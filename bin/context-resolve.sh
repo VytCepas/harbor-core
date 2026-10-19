@@ -123,9 +123,10 @@ bash_write_target() {
   case "$_bc" in *'<<'*) _bc="$(printf '%s\n' "$_bc" | sed -n 1p)" ;; esac
   _bc="$(printf '%s' "$_bc" | tr '\n' ';' | sed -e "s/'[^']*'/#Q#/g" -e 's/"[^"]*"/#Q#/g')"
   _bw='[A-Za-z0-9_./+@%:,-]+'
-  _bt="$(printf '%s\n' "$_bc" | "$FLOOR_GREP" -oE "(^|[^>&=<|-])>>?[ ]*$_bw" | sed -E 's/^.*>[ ]*//' | "$FLOOR_GREP" -v '^/dev/' | sed -n 1p)"
+  # A /dev/ target is a device, except /dev/shm/: a tmpfs a tree can live in (hosted CI's TMPDIR, harbor#1149).
+  _bt="$(printf '%s\n' "$_bc" | "$FLOOR_GREP" -oE "(^|[^>&=<|-])>>?[ ]*$_bw" | sed -E 's/^.*>[ ]*//' | sed -e '\#^/dev/shm/#b' -e '\#^/dev/#d' | sed -n 1p)"
   if [ -z "$_bt" ]; then
-    _bt="$(printf '%s\n' "$_bc" | "$FLOOR_GREP" -oE "(^|[;&|(] *)tee( +-[a-zA-Z]+)* +$_bw" | sed -E 's/^.* //' | "$FLOOR_GREP" -v '^/dev/' | sed -n 1p)"
+    _bt="$(printf '%s\n' "$_bc" | "$FLOOR_GREP" -oE "(^|[;&|(] *)tee( +-[a-zA-Z]+)* +$_bw" | sed -E 's/^.* //' | sed -e '\#^/dev/shm/#b' -e '\#^/dev/#d' | sed -n 1p)"
   fi
   if [ -z "$_bt" ]; then
     _bs="$(printf '%s\n' "$_bc" | "$FLOOR_GREP" -oE "(^|[;&|(] *)(cp|mv|install)( +[^;&|<>()]+)+" | sed -n 1p)"
