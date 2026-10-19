@@ -39,7 +39,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | design | docs/design/ | component | source | living | 6 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | script | bin/ | component | source | living | 205 |
-| (no kind) | - | - | - | - | 170 |
+| (no kind) | - | - | - | - | 171 |
 
 ## Folders
 
@@ -48,7 +48,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | (repo root) | 21 | 3 | 2 |
 | `.agents/` | 4 | 1 | 1 |
 | `.claude/` | 4 | 1 | 1 |
-| `.github/` | 3 | 2 | 1 |
+| `.github/` | 4 | 2 | 1 |
 | `CONTRACTS/` | 77 | 9 | 2 |
 | `DOCTRINE/` | 9 | 1 | 1 |
 | `bin/` | 210 | 21 | 2 |
@@ -438,7 +438,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 |---|---|
 | (repo root) | 19 |
 | `.agents/` | 4 |
-| `.github/` | 2 |
+| `.github/` | 3 |
 | `CONTRACTS/` | 61 |
 | `bin/` | 126 |
 | `commands/` | 5 |

@@ -206,6 +206,19 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       "move it to the private layer; the hit paths are as installed, relative to the target"
     return 1
   fi
+  # Secrets (harbor#1274): gitleaks over the same stage, as deploy-push runs it; missing refuses. gitleaks's default rules
+  # only: it reads a .gitleaks.toml from the scanned dir, and a pack must not allow-list its own secret.
+  command -v gitleaks >/dev/null 2>&1 || { refuse "gitleaks is missing, so the pack was not scanned for secrets" "$(pkg_hint gitleaks)"; return 1; }
+  printf '[extend]\nuseDefault = true\n' > "$WORK/gitleaks.toml"
+  if ! ( cd "$WORK/stage" || exit 2; unset GITLEAKS_CONFIG GITLEAKS_CONFIG_TOML
+         set -- --no-banner --redact --exit-code 1 --report-format json --report-path "$WORK/gitleaks.json" --config "$WORK/gitleaks.toml"
+         if gitleaks dir --help >/dev/null 2>&1; then exec gitleaks dir "$@" .; else exec gitleaks detect --no-git "$@" --source .; fi
+       ) > "$WORK/gitleaks.out" 2>&1; then
+    _gh="$(sed -n 's/^ *"Fingerprint": "\(.*\)",\{0,1\}$/\1/p' "$WORK/gitleaks.json" 2>/dev/null | head -n 1)"
+    if [ -n "$_gh" ]; then refuse "carries a secret (gitleaks: $_gh)" "take it out of the pack's tracked file; the hit is file:rule:line"
+    else refuse "gitleaks could not scan the pack: $(tr -d '\033' < "$WORK/gitleaks.out" | sed 's/\[[0-9;]*m//g' | tail -n 1)" "gitleaks dir --redact . in the pack shows its error"; fi
+    return 1
+  fi
 
   # Shims (harbor#1149): every row links a command to a bin/ file THIS pack installs, under a name core's own table does not
   # own, once. shim-install.sh reads the installed copy, so a row it cannot resolve would be a link to nothing.
