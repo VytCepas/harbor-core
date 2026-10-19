@@ -212,14 +212,14 @@ SECRET="$(sed -n "s/^SECRET='\(.*\)'$/\1/p" "$GUARD_EGRESS" 2>/dev/null || true)
 [ -n "$SECRET" ] || die "could not lift SECRET from $GUARD_EGRESS" "sh bin/floor-verify.sh --live"
 # mawk 1.3.4 (ubuntu's awk) matches an open interval `{n,}` as exactly n, so RLENGTH stops short and the
 # secret's tail survives unmasked (harbor#1149). `[c]{n}[c]*` means the same in every awk; any `{n,}` left refuses.
-SCRUB_SECRET="$(printf '%s' "$SECRET" | sed -E 's/(\[[^]]*\])\{([0-9]+),\}/\1{\2}\1*/g')"
-case "$SCRUB_SECRET" in *[0-9],\}*) die "SECRET has an open interval scrub() cannot rewrite for mawk" "make it a bracket expression, [..]{n,}, in $GUARD_EGRESS" ;; esac
+SCRUB_SHAPES="$(printf '%s' "$SECRET" | sed -E 's/(\[[^]]*\])\{([0-9]+),\}/\1{\2}\1*/g')"
+case "$SCRUB_SHAPES" in *[0-9],\}*) die "SECRET has an open interval scrub() cannot rewrite for mawk" "make it a bracket expression, [..]{n,}, in $GUARD_EGRESS" ;; esac
 
 # Same LENGTH and same PREFIX, body replaced with 'A'. Length matters: several
 # floor rules key on {20,}/{32,} quantifiers, so a shorter replacement would
 # stop matching and the corpus would silently under-report egress blocks.
 scrub() { # stdin -> stdout
-  SCRUB_RE="$SCRUB_SECRET" awk '
+  SCRUB_RE="$SCRUB_SHAPES" awk '
     # ENVIRON, not -v: -v rewrites `\.` to `.` under gawk and mawk, loosening the regex (harbor#771).
     BEGIN { re = ENVIRON["SCRUB_RE"] }
     # Per-CHARACTER-CLASS substitution, not prefix+pad (#47 finding 6). The old
