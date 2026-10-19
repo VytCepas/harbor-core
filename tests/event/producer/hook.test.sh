@@ -40,7 +40,9 @@ for SH in $SHELLS; do
     "$(lines | jq -r 'select(.kind == "agent.done") | "\(.kind) \(.subject) \(.src)"')"
   t_eq "agent.done carries its owning session in data, as §3a allows" "$SID" \
     "$(lines | jq -r 'select(.kind == "agent.done") | .data.session_id')"
-  t_eq "repo is the repo's name" harbor "$(lines | jq -r 'select(.kind == "session.start") | .repo')"
+  # The checkout the hook ran in, not a literal: an export's clone is harbor-core (harbor#1149).
+  t_eq "repo is the repo's name" "$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")" \
+    "$(lines | jq -r 'select(.kind == "session.start") | .repo')"
 
   t_section "$SH: every start kind this producer owns has a terminal kind with the SAME subject (harbor#1049)"
   # The pairs this file produces; agent.spawn ↔ agent.done and the tool.background and pr kinds are

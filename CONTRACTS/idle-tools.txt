@@ -39,7 +39,6 @@
 ab-tally.sh            IDLE  comparative A/B signal over the ledger; nothing schedules a tally
 access-environment.sh IDLE  renders the repo-visibility lines of the auto-mode environment block (harbor#561), and --check (control drift.repo-visibility, warn) holds the live block against them, read only; the live block is written outside this repo, so nothing calls either yet
 bootstrap.sh           VERB  the operator types it once, on a fresh machine (harbor#829); nothing can schedule the first install
-ci-mirror.sh           IDLE  mirrors a harbor PR to the public harbor-core repo behind deploy-push's gates (harbor#1149); the caller is the governance.yml job drafted in the publish runbook, which the operator pushes, so nothing runs it yet
 deliver-drive.sh       VERB  copies a filed deliverable into Drive and prints the share link
 deny-hash.sh           IDLE  M7 leak filter over the operator's own private values — asserts, unrun
 floor-equiv.sh         IDLE  replays a payload corpus through TWO guard trees and compares them
