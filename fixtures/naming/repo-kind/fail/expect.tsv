@@ -1,0 +1,9 @@
+# fixtures/naming/repo-kind/fail (harbor#950) — repo trees that MUST go red on name.repo-kind. Each name is a manifest, built into a directory before --check repo-kind judges it.
+# COLUMNS  name <TAB> the rule ids that must go red, comma-separated
+name	rule
+fixtures/naming/repo-kind/fail/no-config.txt	name.repo-kind
+fixtures/naming/repo-kind/fail/no-kind-line.txt	name.repo-kind
+fixtures/naming/repo-kind/fail/unknown-kind.txt	name.repo-kind
+fixtures/naming/repo-kind/fail/missing-readme.txt	name.repo-kind
+fixtures/naming/repo-kind/fail/docs-is-a-file.txt	name.repo-kind
+fixtures/naming/repo-kind/fail/justfile-is-a-directory.txt	name.repo-kind

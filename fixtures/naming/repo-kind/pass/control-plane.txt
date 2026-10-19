@@ -1,0 +1,13 @@
+# fixtures/naming/repo-kind/pass/control-plane.txt (harbor#950) — a control plane: the longest required list.
+# A repo-kind fixture is a manifest, built into a real directory before --check repo-kind reads it: one entry per line, docs/ for a directory,
+# <file> TAB <text> for a file with content. See bin/lint-name.sh rk_build.
+README.md
+AGENTS.md
+CLAUDE.md
+LICENSE
+CHANGELOG.md
+justfile
+.agents/config.yaml	repo-kind: control-plane
+bin/
+tests/
+docs/

@@ -1,0 +1,8 @@
+role	model	effort	tools	input	output	done_when	must_not	stop_rule
+build	sonnet	medium	all	brief + outcome list	one worktree, red-first tests, commit sha	each outcome shown by a tool run	push, open a PR, merge, touch ~/.claude	report once at the last commit; stop own background jobs first
+review	opus	high	read-only	diff or PR + the claims it makes	findings tagged MATERIAL or MINOR, each with evidence, then a verdict line	every changed hunk read; verdict line present	write, commit, push	report once, verdict line last
+audit	sonnet	medium	read-only + test runners	a done-when list	one row per condition: command, output, pass or fail	every condition ran its own command	fix what it finds	report once; a failed condition is a finding, not a task
+cold-read	haiku	low	Read	one document path	cases placed, then ambiguities listed	document read end to end	read anything but the given document, write	report once; no outside context
+consolidate	sonnet	high	all	branch list + target	one merged branch, conflicts reconciled, full suite result	full suite green or red stated with output	push, merge to main, force anything	report once at the merged head
+docs	claude-code-guide	medium	Read, WebFetch, WebSearch	a question	answer with a cited URL for every claim	each claim has a URL read for it	write, answer from memory	report once; uncited claim means dropped claim
+explore	haiku	low	read-only	a search question + breadth	paths and a conclusion, no file dumps	question answered or absence shown by find	write, run builds	report once

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- harbor:template-only
+     THIS FILE IS A TEMPLATE (harbor#630). Do not cp it: @HOME@ and the other placeholders in it would be
+     installed as literal text, and launchd loads such a job and then fails every time it runs. Render it:
+
+       sh ~/port/harbor/bin/launchd-render.sh ~/port/harbor/launchd/com.harbor.ci-governor.plist > ~/Library/LaunchAgents/com.harbor.ci-governor.plist
+
+     A cp line in the comment below predates the template. It is kept so the rendered file stays byte-identical
+     to the one already installed: follow this block, not that line. This block is not installed;
+     bin/launchd-render.sh drops it. -->
+<!-- CHECKS.md `ci-governor` (harbor#1032): `ci-governor.sh listen`, kept alive. It runs on EVENTS, never a
+     timer: it blocks on `notifyutil -w` (the job hooks' com.harbor.ci-governor.event, `run`'s slot posts,
+     and the OS thermal and memory keys) and on `tail -f` of the harbor-linux container's trigger file.
+     Each wake is one decision; the emergency sampler runs only while CI or a local slot holds cores.
+     An idle box holding nothing wakes it never.
+
+     ProcessType Standard on purpose: the governor and anything it starts run at normal priority.
+     Background (E-cores, throttled) is what made every CI job 2-3x slower on 2026-10-04.
+
+     Aqua: `gh` (it asks GitHub whether a runner is idle before stopping it, and a failed ask stops
+     nothing) needs the keychain. HOME is set for docker's Colima context.
+
+     TEMPLATE: launchd does not expand $HOME, so replace @HOME@ with your home dir on
+     install. An agent cannot install this, by design. Operator steps: harbor#1032.
+
+     See it work: `notifyutil -p com.harbor.ci-governor.event`, then
+     `sh ~/.claude/bin/ci-governor.sh status` and `grep ci-governor ~/.claude/cache/checks.log`.
+
+     Disable (CHECKS.md's two-lookup rule) — bootout's SIGTERM makes listen continue anything it stopped:
+       launchctl bootout gui/$(id -u)/com.harbor.ci-governor
+       rm ~/Library/LaunchAgents/com.harbor.ci-governor.plist -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.harbor.ci-governor</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>@HOME@/.claude/bin/ci-governor.sh</string>
+    <string>listen</string>
+  </array>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>RunAtLoad</key><true/>
+  <key>LimitLoadToSessionType</key><string>Aqua</string>
+  <key>ProcessType</key><string>Standard</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- /usr/sbin for ioreg, sysctl, iostat; /opt/homebrew/bin for docker and gh. No ~/.local/bin. -->
+    <key>PATH</key><string>/usr/bin:/bin:/usr/sbin:/opt/homebrew/bin</string>
+    <key>HOME</key><string>@HOME@</string>
+  </dict>
+  <key>StandardOutPath</key><string>/tmp/com.harbor.ci-governor.out</string>
+  <key>StandardErrorPath</key><string>/tmp/com.harbor.ci-governor.err</string>
+</dict>
+</plist>

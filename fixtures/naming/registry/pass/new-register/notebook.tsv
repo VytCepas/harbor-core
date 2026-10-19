@@ -1,0 +1,7 @@
+# notebook.tsv (harbor#950) — a register added with nothing but its file and its row.
+#
+# WHY: a fixture that must stay green. bin/lint-name.sh names no file called notebook.tsv; it reads the file registers.tsv lists.
+#
+# standard_version: 2.0.0
+id	note
+morning	first

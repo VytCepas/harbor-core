@@ -1,0 +1,16 @@
+harbor-core
+Copyright 2026 Vytautas Cepas
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It includes third-party material, each kept under its own licence. The licence
+text sits beside each tree; the upstream sources and what was changed on intake
+are recorded in PROVENANCE.md and vendor/archify/PROVENANCE.md.
+
+1. vendor/archify/ - the Archify diagram renderers (CLI only)
+   Upstream:  https://github.com/tt-a1i/archify (tag v2.16.0)
+   Licence:   MIT, text in vendor/archify/LICENSE
+   Copyright: (c) 2026 tt-a1i (Archify); (c) 2025 Cocoon AI (original
+              "architecture-diagram-generator")
+
+Not third-party: vendor/complexity-atlas/ is original work (see its README).

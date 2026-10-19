@@ -1,0 +1,10 @@
+# graph.tsv (harbor#996 G2 fixture) - pass-unusual: valid but unusual instances that must stay green
+# relation	notifies	fixture
+# relation	owned-by	fixture
+edge	from	to	site
+owned-by	fx:u	fam:a	fx:u:1
+owned-by	fx:u	fam:b	fx:u:2
+notifies	fx:v	channel:none	fx:v:1
+owned-by	fx:v	fam:a	fx:v:1
+owned-by	fx:v	fam:b	fx:v:1
+owned-by	fx:v	fam:c	fx:v:1

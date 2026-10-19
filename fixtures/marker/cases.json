@@ -1,0 +1,524 @@
+{
+  "_about": "H2 (harbor#4) — the SHARED marker-resolution fixture suite required by CONTRACTS/marker.md. Three implementations must agree: project-init's prod_guard._find_config (Python), projects-orchestrator's resolve_config (Python), and Helm's pure-POSIX floor_in_repo (shell). The POSIX one must NOT import the Python one across a language boundary; it re-implements the spec and these fixtures are what pin the two together.",
+  "_format": "Each case builds `tree` under a scratch root, then resolves from `cwd` (relative to that root). `expect` is the spec verdict. `settled` marks whether CONTRACTS/marker.md actually decides the case — an unsettled case is a question for the three owners, not a bug in any one implementation. A case may carry `files` — a {path: content} map — instead of (or as well as) `tree`, for the cases where the verdict depends on what a marker SAYS rather than only that it exists. A case may carry `home` — a path relative to the scratch root — which the runner sets as $HOME for that case only; M14's stop condition is the one rule whose verdict depends on where $HOME is, and a runner that leaves the real $HOME in place would be testing the developer's machine layout instead of the spec. When `home` is absent the runner MUST still point $HOME somewhere that cannot be an ancestor of `cwd`, so the stop's ABSENCE is pinned too. A case may carry `port_root` — a path relative to the scratch root, exported as $PORT_ROOT for that case only — or `port_root_unset: true`, which leaves PORT_ROOT unset so the `$HOME/port` DEFAULT is what the case exercises. M33-M37 are the PORT_ROOT stop and are the reason both spellings exist: a stop that only applied to an exported value would be off on the box it was built for, where the audit for harbor#619 measured PORT_ROOT unset. When neither key is present the runner MUST still point PORT_ROOT somewhere that cannot be an ancestor of `cwd`, so the stop's ABSENCE is pinned for the other cases exactly as `home` pins M14's.",
+  "_verdicts": [
+    "repo",
+    "ambient"
+  ],
+  "cases": [
+    {
+      "id": "M01-agents-project-init",
+      "why": "The canonical marker project-init emits.",
+      "tree": [
+        ".agents/project-init.md"
+      ],
+      "cwd": ".",
+      "expect": "repo",
+      "settled": true,
+      "roles": [
+        "resolver"
+      ],
+      "roles_why": "project-init.md is a marker for the boundary VERDICT only; neither locator can read a config out of it"
+    },
+    {
+      "id": "M02-agents-config-yaml",
+      "why": "The other spelled marker inside .agents/.",
+      "tree": [
+        ".agents/config.yaml"
+      ],
+      "cwd": ".",
+      "expect": "repo",
+      "settled": true
+    },
+    {
+      "id": "M03-legacy-claude-config",
+      "why": "Legacy marker, explicitly recognized by the spec.",
+      "tree": [
+        ".claude/config.yaml"
+      ],
+      "cwd": ".",
+      "expect": "repo",
+      "settled": true,
+      "roles": [
+        "resolver",
+        "descriptor"
+      ],
+      "roles_why": "prod_guard reads .agents/config.yaml only — the legacy layout predates it"
+    },
+    {
+      "id": "M04-no-marker",
+      "why": "An ordinary directory. The global engine stays in charge.",
+      "tree": [
+        "README.md"
+      ],
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true
+    },
+    {
+      "id": "M05-claude-dir-no-config",
+      "why": "A .claude/ directory alone is NOT a marker — most repos have one.",
+      "tree": [
+        ".claude/settings.local.json"
+      ],
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true
+    },
+    {
+      "id": "M06-walk-up-one",
+      "why": "Marker at the repo root, session cwd in a subdirectory.",
+      "tree": [
+        ".agents/project-init.md",
+        "src/app/main.ts"
+      ],
+      "cwd": "src/app",
+      "expect": "repo",
+      "settled": true,
+      "roles": [
+        "resolver"
+      ],
+      "roles_why": "marker is project-init.md (no config to locate), and the descriptor locator does not walk"
+    },
+    {
+      "id": "M07-walk-up-deep",
+      "why": "Depth must not change the verdict.",
+      "tree": [
+        ".agents/project-init.md",
+        "a/b/c/d/e/f/keep"
+      ],
+      "cwd": "a/b/c/d/e/f",
+      "expect": "repo",
+      "settled": true,
+      "roles": [
+        "resolver"
+      ],
+      "roles_why": "marker is project-init.md (no config to locate), and the descriptor locator does not walk"
+    },
+    {
+      "id": "M08-nested-innermost-wins",
+      "why": "Spec: nested repos, the innermost marker wins. Both are repos, so the VERDICT is the same either way — what differs is WHICH config governs. Implementations that return a root must return the inner one.",
+      "tree": [
+        ".agents/project-init.md",
+        "vendor/inner/.agents/project-init.md"
+      ],
+      "cwd": "vendor/inner",
+      "expect": "repo",
+      "expect_root": "vendor/inner",
+      "settled": true,
+      "roles": [
+        "resolver"
+      ],
+      "roles_why": "marker is project-init.md (no config to locate)"
+    },
+    {
+      "id": "M09-sibling-not-ancestor",
+      "why": "A marker in a SIBLING directory must not leak into this one.",
+      "tree": [
+        "other/.agents/project-init.md",
+        "here/keep"
+      ],
+      "cwd": "here",
+      "expect": "ambient",
+      "settled": true
+    },
+    {
+      "id": "M10-marker-below-cwd",
+      "why": "Resolution walks UP, never down. A marker in a child is not this directory's marker.",
+      "tree": [
+        "child/.agents/project-init.md"
+      ],
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true
+    },
+    {
+      "id": "M11-agents-is-a-file",
+      "why": "`.agents` as a regular file is not the marker directory.",
+      "tree": [
+        ".agents"
+      ],
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true
+    },
+    {
+      "id": "M12-agents-empty-dir",
+      "why": "SETTLED 2026-07-25 (owner). A bare `.agents/` directory is NOT a marker; one of the named files must be present. The spec always read \"`.agents/` present (project-init.md / config.yaml)\", and project-init's reference _find_config has always required a FILE — Helm was the permissive one. Wrong direction for a guard: a bare directory made the floor stand down over a repo with no policy in it yet, which is exactly the window a scaffolder opens when it mkdirs .agents/ before writing into it.",
+      "tree": [
+        ".agents/.keep"
+      ],
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true,
+      "observed_project_init": "ambient (requires .agents/config.yaml to be a file)",
+      "resolution": "Helm changed to match project-init: a named marker FILE is required."
+    },
+    {
+      "id": "M13-marker-is-a-symlink",
+      "why": "SETTLED 2026-07-25 (owner). A symlinked marker is REFUSED. A symlink is writable from OUTSIDE the repo, so honouring it lets an attacker-authored tree forge governed status and stand the ambient layer down (red-team 2026-07-24, marker-forgery). In project-init the same hole is worse than a forged verdict: _find_config locates the file safety.allow is read from, so a symlinked .agents/config.yaml supplies an allowlist from outside the repo and switches prod_guard's destructive-command deny table off entirely.",
+      "tree": [
+        "real/.agents/project-init.md",
+        "link_target_agents"
+      ],
+      "symlinks": [
+        {
+          "from": ".agents",
+          "to": "real/.agents"
+        }
+      ],
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true,
+      "observed_project_init": "repo (is_file() follows symlinks)",
+      "resolution": "project-init changed to match Helm: _find_config refuses a symlinked .agents/ or config.yaml and keeps walking."
+    },
+    {
+      "id": "M14-marker-at-home",
+      "why": "SETTLED 2026-08-02 (owner). The walk STOPS BEFORE $HOME, so a marker there is never examined and every directory beneath it resolves on its own merits. One file at ~/.agents/config.yaml otherwise stands the ambient layer down across the whole machine, and the way it gets written is not an attack: project-init run once in the wrong cwd scaffolds .agents/ right there. M12 raised the bar from a bare directory to a named FILE and did not close this, because a scaffolder writes named files.",
+      "tree": [
+        ".agents/config.yaml",
+        "projects/thing/keep"
+      ],
+      "home": ".",
+      "cwd": "projects/thing",
+      "expect": "ambient",
+      "settled": true,
+      "observed_project_init": "repo (walked `(start, *start.parents)` with no stop condition, 2026-07-25)",
+      "resolution": "All three implementations stop before $HOME. Safe in each: the floor stays armed, prod_guard finds no config and therefore no safety.allow to relax its deny table, and the orchestrator simply does not call $HOME a project. Where $HOME is unset the stop cannot be computed and does not apply — documented, not silently defaulted.",
+      "roles": [
+        "resolver",
+        "allowlist"
+      ],
+      "roles_why": "the $HOME stop is a property of the WALK; the descriptor locator is handed a project dir by the fleet"
+    },
+    {
+      "id": "M28-marker-below-home-still-repo",
+      "why": "The M14 stop must not over-fire. Every governed repo the operator owns lives UNDER $HOME, so a stop that swallowed them would un-govern the entire installed base while looking like a security fix. Breaking a guard proves it discriminates, not that it discriminates correctly — this is the valid-but-unusual case that must stay green.",
+      "tree": [
+        "projects/thing/.agents/config.yaml",
+        "projects/thing/src/keep"
+      ],
+      "home": ".",
+      "cwd": "projects/thing/src",
+      "expect": "repo",
+      "settled": true,
+      "roles": [
+        "resolver",
+        "allowlist"
+      ],
+      "roles_why": "walkers only — the descriptor locator does not walk up"
+    },
+    {
+      "id": "M29-home-not-an-ancestor",
+      "why": "The stop is a property of the PATH being walked, not a global mode. A repo outside $HOME — /opt/svc, a mounted volume, a CI checkout — still walks to `/` exactly as before, and a $HOME somewhere off to the side must not terminate that walk early.",
+      "tree": [
+        "elsewhere/.agents/config.yaml",
+        "elsewhere/src/keep",
+        "somehome/keep"
+      ],
+      "home": "somehome",
+      "cwd": "elsewhere/src",
+      "expect": "repo",
+      "settled": true,
+      "roles": [
+        "resolver",
+        "allowlist"
+      ],
+      "roles_why": "walkers only — the descriptor locator does not walk up"
+    },
+    {
+      "id": "M30-cwd-is-home-itself",
+      "why": "The boundary is BEFORE $HOME, not AT it: a session whose cwd is $HOME resolves ambient even when the marker sits in that same directory. Pins which side of the comparison the stop falls on, so an off-by-one that examines $HOME once cannot pass.",
+      "tree": [
+        ".agents/config.yaml"
+      ],
+      "home": ".",
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true,
+      "roles": [
+        "resolver",
+        "allowlist"
+      ],
+      "roles_why": "the $HOME stop is a property of the WALK"
+    },
+    {
+      "id": "M15-root-cwd",
+      "why": "Walking up from / must terminate, not loop.",
+      "tree": [
+        "keep"
+      ],
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true,
+      "absolute_cwd": "/"
+    },
+    {
+      "id": "M16-cwd-missing",
+      "why": "A cwd that does not exist is AMBIGUOUS. Per the spec the default is consumer-dependent: fail-toward-repo for anything writing the global log; the floor takes the opposite default and stays armed, because for a guard 'defer to the repo' means standing down.",
+      "tree": [
+        "keep"
+      ],
+      "cwd": "does/not/exist",
+      "expect": "ambient",
+      "expect_log_writer": "repo",
+      "settled": true,
+      "roles": [
+        "resolver",
+        "allowlist"
+      ],
+      "roles_why": "the descriptor locator takes a project dir, so 'no cwd' is not a question it is asked"
+    },
+    {
+      "id": "M17-cwd-unset",
+      "why": "Same ambiguity, reached the other way: no cwd in the payload at all.",
+      "tree": [
+        "keep"
+      ],
+      "cwd": null,
+      "expect": "ambient",
+      "expect_log_writer": "repo",
+      "settled": true,
+      "roles": [
+        "resolver",
+        "allowlist"
+      ],
+      "roles_why": "the descriptor locator takes a project dir, so 'no cwd' is not a question it is asked"
+    },
+    {
+      "id": "M18-context-ambient-opt-out",
+      "why": "PI-901 gave the marker a VALUE. `context: ambient` is the owner opting this repo back in to the global layer, so it must decide `ambient` even though the marker is present — otherwise the field the schema defines is decorative and writing it is a silent no-op.",
+      "files": {
+        ".agents/config.yaml": "context: ambient\nproject:\n  name: \"opted-out\"\n"
+      },
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true
+    },
+    {
+      "id": "M19-context-ambient-inner-beats-outer",
+      "why": "Innermost marker wins, so an explicit inner opt-out must not be overruled by an outer repo's marker. This is why the value is read AT the marker the walk finds and decides there, rather than continuing the walk.",
+      "files": {
+        ".agents/config.yaml": "context: repo\n",
+        "sub/.agents/config.yaml": "context: ambient\n"
+      },
+      "cwd": "sub",
+      "expect": "ambient",
+      "settled": true
+    },
+    {
+      "id": "M20-context-repo-is-the-default",
+      "why": "The value only ever ADDS an opt-out. A marker that says `context: repo` — what every fresh scaffold emits — resolves exactly as presence alone already did.",
+      "files": {
+        ".agents/config.yaml": "context: repo\n"
+      },
+      "cwd": ".",
+      "expect": "repo",
+      "settled": true
+    },
+    {
+      "id": "M21-context-absent-is-not-ambient",
+      "why": "Every descriptor scaffolded before PI-901 lacks the key, and `context` is deliberately optional in descriptor.schema.json for exactly that reason. Absence means UNKNOWN and falls back to presence; a reader that treated it as `ambient` would un-govern the entire installed base in one step.",
+      "files": {
+        ".agents/config.yaml": "project:\n  name: \"pre-901\"\n"
+      },
+      "cwd": ".",
+      "expect": "repo",
+      "settled": true
+    },
+    {
+      "id": "M22-context-ambient-commented-out",
+      "why": "`# context: ambient` is documentation, not a declaration. A presence check loose enough to match a comment would hand the repo to the global layer on the strength of a note someone wrote.",
+      "files": {
+        ".agents/config.yaml": "# context: ambient\ncontext: repo\n"
+      },
+      "cwd": ".",
+      "expect": "repo",
+      "settled": true
+    },
+    {
+      "id": "M23-nested-context-key-is-not-the-marker",
+      "why": "`context` is a TOP-LEVEL key. A `context: ambient` indented under some unrelated block is a different key that happens to share a name, and matching it would opt a whole repo out on the strength of a nested value nobody meant as a boundary declaration.",
+      "files": {
+        ".agents/config.yaml": "context: repo\ntooling:\n  context: ambient\n"
+      },
+      "cwd": ".",
+      "expect": "repo",
+      "settled": true
+    },
+    {
+      "id": "M24-marker-file-is-a-symlink",
+      "why": "The other half of M13, and the one the old predicate missed: a real, non-symlink `.agents/` directory containing a SYMLINKED config.yaml. Checking only the directory left the file — the thing actually read for safety.allow and for `context:` — pointing anywhere on disk.",
+      "tree": [
+        "elsewhere/config.yaml"
+      ],
+      "symlinks": [
+        {
+          "from": ".agents/config.yaml",
+          "to": "elsewhere/config.yaml"
+        }
+      ],
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true
+    },
+    {
+      "id": "M25-context-ambient-spaced-colon",
+      "why": "Valid top-level YAML with a space before the colon. A reader that misses a genuine opt-out resolves `repo` and STANDS THE FLOOR DOWN — the unsafe direction — so the reader is deliberately permissive about spelling while staying anchored at column 0. project-init's upgrade preserves exactly these spellings (PR #902 review); a spelling the writer keeps but the reader misses is an opt-out that survives and is then ignored.",
+      "files": {
+        ".agents/config.yaml": "context : ambient\n"
+      },
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true
+    },
+    {
+      "id": "M26-context-ambient-quoted-key",
+      "why": "Valid top-level YAML with a quoted key. A reader that misses a genuine opt-out resolves `repo` and STANDS THE FLOOR DOWN — the unsafe direction — so the reader is deliberately permissive about spelling while staying anchored at column 0. project-init's upgrade preserves exactly these spellings (PR #902 review); a spelling the writer keeps but the reader misses is an opt-out that survives and is then ignored.",
+      "files": {
+        ".agents/config.yaml": "\"context\": ambient\n"
+      },
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true
+    },
+    {
+      "id": "M27-context-ambient-quoted-value",
+      "why": "Valid top-level YAML with a quoted value. A reader that misses a genuine opt-out resolves `repo` and STANDS THE FLOOR DOWN — the unsafe direction — so the reader is deliberately permissive about spelling while staying anchored at column 0. project-init's upgrade preserves exactly these spellings (PR #902 review); a spelling the writer keeps but the reader misses is an opt-out that survives and is then ignored.",
+      "files": {
+        ".agents/config.yaml": "context: \"ambient\"\n"
+      },
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true
+    },
+    {
+      "id": "M31-hash-without-whitespace-is-the-value",
+      "why": "`#` begins a YAML comment only when preceded by whitespace; otherwise it belongs to the plain scalar. So `context: ambient#typo` is the value `ambient#typo`, NOT `ambient`, and a reader that treats it as an opt-out discards a repo's declared policy on a typo. Found by review on project-init PR #927; the shell reader had the same tolerance. Safe for a guard in isolation — it errs toward staying armed — and still a DIVERGENCE, because the descriptor role parses real YAML and resolves the line differently.",
+      "files": {
+        ".agents/config.yaml": "context: ambient#typo\n"
+      },
+      "cwd": ".",
+      "expect": "repo",
+      "settled": true
+    },
+    {
+      "id": "M32-hash-after-whitespace-is-a-comment",
+      "why": "The other direction, and the case that must stay green: a genuine trailing comment does not change the value. Without this, the fix above could be 'never allow a comment' and still pass.",
+      "files": {
+        ".agents/config.yaml": "context: ambient  # opted out deliberately\n"
+      },
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true
+    },
+    {
+      "id": "M33-marker-at-port-root",
+      "why": "harbor#619. The walk STOPS BEFORE PORT_ROOT, the workspace root the governed repos live under, so a marker written there is never examined and every repo beneath it resolves on its own merits. This is M14's hazard one level down and a likelier one: ~/port is a directory the operator is told to create, harbor#620 exists to put root instruction files IN it, and one .agents/config.yaml there would resolve every repo under the workspace to repo - the session hooks stand down and the force-push guard defers to a repo guard that does not exist.",
+      "tree": [
+        "port/.agents/config.yaml",
+        "port/thing/keep"
+      ],
+      "home": ".",
+      "port_root": "port",
+      "cwd": "port/thing",
+      "expect": "ambient",
+      "settled": true,
+      "roles": [
+        "resolver",
+        "allowlist"
+      ],
+      "roles_why": "the PORT_ROOT stop is a property of the WALK; both walkers carry it (the floor since harbor#631, project-init's _find_config since project-init#1030) and the descriptor locator is handed a project dir by the fleet"
+    },
+    {
+      "id": "M34-repo-below-port-root-still-repo",
+      "why": "The M33 stop must not over-fire, and here that is the ENTIRE POINT of the move: after harbor#619 every governed repo the operator owns lives directly under PORT_ROOT. A stop that swallowed them would un-govern the whole installed base while reading as a security fix - the same trap M28 pins for $HOME, and a worse one, because under PORT_ROOT the repos are one level down rather than many.",
+      "tree": [
+        "port/thing/.agents/config.yaml",
+        "port/thing/src/keep"
+      ],
+      "home": ".",
+      "port_root": "port",
+      "cwd": "port/thing/src",
+      "expect": "repo",
+      "settled": true,
+      "roles": [
+        "resolver",
+        "allowlist"
+      ],
+      "roles_why": "walkers only - the descriptor locator does not walk up"
+    },
+    {
+      "id": "M35-port-root-not-an-ancestor",
+      "why": "The stop is a property of the PATH being walked, not a global mode. A repo outside the workspace - a CI checkout, /opt/svc, a clone the operator kept where it was - still resolves exactly as before, and a PORT_ROOT off to the side must not terminate that walk early. M29 for the second stop.",
+      "tree": [
+        "elsewhere/.agents/config.yaml",
+        "elsewhere/src/keep",
+        "port/keep"
+      ],
+      "home": ".",
+      "port_root": "port",
+      "cwd": "elsewhere/src",
+      "expect": "repo",
+      "settled": true,
+      "roles": [
+        "resolver",
+        "allowlist"
+      ],
+      "roles_why": "walkers only - the descriptor locator does not walk up"
+    },
+    {
+      "id": "M36-cwd-is-port-root-itself",
+      "why": "The boundary is BEFORE PORT_ROOT, not AT it: a cross-repo session started in the workspace root - which is the session harbor#619 exists to make possible - resolves ambient even when the marker sits in that same directory. Pins which side of the comparison the stop falls on, so an off-by-one that examines PORT_ROOT once cannot pass. M30 for the second stop.",
+      "tree": [
+        "port/.agents/config.yaml"
+      ],
+      "home": ".",
+      "port_root": "port",
+      "cwd": "port",
+      "expect": "ambient",
+      "settled": true,
+      "roles": [
+        "resolver",
+        "allowlist"
+      ],
+      "roles_why": "the PORT_ROOT stop is a property of the WALK"
+    },
+    {
+      "id": "M37-port-root-unset-uses-the-default",
+      "why": "PORT_ROOT UNSET is not an opt-out. The pre-move audit for harbor#619 measured PORT_ROOT, HARBOR_REPO, ESTATE_DIR and three more unset in .zshrc, .zprofile and a live shell, so a stop that only applied to an exported value would be off on exactly the machine it was built for. With PORT_ROOT unset the root is the documented default $HOME/port, and the stop applies there.",
+      "tree": [
+        "port/.agents/config.yaml",
+        "port/thing/keep"
+      ],
+      "home": ".",
+      "port_root_unset": true,
+      "cwd": "port/thing",
+      "expect": "ambient",
+      "settled": true,
+      "roles": [
+        "resolver",
+        "allowlist"
+      ],
+      "roles_why": "the PORT_ROOT stop is a property of the WALK"
+    },
+    {
+      "id": "M38-harbor-scope-project",
+      "why": "harbor#954 item 9: Harbor itself carries the naming-standard keys (scope: project, standard_version, repo-kind) beside context: repo. The extra keys must not change the verdict in any of the three roles: Harbor resolves as a repo, so its own project rules apply and nothing about the ambient floor is stood down by the new keys.",
+      "files": {
+        ".agents/config.yaml": "context: repo\n\nscope: project\nstandard_version: 1.0.0\nrepo-kind: control-plane  # standards/naming/repo-kinds.tsv\n"
+      },
+      "cwd": ".",
+      "expect": "repo",
+      "settled": true
+    }
+  ],
+  "_observed": "project-init's reference implementation is plugins/project-init-workflow/hooks/prod_guard.py::_find_config, read 2026-07-25. It walks (start, *start.parents) looking for .agents/config.yaml and returns it if config.is_file(). That single line settles M12 (a file is required) and M13 (symlinks are followed) in the OPPOSITE direction to Helm's resolver on both counts.",
+  "_roles": {
+    "_about": "One spec, three ROLES — the claim 'three implementations of one predicate' was measurably false (2026-08-02) and this is the honest model. A case with no `roles` key applies to all three.",
+    "resolver": "Does a repo govern this cwd? Walks up, returns repo|ambient. Helm's floor_in_repo. The only implementation that answers the boundary question itself.",
+    "allowlist": "Which config supplies safety.allow for this cwd? Walks up, needs .agents/config.yaml specifically. project-init's prod_guard._find_config. Maps None -> ambient.",
+    "descriptor": "Where is THIS project's descriptor? No walk — the fleet already points at the dir. projects-orchestrator's resolve_config. Maps None -> ambient, and a descriptor whose `context` is ambient -> ambient."
+  }
+}

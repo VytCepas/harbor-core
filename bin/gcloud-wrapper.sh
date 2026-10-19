@@ -1,0 +1,193 @@
+#!/usr/bin/env sh
+# gcloud-wrapper.sh (harbor#546) — installed as ~/.local/bin/gcloud, ahead of the
+# real gcloud on PATH. Refuses `gcloud auth login` anywhere but INSIDE a gcx
+# identity dir, naming that dir's own account; every other call is an exec of the real gcloud.
+#
+# WHY THE BINARY AND NOT THE GUARD. guard-cloud's IDENTITY tier sees an agent's
+# tool calls and nothing else. On 2026-09-18 a session handed the operator
+# `! gcloud auth login` as the fix for an expired CLI credential; a user `!`
+# command is not a tool call, so no hook would ever have seen it. The only layer
+# every caller crosses — a terminal, a `!` command, an agent, a script — is the
+# name `gcloud` on PATH. A bare login is wrong three ways on this box, each
+# already recorded in gcloud.md of the access register (`sh bin/roots.sh --access`): it refreshes the AMBIENT config rather
+# than the dir gcx reads (so the failure looks unchanged), it makes whichever
+# account the browser offers the ACTIVE one (the 2026-07-31 tools-dir drift),
+# and after a `Reauthentication failed` it is usually unnecessary, because the
+# ADC on the same identity still answers over REST (ROUTING.md in the same register).
+#
+# THE RIGHT ACCOUNT COMES FROM THE DIR, NOT FROM THIS FILE. A dir's pinned
+# `expected-account` wins; otherwise the CLI account it already holds. A dir with
+# neither has no recorded owner, and a login there is refused until one is
+# pinned — the account-to-dir map lives in the dirs gcx already reads, so a list
+# of accounts typed here would be a copy, and copies drift while reading correctly.
+#
+# A NET, NOT A WALL: an absolute path to the real binary walks past it, and
+# that is deliberate — it is the operator's escape, and guard-cloud still asks
+# when an agent does it. Out of scope: `auth application-default login`, which
+# gcx already refuses for its own reason.
+#
+#   gcloud auth login ...                  refused, exit 77, prints the gcx forms
+#   gcx <role> gcloud auth login <acct>    allowed when <acct> is the dir's account
+#   gcloud <anything else>                 exec of the real gcloud, argv untouched
+#   GCLOUD_WRAPPER_ROOT                    identity root override, for the suite
+set -u
+
+ROOT="${GCLOUD_WRAPPER_ROOT:-$HOME/.config/gcloud/identities}"
+
+# Status lines are log-lib's, on stderr: stdout is the real gcloud's (CONTRACTS/logging.md). Loaded only when
+# there is something to say, so a missing library can never stand between a caller and the real gcloud.
+# Installed as a link in ~/.local/bin, so log-lib.sh is looked for beside the file the link resolves to.
+_logload() {
+  _me="$0"
+  while [ -L "$_me" ]; do _ml=$(readlink "$_me"); case "$_ml" in /*) _me="$_ml" ;; *) _me="${_me%/*}/$_ml" ;; esac; done
+  case "$_me" in */*) _here="${_me%/*}" ;; *) _here=. ;; esac
+  [ -f "$_here/log-lib.sh" ] || { printf '%s: log-lib.sh is missing beside %s\n' gcloud "$_me" >&2; exit 77; }
+  . "$_here/log-lib.sh"
+  log_init gcloud; LOG_FD=2
+}
+# _open <step>: load the library and head the run. Each refusal then logs its own FAIL and fix lines inline,
+# because lint LOG1 reads a FAIL's fix on its own straight-line path.
+_open() { _logload; log_head "$1"; }
+
+# Physical path of a file, following symlinks by hand: BSD readlink has no -f on
+# every macOS this box has run, and `realpath` is not POSIX.
+_resolve() {
+  _p=$1; _n=0
+  while [ -L "$_p" ] && [ "$_n" -lt 32 ]; do
+    _l=$(readlink "$_p") || return 1
+    case $_l in /*) _p=$_l ;; *) _p=$(dirname -- "$_p")/$_l ;; esac
+    _n=$((_n + 1))
+  done
+  _d=$(CDPATH= cd -P -- "$(dirname -- "$_p")" 2>/dev/null && pwd -P) || return 1
+  printf '%s/%s\n' "$_d" "$(basename -- "$_p")"
+}
+
+# The real gcloud: the first one on PATH that is not this file. Compared by
+# physical path, so the same wrapper linked from two PATH entries is skipped
+# twice rather than exec'ing itself in a loop.
+_real_gcloud() {
+  _self=$(_resolve "$0") || _self=$0
+  _oifs=$IFS; IFS=:; set -f
+  for _dir in $PATH; do
+    [ -n "$_dir" ] || _dir=.
+    [ -f "$_dir/gcloud" ] && [ -x "$_dir/gcloud" ] || continue
+    _c=$(_resolve "$_dir/gcloud") || continue
+    [ "$_c" = "$_self" ] && continue
+    IFS=$_oifs; set +f
+    printf '%s\n' "$_dir/gcloud"; return 0
+  done
+  IFS=$_oifs; set +f
+  return 1
+}
+
+# Is this `gcloud [global flags] auth login [flags] [ACCOUNT]`? Sets LOGIN_ACCT to
+# the account argument, or '' when none was given. Help is never a login: the
+# cloud-guard corpus allows `auth login --help` and so does this.
+LOGIN_ACCT=''
+_is_login() {
+  for _x in "$@"; do case $_x in -h|--help) return 1 ;; esac; done
+  _pos=0; _skip=0
+  for _x in "$@"; do
+    if [ "$_skip" = 1 ]; then _skip=0; continue; fi
+    case $_x in
+      # flags whose VALUE is the next word; without this a project id would be
+      # read as the command group
+      --account|--project|--configuration|--billing-project|--impersonate-service-account|\
+      --verbosity|--format|--flatten|--flags-file|--trace-token|--access-token-file|\
+      --universe-domain|--cred-file|--login-config|--remote-bootstrap) _skip=1; continue ;;
+      -*) continue ;;
+    esac
+    _pos=$((_pos + 1))
+    case $_pos in
+      1) [ "$_x" = auth ] || return 1 ;;
+      2) [ "$_x" = login ] || return 1 ;;
+      3) LOGIN_ACCT=$_x; return 0 ;;
+    esac
+  done
+  [ "$_pos" -ge 2 ]
+}
+
+# The account a role dir belongs to: the pin, else the CLI account it holds.
+_dir_account() {
+  _a=''
+  if [ -f "$1/expected-account" ]; then
+    _a=$(sed -n '1p' "$1/expected-account" | tr -d '[:space:]')
+  fi
+  if [ -z "$_a" ]; then
+    _cfg=default
+    if [ -f "$1/active_config" ]; then _cfg=$(head -1 "$1/active_config"); fi
+    _a=$(sed -n 's/^account *= *//p' "$1/configurations/config_$_cfg" 2>/dev/null | head -1)
+  fi
+  printf '%s' "$_a"
+}
+
+# The dirs that hold a CLI identity, as runnable lines in FORMS (one per line). An ADC-only dir is left
+# out on purpose: a CLI login is not how it was set up, and ROUTING.md warns that
+# re-authing those dirs can destroy a working grant.
+_forms() {
+  FORMS=''
+  for _d in "$ROOT"/*/; do
+    [ -d "$_d" ] || continue
+    _r=$(basename -- "$_d")
+    _cfg=default
+    if [ -f "$_d/active_config" ]; then _cfg=$(head -1 "$_d/active_config"); fi
+    _cli=$(sed -n 's/^account *= *//p' "$_d/configurations/config_$_cfg" 2>/dev/null | head -1)
+    [ -n "$_cli" ] || continue
+    FORMS="${FORMS:+$FORMS
+}gcx $_r gcloud auth login $(_dir_account "${_d%/}")"
+  done
+  [ -n "$FORMS" ] || FORMS='gcx <role> gcloud auth login <account>'
+}
+
+if _is_login "$@"; then
+  _in=''
+  if [ -n "${CLOUDSDK_CONFIG:-}" ] && [ -d "$CLOUDSDK_CONFIG" ] && [ -d "$ROOT" ]; then
+    _cp=$(CDPATH= cd -P -- "$CLOUDSDK_CONFIG" 2>/dev/null && pwd -P) || _cp=''
+    _rp=$(CDPATH= cd -P -- "$ROOT" 2>/dev/null && pwd -P) || _rp=''
+    # a direct child only: the root itself, a nested path or a `..` escape is
+    # not an identity dir, and pwd -P has already collapsed any `..`
+    case $_cp in "$_rp"/*/*) : ;; "$_rp"/?*) _in=$_cp ;; esac
+  fi
+  if [ -z "$_in" ]; then
+    _forms; _open "auth login"
+    log_fail "refusing \`gcloud auth login\` outside a gcx identity dir: a bare login refreshes the AMBIENT config, not the dir gcx reads, and makes whichever account the browser offers the active one"
+    while IFS= read -r _f; do log_fix "$_f"; done <<EOF
+$FORMS
+EOF
+    log_note "after 'Reauthentication failed' a login is often unnecessary: the ADC on the same identity usually still answers over REST (ROUTING.md in the access register, Descending a tier)"
+    log_end || :; exit 77
+  fi
+  _role=$(basename -- "$_in")
+  _want=$(_dir_account "$_in")
+  if [ -z "$_want" ]; then
+    _open "auth login"
+    log_fail "role '$_role' records no account (no expected-account pin, no CLI account), so which account belongs here is unknown"
+    log_fix "printf '%s\\n' <account> > $_in/expected-account"
+    log_end || :; exit 77
+  fi
+  if [ -z "$LOGIN_ACCT" ]; then
+    _open "auth login"
+    log_fail "a login must NAME the account, or the browser picks it; role '$_role' belongs to $_want"
+    log_fix "gcx $_role gcloud auth login $_want"
+    log_end || :; exit 77
+  fi
+  if [ "$LOGIN_ACCT" != "$_want" ]; then
+    _forms; _open "auth login"
+    log_fail "role '$_role' belongs to $_want, not $LOGIN_ACCT: logging $LOGIN_ACCT in here would make it the active account for every later \`gcx $_role\` call while the label still says $_role"
+    log_fix "gcx $_role gcloud auth login $_want"
+    while IFS= read -r _f; do log_fix "$_f"; done <<EOF
+$FORMS
+EOF
+    log_end || :; exit 77
+  fi
+fi
+
+REAL=$(_real_gcloud) || {
+  _open "real gcloud"
+  # gcloud is a brew cask on macOS and an SDK download elsewhere (harbor#618).
+  if [ "$(uname -s)" = Darwin ]; then _gc_inst='brew install --cask google-cloud-sdk'; else _gc_inst='see https://cloud.google.com/sdk/docs/install'; fi
+  log_fail "no real gcloud on PATH after this wrapper ($0)"
+  log_fix "$_gc_inst   # or remove the ~/.local/bin/gcloud link if the wrapper is not wanted"
+  log_end || :; exit 127
+}
+exec "$REAL" "$@"

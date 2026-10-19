@@ -1,0 +1,1 @@
+{"session_id":"00000000-0000-0000-0000-000000000000","transcript_path":"/redacted","cwd":"/redacted","prompt_id":"redacted","permission_mode":"auto","agent_id":"redacted","agent_type":"workflow-subagent","effort":{"level":"high"},"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"rm -rf /","description":"contract fixture"},"tool_use_id":"redacted"}

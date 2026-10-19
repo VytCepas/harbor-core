@@ -1,0 +1,62 @@
+# skills/test-strength/targets/floor.target
+# Subject: the Bash guard. Checker: floor-equiv replaying the real corpus.
+#
+# WHY NOT the floor suite (tests/floor/). 6583 lines then, minutes-scale, and this box has no
+# `timeout` to bound a hang — a per-class sweep is hours on one serialised
+# runner, and a gate too expensive to run gets stood down. floor-equiv is the
+# NARROWEST command that exercises the mutated thing and it brings its own
+# 676-payload corpus. Measured 2026-08-30: 16.1s per run at --limit 30, and a
+# guard replaced by `exit 0` comes back "11 identical, 19 DIFFERENT", exit 1.
+#
+# KNOWN AND STATED: floor-equiv is blind in one direction by construction. Every
+# corpus payload was selected because the BASELINE blocks it, so the tool sees a
+# candidate that LOSES a block and cannot see one that ADDS a block. That makes
+# it the right instrument for `threshold-widen`, `guard-clause-delete` and
+# `exit-neuter`, and the WRONG one for `threshold-narrow`, whose whole effect is
+# to add blocks. NARROW is declared anyway and its survivors are expected: a
+# survivor that is the instrument's known blind spot is a finding about the
+# instrument, and deleting the class would hide it.
+#
+# The two controls are what close that blind spot from the other side: they fire
+# the PRISTINE guard on ordinary work and require an ALLOW.
+
+target        floor
+subject-kind  posix-shell
+lane          deep
+cost          20
+sites         3
+seed          repo:bin/guard-bash.sh
+stage         copy-tree repo:bin $WORK/base
+stage         copy-tree repo:bin $WORK/cand
+stage         mkdir $WORK/cfg
+place         $WORK/cand/guard-bash.sh
+checker-cmd   sh bin/floor-equiv.sh --baseline $WORK/base --candidate $WORK/cand --corpus fixtures/guard-corpus.jsonl --limit 30 --config $WORK/cfg
+green         0
+red           1
+
+mutate  CMP     comparison-flip
+mutate  WIDE    threshold-widen
+mutate  NARROW  threshold-narrow
+mutate  GUARD   guard-clause-delete
+mutate  EXIT    exit-neuter
+mutate  NEG     negation-drop
+mutate  ALT     alternation-drop
+mutate  MSG     message-drop
+
+manual  TCC-1   a macOS TCC denial makes a guard look busy rather than blocked; no textual mutation of the guard reproduces it
+manual  SHAPE-1 floor-equiv reports only the rule NAME, so a refactor moving a decision from crontab-install.flat to crontab-install.argv is verdict-identical here; a shape-level mutation needs an instrument this target does not have
+
+# `cmd` controls fire the PRISTINE guard on a legitimate payload and require an
+# ALLOW. Constitution No.2 rule 11: a guard that blocks ordinary work gets
+# switched off, and a switched-off guard protects nothing.
+control LEGIT-RSYNC cmd CLAUDE_CONFIG_DIR=$WORK/cfg sh $SUBJECT < $TDIR/floor/legit-rsync.json
+        varies: shape
+        why:    `rsync -a --delete ./build/ host:/srv/` is ordinary deploy work and carries a --delete the destructive rules match on
+control LEGIT-FIND  cmd CLAUDE_CONFIG_DIR=$WORK/cfg sh $SUBJECT < $TDIR/floor/legit-find-delete.json
+        varies: lexical
+        why:    `find build -name '*.tmp' -delete` carries every token a destructive-op rule looks for and is still ordinary work
+
+# DECLARED AND ABSENT ON THIS BOX. cc-audit covers a different axis entirely —
+# malicious payloads in a skill — and naming it here is how a reader learns that
+# axis was not measured, rather than assuming this run covered it.
+scanner cc-audit cc-audit scan $WORK/cand/guard-bash.sh

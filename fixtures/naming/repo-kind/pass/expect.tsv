@@ -1,0 +1,7 @@
+# fixtures/naming/repo-kind/pass (harbor#950) — repo trees that MUST stay green. Each name is a manifest, built into a directory before --check repo-kind judges it.
+# COLUMNS  name <TAB> -
+name	rule
+fixtures/naming/repo-kind/pass/workload.txt	-
+fixtures/naming/repo-kind/pass/workload-extras.txt	-
+fixtures/naming/repo-kind/pass/control-plane.txt	-
+fixtures/naming/repo-kind/pass/data-single-quoted.txt	-

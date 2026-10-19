@@ -1,0 +1,14 @@
+# fixtures/naming/bin/pass (harbor#950) — bin/ names that MUST stay green. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# COLUMNS  name <TAB> -
+name	rule
+admission-bash.sh	-
+drift-undeployed-install.sh	-
+lint-name.sh	-
+memory-route.sh	-
+ci-queue.sh	-
+audit-triage.py	-
+context-budget.awk	-
+sql	-
+harbor	-
+yard	-
+access-route-list.mjs	-

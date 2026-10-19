@@ -1,0 +1,9 @@
+# graph.tsv (harbor#996) - a lint-module fixture, not a real graph
+# input	sysa	~/fixture/sysa	3 files
+# input	sysb	~/fixture/sysb	3 files
+edge	from	to	site
+derives_from	sysa:docs/generated/index.txt	sysa:bin/alpha-gen.sh	sysa:docs/generated/index.txt:1
+references	sysa:bin/alpha-run.sh	sysa:docs/generated/index.txt	sysa:bin/alpha-run.sh:9
+references	sysa:bin/alpha-gen.sh	sysa:docs/generated/index.txt	sysa:bin/alpha-gen.sh:3
+references	sysa:tests/alpha/gen.test.sh	sysa:docs/generated/index.txt	sysa:tests/alpha/gen.test.sh:6
+references	sysa:docs/generated/index.txt	sysa:bin/alpha-run.sh	sysa:docs/generated/index.txt:2

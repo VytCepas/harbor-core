@@ -1,0 +1,9 @@
+{"guard":"destroy","id":"shape:over-cap/ask","want":"allow","why":"harbor#306: past the cap the backstop covers the deny tier only, by design"}
+{"guard":"destroy","id":"shape:no-normalizer/ask","want":"allow","why":"harbor#306: with no normalizer the backstop covers the deny tier only, by design"}
+{"guard":"cloud","id":"shape:over-cap/ask","want":"deny","why":"harbor#306: blind, the backstop denies any call that names bq"}
+{"guard":"cloud","id":"shape:over-cap/allow","want":"deny","why":"harbor#306: blind, the backstop denies any call that names bq"}
+{"guard":"cloud","id":"shape:no-normalizer/ask","want":"deny","why":"harbor#306: blind, the backstop denies any call that names bq"}
+{"guard":"cloud","id":"shape:no-normalizer/allow","want":"deny","why":"harbor#306: blind, the backstop denies any call that names bq"}
+{"guard":"deliverables","id":"shape:env-S/deny","want":"allow","why":"env -S splits words and runs no shell, so > is an argument, not a redirect"}
+{"guard":"bash","id":"shape:env-S/deny","want":"allow","why":"env -S splits words and runs no shell, so | is an argument to curl, not a pipe into sh"}
+{"guard":"deliverables","id":"shape:heredoc-redirect/deny","want":"allow","why":"harbor#716: the body lands in /tmp/x as data, and this guard judges where a document lands; the opener's own redirect is still judged (heredoc-write, heredoc-opener-*)"}

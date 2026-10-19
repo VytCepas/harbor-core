@@ -1,0 +1,6 @@
+# graph.tsv (harbor#996 G2 fixture) - red-enforced-by: fx:ok carries enforced-by; fx:bad has one inbound and an edge of another relation, neither of which counts
+# relation	enforced-by	fixture
+edge	from	to	site
+enforced-by	fx:ok	fx:t	fx:ok:1
+enforced-by	fx:t	fx:bad	fx:t:1
+references	fx:bad	fx:t	fx:bad:1

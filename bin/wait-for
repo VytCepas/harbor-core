@@ -1,0 +1,178 @@
+#!/usr/bin/env sh
+# wait-for — bounded, self-diagnosing wait for an EXTERNAL condition.
+# BOX-1 · was UNTRACKED in ~/.local/bin until 2026-09-09 and is now here so it
+# has history, review and a backup. BOX-1 is a classification chosen to satisfy
+# lint S3 -- there is no issue behind this file, and the fit is provisional: box-local tooling with no better token. Correct it if
+# you know the real provenance.
+#
+# WHY THIS EXISTS
+#   2026-08-24: a hand-rolled `until [ "$(grep -c X f)" -ge 5 ]; do sleep 15; done`
+#   spun for 39 minutes. The predicate could never match the file's real format
+#   (it returned 4 forever and needed 5). The loop had no deadline, no way to say
+#   "I gave up", and printed nothing — so a permanently-false predicate was
+#   indistinguishable from "not yet". This tool makes all three impossible.
+#
+# SCOPE — read this before using it
+#   Use for EXTERNAL state only: a Cloud Build run, a data-sync run, a warehouse
+#   job, a CI check, a port opening. Do NOT use it to wait on work the Claude Code
+#   harness already tracks (background Bash, Workflow, Agent) — those re-invoke the
+#   model on completion, so polling them adds risk and zero information.
+#
+# GUARANTEES
+#   · Cannot hang: the deadline is mandatory and capped.
+#   · Cannot stay silent: on timeout it reports attempts, elapsed, the last
+#     predicate exit code, its stderr, and the last witness value.
+#   · Cannot hide a frozen predicate: with -w it warns when the observed value has
+#     not changed for N polls, which is exactly the signature of the bug above.
+#
+# EXIT CODES
+#   0  condition met          3  deadline reached (gave up)
+#   2  usage error            4  predicate looks broken (not found / not executable)
+#
+# NOTE ON `set -e`: deliberately absent. A predicate returning non-zero is the
+# normal "not yet" case, and `set -e` would abort the wait on the very first poll.
+# (Measured trap on this box: `x="$(cmd)"` under `set -e` aborts instead of
+# falling back.) There is also no EXIT trap, because one that runs after a failure
+# can rewrite a non-zero status into exit 0.
+
+set -u
+
+TIMEOUT=600
+INTERVAL=15
+LABEL=""
+QUIET=0
+WITNESS=""
+STALL=6
+MAXT=3600
+
+# Every line is log-lib's, on stderr (the predicate's stdout is discarded and there is no other output). Installed as
+# a link in ~/.local/bin, so log-lib.sh is looked for beside the file the link resolves to.
+_me="$0"
+while [ -L "$_me" ]; do _ml="$(readlink "$_me")"; case "$_ml" in /*) _me="$_ml" ;; *) _me="${_me%/*}/$_ml" ;; esac; done
+case "$_me" in */*) _here="${_me%/*}" ;; *) _here=. ;; esac
+[ -f "$_here/log-lib.sh" ] || { printf 'wait-for: log-lib.sh is missing beside %s\n' "$_me" >&2; exit 2; }
+. "$_here/log-lib.sh"
+log_init wait-for; LOG_FD=2
+
+# die <what failed>: FAIL, its fix, the summary, exit 2 (a usage error is not a wait).
+die() { log_fail "$*"; log_fix "wait-for -h"; log_end || :; exit 2; }
+
+usage() {
+  cat >&2 <<'U'
+usage: wait-for [-t SEC] [-i SEC] [-n LABEL] [-w WITNESS_CMD] [-s N] [-q] -- CMD [ARGS...]
+
+  CMD          the predicate. Exit 0 means the condition is met.
+  -t SEC       deadline, default 600, max 3600. Never unbounded.
+  -i SEC       poll interval, default 15, minimum 1. Use >=30 for remote APIs.
+  -w CMD       witness: a shell command whose stdout is the observed value.
+               Logged each poll and stall-checked. Strongly recommended — without
+               it a frozen predicate cannot be detected.
+  -s N         warn after the witness value repeats N times, default 6.
+  -n LABEL     label for log lines.
+  -q           only log changes and the verdict.
+
+examples
+  wait-for -t 900 -i 30 -n ci -w 'gh pr checks 42 --json bucket -q ".[].bucket" | sort -u' \
+           -- sh -c 'gh pr checks 42 --json bucket -q ".[].bucket" | grep -qv pending'
+
+  wait-for -t 300 -i 10 -n port -- sh -c 'nc -z 127.0.0.1 8080'
+U
+  exit 2
+}
+
+while getopts ':t:i:n:w:s:qh' o; do
+  case $o in
+    t) TIMEOUT=$OPTARG ;;
+    i) INTERVAL=$OPTARG ;;
+    n) LABEL=$OPTARG ;;
+    w) WITNESS=$OPTARG ;;
+    s) STALL=$OPTARG ;;
+    q) QUIET=1 ;;
+    h) usage ;;
+    :) die "option -$OPTARG requires a value" ;;
+    ?) die "unknown option -$OPTARG" ;;
+  esac
+done
+shift $((OPTIND - 1))
+[ $# -gt 0 ] || usage
+
+case $TIMEOUT  in ''|*[!0-9]*) die "-t must be an integer" ;; esac
+case $INTERVAL in ''|*[!0-9]*) die "-i must be an integer" ;; esac
+case $STALL    in ''|*[!0-9]*) die "-s must be an integer" ;; esac
+[ "$TIMEOUT"  -ge 1 ] || die "-t must be at least 1"
+[ "$TIMEOUT"  -le "$MAXT" ] && : || { log_note "-t capped at $MAXT"; TIMEOUT=$MAXT; }
+[ "$INTERVAL" -ge 1 ] || INTERVAL=1
+
+say() { [ "$QUIET" -eq 1 ] && return 0; log_note "$*"; return 0; }
+ERRF=$(mktemp "${TMPDIR:-/tmp}/waitfor.XXXXXX") || die "cannot create temp file"
+log_head "${LABEL:-wait}"
+
+START=$(date +%s)
+DEADLINE=$((START + TIMEOUT))
+ATTEMPT=0
+PREV=""
+SAME=0
+WARNED=0
+LASTRC=0
+
+[ -n "$WITNESS" ] || say "no -w witness given: a frozen predicate cannot be detected"
+
+while :; do
+  ATTEMPT=$((ATTEMPT + 1))
+
+  if [ -n "$WITNESS" ]; then
+    OBS=$(sh -c "$WITNESS" 2>/dev/null)
+    OBS=$(printf '%s' "$OBS" | tr '\n' ' ')
+  else
+    OBS="(no witness)"
+  fi
+
+  : >"$ERRF"
+  "$@" >/dev/null 2>"$ERRF"
+  LASTRC=$?
+
+  if [ "$LASTRC" -eq 0 ]; then
+    ELAPSED=$(( $(date +%s) - START ))
+    log_ok "MET after ${ELAPSED}s, ${ATTEMPT} attempt(s). observed: ${OBS}"
+    rm -f "$ERRF"
+    log_end; exit $?
+  fi
+
+  # A predicate that is missing or not runnable is a bug, not a "not yet".
+  if [ "$ATTEMPT" -eq 1 ] && { [ "$LASTRC" -eq 127 ] || [ "$LASTRC" -eq 126 ]; }; then
+    [ -s "$ERRF" ] && log_note "predicate stderr: $(cat "$ERRF")"
+    rm -f "$ERRF"
+    log_fail "predicate broken on first evaluation (exit $LASTRC): not waiting"
+    log_fix "$*   # run the predicate by hand and read its error"
+    log_end || :; exit 4
+  fi
+
+  if [ "$OBS" = "$PREV" ]; then
+    SAME=$((SAME + 1))
+  else
+    SAME=0
+    say "observed: ${OBS}  (predicate rc=$LASTRC, t+$(( $(date +%s) - START ))s)"
+  fi
+  PREV=$OBS
+
+  if [ -n "$WITNESS" ] && [ "$WARNED" -eq 0 ] && [ "$SAME" -ge "$STALL" ]; then
+    WARNED=1
+    log_warn "STALL: observed value unchanged for $SAME polls: '${OBS}'. If that value can never satisfy the predicate, this wait is a bug."
+    log_fix "sh -c '<the -w witness>'   # run it by hand and compare its output with what the predicate needs"
+  fi
+
+  NOW=$(date +%s)
+  if [ "$NOW" -ge "$DEADLINE" ]; then
+    log_note "last predicate exit code: $LASTRC; last observed value: ${OBS}"
+    [ -s "$ERRF" ] && log_note "predicate stderr: $(cat "$ERRF")"
+    rm -f "$ERRF"
+    log_fail "gave up after $((NOW - START))s, ${ATTEMPT} attempt(s)"
+    log_fix "wait-for -t $MAXT${LABEL:+ -n $LABEL} -- $*   # a longer deadline, if the condition is real"
+    log_end || :; exit 3
+  fi
+
+  REMAIN=$((DEADLINE - NOW))
+  [ "$INTERVAL" -lt "$REMAIN" ] && SLEEP=$INTERVAL || SLEEP=$REMAIN
+  [ "$SLEEP" -ge 1 ] || SLEEP=1
+  sleep "$SLEEP"
+done

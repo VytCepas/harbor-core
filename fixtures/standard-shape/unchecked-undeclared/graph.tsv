@@ -1,0 +1,3 @@
+# graph.tsv (harbor#996 G2 fixture) - unchecked-undeclared: listed-in is required but this graph derives no listed-in edges, so it is not judged
+edge	from	to	site
+references	fx:a	fx:b	fx:a:1

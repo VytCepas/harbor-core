@@ -1,0 +1,98 @@
+---
+kind: context-map
+status: generated
+owner_issue: 996
+layer: generated
+---
+
+# Context map
+
+Where every tracked file sits on the levels of D-57, generated from the catalog; do not edit.
+
+Regenerate with `sh bin/standard-catalog.sh --map`; `sh bin/standard-catalog.sh --check` is red when this file is stale.
+Ask the catalog instead of reading this page: `harbor find <family>` lists a family's scripts, tests, checks, docs and controls,
+`harbor tree` renders the levels, and `sh bin/standard-catalog.sh --census` writes `build/catalog.tsv` with every row and
+`build/catalog-findings.tsv` with every level the registry could not fill. The README and HANDOFF sections that describe the
+layout stay; this page adds to them and never replaces them.
+
+## Levels
+
+metasystem › domain › system › subsystem › family › component › element
+
+System `harbor` sits in domain `platform`. A file's subsystem is read from its family's `broader` chain in `standards/naming/terms.tsv`.
+
+## Kinds and where they live
+
+| Kind | Folder | Level | Layer | Lifecycle | Files |
+|---|---|---|---|---|---|
+| standard | standards/ | system | source | versioned | 5 |
+| skill | skills/ | component | source | living | 2 |
+| test | tests/ | component | source | living | 3 |
+| report | docs/reports/ | element | report | dated | 1 |
+| design | docs/design/ | component | source | living | 1 |
+| context-map | docs/context-map.md | system | generated | generated | 1 |
+| generated-doc | docs/generated/ | component | generated | generated | 2 |
+| script | bin/ | component | source | living | 6 |
+| (no kind) | - | - | - | - | 2 |
+
+## Folders
+
+| Folder | Files | Families | Kinds |
+|---|---|---|---|
+| (repo root) | 2 | 1 | 2 |
+| `bin/` | 6 | 4 | 1 |
+| `contracts/` | 1 | 1 | 1 |
+| `docs/` | 4 | 2 | 4 |
+| `skills/` | 2 | 1 | 1 |
+| `standards/` | 5 | 1 | 1 |
+| `tests/` | 3 | 1 | 1 |
+
+## Families
+
+| Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
+|---|---|---|---|---|---|---|---|
+| check | observability | 0 | 0 | 0 | 0 | 0 | 0 |
+| deploy | control-plane | 1 | 0 | 0 | 0 | 0 | 1 |
+| drift | control-plane | 3 | 3 | 2 | 2 | 1 | 2 |
+| lint | control-plane | 1 | 0 | 0 | 0 | 0 | 1 |
+| standard | control-plane | 0 | 0 | 5 | 0 | 0 | 0 |
+
+## Per family
+
+Scripts, hooks, docs and other files by path; tests, fixtures and eval data are counted above and not listed. A path's purpose is in `harbor find <family>`.
+
+### deploy
+
+- `bin/deploy-push.sh`
+
+### drift
+
+- `bin/drift-install.sh`
+- `bin/drift-skills.sh`
+- `bin/old-sync.sh`
+- `docs/design/drift-model.md`
+- `docs/reports/2026-10-01-drift-audit.md`
+- `skills/drift-check/SKILL.md`
+
+### lint
+
+- `bin/lint-all.sh`
+
+### standard
+
+- `standards/naming/aliases.tsv`
+- `standards/naming/controls.tsv`
+- `standards/naming/kinds.tsv`
+- `standards/naming/renames.tsv`
+- `standards/naming/terms.tsv`
+
+## Not placed
+
+Files whose family the registry cannot name yet (`build/catalog-findings.tsv` lists each with its reason), by top folder:
+
+| Folder | Files without a family |
+|---|---|
+| (repo root) | 2 |
+| `bin/` | 1 |
+| `contracts/` | 1 |
+| `docs/` | 2 |

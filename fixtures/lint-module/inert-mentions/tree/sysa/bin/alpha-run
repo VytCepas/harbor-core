@@ -1,0 +1,5 @@
+#!/bin/sh
+# the index is docs/generated/index.txt, named in a comment: a comment reads nothing
+echo "see QA-PLAN.md and CORE-PLAN.md"
+		# an indented one, inside a function: docs/generated/index.txt again
+# hand over to bin/beta-run afterwards: named in prose, the live call is the other way round

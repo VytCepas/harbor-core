@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- harbor:template-only
+     THIS FILE IS A TEMPLATE (harbor#630). Do not cp it: @HOME@ and the other placeholders in it would be
+     installed as literal text, and launchd loads such a job and then fails every time it runs. Render it:
+
+       sh ~/port/harbor/bin/launchd-render.sh ~/port/harbor/launchd/com.harbor.pulse.plist > ~/Library/LaunchAgents/com.harbor.pulse.plist
+
+     A cp line in the comment below predates the template. It is kept so the rendered file stays byte-identical
+     to the one already installed: follow this block, not that line. This block is not installed;
+     bin/launchd-render.sh drops it. -->
+<!-- harbor#9 (workstream E, E1): the between-sessions health probe.
+
+     TEMPLATE — launchd does not expand $HOME: replace @HOME@ with your
+     home dir on install.
+
+     AN AGENT CANNOT INSTALL THIS, BY DESIGN. Three floor rules block it and all
+     three are correct: a redirect into LaunchAgents, a cp/mv/ln naming that
+     path, and `launchctl load|bootstrap|setenv`. A session that can stand up its
+     own scheduled job can stand up anything. `launchctl bootout`, `kickstart`,
+     `print` and `list` are NOT blocked, so once you have bootstrapped it an
+     agent can restart and inspect it. Operator steps (repo is source, ~/.claude
+     is the deploy target):
+
+       sh ~/port/harbor/bin/runtime-install.sh --live --apply
+       cp launchd/com.harbor.pulse.plist ~/Library/LaunchAgents/
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.harbor.pulse.plist
+
+     Then, to see it work rather than assume it — two different questions, and
+     the first version of this block only asked one of them:
+
+       launchctl kickstart -k gui/$(id -u)/com.harbor.pulse
+       cat /tmp/com.harbor.pulse.out          # one receipt line per run
+       jq . ~/.claude/cache/pulse-state.json  # and the state it wrote
+
+     The receipt reads `pulse: worst=… spoke=… sink=… answered=…/…`. It exists
+     because the first version of this block told you to read a log the notifier
+     never wrote to — an empty file on a healthy run and on a run that never
+     happened, which is the same defect this header criticises two paragraphs
+     down. A log you cannot distinguish those two states with is not evidence.
+
+     That proves the JOB. It does not prove the SINK: a scheduled run is
+     edge-triggered, so on a box whose verdicts have not moved it correctly
+     sends nothing, and a suppressed banner looks exactly the same. For the
+     sink, fire one unconditionally:
+
+       sh ~/.claude/bin/pulse-notify.sh --selftest
+
+     STDOUT IS DECLARED, NOT ONLY STDERR. The fleet-snapshot job declares stderr
+     alone, and its error file has been zero bytes across every run since it was
+     installed — which is equally consistent with "nothing went wrong" and "the
+     job has not run since July". Liveness is readable from the probe's own
+     state file (`ran_at`), and the two log paths exist so a silent run is
+     distinguishable from a clean one.
+
+     900s, not 300s. The checks are cheap, but the thing this schedules is a
+     NOTIFICATION, and the interval is the floor on how often a flapping verdict
+     can reach a lock screen. Widen it before narrowing it.
+
+     DELIVERY FROM THIS JOB WAS OBSERVED on 2026-08-03: bootstrapped into
+     gui/<uid>, state cleared so a standing verdict became a fresh edge, then
+     `launchctl kickstart -k` — and the banner appeared. That is the one claim
+     in this workstream that could only ever close on a human saying they saw
+     something, and it is closed. It is not permanent: a notification grant can
+     be revoked in System Settings without telling the caller.
+
+     IF THE BANNER STOPS APPEARING: the probe is still working — read the state
+     file and the dashboard tile, and the receipt line in the stdout log tells
+     you whether the run even had anything to say (`spoke=0` means the verdict
+     had not changed, which is the design, not a fault). macOS attributes an
+     `osascript` notification to the script runner's bundle, and Focus
+     suppresses delivery with no error to the caller. LimitLoadToSessionType
+     below is the first knob to try, not KeepAlive. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.harbor.pulse</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>@HOME@/.claude/bin/pulse-notify.sh</string>
+  </array>
+  <key>StartInterval</key><integer>900</integer>
+  <key>RunAtLoad</key><true/>
+  <key>LimitLoadToSessionType</key><string>Aqua</string>
+  <key>ProcessType</key><string>Background</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin:@HARBOR_LOCAL_BIN@</string>
+  </dict>
+  <key>StandardOutPath</key><string>/tmp/com.harbor.pulse.out</string>
+  <key>StandardErrorPath</key><string>/tmp/com.harbor.pulse.err</string>
+</dict>
+</plist>

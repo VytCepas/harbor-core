@@ -1,0 +1,6 @@
+# graph.tsv (harbor#996 G2 fixture) - red-findings-land-in: fx:ok carries findings-land-in; fx:bad has one inbound and an edge of another relation, neither of which counts
+# relation	findings-land-in	fixture
+edge	from	to	site
+findings-land-in	fx:ok	fx:t	fx:ok:1
+findings-land-in	fx:t	fx:bad	fx:t:1
+references	fx:bad	fx:t	fx:bad:1

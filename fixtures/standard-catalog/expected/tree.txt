@@ -1,0 +1,26 @@
+tree: metasystem › domain › system › subsystem › family › component › element (D-57)
+metasystem
+  domain  platform
+    system  fleet  (not in this tree)
+    system  harbor
+      system artifact  context-map  (1)
+      system artifact  standard  (5)
+      subsystem  control-plane
+        family  deploy  (1 files)
+          component  script  (1)
+            element  admission-rule  (1)
+        family  drift  (10 files)
+          component  design  (1)
+          component  script  (3)
+          component  skill  (2)
+          component  test  (3)
+            element  check  (1)
+            element  lint-rule  (2)
+            element  report  (1)
+        family  lint  (1 files)
+          component  script  (1)
+            element  lint-rule  (1)
+        family  standard  (5 files)
+      unassigned  5 files with no family (sh bin/standard-catalog.sh --census says why, per path)
+  domain  workload
+    system  mailcal  (not in this tree)

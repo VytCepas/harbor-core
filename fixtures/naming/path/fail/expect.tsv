@@ -1,0 +1,25 @@
+# fixtures/naming/path/fail (harbor#950) — names that MUST go red on the rule named. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# COLUMNS  name <TAB> the rule ids that must go red, comma-separated
+name	rule
+REVIEW.md	name.case
+REVIEW-2026-07-23.md	name.case,name.date
+review-2026-07-23.md	name.date
+Notes.md	name.case
+docs/my_notes.md	name.separator
+notes@v2.md	name.separator
+issue#949.md	name.separator
+spaced name.md	name.separator
+docs/4ga-report.md	name.word
+docs/double--dash.md	name.word
+x.final.v2.md	name.extension
+notes.markdwn	name.extension
+docs/guard-notes.md	name.alias
+docs/golden-files.md	name.alias
+docs/harbor-notes.md	name.alias
+FLOOR/notes.md	name.case,name.alias
+docs/helm-log-export.md	name.alias
+docs/cfg-loader.md	name.abbreviation
+src/obs/digest_report.py	name.abbreviation
+bin/docs-gen.sh	name.abbreviation,name.family
+launchd/com.harbor.judge.plist	name.launchd,name.alias
+tests/checks/lint.name-test.sh	name.test-path,name.extension

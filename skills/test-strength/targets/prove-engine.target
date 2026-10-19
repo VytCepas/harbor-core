@@ -1,0 +1,111 @@
+# skills/test-strength/targets/prove-engine.target
+# The engine measures itself: mutate prove.sh, and require its own self-test to
+# notice. This is the build spec's section C, mechanised.
+#
+# THE BOOTSTRAP LIMIT, STATED RATHER THAN PAPERED OVER. prove.sh cannot catch a
+# defect that blinds it the same way twice — a mutation that removes a check AND
+# removes the assertion about that check is invisible from in here. The
+# independent judge is tests/skills/prove-test.sh, whose expected exit codes are
+# hand-written and do not use this engine's machinery to decide pass or fail.
+# That asymmetry is the design, not a gap this target can close.
+#
+# THE LIMIT WAS NARROWED ON 2026-08-30, NOT CLOSED, AND THE DIFFERENCE MATTERS.
+# `--self-test` block C now asserts that the verdict words of three fixtures are
+# three DIFFERENT words rather than comparing each to a literal, so a global
+# rename — `s/SURVIVORS/PROVEN/g`, which used to leave the self-test at 20
+# passed 0 failed while a real run printed PROVEN above 33 listed survivors — now
+# turns it red with no literal for the sed to move. What that still cannot pin is
+# WHICH word is which: any rename that keeps the three distinct passes. Only a
+# file the mutation cannot reach can pin the label contract, and that file is
+# tests/skills/prove-test.sh. Do not read block C as closing the bootstrap limit.
+#
+# WHY --self-test AND NOT tests/skills/prove-test.sh. The self-test is hermetic: it
+# builds its fixtures in a mktemp dir and reads nothing from the repo, so a
+# mutant engine cannot pass by accident because some repo file happened to be
+# right. Pointing this at the suite would also make the target depend on a file
+# in another owner's tree, which is the cross-repo shape CONTRACTS/gates.md
+# rules out one directory over.
+#
+# `sites 2` IS A COST DECISION AND IT IS VISIBLE. Every capped class shows
+# `capped from N sites` and a capped run can never print a bare PROVEN. Each run
+# is a full self-test — seconds, not milliseconds — and there is no `timeout` on
+# this box to bound a mutant that loops, so the sweep is kept small deliberately
+# and the cap is reported rather than hidden.
+
+# `cost` IS RE-MEASURED WHEN THE SELF-TEST GROWS, NOT LEFT AT ITS FIRST VALUE.
+# Measured 2026-08-30 with `date +%s` either side: 8s at 20 cases, 19s at 38.
+# The declaration is `10` no longer, because every run of this target is a whole
+# self-test and the budget arithmetic (cost x runs) is what decides whether the
+# target is run at all — a stale `cost` makes an over-budget target look
+# affordable and a cheap one look prohibitive. Re-measure after adding cases.
+
+target        prove-engine
+subject-kind  posix-shell
+lane          deep
+cost          20
+sites         2
+seed          repo:skills/test-strength/bin/prove.sh
+place         $WORK/prove.sh
+checker-cmd   sh $WORK/prove.sh --self-test || exit 1
+green         0
+red           1
+
+# `|| exit 1` IS LOAD-BEARING AND IT COSTS SOMETHING. Say so, because the cost
+# is a discrimination this engine has everywhere else.
+#
+# The canary replaces the subject with `exit 7`, and here the subject IS the
+# checker — so the canary run exits 7, which is neither green (0) nor red (1),
+# and the target reported COULD-NOT-LOOK with a surviving canary. That was the
+# canary doing exactly its job: it said the checker does not answer in the
+# vocabulary the declaration claims. Measured 2026-08-30, before this line
+# existed.
+#
+# The fix is to say what is actually true of a self-test: ANY non-zero is a
+# refusal. `0 = every case passed` is its whole contract, so a mutant that
+# crashes has failed the same way a mutant that reports a failure has. What that
+# gives up is the engine's usual "a crash is not a kill" rule — for this one
+# target, exit 9 and exit 1 are the same verdict. That rule exists to stop a
+# broken checker manufacturing recall, and it is safe to drop here only because
+# the checker and the subject are the same file: a crash in it IS the defect
+# being measured, not noise around the measurement.
+
+mutate  CMP     comparison-flip
+mutate  WIDE    threshold-widen
+mutate  NARROW  threshold-narrow
+mutate  GUARD   guard-clause-delete
+mutate  EXIT    exit-neuter
+mutate  NEG     negation-drop
+mutate  MSG     message-drop
+
+plant   CTL-1   sed -e 's/^  \[ "$(_lines "$P\/controls")" -ge 1 \]/  [ 1 -ge 1 ]/' "$SEED" > "$MUTANT"
+        why:    delete the zero-control refusal and B1 must stop being exit 5 — the layer that makes a control mandatory before a byte is mutated
+plant   INERT-1 sed -e 's/if cmp -s "$SEED" "$_mf"; then/if false; then/' -e 's/if cmp -s "$SEED" "$MUTANT"; then/if false; then/' "$SEED" > "$MUTANT"
+        why:    EVERY SHAPE OF THE RULE, not one — the first version neutralised only the generated-mutant arm, B5 exercises the PLANT arm, and the mutant survived while the check it names was still running. That is the floor-equiv finding one file over: a rule with two implementations needs a mutation that reaches both, or the suite reads as unable to fail when in fact the mutation was incomplete
+
+# RECLASSIFIED FROM A PLANT ON 2026-08-30, AFTER IT SURVIVED AND THE SURVIVAL
+# WAS REPRODUCED BY HAND. Deleting the run-counter check changes no observable
+# behaviour of the pristine engine, because the identity it guards
+# (runs == 1 baseline + 1 canary + controls + mutants) holds by construction —
+# the counter is a tripwire for a state a correct engine never reaches. So no
+# SINGLE mutation of this file can make its absence visible; it takes a second
+# one that actually skips a phase, built from outside — which is what
+# tests/skills/prove-test.sh does, by dropping a `RUNS=$((RUNS + 1))` and requiring the
+# report to say `run counter mismatch`. NO ARM ID IS NAMED HERE ON PURPOSE: an
+# id written into this file is a copy of a fact that lives in that one, and a
+# copy drifts silently while reading correctly. Grep the suite for the reason
+# string instead. Left as a plant this would be a permanent survivor, and a
+# permanent survivor teaches a reader to skim the survivor list, which is the
+# one thing this report cannot afford.
+manual  RUNS-1   the run-counter tripwire guards a state a correct engine never reaches, so its absence is invisible to any single mutation of this file; only a fixture built OUTSIDE the engine, which skips a phase deliberately and requires the report to say "run counter mismatch", can measure it
+manual  DOUBLE-1 a defect that blinds the engine and its own self-test in the same way is invisible from here by construction; tests/skills/prove-test.sh is the independent judge and its expected exits are hand-written
+manual  TIME-1   a mutation that makes the engine HANG is bounded but never scored: PROVE_RUN_TIMEOUT kills it and the target reports COULD-NOT-LOOK, because nobody watched the mutant finish and a guess in the generous direction is how recall gets manufactured
+
+# A cmd control, because a valid-but-unusual INPUT to a shell subject is an
+# unusual INVOCATION of it. Both of these are lawful, both must stay green, and
+# both are the shapes a careless tightening breaks first.
+control MUTATORS cmd sh $SUBJECT --mutators
+        varies: shape
+        why:    --mutators applies nothing and runs no checker, so it must work with no target directory, no workspace and no repo around it — it is what lint C6 reads
+control HELP     cmd sh $SUBJECT --help
+        varies: shape
+        why:    a hand-invocable script that cannot answer --help is one nobody can use without reading it (lint S4), and --help must not need a valid declaration to exist

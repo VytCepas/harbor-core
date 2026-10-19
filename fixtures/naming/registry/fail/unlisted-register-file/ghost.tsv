@@ -1,0 +1,7 @@
+# ghost.tsv (harbor#950) — a registry file no registers.tsv row names: the lint never reads it, so it must go red.
+#
+# WHY: a fixture for name.registry-shape. The file is well formed on purpose; the only thing wrong is that registers.tsv does not list it.
+#
+# standard_version: 2.0.0
+id	note
+ghost	a register nobody listed

@@ -1,0 +1,26 @@
+{"shape":"bare","reps":["deny","ask","allow"],"expect":"same","why":"control: the representative as written"}
+{"shape":"upper-bin","form":"{BIN} {args}","reps":["deny","ask"],"expect":"same","why":"harbor#282: APFS is case-insensitive, so GIT runs git"}
+{"shape":"path-prefix","form":"/opt/homebrew/bin/{bin} {args}","reps":["deny","ask"],"expect":"same","why":"2026-08-13: an absolute path hid the binary"}
+{"shape":"env-S","form":"env -S '{cmd}'","reps":["deny","ask","allow"],"expect":"same","why":"harbor#206: env -S hides the verb from the argv layer"}
+{"shape":"unlisted-wrapper","form":"gtimeout 5 {cmd}","reps":["deny","ask"],"expect":"same","why":"harbor#715: a wrapper the peel does not list must not hide the verb"}
+{"shape":"heredoc-body","form":"git commit -F - <<HD\n{cmd}\nHD","reps":["deny"],"expect":"allow","why":"harbor#302: a heredoc body is a document"}
+{"shape":"heredoc-body-gh","form":"gh issue create --title t --body-file - <<HD\n{cmd}\nHD","reps":["deny"],"expect":"allow","why":"harbor#302"}
+{"shape":"heredoc-into-sh","form":"sh <<HD\n{cmd}\nHD","reps":["deny"],"expect":"same","why":"harbor#302: a body fed to a shell runs"}
+{"shape":"heredoc-piped-sh","form":"cat <<HD | sh\n{cmd}\nHD","reps":["deny"],"expect":"same","why":"harbor#302"}
+{"shape":"after-heredoc","form":"git commit -F - <<HD\nnotes\nHD\n{cmd}","reps":["deny"],"expect":"same","why":"harbor#302: a real command after the body"}
+{"shape":"heredoc-redirect","form":"cat <<HD > /tmp/x\n{cmd}\nHD","reps":["deny"],"expect":"same","why":"harbor#302: a redirect makes the body a write"}
+{"shape":"heredoc-unquoted-subst","form":"git commit -F - <<HD\n$({cmd})\nHD","reps":["deny"],"expect":"same","why":"harbor#798: an unquoted delimiter expands the body, so its $(…) runs"}
+{"shape":"heredoc-unquoted-backtick","form":"gh issue create --title t --body-file - <<HD\n`{cmd}`\nHD","reps":["deny"],"expect":"same","why":"harbor#798"}
+{"shape":"heredoc-opener-compound","form":"git commit -F - <<HD ; {cmd}\nnotes\nHD","reps":["deny"],"expect":"same","why":"harbor#803: the opener line runs a second command"}
+{"shape":"heredoc-delim-is-verb","form":"git commit -F - <<{bin}\nnotes\n{bin}\n{cmd}","reps":["deny"],"expect":"same","why":"harbor#803: a command after the terminator whose word is the delimiter"}
+{"shape":"heredoc-quoted-subst","form":"git commit -F - <<'HD'\n$({cmd})\nHD","reps":["deny"],"expect":"allow","why":"harbor#798 control: a quoted delimiter keeps the body literal"}
+{"shape":"over-cap","pad":33000,"reps":["deny","ask","allow"],"expect":"same","why":"harbor#306: past the normalizer cap the argv layer is blind"}
+{"shape":"under-cap","pad":30000,"reps":["allow"],"expect":"same","why":"harbor#306 control: just under the cap"}
+{"shape":"no-normalizer","fixture":"nonorm","reps":["deny","ask","allow"],"expect":"same","why":"harbor#306: floor-normalize.awk is missing"}
+{"shape":"fixture-copy","fixture":"copy","reps":["deny","allow"],"expect":"same","why":"control: a copied guard behaves like the real one"}
+{"shape":"subagent","ctx":{"agent_type":"workflow-subagent"},"reps":["deny","ask","allow"],"expect":"no-human","why":"harbor#194: nobody is there to answer an ask"}
+{"shape":"subagent-transcript","ctx":{"transcript_path":"/Users/x/.claude/projects/p/subagents/agent-1.jsonl"},"reps":["ask"],"expect":"no-human","why":"harbor#194"}
+{"shape":"autonomous","ctx":{"permission_mode":"bypassPermissions"},"reps":["ask"],"expect":"no-human","why":"harbor#194"}
+{"shape":"posture-deny","posture":"deny","reps":["deny","ask"],"expect":"no-human","why":"the posture knob escalates ask to deny"}
+{"shape":"kill-switch","env":{"HELM_DISABLE_FLOOR":"1"},"reps":["deny"],"expect":"allow","why":"the operator's kill switch"}
+{"shape":"heredoc-apostrophe-body","form":"git commit -F - <<'HD'\nit's how {cmd} is caught\nHD","reps":["deny"],"expect":"allow","why":"harbor#805: an apostrophe in a quoted-delimiter body is literal and must not switch the veto off"}

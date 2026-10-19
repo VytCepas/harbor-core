@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "_why": "The pinned answers for fixtures/memory/corpus. TWO independent implementations must reproduce these: tools/memory (TypeScript, on Bun) and bin/memory-lint.sh (POSIX sh, for CI where Bun is absent). Neither is the arbiter; this file is. Asserting one against the other would let them drift together and still agree.",
+  "corpus": {
+    "files_on_disk": 19,
+    "notes_indexed": 17,
+    "_ignored": "assets/logo.svg is not markdown; .agents/memory/hidden-note.md is an L3 store (a different scope, CONTRACTS/memory-format.md); indexes/derived.md is the derived tier.",
+    "graph_nodes": 15,
+    "_nodes_why": "17 notes minus the 2 duplicate carriers of the colliding slug — a graph node is a slug. The self-link in graph-hub.md is deliberately NOT an edge.",
+    "graph_edges": 5
+  },
+  "dangling": [
+    {
+      "path": "KNOWLEDGE/Ideas/graph-hub.md",
+      "line": 7,
+      "dialect": "frontmatter",
+      "target": "nope-either"
+    },
+    {
+      "path": "KNOWLEDGE/Ideas/graph-hub.md",
+      "line": 11,
+      "dialect": "wikilink",
+      "target": "does-not-exist"
+    }
+  ],
+  "dead_paths": [
+    {
+      "path": "KNOWLEDGE/Research/dead-path-citer.md",
+      "line": 7,
+      "cites": "./missing-file.md"
+    }
+  ],
+  "collisions": [
+    {
+      "slug": "dupe-slug",
+      "paths": [
+        "KNOWLEDGE/Ideas/dupe-slug.md",
+        "KNOWLEDGE/People/dupe-slug.md",
+        "LEARNING/dupe-slug.md"
+      ]
+    }
+  ],
+  "document_frequency": {
+    "fixture": 17,
+    "parquet": 1,
+    "_why": "'fixture' is carried by every indexed note and 'parquet' by exactly one. That gap is the whole IDF assertion: df must be counted per-DOCUMENT over body+title+tags, never per-occurrence."
+  },
+  "queries": [
+    {
+      "query": "fixture parquet",
+      "top": "bm25-rare-term",
+      "count": 1,
+      "_why": "THE discriminating case. Without an IDF term the decoy note common-term-spam (60 occurrences of the universal token, nothing rare) wins this query outright — measured on this corpus at N=17: 2.3736 vs 2.2048. With IDF the rare-term note wins and the decoy falls below the relative cut entirely. The claim is a change of RANK ORDER, not of score, and the assertion in memory-engine.test.ts checks the order — these figures are here to be re-derivable, so re-measure them if the corpus changes."
+    },
+    {
+      "query": "zzheadingzz",
+      "top": "title-only-hit",
+      "count": 1,
+      "_why": "The token exists only in a title. Drop field weighting and this returns nothing."
+    },
+    {
+      "query": "zztagzz",
+      "top": "tag-only-hit",
+      "count": 1,
+      "_why": "The token exists only in tags."
+    },
+    {
+      "query": "zzprivatezz",
+      "top": "goals-probe",
+      "count": 1,
+      "_why": "TELOS/ is in scope by decision. Narrowing the walker silently would break this."
+    },
+    {
+      "query": "zztiezz",
+      "top": "tie-alpha",
+      "count": 2,
+      "_why": "tie-alpha.md and tie-beta.md have byte-identical bodies, so they score identically and the order is decided entirely by the tie-break. Ties break on relPath, so alpha precedes beta. Without this pair an unstable sort passes every other assertion in the suite — measured: it did."
+    },
+    {
+      "query": "zznosuchtokenzz",
+      "top": null,
+      "count": 0,
+      "_why": "Zero hits is a legitimate answer and must exit 0 — a hook that treats 'nothing found' as failure is a hook that gets disabled."
+    }
+  ],
+  "graph_traversal": {
+    "start": "graph-hub",
+    "depth": 2,
+    "order": [
+      "graph-hub",
+      "acme-corp",
+      "ada-lovelace",
+      "alan-turing",
+      "bm25-rare-term"
+    ],
+    "_why": "Breadth-first, nearest first, ties broken by slug. bm25-rare-term is reached at distance 2 only via its INBOUND related: edge to acme-corp, so a directed-only traversal returns four nodes instead of five."
+  },
+  "grep_tier": {
+    "query": "fixture parquet",
+    "count": 1,
+    "top_path": "KNOWLEDGE/Ideas/bm25-rare-term.md",
+    "_why": "D7's third degradation. The grep rung answers a different question (which notes mention every word) but must agree with the engine on this query, or the fallback is not a fallback."
+  }
+}

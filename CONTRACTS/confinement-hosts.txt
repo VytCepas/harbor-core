@@ -1,0 +1,15 @@
+# confinement-hosts.txt (harbor#1298, #555) — the hosts a confined shell command may reach, core's half.
+# One host per line, in Claude Code's `sandbox.network.allowedDomains` shape (`*.` admits subdomains).
+# Each row sits under a comment saying why. The private layer's confinement-hosts.txt is read after
+# this file (CONTRACTS/private-layer.md); workload hosts go there, because lint-domain holds core at zero.
+# Keep it short and stable (#555 decision 11): under allowManagedDomainsOnly a new host is an operator
+# sudo install, so an occasional tool goes through the open retry instead of a new row.
+
+# GitHub: gh, git over https, the App-token mint (#1297 rounds 1 and 3)
+github.com
+api.github.com
+# a nested `claude -p`, which Harbor's own suites and workflows start (#1297 round 1)
+api.anthropic.com
+# uv resolving a script's dependencies on a cache miss
+pypi.org
+files.pythonhosted.org

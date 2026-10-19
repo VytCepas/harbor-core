@@ -1,0 +1,28 @@
+# renames.tsv (harbor#996 B1) — every path rename the standard orders, one row each: the codemod's only input.
+#
+# WHY THIS FILE EXISTS. aliases.tsv holds TERMS (a word and the word to use instead), never paths
+# (research 12e §3), so it cannot drive a rename. A rename here is a row plus one codemod run:
+# `sh bin/standard-rename.sh --apply --id <id>` moves the file, rewrites every true reference to it,
+# retires its exemptions.tsv rows and prints the residual list. The reviewer reads the rows; a
+# conflict on main is a re-run on fresh main, never a hand merge. The research/03 rename TSV is not an
+# input (12a §1): rows come from the mapping tables of harbor#961 through `--import`, or by hand.
+#
+# A ROW STAYS AFTER IT IS APPLIED, as the record that the old path is an alias of the new one. Whether
+# it is applied is derived (old absent, new tracked), never written here. This file is the only place
+# the codemod leaves an old name, so it is excluded from both the rewrite and the residual.
+#
+# standard_version: 2.0.0
+#
+# COLUMNS  id <TAB> old <TAB> new <TAB> surface <TAB> wave <TAB> remove_by <TAB> reason
+#   id         rename-NNNN, unique, never reused
+#   old, new   repo-relative paths of one tracked file; each appears in one row at most
+#   surface    the lint-name.sh surface the new name is judged on (bin, path, env); the codemod refuses
+#              a row whose new name has any finding. An env row names env:NAME twice and moves no file.
+#              Other surfaces (launchd, check-id) are rows the codemod does not apply yet: it exits 3, unchecked.
+#   wave       the harbor#961 wave label (W1 … W6b); --wave selects by it
+#   remove_by  - (a plain rename). A date asks for the old name to keep working until then: a bin or path
+#              row leaves a symlink at the old path (a bin/*.sh also gets a marked line in CONTRACTS/cli.md and CONTRACTS/idle-tools.txt),
+#              an env row reads both names (the new, then the old).
+#              Past the date the next --apply removes the shim or collapses the dual reads.
+#   reason     why the new name, from the mapping row
+id	old	new	surface	wave	remove_by	reason

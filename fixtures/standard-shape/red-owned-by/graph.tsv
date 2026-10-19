@@ -1,0 +1,6 @@
+# graph.tsv (harbor#996 G2 fixture) - red-owned-by: fx:ok carries owned-by; fx:bad has one inbound and an edge of another relation, neither of which counts
+# relation	owned-by	fixture
+edge	from	to	site
+owned-by	fx:ok	fx:t	fx:ok:1
+owned-by	fx:t	fx:bad	fx:t:1
+references	fx:bad	fx:t	fx:bad:1

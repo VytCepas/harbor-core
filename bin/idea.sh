@@ -1,0 +1,164 @@
+#!/usr/bin/env sh
+# idea.sh — extends G2 (harbor#26): append one idea to MEMORY/IDEAS.md and sync
+# it at event time, riding the same log repo, token and secret gate as the
+# Stop-hook work-log push.
+#
+# The event-time counterpart to worklog-push.sh's Stop-hook batch: here the
+# event IS you running the command, so there is no watcher, no daemon and no
+# schedule to drift. Same repo, same token, same fail-closed secret gate.
+#
+#   idea "some thought"        append → commit → push
+#   idea -n "some thought"     append → commit, stay local
+#   idea -l                    print the pool
+#
+# Env: IDEA_NO_SCAN=1 skips the gitleaks gate (see the note at the gate).
+
+set -u
+
+# --help BEFORE ANY WORK (S4, harbor#140). Placed immediately after strict mode
+# so it is the first executable line: a --help that reaches an argument parser is
+# a --help that a script with no parser ignores, and this file had none. Measured
+# 2026-08-20: a sweep of `bin/*.sh --help` ran past five minutes because at least
+# one script treated the flag as a request to do work, and five of the scripts
+# with no --help at all are mutators. The text is the header, read out of THIS
+# file at runtime, so a help message cannot drift from what the script says it is.
+case "${1:-}" in
+  -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); if ($0=="") exit; print; next } {exit}' "$0"
+             printf '\n(flags, if any, are in the header above and the source below.)\n'
+             exit 0 ;;
+esac
+# guard-lib for floor_gitleaks_staged ONLY (the gate below). Nine other non-guard
+# scripts source it the same way — worklog-push.sh, worklog-pull.sh,
+# memory-harvest.sh and the rest — so this is house practice, not a new coupling,
+# and it is what keeps the scanner-dialect probe to ONE implementation instead of
+# the three call sites it was about to become.
+# shellcheck source=/dev/null
+. "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/guard-lib.sh"
+# Status lines are log-lib's, on stderr: stdout is `idea -l`'s pool and nothing else (CONTRACTS/logging.md).
+# shellcheck source=/dev/null
+. "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/log-lib.sh"
+log_init idea; LOG_FD=2
+
+CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+POOL_DIR="${HARBOR_LOG_DIR:-$CFG/MEMORY}"
+TOKEN_FILE="${HARBOR_LOG_TOKEN_FILE:-$CFG/.helm-log-token}"
+FILE="$POOL_DIR/IDEAS.md"
+
+# die <what failed> [fix command]: FAIL, its fix, the summary, exit 1.
+die() {
+  log_fail "$1"
+  if [ -n "${2:-}" ]; then log_fix "$2"; else log_nofix "the header of bin/idea.sh"; fi
+  log_end || :
+  exit 1
+}
+
+[ -d "$POOL_DIR/.git" ] || die "no log repo at $POOL_DIR"
+# The log repo is the pool's own GitHub origin, never a name core carries (harbor#1149); none means local only.
+REPO="${HARBOR_LOG_REPO:-$(slug_of_url "$(git -C "$POOL_DIR" config --get remote.origin.url 2>/dev/null)")}"
+
+PUSH=1
+case "${1:-}" in
+  -l|--list)  if [ -f "$FILE" ]; then cat "$FILE"; exit 0; fi
+              log_note "pool is empty"; log_end; exit $? ;;
+  -n|--local) PUSH=0; shift ;;
+  -*)         die "unknown flag: $1" "idea -h" ;;
+esac
+
+[ $# -gt 0 ] || die "no idea given" 'idea "the idea"   # or: idea -n "the idea" to stay local, idea -l to list'
+TEXT="$*"
+case "$TEXT" in *[!\ ]*) ;; *) die "empty idea" 'idea "the idea"' ;; esac
+
+cd "$POOL_DIR" || die "cannot enter $POOL_DIR"
+
+# Pull first. A single shared file across devices is the one place the work-log's
+# host-partitioning trick does not apply, so we rebase onto origin before
+# appending rather than discovering the divergence at push time. Offline is fine
+# — we just append locally and the next idea (or the Stop hook) carries it up.
+if [ -n "$REPO" ] && [ -f "$TOKEN_FILE" ]; then
+  TOKEN="$(cat "$TOKEN_FILE" 2>/dev/null || true)"
+  if [ -n "${TOKEN:-}" ]; then
+    AUTH="Authorization: Basic $(printf 'x-access-token:%s' "$TOKEN" | base64 | tr -d '\n')"
+    # Token goes in a header, never in the URL (CONSTITUTION No.4): a URL-embedded
+    # token lands in the reflog, in remote-error text and in shell history.
+    git -c http.extraHeader="$AUTH" pull --rebase --quiet \
+      "https://github.com/${REPO}.git" main >/dev/null 2>&1 || true
+  fi
+fi
+
+if [ ! -f "$FILE" ]; then
+  cat > "$FILE" <<'HDR'
+---
+kind: idea-pool
+scope: L0
+---
+
+# Ideas
+
+Append-only. One line per idea, newest at the bottom, written by `idea.sh`.
+
+Status is the whole lifecycle: `open` is the default; promote by editing the
+status word in place and appending a link to wherever the idea grew up —
+an epic, a ticket, a research note, or `dropped` with the reason.
+
+    - `i-0001` · 2026-07-29 · open · the raw thought
+    - `i-0002` · 2026-07-29 · epic · grew into [[harbor-epic]] section 4
+
+HDR
+fi
+
+# Next id — derived from the file, never stored in a counter that can drift.
+# Snapshot BEFORE the append. A rejected idea must leave no trace: `git reset`
+# alone only unstages, so the rejected line would stay in the working file —
+# which both leaves the secret sitting on disk AND makes gitleaks re-find it on
+# every later run, bricking the pool permanently. Found by testing the gate
+# (CONSTITUTION No.2.10/2.11: a guard that blocks ordinary work gets switched off).
+SNAP=$(mktemp "${TMPDIR:-/tmp}/harbor.XXXXXX") || die "cannot create snapshot"
+cp "$FILE" "$SNAP" || die "cannot snapshot $FILE"
+revert() { cp "$SNAP" "$FILE" 2>/dev/null; git reset -q 2>/dev/null; rm -f "$SNAP"; }
+
+# grep -c PRINTS 0 and EXITS 1 on no match, so `|| echo 0` would emit "0\n0"
+# and break the arithmetic. Take grep's stdout; only default when it is empty.
+N=$(grep -c '^- `i-' "$FILE" 2>/dev/null) || true
+ID=$(printf 'i-%04d' $(( ${N:-0} + 1 )))
+printf -- '- `%s` · %s · open · %s\n' "$ID" "$(date +%Y-%m-%d)" "$TEXT" >> "$FILE"
+
+git add -- IDEAS.md >/dev/null 2>&1 || { revert; die "could not stage IDEAS.md"; }
+git diff --cached --quiet 2>/dev/null && { revert; log_note "nothing to commit"; log_end; exit $?; }
+
+# Fail-closed secret gate, same posture as worklog-push.sh. An idea pool is
+# exactly where a pasted key goes to die, and this repo has a remote. Set
+# IDEA_NO_SCAN=1 to bypass deliberately.
+if [ "${IDEA_NO_SCAN:-0}" != "1" ]; then
+  if ! command -v gitleaks >/dev/null 2>&1; then
+    revert; die "gitleaks missing — blocked (fail-closed)" "$(pkg_hint gitleaks)   # or IDEA_NO_SCAN=1 to bypass deliberately"
+  fi
+  # ONE implementation of the subcommand probe, in guard-lib, not a third copy
+  # here — see floor_gitleaks_staged. 8.18.4 has no `gitleaks git` and exits 1 on
+  # it, so with `--exit-code 1` an absent subcommand read as a secret and this
+  # gate reverted every idea on a box carrying the version CI pins.
+  if ! floor_gitleaks_staged "$POOL_DIR" >/dev/null 2>&1; then
+    revert
+    die "that idea looks like it contains a secret — NOT written, pool unchanged" 'idea "the idea, without the secret"'
+  fi
+fi
+
+git commit -q -m "idea: $ID" || { revert; die "commit failed"; }
+rm -f "$SNAP"
+log_ok "$ID recorded"
+
+[ "$PUSH" = "1" ] || { log_note "local only (-n)"; log_end; exit $?; }
+[ -n "$REPO" ] || { log_warn "the log repo has no GitHub origin — committed locally"; log_end; exit $?; }
+[ -f "$TOKEN_FILE" ] || { log_warn "no token — committed locally"; log_end; exit $?; }
+TOKEN="$(cat "$TOKEN_FILE" 2>/dev/null || true)"
+[ -n "${TOKEN:-}" ] || { log_warn "empty token — committed locally"; log_end; exit $?; }
+AUTH="Authorization: Basic $(printf 'x-access-token:%s' "$TOKEN" | base64 | tr -d '\n')"
+
+if git -c http.extraHeader="$AUTH" push --quiet \
+     "https://github.com/${REPO}.git" main >/dev/null 2>&1; then
+  log_ok "pushed"
+else
+  # Network is the only fail-open leg — the commit is already safe locally and
+  # the Stop hook retries it, exactly as worklog-push.sh does.
+  log_warn "push failed (offline?) — commit is local, Stop hook will retry"
+fi
+log_end; exit $?

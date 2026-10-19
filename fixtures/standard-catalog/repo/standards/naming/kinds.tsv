@@ -1,0 +1,15 @@
+# fixture kinds: folder, layer, level and lifecycle per kind
+id	folder	path_pattern	surface	required_fields	layer	level	lifecycle	generator	share	note
+standard	standards/	standards/<topic>.md	path	front_matter	source	system	versioned	-	core	fixture
+lint-rule	standards/naming/	a controls.tsv row	rule-id	id mode title	source	element	versioned	-	core	a row, not a file
+decision-record	docs/decisions/	docs/decisions/<NNNN>-<slug>.md	path	status	source	element	dated	-	core	fixture
+skill	skills/	skills/<name>/SKILL.md	skill	name description	source	component	living	-	core	fixture
+check	registries/	a controls.tsv row	check-id	id	source	element	versioned	-	core	a row, not a file
+registry	registries/	registries/<name>.tsv	registry	id	source	component	versioned	-	core	fixture
+test	tests/	tests/<family>/<subject>/<aspect>.test.sh	test	-	source	component	living	-	core	fixture
+report	docs/reports/	docs/reports/<date>-<slug>.md	path	front_matter	report	element	dated	-	core	fixture
+design	docs/design/	docs/design/<slug>.md	path	front_matter	source	component	living	-	core	fixture
+context-map	docs/context-map.md	docs/context-map.md	path	front_matter	generated	system	generated	-	core	fixture
+generated-doc	docs/generated/	docs/generated/<name>	path	generated-by header	generated	component	generated	-	core	fixture
+script	bin/	bin/<family>-<object>.<ext>	bin	-	source	component	living	-	core	fixture
+hook	bin/	bin/<family>-<object>-hook.<ext>	bin	-	source	component	living	-	core	fixture

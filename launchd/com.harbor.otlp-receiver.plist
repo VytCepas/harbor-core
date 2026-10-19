@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- harbor#1181 lane 5b: Claude Code's own OTLP telemetry, received on 127.0.0.1:4318 by a SYSTEM daemon running as
+     _harborlog and written into the collector's store. Kept alive, not scheduled. TEMPLATE: installed by
+     bin/collector-setup.sh with sudo; a session cannot. Disable: sudo sh bin/collector-setup.sh --uninstall -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.harbor.otlp-receiver</string>
+  <key>UserName</key><string>_harborlog</string>
+  <key>GroupName</key><string>_harborlog</string>
+  <key>ProgramArguments</key><array><string>/usr/bin/python3</string><string>-I</string><string>@BIN@/otlp-receiver.py</string><string>--store</string><string>@STORE@</string></array>
+  <key>KeepAlive</key><true/>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>@STORE@/com.harbor.otlp-receiver.log</string>
+  <key>StandardErrorPath</key><string>@STORE@/com.harbor.otlp-receiver.log</string>
+</dict>
+</plist>

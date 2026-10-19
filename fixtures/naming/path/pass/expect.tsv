@@ -1,0 +1,29 @@
+# fixtures/naming/path/pass (harbor#950) — names that MUST stay green, the unusual ones first. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# COLUMNS  name <TAB> -
+name	rule
+api-property	-
+docs/reports/2026-10-03-review.md	-
+2026-10-03-review.md	-
+x.d.ts	-
+x.test.ts	-
+browser-probe.test.ts	-
+CLAUDE.md.tmpl	-
+templates/CLAUDE.md.tmpl	-
+com.harbor.audit.triage.plist	-
+launchd/com.harbor.audit.triage.plist	-
+.env.example	-
+.gitignore	-
+context.d/user/admission-first.md	-
+docs/decisions/0001-adopt-the-standard.md	-
+src/fleet/drift/undeployed_check.py	-
+src/fleet/__init__.py	-
+schema-v2.json	-
+SKILL.md	-
+skills/tracking-standards/SKILL.md	-
+.github/ISSUE_TEMPLATE/bug.md	-
+README.md	-
+LICENSE	-
+systemd/harbor-audit-triage.timer	-
+standards/naming/terms.tsv	-
+hooks/commit-msg	-
+docs/drift-ref-env.md	-

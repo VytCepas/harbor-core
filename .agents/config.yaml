@@ -1,0 +1,11 @@
+# Harbor's scope marker (harbor#954 PR C; CONTRACTS/marker.md, standards/naming.md D-12, D-37).
+# context: repo is the key the floor reads (floor_in_repo) and project-init renders. It stands the
+# ambient layer down for PROJECT rules only, and only where a guard is wired. The constitutional
+# five never yield. A marker alone hands nothing off: force push stays armed and the work log
+# keeps appending, because neither is listed as stood down.
+context: repo
+
+# Naming-standard keys (standards/naming.md D-28, D-37). Read by no floor code yet.
+scope: project
+standard_version: 1.0.0
+repo-kind: control-plane  # standards/naming/repo-kinds.tsv

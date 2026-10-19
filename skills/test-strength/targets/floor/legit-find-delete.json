@@ -1,0 +1,1 @@
+{"tool_name":"Bash","tool_input":{"command":"find build -name '*.tmp' -delete"}}

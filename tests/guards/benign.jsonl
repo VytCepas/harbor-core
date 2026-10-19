@@ -1,0 +1,15 @@
+{"id":"git-status","cmd":"git status"}
+{"id":"commit-quotes-verbs","cmd":"git commit -m 'docs: how bq rm, git reset --hard and diskutil eraseDisk behave'"}
+{"id":"grep-quotes-verbs","cmd":"grep -rn 'bq rm -r -d' ./docs"}
+{"id":"echo-verbs","cmd":"echo bq rm -r -d proj:ds"}
+{"id":"echo-quoted-wipe","cmd":"echo \"diskutil eraseDisk wipes a disk\""}
+{"id":"plain-rm","cmd":"rm -f /tmp/scratch"}
+{"id":"sort-S-is-a-size","cmd":"sort -S 2G /tmp/f"}
+{"id":"ssh-S-is-a-socket","cmd":"ssh -S /tmp/sock host uptime"}
+{"id":"awk-comma","cmd":"awk {print $1, $2} /tmp/f","why":"harbor#206: a comma is not brace expansion"}
+{"id":"var-braces","cmd":"echo ${HOME}"}
+{"id":"brace-copy","cmd":"cp /tmp/file{1,2} /tmp/dst/"}
+{"id":"env-S-benign","cmd":"env -S 'echo hello'"}
+{"id":"curl-delete-internal","cmd":"curl -X DELETE https://api.internal.example/thing"}
+{"id":"over-cap-no-tool","cmd":"echo hello","pad":33000}
+{"id":"no-normalizer-no-tool","cmd":"echo hello","fixture":"nonorm"}

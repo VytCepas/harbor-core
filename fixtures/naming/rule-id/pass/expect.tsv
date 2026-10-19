@@ -1,0 +1,9 @@
+# fixtures/naming/rule-id/pass (harbor#950) — rule ids that MUST stay green. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# COLUMNS  name <TAB> -
+name	rule
+name.skill-dir	-
+admission.kill-switch-first	-
+drift.undeployed	-
+posix.no-bashism	-
+git.no-ai-attribution	-
+lint.api-property-v2	-

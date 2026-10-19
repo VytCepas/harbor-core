@@ -1,0 +1,8 @@
+# fixtures/naming/registry/pass (harbor#950) — registries that MUST stay green. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# Each name is a registry fixture directory, relative to the repo root: its files are appended to the
+# registry (or replace a file when they open with #), then `--check registry <dir>` judges the result.
+# COLUMNS  name <TAB> -
+name	rule
+standards/naming	-
+fixtures/naming/registry/pass/unusual-rows	-
+fixtures/naming/registry/pass/new-register	-

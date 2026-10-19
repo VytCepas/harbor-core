@@ -1,0 +1,6 @@
+# graph.tsv (harbor#996 G2 fixture) - red-notifies: fx:ok carries notifies; fx:bad has one inbound and an edge of another relation, neither of which counts
+# relation	notifies	fixture
+edge	from	to	site
+notifies	fx:ok	fx:t	fx:ok:1
+notifies	fx:t	fx:bad	fx:t:1
+references	fx:bad	fx:t	fx:bad:1

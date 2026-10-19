@@ -1,0 +1,2 @@
+# fixture suite manifest: test, then what it reads
+tests/misc/legacy.sh bin/drift-skills.sh bin/log-lib.sh tests/misc/legacy.sh

@@ -1,0 +1,8 @@
+# fixtures/naming/path.test/pass (harbor#950) — test paths that MUST stay green through the second name of the test surface. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# COLUMNS  name <TAB> -
+name	rule
+tests/admission/bash/destroy.test.sh	-
+tests/drift/undeployed/test_reconcile.py	-
+tests/ci/api-property/query.test.ts	-
+tests/memory/route/two-word-aspect.test.mjs	-
+tests/README.md	-

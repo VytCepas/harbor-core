@@ -1,0 +1,7 @@
+{
+  "Browser": { "t": "Browser cache", "d": "Keeps copies for one user. The fastest layer, but nobody else benefits from it.", "x": "Asked as: which layer serves a repeat visit by the same user?", "s": "Slide 1.4", "a": "u01" },
+  "CDN edge": { "t": "CDN edge server", "d": "A cache close to many users. A miss goes on to the origin server.", "x": "CDN is caching, not replication.", "s": "Slide 1.6", "a": "u01" },
+  "Origin": { "t": "Origin server", "d": "Holds the real data. Every cache layer exists to avoid asking it.", "s": "Slide 1.7", "a": "u02" },
+  "Write-through": { "t": "Write-through", "d": "Every write goes to the cache and the store at once: safe, slower writes.", "x": "Pair with write-back.", "s": "Slide 2.3", "a": "u02" },
+  "Write-back": { "t": "Write-back", "d": "Writes land in the cache and reach the store later: fast, can lose data on a crash.", "s": "Slide 2.4" }
+}

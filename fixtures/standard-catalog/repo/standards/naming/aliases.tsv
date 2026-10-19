@@ -1,0 +1,3 @@
+# fixture aliases: the system's codename and the term it stands for
+id	term	kind	surfaces	remove_by	note
+harbor	platform	codename	repo,brand	never	the brand and the control plane's repo name

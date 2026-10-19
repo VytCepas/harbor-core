@@ -1,0 +1,5 @@
+# fixtures/naming/mcp-tool/pass (harbor#1301) — MCP tool names that MUST stay green. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# COLUMNS  name <TAB> -
+name	rule
+mcp__harbor_chrome__tab_new	-
+mcp__harbor_chrome__snapshot	-

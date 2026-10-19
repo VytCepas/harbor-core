@@ -1,0 +1,12 @@
+# graph.tsv (harbor#996) - a lint-module fixture, not a real graph
+# input	sysa	~/fixture/sysa	3 files
+# input	sysb	~/fixture/sysb	3 files
+edge	from	to	site
+derives_from	sysa:docs/generated/index.txt	sysa:bin/alpha-gen.sh	sysa:docs/generated/index.txt:1
+references	sysa:bin/alpha-run.sh	sysa:bin/beta-run.sh	sysa:bin/alpha-run.sh:4
+references	sysa:bin/beta-run.sh	sysa:bin/gamma-run.sh	sysa:bin/beta-run.sh:4
+references	sysa:bin/alpha-run.sh	sysa:bin/alpha-lib.sh	sysa:bin/alpha-run.sh:6
+references	sysa:bin/alpha-run.sh	sysb:CONTRACTS/zeta-contract.md	sysa:bin/alpha-run.sh:5
+references	sysa:docs/notes.md	sysb:src/internal/engine.py	sysa:docs/notes.md:1
+references	sysa:bin/alpha-gen.sh	sysa:docs/generated/index.txt	sysa:bin/alpha-gen.sh:3
+references	sysa:docs/generated/index.txt	sysa:bin/alpha-run.sh	sysa:docs/generated/index.txt:2

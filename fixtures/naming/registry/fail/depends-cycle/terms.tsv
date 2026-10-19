@@ -1,0 +1,3 @@
+loopa	family	loop a	policy	-	experimental	-	fixture	-	loopb	a family that depends on loopb
+loopb	family	loop b	policy	-	experimental	-	fixture	-	loopa	a family that depends on loopa, which closes the cycle
+loopc	family	loop c	policy	-	experimental	-	fixture	-	nothing	a family that depends on a word that is not a family

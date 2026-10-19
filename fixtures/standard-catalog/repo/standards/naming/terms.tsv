@@ -1,0 +1,20 @@
+# fixture terms: the smallest registry the catalog tests read
+id	class	pref	broader	vsm	stability	successor	src	alt	depends_on	definition
+metasystem	concept,level	metasystem	-	S1-S5	experimental	-	fixture	-	-	The whole
+domain	concept,level	domain	metasystem	-	experimental	-	fixture	-	-	A kind of work
+system	concept,level	system	domain	-	experimental	-	fixture	-	-	One repository
+subsystem	concept,level	subsystem	system	-	experimental	-	fixture	-	-	A group of families
+family	concept,level	family	subsystem	-	experimental	-	fixture	-	-	A module
+component	concept,level	component	family	-	experimental	-	fixture	-	-	A unit
+element	concept,level	element	component	-	experimental	-	fixture	-	-	A part of a unit
+platform	concept	platform	metasystem	S2-S5	experimental	-	fixture	-	-	The systems that serve workloads
+workload	concept	workload	metasystem	S1	experimental	-	fixture	-	-	The systems that do domain work
+control-plane	concept	control plane	platform	S3	experimental	-	fixture	-	-	Admits and refuses
+observability	concept	observability	control-plane	S3	experimental	-	fixture	-	-	Inferring state from outputs
+fleet	concept,system	fleet	platform	S1	stable	-	fixture	-	-	The fleet controller
+mailcal	concept,system	mailcal	workload	S1	stable	-	fixture	-	-	Mail and calendar
+deploy	family	deploy	control-plane	S3	stable	-	fixture	-	-	Install artifacts on the host
+drift	family	drift	deploy	S3	stable	-	fixture	-	-	Installed copies that lag the source
+lint	family	lint	control-plane	S3	stable	-	fixture	-	-	Conventions, judged
+check	family	check	observability	S3	stable	-	fixture	-	-	Scheduled health checks
+standard	family,kind	standard	control-plane	S2	stable	-	fixture	-	-	A normative format

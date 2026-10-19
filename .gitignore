@@ -1,0 +1,57 @@
+# /build/ is generated output, never a source. dashboard-gen.sh renders
+# build/dashboard.html from status-gen.sh --json, freshness.sh and git at render
+# time; committing it would turn a VIEW of the numbers into a second COPY of
+# them, which is what lint T2 exists to prevent — and a stale chart is read as
+# current far longer than stale prose is.
+#
+# ANCHORED, and that leading slash is load-bearing. A bare `build/` matches at
+# every depth, and plugins/atlas keeps its SOURCE in a directory of that name —
+# so the rule written for one generated dashboard was hiding 9 of the atlas
+# plugin's 13 files, every one of them code. Measured 2026-09-03: build.py,
+# atlas.js, atlas_css.py, check.mjs and namespace.py were all invisible to git
+# while `git status` read clean, which is the failure mode a .gitignore rule is
+# worst at showing you. The anchor keeps the dashboard ignored and nothing else.
+/build/
+
+# Python bytecode. Previously covered by accident: the unanchored `build/` above
+# was hiding plugins/atlas/skills/atlas/build/__pycache__ along with all the
+# source beside it, so anchoring that rule exposed these for the first time. They
+# are generated, machine-specific and version-stamped (cpython-314), so they are
+# named explicitly now rather than left to a rule that was never about them.
+__pycache__/
+*.pyc
+
+# macOS Finder metadata. Untracked-but-present on every directory the
+# operator has opened in Finder; it is noise in `git status`, not content.
+.DS_Store
+
+# Archify's rendered example diagrams. `archify examples` runs
+# vendor/archify/scripts/render-examples.mjs, whose table at lines 13-17 names
+# these five outputs and whose outputRoot defaults to examples/ — so they land
+# beside the .json inputs that produced them, in the same directory git watches.
+#
+# THE JSON IS THE SOURCE AND SAYS SO ITSELF: each input carries an "output" key
+# naming its own HTML, so the render is fully derivable and nothing tracked
+# consumes the result — the only two references to each file are the input that
+# declares it and the renderer that writes it. Committing them would be lint T2's
+# second copy at 3.5 MB, and a stale diagram is read as current the same way a
+# stale chart is.
+#
+# Anchored, like /build/ above, and scoped to the one directory the renderer
+# writes into: vendor/archify/assets/template.html is a SOURCE template and must
+# stay tracked.
+/vendor/archify/examples/*.html
+
+# Claude Code's isolated agent worktrees. Nested git checkouts, never payload (deploy
+# reads only .claude/inject.d/), but untracked they made deploy's preflight refuse the
+# main checkout as dirty whenever a session ran agents with isolation: worktree.
+/.claude/worktrees/
+
+# The context baseline lives in the user's state directory (harbor#1275); this keeps a stray copy at the root of a
+# harbor-core clone from being staged. The dev checkout's tracked seed is unaffected: ignore rules never untrack.
+/CONTEXT-BASELINE.tsv
+
+# docs/index.html is BUILT on demand, never committed (harbor#1197): `sh bin/docs-gen.sh --apply` (~14 s). Committed, it
+# was touched by 126 of 317 first-parent main commits in 30 days, and every pair of open PRs conflicted on it; merge-stack
+# refuses an HTML conflict, so each one stopped for a person. The export builds it into the core snapshot (bin/deploy-push.sh).
+/docs/index.html

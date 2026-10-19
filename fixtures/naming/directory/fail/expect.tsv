@@ -1,0 +1,10 @@
+# fixtures/naming/directory/fail (harbor#950) — directories that MUST go red. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# COLUMNS  name <TAB> rule ids
+name	rule
+docs/Reports	name.case
+docs/my_notes	name.separator
+docs/notes-2026-10-04	name.date
+docs/notes.v2	name.extension
+docs/2fa-notes	name.word
+docs/cfg-notes	name.abbreviation
+docs/floor-notes	name.alias

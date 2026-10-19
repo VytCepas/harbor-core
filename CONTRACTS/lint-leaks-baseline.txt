@@ -1,0 +1,3 @@
+# lint-leaks-baseline.txt (harbor#1149) - occurrences of a CONTRACTS/leak-patterns.tsv pattern in the whole tracked tree (never narrowed by layers.tsv). Only goes down.
+# Derive:  sh bin/lint-leaks.sh --count core
+0

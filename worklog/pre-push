@@ -1,0 +1,26 @@
+#!/bin/sh
+# G1 (harbor#25) — fail-CLOSED gitleaks pre-push gate for the Log repo.
+# Blocks the push when gitleaks finds a secret ANYWHERE in the repo history
+# OR when gitleaks is missing. Install: cp into ~/.claude/MEMORY/.git/hooks/.
+command -v gitleaks >/dev/null 2>&1 || {
+  echo "pre-push: gitleaks missing — push BLOCKED (fail-closed)" >&2
+  exit 1
+}
+# THE SUBCOMMAND IS A DIALECT. gitleaks 8.19 introduced `gitleaks git`; 8.18.4 —
+# the version .github/workflows/governance.yml pins by exact URL — has no such
+# verb and exits 1 on it. With `--exit-code 1` meaning "a leak was found", an
+# absent subcommand is INDISTINGUISHABLE from a finding, so on 8.18.4 this hook
+# blocked every push in the Log repo and said it had found a secret.
+#
+# THE ONLY COPY OF guard-lib's floor_gitleaks_tree THAT IS ALLOWED TO EXIST, and
+# the reason is in this file's own second line: it is copied into
+# ~/.claude/MEMORY/.git/hooks/, a DIFFERENT repository, where harbor's bin/ may
+# not be present at all. A hook that sources a library from a path outside the
+# repo it guards fails open the moment that path moves — so this one stays
+# standalone, and the duplication is the price of that. guard-lib.sh carries the
+# reference implementation and the measured equivalence; keep the two in step.
+if gitleaks git --help >/dev/null 2>&1; then
+  exec gitleaks git --no-banner --exit-code 1 "$(git rev-parse --show-toplevel)"
+else
+  exec gitleaks detect --no-banner --exit-code 1 --source "$(git rev-parse --show-toplevel)"
+fi

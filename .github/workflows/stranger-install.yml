@@ -1,0 +1,47 @@
+# stranger-install (harbor#1149, #831): a clean Ubuntu container, a fresh user, a `git archive HEAD` export:
+# install Harbor and run its checks. Per pull request once the repo is public, and by manual dispatch. Lives here
+# since #1149; an agent cannot write under .github/workflows/, so edits to this file arrive as operator patches
+# (patches/README.md). The self-hosted runner is itself a colima container (docker-in-docker unverified), so a PR
+# run always takes ubuntu-latest, which has docker; only a dispatch can choose self-hosted, and only on a private repo.
+name: stranger-install
+
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: "Runner that has a docker daemon"
+        type: choice
+        default: github-hosted
+        options: [github-hosted, self-hosted]
+  # Per PR once the repo is public: hosted minutes are free there, and while it is private a per-PR hosted job
+  # would spend the plan the operator does not raise. The paths are what a stranger's install reads (harbor#457).
+  pull_request:
+    paths:
+      - bin/**
+      - CONTRACTS/**
+      - tests/install/stranger-ubuntu.sh
+      - .github/workflows/stranger-install.yml
+
+permissions:
+  contents: read
+
+jobs:
+  ubuntu:
+    name: clean Ubuntu install${{ matrix.first_run == '1' && ' (Claude Code ran once)' || '' }}
+    if: ${{ github.event_name != 'pull_request' || github.event.repository.private == false }}
+    timeout-minutes: 20
+    runs-on: ${{ fromJSON(inputs.runner == 'self-hosted' && '["self-hosted","Linux","ARM64"]' || '["ubuntu-latest"]') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # 0 = the stranger who never started Claude Code (scope install seeds settings.json, the default);
+        # 1 = the machine where `claude` already wrote it, which scope install must leave alone.
+        first_run: ['0', '1']
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Stranger installs Harbor
+        env:
+          STRANGER_CLAUDE_FIRST_RUN: ${{ matrix.first_run }}
+        run: sh tests/install/stranger-ubuntu.sh

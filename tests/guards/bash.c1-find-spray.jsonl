@@ -1,0 +1,26 @@
+{"id":"C1-L4-gf-300","rule":"find-xargs-spray","want":"block","cmd":"find /data -type d -exec rsync -a --delete empty/ {} \\;","why":"harbor#1313: an unfiltered find running rsync with a delete flag on every match, which is rm -rf of each"}
+{"id":"C1-L4-gf-312","rule":"find-xargs-spray","want":"block","cmd":"find /x -ok rm -f {} +","why":"harbor#1313: an unfiltered find running rm through -ok/-okdir, which execute as -exec does"}
+{"id":"C1-L4-gf-313","rule":"find-xargs-spray","want":"block","cmd":"find /x -okdir rm -f {} +","why":"harbor#1313: an unfiltered find running rm through -ok/-okdir, which execute as -exec does"}
+{"id":"C1-L4-gf-291","rule":"find-xargs-spray","want":"block","cmd":"find . | sudo xargs rm -f","why":"harbor#1313: an unfiltered find piped to xargs rm, with a wrapper, a value-taking xargs flag or a group opener between the pipe and the verb"}
+{"id":"C1-L4-gf-293","rule":"find-xargs-spray","want":"block","cmd":"find . | xargs -P 4 rm -f","why":"harbor#1313: an unfiltered find piped to xargs rm, with a wrapper, a value-taking xargs flag or a group opener between the pipe and the verb"}
+{"id":"C1-L4-gf-294","rule":"find-xargs-spray","want":"block","cmd":"find . | xargs -n 1 rm -rf","why":"harbor#1313: an unfiltered find piped to xargs rm, with a wrapper, a value-taking xargs flag or a group opener between the pipe and the verb"}
+{"id":"C1-L4-gf-296","rule":"find-xargs-spray","want":"block","cmd":"find . | { xargs rm -f; }","why":"harbor#1313: an unfiltered find piped to xargs rm, with a wrapper, a value-taking xargs flag or a group opener between the pipe and the verb"}
+{"id":"C1-L4-gf-292","rule":"find-xargs-spray","want":"block","cmd":"find . | xargs -I {} rm -f {}","why":"harbor#1313: an unfiltered find piped to xargs rm, with a wrapper, a value-taking xargs flag or a group opener between the pipe and the verb"}
+{"id":"C1-L4-gf-772","rule":"rsync-delete-dest","want":"block","cmd":"rsync -a --delete-missing-args src/ /","why":"harbor#1313: a GNU multi-word rsync delete flag aimed at the root (operator decision: GNU flags in scope for Linux installs)"}
+{"id":"C1-L4-x-17","rule":"rsync-delete-dest","want":"block","cmd":"rsync -a --delete-missing-args src/ ~/","why":"harbor#1313: a GNU multi-word rsync delete flag aimed at the home dir"}
+{"id":"C1-L4-x-18","rule":"find-xargs-spray","want":"block","cmd":"find . | xargs -0 sudo rm -f","why":"harbor#1313: an unfiltered find piped to xargs rm, with a wrapper, a value-taking xargs flag or a group opener between the pipe and the verb"}
+{"id":"C1-L4-x-19","rule":"find-xargs-spray","want":"block","cmd":"find . | /usr/bin/xargs -L 1 rm","why":"harbor#1313: an unfiltered find piped to xargs rm, with a wrapper, a value-taking xargs flag or a group opener between the pipe and the verb"}
+{"id":"C1-L4-ok-1","rule":"find-xargs-spray","want":"allow","cmd":"find . -name '*.pyc' | sudo xargs rm -f","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L4-ok-2","rule":"find-xargs-spray","want":"allow","cmd":"find . -name '*.o' | xargs -I {} rm -f {}","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L4-ok-3","rule":"find-xargs-spray","want":"allow","cmd":"find build -name '*.tmp' | xargs -P 4 -n 1 rm -f","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L4-ok-4","rule":"find-xargs-spray","want":"allow","cmd":"cat removed.txt | xargs -r git rm","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L4-ok-5","rule":"find-xargs-spray","want":"allow","cmd":"find . -type f | xargs -n 1 grep -l TODO","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L4-ok-6","rule":"find-xargs-spray","want":"allow","cmd":"find . -type f | xargs -P 4 -I {} wc -l {}","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L4-ok-7","rule":"find-xargs-spray","want":"allow","cmd":"ls | xargs -L 1 echo","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L4-ok-8","rule":"find-xargs-spray","want":"allow","cmd":"find . -name '*.log' | { xargs rm -f; }","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L4-ok-9","rule":"find-xargs-spray","want":"allow","cmd":"find src -name '*.bak' -ok rm {} \\;","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L4-ok-10","rule":"find-xargs-spray","want":"allow","cmd":"find . -type f -okdir cat {} \\;","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L4-ok-11","rule":"find-xargs-spray","want":"allow","cmd":"find . -type d -name node_modules -exec rsync -a --delete empty/ {} \\;","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L4-ok-12","rule":"find-xargs-spray","want":"allow","cmd":"find . -type f -exec rsync -a {} /tmp/backup/ \\;","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L4-ok-13","rule":"rsync-delete-dest","want":"allow","cmd":"rsync -a --delete-missing-args src/ build/","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L4-ok-14","rule":"rsync-delete-dest","want":"allow","cmd":"rsync -a --delete-after dist/ ./public/","why":"harbor#1313: ordinary work beside the fix stays allowed"}

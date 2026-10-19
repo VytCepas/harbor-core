@@ -1,0 +1,39 @@
+{"id":"kubectl-delete-pod","rule":"cloud-kubectl-delete","want":"ask","cmd":"kubectl delete pod web-1 -n prod","why":"harbor#1149"}
+{"id":"kubectl-delete-ns-flag-first","rule":"cloud-kubectl-delete","want":"ask","cmd":"kubectl -n prod --context c delete deployment web","why":"harbor#1149"}
+{"id":"kubectl-delete-abs-path","rule":"cloud-kubectl-delete","want":"ask","cmd":"/opt/homebrew/bin/kubectl delete ns prod","why":"harbor#1149"}
+{"id":"kubectl-delete-env-prefix","rule":"cloud-kubectl-delete","want":"ask","cmd":"KUBECONFIG=/x/cfg kubectl delete -f m.yaml","why":"harbor#1149"}
+{"id":"kubectl-delete-wrapper","rule":"cloud-kubectl-delete","want":"ask","cmd":"gtimeout 30 kubectl delete pod web-1","why":"harbor#715 spelling, harbor#1149"}
+{"id":"kubectl-delete-upper","rule":"cloud-kubectl-delete","want":"ask","cmd":"KUBECTL delete pod web-1","why":"harbor#282 spelling, harbor#1149"}
+{"id":"kubectl-delete-subagent","rule":"cloud-kubectl-delete","want":"deny","cmd":"kubectl delete pod web-1","ctx":{"agent_type":"workflow-subagent"},"why":"harbor#194 off-main-loop"}
+{"id":"kubectl-get-allowed","rule":"cloud-kubectl-delete","want":"allow","cmd":"kubectl get pods -n prod","why":"harbor#1149 ordinary work"}
+{"id":"kubectl-describe-allowed","rule":"cloud-kubectl-delete","want":"allow","cmd":"kubectl describe deployment web","why":"harbor#1149 ordinary work"}
+{"id":"kubectl-apply-allowed","rule":"cloud-kubectl-delete","want":"allow","cmd":"kubectl apply -f m.yaml","why":"harbor#1149 ordinary work"}
+{"id":"kubectl-delete-in-echo-allowed","rule":"none","want":"allow","cmd":"echo kubectl delete pod web-1","why":"harbor#715: after a text sink the tool word is data"}
+{"id":"tf-destroy","rule":"cloud-terraform-destroy","want":"ask","cmd":"terraform destroy","why":"harbor#1149"}
+{"id":"tf-destroy-chdir","rule":"cloud-terraform-destroy","want":"ask","cmd":"terraform -chdir=infra destroy -var-file=p.tfvars","why":"harbor#1149"}
+{"id":"tf-destroy-abs-path","rule":"cloud-terraform-destroy","want":"ask","cmd":"/opt/homebrew/bin/terraform destroy","why":"harbor#1149"}
+{"id":"tf-destroy-wrapper","rule":"cloud-terraform-destroy","want":"ask","cmd":"env TF_VAR_x=1 gtimeout 600 terraform destroy","why":"harbor#715 spelling, harbor#1149"}
+{"id":"tf-apply-auto-approve","rule":"cloud-terraform-destroy","want":"ask","cmd":"terraform apply -auto-approve","why":"harbor#1149"}
+{"id":"tf-apply-auto-approve-double-dash","rule":"cloud-terraform-destroy","want":"ask","cmd":"terraform apply --auto-approve tf.plan","why":"harbor#1149"}
+{"id":"tf-apply-auto-approve-eq","rule":"cloud-terraform-destroy","want":"ask","cmd":"terraform apply -auto-approve=true","why":"harbor#1149"}
+{"id":"tf-destroy-subagent","rule":"cloud-terraform-destroy","want":"deny","cmd":"terraform apply -auto-approve","ctx":{"agent_type":"workflow-subagent"},"why":"harbor#194 off-main-loop"}
+{"id":"tf-plan-allowed","rule":"cloud-terraform-destroy","want":"allow","cmd":"terraform plan -out tf.plan","why":"harbor#1149 ordinary work"}
+{"id":"tf-init-allowed","rule":"cloud-terraform-destroy","want":"allow","cmd":"terraform init","why":"harbor#1149 ordinary work"}
+{"id":"tf-apply-allowed","rule":"cloud-terraform-destroy","want":"allow","cmd":"terraform apply tf.plan","why":"harbor#1149 ordinary work: the apply prompt is the confirmation"}
+{"id":"aws-terminate-instances","rule":"cloud-aws-destroy","want":"ask","cmd":"aws ec2 terminate-instances --instance-ids i-0abc","why":"harbor#1149"}
+{"id":"aws-s3-rb","rule":"cloud-aws-destroy","want":"ask","cmd":"aws s3 rb s3://bucket","why":"harbor#1149"}
+{"id":"aws-s3-rb-force","rule":"cloud-aws-destroy","want":"ask","cmd":"aws s3 rb s3://bucket --force","why":"harbor#1149"}
+{"id":"aws-s3-rm-recursive","rule":"cloud-aws-destroy","want":"ask","cmd":"aws s3 rm s3://bucket/prefix --recursive","why":"harbor#1149"}
+{"id":"aws-s3-rm-recursive-first","rule":"cloud-aws-destroy","want":"ask","cmd":"aws s3 rm --recursive s3://bucket/prefix","why":"harbor#1149"}
+{"id":"aws-delete-bucket","rule":"cloud-aws-destroy","want":"ask","cmd":"aws s3api delete-bucket --bucket b","why":"harbor#1149"}
+{"id":"aws-delete-stack","rule":"cloud-aws-destroy","want":"ask","cmd":"aws cloudformation delete-stack --stack-name s","why":"harbor#1149"}
+{"id":"aws-delete-db","rule":"cloud-aws-destroy","want":"ask","cmd":"aws --profile prod rds delete-db-instance --db-instance-identifier d","why":"harbor#1149"}
+{"id":"aws-abs-path","rule":"cloud-aws-destroy","want":"ask","cmd":"/usr/local/bin/aws ec2 terminate-instances --instance-ids i-0abc","why":"harbor#1149"}
+{"id":"aws-env-prefix","rule":"cloud-aws-destroy","want":"ask","cmd":"AWS_PROFILE=prod aws s3 rb s3://bucket","why":"harbor#1149"}
+{"id":"aws-wrapper","rule":"cloud-aws-destroy","want":"ask","cmd":"gtimeout 60 aws ec2 terminate-instances --instance-ids i-0abc","why":"harbor#715 spelling, harbor#1149"}
+{"id":"aws-subagent","rule":"cloud-aws-destroy","want":"deny","cmd":"aws s3 rb s3://bucket --force","ctx":{"agent_type":"workflow-subagent"},"why":"harbor#194 off-main-loop"}
+{"id":"aws-s3-ls-allowed","rule":"cloud-aws-destroy","want":"allow","cmd":"aws s3 ls s3://bucket","why":"harbor#1149 ordinary work"}
+{"id":"aws-s3-cp-allowed","rule":"cloud-aws-destroy","want":"allow","cmd":"aws s3 cp f.txt s3://bucket/f.txt","why":"harbor#1149 ordinary work"}
+{"id":"aws-s3-rm-single-allowed","rule":"cloud-aws-destroy","want":"allow","cmd":"aws s3 rm s3://bucket/one.txt","why":"harbor#1149: one object is not a recursive delete"}
+{"id":"aws-describe-allowed","rule":"cloud-aws-destroy","want":"allow","cmd":"aws ec2 describe-instances","why":"harbor#1149 ordinary work"}
+{"id":"aws-list-allowed","rule":"cloud-aws-destroy","want":"allow","cmd":"aws iam list-users","why":"harbor#1149 ordinary work"}

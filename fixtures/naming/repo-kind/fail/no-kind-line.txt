@@ -1,0 +1,9 @@
+# fixtures/naming/repo-kind/fail/no-kind-line.txt (harbor#950) — a .agents/config.yaml that carries no repo-kind line.
+# A repo-kind fixture is a manifest, built into a real directory before --check repo-kind reads it: one entry per line, docs/ for a directory,
+# <file> TAB <text> for a file with content. See bin/lint-name.sh rk_build.
+README.md
+AGENTS.md
+CLAUDE.md
+justfile
+.agents/config.yaml	context: repo
+docs/

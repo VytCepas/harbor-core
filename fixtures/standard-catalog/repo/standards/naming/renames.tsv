@@ -1,0 +1,3 @@
+# fixture renames: the new name carries the family
+id	old	new	surface	wave	remove_by	reason
+rename-0001	bin/old-sync.sh	bin/drift-sync.sh	bin	W1	-	the family leads the name

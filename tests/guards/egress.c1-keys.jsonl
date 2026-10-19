@@ -1,0 +1,18 @@
+{"id":"C1-L6-ccg-150","rule":"key-material-read","want":"block","tool":"Grep","input":{"pattern":"x","path":".","glob":"**/*.pem"},"why":"harbor#1313: a search filtered to private key files returns their bytes past the Read deny"}
+{"id":"C1-L6-ccg-150-brace","rule":"key-material-read","want":"block","tool":"Grep","input":{"pattern":"x","path":".","glob":"*.{crt,pem}"},"why":"harbor#1313: the same key-file filter, another glob spelling"}
+{"id":"C1-L6-ccg-150-class","rule":"key-material-read","want":"block","tool":"Grep","input":{"pattern":"x","path":".","glob":"**/*.[pP][eE][mM]"},"why":"harbor#1313: the same key-file filter, another glob spelling"}
+{"id":"C1-L6-ccg-150-upper","rule":"key-material-read","want":"block","tool":"Grep","input":{"pattern":"x","path":".","glob":"**/*.PEM"},"why":"harbor#1313: the same key-file filter, another glob spelling"}
+{"id":"C1-L6-ccg-150-p12","rule":"key-material-read","want":"block","tool":"Grep","input":{"pattern":"x","path":".","glob":"**/*.p12"},"why":"harbor#1313: the same key-file filter, another glob spelling"}
+{"id":"C1-L6-ccg-150-idkey","rule":"key-material-read","want":"block","tool":"Grep","input":{"pattern":"x","path":".","glob":"**/id_ecdsa"},"why":"harbor#1313: the same key-file filter, another glob spelling"}
+{"id":"C1-L6-ccg-150-path","rule":"key-material-read","want":"block","tool":"Grep","input":{"pattern":"x","path":"certs/client.pfx"},"why":"harbor#1313: a search pointed at one key file reads it"}
+{"id":"C1-L6-ok-1","rule":"key-material-read","want":"allow","tool":"Grep","input":{"pattern":"TODO","glob":"*.ts"},"why":"harbor#1313: an ordinary search beside the fix stays allowed"}
+{"id":"C1-L6-ok-2","rule":"key-material-read","want":"allow","tool":"Grep","input":{"pattern":"TODO","glob":"*.{ts,tsx}"},"why":"harbor#1313: an ordinary search beside the fix stays allowed"}
+{"id":"C1-L6-ok-3","rule":"key-material-read","want":"allow","tool":"Grep","input":{"pattern":"x","path":".","glob":"**/*"},"why":"harbor#1313: an ordinary search beside the fix stays allowed"}
+{"id":"C1-L6-ok-4","rule":"key-material-read","want":"allow","tool":"Grep","input":{"pattern":"x","path":"src"},"why":"harbor#1313: an ordinary search beside the fix stays allowed"}
+{"id":"C1-L6-ok-5","rule":"key-material-read","want":"allow","tool":"Grep","input":{"pattern":"ssh-ed25519","glob":"*.pub"},"why":"harbor#1313: an ordinary search beside the fix stays allowed"}
+{"id":"C1-L6-ok-6","rule":"key-material-read","want":"allow","tool":"Grep","input":{"pattern":"BEGIN CERTIFICATE","glob":"**/*.crt"},"why":"harbor#1313: an ordinary search beside the fix stays allowed"}
+{"id":"C1-L6-ok-7","rule":"key-material-read","want":"allow","tool":"Grep","input":{"pattern":"\\.pem","glob":"*.go"},"why":"harbor#1313: an ordinary search beside the fix stays allowed"}
+{"id":"C1-L6-ok-8","rule":"key-material-read","want":"allow","tool":"Grep","input":{"pattern":"x","path":"src/keystore.ts"},"why":"harbor#1313: an ordinary search beside the fix stays allowed"}
+{"id":"C1-L6-ok-9","rule":"key-material-read","want":"allow","tool":"Grep","input":{"pattern":"x","glob":"docs/*.pem.md"},"why":"harbor#1313: an ordinary search beside the fix stays allowed"}
+{"id":"C1-L6-ok-10","rule":"key-material-read","want":"allow","tool":"Grep","input":{"pattern":"x","glob":"*.p*"},"why":"harbor#1313: an ordinary search beside the fix stays allowed"}
+{"id":"C1-L6-ok-11","rule":"key-material-read","want":"allow","tool":"Grep","input":{"pattern":"x","path":"tests/fixtures/id_rsa.pub"},"why":"harbor#1313: an ordinary search beside the fix stays allowed"}

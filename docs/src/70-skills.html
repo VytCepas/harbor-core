@@ -1,0 +1,195 @@
+<section>
+<h2 id="skills">Skills and the always-on surface</h2>
+
+<p>Skills are capability packages a session can invoke. The architectural question
+is not what they do — it is what they <em>cost when they are not used</em>.</p>
+
+<p>An <strong>ambient</strong> skill's description loads into every session so the
+model can decide to reach for it. An <strong>invoked-only</strong> skill loads
+nothing until it is called by name. The difference is a single frontmatter key,
+and it is the difference between a skill that costs bytes on every turn of every
+session and one that costs nothing until wanted.</p>
+
+<h4>The tracked skills</h4>
+<div class="scroll">
+<!--gen:skills-->
+</div>
+
+<h3>A second tier arrived from outside, and it is dispositioned, not adopted</h3>
+
+<p>A separate set was vendored from an upstream repository and de-platformed. None
+of it was adopted on arrival. Each one was sorted into a disposition — a cheap
+conversion, a rewrite because the body is shaped for a platform this box does not
+run, or a <strong>hold</strong> — and a held skill carries a banner in its own body
+saying so.</p>
+
+<p>The question a held skill has to answer before the banner comes off is not "is
+this good" — it is <em>what would this have changed in a task we actually ran?</em>
+Until that has an answer with a worked example, the file is reference rather than
+instruction. Holding is cheap and reversible; adopting a method nobody has tested
+against real work is neither.</p>
+
+<h4>The vendored tier</h4>
+<div class="scroll">
+<!--gen:vendor-->
+</div>
+
+<div class="note why">
+<span class="tag">Two status columns, from two files, on purpose</span>
+<p>The banner is read from the skill's own body — it is what a session sees when it
+opens the file. The disposition is read from the document where the decision was
+taken. They are supposed to agree, so rendering both makes every build of this page
+the check: a skill classed as held with no banner is a decision that never reached
+the file, and a banner with no decision behind it is a file nobody adjudicated.
+Neither is visible in a table that states the answer once. Neither column is the
+vendoring record's hand-typed "installed" column, which has already been measured
+wrong against the lint rule that derives the same answer — and which now says, in
+its own words, to believe the rule.</p>
+</div>
+
+<h3>The surface has a ceiling, and it is checked</h3>
+
+<p>Descriptions stack, and they stack <em>with projects</em>. Measured on this
+machine: twelve ambient measurement skills cost around 5.7 KB of description, and
+extrapolated to ten projects a machine-wide layout would spend more than the entire
+always-on ceiling on descriptions before any instructions exist. Scoping skills to
+their repository makes that slope flat. An advisory lint rule reports how close the
+current surface is to its ceiling, so the trend is visible before it is a
+problem.</p>
+
+<h3>Frequency was the factor every cost argument was missing</h3>
+
+<p>Every argument about whether a skill earns its bytes was being made without the
+one number that decides it: how often it is actually invoked. That number is now
+measured by reading the session transcripts directly — most installed skills have
+never been invoked at all.</p>
+
+<div class="note why">
+<span class="tag">Why it counts from transcripts and writes nothing</span>
+<p>A usage counter would be a distilled second copy of what the transcripts already
+record exactly, and a second copy is the thing this repository spends most of its
+lint budget preventing. Reading the source of truth on demand is slower and
+correct. It also means the measurement cannot drift, be forgotten, or quietly stop
+being updated — three failure modes a ledger has and a query does not.</p>
+</div>
+
+<div class="note hazard">
+<span class="tag">The trap this measurement exists to avoid</span>
+<p>An invoked-only skill with zero invocations costs nothing and is not evidence of
+anything. An <em>ambient</em> skill with zero invocations is paying its description
+on every session for a capability nothing has ever wanted. The two look identical
+in a list of names and are opposite conclusions, which is why the report labels the
+tier next to the count rather than ranking by count alone. The distinction is not
+academic: on this box the great majority of never-invoked skills are invoked-only
+and cost nothing, and the report's job is to surface the small remainder that are
+ambient and idle.</p>
+</div>
+
+<h3>Zero invocations measured the tier, not the skill</h3>
+
+<p>The hidden tier was built on a fear: that a large roster degrades selection, so
+most skills should be removed from the listing and left readable but uninvocable.
+That produced a clean-looking argument for retirement — several skills had never
+once been reached.</p>
+
+<p>The argument was circular, and a sweep killed it. Cases drawn from work actually
+done on this box were run against the whole installed roster with the hide flag
+stripped from the copies. Skills that had never been reached fired against real
+tasks — and <strong>a hidden skill cannot be invoked, so its zero was guaranteed
+before any work started</strong>. The decisive number is not how many fired but
+where they live: of the skills that fired on those cases, all but one are hidden
+from a session as the box stands today. Nothing false-fired and both negative
+controls drew nothing, which is the half that makes the result mean anything.</p>
+
+<div class="note hazard">
+<span class="tag">The first run of that sweep was contaminated, and the retraction is the lesson</span>
+<p>The measurement tool fed each session the case file on standard input, so every
+prompt carried the whole fixture — the expected-answer column included. The leak
+manufactured exactly half the fire rate: fourteen fires became seven on the clean
+re-run, and two skills this page previously reported as standing did not survive
+it. The reasoning was wrong, not merely the conclusion. The check applied at the
+time was "is this skill named anywhere in the fixture?", and the leak's mechanism
+was never the name appearing in the prompt — it was several kilobytes of other
+people's tasks changing what the session did. Checking for the name tested the
+wrong thing and got the right answer twice by luck, which is indistinguishable from
+a working check right up until it is not.</p>
+</div>
+
+<div class="note why">
+<span class="tag">The index is the route to what is not listed</span>
+<p>A hidden skill cannot be suggested to a model, because nothing lists it — so a
+session cannot be reminded that it exists. What it <em>can</em> do is read a file.
+A single greppable index names every hidden skill and the path to read it, which
+turns "there is no skill for this" from a belief into a claim that can be checked.
+Whether that route is actually taken under ordinary work is not yet measured.</p>
+</div>
+
+<h3>Descriptions that sell a method the model already has do not route</h3>
+
+<p>Several skills were listed, were handed proportionate tasks squarely in their
+own subject, and were never reached. The instinct is to blame trigger vocabulary.
+It was measured, and vocabulary was not the problem: the diagnostic case contained
+the target skill's own trigger words verbatim, and the session still did the whole
+analysis by hand.</p>
+
+<p>Every one of those descriptions advertised a <em>method the model already
+knows</em>. Naming a well-known technique promises nothing that doing the work
+directly would not already deliver, so there is no reason to pay a tool call for
+it. Each lead sentence was rewritten to the <strong>differentiated outcome</strong>
+— what you end up with that you would not otherwise — lifted from the skill's own
+body rather than invented. Trigger vocabulary was kept and extended with phrasing
+natural to the task, deliberately not copied from the evaluation prompts, so the
+next measurement reads as routing rather than memorisation.</p>
+
+<p>On the cases every sweep shares, distinct skills invoked roughly doubled. Two
+skills moved from being read to being invoked. One went the other way and lost a
+skill that had not been touched — which is the honest shape of a result at this
+sample size.</p>
+
+<div class="note hazard">
+<span class="tag">Held-out cases are the only thing that separates routing from keyword matching</span>
+<p>Prompts targeting a specific skill, phrased deliberately differently and verified
+to share zero trigger phrases with that skill's own listing, are the measurement
+that counts. Three of five routed on meaning alone. One skill fired on the case
+whose prompt literally contained its own trigger phrase and drew nothing on the
+same archetype without the words — <em>keyword matching wearing the costume of
+routing</em>, and nothing but a held-out case tells the two apart. Another reached
+nothing in either phrasing across three sweeps.</p>
+</div>
+
+<div class="note hazard">
+<span class="tag">One run separates a large effect from noise, and nothing smaller</span>
+<p>The same case invoked a skill in two earlier sweeps and nothing in the latest;
+one naming task drew nothing while two others reached the same skill. A jump of
+several distinct skills is large enough to survive that; a single flip in either
+direction is not, and is reported as noise rather than as a finding. The sweep is
+also expensive — the estimate in the tool's own header was once wrong by two orders
+of magnitude and was planned off twice, so the measured figure is now printed by the
+dry run, where the decision to spend it is actually made. And it leaves no
+machine-readable trace: the results file is deleted unless explicitly kept, so every
+figure above survives as prose and cannot be re-scored without paying for the sweep
+again.</p>
+</div>
+
+<div class="note hazard">
+<span class="tag">Measured 2026-08-29 — "never fired" is three different findings wearing one label</span>
+<p>Across every sweep, most of the roster never fired, and reading that as a
+verdict on those skills would repeat the mistake the hidden tier was built on. It
+separates into three groups that have nothing in common but the number zero:</p>
+<ul>
+<li><strong>Listed, handed a proportionate task, drew nothing.</strong> Only two,
+and they are the only real routing failures in the set. One reached nothing in
+either the natural and the held-out phrasing, across three sweeps.</li>
+<li><strong>Given a case, outcome never written down.</strong> Three cases sit in
+the roster fixture and appear in no commit and no document. They were written as
+coverage for the very skills the sweep was extended to test, so those results are
+unrecoverable without paying for the sweep again.</li>
+<li><strong>No case was ever written.</strong> The largest group. For a handful
+this is deliberate and the fixture says so — they are not task types this operator
+does, and their silence across three sweeps is the finding rather than a gap. For
+the rest, including several core measurement skills, it is simply uncovered.</li>
+</ul>
+<p>A count that merges the three reads as evidence about skills and is mostly
+evidence about the fixture.</p>
+</div>
+</section>

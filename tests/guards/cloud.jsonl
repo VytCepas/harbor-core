@@ -1,0 +1,195 @@
+{"id":"bq-rm-dataset","rule":"cloud-catastrophic","want":"deny","cmd":"gcx tools bq rm -r -d proj:ds"}
+{"id":"bq-rm-recursive","rule":"cloud-catastrophic","want":"deny","cmd":"gcx tools bq rm -r proj:ds"}
+{"id":"gcloud-storage-rm","rule":"cloud-catastrophic","want":"deny","cmd":"gcx tools gcloud storage rm -r gs://b/x"}
+{"id":"gcloud-iam-binding","rule":"cloud-catastrophic","want":"deny","cmd":"gcx tools gcloud projects add-iam-policy-binding p --member=user:a --role=roles/owner"}
+{"id":"gsutil-rb","rule":"cloud-catastrophic","want":"deny","cmd":"gsutil rb gs://b"}
+{"id":"rest-delete","rule":"cloud-catastrophic","want":"deny","cmd":"curl -X DELETE -H 'Authorization: Bearer t' https://bigquery.googleapis.com/bigquery/v2/projects/p/datasets/d"}
+{"id":"rest-xdelete-glued","rule":"cloud-catastrophic","want":"deny","cmd":"curl -XDELETE https://bigquerydatatransfer.googleapis.com/v1/projects/p/transferConfigs/1"}
+{"id":"rest-wget-method","rule":"cloud-catastrophic","want":"deny","cmd":"wget --method=DELETE https://bigquery.googleapis.com/bigquery/v2/projects/p/datasets/d"}
+{"id":"rest-lowercase-delete","rule":"cloud-catastrophic","want":"deny","cmd":"curl -X delete https://bigquery.googleapis.com/bigquery/v2/projects/p/datasets/d"}
+{"id":"rest-setiampolicy-curl","rule":"cloud-catastrophic","want":"deny","cmd":"curl -X POST -d @p.json https://cloudresourcemanager.googleapis.com/v1/projects/p:setIamPolicy"}
+{"id":"rest-setiampolicy-wget","rule":"cloud-catastrophic","want":"deny","cmd":"wget --post-file=p.json https://cloudresourcemanager.googleapis.com/v1/projects/p:setIamPolicy"}
+{"id":"rest-getiampolicy","rule":"cloud-catastrophic","want":"allow","cmd":"curl -X POST https://cloudresourcemanager.googleapis.com/v1/projects/p:getIamPolicy"}
+{"id":"gcx-abs-path-bq","rule":"cloud-catastrophic","want":"deny","cmd":"gcx tools /opt/homebrew/bin/bq rm -r -d proj:ds"}
+{"id":"abs-path-gcloud","rule":"cloud-catastrophic","want":"deny","cmd":"/opt/homebrew/bin/gcloud storage rm -r gs://b/x"}
+{"id":"upper-gcloud","rule":"cloud-catastrophic","want":"deny","cmd":"GCLOUD projects delete my-proj","why":"harbor#282"}
+{"id":"bq-query-drop-table","rule":"cloud-catastrophic","want":"deny","cmd":"bq query --use_legacy_sql=false 'DROP TABLE proj.ds.t'"}
+{"id":"bq-query-truncate","rule":"cloud-catastrophic","want":"deny","cmd":"bq query 'TRUNCATE TABLE proj.ds.t'"}
+{"id":"gcloud-sa-key-create","rule":"cloud-catastrophic","want":"deny","cmd":"gcx tools gcloud iam service-accounts keys create k.json --iam-account=x@y"}
+{"id":"gcloud-rsync-delete","rule":"cloud-catastrophic","want":"deny","cmd":"gcx tools gcloud storage rsync --delete-unmatched-destination-objects gs://a gs://b"}
+{"id":"gsutil-rsync-d","rule":"cloud-catastrophic","want":"deny","cmd":"gsutil -m rsync -d gs://src gs://dst"}
+{"id":"gsutil-iam-set","rule":"cloud-catastrophic","want":"deny","cmd":"gsutil iam set policy.json gs://b"}
+{"id":"gsutil-acl-ch","rule":"cloud-catastrophic","want":"deny","cmd":"gsutil acl ch -u x@y:O gs://b/o"}
+{"id":"gcloud-projects-delete","rule":"cloud-catastrophic","want":"deny","cmd":"gcx tools gcloud projects delete p"}
+{"id":"gcloud-buckets-delete","rule":"cloud-catastrophic","want":"deny","cmd":"gcx tools gcloud storage buckets delete gs://b"}
+{"id":"bq-truncate","rule":"cloud-catastrophic","want":"deny","cmd":"gcx tools bq truncate --overwrite proj:ds.tbl"}
+{"id":"bq-load-replace","rule":"cloud-catastrophic","want":"deny","cmd":"gcx tools bq load --replace proj:ds.tbl gs://b/f.csv"}
+{"id":"bq-load-replace-true","rule":"cloud-catastrophic","want":"deny","cmd":"gcx tools bq load --replace=true proj:ds.tbl gs://b/f.csv"}
+{"id":"bq-query-replace","rule":"cloud-catastrophic","want":"deny","cmd":"gcx tools bq query --replace --destination_table proj:ds.tbl 'SELECT 1'"}
+{"id":"bq-cp-force","rule":"cloud-catastrophic","want":"deny","cmd":"gcx tools bq cp -f proj:ds.src proj:ds.dst"}
+{"id":"bq-query-drop-matview","rule":"cloud-catastrophic","want":"deny","cmd":"bq query 'DROP MATERIALIZED VIEW proj.ds.mv'"}
+{"id":"bq-query-drop-snapshot","rule":"cloud-catastrophic","want":"deny","cmd":"bq query 'DROP SNAPSHOT TABLE proj.ds.s'"}
+{"id":"bq-query-create-or-replace","rule":"cloud-catastrophic","want":"deny","cmd":"bq query 'CREATE OR REPLACE TABLE proj.ds.t AS SELECT 1'"}
+{"id":"over-cap-bq-query-drop","rule":"cloud-catastrophic","want":"deny","cmd":"bq query 'DROP TABLE proj.ds.t'","pad":33000,"why":"harbor#306: one row per tool family the backstop names"}
+{"id":"over-cap-gcloud-iam","rule":"cloud-catastrophic","want":"deny","cmd":"gcloud projects add-iam-policy-binding p --member=user:x --role=roles/owner","pad":33000,"why":"harbor#306"}
+{"id":"over-cap-gcloud-keys","rule":"cloud-catastrophic","want":"deny","cmd":"gcloud iam service-accounts keys create k.json --iam-account=a@b","pad":33000,"why":"harbor#306"}
+{"id":"over-cap-gsutil-rb","rule":"cloud-catastrophic","want":"deny","cmd":"gsutil rb gs://bucket","pad":33000,"why":"harbor#306"}
+{"id":"over-cap-curl-google","rule":"cloud-catastrophic","want":"deny","cmd":"curl -X DELETE https://bigquery.googleapis.com/v2/projects/p/datasets/d","pad":33000,"why":"harbor#306"}
+{"id":"over-cap-wget2-google","rule":"cloud-catastrophic","want":"deny","cmd":"wget2 https://bigquery.googleapis.com/bigquery/v2/projects/p/datasets","pad":33000,"why":"harbor#306"}
+{"id":"over-cap-curl-not-google","rule":"cloud-catastrophic","want":"allow","cmd":"curl -sS https://example.invalid/x","pad":33000,"why":"harbor#306"}
+{"id":"over-cap-googleapis-no-client","rule":"cloud-catastrophic","want":"allow","cmd":"echo googleapis.com","pad":33000,"why":"harbor#306"}
+{"id":"no-normalizer-gsutil-rb","rule":"cloud-catastrophic","want":"deny","cmd":"gsutil rb gs://bucket","fixture":"nonorm","why":"harbor#306"}
+{"id":"identity-plus-catastrophic","rule":"cloud-catastrophic","want":"deny","cmd":"gcloud auth revoke a@b && bq rm -r -d proj:ds","why":"identity must not outrank destruction"}
+{"id":"curl-get-googleapis","rule":"cloud-catastrophic","want":"allow","cmd":"curl -H 'Authorization: Bearer t' https://bigquery.googleapis.com/bigquery/v2/projects/p/datasets"}
+{"id":"get-delete-in-path","rule":"cloud-catastrophic","want":"allow","cmd":"curl https://bigquery.googleapis.com/bigquery/v2/projects/p/datasets/delete_me_later"}
+{"id":"bq-query-select","rule":"cloud-catastrophic","want":"allow","cmd":"bq query 'SELECT * FROM proj.ds.dropped_events LIMIT 10'"}
+{"id":"bq-query-select-drop-column","rule":"cloud-catastrophic","want":"allow","cmd":"bq query 'SELECT drop_reason FROM proj.ds.events LIMIT 10'"}
+{"id":"bq-query-create-table","rule":"cloud-catastrophic","want":"allow","cmd":"bq query 'CREATE TABLE proj.ds.t (id INT64)'"}
+{"id":"gsutil-iam-get","rule":"cloud-catastrophic","want":"allow","cmd":"gsutil iam get gs://b"}
+{"id":"gsutil-acl-get","rule":"cloud-catastrophic","want":"allow","cmd":"gsutil acl get gs://b/o"}
+{"id":"gcloud-sa-keys-list","rule":"cloud-catastrophic","want":"allow","cmd":"gcx tools gcloud iam service-accounts keys list --iam-account=x@y"}
+{"id":"gcloud-get-iam-policy","rule":"cloud-catastrophic","want":"allow","cmd":"gcx tools gcloud projects get-iam-policy p"}
+{"id":"bq-load-no-replace","rule":"cloud-catastrophic","want":"allow","cmd":"gcx tools bq load proj:ds.tbl gs://b/f.csv"}
+{"id":"bq-cp-no-clobber","rule":"cloud-catastrophic","want":"allow","cmd":"gcx tools bq cp -n proj:ds.src proj:ds.dst"}
+{"id":"bq-rm-table","rule":"cloud-soft","want":"ask","cmd":"gcx tools bq rm -f proj:ds.tbl"}
+{"id":"gcloud-soft-delete","rule":"cloud-soft","want":"ask","cmd":"gcx gtm-write gcloud compute instances delete vm-x"}
+{"id":"gsutil-rm","rule":"cloud-soft","want":"ask","cmd":"gsutil rm gs://b/x"}
+{"id":"tilde-gcx-bq-rm","rule":"cloud-soft","want":"ask","cmd":"~/port/harbor/bin/gcx tools bq rm -f proj:ds.tbl"}
+{"id":"gtimeout-hides-verb","rule":"cloud-soft","want":"ask","cmd":"gtimeout 5 gcx tools bq rm -f proj:ds.tbl","why":"P12-argv-04 / harbor#715: an unlisted wrapper must not hide the verb"}
+{"id":"wrap-unbuffer","rule":"cloud-soft","want":"ask","cmd":"unbuffer bq rm -f proj:ds.tbl","why":"harbor#715: an unlisted wrapper must not hide the verb"}
+{"id":"wrap-proxychains-flag","rule":"cloud-soft","want":"ask","cmd":"proxychains4 -q bq rm -f proj:ds.tbl","why":"harbor#715: an unlisted wrapper must not hide the verb; a flag right before the tool"}
+{"id":"wrap-chroot-positional","rule":"cloud-soft","want":"ask","cmd":"chroot /srv bq rm -f proj:ds.tbl","why":"harbor#715: an unlisted wrapper must not hide the verb; a positional of its own"}
+{"id":"wrap-ssh-remote","rule":"cloud-soft","want":"ask","cmd":"ssh host bq rm -f proj:ds.tbl","why":"harbor#715: an unlisted wrapper must not hide the verb; a remote run is the same delete"}
+{"id":"wrap-gtimeout-dataset","rule":"cloud-catastrophic","want":"deny","cmd":"gtimeout 5 bq rm -r -d proj:ds","why":"harbor#715: an unlisted wrapper must not hide the verb"}
+{"id":"wrap-gtimeout-gcloud","rule":"cloud-catastrophic","want":"deny","cmd":"gtimeout 5 gcloud projects delete p","why":"harbor#715: an unlisted wrapper must not hide the verb"}
+{"id":"wrap-gtimeout-gsutil","rule":"cloud-catastrophic","want":"deny","cmd":"gtimeout 5 gsutil rb gs://b","why":"harbor#715: an unlisted wrapper must not hide the verb"}
+{"id":"wrap-gtimeout-rest","rule":"cloud-catastrophic","want":"deny","cmd":"gtimeout 5 curl -X DELETE https://bigquery.googleapis.com/bigquery/v2/projects/p/datasets/d","why":"harbor#715: an unlisted wrapper must not hide the verb"}
+{"id":"wrap-gtimeout-shell-body","rule":"cloud-soft","want":"ask","cmd":"gtimeout 5 sh -c 'bq rm -f proj:ds.tbl'","why":"harbor#715: an unlisted wrapper must not hide the verb; a shell body behind it is normalized too"}
+{"id":"wrap-nested-shell-body","rule":"cloud-soft","want":"ask","cmd":"gtimeout 5 bash -lc 'unbuffer bq rm -f proj:ds.tbl'","why":"harbor#715: an unlisted wrapper must not hide the verb; two levels"}
+{"id":"wrap-case-and-path","rule":"cloud-soft","want":"ask","cmd":"/opt/homebrew/bin/gtimeout 5 /usr/local/bin/BQ rm -f proj:ds.tbl","why":"harbor#715: an unlisted wrapper must not hide the verb; APFS is case-insensitive"}
+{"id":"wrap-quote-split-tool","rule":"cloud-soft","want":"ask","cmd":"gtimeout 5 b''q rm -f proj:ds.tbl","why":"harbor#715: an unlisted wrapper must not hide the verb; the gate reads the quote-removed table"}
+{"id":"wrap-combo-caffeinate-gtimeout","rule":"cloud-soft","want":"ask","cmd":"caffeinate -i gtimeout 5 bq rm -f proj:ds.tbl","why":"harbor#715: an unlisted wrapper must not hide the verb"}
+{"id":"wrap-combo-nice-gtimeout","rule":"cloud-soft","want":"ask","cmd":"nice -n 5 gtimeout 5 bq rm -f proj:ds.tbl","why":"harbor#715: an unlisted wrapper must not hide the verb"}
+{"id":"wrap-combo-nohup-gtimeout","rule":"cloud-soft","want":"ask","cmd":"nohup gtimeout 5 bq rm -f proj:ds.tbl","why":"harbor#715: an unlisted wrapper must not hide the verb"}
+{"id":"wrap-combo-env-gtimeout","rule":"cloud-soft","want":"ask","cmd":"env VAR=x gtimeout 5 bq rm -f proj:ds.tbl","why":"harbor#715: an unlisted wrapper must not hide the verb"}
+{"id":"wrap-combo-command-gtimeout","rule":"cloud-soft","want":"ask","cmd":"command gtimeout 5 bq rm -f proj:ds.tbl","why":"harbor#715: an unlisted wrapper must not hide the verb"}
+{"id":"wrap-combo-exec-gtimeout","rule":"cloud-soft","want":"ask","cmd":"exec gtimeout 5 bq rm -f proj:ds.tbl","why":"harbor#715: an unlisted wrapper must not hide the verb"}
+{"id":"wrap-combo-xargs-gtimeout","rule":"cloud-soft","want":"ask","cmd":"echo proj:ds.tbl | xargs gtimeout 5 bq rm -f","why":"harbor#715: an unlisted wrapper must not hide the verb"}
+{"id":"wrap-combo-stdbuf-gtimeout","rule":"cloud-soft","want":"ask","cmd":"stdbuf -o0 gtimeout 5 bq rm -f proj:ds.tbl","why":"harbor#715: an unlisted wrapper must not hide the verb"}
+{"id":"wrap-combo-time-gtimeout","rule":"cloud-soft","want":"ask","cmd":"time gtimeout 5 bq rm -f proj:ds.tbl","why":"harbor#715: an unlisted wrapper must not hide the verb"}
+{"id":"wrap-combo-find-exec","rule":"cloud-soft","want":"ask","cmd":"find . -name x -exec gtimeout 5 bq rm -f {} ;","why":"harbor#715: an unlisted wrapper must not hide the verb; inside a find -exec child"}
+{"id":"wrap-listed-timeout","rule":"cloud-soft","want":"ask","cmd":"timeout 5 bq rm -f proj:ds.tbl","why":"harbor#715 control: a wrapper the peel already knows"}
+{"id":"wrap-listed-nice","rule":"cloud-soft","want":"ask","cmd":"nice -n 5 bq rm -f proj:ds.tbl","why":"harbor#715 control: a wrapper the peel already knows"}
+{"id":"wrap-listed-nohup","rule":"cloud-soft","want":"ask","cmd":"nohup bq rm -f proj:ds.tbl","why":"harbor#715 control: a wrapper the peel already knows"}
+{"id":"wrap-listed-env","rule":"cloud-soft","want":"ask","cmd":"env VAR=x bq rm -f proj:ds.tbl","why":"harbor#715 control: a wrapper the peel already knows"}
+{"id":"wrap-listed-command","rule":"cloud-soft","want":"ask","cmd":"command bq rm -f proj:ds.tbl","why":"harbor#715 control: a wrapper the peel already knows"}
+{"id":"wrap-listed-exec","rule":"cloud-soft","want":"ask","cmd":"exec bq rm -f proj:ds.tbl","why":"harbor#715 control: a wrapper the peel already knows"}
+{"id":"wrap-listed-xargs","rule":"cloud-soft","want":"ask","cmd":"echo proj:ds.tbl | xargs bq rm -f","why":"harbor#715 control: a wrapper the peel already knows"}
+{"id":"wrap-listed-stdbuf","rule":"cloud-soft","want":"ask","cmd":"stdbuf -o0 bq rm -f proj:ds.tbl","why":"harbor#715 control: a wrapper the peel already knows"}
+{"id":"wrap-listed-caffeinate","rule":"cloud-soft","want":"ask","cmd":"caffeinate -i bq rm -f proj:ds.tbl","why":"harbor#715 control: a wrapper the peel already knows"}
+{"id":"wrap-listed-time","rule":"cloud-soft","want":"ask","cmd":"time bq rm -f proj:ds.tbl","why":"harbor#715 control: a wrapper the peel already knows"}
+{"id":"wrap-read-stays-allowed","rule":"none","want":"allow","cmd":"gtimeout 5 bq ls","why":"harbor#715: a read behind a wrapper is still a read"}
+{"id":"wrap-sink-before-tool","rule":"none","want":"allow","cmd":"gtimeout 5 echo bq rm -r -d proj:ds","why":"harbor#715: after a text sink the tool word is data"}
+{"id":"wrap-git-grep-is-a-sink","rule":"none","want":"allow","cmd":"git grep -n bq rm","why":"harbor#715: grep as a subcommand stops the walk too"}
+{"id":"wrap-find-name-is-data","rule":"none","want":"allow","cmd":"find . -name bq -exec rm {} ;","why":"harbor#715: find is a sink; its -exec child is judged on its own"}
+{"id":"bq-query-delete-from","rule":"cloud-soft","want":"ask","cmd":"bq query 'DELETE FROM proj.ds.t WHERE TRUE'"}
+{"id":"bq-query-drop-view","rule":"cloud-soft","want":"ask","cmd":"bq query 'DROP VIEW proj.ds.v'"}
+{"id":"bq-query-drop-function","rule":"cloud-soft","want":"ask","cmd":"bq query 'DROP FUNCTION proj.ds.fn'"}
+{"id":"bq-query-merge-delete","rule":"cloud-soft","want":"ask","cmd":"bq query 'MERGE proj.ds.t T USING s ON TRUE WHEN MATCHED THEN DELETE'"}
+{"id":"bq-mk-transfer","rule":"cloud-soft","want":"ask","cmd":"gcx tools bq mk --transfer_config --data_source=scheduled_query --params=x"}
+{"id":"gcloud-services-disable","rule":"cloud-soft","want":"ask","cmd":"gcx tools gcloud services disable bigquery.googleapis.com"}
+{"id":"expiry-set","rule":"cloud-soft","want":"ask","cmd":"gcx tools bq update --expiration 3600 proj:ds.tbl"}
+{"id":"expiry-partition-flag","rule":"cloud-soft","want":"ask","cmd":"gcx tools bq update --time_partitioning_expiration 3600 proj:ds.tbl","why":"PR #209: the flag bq really accepts"}
+{"id":"expiry-equals-form","rule":"cloud-soft","want":"ask","cmd":"gcx tools bq update --expiration=3600 proj:ds.tbl"}
+{"id":"expiry-dataset-default","rule":"cloud-soft","want":"ask","cmd":"gcx tools bq update --default_table_expiration=3600 proj:ds"}
+{"id":"expiry-default-partition","rule":"cloud-soft","want":"ask","cmd":"gcx tools bq update --default_partition_expiration 3600 proj:ds"}
+{"id":"expiry-zero-still-arms-partition","rule":"cloud-soft","want":"ask","cmd":"gcx tools bq update --time_partitioning_expiration 0 proj:ds.tbl"}
+{"id":"expiry-expanded-value","rule":"cloud-soft","want":"ask","cmd":"gcx tools bq update --expiration $SECS proj:ds.tbl"}
+{"id":"subagent-gcloud-delete","rule":"cloud-soft","want":"deny","cmd":"gcx tools gcloud compute instances delete vm","ctx":{"agent_type":"workflow-subagent"},"why":"harbor#194"}
+{"id":"subagent-expiry","rule":"cloud-soft","want":"deny","cmd":"gcx tools bq update --expiration 1 proj:ds.tbl","ctx":{"agent_type":"workflow-subagent"},"why":"harbor#194"}
+{"id":"subagent-expiry-zero-clears","rule":"cloud-soft","want":"allow","cmd":"gcx tools bq update --expiration 0 proj:ds.tbl","ctx":{"agent_type":"workflow-subagent"},"why":"harbor#194"}
+{"id":"expiry-bogus-flag","rule":"cloud-soft","want":"allow","cmd":"gcx tools bq update --time_partition_expiration 1 proj:ds.tbl"}
+{"id":"expiry-zero-clears","rule":"cloud-soft","want":"allow","cmd":"gcx tools bq update --expiration 0 proj:ds.tbl","why":"clearing an expiry prevents data loss"}
+{"id":"expiry-zero-clears-equals","rule":"cloud-soft","want":"allow","cmd":"gcx tools bq update --expiration=0 proj:ds.tbl"}
+{"id":"expiry-zero-clears-dataset","rule":"cloud-soft","want":"allow","cmd":"gcx tools bq update --default_table_expiration 0 proj:ds"}
+{"id":"expiry-zero-clears-default-partition","rule":"cloud-soft","want":"allow","cmd":"gcx tools bq update --default_partition_expiration=0 proj:ds"}
+{"id":"expiry-negative-clears-partition","rule":"cloud-soft","want":"allow","cmd":"gcx tools bq update --time_partitioning_expiration -1 proj:ds.tbl"}
+{"id":"bq-update-no-expiry","rule":"cloud-soft","want":"allow","cmd":"gcx tools bq update --description x proj:ds.tbl"}
+{"id":"gcloud-services-list","rule":"cloud-soft","want":"allow","cmd":"gcx tools gcloud services list"}
+{"id":"gcloud-services-enable","rule":"cloud-soft","want":"allow","cmd":"gcx tools gcloud services enable bigquery.googleapis.com"}
+{"id":"gcx-bq-ls","rule":"cloud-soft","want":"allow","cmd":"gcx tools bq ls --max_results=3"}
+{"id":"bq-query-select-1","rule":"cloud-soft","want":"allow","cmd":"gcx tools bq query --nouse_legacy_sql 'SELECT 1'"}
+{"id":"bq-show","rule":"cloud-soft","want":"allow","cmd":"gcx tools bq show proj:ds.tbl"}
+{"id":"bq-mk-table","rule":"cloud-soft","want":"allow","cmd":"gcx tools bq mk --table proj:ds.newtbl"}
+{"id":"gcloud-projects-list","rule":"cloud-soft","want":"allow","cmd":"gcx tools gcloud projects list"}
+{"id":"gcloud-describe","rule":"cloud-soft","want":"allow","cmd":"gcx tools gcloud compute instances describe x"}
+{"id":"gcloud-config-set-project","rule":"cloud-soft","want":"allow","cmd":"gcx tools gcloud config set project p"}
+{"id":"gsutil-ls","rule":"cloud-soft","want":"allow","cmd":"gsutil ls gs://b"}
+{"id":"auth-login","rule":"cloud-identity","want":"ask","cmd":"gcloud auth login","why":"2026-09-15"}
+{"id":"auth-login-pinned","rule":"cloud-identity","want":"ask","cmd":"gcloud auth login analytics@example.com"}
+{"id":"adc-login","rule":"cloud-identity","want":"ask","cmd":"gcloud auth application-default login"}
+{"id":"config-set-account","rule":"cloud-identity","want":"ask","cmd":"gcx tools gcloud config set account a@b"}
+{"id":"config-unset-account","rule":"cloud-identity","want":"ask","cmd":"gcloud config unset account"}
+{"id":"auth-revoke","rule":"cloud-identity","want":"ask","cmd":"gcloud auth revoke a@b"}
+{"id":"adc-revoke","rule":"cloud-identity","want":"ask","cmd":"gcloud auth application-default revoke"}
+{"id":"configurations-activate","rule":"cloud-identity","want":"ask","cmd":"gcloud config configurations activate prod"}
+{"id":"abs-path-auth-login","rule":"cloud-identity","want":"ask","cmd":"/usr/local/bin/gcloud auth login"}
+{"id":"cloudsdk-config-prefix","rule":"cloud-identity","want":"ask","cmd":"CLOUDSDK_CONFIG=/x/identities/me gcloud auth login a@b"}
+{"id":"env-prefixed-login","rule":"cloud-identity","want":"ask","cmd":"env CLOUDSDK_CONFIG=/x gcloud auth login a@b"}
+{"id":"gcx-wrapped-login","rule":"cloud-identity","want":"ask","cmd":"gcx me gcloud auth login a@b"}
+{"id":"subagent-auth-login","rule":"cloud-identity","want":"deny","cmd":"gcloud auth login","ctx":{"agent_type":"workflow-subagent"},"why":"harbor#194"}
+{"id":"subagent-config-set-account","rule":"cloud-identity","want":"deny","cmd":"gcloud config set account a@b","ctx":{"agent_type":"workflow-subagent"}}
+{"id":"autonomous-adc-login","rule":"cloud-identity","want":"deny","cmd":"gcloud auth application-default login","ctx":{"permission_mode":"bypassPermissions"}}
+{"id":"posture-deny-auth-login","rule":"cloud-identity","want":"deny","cmd":"gcloud auth login","env":{"CLOUD_POSTURE":"deny"}}
+{"id":"auth-list","rule":"cloud-identity","want":"allow","cmd":"gcloud auth list"}
+{"id":"config-get-account","rule":"cloud-identity","want":"allow","cmd":"gcloud config get-value account"}
+{"id":"config-list","rule":"cloud-identity","want":"allow","cmd":"gcloud config list"}
+{"id":"configurations-list","rule":"cloud-identity","want":"allow","cmd":"gcloud config configurations list"}
+{"id":"configurations-describe","rule":"cloud-identity","want":"allow","cmd":"gcloud config configurations describe default"}
+{"id":"print-access-token","rule":"cloud-identity","want":"allow","cmd":"gcloud auth print-access-token"}
+{"id":"print-identity-token","rule":"cloud-identity","want":"allow","cmd":"gcloud auth print-identity-token"}
+{"id":"prose-names-login","rule":"cloud-identity","want":"allow","cmd":"git commit -m 'docs: when to run gcloud auth login'"}
+{"id":"grep-names-login","rule":"cloud-identity","want":"allow","cmd":"grep -rn 'gcloud auth login' ./docs"}
+{"id":"login-help","rule":"cloud-identity","want":"allow","cmd":"gcloud auth login --help","why":"--help is exempt for the identity rules only"}
+{"id":"login-h","rule":"cloud-identity","want":"allow","cmd":"gcloud auth login -h"}
+{"id":"help-auth-login","rule":"cloud-identity","want":"allow","cmd":"gcloud help auth login"}
+{"id":"config-set-account-help","rule":"cloud-identity","want":"allow","cmd":"gcloud config set account --help"}
+{"id":"hd798-unquoted-subst-runs","rule":"cloud-catastrophic","want":"deny","cmd":"git commit -F - <<EOF\n$(gcx tools bq rm -r proj:ds)\nEOF","why":"harbor#798: an unquoted delimiter expands the body, so its $(…) runs"}
+{"id":"hd798-unquoted-backtick-runs","rule":"cloud-catastrophic","want":"deny","cmd":"gh issue create --title t --body-file - <<EOF\n`gcx tools gcloud storage rm -r gs://b/x`\nEOF","why":"harbor#798"}
+{"id":"hd798-quoted-subst-is-text","rule":"cloud-catastrophic","want":"allow","cmd":"git commit -F - <<'EOF'\n$(gcx tools bq rm -r proj:ds)\nEOF","why":"harbor#798 control: a quoted delimiter keeps the body literal"}
+{"id":"hd803-opener-andand","rule":"cloud-catastrophic","want":"deny","cmd":"git commit -F - <<EOF && gcx tools bq rm -r proj:ds\nx\nEOF","why":"harbor#803: the opener line runs a second command before the body"}
+{"id":"hd803-ok-commit-body","rule":"cloud-catastrophic","want":"allow","cmd":"git commit -F - <<'EOF' 2>&1\ngcx tools bq rm -r proj:ds is denied now\nEOF","why":"harbor#803 control"}
+{"id":"p618-wrap-systemd-inhibit","rule":"cloud-soft","want":"ask","cmd":"systemd-inhibit --what=idle bq rm -f proj:ds.tbl","why":"harbor#618: the Linux caffeinate must not hide the verb either"}
+{"id": "gtm-curl-create-version", "rule": "cloud-gtm-version", "want": "deny", "cmd": "curl -sS -X POST -H \"Authorization: Bearer $TOK\" https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2/workspaces/3:create_version -d \"{}\""}
+{"id": "gtm-gcx-curl-publish", "rule": "cloud-gtm-version", "want": "deny", "cmd": "gcx gtm-write curl -X POST https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2/versions/9:publish"}
+{"id": "gtm-var-url-gcx-write", "rule": "cloud-gtm-version", "want": "deny", "cmd": "B=https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2; TOK=$(gcx gtm-write gcloud auth application-default print-access-token) && curl -sS -X POST -H \"Authorization: Bearer $TOK\" \"${B}/workspaces/${W}:create_version\"", "why": "the skill's own spelling: the host sits in an assignment, the verb on a variable URL"}
+{"id": "gtm-var-url-identity-only", "rule": "cloud-gtm-version", "want": "deny", "cmd": "TOK=$(gcx gtm-write gcloud auth application-default print-access-token) && curl -X POST -H \"Authorization: Bearer $TOK\" \"$API/versions/12:publish\"", "why": "no host anywhere; the gtm-write identity is the association"}
+{"id": "gtm-python-c", "rule": "cloud-gtm-version", "want": "deny", "cmd": "python3 -c \"import urllib.request as u; u.urlopen(u.Request(\\\"https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2/workspaces/3:create_version\\\", method=\\\"POST\\\"))\""}
+{"id": "gtm-python-heredoc", "rule": "cloud-gtm-version", "want": "deny", "cmd": "cd /x && python3 - <<'EOF'\nB = \"https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2\"\nr = post(f\"{B}/workspaces/{W}:create_version\")\nEOF", "why": "the skill tells you to build these calls in Python"}
+{"id": "gtm-wget-uppercase-host-query", "rule": "cloud-gtm-version", "want": "deny", "cmd": "wget --method=POST https://TAGMANAGER.googleapis.com/tagmanager/v2/accounts/1/containers/2/versions/9:publish?alt=json"}
+{"id": "gtm-bash-heredoc-runs", "rule": "cloud-gtm-version", "want": "deny", "cmd": "bash <<EOF\ncurl -X POST https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2/workspaces/3:create_version\nEOF", "why": "a shell reading the body runs it"}
+{"id": "gtm-commit-unquoted-subst-runs", "rule": "cloud-gtm-version", "want": "deny", "cmd": "git commit -F - <<EOF\n$(curl -X POST https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2/workspaces/3:create_version)\nEOF", "why": "harbor#798: an unquoted delimiter expands the body, so its $(…) runs"}
+{"id": "gtm-abs-path-curl", "rule": "cloud-gtm-version", "want": "deny", "cmd": "/usr/bin/curl -X POST \"https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2/workspaces/3:create_version\""}
+{"id": "gtm-subagent-still-denies", "rule": "cloud-gtm-version", "want": "deny", "cmd": "curl -X POST https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2/workspaces/3:create_version", "ctx": {"agent_type": "general-purpose"}}
+{"id": "gtm-live-read", "rule": "cloud-gtm-version", "want": "allow", "cmd": "gtm live GTM-XXXXXXX"}
+{"id": "gtm-quick-preview", "rule": "cloud-gtm-version", "want": "allow", "cmd": "gcx gtm-write curl -X POST https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2/workspaces/3:quick_preview"}
+{"id": "gtm-workspace-tag-put", "rule": "cloud-gtm-version", "want": "allow", "cmd": "gcx gtm-write curl -X PUT -d @tag.json https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2/workspaces/3/tags/7"}
+{"id": "gtm-workspace-tag-post", "rule": "cloud-gtm-version", "want": "allow", "cmd": "gcx gtm-write curl -X POST -d @tag.json https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2/workspaces/3/tags"}
+{"id": "gtm-versions-live-read", "rule": "cloud-gtm-version", "want": "allow", "cmd": "curl -sS \"https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2/versions:live\""}
+{"id": "gtm-commit-m-prose", "rule": "cloud-gtm-version", "want": "allow", "cmd": "git commit -m \"gtm: never curl https://tagmanager.googleapis.com/x/workspaces/3:create_version or :publish by hand\""}
+{"id": "gtm-commit-heredoc-prose", "rule": "cloud-gtm-version", "want": "allow", "cmd": "git commit -F - <<EOF\ndocs: the version route\ncurl -X POST https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2/workspaces/3:create_version\nEOF"}
+{"id": "gtm-cd-commit-heredoc-prose", "rule": "cloud-gtm-version", "want": "allow", "cmd": "cd /x && git commit -F - <<'EOF'\ndocs: publish route\ncurl -X POST https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2/versions/9:publish\nEOF", "why": "harbor#302 class: the opener is not segment 1, so only the document-body drop keeps this allowed"}
+{"id": "gtm-cat-doc-heredoc", "rule": "cloud-gtm-version", "want": "allow", "cmd": "cat > notes.md <<'EOF'\ncurl -X POST https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2/workspaces/3:create_version\nEOF", "why": "a runbook written to a file is a document, not a call"}
+{"id": "gtm-mx-version-create", "rule": "cloud-gtm-version", "want": "allow", "cmd": "cd ~/port/standard-repo && bin/mx version --create --name \"STD L1 - publish consent fix\"", "why": "the sanctioned route"}
+{"id": "gtm-just-gtm-lint", "rule": "cloud-gtm-version", "want": "allow", "cmd": "just gtm-lint acme --workspace"}
+{"id": "gtm-pubsub-publish", "rule": "cloud-gtm-version", "want": "allow", "cmd": "curl -X POST -H \"Authorization: Bearer $T\" https://pubsub.googleapis.com/v1/projects/p/topics/t:publish -d @m.json", "why": "Pub/Sub has :publish too"}
+{"id": "gtm-var-publish-unassociated", "rule": "cloud-gtm-version", "want": "allow", "cmd": "curl -X POST \"$T/topics/t:publish\" -d @m.json"}
+{"id": "gtm-grep-names-verb", "rule": "cloud-gtm-version", "want": "allow", "cmd": "grep -rn \":create_version\" packages/mx"}
+{"id": "gtm-gh-body-prose", "rule": "cloud-gtm-version", "want": "allow", "cmd": "gh pr create --title \"gtm gate\" --body \"denies curl https://tagmanager.googleapis.com/x:publish outside mx\""}
+{"id": "gtm-echo-handover", "rule": "cloud-gtm-version", "want": "allow", "cmd": "echo \"publish v12 built from Default Workspace; do NOT re-publish v11\""}
+{"id": "gtm-v1-publish", "rule": "cloud-gtm-version", "want": "deny", "cmd": "curl -X POST -H \"Authorization: Bearer $T\" https://tagmanager.googleapis.com/tagmanager/v1/accounts/1/containers/2/versions/9/publish", "why": "PR #947 review: v1 publish has no colon verb"}
+{"id": "gtm-v1-create-post", "rule": "cloud-gtm-version", "want": "deny", "cmd": "curl -X POST -H \"Authorization: Bearer $T\" https://tagmanager.googleapis.com/tagmanager/v1/accounts/1/containers/2/versions -d '{\"name\":\"x\"}'", "why": "PR #947 review: v1 create is POST .../versions"}
+{"id": "gtm-var-verb-create", "rule": "cloud-gtm-version", "want": "deny", "cmd": "B=https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2; A=create_version; curl -X POST \"$B/workspaces/3:$A\"", "why": "PR #947 review: the verb assembled by the shell"}
+{"id": "gtm-var-verb-braced-publish", "rule": "cloud-gtm-version", "want": "deny", "cmd": "TOK=$(gcx gtm-write gcloud auth application-default print-access-token) && curl -X POST \"$API/versions/12:${V}\"", "why": "PR #947 review: braced variable verb with the gtm-write identity"}
+{"id": "gtm-v1-versions-list", "rule": "cloud-gtm-version", "want": "allow", "cmd": "curl -sS -H \"Authorization: Bearer $T\" https://tagmanager.googleapis.com/tagmanager/v1/accounts/1/containers/2/versions", "why": "a v1 GET lists versions: a read"}
+{"id": "gtm-var-verb-unassociated", "rule": "cloud-gtm-version", "want": "allow", "cmd": "curl -X POST \"$T/topics/t:$V\" -d @m.json", "why": "a variable verb with no Tag Manager host or identity anywhere"}

@@ -1,0 +1,9 @@
+# fixtures/naming/rule-id/fail (harbor#950) — rule ids that MUST go red. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# COLUMNS  name <TAB> rule ids
+name	rule
+N1	name.rule-id
+name	name.rule-id
+widget.case	name.rule-id
+name.Skill_Dir	name.rule-id
+admission.floor-first	name.alias
+check.cfg-age	name.abbreviation

@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+# post-merge (harbor#1043, E1 PR 2) — put `git.merge` on the local event bus, subject = the sha HEAD
+# is at after the merge (a merge commit, or the new tip of a fast-forward or `git pull`).
+# Install: the same one command as the other hooks, `git config core.hooksPath hooks`.
+# `git merge --squash` runs this with $1 = 1 and moves nothing, so it emits nothing. A PR merged on
+# GitHub runs no local hook at all (CONTRACTS/hooks.md); that is the pr.merged producer's moment.
+# It can never fail or print: it exits 0 regardless.
+_hk_self="$0"
+while [ -L "$_hk_self" ]; do
+  _hk_link="$(readlink "$_hk_self")"
+  case "$_hk_link" in /*) _hk_self="$_hk_link" ;; *) _hk_self="${_hk_self%/*}/$_hk_link" ;; esac
+done
+case "$_hk_self" in */*) _hk_here="${_hk_self%/*}" ;; *) _hk_here=. ;; esac
+if [ "${1-}" != 1 ] && [ -f "$_hk_here/lib.sh" ]; then
+  . "$_hk_here/lib.sh"
+  hook_event git.merge "$(git rev-parse HEAD 2>/dev/null)" git.post-merge
+fi
+exit 0

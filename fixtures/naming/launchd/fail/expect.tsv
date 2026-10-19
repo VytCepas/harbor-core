@@ -1,0 +1,10 @@
+# fixtures/naming/launchd/fail (harbor#950) — launchd labels that MUST go red. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# COLUMNS  name <TAB> rule ids
+name	rule
+com.harbor.judge	name.launchd,name.alias
+com.harbor.findings	name.launchd
+com.example.audit.triage	name.launchd
+org.harbor.audit.triage	name.launchd
+com.harbor.audit.Triage	name.case
+com.helm.audit.triage	name.launchd,name.alias
+com.harbor.audit.cfg-sync	name.abbreviation

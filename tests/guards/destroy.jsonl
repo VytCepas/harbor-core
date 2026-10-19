@@ -1,0 +1,81 @@
+{"id":"diskutil-eraseVolume","rule":"diskutil-wipe","want":"deny","cmd":"diskutil eraseVolume free none disk3"}
+{"id":"diskutil-reformat","rule":"diskutil-wipe","want":"deny","cmd":"diskutil reformat disk2s1"}
+{"id":"diskutil-zeroDisk","rule":"diskutil-wipe","want":"deny","cmd":"diskutil zeroDisk disk2"}
+{"id":"diskutil-randomDisk","rule":"diskutil-wipe","want":"deny","cmd":"diskutil randomDisk disk2"}
+{"id":"diskutil-secureErase","rule":"diskutil-wipe","want":"deny","cmd":"diskutil secureErase 0 disk9"}
+{"id":"diskutil-partitionDisk","rule":"diskutil-wipe","want":"deny","cmd":"diskutil partitionDisk disk2 1 GPT jhfs+ x 0"}
+{"id":"apfs-deleteContainer","rule":"diskutil-wipe","want":"deny","cmd":"diskutil apfs deleteContainer disk2"}
+{"id":"apfs-deleteVolume","rule":"diskutil-wipe","want":"deny","cmd":"diskutil apfs deleteVolume disk2s1"}
+{"id":"apfs-deleteVolumeGroup","rule":"diskutil-wipe","want":"deny","cmd":"diskutil apfs deleteVolumeGroup disk9"}
+{"id":"env-split-string","rule":"diskutil-wipe","want":"deny","cmd":"env --split-string='diskutil eraseDisk JHFS+ X /dev/disk9'","why":"harbor#206"}
+{"id":"env-vS-bundled","rule":"diskutil-wipe","want":"deny","cmd":"env -vS 'diskutil eraseDisk JHFS+ X /dev/disk9'","why":"harbor#206"}
+{"id":"brace-command","rule":"diskutil-wipe","want":"deny","cmd":"{diskutil,eraseDisk,JHFS+,X,/dev/disk9}","why":"harbor#206"}
+{"id":"brace-splits-verb","rule":"diskutil-wipe","want":"deny","cmd":"{d,}iskutil eraseDisk JHFS+ X /dev/disk9","why":"harbor#206"}
+{"id":"brace-operands","rule":"diskutil-wipe","want":"deny","cmd":"diskutil {eraseDisk,JHFS+,X,/dev/disk9}","why":"harbor#206"}
+{"id":"diskutil-list","rule":"diskutil-wipe","want":"allow","cmd":"diskutil list"}
+{"id":"diskutil-info","rule":"diskutil-wipe","want":"allow","cmd":"diskutil info disk2"}
+{"id":"apfs-list","rule":"diskutil-wipe","want":"allow","cmd":"diskutil apfs list"}
+{"id":"git-clean-fd","rule":"git-clean-force","want":"ask","cmd":"git clean -fd"}
+{"id":"git-clean-f","rule":"git-clean-force","want":"ask","cmd":"git clean -f"}
+{"id":"git-clean-force-long","rule":"git-clean-force","want":"ask","cmd":"git clean --force -d"}
+{"id":"rel-path-git-clean","rule":"git-clean-force","want":"ask","cmd":"bin/git clean -fdx"}
+{"id":"git-clean-dry-run","rule":"git-clean-force","want":"allow","cmd":"git clean -n"}
+{"id":"git-reset-hard","rule":"git-reset-hard","want":"ask","cmd":"git reset --hard"}
+{"id":"git-reset-hard-rev","rule":"git-reset-hard","want":"ask","cmd":"git reset --hard HEAD~5"}
+{"id":"git-reset-hard-origin","rule":"git-reset-hard","want":"ask","cmd":"git reset --hard origin/main"}
+{"id":"git-reset-soft","rule":"git-reset-hard","want":"allow","cmd":"git reset --soft HEAD~1"}
+{"id":"git-reset-unstage","rule":"git-reset-hard","want":"allow","cmd":"git reset HEAD file.txt"}
+{"id":"grep-mentions-reset","rule":"git-reset-hard","want":"allow","cmd":"grep -rn 'git reset --hard' ./docs"}
+{"id":"git-stash-clear","rule":"git-stash-drop","want":"ask","cmd":"git stash clear"}
+{"id":"git-stash-drop","rule":"git-stash-drop","want":"ask","cmd":"git stash drop"}
+{"id":"git-stash-save","rule":"git-stash-drop","want":"allow","cmd":"git stash"}
+{"id":"git-stash-list","rule":"git-stash-drop","want":"allow","cmd":"git stash list"}
+{"id":"git-reflog-expire","rule":"git-reflog-expire","want":"ask","cmd":"git reflog expire --expire=now --all"}
+{"id":"git-reflog-show","rule":"git-reflog-expire","want":"allow","cmd":"git reflog"}
+{"id":"worktree-remove-force","rule":"git-worktree-remove-force","want":"ask","cmd":"git worktree remove --force /tmp/wt"}
+{"id":"worktree-remove-f","rule":"git-worktree-remove-force","want":"ask","cmd":"git worktree remove -f /tmp/wt"}
+{"id":"worktree-remove-safe","rule":"git-worktree-remove-force","want":"allow","cmd":"git worktree remove /tmp/wt"}
+{"id":"worktree-list","rule":"git-worktree-remove-force","want":"allow","cmd":"git worktree list"}
+{"id":"over-cap-unknown-erase-verb","rule":"argv-blind-diskutil","want":"deny","cmd":"diskutil eraseSomethingNew disk9","pad":33000,"why":"harbor#306: the backstop names the tool, so an unseen verb is covered"}
+{"id":"no-normalizer-unknown-verb","rule":"argv-blind-diskutil","want":"deny","cmd":"diskutil eraseSomethingNew disk9","fixture":"nonorm","why":"harbor#306"}
+{"id":"under-cap-diskutil-list","rule":"argv-blind-diskutil","want":"allow","cmd":"diskutil list","pad":30000}
+{"id":"git-checkout","rule":"none","want":"allow","cmd":"git checkout main"}
+{"id":"git-pull","rule":"none","want":"allow","cmd":"git pull --rebase"}
+{"id":"wrap-781-gtimeout-diskutil","rule":"diskutil-wipe","want":"deny","cmd":"gtimeout 5 diskutil eraseDisk JHFS+ x /dev/disk9","why":"harbor#781: an unlisted wrapper hid the verb (allow before)"}
+{"id":"wrap-781-unbuffer-zeroDisk","rule":"diskutil-wipe","want":"deny","cmd":"unbuffer diskutil zeroDisk disk2","why":"harbor#781"}
+{"id":"wrap-781-proxychains-flag-apfs","rule":"diskutil-wipe","want":"deny","cmd":"proxychains4 -q diskutil apfs deleteContainer disk2","why":"harbor#781: a flag right before the tool"}
+{"id":"wrap-781-chroot-positional","rule":"diskutil-wipe","want":"deny","cmd":"chroot /srv diskutil eraseVolume free none disk3","why":"harbor#781: a positional of the wrapper's own"}
+{"id":"wrap-781-ssh-remote-wipe","rule":"diskutil-wipe","want":"deny","cmd":"ssh host diskutil reformat disk2s1","why":"harbor#781: a remote run is the same wipe"}
+{"id":"wrap-781-shell-body","rule":"diskutil-wipe","want":"deny","cmd":"gtimeout 5 sh -c 'diskutil randomDisk disk2'","why":"harbor#781: a shell body behind the wrapper is normalized too"}
+{"id":"wrap-781-case-and-path","rule":"diskutil-wipe","want":"deny","cmd":"/opt/homebrew/bin/gtimeout 5 /usr/sbin/DISKUTIL eraseDisk JHFS+ x disk9","why":"harbor#781: APFS is case-insensitive"}
+{"id":"wrap-781-quote-split-tool","rule":"diskutil-wipe","want":"deny","cmd":"gtimeout 5 disk''util secureErase 0 disk9","why":"harbor#781: the gate reads the quote-removed table"}
+{"id":"wrap-781-combo-nice-gtimeout","rule":"diskutil-wipe","want":"deny","cmd":"nice -n 5 gtimeout 5 diskutil partitionDisk disk2 1 GPT jhfs+ x 0","why":"harbor#781: a listed wrapper before an unlisted one"}
+{"id":"wrap-781-gtimeout-git-clean","rule":"git-clean-force","want":"ask","cmd":"gtimeout 5 git clean -fdx","why":"harbor#781 (allow before)"}
+{"id":"wrap-781-nested-shell-git-clean","rule":"git-clean-force","want":"ask","cmd":"gtimeout 5 bash -lc 'unbuffer git clean --force -d'","why":"harbor#781: two levels"}
+{"id":"wrap-781-unbuffer-reset-hard","rule":"git-reset-hard","want":"ask","cmd":"unbuffer git reset --hard origin/main","why":"harbor#781"}
+{"id":"wrap-781-chroot-stash-drop","rule":"git-stash-drop","want":"ask","cmd":"chroot /srv git stash drop","why":"harbor#781"}
+{"id":"wrap-781-gtimeout-reflog-expire","rule":"git-reflog-expire","want":"ask","cmd":"gtimeout 5 git reflog expire --expire=now --all","why":"harbor#781"}
+{"id":"wrap-781-gtimeout-worktree-remove","rule":"git-worktree-remove-force","want":"ask","cmd":"gtimeout 5 git -C /tmp/r worktree remove -f /tmp/wt","why":"harbor#781"}
+{"id":"wrap-781-listed-timeout-control","rule":"git-clean-force","want":"ask","cmd":"timeout 5 git clean -fdx","why":"harbor#781 control: a wrapper the peel already knows"}
+{"id":"wrap-781-read-stays-allowed","rule":"diskutil-wipe","want":"allow","cmd":"gtimeout 5 diskutil list","why":"harbor#781: a read behind a wrapper is still a read"}
+{"id":"wrap-781-git-status-allowed","rule":"git-clean-force","want":"allow","cmd":"gtimeout 5 git status","why":"harbor#781"}
+{"id":"wrap-781-dry-run-allowed","rule":"git-clean-force","want":"allow","cmd":"gtimeout 5 git clean -n","why":"harbor#781"}
+{"id":"wrap-781-soft-reset-allowed","rule":"git-reset-hard","want":"allow","cmd":"gtimeout 5 git reset --soft HEAD~1","why":"harbor#781"}
+{"id":"wrap-781-sink-before-tool","rule":"diskutil-wipe","want":"allow","cmd":"gtimeout 5 echo diskutil eraseDisk JHFS+ x disk9","why":"harbor#781: after a text sink the tool word is data"}
+{"id":"wrap-781-grep-is-a-sink","rule":"git-clean-force","want":"allow","cmd":"gtimeout 5 grep -rn 'git clean -fdx' docs","why":"harbor#781"}
+{"id":"wrap-781-heredoc-body-still-a-document","rule":"diskutil-wipe","want":"allow","cmd":"git commit -F - <<'HD'\ngtimeout 5 diskutil eraseDisk JHFS+ x disk9\nHD","why":"harbor#781: the unwrap runs after the heredoc veto"}
+{"id":"hd798-unquoted-subst-runs","rule":"diskutil-wipe","want":"deny","cmd":"git commit -F - <<EOF\n$(diskutil eraseDisk JHFS+ x /dev/disk9)\nEOF","why":"harbor#798: an unquoted delimiter expands the body, so its $(…) runs"}
+{"id":"hd798-unquoted-backtick-runs","rule":"diskutil-wipe","want":"deny","cmd":"gh pr create --title t --body-file - <<EOF\n`diskutil eraseDisk JHFS+ x /dev/disk9`\nEOF","why":"harbor#798"}
+{"id":"hd798-quoted-subst-is-text","rule":"diskutil-wipe","want":"allow","cmd":"git commit -F - <<'EOF'\n$(diskutil eraseDisk JHFS+ x /dev/disk9)\nEOF","why":"harbor#798 control: a quoted delimiter keeps the body literal"}
+{"id":"hd803-opener-semicolon","rule":"diskutil-wipe","want":"deny","cmd":"git commit -F - <<EOF ; diskutil eraseDisk JHFS+ x /dev/disk9\nx\nEOF","why":"harbor#803: the opener line runs a second command before the body"}
+{"id":"hd803-after-terminator-delim-is-verb","rule":"diskutil-wipe","want":"deny","cmd":"git commit -F - <<diskutil\nx\ndiskutil\ndiskutil eraseDisk JHFS+ x /dev/disk9","why":"harbor#803"}
+{"id":"hd803-ok-gh-title-with-operators","rule":"diskutil-wipe","want":"allow","cmd":"gh pr create --title \"fix(harbor#803): a; b\" --body-file - <<'EOF'\ndiskutil eraseDisk JHFS+ x /dev/disk9 is denied\nEOF","why":"harbor#803 control"}
+{"id":"hd805-apostrophe-body-is-text","rule":"diskutil-wipe","want":"allow","cmd":"git commit -F - <<'EOF'\ndocs: it's how diskutil eraseDisk is caught\nEOF","why":"harbor#805: an apostrophe in a quoted-delimiter body must not switch the veto off"}
+{"id":"hd805-unquoted-subst-stays-judged","rule":"diskutil-wipe","want":"deny","cmd":"git commit -F - <<EOF\nit's $(diskutil eraseDisk JHFS+ x /dev/disk9)\nEOF","why":"harbor#805 must not reopen harbor#798"}
+{"id":"push-1290-mirror-unknown-repo","rule":"git-push-snapshots","want":"deny","cmd":"git push --mirror origin","why":"harbor#1290: no .cwd, so the guard cannot rule out publishing refs/snapshots"}
+{"id":"push-1290-glob-refspec-unknown-repo","rule":"git-push-snapshots","want":"deny","cmd":"git push origin 'refs/*:refs/*'","why":"harbor#1290"}
+{"id":"push-1290-branch","rule":"git-push-snapshots","want":"allow","cmd":"git push origin main","why":"harbor#1290: a named branch never carries a snapshot"}
+{"id":"push-1290-tags","rule":"git-push-snapshots","want":"allow","cmd":"git push --tags origin","why":"harbor#1290"}
+{"id":"device-node-replace-gf472","rule":"device-node-replace","want":"ask","cmd":"install payload.bin /dev/shm/../sda","why":"harbor#1313: mv/install onto or off a raw /dev disk node asks (operator decision 2026-10-18)"}
+{"id":"device-node-replace-gf526","rule":"device-node-replace","want":"ask","cmd":"mv payload.bin /dev/sda","why":"harbor#1313: mv/install onto or off a raw /dev disk node asks (operator decision 2026-10-18)"}
+{"id":"device-node-replace-ok","rule":"device-node-replace","want":"allow","cmd":"mv report.txt /tmp/out.txt","why":"harbor#1313: an mv with no device node stays allowed"}

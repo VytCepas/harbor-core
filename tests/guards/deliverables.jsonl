@@ -1,0 +1,169 @@
+{"id":"html-loose-in-home","rule":"home-loose","want":"deny","tool":"Write","path":"{home}/report.html"}
+{"id":"case-insensitive-ext","rule":"home-loose","want":"deny","tool":"Write","path":"{home}/REPORT.HTML","why":"APFS is case-insensitive"}
+{"id":"dot-component","rule":"home-loose","want":"deny","tool":"Write","path":"{home}/./report2.html"}
+{"id":"parent-component","rule":"home-loose","want":"deny","tool":"Write","path":"{home}/proj/../report3.html"}
+{"id":"ext-doc","rule":"home-loose","want":"deny","tool":"Write","path":"{home}/c.doc"}
+{"id":"ext-pptx","rule":"home-loose","want":"deny","tool":"Write","path":"{home}/f.pptx"}
+{"id":"existing-md-in-home","rule":"home-loose","want":"allow","tool":"Write","path":"{home}/existing.md","why":"an existing file was filed by the operator"}
+{"id":"dotfile-in-home","rule":"home-loose","want":"allow","tool":"Write","path":"{home}/.hidden.md"}
+{"id":"not-a-doc-ext","rule":"home-loose","want":"allow","tool":"Write","path":"{home}/script.sh"}
+{"id":"no-ext","rule":"home-loose","want":"allow","tool":"Write","path":"{home}/Makefile"}
+{"id":"unexpanded-var-path","rule":"home-loose","want":"allow","tool":"Write","path":"{home}/report-$NAME.html","why":"a path with $ cannot be resolved, so it is not judged"}
+{"id":"glob-path","rule":"home-loose","want":"allow","tool":"Write","path":"{home}/*.html"}
+{"id":"md-on-desktop","rule":"dropzone","want":"deny","tool":"Write","path":"{home}/Desktop/notes.md"}
+{"id":"pdf-in-documents","rule":"dropzone","want":"deny","tool":"Write","path":"{home}/Documents/plan.pdf"}
+{"id":"csv-in-downloads","rule":"dropzone","want":"deny","tool":"Write","path":"{home}/Downloads/export.csv"}
+{"id":"nested-in-dropzone","rule":"dropzone","want":"deny","tool":"Write","path":"{home}/Documents/a/b/deep.html"}
+{"id":"edit-new-loose","rule":"dropzone","want":"deny","tool":"Edit","path":"{home}/Desktop/new.md"}
+{"id":"multiedit-new-loose","rule":"dropzone","want":"deny","tool":"MultiEdit","path":"{home}/Desktop/new2.md"}
+{"id":"ext-htm","rule":"dropzone","want":"deny","tool":"Write","path":"{home}/Desktop/a.htm"}
+{"id":"ext-markdown","rule":"dropzone","want":"deny","tool":"Write","path":"{home}/Documents/b.markdown"}
+{"id":"ext-docx","rule":"dropzone","want":"deny","tool":"Write","path":"{home}/Downloads/d.docx"}
+{"id":"ext-ppt","rule":"dropzone","want":"deny","tool":"Write","path":"{home}/Desktop/e.ppt"}
+{"id":"ext-rtf","rule":"dropzone","want":"deny","tool":"Write","path":"{home}/Documents/g.rtf"}
+{"id":"ext-txt","rule":"dropzone","want":"deny","tool":"Write","path":"{home}/Desktop/h.txt"}
+{"id":"existing-doc-in-dropzone","rule":"dropzone","want":"allow","tool":"Write","path":"{home}/Documents/kept-by-hand.html"}
+{"id":"repo-parked-in-dropzone","rule":"dropzone","want":"allow","tool":"Write","path":"{home}/Documents/repo/notes.md"}
+{"id":"image-not-a-doc","rule":"dropzone","want":"allow","tool":"Write","path":"{home}/Desktop/screenshot.png"}
+{"id":"recording-not-a-doc","rule":"dropzone","want":"allow","tool":"Write","path":"{home}/Desktop/clip.mov"}
+{"id":"dotfile-in-dropzone","rule":"dropzone","want":"allow","tool":"Write","path":"{home}/Documents/.notes.md"}
+{"id":"read-is-not-a-write","rule":"dropzone","want":"allow","tool":"Read","path":"{home}/Desktop/x.html"}
+{"id":"bare-in-deliverables-root","rule":"root-bare","want":"deny","tool":"Write","path":"{home}/Deliverables/bare.html"}
+{"id":"dated-folder","rule":"root-bare","want":"allow","tool":"Write","path":"{home}/Deliverables/2026-09-02-thing/report.html"}
+{"id":"root-manifest","rule":"root-bare","want":"allow","tool":"Write","path":"{home}/Deliverables/MANIFEST.md"}
+{"id":"root-readme","rule":"root-bare","want":"allow","tool":"Write","path":"{home}/Deliverables/README.md"}
+{"id":"new-dated-folder","rule":"root-bare","want":"allow","tool":"Write","path":"{home}/Deliverables/2026-09-02-new/report.html"}
+{"id":"project-dir","rule":"none","want":"allow","tool":"Write","path":"{home}/proj/README.md"}
+{"id":"outside-home","rule":"none","want":"allow","tool":"Write","path":"/tmp/scratch/out.html"}
+{"id":"append-to-desktop","rule":"dropzone","want":"deny","cmd":"echo hi >> ~/Desktop/log.md"}
+{"id":"redirect-no-space","rule":"dropzone","want":"deny","cmd":"printf x >~/Documents/a.html"}
+{"id":"heredoc-write","rule":"home-loose","want":"deny","cmd":"cat <<HTML > ~/page.html\n<h1>hi</h1>\nHTML","why":"the main case"}
+{"id":"tee-writes-arg","rule":"dropzone","want":"deny","cmd":"tee ~/Documents/out.md"}
+{"id":"tee-with-flag","rule":"dropzone","want":"deny","cmd":"tee -a ~/Desktop/log2.md"}
+{"id":"touch-creates","rule":"dropzone","want":"deny","cmd":"touch ~/Downloads/new.pdf"}
+{"id":"pandoc-o","rule":"home-loose","want":"deny","cmd":"pandoc in.md -o ~/out.pdf"}
+{"id":"pandoc-output-space","rule":"home-loose","want":"deny","cmd":"pandoc in.md --output ~/out2.pdf"}
+{"id":"pandoc-output-equals","rule":"home-loose","want":"deny","cmd":"pandoc in.md --output=~/out3.pdf"}
+{"id":"cp-destination","rule":"home-loose","want":"deny","cmd":"cp /tmp/a.html ~/dest.html"}
+{"id":"mv-destination","rule":"dropzone","want":"deny","cmd":"mv /tmp/a.md ~/Desktop/b.md"}
+{"id":"install-destination","rule":"home-loose","want":"deny","cmd":"install -m 644 build/report.html ~/report4.html"}
+{"id":"rsync-destination","rule":"dropzone","want":"deny","cmd":"rsync -a build/report.html ~/Desktop/report.html"}
+{"id":"ln-destination","rule":"home-loose","want":"deny","cmd":"ln -s /tmp/a.md ~/link.md"}
+{"id":"wkhtmltopdf-output-last","rule":"home-loose","want":"deny","cmd":"wkhtmltopdf page.html ~/page.pdf","why":"harbor#714: the output is the last operand, after the input"}
+{"id":"weasyprint-output-last","rule":"home-loose","want":"deny","cmd":"weasyprint page.html ~/page2.pdf","why":"harbor#714"}
+{"id":"weasyprint-output-flag","rule":"home-loose","want":"deny","cmd":"weasyprint page.html -o ~/page3.pdf","why":"harbor#714 control: the -o spelling already denied"}
+{"id":"wkhtmltopdf-output-last-redirect","rule":"home-loose","want":"deny","cmd":"wkhtmltopdf page.html ~/page4.pdf 2>/dev/null","why":"harbor#714: a trailing redirect does not move the output"}
+{"id":"wkhtmltopdf-options-and-inputs","rule":"dropzone","want":"deny","cmd":"wkhtmltopdf --page-size A4 a.html b.html ~/Desktop/book.pdf","why":"harbor#714: options and several inputs before the output"}
+{"id":"wkhtmltopdf-input-in-home","rule":"home-loose","want":"allow","cmd":"wkhtmltopdf ~/in.html /tmp/out.pdf","why":"harbor#714: the input is read, never judged; the fixture leaves ~/in.html missing so the already-exists exemption cannot mask it"}
+{"id":"weasyprint-input-in-home","rule":"home-loose","want":"allow","cmd":"weasyprint ~/in2.html /tmp/out2.pdf 2>&1","why":"harbor#714: same, with a redirect after the output"}
+{"id":"cp-destination-redirect","rule":"home-loose","want":"deny","cmd":"cp /tmp/a.html ~/dest.html 2>/dev/null","why":"harbor#785: a trailing redirect does not move the destination (allow before)"}
+{"id":"mv-destination-two-redirects","rule":"dropzone","want":"deny","cmd":"mv /tmp/a.md ~/Documents/moved.md >/dev/null 2>&1","why":"harbor#785"}
+{"id":"rsync-destination-redirect-then-and","rule":"home-loose","want":"deny","cmd":"rsync -a /tmp/a.csv ~/data.csv 2>&1 && echo ok","why":"harbor#785"}
+{"id":"ln-destination-redirect-spaced","rule":"home-loose","want":"deny","cmd":"ln -s /tmp/a.md ~/link2.md 2> /dev/null","why":"harbor#785: a spaced redirect"}
+{"id":"ps2pdf-output-last","rule":"home-loose","want":"deny","cmd":"ps2pdf in.ps ~/out.pdf","why":"harbor#785: an output-last converter (allow before)"}
+{"id":"ps2pdf14-output-last","rule":"dropzone","want":"deny","cmd":"ps2pdf14 in.ps ~/Desktop/out14.pdf","why":"harbor#785: the versioned ps2pdf spellings"}
+{"id":"pdftotext-output-last","rule":"home-loose","want":"deny","cmd":"pdftotext in.pdf ~/out.txt","why":"harbor#785"}
+{"id":"pdftotext-options-redirect","rule":"dropzone","want":"deny","cmd":"pdftotext -layout -f 1 in.pdf ~/Documents/out2.txt 2>/dev/null","why":"harbor#785: options before and a redirect after"}
+{"id":"pdftohtml-output-last","rule":"home-loose","want":"deny","cmd":"pdftohtml -s in.pdf ~/out.html","why":"harbor#785"}
+{"id":"pdfunite-output-last","rule":"home-loose","want":"deny","cmd":"pdfunite a.pdf b.pdf ~/merged.pdf","why":"harbor#785: several inputs before the output"}
+{"id":"qpdf-output-last","rule":"home-loose","want":"deny","cmd":"qpdf in.pdf ~/out3.pdf","why":"harbor#785"}
+{"id":"qpdf-options-redirect","rule":"home-loose","want":"deny","cmd":"qpdf --decrypt in.pdf ~/out4.pdf > /dev/null","why":"harbor#785"}
+{"id":"magick-output-last","rule":"home-loose","want":"deny","cmd":"magick in.png ~/out5.pdf","why":"harbor#785"}
+{"id":"convert-output-last","rule":"dropzone","want":"deny","cmd":"convert a.png b.png ~/Downloads/scan.pdf","why":"harbor#785: ImageMagick's older spelling of magick"}
+{"id":"dvipdf-output-last","rule":"home-loose","want":"deny","cmd":"dvipdf paper.dvi ~/paper.pdf","why":"harbor#785"}
+{"id":"ebook-convert-output-last","rule":"home-loose","want":"deny","cmd":"ebook-convert book.epub ~/book.pdf","why":"harbor#785"}
+{"id":"cp-source-redirect","rule":"home-loose","want":"allow","cmd":"cp ~/src8.md /tmp/dst8.md 2>/dev/null","why":"harbor#785: the source is read, never judged; the fixture leaves it missing"}
+{"id":"ps2pdf-input-in-home","rule":"home-loose","want":"allow","cmd":"ps2pdf ~/in6.pdf /tmp/out6.pdf","why":"harbor#785: a converter's input is never judged; missing, so already-exists cannot mask it"}
+{"id":"pdftotext-input-in-home","rule":"home-loose","want":"allow","cmd":"pdftotext ~/in3.pdf /tmp/out3.txt 2>&1","why":"harbor#785"}
+{"id":"qpdf-input-in-home","rule":"home-loose","want":"allow","cmd":"qpdf ~/in4.pdf /tmp/out4.pdf","why":"harbor#785"}
+{"id":"magick-input-in-home","rule":"home-loose","want":"allow","cmd":"magick ~/in5.pdf /tmp/out5.png","why":"harbor#785"}
+{"id":"pdfunite-inputs-in-home","rule":"home-loose","want":"allow","cmd":"pdfunite ~/a7.pdf ~/b7.pdf /tmp/merged7.pdf","why":"harbor#785"}
+{"id":"magick-image-output","rule":"home-loose","want":"allow","cmd":"magick in.png ~/out9.png","why":"harbor#785 control: an image is not a document class"}
+{"id":"pdftotext-into-dated-folder","rule":"root-bare","want":"allow","cmd":"pdftotext in.pdf ~/Deliverables/2026-09-02-thing/out.txt 2>/dev/null","why":"harbor#785 control: the right folder"}
+{"id":"cp-into-dated-folder-redirect","rule":"root-bare","want":"allow","cmd":"cp /tmp/a.html ~/Deliverables/2026-09-02-thing/dest.html 2>/dev/null","why":"harbor#785 control: the right folder"}
+{"id":"open-a-doc","rule":"dropzone","want":"allow","cmd":"open ~/Documents/kept-by-hand.html"}
+{"id":"ls-glob","rule":"home-loose","want":"allow","cmd":"ls ~/*.html"}
+{"id":"grep-a-doc","rule":"dropzone","want":"allow","cmd":"grep -n foo ~/Documents/kept-by-hand.html"}
+{"id":"cp-source","rule":"home-loose","want":"allow","cmd":"cp ~/existing.md /tmp/backup.md"}
+{"id":"the-migration","rule":"root-bare","want":"allow","cmd":"mv ~/report.html ~/Deliverables/2026-09-02-thing/report.html"}
+{"id":"redirect-outside-home","rule":"none","want":"allow","cmd":"echo hi > /tmp/x.html"}
+{"id":"redirect-into-parked-repo","rule":"dropzone","want":"allow","cmd":"cat > ~/Documents/repo/notes.md"}
+{"id":"redirect-into-dated-folder","rule":"root-bare","want":"allow","cmd":"cat > ~/Deliverables/2026-09-02-thing/x.html"}
+{"id":"redirect-unexpanded-var","rule":"home-loose","want":"allow","cmd":"cat > ~/$NAME.html"}
+{"id":"message-quotes-path","rule":"home-loose","want":"allow","cmd":"git commit -m \"moved ~/report.html into Deliverables\""}
+{"id":"heredoc-prose","rule":"home-loose","want":"allow","cmd":"cat <<MSG | gh pr create --body-file -\nsee ~/report.html for the old layout\nMSG"}
+{"id":"heredoc-body-to-tmp-file","rule":"home-loose","want":"allow","cmd":"cat > /tmp/x.jsonl <<'EOF'\n{\"cmd\":\"pandoc a.md -o ~/page.pdf\"}\nEOF","why":"harbor#716: the issue's single-command case; the body is test data"}
+{"id":"heredoc-body-commit-msg-flag","rule":"home-loose","want":"allow","cmd":"git commit -F - <<'EOF'\ndocs: pandoc a.md -o ~/page.pdf now denies\nEOF","why":"harbor#716"}
+{"id":"heredoc-body-gh-pr","rule":"home-loose","want":"allow","cmd":"gh pr create --title t --body-file - <<'EOF'\ntee ~/Documents/out.md\nEOF","why":"harbor#716"}
+{"id":"heredoc-body-tabbed-dash","rule":"home-loose","want":"allow","cmd":"git commit -F - <<-EOF\n\tcat > ~/report.html\n\tEOF","why":"harbor#716: <<- strips leading tabs from the terminator"}
+{"id":"heredoc-opener-write-after-op","rule":"home-loose","want":"deny","cmd":"cat > ~/report5.html <<'EOF'\nhello\nEOF","why":"harbor#716: the opener's own redirect is still judged"}
+{"id":"heredoc-opener-tee","rule":"dropzone","want":"deny","cmd":"tee ~/Documents/notes2.md <<'EOF'\nhello\nEOF","why":"harbor#716: the opener's own write operand is still judged"}
+{"id":"heredoc-body-into-bash","rule":"home-loose","want":"deny","cmd":"bash <<'EOF'\ncat > ~/report.html\nEOF","why":"harbor#716: a body fed to a shell runs"}
+{"id":"heredoc-body-into-sh-s","rule":"home-loose","want":"deny","cmd":"sh -s <<'EOF'\npandoc a.md -o ~/page.pdf\nEOF","why":"harbor#716"}
+{"id":"heredoc-body-into-ssh","rule":"home-loose","want":"deny","cmd":"ssh host <<'EOF'\ncat > ~/report.html\nEOF","why":"harbor#716: not a document consumer, so still judged"}
+{"id":"heredoc-body-into-python","rule":"home-loose","want":"deny","cmd":"python3 - <<'EOF'\npandoc a.md -o ~/page.pdf\nEOF","why":"harbor#716: an interpreter body is code, so still judged"}
+{"id":"heredoc-body-cat-piped","rule":"home-loose","want":"deny","cmd":"cat <<'EOF' | bash\ncat > ~/report.html\nEOF","why":"harbor#716: the opener line pipes into a shell"}
+{"id":"heredoc-body-in-function","rule":"home-loose","want":"deny","cmd":"f() {\ncat <<'EOF'\ncat > ~/report.html\nEOF\n}\nf | sh","why":"harbor#716: only a LEADING heredoc is stripped, so a wrapper around it keeps the body judged"}
+{"id":"heredoc-body-then-write","rule":"home-loose","want":"deny","cmd":"git commit -F - <<'EOF'\nnotes\nEOF\ncat > ~/report6.html","why":"harbor#716: a real command after the terminator is judged"}
+{"id":"heredoc-body-unterminated","rule":"home-loose","want":"deny","cmd":"cat > /tmp/x <<'EOF'\ncat > ~/report.html","why":"harbor#716: no terminator, so nothing is stripped"}
+{"id":"hd784-semi-spaced","rule":"home-loose","want":"deny","cmd":"cat <<HD ; cat > {home}/r784a.html\nx\nHD","why":"harbor#784: a typed ' ; ' is the bytes of the normalizer's line join, so the write after it was dropped as body"}
+{"id":"hd784-semi-tight","rule":"home-loose","want":"deny","cmd":"cat <<HD;cat > {home}/r784b.html\nx\nHD","why":"harbor#784 control"}
+{"id":"hd784-semi-tilde","rule":"home-loose","want":"deny","cmd":"cat <<HD ; cat > ~/r784c.html\nx\nHD","why":"harbor#784 control: the tilde spelling survived through the home-expanded variant"}
+{"id":"hd784-and","rule":"home-loose","want":"deny","cmd":"cat <<HD && cat > {home}/r784d.html\nx\nHD","why":"harbor#784"}
+{"id":"hd784-or","rule":"home-loose","want":"deny","cmd":"cat <<HD || cat > {home}/r784e.html\nx\nHD","why":"harbor#784"}
+{"id":"hd784-pipe","rule":"home-loose","want":"deny","cmd":"cat <<HD | cat > {home}/r784f.html\nx\nHD","why":"harbor#784"}
+{"id":"hd784-newline-after-delimiter","rule":"home-loose","want":"deny","cmd":"cat <<HD\nx\nHD\ncat > {home}/r784g.html","why":"harbor#784: the command on the line after the delimiter is kept"}
+{"id":"hd784-tee-semi","rule":"home-loose","want":"deny","cmd":"tee /tmp/a784 <<HD ; cat > {home}/r784h.html\nx\nHD","why":"harbor#784"}
+{"id":"hd784-herestring-newline","rule":"home-loose","want":"deny","cmd":"cat <<<x\ncat > {home}/r784i.html\nx","why":"harbor#784: a here-string has no body, so its next line is a command"}
+{"id":"hd784-quoted-newline","rule":"home-loose","want":"deny","cmd":"cat <<HD 'a\n' ; cat > {home}/r784j.html\nx\nHD","why":"harbor#784: a quote left open on the opener line carries the command line onto the next"}
+{"id":"hd784-continuation","rule":"home-loose","want":"deny","cmd":"cat <<HD \\\n ; cat > {home}/r784k.html\nx\nHD","why":"harbor#784: a backslash-newline continues the opener line"}
+{"id":"hd784-body-stays-a-document","rule":"home-loose","want":"allow","cmd":"cat > /tmp/n784.md <<'HD'\ncat > {home}/r784l.html\nHD","why":"harbor#784 control: a real body is still a document"}
+{"id":"heredoc-body-compound-opener","rule":"home-loose","want":"allow","cmd":"mkdir -p /tmp/t && cat > /tmp/t/x.jsonl <<'EOF'\n{\"cmd\":\"pandoc a.md -o ~/page.pdf\"}\nEOF","why":"harbor#782: the compound opener line is stripped, so the body is test data (deny before)"}
+{"id":"heredoc-body-in-substitution","rule":"home-loose","want":"allow","cmd":"git commit -m \"$(cat <<'EOF'\ncat > ~/report.html\nEOF\n)\"","why":"harbor#782: the $(cat <<EOF) argument form is stripped; the output is a commit message (deny before)"}
+{"id":"heredoc-782-compound-semicolon","rule":"home-loose","want":"allow","cmd":"echo start ; cat > /tmp/t/y.jsonl <<'EOF'\ntee ~/Documents/out.md\nEOF","why":"harbor#782: a ; compound opener"}
+{"id":"heredoc-782-compound-or","rule":"home-loose","want":"allow","cmd":"test -d /tmp || cat > /tmp/t/z.md <<'EOF'\ncp a.html ~/dest.html\nEOF","why":"harbor#782: a || compound opener"}
+{"id":"heredoc-782-subst-gh-body","rule":"home-loose","want":"allow","cmd":"gh pr create --title t --body \"$(cat <<'EOF'\npandoc a.md -o ~/page.pdf\nEOF\n)\"","why":"harbor#782: a gh publish body via substitution"}
+{"id":"heredoc-782-subst-git-tag","rule":"home-loose","want":"allow","cmd":"git tag -a v1 -m \"$(cat <<'EOF'\ncat > ~/report.html\nEOF\n)\"","why":"harbor#782: git tag is a document consumer too"}
+{"id":"heredoc-782-compound-then-real-opener-write","rule":"home-loose","want":"deny","cmd":"mkdir -p /tmp/t && cat > ~/report7.html <<'EOF'\nhi\nEOF","why":"harbor#782: the peeled opener's OWN write to ~ is still judged"}
+{"id":"heredoc-782-subst-into-sh-c","rule":"home-loose","want":"deny","cmd":"sh -c \"$(cat <<'EOF'\ncat > ~/report.html\nEOF\n)\"","why":"harbor#782: sh -c runs the substitution output, so the body is judged (the kept true positive)"}
+{"id":"heredoc-782-subst-into-eval","rule":"home-loose","want":"deny","cmd":"eval \"$(cat <<'EOF'\ncat > ~/report.html\nEOF\n)\"","why":"harbor#782: eval runs it too"}
+{"id":"heredoc-782-compound-into-bash","rule":"home-loose","want":"deny","cmd":"cd /tmp && bash <<'EOF'\ncat > ~/report.html\nEOF","why":"harbor#782: the peeled consumer is a shell, so the body still runs"}
+{"id":"heredoc-782-compound-pipe-into-sh","rule":"home-loose","want":"deny","cmd":"echo x && cat <<'EOF' | sh\ncat > ~/report.html\nEOF","why":"harbor#782: a pipe into a shell is not a compound we peel"}
+{"id":"heredoc-782-unquoted-subst-runs-leading","rule":"home-loose","want":"deny","cmd":"git commit -F - <<EOF\n$(cat > ~/report8.html </dev/null)\nEOF","why":"harbor#782: an unquoted delimiter expands the body, so a $() in it runs (allow on 8ab1ecd, deny on main)"}
+{"id":"heredoc-782-unquoted-subst-runs-compound","rule":"home-loose","want":"deny","cmd":"mkdir -p /tmp/t && cat > /tmp/t/x <<EOF\n$(cat > ~/report8.html </dev/null)\nEOF","why":"harbor#782"}
+{"id":"heredoc-782-unquoted-subst-runs-in-arg","rule":"home-loose","want":"deny","cmd":"git commit -m \"$(cat <<EOF\n$(cat > ~/report8.html </dev/null)\nEOF\n)\"","why":"harbor#782"}
+{"id":"heredoc-782-unquoted-backtick-runs","rule":"home-loose","want":"deny","cmd":"git commit -m \"$(cat <<EOF\n`cat > ~/report8.html </dev/null`\nEOF\n)\"","why":"harbor#782: a backtick runs too"}
+{"id":"heredoc-782-unquoted-brace-expands","rule":"home-loose","want":"deny","cmd":"git commit -F - <<EOF\n${X:-x} cat > ~/report8.html\nEOF","why":"harbor#782: ${ can evaluate, so an unquoted body carrying it stays judged"}
+{"id":"heredoc-782-quoted-subst-is-text","rule":"home-loose","want":"allow","cmd":"git commit -m \"$(cat <<'EOF'\n$(cat > ~/report8.html </dev/null)\nEOF\n)\"","why":"harbor#782: a quoted delimiter keeps $() literal"}
+{"id":"heredoc-782-unquoted-plain-var-is-text","rule":"home-loose","want":"allow","cmd":"git commit -F - <<EOF\nsee $HOME and cat > ~/report8.html\nEOF","why":"harbor#782: a plain $NAME expands but runs nothing"}
+{"id":"dv793-cp-abs","rule":"home-loose","want":"deny","cmd":"/bin/cp /tmp/a.html ~/dest793.html","why":"harbor#793: a path-prefixed verb is judged like the bare one (allow before)"}
+{"id":"dv793-tee-abs-piped","rule":"dropzone","want":"deny","cmd":"echo x | /usr/bin/tee ~/Documents/n793.md","why":"harbor#793 (allow before)"}
+{"id":"dv793-wkhtmltopdf-abs","rule":"home-loose","want":"deny","cmd":"/opt/homebrew/bin/wkhtmltopdf page.html ~/page793.pdf","why":"harbor#793 (allow before)"}
+{"id":"dv793-tee-abs-flag","rule":"dropzone","want":"deny","cmd":"/usr/bin/tee -a ~/Desktop/log793.md","why":"harbor#793: the tee|touch|install|pandoc rule"}
+{"id":"dv793-touch-abs","rule":"dropzone","want":"deny","cmd":"/usr/bin/touch ~/Downloads/new793.pdf","why":"harbor#793"}
+{"id":"dv793-install-abs","rule":"home-loose","want":"deny","cmd":"/usr/bin/install -m 644 build/report.html ~/report793.html","why":"harbor#793: install is in both verb rules"}
+{"id":"dv793-pandoc-home-bin","rule":"home-loose","want":"deny","cmd":"~/.local/bin/pandoc ~/p793.html","why":"harbor#793: a home-relative prefix"}
+{"id":"dv793-mv-abs","rule":"dropzone","want":"deny","cmd":"/bin/mv /tmp/a.md ~/Desktop/b793.md","why":"harbor#793: the last-operand rule"}
+{"id":"dv793-rsync-abs","rule":"dropzone","want":"deny","cmd":"/usr/bin/rsync -a build/report.html ~/Desktop/r793.html","why":"harbor#793"}
+{"id":"dv793-ln-abs","rule":"home-loose","want":"deny","cmd":"/bin/ln -s /tmp/a.md ~/link793.md","why":"harbor#793"}
+{"id":"dv793-weasyprint-home-bin","rule":"home-loose","want":"deny","cmd":"~/.local/bin/weasyprint page.html ~/page793b.pdf","why":"harbor#793"}
+{"id":"dv793-ps2pdf-abs","rule":"home-loose","want":"deny","cmd":"/usr/local/bin/ps2pdf in.ps ~/out793.pdf","why":"harbor#793"}
+{"id":"dv793-dvipdf-abs","rule":"home-loose","want":"deny","cmd":"/Library/TeX/texbin/dvipdf paper.dvi ~/paper793.pdf","why":"harbor#793"}
+{"id":"dv793-pdftotext-abs-redirect","rule":"dropzone","want":"deny","cmd":"/opt/homebrew/bin/pdftotext -layout in.pdf ~/Documents/o793.txt 2>/dev/null","why":"harbor#793: with a trailing redirect"}
+{"id":"dv793-pdftohtml-abs","rule":"home-loose","want":"deny","cmd":"/opt/homebrew/bin/pdftohtml -s in.pdf ~/o793.html","why":"harbor#793"}
+{"id":"dv793-pdfunite-abs","rule":"home-loose","want":"deny","cmd":"/opt/homebrew/bin/pdfunite a.pdf b.pdf ~/m793.pdf","why":"harbor#793"}
+{"id":"dv793-qpdf-relative","rule":"home-loose","want":"deny","cmd":"./bin/qpdf in.pdf ~/o793b.pdf","why":"harbor#793: a relative prefix"}
+{"id":"dv793-magick-abs","rule":"home-loose","want":"deny","cmd":"/opt/homebrew/bin/magick in.png ~/o793c.pdf","why":"harbor#793"}
+{"id":"dv793-convert-abs","rule":"dropzone","want":"deny","cmd":"/usr/local/bin/convert a.png ~/Downloads/scan793.pdf","why":"harbor#793"}
+{"id":"dv793-ebook-convert-app","rule":"home-loose","want":"deny","cmd":"/Applications/calibre.app/Contents/MacOS/ebook-convert book.epub ~/book793.pdf","why":"harbor#793"}
+{"id":"dv793-cp-abs-after-and","rule":"home-loose","want":"deny","cmd":"mkdir -p /tmp/x && /bin/cp /tmp/a.html ~/d793b.html","why":"harbor#793: after a compound operator"}
+{"id":"dv793-wkhtmltopdf-abs-input-in-home","rule":"home-loose","want":"allow","cmd":"/opt/homebrew/bin/wkhtmltopdf ~/in793.html /tmp/out793.pdf","why":"harbor#793 control: a prefixed converter's input stays unjudged; missing, so already-exists cannot mask it"}
+{"id":"dv793-pdftotext-abs-input-in-home","rule":"home-loose","want":"allow","cmd":"/opt/homebrew/bin/pdftotext ~/in793.pdf /tmp/o793.txt 2>&1","why":"harbor#793 control"}
+{"id":"dv793-pdfunite-abs-inputs-in-home","rule":"home-loose","want":"allow","cmd":"/opt/homebrew/bin/pdfunite ~/a793.pdf ~/b793.pdf /tmp/m793.pdf","why":"harbor#793 control"}
+{"id":"dv793-cp-abs-source-in-home","rule":"home-loose","want":"allow","cmd":"/bin/cp ~/src793.md /tmp/dst793.md","why":"harbor#793 control: a copy's source stays unjudged"}
+{"id":"dv793-cp-abs-into-dated-folder","rule":"root-bare","want":"allow","cmd":"/bin/cp /tmp/a.html ~/Deliverables/2026-09-02-thing/d793.html","why":"harbor#793 control: the right folder"}
+{"id":"dv793-tee-abs-outside-home","rule":"none","want":"allow","cmd":"echo x | /usr/bin/tee /tmp/n793.md","why":"harbor#793 control"}
+{"id":"dv793-grep-abs-is-a-read","rule":"dropzone","want":"allow","cmd":"/usr/bin/grep -n foo ~/Documents/n793c.md","why":"harbor#793 control: a prefixed reader is not a writer"}
+{"id":"dv793-verb-suffix-is-not-the-verb","rule":"home-loose","want":"allow","cmd":"/opt/tools/mycp /tmp/a.html ~/x793.html","why":"harbor#793 control: the prefix ends in a slash, so mycp is not cp"}
+{"id":"dv793-verb-extension-is-not-the-verb","rule":"dropzone","want":"allow","cmd":"/usr/local/bin/teex ~/Documents/n793d.md","why":"harbor#793 control: teex is not tee"}
+{"id":"sh482-d1-shadow-session-records-a-loose-deliverable","rule":"home-loose","want":"allow","env":{"HELM_FLOOR_SHADOW":"1"},"tool":"Write","path":"{home}/report.html","why":"harbor#482: under shadow the deny is recorded, not returned"}

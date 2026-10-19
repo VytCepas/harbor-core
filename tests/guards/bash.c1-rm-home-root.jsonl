@@ -1,0 +1,33 @@
+{"id":"C1-L1-gf-34","rule":"rm-rf-root","want":"block","cmd":"bash{,$(rm$IFS-rf$IFS/)} -c ls","why":"harbor#1313: bypass"}
+{"id":"C1-L1-gf-68","rule":"destructive-at-cfg","want":"block","cmd":"cd ~ && rm -rf .*","why":"harbor#1313: bypass"}
+{"id":"C1-L1-gf-69","rule":"destructive-at-cfg","want":"block","cmd":"cd ~ && rm -rf .**","why":"harbor#1313: bypass"}
+{"id":"C1-L1-gf-70","rule":"destructive-at-cfg","want":"block","cmd":"cd ~ && rm -rf .??*","why":"harbor#1313: bypass"}
+{"id":"C1-L1-gf-71","rule":"destructive-at-cfg","want":"block","cmd":"cd ~ && rm -rf .??**","why":"harbor#1313: bypass"}
+{"id":"C1-L1-gf-72","rule":"destructive-at-cfg","want":"block","cmd":"cd ~ && rm -rf .[!.]*","why":"harbor#1313: bypass"}
+{"id":"C1-L1-gf-73","rule":"destructive-at-cfg","want":"block","cmd":"cd ~ && rm -rf .[!.]?*","why":"harbor#1313: bypass"}
+{"id":"C1-L1-gf-654","rule":"rm-rf-root","want":"block","cmd":"rm -rf /{$(true),}","why":"harbor#1313: bypass"}
+{"id":"C1-L1-gf-665","rule":"rm-rf-home","want":"block","cmd":"rm -rf ~/**","why":"harbor#1313: bypass"}
+{"id":"C1-L1-gf-668","rule":"rm-rf-home","want":"block","cmd":"rm -rf ~/*?","why":"harbor#1313: bypass"}
+{"id":"C1-L1-gf-742","rule":"rm-rf-home","want":"block","cmd":"rm -rf ~/?*","why":"harbor#1313: bypass"}
+{"id":"C1-L1-gf-743","rule":"rm-rf-home","want":"block","cmd":"rm -rf ~/[!.]*","why":"harbor#1313: bypass"}
+{"id":"C1-L1-gf-754","rule":"rm-rf-root","want":"block","cmd":"rm$IFS-rf$IFS/","why":"harbor#1313: bypass"}
+{"id":"C1-L1-gf-755","rule":"rm-rf-root","want":"block","cmd":"rm$IFS-rf$IFS/{$(true),}","why":"harbor#1313: bypass"}
+{"id":"C1-L1-gf-756","rule":"rm-rf-root","want":"block","cmd":"rm$IFS-rf$IFS/{,$(true)}","why":"harbor#1313: bypass"}
+{"id":"C1-L1-gf-950","rule":"rm-rf-root","want":"block","cmd":"{,rm} -rf /","why":"harbor#1313: bypass"}
+{"id":"C1-L1-ccg-28","rule":"rm-rf-root","want":"block","cmd":"rm${IFS}-rf${IFS}/","why":"harbor#1313: bypass"}
+{"id":"C1-L1-ccg-28-pad","rule":"rm-rf-root","want":"block","cmd":"rm${IFS}-rf${IFS}/","pad":33000,"why":"harbor#1313: bypass (padded past the table)"}
+{"id":"C1-L1-ccg-103","rule":"rm-rf-systree","want":"block","cmd":"rm -rf /dev","why":"harbor#1313: bypass"}
+{"id":"C1-L1-ccg-105","rule":"rm-rf-systree","want":"block","cmd":"rm -rf /root","why":"harbor#1313: bypass"}
+{"id":"C1-L1-ok-1","rule":"rm-rf-home","want":"allow","cmd":"rm -rf ~/proj*","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L1-ok-2","rule":"rm-rf-home","want":"allow","cmd":"rm -rf ~/*.log","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L1-ok-4","rule":"destructive-at-cfg","want":"allow","cmd":"cd ~ && rm -rf .cache*","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L1-ok-6","rule":"destructive-at-cfg","want":"allow","cmd":"cd ~/proj && rm -rf .*","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L1-ok-7","rule":"rm-rf-home","want":"allow","cmd":"cd ~/proj && rm -rf *","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L1-ok-22","rule":"rm-rf-home","want":"allow","cmd":"cd ~ && cd proj && rm -rf *","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L1-ok-10","rule":"rm-rf-systree","want":"allow","cmd":"rm -rf /root/.cache","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L1-ok-11","rule":"rm-rf-systree","want":"allow","cmd":"rm -rf /dev/shm/x/y","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L1-ok-12","rule":"rm-rf-systree","want":"allow","cmd":"rm -rf /devel","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L1-ok-13","rule":"rm-rf-systree","want":"allow","cmd":"rm -rf /rootfs","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L1-ok-16","rule":"rm-rf-root","want":"allow","cmd":"printf '%s\\n' a$IFSX","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L1-ok-17","rule":"rm-rf-root","want":"allow","cmd":"cp a{,.bak} /tmp","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L1-ok-19","rule":"rm-rf-root","want":"allow","cmd":"awk '{print$1,$2}' f","why":"harbor#1313: ordinary work beside the fix stays allowed"}

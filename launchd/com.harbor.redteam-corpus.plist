@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- harbor:template-only
+     THIS FILE IS A TEMPLATE (harbor#630). Do not cp it: render it.
+
+       sh ~/port/harbor/bin/launchd-render.sh ~/port/harbor/launchd/com.harbor.redteam-corpus.plist > ~/Library/LaunchAgents/com.harbor.redteam-corpus.plist
+
+     This block is not installed; bin/launchd-render.sh drops it. -->
+<!-- CHECKS.md `redteam-corpus` (harbor#1313): once a week, score the pinned external red-team corpora against
+     main's guards in a throwaway floor and log the delta. Approved by the operator on 2026-10-18: weekly,
+     Monday 09:00 Vilnius, as the operator's own user, beside the other com.harbor.* agents.
+
+     It runs the INSTALLED redteam-corpus-run.sh, never the checkout (see its header); that copy clones
+     main fresh and runs the clone's redteam-corpus.sh. Nothing it does writes outside the cache and
+     HARBOR_REDTEAM_DIR (default vendor-src under the workspace root, `roots.sh --port-root`).
+
+     An agent cannot install this, by design. Operator steps, in order:
+
+       sh ~/port/harbor/bin/runtime-install.sh --live --apply
+       # then render this plist into ~/Library/LaunchAgents and bootstrap it under gui/$(id -u)
+
+     See it work: `launchctl kickstart -k gui/$(id -u)/com.harbor.redteam-corpus`, then
+     `sh ~/port/harbor/bin/redteam-corpus.sh --print` and `cat /tmp/com.harbor.redteam-corpus.out`.
+
+     IT NEEDS THE KEYCHAIN for `gh`'s token (main is a private clone), hence Aqua. MONDAY 09:00 LOCAL
+     (the box runs Vilnius time). A full run is minutes, not seconds; 09:00 is clear of findings at 09:23.
+
+     Disable (CHECKS.md's two-lookup rule):
+       launchctl bootout gui/$(id -u)/com.harbor.redteam-corpus
+       rm ~/Library/LaunchAgents/com.harbor.redteam-corpus.plist -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.harbor.redteam-corpus</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>@HOME@/.claude/bin/redteam-corpus-run.sh</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key><integer>1</integer>
+    <key>Hour</key><integer>9</integer>
+    <key>Minute</key><integer>0</integer>
+  </dict>
+  <key>RunAtLoad</key><false/>
+  <key>LimitLoadToSessionType</key><string>Aqua</string>
+  <key>ProcessType</key><string>Background</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- System dirs first and no ~/.local/bin, as com.harbor.findings: /opt/homebrew/bin last, for gh, jq and node. -->
+    <key>PATH</key><string>/usr/bin:/bin:/opt/homebrew/bin</string>
+    <key>HOME</key><string>@HOME@</string>
+  </dict>
+  <key>StandardOutPath</key><string>/tmp/com.harbor.redteam-corpus.out</string>
+  <key>StandardErrorPath</key><string>/tmp/com.harbor.redteam-corpus.err</string>
+</dict>
+</plist>

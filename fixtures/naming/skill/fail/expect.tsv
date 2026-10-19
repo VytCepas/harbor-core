@@ -1,0 +1,10 @@
+# fixtures/naming/skill/fail (harbor#950) — skill directories that MUST go red. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# COLUMNS  name <TAB> rule ids
+name	rule
+atlas	name.skill-dir
+notes-helper	name.skill-dir
+pilot-book	name.skill-dir,name.alias
+TrackingStandards	name.case,name.skill-dir
+mail_cal	name.separator,name.skill-dir
+audit-cfg	name.abbreviation
+audit-2fa	name.word

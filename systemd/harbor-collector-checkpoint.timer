@@ -1,0 +1,13 @@
+# harbor#1181 — the Linux twin of launchd/com.harbor.collector-checkpoint.plist: a SYSTEM unit running as the harborlog user, the second
+# uid the observed agent cannot write as. TEMPLATE: bin/collector-setup.sh fills @BIN@, @STORE@ and @SOURCES@ and
+# installs it under /etc/systemd/system with sudo; a session cannot. Disable: CHECKS.md, "Platforms".
+[Unit]
+Description=Harbor collector checkpoint, daily
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+Persistent=true
+Unit=harbor-collector-checkpoint.service
+
+[Install]
+WantedBy=timers.target

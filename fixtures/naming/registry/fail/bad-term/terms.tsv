@@ -1,0 +1,2 @@
+Bad_Term	concept	bad term	-	-	experimental	-	fixture	-	-	an id that is not lowercase kebab
+widget	gizmo	widget	no-such-term	-	experimental	-	fixture	-	-	a class outside the closed set, and a broader that does not resolve

@@ -1,0 +1,6 @@
+# graph.tsv (harbor#996 G2 fixture) - red-registered-in: fx:ok carries registered-in; fx:bad has one inbound and an edge of another relation, neither of which counts
+# relation	registered-in	fixture
+edge	from	to	site
+registered-in	fx:ok	fx:t	fx:ok:1
+registered-in	fx:t	fx:bad	fx:t:1
+references	fx:bad	fx:t	fx:bad:1

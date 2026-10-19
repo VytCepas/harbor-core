@@ -1,0 +1,301 @@
+<section>
+<h2 id="inject">The injector</h2>
+
+<p>The injector turns governance into <strong>data</strong>. A rule is a markdown
+file with YAML frontmatter; adding one is writing a file, not editing a hook.
+Wiring happens once per machine, and from then on the number of rules and the
+number of projects grow without touching any code.</p>
+
+<h3>What a rule pack looks like</h3>
+
+<pre><code>---
+id: merge-governance
+event: PreToolUse
+tool: Bash
+when: cmd-prefix gh pr merge
+once: session
+---
+
+Before merging: the required contexts must be green, and a cancelled check
+scores as a failure that never clears.</code></pre>
+
+<p>The body is the note. It is delivered verbatim, collapsed to one paragraph,
+prefixed with a provenance stamp, and handed to the model as additional context
+for that turn.</p>
+
+<h4>Frontmatter</h4>
+<div class="scroll">
+<table class="grid">
+<thead><tr><th>Key</th><th>Required</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>no</td><td>ledger key and <code>--explain</code> label; defaults to the filename</td></tr>
+<tr><td><code>event</code></td><td>yes</td><td>the hook event this rule listens on</td></tr>
+<tr><td><code>tool</code></td><td>no</td><td>tool-name matcher; <code>Write|Edit</code> alternation accepted. Absent means any tool</td></tr>
+<tr><td><code>when</code></td><td>yes</td><td>a predicate. <strong>Repeatable, and repeats are ANDed</strong></td></tr>
+<tr><td><code>once</code></td><td>no</td><td><code>session</code> (default) · <code>match</code> · <code>never</code></td></tr>
+<tr><td><code>mode</code></td><td>no</td><td><code>inform</code> (default), or <code>notify</code> which also speaks to the operator</td></tr>
+<tr><td><code>summary</code></td><td>no</td><td>the operator-facing line for <code>mode: notify</code></td></tr>
+<tr><td><code>run</code></td><td>no</td><td>a script beside the pack whose <strong>stdout is the note</strong>; empty stdout means no note</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Two tiers, discovered from where the session is standing</h3>
+
+<figure>
+<svg viewBox="0 0 840 290" role="img" aria-label="Pack resolution: the box config directory and the session repository each contribute a pack directory; packs are filtered by event, tool and predicates, checked against the once-ledger, then emitted as one stamped note.">
+  <defs>
+    <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <!-- tiers -->
+  <rect x="20" y="30" width="180" height="56" rx="5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="110" y="52" font-size="11.5" text-anchor="middle" fill="currentColor" font-family="ui-monospace, monospace">box tier</text>
+  <text x="110" y="70" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".65">true in every session</text>
+
+  <rect x="20" y="120" width="180" height="56" rx="5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="110" y="142" font-size="11.5" text-anchor="middle" fill="currentColor" font-family="ui-monospace, monospace">repo tier</text>
+  <text x="110" y="160" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".65">true in one tree</text>
+
+  <text x="110" y="205" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".55" font-family="ui-monospace, monospace">resolved from the</text>
+  <text x="110" y="219" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".55" font-family="ui-monospace, monospace">session's cwd — not</text>
+  <text x="110" y="233" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".55" font-family="ui-monospace, monospace">from where this</text>
+  <text x="110" y="247" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".55" font-family="ui-monospace, monospace">engine is installed</text>
+
+  <!-- filters -->
+  <g stroke="currentColor" stroke-width="1.3" marker-end="url(#ar3)" fill="none">
+    <path d="M 200 58 L 262 92"/>
+    <path d="M 200 148 L 262 114"/>
+  </g>
+
+  <rect x="266" y="76" width="128" height="54" rx="5" fill="none" stroke="currentColor" stroke-width="1"/>
+  <text x="330" y="98" font-size="11" text-anchor="middle" fill="currentColor">event + tool</text>
+  <text x="330" y="115" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".65">does it apply?</text>
+
+  <line x1="394" y1="103" x2="432" y2="103" stroke="currentColor" stroke-width="1.3" marker-end="url(#ar3)"/>
+
+  <rect x="436" y="76" width="128" height="54" rx="5" fill="none" stroke="currentColor" stroke-width="1"/>
+  <text x="500" y="98" font-size="11" text-anchor="middle" fill="currentColor">predicates</text>
+  <text x="500" y="115" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".65">ANDed, all must pass</text>
+
+  <line x1="564" y1="103" x2="602" y2="103" stroke="currentColor" stroke-width="1.3" marker-end="url(#ar3)"/>
+
+  <rect x="606" y="76" width="128" height="54" rx="5" fill="none" stroke="currentColor" stroke-width="1"/>
+  <text x="670" y="98" font-size="11" text-anchor="middle" fill="currentColor">once-ledger</text>
+  <text x="670" y="115" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".65">said already?</text>
+
+  <path d="M 670 130 L 670 178" stroke="currentColor" stroke-width="1.3" marker-end="url(#ar3)" fill="none"/>
+
+  <rect x="556" y="182" width="230" height="56" rx="5" fill="none" stroke="currentColor" stroke-width="2"/>
+  <text x="671" y="204" font-size="11.5" text-anchor="middle" fill="currentColor" font-family="ui-monospace, monospace">[HARBOR GOVERNANCE ‹tok›]</text>
+  <text x="671" y="222" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".7">one note, to the model</text>
+
+  <!-- silence path -->
+  <path d="M 606 103 L 606 103" stroke="none"/>
+  <text x="440" y="205" font-size="10.5" fill="currentColor" opacity=".6" font-family="ui-monospace, monospace">no match →</text>
+  <text x="440" y="221" font-size="10.5" fill="currentColor" opacity=".6" font-family="ui-monospace, monospace">0 bytes, exit 0</text>
+</svg>
+<figcaption>The repo tier is resolved from the session's working directory, never
+from the engine's own location — one installed copy must serve whatever repository
+the session is standing in. When the two tiers resolve to the same physical
+directory they are loaded once; comparing them as strings shipped a defect where
+every box rule fired twice.</figcaption>
+</figure>
+
+<h4>The predicate vocabulary</h4>
+<!--gen:predicates-->
+<p>It is fixed, and it is not a language. Every predicate compares a value
+<em>from the payload</em> against a pattern <em>from the pack</em>, and the payload
+value is only ever the subject of a <code>case</code> — never the pattern. Nothing
+from a payload is evaluated, interpolated into a command, or used as a glob.</p>
+
+<div class="note why">
+<span class="tag">Why an unknown predicate refuses both ways</span>
+<p>An unrecognised predicate does not fire, <em>and</em> it does not satisfy
+<code>not</code>. The first version returned the same "did not match" for both,
+so <code>not cmd-prefx git push</code> — one letter wrong — inverted a
+never-matching typo into a rule that fired on everything. The most likely typo
+must not produce the loudest possible rule. Lint <code>IJ1</code> now rejects the
+typo at commit time, which is the only place it is cheap to catch.</p>
+</div>
+
+<h4>Where it is wired</h4>
+<!--gen:events-->
+
+<div class="note hazard">
+<span class="tag">Not every event can reach the model</span>
+<p>Additional context is accepted on some hook events and <strong>rejected on
+others — and rejection discards the whole object</strong>, including an operator
+message riding along in it. <code>PreCompact</code> in particular has no channel
+to the model at all. A pack shipped on it, and every compaction on this machine
+threw its note away while the test suite stayed green, because the suite asserted
+the engine's output rather than what the harness accepts. The rule moved to
+<code>SessionStart</code> with <code>source-is compact</code> — the far side of the
+same moment, where it can be heard — and lint <code>IJ1</code> now fails any pack
+that targets a context-less event without declaring an operator audience.</p>
+</div>
+
+<h3>Repetition, and why the default is once</h3>
+
+<p><code>once: session</code> is the default because a note repeated on every
+Bash call stops being read by its third appearance. That is not a cosmetic
+problem: it is a guard being tuned out rather than switched off, and nothing turns
+red either way. <code>once: match</code> re-fires when the <em>subject</em> changes,
+and <code>once: never</code> fires every time — which only a rule about a rare
+moment should use.</p>
+
+<p>"Subject" is resolved in three steps: the <strong>file path</strong> the tool was
+given; otherwise the content written or returned; otherwise <strong>the raw
+command</strong>. It is the raw command and not the matched prefix, because
+<code>gh pr merge 174</code> and <code>gh pr merge 179</code> are different acts on
+different objects and a rule should speak for both.</p>
+
+<div class="note">
+<span class="tag">The third step was missing, and the failure was silence</span>
+<p>Until 2026-08-09 the subject stopped at content, so a <code>PreToolUse</code>
+rule over Bash had no subject at all — nothing is written or returned before the
+call — and <code>once: match</code> silently behaved as <code>once: session</code>:
+the first matching command spoke and every later one, however different, got
+silence. Measured with five differently-shaped commands in one session; only the
+first fired.</p>
+<p>That is the quietest possible failure for the most natural pack anyone writes,
+<code>cmd-prefix</code> plus <code>match</code>, and nothing turned red for it. The
+claim on this page previously went further than the code and said match keyed on
+"a different command" — it never did. Fixed in
+<a href="https://github.com/VytCepas/harbor/issues/180">harbor#180</a> and pinned
+by three arms in <code>tests/hooks/inject-hook.engine-test.sh</code>: first delivery, silence on a
+repeat, and delivery for a <em>different</em> command in the same session.</p>
+</div>
+
+<p>The ledger is keyed on the session id and lives in one file per session, sharing
+nothing between them. Concurrent sessions on this machine are normal, and the
+hostname here intermittently answers something else, which has already forked
+host-sharded ledgers in this estate. Session ids are validated before they reach
+the filesystem, and the directory is pruned on the way past.</p>
+
+<h3>The injected-instruction detector</h3>
+
+<p>One pack is different in kind: it reads what a tool <em>returned</em> and asks
+whether the content is addressing whatever is processing it, rather than a human
+reading it. That is the tell, and it is close to the only reliable one — an
+injection does not have to look hostile. The measured failure that motivated it is
+in <a href="#timing">the finding above</a>: an HTML comment shouting
+<code>SYSTEM DIRECTIVE</code> was refused every time, while the same demand written
+as a plausible documented convention got past the full constitution.</p>
+
+<p>Two phrase tiers, because one list would have to choose between missing the
+quiet shape and firing on ordinary prose. Loud phrases are unambiguous and fire
+alone; quiet phrases are individually innocent and need corroboration — two of
+them, or one plus a write-or-exfiltrate marker.</p>
+
+<div class="note hazard">
+<span class="tag">Its known false positives</span>
+<p>Any content-based detector fires on documents <em>about</em> itself. Four
+tracked documents that discuss the attack are allowlisted, and the suite sweeps
+every tracked markdown file against that list <strong>in both directions</strong>,
+so a new false positive turns the suite red on the commit that introduces it.
+The runtime has the same property and it is not allowlisted away: reading the
+engine's own phrase list — grepping <code>bin/inject-hook.sh</code> — fires the
+detector, correctly by its own rule and uselessly in fact. Two loud phrases were
+already narrowed after they were found firing on <code>pytest --help</code>, two
+man pages, an OAuth client's <em>"you are now able"</em>, and a package manager's
+contributor docs. Suppressing the self-referential case would mean weakening the
+match, which is the one repair this system does not make.</p>
+</div>
+
+<h3>What it deliberately cannot do</h3>
+
+<p><strong>There is no <code>deny</code> mode.</strong> The injector only ever adds
+text; vetoing a tool call belongs to the security floor, which is a separate layer
+with a separate installer and a much smaller, auditable surface. The measurement
+supports the split rather than merely permitting it — informing scored better than
+vetoing on the same fixture, because a veto stops the action without changing the
+decision that produced it.</p>
+
+<p>Notes carry a per-session provenance stamp, derived from a machine-local salt
+and the session id, so a line claiming to be governance can be told apart from a
+line that merely says it is.</p>
+
+<h3>The engine was proven; the rules it ships were not</h3>
+
+<p>The engine's own suite carries well over a hundred assertions, and every one of
+them runs against a pack the suite writes itself in a temporary directory. That is
+the correct way to test an <em>engine</em> — and it says nothing whatsoever about
+the packs actually shipped. Measured by matching every tracked note identifier
+against every suite by name, the large majority were named in none of them.</p>
+
+<p>What that blindness cost is concrete. A project pack was added two days after
+the last seeding run, so the tree it was meant for never received it, and the note
+warning that a particular refresh flag destroys years of irrecoverable history had
+<strong>never once been delivered</strong>. Every suite was green throughout,
+because no suite looked.</p>
+
+<div class="note why">
+<span class="tag">Every shipped note must have a row, and both arms of it</span>
+<p>A second suite now drives the real packs through the real engine, off a fixture
+of situations. A tracked note with no row fails the run — so a pack added with no
+probe cannot go green — and exemptions are listed with the reason each one cannot
+be pinned there, with their count printed on every run, because a silent cap reads
+as full coverage. Each note needs a <em>silent</em> arm as well as a firing one: a
+fixture that only asserts firing cannot see a false positive, and a guard that
+fires on ordinary work gets switched off.</p>
+</div>
+
+<div class="note why">
+<span class="tag">It plants no violation, and does not need to</span>
+<p>A suite over a <em>guard</em> has to break the guarded thing to see red. A suite
+over <em>notes</em> already has the positive assertion: if a shipped predicate
+breaks, its own firing arm goes red on the next run with no mutation step. The
+verdict machinery itself was checked by jamming the detector — stuck reporting
+"fired" it fails dozens of assertions, stuck reporting "silent" it fails dozens of
+different ones, and correct it passes them all. The two arms constrain each other
+in both directions, so the scoring cannot break quietly.</p>
+</div>
+
+<div class="note hazard">
+<span class="tag">A fixture written beside a pack cannot see that pack's blind spots</span>
+<p>Both suites above are necessary and neither is sufficient, and the reason is
+structural rather than a gap someone can close by adding rows. Whoever writes a
+pack writes its probe from the same mental model, so the fixture asks the
+situations the author already thought of — which is why it goes green while the
+predicate is wrong about a case nobody imagined. An independently authored probe,
+firing shapes the fixture does not contain, is a different instrument and finds a
+different class of defect: predicates that share a name with an engine helper but
+re-implement a weaker version of it, and packs whose declared tool scope is
+narrower than the events the harness already delivers to them. Neither is visible
+from inside a green run.</p>
+</div>
+
+<div class="note hazard">
+<span class="tag">Measured 2026-08-29 — three defects both suites were green through</span>
+<p>An independently authored probe drove every shipped pack through the real engine
+with situations the fixture does not contain. All three suites stayed green
+throughout; each of these was then confirmed at source:</p>
+<ul>
+<li><strong>One predicate skips the quote-blanking the others get.</strong> The
+prefix predicate reaches it through the segmenter; the substring predicate calls
+only the heredoc stripper. So a warning about a destructive database flag fires on
+a commit message that merely <em>mentions</em> the flag.</li>
+<li><strong>A pack's declared tool scope is narrower than the events it
+receives.</strong> The injected-instruction detector lists four tools. The wiring
+already delivers search results and every external-integration tool result to the
+engine, and its own sibling pack declares that wider set — so the detector for
+content that addresses the agent does not run on the tool results most likely to
+carry it. One line in the pack, no re-wiring.</li>
+<li><strong>A pack re-implements an engine helper, weaker.</strong> The
+bare-variable rule blanks double-quoted spans only, while the engine's own routine
+handles both quote characters — so it fires on a single-quoted query program, where
+the dollar sign is not a shell variable at all.</li>
+</ul>
+<p>The first and third are false positives and the second is a coverage hole, and
+none is visible from a green run: the fixture asks the situations the pack's author
+already had in mind.</p>
+</div>
+
+<h4>Every pack currently shipped</h4>
+<div class="scroll">
+<!--gen:packs-->
+</div>
+</section>

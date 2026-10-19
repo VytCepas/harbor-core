@@ -1,0 +1,9 @@
+# fixtures/naming/case/fail (harbor#950) — paths that MUST go red on the case rule. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# COLUMNS  name <TAB> the rule ids that must go red, comma-separated
+name	rule
+REVIEW.md	name.case
+docs/Notes.md	name.case
+Docs/notes.md	name.case
+tests/admission/Bash/destroy.test.sh	name.case
+skills/Tracking-Standards/notes.md	name.case
+EVALS-DATA/exp/arm/r1.json	name.case

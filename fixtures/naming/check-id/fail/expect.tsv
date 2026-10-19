@@ -1,0 +1,6 @@
+# fixtures/naming/check-id/fail (harbor#950) — check ids that MUST go red. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# COLUMNS  name <TAB> rule ids
+name	rule
+drift	name.rule-id
+drift.cfg-age	name.abbreviation
+drift.floor-pins	name.alias

@@ -1,0 +1,509 @@
+# GOVERNANCE — the enforcement CONTRACTS/README.md always claimed existed.
+#
+# An audit on 2026-07-25 found harbor had no CI, no active git hooks, and
+# exactly one continuously-enforced rule (the work-log gitleaks pre-push gate),
+# while CONTRACTS/README.md asserted "a CI freshness check fails if a consumer's
+# vendored copy drifts". This file makes the claim true.
+#
+# ── WHICH RUNNER, AND WHY IT IS A CHOICE ────────────────────────────────────
+# These jobs ran on `ubuntu-latest` and NEVER EXECUTED ONCE: every run for the
+# life of the repo aborted with "the job was not started because recent account
+# payments have failed", so the workflow enforced nothing while reading as though
+# it did — the same shape as a green test that cannot go red.
+#
+# So the runner is SELECTABLE (2026-10-04: the Mac is no longer the default):
+#
+#   self-hosted (private)  a GitHub runner in a Linux container on the operator's
+#   colima                 Mac (Colima; labels self-hosted, Linux, ARM64). GNU
+#                          userland, so the awk/`ls`/`getline` divergences these
+#                          suites exist to catch ARE covered, and the container
+#                          holds no ~/.claude. On a PRIVATE repo any value but `github-hosted`
+#                          lands here, so bin/runner-switch.sh needs no change; a PUBLIC repo
+#                          never does (the selector is hosted whatever the variable says).
+#
+#   github-hosted          ubuntu-latest. Disposable, no access to anything of
+#                          yours. Needs working billing and silently refuses to
+#                          start without it; runner-switch flips HARBOR_RUNNER off
+#                          it when the minutes run low.
+#
+# `actions/checkout` is the only external action used, and that is a deliberate
+# ceiling — do not add a marketplace action without deciding it is worth that access.
+#
+# HOW TO SELECT
+#   per run   — Actions → governance → "Run workflow" → Runner
+#   repo-wide — `gh variable set HARBOR_RUNNER --body github-hosted` (or
+#               `self-hosted`); unset falls back to self-hosted on a private repo,
+#               and every public repo is github-hosted whatever it says
+#
+# The suites were deliberately made host-independent (floor-test reports the same
+# assertion count under a bare $HOME as under the operator's) so that flipping
+# this switch is a one-word change and not a project.
+#
+# Dependencies are INSTALLED on hosted runners and ASSERTED on self-hosted ones:
+# a self-hosted box has whatever it has, and a job that silently skips a suite
+# because a binary is missing is exactly what this file exists to prevent.
+name: governance
+
+on:
+  # ONLY `main`, and this is load-bearing rather than tidiness. With
+  # `branches: ["**"]` a push to a PR branch fires this workflow TWICE — once
+  # here and once on `pull_request` — and the concurrency block below then
+  # cancels one of them. A CANCELLED check run scores as FAILING against a
+  # required status check and never clears, so from the day branch protection
+  # went on, every PR was unmergeable while every suite passed. Measured on
+  # harbor#153, twice, on two different SHAs.
+  #
+  # Nothing is lost by narrowing it: `pull_request` already covers every branch
+  # that is proposed for merge, and a branch with no PR has no gate to satisfy.
+  # `pull_request` stays unfiltered: a required context that never reports
+  # leaves the PR waiting forever, the deadlock this must not trade for.
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: "Where to run the suites"
+        type: choice
+        default: self-hosted
+        options: [self-hosted, github-hosted, colima]
+      level:
+        description: "quick runs CONTRACTS/suites-quick.txt only and skips the STATUS.md check"
+        type: choice
+        default: full
+        options: [full, quick]
+
+# The token every job inherits can read the repository and nothing else; a job that
+# needs more says so itself (`verified` does). A public repo's fork PRs get a
+# read-only token regardless, this keeps pushes to main and dispatches equally small.
+permissions:
+  contents: read
+
+# A push to a PR branch fires this workflow TWICE (push + pull_request), and the
+# self-hosted runner is one machine sharing one live ~/.claude and one checkout
+# path. Concurrent runs therefore corrupt each other: `status-gen.sh` derives its
+# counts by RUNNING the suites, so a second run executing them at the same time
+# changes what the first measures and STATUS.md reads as stale — T1 fails, the
+# status job fails, and the code is fine. Observed 2026-07-29 on commit 0c815d0,
+# where the push run passed every job and the pull_request run failed two.
+#
+# A CI that fails for reasons unrelated to the change teaches people to re-run
+# until green, which is how a real failure gets waved through (CONSTITUTION.md
+# §2.11). Superseded runs are cancelled rather than raced.
+# The key must be the HEAD BRANCH, not github.ref: on `push` that is
+# refs/heads/<branch> but on `pull_request` it is refs/pull/<n>/merge, so keying
+# on github.ref puts the two duplicate runs in DIFFERENT groups and dedupes
+# nothing. Verified by watching both queue anyway on the first attempt.
+#
+# BUT `main` MUST NOT CANCEL ITSELF (CI-1, harbor#150). On a branch a superseded
+# run is genuinely worthless — the commit it measured is gone. On `main` the
+# commit is permanent, so cancelling means a MERGED commit never gets a verdict,
+# and 2026-08-06 produced exactly that: #148's `main` run was cancelled the
+# moment #147 merged on top, leaving `main` carrying floor changes whose suite
+# never completed. It went unnoticed because the NEXT merge's run was green —
+# which is the failure mode, not the mitigation.
+#
+# This is not a licence to run two suites at once — the single-machine hazard
+# above is real and unchanged. `cancel-in-progress: false` QUEUES rather than
+# races: the group is still serialised, later runs wait. The cost is latency on
+# a busy `main`; what it buys is that every merged commit has a completed
+# verdict, which is also what makes required status checks meaningful. A
+# cancelled check reports neither success nor failure, so a protection rule over
+# a self-cancelling workflow gates nothing.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
+
+defaults:
+  run:
+    shell: sh -e {0}
+
+jobs:
+  # ── A MERGE IS NOT RUN TWICE (harbor#679) ───────────────────────────────────
+  # A push to main whose tree is exactly the tree its PR's green run tested
+  # (bin/ci-verified.sh: same tree, the head held main's previous tip, the PR
+  # run passed) is that verdict already. Anything else, including an API that
+  # does not answer, runs the pool as before. Push only: skipped on every PR.
+  verified:
+    name: already verified
+    if: ${{ github.event_name == 'push' }}
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    outputs:
+      verified: ${{ steps.v.outputs.verified }}
+      base: ${{ steps.v.outputs.base }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Did this tree already pass on its PR?
+        id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: sh bin/ci-verified.sh "${{ github.sha }}" "${{ github.event.before }}"
+
+  # ── THE POOL, IN SHARDS (harbor#679, harbor#1172) ───────────────────────────
+  # Every Linux suite runs through bin/suite-run.sh, 3 x CPUs at a time, longest
+  # first by tests/suite-durations.tsv. Since harbor#1172 the selection is split
+  # over SHARDS: `suite-shard` is a matrix, each leg runs `--shard K/N` (K its
+  # matrix value, N the matrix size), and `suites` combines the legs' results.
+  # One job used to carry the whole selection, and on one CPU (two harbor runs at
+  # once: the governor splits its budget between them) it took longer than its
+  # timeout: #1237's job was cancelled at 30 min with 176 of 307 suites done.
+  #
+  # HOW MANY SHARDS. One per harbor runner, from the repo variable
+  # HARBOR_SUITE_SHARDS, a JSON list (unset: [1,2] for harbor-linux and
+  # harbor-linux-2). More legs than runners only queue. Most legs this file
+  # takes is 4 (the results_N outputs below); a fifth is refused in `suites`.
+  #
+  # TIMEOUT. 33 min stays. Since harbor#1172 tests/suite-durations.tsv holds the
+  # MEDIAN in-CI time per suite over 85 sharded-era logs (so CI contention is
+  # already in it, not a 2.73x factor on top) plus a lint-conventions row that
+  # pre-loads shard 1: the full manifest predicts 2954 s per leg / 3 at a time
+  # = 16.4 min, so 33 is 2x. Re-derive with `sh bin/suite-run.sh --plan --shard 1/2`.
+  #
+  # RESULTS CROSS JOBS AS OUTPUTS, not artifacts (actions/checkout stays the only
+  # action). Each leg sets results_<K> and green_<K> only: matrix outputs with
+  # distinct names are combined, the same name is last-writer-wins. A leg that
+  # never reports leaves its suites with no row, and --combine fails them LOST.
+  #
+  # STAND-DOWN STAYS PER SUITE (CI-2): suite-run --select asks bin/suite-select.sh
+  # once for the whole manifest in every leg, and shard 1 writes the `skip` rows.
+  suite-shard:
+    name: suites ${{ matrix.shard }}/${{ strategy.job-total }}
+    needs: verified
+    if: ${{ !cancelled() && needs.verified.outputs.verified != 'true' }}
+    timeout-minutes: 33
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(vars.HARBOR_SUITE_SHARDS || '[1,2]') }}
+    outputs:
+      conventions: ${{ steps.out.outputs.conventions }}
+      results_1: ${{ steps.out.outputs.results_1 }}
+      results_2: ${{ steps.out.outputs.results_2 }}
+      results_3: ${{ steps.out.outputs.results_3 }}
+      results_4: ${{ steps.out.outputs.results_4 }}
+      green_1: ${{ steps.out.outputs.green_1 }}
+      green_2: ${{ steps.out.outputs.green_2 }}
+      green_3: ${{ steps.out.outputs.green_3 }}
+      green_4: ${{ steps.out.outputs.green_4 }}
+    env:
+      HARBOR_BASE: ${{ (github.event_name == 'push' && needs.verified.outputs.base) || format('origin/{0}', github.base_ref || 'main') }}
+      HARBOR_LEVEL: ${{ (inputs.level || vars.HARBOR_CI_LEVEL) }}
+      HARBOR_SUITE_CACHE: ${{ github.event_name != 'push' && vars.HARBOR_SUITE_CACHE || '' }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-pool"]') }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0          # suite-select diffs against the base; lint C2 needs main..HEAD
+          persist-credentials: false
+      - name: Install dependencies (hosted runners only)
+        if: runner.os == 'Linux' && runner.environment == 'github-hosted'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq jq shellcheck dash
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz \
+            | sudo tar -xz -C /usr/local/bin gitleaks
+      # Fail LOUDLY and once, rather than letting each suite discover its own
+      # missing dependency and degrade differently. Lint C4 reads this list.
+      - name: Every binary the suites depend on must exist
+        run: |
+          miss=""
+          for t in jq gitleaks git awk sed perl mkfifo; do
+            command -v "$t" >/dev/null 2>&1 || miss="$miss $t"
+          done
+          if [ -n "$miss" ]; then
+            echo "governance: missing required tool(s):$miss" >&2
+            echo "on a self-hosted runner the box must carry these; see bin/doctor.sh" >&2
+            exit 1
+          fi
+          echo "runner=$RUNNER_OS  all required tools present"
+      # PRESENCE IS NOT SURFACE: 8.19 introduced `gitleaks git`, the pin above is
+      # 8.18.4 (detect/protect only), and an unknown subcommand exits 1 — the same
+      # 1 that means "a leak was found". guard-lib probes either; this asserts one exists.
+      - name: gitleaks must expose a subcommand the code can call
+        run: |
+          if gitleaks git --help >/dev/null 2>&1; then
+            echo "gitleaks surface: git (8.19+)"
+          elif gitleaks protect --help >/dev/null 2>&1 && gitleaks detect --help >/dev/null 2>&1; then
+            echo "gitleaks surface: protect + detect (8.18)"
+          else
+            echo "governance: gitleaks $(gitleaks version 2>/dev/null) exposes NEITHER surface" >&2
+            exit 1
+          fi
+      # shellcheck arms lint F12 (SC3xxx, the only gate against a bashism reaching
+      # dash). Reported, not fatal, until every runner carries it.
+      - name: shellcheck arms lint rule F12 — report, do not fail, when absent
+        run: |
+          if command -v shellcheck >/dev/null 2>&1; then
+            echo "shellcheck $(shellcheck --version | awk '/version:/ {print $2}') — F12 is armed"
+          else
+            echo "::warning::shellcheck absent: lint rule F12 verified NOTHING this run."
+          fi
+      # The suites' scratch (t_init's TMPDIR) on RAM where the box allows it. A
+      # container cannot mount one itself: the runner container needs --tmpfs /tmp.
+      - name: Scratch space on tmpfs where there is one
+        run: |
+          fs="$(df -P /tmp 2>/dev/null | awk 'NR == 2 { print $1 }')"
+          if [ "$fs" = tmpfs ]; then
+            echo "/tmp is tmpfs"
+          elif [ -d /dev/shm ] && ! grep -q ' /dev/shm .*noexec' /proc/mounts 2>/dev/null \
+               && [ "$(df -Pk /dev/shm 2>/dev/null | awk 'NR == 2 { print $4 }')" -ge 2097152 ] 2>/dev/null; then
+            mkdir -p /dev/shm/harbor-ci && echo "TMPDIR=/dev/shm/harbor-ci" >> "$GITHUB_ENV"
+            echo "TMPDIR=/dev/shm/harbor-ci (tmpfs)"
+          else
+            echo "no tmpfs here: suites use /tmp on $fs"
+          fi
+      - name: The changeset this run is judging
+        run: |
+          echo "base=$HARBOR_BASE level=${HARBOR_LEVEL:-full}"
+          sh bin/suite-select.sh --changed
+          sh bin/suite-select.sh --list > "$RUNNER_TEMP/verdicts.txt"
+          cat "$RUNNER_TEMP/verdicts.txt"
+          { echo '### change class'; echo '```'; cat "$RUNNER_TEMP/verdicts.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      # A stale generated file fails here, before the pool (harbor#1287). Shard 1 only.
+      - name: Generated files are current (fresh-check)
+        if: ${{ matrix.shard == 1 }}
+        run: sh bin/fresh-check.sh
+      # CONTINUE-ON-ERROR, NOT `|| :`: the outcome is what `conventions linter`
+      # relays, and the last step below still fails this leg on it. Shard 1 only.
+      - name: Enforce CONTRACTS/naming.md + house style
+        id: conv
+        if: ${{ matrix.shard == 1 }}
+        continue-on-error: true
+        run: sh bin/lint-conventions.sh
+      # SAME CHECK AS THE doc.refs-conform ADVISORIES ABOVE, with its own summary block (harbor#996 E2).
+      # Never gates: exit 0 whatever it finds, 3 only when no entry doc could be read, and that is shown.
+      # A citation it could not look at (no sibling checkouts in CI) is counted "not judged" in the summary line.
+      # Shard 1 only, like lint-conventions, and outside the leg's verdict: it is a report.
+      - name: Entry docs cite paths that exist (doc-refs, warn)
+        id: docrefs
+        if: ${{ matrix.shard == 1 }}
+        continue-on-error: true
+        run: |
+          rc=0
+          sh bin/doc-refs.sh --format findings > "$RUNNER_TEMP/doc-refs.tsv" 2> "$RUNNER_TEMP/doc-refs.log" || rc=$?
+          cat "$RUNNER_TEMP/doc-refs.log"
+          { echo '### doc-refs'; echo '```'; cat "$RUNNER_TEMP/doc-refs.log" "$RUNNER_TEMP/doc-refs.tsv"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit "$rc"
+      - name: This shard's share of the selected suites, longest first
+        id: run
+        continue-on-error: true
+        run: |
+          set -- --select --list CONTRACTS/suites.txt --results "$RUNNER_TEMP/suites.tsv" --shard "${{ matrix.shard }}/${{ strategy.job-total }}"
+          [ "$HARBOR_LEVEL" != quick ] || set -- "$@" --include CONTRACTS/suites-quick.txt
+          sh bin/suite-run.sh "$@"
+      # Under dash as well as sh: macOS /bin/sh forgives bashisms dash will not.
+      # A suite run WITH ARGUMENTS cannot go through the pool, so it is asked directly.
+      # Which suites: CONTRACTS/suites-dash.txt (harbor#961). An empty list fails. Shard 1 only.
+      - name: Statusline golden output (dash)
+        id: dash
+        if: ${{ matrix.shard == 1 }}
+        continue-on-error: true
+        run: |
+          set -- $(awk '!/^[[:space:]]*(#|$)/ { print $1 }' CONTRACTS/suites-dash.txt)
+          [ $# -gt 0 ] || { echo "CONTRACTS/suites-dash.txt names no suite" >&2; exit 1; }
+          for s; do
+            sh bin/suite-select.sh "$s" > /dev/null || continue
+            sh "$s" --dash || exit 1
+          done
+      # results_<K>: this leg's results TSV, base64 on one line. green_<K>: every
+      # part of this leg passed (a step its shard does not run is `skipped`).
+      - name: This shard's results, for the job that combines them
+        id: out
+        if: ${{ !cancelled() }}
+        env:
+          K: ${{ matrix.shard }}
+          CONV: ${{ steps.conv.outcome }}
+          RUN: ${{ steps.run.outcome }}
+          DASH: ${{ steps.dash.outcome }}
+        run: |
+          r="$RUNNER_TEMP/suites.tsv"; [ -f "$r" ] || : > "$r"
+          echo "results_$K=$(base64 < "$r" | tr -d '\n')" >> "$GITHUB_OUTPUT"
+          g=success
+          for o in "$CONV" "$RUN" "$DASH"; do case "$o" in success|skipped) ;; *) g=failure ;; esac; done
+          [ "$RUN" = success ] || g=failure
+          echo "green_$K=$g" >> "$GITHUB_OUTPUT"
+          echo "green=$g" >> "$GITHUB_OUTPUT"
+          [ "$K" != 1 ] || echo "conventions=$CONV" >> "$GITHUB_OUTPUT"
+          echo "shard $K: conventions=$CONV suites=$RUN dash=$DASH -> $g"
+      - name: This shard is green only if every part of it was
+        if: ${{ !cancelled() }}
+        run: '[ "${{ steps.out.outputs.green }}" = success ]'
+
+  # ONE VERDICT FROM N SHARDS. The relays below read this job's outputs exactly as
+  # they read the single pool's, so their names, needs and checks are unchanged.
+  # Under !cancelled() a failed or timed-out leg still lands here, and its
+  # missing results fail its suites LOST rather than skipping the tally.
+  #
+  # THE THREE REQUIRED CONTEXTS ARE RELAYS. Branch protection requires
+  # "conventions linter", "conventions linter suite" and "security-floor suite"
+  # by NAME, so each stays a job of that name, and reads its verdict from the
+  # pool instead of re-running work. Each is always() and fails unless its
+  # verdict is exactly `success` / `pass`: a pool that failed early, timed out or
+  # was cancelled publishes nothing, and nothing is not `pass`. Under !cancelled()
+  # or a plain `needs`, a dead pool would SKIP them, and a skipped required check
+  # reads as satisfied. The cost: red relays on superseded branch runs.
+  suites:
+    name: suites
+    needs: [verified, suite-shard]
+    if: ${{ !cancelled() && needs.verified.outputs.verified != 'true' }}
+    timeout-minutes: 5
+    outputs:
+      conventions: ${{ needs.suite-shard.outputs.conventions }}
+      floor: ${{ steps.tally.outputs.floor }}
+      floor_ran: ${{ steps.tally.outputs.floor_ran }}
+      floor_count: ${{ steps.tally.outputs.floor_count }}
+      lint: ${{ steps.tally.outputs.lint }}
+      normalize_ran: ${{ steps.tally.outputs.normalize_ran }}
+      normalize_count: ${{ steps.tally.outputs.normalize_count }}
+      marker_ran: ${{ steps.tally.outputs.marker_ran }}
+      marker_count: ${{ steps.tally.outputs.marker_count }}
+    env:
+      HARBOR_LEVEL: ${{ (inputs.level || vars.HARBOR_CI_LEVEL) }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      # Every shard listed must report, and every candidate must have exactly one
+      # row across them (bin/suite-run.sh --combine: LOST, DUPLICATE, STRAY).
+      - name: Every shard's results, each suite in exactly one
+        id: combine
+        continue-on-error: true
+        env:
+          SHARDS: ${{ vars.HARBOR_SUITE_SHARDS || '[1,2]' }}
+          R1: ${{ needs.suite-shard.outputs.results_1 }}
+          R2: ${{ needs.suite-shard.outputs.results_2 }}
+          R3: ${{ needs.suite-shard.outputs.results_3 }}
+          R4: ${{ needs.suite-shard.outputs.results_4 }}
+          G1: ${{ needs.suite-shard.outputs.green_1 }}
+          G2: ${{ needs.suite-shard.outputs.green_2 }}
+          G3: ${{ needs.suite-shard.outputs.green_3 }}
+          G4: ${{ needs.suite-shard.outputs.green_4 }}
+        run: |
+          set -- ; bad=0
+          for k in $(printf '%s' "$SHARDS" | jq -r '.[]'); do
+            case "$k" in 1|2|3|4) ;; *) echo "HARBOR_SUITE_SHARDS lists shard $k: this file carries outputs for 1-4 only" >&2; bad=1; continue ;; esac
+            eval "r=\$R$k g=\$G$k"
+            f="$RUNNER_TEMP/shard-$k.tsv"
+            if [ -n "$r" ]; then printf '%s' "$r" | base64 -d > "$f"; else : > "$f"; fi
+            echo "shard $k: $(grep -c . "$f" || :) result row(s), green=${g:-missing}"
+            [ "$g" = success ] || bad=1
+            set -- "$@" "$f"
+          done
+          [ $# -gt 0 ] || { echo "HARBOR_SUITE_SHARDS names no shard" >&2; exit 1; }
+          set -- --combine "$RUNNER_TEMP/suites.tsv" "$@"
+          [ "$HARBOR_LEVEL" != quick ] || set -- --include CONTRACTS/suites-quick.txt "$@"
+          sh bin/suite-run.sh "$@" || bad=1
+          exit "$bad"
+      # One verdict per required group, from the combined results. Each group's suites
+      # are CONTRACTS/suites-tally.txt (harbor#961); the group names stay here, as they
+      # are this step's outputs. The floor's parts are a GLOB there, so a new part is
+      # tallied the day it lands (floor.shards-test). An empty group publishes nothing,
+      # and nothing is not `pass`.
+      - name: Each required group's verdict and count
+        id: tally
+        if: ${{ !cancelled() }}
+        run: |
+          set +e
+          r="$RUNNER_TEMP/suites.tsv"
+          for g in floor lint normalize marker; do
+            sh bin/suite-run.sh --tally "$r" "$g" $(awk -v g="$g" '$1 == g { print $2 }' CONTRACTS/suites-tally.txt)
+          done
+          exit 0
+      - name: The pool is green only if every shard and the combine were
+        if: ${{ !cancelled() }}
+        run: |
+          echo "lint-conventions=${{ needs.suite-shard.outputs.conventions }} shards+combine=${{ steps.combine.outcome }}"
+          [ "${{ needs.suite-shard.outputs.conventions }}" = success ] && [ "${{ steps.combine.outcome }}" = success ]
+
+  conventions:
+    name: conventions linter
+    timeout-minutes: 5
+    needs: [verified, suites]
+    if: ${{ always() }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
+    steps:
+      - name: bin/lint-conventions.sh passed in the suites job
+        run: |
+          echo "lint-conventions: ${{ needs.suites.outputs.conventions }} (suites job: ${{ needs.suites.result }})"
+          [ "${{ needs.verified.outputs.verified }}" = true ] || [ "${{ needs.suites.outputs.conventions }}" = success ]
+
+  lint-suite:
+    name: conventions linter suite
+    timeout-minutes: 5
+    needs: [verified, suites]
+    if: ${{ always() }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
+    steps:
+      - name: The suites that judge the linter passed in the pool
+        run: |
+          echo "lint suites: ${{ needs.suites.outputs.lint }} (suites job: ${{ needs.suites.result }})"
+          [ "${{ needs.verified.outputs.verified }}" = true ] || [ "${{ needs.suites.outputs.lint }}" = pass ]
+
+  # THE REQUIRED CONTEXT `security-floor suite`, and the `floor` id `status`
+  # needs. tests/floor/floor.shards-test.sh checks this relay against the pool.
+  floor:
+    name: security-floor suite
+    timeout-minutes: 5
+    needs: [verified, suites]
+    if: ${{ always() }}
+    outputs:
+      count: ${{ needs.suites.outputs.floor_count }}
+      ran: ${{ needs.suites.outputs.floor_ran }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
+    steps:
+      - name: Every floor part passed in the pool — anything else FAILS this check
+        run: |
+          echo "floor: ${{ needs.suites.outputs.floor }} ran=${{ needs.suites.outputs.floor_ran }} count=${{ needs.suites.outputs.floor_count }}"
+          [ "${{ needs.verified.outputs.verified }}" = true ] || test "${{ needs.suites.outputs.floor }}" = pass
+
+  status:
+    name: generated status is current
+    timeout-minutes: 20
+    needs: [verified, suites, floor]
+    # !cancelled(), not always(): not required, so a superseded run may stay quiet.
+    # Level quick skips this (it was 39 of 46 standard-level reds).
+    if: ${{ !cancelled() && needs.verified.outputs.verified != 'true' && (inputs.level || vars.HARBOR_CI_LEVEL) != 'quick' }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
+    steps:
+      - name: A dependency that did not succeed must FAIL this check, never skip it
+        if: needs.suites.result != 'success' || needs.floor.result != 'success'
+        run: |
+          echo "STATUS.md was NOT checked: suites=${{ needs.suites.result }} floor=${{ needs.floor.result }}" >&2
+          exit 1
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Install dependencies (hosted runners only)
+        if: runner.os == 'Linux' && runner.environment == 'github-hosted'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq jq
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz \
+            | sudo tar -xz -C /usr/local/bin gitleaks
+      # The counts were measured in the pool on this run's runner, so a count that
+      # differs by host still arrives here and still fails against STATUS.md.
+      - name: STATUS.md must be regenerated, not hand-edited
+        run: |
+          # The export carries no STATUS.md (dev-layer, CONTRACTS/layers.tsv) and lint doc.status-generated skips aloud there;
+          # so does this. The witnesses are the lint rule's: dev in layers.tsv, and absent: STATUS.md and its source.
+          if [ ! -e STATUS.md ] && [ ! -e harbor-build-tickets.md ] \
+             && awk -F'\t' '$1 == "STATUS.md" && $2 == "dev" { f = 1 } END { exit !f }' CONTRACTS/layers.tsv; then
+            echo "STATUS.md is dev-layer and this tree carries none of the dev layer: nothing to judge"
+            exit 0
+          fi
+          if [ "${{ needs.floor.outputs.ran }}" = "true" ] \
+             && [ "${{ needs.suites.outputs.normalize_ran }}" = "true" ] \
+             && [ "${{ needs.suites.outputs.marker_ran }}" = "true" ]; then
+            HARBOR_SUITE_COUNTS="floor-test=${{ needs.floor.outputs.count }},normalize-test=${{ needs.suites.outputs.normalize_count }},marker-test=${{ needs.suites.outputs.marker_count }}" \
+              sh bin/status-gen.sh --check
+          else
+            echo "count-bearing suites stood down for this change class —"
+            echo "checking the repo-counted fields only."
+            sh bin/status-gen.sh --check-fast
+          fi

@@ -1,0 +1,12 @@
+# redteam-sources.tsv (harbor#1313) — the external red-team corpora bin/redteam-corpus.sh scores, each PINNED to a commit.
+# A refresh fetches the pinned commit, never upstream HEAD: ccg's harness is JavaScript the check executes, and a moving
+# corpus moves the ratchet for reasons that are not Harbor's. Changing a pin re-runs code from outside: review it.
+# Neither corpus ships in the export (decision 26 on harbor#1149); the check fetches them at run time.
+#
+# COLUMNS (tab-separated; the first non-comment row is the header)
+#   name    the directory under HARBOR_REDTEAM_DIR
+#   url     the upstream git URL
+#   commit  the full commit the corpus is pinned to
+name	url	commit
+ccg	https://github.com/sentinel-hooks/claude-code-guardrails	3249929e35735569fc7c19307a528382f588a398
+shguard	https://github.com/tsukasaI/shguard	3c6bbd1f2e23bb751592615e4cb4c905991c826d

@@ -1,0 +1,160 @@
+<section>
+<h2 id="floor">The security floor</h2>
+
+<p>The floor is the only layer that can say no. It is a set of hook-invoked
+guards that inspect a tool call <em>before</em> it runs and refuse it — pipes into a
+shell, writes to the files that govern future sessions, outbound traffic carrying
+something secret-shaped.</p>
+
+<p>It is written in POSIX <code>sh</code> and nothing else, and that is
+load-bearing rather than nostalgic: the floor has to run on the day the runtime
+is broken, the package manager is mid-upgrade, or a session is being recovered
+from a machine that will not boot its usual toolchain. Everything it depends on
+is in a base install.</p>
+
+<h3>Three layers of deliberately different strength</h3>
+
+<p>The floor describes itself as <strong>defence in depth, not a boundary</strong>,
+and the distinction between its layers matters more than the sum of them.</p>
+
+<ol>
+<li><strong>The deny list</strong> — the only layer the model cannot argue with,
+evaluated by the harness before any hook runs and un-swallowable in every mode.
+It binds the <em>named tool</em>: denying a write to a file does not stop a shell
+redirect to the same file. It is glob-based, so it cannot reason about command
+semantics at all.</li>
+<li><strong>The guard hooks</strong> — text scanners over the command or the path.
+Strong against the shapes they model, hardened through two rounds of adversarial
+attack, and inherently approximate, because that is what a text scanner over shell
+syntax is.</li>
+<li><strong>The integrity gate</strong> — stops nothing. It detects that the first
+two layers have been altered and refuses to open the session.</li>
+</ol>
+
+<p>Each fails differently, which is the entire argument for having three. The real
+security boundary is credential separation and the operating system's sandbox; the
+floor raises the cost of an accident or a prompt-injected mistake and is not a
+containment proof against an attacker who already controls the session.</p>
+
+<h4>The guards</h4>
+<!--gen:guards-->
+
+<h3>Two properties that are not the same thing</h3>
+
+<p><strong>Fail-closed.</strong> A refusal is signalled by one specific exit code.
+Every way a guard can fail to run produces a <em>different</em> code — the JSON
+parser missing makes every field read empty and the guard allows everything; a
+deleted guard, a non-executable guard and a syntax error each exit with their own
+number. None of them is the refusal code, so none of them refused, and the floor
+still looked installed, pinned and wired throughout. A wrapper now sits in front
+of the chain and maps anything that is not an explicit allow to a refusal. <em>A
+guard that cannot execute must not read as permission.</em></p>
+
+<p><strong>A kill-switch on the first live line.</strong> Every guard begins with
+the same environment check, before any other logic, so that an operator locked out
+by their own floor has one documented way back in. This is checked by lint —
+a guard whose first line is anything else fails the build. The reasoning is the
+last rule in the constitution's verification list: a guard that blocks ordinary
+work gets switched off by hand, and a disabled guard protects nothing. Making the
+escape hatch official is what stops it being improvised.</p>
+
+<h3>B8 — pinning the instruction surfaces</h3>
+
+<p>The subtlest guard is the one that watches what will be <em>read</em> rather
+than what is being run. Files that load into every future session — the
+machine's instructions, its skills, its commands, its hooks, its rule packs — are
+hashed and pinned, and drift is reported at session start with the paths that
+changed.</p>
+
+<div class="note why">
+<span class="tag">Found by checking rather than assuming</span>
+<p>The pinned surface list did not include the injector's rule packs until it was
+audited on the branch that built them. A rule pack is text injected verbatim into
+every future session <em>at the moment of an action</em>, which is arguably the
+sharpest instruction surface on the machine, and it was the one nothing reported.
+It is covered now, verified end to end in a sandbox: install, pin, edit a pack,
+see it named as drift by path.</p>
+</div>
+
+<p><strong>Re-pinning is deliberately not automated.</strong> An installer run from
+a session that blesses its own instruction surfaces is a self-approval loop, so the
+pin is a command the operator runs from their own terminal. This is the general
+rule stated once: the system may observe continuously and propose in batch, but it
+may not promote its own observations into a guard, a lint rule or a deny list
+without a person approving the change.</p>
+
+<h3>What it does not claim</h3>
+
+<p>The repository keeps a record of <strong>measured bypasses</strong> of its own
+egress rules. That document is not an embarrassment being managed; it is the
+reason the floor is described as a net rather than a wall, and the reason
+judgment is still load-bearing on top of it. A layer that claimed completeness
+would be the more dangerous artefact, because the next person would stop
+looking.</p>
+
+<p>The live state is also not taken on trust from any document, including this
+one. <code>harbor verify</code> answers "is the floor on?" by <em>firing</em>
+shapes that are known to be blocked and checking that they were, because a page
+describing machine state is a copy — and the constitution's own paragraph about
+the egress scanner asserted the opposite of the truth until it was checked.</p>
+
+<div class="note hazard">
+<span class="tag">The cloud rules are an allowlist of named commands, so an unnamed vendor is uncovered</span>
+<p>The destructive-cloud guard recognises the command-line tools of one cloud
+vendor by name. That is a deliberate scope — the rules encode which subcommands of
+those tools destroy data, and that knowledge does not generalise — but it means a
+different vendor's tool, an orchestrator, or an infrastructure-as-code binary
+passes this layer untouched, however destructive the verb. The same shape holds for
+the branch-protection rule: it recognises the <em>flag</em> spelling of a force
+push, and the refspec spelling of the same operation is a different string. Neither
+is a bug in the rule that exists; both are the boundary of the set of rules that
+exist, and the honest place to read that boundary is the guard's own source rather
+than a summary of it.</p>
+</div>
+
+<div class="note hazard">
+<span class="tag">Measured 2026-08-29 — what passes untouched, with the controls that make the negatives mean something</span>
+<p>An independent probe fed hostile shapes to the guards as text and read the
+verdict. Two controls fired as expected — the flag spelling of a force push to a
+protected branch, and a recursive dataset removal — so the following
+<em>allowed</em> results are not an artefact of a broken harness:</p>
+<ul>
+<li>the same force push written as a <strong>refspec</strong>, plus the mirror and
+delete-branch spellings of the same operation</li>
+<li><strong>every non-Google cloud tool</strong>: an orchestrator deleting a
+production namespace, an infrastructure-as-code destroy, a bucket removal on
+another vendor</li>
+<li>the physical macOS paths behind the firmlinks, where the logical spelling of
+the same directory is blocked</li>
+<li>the whole configuration directory leaving the machine in an archive — the
+egress rules key on key-material paths and provider-secret patterns, not on that
+directory</li>
+</ul>
+<p>None of these is a rule behaving wrongly. Each is the edge of the set of rules
+that were written, which is why the guard's source is the honest place to read the
+scope and a summary is not.</p>
+</div>
+
+<div class="note hazard">
+<span class="tag">The false-positive rate is the number that decides whether any of this survives</span>
+<p>Same probe, sixty ordinary commands: one denial. A further sweep found six more,
+and <strong>three of them blocked real work during the session that ran the
+probe</strong> — a documentation heredoc containing a substitution pattern, a test
+string quoting a dangerous command as an <em>argument</em>, and a shell pipeline
+feeding data into a guard script. That last one only reproduces when a command
+substitution folds, so the message cannot lead you to the offending text: no single
+line triggers it. Also still denied is the archive-extraction step of the
+<em>recovery</em> path this floor itself prescribes.</p>
+<p>This is the failure mode the constitution names directly — a guard that blocks
+ordinary work gets switched off, and a disabled guard protects nothing. A rule that
+fires on prose is not a stricter floor; it is a floor with a shorter life.</p>
+</div>
+
+<p>One property does generalise, and it is the reason a soft verdict is safe here:
+a rule that would <em>ask</em> a human escalates to a refusal when no human is
+reading. A confirmation prompt raised inside a subagent, where nothing can answer
+it, would otherwise resolve itself — an approval nobody gave. The guards detect
+that they are off the main loop and deny instead. This is a property each guard has
+to carry deliberately; a hook that predates the convention, or comes from another
+project, does not inherit it.</p>
+</section>

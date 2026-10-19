@@ -1,0 +1,10 @@
+# fixtures/naming/env/fail (harbor#950) — env var names that MUST go red. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# COLUMNS  name <TAB> rule ids
+name	rule
+HELM_DISABLE_FLOOR	name.env,name.alias
+HARBOR_ROOT	name.env
+harbor_admission_disable	name.env
+HARBOR_ADMISSION_4XX	name.word
+HARBOR_ADMISSION__DISABLE	name.word
+HARBOR_DEPLOY_CFG_DIR	name.abbreviation
+HARBOR_CHECK_PULSE_AGE	name.alias

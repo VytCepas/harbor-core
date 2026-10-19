@@ -1,0 +1,3 @@
+legacy-9001	name.case	standards/naming/terms.tsv	legacy	2027-01-31	the registry exempting its own file
+tool-9001	name.case	**/lint-name.sh	tool-required	never	a glob that reaches the lint
+world-9001	*	fixtures/	world-name	never	a prefix that contains the fixtures

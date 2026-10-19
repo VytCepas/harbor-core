@@ -1,0 +1,18 @@
+# Allowed top-level front-matter keys in an .md a pack installs (bin/pack.sh; harbor#1149). Derived 2026-10-11: union of the top-level keys of every tracked SKILL.md (skills/, vendor/skills/), commands/*.md, the documented inject.d keys (CONTRACTS/inject.md; run: is refused on its own), and the readable workload .claude/skills/*/SKILL.md (azimuth). hooks is never listed.
+name
+description
+disable-model-invocation
+version
+effort
+argument-hint
+context
+license
+allowed-tools
+when_to_use
+id
+event
+tool
+when
+once
+mode
+summary

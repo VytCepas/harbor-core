@@ -1,0 +1,228 @@
+#!/usr/bin/env sh
+# GOVERNANCE (harbor#7) — run the suites this push actually selects, before the
+# push, rather than discovering them red on a serialised CI runner afterwards.
+#
+# Install:  ln -sf ../../hooks/pre-push .git/hooks/pre-push
+# Bypass:   git push --no-verify   (deliberate, visible, and rare)
+#
+# WHY HERE AND NOT AT COMMIT. hooks/pre-commit already pays for the guard smoke
+# suite when a floor surface is staged, and that is the right cost at that
+# moment: it is seconds, and it catches the class of regression that must never
+# reach a PR. Running the WHOLE selected set on every commit is how a hook
+# becomes the thing people reflexively `--no-verify`, and a gate that is
+# routinely skipped protects nothing (CONSTITUTION §2.11). Push is the moment
+# where the cost is proportionate — it happens once per branch, not once per
+# thought, and it is the last point before CI spends the runner.
+#
+# THE SELECTOR DOES THE CONDITIONALITY, AND IT ALREADY EXISTS. bin/suite-select.sh
+# is CI-2's change-class decision procedure, declared in CONTRACTS/suite-paths.txt.
+# Reimplementing that here would be a second copy of a policy that lives somewhere
+# else, and it would drift in the direction that is silent — a local gate that
+# stands down MORE suites than CI does comes back green and shorter, which reads
+# as an improvement.
+#
+# ── THE DEFAULT IS NARROW, AND A MEASUREMENT IS WHY (harbor#7) ──────────────
+# The first cut of this hook ran every suite the selector picked, justified by a
+# demo: a docs-only push selects 2 of 25. `bin/hook-replay.sh --commits` then
+# replayed all 143 real changesets in this repo's history through that same
+# selector, and the demo turns out to be the unrepresentative case:
+#
+#     median suites selected   24 of 25
+#     selected EVERYTHING      37% of pushes
+#     selected 3 or fewer      22% of pushes
+#
+# Harbor's commits touch bin/ almost every time, so the selector — which is doing
+# its job correctly — hands back nearly the whole suite on the median push. A
+# gate that runs 24 of 25 suites before every push is a gate that gets
+# `--no-verify`'d within a week, and a routinely-skipped gate protects nothing
+# (CONSTITUTION §2.11). It also duplicates CI, which runs the same selection on
+# the PR anyway.
+#
+# So the default is the same pair pre-commit already proved affordable — the
+# conventions linter, plus the guard smoke suite when a floor surface is in the
+# pushed range — and the full selected set is opt-in via HARBOR_PREPUSH_FULL=1.
+# The cheap default still catches the class that must never reach a PR; the
+# expensive one is there for the push you actually want to be sure about.
+#
+# THE RUNNER IS SERIALISED AND SELF-HOSTED, which is why the expensive mode
+# exists at all: a red push does not merely cost the author a round trip, it
+# occupies the single runner every other branch is queued behind.
+set -eu
+ROOT="$(git rev-parse --show-toplevel)"
+BASE_BRANCH="${HARBOR_BASE_BRANCH:-main}"
+
+[ -f "$ROOT/bin/suite-select.sh" ] || exit 0
+[ -f "$ROOT/CONTRACTS/suites.txt" ] || exit 0
+
+# harbor#824: everything below this point that runs a suite or the linter goes through
+# hook_scrub_run (hooks/lib.sh), which drops the GIT_* vars git exports into this hook — a suite
+# that builds its own scratch git repo and drives it with `git -C <tmp>` must not inherit them.
+# The git calls ABOVE this line, and $ROOT itself, keep the real GIT_DIR on purpose: they need it
+# to see the repo the hook actually fired in.
+#
+# hooks/lib.sh lives BESIDE THIS FILE, never assumed to be under $ROOT — $ROOT is the repo this
+# hook fires FOR (git rev-parse --show-toplevel), which a test fixture or a foreign repo that
+# copied only this file is not. Resolve this script's own real location, following the
+# `.git/hooks/pre-push` symlink the install step creates ($0 stays the symlink path, unresolved,
+# per POSIX exec). A copy with no lib.sh beside it degrades to an unscrubbed run rather than
+# crashing the hook outright — Harbor's own checkout (primary or any worktree) always ships both
+# files together, so a real Harbor push always gets the scrub.
+_hk_self="$0"
+while [ -L "$_hk_self" ]; do
+  _hk_link="$(readlink "$_hk_self")"
+  case "$_hk_link" in /*) _hk_self="$_hk_link" ;; *) _hk_self="$(dirname "$_hk_self")/$_hk_link" ;; esac
+done
+_hk_here="$(CDPATH= cd -- "$(dirname -- "$_hk_self")" && pwd)"
+if [ -f "$_hk_here/lib.sh" ]; then . "$_hk_here/lib.sh"
+else hook_scrub_run() { env "$@"; }  # same calling convention as the real one (VAR=val leading args), just no -u
+fi
+
+# ONE CPU SLOT PER CHECK, through bin/ci-governor.sh, which shares this Mac's cores between CI and local runs.
+# Output is discarded either way; the governor's own "waiting for a slot" line stays on stderr. A checkout
+# without the governor, or a box whose governor never ran (no state dir), runs the check directly.
+_quiet() { # <cmd…> — env VAR=val as a prefix when the check needs one
+  if [ -f "$ROOT/bin/ci-governor.sh" ]; then hook_scrub_run sh "$ROOT/bin/ci-governor.sh" run --out /dev/null -- "$@"
+  else hook_scrub_run "$@" >/dev/null 2>&1; fi
+}
+
+# THE RANGE COMES FROM STDIN, WHICH IS THE ONLY PLACE IT IS ACTUALLY KNOWN.
+# git feeds pre-push `<local ref> <local sha> <remote ref> <remote sha>` per ref,
+# and <remote sha> is what the remote has RIGHT NOW — more accurate than
+# origin/<base>, which is only as fresh as the last fetch. An all-zero remote sha
+# means a brand-new branch with no remote counterpart; there is no honest range
+# for that, so it falls through to the selector's own default rather than
+# inventing one.
+#
+# A PUSH OF ONLY DELETIONS HAS NO SUBJECT (harbor#575). The per-ref `continue`
+# below skipped the range for a deleted ref and nothing else, so control fell
+# through to the repo-wide linter: 2:31 on this box to ask a question no deletion
+# can change the answer to, since the remote's trees and blobs are untouched. The
+# decision is over the WHOLE push, never one ref — `git push origin :old main`
+# deletes `old` AND publishes `main`, and must still run the checks. `--delete`
+# is not the mixed case: git applies it to every listed ref.
+_range=''; _refs=0; _deleted=0
+while read -r _lref _lsha _rref _rsha; do
+  [ -n "${_lsha:-}" ] || continue
+  _refs=$(( _refs + 1 ))
+  case "$_lsha" in *[!0]*) ;; *) _deleted=$(( _deleted + 1 )); continue ;; esac
+  case "${_rsha:-}" in
+    ''|*[!0-9abcdef]*) continue ;;
+    *[!0]*) _range="$_rsha..$_lsha" ;;
+  esac
+done
+[ -n "$_range" ] || _range=""
+
+# SAY IT STOOD DOWN, NEVER PRINT NOTHING. A silent hook on a deletion push reads
+# exactly like a hook that did not fire (harbor#466), so the reason is printed.
+if [ "$_refs" -gt 0 ] && [ "$_deleted" -eq "$_refs" ]; then
+  echo ""
+  printf 'pre-push: 0 check(s) run — all %s ref(s) in this push are deletions, which publish nothing to test.\n' "$_refs"
+  exit 0
+fi
+
+if [ -n "$_range" ]; then
+  HARBOR_CHANGED="$(git -C "$ROOT" diff --name-only --no-renames "$_range" 2>/dev/null || true)"
+  export HARBOR_CHANGED
+  [ -n "$HARBOR_CHANGED" ] || unset HARBOR_CHANGED
+fi
+export HARBOR_BASE="origin/$BASE_BRANCH"
+
+echo ""
+_ran=0; _stood=0; _rc=0
+
+# A STALE GENERATED FILE FAILS HERE, IN SECONDS (harbor#1287). 7 of 12 failed PR runs 2026-10-14..17 were one, found only
+# after the 15-20 min CI pool. bin/fresh-check.sh runs every generator --check that answers in seconds (CONTRACTS/fresh-checks.tsv)
+# and names the fix; it goes BEFORE the linter and the suites because a stale file makes the rest of the run moot.
+if [ -f "$ROOT/bin/fresh-check.sh" ]; then
+  _ran=$(( _ran + 1 ))
+  if _fc="$(hook_scrub_run sh "$ROOT/bin/fresh-check.sh" 2>&1)"; then
+    printf '          run   fresh-check.sh  ok\n'
+  else
+    printf '          run   fresh-check.sh  FAILED\n'
+    printf '%s\n' "$_fc" | sed 's/^/          /'
+    echo "" >&2
+    echo "pre-push: a generated file is STALE. Run the fix above, commit it, push again — or push deliberately with --no-verify." >&2
+    exit 1
+  fi
+fi
+
+if [ "${HARBOR_PREPUSH_FULL:-0}" = 1 ]; then
+  echo "pre-push: FULL mode — every suite bin/suite-select.sh picks for this push."
+  [ -n "${HARBOR_CHANGED:-}" ] && printf '%s\n' "$HARBOR_CHANGED" | sed 's/^/          /'
+  while IFS= read -r _s; do
+    case "$_s" in ''|\#*) continue ;; esac
+    # A path entry is relative to the repo root; a bare name lives in bin/ (harbor#695).
+    case "$_s" in */*) _sp="$ROOT/$_s" ;; *) _sp="$ROOT/bin/$_s" ;; esac
+    [ -f "$_sp" ] || continue
+    if hook_scrub_run sh "$ROOT/bin/suite-select.sh" "$_s" >/dev/null 2>&1; then
+      _ran=$(( _ran + 1 ))
+      printf '          run   %s' "$_s"
+      if _quiet sh "$_sp"; then printf '  ok\n'; else printf '  FAILED\n'; _rc=1; fi
+    else
+      _stood=$(( _stood + 1 ))
+    fi
+  done < "$ROOT/CONTRACTS/suites.txt"
+else
+  echo "pre-push: conventions + the guard smoke suite if a floor surface moved."
+  echo "          (HARBOR_PREPUSH_FULL=1 for every selected suite — median 24 of 25 here.)"
+  # THE ONLY LOCAL RUN OF THE LINTER, since 2026-09-05. It used to run here AND
+  # unconditionally in pre-commit, so a session of ten commits paid 62s eleven
+  # times for one answer. hooks/pre-commit says why it moved; the short version
+  # is that the linter is repo-wide, so it cannot be filtered by staged path,
+  # and the push is the boundary where paying once is proportionate.
+  #
+  # GUARD THE LINTER'S EXISTENCE, the same way the selector is guarded above.
+  # Without this the hook exits 1 in any repo that has no lint-conventions.sh —
+  # rejecting a perfectly good push because a tool is absent, which is a gate
+  # failing OPEN into a block. Found by the repaired ref-deletion case on its
+  # first run, in a scratch repo that had a selector stub and no linter.
+  if [ -f "$ROOT/bin/lint-conventions.sh" ]; then
+    _ran=$(( _ran + 1 ))
+    printf '          run   lint-conventions.sh'
+    if _quiet sh "$ROOT/bin/lint-conventions.sh"; then printf '  ok\n'; else printf '  FAILED\n'; _rc=1; fi
+  fi
+
+  # SAME TRIGGER AS pre-commit, applied to the whole pushed RANGE rather than one
+  # commit — which is the only thing this hook can see that pre-commit cannot.
+  # `case` globs, not grep: this box's grep is a ugrep wrapper carrying
+  # `-I --ignore-files` and a matcher whose behaviour depends on PATH order means
+  # something different on the CI runner.
+  _floor=0; _floor_ran=0
+  for _p in ${HARBOR_CHANGED:-}; do
+    case "$_p" in
+      bin/guard-*.sh|bin/floor-*.sh|bin/floor-*.awk|bin/sec0-harden.sh|hooks/*) _floor=1 ;;
+    esac
+  done
+  if [ "$_floor" = 1 ] && [ -f "$ROOT/tests/floor/floor-test.sh" ]; then
+    _ran=$(( _ran + 1 ))
+    _floor_ran=1
+    printf '          run   floor-test.sh smoke'
+    if _quiet env T_SMOKE=1 sh "$ROOT/tests/floor/floor-test.sh"; then printf '  ok\n'; else printf '  FAILED\n'; _rc=1; fi
+  fi
+  # THE COUNT MIXED TWO POPULATIONS AND WAS OFF BY ONE. It reported
+  # "<all suites> - 1" while `lint-conventions.sh` is not in suites.txt at all
+  # and `floor-test.sh` — which IS in it — had just run. So "2 run, 24 not run"
+  # counted different things on each side of the comma, in the number the
+  # comment below calls this hook's honesty mechanism. Now it counts exactly the
+  # manifest suites this run did not execute.
+  #
+  # `grep -c` EXITS 1 ON ZERO MATCHES, and under `set -eu` an assignment from a
+  # failing substitution kills the shell — a degenerate suites.txt would have
+  # aborted the push after every check passed, with no message at all. `|| true`
+  # is the whole fix and it is not cosmetic.
+  _total="$(grep -cvE '^[[:space:]]*(#|$)' "$ROOT/CONTRACTS/suites.txt" 2>/dev/null || true)"
+  _total="${_total:-0}"
+  _stood="$(( _total - _floor_ran ))"
+fi
+
+# A SILENT CAP READS AS FULL COVERAGE. The stood-down count is printed on every
+# run, so "the gate passed" can never be confused with "the gate ran everything".
+printf 'pre-push: %s check(s) run, %s suite(s) NOT run here — CI runs the selection on the PR.\n' "$_ran" "$_stood"
+
+if [ "$_rc" -ne 0 ]; then
+  echo ""
+  echo "pre-push: a selected suite is RED. Fix it, or push deliberately with --no-verify." >&2
+  echo "          Re-run one by name for its output:  sh bin/<suite>.sh" >&2
+  exit 1
+fi
+exit 0

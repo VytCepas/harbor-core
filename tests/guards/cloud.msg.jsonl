@@ -1,0 +1,18 @@
+{"id":"adc-msg-no-cli-fix","cmd":"gcloud auth application-default login","env":{"STUB_ACCOUNT":"a@b.example"},"hasnt":"Pinned form:","why":"the ADC message once ended with the CLI remedy"}
+{"id":"adc-msg-names-store","cmd":"gcloud auth application-default login","has":"SEPARATE store"}
+{"id":"cli-msg-not-adc","cmd":"gcloud auth login","has":"does NOT write ADC"}
+{"id":"revoke-msg-no-login","cmd":"gcloud auth revoke a@b","env":{"STUB_ACCOUNT":"a@b.example"},"hasnt":"Pinned form:"}
+{"id":"tier-label","cmd":"gcloud auth login","has":"[IDENTITY]"}
+{"id":"account-known-names-it","cmd":"gcloud auth login","env":{"STUB_ACCOUNT":"a@b.example"},"has":"ACTIVE CLI ACCOUNT RIGHT NOW: a@b.example."}
+{"id":"account-known-pinned-form","cmd":"gcloud auth login","env":{"STUB_ACCOUNT":"a@b.example"},"has":"Pinned form: gcloud auth login a@b.example."}
+{"id":"account-known-ambient","cmd":"gcloud auth login","env":{"STUB_ACCOUNT":"a@b.example"},"has":"AMBIENT config"}
+{"id":"no-account-says-so","cmd":"gcloud auth login","has":"could not be read"}
+{"id":"no-account-generic-pin","cmd":"gcloud auth login","has":"Pinned form: gcloud auth login <account>."}
+{"id":"no-account-no-ambient","cmd":"gcloud auth login","hasnt":"AMBIENT config"}
+{"id":"soft-msg-is-warning-layer","cmd":"gsutil rm gs://b/x","has":"WARNING layer"}
+{"id":"blind-msg-names-tool","cmd":"gsutil rb gs://bucket","pad":33000,"has":"names gsutil"}
+{"id": "gtmstd-names-the-sanctioned-route", "cmd": "curl -X POST https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2/workspaces/3:create_version", "has": "Cut versions only with the GTM standard's own version-cut command (the gtm skill gives its exact form)"}
+{"id": "gtmstd-names-no-sibling-path", "cmd": "curl -X POST https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2/workspaces/3:create_version", "hasnt": "$HOME/port/"}
+{"id": "gtmstd-publish-is-operators", "cmd": "curl -X POST https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2/versions/9:publish", "has": "Publishing is the operator's, in the GTM UI"}
+{"id": "gtmstd-tier-label", "cmd": "curl -X POST https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2/versions/9:publish", "has": "[GTMSTD]"}
+{"id": "gtmstd-not-warning-layer", "cmd": "curl -X POST https://tagmanager.googleapis.com/tagmanager/v2/accounts/1/containers/2/versions/9:publish", "hasnt": "WARNING layer"}

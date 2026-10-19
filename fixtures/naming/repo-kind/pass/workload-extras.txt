@@ -1,0 +1,16 @@
+# fixtures/naming/repo-kind/pass/workload-extras.txt (harbor#950) — valid but unusual: optional entries, entries the kind does not list, and a quoted kind with a trailing comment.
+# A repo-kind fixture is a manifest, built into a real directory before --check repo-kind reads it: one entry per line, docs/ for a directory,
+# <file> TAB <text> for a file with content. See bin/lint-name.sh rk_build.
+README.md
+AGENTS.md
+CLAUDE.md
+justfile
+.agents/config.yaml	repo-kind: "workload"  # standards/naming/repo-kinds.tsv
+docs/
+bin/
+src/
+tests/
+.github/
+.gitignore
+build/
+notes-from-monday.txt

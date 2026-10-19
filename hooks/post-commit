@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+# post-commit (harbor#1043, E1 PR 2) — put `git.commit` on the local event bus, subject = the new sha.
+# Install: the same one command as the other hooks, `git config core.hooksPath hooks` (CONTRACTS/README.md).
+# It can never fail or print: git ignores a post-commit status, and this exits 0 regardless. The
+# repo name and the ts come from event-bus.sh; no message, path or diff is read (docs/design/events.md).
+# A commit that a rebase or cherry-pick sequence replays is not a new commit and emits nothing.
+_hk_self="$0"
+while [ -L "$_hk_self" ]; do
+  _hk_link="$(readlink "$_hk_self")"
+  case "$_hk_link" in /*) _hk_self="$_hk_link" ;; *) _hk_self="${_hk_self%/*}/$_hk_link" ;; esac
+done
+case "$_hk_self" in */*) _hk_here="${_hk_self%/*}" ;; *) _hk_here=. ;; esac
+if [ -f "$_hk_here/lib.sh" ]; then
+  . "$_hk_here/lib.sh"
+  # Not while a rebase or sequencer is replaying commits: hook_replaying (lib.sh, harbor#1114).
+  hook_replaying || hook_event git.commit "$(git rev-parse HEAD 2>/dev/null)" git.post-commit
+fi
+exit 0

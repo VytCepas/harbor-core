@@ -1,0 +1,39 @@
+#!/usr/bin/env sh
+# GOVERNANCE (harbor#1116) — a new linked worktree is born with the memory store routed.
+#
+# Install:  ln -sf ../../hooks/post-checkout .git/hooks/post-checkout   (core.hooksPath needs nothing)
+#
+# bin/worktree.sh new routes at creation (harbor#589), but a raw `git worktree add` skips it, and
+# that is how worktrees are really made here, so the repair did not survive worktree creation.
+# git runs this on every checkout; only a worktree's first one (previous HEAD all zeros, git-dir
+# differing from the common dir) acts. memory-route.sh --apply stays the one linker. It writes
+# symlinks only, and nothing here can fail the checkout: exit 0 on every path.
+set -u
+_prev="${1:-}"
+case "$_prev" in *[!0]*|"") exit 0 ;; esac   # not all zeros: an ordinary checkout
+_gd="$(CDPATH= cd -P -- "$(git rev-parse --git-dir 2>/dev/null)" 2>/dev/null && pwd -P)" || exit 0
+_cd="$(CDPATH= cd -P -- "$(git rev-parse --git-common-dir 2>/dev/null)" 2>/dev/null && pwd -P)" || exit 0
+[ "$_gd" != "$_cd" ] || exit 0               # a fresh clone is not a linked worktree
+
+# $0 is the symlink path when installed by `ln -s`, so resolve it to find bin/ (see hooks/pre-commit).
+_hk_self="$0"
+while [ -L "$_hk_self" ]; do
+  _hk_link="$(readlink "$_hk_self")"
+  case "$_hk_link" in /*) _hk_self="$_hk_link" ;; *) _hk_self="$(dirname "$_hk_self")/$_hk_link" ;; esac
+done
+_hk_root="$(CDPATH= cd -- "$(dirname -- "$_hk_self")/.." && pwd)"
+[ -f "$_hk_root/bin/memory-route.sh" ] || exit 0
+
+# --live only when the config dir IS the live one: the tool's write gate demands it spelled out.
+_cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+_phys() { CDPATH= cd -P -- "$1" 2>/dev/null && pwd -P || printf '%s' "$1"; }
+if [ "$(_phys "$_cfg")" = "$(_phys "$HOME/.claude")" ]; then set -- --live; else set -- --dir "$_cfg"; fi
+
+# git exports GIT_DIR into hooks, and memory-route runs `git worktree list` on other trees
+# (hooks/lib.sh explains the hazard); unset it for that child only.
+if env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE -u GIT_COMMON_DIR -u GIT_PREFIX \
+     sh "$_hk_root/bin/memory-route.sh" "$@" --apply --quiet >/dev/null 2>&1; then :
+else
+  printf 'post-checkout: memory route incomplete, a session in this worktree may start with no memory: sh %s/bin/memory-route.sh %s --apply\n' "$_hk_root" "$*" >&2
+fi
+exit 0

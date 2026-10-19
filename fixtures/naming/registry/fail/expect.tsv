@@ -1,0 +1,30 @@
+# fixtures/naming/registry/fail (harbor#950) — registries that MUST go red. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# Each name is a registry fixture directory, relative to the repo root: its files are appended to the
+# registry (or replace a file when they open with #), then `--check registry <dir>` judges the result.
+# COLUMNS  name <TAB> the rule ids that must go red
+name	rule
+fixtures/naming/registry/fail/bad-term	name.registry-term
+fixtures/naming/registry/fail/duplicate-id	name.registry-duplicate
+fixtures/naming/registry/fail/family-verb-overlap	name.registry-overlap
+fixtures/naming/registry/fail/alias-term-overlap	name.registry-overlap
+fixtures/naming/registry/fail/self-exempt	name.exemption-self
+fixtures/naming/registry/fail/stale-exemption	name.exemption-stale
+fixtures/naming/registry/fail/grown-exemption	name.exemption-grow
+fixtures/naming/registry/fail/alias-expired	name.alias-expired
+fixtures/naming/registry/fail/column-count	name.registry-shape
+fixtures/naming/registry/fail/missing-version	name.registry-shape
+fixtures/naming/registry/fail/control-bad-shape	name.control-shape
+fixtures/naming/registry/fail/control-unregistered	name.control-unregistered
+fixtures/naming/registry/fail/surface-bad-grammar	name.surface-grammar
+fixtures/naming/registry/fail/kind-bad-layer	name.registry-shape
+fixtures/naming/registry/fail/control-type-no-register	name.registry-shape
+fixtures/naming/registry/fail/kind-without-row	name.registry-shape
+fixtures/naming/registry/fail/depends-cycle	name.registry-term
+fixtures/naming/registry/fail/level-fork	name.registry-term
+fixtures/naming/registry/fail/kind-bad-relation	name.registry-shape
+fixtures/naming/registry/fail/unlisted-register-file	name.registry-shape
+fixtures/naming/registry/fail/listed-register-bad-shape	name.registry-shape
+fixtures/naming/registry/fail/surface-bad-view	name.registry-shape
+fixtures/naming/registry/fail/kind-bad-bound	name.registry-shape
+fixtures/naming/registry/fail/kind-bad-relation-bounded	name.registry-shape
+fixtures/naming/registry/fail/kind-empty-bound	name.registry-shape
