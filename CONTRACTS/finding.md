@@ -97,8 +97,8 @@ the command above:
 | subjects | digest |
 |---|---|
 | `bin/runtime-install.sh` | `e06264caf1fcc23e` |
-| `studio/.agents/hooks/prod_guard.py`, `azimuth/.agents/hooks/prod_guard.py` | `9951a348aefc9079` |
-| the same two, in the other order | `9951a348aefc9079` (order does not matter) |
+| `labkit/.agents/hooks/prod_guard.py`, `zorbcorp/.agents/hooks/prod_guard.py` | `44ae053f90619d2c` |
+| the same two, in the other order | `44ae053f90619d2c` (order does not matter) |
 
 `sh bin/findings.sh digest <subject>…` prints it, and `tests/obs/findings-test.sh`
 holds it to the three rows above.

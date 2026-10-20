@@ -3461,7 +3461,7 @@ rule "doc.repos-exist documents name only repos that exist (VytCepas/*)"
 # FIXED 2026-08-02 (harbor#86). This was a hand-maintained COPY of a fact that
 # lives on GitHub: the rule is named for existence and was implemented as
 # membership of a string typed into this line. So a real repo read as
-# nonexistent until a human edited it — which is what happened to `mailcal` on
+# nonexistent until a human edited it — which is what happened to a workload repo on
 # the day it was created, in the same lint run where cite-verify had already
 # fetched it and got 200. It failed the other way too, and more quietly: a
 # deleted or renamed repo stayed on the list forever, and T4 kept certifying
@@ -3491,8 +3491,8 @@ _t4_cited="$(grep -E '^\| `https://github\.com/VytCepas/[^`]+` \| *[23][0-9][0-9
 # VIA column exists for.
 #
 # A workload repo id WAS ON THIS LIST FOR ONE HOUR on 2026-09-15 and is deliberately not any
-# more. The tree was renamed ~/oldname -> ~/azimuth and the GitHub repo was not, so for
-# that hour `VytCepas/oldname` was the live remote for a directory called azimuth and a
+# more. The tree was renamed ~/oldname -> ~/<newname> and the GitHub repo was not, so for
+# that hour `VytCepas/oldname` was the live remote for a directory called <newname> and a
 # document naming it honestly had to say `oldname`. The repo has since been renamed too
 # and every live pointer repointed, so the entry would now be certifying a name
 # nothing uses — which is the second failure mode this rule's own header describes:
@@ -4469,7 +4469,7 @@ if [ -d "$_x8_live" ]; then
     case "$d" in "$ROOT"/vendor/skills/*) _x8_tier=vendored ;; *) _x8_tier=authored ;; esac
     # Resolve the INSTALLED name the same way X4 does. The tracked home is
     # kebab-case (naming.md) but a skill can be installed CamelCase — `mail-cal`
-    # shipped as `MailCal` until 2026-08-05, when the install was renamed kebab to
+    # shipped CamelCase until 2026-08-05, when the install was renamed kebab to
     # match its source. Matching only the exact name exempted precisely the one
     # skill whose names disagreed, which is where a hand-install is likeliest and
     # so where drift is likeliest. Caught while falsifying this rule. No skill
@@ -4930,7 +4930,7 @@ rule "drift.launchd-plist every launchd-scheduled CHECKS.md check has a tracked 
 # X9 demanded `launchd/com.harbor.<id>.plist` for EVERY row, while the register's
 # own third column says of eight of the fifteen that they are not launchd jobs at
 # all: `reference-check` runs inline at SessionStart, four run on every `just
-# lint` in ~/azimuth, and three say "not scheduled" in as many words. So the rule
+# lint` in the measurement repo, and three say "not scheduled" in as many words. So the rule
 # emitted eight permanent advisories that were wrong by the register's own text —
 # a majority — and on 2026-09-15 they buried the one that was right, which was
 # a client monitor's installed copy having been left on its old path by a rename.
@@ -6077,7 +6077,7 @@ fi
 # travel REPO -> ROW. None of them asks the reverse, and that is the direction the
 # defect actually took.
 #
-# Measured 2026-09-15. ~/oldname was renamed ~/azimuth. The registry row kept the old
+# Measured 2026-09-15. ~/oldname was renamed ~/<newname>. The registry row kept the old
 # path, and project-pointer.sh drops a row whose directory is gone --
 # `[ -d "$path" ] || continue` -- so nothing broke and nothing said anything. Every
 # session outside the repo was told "4 REGISTERED project(s)" while azimuth, the
@@ -6151,7 +6151,7 @@ fi
 # The auto-memory store is keyed by the session's working directory, so a repo
 # whose key has no store behind it starts every session with none of the notes.
 # Measured 2026-09-16, before bin/memory-route.sh existed: 10 of 10 governed
-# repos were in that state, including ~/azimuth, where most of this estate's
+# repos were in that state, including the measurement repo, where most of this estate's
 # client work happens. The notes most worth having in a repo are the ones
 # written while working in it, and every one of them was filed from a $HOME
 # session and was therefore invisible exactly where it applied.
@@ -6930,6 +6930,24 @@ rule "lint.domain core files naming a workload tool only go down (CONTRACTS/lint
 if [ -f "$ROOT/bin/lint-domain.sh" ] && [ -f "$ROOT/CONTRACTS/lint-domain-baseline.txt" ]; then
   _dm_out="$(HARBOR_ROOT="$ROOT" sh "$ROOT/bin/lint-domain.sh" --check 2>&1)" \
     || bad lint.domain "$(printf '%s' "$_dm_out" | grep -E 'FAIL:|fix:|changed and' | sed 's/^ *//' | tr '\n' ' ')"
+fi
+# Workload repo names too (harbor#1273), from the private registry: their own baseline, judged only where it exists.
+if [ -f "$ROOT/bin/lint-domain.sh" ] && [ -f "$ROOT/CONTRACTS/lint-domain-repos-baseline.txt" ]; then
+  _dr_out="$(HARBOR_ROOT="$ROOT" sh "$ROOT/bin/lint-domain.sh" --repos --check 2>&1)" \
+    || bad lint.domain "$(printf '%s' "$_dr_out" | grep -E 'FAIL:|fix:|changed and' | sed 's/^ *//' | tr '\n' ' ')"
+fi
+}
+
+# ── doc.constitution-abstract · the constitution states rules, never their cases (harbor#1273) ─
+# No date, ticket, absolute home path or workload repo name outside a fence; the cases are DOCTRINE/case-law.md.
+rule_doc_constitution_abstract() {
+rule "doc.constitution-abstract CONSTITUTION.md names no date, ticket, absolute path or workload repo (harbor#1273)"
+if [ -f "$ROOT/bin/lint-constitution.sh" ] && [ -f "$ROOT/CONSTITUTION.md" ]; then
+  # Green needs the summary line too: a script that died early must not read as a clean constitution.
+  if ! _ca_out="$(HARBOR_ROOT="$ROOT" sh "$ROOT/bin/lint-constitution.sh" --check 2>&1)" \
+     || ! printf '%s\n' "$_ca_out" | grep -q '^lint-constitution: [0-9]* ok, 0 failed'; then
+    bad doc.constitution-abstract "$(printf '%s' "$_ca_out" | grep -E 'FAIL:|error|unexpected' | sed 's/^ *//' | tr '\n' ' ')"
+  fi
 fi
 }
 

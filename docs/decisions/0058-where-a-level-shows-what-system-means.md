@@ -19,7 +19,7 @@ Naming-standard decision D-58. The decision text is imported unchanged from stan
 
 ## Decision
 
-**Flat-surface rule:** a flat namespace carries the grouping it flattens as a prefix, a nested one as a folder, never both. The system term is the short name (`azimuth`), used in references, env prefixes and dialect owners; the repo name renders it with its domain (`tracking-azimuth`)
+**Flat-surface rule:** a flat namespace carries the grouping it flattens as a prefix, a nested one as a folder, never both. The system term is the short name (`<name>`), used in references, env prefixes and dialect owners; the repo name renders it with its domain (`<domain>-<name>`)
 
 ## Consequences
 

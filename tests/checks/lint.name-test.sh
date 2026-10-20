@@ -354,7 +354,7 @@ for _src in 'guard-rules:bin/guard-\*.sh' 'checks-table:CHECKS.md' 'inject-ids:i
   t_has "a census whose source is missing fails loud: $_src" "$(cn)" "found no id: its source is missing or empty"
 done
 cp "$REG/registers.tsv" "$CN/standards/naming/registers.tsv"
-for _m in 'admission.pipe-to-shell' 'check.fleet-snapshot' 'context.subagent-contract' 'ci.suites'; do
+for _m in 'admission.pipe-to-shell' 'check.fleet-snapshot' 'context.subagent-contract' 'ci.public-ci'; do
   if grep -q "^$_m	" "$REG/controls.tsv"; then
     grep -v "^$_m	" "$REG/controls.tsv" > "$CN/standards/naming/controls.tsv"
     t_has "removing the row $_m turns the census red" "$(cn)" "[name.control-unregistered]"

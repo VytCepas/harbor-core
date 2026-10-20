@@ -87,8 +87,8 @@ PORT="${PORT_ROOT:-$HOME_DIR/port}"
 # come and go, and a name missing from the list is a repo whose old address is
 # never matched — a silent green. So the list is read off the directory:
 #
-#   a directory directly under $PORT with a `.git` is a repo          (azimuth)
-#   one without, holding repos one level down, is a container        (flow)
+#   a directory directly under $PORT with a `.git` is a repo          (<repo>)
+#   one without, holding repos one level down, is a container        (<root>)
 #   a sibling worktree, `<repo>-wt-<name>`, is neither — it is a second view of
 #   a repo already counted, so scanning it would count every row twice, and its
 #   name is not an address anything was ever moved from.
@@ -101,9 +101,9 @@ PORT="${PORT_ROOT:-$HOME_DIR/port}"
 #   is a view of a repo counted here. One whose repository lives elsewhere is
 #   still scanned — that is how a branch is measured before it merges (case 17).
 #
-# TARGETS are what 1b scans (relative to $PORT: azimuth, flow/DBT, …); NAMES are
-# the first path components — the names a pre-move literal carries (flow, not
-# flow/DBT). Names are dropped into an ERE unescaped: repo names are
+# TARGETS are what 1b scans (relative to $PORT: <repo>, <root>/<repo>, …); NAMES are
+# the first path components — the names a pre-move literal carries (<root>, not
+# <root>/<repo>). Names are dropped into an ERE unescaped: repo names are
 # [A-Za-z0-9_.-], where the only metacharacter, `.`, over-matches — the safe side.
 __phys() { CDPATH= cd -P -- "$1" 2>/dev/null && pwd -P; }
 __PORTP="$(__phys "$PORT" || printf '%s' "$PORT")"
@@ -138,8 +138,8 @@ for __d in "$PORT"/*; do
 done
 
 # One alternation, built once: (~|$HOME|<home>)/(repo)(separator|end). The tail
-# group is what refuses a LONGER name — ~/harborage, ~/azimuthal — and what
-# refuses a sibling worktree's address (~/azimuth-wt-x), because `-` is not a
+# group is what refuses a LONGER name — ~/harborage, ~/zorbcorpal — and what
+# refuses a sibling worktree's address (~/zorbcorp-wt-x), because `-` is not a
 # separator. --selftest proves both.
 #
 # A FULL STOP ENDING A SENTENCE IS A SEPARATOR; one starting a suffix is not.
@@ -324,7 +324,7 @@ harbor_grep() { # <repo> <git-grep-flags>
 # names here, not from $PORT, so the cases test the construction and do not
 # depend on which repos this box happens to hold.
 if [ "$MODE" = selftest ]; then
-  PAT="$(pat_of 'harbor azimuth dbt-core')"
+  PAT="$(pat_of 'harbor zorbcorp quux-core')"
   log_head "selftest"
   t_match() { # description, text, expect-match(1|0)
     if printf '%s' "$2" | grep -qE "$PAT"; then __g=1; else __g=0; fi
@@ -338,8 +338,8 @@ if [ "$MODE" = selftest ]; then
   # `:=`, not `:-`: lint ROOT1 (roots.sh --check) reads every `${VAR:-<home>/…}`
   # in the tree as a root default, and this is a test vector, not a root.
   t_match 'shell default with $HOME'     'REPO="${HARBOR_REPO:=$HOME/harbor}"'          1
-  t_match 'tilde form in a skill'        'read ~/azimuth/CLIENTS/ACME/TOPOLOGY.md'       1
-  t_match 'absolute form in a plist'     '<string>'"$HOME_DIR"'/azimuth</string>'        1
+  t_match 'tilde form in a skill'        'read ~/zorbcorp/CLIENTS/ACME/TOPOLOGY.md'       1
+  t_match 'absolute form in a plist'     '<string>'"$HOME_DIR"'/zorbcorp</string>'        1
   t_match 'launchd LABEL is not a path'  '<string>com.harbor.judge</string>'             0
   t_match 'helm ledger name'             'CFG/.helm-harbor-state'                        0
   t_match 'repo name with no prefix'     'cd harbor && git status'                       0
@@ -348,13 +348,13 @@ if [ "$MODE" = selftest ]; then
   # prefix alternation whatever the tail does. Measured — a mutant that deleted
   # the separator group passed all 12 tests until these were added.
   t_match 'prefixed but a LONGER name'   "$HOME_DIR/harborage/x"                         0
-  t_match 'prefixed, longer, tilde form' '~/azimuthal/CLIENTS'                           0
+  t_match 'prefixed, longer, tilde form' '~/zorbcorpal/CLIENTS'                           0
   t_match 'prefixed exact name, at end'  "$HOME_DIR/harbor"                              1
-  t_match 'a sibling worktree address'   '~/azimuth-wt-docs/x'                           0
+  t_match 'a sibling worktree address'   '~/zorbcorp-wt-docs/x'                           0
   # The full stop. The first two were MISSED before 2026-09-23; the last two
   # are why `.` is still a name character everywhere else.
   t_match 'a path ending a sentence'     'it moved out of ~/harbor. Then'                1
-  t_match 'full stop, then end of line'  'see ~/azimuth.'                                1
+  t_match 'full stop, then end of line'  'see ~/zorbcorp.'                                1
   t_match 'full stop, then a paren'      '(it lived at ~/harbor.)'                       1
   t_match 'a suffix is not a full stop'  'cat ~/harbor.md'                               0
   t_match 'a dotted longer name'         '~/harbor.bak/x'                                0
@@ -366,9 +366,9 @@ if [ "$MODE" = selftest ]; then
   t_class 'shell code is CODE'    'a.sh'      'REPO="$HOME/harbor"'           CODE
   t_class 'a shebang is CODE'     'dbt'       "#!$HOME_DIR/.venv/bin/python"  CODE
   t_class 'a JS comment is DOC'   'a.mjs'     '// see ~/harbor/CHECKS.md'     DOC
-  t_class 'JS code is CODE'       'a.mjs'     'const p = "~/azimuth"'        CODE
-  t_class 'a SQL comment is DOC'  'a.sql'     '--   ~/dbt-core/models'        DOC
-  t_class 'a shell -- line is CODE' 'a.sh'    '  --dir ~/dbt-core/models'     CODE
+  t_class 'JS code is CODE'       'a.mjs'     'const p = "~/zorbcorp"'        CODE
+  t_class 'a SQL comment is DOC'  'a.sql'     '--   ~/quux-core/models'        DOC
+  t_class 'a shell -- line is CODE' 'a.sh'    '  --dir ~/quux-core/models'     CODE
   t_class 'a markdown Path root is CODE' 'CLAUDE.md' '> **Path root:** `~/harbor` — x' CODE
   t_class 'a Path root in a shell comment is DOC' 'a.sh' '#   > **Path root:** `~/harbor`' DOC
 
@@ -376,27 +376,27 @@ if [ "$MODE" = selftest ]; then
   # neither help nor hurt: the exact line is exempt; another line in the SAME
   # file, and the same text in ANOTHER file, are not.
   __xt="${TMPDIR:-/tmp}/port-paths-xt.$$"
-  printf 'file\ttext\twhy\nrepo/a.sh\tcd ~/azimuth # pinned\tbecause\nrepo/LOG.md\t*\ta record\nharbor/skills/demo/SKILL.md\tsee ~/azimuth/MAP.md\ta record\nharbor/CONSTITUTION.md\tthe tree then at ~/azimuth\ta record\n' > "$__xt"
+  printf 'file\ttext\twhy\nrepo/a.sh\tcd ~/zorbcorp # pinned\tbecause\nrepo/LOG.md\t*\ta record\nharbor/skills/demo/SKILL.md\tsee ~/zorbcorp/MAP.md\ta record\nharbor/CONSTITUTION.md\tthe tree then at ~/zorbcorp\ta record\n' > "$__xt"
   t_ex() { # description, file (relative to $PORT, or absolute), text, expect(1|0)
     case "$2" in /*) __xf="$2" ;; *) __xf="$PORT/$2" ;; esac
     if EXEMPT_FILE="$__xt" is_exempt "$__xf" "$3" "${5:-CODE}"; then __g=1; else __g=0; fi
     if [ "$__g" = "$4" ]; then log_ok "exempt: $1"; else log_fail "exempt: $1"; log_fix "sh $0 --selftest, then read the case in bin/port-paths.sh"; fi
   }
-  t_ex 'the listed line is exempt'           'repo/a.sh' 'x; cd ~/azimuth # pinned' 1
+  t_ex 'the listed line is exempt'           'repo/a.sh' 'x; cd ~/zorbcorp # pinned' 1
   t_ex 'another line in that file is not'    'repo/a.sh' 'cd ~/harbor'             0
-  t_ex 'the same text elsewhere is not'      'repo/b.sh' 'cd ~/azimuth # pinned'   0
+  t_ex 'the same text elsewhere is not'      'repo/b.sh' 'cd ~/zorbcorp # pinned'   0
   t_ex 'a whole-file record exempts DOC'  'repo/LOG.md' 'see ~/harbor/x'  1 DOC
   t_ex 'a whole-file record never exempts CODE' 'repo/LOG.md' 'cd ~/harbor' 0 CODE
   # The installed copy of harbor/skills/demo/SKILL.md is judged by that row; a
   # different line in the copy is not; and a config-dir file outside skills/ and
   # bin/ is a copy of nothing, so no harbor row can reach it.
-  t_ex 'an installed copy takes its source row'  "$CFG/skills/demo/SKILL.md" 'see ~/azimuth/MAP.md now' 1 DOC
-  t_ex 'another line in the copy is not'         "$CFG/skills/demo/SKILL.md" 'see ~/estate/X'           0 DOC
-  t_ex 'a config file outside skills/ is not'    "$CFG/settings.json"        'see ~/azimuth/MAP.md'     0 CODE
+  t_ex 'an installed copy takes its source row'  "$CFG/skills/demo/SKILL.md" 'see ~/zorbcorp/MAP.md now' 1 DOC
+  t_ex 'another line in the copy is not'         "$CFG/skills/demo/SKILL.md" 'see ~/blorp/X'           0 DOC
+  t_ex 'a config file outside skills/ is not'    "$CFG/settings.json"        'see ~/zorbcorp/MAP.md'     0 CODE
   # The installed constitution is CONSTITUTION.md shipped by constitution-install,
   # so it takes that file's rows; a MEMORY/ document is a copy of nothing.
-  t_ex 'the installed constitution takes its source row' "$CFG/CLAUDE.md" 'measured on the tree then at ~/azimuth: x' 1 DOC
-  t_ex 'a MEMORY document takes no harbor row'   "$CFG/MEMORY/IDENTITY.md"   'the tree then at ~/azimuth'  0 DOC
+  t_ex 'the installed constitution takes its source row' "$CFG/CLAUDE.md" 'measured on the tree then at ~/zorbcorp: x' 1 DOC
+  t_ex 'a MEMORY document takes no harbor row'   "$CFG/MEMORY/IDENTITY.md"   'the tree then at ~/zorbcorp'  0 DOC
   rm -f "$__xt"
 
   # The EXCLUSION, asserted through harbor_grep — the function scan 1 runs, never
@@ -625,8 +625,8 @@ done
 
 # 8 · virtualenvs inside a moved repo. A venv is not relocatable: its activate
 #     scripts, console-script shebangs and editable-install .pth files carry the
-#     absolute path it was built at. Measured 2026-09-23: five venvs (dbt-core,
-#     projects-orchestrator, idea-to-live, project-init, mailcal) name the old
+#     absolute path it was built at. Measured 2026-09-23: five venvs (three workload repos and
+#     the two Harbor tools) name the old
 #     address in 76 bin/ files, and work today only through a bridge. The fix is
 #     a rebuild (`uv sync` against the lock), not a rewrite of this list.
 for __cfg in $(find "$PORT" "$HOME_DIR/.local/lib" -maxdepth 5 -name pyvenv.cfg \

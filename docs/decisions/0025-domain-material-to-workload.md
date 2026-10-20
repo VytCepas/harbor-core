@@ -18,7 +18,7 @@ Naming-standard decision D-25. The decision text is imported unchanged from stan
 
 ## Decision
 
-**move to its workload**: tracking skills and client checks → azimuth, data skills → flow/estate; harbor's registry references them as `azimuth/check:<id>`; harbor keeps only platform mechanisms
+**move to its workload**: tracking skills and client checks → the measurement repo, data skills → the data repos; harbor's registry references them as `<system>/check:<id>`; harbor keeps only platform mechanisms
 
 ## Consequences
 

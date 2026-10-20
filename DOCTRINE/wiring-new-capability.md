@@ -25,7 +25,7 @@ correct, well-written content never reached the turn that needed it.
 
 1. **Memory was keyed to the working directory**, so a session started in a
    governed repo loaded none of it. Measured: **291 notes** under the `$HOME`
-   key, **10 of 10 governed repos** starting blind, `~/azimuth` among them. The
+   key, **10 of 10 governed repos** starting blind, the measurement repo among them. The
    inversion is the cruel part — the notes most worth having in a repo are the
    ones written while working in it, and every one had been filed from a `$HOME`
    session and was therefore invisible exactly where it applied.
@@ -90,7 +90,7 @@ the only one that settles it:
 ```
 config       the symlink exists and resolves
 compiled     bin/memory-route.sh --live reports green
-behavioural  a real session started in the measurement repo (azimuth, via the repo registry) quotes a note from the store
+behavioural  a real session started in the measurement repo (resolved through the repo registry) quotes a note from the store
 ```
 
 The behavioural probe is `claude -p` in the target directory, asking for

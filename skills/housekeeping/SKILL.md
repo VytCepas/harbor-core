@@ -75,7 +75,7 @@ that put it in the table.
 **1 · Uncommitted work is the most expensive thing on the box, and `git status`
 is not enough to find it.** Concurrent sessions revert uncommitted work while
 `git status` reads clean (memory `concurrent-sessions-revert-uncommitted-work`).
-Measured 2026-09-06: `~/estate` held **69 uncommitted lines** of `DEAD-ENDS.md`
+Measured 2026-09-06: a workload repo held **69 uncommitted lines** of `DEAD-ENDS.md`
 — two dead ends from a Citadele session, the kind of knowledge nothing
 regenerates. A sweep that started with `rm` would have destroyed it. So the
 FIRST action of any cleanup is to find and commit unsaved work, before a single

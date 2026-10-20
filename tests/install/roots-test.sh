@@ -20,32 +20,32 @@ rc_is() { # <label> <dir> <want-rc> [<stderr-substring>]
 }
 
 t_section "the four arms fire"
-D="$(build ok1 'ESTATE_DIR	REPOS	estate	x' 'D="@V@{ESTATE_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/estate}"')"
+D="$(build ok1 'BLORP_DIR	REPOS	blorp	x' 'D="@V@{BLORP_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/blorp}"')"
 rc_is "a matching default is green" "$D" 0
-D="$(build bad1 'ESTATE_DIR	REPOS	estate	x' 'D="@V@{ESTATE_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/estate-old}"')"
+D="$(build bad1 'BLORP_DIR	REPOS	blorp	x' 'D="@V@{BLORP_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/blorp-old}"')"
 rc_is "a drifted default" "$D" 1 'table says'
-D="$(build bad2 'ESTATE_DIR	REPOS	estate	x
-NEWTHING_DIR	REPOS	nothing	x' 'D="@V@{ESTATE_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/estate}"
+D="$(build bad2 'BLORP_DIR	REPOS	blorp	x
+NEWTHING_DIR	REPOS	nothing	x' 'D="@V@{BLORP_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/blorp}"
 E="@V@{NEWTHING_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/nothing}"
-F="@V@{SURPRISE_DIR:-@V@HOME/port/estate}"')"
+F="@V@{SURPRISE_DIR:-@V@HOME/port/blorp}"')"
 rc_is "an unregistered root variable" "$D" 1 'not in'
-D="$(build bad3 'ESTATE_DIR	REPOS	estate	x
-GHOST_DIR	REPOS	studio	x' 'D="@V@{ESTATE_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/estate}"')"
+D="$(build bad3 'BLORP_DIR	REPOS	blorp	x
+GHOST_DIR	REPOS	labkit	x' 'D="@V@{BLORP_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/blorp}"')"
 rc_is "a dead table row" "$D" 1 'used nowhere'
 
 t_section "the ~/port move: both arms see old and new addresses (harbor#619)"
-D="$(build move1 'ESTATE_DIR	REPOS	estate	x' 'D="@V@{ESTATE_DIR:-@V@HOME/estate}"')"
+D="$(build move1 'BLORP_DIR	REPOS	blorp	x' 'D="@V@{BLORP_DIR:-@V@HOME/blorp}"')"
 rc_is "a registered default at the pre-move address" "$D" 1 'table says'
-D="$(build move2 'ESTATE_DIR	REPOS	estate	x' 'D="@V@{ESTATE_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/estate}"
-F="@V@{SURPRISE_DIR:-@V@HOME/port/estate}"')"
+D="$(build move2 'BLORP_DIR	REPOS	blorp	x' 'D="@V@{BLORP_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/blorp}"
+F="@V@{SURPRISE_DIR:-@V@HOME/port/blorp}"')"
 rc_is "an unregistered root at the new address" "$D" 1 'not in'
-D="$(build move3 'ESTATE_DIR	REPOS	estate	x' 'D="@V@{ESTATE_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/estate}"
-F="@V@{SURPRISE_DIR:-@V@HOME/estate}"')"
+D="$(build move3 'BLORP_DIR	REPOS	blorp	x' 'D="@V@{BLORP_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/blorp}"
+F="@V@{SURPRISE_DIR:-@V@HOME/blorp}"')"
 rc_is "an unregistered root at the old address" "$D" 1 'not in'
 
 t_section "three correct shapes are not flagged"
-D="$(build ok2 'ESTATE_DIR	REPOS	estate	x' 'D="@V@{ESTATE_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/estate}"
-if [ -n "@V@{ESTATE_DIR:-}" ]; then :; fi')"
+D="$(build ok2 'BLORP_DIR	REPOS	blorp	x' 'D="@V@{BLORP_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/blorp}"
+if [ -n "@V@{BLORP_DIR:-}" ]; then :; fi')"
 rc_is "an empty default" "$D" 0
 D="$(build ok3 'HARBOR_REPO	REPOS	harbor	x' 'R="@V@{HARBOR_REPO:-@V@{PORT_ROOT:-@V@HOME/port}/harbor}"
 S="@V@{HARBOR_REPO:-@V@(CDPATH= cd -- "@V@(dirname -- "@V@0")/.." && pwd -P)}"')"
@@ -58,25 +58,25 @@ rc_is "a non-path default" "$D" 0
 t_section "--repos: each governed checkout once, BOX rows left out (harbor#829)"
 D="$(build repos 'HARBOR_REPO	REPOS	harbor	x
 ACCESS_DIR	REPOS	harbor/ACCESS	x
-ESTATE_DIR	REPOS	estate	x
+BLORP_DIR	REPOS	blorp	x
 HARBOR_LOCAL_BIN	BOX	.local/bin	x' 'x=1')"
 t_eq "one row per repo, resolved under HOME" "harbor	$HOME/port/harbor
-estate	$HOME/port/estate" "$(HARBOR_ROOT="$D" env -u PORT_ROOT sh "$T_ROOT/bin/roots.sh" --repos)"
+blorp	$HOME/port/blorp" "$(HARBOR_ROOT="$D" env -u PORT_ROOT sh "$T_ROOT/bin/roots.sh" --repos)"
 D="$(build repos2 'EVIL_DIR	REPOS	..	x' 'x=1')"
 t_exit "a segment that is not a repo name is refused" 2 env HARBOR_ROOT="$D" sh "$T_ROOT/bin/roots.sh" --repos
 t_has "...saying why" "$(HARBOR_ROOT="$D" sh "$T_ROOT/bin/roots.sh" --repos 2>&1)" "is not a repo name"
 
 t_section "the spelling decides whether PORT_ROOT is honoured (harbor#630)"
-D="$(build flat1 'ESTATE_DIR	REPOS	estate	x' 'D="@V@{ESTATE_DIR:-@V@HOME/port/estate}"')"
+D="$(build flat1 'BLORP_DIR	REPOS	blorp	x' 'D="@V@{BLORP_DIR:-@V@HOME/port/blorp}"')"
 rc_is "a flat REPOS default ignores PORT_ROOT and is refused" "$D" 1 'ignores PORT_ROOT'
 D="$(build flat2 'HARBOR_LOCAL_BIN	BOX	.local/bin	x' 'B="@V@{HARBOR_LOCAL_BIN:-@V@HOME/.local/bin}"')"
 rc_is "a BOX default has no PORT_ROOT to honour, so flat is right" "$D" 0
-D="$(build nest1 'ESTATE_DIR	REPOS	estate	x' 'D="@V@{ESTATE_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/estate}"
-F="@V@{SURPRISE_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/estate}"')"
+D="$(build nest1 'BLORP_DIR	REPOS	blorp	x' 'D="@V@{BLORP_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/blorp}"
+F="@V@{SURPRISE_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/blorp}"')"
 rc_is "an unregistered root spelled with PORT_ROOT is still found" "$D" 1 'SURPRISE_DIR names a governed repo'
-D="$(build nest2 'ESTATE_DIR	REPOS	estate	x' 'D="@V@{ESTATE_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/estate-old}"')"
+D="$(build nest2 'BLORP_DIR	REPOS	blorp	x' 'D="@V@{BLORP_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/blorp-old}"')"
 rc_is "a nested default that drifted" "$D" 1 'table says'
-D="$(build nest3 'ESTATE_DIR	REPOS	estate	x' 'D="@V@{ESTATE_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/estate}"
+D="$(build nest3 'BLORP_DIR	REPOS	blorp	x' 'D="@V@{BLORP_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/blorp}"
 P="@V@{HARBOR_SCOPE_PRIVATE:-@V@{PORT_ROOT:-@V@HOME/port}/harbor-private}/jobs"')"
 rc_is "the private layer is not a spelling of the harbor repo" "$D" 0
 
@@ -97,20 +97,20 @@ rc_is "a pair where every row explains itself" "$D" 0
 t_section "a PORT_ROOT other than the default resolves every table row (harbor#630)"
 WS="$T_TMP/elsewhere/ws"; mkdir -p "$WS"
 D="$(build res1 'HARBOR_REPO	REPOS	harbor	x
-ESTATE_DIR	REPOS	estate	x
+BLORP_DIR	REPOS	blorp	x
 HARBOR_FLEET_FILE	REPOS	projects-orchestrator/fleet.yaml	x
 HARBOR_LOCAL_BIN	BOX	.local/bin	x' 'x=1')"
 r() { HARBOR_ROOT="$D" PORT_ROOT="$WS" sh "$T_ROOT/bin/roots.sh" "$@"; }
-t_eq "--get under PORT_ROOT" "$WS/estate" "$(r --get ESTATE_DIR)"
+t_eq "--get under PORT_ROOT" "$WS/blorp" "$(r --get BLORP_DIR)"
 t_eq "--get of a file under a repo" "$WS/projects-orchestrator/fleet.yaml" "$(r --get HARBOR_FLEET_FILE)"
 t_eq "--get of a BOX row stays under HOME" "$HOME/.local/bin" "$(r --get HARBOR_LOCAL_BIN)"
-t_eq "an exported variable still beats the default" "/own/estate" "$(ESTATE_DIR=/own/estate r --get ESTATE_DIR)"
+t_eq "an exported variable still beats the default" "/own/blorp" "$(BLORP_DIR=/own/blorp r --get BLORP_DIR)"
 t_has "--list resolves under PORT_ROOT" "$(r --list)" "$WS/projects-orchestrator/fleet.yaml"
 t_eq "--repos resolves under PORT_ROOT" "harbor	$WS/harbor
-estate	$WS/estate
+blorp	$WS/blorp
 projects-orchestrator	$WS/projects-orchestrator" "$(r --repos)"
-t_eq "PORT_ROOT unset falls back to the home default" "$HOME/port/estate" "$(HARBOR_ROOT="$D" env -u PORT_ROOT sh "$T_ROOT/bin/roots.sh" --get ESTATE_DIR)"
-t_eq "a trailing slash on PORT_ROOT does not double" "$WS/estate" "$(HARBOR_ROOT="$D" PORT_ROOT="$WS/" sh "$T_ROOT/bin/roots.sh" --get ESTATE_DIR)"
+t_eq "PORT_ROOT unset falls back to the home default" "$HOME/port/blorp" "$(HARBOR_ROOT="$D" env -u PORT_ROOT sh "$T_ROOT/bin/roots.sh" --get BLORP_DIR)"
+t_eq "a trailing slash on PORT_ROOT does not double" "$WS/blorp" "$(HARBOR_ROOT="$D" PORT_ROOT="$WS/" sh "$T_ROOT/bin/roots.sh" --get BLORP_DIR)"
 
 t_section "--base: what a base is on this box, the text a launchd template's @HOME@ fills (harbor#630)"
 t_eq "BOX is the home directory" "$HOME" "$(r --base BOX)"
@@ -131,7 +131,7 @@ t_eq "every REPOS row of CONTRACTS/roots.tsv lands under PORT_ROOT" "" "$_bad"
 
 t_section "arm 2 reads its repo ids from the registry, and with none says it sees fewer (harbor#1273)"
 REG="$T_TMP/reg"; mkdir -p "$REG"; printf 'id\tpath\tkind\tremote\nwidget\twidget\tworkload\t-\n' > "$REG/repos.tsv"
-D="$(build reg1 'ESTATE_DIR	REPOS	estate	x' 'D="@V@{ESTATE_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/estate}"
+D="$(build reg1 'BLORP_DIR	REPOS	blorp	x' 'D="@V@{BLORP_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/blorp}"
 F="@V@{SURPRISE_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/widget}"')"
 _rc="$(HARBOR_SCOPE_PRIVATE="$REG" HARBOR_ROOT="$D" sh "$T_ROOT/bin/roots.sh" --check >/dev/null 2>"$T_TMP/err"; echo $?)"
 t_eq "a repo only the registry names is found" 1 "$_rc"
@@ -140,6 +140,6 @@ rc_is "no registry: that repo is unknown, so the site is not flagged" "$D" 0 'no
 
 t_section "a check that inspected nothing is not a pass"
 mkdir -p "$T_TMP/nogit/CONTRACTS"
-printf 'var\tbase\trel\tbreaks\nESTATE_DIR\tREPOS\testate\tx\n' > "$T_TMP/nogit/CONTRACTS/roots.tsv"
+printf 'var\tbase\trel\tbreaks\nBLORP_DIR\tREPOS\tblorp\tx\n' > "$T_TMP/nogit/CONTRACTS/roots.tsv"
 rc_is "a non-checkout" "$T_TMP/nogit" 2
 t_done
