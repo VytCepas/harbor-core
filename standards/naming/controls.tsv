@@ -385,6 +385,7 @@ context.tool-failure-is-not-a-result	warn	injection	bin/inject-hook.sh	-	runtime
 context.unbounded-wait-loop	warn	injection	bin/inject-hook.sh	-	runtime	preventive	experimental	-	context	-	unbounded-wait-loop	injects on PreToolUse (inject.d/box/90-unbounded-wait-loop.md)
 context.repo-tier-not-loaded	warn	injection	bin/inject-hook.sh	-	runtime	preventive	experimental	-	context	-	repo-tier-not-loaded	injects on PreToolUse (inject.d/box/95-repo-tier-not-loaded.md)
 context.agent-brief	warn	injection	bin/inject-hook.sh	-	runtime	preventive	experimental	-	context	-	agent-brief	injects on PreToolUse (inject.d/box/96-agent-brief.md)
+context.name-note	warn	injection	bin/inject-hook.sh	-	runtime	preventive	experimental	-	context	-	name-note	injects on PreToolUse (inject.d/box/98-name-note.md)
 context.agent-model-required	warn	injection	bin/inject-hook.sh	-	runtime	preventive	experimental	-	context	-	agent-model-required	injects on PreToolUse (inject.d/box/97-agent-model-required.md)
 context.dbt-full-refresh-destroys-history	warn	injection	bin/inject-hook.sh	-	runtime	preventive	experimental	-	context	-	dbt-full-refresh-destroys-history	injects on PreToolUse (private layer: inject.d/dbt-core/10-full-refresh-destroys-history.md)
 context.index-md-is-generated	warn	injection	bin/inject-hook.sh	-	runtime	preventive	experimental	-	context	-	index-md-is-generated	injects on PreToolUse (private layer: inject.d/estate/10-index-md-is-generated.md)

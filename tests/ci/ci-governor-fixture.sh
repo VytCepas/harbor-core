@@ -84,8 +84,9 @@ case "$1" in
       # From the stream's size NOW, marked: a post after the marker is never missed (a fixed sleep raced under CI load).
       o=$(( $(wc -c < "$FX/notify.stream") + 1 )); : > "$FX/notify.waiting"
       # The real notifyutil is one process; this fake is a pipeline, so a kill of it must reach its children
-      # or every listen test leaves a tail and an awk running forever.
-      tail -c +"$o" -f "$FX/notify.stream" | awk -v k="$k" 'index(k, " " $0 " ") { print; fflush() }' &
+      # or every listen test leaves a tail and a filter running forever. A read loop, not awk: mawk block-buffers
+      # a pipe, so no post reached the listener (harbor#1149).
+      tail -c +"$o" -f "$FX/notify.stream" | while IFS= read -r l; do case "$k" in *" $l "*) printf '%s\n' "$l" ;; esac; done &
       trap 'pkill -P $$ 2>/dev/null; exit 0' TERM INT HUP
       wait ;;
   *) exit 1 ;;

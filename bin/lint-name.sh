@@ -47,8 +47,10 @@
 # applied, so the lint cannot be talked out of judging itself.
 set -eu
 
-HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
-SELF="$HERE/$(basename -- "$0")"
+# ${0%/*}, not dirname: a hook runs this (inject.d/box/name-note.sh), and a failed fork would make HERE the cwd (harbor#810).
+case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
+HERE="$(CDPATH='' cd -- "$HERE" && pwd)"
+SELF="$HERE/${0##*/}"
 LOG_FD=2   # stdout carries --check, --format findings and --gen output; the log goes to stderr
 . "$HERE/log-lib.sh"
 log_init lint-name

@@ -45,6 +45,8 @@ make_repo() { # <dir> <pack> <shape>: skills = a HIDDEN skill, visible = one the
              printf -- '---\nname: demo\ndescription: USE WHEN demo, probe.\ndisable-model-invocation: true\n---\nbody\n' > "$1/.claude/skills/demo/SKILL.md" ;;
     visible) mkdir -p "$1/.claude/skills/shown"
              printf -- '---\nname: shown\ndescription: USE WHEN shown, probe.\n---\nbody\n' > "$1/.claude/skills/shown/SKILL.md" ;;
+    naming)  mkdir -p "$1/bin" "$1/standards"   # a repo that carries the naming standard (name-note judges only these)
+             cp "$T_ROOT/bin/lint-name.sh" "$T_ROOT/bin/log-lib.sh" "$1/bin/"; cp -R "$T_ROOT/standards/naming" "$1/standards/" ;;
   esac
   case "$2" in
     box)  : ;;

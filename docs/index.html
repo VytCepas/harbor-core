@@ -815,6 +815,7 @@ already had in mind.</p>
 <tr><td>box</td><td><code>95-repo-tier-not-loaded.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
 <tr><td>box</td><td><code>96-agent-brief.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
 <tr><td>box</td><td><code>97-agent-model-required.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
+<tr><td>box</td><td><code>98-name-note.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
 <tr><td>repo · harbor</td><td><code>10-constitution-edit-is-undeployed.md</code></td><td><code>PreToolUse</code></td><td><code>path-contains CONSTITUTION.md</code></td><td>session</td></tr>
 <tr><td>repo · harbor</td><td><code>20-merge-governance.md</code></td><td><code>PreToolUse</code></td><td><code>cmd-prefix gh pr merge</code></td><td>never</td></tr>
 <tr><td>repo · harbor</td><td><code>21-post-merge-state.md</code></td><td><code>PostToolUse</code></td><td><code>cmd-prefix gh pr merge</code></td><td>never</td></tr>
@@ -1441,8 +1442,9 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/drift/confinement/compare.test.sh</code></td><td><code>bin/drift-confinement.sh bin/deploy-confinement.sh bin/roots.sh bin/log-lib.sh bin/floor-deny.sh bin/install-lib.sh bin/runtime-install.sh CONTRACTS/confinement-hosts.txt CONTRACTS/confinement-paths.txt CONTRACTS/helm-state.md tests/drift/confinement/compare.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/confinement/covered.test.sh</code></td><td><code>bin/* tests/lib/* tests/floor/floor-fixture.sh tests/guards/floor-fixture.sh CONTRACTS/confinement-coverage.tsv standards/naming/controls.tsv tests/admission/confinement/covered.test.sh</code></td></tr>
 <tr><td><code>tests/access/chrome/mcp.test.sh</code></td><td><code>bin/* standards/naming/* CONTRACTS/browser-agent-hosts.txt tests/lib/* tests/access/chrome/mcp.test.sh</code></td></tr>
-<tr><td><code>tests/hooks/inject-notes-test.sh</code></td><td><code>bin/inject-hook.sh tests/hooks/inject-notes-test.sh inject.d/* .claude/inject.d/* fixtures/inject/* bin/roots.sh bin/guard-lib.sh bin/floor-normalize.awk tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/hooks/inject-notes-test.sh</code></td><td><code>bin/inject-hook.sh tests/hooks/inject-notes-test.sh inject.d/* .claude/inject.d/* fixtures/inject/* bin/roots.sh bin/guard-lib.sh bin/floor-normalize.awk tests/lib/core.sh bin/lint-name.sh bin/log-lib.sh standards/naming/*</code></td></tr>
 <tr><td><code>tests/hooks/agent-brief-test.sh</code></td><td><code>bin/inject-hook.sh bin/guard-lib.sh inject.d/* tests/hooks/agent-brief-test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/hooks/name-note-test.sh</code></td><td><code>bin/inject-hook.sh bin/guard-lib.sh bin/lint-name.sh bin/log-lib.sh standards/naming/* inject.d/* tests/hooks/name-note-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/guards/destroy-test.sh</code></td><td><code>     bin/* tests/lib/* tests/guards/destroy* tests/guards/guards.jsonl tests/guards/shapes.jsonl tests/guards/benign.jsonl tests/guards/exemptions.jsonl</code></td></tr>
 <tr><td><code>tests/guards/destroy.c1-misc-test.sh</code></td><td><code>bin/* tests/lib/* tests/guards/destroy.c1-misc*</code></td></tr>
 <tr><td><code>tests/guards/cloud-test.sh</code></td><td><code>       bin/*tests/lib/* tests/guards/cloud* tests/guards/guards.jsonl tests/guards/shapes.jsonl tests/guards/benign.jsonl tests/guards/exemptions.jsonl</code></td></tr>

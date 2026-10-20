@@ -29,17 +29,17 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | standard | standards/ | system | source | versioned | 13 |
 | contract | contracts/ | system | source | versioned | 30 |
 | decision-record | docs/decisions/ | element | source | dated | 88 |
-| injection-rule | context-rules/<scope>/ | component | source | living | 33 |
+| injection-rule | context-rules/<scope>/ | component | source | living | 35 |
 | hook | bin/ | component | source | living | 12 |
 | skill | skills/ | component | source | living | 41 |
 | fixture | fixtures/ | element | source | living | 252 |
 | registry | registries/ | component | source | versioned | 47 |
-| test | tests/ | component | source | living | 423 |
+| test | tests/ | component | source | living | 424 |
 | report | docs/reports/ | element | report | dated | 1 |
 | design | docs/design/ | component | source | living | 6 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | script | bin/ | component | source | living | 205 |
-| (no kind) | - | - | - | - | 170 |
+| (no kind) | - | - | - | - | 171 |
 
 ## Folders
 
@@ -48,7 +48,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | (repo root) | 21 | 3 | 2 |
 | `.agents/` | 4 | 1 | 1 |
 | `.claude/` | 4 | 1 | 1 |
-| `.github/` | 3 | 2 | 1 |
+| `.github/` | 4 | 2 | 1 |
 | `CONTRACTS/` | 77 | 9 | 2 |
 | `DOCTRINE/` | 9 | 1 | 1 |
 | `bin/` | 210 | 21 | 2 |
@@ -56,14 +56,14 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `docs/` | 109 | 6 | 5 |
 | `fixtures/` | 252 | 9 | 1 |
 | `hooks/` | 7 | 1 | 1 |
-| `inject.d/` | 29 | 1 | 1 |
+| `inject.d/` | 31 | 1 | 1 |
 | `launchd/` | 12 | 3 | 1 |
 | `patches/` | 12 | 1 | 1 |
 | `runners/` | 2 | 1 | 1 |
 | `skills/` | 41 | 5 | 1 |
 | `standards/` | 13 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 423 | 20 | 1 |
+| `tests/` | 424 | 20 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 73 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -78,7 +78,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | audit | control-plane | 0 | 0 | 0 | 0 | 0 | 2 |
 | check | observability | 1 | 4 | 0 | 1 | 50 | 0 |
 | ci | coordination | 12 | 58 | 1 | 2 | 0 | 4 |
-| context | control-plane | 3 | 0 | 1 | 34 | 0 | 39 |
+| context | control-plane | 3 | 0 | 1 | 36 | 0 | 40 |
 | deploy | control-plane | 4 | 6 | 1 | 1 | 0 | 7 |
 | doc | control-plane | 1 | 1 | 0 | 8 | 0 | 15 |
 | drift | control-plane | 1 | 1 | 0 | 4 | 2 | 12 |
@@ -170,12 +170,14 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `inject.d/box/95-repo-tier-not-loaded.md`
 - `inject.d/box/96-agent-brief.md`
 - `inject.d/box/97-agent-model-required.md`
+- `inject.d/box/98-name-note.md`
 - `inject.d/box/access-route.sh`
 - `inject.d/box/agent-brief.sh`
 - `inject.d/box/agent-model.sh`
 - `inject.d/box/browser-route.sh`
 - `inject.d/box/confinement-refused.sh`
 - `inject.d/box/large-tool-result.sh`
+- `inject.d/box/name-note.sh`
 - `inject.d/box/post-compaction-carry.sh`
 - `inject.d/box/project-pointer.sh`
 - `inject.d/box/repo-skills.sh`
@@ -438,7 +440,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 |---|---|
 | (repo root) | 19 |
 | `.agents/` | 4 |
-| `.github/` | 2 |
+| `.github/` | 3 |
 | `CONTRACTS/` | 61 |
 | `bin/` | 126 |
 | `commands/` | 5 |
@@ -450,7 +452,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `runners/` | 2 |
 | `skills/` | 29 |
 | `systemd/` | 15 |
-| `tests/` | 236 |
+| `tests/` | 237 |
 | `tools/` | 8 |
 | `vendor/` | 73 |
 | `worklog/` | 1 |

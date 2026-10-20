@@ -123,6 +123,7 @@ tests/admission/confinement/covered.test.sh
 tests/access/chrome/mcp.test.sh
 tests/hooks/inject-notes-test.sh
 tests/hooks/agent-brief-test.sh
+tests/hooks/name-note-test.sh
 tests/guards/destroy-test.sh
 tests/guards/destroy.c1-misc-test.sh
 tests/guards/cloud-test.sh

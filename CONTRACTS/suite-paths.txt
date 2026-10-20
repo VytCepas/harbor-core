@@ -126,8 +126,9 @@ tests/hooks/inject-hook.detector-test.sh bin/* inject.d/* .claude/inject.d/* CON
 tests/hooks/inject-hook.packs-test.sh bin/* inject.d/* .claude/inject.d/* CONTRACTS/* tests/hooks/inject-fixture.sh tests/lib/core.sh tests/hooks/inject-hook.packs-test.sh
 tests/hooks/inject-hook.scope-test.sh bin/* inject.d/* .claude/inject.d/* CONTRACTS/* tests/hooks/inject-fixture.sh tests/lib/core.sh tests/hooks/inject-hook.scope-test.sh
 tests/hooks/inject-hook.compaction-digest-test.sh bin/compaction-digest.sh bin/guard-lib.sh inject.d/* tests/hooks/inject-fixture.sh tests/lib/core.sh tests/hooks/inject-hook.compaction-digest-test.sh
-tests/hooks/inject-notes-test.sh bin/inject-hook.sh tests/hooks/inject-notes-test.sh inject.d/* .claude/inject.d/* fixtures/inject/* bin/roots.sh bin/guard-lib.sh bin/floor-normalize.awk tests/lib/core.sh
+tests/hooks/inject-notes-test.sh bin/inject-hook.sh tests/hooks/inject-notes-test.sh inject.d/* .claude/inject.d/* fixtures/inject/* bin/roots.sh bin/guard-lib.sh bin/floor-normalize.awk tests/lib/core.sh bin/lint-name.sh bin/log-lib.sh standards/naming/*
 tests/hooks/agent-brief-test.sh bin/inject-hook.sh bin/guard-lib.sh inject.d/* tests/hooks/agent-brief-test.sh tests/lib/core.sh
+tests/hooks/name-note-test.sh bin/inject-hook.sh bin/guard-lib.sh bin/lint-name.sh bin/log-lib.sh standards/naming/* inject.d/* tests/hooks/name-note-test.sh tests/lib/core.sh
 tests/hooks/ticket-note-test.sh bin/ticket-note.sh tests/hooks/ticket-note-test.sh tests/lib/core.sh
 tests/hooks/reply-shape-test.sh bin/reply-shape.sh tests/hooks/reply-shape-test.sh tests/lib/core.sh
 tests/session/subagent/check.test.sh bin/session-subagent-check.sh tests/session/subagent/check.test.sh tests/lib/core.sh
