@@ -10,23 +10,23 @@ H='id	path	kind	remote
 '
 
 t_section "--repo answers from the registry"
-mkpriv a "$H"'azimuth	azimuth	workload	https://example.test/azimuth.git
+mkpriv a "$H"'zorbcorp	zorbcorp	workload	https://example.test/zorbcorp.git
 yard	tools/yard	scaffolder	-
 '
-t_eq "a known id is its resolved checkout" "$PW/azimuth" "$(roots --repo azimuth)"
+t_eq "a known id is its resolved checkout" "$PW/zorbcorp" "$(roots --repo zorbcorp)"
 t_eq "a nested relative path is kept" "$PW/tools/yard" "$(roots --repo yard)"
-t_eq "--repos lists id and checkout from the registry" "azimuth	$PW/azimuth
+t_eq "--repos lists id and checkout from the registry" "zorbcorp	$PW/zorbcorp
 yard	$PW/tools/yard" "$(roots --repos)"
 t_exit "an unknown id exits 1" 1 roots --repo nope
 t_eq "...and prints nothing on stdout" "" "$(roots --repo nope 2>/dev/null)"
 t_exit "no id is a usage error" 2 roots --repo
 
 t_section "--remote answers with the registry's remote column (harbor#966)"
-mkpriv r "$H"'azimuth	azimuth	workload	https://example.test/o/azimuth.git
+mkpriv r "$H"'zorbcorp	zorbcorp	workload	https://example.test/o/zorbcorp.git
 yard	tools/yard	scaffolder	-
 blank	blank	workload	
 '
-t_eq "a known id prints its remote, and only the remote" "https://example.test/o/azimuth.git" "$(roots --remote azimuth)"
+t_eq "a known id prints its remote, and only the remote" "https://example.test/o/zorbcorp.git" "$(roots --remote zorbcorp)"
 t_exit "a row whose remote is - exits 1" 1 roots --remote yard
 t_eq "...and prints nothing on stdout" "" "$(roots --remote yard 2>/dev/null)"
 t_has "...and says why" "$(roots --remote yard 2>&1)" "has no remote in the registry"
@@ -43,9 +43,9 @@ good	good	workload	https://example.test/o/good.git
 t_exit "a registry --repo refuses is refused here too" 2 roots --remote good
 t_eq "...and no remote reaches stdout" "" "$(roots --remote good 2>/dev/null)"
 PW="$T_TMP/rnone"; mkdir -p "$PW"
-t_exit "no registry exits 1" 1 roots --remote azimuth
-t_eq "...and prints nothing on stdout" "" "$(roots --remote azimuth 2>/dev/null)"
-t_has "...and names the missing registry" "$(roots --remote azimuth 2>&1)" "no registry at"
+t_exit "no registry exits 1" 1 roots --remote zorbcorp
+t_eq "...and prints nothing on stdout" "" "$(roots --remote zorbcorp 2>/dev/null)"
+t_has "...and names the missing registry" "$(roots --remote zorbcorp 2>&1)" "no registry at"
 PW="$T_TMP/rcrlf"; mkdir -p "$PW/harbor-private"
 printf 'id\tpath\tkind\tremote\r\nok\tok\tworkload\thttps://example.test/o/ok.git\r\n' > "$PW/harbor-private/repos.tsv"
 t_eq "CRLF is stripped from the remote" "https://example.test/o/ok.git" "$(roots --remote ok 2>/dev/null)"
@@ -80,7 +80,7 @@ t_exit "a registry that lacks the row says not registered" 1 env PORT_ROOT="$PW"
 
 t_section "a PORT_ROOT with a control character is refused"
 TABROOT="$T_TMP/ta	b"
-t_exit "--repo with a TAB in PORT_ROOT is refused" 2 env PORT_ROOT="$TABROOT" sh "$T_ROOT/bin/roots.sh" --repo azimuth
+t_exit "--repo with a TAB in PORT_ROOT is refused" 2 env PORT_ROOT="$TABROOT" sh "$T_ROOT/bin/roots.sh" --repo zorbcorp
 t_exit "--port-root with a TAB in PORT_ROOT is refused" 2 env PORT_ROOT="$TABROOT" sh "$T_ROOT/bin/roots.sh" --port-root
 
 t_section "a bare harbor scope is a usage error that writes nothing"
@@ -106,11 +106,11 @@ t_section "--conf reads harbor.toml"
 mkpriv c "$H"
 cf() { printf '%s\n' "$1" > "$PW/harbor-private/harbor.toml"; }
 cf '# comment
-packs = ["azimuth", "flow"]   # trailing
+packs = ["zorbcorp", "plumb"]   # trailing
 channel = "stable"
 deliverables_dir = "~/Deliverables"'
-t_eq "an array prints one element per line" "azimuth
-flow" "$(roots --conf packs)"
+t_eq "an array prints one element per line" "zorbcorp
+plumb" "$(roots --conf packs)"
 t_eq "a string prints raw" "stable" "$(roots --conf channel)"
 t_eq "a value with a slash and tilde survives" "~/Deliverables" "$(roots --conf deliverables_dir)"
 t_exit "an unset key without a default exits 1" 1 roots --conf worklog_repo
@@ -124,7 +124,7 @@ t_exit "no file: components is unset, exits 1" 1 roots --conf components
 t_eq "...and prints nothing on stdout" "" "$(roots --conf components 2>/dev/null)"
 t_eq "no file: channel is main" "main" "$(roots --conf channel)"
 mkpriv c2 "$H"
-for body in '[tool]' 'packs = azimuth' 'packs = ["a"' 'typo_key = "x"' 'channel = "nightly"' 'channel = "main" junk' 'packs = ["a"]
+for body in '[tool]' 'packs = zorbcorp' 'packs = ["a"' 'typo_key = "x"' 'channel = "nightly"' 'channel = "main" junk' 'packs = ["a"]
 packs = ["b"]'; do
   cf "$body"
   t_exit "bad config '$(printf '%s' "$body" | tr '\n' ' ')' is refused" 2 roots --conf packs
@@ -268,17 +268,17 @@ t_has "...naming the file" "$(sout)" "FAIL: could not create $SH_/h/.claude/sett
 t_has "...with a fix line under it" "$(grep -A1 'could not create' "$T_TMP/sout")" "  fix: "
 
 t_section "harbor scope install --seed-from-projects"
-PW="$T_TMP/seed"; mkdir -p "$PW/azimuth" "$PW/tool" "$PW/loose"
-git -C "$PW/azimuth" init -q; git -C "$PW/azimuth" remote add origin https://user:secret@example.test/o/azimuth.git
+PW="$T_TMP/seed"; mkdir -p "$PW/zorbcorp" "$PW/tool" "$PW/loose"
+git -C "$PW/zorbcorp" init -q; git -C "$PW/zorbcorp" remote add origin https://user:secret@example.test/o/zorbcorp.git
 git -C "$PW/tool" init -q; git -C "$PW/tool" remote add origin https://example.test/o/tool.git
 git -C "$PW/loose" init -q
-printf '# c\nazimuth\t~/port/azimuth\tx\nflow\t~/port/flow\ty\nodd\t/srv/odd\tz\n' > "$T_TMP/projects.tsv"
+printf '# c\nzorbcorp\t~/port/zorbcorp\tx\nplumb\t~/port/plumb\ty\nodd\t/srv/odd\tz\n' > "$T_TMP/projects.tsv"
 env PORT_ROOT="$PW" HARBOR_SCOPE_PROJECTS_TSV="$T_TMP/projects.tsv" sh "$T_ROOT/bin/scope.sh" install --seed-from-projects >/dev/null 2>&1
 DRYOUT="$(env PORT_ROOT="$T_TMP/seed" HARBOR_SCOPE_PRIVATE="$T_TMP/seed-dry" HARBOR_SCOPE_PROJECTS_TSV="$T_TMP/projects.tsv" sh "$T_ROOT/bin/scope.sh" install --private-only --seed-from-projects --dry-run 2>&1)"
-t_eq "--dry-run names a row seeded from both sources once" "1" "$(printf '%s\n' "$DRYOUT" | grep -c 'would add row: azimuth')"
+t_eq "--dry-run names a row seeded from both sources once" "1" "$(printf '%s\n' "$DRYOUT" | grep -c 'would add row: zorbcorp')"
 REG="$PW/harbor-private/repos.tsv"
-t_eq "a projects.tsv row becomes a row, token stripped from its remote" "azimuth	azimuth	workload	https://example.test/o/azimuth.git" "$(grep '^azimuth	' "$REG")"
-t_eq "a row with no checkout gets remote -" "flow	flow	workload	-" "$(grep '^flow	' "$REG")"
+t_eq "a projects.tsv row becomes a row, token stripped from its remote" "zorbcorp	zorbcorp	workload	https://example.test/o/zorbcorp.git" "$(grep '^zorbcorp	' "$REG")"
+t_eq "a row with no checkout gets remote -" "plumb	plumb	workload	-" "$(grep '^plumb	' "$REG")"
 t_eq "a checkout with a remote that projects.tsv lacks is added" "tool	tool	workload	https://example.test/o/tool.git" "$(grep '^tool	' "$REG")"
 t_hasnt "a checkout with no remote is left out" "$(cat "$REG")" "loose"
 t_hasnt "a path outside ~/port is skipped" "$(cat "$REG")" "odd"
@@ -297,23 +297,23 @@ t_eq "a declared kind is seeded" "data" "$(awk -F'\t' '$1 == "models" { print $3
 t_eq "a kind the vocabulary lacks falls back to workload" "workload" "$(awk -F'\t' '$1 == "oddkind" { print $3 }' "$PW/harbor-private/repos.tsv")"
 
 t_section "seeding refuses rows the reader would refuse (M1) and fixes a missing newline (M2)"
-PW="$T_TMP/seed2"; mkdir -p "$PW/slashy" "$PW/my repo" "$PW/azimuth"
+PW="$T_TMP/seed2"; mkdir -p "$PW/slashy" "$PW/my repo" "$PW/zorbcorp"
 git -C "$PW/my repo" init -q; git -C "$PW/my repo" remote add origin https://example.test/o/m.git
-git -C "$PW/azimuth" init -q; git -C "$PW/azimuth" remote add origin https://example.test/o/azimuth.git
-printf 'slash\t~/port/slashy/\naz\t~/port/azimuth\n' > "$T_TMP/p2.tsv"
+git -C "$PW/zorbcorp" init -q; git -C "$PW/zorbcorp" remote add origin https://example.test/o/zorbcorp.git
+printf 'slash\t~/port/slashy/\naz\t~/port/zorbcorp\n' > "$T_TMP/p2.tsv"
 env PORT_ROOT="$PW" HARBOR_SCOPE_PROJECTS_TSV="$T_TMP/p2.tsv" sh "$T_ROOT/bin/scope.sh" install --seed-from-projects >"$T_TMP/s2.out" 2>&1; RC=$?
 REG="$PW/harbor-private/repos.tsv"
 t_eq "an unnameable checkout makes the seed exit 1" "1" "$RC"
 t_has "...loudly" "$(cat "$T_TMP/s2.out")" "my repo"
 t_exit "...yet the registry it leaves is valid" 0 roots --registry-check
 t_eq "a trailing slash is normalised into the row" "slashy" "$(awk -F'\t' '$1 == "slash" { print $2 }' "$REG")"
-t_eq "an id on an already-registered path is not added" "0" "$(grep -c '^azimuth	' "$REG")"
+t_eq "an id on an already-registered path is not added" "0" "$(grep -c '^zorbcorp	' "$REG")"
 PW="$T_TMP/seed3"; mkdir -p "$PW/flowy" "$PW/harbor-private"
 printf 'id\tpath\tkind\tremote\nmine\tmine\tworkload\t-' > "$PW/harbor-private/repos.tsv"
-printf 'flow\t~/port/flowy\n' > "$T_TMP/p3.tsv"
+printf 'plumb\t~/port/flowy\n' > "$T_TMP/p3.tsv"
 env PORT_ROOT="$PW" HARBOR_SCOPE_PROJECTS_TSV="$T_TMP/p3.tsv" sh "$T_ROOT/bin/scope.sh" install --seed-from-projects >/dev/null 2>&1
 t_eq "a registry with no final newline keeps both rows" "2" "$(grep -c '	workload	' "$PW/harbor-private/repos.tsv")"
-t_eq "...and the new row is whole" "flow	flowy	workload	-" "$(grep '^flow	' "$PW/harbor-private/repos.tsv")"
+t_eq "...and the new row is whole" "plumb	flowy	workload	-" "$(grep '^plumb	' "$PW/harbor-private/repos.tsv")"
 printf 'id\tpath\tkind\tremote\nbad\t../x\tworkload\t-\n' > "$PW/harbor-private/repos.tsv"
 t_exit "a registry already invalid is not appended to" 1 env PORT_ROOT="$PW" HARBOR_SCOPE_PROJECTS_TSV="$T_TMP/p3.tsv" sh "$T_ROOT/bin/scope.sh" install --seed-from-projects
 

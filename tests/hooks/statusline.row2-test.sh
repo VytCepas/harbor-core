@@ -159,7 +159,7 @@ printf 'not json\n' > "$CFG/cache/status-obligations.json"; noob "a malformed ca
 
 t_section "YOU: the operator queue — handoffs and approvals from the ledger, never PRs (2026-10-16)"
 oq() { printf '{"at":%s,"live":3,"overdue":0,"overdue_since":0,"unread":false,"you":%s}\n' "$1" "$2" > "$CFG/cache/status-obligations.json"; }
-oq "$_now" '[{"k":"pr","o":false,"t":"harbor#1263"},{"k":"pr","o":false,"t":"azimuth#113"},{"k":"intent","o":false,"t":"run cleanup.sh --apply"},{"k":"approval","o":false,"t":"deploy harbor main"}]'
+oq "$_now" '[{"k":"pr","o":false,"t":"harbor#1263"},{"k":"pr","o":false,"t":"zorbcorp#113"},{"k":"intent","o":false,"t":"run cleanup.sh --apply"},{"k":"approval","o":false,"t":"deploy harbor main"}]'
 t_eq "handoffs, then approvals; the PRs in the cache are not shown" "run cleanup.sh --apply │ approve deploy harbor main" "$(youw)"
 t_has "a waiting handoff is yellow" "$(youraw "{$WS}")" "${ESC}[33mrun cleanup.sh"
 oq "$_now" '[{"k":"intent","o":true,"t":"late one"}]'
@@ -232,14 +232,14 @@ t_hasnt "a red tip read from a cache over 900s old is not claimed" "$O" 'MAIN RE
 t_has "…it says main? instead" "$O" 'main?'
 mtv '{"at":'"$NOW"',"unread":true,"tip":{"sha":"abc","verdict":"green","at":'"$((NOW - 60))"',"red":false}}'
 t_has "a cache whose last read failed says main?, never green" "$(row3at)" 'main?'
-mtv '{"at":'"$NOW"',"unread":false,"repos":[{"repo":"o/estate","tip":{"red":true,"at":'"$((NOW - 10800))"'}},{"repo":"o/ok","tip":{"red":false,"at":'"$NOW"'}}]}'
-t_has "fleet cache: one red repo is named with its age" "$(row3at)" "MAIN RED estate 3h"
-mtv '{"at":'"$NOW"',"repos":[{"repo":"o/estate","tip":{"red":true,"at":'"$((NOW - 10800))"'}},{"repo":"o/studio","tip":{"red":true,"at":'"$((NOW - 86400))"'}}]}'
-t_has "two red repos are listed oldest first" "$(row3at)" "MAIN RED studio 24h, estate 3h"
+mtv '{"at":'"$NOW"',"unread":false,"repos":[{"repo":"o/blorp","tip":{"red":true,"at":'"$((NOW - 10800))"'}},{"repo":"o/ok","tip":{"red":false,"at":'"$NOW"'}}]}'
+t_has "fleet cache: one red repo is named with its age" "$(row3at)" "MAIN RED blorp 3h"
+mtv '{"at":'"$NOW"',"repos":[{"repo":"o/blorp","tip":{"red":true,"at":'"$((NOW - 10800))"'}},{"repo":"o/labkit","tip":{"red":true,"at":'"$((NOW - 86400))"'}}]}'
+t_has "two red repos are listed oldest first" "$(row3at)" "MAIN RED labkit 24h, blorp 3h"
 mtv '{"at":'"$NOW"',"repos":[{"repo":"o/a","tip":{"red":true,"at":'"$((NOW - 600))"'}},{"repo":"o/b","tip":{"red":true,"at":'"$((NOW - 7200))"'}},{"repo":"o/c","tip":{"red":true,"at":'"$((NOW - 400000))"'}}]}'
 t_has "more than two are counted, with the oldest age" "$(row3at)" "MAIN RED 3 repos, oldest 4d"
-mtv '{"at":'"$NOW"',"unread":true,"repos":[{"repo":"o/estate","tip":{"red":true,"at":'"$((NOW - 10800))"'}},{"repo":"o/gone","unread":true,"state":"unread"}]}'
-t_has "a red repo that was read is still said when another repo is unread" "$(row3at)" "MAIN RED estate 3h"
+mtv '{"at":'"$NOW"',"unread":true,"repos":[{"repo":"o/blorp","tip":{"red":true,"at":'"$((NOW - 10800))"'}},{"repo":"o/gone","unread":true,"state":"unread"}]}'
+t_has "a red repo that was read is still said when another repo is unread" "$(row3at)" "MAIN RED blorp 3h"
 mtv '{"at":'"$NOW"',"unread":true,"repos":[{"repo":"o/ok","tip":{"red":false,"at":'"$NOW"'}},{"repo":"o/gone","unread":true,"state":"unread"}]}'
 t_has "an unread repo and nothing red says main?" "$(row3at)" "main?"
 mtv '{"at":'"$NOW"',"repos":[{"repo":"o/off","state":"disabled","tip":{"red":false,"at":'"$NOW"'}}]}'

@@ -75,7 +75,7 @@ actually pays.
 | **spent every session** | **32,506 B** | **135% of ceiling** |
 
 Two instruments were wrong, in the same direction, at once.
-`estate/bin/check-skills.sh` reported 17,459 B by summing every tier — wrong by
+the data-estate repo's `bin/check-skills.sh` reported 17,459 B by summing every tier — wrong by
 3×, fixed in estate #16. And `bin/context-budget.sh`, the authority lint X3
 enforces, had **zero** references to the cwd-keyed auto-memory index and so
 reported 22,035 B: 91% of ceiling, with headroom, while the true figure was

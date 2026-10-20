@@ -1,0 +1,5 @@
+# domain-repos-allow.tsv (harbor#1273) - core files that may name a workload repo, read by bin/lint-domain.sh --repos.
+# Columns, tab-separated, one header row:  path  term  reason   (path a file or a dir/ prefix, term an id or *)
+path	term	reason
+vendor/archify/	flow	third-party diagram renderer: "flow" is the data-flow diagram, not a repo
+skills/atlas/build/build.py	flow	a diagram flow (an edge) in an error message, not a repo

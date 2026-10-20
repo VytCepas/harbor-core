@@ -630,7 +630,7 @@ coverage_dir() {
   # over $_ccorp; point this at a path that does not exist and grep matches
   # nothing, no GAP is printed, and the caller reads "no system referenced
   # without a card". Measured 2026-09-05: `--coverage /nonexistent` returned
-  # exit 0 and zero GAPs, and estate/bin/access-status.sh counted those zero
+  # exit 0 and zero GAPs, and the data-estate repo's bin/access-status.sh counted those zero
   # GAPs and reported GOOD "coverage". "Never fails the gate" above is about a
   # BACKLOG item, which an absent corpus is not.
   [ -d "$_ccorp" ] || {
