@@ -77,7 +77,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | alert | observability | 0 | 0 | 0 | 0 | 0 | 0 |
 | audit | control-plane | 0 | 0 | 0 | 0 | 0 | 2 |
 | check | observability | 1 | 4 | 0 | 1 | 50 | 0 |
-| ci | coordination | 12 | 58 | 1 | 2 | 0 | 4 |
+| ci | coordination | 12 | 58 | 1 | 3 | 0 | 5 |
 | context | control-plane | 3 | 0 | 1 | 36 | 0 | 40 |
 | deploy | control-plane | 4 | 6 | 1 | 1 | 0 | 7 |
 | doc | control-plane | 1 | 1 | 0 | 8 | 0 | 15 |
@@ -129,6 +129,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 ### ci
 
 - `.github/workflows/governance.yml`
+- `.github/workflows/public-ci.yml`
 - `bin/ci-governor-hook.sh`
 - `bin/ci-governor.sh`
 - `bin/ci-lost-job.sh`
@@ -440,7 +441,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 |---|---|
 | (repo root) | 19 |
 | `.agents/` | 4 |
-| `.github/` | 3 |
+| `.github/` | 2 |
 | `CONTRACTS/` | 61 |
 | `bin/` | 126 |
 | `commands/` | 5 |
