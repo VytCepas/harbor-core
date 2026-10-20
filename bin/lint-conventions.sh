@@ -6933,6 +6933,19 @@ if [ -f "$ROOT/bin/lint-domain.sh" ] && [ -f "$ROOT/CONTRACTS/lint-domain-baseli
 fi
 }
 
+# ── doc.constitution-abstract · the constitution states rules, never their cases (harbor#1273) ─
+# No date, ticket, absolute home path or workload repo name outside a fence; the cases are DOCTRINE/case-law.md.
+rule_doc_constitution_abstract() {
+rule "doc.constitution-abstract CONSTITUTION.md names no date, ticket, absolute path or workload repo (harbor#1273)"
+if [ -f "$ROOT/bin/lint-constitution.sh" ] && [ -f "$ROOT/CONSTITUTION.md" ]; then
+  # Green needs the summary line too: a script that died early must not read as a clean constitution.
+  if ! _ca_out="$(HARBOR_ROOT="$ROOT" sh "$ROOT/bin/lint-constitution.sh" --check 2>&1)" \
+     || ! printf '%s\n' "$_ca_out" | grep -q '^lint-constitution: [0-9]* ok, 0 failed'; then
+    bad doc.constitution-abstract "$(printf '%s' "$_ca_out" | grep -E 'FAIL:|error|unexpected' | sed 's/^ *//' | tr '\n' ' ')"
+  fi
+fi
+}
+
 # ── lint.dev-paths · core code names no more dev-layer paths than the baseline (harbor#1275) ─
 # harbor-core has no dev layer, so a core script or test that reads or writes one fails or litters the export.
 # bin/lint-dev-paths.sh counts (core code file, dev path) pairs from CONTRACTS/layers.tsv; the count may only fall.

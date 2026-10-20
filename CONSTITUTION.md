@@ -3,19 +3,24 @@
 > **Path root:** `~/port/harbor` — every `./`-prefixed path below resolves there, and
 > never against the directory this copy is installed into. This file is authored
 > in the Harbor repo and deployed to the box's own `CLAUDE.md`; an undeclared
-> `./` is green at the source and dead at the only surface anyone reads, which is
-> how ten of them survived here undetected (harbor#462). Checked where it is read
-> by `bin/reference-check.sh` REF-5, and in the repo by lint K1 — two questions,
-> two roots, one extractor.
+> `./` is green at the source and dead at the only surface anyone reads. Checked
+> where it is read by `bin/reference-check.sh` REF-5, and in the repo by lint K1 —
+> two questions, two roots, one extractor (case: *Path root*).
 
 Harbor's L0 constitution. Provenance, divergence and how this file is delivered:
 `./PROVENANCE.md`.
+
+**The rules here are abstract; their cases are law.** No rule below carries a
+date, a ticket, an absolute path or a workload's name. The dated case behind a
+rule is in `./DOCTRINE/case-law.md` under the section the rule names, and a
+workload's own cases are in that workload's pack. Lint `doc.constitution-abstract`
+fails on a specific that comes back.
 
 **It defers inside a governed repo — on everything but the five.** Where a project
 carries the detect-and-defer marker (`./CONTRACTS/marker.md`), that repo's own
 `CLAUDE.md` and `.agents/` governance win on workflow, conventions and tooling.
 The five constitutional rules below never yield, inside a governed repo or out
-(harbor#581).
+(case: *Deference inside a governed repo*).
 
 > **The constitutional tier.** Exactly five rules are CONSTITUTIONAL: №1 Response
 > Shape, №2 Verification, №3 Privacy, №4 Security Protocol, №5 Analysis Means
@@ -200,9 +205,8 @@ Reasoning, incidents and the failure modes of each clause: `./DOCTRINE/critique-
 **Most skills on this box are invisible to you.** Most carry
 `disable-model-invocation: true`, which removes them from your listing
 entirely — you cannot be reminded they exist, because nothing lists them. **The
-share is derived, never stated here** — this sentence read *two thirds* until
-2026-09-21, when the same count came back **39 of 49**, and a magnitude in prose
-drifts while reading perfectly:
+share is derived, never stated here** — a magnitude in prose drifts while
+reading perfectly (case: *Skill share*):
 
 ```sh
 S=~/.claude/skills
@@ -281,11 +285,10 @@ A rule whose declared scope and mechanical scope can differ has a silent failure
 mode that no green run will ever show.
 
 **And a mechanism that does not reach the moment of use is the same wish with
-more machinery.** Measured 2026-09-16: every gate green, every rule correct, and
-**10 of 10 governed repos loading no memory at all** because the store is keyed
-to the working directory. **It was fixed the same day and it regrew** — the fix
-does not survive worktree creation, so the honest state is whatever the check
-says now, not what this paragraph remembers:
+more machinery.** Every gate can be green and every rule correct while the thing
+they protect never reaches the session that needs it. **A fix of that kind can
+regrow**, so the honest state is whatever the check says now, not what this
+paragraph remembers (case: *Memory routing*):
 
 ```sh
 sh bin/memory-route.sh          # blind repos, today
@@ -323,7 +326,7 @@ the census*. A detector that reprints its whole finding set every run has no way
 to distinguish a new problem from a standing one, and trains its reader to skip
 the block.
 
-Growth is what this defends. The tenth check is where an unregistered estate
+Growth is what this defends. The tenth check is where an unregistered set of checks
 stops being manageable, and by then nobody remembers what the first three watch.
 One registry per box, never one per client or per repo, or the registry becomes
 the thing that needs a registry.
@@ -374,18 +377,16 @@ separate questions, answered by two separate observations:
 **A split needs both.** Real-but-private is the commonest good state — a suite of
 independent assertions, a flat list of rules — and reporting it as a defect is how
 a metric talks a codebase into fragmenting. **The census is derived per file and
-is not stated here.** It has now been wrong twice: the prose said *42 files* and
-*exactly one earns a split* until the mechanism existed to contradict it, was
-corrected on 2026-08-30 to *52 / 36 / NOT ONE*, and by 2026-09-20 the tree had
-moved again and one file did meet both (harbor#582). A count of a growing
-codebase, written into a document, is wrong by the next commit:
+is not stated here.** Every count this document held was wrong by the time the
+tree moved (case: *Module census*). A count of a growing codebase, written into a
+document, is wrong by the next commit:
 
 ```sh
 sh bin/module-shape.sh --seam <file>    # is a split of THIS file earned?
 ```
 
-Twice wrong from two hand measurements is No.2.12 catching this document, which
-is why the number left and the command stayed.
+Hand measurements going wrong is No.2.12 catching this document, which is why the
+number left and the command stayed.
 
 **The mechanism is `bin/module-shape.sh`**, and its suite is the load-bearing
 half: the instrument mis-measured four times before it settled, every one caught
@@ -433,16 +434,14 @@ Test for any procedural line: *would a smarter model make this unnecessary?* Yes
   written content, publishing anything. Approval in one context does not carry to
   the next.
 - **Do every step you are allowed to; hand the operator only what is refused to
-  you** (operator, 2026-10-16). Watching CI, fixing a red check, pushing, opening
+  you.** Watching CI, fixing a red check, pushing, opening
   the PR, the gate tools whose permission prompt is the operator's click, and the
   live check after their step are yours. What goes to the operator is only what
   something refused you (a GitHub approval, a CI re-run the App may not start, a
   real-terminal or sudo step, a decision): as the exact commands, in run order,
   each with the one clause saying why it is theirs. A long hand-over hides the one
-  step that blocks: on 2026-10-16 the operator deployed twice and reported done
-  while four PRs still waited on the approval buried in the list. When they say
-  done, verify it live before reporting it. Nothing enforces this rule; memory
-  `do-everything-allowed-paste-only-necessary` is the long form.
+  step that blocks. When they say done, verify it live before reporting it.
+  Nothing enforces this rule (case: *Hand over only what is refused*).
 - **Blank tool output means wait, not re-fire.** Re-issue once at most, and never
   batch a write or a dispatch against reads that have not returned.
 - **Never `cd ~/…` in a tool command — the tilde is what breaks it.** `cd` to an
@@ -450,22 +449,16 @@ Test for any procedural line: *would a smarter model make this unnecessary?* Yes
   and write absolute operands. An unexpanded tilde makes every *relative* path in
   the same compound unresolvable, and with any `Read()` deny rule present the CLI
   stops and asks — for the whole command, in any directory, whatever the tool.
-  Measured 2026-09-04 on the tree now called `~/azimuth`: `cd ~/azimuth && grep …
-  CLIENTS/…` is blocked, while `cd /Users/…/azimuth && …`, `cd $HOME/azimuth && …`
-  and the no-`cd` absolute form all run silently. Wrapping the `cd` in a script
-  does not help. Mechanism and the 2×2: memory
-  `cd-relative-read-prompt-is-a-static-gate`.
+  `cd ~/<repo> && grep … <relative path>` is blocked, while an absolute `cd`,
+  `cd $HOME/<repo>`, or no `cd` with absolute operands runs silently. Wrapping the
+  `cd` in a script does not help (case: *Tilde cd*).
 - **Never rest a negative on a multi-path glob — zsh aborts the whole command on
   the first pattern that matches nothing.** `ls A/*.ips B/*.ips`, when `A` is
   empty, prints `no matches found: A/*.ips` and runs NOTHING: `B` is never looked
-  at, and the empty output reads exactly like "there is nothing anywhere".
-  Measured 2026-09-03: it hid two kernel panics in
-  `/Library/Logs/DiagnosticReports/Retired/` for three tool calls, because the
-  user-level glob beside it matched nothing and killed the line. Use `find <dirs>
-  -name '<pat>'`, which walks every directory it is given and is silent only when
-  the thing is genuinely absent. A tool whose silence means "I did not look" is
-  the same class as this box's `grep`. Mechanism: memory
-  `zsh-glob-abort-false-negative`.
+  at, and the empty output reads exactly like "there is nothing anywhere". Use
+  `find <dirs> -name '<pat>'`, which walks every directory it is given and is
+  silent only when the thing is genuinely absent. A tool whose silence means "I
+  did not look" is the same class as this box's `grep` (case: *Glob abort*).
 - **Never brief a delegate from unread files.** The brief is built from content
   read *and returned* this turn — not recall, not a pending read.
 - **No AI-attribution trailers** in commits or PRs. Enforced by lint rule **C2**.
