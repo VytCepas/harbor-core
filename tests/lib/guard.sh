@@ -38,6 +38,6 @@ t_guard() { # <want> <label> <guard> <payload> [VAR=value …]
   t_eq "$_gl" "$_gw" "$(t_decide "$@")"
 }
 
-t_pad() { # <n> — n bytes of 'x', for over-cap payloads
-  awk -v n="$1" 'BEGIN { s = sprintf("%" n "s", ""); gsub(/ /, "x", s); printf "%s", s }'
+t_pad() { # <n> — n bytes of 'x', for over-cap payloads; doubled, not sprintf: mawk caps sprintf at 8192 bytes (harbor#1149)
+  awk -v n="$1" 'BEGIN { s = "x"; while (length(s) < n) s = s s; printf "%s", substr(s, 1, n) }'
 }

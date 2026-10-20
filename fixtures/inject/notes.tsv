@@ -28,7 +28,8 @@
 # COLUMNS   pack · repo · id · arm · label · payload
 #   pack    the directory under inject.d/ the note ships in; `self` = .claude/inject.d (in the private layer's rows,
 #           a folder of that layer's inject.d/); a name under fixtures/inject/packs/ is a fixture pack (above)
-#   repo    the fixture repo shape: `plain`, `skills` (a HIDDEN skill) or `visible`
+#   repo    the fixture repo shape: `plain`, `skills` (a HIDDEN skill), `visible`, or `naming` (carries
+#           bin/lint-name.sh and standards/naming/, the only repos name-note judges)
 #   arm     fire | silent | deny   (deny = a run: pack returning the decision sentinel)
 #   payload one line of JSON. @REPO@ expands to the fixture repo, @OTHER@ to a
 #           SECOND repo that carries packs, @BARE@ to a repo that carries none,
@@ -103,3 +104,7 @@ example-store	plain	example-wipe-destroys-history	fire	cmd-contains twice: the t
 example-store	plain	example-wipe-destroys-history	silent	the tool without the flag	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"example-tool run --select demo"}}
 example-store	plain	example-wipe-destroys-history	silent	the flag on another tool	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"other-tool sync --wipe"}}
 example-store	plain	example-wipe-destroys-history	silent	the whole command only inside a heredoc body	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"cat <<'EOF'\nexample-tool run --wipe\nEOF"}}
+box	naming	name-note	fire	a new bin script in snake case	{"hook_event_name":"PreToolUse","tool_name":"Write","session_id":"nn-0","tool_input":{"file_path":"@REPO@/bin/Foo_bar.sh","content":"x"}}
+box	naming	name-note	silent	a new bin script named by the grammar	{"hook_event_name":"PreToolUse","tool_name":"Write","session_id":"nn-1","tool_input":{"file_path":"@REPO@/bin/drift-undeployed.sh","content":"x"}}
+box	naming	name-note	silent	an edit of a file that already exists	{"hook_event_name":"PreToolUse","tool_name":"Write","session_id":"nn-2","tool_input":{"file_path":"@REPO@/README.md","content":"x"}}
+box	plain	name-note	silent	the same bad name in a repo without the standard	{"hook_event_name":"PreToolUse","tool_name":"Write","session_id":"nn-3","tool_input":{"file_path":"@REPO@/bin/Foo_bar.sh","content":"x"}}

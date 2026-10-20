@@ -1933,6 +1933,8 @@ if [ -f "$PROV" ]; then
     bad skill.vendor-provenance "PROVENANCE.md has a row for '$_row' but vendor/skills/$_row is gone — delete the row in the same commit as the directory"
   done < "${TMPDIR:-/tmp}/v1-rows.$$"
   rm -f "${TMPDIR:-/tmp}/v1-rows.$$"
+elif _export_tree vendor/skills/; then
+  printf '  (skipped: vendor/skills/ is dev-layer and this tree carries none of it, so there is no vendored copy to need provenance)\n'
 else
   bad skill.vendor-provenance "vendor/skills/PROVENANCE.md missing — vendored copies have no provenance"
 fi
@@ -2037,8 +2039,11 @@ awk '/^## What stands down inside a governed repo/ { s = 1; next }
 [ -s "$_m2_rows" ] \
   || bad scope.stand-down-declared "CONTRACTS/marker.md has no rows under \"What stands down inside a governed repo\""
 # The shell scripts among the files given: a `.sh` name, or a first line that is
-# a sh-family shebang. One awk reads only line 1 of each file.
+# a sh-family shebang. One awk reads only line 1 of each file. Regular files only: mawk stops at the first
+# directory operand (bin/harbor-app), so every later script went unread and two live rows read stale (harbor#1149).
 _m2_shells() {
+  for _m2_a in "$@"; do shift; [ ! -f "$_m2_a" ] || set -- "$@" "$_m2_a"; done
+  [ "$#" -gt 0 ] || return 0
   awk 'FNR == 1 { if (FILENAME ~ /\.sh$/ || $0 ~ /^#!.*[\/ ](ba|z|da|k)?sh([ \t]|$)/) print FILENAME; nextfile }' "$@" 2>/dev/null
 }
 # The code: file|fn for every call on a line that is not a comment.

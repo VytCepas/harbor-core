@@ -1,0 +1,102 @@
+# public-ci (harbor#1149): a harbor PR's core files, mirrored to VytCepas/harbor-core where hosted CI is free,
+# behind deploy-push's gates (bin/ci-mirror.sh: any red gate and nothing leaves). The result comes back as the
+# `public-ci` status on the PR head. Closing the PR closes the mirror and deletes its branch.
+#
+# Secrets (harbor repo):
+#   HARBOR_CORE_MIRROR_TOKEN - fine-grained, VytCepas/harbor-core: Contents, Pull requests, Workflows: write
+#   HARBOR_PRIVATE_READ_TOKEN - fine-grained, VytCepas/harbor-private: Contents: read (the leak gate's private terms)
+#
+# The gate is main's, not the PR's: harbor is checked out at the base sha, and ci-mirror stages the PR head in a
+# worktree of its own. The red-team corpora run against the PR head's guards first, because deploy-push's
+# redteam row reads the last run and refuses one made against other guards.
+#
+# Exported to harbor-core too, where it must do nothing: every job is pinned to the harbor repo.
+name: public-ci
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+concurrency:
+  group: public-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: ${{ github.event.action != 'closed' }}
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    name: public mirror
+    if: ${{ github.repository == 'VytCepas/harbor' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: write
+    runs-on: [self-hosted, Linux, ARM64, harbor-pool]
+    env:
+      PR: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      HARBOR_CORE_MIRROR_TOKEN: ${{ secrets.HARBOR_CORE_MIRROR_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: harbor at the base, so the gate that judges the PR is main's
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: harbor
+          fetch-depth: 0
+          persist-credentials: false
+      - name: harbor-private, for the leak gate's private terms
+        uses: actions/checkout@v5
+        with:
+          repository: VytCepas/harbor-private
+          token: ${{ secrets.HARBOR_PRIVATE_READ_TOKEN }}
+          path: harbor-private
+          persist-credentials: false
+      - name: A fresh harbor-core checkout to stage into
+        run: |
+          rm -rf "$RUNNER_TEMP/harbor-core"
+          git clone -q https://github.com/VytCepas/harbor-core.git "$RUNNER_TEMP/harbor-core"
+          git -C "$RUNNER_TEMP/harbor-core" config user.name "harbor public-ci"
+          git -C "$RUNNER_TEMP/harbor-core" config user.email "public-ci@users.noreply.github.com"
+      - name: The red-team corpora, against the PR head's guards
+        working-directory: harbor
+        run: |
+          git cat-file -e "$HEAD_SHA^{commit}"
+          git worktree add -q --detach "$RUNNER_TEMP/pr-head" "$HEAD_SHA"
+          ( cd "$RUNNER_TEMP/pr-head" && sh bin/redteam-corpus.sh )
+          git worktree remove --force "$RUNNER_TEMP/pr-head"
+      - name: Mirror the core files to harbor-core (gates first)
+        working-directory: harbor
+        env:
+          HARBOR_SCOPE_PRIVATE: ${{ github.workspace }}/harbor-private
+          HARBOR_CORE_MIRROR_DIR: ${{ runner.temp }}/harbor-core
+        run: sh bin/ci-mirror.sh "$PR"
+      - name: Wait for the hosted run, then set public-ci
+        working-directory: harbor
+        run: |
+          n=0
+          while [ "$n" -lt 80 ]; do
+            sh bin/ci-mirror.sh --status "$PR" 2>&1 | tee "$RUNNER_TEMP/status.out"
+            grep -q 'public-ci pending' "$RUNNER_TEMP/status.out" || exit 0
+            n=$((n + 1)); sleep 30
+          done
+          echo "hosted CI on the mirror did not finish in 40 minutes; public-ci stays pending" >&2
+          exit 1
+
+  close:
+    name: public mirror close
+    if: ${{ github.repository == 'VytCepas/harbor' && github.event.action == 'closed' }}
+    timeout-minutes: 5
+    runs-on: [self-hosted, Linux, ARM64, harbor-pool]
+    env:
+      HARBOR_CORE_MIRROR_TOKEN: ${{ secrets.HARBOR_CORE_MIRROR_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - name: Close the mirror PR and delete its branch
+        run: sh bin/ci-mirror.sh --close "${{ github.event.pull_request.number }}"

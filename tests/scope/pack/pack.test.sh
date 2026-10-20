@@ -123,6 +123,33 @@ refused leak-in-binary-attribute ga "client-free"
 mkpack gi; printf '*\n' > "$PW/gi/harbor-pack/skills/demo/.gitignore"; printf '%s\n' "$LEAK" > "$PW/gi/harbor-pack/skills/demo/SKILL.md"; G "$PW/gi" add -f -A; G "$PW/gi" commit -q -m i
 refused leak-under-own-gitignore gi "client-free"
 
+t_section "secrets: gitleaks scans the same stage, by its default rules, and a missing scanner refuses (harbor#1274)"
+# A GitHub-token shape, joined at run time so this file holds none: tests/ is exported and gitleaks scans it too.
+SEC="$(printf '%s%s%s' ghp_ Zq8LmN2pR7tY4wXc9Vb K3jHs6DfG1aQe5UoI)"
+mkpack sk; printf 'pat %s\n' "$SEC" > "$PW/sk/harbor-pack/skills/demo/tok.md"; G "$PW/sk" add -A; G "$PW/sk" commit -q -m s
+refused secret sk "carries a secret"
+OUT="$(pk install sk --apply --dir "$T_TMP/tg-secret" 2>&1)"
+t_has "secret: named as file:rule:line" "$OUT" "tok.md:github-pat:1"
+t_hasnt "secret: never by its text" "$OUT" "Zq8LmN2pR7tY4wXc9Vb"
+printf '[extend]\nuseDefault = true\n[allowlist]\npaths = [%s]\n' "'''.*'''" > "$T_TMP/loose.toml"
+mkdir -p "$T_TMP/tg-loose"
+t_has "an inherited GITLEAKS_CONFIG does not loosen it" "$(GITLEAKS_CONFIG="$T_TMP/loose.toml" pk install sk --apply --dir "$T_TMP/tg-loose" 2>&1)" "carries a secret"
+# The real PATH as one directory of links minus gitleaks, as tests/export/push.test.sh does.
+FARM="$T_TMP/farm"; mkdir -p "$FARM"
+for _d in $(printf '%s' "$PATH" | tr ':' ' '); do
+  [ -d "$_d" ] || continue
+  for _b in "$_d"/*; do
+    _n="${_b##*/}"; [ "$_n" != gitleaks ] || continue
+    [ -x "$_b" ] && [ ! -e "$FARM/$_n" ] && ln -s "$_b" "$FARM/$_n"
+  done
+done
+t_eq "positive control: gitleaks is gone from the farm" no "$(env PATH="$FARM" sh -c 'command -v gitleaks' >/dev/null 2>&1 && echo yes || echo no)"
+mkdir -p "$T_TMP/tg-nogl"; listed '"ok"'
+OUT="$(PATH="$FARM" pk install ok --apply --dir "$T_TMP/tg-nogl" 2>&1)"; RC=$?
+t_eq "no gitleaks refuses a clean pack rather than skipping the scan" 1 "$RC"
+t_has "...and says so" "$OUT" "gitleaks is missing, so the pack was not scanned"
+t_eq "...nothing installed" "" "$(find "$T_TMP/tg-nogl" -type f)"
+
 t_section "refusal: a case-folded guard or core-command name, and a hooks: key"
 mkpack cg; printf 'x\n' > "$PW/cg/harbor-pack/bin/Guard-bash.sh"; G "$PW/cg" add -A; G "$PW/cg" commit -q -m g
 refused guard-case cg "guard-*"
