@@ -24,7 +24,7 @@ binds from a rule that does not is *resident when the model acts* versus *has to
 be fetched*.
 
 **Every project in this estate is on the wrong side of that line.** A workload repo,
-`idea-to-live` and `estate` each ship a `CLAUDE.md` whose entire content is *the
+Two workload repos each ship a `CLAUDE.md` whose entire content is *the
 canonical instructions live in AGENTS.md, read it before working*. That is the
 fetch-required shape by construction, so everything in those AGENTS.md files is
 non-binding until something puts it in front of the session.

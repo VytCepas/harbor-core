@@ -134,8 +134,8 @@ for p in CONTRACTS/shims.tsv CONTRACTS/roots.tsv bin/live-verify.sh CONTRACTS/su
   t_exit "$p is protected" 1 sh "$C" "$T_ROOT" "$p"
 done
 t_exit "an individual test file is not (the register's recorded trade-off)" 0 sh "$C" "$T_ROOT" tests/gate/approval/classify.test.sh
-t_eq "harbor's local required list names the four checks protection requires" \
-  "conventions linter|conventions linter suite|security-floor suite|suites" \
+t_eq "harbor's local required list names the one check protection requires (harbor#1149: public-ci)" \
+  "public-ci" \
   "$(awk -F'\t' '$1 == "VytCepas/harbor" { print $2 }' "$T_ROOT/CONTRACTS/required-checks.tsv" | tr '\n' '|' | sed 's/|$//')"
 # RED-PROOFS: a copy of the tree whose derive lost one source, its register rewritten from it
 RP="$T_TMP/rp"; mkdir -p "$RP/tests" "$RP/.github"

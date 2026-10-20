@@ -82,14 +82,14 @@ t_section "ROOT1: a root default that disagrees with roots.tsv or ignores PORT_R
 # Literal ${VAR:-$HOME/...} tokens in this file would be --check's own findings, so @V@ stands for $.
 _rp_fresh; mkdir -p "$RP/CONTRACTS"
 cp "$SRC/roots.sh" "$SRC/log-lib.sh" "$RP/bin/"
-printf 'var\tbase\trel\tbreaks\nESTATE_DIR\tREPOS\testate\tx\n' > "$RP/CONTRACTS/roots.tsv"
-printf 'D="@V@{ESTATE_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/estate}"\n' | sed 's/@V@/$/g' > "$RP/bin/site.sh"
+printf 'var\tbase\trel\tbreaks\nBLORP_DIR\tREPOS\tblorp\tx\n' > "$RP/CONTRACTS/roots.tsv"
+printf 'D="@V@{BLORP_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/blorp}"\n' | sed 's/@V@/$/g' > "$RP/bin/site.sh"
 ( cd "$RP" && git init -q . && git add -A && git -c user.email=t@t -c user.name=t commit -qm x ) >/dev/null 2>&1
 _rp_green ROOT1 "a default equal to its table row"
-printf 'D="@V@{ESTATE_DIR:-@V@HOME/port/estate-old}"\n' | sed 's/@V@/$/g' > "$RP/bin/site.sh"
+printf 'D="@V@{BLORP_DIR:-@V@HOME/port/blorp-old}"\n' | sed 's/@V@/$/g' > "$RP/bin/site.sh"
 ( cd "$RP" && git add -A && git -c user.email=t@t -c user.name=t commit -qm y ) >/dev/null 2>&1
-_rp_red ROOT1 "ESTATE_DIR default is" "a site default that drifted from the table"
-printf 'D="@V@{ESTATE_DIR:-@V@HOME/port/estate}"\n' | sed 's/@V@/$/g' > "$RP/bin/site.sh"
+_rp_red ROOT1 "BLORP_DIR default is" "a site default that drifted from the table"
+printf 'D="@V@{BLORP_DIR:-@V@HOME/port/blorp}"\n' | sed 's/@V@/$/g' > "$RP/bin/site.sh"
 ( cd "$RP" && git add -A && git -c user.email=t@t -c user.name=t commit -qm z ) >/dev/null 2>&1
 _rp_red ROOT1 "ignores PORT_ROOT" "a site default spelled flat, which ignores PORT_ROOT (harbor#630)"
 
