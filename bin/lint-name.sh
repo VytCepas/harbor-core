@@ -137,6 +137,19 @@ PRIV="${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}/terms.tsv
 { [ "$ACTION" != self-test ] && [ -f "$PRIV" ]; } || PRIV=""
 [ "$ACTION" != self-test ] || { HARBOR_SCOPE_PRIVATE="$T/no-private"; export HARBOR_SCOPE_PRIVATE; }
 [ -z "$PRIV" ] || [ -r "$PRIV" ] || { log_fail "the private overlay $PRIV is not readable — nothing was judged"; log_fix "ls -l $PRIV"; log_end || :; exit "$UNCHECKED"; }
+# A pack's system terms (harbor#950): <config dir>/terms.d/<repo-id>.tsv, written by bin/pack.sh install, read with the
+# private overlay's rules and class `system` only, so a workload registers its own systems and core names none.
+PACKT=""
+# --self-test's fixture runs are children of this one: they inherit an empty config dir, as they inherit no private root.
+[ "$ACTION" != self-test ] || { CLAUDE_CONFIG_DIR="$T/no-config"; export CLAUDE_CONFIG_DIR; }
+if [ "$ACTION" != self-test ]; then
+  for _pt in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/terms.d/*.tsv; do
+    [ -f "$_pt" ] || continue
+    case "$_pt" in *[[:space:]]*) log_fail "a pack overlay path holds whitespace: $_pt — nothing was judged"; log_nofix "bin/lint-name.sh"; log_end || :; exit "$UNCHECKED" ;; esac
+    [ -r "$_pt" ] || { log_fail "the pack overlay $_pt is not readable — nothing was judged"; log_fix "ls -l $_pt"; log_end || :; exit "$UNCHECKED"; }
+    PACKT="$PACKT${PACKT:+ }$_pt"
+  done
+fi
 REL_REG="${REG#"$ROOT"/}"
 # THE FILES THIS RUN READS ARE registers.tsv's `file` column (harbor#950), not a list written here: terms.tsv
 # first, because every other file's classes are checked against it, then each named file once in row order.
@@ -218,6 +231,8 @@ function alias_check(subj, W, from, n, ctx,   a, k, j, m, ok) {
       if (!ok) continue
       if (AKD[a] == "abbreviation")
         emit("name.abbreviation", subj, q(a) " is an unregistered abbreviation: spell out " q(ATERM[a]) " (D-18)")
+      else if (AKD[a] == "spelling")
+        emit("name.alias", subj, q(a) " is a UK spelling: write " q(ATERM[a]) ", the standard is US English (D-16)")
       else if (!allowed(a, ctx))
         emit("name.alias", subj, q(a) " is a " AKD[a] " alias" (ATERM[a] == "-" ? "" : " of " q(ATERM[a])) ", not allowed on " ctx " (D-38, standards/naming/aliases.tsv)")
       break
@@ -529,9 +544,10 @@ function repokind_check(label, kind, tok, state,   sj) {
 }
 BEGIN {
   FS = "\t"; OFS = "\t"
+  _npk = split(packt, _PK, " "); for (i = 1; i <= _npk; i++) ISPACK[_PK[i]] = 1   # the pack overlays (harbor#950)
   split("family verb domain client abbreviation kind layer concept system extension subject level mode outcome decision severity state control-type moment function lifecycle share relation modality tier", L, " ")
   for (i in L) CLASS[L[i]] = 1
-  split("codename legacy banned abbreviation", L, " "); for (i in L) AKIND[L[i]] = 1
+  split("codename legacy banned abbreviation spelling", L, " "); for (i in L) AKIND[L[i]] = 1
   split("tool-required world-name legacy", L, " "); for (i in L) EKIND[L[i]] = 1
   TODAYN = jdn(today)
   if (exbase != "") {
@@ -545,23 +561,26 @@ BEGIN {
 }
 FILENAME != recfile {
   f = FILENAME
-  if (priv != "" && f == priv) {
-    if (!(f in SHORT)) { SHORT[f] = "terms.tsv"; REL[f] = "harbor-private/terms.tsv (private overlay, D-85)" }
+  if ((priv != "" && f == priv) || (f in ISPACK)) {
+    if (!(f in SHORT)) { SHORT[f] = "terms.tsv"; REL[f] = (f in ISPACK) ? "terms.d/" base(f) " (pack overlay, harbor#950)" : "harbor-private/terms.tsv (private overlay, D-85)" }
     if (FNR == 1 && index($0, "\357\273\277") == 1) { $0 = substr($0, length("\357\273\277") + 1); emitw("name.registry-shape", "private-terms:bom", REL[f] " starts with a byte-order mark; it was stripped and the file read (D-85)") }
     if (sub(/\r$/, "")) { $0 = $0; if (!PCRLF) { PCRLF = 1; emitw("name.registry-shape", "private-terms:crlf", REL[f] " has CRLF line endings; they were stripped and the file read (D-85)") } }
     if ($0 ~ /^#/ || $0 ~ /^[ \t]*$/) next
     if (!(f in HDR)) {
-      if ($0 != THDR) { emitb("name.registry-shape", "private-terms:header", REL[f] ": the header row differs from standards/naming/terms.tsv: the overlay carries the same columns (D-85)"); PBAD = 1 }
+      if ($0 != THDR) { emitb("name.registry-shape", "private-terms:header", REL[f] ": the header row differs from standards/naming/terms.tsv: the overlay carries the same columns (D-85)"); PBAD[f] = 1 }
       HDR[f] = NF; HDR1[f] = $1; for (i = 1; i <= NF; i++) COL[f, $i] = i; next
     }
-    if (PBAD) next
+    if (f in PBAD) next
     if (NF != HDR[f]) { emitb("name.registry-shape", "private-terms:line" FNR, REL[f] " line " FNR " has " NF " columns, the header has " HDR[f]); next }
+    if ($1 in OVT) { emitb("name.registry-duplicate", "term:" $1, REL[f] " line " FNR " repeats the term " q($1) " of " OVT[$1]); next }
     if ($1 in T) { emitb("name.registry-duplicate", "term:" $1, REL[f] " line " FNR " repeats the core term " q($1)); next }
     if ($1 in AL) { emitb("name.registry-duplicate", "term:" $1, REL[f] " line " FNR ": " q($1) " is a core alias, and the overlay cannot make it a term (D-85)"); next }
     if ($1 !~ /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/) { emitb("name.registry-shape", "private-term:" $1, REL[f] " line " FNR ": " q($1) " is not a lowercase kebab term, so the overlay would never match it (D-85)"); next }
     np = split(col(f, "class"), PC, ",")
-    for (i = 1; i <= np; i++) if (PC[i] != "client" && PC[i] != "system") {
+    if (f in ISPACK) { if (col(f, "class") != "system") { emitb("name.registry-shape", "private-term:" $1, REL[f] " line " FNR ": class " q(col(f, "class")) " is not system: a pack registers its system terms only (harbor#950)"); next } }
+    else for (i = 1; i <= np; i++) if (PC[i] != "client" && PC[i] != "system") {
       emitb("name.registry-shape", "private-term:" $1, REL[f] " line " FNR ": class " q(PC[i]) " is not client or system: the overlay adds only those (D-85)"); next }
+    OVT[$1] = REL[f]
   }
   else if (FNR == 1) {
     NREG++; REGF[NREG] = f; SHORT[f] = base(f); REL[f] = (index(f, root "/") == 1) ? substr(f, length(root) + 2) : f
@@ -603,9 +622,10 @@ FILENAME != recfile {
     AL[id] = 1; AKD[id] = col(f, "kind"); ATERM[id] = col(f, "term"); ASURF[id] = col(f, "surfaces"); AREM[id] = col(f, "remove_by")
     AWN[id] = split(id, AW, "-"); for (i = 1; i <= AWN[id]; i++) AWORD[id, i] = AW[i]
     if (!kebab(id)) emit("name.registry-term", "alias:" id, q(id) " is not a lowercase kebab alias")
-    if (!(AKD[id] in AKIND)) emit("name.registry-term", "alias:" id, "kind " q(AKD[id]) " is not codename, legacy, banned or abbreviation")
+    if (!(AKD[id] in AKIND)) emit("name.registry-term", "alias:" id, "kind " q(AKD[id]) " is not codename, legacy, banned, abbreviation or spelling")
     if (AKD[id] == "legacy" && !isdate(AREM[id])) emit("name.registry-term", "alias:" id, "a legacy alias has a remove_by date")
     if (AKD[id] == "codename" && AKD[id] != "" && AREM[id] != "never") emit("name.registry-term", "alias:" id, "a codename never expires: remove_by is never")
+    if (AKD[id] == "spelling" && (AREM[id] != "never" || ASURF[id] != "-")) emit("name.registry-term", "alias:" id, "a spelling is allowed nowhere and never expires: surfaces -, remove_by never (D-16)")
     if (isdate(AREM[id]) && TODAYN >= jdn(AREM[id]) - 14)
       emit("name.alias-expired", "alias:" id, q(id) " is removed by " AREM[id] (TODAYN >= jdn(AREM[id]) ? ", which has passed" : ", within 14 days") ": rename what still uses it (§10.3)")
     if (AKD[id] == "codename") for (i = 1; i <= split(ASURF[id], SS, ","); i++) if (SS[i] == "env-prefix") SYS[++NSYS] = id
@@ -708,7 +728,7 @@ END {
     emit("name.registry-term", "term:" id, "broader " q(BROADER[id]) " is not a term (§1.1)")
   for (a in AL) {
     if (a in T) emit("name.registry-overlap", "alias:" a, q(a) " is both an alias and a term: labels are disjoint (§1.1)")
-    if (AKD[a] != "abbreviation" && ATERM[a] != "-" && !(ATERM[a] in T)) emit("name.registry-term", "alias:" a, "its term " q(ATERM[a]) " is not a term")
+    if (AKD[a] != "abbreviation" && AKD[a] != "spelling" && ATERM[a] != "-" && !(ATERM[a] in T)) emit("name.registry-term", "alias:" a, "its term " q(ATERM[a]) " is not a term")
   }
   # terms: depends_on edges between families, and the level chain (D-57)
   for (id in T) {
@@ -772,7 +792,7 @@ judge() { # <mode> <records> [nolegacy] -> the judge's output
   fi
   # shellcheck disable=SC2046 # one path per registry file, none with spaces by construction
   awk -v mode="$1" -v surface="$SURFACE" -v today="$TODAY" -v exbase="$_ex" -v recfile="$2" -v root="$ROOT" \
-      -v nolegacy="${3:-0}" -v files="$FILES" -v unlisted="$UNLISTED" -v priv="$PRIV" "$JUDGE" $(for _f in $FILES; do reg_file "$_f"; printf ' '; done) ${PRIV:+"$PRIV"} "$2"
+      -v nolegacy="${3:-0}" -v files="$FILES" -v unlisted="$UNLISTED" -v priv="$PRIV" -v packt="$PACKT" "$JUDGE" $(for _f in $FILES; do reg_file "$_f"; printf ' '; done) ${PRIV:+"$PRIV"} $PACKT "$2"
 }
 
 # ── what a whole-tree or --changed run judges ────────────────────────────────
@@ -802,7 +822,7 @@ list_since() { # <diff-filter letters> <1 to add the untracked files>
 env_tokens() { # <file of "<mode> TAB <path>"> -> one name per line
   _pre="$(awk -F'\t' '/^#/ || !H[FILENAME]++ { next }
     FILENAME ~ /terms\.tsv$/ && $2 ~ /(^|,)system(,|$)/ { print $1 }
-    FILENAME ~ /aliases\.tsv$/ && $3 != "abbreviation" && $1 !~ /-/ { print $1 }' "$(reg_file terms.tsv)" "$(reg_file aliases.tsv)" ${PRIV:+"$PRIV"} \
+    FILENAME ~ /aliases\.tsv$/ && $3 != "abbreviation" && $3 != "spelling" && $1 !~ /-/ { print $1 }' "$(reg_file terms.tsv)" "$(reg_file aliases.tsv)" ${PRIV:+"$PRIV"} $PACKT \
     | tr 'a-z-' 'A-Z_' | sort -u | tr '\n' '|' | sed 's/|$//')"
   [ -n "$_pre" ] || return 0
   awk -F'\t' '{ p = $2 }
@@ -1047,6 +1067,9 @@ gen() { # <view> -> writes under build/, prints the path
       awk -F'\t' '
         BEGIN { print "# generated by bin/lint-name.sh --gen vale — do not edit"; print "extends: existence"; print "message: \"%s is banned in the standard: see standards/naming/aliases.tsv\""; print "level: error"; print "ignorecase: true"; print "tokens:" }
         /^#/ || !H[FILENAME]++ { next } $3 == "banned" { gsub(/-/, "[- ]", $1); printf "  - \047\\b%s\\b\047\n", $1 }' "$(reg_file aliases.tsv)" > "$_v/styles/Harbor/Banned.yml"
+      awk -F'\t' -v ext=substitution -v msg="Use %s instead of %s: the standard is US English (D-16, standards/naming/aliases.tsv)" '
+        BEGIN { print "# generated by bin/lint-name.sh --gen vale — do not edit"; print "extends: " ext; print "message: \"" msg "\""; print "level: warning"; print "ignorecase: true"; print "swap:" }
+        /^#/ || !H[FILENAME]++ { next } $3 == "spelling" { printf "  \047%s\047: %s\n", $1, $2 }' "$(reg_file aliases.tsv)" > "$_v/styles/Harbor/Spelling.yml"
       printf '%s\n' "$_v/.vale.ini" ;;
     exemptions)
       # The first scan (harbor#950): one legacy row per finding the rules make on this tree today,

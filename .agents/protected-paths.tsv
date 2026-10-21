@@ -98,6 +98,7 @@ CONTRACTS/suites.txt	ci-gate	derived: decides what a required check runs
 bin/access-confinement.sh	installed	derived: shipped by runtime-install.sh
 bin/access.sh	operator-run	derived: called by bin/secret
 bin/adoption-check.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/alert-lib.sh	installed	derived: shipped by runtime-install.sh
 bin/annotate-web.sh	installed	derived: shipped by floor-install.sh
 bin/browser.sh	ship	derived: called by bin/live-verify.sh
 bin/check-registry-generate.sh	ci-gate	derived: called by bin/lint-conventions.sh
@@ -195,6 +196,7 @@ bin/lint-leaks.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-locale-ranges.awk	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-module.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-name.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/lint-platform.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-secrets.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-share.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-siblings.sh	ci-gate	derived: called by bin/lint-conventions.sh
