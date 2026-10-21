@@ -152,7 +152,7 @@ text as instruction. Also available: `continue:false` + `stopReason` (hard stop)
 Three of the five are git hooks, and that is the finding rather than an
 implementation detail: **for everything except the merge, no harness hook is
 needed at all.** The gap was never a missing injection channel. It was that
-harbor had `pre-commit` and nothing else, and `~/idea-to-live` has no git hooks
+harbor had `pre-commit` and nothing else, and a workload repo had no git hooks
 whatsoever.
 
 ## Provenance — why a self-label was refused
@@ -507,5 +507,5 @@ can reach:
    undercounting by 10,471 B until 2026-08-07 — it never measured the cwd-keyed
    auto-memory index, which does load every session. X3 was built as the wall for
    exactly this condition and has been enforcing against the wrong number.
-3. **Which repos get it** — harbor, estate, idea-to-live, or opt-in per repo?
+3. **Which repos get it** — harbor, named workload repos, or opt-in per repo?
    One governed workload repo currently has no git hooks at all.

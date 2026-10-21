@@ -23,4 +23,4 @@ metasystem
         family  standard  (5 files)
       unassigned  5 files with no family (sh bin/standard-catalog.sh --census says why, per path)
   domain  workload
-    system  mailcal  (not in this tree)
+    system  quuxmail  (not in this tree)

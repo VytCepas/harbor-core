@@ -73,7 +73,7 @@ healthy; : > "$FX/runners.fail"; tick "$NOW"; tick "$((NOW + 300))"
 t_eq "GitHub not answering about any runner is unread, not an outage" true "$(get .unread)"
 t_eq "...and no line" 0 "$(alog)"
 
-t_section "a held repo's runner is watched: other-mac serving azimuth"
+t_section "a held repo's runner is watched: other-mac serving zorbcorp"
 healthy; printf 'hold held other-mac serves it\n' > "$CLAUDE_CONFIG_DIR/.harbor-ci-runners"
 printf '{"runners":[{"id":3,"name":"other-mac","status":"offline","busy":false,"labels":[{"name":"self-hosted"}]}]}\n' > "$FX/runners/held.json"
 tick "$NOW"; tick "$((NOW + 300))"

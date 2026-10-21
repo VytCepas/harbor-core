@@ -49,7 +49,7 @@ t_eq "...and only one" 1 "$(nlog)"
 run switch --apply >/dev/null
 t_eq "control: unset already, nothing to write" 1 "$(writes)"
 fleet; verdict github-hosted; echo self-hosted > "$FX/var/beta"; run switch --apply >/dev/null
-t_eq "control: a repo with no local runner keeps what it has (azimuth, served by a Mac)" self-hosted "$(varnow beta)"
+t_eq "control: a repo with no local runner keeps what it has (zorbcorp, served by a Mac)" self-hosted "$(varnow beta)"
 
 t_section "switch: a verdict that cannot be trusted flips nothing"
 fleet; verdict self-hosted "$((NOW - 2000))"; run switch --apply >/dev/null

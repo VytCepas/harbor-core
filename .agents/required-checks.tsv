@@ -3,6 +3,4 @@
 # repo<TAB>check name, exactly as `gh pr checks` prints it. KEEP IN STEP with harbor's rows in
 # CONTRACTS/required-checks.tsv, which bin/merge-check.sh reads when it runs from a checkout.
 
-VytCepas/harbor	conventions linter
-VytCepas/harbor	conventions linter suite
-VytCepas/harbor	security-floor suite
+VytCepas/harbor	public-ci

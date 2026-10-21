@@ -17,7 +17,7 @@
 #
 # WHAT IS DELIBERATELY ABSENT. Shims into things harbor does not own —
 # `project-init` and `projects-orchestrator` (uv tool installs, independent
-# copies, they do not move), `gmail-*`/`gcal-*` (~/.local/lib/mailcal, which the
+# copies, they do not move), `gmail-*`/`gcal-*` (~/.local/lib/<mail tool>, which the
 # runbook keeps where it is), `claude` and `python3.12` (vendor installs). And
 # a BI shim that points into a workload checkout: it DOES move, and it is not
 # harbor's to install. `--check` reports it as unmanaged rather than staying

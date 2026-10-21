@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
 # ci-mirror.sh (harbor#1149) - mirror a harbor PR's core files to the public harbor-core repo, where hosted CI is free.
 #
-#   ci-mirror.sh [--dry-run] <pr>   stage the PR head's core set on branch ci/harbor-<pr>, push it, open or update PR "harbor#<pr>"
+#   ci-mirror.sh [--dry-run] <pr>   stage the PR head's core set on branch ci/harbor-<pr>, push it, open or update PR "harbor#<pr>";
+#                                   a core set equal to harbor-core main has no hosted run, so it sets public-ci success itself
 #   ci-mirror.sh --status <pr>      set the `public-ci` commit status on the harbor PR head from the mirror branch's run
 #   ci-mirror.sh --close <pr>       close the mirror PR and delete its branch
 #
@@ -27,7 +28,7 @@ for a in "$@"; do
     --dry-run) DRY=1 ;;
     --status) MODE=status ;;
     --close) MODE=close ;;
-    -h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "ci-mirror: unknown option '$a'" >&2; exit 2 ;;
     *) [ -z "$PR" ] || { echo "ci-mirror: one pull request only" >&2; exit 2; }; PR="$a" ;;
   esac
@@ -40,6 +41,7 @@ refuse() { log_fail "$1"; [ -z "${2:-}" ] || log_fix "$2"; log_end || :; exit 1;
 BRANCH="ci/harbor-$PR"
 CORE="${HARBOR_CORE_SLUG:-VytCepas/harbor-core}"
 slug_valid "$CORE" || refuse "HARBOR_CORE_SLUG '$CORE' is not owner/name" "export HARBOR_CORE_SLUG=<owner>/<harbor-core repo>"
+NODIFF="no core file differs from $CORE main"
 HSLUG="${HARBOR_SLUG:-$(slug_of_url "$(git -C "$ROOT" config --get remote.origin.url 2>/dev/null || :)")}"
 slug_valid "$HSLUG" || refuse "the harbor repo slug is unknown" "export HARBOR_SLUG=<owner>/harbor"
 
@@ -48,6 +50,20 @@ need_token() {
 }
 # gh calls against harbor-core carry the mirror token (gh sends GH_TOKEN as a header); harbor's own calls do not.
 core_gh() { GH_TOKEN="$HARBOR_CORE_MIRROR_TOKEN" gh "$@"; }
+
+# public-ci on the harbor PR head: STATE, DESC and URL as the caller set them.
+set_status() {
+  gh api -X POST "repos/$HSLUG/statuses/$HEAD_SHA" -f state="$STATE" -f context=public-ci -f description="$DESC" -f target_url="$URL" >/dev/null ||
+    refuse "could not set public-ci on $HEAD_SHA" "the caller needs statuses: write on $HSLUG"
+  log_ok "public-ci $STATE on $HSLUG#$PR ($(printf '%s' "$HEAD_SHA" | cut -c1-12)): $URL"
+}
+close_mirror() {
+  if core_gh pr close "$BRANCH" --repo "$CORE" >/dev/null 2>&1; then log_ok "closed the mirror PR of $HSLUG#$PR"; else log_note "no open mirror PR for $BRANCH"; fi
+  core_gh api -X DELETE "repos/$CORE/git/refs/heads/$BRANCH" >/dev/null 2>&1 || :
+  # The delete's exit is not trusted: the branch must be gone.
+  if core_gh api "repos/$CORE/git/ref/heads/$BRANCH" >/dev/null 2>&1; then refuse "$BRANCH still exists on $CORE" "gh api -X DELETE repos/$CORE/git/refs/heads/$BRANCH"; fi
+  log_ok "$BRANCH is gone from $CORE"
+}
 
 case "$MODE" in
 status)
@@ -68,18 +84,15 @@ status)
         END { print (bad ? "failure" : (pend ? "pending" : "success")) }')"
       DESC="hosted CI on the public mirror: $STATE"
     fi
+  else
+    # No mirror because no core file differs: the mirror run set success itself, and pending here would undo it.
+    CUR="$(gh api "repos/$HSLUG/commits/$HEAD_SHA/statuses" --jq '[.[] | select(.context == "public-ci")][0] | [.state, .description] | @tsv' 2>/dev/null || :)"
+    if [ "$CUR" = "success	$NODIFF" ]; then log_ok "public-ci success on $HSLUG#$PR: $NODIFF"; log_end || :; exit 0; fi
   fi
-  gh api -X POST "repos/$HSLUG/statuses/$HEAD_SHA" -f state="$STATE" -f context=public-ci -f description="$DESC" -f target_url="$URL" >/dev/null ||
-    refuse "could not set public-ci on $HEAD_SHA" "the caller needs statuses: write on $HSLUG"
-  log_ok "public-ci $STATE on $HSLUG#$PR ($(printf '%s' "$HEAD_SHA" | cut -c1-12)): $URL"
+  set_status
   log_end || :; exit 0 ;;
 close)
-  need_token
-  if core_gh pr close "$BRANCH" --repo "$CORE" >/dev/null 2>&1; then log_ok "closed the mirror PR of $HSLUG#$PR"; else log_note "no open mirror PR for $BRANCH"; fi
-  core_gh api -X DELETE "repos/$CORE/git/refs/heads/$BRANCH" >/dev/null 2>&1 || :
-  # The delete's exit is not trusted: the branch must be gone.
-  if core_gh api "repos/$CORE/git/ref/heads/$BRANCH" >/dev/null 2>&1; then refuse "$BRANCH still exists on $CORE" "gh api -X DELETE repos/$CORE/git/refs/heads/$BRANCH"; fi
-  log_ok "$BRANCH is gone from $CORE"
+  need_token; close_mirror
   log_end || :; exit 0 ;;
 esac
 
@@ -134,7 +147,12 @@ fi
 gate "$TDIR" || refuse "deploy-push refused or a gate is red; nothing was pushed" "the release gate rows above name the fix"
 
 if git -C "$TDIR" diff --quiet refs/remotes/origin/main HEAD; then
-  log_ok "the core set of #$PR equals $CORE main; nothing to mirror"; log_end || :; exit 0
+  # No core file differs, so no hosted run will ever report: public-ci is set here, or a required check waits forever.
+  # A mirror left by an earlier push of this PR tested other core files, so it goes.
+  log_ok "the core set of #$PR equals $CORE main; nothing to mirror"
+  close_mirror
+  STATE=success; DESC="$NODIFF"; URL="https://github.com/$CORE/tree/main"; set_status
+  log_end || :; exit 0
 fi
 
 # A plain refspec: never a force, never main.

@@ -32,7 +32,7 @@ says which fixture retired which failure.
 
 ## Make the contract bind — restate it in the turn, or it will not
 
-**Measured, not asserted.** In the third-party-conversion eval (EV-1) in the data-estate repo (estate, via the repo registry), run 2, four arms carried an identical
+**Measured, not asserted.** In the third-party-conversion eval (EV-1) in the data-estate repo (resolved through the repo registry), run 2, four arms carried an identical
 120-word budget inside this skill. What varied was only where the constraint was
 repeated:
 
@@ -79,7 +79,7 @@ language, short enough that a project manager forwards it without editing.
 
 ### The five moves, which cost nothing and are the whole difference
 
-**Measured in `EVALS/DS-1-why-answers-diverge.md` in the data-estate repo (estate, via the repo registry), and this is the sharpest result the evals have
+**Measured in `EVALS/DS-1-why-answers-diverge.md` in the data-estate repo (resolved through the repo registry), and this is the sharpest result the evals have
 produced.** The technical department answered the same object twice, 95 minutes
 apart. The first reply scored 2/7 on the axes below; the second scored 7/7. **No
 new measurement was required for any of the five it gained.** They are a format,

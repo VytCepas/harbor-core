@@ -122,8 +122,8 @@ STAMP='[HARBOR GOVERNANCE]'
 
 # ── PreCompact AND SubagentStart LEFT THIS FILE (harbor#173 · A1) ───────────
 # They were here, they worked, and they were in the wrong building. Both are
-# UNIVERSAL — every session compacts and every session spawns subagents, in a workload repo
-# and idea-to-live and estate exactly as in harbor — while this file is harbor
+# UNIVERSAL — every session compacts and every session spawns subagents, in every workload repo
+# exactly as in harbor — while this file is harbor
 # payload that only ever runs where harbor is the repo. Wired here they reached
 # one repo of four; as declarative packs under `inject.d/box/` they reach every
 # session on the box, and their text is one sentence to edit rather than a shell

@@ -75,7 +75,7 @@ actually pays.
 | **spent every session** | **32,506 B** | **135% of ceiling** |
 
 Two instruments were wrong, in the same direction, at once.
-`estate/bin/check-skills.sh` reported 17,459 B by summing every tier — wrong by
+the data-estate repo's `bin/check-skills.sh` reported 17,459 B by summing every tier — wrong by
 3×, fixed in estate #16. And `bin/context-budget.sh`, the authority lint X3
 enforces, had **zero** references to the cwd-keyed auto-memory index and so
 reported 22,035 B: 91% of ceiling, with headroom, while the true figure was
@@ -221,7 +221,7 @@ exists for.
 the vehicle was an open question: it is not any more. `bin/inject-hook.sh` is one
 engine reading declarative rule packs, wired **once at the box level** by
 `harbor inject`, and it discovers each repo's packs from the session's cwd at fire
-time — so harbor, a workload repo, idea-to-live, estate and every repo created after this get
+time — so harbor, every workload repo and every repo created after this get
 the same channel with no settings file of their own. `CONTRACTS/inject.md` is the
 format. `govern-hook.sh` kept only the merge moment; its `PreCompact` and
 `SubagentStart` branches were universal rules living in harbor-only payload and

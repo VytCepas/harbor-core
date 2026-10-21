@@ -289,6 +289,7 @@ tests/lint/core-writes/ratchet.test.sh
 tests/lint/frozen/freeze.test.sh
 tests/lint/layout-map/map.test.sh
 tests/lint/domain/ratchet.test.sh
+tests/lint/constitution/abstract.test.sh
 tests/lint/siblings/ratchet.test.sh
 tests/session/state/stop.test.sh
 tests/session/react/presets.test.sh
