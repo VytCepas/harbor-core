@@ -2,6 +2,7 @@
 # deploy-push.sh (harbor#1149, DESIGN.md v2.1) - `harbor deploy push`: share core. One snapshot commit of the core set, no history.
 #
 #   deploy-push.sh [--dry-run] <target>   target: a LOCAL git checkout (its top level), clean, not on `stable`
+#   deploy-push.sh --ci-base <target>     the same, for a CI mirror's comparison base: pass-score and redteam are not run
 #
 # The gate scans every staged file, tests and fixtures included (LEAKS_EXPORT=1), then gitleaks scans the same set.
 # Core = the paths of CONTRACTS/layers.tsv at HEAD. They are staged, gated by `lint-leaks.sh --zero` and gitleaks on exactly that set,
@@ -18,11 +19,12 @@ ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
 log_init deploy-push
 LOG_FD=2
 
-DRY=0; TARGET=''
+DRY=0; TARGET=''; CIBASE=0
 for a in "$@"; do
   case "$a" in
     --dry-run) DRY=1 ;;
-    -h|--help) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --ci-base) CIBASE=1 ;;
+    -h|--help) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "deploy-push: unknown option '$a'" >&2; exit 2 ;;
     *) [ -z "$TARGET" ] || { echo "deploy-push: one target only" >&2; exit 2; }; TARGET="$a" ;;
   esac
@@ -199,9 +201,14 @@ fi
 # Domain ratchet at zero over the stage (harbor#1274): core carries no workload tool's name.
 DOMAIN=0
 HARBOR_ROOT="$STAGE" sh "$SRC/lint-domain.sh" --zero >&2 || DOMAIN=1
+# and no workload repo's name (harbor#1273): the ids come from the private registry, so none is named here
+HARBOR_ROOT="$STAGE" sh "$SRC/lint-domain.sh" --repos --zero >&2 || DOMAIN=1
 # pass-score (decision 17 on harbor#1149): HEAD's FLOOR.md, so its pass table, not the working tree's.
 PASSS=0
-if [ -f "$RAW/bin/pass-score.sh" ]; then
+# --ci-base (ci-mirror.sh): the PR's base, only the point a mirror's suites are selected against. The leak, secrets,
+# history and domain rows still run, since the base is pushed to the public repo; the two release-quality rows do not.
+if [ "$CIBASE" = 1 ]; then PASSV="not run: a CI comparison base, never a release"
+elif [ -f "$RAW/bin/pass-score.sh" ]; then
   sh "$RAW/bin/pass-score.sh" > "$TMP/pass.out" 2>&1 || PASSS=1
   PASSV="$(grep -E '(ok|FAIL): VERDICT' "$TMP/pass.out" | head -1 | sed 's/^ *[A-Za-z]*: //')"
 else PASSS=1; PASSV="no bin/pass-score.sh at HEAD"; fi
@@ -209,13 +216,14 @@ else PASSS=1; PASSV="no bin/pass-score.sh at HEAD"; fi
 # baseline. Red while a finding is unaccepted, a corpus was skipped, or HEAD's guards or pins differ from what was run.
 # The overrides are dropped so no environment can point the gate at another baseline.
 RTS=0
-if [ -f "$RAW/bin/redteam-corpus.sh" ]; then
+if [ "$CIBASE" = 1 ]; then RTV="not run: a CI comparison base, never a release"
+elif [ -f "$RAW/bin/redteam-corpus.sh" ]; then
   env -u HARBOR_REDTEAM_BASELINE -u HARBOR_REDTEAM_SOURCES -u HARBOR_CACHE_DIR sh "$RAW/bin/redteam-corpus.sh" --print \
     > "$TMP/redteam.out" 2>&1 || RTS=1
   RTV="$(grep -cE '^  ok: ' "$TMP/redteam.out" | tr -d ' ') corpus line(s) ok, $(grep -cE '^  FAIL: ' "$TMP/redteam.out" | tr -d ' ') red"
 else RTS=1; RTV="no bin/redteam-corpus.sh at HEAD"; fi
 FIXR="sh bin/redteam-corpus.sh --print names each red corpus; adjudicate each finding on harbor#1313"
-FIXD="sh bin/lint-domain.sh --list names each file and term (harbor#1273 empties it)"
+FIXD="sh bin/lint-domain.sh --list (and --repos --list) names each file and term (harbor#1273)"
 FIXP="sh bin/pass-score.sh shows the pass table; an adjudicated pass must leave zero criticals open (decision 23, harbor#1149)"
 
 # The release gate (harbor#1274, decisions 17-18 on harbor#1149): every row named, none a silent pass. The rows run here
@@ -228,9 +236,13 @@ gate_row "leak gate 0" "$GATE" "the staged set" "$FIXL"
 gate_row "secrets 0" "$SECRETS" "gitleaks over the staged set" "$FIXS"
 if [ -n "$TARGET" ]; then gate_row "export history" "$HIST" "$HISTN published commit(s) of the target" "$FIXH"
 else log_skip "release gate · export history: not run - name the target: harbor deploy push --dry-run <target>"; fi
-gate_row "domain ratchet 0" "$DOMAIN" "sh bin/lint-domain.sh --zero over the staged set" "$FIXD"
-gate_row "pass-score" "$PASSS" "${PASSV:-no verdict}" "$FIXP"
-gate_row "redteam-corpus" "$RTS" "$RTV" "$FIXR"
+gate_row "domain ratchet 0" "$DOMAIN" "sh bin/lint-domain.sh --zero and --repos --zero over the staged set" "$FIXD"
+if [ "$CIBASE" = 1 ]; then
+  log_skip "release gate · pass-score: $PASSV"; log_skip "release gate · redteam-corpus: $RTV"
+else
+  gate_row "pass-score" "$PASSS" "${PASSV:-no verdict}" "$FIXP"
+  gate_row "redteam-corpus" "$RTS" "$RTV" "$FIXR"
+fi
 log_skip "release gate · stranger install: not run here - its verdict for this sha: gh run list -w stranger-install.yml -c $SHA; to run it: gh workflow run stranger-install.yml"
 log_skip "release gate · export suite: not run here (serial seconds: the sum of tests/suite-durations.tsv, harbor#1275) - in a clean clone of the target: sh bin/suite-run.sh"
 RED=$((GATE + SECRETS + HIST + DOMAIN + PASSS + RTS))

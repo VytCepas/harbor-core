@@ -59,7 +59,7 @@ issue-title	<family>: <outcome>	required	no	admission: stop exit-127	-	-	D-30
 stamp	[<register>:<id>]	-	no	[check:audit.triage]	-	-	D-20
 mcp-tool	mcp__<object>__<name>	-	check	mcp__harbor_chrome__tab_new	name.mcp-tool	-	an MCP tool as Claude Code names it, mcp__<server>__<tool>: both snake, since the harness joins them with __ (harbor#1301)
 secret	<system>-<service>-<identity>-<purpose>	-	no	harbor-github-vytcepas-pr-read	-	-	never a value, client data or email (D-36)
-cloud-resource	<system>-<family>-<object>[-<env>]	-	no	idea-to-live-api-prod	-	-	a warehouse keeps one dialect per repo, dialects.tsv (D-33)
+cloud-resource	<system>-<family>-<object>[-<env>]	-	no	frobapp-api-prod	-	-	a warehouse keeps one dialect per repo, dialects.tsv (D-33)
 test	tests/<family>/<subject>/<aspect>.test.<ext>	required	tree	tests/admission/bash/destroy.test.sh	name.test-path	-	Python keeps test_<aspect>.py (D-14)
 path.test	the test surface under the name harbor#961 gives it	-	check	tests/admission/bash/destroy.test.sh	-	test	judged exactly as test is; test is the registry id, path.test its second name
 fixture	fixtures/<family>/<subject>/	-	tree	fixtures/naming/path/pass/expect.tsv	-	-	checked as a path

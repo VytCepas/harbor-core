@@ -44,7 +44,7 @@ command -v jq >/dev/null 2>&1 || { log_fail "jq is required"; log_fix "$(pkg_hin
 
 # `--projects` IS A LIVE WRITE WHATEVER THE CONFIG DIR IS, and the first cut of
 # this file missed it: a sandbox install seeded packs into the operator's real
-# ~/azimuth, ~/estate and ~/idea-to-live, because the gate above only ever guarded
+# three workload repos, because the gate above only ever guarded
 # $DIR. The target of --projects is not $DIR at all — it is three other people's
 # working trees — so it carries the authorisation itself rather than inheriting
 # one from an unrelated path comparison. A dry run predicts it (the dry-run exit rule).

@@ -38,37 +38,37 @@ t_eq "1s: the header, then unchecked with the reason, and no summary" "reconcile
 t_has "1s: the reason names the registry, the private layer's (harbor#1149)" "$(cat "$T/status.out")" "no registry at $REG"
 t_eq "1s: no first-seen state is made by a run that could not judge" absent "$([ -e "$CFG/cache/reconcile/memory-route.tsv" ] && echo present || echo absent)"
 
-printf '# comment\n' > "$REG"; mkrepo azimuth; mkrepo estate
+printf '# comment\n' > "$REG"; mkrepo zorbcorp; mkrepo blorp
 t_section "2-3 · an unrouted repo is RED and named; --apply routes it and the same check passes"
 t_eq "2: exit" 1 "$(code)"
-t_has "2: the repo is named BLIND" "$(mr)" 'BLIND  azimuth'
-t_eq "2r: its receipt is red over the blind repos" "red azimuth estate" "$(jq -r '"\(.status) \(.subjects | sort | join(" "))"' "$CFG/cache/checks/memory-route.json")"
+t_has "2: the repo is named BLIND" "$(mr)" 'BLIND  zorbcorp'
+t_eq "2r: its receipt is red over the blind repos" "red blorp zorbcorp" "$(jq -r '"\(.status) \(.subjects | sort | join(" "))"' "$CFG/cache/checks/memory-route.json")"
 t_section "2s · --status: one new row per blind repo with desired, observed, delta and age; a second run adds none"
 _links="$(find "$CFG/projects" -maxdepth 2 -name memory -type l 2>/dev/null | grep -c .)"
 t_eq "2s: exit, the plain run's" 1 "$(mrs_rc)"
 t_eq "2s: the header" "reconcile${TAB}1${TAB}memory-route" "$(sed -n 1p "$T/status.out")"
-t_eq "2s: both blind repos are new rows, keyed by their registry label" "azimuth estate" "$(awk -F'\t' '$1 == "new" { print $2 }' "$T/status.out" | sort | tr '\n' ' ' | sed 's/ $//')"
-t_has "2s: observed names what is wrong" "$(grep "^new${TAB}azimuth" "$T/status.out")" "${TAB}no store for this cwd${TAB}"
-t_has "2s: desired says what a session should load" "$(grep "^new${TAB}azimuth" "$T/status.out")" "${TAB}a session started here loads a store with notes${TAB}"
-t_has "2s: delta says what changes it" "$(grep "^new${TAB}azimuth" "$T/status.out")" "${TAB}add a route to the one store${TAB}0"
+t_eq "2s: both blind repos are new rows, keyed by their registry label" "blorp zorbcorp" "$(awk -F'\t' '$1 == "new" { print $2 }' "$T/status.out" | sort | tr '\n' ' ' | sed 's/ $//')"
+t_has "2s: observed names what is wrong" "$(grep "^new${TAB}zorbcorp" "$T/status.out")" "${TAB}no store for this cwd${TAB}"
+t_has "2s: desired says what a session should load" "$(grep "^new${TAB}zorbcorp" "$T/status.out")" "${TAB}a session started here loads a store with notes${TAB}"
+t_has "2s: delta says what changes it" "$(grep "^new${TAB}zorbcorp" "$T/status.out")" "${TAB}add a route to the one store${TAB}0"
 t_eq "2s: the summary counts two examined, two drifted, none cleared" "summary${TAB}2${TAB}2${TAB}0" "$(grep '^summary' "$T/status.out")"
 t_eq "2s: every stdout line is a record of the contract" "" "$(grep -Ev "^(reconcile|new|standing|cleared|summary|unchecked)${TAB}" "$T/status.out")"
 t_eq "2s: the second run, nothing changed, prints no new row" 0 "$(mrs_rc >/dev/null; grep -c "^new${TAB}" "$T/status.out")"
 t_eq "2s: ...and both rows are standing with an age in seconds" 2 "$(awk -F'\t' '$1 == "standing" && $6 ~ /^[0-9]+$/ { n++ } END { print n + 0 }' "$T/status.out")"
 t_eq "2s: it routed nothing (it only reports)" "$_links" "$(find "$CFG/projects" -maxdepth 2 -name memory -type l 2>/dev/null | grep -c .)"
-t_eq "2s: its receipt is the plain run's, red over the same repos" "red azimuth estate" "$(jq -r '"\(.status) \(.subjects | sort | join(" "))"' "$CFG/cache/checks/memory-route.json")"
+t_eq "2s: its receipt is the plain run's, red over the same repos" "red blorp zorbcorp" "$(jq -r '"\(.status) \(.subjects | sort | join(" "))"' "$CFG/cache/checks/memory-route.json")"
 mr --apply >/dev/null  # the green below comes from re-running the plain check, not from --apply's report
 t_eq "3: exit after --apply" 0 "$(code)"
-t_has "3: the repo is ok" "$(mr)" 'ok     azimuth'
+t_has "3: the repo is ok" "$(mr)" 'ok     zorbcorp'
 t_eq "3r: and its receipt is green, with no subjects" "green 0" "$(jq -r '"\(.status) \(.subjects | length)"' "$CFG/cache/checks/memory-route.json")"
 t_section "3s · --status after --apply: the converged rows are cleared, once, and the exit is 0"
 t_eq "3s: exit" 0 "$(mrs_rc)"
-t_eq "3s: both rows are cleared and none is listed" "azimuth estate 0" "$(awk -F'\t' '$1 == "cleared" { c = c $2 " " } $1 == "new" || $1 == "standing" { n++ } END { sub(/ $/, "", c); print c " " n + 0 }' "$T/status.out")"
+t_eq "3s: both rows are cleared and none is listed" "blorp zorbcorp 0" "$(awk -F'\t' '$1 == "cleared" { c = c $2 " " } $1 == "new" || $1 == "standing" { n++ } END { sub(/ $/, "", c); print c " " n + 0 }' "$T/status.out")"
 t_eq "3s: the summary counts the two routed repos examined, none drifted, two cleared" "summary${TAB}2${TAB}0${TAB}2" "$(grep '^summary' "$T/status.out")"
 t_eq "3s: the next run reports no cleared row" 0 "$(mrs_rc >/dev/null; grep -c "^cleared${TAB}" "$T/status.out")"
 
 t_section "4-6 · the route is a symlink into the one store, counted once"
-LINK="$(route_of "$T/azimuth")"
+LINK="$(route_of "$T/zorbcorp")"
 t_eq "4: the route is a symlink" link "$(is_link "$LINK")"
 t_eq "4: it resolves to the home store" "$(cd -P "$HOME_STORE" && pwd -P)" "$(cd -P "$LINK" 2>/dev/null && pwd -P)"
 printf -- '---\nname: c\n---\nfiled from the repo\n' > "$LINK/c.md"
@@ -103,7 +103,7 @@ t_eq "10r: the empty-store stand-down leaves a stood-down receipt" stood-down "$
 t_eq "10s: --status on an empty store: exit" 3 "$(mrs_rc)"
 t_has "10s: it is an unchecked record" "$(cat "$T/status.out")" "unchecked${TAB}the store at projects/"
 mv "$T/a.keep" "$HOME_STORE/a.md"; mv "$T/b.keep" "$HOME_STORE/b.md"
-cp "$REG" "$T/reg.keep"; printf 'azimuth ~/port/azimuth w\n' > "$REG"  # spaces, not tabs
+cp "$REG" "$T/reg.keep"; printf 'zorbcorp ~/port/zorbcorp w\n' > "$REG"  # spaces, not tabs
 t_eq "11: a registry parsing to 0 rows: exit" 3 "$(code)"
 t_has "11: says so" "$(mr)" 'STOOD DOWN'
 rm -f "$CFG/cache/checks/memory-route.json"; mr >/dev/null

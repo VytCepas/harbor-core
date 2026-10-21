@@ -113,7 +113,7 @@ harbor chrome detach        # when done; idle-timeout releases it anyway after 3
 - **Read-only unless the operator names the write.** A click that saves, creates,
   publishes or invites is a write in his account; ask in chat first.
 - **Work UIs only.** `goto`/`tab-new` refuse any host not in
-  `CONTRACTS/browser-agent-hosts.txt`. A client's live site goes through TagScope,
+  `CONTRACTS/browser-agent-hosts.txt`. A client's live site goes through the tag debugger,
   never this verb — his logged-in cookies would land in the client's analytics.
 - **Refused verbs stay refused.** No `run-code`, `eval`, cookies, storage or state,
   request bodies. If a job seems to need one, stop and say which and why.

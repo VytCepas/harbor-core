@@ -12,7 +12,7 @@ workload	concept	workload	metasystem	S1	experimental	-	fixture	-	-	The systems t
 control-plane	concept	control plane	platform	S3	experimental	-	fixture	-	-	Admits and refuses
 observability	concept	observability	control-plane	S3	experimental	-	fixture	-	-	Inferring state from outputs
 fleet	concept,system	fleet	platform	S1	stable	-	fixture	-	-	The fleet controller
-mailcal	concept,system	mailcal	workload	S1	stable	-	fixture	-	-	Mail and calendar
+quuxmail	concept,system	quuxmail	workload	S1	stable	-	fixture	-	-	Mail and calendar
 deploy	family	deploy	control-plane	S3	stable	-	fixture	-	-	Install artifacts on the host
 drift	family	drift	deploy	S3	stable	-	fixture	-	-	Installed copies that lag the source
 lint	family	lint	control-plane	S3	stable	-	fixture	-	-	Conventions, judged

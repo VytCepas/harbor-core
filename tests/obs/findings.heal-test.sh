@@ -32,7 +32,7 @@ heal() { HARBOR_ROOT="$HP" HARBOR_FINDINGS_NOW="${NOW:-2026-10-10}" GH_NOW="${NO
 hrec() { HARBOR_ROOT="$HP" HARBOR_FINDINGS_NOW="${NOW:-2026-10-10}" GH_NOW="${NOW:-2026-10-10}" sh "$F" reconcile --from "$@" 2>&1; }
 comments_on() { jq -r --argjson n "$1" '[(.comments // [])[] | select(.issue == $n) | .body] | join("\n---\n")' "$GH_STATE"; }
 num_of() { jq -r --arg k "$1" '[.issues[] | select(.body | contains("key=" + $k + " "))] | max_by(.number) | .number' "$GH_STATE"; }
-records "$TMP/h1" lint.exec-bit-kept lint.long-file-reason memory.repo-reachable skill.book-current -- lint.exec-bit-kept:bin/tool.sh 'lint.exec-bit-kept:bin/x;touch PWNED' lint.long-file-reason:bin/tool.sh memory.repo-reachable:azimuth memory.repo-reachable:studio skill.book-current:generator-failed
+records "$TMP/h1" lint.exec-bit-kept lint.long-file-reason memory.repo-reachable skill.book-current -- lint.exec-bit-kept:bin/tool.sh 'lint.exec-bit-kept:bin/x;touch PWNED' lint.long-file-reason:bin/tool.sh memory.repo-reachable:zorbcorp memory.repo-reachable:studio skill.book-current:generator-failed
 
 t_section "heal · a finding with no issue is not repaired, because the repair has nowhere to be written"
 : > "$GH_LOG"; OUT="$(heal "$TMP/h1" --apply)"
