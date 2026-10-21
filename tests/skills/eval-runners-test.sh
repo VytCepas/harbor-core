@@ -19,7 +19,7 @@ live() { kill -0 "$1" 2>/dev/null || return 1; case "$(ps -o stat= -p "$1" 2>/de
 # absolute path, so the copy points it at a temp file; nokill copies an earlier run's .claude.
 mkdir -p "$T_TMP/R/results_a" "$T_TMP/R/results" "$T_TMP/R/results2" "$T_TMP/R/results3" "$T_TMP/R/results4" "$T_TMP/R/nolog" "$T_TMP/R/out"
 mkdir -p "$E/e10inject" "$E/e11live" "$E/e5trap" "$E/e7scale" "$E/e8dilute" "$E/e9ablate" "$E/sliced"
-for _h in azimuth idea-to-live estate harbor-unify; do mkdir -p "$T_TMP/home/$_h"; done
+for _h in zorbcorp frobapp estate harbor-unify; do mkdir -p "$T_TMP/home/$_h"; done
 printf 'print("p")\n' > "$T_TMP/R/getprompt.py"
 # A run dir that satisfies every foreground runner: SPEC.json, PROMPT.txt and a work/ to cd into.
 mkdir -p "$T_TMP/rd/work"; printf '{"prompt":"p","settings":"","cwd":"%s"}' "$T_TMP/rd/work" > "$T_TMP/rd/SPEC.json"; printf p > "$T_TMP/rd/PROMPT.txt"

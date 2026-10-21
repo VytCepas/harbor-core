@@ -25,7 +25,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 
 | Kind | Folder | Level | Layer | Lifecycle | Files |
 |---|---|---|---|---|---|
-| policy | policy/ | system | source | living | 10 |
+| policy | policy/ | system | source | living | 11 |
 | standard | standards/ | system | source | versioned | 13 |
 | contract | contracts/ | system | source | versioned | 30 |
 | decision-record | docs/decisions/ | element | source | dated | 88 |
@@ -33,12 +33,12 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | hook | bin/ | component | source | living | 12 |
 | skill | skills/ | component | source | living | 41 |
 | fixture | fixtures/ | element | source | living | 252 |
-| registry | registries/ | component | source | versioned | 47 |
-| test | tests/ | component | source | living | 424 |
+| registry | registries/ | component | source | versioned | 49 |
+| test | tests/ | component | source | living | 425 |
 | report | docs/reports/ | element | report | dated | 1 |
 | design | docs/design/ | component | source | living | 6 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| script | bin/ | component | source | living | 205 |
+| script | bin/ | component | source | living | 206 |
 | (no kind) | - | - | - | - | 171 |
 
 ## Folders
@@ -49,9 +49,9 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.agents/` | 4 | 1 | 1 |
 | `.claude/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
-| `CONTRACTS/` | 77 | 9 | 2 |
-| `DOCTRINE/` | 9 | 1 | 1 |
-| `bin/` | 210 | 21 | 2 |
+| `CONTRACTS/` | 79 | 9 | 2 |
+| `DOCTRINE/` | 10 | 1 | 1 |
+| `bin/` | 211 | 21 | 2 |
 | `commands/` | 5 | 1 | 1 |
 | `docs/` | 109 | 6 | 5 |
 | `fixtures/` | 252 | 9 | 1 |
@@ -63,7 +63,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `skills/` | 41 | 5 | 1 |
 | `standards/` | 13 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 424 | 20 | 1 |
+| `tests/` | 425 | 20 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 73 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -77,19 +77,19 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | alert | observability | 0 | 0 | 0 | 0 | 0 | 0 |
 | audit | control-plane | 0 | 0 | 0 | 0 | 0 | 2 |
 | check | observability | 1 | 4 | 0 | 1 | 50 | 0 |
-| ci | coordination | 12 | 58 | 1 | 2 | 0 | 4 |
-| context | control-plane | 3 | 0 | 1 | 36 | 0 | 40 |
+| ci | coordination | 12 | 58 | 1 | 3 | 0 | 5 |
+| context | control-plane | 3 | 0 | 1 | 36 | 0 | 29 |
 | deploy | control-plane | 4 | 6 | 1 | 1 | 0 | 7 |
-| doc | control-plane | 1 | 1 | 0 | 8 | 0 | 15 |
+| doc | control-plane | 1 | 1 | 0 | 8 | 0 | 16 |
 | drift | control-plane | 1 | 1 | 0 | 4 | 2 | 12 |
 | eval | control-plane | 0 | 1 | 0 | 0 | 0 | 0 |
 | event | observability | 3 | 16 | 0 | 2 | 0 | 0 |
 | gate | control-plane | 10 | 7 | 0 | 0 | 0 | 0 |
 | housekeeping | control-plane | 0 | 0 | 0 | 2 | 0 | 0 |
-| lint | control-plane | 13 | 37 | 0 | 7 | 0 | 31 |
+| lint | control-plane | 14 | 38 | 0 | 8 | 0 | 31 |
 | memory | memory-store | 4 | 11 | 1 | 23 | 0 | 1 |
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
-| policy | policy-function | 0 | 0 | 10 | 0 | 0 | 3 |
+| policy | policy-function | 0 | 0 | 11 | 0 | 0 | 3 |
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
 | scope | coordination | 1 | 10 | 0 | 0 | 0 | 4 |
 | session | data-plane | 10 | 5 | 0 | 1 | 0 | 0 |
@@ -129,6 +129,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 ### ci
 
 - `.github/workflows/governance.yml`
+- `.github/workflows/public-ci.yml`
 - `bin/ci-governor-hook.sh`
 - `bin/ci-governor.sh`
 - `bin/ci-lost-job.sh`
@@ -232,10 +233,12 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `CONTRACTS/lint-core-writes-baseline.txt`
 - `CONTRACTS/lint-dev-paths-baseline.txt`
 - `CONTRACTS/lint-domain-baseline.txt`
+- `CONTRACTS/lint-domain-repos-baseline.txt`
 - `CONTRACTS/lint-leaks-baseline.txt`
 - `CONTRACTS/lint-secrets-baseline.txt`
 - `CONTRACTS/lint-siblings-baseline.txt`
 - `bin/lint-comment-commands.awk`
+- `bin/lint-constitution.sh`
 - `bin/lint-conventions.sh`
 - `bin/lint-core-writes.sh`
 - `bin/lint-dev-paths.sh`
@@ -269,6 +272,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 
 - `CONSTITUTION.md`
 - `DOCTRINE/absent-by-decision.md`
+- `DOCTRINE/case-law.md`
 - `DOCTRINE/credential-boundary.md`
 - `DOCTRINE/critique-expanded.md`
 - `DOCTRINE/doc-truth.md`
@@ -440,8 +444,8 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 |---|---|
 | (repo root) | 19 |
 | `.agents/` | 4 |
-| `.github/` | 3 |
-| `CONTRACTS/` | 61 |
+| `.github/` | 2 |
+| `CONTRACTS/` | 62 |
 | `bin/` | 126 |
 | `commands/` | 5 |
 | `docs/` | 17 |

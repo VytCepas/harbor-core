@@ -25,57 +25,57 @@ summary() { printf '%s\n' "$1" | grep -F 'note: CODE='; }
 repo "$P/harbor"
 put "$P/harbor/bin/tool.sh"   'REPO="$HOME/harbor"'
 put "$P/harbor/bin/longer.sh" 'X="$HOME/harborage/x"
-cd ~/azimuthal/CLIENTS
-cd ~/azimuth-wt-x/foo
+cd ~/zorbcorpal/CLIENTS
+cd ~/zorbcorp-wt-x/foo
 cd ~/notes/x'
 put "$P/harbor/skills/x/EVALS/run-1/returns.jsonl" '{"p":"~/harbor/x"}'
 put "$P/harbor/EVALS-DATA/r.txt"                   'cd ~/harbor/y'
 put "$P/harbor/COVERAGE-INCIDENTS.tsv"             "a${TAB}~/harbor/z"
 put "$P/harbor/bin/port-paths.sh"                  'cd ~/harbor'
-put "$P/harbor/tests/install/port-paths-test.sh"   'cd ~/azimuth'
-put "$P/harbor/CONTRACTS/port-paths-exempt.tsv"    "azimuth/x${TAB}~/harbor${TAB}why"
+put "$P/harbor/tests/install/port-paths-test.sh"   'cd ~/zorbcorp'
+put "$P/harbor/CONTRACTS/port-paths-exempt.tsv"    "zorbcorp/x${TAB}~/harbor${TAB}why"
 track "$P/harbor"
-repo "$P/azimuth"
-put "$P/azimuth/run.sh"   'cd ~/azimuth/CLIENTS && ls
-# see ~/azimuth/README
+repo "$P/zorbcorp"
+put "$P/zorbcorp/run.sh"   'cd ~/zorbcorp/CLIENTS && ls
+# see ~/zorbcorp/README
 cd ~/harbor # pinned'
-put "$P/azimuth/other.sh" 'cd ~/harbor # pinned'
-put "$P/azimuth/LOG.txt"  '# history: ~/harbor/x
+put "$P/zorbcorp/other.sh" 'cd ~/harbor # pinned'
+put "$P/zorbcorp/LOG.txt"  '# history: ~/harbor/x
 cd ~/harbor/bin'
-put "$P/azimuth/sentence.sh" 'echo "it moved out of ~/azimuth."
+put "$P/zorbcorp/sentence.sh" 'echo "it moved out of ~/zorbcorp."
 cat ~/harbor.md'
-put "$P/azimuth/home.sh" "cd $H/azimuth # pinned"
-track "$P/azimuth"
-mkdir -p "$P/flow"; repo "$P/flow/APP"; put "$P/flow/APP/profiles.yml" 'path: ~/flow/APP/x'; track "$P/flow/APP"
-repo "$P/flow/APP-wt-y"; put "$P/flow/APP-wt-y/a.sh" 'cd ~/flow/APP'; track "$P/flow/APP-wt-y"
-repo "$P/azimuth-wt-x"; put "$P/azimuth-wt-x/a.sh" 'cd ~/azimuth/x'; track "$P/azimuth-wt-x"
-put "$P/notes/notes.sh" 'cd ~/azimuth'  # a directory holding no repo
+put "$P/zorbcorp/home.sh" "cd $H/zorbcorp # pinned"
+track "$P/zorbcorp"
+mkdir -p "$P/plumb"; repo "$P/plumb/APP"; put "$P/plumb/APP/profiles.yml" 'path: ~/plumb/APP/x'; track "$P/plumb/APP"
+repo "$P/plumb/APP-wt-y"; put "$P/plumb/APP-wt-y/a.sh" 'cd ~/plumb/APP'; track "$P/plumb/APP-wt-y"
+repo "$P/zorbcorp-wt-x"; put "$P/zorbcorp-wt-x/a.sh" 'cd ~/zorbcorp/x'; track "$P/zorbcorp-wt-x"
+put "$P/notes/notes.sh" 'cd ~/zorbcorp'  # a directory holding no repo
 put "$C/settings.json"        '{"x": "~/harbor/bin/y"}'
-put "$H/.claude/settings.json" '{"x": "~/azimuth/decoy"}'  # NOT the config dir here
-put "$H/.claude.json"         "{\"$H/azimuth\": {}}"
-put "$H/Library/LaunchAgents/com.test.x.plist" "<string>$H/azimuth/run.sh</string>"
-printf 'file\ttext\twhy\nazimuth/run.sh\tcd ~/harbor # pinned\tpinned on purpose\nazimuth/LOG.txt\t*\ta dated record\nazimuth/home.sh\tcd @HOME@/azimuth # pinned\tpinned, written as lint HP1 requires\n' > "$X"
+put "$H/.claude/settings.json" '{"x": "~/zorbcorp/decoy"}'  # NOT the config dir here
+put "$H/.claude.json"         "{\"$H/zorbcorp\": {}}"
+put "$H/Library/LaunchAgents/com.test.x.plist" "<string>$H/zorbcorp/run.sh</string>"
+printf 'file\ttext\twhy\nzorbcorp/run.sh\tcd ~/harbor # pinned\tpinned on purpose\nzorbcorp/LOG.txt\t*\ta dated record\nzorbcorp/home.sh\tcd @HOME@/zorbcorp # pinned\tpinned, written as lint HP1 requires\n' > "$X"
 INV="$T/inv.tsv"; pp "$P" "$X" > "$INV" 2>"$T/inv.err"; c=$?
 
 t_section "the inventory: header, CODE, DOC, per-line exemptions"
 t_eq "the inventory" 0 "$c"
 t_eq "its TSV header" "surface${TAB}class${TAB}file${TAB}line${TAB}literal" "$(head -1 "$INV")"
-t_eq "a repo's tracked literal is CODE" yes "$(hit "$INV" repo:azimuth CODE "$P/azimuth/run.sh" 1)"
+t_eq "a repo's tracked literal is CODE" yes "$(hit "$INV" repo:zorbcorp CODE "$P/zorbcorp/run.sh" 1)"
 t_eq "harbor's tracked literal is CODE" yes "$(hit "$INV" harbor-tracked CODE "$P/harbor/bin/tool.sh" 1)"
-t_eq "a literal in a # comment is DOC" yes "$(hit "$INV" repo:azimuth DOC "$P/azimuth/run.sh" 2)"
-t_eq "the line the table names is EXEMPT" yes "$(hit "$INV" repo:azimuth EXEMPT "$P/azimuth/run.sh" 3)"
-t_eq "the same text in another file stays CODE" yes "$(hit "$INV" repo:azimuth CODE "$P/azimuth/other.sh" 1)"
-t_eq "an @HOME@ row matches the home-dir line (HP1)" yes "$(hit "$INV" repo:azimuth EXEMPT "$P/azimuth/home.sh" 1)"
-t_eq "a * row exempts a DOC line" yes "$(hit "$INV" repo:azimuth EXEMPT "$P/azimuth/LOG.txt" 1)"
-t_eq "a * row never exempts a CODE line" yes "$(hit "$INV" repo:azimuth CODE "$P/azimuth/LOG.txt" 2)"
+t_eq "a literal in a # comment is DOC" yes "$(hit "$INV" repo:zorbcorp DOC "$P/zorbcorp/run.sh" 2)"
+t_eq "the line the table names is EXEMPT" yes "$(hit "$INV" repo:zorbcorp EXEMPT "$P/zorbcorp/run.sh" 3)"
+t_eq "the same text in another file stays CODE" yes "$(hit "$INV" repo:zorbcorp CODE "$P/zorbcorp/other.sh" 1)"
+t_eq "an @HOME@ row matches the home-dir line (HP1)" yes "$(hit "$INV" repo:zorbcorp EXEMPT "$P/zorbcorp/home.sh" 1)"
+t_eq "a * row exempts a DOC line" yes "$(hit "$INV" repo:zorbcorp EXEMPT "$P/zorbcorp/LOG.txt" 1)"
+t_eq "a * row never exempts a CODE line" yes "$(hit "$INV" repo:zorbcorp CODE "$P/zorbcorp/LOG.txt" 2)"
 
 t_section "what is scanned: derived repos, the matcher, excluded records"
-t_eq "a repo inside a container (flow/APP) is scanned" yes "$(hit "$INV" repo:flow/APP CODE "$P/flow/APP/profiles.yml" 1)"
-t_eq "a <repo>-wt-* sibling is not scanned" none "$(none "$INV" "\$1 ~ /-wt-/ || index(\$3, \"$P/azimuth-wt-x/\") == 1 || index(\$3, \"$P/flow/APP-wt-y/\") == 1")"
+t_eq "a repo inside a container (plumb/APP) is scanned" yes "$(hit "$INV" repo:plumb/APP CODE "$P/plumb/APP/profiles.yml" 1)"
+t_eq "a <repo>-wt-* sibling is not scanned" none "$(none "$INV" "\$1 ~ /-wt-/ || index(\$3, \"$P/zorbcorp-wt-x/\") == 1 || index(\$3, \"$P/plumb/APP-wt-y/\") == 1")"
 t_eq "a directory holding no repo is not scanned" none "$(none "$INV" "index(\$3, \"$P/notes/\") == 1")"
 t_eq "longer names do not match" none "$(none "$INV" "\$3 == \"$P/harbor/bin/longer.sh\"")"
-t_eq "'~/azimuth.' ending a sentence matches" yes "$(hit "$INV" repo:azimuth CODE "$P/azimuth/sentence.sh" 1)"
-t_eq "'~/harbor.md' does not" none "$(none "$INV" "\$3 == \"$P/azimuth/sentence.sh\" && \$4 == 2")"
+t_eq "'~/zorbcorp.' ending a sentence matches" yes "$(hit "$INV" repo:zorbcorp CODE "$P/zorbcorp/sentence.sh" 1)"
+t_eq "'~/harbor.md' does not" none "$(none "$INV" "\$3 == \"$P/zorbcorp/sentence.sh\" && \$4 == 2")"
 t_eq "EVALS, records and the instrument's own files are excluded" none "$(none "$INV" "index(\$3, \"$P/harbor/\") == 1 && \$3 != \"$P/harbor/bin/tool.sh\"")"
 t_eq "settings come from CLAUDE_CONFIG_DIR" yes "$(hit "$INV" settings CODE "$C/settings.json" 1)"
 t_eq "not from \$HOME/.claude" none "$(none "$INV" "\$3 == \"$H/.claude/settings.json\"")"
@@ -94,7 +94,7 @@ t_eq "every selftest case ran" 1 "$(printf '%s\n' "$o" | grep -cxF "port-paths: 
 t_eq "--selftest skipped nothing" 0 "$(printf '%s\n' "$o" | grep -c '^  skip:')"
 
 t_section "it cannot look and say green: missing, unreadable, empty"
-P2="$T/port2"; repo "$P2/azimuth"; put "$P2/azimuth/a.sh" 'echo fine'; track "$P2/azimuth"
+P2="$T/port2"; repo "$P2/zorbcorp"; put "$P2/zorbcorp/a.sh" 'echo fine'; track "$P2/zorbcorp"
 ppc "$P2" /dev/null > "$T/inv2.tsv" 2>/dev/null
 t_eq "no harbor checkout is a CODE row" yes "$(hit "$T/inv2.tsv" harbor-tracked CODE "$P2/harbor" -)"
 o="$(ppc "$P2" /dev/null --verify 2>/dev/null)"; c=$?

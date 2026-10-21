@@ -6,12 +6,15 @@
 #   sh lint-domain.sh --check    red if the count is above CONTRACTS/lint-domain-baseline.txt;
 #                                   green but says to lower the baseline when it is below
 #   sh lint-domain.sh --zero     red on any hit: the export gate once harbor#1273 has emptied it
+#   sh lint-domain.sh --repos <mode>   the same over workload repo names (harbor#1273), its own baseline and allow list
 #
 # Terms: CONTRACTS/domain-terms.tsv (id TAB pattern TAB note), each pattern an ERE matched case-insensitively as a whole
 # word. Allowed: CONTRACTS/domain-allow.tsv (path TAB term TAB reason), harbor logic that must name a tool; path is a file
 # or a dir/ prefix, term an id or *, and the reason is required. Scope: every tracked file, plus untracked ones git does
-# not ignore, whose layer is core (bin/layers.sh --core), minus the two registers. Workload repo ids are not terms here:
-# core cannot list them without naming them, so they come from the private registry in a follow-up (harbor#1274).
+# not ignore, whose layer is core (bin/layers.sh --core), minus the two registers. Workload repo ids are not in the
+# register, since core cannot list them without naming them: --repos reads them from the private project registry
+# (Harbor's own repos excluded) and matches each only where it reads as a repo (~/<id>, <id>/..., `<id>`, <id>#N,
+# "<id> repo"), because several are English words too. With no registry, --repos judges nothing and says so.
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
@@ -24,6 +27,23 @@ log_init lint-domain
 LOG_FD=2
 TAB="$(printf '\t')"
 T="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -rf "$T"' EXIT
+
+GW=-w; REPOS=0; REG=''; WHAT="workload tool"
+if [ "${1:-}" = --repos ]; then
+  REPOS=1; GW=''; WHAT="workload repo"; shift
+  REG="${DOMAIN_REPO_REGISTRY:-${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}/inject.d/box/projects.tsv}"
+  BASE="${DOMAIN_REPOS_BASELINE:-$ROOT/CONTRACTS/lint-domain-repos-baseline.txt}"
+  ALLOW="${DOMAIN_REPOS_ALLOW:-$ROOT/CONTRACTS/domain-repos-allow.tsv}"
+  # Harbor's own repos (the control plane, Yard, Fleet) are not workloads.
+  OWN=' harbor project-init projects-orchestrator '
+  TERMS="$T/repo-terms.tsv"
+  { printf 'id\tpattern\tnote\n'
+    [ ! -f "$REG" ] || sed 's/\r$//' "$REG" | grep -vE '^[[:space:]]*(#|$)' | cut -f1 | while read -r id; do
+      case "$OWN" in *" $id "*) continue ;; esac
+      case "$id" in ''|*[!abcdefghijklmnopqrstuvwxyz0123456789-]*) continue ;; esac
+      printf '%s\t%s\tworkload repo\n' "$id" "(~|port|HOME|ROOT\\}?)/$id([^A-Za-z0-9_-]|\$)|(^|[^A-Za-z0-9_./-])$id(/[A-Za-z0-9_.]|#[0-9]| (repo|tree|checkout|worktree|pack)([^A-Za-z]|\$))|\`$id[\`/]|\\($id,"
+    done; } > "$TERMS"
+fi
 
 rows() { # <file> → its data rows: CR stripped, comments and blanks dropped, header dropped
   [ -f "$1" ] || return 0
@@ -46,7 +66,7 @@ valid() {
 
 hits() { # file TAB term-id, one line per pair, sorted
   rows "$TERMS" | while IFS="$TAB" read -r id pat _note; do
-    git -C "$ROOT" grep -I --untracked -i -w -l -E -e "$pat" -- . 2>/dev/null | awk -v id="$id" '{ print $0 "\t" id }' || :
+    git -C "$ROOT" grep -I --untracked -i $GW -l -E -e "$pat" -- . 2>/dev/null | awk -v id="$id" '{ print $0 "\t" id }' || :
   done > "$T/pairs"
   cut -f1 "$T/pairs" | sort -u | HARBOR_ROOT="$ROOT" sh "$SRC/layers.sh" --core > "$T/core"
   rows "$ALLOW" > "$T/allow"
@@ -67,7 +87,10 @@ case "${1:-}" in
   --list)  need_git || { echo "lint-domain: $ROOT is not a git checkout" >&2; exit 2; }
            valid || exit 2; hits ;;
   --check|--zero)
-    need_git || { log_fail "$ROOT is not a git checkout, nothing was inspected"; log_nofix "bin/lint-domain.sh"; log_end || :; exit 2; }
+    if [ "$REPOS" = 1 ] && [ ! -f "$REG" ]; then
+      log_note "no project registry at ${REG#$HOME/}: workload repo names were not judged"; log_end; exit 0
+    fi
+    need_git ||{ log_fail "$ROOT is not a git checkout, nothing was inspected"; log_nofix "bin/lint-domain.sh"; log_end || :; exit 2; }
     valid || { log_fail "a domain register does not parse, nothing was counted"; log_fix "correct the rows named above"; log_end || :; exit 2; }
     if [ "$1" = --zero ]; then WANT=0; else
       WANT="$(grep -vE '^[[:space:]]*(#|$)' "$BASE" 2>/dev/null | head -1 | tr -d ' ')" || WANT=""
@@ -75,7 +98,7 @@ case "${1:-}" in
     fi
     hits > "$T/hits"; GOT="$(wc -l < "$T/hits" | tr -d ' ')"
     if [ "$GOT" -gt "$WANT" ]; then
-      log_fail "$GOT core file(s)-and-term pair(s) name a workload tool, the limit is $WANT"
+      log_fail "$GOT core file(s)-and-term pair(s) name a $WHAT, the limit is $WANT"
       log_fix "move the workload knowledge to its pack or the private layer (harbor#1273), or allow-list harbor logic in ${ALLOW#$ROOT/} with a reason"
       # The delta, not the census: files this branch touched that hold a hit.
       __chg="$(git -C "$ROOT" diff --name-only "$(git -C "$ROOT" merge-base HEAD origin/main 2>/dev/null || echo HEAD)" 2>/dev/null || :)"
@@ -90,9 +113,9 @@ $f
       log_ok "$GOT pair(s), under the baseline of $WANT"
       log_note "lower ${BASE#$ROOT/} to $GOT so the gain is kept"
     else
-      log_ok "$GOT pair(s) naming a workload tool, equal to the limit"
+      log_ok "$GOT pair(s) naming a $WHAT, equal to the limit"
     fi
     log_end ;;
-  -h|--help|help|'') sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//' ;;
+  -h|--help|help|'') sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//' ;;
   *) echo "lint-domain: unknown argument '$1'" >&2; exit 2 ;;
 esac

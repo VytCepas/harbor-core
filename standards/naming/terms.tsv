@@ -371,7 +371,7 @@ zsh	extension	zsh	-	-	stable	-	harbor#950 (standard §6.3)	-	-	Registered extens
 bash	extension	bash	-	-	stable	-	harbor#950 (standard §6.3)	-	-	Registered extension-chain element (standard §6.3)
 family	concept,level	family	subsystem	-	experimental	-	standard D-57	module; area (workloads)	-	A module of the platform and level five of the hierarchy: the first word on a flat surface and the subpackage in code. It belongs to one subsystem and is not one (D-57, D-59)
 ops	domain	ops	domain	S1	experimental	-	standard D-69	-	-	Domain: operational tools, such as mail and calendar and the wiki mirror
-product	domain	product	domain	S1	experimental	-	standard D-69	-	-	Domain: products the operator ships, such as idea-to-live and the client portal
+product	domain	product	domain	S1	experimental	-	standard D-69	-	-	Domain: products the operator ships, such as a pipeline product and the client portal
 event	family	event	observability	-	experimental	-	harbor#1049 (operator decision 2026-10-05, D-77)	-	-	Family: the event bus and its dispatcher (emit, follow, rules)
 obligation	concept	obligation	status	S3*	experimental	-	harbor#1049 (D-77)	open loop (not used: in control theory it is a loop without feedback)	-	One unit of unfinished work the box tracks from the event that opens it to the event that closes it; the ledger of them is the status family's
 shadow	mode	shadow	-	-	stable	-	standard D-29, D-64	-	-	A control that records a finding and prints nothing (D-29)
