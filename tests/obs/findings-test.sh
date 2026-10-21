@@ -8,8 +8,8 @@
 
 t_section "the digest is the contract's, on its three worked rows"
 t_eq "one path" e06264caf1fcc23e "$(sh "$F" digest bin/runtime-install.sh)"
-t_eq "two paths" 9951a348aefc9079 "$(sh "$F" digest studio/.agents/hooks/prod_guard.py azimuth/.agents/hooks/prod_guard.py)"
-t_eq "order does not matter" 9951a348aefc9079 "$(sh "$F" digest azimuth/.agents/hooks/prod_guard.py studio/.agents/hooks/prod_guard.py)"
+t_eq "two paths" 44ae053f90619d2c "$(sh "$F" digest labkit/.agents/hooks/prod_guard.py zorbcorp/.agents/hooks/prod_guard.py)"
+t_eq "order does not matter" 44ae053f90619d2c "$(sh "$F" digest zorbcorp/.agents/hooks/prod_guard.py labkit/.agents/hooks/prod_guard.py)"
 
 t_section "lanes are read from the contract, and every other key is PROPOSE"
 t_has "the skill.book-current HEAL row" "$(sh "$F" lanes)" "HEAL	lint/skill.book-current	skills/skill-book/SKILL.md	sh bin/skill-book.sh"
@@ -157,8 +157,8 @@ t_eq "…and the same day writes nothing" 0 "$(writes)"
 
 # ── the check tier (harbor#896) ──────────────────────────────────────────────
 t_section "log_receipt writes one atomic, valid receipt, and refuses a bad status or id"
-RD="$TMP/rl"; ( . "$T_ROOT/bin/log-lib.sh"; log_receipt "$RD" memory-route red 'har"bor/wt' studio )
-t_eq "valid JSON with its subjects" 'red ["har\"bor/wt","studio"]' "$(jq -c -r '"\(.status) \(.subjects | tojson)"' "$RD/memory-route.json")"
+RD="$TMP/rl"; ( . "$T_ROOT/bin/log-lib.sh"; log_receipt "$RD" memory-route red 'har"bor/wt' labkit )
+t_eq "valid JSON with its subjects" 'red ["har\"bor/wt","labkit"]' "$(jq -c -r '"\(.status) \(.subjects | tojson)"' "$RD/memory-route.json")"
 t_has "stamped" "$(jq -r .ran_at "$RD/memory-route.json")" "T"
 t_eq "a bad status returns 1" 1 "$( . "$T_ROOT/bin/log-lib.sh"; log_receipt "$RD" memory-route amber x; echo $?)"
 ( . "$T_ROOT/bin/log-lib.sh"; log_receipt "$RD" 'Bad Id' red x || : )
@@ -170,11 +170,11 @@ GH_STATE="$TMP/gh-check.json"; export GH_STATE
 records "$TMP/c0" lint.long-file-reason -- lint.long-file-reason:bin/big.sh
 
 t_section "check tier · a red receipt files check/<id> over its subjects, with the receipt as evidence"
-rcpt memory-route red 2026-10-21 harbor/wt-a studio
+rcpt memory-route red 2026-10-21 harbor/wt-a labkit
 NOW=2026-10-21; OUT="$(rec "$TMP/c0" --apply)"
 t_has "filed, in the HEAL lane" "$OUT" "check/memory-route (2 subject(s)) · HEAL · filed"
 _cb="$(jq -r '[.issues[] | select(.body | contains("key=check/memory-route "))][0].body' "$GH_STATE")"
-t_has "digested over the subjects" "$_cb" "digest=$(sh "$F" digest harbor/wt-a studio)"
+t_has "digested over the subjects" "$_cb" "digest=$(sh "$F" digest harbor/wt-a labkit)"
 t_has "the rule line names the receipt" "$_cb" '`~/.claude/cache/checks/memory-route.json`'
 t_has "the evidence is the receipt" "$_cb" '"status":"red"'
 

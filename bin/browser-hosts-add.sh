@@ -89,7 +89,7 @@ for h in $HOSTS; do
       NOTES="${NOTES:+$NOTES; }$h lands on $_end signed out"
     fi
   fi
-  log_note "review: is $h a client live site? Those go through TagScope, never here"
+  log_note "review: is $h a client live site? Those go through the tag debugger, never here"
 done
 
 # The block, in the file's shape: blank line, comment(s), host lines.

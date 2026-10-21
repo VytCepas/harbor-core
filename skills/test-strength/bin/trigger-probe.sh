@@ -323,7 +323,7 @@ _one_session() {  # $1 = query text ; $2 = log path ; sets FIRED/SHADOW/ERR
   # --disallowedTools IS A SAFETY GATE, NOT AN OPTIMISATION, and it has already
   # earned its place. Measured 2026-08-31: a live session on the account
   # default model routed correctly and then went on to do the work, ending in
-  # `Write {"file_path":"$HOME/azimuth/CLIENTS/ACME/TOPOLOGY.md"}`. The
+  # `Write {"file_path":"$HOME/<repo>/CLIENTS/ACME/TOPOLOGY.md"}`. The
   # write was refused by this list and the directory does not exist. A sweep is
   # dozens of unattended sessions with the operator's whole filesystem in
   # reach, so the list is the boundary. Skill and Read stay allowed because

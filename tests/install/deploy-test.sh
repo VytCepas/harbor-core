@@ -80,7 +80,7 @@ printf 'components = []\n' > "$PV/harbor.toml"; run '' --live
 t_eq "components = []: unset, so exit 0" 0 "$RC"
 t_has "...and the legacy note, as for an unset key" "$(out)" "components unset, so it installs the legacy default"
 t_has "...and plans prod-guard, which the legacy set has and core does not" "$(out)" "prod-guard"
-printf 'packs = azimuth\n' > "$PV/harbor.toml"; run '' --live
+printf 'packs = zorbcorp\n' > "$PV/harbor.toml"; run '' --live
 t_eq "a malformed harbor.toml is a usage error, though it names no components key" 2 "$RC"
 t_has "...and roots.sh names the bad line" "$(out)" "harbor.toml:1"
 run '' --only skills --live

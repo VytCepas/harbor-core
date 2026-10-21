@@ -15,8 +15,8 @@ three:
    reach for first when trimming.
 2. **What the tool still does not measure.** Repo-scoped `.claude/rules/*.md`
    load ambiently *in that repo* and appear nowhere in this report. On
-   2026-08-07 that was 6,450 B in `~/azimuth` and 4,758 B in `~/idea-to-live`, on top
-   of the global figure. A session in the measurement repo (azimuth, via the repo registry) therefore pays materially more than
+   2026-08-07 that was 6,450 B in one workload repo and 4,758 B in another, on top
+   of the global figure. A session in the measurement repo (resolved through the repo registry) therefore pays materially more than
    this table says. Say so rather than reporting the total as complete.
 3. **The tier split.** A skill carrying `disable-model-invocation: true` is
    removed from the model's listing entirely and costs **nothing** per session.

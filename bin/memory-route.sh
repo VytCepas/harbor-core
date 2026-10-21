@@ -22,14 +22,14 @@
 #
 # WHY. The auto-memory store is keyed by the session's working directory:
 # ~/.claude/projects/<cwd-key>/memory/. A session started at $HOME gets the
-# store; a session started in the measurement repo (azimuth, via the repo registry) gets a DIFFERENT key, which has no store
+# store; a session started in the measurement repo (resolved through the repo registry) gets a DIFFERENT key, which has no store
 # behind it, so it loads nothing. Measured 2026-09-16: 291 notes under
 # `-Users-someone`, and 0 under `-Users-someone-harbor`. Every other governed
 # repo had no project directory at all.
 #
 # That is the whole defect, and it is worse than it sounds because it is silent
-# and it inverts. The notes most worth having in the measurement repo (azimuth, via the repo registry) are the ones written
-# WHILE WORKING IN the measurement repo (azimuth, via the repo registry) — the ugrep negative, the zsh word-split, the
+# and it inverts. The notes most worth having in the measurement repo (resolved through the repo registry) are the ones written
+# WHILE WORKING IN the measurement repo (resolved through the repo registry) — the ugrep negative, the zsh word-split, the
 # `cd ~` prompt — and every one of them was filed from a $HOME session and is
 # therefore invisible in the repo it describes. `memory-store-topology.md` has
 # recorded this since 2026-08-02 and nothing acted on it, because a note about a
@@ -132,7 +132,7 @@ fi
 
 # ── the key derivation, which is the one thing here that can be wrong ────────
 # Claude Code names a project directory after the session's cwd with every `/`
-# replaced by `-`, leading slash included: /Users/x/azimuth -> -Users-x-azimuth.
+# replaced by `-`, leading slash included: /Users/x/<repo> -> -Users-x-<repo>.
 # Derived, never parsed back: two different paths can in principle collide once
 # a directory name contains a dash, and this only ever needs the forward map.
 key_for() { printf '%s' "$1" | sed 's|/|-|g'; }
@@ -199,14 +199,14 @@ BAD=0; OK=0; MADE=0; EXAMINED=0
 # ten registry paths and called the job done; measured immediately afterwards,
 # eight more directories a session can legitimately open were still blind —
 # three harbor worktrees (INCLUDING THE ONE THIS TOOL WAS BEING WRITTEN IN),
-# the pipeline repo's sub-checkouts (flow, via the repo registry), a project-init worktree, and mailcal's
-# installed copy under ~/.local/lib.
+# the pipeline repo's sub-checkouts (resolved through the repo registry), a project-init worktree, and a mail
+# tool's installed copy under ~/.local/lib.
 #
 # Two shapes, both ordinary on this box:
 #   worktrees   `worktree.sh` creates one per branch, so they are the NORMAL way
 #               work happens here. Each gets its own cwd key and its own
 #               blindness.
-#   sub-repos   the pipeline repo (flow, via the repo registry) is a ROOT and not a repo — its sub-checkouts are several
+#   sub-repos   the pipeline repo (resolved through the repo registry) is a ROOT and not a repo — its sub-checkouts are several
 #               separate checkouts one level below it. A session runs in those,
 #               never in the root, so routing only the root routes nobody.
 #
@@ -217,14 +217,14 @@ route_targets() { # <repo-or-root path> -> one absolute path per line
   printf '%s\n' "$1"
   # `worktree list` prints the main checkout first; every later line is an extra
   # tree. Silent when the path is not a git repo, which is how a root like
-  # the pipeline repo (flow, via the repo registry) falls through to the sub-repo branch below.
+  # the pipeline repo (resolved through the repo registry) falls through to the sub-repo branch below.
   git -C "$1" worktree list 2>/dev/null | awk 'NR>1 {print $1}'
   # Immediate children that are themselves checkouts. One level only: deeper is
   # vendored dependencies, not somewhere anyone opens a session.
   #
   # `-e`, NOT `-d`, AND THAT IS THE WHOLE CASE. A normal clone has `.git` as a
   # DIRECTORY; a git worktree has `.git` as a FILE containing a gitdir pointer.
-  # Testing for a directory therefore found the pipeline repo's checkout (flow, via the repo registry) and silently missed all
+  # Testing for a directory therefore found the pipeline repo's checkout (resolved through the repo registry) and silently missed all
   # five of its `<sub>-wt-*` worktrees — the branch checkouts, which
   # is where the work in that tree actually happens. Measured 2026-09-16: the
   # first --apply reported a confident "18 of 18 routed" with those five still

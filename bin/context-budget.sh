@@ -245,7 +245,7 @@ done
 # something that never happened.
 #
 # FALSIFIED BEHAVIOURALLY, which is the only way this could have been settled. A
-# real session started in ~/azimuth was asked whether it carried an auto-memory index
+# real session started in a workload repo was asked whether it carried an auto-memory index
 # and answered ABSENT, listing exactly what it did carry. Meanwhile this tool,
 # walking up, was charging that session 10,908 B for a file it never loads. The
 # walk made the budget OVERCOUNT by the largest single item on the box, in every
@@ -305,8 +305,8 @@ fi
 # ── repo-scoped surfaces, which DO load and were never counted ──────────────
 # `.claude/rules/*.md` every one of the 19 on this box declares
 # `alwaysApply: false` with a `globs:` predicate, and a review reading that
-# frontmatter concluded they cost nothing. They cost 6,450 B in ~/azimuth. Measured
-# the only way that settles it: a fresh headless session started in ~/azimuth, asked
+# frontmatter concluded they cost nothing. They cost 6,450 B in one workload repo. Measured
+# the only way that settles it: a fresh headless session started in that repo, asked
 # with no file reads whether the rules were present, quoted BOTH of them
 # verbatim and then listed all three by name.
 #
@@ -346,7 +346,7 @@ done
 # AND THE ANSWER DEPENDS ON THE DIRECTORY, BY SEVEN TIMES. Measured 2026-09-20:
 #
 #     $HOME                      11,804 B      ~/harbor      1,660 B
-#     ~/Deliverables/<a folder>   2,172 B      ~/azimuth     1,666 B
+#     ~/Deliverables/<a folder>   2,172 B      ~/<repo>      1,666 B
 #
 # `inject.d/repo-skills.sh` emits 9,682 B at home and ZERO inside a governed repo.
 # So the largest single injected item on the box — the index to the 38 skills the
@@ -475,7 +475,7 @@ if [ -n "$mem_max_path" ]; then
   # to the ONE $HOME silo by symlink — 25 of 200 store directories are links and
   # the 200 MEMORY.md files have 3 distinct inodes (measured 2026-09-20). The
   # loop above takes the first slug of equal size, so it reported
-  # `-Users-someone-.local-lib-mailcal` for a file that IS `-Users-someone`.
+  # `-Users-someone-.local-lib-<tool>` for a file that IS `-Users-someone`.
   # That mattered little while the worst case was one surface; it matters now that
   # it is paired with the injection probed at $HOME, because a reader has to be
   # able to see that both maxima land in the SAME session and the compound is a

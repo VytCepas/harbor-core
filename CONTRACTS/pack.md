@@ -37,8 +37,8 @@ it (the private layer's own pack: the layer's `jobs/`), and `drift.launchd-plist
 `conf-keys.txt` (optional) declares the `harbor.toml` keys the pack's own tools read (#949): one key per line, `#` comments,
 `[a-z][a-z0-9_]*`. Install puts it at `conf-keys.d/<repo-id>.txt`, and `bin/roots.sh --conf` accepts those keys beside core's
 own (`roots.sh --conf-keys`), so core names no pack's key. Install refuses a core key, a key another installed pack declares,
-and a malformed line; remove takes the keys back with the pack. `reconcile_bq_project`, `antibot_trap_param` and
-`gads_secret_project` stay core-readable for one release while the pack that reads them declares them, then leave core.
+and a malformed line; remove takes the keys back with the pack. Three keys core once read left it one release after
+their pack declared them (#1273): with no pack installed, `roots.sh --conf <key>` refuses them (exit 2).
 
 `shims.tsv` (optional) puts the pack's commands on the operator's PATH: a header row `name` TAB `rel`, then one row per command,
 `rel` a `bin/<file>` this pack installs. `bin/shim-install.sh` links `~/.local/bin/<name>` to the installed copy, so core's own

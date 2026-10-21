@@ -22,7 +22,7 @@ Two halves, and both are load-bearing:
 
 | contract | its checker | where the subject lives | what runs it |
 |---|---|---|---|
-| topology's nine sections | `estate/bin/check-topology.sh` | `<repo>/CLIENTS/` | **nothing** |
+| topology's nine sections | the data-estate repo's `bin/check-topology.sh` | `<repo>/CLIENTS/` | **nothing** |
 | the pack's row format | `harbor/skills/casefile/bin/check-pack.sh` | wherever the case is | **nothing** |
 | the route card | `harbor/skills/access-ledger/bin/check-routes.sh` | `harbor-private/access/` | **nothing** |
 
@@ -33,7 +33,7 @@ it deliberately.
 
 The cross-repo half is just as measurable. `<repo>` holds the only client map on
 this box and names `CLIENTS` **zero times** in its CI workflow, its justfile, its
-`CLAUDE.md` and its `AGENTS.md`. `estate` holds the checker for that map and
+`CLAUDE.md` and its `AGENTS.md`. the data-estate repo holds the checker for that map and
 invokes it in neither its CI nor its justfile.
 
 ## Required properties of a checker

@@ -7,7 +7,7 @@
 #
 # WHY. CI-3 (merge-check) guards the PR before the merge and nothing asks the question after it.
 # Measured 2026-10-01: 41 of the last 99 pushes to harbor's main were not green (30 cancelled, 11 failed,
-# no run at all for some). Measured 2026-10-06: estate, mailcal, studio and zarija sat red on main with
+# no run at all for some). Measured 2026-10-06: four workload repos sat red on main with
 # nothing alerting, because the fleet view read `gh run list --limit 1` (any branch, any workflow).
 #
 # THE FLEET is where ci-runners.sh reads it: the projects-orchestrator snapshot (cache/fleet-snapshot.json,

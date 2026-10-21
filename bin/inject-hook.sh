@@ -266,7 +266,7 @@ strip_heredocs() {
 # newline WITHOUT regard to quoting, so
 #   git commit -m "docs: record the gate (gh pr create needs the agents first)"
 # produced a segment reading `gh pr create needs the agents first` and fired the
-# idea-to-live pack — on a commit, not on a PR. CONTRACTS/inject.md stated the
+# a workload pack — on a commit, not on a PR. CONTRACTS/inject.md stated the
 # opposite as a guarantee. And the second-order effect is worse than the noise:
 # those packs are `once: session`, so the benign commit SPENT the ledger key and
 # the real `gh pr create` later in the same session got total silence. A rule

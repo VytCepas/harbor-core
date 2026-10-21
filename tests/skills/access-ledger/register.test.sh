@@ -59,6 +59,14 @@ export ACCESS_DIR="$T_TMP/explicit"; rm -rf "$PV"
 t_exit "ACCESS_DIR wins over the layer" 0 sh "$ROUTES"
 unset ACCESS_DIR
 
+t_section "the generated files do not depend on the caller's locale"
+LR="$T_TMP/locale"; mkdir -p "$LR"; cp "$CARD" "$LR/thing.md"
+sed 's/person@example.invalid/Zed Bot/g; s/^# thing/# other/' "$CARD" > "$LR/other.md"
+sed 's/person@example.invalid/alpha@example.invalid/g; s/^# thing/# third/' "$CARD" > "$LR/third.md"
+LC_ALL=C sh "$ROUTES" --accounts "$LR" > "$LR/ACCOUNTS.md"; LC_ALL=C sh "$ROUTES" --dispatch "$LR" > "$LR/DISPATCH.md"
+t_exit "written under C, it is current under en_US.UTF-8" 0 env LC_ALL=en_US.UTF-8 ACCESS_DIR="$LR" sh "$ROUTES"
+t_exit "...and under C" 0 env LC_ALL=C ACCESS_DIR="$LR" sh "$ROUTES"
+
 t_section "a layer whose access/ is empty is a failure, not a pass"
 mkdir -p "$PV/access"
 t_exit "no cards found is exit 1" 1 sh "$ROUTES"

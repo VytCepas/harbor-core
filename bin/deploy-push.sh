@@ -199,6 +199,8 @@ fi
 # Domain ratchet at zero over the stage (harbor#1274): core carries no workload tool's name.
 DOMAIN=0
 HARBOR_ROOT="$STAGE" sh "$SRC/lint-domain.sh" --zero >&2 || DOMAIN=1
+# and no workload repo's name (harbor#1273): the ids come from the private registry, so none is named here
+HARBOR_ROOT="$STAGE" sh "$SRC/lint-domain.sh" --repos --zero >&2 || DOMAIN=1
 # pass-score (decision 17 on harbor#1149): HEAD's FLOOR.md, so its pass table, not the working tree's.
 PASSS=0
 if [ -f "$RAW/bin/pass-score.sh" ]; then
@@ -215,7 +217,7 @@ if [ -f "$RAW/bin/redteam-corpus.sh" ]; then
   RTV="$(grep -cE '^  ok: ' "$TMP/redteam.out" | tr -d ' ') corpus line(s) ok, $(grep -cE '^  FAIL: ' "$TMP/redteam.out" | tr -d ' ') red"
 else RTS=1; RTV="no bin/redteam-corpus.sh at HEAD"; fi
 FIXR="sh bin/redteam-corpus.sh --print names each red corpus; adjudicate each finding on harbor#1313"
-FIXD="sh bin/lint-domain.sh --list names each file and term (harbor#1273 empties it)"
+FIXD="sh bin/lint-domain.sh --list (and --repos --list) names each file and term (harbor#1273)"
 FIXP="sh bin/pass-score.sh shows the pass table; an adjudicated pass must leave zero criticals open (decision 23, harbor#1149)"
 
 # The release gate (harbor#1274, decisions 17-18 on harbor#1149): every row named, none a silent pass. The rows run here
@@ -228,7 +230,7 @@ gate_row "leak gate 0" "$GATE" "the staged set" "$FIXL"
 gate_row "secrets 0" "$SECRETS" "gitleaks over the staged set" "$FIXS"
 if [ -n "$TARGET" ]; then gate_row "export history" "$HIST" "$HISTN published commit(s) of the target" "$FIXH"
 else log_skip "release gate · export history: not run - name the target: harbor deploy push --dry-run <target>"; fi
-gate_row "domain ratchet 0" "$DOMAIN" "sh bin/lint-domain.sh --zero over the staged set" "$FIXD"
+gate_row "domain ratchet 0" "$DOMAIN" "sh bin/lint-domain.sh --zero and --repos --zero over the staged set" "$FIXD"
 gate_row "pass-score" "$PASSS" "${PASSV:-no verdict}" "$FIXP"
 gate_row "redteam-corpus" "$RTS" "$RTV" "$FIXR"
 log_skip "release gate · stranger install: not run here - its verdict for this sha: gh run list -w stranger-install.yml -c $SHA; to run it: gh workflow run stranger-install.yml"

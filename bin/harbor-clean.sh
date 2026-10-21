@@ -43,7 +43,7 @@
 # operator to approve. They exist because most of what accumulates on this box is
 # not machine-decidable. Measured 2026-09-22 against the version before them: 61
 # landed-branch rows that were 25 branches, each repeated once per worktree
-# directory of its repo; nothing under ~/flow, whose three repos sit one level
+# directory of its repo; nothing under the pipeline root, whose three repos sit one level
 # below the walk; and no view at all of the six worktrees whose PRs had merged,
 # of branches left on GitHub, or of any PR or issue.
 #
@@ -930,7 +930,7 @@ gh_issues() {
     # AN UNTICKED BOX VETOES EVERY OTHER SIGNAL. Closed sub-issues or a merged PR
     # say part of the work is done; an open done-when box is the issue saying it
     # is not. The first live sweep offered harbor#603 (5 open acceptance boxes,
-    # its one child closed) and idea-to-live#1 for closing (2026-09-22).
+    # its one child closed) and a workload repo's #1 for closing (2026-09-22).
     if [ "$_open" -gt 0 ]; then :
     elif [ "$_done" -gt 0 ]; then _why="every done-when box is ticked ($_done)"
     elif [ "$_st" -gt 0 ] && [ "$_sd" -eq "$_st" ]; then _why="all $_st sub-issues are closed"

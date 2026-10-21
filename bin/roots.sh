@@ -290,12 +290,10 @@ toml_get() { # <file> <key>
 
 # The harbor.toml keys: core's own, then every key an installed pack declares in its conf-keys.txt
 # (installed at <config dir>/conf-keys.d/<repo-id>.txt by bin/pack.sh), so core names no pack's key
-# (#949, CONTRACTS/pack.md). CONF_KEYS_LEGACY were core keys before that: still read, for one release,
-# so a box whose harbor.toml carries them keeps working until its pack declares them; then they go.
+# (#949, CONTRACTS/pack.md). Three former core keys left after one release, once their pack declared them (#1273).
 CONF_KEYS_CORE='packs components channel deliverables_dir worklog_repo mail_account github_owners browser_live_url live_walk_repo confinement_strict confinement_credentials confinement_skip'
-CONF_KEYS_LEGACY='reconcile_bq_project antibot_trap_param gads_secret_project'
 conf_keys() {
-  __ck="$CONF_KEYS_CORE $CONF_KEYS_LEGACY"
+  __ck="$CONF_KEYS_CORE"
   for __kf in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/conf-keys.d/*.txt; do
     [ -f "$__kf" ] || continue
     __ck="$__ck $(tr -d '\r' < "$__kf" | awk '/^[a-z][a-z0-9_]*$/ { printf "%s ", $0 }')"

@@ -35,7 +35,7 @@ box() {
   printf '#!/bin/sh\nexit 0\n' > "$_h/bin/install-stamp.sh"; chmod +x "$_h/bin/"*
   # The test's own reading of the table: every REPOS row's first path segment gets a bare remote.
   # ...plus the pack repo the pack sections clone: no core root names it since its paths left with the pack (harbor#1149).
-  REPOS="$(awk -F"$TAB" '!/^#/ && $2 == "REPOS" { sub(/\/.*/, "", $3); print $3 }' "$_h/CONTRACTS/roots.tsv" | { cat; echo azimuth; } | sort -u | tr '\n' ' ')"
+  REPOS="$(awk -F"$TAB" '!/^#/ && $2 == "REPOS" { sub(/\/.*/, "", $3); print $3 }' "$_h/CONTRACTS/roots.tsv" | { cat; echo zorbcorp; } | sort -u | tr '\n' ' ')"
   for r in $REPOS; do
     mkdir -p "$T/src/$r"
     case "$r" in project-init|projects-orchestrator) printf 'install:\n\techo x\n' > "$T/src/$r/justfile" ;;
@@ -223,15 +223,15 @@ t_has "...and the run says why" "$(out)" "harbor.toml names no components"
 
 t_section "packs name their repos too"
 box pack 'components = ["core"]
-packs = ["azimuth"]' "azimuth${TAB}azimuth${TAB}workload${TAB}-"; run
+packs = ["zorbcorp"]' "zorbcorp${TAB}zorbcorp${TAB}workload${TAB}-"; run
 t_eq "exit" 0 "$RC"
-t_eq "the pack's repo is cloned, nothing else" "azimuth harbor " "$(checkouts)"
-t_eq "...into the directory the registry gives" "acme/azimuth" "$(clones | tr ' ' '\n' | grep azimuth)"
+t_eq "the pack's repo is cloned, nothing else" "harbor zorbcorp " "$(checkouts)"
+t_eq "...into the directory the registry gives" "acme/zorbcorp" "$(clones | tr ' ' '\n' | grep zorbcorp)"
 t_eq "no download for a pack" "" "$(cat "$T/log.curl")"
 box packreg 'components = ["core"]
-packs = ["azimuth"]'; run
+packs = ["zorbcorp"]'; run
 t_eq "a pack the registry lacks: exit" 1 "$RC"
-t_has "...reason" "$(out)" "pack 'azimuth' has no checkout in the registry"
+t_has "...reason" "$(out)" "pack 'zorbcorp' has no checkout in the registry"
 t_eq "...nothing cloned beyond the documented harbor step" "harbor " "$(checkouts)"
 box packpriv 'components = ["core"]
 packs = ["harbor-private"]'; run

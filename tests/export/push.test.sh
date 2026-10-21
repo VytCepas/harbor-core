@@ -10,6 +10,7 @@ HDR='id	kind	pattern	note'
 LHDR='path	layer	note'
 mkdir -p "$T_TMP/pv"; { printf '%s\n' "$HDR"; printf 'k1\tword\tZorblax\tn\n'; } > "$T_TMP/pv/leaks.tsv"
 PV="$T_TMP/pv"
+mkdir -p "$T_TMP/pv/inject.d/box"; printf '# name\tpath\twhat\nzorbcorp\t~/zorbcorp\ta made-up workload repo\n' > "$T_TMP/pv/inject.d/box/projects.tsv"
 
 mk() { # <name> → a source checkout: core bin and docs, a dev notes file, layers.tsv, the tools under test
   _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/CONTRACTS" "$_d/docs" "$_d/EVALS-DATA"

@@ -186,11 +186,11 @@ for u in https://ads.openai.com/conversions https://ui.ads.microsoft.com/campaig
   [ "$(ag goto "$u")" = "exit 0" ] || _bad="$_bad $u"
 done
 t_eq "goto opens every listed vendor UI" "" "$_bad"
-t_eq "a client live site is still refused" "exit 1" "$(ag goto https://newcrush.com/lt/)"
+t_eq "a client live site is still refused" "exit 1" "$(ag goto https://shop.client.example/lt/)"
 # One operator's stack is the private layer's list (harbor#1273): core alone refuses a vendor that only it names.
 t_eq "core alone refuses a vendor the private layer names" "exit 1" "$(ag goto https://example-adtech.test/)"
 t_eq "amazon.com, the shop, is not admitted" "exit 1" "$(ag goto https://www.amazon.com/)"
-t_eq "a client site on a vendor-like name is refused" "exit 1" "$(ag goto https://m.autoplius.lt/)"
+t_eq "a client site on a vendor-like name is refused" "exit 1" "$(ag goto https://m.cars-portal.example/)"
 t_eq "a customer Azure endpoint is not admitted (portal.azure.com only)" "exit 1" "$(ag goto https://evil.openai.azure.com/)"
 t_eq "no SharePoint tenant is admitted by core: *.sharepoint.com is every tenant" "exit 1" "$(ag goto https://other-my.sharepoint.com/)"
 t_eq "core lists no SharePoint tenant host" "" "$(grep -v '^[[:space:]]*#' "$T_ROOT/CONTRACTS/browser-agent-hosts.txt" | grep -i sharepoint || :)"
