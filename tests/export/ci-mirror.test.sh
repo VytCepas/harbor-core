@@ -11,6 +11,7 @@ HDR='id	kind	pattern	note'
 LHDR='path	layer	note'
 mkdir -p "$T_TMP/pv"; { printf '%s\n' "$HDR"; printf 'k1\tword\tZorblax\tn\n'; } > "$T_TMP/pv/leaks.tsv"
 HARBOR_SCOPE_PRIVATE="$T_TMP/pv"; export HARBOR_SCOPE_PRIVATE
+mkdir -p "$T_TMP/pv/inject.d/box"; printf '# name\tpath\twhat\nzorbcorp\t~/zorbcorp\ta made-up workload repo\n' > "$T_TMP/pv/inject.d/box/projects.tsv"
 TOKEN="mirrortok-Qm4xV7nB2c"; TOKB64="$(printf 'x-access-token:%s' "$TOKEN" | base64 | tr -d '\n')"
 HARBOR_CORE_SLUG=test/harbor-core; HARBOR_SLUG=test/harbor; export HARBOR_CORE_SLUG HARBOR_SLUG
 STUB="$T_TMP/stub"; mkdir -p "$STUB"; export STUB
@@ -34,9 +35,12 @@ case "$1 $2" in
   "run list") sha="$(printf '%s' "$*" | sed -n 's/.*headSha == "\([0-9a-f]*\)".*/\1/p')"
               [ ! -f "$STUB/runs" ] || awk -F'\t' -v s="$sha" '$1 == s { print $2 "\t" $3 "\t" $4 }' "$STUB/runs" ;;
   "api -X") case "$3" in
-      POST) echo "$*" >> "$STUB/status.log" ;;
+      POST) echo "$*" >> "$STUB/status.log"
+            st=''; de=''; for a in "$@"; do case "$a" in state=*) st="${a#state=}" ;; description=*) de="${a#description=}" ;; esac; done
+            printf '%s\t%s\n' "$st" "$de" > "$STUB/cur_status" ;;
       DELETE) git -C "$BARE" update-ref -d "refs/heads/${4#repos/*/git/refs/heads/}" ;;
     esac ;;
+  api\ repos/*/statuses) [ ! -f "$STUB/cur_status" ] || cat "$STUB/cur_status" ;;
   api\ repos/*) git -C "$BARE" rev-parse -q --verify "refs/heads/${2#repos/*/git/ref/heads/}" >/dev/null ;;
   *) echo "gh stub: unhandled $*" >&2; exit 9 ;;
 esac
@@ -75,7 +79,7 @@ core() { # <name> → sets BARE and MIR: a bare harbor-core with a seeded main, 
   git clone -q "$BARE" "$MIR" >/dev/null 2>&1
   git -C "$MIR" remote set-url origin https://github.com/test/harbor-core.git
   git -C "$MIR" config "url.$BARE.insteadOf" https://github.com/test/harbor-core.git
-  rm -f "$STUB/pr_number" "$STUB/pr_create" "$STUB/pr_edit" "$STUB/gh.log" "$STUB/git.log" "$STUB/status.log" "$STUB/runs"
+  rm -f "$STUB/pr_number" "$STUB/pr_create" "$STUB/pr_edit" "$STUB/gh.log" "$STUB/git.log" "$STUB/status.log" "$STUB/runs" "$STUB/cur_status"
 }
 run() { # <src> args... → OUT, RC; the token is set unless NOTOKEN=1
   _s="$1"; shift
@@ -238,6 +242,25 @@ rm -f "$STUB/pr_number"; rm -f "$STUB/status.log"; setstatus
 t_has "no mirror PR: pending" "$(cat "$STUB/status.log")" "state=pending"
 NOTOKEN=1; run "$S" --status 7
 t_eq "--status without the token is refused" "1" "$RC"
+
+t_section "no core file differs from harbor-core main: the mirror run sets public-ci success, and --status keeps it"
+S="$(mk same)"; core same
+( cd "$S" && sh bin/deploy-push.sh "$MIR" ) >/dev/null 2>&1 && git -C "$MIR" push -q origin main >/dev/null 2>&1
+t_has "harbor-core main holds the source's core set" "$(git -C "$BARE" ls-tree -r --name-only main)" "docs/a.md"
+pr "$S" docs/core.md 'a core change' >/dev/null
+run "$S" 7; t_eq "a core change first: mirrored" "1" "$(nbranches)"
+HD="$(pr "$S" NOTES.md 'a dev-only change')"
+rm -f "$STUB/status.log"; run "$S" 7
+t_eq "a dev-only head: green" "0" "$RC"
+t_has "...public-ci success on that head" "$(cat "$STUB/status.log")" "statuses/$HD"
+t_has "...state success" "$(cat "$STUB/status.log")" "state=success"
+t_has "...saying why" "$(cat "$STUB/status.log")" "description=no core file differs from test/harbor-core main"
+t_eq "...the mirror the earlier head left is gone" "0" "$(nbranches)"
+t_eq "...and its PR closed" "no" "$([ -f "$STUB/pr_number" ] && echo yes || echo no)"
+rm -f "$STUB/status.log"; run "$S" --status 7
+t_eq "--status after it: green" "0" "$RC"
+t_eq "...writes nothing, so success is not reset to pending" "no" "$([ -f "$STUB/status.log" ] && echo yes || echo no)"
+t_has "...and says success" "$OUT" "public-ci success"
 
 t_section "--close: the mirror PR is closed and its branch deleted; a repeat is harmless"
 S="$(mk close)"; core close; pr "$S" docs/ok.md 'fine' >/dev/null

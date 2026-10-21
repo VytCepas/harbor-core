@@ -215,8 +215,8 @@ refused() { # <expected reason> <mount line...> — the line refuses beta's cont
 }
 refused "a host path outside the shared root" "mount beta /etc ~/etc"
 t_has "...says why: Colima would mount it empty" "$OUT" "/etc is outside $MROOT/: Colima shares only that into its VM"
-refused "a host path that does not exist" "mount beta $MH/port/flow ~/port/flow"
-t_has "...says it would mount empty" "$OUT" "$MH/port/flow does not exist: it would mount empty"
+refused "a host path that does not exist" "mount beta $MH/port/plumb ~/port/plumb"
+t_has "...says it would mount empty" "$OUT" "$MH/port/plumb does not exist: it would mount empty"
 refused "a mode field: mounts are always read-only" "mount beta $MH/port/harbor ~/port/harbor rw"
 refused "a .. segment that walks out of the root" "mount beta $MH/../../etc ~/etc"
 ln -s /etc "$MH/elsewhere"

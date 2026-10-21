@@ -8,6 +8,7 @@ GIT_AUTHOR_NAME=t; GIT_AUTHOR_EMAIL=t@t.test; GIT_COMMITTER_NAME=t; GIT_COMMITTE
 export GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
 mkdir -p "$T_TMP/pv"; printf 'id\tkind\tpattern\tnote\nk1\tword\tZorblax\tn\n' > "$T_TMP/pv/leaks.tsv"
 PV="$T_TMP/pv"
+mkdir -p "$T_TMP/pv/inject.d/box"; printf '# name\tpath\twhat\nzorbcorp\t~/zorbcorp\ta made-up workload repo\n' > "$T_TMP/pv/inject.d/box/projects.tsv"
 
 mk() { # <name> → a source checkout whose release gate rows are green
   _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/CONTRACTS" "$_d/docs"
@@ -143,6 +144,16 @@ printf 'uses quuxtool\n' > "$S/docs/d.md"; cm "$S" dom
 t_eq "a workload term in core refuses the push" "1" "$(prc "$S" "$T")"
 t_has "...on the domain row" "$(push "$S" "$T")" "release gate · domain ratchet 0: red"
 t_eq "...writing nothing" "" "$(head_of "$T")"
+# a workload repo's name, its id read from the private registry (harbor#1273)
+printf 'cd ~/zorbcorp\n' > "$S/docs/d.md"; cm "$S" repo
+t_eq "a workload repo named in core refuses the push" "1" "$(prc "$S" "$T")"
+t_has "...on the domain row" "$(push "$S" "$T")" "release gate · domain ratchet 0: red"
+printf 'hello\n' > "$S/docs/d.md"; cm "$S" norepo
+PV0="$PV"; PV="$T_TMP/pv-noreg"; mkdir -p "$PV"; cp "$PV0/leaks.tsv" "$PV/"
+t_eq "with no project registry the push is refused, not passed unjudged" "1" "$(prc "$S" "$T")"
+t_has "...on the domain row" "$(push "$S" "$T")" "release gate · domain ratchet 0: red"
+PV="$PV0"
+t_eq "...and with it back, the same tree pushes" "0" "$(prc "$S" "$T")"
 S="$(mk pass)"; T="$(tgt pass)"
 printf '| | pass 1 | pass 2 | pass 3 |\n|---|---|---|---|\n| criticals | 0 | 0 | 2 |\n' > "$S/FLOOR.md"; cm "$S" crit
 t_eq "pass-score red refuses the push" "1" "$(prc "$S" "$T")"

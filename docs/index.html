@@ -1175,6 +1175,7 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <tr><td><code>lint.advisory-recorded</code> (was FL2)</td><td>every ADVISORY line in bin/lint-conventions.sh records its subject with _adv (harbor#590)</td></tr>
 <tr><td><code>lint.sibling-literals</code></td><td>occurrences of another repo's path in core only go down (CONTRACTS/lint-siblings-baseline.txt, harbor#966)</td></tr>
 <tr><td><code>lint.domain</code></td><td>core files naming a workload tool only go down (CONTRACTS/lint-domain-baseline.txt, harbor#1274)</td></tr>
+<tr><td><code>doc.constitution-abstract</code></td><td>CONSTITUTION.md names no date, ticket, absolute path or workload repo (harbor#1273)</td></tr>
 <tr><td><code>lint.dev-paths</code></td><td>core code naming a dev-layer path only goes down (CONTRACTS/lint-dev-paths-baseline.txt, harbor#1275)</td></tr>
 <tr><td><code>lint.core-writes</code></td><td>core scripts writing into the checkout only goes down (CONTRACTS/lint-core-writes-baseline.txt, harbor#1275)</td></tr>
 <tr><td><code>lint.share</code></td><td>every file of a known kind lives in a share its kind allows (harbor#1274)</td></tr>
@@ -1230,6 +1231,7 @@ rule, the failure modes of each clause, and what is deliberately absent.</p>
 <div class="scroll">
 <table class="grid"><thead><tr><th>Document</th><th>Argues</th></tr></thead><tbody>
 <tr><td><code>DOCTRINE/absent-by-decision.md</code></td><td>Absent by decision — what CONSTITUTION.md deliberately does not claim</td></tr>
+<tr><td><code>DOCTRINE/case-law.md</code></td><td>Case law — the dated cases behind the constitution's rules</td></tr>
 <tr><td><code>DOCTRINE/credential-boundary.md</code></td><td>The credential boundary — why the identity is the wall and the rule is the warning</td></tr>
 <tr><td><code>DOCTRINE/critique-expanded.md</code></td><td>Recommendation and critique — the reasoning</td></tr>
 <tr><td><code>DOCTRINE/doc-truth.md</code></td><td>Doc-truth — the incidents behind "derive, don't state"</td></tr>
@@ -1604,6 +1606,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/lint/frozen/freeze.test.sh</code></td><td><code>bin/frozen-gen.sh bin/roots.sh bin/guard-*.sh bin/lint-conventions.sh bin/log-lib.sh CONTRACTS/cli.md CONTRACTS/pack.md CONTRACTS/roots.tsv standards/naming/frozen.tsv standards/naming/renames.tsv skills/*/SKILL.md tests/guards/*.jsonl tests/lint/frozen/freeze.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/layout-map/map.test.sh</code></td><td><code>bin/lint-layout-map.sh bin/layers.sh bin/lint-conventions.sh bin/log-lib.sh CONTRACTS/layout-map.tsv CONTRACTS/layers.tsv standards/naming/kinds.tsv tests/lint/layout-map/map.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/domain/ratchet.test.sh</code></td><td><code>bin/lint-domain.sh bin/layers.sh bin/lint-conventions.sh bin/log-lib.sh CONTRACTS/domain-terms.tsv CONTRACTS/domain-allow.tsv CONTRACTS/lint-domain-baseline.txt tests/lint/domain/ratchet.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/lint/constitution/abstract.test.sh</code></td><td><code>bin/lint-constitution.sh bin/lint-conventions.sh bin/log-lib.sh CONSTITUTION.md tests/lint/constitution/abstract.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/siblings/ratchet.test.sh</code></td><td><code>bin/lint-siblings.sh bin/lint-conventions.sh bin/log-lib.sh CONTRACTS/lint-siblings-baseline.txt tests/lint/siblings/ratchet.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/session/state/stop.test.sh</code></td><td><code>bin/session-state.sh bin/guard-stop.sh bin/guard-lib.sh bin/event-bus.sh bin/log-lib.sh bin/fs-lib.sh CONTRACTS/session-waiting.tsv tests/session/state/stop.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/session/react/presets.test.sh</code></td><td><code>bin/session-*.sh bin/log-lib.sh tests/session/react/presets.test.sh tests/lib/core.sh</code></td></tr>
@@ -2455,6 +2458,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/judge-run.sh</code></td><td>judge-run (harbor#44 follow-through — M5's scheduling half) — run the ledger</td></tr>
 <tr><td><code>bin/launchd-render.sh</code></td><td>launchd-render.sh — fill a launchd plist template from the roots table (harbor#630, #1149).</td></tr>
 <tr><td><code>bin/layers.sh</code></td><td>layers.sh (harbor#1149) - reads CONTRACTS/layers.tsv: which paths are core (exported) and which stay dev.</td></tr>
+<tr><td><code>bin/lint-constitution.sh</code></td><td>lint-constitution.sh (harbor#1273) - the constitution states rules, never their cases: no ISO date, ticket, absolute</td></tr>
 <tr><td><code>bin/lint-conventions.sh</code></td><td>GOVERNANCE (harbor#3 follow-on) — enforce the conventions in standards/naming.md</td></tr>
 <tr><td><code>bin/lint-core-writes.sh</code></td><td>lint-core-writes.sh (harbor#1275, harbor#1149) - the ratchet on core scripts that write into the checkout at runtime.</td></tr>
 <tr><td><code>bin/lint-dev-paths.sh</code></td><td>lint-dev-paths.sh (harbor#1275, harbor#1149) - the ratchet on core code that names a dev-layer path: a read or a write</td></tr>

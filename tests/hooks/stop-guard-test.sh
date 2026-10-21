@@ -226,7 +226,7 @@ t_has "P1 deploy --apply under ! (2026-10-17)" "$(sg3 "Run it:
 ! $DEP --apply --live")" "terminal answer"
 t_has "P1 the harbor verb routes to the same script" "$(sg3 "! harbor deploy --apply --live")" "terminal answer"
 t_has "P1 gh auth login prompts" "$(sg3 "! $OGH auth login")" "terminal answer"
-t_eq "P1 gcloud auth login runs its browser flow under ! (replay, 7419e469)" "" "$(sg3 "! gcloud auth login")"
+t_eq "P1 gcloud auth login runs its browser plumb under ! (replay, 7419e469)" "" "$(sg3 "! gcloud auth login")"
 t_eq "P1 gh auth login --with-token reads stdin, not a terminal" "" "$(sg3 "! $OGH auth login --with-token < t")"
 t_eq "P1 the dry run does not prompt" "" "$(sg3 "! $DEP --live")"
 t_eq "P1 the same command for a terminal is the right handover" "" "$(sg3 "In a terminal:
@@ -249,7 +249,7 @@ t_eq "P3 the full path is the operator" "" "$(sg3 "! $OGH pr $M 36 -R o/r --squa
 t_eq "P3 prose naming gh is not a handover" "" "$(sg3 "Never hand over bare gh pr $M from a ! line.")"
 t_eq "P1 sudo inside a quoted remote --command runs on the VM (replay, a41f27d5)" "" \
   "$(sg3 "! gcloud compute ssh vm --command 'sudo cat /x; sudo rm -f /y'")"
-t_eq "cd ~/ under ! ran clean in the transcripts, so it is no predicate" "" "$(sg3 "! cd ~/port/idea-to-live && sh bin/x.sh")"
+t_eq "cd ~/ under ! ran clean in the transcripts, so it is no predicate" "" "$(sg3 "! cd ~/port/frobapp && sh bin/x.sh")"
 T="$(tx)"; { tu_bash p1 "$OGH pr create --fill"; tr_res p1 "https://github.com/o/r/pull/77"; } >> "$T"
 FD="$(printf 'Then, in a terminal:\n```\n%s --apply --live\n```' "$DEP")"
 t_has "P4 deploy while the PR this session opened is unmerged (memory, 2026-08-24)" "$(sg3 "$FD" "$T")" "PR o/r#77"

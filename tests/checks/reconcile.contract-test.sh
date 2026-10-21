@@ -58,13 +58,13 @@ d_default_run()   { _w="$1"; _o="$2"; shift 2; CLAUDE_CONFIG_DIR="$_w" sh "$SUT"
 mr_key()   { printf '%s' "$1" | sed 's|/|-|g'; }
 mr_route() { _k="$(mr_key "$1/$2")"; mkdir -p "$1/cfg/projects/$_k"; ln -s "$1/cfg/projects/$(mr_key "$1")/memory" "$1/cfg/projects/$_k/memory"; }   # <world> <repo>
 d_memory_route_setup() { # a box whose two governed repos both reach the one store; the registry is the private layer's (harbor#1149)
-  mkdir -p "$1/cfg/projects" "$1/repo" "$1/priv/inject.d/box" "$1/azimuth" "$1/estate" "$1/cfg/projects/$(mr_key "$1")/memory"
+  mkdir -p "$1/cfg/projects" "$1/repo" "$1/priv/inject.d/box" "$1/zorbcorp" "$1/blorp" "$1/cfg/projects/$(mr_key "$1")/memory"
   printf 'x\n' > "$1/cfg/projects/$(mr_key "$1")/memory/a.md"
-  printf '# registry\nazimuth\t~/azimuth\tw\nestate\t~/estate\tw\n' > "$1/priv/inject.d/box/projects.tsv"
-  mr_route "$1" azimuth; mr_route "$1" estate
+  printf '# registry\nzorbcorp\t~/zorbcorp\tw\nblorp\t~/blorp\tw\n' > "$1/priv/inject.d/box/projects.tsv"
+  mr_route "$1" zorbcorp; mr_route "$1" blorp
 }
-d_memory_route_break() { rm -f "$1/cfg/projects/$(mr_key "$1/estate")/memory"; }
-d_memory_route_fix()   { mr_route "$1" estate; }
+d_memory_route_break() { rm -f "$1/cfg/projects/$(mr_key "$1/blorp")/memory"; }
+d_memory_route_fix()   { mr_route "$1" blorp; }
 d_memory_route_cfg()   { printf '%s' "$1/cfg"; }
 d_memory_route_run()   { _w="$1"; _o="$2"; shift 2; HOME="$_w" PORT_ROOT="$_w/port" HARBOR_SCOPE_PRIVATE="$_w/priv" HARBOR_REPO="$_w/repo" sh "$SUT" --dir "$_w/cfg" "$@" > "$_o" 2>/dev/null < /dev/null; }
 d_memory_route_plain() { d_memory_route_run "$1" /dev/null; }

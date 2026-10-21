@@ -19,7 +19,7 @@ Naming-standard decision D-26. The decision text is imported from standard-draft
 
 ## Decision
 
-**registered term class `client`**, first object word inside the owning system: `azimuth/check:<client>.purchase`, `clients/<client>/` on path surfaces
+**registered term class `client`**, first object word inside the owning system: `<system>/check:<client>.purchase`, `clients/<client>/` on path surfaces
 
 ## Consequences
 

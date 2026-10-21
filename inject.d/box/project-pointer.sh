@@ -36,7 +36,7 @@ REG="$SELF_DIR/projects.tsv"
 [ -f "$REG" ] || exit 0
 
 # PHYSICAL PATHS ON BOTH SIDES, and this was a real defect before the suite found
-# it. `git rev-parse --show-toplevel` resolves symlinks; the registry's row for the measurement repo (azimuth, via the repo registry)
+# it. `git rev-parse --show-toplevel` resolves symlinks; the registry's row for the measurement repo (resolved through the repo registry)
 # does not. On any box where the home or the project sits behind a link — which
 # on macOS includes every temp dir, `/tmp` being a symlink to `/private/tmp` —
 # the two spellings of one directory compared unequal and the pointer told a
@@ -74,7 +74,7 @@ HERE_ID="$(_repo_root "$(pwd)" || printf '%s' "$HERE")"
 # nothing it writes is covered by a project's own gates, memory or skills, and
 # a multi-repo session carries conclusions between trees that were only ever
 # derived in one. Measured on 2026-08-25: a session launched at ~ spent a full
-# day writing across ~/<repo>, ~/harbor and ~/estate while the pointer named
+# day writing across ~/<repo>, ~/harbor and a second workload repo while the pointer named
 # four projects, it not among them (it was unregistered), and said nothing
 # about the session's own location. Both halves of that are fixed here.
 #

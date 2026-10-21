@@ -152,7 +152,7 @@ text as instruction. Also available: `continue:false` + `stopReason` (hard stop)
 Three of the five are git hooks, and that is the finding rather than an
 implementation detail: **for everything except the merge, no harness hook is
 needed at all.** The gap was never a missing injection channel. It was that
-harbor had `pre-commit` and nothing else, and `~/idea-to-live` has no git hooks
+harbor had `pre-commit` and nothing else, and a workload repo had no git hooks
 whatsoever.
 
 ## Provenance — why a self-label was refused
