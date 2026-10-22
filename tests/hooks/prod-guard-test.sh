@@ -232,6 +232,21 @@ t_eq "...and settings.json was replaced, not truncated in place" yes "$([ "$(ls 
 t_eq "...wiring the shim" 1 "$(jq '[.hooks.PreToolUse[]?.hooks[]?.command | select(contains("prod-guard-ambient.sh"))] | length' "$PG/settings.json")"
 t_eq "a second apply is idempotent" '0 1' "$(pgi --apply --dir "$PG") $(jq '[.hooks.PreToolUse[]?.hooks[]?.command | select(contains("prod-guard-ambient.sh"))] | length' "$PG/settings.json")"
 t_has "...and says it was already wired" "$(cat "$T/pg.out")" "already wired"
+# harbor#1277: prod_guard is a veto, and a hook that times out without onFailure lets the call through.
+pgo() { _o="$1"; shift; env -u CLAUDE_CONFIG_DIR FLOOR_ONFAILURE="$_o" HOME="$T/pgh" PROJECT_INIT_SRC="$T/pgpi" sh "$INST" "$@" >"$T/pg.out" 2>"$T/pg.err"; echo $?; }
+_pgof() { jq -r '[.hooks.PreToolUse[]?.hooks[]? | select(.command | contains("prod-guard-ambient.sh")) | (.onFailure // "none")] | join(",")' "$1/settings.json"; }
+PO="$T/pgof"; mkdir -p "$PO"; printf '{"env":{}}\n' > "$PO/settings.json"
+pgo 0 --apply --dir "$PO" >/dev/null
+t_eq "OF-1 a client too old for the key gets none" none "$(_pgof "$PO")"
+t_eq "OF-2 a dry run names the missing key on a hook already wired" 0 "$(pgo 1 --dir "$PO")"
+t_has "...as the change it would make" "$(cat "$T/pg.out")" "would set onFailure block on it"
+pgo 1 --apply --dir "$PO" >/dev/null
+t_eq "OF-3 a re-install sets onFailure block on the hook already wired" block "$(_pgof "$PO")"
+PO2="$T/pgof2"; mkdir -p "$PO2"; printf '{"env":{}}\n' > "$PO2/settings.json"
+pgo 1 --apply --dir "$PO2" >/dev/null
+t_eq "OF-4 a first install wires it with onFailure block" block "$(_pgof "$PO2")"
+pgo 1 --apply --dir "$PO2" >/dev/null
+t_eq "OF-5 ...once, and a second run says it is already wired" "block 1" "$(_pgof "$PO2") $(grep -c 'already wired' "$T/pg.out")"
 # The install manifest (install standard §3): two rows, each carrying its own source's commit.
 git -C "$T/pgpi" init -q && git -C "$T/pgpi" add -A && git -C "$T/pgpi" -c user.name=t -c user.email=t@t -c commit.gpgsign=false commit -qm pi
 t_eq "an apply from a project-init checkout" 0 "$(pgi --apply --dir "$PG")"

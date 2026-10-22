@@ -299,7 +299,7 @@
 0	tests/cli/managed-telemetry-test.sh
 0	tests/cli/telemetry-report-test.sh
 0	tests/event/bus/prune.test.sh
-0	tests/export/licence.test.sh
+0	tests/export/license.test.sh
 0	tests/floor/deny-hash/output-contract.test.sh
 0	tests/floor/floor-equiv/output-contract.test.sh
 0	tests/floor/marker-backfill/output-contract.test.sh
