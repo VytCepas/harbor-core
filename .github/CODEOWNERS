@@ -62,6 +62,7 @@
 /bin/deploy-confinement.sh @VytCepas
 /CONTRACTS/confinement-hosts.txt @VytCepas
 /CONTRACTS/confinement-paths.txt @VytCepas
+/standards/naming/controls.tsv @VytCepas
 /CONTRACTS/event-rules.tsv @VytCepas
 /CONTRACTS/merge-stack-union.txt @VytCepas
 /CONTRACTS/obligation-kinds.tsv @VytCepas
