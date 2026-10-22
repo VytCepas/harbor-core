@@ -79,15 +79,18 @@ status)
   MIR="$(core_gh pr list --repo "$CORE" --head "$BRANCH" --state open --json headRefOid --jq '.[0].headRefOid // empty')" || refuse "cannot read $CORE" "gh auth status"
   STATE=pending; DESC="no mirror PR yet"; URL="https://github.com/$CORE/tree/$BRANCH"
   if [ -n "$MIR" ]; then
-    # One line per run of the mirror head: status, conclusion, url. A run of an older commit says nothing about this one.
-    RUNS="$(core_gh run list --repo "$CORE" --branch "$BRANCH" --limit 30 --json headSha,status,conclusion,url \
-      --jq ".[] | select(.headSha == \"$MIR\") | [.status, .conclusion, .url] | @tsv")" || refuse "cannot list runs on $CORE" "gh run list --repo $CORE --branch $BRANCH"
+    # One line per run of the mirror head: workflow, status, conclusion, url. A run of an older commit says nothing about this one.
+    RUNS="$(core_gh run list --repo "$CORE" --branch "$BRANCH" --limit 30 --json headSha,workflowName,status,conclusion,url \
+      --jq ".[] | select(.headSha == \"$MIR\") | [.workflowName, .status, .conclusion, .url] | @tsv")" || refuse "cannot list runs on $CORE" "gh run list --repo $CORE --branch $BRANCH"
+    # A cancelled run that another run of the same workflow replaced is no verdict; a cancelled run alone still is red.
+    RUNS="$(printf '%s\n' "$RUNS" | awk -F'\t' '{ l[NR] = $0; w[NR] = $1; c[NR] = $3; if ($3 != "cancelled") live[$1] = 1 }
+      END { for (i = 1; i <= NR; i++) if (!(c[i] == "cancelled" && live[w[i]])) print l[i] }')"
     if [ -z "$RUNS" ]; then DESC="hosted CI has not started on this mirror"
     else
-      URL="$(printf '%s\n' "$RUNS" | awk -F'\t' '{ u = $3 } $1 == "completed" && $2 != "success" && $2 != "skipped" && $2 != "neutral" && !f { f = 1; fu = $3 } END { print (fu != "" ? fu : u) }')"
+      URL="$(printf '%s\n' "$RUNS" | awk -F'\t' '{ u = $4 } $2 == "completed" && $3 != "success" && $3 != "skipped" && $3 != "neutral" && !f { f = 1; fu = $4 } END { print (fu != "" ? fu : u) }')"
       STATE="$(printf '%s\n' "$RUNS" | awk -F'\t' '
-        $1 != "completed" { pend = 1; next }
-        $2 != "success" && $2 != "skipped" && $2 != "neutral" { bad = 1 }
+        $2 != "completed" { pend = 1; next }
+        $3 != "success" && $3 != "skipped" && $3 != "neutral" { bad = 1 }
         END { print (bad ? "failure" : (pend ? "pending" : "success")) }')"
       DESC="hosted CI on the public mirror: $STATE"
     fi
