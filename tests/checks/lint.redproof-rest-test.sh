@@ -153,4 +153,11 @@ t_has "X5 is red on a copy missing the symlink refusal" "$(_x5)" "ADVISORY [drif
 printf 'def guard():\n    return path.is_symlink() and 1\n' > "$_X5_H/port/r1/.agents/hooks/prod_guard.py"
 t_has "X5 is red on a copy that has the refusal but differs" "$(_x5)" "ADVISORY [drift.prod-policy-copy] differs from the source repo (has the refusal): port/r1/.agents/hooks/prod_guard.py"
 
+t_section "lint.platform-calls: a bare macOS-only call in bin/ (harbor#618)"
+_PC="$T_TMP/pcroot"; mkdir -p "$_PC/bin"; cp "$T_ROOT/bin/lint-platform.sh" "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/alert-lib.sh" "$_PC/bin/"
+printf '#!/usr/bin/env sh\nlaunchctl list || systemctl --user list-timers\n' > "$_PC/bin/ported.sh"
+t_eq "lint.platform-calls is silent on a ported call and the helper's own osascript" "" "$(viol lint.platform-calls "$_PC")"
+printf '#!/usr/bin/env sh\npbcopy < x\n' > "$_PC/bin/bare.sh"
+t_has "lint.platform-calls is red on a bare pbcopy" "$(viol lint.platform-calls "$_PC")" "VIOLATION [lint.platform-calls] bin/bare.sh: pbcopy"
+
 t_done
