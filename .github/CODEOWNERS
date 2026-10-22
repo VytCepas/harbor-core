@@ -77,6 +77,7 @@
 /bin/access-confinement.sh @VytCepas
 /bin/access.sh @VytCepas
 /bin/adoption-check.sh @VytCepas
+/bin/alert-lib.sh @VytCepas
 /bin/browser.sh @VytCepas
 /bin/check-registry-generate.sh @VytCepas
 /bin/ci-governor-hook.sh @VytCepas
@@ -160,6 +161,7 @@
 /bin/lint-locale-ranges.awk @VytCepas
 /bin/lint-module.sh @VytCepas
 /bin/lint-name.sh @VytCepas
+/bin/lint-platform.sh @VytCepas
 /bin/lint-secrets.sh @VytCepas
 /bin/lint-share.sh @VytCepas
 /bin/lint-siblings.sh @VytCepas
