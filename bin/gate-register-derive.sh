@@ -65,14 +65,16 @@ for _k in plan apply verify restore deployed; do
   conf "$_k" | tr ' \t' '\n\n' | tr -d "\"'" | awk -v k="$_k" '/\// && !/^[\/$-]/ && !/\.\./ { print $0 "\truns as ship.conf " k "\tship" }'
 done >> "$T/seed"
 # 5 · what decides the required checks' content (review finding 4): the suite manifests, the stand-down map, the local
-#     required list, the push-run skip, the runner images and the test library, and what the workflow ship.conf names
-#     calls. Individual test files stay open: protecting tests/** would put nearly every PR behind the click.
+#     required list, the push-run skip, the runner images and the test library, and what every workflow calls, not only
+#     the one ship.conf judges: the public mirror runs governance.yml inside public-ci (harbor#1149). Individual test
+#     files stay open: protecting tests/** would put nearly every PR behind the click.
 for _f in "$ROOT"/CONTRACTS/suites*.txt CONTRACTS/suite-paths.txt CONTRACTS/required-checks.tsv bin/ci-verified.sh; do
   printf '%s\tdecides what a required check runs\tci-gate\n' "${_f#"$ROOT"/}"
 done >> "$T/seed"
-_wf="$(conf workflow | head -1)"
-[ -z "$_wf" ] || [ ! -f "$ROOT/.github/workflows/$_wf" ] \
-  || calls "$ROOT/.github/workflows/$_wf" | sed "s|\$|	called by .github/workflows/$_wf	ci-gate|" >> "$T/seed"
+for _wp in "$ROOT"/.github/workflows/*.yml; do
+  [ -f "$_wp" ] || continue; _wf="${_wp##*/}"
+  calls "$_wp" | sed "s|\$|	called by .github/workflows/$_wf	ci-gate|" >> "$T/seed"
+done
 awk -F'\t' -v r="$ROOT" '{ f = r "/" $1; if ((getline _ < f) >= 0) { close(f); print } }' "$T/seed" | sort -t "$TAB" -k1,1 -u > "$T/set"
 for _d in runners tests/lib; do
   [ ! -d "$ROOT/$_d" ] || printf '%s/**\tdecides what a required check runs\tci-gate\n' "$_d" >> "$T/set"
