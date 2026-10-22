@@ -51,10 +51,10 @@ HSLUG="${HARBOR_SLUG:-$(slug_of_url "$(git -C "$ROOT" config --get remote.origin
 slug_valid "$HSLUG" || refuse "the harbor repo slug is unknown" "export HARBOR_SLUG=<owner>/harbor"
 
 need_token() {
-  [ -n "${HARBOR_CORE_MIRROR_TOKEN:-}" ] || refuse "HARBOR_CORE_MIRROR_TOKEN is not set, so nothing can reach $CORE" "store the fine-grained harbor-core token as that harbor secret"
+  [ -n "${HARBOR_CORE_MIRROR_TOKEN:-}" ] || refuse "HARBOR_CORE_MIRROR_TOKEN is not set, so nothing can reach $CORE" "store the fine-grained harbor-core token as that harbor secret"  # secret-seam: Actions secret (entry harbor-core-mirror-token)
 }
 # gh calls against harbor-core carry the mirror token (gh sends GH_TOKEN as a header); harbor's own calls do not.
-core_gh() { GH_TOKEN="$HARBOR_CORE_MIRROR_TOKEN" gh "$@"; }
+core_gh() { GH_TOKEN="$HARBOR_CORE_MIRROR_TOKEN" gh "$@"; }  # secret-seam: entry harbor-core-mirror-token
 
 # public-ci on the harbor PR head: STATE, DESC and URL as the caller set them.
 set_status() {
@@ -138,7 +138,7 @@ if [ "$DRY" = 1 ]; then
 fi
 
 # The auth rides in git's environment as a header: not in the remote's URL, not in argv, not in .git/config.
-AUTH="$(printf 'x-access-token:%s' "$HARBOR_CORE_MIRROR_TOKEN" | base64 | tr -d '\n')"
+AUTH="$(printf 'x-access-token:%s' "$HARBOR_CORE_MIRROR_TOKEN" | base64 | tr -d '\n')"  # secret-seam: entry harbor-core-mirror-token
 core_git() { GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader GIT_CONFIG_VALUE_0="Authorization: Basic $AUTH" git -C "$TDIR" "$@"; }
 
 core_git fetch -q origin || refuse "cannot fetch $CORE" "check HARBOR_CORE_MIRROR_TOKEN (Contents: write)"
