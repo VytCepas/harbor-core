@@ -98,12 +98,14 @@ CONTRACTS/suites.txt	ci-gate	derived: decides what a required check runs
 bin/access-confinement.sh	installed	derived: shipped by runtime-install.sh
 bin/access.sh	operator-run	derived: called by bin/secret
 bin/adoption-check.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/alert-lib.sh	installed	derived: shipped by runtime-install.sh
 bin/annotate-web.sh	installed	derived: shipped by floor-install.sh
 bin/browser.sh	ship	derived: called by bin/live-verify.sh
 bin/check-registry-generate.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/ci-governor-hook.sh	installed	derived: shipped by runtime-install.sh
 bin/ci-governor.sh	installed	derived: shipped by runtime-install.sh
 bin/ci-lost-job.sh	installed	derived: shipped by runtime-install.sh
+bin/ci-mirror.sh	ci-gate	derived: called by .github/workflows/public-ci.yml
 bin/ci-queue.sh	installed	derived: shipped by runtime-install.sh
 bin/ci-runners-fleet-lib.sh	installed	derived: shipped by runtime-install.sh
 bin/ci-runners-github-lib.sh	installed	derived: shipped by runtime-install.sh
@@ -122,6 +124,7 @@ bin/context-resolve.sh	installed	derived: shipped by floor-install.sh
 bin/decider-set.sh	installed	derived: shipped by runtime-install.sh
 bin/deploy-confinement.sh	installed	derived: called by bin/floor-verify.sh
 bin/deploy-fleet.sh	installed	derived: shipped by floor-install.sh
+bin/deploy-push.sh	ci-gate	derived: called by bin/ci-mirror.sh
 bin/deploy.sh	ship	derived: runs as ship.conf plan
 bin/doc-refs.sh	ci-gate	derived: called by .github/workflows/governance.yml
 bin/docs-gen.sh	ci-gate	derived: called by bin/lint-conventions.sh
@@ -183,7 +186,7 @@ bin/install-lib.sh	installed	derived: shipped by floor-install.sh
 bin/install-stamp.sh	installed	derived: shipped by runtime-install.sh
 bin/judge-run.sh	installed	derived: shipped by runtime-install.sh
 bin/launchd-render.sh	ci-gate	derived: called by bin/lint-conventions.sh
-bin/layers.sh	ci-gate	derived: called by bin/lint-core-writes.sh
+bin/layers.sh	ci-gate	derived: called by bin/deploy-push.sh
 bin/lint-comment-commands.awk	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-constitution.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-conventions.sh	ci-gate	derived: called by .github/workflows/governance.yml
@@ -195,6 +198,7 @@ bin/lint-leaks.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-locale-ranges.awk	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-module.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-name.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/lint-platform.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-secrets.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-share.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-siblings.sh	ci-gate	derived: called by bin/lint-conventions.sh
@@ -220,7 +224,7 @@ bin/proposal.sh	installed	derived: called by bin/renew-check.sh
 bin/pulse-notify.sh	installed	derived: shipped by runtime-install.sh
 bin/pulse.sh	installed	derived: shipped by runtime-install.sh
 bin/redteam-corpus-run.sh	installed	derived: shipped by runtime-install.sh
-bin/redteam-corpus.sh	installed	derived: called by bin/redteam-corpus-run.sh
+bin/redteam-corpus.sh	ci-gate	derived: called by .github/workflows/public-ci.yml
 bin/reference-check.sh	installed	derived: shipped by runtime-install.sh
 bin/renew-check.sh	installed	derived: shipped by runtime-install.sh
 bin/replay-corpus.sh	ci-gate	derived: called by bin/doctor.sh
@@ -249,7 +253,7 @@ bin/shim-install.sh	ship	derived: called by bin/deploy.sh
 bin/skill-book.sh	ship	derived: called by bin/deploy.sh
 bin/skills-collide.sh	ship	derived: called by bin/skills-install.sh
 bin/skills-install.sh	ship	derived: called by bin/deploy.sh
-bin/standard-catalog.sh	ci-gate	derived: called by bin/standard-shape.sh
+bin/standard-catalog.sh	ci-gate	derived: called by bin/deploy-push.sh
 bin/standard-shape.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/status-gen.sh	ci-gate	derived: called by .github/workflows/governance.yml
 bin/status-obligations.sh	installed	derived: shipped by runtime-install.sh
