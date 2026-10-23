@@ -221,6 +221,7 @@ _ssn() { jq -r '[.hooks.Stop[]?.hooks[]?.command // empty | select(contains("ses
 SS="$T/ss-on"; mkdir -p "$SS"; printf '{}' > "$SS/settings.json"; ri --apply --dir "$SS" >/dev/null 2>&1; ri --apply --dir "$SS" >/dev/null 2>&1
 t_eq "two installs wire exactly one Stop entry" 1 "$(_ssn "$SS")"
 t_eq "...and ship the hook, its library and the pattern table" yes "$([ -f "$SS/bin/session-state.sh" ] && [ -f "$SS/bin/session-react-lib.sh" ] && [ -f "$SS/bin/session-waiting.tsv" ] && echo yes || echo no)"
+t_eq "...and the banner helper the library and pulse-notify source beside them (harbor#618)" yes "$([ -f "$SS/bin/alert-lib.sh" ] && [ -f "$SS/bin/pulse-notify.sh" ] && echo yes || echo no)"
 SO="$T/ss-off"; mkdir -p "$SO"; printf '{}' > "$SO/settings.json"; : > "$SO/session-state.off"; ri --apply --dir "$SO" >/dev/null 2>&1
 t_eq "session-state.off in the config dir: not wired" 0 "$(_ssn "$SO")"
 
