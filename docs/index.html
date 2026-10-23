@@ -1090,6 +1090,7 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <tr><td><code>lint.justfile-paths-resolve</code> (was S5)</td><td>every bin/ path the justfile names resolves (harbor#140)</td></tr>
 <tr><td><code>lint.exec-bit-kept</code> (was S6)</td><td>a script that was executable on the base stays executable (harbor#574)</td></tr>
 <tr><td><code>admission.kill-switch-first</code> (was F1)</td><td>every wired decider's first live line is the HELM_DISABLE_FLOOR check, or it is listed exempt with a reason (harbor#954)</td></tr>
+<tr class="advisory"><td><code>admission.wired-registered</code></td><td>every wired hook script (bin/decider-set.sh) is the engine of a standards/naming/controls.tsv row (harbor#1272) (advisory)</td></tr>
 <tr><td><code>admission.block-id</code> (was F5)</td><td>every floor_block passes a &lt;rule&gt;.&lt;shape&gt; id (harbor#41)</td></tr>
 <tr><td><code>admission.kill-switch-remedy</code> (was F16)</td><td>no floor guard prints the kill-switch as its remedy, except where it is the true one (harbor#482)</td></tr>
 <tr class="advisory"><td><code>lint.long-file-reason</code> (was G1)</td><td>files over 300 lines name their exemption reason in the header (advisory)</td></tr>
@@ -1698,6 +1699,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/lint/name/modes.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/export/license.test.sh</code></td><td><code>LICENSE NOTICE SECURITY.md README.md vendor/* tests/export/license.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/share/check.test.sh</code></td><td><code>bin/lint-share.sh bin/layers.sh bin/roots.sh bin/lint-conventions.sh bin/log-lib.sh CONTRACTS/layers.tsv CONTRACTS/roots.tsv standards/naming/kinds.tsv tests/lint/share/check.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/lint/wired/registered.test.sh</code></td><td><code>bin/decider-set.sh bin/floor-install.sh bin/*-install.sh bin/lint-conventions.sh bin/log-lib.sh standards/naming/controls.tsv</code></td></tr>
 <tr><td><code>tests/ci/fresh-check-test.sh</code></td><td><code>bin/* hooks/* CONTRACTS/* STATUS.md PLAN.md docs/* skills/* .agents/* .github/CODEOWNERS standards/* tests/ci/fresh-check-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/floor/git-verbs-test.sh</code></td><td><code>bin/floor-deny.sh bin/log-lib.sh bin/install-lib.sh bin/guard-bash.sh bin/guard-destroy.sh CONTRACTS/git-verbs.md tests/floor/git-verbs-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/floor/destroy-snapshot-test.sh</code></td><td><code>bin/guard-destroy.sh bin/guard-lib.sh bin/floor-normalize.awk tests/floor/destroy-snapshot-test.sh tests/lib/core.sh</code></td></tr>

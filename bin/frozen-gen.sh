@@ -45,7 +45,10 @@ names() {
   done
   printf 'reserved\tcli:hub\nreserved\ttoml:[hub]\nreserved\tpath:hub/\n'
 }
-frozen() { [ -f "$FROZEN" ] && grep -vE '^[[:space:]]*(#|$)' "$FROZEN" | sed 1d || :; }   # id kind name since
+frozen() { [ -f "$FROZEN" ] && grep -vE '^[[:space:]]*(#|$)' "$FROZEN" | sed 1d || :; }   # id kind name since share
+# The share a frozen name belongs to (#1278): core ships every source above, and only the hub seams are the hub's.
+# workload and personal are the other two values; no core source holds one.
+share() { awk -F'\t' -v OFS='\t' '{ print $1, $2, $3, $4, ($2 == "reserved" ? "hub" : "core") }'; }
 
 names | LC_ALL=C sort -u > "$T/now"
 [ -s "$T/now" ] || { log_fail "no name was read from any source"; log_nofix "the header of bin/frozen-gen.sh"; log_end || :; exit 2; }
@@ -59,9 +62,10 @@ case "${1:-}" in
     { printf '# frozen.tsv (harbor#1276) - the names a stranger types or reads. Written by bin/frozen-gen.sh --apply, never by hand.\n'
       printf '#\n# WHY THIS FILE EXISTS. A name a stranger types is an interface: renaming it breaks their scripts and habits.\n'
       printf '# A row is added when its name first appears and never dropped; renaming one needs a renames.tsv row with its alias.\n'
-      printf '# Columns: id (<kind>:<name>), kind, name, since (the date it was first frozen).\n#\n# standard_version: 2.0.0\n#\n'
-      printf 'id\tkind\tname\tsince\n'
-      { frozen; awk -F'\t' -v d="$_d" '{ print $1 ":" $2 "\t" $1 "\t" $2 "\t" d }' "$T/new"; } | LC_ALL=C sort -t "$(printf '\t')" -k1,1; } > "$T/out"
+      printf '# Columns: id (<kind>:<name>), kind, name, since (the date it was first frozen), share (core, hub, workload\n'
+      printf '# or personal: whose surface it is).\n#\n# standard_version: 2.0.0\n#\n'
+      printf 'id\tkind\tname\tsince\tshare\n'
+      { frozen; awk -F'\t' -v d="$_d" '{ print $1 ":" $2 "\t" $1 "\t" $2 "\t" d }' "$T/new"; } | share | LC_ALL=C sort -t "$(printf '\t')" -k1,1; } > "$T/out"
     cat "$T/out" > "$FROZEN"
     log_ok "$(wc -l < "$T/new" | tr -d ' ') name(s) frozen, $(wc -l < "$T/was" | tr -d ' ') already were"
     log_end; exit $? ;;
@@ -83,5 +87,11 @@ if [ -s "$T/gone" ]; then
   log_fail "$(wc -l < "$T/gone" | tr -d ' ') frozen name(s) are gone from their source with no alias: $(head -5 "$T/gone" | tr '\n' ' ')"
   log_fix "restore the name, or add a standards/naming/renames.tsv row (old = <kind>:<name>, new, remove_by) and keep the old name working until then"
 fi
-[ -s "$T/new" ] || [ -s "$T/gone" ] || log_ok "$(wc -l < "$T/was" | tr -d ' ') frozen name(s), each still in its source or renamed with an alias"
+frozen | cut -f1-5 > "$T/rows"; share < "$T/rows" | cut -f1-5 > "$T/want"
+LC_ALL=C comm -23 "$T/rows" "$T/want" | cut -f1 > "$T/badshare" || :
+if [ -s "$T/badshare" ]; then
+  log_fail "$(wc -l < "$T/badshare" | tr -d ' ') frozen row(s) carry no share or the wrong one: $(head -5 "$T/badshare" | tr '\n' ' ')"
+  log_fix "sh bin/frozen-gen.sh --apply"
+fi
+[ -s "$T/new" ] || [ -s "$T/gone" ] || [ -s "$T/badshare" ] || log_ok "$(wc -l < "$T/was" | tr -d ' ') frozen name(s), each still in its source or renamed with an alias"
 log_end

@@ -358,6 +358,16 @@ deny() {
     2>/dev/null || true
 }
 
+# THE DECISION LOG (harbor#957 item 4). Under --note the caller is inject-hook, which records the fire as
+# g=inject; every other route records it here as g=govern, through the floor's writer. Read lazily and
+# in a subshell, so the library cannot touch the verdict, and silent when there is no ledger.
+_log() { # <deny|advise> <rule>
+  [ "$NOTE_ONLY" = 1 ] && return 0
+  [ -f "$SELF_DIR/guard-lib.sh" ] || return 0
+  ( set +eu; FLOOR_TOOL="${TOOL:-}"; FLOOR_IN="$PAYLOAD"; . "$SELF_DIR/guard-lib.sh"
+    floor_log_decision govern "$1" "$2.meta" ) >/dev/null 2>&1 || :
+}
+
 # ── --box: which repo a merge belongs to (harbor#516) ───────────────────────
 # _registered <tree>: a row in inject.d/projects.tsv, or a worktree of one. The
 # registry is the trust boundary, as for inject-hook's `scope: box`: a merge
@@ -560,6 +570,7 @@ MERGESEGS
     _vwhere=''
     [ "$BOX" = 0 ] || _vwhere=" (in $_vdir)"
     if [ "$_verdict" = refuse ]; then
+      _log deny merge-backstop
       deny "[check:merge-backstop] The merge backstop refuses this merge, so it was not run.
 
 $_vtext
@@ -583,6 +594,7 @@ Route$_vwhere: sh bin/merge-check.sh --merge $_vpr — it re-checks and merges i
   # three lint rules that run at COMMIT time, which is earlier and cheaper than
   # merge.
 
+  [ -z "$note" ] || _log advise merge-note
   emit PreToolUse "$note" "$user"
   exit 0
 fi
@@ -708,6 +720,7 @@ if [ "$EVENT" = PostToolUse ] && matches gh 'pr merge'; then
   # unreachable — `user` lost its only assignment when the doc gate was cut.
   _user=''
   [ -n "$merged" ] && _user="harbor: merged and still local — $merged"
+  [ -z "${note# }" ] || _log advise merged-local
   emit PostToolUse "${note# }" "$_user"
   exit 0
 fi
