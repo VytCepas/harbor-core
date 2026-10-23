@@ -290,9 +290,13 @@ _broken() { # <reason>
   fi
   : > "$_stamp" 2>/dev/null || true
   _log ask prod-broken.meta
-  # The corpus as prod_guard.py's DENY_RULES hold it, bq and gsutil included since project-init ff2749d (PI-916);
-  # checked 2026-10-23 at project-init 22852b9: each bq, gsutil and gcloud storage removal verb asks (harbor#954 item 8).
-  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"prod-guard-ambient is INSTALLED BUT NOT FUNCTIONING: %s. Nothing is evaluating terraform/tofu destroy, kubectl/helm delete, aws/gcloud/az delete, warehouse table and dataset removal, recursive bucket removal, SQL DROP/TRUNCATE or rm -rf. Reported once per session; it will stand down silently for the rest of this session."}}\n' "$1"
+  # THE MESSAGE BELOW UNDERSTATES THE CORPUS (harbor#954 item 8). Its bq/gsutil
+  # caveat went stale with project-init ff2749d (PI-916, 2026-08-01), which added
+  # `bq rm`, `bq truncate`, `gsutil rm -r` and `gcloud storage rm -r` to DENY_RULES;
+  # probed 2026-10-11 at project-init e81f144, `bq rm` and `gsutil rm -r` both ask.
+  # guard-cloud.sh answers the same verbs: controls.tsv admission.class-cloud-destroy
+  # names the floor's one owner. Rewording the message is the operator's call.
+  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"prod-guard-ambient is INSTALLED BUT NOT FUNCTIONING: %s. Nothing is evaluating terraform/tofu destroy, kubectl/helm delete, aws/gcloud/az delete, SQL DROP/TRUNCATE or rm -rf. (bq and gsutil are NOT in the corpus even when it works.) Reported once per session; it will stand down silently for the rest of this session."}}\n' "$1"
   exit 0
 }
 [ -f "$GUARD" ] || _broken "no guard file at $GUARD"

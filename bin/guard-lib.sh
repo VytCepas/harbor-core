@@ -664,7 +664,7 @@ floor_expand_home() {
 # writer (this defect) and a listed token nobody writes (the dead dispatch arm the
 # census is for). Extending this line is now a change the linter demands, not one
 # the next author has to remember.
-FLOOR_OBS_GUARDS=' bash egress selfedit integrity web wrapper session cloud destroy deliverables prod inject govern apiroute '
+FLOOR_OBS_GUARDS=' bash egress selfedit integrity web wrapper session cloud destroy deliverables prod inject '
 # `ask` is a REAL verdict, not a near-miss. It was missing here for the same reason
 # the guard tokens were: the enum predates the two ASK-gate guards. 548 ask records
 # had already been coerced to `other` when this was found — and the ask tier is

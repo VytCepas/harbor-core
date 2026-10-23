@@ -40,7 +40,7 @@ verdict() { # <true|false> <why>
   log_end || :; exit 0
 }
 api() { # <path> — the JSON, or nothing on any failure
-  "$CURL" -fsS -H "Authorization: Bearer ${GH_TOKEN:-}" -H 'Accept: application/vnd.github+json' "$API/$1" 2>/dev/null || :  # secret-seam: Actions GITHUB_TOKEN (entry github-actions-token)
+  "$CURL" -fsS -H "Authorization: Bearer ${GH_TOKEN:-}" -H 'Accept: application/vnd.github+json' "$API/$1" 2>/dev/null || :
 }
 
 [ -n "$REPO" ] || verdict false "no repository is named (GITHUB_REPOSITORY is unset and this checkout has no github.com origin)"

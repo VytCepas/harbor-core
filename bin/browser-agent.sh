@@ -496,9 +496,8 @@ esac
 
 # A token in the CALLER's env is refused: it would ride into every verb and any child. The operator's
 # opt-in is registering it (TOKEN_REF), which attach alone hands to the daemon. Checked before anything runs.
-if [ -n "${PLAYWRIGHT_MCP_EXTENSION_TOKEN:-}" ]; then  # secret-seam: read only to refuse it; the value is never used
-  _refuse 'PLAYWRIGHT_MCP_EXTENSION_TOKEN is set; it skips the approval dialog and this verb runs attended only' 'unset PLAYWRIGHT_MCP_EXTENSION_TOKEN'
-fi
+[ -z "${PLAYWRIGHT_MCP_EXTENSION_TOKEN:-}" ] \
+  || _refuse 'PLAYWRIGHT_MCP_EXTENSION_TOKEN is set; it skips the approval dialog and this verb runs attended only' 'unset PLAYWRIGHT_MCP_EXTENSION_TOKEN'
 _pe="$(_pw_env)"
 [ -z "$_pe" ] || _refuse "PLAYWRIGHT_* set in the environment: $_pe" "unset $_pe"
 [ ! -e "$HOME/.playwright" ] || _refuse "$HOME/.playwright exists; the CLI would read its config" "mv '$HOME/.playwright' '$HOME/.playwright.disabled'"

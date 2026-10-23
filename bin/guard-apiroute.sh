@@ -275,9 +275,6 @@ TEXT=""
 [ -n "$MSGS" ] && TEXT="HELM FLOOR [api-route]: Claude Code's API route was changed —$MSGS Those keys send every request from every session on this box somewhere else; the last time, it was a port nothing listened on and every session failed with 'Connection refused'. Do not run that command again. A gateway the operator really wants is allowed by listing its keys in $ALLOW."
 [ -n "$NOTES" ] && TEXT="${TEXT:+$TEXT }HELM FLOOR [api-route]: first read of a settings file that already routes Claude Code —$NOTES If the operator did not set them, they should be removed by hand; a gateway that is wanted can be made explicit in $ALLOW."
 printf '%s\n' "$TEXT" >&2
-# The decision log (harbor#957 item 4): it repairs rather than refuses, so a record is advise, never deny.
-[ -z "$MSGS" ] || floor_log_decision apiroute advise route-repaired.meta
-[ -z "$NOTES" ] || floor_log_decision apiroute advise route-baseline.meta
 if [ "$EVENT" = "SessionStart" ]; then
   printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":%s}}\n' "$(printf '%s' "$TEXT" | json_str)"
 elif [ -n "$MSGS" ]; then

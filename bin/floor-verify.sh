@@ -239,9 +239,9 @@ if [ -f "$DIR/bin/guard-apiroute.sh" ]; then
   fi
   _ar="$(mktemp -d "${TMPDIR:-/tmp}/floor-verify-apiroute.XXXXXX")"
   printf '{}\n' >"$_ar/settings.json"
-  printf '{"hook_event_name":"PostToolUse","tool_name":"Bash"}' 2>/dev/null | CLAUDE_CONFIG_DIR="$_ar" CLAUDE_PROJECT_DIR="$_ar/proj" sh "$FIRE/bin/guard-apiroute.sh" >/dev/null 2>&1
+  printf '{"hook_event_name":"PostToolUse","tool_name":"Bash"}' 2>/dev/null | CLAUDE_CONFIG_DIR="$_ar" CLAUDE_PROJECT_DIR="$_ar/proj" sh "$DIR/bin/guard-apiroute.sh" >/dev/null 2>&1
   printf '{\n  "env": {\n    "ANTHROPIC_BASE_URL": "http://127.0.0.1:9"\n  }\n}\n' >"$_ar/settings.json"
-  if printf '{"hook_event_name":"PostToolUse","tool_name":"Bash"}' 2>/dev/null | CLAUDE_CONFIG_DIR="$_ar" CLAUDE_PROJECT_DIR="$_ar/proj" sh "$FIRE/bin/guard-apiroute.sh" 2>/dev/null \
+  if printf '{"hook_event_name":"PostToolUse","tool_name":"Bash"}' 2>/dev/null | CLAUDE_CONFIG_DIR="$_ar" CLAUDE_PROJECT_DIR="$_ar/proj" sh "$DIR/bin/guard-apiroute.sh" 2>/dev/null \
        | grep -q '"decision":"block"' && ! grep -q 'ANTHROPIC_BASE_URL' "$_ar/settings.json"; then
     ok "repairs: a settings.json that reroutes Claude Code's API"
   else
@@ -267,7 +267,7 @@ if [ -f "$DIR/bin/govern-hook.sh" ]; then
     printf '#!/bin/sh\necho "REFUSED  floor-verify probe"\nexit 1\n' >"$_gv/port/r/bin/merge-check.sh"
     printf 'probe\t%s\tfloor-verify\n' "$_gv/port/r" >"$_gv/cfg/inject.d/projects.tsv"
     if printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","cwd":"%s","tool_input":{"command":"gh pr merge 1 -R fv/probe"}}' "$_gv" \
-         | CLAUDE_CONFIG_DIR="$_gv/cfg" CLAUDE_PROJECT_DIR="$_gv" PORT_ROOT="$_gv/port" sh "$FIRE/bin/govern-hook.sh" --box 2>/dev/null \
+         | CLAUDE_CONFIG_DIR="$_gv/cfg" CLAUDE_PROJECT_DIR="$_gv" PORT_ROOT="$_gv/port" sh "$DIR/bin/govern-hook.sh" --box 2>/dev/null \
          | grep -q '"permissionDecision":"deny"'; then
       ok "decides (deny): a refused merge named from outside its repo"
     else

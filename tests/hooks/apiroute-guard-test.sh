@@ -227,20 +227,4 @@ mutate "$sed_lib; s#\"\$2\" ! -newer \"\$1\" ! -newer#\"\$2\" ! -newer#" 'M8 old
 mutate "$sed_lib; s#! in_step \"\$1\" \"\$2\"#:#" 'M9 in step is not copied' sc_instep
 mutate "$sed_lib; s#! in_step \"\$1\" \"\$2\"#false#" 'M10 newer is copied' sc_newer
 mutate "$sed_lib; s#find -L #find #" 'M11 a symlink is followed' sc_symlink
-
-t_section "the decision log (harbor#957): a repair is one advise record, a clean read none"
-mkledger() { # <dir> <script>… → a config dir whose bin/ holds the scripts and guard-lib.sh, with a sink; prints the sink
-  mkdir -p "$1/bin" "$1/MEMORY/OBSERVABILITY/probehost"; _lt="$1"; shift
-  cp "$@" "$T_ROOT/bin/guard-lib.sh" "$_lt/bin/"; printf 'probehost\n' > "$_lt/.helm-obs-host"
-  : > "$_lt/MEMORY/OBSERVABILITY/probehost/guard-decisions.jsonl"; chmod 0500 "$_lt/MEMORY/OBSERVABILITY/probehost"
-  printf '%s' "$_lt/MEMORY/OBSERVABILITY/probehost/guard-decisions.jsonl"
-}
-LS="$(mkledger "$TMP/ledger" "$GUARD")"; LG="$TMP/ledger/bin/guard-apiroute.sh"
-D="$(fresh ledgerfx)"; put "$D/cfg/settings.json" "$CLEAN"; fire "$D" PostToolUse "$LG"
-t_eq "a clean file writes no record" 0 "$(grep -c . "$LS")"
-put "$D/cfg/settings.json" "$INCIDENT"; fire "$D" PostToolUse "$LG"
-t_eq "the repair is still made through the ledger copy (control)" block "$(decision .decision)"
-t_has "...and recorded under g=apiroute" "$(cat "$LS")" '"g":"apiroute"'
-t_has "...as advise, since nothing was refused" "$(cat "$LS")" '"d":"advise"'
-t_eq "...with nothing in the catch-all" 0 "$(grep -c '"g":"other"' "$LS")"
 t_done

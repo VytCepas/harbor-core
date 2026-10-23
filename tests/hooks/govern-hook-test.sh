@@ -115,23 +115,6 @@ out="$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov --squash' "$ELSE")"
 t_has "a -R slug from outside the repo is denied on a refusal" "$out" '"permissionDecision":"deny"'
 t_eq "the box deny is valid JSON" 0 "$(printf '%s' "$out" | jq -e . >/dev/null 2>&1; echo $?)"
 t_has "the deny names the repo the route runs in" "$out" "(in $GOVP)"
-# the decision log (harbor#957 item 4): the box deny is recorded under g=govern; the --note route is inject's
-mkledger() { # <dir> <script>… → a config dir whose bin/ holds the scripts and guard-lib.sh, with a sink; prints the sink
-  mkdir -p "$1/bin" "$1/MEMORY/OBSERVABILITY/probehost"; _lt="$1"; shift
-  cp "$@" "$T_ROOT/bin/guard-lib.sh" "$_lt/bin/"; printf 'probehost\n' > "$_lt/.helm-obs-host"
-  : > "$_lt/MEMORY/OBSERVABILITY/probehost/guard-decisions.jsonl"; chmod 0500 "$_lt/MEMORY/OBSERVABILITY/probehost"
-  printf '%s' "$_lt/MEMORY/OBSERVABILITY/probehost/guard-decisions.jsonl"
-}
-GLS="$(mkledger "$T/gledger" "$SUT")"; _sut="$SUT"; SUT="$T/gledger/bin/govern-hook.sh"
-t_has "the deny still comes through the ledger copy (control)" "$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov --squash' "$ELSE")" '"permissionDecision":"deny"'
-t_has "...and is recorded under g=govern" "$(cat "$GLS")" '"g":"govern"'
-t_has "...as deny" "$(cat "$GLS")" '"d":"deny"'
-t_eq "...with nothing in the catch-all" 0 "$(grep -c '"g":"other"' "$GLS")"
-_n="$(grep -c . "$GLS")"
-printf '%s' 'gh pr merge 7 -R Own/Gov' | jq -Rs --arg c "$ELSE" '{hook_event_name:"PreToolUse",tool_name:"Bash",cwd:$c,tool_input:{command:.}}' \
-  | CLAUDE_PROJECT_DIR="$ELSE" CLAUDE_CONFIG_DIR="$CFGB" PORT_ROOT="$PORTB" sh "$SUT" --note >/dev/null 2>&1
-t_eq "the --note route writes nothing here: inject-hook records it" "$_n" "$(grep -c . "$GLS")"
-SUT="$_sut"
 t_has "the slug is matched case-insensitively" "$(fireb PreToolUse 'gh pr merge 7 --repo own/gov' "$ELSE")" '"permissionDecision":"deny"'
 t_has "a HOST/OWNER/REPO slug is matched" "$(fireb PreToolUse 'gh pr merge 7 -R github.com/Own/Gov' "$ELSE")" '"permissionDecision":"deny"'
 t_has "with no -R, the call's working folder names the repo" "$(fireb PreToolUse 'gh pr merge 7' "$GOV")" '"permissionDecision":"deny"'

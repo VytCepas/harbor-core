@@ -34,7 +34,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | skill | skills/ | component | source | living | 41 |
 | fixture | fixtures/ | element | source | living | 252 |
 | registry | registries/ | component | source | versioned | 49 |
-| test | tests/ | component | source | living | 427 |
+| test | tests/ | component | source | living | 426 |
 | report | docs/reports/ | element | report | dated | 1 |
 | design | docs/design/ | component | source | living | 6 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
@@ -63,7 +63,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `skills/` | 41 | 5 | 1 |
 | `standards/` | 13 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 427 | 21 | 1 |
+| `tests/` | 426 | 21 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 73 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -73,20 +73,20 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
 | access | control-plane | 4 | 6 | 2 | 2 | 0 | 0 |
-| admission | control-plane | 15 | 1 | 0 | 0 | 0 | 167 |
+| admission | control-plane | 5 | 1 | 0 | 0 | 0 | 146 |
 | alert | observability | 1 | 1 | 0 | 0 | 0 | 0 |
 | audit | control-plane | 0 | 0 | 0 | 0 | 0 | 2 |
 | check | observability | 1 | 4 | 0 | 1 | 50 | 0 |
 | ci | coordination | 12 | 58 | 1 | 3 | 0 | 5 |
-| context | control-plane | 3 | 0 | 1 | 36 | 0 | 30 |
+| context | control-plane | 3 | 0 | 1 | 36 | 0 | 29 |
 | deploy | control-plane | 4 | 6 | 1 | 1 | 0 | 7 |
 | doc | control-plane | 1 | 1 | 0 | 8 | 0 | 16 |
 | drift | control-plane | 1 | 1 | 0 | 4 | 2 | 12 |
 | eval | control-plane | 0 | 1 | 0 | 0 | 0 | 0 |
-| event | observability | 3 | 16 | 0 | 2 | 0 | 1 |
+| event | observability | 3 | 16 | 0 | 2 | 0 | 0 |
 | gate | control-plane | 10 | 7 | 0 | 0 | 0 | 0 |
 | housekeeping | control-plane | 0 | 0 | 0 | 2 | 0 | 0 |
-| lint | control-plane | 15 | 38 | 0 | 8 | 0 | 31 |
+| lint | control-plane | 15 | 37 | 0 | 8 | 0 | 31 |
 | memory | memory-store | 4 | 11 | 1 | 23 | 0 | 1 |
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
 | policy | policy-function | 0 | 0 | 11 | 0 | 0 | 3 |
@@ -115,21 +115,11 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 
 ### admission
 
-- `bin/annotate-web.sh`
-- `bin/floor-hook.sh`
-- `bin/floor-observe.sh`
-- `bin/govern-hook.sh`
-- `bin/govern-token.sh`
-- `bin/guard-apiroute.sh`
 - `bin/guard-bash.sh`
 - `bin/guard-cloud.sh`
-- `bin/guard-deliverables.sh`
-- `bin/guard-destroy.sh`
 - `bin/guard-egress.sh`
-- `bin/guard-integrity.sh`
 - `bin/guard-selfedit.sh`
 - `bin/guard-stop.sh`
-- `bin/prod-guard-ambient.sh`
 
 ### alert
 
@@ -461,7 +451,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `.agents/` | 4 |
 | `.github/` | 2 |
 | `CONTRACTS/` | 62 |
-| `bin/` | 116 |
+| `bin/` | 126 |
 | `commands/` | 5 |
 | `docs/` | 17 |
 | `fixtures/` | 214 |
