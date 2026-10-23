@@ -133,8 +133,10 @@ t_has "'prod_guard' outside a PreToolUse command does not stand it down" "$(run 
 
 t_section "dependency failure announces itself, once per session"
 SID="broken-once"
-t_has "a missing guard file announces itself as an ask" \
-  "$(run "$T/plain" 'echo hello' "$T/nonexistent.py")" "INSTALLED BUT NOT FUNCTIONING"
+_bm="$(run "$T/plain" 'echo hello' "$T/nonexistent.py")"
+t_has "a missing guard file announces itself as an ask" "$_bm" "INSTALLED BUT NOT FUNCTIONING"
+# harbor#954 item 8: the message names the corpus prod_guard.py holds, warehouse and bucket removal included since PI-916.
+t_has "...naming warehouse removal as unguarded" "$_bm" "warehouse table and dataset removal, recursive bucket removal"
 t_eq "the same session is not prompted a second time" "" "$(run "$T/plain" 'echo hello' "$T/nonexistent.py")"
 SID="broken-twice"
 t_has "a NEW session is announced again" \

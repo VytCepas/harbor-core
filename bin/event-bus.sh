@@ -102,7 +102,12 @@ offsets_lock() {
   _ln=0
   until mkdir "$1" 2>/dev/null; do
     _lp=""; [ ! -f "$1/pid" ] || read -r _lp < "$1/pid" || :
-    if [ -n "$_lp" ] && ! kill -0 "$_lp" 2>/dev/null; then rm -rf "$1"; continue; fi
+    # Re-read before taking over: a lock released and re-taken by a live process since the first
+    # read is not the dead holder's to remove (two writers lost a consumer's row on hosted CI).
+    if [ -n "$_lp" ] && ! kill -0 "$_lp" 2>/dev/null; then
+      _lq=""; [ ! -f "$1/pid" ] || read -r _lq < "$1/pid" || :
+      if [ "$_lq" = "$_lp" ]; then rm -rf "$1"; continue; fi
+    fi
     _ln=$((_ln + 1)); [ "$_ln" -lt 200 ] || return 1
     sleep 0.05 2>/dev/null || sleep 1
   done
