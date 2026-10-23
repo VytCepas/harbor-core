@@ -29,7 +29,7 @@ set -eu
 
 ME="${0##*/}"
 ROOT="${GCLOUD_CREDS_ROOT:-$HOME/.config/gcloud}"
-NAME="${GCLOUD_CREDS_SECRET:-gcloud-store}"  # secret-seam: a bin/secret ref name, not a value (entry gcloud-store)
+NAME="${GCLOUD_CREDS_SECRET:-gcloud-store}"
 SECRET="${GCLOUD_CREDS_SECRET_BIN:-secret}"
 
 # Status lines are log-lib's, on stderr: stdout is `list`'s file names and nothing else (CONTRACTS/logging.md).

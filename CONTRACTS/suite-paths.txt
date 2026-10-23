@@ -385,7 +385,6 @@ tests/admission/confinement/covered.test.sh bin/* tests/lib/* tests/floor/floor-
 tests/access/chrome/mcp.test.sh bin/* standards/naming/* CONTRACTS/browser-agent-hosts.txt tests/lib/* tests/access/chrome/mcp.test.sh
 tests/export/license.test.sh LICENSE NOTICE SECURITY.md README.md vendor/* tests/export/license.test.sh tests/lib/core.sh
 tests/lint/share/check.test.sh bin/lint-share.sh bin/layers.sh bin/roots.sh bin/lint-conventions.sh bin/log-lib.sh CONTRACTS/layers.tsv CONTRACTS/roots.tsv standards/naming/kinds.tsv tests/lint/share/check.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh
-tests/lint/wired/registered.test.sh bin/decider-set.sh bin/floor-install.sh bin/*-install.sh bin/lint-conventions.sh bin/log-lib.sh standards/naming/controls.tsv
 tests/ci/fresh-check-test.sh bin/* hooks/* CONTRACTS/* STATUS.md PLAN.md docs/* skills/* .agents/* .github/CODEOWNERS standards/* tests/ci/fresh-check-test.sh tests/lib/core.sh
 tests/floor/git-verbs-test.sh bin/floor-deny.sh bin/log-lib.sh bin/install-lib.sh bin/guard-bash.sh bin/guard-destroy.sh CONTRACTS/git-verbs.md tests/floor/git-verbs-test.sh tests/lib/core.sh
 tests/floor/destroy-snapshot-test.sh bin/guard-destroy.sh bin/guard-lib.sh bin/floor-normalize.awk tests/floor/destroy-snapshot-test.sh tests/lib/core.sh

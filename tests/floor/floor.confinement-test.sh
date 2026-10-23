@@ -61,10 +61,8 @@ t_exit "...and the compose exits 1" 1 sh -c 'HARBOR_CONFINEMENT_PRIVATE= sh "$1"
 rm -f "$PORT_ROOT/harbor-private/harbor.toml"
 
 t_section "Linux preflight: bubblewrap must start for the operator, or the install refuses"
-STUB="$T_TMP/stub"; SYS="$T_TMP/sys"; mkdir -p "$STUB" "$SYS"
-# The system's tools minus bwrap: a hosted Ubuntu image ships it in /usr/bin, so "without bwrap" must not rest on the image.
-for _f in /bin/* /usr/bin/*; do case "${_f##*/}" in bwrap|socat) ;; *) [ -e "$SYS/${_f##*/}" ] || ln -s "$_f" "$SYS/${_f##*/}" ;; esac; done
-pf() { PATH="$STUB:$SYS" sh -c 'CONFINEMENT_LIB=1; . "$0"; PATH="$1"; confine_preflight "$2"' "$INST" "$STUB:$SYS" "$1" 2>&1; echo "exit $?"; }
+STUB="$T_TMP/stub"; mkdir -p "$STUB"
+pf() { PATH="$STUB:/usr/bin:/bin" sh -c 'CONFINEMENT_LIB=1; . "$0"; PATH="$1"; confine_preflight "$2"' "$INST" "$STUB:/usr/bin:/bin" "$1" 2>&1; echo "exit $?"; }
 t_has "Darwin: Seatbelt ships with the OS, nothing to check" "$(pf Darwin)" "exit 0"
 printf '#!/bin/sh\nexit 0\n' > "$STUB/socat"; chmod +x "$STUB/socat"
 t_has "Linux without bwrap: refused, naming the package" "$(pf Linux)" "missing: bwrap"

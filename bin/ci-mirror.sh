@@ -51,10 +51,10 @@ HSLUG="${HARBOR_SLUG:-$(slug_of_url "$(git -C "$ROOT" config --get remote.origin
 slug_valid "$HSLUG" || refuse "the harbor repo slug is unknown" "export HARBOR_SLUG=<owner>/harbor"
 
 need_token() {
-  [ -n "${HARBOR_CORE_MIRROR_TOKEN:-}" ] || refuse "HARBOR_CORE_MIRROR_TOKEN is not set, so nothing can reach $CORE" "store the fine-grained harbor-core token as that harbor secret"  # secret-seam: Actions secret (entry harbor-core-mirror-token)
+  [ -n "${HARBOR_CORE_MIRROR_TOKEN:-}" ] || refuse "HARBOR_CORE_MIRROR_TOKEN is not set, so nothing can reach $CORE" "store the fine-grained harbor-core token as that harbor secret"
 }
 # gh calls against harbor-core carry the mirror token (gh sends GH_TOKEN as a header); harbor's own calls do not.
-core_gh() { GH_TOKEN="$HARBOR_CORE_MIRROR_TOKEN" gh "$@"; }  # secret-seam: entry harbor-core-mirror-token
+core_gh() { GH_TOKEN="$HARBOR_CORE_MIRROR_TOKEN" gh "$@"; }
 
 # public-ci on the harbor PR head: STATE, DESC and URL as the caller set them.
 set_status() {
@@ -79,18 +79,15 @@ status)
   MIR="$(core_gh pr list --repo "$CORE" --head "$BRANCH" --state open --json headRefOid --jq '.[0].headRefOid // empty')" || refuse "cannot read $CORE" "gh auth status"
   STATE=pending; DESC="no mirror PR yet"; URL="https://github.com/$CORE/tree/$BRANCH"
   if [ -n "$MIR" ]; then
-    # One line per run of the mirror head: workflow, status, conclusion, url. A run of an older commit says nothing about this one.
-    RUNS="$(core_gh run list --repo "$CORE" --branch "$BRANCH" --limit 30 --json headSha,workflowName,status,conclusion,url \
-      --jq ".[] | select(.headSha == \"$MIR\") | [.workflowName, .status, .conclusion, .url] | @tsv")" || refuse "cannot list runs on $CORE" "gh run list --repo $CORE --branch $BRANCH"
-    # A cancelled run that another run of the same workflow replaced is no verdict; a cancelled run alone still is red.
-    RUNS="$(printf '%s\n' "$RUNS" | awk -F'\t' '{ l[NR] = $0; w[NR] = $1; c[NR] = $3; if ($3 != "cancelled") live[$1] = 1 }
-      END { for (i = 1; i <= NR; i++) if (!(c[i] == "cancelled" && live[w[i]])) print l[i] }')"
+    # One line per run of the mirror head: status, conclusion, url. A run of an older commit says nothing about this one.
+    RUNS="$(core_gh run list --repo "$CORE" --branch "$BRANCH" --limit 30 --json headSha,status,conclusion,url \
+      --jq ".[] | select(.headSha == \"$MIR\") | [.status, .conclusion, .url] | @tsv")" || refuse "cannot list runs on $CORE" "gh run list --repo $CORE --branch $BRANCH"
     if [ -z "$RUNS" ]; then DESC="hosted CI has not started on this mirror"
     else
-      URL="$(printf '%s\n' "$RUNS" | awk -F'\t' '{ u = $4 } $2 == "completed" && $3 != "success" && $3 != "skipped" && $3 != "neutral" && !f { f = 1; fu = $4 } END { print (fu != "" ? fu : u) }')"
+      URL="$(printf '%s\n' "$RUNS" | awk -F'\t' '{ u = $3 } $1 == "completed" && $2 != "success" && $2 != "skipped" && $2 != "neutral" && !f { f = 1; fu = $3 } END { print (fu != "" ? fu : u) }')"
       STATE="$(printf '%s\n' "$RUNS" | awk -F'\t' '
-        $2 != "completed" { pend = 1; next }
-        $3 != "success" && $3 != "skipped" && $3 != "neutral" { bad = 1 }
+        $1 != "completed" { pend = 1; next }
+        $2 != "success" && $2 != "skipped" && $2 != "neutral" { bad = 1 }
         END { print (bad ? "failure" : (pend ? "pending" : "success")) }')"
       DESC="hosted CI on the public mirror: $STATE"
     fi
@@ -141,7 +138,7 @@ if [ "$DRY" = 1 ]; then
 fi
 
 # The auth rides in git's environment as a header: not in the remote's URL, not in argv, not in .git/config.
-AUTH="$(printf 'x-access-token:%s' "$HARBOR_CORE_MIRROR_TOKEN" | base64 | tr -d '\n')"  # secret-seam: entry harbor-core-mirror-token
+AUTH="$(printf 'x-access-token:%s' "$HARBOR_CORE_MIRROR_TOKEN" | base64 | tr -d '\n')"
 core_git() { GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader GIT_CONFIG_VALUE_0="Authorization: Basic $AUTH" git -C "$TDIR" "$@"; }
 
 core_git fetch -q origin || refuse "cannot fetch $CORE" "check HARBOR_CORE_MIRROR_TOKEN (Contents: write)"

@@ -380,7 +380,6 @@ tests/standard/rename/window.test.sh
 tests/lint/name/modes.test.sh
 tests/export/license.test.sh
 tests/lint/share/check.test.sh
-tests/lint/wired/registered.test.sh
 tests/ci/fresh-check-test.sh
 tests/floor/git-verbs-test.sh
 tests/floor/destroy-snapshot-test.sh

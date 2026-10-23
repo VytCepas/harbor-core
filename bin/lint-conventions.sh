@@ -848,21 +848,6 @@ for _s in $(sh "$_f1set" --records); do
 done
 }
 
-# ── admission.wired-registered · every wired hook script is a control's engine (harbor#1272) ──
-# A hook that runs in every session and has no controls.tsv row has no mode, owner or off switch a person can
-# read, and the census never sees a guard that answers in JSON instead of floor_block. The set is F1's.
-rule_admission_wired_registered() {
-rule "admission.wired-registered every wired hook script (bin/decider-set.sh) is the engine of a standards/naming/controls.tsv row (harbor#1272) (advisory)"
-_wrset="$ROOT/bin/decider-set.sh"; _wrc="$ROOT/standards/naming/controls.tsv"
-[ -f "$_wrset" ] && [ -f "$_wrc" ] || { bad admission.wired-registered "bin/decider-set.sh or standards/naming/controls.tsv is missing, so the wired set cannot be checked"; return 0; }
-_wrl="$(sh "$_wrset" 2>/dev/null | cut -f1)"
-[ -n "$_wrl" ] || { bad admission.wired-registered "bin/decider-set.sh listed no wired script, so nothing was checked"; return 0; }
-for _s in $_wrl; do
-  awk -F'\t' -v e="bin/$_s" '/^#/ { next } $4 == e { f = 1; exit } END { exit !f }' "$_wrc" \
-    || { _adv admission.wired-registered "bin/$_s"; printf '  ADVISORY [admission.wired-registered] bin/%s is wired as a hook and no standards/naming/controls.tsv row names it as its engine\n' "$_s" >&2; }
-done
-}
-
 # ── F5 · every floor_block call site carries a <rule>.<shape> id ───────────
 # Without one the record logs `unclassified` and the block is invisible to
 # `observe-report.sh` — a rule that fires and cannot be counted, which is the
