@@ -595,12 +595,13 @@ rule "posix.shebang-strict bin/*.sh use #!/usr/bin/env sh + strict mode (documen
 #   ci-runners-*-lib.sh — SOURCED by ci-runners.sh, which holds the strict mode (harbor#1060 split)
 #   gate-lib.sh    — SOURCED, the same reason (harbor#1018)
 #   stream-lib.sh  — SOURCED, the same reason (harbor#1181)
+#   alert-lib.sh   — SOURCED, the same reason (harbor#618)
 #   worklog-*.sh   — contractually fail-open ("every path exits 0"); -e would abort
 for f in "$ROOT"/bin/*.sh; do
   [ -f "$f" ] || continue
   b="$(basename "$f")"
   head -1 "$f" | grep -q '^#!/usr/bin/env sh$' || bad posix.shebang-strict "wrong shebang: ${f#$ROOT/}"
-  case "$b" in guard-lib.sh|log-lib.sh|install-lib.sh|fs-lib.sh|gate-lib.sh|stream-lib.sh|worklog-push.sh|ci-runners-fleet-lib.sh|ci-runners-provision-lib.sh|ci-runners-github-lib.sh|ci-runners-watch-lib.sh) continue ;; esac
+  case "$b" in guard-lib.sh|log-lib.sh|install-lib.sh|fs-lib.sh|gate-lib.sh|stream-lib.sh|alert-lib.sh|worklog-push.sh|ci-runners-fleet-lib.sh|ci-runners-provision-lib.sh|ci-runners-github-lib.sh|ci-runners-watch-lib.sh) continue ;; esac
   grep -qE '^set -(eu|u|euo)' "$f" || bad posix.shebang-strict "no strict mode: ${f#$ROOT/}"
 done
 # EXTENSIONLESS EXECUTABLES ARE SCRIPTS TOO (2026-07-30). Every rule in this file
@@ -699,7 +700,7 @@ _S4_HOOKS="floor-hook floor-observe context-resolve annotate-web prod-guard-ambi
 worklog-push memory-harvest inject-hook replay-worker guard-bash
 guard-egress guard-selfedit guard-integrity guard-cloud guard-destroy guard-lib
 guard-deliverables guard-apiroute
-guard-stop session-verdicts failure-capture failure-observe statusline ticket-note reply-shape log-lib install-lib fs-lib ci-runners-fleet-lib ci-runners-provision-lib ci-runners-github-lib ci-runners-watch-lib gate-lib stream-lib session-react-lib"
+guard-stop session-verdicts failure-capture failure-observe statusline ticket-note reply-shape log-lib install-lib fs-lib alert-lib ci-runners-fleet-lib ci-runners-provision-lib ci-runners-github-lib ci-runners-watch-lib gate-lib stream-lib session-react-lib"
 for f in "$ROOT"/bin/*.sh; do
   [ -f "$f" ] || continue
   _s4b="$(basename "$f" .sh)"
@@ -6625,7 +6626,8 @@ _l1_tsv="$ROOT/CONTRACTS/log-exempt.tsv"
 # The library itself, and this linter: its VIOLATION lines and summary are parsed by the lint suites
 # and guard-stop, a protocol like the test harness's summary rather than a run log. fs-lib.sh prints a
 # value and logs nothing: a library, like log-lib.
-_l1_named='bin/log-lib.sh bin/lint-conventions.sh bin/fs-lib.sh'
+# alert-lib.sh is a library too: its one stderr line IS the notification, said when no desktop channel takes it.
+_l1_named='bin/log-lib.sh bin/lint-conventions.sh bin/fs-lib.sh bin/alert-lib.sh'
 _l1_code() { sed -e 's/^[[:space:]]*#.*$//' -e 's/[[:space:]]#.*$//' "$1"; }  # comments blanked, lines kept
 _l1_uses() { _l1_code "$1" | grep -qE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*log-lib\.sh'; }
 _l1_floor() { # channel 2: guard-lib.sh, or F1's mark of an installed floor file
@@ -6920,6 +6922,20 @@ fi
 # ── lint.domain · core files name no more workload tools than the baseline (harbor#1274) ─
 # Core holds only harbor's own logic (harbor#1149). bin/lint-domain.sh counts (core file, term) pairs over
 # CONTRACTS/domain-terms.tsv minus CONTRACTS/domain-allow.tsv; the count may only fall.
+rule_lint_platform_calls() {
+rule "lint.platform-calls a bin/ script calls no bare macOS-only tool: ported, declared or in a helper (harbor#618)"
+# The derive is bin/lint-platform.sh; tests/checks/platform-calls-test.sh is its red-proof. Approved by the operator 2026-10-20.
+if [ -f "$ROOT/bin/lint-platform.sh" ]; then
+  _pc_out="$(sh "$ROOT/bin/lint-platform.sh" "$ROOT/bin" 2>/dev/null)" || :
+  while IFS= read -r _pcl; do
+    [ -n "$_pcl" ] || continue
+    bad lint.platform-calls "bin/$_pcl is a bare macOS-only call: port it beside its Linux counterpart, go through bin/alert-lib.sh for a notification, or declare \`# platform: macOS-only — <reason>\` in its first 40 lines" "bin/${_pcl%%:*}"
+  done <<PLATFORM
+$_pc_out
+PLATFORM
+fi
+}
+
 rule_lint_domain() {
 rule "lint.domain core files naming a workload tool only go down (CONTRACTS/lint-domain-baseline.txt, harbor#1274)"
 if [ -f "$ROOT/bin/lint-domain.sh" ] && [ -f "$ROOT/CONTRACTS/lint-domain-baseline.txt" ]; then
