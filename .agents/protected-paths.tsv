@@ -77,6 +77,7 @@ bin/managed-retention.sh	settings	writes cleanupPeriodDays into the root-owned m
 bin/deploy-confinement.sh	settings	writes the sandbox block into the root-owned managed-settings.json (harbor#1298)
 CONTRACTS/confinement-hosts.txt	settings	the hosts deploy-confinement.sh writes into managed settings (harbor#1298)
 CONTRACTS/confinement-paths.txt	settings	the write zone and read allows deploy-confinement.sh writes into managed settings (harbor#1298)
+standards/naming/controls.tsv	ci-gate	the control register: each control's mode, owner and red proof, which the lint and the naming census read; a renderer will read it too (harbor#1272)
 # Everything an installer ships into the config dir or wires as a hook or statusline (review finding 3); every shim
 # target CONTRACTS/shims.tsv links into ~/.local/bin and both registers (operator-run: it runs as the operator outside
 # a session); every file a ship.conf command runs (ship); what decides the required checks' content (ci-gate); and
