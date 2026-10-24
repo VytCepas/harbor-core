@@ -132,6 +132,7 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       controls.tsv) printf '%s\t%s\n' "$_p" "checks.d/$ID.controls.tsv" >> "$WORK/plan" ;;
       shims.tsv) printf '%s\t%s\n' "$_p" "shims.d/$ID.tsv" >> "$WORK/plan" ;;
       conf-keys.txt) printf '%s\t%s\n' "$_p" "conf-keys.d/$ID.txt" >> "$WORK/plan" ;;
+      terms.tsv) printf '%s\t%s\n' "$_p" "terms.d/$ID.tsv" >> "$WORK/plan" ;;
       skills/*/*)
         _s="${_r#skills/}"; _s="${_s%%/*}"
         [ ! -e "$ROOT/skills/$_s" ] || refuse "skill $_s shadows a core skill" || return 1
@@ -257,6 +258,34 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       ($0 in seen) { print "line " NR ": " $0 " is listed twice"; exit }
       { seen[$0] = 1 }')"
     [ -z "$_km" ] || refuse "conf-keys.txt: $_km" "one harbor.toml key per line (CONTRACTS/pack.md)" || return 1
+  fi
+
+  # System terms (harbor#950): a workload's pack registers its own systems, so core's terms.tsv names no workload.
+  # The core header, class `system` alone, a kebab id, never a core term and never one another installed pack declares:
+  # bin/lint-name.sh reads all of them as one register. A term the private overlay holds never gets here: its rows are
+  # leak patterns, and the leak gate above refuses the pack that names one.
+  if [ -f "$WORK/stage/terms.d/$ID.tsv" ]; then
+    _thdr="$(grep -v '^#' "$ROOT/standards/naming/terms.tsv" | awk 'NF { print; exit }')"
+    awk -F'\t' '!/^#/ && NF && $1 != "id" { print $1 }' "$ROOT/standards/naming/terms.tsv" > "$WORK/terms.core"
+    : > "$WORK/terms.other"
+    for _f in "$T"/terms.d/*.tsv; do
+      [ -f "$_f" ] && [ "$_f" != "$T/terms.d/$ID.tsv" ] || continue
+      awk -F'\t' -v n="${_f##*/}" '!/^#/ && NF && $1 != "id" { print $1 "\tthe installed pack " n }' "$_f" >> "$WORK/terms.other"
+    done
+    _tm="$(tr -d '\r' < "$WORK/stage/terms.d/$ID.tsv" | awk -F'\t' -v h="$_thdr" -v core="$WORK/terms.core" -v other="$WORK/terms.other" '
+      BEGIN { while ((getline l < core) > 0) c[l] = 1; while ((getline l < other) > 0) { split(l, o, "\t"); p[o[1]] = o[2] } }
+      function out(m) { print m; done = 1; exit }
+      /^[ \t]*#/ || /^[ \t]*$/ { next }
+      !hdr { if ($0 != h) out("its header is not the core terms.tsv header"); hdr = 1; nf = NF; next }
+      NF != nf { out("line " NR " has " NF " columns, the header has " nf) }
+      $1 !~ /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/ { out("line " NR ": " $1 " is not a lowercase kebab term") }
+      $2 != "system" { out("line " NR ": " $1 " has class " $2 ": a pack registers system terms only") }
+      ($1 in c) { out("line " NR ": " $1 " is a core term") }
+      ($1 in p) { out("line " NR ": " $1 " is declared by " p[$1]) }
+      ($1 in seen) { out("line " NR ": " $1 " is listed twice") }
+      { seen[$1] = 1 }
+      END { if (!done && !hdr) print "it has no header row" }')"
+    [ -z "$_tm" ] || refuse "terms.tsv: $_tm" "system rows in the columns of standards/naming/terms.tsv (CONTRACTS/pack.md)" || return 1
   fi
 
   # Check rows (harbor#1149): checks.md must compose into the ONE register beside core, the private layer and every OTHER
@@ -385,7 +414,7 @@ remove_one() { # <id>
   done
   rm -f "$MFD/$ID.tsv"
   # checks.d is shared by every pack, so only the pack that created it holds its D row: the last pack out takes it if empty.
-  if rmdir "$MFD" 2>/dev/null; then rmdir "$T/checks.d" "$T/shims.d" "$T/conf-keys.d" 2>/dev/null || :; fi
+  if rmdir "$MFD" 2>/dev/null; then rmdir "$T/checks.d" "$T/shims.d" "$T/conf-keys.d" "$T/terms.d" 2>/dev/null || :; fi
   log_ok "removed $ID"
   if [ "$_hadck" -eq 1 ]; then recompose || return 1; fi
 }

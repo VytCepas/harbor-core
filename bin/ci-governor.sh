@@ -31,7 +31,12 @@
 # PRIORITY CLASSES (harbor#1060). low_priority (harbor-linux, projects-orchestrator-linux, project-init-linux:
 # harbor, Fleet, Yard; a listed name's numbered twin, harbor-linux-2, is low too, so a second runner is never unmanaged) yields to every other container. Per tick: each busy normal container gets an even share
 # of the budget less linux_min (1) for each busy low one; busy low ones split what is left, never under
-# linux_min; an idle one sits at linux_min. A normal job starting cuts a busy low one on that tick, cuts before
+# linux_min; an idle one sits at linux_min. NORMAL_MIN (normal_min, 2): a busy normal container never gets fewer
+# than normal_min cpus however many are busy (measured: with several busy at budget 4 the even share was ~1 and
+# a perf-budget test failed only for that); still capped at the Colima VM's cpus. When busy-normal x normal_min
+# exceeds the budget, normal_min WINS over the even share: the box is oversubscribed on purpose (--cpus is a
+# cap, not a reservation, and the kernel shares what is really there), and low ones still keep linux_min, never
+# less; a lifted low job leaves each busy normal one its normal_min first. normal_min=1 is the plain even share. A normal job starting cuts a busy low one on that tick, cuts before
 # raises, and its end restores it.
 # A managed host runner (mac_runners, none by default) is stopped only when the budget leaves no room for one
 # more job AND it is idle both here (no Runner.Worker) and on GitHub AND no macOS job is queued there
@@ -139,6 +144,7 @@ CUT_INTERVAL="$(int "$(cfg cut_interval 60)")"
 MIN_BUDGET="$(int "$(cfg min_budget 2)")"
 JOB_CORES="$(int "$(cfg job_cores 2)")"
 LINUX_MIN="$(int "$(cfg linux_min 1)")"
+NORMAL_MIN="$(int "$(cfg normal_min 2)")"
 LIFT_AFTER="$(int "$(cfg lift_after 900)")"   # a low job older than this keeps lift_cpus; 900 is half of harbor's 30-minute job timeout, 0 = off
 LIFT_CPUS="$(int "$(cfg lift_cpus 2)")"
 RUN_DEADLINE="$(int "$(cfg run_deadline 1800)")"
@@ -160,6 +166,7 @@ STOP_MAX="$(int "$(cfg stop_max 300)")"
 TRIGGER="${HARBOR_GOV_TRIGGER:-$HOME/runners/harbor-linux/events/trigger}"
 [ "$MIN_BUDGET" -ge 1 ] || MIN_BUDGET=1
 [ "$LINUX_MIN" -ge 1 ] || LINUX_MIN=1
+[ "$NORMAL_MIN" -ge "$LINUX_MIN" ] || NORMAL_MIN=$LINUX_MIN
 
 # st <key> — one value from the state file (key=value lines; read, never sourced).
 kv() { [ -f "$1" ] && awk -F= -v k="$2" '$1 == k { sub(/^[^=]*=/, ""); v = $0 } END { print v }' "$1" 2>/dev/null || true; }
@@ -447,10 +454,10 @@ $LINUX
 EOF
   _lift=$LINUX_MIN
   if [ "$_na" -gt 0 ]; then
-    _lift=$(( (AVAIL - LINUX_MIN * _bn - LINUX_MIN * (_bl - _na)) / _na ))
+    _lift=$(( (AVAIL - NORMAL_MIN * _bn - LINUX_MIN * (_bl - _na)) / _na ))
     [ "$_lift" -le "$LIFT_CPUS" ] || _lift=$LIFT_CPUS; [ "$_lift" -ge "$LINUX_MIN" ] || _lift=$LINUX_MIN
   fi
-  _ns=$LINUX_MIN; [ "$_bn" = 0 ] || _ns=$(( (AVAIL - LINUX_MIN * (_bl - _na) - _lift * _na) / _bn )); [ "$_ns" -ge "$LINUX_MIN" ] || _ns=$LINUX_MIN
+  _ns=$LINUX_MIN; [ "$_bn" = 0 ] || _ns=$(( (AVAIL - LINUX_MIN * (_bl - _na) - _lift * _na) / _bn )); [ "$_ns" -ge "$NORMAL_MIN" ] || _ns=$NORMAL_MIN   # normal_min, after the share, so low ones below keep linux_min
   _ls=$LINUX_MIN; [ "$_bl" = 0 ] || _ls=$(( (AVAIL - _ns * _bn) / _bl )); [ "$_ls" -ge "$LINUX_MIN" ] || _ls=$LINUX_MIN
   _as=$_lift                                                           # an aged low job's cap: the lift, never what division left over
   [ "$_bn" != 0 ] || [ "$_ls" -le "$_as" ] || _as=$_ls                 # ...unless no day-to-day job is running: then its share of the budget
@@ -612,7 +619,10 @@ tick_lock() {
   _tw=0
   while ! mkdir "$STATE_DIR/tick.lock" 2>/dev/null; do
     _tl="$(cat "$STATE_DIR/tick.lock/pid" 2>/dev/null || true)"
-    if [ -n "$_tl" ] && ! kill -0 "$_tl" 2>/dev/null; then rm -rf "$STATE_DIR/tick.lock"; continue; fi
+    # Re-read before taking over: a lock released and re-taken since the first read is a live one (as event-bus.sh).
+    if [ -n "$_tl" ] && ! kill -0 "$_tl" 2>/dev/null && [ "$(cat "$STATE_DIR/tick.lock/pid" 2>/dev/null || true)" = "$_tl" ]; then
+      rm -rf "$STATE_DIR/tick.lock"; continue
+    fi
     _tw=$(( _tw + 1 )); [ "$_tw" -lt 25 ] || return 1
     sleep 0.2
   done
@@ -701,7 +711,9 @@ reclaim() {
 lock() {
   if mkdir "$STATE_DIR/slots.lock" 2>/dev/null; then echo $$ > "$STATE_DIR/slots.lock/pid"; return 0; fi
   _lp="$(cat "$STATE_DIR/slots.lock/pid" 2>/dev/null || true)"
-  if [ -n "$_lp" ] && ! kill -0 "$_lp" 2>/dev/null; then rm -rf "$STATE_DIR/slots.lock"; fi
+  if [ -n "$_lp" ] && ! kill -0 "$_lp" 2>/dev/null && [ "$(cat "$STATE_DIR/slots.lock/pid" 2>/dev/null || true)" = "$_lp" ]; then
+    rm -rf "$STATE_DIR/slots.lock"
+  fi
   return 1
 }
 unlock() { rm -rf "$STATE_DIR/slots.lock"; }
