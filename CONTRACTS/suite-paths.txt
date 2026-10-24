@@ -379,6 +379,7 @@ tests/standard/rename/window.test.sh always
 tests/lint/name/modes.test.sh always
 tests/cli/harbor-app-routing-test.sh bin/harbor-app/* bin/harbor-app-install.sh bin/install-lib.sh bin/log-lib.sh bin/roots.sh tests/cli/harbor-app-routing-test.sh tests/lib/core.sh
 tests/hooks/session-title-test.sh bin/session-title.sh bin/guard-selfedit.sh bin/guard-lib.sh tests/hooks/session-title-test.sh tests/lib/core.sh
+tests/deploy/hooks/render.test.sh bin/deploy-hooks.sh bin/log-lib.sh tests/deploy/hooks/render.test.sh tests/lib/core.sh
 tests/hooks/access-confinement-test.sh bin/access-confinement.sh bin/deploy-confinement.sh tests/hooks/access-confinement-test.sh tests/lib/core.sh
 tests/drift/confinement/compare.test.sh bin/drift-confinement.sh bin/deploy-confinement.sh bin/roots.sh bin/log-lib.sh bin/floor-deny.sh bin/install-lib.sh bin/runtime-install.sh CONTRACTS/confinement-hosts.txt CONTRACTS/confinement-paths.txt CONTRACTS/helm-state.md tests/drift/confinement/compare.test.sh tests/lib/core.sh
 tests/admission/confinement/covered.test.sh bin/* tests/lib/* tests/floor/floor-fixture.sh tests/guards/floor-fixture.sh CONTRACTS/confinement-coverage.tsv standards/naming/controls.tsv tests/admission/confinement/covered.test.sh
