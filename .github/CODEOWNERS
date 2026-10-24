@@ -62,6 +62,7 @@
 /bin/deploy-confinement.sh @VytCepas
 /CONTRACTS/confinement-hosts.txt @VytCepas
 /CONTRACTS/confinement-paths.txt @VytCepas
+/standards/naming/controls.tsv @VytCepas
 /CONTRACTS/event-rules.tsv @VytCepas
 /CONTRACTS/merge-stack-union.txt @VytCepas
 /CONTRACTS/obligation-kinds.tsv @VytCepas
@@ -77,11 +78,13 @@
 /bin/access-confinement.sh @VytCepas
 /bin/access.sh @VytCepas
 /bin/adoption-check.sh @VytCepas
+/bin/alert-lib.sh @VytCepas
 /bin/browser.sh @VytCepas
 /bin/check-registry-generate.sh @VytCepas
 /bin/ci-governor-hook.sh @VytCepas
 /bin/ci-governor.sh @VytCepas
 /bin/ci-lost-job.sh @VytCepas
+/bin/ci-mirror.sh @VytCepas
 /bin/ci-queue.sh @VytCepas
 /bin/ci-runners-fleet-lib.sh @VytCepas
 /bin/ci-runners-github-lib.sh @VytCepas
@@ -95,6 +98,7 @@
 /bin/constitution-install.sh @VytCepas
 /bin/context-budget.sh @VytCepas
 /bin/decider-set.sh @VytCepas
+/bin/deploy-push.sh @VytCepas
 /bin/doc-refs.sh @VytCepas
 /bin/docs-gen.sh @VytCepas
 /bin/doctor.sh @VytCepas
@@ -160,6 +164,7 @@
 /bin/lint-locale-ranges.awk @VytCepas
 /bin/lint-module.sh @VytCepas
 /bin/lint-name.sh @VytCepas
+/bin/lint-platform.sh @VytCepas
 /bin/lint-secrets.sh @VytCepas
 /bin/lint-share.sh @VytCepas
 /bin/lint-siblings.sh @VytCepas
