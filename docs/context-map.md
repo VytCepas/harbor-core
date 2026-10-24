@@ -36,7 +36,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | registry | registries/ | component | source | versioned | 49 |
 | test | tests/ | component | source | living | 427 |
 | report | docs/reports/ | element | report | dated | 1 |
-| design | docs/design/ | component | source | living | 6 |
+| design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | script | bin/ | component | source | living | 208 |
 | (no kind) | - | - | - | - | 171 |
@@ -53,7 +53,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `DOCTRINE/` | 10 | 1 | 1 |
 | `bin/` | 213 | 22 | 2 |
 | `commands/` | 5 | 1 | 1 |
-| `docs/` | 110 | 6 | 5 |
+| `docs/` | 111 | 6 | 5 |
 | `fixtures/` | 252 | 9 | 1 |
 | `hooks/` | 7 | 1 | 1 |
 | `inject.d/` | 31 | 1 | 1 |
@@ -77,7 +77,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | alert | observability | 1 | 1 | 0 | 0 | 0 | 0 |
 | audit | control-plane | 0 | 0 | 0 | 0 | 0 | 2 |
 | check | observability | 1 | 4 | 0 | 1 | 50 | 0 |
-| ci | coordination | 12 | 58 | 1 | 3 | 0 | 5 |
+| ci | coordination | 12 | 58 | 2 | 3 | 0 | 5 |
 | context | control-plane | 3 | 0 | 1 | 36 | 0 | 30 |
 | deploy | control-plane | 4 | 6 | 1 | 1 | 0 | 7 |
 | doc | control-plane | 1 | 1 | 0 | 8 | 0 | 16 |
@@ -157,6 +157,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/ci-runs-on.sh`
 - `bin/ci-verified.sh`
 - `docs/design/ci-local-heal.md`
+- `docs/design/ci-tests-on-this-host.md`
 - `launchd/com.harbor.ci-governor.plist`
 
 ### context

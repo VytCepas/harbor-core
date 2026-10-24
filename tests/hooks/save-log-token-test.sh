@@ -19,7 +19,8 @@ chmod +x "$T_BIN/pbpaste" "$T_BIN/pbcopy"
 cat > "$T/secret" <<'STUB'
 #!/bin/sh
 case "$1" in
-  put) [ "$2" = worklog-token ] && [ ! -e "$FAKE_STORE.refuse" ] || exit 1; cat > "$FAKE_STORE" ;;
+  put) if [ ! -e "$FAKE_STORE.refuse" ] && [ "$2" = worklog-token ]; then cat > "$FAKE_STORE"
+       else cat > /dev/null; echo "secret: STUBERR-no-register-entry names 'worklog-token' in its secret: field" >&2; exit 1; fi ;;
   run) [ -f "$FAKE_STORE" ] || { echo "no secret named '$2'" >&2; exit 1; }; v="$(cat "$FAKE_STORE")"; export "$3=$v"; shift 4; exec "$@" ;;
   *) exit 2 ;;
 esac
@@ -104,6 +105,8 @@ t_has "it says NOT SAVED" "$OUT" "NOT SAVED"
 t_eq "no plaintext file was written instead" no "$([ -f "$TOK" ] && echo yes || echo no)"
 t_eq "the clipboard is still cleared" 0 "$(wc -c < "$FAKE_CLIP" | tr -d ' ')"
 t_hasnt "the token is absent from the output" "$OUT" "$GOOD"
+t_has "the store's own error text reaches the operator (harbor#431)" "$OUT" "STUBERR-no-register-entry"
+t_hasnt "...and the token is still not in what is printed" "$OUT" "$GOOD"
 rm -f "$FAKE_STORE.refuse"
 
 t_section "SLT-0 the default destination is untouched"

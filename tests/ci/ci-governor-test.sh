@@ -22,6 +22,23 @@ t_eq "...and the idle one (spaces around = are allowed)" 5 "$(st budget)"
 reset; printf 'active_budget=; rm -rf /\n' >> "$CLAUDE_CONFIG_DIR/.harbor-ci-governor"; gov tick >/dev/null
 t_eq "a value that is not a number is the default, never evaluated" 4 "$(st budget)"
 
+t_section "normal_min: a busy normal container never gets fewer than 2 cpus, however many are busy (harbor#1060)"
+reset; for c in a-linux b-linux c-linux d-linux; do ctr "$c" busy; done; gov tick >/dev/null
+t_eq "budget 4, four busy normal jobs (even share 1): each gets 2" "2 2 2 2" "$(ccpus a-linux) $(ccpus b-linux) $(ccpus c-linux) $(ccpus d-linux)"
+reset; for c in a-linux b-linux c-linux; do ctr "$c" busy; done; : > "$FX/lbusy"; gov tick >/dev/null
+t_eq "three busy normal beside a busy low one: each normal gets 2" "2 2 2" "$(ccpus a-linux) $(ccpus b-linux) $(ccpus c-linux)"
+t_eq "...and the low one is still never below linux_min" 1 "$(cpus)"
+reset; for c in a-linux b-linux c-linux; do ctr "$c"; done; : > "$FX/a-linux.lbusy"; gov tick >/dev/null
+t_eq "control: idle containers stay at linux_min" "1 1 1" "$(ccpus b-linux) $(ccpus c-linux) $(cpus)"
+reset; ctr a-linux busy; ctr b-linux busy; gov tick >/dev/null
+t_eq "control: two busy normal on budget 4 split evenly, as before" "2 2" "$(ccpus a-linux) $(ccpus b-linux)"
+reset; printf 'normal_min=3\n' >> "$CLAUDE_CONFIG_DIR/.harbor-ci-governor"; for c in a-linux b-linux c-linux; do ctr "$c" busy; done; gov tick >/dev/null
+t_eq "normal_min=3 is honoured: three busy normal jobs get 3 each" "3 3 3" "$(ccpus a-linux) $(ccpus b-linux) $(ccpus c-linux)"
+reset; printf 'normal_min=1\n' >> "$CLAUDE_CONFIG_DIR/.harbor-ci-governor"; for c in a-linux b-linux c-linux d-linux; do ctr "$c" busy; done; gov tick >/dev/null
+t_eq "normal_min=1 is the old even share: four busy normal jobs get 1 each" "1 1 1 1" "$(ccpus a-linux) $(ccpus b-linux) $(ccpus c-linux) $(ccpus d-linux)"
+reset; printf 'normal_min=3\n' >> "$CLAUDE_CONFIG_DIR/.harbor-ci-governor"; echo 2 > "$FX/vmcpus"; ctr a-linux busy; gov tick >/dev/null
+t_eq "normal_min is still capped at the Colima VM's cpus" 2 "$(ccpus a-linux)"
+
 t_section "the cap never exceeds the Colima VM"
 reset; : > "$FX/lbusy"; echo 2 > "$FX/vmcpus"; echo 700 > "$FX/idle"; gov tick >/dev/null
 t_eq "budget 8 on a 2-CPU VM caps harbor-linux at 2" 2 "$(cpus)"
