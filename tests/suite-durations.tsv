@@ -174,7 +174,7 @@
 3	tests/hooks/agent-brief-test.sh
 3	tests/hooks/inject-hook.compaction-digest-test.sh
 3	tests/hooks/prod-guard-test.sh
-3	tests/hooks/ticket-note-test.sh
+3	hooks/ticket-note/ticket-note.test.sh
 3	tests/install/roots-test.sh
 3	tests/install/skills-install-test.sh
 3	tests/memory/memory-route-test.sh
@@ -240,13 +240,13 @@
 1	tests/event/bus/emit.test.sh
 1	tests/floor/deny-hash-test.sh
 1	tests/floor/floor.shards-test.sh
-1	tests/hooks/failure-observe-test.sh
+1	hooks/failure-observe/failure-observe.test.sh
 1	tests/hooks/hook-replay/output-contract.test.sh
-1	tests/hooks/reply-shape-test.sh
+1	hooks/reply-shape/reply-shape.test.sh
 1	tests/hooks/save-log-token-test.sh
-1	tests/hooks/session-title-test.sh
+1	hooks/session-title/session-title.test.sh
 1	tests/hooks/statusline.subagent-test.sh
-1	tests/hooks/ticket-note/private-owners.test.sh
+1	hooks/ticket-note/private-owners.test.sh
 1	tests/install/doctor-test.sh
 1	tests/install/doctor/output-contract.test.sh
 1	tests/install/first-run.test.sh
@@ -304,7 +304,7 @@
 0	tests/floor/floor-equiv/output-contract.test.sh
 0	tests/floor/marker-backfill/output-contract.test.sh
 0	tests/floor/pass-score/output-contract.test.sh
-0	tests/hooks/failure-observe/output-contract.test.sh
+0	hooks/failure-observe/output-contract.test.sh
 0	tests/hooks/post-checkout-test.sh
 0	tests/install/port-paths/output-contract.test.sh
 0	tests/install/port-paths/worktrees-dir.test.sh

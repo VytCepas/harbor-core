@@ -47,6 +47,7 @@ CAP="${HARBOR_HARVEST_CAP:-25}"
 
 # harbor#813: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./guard-lib.sh from it.
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
+[ ! -f "$DIR/manifest.tsv" ] || DIR="$DIR/../../bin"  # D-88: in the repo an engine sits beside its manifest in hooks/<engine>/; deployed, flat beside its libraries
 . "$DIR/guard-lib.sh"
 # Its one line goes to stderr: a Stop hook's stdout is the harness's (CONTRACTS/logging.md).
 LOG_FD=2; . "$DIR/log-lib.sh"

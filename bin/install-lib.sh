@@ -309,6 +309,12 @@ il_onfailure() {
 # Rows are queued as `+<TAB><row>` or `-<TAB><relpath>` and merged once, at the end of an apply run.
 _il_nl='
 '
+# WHERE AN INSTALLED NAME'S BYTES COME FROM (D-88, harbor#1272): bin/<name>, or the engine folder a hook engine moved to.
+# Deployed flat either way, so payload lists keep the installed name. il_engine_path is the one spelling, for git readers too.
+il_engine_path() { printf 'hooks/%s/%s' "${1%.*}" "$1"; }
+il_src() { # <repo root> <installed name> -> the repo-relative path it is installed from
+  if [ ! -f "$1/bin/$2" ] && [ -f "$1/$(il_engine_path "$2")" ]; then il_engine_path "$2"; else printf 'bin/%s' "$2"; fi
+}
 il_blob() { # <file>
   if [ -L "$1" ]; then printf '%s' "$(readlink "$1")" | git hash-object --no-filters --stdin 2>/dev/null
   else git hash-object --no-filters -- "$1" 2>/dev/null; fi

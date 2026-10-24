@@ -1,13 +1,13 @@
 #!/usr/bin/env sh
 # access-confinement.sh (harbor#1298, #555 decisions 7 and 8): the hook mints a confined command's credentials outside
 # the confinement, into a cache it can read. Against stubs only: a mint that logs each call, a gcx that prints a token.
-. "$(dirname "$0")/../lib/core.sh"; t_init
+. "$(dirname "$0")/../../tests/lib/core.sh"; t_init
 M="$T_TMP/managed/managed-settings.json"; mkdir -p "$T_TMP/managed"
 APPD="$T_TMP/app"; C="$T_TMP/cache"; IDS="$T_TMP/ids"; LOG="$T_TMP/calls.log"; mkdir -p "$APPD" "$IDS"; : > "$LOG"
 # The hook reads no seam from the environment, so the suite drives a copy with its pinned paths rewritten.
 HOOK="$T_TMP/access-confinement.sh"
 sed -e "s|^C=.*|C=\"$C\"|" -e "s|^APPD=.*|APPD=\"$APPD\"|" -e "s|^IDS=.*|IDS=\"$IDS\"|" -e "s|^GCX=.*|GCX=\"$T_BIN/gcx\"|" \
-    -e "s|^MK=.*|MK=\"$T_TMP/managed/harbor-confinement\"|" -e '/^\[ -f "\$MK" \] || MK=/d' "$T_ROOT/bin/access-confinement.sh" > "$HOOK"
+    -e "s|^MK=.*|MK=\"$T_TMP/managed/harbor-confinement\"|" -e '/^\[ -f "\$MK" \] || MK=/d' "$T_ROOT/hooks/access-confinement/access-confinement.sh" > "$HOOK"
 t_eq "CONTROL: the copy's pins point at the fixture" 5 "$(grep -cE "^(C|APPD|IDS|GCX|MK)=\"$T_TMP" "$HOOK")"
 cat > "$APPD/mint-token.sh" <<'EOF'
 #!/bin/sh
@@ -129,10 +129,10 @@ t_section "fail-open, always"
 OUT="$(printf 'not json' | sh "$HOOK" 2>&1)"; RC=$?
 t_eq "unparseable stdin: exit 0" 0 "$RC"
 t_eq "...and silent" "" "$OUT"
-t_eq "the marker path is the installer's, on both platforms" 2 "$(grep -cE "'/Library/Application Support/ClaudeCode/harbor-confinement'|/etc/claude-code/harbor-confinement" "$T_ROOT/bin/access-confinement.sh")"
+t_eq "the marker path is the installer's, on both platforms" 2 "$(grep -cE "'/Library/Application Support/ClaudeCode/harbor-confinement'|/etc/claude-code/harbor-confinement" "$T_ROOT/hooks/access-confinement/access-confinement.sh")"
 t_has "...and the installer writes that name beside managed settings" "$(cat "$T_ROOT/bin/deploy-confinement.sh")" '"$BASE/harbor-confinement"'
 t_eq "the shipped hook reads no seam from the environment" "" \
-  "$(grep -nE 'HARBOR_(CONFINEMENT_CACHE|APP_DIR|GCX|GCLOUD_IDENTITIES|MANAGED_SETTINGS)' "$T_ROOT/bin/access-confinement.sh" | grep -v '^[0-9]*:#' || :)"
+  "$(grep -nE 'HARBOR_(CONFINEMENT_CACHE|APP_DIR|GCX|GCLOUD_IDENTITIES|MANAGED_SETTINGS)' "$T_ROOT/hooks/access-confinement/access-confinement.sh" | grep -v '^[0-9]*:#' || :)"
 t_eq "CONTROL: the pattern finds a seam where one is read" 1 \
   "$(printf 'GCX="${HARBOR_GCX:-gcx}"\n' | grep -cE 'HARBOR_(CONFINEMENT_CACHE|APP_DIR|GCX|GCLOUD_IDENTITIES|MANAGED_SETTINGS)')"
 t_done
