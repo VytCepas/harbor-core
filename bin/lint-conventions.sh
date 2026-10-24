@@ -253,12 +253,17 @@ _justfile_bin_paths() {
 _SC_RAW=''
 # _sc_scope — the scripts F12 and F13 judge, into $_sc_files. F12's -nt/-ot arm
 # (harbor#811) reads the same list, so the two halves cannot disagree on scope.
+# The hook engines (D-88, harbor#1272): hooks/<e>/<e>.sh, never the .test.sh beside them, as the renderer defines them. A rule over
+# bin/*.sh that would lose a moved engine reads these too, so the move narrows no rule.
+_engines() {
+  sh "$ROOT/bin/deploy-hooks.sh" --engines --root "$ROOT" 2>/dev/null || :
+}
 _sc_scope() {
   _sc_files=''
   # tests/*/*.sh: suites and the harness left bin/ for tests/ (harbor#667) and must stay POSIX.
-  for f in "$ROOT"/bin/*.sh "$ROOT"/bin/harbor "$ROOT"/bin/gcx "$ROOT"/hooks/* \
+  for f in "$ROOT"/bin/*.sh "$ROOT"/bin/harbor "$ROOT"/bin/gcx "$ROOT"/hooks/* "$ROOT"/hooks/*/*.sh \
            "$ROOT"/worklog/* "$ROOT"/skills/*/bin/*.sh "$ROOT"/tests/*/*.sh; do
-    [ -f "$f" ] || continue
+    [ -f "$f" ] || continue; case "$f" in *.md) continue ;; esac
     _sc_files="$_sc_files $f"
   done
 }
@@ -597,7 +602,7 @@ rule "posix.shebang-strict bin/*.sh use #!/usr/bin/env sh + strict mode (documen
 #   stream-lib.sh  — SOURCED, the same reason (harbor#1181)
 #   alert-lib.sh   — SOURCED, the same reason (harbor#618)
 #   worklog-*.sh   — contractually fail-open ("every path exits 0"); -e would abort
-for f in "$ROOT"/bin/*.sh; do
+for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   b="$(basename "$f")"
   head -1 "$f" | grep -q '^#!/usr/bin/env sh$' || bad posix.shebang-strict "wrong shebang: ${f#$ROOT/}"
@@ -649,7 +654,7 @@ rule "lint.script-ticket-header bin/ scripts name their ticket in the first 4 li
 # Same extension blind spot as S1: a script is a script whether or not its name
 # ends in .sh, and "which ticket asked for this" is the question a reader of an
 # undocumented credentialed tool most needs answered.
-for f in "$ROOT"/bin/*.sh "$ROOT"/bin/*; do
+for f in "$ROOT"/bin/*.sh "$ROOT"/bin/* $(_engines); do
   [ -f "$f" ] || continue
   case "$(basename "$f")" in *.awk|*.md) continue ;; esac
   head -1 "$f" | grep -q '^#!' || continue
@@ -701,7 +706,7 @@ worklog-push memory-harvest inject-hook replay-worker guard-bash
 guard-egress guard-selfedit guard-integrity guard-cloud guard-destroy guard-lib
 guard-deliverables guard-apiroute
 guard-stop session-verdicts failure-capture failure-observe statusline ticket-note reply-shape log-lib install-lib fs-lib alert-lib ci-runners-fleet-lib ci-runners-provision-lib ci-runners-github-lib ci-runners-watch-lib gate-lib stream-lib session-react-lib"
-for f in "$ROOT"/bin/*.sh; do
+for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   _s4b="$(basename "$f" .sh)"
   case "$_s4b" in *-test) continue ;; esac
@@ -731,7 +736,7 @@ for f in "$ROOT"/bin/*.sh; do
      && printf '%s\n' "$_s4c" | grep -qE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*install-lib\.sh'; then continue; fi
   printf '%s\n' "$_s4c" \
     | grep -qE '(^|[^a-zA-Z-])(-h\||-h\)|--help\)|--help\|)' \
-    || bad lint.help-flag "answers no --help: bin/$_s4b.sh"
+    || bad lint.help-flag "answers no --help: ${f#"$ROOT"/}"
 done
 }
 
@@ -935,7 +940,7 @@ done
 # promoting a smell to a build failure is how a linter gets routed around.
 rule_G1() {
 rule "lint.long-file-reason files over 300 lines name their exemption reason in the header (advisory)"
-for f in "$ROOT"/bin/*.sh; do
+for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   _tot="$(wc -l < "$f" | tr -d ' ')"
   # NON-COMMENT LINES, because the rule was penalising the header it exists to
@@ -1160,7 +1165,7 @@ cat > "$_F11P" <<'F11AWK'
 F11AWK
 _f11=''
 # tests/*/*.sh: a suite moved out of bin/ stays scanned, so the exemption stays one file (harbor#667).
-for f in "$ROOT"/bin/*.sh "$ROOT"/hooks/* "$ROOT"/worklog/* "$ROOT"/skills/*/bin/*.sh "$ROOT"/tests/*/*.sh; do
+for f in "$ROOT"/bin/*.sh "$ROOT"/hooks/* "$ROOT"/hooks/*/*.sh "$ROOT"/worklog/* "$ROOT"/skills/*/bin/*.sh "$ROOT"/tests/*/*.sh; do
   [ -f "$f" ] || continue
   case "${f#"$ROOT"/}" in tests/checks/reference-check-test.sh) continue ;; esac
   _f11hit="$(awk -f "$_F11P" "$f" 2>/dev/null || true)"
@@ -1360,7 +1365,7 @@ rule "admission.grep-wrapper guards use \$FLOOR_GREP, never a bare grep, for rul
 # a bare grep there resolves to whatever is first in PATH. The audit found
 # guard-integrity.sh doing this inside the kill-switch presence check, where a
 # grep-resolution difference decides whether the gate blocks the session.
-for f in "$ROOT"/bin/*.sh; do
+for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   # TEST HARNESSES ARE EXEMPT, and not merely for convenience. A test asserting
   # on what a guard produced must use the plain `grep` in its own PATH: if it
@@ -1384,7 +1389,7 @@ done
 # disagreed about which dir they meant.
 rule_D1() {
 rule "deploy.config-dir scripts resolve \${CLAUDE_CONFIG_DIR:-\$HOME/.claude}, never a bare \$HOME/.claude"
-for f in "$ROOT"/bin/*.sh; do
+for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   # guard-selfedit deliberately protects the LIVE dir as well as the active one.
   # The suites that compare the sandbox against live left bin/ for tests/ (harbor#727).
@@ -1407,7 +1412,7 @@ rule "deploy.live-flag every settings.json mutator requires an explicit --live f
 # variable — was never checked, and it defaults its target to the LIVE dir. That
 # is the file pass 10 walked through four different ways. Any script that writes
 # a pin or a settings file counts, however it spells its apply flag.
-for f in "$ROOT"/bin/*.sh; do
+for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   # status-gen.sh has an --apply arm but writes STATUS.md IN THE REPO — it never
   # touches a config dir, so a --live gate would be meaningless ceremony. The
@@ -1577,7 +1582,7 @@ done
 rule_D6() {
 rule "deploy.printed-command-valid every command a mutator PRINTS is one its own gate would accept"
 _D6_MUT='floor-install|floor-uninstall|floor-deny|sec0-harden|pin-instructions|runtime-install|prod-guard-install|restore'
-for f in "$ROOT"/bin/*.sh; do
+for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   # The suites EXECUTE these tools and quote them in assertion labels; neither is
   # a hint to an operator. Their own coverage of the printed hints is floor-test's
@@ -1669,7 +1674,7 @@ done
 # at the tool level, so the pattern below requires a `(`.
 rule_D4() {
 rule "deploy.deny-consulted no writer emits a deny entry the harness never consults (Write/NotebookEdit/MultiEdit/Glob path rules)"
-for f in "$ROOT"/bin/*.sh; do
+for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   # The mode that REMOVES these has to name them to match them. Skip comments;
   # scan code only. floor-test, which builds fixtures from them, left bin/ (harbor#727).
@@ -1856,10 +1861,10 @@ CLIEOF
   # (3) every bin/*.sh is classified — a verb, or internal WITH A REASON. A script
   # that is in neither table is an orphan nobody decided about, which is how a
   # front door quietly stops being the front door.
-  for f in "$ROOT"/bin/*.sh; do
+  for f in "$ROOT"/bin/*.sh $(_engines); do
     [ -f "$f" ] || continue
     b="$(basename "$f")"
-    grep -qF "\`$b\`" "$_cli" || bad lint.cli-contract "bin/$b appears in no CONTRACTS/cli.md table — verb or internal?"
+    grep -qF "\`$b\`" "$_cli" || bad lint.cli-contract "${f#"$ROOT"/} appears in no CONTRACTS/cli.md table — verb or internal?"
   done
 fi
 }
@@ -1992,7 +1997,7 @@ fi
 # zero-byte `.agents` file silently stopped work-log sync.
 rule_M1() {
 rule "scope.marker-walk-once the marker walk lives ONLY in floor_in_repo (CONTRACTS/marker.md)"
-for f in "$ROOT"/bin/*.sh; do
+for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   b="$(basename "$f")"
   # guard-lib DEFINES it; the linter names it to forbid it. marker-test left bin/ (harbor#727).
@@ -2745,8 +2750,11 @@ if [ -f "$_C8_MAN" ]; then
   # than from the 92 names: the name-driven shape is 92 × every line of every
   # file, on a linter that runs at every commit. `-print0`/`xargs -0` because a
   # path is not a word.
-  find "$ROOT/.github/workflows" "$ROOT/launchd" "$ROOT/hooks" "$ROOT/inject.d" \
+  # hooks/ prose is not a call: its READMEs quote commands for a reader (D-88, harbor#1272). inject.d keeps its .md,
+  # whose run: lines are real calls.
+  find "$ROOT/.github/workflows" "$ROOT/launchd" "$ROOT/inject.d" \
        -type f -print0 2>/dev/null > "${TMPDIR:-/tmp}/c8-surf.$$"
+  find "$ROOT/hooks" -type f ! -name '*.md' -print0 2>/dev/null >> "${TMPDIR:-/tmp}/c8-surf.$$"
   find "$ROOT/bin" -type f -name '*.sh' ! -name '*-test.sh' -print0 2>/dev/null \
        >> "${TMPDIR:-/tmp}/c8-surf.$$"
   # bin/harbor is named BY PATH: the glob above cannot see it (no extension), and it is the
@@ -3014,7 +3022,7 @@ printf 'a=${HARBOR_Z:-} # c\n' > "$_c10t/canary"
   || bad test.knobs-cleared "its lexer cannot read a one-line script, so every suite would read as empty"
 _c10_pass="$(sed -n "s/^T_PASS_ENV='\\([^']*\\)'.*/\\1/p" "$ROOT/tests/lib/core.sh" 2>/dev/null)"
 # The knobs: every `${HARBOR_X` + a default operator in a shell program the repo ships.
-for _c10p in "$ROOT"/bin/* "$ROOT"/hooks/* "$ROOT"/skills/*/bin/*; do
+for _c10p in "$ROOT"/bin/* "$ROOT"/hooks/* $(_engines) "$ROOT"/skills/*/bin/*; do
   [ -f "$_c10p" ] || continue
   case "${_c10p##*/}" in *-test.sh|*-fixture.sh) continue ;; *.sh) ;; *.*) continue ;;
     *) case "$(head -1 "$_c10p")" in '#!'*sh*) ;; *) continue ;; esac ;; esac
@@ -3185,7 +3193,7 @@ rule "test.negative-has-control a NEGATIVE assertion on a tool's prose needs a p
 # cannot affect it. harbor#145's own list included it by mistake, which is the
 # discrimination this rule has to get right or it becomes noise.
 # tests/ suites (harbor#667) spell the pair `t_hasnt … 'phrase'` / `t_has … 'phrase'`.
-for f in "$ROOT"/bin/*-test.sh "$ROOT"/tests/*/*-test.sh; do
+for f in "$ROOT"/bin/*-test.sh "$ROOT"/tests/*/*-test.sh "$ROOT"/hooks/*/*.test.sh; do
   [ -f "$f" ] || continue
   # Phrase (literal or "$VAR") from every pipeline-fed `grep -q` whose assertion
   # reaches `&& bad` within two lines — the negative direction.
@@ -3351,7 +3359,7 @@ _ds="$(sh "$ROOT/bin/docs-gen.sh" --check 2>&1)" \
 # brace depth is what decides enclosure.
 rule_H1() {
 rule "doc.dark-tokens every colour token has a value in each dark branch its file declares"
-for f in "$ROOT"/docs/*.html "$ROOT"/bin/*.sh "$ROOT"/skills/*/bin/*.sh "$ROOT"/build/*.html; do
+for f in "$ROOT"/docs/*.html "$ROOT"/bin/*.sh $(_engines) "$ROOT"/skills/*/bin/*.sh "$ROOT"/build/*.html; do
   [ -f "$f" ] || continue
   # vendor/ is not ours to lint (the V1 argument, one rule over).
   case "$f" in "$ROOT"/vendor/*) continue ;; esac
@@ -4107,7 +4115,7 @@ _x2_side() {
   fi
 }
 if [ -d "$LIVEBIN" ]; then
-  for f in "$ROOT"/bin/*.sh; do
+  for f in "$ROOT"/bin/*.sh $(_engines); do
     [ -f "$f" ] || continue
     b="$(basename "$f")"
     [ -f "$LIVEBIN/$b" ] || continue          # not deployed is a choice, not drift
@@ -6669,14 +6677,14 @@ _l1_harness() { # <rel>
   _l1_code "$ROOT/$1" | grep -qE '\{[[:space:]]*\\?"?(hookSpecificOutput|systemMessage|additionalContext)\\?"?[[:space:]]*:'
 }
 _l1_consumer='Claude Code (statusLine|subagentStatusLine|(SessionStart|UserPromptSubmit|PreToolUse|PostToolUse|PostToolUseFailure|Stop|SubagentStart|SubagentStop|PreCompact|Notification|SessionEnd) hook)'
-for _l1f in "$ROOT"/bin/*; do
+for _l1f in "$ROOT"/bin/* $(_engines); do
   [ -f "$_l1f" ] || continue
   case "${_l1f##*/}" in
     *.sh) ;;
     *.*) continue ;;  # .awk .mjs .py cannot source a sh library
     *) case "$(head -1 "$_l1f")" in '#!'*/sh|'#!'*' sh'|'#!'*/bash|'#!'*' bash'|'#!'*/zsh|'#!'*' zsh') ;; *) continue ;; esac ;;
   esac
-  _l1p="bin/${_l1f##*/}"
+  _l1p="${_l1f#"$ROOT"/}"   # the real path: a hook engine lives in hooks/<e>/ (D-88), and its log-exempt row says so
   case " $_l1_named " in *" $_l1p "*) printf '%s\tnamed\n' "$_l1p" ;; *)
     if _l1_floor "$_l1f"; then printf '%s\tfloor\n' "$_l1p"
     elif awk -F'\t' -v p="$_l1p" '$1 == p && $2 == "protocol" { f = 1 } END { exit !f }' "$_l1t/rows"; then printf '%s\tprotocol\n' "$_l1p"
@@ -6757,7 +6765,7 @@ _l1_stderr() { # <file> <rel>
 # the source lines, never listed, so a lib nothing sources, or whose caller never ends the log, still fails.
 _l1_sourced_by_ender() { # <file>
   _l1sb="${1##*/}"
-  for _l1c in "$ROOT"/bin/*.sh; do
+  for _l1c in "$ROOT"/bin/*.sh $(_engines); do
     [ "$_l1c" != "$1" ] || continue
     _l1_code "$_l1c" | grep -qE "(^|[;&|[:space:]])\\.[[:space:]]+[^;]*/$_l1sb\"?([[:space:];]|\$)" || continue
     _l1_code "$_l1c" | grep -qE '(^|[^A-Za-z0-9_])log_end([^A-Za-z0-9_]|$)' && return 0
@@ -6858,7 +6866,7 @@ if [ ! -f "$_fl1c" ]; then
 fi
 _fl1n="$(grep -c '^<!-- lanes:begin -->$' "$_fl1c" 2>/dev/null | tr -d ' ')"
 [ "${_fl1n:-0}" = 1 ] || { bad audit.finding-lanes "CONTRACTS/finding.md has ${_fl1n:-0} lanes blocks — exactly one <!-- lanes:begin --> … <!-- lanes:end -->"; return 0; }
-for _fl1o in "$ROOT"/CONTRACTS/*.md "$ROOT"/bin/*.sh; do
+for _fl1o in "$ROOT"/CONTRACTS/*.md "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$_fl1o" ] && [ "$_fl1o" != "$_fl1c" ] && [ "$_fl1o" != "$ROOT/bin/lint-conventions.sh" ] || continue
   grep -q '^<!-- lanes:begin -->$' "$_fl1o" 2>/dev/null && bad audit.finding-lanes "${_fl1o#$ROOT/} declares lanes — CONTRACTS/finding.md is the only place a lane is written"
 done

@@ -98,6 +98,7 @@
 /bin/constitution-install.sh @VytCepas
 /bin/context-budget.sh @VytCepas
 /bin/decider-set.sh @VytCepas
+/bin/deploy-hooks.sh @VytCepas
 /bin/deploy-push.sh @VytCepas
 /bin/doc-refs.sh @VytCepas
 /bin/docs-gen.sh @VytCepas
