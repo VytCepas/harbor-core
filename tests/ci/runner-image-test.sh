@@ -60,8 +60,12 @@ fresh; : > "$H/.runner"; ver 2.337.0; ver 2.338.0 partial
 ep >/dev/null; t_eq "a version with no Listener is skipped for the newest complete one" "$H/bin.2.337.0" "$(readlink "$H/bin")"
 fresh; : > "$H/.runner"; ver 2.338.0; mkdir -p "$H/bin"; : > "$H/bin/keep"
 ep >/dev/null; t_eq "control: a real bin/ directory is never replaced" yes "$([ -d "$H/bin" ] && [ ! -L "$H/bin" ] && [ -f "$H/bin/keep" ] && echo yes)"
-fresh; : > "$H/.runner"; ver 2.338.0; mkdir -p "$H/externals"; : > "$H/externals/keep"
-ep >/dev/null; t_eq "control: an existing externals/ is left as it is" yes "$([ -f "$H/externals/keep" ] && [ ! -L "$H/externals" ] && echo yes)"
+fresh; : > "$H/.runner"; ver 2.338.0; mkdir -p "$H/externals/node24"; : > "$H/externals/keep"
+ep >/dev/null
+t_eq "a half-written externals/ left by the update is replaced by the version's link" "$H/externals.2.338.0" "$(readlink "$H/externals")"
+t_eq "...and moved aside, never deleted" yes "$(ls -d "$H"/externals.interrupted-* >/dev/null 2>&1 && [ -f "$(ls -d "$H"/externals.interrupted-* | head -1)/keep" ] && echo yes)"
+fresh; : > "$H/.runner"; ver 2.338.0; ln -s "$H/bin.2.338.0" "$H/bin"; mkdir -p "$H/externals"; : > "$H/externals/keep"
+ep >/dev/null; t_eq "control: a healthy runner (bin has its Listener) keeps its externals/ as it is" yes "$([ -f "$H/externals/keep" ] && [ ! -L "$H/externals" ] && echo yes)"
 
 t_section "the image carries what the suites and the setup actions need, with no job-time install"
 d="$(cat "$DF")"; apt="$(grep "apt-get install" "$DF") "
