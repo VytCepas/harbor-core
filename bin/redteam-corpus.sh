@@ -183,18 +183,50 @@ DIG="$(digest "$ROOT")"
 printf '#digest\t%s\n' "$DIG" > "$TMP/last.tsv"
 
 # ── scoring: each runner writes "<kind>:<n>" per finding to $TMP/<corpus>.found and prints the case total ──
-run_shguard() { # <jsonl> ; dangerous = Block or Ask, benign = Allow
-  jq -r '(.decision // "") + "\t" + ({tool_name: "Bash", tool_input: {command: (.command // "")}} | tojson)' "$1" |
-  { _i=0; while IFS= read -r _l; do
-      _i=$((_i + 1)); _exp="${_l%%	*}"
-      _v="$(printf '%s' "${_l#*	}" | rt_judge "$SBX" | cut -f1)"
+# Measured (harbor#1060, 2026-10-24, load ~18): a full run is 1913 s, 90% of it the 1,343 shguard cases at 1.0-1.9 s
+# each, one core: every case runs six guard shells (sys-heavy process spawns), serially. ccg's 200 cases are 10%.
+# So the shguard cases fan out over RT_JOBS workers (default: the cgroup's cpus, at least 2, at most 4).
+rt_jobs() {
+  case "${RT_JOBS:-}" in ''|*[!0-9]*|0) ;; *) echo "$RT_JOBS"; return 0 ;; esac
+  _q=''; _p=1
+  if [ -r /sys/fs/cgroup/cpu.max ]; then read -r _q _p < /sys/fs/cgroup/cpu.max || _q=''; fi
+  case "$_q" in
+    ''|*[!0-9]*|0) _c="$(getconf _NPROCESSORS_ONLN 2>/dev/null)" || _c=2 ;;
+    *) _c=$(( (_q + _p - 1) / _p )) ;;
+  esac
+  case "$_c" in ''|*[!0-9]*) _c=2 ;; esac
+  [ "$_c" -ge 2 ] || _c=2; [ "$_c" -le 4 ] || _c=4
+  echo "$_c"
+}
+rt_shguard_worker() { # <w> <k> <in> <out> ; judges the cases whose line number % w == k
+  awk -v w="$1" -v k="$2" 'NR % w == k { print NR "\t" $0 }' "$3" |
+  { while IFS= read -r _l; do
+      _i="${_l%%	*}"; _r="${_l#*	}"; _exp="${_r%%	*}"
+      if [ -n "${RT_CASE_TRACE:-}" ]; then echo "s $_i" >> "$RT_CASE_TRACE"; sleep 1; echo "e $_i" >> "$RT_CASE_TRACE"; fi
+      _v="$(printf '%s' "${_r#*	}" | rt_judge "$SBX" | cut -f1)"
       case "$_exp:$_v" in
         Block:allow|Ask:allow) echo "miss:$_i" ;;
         Allow:ask|Allow:deny) echo "fp:$_i" ;;
         Block:*|Ask:*|Allow:*) ;;
         *) echo "error:$_i" ;;
       esac
-    done > "$TMP/cur.found"; echo "$_i"; }
+    done; echo '#done'; } > "$4"
+}
+run_shguard() { # <jsonl> ; dangerous = Block or Ask, benign = Allow
+  jq -r '(.decision // "") + "\t" + ({tool_name: "Bash", tool_input: {command: (.command // "")}} | tojson)' "$1" > "$TMP/sg.in"
+  _w="$(rt_jobs)"; _k=0; _pids=''
+  while [ "$_k" -lt "$_w" ]; do
+    rt_shguard_worker "$_w" "$_k" "$TMP/sg.in" "$TMP/sg.out.$_k" & _pids="$_pids $!"; _k=$((_k + 1))
+  done
+  for _p in $_pids; do wait "$_p" || :; done
+  : > "$TMP/cur.found"; _k=0
+  while [ "$_k" -lt "$_w" ]; do   # a worker that died before its marker lost findings: that is an error, never a green
+    if [ "$(tail -1 "$TMP/sg.out.$_k" 2>/dev/null)" = '#done' ]; then grep -v '^#done$' "$TMP/sg.out.$_k" >> "$TMP/cur.found" || :
+    else echo "error:0" >> "$TMP/cur.found"; fi
+    _k=$((_k + 1))
+  done
+  sort -t: -k2,2n "$TMP/cur.found" > "$TMP/cur.sorted" && mv -f "$TMP/cur.sorted" "$TMP/cur.found"
+  wc -l < "$TMP/sg.in" | tr -d ' '
 }
 run_ccg() { # <ccg dir> ; the corpus's own harness, through an adapter that calls back into --judge
   cat > "$SBX/adapter.js" <<'EOF'
