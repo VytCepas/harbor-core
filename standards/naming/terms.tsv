@@ -426,7 +426,7 @@ duty	modality	duty	-	-	experimental	-	W3C ODRL (research/15 §2-3)	-	-	A clause 
 prohibition	modality	prohibition	-	-	experimental	-	W3C ODRL (research/15 §2-3)	-	-	A clause that forbids: the subject must not do the thing
 permission	modality	permission	-	-	experimental	-	W3C ODRL (research/15 §2-3)	-	-	A clause that allows: the subject may do the thing, and nothing is implied beyond it
 constitutional	tier	constitutional	-	-	experimental	-	research/15 §3 (CLAUDE.md: the five, №1-№5)	-	-	The highest tier: the five constitutional rules and the meta-rules; changes by a person's PR with a named reviewer
-tutorial	kind	tutorial	-	-	experimental	-	harbor#949 composition review (2026-10-04); Diataxis (Procida)	-	-	A learning-oriented doc that takes a reader through one lesson to a working result
-how-to	kind	how-to guide	-	-	experimental	-	harbor#949 composition review (2026-10-04); Diataxis (Procida)	-	-	A task-oriented doc that gives the steps to reach one goal the reader already has
-reference	kind	reference	-	-	experimental	-	harbor#949 composition review (2026-10-04); Diataxis (Procida)	-	-	An information-oriented doc that describes the machinery; generated from the registers where it can be
-explanation	kind	explanation	-	-	experimental	-	harbor#949 composition review (2026-10-04); Diataxis (Procida)	-	-	An understanding-oriented doc that holds the why: doctrine lives here
+tutorial	kind	tutorial	-	-	stable	-	harbor#949 composition review (2026-10-04); Diataxis (Procida); D-90	-	-	A learning-oriented doc that takes a reader through one lesson to a working result
+how-to	kind	how-to guide	-	-	stable	-	harbor#949 composition review (2026-10-04); Diataxis (Procida); D-90	-	-	A task-oriented doc that gives the steps to reach one goal the reader already has
+reference	kind	reference	-	-	stable	-	harbor#949 composition review (2026-10-04); Diataxis (Procida); D-90	-	-	An information-oriented doc that describes the machinery; generated from the registers where it can be
+explanation	kind	explanation	-	-	stable	-	harbor#949 composition review (2026-10-04); Diataxis (Procida); D-90	-	-	An understanding-oriented doc that holds the why: doctrine lives here

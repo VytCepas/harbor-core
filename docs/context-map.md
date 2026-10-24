@@ -28,7 +28,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | policy | policy/ | system | source | living | 11 |
 | standard | standards/ | system | source | versioned | 13 |
 | contract | contracts/ | system | source | versioned | 30 |
-| decision-record | docs/decisions/ | element | source | dated | 90 |
+| decision-record | docs/decisions/ | element | source | dated | 91 |
 | injection-rule | context-rules/<scope>/ | component | source | living | 35 |
 | hook | bin/ | component | source | living | 13 |
 | skill | skills/ | component | source | living | 41 |
@@ -53,7 +53,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `DOCTRINE/` | 10 | 1 | 1 |
 | `bin/` | 214 | 22 | 2 |
 | `commands/` | 5 | 1 | 1 |
-| `docs/` | 112 | 6 | 5 |
+| `docs/` | 113 | 6 | 5 |
 | `fixtures/` | 252 | 9 | 1 |
 | `hooks/` | 8 | 1 | 1 |
 | `inject.d/` | 31 | 1 | 1 |
@@ -94,7 +94,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | scope | coordination | 1 | 11 | 0 | 0 | 0 | 4 |
 | session | data-plane | 10 | 5 | 0 | 1 | 0 | 0 |
 | skill | catalog | 3 | 5 | 0 | 4 | 0 | 11 |
-| standard | policy-function | 3 | 8 | 103 | 0 | 0 | 43 |
+| standard | policy-function | 3 | 8 | 104 | 0 | 0 | 43 |
 | status | observability | 3 | 7 | 0 | 1 | 0 | 0 |
 | test | control-plane | 0 | 1 | 2 | 7 | 0 | 7 |
 | worktree | coordination | 1 | 0 | 0 | 0 | 0 | 0 |
@@ -424,6 +424,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `docs/decisions/0087-the-public-export-repo.md`
 - `docs/decisions/0088-hook-engine-folders.md`
 - `docs/decisions/0089-event-and-manual-moments.md`
+- `docs/decisions/0090-doc-kinds-follow-diataxis.md`
 - `docs/decisions/README.md`
 - `standards/modularity.md`
 - `standards/naming.md`

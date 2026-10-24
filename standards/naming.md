@@ -275,6 +275,7 @@ from D-57 on are listed where this file, the registry or the lint cite them.
 | D-87 | The public export repo | the public core export is `harbor-core` (the codename `harbor` plus the share term `core`, D-83); the private development repo keeps `harbor`. Known collision with the CNCF Harbor registry and its `harbor` CLI (goharbor/harbor-cli): accepted for a quiet repo, to revisit before any announcement. harbor#1149; decided by the operator, 2026-10-15 |
 | D-88 | Hook engine folders | a non-floor hook engine is `hooks/<engine>/` holding `<engine>.sh`, its tests and its manifest, the file named after its folder (revises D-58 and D-11 for this kind; `bin/` stays flat otherwise; the floor's hooks stay pinned where they are). A component folder carries a tracked `README.md`, seven sections generated from the manifest and one hand-written why, and a check fails on a folder without one (revises D-40's location for this kind). harbor#1272; decided by the operator, 2026-10-23 |
 | D-89 | Event and manual moments | the `moment` class gains `event` (started by an event it receives, not a timer or a harness hook; also the D-77 family) and `manual` (a person or a session runs it on demand); each `check` row in `controls.tsv` carries the moment its own trigger matches |
+| D-90 | Human doc kinds follow Diátaxis | a human-read doc is a `tutorial`, `how-to`, `reference` or `explanation`, the names of D-4's `docs/<kind>/` folders; records keep their own kinds |
 
 ## 13. Workspace, private layer, packs and share (D-78 to D-85)
 
