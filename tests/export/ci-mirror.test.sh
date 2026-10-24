@@ -33,7 +33,7 @@ case "$1 $2" in
   "pr edit") echo "$*" > "$STUB/pr_edit" ;;
   "pr close") [ -f "$STUB/pr_number" ] || exit 1; rm "$STUB/pr_number" ;;
   "run list") sha="$(printf '%s' "$*" | sed -n 's/.*headSha == "\([0-9a-f]*\)".*/\1/p')"
-              [ ! -f "$STUB/runs" ] || awk -F'\t' -v s="$sha" '$1 == s { print $2 "\t" $3 "\t" $4 }' "$STUB/runs" ;;
+              [ ! -f "$STUB/runs" ] || awk -F'\t' -v s="$sha" '$1 == s { print ($5 == "" ? "governance" : $5) "\t" $2 "\t" $3 "\t" $4 }' "$STUB/runs" ;;
   "api -X") case "$3" in
       POST) echo "$*" >> "$STUB/status.log"
             st=''; de=''; for a in "$@"; do case "$a" in state=*) st="${a#state=}" ;; description=*) de="${a#description=}" ;; esac; done
@@ -93,13 +93,18 @@ nbranches() { git -C "$BARE" for-each-ref --format='%(refname)' refs/heads/ci | 
 gitcalls() { cat "$STUB/git.log" 2>/dev/null | grep -c "$1" || :; }
 ghcalls() { grep -c "$1" "$STUB/gh.log" 2>/dev/null || :; }
 
-t_section "a green PR: its core set lands on ci/harbor-<pr>, one fast-forwardable commit above main, and a PR is opened"
+t_section "a green PR: its base then its core set land on ci/harbor-<pr>, above main, and a PR is opened into ci/base-<pr>"
 S="$(mk green)"; core green; HEAD7="$(pr "$S" docs/pr7.md 'from the pr')"
 MAIN0="$(tip main)"
 run "$S" 7
 t_eq "the mirror is green" "0" "$RC"
 t_eq "...main of harbor-core is untouched" "$MAIN0" "$(tip main)"
-t_eq "...the branch is one commit above main" "$MAIN0" "$(git -C "$BARE" rev-parse refs/heads/ci/harbor-7~1)"
+t_eq "...the branch is two commits above main, the base then the head" "$MAIN0" "$(git -C "$BARE" rev-parse refs/heads/ci/harbor-7~2)"
+t_eq "...ci/base-7 is the first of them" "$(git -C "$BARE" rev-parse refs/heads/ci/harbor-7~1)" "$(tip ci/base-7)"
+t_has "...it names the PR's base sha" "$(git -C "$BARE" log -1 --format=%B refs/heads/ci/base-7)" "$(git -C "$S" rev-parse HEAD)"
+# the point of the base (harbor#1149): hosted CI diffs only what the PR changed, however stale harbor-core main is
+t_eq "...the head differs from its base by the PR's own file alone" "docs/pr7.md" "$(git -C "$BARE" diff --name-only refs/heads/ci/base-7 refs/heads/ci/harbor-7)"
+t_has "...while against harbor-core main everything differs" "$(git -C "$BARE" diff --name-only main refs/heads/ci/harbor-7 | tr '\n' ' ')" "docs/a.md"
 FILES="$(git -C "$BARE" ls-tree -r --name-only refs/heads/ci/harbor-7 | tr '\n' ' ')"
 t_has "...it holds the PR head's own file" "$FILES" "docs/pr7.md"
 t_hasnt "...and no dev path" "$FILES" "EVALS-DATA"
@@ -108,7 +113,7 @@ t_has "...the snapshot names the PR head's sha" "$(git -C "$BARE" log -1 --forma
 t_eq "...the source file the PR did not touch is the PR head's too" "hello" "$(git -C "$BARE" show refs/heads/ci/harbor-7:docs/a.md)"
 t_has "...the exported slug is harbor-core's, not harbor's" "$(git -C "$BARE" show refs/heads/ci/harbor-7:CONTRACTS/repo-slug.txt)" "test/harbor-core"
 t_has "the PR is titled harbor#7" "$(cat "$STUB/pr_create")" "--title harbor#7"
-t_has "...opened against main from the mirror branch" "$(cat "$STUB/pr_create")" "--base main --head ci/harbor-7"
+t_has "...opened into the base branch from the mirror branch" "$(cat "$STUB/pr_create")" "--base ci/base-7 --head ci/harbor-7"
 t_has "...with the mirror token, on harbor-core" "$(grep 'pr create' "$STUB/gh.log")" "GH_TOKEN=$TOKEN"
 t_hasnt "the token is in no argv git ran" "$(sed 's/ HDR .*//' "$STUB/git.log")" "$TOKEN"
 t_hasnt "...nor its encoding" "$(sed 's/ HDR .*//' "$STUB/git.log")" "$TOKB64"
@@ -126,7 +131,9 @@ HEAD7B="$(pr "$S" docs/pr7.md 'from the pr, amended')"
 run "$S" 7
 t_eq "the second mirror is green" "0" "$RC"
 t_eq "...the old tip is an ancestor of the new one" "0" "$(git -C "$BARE" merge-base --is-ancestor "$TIP1" refs/heads/ci/harbor-7; echo $?)"
-t_eq "...one commit further" "$TIP1" "$(git -C "$BARE" rev-parse refs/heads/ci/harbor-7~1)"
+t_eq "...two commits further, the base again then the head" "$TIP1" "$(git -C "$BARE" rev-parse refs/heads/ci/harbor-7~2)"
+t_eq "...ci/base-7 moved by a fast-forward too" "$(git -C "$BARE" rev-parse refs/heads/ci/harbor-7~1)" "$(tip ci/base-7)"
+t_has "...the edit points the PR at the base branch" "$(cat "$STUB/pr_edit")" "--base ci/base-7"
 t_eq "...the PR was edited" "1" "$(ghcalls 'pr edit')"
 t_eq "...and opened only once" "1" "$(ghcalls 'pr create')"
 # harbor-core's main moves (deploy-push does that); the next mirror carries it and still fast-forwards.
@@ -181,7 +188,7 @@ S="$(mk broken)"; core broken; pr "$S" docs/leak.md 'owned by Zorblax' >/dev/nul
 sed -e 's/^gate "\$TDIR" || refuse.*$/gate "$TDIR" || :/' -e 's/^if git -C "\$TDIR" diff --quiet.*; then$/if false; then/' "$S/bin/ci-mirror.sh" > "$S/bin/cm.new"; mv "$S/bin/cm.new" "$S/bin/ci-mirror.sh"
 t_eq "positive control: both mutations landed" "2" "$(grep -c -e '^gate "\$TDIR" || :$' -e '^if false; then$' "$S/bin/ci-mirror.sh" | tr -d ' ')"
 run "$S" 7
-t_eq "the mutant pushes although the gate was red" "1" "$(nbranches)"
+t_eq "the mutant pushes although the gate was red" "2" "$(nbranches)"
 
 t_section "a missing token, a dry run, and a bad mirror checkout"
 S="$(mk misc)"; core misc; pr "$S" docs/ok.md 'fine' >/dev/null
@@ -231,6 +238,16 @@ t_has "...linked to the failing run" "$(cat "$STUB/status.log")" "target_url=htt
 printf '%s\tcompleted\tsuccess\thttps://runs.test/1\n%s\tin_progress\t\thttps://runs.test/2\n' "$MS" "$MS" > "$STUB/runs"
 rm -f "$STUB/status.log"; setstatus
 t_has "one run still going: state pending" "$(cat "$STUB/status.log")" "state=pending"
+# 2026-10-22, #1344: two runs of one workflow started together, concurrency cancelled one, and public-ci read it as red.
+printf '%s\tcompleted\tcancelled\thttps://runs.test/c\tgovernance\n%s\tin_progress\t\thttps://runs.test/2\tgovernance\n' "$MS" "$MS" > "$STUB/runs"
+rm -f "$STUB/status.log"; setstatus
+t_has "a cancelled run its workflow replaced: pending, not failure" "$(cat "$STUB/status.log")" "state=pending"
+printf '%s\tcompleted\tcancelled\thttps://runs.test/c\tgovernance\n%s\tcompleted\tsuccess\thttps://runs.test/2\tgovernance\n' "$MS" "$MS" > "$STUB/runs"
+rm -f "$STUB/status.log"; setstatus
+t_has "...and success once the replacement is green" "$(cat "$STUB/status.log")" "state=success"
+printf '%s\tcompleted\tcancelled\thttps://runs.test/c\tgovernance\n%s\tcompleted\tsuccess\thttps://runs.test/2\tstranger-install\n' "$MS" "$MS" > "$STUB/runs"
+rm -f "$STUB/status.log"; setstatus
+t_has "a cancelled run nothing replaced is still failure" "$(cat "$STUB/status.log")" "state=failure"
 printf '%s\tcompleted\tfailure\thttps://runs.test/old\n' "0000000000000000000000000000000000000000" > "$STUB/runs"
 rm -f "$STUB/status.log"; setstatus
 t_has "only an older commit's run: pending, never its failure" "$(cat "$STUB/status.log")" "state=pending"
@@ -243,18 +260,18 @@ t_has "no mirror PR: pending" "$(cat "$STUB/status.log")" "state=pending"
 NOTOKEN=1; run "$S" --status 7
 t_eq "--status without the token is refused" "1" "$RC"
 
-t_section "no core file differs from harbor-core main: the mirror run sets public-ci success, and --status keeps it"
+t_section "no core file differs from the PR's base: the mirror run sets public-ci success, and --status keeps it"
 S="$(mk same)"; core same
 ( cd "$S" && sh bin/deploy-push.sh "$MIR" ) >/dev/null 2>&1 && git -C "$MIR" push -q origin main >/dev/null 2>&1
 t_has "harbor-core main holds the source's core set" "$(git -C "$BARE" ls-tree -r --name-only main)" "docs/a.md"
 pr "$S" docs/core.md 'a core change' >/dev/null
-run "$S" 7; t_eq "a core change first: mirrored" "1" "$(nbranches)"
+run "$S" 7; t_eq "a core change first: mirrored, head and base" "2" "$(nbranches)"
 HD="$(pr "$S" NOTES.md 'a dev-only change')"
 rm -f "$STUB/status.log"; run "$S" 7
 t_eq "a dev-only head: green" "0" "$RC"
 t_has "...public-ci success on that head" "$(cat "$STUB/status.log")" "statuses/$HD"
 t_has "...state success" "$(cat "$STUB/status.log")" "state=success"
-t_has "...saying why" "$(cat "$STUB/status.log")" "description=no core file differs from test/harbor-core main"
+t_has "...saying why" "$(cat "$STUB/status.log")" "description=no core file differs from the PR's base"
 t_eq "...the mirror the earlier head left is gone" "0" "$(nbranches)"
 t_eq "...and its PR closed" "no" "$([ -f "$STUB/pr_number" ] && echo yes || echo no)"
 rm -f "$STUB/status.log"; run "$S" --status 7
@@ -265,10 +282,11 @@ t_has "...and says success" "$OUT" "public-ci success"
 t_section "--close: the mirror PR is closed and its branch deleted; a repeat is harmless"
 S="$(mk close)"; core close; pr "$S" docs/ok.md 'fine' >/dev/null
 run "$S" 7
-t_eq "the mirror exists first" "1" "$(nbranches)"
+t_eq "the mirror exists first, head and base" "2" "$(nbranches)"
 run "$S" --close 7
 t_eq "--close is green" "0" "$RC"
 t_eq "...the branch is gone from harbor-core" "none" "$(tip ci/harbor-7)"
+t_eq "...and so is its base branch" "none" "$(tip ci/base-7)"
 t_eq "...the PR is closed" "no" "$([ -f "$STUB/pr_number" ] && echo yes || echo no)"
 t_eq "...main is untouched" "$(git -C "$BARE" rev-parse refs/heads/main)" "$(tip main)"
 run "$S" --close 7
@@ -276,4 +294,13 @@ t_eq "closing again is green" "0" "$RC"
 NOTOKEN=1; run "$S" --close 7
 t_eq "--close without the token is refused" "1" "$RC"
 
+t_section "the base is pushed to the public repo, so it passes the leak gate too"
+S="$(mk baseleak)"; core baseleak
+printf 'a Zorblax line\n' > "$S/docs/leak.md"; git -C "$S" add -A >/dev/null 2>&1; git -C "$S" commit -qm leak >/dev/null 2>&1
+git -C "$S" checkout -q -b fixer >/dev/null 2>&1; git -C "$S" rm -q docs/leak.md >/dev/null 2>&1; git -C "$S" commit -qm unleak >/dev/null 2>&1
+git -C "$S" rev-parse HEAD > "$STUB/head_sha"; git -C "$S" checkout -q - >/dev/null 2>&1
+run "$S" 7
+t_eq "a PR that removes a leak from its base: refused" "1" "$RC"
+t_has "...naming the base" "$OUT" "the PR's base"
+t_eq "...nothing pushed" "0" "$(nbranches)"
 t_done

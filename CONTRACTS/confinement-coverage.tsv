@@ -151,3 +151,25 @@ admission.class-force-push	judged	not a write the confinement denies: a remote a
 admission.class-secret-read	judged	a remote action: the host list does not decide what a permitted host receives
 admission.editor-at-surface	judged	judged until floor_confinement_covers lists it (pass 14)
 admission.find-destroy-at-config	judged	judged until floor_confinement_covers lists it (pass 14)
+admission.git-clean-force	judged	its target can sit in the write zone, or it is not a file write
+admission.git-reset-hard	judged	its target can sit in the write zone, or it is not a file write
+admission.git-stash-drop	judged	its target can sit in the write zone, or it is not a file write
+admission.git-reflog-expire	judged	its target can sit in the write zone, or it is not a file write
+admission.git-worktree-remove-force	judged	its target can sit in the write zone, or it is not a file write
+admission.deliverable-home-loose	judged	its target can sit in the write zone, or it is not a file write
+admission.deliverable-dropzone	judged	its target can sit in the write zone, or it is not a file write
+admission.deliverable-root-bare	judged	its target can sit in the write zone, or it is not a file write
+admission.diskutil-wipe	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.device-node-replace	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.git-push-snapshots	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.diskutil-argv-blind	judged	an unparsed call can name a target anywhere, the write zone included
+admission.external-content-label	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
+admission.session-context-record	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
+admission.event-record	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
+admission.floor-fail-closed	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
+admission.override-ledger	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
+admission.merge-backstop-box	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
+admission.governance-token	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
+admission.api-route-repair	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
+admission.floor-integrity	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
+admission.prod-guard-ambient	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect

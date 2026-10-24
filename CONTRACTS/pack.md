@@ -24,7 +24,7 @@ The target is chosen as every installer chooses it (`bin/install-lib.sh`): `--li
 
 ```
 pack.toml   name, version, harbor_version, description - all four, each a quoted string (flat TOML, D-81)
-skills/<name>/...   bin/<file>   shims.tsv   conf-keys.txt   inject.d/<file>.md   checks.md   controls.tsv   skill-packs/<core skill>/<name>.md   tests/ (never installed)   README* (ignored)
+skills/<name>/...   bin/<file>   shims.tsv   conf-keys.txt   terms.tsv   inject.d/<file>.md   checks.md   controls.tsv   skill-packs/<core skill>/<name>.md   tests/ (never installed)   README* (ignored)
 ```
 
 `checks.md` is a check-register fragment in exactly the shape of the private layer's [`checks.md`](./private-layer.md#checksmd):
@@ -39,6 +39,13 @@ it (the private layer's own pack: the layer's `jobs/`), and `drift.launchd-plist
 own (`roots.sh --conf-keys`), so core names no pack's key. Install refuses a core key, a key another installed pack declares,
 and a malformed line; remove takes the keys back with the pack. Three keys core once read left it one release after
 their pack declared them (#1273): with no pack installed, `roots.sh --conf <key>` refuses them (exit 2).
+
+`terms.tsv` (optional) registers the workload's own system terms (harbor#950): core's `standards/naming/terms.tsv` header,
+then one row per system, class `system` alone. Install puts it at `terms.d/<repo-id>.tsv`, and `bin/lint-name.sh` reads it
+beside the private layer's overlay, so a system's env prefix and short name are known on the box while core's register names
+no workload. Install refuses another header, another class, a term core already has, one another installed pack declares,
+and a malformed id; remove takes the rows back with the pack. A system named here is public, since the pack is client-free; a
+private system goes in `harbor-private/terms.tsv` instead, whose rows are leak patterns, so a pack naming one is refused.
 
 `shims.tsv` (optional) puts the pack's commands on the operator's PATH: a header row `name` TAB `rel`, then one row per command,
 `rel` a `bin/<file>` this pack installs. `bin/shim-install.sh` links `~/.local/bin/<name>` to the installed copy, so core's own
