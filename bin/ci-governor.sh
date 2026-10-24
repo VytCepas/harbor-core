@@ -612,10 +612,7 @@ tick_lock() {
   _tw=0
   while ! mkdir "$STATE_DIR/tick.lock" 2>/dev/null; do
     _tl="$(cat "$STATE_DIR/tick.lock/pid" 2>/dev/null || true)"
-    # Re-read before taking over: a lock released and re-taken since the first read is a live one (as event-bus.sh).
-    if [ -n "$_tl" ] && ! kill -0 "$_tl" 2>/dev/null && [ "$(cat "$STATE_DIR/tick.lock/pid" 2>/dev/null || true)" = "$_tl" ]; then
-      rm -rf "$STATE_DIR/tick.lock"; continue
-    fi
+    if [ -n "$_tl" ] && ! kill -0 "$_tl" 2>/dev/null; then rm -rf "$STATE_DIR/tick.lock"; continue; fi
     _tw=$(( _tw + 1 )); [ "$_tw" -lt 25 ] || return 1
     sleep 0.2
   done
@@ -704,9 +701,7 @@ reclaim() {
 lock() {
   if mkdir "$STATE_DIR/slots.lock" 2>/dev/null; then echo $$ > "$STATE_DIR/slots.lock/pid"; return 0; fi
   _lp="$(cat "$STATE_DIR/slots.lock/pid" 2>/dev/null || true)"
-  if [ -n "$_lp" ] && ! kill -0 "$_lp" 2>/dev/null && [ "$(cat "$STATE_DIR/slots.lock/pid" 2>/dev/null || true)" = "$_lp" ]; then
-    rm -rf "$STATE_DIR/slots.lock"
-  fi
+  if [ -n "$_lp" ] && ! kill -0 "$_lp" 2>/dev/null; then rm -rf "$STATE_DIR/slots.lock"; fi
   return 1
 }
 unlock() { rm -rf "$STATE_DIR/slots.lock"; }

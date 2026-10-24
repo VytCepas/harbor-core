@@ -210,24 +210,4 @@ kill "$H1" 2>/dev/null; wait 2>/dev/null
 reset; gov tick >/dev/null; runc -- true
 t_eq "run posts the governor's event on acquire and on release" 2 "$(grep -c 'com.harbor.ci-governor.event' "$FX/posts")"
 
-t_section "a tick lock re-taken after its dead holder's pid was read is not taken over"
-# Forced: as the waiter learns the old holder is dead, a live process takes the lock (the race event-bus.sh hit on CI).
-verdict="$( STATE_DIR="$T_TMP/lockrace"; mkdir -p "$STATE_DIR"; L="$STATE_DIR/tick.lock"
-  eval "$(sed -n '/^tick_lock() {/,/^}/p' "$GOV")"
-  sleep 30 > /dev/null & LIVE=$!
-  ( exit 0 ) & DEAD=$!; wait "$DEAD"
-  mkdir "$L"; echo "$DEAD" > "$L/pid"
-  kill() {
-    if [ "$1" = -0 ] && [ "$2" = "$DEAD" ] && [ ! -e "$L.swapped" ]; then
-      : > "$L.swapped"; rm -rf "$L"; mkdir "$L"; echo "$LIVE" > "$L/pid"; return 1
-    fi
-    command kill "$@"
-  }
-  ( sleep 1; [ "$(cat "$L/pid" 2>/dev/null)" = "$LIVE" ] && echo intact > "$L.verdict"; rm -rf "$L" ) &
-  REL=$!
-  tick_lock || echo timeout > "$L.verdict"
-  wait "$REL"; command kill "$LIVE" 2>/dev/null
-  cat "$L.verdict" 2>/dev/null || echo stolen )"
-t_eq "the live holder keeps its lock; the waiter takes it once released" intact "$verdict"
-
 t_done

@@ -63,16 +63,4 @@ t_eq "Linux: exit 1" "exit 1" "$(env PATH="$T_TMP/lx:/usr/bin:/bin" HARBOR_LOG_D
 t_has "Linux: gitleaks has no apt package, so the fix names its releases" "$(after_fail)" "  fix: see https://github.com/gitleaks/gitleaks/releases"
 t_hasnt "Linux: and never says brew" "$(ERR)" brew
 t_eq "the pool is byte-for-byte unchanged" "$BEFORE" "$(cat "$L/IDEAS.md")"
-
-t_section "the token comes from the store as worklog-token, as a header, never the URL (harbor#1205)"
-# git's network verbs are recorded, never run; everything else is the real git. The store stub serves FAKE_STORE.
-RGIT="$(command -v git)"; GLOG="$T_TMP/git.calls"; SBIN="$T_TMP/sbin"; mkdir -p "$SBIN"
-printf '#!/bin/sh\ncase " $* " in *" push "*|*" pull "*) printf "%%s\\n" "$*" >> "%s"; exit 0 ;; esac\nexec "%s" "$@"\n' "$GLOG" "$RGIT" > "$SBIN/git"
-printf '#!/bin/sh\n[ "$1" = run ] && [ -f "$FAKE_STORE" ] || exit 1\nv="$(cat "$FAKE_STORE")"; export "$3=$v"; shift 4; exec "$@"\n' > "$T_TMP/secret"
-chmod +x "$SBIN/git"; printf 'store-token\n' > "$T_TMP/store"
-_ok_hdr="Authorization: Basic $(printf 'x-access-token:%s' store-token | base64 | tr -d '\n')"
-t_eq "exit 0" "exit 0" "$(PATH="$SBIN:$PATH" HARBOR_SECRET_BIN="$T_TMP/secret" FAKE_STORE="$T_TMP/store" run 'from the store')"
-t_has "pushed" "$(ERR)" "  ok: pushed"
-t_has "the push carried the store's token as the header" "$(grep ' push ' "$GLOG")" "$_ok_hdr"
-t_hasnt "...and the URL carries no credential" "$(grep ' push ' "$GLOG")" "store-token@"
 t_done

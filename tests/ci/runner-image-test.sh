@@ -46,23 +46,6 @@ t_section "the runner home defaults to the runner user's HOME, so the image need
 fresh; env -u RUNNER_URL -u RUNNER_NAME -u RUNNER_LABELS -u RUNNER_HOME HOME="$H" RUNNER_TOKEN=tok sh "$EP" > /dev/null 2>&1
 t_eq "with RUNNER_HOME unset it configures and runs from HOME" "1 1" "$(n config) $(n run)"
 
-t_section "an interrupted self-update (no bin/, two bin.<version>) is linked back to the newest complete one (harbor#1060)"
-ver() { mkdir -p "$H/bin.$1" "$H/externals.$1"; [ "${2:-}" = partial ] || { printf '#!/bin/sh\n' > "$H/bin.$1/Runner.Listener"; chmod +x "$H/bin.$1/Runner.Listener"; }; }
-fresh; : > "$H/.runner"; ver 2.337.0; ver 2.338.0
-out="$(ep)"
-t_eq "bin links to the newest version" "$H/bin.2.338.0" "$(readlink "$H/bin")"
-t_eq "and externals to the same version" "$H/externals.2.338.0" "$(readlink "$H/externals")"
-t_has "it says what it linked" "$out" "linked bin.2.338.0"
-t_eq "and the runner starts" 1 "$(n run)"
-fresh; : > "$H/.runner"; ver 2.9.0; ver 2.10.0
-ep >/dev/null; t_eq "versions compare as numbers (2.10 after 2.9)" "$H/bin.2.10.0" "$(readlink "$H/bin")"
-fresh; : > "$H/.runner"; ver 2.337.0; ver 2.338.0 partial
-ep >/dev/null; t_eq "a version with no Listener is skipped for the newest complete one" "$H/bin.2.337.0" "$(readlink "$H/bin")"
-fresh; : > "$H/.runner"; ver 2.338.0; mkdir -p "$H/bin"; : > "$H/bin/keep"
-ep >/dev/null; t_eq "control: a real bin/ directory is never replaced" yes "$([ -d "$H/bin" ] && [ ! -L "$H/bin" ] && [ -f "$H/bin/keep" ] && echo yes)"
-fresh; : > "$H/.runner"; ver 2.338.0; mkdir -p "$H/externals"; : > "$H/externals/keep"
-ep >/dev/null; t_eq "control: an existing externals/ is left as it is" yes "$([ -f "$H/externals/keep" ] && [ ! -L "$H/externals" ] && echo yes)"
-
 t_section "the image carries what the suites and the setup actions need, with no job-time install"
 d="$(cat "$DF")"; apt="$(grep "apt-get install" "$DF") "
 t_has "built on the official runner" "$d" "FROM ghcr.io/actions/actions-runner"

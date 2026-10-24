@@ -64,8 +64,7 @@ clip_clear() {
   esac
 }
 
-DEST="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.helm-log-token"   # legacy plaintext, removed once the store holds it
-SECRET="${HARBOR_SECRET_BIN:-$(command -v secret 2>/dev/null || true)}"; [ -n "$SECRET" ] || SECRET="$HOME/.local/bin/secret"
+DEST="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.helm-log-token"
 
 # `|| true` ON THE SUBSTITUTION, not on a later line. Under `set -e` a bare
 # `T="$(clip_read)"` ABORTS on a non-zero read, so a fallback written underneath
@@ -75,19 +74,11 @@ T="$(clip_read 2>/dev/null || true)"
 
 case "$T" in
   github_pat_*|ghp_*)
-    # The store, not a file (harbor#1205): piped, so the value never reaches argv or a prompt's echo.
-    # A refused store is a FAIL, never a quiet fall back to the plaintext file.
-    if ! printf %s "$T" | sh "$SECRET" put worklog-token >/dev/null 2>&1; then
-      T=""; clip_clear 2>/dev/null || true
-      log_fail "NOT SAVED: the credential store refused worklog-token (clipboard cleared)"
-      log_fix "sh $SECRET list; harbor access check   # the register must name worklog-token"
-      log_end || :; exit 1
-    fi
-    T_LEN=${#T}; T=""
+    umask 177
+    printf %s "$T" > "$DEST"
     clip_clear 2>/dev/null || true
-    rm -f "$DEST"
     # LENGTH, NEVER THE VALUE. Enough to tell a truncated paste from a whole one.
-    log_ok "token stored as worklog-token ($T_LEN chars, clipboard cleared, plaintext file removed)"
+    log_ok "token saved (${#T} chars, clipboard cleared)"
     log_end
     ;;
   *)

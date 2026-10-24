@@ -28,7 +28,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | policy | policy/ | system | source | living | 11 |
 | standard | standards/ | system | source | versioned | 13 |
 | contract | contracts/ | system | source | versioned | 30 |
-| decision-record | docs/decisions/ | element | source | dated | 89 |
+| decision-record | docs/decisions/ | element | source | dated | 88 |
 | injection-rule | context-rules/<scope>/ | component | source | living | 35 |
 | hook | bin/ | component | source | living | 12 |
 | skill | skills/ | component | source | living | 41 |
@@ -53,7 +53,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `DOCTRINE/` | 10 | 1 | 1 |
 | `bin/` | 213 | 22 | 2 |
 | `commands/` | 5 | 1 | 1 |
-| `docs/` | 110 | 6 | 5 |
+| `docs/` | 109 | 6 | 5 |
 | `fixtures/` | 252 | 9 | 1 |
 | `hooks/` | 7 | 1 | 1 |
 | `inject.d/` | 31 | 1 | 1 |
@@ -91,10 +91,10 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
 | policy | policy-function | 0 | 0 | 11 | 0 | 0 | 3 |
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
-| scope | coordination | 1 | 11 | 0 | 0 | 0 | 4 |
+| scope | coordination | 1 | 10 | 0 | 0 | 0 | 4 |
 | session | data-plane | 10 | 5 | 0 | 1 | 0 | 0 |
 | skill | catalog | 3 | 5 | 0 | 4 | 0 | 11 |
-| standard | policy-function | 3 | 8 | 102 | 0 | 0 | 43 |
+| standard | policy-function | 3 | 8 | 101 | 0 | 0 | 43 |
 | status | observability | 3 | 7 | 0 | 1 | 0 | 0 |
 | test | control-plane | 0 | 1 | 2 | 7 | 0 | 7 |
 | worktree | coordination | 1 | 0 | 0 | 0 | 0 | 0 |
@@ -420,7 +420,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `docs/decisions/0085-client-terms-leave-core.md`
 - `docs/decisions/0086-the-session-family.md`
 - `docs/decisions/0087-the-public-export-repo.md`
-- `docs/decisions/0088-hook-engine-folders.md`
 - `docs/decisions/README.md`
 - `standards/modularity.md`
 - `standards/naming.md`
@@ -472,7 +471,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `runners/` | 2 |
 | `skills/` | 29 |
 | `systemd/` | 15 |
-| `tests/` | 237 |
+| `tests/` | 238 |
 | `tools/` | 8 |
 | `vendor/` | 73 |
 | `worklog/` | 1 |

@@ -4,7 +4,6 @@ status: accepted
 alias: D-40
 date: 2026-10-04
 source: research/12e-engineer.md
-revised_by: D-88
 ---
 
 # Generated docs

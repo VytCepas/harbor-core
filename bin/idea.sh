@@ -43,22 +43,6 @@ CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 POOL_DIR="${HARBOR_LOG_DIR:-$CFG/MEMORY}"
 TOKEN_FILE="${HARBOR_LOG_TOKEN_FILE:-$CFG/.helm-log-token}"
 FILE="$POOL_DIR/IDEAS.md"
-SECRET="${HARBOR_SECRET_BIN:-$(command -v secret 2>/dev/null || true)}"; [ -n "$SECRET" ] || SECRET="$HOME/.local/bin/secret"
-
-# idea_git <git args>: git with the work-log token as a header, never in the URL (CONSTITUTION No.4).
-# The token is the store's `worklog-token` (harbor#1205), the plaintext file only until it moves.
-# Returns 3 when there is no token at all.
-idea_git() {
-  if [ -f "$SECRET" ] && sh "$SECRET" run worklog-token IDEA_TOKEN -- true >/dev/null 2>&1; then
-    sh "$SECRET" run worklog-token IDEA_TOKEN -- sh -c \
-      'git -c http.extraHeader="Authorization: Basic $(printf "x-access-token:%s" "$IDEA_TOKEN" | base64 | tr -d "\n")" "$@"' idea-git "$@"  # secret-seam: entry worklog-token, injected by secret run
-    return
-  fi
-  [ -f "$TOKEN_FILE" ] || return 3
-  _it="$(cat "$TOKEN_FILE" 2>/dev/null || true)"
-  [ -n "$_it" ] || return 3
-  git -c http.extraHeader="Authorization: Basic $(printf 'x-access-token:%s' "$_it" | base64 | tr -d '\n')" "$@"
-}
 
 # die <what failed> [fix command]: FAIL, its fix, the summary, exit 1.
 die() {
@@ -90,8 +74,15 @@ cd "$POOL_DIR" || die "cannot enter $POOL_DIR"
 # host-partitioning trick does not apply, so we rebase onto origin before
 # appending rather than discovering the divergence at push time. Offline is fine
 # — we just append locally and the next idea (or the Stop hook) carries it up.
-if [ -n "$REPO" ]; then
-  idea_git pull --rebase --quiet "https://github.com/${REPO}.git" main >/dev/null 2>&1 || true
+if [ -n "$REPO" ] && [ -f "$TOKEN_FILE" ]; then
+  TOKEN="$(cat "$TOKEN_FILE" 2>/dev/null || true)"
+  if [ -n "${TOKEN:-}" ]; then
+    AUTH="Authorization: Basic $(printf 'x-access-token:%s' "$TOKEN" | base64 | tr -d '\n')"
+    # Token goes in a header, never in the URL (CONSTITUTION No.4): a URL-embedded
+    # token lands in the reflog, in remote-error text and in shell history.
+    git -c http.extraHeader="$AUTH" pull --rebase --quiet \
+      "https://github.com/${REPO}.git" main >/dev/null 2>&1 || true
+  fi
 fi
 
 if [ ! -f "$FILE" ]; then
@@ -157,13 +148,17 @@ log_ok "$ID recorded"
 
 [ "$PUSH" = "1" ] || { log_note "local only (-n)"; log_end; exit $?; }
 [ -n "$REPO" ] || { log_warn "the log repo has no GitHub origin — committed locally"; log_end; exit $?; }
-_ir=0; idea_git push --quiet "https://github.com/${REPO}.git" main >/dev/null 2>&1 || _ir=$?
-case "$_ir" in
-  0) log_ok "pushed" ;;
-  3) log_warn "no token — committed locally"
-     log_fix "copy the work-log token on GitHub, then: sh $(dirname -- "$0")/save-log-token.sh   # stores worklog-token" ;;
+[ -f "$TOKEN_FILE" ] || { log_warn "no token — committed locally"; log_end; exit $?; }
+TOKEN="$(cat "$TOKEN_FILE" 2>/dev/null || true)"
+[ -n "${TOKEN:-}" ] || { log_warn "empty token — committed locally"; log_end; exit $?; }
+AUTH="Authorization: Basic $(printf 'x-access-token:%s' "$TOKEN" | base64 | tr -d '\n')"
+
+if git -c http.extraHeader="$AUTH" push --quiet \
+     "https://github.com/${REPO}.git" main >/dev/null 2>&1; then
+  log_ok "pushed"
+else
   # Network is the only fail-open leg — the commit is already safe locally and
   # the Stop hook retries it, exactly as worklog-push.sh does.
-  *) log_warn "push failed (offline?) — commit is local, Stop hook will retry" ;;
-esac
+  log_warn "push failed (offline?) — commit is local, Stop hook will retry"
+fi
 log_end; exit $?

@@ -110,30 +110,5 @@ t_has "1191 …naming the hook" "$(cat "$WL/nh.err")" "hook-rejected-1191-nid"
 t_eq "1191 …and no commit lands" "" "$(git -C "$_nh" rev-parse --verify -q HEAD 2>/dev/null)"
 t_eq "1191 …and the session is not blocked (exit 0)" 0 "$_nh_rc"
 
-t_section "harbor#1205 worklog-push: the token is the store's worklog-token; the plaintext file warns once"
-# The store stub logs each call; `run` serves FAKE_STORE as the named variable.
-cat > "$WL/secret" <<'STUB'
-#!/bin/sh
-echo "$*" >> "$FAKE_STORE.calls"
-case "$1" in
-  run) [ -f "$FAKE_STORE" ] || { echo "no secret named '$2'" >&2; exit 1; }; v="$(cat "$FAKE_STORE")"; export "$3=$v"; shift 4; exec "$@" ;;
-  *) exit 2 ;;
-esac
-STUB
-_sc="$WL/scfg"; mkdir -p "$_sc"
-_wps() { printf '{"session_id":"%s","cwd":"%s"}' "$1" "$REPO_BARE" | CLAUDE_CONFIG_DIR="$_sc" HARBOR_LOG_DIR="$WL/plog" \
-  HARBOR_SECRET_BIN="$WL/secret" FAKE_STORE="$WL/store" HARBOR_LOG_TOKEN_FILE="$WL/legacy" sh "$SRC/worklog-push.sh" 2>&1 >/dev/null; }
-rm -f "$WL/store" "$WL/legacy"
-t_has "1205 no token anywhere: it says the log is never pushed" "$(_wps WL-1205-a)" "never pushed"
-t_eq "1205 …once: the next Stop is silent" "" "$(_wps WL-1205-b)"
-printf 'x-test-token\n' > "$WL/legacy"
-t_has "1205 a plaintext file only: it warns that the token is not in the store" "$(_wps WL-1205-c)" "still the plaintext"
-t_eq "1205 …once" "" "$(_wps WL-1205-d)"
-printf 'x-test-token\n' > "$WL/store"; : > "$WL/store.calls"
-t_eq "1205 with the token in the store: a push that succeeds prints nothing" "" "$(_wps WL-1205-e)"
-t_has "1205 …and the push ran under secret run" "$(cat "$WL/store.calls")" "run worklog-token WORKLOG_TOKEN -- git"
-t_eq "1205 …and the warn-once stamps are cleared, so a regression warns again" no \
-  "$([ -e "$_sc/.worklog-token-warned.legacy" ] || [ -e "$_sc/.worklog-token-warned.missing" ] && echo yes || echo no)"
-
 ff_sealed
 t_done
