@@ -60,6 +60,27 @@ for c in c1 c2 c3 c4; do
 done
 export HARBOR_EVENT_DIR="$T_TMP/bus"
 
+t_section "a lock re-taken after its dead holder's pid was read is not taken over"
+# Forced: as the waiter learns the old holder is dead, a live process takes the lock. The race above
+# hits this window only by chance (hosted CI, 61 reads of 60).
+L="$T_TMP/racelock"
+verdict="$( eval "$(sed -n '/^offsets_lock() {/,/^}/p' "$EB")"
+  sleep 30 > /dev/null & LIVE=$!
+  ( exit 0 ) & DEAD=$!; wait "$DEAD"
+  mkdir "$L"; echo "$DEAD" > "$L/pid"
+  kill() {
+    if [ "$1" = -0 ] && [ "$2" = "$DEAD" ] && [ ! -e "$L.swapped" ]; then
+      : > "$L.swapped"; rm -rf "$L"; mkdir "$L"; echo "$LIVE" > "$L/pid"; return 1
+    fi
+    command kill "$@"
+  }
+  ( sleep 1; [ "$(cat "$L/pid" 2>/dev/null)" = "$LIVE" ] && echo intact > "$L.verdict"; rm -rf "$L" ) &
+  REL=$!
+  offsets_lock "$L" || echo timeout > "$L.verdict"
+  wait "$REL"; command kill "$LIVE" 2>/dev/null
+  cat "$L.verdict" 2>/dev/null || echo stolen )"
+t_eq "the live holder keeps its lock; the waiter takes it once released" intact "$verdict"
+
 t_section "several day files, read in date order; a deleted day drops its row"
 d1="$D"
 printf '{"id":"old","ts":"t","src":"cli","kind":"test.since","subject":"yesterday"}\n' > "$T_TMP/bus/2000-01-01.jsonl"

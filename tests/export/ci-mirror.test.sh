@@ -33,7 +33,7 @@ case "$1 $2" in
   "pr edit") echo "$*" > "$STUB/pr_edit" ;;
   "pr close") [ -f "$STUB/pr_number" ] || exit 1; rm "$STUB/pr_number" ;;
   "run list") sha="$(printf '%s' "$*" | sed -n 's/.*headSha == "\([0-9a-f]*\)".*/\1/p')"
-              [ ! -f "$STUB/runs" ] || awk -F'\t' -v s="$sha" '$1 == s { print $2 "\t" $3 "\t" $4 }' "$STUB/runs" ;;
+              [ ! -f "$STUB/runs" ] || awk -F'\t' -v s="$sha" '$1 == s { print ($5 == "" ? "governance" : $5) "\t" $2 "\t" $3 "\t" $4 }' "$STUB/runs" ;;
   "api -X") case "$3" in
       POST) echo "$*" >> "$STUB/status.log"
             st=''; de=''; for a in "$@"; do case "$a" in state=*) st="${a#state=}" ;; description=*) de="${a#description=}" ;; esac; done
@@ -238,6 +238,16 @@ t_has "...linked to the failing run" "$(cat "$STUB/status.log")" "target_url=htt
 printf '%s\tcompleted\tsuccess\thttps://runs.test/1\n%s\tin_progress\t\thttps://runs.test/2\n' "$MS" "$MS" > "$STUB/runs"
 rm -f "$STUB/status.log"; setstatus
 t_has "one run still going: state pending" "$(cat "$STUB/status.log")" "state=pending"
+# 2026-10-22, #1344: two runs of one workflow started together, concurrency cancelled one, and public-ci read it as red.
+printf '%s\tcompleted\tcancelled\thttps://runs.test/c\tgovernance\n%s\tin_progress\t\thttps://runs.test/2\tgovernance\n' "$MS" "$MS" > "$STUB/runs"
+rm -f "$STUB/status.log"; setstatus
+t_has "a cancelled run its workflow replaced: pending, not failure" "$(cat "$STUB/status.log")" "state=pending"
+printf '%s\tcompleted\tcancelled\thttps://runs.test/c\tgovernance\n%s\tcompleted\tsuccess\thttps://runs.test/2\tgovernance\n' "$MS" "$MS" > "$STUB/runs"
+rm -f "$STUB/status.log"; setstatus
+t_has "...and success once the replacement is green" "$(cat "$STUB/status.log")" "state=success"
+printf '%s\tcompleted\tcancelled\thttps://runs.test/c\tgovernance\n%s\tcompleted\tsuccess\thttps://runs.test/2\tstranger-install\n' "$MS" "$MS" > "$STUB/runs"
+rm -f "$STUB/status.log"; setstatus
+t_has "a cancelled run nothing replaced is still failure" "$(cat "$STUB/status.log")" "state=failure"
 printf '%s\tcompleted\tfailure\thttps://runs.test/old\n' "0000000000000000000000000000000000000000" > "$STUB/runs"
 rm -f "$STUB/status.log"; setstatus
 t_has "only an older commit's run: pending, never its failure" "$(cat "$STUB/status.log")" "state=pending"
