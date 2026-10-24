@@ -73,7 +73,7 @@ tests/checks/adoption-check/output-contract.test.sh	vendor/skills/	builds its ow
 tests/checks/lint.docs-test.sh	vendor/skills/	builds its own fixture tree
 tests/checks/lint.redproof-rest-test.sh	vendor/skills/	builds its own fixture tree
 tests/checks/lint.skills-test.sh	vendor/skills/	builds its own fixture tree
-tests/export/licence.test.sh	vendor/skills/	checks the skills licence only when the tree exists, so it must name it
+tests/export/license.test.sh	vendor/skills/	checks the skills licence only when the tree exists, so it must name it
 tests/install/skills-collide-test.sh	vendor/skills/	builds its own fixture tree
 tests/install/skills-install-test.sh	vendor/skills/	builds its own fixture tree
 tests/lint/decision/citation.test.sh	vendor/skills/	builds its own fixture tree

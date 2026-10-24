@@ -233,6 +233,8 @@ t_has "a lowercase path with a separator the standard refuses: green on case" "$
 t_has "…and red on path, where the separator rule judges it" "$(sh "$LN" --check path docs/my_notes.md 2>&1)" "[name.separator] docs/my_notes.md"
 t_has "a legacy alias in a lowercase path: green on case" "$(sh "$LN" --check case docs/helm-log-export.md 2>&1)" "no finding"
 t_has "…and red on path" "$(sh "$LN" --check path docs/helm-log-export.md 2>&1)" "[name.alias] docs/helm-log-export.md"
+t_has "a UK spelling in a path is an alias finding that names the US word (D-16)" "$(sh "$LN" --check path docs/colour-guide.md 2>&1)" '[name.alias] docs/colour-guide.md — `colour` is a UK spelling: write `color`'
+t_has "…and its US spelling is green" "$(sh "$LN" --check path docs/color-guide.md 2>&1)" "no finding"
 for _n in README.md LICENSE CHANGELOG.md SKILL.md .github/ISSUE_TEMPLATE/bug.md CLAUDE.md.tmpl; do
   t_has "a name a tool requires in capitals stays green: $_n" "$(sh "$LN" --check case "$_n" 2>&1)" "no finding"
 done
@@ -368,7 +370,7 @@ t_eq "level and subsystem read as D-57: containment, and a family is not a subsy
 t_eq "there are seven levels, one chain" 7 "$(awk -F'\t' '$2 ~ /(^|,)level(,|$)/ { n++ } END { print n }' "$REG/terms.tsv")"
 t_eq "event is a family; with pack (D-84) and session (D-86) there are 26" 26 "$(awk -F'\t' '$2 ~ /(^|,)family(,|$)/ { n++ } END { print n }' "$REG/terms.tsv")"
 t_eq "obligation is a concept under the status family" status "$(awk -F'\t' '$1 == "obligation" { print $4 }' "$REG/terms.tsv")"
-t_eq "the estate workload (harbor#950) is the one system term core registers; workload systems come from the overlay (D-85)" "estate" \
+t_eq "core registers no workload system term: a workload's pack does, and the private overlay (harbor#950, D-85)" "" \
   "$(awk -F'\t' '$2 ~ /(^|,)system(,|$)/ && $1 != "fleet" && $1 != "memory-store" { print $1 }' "$REG/terms.tsv" | sort | tr '\n' ' ' | sed 's/ $//')"
 t_eq "no control id of the modularity rules collides with a lint id" 0 "$(grep -c '^M[0-9]' "$REG/controls.tsv")"
 t_eq "…the rules are module.* ids: D-60's five, layer-direction and module.graph-conform (harbor#996)" 7 "$(grep -c '^module\.' "$REG/controls.tsv")"

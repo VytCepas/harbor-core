@@ -84,38 +84,11 @@ GATES='fs-lib.sh gate-lib.sh gate-classify.sh gate-merge.sh gate-approve.sh gate
 # The floor hook wiring: event, matcher, guard. guard-egress covers Bash+Write;
 # guard-bash Bash; guard-selfedit Write|Edit|MultiEdit; annotate-web the web/MCP
 # content sources on PostToolUse.
-# <onfail> is `block` for a veto (P13E-2): a PreToolUse hook that times out or crashes otherwise lets the
-# call through ("A timed-out command hook doesn't block the tool call", code.claude.com/docs/en/hooks), so
-# padding a payload until the guard is slow was a way past every rule. Set on a hook already wired, too.
-merge_hook() { # <settings-json> <event> <matcher> <cmd> [<onfail>]  → new json on stdout
-  jq --arg ev "$2" --arg m "$3" --arg cmd "$4" --arg of "${5:-}" '
-    ({type:"command", command:$cmd} + (if $of == "" then {} else {onFailure:$of} end)) as $h
-    | .hooks //= {}
-    | .hooks[$ev] //= []
-    # find or create the matcher bucket
-    | (.hooks[$ev] | map(.matcher == $m) | index(true)) as $i
-    | if $i == null
-      then .hooks[$ev] += [{matcher:$m, hooks:[$h]}]
-      else (.hooks[$ev][$i].hooks |= (
-              if (map(.command) | index($cmd)) == null
-              then . + [$h]
-              elif $of == "" then .
-              else map(if .command == $cmd then . + {onFailure:$of} else . end) end)) end
-  ' "$1"
-}
+# <onfail> is `block` for a veto (P13E-2): padding a payload until the guard is slow was a way past every
+# rule. il_merge_hook (install-lib) sets it on a hook already wired, too.
 
-# onFailure needs Claude Code 2.1.295 or later (code.claude.com/docs/en/hooks). FLOOR_ONFAILURE=1|0 decides
-# for a sandbox or a box without `claude` on PATH; otherwise the installed version does, and an unknown
-# version gets no field, because an older client may not accept a key it does not know.
-floor_onfailure() {
-  case "${FLOOR_ONFAILURE:-}" in 1) echo block; return 0 ;; 0) return 0 ;; esac
-  _ofv="$(claude --version 2>/dev/null | sed -n 's/^\([0-9][0-9]*\)\.\([0-9][0-9]*\)\.\([0-9][0-9]*\).*/\1 \2 \3/p' | head -n 1)"
-  [ -n "$_ofv" ] || return 0
-  set -- $_ofv
-  if [ "$1" -gt 2 ] || { [ "$1" -eq 2 ] && { [ "$2" -gt 1 ] || { [ "$2" -eq 1 ] && [ "$3" -ge 295 ]; }; }; }; then echo block; fi
-  return 0
-}
-ONFAIL="$(floor_onfailure)"
+# onFailure needs Claude Code 2.1.295 or later: il_onfailure decides, FLOOR_ONFAILURE=1|0 overriding it.
+ONFAIL="$(il_onfailure)"
 
 # THE WIRING TABLE (harbor#766), one row per hook: <event>;<matcher>;<argv after /bin/sh>;<opt-in>;
 # <also wired by>. A bare name in the argv is a file in <dir>/bin. The dry run and the apply both
@@ -243,7 +216,7 @@ wire_floor() {
             log_end; exit 1 ;;
     esac
     _of=''; [ "$_ev" != PreToolUse ] || _of="$ONFAIL"   # every PreToolUse row is a veto
-    NEW="$(printf '%s' "$NEW" | merge_hook /dev/stdin "$_ev" "$_m" "$(_hook_cmd "$_argv")" "$_of")"
+    NEW="$(printf '%s' "$NEW" | il_merge_hook /dev/stdin "$_ev" "$_m" "$(_hook_cmd "$_argv")" "$_of")"
   done <<EOF
 $(floor_hooks)
 EOF

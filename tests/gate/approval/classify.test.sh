@@ -152,6 +152,9 @@ rp "the two registers" '/decides what ~\/.local\/bin points at/d' CONTRACTS/shim
 rp "ship.conf commands" 's/^for _k in plan apply verify restore deployed;/for _k in none;/' bin/live-verify.sh
 rp "the suite manifests" 's|"\$ROOT"/CONTRACTS/suites\*\.txt ||' CONTRACTS/suites.txt
 rp "the runner and test-library globs" 's/^for _d in runners tests\/lib;/for _d in none;/' tests/lib/row.sh
+t_exit "a script only a workflow the gate does not judge calls is protected: the mirror runs governance.yml (harbor#1149)" \
+  1 sh "$C" "$T_ROOT" bin/fresh-check.sh
+rp "every workflow, not only the judged one" 's|for _wp in "\$ROOT"/.github/workflows/\*\.yml; do|for _wp in "$ROOT"/.github/workflows/public-ci.yml; do|' bin/fresh-check.sh
 
 t_section "harbor's register: every script an installer wires as a hook or statusline, and every installer"
 wired() { # the bin/ files an installer names as <dir>/bin/<file> (hooks, statusline), and floor-install's wiring table
