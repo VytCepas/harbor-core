@@ -419,7 +419,7 @@ d_evals() {
 
 d_scripts() {
   printf '<table class="grid"><thead><tr><th>Script</th><th>Ticket / purpose line</th></tr></thead><tbody>\n'
-  for f in "$ROOT"/bin/*.sh; do
+  for f in "$ROOT"/bin/*.sh $(sh "$ROOT/bin/deploy-hooks.sh" --engines --root "$ROOT" 2>/dev/null); do
     [ -f "$f" ] || continue
     case "$(basename "$f")" in *-test.sh) continue ;; esac
     _d="$(sed -n '2,4p' "$f" | sed -n 's/^# //p' | head -1)"

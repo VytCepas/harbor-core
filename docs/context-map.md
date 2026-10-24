@@ -28,17 +28,17 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | policy | policy/ | system | source | living | 11 |
 | standard | standards/ | system | source | versioned | 13 |
 | contract | contracts/ | system | source | versioned | 30 |
-| decision-record | docs/decisions/ | element | source | dated | 89 |
+| decision-record | docs/decisions/ | element | source | dated | 90 |
 | injection-rule | context-rules/<scope>/ | component | source | living | 35 |
-| hook | bin/ | component | source | living | 12 |
+| hook | bin/ | component | source | living | 13 |
 | skill | skills/ | component | source | living | 41 |
 | fixture | fixtures/ | element | source | living | 252 |
 | registry | registries/ | component | source | versioned | 49 |
-| test | tests/ | component | source | living | 427 |
+| test | tests/ | component | source | living | 428 |
 | report | docs/reports/ | element | report | dated | 1 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| script | bin/ | component | source | living | 208 |
+| script | bin/ | component | source | living | 209 |
 | (no kind) | - | - | - | - | 171 |
 
 ## Folders
@@ -51,11 +51,11 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.github/` | 4 | 2 | 1 |
 | `CONTRACTS/` | 79 | 9 | 2 |
 | `DOCTRINE/` | 10 | 1 | 1 |
-| `bin/` | 213 | 22 | 2 |
+| `bin/` | 214 | 22 | 2 |
 | `commands/` | 5 | 1 | 1 |
-| `docs/` | 111 | 6 | 5 |
+| `docs/` | 112 | 6 | 5 |
 | `fixtures/` | 252 | 9 | 1 |
-| `hooks/` | 7 | 1 | 1 |
+| `hooks/` | 8 | 1 | 1 |
 | `inject.d/` | 31 | 1 | 1 |
 | `launchd/` | 12 | 3 | 1 |
 | `patches/` | 12 | 1 | 1 |
@@ -63,7 +63,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `skills/` | 41 | 5 | 1 |
 | `standards/` | 13 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 427 | 21 | 1 |
+| `tests/` | 428 | 21 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 73 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -79,7 +79,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | check | observability | 1 | 4 | 0 | 1 | 50 | 0 |
 | ci | coordination | 12 | 58 | 2 | 3 | 0 | 5 |
 | context | control-plane | 3 | 0 | 1 | 36 | 0 | 30 |
-| deploy | control-plane | 4 | 6 | 1 | 1 | 0 | 7 |
+| deploy | control-plane | 5 | 7 | 1 | 1 | 0 | 7 |
 | doc | control-plane | 1 | 1 | 0 | 8 | 0 | 16 |
 | drift | control-plane | 1 | 1 | 0 | 4 | 2 | 12 |
 | eval | control-plane | 0 | 1 | 0 | 0 | 0 | 0 |
@@ -94,7 +94,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | scope | coordination | 1 | 11 | 0 | 0 | 0 | 4 |
 | session | data-plane | 10 | 5 | 0 | 1 | 0 | 0 |
 | skill | catalog | 3 | 5 | 0 | 4 | 0 | 11 |
-| standard | policy-function | 3 | 8 | 102 | 0 | 0 | 43 |
+| standard | policy-function | 3 | 8 | 103 | 0 | 0 | 43 |
 | status | observability | 3 | 7 | 0 | 1 | 0 | 0 |
 | test | control-plane | 0 | 1 | 2 | 7 | 0 | 7 |
 | worktree | coordination | 1 | 0 | 0 | 0 | 0 | 0 |
@@ -206,6 +206,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 
 - `bin/deploy-confinement.sh`
 - `bin/deploy-fleet.sh`
+- `bin/deploy-hooks.sh`
 - `bin/deploy-push.sh`
 - `bin/deploy.sh`
 - `docs/design/deploy-fleet.md`
@@ -422,6 +423,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `docs/decisions/0086-the-session-family.md`
 - `docs/decisions/0087-the-public-export-repo.md`
 - `docs/decisions/0088-hook-engine-folders.md`
+- `docs/decisions/0089-event-and-manual-moments.md`
 - `docs/decisions/README.md`
 - `standards/modularity.md`
 - `standards/naming.md`
@@ -467,7 +469,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `commands/` | 5 |
 | `docs/` | 17 |
 | `fixtures/` | 214 |
-| `hooks/` | 7 |
+| `hooks/` | 8 |
 | `launchd/` | 10 |
 | `patches/` | 12 |
 | `runners/` | 2 |

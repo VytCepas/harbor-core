@@ -151,7 +151,7 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       bin/*/*) refuse "bin/ is flat; $_r is nested" || return 1 ;;
       bin/*)
         _b="${_r#bin/}"; _bs="${_b%.sh}"; _b="$(printf '%s' "$_b" | tr 'A-Z' 'a-z')"; _bs="$(printf '%s' "$_bs" | tr 'A-Z' 'a-z')"
-        for _c in "$ROOT"/bin/*; do
+        for _c in "$ROOT"/bin/* $(sh "$ROOT/bin/deploy-hooks.sh" --engines --root "$ROOT" 2>/dev/null); do
           _cb="$(printf '%s' "${_c##*/}" | tr 'A-Z' 'a-z')"
           [ "$_cb" != "$_b" ] && [ "${_cb%.sh}" != "$_bs" ] || refuse "bin/$_b shadows the core command ${_cb}" || return 1
         done
