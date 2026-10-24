@@ -1339,7 +1339,6 @@ red under <code>standard.decision-dangling</code>.</p>
 <tr><td><code>D-86</code></td><td>The session family</td><td>accepted</td><td>not recorded in source</td><td>-</td></tr>
 <tr><td><code>D-87</code></td><td>The public export repo</td><td>accepted</td><td>2026-10-15</td><td>-</td></tr>
 <tr><td><code>D-88</code></td><td>A hook engine is a folder named after it</td><td>accepted</td><td>2026-10-23</td><td>-</td></tr>
-<tr><td><code>D-89</code></td><td>Two more moments: event and manual</td><td>accepted</td><td>2026-10-24</td><td>-</td></tr>
 </tbody></table>
 </div>
 </section>
@@ -1444,7 +1443,6 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/hooks/inject-hook.compaction-digest-test.sh</code></td><td><code>bin/compaction-digest.sh bin/guard-lib.sh inject.d/* tests/hooks/inject-fixture.sh tests/lib/core.sh tests/hooks/inject-hook.compaction-digest-test.sh</code></td></tr>
 <tr><td><code>tests/hooks/ticket-note-test.sh</code></td><td><code>bin/ticket-note.sh tests/hooks/ticket-note-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/hooks/session-title-test.sh</code></td><td><code>bin/session-title.sh bin/guard-selfedit.sh bin/guard-lib.sh tests/hooks/session-title-test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/deploy/hooks/render.test.sh</code></td><td><code>bin/deploy-hooks.sh bin/log-lib.sh tests/deploy/hooks/render.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/hooks/access-confinement-test.sh</code></td><td><code>bin/access-confinement.sh bin/deploy-confinement.sh tests/hooks/access-confinement-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/drift/confinement/compare.test.sh</code></td><td><code>bin/drift-confinement.sh bin/deploy-confinement.sh bin/roots.sh bin/log-lib.sh bin/floor-deny.sh bin/install-lib.sh bin/runtime-install.sh CONTRACTS/confinement-hosts.txt CONTRACTS/confinement-paths.txt CONTRACTS/helm-state.md tests/drift/confinement/compare.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/confinement/covered.test.sh</code></td><td><code>bin/* tests/lib/* tests/floor/floor-fixture.sh tests/guards/floor-fixture.sh CONTRACTS/confinement-coverage.tsv standards/naming/controls.tsv tests/admission/confinement/covered.test.sh</code></td></tr>
@@ -2402,7 +2400,6 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/deny-hash.sh</code></td><td>M7 · DeriveDenyHashes (harbor#44) — a leak filter over the operator's OWN private</td></tr>
 <tr><td><code>bin/deploy-confinement.sh</code></td><td>CONFINEMENT INSTALL (harbor#1298, #555 P1) — the <code>sandbox</code> block of the root-owned managed-settings.json.</td></tr>
 <tr><td><code>bin/deploy-fleet.sh</code></td><td>deploy-fleet.sh (harbor#1060, harbor#1018) — the ship runner: merge and deploy opted-in fleet repos unattended,</td></tr>
-<tr><td><code>bin/deploy-hooks.sh</code></td><td>deploy-hooks.sh (harbor#1272 step 5, D-88) — a config dir's settings.json hook wiring, RENDERED from the hook engines'</td></tr>
 <tr><td><code>bin/deploy-push.sh</code></td><td>deploy-push.sh (harbor#1149, DESIGN.md v2.1) - <code>harbor deploy push</code>: share core. One snapshot commit of the core set, no history.</td></tr>
 <tr><td><code>bin/deploy.sh</code></td><td>deploy.sh (harbor#457) — install every Harbor payload onto THIS box, in the one order that works.</td></tr>
 <tr><td><code>bin/doc-refs.sh</code></td><td>doc-refs.sh (harbor#996 E1, from #1015) — every path an entry doc cites resolves, and the doc is not left behind.</td></tr>

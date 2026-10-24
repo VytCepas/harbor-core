@@ -288,7 +288,7 @@ t_has "no message in the payload: the transcript's last text is read" \
 # The prompt list is derived from the scripts, never trusted: a bin/*.sh that prompts and is not
 # in SG3_TTY is red here (comment lines are not prompts).
 _tty="$(sed -n "s/^SG3_TTY='\(.*\)'\$/\1/p" "$GUARD")"
-for _f in "$T_ROOT"/bin/*.sh $(sh "$T_ROOT/bin/deploy-hooks.sh" --engines --root "$T_ROOT" 2>/dev/null); do
+for _f in "$T_ROOT"/bin/*.sh; do
   awk '/^[ \t]*#/ { next } /\/dev\/tty|\[y\/N\]/ { f = 1; exit } END { exit !f }' "$_f" || continue
   t_has "$(basename "$_f") prompts, so SG3_TTY names it" "$_tty" "$(basename "$_f")"
 done
