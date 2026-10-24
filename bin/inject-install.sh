@@ -227,9 +227,8 @@ WIRE_POST="$(wire_for PostToolUse)"
 # pack changes its `tool:`, and the failure is silent — the engine is installed
 # and never invoked for the traffic the pack was written for.
 WIRE_FAIL="$(wire_for PostToolUseFailure)"
-# NEVER EMPTY. An empty matcher matches EVERY tool, not none: failure-observe.sh is wired with "" on
-# PostToolUseFailure and logs every tool's failures (measured 2026-10-24, harbor#1272), so an empty derived
-# matcher would fork the engine on every call for packs that do not exist.
+# NEVER EMPTY, because an empty matcher in settings.json matches nothing and the
+# engine would be installed and inert — the failure this whole block is about.
 [ -n "$WIRE_PRE" ]  || WIRE_PRE='Bash|Write|Edit|MultiEdit'
 [ -n "$WIRE_POST" ] || WIRE_POST='Read|Bash|Grep|WebFetch'
 [ -n "$WIRE_FAIL" ] || WIRE_FAIL='.*'

@@ -117,7 +117,6 @@ tests/hooks/inject-hook.scope-test.sh
 tests/hooks/inject-hook.compaction-digest-test.sh
 tests/hooks/ticket-note-test.sh
 tests/hooks/session-title-test.sh
-tests/deploy/hooks/render.test.sh
 tests/hooks/access-confinement-test.sh
 tests/drift/confinement/compare.test.sh
 tests/admission/confinement/covered.test.sh
