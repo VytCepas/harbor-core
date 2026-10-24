@@ -15,7 +15,7 @@ STUB
 chmod +x "$TMP/stub/osascript"; : > "$TMP/sent.log"
 sent() { grep -c '^SENT' "$TMP/sent.log" 2>/dev/null | tr -d ' '; }
 sent_with() { grep -c "$1" "$TMP/sent.log" 2>/dev/null | tr -d ' '; }
-cp "$T_ROOT/bin/pulse-notify.sh" "$T_ROOT/bin/log-lib.sh" "$TMP/nbin/"  # log-lib: installed beside it
+cp "$T_ROOT/bin/pulse-notify.sh" "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/alert-lib.sh" "$T_ROOT/bin/event-bus.sh" "$TMP/nbin/"  # installed beside it
 fake() { printf '%s' "$1" > "$TMP/probe.json"; }
 probe_reads_fixture() { printf '#!/bin/sh\ncat "%s"\n' "$TMP/probe.json" > "$TMP/nbin/pulse.sh"; chmod +x "$TMP/nbin/pulse.sh"; }
 probe_reads_fixture
@@ -112,9 +112,13 @@ printf '#!/bin/sh\nexit 1\n' > "$LX/notify-send"; fresh; _held="$(lrun)"
 t_eq "WSL2 shape: a notify-send with no daemon behind it leaves the edge unrecorded" none "$(nstate '.notified.demo.verdict // "none"')"
 t_has "...and says so in one note, naming the sink (harbor#618)" "$_held" "  note: 1 banner(s) held: sink=notify-send did not take them"
 t_eq "...exactly once" 1 "$(printf '%s\n' "$_held" | grep -c 'banner(s) held')"
-rm -f "$LX/notify-send"; fresh; _held="$(lrun)"
-t_eq "with neither sink the edge stays unrecorded, to be said later" none "$(nstate '.notified.demo.verdict // "none"')"
-t_has "...with the same one note, sink=absent" "$_held" "  note: 1 banner(s) held: sink=absent did not take them"
+unshown() { cat "$HOME"/.local/state/harbor/events/*.jsonl 2>/dev/null | grep -c '"kind":"notify.unshown"'; }
+rm -f "$LX/notify-send"; fresh; _ev0="$(unshown)"; _held="$(lrun)"
+t_eq "with no desktop channel the edge stays unrecorded, to be said later" none "$(nstate '.notified.demo.verdict // "none"')"
+t_has "...with the same one note, sink=log" "$_held" "  note: 1 banner(s) held: sink=log did not take them"
+# never silent (harbor#618): the banner that no channel took is a line on stderr and an event on the bus
+t_has "...the banner is a line on stderr" "$_held" "harbor: pulse — demo"
+t_eq "...and one notify.unshown event on the bus" "$((_ev0 + 1))" "$(unshown)"
 t_eq "a run with nothing to say makes no note" 0 "$(fake "$(mkjson ok 'nothing to report')"; fresh; lrun | grep -c 'banner(s) held')"
 t_exit "...and --selftest says there is no sink" 1 lrun --selftest
 

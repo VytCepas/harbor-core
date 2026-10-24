@@ -4,43 +4,11 @@
 # plutil, ditto, caffeinate, pbcopy, pbpaste, osascript, notifyutil, pmset, scutil, dscl, xattr or brew names a Linux
 # counterpart for each in its own code (systemctl, a clipboard tool, notify-send, pkg_hint, useradd), or carries
 # `# platform: macOS-only — <reason>` in its first 40 lines. Guards and the lint hold the call as a refused pattern.
-# Interim tripwire: the repo-wide lint rule is a human-gated change.
+# osascript has no counterpart: a notification goes through bin/alert-lib.sh, the one helper allowed to call it.
 . "$(dirname "$0")/../lib/core.sh"; t_init
-CALLS='launchctl|plutil|ditto|caffeinate|pbcopy|pbpaste|osascript|notifyutil|pmset|scutil|dscl|xattr|brew'
-CLIP='wl-paste|wl-copy|xclip|xsel|powershell\.exe|clip\.exe'
-
-# Files that hold a call as DATA the floor refuses or matches, with no call to port: the guards' rule
-# patterns, the lint's own rules, and the wrapper-name list the command normalizer reads. A new name is a decision.
-exempt() { case "$1" in guard-*.sh|lint-conventions.sh|floor-normalize.awk) return 0 ;; esac; return 1; }
-# doctor.sh is macOS-only for its optional `launchctl` probe, declared here and not in its header: lint LOG1's
-# ratchet makes any edit to it convert the file onto log-lib, a rewrite of its table output. Move the line into its header then.
-declared_here() { case "$1" in doctor.sh) return 0 ;; esac; return 1; }
-counter() { case "$1" in launchctl) echo 'systemctl' ;; pbcopy|pbpaste) echo "$CLIP" ;; osascript) echo 'notify-send' ;; brew) echo 'pkg_hint|apt-get|= Darwin' ;; dscl) echo 'useradd' ;; *) echo '' ;; esac; }
-
-# uncovered <dir> -> one "<file>: <tool>" line per call that is neither ported nor declared
-uncovered() {
-  for _f in "$1"/*; do
-    [ -f "$_f" ] || continue
-    _n="${_f##*/}"; exempt "$_n" && continue
-    declared_here "$_n" && continue
-    _code="$(sed -e 's/^[[:space:]]*#.*//' "$_f")"
-    _tools="$(printf '%s\n' "$_code" | grep -oE "(^|[^[:alnum:]_.-])($CALLS)([^[:alnum:]_-]|\$)" | grep -oE "$CALLS" | sort -u)"
-    [ -n "$_tools" ] || continue
-    head -n 40 "$_f" | grep -qE '^# platform: macOS-only — .+' && continue
-    for _t in $_tools; do
-      _c="$(counter "$_t")"
-      [ -z "$_c" ] || ! printf '%s\n' "$_code" | grep -qE "(^|[^[:alnum:]_-])($_c)([^[:alnum:]_-]|\$)" || continue
-      printf '%s: %s\n' "$_n" "$_t"
-    done
-  done
-}
-# called <dir> -> the files whose code holds any call at all (the derive's non-vacuity)
-called() {
-  for _f in "$1"/*; do
-    [ -f "$_f" ] || continue
-    sed -e 's/^[[:space:]]*#.*//' "$_f" | grep -qE "(^|[^[:alnum:]_.-])($CALLS)([^[:alnum:]_-]|\$)" && printf '%s\n' "${_f##*/}"
-  done
-}
+# The derive is bin/lint-platform.sh, run by lint.platform-calls; this suite is its red-proof (harbor#618).
+uncovered() { sh "$T_ROOT/bin/lint-platform.sh" "$1" 2>/dev/null || :; }
+called() { sh "$T_ROOT/bin/lint-platform.sh" --called "$1" 2>/dev/null; }
 
 t_section "bin/ holds no bare macOS-only call"
 t_eq "every launchctl, plutil, ditto, caffeinate, pbcopy, pbpaste, osascript, notifyutil, pmset, scutil, dscl, xattr and brew call is ported or declared" "" "$(uncovered "$T_ROOT/bin")"
@@ -49,20 +17,18 @@ t_has "control: the derive sees a ported file (fleet-snapshot-refresh.sh)" "$_ca
 t_has "control: the derive sees a declared file (renew-check.sh)" "$_called" "renew-check.sh "
 t_has "control: ...and the file declared in this suite (doctor.sh)" "$_called" "doctor.sh "
 t_has "control: the derive sees an extensionless file's clipboard call is not skipped (save-log-token.sh)" "$_called" "save-log-token.sh "
-for _c in pulse-notify.sh:osascript:notifier ci-governor.sh:notifyutil:declared deliver-drive.sh:xattr:declared log-lib.sh:brew:defines gcloud-wrapper.sh:brew:guarded collector-setup.sh:dscl:ported; do
+for _c in alert-lib.sh:osascript:helper ci-governor.sh:notifyutil:declared deliver-drive.sh:xattr:declared log-lib.sh:brew:defines gcloud-wrapper.sh:brew:guarded collector-setup.sh:dscl:ported; do
   t_has "control: the derive sees ${_c%%:*}'s ${_c#*:} call (${_c##*:})" "$_called" "${_c%%:*} "
 done
 for _d in renew-check.sh session-verdicts.sh standard-rename.sh ci-governor.sh ci-governor-hook.sh deliver-drive.sh; do
   t_has "$_d declares its macOS-only call" "$(head -n 40 "$T_ROOT/bin/$_d")" "# platform: macOS-only — "
 done
 
-t_section "the control row is registered and its CI switch is real"
-# The row's mode is a stance, not this suite's switch: the suite fails CI whatever it says, and the row's title names the
-# manifest lines that are the way to retire it. So the row, its engine and the manifest line must all still exist.
-_row="$(awk -F'\t' '$1 == "lint.platform-calls" { print $4 "|" $11 }' "$T_ROOT/standards/naming/controls.tsv")"
-t_eq "controls.tsv carries lint.platform-calls with this suite as engine and as red_proof" "tests/checks/platform-calls-test.sh|tests/checks/platform-calls-test.sh" "$_row"
-t_has "the CI manifest runs this suite (the switch the row's title names)" "$(cat "$T_ROOT/CONTRACTS/suites.txt")" "tests/checks/platform-calls-test.sh"
-t_has "...and suite-paths.txt selects it on a change under bin/" "$(grep '^tests/checks/platform-calls-test.sh' "$T_ROOT/CONTRACTS/suite-paths.txt")" "bin/*"
+t_section "the rule is lint.platform-calls, run by the conventions linter"
+_row="$(awk -F'\t' '$1 == "lint.platform-calls" { print $2 "|" $4 "|" $11 }' "$T_ROOT/standards/naming/controls.tsv")"
+t_eq "controls.tsv carries lint.platform-calls: block, run by the linter, this suite its red-proof" "block|bin/lint-conventions.sh|tests/checks/platform-calls-test.sh" "$_row"
+t_has "the linter defines the rule" "$(grep -c '^rule "lint.platform-calls ' "$T_ROOT/bin/lint-conventions.sh")" "1"
+t_has "...and suite-paths.txt selects this suite on a change under bin/" "$(grep '^tests/checks/platform-calls-test.sh' "$T_ROOT/CONTRACTS/suite-paths.txt")" "bin/*"
 
 t_section "red-proof: the checker reads a plant the way the rule says"
 P="$T_TMP/plant"; mkdir -p "$P"
@@ -100,6 +66,7 @@ mac-trio.sh: notifyutil
 mac-trio.sh: pmset
 mac-trio.sh: scutil
 notify-bare.sh: osascript
+notify-ported.sh: osascript
 plutil-bare.sh: plutil
 xattr-bare.sh: xattr"
 t_eq "bare, caffeinate, clipboard-without-counterpart (pbpaste and pbcopy), too-deep header, ditto, another tool's counterpart, a bare notifier, brew, xattr and the macOS trio are red; prose, declared, ported (including a Darwin-guarded brew), near-miss names and a guard are not" "$want" "$(uncovered "$P")"
@@ -125,9 +92,21 @@ cp "$T_ROOT/bin/freshness.sh" "$M/freshness.sh"
 sed 's/pkg_hint jq/brew install jq/' "$T_ROOT/bin/runtime-install.sh" > "$M/runtime-install.sh"
 t_eq "runtime-install.sh back on a bare brew hint (harbor#618)" "runtime-install.sh: brew" "$(uncovered "$M")"
 cp "$T_ROOT/bin/runtime-install.sh" "$M/runtime-install.sh"
-grep -v 'notify-send' "$T_ROOT/bin/pulse-notify.sh" > "$M/pulse-notify.sh"
-t_eq "pulse-notify.sh without its notify-send branch" "pulse-notify.sh: osascript" "$(uncovered "$M")"
+printf 'osascript -e x || notify-send y\n' >> "$M/pulse-notify.sh"
+t_eq "pulse-notify.sh calling osascript itself, notify-send beside it or not" "pulse-notify.sh: osascript" "$(uncovered "$M")"
 cp "$T_ROOT/bin/pulse-notify.sh" "$M/pulse-notify.sh"
+cp "$T_ROOT/bin/alert-lib.sh" "$M/alert-copy.sh"
+t_eq "the helper's code under any other name is red: the exemption is the helper, not the code" "alert-copy.sh: osascript" "$(uncovered "$M")"
+rm -f "$M/alert-copy.sh"
 grep -v '^# platform: macOS-only — ' "$T_ROOT/bin/deliver-drive.sh" > "$M/deliver-drive.sh"
 t_eq "deliver-drive.sh without its header line" "deliver-drive.sh: xattr" "$(uncovered "$M")"
+t_section "the rule itself: a planted bare call fails the linter (lint.platform-calls)"
+LR="$T_TMP/lroot"; mkdir -p "$LR/bin"; cp "$T_ROOT/bin/lint-platform.sh" "$T_ROOT/bin/alert-lib.sh" "$T_ROOT/bin/log-lib.sh" "$LR/bin/"
+printf '#!/usr/bin/env sh\necho ok\n' > "$LR/bin/clean.sh"
+_lo="$(HARBOR_ROOT="$LR" sh "$T_ROOT/bin/lint-conventions.sh" --only lint.platform-calls 2>&1)"
+t_hasnt "control: a clean bin/ with the helper in it raises nothing" "$_lo" "VIOLATION [lint.platform-calls]"
+printf 'osascript -e x\n' >> "$LR/bin/clean.sh"
+_lo="$(HARBOR_ROOT="$LR" sh "$T_ROOT/bin/lint-conventions.sh" --only lint.platform-calls 2>&1)"
+t_has "a planted osascript call is a violation naming the file" "$_lo" "VIOLATION [lint.platform-calls] bin/clean.sh: osascript"
+t_has "...and the linter exits red" "$_lo" "1 violation(s)"
 t_done
