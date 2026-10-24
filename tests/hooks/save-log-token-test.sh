@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
-# save-log-token.sh (harbor#431): the token lands 0600 under the config dir, is never printed,
-# and the clipboard is cleared. pbpaste/pbcopy are stubs, so no real clipboard is touched. The
-# fixtures are assembled at runtime: guard-egress refuses a token-shaped literal on disk.
+# save-log-token.sh (harbor#431, #1205): the token goes into the store as worklog-token, the legacy
+# plaintext file is removed, nothing is printed, and the clipboard is cleared. pbpaste/pbcopy and the
+# store are stubs, so no real clipboard or keychain is touched. The fixtures are assembled at runtime:
+# guard-egress refuses a token-shaped literal on disk.
 . "$(dirname "$0")/../lib/core.sh"; t_init
 SUBJ="$T_ROOT/bin/save-log-token.sh"; T="$T_TMP/slt"; mkdir -p "$T/cfg"
 cat > "$T_BIN/pbpaste" <<'STUB'
@@ -14,6 +15,16 @@ cat > /dev/null
 : > "$FAKE_CLIP"
 STUB
 chmod +x "$T_BIN/pbpaste" "$T_BIN/pbcopy"
+# The store stub: `put worklog-token` keeps stdin, a .refuse marker makes it refuse, `run` serves it.
+cat > "$T/secret" <<'STUB'
+#!/bin/sh
+case "$1" in
+  put) [ "$2" = worklog-token ] && [ ! -e "$FAKE_STORE.refuse" ] || exit 1; cat > "$FAKE_STORE" ;;
+  run) [ -f "$FAKE_STORE" ] || { echo "no secret named '$2'" >&2; exit 1; }; v="$(cat "$FAKE_STORE")"; export "$3=$v"; shift 4; exec "$@" ;;
+  *) exit 2 ;;
+esac
+STUB
+export HARBOR_SECRET_BIN="$T/secret" FAKE_STORE="$T/store"
 _gh='git''hub'
 GOOD="${_gh}_pat_11ABCDEFG0$(printf 'x%.0s' 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0)NOTAREAL"
 NEARMISS="${_gh}_patx_11ABCDEFG"
@@ -27,18 +38,17 @@ runit() { # <clipboard> → OUT, RC
   OUT="$(CLAUDE_CONFIG_DIR="$T/cfg" sh "$SUBJ" 2>&1)"; RC=$?
 }
 
-t_section "SLT-1 a token-shaped clipboard is saved"
+t_section "SLT-1 a token-shaped clipboard is stored as worklog-token"
 printf '%s' "$GOOD" > "$FAKE_CLIP"
 t_has "the clipboard stub serves the token the subject reads" "$(pbpaste)" "$GOOD"
+printf 'old\n' > "$TOK"
 runit "$GOOD"
 t_eq "exit" 0 "$RC"
-t_eq "the token file was written" yes "$([ -f "$TOK" ] && echo yes || echo no)"
-t_eq "the bytes written are the bytes pasted" "$GOOD" "$(cat "$TOK" 2>/dev/null)"
+t_eq "the bytes stored are the bytes pasted" "$GOOD" "$(cat "$FAKE_STORE" 2>/dev/null)"
 
-t_section "SLT-2 the token file is 0600"
-_m="$(stat -f %Lp "$TOK" 2>/dev/null || true)"  # BSD first; GNU `stat -f` prints fs fields, so re-read
-case "$_m" in ''|*[!0-7]*) _m="$(stat -c %a "$TOK" 2>/dev/null || true)" ;; esac
-t_eq "mode" 600 "$_m"
+t_section "SLT-2 no plaintext copy is left"
+t_eq "the legacy token file is removed" no "$([ -f "$TOK" ] && echo yes || echo no)"
+t_has "...and it says so" "$OUT" "plaintext file removed"
 
 t_section "SLT-3 the token never appears in the output"
 t_hasnt "the token is absent from the output" "$OUT" "$GOOD"
@@ -48,9 +58,10 @@ t_section "SLT-4 the clipboard is cleared"
 t_eq "bytes left on the clipboard" 0 "$(wc -c < "$FAKE_CLIP" | tr -d ' ')"
 
 t_section "SLT-5 a non-token clipboard is refused"
-rm -f "$TOK"
+rm -f "$TOK" "$FAKE_STORE"
 runit 'hello world, not a credential'
 t_eq "exit" 1 "$RC"
+t_eq "nothing was stored" no "$([ -f "$FAKE_STORE" ] && echo yes || echo no)"
 t_eq "nothing was written" no "$([ -f "$TOK" ] && echo yes || echo no)"
 t_has "it says NOT SAVED" "$OUT" "NOT SAVED"
 
@@ -76,14 +87,24 @@ t_eq "control: the Linux PATH has no pbpaste" "" "$(PATH="$LX" command -v pbpast
 lxrun "$GOOD"; t_eq "with no clipboard tool at all it exits 2" 2 "$RC"
 t_has "...naming the tools it looked for" "$OUT" "wl-paste"
 printf '#!/bin/sh\ncase " $* " in *" -o "*) cat "$FAKE_CLIP" ;; *) cat > /dev/null; : > "$FAKE_CLIP" ;; esac\n' > "$LX/xclip"
-chmod +x "$LX/xclip"; rm -f "$TOK"; lxrun "$GOOD"
+chmod +x "$LX/xclip"; rm -f "$FAKE_STORE"; lxrun "$GOOD"
 t_eq "xclip: exit" 0 "$RC"
-t_eq "xclip: the bytes written are the bytes pasted" "$GOOD" "$(cat "$TOK" 2>/dev/null)"
+t_eq "xclip: the bytes stored are the bytes pasted" "$GOOD" "$(cat "$FAKE_STORE" 2>/dev/null)"
 t_eq "xclip: the clipboard is cleared" 0 "$(wc -c < "$FAKE_CLIP" | tr -d ' ')"
 printf '#!/bin/sh\ncat "$FAKE_CLIP"\n' > "$LX/wl-paste"; printf '#!/bin/sh\n[ "$1" = --clear ] && : > "$FAKE_CLIP"\n' > "$LX/wl-copy"
-chmod +x "$LX/wl-paste" "$LX/wl-copy"; rm -f "$TOK" "$LX/xclip"; lxrun "$GOOD"
-t_eq "wl-clipboard: the token is saved" "$GOOD" "$(cat "$TOK" 2>/dev/null)"
+chmod +x "$LX/wl-paste" "$LX/wl-copy"; rm -f "$FAKE_STORE" "$LX/xclip"; lxrun "$GOOD"
+t_eq "wl-clipboard: the token is stored" "$GOOD" "$(cat "$FAKE_STORE" 2>/dev/null)"
 t_eq "wl-clipboard: the clipboard is cleared" 0 "$(wc -c < "$FAKE_CLIP" | tr -d ' ')"
+
+t_section "SLT-10 a refused store is a FAIL, never a fall back to the plaintext file"
+rm -f "$TOK" "$FAKE_STORE"; : > "$FAKE_STORE.refuse"
+runit "$GOOD"
+t_eq "exit" 1 "$RC"
+t_has "it says NOT SAVED" "$OUT" "NOT SAVED"
+t_eq "no plaintext file was written instead" no "$([ -f "$TOK" ] && echo yes || echo no)"
+t_eq "the clipboard is still cleared" 0 "$(wc -c < "$FAKE_CLIP" | tr -d ' ')"
+t_hasnt "the token is absent from the output" "$OUT" "$GOOD"
+rm -f "$FAKE_STORE.refuse"
 
 t_section "SLT-0 the default destination is untouched"
 t_eq "\$HOME/.claude/.helm-log-token" sentinel "$(cat "$DEFAULT")"

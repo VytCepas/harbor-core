@@ -72,6 +72,18 @@ S="$(mk core-leak)"; T="$(tgt core-leak)"
 printf 'p=%s/jdoe/x\n' /Users > "$S/docs/path.md"; ( cd "$S" && git add -A && git commit -qm p ) >/dev/null 2>&1
 t_eq "a core-pattern leak (a home path) is red as well" "1" "$(prc "$S" "$T")"
 
+t_section "a planted workload term: the domain ratchet refuses the export (harbor#1274)"
+S="$(mk domain)"; T="$(tgt domain)"
+printf 'set up quuxtool here\n' > "$S/docs/tool.md"; ( cd "$S" && git add -A && git commit -qm tool ) >/dev/null 2>&1
+t_eq "dry-run is red with one hit" "1" "$(prc "$S" --dry-run)"
+t_has "...on the ratchet's own row" "$(push "$S" --dry-run)" "FAIL: release gate · domain ratchet 0: red"
+t_eq "push is red" "1" "$(prc "$S" "$T")"
+t_has "...and says why" "$(push "$S" "$T")" "the domain ratchet is above zero"
+t_eq "...no commit in the target" "0" "$(ncommits "$T")"
+printf 'path\tterm\treason\ndocs/tool.md\tquuxtool\tharbor logic must name it\n' > "$S/CONTRACTS/domain-allow.tsv"
+( cd "$S" && git add -A && git commit -qm allow ) >/dev/null 2>&1
+t_eq "the same hit in an allow-listed path is green" "0" "$(prc "$S" --dry-run)"
+
 t_section "a dev-only file that names the secret does not block"
 S="$(mk devleak)"; T="$(tgt devleak)"
 t_eq "the fixture holds the secret in NOTES.md and EVALS-DATA" "2" "$(git -C "$S" grep -l Zorblax | wc -l | tr -d ' ')"
@@ -249,5 +261,16 @@ t_section "harbor deploy push reaches the script"
 S="$(mk disp)"; T="$(tgt disp)"
 t_eq "the dispatcher routes deploy push" "0" "$(HARBOR_BIN="$S/bin" HARBOR_ROOT="$S" HARBOR_SCOPE_PRIVATE="$PV" sh "$S/bin/harbor" deploy push "$T" >/dev/null 2>&1; echo $?)"
 t_eq "...and it wrote the snapshot" "1" "$(ncommits "$T")"
+
+t_section "--ci-base: a CI mirror's comparison base skips the two release rows, never the leak rows (harbor#1149)"
+S="$(mk cibase)"; T="$(tgt cibase)"
+printf '| | pass 1 | pass 2 | pass 3 |\n|---|---|---|---|\n| criticals | 0 | 0 | 2 |\n' > "$S/FLOOR.md"; ( cd "$S" && git add -A && git commit -qm crit ) >/dev/null 2>&1
+t_eq "a red pass table and a red redteam refuse a release" "1" "$(RTSTUB_RED=1 prc "$S" "$T")"
+t_eq "...and --ci-base writes the base anyway" "0" "$(RTSTUB_RED=1 prc "$S" --ci-base "$T")"
+t_has "...saying both rows were not run" "$(RTSTUB_RED=1 push "$S" --ci-base "$(tgt cibase2)")" "skip: release gate · redteam-corpus: not run: a CI comparison base"
+S="$(mk cibaseleak)"; T="$(tgt cibaseleak)"
+printf 'a Zorblax line\n' > "$S/docs/leak.md"; ( cd "$S" && git add -A && git commit -qm leak ) >/dev/null 2>&1
+t_eq "a leak still refuses a --ci-base" "1" "$(prc "$S" --ci-base "$T")"
+t_eq "...writing nothing" "0" "$(ncommits "$T")"
 
 t_done
