@@ -2745,8 +2745,11 @@ if [ -f "$_C8_MAN" ]; then
   # than from the 92 names: the name-driven shape is 92 × every line of every
   # file, on a linter that runs at every commit. `-print0`/`xargs -0` because a
   # path is not a word.
-  find "$ROOT/.github/workflows" "$ROOT/launchd" "$ROOT/hooks" "$ROOT/inject.d" \
+  # hooks/ prose is not a call: its READMEs quote commands for a reader (D-88, harbor#1272). inject.d keeps its .md,
+  # whose run: lines are real calls.
+  find "$ROOT/.github/workflows" "$ROOT/launchd" "$ROOT/inject.d" \
        -type f -print0 2>/dev/null > "${TMPDIR:-/tmp}/c8-surf.$$"
+  find "$ROOT/hooks" -type f ! -name '*.md' -print0 2>/dev/null >> "${TMPDIR:-/tmp}/c8-surf.$$"
   find "$ROOT/bin" -type f -name '*.sh' ! -name '*-test.sh' -print0 2>/dev/null \
        >> "${TMPDIR:-/tmp}/c8-surf.$$"
   # bin/harbor is named BY PATH: the glob above cannot see it (no extension), and it is the

@@ -46,6 +46,7 @@ managed-telemetry.sh   VERB  the operator runs it once under sudo, after collect
 managed-retention.sh   VERB  the operator runs it once under sudo: a root-owned managed setting is never written on a schedule
 standard-rename.sh     VERB  the rename codemod (harbor#996 B2): a rename wave (harbor#961) runs it once per mapping, by hand; nothing schedules a rename
 gate-codeowners.sh VERB  a person runs --write after changing the protected-paths register (harbor#1018); classify.test.sh runs --check
+deploy-hooks.sh       IDLE  the hook wiring renderer (harbor#1272 step 5); runtime-install and inject-install call it once the pilot's engines move into hooks/<engine>/ (step 6), so nothing calls it yet
 gate-register-derive.sh VERB  a person runs --write after changing an installer (harbor#1018); classify.test.sh runs --check
 gcloud-wrapper.sh      VERB  linked as ~/.local/bin/gcloud by shim-install.sh (CONTRACTS/shims.tsv, harbor#708); every `gcloud` typed on the box reaches it through PATH, which C8 does not scan
 harbor-app-install.sh  VERB  the operator types it, from a terminal only: --apply refuses inside a Claude session, so nothing a session schedules may run it (harbor#1225)
