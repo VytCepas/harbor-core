@@ -81,6 +81,20 @@ verdict="$( eval "$(sed -n '/^offsets_lock() {/,/^}/p' "$EB")"
   cat "$L.verdict" 2>/dev/null || echo stolen )"
 t_eq "the live holder keeps its lock; the waiter takes it once released" intact "$verdict"
 
+t_section "a scan that cannot get the lock prints nothing, so the retry reads each line once"
+# Forced: a live process holds the offsets lock for the whole wait. Before the fix the lines went out
+# first and the offsets never moved, so the next scan printed them again (hosted CI: 71 reads of 60).
+LB="$T_TMP/lockbus"; LO="$T_TMP/lockoff"
+HARBOR_EVENT_DIR="$LB" sh "$EB" emit test.lock l1 >/dev/null; HARBOR_EVENT_DIR="$LB" sh "$EB" emit test.lock l2 >/dev/null
+sleep 30 > /dev/null & HOLD=$!
+mkdir "$LO.lock"; echo "$HOLD" > "$LO.lock/pid"
+HARBOR_EVENT_DIR="$LB" HARBOR_EVENT_BUS_LOCK_TRIES=3 sh "$EB" since "$LO" > "$T_TMP/l1" 2>/dev/null; rc=$?
+t_eq "the locked-out scan exits 1" 1 "$rc"
+t_eq "...and prints no line" "" "$(cat "$T_TMP/l1")"
+kill "$HOLD" 2>/dev/null; wait "$HOLD" 2>/dev/null; rm -rf "$LO.lock"
+HARBOR_EVENT_DIR="$LB" sh "$EB" since "$LO" > "$T_TMP/l2"
+t_eq "the retry reads each line once" 'l1 l2 ' "$(subjects "$T_TMP/l2")"
+
 t_section "several day files, read in date order; a deleted day drops its row"
 d1="$D"
 printf '{"id":"old","ts":"t","src":"cli","kind":"test.since","subject":"yesterday"}\n' > "$T_TMP/bus/2000-01-01.jsonl"

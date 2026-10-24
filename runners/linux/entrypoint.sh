@@ -11,4 +11,16 @@ if [ ! -f .runner ]; then
     --work _work --unattended --replace
 fi
 unset RUNNER_TOKEN
+# A self-update that died between moving bin/ aside and linking the new one leaves no Runner.Listener, and the
+# restart policy turns that into a crash loop (harbor#1060, 2026-10-24: four containers, exit 127). Link the
+# newest complete bin.<version> back; a real bin/ directory is never touched.
+if [ ! -x bin/Runner.Listener ] && { [ ! -e bin ] || [ -L bin ]; }; then
+  for _d in $(ls -d bin.* 2>/dev/null | sort -t. -k2,2nr -k3,3nr -k4,4nr); do
+    [ -x "$_d/Runner.Listener" ] || continue
+    rm -f bin; ln -s "$PWD/$_d" bin
+    [ -e externals ] || [ ! -d "externals.${_d#bin.}" ] || ln -s "$PWD/externals.${_d#bin.}" externals
+    echo "entrypoint: bin/ had no Runner.Listener (an interrupted self-update); linked $_d" >&2
+    break
+  done
+fi
 exec ./run.sh
