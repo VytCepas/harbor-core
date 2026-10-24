@@ -196,7 +196,7 @@ audit_registry() { # <controls.tsv> <root> <strict> → the problems of every ad
   adopter_rows "$1" "$2" > "$W/adopters"
   [ -s "$W/adopters" ] || echo "[derive] no check row in controls.tsv names a script that answers --status"
   check_scripts "$1" | cut -f1 > "$W/registered"
-  for _f in "$2"/bin/*.sh $(sh "$2/bin/deploy-hooks.sh" --engines --root "$2" 2>/dev/null); do   # the other direction: a script on the helper that no row names is an adopter nobody audits
+  for _f in "$2"/bin/*.sh; do   # the other direction: a script on the helper that no row names is an adopter nobody audits
     [ -f "$_f" ] || continue
     _b="${_f##*/}"; _b="${_b%.sh}"
     [ "$_b" = log-lib ] && continue

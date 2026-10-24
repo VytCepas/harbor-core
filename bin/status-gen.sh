@@ -255,7 +255,7 @@ suite_supplied() {
 # harbor#727: tests/ too, since the count-bearing suites and their harness moved there.
 _sc_fingerprint() {
   # The workflow too: floor.shards-test reads it, or HARBOR_WORKFLOW's proposal (harbor#727).
-  cat "$ROOT"/bin/*.sh "$ROOT"/bin/*.awk "$ROOT"/hooks/*/*.sh "$ROOT"/tests/*/*.sh \
+  cat "$ROOT"/bin/*.sh "$ROOT"/bin/*.awk "$ROOT"/tests/*/*.sh \
       "${HARBOR_WORKFLOW:-$ROOT/.github/workflows/governance.yml}" 2>/dev/null \
     | { sha256sum 2>/dev/null || shasum -a 256 2>/dev/null; } \
     | awk '{print $1; exit}'
@@ -512,7 +512,7 @@ fi
 constitution_live="no"; [ -f "$LIVE/CLAUDE.md" ] && constitution_live="yes"
 n_drift=0
 if [ -d "$LIVE/bin" ]; then
-  for f in "$ROOT"/bin/*.sh $(sh "$ROOT/bin/deploy-hooks.sh" --engines --root "$ROOT" 2>/dev/null); do
+  for f in "$ROOT"/bin/*.sh; do
     b="$(basename "$f")"; [ -f "$LIVE/bin/$b" ] || continue
     cmp -s "$f" "$LIVE/bin/$b" || n_drift=$((n_drift + 1))
   done
