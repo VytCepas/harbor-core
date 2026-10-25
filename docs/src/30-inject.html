@@ -165,7 +165,7 @@ first fired.</p>
 claim on this page previously went further than the code and said match keyed on
 "a different command" — it never did. Fixed in
 <a href="https://github.com/VytCepas/harbor/issues/180">harbor#180</a> and pinned
-by three arms in <code>tests/hooks/inject-hook.engine-test.sh</code>: first delivery, silence on a
+by three arms in <code>hooks/injection-rule/engine.test.sh</code>: first delivery, silence on a
 repeat, and delivery for a <em>different</em> command in the same session.</p>
 </div>
 
@@ -197,7 +197,7 @@ tracked documents that discuss the attack are allowlisted, and the suite sweeps
 every tracked markdown file against that list <strong>in both directions</strong>,
 so a new false positive turns the suite red on the commit that introduces it.
 The runtime has the same property and it is not allowlisted away: reading the
-engine's own phrase list — grepping <code>bin/inject-hook.sh</code> — fires the
+engine's own phrase list — grepping <code>hooks/injection-rule/injection-rule.sh</code> — fires the
 detector, correctly by its own rule and uselessly in fact. Two loud phrases were
 already narrowed after they were found firing on <code>pytest --help</code>, two
 man pages, an OAuth client's <em>"you are now able"</em>, and a package manager's

@@ -214,7 +214,7 @@ fi
 # $STATE/ctx/<session_id> holds ctx_pct, one integer, re-scaled to CLAUDE_CODE_AUTO_COMPACT_WINDOW when that
 # is set (used_percentage is measured against the model window and stops predicting compaction once an
 # earlier window is configured). The row itself still shows the payload's own percentage, unchanged.
-# It also reads the state record bin/session-state.sh wrote at the last Stop and shows one token for it,
+# It also reads the state record hooks/session-state/session-state.sh wrote at the last Stop and shows one token for it,
 # only while the payload's prompt_id is the one the record was written for: a new prompt means the record
 # is a turn old, and a stale `? you` on a working session is a lie.
 STTOK=""
@@ -239,7 +239,7 @@ GLYPH_BRIDGE
       fi ;;
     esac
     # event.session-check's verdict (bin/session-check.sh) outlives the turn it was made in, so it is not prompt-gated:
-    # bin/session-state.sh removes it when the session leaves `done`.
+    # hooks/session-state/session-state.sh removes it when the session leaves `done`.
     _ck=""; [ ! -r "$_SDIR/sessions/$_gsid.check" ] || read -r _ck < "$_SDIR/sessions/$_gsid.check" 2>/dev/null || true
     _cktok=""; case "$_ck" in red*) _cktok="${RED}lint ✗${RST}" ;; esac
     _rf="$_SDIR/sessions/$_gsid.json"
@@ -361,7 +361,7 @@ if [ -n "$IN" ] && command -v jq >/dev/null 2>&1; then
     + (if (.context_window.used_percentage // null) == null then []
        else (.context_window.used_percentage | round) as $p
             | [ ramp3($p) + "ctx " + ($p | tostring) + "%" + $rst ] end)
-    # THE SESSION STATE (bin/session-state.sh, via the bridge above): done, waiting on you, N agents, red.
+    # THE SESSION STATE (hooks/session-state/session-state.sh, via the bridge above): done, waiting on you, N agents, red.
     + (if $st != "" then [ $st ] else [] end)
     # CACHE SHARE — cache_read / (input + cache_read + cache_creation): how much
     # of the live context came from cache instead of being re-sent.
@@ -883,13 +883,14 @@ fi
 # handoffs (`intent`, opened by `event-bus.sh emit obligation.open <slug> --data
 # '{"title":"…"}'` with no session id) and approvals. Titles are written by sessions,
 # so control characters are stripped and the text capped here as well as at the fold:
-# an escape sequence in a title must not be able to repaint this row. Overdue items
+# an escape sequence in a title must not be able to repaint this row. 40 columns each (was 90): two
+# 90-column titles pushed every alarm past the terminal's edge; the full title is in `harbor status obligations`. Overdue items
 # are red. A stale cache claims no queue at all, the rule OVERDUE already follows.
 OBLTOK=""; YOUQ=""
 if [ -f "$CACHE_DIR/status-obligations.json" ] && command -v jq >/dev/null 2>&1; then
   _ob="$(jq -r --argjson now "$NOW_EPOCH" --arg red "$RED" --arg yel "$YEL" --arg dim "$DIM" --arg rst "$RST" \
               --arg sep " $SEP " '
-      def clip: (. // "") | tostring | gsub("[[:cntrl:]]"; "") | .[0:90];
+      def clip: (. // "") | tostring | gsub("[[:cntrl:]]"; "") | if length > 40 then .[0:39] + "…" else . end;
       def col($o): if $o == true then $red else $yel end;
       ((.at // 0) | tonumber) as $at | (.live // 0 | tonumber) as $n | (.overdue // 0 | tonumber) as $od | (.overdue_since // 0 | tonumber) as $since
       | if ($now - $at) > 900 then "⧗?", "", ""
