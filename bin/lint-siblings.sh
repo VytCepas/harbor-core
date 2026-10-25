@@ -25,7 +25,8 @@ LOG_FD=2
 PAT='(~/port|[$][{]?HOME[}]?"?/port"?|[$]PORT_ROOT"?|[$][{]PORT_ROOT(:?-[^}]*)?[}]"?|[$][{]?PORT[}]?"?|[$][(][^)]*--port-root[^)]*[)]"?|/(Users|home)/[^/]+/port)/"?[A-Za-z0-9._-]+'
 files() { # file:line TAB literal, one per occurrence
   git -C "$ROOT" grep -I --untracked -n -oE -e "$PAT" -- . \
-      ':!tests/**' ':!fixtures/**' ':!EVALS-DATA/**' ':!**/tests/**' ':!**/fixtures/**' ':!**/EVALS-DATA/**' ':!skills/test-strength/targets/**' 2>/dev/null |
+      ':!tests/**' ':!fixtures/**' ':!EVALS-DATA/**' ':!**/tests/**' ':!**/fixtures/**' ':!**/EVALS-DATA/**' ':!skills/test-strength/targets/**' \
+      ':!hooks/*/*.test.sh' 2>/dev/null |  # a hook engine's tests sit in its folder (D-88)
     awk -F: '{ l = $0; sub(/^[^:]*:[^:]*:/, "", l); x = l; sub(/^.*\//, "", x); gsub(/"/, "", x)
                if (x == "harbor" || x == "harbor-private" || x == ".worktrees" || x == ".scratch" || x == "history") next
                printf "%s:%s\t%s\n", $1, $2, l }' | sort

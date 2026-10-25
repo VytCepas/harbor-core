@@ -95,6 +95,8 @@ copy_data() {
     mkdir -p "$1/$(dirname "${_dp%%:*}")"; cp "$T_ROOT/${_dp%%:*}" "$1/${_dp%%:*}"
   done
 }
+# The hook engines' folders (D-88): their bytes and manifests are payload too, so a copied checkout carries them.
+copy_hooks() { cp -R "$T_ROOT/hooks" "$1/"; }
 P2="$T/p285"; mkdir -p "$P2/.helm-pins"; printf '{}\n' > "$P2/settings.json"
 printf 'stale\n' > "$P2/.helm-pins/guard-lib.sh.sha256"
 _o285="$(ri --apply --dir "$P2" 2>&1)"
@@ -113,7 +115,7 @@ t_has "...under deploy too: nothing later re-pins it" "$(env -u CLAUDE_CONFIG_DI
 CG="$T/cg"; mkdir -p "$CG/bin" "$CG/tests/floor" "$CG/tests/lib" "$CG/CONTRACTS"
 # the whole payload (merge-stack's .py too, harbor#1060; DATA via copy_data), or the copy is a refused half install
 cp "$T_ROOT"/bin/*.sh "$T_ROOT"/bin/*.awk "$T_ROOT"/bin/*.py "$CG/bin/"; cp "$T_ROOT/tests/floor/recover-test.sh" "$CG/tests/floor/"
-cp "$T_ROOT/tests/lib/core.sh" "$CG/tests/lib/"; copy_data "$CG"
+cp "$T_ROOT/tests/lib/core.sh" "$CG/tests/lib/"; copy_data "$CG"; copy_hooks "$CG"
 sed "s/^GUARDS='.*'\$/GUARDS=''/" "$T_ROOT/bin/floor-install.sh" > "$CG/bin/floor-install.sh"
 P4="$T/p285c"; mkdir -p "$P4/.helm-pins"; printf '{}\n' > "$P4/settings.json"; printf 'stale\n' > "$P4/.helm-pins/guard-lib.sh.sha256"
 t_has "mutation: floor-install with no GUARDS brings the banner back" "$(env -u CLAUDE_CONFIG_DIR sh "$CG/bin/runtime-install.sh" --apply --dir "$P4" 2>&1)" 'will be BLOCKED: this install replaced content-pinned file(s): guard-lib.sh'
@@ -123,7 +125,7 @@ t_section "the dry-run exit rule over a regression: runtime-install and floor-in
 CB="$T/copy"; mkdir -p "$CB/bin" "$CB/tests/floor" "$CB/tests/lib"
 cp "$T_ROOT"/bin/*.sh "$T_ROOT"/bin/*.awk "$T_ROOT"/bin/*.py "$CB/bin/"
 cp "$T_ROOT/tests/floor/recover-test.sh" "$CB/tests/floor/"; cp "$T_ROOT/tests/lib/core.sh" "$CB/tests/lib/"
-copy_data "$CB"
+copy_data "$CB"; copy_hooks "$CB"
 printf '#!/bin/sh\n[ "$1" = --check ] || exit 0\nprintf "  FAIL: %%s would remove 2 installed commit(s) from %%s\\n  fix: x\\n  note: abc1234 a commit only the box has\\n" "$3" "$2"\nexit 1\n' > "$CB/bin/install-stamp.sh"
 for tool in runtime-install floor-install; do
   RD="$T/rg-$tool"; mkdir -p "$RD"; printf '{"permissions":{"deny":[]}}\n' > "$RD/settings.json"
@@ -221,6 +223,7 @@ _ssn() { jq -r '[.hooks.Stop[]?.hooks[]?.command // empty | select(contains("ses
 SS="$T/ss-on"; mkdir -p "$SS"; printf '{}' > "$SS/settings.json"; ri --apply --dir "$SS" >/dev/null 2>&1; ri --apply --dir "$SS" >/dev/null 2>&1
 t_eq "two installs wire exactly one Stop entry" 1 "$(_ssn "$SS")"
 t_eq "...and ship the hook, its library and the pattern table" yes "$([ -f "$SS/bin/session-state.sh" ] && [ -f "$SS/bin/session-react-lib.sh" ] && [ -f "$SS/bin/session-waiting.tsv" ] && echo yes || echo no)"
+t_eq "...and the banner helper the library and pulse-notify source beside them (harbor#618)" yes "$([ -f "$SS/bin/alert-lib.sh" ] && [ -f "$SS/bin/pulse-notify.sh" ] && echo yes || echo no)"
 SO="$T/ss-off"; mkdir -p "$SO"; printf '{}' > "$SO/settings.json"; : > "$SO/session-state.off"; ri --apply --dir "$SO" >/dev/null 2>&1
 t_eq "session-state.off in the config dir: not wired" 0 "$(_ssn "$SO")"
 
@@ -241,6 +244,33 @@ t_eq "two installs wire exactly one PreToolUse(Bash) entry" 1 "$(_acn "$AC")"
 t_eq "...and ship the hook" yes "$([ -f "$AC/bin/access-confinement.sh" ] && echo yes || echo no)"
 ACO="$T/ac-off"; mkdir -p "$ACO"; printf '{}' > "$ACO/settings.json"; : > "$ACO/access-confinement.off"; ri --apply --dir "$ACO" >/dev/null 2>&1
 t_eq "access-confinement.off in the config dir: not wired" 0 "$(_acn "$ACO")"
+
+t_section "harbor#1272: the engines' wiring is rendered by deploy-hooks.sh from their manifests"
+_tnn() { jq -r '[.hooks.Stop[]?.hooks[]?.command // empty | select(contains("ticket-note.sh"))] | length' "$1/settings.json"; }
+_nbind="$(grep -l '^installer	runtime-install$' "$T_ROOT"/hooks/*/manifest.tsv | xargs cat | grep -c '^wire	')"  # this installer's only
+HK="$T/hk"; mkdir -p "$HK"; printf '{}' > "$HK/settings.json"; ri --apply --dir "$HK" >/dev/null 2>&1
+t_eq "an install records every binding it wired" "$_nbind" "$(wc -l < "$HK/.harbor-hooks-wired" 2>/dev/null | tr -d ' ')"
+( jq '.hooks.Stop |= map(select([.hooks[]?.command] | any(contains("ticket-note.sh")) | not))' "$HK/settings.json" > "$HK/s" && mv "$HK/s" "$HK/settings.json" )  # a subshell: jq hashed here would answer the no-jq control below
+t_eq "CONTROL: ticket-note's entry was taken out by hand" 0 "$(_tnn "$HK")"
+t_has "the dry run says it stays out, and how to bring it back" "$(ri --dir "$HK" 2>&1)" "ticket-note.sh NOT wired: it was removed from settings.json by hand"
+ri --apply --dir "$HK" >/dev/null 2>&1
+t_eq "...and the next install leaves it out (harbor#362, for every engine)" 0 "$(_tnn "$HK")"
+HD="$T/hk-dup"; mkdir -p "$HD"; printf '{}' > "$HD/settings.json"; ri --apply --dir "$HD" >/dev/null 2>&1
+( jq --arg c "/bin/sh $HOME/.local/bin/ticket-note.sh" '.hooks.Stop += [{matcher: "", hooks: [{type: "command", command: $c}]}]' "$HD/settings.json" > "$HD/s" && mv "$HD/s" "$HD/settings.json" )
+t_eq "CONTROL: a second ticket-note entry, at another path" 2 "$(_tnn "$HD")"
+ri --apply --dir "$HD" >/dev/null 2>&1
+t_eq "an install re-renders it to the one entry the manifest wants" 1 "$(_tnn "$HD")"
+t_eq "...which runs the copy in this config dir" "/bin/sh $HD/bin/ticket-note.sh" "$(jq -r '[.hooks.Stop[]?.hooks[]?.command | select(contains("ticket-note.sh"))][0]' "$HD/settings.json")"
+CM="$T/hk-bad-src"; mkdir -p "$CM/bin" "$CM/tests/floor" "$CM/tests/lib"
+cp "$T_ROOT"/bin/*.sh "$T_ROOT"/bin/*.awk "$T_ROOT"/bin/*.py "$CM/bin/"; cp "$T_ROOT/tests/floor/recover-test.sh" "$CM/tests/floor/"
+cp "$T_ROOT/tests/lib/core.sh" "$CM/tests/lib/"; copy_data "$CM"; copy_hooks "$CM"
+printf 'bogus\tkey\n' >> "$CM/hooks/ticket-note/manifest.tsv"
+HB="$T/hk-bad"; mkdir -p "$HB"; printf '{}' > "$HB/settings.json"
+_hbo="$(env -u CLAUDE_CONFIG_DIR sh "$CM/bin/runtime-install.sh" --dir "$HB" 2>&1)"; _hbr=$?
+t_eq "a manifest that does not render refuses the dry run" 1 "$_hbr"
+t_has "...naming the manifest's defect" "$_hbo" "do not render: hooks/ticket-note/manifest.tsv"
+env -u CLAUDE_CONFIG_DIR sh "$CM/bin/runtime-install.sh" --apply --dir "$HB" >/dev/null 2>&1
+t_eq "...and --apply writes nothing to settings.json" '{}' "$(cat "$HB/settings.json")"
 
 t_section "a missing jq names the package manager of THIS OS (harbor#618)"
 . "$T_ROOT/tests/lib/linux-sim.sh"; NJ="$T/nojq-path"; linux_path "$NJ" jq uname apt-get brew

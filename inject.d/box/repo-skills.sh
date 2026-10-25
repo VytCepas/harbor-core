@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # repo-skills.sh (harbor#173 · A5) — name the repo-scoped skills a session
-# CANNOT see. Run by bin/inject-hook.sh at SessionStart with cwd = the session's
+# CANNOT see. Run by hooks/injection-rule/injection-rule.sh at SessionStart with cwd = the session's
 # repo and the hook payload on stdin, which it ignores.
 #
 # WHY ONLY THE HIDDEN ONES. A repo-scoped skill without the flag is already in

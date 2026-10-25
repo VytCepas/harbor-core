@@ -30,7 +30,7 @@ t_eq "HOST-1 5 dots and spaces are sanitized to hyphens" "my-box-two" "$(_ht - '
 # 6 · one definition: no consumer derives the token itself (code lines only, not prose about it)
 _htdup=""
 for _f in floor-observe.sh worklog-push.sh memory-harvest.sh; do
-  grep -v '^[[:space:]]*#' "$SRC/$_f" 2>/dev/null | grep -q 'hostname -s' && _htdup="$_htdup $_f"
+  grep -v '^[[:space:]]*#' "$(t_src "$_f")" 2>/dev/null | grep -q 'hostname -s' && _htdup="$_htdup $_f"
 done
 t_eq "HOST-1 6 no consumer derives the host token instead of calling floor_host_token" "" "$_htdup"
 printf '#!/bin/sh\nprintf "Pwned-Box\\n"\n' > "$HT/bin/scutil";   chmod 0755 "$HT/bin/scutil"
@@ -174,6 +174,26 @@ printf 'exit 9\n' > "$CFG/bin/spent-guard.sh"
 printf '%s' "$(bash_j 'echo hi')" | CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/floor-hook.sh" "$CFG/bin/spent-guard.sh" >/dev/null 2>&1
 t_has "O-18d the no-verdict record carries its guard and exit code" "$(olast)" '"r":"wrapper-no-verdict-spent-guard-9"'
 rm -f "$CFG/bin/spent-guard.sh"
+# O-18e: a guard whose blocked printf write a signal interrupted (bash 3.2) is re-run, at most twice.
+_eg="$CFG/bin/eintr-guard.sh"; _ec="$TMP/eintr-count"
+eintr_stub() { # <final rc> <stderr> <how many runs fail with exit 1>
+  printf 'n=$(cat "%s" 2>/dev/null || echo 0); n=$((n+1)); echo $n > "%s"\nif [ $n -le %s ]; then echo "%s" >&2; exit 1; fi\nexit %s\n' \
+    "$_ec" "$_ec" "$3" "$2" "$1" > "$_eg"
+}
+eintr_run() { printf '%s' "$(bash_j 'echo hi')" | CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/floor-hook.sh" "$_eg" >/dev/null 2>&1; echo $?; }
+_E='guard-lib.sh: line 1: printf: write error: Interrupted system call'
+otrunc; rm -f "$_ec"; eintr_stub 2 "$_E" 1
+t_eq "O-18e an EINTR exit 1 is retried and the retry's deny is the verdict" "2 2" "$(eintr_run) $(cat "$_ec")"
+t_eq "O-18e a recovered EINTR takes no ledger record at all" 0 "$(orec)"
+otrunc; rm -f "$_ec"; eintr_stub 0 "$_E" 1
+t_eq "O-18f an EINTR exit 1 is retried and the retry's allow is the verdict" "0 2" "$(eintr_run) $(cat "$_ec")"
+otrunc; rm -f "$_ec"; eintr_stub 0 "$_E" 9
+t_eq "O-18g a guard that keeps failing EINTR is denied after two retries (3 runs)" "2 3" "$(eintr_run) $(cat "$_ec")"
+t_has "O-18g the exhausted retries are recorded as no-verdict" "$(olast)" '"r":"wrapper-no-verdict-eintr-guard-1"'
+otrunc; rm -f "$_ec"; eintr_stub 0 'syntax error near unexpected token' 9
+t_eq "O-18h control: a non-EINTR exit 1 is denied with no retry" "2 1" "$(eintr_run) $(cat "$_ec")"
+t_has "O-18h control: and records wrapper-no-verdict" "$(olast)" '"r":"wrapper-no-verdict-eintr-guard-1"'
+rm -f "$_eg" "$_ec"
 # O-19 (hermeticity: no writer escapes the fixture) is ff_sealed, asserted at the end of every part.
 
 # O-20: two guards append to one file per Bash call and tool calls run in parallel.
@@ -313,7 +333,7 @@ for _p in $(cat "$OB/kid.pid"); do kill -9 "$_p" 2>/dev/null; done  # a red run 
 # O-24 is absent on purpose: the temp name embeds the writer's pid, so no fixture can plant it.
 t_exit "O-25 the INT/TERM/HUP traps exit rather than swallow the signal" 0 grep -q 'exit 143' "$SRC/floor-observe.sh"
 # O-26: worklog-push stages through an allowlist, and the ledger is not on it. Code lines only.
-_o26="$(grep -v '^[[:space:]]*#' "$SRC/worklog-push.sh" 2>/dev/null)"
+_o26="$(grep -v '^[[:space:]]*#' "$T_ROOT/hooks/worklog-push/worklog-push.sh" 2>/dev/null)"
 t_eq "O-26 worklog-push stages by allowlist, never git add -A" "stages:yes add-all:no" \
   "stages:$(_re "$_o26" 'git add') add-all:$(_re "$_o26" 'git add (-A|--all|\.)')"
 t_eq "O-26 worklog-push's code never names OBSERVABILITY (the writer's code does)" "writer:named push:none" \

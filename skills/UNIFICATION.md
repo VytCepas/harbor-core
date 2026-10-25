@@ -215,10 +215,10 @@ exists for.
 | `hooks/pre-push` | the suites `bin/suite-select.sh` selects for the pushed range |
 | `bin/govern-hook.sh` | the merge moment — the one no git hook can reach |
 | `tests/hooks/govern-hook-test.sh` | the behavioural suite; it caught a defect no unit case could |
-| `bin/inject-hook.sh` + `inject.d/` | **the vehicle, and it is now wired** — harbor#173 · A1 |
+| `hooks/injection-rule/injection-rule.sh` + `inject.d/` | **the vehicle, and it is now wired** — harbor#173 · A1 |
 
 **Two claims in this section were stale and are corrected here.** The first said
-the vehicle was an open question: it is not any more. `bin/inject-hook.sh` is one
+the vehicle was an open question: it is not any more. `hooks/injection-rule/injection-rule.sh` is one
 engine reading declarative rule packs, wired **once at the box level** by
 `harbor inject`, and it discovers each repo's packs from the session's cwd at fire
 time — so harbor, every workload repo and every repo created after this get
