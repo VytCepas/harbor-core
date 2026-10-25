@@ -176,7 +176,7 @@ repo "$HV/MEMORY"; printf 'ambient\n' > "$HV/.helm-context/probe"
 for _t in -Users-someone/aaaa-1111 -Users-someone/bbbb-2222 -private-tmp-scratch/cccc-3333; do
   printf '{"type":"x"}\n' > "$HV/projects/$_t.jsonl"
 done
-harvest() { printf '{"session_id":"probe","cwd":"%s"}' "${1:-/tmp}" | CLAUDE_CONFIG_DIR="$HV" sh "$T_ROOT/hooks/memory-harvest/memory-harvest.sh" 2>/dev/null; }
+harvest() { printf '{"session_id":"probe","cwd":"%s"}' "${1:-/tmp}" | CLAUDE_CONFIG_DIR="$HV" sh "$T_ROOT/bin/memory-harvest.sh" 2>/dev/null; }
 records() { find "$HV/MEMORY/WORK" -type f -name "${1:-*}" 2>/dev/null | wc -l | tr -d ' '; }
 wfp() { find "$HV/MEMORY/WORK" -type f | LC_ALL=C sort | while IFS= read -r p; do printf '%s %s\n' "$(wc -c < "$p" | tr -d ' ')" "$p"; done; }
 harvest
@@ -232,11 +232,11 @@ t_eq "only the prose link is reported" '["a-real-link"]' "$(sh "$LINT" --root "$
 t_section "no silent caps"
 printf 'ambient\n' > "$HV/.helm-context/probe"; rm -rf "$HV/MEMORY/WORK"
 t_has "the cap says what it dropped" \
-  "$(printf '{"session_id":"probe","cwd":"/tmp"}' | CLAUDE_CONFIG_DIR="$HV" HARBOR_HARVEST_CAP=1 sh "$T_ROOT/hooks/memory-harvest/memory-harvest.sh" 2>&1)" 'still unrecorded'
+  "$(printf '{"session_id":"probe","cwd":"/tmp"}' | CLAUDE_CONFIG_DIR="$HV" HARBOR_HARVEST_CAP=1 sh "$T_ROOT/bin/memory-harvest.sh" 2>&1)" 'still unrecorded'
 
 t_section "one writer, not two"
-t_has "worklog-push.sh writes through floor_worklog_record" "$(cat "$T_ROOT/hooks/worklog-push/worklog-push.sh")" floor_worklog_record
-t_has "memory-harvest.sh writes through floor_worklog_record" "$(cat "$T_ROOT/hooks/memory-harvest/memory-harvest.sh")" floor_worklog_record
+t_has "worklog-push.sh writes through floor_worklog_record" "$(cat "$T_ROOT/bin/worklog-push.sh")" floor_worklog_record
+t_has "memory-harvest.sh writes through floor_worklog_record" "$(cat "$T_ROOT/bin/memory-harvest.sh")" floor_worklog_record
 t_eq "the hook never blocks the session" 0 "$(harvest >/dev/null 2>&1; echo $?)"
 
 t_section "usage"

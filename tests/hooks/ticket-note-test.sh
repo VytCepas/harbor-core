@@ -2,8 +2,8 @@
 # ticket-note.sh, the Stop-hook reminder: it speaks on a GitHub ticket and stays silent on
 # the measured false positives, dedups per session, never fails the turn, and its
 # off switch works both ways (harbor#354, #362). Transcripts are fixtures written here.
-. "$(dirname "$0")/../../tests/lib/core.sh"; t_init
-TOOL="$T_ROOT/hooks/ticket-note/ticket-note.sh"
+. "$(dirname "$0")/../lib/core.sh"; t_init
+TOOL="$T_ROOT/bin/ticket-note.sh"
 T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"; CFG="$T/cfg"
 fixture() { printf '%s\n' "$2" > "$T/$1.jsonl"; }
 pay() { # <session-id> <fixture> [stop_hook_active] → the payload file

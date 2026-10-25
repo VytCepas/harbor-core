@@ -124,7 +124,7 @@ One batch is one branch (`sh bin/worktree.sh new test/667-<batch>`) and one PR. 
 - A legacy negative can be vacuous: a fixture without the needle, a variable the caller already set, a path that does not exist. The batches so far found more than a dozen, and a port must not keep them.
 - A counter incremented inside a function called as `$(…)` never counts: the subshell's variable dies with it.
 - Under /bin/sh, `case x in pat)` inside `$(…)` is a syntax error. Write `(pat)`.
-- ugrep skips a file containing a NUL byte (`hooks/failure-observe/failure-observe.sh`). Use `grep -a` or awk there.
+- ugrep skips a file containing a NUL byte (`bin/failure-observe.sh`). Use `grep -a` or awk there.
 - Never edit a suite while it runs: `sh` reads the file as it goes.
 - On a rebase, conflicts in `CONTRACTS/suites.txt`, `suite-paths.txt`, `cli.md` and `PLAN.md` are expected. Keep both sides, then rerun `plan-status.sh`. `docs/index.html` is built, not committed, so it never conflicts.
 - The floor refuses a Bash heredoc whose body mentions a document path like `~/x.pdf` (#716). Write such files with the editor tool.

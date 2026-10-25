@@ -39,7 +39,7 @@ harbor/bin/lint-conventions.sh	`[ -d ~/harbor/.git ]` is	history: Verified on th
 harbor/bin/memory-lint.sh	Measured 2026-09-21 with cwd ~/harbor	history: dated measurement
 harbor/bin/merge-check.sh	HARBOR_REPO="$HOME/harbor" sh bin/merge-check.sh --protection	history: command as run under Measured 2026-08-13
 harbor/bin/merge-check.sh	PROTECTION ABSENT  $HOME/harbor/main	history: that run's output
-harbor/hooks/session-verdicts/session-verdicts.sh	under ~/harbor/bin, all blocked under $CFG/bin	history: the measured write-shape result; the present-tense security claim was rewritten
+harbor/bin/session-verdicts.sh	under ~/harbor/bin, all blocked under $CFG/bin	history: the measured write-shape result; the present-tense security claim was rewritten
 harbor/bin/store-check.sh	Measured 2026-09-16 from ~/harbor	history: dated measurement
 harbor/bin/store-check.sh	Measured 2026-09-21 with cwd ~/harbor	history: dated measurement
 harbor/bin/worktree.sh	`~/harbor-ci` is a WORKTREE of `~/harbor`	describes a setup that no longer exists (~/harbor-ci is at neither address); a prefix rewrite would leave it half-true

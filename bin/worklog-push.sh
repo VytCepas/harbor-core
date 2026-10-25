@@ -24,7 +24,6 @@ TOKEN_FILE="${HARBOR_LOG_TOKEN_FILE:-$CFG/.helm-log-token}"
 # Stdin is read FIRST now, because the shared resolver reads .cwd from it.
 # harbor#813: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./guard-lib.sh from it.
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
-[ ! -f "$DIR/manifest.tsv" ] || DIR="$DIR/../../bin"  # D-88: in the repo an engine sits beside its manifest in hooks/<engine>/; deployed, flat beside its libraries
 . "$DIR/guard-lib.sh"
 # A Stop hook's stdout is the harness's, so its log goes to stderr (CONTRACTS/logging.md). Every
 # path still exits 0: a blocked commit is a WARN with its fix, never a blocked session.

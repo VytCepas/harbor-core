@@ -83,7 +83,7 @@ obs_safe_write() { # <path> <content>
 }
 
 # ── the host partition ──────────────────────────────────────────────────────
-# THE SAME FUNCTION as hooks/worklog-push/worklog-push.sh and hooks/memory-harvest/memory-harvest.sh call, so the
+# THE SAME FUNCTION as bin/worklog-push.sh and bin/memory-harvest.sh call, so the
 # ledgers partition identically and a cross-device merge lines up. This used to be
 # three copies of one `hostname -s` expression, which stayed byte-identical right
 # up until the value itself moved and forked all three ledgers at once — see
