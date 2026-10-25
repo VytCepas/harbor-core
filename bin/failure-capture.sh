@@ -1469,12 +1469,15 @@ fi
 # rules above. Counting it here would double-report the floor doing its job, and
 # the loudest finding in this ledger would be the control that works.
 if [ "$NTF" -gt 0 ]; then
-  jq -s -r '
+  # HORIZONED ON LAST OCCURRENCE, like FC-2 to FC-5: the ledger is bounded by bytes, not days, so a failure last seen weeks
+  # ago was still reported as current. Measured 2026-10-26: one of three live FC-10 findings had last failed on 2026-09-28.
+  jq -s -r --arg c "$FC_CUTOFF" '
       map(select(.e != "blocked" and (.h // "-") != "-"))
     | group_by(.h)
     | map({ t: .[0].t, k: .[0].k, e: .[0].e,
-            n: length, s: (map(.s) | unique | length) })
+            n: length, s: (map(.s) | unique | length), last: (map(.ts // "" | .[0:10]) | max) })
     | map(select(.n >= 3 and .s >= 2))
+    | map(select($c == "" or .last >= $c))
     | sort_by(-.n)[]
     | [.t, .k, .e, (.n|tostring), (.s|tostring)] | @tsv' \
     "$TFREC" 2>/dev/null > "$TMPD/fc10" || : > "$TMPD/fc10"
