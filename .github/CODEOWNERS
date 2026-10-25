@@ -91,6 +91,7 @@
 /bin/ci-runners-watch-lib.sh @VytCepas
 /bin/ci-runners.sh @VytCepas
 /bin/ci-verified.sh @VytCepas
+/bin/ci-wait.sh @VytCepas
 /bin/cite-verify.sh @VytCepas
 /bin/cited-paths.awk @VytCepas
 /bin/collector-check.sh @VytCepas

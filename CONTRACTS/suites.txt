@@ -250,6 +250,7 @@ tests/event/dispatch/rules.test.sh
 tests/event/dispatch/spawn.test.sh
 tests/event/dispatch/pull.test.sh
 tests/event/dispatch/registry.test.sh
+tests/event/ci/wait.test.sh
 tests/ci/merge-stack/check.test.sh
 tests/ci/merge-stack/merge.test.sh
 tests/ci/merge-stack/rehearse.test.sh
