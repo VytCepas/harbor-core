@@ -31,14 +31,9 @@ esac
 T="$(mktemp -d "${TMPDIR:-/tmp}/derive.XXXXXX")"; trap 'rm -rf "$T"' EXIT
 TAB="$(printf '\t')"
 ls "$ROOT/bin" > "$T/names"
-# A hook engine ships from its folder under its bare name (D-88): name TAB hooks/<engine>/<engine>.sh.
-for _ed in "$ROOT"/hooks/*/; do _en="${_ed%/}"; _en="${_en##*/}"; [ ! -f "$_ed$_en.sh" ] || printf '%s.sh\thooks/%s/%s.sh\n' "$_en" "$_en" "$_en"; done > "$T/engines"
-calls() { # <file> → the bin/ files and hook engines its code lines name after a `/`
+calls() { # <file> → the bin/ files its code lines name after a `/`
   sed -e 's/^[[:space:]]*#.*$//' -e 's/[[:space:]]#.*$//' "$1" | grep -oE '/[A-Za-z0-9_][A-Za-z0-9_.-]*\.(sh|awk|py|tsv|jq|mjs)' \
-    | sed 's|^/||' | sort -u | while IFS= read -r _n; do
-      if grep -qxF "$_n" "$T/names"; then printf 'bin/%s\n' "$_n"
-      else awk -F'\t' -v n="$_n" '$1 == n { print $2 }' "$T/engines"; fi
-    done
+    | sed 's|^/||' | sort -u | while IFS= read -r _n; do grep -qxF "$_n" "$T/names" || continue; printf 'bin/%s\n' "$_n"; done
 }
 conf() { awk -v k="$1" '{ sub(/(^|[ \t])#.*/, "") } $1 == k { $1 = ""; sub(/^[ \t]+/, ""); print }' "$CONF" 2>/dev/null || :; }
 
@@ -56,13 +51,6 @@ awk '/^floor_hooks\(\)/ { f = 1; next } f && /^ROWS$/ { exit } f && !/^#/ && /;/
   | tr ' ' '\n' | awk 'NF && !/^-/ { print "bin/" $0 "\twired by floor-install.sh\tinstalled" }' >> "$T/seed"
 # the gate tools themselves: what their calls reach must be protected too
 for _g in "$ROOT"/bin/gate-*.sh; do printf 'bin/%s\tthe approval gate\tinstalled\n' "${_g##*/}"; done >> "$T/seed"
-# a hook engine's manifest is its wiring: bin/deploy-hooks.sh renders a command for each wire row (D-88)
-for _m in "$ROOT"/hooks/*/manifest.tsv; do
-  [ -f "$_m" ] && grep -q '^wire	' "$_m" || continue
-  _e="${_m%/manifest.tsv}"; _e="${_e##*/}"; printf 'hooks/%s/%s.sh\twired by hooks/%s/manifest.tsv\tinstalled\n' "$_e" "$_e" "$_e"
-done >> "$T/seed"
-# a bare name that left bin/ for its engine folder is shipped from there
-awk -F'\t' -v OFS='\t' 'NR == FNR { e["bin/" $1] = $2; next } ($1 in e) { $1 = e[$1] } { print }' "$T/engines" "$T/seed" > "$T/seed2" && mv "$T/seed2" "$T/seed"
 # 3 · what the box runs from this repo OUTSIDE a session, as the operator (review finding 1): every shim whose root
 #     (CONTRACTS/roots.tsv) is this repo or under it, and both registers, which decide what ~/.local/bin points at
 _me="$(conf repo | head -1)"; _me="${_me##*/}"

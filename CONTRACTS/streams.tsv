@@ -13,7 +13,7 @@
 #   lane        the #1181 lane that moves the row onto the one system
 id	path	writer	needle	shape	retention	sensitivity	on_fail	target_on_fail	lane
 guard.decisions	MEMORY/OBSERVABILITY/<host>/guard-decisions.jsonl	bin/guard-lib.sh	guard-decisions.jsonl	{v,ts,g,d,r,s,t,h,sk}	archive	digest-only	open	spill	3
-tool.failures	MEMORY/OBSERVABILITY/<host>/tool-failures.jsonl	hooks/failure-observe/failure-observe.sh	tool-failures.jsonl	{v,ts,t,e,k,h,s,ms}	archive	digest-only	open	spill	3
+tool.failures	MEMORY/OBSERVABILITY/<host>/tool-failures.jsonl	bin/failure-observe.sh	tool-failures.jsonl	{v,ts,t,e,k,h,s,ms}	archive	digest-only	open	spill	3
 events	~/.local/state/harbor/events/YYYY-MM-DD.jsonl	bin/event-bus.sh	KEEP_DAYS	{id,ts,src,kind,subject,repo,cause,data}	prune-14d	free-text	open	spill	4
 obligations	~/.local/state/harbor/obligations/ledger.jsonl	bin/status-obligations.sh	ledger.jsonl	{ts,obligation,to,event,closed_by}	none	derived	warn	spill	4
 usage.daily	MEMORY/USAGE/<host>/usage.jsonl	bin/usage-aggregate.sh	usage.jsonl	{day,model,entry,msgs,inp,out,cc,cr}	rewrite-merge	derived	closed	spill	4

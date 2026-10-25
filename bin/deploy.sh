@@ -339,8 +339,8 @@ _preflight() {
       _bad "cannot read runtime-install's FILES, so whether it replaces a B6-pinned file is unknown" 'none: harbor#916 — bin/runtime-install.sh FILES='
     else
       for _f in $_rf; do
-        [ -f "$CFG/.helm-pins/$_f.sha256" ] && [ -f "$ROOT/$(il_src "$ROOT" "$_f")" ] || continue
-        [ "$(cat "$CFG/.helm-pins/$_f.sha256" 2>/dev/null)" = "$(_sha256 < "$ROOT/$(il_src "$ROOT" "$_f")")" ] || _pd="$_pd${_pd:+ }$_f"
+        [ -f "$CFG/.helm-pins/$_f.sha256" ] && [ -f "$ROOT/bin/$_f" ] || continue
+        [ "$(cat "$CFG/.helm-pins/$_f.sha256" 2>/dev/null)" = "$(_sha256 < "$ROOT/bin/$_f")" ] || _pd="$_pd${_pd:+ }$_f"
       done
       if [ -n "$_pd" ]; then
         _bad "runtime without floor would replace B6-pinned $_pd, and only floor-install re-pins it: the next session would be BLOCKED" \

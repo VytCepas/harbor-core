@@ -34,5 +34,5 @@ idea	HARBOR_REPO	bin/idea.sh
 memory	HARBOR_REPO	bin/memory.sh
 secret	HARBOR_REPO	bin/secret
 secret-test.sh	HARBOR_REPO	tests/cli/secret-test.sh
-ticket-note.sh	HARBOR_REPO	hooks/ticket-note/ticket-note.sh
+ticket-note.sh	HARBOR_REPO	bin/ticket-note.sh
 wait-for	HARBOR_REPO	bin/wait-for

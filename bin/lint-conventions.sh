@@ -164,7 +164,7 @@ _man_list() { grep -vE '^[[:space:]]*(#|$)' "$_MAN" 2>/dev/null; }
 # _export_tree <dev-path>...: this tree does not carry the dev layer, as far as <dev-path>... can tell (harbor#1149).
 # True when CONTRACTS/layers.tsv lists every argument as a dev row and none of them is on disk or in the index; no layers.tsv,
 # or an argument it does not list as dev, is never an export. The arguments are WITNESSES, not "any dev path", and the choice
-# is load-bearing: core tells an adopter to write HANDOFF.md (hooks/session-state/session-state.sh) and DEAD-ENDS.md (CONTRACTS/memory-format.md),
+# is load-bearing: core tells an adopter to write HANDOFF.md (bin/session-state.sh) and DEAD-ENDS.md (CONTRACTS/memory-format.md),
 # so a tree holding either is still the export and must not turn the two rules below red with a fix the export cannot run
 # (plan-status.sh needs harbor-build-tickets.md). The index counts as well as the disk, so a witness deleted from a dev
 # checkout and not yet committed stays red there. Used by the two rules whose subject is a generated dev-layer file
@@ -204,13 +204,11 @@ _installer_payload() {
     | sed -E 's#.*/##; s/"$//'
 }
 LIVEBIN="${HELM_LIVE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}/bin"
-# The repo file an installed name ships from: bin/<name>, else its hook engine folder (D-88; il_src in bin/install-lib.sh).
-_payload_src() { if [ -f "$ROOT/bin/$1" ] || [ ! -f "$ROOT/hooks/${1%.*}/$1" ]; then printf '%s' "$ROOT/bin/$1"; else printf '%s' "$ROOT/hooks/${1%.*}/$1"; fi; }
 _x7_src_is_own_dir() { # <bin-relative script> [variable, default SRC]
-  grep -qE '^'"${2:-SRC}"'="\$\(CDPATH= cd -- "\$\(dirname -- "\$0"\)" && pwd\)"' "$(_payload_src "$1")" 2>/dev/null
+  grep -qE '^'"${2:-SRC}"'="\$\(CDPATH= cd -- "\$\(dirname -- "\$0"\)" && pwd\)"' "$ROOT/bin/$1" 2>/dev/null
 }
 _x7_read_only() { # <bin-relative script> <referenced script>
-  _x7ro="$(grep -v '^[[:space:]]*#' "$(_payload_src "$1")" 2>/dev/null \
+  _x7ro="$(grep -v '^[[:space:]]*#' "$ROOT/bin/$1" 2>/dev/null \
            | grep -E '\$(SRC_DIR|SRC|DIR|CFG)(/bin)?/'"$2" || true)"
   [ -n "$_x7ro" ] || return 1
   # Any line that is not a read-tool invocation disqualifies the exemption.
@@ -1879,13 +1877,13 @@ rule "admission.exit-codes exit 2 appears only in floor_block(); every hook ends
 # both loops. A hook whose FILENAME escapes this glob is a fail-open contract
 # nothing checks: it may exit non-zero on a bad day and the harness treats that
 # as a blocked event, in a script whose entire job is to be invisible.
-for f in "$ROOT"/bin/guard-*.sh "$ROOT"/bin/annotate-web.sh "$ROOT"/hooks/memory-harvest/memory-harvest.sh; do
+for f in "$ROOT"/bin/guard-*.sh "$ROOT"/bin/annotate-web.sh "$ROOT"/bin/memory-harvest.sh; do
   [ -f "$f" ] || continue
   case "$(basename "$f")" in guard-lib.sh) continue ;; esac
   grep -nE '(^|[[:space:];&|])exit 2([[:space:]]|$)' "$f" 2>/dev/null | grep -vE '^[0-9]+: *#' | grep -q . \
     && bad admission.exit-codes "hook open-codes 'exit 2' instead of floor_block(): ${f#$ROOT/}"
 done
-for f in "$ROOT"/bin/guard-*.sh "$ROOT"/bin/annotate-web.sh "$ROOT"/hooks/worklog-push/worklog-push.sh "$ROOT"/hooks/memory-harvest/memory-harvest.sh; do
+for f in "$ROOT"/bin/guard-*.sh "$ROOT"/bin/annotate-web.sh "$ROOT"/bin/worklog-*.sh "$ROOT"/bin/memory-harvest.sh; do
   [ -f "$f" ] || continue
   case "$(basename "$f")" in guard-lib.sh) continue ;; esac
   [ "$(tail -1 "$f")" = "exit 0" ] || bad admission.exit-codes "hook does not end with 'exit 0': ${f#$ROOT/}"
@@ -2046,7 +2044,7 @@ done
 # reviewable, not correct. A stand-down that bypasses all three is invisible
 # here; M1 is what keeps marker-based stand-downs on floor_in_repo.
 rule_M2() {
-rule "scope.stand-down-declared every governed-repo stand-down in bin/ and the hook engines is declared in CONTRACTS/marker.md, and a constitutional one names its ticket (harbor#581)"
+rule "scope.stand-down-declared every governed-repo stand-down in bin/ is declared in CONTRACTS/marker.md, and a constitutional one names its ticket (harbor#581)"
 _m2_doc="$ROOT/CONTRACTS/marker.md"
 if [ ! -f "$_m2_doc" ]; then
   bad scope.stand-down-declared "CONTRACTS/marker.md is missing — no stand-down can be checked"; return 0
@@ -2056,7 +2054,7 @@ _m2_rows="${TMPDIR:-/tmp}/harbor-m2-rows.$$"; _m2_code="${TMPDIR:-/tmp}/harbor-m
 # tab is IFS whitespace and an empty cell would collapse into its neighbour.
 awk '/^## What stands down inside a governed repo/ { s = 1; next }
      s && /^## / { s = 0 }
-     s && /^\| `(bin|hooks)\// { print }' "$_m2_doc" \
+     s && /^\| `bin\// { print }' "$_m2_doc" \
   | awk -F'|' '{ for (i = 2; i <= 6; i++) { gsub(/^[ \t]+|[ \t]+$/, "", $i); gsub(/`/, "", $i) }
                  print $2 "|" $3 "|" $4 "|" $6 }' > "$_m2_rows"
 [ -s "$_m2_rows" ] \
@@ -2072,10 +2070,7 @@ _m2_shells() {
 # The code: file|fn for every call on a line that is not a comment.
 : > "$_m2_code"
 _m2_list="${TMPDIR:-/tmp}/harbor-m2-list.$$"
-_m2_eng="$(_engines)"  # the hook engines are scanned as bin/ is (D-88, harbor#1272)
-_m2_nl='
-'
-_m2_shells "$ROOT"/bin/* $_m2_eng > "$_m2_list"
+_m2_shells "$ROOT"/bin/* > "$_m2_list"
 while IFS= read -r f; do
   [ -f "$f" ] || continue
   b="$(basename "$f")"
@@ -2085,9 +2080,9 @@ while IFS= read -r f; do
     _m2_n="$(grep -E "(^|[^A-Za-z0-9_])${_m2_fn}([^A-Za-z0-9_]|\$)" "$f" 2>/dev/null \
       | grep -cvE '^[[:space:]]*#' || :)"
     [ "${_m2_n:-0}" -gt 0 ] || continue
-    printf '%s|%s\n' "${f#"$ROOT"/}" "$_m2_fn" >> "$_m2_code"
+    printf 'bin/%s|%s\n' "$b" "$_m2_fn" >> "$_m2_code"
     [ "$_m2_n" -eq 1 ] \
-      || bad scope.stand-down-declared "${f#"$ROOT"/} calls $_m2_fn $_m2_n times — a row covers one stand-down, so a second call would inherit the first one's tier; keep one call per file and function"
+      || bad scope.stand-down-declared "bin/$b calls $_m2_fn $_m2_n times — a row covers one stand-down, so a second call would inherit the first one's tier; keep one call per file and function"
   done
 done < "$_m2_list"
 while IFS='|' read -r _m2_f _m2_fn; do
@@ -2114,9 +2109,8 @@ find "$ROOT" -type f -not -path "$ROOT/bin/*" -not -path '*/.git/*' -print0 2>/d
 while IFS= read -r f; do
   # The suite that drives floor_in_repo, exempt here as it was in bin/ (harbor#727).
   case "${f#$ROOT/}" in tests/floor/marker-test.sh) continue ;; esac
-  case "$_m2_nl$_m2_eng$_m2_nl" in *"$_m2_nl$f$_m2_nl"*) continue ;; esac  # an engine, scanned above
   grep -qE '^[[:space:]]*(\.|source)[[:space:]].*guard-lib\.sh' "$f" 2>/dev/null \
-    && bad scope.stand-down-declared "${f#$ROOT/} sources guard-lib.sh from outside bin/ and the hook engines — M2 scans only those, so widen it"
+    && bad scope.stand-down-declared "${f#$ROOT/} sources guard-lib.sh from outside bin/ — M2 scans bin/ only, so widen it"
 done < "$_m2_list"
 say "  $(wc -l < "$_m2_rows" | tr -d ' ') stand-down site(s) declared, $(grep -c '|constitutional|' "$_m2_rows" || :) of them a constitutional exception."
 rm -f "$_m2_rows" "$_m2_code" "$_m2_list"
@@ -2255,11 +2249,6 @@ for _f15i in "$ROOT"/bin/*install*.sh; do
       [ -z "$_f15r" ] || printf 'inject.d/box/%s\t%s\n' "$_f15r" "${_f15i#"$ROOT"/} (box pack ${_f15p##*/})" >> "$_f15t/wired"
     done
   fi
-done
-# A hook engine's manifest is its wiring (D-88): bin/deploy-hooks.sh renders a command for each wire row.
-for _f15m in "$ROOT"/hooks/*/manifest.tsv; do
-  [ -f "$_f15m" ] && grep -q '^wire	' "$_f15m" || continue
-  _f15d="${_f15m%/manifest.tsv}"; printf '%s\t%s\n' "${_f15d#"$ROOT"/}/${_f15d##*/}.sh" "${_f15m#"$ROOT"/}" >> "$_f15t/wired"
 done
 _f15_x="$ROOT/CONTRACTS/hooks-external.tsv"
 if [ -f "$_f15_x" ]; then
@@ -4761,7 +4750,7 @@ else
   # once via REFRESH_ONLY, once via floor-install's by-name cp — and an undeduped
   # loop reported its one finding twice, which reads as two defects.
   for _t in $(_x7_payload | tr ' ' '\n' | grep . | sort -u); do
-    [ -f "$(_payload_src "$_t")" ] || continue
+    [ -f "$ROOT/bin/$_t" ] || continue
     # NOTE the single-quoted ERE. Written in double quotes, `\$` reaches grep as a
     # bare `$` — an end-of-line anchor — and the pattern silently matches nothing.
     # That false negative is how this rule first reported a clean repo it had not
@@ -4777,7 +4766,7 @@ else
     # read `$DIR` and `$SRC` only, so a call through `$SRC_DIR/` was never scanned: status-obligations.sh sat out of every payload
     # while its sibling callees were in it (harbor#1115). Same proviso as $SRC: only where it provably is the script's own dir.
     _x7_src_is_own_dir "$_t" SRC_DIR && _x7vars="${_x7vars%)}|SRC_DIR)"
-    grep -v '^[[:space:]]*#' "$(_payload_src "$_t")" 2>/dev/null \
+    grep -v '^[[:space:]]*#' "$ROOT/bin/$_t" 2>/dev/null \
       | grep -oE '\$'"$_x7vars"'(/bin)?/[a-z0-9-]+\.(sh|awk)' \
       | sed -E 's#^\$([A-Z_]+).*/#\1 #' | sort -u | while read -r _v _r; do
           [ "$_r" = "$_t" ] && continue
@@ -6672,8 +6661,6 @@ _l1_floor() { # channel 2: guard-lib.sh, or F1's mark of an installed floor file
 # harness command (not in an echoed instruction), a rule pack runs it, or it builds Claude Code hook JSON.
 _l1_harness() { # <rel>
   _l1h="${1##*/}"
-  # A hook engine is harness-run when its manifest binds it: bin/deploy-hooks.sh renders that wiring (D-88).
-  case "$1" in hooks/*/*.sh) grep -q '^wire	' "$ROOT/${1%/*}/manifest.tsv" 2>/dev/null && return 0 ;; esac
   for _l1i in "$ROOT"/bin/*install*.sh; do
     [ -f "$_l1i" ] || continue
     _l1_code "$_l1i" | grep -vE '^[[:space:]]*(echo|printf)[[:space:]]' \

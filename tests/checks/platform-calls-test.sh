@@ -21,7 +21,7 @@ for _c in alert-lib.sh:osascript:helper ci-governor.sh:notifyutil:declared deliv
   t_has "control: the derive sees ${_c%%:*}'s ${_c#*:} call (${_c##*:})" "$_called" "${_c%%:*} "
 done
 for _d in renew-check.sh session-verdicts.sh standard-rename.sh ci-governor.sh ci-governor-hook.sh deliver-drive.sh; do
-  t_has "$_d declares its macOS-only call" "$(head -n 40 "$(t_src "$_d")")" "# platform: macOS-only — "
+  t_has "$_d declares its macOS-only call" "$(head -n 40 "$T_ROOT/bin/$_d")" "# platform: macOS-only — "
 done
 
 t_section "the rule is lint.platform-calls, run by the conventions linter"

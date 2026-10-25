@@ -20,7 +20,7 @@
      WHY NOT A HOOK. Measured the same day on this box: a full run is 7 SECONDS.
      The usage plist beside this one records the identical argument at 10s —
      CONSTITUTION §2.11, a gate that makes ordinary work wait gets switched off.
-     So the job writes `<config>/.helm-judge` here, and hooks/session-verdicts/session-verdicts.sh
+     So the job writes `<config>/.helm-judge` here, and bin/session-verdicts.sh
      READS it at SessionStart in microseconds, speaking only on `crit` or on a
      cache that has stopped being written.
 

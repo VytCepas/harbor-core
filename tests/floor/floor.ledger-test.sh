@@ -30,7 +30,7 @@ t_eq "HOST-1 5 dots and spaces are sanitized to hyphens" "my-box-two" "$(_ht - '
 # 6 · one definition: no consumer derives the token itself (code lines only, not prose about it)
 _htdup=""
 for _f in floor-observe.sh worklog-push.sh memory-harvest.sh; do
-  grep -v '^[[:space:]]*#' "$(t_src "$_f")" 2>/dev/null | grep -q 'hostname -s' && _htdup="$_htdup $_f"
+  grep -v '^[[:space:]]*#' "$SRC/$_f" 2>/dev/null | grep -q 'hostname -s' && _htdup="$_htdup $_f"
 done
 t_eq "HOST-1 6 no consumer derives the host token instead of calling floor_host_token" "" "$_htdup"
 printf '#!/bin/sh\nprintf "Pwned-Box\\n"\n' > "$HT/bin/scutil";   chmod 0755 "$HT/bin/scutil"
@@ -333,7 +333,7 @@ for _p in $(cat "$OB/kid.pid"); do kill -9 "$_p" 2>/dev/null; done  # a red run 
 # O-24 is absent on purpose: the temp name embeds the writer's pid, so no fixture can plant it.
 t_exit "O-25 the INT/TERM/HUP traps exit rather than swallow the signal" 0 grep -q 'exit 143' "$SRC/floor-observe.sh"
 # O-26: worklog-push stages through an allowlist, and the ledger is not on it. Code lines only.
-_o26="$(grep -v '^[[:space:]]*#' "$T_ROOT/hooks/worklog-push/worklog-push.sh" 2>/dev/null)"
+_o26="$(grep -v '^[[:space:]]*#' "$SRC/worklog-push.sh" 2>/dev/null)"
 t_eq "O-26 worklog-push stages by allowlist, never git add -A" "stages:yes add-all:no" \
   "stages:$(_re "$_o26" 'git add') add-all:$(_re "$_o26" 'git add (-A|--all|\.)')"
 t_eq "O-26 worklog-push's code never names OBSERVABILITY (the writer's code does)" "writer:named push:none" \

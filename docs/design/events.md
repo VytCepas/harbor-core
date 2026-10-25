@@ -75,7 +75,7 @@ The suite now runs 12 writers × 50 near-cap emits, where the shell-`printf` app
 | `approval.open` | `approval.close` | the approvals queue id, `<kind>-<owner>_<name>[-<pr>]-<sha12>` (harbor#1018; emitted by `bin/gate-lib.sh`) |
 | `skill.call` | none: a point event | the skill name (harbor#1181 lane 7) |
 | `memory.read` | none: a point event | the memory note's basename, never its path (harbor#1181 lane 7) |
-| `session.state` | none: a point event, only on a change | `session_id`; `data.title` is the state (waiting-agents, waiting-operator, blocked, done, idle), `data.evidence` its reason (harbor#1043; `hooks/session-state/session-state.sh`) |
+| `session.state` | none: a point event, only on a change | `session_id`; `data.title` is the state (waiting-agents, waiting-operator, blocked, done, idle), `data.evidence` its reason (harbor#1043; `bin/session-state.sh`) |
 | `session.save-now` | none: a point event | `session_id`; `data.title` is `ctx N%` (the save-now nudge was sent) |
 | — | `git.commit`, `git.merge` | the commit sha |
 | — | `check.<id>.ran` | the check id |
@@ -96,8 +96,8 @@ without guessing. `emit` checks only the shape of a kind (dotted lower case), no
 | `bin/event-hook.sh` | `PostToolUse` on `Skill` | `skill.call` (`data` = `session_id`) | the skill name | `hook.post-tool-use` |
 | `bin/event-hook.sh` | `PostToolUse` on `Read` of `*/memory/*.md`, `MEMORY.md` or `INDEX-FULL.md` | `memory.read` (`data` = `session_id`) | the basename | `hook.post-tool-use` |
 | `bin/event-hook.sh` | `PostToolUse` on `Bash` whose command's last simple command is `gh pr create` and whose stdout ends in one github.com pull URL | `pr.opened` (`data` = `session_id`, `link`) | `<owner>/<repo>#<n>` | `hook.post-tool-use` |
-| `hooks/session-state/session-state.sh` | Claude Code `Stop`, when the session's state changed | `session.state` (`data` = `session_id`, `title`, `evidence`) | `session_id` | `hook.session-state` |
-| `hooks/session-state/session-state.sh` | Claude Code `Stop`, when `event.session-save-now` is on and the nudge is sent | `session.save-now` (`data` = `session_id`, `title`) | `session_id` | `hook.session-state` |
+| `bin/session-state.sh` | Claude Code `Stop`, when the session's state changed | `session.state` (`data` = `session_id`, `title`, `evidence`) | `session_id` | `hook.session-state` |
+| `bin/session-state.sh` | Claude Code `Stop`, when `event.session-save-now` is on and the nudge is sent | `session.save-now` (`data` = `session_id`, `title`) | `session_id` | `hook.session-state` |
 | `hooks/post-commit` | `git commit`, `--amend`, a single `cherry-pick` (not a rebase or a multi-commit sequence: those replay commits that already have an event) | `git.commit` | the new sha | `git.post-commit` |
 | `hooks/post-merge` | `git merge`, fast-forward or not (not `--squash`) | `git.merge` | the sha HEAD ends at | `git.post-merge` |
 

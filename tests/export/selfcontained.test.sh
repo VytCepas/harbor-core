@@ -75,7 +75,7 @@ t_has "...doc.paths-resolve is green again once the plants are put back" "$(lint
 t_has "...policy.constitution-paths is green again too" "$(lint policy.constitution-paths)" "$GREEN"
 
 t_section "files an adopter writes do not make the export a dev tree"
-# core tells a session to write HANDOFF.md (hooks/session-state/session-state.sh) and names DEAD-ENDS.md as the in-repo ledger
+# core tells a session to write HANDOFF.md (bin/session-state.sh) and names DEAD-ENDS.md as the in-repo ledger
 # (CONTRACTS/memory-format.md). Both are dev-layer rows, neither is a witness, and neither may turn the rules red with a
 # fix the export cannot run (plan-status.sh: "no plan at harbor-build-tickets.md").
 both() { printf '%s\n%s\n' "$(lint doc.status-generated)" "$(lint doc.plan-generated)"; }

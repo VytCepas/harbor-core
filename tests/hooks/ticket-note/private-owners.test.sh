@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 # ticket-note.sh counts a GitHub URL as the operator's ticket only under an owner it knows. Core names the
 # operator's account; every other owner is github_owners in the private layer's harbor.toml (harbor#1149).
-. "$(dirname "$0")/../../tests/lib/core.sh"; t_init
-TOOL="$T_ROOT/hooks/ticket-note/ticket-note.sh"
+. "$(dirname "$0")/../../lib/core.sh"; t_init
+TOOL="$T_ROOT/bin/ticket-note.sh"
 T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"; CFG="$T/cfg"; PV="$T/pv"; mkdir -p "$PV"
 printf '%s\n' '{"m":"see https://github.com/org-one/widget/issues/7"}' > "$T/org.jsonl"
 printf '%s\n' '{"m":"see https://github.com/VytCepas/harbor/issues/152"}' > "$T/own.jsonl"
