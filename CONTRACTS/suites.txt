@@ -117,6 +117,7 @@ tests/hooks/inject-hook.scope-test.sh
 tests/hooks/inject-hook.compaction-digest-test.sh
 tests/hooks/ticket-note-test.sh
 tests/hooks/session-title-test.sh
+tests/deploy/hooks/render.test.sh
 tests/hooks/access-confinement-test.sh
 tests/drift/confinement/compare.test.sh
 tests/admission/confinement/covered.test.sh
@@ -378,9 +379,11 @@ tests/checks/reconcile.contract-test.sh
 tests/ci/runners/scale.test.sh
 tests/standard/rename/window.test.sh
 tests/lint/name/modes.test.sh
-tests/export/licence.test.sh
+tests/export/license.test.sh
 tests/lint/share/check.test.sh
+tests/lint/wired/registered.test.sh
 tests/ci/fresh-check-test.sh
 tests/floor/git-verbs-test.sh
 tests/floor/destroy-snapshot-test.sh
 tests/ci/suite-cache/cache.test.sh
+tests/alert/lib/chain.test.sh

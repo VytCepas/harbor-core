@@ -43,6 +43,8 @@ t_init() { # [name] — defaults to the file name without .sh
   done
   # No suite drives the real Chrome: `harbor chrome attach` opens a window through AppleScript.
   HARBOR_OSASCRIPT=false; export HARBOR_OSASCRIPT
+  # No suite reads the real credential store: a store-reading tool's case brings its own stub (harbor#1205).
+  HARBOR_SECRET_BIN="$T_TMP/no-secret-store"; export HARBOR_SECRET_BIN
   T_PASS=0; T_FAIL=0; T_SEC=""; T_SEC_N=0
   _t_cfg > "$T_TMP/.cfg.before"  # the repo's shared config, before the suite touches anything (harbor#1152)
 }

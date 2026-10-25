@@ -1090,6 +1090,7 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <tr><td><code>lint.justfile-paths-resolve</code> (was S5)</td><td>every bin/ path the justfile names resolves (harbor#140)</td></tr>
 <tr><td><code>lint.exec-bit-kept</code> (was S6)</td><td>a script that was executable on the base stays executable (harbor#574)</td></tr>
 <tr><td><code>admission.kill-switch-first</code> (was F1)</td><td>every wired decider's first live line is the HELM_DISABLE_FLOOR check, or it is listed exempt with a reason (harbor#954)</td></tr>
+<tr class="advisory"><td><code>admission.wired-registered</code></td><td>every wired hook script (bin/decider-set.sh) is the engine of a standards/naming/controls.tsv row (harbor#1272) (advisory)</td></tr>
 <tr><td><code>admission.block-id</code> (was F5)</td><td>every floor_block passes a &lt;rule&gt;.&lt;shape&gt; id (harbor#41)</td></tr>
 <tr><td><code>admission.kill-switch-remedy</code> (was F16)</td><td>no floor guard prints the kill-switch as its remedy, except where it is the true one (harbor#482)</td></tr>
 <tr class="advisory"><td><code>lint.long-file-reason</code> (was G1)</td><td>files over 300 lines name their exemption reason in the header (advisory)</td></tr>
@@ -1174,6 +1175,7 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <tr><td><code>audit.finding-lanes</code> (was FL1)</td><td>finding lanes are declared once, in CONTRACTS/finding.md, and every row joins (harbor#590)</td></tr>
 <tr><td><code>lint.advisory-recorded</code> (was FL2)</td><td>every ADVISORY line in bin/lint-conventions.sh records its subject with _adv (harbor#590)</td></tr>
 <tr><td><code>lint.sibling-literals</code></td><td>occurrences of another repo's path in core only go down (CONTRACTS/lint-siblings-baseline.txt, harbor#966)</td></tr>
+<tr><td><code>lint.platform-calls</code></td><td>a bin/ script calls no bare macOS-only tool: ported, declared or in a helper (harbor#618)</td></tr>
 <tr><td><code>lint.domain</code></td><td>core files naming a workload tool only go down (CONTRACTS/lint-domain-baseline.txt, harbor#1274)</td></tr>
 <tr><td><code>doc.constitution-abstract</code></td><td>CONSTITUTION.md names no date, ticket, absolute path or workload repo (harbor#1273)</td></tr>
 <tr><td><code>lint.dev-paths</code></td><td>core code naming a dev-layer path only goes down (CONTRACTS/lint-dev-paths-baseline.txt, harbor#1275)</td></tr>
@@ -1336,6 +1338,9 @@ red under <code>standard.decision-dangling</code>.</p>
 <tr><td><code>D-85</code></td><td>Client terms leave core</td><td>accepted</td><td>2026-10-10</td><td>-</td></tr>
 <tr><td><code>D-86</code></td><td>The session family</td><td>accepted</td><td>not recorded in source</td><td>-</td></tr>
 <tr><td><code>D-87</code></td><td>The public export repo</td><td>accepted</td><td>2026-10-15</td><td>-</td></tr>
+<tr><td><code>D-88</code></td><td>A hook engine is a folder named after it</td><td>accepted</td><td>2026-10-23</td><td>-</td></tr>
+<tr><td><code>D-89</code></td><td>Two more moments: event and manual</td><td>accepted</td><td>2026-10-24</td><td>-</td></tr>
+<tr><td><code>D-90</code></td><td>Human doc kinds follow Diátaxis</td><td>accepted</td><td>2026-10-24</td><td>-</td></tr>
 </tbody></table>
 </div>
 </section>
@@ -1440,6 +1445,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/hooks/inject-hook.compaction-digest-test.sh</code></td><td><code>bin/compaction-digest.sh bin/guard-lib.sh inject.d/* tests/hooks/inject-fixture.sh tests/lib/core.sh tests/hooks/inject-hook.compaction-digest-test.sh</code></td></tr>
 <tr><td><code>tests/hooks/ticket-note-test.sh</code></td><td><code>bin/ticket-note.sh tests/hooks/ticket-note-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/hooks/session-title-test.sh</code></td><td><code>bin/session-title.sh bin/guard-selfedit.sh bin/guard-lib.sh tests/hooks/session-title-test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/deploy/hooks/render.test.sh</code></td><td><code>bin/deploy-hooks.sh bin/log-lib.sh tests/deploy/hooks/render.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/hooks/access-confinement-test.sh</code></td><td><code>bin/access-confinement.sh bin/deploy-confinement.sh tests/hooks/access-confinement-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/drift/confinement/compare.test.sh</code></td><td><code>bin/drift-confinement.sh bin/deploy-confinement.sh bin/roots.sh bin/log-lib.sh bin/floor-deny.sh bin/install-lib.sh bin/runtime-install.sh CONTRACTS/confinement-hosts.txt CONTRACTS/confinement-paths.txt CONTRACTS/helm-state.md tests/drift/confinement/compare.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/confinement/covered.test.sh</code></td><td><code>bin/* tests/lib/* tests/floor/floor-fixture.sh tests/guards/floor-fixture.sh CONTRACTS/confinement-coverage.tsv standards/naming/controls.tsv tests/admission/confinement/covered.test.sh</code></td></tr>
@@ -1609,7 +1615,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/lint/constitution/abstract.test.sh</code></td><td><code>bin/lint-constitution.sh bin/lint-conventions.sh bin/log-lib.sh CONSTITUTION.md tests/lint/constitution/abstract.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/siblings/ratchet.test.sh</code></td><td><code>bin/lint-siblings.sh bin/lint-conventions.sh bin/log-lib.sh CONTRACTS/lint-siblings-baseline.txt tests/lint/siblings/ratchet.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/session/state/stop.test.sh</code></td><td><code>bin/session-state.sh bin/guard-stop.sh bin/guard-lib.sh bin/event-bus.sh bin/log-lib.sh bin/fs-lib.sh CONTRACTS/session-waiting.tsv tests/session/state/stop.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/session/react/presets.test.sh</code></td><td><code>bin/session-*.sh bin/log-lib.sh tests/session/react/presets.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/session/react/presets.test.sh</code></td><td><code>bin/session-*.sh bin/alert-lib.sh bin/log-lib.sh tests/session/react/presets.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/status/statusline/session.test.sh</code></td><td><code>bin/fleet-glyph.sh tests/hooks/statusline* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/leaks/ratchet.test.sh</code></td><td><code>bin/lint-leaks.sh bin/lint-conventions.sh bin/log-lib.sh CONTRACTS/leak-patterns.tsv CONTRACTS/lint-leaks-baseline.txt tests/lint/leaks/ratchet.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/scope/access/resolver.test.sh</code></td><td><code>bin/roots.sh bin/guard-*.sh bin/floor-* CONTRACTS/private-layer.md tests/scope/access/resolver.test.sh tests/lib/core.sh</code></td></tr>
@@ -1628,7 +1634,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/standard/relation/graph.test.sh</code></td><td><code>bin/graph-gen.sh bin/log-lib.sh bin/roots.sh CONTRACTS/roots.tsv tests/standard/relation/graph.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/shape/validate.test.sh</code></td><td><code>bin/standard-shape.sh bin/graph-gen.sh bin/standard-catalog.sh bin/lint-conventions.sh bin/log-lib.sh bin/roots.sh CONTRACTS/roots.tsv CONTRACTS/finding.md CHECKS.md standards/naming/* fixtures/standard-shape/* tests/lint/shape/validate.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/scope/keys/read.test.sh</code></td><td><code>bin/roots.sh bin/log-lib.sh CONTRACTS/private-layer.md tests/scope/keys/read.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/scope/pack/pack.test.sh</code></td><td><code>bin/pack.sh bin/roots.sh bin/harbor bin/install-lib.sh bin/log-lib.sh bin/lint-leaks.sh CONTRACTS/leak-patterns.tsv CONTRACTS/pack.md tests/scope/pack/pack.test.sh tests/lib/core.sh tests/scope/pack/fixture.sh bin/check-registry-generate.sh CHECKS.md standards/naming/controls.tsv CONTRACTS/pack-frontmatter-keys.txt</code></td></tr>
+<tr><td><code>tests/scope/pack/pack.test.sh</code></td><td><code>bin/pack.sh bin/roots.sh bin/harbor bin/install-lib.sh bin/log-lib.sh bin/lint-leaks.sh CONTRACTS/leak-patterns.tsv CONTRACTS/pack.md tests/scope/pack/pack.test.sh tests/lib/core.sh tests/scope/pack/fixture.sh bin/check-registry-generate.sh CHECKS.md standards/naming/controls.tsv CONTRACTS/pack-frontmatter-keys.txt bin/lint-name.sh standards/naming/*</code></td></tr>
 <tr><td><code>tests/scope/pack/checks.test.sh</code></td><td><code>bin/* CONTRACTS/* CHECKS.md standards/naming/controls.tsv tests/scope/pack/checks.test.sh tests/scope/pack/fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/scope/pack/deploy.test.sh</code></td><td><code>bin/deploy.sh bin/restore.sh bin/install-lib.sh bin/log-lib.sh bin/roots.sh tests/scope/pack/deploy.test.sh tests/install/deploy-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/scope/pack/skill-book.test.sh</code></td><td><code>bin/skill-book.sh bin/pack.sh bin/roots.sh bin/harbor bin/install-lib.sh bin/log-lib.sh bin/lint-leaks.sh CONTRACTS/roots.tsv CONTRACTS/skill-book-router.tsv CONTRACTS/leak-patterns.tsv CONTRACTS/pack-frontmatter-keys.txt skills/skill-book/SKILL.md tests/scope/pack/skill-book.test.sh tests/scope/pack/fixture.sh tests/lib/core.sh</code></td></tr>
@@ -1695,12 +1701,14 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/ci/runners/scale.test.sh</code></td><td><code>bin/ci-runners.sh bin/ci-runners-*-lib.sh bin/log-lib.sh tests/ci/runners/scale.test.sh tests/ci/ci-runners-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/standard/rename/window.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/lint/name/modes.test.sh</code></td><td><code>always</code></td></tr>
-<tr><td><code>tests/export/licence.test.sh</code></td><td><code>LICENSE NOTICE SECURITY.md README.md vendor/* tests/export/licence.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/export/license.test.sh</code></td><td><code>LICENSE NOTICE SECURITY.md README.md vendor/* tests/export/license.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/share/check.test.sh</code></td><td><code>bin/lint-share.sh bin/layers.sh bin/roots.sh bin/lint-conventions.sh bin/log-lib.sh CONTRACTS/layers.tsv CONTRACTS/roots.tsv standards/naming/kinds.tsv tests/lint/share/check.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/lint/wired/registered.test.sh</code></td><td><code>bin/decider-set.sh bin/floor-install.sh bin/*-install.sh bin/lint-conventions.sh bin/log-lib.sh standards/naming/controls.tsv</code></td></tr>
 <tr><td><code>tests/ci/fresh-check-test.sh</code></td><td><code>bin/* hooks/* CONTRACTS/* STATUS.md PLAN.md docs/* skills/* .agents/* .github/CODEOWNERS standards/* tests/ci/fresh-check-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/floor/git-verbs-test.sh</code></td><td><code>bin/floor-deny.sh bin/log-lib.sh bin/install-lib.sh bin/guard-bash.sh bin/guard-destroy.sh CONTRACTS/git-verbs.md tests/floor/git-verbs-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/floor/destroy-snapshot-test.sh</code></td><td><code>bin/guard-destroy.sh bin/guard-lib.sh bin/floor-normalize.awk tests/floor/destroy-snapshot-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/ci/suite-cache/cache.test.sh</code></td><td><code>bin/suite-cache.sh bin/suite-run.sh bin/suite-select.sh bin/log-lib.sh bin/ci-governor.sh tests/ci/suite-cache/* tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/alert/lib/chain.test.sh</code></td><td><code>bin/alert-lib.sh bin/event-bus.sh bin/log-lib.sh tests/alert/lib/* tests/lib/core.sh tests/lib/linux-sim.sh</code></td></tr>
 </tbody></table>
 </div>
 
@@ -2077,6 +2085,7 @@ score a plumbing gap as a verdict on the idea.</p>
 <div class="scroll">
 <table class="grid"><thead><tr><th>Script</th><th>What it answers</th></tr></thead><tbody>
 <tr><td><code>access-confinement.sh</code></td><td>access-confinement.sh (harbor#1298, #555 decisions 7 and 8) — the PreToolUse(Bash) hook that keeps a confined</td></tr>
+<tr><td><code>alert-lib.sh</code></td><td>alert-lib.sh (harbor#618) — one desktop notification helper with a fallback chain, sourced by every notifier.</td></tr>
 <tr><td><code>ci-governor-hook.sh</code></td><td>ci-governor-hook.sh (harbor#1032) — a runner job hook: tells bin/ci-governor.sh a job started or finished.</td></tr>
 <tr><td><code>ci-governor.sh</code></td><td>ci-governor.sh (harbor#1032) — a CPU-core budget that every CI job and local suite run on this Mac goes through.</td></tr>
 <tr><td><code>ci-lost-job.sh</code></td><td>ci-lost-job.sh (harbor#675) — was this red check a job no runner ever took?</td></tr>
@@ -2361,6 +2370,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/access-environment.sh</code></td><td>access-environment.sh (harbor#561) — the repo-visibility lines of the auto-mode environment block, read from</td></tr>
 <tr><td><code>bin/access.sh</code></td><td>access.sh (harbor#1205, harbor#1149) - <code>harbor access</code>: the access register, the one list of every identity an</td></tr>
 <tr><td><code>bin/adoption-check.sh</code></td><td>adoption-check.sh (harbor#117 · A4) — every vendored asset has an intake row.</td></tr>
+<tr><td><code>bin/alert-lib.sh</code></td><td>alert-lib.sh (harbor#618) — one desktop notification helper with a fallback chain, sourced by every notifier.</td></tr>
 <tr><td><code>bin/annotate-web.sh</code></td><td>B4 (harbor#3) — PostToolUse annotator for attacker-writable content sources.</td></tr>
 <tr><td><code>bin/bootstrap.sh</code></td><td>bootstrap.sh (harbor#829) — a fresh machine to a passing deploy dry run, in one command:</td></tr>
 <tr><td><code>bin/browser-agent.sh</code></td><td>browser-agent.sh — <code>harbor chrome</code>: drive the operator's own Chrome through</td></tr>
@@ -2393,6 +2403,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/deny-hash.sh</code></td><td>M7 · DeriveDenyHashes (harbor#44) — a leak filter over the operator's OWN private</td></tr>
 <tr><td><code>bin/deploy-confinement.sh</code></td><td>CONFINEMENT INSTALL (harbor#1298, #555 P1) — the <code>sandbox</code> block of the root-owned managed-settings.json.</td></tr>
 <tr><td><code>bin/deploy-fleet.sh</code></td><td>deploy-fleet.sh (harbor#1060, harbor#1018) — the ship runner: merge and deploy opted-in fleet repos unattended,</td></tr>
+<tr><td><code>bin/deploy-hooks.sh</code></td><td>deploy-hooks.sh (harbor#1272 step 5, D-88) — a config dir's settings.json hook wiring, RENDERED from the hook engines'</td></tr>
 <tr><td><code>bin/deploy-push.sh</code></td><td>deploy-push.sh (harbor#1149, DESIGN.md v2.1) - <code>harbor deploy push</code>: share core. One snapshot commit of the core set, no history.</td></tr>
 <tr><td><code>bin/deploy.sh</code></td><td>deploy.sh (harbor#457) — install every Harbor payload onto THIS box, in the one order that works.</td></tr>
 <tr><td><code>bin/doc-refs.sh</code></td><td>doc-refs.sh (harbor#996 E1, from #1015) — every path an entry doc cites resolves, and the doc is not left behind.</td></tr>
@@ -2467,6 +2478,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/lint-leaks.sh</code></td><td>lint-leaks.sh (harbor#1149, D-79, D-85) - the leak gate: places in the tree that name a client, company, person or account.</td></tr>
 <tr><td><code>bin/lint-module.sh</code></td><td>lint-module.sh (harbor#996 C1) — the modularity lint: judges the reference graph against standards/modularity.md.</td></tr>
 <tr><td><code>bin/lint-name.sh</code></td><td>lint-name.sh (harbor#950) — the naming lint: judges names against standards/naming/*.tsv and generates its views.</td></tr>
+<tr><td><code>bin/lint-platform.sh</code></td><td>lint-platform.sh (harbor#618) — a macOS-only call in bin/ is ported, declared or in a helper, never bare.</td></tr>
 <tr><td><code>bin/lint-secrets.sh</code></td><td>lint-secrets.sh (harbor#1205) - the ratchet on credential reads that bypass bin/secret.</td></tr>
 <tr><td><code>bin/lint-share.sh</code></td><td>lint-share.sh (harbor#1274, harbor#1149, D-83) - the share check: a file lives in a share its kind may take.</td></tr>
 <tr><td><code>bin/lint-siblings.sh</code></td><td>lint-siblings.sh (harbor#966, harbor#1149) - the ratchet on occurrences of another repo's path in core.</td></tr>

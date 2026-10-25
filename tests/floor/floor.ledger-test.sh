@@ -174,6 +174,26 @@ printf 'exit 9\n' > "$CFG/bin/spent-guard.sh"
 printf '%s' "$(bash_j 'echo hi')" | CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/floor-hook.sh" "$CFG/bin/spent-guard.sh" >/dev/null 2>&1
 t_has "O-18d the no-verdict record carries its guard and exit code" "$(olast)" '"r":"wrapper-no-verdict-spent-guard-9"'
 rm -f "$CFG/bin/spent-guard.sh"
+# O-18e: a guard whose blocked printf write a signal interrupted (bash 3.2) is re-run, at most twice.
+_eg="$CFG/bin/eintr-guard.sh"; _ec="$TMP/eintr-count"
+eintr_stub() { # <final rc> <stderr> <how many runs fail with exit 1>
+  printf 'n=$(cat "%s" 2>/dev/null || echo 0); n=$((n+1)); echo $n > "%s"\nif [ $n -le %s ]; then echo "%s" >&2; exit 1; fi\nexit %s\n' \
+    "$_ec" "$_ec" "$3" "$2" "$1" > "$_eg"
+}
+eintr_run() { printf '%s' "$(bash_j 'echo hi')" | CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/floor-hook.sh" "$_eg" >/dev/null 2>&1; echo $?; }
+_E='guard-lib.sh: line 1: printf: write error: Interrupted system call'
+otrunc; rm -f "$_ec"; eintr_stub 2 "$_E" 1
+t_eq "O-18e an EINTR exit 1 is retried and the retry's deny is the verdict" "2 2" "$(eintr_run) $(cat "$_ec")"
+t_eq "O-18e a recovered EINTR takes no ledger record at all" 0 "$(orec)"
+otrunc; rm -f "$_ec"; eintr_stub 0 "$_E" 1
+t_eq "O-18f an EINTR exit 1 is retried and the retry's allow is the verdict" "0 2" "$(eintr_run) $(cat "$_ec")"
+otrunc; rm -f "$_ec"; eintr_stub 0 "$_E" 9
+t_eq "O-18g a guard that keeps failing EINTR is denied after two retries (3 runs)" "2 3" "$(eintr_run) $(cat "$_ec")"
+t_has "O-18g the exhausted retries are recorded as no-verdict" "$(olast)" '"r":"wrapper-no-verdict-eintr-guard-1"'
+otrunc; rm -f "$_ec"; eintr_stub 0 'syntax error near unexpected token' 9
+t_eq "O-18h control: a non-EINTR exit 1 is denied with no retry" "2 1" "$(eintr_run) $(cat "$_ec")"
+t_has "O-18h control: and records wrapper-no-verdict" "$(olast)" '"r":"wrapper-no-verdict-eintr-guard-1"'
+rm -f "$_eg" "$_ec"
 # O-19 (hermeticity: no writer escapes the fixture) is ff_sealed, asserted at the end of every part.
 
 # O-20: two guards append to one file per Bash call and tool calls run in parallel.

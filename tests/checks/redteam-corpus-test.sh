@@ -101,6 +101,18 @@ else
   t_fail "node is not installed here, so the ccg adapter was not exercised"
 fi
 
+t_section "parallel: RT_JOBS workers judge the shguard cases at once, and the findings equal the serial run's"
+_keep="$(cat "$G/guardfall.jsonl")"
+corpus guardfall "Block:echo $MARK" "Allow:git status" "Allow:git reset --hard" "Block:pwd" "Allow:ls" "Block:echo $MARK two"
+RT_JOBS=1 CACHEX="$T_TMP/cache-serial" run --no-refresh >/dev/null
+_serial="$(cut -f1 "$T_TMP/cache-serial/redteam/shguard.guardfall.misses" | tr '\n' ' ')"
+: > "$T_TMP/trace"
+RT_CASE_TRACE="$T_TMP/trace" RT_JOBS=4 CACHEX="$T_TMP/cache-par" run --no-refresh >/dev/null
+t_eq "4 workers, 6 cases: the first four trace lines are all starts (serial would alternate start, end)" "s s s s" "$(head -4 "$T_TMP/trace" | cut -d' ' -f1 | tr '\n' ' ' | sed 's/ $//')"
+t_eq "the findings, in case order, equal the serial run's" "$_serial" "$(cut -f1 "$T_TMP/cache-par/redteam/shguard.guardfall.misses" | tr '\n' ' ')"
+t_has "...and are non-empty, so the comparison compares something" "$_serial" "miss:1"
+printf '%s\n' "$_keep" > "$G/guardfall.jsonl"
+
 t_section "no case text anywhere: stdout, checks.log, the state files"
 t_has "every run's output was kept" "$(grep -c 'redteam-corpus: ' "$T_TMP/all.out")" "1"
 t_eq "the marker is in no output or state" "" "$(grep -rl "$MARK" "$T_TMP/all.out" "$CACHE" 2>/dev/null)"
