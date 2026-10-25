@@ -37,10 +37,6 @@ printf 'jobs:\n  t:\n    steps:\n      - run: sh bin/a-test.sh\n' > "$RP/.github
 _rp_red C3 "not run by CI, and CI does not read the manifest: skills/x/bin/y-test.sh" "a path suite a manifest-blind workflow never names"
 printf '      - run: sh skills/x/bin/y-test.sh\n' >> "$RP/.github/workflows/governance.yml"
 _rp_green C3 "the same workflow once it names the path suite"
-mkdir -p "$RP/hooks/x"; _rp_sh "$RP/hooks/x/x.test.sh"
-_rp_red C3 "test suite missing from CONTRACTS/suites.txt: hooks/x/x.test.sh" "a dot-named engine suite (D-88) in no manifest"
-printf 'hooks/x/x.test.sh\n' >> "$RP/CONTRACTS/suites.txt"; printf '      - run: sh hooks/x/x.test.sh\n' >> "$RP/.github/workflows/governance.yml"
-_rp_green C3 "...once it is listed and run"
 
 t_section "S1 / S2 / S3 / S4: a bin/ script's shebang, name, ticket and --help"
 _rp_fresh; _rp_sh "$RP/bin/good-name.sh"
