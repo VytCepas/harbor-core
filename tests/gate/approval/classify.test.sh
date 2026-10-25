@@ -157,18 +157,26 @@ t_exit "a script only a workflow the gate does not judge calls is protected: the
 rp "every workflow, not only the judged one" 's|for _wp in "\$ROOT"/.github/workflows/\*\.yml; do|for _wp in "$ROOT"/.github/workflows/public-ci.yml; do|' bin/fresh-check.sh
 
 t_section "harbor's register: every script an installer wires as a hook or statusline, and every installer"
-wired() { # the bin/ files an installer names as <dir>/bin/<file> (hooks, statusline), and floor-install's wiring table
+wired() { # what an installer wires, each as the repo file it ships from (an engine's is in its folder, D-88)
+  _wired_raw "$1" | while IFS= read -r _wp; do
+    case "$_wp" in bin/*) _wp="$(t_src "${_wp#bin/}")"; _wp="${_wp#"$T_ROOT"/}" ;; esac
+    printf '%s\n' "$_wp"
+  done
+}
+_wired_raw() { # the bin/ files an installer names as <dir>/bin/<file> (hooks, statusline), and floor-install's wiring table
   grep -ohE '\$DIR/bin/[a-z0-9_-]+\.(sh|awk|py)' "$1"/bin/*-install.sh | sed 's|\$DIR/||'
   awk '/^floor_hooks\(\)/ { f = 1; next } f && /^ROWS$/ { exit } f && !/^#/ && /;/' "$1/bin/floor-install.sh" | cut -d';' -f3 \
     | tr ' ' '\n' | grep -v '^-' | sed 's|^|bin/|'
   git -C "$1" ls-files 'bin/*-install.sh'
+  # a hook engine is wired by its manifest (D-88)
+  for _wm in "$1"/hooks/*/manifest.tsv; do [ -f "$_wm" ] || continue; _we="${_wm%/manifest.tsv}"; _we="${_we##*/}"; printf 'hooks/%s/%s.sh\n' "$_we" "$_we"; done
 }
 _w="$(wired "$T_ROOT" | sort -u)"
 t_eq "the derivation finds them (more than 30)" yes "$([ "$(printf '%s\n' "$_w" | grep -c .)" -gt 30 ] && echo yes || echo no)"
 _open="$(printf '%s\n' "$_w" | sh "$C" "$T_ROOT" | cut -f2 | sort | comm -13 - "$(printf '%s\n' "$_w" > "$T_TMP/w"; echo "$T_TMP/w")")"
 t_eq "none of them is open" "" "$_open"
 cp -R "$T_ROOT/.agents" "$T_TMP/h"; mkdir -p "$T_TMP/hr"; mv "$T_TMP/h" "$T_TMP/hr/.agents"
-grep -v '^bin/reply-shape.sh' "$T_ROOT/.agents/protected-paths.tsv" > "$T_TMP/hr/.agents/protected-paths.tsv"
+grep -v '^bin/context-resolve\.sh' "$T_ROOT/.agents/protected-paths.tsv" > "$T_TMP/hr/.agents/protected-paths.tsv"
 _open="$(printf '%s\n' "$_w" | sh "$C" "$T_TMP/hr" | cut -f2 | sort | comm -13 - "$T_TMP/w")"
-t_eq "RED-PROOF: a register missing a hook row leaves exactly that hook open" bin/reply-shape.sh "$_open"
+t_eq "RED-PROOF: a register missing a hook row leaves exactly that hook open" bin/context-resolve.sh "$_open"
 t_done

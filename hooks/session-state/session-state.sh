@@ -40,6 +40,7 @@
 set -u
 trap 'exit 0' EXIT
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
+[ ! -f "$HERE/manifest.tsv" ] || HERE="$HERE/../../bin"  # D-88: in the repo an engine sits beside its manifest in hooks/<engine>/; deployed, flat beside its libraries
 case "${1-}" in -h|--help) sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
 command -v jq >/dev/null 2>&1 || exit 0
 LC_ALL=C; export LC_ALL

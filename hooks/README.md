@@ -15,6 +15,7 @@ engine's rows in `standards/naming/controls.tsv`.
 ```
 key	value
 engine	session-title
+installer	runtime-install
 wire	UserPromptSubmit	-	5
 wire	SessionStart	-	5
 senses	the title the model wrote for this session
@@ -23,16 +24,26 @@ findings	none: it prints nothing unless a title file exists
 closer	nobody
 ```
 
-- `engine` is the folder's name. `wire` is `event`, `matcher` (`-` for every tool or source, `@derived` when the
+- `engine` is the folder's name. `installer` is the one installer that ships and wires it: each renders only its own
+  engines (`deploy-hooks.sh --installer`), so another installer's entries and derived matchers are never its business.
+  `wire` is `event`, `matcher` (`-` for every tool or source, `@derived` when the
   payload's installer computes it) and `timeout` in seconds (`-` for the harness default), one row per binding.
 - `senses`, `acts-on`, `findings` and `closer` are the engine's place in its control loop (`closer nobody` marks an
   open loop).
+- `#` lines are comments: the why of a binding (its event, its timeout) sits above the rows it explains.
 
 ## Wiring
 
-`sh bin/deploy-hooks.sh --plan ~/.claude` shows what is wired and what would change. The wiring is rendered from the
+`runtime-install.sh` copies each engine flat into `~/.claude/bin/<engine>.sh` and writes its wiring with
+`bin/deploy-hooks.sh`. `sh bin/deploy-hooks.sh --plan ~/.claude` shows what is wired and what would change. The wiring is rendered from the
 manifests, never edited by hand: `--settings` re-renders only harbor's own entries, and an engine whose entries already
 match is left as it is.
 
 **Turning one off:** `touch ~/.claude/<engine>.off`, then deploy. A binding you delete from `settings.json` by hand
-also stays deleted; `--rewire <engine>` brings it back.
+also stays deleted; add it back by hand to wire it again, and the next deploy keeps it.
+
+## Libraries
+
+An engine sources its libraries (`guard-lib.sh`, `log-lib.sh`, …) from its own directory, as every installed script
+does. Deployed, that is `~/.claude/bin/`, beside them. Run from the repo, the engine finds its `manifest.tsv` beside it
+and looks in `../../bin` instead: one line, at the place it resolves its directory.

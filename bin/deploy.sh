@@ -140,7 +140,7 @@ SNAP=''
 # runtime-install's lib/ and prod-guard-install's settings.json.bak.* were missing. A glob is allowed.
 # The install manifest joined it with Wave C (§3): a restore that put the files back and not their rows
 # would leave install-drift and skills-collide reading a record of an install that was undone.
-SNAP_SET='settings.json CLAUDE.md bin lib hooks inject.d skills skill-packs commands checks.d shims.d .harbor-packs .helm-pins .helm-floor-teeth .sec0-baseline.sha256 .helm-instructions.sha256 .helm-install-stamp .harbor-manifest settings.json.bak.*'
+SNAP_SET='settings.json CLAUDE.md bin lib hooks inject.d skills skill-packs commands checks.d shims.d .harbor-packs .harbor-hooks-wired .helm-pins .helm-floor-teeth .sec0-baseline.sha256 .helm-instructions.sha256 .helm-install-stamp .harbor-manifest settings.json.bak.*'
 B8PIN="$CFG/.helm-instructions.sha256"
 trap 'rm -rf "$WORK"' EXIT
 # A trapped INT returns to the script, so it must exit explicitly or the install carries on.
@@ -339,8 +339,8 @@ _preflight() {
       _bad "cannot read runtime-install's FILES, so whether it replaces a B6-pinned file is unknown" 'none: harbor#916 — bin/runtime-install.sh FILES='
     else
       for _f in $_rf; do
-        [ -f "$CFG/.helm-pins/$_f.sha256" ] && [ -f "$ROOT/bin/$_f" ] || continue
-        [ "$(cat "$CFG/.helm-pins/$_f.sha256" 2>/dev/null)" = "$(_sha256 < "$ROOT/bin/$_f")" ] || _pd="$_pd${_pd:+ }$_f"
+        [ -f "$CFG/.helm-pins/$_f.sha256" ] && [ -f "$ROOT/$(il_src "$ROOT" "$_f")" ] || continue
+        [ "$(cat "$CFG/.helm-pins/$_f.sha256" 2>/dev/null)" = "$(_sha256 < "$ROOT/$(il_src "$ROOT" "$_f")")" ] || _pd="$_pd${_pd:+ }$_f"
       done
       if [ -n "$_pd" ]; then
         _bad "runtime without floor would replace B6-pinned $_pd, and only floor-install re-pins it: the next session would be BLOCKED" \
