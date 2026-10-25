@@ -251,10 +251,12 @@ while IFS= read -r rel; do
     continue
   fi
 
-  # Differs from the ref. Walk that path's history for these exact bytes.
+  # Differs from the ref. Walk that path's history for these exact bytes; an engine moved into
+  # hooks/<engine>/ (D-88) also walks its old bin/ path, or every copy from before the move reads modified.
   behind=0; matched=0; older=0
-  for c in $(git -C "$REPO" rev-list "$REF" -- "$src" 2>/dev/null); do
-    hb="$(_blob_of "$c" "$src" || true)"
+  case "$src" in hooks/*) was="$rel" ;; *) was="$src" ;; esac
+  for c in $(git -C "$REPO" rev-list "$REF" -- "$src" "$was" 2>/dev/null); do
+    hb="$(_blob_of "$c" "$src" || _blob_of "$c" "$was" || true)"
     [ -n "$hb" ] || continue
     if [ "$hb" = "$live_blob" ]; then matched=1; break; fi
     if [ "$src" = "$RC_SRC" ] && _rc_older "$c" "$live_blob"; then matched=1; older=1; break; fi

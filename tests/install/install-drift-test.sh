@@ -123,4 +123,15 @@ t_eq "a clean install under --quiet prints nothing" "" "$(sh "$R/bin/install-dri
 t_eq "...and exits 0" 0 "$(sh "$R/bin/install-drift.sh" --dir "$CFG" --ref ref-main --quiet >/dev/null 2>&1; echo $?)"
 printf 'guard-a v1\n' > "$CFG/bin/guard-a.sh"
 t_has "a stale install under --quiet still reports it" "$(sh "$R/bin/install-drift.sh" --dir "$CFG" --ref ref-main --quiet 2>&1)" "  FAIL: stale guard-a.sh"
+
+t_section "an engine moved into hooks/<engine>/ keeps its history: the copy from before the move is stale (D-88)"
+reset_install; printf 'eng v1\n' > "$R/bin/eng.sh"; g add bin; g commit -qm eng-v1
+mkdir -p "$R/hooks/eng"; g mv bin/eng.sh hooks/eng/eng.sh; printf 'eng v2\n' > "$R/hooks/eng/eng.sh"; g add hooks; g commit -qm eng-moved; g branch -f ref-main HEAD
+printf 'eng v2\n' > "$CFG/bin/eng.sh"
+t_has "the moved engine's current bytes are current" "$(drift)" "current=3 stale=0 modified=0"
+printf 'eng v1\n' > "$CFG/bin/eng.sh"; out="$(drift)"
+t_has "bytes from its old bin/ path are stale" "$out" "  FAIL: stale eng.sh (installed copy is 1 commit(s) behind ref-main)"
+t_hasnt "...never modified" "$out" "modified eng.sh"
+printf 'eng v0\n' > "$CFG/bin/eng.sh"
+t_has "bytes no commit had, at either path, are still modified" "$(drift)" "  FAIL: modified eng.sh"
 t_done
