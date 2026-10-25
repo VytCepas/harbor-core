@@ -37,8 +37,8 @@ tests/guards/cloud.jsonl	gtm	guard/floor test corpus: the command or tool name i
 tests/guards/cloud.msg.jsonl	gtm	guard/floor test corpus: the command or tool name is the fixture the guard must act on
 tests/guards/exemptions.jsonl	bq	guard/floor test corpus: the command or tool name is the fixture the guard must act on
 tests/guards/guards.jsonl	bq	guard/floor test corpus: the command or tool name is the fixture the guard must act on
-tests/hooks/inject-hook.packs-test.sh	bq	guard/floor test corpus: the command or tool name is the fixture the guard must act on
-tests/hooks/inject-hook.scope-test.sh	bq	guard/floor test corpus: the command or tool name is the fixture the guard must act on
+hooks/injection-rule/packs.test.sh	bq	guard/floor test corpus: the command or tool name is the fixture the guard must act on
+hooks/injection-rule/scope.test.sh	bq	guard/floor test corpus: the command or tool name is the fixture the guard must act on
 vendor/archify/brand-marks/catalog.json	pinterest	vendored third-party brand-icon catalog; the name is an icon, not harbor workload
 vendor/archify/brand-marks/catalog.json	tiktok	vendored third-party brand-icon catalog; the name is an icon, not harbor workload
 vendor/archify/renderers/shared/generated-brand-marks.mjs	pinterest	vendored third-party brand-icon catalog; the name is an icon, not harbor workload

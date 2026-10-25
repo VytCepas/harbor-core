@@ -740,7 +740,7 @@ sufficient — a convention-shaped injection got past the full constitution 2 of
 times. E6 had separately measured that a rule delivered at the moment of action
 binds where the same rule in the prefix does not. E10 joins them: the
 constitution is untouched, and what changes is whether
-[`bin/inject-hook.sh`](./bin/inject-hook.sh)'s `injected-instruction` detector
+[`hooks/injection-rule/injection-rule.sh`](./hooks/injection-rule/injection-rule.sh)'s `injected-instruction` detector
 fires on the tool result and says so, in the turn.
 
 Four arms — and **`HOOK` alone, with no constitution at all, is the one that

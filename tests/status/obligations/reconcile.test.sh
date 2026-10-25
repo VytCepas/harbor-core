@@ -201,7 +201,9 @@ case_lapsed() { X="$1"; fresh
   : > "$FIX/tr/p/S1.jsonl"; touch_at "$((DL - 3600))" "$FIX/tr/p/S1.jsonl"
   : > "$FIX/tr/p/S4.jsonl"; touch_at "$((DL + 3600))" "$FIX/tr/p/S4.jsonl"
   : > "$FIX/tr/p/S7.jsonl"; touch_at "$((DL - 3600))" "$FIX/tr/p/S7.jsonl"
+  ev 2026-10-04T00:00:00Z tool.background.start S8:T '{"tool":"CronCreate"}'; : > "$FIX/tr/p/S8.jsonl"; touch_at "$((DL - 86400 + 3600))" "$FIX/tr/p/S8.jsonl"
   printf '[{"sessionId":"S6","pid":1}]' > "$FIX/sessions.json"; printf '[]' > "$FIX/agents.json"; rec >/dev/null
+  chk "a dead owner that wrote after the deadline but has been quiet 24h+: abandoned" abandoned "$(cur tool.background:S8:T state)"
   chk "a Workflow past its deadline, owner dead, transcript quiet since: abandoned" abandoned "$(cur tool.background:S1:T state)"
   chk "by reconcile" reconcile "$(cur tool.background:S1:T closed_by)"
   chk "the ledger names the owner-session source" owner-session "$(jq -r 'select(.obligation == "tool.background:S1:T" and .to == "abandoned") | .source' "$OB/ledger.jsonl")"
@@ -237,8 +239,9 @@ case_approval_silent() { X="$1"; fresh
 t_section "owner-session: a Workflow whose dead owner is quiet past its deadline is abandoned"
 t_eq "the real script" ok "$(case_lapsed "$BIN")"
 redproof "outlives never lapses" case_lapsed '(($r.outlives | not) or lapsed($r))' '(($r.outlives | not))'
-redproof "lapse ignores the owner's last write" case_lapsed '<= ($r.deadline_ts | fromdateiso8601);' '<= $now;'
+redproof "lapse ignores the owner's last write" case_lapsed '$w <= ($r.deadline_ts | fromdateiso8601) or' '$w <= $now or'
 redproof "lapse ignores the deadline" case_lapsed '$r.deadline_ts != "" and ($r.deadline_ts | fromdateiso8601) < $now' '$r.deadline_ts != ""'
+redproof "quiet owner never lapses" case_lapsed '$now - $w >= $quiet' 'false'
 redproof "transcripts are never read" case_lapsed '_tm="$(fs_mtime "$_tf")"; [ -z "$_tm" ]' '_tm=""; [ -z "$_tm" ]'
 
 t_section "approval: a merged or closed PR closes the approval waiting on it"
