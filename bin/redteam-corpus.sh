@@ -249,7 +249,10 @@ EOF
 }
 
 # ── the delta against the previous run's state, its ages, and the line each corpus leaves in checks.log ──
-NEWALL=0; UNALL=0
+NEWALL=0; UNALL=0; NEWUN=0
+unacc() { # <corpus>, ids on stdin -> how many the baseline does not accept
+  while IFS= read -r _id; do rows "$BASELINE" | cut -f1-2 | grep -qxF "$1	$_id" || echo x; done | wc -l | tr -d ' '
+}
 record() { # <corpus> <status> <total> [reason]
   _f="$STATE/$(printf '%s' "$1" | tr '/' '.').misses"
   if [ "$2" != ok ]; then
@@ -262,12 +265,13 @@ record() { # <corpus> <status> <total> [reason]
   # FILENAME, not NR == FNR: with no previous state the first file is empty and NR == FNR would hold for the second.
   awk -F'\t' -v now="$NOW" -v pf="$_f" 'FILENAME == pf { seen[$1] = $2; next }
       { print $1 "\t" (($1 in seen) ? seen[$1] : now) }' "$_f" "$TMP/cur.found" > "$_f.tmp"
-  _new="$(awk -F'\t' -v pf="$_f" 'FILENAME == pf { p[$1]; next } !($1 in p)' "$_f" "$_f.tmp" | wc -l | tr -d ' ')"
+  awk -F'\t' -v pf="$_f" 'FILENAME == pf { p[$1]; next } !($1 in p) { print $1 }' "$_f" "$_f.tmp" > "$TMP/new.ids"
+  _new="$(wc -l < "$TMP/new.ids" | tr -d ' ')"; _nu="$(unacc "$1" < "$TMP/new.ids")"
   _clr="$(awk -F'\t' -v pf="$_f.tmp" 'FILENAME == pf { p[$1]; next } !($1 in p)' "$_f.tmp" "$_f" | wc -l | tr -d ' ')"
   mv -f "$_f.tmp" "$_f"
   _mis="$(grep -c '^miss:' "$_f" || :)"; _fp="$(grep -c '^fp:' "$_f" || :)"
   _old="$(cut -f2 "$_f" | sort -n | head -1)"
-  _un="$(cut -f1 "$_f" | while IFS= read -r _id; do rows "$BASELINE" | cut -f1-2 | grep -qxF "$1	$_id" || echo x; done | wc -l | tr -d ' ')"
+  _un="$(cut -f1 "$_f" | unacc "$1")"
   printf '%s\tok\t%s\t%s\t%s\t%s\t%s\t%s\t\n' "$1" "$3" "$_mis" "$_fp" "$_new" "$_clr" "${_old:--}" >> "$TMP/last.tsv"
   _oa=''; [ -z "$_old" ] || _oa=" oldest=$(age $((NOW - _old)))"
   printf '[check:redteam-corpus] %s %s new=%s cleared=%s standing=%s of %s unaccepted=%s%s\n' \
@@ -275,7 +279,7 @@ record() { # <corpus> <status> <total> [reason]
   _line="$1: $_mis miss(es), $_fp false positive(s) of $3; new $_new, cleared $_clr, $_un not accepted$_oa"
   if [ "$_un" = 0 ]; then log_ok "$_line"
   else log_fail "$_line"; log_fix "$SELFCMD --print; adjudicate each on harbor#1313, fixed and pinned or accepted in CONTRACTS/redteam-baseline.tsv"; fi
-  NEWALL=$((NEWALL + _new)); UNALL=$((UNALL + _un))
+  NEWALL=$((NEWALL + _new)); UNALL=$((UNALL + _un)); NEWUN=$((NEWUN + _nu))
 }
 
 score() { # <corpus> <total-or-error>
@@ -301,10 +305,15 @@ else : > "$TMP/cur.found"; score ccg "$(run_ccg "$CORPDIR/ccg")"; fi
 
 mv -f "$TMP/last.tsv" "$STATE/last.tsv"
 EB="$ROOT/bin/event-bus.sh"
-if [ "$NEWALL" -gt 0 ]; then
+# The bus speaks for the live box, so only a run on the live state talks to it (or one handed a bus): a benchmark on
+# a scratch cache read all 453 accepted findings as new and opened a handoff on the operator's row.
+_live="$(CDPATH= cd -- "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/cache" 2>/dev/null && pwd -P)" || _live=""
+_this="$(CDPATH= cd -- "$CACHE_DIR" 2>/dev/null && pwd -P)" || _this=""
+if [ -z "${HARBOR_EVENT_DIR:-}" ] && { [ -z "$_live" ] || [ "$_this" != "$_live" ]; }; then :
+elif [ "$NEWUN" -gt 0 ]; then  # an accepted finding is already adjudicated: nothing waits on the operator
   sh "$EB" emit obligation.open redteam-corpus --src redteam-corpus \
-    --data "$(jq -nc --arg n "$NEWALL" --arg d "$((NOW + 604800))" \
-      '{title: ("redteam-corpus: " + $n + " new miss(es) or false positive(s), harbor#1313"), deadline_ts: $d}')" >/dev/null 2>&1 || :
+    --data "$(jq -nc --arg n "$NEWUN" --arg d "$((NOW + 604800))" \
+      '{title: ("redteam-corpus: " + $n + " new to adjudicate, harbor#1313"), deadline_ts: $d}')" >/dev/null 2>&1 || :
   # a week, the check's own cadence: the default 24 h turned an adjudication in progress into an OVERDUE alarm
 elif [ "$UNALL" = 0 ]; then
   sh "$EB" emit obligation.close redteam-corpus --src redteam-corpus >/dev/null 2>&1 || :

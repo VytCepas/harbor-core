@@ -883,13 +883,14 @@ fi
 # handoffs (`intent`, opened by `event-bus.sh emit obligation.open <slug> --data
 # '{"title":"…"}'` with no session id) and approvals. Titles are written by sessions,
 # so control characters are stripped and the text capped here as well as at the fold:
-# an escape sequence in a title must not be able to repaint this row. Overdue items
+# an escape sequence in a title must not be able to repaint this row. 40 columns each (was 90): two
+# 90-column titles pushed every alarm past the terminal's edge; the full title is in `harbor status obligations`. Overdue items
 # are red. A stale cache claims no queue at all, the rule OVERDUE already follows.
 OBLTOK=""; YOUQ=""
 if [ -f "$CACHE_DIR/status-obligations.json" ] && command -v jq >/dev/null 2>&1; then
   _ob="$(jq -r --argjson now "$NOW_EPOCH" --arg red "$RED" --arg yel "$YEL" --arg dim "$DIM" --arg rst "$RST" \
               --arg sep " $SEP " '
-      def clip: (. // "") | tostring | gsub("[[:cntrl:]]"; "") | .[0:90];
+      def clip: (. // "") | tostring | gsub("[[:cntrl:]]"; "") | if length > 40 then .[0:39] + "…" else . end;
       def col($o): if $o == true then $red else $yel end;
       ((.at // 0) | tonumber) as $at | (.live // 0 | tonumber) as $n | (.overdue // 0 | tonumber) as $od | (.overdue_since // 0 | tonumber) as $since
       | if ($now - $at) > 900 then "⧗?", "", ""

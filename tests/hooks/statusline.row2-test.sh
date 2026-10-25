@@ -171,6 +171,9 @@ O="$(youraw "{$WS}")"
 t_has "control: the cache title does carry the escape sequence" "$(jq -r '.you[0].t' "$CFG/cache/status-obligations.json")" "${ESC}[31mPAINTED"
 t_hasnt "a control character in a title never reaches the terminal" "$O" "${ESC}[31mPAINTED"
 t_has "the text around it survives" "$(youw)" "x[31mPAINTED"
+oq "$_now" '[{"k":"intent","o":false,"t":"Ask Claude Primary Owner: Team or Enterprise? + one single-day spend export"},{"k":"intent","o":false,"t":"exactly forty columns of handoff title k"}]'
+t_eq "a title over 40 columns is cut to 39 and an ellipsis; one of exactly 40 is whole" \
+  "Ask Claude Primary Owner: Team or Enter… │ exactly forty columns of handoff title k" "$(youw)"
 oq "$((_now - 901))" '[{"k":"pr","o":false,"t":"harbor#1263"}]'
 t_eq "a stale cache claims no queue" "" "$(youw)"
 oq "$_now" '"not a list"'
