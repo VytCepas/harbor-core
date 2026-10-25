@@ -7220,61 +7220,6 @@ done < "$_do.out"
 rm -f "$_do.recs" "$_do.cites" "$_do.cited" "$_do.allow" "$_do.out"
 }
 
-# ── event.kind-registered · the event bus has one register of kinds, and nothing waits on silence ──
-# The presets event.pulse and event.fleet-snapshot listened for ci.job.done while nothing emitted it, and pr.merged had
-# no producer either: the kinds were a prose table, and no rule could say a listener waits on a kind nobody emits
-# (harbor#1367). CONTRACTS/event-kinds.tsv is the register; this holds it to the code in both directions.
-rule_event_kind_registered() {
-rule "event.kind-registered every event kind is a row of CONTRACTS/event-kinds.tsv, its emitter names it, and no preset waits on a kind nothing emits (harbor#1367)"
-_ekf="$ROOT/CONTRACTS/event-kinds.tsv"
-[ -f "$_ekf" ] || { bad event.kind-registered "CONTRACTS/event-kinds.tsv is missing: the register of event kinds"; return 0; }
-_ek="${TMPDIR:-/tmp}/ek.$$"
-awk -F'\t' '!/^#/ && NF && $1 != "kind" { print $1 "\t" $4 }' "$_ekf" > "$_ek.reg"
-cut -f1 "$_ek.reg" | LC_ALL=C sort -u > "$_ek.kinds"
-# The row names a file that emits it, and that file names the kind: a register row with no producer is the defect.
-while IFS="$(printf '\t')" read -r _ekk _eke; do
-  [ -n "$_ekk" ] && [ "$_eke" != - ] || continue
-  for _ekp in $_eke; do
-    if [ ! -f "$ROOT/$_ekp" ]; then bad event.kind-registered "$_ekk: its emitter $_ekp does not exist" "CONTRACTS/event-kinds.tsv"
-    elif ! grep -Fq -- "$_ekk" "$ROOT/$_ekp"; then bad event.kind-registered "$_ekk: its emitter $_ekp never names it" "$_ekp"; fi
-  done
-done < "$_ek.reg"
-# Every kind the code emits by name is registered.
-{ find "$ROOT/bin" "$ROOT/hooks" -type f \( -name '*.sh' -o ! -name '*.*' \) 2>/dev/null || :; } | while IFS= read -r _ekf2; do
-  # A word of its own: harbor_emit (stream-lib.sh) writes a telemetry stream, not a bus event.
-  grep -oE '(^|[^A-Za-z0-9_])(emit|emit_event|hook_event) "?[a-z][a-z0-9_-]*(\.[a-z0-9_-]+)+' "$_ekf2" 2>/dev/null \
-    | sed -E 's/^[^a-z]*//; s/^[a-z_]+ "?//' | while IFS= read -r _ekk; do
-        grep -Fxq -- "$_ekk" "$_ek.kinds" || printf '%s\t%s\n' "${_ekf2#"$ROOT"/}" "$_ekk"
-      done
-done | LC_ALL=C sort -u > "$_ek.emitted"
-while IFS="$(printf '\t')" read -r _ekp _ekk; do
-  [ -n "$_ekk" ] && bad event.kind-registered "$_ekp emits $_ekk, which CONTRACTS/event-kinds.tsv does not register" "$_ekp"
-done < "$_ek.emitted"
-# Every kind a preset or an obligation names is registered, and a preset never listens for a kind nothing emits.
-_ek_kinds_of() { # <pattern> → one kind per line: `"kind":"(a\.b|c\.d)"` or `a\.b|c\.d`
-  printf '%s\n' "$1" | sed -e 's/.*"kind":"//' -e 's/".*//' -e 's/[()]//g' -e 's/\\//g' | tr '|' '\n' | grep -E '^[a-z][a-z0-9_.-]*$' || :
-}
-# The pipes below run in subshells, so findings go to a file and bad() runs in this shell.
-for _ekt in event-rules obligation-kinds; do
-  [ -f "$ROOT/CONTRACTS/$_ekt.tsv" ] || continue
-  awk -F'\t' -v t="$_ekt" '!/^#/ && NF && $1 != "kind" { if (t == "event-rules") print $1 "\t" $2; else { print $1 "\t" $2; print $1 "\t" $3 } }' \
-    "$ROOT/CONTRACTS/$_ekt.tsv" | while IFS="$(printf '\t')" read -r _ekid _ekpat; do
-      [ "$_ekpat" != - ] || continue
-      _ek_kinds_of "$_ekpat" | while IFS= read -r _ekk; do
-        if ! grep -Fxq -- "$_ekk" "$_ek.kinds"; then
-          printf 'CONTRACTS/%s.tsv\tCONTRACTS/%s.tsv %s names %s, which CONTRACTS/event-kinds.tsv does not register\n' "$_ekt" "$_ekt" "$_ekid" "$_ekk"
-        elif [ "$_ekt" = event-rules ] && [ "$(awk -F'\t' -v k="$_ekk" '$1 == k { print $2; exit }' "$_ek.reg")" = - ]; then
-          printf 'CONTRACTS/event-rules.tsv\tCONTRACTS/event-rules.tsv %s listens for %s, which nothing on this box emits\n' "$_ekid" "$_ekk"
-        fi
-      done
-    done
-done | LC_ALL=C sort -u > "$_ek.refs"
-while IFS="$(printf '\t')" read -r _ekp _ekm; do
-  [ -n "$_ekm" ] && bad event.kind-registered "$_ekm" "$_ekp"
-done < "$_ek.refs"
-rm -f "$_ek.reg" "$_ek.kinds" "$_ek.emitted" "$_ek.refs"
-}
-
 # ── the dispatcher ───────────────────────────────────────────────────────────
 # THE ORDER IS DERIVED, NOT DECLARED (harbor#537, DOCTRINE/doc-truth.md). A
 # hand-written registry of 78 ids is a copy, and a copy that drops one entry

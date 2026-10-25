@@ -36,30 +36,36 @@ t_has "a session.save-now event is logged under its rule id" "$(cat "$ST/reactio
 reset; fire "$(ev session.state abcdef123 done)" session-save-now.sh; t_eq "a session.state event: nothing logged" no "$([ -e "$ST/reactions.log" ] && echo yes || echo no)"
 t_eq "it sends no banner" "" "$(banners)"
 
-t_section "session-ci-watch: a detached ci-wait on a validated PR link, then one verdict (harbor#1367)"
-cat > "$T/ci-wait.sh" <<'STUB'
-printf '%s\n' "$*" > "$HARBOR_STATUS_DIR/ci-wait.args"
-echo "acme/widgets#9: stub"; exit "${CW_RC:-0}"
+t_section "session-ci-watch: a detached wait-for on a validated PR link, then one verdict"
+cat > "$T_BIN/wait-for" <<'STUB'
+#!/bin/sh
+printf '%s\n' "$*" > "$HARBOR_STATUS_DIR/wait-for.args"
+exit "${WF_RC:-0}"
 STUB
-export HARBOR_SESSION_CI_WAIT="$T/ci-wait.sh"
+cat > "$T_BIN/gh" <<'STUB'
+#!/bin/sh
+cat "$HARBOR_STATUS_DIR/gh.out"
+STUB
+chmod +x "$T_BIN/wait-for" "$T_BIN/gh"
+export HARBOR_SESSION_WAIT_FOR="$T_BIN/wait-for"
 LINK=https://github.com/acme/widgets/pull/9
-reset; rm -f "$ST/ci-wait.args"; fire "$(ev pr.opened abcdef123 '' "$LINK")" session-ci-watch.sh; wait_banner
+reset; rm -f "$ST/wait-for.args"; printf 'pass\n' > "$ST/gh.out"; fire "$(ev pr.opened abcdef123 '' "$LINK")" session-ci-watch.sh; wait_banner
 t_eq "the handler returns at once, exit 0" 0 "$RC"
-t_eq "ci-wait was given the PR and the deadline" "acme/widgets#9 --timeout 1800" "$(cat "$ST/ci-wait.args")"
-t_has "green (exit 0): the banner says so" "$(banners)" "checks green|PR #9"
-t_has "...and the log carries ci-wait's own line" "$(cat "$ST/reactions.log")" "acme/widgets#9: stub"
-for c in "1 checks red" "3 still running" "4 checks unreadable"; do
-  reset; CW_RC="${c%% *}" fire "$(ev pr.opened abcdef123 '' "$LINK")" session-ci-watch.sh; wait_banner
-  t_has "ci-wait exit ${c%% *}: '${c#* }'" "$(banners)" "${c#* }"
-done
+t_has "wait-for was given a deadline and the checks command" "$(cat "$ST/wait-for.args")" "-t 1800"
+t_has "...naming the repo and PR number" "$(cat "$ST/wait-for.args")" "gh pr checks 9 -R acme/widgets"
+t_has "green checks: the banner says so" "$(banners)" "checks green|PR #9"
+reset; printf 'pass\nfail\n' > "$ST/gh.out"; fire "$(ev pr.opened abcdef123 '' "$LINK")" session-ci-watch.sh; wait_banner
+t_has "a failing check: red" "$(banners)" "checks red"
+reset; export WF_RC=3; fire "$(ev pr.opened abcdef123 '' "$LINK")" session-ci-watch.sh; wait_banner
+t_has "wait-for gave up (exit 3): says still running" "$(banners)" "still running"; unset WF_RC
 for bad in 'https://github.com/acme/widgets/pull/9;touch x' 'https://github.com/a;b/c/pull/1' 'https://evil.example/acme/widgets/pull/9' 'https://github.com/acme/widgets/issues/9' 'https://github.com/acme/widgets/pull/'; do
-  reset; rm -f "$ST/ci-wait.args"; fire "$(ev pr.opened abcdef123 '' "$bad")" session-ci-watch.sh; sleep 0.3
-  t_eq "link '$bad' never reaches ci-wait" no "$([ -e "$ST/ci-wait.args" ] && echo yes || echo no)"
+  reset; rm -f "$ST/wait-for.args"; fire "$(ev pr.opened abcdef123 '' "$bad")" session-ci-watch.sh; sleep 0.3
+  t_eq "link '$bad' never reaches wait-for" no "$([ -e "$ST/wait-for.args" ] && echo yes || echo no)"
 done
-reset; rm -f "$ST/ci-wait.args"; fire "$(ev session.state abcdef123 done "$LINK")" session-ci-watch.sh; sleep 0.3
-t_eq "a non-pr.opened event is ignored" no "$([ -e "$ST/ci-wait.args" ] && echo yes || echo no)"
-HARBOR_SESSION_CI_WAIT="$T/missing" fire "$(ev pr.opened abcdef123 '' "$LINK")" session-ci-watch.sh
-t_has "no ci-wait installed: said in the log, exit 0" "$(cat "$ST/reactions.log"):$RC" "not watched"
+reset; rm -f "$ST/wait-for.args"; fire "$(ev session.state abcdef123 done "$LINK")" session-ci-watch.sh; sleep 0.3
+t_eq "a non-pr.opened event is ignored" no "$([ -e "$ST/wait-for.args" ] && echo yes || echo no)"
+HARBOR_SESSION_WAIT_FOR="$T/missing" fire "$(ev pr.opened abcdef123 '' "$LINK")" session-ci-watch.sh
+t_has "no wait-for installed: said in the log, exit 0" "$(cat "$ST/reactions.log"):$RC" "not watched"
 
 t_section "session-cleanup-report: lists, and kills and removes nothing"
 git -C "$REPO" init -q && git -C "$REPO" config user.email t@t && git -C "$REPO" config user.name t

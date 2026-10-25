@@ -820,21 +820,6 @@ cmd_sampler() {
   rm -f "$SAMPLER"
 }
 
-# A container job's trigger line becomes ci.job.start or ci.job.done on the event bus (harbor#1367, CONTRACTS/event-kinds.tsv),
-# detached so the bus never delays a decision. An old three-field line, or one with an odd field, publishes nothing.
-publish_job() { # <trigger line>
-  [ -f "$HERE/event-bus.sh" ] || return 0
-  # The group's stdin is the line: a `</dev/null` on it would replace the pipe, and read would see nothing.
-  printf '%s\n' "$1" | {
-    read -r _ts _run _job _ph _repo _rest || exit 0
-    case "$_ph" in start) _kind=ci.job.start ;; done) _kind=ci.job.done ;; *) exit 0 ;; esac
-    case "$_run$_job$_repo" in *[!A-Za-z0-9._/-]*) exit 0 ;; esac
-    case "$_repo" in */*) ;; *) exit 0 ;; esac
-    sh "$HERE/event-bus.sh" emit "$_kind" "$_repo:$_run:$_job" --src ci-governor --repo "${_repo##*/}" \
-      --data "{\"run_id\":\"$_run\",\"job\":\"$_job\",\"repo\":\"$_repo\"}" </dev/null
-  } >/dev/null 2>&1 &
-}
-
 # What launchd keeps alive. Two blocking streams into one FIFO; the read below is the only wait.
 cmd_listen() {
   mkdir -p "$STATE_DIR/slots" "$CACHE_DIR"
@@ -851,7 +836,6 @@ cmd_listen() {
   exec 3< "$_fifo"
   while read -r _line <&3; do
     case " $_line " in *" $EVENT_KEY "*|*" com.apple.system."*|*" kern.memorystatus"*) _what="notify" ;; *) _what="trigger" ;; esac
-    [ "$_what" != trigger ] || publish_job "$_line"
     sh "$0" event "$_what" || :
   done
   kill $_np $_tp 2>/dev/null || :

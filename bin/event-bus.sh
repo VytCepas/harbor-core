@@ -7,7 +7,6 @@
 #   event-bus.sh tail [N]
 #   event-bus.sh prune
 #   event-bus.sh dispatch|on|pull|subscribe ...       → bin/event-dispatch.sh (harbor#1044, E2)
-#   event-bus.sh ci <owner/repo>#<n> [--timeout S]    → bin/ci-wait.sh: a PR's CI verdict, woken by ci.job.done (harbor#1367)
 # Bus: ${HARBOR_EVENT_DIR:-$HOME/.local/state/harbor/events}/YYYY-MM-DD.jsonl, the date in UTC.
 # emit always exits 0 and prints the id; wait exits 0 on a match (printing the line), 3 at the
 # deadline; 2 is a usage error. Design, schema and robustness rules: docs/design/events.md.
@@ -386,8 +385,7 @@ case "$VERB" in
     prune 0 || :
     log_end; exit $? ;;
   dispatch|on|pull|subscribe) exec sh "$HERE/event-dispatch.sh" "$VERB" "$@" ;;
-  ci) exec sh "$HERE/ci-wait.sh" "$@" ;;
   -h|--help|help) usage ;;
   '') usage >&2; exit 2 ;;
-  *) printf 'event-bus: unknown verb %s (emit, wait, since, tail, prune; dispatch, on, pull, subscribe; ci)\n' "$VERB" >&2; exit 2 ;;
+  *) printf 'event-bus: unknown verb %s (emit, wait, since, tail, prune; dispatch, on, pull, subscribe)\n' "$VERB" >&2; exit 2 ;;
 esac

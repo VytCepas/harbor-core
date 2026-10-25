@@ -78,10 +78,8 @@ nothing. Measured here on 2026-08-24: a loop waiting on a 5-agent workflow spun
 read 4 forever and needed 5), and the workflow's own notification is what
 actually reported completion. With no deadline, no "gave up" status and no
 output, a permanently-false predicate looks exactly like "not yet". If the thing
-you are waiting on is a PR's CI, use \`harbor event ci <owner/repo>#<n>\`: it sleeps on
-the event bus's ci.job.done and never waits on review/decision (harbor#1367). If it is
-another EXTERNAL thing — Cloud Build, a data-sync run, a warehouse job, a port —
-use \`wait-for\`, which cannot hang and prints what it
+you are waiting on is genuinely EXTERNAL — Cloud Build, a data-sync run, a
+warehouse job, CI, a port — use \`wait-for\`, which cannot hang and prints what it
 observed: \`wait-for -t 900 -i 30 -w 'CMD printing the observed value' -- PREDICATE\`
 (exit 0 met, 3 gave up, 4 broken predicate). Either way, do not \`set -e\` around a
 wait predicate: non-zero is the normal "not yet" and would abort on the first poll.

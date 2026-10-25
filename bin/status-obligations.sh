@@ -641,21 +641,6 @@ read_queue() {
   src_set approval-queue true "" "$_c"
 }
 
-# A PR merged or closed on GitHub runs no local hook, so the read that saw it is the producer of pr.merged and pr.closed
-# (harbor#1367, CONTRACTS/event-kinds.tsv): one event per pr row this run closed by gh-pr. Emit never fails the run, and
-# the fold reading the event back closes nothing twice.
-publish_pr_closes() {
-  [ -f "$HERE/event-bus.sh" ] || return 0
-  jq -r 'select(.source == "gh-pr" and .to == "closed" and (.obligation | startswith("pr:"))) | .obligation | ltrimstr("pr:")' "$T/batch" 2>/dev/null \
-  | while IFS= read -r _s; do
-      case "$(awk -F'\t' -v s="$_s" '$1 == s { print $2; exit }' "$T/ans.gh-pr" 2>/dev/null)" in
-        MERGED) _kind=pr.merged ;; CLOSED) _kind=pr.closed ;; *) continue ;;
-      esac
-      _r="${_s%#*}"
-      sh "$HERE/event-bus.sh" emit "$_kind" "$_s" --src status-obligations --repo "${_r##*/}" </dev/null >/dev/null 2>&1 || :
-    done
-}
-
 # One `gh` read per live row, capped. A row whose read failed gets no answer, so it flips nothing; the source is
 # ok:false when any read failed, and says how many.
 read_gh() { # <gh-pr|gh-run>
@@ -839,7 +824,6 @@ reconcile_pass() {
   split_result "$T/rresult"
   if [ -s "$T/batch" ]; then
     cat "$T/batch" >> "$LEDGER" || { log_fail "cannot append to $LEDGER"; log_fix "ls -l $LEDGER"; return 1; }
-    publish_pr_closes
   fi
   fault after-reconcile-ledger
   write_current || return 1

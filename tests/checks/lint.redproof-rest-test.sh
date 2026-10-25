@@ -160,18 +160,4 @@ t_eq "lint.platform-calls is silent on a ported call and the helper's own osascr
 printf '#!/usr/bin/env sh\npbcopy < x\n' > "$_PC/bin/bare.sh"
 t_has "lint.platform-calls is red on a bare pbcopy" "$(viol lint.platform-calls "$_PC")" "VIOLATION [lint.platform-calls] bin/bare.sh: pbcopy"
 
-t_section "event.kind-registered: a preset never waits on a kind nothing emits (harbor#1367)"
-_ek_reg() { printf 'kind\tshape\tsubject\temitter\tmeaning\nx.done\tterminal\ts\t%s\tm\n' "$1" > "$RP/CONTRACTS/event-kinds.tsv"; }
-_rp_fresh; _rp_sh "$RP/bin/x.sh"; printf 'sh "$BUS" emit x.done s\nharbor_emit telemetry.only\n' >> "$RP/bin/x.sh"; _rp_sh "$RP/bin/y.sh"
-_ek_reg bin/x.sh; printf 'event.x\t"kind":"(x\\.done)"\t60\n' > "$RP/CONTRACTS/event-rules.tsv"
-_rp_green event.kind-registered "a preset whose kind is emitted by a file that names it, and a telemetry harbor_emit"
-_ek_reg bin/y.sh
-_rp_red event.kind-registered "x.done: its emitter bin/y.sh never names it" "a row naming an emitter that does not emit it"
-_ek_reg bin/x.sh; printf 'emit_event z.new s\n' >> "$RP/bin/x.sh"
-_rp_red event.kind-registered "bin/x.sh emits z.new, which CONTRACTS/event-kinds.tsv does not register" "an emitted kind with no row"
-_rp_sh "$RP/bin/x.sh"; _ek_reg -
-_rp_red event.kind-registered "event.x listens for x.done, which nothing on this box emits" "a preset on a kind with no producer (the ci.job.done gap)"
-printf 'event.x\t"kind":"(x\\.gone)"\t60\n' > "$RP/CONTRACTS/event-rules.tsv"
-_rp_red event.kind-registered "event.x names x.gone, which CONTRACTS/event-kinds.tsv does not register" "a preset on an unregistered kind"
-
 t_done
