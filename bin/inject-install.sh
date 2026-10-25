@@ -6,7 +6,7 @@
 #                  box/projects.tsv names (--live only)
 #     --remove     unwire, and move the packs and the engine into the backup
 #
-# ONE WIRING, EVERY ENVIRONMENT. bin/inject-hook.sh discovers its rules from the
+# ONE WIRING, EVERY ENVIRONMENT. hooks/injection-rule/injection-rule.sh discovers its rules from the
 # session's cwd at fire time, so wiring it once at the box level gives harbor,
 # every workload repo and every repo created after this the same just-in-
 # time governance channel with no per-repo settings file. That is the whole
@@ -60,19 +60,16 @@ if [ ! -f "$S" ]; then
   log_end; exit 1
 fi
 
-# QUOTED, BECAUSE THE HARNESS RUNS THIS STRING THROUGH A SHELL. Unquoted, a
-# config dir containing a space is word-split at execution: an adversarial pass
-# demonstrated both halves of that — `<tmp>/Application Support/claude` wires a
-# command that fails 127 while this script's own status prints `wired` and
-# `engine current`, and a regular file sitting at the truncation point makes the
-# harness execute THAT file instead, with the rest of the path as its argument.
-# The unquoted form is the estate-wide convention (floor-install.sh has it too);
-# it is wrong there as well and fixed here first.
-HOOK_CMD="/bin/sh \"$DIR/bin/inject-hook.sh\""
-# THE PAYLOAD. inject-hook.sh calls govern-token.sh for the provenance stamp, so
+# THE ENGINE IS WIRED BY bin/deploy-hooks.sh from hooks/injection-rule/manifest.tsv (harbor#1272), which also quotes
+# a config dir that needs it: unquoted, a path with a space was word-split at execution (measured by an adversarial
+# pass). Its tool events take the matchers derived below.
+# THE PAYLOAD. injection-rule.sh calls govern-token.sh for the provenance stamp, so
 # both travel (lint X7: a script an installed script invokes must itself be in a
 # payload, or the install is a broken link nothing checks).
-PAYLOAD='inject-hook.sh govern-token.sh'
+PAYLOAD='injection-rule.sh govern-token.sh'
+OLD_ENGINE=inject-hook.sh  # its name before harbor#1272: an upgrade moves the old copy aside
+HOOKS="$SRC/deploy-hooks.sh"
+_src() { printf '%s/%s' "$ROOT" "$(il_src "$ROOT" "$1")"; }  # an engine's bytes are in its folder (D-88)
 # THE ANNOUNCEMENT, WHICH IS WHAT MAKES THE STAMP WORTH ANYTHING (harbor#7).
 # inject-hook.sh:181 stamps every note with sha256(box salt || session id), and
 # until now NOTHING announced that value — so a reader's first sight of the token
@@ -129,51 +126,6 @@ strip_hook() { # <settings-file> <needle> → new json with every matching hook 
   ' "$1"
 }
 
-# ── THE STALE ENTRY COMES OUT BEFORE THE CURRENT ONE GOES IN (harbor#271) ───
-# merge_hook keys on MATCHER EQUALITY, so a *changed* matcher becomes a SECOND
-# entry rather than a replacement. On a fresh box the derivation below is right;
-# on an UPGRADE — which is every real case — the old entry survives beside it and
-# the engine runs TWICE per tool call.
-#
-# Measured on the live box after the 2026-08-22 apply, not reasoned about: two
-# PostToolUse entries named the engine, the stale `Read|Bash|Grep|WebFetch` and
-# the derived one, so inject-hook.sh forked twice for the four most-used tools
-# here — Bash alone was 4,055 calls across 30 transcripts. No duplicate NOTE
-# reaches the model, and that was measured rather than assumed: firing the
-# deployed engine twice with one session id and payload produced the note once
-# and silence the second time, because the `once:` ledger absorbs it. So this is
-# a COST defect on the hot path harbor#264 is open about, not a correctness one.
-#
-# ADDITIVE-AND-IDEMPOTENT HAS TO SURVIVE THE FIX. merge_hook is borrowed verbatim
-# from floor-install.sh precisely so it never removes a FOREIGN hook, and that is
-# why this prunes by COMMAND as well as by matcher: only an entry naming our own
-# engine is touched, and a foreign command sharing a stale entry keeps both the
-# command and the entry it sits in.
-#
-# THE NEEDLE IS THE INSTALLED PATH, NOT THE BASENAME (PR #276 review, P2). A
-# `contains("inject-hook.sh")` test also matches `/opt/my-inject-hook.sh` —
-# measured, not argued — so the first cut of this function would have deleted a
-# third party's hook on every upgrade, which is the one thing merge_hook exists to
-# never do. `$DIR/bin/inject-hook.sh` still matches both spellings an older
-# installer might have written (quoted and bare), because the quotes sit outside
-# the path. The cost of being tight here is a stale entry that survives when the
-# config dir is spelled differently than it was at install time — a duplicate,
-# which is a cost defect, against deleting somebody else's hook, which is not.
-#
-# strip_hook above KEEPS the basename test deliberately, and its own comment says
-# why: `--remove` is meant to catch a hand-edited path to the same script. That is
-# the right call for an uninstall and the wrong one here.
-prune_stale() { # <settings-file> <event> <keep-matcher> <needle> → new json
-  jq --arg ev "$2" --arg m "$3" --arg n "$4" '
-    if (.hooks[$ev]? | type) != "array" then .
-    else .hooks[$ev] |= (
-           map(if (.matcher // "") == $m then .
-               else .hooks |= map(select(((.command // "") | contains($n)) | not)) end)
-           | map(select((.hooks | length) > 0)) )
-    end
-  ' "$1"
-}
-
 # ── THE MATCHER IS DERIVED FROM THE PACKS, NOT WRITTEN DOWN BESIDE THEM ─────
 # These were two hardcoded lists, and a hardcoded list of what the packs care
 # about is a COPY of a fact that lives in the packs — it drifts silently while
@@ -227,8 +179,9 @@ WIRE_POST="$(wire_for PostToolUse)"
 # pack changes its `tool:`, and the failure is silent — the engine is installed
 # and never invoked for the traffic the pack was written for.
 WIRE_FAIL="$(wire_for PostToolUseFailure)"
-# NEVER EMPTY, because an empty matcher in settings.json matches nothing and the
-# engine would be installed and inert — the failure this whole block is about.
+# NEVER EMPTY. An empty matcher matches EVERY tool, not none: failure-observe.sh is wired with "" on
+# PostToolUseFailure and logs every tool's failures (measured 2026-10-24, harbor#1272), so an empty derived
+# matcher would fork the engine on every call for packs that do not exist.
 [ -n "$WIRE_PRE" ]  || WIRE_PRE='Bash|Write|Edit|MultiEdit'
 [ -n "$WIRE_POST" ] || WIRE_POST='Read|Bash|Grep|WebFetch'
 [ -n "$WIRE_FAIL" ] || WIRE_FAIL='.*'
@@ -299,6 +252,16 @@ if [ "$PROJECTS" -eq 1 ] && [ -n "$PRIVINJ" ]; then
   done
 fi
 
+# deploy-hooks.sh for this installer's engine, with the matchers derived above. <mode> [args…]
+IL_HK_IN="$(mktemp "${TMPDIR:-/tmp}/inject-install-hooks.XXXXXX")" && IL_HK_ERR="$IL_HK_IN.err" \
+  || { log_fail "could not make a temp file for the hook wiring"; log_nofix "TMPDIR"; log_end; exit 1; }
+trap 'rm -f "$IL_HK_IN" "$IL_HK_ERR"' EXIT
+hooks_run() { _hm="$1"; shift
+  sh "$HOOKS" "$_hm" "$DIR" "$@" --root "$ROOT" --installer inject-install \
+    --matcher "injection-rule:PreToolUse=$WIRE_PRE" --matcher "injection-rule:PostToolUse=$WIRE_POST" \
+    --matcher "injection-rule:PostToolUseFailure=$WIRE_FAIL"
+}
+
 status() { # <step> — one log line per fact, under its own header
   log_head "$1"
   for _ev in SessionStart PreToolUse PostToolUse PostToolUseFailure PreCompact SubagentStart; do
@@ -306,7 +269,7 @@ status() { # <step> — one log line per fact, under its own header
     # TWO entries named the engine (harbor#271). One entry per event is the whole
     # truth here — the announce has its own row below — so anything above one is a
     # duplicate the operator has to be told about, and a boolean cannot say it.
-    _c="$(jq -r --arg e "$_ev" --arg n inject-hook.sh \
+    _c="$(jq -r --arg e "$_ev" --arg n injection-rule.sh \
           '[.hooks[$e][]?.hooks[]? | select((.command // "") | contains($n))] | length' "$S" 2>/dev/null || echo 0)"
     case "${_c:-0}" in
       0) log_note "$_ev: engine not wired" ;;
@@ -315,8 +278,10 @@ status() { # <step> — one log line per fact, under its own header
          log_fix "$(il_cmd --apply)" ;;
     esac
   done
-  if [ ! -f "$DIR/bin/inject-hook.sh" ]; then log_note "engine: absent"
-  elif cmp -s "$SRC/inject-hook.sh" "$DIR/bin/inject-hook.sh"; then log_ok "engine: current"
+  _old="$(jq -r --arg n "$OLD_ENGINE" '[.hooks[]?[]?.hooks[]? | select((.command // "") | contains($n))] | length' "$S" 2>/dev/null || echo 0)"
+  [ "${_old:-0}" = 0 ] || { log_warn "the engine's old name is still wired x$_old ($OLD_ENGINE)"; log_fix "$(il_cmd --apply)"; }
+  if [ ! -f "$DIR/bin/injection-rule.sh" ]; then log_note "engine: absent"
+  elif cmp -s "$(_src injection-rule.sh)" "$DIR/bin/injection-rule.sh"; then log_ok "engine: current"
   else log_note "engine: DRIFTED"; fi
   # THE SHELL HALF OF "THE TREE A CALL TOUCHES" (harbor#599) is guard-lib.sh's
   # parser, which the FLOOR installs and this payload deliberately does not — one
@@ -328,7 +293,7 @@ status() { # <step> — one log line per fact, under its own header
     log_warn "parser: ABSENT — git -C and gh -R reach no tree; install the floor to add guard-lib.sh"
     log_fix "sh $SRC/floor-install.sh --apply $(il_spell)"
   fi
-  # THE ANNOUNCE HAS ITS OWN ROW, because the loop above counts only inject-hook.sh
+  # THE ANNOUNCE HAS ITS OWN ROW, because the loop above counts only injection-rule.sh
   # and would have reported SessionStart "wired" with the provenance announce
   # missing — a status line that is true about the engine and silent about the
   # thing that makes the engine's notes verifiable. Salt state is shown next to it:
@@ -381,9 +346,16 @@ _aside() { # <path under $DIR>
 if [ "$IL_APPLY" -eq 0 ]; then
   status "plan for $DIR (dry run: nothing is written)"
   if [ "$REMOVE" -eq 1 ]; then
-    log_note "would unwire inject-hook.sh and govern-token.sh from every event"
-    log_note "would move $DIR/inject.d and bin/{inject-hook.sh,govern-token.sh} into backups/inject-install/<TS>/"
+    log_note "would unwire injection-rule.sh (and $OLD_ENGINE) and govern-token.sh from every event"
+    log_note "would move $DIR/inject.d and bin/{injection-rule.sh,$OLD_ENGINE,govern-token.sh} into backups/inject-install/<TS>/"
   else
+    if _hk_plan="$(hooks_run --plan 2>"$IL_HK_ERR")"; then
+      printf '%s\n' "$_hk_plan" | while IFS="$(printf '\t')" read -r _hv _he _hev _hm _ht; do
+        [ -n "$_hv" ] && log_note "$_hev ($_hm): $_he.sh — $_hv"
+      done
+    else
+      il_refuse "the engine's manifest does not render: $(sed -n 's/^.*FAIL[: ]*//p' "$IL_HK_ERR" | head -1)" "sh $HOOKS --check"
+    fi
     log_note "would copy $PAYLOAD into $DIR/bin, and rebuild $DIR/inject.d from inject.d/box$([ -z "$PRIVFILES" ] || printf ' and the private layer'"'"'s box tier (%s file(s))' "$(printf '%s\n' "$PRIVFILES" | grep -c .)") (the old one moves into the backup)"
   fi
   il_stop
@@ -399,7 +371,7 @@ mkdir -p "$DIR/bin"
 il_source "$ROOT"
 
 if [ "$REMOVE" -eq 1 ]; then
-  NEW="$(strip_hook "$S" inject-hook.sh)"
+  NEW="$(strip_hook "$S" injection-rule.sh | strip_hook /dev/stdin "$OLD_ENGINE")"
   # THE ANNOUNCE HOOK COMES OUT TOO, and it has to come out BEFORE the file it
   # names is deleted. Leaving it would be a wired hook pointing at a removed
   # script — the shape floor-test X13 exists to catch, arriving here by way of an
@@ -408,9 +380,9 @@ if [ "$REMOVE" -eq 1 ]; then
   NEW="$(printf '%s' "$NEW" | strip_hook /dev/stdin govern-token.sh)"
   il_write_json "$NEW" "$S" || { log_end; exit 1; }
   log_ok "unwired the engine and the provenance announce"
-  { _aside "$DIR/inject.d" && _aside "$DIR/bin/inject-hook.sh" && _aside "$DIR/bin/govern-token.sh"; } || { log_end; exit 1; }
+  { _aside "$DIR/inject.d" && _aside "$DIR/bin/injection-rule.sh" && _aside "$DIR/bin/$OLD_ENGINE" && _aside "$DIR/bin/govern-token.sh"; } || { log_end; exit 1; }
   log_ok "moved the packs and the engine into $IL_BK"
-  il_manifest_drop inject.d bin/inject-hook.sh bin/govern-token.sh
+  il_manifest_drop inject.d bin/injection-rule.sh "bin/$OLD_ENGINE" bin/govern-token.sh
   il_manifest_write || { log_end; exit 1; }
   log_note "backup: $IL_BK"
   log_end; exit $?
@@ -419,18 +391,23 @@ fi
 # ── engine + packs ──────────────────────────────────────────────────────────
 for p in $PAYLOAD; do
   il_backup "$DIR/bin/$p" || { log_end; exit 1; }
-  cp "$SRC/$p" "$DIR/bin/$p.tmp.$$" && chmod +x "$DIR/bin/$p.tmp.$$" && mv -f "$DIR/bin/$p.tmp.$$" "$DIR/bin/$p"
+  cp "$(_src "$p")" "$DIR/bin/$p.tmp.$$" && chmod +x "$DIR/bin/$p.tmp.$$" && mv -f "$DIR/bin/$p.tmp.$$" "$DIR/bin/$p"
   # POST-WRITE VERIFY. skills-install.sh exists because a copy that reported
   # success and landed different bytes is the failure the whole installer story
   # is about; the same rule applies to an engine that loads in every session.
-  if ! cmp -s "$SRC/$p" "$DIR/bin/$p"; then
-    log_fail "$DIR/bin/$p differs from $SRC/$p after the copy"
+  if ! cmp -s "$(_src "$p")" "$DIR/bin/$p"; then
+    log_fail "$DIR/bin/$p differs from $(_src "$p") after the copy"
     log_fix "cp '$IL_BK/bin/$p' '$DIR/bin/$p'"
     log_end; exit 1
   fi
 done
 log_ok "engine: copied $PAYLOAD into $DIR/bin, verified byte-identical"
 for p in $PAYLOAD; do il_manifest "bin/$p"; done
+# The engine's old name (harbor#1272): its copy goes into the backup, and its entries are re-rendered below.
+if [ -e "$DIR/bin/$OLD_ENGINE" ]; then
+  _aside "$DIR/bin/$OLD_ENGINE" || { log_end; exit 1; }
+  il_manifest_drop "bin/$OLD_ENGINE"; log_ok "moved the engine's old copy ($OLD_ENGINE) into $IL_BK"
+fi
 # THE BOX TIER IS REBUILT, NOT ADDED TO, and the first cut only added — which
 # WEDGED THE UPGRADE PATH, reproduced by an adversarial pass. Withdraw a pack
 # from `inject.d/box/` and the next install copies the survivors over a
@@ -449,7 +426,7 @@ cp -R "$ROOT"/inject.d/box/. "$DIR/inject.d/"
 SRCBOX="$ROOT/inject.d/box"
 if [ -n "$PRIVFILES" ]; then
   UNION="$(mktemp -d "${TMPDIR:-/tmp}/inject-union.XXXXXX")" || { log_fail "could not make a scratch dir for the box tier"; log_nofix "mktemp"; log_end; exit 1; }
-  trap 'rm -rf "$UNION"' EXIT INT TERM
+  trap 'rm -rf "$UNION" "$IL_HK_IN" "$IL_HK_ERR"' EXIT INT TERM
   cp -R "$ROOT"/inject.d/box/. "$UNION/"
   printf '%s\n' "$PRIVFILES" | while IFS= read -r _pf; do
     cp "$_pf" "$DIR/inject.d/" && cp "$_pf" "$UNION/"
@@ -468,38 +445,20 @@ il_manifest_drop inject.d; il_manifest inject.d
 
 # ── wiring ──────────────────────────────────────────────────────────────────
 NEW="$(cat "$S")"
-add() { NEW="$(printf '%s' "$NEW" | merge_hook /dev/stdin "$1" "$2" "$3")"; }
-add SessionStart  ""            "$HOOK_CMD"
 # BEFORE the engine's own SessionStart entry would be the intuition, and it does
 # not matter: the harness concatenates every SessionStart hook's additionalContext
 # and the reader sees one prefix. What DOES matter is that both are present, so the
 # token is named in the same trusted block the stamped notes arrive in.
-add SessionStart  ""            "$ANNOUNCE_CMD"
-# ONLY these two events carry a DERIVED matcher, so only these two can go stale;
-# the rest are the constant "" and cannot drift (harbor#271). Both steps build
-# $NEW in memory and il_write_json commits once at the end, so no run can leave the
-# event pruned-but-unwired on disk.
-prune() { NEW="$(printf '%s' "$NEW" | prune_stale /dev/stdin "$1" "$2" "$DIR/bin/inject-hook.sh")"; }
-prune PreToolUse  "$WIRE_PRE"
-prune PostToolUse "$WIRE_POST"
-prune PostToolUseFailure "$WIRE_FAIL"
-add PreToolUse    "$WIRE_PRE"   "$HOOK_CMD"
-add PostToolUse   "$WIRE_POST"  "$HOOK_CMD"
-# THE ONE EVENT THAT FIRES ONLY WHEN SOMETHING WENT WRONG, which is what makes it
-# cheap: PreToolUse and PostToolUse pay the engine's fork on every tool call in
-# the session, and this one pays it on the small minority that fail. It is also
-# the moment a repair costs least — CONTRACTS/hooks.md carried the row "the moment
-# a repair is cheapest; nothing uses it" for as long as the table has existed.
-add PostToolUseFailure "$WIRE_FAIL" "$HOOK_CMD"
-# PreCompact STAYS WIRED THOUGH NOTHING SHIPS ON IT. It cannot reach the model —
-# `additionalContext` is rejected there and the whole object discarded — so the
-# engine answers it with a `systemMessage` or with silence. The wiring is kept
-# because packs are data and the wiring is not: an operator-facing `mode: notify`
-# rule at compaction time must not require re-running the installer to exist.
-add PreCompact    ""            "$HOOK_CMD"
-add SubagentStart ""            "$HOOK_CMD"
+NEW="$(printf '%s' "$NEW" | merge_hook /dev/stdin SessionStart "" "$ANNOUNCE_CMD")"
+# The engine's six bindings, rendered from its manifest with the matchers derived above: an entry under the old name or
+# a stale matcher is replaced, never duplicated (harbor#271), and nobody else's entry is touched.
+printf '%s' "$NEW" > "$IL_HK_IN"
+NEW="$(hooks_run --settings --in "$IL_HK_IN" 2>"$IL_HK_ERR")" \
+  || { log_fail "the engine's wiring did not render: $(sed -n 's/^.*FAIL[: ]*//p' "$IL_HK_ERR" | head -1)"; log_nofix "sh $HOOKS --check"; log_end; exit 1; }
 il_write_json "$NEW" "$S" || { log_end; exit 1; }
 log_ok "settings.json: the engine and the announce wired"
+hooks_run --record >/dev/null 2>"$IL_HK_ERR" \
+  || log_warn "settings.json is written, but what is wired was not recorded, so a binding removed by hand may come back: $(sed -n 's/^.*FAIL[: ]*//p' "$IL_HK_ERR" | head -1)"
 
 # ── repo packs ──────────────────────────────────────────────────────────────
 # SEEDED, NOT SYNCED. These land in each project's own tree and are that repo's

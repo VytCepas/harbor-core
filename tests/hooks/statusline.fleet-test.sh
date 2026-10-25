@@ -165,28 +165,28 @@ t_section "session-verdicts: silent when clean, and never blocking"
 V="$TMP/vcfg"; mkdir -p "$V/bin"
 printf '%s\n' '{"permissions":{"deny":[]},"hooks":{"PreToolUse":[{"hooks":[{"type":"command","command":"/bin/sh x/guard-bash.sh"}]}]}}' > "$V/settings.json"
 pin "$V"
-O="$(CLAUDE_CONFIG_DIR="$V" "$SH" "$SRC/session-verdicts.sh" </dev/null 2>/dev/null)"; rc=$?
+O="$(CLAUDE_CONFIG_DIR="$V" "$SH" "$T_ROOT/hooks/session-verdicts/session-verdicts.sh" </dev/null 2>/dev/null)"; rc=$?
 t_eq "a clean box prints NOTHING" "" "$O"
 t_eq "the verdicts hook exits 0 when clean" 0 "$rc"
-verdict() { CLAUDE_CONFIG_DIR="$V" "$SH" "$SRC/session-verdicts.sh" </dev/null 2>/dev/null | jq -r '.systemMessage' 2>/dev/null; }
+verdict() { CLAUDE_CONFIG_DIR="$V" "$SH" "$T_ROOT/hooks/session-verdicts/session-verdicts.sh" </dev/null 2>/dev/null | jq -r '.systemMessage' 2>/dev/null; }
 # A guard named in a DENY ENTRY is text, not a wired guard (floor pass-4).
 printf '%s\n' '{"permissions":{"deny":["Edit(~/.claude/bin/guard-bash.sh)"]},"hooks":{}}' > "$V/settings.json"
 pin "$V"
 t_has "a guard named in deny does not count as wired" "$(verdict)" "no guard is wired"
-cp "$SRC/worklog-push.sh" "$V/bin/worklog-push.sh"
+cp "$T_ROOT/hooks/worklog-push/worklog-push.sh" "$V/bin/worklog-push.sh"
 t_has "a missing guard-lib.sh is a dead worklog" "$(verdict)" "work-log DEAD"
 # The reinstall it names is aimed at the dir it measured (harbor#800): a sandbox's installer by --dir,
 # the live box through deploy, the one live entry (the install standard §4).
 t_has "...its fix re-runs the runtime installer at THIS sandbox, --dir spelled" "$(verdict)" "runtime-install.sh --apply --dir '$V'"
 t_eq "...and no fix in it is aimed at the live box" 0 "$(verdict | grep -c -- '--live')"
-LV="$TMP/lvhome"; mkdir -p "$LV/.claude/bin"; cp "$V/settings.json" "$LV/.claude/"; cp "$SRC/worklog-push.sh" "$LV/.claude/bin/"
+LV="$TMP/lvhome"; mkdir -p "$LV/.claude/bin"; cp "$V/settings.json" "$LV/.claude/"; cp "$T_ROOT/hooks/worklog-push/worklog-push.sh" "$LV/.claude/bin/"
 t_has "the live box's fix is deploy's runtime component" \
-  "$(HOME="$LV" CLAUDE_CONFIG_DIR="$LV/.claude" "$SH" "$SRC/session-verdicts.sh" </dev/null 2>/dev/null | jq -r '.systemMessage' 2>/dev/null)" \
+  "$(HOME="$LV" CLAUDE_CONFIG_DIR="$LV/.claude" "$SH" "$T_ROOT/hooks/session-verdicts/session-verdicts.sh" </dev/null 2>/dev/null | jq -r '.systemMessage' 2>/dev/null)" \
   "deploy.sh --only runtime --apply --live"
 cp "$SRC/guard-lib.sh" "$V/bin/guard-lib.sh"
 t_hasnt "installing guard-lib.sh clears the verdict" "$(verdict)" 'work-log DEAD'
 # systemMessage (operator-facing), never additionalContext (context spend). Comments stripped first.
-t_has "the source names additionalContext in a comment (the needle's control)" "$(cat "$SRC/session-verdicts.sh")" 'additionalContext'
-t_hasnt "no code line spends context tokens" "$(sed 's/#.*//' "$SRC/session-verdicts.sh")" 'additionalContext'
+t_has "the source names additionalContext in a comment (the needle's control)" "$(cat "$T_ROOT/hooks/session-verdicts/session-verdicts.sh")" 'additionalContext'
+t_hasnt "no code line spends context tokens" "$(sed 's/#.*//' "$T_ROOT/hooks/session-verdicts/session-verdicts.sh")" 'additionalContext'
 
 t_done

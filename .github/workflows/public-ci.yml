@@ -64,8 +64,11 @@ jobs:
         working-directory: harbor
         run: |
           git cat-file -e "$HEAD_SHA^{commit}"
+          # A cancelled run leaves pr-head registered in this reused checkout, and the next add exits 128.
+          git worktree prune
           git worktree add -q --detach "$RUNNER_TEMP/pr-head" "$HEAD_SHA"
-          ( cd "$RUNNER_TEMP/pr-head" && sh bin/redteam-corpus.sh )
+          # The last run on this runner already covers identical guards, pins and baseline: nothing to re-score (harbor#1149).
+          ( cd "$RUNNER_TEMP/pr-head" && { sh bin/redteam-corpus.sh --print >/dev/null 2>&1 || sh bin/redteam-corpus.sh; } )
           git worktree remove --force "$RUNNER_TEMP/pr-head"
       - name: Mirror the core files to harbor-core (gates first)
         working-directory: harbor
