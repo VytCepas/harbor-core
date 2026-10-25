@@ -249,6 +249,30 @@ redproof "lapse ignores the deadline" case_lapsed '$r.deadline_ts != "" and ($r.
 redproof "quiet owner never lapses" case_lapsed '$now - $w >= $quiet' 'false'
 redproof "transcripts are never read" case_lapsed '_tm="$(fs_mtime "$_tf")"; [ -z "$_tm" ]' '_tm=""; [ -z "$_tm" ]'
 
+# Claude Code has no hook for background work finishing, but it writes a <task-notification> with the tool-use id and a
+# final status into the owner's transcript. 43 of 48 overdue rows on the live box had one (2026-10-25), most in a live session.
+note() { # <transcript> <tool-use id> <status> — the notification as a transcript line carries it, newlines escaped
+  printf '%s\n' "{\"type\":\"user\",\"message\":{\"content\":\"<task-notification>\\n<task-id>w-$2</task-id>\\n<tool-use-id>$2</tool-use-id>\\n<output-file>/o/$2.output</output-file>\\n<status>$3</status>\\n<summary>s</summary>\\n</task-notification>\"}}" >> "$1"; }
+case_finished() { X="$1"; fresh
+  DL="$(jq -n -r '"2026-10-05T04:00:00Z" | fromdateiso8601')"; mkdir -p "$FIX/tr/p"
+  for _t in TA TB TC TD; do ev 2026-10-05T00:00:00Z tool.background.start "S6:$_t" '{"tool":"Workflow"}'; done
+  ev 2026-10-05T00:00:00Z tool.background.start S4:T '{"tool":"Workflow"}'
+  note "$FIX/tr/p/S6.jsonl" TA completed; note "$FIX/tr/p/S6.jsonl" TC failed
+  printf '%s\n' '{"type":"user","message":{"content":"grep said <tool-use-id>TB</tool-use-id>\\n<status>completed</status>"}}' >> "$FIX/tr/p/S6.jsonl"
+  note "$FIX/tr/p/S4.jsonl" T killed; touch_at "$((DL + 3600))" "$FIX/tr/p/S4.jsonl"
+  printf '[{"sessionId":"S6","pid":1}]' > "$FIX/sessions.json"; printf '[]' > "$FIX/agents.json"; rec >/dev/null
+  chk "a live owner's Workflow with a completed notification closes" closed "$(cur tool.background:S6:TA state)"
+  chk "the ledger names the transcript" transcript "$(jq -r 'select(.obligation == "tool.background:S6:TA" and .to == "closed") | .source' "$OB/ledger.jsonl")"
+  chk "a failed one closes too" closed "$(cur tool.background:S6:TC state)"
+  chk "the id and a status outside a notification close nothing" overdue "$(cur tool.background:S6:TB state)"
+  chk "no notification: still overdue" overdue "$(cur tool.background:S6:TD state)"
+  chk "a dead owner that wrote after the deadline, with a killed notification: closed" closed "$(cur tool.background:S4:T state)"
+  verdict; }
+t_section "owner-session: the owner's transcript says the background work finished"
+t_eq "the real script" ok "$(case_finished "$BIN")"
+redproof "notifications are never read" case_finished 'finished: $f' 'finished: []'
+redproof "the verdict ignores a finished row" case_finished '(($src.sessions.finished // []) | any(.[]; . == $r.subject))' 'false'
+
 t_section "approval: a merged or closed PR closes the approval waiting on it"
 t_eq "the real script" ok "$(case_approval_pr "$BIN")"
 redproof "approval gh-pr verdict" case_approval_pr 'answers[$r | pr_key] // "") | IN("MERGED", "CLOSED"))' 'answers[$r | pr_key] // "") | IN("NEVER"))'

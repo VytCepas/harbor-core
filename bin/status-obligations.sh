@@ -47,7 +47,8 @@
 #                  the one the row's link names.   gh-run   `gh run view`: the run, or the named job, completed.
 #   transcripts    not a source of its own: when a dead owner last wrote its transcript (HARBOR_STATUS_OBLIGATION_TRANSCRIPTS,
 #                  default ~/.claude/projects). A row that outlives its owner's stop (Workflow) is abandoned once its deadline has
-#                  passed, the owner is gone from both lists and no transcript line came after the deadline, or the owner has been silent for HARBOR_STATUS_OBLIGATION_QUIET seconds (86400).
+#                  passed, the owner is gone from both lists and no transcript line came after the deadline, or the owner has been silent for HARBOR_STATUS_OBLIGATION_QUIET seconds (86400). Live or dead, a row
+#                  closes (source transcript) when its owner's transcript carries the row's <task-notification> with a final status.
 #   sweep          the harbor-clean.sh --record rows: each RISK or DECIDE row is a `leftover` obligation owned by the
 #                  operator while the record names it, closed when the next record does not. $HOME is shown as ~.
 # A source that fails, times out, prints what is not a list, or is older than it may be (the sweep record, 36h)
@@ -496,7 +497,8 @@ def verdict($r; $k):
       elif age($r) >= $grace and dead(sid_of($r.owner)) then {to: "abandoned", source: "owner-session"}
       else null end
   elif $k.reconcile == "owner-session" then
-    (if $k.on_stop == "abandon" and (($r.outlives | not) or lapsed($r)) and age($r) >= $grace and dead(sid_of($r.owner))
+    (if (($src.sessions.finished // []) | any(.[]; . == $r.subject)) then {to: "closed", source: "transcript"}
+     elif $k.on_stop == "abandon" and (($r.outlives | not) or lapsed($r)) and age($r) >= $grace and dead(sid_of($r.owner))
      then {to: "abandoned", source: "owner-session"} else null end)
   elif $k.reconcile == "gh-pr" then
     (if ($src["gh-pr"].answers[$r.subject] // "") | IN("MERGED", "CLOSED") then {to: "closed", source: "gh-pr"} else null end)
@@ -620,6 +622,28 @@ read_transcripts() {
   done
   jq -R -s -c --slurpfile cur "$T/src/sessions.json" 'split("\n") | map(select(length > 0) | split("\t") | {key: .[0], value: (.[1] | tonumber)})
     | $cur[0] + {transcripts: from_entries}' "$T/tr.tsv" > "$T/src/sessions.new" && mv -f "$T/src/sessions.new" "$T/src/sessions.json"
+}
+
+# The background work an owner's transcript says finished, into the sessions answer as finished: ["<sid>:<tool-use id>"].
+# Claude Code has no hook for it, but it writes a <task-notification> carrying the tool-use id and a final status into the
+# owner's transcript, live or dead. Only a whole notification counts: the same id and status quoted anywhere else do not.
+read_finished() {
+  [ -f "$T/src/sessions.json" ] || return 0
+  live_rows owner-session > "$T/fin.rows"
+  : > "$T/fin.ids"
+  for _sid in $(sed -n 's/:.*//p' "$T/fin.rows" | sort -u); do
+    case "$_sid" in ''|*[!A-Za-z0-9._-]*) continue ;; esac
+    _tf="$(find "$TRANSCRIPTS" -maxdepth 2 -name "$_sid.jsonl" -type f 2>/dev/null | head -n 1)"
+    [ -n "$_tf" ] || continue
+    awk -v sid="$_sid" '{ s = $0
+      while (match(s, /<task-notification>(\\n|[ \t])*<task-id>[^<]*<\/task-id>(\\n|[ \t])*<tool-use-id>[A-Za-z0-9_]+<\/tool-use-id>(\\n|[ \t])*(<output-file>[^<]*<\/output-file>(\\n|[ \t])*)?<status>(completed|failed|killed|stopped)<\/status>/)) {
+        m = substr(s, RSTART, RLENGTH); s = substr(s, RSTART + RLENGTH)
+        sub(/.*<tool-use-id>/, "", m); sub(/<\/tool-use-id>.*/, "", m); print sid ":" m } }' "$_tf" >> "$T/fin.ids" 2>/dev/null || :
+  done
+  jq -R -s -c --slurpfile cur "$T/src/sessions.json" --rawfile rows "$T/fin.rows" '
+    ($rows | split("\n") | map(select(length > 0))) as $live
+    | (split("\n") | map(select(length > 0)) | unique | map(select(. as $i | $live | any(.[]; . == $i)))) as $f
+    | $cur[0] + {finished: $f}' "$T/fin.ids" > "$T/src/sessions.new" && mv -f "$T/src/sessions.new" "$T/src/sessions.json"
 }
 
 read_agents() {
@@ -819,7 +843,7 @@ reconcile_pass() {
         elif ($k.reconcile | IN("owner-session", "claude-agents")) and ($r.owner | startswith("session:")) then $r.owner[8:]
         else empty end] | unique' "$CURRENT" > "$T/candidates.json"
   _cand="$(jq 'length' "$T/candidates.json")"
-  if [ "$_cand" -gt 0 ]; then read_sessions; read_transcripts; else src_set sessions true "no live rows to check"; fi
+  if [ "$_cand" -gt 0 ]; then read_sessions; read_transcripts; read_finished; else src_set sessions true "no live rows to check"; fi
   _need=0
   [ -z "$(live_rows claude-agents)" ] || _need=1
   if [ "$_need" -eq 0 ] && [ "$_cand" -gt 0 ] && jq -e '.ok == true' "$T/src/sessions.json" >/dev/null 2>&1 \

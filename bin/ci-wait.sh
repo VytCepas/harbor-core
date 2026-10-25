@@ -47,9 +47,11 @@ command -v jq >/dev/null 2>&1 || die 4 "jq is not on PATH"
 
 now() { date +%s; }
 # One read: sets V (green, red, pending, none or error) and LINE. `gh pr checks` exits 8 while anything is pending,
-# so its output decides, not its exit code.
+# so its output decides, not its exit code. A PR with no checks gets no JSON, only "no checks reported" on stderr:
+# that is none, not an unreadable GitHub.
 read_checks() {
-  _j="$(gh pr checks "$N" -R "$REPO" --json name,bucket 2>/dev/null)" || :
+  _j="$(gh pr checks "$N" -R "$REPO" --json name,bucket 2>&1)" || :
+  case "$_j" in "no checks reported"*) _j='[]' ;; esac
   _r="$(printf '%s' "$_j" | jq -r --arg not "$NOT_CI" '
     ($not | split(" ")) as $n
     | [.[] | select(.name as $x | $n | index($x) | not)] as $ci

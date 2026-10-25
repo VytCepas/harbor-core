@@ -7,6 +7,7 @@ export HARBOR_EVENT_DIR="$T_TMP/bus" GH_OUT="$T_TMP/gh.json"; mkdir -p "$HARBOR_
 cat > "$T_BIN/gh" <<'STUB'
 #!/bin/sh
 printf '%s\n' "$*" >> "$GH_OUT.calls"
+[ ! -e "$GH_OUT.nochecks" ] || { echo "no checks reported on the 'x' branch" >&2; exit 1; }
 [ -s "$GH_OUT" ] || exit 1
 cat "$GH_OUT"
 STUB
@@ -51,6 +52,10 @@ t_eq "never settles: exit 3 at the deadline" 3 "$RC"
 : > "$GH_OUT"
 O="$(HARBOR_CI_WAIT_BACKSTOP=1 HARBOR_CI_WAIT_SETTLE=1 sh "$W" acme/widgets#9 --timeout 30 2>&1)"; RC=$?
 t_eq "GitHub unreadable three reads running: exit 4" 4 "$RC"; t_has "...and says so" "$O" "GitHub did not answer"
+: > "$GH_OUT.nochecks"
+O="$(HARBOR_CI_WAIT_BACKSTOP=1 HARBOR_CI_WAIT_SETTLE=1 sh "$W" acme/widgets#9 --timeout 4 2>&1)"; RC=$?; rm -f "$GH_OUT.nochecks"
+t_eq "a PR with no checks is none, not unreadable: exit 3 at the deadline" 3 "$RC"
+t_has "...and says none" "$O" "acme/widgets#9: none: still running after 4s (no checks yet)"
 for bad in acme acme/widgets acme/widgets#x 'a;b/c#1' a/b/c#1; do
   run "$bad"; t_eq "'$bad' is refused before any command: exit 2" 2 "$RC"
 done
