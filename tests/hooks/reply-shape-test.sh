@@ -2,8 +2,8 @@
 # reply-shape.sh, the advisory Stop hook: a turn that wrote and shows no evidence draws the note, a
 # turn with evidence or no writes draws none, a long reply draws the length note, the note says
 # "leads with the answer" is review-only, and every path exits 0 (harbor#952). Transcripts are fixtures.
-. "$(dirname "$0")/../../tests/lib/core.sh"; t_init
-TOOL="$T_ROOT/hooks/reply-shape/reply-shape.sh"
+. "$(dirname "$0")/../lib/core.sh"; t_init
+TOOL="$T_ROOT/bin/reply-shape.sh"
 T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"; CFG="$T/cfg"
 PROMPT='{"type":"user","message":{"role":"user","content":"do the thing"}}'
 RESULT='{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"x","content":"ok"}]}}'

@@ -2,14 +2,14 @@
 # failure-observe.sh, the PostToolUseFailure sink (FO-1, harbor#465): the recurrence key, the refusals
 # that write and create nothing, a sink that follows the writer and not $CLAUDE_CONFIG_DIR, and
 # redactions under hostile input. Every fixture is a throwaway config dir under $T_TMP.
-. "$(dirname "$0")/../../tests/lib/core.sh"; t_init
+. "$(dirname "$0")/../lib/core.sh"; t_init
 SRC="$T_ROOT/bin"; TMP="$T_TMP/fo"; mkdir -p "$TMP"
 SALT=0123456789abcdef0123456789abcdef
 # The state floor-observe.sh leaves at SessionStart: guard-lib beside the tool, host token, salt,
 # and a sealed host dir holding a 0600 sink.
 mkfix() { # <name> → prints the dir
   _d="$TMP/$1"; mkdir -p "$_d/bin" "$_d/MEMORY/OBSERVABILITY/h1"
-  cp "$SRC/guard-lib.sh" "$T_ROOT/hooks/failure-observe/failure-observe.sh" "$_d/bin/"
+  cp "$SRC/guard-lib.sh" "$SRC/failure-observe.sh" "$_d/bin/"
   printf 'h1\n' > "$_d/.helm-obs-host"
   printf '%s\n' "$SALT" > "$_d/.helm-obs-salt"
   : > "$_d/MEMORY/OBSERVABILITY/h1/tool-failures.jsonl"
@@ -136,8 +136,8 @@ t_exit "junk exits" 0 sh -c 'printf "not json at all" | sh "$1/bin/failure-obser
 
 t_section "mutation: the interrupt check is load-bearing"
 MUT="$TMP/mut-interrupt"; mkdir -p "$MUT"
-sed '/^\[ "\${F_INT:-0}" = "1" \] && exit 0$/d' "$T_ROOT/hooks/failure-observe/failure-observe.sh" > "$MUT/failure-observe.sh"
-t_eq "the mutation applies" no "$(cmp -s "$T_ROOT/hooks/failure-observe/failure-observe.sh" "$MUT/failure-observe.sh" && echo yes || echo no)"
+sed '/^\[ "\${F_INT:-0}" = "1" \] && exit 0$/d' "$SRC/failure-observe.sh" > "$MUT/failure-observe.sh"
+t_eq "the mutation applies" no "$(cmp -s "$SRC/failure-observe.sh" "$MUT/failure-observe.sh" && echo yes || echo no)"
 F="$(mkfix mutint)"; cp "$MUT/failure-observe.sh" "$F/bin/failure-observe.sh"
 fire "$F" "$(payload s1 Bash '{"command":"sleep 9"}' 'Interrupted' true)"
 t_eq "without it an interrupt is recorded" 1 "$(nrec "$F")"
@@ -145,8 +145,8 @@ t_eq "without it an interrupt is recorded" 1 "$(nrec "$F")"
 t_section "mutation: the digest subject is tool+input, not the whole payload"
 MUT2="$TMP/mut-subject"; mkdir -p "$MUT2"
 sed 's|^FLOOR_OBS_SUBJECT="\$F_SUBJ"; export FLOOR_OBS_SUBJECT$|FLOOR_OBS_SUBJECT="$PAYLOAD"; export FLOOR_OBS_SUBJECT|' \
-  "$T_ROOT/hooks/failure-observe/failure-observe.sh" > "$MUT2/failure-observe.sh"
-t_eq "the mutation applies" no "$(cmp -s "$T_ROOT/hooks/failure-observe/failure-observe.sh" "$MUT2/failure-observe.sh" && echo yes || echo no)"
+  "$SRC/failure-observe.sh" > "$MUT2/failure-observe.sh"
+t_eq "the mutation applies" no "$(cmp -s "$SRC/failure-observe.sh" "$MUT2/failure-observe.sh" && echo yes || echo no)"
 F="$(mkfix mutsubj)"; cp "$MUT2/failure-observe.sh" "$F/bin/failure-observe.sh"
 fire "$F" "$(payload s1 Read '{"file_path":"/a/b.md"}' 'gone' false)"
 fire "$F" "$(payload s2 Read '{"file_path":"/a/b.md"}' 'gone' false)"

@@ -91,7 +91,6 @@ GH_OWNERS="${TICKET_NOTE_GH_OWNERS:-}"
 if [ -z "$GH_OWNERS" ]; then
   GH_OWNERS="VytCepas"
   case "$0" in */*) _hd="${0%/*}" ;; *) _hd=. ;; esac
-  [ ! -f "$_hd/manifest.tsv" ] || _hd="$_hd/../../bin"  # D-88: in the repo an engine sits beside its manifest in hooks/<engine>/; deployed, flat beside its libraries
   if [ -f "$_hd/roots.sh" ]; then
     _more="$(sh "$_hd/roots.sh" --conf github_owners 2>/dev/null | paste -sd'|' - 2>/dev/null || true)"
     [ -z "$_more" ] || GH_OWNERS="$GH_OWNERS|$_more"

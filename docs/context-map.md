@@ -30,15 +30,15 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | contract | contracts/ | system | source | versioned | 30 |
 | decision-record | docs/decisions/ | element | source | dated | 91 |
 | injection-rule | context-rules/<scope>/ | component | source | living | 35 |
-| hook | bin/ | component | source | living | 40 |
+| hook | bin/ | component | source | living | 13 |
 | skill | skills/ | component | source | living | 41 |
 | fixture | fixtures/ | element | source | living | 252 |
 | registry | registries/ | component | source | versioned | 49 |
-| test | tests/ | component | source | living | 421 |
+| test | tests/ | component | source | living | 428 |
 | report | docs/reports/ | element | report | dated | 1 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| script | bin/ | component | source | living | 199 |
+| script | bin/ | component | source | living | 209 |
 | (no kind) | - | - | - | - | 171 |
 
 ## Folders
@@ -51,11 +51,11 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.github/` | 4 | 2 | 1 |
 | `CONTRACTS/` | 79 | 9 | 2 |
 | `DOCTRINE/` | 10 | 1 | 1 |
-| `bin/` | 204 | 22 | 2 |
+| `bin/` | 214 | 22 | 2 |
 | `commands/` | 5 | 1 | 1 |
 | `docs/` | 113 | 6 | 5 |
 | `fixtures/` | 252 | 9 | 1 |
-| `hooks/` | 35 | 4 | 1 |
+| `hooks/` | 8 | 1 | 1 |
 | `inject.d/` | 31 | 1 | 1 |
 | `launchd/` | 12 | 3 | 1 |
 | `patches/` | 12 | 1 | 1 |
@@ -63,7 +63,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `skills/` | 41 | 5 | 1 |
 | `standards/` | 13 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 421 | 21 | 1 |
+| `tests/` | 428 | 21 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 73 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -72,7 +72,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
-| access | control-plane | 5 | 5 | 2 | 2 | 0 | 0 |
+| access | control-plane | 4 | 6 | 2 | 2 | 0 | 0 |
 | admission | control-plane | 15 | 1 | 0 | 0 | 0 | 167 |
 | alert | observability | 1 | 1 | 0 | 0 | 0 | 0 |
 | audit | control-plane | 0 | 0 | 0 | 0 | 0 | 2 |
@@ -92,7 +92,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | policy | policy-function | 0 | 0 | 11 | 0 | 0 | 3 |
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
 | scope | coordination | 1 | 11 | 0 | 0 | 0 | 4 |
-| session | data-plane | 11 | 4 | 0 | 1 | 0 | 0 |
+| session | data-plane | 10 | 5 | 0 | 1 | 0 | 0 |
 | skill | catalog | 3 | 5 | 0 | 4 | 0 | 11 |
 | standard | policy-function | 3 | 8 | 104 | 0 | 0 | 43 |
 | status | observability | 3 | 7 | 0 | 1 | 0 | 0 |
@@ -108,10 +108,9 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `CONTRACTS/access-card.md`
 - `CONTRACTS/access-register.md`
 - `bin/access-chrome-mcp.py`
+- `bin/access-confinement.sh`
 - `bin/access-environment.sh`
 - `bin/access.sh`
-- `hooks/access-confinement/access-confinement.sh`
-- `hooks/access-confinement/access-confinement.test.sh`
 - `skills/access-ledger/SKILL.md`
 
 ### admission
@@ -273,10 +272,10 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 ### memory
 
 - `CONTRACTS/memory-format.md`
+- `bin/memory-harvest.sh`
 - `bin/memory-lint.sh`
 - `bin/memory-route.sh`
 - `bin/memory.sh`
-- `hooks/memory-harvest/memory-harvest.sh`
 - `tools/memory/memory-engine.test.ts`
 - `tools/memory/memory-engine.ts`
 
@@ -317,11 +316,10 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/session-notify.sh`
 - `bin/session-react-lib.sh`
 - `bin/session-save-now.sh`
-- `hooks/session-state/session-state.sh`
-- `hooks/session-subagent-check/session-subagent-check.sh`
-- `hooks/session-title/session-title.sh`
-- `hooks/session-title/session-title.test.sh`
-- `hooks/session-verdicts/session-verdicts.sh`
+- `bin/session-state.sh`
+- `bin/session-subagent-check.sh`
+- `bin/session-title.sh`
+- `bin/session-verdicts.sh`
 
 ### skill
 
@@ -468,17 +466,17 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `.agents/` | 4 |
 | `.github/` | 2 |
 | `CONTRACTS/` | 62 |
-| `bin/` | 112 |
+| `bin/` | 116 |
 | `commands/` | 5 |
 | `docs/` | 17 |
 | `fixtures/` | 214 |
-| `hooks/` | 27 |
+| `hooks/` | 8 |
 | `launchd/` | 10 |
 | `patches/` | 12 |
 | `runners/` | 2 |
 | `skills/` | 29 |
 | `systemd/` | 15 |
-| `tests/` | 232 |
+| `tests/` | 237 |
 | `tools/` | 8 |
 | `vendor/` | 73 |
 | `worklog/` | 1 |

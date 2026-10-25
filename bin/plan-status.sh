@@ -95,7 +95,7 @@ while IFS='	' read -r id title ev void; do
   # A cancelled ticket is not open and is not built, and evidence cannot tell you
   # which. M4 (SessionHarvester) and M12 (ProposalGC) were VOIDED by the owner on
   # 2026-08-05 and this file reported both DONE, because each named a path that
-  # happens to exist — `hooks/memory-harvest/memory-harvest.sh`, `bin/proposal.sh`. A reader saw
+  # happens to exist — `bin/memory-harvest.sh`, `bin/proposal.sh`. A reader saw
   # "shipped as specified"; what shipped was something adjacent, after the ticket
   # was closed. That is harbor#117's own defect, reappearing inside the tool built
   # to end it, so the check runs BEFORE any evidence is looked at.
