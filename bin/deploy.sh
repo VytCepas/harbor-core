@@ -722,6 +722,19 @@ _unreachable() {
 # shim again after packs: a pack's commands are linked from the shims.d fragment its install wrote (harbor#1149), which the
 # first shim run, before the packs, could not have read on a box that never had them.
 # The two other repos last (harbor#736): Harbor's floor is in place before any other tool is replaced.
+# The packs step recomposes bin/CHECKS.md when a pack's checks.d changed in this deploy, after runtime-install recorded
+# it; event-dispatch reads the register only at its recorded blob, so every preset was refused (harbor#1044). Then
+# runtime-install runs again: it composes the register with the packs as they now are, and records that.
+_register_rerecord() {
+  _want runtime || return 0
+  _rr_want="$(awk '!/^#/ && NF == 5 && $3 == "bin/CHECKS.md" && $4 == "runtime-install" { b = $1 } END { print b }' "$CFG/.harbor-manifest" 2>/dev/null)"
+  _rr_have="$(git hash-object --no-filters -- "$CFG/bin/CHECKS.md" 2>/dev/null)" || _rr_have=''
+  { [ -n "$_rr_want" ] && [ "$_rr_want" != "$_rr_have" ]; } || return 0
+  log_note "the packs step recomposed bin/CHECKS.md after runtime-install recorded it; running runtime-install again to record it"
+  _rr_p="runtime-install.sh --live --apply$AL"
+  # shellcheck disable=SC2086
+  _run sh "$ROOT/bin/"$_rr_p || { _INSTALL_FAILED="$_rr_p (re-recording bin/CHECKS.md after the packs)"; return 1; }
+}
 _install() {
   log_head 'install'
   for _p in "constitution:constitution-install.sh --apply --live$AL" \
@@ -739,7 +752,7 @@ _install() {
             'project-init:XREPO' 'projects-orchestrator:XREPO'; do
     _c="${_p%%:*}"; _p="${_p#*:}"
     if [ "$_c" = packs ]; then _want_any packs inject || continue; else _want "$_c" || continue; fi
-    if [ "$_p" = PACKS ]; then _packs_install || return 1; continue; fi
+    if [ "$_p" = PACKS ]; then _packs_install || return 1; _register_rerecord || return 1; continue; fi
     if [ "$_p" = XREPO ]; then
       _xd="$(_xr_get "$_c")"
       case "$_xd" in ''|skip) continue ;; esac
