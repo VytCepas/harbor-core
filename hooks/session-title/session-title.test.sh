@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 # session-title.sh (harbor#1257): applies the model-written title via sessionTitle, keyed by session id,
 # refuses over 50 characters, never overwrites the operator's /rename, fails open. Fixtures are written here.
-. "$(dirname "$0")/../lib/core.sh"; t_init
-TOOL="$T_ROOT/bin/session-title.sh"
+. "$(dirname "$0")/../../tests/lib/core.sh"; t_init
+TOOL="$T_ROOT/hooks/session-title/session-title.sh"
 T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"; CFG="$T/cfg"; mkdir -p "$CFG/session-titles"
 title() { printf '%s\n' "$2" > "$CFG/session-titles/$1.txt"; }
 # run <payload-json> — the hook the way the harness runs it; stdout in $OUT, stderr in $ERR, exit in $RC.

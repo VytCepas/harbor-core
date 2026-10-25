@@ -3,8 +3,8 @@
 # worktree is its project, an access failure names its route card, a `scope: box` pack
 # follows the call into a REGISTERED repo only, and repo-tier reports what stayed home
 # (harbor#599, #619, 2026-08-28, 2026-09-24).
-. "$(dirname "$0")/../lib/core.sh"; t_init
-. "$(dirname "$0")/inject-fixture.sh"
+. "$(dirname "$0")/../../tests/lib/core.sh"; t_init
+. "$T_ROOT/tests/hooks/inject-fixture.sh"
 
 t_section "project-pointer: a linked worktree is the same project"
 PP="$T_ROOT/inject.d/box/project-pointer.sh"; W="$T/wtcase"

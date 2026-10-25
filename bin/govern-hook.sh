@@ -68,7 +68,7 @@ esac
 # is silence, because unlike the external-content banner nothing here is a
 # safety boundary — a missed reminder costs a reminder.
 #
-# `--note` PRINTS THE TEXT AND NOT THE ENVELOPE (harbor#173). bin/inject-hook.sh
+# `--note` PRINTS THE TEXT AND NOT THE ENVELOPE (harbor#173). hooks/injection-rule/injection-rule.sh
 # is the engine that now carries every other just-in-time rule in this estate,
 # and its `run:` contract is "stdout is the note". This branch computes exactly
 # what it always computed and skips the jq wrapper, so the merge governance below
@@ -134,7 +134,7 @@ STAMP='[HARBOR GOVERNANCE]'
 # pinning, how far behind origin the checkout now is — and CONTRACTS/hooks.md
 # gives the reason no other layer can reach it: a PR merge is server-side, so no
 # local git process runs and no `post-merge` git hook fires, in this repo or any
-# repo, ever. bin/inject-hook.sh calls back into this file through `--note`.
+# repo, ever. hooks/injection-rule/injection-rule.sh calls back into this file through `--note`.
 TOOL="$(field '.tool_name')"
 case "$TOOL" in Bash|Monitor) ;; *) exit 0 ;; esac   # Monitor runs a shell command too (pass 14 E-4)
 CMD="$(field '.tool_input.command')"
@@ -303,7 +303,7 @@ BASE="${HARBOR_BASE_BRANCH:-main}"
 
 emit() { # <event> <model-text> [user-line] — or nothing at all
   [ -n "$2" ] || return 0
-  # --note: the caller is bin/inject-hook.sh, whose contract is "stdout is the
+  # --note: the caller is hooks/injection-rule/injection-rule.sh, whose contract is "stdout is the
   # note". The systemMessage half has no equivalent there and is dropped rather
   # than smuggled into the model's copy — a line written for the operator that
   # arrives as model context is a line addressed to the wrong reader.
@@ -348,7 +348,7 @@ emit() { # <event> <model-text> [user-line] — or nothing at all
 # the installed path is the decorative gate harbor#254 is about, one layer down.
 #
 # The sentinel is the fix: `--note` prints a line the ENGINE recognises, and
-# bin/inject-hook.sh turns it back into a real permissionDecision on PreToolUse
+# hooks/injection-rule/injection-rule.sh turns it back into a real permissionDecision on PreToolUse
 # (and refuses to pretend on every other event, where the harness has no channel
 # for one). CONTRACTS/inject.md carries the contract.
 deny() {

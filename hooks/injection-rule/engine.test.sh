@@ -3,8 +3,8 @@
 # predicates and their substring traps, malformed packs, the once-ledger, run: bodies and
 # decisions, and the provenance stamp (harbor#173, #180, #254). Every narrowing is asserted
 # both ways: a silent arm is written after the pack whose absence it would pass without.
-. "$(dirname "$0")/../lib/core.sh"; t_init
-. "$(dirname "$0")/inject-fixture.sh"
+. "$(dirname "$0")/../../tests/lib/core.sh"; t_init
+. "$T_ROOT/tests/hooks/inject-fixture.sh"
 
 t_section "1 · event and tool routing"
 pack "$CFG/inject.d" 10-sub.md <<'PACK'
@@ -210,7 +210,7 @@ bash_ev PreToolUse "$_big" > "$T/big.json"
 # of it, the larger), stays under the old 5 s bound, capped by the timeout inject-install really wires.
 mkdir -p "$T/wired"; printf '{}\n' > "$T/wired/settings.json"
 env -u CLAUDE_CONFIG_DIR -u CLAUDECODE sh "$T_ROOT/bin/inject-install.sh" --dir "$T/wired" --apply >/dev/null 2>&1
-_to="$(jq -r '[.hooks.PreToolUse[]?.hooks[]? | select(.command | test("inject-hook")) | .timeout // 600] | min // empty' \
+_to="$(jq -r '[.hooks.PreToolUse[]?.hooks[]? | select(.command | test("injection-rule")) | .timeout // 600] | min // empty' \
   "$T/wired/settings.json" 2>/dev/null)"
 _base() { _cost /dev/null awk 'BEGIN { for (i = 0; i < 10000000; i++) s += i }'; }
 _b1="$(_base)"

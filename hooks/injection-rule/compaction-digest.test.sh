@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 # The post-compaction carry names the traps THIS session sprang, from the guard and tool-failure
 # ledgers, capped, with no command text and no section when nothing was hit (harbor#569).
-. "$(dirname "$0")/../lib/core.sh"; t_init
-. "$(dirname "$0")/inject-fixture.sh"
+. "$(dirname "$0")/../../tests/lib/core.sh"; t_init
+. "$T_ROOT/tests/hooks/inject-fixture.sh"
 BOX="$T/dcfg"; OD="$BOX/MEMORY/OBSERVABILITY/testhost"
 mkdir -p "$BOX/inject.d" "$BOX/bin" "$OD"
 cp -R "$T_ROOT"/inject.d/box/. "$BOX/inject.d/"; cp "$T_ROOT/bin/guard-lib.sh" "$T_ROOT/bin/compaction-digest.sh" "$BOX/bin/"

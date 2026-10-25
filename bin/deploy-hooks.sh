@@ -14,12 +14,14 @@
 #   --in FILE                  the settings.json to start from (default: <cfg>/settings.json; absent reads as {})
 #   --matcher ENGINE:EVENT=M   the value of a manifest matcher written `@derived`; its payload's installer supplies it
 #   --rewire ENGINE            wire an engine again that was removed by hand (it forgets the engine's record)
+#   --installer NAME           only the engines whose manifest says `installer NAME`: each installer renders, records and
+#                              prunes its own engines, and leaves the others' entries as they are
 #
 # FAIL CLOSED: a bad manifest, a `@derived` matcher nobody supplied, or a binding whose script is not deployed at
 # <cfg>/bin/<engine>.sh prints FAIL lines and nothing on stdout, exit 1. Exit 2 is usage.
 # DESIRED STATE (operator decision 2026-10-24): an engine whose entries already equal its bindings is left untouched;
 # otherwise every entry of it goes and its bindings are appended, so a changed matcher never leaves a second copy.
-# OFF (the same decision): <cfg>/<engine>.off unwires it, and a binding <cfg>/cache/deploy-hooks/wired.tsv says was
+# OFF (the same decision): <cfg>/<engine>.off unwires it, and a binding <cfg>/.harbor-hooks-wired says was
 # wired before but is absent now was removed by hand and stays removed (harbor#362's ticket-note rule, for every engine).
 set -eu
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
@@ -28,7 +30,7 @@ LOG_FD=2
 . "$HERE/log-lib.sh"
 log_init deploy-hooks
 usage() { log_fail "$1"; log_fix "sh $0 --plan ~/.claude"; log_end || :; exit 2; }
-MODE=''; CFG=''; IN=''; MATCHERS=''; REWIRE=''
+MODE=''; CFG=''; IN=''; MATCHERS=''; REWIRE=''; INSTALLER=''
 case "${1:-}" in
   --check|--engines) MODE="${1#--}"; shift ;;
   --plan|--settings|--record) MODE="${1#--}"; [ $# -ge 2 ] || usage "$1 needs a config dir"; CFG="${2%/}"; shift 2 ;;
@@ -45,6 +47,7 @@ while [ $# -gt 0 ]; do
       case "$2" in ?*:?*=?*) ;; *) usage "--matcher takes ENGINE:EVENT=M, not '$2'" ;; esac
       MATCHERS="$MATCHERS$2$NL"; shift 2 ;;
     --rewire) [ $# -ge 2 ] || usage "--rewire needs an engine"; REWIRE="$REWIRE$2$NL"; shift 2 ;;
+    --installer) [ $# -ge 2 ] || usage "--installer needs a name"; INSTALLER="$2"; shift 2 ;;
     *) usage "unknown argument '$1'" ;;
   esac
 done
@@ -54,18 +57,18 @@ if [ "$MODE" = engines ]; then
 fi
 command -v jq >/dev/null 2>&1 || { log_fail "jq is not installed"; log_fix "$(pkg_hint jq)"; log_end || :; exit 1; }
 T="$(mktemp -d "${TMPDIR:-/tmp}/deploy-hooks.XXXXXX")"; trap 'rm -rf "$T"' EXIT
-REC="$CFG/cache/deploy-hooks/wired.tsv"
+REC="$CFG/.harbor-hooks-wired"  # top level, so deploy's snapshot restores it with the settings.json it describes
 
 # ── read and judge every manifest: $T/wires holds engine TAB event TAB matcher TAB timeout ────────────────────────────
 # The events the harness accepts a command hook on (CONTRACTS/hooks.md); a misspelt event would be wired and never fire.
 EVENTS=' PreToolUse PostToolUse PostToolUseFailure PostToolBatch PermissionRequest SessionStart SessionEnd Stop SubagentStart SubagentStop UserPromptSubmit UserPromptExpansion Notification PreCompact PostCompact InstructionsLoaded PostModelSwitch '
-: > "$T/wires"; : > "$T/errors"; : > "$T/engines"
+: > "$T/wires"; : > "$T/errors"; : > "$T/engines"; : > "$T/installers"
 for _m in "$ROOT"/hooks/*/manifest.tsv; do
   [ -f "$_m" ] || continue
   _d="${_m%/manifest.tsv}"; _e="${_d##*/}"
   printf '%s\n' "$_e" >> "$T/engines"
   [ -f "$_d/$_e.sh" ] || printf '%s: no %s.sh beside the manifest (D-88: the file is named after its folder)\n' "$_m" "$_e" >> "$T/errors"
-  awk -F'\t' -v OFS='\t' -v f="$_m" -v dir="$_e" -v ev="$EVENTS" -v W="$T/wires" -v E="$T/errors" '
+  awk -F'\t' -v OFS='\t' -v f="$_m" -v dir="$_e" -v ev="$EVENTS" -v W="$T/wires" -v E="$T/errors" -v I="$T/installers" '
     function bad(m) { print f ":" NR ": " m >> E }
     /^#/ || /^[[:space:]]*$/ { next }
     !hdr { hdr = 1; if ($1 != "key" || $2 != "value") bad("the first row is the header `key<TAB>value`"); next }
@@ -77,18 +80,38 @@ for _m in "$ROOT"/hooks/*/manifest.tsv; do
       if ($4 != "-" && ($4 !~ /^[0-9]+$/ || $4 + 0 < 1 || $4 + 0 > 600)) bad("timeout `" $4 "` is not - or 1..600 seconds")
       if (seen[$2 "\t" $3]++) bad("`" $2 "` `" $3 "` is bound twice")
       print dir, $2, $3, $4 >> W; w++; next }
+    $1 == "installer" { n["installer"]++
+      if ($2 !~ /^[a-z][a-z0-9-]*-install$/) bad("installer `" $2 "` is not an installer name (<what>-install)")
+      print dir, $2 >> I; next }
     $1 == "senses" || $1 == "acts-on" || $1 == "findings" || $1 == "closer" {
       n[$1]++; if ($2 == "") bad("`" $1 "` is empty"); next }
     { bad("unknown key `" $1 "`") }
     END {
       if (!hdr) bad("the manifest is empty")
-      split("engine senses acts-on findings closer", req, " ")
-      for (i = 1; i <= 5; i++) if (n[req[i]] != 1) bad("`" req[i] "` must appear once, not " (n[req[i]] + 0) " times")
+      split("engine installer senses acts-on findings closer", req, " ")
+      for (i = 1; i <= 6; i++) if (n[req[i]] != 1) bad("`" req[i] "` must appear once, not " (n[req[i]] + 0) " times")
       if (!w) bad("no wire row: an engine bound to no event is not a hook")
     }' "$_m"
 done
 if [ ! -s "$T/engines" ]; then
   log_fail "no hooks/*/manifest.tsv under $ROOT"; log_fix "run from a tree that carries the hook engines (D-88)"; log_end || :; exit 1
+fi
+# ONE INSTALLER'S ENGINES: the others are not this run's to plan, record or prune, and their @derived matchers are not ours.
+if [ -n "$INSTALLER" ] && [ ! -s "$T/errors" ]; then
+  awk -F'\t' -v i="$INSTALLER" '$2 == i { print $1 }' "$T/installers" > "$T/engines"
+  if [ ! -s "$T/engines" ]; then
+    log_fail "no engine's manifest says installer $INSTALLER"; log_fix "grep -l '^installer' $ROOT/hooks/*/manifest.tsv"; log_end || :; exit 1
+  fi
+  awk -F'\t' 'NR == FNR { k[$1] = 1; next } $1 in k' "$T/engines" "$T/wires" > "$T/w1"; mv "$T/w1" "$T/wires"
+fi
+_errs() { # <fix> — every collected error, each with its fix, then stop
+  while IFS= read -r _l; do log_fail "${_l#"$ROOT"/}"; log_fix "$1"; done < "$T/errors"; log_end || :; exit 1
+}
+[ ! -s "$T/errors" ] || _errs "correct the manifest; its format is in hooks/README.md"
+# --check judges the manifests; a @derived matcher is a valid manifest value, supplied by its installer at render time.
+if [ "$MODE" = check ]; then
+  log_ok "$(wc -l < "$T/engines" | tr -d ' ') engine(s), $(wc -l < "$T/wires" | tr -d ' ') binding(s), every manifest valid"
+  log_end; exit $?
 fi
 # A `@derived` matcher is a value the payload's installer computes (inject-install derives the injection rule's from its
 # packs). Substituted here, or refused: an empty matcher would be wired as "every tool", which nobody asked for.
@@ -102,14 +125,7 @@ while IFS="$(printf '\t')" read -r _e _ev _mt _to; do
   printf '%s\t%s\t%s\t%s\n' "$_e" "$_ev" "$_mt" "$_to" >> "$T/w2"
 done < "$T/wires"
 mv "$T/w2" "$T/wires"
-if [ -s "$T/errors" ]; then
-  while IFS= read -r _l; do log_fail "${_l#"$ROOT"/}"; done < "$T/errors"
-  log_fix "correct the manifest; its format is in hooks/README.md"; log_end || :; exit 1
-fi
-if [ "$MODE" = check ]; then
-  log_ok "$(wc -l < "$T/engines" | tr -d ' ') engine(s), $(wc -l < "$T/wires" | tr -d ' ') binding(s), every manifest valid"
-  log_end; exit $?
-fi
+[ ! -s "$T/errors" ] || _errs "run the engine's installer, which derives the matcher, or pass --matcher ENGINE:EVENT=M"
 
 # ── the names each engine answers to: its own and every old name renames.tsv moved to hooks/<engine>/<engine>.sh ──────
 awk -F'\t' 'NR == FNR { e[$1] = 1; next } !/^#/ && $3 ~ /^hooks\/[^\/]+\/[^\/]+\.sh$/ {
@@ -131,11 +147,20 @@ jq -r --rawfile names "$T/names" '
   | select($own[$s] != null)
   | [$own[$s], $ev, (if $m == "" then "-" else $m end), ((.timeout // "-") | tostring), .command] | @tsv' "$T/in.json" > "$T/now"
 if [ -f "$REC" ]; then cp "$REC" "$T/rec"
-elif [ -s "$CFG/.helm-install-stamp" ]; then
-  # NO RECORD YET ON A BOX SOMETHING ALREADY INSTALLED: every binding counts as wired before, so one an operator took
-  # out by hand under the installers' append-only merge stays out on the first render too (harbor#362).
+elif { [ -n "$INSTALLER" ] && grep -q "^$INSTALLER " "$CFG/.helm-install-stamp" 2>/dev/null; } \
+  || { [ -z "$INSTALLER" ] && [ -s "$CFG/.helm-install-stamp" ]; }; then
+  # NO RECORD YET ON A BOX THIS INSTALLER ALREADY INSTALLED: every binding counts as wired before, so one an operator
+  # took out by hand under the installers' append-only merge stays out on the first render too (harbor#362). Another
+  # installer's stamp proves nothing about these engines: floor-install first, then runtime-install, wires them all.
   cut -f1-3 "$T/wires" > "$T/rec"
 else : > "$T/rec"; fi
+
+# The command an engine is wired with. Quoted only when the path needs it: the harness runs it through a shell, so a
+# config dir with a space would be word-split (inject-install's measured failure), and an unquoted plain path keeps a
+# box that already runs it byte-identical.
+_cmd() { case "$CFG/bin/$1.sh" in *[!A-Za-z0-9_./:@%+,=-]*) printf '/bin/sh "%s"' "$CFG/bin/$1.sh" ;; *) printf '/bin/sh %s' "$CFG/bin/$1.sh" ;; esac; }
+case "$CFG" in *[\\\"\$\`]*) log_fail "$CFG holds a backslash, double quote, dollar or backtick, which a double-quoted command cannot carry"; log_nofix "a config dir without them"; log_end || :; exit 1 ;; esac
+while IFS= read -r _e; do printf '%s\t%s\n' "$_e" "$(_cmd "$_e")"; done < "$T/engines" > "$T/cmds"
 
 # ── decide each binding ─────────────────────────────────────────────────────────────────────────────────────────────
 # One line per binding: verdict TAB engine TAB event TAB matcher TAB timeout. An engine is left alone (`keep`) only when
@@ -155,7 +180,7 @@ awk -F'\t' -v OFS='\t' '
 : > "$T/plan"
 while IFS= read -r _e; do
   # Equal means the same command too: an entry under an old name or path is re-rendered, never kept.
-  awk -F'\t' -v OFS='\t' -v e="$_e" -v c="/bin/sh $CFG/bin/$_e.sh" '$1 == "want" && $2 == e { print $2, $3, $4, $5, c }' "$T/verdicts" | sort > "$T/want.e"
+  awk -F'\t' -v OFS='\t' -v e="$_e" -v c="$(_cmd "$_e")" '$1 == "want" && $2 == e { print $2, $3, $4, $5, c }' "$T/verdicts" | sort > "$T/want.e"
   awk -F'\t' -v e="$_e" '$1 == e' "$T/now" | sort > "$T/now.e"
   if cmp -s "$T/want.e" "$T/now.e"; then _v=keep; else _v=wire; awk '{ print "prune\t" $0 }' "$T/now.e" >> "$T/plan"; fi
   awk -F'\t' -v OFS='\t' -v e="$_e" -v v="$_v" '$2 == e { if ($1 == "want") $1 = v; print }' "$T/verdicts" >> "$T/plan"
@@ -190,7 +215,7 @@ fi
 
 # ── settings: drop every entry of a re-rendered or unwired engine, then append its wanted bindings ─────────────────────
 awk -F'\t' '$1 == "wire" || $1 == "prune" { print $2 }' "$T/plan" | sort -u > "$T/redo"
-awk -F'\t' -v OFS='\t' '$1 == "wire" { print $2, $3, $4, $5 }' "$T/plan" > "$T/add"
+awk -F'\t' -v OFS='\t' 'NR == FNR { c[$1] = $2; next } $1 == "wire" { print $2, $3, $4, $5, c[$2] }' "$T/cmds" "$T/plan" > "$T/add"
 jq --rawfile names "$T/names" --rawfile redo "$T/redo" --rawfile add "$T/add" --arg cfg "$CFG" '
   def script: (.command // "") | gsub("\""; "") | split(" ") | map(select(test("\\.(sh|py)$"))) | .[0] // "" | sub(".*/"; "");
   ($names | split("\n") | map(select(length > 0) | split("\t") | {key: .[1], value: .[0]}) | from_entries) as $own
@@ -200,7 +225,7 @@ jq --rawfile names "$T/names" --rawfile redo "$T/redo" --rawfile add "$T/add" --
                                      | map(select((.hooks | length) > 0))))
   | reduce ($add | split("\n")[] | select(length > 0) | split("\t")) as $b (.;
       .hooks[$b[1]] = ((.hooks[$b[1]] // []) + [{matcher: (if $b[2] == "-" then "" else $b[2] end),
-        hooks: [{type: "command", command: ("/bin/sh " + $cfg + "/bin/" + $b[0] + ".sh")}
+        hooks: [{type: "command", command: $b[4]}
                 + (if $b[3] == "-" then {} else {timeout: ($b[3] | tonumber)} end)]}]))
   | .hooks |= with_entries(select((.value | length) > 0))' "$T/in.json"
 log_end

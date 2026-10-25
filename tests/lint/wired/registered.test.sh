@@ -6,7 +6,7 @@
 W=admission.wired-registered
 mk() { # <name> → a root holding bin/ and standards/naming/controls.tsv
   _d="$T_TMP/$1"; mkdir -p "$_d/standards/naming"
-  cp -R "$T_ROOT/bin" "$_d/bin"; cp "$T_ROOT/standards/naming/controls.tsv" "$_d/standards/naming/"
+  cp -R "$T_ROOT/bin" "$_d/bin"; cp -R "$T_ROOT/hooks" "$_d/hooks"; cp "$T_ROOT/standards/naming/controls.tsv" "$_d/standards/naming/"
   printf '%s' "$_d"
 }
 drop() { # <root> <engine> → controls.tsv without that engine's rows

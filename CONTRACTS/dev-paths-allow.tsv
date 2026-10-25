@@ -19,14 +19,14 @@ bin/freshness.sh	*	case labels giving a dev document its age budget; an absent f
 bin/gate-merge-stack.sh	*	knows STATUS.md as a generated file to rebuild only when bin/status-gen.sh is present, and excludes it from the conflict scan
 bin/graph-gen.sh	*	excludes the path from the graph walk; absent in the export, the exclusion is a no-op
 bin/harbor	*	help text for the status verb, never a read
-bin/inject-hook.sh	*	case label that skips the path; absent in the export, it never matches
+hooks/injection-rule/injection-rule.sh	*	case label that skips the path; absent in the export, it never matches
 bin/lint-conventions.sh	*	rules skip when the dev file is absent (_export_tree) and other hits are exclusions or messages; selfcontained.test.sh runs those rules green over the export
 bin/lint-leaks.sh	*	git pathspec exclusion; absent in the export, it excludes nothing
 bin/lint-secrets.sh	*	git pathspec exclusion; absent in the export, it excludes nothing
 bin/lint-siblings.sh	*	git pathspec exclusion; absent in the export, it excludes nothing
 bin/plan-status.sh	*	its subject is the dev-only plan: in the export it refuses with "no plan" and lint doc.plan-generated skips (harbor#1275)
 bin/port-paths.sh	*	git pathspec exclusion; absent in the export, it excludes nothing
-bin/session-state.sh	*	the session repo's own HANDOFF.md, read behind [ -f ]; not harbor's dev layer
+hooks/session-state/session-state.sh	*	the session repo's own HANDOFF.md, read behind [ -f ]; not harbor's dev layer
 bin/status-gen.sh	*	writes STATUS.md only in the dev checkout; in a tree with layers.tsv and no STATUS.md it stands down
 fixtures/lint-module/inert-mentions/tree/sysa/bin/alpha-run	*	fixture text the module lint reads as a mention, never run
 fixtures/lint-module/live-mentions/tree/sysa/bin/alpha-run	*	fixture text the module lint reads as a mention, never run
@@ -47,7 +47,7 @@ tests/floor/floor-test.sh	*	writes or excludes its own fixture of that name in a
 tests/floor/floor.status-test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
 tests/floor/floor.worklog-test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
 tests/floor/marker-test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
-tests/hooks/inject-hook.detector-test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+hooks/injection-rule/detector.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
 tests/install/port-paths-test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
 tests/lint/credential-reads/ratchet.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
 tests/lint/leaks/ratchet.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)

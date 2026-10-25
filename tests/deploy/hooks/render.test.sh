@@ -8,7 +8,7 @@ R="$T/root"; CFG="$T/cfg"
 # engine <name> <manifest wire rows…> — a valid engine folder: the script, and a manifest with one wire row per argument.
 engine() {
   _n="$1"; shift; mkdir -p "$R/hooks/$_n"; printf '#!/bin/sh\nexit 0\n' > "$R/hooks/$_n/$_n.sh"
-  { printf '# fixture\nkey\tvalue\nengine\t%s\n' "$_n"
+  { printf '# fixture\nkey\tvalue\nengine\t%s\ninstaller\t%s\n' "$_n" "${INST:-runtime-install}"
     for _w in "$@"; do printf 'wire\t%s\n' "$_w"; done
     printf 'senses\tthe payload\nacts-on\tnothing\nfindings\tstderr\ncloser\tnobody\n'; } > "$R/hooks/$_n/manifest.tsv"
 }
@@ -116,7 +116,7 @@ settings; t_has "with the sentinel gone alpha is wired again, not read as remove
 
 t_section "a binding removed by hand stays removed; --rewire brings it back"
 fresh; settings; run --record "$CFG"
-t_has "the record holds what is wired" "$(cat "$CFG/cache/deploy-hooks/wired.tsv")" "beta	SessionStart	-"
+t_has "the record holds what is wired" "$(cat "$CFG/.harbor-hooks-wired")" "beta	SessionStart	-"
 jq '.hooks.SessionStart = []' "$CFG/settings.json" > "$T/s"; mv "$T/s" "$CFG/settings.json"
 run --plan "$CFG"; t_has "the plan says removed" "$OUT" "removed	beta	SessionStart"
 settings; t_hasnt "SessionStart is not re-added" "$(cmds)" "SessionStart|"
@@ -127,4 +127,35 @@ t_section "no record yet: a stamped config dir counts every binding as wired bef
 fresh; printf 'runtime-install 2026-10-01\n' > "$CFG/.helm-install-stamp"
 run --plan "$CFG"; t_has "absent on a stamped box: removed by hand" "$OUT" "removed	alpha	Stop"
 rm "$CFG/.helm-install-stamp"; run --plan "$CFG"; t_has "absent on a fresh box: wired" "$OUT" "wire	alpha	Stop"
+printf 'floor-install 0123abc 2026-10-01\n' > "$CFG/.helm-install-stamp"
+run --plan "$CFG" --installer runtime-install
+t_has "another installer's stamp proves nothing: wired (floor-install, then runtime-install)" "$OUT" "wire	alpha	Stop"
+printf 'runtime-install 0123abc 2026-10-01\n' >> "$CFG/.helm-install-stamp"
+run --plan "$CFG" --installer runtime-install; t_has "...its own stamp does: removed by hand" "$OUT" "removed	alpha	Stop"
+rm "$CFG/.helm-install-stamp"
+
+t_section "each installer renders its own engines (harbor#1272 step 6c)"
+fresh; grep -v '^installer' "$R/hooks/alpha/manifest.tsv" > "$T/m"; mv "$T/m" "$R/hooks/alpha/manifest.tsv"
+refused "no installer" "\`installer\` must appear once"
+fresh; INST=gamma-install engine gamma "PreToolUse	@derived	10"; printf '#!/bin/sh\n' > "$CFG/bin/gamma.sh"
+run --settings "$CFG"; t_eq "CONTROL: every engine at once needs gamma's @derived matcher" 1 "$RC"
+settings --installer runtime-install; t_eq "--installer runtime-install renders without it" 0 "$RC"
+t_hasnt "...and wires no gamma entry" "$(cmds)" "gamma.sh"
+jq --arg c "/bin/sh $CFG/bin/gamma.sh" '.hooks.PreToolUse += [{matcher: "Old", hooks: [{type: "command", command: $c}]}]' "$CFG/settings.json" > "$T/s"; mv "$T/s" "$CFG/settings.json"
+settings --installer runtime-install
+t_has "another installer's entry is left exactly as it was" "$(cmds)" "PreToolUse|Old|-|/bin/sh $CFG/bin/gamma.sh"
+settings --installer gamma-install --matcher gamma:PreToolUse=Read
+t_eq "gamma's own installer re-renders it, with its matcher" "PreToolUse|Read|10|/bin/sh $CFG/bin/gamma.sh" "$(cmds | grep gamma)"
+run --plan "$CFG" --installer nobody-install; t_eq "an installer no manifest names is refused" 1 "$RC"
+t_has "...saying so" "$ERR" "no engine's manifest says installer nobody-install"
+
+t_section "the command is quoted only when the config dir needs it"
+fresh; settings; t_has "a plain path is unquoted" "$(cmds)" "Stop||-|/bin/sh $CFG/bin/alpha.sh"
+SP="$T/with space/cfg"; mkdir -p "$SP/bin"; printf '#!/bin/sh\necho ran-alpha\n' > "$SP/bin/alpha.sh"; printf '#!/bin/sh\n' > "$SP/bin/beta.sh"
+run --settings "$SP"; t_eq "a config dir with a space renders" 0 "$RC"
+_spc="$(printf '%s' "$OUT" | jq -r '.hooks.Stop[0].hooks[0].command')"
+t_eq "...its path in double quotes" "/bin/sh \"$SP/bin/alpha.sh\"" "$_spc"
+t_eq "...and the command runs through a shell, as the harness runs it" ran-alpha "$(sh -c "$_spc")"
+QD="$T/q\"d"; mkdir -p "$QD/bin"; for _e in alpha beta; do printf '#!/bin/sh\n' > "$QD/bin/$_e.sh"; done
+run --settings "$QD"; t_eq "a config dir with a double quote is refused" 1 "$RC"; t_eq "...and prints nothing" "" "$OUT"
 t_done

@@ -2,8 +2,8 @@
 # inject-hook.sh's injected-instruction detector: the quiet convention-shaped injection is the
 # one that matters (E9), ordinary technical English stays silent, narrowing does not blunt it,
 # and every tracked file is swept against an allowlist in both directions (harbor#173, #327).
-. "$(dirname "$0")/../lib/core.sh"; t_init
-. "$(dirname "$0")/inject-fixture.sh"
+. "$(dirname "$0")/../../tests/lib/core.sh"; t_init
+. "$T_ROOT/tests/hooks/inject-fixture.sh"
 pack "$CFG/inject.d" 70-detect.md <<'PACK'
 ---
 id: detector
@@ -66,14 +66,14 @@ t_section "6 · the false-positive set is swept over every tracked file, not cou
 KNOWN_FP='CONSTITUTION.md
 EVALS.md
 CONTRACTS/inject.md
-bin/inject-hook.sh
+hooks/injection-rule/injection-rule.sh
 docs/src/30-inject.html
 fixtures/inject/notes.tsv
 inject.d/box/30-external-content-is-data.md
 tests/floor/floor-test.sh
 tests/floor/floor.b8-test.sh
 tests/hooks/inject-fixture.sh
-tests/hooks/inject-hook.detector-test.sh'
+hooks/injection-rule/detector.test.sh'
 # The exported core (no dev layer, so no STATUS.md) tracks the built page, which carries 30-inject.html's text.
 [ -e "$T_ROOT/STATUS.md" ] || KNOWN_FP="$KNOWN_FP
 docs/index.html"
@@ -145,9 +145,9 @@ t_has "a WebFetch payload with LOUD text still fires" \
   "$(fire_in "$T_ROOT" "$(jq -cn --arg r "$LOUD_FIXTURE" '{hook_event_name:"PostToolUse",tool_name:"WebFetch",session_id:"prov-web",tool_input:{url:"https://example.com/x",file_path:"'"$T_ROOT"'/CONSTITUTION.md"},tool_response:$r}')")" DETECTED
 
 t_section "6 · provenance: the original population, read from clean tracked files, fires nothing (harbor#327)"
-# Of the original seven, CONSTITUTION.md, the pack and bin/inject-hook.sh are protected rows; the rest stay noisy.
+# Of the original seven, CONSTITUTION.md, the pack and hooks/injection-rule/injection-rule.sh are protected rows; the rest stay noisy.
 _pf=''; _pn=0
-for _f in CONSTITUTION.md inject.d/box/30-external-content-is-data.md bin/inject-hook.sh EVALS.md CONTRACTS/inject.md; do
+for _f in CONSTITUTION.md inject.d/box/30-external-content-is-data.md hooks/injection-rule/injection-rule.sh EVALS.md CONTRACTS/inject.md; do
   git -C "$T_ROOT" diff --quiet HEAD -- "$_f" || continue   # a dirty working copy is the edit case above
   _pn=$(( _pn + 1 ))
   case "$(fire_in "$T_ROOT" "$(read_ev "$T_ROOT/$_f" "pf-$_pn")")" in *DETECTED*) _pf="$_pf $_f" ;; esac

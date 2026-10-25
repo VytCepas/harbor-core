@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
 # inject-hook.sh (harbor#173 · A1) — the injector. One engine, many rule packs.
 #
-#   echo '<hook json>' | sh bin/inject-hook.sh        read the event from stdin
-#   sh bin/inject-hook.sh --list                      what packs exist, and where
-#   sh bin/inject-hook.sh --explain < payload.json    which rules matched, and why
+#   echo '<hook json>' | sh hooks/injection-rule/injection-rule.sh        read the event from stdin
+#   sh hooks/injection-rule/injection-rule.sh --list                      what packs exist, and where
+#   sh hooks/injection-rule/injection-rule.sh --explain < payload.json    which rules matched, and why
 #
 # DELIBERATELY ONE FILE (lint G1, DOCTRINE/modularity.md): splitting the
 # predicate vocabulary from the pack loader would put the two halves of one
@@ -57,6 +57,7 @@ set -eu
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 # harbor#813: no dirname fork. A failed or unresolvable $(dirname) left SELF_DIR at the cwd, running ./govern-token.sh from it.
 case "$0" in */*) SELF_DIR="${0%/*}" ;; *) SELF_DIR=. ;; esac
+[ ! -f "$SELF_DIR/manifest.tsv" ] || SELF_DIR="$SELF_DIR/../../bin"  # D-88: in the repo an engine sits beside its manifest in hooks/<engine>/; deployed, flat beside its libraries
 
 MODE=hook
 case "${1:-}" in
@@ -64,7 +65,7 @@ case "${1:-}" in
   --explain)  MODE=explain ;;
   --list)     MODE=list ;;
   -h|--help)  sed -n '3,7p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-  *)          printf '  FAIL: inject-hook: unknown flag %s\n  fix: sh %s --help\n' "$1" "$0" >&2; exit 2 ;;
+  *)          printf '  FAIL: injection-rule: unknown flag %s\n  fix: sh %s --help\n' "$1" "$0" >&2; exit 2 ;;
 esac
 
 # ── pack discovery ──────────────────────────────────────────────────────────
@@ -147,7 +148,7 @@ fm_get() { fm_scan "$1" 0; }
 fm_all() { fm_scan "$1" 1; }
 
 if [ "$MODE" = list ]; then
-  printf 'inject-hook — rule packs visible from %s\n\n' "$REPO"
+  printf 'injection-rule — rule packs visible from %s\n\n' "$REPO"
   _n=0
   pack_dirs | while IFS= read -r d; do
     printf '%s\n' "${d#"$HOME"/}"
@@ -861,7 +862,7 @@ WHEN
     # file read afterwards. `match` keys the ledger on what matched, so a benign
     # hit costs one sentence and consumes nothing.
     #
-    # The exact set is NOT written down here. tests/hooks/inject-hook.detector-test.sh sweeps every
+    # The exact set is NOT written down here. hooks/injection-rule/detector.test.sh sweeps every
     # tracked markdown file and compares against an allowlist, so a new false
     # positive turns the suite red on the commit that introduces it. A count in a
     # comment is a copy, and this one was already wrong when it was written.

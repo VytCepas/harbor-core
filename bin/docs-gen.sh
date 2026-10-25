@@ -49,6 +49,7 @@ ROOT="$(CDPATH='' cd -- "$SELF/.." && pwd)"
 # (CONTRACTS/logging.md, harbor#771) — never into a docs/index.html being built.
 . "$SELF/log-lib.sh"
 LOG_FD=2; log_init docs-gen
+. "$SELF/install-lib.sh"  # il_src: a hook engine ships from its folder (D-88)
 SRC="$ROOT/docs/src"
 OUT="$ROOT/docs/index.html"
 LC_ALL=C
@@ -174,8 +175,8 @@ d_packs() {
 }
 
 d_predicates() {
-  printf '<p class="derived">Read from the vocabulary gate in <code>bin/inject-hook.sh</code>: '
-  sed -n 's/^    \(always|cmd-prefix.*\)) ;;$/\1/p' "$ROOT/bin/inject-hook.sh" \
+  printf '<p class="derived">Read from the vocabulary gate in <code>hooks/injection-rule/injection-rule.sh</code>: '
+  sed -n 's/^    \(always|cmd-prefix.*\)) ;;$/\1/p' "$ROOT/hooks/injection-rule/injection-rule.sh" \
     | head -1 | tr '|' '\n' \
     | while read -r p; do [ -n "$p" ] && printf '<code>%s</code> ' "$(printf '%s' "$p" | esc)"; done
   printf '— plus <code>not &lt;predicate&gt;</code>, which inverts any of them.</p>\n'
@@ -396,6 +397,7 @@ d_runtime() {
   } | sort -u | while read -r s p; do
         [ -n "$s" ] || continue
         _f="$ROOT/$p"
+        case "$p" in bin/*) _f="$ROOT/$(il_src "$ROOT" "$s")" ;; esac
         if [ -f "$_f" ]; then
           _d="$(sed -n '2,4p' "$_f" | sed -n 's/^# //p' | head -1)"
         else
