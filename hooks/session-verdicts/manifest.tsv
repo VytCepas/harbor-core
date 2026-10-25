@@ -1,0 +1,7 @@
+key	value
+engine	session-verdicts
+wire	SessionStart	-	-
+senses	the box's standing state: worklog, guards, floor pins, instruction pins
+acts-on	the session's opening context, once
+findings	a standing verdict that is red
+closer	the operator

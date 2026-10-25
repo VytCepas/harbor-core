@@ -1,0 +1,9 @@
+# Why it is wired this way (moved from bin/runtime-install.sh, harbor#1272):
+# reply-shape.sh (harbor#952) — advisory Stop hook, operator-facing systemMessage only. Same off
+key	value
+engine	reply-shape
+wire	Stop	-	-
+senses	the turn's final reply and the tools it ran
+acts-on	the operator's view, via systemMessage
+findings	a reply that wrote without citing evidence, or ran long
+closer	the operator

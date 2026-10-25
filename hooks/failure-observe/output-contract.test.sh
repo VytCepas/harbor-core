@@ -2,9 +2,9 @@
 # failure-observe.sh is Claude Code PostToolUseFailure hook output (channel 3 of CONTRACTS/logging.md, a `protocol`
 # row in CONTRACTS/log-exempt.tsv): its stdout would be session context, so it prints NOTHING on any path, stdout or
 # stderr, and exits 0 on every one (harbor#771). A log line here would corrupt the protocol. Fixtures only.
-. "$(dirname "$0")/../../lib/core.sh"; t_init
+. "$(dirname "$0")/../../tests/lib/core.sh"; t_init
 SRC="$T_ROOT/bin"; D="$T_TMP/fo"; mkdir -p "$D/bin" "$D/MEMORY/OBSERVABILITY/h1"
-cp "$SRC/guard-lib.sh" "$SRC/failure-observe.sh" "$D/bin/"
+cp "$SRC/guard-lib.sh" "$T_ROOT/hooks/failure-observe/failure-observe.sh" "$D/bin/"
 printf 'h1\n' > "$D/.helm-obs-host"; printf '0123456789abcdef0123456789abcdef\n' > "$D/.helm-obs-salt"
 SINK="$D/MEMORY/OBSERVABILITY/h1/tool-failures.jsonl"; : > "$SINK"; chmod 0600 "$SINK"; chmod 0500 "$D/MEMORY/OBSERVABILITY/h1"
 GOOD='{"session_id":"s1","hook_event_name":"PostToolUseFailure","tool_name":"Read","tool_input":{"file_path":"/nowhere/x.md"},"error":"File does not exist.","is_interrupt":false,"duration_ms":7}'

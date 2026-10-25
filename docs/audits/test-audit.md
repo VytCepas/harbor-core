@@ -158,7 +158,7 @@ One realistic defect planted per suite in the code it guards, suite run, code re
 | `tests/cli/browser-test.sh` | `bin/browser-agent.sh:255` | forced-click refusal inside an iframe replaced by `true` | red (1 failed) | red 1 / green 0 |
 | `tests/obs/usage-aggregate-test.sh` | `bin/usage-aggregate.sh:221` | per-request dedupe keeps the record with the fewest output tokens (`max_by` to `min_by`) | red (1 failed) | red 1 / green 0 |
 | `tests/floor/marker-test.sh` | `bin/guard-lib.sh:278` | the stop-before-`$HOME` walk no longer breaks (M14) | red (2 failed) | red 1 / green 0 |
-| `tests/hooks/ticket-note-test.sh` | `bin/ticket-note.sh:121` | the `stop_hook_active` re-entry guard compares against the wrong value, so it never exits | red (1 failed) | red 1 / green 0 |
+| `hooks/ticket-note/ticket-note.test.sh` | `hooks/ticket-note/ticket-note.sh:121` | the `stop_hook_active` re-entry guard compares against the wrong value, so it never exits | red (1 failed) | red 1 / green 0 |
 | `tests/floor/normalize-test.sh` | `bin/floor-normalize.awk:296` | `-u` dropped from the sudo/doas options-that-take-a-value list | red (1 failed) | red 1 / green 0 |
 | `tests/hooks/save-log-token-test.sh` | `bin/save-log-token.sh:76` | token pattern widened with `\|*`, so any clipboard content is saved | red (6 failed) | red 1 / green 0 |
 | `tests/memory/isa-index-test.sh` | `bin/isa-index.sh:80` | the `ISA.md`-required `continue` replaced by `:`, so session dirs count as runs | red (5 failed) | red 1 / green 0 |

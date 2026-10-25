@@ -1,0 +1,12 @@
+# Why it is wired this way (moved from bin/runtime-install.sh, harbor#1272):
+# session-title.sh (harbor#1257) — applies the title the model wrote, on UserPromptSubmit and SessionStart. Same off
+# contract as session-state: the sentinel $DIR/session-title.off stops it being wired; deduped by basename, per event.
+# It prints nothing unless a title file exists for the session, and exits 0 on every path.
+key	value
+engine	session-title
+wire	UserPromptSubmit	-	5
+wire	SessionStart	-	5
+senses	the title the model wrote for this session
+acts-on	the session title, via sessionTitle
+findings	none: it prints nothing unless a title file exists
+closer	nobody
