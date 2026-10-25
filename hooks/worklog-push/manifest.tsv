@@ -1,0 +1,7 @@
+key	value
+engine	worklog-push
+wire	Stop	-	-
+senses	the session that is stopping
+acts-on	the work-log repository: a record, gitleaks-gated, committed and pushed
+findings	a blocked commit or a failed push, as a WARN
+closer	memory-harvest.sh, which writes a missed record; the next Stop retries a push

@@ -26,7 +26,7 @@ bin/lint-secrets.sh	*	git pathspec exclusion; absent in the export, it excludes 
 bin/lint-siblings.sh	*	git pathspec exclusion; absent in the export, it excludes nothing
 bin/plan-status.sh	*	its subject is the dev-only plan: in the export it refuses with "no plan" and lint doc.plan-generated skips (harbor#1275)
 bin/port-paths.sh	*	git pathspec exclusion; absent in the export, it excludes nothing
-bin/session-state.sh	*	the session repo's own HANDOFF.md, read behind [ -f ]; not harbor's dev layer
+hooks/session-state/session-state.sh	*	the session repo's own HANDOFF.md, read behind [ -f ]; not harbor's dev layer
 bin/status-gen.sh	*	writes STATUS.md only in the dev checkout; in a tree with layers.tsv and no STATUS.md it stands down
 fixtures/lint-module/inert-mentions/tree/sysa/bin/alpha-run	*	fixture text the module lint reads as a mention, never run
 fixtures/lint-module/live-mentions/tree/sysa/bin/alpha-run	*	fixture text the module lint reads as a mention, never run
