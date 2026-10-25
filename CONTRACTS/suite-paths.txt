@@ -226,6 +226,7 @@ tests/cli/live-verify-test.sh bin/live-verify.sh bin/floor-verify.sh bin/doctor.
 tests/event/bus/emit.test.sh bin/event-bus.sh bin/log-lib.sh bin/harbor tests/event/bus/* tests/lib/core.sh
 tests/event/bus/concurrency.test.sh bin/event-bus.sh bin/log-lib.sh bin/harbor tests/event/bus/* tests/lib/core.sh
 tests/event/bus/wait.test.sh bin/event-bus.sh bin/log-lib.sh bin/harbor tests/event/bus/* tests/lib/core.sh
+tests/event/ci/wait.test.sh bin/ci-wait.sh bin/event-bus.sh bin/log-lib.sh tests/event/ci/* tests/lib/core.sh
 tests/event/bus/since.test.sh bin/event-bus.sh bin/log-lib.sh bin/harbor tests/event/bus/* tests/lib/core.sh
 tests/event/bus/prune.test.sh bin/event-bus.sh bin/log-lib.sh bin/harbor tests/event/bus/* tests/lib/core.sh
 tests/ci/ci-runs-on-test.sh bin/ci-runs-on.sh bin/log-lib.sh tests/ci/ci-runs-on-test.sh tests/lib/core.sh

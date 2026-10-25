@@ -113,6 +113,7 @@ bin/ci-runners-provision-lib.sh	installed	derived: shipped by runtime-install.sh
 bin/ci-runners-watch-lib.sh	installed	derived: shipped by runtime-install.sh
 bin/ci-runners.sh	installed	derived: shipped by runtime-install.sh
 bin/ci-verified.sh	ci-gate	derived: decides what a required check runs
+bin/ci-wait.sh	installed	derived: shipped by runtime-install.sh
 bin/cite-verify.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/cited-paths.awk	installed	derived: shipped by runtime-install.sh
 bin/collector-check.sh	installed	derived: shipped by runtime-install.sh

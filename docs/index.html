@@ -805,6 +805,7 @@ already had in mind.</p>
 <tr><td>box</td><td><code>80-large-tool-result.md</code></td><td><code>PostToolUse</code></td><td><code>always</code></td><td>session</td></tr>
 <tr><td>box</td><td><code>85-tool-failure-is-not-a-result.md</code></td><td><code>PostToolUseFailure</code></td><td><code>always</code></td><td>session</td></tr>
 <tr><td>box</td><td><code>90-unbounded-wait-loop.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
+<tr><td>box</td><td><code>91-ci-wait-on-the-bus.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
 <tr><td>box</td><td><code>95-repo-tier-not-loaded.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
 <tr><td>box</td><td><code>96-agent-brief.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
 <tr><td>box</td><td><code>97-agent-model-required.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
@@ -1182,6 +1183,7 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <tr><td><code>lint.comment-commands</code></td><td>no shell comment quotes a destructive command in backticks</td></tr>
 <tr><td><code>standard.decision-dangling</code></td><td>every D-n cited in the tree resolves to a decision record (docs/decisions/, harbor#1029)</td></tr>
 <tr><td><code>standard.decision-orphan</code></td><td>every decision record is cited outside docs/decisions/, or allow-listed in CONTRACTS/decision-orphans.tsv (harbor#1029)</td></tr>
+<tr><td><code>event.kind-registered</code></td><td>every event kind is a row of CONTRACTS/event-kinds.tsv, its emitter names it, and no preset waits on a kind nothing emits (harbor#1367)</td></tr>
 </tbody></table>
 </div>
 
@@ -1565,6 +1567,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/event/dispatch/spawn.test.sh</code></td><td><code>bin/event-dispatch.sh bin/event-bus.sh bin/log-lib.sh bin/event-hook.sh bin/pulse.sh bin/fs-lib.sh bin/harbor CHECKS.md CONTRACTS/event-rules.tsv launchd/com.harbor.event.dispatch.plist tests/event/dispatch/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/event/dispatch/pull.test.sh</code></td><td><code>bin/event-dispatch.sh bin/event-bus.sh bin/log-lib.sh bin/event-hook.sh bin/pulse.sh bin/fs-lib.sh bin/harbor CHECKS.md CONTRACTS/event-rules.tsv launchd/com.harbor.event.dispatch.plist tests/event/dispatch/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/event/dispatch/registry.test.sh</code></td><td><code>bin/event-dispatch.sh bin/event-bus.sh bin/log-lib.sh bin/event-hook.sh bin/pulse.sh bin/fs-lib.sh bin/harbor CHECKS.md CONTRACTS/event-rules.tsv launchd/com.harbor.event.dispatch.plist tests/event/dispatch/* tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/event/ci/wait.test.sh</code></td><td><code>bin/ci-wait.sh bin/event-bus.sh bin/log-lib.sh tests/event/ci/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/ci/merge-stack/check.test.sh</code></td><td><code>bin/gate-merge-stack.sh bin/gate-merge-stack-resolve.py bin/log-lib.sh bin/harbor CONTRACTS/merge-stack-union.txt tests/ci/merge-stack/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/ci/merge-stack/merge.test.sh</code></td><td><code>bin/gate-merge-stack.sh bin/gate-merge-stack-resolve.py bin/log-lib.sh bin/harbor CONTRACTS/merge-stack-union.txt tests/ci/merge-stack/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/ci/merge-stack/rehearse.test.sh</code></td><td><code>bin/gate-merge-stack.sh bin/gate-merge-stack-resolve.py bin/log-lib.sh bin/harbor CONTRACTS/merge-stack-union.txt tests/ci/merge-stack/* tests/lib/core.sh</code></td></tr>
@@ -2085,6 +2088,7 @@ score a plumbing gap as a verdict on the idea.</p>
 <tr><td><code>ci-runners-provision-lib.sh</code></td><td>ci-runners-provision-lib.sh (harbor#1060) — container lifecycle: sync_hook, <code>up</code>, <code>refresh</code>, the governance runners, <code>down</code>.</td></tr>
 <tr><td><code>ci-runners-watch-lib.sh</code></td><td>ci-runners-watch-lib.sh (harbor#1060) — watching: the alarm, the drift cache, and <code>tick</code>.</td></tr>
 <tr><td><code>ci-runners.sh</code></td><td>ci-runners.sh (harbor#1060) — one Linux runner container per fleet repo that wants local CI, owned by this box.</td></tr>
+<tr><td><code>ci-wait.sh</code></td><td>ci-wait.sh (harbor#1367) — a PR's CI verdict, woken by the event bus: one GitHub read per finished job, never a poll loop.</td></tr>
 <tr><td><code>cited-paths.awk</code></td><td>  awk -f cited-paths.awk &lt;file&gt;      one cited path per line, in file order</td></tr>
 <tr><td><code>collector-check.sh</code></td><td>collector-check.sh (harbor#1181 lane 5) — the destination for the collector's findings: reads its world-readable</td></tr>
 <tr><td><code>context-budget.sh</code></td><td>context-budget.sh — measure what Harbor costs EVERY session.</td></tr>
@@ -2378,6 +2382,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/ci-runners.sh</code></td><td>ci-runners.sh (harbor#1060) — one Linux runner container per fleet repo that wants local CI, owned by this box.</td></tr>
 <tr><td><code>bin/ci-runs-on.sh</code></td><td>ci-runs-on.sh (harbor#1060) — make a checkout's workflows read vars.CI_RUNS_ON, so the repo can move to local CI.</td></tr>
 <tr><td><code>bin/ci-verified.sh</code></td><td>ci-verified.sh (harbor#679) — is this push to main a tree CI already passed on its PR? Then do not run it twice.</td></tr>
+<tr><td><code>bin/ci-wait.sh</code></td><td>ci-wait.sh (harbor#1367) — a PR's CI verdict, woken by the event bus: one GitHub read per finished job, never a poll loop.</td></tr>
 <tr><td><code>bin/cite-verify.sh</code></td><td>cite-verify.sh — fetch every external URL Harbor's docs cite, report status.</td></tr>
 <tr><td><code>bin/collector-check.sh</code></td><td>collector-check.sh (harbor#1181 lane 5) — the destination for the collector's findings: reads its world-readable</td></tr>
 <tr><td><code>bin/collector-setup.sh</code></td><td>collector-setup.sh (harbor#1181 lanes 5, 5b) — installs the second-uid collector. Run from your own Terminal.</td></tr>

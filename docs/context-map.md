@@ -29,16 +29,16 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | standard | standards/ | system | source | versioned | 13 |
 | contract | contracts/ | system | source | versioned | 30 |
 | decision-record | docs/decisions/ | element | source | dated | 91 |
-| injection-rule | context-rules/<scope>/ | component | source | living | 35 |
+| injection-rule | context-rules/<scope>/ | component | source | living | 37 |
 | hook | hooks/ | component | source | living | 46 |
 | skill | skills/ | component | source | living | 41 |
 | fixture | fixtures/ | element | source | living | 252 |
-| registry | registries/ | component | source | versioned | 49 |
-| test | tests/ | component | source | living | 416 |
+| registry | registries/ | component | source | versioned | 50 |
+| test | tests/ | component | source | living | 417 |
 | report | docs/reports/ | element | report | dated | 1 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| script | bin/ | component | source | living | 199 |
+| script | bin/ | component | source | living | 200 |
 | (no kind) | - | - | - | - | 171 |
 
 ## Folders
@@ -49,21 +49,21 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.agents/` | 4 | 1 | 1 |
 | `.claude/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
-| `CONTRACTS/` | 79 | 9 | 2 |
+| `CONTRACTS/` | 80 | 9 | 2 |
 | `DOCTRINE/` | 10 | 1 | 1 |
-| `bin/` | 203 | 22 | 2 |
+| `bin/` | 204 | 22 | 2 |
 | `commands/` | 5 | 1 | 1 |
 | `docs/` | 113 | 6 | 5 |
 | `fixtures/` | 252 | 9 | 1 |
 | `hooks/` | 42 | 6 | 1 |
-| `inject.d/` | 31 | 1 | 1 |
+| `inject.d/` | 33 | 1 | 1 |
 | `launchd/` | 12 | 3 | 1 |
 | `patches/` | 12 | 1 | 1 |
 | `runners/` | 2 | 1 | 1 |
 | `skills/` | 41 | 5 | 1 |
 | `standards/` | 13 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 416 | 21 | 1 |
+| `tests/` | 417 | 21 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 73 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -77,13 +77,13 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | alert | observability | 1 | 1 | 0 | 0 | 0 | 0 |
 | audit | control-plane | 0 | 0 | 0 | 0 | 0 | 2 |
 | check | observability | 1 | 4 | 0 | 1 | 50 | 0 |
-| ci | coordination | 12 | 58 | 2 | 3 | 0 | 5 |
-| context | control-plane | 3 | 0 | 1 | 36 | 0 | 30 |
+| ci | coordination | 13 | 58 | 2 | 3 | 0 | 5 |
+| context | control-plane | 3 | 0 | 1 | 38 | 0 | 30 |
 | deploy | control-plane | 5 | 7 | 1 | 1 | 0 | 7 |
 | doc | control-plane | 1 | 1 | 0 | 8 | 0 | 16 |
 | drift | control-plane | 1 | 1 | 0 | 4 | 2 | 12 |
 | eval | control-plane | 0 | 1 | 0 | 0 | 0 | 0 |
-| event | observability | 3 | 16 | 0 | 2 | 0 | 1 |
+| event | observability | 3 | 17 | 0 | 3 | 0 | 2 |
 | gate | control-plane | 10 | 7 | 0 | 0 | 0 | 0 |
 | housekeeping | control-plane | 0 | 0 | 0 | 2 | 0 | 0 |
 | lint | control-plane | 15 | 39 | 0 | 8 | 0 | 31 |
@@ -157,6 +157,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/ci-runners.sh`
 - `bin/ci-runs-on.sh`
 - `bin/ci-verified.sh`
+- `bin/ci-wait.sh`
 - `docs/design/ci-local-heal.md`
 - `docs/design/ci-tests-on-this-host.md`
 - `launchd/com.harbor.ci-governor.plist`
@@ -184,6 +185,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `inject.d/box/80-large-tool-result.md`
 - `inject.d/box/85-tool-failure-is-not-a-result.md`
 - `inject.d/box/90-unbounded-wait-loop.md`
+- `inject.d/box/91-ci-wait-on-the-bus.md`
 - `inject.d/box/95-repo-tier-not-loaded.md`
 - `inject.d/box/96-agent-brief.md`
 - `inject.d/box/97-agent-model-required.md`
@@ -192,6 +194,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `inject.d/box/agent-brief.sh`
 - `inject.d/box/agent-model.sh`
 - `inject.d/box/browser-route.sh`
+- `inject.d/box/ci-wait-on-the-bus.sh`
 - `inject.d/box/confinement-refused.sh`
 - `inject.d/box/large-tool-result.sh`
 - `inject.d/box/name-note.sh`
@@ -222,6 +225,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 
 ### event
 
+- `CONTRACTS/event-kinds.tsv`
 - `CONTRACTS/event-rules.tsv`
 - `bin/event-bus.sh`
 - `bin/event-dispatch.sh`
