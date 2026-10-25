@@ -9,7 +9,7 @@
 # predicate left every default suite green while five live packs went silent.
 PRIV="${HARBOR_NOTES_PRIVATE:-}"   # a knob from the caller, read before t_init clears it (harbor#773)
 . "$(dirname "$0")/../lib/core.sh"; t_init
-ENGINE="$T_ROOT/bin/inject-hook.sh"; FIX="$T_ROOT/fixtures/inject/notes.tsv"; T="$T_TMP"
+ENGINE="$T_ROOT/hooks/injection-rule/injection-rule.sh"; FIX="$T_ROOT/fixtures/inject/notes.tsv"; T="$T_TMP"
 # merge-governance and post-merge-state call `gh` against a live PR; their content is
 # tests/hooks/govern-hook-test.sh's, and only their wiring is asserted at the end here.
 EXEMPT='merge-governance post-merge-state'
