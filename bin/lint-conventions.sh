@@ -2341,6 +2341,8 @@ rule "test.suite-in-manifest every tracked *-test.sh is in the suite manifest, a
 # CI is defined in the shared section at the top (harbor#537) — another rule reads it.
 # _MAN is defined in the shared section at the top (harbor#537) — another rule reads it.
 # _man_list is defined in the shared section at the top (harbor#537) — another rule reads it.
+# AND EVERY *.test.sh: a D-88 engine's suite and 157 others are dot-named, and a new unlisted one sat outside
+# CI with this rule green (harbor#1272, measured adding a probe engine).
 # EVERY *-test.sh IN THE TREE, NOT ONLY bin/ (harbor#695). The loop was
 # `"$ROOT"/bin/*-test.sh`, so a skill's own suite was invisible to the rule that
 # promises no suite sits outside CI: a skill's bin/*-preflight-test.sh plants
@@ -2355,9 +2357,9 @@ rule "test.suite-in-manifest every tracked *-test.sh is in the suite manifest, a
 if [ -f "$_MAN" ]; then
   _c3l="${TMPDIR:-/tmp}/c3.$$"
   if git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
-    git -C "$ROOT" ls-files -- '*-test.sh' > "$_c3l" 2>/dev/null || :
+    git -C "$ROOT" ls-files -- '*-test.sh' '*.test.sh' > "$_c3l" 2>/dev/null || :
   else
-    ( cd "$ROOT" && find . -name '*-test.sh' -not -path './.git/*' | sed 's#^\./##' ) > "$_c3l"
+    ( cd "$ROOT" && find . \( -name '*-test.sh' -o -name '*.test.sh' \) -not -path './.git/*' | sed 's#^\./##' ) > "$_c3l"
   fi
   while IFS= read -r _c3p; do
     case "$_c3p" in ''|EVALS-DATA/*) continue ;; esac
