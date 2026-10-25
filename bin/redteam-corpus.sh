@@ -313,8 +313,8 @@ if [ -z "${HARBOR_EVENT_DIR:-}" ] && { [ -z "$_live" ] || [ "$_this" != "$_live"
 elif [ "$NEWUN" -gt 0 ]; then  # an accepted finding is already adjudicated: nothing waits on the operator
   sh "$EB" emit obligation.open redteam-corpus --src redteam-corpus \
     --data "$(jq -nc --arg n "$NEWUN" --arg d "$((NOW + 604800))" \
-      '{title: ("redteam-corpus: " + $n + " new to adjudicate, harbor#1313"), deadline_ts: $d}')" >/dev/null 2>&1 || :
-  # a week, the check's own cadence: the default 24 h turned an adjudication in progress into an OVERDUE alarm
+      '{title: ("redteam-corpus: " + $n + " new to adjudicate, harbor#1313"), deadline_ts: ($d | tonumber | todate)}')" >/dev/null 2>&1 || :
+  # a week, the check's own cadence, as ISO: the ledger reads no other form, so an epoch fell back to the default 24 h
 elif [ "$UNALL" = 0 ]; then
   sh "$EB" emit obligation.close redteam-corpus --src redteam-corpus >/dev/null 2>&1 || :
 fi

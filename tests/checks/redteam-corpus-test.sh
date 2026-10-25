@@ -34,7 +34,7 @@ t_has "...and a skipped corpus is a FAIL, never green" "$(OUT)" "  FAIL: ccg: sk
 
 t_section "the obligation a new finding opens is due in a week, the check's cadence, not the default day"
 _ev="$(find "$HOME/.local/state/harbor/events" -type f 2>/dev/null | xargs cat 2>/dev/null | grep '"obligation.open"' | grep '"redteam-corpus"' | tail -1)"
-t_eq "the open event's deadline is the run's epoch plus 7 days" "$((1790000000 + 604800))" "$(printf '%s' "$_ev" | jq -r '.data.deadline_ts')"
+t_eq "the open event's deadline is the run plus 7 days, in the ISO form the ledger reads" "$(jq -nr '(1790000000 + 604800) | todate')" "$(printf '%s' "$_ev" | jq -r '.data.deadline_ts')"
 t_has "a fix line names the command a person can run, not a temp clone" \
   "$(HARBOR_REDTEAM_SELF='sh bin/redteam-corpus.sh' run --print >/dev/null; OUT)" "  fix: sh bin/redteam-corpus.sh"
 
