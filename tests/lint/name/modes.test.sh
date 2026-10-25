@@ -110,13 +110,26 @@ t_has "…and its broader chain is whole" "$(grep '^| \*\*lint\*\*' "$M/build/na
 t_has "the CLI tree parses a family script back into its tuple" "$(cat "$M/build/naming/cli-tree.txt")" "harbor lint name    <- bin/lint-name.sh"
 t_has "the label set is <axis>:<value>" "$(cat "$M/build/naming/labels.tsv")" "$(printf 'family:admission\t')"
 t_has "the Vale swap list comes from the legacy aliases" "$(cat "$M/build/vale/styles/Harbor/Legacy.yml")" "'floor': security baseline"
+t_has "…and the spelling swap from the spelling aliases (D-16)" "$(cat "$M/build/vale/styles/Harbor/Spelling.yml")" "'behaviour': behavior"
 if command -v vale > /dev/null 2>&1; then
-  printf '# Notes\n\nThe floor blocks it.\n' > "$M/vale-probe.md"
-  t_has "vale runs the generated config and flags a legacy term" \
-    "$(cd "$M" && vale --config build/vale/.vale.ini vale-probe.md 2>&1)" "security baseline"
+  printf '# Notes\n\nThe floor blocks it. Its behaviour holds.\n' > "$M/vale-probe.md"
+  _vl="$(cd "$M" && vale --config build/vale/.vale.ini vale-probe.md 2>&1)"
+  t_has "vale runs the generated config and flags a legacy term" "$_vl" "security baseline"
+  t_has "…and a UK spelling" "$_vl" "Use behavior instead of behaviour"
 else
   t_eq "vale is absent: the generated config was not run (verified NOTHING about it)" absent absent
 fi
+
+t_section "spelling (D-16): a UK spelling is allowed nowhere and never expires"
+SP="$TMP/spelling"; mini "$SP"
+_al="$SP/standards/naming/aliases.tsv"; awk -F'\t' '$1 != "colour"' "$_al" > "$_al.new" && mv "$_al.new" "$_al"
+printf 'colour\tcolor\tspelling\tglossary\t2027-01-31\tD-16\n' >> "$_al"
+printf '#!/usr/bin/env sh\nCOLOUR_MODE_X=1\n' > "$SP/bin/probe.sh"
+_spf="$(sh "$SP/bin/lint-name.sh" --root "$SP" --format findings 2>/dev/null)"
+t_has "a spelling row with a surface or a date goes red" "$(sh "$SP/bin/lint-name.sh" --root "$SP" 2>&1)" \
+  "[name.registry-term] alias:colour — a spelling is allowed nowhere and never expires"
+t_hasnt "…and a spelling's US word is never judged as a term" "$_spf" "alias:behaviour"
+t_hasnt "a spelling is never an env prefix: a token under it in the tree is not judged" "$_spf" "env:COLOUR_MODE_X"
 
 t_section "share (D-83): a kind names the SET of shares it may take, and the lint refuses a missing or unknown one"
 SH="$TMP/share"; mini "$SH"
@@ -186,4 +199,29 @@ _hst="$(HARBOR_SCOPE_PRIVATE="$PV" sh "$LN" --self-test 2>&1)"; _hstrc=$?
 t_eq "--self-test never reads the box's overlay, even a bad one" "exit 0" "exit $_hstrc"
 rm -f "$PV/terms.tsv"
 t_eq "restored, no overlay means no overlay finding" "" "$(ovf)"
+
+t_section "pack overlays (harbor#950): <config dir>/terms.d/<id>.tsv adds a workload's system terms and nothing else"
+PK="$CLAUDE_CONFIG_DIR/terms.d"; mkdir -p "$PK"
+t_has "positive control: with no pack overlay a workload's prefix is unregistered" "$(chk env WIDGETSYS_LINT_X)" "not a registered system"
+{ printf '%s\n' "$_hdr"; _row widgetsys system; } > "$PK/widget.tsv"
+t_eq "a system row is accepted" "" "$(ovf)"
+t_has "…and takes effect: its env prefix is registered" "$(chk env WIDGETSYS_LINT_X)" "no finding"
+{ printf '%s\n' "$_hdr"; _row widget client; } > "$PK/widget.tsv"
+t_has "a client row goes red: a pack registers systems only" "$(ovf)" "private-term:widget"
+t_has "…as a block finding naming the pack file" "$(chk env HARBOR_SCOPE_X)" "terms.d/widget.tsv (pack overlay"
+{ printf '%s\n' "$_hdr"; _row widgetsys system; } > "$PK/widget.tsv"; cp "$PK/widget.tsv" "$PK/other.tsv"
+t_has "the same term in two packs goes red" "$(ovf)" "name.registry-duplicate"
+rm -f "$PK/other.tsv"; cp "$PK/widget.tsv" "$PV/terms.tsv"
+t_has "…and so does a term the private overlay also registers" "$(ovf)" "name.registry-duplicate"
+rm -f "$PV/terms.tsv"; { printf '%s\n' "$_hdr"; _row family system; } > "$PK/widget.tsv"
+t_has "a core term goes red" "$(ovf)" "name.registry-duplicate"
+printf 'id\tclass\nwidgetsys\tsystem\n' > "$PK/widget.tsv"
+t_has "a header that differs from core's goes red" "$(ovf)" "name.registry-shape"
+t_exit "…and fails the run" 1 sh -c 'HARBOR_SCOPE_PRIVATE="$1" sh "$2" --root "$3" --check env HARBOR_SCOPE_X >/dev/null 2>&1' _ "$PV" "$OV/bin/lint-name.sh" "$OV"
+_hst="$(sh "$LN" --self-test 2>&1)"; _hstrc=$?
+t_eq "--self-test never reads a pack overlay, even a bad one" "exit 0" "exit $_hstrc"
+CS="$TMP/cfg space"; mkdir -p "$CS/terms.d"; { printf '%s\n' "$_hdr"; _row widgetsys system; } > "$CS/terms.d/widget.tsv"
+t_exit "a pack overlay path with whitespace is unchecked, never read short" 3 env CLAUDE_CONFIG_DIR="$CS" sh "$OV/bin/lint-name.sh" --root "$OV" --check env WIDGETSYS_LINT_X
+rm -rf "$PK"
+t_eq "restored, no pack overlay means no finding" "" "$(ovf)"
 t_done

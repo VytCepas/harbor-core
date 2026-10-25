@@ -109,7 +109,7 @@ fi
 #
 # WHICH TREE A CALL REACHES INTO IS THE ENGINE'S ANSWER, NOT THIS FILE'S. The
 # definition is written once in CONTRACTS/inject.md ("The tree a call touches")
-# and computed once, in bin/inject-hook.sh, which hands it to every `run:` pack
+# and computed once, in hooks/injection-rule/injection-rule.sh, which hands it to every `run:` pack
 # as HARBOR_TOUCHED: one physical tree per line. This pack computed it itself
 # for one PR (#601); `scope: box` delivery (#599) became the second reader, and
 # two readers of one definition is the point at which a copy starts drifting.

@@ -153,12 +153,12 @@ One realistic defect planted per suite in the code it guards, suite run, code re
 
 | suite | file:line mutated | the mutation, in words | result | mutation: red N / green |
 |---|---|---|---|---|
-| `tests/hooks/inject-notes-test.sh` | `bin/inject-hook.sh:799` (then `:216`) | (1) `[ "$_npred" -gt 0 ]` to `-ge 0`: a pack with no `when:` predicate fires on every event instead of being skipped. (2) the oversized-content cap keeps only the head, dropping the tail slice (`.[-65536:]`) | GREEN — cannot catch this (137 passed, 0 failed, both) | red 0 / green 2 |
+| `tests/hooks/inject-notes-test.sh` | `hooks/injection-rule/injection-rule.sh:799` (then `:216`) | (1) `[ "$_npred" -gt 0 ]` to `-ge 0`: a pack with no `when:` predicate fires on every event instead of being skipped. (2) the oversized-content cap keeps only the head, dropping the tail slice (`.[-65536:]`) | GREEN — cannot catch this (137 passed, 0 failed, both) | red 0 / green 2 |
 | `tests/checks/visual-check-test.sh` | `bin/visual-check.mjs:144` (then `:140`) | (1) normal-text contrast floor 4.5 lowered to 1.5. (2) alpha compositing dropped, translucent text judged as opaque | GREEN — cannot catch this (4 passed, 0 failed, both) | red 0 / green 2 |
 | `tests/cli/browser-test.sh` | `bin/browser-agent.sh:255` | forced-click refusal inside an iframe replaced by `true` | red (1 failed) | red 1 / green 0 |
 | `tests/obs/usage-aggregate-test.sh` | `bin/usage-aggregate.sh:221` | per-request dedupe keeps the record with the fewest output tokens (`max_by` to `min_by`) | red (1 failed) | red 1 / green 0 |
 | `tests/floor/marker-test.sh` | `bin/guard-lib.sh:278` | the stop-before-`$HOME` walk no longer breaks (M14) | red (2 failed) | red 1 / green 0 |
-| `tests/hooks/ticket-note-test.sh` | `bin/ticket-note.sh:121` | the `stop_hook_active` re-entry guard compares against the wrong value, so it never exits | red (1 failed) | red 1 / green 0 |
+| `hooks/ticket-note/ticket-note.test.sh` | `hooks/ticket-note/ticket-note.sh:121` | the `stop_hook_active` re-entry guard compares against the wrong value, so it never exits | red (1 failed) | red 1 / green 0 |
 | `tests/floor/normalize-test.sh` | `bin/floor-normalize.awk:296` | `-u` dropped from the sudo/doas options-that-take-a-value list | red (1 failed) | red 1 / green 0 |
 | `tests/hooks/save-log-token-test.sh` | `bin/save-log-token.sh:76` | token pattern widened with `\|*`, so any clipboard content is saved | red (6 failed) | red 1 / green 0 |
 | `tests/memory/isa-index-test.sh` | `bin/isa-index.sh:80` | the `ISA.md`-required `continue` replaced by `:`, so session dirs count as runs | red (5 failed) | red 1 / green 0 |

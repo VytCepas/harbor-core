@@ -90,32 +90,25 @@ REMIND="${HARBOR_PULSE_REMIND:-86400}"
 DRY=0
 [ "${1:-}" = "--dry-run" ] && DRY=1
 
-# The sink: osascript on macOS, notify-send on Linux (harbor#618). WSL2 often runs no notification
-# daemon, so notify-send fails there and the edge stays unrecorded, to be said on a later run.
-SINK=absent
-if command -v osascript >/dev/null 2>&1; then SINK=osascript
-elif command -v notify-send >/dev/null 2>&1; then SINK=notify-send; fi
+# The sink is bin/alert-lib.sh's chain (harbor#618): macOS, notify-send, a WSL2 toast, else a logged line.
+# Only a desktop channel counts as said: a logged line leaves the edge unrecorded, to be said on a later run.
+ALERT_LIB_DIR="$SRC"; . "$SRC/alert-lib.sh"
+SINK="$(notify_sink)"
 
-send() { # <subtitle> <body> -> 0 ONLY if the sink accepted it
-  case "$SINK" in
-    osascript) osascript - "$2" "$1" <<'APPLESCRIPT' >/dev/null 2>&1 ;;
-on run argv
-  display notification (item 1 of argv) with title "Harbor" subtitle (item 2 of argv)
-end run
-APPLESCRIPT
-    notify-send) notify-send "Harbor — $1" "$2" >/dev/null 2>&1 ;;
-    *) return 1 ;;
-  esac
+send() { # <subtitle> <body> -> 0 ONLY if a desktop channel took it
+  harbor_notify "$1" "$2"
+  [ "$NOTIFY_SINK" != log ]
 }
 
 if [ "${1:-}" = "--selftest" ]; then
-  if [ "$SINK" = absent ]; then
-    log_fail "no osascript or notify-send on PATH — this machine has no sink at all"
+  if [ "$SINK" = log ]; then
+    log_fail "no desktop channel on this machine (macOS notifications, notify-send, a WSL2 toast) — banners go to the event log only"
     log_fix "install libnotify's notify-send (Linux), then: sh $0 --selftest"
     log_end || :; exit 1
   fi
+  _first="$SINK"
   if ! send "pulse — selftest" "the sink works — this run changed nothing"; then
-    log_fail "$SINK refused the banner — no notification daemon is answering"
+    log_fail "$_first refused the banner and no later channel took it — it went to the event log only"
     log_nofix "CHECKS.md, row pulse (WSL2 often runs no notification daemon)"
     log_end || :; exit 1
   fi
