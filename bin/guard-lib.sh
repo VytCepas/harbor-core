@@ -3325,16 +3325,6 @@ floor_instr_diff() {
 # B8-03). Two things are therefore recorded for every tree: the CONTENT reached
 # by following links (`find -L`), and the LINK TARGETS themselves, so that
 # re-pointing a link is drift even when the new target is byte-identical.
-# True when a projects/<x>/memory link only points at another projects/<y>/memory of the same config dir that
-# is a real directory: absolute, no `..`, one level, so the walk pins its content under its own path anyway.
-floor_instr_shared_memory() { # <config-dir> <surface glob> <link target>
-  [ "$2" = 'projects/*/memory' ] || return 1
-  case "$3" in "$1"/projects/*/memory) ;; *) return 1 ;; esac
-  case "$3" in *..*|*//*) return 1 ;; esac
-  _ism="${3#"$1"/projects/}"; _ism="${_ism%/memory}"
-  case "$_ism" in ''|*/*) return 1 ;; esac
-  [ -d "$3" ] && [ ! -L "$3" ]
-}
 floor_instr_manifest() { # <config-dir>
   _cfg="${1%/}"
   for _g in $FLOOR_INSTR_SURFACES; do
@@ -3348,11 +3338,7 @@ floor_instr_manifest() { # <config-dir>
       # arithmetic instead.
       _s="$(printf '%s' "$_p" | awk -v n="${#_cfg}" '{print substr($0, n+2)}')"
       if [ -L "$_p" ]; then
-        _lt="$(readlink "$_p" 2>/dev/null || echo '?')"
-        # A worktree's memory link to a store this same walk already pins adds no instruction: every
-        # new worktree turned B6 amber (71 advisories, 2026-10-23..25). Only that exact shape is exempt.
-        if floor_instr_shared_memory "$_cfg" "$_g" "$_lt"; then continue; fi
-        printf 'link:%s  %s\n' "$_lt" "$_s"
+        printf 'link:%s  %s\n' "$(readlink "$_p" 2>/dev/null || echo '?')" "$_s"
       fi
       if [ -f "$_p" ]; then
         printf '%s  %s\n' "$(floor_sha < "$_p")" "$_s"
