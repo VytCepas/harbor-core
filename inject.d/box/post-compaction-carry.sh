@@ -14,7 +14,7 @@ committed is still undone. If a number matters to the answer and you cannot
 re-derive it this turn, say which number you did not verify rather than repeating
 it.
 TEXT
-# The session state record bin/session-state.sh wrote at the last turn end (harbor#1043): what was in flight when the
+# The session state record hooks/session-state/session-state.sh wrote at the last turn end (harbor#1043): what was in flight when the
 # context was rebuilt. Running tasks and the dirty branch are recoverable only if the model is told they exist; the
 # reason is why the session was last held. A record is data: one line, control characters dropped, text capped.
 _sid="$(printf '%s' "$P" | jq -r '.session_id // empty' 2>/dev/null)" || _sid=""

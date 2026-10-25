@@ -28,17 +28,17 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | policy | policy/ | system | source | living | 11 |
 | standard | standards/ | system | source | versioned | 13 |
 | contract | contracts/ | system | source | versioned | 30 |
-| decision-record | docs/decisions/ | element | source | dated | 88 |
+| decision-record | docs/decisions/ | element | source | dated | 91 |
 | injection-rule | context-rules/<scope>/ | component | source | living | 35 |
-| hook | bin/ | component | source | living | 12 |
+| hook | bin/ | component | source | living | 46 |
 | skill | skills/ | component | source | living | 41 |
 | fixture | fixtures/ | element | source | living | 252 |
 | registry | registries/ | component | source | versioned | 49 |
-| test | tests/ | component | source | living | 425 |
+| test | tests/ | component | source | living | 416 |
 | report | docs/reports/ | element | report | dated | 1 |
-| design | docs/design/ | component | source | living | 6 |
+| design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| script | bin/ | component | source | living | 206 |
+| script | bin/ | component | source | living | 199 |
 | (no kind) | - | - | - | - | 171 |
 
 ## Folders
@@ -51,11 +51,11 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.github/` | 4 | 2 | 1 |
 | `CONTRACTS/` | 79 | 9 | 2 |
 | `DOCTRINE/` | 10 | 1 | 1 |
-| `bin/` | 211 | 21 | 2 |
+| `bin/` | 203 | 22 | 2 |
 | `commands/` | 5 | 1 | 1 |
-| `docs/` | 109 | 6 | 5 |
+| `docs/` | 113 | 6 | 5 |
 | `fixtures/` | 252 | 9 | 1 |
-| `hooks/` | 7 | 1 | 1 |
+| `hooks/` | 42 | 6 | 1 |
 | `inject.d/` | 31 | 1 | 1 |
 | `launchd/` | 12 | 3 | 1 |
 | `patches/` | 12 | 1 | 1 |
@@ -63,7 +63,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `skills/` | 41 | 5 | 1 |
 | `standards/` | 13 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 425 | 20 | 1 |
+| `tests/` | 416 | 21 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 73 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -72,29 +72,29 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
-| access | control-plane | 4 | 6 | 2 | 2 | 0 | 0 |
-| admission | control-plane | 5 | 1 | 0 | 0 | 0 | 146 |
-| alert | observability | 0 | 0 | 0 | 0 | 0 | 0 |
+| access | control-plane | 5 | 5 | 2 | 2 | 0 | 0 |
+| admission | control-plane | 15 | 1 | 0 | 0 | 0 | 167 |
+| alert | observability | 1 | 1 | 0 | 0 | 0 | 0 |
 | audit | control-plane | 0 | 0 | 0 | 0 | 0 | 2 |
 | check | observability | 1 | 4 | 0 | 1 | 50 | 0 |
-| ci | coordination | 12 | 58 | 1 | 3 | 0 | 5 |
-| context | control-plane | 3 | 0 | 1 | 36 | 0 | 29 |
-| deploy | control-plane | 4 | 6 | 1 | 1 | 0 | 7 |
+| ci | coordination | 12 | 58 | 2 | 3 | 0 | 5 |
+| context | control-plane | 3 | 0 | 1 | 36 | 0 | 30 |
+| deploy | control-plane | 5 | 7 | 1 | 1 | 0 | 7 |
 | doc | control-plane | 1 | 1 | 0 | 8 | 0 | 16 |
 | drift | control-plane | 1 | 1 | 0 | 4 | 2 | 12 |
 | eval | control-plane | 0 | 1 | 0 | 0 | 0 | 0 |
-| event | observability | 3 | 16 | 0 | 2 | 0 | 0 |
+| event | observability | 3 | 16 | 0 | 2 | 0 | 1 |
 | gate | control-plane | 10 | 7 | 0 | 0 | 0 | 0 |
 | housekeeping | control-plane | 0 | 0 | 0 | 2 | 0 | 0 |
-| lint | control-plane | 14 | 38 | 0 | 8 | 0 | 31 |
+| lint | control-plane | 15 | 39 | 0 | 8 | 0 | 31 |
 | memory | memory-store | 4 | 11 | 1 | 23 | 0 | 1 |
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
 | policy | policy-function | 0 | 0 | 11 | 0 | 0 | 3 |
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
-| scope | coordination | 1 | 10 | 0 | 0 | 0 | 4 |
-| session | data-plane | 10 | 5 | 0 | 1 | 0 | 0 |
+| scope | coordination | 2 | 10 | 0 | 0 | 0 | 4 |
+| session | data-plane | 11 | 4 | 0 | 1 | 0 | 0 |
 | skill | catalog | 3 | 5 | 0 | 4 | 0 | 11 |
-| standard | policy-function | 3 | 8 | 101 | 0 | 0 | 43 |
+| standard | policy-function | 3 | 8 | 104 | 0 | 0 | 43 |
 | status | observability | 3 | 7 | 0 | 1 | 0 | 0 |
 | test | control-plane | 0 | 1 | 2 | 7 | 0 | 7 |
 | worktree | coordination | 1 | 0 | 0 | 0 | 0 | 0 |
@@ -108,18 +108,33 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `CONTRACTS/access-card.md`
 - `CONTRACTS/access-register.md`
 - `bin/access-chrome-mcp.py`
-- `bin/access-confinement.sh`
 - `bin/access-environment.sh`
 - `bin/access.sh`
+- `hooks/access-confinement/access-confinement.sh`
+- `hooks/access-confinement/access-confinement.test.sh`
 - `skills/access-ledger/SKILL.md`
 
 ### admission
 
+- `bin/annotate-web.sh`
+- `bin/floor-hook.sh`
+- `bin/floor-observe.sh`
+- `bin/govern-hook.sh`
+- `bin/govern-token.sh`
+- `bin/guard-apiroute.sh`
 - `bin/guard-bash.sh`
 - `bin/guard-cloud.sh`
+- `bin/guard-deliverables.sh`
+- `bin/guard-destroy.sh`
 - `bin/guard-egress.sh`
+- `bin/guard-integrity.sh`
 - `bin/guard-selfedit.sh`
 - `bin/guard-stop.sh`
+- `bin/prod-guard-ambient.sh`
+
+### alert
+
+- `bin/alert-lib.sh`
 
 ### check
 
@@ -143,6 +158,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/ci-runs-on.sh`
 - `bin/ci-verified.sh`
 - `docs/design/ci-local-heal.md`
+- `docs/design/ci-tests-on-this-host.md`
 - `launchd/com.harbor.ci-governor.plist`
 
 ### context
@@ -153,8 +169,8 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `.claude/inject.d/merge-note.sh`
 - `bin/context-budget.sh`
 - `bin/context-resolve.sh`
-- `bin/inject-hook.sh`
 - `docs/context-map.md`
+- `hooks/injection-rule/injection-rule.sh`
 - `inject.d/box/10-subagent-contract.md`
 - `inject.d/box/20-post-compaction-carry.md`
 - `inject.d/box/30-external-content-is-data.md`
@@ -191,6 +207,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 
 - `bin/deploy-confinement.sh`
 - `bin/deploy-fleet.sh`
+- `bin/deploy-hooks.sh`
 - `bin/deploy-push.sh`
 - `bin/deploy.sh`
 - `docs/design/deploy-fleet.md`
@@ -248,6 +265,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/lint-locale-ranges.awk`
 - `bin/lint-module.sh`
 - `bin/lint-name.sh`
+- `bin/lint-platform.sh`
 - `bin/lint-secrets.sh`
 - `bin/lint-share.sh`
 - `bin/lint-siblings.sh`
@@ -255,10 +273,10 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 ### memory
 
 - `CONTRACTS/memory-format.md`
-- `bin/memory-harvest.sh`
 - `bin/memory-lint.sh`
 - `bin/memory-route.sh`
 - `bin/memory.sh`
+- `hooks/memory-harvest/memory-harvest.sh`
 - `tools/memory/memory-engine.test.ts`
 - `tools/memory/memory-engine.ts`
 
@@ -289,6 +307,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 ### scope
 
 - `bin/scope.sh`
+- `hooks/injection-rule/scope.test.sh`
 
 ### session
 
@@ -299,10 +318,11 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/session-notify.sh`
 - `bin/session-react-lib.sh`
 - `bin/session-save-now.sh`
-- `bin/session-state.sh`
-- `bin/session-subagent-check.sh`
-- `bin/session-title.sh`
-- `bin/session-verdicts.sh`
+- `hooks/session-state/session-state.sh`
+- `hooks/session-subagent-check/session-subagent-check.sh`
+- `hooks/session-title/session-title.sh`
+- `hooks/session-title/session-title.test.sh`
+- `hooks/session-verdicts/session-verdicts.sh`
 
 ### skill
 
@@ -405,6 +425,9 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `docs/decisions/0085-client-terms-leave-core.md`
 - `docs/decisions/0086-the-session-family.md`
 - `docs/decisions/0087-the-public-export-repo.md`
+- `docs/decisions/0088-hook-engine-folders.md`
+- `docs/decisions/0089-event-and-manual-moments.md`
+- `docs/decisions/0090-doc-kinds-follow-diataxis.md`
 - `docs/decisions/README.md`
 - `standards/modularity.md`
 - `standards/naming.md`
@@ -446,17 +469,17 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `.agents/` | 4 |
 | `.github/` | 2 |
 | `CONTRACTS/` | 62 |
-| `bin/` | 126 |
+| `bin/` | 112 |
 | `commands/` | 5 |
 | `docs/` | 17 |
 | `fixtures/` | 214 |
-| `hooks/` | 7 |
+| `hooks/` | 32 |
 | `launchd/` | 10 |
 | `patches/` | 12 |
 | `runners/` | 2 |
 | `skills/` | 29 |
 | `systemd/` | 15 |
-| `tests/` | 237 |
+| `tests/` | 227 |
 | `tools/` | 8 |
 | `vendor/` | 73 |
 | `worklog/` | 1 |

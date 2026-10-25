@@ -129,7 +129,9 @@ _payload_pathspec() { # <installer-basename> — prints one `bin/<file>` per lin
   # SUITE pairs are <checkout path>:<config-dir path>; the checkout side is the pathspec (harbor#727).
   _ps="$(sed -n 's/^SUITE=.\(.*\).$/\1/p' "$_pi" 2>/dev/null | tr ' ' '\n' \
           | sed -n 's|^\([A-Za-z0-9][A-Za-z0-9._/-]*\):[A-Za-z0-9._/-]*$|\1|p')"
-  printf 'bin/%s.sh\n%s\n%s\n' "$1" "$_pl" "$_ps" | sed '/^$/d' | sort -u
+  # A hook engine moved to its folder (D-88): both spellings, so neither side of the move drops out of the count.
+  _pe="$(printf '%s\n' "$_pl" | sed -n 's|^bin/||p' | while IFS= read -r _pn; do il_engine_path "$_pn"; echo; done)"
+  printf 'bin/%s.sh\n%s\n%s\n%s\n' "$1" "$_pl" "$_ps" "$_pe" | sed '/^$/d' | sort -u
 }
 # `git rev-parse --git-dir`, NOT `[ -d "$REPO/.git" ]`. In a worktree `.git` is a
 # FILE, so the directory test made every worktree report `repo?` — measured the

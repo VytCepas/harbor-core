@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
-# bin/session-state.sh, the Stop hook (harbor#1043, #1044): the five states in rule order, one test per waiting
+# hooks/session-state/session-state.sh, the Stop hook (harbor#1043, #1044): the five states in rule order, one test per waiting
 # pattern in CONTRACTS/session-waiting.tsv, SG-2 parity with guard-stop.sh, an event only on a change, the record's
 # fields, the save-now continuation (once, off without its rule, off under stop_hook_active), and a speed bound.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-TOOL="$T_ROOT/bin/session-state.sh"; GSTOP="$T_ROOT/bin/guard-stop.sh"; TABLE="$T_ROOT/CONTRACTS/session-waiting.tsv"
+TOOL="$T_ROOT/hooks/session-state/session-state.sh"; GSTOP="$T_ROOT/bin/guard-stop.sh"; TABLE="$T_ROOT/CONTRACTS/session-waiting.tsv"
 T="$T_TMP"; ST="$T/state"; REPO="$T/repo"; CFG="$T/cfg"
 export HARBOR_STATUS_DIR="$ST" HARBOR_EVENT_DIR="$T/bus"
 mkdir -p "$REPO" "$CFG"
