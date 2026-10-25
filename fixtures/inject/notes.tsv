@@ -1,6 +1,6 @@
 # SHIPPED-NOTE CONNECTION FIXTURE (harbor#173) — read by tests/hooks/inject-notes-test.sh.
 #
-# WHY THIS FILE EXISTS. tests/hooks/inject-hook.engine-test.sh proves the ENGINE works, against
+# WHY THIS FILE EXISTS. hooks/injection-rule/engine.test.sh proves the ENGINE works, against
 # packs it writes itself. Nothing proved the packs harbor actually SHIPS were
 # reachable by it. Measured 2026-08-29: of the 17 tracked notes, 14 appeared
 # nowhere in any suite, and one of them — the `<tool> --full-refresh` note, which

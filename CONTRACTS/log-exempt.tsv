@@ -20,14 +20,14 @@ bin/event-hook.sh	protocol	Claude Code SessionStart hook (also SessionEnd, Subag
 bin/fleet-glyph.sh	protocol	Claude Code statusLine: the status line it prints is the harness's
 bin/floor-observe.sh	protocol	Claude Code SessionStart hook: its stdout would be session context (it prints none today)
 bin/govern-token.sh	protocol	Claude Code SessionStart hook: the additionalContext announce
-bin/inject-hook.sh	protocol	Claude Code PreToolUse hook, and PostToolUse, PostToolUseFailure, SessionStart, PreCompact: hookSpecificOutput JSON
+hooks/injection-rule/injection-rule.sh	protocol	Claude Code PreToolUse hook, and PostToolUse, PostToolUseFailure, SessionStart, PreCompact: hookSpecificOutput JSON
 bin/prod-guard-ambient.sh	protocol	Claude Code PreToolUse hook: permissionDecision JSON
-bin/session-state.sh	protocol	Claude Code Stop hook: additionalContext JSON
-bin/session-title.sh	protocol	Claude Code UserPromptSubmit hook, also SessionStart: sessionTitle JSON
-bin/access-confinement.sh	protocol	Claude Code PreToolUse hook: prints nothing on any path; it writes the confinement token cache (harbor#1298)
-bin/session-verdicts.sh	protocol	Claude Code SessionStart hook: systemMessage JSON
+hooks/session-state/session-state.sh	protocol	Claude Code Stop hook: additionalContext JSON
+hooks/session-title/session-title.sh	protocol	Claude Code UserPromptSubmit hook, also SessionStart: sessionTitle JSON
+hooks/access-confinement/access-confinement.sh	protocol	Claude Code PreToolUse hook: prints nothing on any path; it writes the confinement token cache (harbor#1298)
+hooks/session-verdicts/session-verdicts.sh	protocol	Claude Code SessionStart hook: systemMessage JSON
 bin/subagent-glyph.sh	protocol	Claude Code subagentStatusLine: one row per live subagent
-bin/reply-shape.sh	protocol	Claude Code Stop hook: systemMessage JSON
-bin/session-subagent-check.sh	protocol	Claude Code SubagentStop hook: systemMessage JSON
-bin/ticket-note.sh	protocol	Claude Code Stop hook: systemMessage JSON
-bin/failure-observe.sh	protocol	Claude Code PostToolUseFailure hook: it prints nothing on any path by design, and its stdout would be session context
+hooks/reply-shape/reply-shape.sh	protocol	Claude Code Stop hook: systemMessage JSON
+hooks/session-subagent-check/session-subagent-check.sh	protocol	Claude Code SubagentStop hook: systemMessage JSON
+hooks/ticket-note/ticket-note.sh	protocol	Claude Code Stop hook: systemMessage JSON
+hooks/failure-observe/failure-observe.sh	protocol	Claude Code PostToolUseFailure hook: it prints nothing on any path by design, and its stdout would be session context

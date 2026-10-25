@@ -13,7 +13,7 @@ git -C "$WL/log" init -q 2>/dev/null
 
 t_section "WL-954 worklog-push: a marked repo appends unless it says worklog: off"
 _wpush() { printf '{"session_id":"%s","cwd":"%s"}' "$1" "$2" \
-  | CLAUDE_CONFIG_DIR="$CFG" HARBOR_LOG_DIR="$WL/log" sh "$SRC/worklog-push.sh" >/dev/null 2>&1; }
+  | CLAUDE_CONFIG_DIR="$CFG" HARBOR_LOG_DIR="$WL/log" sh "$T_ROOT/hooks/worklog-push/worklog-push.sh" >/dev/null 2>&1; }
 _wrec() { find "$WL/log/WORK" -type f -name "*$1*" 2>/dev/null | grep -c . | tr -d ' '; }
 _wpush WL-gov "$WL/gov";         t_eq "WL-954 a marked repo without worklog: off appends to the work log" 1 "$(_wrec WL-gov)"
 _wpush WL-gov-sub "$WL/gov/sub"; t_eq "WL-954 …and so does a subdirectory of it" 1 "$(_wrec WL-gov-sub)"
@@ -51,7 +51,7 @@ chmod +x "$WL/plog/.git/hooks/pre-push"
 printf '#!/bin/sh\nexit 0\n' > "$T_BIN/gitleaks"; chmod +x "$T_BIN/gitleaks"
 printf 'x-test-token\n' > "$WL/token"
 _wpf() { printf '{"session_id":"%s","cwd":"%s"}' "$1" "$REPO_BARE" | CLAUDE_CONFIG_DIR="$CFG" HARBOR_LOG_DIR="$WL/plog" \
-  HARBOR_LOG_TOKEN_FILE="$WL/token" sh "$SRC/worklog-push.sh" 2>&1 >/dev/null; }
+  HARBOR_LOG_TOKEN_FILE="$WL/token" sh "$T_ROOT/hooks/worklog-push/worklog-push.sh" 2>&1 >/dev/null; }
 _o="$(_wpf WL-324)"
 t_has "324 the failure is reported" "$_o" "push FAILED"
 t_has "324 …with git's own reason" "$_o" "remote rejected"
@@ -65,7 +65,7 @@ _nid="$WL/nid"; mkdir -p "$_nid"; git -C "$_nid" init -q 2>/dev/null; git -C "$_
 _nid_run() { ( unset GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
   GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1; export GIT_CONFIG_GLOBAL GIT_CONFIG_NOSYSTEM
   printf '{"session_id":"%s","cwd":"%s"}' "$1" "$WL/gov" \
-    | CLAUDE_CONFIG_DIR="$CFG" HARBOR_LOG_DIR="$_nid" sh "$SRC/worklog-push.sh" >/dev/null 2>"$WL/nid.err" ); }
+    | CLAUDE_CONFIG_DIR="$CFG" HARBOR_LOG_DIR="$_nid" sh "$T_ROOT/hooks/worklog-push/worklog-push.sh" >/dev/null 2>"$WL/nid.err" ); }
 _nid_run WL-1191
 t_has "1191 with no identity the commit lands under the fallback author" "$(git -C "$_nid" log -1 --format=%ae 2>/dev/null)" "harbor@"
 t_has "1191 …and the fallback is said on stderr" "$(cat "$WL/nid.err")" "WARN"
@@ -86,7 +86,7 @@ chmod +x "$_hk/.git/hooks/pre-commit"
 ( unset GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
   GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1; export GIT_CONFIG_GLOBAL GIT_CONFIG_NOSYSTEM
   printf '{"session_id":"WL-1191-hook","cwd":"%s"}' "$WL/gov" \
-    | CLAUDE_CONFIG_DIR="$CFG" HARBOR_LOG_DIR="$_hk" sh "$SRC/worklog-push.sh" >/dev/null 2>"$WL/hk.err" )
+    | CLAUDE_CONFIG_DIR="$CFG" HARBOR_LOG_DIR="$_hk" sh "$T_ROOT/hooks/worklog-push/worklog-push.sh" >/dev/null 2>"$WL/hk.err" )
 _hk_rc=$?
 t_has "1191 a hook-rejected commit is shown as FAIL" "$(cat "$WL/hk.err")" "commit FAILED"
 t_has "1191 …with the hook's own reason" "$(cat "$WL/hk.err")" "hook-rejected-1191"
@@ -102,13 +102,38 @@ chmod +x "$_nh/.git/hooks/pre-commit"
 ( unset GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
   GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1; export GIT_CONFIG_GLOBAL GIT_CONFIG_NOSYSTEM
   printf '{"session_id":"WL-1191-nid-hook","cwd":"%s"}' "$WL/gov" \
-    | CLAUDE_CONFIG_DIR="$CFG" HARBOR_LOG_DIR="$_nh" sh "$SRC/worklog-push.sh" >/dev/null 2>"$WL/nh.err" )
+    | CLAUDE_CONFIG_DIR="$CFG" HARBOR_LOG_DIR="$_nh" sh "$T_ROOT/hooks/worklog-push/worklog-push.sh" >/dev/null 2>"$WL/nh.err" )
 _nh_rc=$?
 t_has "1191 no identity + rejecting hook: the fallback is tried, so the hook runs under it" "$(cat "$WL/nh.ident" 2>/dev/null)" "harbor@"
 t_has "1191 …and the rejection is shown as FAIL with the hook's reason" "$(cat "$WL/nh.err")" "commit FAILED"
 t_has "1191 …naming the hook" "$(cat "$WL/nh.err")" "hook-rejected-1191-nid"
 t_eq "1191 …and no commit lands" "" "$(git -C "$_nh" rev-parse --verify -q HEAD 2>/dev/null)"
 t_eq "1191 …and the session is not blocked (exit 0)" 0 "$_nh_rc"
+
+t_section "harbor#1205 worklog-push: the token is the store's worklog-token; the plaintext file warns once"
+# The store stub logs each call; `run` serves FAKE_STORE as the named variable.
+cat > "$WL/secret" <<'STUB'
+#!/bin/sh
+echo "$*" >> "$FAKE_STORE.calls"
+case "$1" in
+  run) [ -f "$FAKE_STORE" ] || { echo "no secret named '$2'" >&2; exit 1; }; v="$(cat "$FAKE_STORE")"; export "$3=$v"; shift 4; exec "$@" ;;
+  *) exit 2 ;;
+esac
+STUB
+_sc="$WL/scfg"; mkdir -p "$_sc"
+_wps() { printf '{"session_id":"%s","cwd":"%s"}' "$1" "$REPO_BARE" | CLAUDE_CONFIG_DIR="$_sc" HARBOR_LOG_DIR="$WL/plog" \
+  HARBOR_SECRET_BIN="$WL/secret" FAKE_STORE="$WL/store" HARBOR_LOG_TOKEN_FILE="$WL/legacy" sh "$T_ROOT/hooks/worklog-push/worklog-push.sh" 2>&1 >/dev/null; }
+rm -f "$WL/store" "$WL/legacy"
+t_has "1205 no token anywhere: it says the log is never pushed" "$(_wps WL-1205-a)" "never pushed"
+t_eq "1205 …once: the next Stop is silent" "" "$(_wps WL-1205-b)"
+printf 'x-test-token\n' > "$WL/legacy"
+t_has "1205 a plaintext file only: it warns that the token is not in the store" "$(_wps WL-1205-c)" "still the plaintext"
+t_eq "1205 …once" "" "$(_wps WL-1205-d)"
+printf 'x-test-token\n' > "$WL/store"; : > "$WL/store.calls"
+t_eq "1205 with the token in the store: a push that succeeds prints nothing" "" "$(_wps WL-1205-e)"
+t_has "1205 …and the push ran under secret run" "$(cat "$WL/store.calls")" "run worklog-token WORKLOG_TOKEN -- git"
+t_eq "1205 …and the warn-once stamps are cleared, so a regression warns again" no \
+  "$([ -e "$_sc/.worklog-token-warned.legacy" ] || [ -e "$_sc/.worklog-token-warned.missing" ] && echo yes || echo no)"
 
 ff_sealed
 t_done

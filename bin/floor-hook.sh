@@ -182,6 +182,18 @@ _ef="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/floor-hook.XXXXXX" 2>/dev/null || mktemp
 OUT="$(printf '%s' "$IN" | sh "$GUARD" 2>"$_ef")"
 RC=$?
 ERR="$("$_cat" "$_ef" 2>/dev/null)" || ERR="fork: the guard's stderr could not be read"
+# A builtin printf (bash 3.2 as sh) whose blocked write a signal interrupts exits 1 with this text
+# and no verdict. The guard is pure, so re-running it is safe: at most twice, ONLY for that text on
+# a code other than 0/2, and the retry's verdict is the verdict. Any other exit keeps the deny below.
+_try=0
+while [ "$_try" -lt 2 ]; do
+  case "$RC" in 0|2) break ;; esac
+  case "$ERR" in *"Interrupted system call"*) ;; *) break ;; esac
+  _try=$((_try + 1))
+  OUT="$(printf '%s' "$IN" | sh "$GUARD" 2>"$_ef")"
+  RC=$?
+  ERR="$("$_cat" "$_ef" 2>/dev/null)" || ERR="fork: the guard's stderr could not be read"
+done
 rm -f "$_ef"
 
 # harbor#810: a fork or descriptor that failed inside a rule reads as "no match", so an allow that

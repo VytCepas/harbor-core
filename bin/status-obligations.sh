@@ -47,7 +47,7 @@
 #                  the one the row's link names.   gh-run   `gh run view`: the run, or the named job, completed.
 #   transcripts    not a source of its own: when a dead owner last wrote its transcript (HARBOR_STATUS_OBLIGATION_TRANSCRIPTS,
 #                  default ~/.claude/projects). A row that outlives its owner's stop (Workflow) is abandoned once its deadline has
-#                  passed, the owner is gone from both lists and no transcript line came after the deadline.
+#                  passed, the owner is gone from both lists and no transcript line came after the deadline, or the owner has been silent for HARBOR_STATUS_OBLIGATION_QUIET seconds (86400).
 #   sweep          the harbor-clean.sh --record rows: each RISK or DECIDE row is a `leftover` obligation owned by the
 #                  operator while the record names it, closed when the next record does not. $HOME is shown as ~.
 # A source that fails, times out, prints what is not a list, or is older than it may be (the sweep record, 36h)
@@ -482,7 +482,8 @@ def dead($sid): $sid != "" and ($src.sessions.ok // false) and ($src["claude-age
 # been written since: nothing then says it still runs, and the stop that spared it was long ago. A missing transcript counts as quiet.
 def lapsed($r):
   $r.deadline_ts != "" and ($r.deadline_ts | fromdateiso8601) < $now
-  and (($src.sessions.transcripts // {})[sid_of($r.owner)] // 0) <= ($r.deadline_ts | fromdateiso8601);
+  and ((($src.sessions.transcripts // {})[sid_of($r.owner)] // 0) as $w
+       | $w <= ($r.deadline_ts | fromdateiso8601) or $now - $w >= $quiet);
 def sources_of($k): $k.reconcile | split(",");
 def agent_for($subj): (($src["claude-agents"].agents // []) | map(select(.id == $subj or .sessionId == $subj)) | first);
 def verdict($r; $k):
@@ -550,12 +551,13 @@ TRANSCRIPTS="${HARBOR_STATUS_OBLIGATION_TRANSCRIPTS:-$CFG/projects}"   # <projec
 READ_TO="${HARBOR_STATUS_OBLIGATION_READ_TIMEOUT:-10}"   # seconds one read may take
 BUDGET="${HARBOR_STATUS_OBLIGATION_BUDGET:-40}"          # seconds every read of one run may take together
 GRACE="${HARBOR_STATUS_OBLIGATION_GRACE:-300}"           # a registry file lags exec: a younger row is not judged dead
+QUIET="${HARBOR_STATUS_OBLIGATION_QUIET:-86400}"         # seconds a dead owner may be silent before its outliving row lapses even though it wrote after the deadline
 RETAIN="${HARBOR_STATUS_OBLIGATION_RETAIN:-1296000}"       # seconds a closed row, and the keys of its transitions, are kept: bus retention (14d) + 1d
 LOCK_GRACE="${HARBOR_STATUS_OBLIGATION_LOCK_GRACE:-10}"  # a lock whose owner cannot be read is live until it is this old
 LOCK_MAX="${HARBOR_STATUS_OBLIGATION_LOCK_MAX:-900}"     # a lock older than this is taken over, whatever its pid says
 GH_MAX=25                                                # gh reads per source per run, oldest row first
 RECORD_MAX_AGE=129600                                    # a sweep record older than 36h answers nothing
-for _v in READ_TO BUDGET GRACE RETAIN LOCK_GRACE LOCK_MAX; do
+for _v in READ_TO BUDGET GRACE QUIET RETAIN LOCK_GRACE LOCK_MAX; do
   eval "_x=\$$_v"; case "$_x" in ''|*[!0-9]*) log_fail "HARBOR_STATUS_OBLIGATION_$_v is '$_x', want whole seconds"; log_fix "unset HARBOR_STATUS_OBLIGATION_$_v"; log_end || :; exit 2 ;; esac
 done
 
@@ -817,7 +819,7 @@ reconcile_pass() {
   for _f in "$T"/src/*.json; do jq -c --arg n "$(basename "$_f" .json)" '{($n): .}' "$_f"; done | jq -s -c 'add // {}' > "$T/src.json"
   load_state || return 1
   jq -n -c --slurpfile snap "$SNAPFILE" --slurpfile led "$T/led.tail" --argjson reg "$(cat "$T/reg.json")" --slurpfile src "$T/src.json" --argjson lo "$_lo" \
-    --argjson now "$NOW_E" --argjson grace "$GRACE" --arg nowiso "$NOW" --arg home "$HOME" --argjson retain "$RETAIN" '$src[0] as $src | '"$RECON" > "$T/rresult" \
+    --argjson now "$NOW_E" --argjson grace "$GRACE" --argjson quiet "$QUIET" --arg nowiso "$NOW" --arg home "$HOME" --argjson retain "$RETAIN" '$src[0] as $src | '"$RECON" > "$T/rresult" \
     || { log_fail "the reconcile failed on $LEDGER or a source answer; nothing was written"; log_nofix "tests/status/obligations/reconcile.test.sh"; return 1; }
   split_result "$T/rresult"
   if [ -s "$T/batch" ]; then
