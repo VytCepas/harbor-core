@@ -76,7 +76,7 @@ t_eq "budget 8, two normal and one low: each normal job 3 (8 less the low floor,
 t_eq "...harbor-linux the remaining 2" 2 "$(ccpus harbor-linux)"
 fresh; ctr quuxmail-linux busy; ctr estate-linux busy; ctr studio-linux busy; ctr zarija-linux busy; busy harbor-linux; gov tick >/dev/null
 t_eq "four normal jobs on budget 4 still leave harbor-linux its floor, never 0" 1 "$(ccpus harbor-linux)"
-t_eq "...and each normal one at least linux_min" 1 "$(ccpus zarija-linux)"
+t_eq "...and each busy normal one at least normal_min 2 (harbor#1060), the box oversubscribed on purpose" 2 "$(ccpus zarija-linux)"
 
 t_section "a low job past lift_after keeps lift_cpus under a day-to-day job (harbor#1060: suites timed out at its floor, load 20+)"
 age() { if [ "$1" = harbor-linux ]; then echo "$2" > "$FX/age"; else echo "$2" > "$FX/$1.age"; fi; }
@@ -103,12 +103,14 @@ fresh; printf 'lift_after=60\nlift_cpus=3\n' > "$CONF"; echo 700 > "$FX/idle"; c
 t_eq "lift_after and lift_cpus are config keys (budget 8: lift 3)" 3 "$(ccpus harbor-linux)"
 t_eq "...the day-to-day job gets the other 5" 5 "$(ccpus quuxmail-linux)"
 fresh; ctr quuxmail-linux busy; ctr estate-linux busy; ctr studio-linux busy; busy harbor-linux; age harbor-linux 1000; gov tick >/dev/null
-t_eq "three day-to-day jobs on budget 4: the lift is limited to what leaves each its floor (1)" 1 "$(ccpus harbor-linux)"
-t_eq "...so no day-to-day job is cut under linux_min to pay for it" "1 1 1" "$(ccpus quuxmail-linux) $(ccpus estate-linux) $(ccpus studio-linux)"
+t_eq "three day-to-day jobs on budget 4: the lift is limited to what leaves each its normal_min, so none" 1 "$(ccpus harbor-linux)"
+t_eq "...so no day-to-day job is cut under normal_min to pay for it" "2 2 2" "$(ccpus quuxmail-linux) $(ccpus estate-linux) $(ccpus studio-linux)"
 fresh; ctr quuxmail-linux busy; busy harbor-linux; age harbor-linux 1000; ctr projects-orchestrator-linux busy; age projects-orchestrator-linux 5; gov tick >/dev/null
-t_eq "an aged and a young low job beside one day-to-day job: aged keeps 2" 2 "$(ccpus harbor-linux)"
+t_eq "an aged and a young low job beside one day-to-day job on budget 4: normal_min leaves the aged one linux_min" 1 "$(ccpus harbor-linux)"
 t_eq "...the young one is cut to linux_min" 1 "$(ccpus projects-orchestrator-linux)"
-t_eq "...the day-to-day job is not cut under linux_min" 1 "$(ccpus quuxmail-linux)"
+t_eq "...the day-to-day job keeps normal_min 2, so the lift leaves aged only 1 on budget 4" "2 1" "$(ccpus quuxmail-linux) $(ccpus harbor-linux)"
+fresh; echo 700 > "$FX/idle"; ctr quuxmail-linux busy; busy harbor-linux; age harbor-linux 1000; ctr projects-orchestrator-linux busy; age projects-orchestrator-linux 5; gov tick >/dev/null
+t_eq "budget 8: the aged job keeps lift 2, the young one linux_min, the day-to-day job the rest" "2 1 5" "$(ccpus harbor-linux) $(ccpus projects-orchestrator-linux) $(ccpus quuxmail-linux)"
 fresh; ctr quuxmail-linux busy; busy harbor-linux; age harbor-linux 1000; echo 4 > "$FX/mem"; gov sample >/dev/null
 t_eq "an emergency still takes every runner to its emergency cap, lift or not" "0.5" "$(awk -v n="$(cat "$FX/nano")" 'BEGIN { printf "%g", n / 1e9 }')"
 

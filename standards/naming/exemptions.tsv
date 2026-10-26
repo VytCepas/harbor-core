@@ -124,7 +124,6 @@ legacy-0068	name.alias	bin/guard-lib.sh	legacy	2027-02-22	first scan, harbor#950
 legacy-0069	name.alias	bin/guard-selfedit.sh	legacy	2027-02-22	first scan, harbor#950; W6 admission
 legacy-0070	name.alias	bin/guard-stop.sh	legacy	2027-02-22	first scan, harbor#950; W6 admission
 legacy-0071	name.alias	bin/harbor-clean.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0072	name.alias	bin/inject-hook.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0073	name.alias	bin/inject-install.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0074	name.alias	bin/judge-run.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0075	name.alias	bin/prod-guard-ambient.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
@@ -210,10 +209,6 @@ legacy-0156	name.alias	tests/hooks/failure-capture-test.sh	legacy	2027-01-25	fir
 legacy-0157	name.alias	tests/hooks/failure-capture.fc5-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0158	name.alias	tests/hooks/failure-capture.ledger-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0159	name.alias	tests/hooks/inject-fixture.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0160	name.alias	tests/hooks/inject-hook.detector-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0161	name.alias	tests/hooks/inject-hook.engine-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0162	name.alias	tests/hooks/inject-hook.packs-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0163	name.alias	tests/hooks/inject-hook.scope-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0164	name.alias	tests/hooks/inject-notes-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0165	name.alias	tests/hooks/prod-guard-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0166	name.alias	tests/hooks/stop-guard-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
@@ -771,10 +766,6 @@ legacy-0746	name.extension	tests/guards/deliverables.msg.jsonl	legacy	2027-01-25
 legacy-0747	name.extension	tests/guards/destroy.msg.jsonl	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0748	name.extension	tests/hooks/failure-capture.fc5-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0749	name.extension	tests/hooks/failure-capture.ledger-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0750	name.extension	tests/hooks/inject-hook.detector-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0751	name.extension	tests/hooks/inject-hook.engine-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0752	name.extension	tests/hooks/inject-hook.packs-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0753	name.extension	tests/hooks/inject-hook.scope-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0754	name.extension	tests/hooks/statusline.fleet-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0755	name.extension	tests/hooks/statusline.row2-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0756	name.extension	tests/hooks/statusline.subagent-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
@@ -803,7 +794,6 @@ legacy-0782	name.family	bin/deny-hash.sh	legacy	2027-02-01	first scan, harbor#95
 legacy-0783	name.family	bin/docs-gen.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0784	name.family	bin/doctor.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0785	name.family	bin/failure-capture.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0786	name.family	bin/failure-observe.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0787	name.family	bin/findings-run.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0788	name.family	bin/findings.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0789	name.family	bin/fleet-glyph.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
@@ -834,7 +824,6 @@ legacy-0813	name.family	bin/guard-stop.sh	legacy	2027-02-22	first scan, harbor#9
 legacy-0814	name.family	bin/harbor-clean.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0815	name.family	bin/hook-replay.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0816	name.family	bin/idea.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0817	name.family	bin/inject-hook.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0818	name.family	bin/inject-install.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0819	name.family	bin/install-drift.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0820	name.family	bin/install-lib.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
@@ -881,12 +870,10 @@ legacy-0861	name.family	bin/store-check.sh	legacy	2027-02-01	first scan, harbor#
 legacy-0862	name.family	bin/subagent-glyph.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0863	name.family	bin/suite-run.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0864	name.family	bin/suite-select.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0865	name.family	bin/ticket-note.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0866	name.family	bin/usage-aggregate.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0867	name.family	bin/visual-check.mjs	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0868	name.family	bin/visual-check.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0869	name.family	bin/wf-progress.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0871	name.family	bin/worklog-push.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0872	name.family	bin/wrapper-falsify.py	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0876	name.launchd	launchd/com.harbor.findings.plist	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0877	name.launchd	launchd/com.harbor.fleet-snapshot.plist	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
@@ -1348,12 +1335,7 @@ legacy-1346	name.test-path	tests/hooks/apiroute-guard-test.sh	legacy	2027-01-25	
 legacy-1347	name.test-path	tests/hooks/failure-capture-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1348	name.test-path	tests/hooks/failure-capture.fc5-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1349	name.test-path	tests/hooks/failure-capture.ledger-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1350	name.test-path	tests/hooks/failure-observe-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1351	name.test-path	tests/hooks/govern-hook-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1352	name.test-path	tests/hooks/inject-hook.detector-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1353	name.test-path	tests/hooks/inject-hook.engine-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1354	name.test-path	tests/hooks/inject-hook.packs-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1355	name.test-path	tests/hooks/inject-hook.scope-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1356	name.test-path	tests/hooks/inject-notes-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1357	name.test-path	tests/hooks/prod-guard-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1358	name.test-path	tests/hooks/save-log-token-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
@@ -1362,7 +1344,6 @@ legacy-1360	name.test-path	tests/hooks/statusline.fleet-test.sh	legacy	2027-01-2
 legacy-1361	name.test-path	tests/hooks/statusline.row2-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1362	name.test-path	tests/hooks/statusline.subagent-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1363	name.test-path	tests/hooks/stop-guard-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1364	name.test-path	tests/hooks/ticket-note-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1365	name.test-path	tests/install	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1366	name.test-path	tests/install/bootstrap-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1367	name.test-path	tests/install/constitution-install-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests

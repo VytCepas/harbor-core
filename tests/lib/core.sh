@@ -43,6 +43,8 @@ t_init() { # [name] — defaults to the file name without .sh
   done
   # No suite drives the real Chrome: `harbor chrome attach` opens a window through AppleScript.
   HARBOR_OSASCRIPT=false; export HARBOR_OSASCRIPT
+  # No suite reads the real credential store: a store-reading tool's case brings its own stub (harbor#1205).
+  HARBOR_SECRET_BIN="$T_TMP/no-secret-store"; export HARBOR_SECRET_BIN
   T_PASS=0; T_FAIL=0; T_SEC=""; T_SEC_N=0
   _t_cfg > "$T_TMP/.cfg.before"  # the repo's shared config, before the suite touches anything (harbor#1152)
 }
@@ -69,6 +71,8 @@ t_section() { # <title>
 }
 _t_close() { [ -z "$T_SEC" ] || [ "$T_SEC_N" -gt 0 ] || t_fail "section ran no assertions"; }
 
+# The repo file an installed name ships from: bin/<name>, else its hook engine folder (D-88; il_src in bin/install-lib.sh).
+t_src() { if [ -f "$T_ROOT/bin/$1" ] || [ ! -f "$T_ROOT/hooks/${1%.*}/$1" ]; then printf '%s' "$T_ROOT/bin/$1"; else printf '%s' "$T_ROOT/hooks/${1%.*}/$1"; fi; }
 t_eq()    { [ "$3" = "$2" ] && t_pass || t_fail "$1 (want '$2', got '$3')"; }        # <label> <want> <got>
 t_has()   { case "$2" in *"$3"*) t_pass ;; *) t_fail "$1 (missing: $3)" ;; esac; }  # <label> <text> <needle>
 t_hasnt() { # a negative on empty output proves nothing, so empty fails (lint F9's point)

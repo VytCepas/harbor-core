@@ -1,6 +1,6 @@
 # tests/hooks/inject-fixture.sh — sourced after t_init by the inject-hook.<part> suites (harbor#173, #667).
 # $CFG is the box tier and $REPO the session repo, both empty; fire runs the engine against them.
-SUT="$T_ROOT/bin/inject-hook.sh"; T="$T_TMP"; CFG="$T/cfg"; REPO="$T/repo"
+SUT="$T_ROOT/hooks/injection-rule/injection-rule.sh"; T="$T_TMP"; CFG="$T/cfg"; REPO="$T/repo"
 mkdir -p "$CFG/inject.d" "$REPO/.claude/inject.d"
 ( cd "$REPO" && git init -q . && git config user.email t@t && git config user.name t )
 fire_cfg() { # <config-dir> <payload-json> → the engine's stdout

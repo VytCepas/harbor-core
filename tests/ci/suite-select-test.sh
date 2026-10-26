@@ -174,8 +174,36 @@ t_eq "…and so does the other one: not everything" SKIP "$(gv beta-test.sh)"
 t_hasnt "…and the fallback is not taken" "$L" "selector's own inputs ("
 edit_row() { sed 's|^beta-test.sh docs/\*$|beta-test.sh docs/* other/*|' "$G/CONTRACTS/suite-paths.txt" > "$G/x" && mv "$G/x" "$G/CONTRACTS/suite-paths.txt"; app; }
 glane edit_row
-t_eq "an edited row beside appended ones runs everything" RUN "$(gv alpha-test.sh)"
+# A row that only GROWS selects its suite more, never less (harbor#1149): that suite runs, not everything.
+L="$(gsel)"
+t_eq "a row that only grew: its suite runs" RUN "$(gv beta-test.sh)"
+t_has "…because its declaration grew" "$(printf '%s\n' "$L" | grep ' beta-test.sh ')" 'its declaration only grew'
+t_eq "…the selector's own suite runs" RUN "$(gv tests/ci/suite-run-test.sh)"
+t_eq "…an unrelated suite stands down: not everything" SKIP "$(gv alpha-test.sh)"
+t_hasnt "…and the fallback is not taken" "$L" "selector's own inputs ("
+shrink_row() { sed 's|^alpha-test.sh bin/\*$|alpha-test.sh other/*|' "$G/CONTRACTS/suite-paths.txt" > "$G/x" && mv "$G/x" "$G/CONTRACTS/suite-paths.txt"; }
+glane shrink_row
+t_eq "a row that lost a glob runs everything" RUN "$(gv beta-test.sh)"
 t_has "…and names the file" "$(gsel)" "selector's own inputs (CONTRACTS/suite-paths.txt: a line removed or edited"
+grow_at() { sed 's|^@no-suite \*\.md$|@no-suite *.md bin/*|' "$G/CONTRACTS/suite-paths.txt" > "$G/x" && mv "$G/x" "$G/CONTRACTS/suite-paths.txt"; }
+glane grow_at
+t_eq "a grown @ row (@no-suite would hide paths) runs everything" RUN "$(gv beta-test.sh)"
+grow_always() { sed 's|^always-test.sh always$|always-test.sh always bin/*|' "$G/CONTRACTS/suite-paths.txt" > "$G/x" && mv "$G/x" "$G/CONTRACTS/suite-paths.txt"; }
+glane grow_always
+t_eq "a grown always row runs everything" RUN "$(gv beta-test.sh)"
+to_always() { sed 's|^beta-test.sh docs/\*$|beta-test.sh docs/* always|' "$G/CONTRACTS/suite-paths.txt" > "$G/x" && mv "$G/x" "$G/CONTRACTS/suite-paths.txt"; }
+glane to_always
+t_eq "a row grown into always runs everything" RUN "$(gv alpha-test.sh)"
+grow_old() { sed 's|^beta-test.sh docs/\*$|beta-test.sh docs/* newdir/*|' "$G/CONTRACTS/suite-paths.txt" > "$G/x" && mv "$G/x" "$G/CONTRACTS/suite-paths.txt"; echo x >> "$G/newdir/old.conf"; }
+glane grow_old
+t_eq "a grown row cannot classify a path that already existed" RUN "$(gv alpha-test.sh)"
+t_has "…which stays unclassified" "$(gsel)" 'no declaration mentions newdir/old.conf'
+grow_new() { sed 's|^beta-test.sh docs/\*$|beta-test.sh docs/* newdir/*|' "$G/CONTRACTS/suite-paths.txt" > "$G/x" && mv "$G/x" "$G/CONTRACTS/suite-paths.txt"; : > "$G/newdir/new2.conf"; }
+glane grow_new
+t_eq "a grown row may classify a path the changeset adds" SKIP "$(gv alpha-test.sh)"
+grow_manifest() { sed 's|^beta-test.sh$|beta-test.sh x|' "$G/CONTRACTS/suites.txt" > "$G/x" && mv "$G/x" "$G/CONTRACTS/suites.txt"; }
+glane grow_manifest
+t_eq "an edited manifest row runs everything (growth is suite-paths.txt only)" RUN "$(gv alpha-test.sh)"
 drop_row() { grep -v '^beta-test.sh' "$G/CONTRACTS/suite-paths.txt" > "$G/x" && mv "$G/x" "$G/CONTRACTS/suite-paths.txt"; app; }
 glane drop_row
 t_eq "a removed declaration row runs everything" RUN "$(gv alpha-test.sh)"
