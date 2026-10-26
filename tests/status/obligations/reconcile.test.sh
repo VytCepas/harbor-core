@@ -50,7 +50,7 @@ echo "$*" >> "$STUB_FIX/sessions.calls"
 cat "$STUB_FIX/sessions.json"
 EOF
 chmod +x "$STUBS"/*
-ln -sf "$T_ROOT/bin/log-lib.sh" "$MUTD/log-lib.sh"; ln -sf "$T_ROOT/bin/fs-lib.sh" "$MUTD/fs-lib.sh"
+ln -sf "$T_ROOT/bin/log-lib.sh" "$MUTD/log-lib.sh"; ln -sf "$T_ROOT/bin/fs-lib.sh" "$MUTD/fs-lib.sh"; ln -sf "$T_ROOT/bin/event-bus.sh" "$MUTD/event-bus.sh"
 
 fresh() { rm -rf "$W"; mkdir -p "$EV" "$OB" "$FIX/sweep"; N=0; NOW=2026-10-06T02:00:00Z; READ_TO=""; BUDGET=""; FAULT=""; ONOVER=""; }
 ev() { # <ts> <kind> <subject> [data-json]
@@ -132,8 +132,13 @@ case_pr() { X="$1"; fresh
   chk "a closed PR is closed" closed "$(cur pr:VytCepas/harbor#11 state)"
   chk "gh got the repo and number as separate arguments" "pr view 9 -R VytCepas/harbor --json state --jq .state" "$(grep '^pr view 9 ' "$FIX/gh.calls")"
   chk "one read per row" 3 "$(calls gh)"
+  busk() { cat "$EV"/*.jsonl | jq -r --arg s "$1" 'select(.src == "status-obligations" and .subject == $s) | .kind' | tr '\n' ' '; }
+  chk "the merge it saw is published as pr.merged (harbor#1367)" "pr.merged " "$(busk VytCepas/harbor#9)"
+  chk "...a close as pr.closed" "pr.closed " "$(busk VytCepas/harbor#11)"
+  chk "...and an open PR as nothing" "" "$(busk VytCepas/harbor#10)"
   ev 2026-10-06T02:30:00Z pr.merged VytCepas/harbor#9; NOW=2026-10-06T03:00:00Z; rec >/dev/null
   chk "a late merge event does not reopen it" closed "$(cur pr:VytCepas/harbor#9 state)"
+  chk "...and a row already closed is not published again" "pr.merged " "$(busk VytCepas/harbor#9)"
   verdict; }
 case_run() { X="$1"; fresh
   ev 2026-10-06T01:00:00Z ci.job.start VytCepas/harbor:7:suites; ev 2026-10-06T01:00:00Z ci.job.start VytCepas/harbor:8:suites; ev 2026-10-06T01:00:00Z ci.job.start VytCepas/harbor:9:lint
@@ -201,7 +206,9 @@ case_lapsed() { X="$1"; fresh
   : > "$FIX/tr/p/S1.jsonl"; touch_at "$((DL - 3600))" "$FIX/tr/p/S1.jsonl"
   : > "$FIX/tr/p/S4.jsonl"; touch_at "$((DL + 3600))" "$FIX/tr/p/S4.jsonl"
   : > "$FIX/tr/p/S7.jsonl"; touch_at "$((DL - 3600))" "$FIX/tr/p/S7.jsonl"
+  ev 2026-10-04T00:00:00Z tool.background.start S8:T '{"tool":"CronCreate"}'; : > "$FIX/tr/p/S8.jsonl"; touch_at "$((DL - 86400 + 3600))" "$FIX/tr/p/S8.jsonl"
   printf '[{"sessionId":"S6","pid":1}]' > "$FIX/sessions.json"; printf '[]' > "$FIX/agents.json"; rec >/dev/null
+  chk "a dead owner that wrote after the deadline but has been quiet 24h+: abandoned" abandoned "$(cur tool.background:S8:T state)"
   chk "a Workflow past its deadline, owner dead, transcript quiet since: abandoned" abandoned "$(cur tool.background:S1:T state)"
   chk "by reconcile" reconcile "$(cur tool.background:S1:T closed_by)"
   chk "the ledger names the owner-session source" owner-session "$(jq -r 'select(.obligation == "tool.background:S1:T" and .to == "abandoned") | .source' "$OB/ledger.jsonl")"
@@ -237,9 +244,34 @@ case_approval_silent() { X="$1"; fresh
 t_section "owner-session: a Workflow whose dead owner is quiet past its deadline is abandoned"
 t_eq "the real script" ok "$(case_lapsed "$BIN")"
 redproof "outlives never lapses" case_lapsed '(($r.outlives | not) or lapsed($r))' '(($r.outlives | not))'
-redproof "lapse ignores the owner's last write" case_lapsed '<= ($r.deadline_ts | fromdateiso8601);' '<= $now;'
+redproof "lapse ignores the owner's last write" case_lapsed '$w <= ($r.deadline_ts | fromdateiso8601) or' '$w <= $now or'
 redproof "lapse ignores the deadline" case_lapsed '$r.deadline_ts != "" and ($r.deadline_ts | fromdateiso8601) < $now' '$r.deadline_ts != ""'
+redproof "quiet owner never lapses" case_lapsed '$now - $w >= $quiet' 'false'
 redproof "transcripts are never read" case_lapsed '_tm="$(fs_mtime "$_tf")"; [ -z "$_tm" ]' '_tm=""; [ -z "$_tm" ]'
+
+# Claude Code has no hook for background work finishing, but it writes a <task-notification> with the tool-use id and a
+# final status into the owner's transcript. 43 of 48 overdue rows on the live box had one (2026-10-25), most in a live session.
+note() { # <transcript> <tool-use id> <status> — the notification as a transcript line carries it, newlines escaped
+  printf '%s\n' "{\"type\":\"user\",\"message\":{\"content\":\"<task-notification>\\n<task-id>w-$2</task-id>\\n<tool-use-id>$2</tool-use-id>\\n<output-file>/o/$2.output</output-file>\\n<status>$3</status>\\n<summary>s</summary>\\n</task-notification>\"}}" >> "$1"; }
+case_finished() { X="$1"; fresh
+  DL="$(jq -n -r '"2026-10-05T04:00:00Z" | fromdateiso8601')"; mkdir -p "$FIX/tr/p"
+  for _t in TA TB TC TD; do ev 2026-10-05T00:00:00Z tool.background.start "S6:$_t" '{"tool":"Workflow"}'; done
+  ev 2026-10-05T00:00:00Z tool.background.start S4:T '{"tool":"Workflow"}'
+  note "$FIX/tr/p/S6.jsonl" TA completed; note "$FIX/tr/p/S6.jsonl" TC failed
+  printf '%s\n' '{"type":"user","message":{"content":"grep said <tool-use-id>TB</tool-use-id>\\n<status>completed</status>"}}' >> "$FIX/tr/p/S6.jsonl"
+  note "$FIX/tr/p/S4.jsonl" T killed; touch_at "$((DL + 3600))" "$FIX/tr/p/S4.jsonl"
+  printf '[{"sessionId":"S6","pid":1}]' > "$FIX/sessions.json"; printf '[]' > "$FIX/agents.json"; rec >/dev/null
+  chk "a live owner's Workflow with a completed notification closes" closed "$(cur tool.background:S6:TA state)"
+  chk "the ledger names the transcript" transcript "$(jq -r 'select(.obligation == "tool.background:S6:TA" and .to == "closed") | .source' "$OB/ledger.jsonl")"
+  chk "a failed one closes too" closed "$(cur tool.background:S6:TC state)"
+  chk "the id and a status outside a notification close nothing" overdue "$(cur tool.background:S6:TB state)"
+  chk "no notification: still overdue" overdue "$(cur tool.background:S6:TD state)"
+  chk "a dead owner that wrote after the deadline, with a killed notification: closed" closed "$(cur tool.background:S4:T state)"
+  verdict; }
+t_section "owner-session: the owner's transcript says the background work finished"
+t_eq "the real script" ok "$(case_finished "$BIN")"
+redproof "notifications are never read" case_finished 'finished: $f' 'finished: []'
+redproof "the verdict ignores a finished row" case_finished '(($src.sessions.finished // []) | any(.[]; . == $r.subject))' 'false'
 
 t_section "approval: a merged or closed PR closes the approval waiting on it"
 t_eq "the real script" ok "$(case_approval_pr "$BIN")"
@@ -416,11 +448,14 @@ t_eq "and reconciled the ledger inside the same run" closed "$(cur pr:VytCepas/h
 : > "$W/notdir"; rm -f "$FSN/cache/fleet-snapshot.json"; fsn "$W/notdir/ob"; rc=$?
 t_eq "a reconcile that cannot write its state does not fail the job" 0 "$rc"
 t_eq "and the snapshot is still written" yes "$([ -s "$FSN/cache/fleet-snapshot.json" ] && echo yes || echo no)"
+# The run above published #9's merge at the wall clock (harbor#1367), after this suite's pinned NOW: a fresh ledger
+# replaying it is a different case, so the next two cases use PRs of their own.
+ev 2026-10-06T01:00:00Z pr.opened VytCepas/harbor#21; ev 2026-10-06T01:00:00Z pr.opened VytCepas/harbor#22
 rm -f "$FSN/cache/fleet-snapshot.json"; : > "$FIX/gh.hang"; rm -rf "$OB"; mkdir -p "$OB"
 _t0="$(date +%s)"; FSN_TO=1; FSN_BUDGET=2; fsn "$OB"; rc=$?; _dt=$(($(date +%s) - _t0))
 t_eq "a hung gh does not fail the job" 0 "$rc"
 t_eq "and costs it no more than the budget (took ${_dt}s)" yes "$([ "$_dt" -lt 25 ] && echo yes || echo no)"
-t_eq "the row the hung read could not judge stays open" open "$(cur pr:VytCepas/harbor#9 state)"
+t_eq "the row the hung read could not judge stays open" open "$(cur pr:VytCepas/harbor#21 state)"
 
 t_section "the INSTALLED layout: runtime-install ships the script and its register, and launchd's copy folds, caches and files a receipt (harbor#1115)"
 # Every case above runs the checkout, where ../CONTRACTS sits beside bin/ and HARBOR_STATUS_OBLIGATION_KINDS is set. launchd
@@ -431,7 +466,7 @@ env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/runtime-install.sh" --apply --dir "$INS
 t_eq "runtime-install ships status-obligations.sh" yes "$([ -x "$INST/bin/status-obligations.sh" ] && echo yes || echo no)"
 t_eq "...and its register, beside it in bin/" yes "$([ -f "$INST/bin/obligation-kinds.tsv" ] && cmp -s "$KINDS" "$INST/bin/obligation-kinds.tsv" && echo yes || echo no)"
 t_eq "...with no new top-level CONTRACTS/ in the config dir" no "$([ -e "$INST/CONTRACTS" ] && echo yes || echo no)"
-rm -f "$FIX/gh.hang"; printf MERGED > "$FIX/pr-9"   # the bus still holds the PR opened above
+rm -f "$FIX/gh.hang"; printf MERGED > "$FIX/pr-22"   # the bus still holds the PR opened above
 inst_run() { # <config dir> — the installed refresher, every source a stub, no register knob
   env CLAUDE_CONFIG_DIR="$1" HARBOR_CACHE_DIR="$ICACHE" HARBOR_ORCH_BIN="$FSN/orch" HARBOR_FLEET_FILE="$FSN/fleet.yaml" \
     HARBOR_CLEAN_HOME="$FSN/home" HARBOR_CLEAN_SCRATCH="$FSN/scratch" HARBOR_CLEAN_GH=none \
@@ -443,7 +478,7 @@ inst_run() { # <config dir> — the installed refresher, every source a stub, no
 rm -rf "$IOB" "$ICACHE"; inst_run "$INST"; rc=$?
 t_eq "the installed refresher exits 0" 0 "$rc"
 t_eq "the ledger appears under HARBOR_OBLIGATION_DIR" yes "$([ -s "$IOB/ledger.jsonl" ] && echo yes || echo no)"
-t_eq "the open PR was folded and then reconciled closed" closed "$(jq -r '.obligations[] | select(.id == "pr:VytCepas/harbor#9") | .state' "$IOB/current.json" 2>/dev/null)"
+t_eq "the open PR was folded and then reconciled closed" closed "$(jq -r '.obligations[] | select(.id == "pr:VytCepas/harbor#22") | .state' "$IOB/current.json" 2>/dev/null)"
 t_eq "the statusline cache appears" yes "$([ -s "$ICACHE/status-obligations.json" ] && echo yes || echo no)"
 t_eq "the receipt appears" yes "$([ -s "$ICACHE/checks/status.obligations.json" ] && echo yes || echo no)"
 t_eq "...and is green" green "$(jq -r '.verdict // .status // .state // empty' "$ICACHE/checks/status.obligations.json" 2>/dev/null)"
