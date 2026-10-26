@@ -17,11 +17,14 @@
 # injected at the tool call. A fact that matters WHEN A COMMAND RUNS belongs on
 # the command, not in a document the model must remember to consult.
 #
-# PRECISION OVER REACH, because §2.11 makes a false positive a defect. This fires
-# only where the trap actually bites: a BARE `$VAR` in argument position to a CLI
-# whose arguments are conventionally a string of flags. `cd $HOME`, `echo $PATH`
-# and every quoted `"$VAR"` stay silent — they pass one value and one value is
-# what they want.
+# PRECISION OVER REACH, because §2.11 makes a false positive a defect. A 30-day
+# transcript audit measured 2,458 firings and ONE real trap among 1,903 replayable
+# ones: the rest were `gh issue view $n` or a loop variable, a single value. Shell
+# state does not persist between Bash calls, so the trap needs the variable to be
+# ASSIGNED IN THIS COMMAND a value of whitespace or a leading `-` (`X='--a --b'`,
+# `X="a b"`, `export X=...`) and then passed BARE to a flag-taking CLI. Silent for
+# `for X in`, `read X`, single words, `X=$(...)` (content unknown, nearly always one
+# value) and a variable assigned elsewhere (environment). Quoted `"$VAR"` stays silent.
 #
 # stdin is the hook payload; stdout is the note (empty = no note).
 set -u
@@ -50,24 +53,45 @@ CMD="$(printf '%s\n' "$CMD" | awk '
 # for several of them is the documented shape rather than a guess.
 TOOLS='bq gcloud gsutil gh docker aws kubectl curl ffmpeg rsync jq psql'
 
-# A bare $NAME or ${NAME}: not "$NAME" (quoted, one value intended), not $1/$@/$?
-# (positional and special, which DO behave), not $(...) (substitution).
-hit=$(printf '%s' "$CMD" | awk -v tools="$TOOLS" '
+# A bare $NAME or ${NAME} in argument position to TOOLS, where NAME was assigned in
+# this command a value with whitespace or a leading dash. Pass 1 collects those
+# names, pass 2 is the argument-position scan.
+hit=$(printf '%s\n' "$CMD" | awk -v tools="$TOOLS" '
   BEGIN { n = split(tools, T, " "); for (i = 1; i <= n; i++) want[T[i]] = 1 }
-  {
-    line = $0
-    # blank every double-quoted span: a quoted variable is not this trap
-    out = ""; inq = 0
-    for (i = 1; i <= length(line); i++) {
-      c = substr(line, i, 1)
-      if (c == "\"") { inq = !inq; out = out c; continue }
-      out = out (inq ? " " : c)
+  { L[NR] = $0 }
+  END {
+    for (k = 1; k <= NR; k++) {
+      rest = L[k]
+      while (match(rest, /(^|[ \t;&|(])[A-Za-z_][A-Za-z0-9_]*=/)) {
+        nm = substr(rest, RSTART, RLENGTH - 1); sub(/^[ \t;&|(]/, "", nm)
+        rest = substr(rest, RSTART + RLENGTH)
+        c = substr(rest, 1, 1)
+        if (c == "\047" || c == "\"") {
+          v = substr(rest, 2); e = index(v, c); if (e) v = substr(v, 1, e - 1)
+        } else { v = rest; sub(/[ \t;&|].*$/, "", v) }
+        if (v ~ /^(\$\(|`)/) continue
+        if (v ~ /[ \t]/ || v ~ /^-/) multi[nm] = 1
+      }
     }
-    n2 = split(out, W, /[ \t]+/)
-    for (i = 1; i <= n2; i++) {
-      w = W[i]
-      if (w in want) cur = w
-      else if (cur != "" && w ~ /^\$\{?[A-Za-z_][A-Za-z0-9_]*\}?$/) { print cur; exit }
+    inq = 0   # a double-quoted span (an inline SQL) can run across lines
+    for (k = 1; k <= NR; k++) {
+      line = L[k]
+      # blank every double-quoted span: a quoted variable is not this trap
+      out = ""
+      for (i = 1; i <= length(line); i++) {
+        c = substr(line, i, 1)
+        if (c == "\"") { inq = !inq; out = out c; continue }
+        out = out (inq ? " " : c)
+      }
+      n2 = split(out, W, /[ \t]+/)
+      for (i = 1; i <= n2; i++) {
+        w = W[i]
+        if (w in want) cur = w
+        else if (cur != "" && w ~ /^\$\{?[A-Za-z_][A-Za-z0-9_]*\}?$/) {
+          nm = w; gsub(/[${}]/, "", nm)
+          if (nm in multi) { print cur; exit }
+        }
+      }
     }
   }')
 

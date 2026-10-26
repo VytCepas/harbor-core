@@ -22,6 +22,11 @@ citation that misdescribes reality is worse than an absent one.
    `user-invocable`, `argument-hint`, `allowed-tools`, `disable-model-invocation`.
    No bespoke keys: the upstream `version`/`effort` pair folds into `description`,
    which is what the model actually matches on (standards/naming.md §6.4).
+   **Three optional ownership keys are allowed** (read by `inject.d/box/99-skill-on-first-use`, which
+   names the skill the first time a session uses what it owns): `owns-commands` (space-separated CLI
+   names), `owns-tools` (harness tool names such as `Agent`), and `inline-section` (the `## ` heading
+   whose body the note carries, read live from this file). A skill that names a client system in them
+   belongs in the private layer, never in core.
 3. **A skill states *how*, never *which*.** Per-project facts (IDs, current
    state, findings) belong in that project's own `.agents/memory/` — the L3 scope
    in [`CONTRACTS/memory-format.md`](../CONTRACTS/memory-format.md). A skill that
