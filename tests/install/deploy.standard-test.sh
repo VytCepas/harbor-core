@@ -127,8 +127,8 @@ t_has "...after the same snapshot" "$(tar -tzf "$C"/backups/deploy-*/config.tgz 
 t_has "...and says what it leaves alone" "$(out)" "  note: only:       floor — every other component is left as it is"
 fixture onlytwo; run 'y\nn\n' --apply --only runtime,skills --live
 t_eq "--only runtime,skills installs exactly those, in the chain's order" \
-  "runtime-install.sh --live,skills-install.sh --all,skills-install.sh commands,skill-book.sh install," \
-  "$(grep -e '--apply' -e '^skill-book' "$LOGF" | awk '{print $1, $2}' | tr '\n' ',')"
+  "runtime-install.sh --live,skills-install.sh --all,skills-install.sh commands,skill-catalog.sh install," \
+  "$(grep -e '--apply' -e '^skill-catalog' "$LOGF" | awk '{print $1, $2}' | tr '\n' ',')"
 fixture onlyinj; echo mine > "$C/inject.d/99-mine.md"; run '' --only inject --live
 t_eq "--only inject still refuses a box-only pack it would replace" 1 "$RC"
 t_has "...naming it" "$(out)" "99-mine.md"

@@ -1,6 +1,6 @@
 ---
 name: test-strength
-description: Prove a load-bearing test can actually fail, and that it fails for the right reason. Break the thing it guards, watch it go red, restore — then check it stays green on a valid-but-unusual input, because red on a mutant proves discrimination, not correctness. USE WHEN a suite is written or changed, a guard is trusted, a gate reports zero, or a green result is about to be cited as evidence.
+description: Prove a load-bearing test can actually fail, and that it fails for the right reason. Break the thing it guards, watch it go red, restore — then check it stays green on a valid-but-unusual input, because red on a mutant proves discrimination, not correctness. USE WHEN a suite is written or changed, a guard is trusted, a gate reports zero, or a green result is about to be cited as evidence. NOT FOR reviewing a diff for defects (review-fanout), or running a suite to see it pass (`bin/suite-run.sh`).
 disable-model-invocation: true
 ---
 

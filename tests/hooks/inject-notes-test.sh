@@ -9,7 +9,7 @@
 # predicate left every default suite green while five live packs went silent.
 PRIV="${HARBOR_NOTES_PRIVATE:-}"   # a knob from the caller, read before t_init clears it (harbor#773)
 . "$(dirname "$0")/../lib/core.sh"; t_init
-ENGINE="$T_ROOT/bin/inject-hook.sh"; FIX="$T_ROOT/fixtures/inject/notes.tsv"; T="$T_TMP"
+ENGINE="$T_ROOT/hooks/injection-rule/injection-rule.sh"; FIX="$T_ROOT/fixtures/inject/notes.tsv"; T="$T_TMP"
 # merge-governance and post-merge-state call `gh` against a live PR; their content is
 # tests/hooks/govern-hook-test.sh's, and only their wiring is asserted at the end here.
 EXEMPT='merge-governance post-merge-state'
@@ -35,6 +35,10 @@ done < "$T/cfg/inject.d/projects.tsv"
 # browser-route-harbor-chrome reads the host allowlist from the registered harbor checkout.
 _hr="$(awk -F'\t' '$1 == "harbor" { sub(/^~\//, "", $2); print $2; exit }' "$T/cfg/inject.d/projects.tsv")"
 mkdir -p "$HOME/$_hr/CONTRACTS"; cp "$T_ROOT/CONTRACTS/browser-agent-hosts.txt" "$HOME/$_hr/CONTRACTS/"
+
+# skill-on-first-use reads the installed skills, the floor's parser beside the pack, and a transcript.
+mkdir -p "$T/cfg/skills/agent-routing" "$T/cfg/bin"; cp "$T_ROOT/skills/agent-routing/SKILL.md" "$T/cfg/skills/agent-routing/"
+cp "$T_ROOT/bin/guard-lib.sh" "$T_ROOT/bin/floor-normalize.awk" "$T/cfg/bin/"; printf '{}\n' > "$T/transcript.jsonl"
 
 make_repo() { # <dir> <pack> <shape>: skills = a HIDDEN skill, visible = one the model already lists
   rm -rf "$1"; mkdir -p "$1/.claude/inject.d" "$1/vault" "$1/docs"
@@ -76,7 +80,7 @@ fi
 while IFS="$(printf '\t')" read -r pack shape id arm label payload; do
   case "$pack" in ''|'#'*) continue ;; esac
   rows=$((rows + 1)); REPO="$T/repo"; make_repo "$REPO" "$pack" "$shape"
-  _p="$(printf '%s' "$payload" | sed "s|@REPO@|$REPO|g; s|@OTHER@|$OTHER|g; s|@BARE@|$BARE|g")"
+  _p="$(printf '%s' "$payload" | sed "s|@REPO@|$REPO|g; s|@OTHER@|$OTHER|g; s|@BARE@|$BARE|g; s|@TRANSCRIPT@|$T/transcript.jsonl|g")"
   case "$_p" in *'@BIG@'*) _p="$(printf '%s' "$_p" | sed "s|@BIG@|$BIG|")" ;; esac
   out="$(printf '%s' "$_p" | CLAUDE_CONFIG_DIR="$T/cfg" CLAUDE_PROJECT_DIR="$REPO" PORT_ROOT="$T" \
           HARBOR_REPO="$T_ROOT" ACCESS_DIR="$T/access" HARBOR_MANAGED_SETTINGS="$T/managed/managed-settings.json" \

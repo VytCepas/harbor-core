@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # repo-skills.sh (harbor#173 · A5) — name the repo-scoped skills a session
-# CANNOT see. Run by bin/inject-hook.sh at SessionStart with cwd = the session's
+# CANNOT see. Run by hooks/injection-rule/injection-rule.sh at SessionStart with cwd = the session's
 # repo and the hook payload on stdin, which it ignores.
 #
 # WHY ONLY THE HIDDEN ONES. A repo-scoped skill without the flag is already in
@@ -19,7 +19,7 @@ D=".claude/skills"
 [ -d "$D" ] || exit 0
 
 # The frontmatter ONLY. Scanning the body misfiles any skill whose prose mentions
-# the key at column 0 — skill-book.sh records that exact defect.
+# the key at column 0 — skill-catalog.sh records that exact defect.
 fm() { awk 'NR==1 && $0 !~ /^---[[:space:]]*$/ { exit }
             NR>1  && $0 ~  /^---[[:space:]]*$/ { exit }
             NR>1' "$1"; }

@@ -53,6 +53,19 @@ O="$(run -j 1)"; rc=$?
 t_eq "a damaged result set fails the run" 1 "$rc"
 t_has "and names the suite whose result is missing" "$O" "LOST: tests/x/a.sh"
 
+t_section "a worker never vanishes: a lost lock race or a signal is a fail row, never LOST (harbor#1378)"
+# uutils mkdir 0.10 (Ubuntu 26.04, ubuntu-latest) exits 0 when it loses a creation race; this one always loses.
+UU="$T_TMP/uu"; mkdir -p "$UU"; MKD="$(command -v mkdir)"
+printf '#!/bin/sh\ncase "$1" in -*) exec %s "$@" ;; esac\n%s -p -- "$@" && sleep 1\n' "$MKD" "$MKD" > "$UU/mkdir"; chmod +x "$UU/mkdir"
+mk r1; mk r2; man r1 r2
+O="$(PATH="$UU:$PATH" run -j 2)"; rc=$?
+t_eq "where mkdir cannot lock, both workers still run their suite: exit 0, two ok" "0 2" \
+  "$rc $(printf '%s\n' "$O" | grep -c '^  ok: [0-9]*s tests/x/r[12]\.sh')"
+mk w 'for m in "$_SR_LOGS"/../running/*; do kill -TERM "${m##*/}"; done; sleep 5'; man w
+O="$(run -j 1)"
+t_has "a worker killed by TERM leaves a fail row naming the signal" "$O" "tests/x/w.sh the worker was killed by SIGTERM"
+t_hasnt "...so nothing is LOST" "$O" "LOST"
+
 t_section "the work dir: removed when green, kept when a suite failed (harbor#1032)"
 wd() { find "$T_TMP/tmp" -maxdepth 1 -name 'suite-run.*' -type d | wc -l | tr -d ' '; }
 man a b; N0="$(wd)"

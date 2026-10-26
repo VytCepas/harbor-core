@@ -13,7 +13,9 @@ CFG="$T/cfg"; S="$CFG/settings.json"; mkdir -p "$CFG/bin"; printf '{"permissions
 _cmds() { jq -r '.hooks[]?[]?.hooks[]?.command // empty' "$S" 2>/dev/null; }
 _ss() { jq -r '.hooks.SessionStart[]?.hooks[]?.command // empty' "$S" 2>/dev/null; }
 FR="$T/fakeroot"; mkdir -p "$FR/bin" "$FR/.claude"  # a real tree, or a mutant dies at the diff -r gate
-cp "$T_ROOT/bin/inject-hook.sh" "$T_ROOT/bin/govern-token.sh" "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/install-lib.sh" "$T_ROOT/bin/roots.sh" "$FR/bin/"
+cp "$T_ROOT/bin/deploy-hooks.sh" "$T_ROOT/bin/govern-token.sh" "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/install-lib.sh" "$T_ROOT/bin/roots.sh" "$FR/bin/"
+# the engine in its folder with its manifest (D-88), and the rename register its old name is read from
+mkdir -p "$FR/hooks" "$FR/standards/naming"; cp -R "$T_ROOT/hooks/injection-rule" "$FR/hooks/"; cp "$T_ROOT/standards/naming/renames.tsv" "$FR/standards/naming/"
 mkdir -p "$FR/CONTRACTS"; cp "$T_ROOT/CONTRACTS/roots.tsv" "$FR/CONTRACTS/"   # roots.sh, which resolves the private layer, reads its table
 cp -R "$T_ROOT/inject.d" "$FR/inject.d"; cp -R "$T_ROOT/.claude/inject.d" "$FR/.claude/inject.d"
 mutant() { sed "$1" "$TOOL" > "$FR/bin/$2"; printf '%s' "$FR/bin/$2"; }  # <sed-expr> <name> → path
@@ -26,7 +28,7 @@ t_has "...with the command that mints one" "$(printf '%s\n' "$PRE" | grep -A1 'W
 
 t_section "--apply wires the engine and the announce at SessionStart"
 sh "$TOOL" --dir "$CFG" --apply >/dev/null 2>&1
-t_has "the engine is wired" "$(_ss)" "inject-hook.sh"
+t_has "the engine is wired" "$(_ss)" "injection-rule.sh"
 t_has "govern-token is wired" "$(_ss)" "govern-token.sh"
 t_has "in --announce mode" "$(_ss | grep govern-token)" "--announce"
 t_has "with its path quoted" "$(_ss)" "\"$CFG/bin/govern-token.sh\""
@@ -58,15 +60,15 @@ t_has "the salt is reported present" "$POST" "  ok: salt: present"
 t_section "--remove leaves no hook pointing at a file it deleted"
 sh "$TOOL" --dir "$CFG" --remove --apply > "$T/rm.out" 2>&1
 t_eq "govern-token hooks left" 0 "$(_cmds | grep -c 'govern-token\.sh')"
-t_eq "engine hooks left" 0 "$(_cmds | grep -c 'inject-hook\.sh')"
+t_eq "engine hooks left" 0 "$(_cmds | grep -c 'injection-rule\.sh')"
 dangling() { _cmds | sed -E 's/^\/bin\/sh "([^"]+)".*/\1/' | while IFS= read -r p; do
   case "$p" in "$CFG"/*) [ -f "$p" ] || echo "$p" ;; esac; done; }
 t_eq "hooks naming a missing file under the config dir" "" "$(dangling)"
 RMB="$(dirname "$(tail -1 "$T/rm.out" | sed -n 's/^log: //p')")"
 t_eq "--remove moved the packs into its backup, never deleted them" yes "$([ -d "$RMB/inject.d" ] && [ -n "$(ls "$RMB/inject.d")" ] && echo yes || echo no)"
-t_eq "...and the engine" yes "$([ -f "$RMB/bin/inject-hook.sh" ] && [ -f "$RMB/bin/govern-token.sh" ] && echo yes || echo no)"
-t_eq "...leaving neither in the config dir" "no no" "$([ -e "$CFG/inject.d" ] && echo yes || echo no) $([ -e "$CFG/bin/inject-hook.sh" ] && echo yes || echo no)"
-t_eq "...with the pre-run settings.json beside them" 2 "$(jq '[.hooks.SessionStart[]?.hooks[]?.command | select(contains("inject-hook.sh") or contains("govern-token.sh"))] | length' "$RMB/settings.json")"
+t_eq "...and the engine" yes "$([ -f "$RMB/bin/injection-rule.sh" ] && [ -f "$RMB/bin/govern-token.sh" ] && echo yes || echo no)"
+t_eq "...leaving neither in the config dir" "no no" "$([ -e "$CFG/inject.d" ] && echo yes || echo no) $([ -e "$CFG/bin/injection-rule.sh" ] && echo yes || echo no)"
+t_eq "...with the pre-run settings.json beside them" 2 "$(jq '[.hooks.SessionStart[]?.hooks[]?.command | select(contains("injection-rule.sh") or contains("govern-token.sh"))] | length' "$RMB/settings.json")"
 
 t_section "idempotent: a second --apply adds no duplicate"
 sh "$TOOL" --dir "$CFG" --apply >/dev/null 2>&1; N1="$(_ss | grep -c 'govern-token\.sh')"
@@ -76,7 +78,8 @@ REB="$(dirname "$(tail -1 "$T/re.out" | sed -n 's/^log: //p')")"
 t_eq "a rebuild moves the previous box tier into its backup" "$(ls "$T_ROOT/inject.d/box" | sort)" "$(ls "$REB/inject.d" 2>/dev/null | sort)"
 
 t_section "mutant: the section-2 wiring assertions can fail"
-M8="$(mutant '/add SessionStart  ""            "\$ANNOUNCE_CMD"/d' mut-announce.sh)"
+M8="$(mutant '/merge_hook \/dev\/stdin SessionStart "" "\$ANNOUNCE_CMD"/d' mut-announce.sh)"
+t_eq "the mutant's sed applied: no announce merge is left" 0 "$(grep -c 'ANNOUNCE_CMD")"$' "$M8")"
 CFG2="$T/cfg2"; mkdir -p "$CFG2/bin"; printf '{"permissions":{"deny":[]}}\n' > "$CFG2/settings.json"
 t_has "the mutant reached its own output" "$(sh "$M8" --dir "$CFG2" --apply 2>&1)" "backup:"
 t_eq "the mutant wired no announce" 0 "$(jq -r '.hooks.SessionStart[]?.hooks[]?.command // empty' "$CFG2/settings.json" | grep -c 'govern-token\.sh')"
@@ -110,7 +113,7 @@ t_has "mutant: a clean config nags (the clean arm is keyed on the check)" "$O" "
 t_section "the wired matcher covers every tool the packs declare (harbor#184)"
 rm -rf "$CFG"; mkdir -p "$CFG"; printf '{"permissions":{"allow":[],"deny":[]}}\n' > "$S"
 sh "$TOOL" --dir "$CFG" --apply >/dev/null 2>&1
-M="$(jq -r '[.hooks.PostToolUse[]? | select((.hooks[]?.command // "") | contains("inject-hook.sh")) | .matcher] | first // ""' "$S")"
+M="$(jq -r '[.hooks.PostToolUse[]? | select((.hooks[]?.command // "") | contains("injection-rule.sh")) | .matcher] | first // ""' "$S")"
 t_eq "a PostToolUse matcher was written for the engine" yes "${M:+yes}"
 fm() { awk -v k="$2" 'NR==1 && $0 !~ /^---/ {exit} NR>1 && /^---/ {exit} $0 ~ "^"k":" {sub("^"k":[[:space:]]*",""); print; exit}' "$1"; }
 uncovered() { for f in "$T_ROOT"/inject.d/*/*.md "$T_ROOT"/.claude/inject.d/*.md; do
@@ -127,23 +130,25 @@ seed() { rm -rf "$U"; mkdir -p "$U/bin"  # /opt/my-inject-hook.sh CONTAINS our b
     hooks:{PostToolUse:[{matcher:$stale, hooks:[{type:"command", command:$eng, timeout:10},
       {type:"command", command:"/bin/sh /somebody/else.sh", timeout:10}, {type:"command", command:"/bin/sh /opt/my-inject-hook.sh", timeout:10}]},
       {matcher:"Write", hooks:[{type:"command", command:"/bin/sh /third/party.sh", timeout:10}]}]}}' > "$U/settings.json"; }
-ours() { jq -r --arg p "$U/bin/inject-hook.sh" "[.hooks.PostToolUse[]? | select([.hooks[]?.command // \"\"] | map(contains(\$p)) | index(true) != null) | $1]" "$U/settings.json"; }
+# the engine under either name: the seed is a box as it stands before harbor#1272, its entry still inject-hook.sh
+ours() { jq -r --arg p "$U/bin/injection-rule.sh" --arg o "$U/bin/inject-hook.sh" "[.hooks.PostToolUse[]? | select([.hooks[]?.command // \"\"] | map(contains(\$p) or contains(\$o)) | index(true) != null) | $1]" "$U/settings.json"; }
 has_cmd() { jq -r --arg c "$1" '[.hooks.PostToolUse[]?.hooks[]?.command] | index($c) != null' "$U/settings.json"; }
 seed
-t_eq "the fixture seeds one engine entry" 1 "$(ours 1 | jq length)"
+t_eq "the fixture seeds one engine entry, under the old name" 1 "$(ours 1 | jq length)"
 sh "$TOOL" --dir "$U" --apply >/dev/null 2>&1
 t_eq "after the upgrade, one engine entry" 1 "$(ours 1 | jq length)"
+t_eq "...under the new name, and none under the old" "0 1" "$(jq -r '[.hooks[]?[]?.hooks[]?.command] | "\(map(select(contains("inject-hook.sh") and (contains("/opt/") | not))) | length) \(map(select(contains("injection-rule.sh"))) | length > 0 | if . then 1 else 0 end)"' "$U/settings.json")"
 M11="$(ours .matcher | jq -r 'first // ""')"
 t_eq "the surviving entry has a derived matcher" yes "$([ -n "$M11" ] && [ "$M11" != "$STALE" ] && echo yes)"
 t_eq "a foreign hook sharing the stale entry survives" true "$(has_cmd "/bin/sh /somebody/else.sh")"
 t_eq "a third-party entry survives" 1 "$(jq '[.hooks.PostToolUse[]? | select(.matcher == "Write")] | length' "$U/settings.json")"
 t_eq "a foreign hook whose name contains ours survives" true "$(has_cmd "/bin/sh /opt/my-inject-hook.sh")"
 
-t_section "mutant: the upgrade arm goes red without the prune"
-M11B="$(mutant 's/^prune [A-Za-z]* .*$/:/' mut-prune.sh)"
-t_eq "no prune call is left in the mutant" 0 "$(grep -c '^prune ' "$M11B")"
+t_section "mutant: the upgrade arm goes red without the render"
+M11B="$(mutant 's/^NEW="\$(hooks_run --settings /NEWX="$(hooks_run --settings /' mut-render.sh)"
+t_eq "the mutant no longer takes the rendered settings" 0 "$(grep -c '^NEW="$(hooks_run --settings ' "$M11B")"
 seed; sh "$M11B" --dir "$U" --apply >/dev/null 2>&1
-t_eq "the mutant leaves two engine entries" 2 "$(ours 1 | jq length)"
+t_eq "the mutant leaves the old-name entry wired" true "$(has_cmd "/bin/sh \"$U/bin/inject-hook.sh\"")"
 
 t_section "the interface: no positional target, the live dir only by --live, and no env target"
 IF="$T/iface"; mkdir -p "$IF"; printf '{"permissions":{"deny":[]}}\n' > "$IF/settings.json"
@@ -163,11 +168,11 @@ sh "$TOOL" --dir "$MC" >/dev/null 2>&1
 t_eq "a dry run writes no manifest" no "$([ -e "$MC/.harbor-manifest" ] && echo yes || echo no)"
 sh "$TOOL" --dir "$MC" --apply >/dev/null 2>&1
 t_eq "the engine is a row: its bytes, 100755, the installer and this checkout's commit" \
-  "$(git hash-object "$MC/bin/inject-hook.sh") 100755 bin/inject-hook.sh inject-install $(git -C "$T_ROOT" rev-parse HEAD)" \
-  "$(grep ' bin/inject-hook.sh ' "$MC/.harbor-manifest")"
+  "$(git hash-object "$MC/bin/injection-rule.sh") 100755 bin/injection-rule.sh inject-install $(git -C "$T_ROOT" rev-parse HEAD)" \
+  "$(grep ' bin/injection-rule.sh ' "$MC/.harbor-manifest")"
 t_eq "every box pack is a row" "$(cd "$MC" && find inject.d -type f | wc -l | tr -d ' ')" "$(grep -c ' inject.d/' "$MC/.harbor-manifest")"
 sh "$TOOL" --dir "$MC" --apply --remove >/dev/null 2>&1
-t_eq "--remove drops the rows of everything it moved into the backup" 0 "$(grep -cE ' (inject\.d/|bin/inject-hook\.sh |bin/govern-token\.sh )' "$MC/.harbor-manifest")"
+t_eq "--remove drops the rows of everything it moved into the backup" 0 "$(grep -cE ' (inject\.d/|bin/injection-rule\.sh |bin/govern-token\.sh )' "$MC/.harbor-manifest")"
 
 # ── the private layer (harbor#1149) ─────────────────────────────────────────────────────────────────────────────
 # Core ships no pack that names a client or a repo of one: they live in <private>/inject.d, read through roots.sh. Every arm below names
@@ -186,7 +191,7 @@ printf -- '---\nid: private-box-note\nevent: SessionStart\nwhen: always\n---\n\n
 printf -- '---\nid: demo-zz\nevent: PreToolUse\ntool: ZzPrivateTool\nwhen: always\n---\n\nbody\n' > "$PL/inject.d/demo/10-demo-zz.md"
 printf -- '---\nid: other-note\nevent: SessionStart\nwhen: always\n---\n\nbody\n' > "$PL/inject.d/other/10-other.md"
 : > "$PL/inject.d/box/.DS_Store"
-pmatch() { jq -r '[.hooks.PreToolUse[]? | select((.hooks[]?.command // "") | contains("inject-hook.sh")) | .matcher] | first // ""' "$1/settings.json"; }
+pmatch() { jq -r '[.hooks.PreToolUse[]? | select((.hooks[]?.command // "") | contains("injection-rule.sh")) | .matcher] | first // ""' "$1/settings.json"; }
 
 t_section "a private layer's box tier installs with core's, and its repo packs' tools reach the matcher"
 PX="$T/px"; mkdir -p "$PX/bin"; printf '{"permissions":{"allow":[],"deny":[]}}\n' > "$PX/settings.json"
@@ -234,7 +239,7 @@ prefusal() { # <label> <layer> <expect> → the dry run exits 1, --apply exits 1
   t_eq "$1: --apply exits 1" 1 "$_pc"
   t_has "$1: it says why" "$_po" "$3"
   t_eq "$1: the project keeps what it had, and nothing else" "10-demo-zz.md old" "$(ls -A "$PH/port/demo/.claude/inject.d" | tr '\n' ' ')$(cat "$PH/port/demo/.claude/inject.d/10-demo-zz.md")"
-  t_eq "$1: the config dir got no pack tier and no engine" "no no" "$([ -e "$PH/.claude/inject.d" ] && echo yes || echo no) $([ -e "$PH/.claude/bin/inject-hook.sh" ] && echo yes || echo no)"; }
+  t_eq "$1: the config dir got no pack tier and no engine" "no no" "$([ -e "$PH/.claude/inject.d" ] && echo yes || echo no) $([ -e "$PH/.claude/bin/injection-rule.sh" ] && echo yes || echo no)"; }
 LP="$(mklayer script)"; printf '#!/bin/sh\necho hi\n' > "$LP/inject.d/demo/90-evil.sh"
 printf -- '---\nid: evil\nevent: PreToolUse\ntool: Bash\nwhen: always\nrun: 90-evil.sh\n---\n' > "$LP/inject.d/demo/20-evil.md"
 prefusal script "$LP" "only .md packs are seeded into a repository"
@@ -262,7 +267,7 @@ refusal() { # <label> <layer> <expect> → one refusal arm: dry run exits 1, --a
   _ro="$(HARBOR_SCOPE_PRIVATE="$2" sh "$TOOL" --dir "$_rd" --apply 2>&1)"; _rc=$?
   t_eq "$1: --apply exits 1" 1 "$_rc"
   t_has "$1: it says why" "$_ro" "$3"
-  t_eq "$1: nothing was installed" "no no" "$([ -e "$_rd/inject.d" ] && echo yes || echo no) $([ -e "$_rd/bin/inject-hook.sh" ] && echo yes || echo no)"
+  t_eq "$1: nothing was installed" "no no" "$([ -e "$_rd/inject.d" ] && echo yes || echo no) $([ -e "$_rd/bin/injection-rule.sh" ] && echo yes || echo no)"
   t_eq "$1: settings.json is untouched" '{"permissions":{"allow":[],"deny":[]}}' "$(cat "$_rd/settings.json")"; }
 LS="$T/layer-script"; mkdir -p "$LS/inject.d/box"; printf '#!/bin/sh\necho hi\n' > "$LS/inject.d/box/90-evil.sh"
 refusal script "$LS" "only .md packs and projects.tsv are installed from the private layer"

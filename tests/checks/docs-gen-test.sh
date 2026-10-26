@@ -4,7 +4,7 @@
 # It runs a copy of the generator in a fixture tree, so a case never depends on the repo's own prose.
 . "$(dirname "$0")/../lib/core.sh"; t_init
 FX="$T_TMP/fx"; mkdir -p "$FX/bin" "$FX/docs/src"
-cp "$T_ROOT/bin/docs-gen.sh" "$T_ROOT/bin/log-lib.sh" "$FX/bin/"
+cp "$T_ROOT/bin/docs-gen.sh" "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/install-lib.sh" "$FX/bin/"
 DG="$FX/bin/docs-gen.sh"; IDX="$FX/docs/index.html"
 printf '<section><h2 id="a">A</h2>\n<p>prose</p></section>\n' > "$FX/docs/src/10-a.html"
 dg() { sh "$DG" "$@" > "$T_TMP/o" 2> "$T_TMP/e"; RC=$?; }  # fills $T_TMP/o (stdout), $T_TMP/e (stderr), $RC

@@ -12,7 +12,7 @@
 #                   then pruned-* dirs older than 30 days deleted
 #   --only floor --uninstall   remove the floor (harbor uninstall): the same gates and snapshot, and a
 #                   verify that expects the floor GONE; the snapshot is offered back. Every installed pack goes
-#                   with it (bin/pack.sh remove), and the skill book is regenerated without their skills
+#                   with it (bin/pack.sh remove), and the skill catalog is regenerated without their skills
 #   --accept-loss   passed to constitution-, runtime-, floor- and skills-install and to restore.sh;
 #                   deploy's own regression check then warns instead of refusing
 #   --unattended    the ship runner's apply (deploy-fleet.sh, ship contract §6), never a person's: needs --apply,
@@ -140,7 +140,7 @@ SNAP=''
 # runtime-install's lib/ and prod-guard-install's settings.json.bak.* were missing. A glob is allowed.
 # The install manifest joined it with Wave C (§3): a restore that put the files back and not their rows
 # would leave install-drift and skills-collide reading a record of an install that was undone.
-SNAP_SET='settings.json CLAUDE.md bin lib hooks inject.d skills skill-packs commands checks.d shims.d .harbor-packs .helm-pins .helm-floor-teeth .sec0-baseline.sha256 .helm-instructions.sha256 .helm-install-stamp .harbor-manifest settings.json.bak.*'
+SNAP_SET='settings.json CLAUDE.md bin lib hooks inject.d skills skill-packs commands checks.d shims.d .harbor-packs .harbor-hooks-wired .helm-pins .helm-floor-teeth .sec0-baseline.sha256 .helm-instructions.sha256 .helm-install-stamp .harbor-manifest settings.json.bak.*'
 B8PIN="$CFG/.helm-instructions.sha256"
 trap 'rm -rf "$WORK"' EXIT
 # A trapped INT returns to the script, so it must exit explicitly or the install carries on.
@@ -339,8 +339,8 @@ _preflight() {
       _bad "cannot read runtime-install's FILES, so whether it replaces a B6-pinned file is unknown" 'none: harbor#916 — bin/runtime-install.sh FILES='
     else
       for _f in $_rf; do
-        [ -f "$CFG/.helm-pins/$_f.sha256" ] && [ -f "$ROOT/bin/$_f" ] || continue
-        [ "$(cat "$CFG/.helm-pins/$_f.sha256" 2>/dev/null)" = "$(_sha256 < "$ROOT/bin/$_f")" ] || _pd="$_pd${_pd:+ }$_f"
+        [ -f "$CFG/.helm-pins/$_f.sha256" ] && [ -f "$ROOT/$(il_src "$ROOT" "$_f")" ] || continue
+        [ "$(cat "$CFG/.helm-pins/$_f.sha256" 2>/dev/null)" = "$(_sha256 < "$ROOT/$(il_src "$ROOT" "$_f")")" ] || _pd="$_pd${_pd:+ }$_f"
       done
       if [ -n "$_pd" ]; then
         _bad "runtime without floor would replace B6-pinned $_pd, and only floor-install re-pins it: the next session would be BLOCKED" \
@@ -392,6 +392,18 @@ _preflight() {
   else
     _relay --brief "$WORK/skills"
     _bad 'skills: skills-install --all --apply would refuse (its FAIL lines above)' 'none: the skills-install fix lines above'
+  fi
+
+  # The always-on ratchet: what this deploy installs may not cost every session more than CONTEXT-RATCHET.tsv records.
+  # A checkout without the file (harbor-core) has no ratchet to apply.
+  if ! _want_any constitution skills; then :
+  elif [ ! -f "$ROOT/CONTEXT-RATCHET.tsv" ]; then log_note 'context ratchet: no CONTEXT-RATCHET.tsv in this checkout, so no always-on bound to apply'
+  elif sh "$ROOT/bin/context-budget.sh" --ratchet >"$WORK/ratchet" 2>&1; then
+    log_ok "$(sed -n 's/^  ok: //p' "$WORK/ratchet" | head -1)"
+    [ -z "$LOG_PATH" ] || _relay "$WORK/ratchet" >/dev/null
+  else
+    _relay "$WORK/ratchet"
+    _bad 'context ratchet: the core always-on surface grew past CONTEXT-RATCHET.tsv (its FAIL lines above)' 'none: the ratchet fix line above'
   fi
 
   # Commands are overwritten with no collide check; a box copy in no commit is someone's edit.
@@ -518,8 +530,8 @@ _packs_install() { # run after inject-install, which rebuilds inject.d and so dr
     return 1
   fi
 }
-# Uninstall takes every installed pack with the floor (their rows are the register's and the skill book's), then
-# regenerates the skill book from what is left, so no pack row survives in either index.
+# Uninstall takes every installed pack with the floor (their rows are the register's and the skill catalog's), then
+# regenerates the skill catalog from what is left, so no pack row survives in either index.
 _packs_uninstall_plan() {
   _pids="$(_pack_ids | tr '\n' ' ')"
   [ -n "$_pids" ] || return 0
@@ -536,8 +548,8 @@ _packs_uninstall() {
   log_note 'running: pack.sh remove --apply --live'
   # shellcheck disable=SC2086
   _run sh "$ROOT/bin/pack.sh" remove $_pids --apply --live || { _bad 'stopped at: pack.sh remove --apply --live' 'none: its FAIL and fix lines above'; return 1; }
-  log_note 'skill-book.sh: write the installed index from the box without the packs'
-  _run sh "$ROOT/bin/skill-book.sh" install --apply --live || { _bad 'stopped at: skill-book.sh install' 'none: its FAIL and fix lines above'; return 1; }
+  log_note 'skill-catalog.sh: write the installed index from the box without the packs'
+  _run sh "$ROOT/bin/skill-catalog.sh" install --apply --live || { _bad 'stopped at: skill-catalog.sh install' 'none: its FAIL and fix lines above'; return 1; }
   return 0
 }
 
@@ -722,6 +734,19 @@ _unreachable() {
 # shim again after packs: a pack's commands are linked from the shims.d fragment its install wrote (harbor#1149), which the
 # first shim run, before the packs, could not have read on a box that never had them.
 # The two other repos last (harbor#736): Harbor's floor is in place before any other tool is replaced.
+# The packs step recomposes bin/CHECKS.md when a pack's checks.d changed in this deploy, after runtime-install recorded
+# it; event-dispatch reads the register only at its recorded blob, so every preset was refused (harbor#1044). Then
+# runtime-install runs again: it composes the register with the packs as they now are, and records that.
+_register_rerecord() {
+  _want runtime || return 0
+  _rr_want="$(awk '!/^#/ && NF == 5 && $3 == "bin/CHECKS.md" && $4 == "runtime-install" { b = $1 } END { print b }' "$CFG/.harbor-manifest" 2>/dev/null)"
+  _rr_have="$(git hash-object --no-filters -- "$CFG/bin/CHECKS.md" 2>/dev/null)" || _rr_have=''
+  { [ -n "$_rr_want" ] && [ "$_rr_want" != "$_rr_have" ]; } || return 0
+  log_note "the packs step recomposed bin/CHECKS.md after runtime-install recorded it; running runtime-install again to record it"
+  _rr_p="runtime-install.sh --live --apply$AL"
+  # shellcheck disable=SC2086
+  _run sh "$ROOT/bin/"$_rr_p || { _INSTALL_FAILED="$_rr_p (re-recording bin/CHECKS.md after the packs)"; return 1; }
+}
 _install() {
   log_head 'install'
   for _p in "constitution:constitution-install.sh --apply --live$AL" \
@@ -735,11 +760,11 @@ _install() {
             'inject:inject-install.sh --live --apply' \
             'packs:PACKS' \
             'packs:shim-install.sh --live --apply' \
-            'skills:skill-book.sh install --apply --live' \
+            'skills:skill-catalog.sh install --apply --live' \
             'project-init:XREPO' 'projects-orchestrator:XREPO'; do
     _c="${_p%%:*}"; _p="${_p#*:}"
     if [ "$_c" = packs ]; then _want_any packs inject || continue; else _want "$_c" || continue; fi
-    if [ "$_p" = PACKS ]; then _packs_install || return 1; continue; fi
+    if [ "$_p" = PACKS ]; then _packs_install || return 1; _register_rerecord || return 1; continue; fi
     if [ "$_p" = XREPO ]; then
       _xd="$(_xr_get "$_c")"
       case "$_xd" in ''|skip) continue ;; esac

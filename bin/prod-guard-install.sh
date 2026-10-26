@@ -93,20 +93,10 @@ G_DST="$DIR/hooks/prod_guard.py"
 S_DST="$DIR/bin/prod-guard-ambient.sh"
 CMD="/bin/sh $S_DST $G_DST"
 
-# floor-install.sh:73-99's idempotent additive merge, reused verbatim in shape.
-merge_hook() { # <settings-json> <event> <matcher> <cmd> → new json on stdout
-  jq --arg ev "$2" --arg m "$3" --arg cmd "$4" '
-    .hooks //= {}
-    | .hooks[$ev] //= []
-    | (.hooks[$ev] | map(.matcher == $m) | index(true)) as $i
-    | if $i == null
-      then .hooks[$ev] += [{matcher:$m, hooks:[{type:"command", command:$cmd}]}]
-      else (.hooks[$ev][$i].hooks |= (
-              if (map(.command) | index($cmd)) == null
-              then . + [{type:"command", command:$cmd}] else . end)) end
-  ' "$1"
-}
-NEW="$(merge_hook "$S" PreToolUse "Bash" "$CMD")"
+# Wired as floor-install wires its vetoes, onFailure included: a prod_guard that times out otherwise lets
+# the call through (harbor#1277). A hook already wired gains the key.
+ONFAIL="$(il_onfailure)"
+NEW="$(il_merge_hook "$S" PreToolUse "Bash" "$CMD" "$ONFAIL")"
 
 if [ "$IL_APPLY" -eq 0 ]; then
   log_note "guard: would copy $PLUGIN to $G_DST"
@@ -145,7 +135,11 @@ $_ins
 EOF
 fi
 if [ "$(jq -r --arg c "$CMD" '[.hooks.PreToolUse[]? | select(.matcher == "Bash") | .hooks[]?.command] | index($c) != null' "$S")" = true ]; then
-  log_ok "PreToolUse Bash: $CMD already wired"
+  if [ -z "$ONFAIL" ] || [ "$(jq -r --arg c "$CMD" '[.hooks.PreToolUse[]? | select(.matcher == "Bash") | .hooks[]? | select(.command == $c) | .onFailure // ""] | first' "$S")" = "$ONFAIL" ]; then
+    log_ok "PreToolUse Bash: $CMD already wired"
+  else
+    log_note "PreToolUse Bash: $CMD is wired; would set onFailure $ONFAIL on it"
+  fi
 else
   log_note "PreToolUse Bash: would wire $CMD"
 fi

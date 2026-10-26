@@ -195,6 +195,17 @@ t_eq "the completed line: nothing held, the sampler exits" no "$(until_eq no sam
 t_eq "...and harbor-linux is back at its floor" 1 "$(until_eq 1 cpus)"
 listen_down; sampler_down
 
+t_section "events: a container job line is published on the bus as ci.job.start / ci.job.done (harbor#1367)"
+export HARBOR_EVENT_DIR="$FX/bus"; reset; listen_up; sleep 1   # tail -n0 -f reads only what lands after it opens
+busn() { cat "$FX/bus"/*.jsonl 2>/dev/null | grep -c "\"kind\":\"ci.job.$1\",\"subject\":\"acme/widgets:41:test\""; }
+printf '%s\n' "1790000002 41 test start acme/widgets" "1790000003 41 test done acme/widgets" "1790000004 job-completed" \
+  "1790000005 41 test done not-a-repo" "1790000006 41 te;st done acme/widgets" >> "$FX/trigger"
+t_eq "a start line becomes ci.job.start, subject <owner/repo>:<run>:<job>" 1 "$(until_eq 1 busn start)"
+t_eq "...a done line ci.job.done" 1 "$(until_eq 1 busn done)"
+sleep 1
+t_eq "an old three-field line, a repo with no owner and an odd job name publish nothing" 2 "$(cat "$FX/bus"/*.jsonl | grep -c '"kind":"ci\.job')"
+listen_down; sampler_down; unset HARBOR_EVENT_DIR
+
 t_section "events: a host job hook's notification reaches a decision"
 reset; : > "$FX/lbusy"; listen_up
 printf '%s\n%s\n%s\n' "$MACL" "$GTML" "$MACW" > "$FX/procs"
@@ -236,6 +247,14 @@ HARBOR_GOV_EVENTS="$FX/events" GITHUB_JOB=build sh "$T_ROOT/bin/ci-governor-hook
 t_has "inside the container it appends to the mounted trigger" "$(cat "$FX/events/trigger")" " build"
 t_has "on the host it posts the governor's event" "$(cat "$FX/posts")" "com.harbor.ci-governor.event"
 t_eq "it exits 0" 0 "$RC"
+hk() { HARBOR_GOV_EVENTS="$FX/events" GITHUB_RUN_ID=41 GITHUB_JOB=test GITHUB_REPOSITORY=acme/widgets RUNNER_NAME="$1" sh "$T_ROOT/bin/ci-governor-hook.sh"; tail -n1 "$FX/events/trigger" | cut -d' ' -f2-; }
+t_eq "a job's first call is its start, with run, job and repo (harbor#1367)" "41 test start acme/widgets" "$(hk r1)"
+t_eq "...a matrix leg on another runner starts on its own" "41 test start acme/widgets" "$(hk r2)"
+t_eq "...the same runner's second call is its done" "41 test done acme/widgets" "$(hk r1)"
+t_eq "...and the marker is gone, so its next job starts again" "41 test start acme/widgets" "$(hk r1)"
+mkdir -p "$FX/hostbus" "$FX/hoststate"
+HARBOR_GOV_EVENTS="$FX/nomount" HARBOR_EVENT_DIR="$FX/hostbus" XDG_STATE_HOME="$FX/hoststate" GITHUB_RUN_ID=42 GITHUB_JOB=build GITHUB_REPOSITORY=acme/widgets RUNNER_NAME=mac sh "$T_ROOT/bin/ci-governor-hook.sh"
+t_has "on a host runner (no mount) it emits ci.job.start to the bus itself" "$(cat "$FX/hostbus"/*.jsonl)" '"kind":"ci.job.start","subject":"acme/widgets:42:build"'
 chmod 0500 "$FX/events"; HARBOR_GOV_EVENTS="$FX/events" PATH="/bin" /bin/sh "$T_ROOT/bin/ci-governor-hook.sh"; RC=$?
 chmod 0700 "$FX/events"
 t_eq "an unwritable mount and no notifyutil still exit 0: the job is never failed for it" 0 "$RC"
