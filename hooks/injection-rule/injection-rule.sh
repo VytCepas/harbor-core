@@ -355,6 +355,27 @@ SEGS
   return 1
 }
 
+# THE COMMAND WORD, for a tool whose invocation varies in front of its name
+# (inst-quiet-predicates). cmd-prefix needs the segment to START with the words,
+# so `X=dir gcal-write add` and `~/.local/bin/gcal-write add` slipped past it, and
+# the cmd-contains it replaced fired on prose, greps and PR bodies. Same segments
+# (heredocs and quoted bodies already gone), then assignments skipped, and the
+# word must be the name or a path ending in `/name`. `--help` is excluded as above.
+seg_word() { # <name> -> 0 when some segment's command word is <name>
+  _want="$1"
+  while IFS= read -r _s; do
+    [ -n "$_s" ] || continue
+    case " $_s " in *' --help '*) continue ;; esac
+    set -f; set -- $_s; set +f
+    while [ $# -gt 0 ]; do case "$1" in [A-Za-z_]*=*) shift ;; *) break ;; esac; done
+    [ $# -gt 0 ] || continue
+    case "${1#\`}" in "$_want"|*/"$_want") return 0 ;; esac
+  done <<SEGS
+$(segments "$CMD" | sed -e 's/"[ ]*"/Q/g' -e "s/'[ ]*'/Q/g")
+SEGS
+  return 1
+}
+
 pred() { # <predicate line> -> 0 when satisfied
   _p="$1"
   _neg=0
@@ -368,13 +389,14 @@ pred() { # <predicate line> -> 0 when satisfied
   # failure the comment below promises cannot happen, arriving through the one
   # operator this file also provides. Found by an adversarial pass, reproduced.
   case "$_kind" in
-    always|cmd-prefix|cmd-contains|path-contains|content-contains|repo-has|tool-is|source-is|injected-instruction) ;;
+    always|cmd-prefix|cmd-word|cmd-contains|path-contains|content-contains|repo-has|tool-is|source-is|injected-instruction) ;;
     *) explain "unknown predicate '$_kind' — refusing to fire either way"; return 1 ;;
   esac
   _r=1
   case "$_kind" in
     always)               _r=0 ;;
     cmd-prefix)           if seg_prefix "$_arg"; then _r=0; fi ;;
+    cmd-word)             if seg_word "$_arg"; then _r=0; fi ;;
     cmd-contains)         case "$(strip_heredocs "$CMD")" in *"$_arg"*) _r=0 ;; esac ;;
     path-contains)        case "$FPATH" in *"$_arg"*) _r=0 ;; esac ;;
     content-contains)     case "$CONTENT" in *"$_arg"*) _r=0 ;; esac ;;
@@ -489,13 +511,9 @@ HITS
 # PROVENANCE (harbor#327). A Read whose output is a slice of a file that is tracked in a
 # KNOWN repo (the session's, or a registered one) and unmodified vs HEAD is the repo's own
 # committed text. Never a path rule: an untracked, edited or foreign-repo file still fires.
-own_committed_read() {
-  [ "$TOOL" = Read ] && [ -n "$FPATH" ] || return 1
-  [ -f "$FPATH" ] && [ ! -L "$FPATH" ] || return 1
-  _oc_raw="$(printf '%s' "$PAYLOAD" | jq -r '.tool_response
-    | if type == "string" then . elif type == "object" then (.file.content // empty) else empty end' 2>/dev/null || true)"
-  [ -n "$_oc_raw" ] || return 1
-  _oc_pd="$(_phys "${FPATH%/*}")"; _oc_fn="${FPATH##*/}"
+own_committed_file() { # <path> -> 0 iff tracked, clean, in a known repo and operator-reviewed; sets _oc_pd _oc_fn
+  [ -f "$1" ] && [ ! -L "$1" ] || return 1
+  case "$1" in */*) _oc_pd="$(_phys "${1%/*}")" ;; *) _oc_pd="$(_phys .)" ;; esac; _oc_fn="${1##*/}"
   _oc_top="$(git -C "$_oc_pd" rev-parse --show-toplevel 2>/dev/null || true)"; [ -n "$_oc_top" ] || return 1
   _oc_top="$(_phys "$_oc_top")"
   [ "$_oc_top" = "$(_phys "$REPO")" ] || registered "$_oc_top" || return 1
@@ -517,6 +535,13 @@ own_committed_read() {
 $(git -C "$_oc_top" show HEAD:.agents/protected-paths.tsv 2>/dev/null)
 REG
   [ "$_oc_ok" = 0 ] || return 1
+}
+own_committed_read() {
+  [ "$TOOL" = Read ] && [ -n "$FPATH" ] || return 1
+  _oc_raw="$(printf '%s' "$PAYLOAD" | jq -r '.tool_response
+    | if type == "string" then . elif type == "object" then (.file.content // empty) else empty end' 2>/dev/null || true)"
+  [ -n "$_oc_raw" ] || return 1
+  own_committed_file "$FPATH" || return 1
   _oc_body="$(cat "$_oc_pd/$_oc_fn")"
   case "$_oc_body" in *"$_oc_raw"*) return 0 ;; esac
   # Read may number its lines (`   12<TAB>text`); compare without the gutter.
@@ -525,9 +550,69 @@ REG
   return 1
 }
 
+# The same provenance for a Bash READER (inst-quiet-predicates): `cat`, `head`, `tail`,
+# `sed -n`, `grep`, `wc` over files that each pass own_committed_file. Two locks, both needed:
+# the command has no separator, redirect or substitution and every stage is a reader; and
+# EVERY output line (stdout, stderr, error) is in one of those files, once grep's `name:`,
+# `N:` / `N-` and `cat -n` gutters are off. So any byte from elsewhere — a fetch, another
+# repo, an untracked or edited file — fails the second lock and the detector still runs.
+own_committed_bash() {
+  [ "$TOOL" = Bash ] && [ -n "$CMD" ] || return 1
+  case "$CMD" in *';'*|*'&'*|*'>'*|*'<'*|*'`'*|*'('*|*')'*|*'
+'*) return 1 ;; esac
+  _ob_cwd="${CWDP:-${CLAUDE_PROJECT_DIR:-$PWD}}"; _ob_files=''; _ob_names=''; _ob_first=1
+  set -f
+  for _ob_w in $CMD; do
+    if [ "$_ob_first" = 1 ]; then
+      case "$_ob_w" in cat|head|tail|grep|wc|sed) _ob_verb="$_ob_w" ;; *) set +f; return 1 ;; esac
+      [ "$_ob_verb" != sed ] || case "$CMD" in *' -n '*) ;; *) set +f; return 1 ;; esac
+      _ob_first=0; continue
+    fi
+    case "$_ob_w" in '|') _ob_first=1; continue ;; *'|'*) set +f; return 1 ;; esac
+    case "$_ob_verb:$_ob_w" in sed:-i*|sed:--in-place*) set +f; return 1 ;; *:-*) continue ;; esac
+    _ob_w="${_ob_w#[\'\"]}"; _ob_w="${_ob_w%[\'\"]}"
+    case "$_ob_w" in /*) _ob_p="$_ob_w" ;; *) _ob_p="$_ob_cwd/$_ob_w" ;; esac
+    [ -f "$_ob_p" ] || continue
+    own_committed_file "$_ob_p" || { set +f; return 1; }
+    _ob_files="$_ob_files$_oc_pd/$_oc_fn
+"; _ob_names="$_ob_names$_ob_w
+"
+  done
+  set +f
+  [ "$_ob_first" = 0 ] && [ -n "$_ob_files" ] || return 1
+  # Every string the response carries, not only stdout: a field nobody listed is still output.
+  _ob_out="$(printf '%s' "$PAYLOAD" | jq -r '(.error // empty), (.tool_response | .. | strings)' 2>/dev/null || true)"
+  [ -n "$_ob_out" ] || return 1
+  _ob_rc=0
+  # ENVIRON, not -v: BSD awk rejects a newline inside a -v value and -v rewrites backslashes.
+  printf '%s\n' "$_ob_out" | OB_FILES="$_ob_files" OB_NAMES="$_ob_names" awk '
+    function inb(s) { return s == "" || index(body, s) > 0 }
+    BEGIN {
+      nf = split(ENVIRON["OB_FILES"], fl, "\n"); n = split(ENVIRON["OB_NAMES"], nm, "\n")
+      for (k = 1; k <= nf; k++) if (fl[k] != "") { while ((getline b < fl[k]) > 0) body = body b "\n"; close(fl[k]) }
+    }
+    {
+      if ($0 == "--" || inb($0)) next
+      if ($0 ~ /^[ \t]*[0-9]+([ \t]+[0-9]+)*([ \t]+total)?$/) next
+      if (match($0, /^[ \t]*[0-9]+[:\t-]/) && inb(substr($0, RLENGTH + 1))) next
+      for (i = 1; i <= n; i++) {
+        if (nm[i] == "") continue
+        if ($0 == "==> " nm[i] " <==") next
+        if ($0 ~ /^[ \t]*[0-9]+([ \t]+[0-9]+)*[ \t]/ && substr($0, length($0) - length(nm[i]) + 1) == nm[i]) next
+        if (index($0, nm[i]) == 1) {
+          r = substr($0, length(nm[i]) + 1); c = substr(r, 1, 1); r = substr(r, 2)
+          if ((c == ":" || c == "-") && (inb(r) || (match(r, /^[0-9]+[:-]/) && inb(substr(r, RLENGTH + 1))))) next
+        }
+      }
+      exit 1
+    }' || _ob_rc=1
+  return "$_ob_rc"
+}
+
 detect_injection() {
   [ -n "$CONTENT" ] || return 1
   if own_committed_read; then return 1; fi
+  if own_committed_bash; then return 1; fi
   # Case-folded once. `tr` is POSIX and, unlike this box's grep, has no flavour.
   _hay="$(printf '%s' "$CONTENT" | tr '[:upper:]' '[:lower:]')"
   _loud="$(hits_in "$LOUD")"; _loud="${_loud:-0}"
