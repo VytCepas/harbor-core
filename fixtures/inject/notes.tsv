@@ -45,8 +45,17 @@ box	plain	project-pointer	silent	PreToolUse is a different event	{"hook_event_na
 box	skills	repo-skills-pointer	fire	repo carries .claude/skills	{"hook_event_name":"SessionStart","source":"startup"}
 box	visible	repo-skills-pointer	silent	skills present but none hidden	{"hook_event_name":"SessionStart","source":"startup"}
 box	plain	repo-skills-pointer	silent	repo carries no .claude/skills	{"hook_event_name":"SessionStart","source":"startup"}
-box	plain	variable-is-one-argument	fire	a bare $VAR of flags	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"jq $FLAGS settings.json"}}
-box	plain	variable-is-one-argument	silent	the flags written out literally	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"jq -r .hooks settings.json"}}
+box	plain	variable-is-one-argument	fire	a flags variable assigned in the same command	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"FLAGS='--a --b'; jq $FLAGS settings.json"}}
+box	plain	variable-is-one-argument	fire	an exported multi-word variable	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"export Q=\"--a --b\"\nbq query $Q sql"}}
+box	plain	variable-is-one-argument	fire	a variable assigned a leading-dash value	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"F=--json; gh pr list $F"}}
+box	plain	variable-is-one-argument	silent	a loop variable is one value	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"for n in 1 2; do gh issue view $n; done"}}
+box	plain	variable-is-one-argument	silent	a variable assigned nowhere in the command	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"gh issue view $n"}}
+box	plain	variable-is-one-argument	silent	a command substitution has unknown content	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"X=$(echo a b); gh $X"}}
+box	plain	variable-is-one-argument	silent	a quoted command substitution has unknown content	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"X=\"$(echo a b)\"; gh $X"}}
+box	plain	variable-is-one-argument	silent	a multi-word variable inside a multi-line double-quoted SQL	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"W=\"a AND b\"\nbq query \"\nSELECT 1 WHERE $W AND x\""}}
+box	plain	variable-is-one-argument	silent	read assigns one line, not flags	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"read X; gh $X"}}
+box	plain	variable-is-one-argument	silent	a single-word assignment	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"N=12; gh issue view $N"}}
+box	plain	variable-is-one-argument	silent	a multi-word value passed quoted	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"X=\"a b\"; gh issue view \"$X\""}}
 box	plain	unbounded-wait-loop	fire	while true with a sleep	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"while true; do sleep 5; done"}}
 box	plain	unbounded-wait-loop	silent	a bounded command	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"ls -la"}}
 box	plain	ci-wait-on-the-bus	fire	a wait-for polling gh pr checks	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"wait-for -t 900 -i 30 -- sh -c \"gh pr checks 12 -R a/b | grep -qv pending\""}}
@@ -110,3 +119,5 @@ box	naming	name-note	fire	a new bin script in snake case	{"hook_event_name":"Pre
 box	naming	name-note	silent	a new bin script named by the grammar	{"hook_event_name":"PreToolUse","tool_name":"Write","session_id":"nn-1","tool_input":{"file_path":"@REPO@/bin/drift-undeployed.sh","content":"x"}}
 box	naming	name-note	silent	an edit of a file that already exists	{"hook_event_name":"PreToolUse","tool_name":"Write","session_id":"nn-2","tool_input":{"file_path":"@REPO@/README.md","content":"x"}}
 box	plain	name-note	silent	the same bad name in a repo without the standard	{"hook_event_name":"PreToolUse","tool_name":"Write","session_id":"nn-3","tool_input":{"file_path":"@REPO@/bin/Foo_bar.sh","content":"x"}}
+box	plain	skill-on-first-use	fire	an Agent call in a session that has not read agent-routing	{"hook_event_name":"PreToolUse","tool_name":"Agent","session_id":"sfu-fire","transcript_path":"@TRANSCRIPT@","tool_input":{"description":"d","prompt":"p","subagent_type":"general-purpose","model":"haiku"}}
+box	plain	skill-on-first-use	silent	a commit message that only mentions the tool name	{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"sfu-silent","transcript_path":"@TRANSCRIPT@","tool_input":{"command":"git commit -m \"Agent routing notes\""}}

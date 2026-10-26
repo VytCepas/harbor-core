@@ -394,6 +394,18 @@ _preflight() {
     _bad 'skills: skills-install --all --apply would refuse (its FAIL lines above)' 'none: the skills-install fix lines above'
   fi
 
+  # The always-on ratchet: what this deploy installs may not cost every session more than CONTEXT-RATCHET.tsv records.
+  # A checkout without the file (harbor-core) has no ratchet to apply.
+  if ! _want_any constitution skills; then :
+  elif [ ! -f "$ROOT/CONTEXT-RATCHET.tsv" ]; then log_note 'context ratchet: no CONTEXT-RATCHET.tsv in this checkout, so no always-on bound to apply'
+  elif sh "$ROOT/bin/context-budget.sh" --ratchet >"$WORK/ratchet" 2>&1; then
+    log_ok "$(sed -n 's/^  ok: //p' "$WORK/ratchet" | head -1)"
+    [ -z "$LOG_PATH" ] || _relay "$WORK/ratchet" >/dev/null
+  else
+    _relay "$WORK/ratchet"
+    _bad 'context ratchet: the core always-on surface grew past CONTEXT-RATCHET.tsv (its FAIL lines above)' 'none: the ratchet fix line above'
+  fi
+
   # Commands are overwritten with no collide check; a box copy in no commit is someone's edit.
   : >"$WORK/cmds"
   _want skills && { sh "$ROOT/bin/skills-install.sh" commands --all --live >"$WORK/cmds" 2>&1 || true; }
