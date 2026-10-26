@@ -2,6 +2,8 @@
 name: agent-routing
 description: "Which model tier and effort each delegated agent runs on — Agent tool calls, headless `claude -p` runs, workflow agents and orchestrator launches — when to escalate, and what a brief must name so the run ends cleanly. The cheapest tier that passes the gate, chosen per call, never inherited. USE WHEN delegating to a subagent, choosing a model or effort for an agent, fanning out agents, writing a workflow or orchestrator launch, an Agent call was denied for a missing model, an agent failed and you are deciding whether to escalate. NOT FOR reviewing a diff (review-fanout), or API code that calls Claude (claude-api)."
 disable-model-invocation: true
+owns-tools: Agent
+inline-section: The table
 ---
 
 # agent-routing — the cheapest tier that passes the gate

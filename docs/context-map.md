@@ -29,23 +29,23 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | standard | standards/ | system | source | versioned | 14 |
 | contract | contracts/ | system | source | versioned | 30 |
 | decision-record | docs/decisions/ | element | source | dated | 91 |
-| injection-rule | context-rules/<scope>/ | component | source | living | 37 |
+| injection-rule | context-rules/<scope>/ | component | source | living | 39 |
 | hook | hooks/ | component | source | living | 46 |
 | skill | skills/ | component | source | living | 42 |
 | fixture | fixtures/ | element | source | living | 254 |
 | registry | registries/ | component | source | versioned | 51 |
-| test | tests/ | component | source | living | 420 |
+| test | tests/ | component | source | living | 424 |
 | report | docs/reports/ | element | report | dated | 1 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | script | bin/ | component | source | living | 203 |
-| (no kind) | - | - | - | - | 171 |
+| (no kind) | - | - | - | - | 172 |
 
 ## Folders
 
 | Folder | Files | Families | Kinds |
 |---|---|---|---|
-| (repo root) | 21 | 3 | 2 |
+| (repo root) | 22 | 4 | 2 |
 | `.agents/` | 4 | 1 | 1 |
 | `.claude/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
@@ -56,14 +56,14 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `docs/` | 113 | 6 | 5 |
 | `fixtures/` | 254 | 9 | 1 |
 | `hooks/` | 42 | 6 | 1 |
-| `inject.d/` | 33 | 1 | 1 |
+| `inject.d/` | 35 | 1 | 1 |
 | `launchd/` | 12 | 3 | 1 |
 | `patches/` | 12 | 1 | 1 |
 | `runners/` | 2 | 1 | 1 |
 | `skills/` | 42 | 5 | 1 |
 | `standards/` | 14 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 420 | 21 | 1 |
+| `tests/` | 424 | 21 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 73 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -72,13 +72,13 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
-| access | control-plane | 5 | 5 | 2 | 2 | 0 | 0 |
+| access | control-plane | 5 | 6 | 2 | 2 | 0 | 0 |
 | admission | control-plane | 15 | 1 | 0 | 0 | 0 | 167 |
 | alert | observability | 1 | 1 | 0 | 0 | 0 | 0 |
 | audit | control-plane | 0 | 0 | 0 | 0 | 0 | 2 |
 | check | observability | 1 | 4 | 0 | 1 | 50 | 0 |
 | ci | coordination | 13 | 58 | 2 | 3 | 0 | 5 |
-| context | control-plane | 3 | 0 | 1 | 38 | 0 | 31 |
+| context | control-plane | 3 | 0 | 1 | 41 | 0 | 32 |
 | deploy | control-plane | 5 | 7 | 1 | 1 | 0 | 7 |
 | doc | control-plane | 2 | 2 | 0 | 8 | 0 | 17 |
 | drift | control-plane | 1 | 1 | 0 | 4 | 2 | 13 |
@@ -87,13 +87,13 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | gate | control-plane | 10 | 7 | 0 | 0 | 0 | 0 |
 | housekeeping | control-plane | 0 | 0 | 0 | 2 | 0 | 0 |
 | lint | control-plane | 16 | 41 | 0 | 8 | 0 | 33 |
-| memory | memory-store | 4 | 11 | 1 | 23 | 0 | 1 |
+| memory | memory-store | 4 | 12 | 1 | 23 | 0 | 1 |
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
 | policy | policy-function | 0 | 0 | 11 | 0 | 0 | 3 |
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
 | scope | coordination | 2 | 10 | 0 | 0 | 0 | 4 |
 | session | data-plane | 11 | 4 | 0 | 1 | 0 | 0 |
-| skill | catalog | 4 | 5 | 0 | 5 | 0 | 13 |
+| skill | catalog | 4 | 6 | 0 | 5 | 0 | 13 |
 | standard | policy-function | 3 | 8 | 105 | 0 | 0 | 44 |
 | status | observability | 3 | 7 | 0 | 1 | 0 | 0 |
 | test | control-plane | 0 | 1 | 2 | 7 | 0 | 7 |
@@ -168,6 +168,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `.claude/inject.d/20-merge-governance.md`
 - `.claude/inject.d/21-post-merge-state.md`
 - `.claude/inject.d/merge-note.sh`
+- `CONTEXT-RATCHET.tsv`
 - `bin/context-budget.sh`
 - `bin/context-resolve.sh`
 - `docs/context-map.md`
@@ -190,6 +191,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `inject.d/box/96-agent-brief.md`
 - `inject.d/box/97-agent-model-required.md`
 - `inject.d/box/98-name-note.md`
+- `inject.d/box/99-skill-on-first-use.md`
 - `inject.d/box/access-route.sh`
 - `inject.d/box/agent-brief.sh`
 - `inject.d/box/agent-model.sh`
@@ -202,6 +204,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `inject.d/box/project-pointer.sh`
 - `inject.d/box/repo-skills.sh`
 - `inject.d/box/repo-tier.sh`
+- `inject.d/box/skill-first-use.sh`
 - `inject.d/box/tool-failure.sh`
 - `inject.d/box/unbounded-wait-loop.sh`
 - `inject.d/box/variable-is-one-argument.sh`
@@ -488,7 +491,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `runners/` | 2 |
 | `skills/` | 29 |
 | `systemd/` | 15 |
-| `tests/` | 227 |
+| `tests/` | 228 |
 | `tools/` | 8 |
 | `vendor/` | 73 |
 | `worklog/` | 1 |
@@ -544,6 +547,7 @@ Every tracked top-level entry, its kind and layer from `CONTRACTS/layout-map.tsv
 | `STATUS.md` | generated-doc | generated | dev |
 | `PLAN.md` | generated-doc | generated | dev |
 | `CONTEXT-BASELINE.tsv` | record | record | dev |
+| `CONTEXT-RATCHET.tsv` | record | record | core |
 | `COVERAGE-INCIDENTS.tsv` | record | record | dev |
 | `DEAD-ENDS.md` | record | record | dev |
 | `HANDOFF.md` | handover | source | dev |
