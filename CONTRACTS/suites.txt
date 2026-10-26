@@ -28,6 +28,7 @@
 tests/hooks/failure-capture-test.sh
 tests/hooks/failure-capture.fc5-test.sh
 tests/hooks/failure-capture.ledger-test.sh
+tests/hooks/failure-observe-test.sh
 hooks/failure-observe/failure-observe.test.sh
 tests/hooks/post-checkout-test.sh
 tests/hooks/stop-guard-test.sh
@@ -248,6 +249,7 @@ tests/status/obligations/fold.test.sh
 tests/status/obligations/reconcile.test.sh
 tests/status/obligations/surface.test.sh
 tests/status/obligations/harden.test.sh
+tests/status/obligations/finished.test.sh
 tests/event/dispatch/resume.test.sh
 tests/event/dispatch/rules.test.sh
 tests/event/dispatch/spawn.test.sh

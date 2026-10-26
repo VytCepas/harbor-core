@@ -78,12 +78,15 @@ t_hasnt "no absolute \$HOME path reaches the ledger" "$(last "$F")" "$HOME"
 t_section "a hostile tool_name and a hostile path cannot forge a record"
 F="$(mkfix hostile)"  # mcp__server__tool takes its middle from a repo-supplied .mcp.json
 fire "$F" "$(payload s1 'mcp__evil__run' '{"file_path":"/tmp/a\"b"}' 'boom' false)"
-t_eq "an mcp__ name maps to the constant" mcp "$(last "$F" | jq -r .t)"
+t_eq "a clean mcp server name is kept, the tool part never" mcp__evil "$(last "$F" | jq -r .t)"
 t_eq "a subject carrying a quote is refused" - "$(last "$F" | jq -r .k)"
 t_eq "the record still parses" yes "$(parses "$(last "$F")")"
 F="$(mkfix hostile2)"
 fire "$F" "$(payload s1 'Read; rm -rf /' '{"file_path":"/x"}' 'boom' false)"
 t_eq "a tool name with shell metacharacters" other "$(last "$F" | jq -r .t)"
+F="$(mkfix hostile3)"
+fire "$F" "$(payload s1 'mcp__ev"il;x__run' '{"file_path":"/x"}' 'boom' false)"
+t_eq "an mcp server name failing the charset check maps to the constant" mcp "$(last "$F" | jq -r .t)"
 
 t_section "the error classes"
 _class() { _f="$(mkfix "cls$2")"; fire "$_f" "$(payload s1 Read '{"file_path":"/x"}' "$1" false)"; last "$_f" | jq -r .e; }

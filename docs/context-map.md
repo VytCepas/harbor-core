@@ -34,7 +34,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | skill | skills/ | component | source | living | 42 |
 | fixture | fixtures/ | element | source | living | 254 |
 | registry | registries/ | component | source | versioned | 51 |
-| test | tests/ | component | source | living | 424 |
+| test | tests/ | component | source | living | 426 |
 | report | docs/reports/ | element | report | dated | 1 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
@@ -63,7 +63,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `skills/` | 42 | 5 | 1 |
 | `standards/` | 14 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 424 | 21 | 1 |
+| `tests/` | 426 | 21 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 73 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -95,7 +95,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | session | data-plane | 11 | 4 | 0 | 1 | 0 | 0 |
 | skill | catalog | 4 | 6 | 0 | 5 | 0 | 13 |
 | standard | policy-function | 3 | 8 | 105 | 0 | 0 | 44 |
-| status | observability | 3 | 7 | 0 | 1 | 0 | 0 |
+| status | observability | 3 | 8 | 0 | 1 | 0 | 0 |
 | test | control-plane | 0 | 1 | 2 | 7 | 0 | 7 |
 | worktree | coordination | 1 | 0 | 0 | 0 | 0 | 0 |
 
@@ -491,7 +491,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `runners/` | 2 |
 | `skills/` | 29 |
 | `systemd/` | 15 |
-| `tests/` | 228 |
+| `tests/` | 229 |
 | `tools/` | 8 |
 | `vendor/` | 73 |
 | `worklog/` | 1 |

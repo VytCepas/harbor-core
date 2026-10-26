@@ -86,6 +86,7 @@ tests/install/skills-install-test.sh bin/skills-install.sh tests/install/skills-
 tests/hooks/failure-capture-test.sh bin/* hooks/* tests/hooks/failure-capture* tests/lib/core.sh
 tests/hooks/failure-capture.fc5-test.sh bin/* hooks/* tests/hooks/failure-capture* tests/lib/core.sh tests/floor/floor-fixture.sh tests/floor/floor-test.sh tests/floor/floor.*
 tests/hooks/failure-capture.ledger-test.sh bin/* hooks/* tests/hooks/failure-capture* tests/lib/core.sh
+tests/hooks/failure-observe-test.sh hooks/failure-observe/* bin/guard-lib.sh tests/hooks/failure-capture* tests/lib/core.sh
 hooks/failure-observe/failure-observe.test.sh bin/* hooks/* hooks/failure-observe/failure-observe.test.sh tests/lib/core.sh
 tests/hooks/apiroute-guard-test.sh bin/* tests/hooks/apiroute-guard-test.sh tests/lib/core.sh
 tests/hooks/stop-guard-test.sh bin/* tests/hooks/stop-guard-test.sh tests/lib/core.sh
@@ -245,6 +246,7 @@ tests/status/obligations/fold.test.sh bin/status-obligations.sh bin/log-lib.sh C
 tests/status/obligations/reconcile.test.sh bin/status-obligations.sh bin/fleet-snapshot-refresh.sh bin/fleet-sessions.sh bin/log-lib.sh CONTRACTS/obligation-kinds.tsv tests/status/obligations/reconcile.test.sh tests/lib/core.sh
 tests/status/obligations/surface.test.sh bin/status-obligations.sh bin/harbor bin/fleet-glyph.sh bin/findings.sh bin/log-lib.sh bin/lint-conventions.sh CHECKS.md CONTRACTS/finding.md CONTRACTS/obligation-kinds.tsv tests/obs/findings-fixture.sh tests/status/obligations/surface.test.sh tests/lib/core.sh
 tests/status/obligations/harden.test.sh bin/status-obligations.sh bin/log-lib.sh CONTRACTS/obligation-kinds.tsv tests/status/obligations/harden.test.sh tests/lib/core.sh
+tests/status/obligations/finished.test.sh bin/status-obligations.sh bin/log-lib.sh bin/fs-lib.sh bin/event-bus.sh CONTRACTS/obligation-kinds.tsv tests/status/obligations/finished.test.sh tests/lib/core.sh
 tests/event/dispatch/resume.test.sh bin/event-dispatch.sh bin/event-bus.sh bin/log-lib.sh bin/event-hook.sh bin/pulse.sh bin/fs-lib.sh bin/harbor CHECKS.md CONTRACTS/event-rules.tsv launchd/com.harbor.event.dispatch.plist tests/event/dispatch/* tests/lib/core.sh
 tests/event/dispatch/rules.test.sh bin/event-dispatch.sh bin/event-bus.sh bin/log-lib.sh bin/event-hook.sh bin/pulse.sh bin/fs-lib.sh bin/harbor CHECKS.md CONTRACTS/event-rules.tsv launchd/com.harbor.event.dispatch.plist tests/event/dispatch/* tests/lib/core.sh
 tests/event/dispatch/spawn.test.sh bin/event-dispatch.sh bin/event-bus.sh bin/log-lib.sh bin/event-hook.sh bin/pulse.sh bin/fs-lib.sh bin/harbor CHECKS.md CONTRACTS/event-rules.tsv launchd/com.harbor.event.dispatch.plist tests/event/dispatch/* tests/lib/core.sh

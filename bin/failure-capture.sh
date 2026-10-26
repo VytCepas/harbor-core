@@ -259,6 +259,13 @@ if [ -n "$FC_TODAY" ]; then
   esac
 fi
 
+# FC-4's "still raising it" bound: yesterday or today. Day granularity of the ledger's own dates, so ~24h; the 7d horizon above
+# is how far to LOOK for recurrence, not how stale an advisory may be and still count as standing. Empty = no clock: warn loudly.
+FC_RECENT=""
+[ -z "$FC_TODAY" ] || FC_RECENT="$(date -u -j -v-1d -f '%Y-%m-%d' "$FC_TODAY" +%F 2>/dev/null \
+                 || date -u -d "$FC_TODAY - 1 day" +%F 2>/dev/null || true)"
+case "$FC_RECENT" in [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;; *) FC_RECENT="" ;; esac
+
 OBS="$DIR/MEMORY/OBSERVABILITY"
 SETTINGS="$DIR/settings.json"
 
@@ -341,7 +348,7 @@ trap 'rm -rf "$TMPD" 2>/dev/null' EXIT INT TERM HUP
 # pulse.sh:318 argues for: "I could not look" is worse news than "I looked and it
 # was fine", and a run whose sources were unreadable must not render as a healthy
 # zero (DEAD-ENDS DE-14, DE-18).
-rank() { case "$1" in ok) echo 0 ;; unknown) echo 1 ;; warn) echo 2 ;; crit) echo 3 ;; *) echo 1 ;; esac; }
+rank() { case "$1" in ok|info) echo 0 ;; unknown) echo 1 ;; warn) echo 2 ;; crit) echo 3 ;; *) echo 1 ;; esac; }
 finding() { # <rule> <severity> <subject> <what-breaks> <repair>
   [ "$(rank "$2")" -gt "$(rank "$WORST")" ] && WORST="$2"
   FINDINGS="$FINDINGS$1	$2	$3	$4	$5
@@ -1124,7 +1131,9 @@ if [ "$NREC" -gt 0 ]; then
     if [ "$N_ADVISE" -gt 0 ]; then
       _days="$(num "$(days_hr '.g=="integrity" and .d=="advise"' "$_h")")"
       _nadvr="$(num "$(count_hr '.g=="integrity" and .d=="advise"' "$_h")")"
-      if [ "$_days" -ge 2 ]; then
+      _advlast="$(last_h '.g=="integrity" and .d=="advise"' "$_h")"
+      # A cause fixed days ago leaves history that still spans two days; only a recent advisory says it is standing.
+      if [ "$_days" -ge 2 ] && { [ -z "$FC_RECENT" ] || [ "$(printf '%s\n%s\n' "$_advlast" "$FC_RECENT" | sort | tail -n1)" = "$_advlast" ]; }; then
         finding FC-4 warn "${_tag}integrity advisory (x$_nadvr over ${_days}d)" \
           "the integrity gate has raised an advisory on $_days separate days inside the last ${FC_HORIZON} and is still raising it" \
           "list them with observe-report.sh --advise and read the cause with harbor verify; for pin drift, review the changed surfaces and re-pin from your own terminal"
@@ -1243,7 +1252,7 @@ PARTITION_LIST
     { _fc2_rows "(\$c==\"\" or .ts[0:10] >= \$c) and (\$i==\"\" or .ts[0:10] >= \$i or ($_fc2_replaced|not))" crit '' '' "$_fc2_last" "$_fc2_clears"
       # SUPERSEDED — the informative demotion, and it names the install rather
       # than the calendar, because that is what the reader can act on.
-      _fc2_rows "\$i!=\"\" and .ts[0:10] < \$i and $_fc2_replaced" warn \
+      _fc2_rows "\$i!=\"\" and .ts[0:10] < \$i and $_fc2_replaced" info \
         ", last on $_fc2_last — before the floor was reinstalled" \
         " — and the guard file this names was REPLACED by the floor-install of ${FC_INSTALL_DATE}, so it no longer exists in the state this record describes: history unless it recurs"
       # The old half only exists when a horizon was resolvable; with $FC_CUTOFF
@@ -1498,9 +1507,16 @@ if [ "$NTF" -gt 0 ]; then
     # the operator works, and this tool does not get to decide which.
     _sev=warn
     [ "$_fe" = "not-found" ] && [ "$_fs" -ge 3 ] && _sev=crit
-    finding FC-10 "$_sev" "$_ft → $_fk" \
+    _fr="if the subject is a path, resolve or delete the pointer to it; the ledger is at MEMORY/OBSERVABILITY/<host>/tool-failures.jsonl and this tool repairs nothing"
+    _fsub="$_ft → $_fk"
+    case "$_ft" in
+      mcp__*) # an MCP server: no path to resolve, and the ledger keeps no tool name, so the remedy is to look at the server
+        _fsub="MCP server ${_ft#mcp__}"; [ "$_fk" = - ] || _fsub="$_fsub → $_fk"
+        _fr="check that MCP server's own state (is it attached and healthy?) and the first error of the failing call; the ledger keeps the server only, not the tool, and this tool repairs nothing" ;;
+    esac
+    finding FC-10 "$_sev" "$_fsub" \
       "failed $_fn time(s) across $_fs session(s) with the same input, error class '$_fe' — each session found it independently and none of them left a record the next one could read" \
-      "if the subject is a path, resolve or delete the pointer to it; the ledger is at MEMORY/OBSERVABILITY/<host>/tool-failures.jsonl and this tool repairs nothing"
+      "$_fr"
   done < "$TMPD/fc10"
 fi
 
@@ -1527,6 +1543,8 @@ fi
 
 # ── report ───────────────────────────────────────────────────────────────────
 NFIND="$(printf '%s' "$FINDINGS" | awk 'NF{n++} END{print n+0}')"
+# info rows are history: reported, never counted toward the exit status or the clean verdict.
+NACT="$(printf '%s' "$FINDINGS" | awk -F'\t' 'NF && $2!="info"{n++} END{print n+0}')"
 : "${PROBE_OK:=0}"
 # Same reason as the line above: the per-host loop is where both are set, and a
 # box with no host partition never enters it.
@@ -1547,7 +1565,7 @@ if [ "$JSON" = 1 ]; then
       suite_traffic_excluded: ($suite == 1),
       findings: [ split("\n")[] | select(length > 0) | split("\t")
                   | {rule: .[0], severity: .[1], subject: .[2], breaks: .[3], repair: .[4]} ] }
-    | . + {clean: ((.findings | length) == 0)}'
+    | . + {clean: (([.findings[] | select(.severity != "info")] | length) == 0)}'
 elif [ "$_LOGLIB" = 0 ]; then
   # A copy with no log-lib.sh beside it says so rather than printing half a report. --json needs none.
   printf 'failure-capture: log-lib.sh is missing beside %s, so this copy cannot print its report; --json still works\n' "${SELF:-?}" >&2
@@ -1579,6 +1597,7 @@ else
       case "$s" in
         crit) log_fail "$r $j — $w"; log_fix "$p" ;;
         warn) log_warn "$r $j — $w"; log_fix "$p" ;;
+        info) log_note "$r [info] $j — $w" ;;
         *)    log_warn "$r [$s] $j — $w"; log_fix "$p" ;;
       esac
     done < "$TMPD/report"
@@ -1587,5 +1606,5 @@ else
   log_end || :
 fi
 
-[ "$NFIND" -eq 0 ] || exit 1
+[ "$NACT" -eq 0 ] || exit 1
 exit 0

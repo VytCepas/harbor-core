@@ -599,7 +599,7 @@ every box rule fired twice.</figcaption>
 </figure>
 
 <h4>The predicate vocabulary</h4>
-<p class="derived">Read from the vocabulary gate in <code>hooks/injection-rule/injection-rule.sh</code>: <code>always</code> <code>cmd-prefix</code> <code>cmd-contains</code> <code>path-contains</code> <code>content-contains</code> <code>repo-has</code> <code>tool-is</code> <code>source-is</code> <code>injected-instruction</code> — plus <code>not &lt;predicate&gt;</code>, which inverts any of them.</p>
+<p class="derived">Read from the vocabulary gate in <code>hooks/injection-rule/injection-rule.sh</code>: <code>always</code> <code>cmd-prefix</code> <code>cmd-word</code> <code>cmd-contains</code> <code>path-contains</code> <code>content-contains</code> <code>repo-has</code> <code>tool-is</code> <code>source-is</code> <code>injected-instruction</code> — plus <code>not &lt;predicate&gt;</code>, which inverts any of them.</p>
 <p>It is fixed, and it is not a language. Every predicate compares a value
 <em>from the payload</em> against a pattern <em>from the pack</em>, and the payload
 value is only ever the subject of a <code>case</code> — never the pattern. Nothing
@@ -1355,6 +1355,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/hooks/failure-capture-test.sh</code></td><td><code>bin/* hooks/* tests/hooks/failure-capture* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/hooks/failure-capture.fc5-test.sh</code></td><td><code>bin/* hooks/* tests/hooks/failure-capture* tests/lib/core.sh tests/floor/floor-fixture.sh tests/floor/floor-test.sh tests/floor/floor.*</code></td></tr>
 <tr><td><code>tests/hooks/failure-capture.ledger-test.sh</code></td><td><code>bin/* hooks/* tests/hooks/failure-capture* tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/hooks/failure-observe-test.sh</code></td><td><code>hooks/failure-observe/* bin/guard-lib.sh tests/hooks/failure-capture* tests/lib/core.sh</code></td></tr>
 <tr><td><code>hooks/failure-observe/failure-observe.test.sh</code></td><td><code>bin/* hooks/* hooks/failure-observe/failure-observe.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/hooks/post-checkout-test.sh</code></td><td><code>hooks/post-checkout bin/memory-route.sh bin/log-lib.sh tests/hooks/post-checkout-test.sh bin/roots.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/hooks/stop-guard-test.sh</code></td><td><code>bin/* tests/hooks/stop-guard-test.sh tests/lib/core.sh</code></td></tr>
@@ -1569,6 +1570,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/status/obligations/reconcile.test.sh</code></td><td><code>bin/status-obligations.sh bin/fleet-snapshot-refresh.sh bin/fleet-sessions.sh bin/log-lib.sh CONTRACTS/obligation-kinds.tsv tests/status/obligations/reconcile.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/status/obligations/surface.test.sh</code></td><td><code>bin/status-obligations.sh bin/harbor bin/fleet-glyph.sh bin/findings.sh bin/log-lib.sh bin/lint-conventions.sh CHECKS.md CONTRACTS/finding.md CONTRACTS/obligation-kinds.tsv tests/obs/findings-fixture.sh tests/status/obligations/surface.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/status/obligations/harden.test.sh</code></td><td><code>bin/status-obligations.sh bin/log-lib.sh CONTRACTS/obligation-kinds.tsv tests/status/obligations/harden.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/status/obligations/finished.test.sh</code></td><td><code>bin/status-obligations.sh bin/log-lib.sh bin/fs-lib.sh bin/event-bus.sh CONTRACTS/obligation-kinds.tsv tests/status/obligations/finished.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/event/dispatch/resume.test.sh</code></td><td><code>bin/event-dispatch.sh bin/event-bus.sh bin/log-lib.sh bin/event-hook.sh bin/pulse.sh bin/fs-lib.sh bin/harbor CHECKS.md CONTRACTS/event-rules.tsv launchd/com.harbor.event.dispatch.plist tests/event/dispatch/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/event/dispatch/rules.test.sh</code></td><td><code>bin/event-dispatch.sh bin/event-bus.sh bin/log-lib.sh bin/event-hook.sh bin/pulse.sh bin/fs-lib.sh bin/harbor CHECKS.md CONTRACTS/event-rules.tsv launchd/com.harbor.event.dispatch.plist tests/event/dispatch/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/event/dispatch/spawn.test.sh</code></td><td><code>bin/event-dispatch.sh bin/event-bus.sh bin/log-lib.sh bin/event-hook.sh bin/pulse.sh bin/fs-lib.sh bin/harbor CHECKS.md CONTRACTS/event-rules.tsv launchd/com.harbor.event.dispatch.plist tests/event/dispatch/* tests/lib/core.sh</code></td></tr>

@@ -138,6 +138,8 @@ sw 12 1 0 1 "$((_now - 7200))"
 t_eq "a due sweep is SWEEP 12 ·2h on YOU" yes "$(ends "$(youw)" "SWEEP 12 ·2h")"
 t_has "SWEEP is yellow: waiting, not broken" "$(youraw "{$WS}")" "${ESC}[33mSWEEP 12"
 t_hasnt "no 🧹 tile beside the alarm" "$(anyrow)" '🧹'
+sw 12 1 2 1 "$((_now - 7200))"
+t_eq "unread repos mark the count a lower bound: SWEEP 12? ·2h" yes "$(ends "$(youw)" "SWEEP 12? ·2h")"
 sw 4 0 2 0 "$((_now - 3600))"; nosweep "an unread repo with nothing due renders nothing" "$(anyrow)"
 printf 'sweep items=banana due=1 at=%s\n' "$_now" > "$CFG/.helm-sweep"; nosweep "a malformed sweep file renders nothing" "$(anyrow)"
 printf 'sweep items=3 due=1\n' > "$CFG/.helm-sweep"; nosweep "a sweep line without unread/at renders nothing" "$(anyrow)"
@@ -245,6 +247,14 @@ mtv '{"at":'"$NOW"',"unread":true,"repos":[{"repo":"o/blorp","tip":{"red":true,"
 t_has "a red repo that was read is still said when another repo is unread" "$(row3at)" "MAIN RED blorp 3h"
 mtv '{"at":'"$NOW"',"unread":true,"repos":[{"repo":"o/ok","tip":{"red":false,"at":'"$NOW"'}},{"repo":"o/gone","unread":true,"state":"unread"}]}'
 t_has "an unread repo and nothing red says main?" "$(row3at)" "main?"
+mtv '{"at":'"$NOW"',"repos":[{"repo":"o/tagscope","tip":{"red":true,"single":true,"at":'"$((NOW - 86400))"',"red_at":'"$((NOW - 600))"'}}]}'
+t_has "a red tip's age counts from the failing run (red_at), not the commit" "$(row3at)" "MAIN RED tagscope 10m ·1 run"
+mtv '{"at":'"$NOW"',"repos":[{"repo":"o/blorp","tip":{"red":true,"single":false,"at":'"$((NOW - 10800))"'}}]}'
+t_hasnt "a red tip that is not a single run carries no ·1 run" "$(row3at)" '·1 run'
+mtv '{"at":'"$NOW"',"repos":[{"repo":"o/idea-to-live","tip":{"red":false,"verdict":"green","at":'"$NOW"',"sched":["Scheduled readings"]}}]}'
+O="$(row3at)"
+t_has "a failing scheduled workflow beside a green tip is SCHED, named by repo" "$O" "SCHED idea-to-live"
+t_hasnt "…and is not MAIN RED" "$O" 'MAIN RED'
 mtv '{"at":'"$NOW"',"repos":[{"repo":"o/off","state":"disabled","tip":{"red":false,"at":'"$NOW"'}}]}'
 t_eq "a disabled repo raises nothing: no row 3" 2 "$(rowsat)"
 rm -f "$CFG/cache/main-tip-verdict.json"

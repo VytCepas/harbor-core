@@ -357,4 +357,25 @@ PACK
 _d3="$(fire_cfg "$DEC" "$(bash_ev PreToolUse 'staticcase here' "d-$$")")"
 t_has "a static body quoting the sentinel is delivered" "$_d3" 'prose about the mechanism'
 t_hasnt "only run: output can decide; the static body is prose" "$_d3" 'permissionDecision'
+
+t_section "2 · cmd-word: the command word, however it is spelled in front, and never an argument"
+pack "$CFG/inject.d" 12-word.md <<'PACK'
+---
+id: word
+event: PreToolUse
+tool: Bash
+when: cmd-word zzwrite
+once: never
+---
+WORD-NOTE
+PACK
+for _c in 'zzwrite add x' 'cd /tmp && zzwrite add x' 'true; zzwrite add' 'echo a | zzwrite add' \
+  'X=$(zzwrite add x)' 'D=/tmp E="a b" zzwrite add' '/opt/bin/zzwrite add' '~/.local/bin/zzwrite add'; do
+  t_has "fires: $_c" "$(fire "$(bash_ev PreToolUse "$_c" "w-$$")")" WORD-NOTE
+done
+for _c in 'gh pr create --body "uses zzwrite add"' 'grep -rn zzwrite .' "sed 's/zzwrite/x/' SKILL.md" \
+  'echo zzwrite' 'zzwrite-helper add' 'zzwrite --help' "git commit -m 'zzwrite; zzwrite add'" \
+  "$(printf 'cat <<EOF\nzzwrite add\nEOF')"; do
+  gone "silent: $_c" "$(fire "$(bash_ev PreToolUse "$_c" "w-$$")")" WORD-NOTE
+done
 t_done
