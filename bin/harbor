@@ -52,7 +52,7 @@ tree	standard-catalog.sh --tree	no	the seven D-57 levels from the registry, down
 event	event-bus.sh	no	the local event bus: emit, wait (0 match, 3 deadline), since, tail, prune; dispatch, on, pull, subscribe (E2)
 ui	status-console.sh	no	a localhost console of the live state as read-only panels: 127.0.0.1, one-use link, stops when idle
 scope	scope.sh	no	scope install: create the PORT_ROOT skeleton and an empty private layer (--dry-run, --seed-from-projects); never overwrites
-access	access.sh	no	the access register: add, list, has, refs, check, stored, status, rotate, revoke; a ref the register does not name is refused by bin/secret
+access	access.sh	no	the access register: add, list, has, refs, check, stored; a ref the register does not name is refused by bin/secret
 pack	pack.sh	no	install a workload repo's harbor-pack/ box-wide and remove it exactly: list, install, remove (--dir or --live; dry run unless --apply)
 merge-stack	gate-merge-stack.sh	no	merge a plan's PRs in order, each on its own green CI: check, rehearse, merge, verify (docs/design/merge-stack.md)
 ship	deploy-fleet.sh	no	merge and deploy opted-in fleet repos unattended, restore a red deploy, queue protected work (docs/design/deploy-fleet.md)

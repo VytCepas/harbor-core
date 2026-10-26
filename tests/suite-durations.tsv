@@ -105,7 +105,6 @@
 11	tests/cli/issue-connector-test.sh
 11	tests/event/dispatch/pull.test.sh
 11	tests/floor/floor.paths-test.sh
-3	tests/floor/floor.annotate-test.sh
 11	tests/gate/approval/merge.test.sh
 11	tests/hooks/failure-capture.ledger-test.sh
 10	tests/floor/mutation-tier-test.sh
