@@ -61,14 +61,8 @@ t_section "blocked: SG-2, and it agrees with guard-stop.sh on the same transcrip
 tx red "$(tu c2 2020-01-01T00:00:01.000Z 'sh tests/x-test.sh')" "$(tr_ c2 'x-test: 3 passed, 1 failed')"
 tx healed "$(tu c2 2020-01-01T00:00:01.000Z 'sh tests/x-test.sh')" "$(tr_ c2 'x-test: 3 passed, 1 failed')" "$(tu c3 2020-01-01T00:00:02.000Z 'sh tests/x-test.sh')" "$(tr_ c3 'x-test: 4 passed, 0 failed')"
 tx readonly "$(tu c4 2020-01-01T00:00:01.000Z 'cat build.log')" "$(tr_ c4 'x-test: 3 passed, 1 failed')"
-tx dotted "$(tu c5 2020-01-01T00:00:01.000Z 'sh tests/x.test.sh')" "$(tr_ c5 'x.test: 3 passed, 1 failed')"
-BG='Command running in background with ID: bq1. Output is being written to: /t/tasks/bq1.output. Notified.'
-rd() { jq -nc --arg id "$1" --arg p "$2" '{type:"assistant",message:{content:[{type:"tool_use",id:$id,name:"Read",input:{file_path:$p}}]}}'; }
-tx bgheal "$(tu c2 2020-01-01T00:00:01.000Z 'sh tests/x-test.sh')" "$(tr_ c2 'x-test: 3 passed, 1 failed')" "$(tu b3 2020-01-01T00:00:02.000Z 'sh tests/x-test.sh')" "$(tr_ b3 "$BG")" "$(tu c4 2020-01-01T00:00:03.000Z 'tail -1 /t/tasks/bq1.output')" "$(tr_ c4 'x-test: 4 passed, 0 failed')"
-tx bgread "$(tu c2 2020-01-01T00:00:01.000Z 'sh tests/x-test.sh')" "$(tr_ c2 'x-test: 3 passed, 1 failed')" "$(tu b3 2020-01-01T00:00:02.000Z 'sh tests/x-test.sh')" "$(tr_ b3 "$BG")" "$(rd r4 /t/tasks/bq1.output)" "$(tr_ r4 "$(printf '1\tx-test: 4 passed, 0 failed')")"
-tx bgcat "$(tu c6 2020-01-01T00:00:01.000Z 'cat /t/tasks/bq1.output')" "$(tr_ c6 'x-test: 3 passed, 1 failed')"
 gs() { printf '{"session_id":"g-%s","transcript_path":"%s/%s.jsonl","cwd":"%s"}' "$1" "$T" "$1" "$REPO" | CLAUDE_CONFIG_DIR="$CFG" sh "$GSTOP" 2>/dev/null; }
-for c in red healed readonly dotted bgheal bgread bgcat; do
+for c in red healed readonly; do
   run "s-$c" "$c" 'ok'
   g="$(gs "$c")"; gb=no; case "$g" in *'"decision":"block"'*) gb=yes ;; esac
   sb=no; [ "$(rec "s-$c" state)" = blocked ] && sb=yes
@@ -78,13 +72,6 @@ t_eq "a red suite run in the session is blocked" blocked "$(rec s-red state)"
 t_has "...and the reason is the verdict line" "$(rec s-red reason)" "3 passed, 1 failed"
 t_eq "a later green run of it clears the block" idle "$(rec s-healed state)"
 t_eq "a verdict only READ (cat) is not a run" idle "$(rec s-readonly state)"
-t_eq "a dotted suite name (x.test.sh) pairs" blocked "$(rec s-dotted state)"
-t_eq "a background green, read from its task file, clears the red" idle "$(rec s-bgheal state)"
-t_eq "...and so does the same file read with the Read tool" idle "$(rec s-bgread state)"
-t_eq "a cat of a task file no suite of this session wrote is not a run" idle "$(rec s-bgcat state)"
-pair_of() { awk '/SG_PAIR=.$/ { on = 1; next } on { print } on && /}.$/ { exit }' "$1"; }
-t_eq "SG_PAIR is byte-equal to guard-stop.sh's" "$(pair_of "$GSTOP")" "$(pair_of "$TOOL")"
-t_has "...and the extraction found it" "$(pair_of "$TOOL")" 'BGT'
 run s-redq red 'Which one?'; t_eq "a question outranks blocked" waiting-operator "$(rec s-redq state)"
 
 t_section "done: committed or pushed this session, nothing edited since, clean tree, branch pushed; the handoff is no gate"

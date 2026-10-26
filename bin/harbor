@@ -193,13 +193,6 @@ if [ "$_run" != "$SCRIPT" ]; then
   set -- ${_run#"$SCRIPT" } "$@"
   set +f
 fi
-# `harbor verify` re-judges after it verifies, so the .helm-judge counter reflects the box the operator just checked and not
-# the 05:23 run (no new schedule). Best effort and on stderr: the verdict and exit status stay floor-verify's own.
-if [ "$VERB" = verify ] && [ -f "$BIN/judge-run.sh" ] && [ "${HARBOR_NO_JUDGE:-}" != 1 ]; then
-  sh "$BIN/$SCRIPT" "$@"; _rc=$?
-  sh "$BIN/judge-run.sh" --live --apply >/dev/null 2>&1 || :
-  exit "$_rc"
-fi
 # exec, so the target's exit status IS harbor's — never remapped, never swallowed.
 # A wrapper that turns its child's 1 into a 0 to look calmer is the fail-open
 # shape this repo keeps finding in its own history.

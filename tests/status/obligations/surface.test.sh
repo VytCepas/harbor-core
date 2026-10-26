@@ -100,7 +100,7 @@ case_receipt() { _x="$1"
   chk "over the id of the row, never a count" '["session:S1"]' "$(jq -c '.subjects' "$_r" 2>/dev/null)"
   chk "the statusline cache says one overdue" 1 "$(jq '.overdue' "$CACHE/status-obligations.json" 2>/dev/null)"
   chk "and counts the live rows (S1, the PR, the agent)" 3 "$(jq '.live' "$CACHE/status-obligations.json" 2>/dev/null)"
-  chk "the cache holds the epoch the oldest overdue row opened, not an age" "$(epoch 2026-10-05T01:00:00Z)" "$(jq '.overdue_since' "$CACHE/status-obligations.json" 2>/dev/null)"
+  chk "the cache holds the overdue epoch, not an age" "$(epoch 2026-10-06T01:00:00Z)" "$(jq '.overdue_since' "$CACHE/status-obligations.json" 2>/dev/null)"
   scenario; AT=2026-10-07T00:59:00Z; ob "$_x" fold >/dev/null
   chk "23h59m overdue: overdue, but not yet the finding" green "$(jq -r '.status' "$_r" 2>/dev/null)"
   chk "the alarm half still counts it" 1 "$(jq '.overdue' "$CACHE/status-obligations.json" 2>/dev/null)"
@@ -292,7 +292,7 @@ t_section "the receipt: red over the ids of rows more than 24h overdue, green ot
 t_eq "the case passes on the real script" ok "$(case_receipt "$BIN")"
 redproof "receipt: the 24h line moved to ten days" case_receipt "$BIN" 'RED_AFTER_S=86400' 'RED_AFTER_S=864000'
 redproof "receipt: red names no row" case_receipt "$BIN" 'status.obligations red "$@"' 'status.obligations green'
-redproof "cache: the overdue epoch dropped" case_receipt "$BIN" 'overdue_since: ([$od[] | ts(.opened_ts)] | min // 0)' 'overdue_since: 0'
+redproof "cache: the overdue epoch dropped" case_receipt "$BIN" 'overdue_since: ([$od[] | ts(.deadline_ts)] | min // 0)' 'overdue_since: 0'
 scenario; : > "$W/notdir"; _rc=0
 _o="$(env HARBOR_EVENT_DIR="$EV" HARBOR_OBLIGATION_DIR="$OB" HARBOR_CACHE_DIR="$W/notdir/c" HARBOR_STATUS_OBLIGATION_NOW="$AT" HARBOR_STATUS_OBLIGATION_KINDS="$KINDS" HARBOR_STATUS_OBLIGATION_ON_OVERDUE=off sh "$BIN" fold 2>&1)" || _rc=$?
 t_eq "a fold that cannot write its cache still exits 0" 0 "$_rc"
@@ -309,9 +309,9 @@ redproof "glyph: the age counted from the wrong epoch" case_glyph "$T_ROOT/bin/f
 t_section "an end to end: a fold writes the cache, and the statusline reads that file"
 scenario; ev 2026-10-07T02:00:00Z obligation.open handoff-cleanup '{"title":"run cleanup.sh"}'
 ob "$BIN" fold >/dev/null; cp "$CACHE/status-obligations.json" "$GC/status-obligations.json"
-t_has "oldest overdue row opened 2d ago renders OVERDUE 1 ·2d, the age counted at print time" "$(glyph "$T_ROOT/bin/fleet-glyph.sh")" "OVERDUE 1 ·2d"
+t_has "26h overdue renders OVERDUE 1 ·1d, the age counted at print time" "$(glyph "$T_ROOT/bin/fleet-glyph.sh")" "OVERDUE 1 ·1d"
 t_eq "the cache lists what the operator acts on: the handoff, and no PR" '[{"k":"intent","o":false,"t":"run cleanup.sh"}]' "$(jq -c '.you' "$CACHE/status-obligations.json")"
-t_has "and the YOU row reads them" "$(glyph "$T_ROOT/bin/fleet-glyph.sh")" "run cleanup.sh │ OVERDUE 1 ·2d"
+t_has "and the YOU row reads them" "$(glyph "$T_ROOT/bin/fleet-glyph.sh")" "run cleanup.sh │ OVERDUE 1 ·1d"
 t_hasnt "a session row is not the operator's" "$(jq -c '.you' "$CACHE/status-obligations.json")" 'S1'
 rm -f "$GC/status-obligations.json"
 

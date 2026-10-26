@@ -26,14 +26,9 @@
 #   cancelled-only  no success, no failure: every run was cancelled (or skipped, neutral)
 #   no-run          the commit has no push or schedule run at all (red only in a STRICT repo, see below)
 #   unjudged        no run, in a repo whose push workflows are path-filtered: normal, not a verdict
-# PUSH GOVERNS. A green push run of a commit is green, whatever a scheduled run says (harbor#1368: a nightly with a
-# missing secret kept a green main red for weeks). A scheduled failure beside a push run is the quieter `SCHED <repo>`
-# (tip.sched), unless that workflow is declared main-health: a `main-health OWNER/NAME WORKFLOW NAME` line in
-# .harbor-ci-runners (empty by default), whose latest scheduled run then fails the commit as before. A commit with no
-# push run at all is still judged by its scheduled runs. A rerun is the list's latest attempt, so a pass clears a fail.
-# A failed commit carries `runs` (attempts of its failing push runs): 1 is shown `·1 run`, a flake until a second says
-# otherwise, and still red at once; no debounce, because a delay hides a real red. Red since is the first failing
-# run's completion (tip.red_at), not the commit's age.
+# SCHEDULED RUNS. The question is "is this repo's main known-good", and a nightly run that fails on an
+# unchanged tip means it is not, so a workflow's LATEST scheduled run on a commit that failed makes that
+# commit failed even beside a green push run; a later scheduled success on the same sha clears it.
 # STRICT is harbor only (HARBOR_TIP_STRICT): its governance runs on every push, so no run IS red. In every other
 # repo a commit with no run is "unjudged" and the verdict is the NEWEST commit in the window that has one (a
 # path-filtered deploy workflow skips a .github-only commit; a pipeline repo, seen 2026-09). Harbor-only is chosen over
@@ -127,8 +122,7 @@ fleet() {
 
 # jq: the workflow runs that speak for main, one record each, from a runs page
 RECS='def recs: [.workflow_runs[] | select(.event == "push" or .event == "schedule")
-       | {sha: .head_sha, c: (.conclusion // .status // "unknown"), ev: .event, wf: (.workflow_id // 0), t: (.created_at // ""),
-          nm: (.name // ""), u: (.updated_at // .created_at // ""), n: (.run_attempt // 1)}];'
+       | {sha: .head_sha, c: (.conclusion // .status // "unknown"), ev: .event, wf: (.workflow_id // 0), t: (.created_at // "")}];'
 
 # judge OWNER/NAME N — write $T/entry.N.json. Returns 1 when GitHub did not answer; the caller keeps the old entry.
 judge() {
@@ -200,26 +194,15 @@ judge() {
   if [ "$(jq 'length' "$_d/all.json")" = 0 ]; then _state=no-ci; fi
 
   # conclusions per sha: push runs, and the latest scheduled run of each workflow (an old nightly is superseded)
-  # s: latest scheduled run per workflow that is declared main-health; x: the others (judged only when no push run exists).
-  # f: the first failing push or health run's completion time and n its attempts, for "red since" and the one-run mark.
-  _mh="$(awk -v r="$_r" '$1 == "main-health" && $2 == r { sub(/^[^ \t]+[ \t]+[^ \t]+[ \t]+/, ""); print }' "$CFG/.harbor-ci-runners" 2>/dev/null | jq -R . | jq -sc . 2>/dev/null)" || _mh='[]'
-  [ -n "$_mh" ] || _mh='[]'
-  jq -c --argjson mh "$_mh" 'def bad: . == "failure" or . == "timed_out" or . == "startup_failure";
-         def latest: group_by(.wf) | map(sort_by(.t) | last);
-         group_by(.sha) | map(. as $g | {key: .[0].sha, value: {
+  jq -c 'group_by(.sha) | map({key: .[0].sha, value: {
            p: [.[] | select(.ev == "push") | .c],
-           s: ([.[] | select(.ev == "schedule" and (.nm as $n | $mh | index($n)))] | latest | map(.c)),
-           x: ([.[] | select(.ev == "schedule" and (.nm as $n | $mh | index($n) | not))] | latest | map(.c)),
-           xn: ([.[] | select(.ev == "schedule" and (.nm as $n | $mh | index($n) | not))] | latest | map(select(.c | bad) | .nm)),
-           f: ([.[] | select((.ev == "push" or (.nm as $n | $mh | index($n))) and (.c | bad)) | .u] | min),
-           n: ([.[] | select((.ev == "push" or (.nm as $n | $mh | index($n))) and (.c | bad)) | .n] | add)}}) | from_entries' \
+           s: (map(select(.ev == "schedule")) | group_by(.wf) | map(sort_by(.t) | last | .c))}}) | from_entries' \
     "$_d/all.json" > "$_d/conc.json"
 
   jq -c --argjson now "$NOW" --argjson pend "$PEND_SEC" --argjson grace "$GRACE_SEC" --arg repo "$_r" --arg st0 "$_state" --argjson strict "$_strict" \
     --slurpfile conc "$_d/conc.json" --slurpfile prev "$_d/p.json" '
-    def bad: . == "failure" or . == "timed_out" or . == "startup_failure";
-    def verdict($p; $s; $x): (if ($p | length) == 0 then $x else [$x[] | select(bad | not)] end) as $xs | ($p + $s + $xs) as $a
-      | if ($s | any(bad)) then "failed"
+    def verdict($p; $s): ($p + $s) as $a
+      | if ($s | any(. == "failure" or . == "timed_out" or . == "startup_failure")) then "failed"
         elif ($a | length) == 0 then "no-run"
         elif any($a[]; . == "success") then "green"
         elif any($a[]; . == "in_progress" or . == "queued" or . == "pending" or . == "waiting" or . == "requested") then "pending"
@@ -227,15 +210,12 @@ judge() {
         else "cancelled-only" end;
     ($conc[0]) as $c | ($prev[0]) as $p
     | [.[] | . as $k
-        | ($c[$k.sha] // {p: [], s: [], x: [], xn: []}) as $e
-        | verdict($e.p; $e.s; $e.x) as $v0
+        | ($c[$k.sha] // {p: [], s: []}) as $e
+        | verdict($e.p; $e.s) as $v0
         | ($now - $k.at) as $age
         | (if ($v0 == "no-run" and ($strict | not)) then "unjudged"
            elif $v0 == "no-run" and $age < $grace then "pending" else $v0 end) as $v
         | {sha: $k.sha, at: $k.at, msg: $k.msg, verdict: $v,
-           red_at: (if $v == "failed" then ($e.f // null | if . == null then null else fromdateiso8601 end) else null end),
-           runs: (if $v == "failed" then $e.n else null end),
-           sched: (if ($e.p | length) > 0 then $e.xn else [] end),
            bad: ($v == "failed" or $v == "cancelled-only" or $v == "no-run" or ($v == "pending" and $age > $pend))}] as $cm
     | ($cm | map(select(.bad))) as $bad
     | ([$cm[] | select(.verdict != "unjudged")] | .[0]) as $j
@@ -243,9 +223,7 @@ judge() {
     | ($j // $cm[0]) as $tip
     | {repo: $repo, state: $st, head: $cm[0].sha, checked: $now, at: $now, window: ($cm | length), baseline: ($p.have | not),
        tip: {sha: $tip.sha, verdict: $tip.verdict, at: $tip.at, msg: $tip.msg, red: ($tip.bad and $st == "ok"),
-             red_at: ($tip.red_at // $tip.at), runs: $tip.runs, single: ($tip.verdict == "failed" and $tip.runs == 1),
-             sched: $tip.sched,
-             red_for: (if $tip.bad and $st == "ok" then $now - ($tip.red_at // $tip.at) else null end),
+             red_for: (if $tip.bad and $st == "ok" then $now - $tip.at else null end),
              changed: ($p.tip != null and $p.tip != $tip.verdict)},
        counts: ($cm | group_by(.verdict) | map({key: .[0].verdict, value: length}) | from_entries),
        nongreen: (if $st == "ok" then ($bad | length) else 0 end),
@@ -295,7 +273,6 @@ if [ "$PRINT" = 1 ]; then
     _tip="$(jq -r --arg r "$_repo" '.repos[] | select(.repo == $r) | "\(.repo) main tip \(.tip.sha[0:8]) \(.tip.verdict)  \(.tip.msg)"' "$T/result.json")"
     _red="$(jq -r --arg r "$_repo" "$_ago"'.repos[] | select(.repo == $r) | .tip.red_for // empty | ago' "$T/result.json")"
     if [ -n "$_red" ]; then
-      jq -e --arg r "$_repo" '.repos[] | select(.repo == $r and .tip.single)' "$T/result.json" >/dev/null 2>&1 && _red="$_red (one run: rerun it before calling it a pattern)"
       log_fail "$_tip — RED for $_red"
       log_fix "gh run list -R $_repo -b $BRANCH -L 5   # then: gh run view <id> --log-failed -R $_repo; gh run rerun <id> -R $_repo"
     else log_ok "$_tip"; fi
@@ -310,7 +287,6 @@ if [ "$PRINT" = 1 ]; then
       (if .nongreen > 0 then "on file: " + ([.commits[] | select(.bad) | "\(.sha[0:8]) \(.verdict)"] | join(", ")) else empty end)' "$T/result.json" \
       | while IFS= read -r _l; do log_note "$_l"; done
   done < "$T/loud.txt"
-  jq -r '.repos[] | select(.state == "ok" and (.tip.sched | length) > 0) | "\(.repo): scheduled workflow failing beside green push CI (SCHED, not red): \(.tip.sched | join(", "))"' "$T/result.json" | while IFS= read -r _x; do log_note "$_x"; done
   jq -r '.repos[] | select(.state == "disabled") | .repo' "$T/result.json" | while IFS= read -r _x; do log_note "$_x: main CI disabled, not judged"; done
   jq -r '.repos[] | select(.state == "no-ci") | .repo' "$T/result.json" | while IFS= read -r _x; do log_note "$_x: no push or schedule run on main, not judged"; done
   _g="$(jq -r '[.repos[] | select(.state == "ok" and (.tip.red | not) and ((.new | length) == 0)) | (.repo | sub("^[^/]*/"; ""))] | join(" ")' "$T/result.json")"

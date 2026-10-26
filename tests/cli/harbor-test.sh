@@ -33,13 +33,6 @@ t_eq "harbor constitution --apply --live is deploy's constitution component" \
 t_eq "harbor deploy is deploy.sh whole: every argument through, none added (2026-09-30)" \
   "STUB deploy.sh argv=--apply --only floor,skills --with-b6 --live" "$(hb deploy --apply --only floor,skills --with-b6 --live)"
 t_eq "harbor verify names the live box with --live, never through CLAUDE_CONFIG_DIR" "STUB floor-verify.sh argv=--live" "$(hb verify)"
-# verify re-judges afterwards (no new schedule); the verdict and exit status stay floor-verify's own.
-printf '#!/bin/sh\necho "$@" > "%s/judge.argv"\n' "$T_TMP" > "$SB/judge-run.sh"; chmod +x "$SB/judge-run.sh"; rm -f "$T_TMP/judge.argv"
-t_eq "harbor verify still prints only floor-verify's output" "STUB floor-verify.sh argv=--live" "$(hb verify)"
-t_eq "and then runs judge-run.sh --live --apply" "--live --apply" "$(cat "$T_TMP/judge.argv" 2>/dev/null)"
-rm -f "$T_TMP/judge.argv"; hb status >/dev/null
-t_eq "another verb does not re-judge" absent "$([ -f "$T_TMP/judge.argv" ] && echo present || echo absent)"
-rm -f "$SB/judge-run.sh"
 t_eq "harbor restore stays restore.sh, the other live entry" "STUB restore.sh argv=--live" "$(hb restore --live)"
 t_eq "harbor uninstall --apply --live is deploy's floor uninstall (harbor#808)" \
   "STUB deploy.sh argv=--only floor --uninstall --apply --live" "$(hb uninstall --apply --live)"

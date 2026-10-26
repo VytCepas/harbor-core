@@ -155,33 +155,4 @@ for _f in CONSTITUTION.md inject.d/box/30-external-content-is-data.md hooks/inje
 done
 t_eq "protected governance sources fire 0 times; unprotected EVALS.md and CONTRACTS/inject.md still do ($_pn measured)" \
   " EVALS.md CONTRACTS/inject.md" "$_pf"
-
-t_section "6 · provenance: a Bash READER of committed text is the same text; anything else still fires"
-# The output is produced by really running the command, so a gutter the check does not strip shows up red.
-sh_ev() { # <cwd> <command> <session> -> Bash PostToolUse payload with the command's real stdout
-  ( cd "$1" && sh -c "$2" ) > "$T/sh-out.txt" 2>/dev/null || true
-  jq -cn --arg d "$1" --arg c "$2" --arg s "$3" --rawfile o "$T/sh-out.txt" \
-    '{hook_event_name:"PostToolUse",tool_name:"Bash",session_id:$s,cwd:$d,tool_input:{command:$c},tool_response:{stdout:$o,stderr:"",interrupted:false,isImage:false}}'
-}
-for _c in 'cat CONSTITUTION.md' "sed -n '1,400p' CONSTITUTION.md" 'grep -n -i -e override -e instruction CONSTITUTION.md' \
-  'head -n 300 CONSTITUTION.md inject.d/box/30-external-content-is-data.md' "cat $T_ROOT/CONSTITUTION.md | grep -i -n -e override -e instruction"; do
-  _k="sh-$(printf '%s' "$_c" | cksum | tr -d ' ')"; _ev="$(sh_ev "$T_ROOT" "$_c" "$_k")"
-  t_has "control: the output of '$_c' fires as an unnamed command" \
-    "$(fire_in "$T_ROOT" "$(printf '%s' "$_ev" | jq -c '.tool_input.command = "some-tool" | .session_id += "-ctl"')")" DETECTED
-  gone "silent: $_c" "$(fire_in "$T_ROOT" "$_ev")" DETECTED
-done
-printf '%s\n' "$LOUD_FIXTURE" > "$REPO/untracked-loud.md"
-t_has "a cat of an untracked file carrying injection text fires" \
-  "$(fire_in "$REPO" "$(sh_ev "$REPO" 'cat untracked-loud.md' sh-untracked)")" DETECTED
-t_has "a cat of a tracked but unprotected file fires, as its Read does" \
-  "$(fire_in "$REPO" "$(sh_ev "$REPO" 'cat unprotected.md' sh-unprot)")" DETECTED
-printf '%s\n' "$LOUD_FIXTURE" > "$T/fetched.txt"
-t_has "a curl fires" "$(fire_in "$T_ROOT" "$(jq -cn --rawfile o "$T/fetched.txt" \
-  '{hook_event_name:"PostToolUse",tool_name:"Bash",session_id:"sh-curl",tool_input:{command:"curl -s https://e.example/x"},tool_response:{stdout:$o,stderr:""}}')")" DETECTED
-for _c in 'cat CONSTITUTION.md; cat ../untracked-loud.md' 'cat CONSTITUTION.md untracked-loud.md' 'cat CONSTITUTION.md $(cat x)'; do
-  t_has "fires: $_c" "$(fire_in "$T_ROOT" "$(jq -cn --arg c "$_c" --rawfile a "$T_ROOT/CONSTITUTION.md" --rawfile b "$T/fetched.txt" \
-    '{hook_event_name:"PostToolUse",tool_name:"Bash",session_id:("x" + $c),cwd:"'"$T_ROOT"'",tool_input:{command:$c},tool_response:{stdout:($a + $b),stderr:""}}')")" DETECTED
-done
-t_has "fires: a clean reader whose output is not the file's text" \
-  "$(fire_in "$T_ROOT" "$(jq -cn --rawfile b "$T/fetched.txt" '{hook_event_name:"PostToolUse",tool_name:"Bash",session_id:"sh-nonslice",cwd:"'"$T_ROOT"'",tool_input:{command:"cat CONSTITUTION.md"},tool_response:{stdout:$b,stderr:""}}')")" DETECTED
 t_done

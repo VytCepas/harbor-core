@@ -63,8 +63,8 @@ case "$NRUN" in ''|*[!0-9]*) NRUN=0 ;; esac
 NOW="$(date +%s)"
 
 # ── the transcript, one jq pass ────────────────────────────────────────────────────────────────
-# Records: CMD id command ts · BGT id task · RES id <suite verdict line> · PRU id <pull url>.
-# RES and BGT are guard-stop.sh's own filters, so SG-2 below reads what that gate reads.
+# Records: CMD id ts command · RES id <suite verdict line> · PRU id <pull url>.
+# RES is guard-stop.sh's own filter, so SG-2 below reads what that gate reads.
 RED=""; MS=0; MUT=0; PRURL=""; ASKPEND=0; T0=0
 if [ -n "$TX" ] && [ -r "$TX" ]; then
   T0="$(head -n 30 "$TX" 2>/dev/null | jq -r '(.timestamp? // empty) | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601? // empty' 2>/dev/null | head -n 1)"
@@ -78,33 +78,27 @@ if [ -n "$TX" ] && [ -r "$TX" ]; then
   # An AskUserQuestion is pending when it is the last thing the transcript says.
   if tail -n 1 "$TX" 2>/dev/null | grep -q '"name":"AskUserQuestion"'; then ASKPEND=1; fi
   # `jq -R` + `fromjson?`: the window's first line is cut mid-record and must not stop the parse.
-  STREAM="$(tail -c "$WIN" "$TX" 2>/dev/null | grep -E '"name":"(Bash|Write|Edit|NotebookEdit)"|(passed|rules), [0-9]+ (failed|violations)|/pull/[0-9]|tasks/[A-Za-z0-9]+\.output' 2>/dev/null | jq -R -r 'fromjson? |
+  STREAM="$(tail -c "$WIN" "$TX" 2>/dev/null | grep -E '"name":"(Bash|Write|Edit|NotebookEdit)"|(passed|rules), [0-9]+ (failed|violations)|/pull/[0-9]' 2>/dev/null | jq -R -r 'fromjson? |
     if .type=="assistant" then
       ((.timestamp // "" | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601? // 0) as $t
        | .message.content[]? | select(.type=="tool_use") |
-        if .name=="Bash" then "CMD\t" + (.id // "-") + "\t" + ((.input.command // "") | .[0:400] | gsub("[\n\t]"; " ")) + "\t" + ($t|tostring)
-        elif .name=="Read" and ((.input.file_path // "") | test("/tasks/[A-Za-z0-9]+\\.output$")) then "CMD\t" + (.id // "-") + "\t" + .input.file_path + "\t" + ($t|tostring)
+        if .name=="Bash" then "CMD\t" + (.id // "-") + "\t" + ($t|tostring) + "\t" + ((.input.command // "") | .[0:400] | gsub("[\n\t]"; " "))
         elif (.name=="Write" or .name=="Edit" or .name=="NotebookEdit") then "MUT\t-\t" + ($t|tostring)
         else empty end)
     elif .type=="user" then
       (.message.content[]? | select(.type=="tool_result") |
         (.tool_use_id // "-") as $id |
         ((if (.content|type)=="array" then ([.content[]? | .text? // ""] | join("\n")) else (.content|tostring) end)
-         | split("\n")[] | sub("^ *[0-9]+\t"; "")
-         | (select(test("^Command .*Output is being written to: [^ ]*/tasks/[A-Za-z0-9]+\\.output")) | "BGT\t" + $id + "\t" + (capture("/tasks/(?<t>[A-Za-z0-9]+)\\.output") | .t)),
-           (select(test("^[a-z][a-z0-9 .-]*: [0-9]+ (passed|rules), [0-9]+ (failed|violations)")) | "RES\t" + $id + "\t" + .),
+         | split("\n")[]
+         | (select(test("^[a-z][a-z0-9 .-]*: [0-9]+ (passed|rules), [0-9]+ (failed|violations)")) | "RES\t" + $id + "\t" + .),
            (select(test("^https://github\\.com/[^/ ]+/[^/ ]+/pull/[0-9]+$")) | "PRU\t" + $id + "\t" + .)))
     else empty end' 2>/dev/null)" || STREAM=""
   if [ -n "$STREAM" ]; then
-    # SG-2, verbatim from bin/guard-stop.sh (suite_key, and SG_PAIR byte-equal, held by stop.test.sh):
-    # the last verdict per suite name wins.
-    SG_PAIR='
-  $1 == "CMD" { if ($3 ~ /([-.]test|lint-conventions|floor-equiv|pass-score)[a-z-]*\.sh/) ran[$2] = 1
-                else for (t in bg) if (index($3, "tasks/" t ".output")) ran[$2] = 1 }
-  $1 == "BGT" && ($2 in ran) { bg[$3] = 1 }'
-    OUT="$(printf '%s\n' "$STREAM" | awk -F '\t' "$SG_PAIR"'
+    # SG-2, verbatim from bin/guard-stop.sh (its suite_key included): the last verdict per suite name wins.
+    OUT="$(printf '%s\n' "$STREAM" | awk -F '\t' '
       function suite_key(s) { sub(/^.* [0-9]+ /, "", s); return s }
-      $1 == "CMD" && $3 ~ /(^|[ ;&|])(git (commit|push)|gh pr (create|merge))( |$)/ { ms = $4 + 0; prc[$2] = 1 }
+      $1 == "CMD" && $4 ~ /(-test|lint-conventions|floor-equiv|pass-score)[a-z-]*\.sh/ { ran[$2] = 1 }
+      $1 == "CMD" && $4 ~ /(^|[ ;&|])(git (commit|push)|gh pr (create|merge))( |$)/ { ms = $3 + 0; prc[$2] = 1 }
       $1 == "MUT" { mut = $3 + 0 }
       $1 == "PRU" && ($2 in prc) { pru = $3 }
       $1 == "RES" && ($2 in ran) {

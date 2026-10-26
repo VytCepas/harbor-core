@@ -20,12 +20,6 @@ _owner() {
       repos/*|/repos/*|orgs/*|/orgs/*) _a="${_a#/}"; _a="${_a#*/}"; printf '%s\n' "${_a%%/*}"; return ;;
     esac
   done
-  # `api graphql -f owner=X`: the query names its repo in a field, not in a path.
-  if [ "${1:-}" = api ] && [ "${2:-}" = graphql ]; then
-    for _a in "$@"; do
-      case "$_a" in owner=*) _a="${_a#owner=}"; case "$_a" in ''|*[!A-Za-z0-9._-]*) ;; *) printf '%s\n' "$_a"; return ;; esac ;; esac
-    done
-  fi
   _u="$(git config --get remote.origin.url 2>/dev/null)" || return 0
   case "$_u" in *github.com[:/]*) _u="${_u#*github.com[:/]}"; printf '%s\n' "${_u%%/*}" ;; esac
 }

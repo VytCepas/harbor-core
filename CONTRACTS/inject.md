@@ -351,7 +351,6 @@ interpolated into a command, or used as a glob.
 |---|---|
 | `always` | the event fires |
 | `cmd-prefix <words>` | a command-position segment **starts with** exactly those words |
-| `cmd-word <name>` | a command-position segment's **command word** — after any `NAME=value` assignments — is `<name>` or a path ending in `/<name>`; quoted bodies and heredocs are not segments, and `--help` never matches |
 | `cmd-contains <text>` | the command contains the text, heredoc bodies stripped |
 | `path-contains <text>` | `tool_input.file_path` contains the text |
 | `content-contains <text>` | the written content or the tool's response contains the text |

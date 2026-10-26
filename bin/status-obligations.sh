@@ -24,7 +24,6 @@
 #                  `sources` map of `harbor status obligations --json`. ok:false carries the reason; ts is the attempt.
 # SURFACES. Every fold or reconcile run ends by writing the two things the box reads, from current.json and sources.json:
 #   $HARBOR_CACHE_DIR/status-obligations.json   {at, live, overdue, overdue_since, unread, you}: the statusline's `OVERDUE N ·age`
-#                                               overdue_since is the epoch the OLDEST overdue row OPENED: the age of the work, not of its 4h deadline, which says nothing of when it ended
 #                                               and its YOU row; epochs, so the age is counted at print time (default ~/.claude/cache).
 #                                               `you` is up to 8 open rows the operator acts on, oldest first: the operator-owned
 #                                               intents (handoffs) and approvals (PRs left 2026-10-16), as {k: kind, o: overdue, t: label}
@@ -51,10 +50,6 @@
 #                  passed, the owner is gone from both lists and no transcript line came after the deadline, or the owner has been silent for HARBOR_STATUS_OBLIGATION_QUIET seconds (86400). Live or dead, a row
 #                  closes (source transcript) when its owner's transcript, or a subagent's, carries the row's <task-notification>
 #                  with a final status, and (source workflow) when the Workflow run it belongs to has a final status.
-#                  Three more records close a row with no such notification: a Monitor's expiry (or `stream ended`) notice, which has a task id
-#                  only, linked to the row by the Monitor's own `Monitor started (task X, expires in …)` tool_result; a Monitor a subagent
-#                  started, once that subagent ended or the stated expiry passed; an agent's final notice (task id = agent id) written after
-#                  the row opened, so a completed notice from before a resume never closes the resumed agent.
 #   sweep          the harbor-clean.sh --record rows: each RISK or DECIDE row is a `leftover` obligation owned by the
 #                  operator while the record names it, closed when the next record does not. $HOME is shown as ~.
 # A source that fails, times out, prints what is not a list, or is older than it may be (the sweep record, 36h)
@@ -633,64 +628,6 @@ read_transcripts() {
     | $cur[0] + {transcripts: from_entries}' "$T/tr.tsv" > "$T/src/sessions.new" && mv -f "$T/src/sessions.new" "$T/src/sessions.json"
 }
 
-# Facts a transcript holds about work that ends WITHOUT a <task-notification> carrying a tool-use id and a status (harbor#1050):
-#   M  a Monitor started: who started it (main, or the subagent's id), its tool-use id, its task id, when, and its expiry in seconds,
-#      from the Monitor's own tool_result, `Monitor started (task X, expires in 30m ...`. The task id is the only link to a notice.
-#   X  a notification of that task id with neither: the expiry notice (`Monitor expired after ...`) or `stream ended` in the summary.
-#   N  a notification whose task id is an agent's, with a final status, and when it was written (a killed or stopped agent).
-#   E  a subagent whose own transcript ends on a finished assistant turn.
-# Only the unescaped record counts: a tool_result quoted inside another record carries escaped quotes and never matches.
-finished_facts() { # <session id> <transcript> <session dir>
-  { printf 'main\t%s\n' "$2"; find "$3/subagents" -name 'agent-*.jsonl' -type f 2>/dev/null | while IFS= read -r _f; do
-      _w="${_f##*/agent-}"; printf '%s\t%s\n' "${_w%.jsonl}" "$_f"; done; } | while IFS="$(printf '\t')" read -r _who _f; do
-    awk -v sid="$1" -v who="$_who" 'function secs(d,  n, a, i, v, u, t) { n = split(d, a, " "); t = 0
-        for (i = 1; i <= n; i++) { v = a[i] + 0; u = substr(a[i], length(a[i])); t += v * (u == "h" ? 3600 : u == "m" ? 60 : 1) } return t }
-      index($0, "Monitor started (task ") && match($0, /"timestamp":"[0-9T:.Z-]*"/) {
-        ts = substr($0, RSTART + 13, 19) "Z"; s = $0
-        while (match(s, /"tool_use_id":"toolu_[A-Za-z0-9_]+","type":"tool_result","content":("|[[][{]"type":"text","text":")Monitor started [(]task [A-Za-z0-9]+, expires in [0-9hms ]+ unless/)) {
-          m = substr(s, RSTART, RLENGTH); s = substr(s, RSTART + RLENGTH)
-          tu = m; sub(/^"tool_use_id":"/, "", tu); sub(/".*/, "", tu)
-          tk = m; sub(/.*[(]task /, "", tk); sub(/,.*/, "", tk)
-          d = m; sub(/.*expires in /, "", d); sub(/ unless$/, "", d)
-          printf "%s\tM\t%s\t%s\t%s\t%s\t%d\n", sid, who, tu, tk, ts, secs(d) } }
-      index($0, "<task-notification>") && match($0, /"timestamp":"[0-9T:.Z-]*"/) { ts = substr($0, RSTART + 13, 19) "Z"; s = $0
-        while ((i = index(s, "<task-notification>")) > 0) { s = substr(s, i + 19); j = index(s, "</task-notification>"); if (j == 0) break
-          b = substr(s, 1, j - 1); s = substr(s, j)
-          if (!match(b, /<task-id>[A-Za-z0-9]+<\/task-id>/)) continue
-          tk = substr(b, RSTART + 9, RLENGTH - 19)
-          if (match(b, /<status>(completed|failed|killed|stopped)<\/status>/)) { st = substr(b, RSTART + 8, RLENGTH - 17); printf "%s\tN\t%s\t%s\t%s\n", sid, tk, st, ts }
-          else if (b !~ /<status>/ && (b ~ /<event>\[Monitor expired after / || b ~ /stream ended<\/summary>/)) printf "%s\tX\t%s\n", sid, tk } }' "$_f" >> "$T/fin.facts" 2>/dev/null || :
-    [ "$_who" != main ] || continue
-    tail -n 1 "$_f" 2>/dev/null | jq -e -s 'length == 1 and .[0].type == "assistant" and .[0].message.stop_reason == "end_turn"' >/dev/null 2>&1 \
-      && printf '%s\tE\t%s\n' "$1" "$_who" >> "$T/fin.facts"
-  done
-  return 0
-}
-# `<row subject><TAB>source` for each live row those facts close:
-#   a Monitor whose task has a notice of its own expiry or end; one a SUBAGENT started also once that subagent has ended (a
-#   final notice for it after the start, or its last record) or the Monitor's stated expiry has passed, whichever came first;
-#   an agent on a final notice for its id written AFTER the row opened: an earlier one belongs to a run before a resume.
-finished_verdicts() {
-  jq -r -n --rawfile rows "$T/fin.rows" --rawfile facts "$T/fin.facts" --argjson now "$NOW_E" '
-    def ep: try fromdateiso8601 catch 0;
-    ($facts | split("\n") | map(select(length > 0) | split("\t"))) as $f
-    | ($rows | split("\n") | map(select(length > 0) | split("\t"))) | .[] as $r
-    | $r[0] as $sid | $r[1] as $subj
-    | if $r[2] == "agent" then
-        select($f | any(.[]; .[0] == $sid and .[1] == "N" and .[2] == $subj and (.[4][0:19]) > ($r[3][0:19])))
-        | "\($subj)\ttranscript"
-      elif $r[2] == "tool.background" then
-        ([$f[] | select(.[0] == $sid and .[1] == "M" and ($sid + ":" + .[3]) == $subj)] | first) as $m
-        | select($m != null)
-        | if ($f | any(.[]; .[0] == $sid and .[1] == "X" and .[2] == $m[4])) then "\($subj)\ttranscript"
-          elif $m[2] != "main" and (
-                ($f | any(.[]; .[0] == $sid and .[1] == "N" and .[2] == $m[2] and (.[4][0:19]) > ($m[5][0:19])))
-                or ($f | any(.[]; .[0] == $sid and .[1] == "E" and .[2] == $m[2]))
-                or (($m[5] | ep) + ($m[6] | tonumber) < $now)) then "\($subj)\ttranscript"
-          else empty end
-      else empty end' 2>/dev/null || :
-}
-
 # What an owner's own files say finished, into the sessions answer as finished: {"<row subject>": "<source>"}. Claude Code
 # has no hook for background work or a Workflow's subagents ending, but two records exist, for a live owner or a dead one:
 #   transcript  a <task-notification> with the tool-use id and a final status, in the owner's transcript or a subagent's.
@@ -703,8 +640,8 @@ read_finished() {
   jq -r --slurpfile reg "$T/reg.json" '
     ($reg[0] | map(select(.reconcile | split(",") | any(.[]; . == "owner-session" or . == "claude-agents")) | .kind)) as $kinds
     | .obligations[] | select((.state | IN("open", "overdue")) and (.kind as $k | $kinds | any(.[]; . == $k)) and (.owner | startswith("session:")))
-    | "\(.owner[8:])\t\(.subject)\t\(.kind)\t\(.opened_ts)"' "$CURRENT" > "$T/fin.rows"
-  : > "$T/fin.ids"; : > "$T/fin.facts"
+    | "\(.owner[8:])\t\(.subject)"' "$CURRENT" > "$T/fin.rows"
+  : > "$T/fin.ids"
   for _sid in $(cut -f1 "$T/fin.rows" | sort -u); do
     case "$_sid" in ''|*[!A-Za-z0-9._-]*) continue ;; esac
     _tf="$(find "$TRANSCRIPTS" -maxdepth 2 -name "$_sid.jsonl" -type f 2>/dev/null | head -n 1)"
@@ -714,7 +651,6 @@ read_finished() {
       while (match(s, /<task-notification>(\\n|[ \t])*<task-id>[^<]*<\/task-id>(\\n|[ \t])*<tool-use-id>[A-Za-z0-9_]+<\/tool-use-id>(\\n|[ \t])*(<output-file>[^<]*<\/output-file>(\\n|[ \t])*)?<status>(completed|failed|killed|stopped)<\/status>/)) {
         m = substr(s, RSTART, RLENGTH); s = substr(s, RSTART + RLENGTH)
         sub(/.*<tool-use-id>/, "", m); sub(/<\/tool-use-id>.*/, "", m); print sid ":" m "\ttranscript" } }' >> "$T/fin.ids" 2>/dev/null || :
-    finished_facts "$_sid" "$_tf" "$_sd"
     : > "$T/fin.runs"
     for _wf in "$_sd"/workflows/wf_*.json; do
       [ -f "$_wf" ] || continue
@@ -732,7 +668,6 @@ read_finished() {
       [ -n "$_run" ] && grep -qxF "$_run" "$T/fin.runs" && printf '%s\tworkflow\n' "$_subj"
     done >> "$T/fin.ids"
   done
-  finished_verdicts >> "$T/fin.ids"
   jq -R -s -c --slurpfile cur "$T/src/sessions.json" --rawfile rows "$T/fin.rows" '
     ($rows | split("\n") | map(select(length > 0) | split("\t")[1])) as $live
     | (split("\n") | map(select(length > 0) | split("\t") | select(.[0] as $i | $live | any(.[]; . == $i)))
@@ -977,7 +912,7 @@ surface_pass() {
     def ts($t): try ($t | fromdateiso8601) catch 0;
     [.obligations[] | select(.state == "overdue")] as $od
     | {at: $now, live: ([.obligations[] | select(.state == "open" or .state == "overdue")] | length), overdue: ($od | length),
-       overdue_since: ([$od[] | ts(.opened_ts)] | min // 0), unread: ($src | any(.[]; .ok == false)),
+       overdue_since: ([$od[] | ts(.deadline_ts)] | min // 0), unread: ($src | any(.[]; .ok == false)),
        you: ([.obligations[] | select((.state == "open" or .state == "overdue")
                 and .owner == "operator" and (.kind == "intent" or .kind == "approval"))]
              | sort_by(.opened_ts) | .[0:8]

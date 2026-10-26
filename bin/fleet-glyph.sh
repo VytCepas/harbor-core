@@ -869,7 +869,7 @@ if [ -f "$CFG/.helm-sweep" ]; then
         if   [ "$_ss" -lt 3600 ];  then _sg="$((_ss / 60))m"
         elif [ "$_ss" -lt 86400 ]; then _sg="$((_ss / 3600))h"
         else                            _sg="$((_ss / 86400))d"; fi
-        SWEEPTOK="SWEEP $_si$_sq ·$_sg"
+        SWEEPTOK="SWEEP $_si ·$_sg"
       fi ;;
   esac
 fi
@@ -955,33 +955,24 @@ fi
 # ── MAIN RED · a fleet repo's main has no green CI verdict (harbor#586) ─────────────
 # main-tip-verdict.sh writes {at, unread, repos:[{repo, tip, ...}]} inside fleet-snapshot's run; the older
 # single-repo cache has no .repos and reads as one nameless repo. An ALARM, because a merged commit nobody
-# has a green run for is how 41 of 99 pushes went unnoticed; the age is computed here from when the first failing
-# run completed (tip.red_at; the commit's time in an older cache), so it keeps counting between refreshes. One failed push
-# run alone reads `·1 run`: red at once, but a reader can tell a flake from a pattern. A scheduled workflow failing beside
-# a green push tip is `SCHED <repo>`, ambient, not an alarm (tip.sched; a main-health workflow fails the tip instead). A cache over 900s old, or one whose last read failed, is not
+# has a green run for is how 41 of 99 pushes went unnoticed; the age is computed here from the commit's own
+# time, so it keeps counting between refreshes. A cache over 900s old, or one whose last read failed, is not
 # claimed either way: `main?` says "could not look". Compact: `MAIN RED estate 3h`, two are listed, more count.
 if [ -f "$CACHE_DIR/main-tip-verdict.json" ] && command -v jq >/dev/null 2>&1; then
   _mt="$(jq -r --argjson now "$NOW_EPOCH" '
       def ago: if . < 3600 then "\(. / 60 | floor)m" elif . < 172800 then "\(. / 3600 | floor)h" else "\(. / 86400 | floor)d" end;
       . as $c | (($now - (($c.at // 0) | tonumber)) > 900) as $stale
       | ([($c | if (.repos | type) == "array" then .repos else [.] end)[]
-         | select(.tip.red == true and (.unread != true)) | {n: ((.repo // "") | sub("^[^/]*/"; "")), a: ($now - (.tip.red_at // .tip.at)), one: (.tip.single == true)}] | sort_by(-.a)) as $red
+         | select(.tip.red == true and (.unread != true)) | {n: ((.repo // "") | sub("^[^/]*/"; "")), a: ($now - .tip.at)}] | sort_by(-.a)) as $red
       | if $stale then "?"
         elif ($red | length) == 0 then (if $c.unread == true then "?" else empty end)
         elif ($red | length) > 2 then "!\($red | length) repos, oldest \($red[0].a | ago)"
-        else "!" + ($red | map((if .n == "" then "" else .n + " " end) + (.a | ago) + (if .one then " ·1 run" else "" end)) | join(", ")) end' \
+        else "!" + ($red | map((if .n == "" then "" else .n + " " end) + (.a | ago)) | join(", ")) end' \
       "$CACHE_DIR/main-tip-verdict.json" 2>/dev/null || true)"
   case "$_mt" in
     '?') ci_ambient "main?" ;;
     '!'*) ci_alarm "MAIN RED ${_mt#!}" ;;
   esac
-  _ms="$(jq -r --argjson now "$NOW_EPOCH" '
-      . as $c | if (($now - (($c.at // 0) | tonumber)) > 900) then empty else
-      [($c | if (.repos | type) == "array" then .repos else [.] end)[]
-       | select(.tip.red != true and .unread != true and ((.tip.sched // []) | length) > 0) | ((.repo // "") | sub("^[^/]*/"; ""))]
-      | if length == 0 then empty elif length > 2 then "SCHED \(length) repos" else "SCHED " + join(", ") end end' \
-      "$CACHE_DIR/main-tip-verdict.json" 2>/dev/null || true)"
-  [ -n "$_ms" ] && ci_ambient "$_ms"
 fi
 
 # ── CI→local · the month's Actions minutes ran short and CI fell back to the self-hosted runners (harbor#865) ─────
