@@ -64,7 +64,8 @@ clip_clear() {
   esac
 }
 
-DEST="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.helm-log-token"
+DEST="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.helm-log-token"   # legacy plaintext, removed once the store holds it
+SECRET="${HARBOR_SECRET_BIN:-$(command -v secret 2>/dev/null || true)}"; [ -n "$SECRET" ] || SECRET="$HOME/.local/bin/secret"
 
 # `|| true` ON THE SUBSTITUTION, not on a later line. Under `set -e` a bare
 # `T="$(clip_read)"` ABORTS on a non-zero read, so a fallback written underneath
@@ -74,11 +75,26 @@ T="$(clip_read 2>/dev/null || true)"
 
 case "$T" in
   github_pat_*|ghp_*)
-    umask 177
-    printf %s "$T" > "$DEST"
+    # The store, not a file (harbor#1205): piped, so the value never reaches argv or a prompt's echo.
+    # A refused store is a FAIL, never a quiet fall back to the plaintext file.
+    # The store's stderr goes to a FILE, then to the operator: its own words say why (a register entry that
+    # does not name the ref), and a file leaks nothing a `2>&1 >/dev/null` capture would tee. The token goes in
+    # on stdin only, so it is not in anything `secret` says about its arguments.
+    ERRF="$(mktemp "${TMPDIR:-/tmp}/save-log-token.XXXXXX")" || ERRF=/dev/null
+    if ! printf %s "$T" | sh "$SECRET" put worklog-token >/dev/null 2>"$ERRF"; then
+      T=""; clip_clear 2>/dev/null || true
+      log_fail "NOT SAVED: the credential store refused worklog-token (clipboard cleared)"
+      log_fix "sh $SECRET list; harbor access check   # the register must name worklog-token"
+      [ ! -s "$ERRF" ] || while IFS= read -r _l; do log_note "store: $_l"; done < "$ERRF"
+      [ "$ERRF" = /dev/null ] || rm -f "$ERRF"
+      log_end || :; exit 1
+    fi
+    [ "$ERRF" = /dev/null ] || rm -f "$ERRF"
+    T_LEN=${#T}; T=""
     clip_clear 2>/dev/null || true
+    rm -f "$DEST"
     # LENGTH, NEVER THE VALUE. Enough to tell a truncated paste from a whole one.
-    log_ok "token saved (${#T} chars, clipboard cleared)"
+    log_ok "token stored as worklog-token ($T_LEN chars, clipboard cleared, plaintext file removed)"
     log_end
     ;;
   *)

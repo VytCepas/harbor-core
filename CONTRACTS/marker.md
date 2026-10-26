@@ -131,8 +131,8 @@ Added 2026-09-24 for harbor#581. Decision (A): the repo wins on workflow, conven
 | site | stands down via | tier | what stops | ticket |
 |---|---|---|---|---|
 | `bin/guard-bash.sh` | `floor_repo_wires` | project | the protected-branch force-push rules, only where the repo wires `github_command_guard` (a PreToolUse hook, or the `project-init-lifecycle` plugin enabled and installed), which then owns them; a marker alone keeps them armed | harbor#954 |
-| `bin/worklog-push.sh` | `floor_engine_stand_down` | engine | appending this session to the machine-wide work log, only where the repo's `.agents/config.yaml` says `worklog: off` | harbor#954 |
-| `bin/memory-harvest.sh` | `floor_engine_stand_down` | engine | reconciling the work log into memory, only on `worklog: off` | harbor#954 |
+| `hooks/worklog-push/worklog-push.sh` | `floor_engine_stand_down` | engine | appending this session to the machine-wide work log, only where the repo's `.agents/config.yaml` says `worklog: off` | harbor#954 |
+| `hooks/memory-harvest/memory-harvest.sh` | `floor_engine_stand_down` | engine | reconciling the work log into memory, only on `worklog: off` | harbor#954 |
 | `bin/context-resolve.sh` | `floor_in_repo` | report | nothing: it records the session's verdict | — |
 | `bin/fleet-sessions.sh` | `floor_in_repo` | report | nothing: it prints each session's verdict | — |
 

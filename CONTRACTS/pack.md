@@ -24,7 +24,7 @@ The target is chosen as every installer chooses it (`bin/install-lib.sh`): `--li
 
 ```
 pack.toml   name, version, harbor_version, description - all four, each a quoted string (flat TOML, D-81)
-skills/<name>/...   bin/<file>   shims.tsv   conf-keys.txt   inject.d/<file>.md   checks.md   controls.tsv   skill-packs/<core skill>/<name>.md   tests/ (never installed)   README* (ignored)
+skills/<name>/...   bin/<file>   shims.tsv   conf-keys.txt   terms.tsv   inject.d/<file>.md   checks.md   controls.tsv   skill-packs/<core skill>/<name>.md   tests/ (never installed)   README* (ignored)
 ```
 
 `checks.md` is a check-register fragment in exactly the shape of the private layer's [`checks.md`](./private-layer.md#checksmd):
@@ -39,6 +39,13 @@ it (the private layer's own pack: the layer's `jobs/`), and `drift.launchd-plist
 own (`roots.sh --conf-keys`), so core names no pack's key. Install refuses a core key, a key another installed pack declares,
 and a malformed line; remove takes the keys back with the pack. Three keys core once read left it one release after
 their pack declared them (#1273): with no pack installed, `roots.sh --conf <key>` refuses them (exit 2).
+
+`terms.tsv` (optional) registers the workload's own system terms (harbor#950): core's `standards/naming/terms.tsv` header,
+then one row per system, class `system` alone. Install puts it at `terms.d/<repo-id>.tsv`, and `bin/lint-name.sh` reads it
+beside the private layer's overlay, so a system's env prefix and short name are known on the box while core's register names
+no workload. Install refuses another header, another class, a term core already has, one another installed pack declares,
+and a malformed id; remove takes the rows back with the pack. A system named here is public, since the pack is client-free; a
+private system goes in `harbor-private/terms.tsv` instead, whose rows are leak patterns, so a pack naming one is refused.
 
 `shims.tsv` (optional) puts the pack's commands on the operator's PATH: a header row `name` TAB `rel`, then one row per command,
 `rel` a `bin/<file>` this pack installs. `bin/shim-install.sh` links `~/.local/bin/<name>` to the installed copy, so core's own
@@ -135,16 +142,16 @@ composition with the target's `checks.d`, and does not count a file a pack manif
 
 `harbor.toml` `packs = ["<repo-id>", ...]` is the list. Deploy's `packs` component runs `bin/pack.sh install` for it, after
 `inject` (inject-install rebuilds `inject.d` from scratch and so drops a pack's notes, which is why `--only inject` re-runs
-the packs too) and before the skill book, which is generated from the skills the box then holds, a pack's included. No
+the packs too) and before the skill catalog, which is generated from the skills the box then holds, a pack's included. No
 `packs` key, or an empty one, means no packs: one note, and `pack.sh` is not run. A pack `pack.sh` refuses fails the dry run's
 preflight and an apply's install, and the failure line carries `skipped <repo-id>: <reason>`, with the pack's own fix line
 relayed. Deploy's snapshot covers `checks.d`, `skill-packs` and `.harbor-packs`. An `inject.d` note a pack's manifest owns is not counted as
 "bytes in no commit" by the preflight.
 
-`harbor deploy --only floor --uninstall` removes every installed pack (`pack.sh remove`), writes the installed skill book
-again without their skills (`skill-book.sh install`), and fails its verify if a manifest in `.harbor-packs` or a fragment in
+`harbor deploy --only floor --uninstall` removes every installed pack (`pack.sh remove`), writes the installed skill catalog
+again without their skills (`skill-catalog.sh install`), and fails its verify if a manifest in `.harbor-packs` or a fragment in
 `checks.d` is left, so no pack row survives in the register or the book. The book a pack's skills appear in is the
-installed one: the tracked `skills/skill-book/SKILL.md` lists only the skills the repo ships and a pack never reaches it.
+installed one: the tracked `skills/skill-catalog/SKILL.md` lists only the skills the repo ships and a pack never reaches it.
 
 ## A skill that moves from core to a pack
 
