@@ -958,7 +958,9 @@ WHEN
 
     explain "FIRE $_id"
     log_rule advise "$_id"
-    NOTES="$NOTES$_note "
+    # Each note names the rule that raised it, so an alert reaches its owner and off-switch in one
+    # lookup (harbor#957): `<id>` is the front-matter id, which controls.tsv maps in its `emitted` column.
+    NOTES="$NOTES[context:$_id] $_note "
     if [ "$_once" != never ]; then remember "$_key"; fi
 
     # `mode: notify` also speaks to the HUMAN. systemMessage sidesteps the trust

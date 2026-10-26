@@ -49,6 +49,7 @@ name.rule-id	warn	lint	bin/lint-name.sh	rule-id,check-id	ci	detective	experiment
 name.skill-dir	warn	lint	bin/lint-name.sh	skill	ci	detective	experimental	-	standard	tests/checks/lint.name-test.sh	-	a skill directory starts with a family or a registered domain (D-35)
 name.launchd	warn	lint	bin/lint-name.sh	launchd	ci	detective	experimental	-	standard	tests/checks/lint.name-test.sh	-	a launchd label is com.harbor.<family>.<object…> (§6.1)
 name.mcp-tool	warn	lint	bin/lint-name.sh	mcp-tool	ci	detective	experimental	-	standard	tests/checks/lint.name-test.sh	-	an MCP tool is mcp__<server>__<tool>, lowercase snake (harbor#1301)
+name.release-tag	warn	lint	bin/lint-name.sh	release-tag	ci	detective	experimental	-	standard	tests/checks/lint.name-test.sh	-	a release tag is v<semver> and its release title is the tag (harbor#957)
 name.repo-kind	warn	lint	bin/lint-name.sh	repo-kind	ci	detective	experimental	-	standard	tests/checks/lint.name-test.sh	-	a repo carries the top-level entries repo-kinds.tsv requires of the kind its .agents/config.yaml declares; read by --check repo-kind only, never by a tree scan (§8)
 name.registry-shape	warn	lint	bin/lint-name.sh	registry	ci	detective	experimental	-	standard	tests/checks/lint.name-test.sh	-	a registry file opens with a # WHY header and standard_version, its header row starts with id, and every row has the header's column count (§4)
 name.registry-duplicate	warn	lint	bin/lint-name.sh	registry	ci	detective	experimental	-	standard	tests/checks/lint.name-test.sh	-	an id appears once in its file (D-19)

@@ -32,7 +32,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | injection-rule | context-rules/<scope>/ | component | source | living | 37 |
 | hook | hooks/ | component | source | living | 46 |
 | skill | skills/ | component | source | living | 41 |
-| fixture | fixtures/ | element | source | living | 252 |
+| fixture | fixtures/ | element | source | living | 254 |
 | registry | registries/ | component | source | versioned | 50 |
 | test | tests/ | component | source | living | 417 |
 | report | docs/reports/ | element | report | dated | 1 |
@@ -54,7 +54,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `bin/` | 204 | 22 | 2 |
 | `commands/` | 5 | 1 | 1 |
 | `docs/` | 113 | 6 | 5 |
-| `fixtures/` | 252 | 9 | 1 |
+| `fixtures/` | 254 | 9 | 1 |
 | `hooks/` | 42 | 6 | 1 |
 | `inject.d/` | 33 | 1 | 1 |
 | `launchd/` | 12 | 3 | 1 |
@@ -94,7 +94,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | scope | coordination | 2 | 10 | 0 | 0 | 0 | 4 |
 | session | data-plane | 11 | 4 | 0 | 1 | 0 | 0 |
 | skill | catalog | 3 | 5 | 0 | 4 | 0 | 11 |
-| standard | policy-function | 3 | 8 | 104 | 0 | 0 | 43 |
+| standard | policy-function | 3 | 8 | 104 | 0 | 0 | 44 |
 | status | observability | 3 | 7 | 0 | 1 | 0 | 0 |
 | test | control-plane | 0 | 1 | 2 | 7 | 0 | 7 |
 | worktree | coordination | 1 | 0 | 0 | 0 | 0 | 0 |
@@ -476,7 +476,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `bin/` | 112 |
 | `commands/` | 5 |
 | `docs/` | 17 |
-| `fixtures/` | 214 |
+| `fixtures/` | 216 |
 | `hooks/` | 32 |
 | `launchd/` | 10 |
 | `patches/` | 12 |

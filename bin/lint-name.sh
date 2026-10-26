@@ -461,6 +461,11 @@ function mcp_check(subj, name,   r) {
   r = tmatch("mcp-tool", name, "")
   if (r != "") emit(SRULE["mcp-tool"], subj, shape_msg("mcp-tool", r))
 }
+# harbor#957: a release tag is v<semver> and its release title is the tag; no other tag shape names a release.
+function release_check(subj, name) {
+  if (name !~ /^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/)
+    emit("name.release-tag", subj, "a release tag is v<major>.<minor>.<patch> (SemVer 2.0), and the release title is the tag: " q(name) " (harbor#957)")
+}
 function skill_check(subj, name,   r) {
   r = tmatch("skill", tolower(name), "")
   if (r != "") emit(SRULE["skill"], subj, shape_msg("skill", r))
@@ -529,6 +534,7 @@ function check_rec(sf, nm,   p) {
   else if (sf == "skill") { seg_check("skills/" nm, nm, 0, "skill", "skills/" nm, ""); skill_check("skills/" nm, nm) }
   else if (sf == "env") env_check("env:" nm, nm)
   else if (sf == "mcp-tool") mcp_check("mcp-tool:" nm, nm)
+  else if (sf == "release-tag") release_check("release-tag:" nm, nm)
   else if (sf == "rule-id" || sf == "check-id") id_check(sf ":" nm, nm, sf)
 }
 function shape(f, msg) { emit("name.registry-shape", REL[f], msg) }

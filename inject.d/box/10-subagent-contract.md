@@ -1,5 +1,6 @@
 ---
 id: subagent-contract
+description: The four rules a subagent obeys whether or not it can see the constitution
 event: SubagentStart
 when: always
 once: never

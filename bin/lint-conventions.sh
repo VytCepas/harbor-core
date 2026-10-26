@@ -5797,6 +5797,15 @@ for f in "$ROOT"/inject.d/*/*.md "$ROOT"/.claude/inject.d/*.md "${_INJ_DIR:-/non
       [ "$(_ij_fm "$f" | awk -F': *' '$1=="mode"{print $2;exit}')" = notify ] \
         || bad context.pack-shape "pack targets $_ev, which carries no model-visible channel, without mode: notify: $_rel" ;;
   esac
+  # `description` says what the rule is for, one line, so an operator can retire it without reading its
+  # body (harbor#957). A tracked pack is refused; a private one is only reported, because it is not in this
+  # tree to fix.
+  if [ -z "$(_ij_fm "$f" | awk -F': *' '$1=="description"{print $2;exit}')" ]; then
+    case "$_rel" in
+      private:*) _adv context.pack-shape "$_rel"; printf '  ADVISORY [context.pack-shape] pack has no description: %s\n' "$_rel" >&2 ;;
+      *) bad context.pack-shape "pack has no description: $_rel" ;;
+    esac
+  fi
   _n="$(_ij_fm "$f" | grep -c '^when:' || true)"
   [ "${_n:-0}" -ge 1 ] || { bad context.pack-shape "pack has no when: predicate, so it can never fire: $_rel"; continue; }
   # THE PREDICATE VOCABULARY IS FIXED, and an unrecognised one is silent at run
