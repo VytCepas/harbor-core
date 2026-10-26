@@ -97,23 +97,25 @@ scan() {
   return "$_sx"
 }
 
-# offsets_lock <dir>: mkdir is atomic. A lock whose holder is gone is taken over; one still held
-# after ~10s fails the scan, which then prints nothing and leaves the offsets where they were.
+# offsets_lock <path>: a file holding the holder's pid, made with O_EXCL (set -C), never mkdir: uutils
+# mkdir 0.10 (Ubuntu 26.04) exits 0 on a lost race, so two scans read one line (harbor#1378). A lock whose
+# holder is gone is taken over; one still held after ~10s fails the scan, which then prints nothing and
+# leaves the offsets where they were. A directory lock is an older bus's, its pid in <path>/pid.
 # HARBOR_EVENT_BUS_LOCK_TRIES (test-only) shortens the wait.
 offsets_lock() {
   _ln=0; _lt="${HARBOR_EVENT_BUS_LOCK_TRIES:-200}"
-  until mkdir "$1" 2>/dev/null; do
-    _lp=""; [ ! -f "$1/pid" ] || read -r _lp < "$1/pid" || :
+  until ( set -C; printf '%s\n' "$$" > "$1" ) 2>/dev/null; do
+    _lf="$1"; [ ! -d "$1" ] || _lf="$1/pid"
+    _lp=""; [ ! -f "$_lf" ] || read -r _lp < "$_lf" || :
     # Re-read before taking over: a lock released and re-taken by a live process since the first
     # read is not the dead holder's to remove (two writers lost a consumer's row on hosted CI).
     if [ -n "$_lp" ] && ! kill -0 "$_lp" 2>/dev/null; then
-      _lq=""; [ ! -f "$1/pid" ] || read -r _lq < "$1/pid" || :
+      _lq=""; [ ! -f "$_lf" ] || read -r _lq < "$_lf" || :
       if [ "$_lq" = "$_lp" ]; then rm -rf "$1"; continue; fi
     fi
     _ln=$((_ln + 1)); [ "$_ln" -lt "$_lt" ] || return 1
     sleep 0.05 2>/dev/null || sleep 1
   done
-  printf '%s\n' "$$" > "$1/pid" 2>/dev/null || :
 }
 
 consumer_ok() { case "$1" in ''|*[!A-Za-z0-9._-]*) return 1 ;; esac; }

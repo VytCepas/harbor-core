@@ -1,0 +1,5 @@
+# CONTEXT-RATCHET.tsv: the deploy gate for the CORE always-on surface (bin/context-budget.sh --ratchet).
+# Format: <bytes><TAB><date><TAB><why>, one row, the LAST row counts. It may only go down.
+# Raise it deliberately by editing the row and saying why in the commit; lower it when --ratchet reports a saving.
+# Covers CONSTITUTION.md + tracked ambient skill descriptions only; not the memory index, plugins, commands or injection.
+31159	2026-10-26	baseline set at the measured value when the ratchet landed

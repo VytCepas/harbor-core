@@ -94,6 +94,13 @@ t_eq "...and prints no line" "" "$(cat "$T_TMP/l1")"
 kill "$HOLD" 2>/dev/null; wait "$HOLD" 2>/dev/null; rm -rf "$LO.lock"
 HARBOR_EVENT_DIR="$LB" sh "$EB" since "$LO" > "$T_TMP/l2"
 t_eq "the retry reads each line once" 'l1 l2 ' "$(subjects "$T_TMP/l2")"
+# uutils mkdir 0.10 (Ubuntu 26.04, ubuntu-latest) exits 0 when it loses a creation race; this one always loses.
+UU="$T_TMP/uu"; mkdir -p "$UU"; MKD="$(command -v mkdir)"
+printf '#!/bin/sh\ncase "$1" in -*) exec %s "$@" ;; esac\n%s -p -- "$@" && sleep 1\n' "$MKD" "$MKD" > "$UU/mkdir"; chmod +x "$UU/mkdir"
+HARBOR_EVENT_DIR="$LB" sh "$EB" emit test.lock l3 >/dev/null
+for k in 1 2; do HARBOR_EVENT_DIR="$LB" PATH="$UU:$PATH" sh "$EB" since "$LO" > "$T_TMP/uu$k" 2>/dev/null & done; wait
+t_eq "two scans at once where mkdir cannot lock read the new line once between them (harbor#1378)" 'l3 ' \
+  "$(cat "$T_TMP/uu1" "$T_TMP/uu2" > "$T_TMP/uu.both"; subjects "$T_TMP/uu.both")"
 
 t_section "several day files, read in date order; a deleted day drops its row"
 d1="$D"
