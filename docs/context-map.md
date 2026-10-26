@@ -34,7 +34,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | skill | skills/ | component | source | living | 42 |
 | fixture | fixtures/ | element | source | living | 254 |
 | registry | registries/ | component | source | versioned | 51 |
-| test | tests/ | component | source | living | 420 |
+| test | tests/ | component | source | living | 421 |
 | report | docs/reports/ | element | report | dated | 1 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
@@ -63,7 +63,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `skills/` | 42 | 5 | 1 |
 | `standards/` | 14 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 420 | 21 | 1 |
+| `tests/` | 421 | 21 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 73 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -72,7 +72,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
-| access | control-plane | 5 | 5 | 2 | 2 | 0 | 0 |
+| access | control-plane | 5 | 6 | 2 | 2 | 0 | 0 |
 | admission | control-plane | 15 | 1 | 0 | 0 | 0 | 167 |
 | alert | observability | 1 | 1 | 0 | 0 | 0 | 0 |
 | audit | control-plane | 0 | 0 | 0 | 0 | 0 | 2 |

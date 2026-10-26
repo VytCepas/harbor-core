@@ -369,6 +369,7 @@ tests/scope/pack/skill-packs.test.sh
 tests/access/environment/visibility.test.sh
 tests/cli/access/add-prompts.test.sh
 tests/cli/access/stored.test.sh
+tests/cli/access/lifecycle.test.sh
 tests/lint/module/rules.test.sh
 tests/lint/module/unchecked.test.sh
 tests/lint/doc-refs/doc-refs.test.sh

@@ -32,6 +32,17 @@ Cards stay per system; the entry is the identity a card's `account:` line points
 | `secret` | the **reference** the value is stored under (`[A-Za-z0-9._-]+`), or `none` when no `bin/secret` item holds it: a browser sign-in, a role, or a credential a tool still reads from outside the seam, whose `what` says where (a migration debt, not a second store). A ref is named by one entry |
 | `verified` | one ISO date; `harbor access add` writes today |
 
+Optional, and checked when present (the lifecycle, below):
+
+| Field | Says |
+|---|---|
+| `check`, `expect` | together or not at all. One read-only command that proves the credential works now, and what it must print as backticked literals: the card's `check:`/`expect:` grammar, run by the same classifier (`check-routes.sh --probe`), so a write is refused unrun and a browser check is never a pass |
+| `expires` | the calendar date the vendor says it stops working |
+| `renew` | one line: where, and as which account, a new value is minted |
+| `revoke` | one line: where the old value is retired at its source |
+| `rotated` | the day a value was last stored by `add` or `rotate`; written by them |
+| `revoked` | the day the entry was retired; written by `revoke`. Its presence, whatever its value, refuses the ref |
+
 Prose between entries is free. An indented `name:` line must sit inside an entry and name a known field; a typo
 (`use_when:`) is red, never read as absent.
 
@@ -62,11 +73,53 @@ are not gated. No verb prints a value; there is still no `get`.
 harbor access add <id> --kind K --what T --use-when T --reaches T --cannot T --grant T (--secret REF | --no-secret) \
                        [--value-stdin] [--probe CMD]
 harbor access list          # id, kind, secret ref, what
-harbor access has <ref>     # 0 registered, 3 grandfathered, 1 neither
+harbor access has <ref>     # 0 registered, 3 grandfathered, 4 revoked, 1 neither
 harbor access refs          # the registered refs
 harbor access check         # well formed, no credential value; exit 2 with no register, never a pass
-harbor access stored        # every item bin/secret holds: registered, grandfathered or UNREGISTERED (exit 1)
+harbor access stored        # every item bin/secret holds: registered, grandfathered, REVOKED or UNREGISTERED (exit 1)
+harbor access status [-v] [id...]          # stored, alive, in date: what is wrong and since when (exit 1 on a red)
+harbor access rotate <id> [--value-stdin] [--locked]  # a new value, kept only if the entry's check passes on it
+harbor access revoke <id>                  # refuse the ref from now on, then remove the stored value
 ```
+
+`add` also takes `--check CMD --expect T`, `--expires DATE`, `--renew T` and `--revoke T`, each one line and scanned
+for a credential shape like every other field.
+
+## Lifecycle: one controller for store, renew and retire
+
+The register is the one place a credential's life is managed, so renewing a key is one command and nothing is
+hand-edited:
+
+- **`status`** reads; it never writes the register. Per entry, the worst state wins. Red, which exits 1, covers four
+  cases: a ref missing from the store, a `check` that fails or times out (30s, `PROBE_TIMEOUT`) or is refused as a
+  write, an `expires` in the past, and a revoked ref still stored. A warning is an `expires` within 14 days. A gap,
+  which does not exit 1, covers three cases: a stored ref with no `check` (`unprobed`), a token or app the seam does
+  not hold (`unmanaged`), and a stored ref with no `renew`/`revoke` recipe. By default it prints the reds and
+  warnings, each with the day it was first seen, then one tally line that counts every state. `-v` prints every
+  entry. The first-seen days live in a state file outside git (`$XDG_STATE_HOME/harbor/access-status.tsv`), so a
+  standing red reads as old rather than new. The probe's output is never printed, because a failing CLI can echo the
+  credential it was handed. Exit 2 when the store or the register cannot be read: that is never a pass.
+- **`rotate <id>`** needs the entry's `check`/`expect`. `bin/secret rotate` holds the old value for the length of one
+  probe, stores the new one, and runs the check with no stdin and its output discarded. On a pass it keeps the new
+  value, dates `rotated:` and `verified:` today, and prints the entry's `revoke` recipe: retiring the OLD value at its
+  source is the operator's last step, and outside this box. On a fail or an interrupt it puts the old value back
+  through `store()`, proven by sha256, and exits 1. A put-back that itself fails is exit 4 and says so. With no
+  readable old value, the new one is removed instead.
+- **`revoke <id>`** writes `revoked:` first and removes the stored value second. A failure between the two leaves a
+  refused ref, never a live one. `has` returns 4 for a ref any revoked entry names, before the legacy list is read,
+  so a grandfathered ref cannot come back through it. `rotate` refuses a revoked entry. A ref is re-issued by deleting
+  its `revoked:` line, which is a deliberate edit, or by a new entry.
+- **One writer at a time.** `add` and `revoke` take `<register>.lock` (an atomic `mkdir`) and fail after 30s with the
+  `rmdir` that clears a lock left by a killed writer; they never break it silently. `rotate` takes it only to date the
+  entry after the value is kept, so a busy register costs it the dates, with a warning, never the rotation. `rotate` and
+  `revoke` refuse a register that does not parse cleanly, and `revoke` removes the value only once `has` says 4.
+- **`--locked`** (`rotate`) stores the new value with `-T ""`, as `secret put --locked` does. Without it the value is
+  stored unlocked, so a locked item must be rotated with the flag.
+- **Linux:** `secret list` fails loudly on an unreadable macOS keychain. On libsecret, an unreachable Secret Service
+  still lists empty. That case is not yet measured, and until it is, `status` reads it as every ref MISSING.
+- **Not covered:** a credential with no entry at all. `lint.credential-reads` counts those, and `status` cannot see
+  them. Neither can a `check` that passes on a CLI's own cached login while the stored item is bad: write the `check`
+  so it reads through the entry's ref.
 
 `stored` is the store side of the gate. An item the store holds and no entry or legacy line names is a value
 `bin/secret` refuses to every consumer, so whatever reads it is broken while the item still looks present (harbor#1205:
