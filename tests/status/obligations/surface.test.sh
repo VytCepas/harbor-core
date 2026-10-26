@@ -187,7 +187,7 @@ case_findings() { _f="$1"; scenario; ob "$BIN" fold >/dev/null
   verdict
 }
 case_lint() { _l="$1"; _lr="$W/lintroot"; rm -rf "$_lr"; mkdir -p "$_lr/CONTRACTS" "$_lr/bin" "$_lr/launchd"
-  cp "$T_ROOT/CONTRACTS/finding.md" "$_lr/CONTRACTS/"; cp "$T_ROOT/CHECKS.md" "$_lr/"; : > "$_lr/bin/skill-book.sh"; : > "$_lr/bin/memory-route.sh"
+  cp "$T_ROOT/CONTRACTS/finding.md" "$_lr/CONTRACTS/"; cp "$T_ROOT/CHECKS.md" "$_lr/"; : > "$_lr/bin/skill-catalog.sh"; : > "$_lr/bin/memory-route.sh"
   awk '/^<!-- lanes:end -->$/ { print "| PROPOSE | `check/status.obligations` | `*` | `-` | #1050 |" } { print }' "$_lr/CONTRACTS/finding.md" > "$_lr/f.md" && mv "$_lr/f.md" "$_lr/CONTRACTS/finding.md"
   _o="$(HARBOR_ROOT="$_lr" sh "$_l" --only FL1 2>&1)"
   chk "FL1 joins a lanes key check/status.obligations to its CHECKS.md row" no "$(has "$_o" 'names no CHECKS.md row')"

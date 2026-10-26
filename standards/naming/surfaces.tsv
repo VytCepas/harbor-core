@@ -58,6 +58,7 @@ label	<axis>:<value>	-	no	family:admission	-	-	generated as the label set (`--ge
 issue-title	<family>: <outcome>	required	no	admission: stop exit-127	-	-	D-30
 stamp	[<register>:<id>]	-	no	[check:audit.triage]	-	-	D-20
 mcp-tool	mcp__<object>__<name>	-	check	mcp__harbor_chrome__tab_new	name.mcp-tool	-	an MCP tool as Claude Code names it, mcp__<server>__<tool>: both snake, since the harness joins them with __ (harbor#1301)
+release-tag	v<major>.<minor>.<patch>, SemVer 2.0	-	check	v1.2.3	-	-	a release tag, and the title of its release; read by --check only, never by a tree scan. The grammar is a regex in bin/lint-name.sh because a version is digits and dots, which no slot spells (harbor#957)
 secret	<system>-<service>-<identity>-<purpose>	-	no	harbor-github-vytcepas-pr-read	-	-	never a value, client data or email (D-36)
 cloud-resource	<system>-<family>-<object>[-<env>]	-	no	frobapp-api-prod	-	-	a warehouse keeps one dialect per repo, dialects.tsv (D-33)
 test	tests/<family>/<subject>/<aspect>.test.<ext>	required	tree	tests/admission/bash/destroy.test.sh	name.test-path	-	Python keeps test_<aspect>.py (D-14)

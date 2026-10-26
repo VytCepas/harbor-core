@@ -41,3 +41,4 @@ check	controls.tsv	type=check	checks-table:CHECKS.md	a scheduled check; its outp
 injection	controls.tsv	type=injection	inject-ids:inject.d,.claude/inject.d	a rule pack the injection engine adds to a session
 ci	controls.tsv	type=ci	required-checks:CONTRACTS/required-checks.tsv=VytCepas/harbor	a required CI check on harbor's main
 vale	controls.tsv	type=vale	-	a prose rule of the Vale config generated from aliases.tsv
+label-axis	label-axes.tsv	-	-	an issue label as <axis>:<value> with the legacy label it replaces; renders issue-taxonomy.tsv (harbor#978)
