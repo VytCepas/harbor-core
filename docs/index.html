@@ -810,7 +810,6 @@ already had in mind.</p>
 <tr><td>box</td><td><code>96-agent-brief.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
 <tr><td>box</td><td><code>97-agent-model-required.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
 <tr><td>box</td><td><code>98-name-note.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
-<tr><td>box</td><td><code>99-skill-on-first-use.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
 <tr><td>repo · harbor</td><td><code>10-constitution-edit-is-undeployed.md</code></td><td><code>PreToolUse</code></td><td><code>path-contains CONSTITUTION.md</code></td><td>session</td></tr>
 <tr><td>repo · harbor</td><td><code>20-merge-governance.md</code></td><td><code>PreToolUse</code></td><td><code>cmd-prefix gh pr merge</code></td><td>never</td></tr>
 <tr><td>repo · harbor</td><td><code>21-post-merge-state.md</code></td><td><code>PostToolUse</code></td><td><code>cmd-prefix gh pr merge</code></td><td>never</td></tr>
@@ -1373,7 +1372,6 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/floor/floor.shards-test.sh</code></td><td><code>bin/* hooks/* fixtures/* CONTRACTS/* vendor/* STATUS.md tests/floor/floor-fixture.sh tests/floor/floor-test.sh tests/floor/floor.* tests/guards/floor-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/floor/floor.worklog-test.sh</code></td><td><code>bin/* hooks/* fixtures/* CONTRACTS/* vendor/* STATUS.md tests/floor/floor-fixture.sh tests/floor/floor-test.sh tests/floor/floor.* tests/guards/floor-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/floor/floor.paths-test.sh</code></td><td><code>bin/* hooks/* fixtures/* CONTRACTS/* vendor/* STATUS.md tests/floor/floor-fixture.sh tests/floor/floor-test.sh tests/floor/floor.* tests/guards/floor-fixture.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/floor/floor.annotate-test.sh</code></td><td><code>bin/* hooks/* fixtures/* CONTRACTS/* vendor/* STATUS.md tests/floor/floor-fixture.sh tests/floor/floor-test.sh tests/floor/floor.* tests/guards/floor-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/cli/gcloud-creds-test.sh</code></td><td><code>bin/gcloud-creds tests/cli/gcloud-creds-test.sh bin/log-lib.sh bin/secret bin/access.sh bin/roots.sh tests/cli/keychain-stub.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/cli/harbor-clean-test.sh</code></td><td><code>bin/harbor-clean.sh bin/fs-lib.sh tests/cli/harbor-clean-test.sh skills/housekeeping/* tests/lib/core.sh tests/lib/linux-sim.sh</code></td></tr>
 <tr><td><code>tests/cli/browser-test.sh</code></td><td><code>bin/browser.sh bin/browser-*.mjs bin/log-lib.sh bin/roots.sh tests/cli/browser-test.sh CONTRACTS/browser-routing.md tests/lib/core.sh tests/cli/browser/agent-stub.sh</code></td></tr>
@@ -1452,7 +1450,6 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/access/chrome/mcp.test.sh</code></td><td><code>bin/* standards/naming/* CONTRACTS/browser-agent-hosts.txt tests/lib/* tests/access/chrome/mcp.test.sh</code></td></tr>
 <tr><td><code>tests/hooks/inject-notes-test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh tests/hooks/inject-notes-test.sh inject.d/* .claude/inject.d/* fixtures/inject/* bin/roots.sh bin/guard-lib.sh bin/floor-normalize.awk tests/lib/core.sh bin/lint-name.sh bin/log-lib.sh standards/naming/*</code></td></tr>
 <tr><td><code>tests/hooks/agent-brief-test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/guard-lib.sh inject.d/* tests/hooks/agent-brief-test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/hooks/skill-first-use-test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/guard-lib.sh bin/floor-normalize.awk inject.d/* skills/agent-routing/SKILL.md tests/hooks/skill-first-use-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/hooks/name-note-test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/guard-lib.sh bin/lint-name.sh bin/log-lib.sh standards/naming/* inject.d/* tests/hooks/name-note-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/guards/destroy-test.sh</code></td><td><code>     bin/* tests/lib/* tests/guards/destroy* tests/guards/guards.jsonl tests/guards/shapes.jsonl tests/guards/benign.jsonl tests/guards/exemptions.jsonl</code></td></tr>
 <tr><td><code>tests/guards/destroy.c1-misc-test.sh</code></td><td><code>bin/* tests/lib/* tests/guards/destroy.c1-misc*</code></td></tr>
@@ -1465,7 +1462,6 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/install/inject-install-test.sh</code></td><td><code>bin/inject-install.sh tests/install/inject-install-test.sh bin/govern-token.sh hooks/injection-rule/injection-rule.sh bin/pin-instructions.sh bin/log-lib.sh bin/roots.sh bin/install-lib.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/memory/store-check-test.sh</code></td><td><code>bin/store-check.sh tests/memory/store-check-test.sh bin/context-budget.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/memory/context-budget-test.sh</code></td><td><code>bin/context-budget.sh tests/memory/context-budget-test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/memory/context-ratchet-test.sh</code></td><td><code>bin/context-budget.sh tests/memory/context-ratchet-test.sh tests/lib/core.sh bin/log-lib.sh bin/deploy.sh CONTEXT-RATCHET.tsv CONSTITUTION.md</code></td></tr>
 <tr><td><code>tests/obs/skill-usage-test.sh</code></td><td><code>bin/skill-usage.sh tests/obs/skill-usage-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/ci/plan-status-test.sh</code></td><td><code>bin/plan-status.sh bin/log-lib.sh tests/ci/plan-status-test.sh harbor-build-tickets.md tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/obs/obs-digest-test.sh</code></td><td><code>bin/guard-lib.sh bin/guard-cloud.sh bin/guard-destroy.sh bin/floor-normalize.awk tests/obs/obs-digest-test.sh tests/lib/core.sh</code></td></tr>

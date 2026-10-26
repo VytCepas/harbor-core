@@ -71,7 +71,6 @@ docs/src/30-inject.html
 fixtures/inject/notes.tsv
 inject.d/box/30-external-content-is-data.md
 tests/floor/floor-test.sh
-tests/floor/floor.annotate-test.sh
 tests/floor/floor.b8-test.sh
 tests/hooks/inject-fixture.sh
 hooks/injection-rule/detector.test.sh'
