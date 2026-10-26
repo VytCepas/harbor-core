@@ -77,6 +77,7 @@ tests/floor/floor.status-test.sh bin/* hooks/* fixtures/* CONTRACTS/* vendor/* S
 tests/floor/floor.shards-test.sh bin/* hooks/* fixtures/* CONTRACTS/* vendor/* STATUS.md tests/floor/floor-fixture.sh tests/floor/floor-test.sh tests/floor/floor.* tests/guards/floor-fixture.sh tests/lib/core.sh
 tests/floor/floor.worklog-test.sh bin/* hooks/* fixtures/* CONTRACTS/* vendor/* STATUS.md tests/floor/floor-fixture.sh tests/floor/floor-test.sh tests/floor/floor.* tests/guards/floor-fixture.sh tests/lib/core.sh
 tests/floor/floor.paths-test.sh bin/* hooks/* fixtures/* CONTRACTS/* vendor/* STATUS.md tests/floor/floor-fixture.sh tests/floor/floor-test.sh tests/floor/floor.* tests/guards/floor-fixture.sh tests/lib/core.sh
+tests/floor/floor.annotate-test.sh bin/* hooks/* fixtures/* CONTRACTS/* vendor/* STATUS.md tests/floor/floor-fixture.sh tests/floor/floor-test.sh tests/floor/floor.* tests/guards/floor-fixture.sh tests/lib/core.sh
 tests/memory/isa-index-test.sh bin/isa-index.sh tests/memory/isa-index-test.sh bin/log-lib.sh tests/lib/core.sh
 tests/install/skills-collide-test.sh bin/skills-collide.sh tests/install/skills-collide-test.sh tests/lib/core.sh
 tests/ci/status-gen-test.sh bin/status-gen.sh bin/log-lib.sh tests/ci/status-gen-test.sh tests/lib/core.sh
@@ -128,6 +129,7 @@ hooks/injection-rule/scope.test.sh bin/* inject.d/* .claude/inject.d/* CONTRACTS
 hooks/injection-rule/compaction-digest.test.sh bin/compaction-digest.sh bin/guard-lib.sh inject.d/* tests/hooks/inject-fixture.sh tests/lib/core.sh hooks/injection-rule/compaction-digest.test.sh
 tests/hooks/inject-notes-test.sh hooks/injection-rule/injection-rule.sh tests/hooks/inject-notes-test.sh inject.d/* .claude/inject.d/* fixtures/inject/* bin/roots.sh bin/guard-lib.sh bin/floor-normalize.awk tests/lib/core.sh bin/lint-name.sh bin/log-lib.sh standards/naming/*
 tests/hooks/agent-brief-test.sh hooks/injection-rule/injection-rule.sh bin/guard-lib.sh inject.d/* tests/hooks/agent-brief-test.sh tests/lib/core.sh
+tests/hooks/skill-first-use-test.sh hooks/injection-rule/injection-rule.sh bin/guard-lib.sh bin/floor-normalize.awk inject.d/* skills/agent-routing/SKILL.md tests/hooks/skill-first-use-test.sh tests/lib/core.sh
 tests/hooks/name-note-test.sh hooks/injection-rule/injection-rule.sh bin/guard-lib.sh bin/lint-name.sh bin/log-lib.sh standards/naming/* inject.d/* tests/hooks/name-note-test.sh tests/lib/core.sh
 hooks/ticket-note/ticket-note.test.sh hooks/ticket-note/ticket-note.sh hooks/ticket-note/ticket-note.test.sh tests/lib/core.sh
 hooks/reply-shape/reply-shape.test.sh hooks/reply-shape/reply-shape.sh hooks/reply-shape/reply-shape.test.sh tests/lib/core.sh
@@ -177,6 +179,7 @@ tests/ci/merged-check-test.sh bin/merged-check.sh bin/log-lib.sh tests/ci/merged
 tests/install/inject-install-test.sh bin/inject-install.sh tests/install/inject-install-test.sh bin/govern-token.sh hooks/injection-rule/injection-rule.sh bin/pin-instructions.sh bin/log-lib.sh bin/roots.sh bin/install-lib.sh tests/lib/core.sh
 tests/memory/store-check-test.sh bin/store-check.sh tests/memory/store-check-test.sh bin/context-budget.sh tests/lib/core.sh
 tests/memory/context-budget-test.sh bin/context-budget.sh tests/memory/context-budget-test.sh tests/lib/core.sh
+tests/memory/context-ratchet-test.sh bin/context-budget.sh tests/memory/context-ratchet-test.sh tests/lib/core.sh bin/log-lib.sh bin/deploy.sh CONTEXT-RATCHET.tsv CONSTITUTION.md
 tests/obs/skill-usage-test.sh bin/skill-usage.sh tests/obs/skill-usage-test.sh tests/lib/core.sh
 tests/obs/skill-fire-test.sh bin/skill-fire.sh tests/obs/skill-fire-test.sh tests/lib/core.sh bin/log-lib.sh
 tests/ci/plan-status-test.sh bin/plan-status.sh bin/log-lib.sh tests/ci/plan-status-test.sh harbor-build-tickets.md tests/lib/core.sh

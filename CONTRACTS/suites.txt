@@ -46,6 +46,7 @@ tests/floor/floor.status-test.sh
 tests/floor/floor.shards-test.sh
 tests/floor/floor.worklog-test.sh
 tests/floor/floor.paths-test.sh
+tests/floor/floor.annotate-test.sh
 tests/cli/gcloud-creds-test.sh
 tests/cli/harbor-clean-test.sh
 tests/cli/browser-test.sh
@@ -124,6 +125,7 @@ tests/admission/confinement/covered.test.sh
 tests/access/chrome/mcp.test.sh
 tests/hooks/inject-notes-test.sh
 tests/hooks/agent-brief-test.sh
+tests/hooks/skill-first-use-test.sh
 tests/hooks/name-note-test.sh
 tests/guards/destroy-test.sh
 tests/guards/destroy.c1-misc-test.sh
@@ -136,6 +138,7 @@ tests/ci/merged-check-test.sh
 tests/install/inject-install-test.sh
 tests/memory/store-check-test.sh
 tests/memory/context-budget-test.sh
+tests/memory/context-ratchet-test.sh
 tests/obs/skill-usage-test.sh
 tests/ci/plan-status-test.sh
 tests/obs/obs-digest-test.sh
