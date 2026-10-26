@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# inject-hook.sh (harbor#173 · A1) — the injector. One engine, many rule packs.
+# injection-rule.sh (harbor#173 · A1; renamed from inject-hook.sh, harbor#1272) — the injector. One engine, many rule packs.
 #
 #   echo '<hook json>' | sh hooks/injection-rule/injection-rule.sh        read the event from stdin
 #   sh hooks/injection-rule/injection-rule.sh --list                      what packs exist, and where
@@ -99,14 +99,14 @@ pack_dirs() {
   return 0
 }
 
-# Collation is pinned for the same reason skill-book.sh pins it: glob order is
+# Collation is pinned for the same reason skill-catalog.sh pins it: glob order is
 # LC_COLLATE-dependent, and two boxes ordering the same packs differently would
 # emit notes in a different order and make any diff-based check flap.
 LC_ALL=C
 export LC_ALL
 
 # ── frontmatter ─────────────────────────────────────────────────────────────
-# THE FRONTMATTER ONLY, never the whole file. skill-book.sh records the failure
+# THE FRONTMATTER ONLY, never the whole file. skill-catalog.sh records the failure
 # this avoids: scanning the body misfiled any skill whose prose mentioned the key
 # at column 0 — and these packs are documents ABOUT matching, so a pack that
 # discussed `event:` in its note would classify itself.
@@ -958,7 +958,9 @@ WHEN
 
     explain "FIRE $_id"
     log_rule advise "$_id"
-    NOTES="$NOTES$_note "
+    # Each note names the rule that raised it, so an alert reaches its owner and off-switch in one
+    # lookup (harbor#957): `<id>` is the front-matter id, which controls.tsv maps in its `emitted` column.
+    NOTES="$NOTES[context:$_id] $_note "
     if [ "$_once" != never ]; then remember "$_key"; fi
 
     # `mode: notify` also speaks to the HUMAN. systemMessage sidesteps the trust

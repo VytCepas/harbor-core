@@ -174,4 +174,23 @@ _rp_red event.kind-registered "event.x listens for x.done, which nothing on this
 printf 'event.x\t"kind":"(x\\.gone)"\t60\n' > "$RP/CONTRACTS/event-rules.tsv"
 _rp_red event.kind-registered "event.x names x.gone, which CONTRACTS/event-kinds.tsv does not register" "a preset on an unregistered kind"
 
+t_section "skill.description-shape and skill.cited-path-exists: one description shape, no dead path (harbor#1010)"
+_sk() { mkdir -p "$RP/skills/$1" "$RP/bin"; printf -- '---\nname: %s\ndescription: "%s"\n%s---\n' "$1" "$2" "${3:-}" > "$RP/skills/$1/SKILL.md"; }
+_rp_fresh; _rp_sh "$RP/bin/real.sh"
+_sk ok 'Does a thing with `bin/real.sh` and `~/box/only` and `a/*`. USE WHEN x. NOT FOR y (z).' 'disable-model-invocation: true
+'
+_rp_green skill.description-shape "a skill with USE WHEN then NOT FOR and one visibility key"
+_rp_green skill.cited-path-exists "a description citing a real repo path and a box path"
+_sk nofor 'Does a thing. USE WHEN x.'
+_rp_red skill.description-shape "skills/nofor description lacks a USE WHEN or a NOT FOR clause" "a description with no NOT FOR"
+_sk nofor 'Does a thing. NOT FOR y. USE WHEN x.'
+_rp_red skill.description-shape "skills/nofor puts NOT FOR before USE WHEN" "a NOT FOR placed before USE WHEN"
+_sk nofor 'Does a thing. USE WHEN x. NOT FOR y.' 'disable-model-invocation: true
+user-invocable: false
+'
+_rp_red skill.description-shape "skills/nofor declares 2 visibility keys" "two visibility keys on one skill"
+_sk nofor 'Does a thing. USE WHEN x. NOT FOR y.'
+_sk dead 'Runs `bin/gone.sh` for you. USE WHEN x. NOT FOR y.'
+_rp_red skill.cited-path-exists "skills/dead cites bin/gone.sh, which is not in the tree" "a description citing a script that does not exist"
+
 t_done

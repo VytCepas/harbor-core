@@ -1,5 +1,6 @@
 ---
 id: browser-route-reminder
+description: Logged-in browser work goes through harbor chrome first
 event: PreToolUse
 tool: mcp__claude-in-chrome__.*
 when: always

@@ -91,7 +91,7 @@
 16	tests/hooks/failure-capture.fc5-test.sh
 16	tests/install/inject-install-test.sh
 16	tests/lint/leaks/ratchet.test.sh
-16	tests/skills/skill-book-test.sh
+16	tests/skills/skill-catalog-test.sh
 15	tests/checks/platform-calls-test.sh
 15	tests/event/producer/tools.test.sh
 15	tests/memory/memory-test.sh
@@ -272,7 +272,7 @@
 1	tests/obs/skill-fire-test.sh
 1	tests/obs/skill-fire/output-contract.test.sh
 1	tests/obs/skill-usage-test.sh
-1	tests/scope/pack/skill-book.test.sh
+1	tests/scope/pack/skill-catalog.test.sh
 1	tests/session/subagent/check.test.sh
 1	tests/skills/access-ledger/register.test.sh
 1	tests/standard/catalog/census.test.sh
@@ -321,3 +321,6 @@
 0	tests/scope/access/resolver.test.sh
 0	tests/scope/keys/read.test.sh
 0	tests/session/agents/registry.test.sh
+0	tests/lint/comment/added.test.sh
+0	tests/lint/name/issue-taxonomy.test.sh
+0	tests/doc/vale/vale.test.sh

@@ -49,3 +49,4 @@ rename-0020	tests/hooks/inject-hook.detector-test.sh	hooks/injection-rule/detect
 rename-0021	tests/hooks/inject-hook.engine-test.sh	hooks/injection-rule/engine.test.sh	path	P1	-	#1272 pilot: an aspect test in the engine's folder
 rename-0022	tests/hooks/inject-hook.packs-test.sh	hooks/injection-rule/packs.test.sh	path	P1	-	#1272 pilot: an aspect test in the engine's folder
 rename-0023	tests/hooks/inject-hook.scope-test.sh	hooks/injection-rule/scope.test.sh	path	P1	-	#1272 pilot: an aspect test in the engine's folder
+rename-0024	skill:skill-book	skill-catalog	skill	W2	2026-12-31	harbor#1010: the generated index is the skill catalog; skills/skill-book/ and bin/skill-book.sh stay as aliases until then

@@ -1,5 +1,6 @@
 ---
 id: confinement-refused
+description: Names the treatment for each kind of sandbox refusal at the moment it happens
 event: PostToolUse
 tool: Bash
 when: always

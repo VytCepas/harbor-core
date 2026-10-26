@@ -35,11 +35,11 @@ t_has "pack.sh ran its own dry run, on the live dir" "$(cat "$LOGF")" "pack.sh i
 t_has "...and its verdict is deploy's" "$(out)" "  ok: pack.sh: its dry run passes (1 pack(s) in harbor.toml)"
 t_eq "nothing was applied" "" "$(applied)"
 
-t_section "apply: packs install after inject (which rebuilds inject.d) and before the skill book"
+t_section "apply: packs install after inject (which rebuilds inject.d) and before the skill catalog"
 packcase apply; run 'y\n' --apply --live
 t_eq "the apply exits 0" 0 "$RC"
 t_has "pack.sh installed with --apply" "$(applied)" "pack.sh install,"
-t_exit "inject-install runs, then pack.sh, then skill-book.sh" 0 sh -c "echo '$(order)' | grep -q 'inject-install.sh pack.sh skill-book.sh'"
+t_exit "inject-install runs, then pack.sh, then skill-catalog.sh" 0 sh -c "echo '$(order)' | grep -q 'inject-install.sh pack.sh skill-catalog.sh'"
 t_eq "every pack.sh run carried HARBOR_DEPLOY=1" no "$(grep -q pack.sh "$T/calls.nodeploy" 2>/dev/null && echo yes || echo no)"
 
 t_section "no packs key: no packs, with a note, and pack.sh is never run"
@@ -85,7 +85,7 @@ run '' --live
 t_eq "with the pack's manifest the same file passes" 0 "$RC"
 t_has "...and inject.d is judged clean" "$(out)" "inject.d: every installed pack is one the repo holds or once held"
 
-t_section "uninstall: every installed pack goes with the floor, and the skill book is regenerated without them"
+t_section "uninstall: every installed pack goes with the floor, and the skill catalog is regenerated without them"
 packcase unin; printf '#!/bin/sh\necho "  ok: stub floor-uninstall"\n' > "$REPO/bin/floor-uninstall.sh"; chmod +x "$REPO/bin/floor-uninstall.sh"
 git -C "$REPO" add bin/floor-uninstall.sh; commit_push stubun
 mkdir -p "$C/.harbor-packs" "$C/checks.d" "$C/skill-packs/topology"; printf '# repo\tdemo\nF\tchecks.d/demo.md\nF\tskill-packs/topology/demo.md\n' > "$C/.harbor-packs/demo.tsv"; printf 'rows\n' > "$C/checks.d/demo.md"
@@ -102,9 +102,9 @@ t_has "the snapshot taken first holds the pack's manifest and fragment" "$(tar -
 t_has "...fragment included" "$(tar -tzf "$SNAPD/config.tgz" 2>/dev/null | tr '\n' ' ')" "checks.d/demo.md"
 t_has "...and the pack file it put under skill-packs/, which a restore must put back" "$(tar -tzf "$SNAPD/config.tgz" 2>/dev/null | tr '\n' ' ')" "skill-packs/topology/demo.md"
 t_has "pack.sh removed the pack" "$(cat "$LOGF")" "pack.sh remove demo --apply --live"
-t_exit "...then the installed book was written from what is left" 0 sh -c "echo '$(order)' | grep -q 'pack.sh skill-book.sh'"
-t_has "...by skill-book.sh install on the live dir" "$(grep '^skill-book.sh' "$LOGF")" "skill-book.sh install --apply --live"
-t_eq "...and never reinstalled from the tracked file" 0 "$(grep -c 'skills-install.sh skill-book' "$LOGF")"
+t_exit "...then the installed book was written from what is left" 0 sh -c "echo '$(order)' | grep -q 'pack.sh skill-catalog.sh'"
+t_has "...by skill-catalog.sh install on the live dir" "$(grep '^skill-catalog.sh' "$LOGF")" "skill-catalog.sh install --apply --live"
+t_eq "...and never reinstalled from the tracked file" 0 "$(grep -c 'skills-install.sh skill-catalog' "$LOGF")"
 t_has "verify finds no pack left" "$(out)" "  ok: no pack is left: no manifest in .harbor-packs and no fragment in checks.d"
 t_eq "no manifest remains" no "$([ -e "$C/.harbor-packs/demo.tsv" ] && echo yes || echo no)"
 t_eq "no fragment remains" no "$([ -e "$C/checks.d/demo.md" ] && echo yes || echo no)"

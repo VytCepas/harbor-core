@@ -648,8 +648,10 @@ if [ -d "$CFG/.helm-peers" ]; then
   if [ -n "$IN" ] && command -v jq >/dev/null 2>&1; then
     _mysid="$(printf '%s' "$IN" | jq -r '.session_id // empty' 2>/dev/null || true)"
   fi
-  _mytree="$(git -C "$DIR" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$DIR")"
-  for _pf in "$CFG"/.helm-peers/*; do
+  # Only a git work tree can be shared: two sessions launched in a plain folder (~/port) each work in their own
+  # worktree, and counting them lit SHARED TREE red on 2026-10-26 with nothing at risk.
+  _mytree="$(git -C "$DIR" rev-parse --show-toplevel 2>/dev/null || :)"
+  [ -n "$_mytree" ] && for _pf in "$CFG"/.helm-peers/*; do
     [ -f "$_pf" ] || continue
     case "${_pf##*/}" in "$_mysid") continue ;; esac
     _ptree=""; _ppid=""
