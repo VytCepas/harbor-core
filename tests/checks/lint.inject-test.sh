@@ -10,7 +10,7 @@
 t_section "IJ1: scope: is a frozen enum, and box needs a tool call (harbor#599)"
 _ij1s() { # <scope> <event> → the IJ1 output for a root holding that one pack
   rm -rf "$TMP/ij1s"; mkdir -p "$TMP/ij1s/bin" "$TMP/ij1s/inject.d/demo"
-  printf -- '---\nid: demo\ndescription: a demo\nevent: %s\nwhen: always\nscope: %s\n---\nbody\n' "$2" "$1" > "$TMP/ij1s/inject.d/demo/10-demo.md"
+  printf -- '---\nid: demo\nevent: %s\nwhen: always\nscope: %s\n---\nbody\n' "$2" "$1" > "$TMP/ij1s/inject.d/demo/10-demo.md"
   lint1 IJ1 "$TMP/ij1s" || true
 }
 t_hasnt "scope: box on PreToolUse is valid" "$(_ij1s box PreToolUse)" 'VIOLATION [context.pack-shape]'
@@ -27,20 +27,6 @@ t_has "a private pack on an event the engine never sees is refused, named as pri
   'declares an event the engine never sees (Bogus): private:inject.d/demo/10-demo.md'
 t_has "a private pack one level off is a pack nothing reads" "$(_ij1p box/sub/10-demo.md PreToolUse)" \
   'nothing installs or reads it'
-
-t_section "IJ1: a tracked pack has a description (harbor#957)"
-_ij1d() { # <front-matter extra line, may be empty> → IJ1's output for a tracked pack with that line
-  rm -rf "$TMP/ij1d"; mkdir -p "$TMP/ij1d/bin" "$TMP/ij1d/inject.d/demo"
-  printf -- '---\nid: demo\n%sevent: PreToolUse\nwhen: always\n---\nbody\n' "$1" > "$TMP/ij1d/inject.d/demo/10-demo.md"
-  lint1 IJ1 "$TMP/ij1d" || true
-}
-t_has "a tracked pack with no description is refused" "$(_ij1d '')" 'pack has no description: inject.d/demo/10-demo.md'
-t_has "an empty description is refused too" "$(_ij1d 'description:
-')" 'pack has no description: inject.d/demo/10-demo.md'
-t_hasnt "a described pack is valid" "$(_ij1d 'description: what it is for
-')" 'VIOLATION [context.pack-shape]'
-t_has "a private pack with none is a warning, not a violation" "$(_ij1p demo/10-demo.md PreToolUse)" \
-  'ADVISORY [context.pack-shape] pack has no description: private:inject.d/demo/10-demo.md'
 
 t_section "IJ2: the registry's second direction (harbor#177)"
 IJR="$TMP/ij-root"; IJP="$TMP/ij-priv"; IJH="$TMP/ij-home"

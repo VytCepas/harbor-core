@@ -149,7 +149,7 @@ the tool that forces it.**
    SemVer where adding is minor and removing an alias or changing the grammar is major (D-28), and its id column
    comes first. The six registers of D-61 are `terms.tsv` (with every closed set as a class), `kinds.tsv`,
    `surfaces.tsv`, `registers.tsv`, `controls.tsv`, and `aliases.tsv` with `exemptions.tsv`. `renames.tsv`,
-   `repo-kinds.tsv`, `dialects.tsv` and `label-axes.tsv` stay beside them and are not copied into the six. `registers.tsv` names every
+   `repo-kinds.tsv` and `dialects.tsv` stay beside them and are not copied into the six. `registers.tsv` names every
    file in the directory, those three included, and the lint reads exactly the files it names: a `*.tsv` with no
    row there is red (`name.registry-shape`).
 2. **Lint:** `bin/lint-name.sh`, one POSIX `sh` + `awk` file, so yard can vendor it into any repo with no
@@ -192,15 +192,6 @@ the tool that forces it.**
      self-test fails unless every rule goes red on every surface its `controls.tsv` row declares.
 6. **Generated from the registry** into untracked `build/` (D-40): glossary, naming guide, CLI tree (D-13), label
    set (D-30), Vale config and rule titles.
-   - `--gen issue-taxonomy` renders `label-axes.tsv` (every label as `<axis>:<value>`, the legacy label it replaces,
-     each axis's cardinality) into the connector's taxonomy format and a legacy-to-new map. Nothing is renamed on
-     GitHub by it: label writes are an operator's, and the connector reads `CONTRACTS/issue-taxonomy.tsv` until then.
-   - `sh bin/doc-vale.sh <file.md>` generates the Vale config and runs it. Without Vale it prints "verified NOTHING"
-     and exits 3, never 0.
-7. **Header and comment rules on added lines** (harbor#978): `bin/lint-comment.sh` judges only what a branch adds. A
-   new script opens `# <name> (<repo>#N) — <purpose>` on line 1, or line 2 under a shebang (`lint.file-header`), and
-   more than 3 added comment lines in a row are flagged outside a new file's header (`lint.comment-added`). Both
-   are `warn` rows of `controls.tsv`. It is not yet called from `bin/lint-conventions.sh` (harbor#957 holds that file).
 
 ## 12. Decisions
 

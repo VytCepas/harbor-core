@@ -61,7 +61,7 @@ done slightly worse*, forever, with nothing to notice.
 |---|---|
 | **A repo** | it has a row in the private layer's `inject.d/box/projects.tsv` (`bin/roots.sh --projects`; lint IJ3 walks the other way), a memory route (`bin/memory-route.sh --live --apply`, lint **IJ6**), and an `inject.d/<name>/` directory in the private layer if it has rules of its own (lint IJ2) |
 | **A skill** | its description carries `USE WHEN` **trigger phrases** (lint **T11**) — `repo-skills.sh` emits the triggers, not the prose, and a skill without them is installed, invisible and unreachable. Plus a row in `skills/README.md` (T10) |
-| **A hidden skill** (`disable-model-invocation: true`) | `skill-catalog` indexes it, and something names its **path** — a hidden skill cannot be invoked, but its `SKILL.md` can always be read |
+| **A hidden skill** (`disable-model-invocation: true`) | `skill-book` indexes it, and something names its **path** — a hidden skill cannot be invoked, but its `SKILL.md` can always be read |
 | **A client** | a `client.toml` if anything in the directory can write to a vendor API (`check-seams.sh` seam 5b). A directory holding only documents needs none, and demanding one would be the false positive §2.11 forbids |
 | **A check** | a row in [CHECKS.md](../CHECKS.md), a `[check:<id>]` stamp on every line, a caller that is not a test (lint **C8**), a suite in `CONTRACTS/suites.txt` (C3) with paths in `CONTRACTS/suite-paths.txt` (C5), and a row in `CONTRACTS/cli.md` (CLI1) |
 | **An inject pack** | a moment, a citation to where the rule already lives, and a falsifier — plus a fire row **and** a silent row in `fixtures/inject/notes.tsv` |

@@ -1,6 +1,5 @@
 ---
 id: browser-route-harbor-chrome
-description: Refuses Claude in Chrome on a host that harbor chrome already covers
 event: PreToolUse
 tool: mcp__claude-in-chrome__navigate|mcp__claude-in-chrome__browser_batch
 when: always

@@ -1,8 +1,0 @@
-# fixtures/naming/release-tag/fail (harbor#957) — release tags that MUST go red. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
-# COLUMNS  name <TAB> rule ids
-name	rule
-transition-check-v1	name.release-tag
-1.2.2	name.release-tag
-v1.2	name.release-tag
-v01.2.3	name.release-tag
-TagScope 0.1.0	name.release-tag

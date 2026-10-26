@@ -1,6 +1,5 @@
 ---
 id: constitution-edit-is-undeployed
-description: Editing CONSTITUTION.md changes no running session until it is deployed
 event: PreToolUse
 tool: Edit|Write
 when: path-contains CONSTITUTION.md

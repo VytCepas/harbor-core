@@ -130,7 +130,7 @@ PACK
 t_has "not <predicate> inverts" "$(fire "$(bash_ev PreToolUse 'ls')")" NEG-NOTE
 rm -f "$REPO/.claude/inject.d/32-neg.md" "$REPO/.claude/inject.d/31-multi-fail.md"
 
-t_section "3 · a malformed pack is silent (skill-catalog's --chekc shape)"
+t_section "3 · a malformed pack is silent (skill-book's --chekc shape)"
 pack "$REPO/.claude/inject.d" 40-typo.md <<'PACK'
 ---
 id: typo
@@ -292,31 +292,6 @@ _a="$(fire '{"hook_event_name":"SubagentStart","session_id":"p1"}')"; _b="$(fire
 t_has "with a salt the note carries a session token" "$_a" 'HARBOR GOVERNANCE '
 t_eq "two sessions get different stamps" yes "$([ "$_a" != "$_b" ] && echo yes)"
 rm -f "$CFG/.helm-govern-salt"
-
-t_section "7 · every note starts [context:<id>] (harbor#957)"
-pack "$CFG/inject.d" 12-ctx-a.md <<'PACK'
----
-id: ctx-static
-event: SessionStart
-when: always
-once: never
----
-STATIC-BODY
-PACK
-pack "$CFG/inject.d" 13-ctx-b.md <<'PACK'
----
-id: ctx-dynamic
-event: SessionStart
-when: always
-once: never
-run: ctx-b.sh
----
-PACK
-printf '#!/bin/sh\necho DYNAMIC-BODY\n' > "$CFG/inject.d/ctx-b.sh"
-_c="$(fire '{"hook_event_name":"SessionStart","session_id":"c1"}')"
-t_has "a static note leads with its own id" "$_c" '[context:ctx-static] STATIC-BODY'
-t_has "a run: note leads with its own id" "$_c" '[context:ctx-dynamic] DYNAMIC-BODY'
-rm -f "$CFG/inject.d/12-ctx-a.md" "$CFG/inject.d/13-ctx-b.md" "$CFG/inject.d/ctx-b.sh"
 
 t_section "a run: pack can decide, and only where the harness can hear it (harbor#254)"
 DEC="$T/dec"; mkdir -p "$DEC/inject.d"

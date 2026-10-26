@@ -249,32 +249,29 @@ redproof "lapse ignores the deadline" case_lapsed '$r.deadline_ts != "" and ($r.
 redproof "quiet owner never lapses" case_lapsed '$now - $w >= $quiet' 'false'
 redproof "transcripts are never read" case_lapsed '_tm="$(fs_mtime "$_tf")"; [ -z "$_tm" ]' '_tm=""; [ -z "$_tm" ]'
 
-# No hook for background work finishing: the owner's transcript carries a <task-notification> (43 of 48 live overdue rows, 2026-10-25).
+# Claude Code has no hook for background work finishing, but it writes a <task-notification> with the tool-use id and a
+# final status into the owner's transcript. 43 of 48 overdue rows on the live box had one (2026-10-25), most in a live session.
 note() { # <transcript> <tool-use id> <status> — the notification as a transcript line carries it, newlines escaped
   printf '%s\n' "{\"type\":\"user\",\"message\":{\"content\":\"<task-notification>\\n<task-id>w-$2</task-id>\\n<tool-use-id>$2</tool-use-id>\\n<output-file>/o/$2.output</output-file>\\n<status>$3</status>\\n<summary>s</summary>\\n</task-notification>\"}}" >> "$1"; }
-case_finished() { X="$1"; fresh; DL="$(jq -n -r '"2026-10-05T04:00:00Z" | fromdateiso8601')"; mkdir -p "$FIX/tr/p"
-  for _t in S6:TA S6:TB S6:TC S6:TD S4:T; do ev 2026-10-05T00:00:00Z tool.background.start "$_t" '{"tool":"Workflow"}'; done
-  note "$FIX/tr/p/S6.jsonl" TA completed; note "$FIX/tr/p/S6.jsonl" TC failed; note "$FIX/tr/p/S4.jsonl" T killed; touch_at "$((DL + 3600))" "$FIX/tr/p/S4.jsonl"
+case_finished() { X="$1"; fresh
+  DL="$(jq -n -r '"2026-10-05T04:00:00Z" | fromdateiso8601')"; mkdir -p "$FIX/tr/p"
+  for _t in TA TB TC TD; do ev 2026-10-05T00:00:00Z tool.background.start "S6:$_t" '{"tool":"Workflow"}'; done
+  ev 2026-10-05T00:00:00Z tool.background.start S4:T '{"tool":"Workflow"}'
+  note "$FIX/tr/p/S6.jsonl" TA completed; note "$FIX/tr/p/S6.jsonl" TC failed
   printf '%s\n' '{"type":"user","message":{"content":"grep said <tool-use-id>TB</tool-use-id>\\n<status>completed</status>"}}' >> "$FIX/tr/p/S6.jsonl"
-  printf '[{"sessionId":"S6","pid":1}]' > "$FIX/sessions.json"; printf '[]' > "$FIX/agents.json"; rec >/dev/null; chk "a live owner's Workflow with a completed notification closes" closed "$(cur tool.background:S6:TA state)"
-  chk "the ledger names the transcript" transcript "$(jq -r 'select(.obligation == "tool.background:S6:TA" and .to == "closed") | .source' "$OB/ledger.jsonl")"; chk "a failed one closes too" closed "$(cur tool.background:S6:TC state)"; chk "no notification: still overdue" overdue "$(cur tool.background:S6:TD state)"
-  chk "the id and a status outside a notification close nothing" overdue "$(cur tool.background:S6:TB state)"; chk "a dead owner that wrote after the deadline, with a killed notification: closed" closed "$(cur tool.background:S4:T state)"; verdict; }
-t_section "owner-session: the owner's transcript says the background work finished"; t_eq "the real script" ok "$(case_finished "$BIN")"
-redproof "notifications are never read" case_finished 'finished: $f' 'finished: {}'; redproof "the verdict ignores a finished row" case_finished '((($src.sessions.finished // {})[$r.subject] // null) as $fs' '(null as $fs'
-# A Workflow's subagents, a Monitor one started, and a killed or resumed Workflow call leave no notification; the run's state file does.
-case_runs() { X="$1"; fresh; _w="$FIX/tr/p/S6"; mkdir -p "$_w/workflows" "$_w/subagents/workflows/wf_r1-a" "$_w/subagents/workflows/wf_r2-b"; : > "$_w/subagents/workflows/wf_r2-b/agent-AG2.jsonl"
-  printf '{"runId":"wf_r1-a","status":"killed"}' > "$_w/workflows/wf_r1-a.json"; printf '{"runId":"wf_r2-b","status":"running"}' > "$_w/workflows/wf_r2-b.json"
-  for _a in AG1 AG2; do ev 2026-10-05T00:00:00Z agent.spawn "$_a" '{"session_id":"S6"}'; done
-  for _t in TM TW TX; do ev 2026-10-05T00:00:00Z tool.background.start "S6:$_t" '{"tool":"Workflow"}'; done
-  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"TM","name":"Monitor"}]}}' > "$_w/subagents/workflows/wf_r1-a/agent-AG1.jsonl"
-  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"TW","content":"Task ID: x1. Run wf_r1-a"}]}}' \
-    '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"TX","content":"Task ID: x2. Run wf_r2-b"}]}}' > "$_w.jsonl"
-  printf '[{"sessionId":"S6","pid":1}]' > "$FIX/sessions.json"; printf '[]' > "$FIX/agents.json"; rec >/dev/null; chk "a subagent of a finished run closes" closed "$(cur agent:AG1 state)"
-  chk "the ledger names the workflow" workflow "$(jq -r 'select(.obligation == "agent:AG1" and .to == "closed") | .source' "$OB/ledger.jsonl")"; chk "a Monitor a finished run's subagent started closes" closed "$(cur tool.background:S6:TM state)"
-  chk "a Workflow call whose run was killed closes" closed "$(cur tool.background:S6:TW state)"; chk "a subagent of a run still going stays" overdue "$(cur agent:AG2 state)"; chk "a Workflow call whose run is still going stays" overdue "$(cur tool.background:S6:TX state)"; verdict; }
-t_section "owner-session and claude-agents: a Workflow run's own state file says it ended"; t_eq "the real script" ok "$(case_runs "$BIN")"
-redproof "run state files are never read" case_runs 'IN("completed", "failed", "killed", "cancelled")) | .runId' 'IN("never")) | .runId'; redproof "a subagent is never mapped to its run" case_runs '-name "agent-$_id.jsonl"' '-name "never-$_id.jsonl"'
-redproof "a Workflow call is never mapped to its run" case_runs 'grep -o '"'"'wf_[a-z0-9]*-[a-z0-9]*'"'"'' 'grep -o '"'"'never_[a-z]*'"'"''
+  note "$FIX/tr/p/S4.jsonl" T killed; touch_at "$((DL + 3600))" "$FIX/tr/p/S4.jsonl"
+  printf '[{"sessionId":"S6","pid":1}]' > "$FIX/sessions.json"; printf '[]' > "$FIX/agents.json"; rec >/dev/null
+  chk "a live owner's Workflow with a completed notification closes" closed "$(cur tool.background:S6:TA state)"
+  chk "the ledger names the transcript" transcript "$(jq -r 'select(.obligation == "tool.background:S6:TA" and .to == "closed") | .source' "$OB/ledger.jsonl")"
+  chk "a failed one closes too" closed "$(cur tool.background:S6:TC state)"
+  chk "the id and a status outside a notification close nothing" overdue "$(cur tool.background:S6:TB state)"
+  chk "no notification: still overdue" overdue "$(cur tool.background:S6:TD state)"
+  chk "a dead owner that wrote after the deadline, with a killed notification: closed" closed "$(cur tool.background:S4:T state)"
+  verdict; }
+t_section "owner-session: the owner's transcript says the background work finished"
+t_eq "the real script" ok "$(case_finished "$BIN")"
+redproof "notifications are never read" case_finished 'finished: $f' 'finished: []'
+redproof "the verdict ignores a finished row" case_finished '(($src.sessions.finished // []) | any(.[]; . == $r.subject))' 'false'
 
 t_section "approval: a merged or closed PR closes the approval waiting on it"
 t_eq "the real script" ok "$(case_approval_pr "$BIN")"

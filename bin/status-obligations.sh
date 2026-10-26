@@ -48,8 +48,7 @@
 #   transcripts    not a source of its own: when a dead owner last wrote its transcript (HARBOR_STATUS_OBLIGATION_TRANSCRIPTS,
 #                  default ~/.claude/projects). A row that outlives its owner's stop (Workflow) is abandoned once its deadline has
 #                  passed, the owner is gone from both lists and no transcript line came after the deadline, or the owner has been silent for HARBOR_STATUS_OBLIGATION_QUIET seconds (86400). Live or dead, a row
-#                  closes (source transcript) when its owner's transcript, or a subagent's, carries the row's <task-notification>
-#                  with a final status, and (source workflow) when the Workflow run it belongs to has a final status.
+#                  closes (source transcript) when its owner's transcript carries the row's <task-notification> with a final status.
 #   sweep          the harbor-clean.sh --record rows: each RISK or DECIDE row is a `leftover` obligation owned by the
 #                  operator while the record names it, closed when the next record does not. $HOME is shown as ~.
 # A source that fails, times out, prints what is not a list, or is older than it may be (the sweep record, 36h)
@@ -493,15 +492,12 @@ def verdict($r; $k):
     (if age($r) >= $grace and dead($r.subject) then {to: "closed", source: "sessions"} else null end)
   elif $k.reconcile == "claude-agents" then
     agent_for($r.subject) as $a
-    | (($src.sessions.finished // {})[$r.subject] // null) as $fs
-    | if $fs != null then {to: "closed", source: $fs}
-      elif ($src["claude-agents"].ok // false) | not then null
+    | if ($src["claude-agents"].ok // false) | not then null
       elif $a != null then (if ($a.state // "") | terminal then {to: "closed", source: "claude-agents"} else null end)
       elif age($r) >= $grace and dead(sid_of($r.owner)) then {to: "abandoned", source: "owner-session"}
       else null end
   elif $k.reconcile == "owner-session" then
-    ((($src.sessions.finished // {})[$r.subject] // null) as $fs
-     | if $fs != null then {to: "closed", source: $fs}
+    (if (($src.sessions.finished // []) | any(.[]; . == $r.subject)) then {to: "closed", source: "transcript"}
      elif $k.on_stop == "abandon" and (($r.outlives | not) or lapsed($r)) and age($r) >= $grace and dead(sid_of($r.owner))
      then {to: "abandoned", source: "owner-session"} else null end)
   elif $k.reconcile == "gh-pr" then
@@ -628,50 +624,25 @@ read_transcripts() {
     | $cur[0] + {transcripts: from_entries}' "$T/tr.tsv" > "$T/src/sessions.new" && mv -f "$T/src/sessions.new" "$T/src/sessions.json"
 }
 
-# What an owner's own files say finished, into the sessions answer as finished: {"<row subject>": "<source>"}. Claude Code
-# has no hook for background work or a Workflow's subagents ending, but two records exist, for a live owner or a dead one:
-#   transcript  a <task-notification> with the tool-use id and a final status, in the owner's transcript or a subagent's.
-#               Only a whole notification counts: the same id and status quoted anywhere else do not.
-#   workflow    the run's own state file, <sid>/workflows/wf_<run>.json, once its status is final. It covers what ends with
-#               no notification: the run's subagents (agent rows), a Monitor one of them started, and a Workflow call that
-#               was killed or resumed under a new task. 7 of the 9 overdue rows on the live box were these (2026-10-26).
+# The background work an owner's transcript says finished, into the sessions answer as finished: ["<sid>:<tool-use id>"].
+# Claude Code has no hook for it, but it writes a <task-notification> carrying the tool-use id and a final status into the
+# owner's transcript, live or dead. Only a whole notification counts: the same id and status quoted anywhere else do not.
 read_finished() {
   [ -f "$T/src/sessions.json" ] || return 0
-  jq -r --slurpfile reg "$T/reg.json" '
-    ($reg[0] | map(select(.reconcile | split(",") | any(.[]; . == "owner-session" or . == "claude-agents")) | .kind)) as $kinds
-    | .obligations[] | select((.state | IN("open", "overdue")) and (.kind as $k | $kinds | any(.[]; . == $k)) and (.owner | startswith("session:")))
-    | "\(.owner[8:])\t\(.subject)"' "$CURRENT" > "$T/fin.rows"
+  live_rows owner-session > "$T/fin.rows"
   : > "$T/fin.ids"
-  for _sid in $(cut -f1 "$T/fin.rows" | sort -u); do
+  for _sid in $(sed -n 's/:.*//p' "$T/fin.rows" | sort -u); do
     case "$_sid" in ''|*[!A-Za-z0-9._-]*) continue ;; esac
     _tf="$(find "$TRANSCRIPTS" -maxdepth 2 -name "$_sid.jsonl" -type f 2>/dev/null | head -n 1)"
     [ -n "$_tf" ] || continue
-    _sd="${_tf%.jsonl}"
-    { cat "$_tf"; find "$_sd/subagents" -name '*.jsonl' -type f -exec cat {} + 2>/dev/null; } | awk -v sid="$_sid" '{ s = $0
+    awk -v sid="$_sid" '{ s = $0
       while (match(s, /<task-notification>(\\n|[ \t])*<task-id>[^<]*<\/task-id>(\\n|[ \t])*<tool-use-id>[A-Za-z0-9_]+<\/tool-use-id>(\\n|[ \t])*(<output-file>[^<]*<\/output-file>(\\n|[ \t])*)?<status>(completed|failed|killed|stopped)<\/status>/)) {
         m = substr(s, RSTART, RLENGTH); s = substr(s, RSTART + RLENGTH)
-        sub(/.*<tool-use-id>/, "", m); sub(/<\/tool-use-id>.*/, "", m); print sid ":" m "\ttranscript" } }' >> "$T/fin.ids" 2>/dev/null || :
-    : > "$T/fin.runs"
-    for _wf in "$_sd"/workflows/wf_*.json; do
-      [ -f "$_wf" ] || continue
-      jq -r 'select((.status // "") | IN("completed", "failed", "killed", "cancelled")) | .runId // empty' "$_wf" >> "$T/fin.runs" 2>/dev/null || :
-    done
-    [ -s "$T/fin.runs" ] || continue
-    # Which run a row belongs to: its subagent's transcript, the subagent transcript that started it, or the Workflow call's result.
-    awk -F '\t' -v s="$_sid" '$1 == s { print $2 }' "$T/fin.rows" | while IFS= read -r _subj; do
-      _id="${_subj##*:}"
-      case "$_id" in ''|*[!A-Za-z0-9_]*) continue ;; esac
-      _hit="$(find "$_sd/subagents/workflows" -name "agent-$_id.jsonl" -type f 2>/dev/null | head -n 1)"
-      [ -n "$_hit" ] || _hit="$(find "$_sd/subagents/workflows" -name '*.jsonl' -type f -exec grep -lF "$_id" {} + 2>/dev/null | head -n 1)"
-      if [ -n "$_hit" ]; then _run="${_hit%/*}"; _run="${_run##*/}"
-      else _run="$(grep -F "\"tool_use_id\":\"$_id\"" "$_tf" 2>/dev/null | grep -o 'wf_[a-z0-9]*-[a-z0-9]*' | head -n 1)"; fi
-      [ -n "$_run" ] && grep -qxF "$_run" "$T/fin.runs" && printf '%s\tworkflow\n' "$_subj"
-    done >> "$T/fin.ids"
+        sub(/.*<tool-use-id>/, "", m); sub(/<\/tool-use-id>.*/, "", m); print sid ":" m } }' "$_tf" >> "$T/fin.ids" 2>/dev/null || :
   done
   jq -R -s -c --slurpfile cur "$T/src/sessions.json" --rawfile rows "$T/fin.rows" '
-    ($rows | split("\n") | map(select(length > 0) | split("\t")[1])) as $live
-    | (split("\n") | map(select(length > 0) | split("\t") | select(.[0] as $i | $live | any(.[]; . == $i)))
-       | reduce .[] as $p ({}; if has($p[0]) then . else . + {($p[0]): $p[1]} end)) as $f
+    ($rows | split("\n") | map(select(length > 0))) as $live
+    | (split("\n") | map(select(length > 0)) | unique | map(select(. as $i | $live | any(.[]; . == $i)))) as $f
     | $cur[0] + {finished: $f}' "$T/fin.ids" > "$T/src/sessions.new" && mv -f "$T/src/sessions.new" "$T/src/sessions.json"
 }
 

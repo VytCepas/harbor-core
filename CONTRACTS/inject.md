@@ -170,7 +170,6 @@ collapsed to one paragraph.
 | Key | Required | Meaning |
 |---|---|---|
 | `id` | no | ledger key and `--explain` label; defaults to the filename |
-| `description` | **yes** | one line saying what the rule is for, so a reader can retire it without reading its body. Lint IJ1 refuses a tracked pack without one and warns on a private pack |
 | `event` | **yes** | `PreToolUse` · `PostToolUse` · `PostToolUseFailure` · `SessionStart` · `SubagentStart` — and `PreCompact` · `SessionEnd` **only with `mode: notify`**, see below |
 | `tool` | no | tool-name matcher. `Write\|Edit` alternation is accepted. Absent means any tool |
 | `when` | **yes** | a predicate. **Repeatable, and repeats are ANDed** |
@@ -179,11 +178,6 @@ collapsed to one paragraph.
 | `summary` | no | the operator-facing line for `mode: notify` |
 | `run` | no | a script beside the pack whose **stdout is the note**; empty stdout means no note. It may instead return a **decision** — see below |
 | `scope` | no | `repo` (default) or `box`. `box` also delivers a repo pack when a session outside the repo makes a tool call that touches it. Registered projects only, tool events only. See "`scope: box`" above |
-
-**Every delivered note starts `[context:<id>]`**, after the governance stamp, where `<id>` is the pack's `id`. The
-`emitted` column of `standards/naming/controls.tsv` maps that id to its control row, so the first lookup from a note
-reaches its owner and its off-switch (harbor#957; `hooks/injection-rule/engine.test.sh`, section "every note starts").
-A deny reason keeps the refusal form its channel already has.
 
 ### A `run:` pack may return a decision, not only a note
 
@@ -254,7 +248,7 @@ a repeat, and delivery for a different command in the same session.
 **A pack with no `when:` never fires.** That is deliberate and it is asserted:
 the most likely typo must not produce the loudest possible rule.
 
-**An unrecognised predicate never fires either.** `bin/skill-catalog.sh` carries the
+**An unrecognised predicate never fires either.** `bin/skill-book.sh` carries the
 incident this guards against — an unrecognised token that fell through to the
 permissive branch turned a gate into a no-op while still reading like a gate.
 

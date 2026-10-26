@@ -203,7 +203,7 @@
 /bin/session-react-lib.sh @VytCepas
 /bin/session-save-now.sh @VytCepas
 /bin/shim-install.sh @VytCepas
-/bin/skill-catalog.sh @VytCepas
+/bin/skill-book.sh @VytCepas
 /bin/skills-collide.sh @VytCepas
 /bin/skills-install.sh @VytCepas
 /bin/standard-catalog.sh @VytCepas

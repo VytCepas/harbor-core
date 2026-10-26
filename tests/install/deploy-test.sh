@@ -93,7 +93,7 @@ rm -f "$PV/harbor.toml"; unset HARBOR_SCOPE_PRIVATE
 
 t_section "preflight: the checkout"
 fixture dirty; echo x > "$REPO/stray"; refuse "a dirty tree" "uncommitted changes"
-fixture gen; echo y > "$REPO/skills/skill-catalog/SKILL.md"; refuse "an edited tracked skill catalog (a deploy no longer rewrites it, so no path is allowed dirty)" "uncommitted changes"
+fixture gen; echo y > "$REPO/skills/skill-book/SKILL.md"; refuse "an edited tracked skill book (a deploy no longer rewrites it, so no path is allowed dirty)" "uncommitted changes"
 fixture ahead; git -C "$REPO" -c user.name=t -c user.email=t@t commit -q --allow-empty -m x; refuse "unpushed commits" "ahead 1"
 fixture branch; git -C "$REPO" checkout -q -b feature; refuse "a non-main branch" "not main"
 fixture wt; git -C "$REPO" worktree add -q --detach "$T/wt" 2>/dev/null; REPO="$T/wt"; refuse "a linked worktree" "linked worktree"
@@ -251,8 +251,8 @@ fixture unatt; SHIP_SNAPSHOT="$T/snap"; : > "$SHIP_SNAPSHOT"
 printf 'bbb  CLAUDE.md\n' > "$T/b8"  # B8 drift, so the re-pin is reached
 CC=1 run '' --apply --live --unattended; CC=''
 t_eq "inside a session, with no terminal, it installs" 0 "$RC"
-t_eq "...in the one order that works" "constitution-install.sh --apply,shim-install.sh --live,sec0-harden.sh --apply,runtime-install.sh --live,floor-install.sh --live,prod-guard-install.sh --live,skills-install.sh --all,skills-install.sh commands,inject-install.sh --live,shim-install.sh --live,skill-catalog.sh install,just $T/pi,just $T/po," \
-  "$(grep -e '--apply' -e '^skill-catalog' "$LOGF" | awk '{print $1, $2}' | tr '\n' ',')"
+t_eq "...in the one order that works" "constitution-install.sh --apply,shim-install.sh --live,sec0-harden.sh --apply,runtime-install.sh --live,floor-install.sh --live,prod-guard-install.sh --live,skills-install.sh --all,skills-install.sh commands,inject-install.sh --live,shim-install.sh --live,skill-book.sh install,just $T/pi,just $T/po," \
+  "$(grep -e '--apply' -e '^skill-book' "$LOGF" | awk '{print $1, $2}' | tr '\n' ',')"
 t_eq "the snapshot id the runner reads is this run's snapshot" "$(ls -d "$C"/backups/deploy-*)" "$(cat "$SHIP_SNAPSHOT")"
 t_has "the install question is answered yes, saying why" "$(out)" "yes: --unattended"
 t_eq "the B8 re-pin is never made unattended" 0 "$(pins)"; t_has "...and says so" "$(out)" "answering No: --unattended asks nobody"
@@ -289,11 +289,11 @@ t_exit "...every line timestamped" 0 awk '!/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}
 t_eq "the last screen line names the log" "log: $(ls "$C"/backups/deploy/*/log | head -1)" "$(tail -1 "$T/out.txt")"
 t_eq "...and no snapshot was taken" no "$(ls -d "$C"/backups/deploy-* >/dev/null 2>&1 && echo yes || echo no)"
 
-t_section "the happy path: order, snapshot, the installed skill catalog written after the packs"
+t_section "the happy path: order, snapshot, the installed skill book written after the packs"
 fixture happy; mkdir -p "$C/lib"; echo core > "$C/lib/core.sh"; run 'y\n' --apply --live
-WANT='constitution-install.sh --apply,shim-install.sh --live,sec0-harden.sh --apply,runtime-install.sh --live,floor-install.sh --live,prod-guard-install.sh --live,skills-install.sh --all,skills-install.sh commands,inject-install.sh --live,shim-install.sh --live,skill-catalog.sh install,'"just $T/pi,just $T/po,"
+WANT='constitution-install.sh --apply,shim-install.sh --live,sec0-harden.sh --apply,runtime-install.sh --live,floor-install.sh --live,prod-guard-install.sh --live,skills-install.sh --all,skills-install.sh commands,inject-install.sh --live,shim-install.sh --live,skill-book.sh install,'"just $T/pi,just $T/po,"
 t_eq "the happy path" 0 "$RC"
-t_eq "installs run in the one order that works" "$WANT" "$(grep -e '--apply' -e '^skill-catalog' "$LOGF" | awk '{print $1, $2}' | tr '\n' ',')"
+t_eq "installs run in the one order that works" "$WANT" "$(grep -e '--apply' -e '^skill-book' "$LOGF" | awk '{print $1, $2}' | tr '\n' ',')"
 t_has "a snapshot of the config dir is taken first" "$(tar -tzf "$C"/backups/deploy-*/config.tgz 2>/dev/null)" "settings.json"
 t_has "the snapshot covers lib/ (harbor#765)" "$(tar -tzf "$C"/backups/deploy-*/config.tgz 2>/dev/null)" "lib/core.sh"
 t_has "set.txt records lib/ for restore.sh" "$(cat "$C"/backups/deploy-*/set.txt 2>/dev/null)" "lib"
@@ -305,7 +305,7 @@ t_eq "...whose path is the snapshot's, relative to the config dir" "backups/${_s
 t_exit "...with a UTC time" 0 grep -qE '^[0-9a-f]{64} [^ ]+ [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z ' "$C/.helm-snapshots"
 t_eq "...and the hash of the set it covered" "set=$(_sh < "$_sd/set.txt")" "$(awk '{print $4}' "$C/.helm-snapshots" 2>/dev/null)"
 t_hasnt "the ledger is not in the snapshot it records" "$(tar -tzf "$_sd/config.tgz")" ".helm-snapshots"
-t_eq "the skill catalog is written by skill-catalog.sh install on the live dir, and never through skills-install from the tracked file" "skill-catalog.sh install --apply --live" "$(grep '^skill-catalog.sh' "$LOGF")"
+t_eq "the skill book is written by skill-book.sh install on the live dir, and never through skills-install from the tracked file" "skill-book.sh install --apply --live" "$(grep '^skill-book.sh' "$LOGF")"
 t_has "B8 unchanged: nothing to re-pin" "$(out)" "nothing to re-pin"; t_eq "B8 unchanged: no pin-instructions call" 0 "$(pins)"
 t_has "a child's lines are relayed on screen" "$(out)" "  ok: runtime-install.sh stub ran (apply)"
 t_has "...and kept in deploy's log, timestamped" "$(dlog)" "Z   ok: runtime-install.sh stub ran (apply)"

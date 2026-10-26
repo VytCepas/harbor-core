@@ -217,7 +217,7 @@ a `bin/` script that does not exist.
 <!-- lanes:begin -->
 | lane | key | subject | repair | ticket |
 |---|---|---|---|---|
-| HEAL | `lint/skill.book-current` | `skills/skill-catalog/SKILL.md` | `sh bin/skill-catalog.sh` | #591 |
+| HEAL | `lint/skill.book-current` | `skills/skill-book/SKILL.md` | `sh bin/skill-book.sh` | #591 |
 | HEAL | `check/memory-route` | `*` | `sh bin/memory-route.sh --live --apply` | #589 |
 | HEAL | `lint/lint.exec-bit-kept` | `bin/*` | `chmod +x <subject>` | #574 |
 | HEAL | `check/ci-lost-rerun` | `*` | `sh bin/ci-runners.sh rerun-lost --apply` | #675 |

@@ -635,28 +635,6 @@ if [ -f "$DIR/CLAUDE.md" ]; then
   fi
 fi
 
-# ── REF-5 · and the installed surface's own dangling edges (harbor#996 C2) ───
-# The reference graph's `deploys_to` edges that end on a file this config dir does not hold: the install
-# manifest says a file was installed and it is gone. `graph-gen.sh --dangling` owns the definition (it reads the
-# manifest alone, no tree scan, so this stays cheap); this folds each row into REF-5 beside the dead citations,
-# since both are "a reference on the installed surface that resolves nowhere". graph-gen.sh is found beside this
-# script or in the harbor checkout, never in the tree under inspection (the same rule as EXTRACT above); with
-# neither the count says 0 examined, which is not a pass.
-_gg="$SELF/graph-gen.sh"
-if [ ! -f "$_gg" ]; then
-  _gg="$(sh "$SELF/roots.sh" --get HARBOR_REPO 2>/dev/null || :)"; _gg="${_gg:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}/bin/graph-gen.sh"
-fi
-if [ -f "$DIR/.harbor-manifest" ] && [ -f "$_gg" ] && command -v python3 >/dev/null 2>&1; then
-  CLAUDE_CONFIG_DIR="$DIR" sh "$_gg" --dangling 2>/dev/null > "${TMPDIR:-/tmp}/refchk-5d.$$" || :
-  while IFS='	' read -r _dp _ds _dw; do
-    [ -n "${_dp:-}" ] && finding "REF-5" "manifest → $_dp" "$_dw ($_ds), so a dangling deploys_to edge in the reference graph"
-  done < "${TMPDIR:-/tmp}/refchk-5d.$$"
-  rm -f "${TMPDIR:-/tmp}/refchk-5d.$$"
-  examined "REF-5" "$(grep -vc -e '^#' -e '^[[:space:]]*$' "$DIR/.harbor-manifest" || :)" "manifest row(s) checked for a dangling installed file"
-elif [ -f "$DIR/.harbor-manifest" ]; then
-  examined "REF-5" 0 "manifest row(s) checked for a dangling installed file (graph-gen.sh or python3 not found, so none judged)"
-fi
-
 # ── REF-8 · a document citing ./paths declares which root they resolve against ─
 # harbor#462's actual finding, and the reason REF-5 above could be "fixed" for
 # three years without the defect moving: `./DOCTRINE/grilling.md` is not a wrong

@@ -1,7 +1,0 @@
-# fixtures/naming/release-tag/pass (harbor#957) — release tags that MUST stay green. Read by bin/lint-name.sh --self-test.
-# COLUMNS  name <TAB> -
-name	rule
-v1.2.2	-
-v0.1.0	-
-v2.0.0-rc.1	-
-v1.0.0+build.5	-

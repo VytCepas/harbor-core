@@ -1,6 +1,5 @@
 ---
 id: ci-wait-on-the-bus
-description: A CI wait runs on the event bus, never as a poll
 event: PreToolUse
 tool: Bash
 when: always

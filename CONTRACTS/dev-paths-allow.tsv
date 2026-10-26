@@ -66,7 +66,7 @@ bin/deploy.sh	vendor/skills/	asks git for the tracked skill names; with no vendo
 bin/docs-gen.sh	vendor/skills/	globs vendor/skills/*/SKILL.md behind [ -f ]; an absent tree yields no rows
 bin/lint-name.sh	vendor/skills/	matches a tracked path prefix; absent in the export, it never matches
 bin/pack.sh	vendor/skills/	tests for a name clash with [ -e ]; an absent tree clashes with nothing
-bin/skill-catalog.sh	vendor/skills/	lists skills/ then vendor/skills/ behind [ -d ]; an absent tree adds none
+bin/skill-book.sh	vendor/skills/	lists skills/ then vendor/skills/ behind [ -d ]; an absent tree adds none
 bin/skills-collide.sh	vendor/skills/	reads vendor/skills/ behind [ -d ] and [ -f ]; an absent tree adds none
 bin/skills-install.sh	vendor/skills/	reads vendor/skills/ behind [ -d ] and [ -f ]; an absent tree adds none
 tests/checks/adoption-check/output-contract.test.sh	vendor/skills/	builds its own fixture tree
@@ -77,4 +77,4 @@ tests/export/license.test.sh	vendor/skills/	checks the skills licence only when 
 tests/install/skills-collide-test.sh	vendor/skills/	builds its own fixture tree
 tests/install/skills-install-test.sh	vendor/skills/	builds its own fixture tree
 tests/lint/decision/citation.test.sh	vendor/skills/	builds its own fixture tree
-tests/skills/skill-catalog-test.sh	vendor/skills/	builds its own fixture tree
+tests/skills/skill-book-test.sh	vendor/skills/	builds its own fixture tree

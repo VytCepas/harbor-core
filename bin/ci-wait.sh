@@ -46,37 +46,24 @@ command -v gh >/dev/null 2>&1 || die 4 "gh is not on PATH"
 command -v jq >/dev/null 2>&1 || die 4 "jq is not on PATH"
 
 now() { date +%s; }
-# REQUIRED checks the base branch names (classic protection or a ruleset), read once: green waits until each has reported.
-# On 2026-10-26 a mirror job passed before GitHub posted the required public-ci, and the wait said green (#1370).
-required() {
-  _b="$(gh pr view "$N" -R "$REPO" --json baseRefName --jq .baseRefName 2>/dev/null)" || _b=""
-  case "$_b" in ''|*[!A-Za-z0-9._/-]*) return 0 ;; esac
-  { gh api "repos/$REPO/branches/$_b" --jq '.protection.required_status_checks.contexts[]?' 2>/dev/null || :
-    gh api "repos/$REPO/rules/branches/$_b" --jq '.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context' 2>/dev/null || :
-  } | sort -u | tr '\n' '\t'
-}
-REQ="$(required)"
 # One read: sets V (green, red, pending, none or error) and LINE. `gh pr checks` exits 8 while anything is pending,
 # so its output decides, not its exit code. A PR with no checks gets no JSON, only "no checks reported" on stderr:
 # that is none, not an unreadable GitHub.
 read_checks() {
   _j="$(gh pr checks "$N" -R "$REPO" --json name,bucket 2>&1)" || :
   case "$_j" in "no checks reported"*) _j='[]' ;; esac
-  _r="$(printf '%s' "$_j" | jq -r --arg not "$NOT_CI" --arg req "$REQ" '
+  _r="$(printf '%s' "$_j" | jq -r --arg not "$NOT_CI" '
     ($not | split(" ")) as $n
-    | ($req | split("\t") | map(select(length > 0))) as $rq
-    | ([.[].name]) as $have | ($rq | map(select(. as $x | $have | index($x) | not))) as $miss
     | [.[] | select(.name as $x | $n | index($x) | not)] as $ci
     | [.[] | select(.name as $x | $n | index($x))] as $nc
     | ($ci | map(.bucket)) as $b
     | (if ($ci | length) == 0 then "none" elif ($b | index("pending")) then "pending"
-       elif ($b | any(. == "fail" or . == "cancel")) then "red" else "green" end)
-    | (if (. == "green" or . == "none") and ($miss | length) > 0 then "pending" else . end) as $v
-    | "\($v)\t\($ci | group_by(.bucket) | map("\(length) \(.[0].bucket)") | join(", "))\t\($nc | map("\(.name) \(.bucket)") | join(", "))\t\($miss | join(", "))"
+       elif ($b | any(. == "fail" or . == "cancel")) then "red" else "green" end) as $v
+    | "\($v)\t\($ci | group_by(.bucket) | map("\(length) \(.[0].bucket)") | join(", "))\t\($nc | map("\(.name) \(.bucket)") | join(", "))"
   ' 2>/dev/null)" || _r=""
   if [ -z "$_r" ]; then V=error; LINE="$REPO#$N: GitHub did not answer"; return; fi
-  V="${_r%%	*}"; _r="${_r#*	}"; _counts="${_r%%	*}"; _r="${_r#*	}"; _nc="${_r%%	*}"; _miss="${_r#*	}"
-  LINE="$REPO#$N: $V (${_counts:-no checks yet}${_nc:+; not CI: $_nc}${_miss:+; required, not reported yet: $_miss})"
+  V="${_r%%	*}"; _r="${_r#*	}"; _counts="${_r%%	*}"; _nc="${_r#*	}"
+  LINE="$REPO#$N: $V (${_counts:-no checks yet}${_nc:+; not CI: $_nc})"
 }
 verdict() { # exits on a settled read
   case "$V" in

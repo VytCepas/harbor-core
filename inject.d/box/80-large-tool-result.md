@@ -1,6 +1,5 @@
 ---
 id: large-tool-result
-description: A large tool result is read in slices, never whole
 event: PostToolUse
 tool: Read|Bash|Grep|Glob|WebFetch|WebSearch|mcp__.*
 when: always

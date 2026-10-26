@@ -26,19 +26,19 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | Kind | Folder | Level | Layer | Lifecycle | Files |
 |---|---|---|---|---|---|
 | policy | policy/ | system | source | living | 11 |
-| standard | standards/ | system | source | versioned | 14 |
+| standard | standards/ | system | source | versioned | 13 |
 | contract | contracts/ | system | source | versioned | 30 |
 | decision-record | docs/decisions/ | element | source | dated | 91 |
 | injection-rule | context-rules/<scope>/ | component | source | living | 37 |
 | hook | hooks/ | component | source | living | 46 |
-| skill | skills/ | component | source | living | 42 |
-| fixture | fixtures/ | element | source | living | 254 |
-| registry | registries/ | component | source | versioned | 51 |
-| test | tests/ | component | source | living | 420 |
+| skill | skills/ | component | source | living | 41 |
+| fixture | fixtures/ | element | source | living | 252 |
+| registry | registries/ | component | source | versioned | 50 |
+| test | tests/ | component | source | living | 417 |
 | report | docs/reports/ | element | report | dated | 1 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| script | bin/ | component | source | living | 203 |
+| script | bin/ | component | source | living | 200 |
 | (no kind) | - | - | - | - | 171 |
 
 ## Folders
@@ -49,21 +49,21 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.agents/` | 4 | 1 | 1 |
 | `.claude/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
-| `CONTRACTS/` | 81 | 9 | 2 |
+| `CONTRACTS/` | 80 | 9 | 2 |
 | `DOCTRINE/` | 10 | 1 | 1 |
-| `bin/` | 207 | 22 | 2 |
+| `bin/` | 204 | 22 | 2 |
 | `commands/` | 5 | 1 | 1 |
 | `docs/` | 113 | 6 | 5 |
-| `fixtures/` | 254 | 9 | 1 |
+| `fixtures/` | 252 | 9 | 1 |
 | `hooks/` | 42 | 6 | 1 |
 | `inject.d/` | 33 | 1 | 1 |
 | `launchd/` | 12 | 3 | 1 |
 | `patches/` | 12 | 1 | 1 |
 | `runners/` | 2 | 1 | 1 |
-| `skills/` | 42 | 5 | 1 |
-| `standards/` | 14 | 1 | 1 |
+| `skills/` | 41 | 5 | 1 |
+| `standards/` | 13 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 420 | 21 | 1 |
+| `tests/` | 417 | 21 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 73 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -80,21 +80,21 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | ci | coordination | 13 | 58 | 2 | 3 | 0 | 5 |
 | context | control-plane | 3 | 0 | 1 | 38 | 0 | 31 |
 | deploy | control-plane | 5 | 7 | 1 | 1 | 0 | 7 |
-| doc | control-plane | 2 | 2 | 0 | 8 | 0 | 17 |
-| drift | control-plane | 1 | 1 | 0 | 4 | 2 | 13 |
+| doc | control-plane | 1 | 1 | 0 | 8 | 0 | 16 |
+| drift | control-plane | 1 | 1 | 0 | 4 | 2 | 12 |
 | eval | control-plane | 0 | 1 | 0 | 0 | 0 | 0 |
 | event | observability | 3 | 17 | 0 | 3 | 0 | 2 |
 | gate | control-plane | 10 | 7 | 0 | 0 | 0 | 0 |
 | housekeeping | control-plane | 0 | 0 | 0 | 2 | 0 | 0 |
-| lint | control-plane | 16 | 41 | 0 | 8 | 0 | 33 |
+| lint | control-plane | 15 | 39 | 0 | 8 | 0 | 31 |
 | memory | memory-store | 4 | 11 | 1 | 23 | 0 | 1 |
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
 | policy | policy-function | 0 | 0 | 11 | 0 | 0 | 3 |
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
 | scope | coordination | 2 | 10 | 0 | 0 | 0 | 4 |
 | session | data-plane | 11 | 4 | 0 | 1 | 0 | 0 |
-| skill | catalog | 4 | 5 | 0 | 5 | 0 | 13 |
-| standard | policy-function | 3 | 8 | 105 | 0 | 0 | 44 |
+| skill | catalog | 3 | 5 | 0 | 4 | 0 | 11 |
+| standard | policy-function | 3 | 8 | 104 | 0 | 0 | 43 |
 | status | observability | 3 | 7 | 0 | 1 | 0 | 0 |
 | test | control-plane | 0 | 1 | 2 | 7 | 0 | 7 |
 | worktree | coordination | 1 | 0 | 0 | 0 | 0 | 0 |
@@ -218,7 +218,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 ### doc
 
 - `bin/doc-refs.sh`
-- `bin/doc-vale.sh`
 
 ### drift
 
@@ -260,7 +259,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `CONTRACTS/lint-secrets-baseline.txt`
 - `CONTRACTS/lint-siblings-baseline.txt`
 - `bin/lint-comment-commands.awk`
-- `bin/lint-comment.sh`
 - `bin/lint-constitution.sh`
 - `bin/lint-conventions.sh`
 - `bin/lint-core-writes.sh`
@@ -335,11 +333,9 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `CONTRACTS/skill-book-router.tsv`
 - `CONTRACTS/skill-pack-frontmatter-keys.txt`
 - `bin/skill-book.sh`
-- `bin/skill-catalog.sh`
 - `bin/skill-fire.sh`
 - `bin/skill-usage.sh`
 - `skills/skill-book/SKILL.md`
-- `skills/skill-catalog/SKILL.md`
 
 ### standard
 
@@ -445,7 +441,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `standards/naming/exemptions.tsv`
 - `standards/naming/frozen.tsv`
 - `standards/naming/kinds.tsv`
-- `standards/naming/label-axes.tsv`
 - `standards/naming/registers.tsv`
 - `standards/naming/renames.tsv`
 - `standards/naming/repo-kinds.tsv`
@@ -477,11 +472,11 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | (repo root) | 19 |
 | `.agents/` | 4 |
 | `.github/` | 2 |
-| `CONTRACTS/` | 63 |
+| `CONTRACTS/` | 62 |
 | `bin/` | 112 |
 | `commands/` | 5 |
 | `docs/` | 17 |
-| `fixtures/` | 216 |
+| `fixtures/` | 214 |
 | `hooks/` | 32 |
 | `launchd/` | 10 |
 | `patches/` | 12 |

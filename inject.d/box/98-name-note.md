@@ -1,6 +1,5 @@
 ---
 id: name-note
-description: A new file name that breaks the naming standard draws a note before the file exists
 event: PreToolUse
 tool: Write
 when: always

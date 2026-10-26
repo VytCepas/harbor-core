@@ -1,6 +1,5 @@
 ---
 id: project-pointer
-description: Lists the registered projects at session start, so repo scoping does not hide them
 event: SessionStart
 when: always
 once: never

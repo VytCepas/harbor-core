@@ -1,6 +1,5 @@
 ---
 id: unbounded-wait-loop
-description: A wait loop with no deadline is replaced by the wait-for helper
 event: PreToolUse
 tool: Bash
 when: always

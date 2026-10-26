@@ -7,7 +7,7 @@
 #     --from-old OLD      a rename: the old dir moves into the backup
 #     --accept-loss       install over a newer live copy, or one holding files the repo does not
 #   A dry run exits 1 exactly when --apply would refuse (nested, newer, box-only files).
-#   skill-catalog is the one skill that is COMPOSED, not copied (harbor#1149): see COMPOSED below.
+#   skill-book is the one skill that is COMPOSED, not copied (harbor#1149): see COMPOSED below.
 #
 # WHY THIS EXISTS. Until now the documented mechanism was a hand-typed
 # `cp -R skills/<name>/. ~/.claude/skills/<name>/`, and skills/README.md records
@@ -75,11 +75,11 @@ src_for() {
 # THE SKILL BOOK IS COMPOSED, NOT COPIED (harbor#1149). The installed book lists every skill installed in the config dir and
 # the CLIs on the box, so it differs from the tracked copy by design. Copying the tracked one over it drops every row the repo
 # does not ship (the box's skills, the packs', the CLI table) until the next deploy, and a byte comparison calls the composed
-# one DRIFTED for ever. bin/skill-catalog.sh install is its one writer and its one judge (`install --check`), so this installer
+# one DRIFTED for ever. bin/skill-book.sh install is its one writer and its one judge (`install --check`), so this installer
 # asks it, and --all installs the book LAST because it lists what the run installed. Without the generator beside this script
 # (a copy of the tree that lacks it) the book is an ordinary payload.
-COMPOSED=skill-catalog
-_composed() { [ "$KIND" = skills ] && [ "$1" = "$COMPOSED" ] && [ -f "$ROOT/bin/skill-catalog.sh" ]; }
+COMPOSED=skill-book
+_composed() { [ "$KIND" = skills ] && [ "$1" = "$COMPOSED" ] && [ -f "$ROOT/bin/skill-book.sh" ]; }
 
 # The one install command for ONE name, whatever this run selected: a fix names the skill it fixes.
 _cmd_for() { # <name>
@@ -119,7 +119,7 @@ state_of() {
   [ -d "$_d/$2" ] && { printf 'NESTED'; return; }
   if _composed "$2"; then
     # The generator answers: 0 current, 1 stale, anything else it could not say (a router row it cannot read).
-    _sc=0; il_run sh "$ROOT/bin/skill-catalog.sh" install --check >/dev/null 2>&1 || _sc=$?
+    _sc=0; il_run sh "$ROOT/bin/skill-book.sh" install --check >/dev/null 2>&1 || _sc=$?
     case "$_sc" in 0) printf 'current' ;; 1) printf 'DRIFTED' ;; *) printf 'UNREADABLE' ;; esac
     return
   fi
@@ -137,7 +137,7 @@ list_all() {
       NESTED)  log_warn "$n: NESTED (${d#"$ROOT"/}) — an earlier hand-typed cp left $n/$n/ and the old copy is still serving"
                log_nofix "skills/README.md (the trailing /. trap): move $DEST_ROOT/$n/$n aside by hand" ;;
       UNREADABLE) log_warn "$n: the generator cannot say whether the installed book is current"
-               log_nofix "sh $ROOT/bin/skill-catalog.sh install --check $(il_spell): its FAIL line names the cause" ;;
+               log_nofix "sh $ROOT/bin/skill-book.sh install --check $(il_spell): its FAIL line names the cause" ;;
       *)       log_note "$n: $_st (${d#"$ROOT"/})" ;;
     esac
   done
@@ -261,7 +261,7 @@ install_one() {
 
   if [ "$st" = UNREADABLE ]; then
     log_fail "$n: the generator cannot say what the installed book should be, so it was not touched"
-    log_fix "sh $ROOT/bin/skill-catalog.sh install --check $(il_spell)"
+    log_fix "sh $ROOT/bin/skill-book.sh install --check $(il_spell)"
     return 1
   fi
   if [ "$st" = current ]; then
@@ -321,7 +321,7 @@ install_one() {
 
   # The generator writes the book: its own backup, its own byte check, its own manifest row.
   if _composed "$n"; then
-    if ! il_run sh "$ROOT/bin/skill-catalog.sh" install --apply; then
+    if ! il_run sh "$ROOT/bin/skill-book.sh" install --apply; then
       log_fail "$n: the generator could not write the installed book"
       log_nofix "its FAIL lines above; the pre-run copy is in the backup it names"
       return 1

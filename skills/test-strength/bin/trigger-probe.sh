@@ -416,7 +416,7 @@ _one_session() {  # $1 = query text ; $2 = log path ; sets FIRED/SHADOW/ERR
     # plant and the original, and a session that routes to the original scores
     # as a MISS while having routed perfectly well. Measured 2026-08-31 on the
     # account default model, a session whose plant was NOT the winner: its
-    # decisions ran Skill{skill-catalog} → Glob ~/.claude/skills → Read
+    # decisions ran Skill{skill-book} → Glob ~/.claude/skills → Read
     # ~/.claude/skills/topology/SKILL.md. Note what that means for the rule
     # above: under the first-decision rule that session is NOFIRE, because its
     # FIRST decision was the operator's index skill, not the installed twin.

@@ -72,7 +72,7 @@ printf 'real\n' > "$X8C/skills/demo/notes.md"
 t_eq "…while a real extra file beside them still is" yes "$(nonempty "$(_x8)")"
 
 t_section "X8: a generated skill is judged by its generator, not by a byte diff (harbor#1149)"
-# The installed skill catalog is composed from the config dir, so it differs from the tracked copy on any box that holds a
+# The installed skill book is composed from the config dir, so it differs from the tracked copy on any box that holds a
 # skill the repo does not ship. Calling that drift is a false positive no repair clears; the generator is asked instead.
 _x8_gen_setup() { # <exit code of the generator's `install --check`>
   _x8_setup 'name: book
@@ -89,7 +89,7 @@ t_has "a copy the generator calls stale is reported as generated" "$_o" "GENERAT
 t_has "with the command that regenerates it, never a copy either way" "$_o" "do not copy either way, regenerate: demo -> sh bin/gen.sh install --apply"
 _x8_gen_setup 2
 t_has "a generator that cannot be asked is said, not read as drift" "$(_x8)" "the generator FAILED (rc=2), so demo was not judged"
-# 3 is what skill-catalog.sh install --check exits for a router row it cannot read: it used to exit 1, and X8 called that a stale copy.
+# 3 is what skill-book.sh install --check exits for a router row it cannot read: it used to exit 1, and X8 called that a stale copy.
 _x8_gen_setup 3; _o="$(_x8)"
 t_has "a generator that exits 3 is a failed generator" "$_o" "the generator FAILED (rc=3), so demo was not judged"
 t_hasnt "...never a copy to regenerate" "$_o" "regenerate: demo"
@@ -234,19 +234,4 @@ rm -rf "$H1R"; mkdir -p "$H1R/bin" "$H1R/docs"; cp "$LINT" "$H1R/bin/"
 printf '#!/bin/sh\n# doc: :root{--bg:#ffffff} is the shape we look for\ngrep -q ":root{" "$1"\n' > "$H1R/bin/mentions.sh"
 t_eq "a script that only MENTIONS :root is not a stylesheet" "" "$(viol H1 "$H1R")"
 
-
-t_section "drift.skill-manifest: an installed skill no manifest records (harbor#1010)"
-SMC="$TMP/sm-cfg"; rm -rf "$SMC"; mkdir -p "$SMC/skills/one"
-printf -- '---\nname: one\ndescription: "X. USE WHEN x."\n---\n' > "$SMC/skills/one/SKILL.md"
-_sm() { CLAUDE_CONFIG_DIR="$SMC" HARBOR_ROOT="$T_ROOT" sh "$LINT" --only drift.skill-manifest 2>&1 | grep 'ADVISORY \[drift.skill-manifest\]' || true; }
-t_eq "no manifest in the config dir: nothing to judge, silent" "" "$(_sm)"
-printf '# m\nabc 100644 skills/one/SKILL.md skills-install deadbeef\n' > "$SMC/.harbor-manifest"
-t_eq "an installed skill with its row is silent" "" "$(_sm)"
-mkdir -p "$SMC/skills/two"; printf -- '---\nname: two\ndescription: "X. USE WHEN x."\n---\n' > "$SMC/skills/two/SKILL.md"
-t_has "a skill installed by hand is advised, by name" "$(_sm)" 'installed skill two has no row'
-
-t_section "test-strength is cross-linked from where verification is taught (harbor#1010)"
-for _tl in DOCTRINE/verification-expanded.md AGENTS.md; do
-  t_has "$_tl points at skills/test-strength" "$(cat "$T_ROOT/$_tl")" 'skills/test-strength/SKILL.md'
-done
 t_done

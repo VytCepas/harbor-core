@@ -9,19 +9,19 @@
 # contract whose HEAL rows name fixture repairs. Every case reads what was written or run.
 GH_STATE="$TMP/gh-heal.json"; export GH_STATE
 HO="$TMP/heal-origin.git"; HP="$TMP/heal"; MARK="$TMP/route.mark"; export MARK
-git init -q --bare "$HO"; mkdir -p "$HP/CONTRACTS" "$HP/bin" "$HP/skills/skill-catalog"
+git init -q --bare "$HO"; mkdir -p "$HP/CONTRACTS" "$HP/bin" "$HP/skills/skill-book"
 awk '/^<!-- lanes:begin -->$/ { print; print "| lane | key | subject | repair | ticket |"; print "|---|---|---|---|---|"
        print "| HEAL | `lint/lint.exec-bit-kept` | `bin/*` | `chmod +x <subject>` | #574 |"
-       print "| HEAL | `lint/skill.book-current` | `skills/skill-catalog/SKILL.md` | `sh bin/book.sh` | #591 |"
+       print "| HEAL | `lint/skill.book-current` | `skills/skill-book/SKILL.md` | `sh bin/book.sh` | #591 |"
        print "| HEAL | `lint/memory.repo-reachable` | `*` | `sh bin/route.sh` | #589 |"
        print "| HEAL | `check/memory-route` | `*` | `sh bin/route.sh` | #589 |"
        print "| HEAL | `lint/skill.not-for-target-exists` | `*` | `sh bin/fail.sh` | #590 |"
        print "| PROPOSE | `lint/lint.long-file-reason` | `*` | `chmod +x <subject>` | #590 |"; t = 1; next }
      /^<!-- lanes:end -->$/ { t = 0 } !t' "$T_ROOT/CONTRACTS/finding.md" > "$HP/CONTRACTS/finding.md"
 printf 'echo tool\n' > "$HP/bin/tool.sh"; chmod 644 "$HP/bin/tool.sh"
-printf 'echo fresh > skills/skill-catalog/SKILL.md\n' > "$HP/bin/book.sh"
+printf 'echo fresh > skills/skill-book/SKILL.md\n' > "$HP/bin/book.sh"
 printf 'echo routed >> "$MARK"\n' > "$HP/bin/route.sh"
-printf 'stale\n' > "$HP/skills/skill-catalog/SKILL.md"
+printf 'stale\n' > "$HP/skills/skill-book/SKILL.md"
 printf 'echo half >> bin/tool.sh; echo "route table locked" >&2; exit 1\n' > "$HP/bin/fail.sh"
 git -C "$HP" init -q; git -C "$HP" -c user.email=t@t -c user.name=t add -A
 git -C "$HP" -c user.email=t@t -c user.name=t commit -qm fixture

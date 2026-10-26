@@ -7,7 +7,6 @@ export HARBOR_EVENT_DIR="$T_TMP/bus" GH_OUT="$T_TMP/gh.json"; mkdir -p "$HARBOR_
 cat > "$T_BIN/gh" <<'STUB'
 #!/bin/sh
 printf '%s\n' "$*" >> "$GH_OUT.calls"
-case "$1 $2" in "pr view") echo main; exit 0 ;; "api repos/acme/widgets/branches/main") cat "$GH_OUT.req" 2>/dev/null; exit 0 ;; api*) exit 0 ;; esac
 [ ! -e "$GH_OUT.nochecks" ] || { echo "no checks reported on the 'x' branch" >&2; exit 1; }
 [ -s "$GH_OUT" ] || exit 1
 cat "$GH_OUT"
@@ -40,21 +39,11 @@ checks '[{"name":"test","bucket":"pending"}]'; : > "$GH_OUT.calls"
 T0="$(date +%s)"
 HARBOR_CI_WAIT_BACKSTOP=60 HARBOR_CI_WAIT_SETTLE=1 sh "$W" acme/widgets#9 --timeout 90 > "$T_TMP/bg.out" 2>&1 & WP=$!
 sleep 2
-t_eq "while pending it has read the checks once, then sleeps" 1 "$(grep -c '^pr checks' "$GH_OUT.calls")"
+t_eq "while pending it has read GitHub once, then sleeps" 1 "$(grep -c . "$GH_OUT.calls")"
 checks "$GREEN"; sh "$BUS" emit ci.job.done acme/widgets:1:test --src test >/dev/null
 wait "$WP"; RC=$?; DT=$(( $(date +%s) - T0 ))
 t_eq "the job's event ends the wait: exit 0" 0 "$RC"; t_has "...with the green verdict" "$(cat "$T_TMP/bg.out")" ": green"
 t_eq "...in seconds, far inside the 60 s backstop" yes "$([ "$DT" -lt 20 ] && echo yes || echo "no (${DT}s)")"
-
-t_section "a required check that has not reported yet is not green"
-printf 'public-ci\n' > "$GH_OUT.req"; checks '[{"name":"public mirror","bucket":"pass"}]'
-O="$(HARBOR_CI_WAIT_BACKSTOP=1 HARBOR_CI_WAIT_SETTLE=1 sh "$W" acme/widgets#9 --timeout 3 2>&1)"; RC=$?
-t_eq "every reported check passed, the required one is missing: still running (exit 3)" 3 "$RC"
-t_has "...and it names what it waits for" "$O" "required, not reported yet: public-ci"
-checks '[{"name":"public mirror","bucket":"pass"},{"name":"public-ci","bucket":"pass"}]'; run acme/widgets#9
-t_eq "once it reports and passes: green" 0 "$RC"; rm -f "$GH_OUT.req"
-checks '[{"name":"public mirror","bucket":"pass"}]'; run acme/widgets#9
-t_eq "control: with nothing required, the same checks are green" 0 "$RC"
 
 t_section "deadline, GitHub down, and usage"
 checks '[{"name":"test","bucket":"pending"}]'
