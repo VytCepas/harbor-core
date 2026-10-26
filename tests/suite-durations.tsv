@@ -321,3 +321,6 @@
 0	tests/scope/access/resolver.test.sh
 0	tests/scope/keys/read.test.sh
 0	tests/session/agents/registry.test.sh
+0	tests/lint/comment/added.test.sh
+0	tests/lint/name/issue-taxonomy.test.sh
+0	tests/doc/vale/vale.test.sh

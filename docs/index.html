@@ -1705,6 +1705,9 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/floor/destroy-snapshot-test.sh</code></td><td><code>bin/guard-destroy.sh bin/guard-lib.sh bin/floor-normalize.awk tests/floor/destroy-snapshot-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/ci/suite-cache/cache.test.sh</code></td><td><code>bin/suite-cache.sh bin/suite-run.sh bin/suite-select.sh bin/log-lib.sh bin/ci-governor.sh tests/ci/suite-cache/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/alert/lib/chain.test.sh</code></td><td><code>bin/alert-lib.sh bin/event-bus.sh bin/log-lib.sh tests/alert/lib/* tests/lib/core.sh tests/lib/linux-sim.sh</code></td></tr>
+<tr><td><code>tests/lint/comment/added.test.sh</code></td><td><code>bin/lint-comment.sh standards/naming/controls.tsv tests/lint/comment/* tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/lint/name/issue-taxonomy.test.sh</code></td><td><code>bin/lint-name.sh standards/naming/* CONTRACTS/issue-taxonomy.tsv tests/lint/name/issue-taxonomy.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/doc/vale/vale.test.sh</code></td><td><code>bin/doc-vale.sh bin/lint-name.sh bin/log-lib.sh standards/naming/* tests/doc/vale/* tests/lib/core.sh</code></td></tr>
 </tbody></table>
 </div>
 
@@ -2401,6 +2404,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/deploy-push.sh</code></td><td>deploy-push.sh (harbor#1149, DESIGN.md v2.1) - <code>harbor deploy push</code>: share core. One snapshot commit of the core set, no history.</td></tr>
 <tr><td><code>bin/deploy.sh</code></td><td>deploy.sh (harbor#457) — install every Harbor payload onto THIS box, in the one order that works.</td></tr>
 <tr><td><code>bin/doc-refs.sh</code></td><td>doc-refs.sh (harbor#996 E1, from #1015) — every path an entry doc cites resolves, and the doc is not left behind.</td></tr>
+<tr><td><code>bin/doc-vale.sh</code></td><td>doc-vale.sh (harbor#978) — prose against the registry: legacy aliases, UK spelling, banned words, via Vale.</td></tr>
 <tr><td><code>bin/docs-gen.sh</code></td><td>DOCS — generate docs/index.html, the architecture document (harbor#173).</td></tr>
 <tr><td><code>bin/doctor.sh</code></td><td>doctor.sh — probe the external tools Harbor's doctrine depends on.</td></tr>
 <tr><td><code>bin/drift-confinement.sh</code></td><td>drift-confinement.sh (harbor#1299, #555 P2) — the check drift.confinement: the installed <code>sandbox</code> block of the</td></tr>
@@ -2461,6 +2465,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/judge-run.sh</code></td><td>judge-run (harbor#44 follow-through — M5's scheduling half) — run the ledger</td></tr>
 <tr><td><code>bin/launchd-render.sh</code></td><td>launchd-render.sh — fill a launchd plist template from the roots table (harbor#630, #1149).</td></tr>
 <tr><td><code>bin/layers.sh</code></td><td>layers.sh (harbor#1149) - reads CONTRACTS/layers.tsv: which paths are core (exported) and which stay dev.</td></tr>
+<tr><td><code>bin/lint-comment.sh</code></td><td>lint-comment.sh (harbor#978) — file header line 2 and the comment rule, judged on the lines a branch adds.</td></tr>
 <tr><td><code>bin/lint-constitution.sh</code></td><td>lint-constitution.sh (harbor#1273) - the constitution states rules, never their cases: no ISO date, ticket, absolute</td></tr>
 <tr><td><code>bin/lint-conventions.sh</code></td><td>GOVERNANCE (harbor#3 follow-on) — enforce the conventions in standards/naming.md</td></tr>
 <tr><td><code>bin/lint-core-writes.sh</code></td><td>lint-core-writes.sh (harbor#1275, harbor#1149) - the ratchet on core scripts that write into the checkout at runtime.</td></tr>

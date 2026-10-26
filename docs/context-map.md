@@ -26,7 +26,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | Kind | Folder | Level | Layer | Lifecycle | Files |
 |---|---|---|---|---|---|
 | policy | policy/ | system | source | living | 11 |
-| standard | standards/ | system | source | versioned | 13 |
+| standard | standards/ | system | source | versioned | 14 |
 | contract | contracts/ | system | source | versioned | 30 |
 | decision-record | docs/decisions/ | element | source | dated | 91 |
 | injection-rule | context-rules/<scope>/ | component | source | living | 37 |
@@ -34,11 +34,11 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | skill | skills/ | component | source | living | 41 |
 | fixture | fixtures/ | element | source | living | 252 |
 | registry | registries/ | component | source | versioned | 50 |
-| test | tests/ | component | source | living | 417 |
+| test | tests/ | component | source | living | 420 |
 | report | docs/reports/ | element | report | dated | 1 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| script | bin/ | component | source | living | 200 |
+| script | bin/ | component | source | living | 202 |
 | (no kind) | - | - | - | - | 171 |
 
 ## Folders
@@ -51,7 +51,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.github/` | 4 | 2 | 1 |
 | `CONTRACTS/` | 80 | 9 | 2 |
 | `DOCTRINE/` | 10 | 1 | 1 |
-| `bin/` | 204 | 22 | 2 |
+| `bin/` | 206 | 22 | 2 |
 | `commands/` | 5 | 1 | 1 |
 | `docs/` | 113 | 6 | 5 |
 | `fixtures/` | 252 | 9 | 1 |
@@ -61,9 +61,9 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `patches/` | 12 | 1 | 1 |
 | `runners/` | 2 | 1 | 1 |
 | `skills/` | 41 | 5 | 1 |
-| `standards/` | 13 | 1 | 1 |
+| `standards/` | 14 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 417 | 21 | 1 |
+| `tests/` | 420 | 21 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 73 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -80,13 +80,13 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | ci | coordination | 13 | 58 | 2 | 3 | 0 | 5 |
 | context | control-plane | 3 | 0 | 1 | 38 | 0 | 31 |
 | deploy | control-plane | 5 | 7 | 1 | 1 | 0 | 7 |
-| doc | control-plane | 1 | 1 | 0 | 8 | 0 | 16 |
+| doc | control-plane | 2 | 2 | 0 | 8 | 0 | 17 |
 | drift | control-plane | 1 | 1 | 0 | 4 | 2 | 12 |
 | eval | control-plane | 0 | 1 | 0 | 0 | 0 | 0 |
 | event | observability | 3 | 17 | 0 | 3 | 0 | 2 |
 | gate | control-plane | 10 | 7 | 0 | 0 | 0 | 0 |
 | housekeeping | control-plane | 0 | 0 | 0 | 2 | 0 | 0 |
-| lint | control-plane | 15 | 39 | 0 | 8 | 0 | 31 |
+| lint | control-plane | 16 | 41 | 0 | 8 | 0 | 33 |
 | memory | memory-store | 4 | 11 | 1 | 23 | 0 | 1 |
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
 | policy | policy-function | 0 | 0 | 11 | 0 | 0 | 3 |
@@ -94,7 +94,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | scope | coordination | 2 | 10 | 0 | 0 | 0 | 4 |
 | session | data-plane | 11 | 4 | 0 | 1 | 0 | 0 |
 | skill | catalog | 3 | 5 | 0 | 4 | 0 | 11 |
-| standard | policy-function | 3 | 8 | 104 | 0 | 0 | 43 |
+| standard | policy-function | 3 | 8 | 105 | 0 | 0 | 43 |
 | status | observability | 3 | 7 | 0 | 1 | 0 | 0 |
 | test | control-plane | 0 | 1 | 2 | 7 | 0 | 7 |
 | worktree | coordination | 1 | 0 | 0 | 0 | 0 | 0 |
@@ -218,6 +218,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 ### doc
 
 - `bin/doc-refs.sh`
+- `bin/doc-vale.sh`
 
 ### drift
 
@@ -259,6 +260,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `CONTRACTS/lint-secrets-baseline.txt`
 - `CONTRACTS/lint-siblings-baseline.txt`
 - `bin/lint-comment-commands.awk`
+- `bin/lint-comment.sh`
 - `bin/lint-constitution.sh`
 - `bin/lint-conventions.sh`
 - `bin/lint-core-writes.sh`
@@ -441,6 +443,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `standards/naming/exemptions.tsv`
 - `standards/naming/frozen.tsv`
 - `standards/naming/kinds.tsv`
+- `standards/naming/label-axes.tsv`
 - `standards/naming/registers.tsv`
 - `standards/naming/renames.tsv`
 - `standards/naming/repo-kinds.tsv`

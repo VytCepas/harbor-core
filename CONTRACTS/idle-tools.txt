@@ -65,3 +65,5 @@ stream-export.py       VERB  the operator runs it when preparing a public artefa
 telemetry-report.sh    VERB  the operator asks it a question; nothing needs it on a schedule
 visual-check.sh        VERB  renders every generated HTML surface for a human to look at
 wf-progress.sh         IDLE  is that workflow actually running — no caller and no test
+doc-vale.sh            IDLE  Vale over prose with the registry's config (harbor#978); nothing calls it yet because Vale is not in the CI images, an operator-applied patch
+lint-comment.sh        IDLE  header line 2 and the comment-run rule on added lines (harbor#978); not yet called from lint-conventions.sh because harbor#957 holds that file
