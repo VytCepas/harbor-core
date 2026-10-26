@@ -213,10 +213,10 @@ The operator's premise was that hooks *save* context. The accounting:
 
 | | Δ standing bytes (measured 2026-08-09) |
 |---|---|
-| CONSTITUTION.md — the §4 hook-channel rule and the `skill-book` pointer | **+1,126** (measured) |
+| CONSTITUTION.md — the §4 hook-channel rule and the `skill-catalog` pointer | **+1,126** (measured) |
 | Session spend | **32,765 → 33,891 = 141% of ceiling** |
 | Every hook payload here (PreCompact, SubagentStart, merge) | **0** — they fire on occasions, not in prefixes |
-| `skill-book`'s new router table | **0 standing** — it is body, loaded only on invoke |
+| `skill-catalog`'s new router table | **0 standing** — it is body, loaded only on invoke |
 | Three slash commands | **0 standing body** |
 
 **One genuine reduction is available and it is gated on installing.** §1's

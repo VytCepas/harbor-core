@@ -30,7 +30,7 @@ active in every session on the machine — and `claude plugin details atlas` put
 **~398 tokens always-on**. Meanwhile a skill carrying `disable-model-invocation: true`
 costs **zero**. The tier was buying nothing and cost real governance: seven of eight
 Harbor gates greped `plugins/` zero times, so this tree was invisible to the context
-budget, absent from the generated skill-book, and shipping a `check.mjs` registered in no
+budget, absent from the generated skill-catalog, and shipping a `check.mjs` registered in no
 suite while its manifest advertised one. Retired: `./DOCTRINE/no-authored-plugins.md`,
 enforced by lint **X10**.
 

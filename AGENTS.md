@@ -25,6 +25,7 @@ them). Claude Code reads [CLAUDE.md](CLAUDE.md), which imports this file.
 
 - **Suites:** `sh bin/suite-run.sh --select` runs the suites the changeset needs (flags: `sed -n 2,17p bin/suite-run.sh`). Never a hand-rolled `xargs` loop over `CONTRACTS/suites.txt`: one ran nothing and reported green.
 - **Lint:** `sh bin/lint-conventions.sh`.
+- **A test that cannot fail does not count:** break what it guards, watch it go red, restore it. [`skills/test-strength`](skills/test-strength/SKILL.md) is the method.
 - **Where CI runs:** a harbor PR is mirrored (`.github/workflows/public-ci.yml`, `bin/ci-mirror.sh`) to the public `harbor-core` repo, where governance CI runs on the self-hosted `harbor-linux` runners. `public-ci` is the required check (`CONTRACTS/required-checks.tsv`).
 - **Sandbox:** a suite that clones the repo can fail inside the Claude sandbox only; rerun outside it before believing a red.
 - **Shared CPU, shared sessions:** waiting on `bin/ci-governor.sh` is expected, and another session's run is never yours to kill. The rest: [docs/design/ci-tests-on-this-host.md](docs/design/ci-tests-on-this-host.md).

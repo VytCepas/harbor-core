@@ -248,7 +248,7 @@ a repeat, and delivery for a different command in the same session.
 **A pack with no `when:` never fires.** That is deliberate and it is asserted:
 the most likely typo must not produce the loudest possible rule.
 
-**An unrecognised predicate never fires either.** `bin/skill-book.sh` carries the
+**An unrecognised predicate never fires either.** `bin/skill-catalog.sh` carries the
 incident this guards against — an unrecognised token that fell through to the
 permissive branch turned a gate into a no-op while still reading like a gate.
 

@@ -76,15 +76,15 @@ grep -v '	ci-gate	the generic patterns of the leak gate' "$T_ROOT/.agents/protec
 t_exit "RED-PROOF: without the leak-patterns row, the register is open there" 0 \
   sh "$C" "$T_TMP/lp" CONTRACTS/leak-patterns.tsv
 
-t_section "harbor's register: the skill book's router is an instruction surface (harbor#1149)"
-# deploy writes this file's text into the installed skill book, so a change to it is a change to what every session reads.
+t_section "harbor's register: the skill catalog's router is an instruction surface (harbor#1149)"
+# deploy writes this file's text into the installed skill catalog, so a change to it is a change to what every session reads.
 t_eq "CONTRACTS/skill-book-router.tsv is protected as instructions" instructions "$(sh "$C" "$T_ROOT" CONTRACTS/skill-book-router.tsv | cut -f3)"
-t_eq "...as is the generator that reads it, and the tracked book it writes" "ship instructions" "$(sh "$C" "$T_ROOT" bin/skill-book.sh skills/skill-book/SKILL.md | cut -f3 | tr '\n' ' ' | sed 's/ $//')"
+t_eq "...as is the generator that reads it, and the tracked book it writes" "ship instructions" "$(sh "$C" "$T_ROOT" bin/skill-catalog.sh skills/skill-catalog/SKILL.md | cut -f3 | tr '\n' ' ' | sed 's/ $//')"
 mkdir -p "$T_TMP/sbr/.agents"; cp "$T_ROOT/.agents/ship.conf" "$T_TMP/sbr/.agents/"
 grep -v '	instructions	the Start-here text deploy writes' "$T_ROOT/.agents/protected-paths.tsv" > "$T_TMP/sbr/.agents/protected-paths.tsv"
 t_exit "RED-PROOF: without the router row, a change touching only the router is open" 0 \
   sh "$C" "$T_TMP/sbr" CONTRACTS/skill-book-router.tsv
-t_exit "...and the row is the only difference: the generator is still protected there" 1 sh "$C" "$T_TMP/sbr" bin/skill-book.sh
+t_exit "...and the row is the only difference: the generator is still protected there" 1 sh "$C" "$T_TMP/sbr" bin/skill-catalog.sh
 t_eq "CODEOWNERS owns it too" "/CONTRACTS/skill-book-router.tsv" "$(grep -o '^/CONTRACTS/skill-book-router.tsv' "$T_ROOT/.github/CODEOWNERS")"
 
 t_section "harbor's register: a persistent job always queues for the click"
