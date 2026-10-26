@@ -130,7 +130,7 @@ PACK
 t_has "not <predicate> inverts" "$(fire "$(bash_ev PreToolUse 'ls')")" NEG-NOTE
 rm -f "$REPO/.claude/inject.d/32-neg.md" "$REPO/.claude/inject.d/31-multi-fail.md"
 
-t_section "3 · a malformed pack is silent (skill-book's --chekc shape)"
+t_section "3 · a malformed pack is silent (skill-catalog's --chekc shape)"
 pack "$REPO/.claude/inject.d" 40-typo.md <<'PACK'
 ---
 id: typo
