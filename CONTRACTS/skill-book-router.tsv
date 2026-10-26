@@ -1,4 +1,4 @@
-# skill-book-router.tsv (harbor#1149) - the "Start here" table of the skill book (bin/skill-book.sh): a situation and the skill that owns it.
+# skill-book-router.tsv (harbor#1149) - the "Start here" table of the skill catalog (bin/skill-catalog.sh): a situation and the skill that owns it.
 # A row is printed only when its skill is in the book being written, so the tracked book never routes to a skill this repo does not ship.
 # Rows for skills a pack ships are not here: the private layer's skill-book-router.tsv (CONTRACTS/private-layer.md) appends them, or replaces the text of a row here in place.
 # Columns, tab-separated, one header row, a skill once per file. Row order is the table order. Names no client, company or account.

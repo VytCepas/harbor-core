@@ -1143,7 +1143,7 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <tr class="advisory"><td><code>drift.launchd-plist</code> (was X9)</td><td>every launchd-scheduled CHECKS.md check has a tracked plist, and the installed copy matches (advisory)</td></tr>
 <tr><td><code>skill.readme-row</code> (was T10)</td><td>every skills/ entry has a row in skills/README.md (why it exists)</td></tr>
 <tr><td><code>skill.use-when</code> (was T11)</td><td>every tracked skill's description carries USE WHEN trigger phrases</td></tr>
-<tr class="advisory"><td><code>skill.book-current</code> (was T9)</td><td>the tracked skill book is current against the skills this checkout tracks (advisory)</td></tr>
+<tr class="advisory"><td><code>skill.book-current</code> (was T9)</td><td>the tracked skill catalog is current against the skills this checkout tracks (advisory)</td></tr>
 <tr><td><code>doc.magnitude-dated</code> (was T12)</td><td>a magnitude quoted beside one of this repo's tools names the date it was measured (harbor#520)</td></tr>
 <tr class="advisory"><td><code>context.budget-ceiling</code> (was X3)</td><td>the always-on context surface stays under its ceiling (advisory)</td></tr>
 <tr><td><code>policy.no-authored-plugins</code> (was X10)</td><td>no Harbor-authored plugin tier (DOCTRINE/no-authored-plugins.md)</td></tr>
@@ -1184,6 +1184,9 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <tr><td><code>standard.decision-dangling</code></td><td>every D-n cited in the tree resolves to a decision record (docs/decisions/, harbor#1029)</td></tr>
 <tr><td><code>standard.decision-orphan</code></td><td>every decision record is cited outside docs/decisions/, or allow-listed in CONTRACTS/decision-orphans.tsv (harbor#1029)</td></tr>
 <tr><td><code>event.kind-registered</code></td><td>every event kind is a row of CONTRACTS/event-kinds.tsv, its emitter names it, and no preset waits on a kind nothing emits (harbor#1367)</td></tr>
+<tr><td><code>skill.description-shape</code></td><td>an authored skill's description carries USE WHEN then NOT FOR, and its frontmatter has at most one visibility key (warn, harbor#1010)</td></tr>
+<tr><td><code>skill.cited-path-exists</code></td><td>a backticked repo path in an authored skill's description exists in the tree (warn, harbor#1010)</td></tr>
+<tr><td><code>drift.skill-manifest</code></td><td>every skill installed in the config dir has a row in .harbor-manifest or a pack's manifest, and every skill row an installed skill (advisory, harbor#1010)</td></tr>
 </tbody></table>
 </div>
 
@@ -1520,7 +1523,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/guards/bash-test.sh</code></td><td><code>        bin/* tests/lib/* tests/guards/bash-test.sh tests/guards/floor-fixture.sh tests/guards/guards.jsonl tests/guards/shapes.jsonl tests/guards/benign.jsonl tests/guards/exemptions.jsonl</code></td></tr>
 <tr><td><code>tests/checks/docs-gen-test.sh</code></td><td><code>bin/docs-gen.sh bin/log-lib.sh tests/checks/docs-gen-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/skills/eval-runners-test.sh</code></td><td><code>EVALS-DATA/* fixtures/eval-runners/* tests/skills/eval-runners-test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/skills/skill-book-test.sh</code></td><td><code>bin/skill-book.sh bin/log-lib.sh bin/roots.sh bin/install-lib.sh CONTRACTS/roots.tsv CONTRACTS/skill-book-router.tsv skills/skill-book/SKILL.md tests/skills/skill-book-test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/skills/skill-catalog-test.sh</code></td><td><code>bin/skill-catalog.sh bin/log-lib.sh bin/roots.sh bin/install-lib.sh CONTRACTS/roots.tsv CONTRACTS/skill-book-router.tsv skills/skill-catalog/SKILL.md tests/skills/skill-catalog-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/skills/atlas-zones-test.sh</code></td><td><code>skills/atlas/build/build.py tests/skills/atlas-zones-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/skills/atlas-inside-test.sh</code></td><td><code>skills/atlas/build/build.py tests/skills/atlas-inside-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/skills/archify-report-pipe-test.sh</code></td><td><code>vendor/archify/scripts/check-render-output.mjs vendor/archify/bin/archify.mjs fixtures/archify/fanout.architecture.json tests/skills/archify-report-pipe-test.sh tests/lib/core.sh</code></td></tr>
@@ -1633,7 +1636,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/scope/pack/pack.test.sh</code></td><td><code>bin/pack.sh bin/roots.sh bin/harbor bin/install-lib.sh bin/log-lib.sh bin/lint-leaks.sh CONTRACTS/leak-patterns.tsv CONTRACTS/pack.md tests/scope/pack/pack.test.sh tests/lib/core.sh tests/scope/pack/fixture.sh bin/check-registry-generate.sh CHECKS.md standards/naming/controls.tsv CONTRACTS/pack-frontmatter-keys.txt bin/lint-name.sh standards/naming/*</code></td></tr>
 <tr><td><code>tests/scope/pack/checks.test.sh</code></td><td><code>bin/* CONTRACTS/* CHECKS.md standards/naming/controls.tsv tests/scope/pack/checks.test.sh tests/scope/pack/fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/scope/pack/deploy.test.sh</code></td><td><code>bin/deploy.sh bin/restore.sh bin/install-lib.sh bin/log-lib.sh bin/roots.sh tests/scope/pack/deploy.test.sh tests/install/deploy-fixture.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/scope/pack/skill-book.test.sh</code></td><td><code>bin/skill-book.sh bin/pack.sh bin/roots.sh bin/harbor bin/install-lib.sh bin/log-lib.sh bin/lint-leaks.sh CONTRACTS/roots.tsv CONTRACTS/skill-book-router.tsv CONTRACTS/leak-patterns.tsv CONTRACTS/pack-frontmatter-keys.txt skills/skill-book/SKILL.md tests/scope/pack/skill-book.test.sh tests/scope/pack/fixture.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/scope/pack/skill-catalog.test.sh</code></td><td><code>bin/skill-catalog.sh bin/pack.sh bin/roots.sh bin/harbor bin/install-lib.sh bin/log-lib.sh bin/lint-leaks.sh CONTRACTS/roots.tsv CONTRACTS/skill-book-router.tsv CONTRACTS/leak-patterns.tsv CONTRACTS/pack-frontmatter-keys.txt skills/skill-catalog/SKILL.md tests/scope/pack/skill-catalog.test.sh tests/scope/pack/fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/export/push.test.sh</code></td><td><code>bin/deploy-push.sh bin/layers.sh bin/lint-leaks.sh bin/lint-domain.sh bin/pass-score.sh bin/harbor bin/log-lib.sh CONTRACTS/layers.tsv CONTRACTS/leak-patterns.tsv tests/export/push.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/export/history.test.sh</code></td><td><code>bin/deploy-push.sh bin/layers.sh bin/lint-leaks.sh bin/lint-domain.sh bin/pass-score.sh bin/log-lib.sh CONTRACTS/leak-patterns.tsv tests/export/history.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/export/ci-mirror.test.sh</code></td><td><code>bin/ci-mirror.sh bin/deploy-push.sh bin/layers.sh bin/lint-leaks.sh bin/lint-domain.sh bin/pass-score.sh bin/log-lib.sh CONTRACTS/leak-patterns.tsv tests/export/ci-mirror.test.sh tests/lib/core.sh</code></td></tr>
@@ -1705,6 +1708,9 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/floor/destroy-snapshot-test.sh</code></td><td><code>bin/guard-destroy.sh bin/guard-lib.sh bin/floor-normalize.awk tests/floor/destroy-snapshot-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/ci/suite-cache/cache.test.sh</code></td><td><code>bin/suite-cache.sh bin/suite-run.sh bin/suite-select.sh bin/log-lib.sh bin/ci-governor.sh tests/ci/suite-cache/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/alert/lib/chain.test.sh</code></td><td><code>bin/alert-lib.sh bin/event-bus.sh bin/log-lib.sh tests/alert/lib/* tests/lib/core.sh tests/lib/linux-sim.sh</code></td></tr>
+<tr><td><code>tests/lint/comment/added.test.sh</code></td><td><code>bin/lint-comment.sh standards/naming/controls.tsv tests/lint/comment/* tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/lint/name/issue-taxonomy.test.sh</code></td><td><code>bin/lint-name.sh standards/naming/* CONTRACTS/issue-taxonomy.tsv tests/lint/name/issue-taxonomy.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/doc/vale/vale.test.sh</code></td><td><code>bin/doc-vale.sh bin/lint-name.sh bin/log-lib.sh standards/naming/* tests/doc/vale/* tests/lib/core.sh</code></td></tr>
 </tbody></table>
 </div>
 
@@ -1794,7 +1800,8 @@ session and one that costs nothing until wanted.</p>
 <tr><td><code>housekeeping</code></td><td>invoked only</td><td>"Reclaim a drifted box: the measured trash classes that accumulate here, the detector for each, and — the load-bearing half — the things that LOOK</td></tr>
 <tr><td><code>learning-artifact</code></td><td>invoked only</td><td>"The approved house style and build kit for study pages — an exam guide, a course explainer, a revision page: one section per tab, hand-drawn SVG di</td></tr>
 <tr><td><code>review-fanout</code></td><td>ambient</td><td>"Review a code change with several cheap reviewers, each given a different lens, then verify every finding before reporting it. The deliverable is ver</td></tr>
-<tr><td><code>skill-book</code></td><td>ambient</td><td>"The index of every skill and credentialed CLI on this box, with the path to read each one — most are hidden from your listing and this is the only </td></tr>
+<tr><td><code>skill-book</code></td><td>invoked only</td><td>"The old name of the skill-catalog skill, kept as an alias for one release (harbor#1010): read ~/.claude/skills/skill-catalog/SKILL.md, which is the i</td></tr>
+<tr><td><code>skill-catalog</code></td><td>ambient</td><td>"The index of every skill and credentialed CLI on this box, with the path to read each one — most are hidden from your listing and this is the only </td></tr>
 <tr><td><code>test-strength</code></td><td>invoked only</td><td>Prove a load-bearing test can actually fail, and that it fails for the right reason. Break the thing it guards, watch it go red, restore — then chec</td></tr>
 </tbody></table>
 </div>
@@ -2401,6 +2408,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/deploy-push.sh</code></td><td>deploy-push.sh (harbor#1149, DESIGN.md v2.1) - <code>harbor deploy push</code>: share core. One snapshot commit of the core set, no history.</td></tr>
 <tr><td><code>bin/deploy.sh</code></td><td>deploy.sh (harbor#457) — install every Harbor payload onto THIS box, in the one order that works.</td></tr>
 <tr><td><code>bin/doc-refs.sh</code></td><td>doc-refs.sh (harbor#996 E1, from #1015) — every path an entry doc cites resolves, and the doc is not left behind.</td></tr>
+<tr><td><code>bin/doc-vale.sh</code></td><td>doc-vale.sh (harbor#978) — prose against the registry: legacy aliases, UK spelling, banned words, via Vale.</td></tr>
 <tr><td><code>bin/docs-gen.sh</code></td><td>DOCS — generate docs/index.html, the architecture document (harbor#173).</td></tr>
 <tr><td><code>bin/doctor.sh</code></td><td>doctor.sh — probe the external tools Harbor's doctrine depends on.</td></tr>
 <tr><td><code>bin/drift-confinement.sh</code></td><td>drift-confinement.sh (harbor#1299, #555 P2) — the check drift.confinement: the installed <code>sandbox</code> block of the</td></tr>
@@ -2461,6 +2469,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/judge-run.sh</code></td><td>judge-run (harbor#44 follow-through — M5's scheduling half) — run the ledger</td></tr>
 <tr><td><code>bin/launchd-render.sh</code></td><td>launchd-render.sh — fill a launchd plist template from the roots table (harbor#630, #1149).</td></tr>
 <tr><td><code>bin/layers.sh</code></td><td>layers.sh (harbor#1149) - reads CONTRACTS/layers.tsv: which paths are core (exported) and which stay dev.</td></tr>
+<tr><td><code>bin/lint-comment.sh</code></td><td>lint-comment.sh (harbor#978) — file header line 2 and the comment rule, judged on the lines a branch adds.</td></tr>
 <tr><td><code>bin/lint-constitution.sh</code></td><td>lint-constitution.sh (harbor#1273) - the constitution states rules, never their cases: no ISO date, ticket, absolute</td></tr>
 <tr><td><code>bin/lint-conventions.sh</code></td><td>GOVERNANCE (harbor#3 follow-on) — enforce the conventions in standards/naming.md</td></tr>
 <tr><td><code>bin/lint-core-writes.sh</code></td><td>lint-core-writes.sh (harbor#1275, harbor#1149) - the ratchet on core scripts that write into the checkout at runtime.</td></tr>
@@ -2524,7 +2533,8 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/session-react-lib.sh</code></td><td>session-react-lib.sh (harbor#1043, #1044) — what the session.* reaction handlers share. Sourced, never run.</td></tr>
 <tr><td><code>bin/session-save-now.sh</code></td><td>session-save-now.sh (harbor#1043, #1044) — rule event.session-save-now: the audit trail of a "write the handoff now" nudge.</td></tr>
 <tr><td><code>bin/shim-install.sh</code></td><td>shim-install.sh — the ~/.local/bin commands, from CONTRACTS/shims.tsv. harbor#630.</td></tr>
-<tr><td><code>bin/skill-book.sh</code></td><td>skill-book.sh — generate the skill book, the index that makes invoked-only skills findable (harbor#155, harbor#1149).</td></tr>
+<tr><td><code>bin/skill-book.sh</code></td><td>skill-book.sh — the old name of bin/skill-catalog.sh, kept for one release (harbor#1010). Runs it with the same arguments.</td></tr>
+<tr><td><code>bin/skill-catalog.sh</code></td><td>skill-catalog.sh — generate the skill catalog, the index that makes invoked-only skills findable (harbor#155, harbor#1149, harbor#1010).</td></tr>
 <tr><td><code>bin/skill-fire.sh</code></td><td>skill-fire.sh (harbor#293 · the tier decision's verifier) — does a candidate</td></tr>
 <tr><td><code>bin/skill-usage.sh</code></td><td>skill-usage.sh (harbor#173 · A7, harbor#518) — how often is a skill invoked, and when last?</td></tr>
 <tr><td><code>bin/skills-collide.sh</code></td><td>skills-collide.sh (harbor#117 · I3, #476, #641) — the pre-install collision scan, by content.</td></tr>
@@ -2548,7 +2558,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/worktree.sh</code></td><td>worktree.sh — session worktrees: create, retire, collect (CI-4, harbor#150)</td></tr>
 <tr><td><code>bin/access-confinement.sh</code></td><td>access-confinement.sh (harbor#1298, #555 decisions 7 and 8) — the PreToolUse(Bash) hook that keeps a confined</td></tr>
 <tr><td><code>bin/failure-observe.sh</code></td><td>FO-1 (harbor#465) — the PostToolUseFailure sink: one durable record per failed</td></tr>
-<tr><td><code>bin/injection-rule.sh</code></td><td>inject-hook.sh (harbor#173 · A1) — the injector. One engine, many rule packs.</td></tr>
+<tr><td><code>bin/injection-rule.sh</code></td><td>injection-rule.sh (harbor#173 · A1; renamed from inject-hook.sh, harbor#1272) — the injector. One engine, many rule packs.</td></tr>
 <tr><td><code>bin/memory-harvest.sh</code></td><td>memory-harvest (harbor#6 — workstream D, D1) — the work-log reconciler.</td></tr>
 <tr><td><code>bin/reply-shape.sh</code></td><td>reply-shape (harbor#952, #949 D-23) — advisory Stop hook. Registered in CHECKS.md as <code>reply-shape</code>.</td></tr>
 <tr><td><code>bin/session-state.sh</code></td><td>session-state.sh (harbor#1043, #1044) — the Stop hook that says what this session is WAITING ON.</td></tr>

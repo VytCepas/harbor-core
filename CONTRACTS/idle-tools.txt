@@ -44,6 +44,7 @@ deny-hash.sh           IDLE  M7 leak filter over the operator's own private valu
 floor-equiv.sh         IDLE  replays a payload corpus through TWO guard trees and compares them
 managed-telemetry.sh   VERB  the operator runs it once under sudo, after collector-setup.sh
 managed-retention.sh   VERB  the operator runs it once under sudo: a root-owned managed setting is never written on a schedule
+skill-book.sh        VERB  the old name of skill-catalog.sh (harbor#1010): kept one release for a habit or a document that still types it; goes with its renames.tsv row
 standard-rename.sh     VERB  the rename codemod (harbor#996 B2): a rename wave (harbor#961) runs it once per mapping, by hand; nothing schedules a rename
 gate-codeowners.sh VERB  a person runs --write after changing the protected-paths register (harbor#1018); classify.test.sh runs --check
 gate-register-derive.sh VERB  a person runs --write after changing an installer (harbor#1018); classify.test.sh runs --check
@@ -65,3 +66,5 @@ stream-export.py       VERB  the operator runs it when preparing a public artefa
 telemetry-report.sh    VERB  the operator asks it a question; nothing needs it on a schedule
 visual-check.sh        VERB  renders every generated HTML surface for a human to look at
 wf-progress.sh         IDLE  is that workflow actually running — no caller and no test
+doc-vale.sh            IDLE  Vale over prose with the registry's config (harbor#978); nothing calls it yet because Vale is not in the CI images, an operator-applied patch
+lint-comment.sh        IDLE  header line 2 and the comment-run rule on added lines (harbor#978); not yet called from lint-conventions.sh because harbor#957 holds that file
