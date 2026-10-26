@@ -14,7 +14,8 @@ corpus() { # <file> <decision:command>… — one JSONL line each
   _cf="$G/$1.jsonl"; shift; : > "$_cf"
   for _l in "$@"; do jq -nc --arg d "${_l%%:*}" --arg c "${_l#*:}" '{command: $c, decision: $d}' >> "$_cf"; done
 }
-run() { HARBOR_REDTEAM_DIR="$C" HARBOR_CACHE_DIR="${CACHEX:-$CACHE}" HARBOR_REDTEAM_BASELINE="$BL" HARBOR_REDTEAM_SOURCES="$SRC" \
+BUS="$HOME/.local/state/harbor/events"  # the sandbox HOME's bus, handed over: the cache here is not the live one
+run() { HARBOR_EVENT_DIR="${BUSX-$BUS}" HARBOR_REDTEAM_DIR="$C" HARBOR_CACHE_DIR="${CACHEX:-$CACHE}" HARBOR_REDTEAM_BASELINE="$BL" HARBOR_REDTEAM_SOURCES="$SRC" \
           HARBOR_NODE="${NODEBIN:-/nonexistent/node}" HARBOR_NOW="${AT:-1790000000}" sh "$TOOL" "$@" > "$T_TMP/out" 2>&1
         _rr=$?; cat "$T_TMP/out" >> "$T_TMP/all.out"; echo "exit $_rr"; }
 OUT() { cat "$T_TMP/out"; }
@@ -33,7 +34,7 @@ t_has "...and a skipped corpus is a FAIL, never green" "$(OUT)" "  FAIL: ccg: sk
 
 t_section "the obligation a new finding opens is due in a week, the check's cadence, not the default day"
 _ev="$(find "$HOME/.local/state/harbor/events" -type f 2>/dev/null | xargs cat 2>/dev/null | grep '"obligation.open"' | grep '"redteam-corpus"' | tail -1)"
-t_eq "the open event's deadline is the run's epoch plus 7 days" "$((1790000000 + 604800))" "$(printf '%s' "$_ev" | jq -r '.data.deadline_ts')"
+t_eq "the open event's deadline is the run plus 7 days, in the ISO form the ledger reads" "$(jq -nr '(1790000000 + 604800) | todate')" "$(printf '%s' "$_ev" | jq -r '.data.deadline_ts')"
 t_has "a fix line names the command a person can run, not a temp clone" \
   "$(HARBOR_REDTEAM_SELF='sh bin/redteam-corpus.sh' run --print >/dev/null; OUT)" "  fix: sh bin/redteam-corpus.sh"
 
@@ -100,6 +101,36 @@ EOF
 else
   t_fail "node is not installed here, so the ccg adapter was not exercised"
 fi
+
+t_section "parallel: RT_JOBS workers judge the shguard cases at once, and the findings equal the serial run's"
+_keep="$(cat "$G/guardfall.jsonl")"
+corpus guardfall "Block:echo $MARK" "Allow:git status" "Allow:git reset --hard" "Block:pwd" "Allow:ls" "Block:echo $MARK two"
+RT_JOBS=1 CACHEX="$T_TMP/cache-serial" run --no-refresh >/dev/null
+_serial="$(cut -f1 "$T_TMP/cache-serial/redteam/shguard.guardfall.misses" | tr '\n' ' ')"
+: > "$T_TMP/trace"
+RT_CASE_TRACE="$T_TMP/trace" RT_JOBS=4 CACHEX="$T_TMP/cache-par" run --no-refresh >/dev/null
+t_eq "4 workers, 6 cases: the first four trace lines are all starts (serial would alternate start, end)" "s s s s" "$(head -4 "$T_TMP/trace" | cut -d' ' -f1 | tr '\n' ' ' | sed 's/ $//')"
+t_eq "the findings, in case order, equal the serial run's" "$_serial" "$(cut -f1 "$T_TMP/cache-par/redteam/shguard.guardfall.misses" | tr '\n' ' ')"
+t_has "...and are non-empty, so the comparison compares something" "$_serial" "miss:1"
+printf '%s\n' "$_keep" > "$G/guardfall.jsonl"
+
+t_section "the handoff: only new findings not yet accepted open it, and only a run on the live state talks to the bus"
+opens() { cat "$BUS"/*.jsonl 2>/dev/null | grep '"obligation.open"' | grep -c '"redteam-corpus"'; }
+_o="$(opens)"
+CACHEX="$T_TMP/cache-acc" run --no-refresh >/dev/null
+t_has "control: a fresh cache reads both accepted findings as new" "$(grep 'shguard/guardfall' "$T_TMP/cache-acc/checks.log" | tail -1)" "new=2"
+t_eq "...and opens no handoff, since both are accepted" "$_o" "$(opens)"
+sed -i.bak '/miss:4/d' "$BL"
+( BUSX='' CACHEX="$T_TMP/cache-borrowed" run --no-refresh >/dev/null )  # a subshell: sh keeps an assignment before a function
+t_has "control: a borrowed cache, no bus handed over, finds miss:4 new and not accepted" "$(OUT)" "new 2, cleared 0, 1 not accepted"
+t_eq "...and leaves the bus alone" "$_o" "$(opens)"
+CACHEX="$T_TMP/cache-handed" run --no-refresh >/dev/null
+t_eq "the same run with a bus handed over opens it" "$((_o + 1))" "$(opens)"
+t_has "...titled with what waits" "$(cat "$BUS"/*.jsonl | grep '"obligation.open"' | tail -1 | jq -r .data.title)" "redteam-corpus: 1 new to adjudicate, harbor#1313"
+mkdir -p "$CLAUDE_CONFIG_DIR/cache"
+( BUSX='' CACHEX="$CLAUDE_CONFIG_DIR/cache" run --no-refresh >/dev/null )
+t_eq "the weekly job's shape, the live cache and no bus handed over, opens it too" "$((_o + 2))" "$(opens)"
+mv "$BL.bak" "$BL"
 
 t_section "no case text anywhere: stdout, checks.log, the state files"
 t_has "every run's output was kept" "$(grep -c 'redteam-corpus: ' "$T_TMP/all.out")" "1"

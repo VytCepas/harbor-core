@@ -83,6 +83,7 @@ esac
 case "$0" in */*) _pd="${0%/*}" ;; *) _pd=. ;; esac
 . "$_pd/log-lib.sh"
 . "$_pd/fs-lib.sh"
+ALERT_LIB_DIR="$_pd"; . "$_pd/alert-lib.sh"
 LOG_FD=2; log_init pulse
 
 # jq missing is not a reason to print nothing — it is the single dependency
@@ -189,8 +190,8 @@ check_deps() {
   _crit=""; _warn=""
   command -v git >/dev/null 2>&1 || _crit="$_crit git"
   command -v gitleaks >/dev/null 2>&1 || _warn="$_warn gitleaks"
-  # The notify sink: osascript on macOS, notify-send on Linux (harbor#618).
-  command -v osascript >/dev/null 2>&1 || command -v notify-send >/dev/null 2>&1 || _warn="$_warn osascript/notify-send"
+  # The notify sink (bin/alert-lib.sh, harbor#618): with no desktop channel a banner is only logged.
+  [ "$(notify_sink)" != log ] || _warn="$_warn desktop-notifier"
   if [ -n "$_crit" ]; then
     emit deps crit "missing:$_crit — the work-log cannot sync at all"
   elif [ -n "$_warn" ]; then
