@@ -17,6 +17,7 @@ if [ "${PACK_STUB_REFUSE:-}" = "$m" ] || [ "${PACK_STUB_REFUSE:-}" = both ]; the
   echo "pack: 0 ok, 1 failed, 0 warnings"; exit 1
 fi
 case "$1:$m" in remove:apply) [ -n "${PACK_STUB_KEEP:-}" ] || rm -rf "$HOME/.claude/.harbor-packs" "$HOME/.claude/checks.d" ;; esac
+[ -z "${PACK_STUB_RECOMPOSE:-}" ] || [ "$m" != apply ] || printf "| demo row |\n" >> "$HOME/.claude/bin/CHECKS.md"
 echo "  ok: pack.sh stub ran ($1 $m)"; echo "pack: 1 ok, 0 failed, 0 warnings"'
 packcase() { # <case> [listed]: a deploy fixture whose pack.sh is the stub above; harbor.toml lists "demo" unless told not
   fixture "$1"
@@ -127,4 +128,21 @@ PACK_STUB_KEEP=1; export PACK_STUB_KEEP; run 'y\nn\n' --only floor --uninstall -
 t_eq "a removal that leaves a pack behind fails verify" 1 "$RC"
 t_has "...naming the pack" "$(out)" "  FAIL: a pack is still installed after the removal: demo"
 unset PACK_STUB_KEEP
+
+t_section "the packs step recomposed bin/CHECKS.md after runtime-install recorded it: runtime-install records it again (harbor#1044)"
+# runtime-install's stub records bin/CHECKS.md as it finds it (creating it once), as the real one records what it composed.
+STUB_HOOK_runtimeinstallsh='f="$HOME/.claude/bin/CHECKS.md"; m="$HOME/.claude/.harbor-manifest"; mkdir -p "${f%/*}"; [ -f "$f" ] || printf "core\n" > "$f"
+b=$(git hash-object --no-filters "$f"); { grep -v " bin/CHECKS.md " "$m" 2>/dev/null; printf "%s 100644 bin/CHECKS.md runtime-install t\n" "$b"; } > "$m.new"; mv "$m.new" "$m"'
+export STUB_HOOK_runtimeinstallsh
+rr_applies() { grep -c '^runtime-install.sh .*--apply' "$LOGF"; }
+packcase rerec; PACK_STUB_RECOMPOSE=1; export PACK_STUB_RECOMPOSE; run 'y\nn\n' --apply --live
+t_eq "the apply exits 0" 0 "$RC"
+t_eq "runtime-install applies twice" 2 "$(rr_applies)"
+t_eq "...the second after pack.sh's apply" "pack.sh runtime-install.sh" "$(grep -E '^(pack\.sh install|runtime-install\.sh).*--apply' "$LOGF" | tail -2 | awk '{ print $1 }' | tr '\n' ' ' | sed 's/ $//')"
+t_eq "the recorded blob is the installed register's" "$(git hash-object --no-filters "$C/bin/CHECKS.md")" "$(awk '$3 == "bin/CHECKS.md" { print $1 }' "$C/.harbor-manifest")"
+t_has "...and deploy says why it ran it again" "$(out)" "running runtime-install again to record it"
+unset PACK_STUB_RECOMPOSE
+packcase rerec0; run 'y\nn\n' --apply --live
+t_eq "control: a pack step that leaves bin/CHECKS.md alone, runtime-install applies once" 1 "$(rr_applies)"
+unset STUB_HOOK_runtimeinstallsh
 t_done

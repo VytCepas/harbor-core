@@ -47,7 +47,8 @@
 #                  the one the row's link names.   gh-run   `gh run view`: the run, or the named job, completed.
 #   transcripts    not a source of its own: when a dead owner last wrote its transcript (HARBOR_STATUS_OBLIGATION_TRANSCRIPTS,
 #                  default ~/.claude/projects). A row that outlives its owner's stop (Workflow) is abandoned once its deadline has
-#                  passed, the owner is gone from both lists and no transcript line came after the deadline.
+#                  passed, the owner is gone from both lists and no transcript line came after the deadline, or the owner has been silent for HARBOR_STATUS_OBLIGATION_QUIET seconds (86400). Live or dead, a row
+#                  closes (source transcript) when its owner's transcript carries the row's <task-notification> with a final status.
 #   sweep          the harbor-clean.sh --record rows: each RISK or DECIDE row is a `leftover` obligation owned by the
 #                  operator while the record names it, closed when the next record does not. $HOME is shown as ~.
 # A source that fails, times out, prints what is not a list, or is older than it may be (the sweep record, 36h)
@@ -482,7 +483,8 @@ def dead($sid): $sid != "" and ($src.sessions.ok // false) and ($src["claude-age
 # been written since: nothing then says it still runs, and the stop that spared it was long ago. A missing transcript counts as quiet.
 def lapsed($r):
   $r.deadline_ts != "" and ($r.deadline_ts | fromdateiso8601) < $now
-  and (($src.sessions.transcripts // {})[sid_of($r.owner)] // 0) <= ($r.deadline_ts | fromdateiso8601);
+  and ((($src.sessions.transcripts // {})[sid_of($r.owner)] // 0) as $w
+       | $w <= ($r.deadline_ts | fromdateiso8601) or $now - $w >= $quiet);
 def sources_of($k): $k.reconcile | split(",");
 def agent_for($subj): (($src["claude-agents"].agents // []) | map(select(.id == $subj or .sessionId == $subj)) | first);
 def verdict($r; $k):
@@ -495,7 +497,8 @@ def verdict($r; $k):
       elif age($r) >= $grace and dead(sid_of($r.owner)) then {to: "abandoned", source: "owner-session"}
       else null end
   elif $k.reconcile == "owner-session" then
-    (if $k.on_stop == "abandon" and (($r.outlives | not) or lapsed($r)) and age($r) >= $grace and dead(sid_of($r.owner))
+    (if (($src.sessions.finished // []) | any(.[]; . == $r.subject)) then {to: "closed", source: "transcript"}
+     elif $k.on_stop == "abandon" and (($r.outlives | not) or lapsed($r)) and age($r) >= $grace and dead(sid_of($r.owner))
      then {to: "abandoned", source: "owner-session"} else null end)
   elif $k.reconcile == "gh-pr" then
     (if ($src["gh-pr"].answers[$r.subject] // "") | IN("MERGED", "CLOSED") then {to: "closed", source: "gh-pr"} else null end)
@@ -550,12 +553,13 @@ TRANSCRIPTS="${HARBOR_STATUS_OBLIGATION_TRANSCRIPTS:-$CFG/projects}"   # <projec
 READ_TO="${HARBOR_STATUS_OBLIGATION_READ_TIMEOUT:-10}"   # seconds one read may take
 BUDGET="${HARBOR_STATUS_OBLIGATION_BUDGET:-40}"          # seconds every read of one run may take together
 GRACE="${HARBOR_STATUS_OBLIGATION_GRACE:-300}"           # a registry file lags exec: a younger row is not judged dead
+QUIET="${HARBOR_STATUS_OBLIGATION_QUIET:-86400}"         # seconds a dead owner may be silent before its outliving row lapses even though it wrote after the deadline
 RETAIN="${HARBOR_STATUS_OBLIGATION_RETAIN:-1296000}"       # seconds a closed row, and the keys of its transitions, are kept: bus retention (14d) + 1d
 LOCK_GRACE="${HARBOR_STATUS_OBLIGATION_LOCK_GRACE:-10}"  # a lock whose owner cannot be read is live until it is this old
 LOCK_MAX="${HARBOR_STATUS_OBLIGATION_LOCK_MAX:-900}"     # a lock older than this is taken over, whatever its pid says
 GH_MAX=25                                                # gh reads per source per run, oldest row first
 RECORD_MAX_AGE=129600                                    # a sweep record older than 36h answers nothing
-for _v in READ_TO BUDGET GRACE RETAIN LOCK_GRACE LOCK_MAX; do
+for _v in READ_TO BUDGET GRACE QUIET RETAIN LOCK_GRACE LOCK_MAX; do
   eval "_x=\$$_v"; case "$_x" in ''|*[!0-9]*) log_fail "HARBOR_STATUS_OBLIGATION_$_v is '$_x', want whole seconds"; log_fix "unset HARBOR_STATUS_OBLIGATION_$_v"; log_end || :; exit 2 ;; esac
 done
 
@@ -620,6 +624,28 @@ read_transcripts() {
     | $cur[0] + {transcripts: from_entries}' "$T/tr.tsv" > "$T/src/sessions.new" && mv -f "$T/src/sessions.new" "$T/src/sessions.json"
 }
 
+# The background work an owner's transcript says finished, into the sessions answer as finished: ["<sid>:<tool-use id>"].
+# Claude Code has no hook for it, but it writes a <task-notification> carrying the tool-use id and a final status into the
+# owner's transcript, live or dead. Only a whole notification counts: the same id and status quoted anywhere else do not.
+read_finished() {
+  [ -f "$T/src/sessions.json" ] || return 0
+  live_rows owner-session > "$T/fin.rows"
+  : > "$T/fin.ids"
+  for _sid in $(sed -n 's/:.*//p' "$T/fin.rows" | sort -u); do
+    case "$_sid" in ''|*[!A-Za-z0-9._-]*) continue ;; esac
+    _tf="$(find "$TRANSCRIPTS" -maxdepth 2 -name "$_sid.jsonl" -type f 2>/dev/null | head -n 1)"
+    [ -n "$_tf" ] || continue
+    awk -v sid="$_sid" '{ s = $0
+      while (match(s, /<task-notification>(\\n|[ \t])*<task-id>[^<]*<\/task-id>(\\n|[ \t])*<tool-use-id>[A-Za-z0-9_]+<\/tool-use-id>(\\n|[ \t])*(<output-file>[^<]*<\/output-file>(\\n|[ \t])*)?<status>(completed|failed|killed|stopped)<\/status>/)) {
+        m = substr(s, RSTART, RLENGTH); s = substr(s, RSTART + RLENGTH)
+        sub(/.*<tool-use-id>/, "", m); sub(/<\/tool-use-id>.*/, "", m); print sid ":" m } }' "$_tf" >> "$T/fin.ids" 2>/dev/null || :
+  done
+  jq -R -s -c --slurpfile cur "$T/src/sessions.json" --rawfile rows "$T/fin.rows" '
+    ($rows | split("\n") | map(select(length > 0))) as $live
+    | (split("\n") | map(select(length > 0)) | unique | map(select(. as $i | $live | any(.[]; . == $i)))) as $f
+    | $cur[0] + {finished: $f}' "$T/fin.ids" > "$T/src/sessions.new" && mv -f "$T/src/sessions.new" "$T/src/sessions.json"
+}
+
 read_agents() {
   _to="$(slot)"; [ "$_to" -gt 0 ] || { src_set claude-agents false "read budget spent"; return 0; }
   _rc=0; _out="$(bounded "$_to" "$CLAUDE" agents --json --all </dev/null 2>/dev/null)" || _rc=$?
@@ -637,6 +663,21 @@ read_queue() {
   _c="$(jq -c -n '[inputs | select(type == "object" and .closed == true and (.id | type) == "string") | .id] | unique | {closed: .}' "$_q" 2>/dev/null)" \
     || { src_set approval-queue false "$_q is not JSON lines"; return 0; }
   src_set approval-queue true "" "$_c"
+}
+
+# A PR merged or closed on GitHub runs no local hook, so the read that saw it is the producer of pr.merged and pr.closed
+# (harbor#1367, CONTRACTS/event-kinds.tsv): one event per pr row this run closed by gh-pr. Emit never fails the run, and
+# the fold reading the event back closes nothing twice.
+publish_pr_closes() {
+  [ -f "$HERE/event-bus.sh" ] || return 0
+  jq -r 'select(.source == "gh-pr" and .to == "closed" and (.obligation | startswith("pr:"))) | .obligation | ltrimstr("pr:")' "$T/batch" 2>/dev/null \
+  | while IFS= read -r _s; do
+      case "$(awk -F'\t' -v s="$_s" '$1 == s { print $2; exit }' "$T/ans.gh-pr" 2>/dev/null)" in
+        MERGED) _kind=pr.merged ;; CLOSED) _kind=pr.closed ;; *) continue ;;
+      esac
+      _r="${_s%#*}"
+      sh "$HERE/event-bus.sh" emit "$_kind" "$_s" --src status-obligations --repo "${_r##*/}" </dev/null >/dev/null 2>&1 || :
+    done
 }
 
 # One `gh` read per live row, capped. A row whose read failed gets no answer, so it flips nothing; the source is
@@ -802,7 +843,7 @@ reconcile_pass() {
         elif ($k.reconcile | IN("owner-session", "claude-agents")) and ($r.owner | startswith("session:")) then $r.owner[8:]
         else empty end] | unique' "$CURRENT" > "$T/candidates.json"
   _cand="$(jq 'length' "$T/candidates.json")"
-  if [ "$_cand" -gt 0 ]; then read_sessions; read_transcripts; else src_set sessions true "no live rows to check"; fi
+  if [ "$_cand" -gt 0 ]; then read_sessions; read_transcripts; read_finished; else src_set sessions true "no live rows to check"; fi
   _need=0
   [ -z "$(live_rows claude-agents)" ] || _need=1
   if [ "$_need" -eq 0 ] && [ "$_cand" -gt 0 ] && jq -e '.ok == true' "$T/src/sessions.json" >/dev/null 2>&1 \
@@ -817,11 +858,12 @@ reconcile_pass() {
   for _f in "$T"/src/*.json; do jq -c --arg n "$(basename "$_f" .json)" '{($n): .}' "$_f"; done | jq -s -c 'add // {}' > "$T/src.json"
   load_state || return 1
   jq -n -c --slurpfile snap "$SNAPFILE" --slurpfile led "$T/led.tail" --argjson reg "$(cat "$T/reg.json")" --slurpfile src "$T/src.json" --argjson lo "$_lo" \
-    --argjson now "$NOW_E" --argjson grace "$GRACE" --arg nowiso "$NOW" --arg home "$HOME" --argjson retain "$RETAIN" '$src[0] as $src | '"$RECON" > "$T/rresult" \
+    --argjson now "$NOW_E" --argjson grace "$GRACE" --argjson quiet "$QUIET" --arg nowiso "$NOW" --arg home "$HOME" --argjson retain "$RETAIN" '$src[0] as $src | '"$RECON" > "$T/rresult" \
     || { log_fail "the reconcile failed on $LEDGER or a source answer; nothing was written"; log_nofix "tests/status/obligations/reconcile.test.sh"; return 1; }
   split_result "$T/rresult"
   if [ -s "$T/batch" ]; then
     cat "$T/batch" >> "$LEDGER" || { log_fail "cannot append to $LEDGER"; log_fix "ls -l $LEDGER"; return 1; }
+    publish_pr_closes
   fi
   fault after-reconcile-ledger
   write_current || return 1

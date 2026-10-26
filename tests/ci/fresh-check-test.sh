@@ -36,7 +36,7 @@ t_section "every generator is decided"
 T="$T_ROOT/CONTRACTS/fresh-checks.tsv"
 decided="$(awk -F'\t' '!/^#/ && NF>=2 { if ($1=="-") print $2; else { n=split($2,w," "); for(i=1;i<=n;i++) if (w[i] ~ /\.sh$/) { sub(/.*\//,"",w[i]); print w[i] } } }' "$T")"
 cands=""
-for f in "$T_ROOT"/bin/*.sh; do
+for f in "$T_ROOT"/bin/*.sh $(sh "$T_ROOT/bin/deploy-hooks.sh" --engines --root "$T_ROOT" 2>/dev/null); do
   h="$(sed -n '1,40p' "$f" | grep '^#')"
   case "$h" in *--check*) ;; *) continue ;; esac
   printf '%s\n' "$h" | grep -qiE 'stale|current|fresh|equals|differs' && cands="$cands ${f##*/}"

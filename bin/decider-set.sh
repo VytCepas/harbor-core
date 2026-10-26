@@ -27,7 +27,7 @@ HERE="$(CDPATH= cd -- "${HERE:-/}" && pwd)"
 FI="$HERE/floor-install.sh"
 
 # <installer> <script it wires into settings.json>
-SIBLINGS='inject-install.sh inject-hook.sh
+SIBLINGS='inject-install.sh injection-rule.sh
 inject-install.sh govern-token.sh
 prod-guard-install.sh prod-guard-ambient.sh
 runtime-install.sh context-resolve.sh'
@@ -49,7 +49,7 @@ guard-stop.sh|first|enforces|refuses once per state and blocks no tool call
 floor-observe.sh|exempt|none|records the override itself, so it has to run when the switch is set; cannot refuse
 event-hook.sh|exempt|none|a recorder, exit 0 on every path, cannot refuse
 govern-token.sh|exempt|none|announces the provenance token, cannot refuse
-inject-hook.sh|exempt|enforces|rule packs are each repo's own governance and its run: deny is the repo's, not the floor's
+injection-rule.sh|exempt|enforces|rule packs are each repo's own governance and its run: deny is the repo's, not the floor's
 prod-guard-ambient.sh|exempt|enforces|defers to prod_guard.py, the cloud and data destruction deny that the switch does not lift (floor-deny.sh:34-35)"
 
 wired() { # the scripts floor-install.sh's table wires, then the siblings'

@@ -15,6 +15,7 @@ mk() { # <name> → a root with the sources frozen-gen reads, and a frozen.tsv w
 FG() { HARBOR_ROOT="$1" sh "$1/bin/frozen-gen.sh" "$2" 2>&1; }
 rc() { HARBOR_ROOT="$1" sh "$1/bin/frozen-gen.sh" "$2" >/dev/null 2>&1; echo $?; }
 row() { grep -c "^$2:$3	$2	$3	" "$1/standards/naming/frozen.tsv"; }
+share() { awk -F'\t' -v i="$2" '$1 == i { print $5 }' "$1/standards/naming/frozen.tsv"; }
 
 t_section "the freeze is generated, and regenerating restores a deleted row"
 R="$(mk gen)"
@@ -28,6 +29,15 @@ t_eq "...a guard rule id from the source" "1" "$(row "$R" rule bash:rm-rf-home)"
 t_eq "...a rule id only a guard's table pins (cloud names its rule in a variable)" "1" "$(row "$R" rule cloud:cloud-soft)"
 t_eq "...and no field path read as a rule (.tool_input.content)" "0" "$(row "$R" rule egress:input)"
 t_eq "the hub seams are reserved, names only (decision 21)" "3" "$(grep -c '^reserved:' "$R/standards/naming/frozen.tsv")"
+t_eq "...and their share is hub (#1278)" "hub" "$(share "$R" reserved:cli:hub)"
+t_eq "a core name's share is core" "core" "$(share "$R" cli:verify)"
+awk -F'\t' -v OFS='\t' '$1 == "cli:verify" { $5 = "hub" } 1' "$R/standards/naming/frozen.tsv" > "$R/f" && mv "$R/f" "$R/standards/naming/frozen.tsv"
+t_eq "a hand-edited share is red" "1" "$(rc "$R" --check)"
+t_has "...naming the row" "$(FG "$R" --check)" "carry no share or the wrong one: cli:verify"
+awk -F'\t' -v OFS='\t' '$1 == "cli:verify" { NF = 4 } 1' "$R/standards/naming/frozen.tsv" > "$R/f" && mv "$R/f" "$R/standards/naming/frozen.tsv"
+t_eq "a row with no share is red" "1" "$(rc "$R" --check)"
+FG "$R" --apply >/dev/null
+t_eq "...and --apply writes it back" "core" "$(share "$R" cli:verify)"
 sed '/^cli:verify	/d' "$R/standards/naming/frozen.tsv" > "$R/f" && mv "$R/f" "$R/standards/naming/frozen.tsv"
 t_eq "a deleted row is red" "1" "$(rc "$R" --check)"
 t_has "...named as not frozen" "$(FG "$R" --check)" "are not frozen: cli:verify"
