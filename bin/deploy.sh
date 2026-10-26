@@ -1070,6 +1070,19 @@ _pr_find() {
     if il_known "$CFG" "commands/$_n" "$_f" "$ROOT" "commands/$_n"; then _pr_add "$_f" 'a command the repo shipped and no longer does'
     else printf '%s\t%s\n' "$_f" 'a command the repo once shipped, holding bytes in no commit: kept' >>"$WORK/prune.kept"; fi
   done
+  # 2b · manifest rows for a file gone from the box and from the repo at HEAD: nothing will move or rewrite
+  # it, so the row only keeps REF-5 and skill-catalog red. A path the repo still ships is kept (the next
+  # install rewrites it). Only skills/, commands/ and bin/ are judged; no HEAD listing drops nothing.
+  : >"$WORK/prune.rows"
+  _git ls-tree -r --name-only HEAD skills/ vendor/skills/ commands/ bin/ 2>/dev/null | sed 's|^vendor/||' >"$WORK/prune.head" || :
+  if [ -s "$WORK/prune.head" ]; then
+    il_mf_rows "$CFG" | awk -F'\t' '{ print $1 }' | while IFS= read -r _r; do
+      case "$_r" in skills/*|commands/*|bin/*) ;; *) continue ;; esac
+      [ ! -e "$CFG/$_r" ] && [ ! -L "$CFG/$_r" ] || continue
+      grep -qxF -- "$_r" "$WORK/prune.head" && continue
+      printf '%s\t%s\n' "$_r" 'recorded by an install, gone from the box, and the repo no longer ships it' >>"$WORK/prune.rows"
+    done
+  fi
   # 3 · prod-guard-install's old backups in the config root (install-lib backs up beside the log now).
   for _f in "$CFG"/settings.json.bak.*; do [ -e "$_f" ] && _pr_add "$_f" "prod-guard-install's old backup in the config root"; done
   # 4 · backups beyond retention: per installer, the newest $PRUNE_KEEP and anything younger than
@@ -1125,7 +1138,7 @@ _pr_move() { # <path>
 _prune() {
   log_head "prune · what the box holds that nothing installs any more"
   _pr_find
-  _np="$(grep -c . "$WORK/prune" || :)"
+  _np="$(cat "$WORK/prune" "$WORK/prune.rows" | grep -c . || :)"
   PDIR="$CFG/backups/pruned-$(date +%Y%m%d-%H%M%S)"
   while IFS='	' read -r _p _why; do
     [ -n "$_p" ] || continue
@@ -1147,6 +1160,11 @@ _prune() {
     awk -F'\t' -v d="$CFG/.helm-pins/" 'index($1, d) == 1' "$WORK/prune" >"$WORK/prune.pins"
     while IFS='	' read -r _p _why; do [ ! -e "$_p" ] || _pr_move "$_p" || :; done <"$WORK/prune.pins"
   fi
+  # A stale manifest row is dropped, never a file: il_manifest_write below applies it.
+  while IFS='	' read -r _p _why; do
+    [ -n "$_p" ] || continue
+    if [ "$IL_APPLY" -eq 0 ]; then log_note "would drop the manifest row $_p ($_why)"; else il_manifest_drop "$_p"; log_ok "dropped the manifest row $_p"; fi
+  done <"$WORK/prune.rows"
   while IFS='	' read -r _p _why; do [ -z "$_p" ] || log_skip "$_p: $_why"; done <"$WORK/prune.kept"
   [ "$_np" -gt 0 ] || log_ok 'nothing to prune'
   [ "$SHIM_AFTER" -eq 0 ] || il_next "sh '$ROOT/bin/deploy.sh' --apply --only shim --live   # links the shims.tsv owner back"
