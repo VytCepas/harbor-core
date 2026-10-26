@@ -1,7 +1,0 @@
-# catalog-non-tools.tsv (harbor#1010) - executables the catalog never lists as tools: its CLI table is for credentialed commands a session can run.
-# bin/skill-catalog.sh reads this: an entry of ~/.local/bin whose name matches a glob is left out of the table and named once under it.
-# Columns, tab-separated, one header row: a name glob (* only) and why it is not a tool. Names no client, company or account.
-glob	why
-*.sh	a script, not a command: a test or a helper that lives beside the tools
-*.py	a script, not a command: a helper that lives beside the tools
-python3*	an interpreter, not a tool of this box

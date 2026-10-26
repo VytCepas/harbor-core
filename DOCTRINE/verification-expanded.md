@@ -124,11 +124,6 @@ was rewritten to assert through an independent reader.
 Every rule added to `bin/lint-conventions.sh` since is mutation-checked before it
 is trusted — break the thing, watch the rule fire, restore.
 
-The procedure, and the prove target that runs it over a gate, is the skill
-[`skills/test-strength`](../skills/test-strength/SKILL.md)
-(`sh skills/test-strength/bin/prove.sh <target>`; targets in `skills/test-strength/targets/`). Read it before calling a suite
-strong.
-
 **Red on a mutant proves discrimination, not correctness.** A rule that fires on
 the planted violation has shown it can tell *something* apart; it has not shown
 it can tell the right things apart. A pattern that matches far too much goes red
