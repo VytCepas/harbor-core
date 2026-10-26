@@ -61,7 +61,6 @@ FLOOR.md	explanation	source	workstream B landing doc: kill-switch, sandbox, rest
 STATUS.md	generated-doc	generated	every number harbor states about itself; status-gen.sh
 PLAN.md	generated-doc	generated	which plan ticket is built; plan-status.sh
 CONTEXT-BASELINE.tsv	record	record	session cost log, append-only
-CONTEXT-RATCHET.tsv	record	record	deploy ratchet on the core always-on bytes
 COVERAGE-INCIDENTS.tsv	record	record	incident log
 DEAD-ENDS.md	record	record	approaches tried and rejected
 HANDOFF.md	handover	source	resume brief for a fresh session

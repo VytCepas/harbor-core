@@ -8,7 +8,6 @@
 path	dev	reason
 tests/export/selfcontained.test.sh	*	asserts the export carries no dev-layer file, so it must name them
 .gitignore	CONTEXT-BASELINE.tsv	ignores the old in-tree baseline so a core clone never stages it (harbor#1275)
-tests/memory/context-ratchet-test.sh	vendor/skills/	builds its own fixture tree
 tests/memory/context-budget-test.sh	CONTEXT-BASELINE.tsv	proves the migration reads an in-tree seed only when present and never writes it (harbor#1275)
 tests/ci/fresh-check-test.sh	STATUS.md	the real-tree arm runs only when STATUS.md exists; the export has no dev layer and skips it
 .github/workflows/governance.yml	*	the STATUS.md check runs only when STATUS.md and harbor-build-tickets.md exist; other hits are messages
@@ -61,14 +60,12 @@ tests/status/obligations/surface.test.sh	*	writes or excludes its own fixture of
 tests/doc/decision/table.test.sh	STATUS.md	the export has no dev layer, so no STATUS.md marks the tree that tracks the page deploy-push built
 tests/export/ci-mirror.test.sh	*	writes or excludes its own fixture of that name in a temp tree (the harbor source it mirrors from), never reads the real one (2026-10-19)
 .github/CODEOWNERS	vendor/skills/	an ownership glob for a tree the export lacks; it matches nothing there
-.gitleaks.toml	vendor/skills-archive/	an allow-list path for one dev-layer file; absent in the export, it allows nothing
 .gitleaks.toml	vendor/skills/	an allow-list path for one dev-layer file; absent in the export, it allows nothing
 bin/adoption-check.sh	vendor/skills/	skips aloud when vendor/skills is absent (dev layer)
 bin/deploy.sh	vendor/skills/	asks git for the tracked skill names; with no vendor/skills the list is only skills/
 bin/docs-gen.sh	vendor/skills/	globs vendor/skills/*/SKILL.md behind [ -f ]; an absent tree yields no rows
 bin/lint-name.sh	vendor/skills/	matches a tracked path prefix; absent in the export, it never matches
 bin/pack.sh	vendor/skills/	tests for a name clash with [ -e ]; an absent tree clashes with nothing
-bin/skill-catalog.sh	vendor/skills-archive/	names the archive in the catalog's own text; it reads nothing from it
 bin/skill-catalog.sh	vendor/skills/	lists skills/ then vendor/skills/ behind [ -d ]; an absent tree adds none
 bin/skills-collide.sh	vendor/skills/	reads vendor/skills/ behind [ -d ] and [ -f ]; an absent tree adds none
 bin/skills-install.sh	vendor/skills/	reads vendor/skills/ behind [ -d ] and [ -f ]; an absent tree adds none
@@ -76,7 +73,6 @@ tests/checks/adoption-check/output-contract.test.sh	vendor/skills/	builds its ow
 tests/checks/lint.docs-test.sh	vendor/skills/	builds its own fixture tree
 tests/checks/lint.redproof-rest-test.sh	vendor/skills/	builds its own fixture tree
 tests/checks/lint.skills-test.sh	vendor/skills/	builds its own fixture tree
-tests/export/license.test.sh	vendor/skills-archive/	checks the archived fabric licence only when the tree exists, so it must name it
 tests/export/license.test.sh	vendor/skills/	checks the skills licence only when the tree exists, so it must name it
 tests/install/skills-collide-test.sh	vendor/skills/	builds its own fixture tree
 tests/install/skills-install-test.sh	vendor/skills/	builds its own fixture tree
