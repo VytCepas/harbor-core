@@ -356,7 +356,7 @@ done
 # worst case, for the reason harbor#243 gives about the memory index: lint X3 runs
 # from inside this checkout, which is the cheapest directory on the box.
 inj_local=0; inj_max=0; inj_max_where=""
-_injector="$ROOT/bin/inject-hook.sh"
+_injector="$ROOT/hooks/injection-rule/injection-rule.sh"
 _inject_bytes() { # <cwd> -> bytes the SessionStart injection would deliver there
   [ -d "$1" ] || { echo 0; return; }
   # `CLAUDE_CONFIG_DIR="$CFG"` IS LOAD-BEARING, NOT TIDINESS. inject-hook.sh reads
@@ -393,7 +393,7 @@ if [ "$_cfg_is_live" -eq 0 ]; then
   printf '%-46s %8s  %s\n' "SessionStart injection" 0 "NOT MEASURABLE — \$CLAUDE_CONFIG_DIR is not the live dir"
 elif [ -f "$_injector" ] && [ "${HARBOR_BUDGET_NO_PROBE:-0}" != 1 ]; then
   inj_local="$(_inject_bytes "$PWD")"; : "${inj_local:=0}"
-  row "SessionStart injection (this cwd)" "$inj_local" "probed via bin/inject-hook.sh"
+  row "SessionStart injection (this cwd)" "$inj_local" "probed via hooks/injection-rule/injection-rule.sh"
   # The worst case is a session started where no repo governs — the case that
   # carries the full hidden-skill listing. Probed rather than asserted, and named
   # in the report so the claim is falsifiable at a glance.

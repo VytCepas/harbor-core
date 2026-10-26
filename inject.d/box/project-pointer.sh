@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # project-pointer.sh (harbor#173 · A6) — buy back the reach repo-scoping costs.
-# Run by bin/inject-hook.sh at SessionStart with cwd = the session's repo.
+# Run by hooks/injection-rule/injection-rule.sh at SessionStart with cwd = the session's repo.
 #
 # THIS HEADER USED TO CALL IT "the ~230 bytes" AND THAT WAS A COPIED CONSTANT
 # ABOUT SOMETHING ELSE. 230 B is E7's SINGLE-ENTRY pointer arm. What this script

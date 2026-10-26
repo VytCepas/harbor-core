@@ -1,0 +1,21 @@
+# Why it is wired this way (moved from bin/inject-install.sh, harbor#1272):
+# THE TOOL EVENTS CARRY A DERIVED MATCHER (@derived): the union of the `tool:` values of every pack the engine may meet,
+# which inject-install computes and passes. PreToolUse and PostToolUse fire on every tool call, so the matcher keeps the
+# engine from forking on tools no rule can match; PostToolUseFailure fires only when something failed, the cheapest
+# moment for a repair. A matcher written here would go stale the moment a pack changes (harbor#184).
+# NO UserPromptSubmit, deliberately: it fires on every prompt, ambient injection with a per-turn multiplier.
+# PreCompact stays wired though nothing ships on it: packs are data, so a `mode: notify` rule at compaction time must not
+# need the installer re-run to exist.
+key	value
+engine	injection-rule
+installer	inject-install
+wire	SessionStart	-	10
+wire	PreToolUse	@derived	10
+wire	PostToolUse	@derived	10
+wire	PostToolUseFailure	@derived	10
+wire	PreCompact	-	10
+wire	SubagentStart	-	10
+senses	the tool call, prompt event or session moment, against every rule pack visible from the session's repo
+acts-on	the session's context (additionalContext), or the tool call (a deny that a pack's rule decides)
+findings	a stamped note the session reads, or a refusal
+closer	the session itself: a note is advice it acts on in the same turn

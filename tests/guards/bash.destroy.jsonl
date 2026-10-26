@@ -111,8 +111,8 @@
 {"id":"edge-5-two-hops","rule":"cd-bridge-destroy","want":"block","cmd":"cd / && cd ~ && rm -rf .claude"}
 {"id":"edge-6-bash-c-named-script","rule":"cd-bridge-destroy","want":"allow","cmd":"bash -c 'cat p.json | sh bin/guard-bash.sh'"}
 {"id":"edge-6-bundled-lc","rule":"cd-bridge-destroy","want":"allow","cmd":"sh -lc 'printf x | sh bin/docs-gen.sh'"}
-{"id":"edge-6-sh-c-named-script","rule":"cd-bridge-destroy","want":"allow","cmd":"sh -c 'printf x | sh bin/inject-hook.sh'"}
-{"id":"edge-6-unwrapped-unchanged","rule":"cd-bridge-destroy","want":"allow","cmd":"printf x | sh bin/inject-hook.sh"}
+{"id":"edge-6-sh-c-named-script","rule":"cd-bridge-destroy","want":"allow","cmd":"sh -c 'printf x | sh hooks/injection-rule/injection-rule.sh'"}
+{"id":"edge-6-unwrapped-unchanged","rule":"cd-bridge-destroy","want":"allow","cmd":"printf x | sh hooks/injection-rule/injection-rule.sh"}
 {"id":"edge-6-wrapper-hides-nothing","rule":"rm-rf-root","want":"block","cmd":"sh -c 'rm -rf /'"}
 {"id":"edge-7-a-home-relative-var","rule":"rm-rf-systree","want":"allow","cmd":"rm -rf /Users/someone/var"}
 {"id":"edge-7-a-local-build-dir","rule":"rm-rf-systree","want":"allow","cmd":"rm -rf /tmp/build/var"}

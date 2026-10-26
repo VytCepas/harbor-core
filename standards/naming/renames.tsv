@@ -26,3 +26,27 @@
 #              Past the date the next --apply removes the shim or collapses the dual reads.
 #   reason     why the new name, from the mapping row
 id	old	new	surface	wave	remove_by	reason
+rename-0001	bin/access-confinement.sh	hooks/access-confinement/access-confinement.sh	path	P1	-	#1272 pilot: one folder per non-floor hook engine, the file named after it (D-11, D-58 as amended 2026-10-23)
+rename-0002	bin/failure-observe.sh	hooks/failure-observe/failure-observe.sh	path	P1	-	#1272 pilot: one folder per non-floor hook engine, the file named after it (D-11, D-58 as amended 2026-10-23)
+rename-0003	bin/session-title.sh	hooks/session-title/session-title.sh	path	P1	-	#1272 pilot: one folder per non-floor hook engine, the file named after it (D-11, D-58 as amended 2026-10-23)
+rename-0004	bin/session-verdicts.sh	hooks/session-verdicts/session-verdicts.sh	path	P1	-	#1272 pilot: one folder per non-floor hook engine, the file named after it (D-11, D-58 as amended 2026-10-23)
+rename-0005	bin/memory-harvest.sh	hooks/memory-harvest/memory-harvest.sh	path	P1	-	#1272 pilot: one folder per non-floor hook engine, the file named after it (D-11, D-58 as amended 2026-10-23)
+rename-0006	bin/reply-shape.sh	hooks/reply-shape/reply-shape.sh	path	P1	-	#1272 pilot: one folder per non-floor hook engine, the file named after it (D-11, D-58 as amended 2026-10-23)
+rename-0007	bin/session-state.sh	hooks/session-state/session-state.sh	path	P1	-	#1272 pilot: one folder per non-floor hook engine, the file named after it (D-11, D-58 as amended 2026-10-23)
+rename-0008	bin/ticket-note.sh	hooks/ticket-note/ticket-note.sh	path	P1	-	#1272 pilot: one folder per non-floor hook engine, the file named after it (D-11, D-58 as amended 2026-10-23)
+rename-0009	bin/worklog-push.sh	hooks/worklog-push/worklog-push.sh	path	P1	-	#1272 pilot: one folder per non-floor hook engine, the file named after it (D-11, D-58 as amended 2026-10-23)
+rename-0010	bin/session-subagent-check.sh	hooks/session-subagent-check/session-subagent-check.sh	path	P1	-	#1272 pilot: one folder per non-floor hook engine, the file named after it (D-11, D-58 as amended 2026-10-23)
+rename-0011	bin/inject-hook.sh	hooks/injection-rule/injection-rule.sh	path	P1	-	#1272 pilot; inject is a legacy alias of injection-rule on path (D-38), so the engine takes the standard term
+rename-0012	tests/hooks/access-confinement-test.sh	hooks/access-confinement/access-confinement.test.sh	path	P1	-	#1272 pilot: the engine's test lives in its folder
+rename-0013	tests/hooks/session-title-test.sh	hooks/session-title/session-title.test.sh	path	P1	-	#1272 pilot: the engine's test lives in its folder
+rename-0014	tests/hooks/reply-shape-test.sh	hooks/reply-shape/reply-shape.test.sh	path	P1	-	#1272 pilot: the engine's test lives in its folder
+rename-0015	tests/hooks/failure-observe-test.sh	hooks/failure-observe/failure-observe.test.sh	path	P1	-	#1272 pilot: the engine's test lives in its folder
+rename-0016	tests/hooks/ticket-note-test.sh	hooks/ticket-note/ticket-note.test.sh	path	P1	-	#1272 pilot: the engine's test lives in its folder
+rename-0017	tests/hooks/failure-observe/output-contract.test.sh	hooks/failure-observe/output-contract.test.sh	path	P1	-	#1272 pilot: an aspect test in the engine's folder
+rename-0018	tests/hooks/ticket-note/private-owners.test.sh	hooks/ticket-note/private-owners.test.sh	path	P1	-	#1272 pilot: an aspect test in the engine's folder
+rename-0019	tests/hooks/inject-hook.compaction-digest-test.sh	hooks/injection-rule/compaction-digest.test.sh	path	P1	-	#1272 pilot: an aspect test in the engine's folder
+rename-0020	tests/hooks/inject-hook.detector-test.sh	hooks/injection-rule/detector.test.sh	path	P1	-	#1272 pilot: an aspect test in the engine's folder
+rename-0021	tests/hooks/inject-hook.engine-test.sh	hooks/injection-rule/engine.test.sh	path	P1	-	#1272 pilot: an aspect test in the engine's folder
+rename-0022	tests/hooks/inject-hook.packs-test.sh	hooks/injection-rule/packs.test.sh	path	P1	-	#1272 pilot: an aspect test in the engine's folder
+rename-0023	tests/hooks/inject-hook.scope-test.sh	hooks/injection-rule/scope.test.sh	path	P1	-	#1272 pilot: an aspect test in the engine's folder
+rename-0024	skill:skill-book	skill-catalog	skill	W2	2026-12-31	harbor#1010: the generated index is the skill catalog; skills/skill-book/ and bin/skill-book.sh stay as aliases until then
