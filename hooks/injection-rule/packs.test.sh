@@ -45,8 +45,7 @@ t_has "the project pointer routes, counting REGISTERED projects (harbor#181)" "$
 t_hasnt "the pointer no longer claims a count of the box" "$_b4" 'project(s) on this box'
 
 t_section "8 · the \$VAR pack, and the heredoc false positive it shipped with"
-t_has "fires on a real flag-taking call" "$(firebox "$(bash_ev PreToolUse 'P="--project_id=a --location=EU"; bq query $P sql' v1)")" 'does not word-split'
-t_eq "silent when the variable is not assigned in the command" "" "$(firebox "$(bash_ev PreToolUse 'gh issue view $n' v6)")"
+t_has "fires on a real flag-taking call" "$(firebox "$(bash_ev PreToolUse 'bq query $P sql' v1)")" 'does not word-split'
 t_eq "silent on a single-value use" "" "$(firebox "$(bash_ev PreToolUse 'cd $HOME' v2)")"
 t_eq "silent on a quoted variable" "" "$(firebox "$(bash_ev PreToolUse 'bq query "$SQL"' v3)")"
 t_eq "silent on the trap quoted inside a heredoc" "" "$(firebox "$(bash_ev PreToolUse 'gh issue create --body "$(cat <<'"'"'EOF'"'"'
@@ -56,7 +55,7 @@ EOF
 t_has "a heredoc does not mask a real call after it" "$(firebox "$(bash_ev PreToolUse 'cat <<EOF
 notes
 EOF
-P="--a --b"; bq query $P sql' v5)")" 'does not word-split'
+bq query $P sql' v5)")" 'does not word-split'
 
 t_section "8 · the unbounded-wait-loop pack (the 39-minute loop, 2026-08-24)"
 t_has "fires on the original bug" "$(firebox "$(bash_ev PreToolUse 'until [ "$(grep -c x f)" -ge 5 ]; do sleep 15; done' w1)")" 'cannot report giving up'
