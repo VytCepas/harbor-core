@@ -53,7 +53,7 @@ inject.d/**	instructions	just-in-time instruction packs injected into sessions
 skills/**	instructions	every tracked skill, installed into the config dir
 vendor/skills/**	instructions	vendored skills, installed beside skills/
 commands/**	instructions	slash commands, installed into the config dir
-CONTRACTS/skill-book-router.tsv	instructions	the Start-here text deploy writes into the installed skill catalog, an instruction surface (harbor#1149)
+CONTRACTS/skill-book-router.tsv	instructions	the Start-here text deploy writes into the installed skill book, an instruction surface (harbor#1149)
 launchd/**	persistent-job	launchd plist sources: a recurring job needs the operator's explicit yes, so its deploy always queues
 systemd/**	persistent-job	systemd units: a recurring job needs the operator's explicit yes, so its deploy always queues
 **.plist	persistent-job	a launchd job definition anywhere in the tree, the E2 dispatcher's com.harbor.event.dispatch included
@@ -244,7 +244,7 @@ bin/session-notify.sh	installed	derived: shipped by runtime-install.sh
 bin/session-react-lib.sh	installed	derived: shipped by runtime-install.sh
 bin/session-save-now.sh	installed	derived: shipped by runtime-install.sh
 bin/shim-install.sh	ship	derived: called by bin/deploy.sh
-bin/skill-catalog.sh	ship	derived: called by bin/deploy.sh
+bin/skill-book.sh	ship	derived: called by bin/deploy.sh
 bin/skills-collide.sh	ship	derived: called by bin/skills-install.sh
 bin/skills-install.sh	ship	derived: called by bin/deploy.sh
 bin/standard-catalog.sh	ci-gate	derived: called by bin/deploy-push.sh

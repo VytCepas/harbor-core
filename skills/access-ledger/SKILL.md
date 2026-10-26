@@ -1,6 +1,6 @@
 ---
 name: access-ledger
-description: "Which account to use on each system, the role it holds and what it cannot reach: harbor-private/access/ACCOUNTS.md, generated from the route cards; plus the one-ask access ledger. USE WHEN which account, wrong account, 401, 403, permission denied, Reauthentication failed, do I have access, can I reach X, need access, credentials, token, least privilege. NOT FOR obtaining or storing a credential (the operator holds those), or a number that is wrong (a casefile pack owns that)."
+description: "Which account to use on each system, the role it holds and what it cannot reach: harbor-private/access/ACCOUNTS.md, generated from the route cards; plus the one-ask access ledger. USE WHEN which account, wrong account, 401, 403, permission denied, Reauthentication failed, do I have access, can I reach X, need access, credentials, token, least privilege."
 argument-hint: [system or client]
 ---
 

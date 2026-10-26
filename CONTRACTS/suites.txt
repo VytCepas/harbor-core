@@ -203,7 +203,7 @@ tests/guards/selfedit-test.sh
 tests/guards/bash-test.sh
 tests/checks/docs-gen-test.sh
 tests/skills/eval-runners-test.sh
-tests/skills/skill-catalog-test.sh
+tests/skills/skill-book-test.sh
 tests/skills/atlas-zones-test.sh
 tests/skills/atlas-inside-test.sh
 tests/skills/archify-report-pipe-test.sh
@@ -316,7 +316,7 @@ tests/scope/keys/read.test.sh
 tests/scope/pack/pack.test.sh
 tests/scope/pack/checks.test.sh
 tests/scope/pack/deploy.test.sh
-tests/scope/pack/skill-catalog.test.sh
+tests/scope/pack/skill-book.test.sh
 tests/export/push.test.sh
 tests/export/history.test.sh
 tests/export/ci-mirror.test.sh

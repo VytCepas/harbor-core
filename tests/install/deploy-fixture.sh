@@ -3,7 +3,7 @@
 # REAL deploy.sh, restore.sh, log-lib.sh and install-lib.sh run in it (harbor#457, #765).
 # STUB_HOOK_* values are shell source run by the stub's `sh -c`, so their quotes are literal.
 # shellcheck disable=SC2089,SC2090
-INSTALLERS='constitution-install.sh shim-install.sh sec0-harden.sh runtime-install.sh floor-install.sh prod-guard-install.sh skills-install.sh skill-catalog.sh inject-install.sh pack.sh'
+INSTALLERS='constitution-install.sh shim-install.sh sec0-harden.sh runtime-install.sh floor-install.sh prod-guard-install.sh skills-install.sh skill-book.sh inject-install.sh pack.sh'
 # A stub logs argv, fails when STUB_FAIL names "<script>:dry|apply", runs STUB_HOOK_<name> on apply.
 # It records a child run WITHOUT HARBOR_DEPLOY=1 (#285) or WITH a CLAUDE_CONFIG_DIR, both of which deploy
 # must never hand a child, and prints one line in the log shape, for the relay into deploy's log.
@@ -21,7 +21,7 @@ exit 0'
 
 fixture() { # <case> → T (case dir) with origin.git, repo (a clone on main), home H, config C
   T="$T_TMP/$1"; H="$T/home"; C="$H/.claude"; REPO="$T/repo"; LOGF="$T/calls"
-  mkdir -p "$T/src/bin" "$T/src/inject.d/box" "$T/src/skills/skill-catalog" "$C/inject.d" "$C/.helm-pins" "$H/.local/bin"
+  mkdir -p "$T/src/bin" "$T/src/inject.d/box" "$T/src/skills/skill-book" "$C/inject.d" "$C/.helm-pins" "$H/.local/bin"
   cp "$T_ROOT/bin/deploy.sh" "$T/src/bin/deploy.sh"; cp "$T_ROOT/bin/restore.sh" "$T/src/bin/restore.sh"
   cp "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/install-lib.sh" "$T/src/bin/"
   for s in $INSTALLERS; do printf '%s\n' "$_stub_body" > "$T/src/bin/$s"; done
@@ -77,7 +77,7 @@ exec sh "$(dirname "$0")/skills-install.real" "$@"
 EOS
   printf '%s\n' "$_stub_body" | sed 's/\$(basename "\$0")/skills-install.sh/' > "$T/src/bin/skills-install.real"
   printf 'pack\n' > "$T/src/inject.d/box/10-a.md"; printf 'old pack\n' > "$T/src/inject.d/box/20-old.md"
-  mkdir -p "$T/src/commands"; printf 'v1\n' > "$T/src/commands/x.md"; printf 'book\n' > "$T/src/skills/skill-catalog/SKILL.md"
+  mkdir -p "$T/src/commands"; printf 'v1\n' > "$T/src/commands/x.md"; printf 'book\n' > "$T/src/skills/skill-book/SKILL.md"
   chmod +x "$T/src/bin/"*
   git -C "$T/src" init -q -b main && git -C "$T/src" add -A && git -C "$T/src" -c user.name=t -c user.email=t@t commit -q -m init
   # history then holds a withdrawn pack (20-old) and an older command (x v1)

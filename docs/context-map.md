@@ -31,14 +31,14 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | decision-record | docs/decisions/ | element | source | dated | 91 |
 | injection-rule | context-rules/<scope>/ | component | source | living | 37 |
 | hook | hooks/ | component | source | living | 46 |
-| skill | skills/ | component | source | living | 42 |
+| skill | skills/ | component | source | living | 41 |
 | fixture | fixtures/ | element | source | living | 252 |
-| registry | registries/ | component | source | versioned | 51 |
+| registry | registries/ | component | source | versioned | 50 |
 | test | tests/ | component | source | living | 417 |
 | report | docs/reports/ | element | report | dated | 1 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| script | bin/ | component | source | living | 201 |
+| script | bin/ | component | source | living | 200 |
 | (no kind) | - | - | - | - | 171 |
 
 ## Folders
@@ -49,9 +49,9 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.agents/` | 4 | 1 | 1 |
 | `.claude/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
-| `CONTRACTS/` | 81 | 9 | 2 |
+| `CONTRACTS/` | 80 | 9 | 2 |
 | `DOCTRINE/` | 10 | 1 | 1 |
-| `bin/` | 205 | 22 | 2 |
+| `bin/` | 204 | 22 | 2 |
 | `commands/` | 5 | 1 | 1 |
 | `docs/` | 113 | 6 | 5 |
 | `fixtures/` | 252 | 9 | 1 |
@@ -60,7 +60,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `launchd/` | 12 | 3 | 1 |
 | `patches/` | 12 | 1 | 1 |
 | `runners/` | 2 | 1 | 1 |
-| `skills/` | 42 | 5 | 1 |
+| `skills/` | 41 | 5 | 1 |
 | `standards/` | 13 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `tests/` | 417 | 21 | 1 |
@@ -81,7 +81,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | context | control-plane | 3 | 0 | 1 | 38 | 0 | 31 |
 | deploy | control-plane | 5 | 7 | 1 | 1 | 0 | 7 |
 | doc | control-plane | 1 | 1 | 0 | 8 | 0 | 16 |
-| drift | control-plane | 1 | 1 | 0 | 4 | 2 | 13 |
+| drift | control-plane | 1 | 1 | 0 | 4 | 2 | 12 |
 | eval | control-plane | 0 | 1 | 0 | 0 | 0 | 0 |
 | event | observability | 3 | 17 | 0 | 3 | 0 | 2 |
 | gate | control-plane | 10 | 7 | 0 | 0 | 0 | 0 |
@@ -93,7 +93,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
 | scope | coordination | 2 | 10 | 0 | 0 | 0 | 4 |
 | session | data-plane | 11 | 4 | 0 | 1 | 0 | 0 |
-| skill | catalog | 4 | 5 | 0 | 5 | 0 | 13 |
+| skill | catalog | 3 | 5 | 0 | 4 | 0 | 11 |
 | standard | policy-function | 3 | 8 | 104 | 0 | 0 | 43 |
 | status | observability | 3 | 7 | 0 | 1 | 0 | 0 |
 | test | control-plane | 0 | 1 | 2 | 7 | 0 | 7 |
@@ -333,11 +333,9 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `CONTRACTS/skill-book-router.tsv`
 - `CONTRACTS/skill-pack-frontmatter-keys.txt`
 - `bin/skill-book.sh`
-- `bin/skill-catalog.sh`
 - `bin/skill-fire.sh`
 - `bin/skill-usage.sh`
 - `skills/skill-book/SKILL.md`
-- `skills/skill-catalog/SKILL.md`
 
 ### standard
 
@@ -474,7 +472,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | (repo root) | 19 |
 | `.agents/` | 4 |
 | `.github/` | 2 |
-| `CONTRACTS/` | 63 |
+| `CONTRACTS/` | 62 |
 | `bin/` | 112 |
 | `commands/` | 5 |
 | `docs/` | 17 |

@@ -12,12 +12,12 @@ t_eq "two paths" 44ae053f90619d2c "$(sh "$F" digest labkit/.agents/hooks/prod_gu
 t_eq "order does not matter" 44ae053f90619d2c "$(sh "$F" digest zorbcorp/.agents/hooks/prod_guard.py labkit/.agents/hooks/prod_guard.py)"
 
 t_section "lanes are read from the contract, and every other key is PROPOSE"
-t_has "the skill.book-current HEAL row" "$(sh "$F" lanes)" "HEAL	lint/skill.book-current	skills/skill-catalog/SKILL.md	sh bin/skill-catalog.sh"
+t_has "the skill.book-current HEAL row" "$(sh "$F" lanes)" "HEAL	lint/skill.book-current	skills/skill-book/SKILL.md	sh bin/skill-book.sh"
 records "$TMP/r0" lint.long-file-reason skill.book-current -- lint.long-file-reason:bin/big.sh skill.book-current:generator-failed
 t_has "a subject no HEAL row matches is PROPOSE" "$(rec "$TMP/r0")" "lint/skill.book-current (1 subject(s)) · PROPOSE"
 
 t_section "a dry run reads the store once and writes nothing"
-: > "$GH_LOG"; records "$TMP/r1" lint.long-file-reason drift.launchd-plist skill.book-current skill.not-for-target-exists -- lint.long-file-reason:bin/big.sh drift.launchd-plist:uncommitted:com.harbor.a.plist skill.book-current:skills/skill-catalog/SKILL.md
+: > "$GH_LOG"; records "$TMP/r1" lint.long-file-reason drift.launchd-plist skill.book-current skill.not-for-target-exists -- lint.long-file-reason:bin/big.sh drift.launchd-plist:uncommitted:com.harbor.a.plist skill.book-current:skills/skill-book/SKILL.md
 OUT="$(rec "$TMP/r1")"
 t_has "it names what it would file" "$OUT" "lint/lint.long-file-reason (1 subject(s)) · PROPOSE · would file"
 t_has "and the lane the contract gives skill.book-current" "$OUT" "lint/skill.book-current (1 subject(s)) · HEAL · would file"
