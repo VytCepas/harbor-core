@@ -5,6 +5,8 @@
 #   sh bin/context-budget.sh --check    fail if the DELIBERATE surface has moved
 #                                       off the last row of CONTEXT-BASELINE.tsv
 #   sh bin/context-budget.sh --record   append today's figure + instrument id; you write the why
+#   sh bin/context-budget.sh --ratchet  deploy gate: fail when the CORE surface (CONSTITUTION.md + tracked ambient
+#                                       skill descriptions, read from this checkout only) exceeds CONTEXT-RATCHET.tsv
 #   sh bin/context-budget.sh --check --kind   also print kind=<match|grew|shrank|instrument-changed|
 #                                       no-baseline|unreadable|malformed> last on stdout: X3's subject (harbor#585)
 # (the --help extractor stops at the first blank comment line, so the usage block
@@ -51,6 +53,7 @@ case "${1:-}" in
               *)      printf 'context-budget: unknown flag %s after --check (try --help)\n' "$2" >&2; exit 2 ;;
             esac ;;
   --record) MODE=record ;;
+  --ratchet) MODE=ratchet ;;
   '')       ;;
   *)        printf 'context-budget: unknown flag %s (try --help)\n' "$1" >&2; exit 2 ;;
 esac
@@ -126,6 +129,51 @@ desc_bytes() { # <file> -> bytes of the whole description: value
        inb                        { t += length($0) + 1 }
        END                        { print t+0 }' "$1"
 }
+
+# ── THE DEPLOY RATCHET (--ratchet) ──────────────────────────────────────────
+# A ratchet, not a cliff: refuses only GROWTH past the number in CONTEXT-RATCHET.tsv, which is checked in, so a deliberate
+# raise is a one-line edit whose commit says why. WHAT IT COVERS IS WHAT THIS CHECKOUT CONTROLS AND NOTHING ELSE:
+# CONSTITUTION.md (what deploy installs as CLAUDE.md, so the NEW text is measured, not last deploy's) plus the descriptions of
+# the ambient skills in skills/ and vendor/skills/. It reads nothing from ~/.claude, so the answer is a pure function of the
+# tree: the same on CI and on the box, and a deploy cannot go red because of something it did not write.
+# LEFT OUT ON PURPOSE (CONSTITUTION §2.11, a false positive gets the guard switched off): the per-project memory index is
+# model-authored and changes between sessions, so a deploy-time gate on it would fire on ordinary work (store-check.sh
+# bounds it); plugin and slash-command descriptions are installed by the operator, not by deploy; the SessionStart
+# injection moves by ~10 KB with the caller's directory and with the live packs. All three stay in the report above.
+if [ "$MODE" = ratchet ]; then
+  RB="${HARBOR_RATCHET_BASELINE:-$ROOT/CONTEXT-RATCHET.tsv}"; RBN="${RB#$ROOT/}"
+  rl="$(printf '%s\t%s\n' "$(bytes "$ROOT/CONSTITUTION.md")" CONSTITUTION.md)"
+  for d in "$ROOT"/skills/*/ "$ROOT"/vendor/skills/*/; do
+    f="$d/SKILL.md"; [ -f "$f" ] || continue
+    grep -q '^disable-model-invocation:[[:space:]]*true' "$f" 2>/dev/null && continue
+    rl="$rl
+$(desc_bytes "$f")	skill description: $(basename "$d")"
+  done
+  now="$(printf '%s\n' "$rl" | awk -F'\t' '{ t += $1 } END { print t+0 }')"
+  if [ ! -f "$RB" ]; then
+    log_fail "context ratchet: no baseline file $RBN, so nothing was compared"
+    log_fix "printf '%s\\t%s\\t%s\\n' $now \"\$(date +%Y-%m-%d)\" 'why' >> $RBN"
+    log_end || :; exit 1
+  fi
+  base="$(grep -v '^#' "$RB" | grep -v '^[[:space:]]*$' | tail -1 | cut -f1)"
+  case "$base" in ''|*[!0-9]*)
+    log_fail "context ratchet: the last row of $RBN has no byte count in column 1 ('$base')"
+    log_fix "edit $RBN: one row, <bytes><TAB><date><TAB><why>"; log_end || :; exit 1 ;; esac
+  if [ "$now" -gt "$base" ]; then
+    log_fail "context ratchet: the core always-on surface is $now B, over the $base B recorded in $RBN (+$(( now - base )) B); every session pays it"
+    log_fix "cut the largest contributor, or raise deliberately: set the number in $RBN to $now and say why in the commit"
+    printf '%s\n' "$rl" | sort -t"$(printf '\t')" -k1,1 -rn | head -5 | while IFS="$(printf '\t')" read -r _b _l; do
+      log_note "top contributor: $_b B  $_l"; done
+    log_end || :; exit 1
+  fi
+  if [ "$now" -lt "$base" ]; then
+    log_ok "context ratchet: $now B, under the $base B recorded in $RBN (-$(( base - now )) B)"
+    log_note "record the lower number so the saving cannot grow back: set $RBN to $now"
+  else
+    log_ok "context ratchet: $now B, at the $base B recorded in $RBN"
+  fi
+  log_end || :; exit 0
+fi
 
 # A CHECK THAT PRINTS A TABLE IS A CHECK NOBODY READS IN CI. The rows are emitted
 # as the measurement runs, so --check and --record keep fd 3 for their one line

@@ -156,7 +156,7 @@ SKILL_HOMES="$ROOT/vendor/skills $ROOT/skills"
 # Twelve of them; everything else stayed in the single block that reads it. The
 # prose explaining each one stays with the rule that owns the question — the
 # pointer is the symbol name, which greps to both places.
-ALLOWED='name|description|when_to_use|user-invocable|argument-hint|allowed-tools|disable-model-invocation|version|effort|context|model|license|metadata'
+ALLOWED='name|description|when_to_use|user-invocable|argument-hint|allowed-tools|disable-model-invocation|version|effort|context|model|license|metadata|owns-commands|owns-tools|inline-section'
 PROV="$ROOT/vendor/skills/PROVENANCE.md"
 CI="$ROOT/.github/workflows/governance.yml"
 _MAN="$ROOT/CONTRACTS/suites.txt"

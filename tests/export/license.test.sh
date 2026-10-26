@@ -13,7 +13,7 @@ t_section "NOTICE names every vendored tree"
 t_has "NOTICE carries the holder line" "$(cat "$R/NOTICE")" "Copyright 2026 Vytautas Cepas"
 # a vendored tree is any directory under vendor/ but the dev-layer skills; derived from disk, never a fixed list
 missing() { # <notice file> → the vendor/ dirs it does not name
-  for d in "$R"/vendor/*/; do n="vendor/$(basename "$d")/"; [ "$n" = vendor/skills/ ] && continue; grep -qF "$n" "$1" || printf '%s ' "$n"; done
+  for d in "$R"/vendor/*/; do n="vendor/$(basename "$d")/"; case "$n" in vendor/skills/|vendor/skills-archive/) continue ;; esac; grep -qF "$n" "$1" || printf '%s ' "$n"; done
 }
 t_eq "no vendor/ directory is missing from NOTICE" "" "$(missing "$R/NOTICE")"
 grep -v 'vendor/archify/' "$R/NOTICE" > "$T_TMP/notice.mut"
@@ -22,7 +22,7 @@ t_has "control: a NOTICE without archify goes red" "$(missing "$T_TMP/notice.mut
 t_section "each vendored licence sits beside its tree"
 # vendor/skills is dev-layer: its licences are checked where it exists and absent from the export
 set -- vendor/archify/LICENSE
-[ -d "$R/vendor/skills" ] && set -- vendor/skills/LICENSE vendor/skills/fabric/LICENSE-fabric "$@"
+[ -d "$R/vendor/skills" ] && set -- vendor/skills/LICENSE vendor/skills-archive/fabric/LICENSE-fabric "$@"
 for f in "$@"; do
   [ -s "$R/$f" ] && t_pass || t_fail "$f is missing or empty"
   t_has "...$f is an MIT text" "$(cat "$R/$f")" "Permission is hereby granted, free of charge"
