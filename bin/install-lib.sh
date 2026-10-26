@@ -34,6 +34,9 @@
 #                                is then a file LOST after the first run, not a first run not yet taken
 #   il_lost_settings_fix <config dir> <restore.sh>   the fix for that: restore's dry run when a deploy snapshot exists,
 #                                else the first-run command (which seeds an empty {})
+#   il_merge_hook <settings-json> <event> <matcher> <cmd> [<onfail>]   wire one hook, additively; new json on stdout
+#   il_onfailure                 `block` when the client takes a hook's onFailure key (Claude Code >= 2.1.295),
+#                                else nothing; FLOOR_ONFAILURE=1|0 decides where `claude` is not on PATH
 #
 # The install manifest (install standard §3): <target>/.harbor-manifest, one row per installed file,
 # `<git-blob> <mode> <relpath> <installer> <commit>`, newest row per path. B6 never reads it: a tamper
@@ -275,11 +278,43 @@ il_lost_settings_fix() { # <config dir> <restore.sh>
     printf 'sh %s --live' "$(_il_sq "$2")"  # the dry run: which snapshot comes back and what moves aside
   else il_first_run_cmd; fi
 }
+# Additive and idempotent: a command already under that matcher is left alone, but gains <onfail> when given.
+il_merge_hook() { # <settings-json> <event> <matcher> <cmd> [<onfail>]  → new json on stdout
+  jq --arg ev "$2" --arg m "$3" --arg cmd "$4" --arg of "${5:-}" '
+    ({type:"command", command:$cmd} + (if $of == "" then {} else {onFailure:$of} end)) as $h
+    | .hooks //= {}
+    | .hooks[$ev] //= []
+    | (.hooks[$ev] | map(.matcher == $m) | index(true)) as $i
+    | if $i == null
+      then .hooks[$ev] += [{matcher:$m, hooks:[$h]}]
+      else (.hooks[$ev][$i].hooks |= (
+              if (map(.command) | index($cmd)) == null
+              then . + [$h]
+              elif $of == "" then .
+              else map(if .command == $cmd then . + {onFailure:$of} else . end) end)) end
+  ' "$1"
+}
+# A PreToolUse veto that times out or crashes lets the call through unless onFailure is set
+# (code.claude.com/docs/en/hooks). An unknown version gets no field: an older client may reject the key.
+il_onfailure() {
+  case "${FLOOR_ONFAILURE:-}" in 1) echo block; return 0 ;; 0) return 0 ;; esac
+  _ofv="$(claude --version 2>/dev/null | sed -n 's/^\([0-9][0-9]*\)\.\([0-9][0-9]*\)\.\([0-9][0-9]*\).*/\1 \2 \3/p' | head -n 1)"
+  [ -n "$_ofv" ] || return 0
+  set -- $_ofv
+  if [ "$1" -gt 2 ] || { [ "$1" -eq 2 ] && { [ "$2" -gt 1 ] || { [ "$2" -eq 1 ] && [ "$3" -ge 295 ]; }; }; }; then echo block; fi
+  return 0
+}
 
 # ── THE INSTALL MANIFEST (install standard §3) ────────────────────────────────
 # Rows are queued as `+<TAB><row>` or `-<TAB><relpath>` and merged once, at the end of an apply run.
 _il_nl='
 '
+# WHERE AN INSTALLED NAME'S BYTES COME FROM (D-88, harbor#1272): bin/<name>, or the engine folder a hook engine moved to.
+# Deployed flat either way, so payload lists keep the installed name. il_engine_path is the one spelling, for git readers too.
+il_engine_path() { printf 'hooks/%s/%s' "${1%.*}" "$1"; }
+il_src() { # <repo root> <installed name> -> the repo-relative path it is installed from
+  if [ ! -f "$1/bin/$2" ] && [ -f "$1/$(il_engine_path "$2")" ]; then il_engine_path "$2"; else printf 'bin/%s' "$2"; fi
+}
 il_blob() { # <file>
   if [ -L "$1" ]; then printf '%s' "$(readlink "$1")" | git hash-object --no-filters --stdin 2>/dev/null
   else git hash-object --no-filters -- "$1" 2>/dev/null; fi

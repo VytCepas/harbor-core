@@ -530,7 +530,7 @@ if [ -f "$S" ] && command -v jq >/dev/null 2>&1; then
     fi
   elif [ -f "$DIR/.helm-govern-salt" ]; then
     finding "REF-7" "settings.json" \
-      "a governance salt is minted but no SessionStart hook announces the token — inject-hook.sh stamps notes with a value the reader never receives from a trusted channel, which CONSTITUTION §4 tells them to reject" \
+      "a governance salt is minted but no SessionStart hook announces the token — injection-rule.sh stamps notes with a value the reader never receives from a trusted channel, which CONSTITUTION §4 tells them to reject" \
       "$(_install_fix inject inject-install)"
   fi
 fi
