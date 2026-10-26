@@ -53,8 +53,8 @@ t_has "X9b ...in the form restore.sh's gate takes: --live --apply (harbor#765)" 
 # session-verdicts.sh prints the same idiom; its live spelling is shell-quoted, so the bare
 # forms alone could never match (the legacy negative was blind to it). Positive control first.
 t_has "X9b session-verdicts on the LIVE dir names --live (the needle below can appear)" \
-  "$(env HOME="$H110" CLAUDE_CONFIG_DIR="$H110/.claude" sh "$SRC/session-verdicts.sh" 2>/dev/null)" "'--live' --repin"
-SV110="$(env HOME="$H110" CLAUDE_CONFIG_DIR="$X9" sh "$SRC/session-verdicts.sh" 2>/dev/null || true)"
+  "$(env HOME="$H110" CLAUDE_CONFIG_DIR="$H110/.claude" sh "$T_ROOT/hooks/session-verdicts/session-verdicts.sh" 2>/dev/null)" "'--live' --repin"
+SV110="$(env HOME="$H110" CLAUDE_CONFIG_DIR="$X9" sh "$T_ROOT/hooks/session-verdicts/session-verdicts.sh" 2>/dev/null || true)"
 t_eq "X9b session-verdicts must not print a LIVE recovery from a sandbox" sandbox "$(no_live "$SV110")"
 t_has "X9b ...its sandbox re-pin is --dir spelled, the only target form floor-deny takes (harbor#800)" "$SV110" "floor-deny.sh --dir '$X9' --repin"
 
@@ -137,10 +137,10 @@ t_eq "X13 the recovery-path scan still reaches >= 3 scripts, or the check above 
 # --apply re-adds the whole B1 set and resurrects withdrawn entries; re-pinning is --repin. Code only.
 t_exit "X13 guard-integrity.sh must not tell the operator to re-pin with --apply" 1 \
   sh -c 'grep -v "^[[:space:]]*#" "$1" | grep -q "floor-deny\.sh --live --apply"' _ "$SRC/guard-integrity.sh"
-for _x13 in guard-integrity.sh session-verdicts.sh; do
-  t_exit "X13 $_x13 names the re-pin command its twin prints" 0 grep -q 'bin/floor-deny\.sh \$TGTQ --repin' "$SRC/$_x13"
-  t_exit "X13 $_x13 resolves the recovery target against the live dir" 0 grep -q 'TGT="--live"' "$SRC/$_x13"
-  t_exit "X13 $_x13 shell-quotes the path it prints (PR #113)" 0 grep -q '_shq()' "$SRC/$_x13"
+for _x13p in bin/guard-integrity.sh hooks/session-verdicts/session-verdicts.sh; do _x13="${_x13p##*/}"
+  t_exit "X13 $_x13 names the re-pin command its twin prints" 0 grep -q 'bin/floor-deny\.sh \$TGTQ --repin' "$T_ROOT/$_x13p"
+  t_exit "X13 $_x13 resolves the recovery target against the live dir" 0 grep -q 'TGT="--live"' "$T_ROOT/$_x13p"
+  t_exit "X13 $_x13 shell-quotes the path it prints (PR #113)" 0 grep -q '_shq()' "$T_ROOT/$_x13p"
 done
 X13SP="$TMP/x13 space/.claude"; pinned_dir "$X13SP"
 printf 'deliberately-not-a-hash\n' > "$X13SP/.sec0-baseline.sha256"
@@ -149,7 +149,7 @@ t_has "X13 a config dir containing a space is pasted quoted" "$(b6msg "$X13SP")"
 # live entry since harbor#800, counts as one — may name the checkout only beside
 # `git -C ~/port/harbor diff --quiet` ON THAT LINE (git status --short always exits 0).
 for _sv in guard-integrity.sh session-verdicts.sh; do
-  _x13_ck="$(grep -v '^[[:space:]]*#' "$SRC/$_sv" | grep -E '(~|\$HOME)/(port/)?harbor/bin/[a-z0-9-]+\.sh' || true)"
+  _x13_ck="$(grep -v '^[[:space:]]*#' "$(t_src "$_sv")" | grep -E '(~|\$HOME)/(port/)?harbor/bin/[a-z0-9-]+\.sh' || true)"
   _x13_n="$(printf '%s\n' "$_x13_ck" | grep -c . || true)"
   if [ -z "$_x13_ck" ]; then _x13_v=clean
   elif [ "$_x13_n" = "$(printf '%s\n' "$_x13_ck" | grep -E '(install|deploy)\.sh' | grep -c 'git -C ~/port/harbor diff --quiet' || true)" ]; then _x13_v=clean

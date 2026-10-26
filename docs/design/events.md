@@ -64,22 +64,11 @@ The suite now runs 12 writers × 50 near-cap emits, where the shell-`printf` app
 
 ## Kinds and subjects
 
-| start kind | terminal kind(s) | subject |
-|---|---|---|
-| `session.start` | `session.stop` | Claude Code `session_id` |
-| `agent.spawn` | `agent.done` | the subagent's `agent_id` (else `<session_id>:<tool_use_id>`) |
-| `tool.background.start` | `tool.background.done` | `<session_id>:<tool_use_id>` |
-| `pr.opened` | `pr.merged`, `pr.closed` | `<owner>/<repo>#<n>` |
-| `ci.job.start` | `ci.job.done` | `<owner>/<repo>:<run_id>:<job>` |
-| `obligation.open` | `obligation.close` | the obligation id |
-| `approval.open` | `approval.close` | the approvals queue id, `<kind>-<owner>_<name>[-<pr>]-<sha12>` (harbor#1018; emitted by `bin/gate-lib.sh`) |
-| `skill.call` | none: a point event | the skill name (harbor#1181 lane 7) |
-| `memory.read` | none: a point event | the memory note's basename, never its path (harbor#1181 lane 7) |
-| `session.state` | none: a point event, only on a change | `session_id`; `data.title` is the state (waiting-agents, waiting-operator, blocked, done, idle), `data.evidence` its reason (harbor#1043; `bin/session-state.sh`) |
-| `session.save-now` | none: a point event | `session_id`; `data.title` is `ctx N%` (the save-now nudge was sent) |
-| — | `git.commit`, `git.merge` | the commit sha |
-| — | `check.<id>.ran` | the check id |
-| — | `obligation.repair` | the obligation id |
+**The register is [CONTRACTS/event-kinds.tsv](../../CONTRACTS/event-kinds.tsv)** (harbor#1367): every kind, its shape
+(start, terminal or point), its subject and the file that emits it. It replaced the table that stood here, because a
+prose table let two presets and the `ci` obligation listen for `ci.job.done` while nothing emitted it. Lint
+`event.kind-registered` holds it to the code: an emitted kind with no row, a row whose emitter never names it, and a
+preset listening for a kind nothing emits are each red.
 
 A start and its terminal share the subject verbatim, so the obligations ledger (#1050) pairs them
 without guessing. `emit` checks only the shape of a kind (dotted lower case), not membership.
@@ -96,8 +85,8 @@ without guessing. `emit` checks only the shape of a kind (dotted lower case), no
 | `bin/event-hook.sh` | `PostToolUse` on `Skill` | `skill.call` (`data` = `session_id`) | the skill name | `hook.post-tool-use` |
 | `bin/event-hook.sh` | `PostToolUse` on `Read` of `*/memory/*.md`, `MEMORY.md` or `INDEX-FULL.md` | `memory.read` (`data` = `session_id`) | the basename | `hook.post-tool-use` |
 | `bin/event-hook.sh` | `PostToolUse` on `Bash` whose command's last simple command is `gh pr create` and whose stdout ends in one github.com pull URL | `pr.opened` (`data` = `session_id`, `link`) | `<owner>/<repo>#<n>` | `hook.post-tool-use` |
-| `bin/session-state.sh` | Claude Code `Stop`, when the session's state changed | `session.state` (`data` = `session_id`, `title`, `evidence`) | `session_id` | `hook.session-state` |
-| `bin/session-state.sh` | Claude Code `Stop`, when `event.session-save-now` is on and the nudge is sent | `session.save-now` (`data` = `session_id`, `title`) | `session_id` | `hook.session-state` |
+| `hooks/session-state/session-state.sh` | Claude Code `Stop`, when the session's state changed | `session.state` (`data` = `session_id`, `title`, `evidence`) | `session_id` | `hook.session-state` |
+| `hooks/session-state/session-state.sh` | Claude Code `Stop`, when `event.session-save-now` is on and the nudge is sent | `session.save-now` (`data` = `session_id`, `title`) | `session_id` | `hook.session-state` |
 | `hooks/post-commit` | `git commit`, `--amend`, a single `cherry-pick` (not a rebase or a multi-commit sequence: those replay commits that already have an event) | `git.commit` | the new sha | `git.post-commit` |
 | `hooks/post-merge` | `git merge`, fast-forward or not (not `--squash`) | `git.merge` | the sha HEAD ends at | `git.post-merge` |
 
@@ -150,9 +139,10 @@ without guessing. `emit` checks only the shape of a kind (dotted lower case), no
   that never had a `SubagentStart`. Its payload (2.1.292 hook reference) has no final-versus-interim field:
   `stop_hook_active` only says a stop hook is already continuing the turn. So the producer emits all of them and
   the fold dedupes: the first done closes the row, later ones are no-ops, and a new `agent.spawn` opens it again.
-- **Not here:** `ci.job.*` (the runner's hook, PR #1072), a `claude agents` dispatch (it is an ordinary
-  Bash call; not told apart from one), and a producer for `pr.merged` / `pr.closed`. A new Claude Code
+- **Not here:** a `claude agents` dispatch (it is an ordinary Bash call; not told apart from one). A new Claude Code
   producer is one `case` arm in `event-hook.sh` plus one row in `floor-install.sh`'s wiring table.
+- **Elsewhere (harbor#1367):** `ci.job.*` from the runner job hook through `ci-governor listen` (or the hook itself on a
+  host runner), and `pr.merged` / `pr.closed` from the obligations reconcile, which is what sees GitHub merge a PR.
 
 ## The tool
 

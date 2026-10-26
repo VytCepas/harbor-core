@@ -1,5 +1,6 @@
 ---
 id: variable-is-one-argument
+description: A zsh variable holding several flags is one argument, not many
 event: PreToolUse
 tool: Bash
 when: always

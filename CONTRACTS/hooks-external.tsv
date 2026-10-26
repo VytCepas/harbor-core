@@ -6,6 +6,6 @@
 # nothing in harbor or ~/port writes its settings.json entry (searched 2026-09-29).
 # A row here puts a script in F15's set, and floor.session-test's B9c wires and runs it.
 # Remove a row when an installer wires the hook, or when the box stops running it.
+# Empty since harbor#1272: worklog-push.sh is a hook engine, wired by runtime-install from its manifest.
 #
 # script	event	why
-bin/worklog-push.sh	Stop	G2 (harbor#26): the session record, gitleaks-gated push; wired by hand on the box
