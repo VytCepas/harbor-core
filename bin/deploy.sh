@@ -12,7 +12,7 @@
 #                   then pruned-* dirs older than 30 days deleted
 #   --only floor --uninstall   remove the floor (harbor uninstall): the same gates and snapshot, and a
 #                   verify that expects the floor GONE; the snapshot is offered back. Every installed pack goes
-#                   with it (bin/pack.sh remove), and the skill book is regenerated without their skills
+#                   with it (bin/pack.sh remove), and the skill catalog is regenerated without their skills
 #   --accept-loss   passed to constitution-, runtime-, floor- and skills-install and to restore.sh;
 #                   deploy's own regression check then warns instead of refusing
 #   --unattended    the ship runner's apply (deploy-fleet.sh, ship contract §6), never a person's: needs --apply,
@@ -518,8 +518,8 @@ _packs_install() { # run after inject-install, which rebuilds inject.d and so dr
     return 1
   fi
 }
-# Uninstall takes every installed pack with the floor (their rows are the register's and the skill book's), then
-# regenerates the skill book from what is left, so no pack row survives in either index.
+# Uninstall takes every installed pack with the floor (their rows are the register's and the skill catalog's), then
+# regenerates the skill catalog from what is left, so no pack row survives in either index.
 _packs_uninstall_plan() {
   _pids="$(_pack_ids | tr '\n' ' ')"
   [ -n "$_pids" ] || return 0
@@ -536,8 +536,8 @@ _packs_uninstall() {
   log_note 'running: pack.sh remove --apply --live'
   # shellcheck disable=SC2086
   _run sh "$ROOT/bin/pack.sh" remove $_pids --apply --live || { _bad 'stopped at: pack.sh remove --apply --live' 'none: its FAIL and fix lines above'; return 1; }
-  log_note 'skill-book.sh: write the installed index from the box without the packs'
-  _run sh "$ROOT/bin/skill-book.sh" install --apply --live || { _bad 'stopped at: skill-book.sh install' 'none: its FAIL and fix lines above'; return 1; }
+  log_note 'skill-catalog.sh: write the installed index from the box without the packs'
+  _run sh "$ROOT/bin/skill-catalog.sh" install --apply --live || { _bad 'stopped at: skill-catalog.sh install' 'none: its FAIL and fix lines above'; return 1; }
   return 0
 }
 
@@ -748,7 +748,7 @@ _install() {
             'inject:inject-install.sh --live --apply' \
             'packs:PACKS' \
             'packs:shim-install.sh --live --apply' \
-            'skills:skill-book.sh install --apply --live' \
+            'skills:skill-catalog.sh install --apply --live' \
             'project-init:XREPO' 'projects-orchestrator:XREPO'; do
     _c="${_p%%:*}"; _p="${_p#*:}"
     if [ "$_c" = packs ]; then _want_any packs inject || continue; else _want "$_c" || continue; fi

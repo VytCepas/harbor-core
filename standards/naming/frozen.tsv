@@ -207,6 +207,7 @@ skill:housekeeping	skill	housekeeping	2026-10-17	core
 skill:learning-artifact	skill	learning-artifact	2026-10-17	core
 skill:review-fanout	skill	review-fanout	2026-10-17	core
 skill:skill-book	skill	skill-book	2026-10-17	core
+skill:skill-catalog	skill	skill-catalog	2026-10-26	core
 skill:test-strength	skill	test-strength	2026-10-17	core
 toml:browser_live_url	toml	browser_live_url	2026-10-17	core
 toml:channel	toml	channel	2026-10-17	core

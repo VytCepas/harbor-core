@@ -10,7 +10,7 @@ docs/context-map.md	sh bin/standard-catalog.sh --check	sh bin/standard-catalog.s
 .agents/protected-paths.tsv	sh bin/gate-register-derive.sh --check	sh bin/gate-register-derive.sh --write	
 .github/CODEOWNERS	sh bin/gate-codeowners.sh --check	sh bin/gate-codeowners.sh --write	
 PLAN.md	sh bin/plan-status.sh --check	sh bin/plan-status.sh	harbor-build-tickets.md
-skills/skill-book/SKILL.md	sh bin/skill-book.sh --check	sh bin/skill-book.sh	
+skills/skill-catalog/SKILL.md	sh bin/skill-catalog.sh --check	sh bin/skill-catalog.sh	
 docs/index.html	sh bin/docs-gen.sh --check	sh bin/docs-gen.sh --apply	
 -	access-environment.sh	checks a live settings.json, not a tracked file
 -	decider-set.sh	wiring-versus-table drift, not a generated file

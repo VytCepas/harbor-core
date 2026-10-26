@@ -44,6 +44,7 @@ deny-hash.sh           IDLE  M7 leak filter over the operator's own private valu
 floor-equiv.sh         IDLE  replays a payload corpus through TWO guard trees and compares them
 managed-telemetry.sh   VERB  the operator runs it once under sudo, after collector-setup.sh
 managed-retention.sh   VERB  the operator runs it once under sudo: a root-owned managed setting is never written on a schedule
+skill-book.sh        VERB  the old name of skill-catalog.sh (harbor#1010): kept one release for a habit or a document that still types it; goes with its renames.tsv row
 standard-rename.sh     VERB  the rename codemod (harbor#996 B2): a rename wave (harbor#961) runs it once per mapping, by hand; nothing schedules a rename
 gate-codeowners.sh VERB  a person runs --write after changing the protected-paths register (harbor#1018); classify.test.sh runs --check
 gate-register-derive.sh VERB  a person runs --write after changing an installer (harbor#1018); classify.test.sh runs --check
