@@ -43,9 +43,9 @@ vendor/archify/brand-marks/catalog.json	pinterest	vendored third-party brand-ico
 vendor/archify/brand-marks/catalog.json	tiktok	vendored third-party brand-icon catalog; the name is an icon, not harbor workload
 vendor/archify/renderers/shared/generated-brand-marks.mjs	pinterest	vendored third-party brand-icon catalog; the name is an icon, not harbor workload
 vendor/archify/renderers/shared/generated-brand-marks.mjs	tiktok	vendored third-party brand-icon catalog; the name is an icon, not harbor workload
-vendor/skills/private-investigator/SKILL.md	tiktok	vendored OSINT skill naming the network as a social site, not marketing measurement
-vendor/skills/private-investigator/Workflows/FindPerson.md	tiktok	vendored OSINT skill naming the network as a social site, not marketing measurement
-vendor/skills/private-investigator/Workflows/SocialMediaSearch.md	tiktok	vendored OSINT skill naming the network as a social site, not marketing measurement
+vendor/skills-archive/private-investigator/SKILL.md	tiktok	vendored OSINT skill naming the network as a social site, not marketing measurement
+vendor/skills-archive/private-investigator/Workflows/FindPerson.md	tiktok	vendored OSINT skill naming the network as a social site, not marketing measurement
+vendor/skills-archive/private-investigator/Workflows/SocialMediaSearch.md	tiktok	vendored OSINT skill naming the network as a social site, not marketing measurement
 fixtures/inject/notes.tsv	bq	fixture row: the route table maps this command, so the row must name it to fire
 tests/skills/skill-catalog-test.sh	gtm	fixture: bin/skill-catalog.sh keys a CLI row to the sibling checkout by this name; retire with that row (harbor#1273)
 standards/naming/controls.tsv	dbt	control rows register injected notes whose ids are set by files in the private layer (inject.d/<repo>); a row id must equal the note id it registers, so the registry has to carry the name

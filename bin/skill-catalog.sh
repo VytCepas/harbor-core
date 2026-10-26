@@ -377,6 +377,8 @@ book is the only place a reader will see it.
 pack's manifest lists it), `box` (installed, tracked nowhere in this checkout),
 `cli` (an executable on `$PATH`).
 
+**Archived skills exist** in `vendor/skills-archive/` (not installed, not listed here; `vendor/skills-archive/PROVENANCE.md` names them and how to restore one).
+
 ## Start here — which skill for which situation
 
 HEAD
