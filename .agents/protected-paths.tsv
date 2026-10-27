@@ -35,25 +35,25 @@ bin/*-hook.sh	hook	scripts wired as harness hooks: the floor wrapper, govern, in
 bin/annotate-web.sh	hook	PostToolUse hook: frames fetched content as external
 bin/context-resolve.sh	hook	SessionStart and PostToolUse hook: records each session's context
 bin/govern-token.sh	hook	SessionStart hook: the token that stamps every governance note
-bin/session-verdicts.sh	hook	SessionStart hook: puts verdicts into every session's context
-bin/failure-observe.sh	hook	PostToolUseFailure hook
-bin/memory-harvest.sh	hook	Stop hook
-bin/ticket-note.sh	hook	Stop hook
-bin/reply-shape.sh	hook	Stop hook
-bin/session-subagent-check.sh	hook	SubagentStop hook
-bin/session-state.sh	hook	Stop hook: records what the session waits on
-bin/session-title.sh	hook	UserPromptSubmit and SessionStart hook: applies the model-written session title
-bin/worklog-push.sh	hook	Stop hook
+hooks/session-verdicts/session-verdicts.sh	hook	SessionStart hook: puts verdicts into every session's context
+hooks/failure-observe/failure-observe.sh	hook	PostToolUseFailure hook
+hooks/memory-harvest/memory-harvest.sh	hook	Stop hook
+hooks/ticket-note/ticket-note.sh	hook	Stop hook
+hooks/reply-shape/reply-shape.sh	hook	Stop hook
+hooks/session-subagent-check/session-subagent-check.sh	hook	SubagentStop hook
+hooks/session-state/session-state.sh	hook	Stop hook: records what the session waits on
+hooks/session-title/session-title.sh	hook	UserPromptSubmit and SessionStart hook: applies the model-written session title
+hooks/worklog-push/worklog-push.sh	hook	Stop hook
 bin/prod-guard-ambient.sh	hook	PreToolUse hook: the shim that runs project-init's prod_guard
 bin/fleet-glyph.sh	hook	the settings statusLine command: runs at every render
 bin/subagent-glyph.sh	hook	the settings statusLine command for subagents
-hooks/**	hook	the repo's git hooks: pre-commit and pre-push run the floor's smoke and the lint
+hooks/**	hook	the repo's git hooks (pre-commit and pre-push run the floor's smoke and the lint) and the hook engines: script, tests and manifest per folder (D-88)
 inject.d/**	instructions	just-in-time instruction packs injected into sessions
 .claude/**	instructions	this repo's own Claude Code config and instruction packs
 skills/**	instructions	every tracked skill, installed into the config dir
 vendor/skills/**	instructions	vendored skills, installed beside skills/
 commands/**	instructions	slash commands, installed into the config dir
-CONTRACTS/skill-book-router.tsv	instructions	the Start-here text deploy writes into the installed skill book, an instruction surface (harbor#1149)
+CONTRACTS/skill-book-router.tsv	instructions	the Start-here text deploy writes into the installed skill catalog, an instruction surface (harbor#1149)
 launchd/**	persistent-job	launchd plist sources: a recurring job needs the operator's explicit yes, so its deploy always queues
 systemd/**	persistent-job	systemd units: a recurring job needs the operator's explicit yes, so its deploy always queues
 **.plist	persistent-job	a launchd job definition anywhere in the tree, the E2 dispatcher's com.harbor.event.dispatch included
@@ -77,6 +77,7 @@ bin/managed-retention.sh	settings	writes cleanupPeriodDays into the root-owned m
 bin/deploy-confinement.sh	settings	writes the sandbox block into the root-owned managed-settings.json (harbor#1298)
 CONTRACTS/confinement-hosts.txt	settings	the hosts deploy-confinement.sh writes into managed settings (harbor#1298)
 CONTRACTS/confinement-paths.txt	settings	the write zone and read allows deploy-confinement.sh writes into managed settings (harbor#1298)
+standards/naming/controls.tsv	ci-gate	the control register: each control's mode, owner and red proof, which the lint and the naming census read; a renderer will read it too (harbor#1272)
 # Everything an installer ships into the config dir or wires as a hook or statusline (review finding 3); every shim
 # target CONTRACTS/shims.tsv links into ~/.local/bin and both registers (operator-run: it runs as the operator outside
 # a session); every file a ship.conf command runs (ship); what decides the required checks' content (ci-gate); and
@@ -95,15 +96,16 @@ CONTRACTS/suites-dash.txt	ci-gate	derived: decides what a required check runs
 CONTRACTS/suites-quick.txt	ci-gate	derived: decides what a required check runs
 CONTRACTS/suites-tally.txt	ci-gate	derived: decides what a required check runs
 CONTRACTS/suites.txt	ci-gate	derived: decides what a required check runs
-bin/access-confinement.sh	installed	derived: shipped by runtime-install.sh
 bin/access.sh	operator-run	derived: called by bin/secret
 bin/adoption-check.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/alert-lib.sh	installed	derived: shipped by runtime-install.sh
 bin/annotate-web.sh	installed	derived: shipped by floor-install.sh
 bin/browser.sh	ship	derived: called by bin/live-verify.sh
 bin/check-registry-generate.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/ci-governor-hook.sh	installed	derived: shipped by runtime-install.sh
 bin/ci-governor.sh	installed	derived: shipped by runtime-install.sh
 bin/ci-lost-job.sh	installed	derived: shipped by runtime-install.sh
+bin/ci-mirror.sh	ci-gate	derived: called by .github/workflows/public-ci.yml
 bin/ci-queue.sh	installed	derived: shipped by runtime-install.sh
 bin/ci-runners-fleet-lib.sh	installed	derived: shipped by runtime-install.sh
 bin/ci-runners-github-lib.sh	installed	derived: shipped by runtime-install.sh
@@ -111,6 +113,7 @@ bin/ci-runners-provision-lib.sh	installed	derived: shipped by runtime-install.sh
 bin/ci-runners-watch-lib.sh	installed	derived: shipped by runtime-install.sh
 bin/ci-runners.sh	installed	derived: shipped by runtime-install.sh
 bin/ci-verified.sh	ci-gate	derived: decides what a required check runs
+bin/ci-wait.sh	installed	derived: shipped by runtime-install.sh
 bin/cite-verify.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/cited-paths.awk	installed	derived: shipped by runtime-install.sh
 bin/collector-check.sh	installed	derived: shipped by runtime-install.sh
@@ -122,6 +125,8 @@ bin/context-resolve.sh	installed	derived: shipped by floor-install.sh
 bin/decider-set.sh	installed	derived: shipped by runtime-install.sh
 bin/deploy-confinement.sh	installed	derived: called by bin/floor-verify.sh
 bin/deploy-fleet.sh	installed	derived: shipped by floor-install.sh
+bin/deploy-hooks.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/deploy-push.sh	ci-gate	derived: called by bin/ci-mirror.sh
 bin/deploy.sh	ship	derived: runs as ship.conf plan
 bin/doc-refs.sh	ci-gate	derived: called by .github/workflows/governance.yml
 bin/docs-gen.sh	ci-gate	derived: called by bin/lint-conventions.sh
@@ -131,7 +136,6 @@ bin/event-bus.sh	installed	derived: shipped by floor-install.sh
 bin/event-dispatch.sh	installed	derived: shipped by runtime-install.sh
 bin/event-hook.sh	installed	derived: shipped by floor-install.sh
 bin/failure-capture.sh	installed	derived: shipped by runtime-install.sh
-bin/failure-observe.sh	installed	derived: shipped by runtime-install.sh
 bin/findings-run.sh	installed	derived: shipped by runtime-install.sh
 bin/findings.sh	installed	derived: called by bin/findings-run.sh
 bin/fleet-glyph.sh	installed	derived: shipped by runtime-install.sh
@@ -176,15 +180,15 @@ bin/guard-stop.sh	installed	derived: wired by floor-install.sh
 bin/harbor	operator-run	derived: linked into ~/.local/bin as harbor by CONTRACTS/shims.tsv
 bin/harbor-clean.sh	installed	derived: shipped by runtime-install.sh
 bin/idea.sh	operator-run	derived: linked into ~/.local/bin as idea by CONTRACTS/shims.tsv
-bin/inject-hook.sh	installed	derived: wired by inject-install.sh
 bin/inject-install.sh	installed	derived: called by bin/decider-set.sh
 bin/install-drift.sh	ship	derived: called by bin/deploy.sh
 bin/install-lib.sh	installed	derived: shipped by floor-install.sh
 bin/install-stamp.sh	installed	derived: shipped by runtime-install.sh
 bin/judge-run.sh	installed	derived: shipped by runtime-install.sh
 bin/launchd-render.sh	ci-gate	derived: called by bin/lint-conventions.sh
-bin/layers.sh	ci-gate	derived: called by bin/lint-core-writes.sh
+bin/layers.sh	ci-gate	derived: called by bin/deploy-push.sh
 bin/lint-comment-commands.awk	ci-gate	derived: called by bin/lint-conventions.sh
+bin/lint-comment.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-constitution.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-conventions.sh	ci-gate	derived: called by .github/workflows/governance.yml
 bin/lint-core-writes.sh	ci-gate	derived: called by bin/lint-conventions.sh
@@ -195,6 +199,7 @@ bin/lint-leaks.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-locale-ranges.awk	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-module.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-name.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/lint-platform.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-secrets.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-share.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-siblings.sh	ci-gate	derived: called by bin/lint-conventions.sh
@@ -202,7 +207,6 @@ bin/live-verify.sh	ship	derived: runs as ship.conf verify
 bin/log-lib.sh	installed	derived: shipped by floor-install.sh
 bin/main-tip-verdict.sh	installed	derived: shipped by runtime-install.sh
 bin/managed-mods.sh	installed	derived: called by bin/floor-verify.sh
-bin/memory-harvest.sh	installed	derived: shipped by runtime-install.sh
 bin/memory-lint.sh	installed	derived: called by bin/store-check.sh
 bin/memory-route.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/memory.sh	operator-run	derived: linked into ~/.local/bin as memory by CONTRACTS/shims.tsv
@@ -220,13 +224,12 @@ bin/proposal.sh	installed	derived: called by bin/renew-check.sh
 bin/pulse-notify.sh	installed	derived: shipped by runtime-install.sh
 bin/pulse.sh	installed	derived: shipped by runtime-install.sh
 bin/redteam-corpus-run.sh	installed	derived: shipped by runtime-install.sh
-bin/redteam-corpus.sh	installed	derived: called by bin/redteam-corpus-run.sh
+bin/redteam-corpus.sh	ci-gate	derived: called by .github/workflows/public-ci.yml
 bin/reference-check.sh	installed	derived: shipped by runtime-install.sh
 bin/renew-check.sh	installed	derived: shipped by runtime-install.sh
 bin/replay-corpus.sh	ci-gate	derived: called by bin/doctor.sh
 bin/replay-worker.sh	installed	derived: called by bin/replay.sh
 bin/replay.sh	installed	derived: called by bin/pass-score.sh
-bin/reply-shape.sh	installed	derived: shipped by runtime-install.sh
 bin/restore.sh	installed	derived: shipped by floor-install.sh
 bin/roots.sh	ship	derived: called by bin/deploy.sh
 bin/runner-switch.sh	installed	derived: shipped by runtime-install.sh
@@ -241,15 +244,11 @@ bin/session-cleanup-report.sh	installed	derived: shipped by runtime-install.sh
 bin/session-notify.sh	installed	derived: shipped by runtime-install.sh
 bin/session-react-lib.sh	installed	derived: shipped by runtime-install.sh
 bin/session-save-now.sh	installed	derived: shipped by runtime-install.sh
-bin/session-state.sh	installed	derived: shipped by runtime-install.sh
-bin/session-subagent-check.sh	installed	derived: shipped by runtime-install.sh
-bin/session-title.sh	installed	derived: shipped by runtime-install.sh
-bin/session-verdicts.sh	installed	derived: shipped by runtime-install.sh
 bin/shim-install.sh	ship	derived: called by bin/deploy.sh
-bin/skill-book.sh	ship	derived: called by bin/deploy.sh
+bin/skill-catalog.sh	ship	derived: called by bin/deploy.sh
 bin/skills-collide.sh	ship	derived: called by bin/skills-install.sh
 bin/skills-install.sh	ship	derived: called by bin/deploy.sh
-bin/standard-catalog.sh	ci-gate	derived: called by bin/standard-shape.sh
+bin/standard-catalog.sh	ci-gate	derived: called by bin/deploy-push.sh
 bin/standard-shape.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/status-gen.sh	ci-gate	derived: called by .github/workflows/governance.yml
 bin/status-obligations.sh	installed	derived: shipped by runtime-install.sh
@@ -259,11 +258,20 @@ bin/subagent-glyph.sh	installed	derived: shipped by runtime-install.sh
 bin/suite-cache.sh	ci-gate	derived: called by bin/suite-run.sh
 bin/suite-run.sh	ci-gate	derived: called by .github/workflows/governance.yml
 bin/suite-select.sh	ci-gate	derived: called by .github/workflows/governance.yml
-bin/ticket-note.sh	installed	derived: shipped by runtime-install.sh
 bin/usage-aggregate.sh	installed	derived: shipped by runtime-install.sh
 bin/wait-for	operator-run	derived: linked into ~/.local/bin as wait-for by CONTRACTS/shims.tsv
-bin/worklog-push.sh	installed	derived: shipped by runtime-install.sh
 bin/worktree.sh	installed	derived: called by bin/govern-hook.sh
+hooks/access-confinement/access-confinement.sh	installed	derived: shipped by runtime-install.sh
+hooks/failure-observe/failure-observe.sh	installed	derived: shipped by runtime-install.sh
+hooks/injection-rule/injection-rule.sh	installed	derived: wired by inject-install.sh
+hooks/memory-harvest/memory-harvest.sh	installed	derived: shipped by runtime-install.sh
+hooks/reply-shape/reply-shape.sh	installed	derived: shipped by runtime-install.sh
+hooks/session-state/session-state.sh	installed	derived: shipped by runtime-install.sh
+hooks/session-subagent-check/session-subagent-check.sh	installed	derived: shipped by runtime-install.sh
+hooks/session-title/session-title.sh	installed	derived: shipped by runtime-install.sh
+hooks/session-verdicts/session-verdicts.sh	installed	derived: shipped by runtime-install.sh
+hooks/ticket-note/ticket-note.sh	installed	derived: shipped by runtime-install.sh
+hooks/worklog-push/worklog-push.sh	installed	derived: shipped by runtime-install.sh
 runners/**	ci-gate	derived: decides what a required check runs
 tests/cli/gcloud-creds-test.sh	operator-run	derived: linked into ~/.local/bin as gcloud-creds-test.sh by CONTRACTS/shims.tsv
 tests/cli/secret-test.sh	operator-run	derived: linked into ~/.local/bin as secret-test.sh by CONTRACTS/shims.tsv

@@ -1,0 +1,13 @@
+# Why it is wired this way (moved from bin/runtime-install.sh, harbor#1272):
+# session-state.sh (harbor#1043, #1044) — the Stop hook that records what the session waits on. It prints nothing but one
+# opt-in continuation (see its header). Same off contract as reply-shape: the sentinel $DIR/session-state.off stops it
+# being wired; deduped by basename. Unlike ticket-note it carries `timeout: 5`: it is fail-open by design, so a
+# skipped run costs one stale record, not a stand-down of anything.
+key	value
+engine	session-state
+installer	runtime-install
+wire	Stop	-	5
+senses	the Stop payload and the transcript
+acts-on	the session's state record and the event bus
+findings	what the session waits on
+closer	the operator, through the statusline and session-ci-watch

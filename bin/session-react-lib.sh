@@ -4,7 +4,7 @@
 #   . "$HERE/session-react-lib.sh"
 #   react_event       parse $HARBOR_EVENT: RKIND RSID RSTATE RLINK; returns 1 unless RSID is a plain session id
 #   react_rec <key>   one field of the session's state record (empty when there is none)
-#   react_notify <subtitle> <body>   a desktop banner, best-effort (osascript, else notify-send)
+#   react_notify <subtitle> <body>   a desktop banner through bin/alert-lib.sh's chain; 1 when it was only logged
 #   react_log <id> <text>            one line in $RSTATE_DIR/reactions.log
 #
 # The event is the dispatcher's own raw bus line, data and not an instruction: every field is checked against a short
@@ -13,6 +13,7 @@
 set -u
 [ -n "${_LOG_LIB:-}" ] || . "${HERE:?session-react-lib.sh: set HERE to the caller bin/ before sourcing}/log-lib.sh"
 RSTATE_DIR="${HARBOR_STATUS_DIR:-${HOME:-/nonexistent}/.local/state/harbor}"
+ALERT_LIB_DIR="$HERE"; . "$HERE/alert-lib.sh"
 
 react_event() {
   RKIND=""; RSID=""; RSTATE=""; RLINK=""; RDSID=""
@@ -28,18 +29,9 @@ react_rec() { # <key>
   jq -r --arg k "$1" '.[$k] // empty | tostring' "$RSTATE_DIR/sessions/$RSID.json" 2>/dev/null || :
 }
 
-react_notify() { # <subtitle> <body>
-  if command -v osascript >/dev/null 2>&1; then
-    osascript - "$2" "$1" <<'APPLESCRIPT' >/dev/null 2>&1 || return 1
-on run argv
-  display notification (item 1 of argv) with title "Harbor" subtitle (item 2 of argv)
-end run
-APPLESCRIPT
-  elif command -v notify-send >/dev/null 2>&1; then
-    notify-send "Harbor — $1" "$2" >/dev/null 2>&1 || return 1
-  else
-    return 1
-  fi
+react_notify() { # <subtitle> <body> -> 0 only if a desktop channel took it (bin/alert-lib.sh, harbor#618)
+  harbor_notify "$1" "$2"
+  [ "$NOTIFY_SINK" != log ]
 }
 
 react_log() { # <check-id> <text>: one line in reactions.log

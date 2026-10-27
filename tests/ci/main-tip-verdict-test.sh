@@ -36,12 +36,16 @@ commits() {
 runs() {
   _j="[]"; _k=0
   for _p in "$@"; do
-    _s="${_p%%:*}"; _c="${_p#*:}"; _ev=push; _k=$((_k + 1)); _t="$(jq -rn --argjson t "$((NOW - 1800 + _k))" '$t | todate')"
-    case "$_c" in *@s) _ev=schedule; _c="${_c%@s}" ;; esac
+    _s="${_p%%:*}"; _c="${_p#*:}"; _ev=push; _nm=CI; _at=1; _k=$((_k + 1)); _t="$(jq -rn --argjson t "$((NOW - 1800 + _k))" '$t | todate')"
+    case "$_c" in *#*) _at="${_c##*#}"; _c="${_c%#*}" ;; esac    # `#2` is a second attempt of the run
+    case "$_c" in *@s) _ev=schedule; _nm="${SCHEDNAME:-Nightly}"; _c="${_c%@s}" ;; esac
+    _u="$_t"; [ -z "${UPD:-}" ] || _u="$(jq -rn --argjson t "$UPD" '$t | todate')"   # UPD: when a finished run completed
     case "$_c" in
-      -*) _j="$(printf '%s' "$_j" | jq -c --arg s "$_s" --arg st "${_c#-}" --arg e "$_ev" --arg t "$_t" '. + [{head_sha: $s, conclusion: null, status: $st, event: $e, workflow_id: 7, created_at: $t}]')" ;;
-      *)  _j="$(printf '%s' "$_j" | jq -c --arg s "$_s" --arg c "$_c" --arg e "$_ev" --arg t "$_t" '. + [{head_sha: $s, conclusion: $c, status: "completed", event: $e, workflow_id: 7, created_at: $t}]')" ;;
+      -*) _co=null; _st="${_c#-}" ;;
+      *)  _co="\"$_c\""; _st=completed ;;
     esac
+    _j="$(printf '%s' "$_j" | jq -c --arg s "$_s" --argjson c "$_co" --arg st "$_st" --arg e "$_ev" --arg t "$_t" --arg u "$_u" --arg nm "$_nm" --argjson at "$_at" \
+      '. + [{head_sha: $s, conclusion: $c, status: $st, event: $e, workflow_id: (if $e == "push" then 7 else 8 end), name: $nm, created_at: $t, updated_at: $u, run_attempt: $at}]')"
   done
   [ -z "${PAD:-}" ] || _j="$(printf '%s' "$_j" | jq -c --arg t "$(jq -rn --argjson t "$((NOW - 3600))" '$t | todate')" '. + [range(100) | {head_sha: "zz", conclusion: "success", status: "completed", event: "push", workflow_id: 7, created_at: $t}]')"
   printf '{"workflow_runs":%s}\n' "$_j" > "$(fxname "repos/$R/actions/runs?branch=main&per_page=100")"
@@ -53,11 +57,11 @@ byrun() {
 }
 # wfstate <state> — the repo's workflows list: one workflow, id 7, in that state (an unrelated active one beside it).
 wfstate() { printf '{"workflows":[{"id":7,"state":"%s"},{"id":9,"state":"active"}]}\n' "$1" > "$(fxname "repos/$R/actions/workflows?per_page=100")"; }
-run() { FX="$FX" HARBOR_GH="$GH" HARBOR_TIP_REPO="$R" HARBOR_TIP_STRICT="$R" HARBOR_CACHE_DIR="$CACHE" HARBOR_RECEIPTS="$CACHE/checks" HARBOR_NOW="${AT:-$NOW}" \
+run() { FX="$FX" CLAUDE_CONFIG_DIR="$CFGD" HARBOR_GH="$GH" HARBOR_TIP_REPO="$R" HARBOR_TIP_STRICT="$R" HARBOR_CACHE_DIR="$CACHE" HARBOR_RECEIPTS="$CACHE/checks" HARBOR_NOW="${AT:-$NOW}" \
           sh "$T_ROOT/bin/main-tip-verdict.sh" "$@"; }
 get() { jq -r ".repos[0] | $1" "$CACHE/main-tip-verdict.json"; }
 getr() { jq -r ".repos[] | select(.repo == \"$1\") | $2" "$CACHE/main-tip-verdict.json"; }   # one repo's field in the fleet cache
-reset() { rm -f "$CACHE/main-tip-verdict.json" "$CACHE/checks.log"; AT=$NOW; wfstate active; unset PAD; }
+reset() { rm -f "$CACHE/main-tip-verdict.json" "$CACHE/checks.log"; AT=$NOW; wfstate active; unset PAD SCHEDNAME UPD; }   # a var set before a function call outlives it in POSIX sh
 # the fleet run: the fixture repos come from `repo` lines in the config, the way ci-runners reads them
 CFGD="$T_TMP/cfg"; mkdir -p "$CFGD"; printf '[]\n' > "$T_TMP/snap.json"
 # Harbor's own slug is named by log-lib's repo_slug (harbor#1149): the fleet cases run a copy laid out as runtime-install lays it, with
@@ -83,14 +87,14 @@ reset; runs a1:failure a2:success a3:success a4:success
 run
 t_eq "the tip reads failed" failed "$(get .tip.verdict)"
 t_eq "a failed tip is red" true "$(get .tip.red)"
-t_eq "it has been red for the three hours since it landed" 10800 "$(get .tip.red_for)"
+t_eq "it has been red since the failing run completed (half an hour ago), not since the commit landed" 1799 "$(get .tip.red_for)"
 t_eq "its receipt is red over the non-green commit's short sha" 'red ["r:a1"]' "$(jq -c -r '"\(.status) \(.subjects | tojson)"' "$CACHE/checks/main-tip-verdict.json")"
 rm -f "$CACHE/checks/main-tip-verdict.json"; run --print >/dev/null 2>&1 || :
 t_eq "--print leaves no receipt" no "$([ -f "$CACHE/checks/main-tip-verdict.json" ] && echo yes || echo no)"
 run
 t_exit "--print exits 1 on a red tip" 1 run --print
 P="$(run --print || true)"
-t_has "--print says RED and for how long" "$P" 'RED for 3h'
+t_has "--print says RED and for how long" "$P" 'RED for 29m (one run'
 t_has "--print names the tip" "$P" 'main tip a1'
 t_has "a red tip stamps one line in checks.log under its registry id" "$(cat "$CACHE/checks.log")" '[check:main-tip-verdict]'
 
@@ -126,6 +130,25 @@ t_eq "…and says so" true "$(get .baseline)"
 P="$(run --print)"
 t_has "--print names a green-tipped repo on one line, not as a census" "$P" 'green: r'
 t_eq "…and does not list its older non-green commits" 0 "$(printf '%s\n' "$P" | grep -c 'on file')"
+
+t_section "push governs: a scheduled failure is SCHED, a rerun clears, one failed run is marked, red since is the run"
+TIP_AGE=$((3 * 3600)); commits a1 a2 a3 a4; : > "$CFGD/.harbor-ci-runners"
+reset; SCHEDNAME="Scheduled readings"; runs a1:success a1:failure@s a2:success a3:success a4:success; run
+t_eq "a failing scheduled run beside a green push run is green, not red" "green false" "$(get '"\(.tip.verdict) \(.tip.red)"')"
+t_eq "…and names the scheduled workflow for the quieter SCHED token" "Scheduled readings" "$(get '.tip.sched | join(",")')"
+t_eq "a scheduled failure with no push run on the commit still fails it" "failed true" "$( reset; SCHEDNAME=W; runs a1:failure@s a2:success a3:success a4:success; run; get '"\(.tip.verdict) \(.tip.red)"')"
+printf 'main-health o/r Scheduled readings\n' > "$CFGD/.harbor-ci-runners"
+reset; SCHEDNAME="Scheduled readings"; runs a1:success a1:failure@s a2:success a3:success a4:success; run
+t_eq "a scheduled workflow declared main-health fails the tip beside a green push run" "failed true" "$(get '"\(.tip.verdict) \(.tip.red)"')"
+: > "$CFGD/.harbor-ci-runners"
+reset; runs a1:success#2 a2:success a3:success a4:success; run
+t_eq "a failed run re-run to a pass (the list's latest attempt) is green" "green false" "$(get '"\(.tip.verdict) \(.tip.red)"')"
+reset; runs a1:failure a2:success a3:success a4:success; run
+t_eq "one failed push run with no other attempt is red and marked single" "true true 1" "$(get '"\(.tip.red) \(.tip.single) \(.tip.runs)"')"
+reset; runs a1:failure#2 a2:success a3:success a4:success; run
+t_eq "a failure that failed again on a re-run is red and not single" "true false 2" "$(get '"\(.tip.red) \(.tip.single) \(.tip.runs)"')"
+reset; UPD=$((NOW - 600)); runs a1:failure a2:success a3:success a4:success; run
+t_eq "red since is the failing run's completion, ten minutes ago, not the commit's three hours" 600 "$(get .tip.red_for)"
 
 t_section "the delta: new since last run, and standing ones are not repeated"
 reset; runs a1:success a2:success a3:success a4:success; run
@@ -185,7 +208,7 @@ t_has "...and says nothing was judged" "$_nj" 'nothing was judged'
 
 # ═══ the fleet (harbor#1088): every repo the fleet lists, one verdict each ═══════════════════════
 t_section "fleet: the repos come from the snapshot (workflows + github origin) and the config's repo lines"
-printf 'repo o/green\nrepo o/sched\nrepo o/off\nrepo o/gone\n' > "$CFGD/.harbor-ci-runners"
+printf 'repo o/green\nrepo o/sched\nrepo o/off\nrepo o/gone\nmain-health o/sched Nightly\n' > "$CFGD/.harbor-ci-runners"
 mkdir -p "$T_TMP/p/snap/.github/workflows" "$T_TMP/p/nowf"
 git -C "$T_TMP/p/snap" init -q && git -C "$T_TMP/p/snap" remote add origin https://github.com/o/snap.git
 git -C "$T_TMP/p/nowf" init -q && git -C "$T_TMP/p/nowf" remote add origin https://github.com/o/nowf.git
@@ -206,8 +229,8 @@ t_eq "a snapshot repo with no .github/workflows is never asked" 0 "$(grep -c 'o/
 t_section "fleet: green, failed-scheduled, disabled, unread — one verdict each"
 t_eq "a green repo is green and not red" "green false" "$(getr o/green '"\(.tip.verdict) \(.tip.red)"')"
 t_eq "a snapshot-derived repo is judged too" green "$(getr o/snap .tip.verdict)"
-t_eq "a scheduled failure beside a green push run makes the commit failed" "failed true" "$(getr o/sched '"\(.tip.verdict) \(.tip.red)"')"
-t_eq "…and its age counts from the tip's commit" 10800 "$(getr o/sched .tip.red_for)"
+t_eq "a scheduled failure of a main-health workflow beside a green push run makes the commit failed" "failed true" "$(getr o/sched '"\(.tip.verdict) \(.tip.red)"')"
+t_eq "…and its age counts from the failing run's completion, not the commit" 1798 "$(getr o/sched .tip.red_for)"
 t_eq "a repo whose main workflows are all disabled is disabled, not red" "disabled false" "$(getr o/off '"\(.state) \(.tip.red)"')"
 t_eq "a repo GitHub did not answer for is unread, never green" "unread true" "$(getr o/gone '"\(.state) \(.unread)"')"
 t_eq "the cache says it has an unread repo" true "$(jq -r .unread "$CACHE/main-tip-verdict.json")"
@@ -220,7 +243,7 @@ t_eq "its receipt is red over the failed repo's commit, name-prefixed" 'red ["sc
 t_section "fleet: --print is the delta; a green repo is a word, not a block"
 P="$(AT=$NOW fleet --print || true)"
 t_has "the failed repo is named with its age" "$P" 'o/sched main tip s1'
-t_has "…RED for 3h" "$P" 'RED for 3h'
+t_has "…RED for 29m, from the failing run" "$P" 'RED for 29m'
 t_has "the disabled repo is said once" "$P" 'o/off: main CI disabled'
 t_has "the unread repo says UNREAD" "$P" 'o/gone: UNREAD'
 t_has "green repos are one line" "$P" 'green: harbor snap green'

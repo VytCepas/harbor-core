@@ -6,7 +6,7 @@
 T="$T_TMP"; CFG="$T/cfg"; REPO="$T/repo"
 mkdir -p "$CFG/inject.d" "$CFG/bin" "$REPO"
 cp "$T_ROOT/inject.d/box/96-agent-brief.md" "$T_ROOT/inject.d/box/agent-brief.sh" "$T_ROOT/inject.d/box/agent-model.sh" "$CFG/inject.d/"
-cp "$T_ROOT/bin/inject-hook.sh" "$T_ROOT/bin/guard-lib.sh" "$CFG/bin/"
+cp "$T_ROOT/hooks/injection-rule/injection-rule.sh" "$T_ROOT/bin/guard-lib.sh" "$CFG/bin/"
 # A decision log the floor writer will accept: a host token, a sink file, and a host dir that is not writable.
 OBS="$CFG/MEMORY/OBSERVABILITY/testhost"; mkdir -p "$OBS"; printf 'testhost\n' > "$CFG/.helm-obs-host"
 : > "$OBS/guard-decisions.jsonl"; chmod 500 "$OBS"
@@ -18,7 +18,7 @@ call() { # <prompt> [model] [subagent_type] [effort] → engine stdout in $OUT, 
     '{hook_event_name:"PreToolUse",tool_name:"Agent",session_id:"s",
       tool_input:({description:"d",prompt:$p,subagent_type:$t} + (if $m == "" then {} else {model:$m} end)
                   + (if $e == "" then {} else {effort:$e} end))}' > "$T/in.json"
-  OUT="$(CLAUDE_CONFIG_DIR="$CFG" CLAUDE_PROJECT_DIR="$REPO" /bin/sh "$CFG/bin/inject-hook.sh" < "$T/in.json" 2>"$T/err")"; RC=$?
+  OUT="$(CLAUDE_CONFIG_DIR="$CFG" CLAUDE_PROJECT_DIR="$REPO" /bin/sh "$CFG/bin/injection-rule.sh" < "$T/in.json" 2>"$T/err")"; RC=$?
 }
 note() { printf '%s' "$OUT" | jq -r '.hookSpecificOutput.additionalContext // ""' 2>/dev/null; }
 
@@ -65,7 +65,7 @@ call 'Look at the branches.' ''
 t_eq "a worst-case brief carries no permissionDecision" "" "$(printf '%s' "$OUT" | jq -r '.hookSpecificOutput.permissionDecision // ""')"
 t_eq "exit 0" 0 "$RC"
 t_eq "the script never prints a deny sentinel" 0 "$(grep 'printf' "$T_ROOT/inject.d/box/agent-brief.sh" | grep -c 'HARBOR-DECISION')"
-t_eq "garbage payload: silent exit 0" 0 "$(printf 'not json' | CLAUDE_CONFIG_DIR="$CFG" CLAUDE_PROJECT_DIR="$REPO" /bin/sh "$CFG/bin/inject-hook.sh" >/dev/null 2>&1; echo $?)"
+t_eq "garbage payload: silent exit 0" 0 "$(printf 'not json' | CLAUDE_CONFIG_DIR="$CFG" CLAUDE_PROJECT_DIR="$REPO" /bin/sh "$CFG/bin/injection-rule.sh" >/dev/null 2>&1; echo $?)"
 
 t_section "the decision log"
 chmod u+w "$OBS"; : > "$OBS/guard-decisions.jsonl"; chmod 500 "$OBS"

@@ -1,5 +1,6 @@
 ---
 id: agent-model-required
+description: An Agent call with no model inherits the parent model, so one is required
 event: PreToolUse
 tool: Agent|Task
 when: always

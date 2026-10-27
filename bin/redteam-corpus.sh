@@ -183,18 +183,50 @@ DIG="$(digest "$ROOT")"
 printf '#digest\t%s\n' "$DIG" > "$TMP/last.tsv"
 
 # ── scoring: each runner writes "<kind>:<n>" per finding to $TMP/<corpus>.found and prints the case total ──
-run_shguard() { # <jsonl> ; dangerous = Block or Ask, benign = Allow
-  jq -r '(.decision // "") + "\t" + ({tool_name: "Bash", tool_input: {command: (.command // "")}} | tojson)' "$1" |
-  { _i=0; while IFS= read -r _l; do
-      _i=$((_i + 1)); _exp="${_l%%	*}"
-      _v="$(printf '%s' "${_l#*	}" | rt_judge "$SBX" | cut -f1)"
+# Measured (harbor#1060, 2026-10-24, load ~18): a full run is 1913 s, 90% of it the 1,343 shguard cases at 1.0-1.9 s
+# each, one core: every case runs six guard shells (sys-heavy process spawns), serially. ccg's 200 cases are 10%.
+# So the shguard cases fan out over RT_JOBS workers (default: the cgroup's cpus, at least 2, at most 4).
+rt_jobs() {
+  case "${RT_JOBS:-}" in ''|*[!0-9]*|0) ;; *) echo "$RT_JOBS"; return 0 ;; esac
+  _q=''; _p=1
+  if [ -r /sys/fs/cgroup/cpu.max ]; then read -r _q _p < /sys/fs/cgroup/cpu.max || _q=''; fi
+  case "$_q" in
+    ''|*[!0-9]*|0) _c="$(getconf _NPROCESSORS_ONLN 2>/dev/null)" || _c=2 ;;
+    *) _c=$(( (_q + _p - 1) / _p )) ;;
+  esac
+  case "$_c" in ''|*[!0-9]*) _c=2 ;; esac
+  [ "$_c" -ge 2 ] || _c=2; [ "$_c" -le 4 ] || _c=4
+  echo "$_c"
+}
+rt_shguard_worker() { # <w> <k> <in> <out> ; judges the cases whose line number % w == k
+  awk -v w="$1" -v k="$2" 'NR % w == k { print NR "\t" $0 }' "$3" |
+  { while IFS= read -r _l; do
+      _i="${_l%%	*}"; _r="${_l#*	}"; _exp="${_r%%	*}"
+      if [ -n "${RT_CASE_TRACE:-}" ]; then echo "s $_i" >> "$RT_CASE_TRACE"; sleep 1; echo "e $_i" >> "$RT_CASE_TRACE"; fi
+      _v="$(printf '%s' "${_r#*	}" | rt_judge "$SBX" | cut -f1)"
       case "$_exp:$_v" in
         Block:allow|Ask:allow) echo "miss:$_i" ;;
         Allow:ask|Allow:deny) echo "fp:$_i" ;;
         Block:*|Ask:*|Allow:*) ;;
         *) echo "error:$_i" ;;
       esac
-    done > "$TMP/cur.found"; echo "$_i"; }
+    done; echo '#done'; } > "$4"
+}
+run_shguard() { # <jsonl> ; dangerous = Block or Ask, benign = Allow
+  jq -r '(.decision // "") + "\t" + ({tool_name: "Bash", tool_input: {command: (.command // "")}} | tojson)' "$1" > "$TMP/sg.in"
+  _w="$(rt_jobs)"; _k=0; _pids=''
+  while [ "$_k" -lt "$_w" ]; do
+    rt_shguard_worker "$_w" "$_k" "$TMP/sg.in" "$TMP/sg.out.$_k" & _pids="$_pids $!"; _k=$((_k + 1))
+  done
+  for _p in $_pids; do wait "$_p" || :; done
+  : > "$TMP/cur.found"; _k=0
+  while [ "$_k" -lt "$_w" ]; do   # a worker that died before its marker lost findings: that is an error, never a green
+    if [ "$(tail -1 "$TMP/sg.out.$_k" 2>/dev/null)" = '#done' ]; then grep -v '^#done$' "$TMP/sg.out.$_k" >> "$TMP/cur.found" || :
+    else echo "error:0" >> "$TMP/cur.found"; fi
+    _k=$((_k + 1))
+  done
+  sort -t: -k2,2n "$TMP/cur.found" > "$TMP/cur.sorted" && mv -f "$TMP/cur.sorted" "$TMP/cur.found"
+  wc -l < "$TMP/sg.in" | tr -d ' '
 }
 run_ccg() { # <ccg dir> ; the corpus's own harness, through an adapter that calls back into --judge
   cat > "$SBX/adapter.js" <<'EOF'
@@ -217,7 +249,10 @@ EOF
 }
 
 # ── the delta against the previous run's state, its ages, and the line each corpus leaves in checks.log ──
-NEWALL=0; UNALL=0
+NEWALL=0; UNALL=0; NEWUN=0
+unacc() { # <corpus>, ids on stdin -> how many the baseline does not accept
+  while IFS= read -r _id; do rows "$BASELINE" | cut -f1-2 | grep -qxF "$1	$_id" || echo x; done | wc -l | tr -d ' '
+}
 record() { # <corpus> <status> <total> [reason]
   _f="$STATE/$(printf '%s' "$1" | tr '/' '.').misses"
   if [ "$2" != ok ]; then
@@ -230,12 +265,13 @@ record() { # <corpus> <status> <total> [reason]
   # FILENAME, not NR == FNR: with no previous state the first file is empty and NR == FNR would hold for the second.
   awk -F'\t' -v now="$NOW" -v pf="$_f" 'FILENAME == pf { seen[$1] = $2; next }
       { print $1 "\t" (($1 in seen) ? seen[$1] : now) }' "$_f" "$TMP/cur.found" > "$_f.tmp"
-  _new="$(awk -F'\t' -v pf="$_f" 'FILENAME == pf { p[$1]; next } !($1 in p)' "$_f" "$_f.tmp" | wc -l | tr -d ' ')"
+  awk -F'\t' -v pf="$_f" 'FILENAME == pf { p[$1]; next } !($1 in p) { print $1 }' "$_f" "$_f.tmp" > "$TMP/new.ids"
+  _new="$(wc -l < "$TMP/new.ids" | tr -d ' ')"; _nu="$(unacc "$1" < "$TMP/new.ids")"
   _clr="$(awk -F'\t' -v pf="$_f.tmp" 'FILENAME == pf { p[$1]; next } !($1 in p)' "$_f.tmp" "$_f" | wc -l | tr -d ' ')"
   mv -f "$_f.tmp" "$_f"
   _mis="$(grep -c '^miss:' "$_f" || :)"; _fp="$(grep -c '^fp:' "$_f" || :)"
   _old="$(cut -f2 "$_f" | sort -n | head -1)"
-  _un="$(cut -f1 "$_f" | while IFS= read -r _id; do rows "$BASELINE" | cut -f1-2 | grep -qxF "$1	$_id" || echo x; done | wc -l | tr -d ' ')"
+  _un="$(cut -f1 "$_f" | unacc "$1")"
   printf '%s\tok\t%s\t%s\t%s\t%s\t%s\t%s\t\n' "$1" "$3" "$_mis" "$_fp" "$_new" "$_clr" "${_old:--}" >> "$TMP/last.tsv"
   _oa=''; [ -z "$_old" ] || _oa=" oldest=$(age $((NOW - _old)))"
   printf '[check:redteam-corpus] %s %s new=%s cleared=%s standing=%s of %s unaccepted=%s%s\n' \
@@ -243,7 +279,7 @@ record() { # <corpus> <status> <total> [reason]
   _line="$1: $_mis miss(es), $_fp false positive(s) of $3; new $_new, cleared $_clr, $_un not accepted$_oa"
   if [ "$_un" = 0 ]; then log_ok "$_line"
   else log_fail "$_line"; log_fix "$SELFCMD --print; adjudicate each on harbor#1313, fixed and pinned or accepted in CONTRACTS/redteam-baseline.tsv"; fi
-  NEWALL=$((NEWALL + _new)); UNALL=$((UNALL + _un))
+  NEWALL=$((NEWALL + _new)); UNALL=$((UNALL + _un)); NEWUN=$((NEWUN + _nu))
 }
 
 score() { # <corpus> <total-or-error>
@@ -269,11 +305,16 @@ else : > "$TMP/cur.found"; score ccg "$(run_ccg "$CORPDIR/ccg")"; fi
 
 mv -f "$TMP/last.tsv" "$STATE/last.tsv"
 EB="$ROOT/bin/event-bus.sh"
-if [ "$NEWALL" -gt 0 ]; then
+# The bus speaks for the live box, so only a run on the live state talks to it (or one handed a bus): a benchmark on
+# a scratch cache read all 453 accepted findings as new and opened a handoff on the operator's row.
+_live="$(CDPATH= cd -- "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/cache" 2>/dev/null && pwd -P)" || _live=""
+_this="$(CDPATH= cd -- "$CACHE_DIR" 2>/dev/null && pwd -P)" || _this=""
+if [ -z "${HARBOR_EVENT_DIR:-}" ] && { [ -z "$_live" ] || [ "$_this" != "$_live" ]; }; then :
+elif [ "$NEWUN" -gt 0 ]; then  # an accepted finding is already adjudicated: nothing waits on the operator
   sh "$EB" emit obligation.open redteam-corpus --src redteam-corpus \
-    --data "$(jq -nc --arg n "$NEWALL" --arg d "$((NOW + 604800))" \
-      '{title: ("redteam-corpus: " + $n + " new miss(es) or false positive(s), harbor#1313"), deadline_ts: $d}')" >/dev/null 2>&1 || :
-  # a week, the check's own cadence: the default 24 h turned an adjudication in progress into an OVERDUE alarm
+    --data "$(jq -nc --arg n "$NEWUN" --arg d "$((NOW + 604800))" \
+      '{title: ("redteam-corpus: " + $n + " new to adjudicate, harbor#1313"), deadline_ts: ($d | tonumber | todate)}')" >/dev/null 2>&1 || :
+  # a week, the check's own cadence, as ISO: the ledger reads no other form, so an epoch fell back to the default 24 h
 elif [ "$UNALL" = 0 ]; then
   sh "$EB" emit obligation.close redteam-corpus --src redteam-corpus >/dev/null 2>&1 || :
 fi
