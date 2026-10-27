@@ -311,9 +311,13 @@ scan() {
 #   literals, quoted as data; scanned, they turn the gate red on its own test
 #   data (suite case 8). The cost, named: a real pre-move default written here would
 #   go unseen here — its defaults derive from PORT_ROOT and HOME instead.
+#   ONE LIST, applied to every repo scan (1b too): harbor-core mirrors these files and the private layer keeps its own
+#   exemption table, and scanned there they were 157 of 159 CODE rows on 2026-10-27, the gate red on its own data. The
+#   suite split into tests/install/port-paths/ is listed beside the file it came from.
+INSTRUMENT_SPEC=':!bin/port-paths.sh :!tests/install/port-paths-test.sh :!tests/install/port-paths/* :!CONTRACTS/port-paths-exempt.tsv :!port-paths-exempt.tsv'
 harbor_grep() { # <repo> <git-grep-flags>
-  git -C "$1" grep "$2" "$PAT" -- . ':!EVALS-DATA' ':!*/EVALS/*' ':!COVERAGE-INCIDENTS.tsv' \
-      ':!bin/port-paths.sh' ':!tests/install/port-paths-test.sh' ':!CONTRACTS/port-paths-exempt.tsv' 2>/dev/null
+  # shellcheck disable=SC2086  # INSTRUMENT_SPEC is pathspecs with no spaces, split on purpose
+  git -C "$1" grep "$2" "$PAT" -- . ':!EVALS-DATA' ':!*/EVALS/*' ':!COVERAGE-INCIDENTS.tsv' $INSTRUMENT_SPEC 2>/dev/null
 }
 
 # --selftest. The two load-bearing parts are the regex and classify(); everything
@@ -450,11 +454,20 @@ if [ "$MODE" = verify ]; then
         # `(pattern)`: this loop runs inside $( ), where bash 3.2 reads a bare
         # `pattern)` as the end of the substitution.
         case "$__et" in (*@HOME@*) __er="$(printf '%s' "$__et" | sed "s|@HOME@|$HOME_DIR|g")" ;; esac
-        if [ "$__et" = '*' ]; then
-          grep -qE "$PAT" "$PORT/$__ef" 2>/dev/null && continue
-        else
-          grep -qF -- "$__er" "$PORT/$__ef" 2>/dev/null && continue
-        fi
+        # The file of the row AND the installed copy the scan maps onto it (FINISH_AWK: skills/, bin/, CLAUDE.md):
+        # a skill retired from the tree but still installed kept its row live, and was reported stale (2026-10-27).
+        # No apostrophe in a comment here: inside $( ) bash 3.2 reads one as an open quote.
+        set -- "$PORT/$__ef"
+        case "$__ef" in
+          (harbor/skills/*|harbor/bin/*) [ -z "$CFG" ] || set -- "$@" "$CFG/${__ef#harbor/}" ;;
+          (harbor/CONSTITUTION.md) [ -z "$CFG" ] || set -- "$@" "$CFG/CLAUDE.md" ;;
+        esac
+        __live=0
+        for __eg in "$@"; do
+          if [ "$__et" = '*' ]; then grep -qE "$PAT" "$__eg" 2>/dev/null && __live=1
+          else grep -qF -- "$__er" "$__eg" 2>/dev/null && __live=1; fi
+        done
+        [ "$__live" = 0 ] || continue
         echo "$__ef$(printf '\t')$__et"
       done)"
   fi
@@ -530,7 +543,8 @@ for __r in $TARGETS; do
   fi
   #    estate's AUDITS/<date>-data/ is excluded for the EVALS reason: a dated
   #    audit's findings.json quotes the paths it measured on that day.
-  git -C "$__d" grep -nE "$PAT" -- . ':!*/EVALS/*' ':!AUDITS/*' 2>/dev/null |
+  # shellcheck disable=SC2086
+  git -C "$__d" grep -nE "$PAT" -- . ':!*/EVALS/*' ':!AUDITS/*' $INSTRUMENT_SPEC 2>/dev/null |
     while IFS=: read -r __f __ln __txt; do
       raw "repo:$__r" "$__d/$__f" "$__ln" "$__txt"
     done

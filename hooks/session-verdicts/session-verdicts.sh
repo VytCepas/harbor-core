@@ -26,6 +26,20 @@
 # floor is standing down — would print nothing.
 set -u
 
+# Once per session means not again after /compact (asked 2026-10-27): compaction re-fires SessionStart
+# in the same session, with source "compact". Read in the background under a 1 s timer, because a caller whose
+# stdin is open and idle (a suite run from a tool shell) held a plain `read` for ten minutes; POSIX sh has no `read -t`.
+_in=""
+if [ ! -t 0 ] && _sf="$(mktemp "${TMPDIR:-/tmp}/sv-in.XXXXXX" 2>/dev/null)"; then
+  exec 3<&0
+  { IFS= read -r _l <&3; printf '%s' "$_l" > "$_sf"; } 2>/dev/null & _rp=$!
+  { sleep 1; kill "$_rp" 2>/dev/null; } & _tp=$!
+  { wait "$_rp"; kill "$_tp"; wait "$_tp"; } 2>/dev/null   # reaped here, so the shell prints no "Terminated"
+  exec 3<&-
+  _in="$(cat "$_sf" 2>/dev/null)"; rm -f "$_sf"
+fi
+case "$_in" in *'"source"'*) [ "$(printf '%s' "$_in" | jq -r '.source // empty' 2>/dev/null)" != compact ] || exit 0 ;; esac
+
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 # The re-pin hints below name a TARGET, and `--live` in floor-deny.sh means
 # literally $HOME/.claude — it does not follow CLAUDE_CONFIG_DIR (that flag is

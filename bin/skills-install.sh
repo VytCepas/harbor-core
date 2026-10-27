@@ -421,6 +421,19 @@ elif [ "$ALL" -eq 1 ]; then
   done
   # The composed book goes last: it lists what the loop above installed.
   if _composed "$COMPOSED" && src_for "$COMPOSED" >/dev/null; then install_one "$COMPOSED" || BAD=1; fi
+  # A RETIRED skill's rows go too: tracked here no longer, and gone from disk. 472 rows of skills retired on 2026-10-26
+  # stayed, and reference-check printed "473 references do not resolve" at every session start. A skill still tracked
+  # but missing on disk keeps its rows (REF-5's real finding), and so does a retired dir still on disk (box-only).
+  if [ "$IL_APPLY" -eq 1 ] && [ -f "$IL_TARGET/.harbor-manifest" ]; then
+    for _rn in $(awk -v k="$KIND/" '!/^#/ && NF >= 5 && $(NF-1) == "skills-install" {
+        r = $0; sub(/^[^ ]+ [^ ]+ /, "", r); sub(/ [^ ]+ [^ ]+$/, "", r)
+        if (index(r, k) == 1) { n = substr(r, length(k) + 1); sub(/\/.*/, "", n); if (n ~ /^[A-Za-z0-9._-]+$/) print n } }' \
+        "$IL_TARGET/.harbor-manifest" | LC_ALL=C sort -u); do
+      ! src_for "$_rn" >/dev/null || continue
+      [ ! -e "$DEST_ROOT/$_rn" ] || continue
+      il_manifest_drop "$KIND/$_rn"; log_note "$_rn: retired, and gone from $DEST_ROOT, so its manifest rows are dropped"
+    done
+  fi
 elif [ -z "$NAME" ]; then
   list_all
 else

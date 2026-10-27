@@ -174,7 +174,7 @@ printf '61\n' > "$ST/ctx/ac-1"; run ac-1 plain 'All set.'
 t_has "ten points more asks again" "$(cat "$T/out")" '"additionalContext"'
 run ac-1 plain 'Everything is merged and saved.
 [compact-ok]' '[]' true
-t_has "[compact-ok] as the last line: the operator is told" "$(cat "$T/out")" 'Compacting'
+t_eq "[compact-ok] as the last line: nothing printed to the operator" "" "$(cat "$T/out")"
 typed ac-1; t_has "...and /compact is typed into the tab of the session's tty" "$(cat "$T/osa.calls")" '/dev/ttys999'
 t_has "...and logged" "$(cat "$ST"/backups/session-autocompact/*/log)" 'typed /compact on ttys999: sent'
 : > "$T/osa.calls"
@@ -230,7 +230,7 @@ sleep 0.5; t_eq "a running background task: nothing runs" "" "$(cat "$T/clean.ca
 t_eq "cleanup-auto.off: nothing runs" "" "$(cat "$T/clean.calls")"; rm -f "$ST/cleanup-auto.off"
 run cl-1 plain 'Merged, deployed, verified.
 [cleanup-ok]'
-t_has "[cleanup-ok] as the last line: the operator is told" "$(cat "$T/out")" 'Cleaning up'
+t_eq "[cleanup-ok] as the last line: nothing printed to the operator" "" "$(cat "$T/out")"
 cleaned; t_has "...the sweep applies on the live box" "$(cat "$T/clean.calls")" '--apply --live'
 t_has "...then re-records the count" "$(cat "$T/clean.calls")" '--record --live'
 t_has "...and logs what it reclaimed" "$(cat "$ST"/backups/session-cleanup/*/log)" 'reclaimed: finished-worktrees'
@@ -238,9 +238,7 @@ t_has "...and logs what it reclaimed" "$(cat "$ST"/backups/session-cleanup/*/log
 export HARBOR_AUTOCOMPACT_TTY=ttys999 HARBOR_AUTOCOMPACT_OSA="$T/osa" HARBOR_AUTOCOMPACT_DELAY=0
 run cl-2 plain 'All done.
 [cleanup-ok] [compact-ok]'
-t_eq "both markers: ONE JSON object" 1 "$(grep -c . "$T/out")"
-t_has "...telling of both" "$(cat "$T/out")" 'Cleaning up'
-t_has "...both" "$(cat "$T/out")" 'Compacting'
+t_eq "both markers: nothing printed" "" "$(cat "$T/out")"
 cleaned; t_has "...the sweep ran" "$(cat "$T/clean.calls")" '--apply --live'
 typed cl-2; t_has "...and /compact was typed" "$(cat "$T/osa.calls")" '/dev/ttys999'
 sleep 0.5; : > "$T/clean.calls"; sh "$T_ROOT/bin/session-cleanup.sh" '../x'

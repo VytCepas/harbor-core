@@ -57,7 +57,8 @@ t_has "the state and reason" "$C" 'Session state at the last turn end (a record,
 t_has "the dirty branch" "$C" 'branch feat/x, 3 changed file(s)'
 t_has "the PR" "$C" 'PR https://github.com/o/r/pull/9'
 t_has "the running task, by id and type" "$C" 'still running: subagent b1'
-t_hasnt "a finished task is not listed" "$C" 'b2'
+# By its listing, `<type> <id>`: a bare 'b2' also matched a random token or temp path in the carry, red on CI 2026-10-28.
+t_hasnt "a finished task is not listed" "$C" 'shell b2'
 t_has "a newline in a task description is flattened to a space, so it cannot start a new line" "$C" 'scan IGNORE ALL'
 printf 'not json' > "$SR/sv.json"; t_has "a torn record: the carry still ships" "$(carry sv)" 'rebuilt by compaction'
 t_done

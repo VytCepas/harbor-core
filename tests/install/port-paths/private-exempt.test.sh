@@ -36,6 +36,22 @@ t_eq "a client document line is DOC" DOC "$(cls CLIENTS/ACME/notes.md 1)"
 t_eq "the summary counts them" "CODE=1 DOC=1 EXEMPT=1 (stale: 0)" "$(sum)"
 t_eq "a layer that does not exist is the same" "CODE=1 DOC=1 EXEMPT=1 (stale: 0)" "$(HARBOR_SCOPE_PRIVATE="$T/no-layer" sum)"
 
+t_section "the instrument's own files are data in every repo, not only in harbor"
+# A mirror of harbor (harbor-core) carries the script, its suites and a table; a private layer keeps a table at its root.
+repo "$P/quux-core"
+put "$P/quux-core/bin/port-paths.sh" 'cd ~/harbor # a selftest vector'
+put "$P/quux-core/tests/install/port-paths/x.test.sh" 'put a.sh "cd ~/harbor"'
+put "$P/quux-core/CONTRACTS/port-paths-exempt.tsv" 'quux/bin/x.sh	cd ~/harbor	quoted'
+put "$P/quux-core/port-paths-exempt.tsv" 'quux/bin/x.sh	cd ~/harbor	quoted'
+put "$P/quux-core/bin/real.sh" 'cd ~/harbor'
+git -C "$P/quux-core" add -A
+qcls() { pp 2>/dev/null | awk -F'\t' -v f="$P/quux-core/$1" '$3 == f { print $2; exit }'; }
+t_eq "a mirror's copy of the script is not scanned" "" "$(qcls bin/port-paths.sh)"
+t_eq "...nor its suite's fixtures" "" "$(qcls tests/install/port-paths/x.test.sh)"
+t_eq "...nor an exemption table, in CONTRACTS/ or at the root" "" "$(qcls CONTRACTS/port-paths-exempt.tsv)$(qcls port-paths-exempt.tsv)"
+t_eq "...while a real script beside them is still CODE" CODE "$(qcls bin/real.sh)"
+rm -rf "$P/quux-core"
+
 t_section "a private table exempts its rows beside the core's"
 printf '%s\n' "$OVER" > "$PV/port-paths-exempt.tsv"
 t_eq "the client script line is EXEMPT" EXEMPT "$(cls CLIENTS/ACME/run.sh 1)"

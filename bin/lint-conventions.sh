@@ -4266,8 +4266,12 @@ if [ -d "$_localbin" ]; then
   _x2b_owned="$(sed 's/#.*//' "$ROOT/CONTRACTS/shims.tsv" 2>/dev/null \
     | awk -F'\t' 'NF >= 3 && $1 != "name" && $3 ~ /^bin\// { sub(/^bin\//, "", $3); printf "%s:%s ", $3, $1 }')"
   _x2b_stamp="${HELM_LIVE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}/$(awk -F\" '/^STAMP_NAME=/{print $2; exit}' "$ROOT/bin/install-stamp.sh" 2>/dev/null || printf '.helm-install-stamp')"
+  # harbor-app-install.sh's copies into ~/.local/bin (`put <bin/harbor-app file> "$BIN/<name>"`), read from its own put
+  # lines: the gh shim lagged its #1381 fix for nine days and the sweep could not read 7 repos (2026-10-27). Compared
+  # only (DIFFERS or DANGLING): their absence is the operator's choice not to install the App, never NEVER DEPLOYED.
+  _x2b_app="$(awk '$1 == "put" && $3 ~ /^"\$BIN\// { d = $3; gsub(/"/, "", d); sub(/^\$BIN\//, "", d); printf "harbor-app/%s:%s ", $2, d }' "$ROOT/bin/harbor-app-install.sh" 2>/dev/null)"
   # source .sh -> installed one-word name
-  for _pair in $_x2b_owned; do
+  for _pair in $_x2b_owned $_x2b_app; do
     _src="$ROOT/bin/${_pair%%:*}"
     _dst="$_localbin/${_pair#*:}"
     [ -f "$_src" ] || continue

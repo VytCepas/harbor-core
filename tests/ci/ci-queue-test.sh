@@ -41,7 +41,7 @@ hist() { # <run id> <A secs> — B is always 60s and C 300s
 }
 hist 10 580; hist 11 600; hist 12 900    # A's median is 600, not the 693 mean; o/s has no fixtures
 
-qat() { _t="$1"; shift; FX="$FX" HARBOR_GH="$GH" HARBOR_RUNNERS_DIR="$RUN" HARBOR_CACHE_DIR="$CACHE" \
+qat() { _t="$1"; shift; FX="$FX" HARBOR_GH="$GH" HARBOR_RUNNERS_DIR="$RUN" HARBOR_CACHE_DIR="$CACHE" HARBOR_DOCKER="${QDOCKER:-false}" \
           HARBOR_NOW="$_t" sh "$T_ROOT/bin/ci-queue.sh" "$@"; }
 q() { qat "$NOW" "$@"; }
 get() { jq -r --arg r "$1" ".repos[] | select(.repo == \$r) | $2" "$CACHE/ci-queue.json"; }
@@ -70,12 +70,28 @@ fx 'repos/o/r/actions/runs/1/jobs?per_page=100' \
 q
 t_eq "an overrunning job reads as due now" "$NOW" "$(get o/r .eta)"
 
+t_section "runner containers name their repo in RUNNER_URL; a gate container is not parallelism"
+# A docker stub: three o/r containers (one a gate), one org runner with no repo.
+cat > "$T_TMP/docker" <<'DK'
+#!/bin/sh
+case "$1" in
+  ps) printf 'r-linux\nr-linux-2\nr-gate\norg-linux\n' ;;
+  inspect) case "$4" in org-linux) echo 'RUNNER_URL=https://github.com/o' ;; *) echo 'RUNNER_URL=https://github.com/o/r' ;; esac ;;
+esac
+DK
+chmod +x "$T_TMP/docker"
+mv "$RUN" "$RUN.off"; mkdir -p "$RUN"
+QDOCKER="$T_TMP/docker" q
+t_eq "two o/r containers with no .runner on the host are two runners" 2 "$(get o/r .runners)"
+t_eq "the org runner adds no repo" 1 "$(jq '.repos | length' "$CACHE/ci-queue.json")"
+rm -rf "$RUN"; mv "$RUN.off" "$RUN"
+
 t_section "idle, and no runners at all"
 fx 'repos/o/r/actions/runs?status=in_progress&per_page=50' '{"workflow_runs":[]}'
 q
 t_eq "an idle repo has no jobs left" 0 "$(get o/r .left)"
 t_eq "an idle repo has no eta" null "$(get o/r .eta)"
-t_exit "no runner folders still exits 0" 0 env HARBOR_RUNNERS_DIR="$T_TMP/none" FX="$FX" HARBOR_GH="$GH" \
+t_exit "no runner folders still exits 0" 0 env HARBOR_RUNNERS_DIR="$T_TMP/none" HARBOR_DOCKER=false FX="$FX" HARBOR_GH="$GH" \
   HARBOR_CACHE_DIR="$CACHE" HARBOR_NOW="$NOW" sh "$T_ROOT/bin/ci-queue.sh"
 t_eq "no runner folders write an empty repo list" '[]' "$(jq -c .repos "$CACHE/ci-queue.json")"
 

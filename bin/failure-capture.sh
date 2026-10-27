@@ -1477,11 +1477,12 @@ fi
 # a tool failure AND is already one record in guard-decisions.jsonl, judged by the
 # rules above. Counting it here would double-report the floor doing its job, and
 # the loudest finding in this ledger would be the control that works.
+# `handoff` likewise: browser-agent refusing by its own rules and naming the operator's next step.
 if [ "$NTF" -gt 0 ]; then
   # HORIZONED ON LAST OCCURRENCE, like FC-2 to FC-5: the ledger is bounded by bytes, not days, so a failure last seen weeks
   # ago was still reported as current. Measured 2026-10-26: one of three live FC-10 findings had last failed on 2026-09-28.
   jq -s -r --arg c "$FC_CUTOFF" '
-      map(select(.e != "blocked" and (.h // "-") != "-"))
+      map(select(.e != "blocked" and .e != "handoff" and (.h // "-") != "-"))
     | group_by(.h)
     # Label from the NEWEST record: the oldest one of a long-lived group can predate a recorder fix (bare `mcp` before #1381).
     | map((sort_by(.ts // "") | .[-1]) as $n | { t: $n.t, k: $n.k, e: $n.e,
