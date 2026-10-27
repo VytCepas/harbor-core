@@ -35,6 +35,13 @@
 # `stop_hook_active` stops a second one in the same chain; save_now in the record stops a repeat for the
 # same trigger. Anything heavier than this runs detached from the dispatcher, never here.
 #
+# COMPACT  no hook can start a compaction, so it runs on the agent's word. ASK: on a done or idle turn with
+# ctx_pct >= HARBOR_AUTOCOMPACT_PCT (35), no save-now this turn and not already a continuation, ONE Stop
+# continuation asks the agent whether the task is finished; once per 10-point growth step (compact_ask in the
+# record; a fall in ctx re-arms it). RUN: when the agent's message ENDS with the line [compact-ok], this hook
+# starts bin/session-autocompact.sh detached, which types /compact into the session's Terminal tab. Off for
+# both: $STATE/compact-auto.off.
+#
 # The floor never depends on this file; guard-stop.sh is not touched and not called.
 
 set -u
@@ -183,9 +190,9 @@ if [ "$HANDOVER_AT" -eq 0 ] || { [ "$MS" -gt 0 ] && [ "$HANDOVER_AT" -lt "$MS" ]
 # ── the record and the event ───────────────────────────────────────────────────────────────────
 mkdir -p "$STATE/sessions" 2>/dev/null || exit 0
 REC="$STATE/sessions/$SID.json"
-PREV=""; SINCE="$NOW"; PSAVE=""
+PREV=""; SINCE="$NOW"; PSAVE=""; PASK=""
 if [ -r "$REC" ]; then
-  eval "$(jq -r '@sh "PREV=\(.state // "") PSINCE=\(.since // 0) PSAVE=\(.save_now // "") PUPD=\(.updated // 0)"' "$REC" 2>/dev/null)" || PREV=""
+  eval "$(jq -r '@sh "PREV=\(.state // "") PSINCE=\(.since // 0) PSAVE=\(.save_now // "") PASK=\(.compact_ask // "") PUPD=\(.updated // 0)"' "$REC" 2>/dev/null)" || PREV=""
   [ "$PREV" != "$S" ] || SINCE="${PSINCE:-$NOW}"
 fi
 
@@ -206,12 +213,29 @@ if [ "$ACTIVE" != true ] && [ -n "$CTX" ] && [ -f "$CFG/.helm-dispatch/rules/eve
 fi
 [ -n "$SAVE" ] || SAVE="${PSAVE:-}"
 
+# compact: ask the agent at a finished turn; run on its [compact-ok].
+ASKED="${PASK:-}"; ASKMSG=""; RUNC=""
+ASKPCT="${HARBOR_AUTOCOMPACT_PCT:-35}"; case "$ASKPCT" in ''|*[!0-9]*) ASKPCT=35 ;; esac
+if [ ! -e "$STATE/compact-auto.off" ] && [ -f "$HERE/session-autocompact.sh" ] && [ "$NRUN" -eq 0 ]; then
+  # Only as the message's last non-blank line: a quoted or explained marker is not the agent's word.
+  _lastl="$(printf '%s\n' "$MSG" | awk 'NF { l = $0 } END { sub(/^[ \t]+/, "", l); sub(/[ \t]+$/, "", l); print l }')"
+  [ "$_lastl" != '[compact-ok]' ] || RUNC=1
+  if [ -z "$RUNC" ] && [ "$ACTIVE" != true ] && [ -z "$SAVEMSG" ] && [ -n "$CTX" ] \
+     && { [ "$S" = done ] || [ "$S" = idle ]; } && [ "$CTX" -ge "$ASKPCT" ]; then
+    case "$ASKED" in ''|*[!0-9]*) ASKED="" ;; esac
+    if [ -z "$ASKED" ] || [ "$CTX" -lt "$ASKED" ] || [ "$CTX" -ge $((ASKED + 10)) ]; then
+      ASKED="$CTX"
+      ASKMSG="Context is at ${CTX}% of the compaction window. Is the whole task finished, with its state saved (memory note or handoff) and nothing waiting on you? If yes, reply with the single line [compact-ok] and the session compacts now. If not, reply only 'not yet' and carry on."
+    fi
+  fi
+fi
+
 jq -cn --arg state "$S" --argjson since "$SINCE" --arg cwd "$CWD" --arg branch "$BRANCH" --argjson dirty "$DIRTY" \
   --arg pr "$PRURL" --argjson tasks "$TASKS" --arg ctx "$CTX" --argjson handoff "$HANDOVER_AT" --arg reason "$REASON" \
-  --argjson agents "$NRUN" --arg pid "$PID" --argjson upd "$NOW" --arg save "$SAVE" --arg hstale "$HSTALE" \
+  --argjson agents "$NRUN" --arg pid "$PID" --argjson upd "$NOW" --arg save "$SAVE" --arg hstale "$HSTALE" --arg ask "$ASKED" \
   '{state:$state, since:$since, cwd:$cwd, branch:$branch, dirty:$dirty, pr:$pr, background_tasks:$tasks,
     ctx_pct:(if $ctx == "" then null else ($ctx|tonumber) end), handover_at:$handoff, reason:$reason,
-    agents:$agents, prompt_id:$pid, updated:$upd, save_now:$save, handover_stale:$hstale}' > "$REC.$$" 2>/dev/null && mv -f "$REC.$$" "$REC" 2>/dev/null
+    agents:$agents, prompt_id:$pid, updated:$upd, save_now:$save, handover_stale:$hstale, compact_ask:$ask}' > "$REC.$$" 2>/dev/null && mv -f "$REC.$$" "$REC" 2>/dev/null
 rm -f "$REC.$$" 2>/dev/null
 
 # Leaving `done` retires the lint verdict event.session-check wrote for it (the glyph shows it until then).
@@ -235,5 +259,21 @@ fi
 
 if [ -n "$SAVEMSG" ]; then
   jq -cn --arg m "$SAVEMSG" '{hookSpecificOutput:{hookEventName:"Stop", additionalContext:$m}}'
+fi
+if [ -n "$ASKMSG" ]; then
+  jq -cn --arg m "$ASKMSG" '{hookSpecificOutput:{hookEventName:"Stop", additionalContext:$m}}'
+fi
+if [ -n "$RUNC" ]; then
+  # The tty of the claude process above this hook; the helper finds the Terminal tab by it.
+  _tty="${HARBOR_AUTOCOMPACT_TTY:-}"; _p="$PPID"; _i=0
+  while [ -z "$_tty" ] && [ "$_i" -lt 4 ] && [ -n "$_p" ] && [ "$_p" -gt 1 ] 2>/dev/null; do
+    _l="$(ps -o tty= -o ppid= -p "$_p" 2>/dev/null)" || break
+    set -- $_l; case "${1:-}" in ''|'??'|'?') ;; *) _tty="$1"; break ;; esac
+    _p="${2:-}"; _i=$((_i + 1))
+  done
+  if [ -n "$_tty" ]; then
+    ( sh "$HERE/session-autocompact.sh" "$SID" "$_tty" ) >/dev/null 2>&1 </dev/null &
+    jq -cn '{systemMessage:"Compacting: the agent said the task is finished ([compact-ok]). [session-state compact; off: touch ~/.local/state/harbor/compact-auto.off]"}'
+  fi
 fi
 exit 0
