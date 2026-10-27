@@ -2,6 +2,6 @@
 # Columns, tab-separated, one header row:  path  term  reason   (path a file or a dir/ prefix, term an id or *)
 path	term	reason
 vendor/archify/	flow	third-party diagram renderer: "flow" is the data-flow diagram, not a repo
-skills/atlas/build/build.py	flow	a diagram flow (an edge) in an error message, not a repo
+skills/doc-atlas/build/build.py	flow	a diagram flow (an edge) in an error message, not a repo
 skills/README.md	flow	the flow pack skill's name in the skill roster, not the repo
 skills/UNIFICATION.md	flow	the flow pack skill's name in a measured firing list, not the repo

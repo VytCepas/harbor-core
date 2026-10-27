@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# save-log-token.sh (harbor#431) — put the helm-log token on disk without ever
+# save-log-token.sh (harbor#431) — put the memory-store token on disk without ever
 # showing it, and without leaving it on the clipboard.
 #
 #   sh save-log-token.sh          # reads the clipboard, writes the token file

@@ -84,6 +84,12 @@ mkdir -p "$C/.harbor-packs"; printf '# repo\tdemo\nF\tinject.d/pack-demo--n.md\n
 run '' --live
 t_eq "with the pack's manifest the same file passes" 0 "$RC"
 t_has "...and inject.d is judged clean" "$(out)" "inject.d: every installed pack is one the repo holds or once held"
+packcase ownednew; mkdir -p "$C/context-rules/user"; printf 'pack note\n' > "$C/context-rules/user/pack-demo--n.md"
+run '' --live
+t_has "the new box tier is judged too (harbor#1010)" "$(out)" "context-rules/user holds packs whose bytes are in no commit"
+mkdir -p "$C/.harbor-packs"; printf '# repo\tdemo\nF\tcontext-rules/user/pack-demo--n.md\n' > "$C/.harbor-packs/demo.tsv"
+run '' --live
+t_has "...and passes with the pack's manifest" "$(out)" "context-rules/user: every installed pack is one the repo holds or once held"
 
 t_section "uninstall: every installed pack goes with the floor, and the skill catalog is regenerated without them"
 packcase unin; printf '#!/bin/sh\necho "  ok: stub floor-uninstall"\n' > "$REPO/bin/floor-uninstall.sh"; chmod +x "$REPO/bin/floor-uninstall.sh"

@@ -33,7 +33,7 @@
 /bin/fleet-glyph.sh @VytCepas
 /bin/subagent-glyph.sh @VytCepas
 /hooks/** @VytCepas
-/inject.d/** @VytCepas
+/context-rules/** @VytCepas
 /.claude/** @VytCepas
 /skills/** @VytCepas
 /vendor/skills/** @VytCepas
@@ -176,6 +176,7 @@
 /bin/memory-route.sh @VytCepas
 /bin/memory.sh @VytCepas
 /bin/merged-check.sh @VytCepas
+/bin/name-check @VytCepas
 /bin/observe-report.sh @VytCepas
 /bin/pack.sh @VytCepas
 /bin/pass-score.sh @VytCepas

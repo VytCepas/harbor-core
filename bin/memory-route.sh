@@ -137,11 +137,14 @@ fi
 # a directory name contains a dash, and this only ever needs the forward map.
 key_for() { printf '%s' "$1" | sed 's|/|-|g'; }
 
-# THE REGISTRY IS THE PRIVATE LAYER'S (harbor#1149): <private>/inject.d/box/projects.tsv, through the one resolver beside this
+# THE REGISTRY IS THE PRIVATE LAYER'S (harbor#1149): <private>/context-rules/user/projects.tsv (harbor#1010), through the one resolver beside this
 # script. None is the stand-down below, which names where it looked.
 _SELF="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)"
 REGISTRY="$(env -u HARBOR_ROOT sh "$_SELF/roots.sh" --projects 2>/dev/null || :)"
-[ -n "$REGISTRY" ] || REGISTRY="$(env -u HARBOR_ROOT sh "$_SELF/roots.sh" --private 2>/dev/null || :)/inject.d/box/projects.tsv"
+if [ -z "$REGISTRY" ]; then  # named where the layer's own layout would hold it (harbor#1010)
+  _pv="$(env -u HARBOR_ROOT sh "$_SELF/roots.sh" --private 2>/dev/null || :)"
+  if [ -d "$_pv/context-rules" ]; then REGISTRY="$_pv/context-rules/user/projects.tsv"; else REGISTRY="$_pv/inject.d/box/projects.tsv"; fi
+fi
 STORE_ROOT="$CFG/projects"
 # PHYSICAL, on both sides of the comparison. Claude Code keys the directory off
 # the resolved path, which this box's own store proves: the scratchpad silos are
@@ -199,7 +202,7 @@ BAD=0; OK=0; MADE=0; EXAMINED=0
 # ten registry paths and called the job done; measured immediately afterwards,
 # eight more directories a session can legitimately open were still blind —
 # three harbor worktrees (INCLUDING THE ONE THIS TOOL WAS BEING WRITTEN IN),
-# the pipeline repo's sub-checkouts (resolved through the repo registry), a project-init worktree, and a mail
+# the pipeline repo's sub-checkouts (resolved through the repo registry), a yard worktree, and a mail
 # tool's installed copy under ~/.local/lib.
 #
 # Two shapes, both ordinary on this box:

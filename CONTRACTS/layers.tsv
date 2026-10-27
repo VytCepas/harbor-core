@@ -18,10 +18,10 @@ CONTRACTS/	core	interface contracts
 DOCTRINE/	core	rule reasoning
 bin/	core	the tools
 commands/	core	slash commands
+context-rules/	core	session injectors (inject.d/ before harbor#1010)
 docs/	core	documentation
 fixtures/	core	test fixtures
 hooks/	core	git hooks
-inject.d/	core	session injectors
 launchd/	core	macOS schedules
 patches/	core	vendor patches
 runners/	core	CI runner setup

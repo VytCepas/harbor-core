@@ -27,7 +27,7 @@
 #                                        confirms it wedged and the job running now is that job; one checks.log line
 #   (up --apply and tick also install bin/ci-governor-hook.sh into the events mount every container runs it from)
 #
-# THE FLEET is the projects-orchestrator snapshot (fleet.yaml's roots and projects, read through cache/fleet-snapshot.json).
+# THE FLEET is the fleet snapshot (fleet.yaml's roots and projects, read through cache/fleet-snapshot.json).
 # A repo wants a runner when its workflows read vars.CI_RUNS_ON, unless its .agents/config.yaml says `ci_runner: hosted`
 # or its origin names no GitHub repo (never pushed: nothing to register a runner to); a repo under another owner is listed as `foreign` and left alone (personal-account runners are per repo).
 # CONFIG is $CLAUDE_CONFIG_DIR/.harbor-ci-runners: `image NAME` (else HARBOR_CI_IMAGE, else port-linux-runner:local),
@@ -111,7 +111,8 @@ CONF="$CFG/.harbor-ci-runners"
 CACHE_DIR="${HARBOR_CACHE_DIR:-$HOME/.claude/cache}"
 LOG="$CACHE_DIR/checks.log"
 SNAP="${HARBOR_FLEET_SNAPSHOT:-$CACHE_DIR/fleet-snapshot.json}"
-FLEET="${HARBOR_FLEET_FILE:-${PORT_ROOT:-$HOME/port}/projects-orchestrator/fleet.yaml}"
+# the fleet file through the registry-aware reader beside this script (harbor#966)
+FLEET="${HARBOR_FLEET_FILE:-$(sh "$(dirname -- "$0")/roots.sh" --get HARBOR_FLEET_FILE 2>/dev/null || :)}"
 ORCH="${HARBOR_ORCH_BIN:-$HOME/.local/bin/projects-orchestrator}"
 EVENTS="${HARBOR_CI_EVENTS_DIR:-$HOME/runners/harbor-linux/events}"
 LABELS="${HARBOR_CI_LABELS:-self-hosted,Linux,ARM64}"

@@ -65,7 +65,7 @@ apart, so both are named here.
 
 | Registry | Question | Owner |
 |---|---|---|
-| `harbor-private/inject.d/box/projects.tsv` | *what should a session be told exists?* | harbor (private layer, harbor#1149) |
+| `harbor-private/context-rules/user/projects.tsv` (`inject.d/box/` until it moves) | *what should a session be told exists?* | harbor (private layer, harbor#1149) |
 | `projects-orchestrator/fleet.yaml` | *what should the fleet report health for?* | Fleet (gitignored, machine-specific) |
 
 Lint `IJ2` binds each registry row to a rule pack, `IJ3` walks the box for

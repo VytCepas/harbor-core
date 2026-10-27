@@ -24,7 +24,7 @@
 # the fleet does not list it and this tool never sees it. Widening the predicate
 # would commit into someone else's repository.
 #
-# THE CWD TRAP. `projects-orchestrator` reads `fleet.yaml` from the CURRENT
+# THE CWD TRAP. `fleet` reads `fleet.yaml` from the CURRENT
 # directory and otherwise falls back to scanning `cwd.parent` with no excludes,
 # so the same command returns 7 projects from the checkout and 0 from $HOME.
 # This tool always runs the CLI from the orchestrator checkout for that reason;
@@ -45,12 +45,12 @@ for arg in "$@"; do
   esac
 done
 
-PO_DIR="${HARBOR_ORCHESTRATOR:-${PORT_ROOT:-$HOME/port}/projects-orchestrator}"
+PO_DIR="$(sh "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/roots.sh" --get HARBOR_ORCHESTRATOR)" || exit 2   # harbor#966
 CLI="$(command -v projects-orchestrator 2>/dev/null || true)"
-[ -n "$CLI" ] || { log_fail "the projects-orchestrator CLI is not installed (not on PATH)"
-  log_nofix "CONTRACTS/marker.md (install projects-orchestrator from its checkout, then rerun)"; log_end || :; exit 1; }
+[ -n "$CLI" ] || { log_fail "the fleet CLI is not installed (not on PATH)"
+  log_nofix "CONTRACTS/marker.md (install fleet from its checkout, then rerun)"; log_end || :; exit 1; }
 [ -d "$PO_DIR" ] || { log_fail "no orchestrator checkout at $PO_DIR"
-  log_fix "git clone <the projects-orchestrator repo> $PO_DIR  # or set HARBOR_ORCHESTRATOR"; log_end || :; exit 1; }
+  log_fix "git clone <the fleet repo> $PO_DIR  # or set HARBOR_ORCHESTRATOR"; log_end || :; exit 1; }
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required and is not on PATH"; log_fix "$(pkg_hint jq)"; log_end || :; exit 1; }
 
 FLEET="$(cd "$PO_DIR" && "$CLI" snapshot --json 2>/dev/null || true)"
@@ -146,5 +146,5 @@ while IFS="$(printf '\t')" read -r name path root; do
   log_ok "$name: wrote context: repo"
 done < "$ROWS"
 
-log_note "project-init specifically: its .claude/config.yaml is a byte-hashed committed mirror, so a splice there needs 'just sync-claude' in the same change or tests/contracts/test_claude_dir_sync.py goes red"
+log_note "yard specifically: its .claude/config.yaml is a byte-hashed committed mirror, so a splice there needs 'just sync-claude' in the same change or tests/contracts/test_claude_dir_sync.py goes red"
 log_end; exit $?

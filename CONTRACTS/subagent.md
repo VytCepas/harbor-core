@@ -1,6 +1,6 @@
 # Subagent contract: roles, stop rules, the stop check
 
-*harbor#445 item E, 2026-10-10. Files: `CONTRACTS/agents.tsv`, `inject.d/box/10-subagent-contract.md`, `hooks/session-subagent-check/session-subagent-check.sh`.*
+*harbor#445 item E, 2026-10-10. Files: `CONTRACTS/agents.tsv`, `context-rules/user/subagent-contract.md`, `hooks/session-subagent-check/session-subagent-check.sh`.*
 
 ## What the hooks receive
 

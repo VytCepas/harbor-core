@@ -117,6 +117,7 @@ hooks/injection-rule/detector.test.sh
 hooks/injection-rule/packs.test.sh
 hooks/injection-rule/scope.test.sh
 hooks/injection-rule/compaction-digest.test.sh
+hooks/injection-rule/context-rules.test.sh
 hooks/ticket-note/ticket-note.test.sh
 hooks/session-title/session-title.test.sh
 tests/deploy/hooks/render.test.sh
@@ -164,6 +165,7 @@ tests/install/install-drift-test.sh
 tests/memory/memory-route-test.sh
 tests/ci/pr-wait-test.sh
 tests/install/port-paths-test.sh
+tests/install/port-drift-test.sh
 tests/ci/ci-queue-test.sh
 tests/ci/main-tip-verdict-test.sh
 tests/install/constitution-install-test.sh
@@ -396,4 +398,8 @@ tests/ci/suite-cache/cache.test.sh
 tests/alert/lib/chain.test.sh
 tests/lint/comment/added.test.sh
 tests/lint/name/issue-taxonomy.test.sh
+tests/lint/name/validators.test.sh
 tests/doc/vale/vale.test.sh
+tests/ci/lint-pr-test.sh
+tests/guards/name-note-create-test.sh
+tests/ci/lint-renderer-test.sh

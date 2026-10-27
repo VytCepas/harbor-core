@@ -341,7 +341,7 @@ emit() { # <event> <model-text> [user-line] — or nothing at all
 # ── AND IT HAS TO SURVIVE THE ROUTE THE OPERATOR ACTUALLY RUNS ───────────────
 # Found by review, not by this file's suite, and it is §2.6 exactly: the suite
 # fired the hook DIRECTLY while production goes through
-# `.claude/inject.d/merge-note.sh`, which execs `govern-hook.sh --note` because
+# `context-rules/harbor/merge-note.sh`, which execs `govern-hook.sh --note` because
 # `run:` packs contract that stdout IS the note. So a deny degraded to prose,
 # `inject-hook.sh` wrapped that prose as additionalContext, and every red PR
 # still merged — with a green suite either side of it. A gate that is inert on
@@ -369,11 +369,13 @@ _log() { # <deny|advise> <rule>
 }
 
 # ── --box: which repo a merge belongs to (harbor#516) ───────────────────────
-# _registered <tree>: a row in inject.d/projects.tsv, or a worktree of one. The
+# _registered <tree>: a row in the box tier's projects.tsv, or a worktree of one. The
 # registry is the trust boundary, as for inject-hook's `scope: box`: a merge
 # naming a cloned third-party repo must not run that repo's script in a hook.
 _registered() {
-  _reg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/inject.d/projects.tsv"
+  # Beside the box tier, which moved in harbor#1010; the old place is read while no new one is installed.
+  _reg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/context-rules/user/projects.tsv"
+  [ -f "$_reg" ] || _reg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/inject.d/projects.tsv"
   [ -f "$_reg" ] || return 1
   _me="$(cd "$1" 2>/dev/null && pwd -P || true)"
   _own="$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
@@ -417,7 +419,9 @@ _box_target() {
   [ -n "$_bt" ] && [ -f "$_bt/bin/merge-check.sh" ] || return 0
   _registered "$_bt" || return 0
   # Once: a session in that repo, or a worktree of it, with the merge pack is the pack's.
-  if [ -n "$PROJ" ] && [ -f "$PROJ/.claude/inject.d/merge-note.sh" ] && [ "$(_owner "$PROJ")" = "$_bt" ]; then return 0; fi
+  if [ -n "$PROJ" ] && [ "$(_owner "$PROJ")" = "$_bt" ]; then  # either layout carries the pack (harbor#1010)
+    for _mn in "$PROJ"/context-rules/*/merge-note.sh "$PROJ/.claude/inject.d/merge-note.sh"; do [ ! -f "$_mn" ] || return 0; done
+  fi
   printf '%s' "$_bt"
 }
 # _owner <tree>: the main checkout it belongs to, physical; itself when it is one.
