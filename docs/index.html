@@ -798,6 +798,7 @@ already had in mind.</p>
 <tr><td>box</td><td><code>40-repo-skills-pointer.md</code></td><td><code>SessionStart</code></td><td><code>repo-has .claude/skills</code></td><td>never</td></tr>
 <tr><td>box</td><td><code>45-access-route-pointer.md</code></td><td><code>PostToolUse</code></td><td><code>always</code></td><td>match</td></tr>
 <tr><td>box</td><td><code>50-project-pointer.md</code></td><td><code>SessionStart</code></td><td><code>always</code></td><td>never</td></tr>
+<tr><td>box</td><td><code>55-session-title-missing.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
 <tr><td>box</td><td><code>60-variable-is-one-argument.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
 <tr><td>box</td><td><code>65-browser-route-harbor-chrome.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
 <tr><td>box</td><td><code>66-browser-route-reminder.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
@@ -2146,6 +2147,7 @@ score a plumbing gap as a verdict on the idea.</p>
 <tr><td><code>runner-switch.sh</code></td><td>runner-switch.sh (harbor#865) — GitHub-hosted is the primary CI runner; the Mac is the fallback when the month's Actions minutes run short.</td></tr>
 <tr><td><code>sandbox-make.sh</code></td><td>SANDBOX (harbor#33) — build a disposable copy of ~/.claude's CONFIG surfaces</td></tr>
 <tr><td><code>save-log-token.sh</code></td><td>save-log-token.sh (harbor#431) — put the helm-log token on disk without ever</td></tr>
+<tr><td><code>session-autocompact.sh</code></td><td>session-autocompact.sh (harbor#187) — types /compact into a session's Terminal tab, on the agent's word.</td></tr>
 <tr><td><code>session-check.sh</code></td><td>session-check.sh (harbor#1043, #1044) — rule event.session-check: lint what a finished session changed.</td></tr>
 <tr><td><code>session-ci-watch.sh</code></td><td>session-ci-watch.sh (harbor#1043, #1044) — rule event.session-ci-watch: when a session opens a PR, wait for its checks and say how they ended.</td></tr>
 <tr><td><code>session-cleanup-report.sh</code></td><td>session-cleanup-report.sh (harbor#1043, #1044) — rule event.session-cleanup-report: what a finished session left behind. REPORT ONLY.</td></tr>
@@ -2534,6 +2536,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/save-log-token.sh</code></td><td>save-log-token.sh (harbor#431) — put the helm-log token on disk without ever</td></tr>
 <tr><td><code>bin/scope.sh</code></td><td>scope.sh (harbor#966, harbor#1149) - <code>harbor scope install</code>: the PORT_ROOT skeleton and an empty</td></tr>
 <tr><td><code>bin/sec0-harden.sh</code></td><td>SEC-0 (the install standard, harbor#765) — hand-harden Claude Code's config dir.</td></tr>
+<tr><td><code>bin/session-autocompact.sh</code></td><td>session-autocompact.sh (harbor#187) — types /compact into a session's Terminal tab, on the agent's word.</td></tr>
 <tr><td><code>bin/session-check.sh</code></td><td>session-check.sh (harbor#1043, #1044) — rule event.session-check: lint what a finished session changed.</td></tr>
 <tr><td><code>bin/session-ci-watch.sh</code></td><td>session-ci-watch.sh (harbor#1043, #1044) — rule event.session-ci-watch: when a session opens a PR, wait for its checks and say how they ended.</td></tr>
 <tr><td><code>bin/session-cleanup-report.sh</code></td><td>session-cleanup-report.sh (harbor#1043, #1044) — rule event.session-cleanup-report: what a finished session left behind. REPORT ONLY.</td></tr>

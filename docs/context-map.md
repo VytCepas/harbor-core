@@ -29,7 +29,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | standard | standards/ | system | source | versioned | 14 |
 | contract | contracts/ | system | source | versioned | 30 |
 | decision-record | docs/decisions/ | element | source | dated | 91 |
-| injection-rule | context-rules/<scope>/ | component | source | living | 39 |
+| injection-rule | context-rules/<scope>/ | component | source | living | 41 |
 | hook | hooks/ | component | source | living | 46 |
 | skill | skills/ | component | source | living | 42 |
 | fixture | fixtures/ | element | source | living | 254 |
@@ -38,7 +38,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | report | docs/reports/ | element | report | dated | 1 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| script | bin/ | component | source | living | 203 |
+| script | bin/ | component | source | living | 204 |
 | (no kind) | - | - | - | - | 172 |
 
 ## Folders
@@ -51,12 +51,12 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.github/` | 4 | 2 | 1 |
 | `CONTRACTS/` | 81 | 9 | 2 |
 | `DOCTRINE/` | 10 | 1 | 1 |
-| `bin/` | 207 | 22 | 2 |
+| `bin/` | 208 | 22 | 2 |
 | `commands/` | 5 | 1 | 1 |
 | `docs/` | 113 | 6 | 5 |
 | `fixtures/` | 254 | 9 | 1 |
 | `hooks/` | 42 | 6 | 1 |
-| `inject.d/` | 35 | 1 | 1 |
+| `inject.d/` | 37 | 1 | 1 |
 | `launchd/` | 12 | 3 | 1 |
 | `patches/` | 12 | 1 | 1 |
 | `runners/` | 2 | 1 | 1 |
@@ -78,7 +78,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | audit | control-plane | 0 | 0 | 0 | 0 | 0 | 2 |
 | check | observability | 1 | 4 | 0 | 1 | 50 | 0 |
 | ci | coordination | 13 | 58 | 2 | 3 | 0 | 5 |
-| context | control-plane | 3 | 0 | 1 | 41 | 0 | 32 |
+| context | control-plane | 3 | 0 | 1 | 43 | 0 | 33 |
 | deploy | control-plane | 5 | 7 | 1 | 1 | 0 | 7 |
 | doc | control-plane | 2 | 2 | 0 | 8 | 0 | 17 |
 | drift | control-plane | 1 | 1 | 0 | 4 | 2 | 13 |
@@ -92,7 +92,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | policy | policy-function | 0 | 0 | 11 | 0 | 0 | 3 |
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
 | scope | coordination | 2 | 10 | 0 | 0 | 0 | 4 |
-| session | data-plane | 11 | 4 | 0 | 1 | 0 | 0 |
+| session | data-plane | 12 | 4 | 0 | 1 | 0 | 0 |
 | skill | catalog | 4 | 6 | 0 | 5 | 0 | 13 |
 | standard | policy-function | 3 | 8 | 105 | 0 | 0 | 44 |
 | status | observability | 3 | 8 | 0 | 1 | 0 | 0 |
@@ -179,6 +179,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `inject.d/box/40-repo-skills-pointer.md`
 - `inject.d/box/45-access-route-pointer.md`
 - `inject.d/box/50-project-pointer.md`
+- `inject.d/box/55-session-title-missing.md`
 - `inject.d/box/60-variable-is-one-argument.md`
 - `inject.d/box/65-browser-route-harbor-chrome.md`
 - `inject.d/box/66-browser-route-reminder.md`
@@ -204,6 +205,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `inject.d/box/project-pointer.sh`
 - `inject.d/box/repo-skills.sh`
 - `inject.d/box/repo-tier.sh`
+- `inject.d/box/session-title-missing.sh`
 - `inject.d/box/skill-first-use.sh`
 - `inject.d/box/tool-failure.sh`
 - `inject.d/box/unbounded-wait-loop.sh`
@@ -321,6 +323,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 ### session
 
 - `CONTRACTS/session-waiting.tsv`
+- `bin/session-autocompact.sh`
 - `bin/session-check.sh`
 - `bin/session-ci-watch.sh`
 - `bin/session-cleanup-report.sh`

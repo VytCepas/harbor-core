@@ -238,6 +238,7 @@ bin/sandbox-make.sh	installed	derived: shipped by runtime-install.sh
 bin/save-log-token.sh	installed	derived: shipped by runtime-install.sh
 bin/sec0-harden.sh	installed	derived: shipped by floor-install.sh
 bin/secret	operator-run	derived: linked into ~/.local/bin as secret by CONTRACTS/shims.tsv
+bin/session-autocompact.sh	installed	derived: shipped by runtime-install.sh
 bin/session-check.sh	installed	derived: shipped by runtime-install.sh
 bin/session-ci-watch.sh	installed	derived: shipped by runtime-install.sh
 bin/session-cleanup-report.sh	installed	derived: shipped by runtime-install.sh

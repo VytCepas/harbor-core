@@ -5,6 +5,8 @@
 . "$(dirname "$0")/../../tests/lib/core.sh"; t_init
 . "$T_ROOT/tests/hooks/inject-fixture.sh"
 BOX="$T/boxcfg"; mkdir -p "$BOX/inject.d"; cp -R "$T_ROOT"/inject.d/box/. "$BOX/inject.d/"
+# The untitled-session note fires on every first tool call; its own cases live in fixtures/inject/notes.tsv (harbor#1257).
+: > "$BOX/session-title.off"
 # The registry is the private layer's file (harbor#1149): core ships none, so a fixture with example names stands in,
 # beside the packs where the installer puts it. It resolves against $HOME, the sandbox: stand up the directories it names.
 printf '# fixture registry\nharbor\t~/port/harbor\tthe fixture control plane\ndemo\t~/port/demo\ta fixture project\n' > "$BOX/inject.d/projects.tsv"

@@ -30,6 +30,10 @@ case "$_sid" in ''|*[!A-Za-z0-9_-]*) ;; *)
          then "; still running: " + ([.background_tasks[] | select(.status == "running" or .status == "pending") | (.type | c) + " " + (.id | c) + " \"" + (.description | c) + "\""] | join(", "))
          else "" end)
       + ". Check the running tasks and the changed files before assuming either is finished."' "$_rec" 2>/dev/null || :
+  fi
+  # Long sessions drift off their title; a compaction is the natural point to re-title (hooks/session-title).
+  if [ ! -e "$CFG/session-title.off" ]; then
+    printf 'If the work has moved on from this session'"'"'s title, Write a new one line `<area>: <what>` (at most 50 characters, no ticket numbers) to %s; it applies on the next prompt.\n' "$CFG/session-titles/$_sid.txt"
   fi ;;
 esac
 cd "$CFG" 2>/dev/null || exit 0

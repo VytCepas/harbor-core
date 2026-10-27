@@ -17,7 +17,8 @@ t_section "1 · an empty ledger adds no section"
 : > "$OD/guard-decisions.jsonl"; : > "$OD/tool-failures.jsonl"
 t_has "the numbers-are-copies text still ships" "$(carry sx)" 'rebuilt by compaction'
 t_hasnt "no digest section on an empty ledger" "$(carry sx)" 'already sprang'
-t_eq "payload identical to a session with no rows" "$BASE" "$(carry sx)"
+# The retitle line names the session's own title file (harbor#1257); everything else must match.
+t_eq "payload identical to a session with no rows" "$BASE" "$(carry sx | sed 's|session-titles/sx\.txt|session-titles/nobody.txt|')"
 
 t_section "2 · only this session's rows"
 X="$(skof sx)"; Y="$(skof sy)"
