@@ -1757,7 +1757,7 @@ a shell a person launches, so an `export` in a terminal is out of its sight.
 
 **Why it moved.** `bin/govern-hook.sh` denies a `gh pr merge` that
 `bin/merge-check.sh` refuses, and its only route was harbor's repo pack
-(`context-rules/harbor/merge-governance.md`). A repo pack loads only when the
+(`.claude/inject.d/20-merge-governance.md`). A repo pack loads only when the
 session's project dir is the repo, and all 19 transcripts that ran `gh pr merge`
 in the 30 days harbor#516 measured were launched elsewhere. The one blocking
 rule in the inject engine had never fired outside its own suite.
@@ -1766,7 +1766,7 @@ rule in the inject engine had never fired outside its own suite.
 `Bash`. It reads the target repo from the call itself: a `-R`/`--repo` slug
 mapped to its main checkout under the port root, or else the call's working
 folder. It runs that repo's `bin/merge-check.sh` only if the repo is a
-**registered project** (the private layer's `projects.tsv`, `bin/roots.sh --projects`), the trust boundary inject-hook's
+**registered project** (the private layer's `inject.d/box/projects.tsv`), the trust boundary inject-hook's
 `scope: box` uses for the same reason: a merge naming a cloned third-party repo
 must not run that repo's script inside a hook. It stays silent when the session
 stands in the repo and its merge pack is there, so a merge is checked once. The

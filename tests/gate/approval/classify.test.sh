@@ -61,7 +61,7 @@ t_eq "no repo root: usage, exit 2" 2 "$RC"
 
 t_section "harbor's register: the policy's paths are protected"
 for p in CONSTITUTION.md DOCTRINE/verification-expanded.md bin/guard-bash.sh bin/floor-install.sh bin/guard-lib.sh \
-         bin/floor-normalize.awk hooks/pre-commit context-rules/user/x.md context-rules/harbor/merge-note.sh skills/x/SKILL.md \
+         bin/floor-normalize.awk hooks/pre-commit inject.d/box/x.md .claude/inject.d/merge-note.sh skills/x/SKILL.md \
          bin/runtime-install.sh bin/deploy.sh bin/restore.sh bin/sec0-harden.sh bin/pin-instructions.sh \
          CONTRACTS/required-checks.tsv CONTRACTS/hooks.md .github/workflows/governance.yml bin/gate-approve.sh \
          bin/gate-lib.sh bin/merge-check.sh .agents/protected-paths.tsv .agents/ship.conf; do

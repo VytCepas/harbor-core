@@ -9,7 +9,7 @@
 # this box does not host emits nothing, so each sleep is capped at HARBOR_CI_WAIT_BACKSTOP (300 s) and the read
 # runs anyway: a slower answer, never a missed one.
 #
-# NOT CI: `review/decision` (yard scaffolds' review-status.yml) stays pending until a person approves. A
+# NOT CI: `review/decision` (project-init scaffolds' review-status.yml) stays pending until a person approves. A
 # wait for "nothing pending" took it for CI and sat out its 40-minute deadline on 2026-10-25 with 18 checks green.
 # The contexts in NOT_CI are named in the verdict and never waited on; HARBOR_CI_NOT_CHECKS replaces the list.
 #

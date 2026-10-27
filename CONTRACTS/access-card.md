@@ -12,14 +12,14 @@ turns that into a plain "no access register" and never reads or passes against a
 |---|---|
 | `skills/access-ledger/bin/check-routes.sh` (any mode without an explicit `[dir]`) | exit 2, "NOTHING was checked and this is not a pass" |
 | `skills/topology/bin/check-topology.sh` | skips resolving a map's card citations and says so on stderr |
-| `context-rules/user/access-route.sh` | silent, exit 0 (an advisory pointer; it fails open like every injected note) |
+| `inject.d/box/access-route.sh` | silent, exit 0 (an advisory pointer; it fails open like every injected note) |
 | lint `doc.urls-cited` | "skipped: no private layer" |
 
 The floor (`guard-*`, `floor-*`) never reads the register.
 
 ## `routes.tsv`: which card a failing command points at
 
-`context-rules/user/access-route.sh` is the note that quotes a card when a command fails with an auth error. It ships the
+`inject.d/box/access-route.sh` is the note that quotes a card when a command fails with an auth error. It ships the
 mechanism and no table: which command or host belongs to which card names systems, so the table is
 `<access>/routes.tsv` (private data, harbor#1149; the card files stay `*.md`, this one is not a card).
 

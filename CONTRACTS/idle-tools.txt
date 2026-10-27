@@ -58,7 +58,6 @@ memory.sh              VERB  the L0 memory front door; `harbor memory` and hand 
 module-shape.sh        IDLE  answers the two questions CONSTITUTION "Module shape" asks — and its own header stated a count that went stale for exactly this reason
 mutation-tier.sh       IDLE  classifies a path by what writing there costs; asserts, unrun
 port-paths.sh          IDLE  the harbor#619 move gate (CHECKS.md `port-paths`): typed by hand, and run as its gate by remove-bridges.sh, which lives in the Deliverables folder outside every surface C8 scans; nothing schedules it, so a new pre-move literal shows only when someone runs it
-port-drift.sh          IDLE  the harbor#966 workspace drift check (CHECKS.md `port-drift`): typed by hand, because the tree under PORT_ROOT is box state and a lint rule on it would be red in CI for a reason no commit can fix; nothing schedules it
 pr-wait.sh             VERB  run by hand or by an agent after a push: returns on the first review thread, failed check or green (harbor#552)
 report-contract.sh     IDLE  does a generated artefact meet CONTRACTS/reports.md — no caller and no test
 rule-health.sh         IDLE  which lint rules are not earning their keep (harbor#577); weekly is intended and needs the operator's yes, until then it runs by hand
@@ -68,5 +67,3 @@ telemetry-report.sh    VERB  the operator asks it a question; nothing needs it o
 visual-check.sh        VERB  renders every generated HTML surface for a human to look at
 wf-progress.sh         IDLE  is that workflow actually running — no caller and no test
 doc-vale.sh            IDLE  Vale over prose with the registry's config (harbor#978); nothing calls it yet because Vale is not in the CI images, an operator-applied patch
-lint-pr.sh      IDLE  validates a PR title, body and branch (harbor#978); nothing calls it yet because the workflow job is an operator-applied patch
-lint-renderer.sh  IDLE  checks every naming writer calls the renderer (harbor#978, name.renderer-used); nothing calls it yet because the workflow job is an operator-applied patch

@@ -9,7 +9,7 @@ command -v python3 >/dev/null 2>&1 || { t_section "python3 is absent"; t_exit "t
 H="$HOME"; HB="$H/port/harbor"; CFG="$H/box/.claude"   # a sandbox HOME of its own: --dir never reaches $HOME/.claude
 unset CLAUDE_CONFIG_DIR   # the box target is named by --dir; the env must not disagree with it
 mkdir -p "$HB/bin" "$HB/docs" "$HB/launchd" "$HB/tests" "$HB/standards/naming" "$HB/fixtures"
-for f in terms aliases controls surfaces kinds registers repo-kinds dialects frozen label-axes writers; do cp "$T_ROOT/standards/naming/$f.tsv" "$HB/standards/naming/"; done
+for f in terms aliases controls surfaces kinds registers repo-kinds dialects frozen label-axes; do cp "$T_ROOT/standards/naming/$f.tsv" "$HB/standards/naming/"; done
 sed -n '/^id	old	new/q;p' "$T_ROOT/standards/naming/renames.tsv" > "$HB/standards/naming/renames.tsv"
 printf 'id\told\tnew\tsurface\twave\tremove_by\treason\n' >> "$HB/standards/naming/renames.tsv"
 { sed -n '/^id	rule	subject/q;p' "$T_ROOT/standards/naming/exemptions.tsv"

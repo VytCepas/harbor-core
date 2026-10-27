@@ -47,18 +47,11 @@ not a feature.
 
 | Tier | Path | Loaded | Installed by |
 |---|---|---|---|
-| **Box** | `<config>/context-rules/user/` | every session on this machine | `harbor inject --live --apply` from `context-rules/user/`, plus the private layer's `context-rules/user/` (`.md` packs and `projects.tsv` only) |
-| **Repo** | `<repo>/context-rules/<repo>/` | only when that repo is the session's **project directory** | the repo owns it; `--projects` seeds `.claude/inject.d/` from the private layer's `<name>/` folder (core ships no other repo's rules, harbor#1149; [private-layer.md](./private-layer.md)) |
+| **Box** | `<config>/inject.d/` | every session on this machine | `harbor inject --live --apply` from `inject.d/box/`, plus the private layer's `inject.d/box/` (`.md` packs and `projects.tsv` only) |
+| **Repo** | `<repo>/.claude/inject.d/` | only when that repo is the session's **project directory** | the repo owns it; `--projects` seeds it from the private layer's `inject.d/<name>/` (core ships no repo pack, harbor#1149; [private-layer.md](./private-layer.md)) |
 | **Reached** | the same directory, `scope: box` packs only | when a tool call from **outside** touches that repo, and it is registered | the same; see "`scope: box`" below |
 
-Box and repo are read on every fire, box first; reached trees come last, and only on a tool event.
-
-**A rule is `context-rules/<scope>/<id>.md` (harbor#1010, D-43, D-65).** The id is the file name; `id:` is only for a
-rule whose id differs from it. Within a tier, rules run by `order:` (a whole number), then rules with none, each group
-by file name. A repo's `context-rules/user/` is the box tier's source and is never read as that repo's own.
-**The old layout is read for one release:** the box tier also reads `<config>/inject.d/` and a repo also reads
-`.claude/inject.d/`, where an `NN-` file name sorts as `order: NN`; an id found in the new tree skips the old file.
-The removal date is the `dir:inject.d` row in `standards/naming/renames.tsv`. The engine resolves the repo from
+Box and repo are read on every fire, box first; reached trees come last, and only on a tool event. The engine resolves the repo from
 `CLAUDE_PROJECT_DIR`, falling back to the hook process's cwd — so **one
 box-level wiring serves every repository**, including ones that do not exist
 yet. That is the property that makes this scale: adding a project is a
@@ -76,7 +69,7 @@ main checkout and a session opened at `$HOME` keeps `$HOME` as its project.
 
 When they diverge the repo tier is not merely wrong, it is **empty**: `$HOME`
 resolves `$REPO/.claude/inject.d` onto the box pack directory itself,
-`tree_dirs()` drops it as a duplicate of the box tier, and no repo rule loads at
+`pack_dirs()` drops it as a duplicate of the box tier, and no repo rule loads at
 all. Measured 2026-08-29 in the session auditing this question — harbor's own
 three packs, the merge-governance chain among them, governed nothing, and the
 suites were green throughout because every one of them sets
@@ -133,7 +126,7 @@ session is one nobody reads.
 
 ### `scope: box` — a repo rule that follows the call
 
-A pack in a repository's own `context-rules/<repo>/` (or the old `.claude/inject.d/`) that declares `scope: box` is
+A pack in a repository's own `.claude/inject.d/` that declares `scope: box` is
 also delivered when a session **outside** that repository makes a tool call that
 touches it. Decided 2026-09-24 on harbor#599. The repo consents per rule, in its
 own data, and the default (`scope: repo`, or no key) is to stay home.
@@ -218,7 +211,7 @@ not acquire the power to block a tool call by containing a sentence.
 
 **Why this exists (harbor#254).** `bin/govern-hook.sh` computes the merge
 backstop's verdict and emits a deny. Reached through this engine — which is how
-production reaches it, via `context-rules/harbor/merge-note.sh` — `--note` printed
+production reaches it, via `.claude/inject.d/merge-note.sh` — `--note` printed
 that verdict as prose, the engine wrapped the prose as additionalContext, and
 prose cannot stop a `Bash` call: every red PR still merged, with a green suite on
 both sides of the gap. The suite fired the hook directly; the operator does not.
@@ -455,11 +448,11 @@ Prefer two excellent rules to six plausible ones. Zero is a valid answer.
 
 ## Adding a project
 
-1. One line in the private layer's `context-rules/user/projects.tsv` (`sh bin/roots.sh --projects`) — `name<TAB>~/path<TAB>what it covers`.
+1. One line in the private layer's `inject.d/box/projects.tsv` (`sh bin/roots.sh --projects`) — `name<TAB>~/path<TAB>what it covers`.
    That line is also the pointer every other session gets about this project, so
    write `covers` as the question that sends a reader there.
-2. `context-rules/<name>/` in the private layer for the packs, if the project's rules should be
-   tracked centrally; otherwise the repo owns `context-rules/<name>/` directly.
+2. `inject.d/<name>/` in the private layer for the packs, if the project's rules should be
+   tracked centrally; otherwise the repo owns `.claude/inject.d/` directly.
 3. `harbor inject --live --apply --projects`.
 
 Nothing else. No new wiring, no new script, no settings file in the project.

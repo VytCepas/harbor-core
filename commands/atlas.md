@@ -5,7 +5,7 @@ argument-hint: [system to draw, or the deliverable folder to update]
 
 Build an architecture atlas for: **$ARGUMENTS**
 
-Load the `doc-atlas` skill and follow it. The short form:
+Load the `atlas` skill and follow it. The short form:
 
 1. **Find the specs.** archify `.json` specs with their rendered `.html` beside them —
    usually `docs/reference/diagrams/`. If the specs do not exist yet, they come from a
@@ -24,7 +24,7 @@ Load the `doc-atlas` skill and follow it. The short form:
 4. **Build and prove it in one command:**
 
    ```sh
-   python3 ~/.claude/skills/doc-atlas/build/build.py atlas.config.json --check
+   python3 ~/.claude/skills/atlas/build/build.py atlas.config.json --check
    ```
 
    Exit 0 is green. **Exit 127 means node or playwright is missing — a deferral, not a

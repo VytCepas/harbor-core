@@ -158,16 +158,13 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
         awk -F'\t' 'NF >= 4 && /^[a-z-]+\t/ { print $1 }' "$ROOT/bin/harbor" | awk -v b="$_bs" '$0 == b { f = 1 } END { exit f }' ||
           refuse "bin/$_b shadows the core verb harbor $_bs" || return 1
         printf '%s\t%s\n' "$_p" "$_r" >> "$WORK/plan" ;;
-      # A pack's rules: context-rules/user/<f>.md, or the old inject.d/<f>.md for one release (harbor#1010); both land in
-      # the installed box tier, context-rules/user/pack-<name>--<f>.md.
-      context-rules/user/*/*|inject.d/*/*) refuse "${_r%/*}/ is flat; $_r is nested" || return 1 ;;
-      context-rules/user/*.md|inject.d/*.md)
+      inject.d/*/*) refuse "inject.d/ is flat; $_r is nested" || return 1 ;;
+      inject.d/*.md)
         # run: names a script beside the pack whose stdout may be a deny verdict (CONTRACTS/inject.md).
         git -C "$DIR" show "HEAD:$_p" | tr -d '\r' | awk '/^[ \t]*run[ \t]*:/ { f = 1 } END { exit f }' ||
           refuse "inject pack $_r has run: (it could deny); packs inject notes only" || return 1
-        printf '%s\t%s\n' "$_p" "context-rules/user/pack-$NAME--${_r##*/}" >> "$WORK/plan" ;;
-      context-rules/user/*|inject.d/*) refuse "$_r is not a .md pack" || return 1 ;;
-      context-rules/*) refuse "$_r: a pack's rules are context-rules/user/<f>.md; a repo scope is that repo's own" || return 1 ;;
+        printf '%s\t%s\n' "$_p" "inject.d/pack-$NAME--${_r#inject.d/}" >> "$WORK/plan" ;;
+      inject.d/*) refuse "inject.d/${_r#inject.d/} is not a .md pack" || return 1 ;;
       *) log_warn "$ID: $_r is not a pack entry and is not installed" ;;
     esac
   done < "$WORK/files"

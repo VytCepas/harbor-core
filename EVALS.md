@@ -940,7 +940,7 @@ would put a `cd` or a pointer-mediated read in front of the most-used
 capabilities on the box, to save 3,340 B. **A6 is withdrawn as written.** E7's
 finding is not wrong — it is about the *slope*, and the answer to a slope is to
 scope skills that are **born** in a project, which is what
-`context-rules/user/project-pointer.md` now does for every project added after this.
+`inject.d/box/50-project-pointer.md` now does for every project added after this.
 Scoping the ones already in daily use from the home directory was solving the
 scaling problem on the wrong population.
 

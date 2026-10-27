@@ -40,7 +40,7 @@ judge	triage	legacy	glossary,registry,record,memory-prose	2027-01-31	§1.2
 failure-capture	triage	legacy	glossary,registry,record,memory-prose	2027-01-31	§1.2
 pulse	alerting	legacy	glossary,registry,record,memory-prose	2027-01-31	§1.2
 monitor	alerting	legacy	glossary,registry,record,memory-prose	2027-01-31	§1.2
-inject	injection-rule	legacy	glossary,registry,record,memory-prose	2027-01-31	inject.d/ becomes context-rules/<scope>/ (harbor#1010)
+inject	injection-rule	legacy	glossary,registry,record,memory-prose	2027-01-31	inject.d/ becomes context.d/
 governance-note	provenance-stamp	legacy	glossary,registry,record,memory-prose	2027-01-31	§1.2
 audit-log	decision-log	legacy	glossary,registry,record,memory-prose	2027-01-31	research/02: OPA's term
 handoff	handover	legacy	glossary,registry,record,memory-prose	2027-01-31	D-7
@@ -90,6 +90,7 @@ num	number	abbreviation	glossary	-	D-18
 cnt	count	abbreviation	glossary	-	D-18
 idx	index	abbreviation	glossary	-	D-18
 pkg	package	abbreviation	glossary	-	D-18
+perf	performance	abbreviation	glossary	-	D-18
 wf	workflow	abbreviation	glossary	-	D-18
 adr	decision-record	abbreviation	glossary	-	D-18: decision record
 behaviour	behavior	spelling	-	never	D-16

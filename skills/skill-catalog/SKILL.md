@@ -64,17 +64,12 @@ section is the only thing standing between them and being lost.
 
 | Skill | Tier | What it is for | Read |
 |---|---|---|---|
-| `access-browser` | core | Pick the right browser backend and drive it, then say what the run's absence is and is not evidence for.…<br>_NOT FOR administering a tag-manager or analytics container (its workload skill owns that),…_ | `~/.claude/skills/access-browser/SKILL.md` |
-| `agent-routing` | core | Which model tier and effort each delegated agent runs on — Agent tool calls, headless `claude -p` runs,…<br>_NOT FOR reviewing a diff (audit-review-fanout), or API code that calls Claude (claude-api)._ | `~/.claude/skills/agent-routing/SKILL.md` |
-| `atlas` | core | The old name of the doc-atlas skill, kept as an alias until 2027-01-31 (harbor#1010): read…<br>_NOT FOR anything the atlas skill does not already answer (doc-atlas)._ | `~/.claude/skills/atlas/SKILL.md` |
-| `browser` | core | The old name of the access-browser skill, kept as an alias until 2027-01-31 (harbor#1010): read…<br>_NOT FOR anything the browser route does not already answer (access-browser)._ | `~/.claude/skills/browser/SKILL.md` |
-| `deliverable-contract` | core | The old name of the doc-deliverable-contract skill, kept as an alias until 2027-01-31 (harbor#1010): read…<br>_NOT FOR anything the deliverable contract does not already answer (doc-deliverable-contract)._ | `~/.claude/skills/deliverable-contract/SKILL.md` |
-| `doc-learning-artifact` | core | The approved house style and build kit for study pages — an exam guide, a course explainer, a revision…<br>_NOT FOR an architecture or system diagram (`doc-atlas`), a status report or findings, or…_ | `~/.claude/skills/doc-learning-artifact/SKILL.md` |
+| `agent-routing` | core | Which model tier and effort each delegated agent runs on — Agent tool calls, headless `claude -p` runs,…<br>_NOT FOR reviewing a diff (review-fanout), or API code that calls Claude (claude-api)._ | `~/.claude/skills/agent-routing/SKILL.md` |
+| `browser` | core | Pick the right browser backend and drive it, then say what the run's absence is and is not evidence for.…<br>_NOT FOR administering a tag-manager or analytics container (its workload skill owns that),…_ | `~/.claude/skills/browser/SKILL.md` |
 | `housekeeping` | core | Reclaim a drifted box: the measured trash classes that accumulate here, the detector for each, and —…<br>_NOT FOR deleting one file you can already name, or a repo's own build artefacts (its justfile…_ | `~/.claude/skills/housekeeping/SKILL.md` |
-| `learning-artifact` | core | The old name of the doc-learning-artifact skill, kept as an alias until 2027-01-31 (harbor#1010): read…<br>_NOT FOR anything the study-page skill does not already answer (doc-learning-artifact)._ | `~/.claude/skills/learning-artifact/SKILL.md` |
-| `review-fanout` | core | The old name of the audit-review-fanout skill, kept as an alias until 2027-01-31 (harbor#1010): read…<br>_NOT FOR anything the fan-out review does not already answer (audit-review-fanout)._ | `~/.claude/skills/review-fanout/SKILL.md` |
+| `learning-artifact` | core | The approved house style and build kit for study pages — an exam guide, a course explainer, a revision…<br>_NOT FOR an architecture or system diagram (`atlas`), a status report or findings, or anything…_ | `~/.claude/skills/learning-artifact/SKILL.md` |
 | `skill-book` | core | The old name of the skill-catalog skill, kept as an alias for one release (harbor#1010): read…<br>_NOT FOR anything the catalog does not already answer (skill-catalog)._ | `~/.claude/skills/skill-book/SKILL.md` |
-| `test-strength` | core | Prove a load-bearing test can actually fail, and that it fails for the right reason. Break the thing it…<br>_NOT FOR reviewing a diff for defects (audit-review-fanout), or running a suite to see it pass…_ | `~/.claude/skills/test-strength/SKILL.md` |
+| `test-strength` | core | Prove a load-bearing test can actually fail, and that it fails for the right reason. Break the thing it…<br>_NOT FOR reviewing a diff for defects (review-fanout), or running a suite to see it pass…_ | `~/.claude/skills/test-strength/SKILL.md` |
 
 ## Skills already in your listing — invoke them
 
@@ -83,9 +78,9 @@ Listed for the operator, who does not get the model's skill listing.
 | Skill | Tier | What it is for |
 |---|---|---|
 | `access-ledger` | core | Which account to use on each system, the role it holds and what it cannot reach:…<br>_NOT FOR obtaining or storing a credential (the operator holds those), or a number that is wrong…_ |
-| `audit-review-fanout` | core | Review a code change with several cheap reviewers, each given a different lens, then verify every finding…<br>_NOT FOR a one-line or docs-only change (one reviewer is enough), proving a test can fail…_ |
-| `doc-atlas` | core | The single owner of human-readable HTML artefacts on this box: an atlas whose subject is a DRAWING, not…<br>_NOT FOR a projection of a TOPOLOGY.md, which is `topology`'s own report-gen.sh._ |
-| `doc-deliverable-contract` | core | Before writing anything a person outside this session will read — a client thread reply, a ticket…<br>_NOT FOR the investigation itself (casefile), or the durable map (topology)._ |
+| `atlas` | core | The single owner of human-readable HTML artefacts on this box: an atlas whose subject is a DRAWING, not…<br>_NOT FOR a projection of a TOPOLOGY.md, which is `topology`'s own report-gen.sh._ |
+| `deliverable-contract` | core | Before writing anything a person outside this session will read — a client thread reply, a ticket…<br>_NOT FOR the investigation itself (casefile), or the durable map (topology)._ |
+| `review-fanout` | core | Review a code change with several cheap reviewers, each given a different lens, then verify every finding…<br>_NOT FOR a one-line or docs-only change (one reviewer is enough), proving a test can fail…_ |
 | `skill-catalog` | core | The index of every skill and credentialed CLI on this box, with the path to read each one — most are…<br>_NOT FOR invoking a skill already in your listing — this is for the ones you cannot see._ |
 
 ## Credentialed CLIs — not skills, and in no listing at all
@@ -106,19 +101,14 @@ One line per skill, carrying the words a task actually arrives with and
 the path on the SAME line, because grep returns a line and a hit that
 does not carry the path sends you back to the top.
 
-- `access-browser` — `~/.claude/skills/access-browser/SKILL.md` — which browser tool, does the pixel fire, no pixel fired, is the tag absent, what third parties load, subresource list, instrument a storefront, headless vs extension, drive a logged-in dashboard, harbor chrome lost or hidden tab, add a Commerce Manager data feed, screenshot someone else's site, consent banner changes what fires.
 - `access-ledger` — `~/.claude/skills/access-ledger/SKILL.md` — which account, wrong account, 401, 403, permission denied, Reauthentication failed, do I have access, can I reach X, need access, credentials, token, least privilege.
 - `agent-routing` — `~/.claude/skills/agent-routing/SKILL.md` — delegating to a subagent, choosing a model or effort for an agent, fanning out agents, writing a workflow or orchestrator launch, an Agent call was denied for a missing model, an agent failed and you are deciding whether to escalate.
-- `atlas` — `~/.claude/skills/atlas/SKILL.md` — you looked for atlas or a document still says atlas.
-- `audit-review-fanout` — `~/.claude/skills/audit-review-fanout/SKILL.md` — review this PR, review the diff, code review, review my changes, audit this change, check before merge, second opinion on code.
-- `browser` — `~/.claude/skills/browser/SKILL.md` — you looked for browser or a document still says browser.
-- `deliverable-contract` — `~/.claude/skills/deliverable-contract/SKILL.md` — you looked for deliverable-contract or a document still says deliverable-contract.
-- `doc-atlas` — `~/.claude/skills/doc-atlas/SKILL.md` — presenting an architecture, a technology stack, a module or connection structure to a person; when an existing atlas needs updating; when somebody asks for a diagram they can click.
-- `doc-deliverable-contract` — `~/.claude/skills/doc-deliverable-contract/SKILL.md` — replying to a client or account team, answering a thread, writing a recommendation or proposal, drafting a ticket comment, sending findings to anyone, or when a correct analysis needs to become a usable answer.
-- `doc-learning-artifact` — `~/.claude/skills/doc-learning-artifact/SKILL.md` — building or updating a study guide, exam guide, course notes page, revision page or learning artifact; when somebody wants to learn a course, a lecture series or a topic from one page.
+- `atlas` — `~/.claude/skills/atlas/SKILL.md` — presenting an architecture, a technology stack, a module or connection structure to a person; when an existing atlas needs updating; when somebody asks for a diagram they can click.
+- `browser` — `~/.claude/skills/browser/SKILL.md` — which browser tool, does the pixel fire, no pixel fired, is the tag absent, what third parties load, subresource list, instrument a storefront, headless vs extension, drive a logged-in dashboard, harbor chrome lost or hidden tab, add a Commerce Manager data feed, screenshot someone else's site, consent banner changes what fires.
+- `deliverable-contract` — `~/.claude/skills/deliverable-contract/SKILL.md` — replying to a client or account team, answering a thread, writing a recommendation or proposal, drafting a ticket comment, sending findings to anyone, or when a correct analysis needs to become a usable answer.
 - `housekeeping` — `~/.claude/skills/housekeeping/SKILL.md` — the statusline shows 🧹 or SWEEP, clean up, sweep, free disk space, the box feels cluttered, tidy the fleet, obsolete worktrees or branches, stale sessions, what is safe to delete, disk is full, prune caches, retire a PR nobody will merge, merge what is waiting, garbage collect.
-- `learning-artifact` — `~/.claude/skills/learning-artifact/SKILL.md` — you looked for learning-artifact or a document still says learning-artifact.
-- `review-fanout` — `~/.claude/skills/review-fanout/SKILL.md` — you looked for review-fanout or a document still says review-fanout.
+- `learning-artifact` — `~/.claude/skills/learning-artifact/SKILL.md` — building or updating a study guide, exam guide, course notes page, revision page or learning artifact; when somebody wants to learn a course, a lecture series or a topic from one page.
+- `review-fanout` — `~/.claude/skills/review-fanout/SKILL.md` — review this PR, review the diff, code review, review my changes, audit this change, check before merge, second opinion on code.
 - `skill-book` — `~/.claude/skills/skill-book/SKILL.md` — you looked for skill-book or a document still says skill-book.
 - `skill-catalog` — `~/.claude/skills/skill-catalog/SKILL.md` — you are about to do reasoning work by hand: design an eval or a pass^k study, run a red-team or adversarial pass, chase a root cause, reason from first principles, get independent perspectives on a decision, write or optimise a prompt, extract the substance of a paper or a long document, generate options. ALSO WHEN what skills do I have, list skills, find a tool, which tool reads email/calendar/tickets/tags, I forgot the name of that skill, skill-book (its name before harbor#1010).
 - `test-strength` — `~/.claude/skills/test-strength/SKILL.md` — a suite is written or changed, a guard is trusted, a gate reports zero, or a green result is about to be cited as evidence.

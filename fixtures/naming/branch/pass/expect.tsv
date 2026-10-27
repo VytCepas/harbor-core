@@ -1,6 +1,0 @@
-# fixtures/naming/branch/pass (harbor#978) — branches that MUST stay green. Read by bin/lint-name.sh --self-test.
-# COLUMNS  name <TAB> -
-name	rule
-fix/949-admission-missing-hook	-
-feat/978-git-convention	-
-docs/1-x	-

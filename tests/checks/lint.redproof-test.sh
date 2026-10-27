@@ -227,8 +227,8 @@ _F15_DIRTY='DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"'
 _F15_CLEAN='case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac'
 _f15_sh() { _rp_sh "$RP/$1"; _f15_f="$RP/$1"; shift; printf '%s\n' "$@" >> "$_f15_f"; }  # <rel> <line>…
 _f15_fx() { # a clean box: a table row, a composed hook, one named through a variable, a box pack, their libraries
-  _rp_fresh; mkdir -p "$RP/context-rules/user"
-  printf '%s\n' '#!/usr/bin/env sh' '# fixture (harbor#813)' 'PACKS="$SRC/../context-rules/user"' \
+  _rp_fresh; mkdir -p "$RP/inject.d/box"
+  printf '%s\n' '#!/usr/bin/env sh' '# fixture (harbor#813)' 'PACKS="$SRC/../inject.d/box"' \
     "floor_hooks() { cat <<'ROWS'" 'PreToolUse;Bash;zz-wrap.sh zz-guard.sh' '# PreToolUse;Bash;zz-commented.sh' 'ROWS' '}' \
     'ZZ_HOOK="/bin/sh $DIR/bin/zz-stop.sh"' 'Z_DST="$DIR/bin/zz-shim.sh"' 'CMD="/bin/sh $Z_DST $DIR/hooks/x.py"' \
     'log_note "verify: /bin/sh $DIR/bin/zz-hint.sh < p"' > "$RP/bin/zz-install.sh"
@@ -236,8 +236,8 @@ _f15_fx() { # a clean box: a table row, a composed hook, one named through a var
   _f15_sh bin/zz-guard.sh "$_F15_CLEAN" '. "$DIR/zz-lib.sh"' 'L="$DIR/zz-vlib.sh"' '[ -f "$L" ] && . "$L"' \
     'echo "to reinstall: sh $DIR/zz-cli.sh --apply"'
   _f15_sh bin/zz-shim.sh '_L="${0%/*}/zz-lib.sh"' '( . "$_L" )'
-  printf '%s\n' '---' 'event: SessionStart' 'run: zz-pack.sh' '---' 'body' > "$RP/context-rules/user/zz.md"
-  _f15_sh context-rules/user/zz-pack.sh "$_F15_CLEAN"
+  printf '%s\n' '---' 'event: SessionStart' 'run: zz-pack.sh' '---' 'body' > "$RP/inject.d/box/10-zz.md"
+  _f15_sh inject.d/box/zz-pack.sh "$_F15_CLEAN"
 }
 _f15_dirty() { # <rel> [line] — the clean resolution becomes the dirty one, or [line]
   awk -v r="${2:-$_F15_DIRTY}" 'index($0, "case \"$0\" in */*) DIR=") == 1 { print r; next } { print }' "$RP/$1" > "$RP/$1.t" \
@@ -260,8 +260,8 @@ _f15_fx; _f15_dirty bin/zz-stop.sh
 _rp_red F15 "bin/zz-stop.sh:3 resolves" "a composed /bin/sh \$DIR/bin/X hook"
 _f15_fx; printf '%s\n' "$_F15_DIRTY" >> "$RP/bin/zz-shim.sh"
 _rp_red F15 "bin/zz-shim.sh:5 resolves" "a hook named through V=\"\$DIR/bin/X\""
-_f15_fx; _f15_dirty context-rules/user/zz-pack.sh
-_rp_red F15 "context-rules/user/zz-pack.sh:3 resolves" "a box pack's run: script"
+_f15_fx; _f15_dirty inject.d/box/zz-pack.sh
+_rp_red F15 "inject.d/box/zz-pack.sh:3 resolves" "a box pack's run: script"
 _f15_fx; _f15_dirty bin/zz-lib.sh 'FLOOR_AWK="${DIR:-$(dirname -- "${0:-.}")}/floor-normalize.awk"'
 _rp_red F15 "bin/zz-lib.sh:3 resolves" "guard-lib's \${0:-.} fallback spelling"
 _f15_fx; _f15_dirty bin/zz-lib.sh 'D=`dirname $0`'
@@ -284,7 +284,8 @@ t_has "F15 a row's violation fails the run" "$_f15o" '1 rules, 2 violation(s)'
 _f15_fx; printf 'X_HOOK="/bin/sh $DIR/bin/reference-check.sh"\n' >> "$RP/bin/zz-install.sh"
 _f15_sh bin/reference-check.sh "$_F15_DIRTY"
 _f15o="$(_rp F15)"
-# harbor#880: reference-check.sh's exemption (harbor#809) retired with its defect: a hook-run one on $(dirname) is red.
+# harbor#880: reference-check.sh's pending exemption (harbor#809) retired with its defect, so a hook-run
+# reference-check.sh on $(dirname) is red like any other.
 t_has "F15 the once-pending reference-check.sh is a violation now" "$_f15o" 'VIOLATION [admission.no-dirname] bin/reference-check.sh:3 resolves its own directory'
 
 t_section "F11: a BSD-first stat fallback in one capture"
@@ -349,27 +350,25 @@ printf '# no enum line at all\n' > "$RP/bin/guard-lib.sh"
 _rp_red C7 "has no readable FLOOR_OBS_GUARDS line" "a guard-lib.sh with no enum"
 
 t_section "IJ1: a pack with no predicate, or where nothing reads it"
-_rp_fresh; mkdir -p "$RP/context-rules/demo"
-printf -- '---\ndescription: a demo pack\nevent: PreToolUse\nwhen: always\n---\nbody\n' > "$RP/context-rules/demo/demo.md"
+_rp_fresh; mkdir -p "$RP/inject.d/demo"
+printf -- '---\nid: demo\ndescription: a demo pack\nevent: PreToolUse\nwhen: always\n---\nbody\n' > "$RP/inject.d/demo/10-demo.md"
 _rp_green IJ1 "a pack with an event, a predicate and a body"
-printf -- '---\ndescription: a demo pack\nevent: PreToolUse\n---\nbody\n' > "$RP/context-rules/demo/demo.md"
+printf -- '---\nid: demo\ndescription: a demo pack\nevent: PreToolUse\n---\nbody\n' > "$RP/inject.d/demo/10-demo.md"
 _rp_red IJ1 "pack has no when: predicate, so it can never fire" "a pack with no when:"
-_rp_fresh; mkdir -p "$RP/context-rules/demo/sub" "$RP/context-rules/user"
-printf -- '---\ndescription: a demo pack\nevent: PreToolUse\nwhen: always\n---\nbody\n' > "$RP/context-rules/demo/demo.md"
-cp "$RP/context-rules/demo/demo.md" "$RP/context-rules/user/demo.md"; : > "$RP/context-rules/README.md"
-_rp_green IJ1 "packs in two scopes, and a README beside them"
-cp "$RP/context-rules/demo/demo.md" "$RP/context-rules/demo/a rule.md"
+_rp_fresh; mkdir -p "$RP/inject.d/demo/sub" "$RP/.claude/inject.d"
+printf -- '---\nid: demo\ndescription: a demo pack\nevent: PreToolUse\nwhen: always\n---\nbody\n' > "$RP/inject.d/demo/10-demo.md"
+cp "$RP/inject.d/demo/10-demo.md" "$RP/.claude/inject.d/10-demo.md"; : > "$RP/inject.d/README.md"
+_rp_green IJ1 "packs at both declared locations, and a README beside them"
+cp "$RP/inject.d/demo/10-demo.md" "$RP/inject.d/demo/20 a rule.md"
 _rp_green IJ1 "a valid pack whose file name contains a space"
-printf -- '---\ndescription: a demo pack\nevent: PreToolUse\n---\nbody\n' > "$RP/context-rules/demo/a rule.md"
-_rp_red IJ1 "pack has no when: predicate, so it can never fire: context-rules/demo/a rule.md" "an invalid pack whose name has a space"
-rm "$RP/context-rules/demo/a rule.md"
-IJ1_WHERE='nothing installs or reads it (CONTRACTS/inject.md names context-rules/<scope>/):'
-cp "$RP/context-rules/demo/demo.md" "$RP/context-rules/top.md"
-_rp_red IJ1 "pack sits where $IJ1_WHERE context-rules/top.md" "a pack at context-rules/top.md"
-rm "$RP/context-rules/top.md"; cp "$RP/context-rules/demo/demo.md" "$RP/context-rules/demo/sub/deep.md"
-_rp_red IJ1 "$IJ1_WHERE context-rules/demo/sub/deep.md" "a pack two levels deep"
-rm "$RP/context-rules/demo/sub/deep.md"; mkdir -p "$RP/.claude/inject.d"; cp "$RP/context-rules/demo/demo.md" "$RP/.claude/inject.d/10-demo.md"
-_rp_red IJ1 "retired inject.d/ layout, which nothing installs; move it to context-rules/<scope>/<id>.md: .claude/inject.d/10-demo.md" "a rule left in the old layout (harbor#1010)"
+printf -- '---\nid: demo2\ndescription: a demo pack\nevent: PreToolUse\n---\nbody\n' > "$RP/inject.d/demo/20 a rule.md"
+_rp_red IJ1 "pack has no when: predicate, so it can never fire: inject.d/demo/20 a rule.md" "an invalid pack whose name has a space"
+rm "$RP/inject.d/demo/20 a rule.md"
+IJ1_WHERE='nothing installs or reads it (CONTRACTS/inject.md names inject.d/<name>/ and .claude/inject.d/):'
+cp "$RP/inject.d/demo/10-demo.md" "$RP/inject.d/top.md"
+_rp_red IJ1 "pack sits where $IJ1_WHERE inject.d/top.md" "a pack at inject.d/top.md"
+rm "$RP/inject.d/top.md"; cp "$RP/inject.d/demo/10-demo.md" "$RP/inject.d/demo/sub/deep.md"
+_rp_red IJ1 "$IJ1_WHERE inject.d/demo/sub/deep.md" "a pack two levels deep"
 
 t_section "T8: an upstream hook with no COVERAGE.md row"
 _rp_fresh; mkdir -p "$TMP/rp-up/Mirror/install/hooks"; : > "$TMP/rp-up/Mirror/install/hooks/zzprobe.hook.ts"
@@ -394,7 +393,8 @@ _rp_red T9 "the generator FAILED (rc=3)" "a generator that crashes"
 rm -rf "$CLAUDE_CONFIG_DIR/skills"; printf '#!/usr/bin/env sh\nexit 1\n' > "$RP/bin/skill-catalog.sh"
 _rp_red T9 "ADVISORY [skill.book-current] skills/skill-catalog/SKILL.md is STALE" "a checkout on a machine with no skills dir"
 mkdir -p "$CLAUDE_CONFIG_DIR/skills"
-# The REAL generator: a router row it cannot read exits 3, and T9 reports a failed generator with the row's line (it exited 1, harbor#1149).
+# The REAL generator, not a stub: a router row it cannot read exits 3, and T9 reports it as a failed generator with the line that
+# names the row. It exited 1 (STALE) and the reason went to /dev/null (harbor#1149).
 _rp_fresh; cp "$T_ROOT/bin/skill-catalog.sh" "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/install-lib.sh" "$RP/bin/"
 mkdir -p "$RP/skills/alpha" "$RP/skills/skill-catalog"; printf -- '---\nname: alpha\ndescription: "Alpha. USE WHEN alpha work."\n---\n' > "$RP/skills/alpha/SKILL.md"
 cp "$T_ROOT/skills/skill-catalog/SKILL.md" "$RP/skills/skill-catalog/SKILL.md"; printf 'skill\tsituation\nalpha\tAlpha work\n' > "$RP/CONTRACTS/skill-book-router.tsv"

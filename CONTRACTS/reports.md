@@ -3,7 +3,7 @@
 **Scope: anything this box GENERATES for a person to read.** An HTML audit report,
 a diagram, a reconciliation listing, a findings export, a dashboard. Not a commit
 message, not a terminal answer, not a client email — those are
-`skills/doc-deliverable-contract`, which governs text a person WRITES. The two agree
+`skills/deliverable-contract`, which governs text a person WRITES. The two agree
 on the principle and differ on the artefact: this file is the machine-checkable
 half.
 
@@ -139,7 +139,7 @@ finished prose for digits.
 | `skills/topology/bin/report-gen.sh` | Gaps tab + per-section notes | footer | n/a — routes to `topology-diagram.sh` | grades freshness (`verified` date, `stale`), never severity — trigger does not fire | `count()` over the same TSV the tabs filter |
 | `skills/topology/bin/topology-diagram.sh` | — | in the companion header | `TOPO_EMIT=md` + `flow-connectivity.mjs` | n/a — draws, does not grade | n/a |
 | `skills/topology/bin/reconcile-estate.sh` | `NOT ENUMERATED` block | header line | n/a — no picture | n/a — reconciles, does not grade | n/a |
-| `skills/doc-atlas/build/build.py` | diagnostics tab | brand line + companion header | companion written first, `connectivity()` both ways | grade + basis + ISO date, refused at build | `diagnose()` counts from the findings |
+| `skills/atlas/build/build.py` | diagnostics tab | brand line + companion header | companion written first, `connectivity()` both ways | grade + basis + ISO date, refused at build | `diagnose()` counts from the findings |
 
 A generator added later goes in this table or the row says why it is exempt. An
 empty cell is a gap someone can see; an absent row is a gap nobody can.

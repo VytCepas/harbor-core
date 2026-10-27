@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
-# skills/doc-atlas/build/build.py inside_views(): a diagram declaring `inside` links from one part of
+# skills/atlas/build/build.py inside_views(): a diagram declaring `inside` links from one part of
 # another diagram, its tab follows its parent's, and every bad declaration stops the build.
 . "$(dirname "$0")/../lib/core.sh"; t_init
-run() { python3 - "$T_ROOT/skills/doc-atlas/build" "$1" <<'PY' 2>&1
+run() { python3 - "$T_ROOT/skills/atlas/build" "$1" <<'PY' 2>&1
 import sys, json
 sys.path.insert(0, sys.argv[1])
 from build import inside_views

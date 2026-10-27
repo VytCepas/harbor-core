@@ -46,8 +46,7 @@ STATE="$CFG/.helm-ship"                               # <owner>_<name>.json per 
 WORK="$HOME/.local/state/harbor/ship"                 # the lock and the run logs
 CACHE_DIR="${HARBOR_CACHE_DIR:-$HOME/.claude/cache}"
 SNAP="${HARBOR_FLEET_SNAPSHOT:-$CACHE_DIR/fleet-snapshot.json}"
-# the fleet file through the registry-aware reader beside this script (harbor#966)
-FLEET="${HARBOR_FLEET_FILE:-$(sh "$HERE/roots.sh" --get HARBOR_FLEET_FILE 2>/dev/null || :)}"
+FLEET="${HARBOR_FLEET_FILE:-${PORT_ROOT:-$HOME/port}/projects-orchestrator/fleet.yaml}"
 ORCH="${HARBOR_ORCH_BIN:-$HOME/.local/bin/projects-orchestrator}"
 GMS="$HERE/gate-merge-stack.sh"
 NOW="${HARBOR_DEPLOY_FLEET_NOW:-$(date +%s)}"; case "$NOW" in ''|*[!0-9]*) NOW="$(date +%s)" ;; esac

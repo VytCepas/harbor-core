@@ -14,7 +14,7 @@
 # with its own matcher, its own fail-open discipline and its own bugs. That does
 # not scale past one repo, and the operator's environment is already four —
 # harbor and its workload repos — with more coming. So the shell is written
-# ONCE and the rules become DATA: a repo declares `context-rules/<repo>/<id>.md` and
+# ONCE and the rules become DATA: a repo declares `.claude/inject.d/*.md` and
 # gets just-in-time governance with no shell of its own.
 #
 # WHAT MAKES THIS WORTH THE BYTES, MEASURED. E6 (EVALS.md) ran the same sentence
@@ -89,44 +89,14 @@ REPO="$(cd "${CLAUDE_PROJECT_DIR:-$PWD}" 2>/dev/null && git rev-parse --show-top
 # PHYSICALLY (symlinks resolved) for the reason lint D2 exists: /tmp and
 # /private/tmp are the same directory and differ as strings.
 _phys() { CDPATH='' cd -P -- "$1" 2>/dev/null && pwd -P || printf '%s' "$1"; }
-
-# TWO LAYOUTS FOR ONE RELEASE (harbor#1010, D-43, D-65). A rule is context-rules/<scope>/<id>.md;
-# the old inject.d/ is still read until the date in standards/naming/renames.tsv. New first: on an id clash it wins.
-# Box tier: $CFG/context-rules/user, then $CFG/inject.d. A tree: each context-rules/<scope>/ but user (the box
-# tier's source, which only the installer delivers), then .claude/inject.d. A tree dir that IS a box dir is dropped.
-box_dirs() {
-  for _bd in "$CFG/context-rules/user" "$CFG/inject.d"; do [ ! -d "$_bd" ] || printf '%s\n' "$_bd"; done
+pack_dirs() {
+  _box=''; _rep=''
+  [ -d "$CFG/inject.d" ] && _box="$(_phys "$CFG/inject.d")" && printf '%s\n' "$CFG/inject.d"
+  if [ -n "$REPO" ] && [ -d "$REPO/.claude/inject.d" ]; then
+    _rep="$(_phys "$REPO/.claude/inject.d")"
+    [ "$_rep" = "$_box" ] || printf '%s\n' "$REPO/.claude/inject.d"
+  fi
   return 0
-}
-BOXP="$(box_dirs | while IFS= read -r _bd; do _phys "$_bd"; printf '\n'; done)"
-tree_dirs() { # <tree>
-  for _td in "$1"/context-rules/*/ "$1/.claude/inject.d"; do
-    _td="${_td%/}"
-    [ -d "$_td" ] || continue
-    case "$_td" in "$1/context-rules/user") continue ;; esac
-    case "$NL$BOXP$NL" in *"$NL$(_phys "$_td")$NL"*) continue ;; esac
-    printf '%s\n' "$_td"
-  done
-  return 0
-}
-
-# ONE TIER'S RULES, IN ORDER (harbor#1010). By `order:`, else an old file name's NN- prefix, else after every
-# ordered rule; then by file name, which is what the old glob order was. One awk and one sort per tier, not per file.
-rule_files() { # <dir>... (new layout first) -> one rule file per line; an id already seen in an earlier dir is skipped
-  for _rd in "$@"; do for _rf in "$_rd"/*.md; do [ ! -f "$_rf" ] || printf '%s\n' "$_rf"; done; done | awk '
-    { f = $0; n = f; sub(/^.*\//, "", n); id = n; sub(/\.md$/, "", id); o = ""; hid = 0; hor = 0; ln = 0
-      while ((getline l < f) > 0) {
-        ln++
-        if (ln == 1) { if (l !~ /^---[[:space:]]*$/) break; continue }
-        if (l ~ /^---[[:space:]]*$/) break
-        if (l ~ /^id:/ && !hid)    { hid = 1; v = l; sub(/^id:[[:space:]]*/, "", v); if (v != "") id = v }
-        if (l ~ /^order:/ && !hor) { hor = 1; v = l; sub(/^order:[[:space:]]*/, "", v); o = v }
-      }
-      close(f)
-      if (o !~ /^[0-9]+$/) { o = 1000; if (match(n, /^[0-9]+-/)) o = substr(n, 1, RLENGTH - 1) + 0 }
-      if (id in seen) next
-      seen[id] = 1
-      printf "%d\t%s\t%s\n", o, n, f }' | sort -t "$(printf '\t')" -k1,1n -k2,2 | cut -f3-
 }
 
 # Collation is pinned for the same reason skill-catalog.sh pins it: glob order is
@@ -179,14 +149,12 @@ fm_all() { fm_scan "$1" 1; }
 
 if [ "$MODE" = list ]; then
   printf 'injection-rule — rule packs visible from %s\n\n' "$REPO"
-  # In sweep order, each tier merged across both layouts (harbor#1010), so the list is what fires and in what order.
-  for _tier in box repo; do
-    if [ "$_tier" = box ]; then _ds="$(box_dirs)"; else _ds="$(if [ -n "$REPO" ]; then tree_dirs "$REPO"; fi)"; fi
-    [ -n "$_ds" ] || continue
-    printf '%s tier: %s\n' "$_tier" "$(printf '%s\n' "$_ds" | sed "s|^$HOME/|~/|" | tr '\n' ' ')"
-    _IFS="$IFS"; IFS="$NL"; set -f; set -- $_ds; set +f; IFS="$_IFS"  # one dir per line
-    rule_files "$@" | while IFS= read -r f; do
-      printf '  %-40s %-14s %-8s %s\n' "${f#"$HOME"/}" \
+  _n=0
+  pack_dirs | while IFS= read -r d; do
+    printf '%s\n' "${d#"$HOME"/}"
+    for f in "$d"/*.md; do
+      [ -f "$f" ] || continue
+      printf '  %-28s %-14s %-8s %s\n' "$(basename "$f")" \
         "$(fmv "$f" event)" "$(fmv "$f" tool)" "$(fmall "$f" when | tr '\n' ';')"
     done
     printf '\n'
@@ -851,9 +819,7 @@ touched_trees() {
 # with this engine's governance stamp. `projects.tsv` beside the box packs is the
 # operator's list of this estate's projects; a worktree counts as its owner,
 # because the registry names repositories, not their checkouts.
-# It moves with the box tier (harbor#1010); the old place is read while no new one is installed.
-REG="$CFG/context-rules/user/projects.tsv"
-[ -f "$REG" ] || REG="$CFG/inject.d/projects.tsv"
+REG="$CFG/inject.d/projects.tsv"
 registered() { # <physical tree>
   [ -f "$REG" ] || return 1
   _own="$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
@@ -873,11 +839,12 @@ CWDP="$(field '.cwd')"
 case "$EVENT" in
   PreToolUse|PostToolUse|PostToolUseFailure)
     TOUCHED="$(touched_trees)"
-    _gov="$(_phys "$REPO")"
+    _gov="$(_phys "$REPO")"; _boxd="$(_phys "$CFG/inject.d")"
     while IFS= read -r _t; do
       [ -n "$_t" ] || continue
       [ "$_t" != "$_gov" ] || continue
-      [ -n "$(tree_dirs "$_t")" ] || continue
+      [ -d "$_t/.claude/inject.d" ] || continue
+      [ "$(_phys "$_t/.claude/inject.d")" != "$_boxd" ] || continue
       if registered "$_t"; then
         REACHED="$REACHED$_t
 "
@@ -896,38 +863,30 @@ HARBOR_TOUCHED="$TOUCHED"; HARBOR_REACHED="$REACHED"
 export HARBOR_TOUCHED HARBOR_REACHED
 
 # ── evaluate every pack ─────────────────────────────────────────────────────
-# Three sources, one line per rule file in sweep order: `<file> TAB <tree it speaks for> TAB <reached>`.
+# Three sources, one line each: `<pack dir> TAB <tree it speaks for> TAB <reached>`.
 # Box and repo packs speak for the governed tree. A REACHED tree's packs speak
 # for that tree — `repo-has` is judged there and a `run:` script runs there — and
 # only the ones that declare `scope: box` are read at all: the repo consents per
 # rule, in its own data, and the default is to stay home.
-tier_files() { # <tree it speaks for> <reached> <dirs, one per line> -> the sweep lines of one tier
-  _tt="$1"; _tr="$2"; _IFS="$IFS"; IFS="$NL"; set -f; set -- $3; set +f; IFS="$_IFS"
-  [ $# -gt 0 ] || return 0
-  rule_files "$@" | while IFS= read -r _tf; do printf '%s\t%s\t%s\n' "$_tf" "$_tt" "$_tr"; done
-}
-sweep_files() {
-  tier_files "$REPO" 0 "$(box_dirs)"
-  if [ -n "$REPO" ]; then tier_files "$REPO" 0 "$(tree_dirs "$REPO")"; fi
+sweep_dirs() {
+  pack_dirs | while IFS= read -r _d; do printf '%s\t%s\t0\n' "$_d" "$REPO"; done
   printf '%s' "$REACHED" | while IFS= read -r _t; do
-    if [ -n "$_t" ]; then tier_files "$_t" 1 "$(tree_dirs "$_t")"; fi
+    if [ -n "$_t" ]; then printf '%s\t%s\t1\n' "$_t/.claude/inject.d" "$_t"; fi
   done
   return 0
 }
 
 DECISION=''; DREASON=''
-while IFS="$(printf '\t')" read -r _file RT _reach; do
-  [ -n "$_file" ] || continue
-  _dir="${_file%/*}"
+while IFS="$(printf '\t')" read -r _dir RT _reach; do
+  [ -n "$_dir" ] || continue
   # A DECISION ENDS THE SWEEP. Once a pack has denied the call, later packs are
   # commenting on a tool use that will not happen, and the `break` below only
   # leaves the inner loop — without this the next directory would keep firing.
   [ "$DECISION" = deny ] && break
-  # One pass per file since harbor#1010; the loop stays so `continue` and the deny `break` keep their meaning.
-  for _f in "$_file"; do
+  for _f in "$_dir"/*.md; do
     [ -f "$_f" ] || continue
     fm_load "$_f"
-    fm_get id; _id="$FMV"; [ -n "$_id" ] || { _id="${_f##*/}"; _id="${_id%.md}"; }
+    fm_get id; _id="$FMV"; [ -n "$_id" ] || _id="$(basename "$_f" .md)"
     if [ "$_reach" = 1 ]; then
       fm_get scope
       if [ "$FMV" != box ]; then
@@ -1099,7 +1058,7 @@ WHEN
     fi
   done
 done <<PACKS
-$(sweep_files)
+$(sweep_dirs)
 PACKS
 
 NOTES="${NOTES% }"
@@ -1122,7 +1081,7 @@ NOTES="${NOTES% }"
 # pattern — there is no channel from a PreCompact hook to the model in this
 # harness at all. Every compaction this box performed emitted an object the
 # harness rejected. The rule was retargeted to SessionStart + `source-is compact`
-# (see context-rules/user/post-compaction-carry.md), which fires on the far side of
+# (see inject.d/box/20-post-compaction-carry.md), which fires on the far side of
 # the same moment and CAN be heard. Lint IJ1 now refuses a pack that declares a
 # context-less event without `mode: notify`, so this class cannot return quietly.
 #

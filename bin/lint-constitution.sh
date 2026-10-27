@@ -5,7 +5,7 @@
 #   sh lint-constitution.sh [--check]   red on any specific in CONSTITUTION.md, one FAIL per hit with its line
 #   sh lint-constitution.sh --help
 #
-# Workload names come from the private layer's project registry ($HARBOR_SCOPE_PRIVATE/context-rules/user/projects.tsv, or the old inject.d/box/), so
+# Workload names come from the private layer's project registry ($HARBOR_SCOPE_PRIVATE/inject.d/box/projects.tsv), so
 # core never lists them; Harbor's own repos (OWN) are not workloads. With no registry, as in public CI, names are not
 # judged and the run says so. The `**Path root:**` line is exempt: bin/reference-check.sh reads the root from it.
 # Env: HARBOR_ROOT, HARBOR_SCOPE_PRIVATE, CONSTITUTION_FILE (default CONSTITUTION.md). Exit 0 clean, 1 a hit, 2 usage.
@@ -25,7 +25,7 @@ esac
 
 DOC="${CONSTITUTION_FILE:-$ROOT/CONSTITUTION.md}"
 PRIV="${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}"
-REG="$PRIV/context-rules/user/projects.tsv"; [ -f "$REG" ] || REG="$PRIV/inject.d/box/projects.tsv"  # harbor#1010
+REG="$PRIV/inject.d/box/projects.tsv"
 # Harbor's own repos: the control plane, Yard and Fleet (README's layer table). Never workloads.
 OWN=' harbor project-init projects-orchestrator '
 FIX="move the case to DOCTRINE/case-law.md (a workload's case to its pack) and point to it by section"

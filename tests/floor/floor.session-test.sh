@@ -237,9 +237,9 @@ CLAUDE_CONFIG_DIR="$B9CC" PROJECT_INIT_SRC="$B9C/pi" sh "$SRC/prod-guard-install
 { jq -r '(.hooks // {} | to_entries[] | .key as $e | .value[]? | .hooks[]? | [$e, .command] | @tsv),
          (.statusLine.command // empty | ["statusLine", .] | @tsv),
          (.subagentStatusLine.command // empty | ["subagentStatusLine", .] | @tsv)' "$B9CC/settings.json"
-  for _b9k in "$B9CC"/context-rules/user/*.md; do
+  for _b9k in "$B9CC"/inject.d/*.md; do
     _b9r="$(sed -n 's/^run:[[:space:]]*//p' "$_b9k" | head -n 1)"
-    [ -z "$_b9r" ] || printf 'context-rules\t/bin/sh "%s"\n' "$B9CC/context-rules/user/$_b9r"
+    [ -z "$_b9r" ] || printf 'inject.d\t/bin/sh "%s"\n' "$B9CC/inject.d/$_b9r"
   done
   grep -vE '^[[:space:]]*(#|$)' "$HROOT/CONTRACTS/hooks-external.tsv" | while IFS='	' read -r _b9s _b9e _b9y; do
     printf '%s\t/bin/sh %s\n' "$_b9e" "$B9CC/$_b9s"; done; } | awk '!s[$0]++' > "$B9C/wired"
@@ -250,7 +250,7 @@ t_eq "B9c worklog-push is installed and wired here (from its manifest since harb
   "$(for _b9w in worklog-push.sh; do grep -F "/bin/$_b9w" "$B9C/wired" | head -n 1 | cut -f2 \
        | sed 's#^/bin/sh ##' | while IFS= read -r _b9f; do [ -f "$_b9f" ] && echo y; done; done | grep -c y)"
 # The plant: a marker under every installed .sh and .awk name, and a registry row project-pointer would name.
-for _b9f in "$B9CC"/bin/* "$B9CC"/context-rules/user/*; do
+for _b9f in "$B9CC"/bin/* "$B9CC"/inject.d/*; do
   _b9b="${_b9f##*/}"
   case "$_b9b" in
     *.sh)  printf 'echo %s >> "%s/ran"\nexit 0\n' "$_b9b" "$B9C" > "$B9CP/$_b9b" ;;

@@ -2,8 +2,8 @@
 # bootstrap.sh (harbor#829) — a fresh machine to a passing deploy dry run, in one command:
 #   git clone <url> ~/port/harbor && sh ~/port/harbor/bin/harbor scope install && sh ~/port/harbor/bin/bootstrap.sh
 #   -h, --help   this text
-# (harbor#966) Reads the private layer's harbor.toml and clones only what it names: yard and prod-guard need the yard checkout,
-# fleet needs the fleet checkout, each pack its own repo, from the registry's remote or else the owner of harbor's own
+# (harbor#966) Reads the private layer's harbor.toml and clones only what it names: yard and prod-guard need project-init,
+# fleet needs projects-orchestrator, each pack its own repo, from the registry's remote or else the owner of harbor's own
 # origin. uv and just are installed into HARBOR_LOCAL_BIN for yard or fleet only. Then it hands off to `deploy.sh --live`:
 # the DRY RUN. core alone clones nothing, downloads nothing and needs no gh. The apply stays the operator's; this never runs it.
 # Refused before any write: a native Windows shell, a checkout outside HARBOR_REPO, no private layer (a stranger runs

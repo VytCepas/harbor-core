@@ -482,7 +482,7 @@ if [ -s "$LIVE/bin/guard-integrity.sh" ]; then
 fi
 
 # prod_guard is NOT part of the floor at all. The floor deliberately omits the
-# cloud/data corpus (guard-bash.sh:6-8) because yard's guard owns it, so
+# cloud/data corpus (guard-bash.sh:6-8) because project-init's guard owns it, so
 # this is a separate control with a separate install path and it gets its own
 # row. Giving it one is also what stops the floor's row from borrowing its
 # evidence, which is precisely how the substring defect above stayed invisible.

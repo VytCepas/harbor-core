@@ -198,16 +198,11 @@ rule:egress:provider-secret-egress	rule	egress:provider-secret-egress	2026-10-17
 rule:egress:secret-to-disk	rule	egress:secret-to-disk	2026-10-17	core
 rule:selfedit:floor-surface	rule	selfedit:floor-surface	2026-10-17	core
 rule:selfedit:switch-in-settings	rule	selfedit:switch-in-settings	2026-10-17	core
-skill:access-browser	skill	access-browser	2026-10-27	core
 skill:access-ledger	skill	access-ledger	2026-10-17	core
 skill:agent-routing	skill	agent-routing	2026-10-17	core
 skill:atlas	skill	atlas	2026-10-17	core
-skill:audit-review-fanout	skill	audit-review-fanout	2026-10-27	core
 skill:browser	skill	browser	2026-10-17	core
 skill:deliverable-contract	skill	deliverable-contract	2026-10-17	core
-skill:doc-atlas	skill	doc-atlas	2026-10-27	core
-skill:doc-deliverable-contract	skill	doc-deliverable-contract	2026-10-27	core
-skill:doc-learning-artifact	skill	doc-learning-artifact	2026-10-27	core
 skill:housekeeping	skill	housekeeping	2026-10-17	core
 skill:learning-artifact	skill	learning-artifact	2026-10-17	core
 skill:review-fanout	skill	review-fanout	2026-10-17	core

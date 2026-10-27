@@ -23,7 +23,7 @@ DOCTRINE/credential-boundary.md	bq	floor documentation: names the cloud command 
 DOCTRINE/credential-boundary.md	gtm	floor documentation: names the cloud command the floor blocks
 FLOOR.md	bigquery	floor documentation: names the cloud command the floor blocks
 FLOOR.md	bq	floor documentation: names the cloud command the floor blocks
-context-rules/user/variable-is-one-argument.sh	bq	guard/floor test corpus: the command or tool name is the fixture the guard must act on
+inject.d/box/variable-is-one-argument.sh	bq	guard/floor test corpus: the command or tool name is the fixture the guard must act on
 tests/floor/floor.b6-test.sh	bigquery	guard/floor test corpus: the command or tool name is the fixture the guard must act on
 tests/floor/floor.install-test.sh	bq	guard/floor test corpus: the command or tool name is the fixture the guard must act on
 tests/floor/normalize-test.sh	bq	guard/floor test corpus: the command or tool name is the fixture the guard must act on
@@ -51,4 +51,3 @@ tests/skills/skill-catalog-test.sh	gtm	fixture: bin/skill-catalog.sh keys a CLI 
 standards/naming/controls.tsv	dbt	control rows register injected notes whose ids are set by files in the private layer (inject.d/<repo>); a row id must equal the note id it registers, so the registry has to carry the name
 standards/naming/frozen.tsv	gtm	freezes the cloud guard rule id cloud-gtm-version, a refusal operators read (harbor#1276)
 tests/lint/frozen/freeze.test.sh	clickup	asserts the moved-out names never enter the freeze (harbor#1276 done-when 3)
-standards/rename-maps/sitting-b.md	dbt	a rename-map record quotes a name it renames; naming data, not workload logic (harbor#961)

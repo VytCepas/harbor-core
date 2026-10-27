@@ -32,7 +32,7 @@ line there would corrupt the protocol. Such a file is a permanent `protocol` row
 - **refuses a `protocol` row with no evidence that the harness reads the file's output.** The evidence
   is decidable: an installer composes it as a harness command (`/bin/sh $DIR/bin/<file>`, the house
   idiom for every hook and status line, and never inside an echoed instruction), a rule pack in
-  `context-rules/` runs it, or it builds a Claude Code hook JSON object (`hookSpecificOutput`,
+  `inject.d/` runs it, or it builds a Claude Code hook JSON object (`hookSpecificOutput`,
   `systemMessage`, `additionalContext`).
 - **never trips the ratchet when the file changes**, but a touched one keeps its **stderr diagnostics in
   the line shape**: every `printf` or `echo` it sends to `>&2` starts with a header, a TAG line or the

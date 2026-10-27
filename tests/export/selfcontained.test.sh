@@ -62,7 +62,7 @@ t_has "CONSTITUTION.md citing ./HANDOFF.md" "$_o" "CONSTITUTION.md $DEAD HANDOFF
 # the rest of the exported markdown: a dev link here resolves in the dev checkout and dangles in the export, so only the
 # export can see it. One file per directory the sweep used to skip, picked from what is staged.
 first_md() { find "$S/$1" -type f -name '*.md' | LC_ALL=C sort | sed -n 1p | sed "s#^$S/##"; }
-for _d in skills commands context-rules patches vendor/archify fixtures; do
+for _d in skills commands inject.d patches vendor/archify fixtures; do
   _f="$(first_md "$_d")"
   [ -n "$_f" ] || { t_fail "$_d has no staged markdown to plant in, so its sweep went unproved"; continue; }
   _up="$(printf '%s' "${_f%/*}" | sed 's#[^/][^/]*#..#g')"; [ "$_f" != "${_f%/*}" ] || _up=.

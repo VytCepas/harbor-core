@@ -104,11 +104,11 @@ type	epic:provenance	-	origin record of an audit or research pass; closes when i
 type	epic:framing	-	a problem statement awaiting a design decision
 theme	theme:floor	bin/guard-*.sh bin/floor-*.sh bin/restore.sh bin/lint-conventions.sh FLOOR.md	guard and floor correctness — what the gates see and refuse
 theme	theme:memory	bin/memory*.sh hooks/memory-harvest/* hooks/worklog-push/* worklog/* CONTRACTS/memory-format.md	capture, recall, index, staleness
-theme	theme:context	bin/context-budget.sh bin/store-check.sh context-rules/* CONTEXT-BASELINE.tsv CONSTITUTION.md	always-on surface and per-call context economy
+theme	theme:context	bin/context-budget.sh bin/store-check.sh inject.d/* CONTEXT-BASELINE.tsv CONSTITUTION.md	always-on surface and per-call context economy
 theme	theme:doc-truth	DOCTRINE/doc-truth.md CONTRACTS/README.md QA-PLAN.md EVALS.md STATUS.md COVERAGE.md	records that contradict the system they describe
 theme	theme:ci	.github/workflows/* bin/merge-check.sh bin/worktree.sh bin/doctor.sh	CI, worktrees, deployment and drift between repo and box
 theme	theme:observability	bin/fleet-glyph.sh bin/observe-report.sh tests/hooks/statusline*.sh bin/dashboard-gen.sh bin/failure-capture.sh	making running state legible: statusline, ledger, reports
-theme	theme:subagent	context-rules/user/subagent-contract.md EVALS-DATA/*/subagent-reports/*	delegation: what a subagent may do and must return
+theme	theme:subagent	inject.d/box/10-subagent-contract.md EVALS-DATA/*/subagent-reports/*	delegation: what a subagent may do and must return
 theme	theme:architecture	CONTRACTS/descriptor.md CONTRACTS/marker.md	architecture records and the cross-repo system graph
 theme	theme:vendoring	vendor/* PROVENANCE.md skills/UNIFICATION.md bin/skills-*.sh	intake of third-party code: copy, depend, or take the idea
 theme	theme:browser	CONTRACTS/browser-routing.md bin/browser.sh bin/visual-check.sh	browser capability and its backends

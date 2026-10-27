@@ -324,9 +324,9 @@ done
 t_has "…and a good test path is not" "$(sh "$LN" --check test tests/admission/bash/x.test.sh 2>&1)" "no finding"
 
 t_section "an id the tree carries and controls.tsv lacks is red, for each census (D-62)"
-CN="$TMP/census"; mini "$CN"; mkdir -p "$CN/context-rules" "$CN/CONTRACTS"
+CN="$TMP/census"; mini "$CN"; mkdir -p "$CN/inject.d/box" "$CN/.claude/inject.d" "$CN/CONTRACTS"
 cp "$T_ROOT"/bin/guard-*.sh "$CN/bin/"; cp "$T_ROOT/bin/lint-conventions.sh" "$CN/bin/"; cp "$T_ROOT/CHECKS.md" "$CN/"
-cp "$T_ROOT/CONTRACTS/required-checks.tsv" "$CN/CONTRACTS/"; cp -R "$T_ROOT"/context-rules/. "$CN/context-rules/"
+cp "$T_ROOT/CONTRACTS/required-checks.tsv" "$CN/CONTRACTS/"; cp "$T_ROOT"/inject.d/box/*.md "$CN/inject.d/box/"; cp "$T_ROOT"/.claude/inject.d/*.md "$CN/.claude/inject.d/"
 cn() { sh "$CN/bin/lint-name.sh" --root "$CN" --check registry standards/naming 2>&1; }
 t_has "the real guards, checks, packs and rules are all registered: no finding" "$(cn)" "no finding"
 grep -v '^admission\.' "$REG/controls.tsv" > "$CN/standards/naming/controls.tsv"
@@ -343,14 +343,14 @@ cp "$T_ROOT/bin/lint-conventions.sh" "$CN/bin/lint-conventions.sh"
 awk '/^## Register/ { print; getline; print; getline; print; print "| `ghost-check` | nothing | never | none | a check no row holds |"; next } { print }' "$T_ROOT/CHECKS.md" > "$CN/CHECKS.md"
 t_has "a check in CHECKS.md with no row is red" "$(cn)" "[name.control-unregistered] check:ghost-check"
 cp "$T_ROOT/CHECKS.md" "$CN/CHECKS.md"
-printf -- '---\nevent: SessionStart\nwhen: always\n---\nbody\n' > "$CN/context-rules/user/ghost-pack.md"
-t_has "a rule with no row is red, its id derived from the file name (harbor#1010)" "$(cn)" "[name.control-unregistered] injection:ghost-pack"
-rm "$CN/context-rules/user/ghost-pack.md"
+printf -- '---\nid: ghost-pack\nevent: SessionStart\nwhen: always\n---\nbody\n' > "$CN/inject.d/box/10-ghost-pack.md"
+t_has "a rule pack with no row is red" "$(cn)" "[name.control-unregistered] injection:ghost-pack"
+rm "$CN/inject.d/box/10-ghost-pack.md"
 printf 'VytCepas/harbor\tghost gate\n' >> "$CN/CONTRACTS/required-checks.tsv"
 t_has "a required CI check with no row is red" "$(cn)" "[name.control-unregistered] ci:ghost gate"
 cp "$T_ROOT/CONTRACTS/required-checks.tsv" "$CN/CONTRACTS/required-checks.tsv"
 t_has "and the clean copy is clean again" "$(cn)" "no finding"
-for _src in 'guard-rules:bin/guard-\*.sh' 'checks-table:CHECKS.md' 'inject-ids:context-rules' 'lint-rules:bin/lint-conventions.sh' 'required-checks:CONTRACTS/required-checks.tsv'; do
+for _src in 'guard-rules:bin/guard-\*.sh' 'checks-table:CHECKS.md' 'inject-ids:inject.d,.claude/inject.d' 'lint-rules:bin/lint-conventions.sh' 'required-checks:CONTRACTS/required-checks.tsv'; do
   _bad="${_src%%:*}:zz-missing"
   sed "s#$_src#$_bad#" "$REG/registers.tsv" > "$CN/standards/naming/registers.tsv"
   t_has "a census whose source is missing fails loud: $_src" "$(cn)" "found no id: its source is missing or empty"
@@ -368,7 +368,7 @@ t_section "terms.tsv: depends_on, the level chain and the closed sets (D-57, D-6
 t_eq "level and subsystem read as D-57: containment, and a family is not a subsystem" "yes" \
   "$(awk -F'\t' '$1 == "level" && $11 ~ /containment/ { a = 1 } $1 == "subsystem" && $11 ~ /is not one/ && $9 !~ /family/ { b = 1 } END { print (a && b) ? "yes" : "no" }' "$REG/terms.tsv")"
 t_eq "there are seven levels, one chain" 7 "$(awk -F'\t' '$2 ~ /(^|,)level(,|$)/ { n++ } END { print n }' "$REG/terms.tsv")"
-t_eq "event is a family; with pack (D-84), session (D-86) and agent (#1010) and library (#961) there are 28" 28 "$(awk -F'\t' '$2 ~ /(^|,)family(,|$)/ { n++ } END { print n }' "$REG/terms.tsv")"
+t_eq "event is a family; with pack (D-84) and session (D-86) there are 26" 26 "$(awk -F'\t' '$2 ~ /(^|,)family(,|$)/ { n++ } END { print n }' "$REG/terms.tsv")"
 t_eq "obligation is a concept under the status family" status "$(awk -F'\t' '$1 == "obligation" { print $4 }' "$REG/terms.tsv")"
 t_eq "core registers no workload system term: a workload's pack does, and the private overlay (harbor#950, D-85)" "" \
   "$(awk -F'\t' '$2 ~ /(^|,)system(,|$)/ && $1 != "fleet" && $1 != "memory-store" { print $1 }' "$REG/terms.tsv" | sort | tr '\n' ' ' | sed 's/ $//')"

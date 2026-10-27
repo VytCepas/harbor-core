@@ -15,8 +15,8 @@
 #   required, optional   space-separated entries; a trailing / marks a directory
 #   machine-read kinds (policy/ standards/ contracts/ registries/) are present only when non-empty
 id	required	optional	note
-control-plane	README.md AGENTS.md CLAUDE.md LICENSE CHANGELOG.md justfile .agents/config.yaml bin/ tests/ docs/	policy/ standards/ contracts/ registries/ fixtures/ context-rules/ skills/ agents/ templates/ githooks/ access/ evals/	harbor
+control-plane	README.md AGENTS.md CLAUDE.md LICENSE CHANGELOG.md justfile .agents/config.yaml bin/ tests/ docs/	policy/ standards/ contracts/ registries/ fixtures/ context.d/ skills/ agents/ templates/ githooks/ access/ evals/	harbor
 scaffolder	README.md AGENTS.md CLAUDE.md LICENSE CHANGELOG.md justfile .agents/config.yaml src/ tests/ templates/ docs/	standards/ contracts/ registries/ fixtures/ skills/	yard
 fleet-controller	README.md AGENTS.md CLAUDE.md LICENSE CHANGELOG.md justfile .agents/config.yaml src/ tests/ docs/	contracts/ registries/ fixtures/	fleet
-workload	README.md AGENTS.md CLAUDE.md justfile .agents/config.yaml docs/	bin/ src/ tests/ fixtures/ skills/ agents/ clients/ context-rules/ registries/	<domain>-<name> (D-45)
+workload	README.md AGENTS.md CLAUDE.md justfile .agents/config.yaml docs/	bin/ src/ tests/ fixtures/ skills/ agents/ clients/ context.d/ registries/	<domain>-<name> (D-45)
 data	README.md AGENTS.md CLAUDE.md justfile .agents/config.yaml docs/	models/ tests/ fixtures/ registries/	transformation and ingestion repos; one dialect from dialects.tsv (D-33)
