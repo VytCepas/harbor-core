@@ -8,11 +8,12 @@
 #   sh roots.sh --check        every ${VAR:-...} default matches, honours PORT_ROOT, is registered; a shared path has a reason
 #   sh roots.sh --repo <id>    one repo's checkout from the registry (PORT_ROOT/<id> with no registry; exit 1, empty, when a registry lacks it) (harbor#966)
 #   sh roots.sh --remote <id>  one repo's clone URL from the registry's remote column; exit 1, empty, with no registry, no such row, or remote '-' (harbor#966)
+#   sh roots.sh --get <VAR>    (above) follows repos.tsv for a REPOS row: the registry's path replaces the row's first segment (harbor#966)
 #   sh roots.sh --registry-check   every repos.tsv row valid: id, path and symlinks inside PORT_ROOT, kind known
 #   sh roots.sh --port-root | --private   the workspace root, the private layer's directory
 #   sh roots.sh --access       the access register (<private>/access, or $ACCESS_DIR); exit 1, empty, when there is none
-#   sh roots.sh --inject       the private rule packs (<private>/inject.d); exit 1, empty, when there is none
-#   sh roots.sh --projects     the project registry (<private>/inject.d/box/projects.tsv); exit 1, empty, when there is none
+#   sh roots.sh --inject       the private rules (<private>/context-rules, else the old <private>/inject.d); exit 1, empty, when there is none
+#   sh roots.sh --projects     the project registry (<rules>/user/projects.tsv; box/ in the old inject.d); exit 1, empty, when there is none
 #   sh roots.sh --conf <key>   one value from harbor.toml (an array prints one element per line)
 #   sh roots.sh --conf-keys    core's own harbor.toml keys, one per line (a pack's keys come from its conf-keys.txt)
 #   sh roots.sh --base <BOX|REPOS>   what a base is on this box ($HOME, or the workspace root): the text a launchd template's @HOME@ fills (harbor#630)
@@ -46,6 +47,8 @@ set -eu
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
 TABLE="${HARBOR_ROOTS_TABLE:-$ROOT/CONTRACTS/roots.tsv}"
+# Installed (harbor#966): no CONTRACTS/ above bin/, so the table ships beside this file as roots.tsv.
+[ -f "$TABLE" ] || [ -n "${HARBOR_ROOTS_TABLE:-}" ] || ! [ -f "$SRC/roots.tsv" ] || TABLE="$SRC/roots.tsv"
 # CONTRACTS/logging.md channel 1. LOG_FD=2: --get and --list print DATA on stdout (a value, a
 # table), and --check's success line is that same protocol — every log-lib line stays on stderr.
 . "$SRC/log-lib.sh"
@@ -103,6 +106,15 @@ default_for() { # <var> → the default as a path on this box, or empty if not a
   rows | while IFS="$(printf '\t')" read -r __v __b __r __x; do
     [ "$__v" = "$1" ] || continue
     __rp="$(resolved_prefix "$__b")" || exit 2
+    # A REPOS row follows the private registry when it holds the repo (harbor#966), so a renamed or moved
+    # checkout is one edit there; with no registry, or no such row, the table's own path stands.
+    if [ "$__b" = REPOS ]; then
+      __id="${__r%%/*}"; __hit="$(repo_path "$__id")" || __hit=""
+      if [ -n "$__hit" ]; then
+        case "$__r" in */*) printf '%s/%s' "$__hit" "${__r#*/}" ;; *) printf '%s' "$__hit" ;; esac
+        return 0
+      fi
+    fi
     printf '%s/%s' "$__rp" "$__r"
     return 0
   done
@@ -145,21 +157,24 @@ access_dir() {
   printf '%s' "${__ad%/}"
 }
 
-# The private rule packs (CONTRACTS/private-layer.md, harbor#1149): <private>/inject.d, the shape of core's inject.d/ -
-# box/ for the packs every session on the box carries (and the project registry), one folder per repo for the packs
+# The private rules (CONTRACTS/private-layer.md, harbor#1149): <private>/context-rules, the shape of core's context-rules/ -
+# user/ (box/ in the old inject.d) for the rules every session on the box carries (and the project registry), one folder per repo for the rules
 # `inject-install.sh --projects` seeds. They name clients and repos, so core ships none. Nothing in it is code: the
 # installer takes .md packs and projects.tsv only. Absent is exit 1 with nothing on stdout and the reason on stderr,
 # so a reader says "no private packs" and never reads or seeds an empty path.
 inject_dir() {
   __pv="$(private_dir)" || return 2
   [ -d "$__pv" ] || { echo "roots: no private layer at $__pv, so there are no private rule packs (CONTRACTS/private-layer.md)" >&2; return 1; }
-  [ -d "$__pv/inject.d" ] || { echo "roots: the private layer at $__pv has no inject.d/ directory (CONTRACTS/private-layer.md)" >&2; return 1; }
+  # harbor#1010: the new layout (context-rules/{user,<repo>}/) wins; the old inject.d/{box,<repo>}/ is read for one release.
+  if [ -d "$__pv/context-rules" ]; then printf '%s' "$__pv/context-rules"; return 0; fi
+  [ -d "$__pv/inject.d" ] || { echo "roots: the private layer at $__pv has no context-rules/ or inject.d/ directory (CONTRACTS/private-layer.md)" >&2; return 1; }
   printf '%s' "$__pv/inject.d"
 }
 projects_file() {
   __id="$(inject_dir)" || return $?
-  [ -f "$__id/box/projects.tsv" ] || { echo "roots: no project registry at $__id/box/projects.tsv (CONTRACTS/private-layer.md)" >&2; return 1; }
-  printf '%s' "$__id/box/projects.tsv"
+  case "$__id" in */context-rules) __pf="$__id/user/projects.tsv" ;; *) __pf="$__id/box/projects.tsv" ;; esac
+  [ -f "$__pf" ] || { echo "roots: no project registry at $__pf (CONTRACTS/private-layer.md)" >&2; return 1; }
+  printf '%s' "$__pf"
 }
 
 # A file as lines, with a UTF-8 BOM and trailing CRs removed (an editor on Windows writes both) and a
@@ -244,6 +259,11 @@ repos_list() { # → id TAB resolved checkout
       case "$__n" in *[!A-Za-z0-9._-]*|.*) echo "roots: '$__n' is not a repo name" >&2; exit 2 ;; esac
       printf '%s\t%s/%s\n' "$__n" "$__root" "$__n"
     done
+}
+
+repo_path() { # <id> → the registry's checkout for that id; exit 1, empty, with no registry or no such row
+  [ -f "$(private_dir)/repos.tsv" ] || return 1
+  repos_list | I="$1" awk -F'\t' '$1 == ENVIRON["I"] { print $2; f = 1; exit } END { exit f ? 0 : 1 }'
 }
 
 # harbor.toml, the flat subset: key = "value" or key = ["a", "b"] on one line, # comments, no tables.

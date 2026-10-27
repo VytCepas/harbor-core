@@ -381,7 +381,7 @@ c_runner_diag() {
 c_pycache() {
   selected pycache-in-payload || return 0
   # Scoped to payload/template trees, where bytecode does not merely clutter but
-  # POISONS a content hash (project-init#972). A __pycache__ beside ordinary
+  # POISONS a content hash (yard#972). A __pycache__ beside ordinary
   # source is the interpreter's business, not this tool's.
   for root in "$HOME_DIR"/project-init/plugins "$HOME_DIR"/project-init/templates; do
     [ -d "$root" ] || continue
@@ -391,7 +391,7 @@ c_pycache() {
     done
     if [ "$n" -gt 0 ]; then
       row RECLAIM pycache-in-payload "$b" "$n __pycache__ dir(s) under ${root#$HOME_DIR/}" \
-        "inside a hashed payload it reddens a lock test that is green on CI — project-init#972"
+        "inside a hashed payload it reddens a lock test that is green on CI — yard#972"
       [ "$APPLY" -eq 1 ] && find "$root" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
     fi
   done
@@ -483,7 +483,7 @@ c_prunable_worktrees() {
 c_bare_checkout() {
   selected bare-checkout || return 0
   # NOT trash — DAMAGE, and it is reported because nothing else on the box
-  # notices. projects-orchestrator's pytest suite set this on the operator's real
+  # notices. fleet's pytest suite set this on the operator's real
   # checkout on 2026-09-06; `git status` there read clean throughout. RISK, not
   # KEEP: it is the operator's to fix, so it has to count on the statusline.
   for d in $(repos); do

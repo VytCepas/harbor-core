@@ -10,7 +10,7 @@
 # no run at all for some). Measured 2026-10-06: four workload repos sat red on main with
 # nothing alerting, because the fleet view read `gh run list --limit 1` (any branch, any workflow).
 #
-# THE FLEET is where ci-runners.sh reads it: the projects-orchestrator snapshot (cache/fleet-snapshot.json,
+# THE FLEET is where ci-runners.sh reads it: the fleet snapshot (cache/fleet-snapshot.json,
 # HARBOR_FLEET_SNAPSHOT) members that carry .github/workflows and a github.com origin, plus the `repo
 # OWNER/NAME` lines of $CLAUDE_CONFIG_DIR/.harbor-ci-runners, plus harbor itself (named by log-lib's repo_slug: this
 # checkout's origin, or the bin/repo-slug.txt beside an install; harbor#1149). HARBOR_TIP_REPO=o/r

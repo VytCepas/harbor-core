@@ -31,7 +31,9 @@ T="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -rf "$T"' EXIT
 GW=-w; REPOS=0; REG=''; WHAT="workload tool"
 if [ "${1:-}" = --repos ]; then
   REPOS=1; GW=''; WHAT="workload repo"; shift
-  REG="${DOMAIN_REPO_REGISTRY:-${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}/inject.d/box/projects.tsv}"
+  _pvl="${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}"
+  _pvr="$_pvl/context-rules/user/projects.tsv"; [ -f "$_pvr" ] || _pvr="$_pvl/inject.d/box/projects.tsv"  # harbor#1010
+  REG="${DOMAIN_REPO_REGISTRY:-$_pvr}"
   BASE="${DOMAIN_REPOS_BASELINE:-$ROOT/CONTRACTS/lint-domain-repos-baseline.txt}"
   ALLOW="${DOMAIN_REPOS_ALLOW:-$ROOT/CONTRACTS/domain-repos-allow.tsv}"
   # Harbor's own repos (the control plane, Yard, Fleet) are not workloads.
@@ -91,7 +93,7 @@ case "${1:-}" in
       # The export gate refuses a silent pass: no registry there means no export (harbor#1273).
       if [ "$1" = --zero ]; then
         log_fail "no project registry at ${REG#$HOME/}: workload repo names were not judged"
-        log_fix "export from the box, where the private layer holds inject.d/box/projects.tsv"; log_end || :; exit 2
+        log_fix "export from the box, where the private layer holds context-rules/user/projects.tsv"; log_end || :; exit 2
       fi
       log_note "no project registry at ${REG#$HOME/}: workload repo names were not judged"; log_end; exit 0
     fi

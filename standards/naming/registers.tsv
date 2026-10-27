@@ -38,7 +38,8 @@ dialect	dialects.tsv	-	-	a naming dialect a repo may register for objects the st
 lint	controls.tsv	type=lint	lint-rules:bin/lint-conventions.sh	a static rule; bin/lint-conventions.sh's ids are the census, bin/lint-name.sh's are read from this registry
 admission	controls.tsv	type=admission	guard-rules:bin/guard-*.sh	a refusal one of the admission guards prints as [<guard>:<rule>]
 check	controls.tsv	type=check	checks-table:CHECKS.md	a scheduled check; its output is stamped [check:<id>]
-injection	controls.tsv	type=injection	inject-ids:inject.d,.claude/inject.d	a rule pack the injection engine adds to a session
+injection	controls.tsv	type=injection	inject-ids:context-rules	a rule pack the injection engine adds to a session
 ci	controls.tsv	type=ci	required-checks:CONTRACTS/required-checks.tsv=VytCepas/harbor	a required CI check on harbor's main
 vale	controls.tsv	type=vale	-	a prose rule of the Vale config generated from aliases.tsv
 label-axis	label-axes.tsv	-	-	an issue label as <axis>:<value> with the legacy label it replaces; renders issue-taxonomy.tsv (harbor#978)
+writer	writers.tsv	-	-	a script that creates a named thing, and the command patterns that find one (harbor#978)

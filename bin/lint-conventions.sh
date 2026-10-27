@@ -2253,12 +2253,12 @@ rm -f "$_f14_rows" "$_f14_code" "$_f14_lay"
 # THE SET IS DERIVED, NEVER LISTED, from what the installers wire:
 #   wired   every argv word of a floor_hooks table row, every "/bin/sh $DIR/bin/X" (or "/bin/sh $V"
 #           with V="$DIR/bin/X") an installer composes as a harness command, and the run: script of
-#           every box pack an installer that names inject.d/box installs;
+#           every box pack an installer that names context-rules/user installs;
 #   closed  what those execute or source (`.`, sh, bash, exec) through a path ending in a file
 #           beside them or in bin/, outside a quoted string: a hint that only NAMES a command runs nothing.
 #   declared a hook the box runs that no installer wires (worklog-push) is a row in
 #           CONTRACTS/hooks-external.tsv, read here as one more wiring.
-# A repo pack's scripts (.claude/inject.d) are out: they run the session repo's own code, so a file
+# A repo pack's scripts (context-rules/<repo>, or the old .claude/inject.d) are out: they run the session repo's own code, so a file
 # planted beside them has the same author. The behaviour is pinned by floor-test B9c.
 rule_F15() {
 rule "admission.no-dirname no script a hook runs resolves its own directory through \$(dirname) (harbor#813)"
@@ -2283,11 +2283,11 @@ for _f15i in "$ROOT"/bin/*install*.sh; do
         if (index(s, "/bin/")) { sub(/^[^\/]*\/bin\//, "", s); print "bin/" s "\t" src }
         else { sub(/[}]$/, "", s); U[s] = 1 } } }
     END { for (k in U) if (k in PV) print "bin/" PV[k] "\t" src }' >> "$_f15t/wired"
-  if _f15_code "$_f15i" | grep -q 'inject\.d/box'; then
-    for _f15p in "$ROOT"/inject.d/box/*.md; do
+  if _f15_code "$_f15i" | grep -q 'context-rules/user'; then
+    for _f15p in "$ROOT"/context-rules/user/*.md; do
       [ -f "$_f15p" ] || continue
       _f15r="$(awk 'NR == 1 && !/^---/ { exit } NR > 1 && /^---/ { exit } /^run:[[:space:]]*/ { sub(/^run:[[:space:]]*/, ""); print; exit }' "$_f15p")"
-      [ -z "$_f15r" ] || printf 'inject.d/box/%s\t%s\n' "$_f15r" "${_f15i#"$ROOT"/} (box pack ${_f15p##*/})" >> "$_f15t/wired"
+      [ -z "$_f15r" ] || printf 'context-rules/user/%s\t%s\n' "$_f15r" "${_f15i#"$ROOT"/} (box pack ${_f15p##*/})" >> "$_f15t/wired"
     done
   fi
 done
@@ -2798,9 +2798,9 @@ if [ -f "$_C8_MAN" ]; then
   # than from the 92 names: the name-driven shape is 92 × every line of every
   # file, on a linter that runs at every commit. `-print0`/`xargs -0` because a
   # path is not a word.
-  # hooks/ prose is not a call: its READMEs quote commands for a reader (D-88, harbor#1272). inject.d keeps its .md,
+  # hooks/ prose is not a call: its READMEs quote commands for a reader (D-88, harbor#1272). context-rules keeps its .md,
   # whose run: lines are real calls.
-  find "$ROOT/.github/workflows" "$ROOT/launchd" "$ROOT/inject.d" \
+  find "$ROOT/.github/workflows" "$ROOT/launchd" "$ROOT/context-rules" \
        -type f -print0 2>/dev/null > "${TMPDIR:-/tmp}/c8-surf.$$"
   find "$ROOT/hooks" -type f ! -name '*.md' -print0 2>/dev/null >> "${TMPDIR:-/tmp}/c8-surf.$$"
   find "$ROOT/bin" -type f -name '*.sh' ! -name '*-test.sh' -print0 2>/dev/null \
@@ -3598,7 +3598,7 @@ done
 # ── T5 · the CLI is `harbor`; nothing describes a `helm` command ───────────
 # Decided 2026-07-26 (standards/naming.md §6.4). Helm stays the LAYER name — a helm
 # is where you steer from, which is exactly what L0 is — but the BINARY is
-# `harbor`, because `helm` collides and not theoretically: project-init's
+# `harbor`, because `helm` collides and not theoretically: yard's
 # prod_guard.py:50 already classes `helm uninstall|delete` as a destructive
 # operation, and that guard ships in templates/base/ to every scaffolded repo.
 # A `helm` CLI with an uninstall subcommand would be blocked by Harbor's own
@@ -4858,7 +4858,7 @@ guarded_find() { # guarded_find <root> <maxdepth> <find expression...>
 }
 
 # ── X5 · no deployed prod_guard.py diverges from the plugin it came from ───
-# THE GAP THIS CLOSES. projects-orchestrator#199 existed because a scaffolded
+# THE GAP THIS CLOSES. fleet#199 existed because a scaffolded
 # prod_guard.py sat a week behind the plugin it was copied from, with the
 # symlink refusal (PI-903) missing, and NOTHING compared the two. X2 covers live
 # bin/ vs repo and X4 covers installed skills vs vendored; neither looks at a
@@ -4878,15 +4878,15 @@ rule "drift.prod-policy-copy every deployed prod_guard.py matches the AUTHORITAT
 # THE BASELINE IS THE POINT OF THIS RULE, and the first version got it wrong.
 # It compared deployed copies against the marketplace mirror under
 # ~/.claude/plugins — which is itself STALE: HEAD c2b81b1 (2026-07-13) against an
-# upstream fix in ac85947 (2026-07-26, project-init#904, the PI-903 symlink
+# upstream fix in ac85947 (2026-07-26, yard#904, the PI-903 symlink
 # refusal). All three installed plugin copies are 266 lines with zero
 # `is_symlink`. So the rule would have called the VULNERABLE copy "matching" and
-# projects-orchestrator's CORRECT one "diverged" — precisely inverted.
+# fleet's CORRECT one "diverged" — precisely inverted.
 #
 # Fourth instance of one class in this ticket: the artifact under governance is
 # not the artifact doing the work. Here the artifact was the BASELINE.
 _CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-_SRC="${PROJECT_INIT_SRC:-${PORT_ROOT:-$HOME/port}/project-init}/templates/base/dot_agents/hooks/prod_guard.py"
+_SRC="${PROJECT_INIT_SRC:-$(env -u HARBOR_ROOT sh "$(dirname -- "$0")/roots.sh" --get HARBOR_PROJECT_INIT 2>/dev/null || :)}/templates/base/dot_agents/hooks/prod_guard.py"  # harbor#966
 _MIRROR="$_CFG/plugins/marketplaces/project-init/plugins/project-init-workflow/hooks/prod_guard.py"
 if [ -f "$_SRC" ]; then _BASE="$_SRC"; _BKIND="source repo"
 else _BASE="$_MIRROR"; _BKIND="marketplace mirror"; fi
@@ -5140,7 +5140,7 @@ fi
 # differently or not at all. A false positive gets a check deleted rather than
 # fixed (CONSTITUTION.md §2.11).
 # ── T11 · a skill the router cannot match is a skill nobody reaches ─────────
-# `inject.d/box/repo-skills.sh` makes a hidden skill reachable by emitting its
+# `context-rules/user/repo-skills.sh` makes a hidden skill reachable by emitting its
 # TRIGGER PHRASES, not its prose: it extracts `USE WHEN...` from the description
 # and falls back to the prose half only when a skill has none. Its own header
 # records what happens when that half is missing — until 2026-08-28 the emitter
@@ -5409,7 +5409,7 @@ unset _pm
 # $HOME" — lived in exactly two pieces of prose: a comment inside the GITIGNORED
 # fleet.yaml, and one line of harbor-build-tickets.md. Nothing checked it. So a
 # governed repo cloned into ~/Documents sat outside the fleet while every command
-# reported success, because projects-orchestrator scans `roots:` one level deep
+# reported success, because fleet scans `roots:` one level deep
 # and drops `exclude:` trees — and a project it never enumerates cannot be
 # reported as missing. Found 2026-07-31 with a workload repo and a since-retired project both under
 # ~/Documents/projects, the fleet reporting 2 projects and nothing reporting a
@@ -5454,7 +5454,7 @@ rule "scope.repo-discoverable every governed repo is reachable by fleet.yaml's o
 # It also never parsed `projects:`, so a repo registered there explicitly — the
 # supported way to include something outside every root — was reported as
 # unreachable while the fleet was reading it fine.
-_FLEET="${HARBOR_FLEET_FILE:-${PORT_ROOT:-$HOME/port}/projects-orchestrator/fleet.yaml}"
+_FLEET="$(env -u HARBOR_ROOT sh "$(dirname -- "$0")/roots.sh" --get HARBOR_FLEET_FILE 2>/dev/null || :)"  # harbor#966
 if [ -f "$_FLEET" ]; then
   # One awk pass, TAB-tagged by key, so the shell can tell the three lists apart
   # without word-splitting a path. awk and not a YAML library: this layer is
@@ -5789,17 +5789,20 @@ fi
 # their own drift rules; what belongs here is the source, at commit time.
 #
 # AND THE PRIVATE LAYER'S (harbor#1149). The packs that name a repo or a client, and the project
-# registry, live in <private>/inject.d, in the shape of this tree's inject.d/. They are not tracked
+# registry, live in <private>/context-rules (or the old <private>/inject.d, harbor#1010), in the shape of this tree's. They are not tracked
 # here, but they are installed and seeded from there, so a malformed one is the same silent
 # never-fired defect and IJ1..IJ5 read that tree too. `_inj_load` asks the one resolver beside this
-# script (a HARBOR_ROOT fixture holds no roots.sh): _INJ_DIR is the private inject.d, empty when
-# there is none, and _INJ_REG the registry inside it, empty when there is none.
+# script (a HARBOR_ROOT fixture holds no roots.sh): _INJ_DIR is the private rules root, empty when
+# there is none, _INJ_BOX its box tier (user/, or box/ in the old layout), and _INJ_REG the registry inside it, empty when there is none.
 _inj_load() {
   [ -z "${_INJ_LOADED:-}" ] || return 0
   _INJ_LOADED=1
   _INJ_DIR="$(env -u HARBOR_ROOT sh "$(dirname -- "$0")/roots.sh" --inject 2>/dev/null || :)"
-  _INJ_REG=''
-  if [ -n "$_INJ_DIR" ] && [ -f "$_INJ_DIR/box/projects.tsv" ]; then _INJ_REG="$_INJ_DIR/box/projects.tsv"; fi
+  _INJ_REG=''; _INJ_BOX=''
+  if [ -n "$_INJ_DIR" ]; then
+    case "$_INJ_DIR" in */context-rules) _INJ_BOX="$_INJ_DIR/user" ;; *) _INJ_BOX="$_INJ_DIR/box" ;; esac
+    [ ! -f "$_INJ_BOX/projects.tsv" ] || _INJ_REG="$_INJ_BOX/projects.tsv"
+  fi
 }
 rule_IJ1() {
 rule "context.pack-shape every tracked rule pack declares an event, a predicate and a body (CONTRACTS/inject.md)"
@@ -5807,9 +5810,20 @@ _inj_load
 _ij_fm() { awk 'NR==1 && $0 !~ /^---[[:space:]]*$/ { exit }
                 NR>1  && $0 ~  /^---[[:space:]]*$/ { exit }
                 NR>1' "$1"; }
-for f in "$ROOT"/inject.d/*/*.md "$ROOT"/.claude/inject.d/*.md "${_INJ_DIR:-/nonexistent}"/*/*.md; do
+for f in "$ROOT"/context-rules/*/*.md "${_INJ_DIR:-/nonexistent}"/*/*.md; do
   [ -f "$f" ] || continue
-  case "$f" in "$ROOT"/*) _rel="${f#$ROOT/}" ;; *) _rel="private:${f#"${_INJ_DIR%/inject.d}"/}" ;; esac
+  case "$f" in "$ROOT"/*) _rel="${f#$ROOT/}" ;; *) _rel="private:${f#"${_INJ_DIR%/*}"/}" ;; esac
+  # THE ID IS THE FILE NAME AND ORDER IS A KEY (D-43, harbor#1010): a tracked rule carries no NN- prefix and no id: that
+  # repeats its name, and an order: is a whole number. The private layer is judged once it moves to context-rules/.
+  case "$_rel" in
+    context-rules/*|private:context-rules/*)
+      _nm="${f##*/}"; _nm="${_nm%.md}"
+      case "$_nm" in [0-9]*-*) bad context.pack-shape "rule file name carries an NN- prefix; order is an order: key (D-43): $_rel" ;; esac
+      [ "$(_ij_fm "$f" | awk -F': *' '$1=="id"{print $2;exit}')" != "$_nm" ] \
+        || bad context.pack-shape "rule repeats its file name in id:; the id is derived (D-43): $_rel"
+      _or="$(_ij_fm "$f" | awk -F': *' '$1=="order"{print $2;exit}')"
+      case "$_or" in ''|*[!0-9]*) [ -z "$_or" ] || bad context.pack-shape "order: is not a whole number ($_or): $_rel" ;; esac ;;
+  esac
   _ev="$(_ij_fm "$f" | awk -F': *' '$1=="event"{print $2;exit}')"
   case "$_ev" in
     PreToolUse|PostToolUse|PostToolUseFailure|SessionStart|SubagentStart|PreCompact|SessionEnd) ;;
@@ -5879,8 +5893,8 @@ for f in "$ROOT"/inject.d/*/*.md "$ROOT"/.claude/inject.d/*.md "${_INJ_DIR:-/non
     *) bad context.pack-shape "pack declares scope: $_sc — the values are repo and box: $_rel" ;;
   esac
 done
-# A PACK OUTSIDE THE TWO DECLARED LOCATIONS IS A PACK NOTHING READS (harbor#588).
-# The glob above is `inject.d/*/*.md` and `.claude/inject.d/*.md`, which is
+# A PACK OUTSIDE THE DECLARED LOCATION IS A PACK NOTHING READS (harbor#588).
+# The glob above is `context-rules/*/*.md` (harbor#1010; it was `inject.d/*/*.md` and `.claude/inject.d/*.md`), which is
 # exactly where CONTRACTS/inject.md says packs live — and so a pack one level
 # off, at `inject.d/x.md` or `inject.d/box/sub/x.md`, was not validated and not
 # reported either. The installer copies `inject.d/<name>/` and the engine reads
@@ -5891,16 +5905,19 @@ done
 # broke `inject.d/demo/a rule.md` into two paths and flagged the fragment. The
 # list goes through a file so `bad` still counts in this shell, not a pipe's.
 _ijl="${TMPDIR:-/tmp}/ij1loc.$$"
-for _ijd in "$ROOT/inject.d" "$ROOT/.claude/inject.d" ${_INJ_DIR:+"$_INJ_DIR"}; do
+for _ijd in "$ROOT/context-rules" "$ROOT/inject.d" "$ROOT/.claude/inject.d" ${_INJ_DIR:+"$_INJ_DIR"}; do
   [ -d "$_ijd" ] || continue
   find "$_ijd" -type f -name '*.md' 2>/dev/null
 done | sort > "$_ijl"
 while IFS= read -r f; do
   [ -n "$f" ] || continue
-  case "$f" in "$ROOT"/*) _rel="${f#$ROOT/}"; _lbl="$_rel" ;; *) _rel="${f#"${_INJ_DIR%/inject.d}"/}"; _lbl="private:$_rel" ;; esac
+  case "$f" in "$ROOT"/*) _rel="${f#$ROOT/}"; _lbl="$_rel" ;; *) _rel="${f#"${_INJ_DIR%/*}"/}"; _lbl="private:$_rel" ;; esac
   case "${_rel##*/}" in README.md) continue ;; esac
+  # Core's old layout is retired (harbor#1010): the installer no longer reads it, so a rule there never ships.
+  case "$_lbl" in inject.d/*|.claude/inject.d/*)
+    bad context.pack-shape "rule sits in the retired inject.d/ layout, which nothing installs; move it to context-rules/<scope>/<id>.md: $_lbl"; continue ;; esac
   [ "$(printf '%s' "$_rel" | awk -F/ '{ print NF }')" -eq 3 ] \
-    || bad context.pack-shape "pack sits where nothing installs or reads it (CONTRACTS/inject.md names inject.d/<name>/ and .claude/inject.d/): $_lbl"
+    || bad context.pack-shape "pack sits where nothing installs or reads it (CONTRACTS/inject.md names context-rules/<scope>/): $_lbl"
 done < "$_ijl"
 rm -f "$_ijl"
 # The subshell above cannot increment FAIL — the same defect CLI1's header
@@ -5919,18 +5936,18 @@ fi
 # which is the more expensive half, because it is paid in every session and the
 # thing it points at may not be there.
 rule_IJ2() {
-rule "context.registry-dirs inject.d/<project>/ and inject.d/box/projects.tsv name the same projects"
-# The registry and the project pack folders are the private layer's (harbor#1149): <private>/inject.d/box/projects.tsv
-# and <private>/inject.d/<project>/. Core ships neither, so with no private layer there is nothing to compare, and
+rule "context.registry-dirs context-rules/<project>/ and the box tier's projects.tsv name the same projects"
+# The registry and the project pack folders are the private layer's (harbor#1149): <private>/context-rules/user/projects.tsv
+# and <private>/context-rules/<project>/ (box/ and <project>/ under the old inject.d, harbor#1010). Core ships neither, so with no private layer there is nothing to compare, and
 # the rule says it did not look rather than passing.
 _inj_load
 _reg="$_INJ_REG"
 if [ -n "$_reg" ]; then
-  for d in "$ROOT"/inject.d/*/ "$_INJ_DIR"/*/; do
+  for d in "$_INJ_DIR"/*/; do
     [ -d "$d" ] || continue
-    n="$(basename "$d")"; [ "$n" = box ] && continue
+    n="$(basename "$d")"; case "$n" in box|user) continue ;; esac
     awk -F'\t' -v k="$n" '$1 == k { found = 1 } END { exit !found }' "$_reg" \
-      || bad context.registry-dirs "inject.d/$n/ has no row in projects.tsv, so nothing ever seeds it"
+      || bad context.registry-dirs "${_INJ_DIR##*/}/$n/ has no row in projects.tsv, so nothing ever seeds it"
   done
   while IFS='	' read -r _n _p _rest; do
     case "$_n" in ''|'#'*) continue ;; esac
@@ -5960,20 +5977,20 @@ if [ -n "$_reg" ]; then
     # shape — "EQUAL mtimes say UNDECIDABLE, never a guess" — and saying so out
     # loud is what keeps the silence from reading as a pass.
     _abs="$HOME/${_p#\~/}"
-    if [ -d "$ROOT/inject.d/$_n" ] || [ -d "$_INJ_DIR/$_n" ]; then
-      :   # seeded from this repo or from the private layer
+    if [ -d "$_INJ_DIR/$_n" ]; then
+      :   # seeded from the private layer
     elif [ ! -d "$_abs" ]; then
       _adv context.registry-dirs "$_p"; printf '  ADVISORY [context.registry-dirs] %s is not on this box — cannot tell whether anything governs %s\n' "$_p" "$_n"
-    elif [ -n "$(ls "$_abs"/.claude/inject.d/*.md 2>/dev/null)" ]; then
-      :   # self-seeded: the packs live in the project's own tree
+    elif [ -n "$(find "$_abs/context-rules" "$_abs/.claude/inject.d" -path "$_abs/context-rules/user" -prune -o -name '*.md' -print 2>/dev/null | head -1)" ]; then
+      :   # self-seeded: the packs live in the project's own tree, in either layout (harbor#1010)
     else
-      bad context.registry-dirs "projects.tsv row '$_n' has no packs — none in the private inject.d/$_n/ and none in $_p/.claude/inject.d/ — so the pointer advertises it in every session and no rule of its own can fire"
+      bad context.registry-dirs "projects.tsv row '$_n' has no packs — none in the private ${_INJ_DIR##*/}/$_n/ and none in $_p/context-rules/ or $_p/.claude/inject.d/ — so the pointer advertises it in every session and no rule of its own can fire"
     fi
   done < "$_reg"
 elif [ -n "$_INJ_DIR" ]; then
-  bad context.registry-dirs "the private layer's inject.d/box/projects.tsv is missing — the pointer has no registry"
+  bad context.registry-dirs "the private layer's ${_INJ_BOX#"${_INJ_DIR%/*}"/}/projects.tsv is missing — the pointer has no registry"
 else
-  printf '  no private layer with an inject.d/ on this box, so there is no registry to compare against the pack folders — not checked.\n'
+  printf '  no private layer with a context-rules/ or inject.d/ on this box, so there is no registry to compare against the pack folders — not checked.\n'
 fi
 }
 
@@ -6077,12 +6094,12 @@ _inj_load
 _ij4_reg="$_INJ_REG"
 _ij4_home="${HARBOR_ESTATE_ROOT:-$HOME}"
 _ij4_bad=0; _ij4_seen=0
-# THE PROJECT PACKS ARE THE PRIVATE LAYER'S (harbor#1149): <private>/inject.d/<name>/ seeded by `inject-install.sh
+# THE PROJECT PACKS ARE THE PRIVATE LAYER'S (harbor#1149): <private>/context-rules/<name>/ (or inject.d/<name>/) seeded by `inject-install.sh
 # --projects`. With no registry there is nothing to seed them by, and the box tier below is still judged.
 if [ -n "$_ij4_reg" ]; then
   for _d in "$_INJ_DIR"/*/; do
     [ -d "$_d" ] || continue
-    _n="$(basename "$_d")"; [ "$_n" = box ] && continue
+    _n="$(basename "$_d")"; case "$_n" in box|user) continue ;; esac
     _t="$(awk -F'\t' -v k="$_n" '$1 == k { print $2; exit }' "$_ij4_reg" 2>/dev/null || true)"
     case "$_t" in '~/'*) _t="$_ij4_home/${_t#'~/'}" ;; esac
     # No row, or no such directory on this box, is IJ2's business and IJ3's.
@@ -6105,23 +6122,23 @@ fi
 # which is exactly why it needs a check: a latent gap with nothing watching it
 # is how the workload pack sat undelivered for four days.
 #
-# THE TIER IS CORE'S inject.d/box PLUS THE PRIVATE LAYER'S box files (harbor#1149): the
+# THE TIER IS CORE'S context-rules/user PLUS THE PRIVATE LAYER'S box files (harbor#1149, #1010): the
 # installer puts both in one directory, so the comparison is against both, and a private pack
 # that was never installed is a gap in this tier like any other. Only what the installer takes
 # crosses — a .md pack and projects.tsv — so a stray file in the private box dir is not drift.
 _ij4_cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-if [ -d "$ROOT/inject.d/box" ] && [ -d "$_ij4_cfg" ]; then
-  _ij4_u="${TMPDIR:-/tmp}/ij4u.$$"; mkdir -p "$_ij4_u"; cp -R "$ROOT/inject.d/box/." "$_ij4_u/" 2>/dev/null || :
-  if [ -n "$_INJ_DIR" ]; then
-    for _pf in "$_INJ_DIR"/box/*.md "$_INJ_DIR"/box/projects.tsv; do [ -f "$_pf" ] && cp "$_pf" "$_ij4_u/"; done
+if [ -d "$ROOT/context-rules/user" ] && [ -d "$_ij4_cfg" ]; then
+  _ij4_u="${TMPDIR:-/tmp}/ij4u.$$"; mkdir -p "$_ij4_u"; cp -R "$ROOT/context-rules/user/." "$_ij4_u/" 2>/dev/null || :
+  if [ -n "$_INJ_BOX" ]; then
+    for _pf in "$_INJ_BOX"/*.md "$_INJ_BOX"/projects.tsv; do [ -f "$_pf" ] && cp "$_pf" "$_ij4_u/"; done
   fi
   _ij4_seen=$(( _ij4_seen + 1 ))
-  if [ ! -d "$_ij4_cfg/inject.d" ]; then
-    _adv drift.pack-installed box-never-installed; printf '  ADVISORY [drift.pack-installed] the BOX packs are tracked but NEVER INSTALLED: %s/inject.d does not exist\n' \
+  if [ ! -d "$_ij4_cfg/context-rules/user" ]; then
+    _adv drift.pack-installed box-never-installed; printf '  ADVISORY [drift.pack-installed] the BOX packs are tracked but NEVER INSTALLED: %s/context-rules/user does not exist\n' \
       "${_ij4_cfg#"$HOME"/}"
     _ij4_bad=$(( _ij4_bad + 1 ))
-  elif ! diff -r "$_ij4_u" "$_ij4_cfg/inject.d" >/dev/null 2>&1; then
-    _adv drift.pack-installed box-drifted; printf '  ADVISORY [drift.pack-installed] the BOX packs have drifted from the repo copy: %s/inject.d\n' \
+  elif ! diff -r "$_ij4_u" "$_ij4_cfg/context-rules/user" >/dev/null 2>&1; then
+    _adv drift.pack-installed box-drifted; printf '  ADVISORY [drift.pack-installed] the BOX packs have drifted from the repo copy: %s/context-rules/user\n' \
       "${_ij4_cfg#"$HOME"/}"
     _ij4_bad=$(( _ij4_bad + 1 ))
   fi
@@ -6212,8 +6229,8 @@ fi
 # there was no cwd on the box from which `/harbor-context` worked except the repo
 # root itself.
 #
-# WHY THIS RULE DOES NOT SCAN inject.d/, which has the same shape and is CORRECT.
-# `.claude/inject.d/merge-note.sh` runs `exec sh "bin/govern-hook.sh" --note`,
+# WHY THIS RULE DOES NOT SCAN context-rules/, which has the same shape and is CORRECT.
+# `context-rules/harbor/merge-note.sh` runs `exec sh "bin/govern-hook.sh" --note`,
 # also relative — and it works, because hooks/injection-rule/injection-rule.sh wraps every `run:`
 # call in `(cd "$REPO" 2>/dev/null && sh "$_dir/$_run")`. CITED BY SHAPE, NOT BY
 # LINE: this comment said `:587` until 2026-09-16, by which time the wrapper had
@@ -6221,7 +6238,7 @@ fi
 # is a copy of a fact that lives in the file, and copies drift while reading
 # perfectly. Verified both ways from $HOME: rc=0 through the wrapper,
 # rc=127 without it. Nothing cds for a slash command, which is the whole
-# difference. A rule that flagged inject.d would be a false positive on working
+# difference. A rule that flagged context-rules would be a false positive on working
 # behaviour, and §2.11 makes that a defect rather than safety.
 # ── IJ6 · a governed repo whose sessions load NO memory (advisory) ──────────
 # The auto-memory store is keyed by the session's working directory, so a repo
@@ -6308,7 +6325,7 @@ for f in "$ROOT"/commands/*.md; do
       '$'*)  continue ;;   # a variable is the operator's to resolve; not decidable here
       *)
         # A `cd` EARLIER IN THE SAME COMMAND MAKES A RELATIVE PATH CORRECT, and
-        # this rule's own header blesses exactly that construct for inject.d
+        # this rule's own header blesses exactly that construct for context-rules
         # (`(cd "$REPO" && sh bin/x.sh)`, verified rc=0 from $HOME). Flagging it
         # inside commands/ while exempting it next door is the rule contradicting
         # its own reasoning.
@@ -6730,7 +6747,7 @@ _l1_harness() { # <rel>
       t && $1 ~ /^[A-Z][A-Za-z]+$/ && NF >= 3 { m = split($3, a, " "); for (i = 1; i <= m; i++) if (a[i] == b) h = 1 }
       END { exit !h }' "$_l1i" && return 0
   done
-  find "$ROOT/inject.d" "$ROOT/.claude/inject.d" -type f 2>/dev/null | while IFS= read -r _l1q; do
+  find "$ROOT/context-rules" -type f 2>/dev/null | while IFS= read -r _l1q; do
     _l1_code "$_l1q" | grep -qF -e "sh \"bin/$_l1h\"" -e "sh bin/$_l1h" && { echo y; break; }
   done | grep -q y && return 0
   _l1_code "$ROOT/$1" | grep -qE '\{[[:space:]]*\\?"?(hookSpecificOutput|systemMessage|additionalContext)\\?"?[[:space:]]*:'

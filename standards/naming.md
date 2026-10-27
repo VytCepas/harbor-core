@@ -285,6 +285,7 @@ from D-57 on are listed where this file, the registry or the lint cite them.
 | D-88 | Hook engine folders | a non-floor hook engine is `hooks/<engine>/` holding `<engine>.sh`, its tests and its manifest, the file named after its folder (revises D-58 and D-11 for this kind; `bin/` stays flat otherwise; the floor's hooks stay pinned where they are). A component folder carries a tracked `README.md`, seven sections generated from the manifest and one hand-written why, and a check fails on a folder without one (revises D-40's location for this kind). harbor#1272; decided by the operator, 2026-10-23 |
 | D-89 | Event and manual moments | the `moment` class gains `event` (started by an event it receives, not a timer or a harness hook; also the D-77 family) and `manual` (a person or a session runs it on demand); each `check` row in `controls.tsv` carries the moment its own trigger matches |
 | D-90 | Human doc kinds follow Diátaxis | a human-read doc is a `tutorial`, `how-to`, `reference` or `explanation`, the names of D-4's `docs/<kind>/` folders; records keep their own kinds |
+| D-91 | The object slot stays open | the allowlist validators (`build/validators.txt`, `name-check`) check shape and family only; the object slot is free and no validator claims object-slot coverage. Closing it through `terms.tsv` rows is deferred. Operator decision 2026-10-27, harbor#1259 (D-38 stands) |
 
 ## 13. Workspace, private layer, packs and share (D-78 to D-85)
 
@@ -294,7 +295,7 @@ The target design is `DESIGN.md` of the core-packs deliverable; this section is 
   the repos named in `harbor-private/repos.tsv` (`id`, `path`, `kind`, `remote`; D-82).
 - **Private layer (D-79):** `$PORT_ROOT/harbor-private`, data only: `harbor.toml`, `repos.tsv`, `terms.tsv`,
   `leaks.tsv`, `access/`, `checks.md`, `controls.tsv`, `jobs/`, `CLAUDE.personal.md`.
-- **Pack (D-80):** `<workload repo>/harbor-pack/` with `pack.toml`, `skills/`, `bin/`, `inject.d/`, `checks.tsv`,
+- **Pack (D-80):** `<workload repo>/harbor-pack/` with `pack.toml`, `skills/`, `bin/`, `context-rules/user/` (`inject.d/` until harbor#1010's date), `checks.tsv`,
   `tests/`. No `hooks/`, no `guard-*`.
 - **Config grammar (D-81):** `harbor.toml` and `pack.toml` are one flat TOML subset: one `key = value` per line,
   `#` comments, values a double-quoted string or a one-line array of them, no tables.

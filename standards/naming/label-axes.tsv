@@ -34,11 +34,11 @@ epic:provenance	epic	provenance	epic:provenance	-	-	-	ok	origin record of an aud
 epic:framing	epic	framing	epic:framing	-	-	-	ok	a problem statement awaiting a design decision
 theme:floor	theme	floor	theme:floor	bin/guard-*.sh bin/floor-*.sh bin/restore.sh bin/lint-conventions.sh FLOOR.md	-	-	gap	guard and floor correctness — what the gates see and refuse
 family:memory	family	memory	theme:memory	bin/memory*.sh hooks/memory-harvest/* hooks/worklog-push/* worklog/* CONTRACTS/memory-format.md	-	-	ok	capture, recall, index, staleness
-family:context	family	context	theme:context	bin/context-budget.sh bin/store-check.sh inject.d/* CONTEXT-BASELINE.tsv CONSTITUTION.md	-	-	ok	always-on surface and per-call context economy
+family:context	family	context	theme:context	bin/context-budget.sh bin/store-check.sh context-rules/* CONTEXT-BASELINE.tsv CONSTITUTION.md	-	-	ok	always-on surface and per-call context economy
 theme:doc-truth	theme	doc-truth	theme:doc-truth	DOCTRINE/doc-truth.md CONTRACTS/README.md QA-PLAN.md EVALS.md STATUS.md COVERAGE.md	-	-	gap	records that contradict the system they describe
 family:ci	family	ci	theme:ci	.github/workflows/* bin/merge-check.sh bin/worktree.sh bin/doctor.sh	-	-	ok	CI, worktrees, deployment and drift between repo and box
 theme:observability	theme	observability	theme:observability	bin/fleet-glyph.sh bin/observe-report.sh tests/hooks/statusline*.sh bin/dashboard-gen.sh bin/failure-capture.sh	-	-	gap	making running state legible: statusline, ledger, reports
-theme:subagent	theme	subagent	theme:subagent	inject.d/box/10-subagent-contract.md EVALS-DATA/*/subagent-reports/*	-	-	gap	delegation: what a subagent may do and must return
+theme:subagent	theme	subagent	theme:subagent	context-rules/user/subagent-contract.md EVALS-DATA/*/subagent-reports/*	-	-	gap	delegation: what a subagent may do and must return
 theme:architecture	theme	architecture	theme:architecture	CONTRACTS/descriptor.md CONTRACTS/marker.md	-	-	gap	architecture records and the cross-repo system graph
 theme:vendoring	theme	vendoring	theme:vendoring	vendor/* PROVENANCE.md skills/UNIFICATION.md bin/skills-*.sh	-	-	gap	intake of third-party code: copy, depend, or take the idea
 theme:browser	theme	browser	theme:browser	CONTRACTS/browser-routing.md bin/browser.sh bin/visual-check.sh	-	-	gap	browser capability and its backends

@@ -12,13 +12,13 @@ The directory is `${HARBOR_SCOPE_PRIVATE:-$PORT_ROOT/harbor-private}`, with `POR
 | `terms.tsv` | client and system terms, in the core `terms.tsv` columns | `bin/lint-name.sh`, the naming overlay (D-85) |
 | `leaks.tsv` | the leak gate's patterns, never terms: `id` TAB `kind` TAB `pattern` TAB `note`, kind one of literal, word, domain, email-domain, regex | `bin/lint-leaks.sh` (D-79, D-85; harbor#1149) |
 | `leaks-baseline.txt` | one number: the private leak count, which only goes down | `bin/lint-leaks.sh --check`, when the file exists |
-| `access/` | account, role and route cards; names only, never a secret; format in [access-card.md](./access-card.md) | `bin/roots.sh --access`, the one resolver; through it `skills/access-ledger/bin/check-routes.sh`, `skills/topology/bin/check-topology.sh`, `inject.d/box/access-route.sh` and lint `doc.urls-cited` |
+| `access/` | account, role and route cards; names only, never a secret; format in [access-card.md](./access-card.md) | `bin/roots.sh --access`, the one resolver; through it `skills/access-ledger/bin/check-routes.sh`, `skills/topology/bin/check-topology.sh`, `context-rules/user/access-route.sh` and lint `doc.urls-cited` |
 | `access/register.md` | the identity register: one `## <id>` entry per account, role, app, mailbox or token, each with a `secret:` reference, never a value; created with a header only; format in [access-register.md](./access-register.md) | `bin/access.sh` (`harbor access`), the one reader; through it `bin/secret`, which refuses a ref no entry names |
-| `inject.d/` | the rule packs that name a client or one of its repos, in the shape of core's `inject.d/`: `box/` (the `.md` packs every session carries, and `projects.tsv`, the registry: `name` TAB `~/path` TAB `what it covers`), one folder per repo (`<name>/*.md`, seeded into that repo by `--projects`) and `notes.tsv` (their probe rows, in the columns of `fixtures/inject/notes.tsv`); see [`inject.d/`](#injectd) | `bin/roots.sh --inject` and `--projects`, the resolver; through it `bin/inject-install.sh`, `bin/memory-route.sh`, `bin/access-environment.sh`, `bin/scope.sh`, `tests/hooks/inject-notes-test.sh` (`HARBOR_NOTES_PRIVATE`) and lint `IJ1`..`IJ5`. Absent is core's box tier alone, no registry and nothing to seed |
+| `context-rules/` (`inject.d/` until it moves, harbor#1010) | the rule packs that name a client or one of its repos, in the shape of core's `context-rules/`: `user/` (`box/` under `inject.d/`; the `.md` packs every session carries, and `projects.tsv`, the registry: `name` TAB `~/path` TAB `what it covers`), one folder per repo (`<name>/*.md`, seeded into that repo by `--projects`) and `notes.tsv` (their probe rows, in the columns of `fixtures/inject/notes.tsv`); see [`context-rules/`](#context-rules) | `bin/roots.sh --inject` and `--projects`, the resolver; through it `bin/inject-install.sh`, `bin/memory-route.sh`, `bin/access-environment.sh`, `bin/scope.sh`, `tests/hooks/inject-notes-test.sh` (`HARBOR_NOTES_PRIVATE`) and lint `IJ1`..`IJ5`. Absent is core's box tier alone, no registry and nothing to seed |
 | `checks.md` | private check rows (client monitors): a fragment in the register's own shape, see [`checks.md`](#checksmd) | `bin/check-registry-generate.sh`; through it `runtime-install.sh`, `install-drift.sh`, `findings.sh`, `lint-conventions.sh` (`drift.launchd-plist`, `audit.finding-lanes`) |
 | `controls.tsv` | the `check.<id>` control rows of those checks, in the core `standards/naming/controls.tsv` columns | nothing yet: `bin/lint-name.sh` overlays `terms.tsv` only |
 | `jobs/` | private scheduled jobs: the launchd plists of the checks in `checks.md` and in `harbor-pack/checks.md` (a pack ships no plist, harbor#1273), named `com.harbor.<id>.plist` | `drift.launchd-plist` (the plist a row owes) and `renew-check.sh` (built here, installed nowhere). Core has no plist installer either: the operator copies a plist into the LaunchAgents folder, from `jobs/` here and from `launchd/` there |
-| `browser-hosts.txt` | hosts `harbor chrome` admits beyond core's allowlist (an operator's own vendor stack, a company's internal UIs and its partners', a client's tools, an operator's own tenants and coursework), in the allowlist's own shape: a line admits the host and its subdomains, under a comment saying why | `bin/browser-agent.sh` (the `goto`/`tab-new` host check) and `inject.d/box/browser-route.sh`, each after the core list. Absent is the core list alone |
+| `browser-hosts.txt` | hosts `harbor chrome` admits beyond core's allowlist (an operator's own vendor stack, a company's internal UIs and its partners', a client's tools, an operator's own tenants and coursework), in the allowlist's own shape: a line admits the host and its subdomains, under a comment saying why | `bin/browser-agent.sh` (the `goto`/`tab-new` host check) and `context-rules/user/browser-route.sh`, each after the core list. Absent is the core list alone |
 | `confinement-hosts.txt` | hosts a confined shell command may reach beyond core's `CONTRACTS/confinement-hosts.txt` (the APIs a workload's tools call), in core's shape: one host per line, `*.` for subdomains, under a comment saying why. Keep it short (#555 decision 11): each new row is an operator `sudo` install | `bin/deploy-confinement.sh`, after the core list, deduplicated. Absent is the core list alone, byte for byte; a row that does not compose, or a file that exists and cannot be read, refuses the install |
 | `confinement-paths.txt` | write, deny-write and read rows beyond core's `CONTRACTS/confinement-paths.txt` (a workload tool's cache or config dir, its CA bundle), as `<kind> <path>` with `@PORT_ROOT@` and `@DELIVERABLES@` resolved; paths are resolved paths, since Seatbelt ignores a symlinked spelling | `bin/deploy-confinement.sh`, after core's rows, same refusals. Absent is core's rows alone |
 | `citations.md` | the rows of `CITATIONS.md` for hosts core does not name, same row shape | lint `doc.urls-cited` (T7), beside `CITATIONS.md`. Absent is the core ledger alone. A hand-kept ledger: `bin/cite-verify.sh` fetches the tree's URLs, not these |
@@ -47,6 +47,7 @@ The directory is `${HARBOR_SCOPE_PRIVATE:-$PORT_ROOT/harbor-private}`, with `POR
   `<owner of harbor's origin>/<id>`. Anything else (a `user:token@`, `http://`, `ext::`, a query) refuses the run before any write.
 - `--repo <id>` prints the resolved checkout. When a registry exists and lacks the row it is "not registered": exit 1, nothing on stdout.
 - `--remote <id>` prints the row's `remote`. No registry, no such row, and a remote of `-` or empty are each exit 1 with nothing on stdout (the caller then applies its own rule); an unreadable registry is exit 2.
+- `--get <VAR>` for a `roots.tsv` row on the workspace base (`HARBOR_ORCHESTRATOR`, `HARBOR_FLEET_FILE`, `HARBOR_PROJECT_INIT`) follows the registry: the row's first path segment is a repo id, and the registry's path for it replaces that segment. An id the registry lacks, or no registry, keeps the table's path; an exported override wins over both. A script that needs a sibling's checkout asks for its role this way and names no repo (harbor#966).
 - **No registry file:** `--repos` answers from `CONTRACTS/roots.tsv`, and `--repo <id>` prints `PORT_ROOT/<id>` whether or not that directory exists, the old literal, so a box with no layer behaves as before. `harbor scope install --seed-from-projects` writes the registry.
 
 ## `harbor.toml`
@@ -110,7 +111,7 @@ or an `ACCESS_DIR` that is not a directory), prints nothing, says why on stderr 
 pass: the route gate exits 2, the topology check says it skipped, the access-failure note stays silent, the lint rule
 reports "skipped: no private layer". The floor does not read it.
 
-`access/routes.tsv` is the one file in it that is not a card: the command-to-card table `inject.d/box/access-route.sh`
+`access/routes.tsv` is the one file in it that is not a card: the command-to-card table `context-rules/user/access-route.sh`
 reads (format in [access-card.md](./access-card.md)). Absent, the access-failure note stays silent.
 
 `access/vocabulary.tsv` is the register's own words (harbor#1273): `kind` TAB `pattern` TAB `card`, a `system` row for each name
@@ -118,29 +119,35 @@ reads (format in [access-card.md](./access-card.md)). Absent, the access-failure
 `identity:` or `account:` must not stop at, beside core's generic ones. A row that cannot be read refuses the run (exit 2).
 Absent, `--coverage` says NOT CHECKED (exit 2) and the gate holds core's labels alone.
 
-## `inject.d/`
+## `context-rules/`
 
-Core's `inject.d/` holds `box/` and nothing else: the packs every box needs and none that names a client or a repo of
-one. The rest is here, in the same shape. `sh bin/roots.sh --inject` prints `<private>/inject.d` and `--projects` the
-registry `<private>/inject.d/box/projects.tsv`; with no layer, no `inject.d/` or no registry each prints nothing, says
+Core's `context-rules/` holds `user/` (the box tier) and `harbor/` (harbor's own repo rules) and nothing else: the packs
+every box needs and none that names a client or another repo. The rest is here, in the same shape. `sh bin/roots.sh
+--inject` prints `<private>/context-rules`, or the old `<private>/inject.d` while the layer has not moved (harbor#1010), and
+`--projects` the registry, `<rules>/user/projects.tsv` (`box/projects.tsv` under `inject.d/`); with no layer, neither
+directory or no registry each prints nothing, says
 why on stderr and exits 1, and no reader treats that as a pass: the installer is core alone, `memory-route` stands
 down naming where it looked, and lint IJ2 says it did not check.
 
-- **It is data.** `bin/inject-install.sh` copies only `*.md` and `projects.tsv` from `box/` into `<config>/inject.d`,
-  where every session's hook reads them. A script, a link, any other file, or a name core's `inject.d/box/` already
+- **It is data.** `bin/inject-install.sh` copies only `*.md` and `projects.tsv` from `user/` (or `box/`) into
+  `<config>/context-rules/user`, where every session's hook reads them. A script, a link, any other file, or a name core's `context-rules/user/` already
   ships is refused (a dry run exits 1, `--apply` writes nothing): a private file never replaces a shipped pack. The
   repo folders are held to the same rule when `--projects` seeds them, since the engine runs a pack's `run:` script in
   the repository they land in: only flat `*.md` files cross, and a script, a link, a subfolder or any other file
   refuses the run.
 - **The matcher includes them.** The tool matcher the installer wires is derived from every pack the engine may meet,
   the private repo packs among them, so a private pack on a tool no core pack names is still invoked.
-- **`--projects` seeds from here.** The installer's `--projects` step copies `<private>/inject.d/<name>/` into the
+- **`--projects` seeds from here.** The installer's `--projects` step copies `<private>/context-rules/<name>/` (or `inject.d/<name>/`) into the
   project the registry row `<name>` names (the existing `.claude/inject.d` goes to the run's backup first); a folder
   with no row is skipped and says so.
 - **`notes.tsv`** carries the probe rows of these packs. `HARBOR_NOTES_PRIVATE=<layer> sh tests/hooks/inject-notes-test.sh`
   runs them beside core's `fixtures/inject/notes.tsv`.
-- **Merge order.** The layer holding these packs lands before the core change that removes them from `inject.d/`, or
+- **Merge order.** The layer holding these packs lands before the core change that removes them from core, or
   a deploy between the two installs a box with neither.
+- **The move (harbor#1010).** Moving this folder to `context-rules/` is one private commit: `inject.d/box/` becomes
+  `context-rules/user/` with `projects.tsv`, each `inject.d/<name>/` becomes `context-rules/<name>/`, each `NN-x.md` becomes
+  `<id>.md` with `order: NN` where order matters, and `notes.tsv` moves with them. Core reads either layout until the
+  `dir:inject.d` row's date in `standards/naming/renames.tsv`.
 
 ## The tree names no sibling repo
 

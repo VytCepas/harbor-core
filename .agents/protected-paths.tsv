@@ -48,7 +48,7 @@ bin/prod-guard-ambient.sh	hook	PreToolUse hook: the shim that runs project-init'
 bin/fleet-glyph.sh	hook	the settings statusLine command: runs at every render
 bin/subagent-glyph.sh	hook	the settings statusLine command for subagents
 hooks/**	hook	the repo's git hooks (pre-commit and pre-push run the floor's smoke and the lint) and the hook engines: script, tests and manifest per folder (D-88)
-inject.d/**	instructions	just-in-time instruction packs injected into sessions
+context-rules/**	instructions	just-in-time instruction packs injected into sessions (inject.d/ before harbor#1010)
 .claude/**	instructions	this repo's own Claude Code config and instruction packs
 skills/**	instructions	every tracked skill, installed into the config dir
 vendor/skills/**	instructions	vendored skills, installed beside skills/
@@ -88,7 +88,7 @@ CONTRACTS/merge-stack-union.txt	installed	derived: shipped by runtime-install.sh
 CONTRACTS/obligation-kinds.tsv	installed	derived: shipped by runtime-install.sh
 CONTRACTS/repo-slug.txt	installed	derived: shipped by runtime-install.sh
 CONTRACTS/required-checks.tsv	installed	derived: shipped by runtime-install.sh
-CONTRACTS/roots.tsv	operator-run	derived: decides what ~/.local/bin points at
+CONTRACTS/roots.tsv	installed	derived: shipped by runtime-install.sh
 CONTRACTS/session-waiting.tsv	installed	derived: shipped by runtime-install.sh
 CONTRACTS/shims.tsv	operator-run	derived: decides what ~/.local/bin points at
 CONTRACTS/suite-paths.txt	ci-gate	derived: decides what a required check runs
@@ -212,6 +212,7 @@ bin/memory-route.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/memory.sh	operator-run	derived: linked into ~/.local/bin as memory by CONTRACTS/shims.tsv
 bin/merge-check.sh	installed	derived: shipped by floor-install.sh
 bin/merged-check.sh	installed	derived: shipped by runtime-install.sh
+bin/name-check	operator-run	derived: linked into ~/.local/bin as name-check by CONTRACTS/shims.tsv
 bin/observe-report.sh	installed	derived: shipped by runtime-install.sh
 bin/otlp-receiver.py	ship	derived: called by bin/collector-setup.sh
 bin/pack.sh	ship	derived: called by bin/deploy.sh
@@ -231,7 +232,7 @@ bin/replay-corpus.sh	ci-gate	derived: called by bin/doctor.sh
 bin/replay-worker.sh	installed	derived: called by bin/replay.sh
 bin/replay.sh	installed	derived: called by bin/pass-score.sh
 bin/restore.sh	installed	derived: shipped by floor-install.sh
-bin/roots.sh	ship	derived: called by bin/deploy.sh
+bin/roots.sh	installed	derived: shipped by runtime-install.sh
 bin/runner-switch.sh	installed	derived: shipped by runtime-install.sh
 bin/runtime-install.sh	ship	derived: called by bin/deploy.sh
 bin/sandbox-make.sh	installed	derived: shipped by runtime-install.sh

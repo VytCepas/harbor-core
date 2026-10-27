@@ -5,7 +5,7 @@
 . "$T_ROOT/tests/hooks/inject-fixture.sh"
 BOX="$T/dcfg"; OD="$BOX/MEMORY/OBSERVABILITY/testhost"
 mkdir -p "$BOX/inject.d" "$BOX/bin" "$OD"
-cp -R "$T_ROOT"/inject.d/box/. "$BOX/inject.d/"; cp "$T_ROOT/bin/guard-lib.sh" "$T_ROOT/bin/compaction-digest.sh" "$BOX/bin/"
+cp -R "$T_ROOT"/context-rules/user/. "$BOX/inject.d/"; cp "$T_ROOT/bin/guard-lib.sh" "$T_ROOT/bin/compaction-digest.sh" "$BOX/bin/"
 printf 'testhost\n' > "$BOX/.helm-obs-host"; printf '0123456789abcdef0123456789abcdef\n' > "$BOX/.helm-obs-salt"
 skof() { sh "$BOX/bin/compaction-digest.sh" --keys "$1" | cut -d" " -f1; }
 sof()  { sh "$BOX/bin/compaction-digest.sh" --keys "$1" | cut -d" " -f2; }
