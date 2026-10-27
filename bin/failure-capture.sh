@@ -1483,8 +1483,7 @@ if [ "$NTF" -gt 0 ]; then
   jq -s -r --arg c "$FC_CUTOFF" '
       map(select(.e != "blocked" and (.h // "-") != "-"))
     | group_by(.h)
-    # Label from the NEWEST record: the oldest one of a long-lived group can predate a recorder fix (bare `mcp` before #1381).
-    | map((sort_by(.ts // "") | .[-1]) as $n | { t: $n.t, k: $n.k, e: $n.e,
+    | map({ t: .[0].t, k: .[0].k, e: .[0].e,
             n: length, s: (map(.s) | unique | length), last: (map(.ts // "" | .[0:10]) | max) })
     | map(select(.n >= 3 and .s >= 2))
     | map(select($c == "" or .last >= $c))
