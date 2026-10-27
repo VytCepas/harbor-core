@@ -13,7 +13,6 @@ if [ -z "$UI_BUN" ]; then
   t_eq "HARBOR_REQUIRE_BUN is off where bun is absent" 0 "$REQ_BUN"
   t_done
 fi
-ui_require_listen "the panels"
 cmd_of() { case "$1" in # the source command each panel must name
   floor) echo 'bin/floor-verify.sh --live' ;; findings) echo 'bin/findings.sh report' ;; register) echo 'CHECKS.md' ;;
   checks) echo 'cache/checks.log' ;; guards) echo 'bin/observe-report.sh --fp' ;; context) echo 'bin/context-budget.sh --check' ;;

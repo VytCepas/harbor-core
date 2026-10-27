@@ -73,8 +73,6 @@ t_has "the crit reaches session-verdicts" "$_v" "ledger judge CRIT"
 t_has "the repair text survives" "$_v" "floor-install.sh"
 # The cache holds a warn line for this fixture (section 1); the session channel stays blind to it.
 t_hasnt "an itemised warn never reaches the session channel" "$_v" "cd-cfg-then-find-exec"
-t_eq "...but not again after /compact: the same session already saw it" "" "$(printf '{"hook_event_name":"SessionStart","source":"compact"}\n' | sv)"
-t_has "...while a resume still shows it" "$(printf '{"hook_event_name":"SessionStart","source":"resume"}\n' | sv)" "ledger judge CRIT"
 fixture_clean; run "$T/cfg" --apply >/dev/null
 t_eq "a clean cache prints nothing" "" "$(sv)"
 

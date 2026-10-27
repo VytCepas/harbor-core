@@ -97,11 +97,6 @@ t_eq "an empty error" empty "$(_class '' 4)"
 t_eq "an unrecognised error" other "$(_class 'nothing familiar here' 5)"
 # A floor block is already one record in guard-decisions.jsonl; FC-10 excludes this class.
 t_eq "a floor block" blocked "$(_class 'HELM FLOOR [bash:pipe-to-shell]: BLOCKED' 6)"
-# browser-agent's operator hand-offs are its rules working; tagged on its own server only.
-_mclass() { _f="$(mkfix "mcls$3")"; fire "$_f" "$(payload s1 "$2" '{"args":[]}' "$1" false)"; last "$_f" | jq -r .e; }
-t_eq "a harbor_chrome hand-off" handoff "$(_mclass '  FAIL: hand-off: signed out: x' mcp__harbor_chrome__snapshot 1)"
-t_eq "...the same text from another server is not" other "$(_mclass '  FAIL: hand-off: signed out: x' mcp__other__snapshot 2)"
-t_eq "...nor a harbor_chrome failure without the tag" other "$(_mclass '  FAIL: ref e1 is not in the current snapshot' mcp__harbor_chrome__click 3)"
 
 t_section "every refusal writes nothing and creates nothing"
 F="$(mkfix nosink)"  # only floor-observe.sh may create a sink

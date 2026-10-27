@@ -218,7 +218,6 @@ t_eq "an ordinary button is clicked" "exit 0" "$(ag click e3)"
 t_eq "after a full guard snapshot, never a partial one" 1 "$(called 'snapshot --boxes --filename=harbor-guard.yml')"
 t_eq "and the click itself ran" 1 "$(called 'click e3')"
 t_eq "a Delete button is refused" "exit 1" "$(ag click e4)"
-t_has "...as a hand-off, so the failure ledger does not count it (FC-10)" "$(out)" "FAIL: hand-off: destructive click refused"
 t_has "naming the label and the word" "$(out)" "'button \"Delete campaign\"' (e4) matches 'delete'"
 t_has "with the per-call confirm as its fix" "$(out)" "fix: HARBOR_BROWSER_CONFIRM=e4 harbor chrome click e4"
 t_eq "and the click never reached the CLI" 0 "$(called 'click e4')"
@@ -249,7 +248,7 @@ t_eq "a confirm set on any other verb is refused (exported)" "exit 1" "$(rc env 
 t_has "naming it per-call" "$(out)" "never exported"
 # The guard line removed, the same Delete click must go through: the arms above can fail.
 M="$T_TMP/mutant"; mkdir -p "$M/bin" "$M/CONTRACTS"
-sed 's/^\( *\)_handoff "destructive .*/\1:/' "$AGENT" > "$M/bin/browser-agent.sh"
+sed 's/^\( *\)_refuse "destructive .*/\1:/' "$AGENT" > "$M/bin/browser-agent.sh"
 cp "$T_ROOT/bin/log-lib.sh" "$M/bin/"; cp "$T_ROOT/CONTRACTS/browser-agent-hosts.txt" "$M/CONTRACTS/"
 t_eq "the mutant differs from the script" yes "$(cmp -s "$AGENT" "$M/bin/browser-agent.sh" || echo yes)"
 t_eq "and without the guard line the Delete click goes through" "exit 0" \
