@@ -279,4 +279,9 @@ t_has "...and named" "$(mfi)" 'installed skill three has no row'
 rm -rf "$MFD/skills/three"; printf 'abc 100644 skills/ghost/SKILL.md skills-install deadbeef\n' >> "$MFD/.harbor-manifest"
 t_eq "a manifest row whose skill is gone is red" 1 "$(mfx)"
 t_has "...and named" "$(mfi)" 'manifest row for skill ghost names a skill that is not installed'
+printf 'abc 100644 skills/alpha/SKILL.md skills-install deadbeef\n' >> "$MFD/.harbor-manifest"
+MFO="$(mfi)"
+t_eq "each finding carries its own fix line (the contract warning never prints)" 0 "$(printf '%s\n' "$MFO" | grep -c 'no fix line followed')"
+t_has "a stale row for a skill the checkout no longer ships is fixed by the prune" "$MFO" "fix: sh bin/deploy.sh --prune --apply --dir"
+t_has "a row for a skill the checkout still ships is fixed by reinstalling it" "$(printf '%s\n' "$MFO" | grep -- '--only skills --dir')" "mfcfg' alpha"
 t_done

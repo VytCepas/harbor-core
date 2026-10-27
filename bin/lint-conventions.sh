@@ -361,6 +361,8 @@ for _h in $SKILL_HOMES; do
     [ -d "$d" ] && _n3_known="$_n3_known $(basename "$d")"
   done
 done
+# A tracked slash command is invoked like a skill, so it is a handoff target too (harbor#1010: review-fanout -> harbor-merge).
+for _c in "$ROOT"/commands/*.md; do [ -f "$_c" ] && _n3_known="$_n3_known $(basename "$_c" .md)"; done
 _n3_hits=0
 for _h in $SKILL_HOMES; do
   [ -d "$_h" ] || continue
@@ -589,6 +591,38 @@ else
   fi
 fi
 rm -rf "$_ssd"
+}
+
+# ── lint.comment-conform · the lines a branch adds pass bin/lint-comment.sh (warn, harbor#978) ──
+# RUNS bin/lint-comment.sh and relays its findings as advisories, as N4 does (ids and modes are its and controls.tsv's).
+# Exit 3, no base (a shallow clone), is an advisory, never silence or a failure; exit 2 or above 3 judged nothing.
+rule_lint_comment_conform() {
+rule "lint.comment-conform the lines a branch adds pass bin/lint-comment.sh: header line 2, comment runs (warn) (harbor#978)"
+_lc="$ROOT/bin/lint-comment.sh"
+if [ ! -f "$_lc" ]; then say "  skip: no bin/lint-comment.sh in this tree, so no added line was judged"; return 0; fi
+_lco="${TMPDIR:-/tmp}/lc.$$"; _lcrc=0; _lcred="${LINT_REDLOG:-}"
+LINT_REDLOG="$_lcred" sh "$_lc" --root "$ROOT" > /dev/null 2> "$_lco" || _lcrc=$?
+if [ "$_lcrc" -eq 3 ]; then
+  LINT_REDLOG=""   # "could not look" is not the rule going red
+  _adv lint.comment-conform bin/lint-comment.sh; printf '  ADVISORY [lint.comment-conform] unchecked: no base to compare against (HARBOR_BASE, else origin/main), so no added line was judged\n' >&2
+  LINT_REDLOG="$_lcred"
+elif [ "$_lcrc" -gt 1 ]; then
+  bad lint.comment-conform "bin/lint-comment.sh exited $_lcrc and judged nothing: $(grep -m1 'FAIL:' "$_lco" | sed 's/^ *FAIL: //')"
+else
+  _lcn=0; _lcf=0; LINT_REDLOG=""   # the relay records findings, not reds: lint-comment.sh already logged its ids
+  while IFS= read -r _lcl; do
+    case "$_lcl" in
+      '  WARN: ['*) _lcn=$((_lcn + 1)); _lcs="${_lcl#*] }"; _lcs="${_lcs%% — *}"
+                    _adv lint.comment-conform "$_lcs"; printf '  ADVISORY [lint.comment-conform] %s\n' "${_lcl#  WARN: }" >&2 ;;
+      '  FAIL: ['*) _lcf=$((_lcf + 1)); _lcs="${_lcl#*] }"; LINT_REDLOG="$_lcred"; bad lint.comment-conform "${_lcl#  FAIL: }" "${_lcs%% — *}"; LINT_REDLOG="" ;;
+    esac
+  done < "$_lco"
+  LINT_REDLOG="$_lcred"
+  # exit 1 with no [rule] FAIL line is the engine dying (a missing lib exits 1), not a finding: never a pass
+  if [ "$_lcrc" -eq 1 ] && [ "$_lcf" -eq 0 ]; then bad lint.comment-conform "bin/lint-comment.sh exited 1 with no finding and judged nothing: $(head -1 "$_lco")"; fi
+  [ "$_lcn" -gt 0 ] || say "  $(grep -m1 'no added header' "$_lco" | sed -E 's/^ *(ok|note): //')"
+fi
+rm -f "$_lco"
 }
 
 # ── S1 · shell scripts: shebang, strict mode ────────────────────────────────

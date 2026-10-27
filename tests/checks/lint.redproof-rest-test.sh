@@ -193,4 +193,33 @@ _sk nofor 'Does a thing. USE WHEN x. NOT FOR y.'
 _sk dead 'Runs `bin/gone.sh` for you. USE WHEN x. NOT FOR y.'
 _rp_red skill.cited-path-exists "skills/dead cites bin/gone.sh, which is not in the tree" "a description citing a script that does not exist"
 
+
+t_section "N3 (advisory): a NOT FOR handoff to a tracked slash command resolves (harbor#1010)"
+_rp_fresh; mkdir -p "$RP/skills/giver" "$RP/commands"
+printf -- '---\nname: giver\ndescription: Gives. USE WHEN giving. NOT FOR merging (merge-gate).\n---\n' > "$RP/skills/giver/SKILL.md"
+_rp_red N3 'ADVISORY [skill.not-for-target-exists] giver hands off to "merge-gate"' "a handoff to a command that is not tracked"
+printf '# merge-gate\n' > "$RP/commands/merge-gate.md"
+_rp_green N3 "a handoff to commands/merge-gate.md"
+
+t_section "lint.comment-conform: bin/lint-comment.sh's findings on a branch are relayed, never silent (harbor#978)"
+CR="$T_TMP/cr"; rm -rf "$CR"; mkdir -p "$CR/bin" "$CR/standards/naming"; cp "$T_ROOT/bin/lint-comment.sh" "$T_ROOT/bin/log-lib.sh" "$CR/bin/"
+printf 'id\tmode\n' > "$CR/standards/naming/controls.tsv"
+git -C "$CR" init -q -b main; git -C "$CR" add -A; git -C "$CR" -c user.email=t@e.invalid -c user.name=t commit -q -m base
+git -C "$CR" checkout -q -b feature
+_cr() { ( HARBOR_BASE="${1:-main}"; export HARBOR_BASE; _rp lint.comment-conform "$CR" ); }
+t_has "a branch adding nothing is clean, and the engine ran" "$(_cr)" "1 rules, 0 violations"
+t_eq "...with no advisory" "" "$(_cr | grep -F 'ADVISORY [lint.comment-conform]')"
+printf '#!/usr/bin/env sh\n# whatever\nx=1\n' > "$CR/bin/nohead.sh"
+git -C "$CR" add -A; git -C "$CR" -c user.email=t@e.invalid -c user.name=t commit -q -m branch
+t_has "an added script without the header is an advisory under the relay id" "$(_cr)" "ADVISORY [lint.comment-conform] [lint.file-header] bin/nohead.sh:2"
+t_has "...and still no violation" "$(_cr)" "0 violations"
+t_has "no base is said as an advisory, never silence" "$(_cr no-such-ref)" "ADVISORY [lint.comment-conform] unchecked: no base to compare against"
+t_has "...and does not fail the build" "$(_cr no-such-ref)" "0 violations"
+printf 'id\tmode\nlint.file-header\tblock\n' > "$CR/standards/naming/controls.tsv"
+t_has "a block row's finding is a violation" "$(_cr)" "VIOLATION [lint.comment-conform] [lint.file-header] bin/nohead.sh:2"
+rm "$CR/bin/log-lib.sh"
+t_has "an engine that cannot run is a violation, not a pass" "$(_cr)" "VIOLATION [lint.comment-conform] bin/lint-comment.sh exited"
+rm "$CR/bin/lint-comment.sh"
+t_has "a tree without the engine is skipped, said so" "$(_cr)" "skip: no bin/lint-comment.sh"
+
 t_done
