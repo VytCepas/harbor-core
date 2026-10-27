@@ -170,6 +170,8 @@ FT3="$(tf_fixture tf-single)"; tf_write "$FT3" 1 s not-found
 t_eq "one failure, once" no "$(has_rule "$FT3" FC-10)"
 FT4="$(tf_fixture tf-blocked)"; tf_write "$FT4" 4 s blocked  # the guard ledger's record, not this one
 t_eq "a repeated floor block" no "$(has_rule "$FT4" FC-10)"
+FT4H="$(tf_fixture tf-handoff)"; tf_write "$FT4H" 4 s handoff  # browser-agent handing a step to the operator
+t_eq "a repeated operator hand-off" no "$(has_rule "$FT4H" FC-10)"
 
 # A not-found pointer that resolves now is repaired (the judge's crit on ~/port/harbor/CLAUDE.md outlived its own fix).
 t_section "FC-10: a not-found path that exists now is repaired, and one that does not still fires"
