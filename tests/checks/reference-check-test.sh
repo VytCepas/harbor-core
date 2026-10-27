@@ -10,6 +10,7 @@ CLEAN="$(mkfixture clean)"
 t_eq "the clean fixture reports nothing" "" "$(rules_of "$CLEAN")"
 t_exit "the clean fixture exits" 0 sh "$RC" "$CLEAN"
 
+
 t_section "REF-1: a hook whose script does not exist"
 F1="$(mkfixture ref1)"
 resettings "$F1" --arg c "/bin/sh $F1/bin/GONE.sh" '.hooks.SessionStart += [{matcher: "x", hooks: [{type: "command", command: $c}]}]'
@@ -64,6 +65,8 @@ t_eq "REF-5 fires on a manifest row with no file" yes "$(fired "$(rules_of "$F5D
 t_has "the finding names the missing file" "$(sh "$RC" "$F5D" 2>&1)" "GONE-installed.sh"
 t_exit "a dangling installed file exits" 1 sh "$RC" "$F5D"
 t_eq "graph-gen --dangling lists the same row" "bin/GONE-installed.sh" "$(CLAUDE_CONFIG_DIR="$F5D" sh "$T_ROOT/bin/graph-gen.sh" --dangling | awk -F'\t' '{ sub(/.*\/bin\//, "bin/", $1); print $1 }')"
+t_exit "...and with TMPDIR unwritable still exits" 1 env TMPDIR=/nonexistent-refchk sh "$RC" "$F5D"
+t_eq "...still naming the row" yes "$(fired "$(TMPDIR=/nonexistent-refchk sh "$RC" "$F5D" 2>&1)" REF-5)"
 
 t_section "REF-0: a settings.json that does not PARSE is never 'clean'"
 F0="$(mkfixture ref0)"

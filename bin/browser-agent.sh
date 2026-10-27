@@ -74,6 +74,9 @@ _refuse() { # <what failed> [fix command]
   log_end || :
   exit 1
 }
+# A refusal whose next step is the operator's, or one of harbor's own rules working: tagged so the
+# failure ledger files it as `handoff`, not as the tool failing (FC-10, harbor#465).
+_handoff() { _refuse "hand-off: $1" "${2:-}"; }
 
 # The Chrome profiles holding the extension, comma-separated, or `none`.
 _ext_profiles() {
@@ -324,7 +327,7 @@ _account_for() { # <app host>
 _signed_out() { # <sign-in page url> — refuse naming the account the app wants
   _app="$(cat "$WORKDIR/.app-host" 2>/dev/null || :)"; [ -n "$_app" ] || _app="$(_url_host "$1")"
   _acct="$(_account_for "$_app")"
-  _refuse "signed out: $_app sent this session to a sign-in page ($(_url_host "$1")). Signing in is the operator's: harbor never fills a password or picks a password-manager entry" \
+  _handoff "signed out: $_app sent this session to a sign-in page ($(_url_host "$1")). Signing in is the operator's: harbor never fills a password or picks a password-manager entry" \
     "operator: sign in${_acct:+ as $_acct}; then harbor chrome wait-signin"
 }
 _bare_url() { printf '%s' "$1" | sed 's/[?#].*//'; }   # query strings carry tokens and ids
@@ -346,7 +349,7 @@ _gone_check() {
   /usr/bin/grep -qE "^(The b|B)rowser '[^']*' is not open" "$1" 2>/dev/null || return 0
   rm -f "$1"; _e="$(_relay_err)"
   _why=''; [ -z "$_e" ] || _why="$(/usr/bin/grep -o 'ws closed> .*' "$_e" | tail -1 | cut -c12-200 || :)"
-  _refuse "no Chrome is connected to session $S${_why:+ — the relay last closed with $_why}" \
+  _handoff "no Chrome is connected to session $S${_why:+ — the relay last closed with $_why}" \
     'harbor chrome attach   # then Connect in Chrome; for an app with a login, sign in first and Connect that tab'
 }
 
@@ -433,7 +436,7 @@ _guard() { # <verb> <ref>
     if [ "$CONFIRM" = "$2" ]; then
       log_warn "operator-confirmed destructive $1: '$G_LABEL' ($2, matches '$_hit')"
     else
-      _refuse "destructive $1 refused: '$G_LABEL' ($2) matches '$_hit' — the operator confirms one call" "HARBOR_BROWSER_CONFIRM=$2 harbor chrome $1 $2"
+      _handoff "destructive $1 refused: '$G_LABEL' ($2) matches '$_hit' — the operator confirms one call" "HARBOR_BROWSER_CONFIRM=$2 harbor chrome $1 $2"
     fi
   fi
 }
@@ -697,7 +700,7 @@ OSA
     sleep "${HARBOR_CHROME_SETTLE:-1}"
     _p="$(_cli_run "-s=$S" --raw eval "$STATE_EXPR" 2>/dev/null)" || _p=''
     case "$_p" in *'visibility\":\"hidden'*|*'"visibility":"hidden'*)
-      _refuse "front: $_r is active in its window, but the page is still hidden (the window is minimised again, or on another Space)" 'harbor chrome tabs   # then bring that window up by hand; never minimise a harbor window' ;;
+      _handoff "front: $_r is active in its window, but the page is still hidden (the window is minimised again, or on another Space)" 'harbor chrome tabs   # then bring that window up by hand; never minimise a harbor window' ;;
     esac
     log_ok "front: $_r is the tab Chrome shows; focus left where it was"
     ;;
@@ -720,10 +723,10 @@ EOF
     log_note "wait-signin: waiting up to $_max s for the operator to sign in on $(_url_host "$_u")"
     _t=0
     while _signin_url "$_u" || [ "$_u" = about:blank ]; do
-      [ "$_t" -lt "$_max" ] || _refuse "still on a sign-in page after $_max s ($(_url_host "$_u"))" 'harbor chrome wait-signin   # again, once signed in'
+      [ "$_t" -lt "$_max" ] || _handoff "still on a sign-in page after $_max s ($(_url_host "$_u"))" 'harbor chrome wait-signin   # again, once signed in'
       sleep "${HARBOR_CHROME_POLL:-3}"; _t=$((_t + ${HARBOR_CHROME_POLL:-3}))
       _u="$(_pick | awk -F '\t' -v t="$_tid" '$1 == t { print $2 }')"
-      [ -n "$_u" ] || _refuse 'the sign-in tab was closed' 'harbor chrome attach'
+      [ -n "$_u" ] || _handoff 'the sign-in tab was closed' 'harbor chrome attach'
     done
     _host_ok "$_u" || _refuse "signed in, but the page went to $(_url_host "$_u"), which is not on the allow-list" 'harbor chrome hosts'
     if [ -n "$(_session_url)" ]; then
@@ -826,12 +829,12 @@ EOF
         # registry's (harbor#966); unset or unregistered, the hint says which, never a guessed path.
         _m="host refused: '$1' is not https on a host in CONTRACTS/browser-agent-hosts.txt or the private layer's browser-hosts.txt; client live sites go through the live-walk repo"
         _lr=0; _lw="$(sh "$HERE/roots.sh" --conf live_walk_repo 2>/dev/null)" || _lr=$?
-        [ "$_lr" -ne 2 ] || _refuse "$_m" "harbor-private/harbor.toml did not read: sh bin/roots.sh --conf live_walk_repo"
-        [ -n "$_lw" ] || _refuse "$_m" "no live-walk repo is set on this box: live_walk_repo in harbor-private/harbor.toml (CONTRACTS/private-layer.md)"
+        [ "$_lr" -ne 2 ] || _handoff "$_m" "harbor-private/harbor.toml did not read: sh bin/roots.sh --conf live_walk_repo"
+        [ -n "$_lw" ] || _handoff "$_m" "no live-walk repo is set on this box: live_walk_repo in harbor-private/harbor.toml (CONTRACTS/private-layer.md)"
         _ts="$(sh "$HERE/roots.sh" --repo "$_lw" 2>/dev/null)" || _ts=""
         case "$_ts" in "$HOME"/*) _ts="~${_ts#"$HOME"}" ;; esac
-        if [ -n "$_ts" ]; then _refuse "${_m%the live-walk repo}$_lw" "cd $_ts && just live"
-        else _refuse "${_m%the live-walk repo}$_lw" "$_lw is not registered on this box (sh bin/roots.sh --repos); register it in harbor-private/repos.tsv"; fi
+        if [ -n "$_ts" ]; then _handoff "${_m%the live-walk repo}$_lw" "cd $_ts && just live"
+        else _handoff "${_m%the live-walk repo}$_lw" "$_lw is not registered on this box (sh bin/roots.sh --repos); register it in harbor-private/repos.tsv"; fi
       fi
     fi
     # Held, not exec'd, so a gone session can be told apart (_gone_check, harbor#920).
@@ -854,7 +857,7 @@ EOF
       && tail -n "+$((_el + 1))" "$_e" 2>/dev/null | /usr/bin/grep -q 'chrome-extension:// URL of different extension'; then
       _scrub < "$_o" >&2; rm -f "$_o"
       _acct="$(_account_for "$(_url_host "$1")")"
-      _refuse "the tab was lost on load: another extension put a frame in the page (usually a password manager's autofill on a sign-in form), and Chrome lets no extension debug another's" \
+      _handoff "the tab was lost on load: another extension put a frame in the page (usually a password manager's autofill on a sign-in form), and Chrome lets no extension debug another's" \
         "operator: sign in to $(_url_host "$1")${_acct:+ as $_acct}; then harbor chrome wait-signin"
     fi
     # A failed navigation whose tab Chrome shows on a sign-in page: signed out, whatever the CLI

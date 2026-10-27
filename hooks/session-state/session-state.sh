@@ -297,8 +297,7 @@ fi
 if [ -n "$CASKMSG" ]; then
   jq -cn --arg m "$CASKMSG" '{hookSpecificOutput:{hookEventName:"Stop", additionalContext:$m}}'
 fi
-CLMSG="Cleaning up: the agent said the work is finished ([cleanup-ok]); the sweep applies its RECLAIM rows. [session-state cleanup; off: touch ~/.local/state/harbor/cleanup-auto.off]"
-SENT=""
+# Both runs are silent to the operator (asked 2026-10-27): each writes its own log under backups/.
 if [ -n "$RUNCL" ]; then
   ( sh "$HERE/session-cleanup.sh" "$SID" ) >/dev/null 2>&1 </dev/null &
 fi
@@ -312,11 +311,6 @@ if [ -n "$RUNC" ]; then
   done
   if [ -n "$_tty" ]; then
     ( sh "$HERE/session-autocompact.sh" "$SID" "$_tty" ) >/dev/null 2>&1 </dev/null &
-    _cm="Compacting: the agent said the task is finished ([compact-ok]). [session-state compact; off: touch ~/.local/state/harbor/compact-auto.off]"
-    [ -z "$RUNCL" ] || _cm="$CLMSG $_cm"
-    jq -cn --arg m "$_cm" '{systemMessage:$m}'; SENT=1
   fi
 fi
-# One JSON object per hook run: the cleanup notice rides on the compact one when both ran.
-[ -z "$RUNCL" ] || [ -n "$SENT" ] || jq -cn --arg m "$CLMSG" '{systemMessage:$m}'
 exit 0
