@@ -106,10 +106,10 @@ _nr="$(grep -c . "$T/rules" | tr -d ' ')"
 # THE FINDING KEY. The store holds one issue per conventions rule, keyed lint/<rule>. A rule whose own engine
 # is bin/lint-conventions.sh is filed under its own id. A name.*, module.* or doc.refs-* rule is not: the
 # conventions run relays its engine's findings under ONE rule (lint-conventions.sh rule_N4,
-# rule_module_graph_conform, rule_doc_refs_conform, rule_lint_comment_conform), so the store cannot say which of them an acceptance was
+# rule_module_graph_conform, rule_doc_refs_conform), so the store cannot say which of them an acceptance was
 # against, and an acceptance on the relay key restarts every rule behind it. relays() pairs each engine
 # with that key; the suite pins it to controls.tsv, so a new engine fails there rather than counting zero.
-relays() { printf '%s\t%s\n' bin/lint-name.sh standard.names-conform bin/lint-module.sh module.graph-conform bin/doc-refs.sh doc.refs-conform bin/standard-shape.sh standard.shape-conform bin/lint-comment.sh lint.comment-conform; }
+relays() { printf '%s\t%s\n' bin/lint-name.sh standard.names-conform bin/lint-module.sh module.graph-conform bin/doc-refs.sh doc.refs-conform bin/standard-shape.sh standard.shape-conform bin/lint-comment.sh lint.script-ticket-header; }
 engine_findings() { # <engine> — its own findings, one rule id per finding, appended to $T/p.cnt; 1 when it could not look
   [ -f "$ROOT/$1" ] || return 1
   _erc=0

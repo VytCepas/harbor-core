@@ -154,7 +154,6 @@
 /bin/launchd-render.sh @VytCepas
 /bin/layers.sh @VytCepas
 /bin/lint-comment-commands.awk @VytCepas
-/bin/lint-comment.sh @VytCepas
 /bin/lint-constitution.sh @VytCepas
 /bin/lint-conventions.sh @VytCepas
 /bin/lint-core-writes.sh @VytCepas

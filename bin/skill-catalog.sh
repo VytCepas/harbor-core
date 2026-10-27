@@ -143,18 +143,14 @@ if [ "$MODE" = install ]; then
       _n="$(basename "$_d")"; _mn=$((_mn + 1))
       awk -v p="skills/$_n/SKILL.md" '$3 == p { f = 1 } END { exit !f }' "$IM" && continue
       awk -F'\t' -v p="skills/$_n/" 'index($2, p) == 1 { f = 1 } END { exit !f }' "$IL_TARGET"/.harbor-packs/*.tsv 2>/dev/null && continue
-      printf 'installed skill %s has no row in %s or in a pack manifest\t%s\n' "$_n" ".harbor-manifest" \
-        "sh bin/deploy.sh --apply --only skills $(il_spell) records it; or remove the skill dir if nothing should own it" >> "$WORK/orphans"
+      printf 'installed skill %s has no row in %s or in a pack manifest\n' "$_n" ".harbor-manifest" >> "$WORK/orphans"
     done
     awk '$3 ~ /^skills\/[^\/]+\/SKILL\.md$/ { split($3, a, "/"); print a[2] }' "$IM" | while IFS= read -r _n; do
-      [ -f "$SKILL_DIR/$_n/SKILL.md" ] && continue
-      # A shipped skill is reinstalled; one the checkout no longer ships has only a stale row, which the prune drops.
-      if [ -d "$ROOT/skills/$_n" ] || [ -d "$ROOT/vendor/skills/$_n" ]; then _mf="sh bin/deploy.sh --apply --only skills $(il_spell) $_n"
-      else _mf="sh bin/deploy.sh --prune --apply $(il_spell)"; fi
-      printf 'the manifest row for skill %s names a skill that is not installed\t%s\n' "$_n" "$_mf" >> "$WORK/orphans"
+      [ -f "$SKILL_DIR/$_n/SKILL.md" ] || printf 'the manifest row for skill %s names a skill that is not installed\n' "$_n" >> "$WORK/orphans"
     done
     if [ -s "$WORK/orphans" ]; then
-      while IFS='	' read -r _e _f; do log_fail "$_e"; log_fix "$_f"; done < "$WORK/orphans"
+      while IFS= read -r _e; do log_fail "$_e"; done < "$WORK/orphans"
+      log_fix "sh bin/deploy.sh --apply --only skills $(il_spell) records it; or remove the skill dir (or the manifest row) if nothing should own it"
       log_end || :; exit 1
     fi
     log_ok "every one of the $_mn installed skill(s) has a manifest row, and every skill row names an installed skill"; log_end; exit $?

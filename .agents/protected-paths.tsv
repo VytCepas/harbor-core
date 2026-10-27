@@ -188,7 +188,6 @@ bin/judge-run.sh	installed	derived: shipped by runtime-install.sh
 bin/launchd-render.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/layers.sh	ci-gate	derived: called by bin/deploy-push.sh
 bin/lint-comment-commands.awk	ci-gate	derived: called by bin/lint-conventions.sh
-bin/lint-comment.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-constitution.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-conventions.sh	ci-gate	derived: called by .github/workflows/governance.yml
 bin/lint-core-writes.sh	ci-gate	derived: called by bin/lint-conventions.sh
