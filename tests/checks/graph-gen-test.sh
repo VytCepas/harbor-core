@@ -103,6 +103,20 @@ t_has "refs follows the deploy one hop to the hook line" "$R" "~/.claude/setting
 t_has "and to the LaunchAgent" "$R" "~/Library/LaunchAgents/com.x.job.plist:1"
 t_eq "a copy deployed under another name resolves by its bytes" 1 "$(row deploys_to harbor:bin/lib.sh '~/.claude/hooks/renamed-lib.sh')"
 t_has "and its hook line is listed under the source, through the hop alone" "$(gen --refs bin/lib.sh 2>/dev/null)" "~/.claude/settings.json:2"
+t_section "dangling (C2): a manifest row whose installed file is gone, and only that"
+mkdir -p "$H/.claude/skills/s" "$H/.claude/hooks" "$H/.claude/bin"
+cp "$HB/bin/a.sh" "$H/.claude/bin/a.sh"; cp "$HB/vendor/skills/s/SKILL.md" "$H/.claude/skills/s/SKILL.md"
+cp "$HB/bin/lib.sh" "$H/.claude/hooks/renamed-lib.sh"
+D="$(gen --dangling 2>/dev/null)"; _rc=0; gen --dangling >/dev/null 2>&1 || _rc=$?
+t_eq "one row dangles, the one with no file" 1 "$(printf '%s\n' "$D" | grep -c .)"
+t_has "it is the gone file, at its manifest line" "$D" "~/.claude/bin/gone.sh	~/.claude/.harbor-manifest:5"
+t_eq "a dangling edge exits 1" 1 "$_rc"
+gen >/dev/null 2>&1
+t_eq "the graph holds that same unsourced edge" 1 "$(row deploys_to '?' '~/.claude/bin/gone.sh')"
+t_eq "--dangling built no graph of its own" 0 "$(gen --dangling 2>&1 >/dev/null | grep -c 'wrote')"
+: > "$H/.claude/bin/gone.sh"
+t_exit "with the file back nothing dangles" 0 gen --dangling
+
 rm "$H/.claude/.harbor-manifest"; gen >/dev/null 2>&1
 t_eq "no manifest, no manifest edge" 0 "$(row deploys_to harbor:bin/a.sh '~/.claude/bin/a.sh')"
 t_has "and the input says absent" "$(cat "$G")" "# input	manifest	~/.claude/.harbor-manifest	absent"

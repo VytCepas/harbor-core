@@ -130,6 +130,11 @@ command -v jq >/dev/null 2>&1 || exit 0
 #
 # `.text? // ""` and the array/scalar test on `.content`: both shapes occur, and
 # a missing `.text` on a non-text block must not abort the whole extraction.
+#
+# BGT carries a background task's id (launched so, or moved there at the timeout),
+# and a Read of a task output file is a
+# CMD record, so a run in the background pairs through the later read of its own
+# output file (SG_PAIR below). A Read result's `N<tab>` line prefix is stripped.
 STREAM="$(jq -r '
   if .type=="assistant" then
     (.message.content[]? | select(.type=="tool_use") |
@@ -137,6 +142,8 @@ STREAM="$(jq -r '
         then "MUT\t-\t" + (.input.file_path // "")
       elif .name=="Bash"
         then "CMD\t" + (.id // "-") + "\t" + ((.input.command // "") | gsub("[\n\t]"; " "))
+      elif .name=="Read" and ((.input.file_path // "") | test("/tasks/[A-Za-z0-9]+\\.output$"))
+        then "CMD\t" + (.id // "-") + "\t" + .input.file_path
       else empty end)
   elif .type=="user" and (.message.content|type)=="string" then
     (.message.content | split("\n")[]
@@ -148,8 +155,9 @@ STREAM="$(jq -r '
       (if (.content|type)=="array"
          then ([.content[]? | .text? // ""] | join("\n"))
          else (.content|tostring) end)
-      | split("\n")[]
-      | if test("^[a-z][a-z0-9 .-]*: [0-9]+ (passed|rules), [0-9]+ (failed|violations)") then "RES\t" + $id + "\t" + .
+      | split("\n")[] | sub("^ *[0-9]+\t"; "")
+      | if test("^Command .*Output is being written to: [^ ]*/tasks/[A-Za-z0-9]+\\.output") then "BGT\t" + $id + "\t" + (capture("/tasks/(?<t>[A-Za-z0-9]+)\\.output") | .t)
+        elif test("^[a-z][a-z0-9 .-]*: [0-9]+ (passed|rules), [0-9]+ (failed|violations)") then "RES\t" + $id + "\t" + .
         elif test("github\\.com/[^ ]+/pull/[0-9]+") then "PRU\t" + $id + "\t" + (capture("github\\.com/(?<r>[^/ ]+/[^/ ]+)/pull/(?<n>[0-9]+)") | .r + "#" + .n)
         elif test("[Mm]erged pull request [^ ]*#[0-9]+") then "PRM\t-\t" + (capture("[Mm]erged pull request (?<r>[^ ]*)#(?<n>[0-9]+)") | .r + "#" + .n)
         else empty end)
@@ -255,6 +263,15 @@ fi
 # prepended to each awk program: strip through the last ` <rc> `.
 SG_SUITE_FN='function suite_key(s) { sub(/^.* [0-9]+ /, "", s); return s }'
 
+# ── WHICH TOOL CALLS PRODUCED A VERDICT, SHARED BY SG-1 AND SG-2 ────────────
+# A suite command (foreground), or a read of the task output file of a background
+# suite command this session launched: a `cat` of any other log pairs with nothing.
+# `[-.]test`: hooks/injection-rule/packs.test.sh is a suite too.
+SG_PAIR='
+  $1 == "CMD" { if ($3 ~ /([-.]test|lint-conventions|floor-equiv|pass-score)[a-z-]*\.sh/) ran[$2] = 1
+                else for (t in bg) if (index($3, "tasks/" t ".output")) ran[$2] = 1 }
+  $1 == "BGT" && ($2 in ran) { bg[$3] = 1 }'
+
 # ── SG-1 · a floor surface was edited and the suite did not run after it ────
 # PATH-SCOPED, and the pattern is the floor's own file set: bin/guard-*.sh,
 # bin/floor-*.sh, bin/floor-normalize.awk. `bin/` is required, so a note called
@@ -316,11 +333,11 @@ EOF
 [ -n "${SG1_PARTS# }" ] || { [ -n "$_sg_cwd" ] && SG1_PARTS="$(_sg_parts "$_sg_cwd")"; }
 [ -n "${SG1_PARTS# }" ] || SG1_PARTS="floor-test"
 export SG1_OK SG1_PARTS
-SG1="$(printf '%s\n' "$STREAM" | awk -F '\t' "$SG_SUITE_FN"'
+# A background run launched before the edit verified the code it replaced: the edit drops it.
+SG1="$(printf '%s\n' "$STREAM" | awk -F '\t' "$SG_SUITE_FN$SG_PAIR"'
   BEGIN { n = split(ENVIRON["SG1_OK"], a, "\n"); for (i = 1; i <= n; i++) if (a[i] != "") ok[a[i]] = 1
           n = split(ENVIRON["SG1_PARTS"], a, " "); for (i = 1; i <= n; i++) if (a[i] != "") need[a[i]] = 1 }
-  $1 == "MUT" && ($3 in ok) { mut = NR; path = $3; split("", seen) }
-  $1 == "CMD" && $3 ~ /(-test|lint-conventions|floor-equiv|pass-score)[a-z-]*\.sh/ { ran[$2] = 1 }
+  $1 == "MUT" && ($3 in ok) { mut = NR; path = $3; split("", seen); split("", bg) }
   $1 == "RES" && mut > 0 && ($2 in ran) { c = index($3, ":"); if (c > 1) { k = suite_key(substr($3, 1, c - 1)); if (k in need) seen[k] = 1 } }
   END { if (mut > 0) for (k in need) if (!(k in seen)) { print path; exit } }
 ')"
@@ -335,9 +352,9 @@ SG1="$(printf '%s\n' "$STREAM" | awk -F '\t' "$SG_SUITE_FN"'
 # run — №2.7 again, from the other side.
 #
 # The id gate is the first clause: a verdict whose tool_use id belongs to no
-# suite-invoking command is a verdict this session READ, not one it produced.
-SG2="$(printf '%s\n' "$STREAM" | awk -F '\t' "$SG_SUITE_FN"'
-  $1 == "CMD" && $3 ~ /(-test|lint-conventions|floor-equiv|pass-score)[a-z-]*\.sh/ { ran[$2] = 1 }
+# suite-invoking command, nor to a read of a background suite's own output file
+# (SG_PAIR), is a verdict this session READ, not one it produced.
+SG2="$(printf '%s\n' "$STREAM" | awk -F '\t' "$SG_SUITE_FN$SG_PAIR"'
   $1 == "RES" && ($2 in ran) {
     line = $3
     n = index(line, ":")
@@ -387,7 +404,10 @@ fi
 # Bounded chattiness: keyed on the path, so a session editing three floor files
 # without running the suite is refused three times, not once and not thirty.
 # Precision beats quiet here — each refusal names a different real defect.
-SG_KEY="$(printf 'SG1:%s|SG2:%s|SG3:%s' "$SG1" "$(printf '%s' "$SG2" | sort | tr '\n' ';')" "$(printf '%s' "$SG3" | sort | tr '\n' ';')" | floor_sha 2>/dev/null)"
+# SG-2 keys on the red suites' NAMES, not their counts, so a re-run that moves the counts is the
+# same state. Given up: a different new failure in that suite goes unflagged until it is green once.
+SG2_NAMES="$(printf '%s\n' "$SG2" | awk "$SG_SUITE_FN"'{ c = index($0, ":"); if (c > 1) print suite_key(substr($0, 1, c - 1)) }' | sort -u | tr '\n' ';')"
+SG_KEY="$(printf 'SG1:%s|SG2:%s|SG3:%s' "$SG1" "$SG2_NAMES" "$(printf '%s' "$SG3" | sort | tr '\n' ';')" | floor_sha 2>/dev/null)"
 SG_SID="$(floor_field '.session_id')"
 case "$SG_SID" in ''|*[!A-Za-z0-9_-]*) SG_SID='' ;; esac
 SG_SEEN=""

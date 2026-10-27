@@ -1,11 +1,13 @@
 #!/usr/bin/env sh
-# bin/session-state.sh, the Stop hook (harbor#1043, #1044): the five states in rule order, one test per waiting
+# hooks/session-state/session-state.sh, the Stop hook (harbor#1043, #1044): the five states in rule order, one test per waiting
 # pattern in CONTRACTS/session-waiting.tsv, SG-2 parity with guard-stop.sh, an event only on a change, the record's
 # fields, the save-now continuation (once, off without its rule, off under stop_hook_active), and a speed bound.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-TOOL="$T_ROOT/bin/session-state.sh"; GSTOP="$T_ROOT/bin/guard-stop.sh"; TABLE="$T_ROOT/CONTRACTS/session-waiting.tsv"
+TOOL="$T_ROOT/hooks/session-state/session-state.sh"; GSTOP="$T_ROOT/bin/guard-stop.sh"; TABLE="$T_ROOT/CONTRACTS/session-waiting.tsv"
 T="$T_TMP"; ST="$T/state"; REPO="$T/repo"; CFG="$T/cfg"
 export HARBOR_STATUS_DIR="$ST" HARBOR_EVENT_DIR="$T/bus"
+# Auto-compact off for every section but its own, and never a real osascript: a test must not type into a terminal.
+export HARBOR_AUTOCOMPACT_PCT=101 HARBOR_AUTOCOMPACT_OSA=false
 mkdir -p "$REPO" "$CFG"
 git -C "$REPO" init -q && git -C "$REPO" config user.email t@t && git -C "$REPO" config user.name t
 git -C "$REPO" checkout -q -b work; printf 'a\n' > "$REPO/f"; printf 'h\n' > "$REPO/HANDOFF.md"
@@ -61,8 +63,14 @@ t_section "blocked: SG-2, and it agrees with guard-stop.sh on the same transcrip
 tx red "$(tu c2 2020-01-01T00:00:01.000Z 'sh tests/x-test.sh')" "$(tr_ c2 'x-test: 3 passed, 1 failed')"
 tx healed "$(tu c2 2020-01-01T00:00:01.000Z 'sh tests/x-test.sh')" "$(tr_ c2 'x-test: 3 passed, 1 failed')" "$(tu c3 2020-01-01T00:00:02.000Z 'sh tests/x-test.sh')" "$(tr_ c3 'x-test: 4 passed, 0 failed')"
 tx readonly "$(tu c4 2020-01-01T00:00:01.000Z 'cat build.log')" "$(tr_ c4 'x-test: 3 passed, 1 failed')"
+tx dotted "$(tu c5 2020-01-01T00:00:01.000Z 'sh tests/x.test.sh')" "$(tr_ c5 'x.test: 3 passed, 1 failed')"
+BG='Command running in background with ID: bq1. Output is being written to: /t/tasks/bq1.output. Notified.'
+rd() { jq -nc --arg id "$1" --arg p "$2" '{type:"assistant",message:{content:[{type:"tool_use",id:$id,name:"Read",input:{file_path:$p}}]}}'; }
+tx bgheal "$(tu c2 2020-01-01T00:00:01.000Z 'sh tests/x-test.sh')" "$(tr_ c2 'x-test: 3 passed, 1 failed')" "$(tu b3 2020-01-01T00:00:02.000Z 'sh tests/x-test.sh')" "$(tr_ b3 "$BG")" "$(tu c4 2020-01-01T00:00:03.000Z 'tail -1 /t/tasks/bq1.output')" "$(tr_ c4 'x-test: 4 passed, 0 failed')"
+tx bgread "$(tu c2 2020-01-01T00:00:01.000Z 'sh tests/x-test.sh')" "$(tr_ c2 'x-test: 3 passed, 1 failed')" "$(tu b3 2020-01-01T00:00:02.000Z 'sh tests/x-test.sh')" "$(tr_ b3 "$BG")" "$(rd r4 /t/tasks/bq1.output)" "$(tr_ r4 "$(printf '1\tx-test: 4 passed, 0 failed')")"
+tx bgcat "$(tu c6 2020-01-01T00:00:01.000Z 'cat /t/tasks/bq1.output')" "$(tr_ c6 'x-test: 3 passed, 1 failed')"
 gs() { printf '{"session_id":"g-%s","transcript_path":"%s/%s.jsonl","cwd":"%s"}' "$1" "$T" "$1" "$REPO" | CLAUDE_CONFIG_DIR="$CFG" sh "$GSTOP" 2>/dev/null; }
-for c in red healed readonly; do
+for c in red healed readonly dotted bgheal bgread bgcat; do
   run "s-$c" "$c" 'ok'
   g="$(gs "$c")"; gb=no; case "$g" in *'"decision":"block"'*) gb=yes ;; esac
   sb=no; [ "$(rec "s-$c" state)" = blocked ] && sb=yes
@@ -72,6 +80,13 @@ t_eq "a red suite run in the session is blocked" blocked "$(rec s-red state)"
 t_has "...and the reason is the verdict line" "$(rec s-red reason)" "3 passed, 1 failed"
 t_eq "a later green run of it clears the block" idle "$(rec s-healed state)"
 t_eq "a verdict only READ (cat) is not a run" idle "$(rec s-readonly state)"
+t_eq "a dotted suite name (x.test.sh) pairs" blocked "$(rec s-dotted state)"
+t_eq "a background green, read from its task file, clears the red" idle "$(rec s-bgheal state)"
+t_eq "...and so does the same file read with the Read tool" idle "$(rec s-bgread state)"
+t_eq "a cat of a task file no suite of this session wrote is not a run" idle "$(rec s-bgcat state)"
+pair_of() { awk '/SG_PAIR=.$/ { on = 1; next } on { print } on && /}.$/ { exit }' "$1"; }
+t_eq "SG_PAIR is byte-equal to guard-stop.sh's" "$(pair_of "$GSTOP")" "$(pair_of "$TOOL")"
+t_has "...and the extraction found it" "$(pair_of "$TOOL")" 'BGT'
 run s-redq red 'Which one?'; t_eq "a question outranks blocked" waiting-operator "$(rec s-redq state)"
 
 t_section "done: committed or pushed this session, nothing edited since, clean tree, branch pushed; the handoff is no gate"
@@ -138,6 +153,51 @@ printf '80\n' > "$ST/ctx/s-80"; run s-80 plain 'Done.'
 t_eq "80% with no new milestone: no continuation" "" "$(cat "$T/out")"
 printf '95\n' > "$ST/ctx/s-fresh"; touch "$REPO/HANDOFF.md"; run s-fresh plain 'Done.'
 t_eq "95% but the handoff is newer than the last milestone: no continuation" "" "$(cat "$T/out")"
+
+t_section "compact: a finished turn asks the agent once; the agent's [compact-ok] as the last line types /compact"
+rm -f "$CFG/.helm-dispatch/rules/event.session-save-now.rule"
+printf '#!/bin/sh\ncat > /dev/null; printf "%%s\\n" "$*" >> "%s/osa.calls"; echo sent\n' "$T" > "$T/osa"; chmod +x "$T/osa"
+export HARBOR_AUTOCOMPACT_PCT=35 HARBOR_AUTOCOMPACT_TTY=ttys999 HARBOR_AUTOCOMPACT_OSA="$T/osa" HARBOR_AUTOCOMPACT_DELAY=0
+typed() { _n=0; until grep -q "$(printf %.8s "$1") typed" "$ST"/backups/session-autocompact/*/log 2>/dev/null || [ "$_n" -ge 20 ]; do sleep 0.25; _n=$((_n + 1)); done; sleep 0.2; }
+: > "$T/osa.calls"
+printf '20\n' > "$ST/ctx/ac-small"; run ac-small plain 'All set.'
+t_eq "ctx under 35%: no question" "" "$(cat "$T/out")"
+printf '50\n' > "$ST/ctx/ac-1"; run ac-1 plain 'All set.'
+t_has "ctx 50% on an idle turn: one continuation asks the agent" "$(cat "$T/out")" '"additionalContext"'
+t_has "...naming the line to answer with" "$(cat "$T/out")" '[compact-ok]'
+t_eq "...and nothing is typed on a question" "" "$(cat "$T/osa.calls")"
+run ac-1 plain 'not yet' '[]' true
+t_eq "'not yet' inside the continuation: no second question, nothing typed" ":" "$(cat "$T/out"):$(cat "$T/osa.calls")"
+run ac-1 plain 'All set.'
+t_eq "the same growth step does not ask again" "" "$(cat "$T/out")"
+printf '61\n' > "$ST/ctx/ac-1"; run ac-1 plain 'All set.'
+t_has "ten points more asks again" "$(cat "$T/out")" '"additionalContext"'
+run ac-1 plain 'Everything is merged and saved.
+[compact-ok]' '[]' true
+t_has "[compact-ok] as the last line: the operator is told" "$(cat "$T/out")" 'Compacting'
+typed ac-1; t_has "...and /compact is typed into the tab of the session's tty" "$(cat "$T/osa.calls")" '/dev/ttys999'
+t_has "...and logged" "$(cat "$ST"/backups/session-autocompact/*/log)" 'typed /compact on ttys999: sent'
+: > "$T/osa.calls"
+printf '10\n' > "$ST/ctx/ac-2"; run ac-2 plain 'Done.
+[compact-ok]'
+typed ac-2; t_has "the agent may say it unasked, at any context size" "$(cat "$T/osa.calls")" '/dev/ttys999'
+: > "$T/osa.calls"
+run ac-q plain 'When the task is done I end with [compact-ok] on its own line.'
+run ac-q2 plain '[compact-ok]
+and then more text'
+sleep 0.5; t_eq "a marker quoted mid-message, or not on the last line: nothing typed" "" "$(cat "$T/osa.calls")"
+run ac-run plain '[compact-ok]' "$RUN"
+sleep 0.5; t_eq "a running background task: nothing typed" "" "$(cat "$T/osa.calls")"
+printf '50\n' > "$ST/ctx/ac-r2"; run ac-r2 plain 'x' "$RUN"
+t_eq "...and no question while one runs" "" "$(cat "$T/out")"
+: > "$ST/compact-auto.off"; printf '50\n' > "$ST/ctx/ac-off"; run ac-off plain 'All set.'
+t_eq "compact-auto.off: no question" "" "$(cat "$T/out")"
+run ac-off plain '[compact-ok]'; sleep 0.5
+t_eq "...and nothing typed" "" "$(cat "$T/osa.calls")"; rm -f "$ST/compact-auto.off"
+sh "$T_ROOT/bin/session-autocompact.sh" '../x' ttys999
+sh "$T_ROOT/bin/session-autocompact.sh" ac-bad 'ttys1;touch x'
+t_eq "the helper: an unsafe session id or tty runs nothing" "" "$(cat "$T/osa.calls")"
+unset HARBOR_AUTOCOMPACT_TTY HARBOR_AUTOCOMPACT_DELAY; export HARBOR_AUTOCOMPACT_PCT=101 HARBOR_AUTOCOMPACT_OSA=false
 
 t_section "fail-open, off switch, and speed"
 printf 'not json' | CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" > "$T/out" 2>&1; t_eq "garbage on stdin: exit 0, silent" "0:" "$?:$(cat "$T/out")"

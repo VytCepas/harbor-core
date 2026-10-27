@@ -9,7 +9,7 @@
 lanes_root() {
   _r="$TMP/$1"; mkdir -p "$_r/CONTRACTS" "$_r/bin"
   cp "$T_ROOT/CONTRACTS/finding.md" "$_r/CONTRACTS/"; cp "$T_ROOT/CHECKS.md" "$_r/"
-  : > "$_r/bin/skill-book.sh"; : > "$_r/bin/memory-route.sh"; : > "$_r/bin/ci-runners.sh"
+  : > "$_r/bin/skill-catalog.sh"; : > "$_r/bin/memory-route.sh"; : > "$_r/bin/ci-runners.sh"
   printf '%s' "$_r"
 }
 # row <root> <row> — append a row inside the lanes block
@@ -22,7 +22,7 @@ t_eq "the fixture root" 0 "$(vcount "$(lint1 FL1 "$G")")"
 t_has "it counts the HEAL rows" "$(lint1 FL1 "$G")" "4 in HEAL"
 
 t_section "FL1 refuses a row that does not join"
-R1="$(lanes_root unreg)"; row "$R1" '| HEAL | `lint/NOPE9` | `*` | `sh bin/skill-book.sh` | #590 |'
+R1="$(lanes_root unreg)"; row "$R1" '| HEAL | `lint/NOPE9` | `*` | `sh bin/skill-catalog.sh` | #590 |'
 t_has "a lint key with no rule" "$(viol FL1 "$R1")" "names no lint rule"
 R2="$(lanes_root nocheck)"; row "$R2" '| DECIDE | `check/no-such-check` | `*` | `-` | #590 |'
 t_has "a check key with no CHECKS.md row" "$(viol FL1 "$R2")" "names no CHECKS.md row"

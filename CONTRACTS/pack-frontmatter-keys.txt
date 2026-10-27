@@ -9,6 +9,9 @@ context
 license
 allowed-tools
 when_to_use
+owns-commands
+owns-tools
+inline-section
 id
 event
 tool

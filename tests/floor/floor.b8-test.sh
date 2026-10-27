@@ -57,6 +57,21 @@ t_has "B8-135 the real surface is not crowded out of the report" "$(b8run)" 'CLA
 t_has "B8-135 the memory writes are counted, not dropped" "$(b8run)" 'auto-memory file(s)'
 pin8
 t_eq "B8-135 silent after re-pinning both classes" "" "$(b8run)"
+# A new worktree's memory dir is a link to the shared store: the store is pinned under its own path, so the link is not drift.
+mkdir -p "$B8/projects/-Users-x-wt"; ln -s "$B8/projects/-Users-x/memory" "$B8/projects/-Users-x-wt/memory"
+t_eq "B8 a memory link to a pinned store in the same config dir is silent" "" "$(b8run)"
+printf 'edited through the link\n' >> "$B8/projects/-Users-x-wt/memory/a.md"
+t_has "B8 ...but a write through it is still the store's drift" "$(b8run)" 'projects/-Users-x/memory/a.md'
+pin8
+mkdir -p "$TMP/b8-elsewhere" "$B8/projects/-Users-y"; printf 'name: planted\n' > "$TMP/b8-elsewhere/p.md"
+ln -s "$TMP/b8-elsewhere" "$B8/projects/-Users-y/memory"
+t_has "B8 a memory link out of the config dir is still drift" "$(b8run)" 'projects/-Users-y/memory'
+rm -f "$B8/projects/-Users-y/memory"; ln -s "../-Users-x/memory" "$B8/projects/-Users-y/memory"
+t_has "B8 a relative memory link is still drift" "$(b8run)" 'projects/-Users-y/memory'
+rm -f "$B8/projects/-Users-y/memory"; ln -s "$B8/projects/-Users-x-wt/memory" "$B8/projects/-Users-y/memory"
+t_has "B8 a link to a link is still drift" "$(b8run)" 'projects/-Users-y/memory'
+rm -rf "$B8/projects/-Users-y" "$B8/projects/-Users-x-wt"; pin8
+t_eq "B8 silent again once the links are gone and re-pinned" "" "$(b8run)"
 printf 'more\n' >> "$B8/CLAUDE.md"
 t_exit "B8 --check fails on drift" 1 pi --check "$B8"
 pin8

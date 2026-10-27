@@ -30,6 +30,10 @@ routes() { # prints one "<want> <got> <label>" line per case
     "$O|me|repo view Acme-Org/widgets" \
     "$O|me|repo clone https://github.com/Acme-Org/widgets" \
     "$O|org|pr view feature/x" \
+    "$O|me|api graphql -f owner=Acme-Org -f name=widgets" \
+    "$O|none|api graphql --paginate -F owner=acme-org -f name=x" \
+    "$V|org|api graphql -f owner=VytCepas -f name=harbor" \
+    "$V|none|api graphql -f owner=bad/owner;x -f name=x" \
     "$V|me|issue list" \
     "$V|none|issue view 1 -R VytCepas/harbor" \
     "$V|none|api repos/cli/cli" \

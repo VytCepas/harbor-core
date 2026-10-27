@@ -15,6 +15,7 @@ tests/floor/floor.b6-test.sh
 tests/floor/floor.shards-test.sh
 tests/floor/floor.worklog-test.sh
 tests/floor/floor.paths-test.sh
+tests/floor/floor.annotate-test.sh
 tests/floor/replay-test.sh
 tests/checks/lint-test.sh
 tests/checks/lint.c9-test.sh

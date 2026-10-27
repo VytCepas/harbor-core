@@ -34,8 +34,9 @@
 # reports — so --combine refuses a suite in no shard's results or in two, rather than pass a run that
 # dropped or doubled one.
 #
-# EVERY QUEUED SUITE MUST COME BACK. A suite with no result line (a worker that died) is a failure
-# named LOST, never a quiet omission: a runner that drops suites reads as a faster green run.
+# EVERY QUEUED SUITE MUST COME BACK. A suite with no result line (a worker killed outright, or damaged
+# results) is a failure named LOST, never a quiet omission: a runner that drops suites reads as a faster
+# green run. A worker that is signalled or exits early writes its own fail row, naming why (harbor#1378).
 set -eu
 
 DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
@@ -77,18 +78,31 @@ if [ "${1:-}" = "--_one" ]; then
     done
     rm -f "$_kf"; kill -9 "-$1" 2>/dev/null || :; kill -9 $1 $_kk 2>/dev/null || :
   }
+  # A WORKER NEVER VANISHES (harbor#1378): a signal or an early exit still writes a fail row that names it,
+  # so LOST is left meaning a damaged results file. On exit it drops its slot marker, and the lock if it holds it.
+  _t0="$(date +%s)"; _sp=""; _held=""; _done=""
+  _row() { printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$1" "$(( $(date +%s) - _t0 ))" "$2" "$3" "$_s" "$4" >> "$_SR_RES"; _done=1; }
+  _sig() { [ -z "$_sp" ] || _killtree "$_sp"; _row fail "$2" - "the worker was killed by SIG$1"; exit "$2"; }
   _run="$_SR_LOGS/../running"; mkdir -p "$_run"
+  trap '_e=$?; rm -f "$_run/$$"; [ -z "$_held" ] || rm -f "$_run.lock"; [ -n "$_done" ] || _row fail "$_e" - "the worker exited $_e before its result"' EXIT
+  trap '_sig TERM 143' TERM; trap '_sig INT 130' INT; trap '_sig HUP 129' HUP
+  # The slot lock is a file the shell creates with O_EXCL (set -C), never mkdir: uutils mkdir 0.10 (Ubuntu
+  # 26.04, ubuntu-latest) exits 0 when it loses the race, so two workers held it and one died (harbor#1378).
   while :; do
-    if mkdir "$_run.lock" 2>/dev/null; then
+    if ( set -C; printf '%s\n' "$$" > "$_run.lock" ) 2>/dev/null; then
+      _held=1
       for _m in "$_run"/*; do [ -f "$_m" ] && ! kill -0 "${_m##*/}" 2>/dev/null && rm -f "$_m"; done
-      if [ "$(find "$_run" -type f | wc -l | tr -d ' ')" -lt "$(_allow)" ]; then : > "$_run/$$"; rmdir "$_run.lock"; break; fi
-      rmdir "$_run.lock"; sleep 0.5    # full: wait for a suite to finish
+      if [ "$(find "$_run" -type f | wc -l | tr -d ' ')" -lt "$(_allow)" ]; then : > "$_run/$$"; _held=""; rm -f "$_run.lock"; break; fi
+      _held=""; rm -f "$_run.lock"; sleep 0.5    # full: wait for a suite to finish
     else
-      _lk="$(find "$_run.lock" -maxdepth 0 -mmin +1 2>/dev/null || :)"; [ -z "$_lk" ] || rmdir "$_run.lock" 2>/dev/null || :
+      # Broken only when its holder is dead (read twice, as event-bus.sh does) or it is over a minute old.
+      _lp=""; { read -r _lp < "$_run.lock"; } 2>/dev/null || :
+      if { [ -n "$_lp" ] && ! kill -0 "$_lp" 2>/dev/null; } || [ -n "$(find "$_run.lock" -maxdepth 0 -mmin +1 2>/dev/null)" ]; then
+        _lq=""; { read -r _lq < "$_run.lock"; } 2>/dev/null || :; [ "$_lq" != "$_lp" ] || rm -f "$_run.lock"
+      fi
       sleep 0.1                         # another worker is counting
     fi
   done
-  trap 'rm -f "$_run/$$"' EXIT
   _log="$_SR_LOGS/$(printf '%s' "$_s" | tr '/' '_').log"
   _t0="$(date +%s)"
   cd "$ROOT"
@@ -106,8 +120,7 @@ if [ "${1:-}" = "--_one" ]; then
   set -m 2>/dev/null || :
   if [ -n "$_sink" ]; then "$@" > "$_sink" 2>&1 < /dev/null & else "$@" >&2 2>&1 < /dev/null & fi
   _sp=$!; set +m 2>/dev/null || :
-  # Its own group is out of reach of a signal to the run's group, so a stopped worker takes its suite with it.
-  trap '_killtree "$_sp"; exit 143' TERM INT HUP
+  # Its own group is out of reach of a signal to the run's group, so a stopped worker takes its suite with it (_sig).
   _sz=-1; _lc="$(date +%s)"; _rc=""
   while kill -0 "$_sp" 2>/dev/null; do
     sleep 0.5
@@ -120,12 +133,11 @@ if [ "${1:-}" = "--_one" ]; then
     fi
   done
   if [ -n "$_rc" ]; then wait "$_sp" 2>/dev/null || :; else _rc=0; wait "$_sp" || _rc=$?; fi
-  _secs=$(( $(date +%s) - _t0 ))
   _n="$(awk -v k="${_b%.sh}:" '$1 == k { print $2; exit }' "$_log")"
   _v=pass; _why=""
   [ "$_rc" -eq 0 ] || { _v=fail; _why="exited $_rc"; }
   [ "$_rc" -ne 124 ] || _why="timed out: no output for ${_SR_TMO}s, or ${_SR_HARD}s in all"
-  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$_v" "$_secs" "$_rc" "${_n:--}" "$_s" "$_why" >> "$_SR_RES"
+  _row "$_v" "$_rc" "${_n:--}" "$_why"
   exit 0
 fi
 

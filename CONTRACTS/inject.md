@@ -1,8 +1,8 @@
 # Rule packs — the just-in-time governance format
 
 **Frozen surface:** the frontmatter keys and the predicate vocabulary below.
-**Engine:** [`bin/inject-hook.sh`](../bin/inject-hook.sh). **Installer:**
-`harbor inject`. **Suite:** [`tests/hooks/inject-hook.engine-test.sh`](../tests/hooks/inject-hook.engine-test.sh), with the detector, packs and scope parts beside it.
+**Engine:** [`hooks/injection-rule/injection-rule.sh`](../hooks/injection-rule/injection-rule.sh). **Installer:**
+`harbor inject`. **Suite:** [`hooks/injection-rule/engine.test.sh`](../hooks/injection-rule/engine.test.sh), with the detector, packs and scope parts beside it.
 **Ticket:** harbor#173 · A1.
 
 A rule pack is a markdown file. A repo declares one, and from then on that repo's
@@ -33,7 +33,7 @@ non-binding until something puts it in front of the session.
 3/4 — and the veto's single miss was a session that stopped to ask rather than
 acting. **There is exactly ONE opt-in deny, and this sentence used to say there
 was none** — it read "there is deliberately no `deny` mode" for the whole of the
-time the mode existed, which `bin/inject-hook.sh` corrected in its own header and
+time the mode existed, which `hooks/injection-rule/injection-rule.sh` corrected in its own header and
 this file did not. The sentinel is specified under *A `run:` pack may return a
 decision* below; it is exact, opt-in, `run:`-only and PreToolUse-only. A contract
 that denies the existence of the blocking path is worse than one that omits it,
@@ -108,7 +108,7 @@ heredoc bodies are data: the shell half goes through the floor's own
 `floor_seg_load` (`guard-lib.sh`, beside the engine), never a second parser.
 Without `guard-lib.sh` there are no shell targets, and the engine stays silent.
 
-**Computed once, by the engine, on the three tool events.** `bin/inject-hook.sh`
+**Computed once, by the engine, on the three tool events.** `hooks/injection-rule/injection-rule.sh`
 works the answer out before any pack is read, and hands it to every `run:` pack
 as `HARBOR_TOUCHED`, one physical tree per line. `HARBOR_REACHED` lists the
 subset whose `scope: box` packs were swept. `repo-tier.sh` reads both instead of
@@ -170,6 +170,7 @@ collapsed to one paragraph.
 | Key | Required | Meaning |
 |---|---|---|
 | `id` | no | ledger key and `--explain` label; defaults to the filename |
+| `description` | **yes** | one line saying what the rule is for, so a reader can retire it without reading its body. Lint IJ1 refuses a tracked pack without one and warns on a private pack |
 | `event` | **yes** | `PreToolUse` · `PostToolUse` · `PostToolUseFailure` · `SessionStart` · `SubagentStart` — and `PreCompact` · `SessionEnd` **only with `mode: notify`**, see below |
 | `tool` | no | tool-name matcher. `Write\|Edit` alternation is accepted. Absent means any tool |
 | `when` | **yes** | a predicate. **Repeatable, and repeats are ANDed** |
@@ -178,6 +179,11 @@ collapsed to one paragraph.
 | `summary` | no | the operator-facing line for `mode: notify` |
 | `run` | no | a script beside the pack whose **stdout is the note**; empty stdout means no note. It may instead return a **decision** — see below |
 | `scope` | no | `repo` (default) or `box`. `box` also delivers a repo pack when a session outside the repo makes a tool call that touches it. Registered projects only, tool events only. See "`scope: box`" above |
+
+**Every delivered note starts `[context:<id>]`**, after the governance stamp, where `<id>` is the pack's `id`. The
+`emitted` column of `standards/naming/controls.tsv` maps that id to its control row, so the first lookup from a note
+reaches its owner and its off-switch (harbor#957; `hooks/injection-rule/engine.test.sh`, section "every note starts").
+A deny reason keeps the refusal form its channel already has.
 
 ### A `run:` pack may return a decision, not only a note
 
@@ -209,7 +215,7 @@ production reaches it, via `.claude/inject.d/merge-note.sh` — `--note` printed
 that verdict as prose, the engine wrapped the prose as additionalContext, and
 prose cannot stop a `Bash` call: every red PR still merged, with a green suite on
 both sides of the gap. The suite fired the hook directly; the operator does not.
-`tests/hooks/inject-hook.packs-test.sh` now drives the shipped pack end to end.
+`hooks/injection-rule/packs.test.sh` now drives the shipped pack end to end.
 
 A pack that can deny can also block ordinary work, so it is opt-in per pack, the
 sentinel is exact, and the decision is only ever as good as the predicate that
@@ -242,19 +248,19 @@ it failed by going quiet, which nothing turns red for.
 
 The subject is the **raw** command, not the matched prefix: `gh pr merge 174` and
 `gh pr merge 179` are different acts on different objects and a rule should speak
-for both. `tests/hooks/inject-hook.engine-test.sh` asserts all three — first delivery, silence on
+for both. `hooks/injection-rule/engine.test.sh` asserts all three — first delivery, silence on
 a repeat, and delivery for a different command in the same session.
 
 **A pack with no `when:` never fires.** That is deliberate and it is asserted:
 the most likely typo must not produce the loudest possible rule.
 
-**An unrecognised predicate never fires either.** `bin/skill-book.sh` carries the
+**An unrecognised predicate never fires either.** `bin/skill-catalog.sh` carries the
 incident this guards against — an unrecognised token that fell through to the
 permissive branch turned a gate into a no-op while still reading like a gate.
 
 ### Every shipped pack needs a probe row, and the suite fails without one
 
-`tests/hooks/inject-hook.engine-test.sh` tests the **engine**, against packs it writes itself in
+`hooks/injection-rule/engine.test.sh` tests the **engine**, against packs it writes itself in
 a temp dir. That is the right shape for an engine and it says nothing whatsoever
 about the packs in `inject.d/`. Measured 2026-08-29 by grepping every tracked
 `id:` against every suite: **14 of 17 were named in none of them.** Naming is a
@@ -322,7 +328,7 @@ moment and can be heard.
 
 So on a context-less event the engine emits a `systemMessage` alone, or nothing.
 A pack targeting one must declare `mode: notify` — **lint IJ1 fails otherwise**,
-and `tests/hooks/inject-hook.packs-test.sh` asserts that `PreCompact` produces no stdout at all.
+and `hooks/injection-rule/packs.test.sh` asserts that `PreCompact` produces no stdout at all.
 
 **`PostToolUseFailure` was on that accepted list for months with nothing on it**,
 and it is now wired (`85-tool-failure-is-not-a-result`). Two things about it were
@@ -345,6 +351,7 @@ interpolated into a command, or used as a glob.
 |---|---|
 | `always` | the event fires |
 | `cmd-prefix <words>` | a command-position segment **starts with** exactly those words |
+| `cmd-word <name>` | a command-position segment's **command word** — after any `NAME=value` assignments — is `<name>` or a path ending in `/<name>`; quoted bodies and heredocs are not segments, and `--help` never matches |
 | `cmd-contains <text>` | the command contains the text, heredoc bodies stripped |
 | `path-contains <text>` | `tool_input.file_path` contains the text |
 | `content-contains <text>` | the written content or the tool's response contains the text |
@@ -402,7 +409,7 @@ exfiltrate marker.
 
 **The false-positive set is swept, not counted here.** Every tracked markdown
 file in this repo is run through the detector by
-[`tests/hooks/inject-hook.detector-test.sh`](../tests/hooks/inject-hook.detector-test.sh) and compared against an
+[`hooks/injection-rule/detector.test.sh`](../hooks/injection-rule/detector.test.sh) and compared against an
 allowlist, so **a new false positive turns the suite red on the commit that
 introduces it**. The allowlisted ones are all documents *about* injection — the
 constitution's §4 describes the attack in the attack's own words, this contract

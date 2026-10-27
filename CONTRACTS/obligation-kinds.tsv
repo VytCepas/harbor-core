@@ -22,8 +22,8 @@
 #   opens_when - or <data key>=<ERE>: an open event opens a row only if its data key matches the ERE (anchored by the fold).
 #              An event that does not is counted as matching no row: it opens nothing and is never guessed at (harbor#1049)
 #
-# Claude Code has no hook for a background tool finishing, so a background row closes only at its deadline or when its
-# session ends. That is right for work whose lifetime matters (Monitor, Workflow, CronCreate, ScheduleWakeup) and noise
+# Claude Code has no hook for a background tool finishing; a background row closes when the owner's transcript carries its
+# <task-notification> with a final status (reconcile, owner-session), else at its deadline or when its session ends. That is right for work whose lifetime matters (Monitor, Workflow, CronCreate, ScheduleWakeup) and noise
 # for a plain background Bash, which opened a row nobody could close: `⧗N` read as a census, not as work to look at.
 # The bus still records every start; only the ledger declines the Bash ones, and deleting the opens_when cell restores them.
 #
