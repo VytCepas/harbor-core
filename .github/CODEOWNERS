@@ -197,7 +197,6 @@
 /bin/sandbox-make.sh @VytCepas
 /bin/save-log-token.sh @VytCepas
 /bin/secret @VytCepas
-/bin/session-autocompact.sh @VytCepas
 /bin/session-check.sh @VytCepas
 /bin/session-ci-watch.sh @VytCepas
 /bin/session-cleanup-report.sh @VytCepas

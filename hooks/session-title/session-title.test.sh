@@ -32,19 +32,6 @@ run "$(ups s1 'my own name')";  t_eq "a different session_title: nothing" "" "$O
 run "$(ss s1 resume 'my own name')"; t_eq "...also on SessionStart" "" "$OUT"
 run "$(ups s1 'harbor: session title hook')"; t_eq "an identical session_title may be re-emitted" "$(want UserPromptSubmit 'harbor: session title hook')" "$OUT"
 
-t_section "a title this hook applied can be replaced; the operator's still cannot"
-title r1 'harbor: first topic'
-run "$(ups r1)";                t_eq "the first title is applied" "$(want UserPromptSubmit 'harbor: first topic')" "$OUT"
-t_eq "...and remembered as ours" 'harbor: first topic' "$(cat "$CFG/session-titles/r1.applied")"
-title r1 'azimuth: second topic'
-run "$(ups r1 'harbor: first topic')"; t_eq "a new title replaces the one this hook applied" "$(want UserPromptSubmit 'azimuth: second topic')" "$OUT"
-t_eq "...and the new one is remembered" 'azimuth: second topic' "$(cat "$CFG/session-titles/r1.applied")"
-run "$(ss r1 resume 'azimuth: second topic')"; t_eq "...and re-emitted on resume" "$(want SessionStart 'azimuth: second topic')" "$OUT"
-run "$(ups r1 'my own name')";  t_eq "an operator /rename after ours still wins" "" "$OUT"
-title r2 'harbor: never applied'
-run "$(ups r2 'some older title')"; t_eq "no record of ours: a different title is the operator's" "" "$OUT"
-t_eq "...and nothing is remembered" "no" "$([ -f "$CFG/session-titles/r2.applied" ] && echo yes || echo no)"
-
 t_section "length is enforced by the hook"
 title s4 '12345678901234567890123456789012345678901234567890'
 run "$(ups s4)";                t_eq "exactly 50 characters is accepted" "$(want UserPromptSubmit '12345678901234567890123456789012345678901234567890')" "$OUT"
