@@ -7,6 +7,7 @@
 #   event-bus.sh tail [N]
 #   event-bus.sh prune
 #   event-bus.sh dispatch|on|pull|subscribe ...       → bin/event-dispatch.sh (harbor#1044, E2)
+#   event-bus.sh ci <owner/repo>#<n> [--timeout S]    → bin/ci-wait.sh: a PR's CI verdict, woken by ci.job.done (harbor#1367)
 # Bus: ${HARBOR_EVENT_DIR:-$HOME/.local/state/harbor/events}/YYYY-MM-DD.jsonl, the date in UTC.
 # emit always exits 0 and prints the id; wait exits 0 on a match (printing the line), 3 at the
 # deadline; 2 is a usage error. Design, schema and robustness rules: docs/design/events.md.
@@ -62,12 +63,15 @@ dnum() { _dn="$1"; _dy="${_dn%%-*}"; _dn="${_dn#*-}"; DNUM="$_dy${_dn%%-*}${_dn#
 # A last line with no newline yet is left for the next scan, so a torn write is never read; a day
 # file with no row starts at 0. Lines go out before the offsets move: a reader killed mid-read
 # re-reads (consumers dedupe on id), never skips. Returns 1, offsets untouched, when it could not.
+# The lock is taken BEFORE the offsets are read or a line printed: a wait that times out prints
+# nothing, so it is a retry, never a re-read (hosted CI under load: 71 reads of 60, harbor#1043).
 scan() {
   _so="$1"; _sw="$2"
   _sd="${_so%/*}"; [ "$_sd" != "$_so" ] || _sd=.
   mkdir -p "$_sd" 2>/dev/null || :
   _sn="$(mktemp "$_so.XXXXXX" 2>/dev/null)" || return 1
   _ss="$_sn.sizes"; _sp="$_sn.plan"; _sr="$_sn.rows"; _sc="$_sn.count"
+  offsets_lock "$_so.lock" || { rm -f "$_sn"; return 1; }
   ( cd "$DIR" 2>/dev/null && set +f && for _f in $DAYGLOB; do [ ! -f "$_f" ] || wc -c -- "$_f"; done ) > "$_ss" 2>/dev/null || :
   awk -v w="$_sw" -v of="$_so" 'BEGIN { while ((getline l < of) > 0) { split(l, a, " "); if (a[1] == w) off[a[2]] = a[3] + 0 } }
     $2 ~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\.jsonl$/ {
@@ -79,34 +83,39 @@ scan() {
       # Bytes [s, z) only: a line that crosses z, or has no newline yet, stops the read.
       tail -c +"$((_s + 1))" "$DIR/$_d.jsonl" 2>/dev/null | LC_ALL=C awk -v lim="$((_z - _s))" -v cf="$_sc" '
         { n = length($0) + 1; if (used + n > lim) exit; used += n; if ($0 ~ /^[{]"id":".*[}]$/) print }
-        END { print used + 0 > cf }' || { rm -f "$_sn" "$_ss" "$_sp" "$_sr" "$_sc"; return 1; }
+        END { print used + 0 > cf }' || { rm -rf "$_so.lock"; rm -f "$_sn" "$_ss" "$_sp" "$_sr" "$_sc"; return 1; }
       read -r _c < "$_sc" || _c=0
     fi
     printf '%s %s %s\n' "$_sw" "$_d" "$((_s + _c))" >> "$_sr"
   done < "$_sp"
-  # Other consumers' rows are re-read and the file replaced under a lock, so two consumers sharing
-  # one offsets file never write back each other's stale rows.
-  _sx=1
-  if offsets_lock "$_so.lock"; then
-    { awk -v w="$_sw" '$1 != w' "$_so" 2>/dev/null || :; cat "$_sr"; } > "$_sn" && mv -f "$_sn" "$_so"
-    _sx=$?
-    rm -rf "$_so.lock"
-  fi
+  # Other consumers' rows are re-read and the file replaced under the same lock, so two consumers
+  # sharing one offsets file never write back each other's stale rows.
+  { awk -v w="$_sw" '$1 != w' "$_so" 2>/dev/null || :; cat "$_sr"; } > "$_sn" && mv -f "$_sn" "$_so"
+  _sx=$?
+  rm -rf "$_so.lock"
   rm -f "$_sn" "$_ss" "$_sp" "$_sr" "$_sc"
   return "$_sx"
 }
 
-# offsets_lock <dir>: mkdir is atomic. A lock whose holder is gone is taken over; one still held
-# after ~10s fails the scan, which then leaves the offsets where they were.
+# offsets_lock <path>: a file holding the holder's pid, made with O_EXCL (set -C), never mkdir: uutils
+# mkdir 0.10 (Ubuntu 26.04) exits 0 on a lost race, so two scans read one line (harbor#1378). A lock whose
+# holder is gone is taken over; one still held after ~10s fails the scan, which then prints nothing and
+# leaves the offsets where they were. A directory lock is an older bus's, its pid in <path>/pid.
+# HARBOR_EVENT_BUS_LOCK_TRIES (test-only) shortens the wait.
 offsets_lock() {
-  _ln=0
-  until mkdir "$1" 2>/dev/null; do
-    _lp=""; [ ! -f "$1/pid" ] || read -r _lp < "$1/pid" || :
-    if [ -n "$_lp" ] && ! kill -0 "$_lp" 2>/dev/null; then rm -rf "$1"; continue; fi
-    _ln=$((_ln + 1)); [ "$_ln" -lt 200 ] || return 1
+  _ln=0; _lt="${HARBOR_EVENT_BUS_LOCK_TRIES:-200}"
+  until ( set -C; printf '%s\n' "$$" > "$1" ) 2>/dev/null; do
+    _lf="$1"; [ ! -d "$1" ] || _lf="$1/pid"
+    _lp=""; [ ! -f "$_lf" ] || read -r _lp < "$_lf" || :
+    # Re-read before taking over: a lock released and re-taken by a live process since the first
+    # read is not the dead holder's to remove (two writers lost a consumer's row on hosted CI).
+    if [ -n "$_lp" ] && ! kill -0 "$_lp" 2>/dev/null; then
+      _lq=""; [ ! -f "$_lf" ] || read -r _lq < "$_lf" || :
+      if [ "$_lq" = "$_lp" ]; then rm -rf "$1"; continue; fi
+    fi
+    _ln=$((_ln + 1)); [ "$_ln" -lt "$_lt" ] || return 1
     sleep 0.05 2>/dev/null || sleep 1
   done
-  printf '%s\n' "$$" > "$1/pid" 2>/dev/null || :
 }
 
 consumer_ok() { case "$1" in ''|*[!A-Za-z0-9._-]*) return 1 ;; esac; }
@@ -379,7 +388,8 @@ case "$VERB" in
     prune 0 || :
     log_end; exit $? ;;
   dispatch|on|pull|subscribe) exec sh "$HERE/event-dispatch.sh" "$VERB" "$@" ;;
+  ci) exec sh "$HERE/ci-wait.sh" "$@" ;;
   -h|--help|help) usage ;;
   '') usage >&2; exit 2 ;;
-  *) printf 'event-bus: unknown verb %s (emit, wait, since, tail, prune; dispatch, on, pull, subscribe)\n' "$VERB" >&2; exit 2 ;;
+  *) printf 'event-bus: unknown verb %s (emit, wait, since, tail, prune; dispatch, on, pull, subscribe; ci)\n' "$VERB" >&2; exit 2 ;;
 esac

@@ -417,6 +417,11 @@ Test for any procedural line: *would a smarter model make this unnecessary?* Yes
   `/bin/sh` with BSD `grep`); the trio (`project-init`, `projects-orchestrator`)
   is **Python**; vendored skill-tools are **TypeScript on Bun**. Match the layer
   you are in. Net-new work picks by fit and says why.
+- **Tests and CI have one box-level guide.** Local suites and CI share one CPU
+  budget, agent identity limits what an agent may push or merge, and a local
+  result that flips between identical runs is the machine. Read
+  [the guide](./docs/design/ci-tests-on-this-host.md) before running a suite or
+  reading a red.
 - **Plan means stop.** "Make a plan" is a request to present and stop. No
   execution without approval.
 - **Markdown for prompts and docs.** HTML only where markdown genuinely cannot

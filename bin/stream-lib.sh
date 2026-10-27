@@ -46,11 +46,12 @@ harbor_emit() { # <stream> [<attrs-json>]
   _ed="$_er/$_es/$(date -u +%Y-%m-%d)"; _ef="$_ed/$_ew.jsonl"
   ( umask 077; mkdir -p "$_ed" ) 2>/dev/null || { stream_spill "$_er" "$_es" "cannot create $_ed" "$_ea"; return $?; }
   { [ ! -e "$_ef" ] || { [ -f "$_ef" ] && [ ! -L "$_ef" ]; }; } || { stream_spill "$_er" "$_es" "sink is not a regular file" "$_ea"; return $?; }
-  # One writer at a time per file (measured: 20 concurrent emits all read seq 1): mkdir is atomic everywhere. A lock
-  # older than a minute is a crashed writer's and is broken; one not won in ~5 s spills, never blocks the caller.
+  # One writer at a time per file (measured: 20 concurrent emits all read seq 1). The lock is a file the shell makes
+  # with O_EXCL (set -C), never mkdir: uutils mkdir 0.10 exits 0 on a lost race (harbor#1378). A lock older than a
+  # minute is a crashed writer's and is broken (a directory: an older writer's); one not won in ~5 s spills.
   _lk="$_ef.lock"; _lt=0
-  until mkdir "$_lk" 2>/dev/null; do
-    [ -n "$(find "$_lk" -maxdepth 0 -mmin +1 2>/dev/null)" ] && rmdir "$_lk" 2>/dev/null && continue
+  until ( set -C; : > "$_lk" ) 2>/dev/null; do
+    [ -n "$(find "$_lk" -maxdepth 0 -mmin +1 2>/dev/null)" ] && { rmdir "$_lk" || rm -f "$_lk"; } 2>/dev/null && continue
     _lt=$((_lt + 1)); [ "$_lt" -le 100 ] || { stream_spill "$_er" "$_es" "lock not won in 5 s" "$_ea"; return $?; }
     sleep 0.05 2>/dev/null || sleep 1
   done
@@ -64,10 +65,10 @@ harbor_emit() { # <stream> [<attrs-json>]
       --arg src "${HARBOR_WRITER:-${0##*/}}" --arg repo "${HARBOR_REPO_NAME:-}" --arg cause "${HARBOR_CAUSE:-}" \
       --argjson attrs "$_ea" --arg prev "$_ep" \
       '{v:1,id:$id,ts:$ts,stream:$s,sess:$sess,seq:$seq,src:$src,repo:$repo,cause:$cause,attrs:$attrs,prev:$prev}' 2>/dev/null)" \
-    || { rmdir "$_lk" 2>/dev/null; stream_spill "$_er" "$_es" "envelope did not build" "$_ea"; return $?; }
-  [ "$(printf %s "$_el" | wc -c)" -lt "$STREAM_MAX" ] || { rmdir "$_lk" 2>/dev/null; stream_spill "$_er" "$_es" "line over $STREAM_MAX bytes" "$_es"; return $?; }
-  printf '%s\n' "$_el" >> "$_ef" 2>/dev/null || { rmdir "$_lk" 2>/dev/null; stream_spill "$_er" "$_es" "append failed" "$_el"; return $?; }
-  rmdir "$_lk" 2>/dev/null || :
+    || { rm -f "$_lk" 2>/dev/null; stream_spill "$_er" "$_es" "envelope did not build" "$_ea"; return $?; }
+  [ "$(printf %s "$_el" | wc -c)" -lt "$STREAM_MAX" ] || { rm -f "$_lk" 2>/dev/null; stream_spill "$_er" "$_es" "line over $STREAM_MAX bytes" "$_es"; return $?; }
+  printf '%s\n' "$_el" >> "$_ef" 2>/dev/null || { rm -f "$_lk" 2>/dev/null; stream_spill "$_er" "$_es" "append failed" "$_el"; return $?; }
+  rm -f "$_lk" 2>/dev/null || :
   chmod 0600 "$_ef" 2>/dev/null || :
   return 0
 }

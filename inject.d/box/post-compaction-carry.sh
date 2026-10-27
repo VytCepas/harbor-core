@@ -14,7 +14,7 @@ committed is still undone. If a number matters to the answer and you cannot
 re-derive it this turn, say which number you did not verify rather than repeating
 it.
 TEXT
-# The session state record bin/session-state.sh wrote at the last turn end (harbor#1043): what was in flight when the
+# The session state record hooks/session-state/session-state.sh wrote at the last turn end (harbor#1043): what was in flight when the
 # context was rebuilt. Running tasks and the dirty branch are recoverable only if the model is told they exist; the
 # reason is why the session was last held. A record is data: one line, control characters dropped, text capped.
 _sid="$(printf '%s' "$P" | jq -r '.session_id // empty' 2>/dev/null)" || _sid=""
@@ -30,6 +30,10 @@ case "$_sid" in ''|*[!A-Za-z0-9_-]*) ;; *)
          then "; still running: " + ([.background_tasks[] | select(.status == "running" or .status == "pending") | (.type | c) + " " + (.id | c) + " \"" + (.description | c) + "\""] | join(", "))
          else "" end)
       + ". Check the running tasks and the changed files before assuming either is finished."' "$_rec" 2>/dev/null || :
+  fi
+  # Long sessions drift off their title; a compaction is the natural point to re-title (hooks/session-title).
+  if [ ! -e "$CFG/session-title.off" ]; then
+    printf 'If the work has moved on from this session'"'"'s title, Write a new one line `<area>: <what>` (at most 50 characters, no ticket numbers) to %s; it applies on the next prompt.\n' "$CFG/session-titles/$_sid.txt"
   fi ;;
 esac
 cd "$CFG" 2>/dev/null || exit 0

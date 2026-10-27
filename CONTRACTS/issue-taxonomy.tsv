@@ -103,7 +103,7 @@ type	epic:workstream	-	a capability being built; closes when its children do
 type	epic:provenance	-	origin record of an audit or research pass; closes when its children are triaged
 type	epic:framing	-	a problem statement awaiting a design decision
 theme	theme:floor	bin/guard-*.sh bin/floor-*.sh bin/restore.sh bin/lint-conventions.sh FLOOR.md	guard and floor correctness — what the gates see and refuse
-theme	theme:memory	bin/memory*.sh bin/worklog-*.sh worklog/* CONTRACTS/memory-format.md	capture, recall, index, staleness
+theme	theme:memory	bin/memory*.sh hooks/memory-harvest/* hooks/worklog-push/* worklog/* CONTRACTS/memory-format.md	capture, recall, index, staleness
 theme	theme:context	bin/context-budget.sh bin/store-check.sh inject.d/* CONTEXT-BASELINE.tsv CONSTITUTION.md	always-on surface and per-call context economy
 theme	theme:doc-truth	DOCTRINE/doc-truth.md CONTRACTS/README.md QA-PLAN.md EVALS.md STATUS.md COVERAGE.md	records that contradict the system they describe
 theme	theme:ci	.github/workflows/* bin/merge-check.sh bin/worktree.sh bin/doctor.sh	CI, worktrees, deployment and drift between repo and box

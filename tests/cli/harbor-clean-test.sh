@@ -199,7 +199,13 @@ cat > "$T_BIN/gh" <<'GHSTUB'
 case "$*" in
   "repo view acme/widget --json defaultBranchRef") cat "$STUB/repo.json" ;;
   "api repos/acme/widget/branches?per_page=100 --paginate") cat "$STUB/branches.json" ;;
-  "pr list -R acme/widget --state all "*) [ "${STUB_FAIL:-}" = prs ] && exit 1; cat "$STUB/prs.json" ;;
+  "pr list -R acme/widget --state all "*)
+    echo x >> "$STUB/prs.calls"
+    [ "${STUB_FAIL:-}" = prs ] && exit 1
+    [ "${STUB_FAIL:-}" = prs404 ] && { echo "HTTP 404: Not Found" >&2; exit 1; }
+    [ "${STUB_FAIL:-}" = prs502 ] && { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
+    [ "${STUB_FAIL:-}" = prs504once ] && [ "$(wc -l < "$STUB/prs.calls")" -le 1 ] && { echo "HTTP 504: Gateway Timeout" >&2; exit 1; }
+    cat "$STUB/prs.json" ;;
   "pr list -R acme/widget --state open "*) cat "$STUB/open.json" ;;
   "api graphql --paginate -f owner=acme -f name=widget "*) cat "$STUB/issues.json" ;;
   *) echo "gh stub: unexpected call: $*" >&2; exit 1 ;;
@@ -229,14 +235,11 @@ t_eq "a branch made today is not idle" 0 "$(any pr-branches 'widget fresh-local'
 t_eq "a pushed branch is not the only copy" 0 "$(rows RISK pr-branches 'widget pushed-idle')"
 t_eq "a pushed branch with no PR for 30d: DECIDE" 1 "$(rows DECIDE pr-branches 'widget pushed-idle')"
 
-t_section "19 worktrees: merged+clean DECIDE, merged+dirty RISK, open nothing"
-t_eq "a clean worktree whose PR merged: DECIDE" 1 "$(rows DECIDE finished-worktrees 'widget-wt-done')"
+t_section "19 worktrees: merged+clean RECLAIM, merged+dirty RISK, open nothing"
+t_eq "a clean worktree whose PR merged: RECLAIM" 1 "$(rows RECLAIM finished-worktrees 'widget-wt-done')"
 t_eq "uncommitted changes in a finished worktree: RISK" 1 "$(rows RISK finished-worktrees 'widget-wt-dirty')"
 t_eq "a worktree with an OPEN PR is not counted" 0 "$(any finished-worktrees 'widget-wt-open')"
 t_eq "a worktree's branch is not ALSO a branch row" 0 "$(any pr-branches 'widget wt-done')"
-GHR --apply >/dev/null  # --apply never acts on DECIDE
-t_eq "--apply keeps a DECIDE worktree" present "$(there "$H/widget-wt-done")"
-t_exit "--apply keeps a DECIDE branch" 0 git -C "$GR" rev-parse --verify -q merged-clean
 
 t_section "20 remote branches: at the merged head DECIDE; moved says look"
 t_eq "a GitHub branch left at its merged head: DECIDE" 1 "$(rows DECIDE remote-branches 'acme/widget merged-clean')"
@@ -285,7 +288,15 @@ t_eq "an idle worktree an install-root link resolves into is KEEP, naming the li
   "KEEP install target: .local/bin/tool resolves into it" "$(wi widget-wt-installed)"
 t_eq "...and so is one whose PR merged" "KEEP install target: .local/bin/done-tool resolves into it" "$(wi widget-wt-done)"
 t_eq "control: an idle worktree nothing links into is still DECIDE" "DECIDE no PR and no commit for 30d" "$(wi widget-wt-idle)"
-rm -f "$H/.local/bin/done-tool"  # wt-done is a DECIDE fixture again for every later section
+rm -f "$H/.local/bin/done-tool"
+
+t_section "23d --apply removes a merged worktree and its branch; DECIDE and RISK stay"
+GHR --apply >/dev/null
+t_eq "--apply removes the merged, clean worktree" gone "$(there "$H/widget-wt-done")"
+t_exit "...and its local branch" 1 git -C "$GR" rev-parse --verify -q wt-done
+t_eq "--apply keeps a DECIDE worktree (later work pushed, in no PR)" present "$(there "$H/widget-wt-after-pushed")"
+t_eq "--apply keeps a RISK worktree (uncommitted changes)" present "$(there "$H/widget-wt-dirty")"
+t_exit "--apply keeps a DECIDE branch" 0 git -C "$GR" rev-parse --verify -q merged-clean
 
 t_section "24 a failed GitHub read is UNREAD, never clean (harbor#626)"
 Ju="$(with HARBOR_CLEAN_GH="$T_BIN/gh" STUB_FAIL=prs sh "$TOOL" --json)"
@@ -294,6 +305,12 @@ t_has "a good read does judge branch rows" "$J" '"class":"pr-branches"'
 t_hasnt "branch rows are not judged without the PR list" "$Ju" '"class":"pr-branches"'
 t_has "--record carries unread=1" "$(with HARBOR_CLEAN_GH="$T_BIN/gh" STUB_FAIL=prs sh "$TOOL" --record | tail -n 1)" "unread=1"
 t_has "a PR list at its limit is unread too" "$(with HARBOR_CLEAN_GH="$T_BIN/gh" HARBOR_CLEAN_PR_LIMIT=7 sh "$TOOL" --json)" '"class":"unread"'
+
+t_section "24b a transient 5xx is retried, a 4xx is not (the sweep undercounted)"
+rc() { : > "$STUB/prs.calls"; _o="$(with HARBOR_CLEAN_GH="$T_BIN/gh" HARBOR_CLEAN_RETRY_WAIT=0 STUB_FAIL="$1" sh "$TOOL" --record | tail -n 1)"; printf '%s %s' "$(wc -l < "$STUB/prs.calls" | tr -d ' ')" "$(printf '%s' "$_o" | grep -o 'unread=[0-9]*')"; }
+t_eq "one 504 then success reads the repo whole" "2 unread=0" "$(rc prs504once)"
+t_eq "a permanent 502 gives up after 3 tries, unread" "3 unread=1" "$(rc prs502)"
+t_eq "a 404 is not retried, unread" "1 unread=1" "$(rc prs404)"
 
 t_section "25 the keep list turns a row into KEEP, with the operator's reason"
 printf 'pr-branches\twidget lonely\tparked on purpose\n' > "$CFG/.helm-sweep-keep"

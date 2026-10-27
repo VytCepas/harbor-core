@@ -18,7 +18,7 @@ run() { sh "$T/bin/judge-run.sh" "$@" 2>/dev/null; }
 JV="$T/cfg/.helm-judge"
 has_cache() { [ -f "$1" ] && echo yes || echo no; }
 lines() { grep -c "^$1 " "$JV" 2>/dev/null || true; }
-sv() { CLAUDE_CONFIG_DIR="$T/cfg" sh "$T_ROOT/bin/session-verdicts.sh" 2>&1; }
+sv() { CLAUDE_CONFIG_DIR="$T/cfg" sh "$T_ROOT/hooks/session-verdicts/session-verdicts.sh" 2>&1; }
 
 t_section "1 · a crit finding reaches the cache"
 fixture_crit; rm -f "$JV"

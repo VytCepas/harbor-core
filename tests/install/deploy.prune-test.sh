@@ -30,6 +30,7 @@ build() { # <case> — a box holding one leftover of every class, and the contro
   ship skills/KeepMe/SKILL.md 'keep me'
   g mv skills/KeepMe skills/tmp-keep; g mv skills/tmp-keep skills/keepme; g commit -qm 'rename KeepMe'; g push -q origin main
   ship commands/gone.md 'gone v1'; retire commands/gone.md
+  ship bin/gone-row.sh 'gone row'; retire bin/gone-row.sh; ship commands/kept-row.md 'still shipped'
   mkdir -p "$REPO/CONTRACTS"; printf 'name\troot\trel\nidea\tHARBOR_REPO\tbin/idea.sh\n' > "$REPO/CONTRACTS/shims.tsv"
   g add CONTRACTS; g commit -qm shims; g push -q origin main
   # the box
@@ -42,6 +43,7 @@ build() { # <case> — a box holding one leftover of every class, and the contro
   printf 'keep me\n' > "$C/skills/KeepMe/SKILL.md"
   printf 'gone v1\n' > "$C/commands/gone.md"
   printf '# .harbor-manifest\n%s 100644 commands/gone.md skills-install -\n' "$(git hash-object "$C/commands/gone.md")" > "$C/.harbor-manifest"
+  printf '%s 100644 bin/gone-row.sh runtime-install -\n%s 100644 commands/kept-row.md skills-install -\n' abc abc >> "$C/.harbor-manifest"
   printf 'x\n' > "$C/.helm-baseline"; : > "$C/backups/config-baseline-20260801-000000.tgz"
   printf 'bp\n' > "$C/bin/baseline-pin.sh"; printf 'bppin\n' > "$C/.helm-pins/baseline-pin.sh.sha256"
   printf '{}\n' > "$C/settings.json.bak.20260801T000000Z"
@@ -67,6 +69,8 @@ for _w in "$C/.helm-baseline" "$C/backups/config-baseline-20260801-000000.tgz" "
           "$H/.local/share/project-init" "$H/.local/bin/gone" "$H/.local/bin/idea"; do
   t_has "would move ${_w#"$T"/}" "$(out)" "  note: would move $_w ("
 done
+t_has "a manifest row for a file gone from the box and the repo would be dropped" "$(out)" "  note: would drop the manifest row bin/gone-row.sh ("
+t_eq "...a row for a path the repo still ships would not" 0 "$(out | grep -c 'manifest row commands/kept-row.md')"
 t_has "...and would delete a pruned-* dir older than 30 days" "$(out)" "  note: would delete $C/backups/pruned-20250101-000000"
 t_has "its next step is the apply, spelled for its gate" "$(out)" "  note: next: sh '$REPO/bin/deploy.sh' --apply --prune --live"
 
@@ -86,6 +90,8 @@ t_eq "the dangling link moved, as a link" "no $T/nowhere" "$(yn [ -L "$H/.local/
 t_eq "the double-owned shim moved" "no $C/bin/idea.sh" "$(yn [ -L "$H/.local/bin/idea" ]) $(readlink "$P/HOME/.local/bin/idea")"
 t_has "...and the one-component deploy that links its owner back is the next step" "$(out)" "  note: next: sh '$REPO/bin/deploy.sh' --apply --only shim --live"
 t_eq "the moved command's manifest row is dropped (§3)" 0 "$(grep -c ' commands/gone.md ' "$C/.harbor-manifest")"
+t_eq "the stale row is dropped, and nothing was moved for it" "0 no" "$(grep -c ' bin/gone-row.sh ' "$C/.harbor-manifest") $(yn [ -e "$P/bin/gone-row.sh" ])"
+t_eq "...a row the repo still ships is kept (the next install rewrites it)" 1 "$(grep -c ' commands/kept-row.md ' "$C/.harbor-manifest")"
 t_eq "the pruned-* dir older than 30 days is deleted" no "$(yn [ -e "$C/backups/pruned-20250101-000000" ])"
 t_eq "...and one moved there 10 days ago stays" yes "$(yn [ -d "$C/backups/pruned-20260920-000000/y" ])"
 t_has "the run keeps its log" "$(dlog)" "  ok: moved $C/bin/old-tool.sh -> $P/bin/old-tool.sh"
