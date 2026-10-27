@@ -1,5 +1,6 @@
 ---
 id: agent-brief
+description: Names what an Agent call prompt lacks: an outcome, constraints, an output location
 event: PreToolUse
 tool: Agent|Task
 when: always

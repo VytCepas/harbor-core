@@ -32,8 +32,10 @@
 # refusal nothing tests is a comment.
 #
 # FOUR VERDICTS, AND ONLY ONE OF THEM IS EVER ACTED ON HERE:
-#   RECLAIM  dead by a predicate this file can decide; --apply acts on it
-#   DECIDE   a person has to choose — delete a branch whose PR merged, close an
+#   RECLAIM  dead by a predicate this file can decide; --apply acts on it. Since
+#            2026-10-27 that includes a clean worktree whose PR MERGED with every
+#            commit on it (the PR keeps the commits), by the operator's decision
+#   DECIDE   a person has to choose — delete a remote branch, close an
 #            issue, merge a green PR, move a loose file. --apply NEVER touches it
 #   RISK     work that exists in one place only and is going stale — uncommitted
 #            changes in a finished worktree, a branch on no remote and in no PR,
@@ -672,6 +674,19 @@ bounded() {
 PR_LIMIT="${HARBOR_CLEAN_PR_LIMIT:-2000}"
 GHQ='query($owner:String!,$name:String!,$endCursor:String){repository(owner:$owner,name:$name){issues(states:OPEN,first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{number updatedAt body subIssuesSummary{total completed} closedByPullRequestsReferences(first:10,includeClosedPrs:true){nodes{state}}}}}}'
 
+# gh_try <out> <cmd…> — bounded, retried up to 3 times on a 5xx or gateway timeout, never on a 4xx.
+# gh's stderr is kept only to classify the failure. HARBOR_CLEAN_RETRY_WAIT is the backoff seed (suite sets 0).
+gh_try() {
+  _go="$1"; shift; _gn=0
+  while :; do
+    bounded "$GHT" "$@" > "$_go" 2> "$_go.err" && { rm -f "$_go.err"; return 0; }
+    _gn=$((_gn + 1))
+    grep -Eqi 'HTTP 5[0-9][0-9]|Gateway Time-?out|Bad Gateway|Service Unavailable' "$_go.err" 2>/dev/null || return 1
+    [ "$_gn" -lt 3 ] || return 1
+    sleep $((_gn * ${HARBOR_CLEAN_RETRY_WAIT:-2}))
+  done
+}
+
 # gh_load <slug> <dir> — 0 only when EVERY read came back whole. Raw JSON from gh
 # and every projection here in jq, so the suite's stub serves recorded JSON and
 # the projections are what it tests.
@@ -680,18 +695,18 @@ gh_load() {
   [ "$GH" = none ] && return 1
   command -v "$GH" >/dev/null 2>&1 || return 1
   command -v jq >/dev/null 2>&1 || return 1
-  bounded 90 "$GH" repo view "$_s" --json defaultBranchRef > "$_g/repo.json" 2>/dev/null || return 1
+  GHT=90 gh_try "$_g/repo.json" "$GH" repo view "$_s" --json defaultBranchRef || return 1
   jq -r '.defaultBranchRef.name // empty' "$_g/repo.json" > "$_g/default" 2>/dev/null || return 1
   [ -s "$_g/default" ] || return 1
-  bounded 90 "$GH" api "repos/$_s/branches?per_page=100" --paginate > "$_g/branches.json" 2>/dev/null || return 1
+  GHT=90 gh_try "$_g/branches.json" "$GH" api "repos/$_s/branches?per_page=100" --paginate || return 1
   jq -r '.[] | [.name, .commit.sha] | @tsv' "$_g/branches.json" > "$_g/branches.tsv" 2>/dev/null || return 1
-  bounded 120 "$GH" pr list -R "$_s" --state all --limit "$PR_LIMIT" \
-    --json number,state,headRefName,headRefOid,updatedAt > "$_g/prs.json" 2>/dev/null || return 1
+  GHT=120 gh_try "$_g/prs.json" "$GH" pr list -R "$_s" --state all --limit "$PR_LIMIT" \
+    --json number,state,headRefName,headRefOid,updatedAt || return 1
   jq -r '.[] | [.headRefName, .state, (.number | tostring), .headRefOid, (.updatedAt | fromdateiso8601 | tostring)] | @tsv' \
     "$_g/prs.json" > "$_g/prs.tsv" 2>/dev/null || return 1
   [ "$(wc -l < "$_g/prs.tsv")" -lt "$PR_LIMIT" ] || return 1
-  bounded 90 "$GH" pr list -R "$_s" --state open --limit 200 \
-    --json number,headRefName,updatedAt,isDraft,mergeable,statusCheckRollup > "$_g/open.json" 2>/dev/null || return 1
+  GHT=90 gh_try "$_g/open.json" "$GH" pr list -R "$_s" --state open --limit 200 \
+    --json number,headRefName,updatedAt,isDraft,mergeable,statusCheckRollup || return 1
   jq -r '.[] | [(.number | tostring), .headRefName, (.updatedAt | fromdateiso8601 | tostring),
       (if .isDraft then "draft" else "ready" end), (.mergeable // "UNKNOWN"),
       ([.statusCheckRollup[]? | (.conclusion // .state // "")] as $c
@@ -699,8 +714,7 @@ gh_load() {
          elif any($c[]; . == "FAILURE" or . == "ERROR" or . == "TIMED_OUT" or . == "ACTION_REQUIRED" or . == "STARTUP_FAILURE") then "red"
          elif all($c[]; . == "SUCCESS" or . == "SKIPPED" or . == "NEUTRAL") then "green"
          else "pending" end)] | @tsv' "$_g/open.json" > "$_g/open.tsv" 2>/dev/null || return 1
-  bounded 120 "$GH" api graphql --paginate -f owner="${_s%%/*}" -f name="${_s#*/}" -f query="$GHQ" \
-    > "$_g/issues.json" 2>/dev/null || return 1
+  GHT=120 gh_try "$_g/issues.json" "$GH" api graphql --paginate -f owner="${_s%%/*}" -f name="${_s#*/}" -f query="$GHQ" || return 1
   jq -r '.data.repository.issues.nodes[] | [(.number | tostring), (.updatedAt | fromdateiso8601 | tostring),
       ([(.body // "") | scan("(?m)^[ \t]*[-*] \\[ \\]")] | length | tostring),
       ([(.body // "") | scan("(?m)^[ \t]*[-*] \\[[xX]\\]")] | length | tostring),
@@ -776,6 +790,12 @@ gh_worktrees() {
         row KEEP finished-worktrees 0 "$_sub" "PR #$_n was $_did, but a live session is working in it"
       elif [ "$_rc" -eq 2 ]; then
         row DECIDE finished-worktrees 0 "$_sub" "PR #$_n was $_did; its head is not in this clone, so containment is unproven" "$_rm"
+      elif [ "$_did" = merged ]; then
+        # Operator decision 2026-10-27: merged, every commit in the PR, clean, no live session — reclaimable. No --force.
+        row RECLAIM finished-worktrees 0 "$_sub" "PR #$_n was merged and carried every commit on it"
+        if [ "$APPLY" -eq 1 ] && git -C "$_r" worktree remove "$_w" >/dev/null 2>&1; then
+          [ "$_b" = "-" ] || git -C "$_r" branch -D "$_b" >/dev/null 2>&1 || true
+        fi
       else
         row DECIDE finished-worktrees 0 "$_sub" "PR #$_n was $_did and carried every commit on it" "$_rm"
       fi

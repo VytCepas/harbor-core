@@ -131,13 +131,13 @@ FCT="$MUT5"; t_eq "the mutant: FC-1 rows" 0 "$(count_of "$MH2" FC-1)"; FCT="$FC"
 
 # FC-10's falsifier, both halves: the same failure in three sessions is ONE finding naming the tool
 # and input, and a tool that fails once raises nothing (harbor#465).
-tf_write() { # <dir> <n> <session-prefix> <error-class> [digest] [same] [key]; `same` = one session
-  _d="$1"; _n="$2"; _p="$3"; _e="$4"; _h="${5:-aaaabbbbccccdddd}"; _m="${6:-}"; _k="${7:-~/x/gone.md}"
+tf_write() { # <dir> <n> <session-prefix> <error-class> [digest] [same] [key] [day]; `same` = one session
+  _d="$1"; _n="$2"; _p="$3"; _e="$4"; _h="${5:-aaaabbbbccccdddd}"; _m="${6:-}"; _k="${7:-~/x/gone.md}"; _day="${8:-2026-08-02}"
   _i=1
   while [ "$_i" -le "$_n" ]; do
     _sid="$_p$_i"; [ "$_m" = same ] && _sid="$_p"
-    printf '{"v":1,"ts":"2026-08-02T10:00:00Z","t":"Read","e":"%s","k":"%s","h":"%s","s":"%s","ms":4}\n' \
-      "$_e" "$_k" "$_h" "$_sid" >> "$_d/MEMORY/OBSERVABILITY/$HOST/tool-failures.jsonl"
+    printf '{"v":1,"ts":"%sT10:00:00Z","t":"Read","e":"%s","k":"%s","h":"%s","s":"%s","ms":4}\n' \
+      "$_day" "$_e" "$_k" "$_h" "$_sid" >> "$_d/MEMORY/OBSERVABILITY/$HOST/tool-failures.jsonl"
     _i=$((_i + 1))
   done
 }
@@ -155,6 +155,14 @@ t_eq "FC-10 fires on three sessions" yes "$(has_rule "$FT1" FC-10)"
 t_eq "as one finding, not three" 1 "$(count_of "$FT1" FC-10)"
 case "$(subj_of "$FT1" FC-10)" in *Read*gone.md*) _s=named ;; *) _s="$(subj_of "$FT1" FC-10)" ;; esac
 t_eq "it names the tool, then the input" named "$_s"
+# A group older than the recorder's server-name fix opens on a bare `mcp` record; the label is the newest record's.
+FT15="$(tf_fixture tf-relabel)"
+for _r in '2026-07-30 mcp s1' '2026-08-01 mcp__srvx s2' '2026-08-02 mcp__srvx s3'; do
+  set -- $_r
+  printf '{"v":1,"ts":"%sT10:00:00Z","t":"%s","e":"other","k":"-","h":"eeeeffff00001111","s":"%s","ms":4}\n' \
+    "$1" "$2" "$3" >> "$FT15/MEMORY/OBSERVABILITY/$HOST/tool-failures.jsonl"
+done
+t_has "a legacy first record does not name the group" "$(subj_of "$FT15" FC-10)" "MCP server srvx"
 t_section "FC-10 stays silent on a retry loop, a single failure, and a floor block"
 FT2="$(tf_fixture tf-oneshot)"; tf_write "$FT2" 5 one not-found aaaabbbbccccdddd same
 t_eq "five failures inside one session" no "$(has_rule "$FT2" FC-10)"
@@ -179,6 +187,17 @@ t_eq "a key that is not a path cannot be probed, so it stays" yes "$(has_rule "$
 FT12="$(tf_fixture tf-othererr)"; : > "$HOME/x/present.md"; tf_write "$FT12" 3 s timeout aaaabbbbccccdddd "" '~/x/present.md'
 t_eq "an existing path under another error class still fires" yes "$(has_rule "$FT12" FC-10)"
 rm -f "$HOME/x/present.md"
+
+t_section "FC-10 is horizoned on last occurrence: a failure last seen weeks ago is history"
+FT13="$(tf_fixture tf-old)"; tf_write "$FT13" 4 s timeout aaaabbbbccccdddd "" 'old-command' 2026-07-01
+t_eq "four sessions, all a month before today" no "$(has_rule "$FT13" FC-10)"
+FT14="$(tf_fixture tf-oldnew)"; tf_write "$FT14" 3 s timeout aaaabbbbccccdddd "" 'old-command' 2026-07-01
+tf_write "$FT14" 1 t timeout aaaabbbbccccdddd "" 'old-command' 2026-08-02
+t_eq "the same failure again yesterday: it fires, counted over all history" yes "$(has_rule "$FT14" FC-10)"
+MUT7="$TMP/mut-fc10-horizon.sh"
+sed 's/map(select($c == "" or .last >= $c))/map(.)/' "$FC" > "$MUT7"
+t_eq "the horizon mutation applies" no "$(cmp -s "$FC" "$MUT7" && echo yes || echo no)"
+FCT="$MUT7"; t_eq "without the horizon the month-old failure fires" yes "$(has_rule "$FT13" FC-10)"; FCT="$FC"
 
 t_section "FC-11: the recorder is wired and has nowhere to write"
 FT5="$(tf_fixture tf-nosink)"

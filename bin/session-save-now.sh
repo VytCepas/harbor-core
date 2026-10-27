@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # session-save-now.sh (harbor#1043, #1044) — rule event.session-save-now: the audit trail of a "write the handoff now" nudge.
 #
-# The nudge itself is the Stop hook's (bin/session-state.sh): only a Stop hook can continue a turn, and it does so ONCE per
+# The nudge itself is the Stop hook's (hooks/session-state/session-state.sh): only a Stop hook can continue a turn, and it does so ONCE per
 # trigger, guarded by stop_hook_active, when this rule is installed. It then puts session.save-now on the bus; this
 # handler records that it happened in reactions.log. It sends nothing to the session and runs nothing else.
 set -u

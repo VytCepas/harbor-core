@@ -208,6 +208,7 @@ fi
 # log-lib.sh and install-lib.sh (harbor#771, #765): the installed floor-install, floor-verify, restore,
 # install-stamp and floor-deny source them from their own dir, so a copy without them cannot run.
 # fs-lib.sh (harbor#618): pulse, harbor-clean and reference-check read mtimes through it, from their own dir.
+# alert-lib.sh (harbor#618): pulse-notify and session-react-lib say a banner through its fallback chain, from their own dir.
 # stream-lib.sh (harbor#1181): fleet-snapshot-refresh appends its history through harbor_emit, from its own dir.
 # collector-check.sh (harbor#1181 lane 5): fleet-snapshot-refresh runs it each tick, from its own dir.
 # gate-merge-stack.sh (harbor#1060, ship contract 5b.9) is merge-stack; it runs merge-check.sh and gate-merge-stack-resolve.py
@@ -215,7 +216,7 @@ fi
 # event-dispatch.sh (harbor#1044) is what launchd/com.harbor.event.dispatch.plist runs from here; shipped inert: no
 # installer loads that plist or writes a rule. event-bus.sh ships with it (floor-install copies it too): the loop
 # guard needs the bus that passes HARBOR_EVENT_CAUSE on, and a dispatcher beside an older bus refuses to follow.
-FILES="guard-lib.sh access-confinement.sh save-log-token.sh findings-run.sh redteam-corpus-run.sh ticket-note.sh reply-shape.sh session-subagent-check.sh context-resolve.sh floor-deny.sh floor-install.sh install-stamp.sh merged-check.sh fleet-glyph.sh subagent-glyph.sh fleet-sessions.sh fleet-snapshot-refresh.sh harbor-clean.sh ci-queue.sh main-tip-verdict.sh gh-plan.sh runner-switch.sh ci-runners.sh ci-lost-job.sh ci-governor.sh ci-governor-hook.sh session-verdicts.sh observe-report.sh restore.sh sandbox-make.sh worklog-push.sh memory-harvest.sh pulse.sh pulse-notify.sh usage-aggregate.sh judge-run.sh failure-capture.sh floor-verify.sh decider-set.sh renew-check.sh store-check.sh context-budget.sh reference-check.sh cited-paths.awk failure-observe.sh log-lib.sh install-lib.sh fs-lib.sh status-obligations.sh ci-runners-fleet-lib.sh ci-runners-provision-lib.sh ci-runners-github-lib.sh ci-runners-watch-lib.sh gate-merge-stack.sh gate-merge-stack-resolve.py merge-check.sh event-dispatch.sh event-bus.sh stream-lib.sh collector-check.sh session-state.sh session-react-lib.sh session-notify.sh session-save-now.sh session-ci-watch.sh session-cleanup-report.sh session-check.sh session-title.sh"
+FILES="guard-lib.sh access-confinement.sh save-log-token.sh findings-run.sh redteam-corpus-run.sh ticket-note.sh reply-shape.sh session-subagent-check.sh session-autocompact.sh session-cleanup.sh context-resolve.sh floor-deny.sh floor-install.sh install-stamp.sh merged-check.sh fleet-glyph.sh subagent-glyph.sh fleet-sessions.sh fleet-snapshot-refresh.sh harbor-clean.sh ci-queue.sh main-tip-verdict.sh gh-plan.sh runner-switch.sh ci-runners.sh ci-lost-job.sh ci-governor.sh ci-governor-hook.sh session-verdicts.sh observe-report.sh restore.sh sandbox-make.sh worklog-push.sh memory-harvest.sh pulse.sh pulse-notify.sh usage-aggregate.sh judge-run.sh failure-capture.sh floor-verify.sh decider-set.sh renew-check.sh store-check.sh context-budget.sh reference-check.sh cited-paths.awk failure-observe.sh log-lib.sh install-lib.sh fs-lib.sh alert-lib.sh status-obligations.sh ci-runners-fleet-lib.sh ci-runners-provision-lib.sh ci-runners-github-lib.sh ci-runners-watch-lib.sh gate-merge-stack.sh gate-merge-stack-resolve.py merge-check.sh event-dispatch.sh event-bus.sh stream-lib.sh collector-check.sh session-state.sh session-react-lib.sh session-notify.sh session-save-now.sh session-ci-watch.sh ci-wait.sh session-cleanup-report.sh session-check.sh session-title.sh"
 # The restore-path suite and the harness it sources, as <checkout path>:<config-dir path> (harbor#727).
 # Same relative layout as the repo, so bin/recover-test.sh finds ../lib/core.sh with no checkout.
 SUITE="tests/floor/recover-test.sh:bin/recover-test.sh tests/lib/core.sh:lib/core.sh"
@@ -274,83 +275,12 @@ REFRESH_ONLY="guard-integrity.sh"
 # saying which won. shims.tsv is the one owner of ~/.local/bin now; this installer never touches it.
 
 
-VERDICT_HOOK="/bin/sh $DIR/bin/session-verdicts.sh"
 RESOLVER_HOOK="/bin/sh $DIR/bin/context-resolve.sh"
-# harbor#6 — the work-log reconciler, wired at STOP rather than SessionStart.
-#
-# D1's ticket says SessionStart, and that is where it does NOT work. Every hook
-# here reads the session's resolved context, and the thing that WRITES that
-# context is context-resolve.sh — another SessionStart hook. Hooks in one event
-# are not ordered by this installer and the harness gives no ordering guarantee,
-# so on a fresh session the context file may not exist when the reconciler runs,
-# and floor_engine_stand_down's fail-toward-repo default then made it a no-op.
-# Measured (before the pull hook was retired, #311): it was wired FIRST at SessionStart, ahead of the
-# resolver, and that ordering is the reason this hook is at Stop. (Since harbor#954 the
-# stand-down reads only the repo's `worklog: off`, not the context file.)
-#
-# At Stop the context is reliably present — the live store carries records
-# written by worklog-push.sh, which reads it at Stop, so this is observed rather
-# than assumed. A session that crashed still gets reconciled without operator
-# action; it happens at the end of the NEXT session instead of the start of it.
-# Stop stays the schedule: moving it would be a change of its own, not this one.
-HARVEST_HOOK="/bin/sh $DIR/bin/memory-harvest.sh"
-
-# FO-1 (harbor#465) — the PostToolUseFailure recorder.
-#
-# INSTALLED HERE AND NOT BY floor-install.sh, deliberately. It lives beside the
-# guard ledger, sources guard-lib.sh and writes into MEMORY/OBSERVABILITY, so
-# floor-install's $GUARDS looks like its home — and putting it there would make it
-# part of guard-integrity.sh's floor MINIMUM, after which a MISSING RECORDER
-# BLOCKS THE SESSION. It gates nothing and blocks nothing; a recorder outage is a
-# ledger with a hole, never a floor with one, and escalating the first into the
-# second is how a control gets switched off. Its analyser (failure-capture.sh) is
-# already this installer's, which is the other half of the argument.
-FAILOBS_HOOK="/bin/sh $DIR/bin/failure-observe.sh"
-
-# TICKET-NOTE, THE THIRD Stop HOOK. It is wired here rather than in
-# floor-install.sh because it is not a guard: it blocks nothing, refuses nothing,
-# and speaks only to the operator through `systemMessage`. The floor's teeth and
-# an operator reminder are different layers and the installers should not blur
-# them.
-#
-# NO `timeout` KEY, deliberately, matching memory-harvest above. The harness
-# default is longer than any bound we would set, and a hook that exceeds its
-# timeout is SKIPPED (FLOOR.md) — so a tight timeout here would buy a silent
-# stand-down, not safety. The script bounds its own work instead: a 10 MB scan
-# window, measured at ~0.1s/MB.
-TICKET_HOOK="/bin/sh $DIR/bin/ticket-note.sh"
-
-# ── WHETHER TO WIRE IT AT ALL (harbor#362) ──────────────────────────────────
-# This installer used to wire ticket-note unconditionally, and "append-only,
-# idempotent" made that sound safe. It was not: idempotent means *this* command
-# string appears once, and the operator had disabled a copy at a DIFFERENT path,
-# so the merge saw no match and added a second, undisabled entry. Measured
-# 2026-08-26: `.hooks.Stop` carried both, and the reminder came back one day after
-# it was switched off, with nothing recording that anyone had asked.
-#
-# TWO REFUSALS, ANSWERING TWO DIFFERENT QUESTIONS:
-#
-#   the sentinel   $DIR/ticket-note.off — an explicit, durable "off". No installer
-#                  writes or removes it, which is exactly why it can outlive one.
-#   absence        A hook missing from a config dir this installer HAS ALREADY
-#                  STAMPED was removed by somebody. On a first install there is no
-#                  stamp and nothing to respect, so it wires; after that, absence
-#                  is a decision. This is the half that makes unwiring stick
-#                  without the operator having to learn a second mechanism.
-#
-# The distinction matters because the two states are indistinguishable in
-# settings.json alone — "never installed" and "installed then removed" both read
-# as no entry — and only the stamp separates them.
-_tn_prev_install=0
-[ -f "$DIR/.helm-install-stamp" ] && grep -q '^runtime-install ' "$DIR/.helm-install-stamp" && _tn_prev_install=1
-_tn_wired=0
-[ -f "$S" ] && [ "$(jq -r '[.hooks.Stop[]?.hooks[]?.command // empty | select(contains("ticket-note.sh"))] | length' "$S" 2>/dev/null || echo 0)" != "0" ] && _tn_wired=1
-TICKET_WIRE=1
-if [ -e "$DIR/ticket-note.off" ]; then
-  TICKET_WIRE=0; TICKET_WHY="the $DIR/ticket-note.off sentinel is present"
-elif [ "$_tn_prev_install" = 1 ] && [ "$_tn_wired" = 0 ]; then
-  TICKET_WIRE=0; TICKET_WHY="it was removed from a config dir this installer already stamped"
-fi
+# The hook engines (hooks/<engine>/, D-88) are wired by bin/deploy-hooks.sh from their manifests, after their files
+# are copied: desired state for harbor's own entries, <engine>.off, and a binding removed by hand stays removed.
+# The why of each binding is in its manifest (harbor#1272).
+HOOKS="$SRC/deploy-hooks.sh"
+_src() { printf '%s/../%s' "$SRC" "$(il_src "$SRC/.." "$1")"; }  # FILES are installed names; an engine's bytes are in its folder
 
 # Append-only hook merge: add the command if no entry already carries it. Compares
 # the COMMAND STRING, so re-running is idempotent and an operator's own hook in
@@ -373,91 +303,8 @@ merge_session_hook() { # <settings-json-text> <command>
       else .hooks.SessionStart += [{matcher: "", hooks: [{type: "command", command: $c}]}] end'
 }
 
-# The same append-only, same-shape, idempotent merge for any other event. Kept as
-# a second function rather than a parameter on the first so the SessionStart
-# callers above are untouched — this installer writes the operator's settings.json
-# and a refactor of that path is not worth the blast radius.
-merge_event_hook() { # <settings-json-text> <event> <command>
-  printf '%s' "$1" | jq --arg e "$2" --arg c "$3" '
-    .hooks //= {} | .hooks[$e] //= []
-    | if ([.hooks[$e][]?.hooks[]?.command // empty] | index($c)) then .
-      else .hooks[$e] += [{matcher: "", hooks: [{type: "command", command: $c}]}] end'
-}
-
 NEW="$(cat "$S")"
 NEW="$(merge_session_hook "$NEW" "$RESOLVER_HOOK")"
-NEW="$(merge_session_hook "$NEW" "$VERDICT_HOOK")"
-NEW="$(merge_event_hook "$NEW" "Stop" "$HARVEST_HOOK")"
-NEW="$(merge_event_hook "$NEW" "PostToolUseFailure" "$FAILOBS_HOOK")"
-# DEDUPED BY BASENAME, NOT BY COMMAND STRING, and that is the second half of
-# harbor#362. `merge_event_hook` compares the whole command, so a copy wired from
-# ~/.local/bin and a copy wired from <cfg>/bin are two different strings and both
-# get added — which is how the live box ended up running the reminder twice.
-# Any entry naming ticket-note.sh, at any path, counts as already wired.
-if [ "$TICKET_WIRE" = 1 ]; then
-  NEW="$(printf '%s' "$NEW" | jq --arg c "$TICKET_HOOK" '
-    .hooks //= {} | .hooks.Stop //= []
-    | if ([.hooks.Stop[]?.hooks[]?.command // empty
-           | select(contains("ticket-note.sh"))] | length) > 0 then .
-      else .hooks.Stop += [{matcher: "", hooks: [{type: "command", command: $c}]}] end')"
-fi
-# reply-shape.sh (harbor#952) — advisory Stop hook, operator-facing systemMessage only. Same off
-# contract as ticket-note: the sentinel $DIR/reply-shape.off stops it being wired; deduped by basename.
-REPLY_HOOK="/bin/sh $DIR/bin/reply-shape.sh"
-if [ -e "$DIR/reply-shape.off" ]; then REPLY_WIRE=0
-else
-  REPLY_WIRE=1
-  NEW="$(printf '%s' "$NEW" | jq --arg c "$REPLY_HOOK" '
-    .hooks //= {} | .hooks.Stop //= []
-    | if ([.hooks.Stop[]?.hooks[]?.command // empty | select(contains("reply-shape.sh"))] | length) > 0 then .
-      else .hooks.Stop += [{matcher: "", hooks: [{type: "command", command: $c}]}] end')"
-fi
-# session-subagent-check.sh (harbor#445 item E) — advisory SubagentStop hook, systemMessage only. Same off
-# contract as reply-shape: the sentinel $DIR/subagent-stop.off is read by the hook itself.
-SSC_HOOK="/bin/sh $DIR/bin/session-subagent-check.sh"
-NEW="$(printf '%s' "$NEW" | jq --arg c "$SSC_HOOK" '
-  .hooks //= {} | .hooks.SubagentStop //= []
-  | if ([.hooks.SubagentStop[]?.hooks[]?.command // empty | select(contains("session-subagent-check.sh"))] | length) > 0 then .
-    else .hooks.SubagentStop += [{matcher: "", hooks: [{type: "command", command: $c}]}] end')"
-# session-state.sh (harbor#1043, #1044) — the Stop hook that records what the session waits on. It prints nothing but one
-# opt-in continuation (see its header). Same off contract as reply-shape: the sentinel $DIR/session-state.off stops it
-# being wired; deduped by basename. Unlike ticket-note it carries `timeout: 5`: it is fail-open by design, so a
-# skipped run costs one stale record, not a stand-down of anything.
-STATE_HOOK="/bin/sh $DIR/bin/session-state.sh"
-if [ -e "$DIR/session-state.off" ]; then STATE_WIRE=0
-else
-  STATE_WIRE=1
-  NEW="$(printf '%s' "$NEW" | jq --arg c "$STATE_HOOK" '
-    .hooks //= {} | .hooks.Stop //= []
-    | if ([.hooks.Stop[]?.hooks[]?.command // empty | select(contains("session-state.sh"))] | length) > 0 then .
-      else .hooks.Stop += [{matcher: "", hooks: [{type: "command", command: $c, timeout: 5}]}] end')"
-fi
-# session-title.sh (harbor#1257) — applies the title the model wrote, on UserPromptSubmit and SessionStart. Same off
-# contract as session-state: the sentinel $DIR/session-title.off stops it being wired; deduped by basename, per event.
-# It prints nothing unless a title file exists for the session, and exits 0 on every path.
-TITLE_HOOK="/bin/sh $DIR/bin/session-title.sh"
-if [ -e "$DIR/session-title.off" ]; then TITLE_WIRE=0
-else
-  TITLE_WIRE=1
-  NEW="$(printf '%s' "$NEW" | jq --arg c "$TITLE_HOOK" '
-    .hooks //= {} | .hooks.UserPromptSubmit //= [] | .hooks.SessionStart //= []
-    | (if ([.hooks.UserPromptSubmit[]?.hooks[]?.command // empty | select(contains("session-title.sh"))] | length) > 0 then .
-       else .hooks.UserPromptSubmit += [{matcher: "", hooks: [{type: "command", command: $c, timeout: 5}]}] end)
-    | (if ([.hooks.SessionStart[]?.hooks[]?.command // empty | select(contains("session-title.sh"))] | length) > 0 then .
-       else .hooks.SessionStart += [{matcher: "", hooks: [{type: "command", command: $c, timeout: 5}]}] end)')"
-fi
-# access-confinement.sh (harbor#1298, #555 decisions 7 and 8) — PreToolUse(Bash): mints a confined command's GitHub
-# App and gcx tokens outside the confinement, into a cache it can read. Inert until deploy-confinement.sh's marker
-# exists, prints nothing, exits 0. Same off contract: the sentinel $DIR/access-confinement.off stops it being wired.
-CONF_HOOK="/bin/sh $DIR/bin/access-confinement.sh"
-if [ -e "$DIR/access-confinement.off" ]; then CONF_WIRE=0
-else
-  CONF_WIRE=1
-  NEW="$(printf '%s' "$NEW" | jq --arg c "$CONF_HOOK" '
-    .hooks //= {} | .hooks.PreToolUse //= []
-    | if ([.hooks.PreToolUse[]?.hooks[]?.command // empty | select(contains("access-confinement.sh"))] | length) > 0 then .
-      else .hooks.PreToolUse += [{matcher: "Bash", hooks: [{type: "command", command: $c, timeout: 30}]}] end')"
-fi
 # BOTH GLYPH SURFACES ARE WIRED HERE, IN ONE PASS, AND THAT IS DELIBERATE.
 # subagent-glyph.sh would otherwise be a file this installer copies and nothing
 # ever calls — the harness only invokes it when settings.json declares
@@ -483,7 +330,7 @@ if [ "$IL_APPLY" -eq 1 ]; then log_head "apply to $DIR"; else log_head "plan for
 # A half install is worse than none: every file the payload names must be here before anything is.
 _missing=0
 for f in $FILES $REFRESH_ONLY; do
-  [ -f "$SRC/$f" ] && continue
+  [ -f "$(_src "$f")" ] && continue
   _missing=1
   log_fail "$f is missing from $SRC — refusing a half install"
   log_nofix "a checkout, or an installed copy, carrying every file runtime-install.sh names in FILES"
@@ -517,7 +364,7 @@ done
 CK_SRC="$SRC/../CHECKS.md"
 CK_TMP="$(mktemp "${TMPDIR:-/tmp}/runtime-install-checks.XXXXXX")" || { log_fail "could not make a temp file for the composed register"; log_nofix "TMPDIR"; log_end; exit 1; }
 RC_TMP="$(mktemp "${TMPDIR:-/tmp}/runtime-install-required.XXXXXX")" || { log_fail "could not make a temp file for the composed required-checks list"; log_nofix "TMPDIR"; log_end; exit 1; }
-trap 'rm -f "$CK_TMP" "$RC_TMP" "$RC_TMP.new"' EXIT
+trap 'rm -f "$CK_TMP" "$RC_TMP" "$RC_TMP.new" "$CK_TMP.in" "$CK_TMP.hooks"' EXIT
 # The packs installed here (checks.d/<repo-id>.md, written by pack.sh) are composed in too, so reinstalling the runtime never drops their rows.
 if _ck_err="$(sh "$SRC/check-registry-generate.sh" --core "$SRC/../CHECKS.md" --packs "$DIR/checks.d" 2>&1 >"$CK_TMP")"; then CK_SRC="$CK_TMP"
 else
@@ -536,7 +383,7 @@ fi
 data_src() { case "${1%%:*}" in CHECKS.md) printf '%s' "$CK_SRC" ;; CONTRACTS/required-checks.tsv) printf '%s' "$RC_SRC" ;; *) printf '%s' "$SRC/../${1%%:*}" ;; esac; } # <checkout path>:<config-dir path> -> the bytes to install
 for f in $FILES; do
   if [ ! -f "$DIR/bin/$f" ]; then log_note "bin/$f (new)"
-  elif cmp -s "$SRC/$f" "$DIR/bin/$f"; then log_note "bin/$f (replace, identical)"
+  elif cmp -s "$(_src "$f")" "$DIR/bin/$f"; then log_note "bin/$f (replace, identical)"
   else log_note "bin/$f (replace)"; fi
 done
 for _p in $SUITE; do
@@ -574,25 +421,27 @@ log_note "statusLine → command + refreshInterval ${REFRESH}s"
 # dry run never mentions is a key the operator did not know this installer owns.
 log_note "subagentStatusLine → command (one row per live subagent)"
 log_note "SessionStart += context-resolve.sh (append-only, idempotent)"
-log_note "SessionStart += session-verdicts.sh (append-only, idempotent)"
-log_note "Stop += memory-harvest.sh (append-only, idempotent)"
-log_note "PostToolUseFailure += failure-observe.sh (append-only, idempotent)"
-# The report has to carry the DECISION, not the intention. A line that says it
-# wires a hook it then skips is how an operator learns to stop reading the dry run.
-if [ "$TICKET_WIRE" = 1 ]; then log_note "Stop += ticket-note.sh (deduped by basename, any path)"
-else log_skip "Stop: ticket-note.sh NOT wired: $TICKET_WHY; to re-enable: rm $DIR/ticket-note.off, then re-run"; fi
-if [ "$REPLY_WIRE" = 1 ]; then log_note "Stop += reply-shape.sh (deduped by basename, any path)"
-else log_skip "Stop: reply-shape.sh NOT wired: $DIR/reply-shape.off is present; to re-enable: rm it, then re-run"; fi
-if [ "$STATE_WIRE" = 1 ]; then log_note "Stop += session-state.sh (deduped by basename, any path)"
-else log_skip "Stop: session-state.sh NOT wired: $DIR/session-state.off is present; to re-enable: rm it, then re-run"; fi
-if [ "$TITLE_WIRE" = 1 ]; then log_note "UserPromptSubmit + SessionStart += session-title.sh (deduped by basename, any path)"
-else log_skip "session-title.sh NOT wired: $DIR/session-title.off is present; to re-enable: rm it, then re-run"; fi
-if [ "$CONF_WIRE" = 1 ]; then log_note "PreToolUse(Bash) += access-confinement.sh (deduped by basename, any path)"
-else log_skip "access-confinement.sh NOT wired: $DIR/access-confinement.off is present; to re-enable: rm it, then re-run"; fi
+log_note "Stop, PostToolUseFailure and the rest: the hook engines, as bin/deploy-hooks.sh plans them below"
 log_skip "one-word commands (idea, memory, gcx, gcloud): CONTRACTS/shims.tsv owns them, through shim-install (harbor#708)"
-if [ "$(jq -S '{statusLine, subagentStatusLine, hooks}' "$S")" = "$(printf '%s' "$NEW" | jq -S '{statusLine, subagentStatusLine, hooks}')" ]
+# The engines' wiring, asked of the renderer here as in --apply, so a bad manifest refuses the dry run too.
+if _hk_plan="$(sh "$HOOKS" --plan "$DIR" --root "$SRC/.." --installer runtime-install 2>"$CK_TMP.hooks")"; then
+  while IFS="$(printf '\t')" read -r _hv _he _hev _hm _ht; do
+    [ -n "$_hv" ] || continue
+    case "$_hv" in
+      off) log_skip "$_hev: $_he.sh NOT wired: $DIR/$_he.off is present; to re-enable: rm it, then re-run" ;;
+      removed) log_skip "$_hev: $_he.sh NOT wired: it was removed from settings.json by hand; to re-enable: add it back to $DIR/settings.json, and the next run keeps it" ;;
+      *) log_note "$_hev ($_hm): $_he.sh — $_hv" ;;
+    esac
+  done <<EOF
+$_hk_plan
+EOF
+else
+  il_refuse "the hook engines' manifests do not render: $(sed -n 's/^.*FAIL[: ]*//p' "$CK_TMP.hooks" | head -1)" "sh $HOOKS --check"
+fi
+_hk_moves="$(printf '%s\n' "${_hk_plan:-}" | grep -cE '^(wire|prune)' || :)"
+if [ "$(jq -S '{statusLine, subagentStatusLine, hooks}' "$S")" = "$(printf '%s' "$NEW" | jq -S '{statusLine, subagentStatusLine, hooks}')" ] && [ "$_hk_moves" = 0 ]
 then log_ok "settings.json already carries every key and hook above"
-else log_note "settings.json: the keys and hooks above would be merged in (append-only)"; fi
+else log_note "settings.json: the keys and hooks above would be merged in"; fi
 
 # ── would this deploy REMOVE work that is already installed? (harbor#115) ────
 # Asked in BOTH modes, and now a refusal in both (the install standard's dry-run rule): a dry
@@ -620,12 +469,12 @@ mkdir -p "$DIR/bin"
 il_backup "$S" || { log_end; exit 1; }
 # The pre-run bytes of every file this run REPLACES with different content; identical bytes lose nothing.
 for f in $FILES $REFRESH_ONLY; do
-  if [ -f "$DIR/bin/$f" ] && ! cmp -s "$SRC/$f" "$DIR/bin/$f"; then il_backup "$DIR/bin/$f" || { log_end; exit 1; }; fi
+  if [ -f "$DIR/bin/$f" ] && ! cmp -s "$(_src "$f")" "$DIR/bin/$f"; then il_backup "$DIR/bin/$f" || { log_end; exit 1; }; fi
 done
 for _p in $SUITE $DATA; do
   if [ -f "$DIR/${_p#*:}" ] && ! cmp -s "$(data_src "$_p")" "$DIR/${_p#*:}"; then il_backup "$DIR/${_p#*:}" || { log_end; exit 1; }; fi
 done
-for f in $FILES; do il_install_exec "$SRC/$f" "$DIR/bin/$f"; il_manifest "bin/$f"; done
+for f in $FILES; do il_install_exec "$(_src "$f")" "$DIR/bin/$f"; il_manifest "bin/$f"; done
 log_ok "copied $(printf '%s\n' $FILES | wc -l | tr -d ' ') files into $DIR/bin"
 for _p in $SUITE; do
   mkdir -p "$DIR/$(dirname "${_p#*:}")"
@@ -682,12 +531,18 @@ fi
 _b6_refreshed=""
 for f in $REFRESH_ONLY; do
   [ -f "$DIR/bin/$f" ] || continue
-  il_install_exec "$SRC/$f" "$DIR/bin/$f"; il_manifest "bin/$f"
+  il_install_exec "$(_src "$f")" "$DIR/bin/$f"; il_manifest "bin/$f"
   _b6_refreshed="${_b6_refreshed}${_b6_refreshed:+ }$f"
 done
 if [ -n "$_b6_refreshed" ]; then log_ok "b6: $_b6_refreshed refreshed (already installed here)"
 else log_skip "b6: not installed here — guard-integrity.sh left alone"; fi
+# The engines' entries, rendered now that their files are in $DIR/bin: the renderer refuses to wire a script not there.
+printf '%s' "$NEW" > "$CK_TMP.in"
+NEW="$(sh "$HOOKS" --settings "$DIR" --in "$CK_TMP.in" --root "$SRC/.." --installer runtime-install 2>"$CK_TMP.hooks")" \
+  || { log_fail "the hook engines' wiring did not render: $(sed -n 's/^.*FAIL[: ]*//p' "$CK_TMP.hooks" | head -1)"; log_nofix "sh $HOOKS --check"; log_end; exit 1; }
 il_write_json "$NEW" "$S" || { log_end; exit 1; }
+sh "$HOOKS" --record "$DIR" --root "$SRC/.." --installer runtime-install >/dev/null 2>"$CK_TMP.hooks" \
+  || log_warn "settings.json is written, but what is wired was not recorded, so a binding removed by hand may come back on the next run: $(sed -n 's/^.*FAIL[: ]*//p' "$CK_TMP.hooks" | head -1)"
 log_ok "settings.json: statusLine, subagentStatusLine and the hooks merged; the old bytes are in $IL_BK"
 
 # THE PINS THIS INSTALLER JUST INVALIDATED. Two files in FILES — guard-lib.sh
