@@ -818,12 +818,10 @@ _gen() {
     "memory_store=${HARBOR_LOG_DIR:-$CFG/MEMORY}" "local_bin=$(_root HARBOR_LOCAL_BIN)"
 }
 if [ "$MODE" = dangling ]; then
-  # A failed scan is 3 (unchecked), never 1: reference-check read 1 as "rows found", so a scan that died on an
-  # unwritable TMPDIR printed no row and REF-5 reported 473 dangling files as none (2026-10-27). No temp file either.
-  _dg="$(_py dangling "home=$HOME" "cfg=$CFG")" || { log_fail "the dangling scan failed (python3 traceback above)"; log_fix "$_AGAIN --dangling"; log_end || :; exit 3; }
-  [ -n "$_dg" ] || exit 0
-  printf '%s\n' "$_dg"
-  exit 1
+  _py dangling "home=$HOME" "cfg=$CFG" > "$TMP.d" || { log_fail "the dangling scan failed (python3 traceback above)"; log_fix "$_AGAIN --dangling"; log_end || :; rm -f "$TMP.d"; exit 1; }
+  cat "$TMP.d"; _n="$(wc -l < "$TMP.d" | tr -d ' ')"; rm -f "$TMP.d"
+  [ "$_n" = 0 ] || exit 1
+  exit 0
 fi
 if ! _gen; then
   log_fail "the graph build failed (python3 traceback above)"; log_fix "$_AGAIN --stdout, and read the traceback"

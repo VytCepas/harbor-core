@@ -49,6 +49,7 @@ standard-rename.sh     VERB  the rename codemod (harbor#996 B2): a rename wave (
 gate-codeowners.sh VERB  a person runs --write after changing the protected-paths register (harbor#1018); classify.test.sh runs --check
 gate-register-derive.sh VERB  a person runs --write after changing an installer (harbor#1018); classify.test.sh runs --check
 gcloud-wrapper.sh      VERB  linked as ~/.local/bin/gcloud by shim-install.sh (CONTRACTS/shims.tsv, harbor#708); every `gcloud` typed on the box reaches it through PATH, which C8 does not scan
+harbor-app-install.sh  VERB  the operator types it, from a terminal only: --apply refuses inside a Claude session, so nothing a session schedules may run it (harbor#1225)
 hook-replay.sh         IDLE  measures the hook layer against REAL traffic; the corpus exists, nothing replays it
 idea.sh                VERB  appends one idea to the memory store, typed by a person
 isa-index.sh           VERB  regenerates the slug -> repo -> PR -> ADR pointer table on request

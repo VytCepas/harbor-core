@@ -150,17 +150,6 @@ ln -sfn "$TMP/gone/bin/one.sh" "$X24B/one"
 t_eq "a link into a REMOVED worktree is DANGLING, not absent" yes "$(hasre "$(x24 X2b)" 'DANGLING.*one')"
 ln -sfn "$X24R/bin/one.sh" "$X24B/one"
 t_hasnt "a link that resolves into the repo is silent" "[$(x24 X2b)]" 'one'
-# harbor-app-install's copies, read from its own put lines: compared, never NEVER DEPLOYED.
-mkdir -p "$X24R/bin/harbor-app"; printf '#!/bin/sh\necho new\n' > "$X24R/bin/harbor-app/gh"
-printf 'put gh "$BIN/gh" 755\nput mint-token.sh "$CFG/mint-token.sh" 700\n' > "$X24R/bin/harbor-app-install.sh"
-printf 'runtime-install deadbeef x x\n' > "$X24L/.helm-install-stamp"
-t_hasnt "an App shim never installed is silent: installing the App is a choice" "[$(x24 X2b)]" 'local/bin/gh'
-printf '#!/bin/sh\necho old\n' > "$X24B/gh"
-t_has "an installed App shim that differs from bin/harbor-app/gh is reported" "$(x24 X2b)" 'DIFFERS (either direction): ~/.local/bin/gh vs bin/harbor-app/gh'
-cp "$X24R/bin/harbor-app/gh" "$X24B/gh"
-t_hasnt "...and an identical one is silent" "[$(x24 X2b)]" 'local/bin/gh'
-t_hasnt "a put into another directory is not a ~/.local/bin command" "[$(x24 X2b)]" 'mint-token'
-rm -f "$X24L/.helm-install-stamp" "$X24B/gh"
 
 t_section "X9: the register's schedule column decides who owes a plist"
 X9R="$TMP/x9"; mkdir -p "$X9R/bin" "$X9R/launchd"; cp "$LINT" "$X9R/bin/"

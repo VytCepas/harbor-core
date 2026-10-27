@@ -44,6 +44,7 @@ harbor/bin/store-check.sh	Measured 2026-09-16 from ~/harbor	history: dated measu
 harbor/bin/store-check.sh	Measured 2026-09-21 with cwd ~/harbor	history: dated measurement
 harbor/bin/worktree.sh	`~/harbor-ci` is a WORKTREE of `~/harbor`	describes a setup that no longer exists (~/harbor-ci is at neither address); a prefix rewrite would leave it half-true
 harbor/HANDOFF-ARCHIVE.md	*	record: archived handoffs
+harbor/EVALS.md	*	record: eval run log
 harbor/harbor-build-tickets.md	*	record: historical build-ticket list
 # harbor instruction surfaces kept as dated record — harbor#639 (harbor#629), 2026-09-23
 harbor/CONTRACTS/cli.md	`~/harbor-ci` is a **worktree** of `~/harbor`	rationale for worktree.sh describing the state that motivated it; ~/harbor-ci exists at neither address, so rewriting half the clause would assert a false present
@@ -60,5 +61,3 @@ harbor/skills/housekeeping/references/classes.md	set **`core.bare = true` on `~/
 # sentence-ending history lines surfaced by the full-stop separator fix, and a workload-repo ticket — 2026-09-23
 harbor/bin/context-resolve.sh	had spent its entire life editing ~/harbor.	history: the harbor#75 measurement of launch cwd vs write tree
 harbor/bin/fleet-sessions.sh	# ~/harbor. Grouping on either one	history: the re-measured 2026-08-02 observation of two sessions
-harbor/tests/lint/domain/ratchet.test.sh	the brook ran by; a zorbcorporate thing; ~/harbor/bin	fixture: a word-boundary case for the domain ratchet, data not a path
-harbor-core/tests/lint/domain/ratchet.test.sh	the brook ran by; a zorbcorporate thing; ~/harbor/bin	fixture: the same case in the public mirror

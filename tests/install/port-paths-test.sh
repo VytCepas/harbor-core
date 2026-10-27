@@ -127,12 +127,6 @@ t_has "names the stale * row of a file that names no path" "$E4" "$SE/b.md"
 t_has "names the stale line row" "$E4" "$SE/a.sh — \"no longer here\""
 t_hasnt "a * row whose file still names a path is not stale" "$E4" "$SE/a.sh — \"*\""
 t_hasnt "an @HOME@ row whose line is there is not stale" "$E4" "$SE/c.sh"
-# A skill retired from the tree but still installed: its row exempts the installed copy, so it is not stale.
-mkdir -p "$CC/skills/gone"; printf 'see ~/harbor/MAP.md\n' > "$CC/skills/gone/SKILL.md"
-printf 'harbor/skills/gone/SKILL.md\tsee ~/harbor/MAP.md\trecord\n' >> "$X4"
-t_hasnt "a row whose line lives on in the installed copy is not stale" "$(ppc "$P4" "$X4" --verify 2>&1)" "$SE/skills/gone"
-rm -rf "$CC/skills/gone"
-t_has "...and is, once the installed copy is gone too" "$(ppc "$P4" "$X4" --verify 2>&1)" "$SE/skills/gone"
 o="$(TMPDIR="$T/no-such-dir" HOME="$HC" CLAUDE_CONFIG_DIR="$CC" PORT_ROOT="$P4" PORT_PATHS_EXEMPT="$X4" sh "$TOOL" --verify 2>&1)"; c=$?
 t_eq "a scan with nowhere to write" 3 "$c"; t_has "says it is not a green" "$o" "not a green"
 o="$(ppc "$T/port-absent" /dev/null --help 2>&1)"; c=$?

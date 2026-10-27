@@ -83,10 +83,7 @@ run >/dev/null
 t_eq "a second failed tick adds no line" 2 "$(nlog)"
 rm -f "$FX/plan.fail"; run >/dev/null
 t_eq "control: a good read clears the mark" false "$(get .unread)"
-t_eq "...and says once that the read answers again, so the log does not end on the failure" 3 "$(nlog)"
-t_has "...in those words" "$(last)" "the plan read answers again"
-run >/dev/null
-t_eq "...and, nothing having changed since, adds no line" 3 "$(nlog)"
+t_eq "...and, nothing having changed, adds no line" 2 "$(nlog)"
 reset; run >/dev/null; state pro broken; run >/dev/null
 t_eq "a protection read that is neither 200, 403 nor 404 is unread, never a gate" "true github" "$(get .unread) $(get .gate)"
 reset; printf '\n' > "$FX/plan"; run >/dev/null

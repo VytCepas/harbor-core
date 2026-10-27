@@ -9,10 +9,9 @@
 # runners worked through two overlapping runs, when the answer took five API
 # reads and a schedule worked out by hand. fleet-glyph.sh renders it as ⏳N ·~Mm.
 #
-# THE REPOS ARE DERIVED, NEVER LISTED. Every running runner container's
-# RUNNER_URL, and every <runner>/.runner under HARBOR_RUNNERS_DIR (default
-# ~/runners), names the repo it serves, and the number of runners per repo is the
-# parallelism the estimate schedules against.
+# THE REPOS ARE DERIVED, NEVER LISTED. Every <runner>/.runner under
+# HARBOR_RUNNERS_DIR (default ~/runners) names the repo it serves, and the number
+# of runner folders per repo is the parallelism the estimate schedules against.
 # Adding or removing a runner changes the estimate with no edit here.
 #
 # THE ESTIMATE. A job's typical length is the median of its last three successful
@@ -70,7 +69,6 @@ CACHE_DIR="${HARBOR_CACHE_DIR:-$HOME/.claude/cache}"
 OUT="$CACHE_DIR/ci-queue.json"
 NOW="${HARBOR_NOW:-$(date +%s)}"
 GH="${HARBOR_GH:-gh}"
-DOCKER="${HARBOR_DOCKER:-docker}"
 STALL_SEC="${HARBOR_CI_STALL_SEC:-600}"
 STALL_CONFIRM=240   # a second refresh, less jitter: 300s apart, never one sample
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required and is not on PATH"; log_fix "$(pkg_hint jq)"; log_end || :; exit 2; }
@@ -90,14 +88,6 @@ for _f in "$RUNNERS_DIR"/*/.runner; do
   [ -f "$_f" ] || continue
   tr -d '\357\273\277' < "$_f" | jq -r '.gitHubUrl // empty' 2>/dev/null \
     | sed -n 's#^https://github\.com/\([^/][^/]*/[^/][^/]*\)/*$#\1#p' >> "$T/repos" || :
-done
-# Runner CONTAINERS (the fleet since ci-runners.sh, harbor#1060) carry no .runner on the host: each names its repo in
-# RUNNER_URL. Read only from .runner folders, the queue was empty while every runner was busy (2026-10-27). A gate
-# container runs gate jobs only, so it is not parallelism here; an org URL names no repo; docker down adds nothing.
-for _c in $("$DOCKER" ps --format '{{.Names}}' 2>/dev/null); do
-  case "$_c" in *-gate|*-gate-[0-9]) continue ;; esac
-  "$DOCKER" inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$_c" 2>/dev/null \
-    | sed -n 's#^RUNNER_URL=https://github\.com/\([^/][^/]*/[^/][^/]*\)/*$#\1#p' >> "$T/repos" || :
 done
 
 : > "$T/out.jsonl"

@@ -146,7 +146,6 @@
 /bin/guard-integrity.sh @VytCepas
 /bin/guard-selfedit.sh @VytCepas
 /bin/guard-stop.sh @VytCepas
-/bin/harbor-app-install.sh @VytCepas
 /bin/harbor-clean.sh @VytCepas
 /bin/idea.sh @VytCepas
 /bin/inject-install.sh @VytCepas

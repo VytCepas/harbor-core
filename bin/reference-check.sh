@@ -120,19 +120,6 @@ log_init reference-check
 # --json's stdout is data, byte-identical to before; its log lines, if any, go to stderr. So is --status's.
 [ "$JSON$STATUS" = 00 ] || LOG_FD=2
 [ "$STATUS" = 0 ] || status_init reference-check "$DIR" || exit 3
-# Every report loop below reads a here-document, and a shell that cannot create one's temp file runs them on
-# nothing and reports clean (seen in a sandboxed subagent, 2026-10-27). `read` is a builtin, so a PATH with no
-# coreutils still probes. Refused, never read as a pass.
-_hd=""
-{ IFS= read -r _hd <<EOF
-ok
-EOF
-} 2>/dev/null || _hd=""
-if [ "$_hd" != ok ]; then
-  log_fail "this shell cannot create a here-document (TMPDIR=${TMPDIR:-unset} is not writable), so no rule could be judged"
-  log_fix "TMPDIR=\"\$HOME/tmp\" sh $0 $*"
-  log_end || :; exit 2
-fi
 
 # An absent config dir is an ANSWER, not a misuse — the same argument
 # floor-verify.sh:44 makes. Nothing is installed, so nothing dangles.
@@ -660,19 +647,12 @@ if [ ! -f "$_gg" ]; then
   _gg="$(sh "$SELF/roots.sh" --get HARBOR_REPO 2>/dev/null || :)"; _gg="${_gg:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}/bin/graph-gen.sh"
 fi
 if [ -f "$DIR/.harbor-manifest" ] && [ -f "$_gg" ] && command -v python3 >/dev/null 2>&1; then
-  # Held in a variable, not a temp file: an unwritable TMPDIR made the file's 473 rows read as none (2026-10-27).
-  # graph-gen exits 0 clean or 1 with dangling rows; anything else judged nothing, and says so as a finding.
-  _gr=0; _dang="$(CLAUDE_CONFIG_DIR="$DIR" sh "$_gg" --dangling 2>/dev/null)" || _gr=$?
-  if [ "$_gr" -le 1 ]; then
-    while IFS='	' read -r _dp _ds _dw; do
-      [ -n "${_dp:-}" ] && finding "REF-5" "manifest → $_dp" "$_dw ($_ds), so a dangling deploys_to edge in the reference graph"
-    done <<EOF
-$_dang
-EOF
-    examined "REF-5" "$(grep -vc -e '^#' -e '^[[:space:]]*$' "$DIR/.harbor-manifest" || :)" "manifest row(s) checked for a dangling installed file"
-  else
-    finding "REF-5" "graph-gen.sh --dangling" "it exited $_gr, so no installed file was checked against the manifest" "CLAUDE_CONFIG_DIR=$DIR sh $_gg --dangling"
-  fi
+  CLAUDE_CONFIG_DIR="$DIR" sh "$_gg" --dangling 2>/dev/null > "${TMPDIR:-/tmp}/refchk-5d.$$" || :
+  while IFS='	' read -r _dp _ds _dw; do
+    [ -n "${_dp:-}" ] && finding "REF-5" "manifest → $_dp" "$_dw ($_ds), so a dangling deploys_to edge in the reference graph"
+  done < "${TMPDIR:-/tmp}/refchk-5d.$$"
+  rm -f "${TMPDIR:-/tmp}/refchk-5d.$$"
+  examined "REF-5" "$(grep -vc -e '^#' -e '^[[:space:]]*$' "$DIR/.harbor-manifest" || :)" "manifest row(s) checked for a dangling installed file"
 elif [ -f "$DIR/.harbor-manifest" ]; then
   examined "REF-5" 0 "manifest row(s) checked for a dangling installed file (graph-gen.sh or python3 not found, so none judged)"
 fi

@@ -178,7 +178,6 @@ bin/guard-lib.sh	installed	derived: shipped by floor-install.sh
 bin/guard-selfedit.sh	installed	derived: shipped by floor-install.sh
 bin/guard-stop.sh	installed	derived: wired by floor-install.sh
 bin/harbor	operator-run	derived: linked into ~/.local/bin as harbor by CONTRACTS/shims.tsv
-bin/harbor-app-install.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/harbor-clean.sh	installed	derived: shipped by runtime-install.sh
 bin/idea.sh	operator-run	derived: linked into ~/.local/bin as idea by CONTRACTS/shims.tsv
 bin/inject-install.sh	installed	derived: called by bin/decider-set.sh

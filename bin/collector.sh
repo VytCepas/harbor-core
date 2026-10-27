@@ -38,9 +38,6 @@ event() {
 }
 
 ingest() {
-  # The pass's start, beside status.json's end: a pass slower than the check's 15 min (load 18, 2026-10-27) read as a
-  # dead collector. collector-check takes the newer of the two, so a pass that hangs still goes stale.
-  : > "$STORE/pass.started" 2>/dev/null && chmod 0644 "$STORE/pass.started" 2>/dev/null || :
   _unread=0; _files=0; _bytes=0; _new="$STORE/state/files.tsv.new"; : > "$_new"; _now="$(date +%s)"
   : > "$STORE/state/active.now"
   : > "$STORE/state/list"

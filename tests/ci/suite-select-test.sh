@@ -232,19 +232,6 @@ glane other_self
 t_eq "appended rows beside another selector input run everything" RUN "$(gv beta-test.sh)"
 t_has "…and name that input" "$(gsel)" "selector's own inputs (bin/suite-run.sh)"
 
-t_section "uncommitted work is part of the local changeset; an unreachable base still runs everything"
-gq checkout -q -B wip main
-echo x >> "$G/docs/d.txt"
-t_eq "an uncommitted edit selects its declarer" RUN "$(gv beta-test.sh)"
-t_eq "…and only it: not everything" SKIP "$(gv alpha-test.sh)"
-gq checkout -q -- docs/d.txt; : > "$G/docs/new.txt"
-t_eq "an untracked new file selects its declarer" RUN "$(gv beta-test.sh)"
-t_eq "…and only it" SKIP "$(gv alpha-test.sh)"
-t_eq "an unreachable base runs everything, whatever the working tree" RUN \
-  "$( ( cd "$CWD" && HARBOR_ROOT="$G" HARBOR_BASE=no-such-ref sh "$SEL" --list ) 2>&1 | awk '$2 == "alpha-test.sh" { print $1 }')"
-rm -f "$G/docs/new.txt"; gq checkout -q main
-t_eq "a clean tree on the base itself still runs everything" RUN "$(gv alpha-test.sh)"
-
 t_section ".github/CODEOWNERS is not a selector input; a workflow still is (harbor#150)"
 t_has "CODEOWNERS is judged like any path" "$(sel '.github/CODEOWNERS' --list)" 'no declaration mentions .github/CODEOWNERS'
 t_has "a workflow is still the selector's own input" "$(sel '.github/workflows/governance.yml' --list)" "selector's own inputs"

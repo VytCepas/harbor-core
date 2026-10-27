@@ -113,8 +113,6 @@ else
 fi
 
 ALARM=false; [ "$PLAN/$GATE" = "$APLAN/$AGATE" ] || ALARM=true
-# The "did not answer" line promised the next good read clears it: say so once, or the log ends on the failure.
-[ "$MODE" != run ] || [ "$(printf '%s' "$PREV" | jq -r '.unread // false')" != true ] || logline "the plan read answers again"
 save "$(jq -cn --argjson now "$NOW" --arg repo "$REPO" --arg plan "$PLAN" --arg gate "$GATE" --argjson ack "$ACK" --argjson alarm "$ALARM" \
   '{at: $now, repo: $repo, plan: $plan, gate: $gate, ack: $ack, alarm: $alarm, unread: false}')"
 [ "$MODE" = ack ] && log_end >/dev/null || :

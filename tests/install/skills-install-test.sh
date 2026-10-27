@@ -165,20 +165,6 @@ t_eq "...a rename drops them, with the old dir it moved into the backup" 0 "$(gr
 t_eq "...and records the new name" 1 "$(grep -c ' skills/renamed/SKILL.md ' "$MF")"
 _mfb="$(cat "$MF")"; sh "$ROOT/bin/skills-install.sh" --dir "$CFG" alpha >/dev/null 2>&1
 t_eq "a dry run leaves the manifest as it was" "$_mfb" "$(cat "$MF")"
-mkdir -p "$ROOT/skills/retiree" "$ROOT/skills/kept"
-printf -- '---\nname: retiree\ndescription: "R"\n---\n' > "$ROOT/skills/retiree/SKILL.md"
-printf -- '---\nname: kept\ndescription: "K"\n---\n' > "$ROOT/skills/kept/SKILL.md"
-run retiree --apply >/dev/null; run kept --apply >/dev/null
-rm -rf "$ROOT/skills/retiree" "$CFG/skills/retiree" "$CFG/skills/kept"
-_mfb="$(cat "$MF")"; run --all >/dev/null
-t_eq "a dry --all leaves a retired skill's rows" "$_mfb" "$(cat "$MF")"
-run --all --apply >/dev/null
-t_eq "--all --apply drops the rows of a skill retired from the repo and gone from disk" 0 "$(grep -c ' skills/retiree/' "$MF")"
-t_eq "...keeps a still-tracked skill's rows (it is reinstalled)" 1 "$(grep -c ' skills/kept/SKILL.md ' "$MF")"
-mkdir -p "$ROOT/skills/boxonly"; printf -- '---\nname: boxonly\ndescription: "B"\n---\n' > "$ROOT/skills/boxonly/SKILL.md"
-run boxonly --apply >/dev/null; rm -rf "$ROOT/skills/boxonly"; run --all --apply >/dev/null
-t_eq "...and keeps a retired skill's rows while its dir is still on disk" 1 "$(grep -c ' skills/boxonly/SKILL.md ' "$MF")"
-rm -rf "$ROOT/skills/kept" "$CFG/skills/boxonly"; run --all --apply >/dev/null
 cmd "$T_TMP/ch3" "$T_TMP/ch3/elsewhere" --apply --dir "$T_TMP/ch3/elsewhere" >/dev/null
 t_has "a command install is a row too" "$(cat "$T_TMP/ch3/elsewhere/.harbor-manifest")" " commands/harbor-merge.md skills-install "
 

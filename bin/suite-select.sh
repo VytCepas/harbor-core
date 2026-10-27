@@ -168,17 +168,7 @@ CHANGED=""
 if [ -n "${HARBOR_CHANGED+x}" ]; then
   CHANGED="$HARBOR_CHANGED"
 else
-  if CHANGED="$(git -C "$ROOT" diff --name-only --no-renames "$BASE...$HEADREF" 2>/dev/null)"; then
-    # Uncommitted work counts when judging the local HEAD: before the first commit the committed diff is empty, and
-    # empty selects EVERY suite (399 for a 13-file change, 2026-10-27). Only once the base resolved, so an
-    # unreachable base still runs everything.
-    if [ "$HEADREF" = HEAD ]; then
-      _wt="$( { git -C "$ROOT" diff --name-only --no-renames HEAD && git -C "$ROOT" ls-files --others --exclude-standard; } 2>/dev/null)" || _wt=""
-      CHANGED="$(printf '%s\n%s\n' "$CHANGED" "$_wt" | awk 'NF && !s[$0]++')"
-    fi
-  else
-    CHANGED=""
-  fi
+  CHANGED="$(git -C "$ROOT" diff --name-only --no-renames "$BASE...$HEADREF" 2>/dev/null)" || CHANGED=""
 fi
 
 # <file> → `A<TAB>key` per row the diff from the merge base ADDS to it and `G<TAB>key<TAB>base globs` per
@@ -258,10 +248,6 @@ fi
 if [ -z "$ALL_WHY" ] && { [ -n "$APPENDED" ] || [ -n "$GROWN" ]; }; then
   ADDED="$(git -C "$ROOT" diff --name-only --no-renames --diff-filter=A "$BASE...$HEADREF" 2>/dev/null)" \
     || ALL_WHY="rows were appended to the selector's inputs and git cannot list the paths this changeset adds"
-  # New files not yet committed are added paths too (see the changeset above).
-  [ -n "$ALL_WHY" ] || [ "$HEADREF" != HEAD ] || [ -n "${HARBOR_CHANGED+x}" ] \
-    || ADDED="$ADDED${ADDED:+
-}$( { git -C "$ROOT" diff --name-only --no-renames --diff-filter=A HEAD; git -C "$ROOT" ls-files --others --exclude-standard; } 2>/dev/null)"
 fi
 NL='
 '
