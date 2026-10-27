@@ -235,14 +235,11 @@ t_eq "a branch made today is not idle" 0 "$(any pr-branches 'widget fresh-local'
 t_eq "a pushed branch is not the only copy" 0 "$(rows RISK pr-branches 'widget pushed-idle')"
 t_eq "a pushed branch with no PR for 30d: DECIDE" 1 "$(rows DECIDE pr-branches 'widget pushed-idle')"
 
-t_section "19 worktrees: merged+clean DECIDE, merged+dirty RISK, open nothing"
-t_eq "a clean worktree whose PR merged: DECIDE" 1 "$(rows DECIDE finished-worktrees 'widget-wt-done')"
+t_section "19 worktrees: merged+clean RECLAIM, merged+dirty RISK, open nothing"
+t_eq "a clean worktree whose PR merged: RECLAIM" 1 "$(rows RECLAIM finished-worktrees 'widget-wt-done')"
 t_eq "uncommitted changes in a finished worktree: RISK" 1 "$(rows RISK finished-worktrees 'widget-wt-dirty')"
 t_eq "a worktree with an OPEN PR is not counted" 0 "$(any finished-worktrees 'widget-wt-open')"
 t_eq "a worktree's branch is not ALSO a branch row" 0 "$(any pr-branches 'widget wt-done')"
-GHR --apply >/dev/null  # --apply never acts on DECIDE
-t_eq "--apply keeps a DECIDE worktree" present "$(there "$H/widget-wt-done")"
-t_exit "--apply keeps a DECIDE branch" 0 git -C "$GR" rev-parse --verify -q merged-clean
 
 t_section "20 remote branches: at the merged head DECIDE; moved says look"
 t_eq "a GitHub branch left at its merged head: DECIDE" 1 "$(rows DECIDE remote-branches 'acme/widget merged-clean')"
@@ -291,7 +288,15 @@ t_eq "an idle worktree an install-root link resolves into is KEEP, naming the li
   "KEEP install target: .local/bin/tool resolves into it" "$(wi widget-wt-installed)"
 t_eq "...and so is one whose PR merged" "KEEP install target: .local/bin/done-tool resolves into it" "$(wi widget-wt-done)"
 t_eq "control: an idle worktree nothing links into is still DECIDE" "DECIDE no PR and no commit for 30d" "$(wi widget-wt-idle)"
-rm -f "$H/.local/bin/done-tool"  # wt-done is a DECIDE fixture again for every later section
+rm -f "$H/.local/bin/done-tool"
+
+t_section "23d --apply removes a merged worktree and its branch; DECIDE and RISK stay"
+GHR --apply >/dev/null
+t_eq "--apply removes the merged, clean worktree" gone "$(there "$H/widget-wt-done")"
+t_exit "...and its local branch" 1 git -C "$GR" rev-parse --verify -q wt-done
+t_eq "--apply keeps a DECIDE worktree (later work pushed, in no PR)" present "$(there "$H/widget-wt-after-pushed")"
+t_eq "--apply keeps a RISK worktree (uncommitted changes)" present "$(there "$H/widget-wt-dirty")"
+t_exit "--apply keeps a DECIDE branch" 0 git -C "$GR" rev-parse --verify -q merged-clean
 
 t_section "24 a failed GitHub read is UNREAD, never clean (harbor#626)"
 Ju="$(with HARBOR_CLEAN_GH="$T_BIN/gh" STUB_FAIL=prs sh "$TOOL" --json)"

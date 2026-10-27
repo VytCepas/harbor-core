@@ -201,6 +201,7 @@
 /bin/session-check.sh @VytCepas
 /bin/session-ci-watch.sh @VytCepas
 /bin/session-cleanup-report.sh @VytCepas
+/bin/session-cleanup.sh @VytCepas
 /bin/session-notify.sh @VytCepas
 /bin/session-react-lib.sh @VytCepas
 /bin/session-save-now.sh @VytCepas

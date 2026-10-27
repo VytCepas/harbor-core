@@ -242,6 +242,7 @@ bin/session-autocompact.sh	installed	derived: shipped by runtime-install.sh
 bin/session-check.sh	installed	derived: shipped by runtime-install.sh
 bin/session-ci-watch.sh	installed	derived: shipped by runtime-install.sh
 bin/session-cleanup-report.sh	installed	derived: shipped by runtime-install.sh
+bin/session-cleanup.sh	installed	derived: shipped by runtime-install.sh
 bin/session-notify.sh	installed	derived: shipped by runtime-install.sh
 bin/session-react-lib.sh	installed	derived: shipped by runtime-install.sh
 bin/session-save-now.sh	installed	derived: shipped by runtime-install.sh

@@ -155,6 +155,14 @@ t_eq "FC-10 fires on three sessions" yes "$(has_rule "$FT1" FC-10)"
 t_eq "as one finding, not three" 1 "$(count_of "$FT1" FC-10)"
 case "$(subj_of "$FT1" FC-10)" in *Read*gone.md*) _s=named ;; *) _s="$(subj_of "$FT1" FC-10)" ;; esac
 t_eq "it names the tool, then the input" named "$_s"
+# A group older than the recorder's server-name fix opens on a bare `mcp` record; the label is the newest record's.
+FT15="$(tf_fixture tf-relabel)"
+for _r in '2026-07-30 mcp s1' '2026-08-01 mcp__srvx s2' '2026-08-02 mcp__srvx s3'; do
+  set -- $_r
+  printf '{"v":1,"ts":"%sT10:00:00Z","t":"%s","e":"other","k":"-","h":"eeeeffff00001111","s":"%s","ms":4}\n' \
+    "$1" "$2" "$3" >> "$FT15/MEMORY/OBSERVABILITY/$HOST/tool-failures.jsonl"
+done
+t_has "a legacy first record does not name the group" "$(subj_of "$FT15" FC-10)" "MCP server srvx"
 t_section "FC-10 stays silent on a retry loop, a single failure, and a floor block"
 FT2="$(tf_fixture tf-oneshot)"; tf_write "$FT2" 5 one not-found aaaabbbbccccdddd same
 t_eq "five failures inside one session" no "$(has_rule "$FT2" FC-10)"

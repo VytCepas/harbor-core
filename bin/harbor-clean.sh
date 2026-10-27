@@ -32,8 +32,10 @@
 # refusal nothing tests is a comment.
 #
 # FOUR VERDICTS, AND ONLY ONE OF THEM IS EVER ACTED ON HERE:
-#   RECLAIM  dead by a predicate this file can decide; --apply acts on it
-#   DECIDE   a person has to choose — delete a branch whose PR merged, close an
+#   RECLAIM  dead by a predicate this file can decide; --apply acts on it. Since
+#            2026-10-27 that includes a clean worktree whose PR MERGED with every
+#            commit on it (the PR keeps the commits), by the operator's decision
+#   DECIDE   a person has to choose — delete a remote branch, close an
 #            issue, merge a green PR, move a loose file. --apply NEVER touches it
 #   RISK     work that exists in one place only and is going stale — uncommitted
 #            changes in a finished worktree, a branch on no remote and in no PR,
@@ -788,6 +790,12 @@ gh_worktrees() {
         row KEEP finished-worktrees 0 "$_sub" "PR #$_n was $_did, but a live session is working in it"
       elif [ "$_rc" -eq 2 ]; then
         row DECIDE finished-worktrees 0 "$_sub" "PR #$_n was $_did; its head is not in this clone, so containment is unproven" "$_rm"
+      elif [ "$_did" = merged ]; then
+        # Operator decision 2026-10-27: merged, every commit in the PR, clean, no live session — reclaimable. No --force.
+        row RECLAIM finished-worktrees 0 "$_sub" "PR #$_n was merged and carried every commit on it"
+        if [ "$APPLY" -eq 1 ] && git -C "$_r" worktree remove "$_w" >/dev/null 2>&1; then
+          [ "$_b" = "-" ] || git -C "$_r" branch -D "$_b" >/dev/null 2>&1 || true
+        fi
       else
         row DECIDE finished-worktrees 0 "$_sub" "PR #$_n was $_did and carried every commit on it" "$_rm"
       fi

@@ -42,6 +42,12 @@
 # starts bin/session-autocompact.sh detached, which types /compact into the session's Terminal tab. Off for
 # both: $STATE/compact-auto.off.
 #
+# CLEANUP  the same shape, on a different trigger. ASK: on a done or idle turn, when a PR this session opened
+# (a pr.opened event carrying its session_id) has a pr.merged event newer than the last ask (cleanup_ask in the
+# record), ONE continuation asks whether everything for it is finished. RUN: a message ending with the line
+# [cleanup-ok] starts bin/session-cleanup.sh detached, which applies the sweep's RECLAIM rows only. The line
+# [cleanup-ok] [compact-ok] does both. Off: $STATE/cleanup-auto.off.
+#
 # The floor never depends on this file; guard-stop.sh is not touched and not called.
 
 set -u
@@ -190,9 +196,9 @@ if [ "$HANDOVER_AT" -eq 0 ] || { [ "$MS" -gt 0 ] && [ "$HANDOVER_AT" -lt "$MS" ]
 # ── the record and the event ───────────────────────────────────────────────────────────────────
 mkdir -p "$STATE/sessions" 2>/dev/null || exit 0
 REC="$STATE/sessions/$SID.json"
-PREV=""; SINCE="$NOW"; PSAVE=""; PASK=""
+PREV=""; SINCE="$NOW"; PSAVE=""; PASK=""; PCLEAN=""
 if [ -r "$REC" ]; then
-  eval "$(jq -r '@sh "PREV=\(.state // "") PSINCE=\(.since // 0) PSAVE=\(.save_now // "") PASK=\(.compact_ask // "") PUPD=\(.updated // 0)"' "$REC" 2>/dev/null)" || PREV=""
+  eval "$(jq -r '@sh "PREV=\(.state // "") PSINCE=\(.since // 0) PSAVE=\(.save_now // "") PASK=\(.compact_ask // "") PCLEAN=\(.cleanup_ask // "") PUPD=\(.updated // 0)"' "$REC" 2>/dev/null)" || PREV=""
   [ "$PREV" != "$S" ] || SINCE="${PSINCE:-$NOW}"
 fi
 
@@ -219,7 +225,7 @@ ASKPCT="${HARBOR_AUTOCOMPACT_PCT:-35}"; case "$ASKPCT" in ''|*[!0-9]*) ASKPCT=35
 if [ ! -e "$STATE/compact-auto.off" ] && [ -f "$HERE/session-autocompact.sh" ] && [ "$NRUN" -eq 0 ]; then
   # Only as the message's last non-blank line: a quoted or explained marker is not the agent's word.
   _lastl="$(printf '%s\n' "$MSG" | awk 'NF { l = $0 } END { sub(/^[ \t]+/, "", l); sub(/[ \t]+$/, "", l); print l }')"
-  [ "$_lastl" != '[compact-ok]' ] || RUNC=1
+  case "$_lastl" in '[compact-ok]'|'[cleanup-ok] [compact-ok]') RUNC=1 ;; esac
   if [ -z "$RUNC" ] && [ "$ACTIVE" != true ] && [ -z "$SAVEMSG" ] && [ -n "$CTX" ] \
      && { [ "$S" = done ] || [ "$S" = idle ]; } && [ "$CTX" -ge "$ASKPCT" ]; then
     case "$ASKED" in ''|*[!0-9]*) ASKED="" ;; esac
@@ -230,12 +236,37 @@ if [ ! -e "$STATE/compact-auto.off" ] && [ -f "$HERE/session-autocompact.sh" ] &
   fi
 fi
 
+# cleanup: ask when a PR this session opened has merged since the last ask; run on its [cleanup-ok].
+CASKED="${PCLEAN:-}"; CASKMSG=""; RUNCL=""
+if [ ! -e "$STATE/cleanup-auto.off" ] && [ -f "$HERE/session-cleanup.sh" ] && [ "$NRUN" -eq 0 ]; then
+  _lastl="$(printf '%s\n' "$MSG" | awk 'NF { l = $0 } END { sub(/^[ \t]+/, "", l); sub(/[ \t]+$/, "", l); print l }')"
+  case "$_lastl" in '[cleanup-ok]'|'[cleanup-ok] [compact-ok]') RUNCL=1 ;; esac
+  if [ -z "$RUNCL" ] && [ -z "$RUNC" ] && [ "$ACTIVE" != true ] && [ -z "$SAVEMSG" ] && [ -z "$ASKMSG" ] \
+     && { [ "$S" = done ] || [ "$S" = idle ]; }; then
+    # The bus's last two day files; a session's PRs are the pr.opened events carrying its id.
+    _ev="${HARBOR_EVENT_DIR:-${HOME:-/nonexistent}/.local/state/harbor/events}"
+    _days="$(ls "$_ev" 2>/dev/null | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}\.jsonl$' | tail -n 2)"
+    if [ -n "$_days" ]; then
+      _m="$(cd "$_ev" 2>/dev/null && cat $_days 2>/dev/null | grep -F -e '"pr.opened"' -e '"pr.merged"' \
+        | jq -rs --arg s "$SID" '
+            (map(select(.kind == "pr.opened" and .data.session_id == $s) | .subject) | unique) as $mine
+            | map(select(.kind == "pr.merged" and (.subject as $x | $mine | index($x)))) | max_by(.ts) // empty
+            | "\(.ts)\t\(.subject)"' 2>/dev/null)" || _m=""
+      _mts="${_m%%	*}"; _msub="${_m#*	}"
+      if [ -n "$_m" ] && { [ -z "$CASKED" ] || [ "$(printf '%s\n%s\n' "$CASKED" "$_mts" | sort | tail -n 1)" != "$CASKED" ]; }; then
+        CASKED="$_mts"
+        CASKMSG="$_msub merged. Is everything for it finished: deployed, verified live, state saved, nothing waiting on you? If yes, end your reply with the single line [cleanup-ok] and the sweep removes what is now reclaimable (worktrees whose PR merged with every commit, their local branches, empty session dirs; never remote branches or anything with unpushed work). To clean and compact together, end with [cleanup-ok] [compact-ok]. If not, reply only 'not yet' and carry on."
+      fi
+    fi
+  fi
+fi
+
 jq -cn --arg state "$S" --argjson since "$SINCE" --arg cwd "$CWD" --arg branch "$BRANCH" --argjson dirty "$DIRTY" \
   --arg pr "$PRURL" --argjson tasks "$TASKS" --arg ctx "$CTX" --argjson handoff "$HANDOVER_AT" --arg reason "$REASON" \
-  --argjson agents "$NRUN" --arg pid "$PID" --argjson upd "$NOW" --arg save "$SAVE" --arg hstale "$HSTALE" --arg ask "$ASKED" \
+  --argjson agents "$NRUN" --arg pid "$PID" --argjson upd "$NOW" --arg save "$SAVE" --arg hstale "$HSTALE" --arg ask "$ASKED" --arg cask "$CASKED" \
   '{state:$state, since:$since, cwd:$cwd, branch:$branch, dirty:$dirty, pr:$pr, background_tasks:$tasks,
     ctx_pct:(if $ctx == "" then null else ($ctx|tonumber) end), handover_at:$handoff, reason:$reason,
-    agents:$agents, prompt_id:$pid, updated:$upd, save_now:$save, handover_stale:$hstale, compact_ask:$ask}' > "$REC.$$" 2>/dev/null && mv -f "$REC.$$" "$REC" 2>/dev/null
+    agents:$agents, prompt_id:$pid, updated:$upd, save_now:$save, handover_stale:$hstale, compact_ask:$ask, cleanup_ask:$cask}' > "$REC.$$" 2>/dev/null && mv -f "$REC.$$" "$REC" 2>/dev/null
 rm -f "$REC.$$" 2>/dev/null
 
 # Leaving `done` retires the lint verdict event.session-check wrote for it (the glyph shows it until then).
@@ -263,6 +294,14 @@ fi
 if [ -n "$ASKMSG" ]; then
   jq -cn --arg m "$ASKMSG" '{hookSpecificOutput:{hookEventName:"Stop", additionalContext:$m}}'
 fi
+if [ -n "$CASKMSG" ]; then
+  jq -cn --arg m "$CASKMSG" '{hookSpecificOutput:{hookEventName:"Stop", additionalContext:$m}}'
+fi
+CLMSG="Cleaning up: the agent said the work is finished ([cleanup-ok]); the sweep applies its RECLAIM rows. [session-state cleanup; off: touch ~/.local/state/harbor/cleanup-auto.off]"
+SENT=""
+if [ -n "$RUNCL" ]; then
+  ( sh "$HERE/session-cleanup.sh" "$SID" ) >/dev/null 2>&1 </dev/null &
+fi
 if [ -n "$RUNC" ]; then
   # The tty of the claude process above this hook; the helper finds the Terminal tab by it.
   _tty="${HARBOR_AUTOCOMPACT_TTY:-}"; _p="$PPID"; _i=0
@@ -273,7 +312,11 @@ if [ -n "$RUNC" ]; then
   done
   if [ -n "$_tty" ]; then
     ( sh "$HERE/session-autocompact.sh" "$SID" "$_tty" ) >/dev/null 2>&1 </dev/null &
-    jq -cn '{systemMessage:"Compacting: the agent said the task is finished ([compact-ok]). [session-state compact; off: touch ~/.local/state/harbor/compact-auto.off]"}'
+    _cm="Compacting: the agent said the task is finished ([compact-ok]). [session-state compact; off: touch ~/.local/state/harbor/compact-auto.off]"
+    [ -z "$RUNCL" ] || _cm="$CLMSG $_cm"
+    jq -cn --arg m "$_cm" '{systemMessage:$m}'; SENT=1
   fi
 fi
+# One JSON object per hook run: the cleanup notice rides on the compact one when both ran.
+[ -z "$RUNCL" ] || [ -n "$SENT" ] || jq -cn --arg m "$CLMSG" '{systemMessage:$m}'
 exit 0

@@ -38,7 +38,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | report | docs/reports/ | element | report | dated | 1 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| script | bin/ | component | source | living | 204 |
+| script | bin/ | component | source | living | 205 |
 | (no kind) | - | - | - | - | 172 |
 
 ## Folders
@@ -51,7 +51,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.github/` | 4 | 2 | 1 |
 | `CONTRACTS/` | 81 | 9 | 2 |
 | `DOCTRINE/` | 10 | 1 | 1 |
-| `bin/` | 208 | 22 | 2 |
+| `bin/` | 209 | 22 | 2 |
 | `commands/` | 5 | 1 | 1 |
 | `docs/` | 113 | 6 | 5 |
 | `fixtures/` | 254 | 9 | 1 |
@@ -92,7 +92,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | policy | policy-function | 0 | 0 | 11 | 0 | 0 | 3 |
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
 | scope | coordination | 2 | 10 | 0 | 0 | 0 | 4 |
-| session | data-plane | 12 | 4 | 0 | 1 | 0 | 0 |
+| session | data-plane | 13 | 4 | 0 | 1 | 0 | 0 |
 | skill | catalog | 4 | 6 | 0 | 5 | 0 | 13 |
 | standard | policy-function | 3 | 8 | 105 | 0 | 0 | 44 |
 | status | observability | 3 | 8 | 0 | 1 | 0 | 0 |
@@ -327,6 +327,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/session-check.sh`
 - `bin/session-ci-watch.sh`
 - `bin/session-cleanup-report.sh`
+- `bin/session-cleanup.sh`
 - `bin/session-notify.sh`
 - `bin/session-react-lib.sh`
 - `bin/session-save-now.sh`

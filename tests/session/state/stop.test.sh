@@ -199,6 +199,54 @@ sh "$T_ROOT/bin/session-autocompact.sh" ac-bad 'ttys1;touch x'
 t_eq "the helper: an unsafe session id or tty runs nothing" "" "$(cat "$T/osa.calls")"
 unset HARBOR_AUTOCOMPACT_TTY HARBOR_AUTOCOMPACT_DELAY; export HARBOR_AUTOCOMPACT_PCT=101 HARBOR_AUTOCOMPACT_OSA=false
 
+t_section "cleanup: a merged PR of this session asks once; [cleanup-ok] as the last line runs the sweep's RECLAIM rows"
+printf '#!/bin/sh\nprintf "%%s\\n" "$*" >> "%s/clean.calls"\ncase "$*" in *--apply*) echo "  RECLAIM  finished-worktrees  0B  wt-x" ;; esac\n' "$T" > "$T/clean"; chmod +x "$T/clean"
+export HARBOR_CLEANUP_TOOL="$T/clean"
+cleaned() { _n=0; until grep -q -- '--record' "$T/clean.calls" 2>/dev/null || [ "$_n" -ge 20 ]; do sleep 0.25; _n=$((_n + 1)); done; sleep 0.2; }
+ev() { jq -nc --arg k "$1" --arg s "$2" --arg ts "$3" --arg sid "$4" '{id:"e",ts:$ts,kind:$k,subject:$s,src:"t",data:{session_id:$sid}}' >> "$T/bus/2020-01-01.jsonl"; }  # <kind> <subject> <ts> <sid>
+mkdir -p "$T/bus"; : > "$T/clean.calls"
+run cl-1 plain 'All set.'
+t_eq "no PR of this session merged: no question" "" "$(cat "$T/out")"
+ev pr.opened o/r#1 2020-01-01T00:00:01Z cl-1; ev pr.opened o/r#2 2020-01-01T00:00:01Z cl-other
+ev pr.merged o/r#2 2020-01-01T00:00:02Z ""
+run cl-1 plain 'All set.'
+t_eq "another session's PR merged: no question" "" "$(cat "$T/out")"
+ev pr.merged o/r#1 2020-01-01T00:00:05Z ""
+run cl-1 plain 'All set.'
+t_has "this session's PR merged: one continuation asks" "$(cat "$T/out")" '"additionalContext"'
+t_has "...naming the PR and the line to answer with" "$(cat "$T/out")" 'o/r#1 merged'
+t_has "...and the marker" "$(cat "$T/out")" '[cleanup-ok]'
+run cl-1 plain 'All set.'
+t_eq "the same merge does not ask again" "" "$(cat "$T/out")"
+ev pr.opened o/r#3 2020-01-01T00:00:06Z cl-1; ev pr.merged o/r#3 2020-01-01T00:00:09Z ""
+run cl-1 plain 'All set.'
+t_has "a later merge of another of its PRs asks again" "$(cat "$T/out")" 'o/r#3 merged'
+t_eq "...and nothing ran on a question" "" "$(cat "$T/clean.calls")"
+run cl-q plain 'When it is merged I end with [cleanup-ok] on its own line.'
+sleep 0.5; t_eq "a marker quoted mid-message: nothing runs" "" "$(cat "$T/clean.calls")"
+run cl-run plain '[cleanup-ok]' "$RUN"
+sleep 0.5; t_eq "a running background task: nothing runs" "" "$(cat "$T/clean.calls")"
+: > "$ST/cleanup-auto.off"; run cl-off plain '[cleanup-ok]'; sleep 0.5
+t_eq "cleanup-auto.off: nothing runs" "" "$(cat "$T/clean.calls")"; rm -f "$ST/cleanup-auto.off"
+run cl-1 plain 'Merged, deployed, verified.
+[cleanup-ok]'
+t_has "[cleanup-ok] as the last line: the operator is told" "$(cat "$T/out")" 'Cleaning up'
+cleaned; t_has "...the sweep applies on the live box" "$(cat "$T/clean.calls")" '--apply --live'
+t_has "...then re-records the count" "$(cat "$T/clean.calls")" '--record --live'
+t_has "...and logs what it reclaimed" "$(cat "$ST"/backups/session-cleanup/*/log)" 'reclaimed: finished-worktrees'
+: > "$T/clean.calls"; : > "$T/osa.calls"
+export HARBOR_AUTOCOMPACT_TTY=ttys999 HARBOR_AUTOCOMPACT_OSA="$T/osa" HARBOR_AUTOCOMPACT_DELAY=0
+run cl-2 plain 'All done.
+[cleanup-ok] [compact-ok]'
+t_eq "both markers: ONE JSON object" 1 "$(grep -c . "$T/out")"
+t_has "...telling of both" "$(cat "$T/out")" 'Cleaning up'
+t_has "...both" "$(cat "$T/out")" 'Compacting'
+cleaned; t_has "...the sweep ran" "$(cat "$T/clean.calls")" '--apply --live'
+typed cl-2; t_has "...and /compact was typed" "$(cat "$T/osa.calls")" '/dev/ttys999'
+sleep 0.5; : > "$T/clean.calls"; sh "$T_ROOT/bin/session-cleanup.sh" '../x'
+t_eq "the helper: an unsafe session id runs nothing" "" "$(cat "$T/clean.calls")"
+unset HARBOR_AUTOCOMPACT_TTY HARBOR_AUTOCOMPACT_DELAY HARBOR_CLEANUP_TOOL; export HARBOR_AUTOCOMPACT_OSA=false
+
 t_section "fail-open, off switch, and speed"
 printf 'not json' | CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" > "$T/out" 2>&1; t_eq "garbage on stdin: exit 0, silent" "0:" "$?:$(cat "$T/out")"
 printf '{"session_id":"../x","cwd":"/"}' | CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" > "$T/out" 2>&1; t_eq "an unsafe session id writes nothing" "no" "$([ -e "$ST/x.json" ] && echo yes || echo no)"
