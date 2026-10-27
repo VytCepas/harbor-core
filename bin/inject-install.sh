@@ -2,8 +2,8 @@
 # inject-install.sh (harbor#173 · A1) — wire the injector, box-wide.
 #   sh bin/inject-install.sh [--apply] (--live | --dir PATH) [--projects] [--remove]
 #     no --apply   status: what is wired, what drifted, and what --apply would do
-#     --projects   also seed the private layer's repo packs (<private>/inject.d/<name>/) into the projects its
-#                  box/projects.tsv names (--live only)
+#     --projects   also seed the private layer's repo packs (<private>/context-rules/<name>/, or the old inject.d/<name>/)
+#                  into the projects its user/projects.tsv names (--live only); they land in .claude/inject.d, harbor#1010
 #     --remove     unwire, and move the packs and the engine into the backup
 #
 # ONE WIRING, EVERY ENVIRONMENT. hooks/injection-rule/injection-rule.sh discovers its rules from the
@@ -34,12 +34,16 @@ il_parse "$@"
 il_target
 DIR="$IL_TARGET"
 # THE PRIVATE RULE PACKS (harbor#1149). Core ships the packs every box needs and none that names a client or a repo of
-# one. Those live in <private>/inject.d, in the shape of core's inject.d/ (box/ for the packs every session carries and
+# one. Those live in <private>/context-rules (or the old inject.d), in the shape of core's (user/ for the packs every session carries and
 # the project registry, one folder per repo for `--projects`), and are read through the one resolver. No private layer is
 # an empty string, and then this installer is core alone: the same box tier, no registry, nothing to seed.
 PRIVINJ="$(env -u HARBOR_ROOT sh "$SRC/roots.sh" --inject 2>/dev/null)" && _prc=0 || _prc=$?
 # exit 1 is "no private layer" (core alone); 2 is a layer that could not be located at all, which is not a silent core-alone.
 [ "$_prc" -le 1 ] || { PRIVINJ=''; il_refuse "the private layer could not be located (roots.sh --inject exited $_prc)" "sh $SRC/roots.sh --inject"; }
+# harbor#1010: the box tier is context-rules/user, in core, in the private layer (box/ in its old inject.d) and installed;
+# the old $DIR/inject.d is moved into the backup by --apply, and the engine reads it until then.
+COREBOX="$ROOT/context-rules/user"; BOXREL=context-rules/user
+PRIVBOX=''; [ -z "$PRIVINJ" ] || { PRIVBOX="$PRIVINJ/user"; [ -d "$PRIVBOX" ] || PRIVBOX="$PRIVINJ/box"; }
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required"; log_fix "$(pkg_hint jq)"; log_end; exit 1; }
 
 # `--projects` IS A LIVE WRITE WHATEVER THE CONFIG DIR IS, and the first cut of
@@ -151,7 +155,7 @@ strip_hook() { # <settings-file> <needle> → new json with every matching hook 
 # belong in the matcher; derived from core alone, a private pack on a tool the core packs never name would be installed
 # and never invoked (harbor#184's defect, arriving by the private layer).
 pack_files() {
-  for _f in "$ROOT"/inject.d/*/*.md "$ROOT"/.claude/inject.d/*.md; do
+  for _f in "$ROOT"/context-rules/*/*.md; do
     [ -f "$_f" ] && printf '%s\n' "$_f"
   done
   if [ -n "$PRIVINJ" ]; then
@@ -187,37 +191,37 @@ WIRE_FAIL="$(wire_for PostToolUseFailure)"
 [ -n "$WIRE_FAIL" ] || WIRE_FAIL='.*'
 
 # THE PRIVATE BOX TIER IS DATA, OR IT IS REFUSED. The private layer holds no code (CONTRACTS/private-layer.md), and what
-# lands in <config>/inject.d runs inside every session's hook, so only a .md pack and the registry cross. A name core's box
+# lands in <config>/context-rules/user runs inside every session's hook, so only a .md pack and the registry cross. A name core's box
 # tier already holds is refused as well: a private file silently replacing a shipped pack would change what every session
 # is told, with nothing saying so. PRIVFILES is what passed, one path per line; a refusal is il_refuse's, so a dry run
 # predicts it and --apply writes nothing.
 PRIVFILES=''
-if [ -n "$PRIVINJ" ] && [ -d "$PRIVINJ/box" ]; then
-  for _pf in "$PRIVINJ"/box/* "$PRIVINJ"/box/.[!.]*; do
+if [ -n "$PRIVBOX" ] && [ -d "$PRIVBOX" ]; then
+  for _pf in "$PRIVBOX"/* "$PRIVBOX"/.[!.]*; do
     [ -e "$_pf" ] || [ -L "$_pf" ] || continue
     _pn="${_pf##*/}"
     [ "$_pn" != .DS_Store ] || continue
     if [ -L "$_pf" ] || [ ! -f "$_pf" ]; then
-      il_refuse "the private box tier holds $_pn, which is not a plain file; $PRIVINJ/box is flat, .md packs and projects.tsv" \
-        "move it out of $PRIVINJ/box"
+      il_refuse "the private box tier holds $_pn, which is not a plain file; $PRIVBOX is flat, .md packs and projects.tsv" \
+        "move it out of $PRIVBOX"
       continue
     fi
     case "$_pn" in
       *.md|projects.tsv) ;;
       *) il_refuse "the private box tier holds $_pn; only .md packs and projects.tsv are installed from the private layer, which is data and never code" \
-           "move it out of $PRIVINJ/box"
+           "move it out of $PRIVBOX"
          continue ;;
     esac
-    if [ -e "$ROOT/inject.d/box/$_pn" ]; then
-      il_refuse "$_pn is in core's inject.d/box and in the private box tier; a private file never replaces a shipped pack" \
-        "rename or remove $PRIVINJ/box/$_pn"
+    if [ -e "$COREBOX/$_pn" ]; then
+      il_refuse "$_pn is in core's $BOXREL and in the private box tier; a private file never replaces a shipped pack" \
+        "rename or remove $PRIVBOX/$_pn"
       continue
     fi
     PRIVFILES="${PRIVFILES:+$PRIVFILES
 }$_pf"
   done
 fi
-REGISTRY="${PRIVINJ:+$PRIVINJ/box/projects.tsv}"
+REGISTRY="${PRIVBOX:+$PRIVBOX/projects.tsv}"
 
 # THE REPO FOLDERS ARE DATA TOO, and there it matters more. `--projects` seeds <private>/inject.d/<name>/ into a registered
 # repository's own .claude/inject.d, where the engine runs a pack's `run:` script on every tool call in that repo, so a script
@@ -227,7 +231,7 @@ REGISTRY="${PRIVINJ:+$PRIVINJ/box/projects.tsv}"
 if [ "$PROJECTS" -eq 1 ] && [ -n "$PRIVINJ" ]; then
   for _rd in "$PRIVINJ"/*/; do
     [ -d "$_rd" ] || continue
-    _rn="$(basename "$_rd")"; [ "$_rn" != box ] || continue
+    _rn="$(basename "$_rd")"; case "$_rn" in box|user) continue ;; esac
     if [ -L "${_rd%/}" ]; then
       il_refuse "the private repo pack folder $_rn is a link, not a directory; $PRIVINJ/$_rn must be the folder itself" \
         "replace $PRIVINJ/$_rn with the directory it points to"
@@ -310,17 +314,18 @@ status() { # <step> — one log line per fact, under its own header
     log_fix "sh $SRC/govern-token.sh --init$([ "$IL_LIVE" -eq 1 ] && printf ' --live' || true)"
   fi
   _pk=0
-  if [ -d "$DIR/inject.d" ]; then
-    for _f in "$DIR/inject.d"/*; do [ -f "$_f" ] && _pk=$(( _pk + 1 )); done
+  if [ -d "$DIR/$BOXREL" ]; then
+    for _f in "$DIR/$BOXREL"/*; do [ -f "$_f" ] && _pk=$(( _pk + 1 )); done
   fi
-  log_note "box packs: $_pk installed, $(_n=0; for _f in "$ROOT"/inject.d/box/*; do [ -f "$_f" ] && _n=$(( _n + 1 )); done; [ -z "$PRIVFILES" ] || _n=$(( _n + $(printf '%s\n' "$PRIVFILES" | grep -c .) )); printf '%s' "$_n") tracked"
+  [ ! -d "$DIR/inject.d" ] || log_note "the old box tier $DIR/inject.d is still installed; the engine reads it until --apply moves it into the backup (harbor#1010)"
+  log_note "box packs: $_pk installed, $(_n=0; for _f in "$COREBOX"/*; do [ -f "$_f" ] && _n=$(( _n + 1 )); done; [ -z "$PRIVFILES" ] || _n=$(( _n + $(printf '%s\n' "$PRIVFILES" | grep -c .) )); printf '%s' "$_n") tracked"
   if [ -z "$PRIVINJ" ]; then
-    log_note "private packs: none (no private layer with an inject.d/), so this is core's box tier alone"
+    log_note "private packs: none (no private layer with a context-rules/ or inject.d/), so this is core's box tier alone"
   else
     log_note "private packs: $(printf '%s\n' "$PRIVFILES" | grep -c . || true) box file(s) from $PRIVINJ"
     for _d in "$PRIVINJ"/*/; do
       [ -d "$_d" ] || continue
-      _n="$(basename "$_d")"; [ "$_n" = box ] && continue
+      _n="$(basename "$_d")"; case "$_n" in box|user) continue ;; esac
       _t="$(awk -F'\t' -v k="$_n" '$1 == k { print $2; exit }' "$REGISTRY" 2>/dev/null || true)"
       case "$_t" in '~/'*) _t="$HOME/${_t#'~/'}" ;; esac
       _st='no such project'
@@ -347,7 +352,7 @@ if [ "$IL_APPLY" -eq 0 ]; then
   status "plan for $DIR (dry run: nothing is written)"
   if [ "$REMOVE" -eq 1 ]; then
     log_note "would unwire injection-rule.sh (and $OLD_ENGINE) and govern-token.sh from every event"
-    log_note "would move $DIR/inject.d and bin/{injection-rule.sh,$OLD_ENGINE,govern-token.sh} into backups/inject-install/<TS>/"
+    log_note "would move $DIR/$BOXREL, $DIR/inject.d and bin/{injection-rule.sh,$OLD_ENGINE,govern-token.sh} into backups/inject-install/<TS>/"
   else
     if _hk_plan="$(hooks_run --plan 2>"$IL_HK_ERR")"; then
       printf '%s\n' "$_hk_plan" | while IFS="$(printf '\t')" read -r _hv _he _hev _hm _ht; do
@@ -356,7 +361,7 @@ if [ "$IL_APPLY" -eq 0 ]; then
     else
       il_refuse "the engine's manifest does not render: $(sed -n 's/^.*FAIL[: ]*//p' "$IL_HK_ERR" | head -1)" "sh $HOOKS --check"
     fi
-    log_note "would copy $PAYLOAD into $DIR/bin, and rebuild $DIR/inject.d from inject.d/box$([ -z "$PRIVFILES" ] || printf ' and the private layer'"'"'s box tier (%s file(s))' "$(printf '%s\n' "$PRIVFILES" | grep -c .)") (the old one moves into the backup)"
+    log_note "would copy $PAYLOAD into $DIR/bin, and rebuild $DIR/$BOXREL from $BOXREL$([ -z "$PRIVFILES" ] || printf ' and the private layer'"'"'s box tier (%s file(s))' "$(printf '%s\n' "$PRIVFILES" | grep -c .)") (the old one, and any old $DIR/inject.d, moves into the backup)"
   fi
   il_stop
   [ "$IL_REFUSED" -eq 1 ] || il_apply_next inject
@@ -380,9 +385,9 @@ if [ "$REMOVE" -eq 1 ]; then
   NEW="$(printf '%s' "$NEW" | strip_hook /dev/stdin govern-token.sh)"
   il_write_json "$NEW" "$S" || { log_end; exit 1; }
   log_ok "unwired the engine and the provenance announce"
-  { _aside "$DIR/inject.d" && _aside "$DIR/bin/injection-rule.sh" && _aside "$DIR/bin/$OLD_ENGINE" && _aside "$DIR/bin/govern-token.sh"; } || { log_end; exit 1; }
+  { _aside "$DIR/$BOXREL" && _aside "$DIR/inject.d" && _aside "$DIR/bin/injection-rule.sh" && _aside "$DIR/bin/$OLD_ENGINE" && _aside "$DIR/bin/govern-token.sh"; } || { log_end; exit 1; }
   log_ok "moved the packs and the engine into $IL_BK"
-  il_manifest_drop inject.d bin/injection-rule.sh "bin/$OLD_ENGINE" bin/govern-token.sh
+  il_manifest_drop "$BOXREL" inject.d bin/injection-rule.sh "bin/$OLD_ENGINE" bin/govern-token.sh
   il_manifest_write || { log_end; exit 1; }
   log_note "backup: $IL_BK"
   log_end; exit $?
@@ -410,38 +415,39 @@ if [ -e "$DIR/bin/$OLD_ENGINE" ]; then
 fi
 # THE BOX TIER IS REBUILT, NOT ADDED TO, and the first cut only added — which
 # WEDGED THE UPGRADE PATH, reproduced by an adversarial pass. Withdraw a pack
-# from `inject.d/box/` and the next install copies the survivors over a
+# from `context-rules/user/` and the next install copies the survivors over a
 # destination that still holds the withdrawn one; the two-way `diff -r` below
 # then fails, the script exits BEFORE wiring, and the withdrawn rule keeps firing
 # forever while every retry fails identically. Moving the old tier into the backup
 # first is what makes that `diff -r` the right assertion rather than a trap.
-_aside "$DIR/inject.d" || { log_end; exit 1; }
-mkdir -p "$DIR/inject.d"
+# The old tier goes too (harbor#1010): a stale copy left there would fire where the new tier lacks its id.
+{ _aside "$DIR/$BOXREL" && _aside "$DIR/inject.d"; } || { log_end; exit 1; }
+mkdir -p "$DIR/$BOXREL"
 # The trailing `/.` is the whole point, and skills-install.sh's header records
 # the measured failure without it: `cp -R src dest` into an EXISTING destination
 # silently produces dest/box/ and leaves the original files serving, with nothing
 # erroring.
-cp -R "$ROOT"/inject.d/box/. "$DIR/inject.d/"
+cp -R "$COREBOX"/. "$DIR/$BOXREL/"
 # The private box tier goes in one validated file at a time (PRIVFILES), so a stray .DS_Store or a folder never installs.
-SRCBOX="$ROOT/inject.d/box"
+SRCBOX="$COREBOX"
 if [ -n "$PRIVFILES" ]; then
   UNION="$(mktemp -d "${TMPDIR:-/tmp}/inject-union.XXXXXX")" || { log_fail "could not make a scratch dir for the box tier"; log_nofix "mktemp"; log_end; exit 1; }
   trap 'rm -rf "$UNION" "$IL_HK_IN" "$IL_HK_ERR"' EXIT INT TERM
-  cp -R "$ROOT"/inject.d/box/. "$UNION/"
+  cp -R "$COREBOX"/. "$UNION/"
   printf '%s\n' "$PRIVFILES" | while IFS= read -r _pf; do
-    cp "$_pf" "$DIR/inject.d/" && cp "$_pf" "$UNION/"
+    cp "$_pf" "$DIR/$BOXREL/" && cp "$_pf" "$UNION/"
   done
   SRCBOX="$UNION"
 fi
-chmod +x "$DIR"/inject.d/*.sh 2>/dev/null || true
-if ! diff -r "$SRCBOX" "$DIR/inject.d" > "$IL_BK/packs.diff" 2>&1; then
-  log_fail "the box packs in $DIR/inject.d differ from inject.d/box${PRIVFILES:+ and the private box tier} after the copy (the diff: $IL_BK/packs.diff)"
-  log_fix "rm -rf '$DIR/inject.d' && mv '$IL_BK/inject.d' '$DIR/inject.d'"
+chmod +x "$DIR/$BOXREL"/*.sh 2>/dev/null || true
+if ! diff -r "$SRCBOX" "$DIR/$BOXREL" > "$IL_BK/packs.diff" 2>&1; then
+  log_fail "the box packs in $DIR/$BOXREL differ from $BOXREL${PRIVFILES:+ and the private box tier} after the copy (the diff: $IL_BK/packs.diff)"
+  log_fix "rm -rf '$DIR/$BOXREL' && mv '$IL_BK/$BOXREL' '$DIR/$BOXREL'"
   log_end; exit 1
 fi
 rm -f "$IL_BK/packs.diff"
-log_ok "box packs: rebuilt $DIR/inject.d from inject.d/box$([ -z "$PRIVFILES" ] || printf ' and %s private file(s)' "$(printf '%s\n' "$PRIVFILES" | grep -c .)") (the previous tier is in $IL_BK)"
-il_manifest_drop inject.d; il_manifest inject.d
+log_ok "box packs: rebuilt $DIR/$BOXREL from $BOXREL$([ -z "$PRIVFILES" ] || printf ' and %s private file(s)' "$(printf '%s\n' "$PRIVFILES" | grep -c .)") (the previous tier is in $IL_BK)"
+il_manifest_drop inject.d "$BOXREL"; il_manifest "$BOXREL"
 
 # ── wiring ──────────────────────────────────────────────────────────────────
 NEW="$(cat "$S")"
@@ -466,12 +472,12 @@ hooks_run --record >/dev/null 2>"$IL_HK_ERR" \
 # status line above reports drift instead of silently healing it. What it overwrote
 # is copied into the run's backup first.
 if [ "$PROJECTS" -eq 1 ] && [ -z "$PRIVINJ" ]; then
-  log_skip "no private layer with an inject.d/: core ships no repo packs, so there is nothing to seed"
+  log_skip "no private layer with a context-rules/ or inject.d/: core ships no repo packs, so there is nothing to seed"
 elif [ "$PROJECTS" -eq 1 ]; then
   REG="$REGISTRY"
   for _d in "$PRIVINJ"/*/; do
     [ -d "$_d" ] || continue
-    _n="$(basename "$_d")"; [ "$_n" = box ] && continue
+    _n="$(basename "$_d")"; case "$_n" in box|user) continue ;; esac
     _t="$(awk -F'\t' -v k="$_n" '$1 == k { print $2; exit }' "$REG" 2>/dev/null || true)"
     case "$_t" in '~/'*) _t="$HOME/${_t#'~/'}" ;; esac
     if [ -z "$_t" ] || [ ! -d "$_t" ]; then

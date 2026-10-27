@@ -396,7 +396,7 @@ done
 #     $HOME                      11,804 B      ~/harbor      1,660 B
 #     ~/Deliverables/<a folder>   2,172 B      ~/<repo>      1,666 B
 #
-# `inject.d/repo-skills.sh` emits 9,682 B at home and ZERO inside a governed repo.
+# `context-rules/user/repo-skills.sh` emits 9,682 B at home and ZERO inside a governed repo.
 # So the largest single injected item on the box — the index to the 38 skills the
 # model cannot see — reaches only sessions started outside a repo, which is the
 # opposite of where the memory index lands, and both are invisible to a reader of
@@ -420,7 +420,7 @@ _inject_bytes() { # <cwd> -> bytes the SessionStart injection would deliver ther
 }
 # ONLY FOR THE LIVE CONFIG DIR, AND THE REASON IS A PROPERTY OF THE INJECTOR.
 # `CLAUDE_CONFIG_DIR` does NOT isolate this surface: inject-hook.sh loads packs
-# from two tiers, and when the second — `$REPO/.claude/inject.d`, where REPO
+# from two tiers, and when the second — `$REPO/context-rules/<repo>` (or `.claude/inject.d`), where REPO
 # falls back to the probed directory — resolves under $HOME, the LIVE packs load
 # whatever $CFG says. Measured 2026-09-20: an empty config dir still returned
 # 11,791 B at $HOME. So a shadow-dir run would charge the fixture the real box's

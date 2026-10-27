@@ -8,7 +8,7 @@
 #                                                                      does the live block carry these lines?
 #
 # THE REGISTRY. By default the governed repos are read through `roots.sh --repos` (harbor-private/repos.tsv, the
-# one registry, harbor#966); a box with no repos.tsv falls back to the private layer's inject.d/box/projects.tsv
+# one registry, harbor#966); a box with no repos.tsv falls back to the private layer's projects.tsv
 # (`roots.sh --projects`, harbor#1149). --registry FILE
 # names a file instead: any TSV whose first two columns are name and path (projects.tsv, or the output of
 # `roots.sh --repos`). A row's path is resolved against $HOME (a leading ~/ is expanded) and its `origin` remote
@@ -73,8 +73,8 @@ load_registry() {
   fi
   # The fallback is the private layer's projects.tsv (harbor#1149): core ships none, and roots.sh is its one resolver.
   _proj="$(sh "$ROOT/bin/roots.sh" --projects 2>/dev/null)" || _proj=""
-  [ -n "$_proj" ] && [ -r "$_proj" ] || { REGWHY="no repos.tsv and no inject.d/box/projects.tsv in the private layer: no registry of governed repos"; return 1; }
-  cp "$_proj" "$T/reg"; REGFROM="inject.d/box/projects.tsv"; return 0
+  [ -n "$_proj" ] && [ -r "$_proj" ] || { REGWHY="no repos.tsv and no projects.tsv in the private layer: no registry of governed repos"; return 1; }
+  cp "$_proj" "$T/reg"; REGFROM="${_proj#"${_proj%/*/*/*}"/}"; return 0
 }
 
 # render_lines <registry> → one visibility line per registry row on stdout; comments and blank lines skipped.

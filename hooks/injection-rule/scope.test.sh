@@ -7,7 +7,7 @@
 . "$T_ROOT/tests/hooks/inject-fixture.sh"
 
 t_section "project-pointer: a linked worktree is the same project"
-PP="$T_ROOT/inject.d/box/project-pointer.sh"; W="$T/wtcase"
+PP="$T_ROOT/context-rules/user/project-pointer.sh"; W="$T/wtcase"
 mkdir -p "$W/home/proj" "$W/home/decoy" "$W/pack" "$W/elsewhere"
 ( cd "$W/home/proj" && git init -q . && git -c user.email=t@t -c user.name=t commit -q --allow-empty -m init \
   && git worktree add -q -b wtbranch "$W/home/projwt" ) >/dev/null 2>&1
@@ -31,7 +31,7 @@ t_hasnt "a registered subdirectory does not claim the whole repository" "$(_pp "
 
 t_section "8c · an access failure names its route card and account (2026-09-24)"
 ACCCFG="$T/acccfg"; mkdir -p "$ACCCFG/inject.d" "$T/access"
-cp "$T_ROOT/inject.d/box/45-access-route-pointer.md" "$T_ROOT/inject.d/box/access-route.sh" "$ACCCFG/inject.d/"
+cp "$T_ROOT/context-rules/user/access-route-pointer.md" "$T_ROOT/context-rules/user/access-route.sh" "$ACCCFG/inject.d/"
 # The command-to-card table is the register's own (<register>/routes.tsv, harbor#1149); core ships none, so the fixture writes one.
 printf 'example-project|api\\.example\\.test\texample\n@B@gcloud \tgcloud\n' > "$T/access/routes.tsv"
 cat > "$T/access/example.md" <<'CARD'
@@ -129,7 +129,7 @@ t_eq "inside its own repo the pack is delivered once, not twice" 1 "$(printf '%s
 t_has "inside its own repo a home-only pack still loads" "$_r" 'ALPHA-PRIVATE'
 
 t_section "repo-tier: the report reads the same answer the sweep acted on"
-cp "$T_ROOT/inject.d/box/95-repo-tier-not-loaded.md" "$T_ROOT/inject.d/box/repo-tier.sh" "$SBC/inject.d/"
+cp "$T_ROOT/context-rules/user/repo-tier-not-loaded.md" "$T_ROOT/context-rules/user/repo-tier.sh" "$SBC/inject.d/"
 t_has "names what crossed and what stayed home" "$(reach "$(rd "$A/README.md" "$WS")")" \
   'NOT govern this session: alpha-private (delivered anyway, because they declare scope: box: alpha-consents alpha-marker alpha-run)'
 _rb="$(reach "$(rd "$B/README.md" "$WS")")"

@@ -51,6 +51,7 @@ tool-0020	name.case	**/LICENSE	tool-required	never	D-1: README, LICENSE and CHAN
 tool-0021	name.case	**/CHANGELOG.md	tool-required	never	D-1: README, LICENSE and CHANGELOG stay uppercase by convention
 tool-0022	name.abbreviation	**/commit-msg	tool-required	never	git runs the commit-msg hook by name
 tool-0024	name.separator	**/dot_*	tool-required	never	D-56: the scaffolder's template engine reads the dot_ prefix as a leading dot
+tool-0026	name.skill-dir	skills/review-fanout	tool-required	never	Claude Code's Skill tool still resolves the old name review-fanout through this alias stub until 2027-01-31 (renames.tsv rename-0029); the row goes with the stub
 tool-0023	name.extension	**/com.*.plist	tool-required	never	launchd defines the label, so a plist name carries the id's dots: com.harbor.<id>.plist (§6.3)
 world-0001	*	vendor/	world-name	never	D-52: a vendored upstream tree keeps the upstream's names; our wrappers follow the standard
 legacy-0001	name.abbreviation	EVALS-DATA/sliced/gen_corpus.py	legacy	2027-01-18	first scan, harbor#950; W1 eval data sliced
@@ -179,7 +180,7 @@ legacy-0124	name.alias	harbor-build-tickets.md	legacy	2026-11-16	first scan, har
 legacy-0125	name.alias	harbor-epic.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0126	name.alias	inject.d	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0127	name.alias	inject.d/box	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0128	name.alias	inject.d/box/65-browser-route-harbor-chrome.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-0128	name.alias	context-rules/user/browser-route-harbor-chrome.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0131	name.alias	launchd/com.harbor.judge.plist	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0132	name.alias	launchd/com.harbor.pulse.plist	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0133	name.alias	patches/governance-security-floor-shard.patch.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
@@ -552,13 +553,6 @@ legacy-0509	name.case	REVIEW-2026-07-23.md	legacy	2026-11-16	first scan, harbor#
 legacy-0510	name.case	RUNTIME.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0511	name.case	SEC-0.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0512	name.case	STATUS.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0513	name.case	fixtures/memory/corpus/KNOWLEDGE	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0514	name.case	fixtures/memory/corpus/KNOWLEDGE/Companies	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0515	name.case	fixtures/memory/corpus/KNOWLEDGE/Ideas	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0516	name.case	fixtures/memory/corpus/KNOWLEDGE/People	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0517	name.case	fixtures/memory/corpus/KNOWLEDGE/Research	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0518	name.case	fixtures/memory/corpus/LEARNING	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0519	name.case	fixtures/memory/corpus/TELOS	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0520	name.case	skills/UNIFICATION.md	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0521	name.case	skills/ad-inventory/EVALS	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0522	name.case	skills/ad-inventory/EVALS/R2-lens-or-glossary.md	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
@@ -1246,7 +1240,6 @@ legacy-1243	name.separator	EVALS-DATA/sliced/results2_rows.json	legacy	2027-01-1
 legacy-1244	name.separator	EVALS-DATA/sliced/run_four.sh	legacy	2027-01-18	first scan, harbor#950; W1 eval data sliced
 legacy-1245	name.separator	EVALS-DATA/sliced/run_one.sh	legacy	2027-01-18	first scan, harbor#950; W1 eval data sliced
 legacy-1246	name.separator	EVALS-DATA/sliced/run_two.sh	legacy	2027-01-18	first scan, harbor#950; W1 eval data sliced
-legacy-1247	name.separator	fixtures/memory/corpus/LEARNING/spaced name.md	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1248	name.skill-dir	skills/ad-inventory	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-1249	name.skill-dir	skills/atlas	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-1250	name.skill-dir	skills/browser	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
@@ -1397,9 +1390,9 @@ legacy-1414	name.test-path	tests/skills/prove.report-test.sh	legacy	2027-01-25	f
 legacy-1415	name.test-path	tests/skills/prove.watchdog-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1416	name.test-path	tests/skills/skill-gates-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1417	name.test-path	tests/skills/skill-gates.maps-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1418	name.word	.claude/inject.d/10-constitution-edit-is-undeployed.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1419	name.word	.claude/inject.d/20-merge-governance.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1420	name.word	.claude/inject.d/21-post-merge-state.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1418	name.word	context-rules/harbor/constitution-edit-is-undeployed.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1419	name.word	context-rules/harbor/merge-governance.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1420	name.word	context-rules/harbor/post-merge-state.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-1421	name.word	SEC-0.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-1422	name.word	docs/src/00-overview.html	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-1423	name.word	docs/src/10-timing.html	legacy	2026-11-16	first scan, harbor#950; W1 docs
@@ -1412,20 +1405,29 @@ legacy-1429	name.word	docs/src/70-skills.html	legacy	2026-11-16	first scan, harb
 legacy-1430	name.word	docs/src/80-monitor.html	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-1431	name.word	docs/src/90-extend.html	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-1432	name.word	docs/src/95-vocabulary.html	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1434	name.word	inject.d/box/10-subagent-contract.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1435	name.word	inject.d/box/20-post-compaction-carry.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1436	name.word	inject.d/box/30-external-content-is-data.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1437	name.word	inject.d/box/40-repo-skills-pointer.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1438	name.word	inject.d/box/45-access-route-pointer.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1439	name.word	inject.d/box/50-project-pointer.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1440	name.word	inject.d/box/60-variable-is-one-argument.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1441	name.word	inject.d/box/65-browser-route-harbor-chrome.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1442	name.word	inject.d/box/66-browser-route-reminder.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1434	name.word	context-rules/user/subagent-contract.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1435	name.word	context-rules/user/post-compaction-carry.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1436	name.word	context-rules/user/external-content-is-data.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1437	name.word	context-rules/user/repo-skills-pointer.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1438	name.word	context-rules/user/access-route-pointer.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1439	name.word	context-rules/user/project-pointer.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1440	name.word	context-rules/user/variable-is-one-argument.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1441	name.word	context-rules/user/browser-route-harbor-chrome.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1442	name.word	context-rules/user/browser-route-reminder.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-1443	name.word	inject.d/box/70-measurement-skills-are-hidden.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-1444	name.word	inject.d/box/75-client-work-is-a-measurement-change.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1445	name.word	inject.d/box/80-large-tool-result.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1446	name.word	inject.d/box/85-tool-failure-is-not-a-result.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1447	name.word	inject.d/box/90-unbounded-wait-loop.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1448	name.word	inject.d/box/95-repo-tier-not-loaded.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1449	name.word	inject.d/box/97-agent-model-required.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1445	name.word	context-rules/user/large-tool-result.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1446	name.word	context-rules/user/tool-failure-is-not-a-result.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1447	name.word	context-rules/user/unbounded-wait-loop.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1448	name.word	context-rules/user/repo-tier-not-loaded.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1449	name.word	context-rules/user/agent-model-required.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-1463	name.word	skills/casefile/EVALS/SIM/04-promotion-closing.md	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
+tool-0025	name.case	**/NOTICE	tool-required	never	Apache 2.0 NOTICE file: like LICENSE, it has no extension and keeps its name (sitting B Q11)
+world-0002	name.case	fixtures/memory/corpus/	world-name	never	the fixture imitates a real memory store whose directory names are what the tests read (sitting B Q11)
+world-0003	name.separator	fixtures/memory/corpus/	world-name	never	the fixture imitates a real memory store; a note with a space in its name is a case the tests cover (sitting B Q11)
+world-0004	name.abbreviation	fixtures/lint-module/	world-name	never	the fixture trees are the inputs of the module lint, and their package is named pkg on purpose (sitting B Q11)
+world-0005	name.alias	rule:admission.floor-fail-closed	world-name	never	D-19: a rule id is permanent once published, so it keeps the word it was born with (sitting B Q11)
+world-0006	name.alias	rule:admission.floor-integrity	world-name	never	D-19: a rule id is permanent once published, so it keeps the word it was born with (sitting B Q11)
+world-0007	name.alias	rule:admission.merge-backstop-box	world-name	never	D-19: a rule id is permanent once published, so it keeps the word it was born with (sitting B Q11)
+world-0008	name.alias	rule:admission.prod-guard-ambient	world-name	never	D-19: a rule id is permanent once published, so it keeps the word it was born with (sitting B Q11)
+world-0009	name.abbreviation	rule:admission.extract-over-cfg-ancestor	world-name	never	D-19: a rule id is permanent once published, so it keeps the word it was born with (sitting B Q11)

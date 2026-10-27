@@ -52,8 +52,8 @@ harbor/CONTRACTS/cli.md	from `~/harbor` and `186%, over` from `$HOME` in the sam
 harbor/DOCTRINE/verification-expanded.md	**Measured 2026-08-27, on `~/harbor/bin`:**	dated measurement; the path is its object
 harbor/HANDOFF.md	Nobody opened `~/project-init` or `~/projects-orchestrator` this session	session record of what was not opened
 harbor/PLAN.md	the ACCESS book at ~/harbor/ACCESS	generated, same as above
-harbor/inject.d/box/project-pointer.sh	handed `harbor (~/harbor)` in the list of projects	quote of the pointer's output measured 2026-08-28
-harbor/inject.d/box/repo-skills.sh	from cwd=~/harbor, 0 of 36 do	re-measured 2026-09-06
+harbor/context-rules/user/project-pointer.sh	handed `harbor (~/harbor)` in the list of projects	quote of the pointer's output measured 2026-08-28
+harbor/context-rules/user/repo-skills.sh	from cwd=~/harbor, 0 of 36 do	re-measured 2026-09-06
 harbor/skills/UNIFICATION.md	(Superseded the 2026-08 state where `~/harbor` sat on a	history (line 271's "run governance from here" was rewritten)
 harbor/skills/UNIFICATION.md	!`sh ~/harbor/bin/context-budget.sh 2>&1`	quote of /harbor-context as it read during that sweep
 harbor/skills/access-ledger/bin/check-routes.sh	Consolidating the card store into ~/harbor/ACCESS	2026-09-15 incident

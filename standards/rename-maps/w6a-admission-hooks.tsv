@@ -1,0 +1,67 @@
+# w6a-admission-hooks.tsv (harbor#961, lane E): the mapping for admission hooks, one atomic set per script, FLOOR_* constants (inject.d is owned by #1010); env rows are added by hand
+#
+# WHY THIS FILE EXISTS. The six-wave rename needs one reviewed table per wave before any file moves; the operator approves it wholesale at sitting B
+# (SITTING-B.md lists only the rows that need a decision). Names come from registered terms only (standards/naming/terms.tsv).
+#
+# COLUMNS  old_path TAB new_path TAB wave TAB recommendation TAB confidence TAB reason TAB remove_by TAB frozen TAB surface TAB reader
+#   recommendation  rename (imported) or decide (a question in SITTING-B.md; the importer skips it)
+#   confidence      high, med or low; low rows are asked in SITTING-B.md
+#   remove_by       the date the old name stops working. The importer ignores this column and writes "-": set it after the import (sitting-b.md has the command).
+#                   "-" here means no outside reader was found, a case-only move (a forwarder would be the file itself) or an internal constant (plain rename, no dual-read window)
+#   frozen          the frozen.tsv name this row touches (a stranger types it); such a row keeps an alias until remove_by
+#   surface         empty = bin or path (the importer picks); env and rule-id are not file moves
+#   reader          what outside the repo reads the old path (hook command, loaded LaunchAgent, deployed copy, PATH link, another repo, a memory note, frozen.tsv); "none found" means remove_by is - and no symlink is left. Checked 2026-10-27.
+#
+# standard_version: 2.0.0
+old_path	new_path	wave	recommendation	confidence	reason	remove_by	frozen	surface	reader
+bin/annotate-web.sh	bin/admission-annotate-web.sh	W6a	rename	med	PostToolUse hook that marks fetched content as data; wired by floor-install, so it moves with the admission set	2027-03-07			deployed copy ~/.claude/bin/; ~/.claude/settings.json hook command
+bin/decider-set.sh	bin/admission-decider-set.sh	W6a	rename	high	the wired hook set the two kill switches govern	2027-03-07			deployed copy ~/.claude/bin/
+bin/floor-deny.sh	bin/admission-deny.sh	W6a	rename	high	floor is a legacy alias of baseline; the deny installer joins the admission set	2027-03-07			deployed copy ~/.claude/bin/; memory notes; repo studio
+bin/floor-equiv.sh	bin/admission-equivalence.sh	W6a	rename	high	equiv is a banned abbreviation; proves two guard trees give identical verdicts	-			none found
+bin/floor-install.sh	bin/admission-install.sh	W6a	rename	high	installs the admission set	2027-03-07			deployed copy ~/.claude/bin/; memory notes
+bin/floor-normalize.awk	bin/admission-normalize.awk	W6a	rename	high	command normaliser every admission guard reads	2027-03-07			deployed copy ~/.claude/bin/; memory notes
+bin/floor-observe.sh	bin/admission-observe.sh	W6a	rename	high	SessionStart half of the decision ledger	2027-03-07			deployed copy ~/.claude/bin/; memory notes; ~/.claude/settings.json hook command
+bin/floor-uninstall.sh	bin/admission-remove.sh	W6a	rename	high	remove is the registered verb	-			none found
+bin/floor-verify.sh	bin/admission-verify.sh	W6a	rename	high	is the admission set on	2027-03-07			deployed copy ~/.claude/bin/; memory notes; repo azimuth (+1)
+bin/govern-hook.sh	bin/context-govern-hook.sh	W6a	rename	med	injects stamped governance notes at the hook; wired by floor-install	2027-03-07			deployed copy ~/.claude/bin/; ~/.claude/settings.json hook command
+bin/govern-token.sh	bin/context-govern-token.sh	W6a	rename	med	provenance stamp for injected notes	2027-03-07			deployed copy ~/.claude/bin/; ~/.claude/settings.json hook command
+bin/guard-apiroute.sh	bin/admission-apiroute.sh	W6a	rename	high	guard is a legacy alias of admission-hook (D-2)	2027-03-07			deployed copy ~/.claude/bin/; memory notes; ~/.claude/settings.json hook command
+bin/guard-bash.sh	bin/admission-bash.sh	W6a	rename	high	the registered example name for the bash guard	2027-03-07	rule:bash:* (110 ids)		deployed copy ~/.claude/bin/; frozen.tsv rule:bash:*; memory notes (+1)
+bin/guard-cloud.sh	bin/admission-cloud.sh	W6a	rename	high	guard is a legacy alias of admission-hook (D-2)	2027-03-07	rule:cloud:* (7 ids)		deployed copy ~/.claude/bin/; frozen.tsv rule:cloud:*; memory notes (+2)
+bin/guard-deliverables.sh	bin/admission-deliverables.sh	W6a	rename	high	guard is a legacy alias of admission-hook (D-2)	2027-03-07	rule:deliverables:* (3 ids)		deployed copy ~/.claude/bin/; frozen.tsv rule:deliverables:*; memory notes (+1)
+bin/guard-destroy.sh	bin/admission-destroy.sh	W6a	rename	high	guard is a legacy alias of admission-hook (D-2)	2027-03-07	rule:destroy:* (9 ids)		deployed copy ~/.claude/bin/; frozen.tsv rule:destroy:*; memory notes (+1)
+bin/guard-egress.sh	bin/admission-egress.sh	W6a	rename	high	guard is a legacy alias of admission-hook (D-2)	2027-03-07	rule:egress:* (17 ids)		deployed copy ~/.claude/bin/; frozen.tsv rule:egress:*; memory notes (+1)
+bin/guard-lib.sh	bin/admission-lib.sh	W6a	rename	high	shared helpers of the guards; floor_ helpers become admission_ (D-2)	2027-03-07			deployed copy ~/.claude/bin/; memory notes
+bin/guard-selfedit.sh	bin/admission-selfedit.sh	W6a	rename	high	guard is a legacy alias of admission-hook (D-2)	2027-03-07	rule:selfedit:* (2 ids)		deployed copy ~/.claude/bin/; frozen.tsv rule:selfedit:*; ~/.claude/settings.json hook command (+1)
+bin/guard-stop.sh	bin/admission-stop.sh	W6a	rename	high	guard is a legacy alias of admission-hook (D-2)	2027-03-07			deployed copy ~/.claude/bin/; ~/.claude/settings.json hook command
+bin/pin-instructions.sh	bin/admission-pin-instructions.sh	W6a	rename	high	pins the instruction surfaces; wired by floor-install	2027-03-07			deployed copy ~/.claude/bin/; memory notes
+bin/prod-guard-ambient.sh	bin/admission-prod-ambient.sh	W6a	rename	med	ambient hook script of the prod guard	2027-03-07			deployed copy ~/.claude/bin/; memory notes; ~/.claude/settings.json hook command
+bin/prod-guard-install.sh	bin/admission-prod-install.sh	W6a	rename	med	installs the prod guard	2027-03-07			memory notes
+env:FLOOR_AWK	env:HARBOR_ADMISSION_AWK	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_COLLAPSE_AWK	env:HARBOR_ADMISSION_COLLAPSE_AWK	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_FIX	env:HARBOR_ADMISSION_FIX	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_GREP	env:HARBOR_ADMISSION_GREP	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	memory notes
+env:FLOOR_HIT_EOF	env:HARBOR_ADMISSION_HIT_EOF	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_IN	env:HARBOR_ADMISSION_IN	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_INSTR_SURFACES	env:HARBOR_ADMISSION_INSTR_SURFACES	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_JQ	env:HARBOR_ADMISSION_JQ	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	memory notes
+env:FLOOR_MARKER_DIR	env:HARBOR_ADMISSION_MARKER_DIR	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_MAX_NORM	env:HARBOR_ADMISSION_MAX_NORM	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_OBS_GUARDS	env:HARBOR_ADMISSION_OBSERVE_GUARDS	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_OBS_SHAPES	env:HARBOR_ADMISSION_OBSERVE_SHAPES	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_OBS_SUBJECT	env:HARBOR_ADMISSION_OBSERVE_SUBJECT	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	memory notes
+env:FLOOR_OBS_TOOLS	env:HARBOR_ADMISSION_OBSERVE_TOOLS	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_OBS_VERDICTS	env:HARBOR_ADMISSION_OBSERVE_VERDICTS	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_ONFAILURE	env:HARBOR_ADMISSION_ONFAILURE	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_OPTS	env:HARBOR_ADMISSION_OPTS	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_SEG_CMD	env:HARBOR_ADMISSION_SEG_COMMAND	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_SEG_EOF	env:HARBOR_ADMISSION_SEG_EOF	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_SEG_TAB_ARGS	env:HARBOR_ADMISSION_SEG_TAB_ARGUMENTS	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_SEG_TAB_IDS	env:HARBOR_ADMISSION_SEG_TAB_IDS	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_SEG_TAB_KEY	env:HARBOR_ADMISSION_SEG_TAB_KEY	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_SEG_TAB_N	env:HARBOR_ADMISSION_SEG_TAB_N	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_SEG_TAB_RC	env:HARBOR_ADMISSION_SEG_TAB_RC	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_SEGS	env:HARBOR_ADMISSION_SEGS	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	memory notes
+env:FLOOR_SHADOWED	env:HARBOR_ADMISSION_SHADOWED	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_TOOL	env:HARBOR_ADMISSION_TOOL	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	
+env:FLOOR_WIRED	env:HARBOR_ADMISSION_WIRED	W6a	rename	med	FLOOR_ is a legacy alias of baseline (D-2); an internal constant of the guard set, so a plain rename with no dual-read window	-		env	

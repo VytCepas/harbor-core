@@ -1,6 +1,6 @@
 ---
 name: agent-routing
-description: "Which model tier and effort each delegated agent runs on — Agent tool calls, headless `claude -p` runs, workflow agents and orchestrator launches — when to escalate, and what a brief must name so the run ends cleanly. The cheapest tier that passes the gate, chosen per call, never inherited. USE WHEN delegating to a subagent, choosing a model or effort for an agent, fanning out agents, writing a workflow or orchestrator launch, an Agent call was denied for a missing model, an agent failed and you are deciding whether to escalate. NOT FOR reviewing a diff (review-fanout), or API code that calls Claude (claude-api)."
+description: "Which model tier and effort each delegated agent runs on — Agent tool calls, headless `claude -p` runs, workflow agents and orchestrator launches — when to escalate, and what a brief must name so the run ends cleanly. The cheapest tier that passes the gate, chosen per call, never inherited. USE WHEN delegating to a subagent, choosing a model or effort for an agent, fanning out agents, writing a workflow or orchestrator launch, an Agent call was denied for a missing model, an agent failed and you are deciding whether to escalate. NOT FOR reviewing a diff (audit-review-fanout), or API code that calls Claude (claude-api)."
 disable-model-invocation: true
 owns-tools: Agent
 inline-section: The table
@@ -26,12 +26,12 @@ failed gate or a refusal. The quality gates never change with the tier.
 
 ## Rules that are not obvious
 
-- **Always pass `model`.** `inject.d/box/97-agent-model-required` denies an Agent call without one.
+- **Always pass `model`.** `context-rules/user/agent-model-required` denies an Agent call without one.
   It exempts a `fork`, and an agent whose definition pins a model. The pin is not a routing
   decision: `pr-review-toolkit:code-reviewer` pins `opus`. Passing `model` overrides the pin, so
   pass it.
 - **Haiku defaults to `medium` effort.** A code-changing Haiku agent needs `effort: high`, where
-  the trial measured it. `inject.d/box/96-agent-brief` names a missing effort. Never run an
+  the trial measured it. `context-rules/user/agent-brief` names a missing effort. Never run an
   agentic task at `low`: at that level Haiku stops early and reports work as done without
   checking it.
 - **A Haiku refusal is a failure, not an answer.** Haiku 5.5 has no server-side refusal

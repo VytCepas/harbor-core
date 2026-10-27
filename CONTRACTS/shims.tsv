@@ -32,6 +32,7 @@ gcloud-creds-test.sh	HARBOR_REPO	tests/cli/gcloud-creds-test.sh
 harbor	HARBOR_REPO	bin/harbor
 idea	HARBOR_REPO	bin/idea.sh
 memory	HARBOR_REPO	bin/memory.sh
+name-check	HARBOR_REPO	bin/name-check
 secret	HARBOR_REPO	bin/secret
 secret-test.sh	HARBOR_REPO	tests/cli/secret-test.sh
 ticket-note.sh	HARBOR_REPO	hooks/ticket-note/ticket-note.sh

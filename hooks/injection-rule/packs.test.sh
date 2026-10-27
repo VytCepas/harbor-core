@@ -4,7 +4,7 @@
 # denies end to end through .claude/inject.d (harbor#173, #181, #184, #254, #315).
 . "$(dirname "$0")/../../tests/lib/core.sh"; t_init
 . "$T_ROOT/tests/hooks/inject-fixture.sh"
-BOX="$T/boxcfg"; mkdir -p "$BOX/inject.d"; cp -R "$T_ROOT"/inject.d/box/. "$BOX/inject.d/"
+BOX="$T/boxcfg"; mkdir -p "$BOX/inject.d"; cp -R "$T_ROOT"/context-rules/user/. "$BOX/inject.d/"
 # The untitled-session note fires on every first tool call; its own cases live in fixtures/inject/notes.tsv (harbor#1257).
 : > "$BOX/session-title.off"
 # The registry is the private layer's file (harbor#1149): core ships none, so a fixture with example names stands in,
@@ -122,7 +122,7 @@ t_eq "a tool outside the declared set is still skipped" "" "$(_res NotDeclaredAn
 
 t_section "8b · PostToolUseFailure, on the measured payload shape (claude 2.1.258)"
 FAILCFG="$T/failcfg"; mkdir -p "$FAILCFG/inject.d"
-cp "$T_ROOT/inject.d/box/85-tool-failure-is-not-a-result.md" "$T_ROOT/inject.d/box/tool-failure.sh" "$FAILCFG/inject.d/"
+cp "$T_ROOT/context-rules/user/tool-failure-is-not-a-result.md" "$T_ROOT/context-rules/user/tool-failure.sh" "$FAILCFG/inject.d/"
 fail_ev() { # <is_interrupt> <error> [session]
   jq -cn --argjson i "$1" --arg e "$2" --arg s "${3:-f-$$}" \
     '{hook_event_name:"PostToolUseFailure",tool_name:"Read",session_id:$s,tool_input:{file_path:"/nope.txt"},tool_use_id:"tu1",error:$e,is_interrupt:$i,duration_ms:4}'
@@ -179,7 +179,7 @@ gone "a Bash call is not this pack's business" "$(firebox "$(bash_ev PreToolUse 
 
 t_section "9 · every tracked pack is well-formed"
 fm() { awk 'NR==1 && $0 !~ /^---/ {exit} NR>1 && $0 ~ /^---/ {exit} NR>1' "$1"; }  # <pack> → its frontmatter
-for _f in "$T_ROOT"/inject.d/*/*.md "$T_ROOT"/.claude/inject.d/*.md; do
+for _f in "$T_ROOT"/context-rules/*/*.md; do
   [ -f "$_f" ] || continue
   _e="$(fm "$_f" | awk -F': *' '$1=="event"{print $2;exit}')"
   _w="$(fm "$_f" | grep -c '^when:')"; _r="$(fm "$_f" | awk -F': *' '$1=="run"{print $2;exit}')"
@@ -195,8 +195,8 @@ t_section "the merge gate end to end: shipped pack, real govern-hook.sh, stubbed
 E2E="$T/e2e"; mkdir -p "$E2E/repo/bin" "$E2E/repo/.claude/inject.d" "$E2E/cfg"
 ( cd "$E2E/repo" && git init -q . && git config user.email t@t && git config user.name t \
   && git config commit.gpgsign false && printf 'x\n' > README && git add -A && git commit -qm init ) >/dev/null 2>&1
-cp "$T_ROOT/bin/govern-hook.sh" "$E2E/repo/bin/"; cp "$T_ROOT/.claude/inject.d/merge-note.sh" "$E2E/repo/.claude/inject.d/"
-for _mp in "$T_ROOT"/.claude/inject.d/*merge*.md; do cp "$_mp" "$E2E/repo/.claude/inject.d/"; done
+cp "$T_ROOT/bin/govern-hook.sh" "$E2E/repo/bin/"; cp "$T_ROOT/context-rules/harbor/merge-note.sh" "$E2E/repo/.claude/inject.d/"
+for _mp in "$T_ROOT"/context-rules/harbor/*merge*.md; do cp "$_mp" "$E2E/repo/.claude/inject.d/"; done
 _e2e() { # <exit> <text> <command>
   printf '#!/usr/bin/env sh\nprintf "%%s\\n" "%s"\nexit %s\n' "$2" "$1" > "$E2E/repo/bin/merge-check.sh"
   jq -cn --arg c "$3" '{hook_event_name:"PreToolUse",tool_name:"Bash",session_id:"e-1",tool_input:{command:$c}}' \

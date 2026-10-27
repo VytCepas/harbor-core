@@ -17,17 +17,16 @@
 # A one-off dated document at the root is a `record`; moving it to a records folder is a later step of harbor#1272.
 entry	kind	layer	note
 .agents/	config	source	agent governance: config, protected paths, required checks
-.claude/	config	source	repo-local harness config
 .github/	config	source	CI workflows and CODEOWNERS
 CONTRACTS/	contract	source	interface contracts and the registers beside them
 DOCTRINE/	explanation	source	the reasoning behind the rules
 EVALS-DATA/	eval	source	eval corpora, bulk data
 bin/	script	source	the tools, hook entry points and guards
 commands/	command	source	slash commands
+context-rules/	injection-rule	source	notes injected into a session
 docs/	explanation	source	documentation; docs/context-map.md and docs/generated/ in it are generated
 fixtures/	fixture	source	test fixtures
 hooks/	hook	source	git hooks
-inject.d/	injection-rule	source	notes injected into a session
 launchd/	deploy-unit	source	macOS schedules, rendered at deploy
 patches/	vendored	source	patches to vendored upstream code
 runners/	deploy-unit	source	CI runner setup

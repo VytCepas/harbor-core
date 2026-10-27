@@ -140,7 +140,7 @@ SNAP=''
 # runtime-install's lib/ and prod-guard-install's settings.json.bak.* were missing. A glob is allowed.
 # The install manifest joined it with Wave C (§3): a restore that put the files back and not their rows
 # would leave install-drift and skills-collide reading a record of an install that was undone.
-SNAP_SET='settings.json CLAUDE.md bin lib hooks inject.d skills skill-packs commands checks.d shims.d .harbor-packs .harbor-hooks-wired .helm-pins .helm-floor-teeth .sec0-baseline.sha256 .helm-instructions.sha256 .helm-install-stamp .harbor-manifest settings.json.bak.*'
+SNAP_SET='settings.json CLAUDE.md bin lib hooks context-rules inject.d skills skill-packs commands checks.d shims.d .harbor-packs .harbor-hooks-wired .helm-pins .helm-floor-teeth .sec0-baseline.sha256 .helm-instructions.sha256 .helm-install-stamp .harbor-manifest settings.json.bak.*'
 B8PIN="$CFG/.helm-instructions.sha256"
 trap 'rm -rf "$WORK"' EXIT
 # A trapped INT returns to the script, so it must exit explicitly or the install carries on.
@@ -228,7 +228,7 @@ _in_history() { # <repo-path> <file under $CFG>
   il_known "$CFG" "${2#"$CFG"/}" "$2" "$ROOT" "$1"
 }
 # The same question of the private layer's own history (harbor#1149): the box packs and the project registry it carries are
-# installed into <config>/inject.d, so a past version of one is as much "an install put it there" as a core pack is.
+# installed into <config>/context-rules/user (inject.d before harbor#1010), so a past version of one is as much "an install put it there" as a core pack is.
 _in_private_history() { # <repo-path in the private layer> <file under $CFG>
   _pv="$(sh "$ROOT/bin/roots.sh" --private 2>/dev/null)" && [ -d "$_pv" ] || return 1
   il_known "$CFG" "${2#"$CFG"/}" "$2" "$_pv" "$1"
@@ -419,28 +419,30 @@ _preflight() {
   done
   if _want skills && [ "$_cm_bad" -eq 0 ]; then log_ok 'commands: no box-only edits would be overwritten'; fi
 
-  # inject-install rebuilds inject.d from scratch. A pack the repo once held (current or withdrawn)
-  # is its to replace; bytes in no commit are someone's work and would be deleted.
-  if _want inject && [ -d "$CFG/inject.d" ]; then
-    ( cd "$CFG/inject.d" && find . -type f ! -name .DS_Store | sed 's|^\./||' | sort ) >"$WORK/inj.live"
+  # inject-install rebuilds the box tier from scratch, and moves the old inject.d into its backup (harbor#1010). A pack
+  # the repo once held (current or withdrawn, at either path) is its to replace; bytes in no commit are someone's work.
+  for _it in context-rules/user inject.d; do
+    _want inject && [ -d "$CFG/$_it" ] || continue
+    ( cd "$CFG/$_it" && find . -type f ! -name .DS_Store | sed 's|^\./||' | sort ) >"$WORK/inj.live"
     : >"$WORK/inj.unsrc"
     # A note a pack installed (its manifest in .harbor-packs) is bytes from that pack's repo, not from a commit here; the
     # packs step puts it back after inject-install rebuilds the directory.
-    _pack_owned inject.d >"$WORK/inj.pack"
+    _pack_owned "$_it" >"$WORK/inj.pack"
     while IFS= read -r _f; do
       [ -n "$_f" ] || continue
       grep -qxF -e "$_f" "$WORK/inj.pack" && continue
-      _in_history "inject.d/box/$_f" "$CFG/inject.d/$_f" || _in_private_history "inject.d/box/$_f" "$CFG/inject.d/$_f" \
+      _in_history "context-rules/user/$_f" "$CFG/$_it/$_f" || _in_history "inject.d/box/$_f" "$CFG/$_it/$_f" \
+        || _in_private_history "context-rules/user/$_f" "$CFG/$_it/$_f" || _in_private_history "inject.d/box/$_f" "$CFG/$_it/$_f" \
         || printf '%s\n' "$_f" >>"$WORK/inj.unsrc"
     done <"$WORK/inj.live"
     if [ -s "$WORK/inj.unsrc" ]; then
-      _bad 'inject.d holds packs whose bytes are in no commit; inject-install would replace them' \
-        "none: harbor#457 — copy each one into inject.d/box/ (or the private layer's) through a PR, or move it out of $CFG/inject.d"
+      _bad "$_it holds packs whose bytes are in no commit; inject-install would replace them" \
+        "none: harbor#457 — copy each one into context-rules/user/ (or the private layer's) through a PR, or move it out of $CFG/$_it"
       _notes <"$WORK/inj.unsrc"
     else
-      log_ok 'inject.d: every installed pack is one the repo holds or once held'
+      log_ok "$_it: every installed pack is one the repo holds or once held"
     fi
-  fi
+  done
 
   : >"$WORK/b8.drift.pre"
   if [ ! -f "$B8PIN" ]; then
@@ -521,7 +523,7 @@ _packs_plan() {
   log_ok "pack.sh: its dry run passes ($(printf '%s\n' "$PACKS_LIST" | wc -l | tr -d ' ') pack(s) in harbor.toml)"
   _relay --brief "$WORK/out"
 }
-_packs_install() { # run after inject-install, which rebuilds inject.d and so drops a pack's notes
+_packs_install() { # run after inject-install, which rebuilds the box tier and so drops a pack's notes
   _packs_conf && _pk_rc=0 || _pk_rc=$?
   case "$_pk_rc" in 1) return 0 ;; 2) _INSTALL_FAILED='harbor.toml packs: roots.sh could not read it'; return 1 ;; esac
   log_note 'running: pack.sh install --apply --live'
@@ -554,7 +556,7 @@ _packs_uninstall() {
 }
 
 # ── CROSS-REPO (harbor#736): each repo's own `just install [--apply|--check]`, after Harbor's ──────
-# The documented interface (project-init#1047, projects-orchestrator#318): a dry run by default that
+# The documented interface (yard#1047, fleet#318): a dry run by default that
 # exits 1 when --apply would refuse, and --check non-zero on drift. A repo it cannot run fails preflight (UNREACHABLE).
 XR_PI=''; XR_PO=''
 _xr_dir() { case "$1" in project-init) sh "$ROOT/bin/roots.sh" --get HARBOR_PROJECT_INIT 2>/dev/null ;; *) sh "$ROOT/bin/roots.sh" --get HARBOR_ORCHESTRATOR 2>/dev/null ;; esac; }
@@ -562,7 +564,7 @@ _xr_set() { if [ "$1" = project-init ]; then XR_PI="$2"; else XR_PO="$2"; fi; }
 _xr_get() { if [ "$1" = project-init ]; then printf '%s' "$XR_PI"; else printf '%s' "$XR_PO"; fi; }
 _just() { _jd="$1"; shift; just --justfile "$_jd/justfile" --working-directory "$_jd" "$@"; }
 # Is the clone at <dir> current with a FRESHLY fetched origin/main? A child's dry run judges sync by the last
-# fetch (project-init and projects-orchestrator both did, until their dry runs learned to fetch), so a clone
+# fetch (yard and fleet both did, until their dry runs learned to fetch), so a clone
 # behind passed the dry run and was refused at apply, after the box had been written (harbor#736). Judged
 # here as well, against a fetch made now: a behind clone, or a fetch that fails, fails the preflight.
 # --no-write-fetch-head: a dry run leaves an up-to-date clone byte-for-byte as it was (bootstrap-test).
@@ -661,10 +663,10 @@ _plan() {
     # shellcheck disable=SC2086
     sh "$ROOT/bin/"$_p >"$WORK/out" 2>&1 </dev/null || _r_rc=$?
     { printf '\n=== %s (rc=%s)\n' "$_p" "$_r_rc"; cat "$WORK/out"; } >>"$PLAN"
-    # prod-guard copies project-init's prod_guard.py; a box without project-init cannot install it.
+    # prod-guard copies yard's prod_guard.py; a box without yard cannot install it.
     if [ "${_p%% *}" = prod-guard-install.sh ] && grep -q '^  FAIL: no prod_guard.py at' "$WORK/out"; then
       [ -z "$LOG_PATH" ] || _relay "$WORK/out" >/dev/null
-      PROD_GUARD=0; _unreach prod-guard "$(sed -n 's/^  FAIL: //p' "$WORK/out" | head -1); it is copied from a project-init checkout (PROJECT_INIT_SRC)"; continue
+      PROD_GUARD=0; _unreach prod-guard "$(sed -n 's/^  FAIL: //p' "$WORK/out" | head -1); it is copied from a yard checkout (PROJECT_INIT_SRC)"; continue
     fi
     if [ "$_r_rc" -ne 0 ]; then
       _bad "${_p%% *}: its own dry run FAILED (rc=$_r_rc), so its install would too" "none: its FAIL and fix lines below"
@@ -729,7 +731,7 @@ _unreachable() {
 # shim before runtime: shim-install owns the ~/.local/bin links, `harbor` included (shims.tsv).
 # sec0 before runtime: it writes the SEC-0 deny base the floor assumes, and re-pins what it wrote.
 # runtime before floor: floor-install writes the B6 content pins, so it runs after the files it pins.
-# inject before packs: inject-install rebuilds inject.d from scratch, which drops a pack's notes; packs before the skill
+# inject before packs: inject-install rebuilds the box tier from scratch, which drops a pack's notes; packs before the skill
 # book, which is generated from the skills the box then holds, packs' included (harbor#1149).
 # shim again after packs: a pack's commands are linked from the shims.d fragment its install wrote (harbor#1149), which the
 # first shim run, before the packs, could not have read on a box that never had them.
@@ -1101,7 +1103,7 @@ _pr_find() {
     [ -n "$(find "$_r" -prune -mtime -"$PRUNE_DAYS" 2>/dev/null)" ] && continue
     _pr_add "$_r" "beyond retention: the newest $PRUNE_KEEP of its installer and anything younger than $PRUNE_DAYS days stay"
   done
-  # 5 · a stale project-init bootstrap clone: install.sh's second copy, which nothing on PATH runs.
+  # 5 · a stale yard bootstrap clone: install.sh's second copy, which nothing on PATH runs.
   _pic="$HOME/.local/share/project-init"
   if [ -d "$_pic/.git" ]; then
     _used=''
@@ -1109,8 +1111,8 @@ _pr_find() {
       [ -L "$_l" ] || continue
       case "$(readlink "$_l")" in "$_pic"/*|"$_pic") _used="${_l##*/}" ;; esac
     done
-    if [ -z "$_used" ]; then _pr_add "$_pic" "project-init's bootstrap clone: nothing in $LOCAL_BIN runs it (the uv tool is its own copy)"
-    else printf '%s\t%s\n' "$_pic" "project-init's bootstrap clone: $LOCAL_BIN/$_used still runs it, kept" >>"$WORK/prune.kept"; fi
+    if [ -z "$_used" ]; then _pr_add "$_pic" "yard's bootstrap clone: nothing in $LOCAL_BIN runs it (the uv tool is its own copy)"
+    else printf '%s\t%s\n' "$_pic" "yard's bootstrap clone: $LOCAL_BIN/$_used still runs it, kept" >>"$WORK/prune.kept"; fi
   fi
   # 6 · ~/.local/bin: a dangling link, and a shim some other owner linked (harbor#708: shims.tsv owns
   # them; runtime-install used to link idea/memory/gcx/gcloud into the config dir).

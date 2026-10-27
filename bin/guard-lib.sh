@@ -368,8 +368,10 @@ floor_in_repo() {
       # orchestrator parses real YAML and resolves that line differently. Three
       # readers disagreeing about one line is what the shared fixtures exist to
       # prevent, so the fixture pins it too.
+      # Two spellings, one opt-out (harbor#966): the legacy `context: ambient` and the standard's
+      # `scope: user` (D-12). Either one alone stays armed; `scope: project` and `context: repo` add nothing.
       if [ -f "$_cfg" ] && [ ! -L "$_cfg" ] && "$FLOOR_GREP" -Eq \
-         "^[\"']?context[\"']?[[:space:]]*:[[:space:]]*[\"']?ambient[\"']?([[:space:]]+#.*)?[[:space:]]*\$" \
+         "^[\"']?(context[\"']?[[:space:]]*:[[:space:]]*[\"']?ambient|scope[\"']?[[:space:]]*:[[:space:]]*[\"']?user)[\"']?([[:space:]]+#.*)?[[:space:]]*\$" \
          "$_cfg" 2>/dev/null; then
         return 1
       fi
@@ -3238,7 +3240,8 @@ floor_seg_cd_fold() { # <dir>… [+<subtree>…] -> FOLD: lines and SEG rows
 # a prefix a reader may skim, which is measurably why it works (EVALS.md E6, E10)
 # and exactly why an unreviewed edit to one matters MORE than an unreviewed edit
 # to CLAUDE.md. Caught by checking, on the same branch that built it.
-FLOOR_INSTR_SURFACES='CLAUDE.md CLAUDE.local.md agents skills commands output-styles hooks plugins inject.d projects/*/memory'
+# `context-rules` is the same surface after harbor#1010; inject.d stays while the engine reads it.
+FLOOR_INSTR_SURFACES='CLAUDE.md CLAUDE.local.md agents skills commands output-styles hooks plugins context-rules inject.d projects/*/memory'
 
 # floor_sha — one sha256, whichever tool this box has.
 floor_sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }

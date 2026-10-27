@@ -249,7 +249,7 @@ The harness side is **wired, and by a different route than this paragraph used t
 describe.** It said `hooks/hooks.json` → `bin/govern-hook.sh` was "not installed
 and is the operator's act". No `hooks.json` has ever existed in this repo, and
 [README.md](./README.md) — which this file is linked from — has recorded the real
-route since 2026-08-08: `.claude/inject.d/20-merge-governance.md` →
+route since 2026-08-08: `context-rules/harbor/merge-governance.md` →
 `merge-note.sh` → `sh bin/govern-hook.sh --note`, with `inject-hook.sh` on
 `PreToolUse` and `PostToolUse` in the live settings. Two contracts disagreeing
 about whether a blocking gate is wired is worse than either being silent.
