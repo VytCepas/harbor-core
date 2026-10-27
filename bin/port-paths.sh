@@ -80,7 +80,6 @@ CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 # `[ -d … ] || continue`, so on the day the gate matters most it would have
 # looked at nothing and reported CODE=0. Measured by reading, before phase C ran.
 PORT="${PORT_ROOT:-$HOME_DIR/port}"
-FLEETF="$(sh "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/roots.sh" --get HARBOR_FLEET_FILE)" || exit 3   # harbor#966
 
 # THE REPOS ARE DERIVED FROM $PORT, NEVER LISTED. The Deliverables copy carried a
 # hand-written list of thirteen names, and a hand list of what lives in a
@@ -565,13 +564,13 @@ scan claude-json "$HOME_DIR/.claude.json"
 # 4 · fleet discovery. Gitignored by design (.gitignore:68), so it has NO version
 #     history — and po#305 measured that register() silently drops two fields and
 #     every comment. Edit it by hand, never by tool.
-scan fleet "$FLEETF"
+scan fleet "$PORT/projects-orchestrator/fleet.yaml"
 #     The root line names $HOME itself, which PAT cannot see — it carries no
 #     repo name. Scanning $HOME at depth 1 after phase C finds zero projects and
 #     raises no error (roots.tsv, HARBOR_FLEET_FILE), so it is checked by value.
-grep -nE "^[[:space:]]*-[[:space:]]*${HOME_DIR}/?[[:space:]]*\$" "$FLEETF" 2>/dev/null |
+grep -nE "^[[:space:]]*-[[:space:]]*${HOME_DIR}/?[[:space:]]*\$" "$PORT/projects-orchestrator/fleet.yaml" 2>/dev/null |
   while IFS=: read -r __ln __txt; do
-    printf 'CODE\tfleet\t%s\t%s\t%s (roots: must be %s)\n' "$FLEETF" "$__ln" "$(printf '%s' "$__txt" | sed 's/^[[:space:]]*//')" "$PORT"
+    printf 'CODE\tfleet\t%s\t%s\t%s (roots: must be %s)\n' "$PORT/projects-orchestrator/fleet.yaml" "$__ln" "$(printf '%s' "$__txt" | sed 's/^[[:space:]]*//')" "$PORT"
   done
 
 # 5 · launchd. These cannot use $HOME, so every path here is unavoidably absolute.

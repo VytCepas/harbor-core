@@ -38,7 +38,7 @@ rm -f "$PV/browser-hosts.txt"
 t_eq "and without the file it is refused" "exit 1" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN -u HARBOR_BROWSER_PRIVATE_HOSTS HARBOR_SCOPE_PRIVATE="$PV" HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" goto https://wiki.example.invalid/)"
 
 t_section "the Claude-in-Chrome route hook reads the same list"
-HK="$T_ROOT/context-rules/user/browser-route.sh"
+HK="$T_ROOT/inject.d/box/browser-route.sh"
 HR="$T_TMP/hookroot"; mkdir -p "$HR/CONTRACTS" "$HR/bin" "$T_TMP/inj"
 cp "$T_ROOT/bin/roots.sh" "$T_ROOT/bin/log-lib.sh" "$HR/bin/"; cp "$T_ROOT/CONTRACTS/roots.tsv" "$HR/CONTRACTS/"
 printf '# A vendor\nads.example.net\n' > "$HR/CONTRACTS/browser-agent-hosts.txt"

@@ -48,7 +48,7 @@
 # applied, so the lint cannot be talked out of judging itself.
 set -eu
 
-# ${0%/*}, not dirname: a hook runs this (context-rules/user/name-note.sh), and a failed fork would make HERE the cwd (harbor#810).
+# ${0%/*}, not dirname: a hook runs this (inject.d/box/name-note.sh), and a failed fork would make HERE the cwd (harbor#810).
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH='' cd -- "$HERE" && pwd)"
 SELF="$HERE/${0##*/}"
@@ -412,55 +412,6 @@ function trender(sid, V,   n, i, g, out, nm, v, ok, k, J, part) {
   }
   return out
 }
-# ── harbor#1259: the validators, rendered from the same compiled grammar (tcompile) and term sets (slotok) ──
-# A validator is an allowlist of shape and family, never a second parser: a registered slot is the words slotok
-# accepts (aliases allowed on the surface included), a free slot is lowercase words joined by the grammar joiner.
-# Vocabulary (the object slot, D-38) is not in it; the lint denylists and alias rules still judge that.
-function vlit(s,   o, i, c) {   # a literal, escaped for an ERE outside a bracket expression
-  o = ""
-  for (i = 1; i <= length(s); i++) { c = substr(s, i, 1); o = o (index("\\^$.[]|()*+?{}", c) ? "\\" c : c) }
-  return o
-}
-function valts(sid, cls, up,   k, KP, n, m, i, j, w, t, ctx, J, out, seen) {   # the words of a slot class, as the surface spells them
-  J = TJ[sid]; ctx = (sid == "env") ? "env-prefix" : sid; n = 0; m = 0
-  delete WL; delete VW; delete seen
-  for (k in IS) {
-    split(k, KP, SUBSEP)
-    if ((KP[1] == "family" && (cls == "family" || cls == "family|domain")) || (KP[1] == "domain" && cls == "family|domain") \
-        || (KP[1] == "verb" && cls == "verb") || (KP[1] == "system" && cls == "system")) WL[++n] = KP[2]
-  }
-  if (cls == "system") for (k in AL) if (allowed(k, ctx)) WL[++n] = k
-  for (i = 1; i <= n; i++) {
-    w = WL[i]; gsub(/-/, J, w); if (up) w = toupper(w)
-    if (!(w in seen)) { seen[w] = 1; VW[++m] = w }
-  }
-  if (m == 0) { VERR = "no term of class " cls " (the grammar of " sid " needs one)"; return "" }
-  for (i = 2; i <= m; i++) for (j = i; j > 1 && VW[j - 1] > VW[j]; j--) { t = VW[j]; VW[j] = VW[j - 1]; VW[j - 1] = t }
-  out = ""; for (i = 1; i <= m; i++) out = out (i > 1 ? "|" : "") vlit(VW[i])
-  return "(" out ")"
-}
-function vslot(sid, nm, up,   J, w) {   # one slot: its words, or a free word-run joined by the surface joiner
-  J = TJ[sid]
-  if (slotclass(nm) != "free") return valts(sid, slotclass(nm), up)
-  w = up ? "[A-Z][A-Z0-9]*" : "[a-z][a-z0-9]*"
-  return (nm == "ext") ? w : w "(" J w ")*"
-}
-function vtok(sid, i) {
-  if (TK[sid, i] == "L") return vlit(TV[sid, i])
-  return vslot(sid, tolower(TV[sid, i]), TV[sid, i] == toupper(TV[sid, i]))
-}
-function vre(sid, from, to,   i, g, k, out, part) {   # tokens from..to; an optional group is (..)? as the template spells it
-  out = ""
-  for (i = from; i <= to; i++) {
-    if (TO[sid, i]) {
-      g = i; while (g + 1 <= to && TO[sid, g + 1] == TO[sid, i]) g++
-      part = ""; for (k = i; k <= g; k++) part = part vtok(sid, k)
-      out = out "(" part ")?"; i = g; continue
-    }
-    out = out vtok(sid, i)
-  }
-  return out
-}
 function dfs(u,   n, D, i, v) {
   COLOR[u] = 1
   n = split(DEP[u], D, ",")
@@ -515,28 +466,6 @@ function mcp_check(subj, name,   r) {
 function release_check(subj, name) {
   if (name !~ /^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/)
     emit("name.release-tag", subj, "a release tag is v<major>.<minor>.<patch> (SemVer 2.0), and the release title is the tag: " q(name) " (harbor#957)")
-}
-# harbor#978 (D-21): a commit subject, which is also a PR title, is <type>(<family>): <subject>, the type a commit-type term.
-# Scope = a register domain: the same family-or-domain set a name slot takes (operator, 2026-10-27).
-function commit_check(subj, name,   t, sc, n, S, i, rest) {
-  if (name !~ /^[a-z][a-z0-9]*(\([^()]*\))?!?: ./) {
-    emit("name.commit", subj, "a commit subject is <type>(<domain>): <subject>: " q(name) " (D-21)"); return
-  }
-  t = name; sub(/[(!:].*$/, "", t)
-  if (!(("commit-type" SUBSEP t) in IS)) emit("name.commit", subj, "the type " q(t) " is not a registered commit type (terms.tsv, class commit-type)")
-  if (name !~ /^[a-z][a-z0-9]*\(/) { emit("name.commit", subj, "the subject has no (<family>) scope: " q(name) " (D-21)"); return }
-  sc = name; sub(/^[^(]*\(/, "", sc); sub(/\).*$/, "", sc)
-  n = split(sc, S, ",")
-  for (i = 1; i <= n; i++)
-    if (!(("family" SUBSEP S[i]) in IS) && !(("domain" SUBSEP S[i]) in IS)) emit("name.commit", subj, "the scope " q(S[i]) " is not a registered domain (terms.tsv, class family or domain; D-21)")
-}
-# harbor#978 (D-21): a branch is <type>/<issue>-<slug>, lowercase kebab, the type a commit-type term.
-function branch_check(subj, name,   t) {
-  if (name !~ /^[a-z][a-z0-9]*\/[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$/) {
-    emit("name.branch", subj, "a branch is <type>/<issue>-<slug>, lowercase kebab: " q(name) " (D-21)"); return
-  }
-  t = name; sub(/\/.*$/, "", t)
-  if (!(("commit-type" SUBSEP t) in IS)) emit("name.branch", subj, "the type " q(t) " is not a registered commit type (terms.tsv, class commit-type)")
 }
 function skill_check(subj, name,   r) {
   r = tmatch("skill", tolower(name), "")
@@ -607,8 +536,6 @@ function check_rec(sf, nm,   p) {
   else if (sf == "env") env_check("env:" nm, nm)
   else if (sf == "mcp-tool") mcp_check("mcp-tool:" nm, nm)
   else if (sf == "release-tag") release_check("release-tag:" nm, nm)
-  else if (sf == "commit") commit_check("commit:" nm, nm)
-  else if (sf == "branch") branch_check("branch:" nm, nm)
   else if (sf == "rule-id" || sf == "check-id") id_check(sf ":" nm, nm, sf)
 }
 function shape(f, msg) { emit("name.registry-shape", REL[f], msg) }
@@ -625,7 +552,7 @@ function repokind_check(label, kind, tok, state,   sj) {
 BEGIN {
   FS = "\t"; OFS = "\t"
   _npk = split(packt, _PK, " "); for (i = 1; i <= _npk; i++) ISPACK[_PK[i]] = 1   # the pack overlays (harbor#950)
-  split("family verb domain client abbreviation kind layer concept system extension subject level mode outcome decision severity state control-type moment function lifecycle share relation modality tier commit-type", L, " ")
+  split("family verb domain client abbreviation kind layer concept system extension subject level mode outcome decision severity state control-type moment function lifecycle share relation modality tier", L, " ")
   for (i in L) CLASS[L[i]] = 1
   split("codename legacy banned abbreviation spelling", L, " "); for (i in L) AKIND[L[i]] = 1
   split("tool-required world-name legacy", L, " "); for (i in L) EKIND[L[i]] = 1
@@ -796,20 +723,6 @@ $1 == "T" { sid = $2; if (!(sid in TJ)) { print "T", sid, "err", "surfaces.tsv h
             r = tmatch(sid, tolower(o), "")
             if (r != "" || tslots(sid) != t1) { print "T", sid, "err", "parse(render(t)) differs from t for " q(ex); next }
             print "T", sid, "ok"; next }
-# harbor#1259: one anchored ERE per grammar-backed surface. A Python test (D-14) and a PATH command (D-11) are the two
-# forms the lint judges outside the grammar shape, so the validator takes them too, as test_check and bin_check do.
-$1 == "V" { sid = $2
-  if (!(sid in TJ)) { print "V", sid, "err", "surfaces.tsv has no grammar for " q(sid); next }
-  if (TERR[sid] != "") { print "V", sid, "err", TERR[sid]; next }
-  VERR = ""; n = NTK[sid]; body = vre(sid, 1, n)
-  if (sid == "test") {
-    ap = 0; for (i = 1; i <= n; i++) if (TK[sid, i] == "S" && tolower(TV[sid, i]) == "aspect") ap = i
-    if (ap == 0) VERR = "the test grammar has no <aspect> slot for the Python form (D-14)"
-    else body = "(" body ")|(" vre(sid, 1, ap - 1) "test_[a-z][a-z0-9_]*\\.py)"
-  }
-  if (sid == "bin" && TEXT[sid]) body = "(" body ")|([a-z][a-z0-9]*(-[a-z][a-z0-9]*)*)"
-  if (VERR != "") { print "V", sid, "err", VERR; next }
-  print "V", sid, "ok", "^(" body ")$"; next }
 END {
   for (i = 1; i <= NREG; i++) {
     f = REGF[i]
@@ -1004,9 +917,7 @@ census() {
       required-checks) [ -f "$ROOT/$_a" ] && awk -F'\t' -v r="$_arg" '/^#/ || NF < 2 { next } $1 == r { print $2 }' "$ROOT/$_a" ;;
       inject-ids)  for _d in $(printf '%s' "$_a" | tr ',' ' '); do
                      [ -d "$ROOT/$_d" ] && find "$ROOT/$_d" -type f -name '*.md' | sort | while IFS= read -r _f; do
-                       # the id: key, else the file name (D-43, harbor#1010: the id is derived)
-                       awk -v n="${_f##*/}" 'BEGIN { sub(/\.md$/, "", n) } NR == 1 { if ($0 != "---") exit; f = 1 } /^---$/ && NR > 1 { exit }
-                         /^id:/ { sub(/^id:[ \t]*/, ""); if ($0 != "") { print; d = 1; exit } } END { if (f && !d) print n }' "$_f"
+                       awk 'NR == 1 && $0 != "---" { exit } /^---$/ && NR > 1 { exit } /^id:/ { sub(/^id:[ \t]*/, ""); print; exit }' "$_f"
                      done
                    done ;;
       guard-rules) for _f in "$ROOT"/$_a; do
@@ -1215,37 +1126,13 @@ gen() { # <view> -> writes under build/, prints the path
             for (i = 1; i <= NR; i++) printf "legacy-%04d\t%s\tlegacy\t%s\tfirst scan, harbor#950; %s\n", i, R[i], D[B[i]], LAB[B[i]]
           }' > "$_out/exemptions.legacy.tsv"
       printf '%s\n' "$_out/exemptions.legacy.tsv" ;;
-    validators)
-      # harbor#1259: build/validators.txt, one `<surface> TAB <ERE>` per grammar-backed surface, derived here and never by hand.
-      validators_to "$ROOT/build/validators.txt" || return 1
-      printf '%s\n' "$ROOT/build/validators.txt" ;;
     *) return 2 ;;
   esac
-}
-# The derivation (harbor#1259): the judge renders each grammar, so a grammar cell that cannot be compiled is refused here.
-validators_to() { # <file> -> writes the validators; nonzero when a grammar cannot be rendered
-  awk -F'\t' '/^#/ || !H[FILENAME]++ { next } $6 != "-" && $6 != "" { print "V\t" $1 }' "$(reg_file surfaces.tsv)" > "$T/vrec"
-  # Core registers only: the private and pack overlays would make build/validators.txt differ between boxes, and a
-  # validator is the shape the public standard gives. A private system prefix is then a vocabulary question for the lint.
-  _vp="$PRIV"; _vk2="$PACKT"; PRIV=""; PACKT=""
-  judge validators "$T/vrec" > "$T/vout" || unchecked
-  PRIV="$_vp"; PACKT="$_vk2"
-  _vbad=0
-  while IFS='	' read -r _vk _vs _vst _vwhy; do
-    [ "$_vk" = V ] || continue
-    [ "$_vst" = ok ] || { log_fail "--gen validators: $_vs: $_vwhy"; log_fix "fix the grammar cell of $_vs in $REL_REG/surfaces.tsv"; _vbad=1; }
-  done < "$T/vout"
-  [ "$_vbad" -eq 0 ] || return 1
-  mkdir -p "$(dirname "$1")"
-  { printf '%s\n' "# generated by bin/lint-name.sh --gen validators from $REL_REG/surfaces.tsv and terms.tsv — do not edit"
-    awk -F'\t' '$1 == "V" && $3 == "ok" { print $2 "\t" $4 }' "$T/vout"
-  } > "$1.new" && mv "$1.new" "$1"
 }
 
 if [ "$ACTION" = gen ]; then
   _rc=0; gen "$VIEW" || _rc=$?
-  if [ "$_rc" -eq 2 ]; then log_fail "unknown view: $VIEW"; log_fix "sh $SELF --gen glossary|naming-guide|cli-tree|labels|vale|exemptions|issue-taxonomy|validators"; log_end || :; exit 2; fi
-  if [ "$_rc" -ne 0 ]; then log_end || :; exit 1; fi
+  if [ "$_rc" -eq 2 ]; then log_fail "unknown view: $VIEW"; log_fix "sh $SELF --gen glossary|naming-guide|cli-tree|labels|vale|exemptions|issue-taxonomy"; log_end || :; exit 2; fi
   log_ok "wrote --gen $VIEW under ${ROOT##*/}/build/"; log_end || :; exit 0
 fi
 
@@ -1354,35 +1241,4 @@ if [ -s "$T/nopair" ]; then
 else
   log_ok "every rule went red on every surface it declares ($(grep -c . "$T/pairs" | tr -d ' ') rule×surface pairs)"
 fi
-
-# The validators (harbor#1259). The derivation runs into $T, so this never reads the box; the file a consumer reads is
-# build/validators.txt, and when it exists it must be what the derivation gives and must pass the same checks.
-vcheck() { # <validators file> <label> -> every grammar surface has one, its example matches it, and it refuses "" and "a b"
-  _vres="$(awk -F'\t' -v label="$2" '
-    FILENAME == ARGV[1] { if ($0 !~ /^#/ && NF == 2) { RE[$1] = $2 }; next }
-    /^#/ || !H[FILENAME]++ { next }
-    $6 != "-" && $6 != "" { G[$1] = 1; n++
-      if (!($1 in RE)) { print "fail\tno validator for " $1; next }
-      if (!($5 ~ RE[$1])) print "fail\t" $1 " its example " $5 " does not match its validator"
-    }
-    END {
-      for (s in RE) {
-        if (!(s in G)) print "fail\ta validator for " s ", which has no grammar cell (prose renders no validator)"
-        if (("" ~ RE[s]) || ("a b" ~ RE[s])) print "fail\t" s " accepts a string that is empty or has a space"
-      }
-      print "count\t" n + 0
-    }' "$1" "$(reg_file surfaces.tsv)")"
-  _vfail="$(printf '%s\n' "$_vres" | awk -F'\t' '$1 == "fail" { printf "%s; ", $2 }')"
-  _vn="$(printf '%s\n' "$_vres" | awk -F'\t' '$1 == "count" { print $2 }')"
-  if [ -n "$_vfail" ]; then log_fail "$2: ${_vfail%; }"; log_fix "sh $SELF --gen validators"
-  else log_ok "$2: $_vn grammar surfaces, each example matches its validator, none accepts \"\" or \"a b\""; fi
-}
-if validators_to "$T/validators.txt"; then
-  vcheck "$T/validators.txt" "validators derived in this run"
-  if [ -f "$ROOT/build/validators.txt" ]; then
-    if cmp -s "$T/validators.txt" "$ROOT/build/validators.txt"; then log_ok "build/validators.txt is what --gen validators derives"
-    else log_fail "build/validators.txt is not what --gen validators derives (edited by hand, or stale)"; log_fix "sh $SELF --gen validators"; fi
-    vcheck "$ROOT/build/validators.txt" "build/validators.txt"
-  fi
-else log_fail "the validators could not be derived from the grammar cells"; log_fix "sh $SELF --gen validators"; fi
 log_end

@@ -26,19 +26,20 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | Kind | Folder | Level | Layer | Lifecycle | Files |
 |---|---|---|---|---|---|
 | policy | policy/ | system | source | living | 11 |
-| standard | standards/ | system | source | versioned | 25 |
+| standard | standards/ | system | source | versioned | 14 |
 | contract | contracts/ | system | source | versioned | 30 |
-| decision-record | docs/decisions/ | element | source | dated | 92 |
-| hook | hooks/ | component | source | living | 47 |
-| skill | skills/ | component | source | living | 47 |
-| fixture | fixtures/ | element | source | living | 258 |
+| decision-record | docs/decisions/ | element | source | dated | 91 |
+| injection-rule | context-rules/<scope>/ | component | source | living | 41 |
+| hook | hooks/ | component | source | living | 46 |
+| skill | skills/ | component | source | living | 42 |
+| fixture | fixtures/ | element | source | living | 254 |
 | registry | registries/ | component | source | versioned | 51 |
-| test | tests/ | component | source | living | 431 |
+| test | tests/ | component | source | living | 426 |
 | report | docs/reports/ | element | report | dated | 1 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| script | bin/ | component | source | living | 209 |
-| (no kind) | - | - | - | - | 215 |
+| script | bin/ | component | source | living | 205 |
+| (no kind) | - | - | - | - | 172 |
 
 ## Folders
 
@@ -46,22 +47,23 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 |---|---|---|---|
 | (repo root) | 22 | 4 | 2 |
 | `.agents/` | 4 | 1 | 1 |
+| `.claude/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
 | `CONTRACTS/` | 81 | 9 | 2 |
 | `DOCTRINE/` | 10 | 1 | 1 |
-| `bin/` | 213 | 22 | 2 |
+| `bin/` | 209 | 22 | 2 |
 | `commands/` | 5 | 1 | 1 |
-| `context-rules/` | 43 | 6 | 1 |
-| `docs/` | 114 | 6 | 5 |
-| `fixtures/` | 258 | 9 | 1 |
-| `hooks/` | 43 | 6 | 1 |
+| `docs/` | 113 | 6 | 5 |
+| `fixtures/` | 254 | 9 | 1 |
+| `hooks/` | 42 | 6 | 1 |
+| `inject.d/` | 37 | 1 | 1 |
 | `launchd/` | 12 | 3 | 1 |
 | `patches/` | 12 | 1 | 1 |
 | `runners/` | 2 | 1 | 1 |
-| `skills/` | 47 | 8 | 1 |
-| `standards/` | 25 | 1 | 1 |
+| `skills/` | 42 | 5 | 1 |
+| `standards/` | 14 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 431 | 22 | 1 |
+| `tests/` | 426 | 21 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 73 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -70,31 +72,29 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
-| access | control-plane | 5 | 6 | 2 | 6 | 0 | 0 |
+| access | control-plane | 5 | 6 | 2 | 2 | 0 | 0 |
 | admission | control-plane | 15 | 1 | 0 | 0 | 0 | 167 |
-| agent | control-plane | 0 | 2 | 0 | 5 | 0 | 0 |
 | alert | observability | 1 | 1 | 0 | 0 | 0 | 0 |
-| audit | control-plane | 0 | 0 | 0 | 1 | 0 | 2 |
-| check | observability | 1 | 4 | 0 | 1 | 51 | 0 |
-| ci | coordination | 13 | 60 | 2 | 5 | 0 | 5 |
-| context | control-plane | 4 | 0 | 1 | 2 | 0 | 34 |
+| audit | control-plane | 0 | 0 | 0 | 0 | 0 | 2 |
+| check | observability | 1 | 4 | 0 | 1 | 50 | 0 |
+| ci | coordination | 13 | 58 | 2 | 3 | 0 | 5 |
+| context | control-plane | 3 | 0 | 1 | 43 | 0 | 33 |
 | deploy | control-plane | 5 | 7 | 1 | 1 | 0 | 7 |
-| doc | control-plane | 2 | 2 | 0 | 31 | 0 | 17 |
+| doc | control-plane | 2 | 2 | 0 | 8 | 0 | 17 |
 | drift | control-plane | 1 | 1 | 0 | 4 | 2 | 13 |
 | eval | control-plane | 0 | 1 | 0 | 0 | 0 | 0 |
 | event | observability | 3 | 17 | 0 | 3 | 0 | 2 |
 | gate | control-plane | 10 | 7 | 0 | 0 | 0 | 0 |
 | housekeeping | control-plane | 0 | 0 | 0 | 2 | 0 | 0 |
-| library | policy-function | 0 | 0 | 0 | 0 | 0 | 0 |
-| lint | control-plane | 18 | 43 | 0 | 8 | 3 | 34 |
+| lint | control-plane | 16 | 41 | 0 | 8 | 0 | 34 |
 | memory | memory-store | 4 | 12 | 1 | 23 | 0 | 1 |
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
 | policy | policy-function | 0 | 0 | 11 | 0 | 0 | 3 |
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
 | scope | coordination | 2 | 10 | 0 | 0 | 0 | 4 |
-| session | data-plane | 13 | 4 | 0 | 3 | 0 | 0 |
-| skill | catalog | 4 | 6 | 0 | 7 | 0 | 13 |
-| standard | policy-function | 3 | 8 | 117 | 0 | 1 | 46 |
+| session | data-plane | 13 | 4 | 0 | 1 | 0 | 0 |
+| skill | catalog | 4 | 6 | 0 | 5 | 0 | 13 |
+| standard | policy-function | 3 | 8 | 105 | 0 | 0 | 44 |
 | status | observability | 3 | 8 | 0 | 1 | 0 | 0 |
 | test | control-plane | 0 | 1 | 2 | 7 | 0 | 7 |
 | worktree | coordination | 1 | 0 | 0 | 0 | 0 | 0 |
@@ -110,11 +110,8 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/access-chrome-mcp.py`
 - `bin/access-environment.sh`
 - `bin/access.sh`
-- `context-rules/user/access-route-pointer.md`
-- `context-rules/user/access-route.sh`
 - `hooks/access-confinement/access-confinement.sh`
 - `hooks/access-confinement/access-confinement.test.sh`
-- `skills/access-browser/SKILL.md`
 - `skills/access-ledger/SKILL.md`
 
 ### admission
@@ -135,21 +132,9 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/guard-stop.sh`
 - `bin/prod-guard-ambient.sh`
 
-### agent
-
-- `context-rules/user/agent-brief.md`
-- `context-rules/user/agent-brief.sh`
-- `context-rules/user/agent-model-required.md`
-- `context-rules/user/agent-model.sh`
-- `skills/agent-routing/SKILL.md`
-
 ### alert
 
 - `bin/alert-lib.sh`
-
-### audit
-
-- `skills/audit-review-fanout/SKILL.md`
 
 ### check
 
@@ -173,20 +158,58 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/ci-runs-on.sh`
 - `bin/ci-verified.sh`
 - `bin/ci-wait.sh`
-- `context-rules/user/ci-wait-on-the-bus.md`
-- `context-rules/user/ci-wait-on-the-bus.sh`
 - `docs/design/ci-local-heal.md`
 - `docs/design/ci-tests-on-this-host.md`
 - `launchd/com.harbor.ci-governor.plist`
 
 ### context
 
+- `.claude/inject.d/10-constitution-edit-is-undeployed.md`
+- `.claude/inject.d/20-merge-governance.md`
+- `.claude/inject.d/21-post-merge-state.md`
+- `.claude/inject.d/merge-note.sh`
 - `CONTEXT-RATCHET.tsv`
 - `bin/context-budget.sh`
 - `bin/context-resolve.sh`
 - `docs/context-map.md`
-- `hooks/injection-rule/context-rules.test.sh`
 - `hooks/injection-rule/injection-rule.sh`
+- `inject.d/box/10-subagent-contract.md`
+- `inject.d/box/20-post-compaction-carry.md`
+- `inject.d/box/30-external-content-is-data.md`
+- `inject.d/box/40-repo-skills-pointer.md`
+- `inject.d/box/45-access-route-pointer.md`
+- `inject.d/box/50-project-pointer.md`
+- `inject.d/box/55-session-title-missing.md`
+- `inject.d/box/60-variable-is-one-argument.md`
+- `inject.d/box/65-browser-route-harbor-chrome.md`
+- `inject.d/box/66-browser-route-reminder.md`
+- `inject.d/box/70-confinement-refused.md`
+- `inject.d/box/80-large-tool-result.md`
+- `inject.d/box/85-tool-failure-is-not-a-result.md`
+- `inject.d/box/90-unbounded-wait-loop.md`
+- `inject.d/box/91-ci-wait-on-the-bus.md`
+- `inject.d/box/95-repo-tier-not-loaded.md`
+- `inject.d/box/96-agent-brief.md`
+- `inject.d/box/97-agent-model-required.md`
+- `inject.d/box/98-name-note.md`
+- `inject.d/box/99-skill-on-first-use.md`
+- `inject.d/box/access-route.sh`
+- `inject.d/box/agent-brief.sh`
+- `inject.d/box/agent-model.sh`
+- `inject.d/box/browser-route.sh`
+- `inject.d/box/ci-wait-on-the-bus.sh`
+- `inject.d/box/confinement-refused.sh`
+- `inject.d/box/large-tool-result.sh`
+- `inject.d/box/name-note.sh`
+- `inject.d/box/post-compaction-carry.sh`
+- `inject.d/box/project-pointer.sh`
+- `inject.d/box/repo-skills.sh`
+- `inject.d/box/repo-tier.sh`
+- `inject.d/box/session-title-missing.sh`
+- `inject.d/box/skill-first-use.sh`
+- `inject.d/box/tool-failure.sh`
+- `inject.d/box/unbounded-wait-loop.sh`
+- `inject.d/box/variable-is-one-argument.sh`
 
 ### deploy
 
@@ -201,9 +224,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 
 - `bin/doc-refs.sh`
 - `bin/doc-vale.sh`
-- `skills/doc-atlas/SKILL.md`
-- `skills/doc-deliverable-contract/SKILL.md`
-- `skills/doc-learning-artifact/SKILL.md`
 
 ### drift
 
@@ -257,8 +277,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/lint-module.sh`
 - `bin/lint-name.sh`
 - `bin/lint-platform.sh`
-- `bin/lint-pr.sh`
-- `bin/lint-renderer.sh`
 - `bin/lint-secrets.sh`
 - `bin/lint-share.sh`
 - `bin/lint-siblings.sh`
@@ -313,8 +331,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/session-notify.sh`
 - `bin/session-react-lib.sh`
 - `bin/session-save-now.sh`
-- `context-rules/user/session-title-missing.md`
-- `context-rules/user/session-title-missing.sh`
 - `hooks/session-state/session-state.sh`
 - `hooks/session-subagent-check/session-subagent-check.sh`
 - `hooks/session-title/session-title.sh`
@@ -329,8 +345,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/skill-catalog.sh`
 - `bin/skill-fire.sh`
 - `bin/skill-usage.sh`
-- `context-rules/user/skill-first-use.sh`
-- `context-rules/user/skill-on-first-use.md`
 - `skills/skill-book/SKILL.md`
 - `skills/skill-catalog/SKILL.md`
 
@@ -429,7 +443,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `docs/decisions/0088-hook-engine-folders.md`
 - `docs/decisions/0089-event-and-manual-moments.md`
 - `docs/decisions/0090-doc-kinds-follow-diataxis.md`
-- `docs/decisions/0091-object-slot-open.md`
 - `docs/decisions/README.md`
 - `standards/modularity.md`
 - `standards/naming.md`
@@ -445,17 +458,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `standards/naming/repo-kinds.tsv`
 - `standards/naming/surfaces.tsv`
 - `standards/naming/terms.tsv`
-- `standards/naming/writers.tsv`
-- `standards/rename-maps/fleet-modules-in-projects-orchestrator.tsv`
-- `standards/rename-maps/sitting-b.md`
-- `standards/rename-maps/t4-letter-ids.tsv`
-- `standards/rename-maps/w1-docs.tsv`
-- `standards/rename-maps/w2-tests.tsv`
-- `standards/rename-maps/w3-bin.tsv`
-- `standards/rename-maps/w4-path-shims.tsv`
-- `standards/rename-maps/w5-state-env-launchd.tsv`
-- `standards/rename-maps/w6a-admission-hooks.tsv`
-- `standards/rename-maps/w6b-admission-floor-hook-and-integrity.tsv`
 
 ### status
 
@@ -483,18 +485,17 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `.agents/` | 4 |
 | `.github/` | 2 |
 | `CONTRACTS/` | 63 |
-| `bin/` | 114 |
+| `bin/` | 112 |
 | `commands/` | 5 |
-| `context-rules/` | 31 |
 | `docs/` | 17 |
-| `fixtures/` | 220 |
+| `fixtures/` | 216 |
 | `hooks/` | 32 |
 | `launchd/` | 10 |
 | `patches/` | 12 |
 | `runners/` | 2 |
-| `skills/` | 7 |
+| `skills/` | 29 |
 | `systemd/` | 15 |
-| `tests/` | 228 |
+| `tests/` | 229 |
 | `tools/` | 8 |
 | `vendor/` | 73 |
 | `worklog/` | 1 |
@@ -506,16 +507,17 @@ Every tracked top-level entry, its kind and layer from `CONTRACTS/layout-map.tsv
 | Entry | Kind | Layer | Ships |
 |---|---|---|---|
 | `.agents/` | config | source | core |
+| `.claude/` | config | source | core |
 | `.github/` | config | source | core |
 | `CONTRACTS/` | contract | source | core |
 | `DOCTRINE/` | explanation | source | core |
 | `EVALS-DATA/` | eval | source | dev |
 | `bin/` | script | source | core |
 | `commands/` | command | source | core |
-| `context-rules/` | injection-rule | source | core |
 | `docs/` | explanation | source | core |
 | `fixtures/` | fixture | source | core |
 | `hooks/` | hook | source | core |
+| `inject.d/` | injection-rule | source | core |
 | `launchd/` | deploy-unit | source | core |
 | `patches/` | vendored | source | core |
 | `runners/` | deploy-unit | source | core |

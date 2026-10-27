@@ -26,7 +26,7 @@
 # because an absurd negative proves only that the predicate is not `true`.
 #
 # COLUMNS   pack · repo · id · arm · label · payload
-#   pack    the context-rules/ scope the note ships in (`box` = user/); `self` = harbor's own context-rules/harbor/ (in the private layer's rows,
+#   pack    the directory under inject.d/ the note ships in; `self` = .claude/inject.d (in the private layer's rows,
 #           a folder of that layer's inject.d/); a name under fixtures/inject/packs/ is a fixture pack (above)
 #   repo    the fixture repo shape: `plain`, `skills` (a HIDDEN skill), `visible`, or `naming` (carries
 #           bin/lint-name.sh and standards/naming/, the only repos name-note judges)

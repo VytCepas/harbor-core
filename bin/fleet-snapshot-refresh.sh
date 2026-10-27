@@ -23,8 +23,7 @@ esac
 log_init fleet-snapshot-refresh
 CACHE_DIR="${HARBOR_CACHE_DIR:-$HOME/.claude/cache}"
 CACHE="$CACHE_DIR/fleet-snapshot.json"
-# the fleet file through the registry-aware reader beside this script (harbor#966)
-FLEET="${HARBOR_FLEET_FILE:-$(sh "$(dirname -- "$0")/roots.sh" --get HARBOR_FLEET_FILE 2>/dev/null || :)}"
+FLEET="${HARBOR_FLEET_FILE:-${PORT_ROOT:-$HOME/port}/projects-orchestrator/fleet.yaml}"
 ORCH="${HARBOR_ORCH_BIN:-$HOME/.local/bin/projects-orchestrator}"
 
 mkdir -p "$CACHE_DIR"
@@ -234,7 +233,7 @@ fi
 # The consumer degrades on this too now (bin/fleet-glyph.sh), because a cache with
 # a private remote and a launchd writer needs the check at both ends.
 #
-# EVERY ELEMENT MUST BE AN OBJECT (fleet#218). The array check
+# EVERY ELEMENT MUST BE AN OBJECT (projects-orchestrator#218). The array check
 # alone admitted `[…, null]`, and each consumer counts elements: measured
 # 2026-09-19, a null-padded copy of the live cache moved the statusline from ⚓15
 # to ⚓16, a phantom project with no fields and no error. The producer's schema
@@ -248,7 +247,7 @@ if "$ORCH" snapshot --fleet "$FLEET" --json >"$TMP" 2>/dev/null \
   mv "$TMP" "$CACHE"
 else
   log_fail "the fleet snapshot failed, or failed the shape gate, so $CACHE keeps its previous value: $ORCH snapshot --fleet $FLEET"
-  log_nofix "fleet — run $ORCH snapshot --fleet $FLEET --json to see why"
+  log_nofix "projects-orchestrator — run $ORCH snapshot --fleet $FLEET --json to see why"
   log_end || :
   exit 1
 fi

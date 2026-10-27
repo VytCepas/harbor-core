@@ -113,7 +113,7 @@ cell meaning *not recorded*, which is not the same as *no access*.
   in the browser (`BROWSER`, below). Where nothing can read it, the line says
   `none - <why>` so the gap stays on the page instead of looking covered.
 - **An access failure points here by itself.** The box pack
-  `context-rules/user/access-route-pointer.md` fires on a Bash result carrying a
+  `inject.d/box/45-access-route-pointer.md` fires on a Bash result carrying a
   401, 403, `PERMISSION_DENIED` or `Reauthentication failed` from a system that
   has a card, and names the account that card says to use.
 - **The gate fails a stale `ACCOUNTS.md` or `DISPATCH.md`.** Edit a card, then

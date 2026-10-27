@@ -12,7 +12,7 @@ them). Claude Code reads [CLAUDE.md](CLAUDE.md), which imports this file.
 - [CONTRACTS/README.md](CONTRACTS/README.md) — the contracts index. [CONTRACTS/marker.md](CONTRACTS/marker.md) is the scope marker and the stand-down table.
 - `HANDOFF.md` — current state; `STATUS.md` is generated. Both stay in the development checkout (`CONTRACTS/layers.tsv`), so the exported core has neither.
 - [standards/naming.md](standards/naming.md) — naming and conventions; the registers live in `standards/naming/`.
-- [CONTRACTS/access-card.md](CONTRACTS/access-card.md) — how to reach each system, and as whom: the card format. The cards are private data, in `$PORT_ROOT/harbor-private/access/`.
+- [CONTRACTS/access-card.md](CONTRACTS/access-card.md) — how to reach each system, and as whom: the card format. The cards are private data, in `harbor-private/access/`.
 
 ## Key rules for agents
 

@@ -261,11 +261,11 @@ if [ -f "$DIR/bin/govern-hook.sh" ]; then
   if [ -z "$_gv" ] || [ ! -d "$_gv" ]; then
     no "govern-hook --box was NOT probed: mktemp gave no directory" "$FLOOR_FIX"
   else
-    mkdir -p "$_gv/port/r/bin" "$_gv/cfg/context-rules/user"
+    mkdir -p "$_gv/port/r/bin" "$_gv/cfg/inject.d"
     git -C "$_gv/port/r" init -q >/dev/null 2>&1 || true
     git -C "$_gv/port/r" remote add origin https://example.invalid/fv/probe.git >/dev/null 2>&1 || true
     printf '#!/bin/sh\necho "REFUSED  floor-verify probe"\nexit 1\n' >"$_gv/port/r/bin/merge-check.sh"
-    printf 'probe\t%s\tfloor-verify\n' "$_gv/port/r" >"$_gv/cfg/context-rules/user/projects.tsv"
+    printf 'probe\t%s\tfloor-verify\n' "$_gv/port/r" >"$_gv/cfg/inject.d/projects.tsv"
     if printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","cwd":"%s","tool_input":{"command":"gh pr merge 1 -R fv/probe"}}' "$_gv" \
          | CLAUDE_CONFIG_DIR="$_gv/cfg" CLAUDE_PROJECT_DIR="$_gv" PORT_ROOT="$_gv/port" sh "$FIRE/bin/govern-hook.sh" --box 2>/dev/null \
          | grep -q '"permissionDecision":"deny"'; then

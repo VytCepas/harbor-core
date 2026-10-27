@@ -792,30 +792,29 @@ already had in mind.</p>
 <h4>Every pack currently shipped</h4>
 <div class="scroll">
 <table class="grid"><thead><tr><th>Tier</th><th>Pack</th><th>Event</th><th>Fires when</th><th>Repeats</th></tr></thead><tbody>
-<tr><td>repo · harbor</td><td><code>constitution-edit-is-undeployed.md</code></td><td><code>PreToolUse</code></td><td><code>path-contains CONSTITUTION.md</code></td><td>session</td></tr>
-<tr><td>repo · harbor</td><td><code>merge-governance.md</code></td><td><code>PreToolUse</code></td><td><code>cmd-prefix gh pr merge</code></td><td>never</td></tr>
-<tr><td>repo · harbor</td><td><code>post-merge-state.md</code></td><td><code>PostToolUse</code></td><td><code>cmd-prefix gh pr merge</code></td><td>never</td></tr>
-<tr><td>box</td><td><code>access-route-pointer.md</code></td><td><code>PostToolUse</code></td><td><code>always</code></td><td>match</td></tr>
-<tr><td>box</td><td><code>agent-brief.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
-<tr><td>box</td><td><code>agent-model-required.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
-<tr><td>box</td><td><code>browser-route-harbor-chrome.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
-<tr><td>box</td><td><code>browser-route-reminder.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
-<tr><td>box</td><td><code>ci-wait-on-the-bus.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
-<tr><td>box</td><td><code>confinement-refused.md</code></td><td><code>PostToolUse</code></td><td><code>always</code></td><td>session</td></tr>
-<tr><td>box</td><td><code>external-content-is-data.md</code></td><td><code>PostToolUse</code></td><td><code>injected-instruction</code></td><td>match</td></tr>
-<tr><td>box</td><td><code>large-tool-result.md</code></td><td><code>PostToolUse</code></td><td><code>always</code></td><td>session</td></tr>
-<tr><td>box</td><td><code>name-note-create.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
-<tr><td>box</td><td><code>name-note.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
-<tr><td>box</td><td><code>post-compaction-carry.md</code></td><td><code>SessionStart</code></td><td><code>source-is compact</code></td><td>never</td></tr>
-<tr><td>box</td><td><code>project-pointer.md</code></td><td><code>SessionStart</code></td><td><code>always</code></td><td>never</td></tr>
-<tr><td>box</td><td><code>repo-skills-pointer.md</code></td><td><code>SessionStart</code></td><td><code>repo-has .claude/skills</code></td><td>never</td></tr>
-<tr><td>box</td><td><code>repo-tier-not-loaded.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
-<tr><td>box</td><td><code>session-title-missing.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
-<tr><td>box</td><td><code>skill-on-first-use.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
-<tr><td>box</td><td><code>subagent-contract.md</code></td><td><code>SubagentStart</code></td><td><code>always</code></td><td>never</td></tr>
-<tr><td>box</td><td><code>tool-failure-is-not-a-result.md</code></td><td><code>PostToolUseFailure</code></td><td><code>always</code></td><td>session</td></tr>
-<tr><td>box</td><td><code>unbounded-wait-loop.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
-<tr><td>box</td><td><code>variable-is-one-argument.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
+<tr><td>box</td><td><code>10-subagent-contract.md</code></td><td><code>SubagentStart</code></td><td><code>always</code></td><td>never</td></tr>
+<tr><td>box</td><td><code>20-post-compaction-carry.md</code></td><td><code>SessionStart</code></td><td><code>source-is compact</code></td><td>never</td></tr>
+<tr><td>box</td><td><code>30-external-content-is-data.md</code></td><td><code>PostToolUse</code></td><td><code>injected-instruction</code></td><td>match</td></tr>
+<tr><td>box</td><td><code>40-repo-skills-pointer.md</code></td><td><code>SessionStart</code></td><td><code>repo-has .claude/skills</code></td><td>never</td></tr>
+<tr><td>box</td><td><code>45-access-route-pointer.md</code></td><td><code>PostToolUse</code></td><td><code>always</code></td><td>match</td></tr>
+<tr><td>box</td><td><code>50-project-pointer.md</code></td><td><code>SessionStart</code></td><td><code>always</code></td><td>never</td></tr>
+<tr><td>box</td><td><code>55-session-title-missing.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
+<tr><td>box</td><td><code>60-variable-is-one-argument.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
+<tr><td>box</td><td><code>65-browser-route-harbor-chrome.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
+<tr><td>box</td><td><code>66-browser-route-reminder.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
+<tr><td>box</td><td><code>70-confinement-refused.md</code></td><td><code>PostToolUse</code></td><td><code>always</code></td><td>session</td></tr>
+<tr><td>box</td><td><code>80-large-tool-result.md</code></td><td><code>PostToolUse</code></td><td><code>always</code></td><td>session</td></tr>
+<tr><td>box</td><td><code>85-tool-failure-is-not-a-result.md</code></td><td><code>PostToolUseFailure</code></td><td><code>always</code></td><td>session</td></tr>
+<tr><td>box</td><td><code>90-unbounded-wait-loop.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
+<tr><td>box</td><td><code>91-ci-wait-on-the-bus.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
+<tr><td>box</td><td><code>95-repo-tier-not-loaded.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
+<tr><td>box</td><td><code>96-agent-brief.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
+<tr><td>box</td><td><code>97-agent-model-required.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
+<tr><td>box</td><td><code>98-name-note.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
+<tr><td>box</td><td><code>99-skill-on-first-use.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
+<tr><td>repo · harbor</td><td><code>10-constitution-edit-is-undeployed.md</code></td><td><code>PreToolUse</code></td><td><code>path-contains CONSTITUTION.md</code></td><td>session</td></tr>
+<tr><td>repo · harbor</td><td><code>20-merge-governance.md</code></td><td><code>PreToolUse</code></td><td><code>cmd-prefix gh pr merge</code></td><td>never</td></tr>
+<tr><td>repo · harbor</td><td><code>21-post-merge-state.md</code></td><td><code>PostToolUse</code></td><td><code>cmd-prefix gh pr merge</code></td><td>never</td></tr>
 </tbody></table>
 </div>
 </section>
@@ -1156,7 +1155,7 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <tr><td><code>policy.magnitude-derived</code> (was MAG1)</td><td>a magnitude in CONSTITUTION.md carries the command that derives it (harbor#583)</td></tr>
 <tr><td><code>drift.sandbox-copy</code> (was X1)</td><td>the dev sandbox's guards are byte-identical to bin/ (QA-PLAN R8)</td></tr>
 <tr><td><code>context.pack-shape</code> (was IJ1)</td><td>every tracked rule pack declares an event, a predicate and a body (CONTRACTS/inject.md)</td></tr>
-<tr><td><code>context.registry-dirs</code> (was IJ2)</td><td>context-rules/&lt;project&gt;/ and the box tier's projects.tsv name the same projects</td></tr>
+<tr><td><code>context.registry-dirs</code> (was IJ2)</td><td>inject.d/&lt;project&gt;/ and inject.d/box/projects.tsv name the same projects</td></tr>
 <tr><td><code>doc.plan-generated</code> (was T1c)</td><td>PLAN.md is regenerated, not hand-edited (harbor#117)</td></tr>
 <tr class="advisory"><td><code>context.repo-registered</code> (was IJ3)</td><td>every governed repo on this box has a registry row (advisory)</td></tr>
 <tr class="advisory"><td><code>drift.pack-installed</code> (was IJ4)</td><td>every tracked pack is installed where the engine reads it — box and project (advisory)</td></tr>
@@ -1343,7 +1342,6 @@ red under <code>standard.decision-dangling</code>.</p>
 <tr><td><code>D-88</code></td><td>A hook engine is a folder named after it</td><td>accepted</td><td>2026-10-23</td><td>-</td></tr>
 <tr><td><code>D-89</code></td><td>Two more moments: event and manual</td><td>accepted</td><td>2026-10-24</td><td>-</td></tr>
 <tr><td><code>D-90</code></td><td>Human doc kinds follow Diátaxis</td><td>accepted</td><td>2026-10-24</td><td>-</td></tr>
-<tr><td><code>D-91</code></td><td>The object slot stays open</td><td>accepted</td><td>2026-10-27</td><td>-</td></tr>
 </tbody></table>
 </div>
 </section>
@@ -1443,12 +1441,11 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/ci/status-gen-test.sh</code></td><td><code>bin/status-gen.sh bin/log-lib.sh tests/ci/status-gen-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/install/skills-install-test.sh</code></td><td><code>bin/skills-install.sh tests/install/skills-install-test.sh bin/skills-collide.sh commands/* bin/log-lib.sh bin/install-lib.sh bin/fs-lib.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/hooks/govern-hook-test.sh</code></td><td><code>bin/* hooks/* CONTRACTS/* commands/* tests/hooks/govern-hook-test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>hooks/injection-rule/engine.test.sh</code></td><td><code>bin/* context-rules/* CONTRACTS/* tests/hooks/inject-fixture.sh tests/lib/core.sh hooks/injection-rule/engine.test.sh</code></td></tr>
-<tr><td><code>hooks/injection-rule/detector.test.sh</code></td><td><code>bin/* context-rules/* CONTRACTS/* tests/hooks/inject-fixture.sh tests/lib/core.sh hooks/injection-rule/detector.test.sh CONSTITUTION.md EVALS.md docs/src/30-inject.html fixtures/inject/* tests/floor/floor-test.sh tests/floor/floor.b8-test.sh</code></td></tr>
-<tr><td><code>hooks/injection-rule/packs.test.sh</code></td><td><code>bin/* context-rules/* CONTRACTS/* tests/hooks/inject-fixture.sh tests/lib/core.sh hooks/injection-rule/packs.test.sh</code></td></tr>
-<tr><td><code>hooks/injection-rule/scope.test.sh</code></td><td><code>bin/* context-rules/* CONTRACTS/* tests/hooks/inject-fixture.sh tests/lib/core.sh hooks/injection-rule/scope.test.sh</code></td></tr>
-<tr><td><code>hooks/injection-rule/compaction-digest.test.sh</code></td><td><code>bin/compaction-digest.sh bin/guard-lib.sh context-rules/* tests/hooks/inject-fixture.sh tests/lib/core.sh hooks/injection-rule/compaction-digest.test.sh</code></td></tr>
-<tr><td><code>hooks/injection-rule/context-rules.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh tests/hooks/inject-fixture.sh tests/lib/core.sh hooks/injection-rule/context-rules.test.sh</code></td></tr>
+<tr><td><code>hooks/injection-rule/engine.test.sh</code></td><td><code>bin/* inject.d/* .claude/inject.d/* CONTRACTS/* tests/hooks/inject-fixture.sh tests/lib/core.sh hooks/injection-rule/engine.test.sh</code></td></tr>
+<tr><td><code>hooks/injection-rule/detector.test.sh</code></td><td><code>bin/* inject.d/* .claude/inject.d/* CONTRACTS/* tests/hooks/inject-fixture.sh tests/lib/core.sh hooks/injection-rule/detector.test.sh CONSTITUTION.md EVALS.md docs/src/30-inject.html fixtures/inject/* tests/floor/floor-test.sh tests/floor/floor.b8-test.sh</code></td></tr>
+<tr><td><code>hooks/injection-rule/packs.test.sh</code></td><td><code>bin/* inject.d/* .claude/inject.d/* CONTRACTS/* tests/hooks/inject-fixture.sh tests/lib/core.sh hooks/injection-rule/packs.test.sh</code></td></tr>
+<tr><td><code>hooks/injection-rule/scope.test.sh</code></td><td><code>bin/* inject.d/* .claude/inject.d/* CONTRACTS/* tests/hooks/inject-fixture.sh tests/lib/core.sh hooks/injection-rule/scope.test.sh</code></td></tr>
+<tr><td><code>hooks/injection-rule/compaction-digest.test.sh</code></td><td><code>bin/compaction-digest.sh bin/guard-lib.sh inject.d/* tests/hooks/inject-fixture.sh tests/lib/core.sh hooks/injection-rule/compaction-digest.test.sh</code></td></tr>
 <tr><td><code>hooks/ticket-note/ticket-note.test.sh</code></td><td><code>hooks/ticket-note/ticket-note.sh hooks/ticket-note/ticket-note.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>hooks/session-title/session-title.test.sh</code></td><td><code>hooks/session-title/session-title.sh bin/guard-selfedit.sh bin/guard-lib.sh hooks/session-title/session-title.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/deploy/hooks/render.test.sh</code></td><td><code>bin/deploy-hooks.sh bin/log-lib.sh tests/deploy/hooks/render.test.sh tests/lib/core.sh</code></td></tr>
@@ -1456,10 +1453,10 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/drift/confinement/compare.test.sh</code></td><td><code>bin/drift-confinement.sh bin/deploy-confinement.sh bin/roots.sh bin/log-lib.sh bin/floor-deny.sh bin/install-lib.sh bin/runtime-install.sh CONTRACTS/confinement-hosts.txt CONTRACTS/confinement-paths.txt CONTRACTS/helm-state.md tests/drift/confinement/compare.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/confinement/covered.test.sh</code></td><td><code>bin/* tests/lib/* tests/floor/floor-fixture.sh tests/guards/floor-fixture.sh CONTRACTS/confinement-coverage.tsv standards/naming/controls.tsv tests/admission/confinement/covered.test.sh</code></td></tr>
 <tr><td><code>tests/access/chrome/mcp.test.sh</code></td><td><code>bin/* standards/naming/* CONTRACTS/browser-agent-hosts.txt tests/lib/* tests/access/chrome/mcp.test.sh</code></td></tr>
-<tr><td><code>tests/hooks/inject-notes-test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh tests/hooks/inject-notes-test.sh context-rules/* fixtures/inject/* bin/roots.sh bin/guard-lib.sh bin/floor-normalize.awk tests/lib/core.sh bin/lint-name.sh bin/log-lib.sh standards/naming/*</code></td></tr>
-<tr><td><code>tests/hooks/agent-brief-test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/guard-lib.sh context-rules/* tests/hooks/agent-brief-test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/hooks/skill-first-use-test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/guard-lib.sh bin/floor-normalize.awk context-rules/* skills/agent-routing/SKILL.md tests/hooks/skill-first-use-test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/hooks/name-note-test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/guard-lib.sh bin/lint-name.sh bin/log-lib.sh standards/naming/* context-rules/* tests/hooks/name-note-test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/hooks/inject-notes-test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh tests/hooks/inject-notes-test.sh inject.d/* .claude/inject.d/* fixtures/inject/* bin/roots.sh bin/guard-lib.sh bin/floor-normalize.awk tests/lib/core.sh bin/lint-name.sh bin/log-lib.sh standards/naming/*</code></td></tr>
+<tr><td><code>tests/hooks/agent-brief-test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/guard-lib.sh inject.d/* tests/hooks/agent-brief-test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/hooks/skill-first-use-test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/guard-lib.sh bin/floor-normalize.awk inject.d/* skills/agent-routing/SKILL.md tests/hooks/skill-first-use-test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/hooks/name-note-test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/guard-lib.sh bin/lint-name.sh bin/log-lib.sh standards/naming/* inject.d/* tests/hooks/name-note-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/guards/destroy-test.sh</code></td><td><code>     bin/* tests/lib/* tests/guards/destroy* tests/guards/guards.jsonl tests/guards/shapes.jsonl tests/guards/benign.jsonl tests/guards/exemptions.jsonl</code></td></tr>
 <tr><td><code>tests/guards/destroy.c1-misc-test.sh</code></td><td><code>bin/* tests/lib/* tests/guards/destroy.c1-misc*</code></td></tr>
 <tr><td><code>tests/guards/cloud-test.sh</code></td><td><code>       bin/*tests/lib/* tests/guards/cloud* tests/guards/guards.jsonl tests/guards/shapes.jsonl tests/guards/benign.jsonl tests/guards/exemptions.jsonl</code></td></tr>
@@ -1496,7 +1493,6 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/memory/memory-route-test.sh</code></td><td><code>bin/memory-route.sh bin/log-lib.sh tests/memory/memory-route-test.sh bin/roots.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/ci/pr-wait-test.sh</code></td><td><code>bin/pr-wait* bin/ci-lost-job.sh bin/gate-required-generate.sh bin/log-lib.sh tests/ci/pr-wait-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/install/port-paths-test.sh</code></td><td><code>bin/port-paths.sh bin/log-lib.sh bin/roots.sh tests/install/port-paths-test.sh CONTRACTS/port-paths-exempt.tsv tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/install/port-drift-test.sh</code></td><td><code>bin/port-drift.sh bin/roots.sh bin/log-lib.sh CONTRACTS/roots.tsv CONTRACTS/private-layer.md tests/install/port-drift-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/ci/ci-queue-test.sh</code></td><td><code>bin/ci-queue.sh bin/log-lib.sh tests/ci/ci-queue-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/ci/main-tip-verdict-test.sh</code></td><td><code>bin/main-tip-verdict.sh bin/log-lib.sh tests/ci/main-tip-verdict-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/install/constitution-install-test.sh</code></td><td><code>bin/constitution-install.sh tests/install/constitution-install-test.sh bin/log-lib.sh bin/install-lib.sh tests/lib/core.sh</code></td></tr>
@@ -1506,7 +1502,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/lib/install-lib-test.sh</code></td><td><code> bin/install-lib.sh bin/log-lib.sh tests/lib/install-lib-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lib/fs-lib-test.sh</code></td><td><code>bin/fs-lib.sh bin/fleet-glyph.sh tests/lib/fs-lib-test.sh tests/lib/linux-sim.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/install/deploy-test.sh</code></td><td><code>bin/deploy.sh bin/restore.sh bin/install-lib.sh bin/log-lib.sh tests/install/deploy-test.sh tests/install/deploy-fixture.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/install/deploy.standard-test.sh</code></td><td><code>bin/* CONTRACTS/* CONSTITUTION.md skills/* vendor/* commands/* context-rules/* tests/floor/recover-test.sh tests/install/deploy.standard-test.sh tests/install/deploy-fixture.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/install/deploy.standard-test.sh</code></td><td><code>bin/* CONTRACTS/* CONSTITUTION.md skills/* vendor/* commands/* inject.d/* tests/floor/recover-test.sh tests/install/deploy.standard-test.sh tests/install/deploy-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/install/deploy.prune-test.sh</code></td><td><code>bin/deploy.sh bin/restore.sh bin/install-lib.sh bin/log-lib.sh bin/install-drift.sh tests/install/deploy.prune-test.sh tests/install/deploy-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/install/bootstrap-test.sh</code></td><td><code>bin/bootstrap.sh bin/deploy.sh bin/roots.sh bin/log-lib.sh bin/install-lib.sh CONTRACTS/roots.tsv tests/install/bootstrap-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/guards/bash.cd-fold-test.sh</code></td><td><code>bin/* tests/lib/* tests/guards/bash.cd-fold* tests/guards/floor-fixture.sh</code></td></tr>
@@ -1535,8 +1531,8 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/checks/docs-gen-test.sh</code></td><td><code>bin/docs-gen.sh bin/log-lib.sh tests/checks/docs-gen-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/skills/eval-runners-test.sh</code></td><td><code>EVALS-DATA/* fixtures/eval-runners/* tests/skills/eval-runners-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/skills/skill-catalog-test.sh</code></td><td><code>bin/skill-catalog.sh bin/log-lib.sh bin/roots.sh bin/install-lib.sh CONTRACTS/roots.tsv CONTRACTS/skill-book-router.tsv skills/skill-catalog/SKILL.md tests/skills/skill-catalog-test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/skills/atlas-zones-test.sh</code></td><td><code>skills/doc-atlas/build/build.py tests/skills/atlas-zones-test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/skills/atlas-inside-test.sh</code></td><td><code>skills/doc-atlas/build/build.py tests/skills/atlas-inside-test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/skills/atlas-zones-test.sh</code></td><td><code>skills/atlas/build/build.py tests/skills/atlas-zones-test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/skills/atlas-inside-test.sh</code></td><td><code>skills/atlas/build/build.py tests/skills/atlas-inside-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/skills/archify-report-pipe-test.sh</code></td><td><code>vendor/archify/scripts/check-render-output.mjs vendor/archify/bin/archify.mjs fixtures/archify/fanout.architecture.json tests/skills/archify-report-pipe-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/checks/test-contract-test.sh</code></td><td><code>skills/*/bin/*-test.sh CONTRACTS/test-contract.md CONTRACTS/README.md CONTRACTS/suites.txt tests/README.md tests/lib/run.sh justfile tests/checks/test-contract-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/cli/live-verify-test.sh</code></td><td><code>bin/live-verify.sh bin/floor-verify.sh bin/doctor.sh bin/install-drift.sh bin/shim-install.sh bin/roots.sh bin/secret bin/skills-install.sh bin/browser.sh bin/harbor bin/install-lib.sh bin/log-lib.sh bin/guard-* bin/floor-* bin/pin-instructions.sh bin/sec0-harden.sh CONTRACTS/shims.tsv CONTRACTS/roots.tsv CHECKS.md tests/cli/keychain-stub.sh tests/cli/live-verify-test.sh tests/lib/core.sh</code></td></tr>
@@ -1553,7 +1549,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/ci/ci-governor-liveness-test.sh</code></td><td><code>bin/ci-governor.sh bin/ci-governor-hook.sh bin/suite-run.sh bin/log-lib.sh hooks/pre-push hooks/lib.sh tests/lib/run.sh tests/ci/ci-governor-* tests/lib/core.sh</code></td></tr>
 <tr><td><code>hooks/reply-shape/reply-shape.test.sh</code></td><td><code>hooks/reply-shape/reply-shape.sh hooks/reply-shape/reply-shape.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/session/subagent/check.test.sh</code></td><td><code>hooks/session-subagent-check/session-subagent-check.sh tests/session/subagent/check.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/session/agents/registry.test.sh</code></td><td><code>CONTRACTS/agents.tsv context-rules/user/subagent-contract.md tests/session/agents/registry.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/session/agents/registry.test.sh</code></td><td><code>CONTRACTS/agents.tsv inject.d/box/10-subagent-contract.md tests/session/agents/registry.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/ci/ci-governor-priority-test.sh</code></td><td><code>bin/ci-governor.sh bin/ci-governor-hook.sh bin/suite-run.sh bin/log-lib.sh hooks/pre-push hooks/lib.sh tests/lib/run.sh tests/ci/ci-governor-* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/event/bus/emit.test.sh</code></td><td><code>bin/event-bus.sh bin/log-lib.sh bin/harbor tests/event/bus/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/event/bus/concurrency.test.sh</code></td><td><code>bin/event-bus.sh bin/log-lib.sh bin/harbor tests/event/bus/* tests/lib/core.sh</code></td></tr>
@@ -1633,7 +1629,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/skills/access-ledger/register.test.sh</code></td><td><code>skills/access-ledger/bin/* bin/roots.sh bin/log-lib.sh tests/skills/access-ledger/register.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/check/registry/compose.test.sh</code></td><td><code>bin/check-registry-generate.sh CHECKS.md tests/check/registry/compose.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/check/registry/readers.test.sh</code></td><td><code>bin/check-registry-generate.sh bin/runtime-install.sh bin/install-drift.sh bin/lint-conventions.sh bin/log-lib.sh bin/install-lib.sh CHECKS.md tests/check/registry/readers.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/cli/browser/private-hosts.test.sh</code></td><td><code>bin/browser-agent.sh bin/roots.sh bin/log-lib.sh context-rules/user/browser-route.sh CONTRACTS/browser-agent-hosts.txt CONTRACTS/private-layer.md tests/cli/browser/private-hosts.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/cli/browser/private-hosts.test.sh</code></td><td><code>bin/browser-agent.sh bin/roots.sh bin/log-lib.sh inject.d/box/browser-route.sh CONTRACTS/browser-agent-hosts.txt CONTRACTS/private-layer.md tests/cli/browser/private-hosts.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/cli/browser/token.test.sh</code></td><td><code>bin/browser-agent.sh bin/secret bin/access.sh bin/scope.sh bin/roots.sh bin/log-lib.sh CONTRACTS/browser-agent-hosts.txt CONTRACTS/secret-legacy-refs.txt tests/cli/browser/token.test.sh tests/cli/keychain-stub.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/cli/browser/chrome.test.sh</code></td><td><code>bin/browser-agent.sh bin/log-lib.sh bin/roots.sh CONTRACTS/browser-agent-hosts.txt tests/cli/browser/chrome.test.sh tests/cli/browser/agent-stub.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>hooks/ticket-note/private-owners.test.sh</code></td><td><code>hooks/ticket-note/ticket-note.sh bin/roots.sh bin/log-lib.sh CONTRACTS/private-layer.md hooks/ticket-note/private-owners.test.sh tests/lib/core.sh</code></td></tr>
@@ -1723,11 +1719,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/alert/lib/chain.test.sh</code></td><td><code>bin/alert-lib.sh bin/event-bus.sh bin/log-lib.sh tests/alert/lib/* tests/lib/core.sh tests/lib/linux-sim.sh</code></td></tr>
 <tr><td><code>tests/lint/comment/added.test.sh</code></td><td><code>bin/lint-comment.sh standards/naming/controls.tsv tests/lint/comment/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/name/issue-taxonomy.test.sh</code></td><td><code>bin/lint-name.sh standards/naming/* CONTRACTS/issue-taxonomy.tsv tests/lint/name/issue-taxonomy.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/lint/name/validators.test.sh</code></td><td><code>bin/lint-name.sh bin/name-check standards/naming/* fixtures/naming/* tests/checks/lint-fixture.sh tests/checks/lint.name-fixture.sh tests/lint/name/validators.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/doc/vale/vale.test.sh</code></td><td><code>bin/doc-vale.sh bin/lint-name.sh bin/log-lib.sh standards/naming/* tests/doc/vale/* tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/ci/lint-pr-test.sh</code></td><td><code>bin/lint-pr.sh bin/lint-name.sh bin/log-lib.sh hooks/commit-msg standards/naming/* fixtures/naming/* tests/ci/lint-pr-test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/guards/name-note-create-test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/guard-lib.sh bin/lint-name.sh bin/log-lib.sh standards/naming/* context-rules/* tests/guards/name-note-create-test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/ci/lint-renderer-test.sh</code></td><td><code>bin/lint-renderer.sh bin/log-lib.sh standards/naming/* tests/lib/core.sh</code></td></tr>
 </tbody></table>
 </div>
 
@@ -1809,19 +1801,14 @@ session and one that costs nothing until wanted.</p>
 <h4>The tracked skills</h4>
 <div class="scroll">
 <table class="grid"><thead><tr><th>Skill</th><th>Invocation</th><th>What it is for</th></tr></thead><tbody>
-<tr><td><code>access-browser</code></td><td>invoked only</td><td>"Pick the right browser backend and drive it, then say what the run's absence is and is not evidence for. Two axes — does it need a login, and does </td></tr>
 <tr><td><code>access-ledger</code></td><td>ambient</td><td>"Which account to use on each system, the role it holds and what it cannot reach: harbor-private/access/ACCOUNTS.md, generated from the route cards; p</td></tr>
 <tr><td><code>agent-routing</code></td><td>invoked only</td><td>"Which model tier and effort each delegated agent runs on — Agent tool calls, headless `claude -p` runs, workflow agents and orchestrator launches �</td></tr>
-<tr><td><code>atlas</code></td><td>invoked only</td><td>"The old name of the doc-atlas skill, kept as an alias until 2027-01-31 (harbor#1010): read ~/.claude/skills/doc-atlas/SKILL.md, which draws the archi</td></tr>
-<tr><td><code>audit-review-fanout</code></td><td>ambient</td><td>"Review a code change with several cheap reviewers, each given a different lens, then verify every finding before reporting it. The deliverable is ver</td></tr>
-<tr><td><code>browser</code></td><td>invoked only</td><td>"The old name of the access-browser skill, kept as an alias until 2027-01-31 (harbor#1010): read ~/.claude/skills/access-browser/SKILL.md, which picks</td></tr>
-<tr><td><code>deliverable-contract</code></td><td>invoked only</td><td>"The old name of the doc-deliverable-contract skill, kept as an alias until 2027-01-31 (harbor#1010): read ~/.claude/skills/doc-deliverable-contract/S</td></tr>
-<tr><td><code>doc-atlas</code></td><td>ambient</td><td>"The single owner of human-readable HTML artefacts on this box: an atlas whose subject is a DRAWING, not prose. The diagram takes the whole stage with</td></tr>
-<tr><td><code>doc-deliverable-contract</code></td><td>ambient</td><td>"Before writing anything a person outside this session will read — a client thread reply, a ticket comment, a recommendation, a proposal — restate</td></tr>
-<tr><td><code>doc-learning-artifact</code></td><td>invoked only</td><td>"The approved house style and build kit for study pages — an exam guide, a course explainer, a revision page: one section per tab, hand-drawn SVG di</td></tr>
+<tr><td><code>atlas</code></td><td>ambient</td><td>"The single owner of human-readable HTML artefacts on this box: an atlas whose subject is a DRAWING, not prose. The diagram takes the whole stage with</td></tr>
+<tr><td><code>browser</code></td><td>invoked only</td><td>"Pick the right browser backend and drive it, then say what the run's absence is and is not evidence for. Two axes — does it need a login, and does </td></tr>
+<tr><td><code>deliverable-contract</code></td><td>ambient</td><td>"Before writing anything a person outside this session will read — a client thread reply, a ticket comment, a recommendation, a proposal — restate</td></tr>
 <tr><td><code>housekeeping</code></td><td>invoked only</td><td>"Reclaim a drifted box: the measured trash classes that accumulate here, the detector for each, and — the load-bearing half — the things that LOOK</td></tr>
-<tr><td><code>learning-artifact</code></td><td>invoked only</td><td>"The old name of the doc-learning-artifact skill, kept as an alias until 2027-01-31 (harbor#1010): read ~/.claude/skills/doc-learning-artifact/SKILL.m</td></tr>
-<tr><td><code>review-fanout</code></td><td>invoked only</td><td>"The old name of the audit-review-fanout skill, kept as an alias until 2027-01-31 (harbor#1010): read ~/.claude/skills/audit-review-fanout/SKILL.md, w</td></tr>
+<tr><td><code>learning-artifact</code></td><td>invoked only</td><td>"The approved house style and build kit for study pages — an exam guide, a course explainer, a revision page: one section per tab, hand-drawn SVG di</td></tr>
+<tr><td><code>review-fanout</code></td><td>ambient</td><td>"Review a code change with several cheap reviewers, each given a different lens, then verify every finding before reporting it. The deliverable is ver</td></tr>
 <tr><td><code>skill-book</code></td><td>invoked only</td><td>"The old name of the skill-catalog skill, kept as an alias for one release (harbor#1010): read ~/.claude/skills/skill-catalog/SKILL.md, which is the i</td></tr>
 <tr><td><code>skill-catalog</code></td><td>ambient</td><td>"The index of every skill and credentialed CLI on this box, with the path to read each one — most are hidden from your listing and this is the only </td></tr>
 <tr><td><code>test-strength</code></td><td>invoked only</td><td>Prove a load-bearing test can actually fail, and that it fails for the right reason. Break the thing it guards, watch it go red, restore — then chec</td></tr>
@@ -2157,10 +2144,9 @@ score a plumbing gap as a verdict on the idea.</p>
 <tr><td><code>renew-check.sh</code></td><td>renew-check (harbor#44 follow-through, harbor#800) — what is BUILT here and NOT RUNNING there.</td></tr>
 <tr><td><code>reply-shape.sh</code></td><td>reply-shape (harbor#952, #949 D-23) — advisory Stop hook. Registered in CHECKS.md as <code>reply-shape</code>.</td></tr>
 <tr><td><code>restore.sh</code></td><td>RECOVER (harbor#34, #765) — put a config dir back from a deploy snapshot.</td></tr>
-<tr><td><code>roots.sh</code></td><td>roots.sh — resolve the named roots in CONTRACTS/roots.tsv, and check that the</td></tr>
 <tr><td><code>runner-switch.sh</code></td><td>runner-switch.sh (harbor#865) — GitHub-hosted is the primary CI runner; the Mac is the fallback when the month's Actions minutes run short.</td></tr>
 <tr><td><code>sandbox-make.sh</code></td><td>SANDBOX (harbor#33) — build a disposable copy of ~/.claude's CONFIG surfaces</td></tr>
-<tr><td><code>save-log-token.sh</code></td><td>save-log-token.sh (harbor#431) — put the memory-store token on disk without ever</td></tr>
+<tr><td><code>save-log-token.sh</code></td><td>save-log-token.sh (harbor#431) — put the helm-log token on disk without ever</td></tr>
 <tr><td><code>session-autocompact.sh</code></td><td>session-autocompact.sh (harbor#187) — types /compact into a session's Terminal tab, on the agent's word.</td></tr>
 <tr><td><code>session-check.sh</code></td><td>session-check.sh (harbor#1043, #1044) — rule event.session-check: lint what a finished session changed.</td></tr>
 <tr><td><code>session-ci-watch.sh</code></td><td>session-ci-watch.sh (harbor#1043, #1044) — rule event.session-ci-watch: when a session opens a PR, wait for its checks and say how they ended.</td></tr>
@@ -2328,10 +2314,10 @@ unrelated to whether it discriminates.</p>
 <h3>Add a project</h3>
 
 <pre><code># 1 · create the pack directory, in the private layer (harbor#1149)
-P="$(sh bin/roots.sh --private)/context-rules"; mkdir -p "$P/user" "$P/&lt;project&gt;"
+P="$(sh bin/roots.sh --private)/inject.d"; mkdir -p "$P/box" "$P/&lt;project&gt;"
 
 # 2 · register it (name, path, what it covers)
-$EDITOR "$P/user/projects.tsv"
+$EDITOR "$P/box/projects.tsv"
 
 # 3 · seed it into the project's own tree
 sh bin/inject-install.sh --live --apply --projects</code></pre>
@@ -2505,8 +2491,6 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/lint-module.sh</code></td><td>lint-module.sh (harbor#996 C1) — the modularity lint: judges the reference graph against standards/modularity.md.</td></tr>
 <tr><td><code>bin/lint-name.sh</code></td><td>lint-name.sh (harbor#950) — the naming lint: judges names against standards/naming/*.tsv and generates its views.</td></tr>
 <tr><td><code>bin/lint-platform.sh</code></td><td>lint-platform.sh (harbor#618) — a macOS-only call in bin/ is ported, declared or in a helper, never bare.</td></tr>
-<tr><td><code>bin/lint-pr.sh</code></td><td>lint-pr.sh (harbor#978, D-21): a PR's title, body and branch against the git naming standard.</td></tr>
-<tr><td><code>bin/lint-renderer.sh</code></td><td>lint-renderer.sh (harbor#978 item 8, rule name.renderer-used): every writer in standards/naming/writers.tsv</td></tr>
 <tr><td><code>bin/lint-secrets.sh</code></td><td>lint-secrets.sh (harbor#1205) - the ratchet on credential reads that bypass bin/secret.</td></tr>
 <tr><td><code>bin/lint-share.sh</code></td><td>lint-share.sh (harbor#1274, harbor#1149, D-83) - the share check: a file lives in a share its kind may take.</td></tr>
 <tr><td><code>bin/lint-siblings.sh</code></td><td>lint-siblings.sh (harbor#966, harbor#1149) - the ratchet on occurrences of another repo's path in core.</td></tr>
@@ -2529,10 +2513,9 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/pass-score.sh</code></td><td>pass-score.sh — MAD confidence gating over FLOOR.md's adversarial pass table.</td></tr>
 <tr><td><code>bin/pin-instructions.sh</code></td><td>B8 (harbor#38) — pin the PERSISTENT INSTRUCTION surfaces of a config dir (the install standard, harbor#765).</td></tr>
 <tr><td><code>bin/plan-status.sh</code></td><td>plan-status.sh (harbor#117) — which plan tickets are DONE, derived and not stated.</td></tr>
-<tr><td><code>bin/port-drift.sh</code></td><td>port-drift.sh (harbor#966, check id <code>port-drift</code>) - every directory under PORT_ROOT is a registered repo or an exempt kind.</td></tr>
 <tr><td><code>bin/port-paths.sh</code></td><td>port-paths.sh (harbor#629, harbor#619) — literals naming a repo at its PRE-MOVE address.</td></tr>
 <tr><td><code>bin/pr-wait.sh</code></td><td>pr-wait.sh (harbor#552) — wait on a pull request until the FIRST thing that</td></tr>
-<tr><td><code>bin/prod-guard-ambient.sh</code></td><td>B10 (harbor#56) — the ambient shim for yard's <code>prod_guard.py</code>.</td></tr>
+<tr><td><code>bin/prod-guard-ambient.sh</code></td><td>B10 (harbor#56) — the ambient shim for project-init's <code>prod_guard.py</code>.</td></tr>
 <tr><td><code>bin/prod-guard-install.sh</code></td><td>B10 (harbor#56) — install prod_guard AMBIENTLY, which nothing currently does.</td></tr>
 <tr><td><code>bin/proposal.sh</code></td><td>proposal (harbor#44 follow-through) — self-improvement packets a human ingests.</td></tr>
 <tr><td><code>bin/pulse-notify.sh</code></td><td>pulse-notify (harbor#9 — workstream E, E1) — the edge trigger and the sink.</td></tr>
@@ -2551,7 +2534,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/runner-switch.sh</code></td><td>runner-switch.sh (harbor#865) — GitHub-hosted is the primary CI runner; the Mac is the fallback when the month's Actions minutes run short.</td></tr>
 <tr><td><code>bin/runtime-install.sh</code></td><td>L0-5c (harbor#59) — install the Helm RUNTIME, which is not the floor (the install standard, harbor#765).</td></tr>
 <tr><td><code>bin/sandbox-make.sh</code></td><td>SANDBOX (harbor#33) — build a disposable copy of ~/.claude's CONFIG surfaces</td></tr>
-<tr><td><code>bin/save-log-token.sh</code></td><td>save-log-token.sh (harbor#431) — put the memory-store token on disk without ever</td></tr>
+<tr><td><code>bin/save-log-token.sh</code></td><td>save-log-token.sh (harbor#431) — put the helm-log token on disk without ever</td></tr>
 <tr><td><code>bin/scope.sh</code></td><td>scope.sh (harbor#966, harbor#1149) - <code>harbor scope install</code>: the PORT_ROOT skeleton and an empty</td></tr>
 <tr><td><code>bin/sec0-harden.sh</code></td><td>SEC-0 (the install standard, harbor#765) — hand-harden Claude Code's config dir.</td></tr>
 <tr><td><code>bin/session-autocompact.sh</code></td><td>session-autocompact.sh (harbor#187) — types /compact into a session's Terminal tab, on the agent's word.</td></tr>

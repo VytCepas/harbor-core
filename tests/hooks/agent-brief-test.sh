@@ -5,7 +5,7 @@
 . "$(dirname "$0")/../lib/core.sh"; t_init
 T="$T_TMP"; CFG="$T/cfg"; REPO="$T/repo"
 mkdir -p "$CFG/inject.d" "$CFG/bin" "$REPO"
-cp "$T_ROOT/context-rules/user/agent-brief.md" "$T_ROOT/context-rules/user/agent-brief.sh" "$T_ROOT/context-rules/user/agent-model.sh" "$CFG/inject.d/"
+cp "$T_ROOT/inject.d/box/96-agent-brief.md" "$T_ROOT/inject.d/box/agent-brief.sh" "$T_ROOT/inject.d/box/agent-model.sh" "$CFG/inject.d/"
 cp "$T_ROOT/hooks/injection-rule/injection-rule.sh" "$T_ROOT/bin/guard-lib.sh" "$CFG/bin/"
 # A decision log the floor writer will accept: a host token, a sink file, and a host dir that is not writable.
 OBS="$CFG/MEMORY/OBSERVABILITY/testhost"; mkdir -p "$OBS"; printf 'testhost\n' > "$CFG/.helm-obs-host"
@@ -64,7 +64,7 @@ t_section "it informs and never denies"
 call 'Look at the branches.' ''
 t_eq "a worst-case brief carries no permissionDecision" "" "$(printf '%s' "$OUT" | jq -r '.hookSpecificOutput.permissionDecision // ""')"
 t_eq "exit 0" 0 "$RC"
-t_eq "the script never prints a deny sentinel" 0 "$(grep 'printf' "$T_ROOT/context-rules/user/agent-brief.sh" | grep -c 'HARBOR-DECISION')"
+t_eq "the script never prints a deny sentinel" 0 "$(grep 'printf' "$T_ROOT/inject.d/box/agent-brief.sh" | grep -c 'HARBOR-DECISION')"
 t_eq "garbage payload: silent exit 0" 0 "$(printf 'not json' | CLAUDE_CONFIG_DIR="$CFG" CLAUDE_PROJECT_DIR="$REPO" /bin/sh "$CFG/bin/injection-rule.sh" >/dev/null 2>&1; echo $?)"
 
 t_section "the decision log"

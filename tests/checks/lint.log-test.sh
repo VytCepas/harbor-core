@@ -140,14 +140,14 @@ fresh; rm "$R/CONTRACTS/log-exempt.tsv"
 t_has 'no table at all is red' "$(L)" "VIOLATION [lint.log-contract] CONTRACTS/log-exempt.tsv is missing"
 
 t_section "(d) a protocol row: harness output, a named consumer, and no ratchet on its stdout"
-P="$TMP/log1-proto"; rm -rf "$P"; mkdir -p "$P/bin" "$P/CONTRACTS" "$P/context-rules/p"; cp "$SRC/log-lib.sh" "$P/bin/"
+P="$TMP/log1-proto"; rm -rf "$P"; mkdir -p "$P/bin" "$P/CONTRACTS" "$P/inject.d/p"; cp "$SRC/log-lib.sh" "$P/bin/"
 sh1() { printf '#!/usr/bin/env sh\n# fixture (harbor#771)\nset -u\n%s\n' "$2" > "$P/bin/$1"; }
 sh1 demo-install.sh 'NEW="$(jq --arg c "/bin/sh $DIR/bin/glyph.sh" ".statusLine = {command: \$c}" "$S")"
 echo "run it by hand: /bin/sh $DIR/bin/echoed.sh"'
 sh1 glyph.sh 'printf "%s\n" "✓ main"'
 sh1 hook.sh 'echo "hook: said the old way" >&2
 jq -n --arg m "$MSG" '"'"'{systemMessage: $m}'"'"''
-sh1 packed.sh 'printf "note\n"'; printf 'exec sh "bin/packed.sh" --note\n' > "$P/context-rules/p/x.sh"
+sh1 packed.sh 'printf "note\n"'; printf 'exec sh "bin/packed.sh" --note\n' > "$P/inject.d/p/x.sh"
 sh1 plain.sh 'echo plain'; sh1 echoed.sh 'echo x'; sh1 observer.sh ':'; sh1 dropped.sh ':'
 sh1 table-install.sh "floor_hooks() { cat <<'ROWS'
 # SessionStart;;dropped.sh  is a comment row, never a wiring
@@ -201,9 +201,9 @@ t_has 'a protocol row that names no consumer is red' "$(L "$P")" \
 px checkout -q -- CONTRACTS/log-exempt.tsv; sedi 's#^bin/echoed.sh	ratchet	fixture#bin/echoed.sh	protocol	Claude Code SessionStart hook#' "$P/CONTRACTS/log-exempt.tsv"
 t_has 'a protocol row whose only evidence is an echoed instruction is red' "$(L "$P")" \
   "VIOLATION [lint.log-contract] CONTRACTS/log-exempt.tsv: bin/echoed.sh is a protocol row, but nothing shows the harness reads its output"
-px checkout -q -- CONTRACTS/log-exempt.tsv; rm "$P/context-rules/p/x.sh"
+px checkout -q -- CONTRACTS/log-exempt.tsv; rm "$P/inject.d/p/x.sh"
 t_has 'the rule pack is the evidence for a pack-run file' "$(L "$P")" "bin/packed.sh is a protocol row, but nothing shows the harness reads its output"
-px checkout -q -- context-rules; sh1 new-hook.sh 'printf "{\"hookSpecificOutput\":{}}\n"'; prow bin/new-hook.sh protocol 'Claude Code PreToolUse hook: permissionDecision JSON'
+px checkout -q -- inject.d; sh1 new-hook.sh 'printf "{\"hookSpecificOutput\":{}}\n"'; prow bin/new-hook.sh protocol 'Claude Code PreToolUse hook: permissionDecision JSON'
 green "a new harness hook gets a protocol row, evidence in hand" "$P"
 
 t_section "the real tree"

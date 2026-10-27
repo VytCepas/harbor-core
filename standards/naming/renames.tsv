@@ -49,11 +49,4 @@ rename-0020	tests/hooks/inject-hook.detector-test.sh	hooks/injection-rule/detect
 rename-0021	tests/hooks/inject-hook.engine-test.sh	hooks/injection-rule/engine.test.sh	path	P1	-	#1272 pilot: an aspect test in the engine's folder
 rename-0022	tests/hooks/inject-hook.packs-test.sh	hooks/injection-rule/packs.test.sh	path	P1	-	#1272 pilot: an aspect test in the engine's folder
 rename-0023	tests/hooks/inject-hook.scope-test.sh	hooks/injection-rule/scope.test.sh	path	P1	-	#1272 pilot: an aspect test in the engine's folder
-rename-0024	skill:skill-book	skill-catalog	skill	T7	2026-12-31	harbor#1010: the generated index is the skill catalog; skills/skill-book/ and bin/skill-book.sh stay as aliases until then
-rename-0025	skill:atlas	doc-atlas	skill	W2	2027-01-31	harbor#1010 D-35: a skill is <family-or-domain>-<object>; doc is the registered family for derived docs, atlas the object (skills/atlas/ stays as an alias until then)
-rename-0026	skill:browser	access-browser	skill	W2	2027-01-31	harbor#1010 D-35: access is the registered family for routes and identity (which backend, with a login or not); skills/browser/ stays as an alias until then
-rename-0027	skill:deliverable-contract	doc-deliverable-contract	skill	W2	2027-01-31	harbor#1010 D-35: doc is the registered family; skills/deliverable-contract/ stays as an alias until then
-rename-0028	skill:learning-artifact	doc-learning-artifact	skill	W2	2027-01-31	harbor#1010 D-35: doc is the registered family for study documents; skills/learning-artifact/ stays as an alias until then
-rename-0029	skill:review-fanout	audit-review-fanout	skill	W2	2027-01-31	harbor#1010 D-35: audit is the registered family (an independent inspection); review is the concept it carries; skills/review-fanout/ stays as an alias until then
-rename-0030	dir:inject.d	context-rules/user	directory	W2	2026-12-31	harbor#1010: the box tier (D-43, D-65); the engine, installer, pack loader and private-layer readers also read the old inject.d/ (deployed and private) until then
-rename-0031	dir:.claude/inject.d	context-rules/<repo>	directory	W2	2026-12-31	harbor#1010: a repo's own rules; the engine and repo-tier.sh also read a repo's .claude/inject.d/ until then, and --projects still seeds it
+rename-0024	skill:skill-book	skill-catalog	skill	W2	2026-12-31	harbor#1010: the generated index is the skill catalog; skills/skill-book/ and bin/skill-book.sh stay as aliases until then

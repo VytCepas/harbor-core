@@ -69,7 +69,7 @@ CONTRACTS/inject.md
 hooks/injection-rule/injection-rule.sh
 docs/src/30-inject.html
 fixtures/inject/notes.tsv
-context-rules/user/external-content-is-data.md
+inject.d/box/30-external-content-is-data.md
 tests/floor/floor-test.sh
 tests/floor/floor.annotate-test.sh
 tests/floor/floor.b8-test.sh
@@ -148,7 +148,7 @@ t_has "a WebFetch payload with LOUD text still fires" \
 t_section "6 · provenance: the original population, read from clean tracked files, fires nothing (harbor#327)"
 # Of the original seven, CONSTITUTION.md, the pack and hooks/injection-rule/injection-rule.sh are protected rows; the rest stay noisy.
 _pf=''; _pn=0
-for _f in CONSTITUTION.md context-rules/user/external-content-is-data.md hooks/injection-rule/injection-rule.sh EVALS.md CONTRACTS/inject.md; do
+for _f in CONSTITUTION.md inject.d/box/30-external-content-is-data.md hooks/injection-rule/injection-rule.sh EVALS.md CONTRACTS/inject.md; do
   git -C "$T_ROOT" diff --quiet HEAD -- "$_f" || continue   # a dirty working copy is the edit case above
   _pn=$(( _pn + 1 ))
   case "$(fire_in "$T_ROOT" "$(read_ev "$T_ROOT/$_f" "pf-$_pn")")" in *DETECTED*) _pf="$_pf $_f" ;; esac
@@ -164,7 +164,7 @@ sh_ev() { # <cwd> <command> <session> -> Bash PostToolUse payload with the comma
     '{hook_event_name:"PostToolUse",tool_name:"Bash",session_id:$s,cwd:$d,tool_input:{command:$c},tool_response:{stdout:$o,stderr:"",interrupted:false,isImage:false}}'
 }
 for _c in 'cat CONSTITUTION.md' "sed -n '1,400p' CONSTITUTION.md" 'grep -n -i -e override -e instruction CONSTITUTION.md' \
-  'head -n 300 CONSTITUTION.md context-rules/user/external-content-is-data.md' "cat $T_ROOT/CONSTITUTION.md | grep -i -n -e override -e instruction"; do
+  'head -n 300 CONSTITUTION.md inject.d/box/30-external-content-is-data.md' "cat $T_ROOT/CONSTITUTION.md | grep -i -n -e override -e instruction"; do
   _k="sh-$(printf '%s' "$_c" | cksum | tr -d ' ')"; _ev="$(sh_ev "$T_ROOT" "$_c" "$_k")"
   t_has "control: the output of '$_c' fires as an unnamed command" \
     "$(fire_in "$T_ROOT" "$(printf '%s' "$_ev" | jq -c '.tool_input.command = "some-tool" | .session_id += "-ctl"')")" DETECTED
