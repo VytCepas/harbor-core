@@ -3412,12 +3412,9 @@ floor_instr_manifest() { # <config-dir>
     # A surface may be a glob (projects/*/memory). Unmatched globs come back
     # literally, which the -f/-d tests below then record as absent.
     for _p in "$_cfg"/$_g; do
-      # ${_p#$_cfg/} is a GLOB strip, so a config dir containing [ ? or *
-      # silently failed to match and the surface came out as an ABSOLUTE path
-      # while the directory branch (awk index) stripped it correctly — the same
-      # path spelled two ways in one manifest (pass 10, P10-05). Literal length
-      # arithmetic instead.
-      _s="$(printf '%s' "$_p" | awk -v n="${#_cfg}" '{print substr($0, n+2)}')"
+      # Quoted, the strip is literal: an unquoted ${_p#$_cfg/} glob-matched [ ? * (P10-05).
+      # No fork per path: 1,300+ memory links made this loop the session-start cost.
+      _s="${_p#"$_cfg"/}"
       if [ -L "$_p" ]; then
         _lt="$(readlink "$_p" 2>/dev/null || echo '?')"
         # A worktree's memory link to a store this same walk already pins adds no instruction: every
@@ -3505,7 +3502,7 @@ floor_instr_manifest() { # <config-dir>
         # on -f, so this is a no-op for every surface that does not hold them.
         for _pm in installed_plugins.json known_marketplaces.json; do
           [ -f "$_p/$_pm" ] || continue
-          _pmrel="$(printf '%s' "$_p/$_pm" | awk -v n="${#_cfg}" '{print substr($0, n+2)}')"
+          _pmrel="${_p#"$_cfg"/}/$_pm"
           if [ "$_pm" = installed_plugins.json ] && [ -n "$_ld" ]; then
             printf '%s  %s\n' "$(floor_installed_sha "$_p/$_pm")" "$_pmrel"
           else
@@ -3545,7 +3542,7 @@ floor_instr_manifest() { # <config-dir>
         done
         find "$_p" \( -name .git -o -name .in_use -o -path "$_pc" \) -prune -o \
              ! -name .last_inuse_sweep -type l -print 2>/dev/null | while IFS= read -r _l; do
-          _rel="$(printf '%s' "$_l" | awk -v n="${#_cfg}" '{print substr($0, n+2)}')"
+          _rel="${_l#"$_cfg"/}"
           printf 'link:%s  %s\n' "$(readlink "$_l" 2>/dev/null || echo '?')" "$_rel"
           # A symlink to a regular FILE is hashed through the link, so swapping
           # its target content is drift (that was B8-02). A symlink to a

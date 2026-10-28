@@ -135,5 +135,17 @@ t_has "1205 …and the push ran under secret run" "$(cat "$WL/store.calls")" "ru
 t_eq "1205 …and the warn-once stamps are cleared, so a regression warns again" no \
   "$([ -e "$_sc/.worklog-token-warned.legacy" ] || [ -e "$_sc/.worklog-token-warned.missing" ] && echo yes || echo no)"
 
+t_section "worklog-push: one session at a time commits and pushes (concurrent Stops raced on the remote ref)"
+_lk="$WL/plog/.git/harbor-worklog.lock"; _nc() { git -C "$WL/plog" rev-list --count HEAD 2>/dev/null; }
+mkdir "$_lk"; _c0="$(_nc)"; _wps WL-lock-a >/dev/null
+t_eq "lock held: no commit" "$_c0" "$(_nc)"
+t_eq "…but the session record is still written" 1 "$(find "$WL/plog/WORK" -type f -name '*WL-lock-a*' | grep -c . | tr -d ' ')"
+t_eq "…and the holder's lock is left alone" yes "$([ -d "$_lk" ] && echo yes || echo no)"
+rmdir "$_lk"; _wps WL-lock-b >/dev/null
+t_eq "lock free: the waiting record and its own are committed" "$((_c0 + 1))" "$(_nc)"
+t_eq "…and the lock is released" no "$([ -d "$_lk" ] && echo yes || echo no)"
+mkdir "$_lk"; touch -t 202001010000 "$_lk"; _wps WL-lock-c >/dev/null
+t_eq "a lock older than 10 minutes is reclaimed" "$((_c0 + 2))" "$(_nc)"
+
 ff_sealed
 t_done
