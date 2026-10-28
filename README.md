@@ -67,7 +67,7 @@ Already three separate things, deliberately:
 
 - **`DEAD-ENDS.md`** — approaches tried and *rejected*, append-only.
   In-repo and git-diffable because it must survive any tool being deleted.
-- **`MEMORY/KNOWLEDGE/`** — the durable library (workstream **D**).
+- **`~/.claude/MEMORY/KNOWLEDGE/`** — the durable library (workstream **D**).
 - **The missing middle** — what actually happened, per decision (harbor#41).
   Without it the other two are written from memory.
 

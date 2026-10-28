@@ -55,10 +55,10 @@ unrelated to whether it discriminates.</p>
 <h3>Add a project</h3>
 
 <pre><code># 1 · create the pack directory, in the private layer (harbor#1149)
-P="$(sh bin/roots.sh --private)/inject.d"; mkdir -p "$P/box" "$P/&lt;project&gt;"
+P="$(sh bin/roots.sh --private)/context-rules"; mkdir -p "$P/user" "$P/&lt;project&gt;"
 
 # 2 · register it (name, path, what it covers)
-$EDITOR "$P/box/projects.tsv"
+$EDITOR "$P/user/projects.tsv"
 
 # 3 · seed it into the project's own tree
 sh bin/inject-install.sh --live --apply --projects</code></pre>

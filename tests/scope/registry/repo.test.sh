@@ -317,6 +317,16 @@ t_eq "...and the new row is whole" "plumb	flowy	workload	-" "$(grep '^plumb	' "$
 printf 'id\tpath\tkind\tremote\nbad\t../x\tworkload\t-\n' > "$PW/harbor-private/repos.tsv"
 t_exit "a registry already invalid is not appended to" 1 env PORT_ROOT="$PW" HARBOR_SCOPE_PROJECTS_TSV="$T_TMP/p3.tsv" sh "$T_ROOT/bin/scope.sh" install --seed-from-projects
 
+t_section "--get follows the registry for a REPOS role, and keeps the table path with none (harbor#966)"
+mkpriv g "$H"'projects-orchestrator	moved/fleet	fleet-controller	-
+'
+t_eq "a role row resolves through the registry's path" "$PW/moved/fleet" "$(roots --get HARBOR_ORCHESTRATOR)"
+t_eq "...and keeps the rest of the row's path" "$PW/moved/fleet/fleet.yaml" "$(roots --get HARBOR_FLEET_FILE)"
+t_eq "a repo the registry lacks keeps the table path" "$PW/project-init" "$(roots --get HARBOR_PROJECT_INIT)"
+t_eq "an exported override still wins" "/elsewhere" "$(HARBOR_ORCHESTRATOR=/elsewhere roots --get HARBOR_ORCHESTRATOR)"
+PW="$T_TMP/g-none"; mkdir -p "$PW"
+t_eq "no registry is today's literal" "$PW/projects-orchestrator" "$(roots --get HARBOR_ORCHESTRATOR)"
+
 t_section "a skill's notes/ pointer finds its file through roots.sh --private (harbor#1149)"
 # dev-tracking, the skill that carried one, left core for the private layer's pack (harbor#1273), whose suite checks it;
 # a fixture skill keeps the shape and the resolver tested here, beside any core skill that still prints one.

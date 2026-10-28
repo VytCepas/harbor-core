@@ -4,6 +4,7 @@ The marker tells every layer *"this is a project-init-governed repo → the repo
 
 ## The key
 - Use **`context: repo`** in `.agents/config.yaml`.
+- **Two spellings, read as one (harbor#966, D-12).** The standard's key is **`scope: project|user`**; the legacy key is `context: repo|ambient`. They map `project` = `repo` and `user` = `ambient`, and a reader accepts both. **Either key opting out decides `ambient`**, so a config carrying `context: repo` beside `scope: user` is `ambient`: for a guard the opt-out is the safe direction. Harbor's own marker says `scope: project`. The writer (yard, today project-init) moves to `scope:` in its own repo, and the legacy key and the `project-init.md` marker stay readable until fleet reports no repo still on them. Only the shell resolver reads `scope:` so far, so fixtures M38-M40 are scoped to the `resolver` role until yard and fleet adopt it.
 - ~~emitted by **augmenting the existing** `templates/base/dot_agents/project-init.md.tmpl`~~ — **CORRECTED 2026-07-25 (PI-901).** That file is Markdown. `.agents/config.yaml` — the file `prod_guard._find_config` actually reads — renders from **`templates/base/dot_agents/config.yaml.tmpl`**, which is where every other config key already flows. **Landed:** project-init [#902](https://github.com/VytCepas/project-init/pull/902).
 - Do **NOT** use `governance:` — project-init already defines `governance` as a **boolean** (the SYSTEM_CARD gate toggle, `variables.py`). Overloading it is a wizard/schema collision. **Landed:** a contract test now asserts no top-level `governance` key appears in a `governance=True` render, so the collision cannot come back by accident.
 - **Add `context` to `descriptor.schema.json`** (additive, v2) so the contract test protects it — otherwise project-init could drop/rename it and no test fails, silently breaking Helm's deferral in every scaffolded repo. **Landed, with two refinements:**
@@ -20,7 +21,7 @@ Input: cwd. Walk up. Output: `repo | ambient`.
 ### The marker's VALUE (added 2026-07-25 — PI-901 gave the marker one)
 The original spec decided everything from marker **presence**. `context:` now carries a value, and a value nobody reads is a field whose documented meaning is a lie. So:
 
-- **`context: ambient` in the found marker's `config.yaml` ⇒ `ambient`,** even though the marker is present. It is the owner opting this repo back in to the global layer.
+- **`context: ambient` (or `scope: user`) in the found marker's `config.yaml` ⇒ `ambient`,** even though the marker is present. It is the owner opting this repo back in to the global layer.
 - **Read it AT the marker the walk finds, and decide there.** The innermost marker wins, so an explicit inner opt-out must not fall through and be overruled by an outer repo's marker.
 - **`context` absent ⇒ UNKNOWN, fall back to presence. Never read absence as `ambient`** — that would un-govern the entire pre-PI-901 installed base in one step.
 - **Top-level only, matched at column 0.** A `context:` indented under another block is a different key that shares a name.
@@ -131,8 +132,8 @@ Added 2026-09-24 for harbor#581. Decision (A): the repo wins on workflow, conven
 | site | stands down via | tier | what stops | ticket |
 |---|---|---|---|---|
 | `bin/guard-bash.sh` | `floor_repo_wires` | project | the protected-branch force-push rules, only where the repo wires `github_command_guard` (a PreToolUse hook, or the `project-init-lifecycle` plugin enabled and installed), which then owns them; a marker alone keeps them armed | harbor#954 |
-| `bin/worklog-push.sh` | `floor_engine_stand_down` | engine | appending this session to the machine-wide work log, only where the repo's `.agents/config.yaml` says `worklog: off` | harbor#954 |
-| `bin/memory-harvest.sh` | `floor_engine_stand_down` | engine | reconciling the work log into memory, only on `worklog: off` | harbor#954 |
+| `hooks/worklog-push/worklog-push.sh` | `floor_engine_stand_down` | engine | appending this session to the machine-wide work log, only where the repo's `.agents/config.yaml` says `worklog: off` | harbor#954 |
+| `hooks/memory-harvest/memory-harvest.sh` | `floor_engine_stand_down` | engine | reconciling the work log into memory, only on `worklog: off` | harbor#954 |
 | `bin/context-resolve.sh` | `floor_in_repo` | report | nothing: it records the session's verdict | — |
 | `bin/fleet-sessions.sh` | `floor_in_repo` | report | nothing: it prints each session's verdict | — |
 

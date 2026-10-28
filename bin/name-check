@@ -1,0 +1,55 @@
+#!/usr/bin/env sh
+# name-check (harbor#1259) — does a string conform to its surface's allowlist validator? A PATH command (no extension,
+# so no family needed, D-11), installed as ~/.local/bin/name-check through CONTRACTS/shims.tsv.
+#
+#   name-check <surface> <string>   exit 0 conforms · 1 does not · 2 usage, an unknown surface, or a surface with no
+#                                   validator (its renderer is prose) · 3 the validators could not be derived
+#   name-check --help
+#
+# The validator is one anchored ERE per grammar-backed surface, written to build/validators.txt by
+# `sh bin/lint-name.sh --gen validators` from standards/naming/surfaces.tsv and terms.tsv. It is derived on every call,
+# so an edited or stale file cannot answer. The grammar is the lint's own, so this adds no second parser.
+
+set -u
+
+case "${1:-}" in
+  -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); print; next } {exit}' "$0"; exit 0 ;;
+esac
+
+case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
+HERE="$(CDPATH='' cd -- "$HERE" && pwd)"
+ROOT="$(CDPATH='' cd -- "$HERE/.." && pwd)"
+LN="$HERE/lint-name.sh"
+V="$ROOT/build/validators.txt"
+SURFACES="$ROOT/standards/naming/surfaces.tsv"
+LOG_FD=2   # stdout is never written: a verdict is the exit code
+. "$HERE/log-lib.sh"
+log_init name-check
+
+if [ $# -ne 2 ]; then
+  log_fail "takes a surface and one string, got $# argument(s)"; log_fix "sh $HERE/name-check --help"; log_end || :; exit 2
+fi
+SURFACE="$1"; NAME="$2"
+
+if ! sh "$LN" --root "$ROOT" --gen validators > /dev/null 2>&1; then
+  log_fail "the validators could not be derived, so nothing was checked"; log_fix "sh $LN --gen validators"; log_end || :; exit 3
+fi
+
+ERE="$(awk -F'\t' -v s="$SURFACE" '!/^#/ && $1 == s { print $2; exit }' "$V")"
+if [ -z "$ERE" ]; then
+  if awk -F'\t' -v s="$SURFACE" '!/^#/ && $1 == s { found = 1 } END { exit !found }' "$SURFACES"; then
+    log_fail "surface $SURFACE has no validator, because its renderer is prose (standards/naming/surfaces.tsv)"
+    log_fix "sh $LN --gen naming-guide lists the surfaces that have one"
+  else
+    log_fail "unknown surface $SURFACE (a row of standards/naming/surfaces.tsv)"
+    log_fix "sh $LN --gen naming-guide lists every surface"
+  fi
+  log_end || :; exit 2
+fi
+
+# The string reaches awk through ENVIRON, never as a -v assignment (which would read escapes) or the program text.
+if NC_S="$NAME" NC_RE="$ERE" awk 'BEGIN { exit (ENVIRON["NC_S"] ~ ENVIRON["NC_RE"]) ? 0 : 1 }'; then
+  exit 0
+fi
+log_fail "$NAME does not conform to $SURFACE (validator $ERE)"; log_nofix "standards/naming.md §6.1, the grammar of $SURFACE"; log_end || :
+exit 1

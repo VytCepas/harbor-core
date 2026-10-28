@@ -32,6 +32,12 @@ t_eq "no lock is left behind" 0 "$(find "$HARBOR_SINK/conc" -name '*.lock' | gre
 mkdir "$CF2.lock"; touch -t 202001010000 "$CF2.lock"
 t_eq "a stale lock from a crashed writer is broken, not waited on forever" 0 "$(harbor_emit conc '{}' >/dev/null 2>&1; echo $?)"
 t_eq "and the line landed" 11 "$(grep -c . "$CF2")"
+# uutils mkdir 0.10 (Ubuntu 26.04, ubuntu-latest) exits 0 when it loses a creation race; this one always loses.
+UU="$T_TMP/uu"; mkdir -p "$UU"; MKD="$(command -v mkdir)"
+printf '#!/bin/sh\ncase "$1" in -*) exec %s "$@" ;; esac\n%s -p -- "$@" && sleep 1\n' "$MKD" "$MKD" > "$UU/mkdir"; chmod +x "$UU/mkdir"
+i=0; while [ "$i" -lt 6 ]; do ( PATH="$UU:$PATH"; harbor_emit uu '{"n":1}' >/dev/null 2>&1 ) & i=$((i + 1)); done; wait
+t_eq "where mkdir cannot lock, six simultaneous emits are still seq 1 to 6 (harbor#1378)" "1 2 3 4 5 6" \
+  "$(find "$HARBOR_SINK/uu" -name '*.jsonl' -exec jq -r .seq {} + | sort -n | tr '\n' ' ' | sed 's/ $//')"
 
 t_section "failure never exits the caller"
 harbor_emit run 'not json' 2>/dev/null; t_eq "bad attrs return 0" 0 $?

@@ -9,32 +9,42 @@
 # predicate left every default suite green while five live packs went silent.
 PRIV="${HARBOR_NOTES_PRIVATE:-}"   # a knob from the caller, read before t_init clears it (harbor#773)
 . "$(dirname "$0")/../lib/core.sh"; t_init
-ENGINE="$T_ROOT/bin/inject-hook.sh"; FIX="$T_ROOT/fixtures/inject/notes.tsv"; T="$T_TMP"
+ENGINE="$T_ROOT/hooks/injection-rule/injection-rule.sh"; FIX="$T_ROOT/fixtures/inject/notes.tsv"; T="$T_TMP"
 # merge-governance and post-merge-state call `gh` against a live PR; their content is
 # tests/hooks/govern-hook-test.sh's, and only their wiring is asserted at the end here.
 EXEMPT='merge-governance post-merge-state'
-tracked_ids() {
-  for _f in "$T_ROOT"/inject.d/*/*.md "$T_ROOT"/.claude/inject.d/*.md "$T_ROOT"/fixtures/inject/packs/*/*.md ${PRIV:+"$PRIV"/inject.d/*/*.md}; do
+# The private layer in either layout for one release (harbor#1010): context-rules/{user,<repo>}/, or inject.d/{box,<repo>}/.
+PRR=''; PRB=''
+if [ -n "$PRIV" ]; then PRR="$PRIV/context-rules"; PRB=user; [ -d "$PRR" ] || { PRR="$PRIV/inject.d"; PRB=box; }; fi
+tracked_ids() { # the id: key, else the file name (D-43)
+  for _f in "$T_ROOT"/context-rules/*/*.md "$T_ROOT"/fixtures/inject/packs/*/*.md ${PRR:+"$PRR"/*/*.md}; do
     [ -f "$_f" ] || continue
-    awk '/^---$/{n++; next} n==1 && /^id:/{sub(/^id:[[:space:]]*/,""); print; exit}' "$_f"
+    awk -v n="${_f##*/}" 'BEGIN { sub(/\.md$/, "", n) } /^---$/{c++; next} c==1 && /^id:/{sub(/^id:[[:space:]]*/,""); print; d=1; exit} END { if (!d) print n }' "$_f"
   done | sort -u
 }
-mkdir -p "$T/cfg/inject.d"; cp -R "$T_ROOT"/inject.d/box/. "$T/cfg/inject.d/"; chmod +x "$T"/cfg/inject.d/*.sh
+BOXD="$T/cfg/context-rules/user"   # the installed box tier
+mkdir -p "$BOXD"; cp -R "$T_ROOT"/context-rules/user/. "$BOXD/"; chmod +x "$BOXD"/*.sh
 # The registry is the box's own file beside the packs: a fixture here (example names), the private layer's own when one is
 # asked for. The project pointer lists only registered projects whose directory exists under $HOME, and $HOME is the
 # sandbox, so stand up the directories the registry names.
 if [ -n "$PRIV" ]; then
-  for _pf in "$PRIV"/inject.d/box/*; do [ -f "$_pf" ] && cp "$_pf" "$T/cfg/inject.d/"; done
+  for _pf in "$PRR/$PRB"/*; do [ -f "$_pf" ] && cp "$_pf" "$BOXD/"; done
 else
-  printf 'harbor\t~/port/harbor\tthe fixture control plane\ndemo\t~/port/demo\ta fixture project\n' > "$T/cfg/inject.d/projects.tsv"
+  printf 'harbor\t~/port/harbor\tthe fixture control plane\ndemo\t~/port/demo\ta fixture project\n' > "$BOXD/projects.tsv"
 fi
 while IFS="$(printf '\t')" read -r _rn _rp _rest; do
   case "$_rn" in ''|'#'*) continue ;; esac
   case "$_rp" in '~/'*) mkdir -p "$HOME/${_rp#'~/'}" ;; esac
-done < "$T/cfg/inject.d/projects.tsv"
+done < "$BOXD/projects.tsv"
 # browser-route-harbor-chrome reads the host allowlist from the registered harbor checkout.
-_hr="$(awk -F'\t' '$1 == "harbor" { sub(/^~\//, "", $2); print $2; exit }' "$T/cfg/inject.d/projects.tsv")"
+_hr="$(awk -F'\t' '$1 == "harbor" { sub(/^~\//, "", $2); print $2; exit }' "$BOXD/projects.tsv")"
 mkdir -p "$HOME/$_hr/CONTRACTS"; cp "$T_ROOT/CONTRACTS/browser-agent-hosts.txt" "$HOME/$_hr/CONTRACTS/"
+
+# skill-on-first-use reads the installed skills, the floor's parser beside the pack, and a transcript.
+mkdir -p "$T/cfg/skills/agent-routing" "$T/cfg/bin"; cp "$T_ROOT/skills/agent-routing/SKILL.md" "$T/cfg/skills/agent-routing/"
+cp "$T_ROOT/bin/guard-lib.sh" "$T_ROOT/bin/floor-normalize.awk" "$T/cfg/bin/"; printf '{}\n' > "$T/transcript.jsonl"
+# name-note-create ships the mechanism, never a command: a workload pack writes the rows. This neutral one stands in (tests/hooks/name-note-create-test.sh).
+mkdir -p "$T/cfg/name-create.d"; printf 'fixturectl[[:space:]]+create[[:space:]]+\tskill\tUse the form the grammar names.\n' > "$T/cfg/name-create.d/fixture.tsv"
 
 make_repo() { # <dir> <pack> <shape>: skills = a HIDDEN skill, visible = one the model already lists
   rm -rf "$1"; mkdir -p "$1/.claude/inject.d" "$1/vault" "$1/docs"
@@ -50,11 +60,11 @@ make_repo() { # <dir> <pack> <shape>: skills = a HIDDEN skill, visible = one the
   esac
   case "$2" in
     box)  : ;;
-    self) cp -R "$T_ROOT"/.claude/inject.d/. "$1/.claude/inject.d/" ;;
+    self) mkdir -p "$1/context-rules/harbor"; cp -R "$T_ROOT"/context-rules/harbor/. "$1/context-rules/harbor/" ;;
     *)    if [ -d "$T_ROOT/fixtures/inject/packs/$2" ]; then cp -R "$T_ROOT/fixtures/inject/packs/$2/." "$1/.claude/inject.d/"
-          else cp -R "$PRIV/inject.d/$2/." "$1/.claude/inject.d/"; fi ;;
+          else cp -R "$PRR/$2/." "$1/.claude/inject.d/"; fi ;;
   esac
-  chmod +x "$1"/.claude/inject.d/*.sh 2>/dev/null || true
+  chmod +x "$1"/.claude/inject.d/*.sh "$1"/context-rules/*/*.sh 2>/dev/null || true
 }
 BIG="$(awk 'BEGIN{ while (i++ < 40000) printf "x" }')"
 # repo-tier-not-loaded's subject is a SECOND tree: @OTHER@ carries packs, @BARE@ has an empty
@@ -71,12 +81,12 @@ t_section "every row of fixtures/inject/notes.tsv${PRIV:+ and of the private lay
 seen_fire=''; seen_silent=''; rows=0
 cat "$FIX" > "$T/rows.tsv"
 if [ -n "$PRIV" ]; then
-  [ -f "$PRIV/inject.d/notes.tsv" ] && cat "$PRIV/inject.d/notes.tsv" >> "$T/rows.tsv" || t_fail "HARBOR_NOTES_PRIVATE is set but $PRIV/inject.d/notes.tsv is not a file"
+  [ -f "$PRR/notes.tsv" ] && cat "$PRR/notes.tsv" >> "$T/rows.tsv" || t_fail "HARBOR_NOTES_PRIVATE is set but $PRR/notes.tsv is not a file"
 fi
 while IFS="$(printf '\t')" read -r pack shape id arm label payload; do
   case "$pack" in ''|'#'*) continue ;; esac
   rows=$((rows + 1)); REPO="$T/repo"; make_repo "$REPO" "$pack" "$shape"
-  _p="$(printf '%s' "$payload" | sed "s|@REPO@|$REPO|g; s|@OTHER@|$OTHER|g; s|@BARE@|$BARE|g")"
+  _p="$(printf '%s' "$payload" | sed "s|@REPO@|$REPO|g; s|@OTHER@|$OTHER|g; s|@BARE@|$BARE|g; s|@TRANSCRIPT@|$T/transcript.jsonl|g")"
   case "$_p" in *'@BIG@'*) _p="$(printf '%s' "$_p" | sed "s|@BIG@|$BIG|")" ;; esac
   out="$(printf '%s' "$_p" | CLAUDE_CONFIG_DIR="$T/cfg" CLAUDE_PROJECT_DIR="$REPO" PORT_ROOT="$T" \
           HARBOR_REPO="$T_ROOT" ACCESS_DIR="$T/access" HARBOR_MANAGED_SETTINGS="$T/managed/managed-settings.json" \
@@ -113,7 +123,7 @@ printf '#!/usr/bin/env sh\nprintf "REACHED-%%s\\n" "$(cat | tr -d "\\n" | cut -c
 chmod +x "$REPO/bin/govern-hook.sh"
 _w="$(printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"gh pr merge 1"}}' \
       | CLAUDE_CONFIG_DIR="$T/cfg" CLAUDE_PROJECT_DIR="$REPO" /bin/sh "$ENGINE" 2>&1)"
-t_has "merge-governance: the engine reaches .claude/inject.d/merge-note.sh" "$_w" 'REACHED-'
+t_has "merge-governance: the engine reaches context-rules/harbor/merge-note.sh" "$_w" 'REACHED-'
 printf '  %s rows, %s tracked note(s), %s exempt (%s)\n' \
   "$rows" "$(tracked_ids | wc -l | tr -d ' ')" "$(printf '%s' "$EXEMPT" | wc -w | tr -d ' ')" "$EXEMPT"
 t_done

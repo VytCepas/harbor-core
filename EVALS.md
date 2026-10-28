@@ -740,7 +740,7 @@ sufficient — a convention-shaped injection got past the full constitution 2 of
 times. E6 had separately measured that a rule delivered at the moment of action
 binds where the same rule in the prefix does not. E10 joins them: the
 constitution is untouched, and what changes is whether
-[`bin/inject-hook.sh`](./bin/inject-hook.sh)'s `injected-instruction` detector
+[`hooks/injection-rule/injection-rule.sh`](./hooks/injection-rule/injection-rule.sh)'s `injected-instruction` detector
 fires on the tool result and says so, in the turn.
 
 Four arms — and **`HOOK` alone, with no constitution at all, is the one that
@@ -940,7 +940,7 @@ would put a `cd` or a pointer-mediated read in front of the most-used
 capabilities on the box, to save 3,340 B. **A6 is withdrawn as written.** E7's
 finding is not wrong — it is about the *slope*, and the answer to a slope is to
 scope skills that are **born** in a project, which is what
-`inject.d/box/50-project-pointer.md` now does for every project added after this.
+`context-rules/user/project-pointer.md` now does for every project added after this.
 Scoping the ones already in daily use from the home directory was solving the
 scaling problem on the wrong population.
 

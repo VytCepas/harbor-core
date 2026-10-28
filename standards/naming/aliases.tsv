@@ -16,10 +16,14 @@
 #   banned        never in a name; glossary only (bare "golden", "self-healing", "signed")
 #   abbreviation  an abbreviation that is NOT registered: spell out the word in `term` (D-18).
 #                 Registered abbreviations are terms.tsv rows of class abbreviation.
+#   spelling      a UK spelling: write the US word in `term` (D-16), which is any English word,
+#                 not a terms.tsv id. Allowed nowhere, never expires; a finding in a name, and a
+#                 Vale swap in prose (--gen vale).
 #
 # COLUMNS  id <TAB> term <TAB> kind <TAB> surfaces <TAB> remove_by <TAB> note
 #   id        the alias, lowercase kebab; never equal to a term id (SKOS: labels are disjoint)
-#   term      the terms.tsv id to use instead (an abbreviation's spelled-out word; - for banned)
+#   term      the terms.tsv id to use instead (an abbreviation's spelled-out word, a spelling's US
+#             word; - for banned)
 #   surfaces  where the alias is allowed, comma-separated; - for nowhere
 #   remove_by YYYY-MM-DD, never, or -
 id	term	kind	surfaces	remove_by	note
@@ -36,7 +40,7 @@ judge	triage	legacy	glossary,registry,record,memory-prose	2027-01-31	§1.2
 failure-capture	triage	legacy	glossary,registry,record,memory-prose	2027-01-31	§1.2
 pulse	alerting	legacy	glossary,registry,record,memory-prose	2027-01-31	§1.2
 monitor	alerting	legacy	glossary,registry,record,memory-prose	2027-01-31	§1.2
-inject	injection-rule	legacy	glossary,registry,record,memory-prose	2027-01-31	inject.d/ becomes context.d/
+inject	injection-rule	legacy	glossary,registry,record,memory-prose	2027-01-31	inject.d/ becomes context-rules/<scope>/ (harbor#1010)
 governance-note	provenance-stamp	legacy	glossary,registry,record,memory-prose	2027-01-31	§1.2
 audit-log	decision-log	legacy	glossary,registry,record,memory-prose	2027-01-31	research/02: OPA's term
 handoff	handover	legacy	glossary,registry,record,memory-prose	2027-01-31	D-7
@@ -86,6 +90,32 @@ num	number	abbreviation	glossary	-	D-18
 cnt	count	abbreviation	glossary	-	D-18
 idx	index	abbreviation	glossary	-	D-18
 pkg	package	abbreviation	glossary	-	D-18
-perf	performance	abbreviation	glossary	-	D-18
 wf	workflow	abbreviation	glossary	-	D-18
 adr	decision-record	abbreviation	glossary	-	D-18: decision record
+behaviour	behavior	spelling	-	never	D-16
+cancelled	canceled	spelling	-	never	D-16
+artefact	artifact	spelling	-	never	D-16
+labelled	labeled	spelling	-	never	D-16
+judgement	judgment	spelling	-	never	D-16
+colour	color	spelling	-	never	D-16
+licence	license	spelling	-	never	D-16
+grey	gray	spelling	-	never	D-16
+defence	defense	spelling	-	never	D-16
+catalogue	catalog	spelling	-	never	D-16
+analyse	analyze	spelling	-	never	D-16
+summarise	summarize	spelling	-	never	D-16
+organisation	organization	spelling	-	never	D-16
+organise	organize	spelling	-	never	D-16
+honour	honor	spelling	-	never	D-16
+centre	center	spelling	-	never	D-16
+serialise	serialize	spelling	-	never	D-16
+optimise	optimize	spelling	-	never	D-16
+favour	favor	spelling	-	never	D-16
+recognise	recognize	spelling	-	never	D-16
+minimise	minimize	spelling	-	never	D-16
+authorise	authorize	spelling	-	never	D-16
+programme	program	spelling	-	never	D-16
+normalise	normalize	spelling	-	never	D-16
+sanitise	sanitize	spelling	-	never	D-16
+modelling	modeling	spelling	-	never	D-16
+initialise	initialize	spelling	-	never	D-16

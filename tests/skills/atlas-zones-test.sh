@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# skills/atlas/build/build.py unzoned(): an architecture drawing of 8+ parts with no archify
+# skills/doc-atlas/build/build.py unzoned(): an architecture drawing of 8+ parts with no archify
 # `boundaries` is named; zoned, waived, smaller or non-architecture drawings are not.
 . "$(dirname "$0")/../lib/core.sh"; t_init
 S="$T_TMP/specs"; mkdir -p "$S"
@@ -15,7 +15,7 @@ PY
 }
 spec flat8.json 8 architecture n; spec zoned8.json 8 architecture y; spec small7.json 7 architecture n
 spec waived8.json 8 architecture n; spec flow8.json 8 dataflow n
-run() { python3 - "$T_ROOT/skills/atlas/build" "$S" <<'PY'
+run() { python3 - "$T_ROOT/skills/doc-atlas/build" "$S" <<'PY'
 import sys
 sys.path.insert(0, sys.argv[1])
 from build import unzoned

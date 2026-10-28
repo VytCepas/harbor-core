@@ -49,6 +49,7 @@ ROOT="$(CDPATH='' cd -- "$SELF/.." && pwd)"
 # (CONTRACTS/logging.md, harbor#771) — never into a docs/index.html being built.
 . "$SELF/log-lib.sh"
 LOG_FD=2; log_init docs-gen
+. "$SELF/install-lib.sh"  # il_src: a hook engine ships from its folder (D-88)
 SRC="$ROOT/docs/src"
 OUT="$ROOT/docs/index.html"
 LC_ALL=C
@@ -147,15 +148,14 @@ _fmv() { _fm "$1" | awk -F': *' -v k="$2" '$1==k {sub(/^[^:]*: */,""); print; ex
 
 d_packs() {
   printf '<table class="grid"><thead><tr><th>Tier</th><th>Pack</th><th>Event</th><th>Fires when</th><th>Repeats</th></tr></thead><tbody>\n'
-  # `inject.d/*/*.md` ALREADY COVERS box/ — globbing box/ separately as well is
+  # `context-rules/*/*.md` ALREADY COVERS user/ — globbing user/ separately as well is
   # how the first cut listed every box pack twice, which is precisely the
-  # duplicate-tier defect the engine itself shipped. One glob per tier.
-  for f in "$ROOT"/inject.d/*/*.md "$ROOT"/.claude/inject.d/*.md; do
+  # duplicate-tier defect the engine itself shipped. One glob for every scope (harbor#1010).
+  for f in "$ROOT"/context-rules/*/*.md; do
     [ -f "$f" ] || continue
     _rel="${f#"$ROOT"/}"
-    case "$_rel" in inject.d/box/*) _tier='box' ;;
-                    .claude/inject.d/*) _tier='repo · harbor' ;;
-                    inject.d/*) _tier="repo · $(basename "$(dirname "$f")")" ;; esac
+    case "$_rel" in context-rules/user/*) _tier='box' ;;
+                    *) _tier="repo · $(basename "$(dirname "$f")")" ;; esac
     # A pack may carry SEVERAL `when:` lines (they are ANDed), so the cell needs a
     # line break the escaper must not eat. Joined on a SENTINEL, escaped, then the
     # sentinel becomes the tag. Emitting a literal `<br>` before escaping produced
@@ -174,8 +174,8 @@ d_packs() {
 }
 
 d_predicates() {
-  printf '<p class="derived">Read from the vocabulary gate in <code>bin/inject-hook.sh</code>: '
-  sed -n 's/^    \(always|cmd-prefix.*\)) ;;$/\1/p' "$ROOT/bin/inject-hook.sh" \
+  printf '<p class="derived">Read from the vocabulary gate in <code>hooks/injection-rule/injection-rule.sh</code>: '
+  sed -n 's/^    \(always|cmd-prefix.*\)) ;;$/\1/p' "$ROOT/hooks/injection-rule/injection-rule.sh" \
     | head -1 | tr '|' '\n' \
     | while read -r p; do [ -n "$p" ] && printf '<code>%s</code> ' "$(printf '%s' "$p" | esc)"; done
   printf '— plus <code>not &lt;predicate&gt;</code>, which inverts any of them.</p>\n'
@@ -396,6 +396,7 @@ d_runtime() {
   } | sort -u | while read -r s p; do
         [ -n "$s" ] || continue
         _f="$ROOT/$p"
+        case "$p" in bin/*) _f="$ROOT/$(il_src "$ROOT" "$s")" ;; esac
         if [ -f "$_f" ]; then
           _d="$(sed -n '2,4p' "$_f" | sed -n 's/^# //p' | head -1)"
         else
@@ -419,7 +420,7 @@ d_evals() {
 
 d_scripts() {
   printf '<table class="grid"><thead><tr><th>Script</th><th>Ticket / purpose line</th></tr></thead><tbody>\n'
-  for f in "$ROOT"/bin/*.sh; do
+  for f in "$ROOT"/bin/*.sh $(sh "$ROOT/bin/deploy-hooks.sh" --engines --root "$ROOT" 2>/dev/null); do
     [ -f "$f" ] || continue
     case "$(basename "$f")" in *-test.sh) continue ;; esac
     _d="$(sed -n '2,4p' "$f" | sed -n 's/^# //p' | head -1)"

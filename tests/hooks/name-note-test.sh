@@ -5,8 +5,8 @@
 . "$(dirname "$0")/../lib/core.sh"; t_init
 T="$T_TMP"; CFG="$T/cfg"; REPO="$T/repo"; BARE="$T/bare"
 mkdir -p "$CFG/inject.d" "$CFG/bin" "$REPO/bin" "$REPO/standards" "$REPO/CONTRACTS" "$BARE/bin"
-cp "$T_ROOT/inject.d/box/98-name-note.md" "$T_ROOT/inject.d/box/name-note.sh" "$CFG/inject.d/"
-cp "$T_ROOT/bin/inject-hook.sh" "$T_ROOT/bin/guard-lib.sh" "$CFG/bin/"
+cp "$T_ROOT/context-rules/user/name-note.md" "$T_ROOT/context-rules/user/name-note.sh" "$CFG/inject.d/"
+cp "$T_ROOT/hooks/injection-rule/injection-rule.sh" "$T_ROOT/bin/guard-lib.sh" "$CFG/bin/"
 # REPO carries the standard (its own lint and registry); BARE is a git repo that does not.
 cp "$T_ROOT/bin/lint-name.sh" "$T_ROOT/bin/log-lib.sh" "$REPO/bin/"; cp -R "$T_ROOT/standards/naming" "$REPO/standards/"
 printf 'x\n' > "$REPO/README.md"
@@ -17,7 +17,7 @@ trap 'chmod -R u+w "$T_TMP" 2>/dev/null; rm -rf "$T_TMP"' EXIT
 
 call() { # <file_path> [project dir] [tool] → engine stdout in $OUT, rc in $RC
   jq -nc --arg f "$1" --arg t "${3:-Write}" '{hook_event_name:"PreToolUse",tool_name:$t,session_id:"s",tool_input:{file_path:$f,content:"x"}}' > "$T/in.json"
-  OUT="$(CLAUDE_CONFIG_DIR="$CFG" CLAUDE_PROJECT_DIR="${2:-$REPO}" /bin/sh "$CFG/bin/inject-hook.sh" < "$T/in.json" 2>"$T/err")"; RC=$?
+  OUT="$(CLAUDE_CONFIG_DIR="$CFG" CLAUDE_PROJECT_DIR="${2:-$REPO}" /bin/sh "$CFG/bin/injection-rule.sh" < "$T/in.json" 2>"$T/err")"; RC=$?
 }
 note() { printf '%s' "$OUT" | jq -r '.hookSpecificOutput.additionalContext // ""' 2>/dev/null; }
 
@@ -50,8 +50,8 @@ t_section "it informs and never denies"
 call "$REPO/bin/Foo_bar.sh"
 t_eq "a fired note carries no permissionDecision" "" "$(printf '%s' "$OUT" | jq -r '.hookSpecificOutput.permissionDecision // ""')"
 t_eq "exit 0" 0 "$RC"
-t_eq "the script never prints a deny sentinel" 0 "$(grep 'printf' "$T_ROOT/inject.d/box/name-note.sh" | grep -c 'HARBOR-DECISION')"
-t_eq "garbage payload: silent exit 0" 0 "$(printf 'not json' | CLAUDE_CONFIG_DIR="$CFG" CLAUDE_PROJECT_DIR="$REPO" /bin/sh "$CFG/bin/inject-hook.sh" >/dev/null 2>&1; echo $?)"
+t_eq "the script never prints a deny sentinel" 0 "$(grep 'printf' "$T_ROOT/context-rules/user/name-note.sh" | grep -c 'HARBOR-DECISION')"
+t_eq "garbage payload: silent exit 0" 0 "$(printf 'not json' | CLAUDE_CONFIG_DIR="$CFG" CLAUDE_PROJECT_DIR="$REPO" /bin/sh "$CFG/bin/injection-rule.sh" >/dev/null 2>&1; echo $?)"
 rm -f "$REPO/bin/lint-name.sh"; call "$REPO/bin/Foo_bar.sh"
 t_eq "a repo whose lint is gone: silent exit 0" "0:" "$RC:$(note)"
 cp "$T_ROOT/bin/lint-name.sh" "$REPO/bin/"

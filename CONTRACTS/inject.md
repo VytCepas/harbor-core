@@ -1,8 +1,8 @@
 # Rule packs — the just-in-time governance format
 
 **Frozen surface:** the frontmatter keys and the predicate vocabulary below.
-**Engine:** [`bin/inject-hook.sh`](../bin/inject-hook.sh). **Installer:**
-`harbor inject`. **Suite:** [`tests/hooks/inject-hook.engine-test.sh`](../tests/hooks/inject-hook.engine-test.sh), with the detector, packs and scope parts beside it.
+**Engine:** [`hooks/injection-rule/injection-rule.sh`](../hooks/injection-rule/injection-rule.sh). **Installer:**
+`harbor inject`. **Suite:** [`hooks/injection-rule/engine.test.sh`](../hooks/injection-rule/engine.test.sh), with the detector, packs and scope parts beside it.
 **Ticket:** harbor#173 · A1.
 
 A rule pack is a markdown file. A repo declares one, and from then on that repo's
@@ -33,7 +33,7 @@ non-binding until something puts it in front of the session.
 3/4 — and the veto's single miss was a session that stopped to ask rather than
 acting. **There is exactly ONE opt-in deny, and this sentence used to say there
 was none** — it read "there is deliberately no `deny` mode" for the whole of the
-time the mode existed, which `bin/inject-hook.sh` corrected in its own header and
+time the mode existed, which `hooks/injection-rule/injection-rule.sh` corrected in its own header and
 this file did not. The sentinel is specified under *A `run:` pack may return a
 decision* below; it is exact, opt-in, `run:`-only and PreToolUse-only. A contract
 that denies the existence of the blocking path is worse than one that omits it,
@@ -47,11 +47,18 @@ not a feature.
 
 | Tier | Path | Loaded | Installed by |
 |---|---|---|---|
-| **Box** | `<config>/inject.d/` | every session on this machine | `harbor inject --live --apply` from `inject.d/box/`, plus the private layer's `inject.d/box/` (`.md` packs and `projects.tsv` only) |
-| **Repo** | `<repo>/.claude/inject.d/` | only when that repo is the session's **project directory** | the repo owns it; `--projects` seeds it from the private layer's `inject.d/<name>/` (core ships no repo pack, harbor#1149; [private-layer.md](./private-layer.md)) |
+| **Box** | `<config>/context-rules/user/` | every session on this machine | `harbor inject --live --apply` from `context-rules/user/`, plus the private layer's `context-rules/user/` (`.md` packs and `projects.tsv` only) |
+| **Repo** | `<repo>/context-rules/<repo>/` | only when that repo is the session's **project directory** | the repo owns it; `--projects` seeds `.claude/inject.d/` from the private layer's `<name>/` folder (core ships no other repo's rules, harbor#1149; [private-layer.md](./private-layer.md)) |
 | **Reached** | the same directory, `scope: box` packs only | when a tool call from **outside** touches that repo, and it is registered | the same; see "`scope: box`" below |
 
-Box and repo are read on every fire, box first; reached trees come last, and only on a tool event. The engine resolves the repo from
+Box and repo are read on every fire, box first; reached trees come last, and only on a tool event.
+
+**A rule is `context-rules/<scope>/<id>.md` (harbor#1010, D-43, D-65).** The id is the file name; `id:` is only for a
+rule whose id differs from it. Within a tier, rules run by `order:` (a whole number), then rules with none, each group
+by file name. A repo's `context-rules/user/` is the box tier's source and is never read as that repo's own.
+**The old layout is read for one release:** the box tier also reads `<config>/inject.d/` and a repo also reads
+`.claude/inject.d/`, where an `NN-` file name sorts as `order: NN`; an id found in the new tree skips the old file.
+The removal date is the `dir:inject.d` row in `standards/naming/renames.tsv`. The engine resolves the repo from
 `CLAUDE_PROJECT_DIR`, falling back to the hook process's cwd — so **one
 box-level wiring serves every repository**, including ones that do not exist
 yet. That is the property that makes this scale: adding a project is a
@@ -69,7 +76,7 @@ main checkout and a session opened at `$HOME` keeps `$HOME` as its project.
 
 When they diverge the repo tier is not merely wrong, it is **empty**: `$HOME`
 resolves `$REPO/.claude/inject.d` onto the box pack directory itself,
-`pack_dirs()` drops it as a duplicate of the box tier, and no repo rule loads at
+`tree_dirs()` drops it as a duplicate of the box tier, and no repo rule loads at
 all. Measured 2026-08-29 in the session auditing this question — harbor's own
 three packs, the merge-governance chain among them, governed nothing, and the
 suites were green throughout because every one of them sets
@@ -108,7 +115,7 @@ heredoc bodies are data: the shell half goes through the floor's own
 `floor_seg_load` (`guard-lib.sh`, beside the engine), never a second parser.
 Without `guard-lib.sh` there are no shell targets, and the engine stays silent.
 
-**Computed once, by the engine, on the three tool events.** `bin/inject-hook.sh`
+**Computed once, by the engine, on the three tool events.** `hooks/injection-rule/injection-rule.sh`
 works the answer out before any pack is read, and hands it to every `run:` pack
 as `HARBOR_TOUCHED`, one physical tree per line. `HARBOR_REACHED` lists the
 subset whose `scope: box` packs were swept. `repo-tier.sh` reads both instead of
@@ -126,7 +133,7 @@ session is one nobody reads.
 
 ### `scope: box` — a repo rule that follows the call
 
-A pack in a repository's own `.claude/inject.d/` that declares `scope: box` is
+A pack in a repository's own `context-rules/<repo>/` (or the old `.claude/inject.d/`) that declares `scope: box` is
 also delivered when a session **outside** that repository makes a tool call that
 touches it. Decided 2026-09-24 on harbor#599. The repo consents per rule, in its
 own data, and the default (`scope: repo`, or no key) is to stay home.
@@ -170,6 +177,7 @@ collapsed to one paragraph.
 | Key | Required | Meaning |
 |---|---|---|
 | `id` | no | ledger key and `--explain` label; defaults to the filename |
+| `description` | **yes** | one line saying what the rule is for, so a reader can retire it without reading its body. Lint IJ1 refuses a tracked pack without one and warns on a private pack |
 | `event` | **yes** | `PreToolUse` · `PostToolUse` · `PostToolUseFailure` · `SessionStart` · `SubagentStart` — and `PreCompact` · `SessionEnd` **only with `mode: notify`**, see below |
 | `tool` | no | tool-name matcher. `Write\|Edit` alternation is accepted. Absent means any tool |
 | `when` | **yes** | a predicate. **Repeatable, and repeats are ANDed** |
@@ -178,6 +186,11 @@ collapsed to one paragraph.
 | `summary` | no | the operator-facing line for `mode: notify` |
 | `run` | no | a script beside the pack whose **stdout is the note**; empty stdout means no note. It may instead return a **decision** — see below |
 | `scope` | no | `repo` (default) or `box`. `box` also delivers a repo pack when a session outside the repo makes a tool call that touches it. Registered projects only, tool events only. See "`scope: box`" above |
+
+**Every delivered note starts `[context:<id>]`**, after the governance stamp, where `<id>` is the pack's `id`. The
+`emitted` column of `standards/naming/controls.tsv` maps that id to its control row, so the first lookup from a note
+reaches its owner and its off-switch (harbor#957; `hooks/injection-rule/engine.test.sh`, section "every note starts").
+A deny reason keeps the refusal form its channel already has.
 
 ### A `run:` pack may return a decision, not only a note
 
@@ -205,11 +218,11 @@ not acquire the power to block a tool call by containing a sentence.
 
 **Why this exists (harbor#254).** `bin/govern-hook.sh` computes the merge
 backstop's verdict and emits a deny. Reached through this engine — which is how
-production reaches it, via `.claude/inject.d/merge-note.sh` — `--note` printed
+production reaches it, via `context-rules/harbor/merge-note.sh` — `--note` printed
 that verdict as prose, the engine wrapped the prose as additionalContext, and
 prose cannot stop a `Bash` call: every red PR still merged, with a green suite on
 both sides of the gap. The suite fired the hook directly; the operator does not.
-`tests/hooks/inject-hook.packs-test.sh` now drives the shipped pack end to end.
+`hooks/injection-rule/packs.test.sh` now drives the shipped pack end to end.
 
 A pack that can deny can also block ordinary work, so it is opt-in per pack, the
 sentinel is exact, and the decision is only ever as good as the predicate that
@@ -242,19 +255,19 @@ it failed by going quiet, which nothing turns red for.
 
 The subject is the **raw** command, not the matched prefix: `gh pr merge 174` and
 `gh pr merge 179` are different acts on different objects and a rule should speak
-for both. `tests/hooks/inject-hook.engine-test.sh` asserts all three — first delivery, silence on
+for both. `hooks/injection-rule/engine.test.sh` asserts all three — first delivery, silence on
 a repeat, and delivery for a different command in the same session.
 
 **A pack with no `when:` never fires.** That is deliberate and it is asserted:
 the most likely typo must not produce the loudest possible rule.
 
-**An unrecognised predicate never fires either.** `bin/skill-book.sh` carries the
+**An unrecognised predicate never fires either.** `bin/skill-catalog.sh` carries the
 incident this guards against — an unrecognised token that fell through to the
 permissive branch turned a gate into a no-op while still reading like a gate.
 
 ### Every shipped pack needs a probe row, and the suite fails without one
 
-`tests/hooks/inject-hook.engine-test.sh` tests the **engine**, against packs it writes itself in
+`hooks/injection-rule/engine.test.sh` tests the **engine**, against packs it writes itself in
 a temp dir. That is the right shape for an engine and it says nothing whatsoever
 about the packs in `inject.d/`. Measured 2026-08-29 by grepping every tracked
 `id:` against every suite: **14 of 17 were named in none of them.** Naming is a
@@ -322,7 +335,7 @@ moment and can be heard.
 
 So on a context-less event the engine emits a `systemMessage` alone, or nothing.
 A pack targeting one must declare `mode: notify` — **lint IJ1 fails otherwise**,
-and `tests/hooks/inject-hook.packs-test.sh` asserts that `PreCompact` produces no stdout at all.
+and `hooks/injection-rule/packs.test.sh` asserts that `PreCompact` produces no stdout at all.
 
 **`PostToolUseFailure` was on that accepted list for months with nothing on it**,
 and it is now wired (`85-tool-failure-is-not-a-result`). Two things about it were
@@ -345,6 +358,7 @@ interpolated into a command, or used as a glob.
 |---|---|
 | `always` | the event fires |
 | `cmd-prefix <words>` | a command-position segment **starts with** exactly those words |
+| `cmd-word <name>` | a command-position segment's **command word** — after any `NAME=value` assignments — is `<name>` or a path ending in `/<name>`; quoted bodies and heredocs are not segments, and `--help` never matches |
 | `cmd-contains <text>` | the command contains the text, heredoc bodies stripped |
 | `path-contains <text>` | `tool_input.file_path` contains the text |
 | `content-contains <text>` | the written content or the tool's response contains the text |
@@ -402,7 +416,7 @@ exfiltrate marker.
 
 **The false-positive set is swept, not counted here.** Every tracked markdown
 file in this repo is run through the detector by
-[`tests/hooks/inject-hook.detector-test.sh`](../tests/hooks/inject-hook.detector-test.sh) and compared against an
+[`hooks/injection-rule/detector.test.sh`](../hooks/injection-rule/detector.test.sh) and compared against an
 allowlist, so **a new false positive turns the suite red on the commit that
 introduces it**. The allowlisted ones are all documents *about* injection — the
 constitution's §4 describes the attack in the attack's own words, this contract
@@ -441,11 +455,11 @@ Prefer two excellent rules to six plausible ones. Zero is a valid answer.
 
 ## Adding a project
 
-1. One line in the private layer's `inject.d/box/projects.tsv` (`sh bin/roots.sh --projects`) — `name<TAB>~/path<TAB>what it covers`.
+1. One line in the private layer's `context-rules/user/projects.tsv` (`sh bin/roots.sh --projects`) — `name<TAB>~/path<TAB>what it covers`.
    That line is also the pointer every other session gets about this project, so
    write `covers` as the question that sends a reader there.
-2. `inject.d/<name>/` in the private layer for the packs, if the project's rules should be
-   tracked centrally; otherwise the repo owns `.claude/inject.d/` directly.
+2. `context-rules/<name>/` in the private layer for the packs, if the project's rules should be
+   tracked centrally; otherwise the repo owns `context-rules/<name>/` directly.
 3. `harbor inject --live --apply --projects`.
 
 Nothing else. No new wiring, no new script, no settings file in the project.

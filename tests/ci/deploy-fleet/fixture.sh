@@ -6,7 +6,8 @@
 fx_inst() { # <dir> — the runner and merge-stack side by side, with a stub merge-check.sh
   mkdir -p "$1/bin" "$1/CONTRACTS"
   cp "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/event-bus.sh" "$T_ROOT/bin/gate-merge-stack.sh" "$T_ROOT/bin/gate-merge-stack-resolve.py" \
-    "$T_ROOT/bin/deploy-fleet.sh" "$1/bin/"
+    "$T_ROOT/bin/deploy-fleet.sh" "$T_ROOT/bin/roots.sh" "$1/bin/"
+  cp "$T_ROOT/CONTRACTS/roots.tsv" "$1/bin/roots.tsv"   # the installed runner finds the fleet file through roots.sh (harbor#966)
   cp "$T_ROOT/CONTRACTS/merge-stack-union.txt" "$1/CONTRACTS/"
   : > "$1/CONTRACTS/required-checks.tsv"   # harbor's own rows, which name no acme repo (merge-stack reads them since #1126 r4)
   cat > "$1/bin/merge-check.sh" <<'EOF'
