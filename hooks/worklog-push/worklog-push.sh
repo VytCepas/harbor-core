@@ -51,6 +51,15 @@ floor_worklog_record "$WORKLOG_DIR" "$HOST" "$SID" "$DATE" "$(date +%H:%M)" "${C
 
 cd "$WORKLOG_DIR" || exit 0
 
+# One session at a time stages, commits and pushes: concurrent Stops raced on the
+# remote ref (50 of 54 push failures, `cannot lock ref`). A skipped session loses
+# nothing — its record is on disk and the next push carries every local commit.
+# A lock left by a killed hook is reclaimed after 10 minutes.
+_wl_lock="$WORKLOG_DIR/.git/harbor-worklog.lock"
+[ -z "$(find "$WORKLOG_DIR/.git" -maxdepth 1 -name harbor-worklog.lock -mmin +10 2>/dev/null)" ] || rmdir "$_wl_lock" 2>/dev/null
+mkdir "$_wl_lock" 2>/dev/null || exit 0
+trap 'rmdir "$_wl_lock" 2>/dev/null' EXIT
+
 # Tracked-glob allowlist (deny-by-default; never git add -A). One add per
 # glob: git aborts a multi-pathspec add wholesale if ANY pathspec is empty.
 for g in 'WORK/sessions/*/*.md' 'KNOWLEDGE/*.md' 'LEARNING/*.md' 'CHECKPOINTS/*/*' \
