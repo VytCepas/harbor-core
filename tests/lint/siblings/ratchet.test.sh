@@ -5,13 +5,13 @@
 . "$T_ROOT/tests/checks/lint-fixture.sh"
 SL() { HARBOR_ROOT="$1" sh "$T_ROOT/bin/lint-siblings.sh" "$2" 2>&1; }
 mk() { # <name> <baseline> → a checkout with 3 literals in 2 files, harbor's own paths, and excluded dirs
-  _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/CONTRACTS/fixtures" "$_d/skills/x" "$_d/tests" "$_d/bin/tests" "$_d/skills/test-strength/targets"
+  _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/contracts/fixtures" "$_d/skills/x" "$_d/tests" "$_d/bin/tests" "$_d/skills/test-strength/targets"
   printf 'A=$HOME/port/zorbcorp\nB=${PORT_ROOT}/blorp\n' > "$_d/bin/a.sh"
   printf '# see ~/port/plumb/x\n' > "$_d/skills/x/SKILL.md"
   printf 'H=$HOME/port/harbor/bin\nP=$PORT_ROOT/harbor-private\nW=$PORT_ROOT/.worktrees/x\nV=$HOME/port/$repo\n' > "$_d/bin/own.sh"
-  printf 'T=$HOME/port/zorbcorp\n' | tee "$_d/tests/t.sh" "$_d/CONTRACTS/fixtures/f.txt" "$_d/bin/tests/t.sh" "$_d/skills/test-strength/targets/t.sh" > /dev/null
-  cp "$T_ROOT/bin/lint-siblings.sh" "$T_ROOT/bin/log-lib.sh" "$_d/bin/"
-  printf '%s\n' "$2" > "$_d/CONTRACTS/lint-siblings-baseline.txt"
+  printf 'T=$HOME/port/zorbcorp\n' | tee "$_d/tests/t.sh" "$_d/contracts/fixtures/f.txt" "$_d/bin/tests/t.sh" "$_d/skills/test-strength/targets/t.sh" > /dev/null
+  cp "$T_ROOT/bin/lint-siblings.sh" "$T_ROOT/bin/library-log.sh" "$_d/bin/"
+  printf '%s\n' "$2" > "$_d/contracts/lint-siblings-baseline.txt"
   ( cd "$_d" && git init -q . && git add -A && git -c user.email=t@t -c user.name=t commit -qm x ) >/dev/null 2>&1
   printf '%s' "$_d"
 }
@@ -29,10 +29,10 @@ D="$(mk at 3)"; t_eq "equal is green" "0" "$(red "$D")"
 D="$(mk over 2)"; OUT="$(SL "$D" --check)"
 t_eq "above is red" "1" "$(red "$D")"
 t_has "...and says the count and the baseline" "$OUT" "3 sibling-path literal(s) in the tree, baseline is 2"
-t_has "...and the fix" "$OUT" "roots.sh --repo"
+t_has "...and the fix" "$OUT" "scope-roots.sh --repo"
 D="$(mk under 9)"; OUT="$(SL "$D" --check)"
 t_eq "below is still green" "0" "$(red "$D")"
-t_has "...and tells you to lower the baseline" "$OUT" "lower CONTRACTS/lint-siblings-baseline.txt to 3"
+t_has "...and tells you to lower the baseline" "$OUT" "lower contracts/lint-siblings-baseline.txt to 3"
 D="$(mk nobase x)"; t_eq "a non-numeric baseline is red" "1" "$(red "$D")"
 mkdir -p "$T_TMP/nogit"
 t_exit "a non-checkout inspected nothing and is not a pass" 2 env HARBOR_ROOT="$T_TMP/nogit" sh "$T_ROOT/bin/lint-siblings.sh" --check
@@ -62,7 +62,7 @@ x=/home/someone/port/zorbcorp
 x=~/port/zorbcorp
 x=${PORT_ROOT-$HOME/port}/zorbcorp
 x=$HOME/port/"zorbcorp"
-x=$(sh bin/roots.sh --port-root)/zorbcorp
+x=$(sh bin/scope-roots.sh --port-root)/zorbcorp
 SPELLINGS
 D="$(mk untracked 3)"; printf 'x=~/port/blorp\n' > "$D/bin/u.sh"
 t_eq "an untracked file counts" "4" "$(SL "$D" --count)"

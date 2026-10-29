@@ -1,9 +1,9 @@
-# harbor#617 — the Linux/WSL2 twin of launchd/com.harbor.fleet-snapshot.plist, CHECKS.md row `fleet-snapshot`.
-# Install and disable: CHECKS.md, "Platforms". WSL2 needs [boot] systemd=true in /etc/wsl.conf.
+# harbor#617 — the Linux/WSL2 twin of launchd/com.harbor.fleet-snapshot.plist, docs/reference/checks.md row `fleet-snapshot`.
+# Install and disable: docs/reference/checks.md, "Platforms". WSL2 needs [boot] systemd=true in /etc/wsl.conf.
 [Unit]
 Description=Harbor check fleet-snapshot: the fleet snapshot cache the statusline reads
 
 [Service]
 Type=oneshot
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=/bin/sh %h/.claude/bin/fleet-snapshot-refresh.sh
+ExecStart=/bin/sh %h/.claude/bin/status-fleet-snapshot-refresh.sh

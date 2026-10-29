@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# bin/gate-required-generate.sh and what reads its sum (harbor#1149): core's CONTRACTS/required-checks.tsv holds harbor's own rows,
+# bin/gate-required-generate.sh and what reads its sum (harbor#1149): core's contracts/required-checks.tsv holds harbor's own rows,
 # the private layer's required-checks.tsv the rows whose repo cannot be named in core, and a reader sees one list. runtime-install installs the sum as
 # bin/required-checks.tsv and install-drift holds it to the composition at the ref. Layers are throwaway directories; the repos
 # and checks are made up and name no real entity.
@@ -26,7 +26,7 @@ t_exit "a core with no final newline does not swallow the layer's first row" 0 s
 PV="$(layer add 'acme/core\textra\n')"
 t_eq "the layer can add a check to a core repo" "gate extra" "$(gen "$PV" | awk -F'\t' '$1 == "acme/core" { printf "%s%s", sep, $2; sep = " " }')"
 t_exit "...and every core row is still there, in order" 0 sh -c "HARBOR_SCOPE_PRIVATE='$PV' sh '$GEN' --core '$CORE' | head -n 2 | cmp -s - '$CORE'"
-t_eq "the default core is this checkout's CONTRACTS/required-checks.tsv" "yes" "$(HARBOR_SCOPE_PRIVATE="$T/nowhere" sh "$GEN" | cmp -s - "$T_ROOT/CONTRACTS/required-checks.tsv" && echo yes)"
+t_eq "the default core is this checkout's contracts/required-checks.tsv" "yes" "$(HARBOR_SCOPE_PRIVATE="$T/nowhere" sh "$GEN" | cmp -s - "$T_ROOT/contracts/required-checks.tsv" && echo yes)"
 
 t_section "a layer that cannot be composed refuses the whole read, with nothing on stdout"
 refuses() { # <label> <printf-format content> <expected message>
@@ -77,7 +77,7 @@ t_eq "a commit the layer does not hold: exit 2" 2 "$_rc"; t_eq "...nothing on st
 t_eq "a revision that is not hex is refused" 2 "$(sh "$GEN" --core "$CORE" --private "$LG" --private-rev '--output=x' >/dev/null 2>&1; echo $?)"
 
 t_section "red-proof: the checks above can fail"
-MB="$T/mut/bin"; mkdir -p "$MB"; cp "$T_ROOT/bin/log-lib.sh" "$MB/"
+MB="$T/mut/bin"; mkdir -p "$MB"; cp "$T_ROOT/bin/library-log.sh" "$MB/"
 sed '/NF != 2 {/d' "$GEN" > "$MB/gate-required-generate.sh"
 t_exit "M1 the field-count check is removed: the mutation applies" 1 cmp -s "$MB/gate-required-generate.sh" "$GEN"
 PV="$(layer m1 'acme/other\tCI gate\textra\n')"
@@ -99,18 +99,18 @@ if [ -r "$PV/required-checks.tsv" ]; then t_pass   # root
 else t_eq "M4: an unreadable file is then read as no rows (exit 0)" 0 "$(HARBOR_SCOPE_PRIVATE="$PV" sh "$MB/gate-required-generate.sh" --core "$CORE" >/dev/null 2>&1; echo $?)"; fi
 chmod 644 "$PV/required-checks.tsv"
 
-ri() { env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/runtime-install.sh" "$@"; }
+ri() { env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/deploy-runtime-install.sh" "$@"; }
 t_section "runtime-install: the installed list is core when there is no layer, the sum when there is"
 D="$T/cfg-none"; mkdir -p "$D"; printf '{}' > "$D/settings.json"
 HARBOR_SCOPE_PRIVATE="$T/nowhere" ri --apply --dir "$D" >/dev/null 2>&1
-t_exit "no layer: bin/required-checks.tsv is CONTRACTS/required-checks.tsv, byte for byte" 0 cmp -s "$T_ROOT/CONTRACTS/required-checks.tsv" "$D/bin/required-checks.tsv"
+t_exit "no layer: bin/required-checks.tsv is contracts/required-checks.tsv, byte for byte" 0 cmp -s "$T_ROOT/contracts/required-checks.tsv" "$D/bin/required-checks.tsv"
 PV="$(layer ri 'acme/other\tCI gate\n')"; D="$T/cfg-a"; mkdir -p "$D"; printf '{}' > "$D/settings.json"
 _plan="$(HARBOR_SCOPE_PRIVATE="$PV" ri --dir "$D" 2>&1)"
 t_has "the dry run says the list is composed" "$_plan" "bin/required-checks.tsv is composed: core plus 1 row(s) from the private layer"
 t_eq "...and wrote nothing" no "$([ -e "$D/bin/required-checks.tsv" ] && echo yes || echo no)"
 HARBOR_SCOPE_PRIVATE="$PV" ri --apply --dir "$D" >/dev/null 2>&1
 t_exit "a layer: the installed list holds the layer's row" 0 grep -q "^acme/other${TAB}CI gate\$" "$D/bin/required-checks.tsv"
-t_exit "...and every one of core's rows" 0 sh -c "grep '^[^#]' '$T_ROOT/CONTRACTS/required-checks.tsv' | grep . | while IFS= read -r l; do grep -qxF \"\$l\" '$D/bin/required-checks.tsv' || exit 1; done"
+t_exit "...and every one of core's rows" 0 sh -c "grep '^[^#]' '$T_ROOT/contracts/required-checks.tsv' | grep . | while IFS= read -r l; do grep -qxF \"\$l\" '$D/bin/required-checks.tsv' || exit 1; done"
 t_eq "the installed file is the generator's output" "yes" "$(HARBOR_SCOPE_PRIVATE="$PV" sh "$GEN" | cmp -s - "$D/bin/required-checks.tsv" && echo yes)"
 t_hasnt "an install whose list loses nothing says nothing of drops" "$(HARBOR_SCOPE_PRIVATE="$PV" ri --dir "$D" 2>&1)" "DROPS"
 printf '# the layer lost its row\n' > "$PV/required-checks.tsv"
@@ -127,18 +127,18 @@ t_has "...and says so" "$(cat "$T/bad.out")" "does not compose with core's"
 t_eq "...writing no list" no "$([ -e "$D/bin/required-checks.tsv" ] && echo yes || echo no)"
 
 t_section "install-drift: the installed list is held to the composition at the ref"
-R="$T/repo"; CFG="$T/install"; mkdir -p "$R/bin" "$R/CONTRACTS" "$CFG/bin"
-cp "$T_ROOT/bin/install-drift.sh" "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/install-lib.sh" "$GEN" "$R/bin/"
-printf 'DATA="CONTRACTS/required-checks.tsv:bin/required-checks.tsv"\n' > "$R/bin/runtime-install.sh"
-cp "$CORE" "$R/CONTRACTS/required-checks.tsv"
+R="$T/repo"; CFG="$T/install"; mkdir -p "$R/bin" "$R/contracts" "$CFG/bin"
+cp "$T_ROOT/bin/drift-install.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/deploy-install-lib.sh" "$GEN" "$R/bin/"
+printf 'DATA="contracts/required-checks.tsv:bin/required-checks.tsv"\n' > "$R/bin/deploy-runtime-install.sh"
+cp "$CORE" "$R/contracts/required-checks.tsv"
 git init -q "$R"; git -C "$R" symbolic-ref HEAD refs/heads/main
 git -C "$R" add -A; git -C "$R" -c user.email=t@t -c user.name=t -c commit.gpgsign=false commit -qm v1
-drift() { HARBOR_SCOPE_PRIVATE="$1" sh "$R/bin/install-drift.sh" --dir "$CFG" --ref main 2>&1; }
+drift() { HARBOR_SCOPE_PRIVATE="$1" sh "$R/bin/drift-install.sh" --dir "$CFG" --ref main 2>&1; }
 PV="$(layer dr 'acme/other\tCI gate\n')"
-sh "$R/bin/gate-required-generate.sh" --core "$R/CONTRACTS/required-checks.tsv" --private "$PV" > "$CFG/bin/required-checks.tsv"
+sh "$R/bin/gate-required-generate.sh" --core "$R/contracts/required-checks.tsv" --private "$PV" > "$CFG/bin/required-checks.tsv"
 t_has "the composed list is current when its layer is there" "$(drift "$PV")" "current=1 stale=0 modified=0 unsourced=0"
 t_has "...and reads modified when the layer is gone (it is no longer what would be installed)" "$(drift "$T/nowhere")" "FAIL: modified required-checks.tsv ("
-cp "$R/CONTRACTS/required-checks.tsv" "$CFG/bin/required-checks.tsv"
+cp "$R/contracts/required-checks.tsv" "$CFG/bin/required-checks.tsv"
 t_has "the bare core list is current when there is no layer" "$(drift "$T/nowhere")" "current=1 stale=0 modified=0 unsourced=0"
 t_has "...and reads stale, not edited in place, when a layer would add rows to it (a list installed before it was composed)" "$(drift "$PV")" "FAIL: stale required-checks.tsv ("
 
@@ -146,19 +146,19 @@ t_has "...and reads stale, not edited in place, when a layer would add rows to i
 PG="$T/pv-drift"; mkdir -p "$PG"; git init -q "$PG"
 gc() { _gd="$1"; shift; git -C "$_gd" -c user.email=t@t -c user.name=t -c commit.gpgsign=false commit -q "$@"; }
 printf 'acme/other\tCI gate\n' > "$PG/required-checks.tsv"; git -C "$PG" add -A; gc "$PG" -m l1
-sh "$R/bin/gate-required-generate.sh" --core "$R/CONTRACTS/required-checks.tsv" --private "$PG" > "$CFG/bin/required-checks.tsv"
+sh "$R/bin/gate-required-generate.sh" --core "$R/contracts/required-checks.tsv" --private "$PG" > "$CFG/bin/required-checks.tsv"
 t_has "a list composed from this core and this layer revision is current" "$(drift "$PG")" "current=1 stale=0 modified=0 unsourced=0"
 printf 'acme/other\tCI gate\nacme/other\tlint\n' > "$PG/required-checks.tsv"; gc "$PG" -am l2
 t_has "the layer gained a row since the deploy: stale" "$(drift "$PG")" "FAIL: stale required-checks.tsv ("
-printf '# core: harbor only\nacme/core\tgate\nacme/core\tlint\n' > "$R/CONTRACTS/required-checks.tsv"; git -C "$R" -c user.email=t@t -c user.name=t -c commit.gpgsign=false commit -qam v2
+printf '# core: harbor only\nacme/core\tgate\nacme/core\tlint\n' > "$R/contracts/required-checks.tsv"; git -C "$R" -c user.email=t@t -c user.name=t -c commit.gpgsign=false commit -qam v2
 t_has "...and core gained one as well: still stale" "$(drift "$PG")" "FAIL: stale required-checks.tsv ("
 t_has "...whose fix is a redeploy" "$(drift "$PG")" "fix: sh "
 printf 'acme/other\tCI gate\nacme/other\tlint\nacme/other\tunreviewed\n' > "$PG/required-checks.tsv"
-sh "$R/bin/gate-required-generate.sh" --core "$R/CONTRACTS/required-checks.tsv" --private "$PG" > "$CFG/bin/required-checks.tsv"
+sh "$R/bin/gate-required-generate.sh" --core "$R/contracts/required-checks.tsv" --private "$PG" > "$CFG/bin/required-checks.tsv"
 t_has "an uncommitted layer row, deployed, is what the layer says: current" "$(drift "$PG")" "current=1 stale=0 modified=0 unsourced=0"
 git -C "$PG" checkout -q -- required-checks.tsv
 t_has "...and once the layer drops it, no commit explains the installed row: modified" "$(drift "$PG")" "FAIL: modified required-checks.tsv ("
 t_has "...and the fix names the generator, not a box-only capture" "$(drift "$PG")" "gate-required-generate.sh"
-sh "$R/bin/gate-required-generate.sh" --core "$R/CONTRACTS/required-checks.tsv" --private "$PG" | grep -v "^acme/core${TAB}gate\$" > "$CFG/bin/required-checks.tsv"
+sh "$R/bin/gate-required-generate.sh" --core "$R/contracts/required-checks.tsv" --private "$PG" | grep -v "^acme/core${TAB}gate\$" > "$CFG/bin/required-checks.tsv"
 t_has "a core row dropped from the installed list is not behind, it is edited: modified" "$(drift "$PG")" "FAIL: modified required-checks.tsv ("
 t_done

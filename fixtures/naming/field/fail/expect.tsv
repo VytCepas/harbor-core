@@ -1,0 +1,10 @@
+# fixtures/naming/field/fail (harbor#1001) — fields that MUST go red. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# COLUMNS  name <TAB> rule ids
+name	rule
+created_ts	name.field
+RunTime	name.field
+timeout_seconds	name.field
+size_kb	name.field
+user_uid	name.field
+is_enabled_flag	name.field
+run-at	name.field

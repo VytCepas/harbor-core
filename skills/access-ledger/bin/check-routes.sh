@@ -1,7 +1,7 @@
 #!/bin/sh
 # check-routes.sh — assert the access register is a checkable instrument, not a diary.
 #
-# The access register (the private layer's access/, CONTRACTS/access-card.md) holds the route
+# The access register (the private layer's access/, contracts/access-card.md) holds the route
 # documents describing how to reach each system and as whom. Measured 2026-08-29: not one of them carries a runnable check, and
 # nothing anywhere runs them. So the `verified:` claim in a route can only ever
 # age, and the first thing a session does with a route is re-derive it by hand —
@@ -40,18 +40,18 @@
 set -eu
 
 # THE CARD STORE IS PRIVATE DATA (harbor#1149): a card names accounts, so it lives in the private
-# layer and core ships the format only. The ONE resolver is `bin/roots.sh --access` ($ACCESS_DIR
+# layer and core ships the format only. The ONE resolver is `bin/scope-roots.sh --access` ($ACCESS_DIR
 # wins); this file never spells the location. With no register the answer is exit 2 and a line saying
 # nothing was checked, never a pass: a gate that found no cards and said "ok" would be the vacuous
 # green the old ACCESS_DIR row in roots.tsv warned about. An explicit [dir] needs no register.
 ACCESS_DIR_DEFAULT=''
 register_dir() {
   case "$0" in */*) _rh="${0%/*}" ;; *) _rh=. ;; esac
-  _rr="$_rh/../../../bin/roots.sh"   # run from a checkout; an installed copy asks the checkout
-  [ -f "$_rr" ] && [ -f "$_rh/../../../CONTRACTS/roots.tsv" ] || _rr="${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}/bin/roots.sh"
+  _rr="$_rh/../../../bin/scope-roots.sh"   # run from a checkout; an installed copy asks the checkout
+  [ -f "$_rr" ] && [ -f "$_rh/../../../contracts/roots.tsv" ] || _rr="${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}/bin/scope-roots.sh"
   if ACCESS_DIR_DEFAULT="$(sh "$_rr" --access)"; then return 0; fi
   printf 'check-routes: no access register, so NOTHING was checked and this is not a pass.\n' >&2
-  printf '              Pass a card directory, or create the private layer (harbor scope install, CONTRACTS/private-layer.md).\n' >&2
+  printf '              Pass a card directory, or create the private layer (harbor scope install, contracts/private-layer.md).\n' >&2
   exit 2
 }
 want_dir() { [ -n "${1:-}" ] || register_dir; }   # <the optional [dir] argument>

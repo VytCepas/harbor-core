@@ -8,7 +8,7 @@
 #   sh bin/standard-rename.sh --import <mapping.tsv> [--wave W] [--old PATH]...   add a mapping's rename rows to renames.tsv
 #   sh bin/standard-rename.sh --pr-body [--report F] [--before R] [--after R] [--refs harbor#N]   the six-line PR body
 #   <rows>: --id <id> and --wave <W>, each repeatable · --root <dir> (default this checkout)
-#   --report <file> (default <root>/build/rename-report.tsv) · --before/--after: bin/suite-run.sh --results files
+#   --report <file> (default <root>/build/rename-report.tsv) · --before/--after: bin/test-suite-run.sh --results files
 #   exit 0 residual 0 · 1 residual left, or a row or the box half refused · 2 usage · 3 unchecked
 # platform: macOS-only — --live reads a ~/Library/LaunchAgents twin and its reload hint names `launchctl bootout/bootstrap`; Linux has no LaunchAgents, so no twin is found there (harbor#618).
 #
@@ -19,20 +19,20 @@
 # A TRUE REFERENCE, NOT A SUBSTRING. The token is the old basename when the file stays in its directory
 # and its name has an extension (`guard-bash.sh`), else the whole old path (`bin/harbor`). It counts only
 # when neither neighbour is [A-Za-z0-9_-], the rule harbor#961's mapping counted inbound_refs with. So
-# `bin/harbor` inside `bin/harbor-clean.sh` is left alone, though the graph (bin/graph-gen.sh) lists that
+# `bin/harbor` inside `bin/housekeeping-clean.sh` is left alone, though the graph (bin/doc-graph-generate.sh) lists that
 # line, because the graph keeps git grep -F's substring semantics; the report names every such site. A
 # basename another tracked path also carries falls back to the whole path. A whole path is never the
 # tail of another tracked path's name: right after that path's directory (`vendor/archify/` for
 # `bin/x.mjs`) it names the other file, so it is no reference and no ambiguity; after a bare `/`, `./` or
 # `$ROOT/` it still counts, which is how CODEOWNERS and shell code spell a root path. A whole path another
 # tracked path carries any other way (as its start, or after a non-slash) is still ambiguous and refuses
-# the row. A bare mention of such a path inside the other file's own directory (`PLAN.md` in skills/topology/EVALS, beside
-# EVALS/PLAN.md), or on a line that also names the other file by its longer path, means that file: it is left as written,
+# the row. A bare mention of such a path inside the other file's own directory (`docs/generated/plan.md` in skills/topology/EVALS, beside
+# EVALS/docs/generated/plan.md), or on a line that also names the other file by its longer path, means that file: it is left as written,
 # listed in the report as `relative` and warned, and is no residual. The graph indexes full paths only, so bare-name references
 # (floor-install.sh's `floor-hook.sh guard-bash.sh`) are found by this scan; the report counts them.
 #
 # A CASE-ONLY MOVE goes in two steps. A case-insensitive disk finds `contracts/README.md` where
-# `CONTRACTS/README.md` is, so "already exists" is judged by what the disk holds under that exact spelling
+# `contracts/README.md` is, so "already exists" is judged by what the disk holds under that exact spelling
 # and by whether it is the file moving; the move itself goes through a temporary name, and the disk's
 # directory is renamed to the index's spelling once nothing tracked is left under the old one.
 # A directory tracked in both spellings after a move is reported: it is one directory on such a disk.
@@ -41,7 +41,7 @@
 # relative symlink to the new file, tracked and named in the report. A link serves whatever reaches the old path (an exec, a
 # `source`, an interpreter, a read), which a forwarder that `exec`s would not. Every reference in the repo is still rewritten to
 # the new name; the shim is for what the repo cannot reach (a deployed hook, a PATH link, another checkout). Its exemptions.tsv
-# row stays while it lives. For a bin/*.sh, lint wants the old name in a CONTRACTS/cli.md table and in CONTRACTS/idle-tools.txt, so
+# row stays while it lives. For a bin/*.sh, lint wants the old name in a contracts/cli.md table and in contracts/idle-tools.txt, so
 # the shim carries one marked line in each (written and removed with it; a register the tree lacks is not invented).
 # Past the date, --plan and --residual list it and --apply deletes it; a date already past when the row first runs writes none.
 # A case-only move has no shim: it would be the file itself.
@@ -67,13 +67,13 @@
 # command, a deployed copy older than the rename. renames.tsv itself is the one place an old name stays.
 # The work log (memory-store) is a dated record: counted, never rewritten.
 #
-# PYTHON CORE, like graph-gen.sh, and for the same fit reason: overlapping byte-level regex with
+# PYTHON CORE, like doc-graph-generate.sh, and for the same fit reason: overlapping byte-level regex with
 # lookbehind over every tracked file, and JSON hook rewriting; POSIX tools have neither.
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 SRC="$(CDPATH= cd -- "$SRC" && pwd -P)"
-. "$SRC/log-lib.sh"
+. "$SRC/library-log.sh"
 LOG_FD=2; log_init standard-rename
 
 usage() { sed -n '2,13p' "$SRC/standard-rename.sh" | sed 's/^# \{0,1\}//'; }
@@ -126,7 +126,7 @@ fi
 BOX=""; IL_BK=""
 if [ -n "$BOXARGS" ]; then
   case "$MODE" in plan|apply|residual) ;; *) _usage_error "a target goes with --plan, --apply or --residual" ;; esac
-  . "$SRC/install-lib.sh"
+  . "$SRC/deploy-install-lib.sh"
   eval "il_parse $BOXARGS $([ "$APPLY" = 1 ] && printf -- --apply)"
   il_target
   BOX="$IL_TARGET"
@@ -280,8 +280,8 @@ def case_collisions(paths, news):
 
 # ── shims: with remove_by set, the old path is a relative symlink to the new one until that date
 SHIM_MARK = 'forwarding shim (harbor#996 %s)'
-IDLE_REG = 'CONTRACTS/idle-tools.txt'
-CLI_REG = 'CONTRACTS/cli.md'
+IDLE_REG = 'contracts/idle-tools.txt'
+CLI_REG = 'contracts/cli.md'
 RX_BIN_TOOL = re.compile(r'^bin/[^/]+\.sh$')
 CLI_HEAD = '| Script | Why it is not a verb |'
 
@@ -311,7 +311,7 @@ def write_shim(root, r):
     return 'symlink'
 
 # What lint asks of a bin/*.sh that is a shim. Its content, shebang and --help are the new file's (it is a link to it), but
-# lint.cli-contract wants the NAME in a CONTRACTS/cli.md table and lint.tool-has-caller wants a caller or an idle line, and
+# lint.cli-contract wants the NAME in a contracts/cli.md table and lint.tool-has-caller wants a caller or an idle line, and
 # the codemod has just rewritten every caller. So a live shim carries one line in each, marked with its row id; both go
 # with the shim. A register the tree lacks is not invented.
 def lint_rows(r):
@@ -619,8 +619,8 @@ def lint_findings(a, surface, name):
     return [l for l in dec(r.stdout).splitlines() if l[:2] in ('A\t', 'V\t')]
 
 def graph(a):
-    """(edges, inputs) from bin/graph-gen.sh, built now over this root."""
-    r = subprocess.run(['sh', os.path.join(a['src'], 'graph-gen.sh'), '--root', a['root'], '--stdout'], capture_output=True)
+    """(edges, inputs) from bin/doc-graph-generate.sh, built now over this root."""
+    r = subprocess.run(['sh', os.path.join(a['src'], 'doc-graph-generate.sh'), '--root', a['root'], '--stdout'], capture_output=True)
     if r.returncode != 0:
         return None, {}
     edges, inputs = [], {}
@@ -1044,7 +1044,7 @@ def run(a):
         rpt.append(('row', r['id'], r['old'], r['new'], r['surface'], r['wave'], r['tok'], r['rep'], state))
     # The graph's view of each pending path, before it moves: every site is a reference or a substring.
     if edges is None:
-        log('WARN', 'bin/graph-gen.sh did not build, so the graph cross-check was skipped', 'sh bin/graph-gen.sh --stdout, and read the error')
+        log('WARN', 'bin/doc-graph-generate.sh did not build, so the graph cross-check was skipped', 'sh bin/doc-graph-generate.sh --stdout, and read the error')
     else:
         for r in pending:
             node = 'harbor:' + r['old']
@@ -1461,7 +1461,7 @@ def prbody(a):
     if b is not None and f is not None:
         newly = sorted(s for s, v in f.items() if v == 'fail' and b.get(s) != 'fail')
         cnt = lambda t: '%d/%d' % (sum(1 for v in t.values() if v == 'pass'), len(t))
-        tested = 'suite ledger before %s pass, after %s pass (`bin/suite-run.sh --results`); residual %d.' % (cnt(b), cnt(f), len(res))
+        tested = 'suite ledger before %s pass, after %s pass (`bin/test-suite-run.sh --results`); residual %d.' % (cnt(b), cnt(f), len(res))
     else:
         newly = None
         tested = 'no suite ledger was given, so the suites are UNTESTED here; residual %d.' % len(res)

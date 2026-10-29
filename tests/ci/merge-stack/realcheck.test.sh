@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# harbor merge-stack with the REAL bin/merge-check.sh beside it (harbor#1060): the stub gh answers branch protection (403, 404,
+# harbor merge-stack with the REAL bin/gate-merge-check.sh beside it (harbor#1060): the stub gh answers branch protection (403, 404,
 # 200) and the PR's check rows, so what a repo must do to opt in is pinned to merge-check's actual behaviour, not to a stub.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/ci/merge-stack/fixture.sh"
@@ -80,64 +80,64 @@ prbranch
 t_eq "...and on the PR's own branch" 0 "$(run "$M/bin/gate-merge-stack.sh")"
 t_eq "...whose merge deletes main's security row" "$(printf "$ONE")" "$(ms_file main .agents/required-checks.tsv)"
 
-t_section "rows only in CONTRACTS/required-checks.tsv on origin (harbor's shape): read from origin in BOTH layouts (r4 #1) (red-proof)"
+t_section "rows only in contracts/required-checks.tsv on origin (harbor's shape): read from origin in BOTH layouts (r4 #1) (red-proof)"
 # merge-check's own fallback is the file beside it: from a checkout's bin/ (how `harbor merge-stack` runs) that is the working tree
 BOTH='suite\tpass\t1m\thttps://example.invalid/1\nsecurity\tpass\t1m\thttps://example.invalid/2\n'
-harborish() { # <check rows> [checkout] — origin lists suite + security in CONTRACTS/, no .agents file; [checkout] puts the tool in the repo
-  ms_world; mkdir -p "$W/CONTRACTS"; printf "$TWO" > "$W/CONTRACTS/required-checks.tsv"
-  if [ "${2:-}" = checkout ]; then mkdir -p "$W/bin"; cp "$T_ROOT/CONTRACTS/merge-stack-union.txt" "$W/CONTRACTS/"
-    cp "$T_ROOT/bin/gate-merge-stack.sh" "$T_ROOT/bin/gate-merge-stack-resolve.py" "$T_ROOT/bin/merge-check.sh" "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/ci-lost-job.sh" "$W/bin/"; fi
+harborish() { # <check rows> [checkout] — origin lists suite + security in contracts/, no .agents file; [checkout] puts the tool in the repo
+  ms_world; mkdir -p "$W/contracts"; printf "$TWO" > "$W/contracts/required-checks.tsv"
+  if [ "${2:-}" = checkout ]; then mkdir -p "$W/bin"; cp "$T_ROOT/contracts/merge-stack-union.txt" "$W/contracts/"
+    cp "$T_ROOT/bin/gate-merge-stack.sh" "$T_ROOT/bin/gate-merge-stack-resolve.py" "$T_ROOT/bin/gate-merge-check.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/ci-lost-job.sh" "$W/bin/"; fi
   wg add -A; wg commit -q -m rows; wg push -q origin "$MS_DEF" 2>/dev/null; git -C "$H" pull -q --ff-only 2>/dev/null
   ms_branch feat; ms_add a.txt one; ms_push feat; ms_pr 11 feat "feat a"; ms_plan "$PL" 11
   printf '%s' "$GH403" > "$MS_FIX/protection.out"; echo 1 > "$MS_FIX/protection.rc"; printf "$1" > "$MS_FIX/checks.tsv"; }
-dropped_on_pr() { wg checkout -q feat; printf "$ONE" > "$W/CONTRACTS/required-checks.tsv"; wg commit -qam 'drop security'
+dropped_on_pr() { wg checkout -q feat; printf "$ONE" > "$W/contracts/required-checks.tsv"; wg commit -qam 'drop security'
   ms_push feat; git -C "$H" fetch -q origin; git -C "$H" checkout -q -B feat origin/feat; }
 CK="$H/bin/gate-merge-stack.sh"
 harborish "$BOTH" checkout
-t_eq "origin has no .agents file, only CONTRACTS/required-checks.tsv" "" "$(ms_file main .agents/required-checks.tsv)"
+t_eq "origin has no .agents file, only contracts/required-checks.tsv" "" "$(ms_file main .agents/required-checks.tsv)"
 t_eq "checkout layout, every listed check green: merges, exit 0" 0 "$(run "$CK")"
 t_eq "...the PR is merged" MERGED "$(cat "$MS_FIX/pr/11.state")"
-t_has "...gated on origin's CONTRACTS file" "$(OUT)" "required checks: CONTRACTS/required-checks.tsv as origin/main holds it"
+t_has "...gated on origin's CONTRACTS file" "$(OUT)" "required checks: contracts/required-checks.tsv as origin/main holds it"
 harborish "$SEC" checkout
 t_eq "checkout layout, a listed check skips itself: refused" 1 "$(run "$CK")"
-harborish "$SEC" checkout; printf "$ONE" > "$H/CONTRACTS/required-checks.tsv"
+harborish "$SEC" checkout; printf "$ONE" > "$H/contracts/required-checks.tsv"
 t_eq "checkout layout, an uncommitted edit drops the row: still refused (probe n5 A)" 1 "$(run "$CK")"
 t_eq "...the PR is still open" OPEN "$(cat "$MS_FIX/pr/11.state")"
 harborish "$SEC" checkout; dropped_on_pr
 t_eq "checkout layout, on the PR's branch whose commit drops the row: still refused (probe n5 B)" 1 "$(run "$CK")"
-t_eq "...and main still lists both checks" "$(printf "$TWO")" "$(ms_file main CONTRACTS/required-checks.tsv)"
-# the installed layout (5b.9): runtime-install's copy, with no CONTRACTS/ above its bin/
+t_eq "...and main still lists both checks" "$(printf "$TWO")" "$(ms_file main contracts/required-checks.tsv)"
+# the installed layout (5b.9): runtime-install's copy, with no contracts/ above its bin/
 CFG="$T_TMP/cfg"; rm -rf "$CFG"; mkdir -p "$CFG"; printf '{}' > "$CFG/settings.json"
-env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/runtime-install.sh" --apply --dir "$CFG" >"$T_TMP/install.out" 2>&1
-t_eq "runtime-install --apply into a sandbox: exit 0, no CONTRACTS/ above bin/" "0 no" "$? $([ -e "$CFG/CONTRACTS" ] && echo yes || echo no)"
+env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/deploy-runtime-install.sh" --apply --dir "$CFG" >"$T_TMP/install.out" 2>&1
+t_eq "runtime-install --apply into a sandbox: exit 0, no contracts/ above bin/" "0 no" "$? $([ -e "$CFG/contracts" ] && echo yes || echo no)"
 harborish "$BOTH"
 t_eq "installed layout, every listed check green: merges, exit 0 (probe n8)" 0 "$(run "$CFG/bin/gate-merge-stack.sh")"
 t_eq "...the PR is merged" MERGED "$(cat "$MS_FIX/pr/11.state")"
 harborish "$SEC"
 t_eq "installed layout, a listed check skips itself: refused" 1 "$(run "$CFG/bin/gate-merge-stack.sh")"
-harborish "$SEC"; printf "$ONE" > "$H/CONTRACTS/required-checks.tsv"
+harborish "$SEC"; printf "$ONE" > "$H/contracts/required-checks.tsv"
 t_eq "installed layout, an uncommitted edit drops the row: still refused" 1 "$(run "$CFG/bin/gate-merge-stack.sh")"
 harborish "$SEC"; dropped_on_pr
 t_eq "installed layout, on the PR's branch whose commit drops the row: still refused" 1 "$(run "$CFG/bin/gate-merge-stack.sh")"
 t_eq "...the PR is still open" OPEN "$(cat "$MS_FIX/pr/11.state")"
 on_main() { wg checkout -q "$MS_DEF"; "$@"; wg commit -qam "$*"; wg push -q origin "$MS_DEF" 2>/dev/null; }
-two_agents() { mkdir -p "$W/.agents"; printf "$TWO" > "$W/.agents/required-checks.tsv"; printf "$ONE" > "$W/CONTRACTS/required-checks.tsv"; wg add -A; }
+two_agents() { mkdir -p "$W/.agents"; printf "$TWO" > "$W/.agents/required-checks.tsv"; printf "$ONE" > "$W/contracts/required-checks.tsv"; wg add -A; }
 harborish "$SEC"; on_main two_agents
-t_eq "origin's .agents file counts beside its CONTRACTS/ one: its security row is required, so refused" 1 "$(run "$CFG/bin/gate-merge-stack.sh")"
+t_eq "origin's .agents file counts beside its contracts/ one: its security row is required, so refused" 1 "$(run "$CFG/bin/gate-merge-stack.sh")"
 t_has "...gated on the .agents file" "$(OUT)" "required checks: .agents/required-checks.tsv as origin/main holds it"
-harborish "$BOTH"; on_main git -C "$W" rm -q CONTRACTS/required-checks.tsv
-mkdir -p "$H/CONTRACTS"; printf "$TWO" > "$H/CONTRACTS/required-checks.tsv"
+harborish "$BOTH"; on_main git -C "$W" rm -q contracts/required-checks.tsv
+mkdir -p "$H/contracts"; printf "$TWO" > "$H/contracts/required-checks.tsv"
 t_eq "origin declares nothing, a working-tree file does: refused, only protection could gate" 1 "$(run "$CFG/bin/gate-merge-stack.sh")"
 t_has "...saying origin declares none" "$(OUT)" "origin/main declares none"
 ms_mutant "M30b merge-check is not handed the list, from the checkout" 's/^      HARBOR_REQUIRED_CHECKS="\$RCTMP"; export HARBOR_REQUIRED_CHECKS$/      :/'
-harborish "$SEC" checkout; cp "$M/bin/gate-merge-stack.sh" "$H/bin/gate-merge-stack.sh"; printf "$ONE" > "$H/CONTRACTS/required-checks.tsv"
+harborish "$SEC" checkout; cp "$M/bin/gate-merge-stack.sh" "$H/bin/gate-merge-stack.sh"; printf "$ONE" > "$H/contracts/required-checks.tsv"
 t_eq "the mutant, run from the checkout, merges on the uncommitted edit" 0 "$(run "$CK")"
-harborish "$BOTH"; cp "$T_ROOT/bin/merge-check.sh" "$T_ROOT/bin/ci-lost-job.sh" "$M/bin/"
+harborish "$BOTH"; cp "$T_ROOT/bin/gate-merge-check.sh" "$T_ROOT/bin/ci-lost-job.sh" "$M/bin/"
 t_eq "...and the installed mutant refuses harbor's green PR (merge-check has no file beside it)" 1 "$(run "$M/bin/gate-merge-stack.sh")"
 t_section "a repo is judged by the UNION of its own declaration and harbor's rows for it (r5 #3, #1139, probe n11) (red-proof)"
 # a Flow-shaped repo: GitHub answers 404 "Branch not protected"; harbor's file beside the tool lists its two checks
 flow() { # <check rows> [the repo's own .agents rows on origin]
-  ms_world; ms_real_check; printf 'acme/widgets\tunit-test\nacme/widgets\tgrammar-test\n' > "$MS_INST/CONTRACTS/required-checks.tsv"
+  ms_world; ms_real_check; printf 'acme/widgets\tunit-test\nacme/widgets\tgrammar-test\n' > "$MS_INST/contracts/required-checks.tsv"
   [ -z "${2:-}" ] || optin "$2"
   ms_branch feat; ms_add a.txt one; ms_push feat; ms_pr 11 feat "feat a"; ms_plan "$PL" 11
   printf '%s' "$GH404" > "$MS_FIX/protection.out"; echo 1 > "$MS_FIX/protection.rc"; printf "$1" > "$MS_FIX/checks.tsv"; }
@@ -162,11 +162,11 @@ flow "$DBT2"; t_eq "M56: the green Flow PR is refused again (n11 c)" 1 "$(run "$
 flow "$DBT1" 'acme/widgets\tunit-test\n'; t_eq "M56: the weaker repo file merges the PR that dropped a job (n11 e)" 0 "$(run "$M/bin/gate-merge-stack.sh")"
 # harbor's rows from a harbor CHECKOUT come from its origin's default branch, never its working tree (r4 #1's rule)
 HB="$T_TMP/harbor.git"; HC="$T_TMP/hc"
-harbor_checkout() { rm -rf "$HB" "$HC"; git init -q --bare "$HB"; git clone -q "$HB" "$HC" 2>/dev/null; mkdir -p "$HC/bin" "$HC/CONTRACTS"
-  cp "$T_ROOT/bin/gate-merge-stack.sh" "$T_ROOT/bin/gate-merge-stack-resolve.py" "$T_ROOT/bin/merge-check.sh" "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/ci-lost-job.sh" "$HC/bin/"
-  cp "$T_ROOT/CONTRACTS/merge-stack-union.txt" "$HC/CONTRACTS/"; printf 'acme/widgets\tunit-test\nacme/widgets\tgrammar-test\n' > "$HC/CONTRACTS/required-checks.tsv"
+harbor_checkout() { rm -rf "$HB" "$HC"; git init -q --bare "$HB"; git clone -q "$HB" "$HC" 2>/dev/null; mkdir -p "$HC/bin" "$HC/contracts"
+  cp "$T_ROOT/bin/gate-merge-stack.sh" "$T_ROOT/bin/gate-merge-stack-resolve.py" "$T_ROOT/bin/gate-merge-check.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/ci-lost-job.sh" "$HC/bin/"
+  cp "$T_ROOT/contracts/merge-stack-union.txt" "$HC/contracts/"; printf 'acme/widgets\tunit-test\nacme/widgets\tgrammar-test\n' > "$HC/contracts/required-checks.tsv"
   git -C "$HC" add -A; git -C "$HC" commit -q -m harbor; git -C "$HC" push -q origin HEAD 2>/dev/null
-  printf 'acme/widgets\tunit-test\n' > "$HC/CONTRACTS/required-checks.tsv"; }   # an uncommitted edit drops the grammar row
+  printf 'acme/widgets\tunit-test\n' > "$HC/contracts/required-checks.tsv"; }   # an uncommitted edit drops the grammar row
 flow "$DBT1"; harbor_checkout
 t_eq "from a harbor checkout whose working tree dropped the grammar row: still refused" 1 "$(run "$HC/bin/gate-merge-stack.sh")"
 t_has "...on the row its origin holds" "$(OUT)" "grammar-test"

@@ -8,7 +8,7 @@
 # A mutation that did not apply fails too, so a proof cannot pass for want of a change.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 
-BIN="$T_ROOT/bin/status-obligations.sh"; KINDS="$T_ROOT/CONTRACTS/obligation-kinds.tsv"
+BIN="$T_ROOT/bin/status-obligations.sh"; KINDS="$T_ROOT/contracts/obligation-kinds.tsv"
 W="$T_TMP/w"; EV="$W/ev"; OB="$W/ob"; FIX="$W/fix"; STUBS="$T_TMP/stubs"; MUTD="$T_TMP/mut"
 NOW=2026-10-06T02:00:00Z; NOWE="$(jq -n -r --arg t "$NOW" '$t | fromdateiso8601')"; N=0; D=2026-10-06.jsonl
 STUB_FIX="$FIX"; export STUB_FIX
@@ -50,7 +50,7 @@ echo "$*" >> "$STUB_FIX/sessions.calls"
 cat "$STUB_FIX/sessions.json"
 EOF
 chmod +x "$STUBS"/*
-ln -sf "$T_ROOT/bin/log-lib.sh" "$MUTD/log-lib.sh"; ln -sf "$T_ROOT/bin/fs-lib.sh" "$MUTD/fs-lib.sh"; ln -sf "$T_ROOT/bin/event-bus.sh" "$MUTD/event-bus.sh"
+ln -sf "$T_ROOT/bin/library-log.sh" "$MUTD/library-log.sh"; ln -sf "$T_ROOT/bin/library-fs.sh" "$MUTD/library-fs.sh"; ln -sf "$T_ROOT/bin/event-bus.sh" "$MUTD/event-bus.sh"
 
 fresh() { rm -rf "$W"; mkdir -p "$EV" "$OB" "$FIX/sweep"; N=0; NOW=2026-10-06T02:00:00Z; READ_TO=""; BUDGET=""; FAULT=""; ONOVER=""; }
 ev() { # <ts> <kind> <subject> [data-json]
@@ -441,7 +441,7 @@ fsn() { # <obligation dir> — the real refresher against a fake producer, every
     HARBOR_STATUS_OBLIGATION_GH="$STUBS/gh" HARBOR_STATUS_OBLIGATION_CLAUDE="$STUBS/claude" HARBOR_STATUS_OBLIGATION_SESSIONS="$STUBS/sessions" \
     HARBOR_STATUS_OBLIGATION_HOUSEKEEPING="$FSN/none.jsonl" PATH="$FSN/other:$PATH" \
     ${FSN_TO:+HARBOR_STATUS_OBLIGATION_READ_TIMEOUT="$FSN_TO"} ${FSN_BUDGET:+HARBOR_STATUS_OBLIGATION_BUDGET="$FSN_BUDGET"} \
-    sh "$T_ROOT/bin/fleet-snapshot-refresh.sh" >/dev/null 2>&1
+    sh "$T_ROOT/bin/status-fleet-snapshot-refresh.sh" >/dev/null 2>&1
 }
 t_eq "no real gh, claude or launchctl was touched before the refresher ran" no "$([ -e "$T_TMP/touched" ] && echo yes || echo no)"
 fsn "$OB"; rc=$?
@@ -461,14 +461,14 @@ t_eq "and costs it no more than the budget (took ${_dt}s)" yes "$([ "$_dt" -lt 2
 t_eq "the row the hung read could not judge stays open" open "$(cur pr:VytCepas/harbor#21 state)"
 
 t_section "the INSTALLED layout: runtime-install ships the script and its register, and launchd's copy folds, caches and files a receipt (harbor#1115)"
-# Every case above runs the checkout, where ../CONTRACTS sits beside bin/ and HARBOR_STATUS_OBLIGATION_KINDS is set. launchd
-# runs ~/.claude/bin/fleet-snapshot-refresh.sh, which `>/dev/null || true`s this script: a copy that is not there, or cannot find its
+# Every case above runs the checkout, where ../contracts sits beside bin/ and HARBOR_STATUS_OBLIGATION_KINDS is set. launchd
+# runs ~/.claude/bin/status-fleet-snapshot-refresh.sh, which `>/dev/null || true`s this script: a copy that is not there, or cannot find its
 # register, fails with no output, no cache and no receipt. So this installs into a sandbox dir and runs THAT, with no KINDS knob.
 INST="$W/inst"; ICACHE="$W/icache"; IOB="$W/iob"; mkdir -p "$INST"; printf '{}' > "$INST/settings.json"   # the fixtures above stay: no `fresh`, which wipes $W
-env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/runtime-install.sh" --apply --dir "$INST" >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/deploy-runtime-install.sh" --apply --dir "$INST" >/dev/null 2>&1
 t_eq "runtime-install ships status-obligations.sh" yes "$([ -x "$INST/bin/status-obligations.sh" ] && echo yes || echo no)"
 t_eq "...and its register, beside it in bin/" yes "$([ -f "$INST/bin/obligation-kinds.tsv" ] && cmp -s "$KINDS" "$INST/bin/obligation-kinds.tsv" && echo yes || echo no)"
-t_eq "...with no new top-level CONTRACTS/ in the config dir" no "$([ -e "$INST/CONTRACTS" ] && echo yes || echo no)"
+t_eq "...with no new top-level contracts/ in the config dir" no "$([ -e "$INST/contracts" ] && echo yes || echo no)"
 rm -f "$FIX/gh.hang"; printf MERGED > "$FIX/pr-22"   # the bus still holds the PR opened above
 inst_run() { # <config dir> — the installed refresher, every source a stub, no register knob
   env CLAUDE_CONFIG_DIR="$1" HARBOR_CACHE_DIR="$ICACHE" HARBOR_ORCH_BIN="$FSN/orch" HARBOR_FLEET_FILE="$FSN/fleet.yaml" \
@@ -476,7 +476,7 @@ inst_run() { # <config dir> — the installed refresher, every source a stub, no
     HARBOR_EVENT_DIR="$EV" HARBOR_OBLIGATION_DIR="$IOB" HARBOR_STATUS_OBLIGATION_NOW="$NOW" \
     HARBOR_STATUS_OBLIGATION_GH="$STUBS/gh" HARBOR_STATUS_OBLIGATION_CLAUDE="$STUBS/claude" HARBOR_STATUS_OBLIGATION_SESSIONS="$STUBS/sessions" \
     HARBOR_STATUS_OBLIGATION_HOUSEKEEPING="$FSN/none.jsonl" PATH="$FSN/other:$PATH" \
-    sh "$1/bin/fleet-snapshot-refresh.sh" >/dev/null 2>&1
+    sh "$1/bin/status-fleet-snapshot-refresh.sh" >/dev/null 2>&1
 }
 rm -rf "$IOB" "$ICACHE"; inst_run "$INST"; rc=$?
 t_eq "the installed refresher exits 0" 0 "$rc"

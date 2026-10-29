@@ -127,7 +127,7 @@ case "${1:---help}" in
     sed -n '3,7p' "$0" | sed 's/^# \{0,1\}//'
     ;;
   *)
-    # EXIT 2 ON AN UNKNOWN FLAG, matching hook-replay.sh and skills-install.sh.
+    # EXIT 2 ON AN UNKNOWN FLAG, matching eval-hook-replay.sh and skill-install.sh.
     # It printed help and exited 0, so a typo in a wired hook would have looked
     # like success — the same vacuous-gate shape skill-catalog.sh's header records.
     printf '  FAIL: govern-token: unknown flag %s\n' "$1" >&2

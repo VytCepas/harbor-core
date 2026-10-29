@@ -1,13 +1,14 @@
 # fixtures/naming/bin/fail (harbor#950) — bin/ names that MUST go red. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
 # COLUMNS  name <TAB> rule ids
 name	rule
-install-drift.sh	name.family
+install-drift-x.sh	name.family
 floor-verify.sh	name.family,name.alias
 guard_bash.sh	name.family,name.alias,name.separator
 audit_triage.py	name.separator
-harbor-clean.sh	name.family,name.alias
-docs-gen.sh	name.family,name.abbreviation
+harbor-clean-x.sh	name.family,name.alias
+docs-gen-x.sh	name.family,name.abbreviation
 Lint-Name.sh	name.case
 audit-triage-2026-10-04.sh	name.date
 audit-triage.v2.sh	name.extension
 audit-2fa.sh	name.word
+admission-qzxv.sh	name.word-unregistered

@@ -7,7 +7,7 @@
 #
 # WHAT IT ANSWERS. "How long until CI is done" — asked 2026-09-23 while three
 # runners worked through two overlapping runs, when the answer took five API
-# reads and a schedule worked out by hand. fleet-glyph.sh renders it as ⏳N ·~Mm.
+# reads and a schedule worked out by hand. status-fleet-glyph.sh renders it as ⏳N ·~Mm.
 #
 # THE REPOS ARE DERIVED, NEVER LISTED. Every running runner container's
 # RUNNER_URL, and every <runner>/.runner under HARBOR_RUNNERS_DIR (default
@@ -24,7 +24,7 @@
 # no history takes the longest known typical, so an unknown job never shortens it.
 #
 # ABSOLUTE TIMES ONLY. The cache stores the epoch each repo should be free (`eta`),
-# never a countdown: fleet-glyph.sh subtracts the clock at print time, as row 1
+# never a countdown: status-fleet-glyph.sh subtracts the clock at print time, as row 1
 # does for the rate-limit reset (harbor#84), because the harness can skip or cancel
 # any tick and a stored countdown is wrong by however long it was left standing.
 #
@@ -47,7 +47,7 @@
 # runners endpoint needs repo admin; when it cannot be read the stall is UNKNOWN
 # (`idle: null`) and the estimate above is untouched.
 #
-# Run by fleet-snapshot-refresh.sh every 300s. Writes atomically; on any failure
+# Run by status-fleet-snapshot-refresh.sh every 300s. Writes atomically; on any failure
 # the previous cache is kept. POSIX sh, jq, gh (HARBOR_GH swaps in a fake).
 set -eu
 
@@ -56,7 +56,7 @@ case "${1:-}" in
              printf '\n(flags, if any, are in the header above and the source below.)\n'
              exit 0 ;;
 esac
-. "$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)/log-lib.sh"
+. "$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)/library-log.sh"
 log_init ci-queue
 PRINT=0
 case "${1:-}" in

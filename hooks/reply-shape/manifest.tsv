@@ -1,4 +1,4 @@
-# Why it is wired this way (moved from bin/runtime-install.sh, harbor#1272):
+# Why it is wired this way (moved from bin/deploy-runtime-install.sh, harbor#1272):
 # reply-shape.sh (harbor#952) — advisory Stop hook, operator-facing systemMessage only. Same off
 key	value
 engine	reply-shape
