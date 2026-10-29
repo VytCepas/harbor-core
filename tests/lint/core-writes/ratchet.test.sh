@@ -3,15 +3,15 @@
 # Each case is a throwaway git checkout with its own layers.tsv.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/checks/lint-fixture.sh"
-CW() { HARBOR_SCOPE_ROOT="$1" sh "$T_ROOT/bin/lint-core-writes.sh" "$2" 2>&1; }
-red() { HARBOR_SCOPE_ROOT="$1" sh "$T_ROOT/bin/lint-core-writes.sh" --check >/dev/null 2>&1; echo $?; }
+CW() { HARBOR_ROOT="$1" sh "$T_ROOT/bin/lint-core-writes.sh" "$2" 2>&1; }
+red() { HARBOR_ROOT="$1" sh "$T_ROOT/bin/lint-core-writes.sh" --check >/dev/null 2>&1; echo $?; }
 mk() { # <name> <baseline> → 5 hits: bin/a.sh (out.txt, b.txt, state.tsv, d/), bin/b.sh (>> stray.log); every other shape adds none
   _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/contracts" "$_d/docs" "$_d/tests" "$_d/DEV"
   printf 'path\tlayer\tnote\nbin/\tcore\t\ncontracts/\tcore\t\ndocs/\tcore\t\ntests/\tcore\t\n.gitignore\tcore\t\nDEV/\tdev\t\n' > "$_d/contracts/layers.tsv"
   printf 'path\ttarget\treason\nbin/allowed.sh\t*\tthe operator asked for the file\n' > "$_d/contracts/core-writes-allow.tsv"
   printf '/build/\n' > "$_d/.gitignore"
   cat > "$_d/bin/a.sh" <<'EOF'
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}}"
+ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
 echo x > "$ROOT/out.txt"
 cp src "$ROOT/b.txt"
 OUT="${BASE_X:-$ROOT/state.tsv}"; printf 'r\n' >> "$OUT"
@@ -65,7 +65,7 @@ t_eq "below is still green" "0" "$(red "$D")"
 t_has "...and asks for a lower baseline" "$OUT" "lower contracts/lint-core-writes-baseline.txt to 6"
 D="$(mk nobase x)"; t_eq "a non-numeric baseline is red" "1" "$(red "$D")"
 mkdir -p "$T_TMP/nogit"
-t_exit "a non-checkout inspected nothing and is not a pass" 2 env HARBOR_SCOPE_ROOT="$T_TMP/nogit" sh "$T_ROOT/bin/lint-core-writes.sh" --check
+t_exit "a non-checkout inspected nothing and is not a pass" 2 env HARBOR_ROOT="$T_TMP/nogit" sh "$T_ROOT/bin/lint-core-writes.sh" --check
 
 t_section "growth is red, in a new file that was never added"
 D="$(mk grow 6)"; printf 'ROOT=$(cd "$(dirname "$0")/.." && pwd)\ntee "$ROOT/new.out" < /dev/null\n' > "$D/bin/new.sh"

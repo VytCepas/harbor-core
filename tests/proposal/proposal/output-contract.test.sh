@@ -6,7 +6,7 @@
 P="$T_ROOT/bin/proposal.sh"; R="$T_TMP/repo"; mkdir -p "$R/bin"
 git -C "$R" init -q; git -C "$R" config user.email t@t; git -C "$R" config user.name t; git -C "$R" config commit.gpgsign false
 printf 'v1\n' > "$R/bin/thing.sh"; git -C "$R" add -A >/dev/null; git -C "$R" commit -qm base
-run() { HARBOR_SCOPE_REPO="$R" sh "$P" "$@" >"$T_TMP/out" 2>"$T_TMP/err"; echo "exit $?"; }
+run() { HARBOR_REPO="$R" sh "$P" "$@" >"$T_TMP/out" 2>"$T_TMP/err"; echo "exit $?"; }
 OUT() { cat "$T_TMP/out"; }; ERR() { cat "$T_TMP/err"; }
 after_fail() { awk '/^  FAIL:/ { f = 1; next } f { print; exit }' "$T_TMP/err"; }
 

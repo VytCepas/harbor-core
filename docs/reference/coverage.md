@@ -139,8 +139,8 @@ skill posts to.
 2026-08-02.** What landed is a launchd-scheduled probe in POSIX sh: no resident
 daemon, no `localhost:31337`, no menubar app (the statusline glyph is already
 that surface), no voice. Harbor was already running a launchd job
-(`com.harbor.status.fleet-snapshot`), so the scheduling pattern was proven here before
-E started; `com.harbor.alert.probe` is the second.
+(`com.harbor.fleet-snapshot`), so the scheduling pattern was proven here before
+E started; `com.harbor.pulse` is the second.
 
 This file's own sentence is what settled it. The de-platforming applied to
 skills removed the *callers* (`curl localhost:31337/notify`), not the service,
@@ -180,7 +180,7 @@ give the `Research` skill a multi-vendor panel; Claude Code has first-class
 subagents and the `Workflow` tool, which is the same fan-out without four API
 keys billed outside the subscription. This is the one place where the
 "different machinery" verdict genuinely holds, unlike the four it was wrongly
-applied to (see `docs/reports/rejected-approaches.md` DE-10).
+applied to (see `docs/decisions/rejected-approaches.md` DE-10).
 
 **What does NOT come free with our subagents** is upstream's
 `UrlVerificationProtocol` — already taken, see [docs/reference/citations.md](./citations.md).
@@ -233,7 +233,7 @@ already written down as open.
 | **`BudgetCheck`** | *"backpressure against always-on context re-accretion. Without a ceiling those files regrow: proposals auto-append, ISAs accrete, rules stack"* | **A risk Harbor is actively walking into.** L2 adds `CLAUDE.md` + `TELOS` + `IDENTITY` to every session and nothing bounds them. Upstream hit this and built a ceiling; we have not noticed it yet. |
 | **`SessionHarvester`** | extracts learnings from `~/.claude/projects/` transcripts into `LEARNING/` | **VOID by owner decision 2026-08-05** (M4). Its value is transcript CONTENT, refused twice — DE-16 for the durable corpus and the standing "never persist a distilled copy" rule for the digest. The safe residue is the transcript INDEX, and `hooks/memory-harvest/memory-harvest.sh` (D1) already reads it. Aggravating fact: `LEARNING/*.md` is inside `worklog-push.sh`'s allowlist, so its output would have been published. |
 | **`LearningPatternSynthesis`** | *"aggregate ratings into actionable patterns… recurring patterns… synthesis reports for continuous improvement"* | **VOID by owner decision 2026-08-05** (M6). Every input is accounted for: `SatisfactionCapture` has no ticket and no rating surface exists, `SessionHarvester` is void, and the one real signal — ledger recurrence — is already ranked by M5's FC-5, which also excludes the verifier's own probe traffic. A synthesis step over a signal nobody captures. |
-| **`FailureCapture`** | full-context failure analysis | The substrate the self-heal question was really about. Upstream's `HookHealer` heals one class; **this** is the part that notices a failure worth healing. **BUILT 2026-08-04** — `bin/audit-triage.sh` (M5), and deliberately NARROWER than upstream's name: it judges the guard-decision ledger, it does not capture full context. A durable store of command text is refused by owner decision (`docs/reports/rejected-approaches.md` DE-16) and the ledger is redacted by construction, so "full context" is unavailable on purpose. It reports and never repairs. |
+| **`FailureCapture`** | full-context failure analysis | The substrate the self-heal question was really about. Upstream's `HookHealer` heals one class; **this** is the part that notices a failure worth healing. **BUILT 2026-08-04** — `bin/audit-triage.sh` (M5), and deliberately NARROWER than upstream's name: it judges the guard-decision ledger, it does not capture full context. A durable store of command text is refused by owner decision (`docs/decisions/rejected-approaches.md` DE-16) and the ledger is redacted by construction, so "full context" is unavailable on purpose. It reports and never repairs. |
 
 #### Take if cheap — real value, no urgency
 
@@ -266,7 +266,7 @@ if gitleaks proves insufficient.
 
 `Philosophy.md`, `SelfHealing.md`, `VerificationExpanded.md`. `docs/reference/provenance.md`
 records dropping every pointer to `UPSTREAM/RULES/*` by name rather than
-repointing — see `docs/reports/rejected-approaches.md` DE-05 for why. Their *content* was handled
+repointing — see `docs/decisions/rejected-approaches.md` DE-05 for why. Their *content* was handled
 separately, and unevenly:
 
 | File | Status |

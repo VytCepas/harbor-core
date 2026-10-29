@@ -9,7 +9,7 @@
 #                                       green but says to lower the baseline when it is below
 #
 # A WRITE is, on a non-comment line of a core shell script, a redirect (> >>), tee, touch, mkdir, or the last argument of
-# mv, cp, install or ln, whose target is $ROOT or $HARBOR_SCOPE_ROOT, or a variable the same file assigns from a path under one
+# mv, cp, install or ln, whose target is $ROOT or $HARBOR_ROOT, or a variable the same file assigns from a path under one
 # of them (NAME="$ROOT/x", NAME="${V:-$ROOT/x}"). Not a hit: a target .gitignore covers (it cannot be staged), a file the core
 # export tracks (a diff, reviewed like any edit), a mkdir of a directory the tree tracks. Not followed: a path built through a
 # variable that copies $ROOT (B=$ROOT; "$B/x").
@@ -19,7 +19,7 @@
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
+ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
 ALLOW="${CORE_WRITES_ALLOW:-$ROOT/contracts/core-writes-allow.tsv}"
 BASE="${CORE_WRITES_BASELINE:-$ROOT/contracts/lint-core-writes-baseline.txt}"
 . "$SRC/library-log.sh"
@@ -59,12 +59,10 @@ function resolve(s,   n, r) { # a word naming a tree path: the literal path unde
   for (n in N) { r = try(s, n); if (r != "\001") return (N[n] == "" ? r : N[n] r) }
   return "\001"
 }
-FNR == 1 { delete N; N["ROOT"] = ""; N["HARBOR_SCOPE_ROOT"] = ""; N["HARBOR_ROOT"] = "" }
+FNR == 1 { delete N; N["ROOT"] = ""; N["HARBOR_ROOT"] = "" }
 /^[ \t]*#/ { next }
 {
   line = $0
-  # harbor#961 W5: the dual read ${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-}} names the tree as either name does, until 2026-11-15
-  gsub(/\$\{HARBOR_SCOPE_ROOT:-\$\{HARBOR_ROOT(:-)?\}\}/, "$HARBOR_SCOPE_ROOT", line)
   # A variable assigned from a path under the tree. The right-hand side may nest it: NAME="${V:-$ROOT/x}".
   ns = split(line, SEG, ";")
   for (k = 1; k <= ns; k++) {
@@ -73,8 +71,8 @@ FNR == 1 { delete N; N["ROOT"] = ""; N["HARBOR_SCOPE_ROOT"] = ""; N["HARBOR_ROOT
       lhs = substr(seg, 1, RLENGTH - 1); sub(/^[ \t]*(export +|local +|readonly +)?/, "", lhs)
       rhs = substr(seg, RLENGTH + 1); sub(/;.*/, "", rhs)
       # A ROOT that is not derived from the own place of the script (gcloud-creds: ~/.config/gcloud) is not the tree.
-      if (lhs == "ROOT") { if (rhs ~ /(\.\.|pwd|HARBOR_SCOPE_ROOT|HARBOR_ROOT|rev-parse|HERE|SRC|\$0)/) N["ROOT"] = ""; else if (rhs !~ /^["\x27]*$/) delete N["ROOT"] }
-      if (lhs != "ROOT" && lhs != "HARBOR_SCOPE_ROOT" && lhs != "HARBOR_ROOT" && match(rhs, /^["\x27]?(\$\{[A-Za-z_0-9]+:-)?\$\{?(ROOT|HARBOR_SCOPE_ROOT|HARBOR_ROOT)\}?\//)) {
+      if (lhs == "ROOT") { if (rhs ~ /(\.\.|pwd|HARBOR_ROOT|rev-parse|HERE|SRC|\$0)/) N["ROOT"] = ""; else if (rhs !~ /^["\x27]*$/) delete N["ROOT"] }
+      if (lhs != "ROOT" && lhs != "HARBOR_ROOT" && match(rhs, /^["\x27]?(\$\{[A-Za-z_0-9]+:-)?\$\{?(ROOT|HARBOR_ROOT)\}?\//)) {
         w = rhs; sub(/^["\x27]?(\$\{[A-Za-z_0-9]+:-)?/, "", w); r = resolve(w)
         if (r != "\001" && r != "") N[lhs] = r
       }
@@ -112,7 +110,7 @@ FNR == 1 { delete N; N["ROOT"] = ""; N["HARBOR_SCOPE_ROOT"] = ""; N["HARBOR_ROOT
 
 hits() { # file TAB target, one line per pair, sorted
   ( cd "$ROOT" && git ls-files --cached --others --exclude-standard ) | sort -u |
-    HARBOR_SCOPE_ROOT="$ROOT" sh "$SRC/scope-layers.sh" --core |
+    HARBOR_ROOT="$ROOT" sh "$SRC/scope-layers.sh" --core |
     grep -vE '^(tests|fixtures|vendor|docs)/' | grep -vE '\.(md|html|tsv|txt|json|jsonl|csv|py|ts|js|mjs)$' > "$T/files" || :
   : > "$T/code"
   while IFS= read -r f; do
@@ -120,7 +118,7 @@ hits() { # file TAB target, one line per pair, sorted
     printf '%s\n' "$f"
   done < "$T/files" > "$T/code"
   ( cd "$ROOT" && [ ! -s "$T/code" ] || xargs awk "$CAND" < "$T/code" ) | sort -u > "$T/cand"
-  ( cd "$ROOT" && git ls-files ) | HARBOR_SCOPE_ROOT="$ROOT" sh "$SRC/scope-layers.sh" --core > "$T/tcore" || :
+  ( cd "$ROOT" && git ls-files ) | HARBOR_ROOT="$ROOT" sh "$SRC/scope-layers.sh" --core > "$T/tcore" || :
   while IFS="$(printf '\t')" read -r f p; do
     # A file the core export tracks is rewritten as a diff, reviewed like any edit: never a stray untracked file.
     if grep -qxF -- "$p" "$T/tcore"; then continue; fi

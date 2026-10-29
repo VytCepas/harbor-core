@@ -43,7 +43,7 @@
 #             (CONSTITUTION §2.10), and it is harbor#163.
 set -eu
 
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}}"
+ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
 DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 # THE REPO'S NAME COMES FROM ITS MAIN WORKTREE (harbor#1149), never from $ROOT: run from inside a worktree,
 # $ROOT is that worktree and its basename would nest the new tree under .worktrees/<repo>-wt-<x>/.
@@ -51,7 +51,7 @@ DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 MAIN="$(git -C "$ROOT" worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p')"
 [ -n "$MAIN" ] || MAIN="$ROOT"
 REPO_NAME="$(basename -- "$MAIN")"
-BASE="${HARBOR_CI_BASE:-${HARBOR_BASE:-origin/main}}"
+BASE="${HARBOR_BASE:-origin/main}"
 APPLY=0; FORCE=0
 LOG_FD=2   # stdout is the verdict table and the gc plan; the log goes to stderr
 . "$DIR/library-log.sh"
@@ -185,7 +185,7 @@ verdict() { # <path> <sha> <branch> -> sets V and WHY
   # fundamental reason to keep it than "someone is using it right now".
   #
   # ${BASE#*/} strips ONLY the remote segment: origin/main -> main, and
-  # origin/release/2 -> release/2. When HARBOR_CI_BASE names a local branch carrying
+  # origin/release/2 -> release/2. When HARBOR_BASE names a local branch carrying
   # no slash the expansion is a no-op, which is what the second pattern is for.
   case "$3" in "${BASE#*/}"|"$BASE")
     WHY="$3 is the base branch — never session work"; return ;;
@@ -227,7 +227,7 @@ ROWS
       && { printf 'worktree: branch already exists: %s\n' "$ARG" >&2; exit 1; }
     _slug="$(printf '%s' "$ARG" | tr '/' '-')"
     # harbor#1149: worktrees live under $PORT_ROOT/.worktrees/<repo>/; the sibling `<repo>-wt-*` layout is legacy.
-    _pw="$(HARBOR_SCOPE_ROOT= HARBOR_ROOT= sh "$DIR/scope-roots.sh" --port-root)" || { echo "worktree: cannot resolve PORT_ROOT" >&2; exit 1; }
+    _pw="$(HARBOR_ROOT= sh "$DIR/scope-roots.sh" --port-root)" || { echo "worktree: cannot resolve PORT_ROOT" >&2; exit 1; }
     _dest="${_pw%/}/.worktrees/$REPO_NAME/$_slug"
     mkdir -p -- "$(dirname -- "$_dest")"
     [ -e "$_dest" ] && { printf 'worktree: already exists: %s\n' "$_dest" >&2; exit 1; }
@@ -260,7 +260,7 @@ ROWS
     # A bare name is tried in both layouts (harbor#1149): the new one first, then the legacy sibling.
     case "$_want" in
       */*) ;;
-      *) _pw="$(HARBOR_SCOPE_ROOT= HARBOR_ROOT= sh "$DIR/scope-roots.sh" --port-root 2>/dev/null || :)"
+      *) _pw="$(HARBOR_ROOT= sh "$DIR/scope-roots.sh" --port-root 2>/dev/null || :)"
          _want="${_pw%/}/.worktrees/$REPO_NAME/$ARG"
          [ -d "$_want" ] || _want="$(dirname -- "$MAIN")/$REPO_NAME-wt-$ARG" ;;
     esac

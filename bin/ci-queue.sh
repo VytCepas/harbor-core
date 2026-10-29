@@ -2,7 +2,7 @@
 # ci-queue.sh (harbor#657) — how long until this box's CI runners are free: the
 # jobs still to run, and when the last of them should finish, for the statusline.
 #
-#   sh ci-queue.sh            write $HARBOR_SCOPE_CACHE_DIR/ci-queue.json (default ~/.claude/cache)
+#   sh ci-queue.sh            write $HARBOR_CACHE_DIR/ci-queue.json (default ~/.claude/cache)
 #   sh ci-queue.sh --print    print one line per repo instead of writing the cache
 #
 # WHAT IT ANSWERS. "How long until CI is done" — asked 2026-09-23 while three
@@ -10,7 +10,7 @@
 # reads and a schedule worked out by hand. status-fleet-glyph.sh renders it as ⏳N ·~Mm.
 #
 # THE REPOS ARE DERIVED, NEVER LISTED. Every running runner container's
-# RUNNER_URL, and every <runner>/.runner under HARBOR_CI_RUNNERS_DIR (default
+# RUNNER_URL, and every <runner>/.runner under HARBOR_RUNNERS_DIR (default
 # ~/runners), names the repo it serves, and the number of runners per repo is the
 # parallelism the estimate schedules against.
 # Adding or removing a runner changes the estimate with no edit here.
@@ -48,7 +48,7 @@
 # (`idle: null`) and the estimate above is untouched.
 #
 # Run by status-fleet-snapshot-refresh.sh every 300s. Writes atomically; on any failure
-# the previous cache is kept. POSIX sh, jq, gh (HARBOR_TEST_GH swaps in a fake).
+# the previous cache is kept. POSIX sh, jq, gh (HARBOR_GH swaps in a fake).
 set -eu
 
 case "${1:-}" in
@@ -65,11 +65,11 @@ case "${1:-}" in
   *) log_fail "unknown option $1"; log_fix "sh $0 --help"; log_end || :; exit 2 ;;
 esac
 
-RUNNERS_DIR="${HARBOR_CI_RUNNERS_DIR:-${HARBOR_RUNNERS_DIR:-$HOME/runners}}"
-CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
+RUNNERS_DIR="${HARBOR_RUNNERS_DIR:-$HOME/runners}"
+CACHE_DIR="${HARBOR_CACHE_DIR:-$HOME/.claude/cache}"
 OUT="$CACHE_DIR/ci-queue.json"
-NOW="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
-GH="${HARBOR_TEST_GH:-${HARBOR_GH:-gh}}"
+NOW="${HARBOR_NOW:-$(date +%s)}"
+GH="${HARBOR_GH:-gh}"
 DOCKER="${HARBOR_DOCKER:-docker}"
 STALL_SEC="${HARBOR_CI_STALL_SEC:-600}"
 STALL_CONFIRM=240   # a second refresh, less jitter: 300s apart, never one sample

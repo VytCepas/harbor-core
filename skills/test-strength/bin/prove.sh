@@ -19,7 +19,7 @@
 #
 # Environment: PROVE_TARGETS  PROVE_WORK  PROVE_BUDGET (per-target seconds)
 #              PROVE_RUN_TIMEOUT (per-run seconds; this box has no timeout(1))
-#              PROVE_ALLOW_EXTERNAL  HARBOR_SCOPE_ROOT
+#              PROVE_ALLOW_EXTERNAL  HARBOR_ROOT
 #
 # WHY THIS EXISTS. skills/test-strength/SKILL.md states three checks and had no
 # mechanism, so nothing on this box could tell a checked suite from an unchecked
@@ -64,7 +64,7 @@
 #     sprintf("%c", 39).
 set -u
 
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd)}}"
+ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd)}"
 PROVE_TARGETS="${PROVE_TARGETS:-$ROOT/skills/test-strength/targets}"
 PROVE_WORK="${PROVE_WORK:-${TMPDIR:-/tmp}}"
 while :; do case "$PROVE_WORK" in */) PROVE_WORK="${PROVE_WORK%/}" ;; *) break ;; esac; done
@@ -151,7 +151,7 @@ usage() {
 # `command -v` whether a name resolves: the measured failure above was a name
 # that resolved and then exited 127.
 #
-# WHY EMPTINESS ITSELF IS NOT THE TEST: a legitimate HARBOR_SCOPE_ROOT may hold none
+# WHY EMPTINESS ITSELF IS NOT THE TEST: a legitimate HARBOR_ROOT may hold none
 # of the six directories below — the self-test's own fixture root does, and its
 # manifest is empty by construction — so an empty manifest cannot be treated as
 # a fault without refusing every self-test child run.
@@ -2102,7 +2102,7 @@ TT
     for _x in "$@"; do printf '%s\n' "$_x" >> "$D/targets/$_n.target"; done
   }
 
-  # HARBOR_SCOPE_ROOT POINTS AT THE FIXTURE DIR, NOT THE REPO. Two reasons, and both
+  # HARBOR_ROOT POINTS AT THE FIXTURE DIR, NOT THE REPO. Two reasons, and both
   # are load-bearing. It makes this loop genuinely portable — the child runs
   # never read the repo, so the skill self-proves wherever it is installed. And
   # it aims the read-only tripwire at the fixture tree: pointed at the repo, a
@@ -2110,7 +2110,7 @@ TT
   # would report the box rather than the engine.
   _case() { # _case <want-exit> <label> <grep-or-empty> <args...>
     _want="$1"; _lab="$2"; _need="$3"; shift 3
-    _out=$(HARBOR_SCOPE_ROOT="$D" PROVE_TARGETS="$D/targets" sh "$SELF" "$@" 2>&1); _got=$?
+    _out=$(HARBOR_ROOT="$D" PROVE_TARGETS="$D/targets" sh "$SELF" "$@" 2>&1); _got=$?
     _ok=1
     [ "$_got" = "$_want" ] || _ok=0
     if [ -n "$_need" ]; then printf '%s\n' "$_out" | /usr/bin/grep -q "$_need" || _ok=0; fi
@@ -2126,7 +2126,7 @@ TT
   _case 4 'A1 a checker that cannot fail is COULD-NOT-LOOK, never PROVEN' 'CANARY     SURVIVED' always-green
   _mk overbroad over.sh
   _case 3 'A2 an over-broad rule is CONTROL-RED' 'CONTROLS   0/1 green' overbroad
-  _out=$(HARBOR_SCOPE_ROOT="$D" PROVE_TARGETS="$D/targets" sh "$SELF" overbroad 2>&1)
+  _out=$(HARBOR_ROOT="$D" PROVE_TARGETS="$D/targets" sh "$SELF" overbroad 2>&1)
   if printf '%s\n' "$_out" | /usr/bin/grep -q '^  GENERATED'; then
     printf '  FAIL  A2 a recall figure exists beside a broken guard\n'; fail=$((fail + 1))
   else
@@ -2193,7 +2193,7 @@ TT
   _case 5 'B7c an unknown continuation key is REFUSED' 'unknown continuation key' badkey
 
   mkdir -p "$D/empty"
-  _out=$(HARBOR_SCOPE_ROOT="$D" PROVE_TARGETS="$D/empty" sh "$SELF" --all 2>&1); _got=$?
+  _out=$(HARBOR_ROOT="$D" PROVE_TARGETS="$D/empty" sh "$SELF" --all 2>&1); _got=$?
   if [ "$_got" = 5 ]; then printf '  PASS  B8 --all over an empty target dir is REFUSED\n'; pass=$((pass + 1))
   else printf '  FAIL  B8 --all over an empty target dir (exit %s, wanted 5)\n' "$_got"; fail=$((fail + 1)); fi
 
@@ -2229,7 +2229,7 @@ TT
 exit 0
 HG
   _mk hangs hang.sh
-  _out=$(HARBOR_SCOPE_ROOT="$D" PROVE_TARGETS="$D/targets" PROVE_RUN_TIMEOUT=2 sh "$SELF" hangs 2>&1); _got=$?
+  _out=$(HARBOR_ROOT="$D" PROVE_TARGETS="$D/targets" PROVE_RUN_TIMEOUT=2 sh "$SELF" hangs 2>&1); _got=$?
   if [ "$_got" = 4 ] && printf '%s\n' "$_out" | /usr/bin/grep -q 'PROVE_RUN_TIMEOUT'; then
     printf '  PASS  B14 a checker that never returns is killed and reported COULD-NOT-LOOK\n'; pass=$((pass + 1))
   else
@@ -2250,7 +2250,7 @@ HG
     for _p in $_left; do kill -9 "$_p" 2>/dev/null; done
   fi
 
-  _mkbudget=$(HARBOR_SCOPE_ROOT="$D" PROVE_TARGETS="$D/budget" PROVE_BUDGET=1 sh "$SELF" --lane fast 2>&1); _got=$?
+  _mkbudget=$(HARBOR_ROOT="$D" PROVE_TARGETS="$D/budget" PROVE_BUDGET=1 sh "$SELF" --lane fast 2>&1); _got=$?
   if [ "$_got" = 4 ] && printf '%s\n' "$_mkbudget" | /usr/bin/grep -q 'NOT RUN  over budget'; then
     printf '  PASS  B11 a target over PROVE_BUDGET is NOT RUN and never reads as fine\n'; pass=$((pass + 1))
   else
@@ -2306,7 +2306,7 @@ ST
   sed 's/^target        good$/target        a-scan/' "$D/targets/good.target" > "$D/scan/a-scan.target"
   printf 'scanner prove-absent-scanner prove-absent-scanner --run\n' >> "$D/scan/a-scan.target"
   sed 's/^target        good$/target        b-clean/' "$D/targets/good.target" > "$D/scan/b-clean.target"
-  _out=$(HARBOR_SCOPE_ROOT="$D" PROVE_TARGETS="$D/scan" sh "$SELF" --all --require-scanners 2>&1); _got=$?
+  _out=$(HARBOR_ROOT="$D" PROVE_TARGETS="$D/scan" sh "$SELF" --all --require-scanners 2>&1); _got=$?
   if [ "$_got" = 4 ] && printf '%s\n' "$_out" | /usr/bin/grep -q 'b-clean.*PROVEN'; then
     printf '  PASS  B21 --require-scanners does not leak an absent scanner onto the next target\n'; pass=$((pass + 1))
   else
@@ -2324,13 +2324,13 @@ ST
   printf '#!/bin/sh\nexit 127\n' > "$D/shim-sha/shasum";  chmod +x "$D/shim-sha/shasum"
   printf '#!/bin/sh\nexit 127\n' > "$D/shim-both/shasum"; chmod +x "$D/shim-both/shasum"
   printf '#!/bin/sh\nexit 127\n' > "$D/shim-both/cksum";  chmod +x "$D/shim-both/cksum"
-  _out=$(PATH="$D/shim-sha:$PATH" HARBOR_SCOPE_ROOT="$D" PROVE_TARGETS="$D/targets" PROVE_WORK="$D/skills/w" sh "$SELF" good 2>&1); _got=$?
+  _out=$(PATH="$D/shim-sha:$PATH" HARBOR_ROOT="$D" PROVE_TARGETS="$D/targets" PROVE_WORK="$D/skills/w" sh "$SELF" good 2>&1); _got=$?
   if [ "$_got" = 4 ] && printf '%s\n' "$_out" | /usr/bin/grep -q 'TRIPWIRE'; then
     printf '  PASS  B22 with shasum absent the tripwire still fires, on cksum\n'; pass=$((pass + 1))
   else
     printf '  FAIL  B22 tripwire went silent without shasum (exit %s, wanted 4)\n' "$_got"; fail=$((fail + 1))
   fi
-  _out=$(PATH="$D/shim-both:$PATH" HARBOR_SCOPE_ROOT="$D" PROVE_TARGETS="$D/targets" sh "$SELF" good 2>&1); _got=$?
+  _out=$(PATH="$D/shim-both:$PATH" HARBOR_ROOT="$D" PROVE_TARGETS="$D/targets" sh "$SELF" good 2>&1); _got=$?
   if [ "$_got" = 4 ] && printf '%s\n' "$_out" | /usr/bin/grep -q 'needs shasum or cksum'; then
     printf '  PASS  B23 with no hasher at all the run REFUSES rather than comparing two nothings\n'; pass=$((pass + 1))
   else
@@ -2470,7 +2470,7 @@ ST
   _report_word() { # $1 = report label, $2 = target -> the word printed after it
     # The exit code is deliberately not the assertion here: these cases are
     # about the WORD, and the exits are already asserted by C1/C2/A0/A1.
-    HARBOR_SCOPE_ROOT="$D" PROVE_TARGETS="$D/targets" sh "$SELF" "$2" 2>&1 \
+    HARBOR_ROOT="$D" PROVE_TARGETS="$D/targets" sh "$SELF" "$2" 2>&1 \
       | awk -v k="$1" '$1 == k { print $2; exit }'
   }
   _differ() { # _differ <label> <a> <b>

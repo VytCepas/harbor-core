@@ -23,12 +23,12 @@
 #   sources.json   what each source answered on the last reconcile: {"<source>": {"ok", "reason", "ts"}}, the
 #                  `sources` map of `harbor status obligations --json`. ok:false carries the reason; ts is the attempt.
 # SURFACES. Every fold or reconcile run ends by writing the two things the box reads, from current.json and sources.json:
-#   $HARBOR_SCOPE_CACHE_DIR/status-obligations.json   {at, live, overdue, overdue_since, unread, you}: the statusline's `OVERDUE N ·age`
+#   $HARBOR_CACHE_DIR/status-obligations.json   {at, live, overdue, overdue_since, unread, you}: the statusline's `OVERDUE N ·age`
 #                                               overdue_since is the epoch the OLDEST overdue row OPENED: the age of the work, not of its 4h deadline, which says nothing of when it ended
 #                                               and its YOU row; epochs, so the age is counted at print time (default ~/.claude/cache).
 #                                               `you` is up to 8 open rows the operator acts on, oldest first: the operator-owned
 #                                               intents (handoffs) and approvals (PRs left 2026-10-16), as {k: kind, o: overdue, t: label}
-#   $HARBOR_SCOPE_CACHE_DIR/checks/status.obligations.json   the check's receipt (docs/reference/checks.md row `status.obligations`): red over the
+#   $HARBOR_CACHE_DIR/checks/status.obligations.json   the check's receipt (docs/reference/checks.md row `status.obligations`): red over the
 #                                               ids of every row more than 24h past its deadline, else green; `lint-findings.sh
 #                                               reconcile` files red as `check/status.obligations`. The file is named for the id.
 # INPUT: $HARBOR_EVENT_DIR/YYYY-MM-DD.jsonl (default ~/.local/state/harbor/events), one event per line.
@@ -106,7 +106,7 @@ SNAP="$DIR/snapshot.json"
 NOW="${HARBOR_STATUS_OBLIGATION_NOW:-$(date -u '+%Y-%m-%dT%H:%M:%SZ')}"
 LEDGER_SKIPPED=0   # ledger lines this run skipped because they did not parse
 
-CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
+CACHE_DIR="${HARBOR_CACHE_DIR:-$HOME/.claude/cache}"
 RED_AFTER_S=86400   # a row this long past its deadline turns the receipt red (harbor#1050)
 
 command -v jq >/dev/null 2>&1 || {
@@ -610,7 +610,7 @@ live_rows() { # <source> — the subjects of live rows whose kind the register r
 read_sessions() {
   _to="$(slot)"; [ "$_to" -gt 0 ] || { src_set sessions false "read budget spent"; return 0; }
   if [ -n "$SESSIONS_BIN" ]; then _rc=0; _out="$(bounded "$_to" "$SESSIONS_BIN" --json </dev/null 2>/dev/null)" || _rc=$?
-  elif [ ! -d "${HARBOR_SESSION_REGISTRY_DIR:-${HARBOR_SESSIONS_DIR:-$CFG/sessions}}" ]; then src_set sessions false "no session registry on this box"; return 0
+  elif [ ! -d "${HARBOR_SESSIONS_DIR:-$CFG/sessions}" ]; then src_set sessions false "no session registry on this box"; return 0
   else _rc=0; _out="$(bounded "$_to" sh "$HERE/context-peers.sh" --json </dev/null 2>/dev/null)" || _rc=$?; fi
   [ "$_rc" -eq 0 ] || { src_set sessions false "$(why "$_rc" "$_to")"; return 0; }
   printf '%s' "$_out" | jq -e 'type == "array"' >/dev/null 2>&1 || { src_set sessions false "the registry read was not a list"; return 0; }

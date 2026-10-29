@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # M2 replay (harbor#44): the corpus builder, the runner and the labels. Hermetic: a synthetic
-# transcript tree through HARBOR_SESSION_TRANSCRIPTS, never the operator's store. R13 compares the REAL
+# transcript tree through HARBOR_TRANSCRIPTS, never the operator's store. R13 compares the REAL
 # live .helm-replay before and after the run, read (never written) before t_init sandboxes HOME.
 _rp_manifest() { if [ -e "$1" ]; then echo present; find "$1" -type f -exec cksum {} + 2>/dev/null | sort; else echo absent; fi; }
 REAL_RP="$HOME/.claude/.helm-replay"; REAL_RP_BEFORE="$(_rp_manifest "$REAL_RP")"
@@ -27,7 +27,7 @@ GHP='sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
   rec Write '{"file_path":"/tmp/notes.txt","content":"nothing secret here"}'
   rec Edit  '{"file_path":"/tmp/a.py","new_string":"print(1)"}'
 } > "$TR/session-1.jsonl"
-export HARBOR_SESSION_TRANSCRIPTS="$TMP/projects"
+export HARBOR_TRANSCRIPTS="$TMP/projects"
 build() { CLAUDE_CONFIG_DIR="$CFG" sh "$SRC/eval-replay-corpus.sh" "$@" 2>&1; }
 replay() { CLAUDE_CONFIG_DIR="$CFG" sh "$SRC/eval-replay.sh" "$@" 2>&1; }
 
@@ -135,7 +135,7 @@ t_has "R12 --labels prints the queue" "$r" 'adjudication queue'
 t_eq "R12 the queue reports leverage" yes "$(rx "$r" 'settles [1-9][0-9]* block')"
 
 t_section "R13-R15: isolation and the self-check"
-t_has "R13 the builder reads the fixture store" "$(build)" "source          ${HARBOR_SESSION_TRANSCRIPTS:-}"
+t_has "R13 the builder reads the fixture store" "$(build)" "source          $HARBOR_TRANSCRIPTS"
 t_eq "R13 the real live .helm-replay is unchanged by this run" "$REAL_RP_BEFORE" "$(_rp_manifest "$REAL_RP")"
 # R14: the SHIPPED eval-replay.sh beside a worker that drops records with an odd checksum, so the
 # run is partial (0 < GOT < IN) and deterministic. A short run must refuse to report.
@@ -173,7 +173,7 @@ _esc="$TMP/esc"; mkdir -p "$_esc/projects/p"
 _sch='postgres'; _cred='usrNAME123:pw\nq\tr\"s'
 printf '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Bash","input":{"command":"psql %s%s%s@dbhost.example"}}]}}\n' \
   "$_sch" '://' "$_cred" > "$_esc/projects/p/s.jsonl"
-HARBOR_SESSION_TRANSCRIPTS="$_esc/projects" CLAUDE_CONFIG_DIR="$CFG" \
+HARBOR_TRANSCRIPTS="$_esc/projects" CLAUDE_CONFIG_DIR="$CFG" \
   sh "$SRC/eval-replay-corpus.sh" --to "$_esc/c.jsonl" > "$_esc/build.log" 2>&1; _rc=$?
 t_eq "R16 the builder accepts an escape-carrying secret" 0 "$_rc"
 t_eq "R16 the scrubbed corpus is one valid JSON line" 1 "$(jq -c . "$_esc/c.jsonl" 2>/dev/null | wc -l | tr -d ' ')"

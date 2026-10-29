@@ -50,7 +50,7 @@
 # INTEGERS AND LABELS ONLY — THERE IS NO FREE-TEXT FIELD, AND THAT IS #293's
 # CONSTRAINT RATHER THAN A STYLE CHOICE. A `--note` was drafted and cut. The
 # ledger lives under $CFG/MEMORY, and `worklog-push.sh` sets
-# LOG_DIR="${HARBOR_MEMORY_LOG_DIR:-$CFG/MEMORY}" — so this file sits INSIDE the tree
+# LOG_DIR="${HARBOR_LOG_DIR:-$CFG/MEMORY}" — so this file sits INSIDE the tree
 # that gets staged for the private memory-store remote. It is safe today only by
 # extension: the allowlist is deny-by-default and its globs are
 # WORK/sessions/*/*.md, KNOWLEDGE/*.md, LEARNING/*.md, WISDOM/*.md, IDEAS.md,

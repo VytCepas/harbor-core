@@ -6,7 +6,7 @@
 TOOL="$T_ROOT/bin/status-plan-generate.sh"; P="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"
 PLAN="$P/tickets.md"; OUT="$P/derived.md"; : > "$P/present.txt"
 printf '## X · fixture\n\n**Z1 · built** — effort S\n- Evidence: %s\n\n**Z2 · not built** — effort S\n- Evidence: %s\n' "$P/present.txt" "$P/absent.txt" > "$PLAN"
-run() { HARBOR_STATUS_PLAN_SRC="${SRC:-$PLAN}" HARBOR_STATUS_PLAN_OUT="$OUT" sh "$TOOL" "$@" >"$P/out" 2>"$P/err"; echo "exit $?"; }
+run() { HARBOR_PLAN_SRC="${SRC:-$PLAN}" HARBOR_PLAN_OUT="$OUT" sh "$TOOL" "$@" >"$P/out" 2>"$P/err"; echo "exit $?"; }
 O() { cat "$P/out"; }; E() { cat "$P/err"; }
 after_fail() { awk '/^  FAIL:/ { f = 1; next } f { print; exit }' "$P/err"; }
 

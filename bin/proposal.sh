@@ -62,7 +62,7 @@ case "${1:-}" in
              exit 0 ;;
 esac
 DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
-ROOT="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-$(CDPATH= cd -- "$DIR/.." && pwd -P)}}"
+ROOT="${HARBOR_REPO:-$(CDPATH= cd -- "$DIR/.." && pwd -P)}"
 STORE="$ROOT/proposals"
 
 _sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }

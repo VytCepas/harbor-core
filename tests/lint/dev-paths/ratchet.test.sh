@@ -3,8 +3,8 @@
 # Each case is a throwaway git checkout with its own layers.tsv; the dev paths are made up.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/checks/lint-fixture.sh"
-DP() { HARBOR_SCOPE_ROOT="$1" sh "$T_ROOT/bin/lint-dev-paths.sh" "$2" 2>&1; }
-red() { HARBOR_SCOPE_ROOT="$1" sh "$T_ROOT/bin/lint-dev-paths.sh" --check >/dev/null 2>&1; echo $?; }
+DP() { HARBOR_ROOT="$1" sh "$T_ROOT/bin/lint-dev-paths.sh" "$2" 2>&1; }
+red() { HARBOR_ROOT="$1" sh "$T_ROOT/bin/lint-dev-paths.sh" --check >/dev/null 2>&1; echo $?; }
 mk() { # <name> <baseline> → 3 pairs: bin/a.sh (NOTES.md, DATA/), bin/b.py (NOTES.md); comments, docs, data, dev and allowed add none
   _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/contracts" "$_d/docs" "$_d/DATA" "$_d/tests/ok"
   printf 'path\tlayer\tnote\nbin/\tcore\t\ncontracts/\tcore\t\ndocs/\tcore\t\ntests/\tcore\t\nDATA/\tdev\t\nNOTES.md\tdev\t\n.gitignore\tcore\t\n' > "$_d/contracts/layers.tsv"
@@ -45,7 +45,7 @@ t_eq "below is still green" "0" "$(red "$D")"
 t_has "...and asks for a lower baseline" "$OUT" "lower contracts/lint-dev-paths-baseline.txt to 3"
 D="$(mk nobase x)"; t_eq "a non-numeric baseline is red" "1" "$(red "$D")"
 mkdir -p "$T_TMP/nogit"
-t_exit "a non-checkout inspected nothing and is not a pass" 2 env HARBOR_SCOPE_ROOT="$T_TMP/nogit" sh "$T_ROOT/bin/lint-dev-paths.sh" --check
+t_exit "a non-checkout inspected nothing and is not a pass" 2 env HARBOR_ROOT="$T_TMP/nogit" sh "$T_ROOT/bin/lint-dev-paths.sh" --check
 
 t_section "growth is red, in a new file that was never added"
 D="$(mk grow 3)"; printf 'cp x "$ROOT/DATA/y"\n' > "$D/bin/new.sh"

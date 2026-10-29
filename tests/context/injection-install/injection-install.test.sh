@@ -6,7 +6,7 @@
 # Then the install standard (harbor#765, #771): the interface, and what --remove or a rebuild takes out
 # lands in backups/inject-install/<TS>/ instead of being deleted.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY
+unset CLAUDECODE HARBOR_DEPLOY
 unset CLAUDE_CONFIG_DIR  # every call names its target with --dir or --live
 TOOL="$T_ROOT/bin/context-injection-install.sh"; T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"
 CFG="$T/cfg"; S="$CFG/settings.json"; mkdir -p "$CFG/bin"; printf '{"permissions":{"deny":[]}}\n' > "$S"
@@ -101,7 +101,7 @@ printf 'and one more instruction\n' >> "$FH/.claude/CLAUDE.md"; O="$(inst)"
 t_has "drifted: reports the drift" "$O" "DIFFER from the pin"
 t_has "drifted: offers the review step, as its fix" "$O" "  fix: sh $FH/.claude/bin/pin-instructions.sh --check --live"
 t_has "drifted: closes with the re-pin" "$O" "$NAG"
-O="$(HARBOR_DEPLOY_ACTIVE=1 inst)"
+O="$(HARBOR_DEPLOY=1 inst)"
 t_has "under deploy: the drift is still reported" "$O" "DIFFER from the pin"
 t_hasnt "under deploy: the re-pin is deploy's step and is not printed (harbor#285)" "$O" "$NAG"
 M9="$(mutant 's|elif il_run sh "$DIR/bin/pin-instructions.sh" --check >/dev/null 2>&1; then|elif false; then|' mut-nag.sh)"

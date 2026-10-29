@@ -9,7 +9,7 @@
 . "$T_ROOT/tests/lib/linux-sim.sh"; . "$(dirname "$0")/../../cli/libsecret-stub.sh"
 BIN="$T_ROOT/bin"; W="$T_TMP/work"; mkdir -p "$W"; OUT="$W/out"
 # bin/secret serves only a ref the access register names (harbor#1205): the probe names this suite uses are registered here.
-export ACCESS_DIR="$W/access"; mkdir -p "$ACCESS_DIR"; export HARBOR_SCOPE_ROOT="$T_ROOT"   # a mutant copy of secret reads the checkout's tables, not its own parent
+export ACCESS_DIR="$W/access"; mkdir -p "$ACCESS_DIR"; export HARBOR_ROOT="$T_ROOT"   # a mutant copy of secret reads the checkout's tables, not its own parent
 for _g in argvprobe stape-fresh stape-api meta-system-user-read; do printf '\n## %s\n\n    secret: %s\n' "$_g" "$_g" >> "$ACCESS_DIR/register.md"; done
 ACCT="${USER:-$(id -un)}"
 SKEY='FAKE-STAPE-KEY-0123456789abcdef'

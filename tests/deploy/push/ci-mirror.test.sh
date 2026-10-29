@@ -3,7 +3,7 @@
 # The "remote" is a local bare repo reached through an insteadOf rewrite of a github.com URL; gh is a stub over that bare
 # repo. No network. The "secret" below is a made-up word and the "token" a made-up string, never real.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset HARBOR_TEST_IN_SUITE HARBOR_IN_SUITE GH_TOKEN GITHUB_TOKEN
+unset HARBOR_IN_SUITE GH_TOKEN GITHUB_TOKEN
 GIT_AUTHOR_NAME=t; GIT_AUTHOR_EMAIL=t@t.test; GIT_COMMITTER_NAME=t; GIT_COMMITTER_EMAIL=t@t.test
 export GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
 REALGIT="$(command -v git)"

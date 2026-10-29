@@ -29,7 +29,7 @@ done
 # @no-suite globs here. Both halves: an unmatched glob stays literal in sh (2026-08-06).
 CWD="$T_TMP/cwd"; mkdir -p "$CWD/skills/example-skill" "$CWD/skills/measurement-debug" "$CWD/docs/generated"
 : > "$CWD/README.md"; : > "$CWD/docs/generated/status.md"
-sel() { _c="$1"; shift; ( cd "$CWD" && HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_CHANGED="$_c" sh "$SEL" "$@" ) 2>&1; }
+sel() { _c="$1"; shift; ( cd "$CWD" && HARBOR_ROOT="$R" HARBOR_CHANGED="$_c" sh "$SEL" "$@" ) 2>&1; }
 verdict() { sel "$1" --list | awk -v s="$2" '$2 == s { print $1; exit }'; }  # <changeset> <suite>
 runs() { sel "$1" --list | grep -c '^RUN'; }  # 5 = every fixture suite runs
 
@@ -61,7 +61,7 @@ t_has "…and says it is the selector's own input" "$(sel 'tests/test/suite-sele
 t_has "the unclassified fallback names the path" "$(sel 'newdir/thing.conf' --list)" 'newdir/thing.conf'
 R2="$T_TMP/root-nodecl"; mkdir -p "$R2/contracts" "$R2/bin"; cp "$R/contracts/suites.txt" "$R2/contracts/"
 t_eq "a missing suite-paths.txt stands nothing down" 5 \
-  "$( ( cd "$CWD" && HARBOR_SCOPE_ROOT="$R2" HARBOR_TEST_CHANGED='skills/example-skill/SKILL.md' sh "$SEL" --list ) 2>&1 | grep -c '^RUN')"
+  "$( ( cd "$CWD" && HARBOR_ROOT="$R2" HARBOR_CHANGED='skills/example-skill/SKILL.md' sh "$SEL" --list ) 2>&1 | grep -c '^RUN')"
 
 t_section "@no-suite classifies, it never suppresses"
 t_eq "docs/generated/status.md still selects the suite that declares it" RUN "$(verdict 'docs/generated/status.md' floor-test.sh)"
@@ -71,7 +71,7 @@ t_section "--run"
 GO="$T_TMP/gh-output"; GS="$T_TMP/gh-summary"; RO="$T_TMP/run.out"
 run() { # <changeset> <suite> → exit code; log in $RO
   : > "$GO"; : > "$GS"
-  ( cd "$CWD" && HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_CHANGED="$1" GITHUB_OUTPUT="$GO" GITHUB_STEP_SUMMARY="$GS" \
+  ( cd "$CWD" && HARBOR_ROOT="$R" HARBOR_CHANGED="$1" GITHUB_OUTPUT="$GO" GITHUB_STEP_SUMMARY="$GS" \
       sh "$SEL" --run "$2" ) > "$RO" 2>&1
   echo $?
 }
@@ -92,7 +92,7 @@ t_has "…and the run says what failed, and where, first" "$(cat "$RO")" "  FAIL
 t_has "…with the fix line the contract wants after a FAIL" "$(cat "$RO")" '  fix: none automatic — see bin/alpha-test.sh'
 t_has "…and a summary that agrees with the exit code" "$(cat "$RO")" 'suite-select: 0 ok, 1 failed, 0 warnings'
 _rt="$T_TMP/runner-temp"; mkdir -p "$_rt"
-( cd "$CWD" && HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_CHANGED='bin/x.sh' RUNNER_TEMP="$_rt" sh "$SEL" --run alpha-test.sh ) > "$RO" 2>&1
+( cd "$CWD" && HARBOR_ROOT="$R" HARBOR_CHANGED='bin/x.sh' RUNNER_TEMP="$_rt" sh "$SEL" --run alpha-test.sh ) > "$RO" 2>&1
 t_eq "under Actions the kept output is in RUNNER_TEMP, and named" "log: $_rt/alpha-test.sh.out" "$(tail -1 "$RO")"
 printf '#!/usr/bin/env sh\nprintf "alpha-test: 7 passed, 0 failed\\n"\n' > "$R/bin/alpha-test.sh"
 run 'bin/x.sh' alpha-test.sh >/dev/null
@@ -133,7 +133,7 @@ t_has "…naming it" "$(cat "$RO")" 'tests/scope/marker/marker.test.sh printed n
 t_eq "a floor part that prints no count fails" 1 "$(run 'bin/x.sh' tests/admission/baseline/quiet.test.sh)"
 t_eq "a moved suite that carries no count is not failed for it" 0 "$(run 'bin/x.sh' tests/other/plain-test.sh)"
 t_eq "--shard is retired: a leftover spelling is a usage error" 2 \
-  "$( ( cd "$CWD" && HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_CHANGED='bin/x.sh' sh "$SEL" --run floor-test.sh --shard 0/3 ) > "$RO" 2>&1; echo $?)"
+  "$( ( cd "$CWD" && HARBOR_ROOT="$R" HARBOR_CHANGED='bin/x.sh' sh "$SEL" --run floor-test.sh --shard 0/3 ) > "$RO" 2>&1; echo $?)"
 t_has "…that names the retirement" "$(cat "$RO")" '--shard was retired in harbor#727'
 
 t_section "--sum: one job's suite counts (harbor#727)"
@@ -161,7 +161,7 @@ printf '# decl\nalways-test.sh always\nalpha-test.sh bin/*\nbeta-test.sh docs/*\
 : > "$G/bin/a.sh"; : > "$G/bin/test-suite-run.sh"; : > "$G/docs/d.txt"; : > "$G/newdir/old.conf"
 gq init -q -b main; gq add -A; gq commit -q -m base
 glane() { gq checkout -q -B lane main; "$@"; gq add -A; gq commit -q -m lane; }  # <edit-fn>: one lane commit
-gsel() { ( cd "$CWD" && HARBOR_SCOPE_ROOT="$G" HARBOR_CI_BASE=main sh "$SEL" --list ) 2>&1; }
+gsel() { ( cd "$CWD" && HARBOR_ROOT="$G" HARBOR_BASE=main sh "$SEL" --list ) 2>&1; }
 gv() { gsel | awk -v s="$1" '$2 == s { print $1; exit }'; }  # <suite> → RUN|SKIP
 app() { printf 'gamma-test.sh\n' >> "$G/contracts/suites.txt"; printf 'gamma-test.sh gamma/*%s\n' "${1:-}" >> "$G/contracts/suite-paths.txt"; mkdir -p "$G/gamma"; : > "$G/gamma/g.sh"; }
 glane app
@@ -226,7 +226,7 @@ glane move_floor
 t_eq "moving a declared file into a newly classified directory still selects the old path's declarers" RUN "$(gv alpha-test.sh)"
 gq checkout -q main
 t_eq "a changeset naming the manifest while git sees no change in it runs everything" RUN \
-  "$( ( cd "$CWD" && HARBOR_SCOPE_ROOT="$G" HARBOR_CI_BASE=main HARBOR_TEST_CHANGED='contracts/suites.txt' sh "$SEL" --list ) 2>&1 | awk '$2 == "alpha-test.sh" { print $1 }')"
+  "$( ( cd "$CWD" && HARBOR_ROOT="$G" HARBOR_BASE=main HARBOR_CHANGED='contracts/suites.txt' sh "$SEL" --list ) 2>&1 | awk '$2 == "alpha-test.sh" { print $1 }')"
 other_self() { app; echo 'echo x' >> "$G/bin/test-suite-run.sh"; }  # a pure addition, to a file that is not APPENDABLE
 glane other_self
 t_eq "appended rows beside another selector input run everything" RUN "$(gv beta-test.sh)"
@@ -241,7 +241,7 @@ gq checkout -q -- docs/d.txt; : > "$G/docs/new.txt"
 t_eq "an untracked new file selects its declarer" RUN "$(gv beta-test.sh)"
 t_eq "…and only it" SKIP "$(gv alpha-test.sh)"
 t_eq "an unreachable base runs everything, whatever the working tree" RUN \
-  "$( ( cd "$CWD" && HARBOR_SCOPE_ROOT="$G" HARBOR_CI_BASE=no-such-ref sh "$SEL" --list ) 2>&1 | awk '$2 == "alpha-test.sh" { print $1 }')"
+  "$( ( cd "$CWD" && HARBOR_ROOT="$G" HARBOR_BASE=no-such-ref sh "$SEL" --list ) 2>&1 | awk '$2 == "alpha-test.sh" { print $1 }')"
 rm -f "$G/docs/new.txt"; gq checkout -q main
 t_eq "a clean tree on the base itself still runs everything" RUN "$(gv alpha-test.sh)"
 
@@ -251,7 +251,7 @@ t_has "a workflow is still the selector's own input" "$(sel '.github/workflows/g
 t_has "an unknown .github/ file is still unclassified" "$(sel '.github/dependabot.yml' --list)" 'unclassified'
 
 t_section "the real contracts/suite-paths.txt"
-real() { HARBOR_TEST_CHANGED="$1" sh "$SEL" --list 2>&1; }
+real() { HARBOR_CHANGED="$1" sh "$SEL" --list 2>&1; }
 N_MAN="$(grep -cvE '^[[:space:]]*(#|$)' "$T_ROOT/contracts/suites.txt")"
 t_eq "the real manifest lists suites" yes "$([ "$N_MAN" -gt 0 ] && echo yes || echo no)"
 t_eq "every real manifest suite reaches a verdict" "$N_MAN" "$(real 'skills/example-skill/SKILL.md' | grep -cE '^(RUN|SKIP)')"

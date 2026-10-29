@@ -36,7 +36,7 @@ An agent has no working-memory limit, so the human argument for a monolith
   the ones missed.
 - **Blast radius is bounded by the file, not by the intent.** An edit to fix one
   rule in a 425-line guard can silently alter a sibling rule sharing the same
-  variable — recorded, with receipts, in DE-01 (`docs/reports/rejected-approaches.md`).
+  variable — recorded, with receipts, in DE-01 (`docs/decisions/rejected-approaches.md`).
 - **Compute is all-or-nothing at the module boundary.** You re-run what you
   cannot isolate.
 
@@ -210,7 +210,7 @@ drive a split that widens the interface.
 ## Rejected framings
 
 Recorded because each is a plausible next proposal, and
-`docs/reports/rejected-approaches.md` is for strategies while this is for *definitions*
+`docs/decisions/rejected-approaches.md` is for strategies while this is for *definitions*
 — the confusion is cheaper to prevent here, beside the word it would corrupt.
 
 - **Depth as the ratio of implementation lines to interface lines** (Ousterhout's

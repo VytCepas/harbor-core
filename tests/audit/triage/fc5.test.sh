@@ -36,9 +36,9 @@ recn 2 "$F5MIX" bash block mutate-aimed-surface "2026-07-01T12:00:00Z" "$D_REAL"
 recn 1 "$F5MIX" bash block mutate-aimed-surface "2026-08-02T12:00:00Z" "$D_REAL"; seal "$F5MIX"
 t_eq "two old blocks and one yesterday still fire" yes "$(has_rule "$F5MIX" FC-5)"
 t_has "with the all-history count" "$(subj_of "$F5MIX" FC-5)" "worst x3"
-HARBOR_AUDIT_TRIAGE_NOW=not-a-date  # fail loud: an unreadable clock never makes a finding disappear
+HARBOR_FC_NOW=not-a-date  # fail loud: an unreadable clock never makes a finding disappear
 t_eq "an unresolvable clock reports the stale recurrence" yes "$(has_rule "$F5OLD" FC-5)"
-HARBOR_AUDIT_TRIAGE_NOW=2026-08-03
+HARBOR_FC_NOW=2026-08-03
 
 t_section "FC-5 stays green on the verifier's own probe traffic"
 t_eq "a probe subject is derived from floor-verify.sh" yes "$([ -n "$PROBE_SUBJ" ] && echo yes || echo no)"

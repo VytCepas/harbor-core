@@ -4,16 +4,15 @@
 #
 #   sh scope-roots.sh --list         every row, resolved against this box
 #   sh scope-roots.sh --get <VAR>    one resolved path, for a script to consume
-#   sh scope-roots.sh --aliases      old TAB new, the renamed rows --get answers by their old names until 2026-11-15 (harbor#961 W5)
 #   sh scope-roots.sh --repos        each governed repo once: <name> TAB <resolved checkout> (harbor#829)
 #   sh scope-roots.sh --check        every ${VAR:-...} default matches, honours PORT_ROOT, is registered; a shared path has a reason
 #   sh scope-roots.sh --repo <id>    one repo's checkout from the registry (PORT_ROOT/<id> with no registry; exit 1, empty, when a registry lacks it) (harbor#966)
 #   sh scope-roots.sh --remote <id>  one repo's clone URL from the registry's remote column; exit 1, empty, with no registry, no such row, or remote '-' (harbor#966)
 #   sh scope-roots.sh --get <VAR>    (above) follows repos.tsv for a REPOS row: the registry's path replaces the row's first segment (harbor#966)
-#   sh scope-roots.sh --registry-check   every repos.tsv row valid: id, path and symlinks inside PORT_ROOT, kind, topology and interaction known; an optional 7th column is a free note (`proposed`: a guessed value awaiting a yes)
+#   sh scope-roots.sh --registry-check   every repos.tsv row valid: id, path and symlinks inside PORT_ROOT, kind, topology and interaction known
 #   sh scope-roots.sh --topology <id>    one repo's topology TAB interaction mode from the registry ('-' TAB '-' on a four-column row); exit 1, empty, with no registry or no such row (harbor#966)
 #   sh scope-roots.sh --platform-ids     the platform's own repos, one id per line: registry rows of a platform kind (control-plane, scaffolder,
-#                                    fleet-controller), else the roots table's HARBOR_SCOPE_REPO / _SCAFFOLDER / _FLEET_CONTROLLER rows (harbor#966)
+#                                    fleet-controller), else the roots table's HARBOR_REPO / _SCAFFOLDER / _FLEET_CONTROLLER rows (harbor#966)
 #   sh scope-roots.sh --port-root | --private   the workspace root, the private layer's directory
 #   sh scope-roots.sh --access       the access register (<private>/access, or $ACCESS_DIR); exit 1, empty, when there is none
 #   sh scope-roots.sh --inject       the private rules (<private>/context-rules, else the old <private>/inject.d); exit 1, empty, when there is none
@@ -49,28 +48,16 @@ set -eu
 # dirname call empty, `cd -- ""` silently stays put, and SRC becomes whatever
 # the SESSION's cwd happened to be (harbor#810, #813).
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
-TABLE="${HARBOR_SCOPE_ROOTS_TABLE:-${HARBOR_ROOTS_TABLE:-$ROOT/contracts/roots.tsv}}"
+ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
+TABLE="${HARBOR_ROOTS_TABLE:-$ROOT/contracts/roots.tsv}"
 # Installed (harbor#966): no contracts/ above bin/, so the table ships beside this file as roots.tsv.
-[ -f "$TABLE" ] || [ -n "${HARBOR_SCOPE_ROOTS_TABLE:-${HARBOR_ROOTS_TABLE:-}}" ] || ! [ -f "$SRC/roots.tsv" ] || TABLE="$SRC/roots.tsv"
+[ -f "$TABLE" ] || [ -n "${HARBOR_ROOTS_TABLE:-}" ] || ! [ -f "$SRC/roots.tsv" ] || TABLE="$SRC/roots.tsv"
 # contracts/logging.md channel 1. LOG_FD=2: --get and --list print DATA on stdout (a value, a
 # table), and --check's success line is that same protocol — every log-lib line stays on stderr.
 . "$SRC/library-log.sh"
 LOG_FD=2
 
 [ -f "$TABLE" ] || { echo "roots: no table at $TABLE" >&2; exit 2; }
-
-# harbor#961 W5: the roots that took registered names (standards/naming/renames.tsv), old TAB new. Until 2026-11-15 an
-# old name is still asked for (a sibling repo, a pack's shims.tsv, a private plist's @NAME@) and still read as an
-# override when the new one is unset: the dual-read window. Past it, delete the line and the old name is refused.
-W5_ALIASES='HARBOR_ORCHESTRATOR	HARBOR_SCOPE_FLEET_CONTROLLER
-HARBOR_PROJECT_INIT	HARBOR_SCOPE_SCAFFOLDER
-HARBOR_REPO	HARBOR_SCOPE_REPO
-HARBOR_FLEET_FILE	HARBOR_SCOPE_FLEET_FILE
-HARBOR_LOCAL_BIN	HARBOR_SCOPE_LOCAL_BIN
-HARBOR_ORCH_BIN	HARBOR_SCOPE_FLEET_CONTROLLER_BIN'
-w5_new() { printf '%s\n' "$W5_ALIASES" | awk -F'\t' -v n="$1" '$1 == n { print $2; f = 1 } END { if (!f) print n }'; }
-w5_old() { printf '%s\n' "$W5_ALIASES" | awk -F'\t' -v n="$1" '$2 == n { print $1 }'; }
 
 # The one line the ~/port move edits. Returns the LITERAL TEXT a default is
 # expected to spell, not a resolved path — ROOT1 compares source text, and
@@ -206,7 +193,7 @@ clean_lines() { # <file>
 
 # Rows validated and printed as id TAB path TAB kind TAB remote TAB topology TAB interaction (a four-field
 # row prints '-' for the last two, harbor#966). A row that would resolve outside
-# PORT_ROOT, repeat an id or a path (case-insensitively) or has other than four, six or seven fields refuses the
+# PORT_ROOT, repeat an id or a path (case-insensitively) or has other than four or six fields refuses the
 # whole read (exit 2): a lookup that skips a bad row answers "unknown" for a repo that is only
 # mistyped. One trailing / on a path is dropped. This pass is lexical; confine() follows symlinks.
 # Kinds, topologies and interaction modes are judged only when a kinds file is given (--registry-check), so a
@@ -217,8 +204,8 @@ registry_rows() { # <repos.tsv, or /dev/stdin> [<repo-kinds.tsv>] — the file n
     BEGIN { kf = ENVIRON["KF"]
             if (kf != "") while ((getline l < kf) > 0) { if (l ~ /^#/ || l ~ /^id\t/) continue; split(l, f, "\t"); if (f[1] != "") kind[f[1]] = 1 } }
     /^[ \t]*#/ || /^[ \t]*$/ || $1 == "id" { next }
-    { if (NF != 4 && NF != 6 && NF != 7) { bad("expected id, path, kind, remote[, topology, interaction[, note]] (tab-separated), got " NF " field(s)"); next }
-      tp = (NF >= 6) ? $5 : "-"; im = (NF >= 6) ? $6 : "-"
+    { if (NF != 4 && NF != 6) { bad("expected id, path, kind, remote[, topology, interaction] (tab-separated), got " NF " field(s)"); next }
+      tp = (NF == 6) ? $5 : "-"; im = (NF == 6) ? $6 : "-"
       if ($1 !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/) { bad("id \"" $1 "\" is not a repo name"); next }
       if ($1 in seen) { bad("duplicate id \"" $1 "\""); next }
       p = $2; sub(/\/$/, "", p)
@@ -367,13 +354,13 @@ case "${1:-}" in
       printf '%-24s %-6s %s\n' "$__v" "$__b" "$__p/$__r"
     done
     ;;
-  --aliases) printf '%s\n' "$W5_ALIASES" ;;   # old TAB new: names --get still answers until 2026-11-15 (harbor#961 W5)
   --get)
     [ -n "${2:-}" ] || { echo "roots: --get needs a variable name" >&2; exit 2; }
     # harbor#961 W5: two repo roots took registered names. Until 2026-11-15 the old name is still asked for (a
     # sibling repo's call) and still read as an override when the new one is unset (renames.tsv dual-read window).
     __gv="$2"; __go=""
-    __gv="$(w5_new "$__gv")"; __go="$(w5_old "$__gv")"
+    case "$__gv" in HARBOR_ORCHESTRATOR) __gv=HARBOR_SCOPE_FLEET_CONTROLLER ;; HARBOR_PROJECT_INIT) __gv=HARBOR_SCOPE_SCAFFOLDER ;; esac
+    case "$__gv" in HARBOR_SCOPE_FLEET_CONTROLLER) __go=HARBOR_ORCHESTRATOR ;; HARBOR_SCOPE_SCAFFOLDER) __go=HARBOR_PROJECT_INIT ;; esac
     [ -n "$(expected_for "$__gv")" ] || { echo "roots: $2 is not in $TABLE" >&2; exit 2; }
     # The caller's own override still wins — the table supplies the DEFAULT,
     # never the answer. A resolver that ignored an exported value would make
@@ -442,7 +429,7 @@ case "${1:-}" in
       __all="$(registry_load "$__rf")" || exit 2
       printf '%s\n' "$__all" | awk -F'\t' '$3 ~ /^(control-plane|scaffolder|fleet-controller)$/ { print $1 }'
     else
-      rows | awk -F'\t' '$2 == "REPOS" && $1 ~ /^(HARBOR_SCOPE_REPO|HARBOR_SCOPE_SCAFFOLDER|HARBOR_SCOPE_FLEET_CONTROLLER)$/ {
+      rows | awk -F'\t' '$2 == "REPOS" && $1 ~ /^(HARBOR_REPO|HARBOR_SCOPE_SCAFFOLDER|HARBOR_SCOPE_FLEET_CONTROLLER)$/ {
         n = $3; sub(/\/.*/, "", n); if (n != "" && !seen[n]++) print n }'
     fi
     ;;
@@ -493,11 +480,8 @@ case "${1:-}" in
         while IFS= read -r HIT; do
           GOT="${HIT#\$\{$VAR:-}"; GOT="${GOT%\}}"
           # harbor#961 W5: a dual-read reader is ${NEW:-${OLD:-<default>}} until 2026-11-15; the default is the inner one
-          __vo="$(w5_old "$VAR")"
-          if [ -n "$__vo" ] && [ "${GOT#\$\{$__vo:-}" != "$GOT" ]; then
-            GOT="${GOT#\$\{$__vo:-}"
-            case "$GOT" in *'${'*) ;; *'}') GOT="${GOT%\}}" ;; esac   # a flat inner default: the match took its closing brace
-          fi
+          case "$VAR" in HARBOR_SCOPE_FLEET_CONTROLLER) GOT="${GOT#\$\{HARBOR_ORCHESTRATOR:-}" ;;
+                         HARBOR_SCOPE_SCAFFOLDER) GOT="${GOT#\$\{HARBOR_PROJECT_INIT:-}" ;; esac
           RAW="$GOT"
           GOT="$(printf '%s' "$GOT" | sed 's|\${PORT_ROOT:-\$HOME/port}|$HOME/port|')"
           # THREE SHAPES ARE NOT A DISAGREEMENT, and each was measured on this
@@ -512,7 +496,7 @@ case "${1:-}" in
                                   # edit at all, which is the outcome this table
                                   # is trying to buy.
             */*)    ;;            # path-shaped — the only shape to compare
-            *)      continue ;;   # ${HARBOR_SCOPE_REPO:-none}, a printf placeholder
+            *)      continue ;;   # ${HARBOR_REPO:-none}, a printf placeholder
           esac
           CHECKED=$((CHECKED + 1))
           if [ "$GOT" = "$WANT" ]; then
@@ -541,7 +525,7 @@ case "${1:-}" in
     REPOS_RE="$(printf '%s\n' "$__ids" | awk -F'\t' 'NF { gsub(/\./, "\\.", $1); printf "%s%s", (n++ ? "|" : ""), $1 }')"
     [ -f "$(private_dir)/repos.tsv" ] || log_note "no repo registry: arm 2 checks the roots table's repos only ($REPOS_RE)"
     KNOWN="$(rows | awk -F'\t' '{printf "%s|", $1}')KNOWN_NONE"
-    KNOWN="$KNOWN|$(printf '%s\n' "$W5_ALIASES" | cut -f1 | paste -sd'|' -)"   # harbor#961 W5: old names, read inside their new rows' readers until 2026-11-15
+    KNOWN="$KNOWN|HARBOR_ORCHESTRATOR|HARBOR_PROJECT_INIT"   # harbor#961 W5: old names, read inside their new rows' readers until 2026-11-15
     #     Anchored on a default that STARTS with the home prefix: `${BIN:-$_self_dir,
     #     $HOME/port/harbor/bin}` in bin/harbor is a help STRING listing where it
     #     looked, not a root, and flagging it would be the false positive above

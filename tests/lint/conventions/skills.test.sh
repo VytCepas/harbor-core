@@ -11,7 +11,7 @@ _x8_setup() { # <repo-body> <live-body> <repo-stamp> <live-stamp>
   printf '%s\n' "$1" > "$X8R/skills/demo/SKILL.md"; printf '%s\n' "$2" > "$X8C/skills/demo/SKILL.md"
   touch -t "$3" "$X8R/skills/demo/SKILL.md"; touch -t "$4" "$X8C/skills/demo/SKILL.md"
 }
-_x8() { CLAUDE_CONFIG_DIR="$X8C" HARBOR_SCOPE_ROOT="$X8R" sh "$X8R/bin/lint-conventions.sh" --only X8 2>&1 | grep 'ADVISORY \[drift.skill-bytes\]' || true; }
+_x8() { CLAUDE_CONFIG_DIR="$X8C" HARBOR_ROOT="$X8R" sh "$X8R/bin/lint-conventions.sh" --only X8 2>&1 | grep 'ADVISORY \[drift.skill-bytes\]' || true; }
 X8_LIVE='LIVE IS NEWER'; X8_REPO='repo is newer'; X8_SKEW='BRANCH SKEW'
 
 t_section "X8: drift names which side is newer (harbor#139)"
@@ -94,7 +94,7 @@ _x8_gen_setup 3; _o="$(_x8)"
 t_has "a generator that exits 3 is a failed generator" "$_o" "the generator FAILED (rc=3), so demo was not judged"
 t_hasnt "...never a copy to regenerate" "$_o" "regenerate: demo"
 _x8_gen_setup 0; mkdir -p "$HOME/.claude"; rm -rf "$HOME/.claude/skills"; cp -R "$X8C/skills" "$HOME/.claude/skills"; rm -f "$TMP/gen.args"
-CLAUDE_CONFIG_DIR="$HOME/.claude" HARBOR_SCOPE_ROOT="$X8R" sh "$X8R/bin/lint-conventions.sh" --only X8 >/dev/null 2>&1
+CLAUDE_CONFIG_DIR="$HOME/.claude" HARBOR_ROOT="$X8R" sh "$X8R/bin/lint-conventions.sh" --only X8 >/dev/null 2>&1
 t_has "the live config dir is asked as --live, which is what its gate accepts" "$(cat "$TMP/gen.args" 2>/dev/null)" "install --check --live"
 rm -rf "$HOME/.claude"
 _x8_gen_setup 0; rm -f "$X8R/bin/gen.sh"
@@ -238,7 +238,7 @@ t_eq "a script that only MENTIONS :root is not a stylesheet" "" "$(viol H1 "$H1R
 t_section "drift.skill-manifest: an installed skill no manifest records (harbor#1010)"
 SMC="$TMP/sm-cfg"; rm -rf "$SMC"; mkdir -p "$SMC/skills/one"
 printf -- '---\nname: one\ndescription: "X. USE WHEN x."\n---\n' > "$SMC/skills/one/SKILL.md"
-_sm() { CLAUDE_CONFIG_DIR="$SMC" HARBOR_SCOPE_ROOT="$T_ROOT" sh "$LINT" --only drift.skill-manifest 2>&1 | grep 'ADVISORY \[drift.skill-manifest\]' || true; }
+_sm() { CLAUDE_CONFIG_DIR="$SMC" HARBOR_ROOT="$T_ROOT" sh "$LINT" --only drift.skill-manifest 2>&1 | grep 'ADVISORY \[drift.skill-manifest\]' || true; }
 t_eq "no manifest in the config dir: nothing to judge, silent" "" "$(_sm)"
 printf '# m\nabc 100644 skills/one/SKILL.md skills-install deadbeef\n' > "$SMC/.harbor-manifest"
 t_eq "an installed skill with its row is silent" "" "$(_sm)"

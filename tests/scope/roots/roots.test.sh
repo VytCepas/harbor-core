@@ -14,7 +14,7 @@ build() { # <name> <table-body> <site-content> → the checkout's path
 }
 # Assign the dir before calling: inline, a brace-comma fixture brace-expands the whole word.
 rc_is() { # <label> <dir> <want-rc> [<stderr-substring>]
-  _rc="$(HARBOR_SCOPE_ROOT="$2" sh "$T_ROOT/bin/scope-roots.sh" --check >/dev/null 2>"$T_TMP/err"; echo $?)"
+  _rc="$(HARBOR_ROOT="$2" sh "$T_ROOT/bin/scope-roots.sh" --check >/dev/null 2>"$T_TMP/err"; echo $?)"
   t_eq "$1: exit" "$3" "$_rc"
   [ -z "${4:-}" ] || t_has "$1: reason" "$(cat "$T_TMP/err")" "$4"
 }
@@ -47,29 +47,29 @@ t_section "three correct shapes are not flagged"
 D="$(build ok2 'BLORP_DIR	REPOS	blorp	x' 'D="@V@{BLORP_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/blorp}"
 if [ -n "@V@{BLORP_DIR:-}" ]; then :; fi')"
 rc_is "an empty default" "$D" 0
-D="$(build ok3 'HARBOR_SCOPE_REPO	REPOS	harbor	x' 'R="@V@{HARBOR_SCOPE_REPO:-@V@{PORT_ROOT:-@V@HOME/port}/harbor}"
-S="@V@{HARBOR_SCOPE_REPO:-@V@(CDPATH= cd -- "@V@(dirname -- "@V@0")/.." && pwd -P)}"')"
+D="$(build ok3 'HARBOR_REPO	REPOS	harbor	x' 'R="@V@{HARBOR_REPO:-@V@{PORT_ROOT:-@V@HOME/port}/harbor}"
+S="@V@{HARBOR_REPO:-@V@(CDPATH= cd -- "@V@(dirname -- "@V@0")/.." && pwd -P)}"')"
 rc_is "a derived default" "$D" 0
-D="$(build ok4 'HARBOR_SCOPE_REPO	REPOS	harbor	x' 'R="@V@{HARBOR_SCOPE_REPO:-@V@{PORT_ROOT:-@V@HOME/port}/harbor}"
-printf "looked in: %s" "@V@{HARBOR_SCOPE_REPO:-none}"
+D="$(build ok4 'HARBOR_REPO	REPOS	harbor	x' 'R="@V@{HARBOR_REPO:-@V@{PORT_ROOT:-@V@HOME/port}/harbor}"
+printf "looked in: %s" "@V@{HARBOR_REPO:-none}"
 printf "looked in: %s" "@V@{BIN:-@V@_self_dir, @V@HOME/port/harbor/bin}"')"
 rc_is "a non-path default" "$D" 0
 
 t_section "--repos: each governed checkout once, BOX rows left out (harbor#829)"
-D="$(build repos 'HARBOR_SCOPE_REPO	REPOS	harbor	x
+D="$(build repos 'HARBOR_REPO	REPOS	harbor	x
 ACCESS_DIR	REPOS	harbor/ACCESS	x
 BLORP_DIR	REPOS	blorp	x
-HARBOR_SCOPE_LOCAL_BIN	BOX	.local/bin	x' 'x=1')"
+HARBOR_LOCAL_BIN	BOX	.local/bin	x' 'x=1')"
 t_eq "one row per repo, resolved under HOME" "harbor	$HOME/port/harbor
-blorp	$HOME/port/blorp" "$(HARBOR_SCOPE_ROOT="$D" env -u PORT_ROOT sh "$T_ROOT/bin/scope-roots.sh" --repos)"
+blorp	$HOME/port/blorp" "$(HARBOR_ROOT="$D" env -u PORT_ROOT sh "$T_ROOT/bin/scope-roots.sh" --repos)"
 D="$(build repos2 'EVIL_DIR	REPOS	..	x' 'x=1')"
-t_exit "a segment that is not a repo name is refused" 2 env HARBOR_SCOPE_ROOT="$D" sh "$T_ROOT/bin/scope-roots.sh" --repos
-t_has "...saying why" "$(HARBOR_SCOPE_ROOT="$D" sh "$T_ROOT/bin/scope-roots.sh" --repos 2>&1)" "is not a repo name"
+t_exit "a segment that is not a repo name is refused" 2 env HARBOR_ROOT="$D" sh "$T_ROOT/bin/scope-roots.sh" --repos
+t_has "...saying why" "$(HARBOR_ROOT="$D" sh "$T_ROOT/bin/scope-roots.sh" --repos 2>&1)" "is not a repo name"
 
 t_section "the spelling decides whether PORT_ROOT is honoured (harbor#630)"
 D="$(build flat1 'BLORP_DIR	REPOS	blorp	x' 'D="@V@{BLORP_DIR:-@V@HOME/port/blorp}"')"
 rc_is "a flat REPOS default ignores PORT_ROOT and is refused" "$D" 1 'ignores PORT_ROOT'
-D="$(build flat2 'HARBOR_SCOPE_LOCAL_BIN	BOX	.local/bin	x' 'B="@V@{HARBOR_SCOPE_LOCAL_BIN:-@V@HOME/.local/bin}"')"
+D="$(build flat2 'HARBOR_LOCAL_BIN	BOX	.local/bin	x' 'B="@V@{HARBOR_LOCAL_BIN:-@V@HOME/.local/bin}"')"
 rc_is "a BOX default has no PORT_ROOT to honour, so flat is right" "$D" 0
 D="$(build nest1 'BLORP_DIR	REPOS	blorp	x' 'D="@V@{BLORP_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/blorp}"
 F="@V@{SURPRISE_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/blorp}"')"
@@ -96,29 +96,29 @@ rc_is "a pair where every row explains itself" "$D" 0
 
 t_section "a PORT_ROOT other than the default resolves every table row (harbor#630)"
 WS="$T_TMP/elsewhere/ws"; mkdir -p "$WS"
-D="$(build res1 'HARBOR_SCOPE_REPO	REPOS	harbor	x
+D="$(build res1 'HARBOR_REPO	REPOS	harbor	x
 BLORP_DIR	REPOS	blorp	x
-HARBOR_SCOPE_FLEET_FILE	REPOS	projects-orchestrator/fleet.yaml	x
-HARBOR_SCOPE_LOCAL_BIN	BOX	.local/bin	x' 'x=1')"
-r() { HARBOR_SCOPE_ROOT="$D" PORT_ROOT="$WS" sh "$T_ROOT/bin/scope-roots.sh" "$@"; }
+HARBOR_FLEET_FILE	REPOS	projects-orchestrator/fleet.yaml	x
+HARBOR_LOCAL_BIN	BOX	.local/bin	x' 'x=1')"
+r() { HARBOR_ROOT="$D" PORT_ROOT="$WS" sh "$T_ROOT/bin/scope-roots.sh" "$@"; }
 t_eq "--get under PORT_ROOT" "$WS/blorp" "$(r --get BLORP_DIR)"
-t_eq "--get of a file under a repo" "$WS/projects-orchestrator/fleet.yaml" "$(r --get HARBOR_SCOPE_FLEET_FILE)"
-t_eq "--get of a BOX row stays under HOME" "$HOME/.local/bin" "$(r --get HARBOR_SCOPE_LOCAL_BIN)"
+t_eq "--get of a file under a repo" "$WS/projects-orchestrator/fleet.yaml" "$(r --get HARBOR_FLEET_FILE)"
+t_eq "--get of a BOX row stays under HOME" "$HOME/.local/bin" "$(r --get HARBOR_LOCAL_BIN)"
 t_eq "an exported variable still beats the default" "/own/blorp" "$(BLORP_DIR=/own/blorp r --get BLORP_DIR)"
 t_has "--list resolves under PORT_ROOT" "$(r --list)" "$WS/projects-orchestrator/fleet.yaml"
 t_eq "--repos resolves under PORT_ROOT" "harbor	$WS/harbor
 blorp	$WS/blorp
 projects-orchestrator	$WS/projects-orchestrator" "$(r --repos)"
-t_eq "PORT_ROOT unset falls back to the home default" "$HOME/port/blorp" "$(HARBOR_SCOPE_ROOT="$D" env -u PORT_ROOT sh "$T_ROOT/bin/scope-roots.sh" --get BLORP_DIR)"
-t_eq "a trailing slash on PORT_ROOT does not double" "$WS/blorp" "$(HARBOR_SCOPE_ROOT="$D" PORT_ROOT="$WS/" sh "$T_ROOT/bin/scope-roots.sh" --get BLORP_DIR)"
+t_eq "PORT_ROOT unset falls back to the home default" "$HOME/port/blorp" "$(HARBOR_ROOT="$D" env -u PORT_ROOT sh "$T_ROOT/bin/scope-roots.sh" --get BLORP_DIR)"
+t_eq "a trailing slash on PORT_ROOT does not double" "$WS/blorp" "$(HARBOR_ROOT="$D" PORT_ROOT="$WS/" sh "$T_ROOT/bin/scope-roots.sh" --get BLORP_DIR)"
 
 t_section "--base: what a base is on this box, the text a launchd template's @HOME@ fills (harbor#630)"
 t_eq "BOX is the home directory" "$HOME" "$(r --base BOX)"
 t_eq "REPOS is the workspace root, PORT_ROOT honoured" "$WS" "$(r --base REPOS)"
-t_eq "a trailing slash on HOME is dropped" "$HOME" "$(HOME="$HOME/" HARBOR_SCOPE_ROOT="$D" sh "$T_ROOT/bin/scope-roots.sh" --base BOX)"
+t_eq "a trailing slash on HOME is dropped" "$HOME" "$(HOME="$HOME/" HARBOR_ROOT="$D" sh "$T_ROOT/bin/scope-roots.sh" --base BOX)"
 t_exit "a base that is not one is refused" 2 r --base NOWHERE
 t_exit "no base named is a usage error" 2 r --base
-t_exit "with HOME unset the BOX base has no path, and says so" 2 env -u HOME HARBOR_SCOPE_ROOT="$D" sh "$T_ROOT/bin/scope-roots.sh" --base BOX
+t_exit "with HOME unset the BOX base has no path, and says so" 2 env -u HOME HARBOR_ROOT="$D" sh "$T_ROOT/bin/scope-roots.sh" --base BOX
 
 t_section "the real table: every REPOS row resolves under another root and no site spells it flat"
 t_eq "the tree's own --check is green" "0" "$(sh "$T_ROOT/bin/scope-roots.sh" --check >/dev/null 2>&1; echo $?)"
@@ -133,7 +133,7 @@ t_section "arm 2 reads its repo ids from the registry, and with none says it see
 REG="$T_TMP/reg"; mkdir -p "$REG"; printf 'id\tpath\tkind\tremote\nwidget\twidget\tworkload\t-\n' > "$REG/repos.tsv"
 D="$(build reg1 'BLORP_DIR	REPOS	blorp	x' 'D="@V@{BLORP_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/blorp}"
 F="@V@{SURPRISE_DIR:-@V@{PORT_ROOT:-@V@HOME/port}/widget}"')"
-_rc="$(HARBOR_SCOPE_PRIVATE="$REG" HARBOR_SCOPE_ROOT="$D" sh "$T_ROOT/bin/scope-roots.sh" --check >/dev/null 2>"$T_TMP/err"; echo $?)"
+_rc="$(HARBOR_SCOPE_PRIVATE="$REG" HARBOR_ROOT="$D" sh "$T_ROOT/bin/scope-roots.sh" --check >/dev/null 2>"$T_TMP/err"; echo $?)"
 t_eq "a repo only the registry names is found" 1 "$_rc"
 t_has "...as an unregistered root" "$(cat "$T_TMP/err")" 'SURPRISE_DIR names a governed repo'
 rc_is "no registry: that repo is unknown, so the site is not flagged" "$D" 0 'no repo registry: arm 2 checks'

@@ -435,8 +435,8 @@ for _c in gh claude launchctl; do printf '#!/bin/sh\nexit 1\n' > "$FSN/other/$_c
 printf '#!/bin/sh\necho "[{}]"\n' > "$FSN/orch"; chmod +x "$FSN/orch"
 ev 2026-10-06T01:00:00Z pr.opened VytCepas/harbor#9; printf MERGED > "$FIX/pr-9"
 fsn() { # <obligation dir> — the real refresher against a fake producer, every other job pinned to nothing
-  env CLAUDE_CONFIG_DIR="$FSN" HARBOR_SCOPE_CACHE_DIR="$FSN/cache" HARBOR_SCOPE_FLEET_CONTROLLER_BIN="$FSN/orch" HARBOR_SCOPE_FLEET_FILE="$FSN/fleet.yaml" \
-    HARBOR_HOUSEKEEPING_CLEAN_HOME="$FSN/home" HARBOR_HOUSEKEEPING_CLEAN_SCRATCH="$FSN/scratch" HARBOR_HOUSEKEEPING_CLEAN_GH=none \
+  env CLAUDE_CONFIG_DIR="$FSN" HARBOR_CACHE_DIR="$FSN/cache" HARBOR_ORCH_BIN="$FSN/orch" HARBOR_FLEET_FILE="$FSN/fleet.yaml" \
+    HARBOR_CLEAN_HOME="$FSN/home" HARBOR_CLEAN_SCRATCH="$FSN/scratch" HARBOR_CLEAN_GH=none \
     HARBOR_EVENT_DIR="$EV" HARBOR_OBLIGATION_DIR="$1" HARBOR_STATUS_OBLIGATION_NOW="$NOW" HARBOR_STATUS_OBLIGATION_KINDS="$KINDS" \
     HARBOR_STATUS_OBLIGATION_GH="$STUBS/gh" HARBOR_STATUS_OBLIGATION_CLAUDE="$STUBS/claude" HARBOR_STATUS_OBLIGATION_SESSIONS="$STUBS/sessions" \
     HARBOR_STATUS_OBLIGATION_HOUSEKEEPING="$FSN/none.jsonl" PATH="$FSN/other:$PATH" \
@@ -471,8 +471,8 @@ t_eq "...and its register, beside it in bin/" yes "$([ -f "$INST/bin/obligation-
 t_eq "...with no new top-level contracts/ in the config dir" no "$([ -e "$INST/contracts" ] && echo yes || echo no)"
 rm -f "$FIX/gh.hang"; printf MERGED > "$FIX/pr-22"   # the bus still holds the PR opened above
 inst_run() { # <config dir> — the installed refresher, every source a stub, no register knob
-  env CLAUDE_CONFIG_DIR="$1" HARBOR_SCOPE_CACHE_DIR="$ICACHE" HARBOR_SCOPE_FLEET_CONTROLLER_BIN="$FSN/orch" HARBOR_SCOPE_FLEET_FILE="$FSN/fleet.yaml" \
-    HARBOR_HOUSEKEEPING_CLEAN_HOME="$FSN/home" HARBOR_HOUSEKEEPING_CLEAN_SCRATCH="$FSN/scratch" HARBOR_HOUSEKEEPING_CLEAN_GH=none \
+  env CLAUDE_CONFIG_DIR="$1" HARBOR_CACHE_DIR="$ICACHE" HARBOR_ORCH_BIN="$FSN/orch" HARBOR_FLEET_FILE="$FSN/fleet.yaml" \
+    HARBOR_CLEAN_HOME="$FSN/home" HARBOR_CLEAN_SCRATCH="$FSN/scratch" HARBOR_CLEAN_GH=none \
     HARBOR_EVENT_DIR="$EV" HARBOR_OBLIGATION_DIR="$IOB" HARBOR_STATUS_OBLIGATION_NOW="$NOW" \
     HARBOR_STATUS_OBLIGATION_GH="$STUBS/gh" HARBOR_STATUS_OBLIGATION_CLAUDE="$STUBS/claude" HARBOR_STATUS_OBLIGATION_SESSIONS="$STUBS/sessions" \
     HARBOR_STATUS_OBLIGATION_HOUSEKEEPING="$FSN/none.jsonl" PATH="$FSN/other:$PATH" \

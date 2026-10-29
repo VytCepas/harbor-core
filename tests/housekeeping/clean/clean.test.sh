@@ -6,10 +6,10 @@
 TOOL="$T_ROOT/bin/housekeeping-clean.sh"
 H="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)/box"; CFG="$H/.claude"; SCR="$T_TMP/scratch"
 mkdir -p "$CFG" "$SCR"
-export HARBOR_HOUSEKEEPING_CLEAN_SCRATCH="$SCR" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" HARBOR_HOUSEKEEPING_CLEAN_GH=none
-run()   { HARBOR_HOUSEKEEPING_CLEAN_HOME="$H" CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" "$@" 2>&1; }
-apply() { HARBOR_HOUSEKEEPING_CLEAN_HOME="$H" CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" --apply "$@" >/dev/null 2>&1; }
-with()  { env HARBOR_HOUSEKEEPING_CLEAN_HOME="$H" CLAUDE_CONFIG_DIR="$CFG" "$@" 2>&1; }  # never `VAR=x fn`: it persists under sh
+export HARBOR_CLEAN_SCRATCH="$SCR" HARBOR_CACHE_DIR="$CFG/cache" HARBOR_CLEAN_GH=none
+run()   { HARBOR_CLEAN_HOME="$H" CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" "$@" 2>&1; }
+apply() { HARBOR_CLEAN_HOME="$H" CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" --apply "$@" >/dev/null 2>&1; }
+with()  { env HARBOR_CLEAN_HOME="$H" CLAUDE_CONFIG_DIR="$CFG" "$@" 2>&1; }  # never `VAR=x fn`: it persists under sh
 there() { if [ -e "$1" ]; then echo present; else echo gone; fi; }
 
 # Sacred: each must survive --apply with its content intact.
@@ -112,17 +112,17 @@ else echo "  SKIP --json line check: no jq on this host"; fi
 
 t_section "13 --list names every class; an unknown flag is a usage error"
 t_has "--list names the classes" "$(run --list | tr '\n' ' ')" "landed-branches"
-t_exit "an unknown flag exits 2" 2 env HARBOR_HOUSEKEEPING_CLEAN_HOME="$H" sh "$TOOL" --nonsense
+t_exit "an unknown flag exits 2" 2 env HARBOR_CLEAN_HOME="$H" sh "$TOOL" --nonsense
 
 t_section "14 the D2 gate: --apply alone refuses the live config dir"
 # Live here is the sandbox HOME's .claude, created so the gate's own dir test cannot pass vacuously.
 mkdir -p "$HOME/.claude/session-env/empty-live"
-out="$(env -u CLAUDE_CONFIG_DIR HARBOR_HOUSEKEEPING_CLEAN_HOME="$HOME" sh "$TOOL" --apply 2>&1)"; rc=$?
+out="$(env -u CLAUDE_CONFIG_DIR HARBOR_CLEAN_HOME="$HOME" sh "$TOOL" --apply 2>&1)"; rc=$?
 t_eq "--apply on the live dir exits 1" 1 "$rc"
 t_has "the refusal uses D2's house idiom" "$out" "explicit --live"
 t_has "and names the flags that would proceed" "$out" "--apply --live"
 t_eq "the refused run touched nothing" present "$(there "$HOME/.claude/session-env/empty-live")"
-t_has "a dry run of the live dir still reports" "$(env -u CLAUDE_CONFIG_DIR HARBOR_HOUSEKEEPING_CLEAN_HOME="$HOME" sh "$TOOL" 2>&1)" "DRY RUN"
+t_has "a dry run of the live dir still reports" "$(env -u CLAUDE_CONFIG_DIR HARBOR_CLEAN_HOME="$HOME" sh "$TOOL" 2>&1)" "DRY RUN"
 
 t_section "15 control: the fixture dir is not the live dir, so --apply needs no --live"
 out="$(run --apply session-env)"; rc=$?
@@ -212,7 +212,7 @@ case "$*" in
 esac
 GHSTUB
 chmod +x "$T_BIN/gh"
-GHR() { with HARBOR_HOUSEKEEPING_CLEAN_GH="$T_BIN/gh" sh "$TOOL" "$@"; }
+GHR() { with HARBOR_CLEAN_GH="$T_BIN/gh" sh "$TOOL" "$@"; }
 J="$(GHR --json)"
 rows() { printf '%s\n' "$J" | jq -r --arg v "$1" --arg c "$2" --arg s "$3" \
   'select(.verdict == $v and .class == $c and (.subject | contains($s))) | .verdict' | wc -l | tr -d ' '; }  # <verdict> <class> <subject>
@@ -272,7 +272,7 @@ t_eq "a worktree whose later work is NOT pushed: RISK" 1 "$(rows RISK finished-w
 
 t_section "23c a worktree an install root links into is KEEP, never DECIDE (harbor#922)"
 # ~/.local/lib/quuxmail shape: idle, no PR, and the runtime behind ~/.local/bin. Reached by a relative chain via an alias.
-unset HARBOR_SCOPE_LOCAL_BIN HARBOR_LOCAL_BIN  # the root is the fixture home's .local/bin, as roots.tsv declares
+unset HARBOR_LOCAL_BIN  # the root is the fixture home's .local/bin, as roots.tsv declares
 gg checkout -q -b wt-installed main; mkdir -p "$GR/bin"; printf 'tool\n' > "$GR/bin/tool"; gg add bin/tool
 GIT_AUTHOR_DATE="$(ago 30) +0000" GIT_COMMITTER_DATE="$(ago 30) +0000" gg commit -qm tool
 gg checkout -q -b wt-idle main; commit idle 30 >/dev/null; gg checkout -q main
@@ -299,15 +299,15 @@ t_eq "--apply keeps a RISK worktree (uncommitted changes)" present "$(there "$H/
 t_exit "--apply keeps a DECIDE branch" 0 git -C "$GR" rev-parse --verify -q merged-clean
 
 t_section "24 a failed GitHub read is UNREAD, never clean (harbor#626)"
-Ju="$(with HARBOR_HOUSEKEEPING_CLEAN_GH="$T_BIN/gh" STUB_FAIL=prs sh "$TOOL" --json)"
+Ju="$(with HARBOR_CLEAN_GH="$T_BIN/gh" STUB_FAIL=prs sh "$TOOL" --json)"
 t_has "a failed PR read reports the repo unread" "$Ju" '"class":"unread"'
 t_has "a good read does judge branch rows" "$J" '"class":"pr-branches"'
 t_hasnt "branch rows are not judged without the PR list" "$Ju" '"class":"pr-branches"'
-t_has "--record carries unread=1" "$(with HARBOR_HOUSEKEEPING_CLEAN_GH="$T_BIN/gh" STUB_FAIL=prs sh "$TOOL" --record | tail -n 1)" "unread=1"
-t_has "a PR list at its limit is unread too" "$(with HARBOR_HOUSEKEEPING_CLEAN_GH="$T_BIN/gh" HARBOR_HOUSEKEEPING_CLEAN_PR_LIMIT=7 sh "$TOOL" --json)" '"class":"unread"'
+t_has "--record carries unread=1" "$(with HARBOR_CLEAN_GH="$T_BIN/gh" STUB_FAIL=prs sh "$TOOL" --record | tail -n 1)" "unread=1"
+t_has "a PR list at its limit is unread too" "$(with HARBOR_CLEAN_GH="$T_BIN/gh" HARBOR_CLEAN_PR_LIMIT=7 sh "$TOOL" --json)" '"class":"unread"'
 
 t_section "24b a transient 5xx is retried, a 4xx is not (the sweep undercounted)"
-rc() { : > "$STUB/prs.calls"; _o="$(with HARBOR_HOUSEKEEPING_CLEAN_GH="$T_BIN/gh" HARBOR_CLEAN_RETRY_WAIT=0 STUB_FAIL="$1" sh "$TOOL" --record | tail -n 1)"; printf '%s %s' "$(wc -l < "$STUB/prs.calls" | tr -d ' ')" "$(printf '%s' "$_o" | grep -o 'unread=[0-9]*')"; }
+rc() { : > "$STUB/prs.calls"; _o="$(with HARBOR_CLEAN_GH="$T_BIN/gh" HARBOR_CLEAN_RETRY_WAIT=0 STUB_FAIL="$1" sh "$TOOL" --record | tail -n 1)"; printf '%s %s' "$(wc -l < "$STUB/prs.calls" | tr -d ' ')" "$(printf '%s' "$_o" | grep -o 'unread=[0-9]*')"; }
 t_eq "one 504 then success reads the repo whole" "2 unread=0" "$(rc prs504once)"
 t_eq "a permanent 502 gives up after 3 tries, unread" "3 unread=1" "$(rc prs502)"
 t_eq "a 404 is not retried, unread" "1 unread=1" "$(rc prs404)"
@@ -344,27 +344,27 @@ t_has "an old Office lock file is listed" "$Jd" '~$report.docx'
 
 t_section "28 --record: the line, the count, due, and the rows"
 REC="$(GHR --record | tail -n 1)"
-t_eq "--record prints the sweep line" match "$(case "$REC" in ("sweep items="*" due=1 at="*"[check:housekeeping.clean]") echo match ;; (*) printf '%s' "$REC" ;; esac)"
+t_eq "--record prints the sweep line" match "$(case "$REC" in ("sweep items="*" due=1 at="*"[check:sweep]") echo match ;; (*) printf '%s' "$REC" ;; esac)"
 t_eq "--record writes .helm-sweep" present "$(there "$CFG/.helm-sweep")"
 t_eq "items= equals the DECIDE+RISK rows it wrote" \
   "$(jq -r 'select(.verdict == "DECIDE" or .verdict == "RISK") | .verdict' "$CFG/.helm-sweep.jsonl" | wc -l | tr -d ' ')" \
   "$(sed -n 's/.*items=\([0-9]*\).*/\1/p' "$CFG/.helm-sweep")"
 t_eq ".helm-sweep.jsonl is line-delimited valid JSON" 0 "$(jq -R 'select(length > 0) | fromjson' "$CFG/.helm-sweep.jsonl" >/dev/null 2>&1; echo $?)"
 t_eq "--record releases its lock" gone "$(there "$CFG/.helm-sweep.lock")"
-t_has "RISK rows alone make the count due" "$(with HARBOR_HOUSEKEEPING_CLEAN_GH="$T_BIN/gh" HARBOR_HOUSEKEEPING_CLEAN_DUE=100000 sh "$TOOL" --record | tail -n 1)" " due=1 "
+t_has "RISK rows alone make the count due" "$(with HARBOR_CLEAN_GH="$T_BIN/gh" HARBOR_CLEAN_DUE=100000 sh "$TOOL" --record | tail -n 1)" " due=1 "
 t_eq "a few DECIDE rows and no RISK are not due" match \
-  "$(case "$(with HARBOR_HOUSEKEEPING_CLEAN_DUE=100000 sh "$TOOL" --record loose-deliverables | tail -n 1)" in (*" risk=0 "*" due=0 "*) echo match ;; (*) echo no ;; esac)"
+  "$(case "$(with HARBOR_CLEAN_DUE=100000 sh "$TOOL" --record loose-deliverables | tail -n 1)" in (*" risk=0 "*" due=0 "*) echo match ;; (*) echo no ;; esac)"
 
 t_section "29 --if-due: a slot passed since the last record, or nothing happens"
 # Pinned in UTC: 2026-01-15 12:00, slots 09 and 16, so the latest slot is 09:00 that day.
 N12=1768478400; S09=1768467600
-rif() { with TZ=UTC HARBOR_TEST_NOW="$N12" sh "$TOOL" --record --if-due loose-deliverables >/dev/null; }
+rif() { with TZ=UTC HARBOR_NOW="$N12" sh "$TOOL" --record --if-due loose-deliverables >/dev/null; }
 printf 'sweep items=0 at=%s\n' "$((S09 + 60))" > "$CFG/.helm-sweep"; rif
 t_eq "--if-due stands down within a covered slot" "sweep items=0 at=$((S09 + 60))" "$(cat "$CFG/.helm-sweep")"
 printf 'sweep items=0 at=%s\n' "$((S09 - 60))" > "$CFG/.helm-sweep"; rif
 t_has "--if-due runs once a slot has passed" "$(cat "$CFG/.helm-sweep")" " at=$N12"
 printf 'sweep items=0 at=%s\n' "$((S09 - 16 * 3600 + 60))" > "$CFG/.helm-sweep"   # yesterday 17:00
-with TZ=UTC HARBOR_TEST_NOW="$((S09 - 3600))" sh "$TOOL" --record --if-due loose-deliverables >/dev/null
+with TZ=UTC HARBOR_NOW="$((S09 - 3600))" sh "$TOOL" --record --if-due loose-deliverables >/dev/null
 t_eq "08:00 sees yesterday's 16:00 as covered" "sweep items=0 at=$((S09 - 16 * 3600 + 60))" "$(cat "$CFG/.helm-sweep")"
 rm -f "$CFG/.helm-sweep"; mkdir "$CFG/.helm-sweep.lock"; run --record loose-deliverables >/dev/null
 t_eq "--record stands down on a held lock" gone "$(there "$CFG/.helm-sweep")"
@@ -372,9 +372,9 @@ touch -t 202601010000 "$CFG/.helm-sweep.lock"; run --record loose-deliverables >
 t_eq "a 31-minute-old lock is dead and does not block" present "$(there "$CFG/.helm-sweep")"
 
 t_section "30 --record refuses --apply, and the live dir without --live"
-t_exit "--record --apply exits 2" 2 env HARBOR_HOUSEKEEPING_CLEAN_HOME="$H" CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" --record --apply
+t_exit "--record --apply exits 2" 2 env HARBOR_CLEAN_HOME="$H" CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" --record --apply
 mkdir -p "$HOME/.claude"  # the sandbox's live dir must exist, or the refusal is not what is tested
-t_has "--record on the live dir refuses" "$(env -u CLAUDE_CONFIG_DIR HARBOR_HOUSEKEEPING_CLEAN_HOME="$HOME" sh "$TOOL" --record 2>&1)" "--record --live"
+t_has "--record on the live dir refuses" "$(env -u CLAUDE_CONFIG_DIR HARBOR_CLEAN_HOME="$HOME" sh "$TOOL" --record 2>&1)" "--record --live"
 t_eq "and records nothing there" gone "$(there "$HOME/.claude/.helm-sweep")"
 
 t_section "31 an unreadable directory does not kill --apply mid-run"
@@ -400,8 +400,8 @@ t_has "the landed branch under port/ is found" "$(run landed-branches)" "port/de
 t_section "33 the .DS_Store walk never enters a folder macOS guards (harbor#658)"
 H6="$T_TMP/h658"; GUARDED="Library Music Pictures Movies Desktop Documents Downloads .Trash"
 for d in $GUARDED plain; do mkdir -p "$H6/$d"; printf 'x' > "$H6/$d/.DS_Store"; done
-t_has "only the control is counted" "$(HARBOR_HOUSEKEEPING_CLEAN_HOME="$H6" CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" ds-store 2>&1)" "1 .DS_Store file(s)"
-HARBOR_HOUSEKEEPING_CLEAN_HOME="$H6" CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" --apply ds-store >/dev/null 2>&1
+t_has "only the control is counted" "$(HARBOR_CLEAN_HOME="$H6" CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" ds-store 2>&1)" "1 .DS_Store file(s)"
+HARBOR_CLEAN_HOME="$H6" CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" --apply ds-store >/dev/null 2>&1
 t_eq "--apply removes the control" gone "$(there "$H6/plain/.DS_Store")"
 t_eq "--apply leaves all 8 guarded folders alone" 8 "$(for d in $GUARDED; do [ -f "$H6/$d/.DS_Store" ] && echo x; done | grep -c x)"
 
@@ -414,11 +414,11 @@ settle() { _sa=x; _si=0; while [ -n "$_sa" ] && [ "$_si" -lt 20 ]; do  # <pidfil
   _si=$((_si + 1)); done; printf '%s' "$_sa"; }
 reap() { for _p in $(cat "$KID"); do kill -9 "$_p" 2>/dev/null; done; }  # a red run leaks nothing
 : > "$KID"
-t_has "a read past its bound leaves its repo unread" "$(with HARBOR_HOUSEKEEPING_CLEAN_GH="$GHH/gh" HARBOR_HOUSEKEEPING_CLEAN_BOUND=1 sh "$TOOL" --json)" '"class":"unread"'
+t_has "a read past its bound leaves its repo unread" "$(with HARBOR_CLEAN_GH="$GHH/gh" HARBOR_CLEAN_BOUND=1 sh "$TOOL" --json)" '"class":"unread"'
 t_eq "the wrapper recorded its child, or the next row is vacuous" 1 "$(grep -c . "$KID")"
 t_eq "at the bound the wrapper's child dies too" '' "$(settle "$KID")"
 reap; : > "$KID"
-env HARBOR_HOUSEKEEPING_CLEAN_HOME="$H" CLAUDE_CONFIG_DIR="$CFG" HARBOR_HOUSEKEEPING_CLEAN_GH="$GHH/gh" HARBOR_HOUSEKEEPING_CLEAN_BOUND=60 \
+env HARBOR_CLEAN_HOME="$H" CLAUDE_CONFIG_DIR="$CFG" HARBOR_CLEAN_GH="$GHH/gh" HARBOR_CLEAN_BOUND=60 \
   sh "$TOOL" --json >/dev/null 2>&1 &  # env, never `with … &`: $! would be a subshell, not harbor-clean
 _hp=$!; _hi=0; while [ ! -s "$KID" ] && [ "$_hi" -lt 100 ]; do sleep 0.1; _hi=$((_hi + 1)); done
 kill -TERM "$_hp"; wait "$_hp" 2>/dev/null

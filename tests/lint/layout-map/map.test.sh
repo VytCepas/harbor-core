@@ -3,8 +3,8 @@
 # Each case is a throwaway git checkout with its own map, kinds.tsv and layers.tsv.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/checks/lint-fixture.sh"
-LM() { HARBOR_SCOPE_ROOT="$1" sh "$T_ROOT/bin/lint-layout-map.sh" "$2" 2>&1; }
-red() { HARBOR_SCOPE_ROOT="$1" sh "$T_ROOT/bin/lint-layout-map.sh" --check >/dev/null 2>&1; echo $?; }
+LM() { HARBOR_ROOT="$1" sh "$T_ROOT/bin/lint-layout-map.sh" "$2" 2>&1; }
+red() { HARBOR_ROOT="$1" sh "$T_ROOT/bin/lint-layout-map.sh" --check >/dev/null 2>&1; echo $?; }
 mk() { # <name> → a checkout with folder bin/, folder docs/, root file README.md and a complete map
   _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/contracts" "$_d/docs" "$_d/standards/naming"
   printf 'id\tfolder\nscript\tbin/\nexplanation\tdocs/\n' > "$_d/standards/naming/kinds.tsv"
@@ -52,7 +52,7 @@ t_has "...and follows a change there" "$(LM "$D" --list)" "README.md	explanation
 
 t_section "nothing inspected is not a pass"
 mkdir -p "$T_TMP/nogit/contracts" "$T_TMP/nogit/bin"; cp "$T_TMP/ok/contracts/layout-map.tsv" "$T_TMP/nogit/contracts/"
-t_exit "a non-checkout" 2 env HARBOR_SCOPE_ROOT="$T_TMP/nogit" sh "$T_ROOT/bin/lint-layout-map.sh" --check
+t_exit "a non-checkout" 2 env HARBOR_ROOT="$T_TMP/nogit" sh "$T_ROOT/bin/lint-layout-map.sh" --check
 D="$(mk nomap)"; rm "$D/contracts/layout-map.tsv"; t_eq "a missing map" "2" "$(red "$D")"
 
 t_section "lint.layout-map runs the same check"

@@ -19,7 +19,7 @@ LOG_FD=2
 . "$HERE/library-log.sh"
 log_init lint-comment
 usage() { awk 'NR < 2 { next } !/^#/ { exit } { sub(/^# ?/, ""); print }' "$HERE/${0##*/}"; }
-ROOT=""; REG=""; BASE="${HARBOR_CI_BASE:-${HARBOR_BASE:-origin/main}}"
+ROOT=""; REG=""; BASE="${HARBOR_BASE:-origin/main}"
 while [ $# -gt 0 ]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;

@@ -4,12 +4,12 @@
      THIS FILE IS A TEMPLATE (harbor#630). Do not cp it: @HOME@ and the other placeholders in it would be
      installed as literal text, and launchd loads such a job and then fails every time it runs. Render it:
 
-       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.ci.governor.plist > ~/Library/LaunchAgents/com.harbor.ci.governor.plist
+       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.ci-governor.plist > ~/Library/LaunchAgents/com.harbor.ci-governor.plist
 
      A cp line in the comment below predates the template. It is kept so the rendered file stays byte-identical
      to the one already installed: follow this block, not that line. This block is not installed;
      bin/deploy-launchd-render.sh drops it. -->
-<!-- docs/reference/checks.md `ci.governor` (harbor#1032): `ci-governor.sh listen`, kept alive. It runs on EVENTS, never a
+<!-- docs/reference/checks.md `ci-governor` (harbor#1032): `ci-governor.sh listen`, kept alive. It runs on EVENTS, never a
      timer: it blocks on `notifyutil -w` (the job hooks' com.harbor.ci-governor.event, `run`'s slot posts,
      and the OS thermal and memory keys) and on `tail -f` of the harbor-linux container's trigger file.
      Each wake is one decision; the emergency sampler runs only while CI or a local slot holds cores.
@@ -28,11 +28,11 @@
      `sh ~/.claude/bin/ci-governor.sh status` and `grep ci-governor ~/.claude/cache/checks.log`.
 
      Disable (docs/reference/checks.md's two-lookup rule) — bootout's SIGTERM makes listen continue anything it stopped:
-       launchctl bootout gui/$(id -u)/com.harbor.ci.governor
-       rm ~/Library/LaunchAgents/com.harbor.ci.governor.plist -->
+       launchctl bootout gui/$(id -u)/com.harbor.ci-governor
+       rm ~/Library/LaunchAgents/com.harbor.ci-governor.plist -->
 <plist version="1.0">
 <dict>
-  <key>Label</key><string>com.harbor.ci.governor</string>
+  <key>Label</key><string>com.harbor.ci-governor</string>
   <key>ProgramArguments</key>
   <array>
     <string>/bin/sh</string>
@@ -50,7 +50,7 @@
     <key>PATH</key><string>/usr/bin:/bin:/usr/sbin:/opt/homebrew/bin</string>
     <key>HOME</key><string>@HOME@</string>
   </dict>
-  <key>StandardOutPath</key><string>/tmp/com.harbor.ci.governor.out</string>
-  <key>StandardErrorPath</key><string>/tmp/com.harbor.ci.governor.err</string>
+  <key>StandardOutPath</key><string>/tmp/com.harbor.ci-governor.out</string>
+  <key>StandardErrorPath</key><string>/tmp/com.harbor.ci-governor.err</string>
 </dict>
 </plist>

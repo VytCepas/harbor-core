@@ -87,13 +87,13 @@ ui_can_listen() {
   _lr=1; grep -q '^up' "$T_TMP/listen.out" 2>/dev/null && _lr=0
   kill "$_lp" 2>/dev/null; wait "$_lp" 2>/dev/null; return $_lr
 }
-# ui_require_listen <what> — skip the suite loudly where loopback is refused; HARBOR_TEST_REQUIRE_BUN=1 (CI) makes that a failure.
+# ui_require_listen <what> — skip the suite loudly where loopback is refused; HARBOR_REQUIRE_BUN=1 (CI) makes that a failure.
 ui_require_listen() {
   ui_can_listen && return 0
   if [ "${REQ_BUN:-0}" = 1 ]; then t_fail "bun cannot listen on 127.0.0.1 ($(head -c 200 "$T_TMP/listen.out" 2>/dev/null))"; t_done; fi
   echo "  SKIP $1: bun cannot listen on 127.0.0.1 here (the Claude sandbox refuses it; rerun outside it)"
   t_section "loopback listen refused: the server arms stand down"
-  t_eq "HARBOR_TEST_REQUIRE_BUN is off where listening is refused" 0 "${REQ_BUN:-0}"
+  t_eq "HARBOR_REQUIRE_BUN is off where listening is refused" 0 "${REQ_BUN:-0}"
   t_done
 }
 ui_stop() { kill "$UI_PID" 2>/dev/null; wait "$UI_PID" 2>/dev/null; return 0; }

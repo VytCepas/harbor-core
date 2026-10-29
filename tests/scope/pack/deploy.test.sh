@@ -3,13 +3,13 @@
 # deploy suites' throwaway repo; pack.sh is a stub that logs its argv and refuses on PACK_STUB_REFUSE=dry|apply|both,
 # in the line shape the real one prints (pack.sh's own behaviour is tests/scope/pack/pack.test.sh).
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY
+unset CLAUDECODE HARBOR_DEPLOY
 T_TMP="$(cd "$T_TMP" && pwd -P)"
 . "$(dirname "$0")/../../install/deploy-fixture.sh"
 PV="$T_TMP/pv"; mkdir -p "$PV"; HARBOR_SCOPE_PRIVATE="$PV"; export HARBOR_SCOPE_PRIVATE
 PACK_STUB='#!/bin/sh
 printf "pack.sh %s\n" "$*" >> "$STUB_LOG"
-[ "${HARBOR_DEPLOY_ACTIVE:-${HARBOR_DEPLOY:-}}" = 1 ] || printf "pack.sh\n" >> "$STUB_LOG.nodeploy"
+[ "${HARBOR_DEPLOY:-}" = 1 ] || printf "pack.sh\n" >> "$STUB_LOG.nodeploy"
 case " $* " in *" --apply "*) m=apply ;; *) m=dry ;; esac
 if [ "${PACK_STUB_REFUSE:-}" = "$m" ] || [ "${PACK_STUB_REFUSE:-}" = both ]; then
   echo "  FAIL: skipped demo: dirty: harbor-pack/ has uncommitted or untracked changes"
@@ -40,7 +40,7 @@ packcase apply; run 'y\n' --apply --live
 t_eq "the apply exits 0" 0 "$RC"
 t_has "pack.sh installed with --apply" "$(applied)" "pack.sh install,"
 t_exit "inject-install runs, then pack.sh, then skill-catalog.sh" 0 sh -c "echo '$(order)' | grep -q 'context-injection-install.sh pack.sh skill-catalog.sh'"
-t_eq "every pack.sh run carried HARBOR_DEPLOY_ACTIVE=1" no "$(grep -q pack.sh "$T/calls.nodeploy" 2>/dev/null && echo yes || echo no)"
+t_eq "every pack.sh run carried HARBOR_DEPLOY=1" no "$(grep -q pack.sh "$T/calls.nodeploy" 2>/dev/null && echo yes || echo no)"
 
 t_section "no packs key: no packs, with a note, and pack.sh is never run"
 packcase nokey none; rm -f "$PV/harbor.toml"; run '' --live

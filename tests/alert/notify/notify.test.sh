@@ -22,7 +22,7 @@ probe_reads_fixture
 mkjson() { # <verdict> <detail>
   jq -n --arg v "$1" --arg d "$2" '{ran_at: 1700000000, generated:"x", inputs_seen:1, checks_run:1, worst:$v, checks:{demo:{verdict:$v, detail:$d}}}'
 }
-nrun() { PATH="$TMP/stub:$PATH" HARBOR_SCOPE_CACHE_DIR="$TMP/ncache" HARBOR_ALERT_PROBE_STATE="$TMP/ncache/state.json" sh "$TMP/nbin/alert-notify.sh" "$@" 2>&1; }
+nrun() { PATH="$TMP/stub:$PATH" HARBOR_CACHE_DIR="$TMP/ncache" HARBOR_ALERT_PROBE_STATE="$TMP/ncache/state.json" sh "$TMP/nbin/alert-notify.sh" "$@" 2>&1; }
 nstate() { jq -r "$1" "$TMP/ncache/state.json" 2>/dev/null; }
 has_state() { [ -f "$1" ] && echo yes || echo no; }
 fresh() { rm -f "$TMP/ncache/state.json"; : > "$TMP/sent.log"; }
@@ -53,7 +53,7 @@ fake "$(mkjson crit 'the fixture is on fire')"; nrun >/dev/null
 t_eq "a new crit speaks" 3 "$(sent)"
 nrun >/dev/null
 t_eq "inside the window it does not repeat" 3 "$(sent)"
-PATH="$TMP/stub:$PATH" HARBOR_SCOPE_CACHE_DIR="$TMP/ncache" HARBOR_ALERT_PROBE_STATE="$TMP/ncache/state.json" HARBOR_ALERT_PROBE_REMIND=0 \
+PATH="$TMP/stub:$PATH" HARBOR_CACHE_DIR="$TMP/ncache" HARBOR_ALERT_PROBE_STATE="$TMP/ncache/state.json" HARBOR_ALERT_PROBE_REMIND=0 \
   sh "$TMP/nbin/alert-notify.sh" >/dev/null 2>&1
 t_eq "past the window it repeats" 4 "$(sent)"
 t_eq "the reminder is worded as one" 1 "$(sent_with 'STILL CRIT')"
@@ -65,8 +65,8 @@ t_has "the scrubber ran on the body" "$(cat "$TMP/sent.log")" "[path]"
 
 t_section "it refuses to write through something that is not a regular file"
 rm -rf "$TMP/fifo"; mkdir -p "$TMP/fifo"; mkfifo "$TMP/fifo/state.json"
-t_exit "a fifo at the state path" 1 env PATH="$TMP/stub:$PATH" HARBOR_SCOPE_CACHE_DIR="$TMP/fifo" HARBOR_ALERT_PROBE_STATE="$TMP/fifo/state.json" sh "$TMP/nbin/alert-notify.sh"
-t_has "the refusal says why" "$(PATH="$TMP/stub:$PATH" HARBOR_SCOPE_CACHE_DIR="$TMP/fifo" HARBOR_ALERT_PROBE_STATE="$TMP/fifo/state.json" sh "$TMP/nbin/alert-notify.sh" 2>&1)" "not a regular file"
+t_exit "a fifo at the state path" 1 env PATH="$TMP/stub:$PATH" HARBOR_CACHE_DIR="$TMP/fifo" HARBOR_ALERT_PROBE_STATE="$TMP/fifo/state.json" sh "$TMP/nbin/alert-notify.sh"
+t_has "the refusal says why" "$(PATH="$TMP/stub:$PATH" HARBOR_CACHE_DIR="$TMP/fifo" HARBOR_ALERT_PROBE_STATE="$TMP/fifo/state.json" sh "$TMP/nbin/alert-notify.sh" 2>&1)" "not a regular file"
 rm -f "$TMP/fifo/state.json"
 
 t_section "an unknown in between neither swallows nor repeats an edge (REVIEW #106)"
@@ -85,7 +85,7 @@ t_section "a sink that refuses does not mark the edge delivered (REVIEW #106)"
 fresh; mkdir -p "$TMP/deadstub"
 printf '#!/bin/sh\nexit 1\n' > "$TMP/deadstub/osascript"; chmod +x "$TMP/deadstub/osascript"
 fake "$(mkjson warn 'unhappy')"
-PATH="$TMP/deadstub:$PATH" HARBOR_SCOPE_CACHE_DIR="$TMP/ncache" HARBOR_ALERT_PROBE_STATE="$TMP/ncache/state.json" sh "$TMP/nbin/alert-notify.sh" >/dev/null 2>&1
+PATH="$TMP/deadstub:$PATH" HARBOR_CACHE_DIR="$TMP/ncache" HARBOR_ALERT_PROBE_STATE="$TMP/ncache/state.json" sh "$TMP/nbin/alert-notify.sh" >/dev/null 2>&1
 t_eq "a refused send is not recorded as delivered" none "$(nstate '.notified.demo.verdict // "none"')"
 nrun >/dev/null
 t_eq "the edge is retried once the sink comes back" 1 "$(sent)"
@@ -100,7 +100,7 @@ t_section "Linux: with no osascript, notify-send is the sink (harbor#618)"
 # A PATH with every tool this host has except osascript, and a notify-send that records.
 . "$T_ROOT/tests/lib/linux-sim.sh"; LX="$TMP/linux"; linux_path "$LX" osascript notify-send
 printf '#!/bin/sh\nprintf "SENT\\tnotify-send %%s\\n" "$*" >> "%s"\nexit 0\n' "$TMP/sent.log" > "$LX/notify-send"; chmod +x "$LX/notify-send"
-lrun() { PATH="$LX" HARBOR_SCOPE_CACHE_DIR="$TMP/ncache" HARBOR_ALERT_PROBE_STATE="$TMP/ncache/state.json" sh "$TMP/nbin/alert-notify.sh" "$@" 2>&1; }
+lrun() { PATH="$LX" HARBOR_CACHE_DIR="$TMP/ncache" HARBOR_ALERT_PROBE_STATE="$TMP/ncache/state.json" sh "$TMP/nbin/alert-notify.sh" "$@" 2>&1; }
 t_eq "control: the Linux PATH has no osascript" "" "$(PATH="$LX" command -v osascript)"
 fresh; fake "$(mkjson warn 'unhappy on linux')"; lrun >/dev/null
 t_eq "a new warn reaches notify-send" 1 "$(sent_with 'notify-send')"
@@ -134,7 +134,7 @@ fresh; mkdir -p "$TMP/rocache"; chmod 500 "$TMP/rocache"
 if [ "$(id -u)" = 0 ]; then echo "  (skipped: running as root, so discretionary permissions do not apply)"
 else
   fake "$(mkjson warn 'unhappy')"
-  O="$(PATH="$TMP/stub:$PATH" HARBOR_SCOPE_CACHE_DIR="$TMP/rocache" HARBOR_ALERT_PROBE_STATE="$TMP/rocache/state.json" sh "$TMP/nbin/alert-notify.sh" 2>&1)"; _rc=$?
+  O="$(PATH="$TMP/stub:$PATH" HARBOR_CACHE_DIR="$TMP/rocache" HARBOR_ALERT_PROBE_STATE="$TMP/rocache/state.json" sh "$TMP/nbin/alert-notify.sh" 2>&1)"; _rc=$?
   t_eq "an unwritable state path stops the run" 1 "$_rc"
   t_eq "it spoke nothing it could not record" 0 "$(sent)"
   t_has "the refusal explains itself" "$O" "repeats forever"
@@ -152,10 +152,10 @@ mkdir -p "$TMP/dash" "$TMP/dashcfg"
 jq -n '{ran_at: 1700000000, generated:"x", inputs_seen:2, checks_run:2, worst:"warn", sink:"osascript",
         notifications:0, checks:{demo:{verdict:"warn", detail:"a fixture verdict"}}}' > "$TMP/dash/pulse-state.json"
 echo '[]' > "$TMP/dash/fleet-snapshot.json"
-dash() { CLAUDE_CONFIG_DIR="$TMP/dashcfg" HARBOR_SCOPE_CACHE_DIR="$1" sh "$T_ROOT/bin/status-dashboard-generate.sh" --stdout 2>/dev/null; }
+dash() { CLAUDE_CONFIG_DIR="$TMP/dashcfg" HARBOR_CACHE_DIR="$1" sh "$T_ROOT/bin/status-dashboard-generate.sh" --stdout 2>/dev/null; }
 PAGE="$(dash "$TMP/dash")"
 t_has "the fixture verdict reaches the Pulse tile" "$PAGE" ">demo<"
-t_hasnt "the Pulse tile honours HARBOR_SCOPE_CACHE_DIR" "$PAGE" "No probe has run"
+t_hasnt "the Pulse tile honours HARBOR_CACHE_DIR" "$PAGE" "No probe has run"
 t_has "an empty fleet array is worded as one" "$PAGE" "lists no repos"
 t_hasnt "an empty fleet is not a broken cache" "$PAGE" "not the array"
 # The positive twins: both needles are real wording, reached from a cache without the files.

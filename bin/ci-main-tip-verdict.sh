@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # ci-main-tip-verdict.sh (harbor#586) — does every recent commit on main carry a GREEN CI verdict, in every fleet repo?
 #
-#   sh ci-main-tip-verdict.sh            write $HARBOR_SCOPE_CACHE_DIR/main-tip-verdict.json (default ~/.claude/cache)
+#   sh ci-main-tip-verdict.sh            write $HARBOR_CACHE_DIR/main-tip-verdict.json (default ~/.claude/cache)
 #   sh ci-main-tip-verdict.sh --print    print the DELTA and the AGES for a person; exit 1 when a tip is red, 3 when a repo was
 #                                     unread and none was red (D-29 unchecked: before D-49 it was 2, now a bad option)
 #
@@ -13,7 +13,7 @@
 # THE FLEET is where ci-runners.sh reads it: the fleet snapshot (cache/fleet-snapshot.json,
 # HARBOR_FLEET_SNAPSHOT) members that carry .github/workflows and a github.com origin, plus the `repo
 # OWNER/NAME` lines of $CLAUDE_CONFIG_DIR/.harbor-ci-runners, plus harbor itself (named by log-lib's repo_slug: this
-# checkout's origin, or the bin/repo-slug.txt beside an install; harbor#1149). HARBOR_CI_TIP_REPO=o/r
+# checkout's origin, or the bin/repo-slug.txt beside an install; harbor#1149). HARBOR_TIP_REPO=o/r
 # judges that one repo only.
 #
 # A COMMIT'S VERDICT is read from ITS runs, never from `gh run list` (whose page silently drops old
@@ -55,14 +55,14 @@
 # none for an hour. A repo that needs a full read adds one `actions/runs` list, up to 10 by-sha reads, and
 # one `actions/workflows` read only when its tip is red.
 #
-# WHERE FINDINGS LAND (docs/reference/checks.md row `ci.main-tip-verdict`): the statusline alarm `MAIN RED <repo> <age>` from
-# the cache; one `[check:ci.main-tip-verdict]` line in cache/checks.log per change per repo (new non-green, the
+# WHERE FINDINGS LAND (docs/reference/checks.md row `main-tip-verdict`): the statusline alarm `MAIN RED <repo> <age>` from
+# the cache; one `[check:main-tip-verdict]` line in cache/checks.log per change per repo (new non-green, the
 # tip's verdict changed, a repo gone disabled) — never one per tick; `--print` for the detail.
 # It WRITES NOTHING ELSE and re-runs nothing: a cancelled run is re-run by a person
 # (`gh run rerun <id>`), because re-running from an unreviewed signal would hide the thing it found.
 #
 # A FAILED READ KEEPS THAT REPO'S PREVIOUS ENTRY and marks it "unread": true; silence never means "all green".
-# Run by status-fleet-snapshot-refresh.sh every 300s. POSIX sh, jq, gh (HARBOR_TEST_GH swaps in a fake).
+# Run by status-fleet-snapshot-refresh.sh every 300s. POSIX sh, jq, gh (HARBOR_GH swaps in a fake).
 set -eu
 . "$(dirname -- "$0")/library-log.sh"
 log_init main-tip-verdict
@@ -80,27 +80,27 @@ case "${1:-}" in
 esac
 [ $# -le 1 ] || { LOG_FD=2; log_fail "unexpected argument $2 after $1"; log_fix "sh $0 --help"; exit 2; }
 
-BRANCH="${HARBOR_CI_TIP_BRANCH:-${HARBOR_TIP_BRANCH:-main}}"
+BRANCH="${HARBOR_TIP_BRANCH:-main}"
 SELF="$(repo_slug)"                          # harbor's own OWNER/NAME (harbor#1149); empty when nothing names it
 STRICT="${HARBOR_TIP_STRICT:-$SELF}"         # repos whose every push runs CI: a commit with no run there IS red
-WINDOW="${HARBOR_CI_TIP_WINDOW:-${HARBOR_TIP_WINDOW:-30}}"            # first-parent commits judged per run
-PEND_SEC="${HARBOR_CI_TIP_PENDING_SEC:-${HARBOR_TIP_PENDING_SEC:-7200}}"   # a run pending longer than this is stuck
+WINDOW="${HARBOR_TIP_WINDOW:-30}"            # first-parent commits judged per run
+PEND_SEC="${HARBOR_TIP_PENDING_SEC:-7200}"   # a run pending longer than this is stuck
 GRACE_SEC=600                                # a fresh commit has no run for a moment
 RECHECK_SEC=3600                             # a final state is re-read this often (a nightly run can turn green red)
 FALLBACK_MAX=10                              # by-sha reads per repo per run, a rate-limit bound
-CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
+CACHE_DIR="${HARBOR_CACHE_DIR:-$HOME/.claude/cache}"
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 OUT="$CACHE_DIR/main-tip-verdict.json"
 LOG="$CACHE_DIR/checks.log"
 # The check tier's receipt (harbor#896): red over the non-green commits' short shas, green when none,
 # stood-down when GitHub did not answer. --print writes nothing, so it leaves no receipt either.
 RECEIPTS="$(receipt_dir)"   # harbor#904: the dir the reconcile reads, not $CACHE_DIR/checks
-NOW="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
-GH="${HARBOR_TEST_GH:-${HARBOR_GH:-gh}}"
+NOW="${HARBOR_NOW:-$(date +%s)}"
+GH="${HARBOR_GH:-gh}"
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required, so nothing was judged"; log_fix "$(pkg_hint jq)"; exit 3; }
-# Harbor is in the fleet unless HARBOR_CI_TIP_REPO names the one repo judged: with no name for it the verdict would leave harbor's own main out.
-[ -n "$SELF" ] || [ -n "${HARBOR_CI_TIP_REPO:-${HARBOR_TIP_REPO:-}}" ] || { log_fail "harbor's own repository is not derivable (no origin in this checkout, no repo-slug.txt beside this install), so nothing was judged"
-  log_fix "HARBOR_CI_TIP_REPO=<owner/name> sh $0, or deploy again: the install carries bin/repo-slug.txt"; exit 3; }
+# Harbor is in the fleet unless HARBOR_TIP_REPO names the one repo judged: with no name for it the verdict would leave harbor's own main out.
+[ -n "$SELF" ] || [ -n "${HARBOR_TIP_REPO:-}" ] || { log_fail "harbor's own repository is not derivable (no origin in this checkout, no repo-slug.txt beside this install), so nothing was judged"
+  log_fix "HARBOR_TIP_REPO=<owner/name> sh $0, or deploy again: the install carries bin/repo-slug.txt"; exit 3; }
 case "$WINDOW" in ''|*[!0-9]*) WINDOW=30 ;; esac
 [ "$WINDOW" -ge 1 ] || WINDOW=30
 
@@ -110,7 +110,7 @@ api() { "$GH" api "$1" 2>/dev/null; }
 
 # The fleet, one OWNER/NAME a line: harbor, the snapshot's repos with workflows, the config's `repo` lines.
 fleet() {
-  if [ -n "${HARBOR_CI_TIP_REPO:-${HARBOR_TIP_REPO:-}}" ]; then printf '%s\n' "${HARBOR_CI_TIP_REPO:-${HARBOR_TIP_REPO:-}}"; return 0; fi
+  if [ -n "${HARBOR_TIP_REPO:-}" ]; then printf '%s\n' "$HARBOR_TIP_REPO"; return 0; fi
   SNAP="${HARBOR_FLEET_SNAPSHOT:-$CACHE_DIR/fleet-snapshot.json}"
   {
     printf '%s\n' "$SELF"
@@ -331,10 +331,10 @@ while IFS= read -r _e; do
   _prevred=false
   [ -f "$OUT" ] && _prevred="$(jq -r --arg r "$_repo" '(if (.repos | type) == "array" then .repos else [.] end) | map(select(.repo == $r)) | .[0].tip.red // false' "$OUT" 2>/dev/null || echo false)"
   printf '%s' "$_e" | jq -r --arg ts "$_ts" --argjson now "$NOW" --arg pr "$_prevred" '
-    if .state == "disabled" then (if .changed then "[check:ci.main-tip-verdict] \($ts) \(.repo) main CI disabled (every push/schedule workflow); not judged" else empty end)
+    if .state == "disabled" then (if .changed then "[check:main-tip-verdict] \($ts) \(.repo) main CI disabled (every push/schedule workflow); not judged" else empty end)
     elif .state != "ok" then empty
     elif ((.new | length) > 0) or .tip.changed or (.tip.red and $pr != "true") then
-      "[check:ci.main-tip-verdict] \($ts) \(.repo) tip \(.tip.sha[0:8]) \(.tip.verdict)"
+      "[check:main-tip-verdict] \($ts) \(.repo) tip \(.tip.sha[0:8]) \(.tip.verdict)"
       + (if .tip.red then " red \(($now - .tip.at) / 60 | floor)m" else "" end)
       + "; \(.new | length) new non-green: " + ([.new[] | "\(.sha[0:8]) \(.verdict)"] | join(" ")) + "; \(.nongreen - (.new | length)) standing"
     else empty end' >> "$LOG" 2>/dev/null || :
@@ -344,8 +344,8 @@ cp "$T/result.json" "$OUT.tmp.$$" && mv -f "$OUT.tmp.$$" "$OUT" || { rm -f "$OUT
 _bad="$(jq -r --arg self "$SELF" '[.repos[] | select(.state == "ok" and (.unread | not)) | .repo as $r | (.repo | sub("^[^/]*/"; "")) as $n | .commits[] | select(.bad)
                | (if $r == $self then "" else $n + ":" end) + .sha[0:8]] | join(" ")' "$T/result.json")"
 # shellcheck disable=SC2086 # short shas, one word each
-if [ -n "$_bad" ]; then log_receipt "$RECEIPTS" ci.main-tip-verdict red $_bad || log_warn "no receipt written to $RECEIPTS"
-elif [ "$_unread" -gt 0 ]; then log_receipt "$RECEIPTS" ci.main-tip-verdict stood-down || log_warn "no receipt written to $RECEIPTS"
-else log_receipt "$RECEIPTS" ci.main-tip-verdict green || log_warn "no receipt written to $RECEIPTS"; fi
+if [ -n "$_bad" ]; then log_receipt "$RECEIPTS" main-tip-verdict red $_bad || log_warn "no receipt written to $RECEIPTS"
+elif [ "$_unread" -gt 0 ]; then log_receipt "$RECEIPTS" main-tip-verdict stood-down || log_warn "no receipt written to $RECEIPTS"
+else log_receipt "$RECEIPTS" main-tip-verdict green || log_warn "no receipt written to $RECEIPTS"; fi
 # A repo GitHub did not answer for is unchecked (3, D-29) unless a red was judged beside it, which is the 1 it always was.
 [ "$_unread" = 0 ] || { [ -z "$_bad" ] || exit 1; exit 3; }

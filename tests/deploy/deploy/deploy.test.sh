@@ -5,7 +5,7 @@
 # prompts are answered through script(1). The stubs speak the install standard's line shape
 # (contracts/logging.md) and the output contracts deploy reads (wave-b conventions §8).
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY  # a run inside a session or a deploy must not decide a case
+unset CLAUDECODE HARBOR_DEPLOY  # a run inside a session or a deploy must not decide a case
 T_TMP="$(cd "$T_TMP" && pwd -P)"  # deploy reports the config dir physically (install-lib's il_target)
 . "$(dirname "$0")/../../install/deploy-fixture.sh"
 need_pty
@@ -37,9 +37,9 @@ t_eq "every line is a header, a TAG line, a summary or a log line" 0 \
   "$(grep -cvE '^(── [a-z0-9.-]+ · |  (ok|FAIL|WARN|note|skip|fix): |[A-Za-z0-9_.-]+: [0-9]+ ok, [0-9]+ failed, [0-9]+ warnings$|log: )' "$T/out.txt")"
 t_has "the positive control: the output holds deploy's own TAG lines" "$(out)" "  ok: working tree clean"
 t_eq "a dry run keeps no log file" no "$([ -d "$C/backups/deploy" ] && echo yes || echo no)"
-t_eq "every child ran with HARBOR_DEPLOY_ACTIVE=1 (#285)" no "$([ -s "$LOGF.nodeploy" ] && echo yes || echo no)"
-t_has "the positive control: a stub run outside deploy records its missing HARBOR_DEPLOY_ACTIVE" \
-  "$(env -u HARBOR_DEPLOY_ACTIVE -u HARBOR_DEPLOY STUB_LOG="$T/ctl" sh "$REPO/bin/context-injection-install.sh" >/dev/null; cat "$T/ctl.nodeploy")" context-injection-install.sh
+t_eq "every child ran with HARBOR_DEPLOY=1 (#285)" no "$([ -s "$LOGF.nodeploy" ] && echo yes || echo no)"
+t_has "the positive control: a stub run outside deploy records its missing HARBOR_DEPLOY" \
+  "$(env -u HARBOR_DEPLOY STUB_LOG="$T/ctl" sh "$REPO/bin/context-injection-install.sh" >/dev/null; cat "$T/ctl.nodeploy")" context-injection-install.sh
 t_eq "no child saw a CLAUDE_CONFIG_DIR" no "$([ -s "$LOGF.rehearse" ] && echo yes || echo no)"
 t_eq "constitution-install's own dry run replaces the rehearsal on a copy" "policy-constitution-install.sh --live" \
   "$(grep '^policy-constitution-install.sh' "$LOGF")"
@@ -99,7 +99,7 @@ fixture branch; git -C "$REPO" checkout -q -b feature; refuse "a non-main branch
 fixture wt; git -C "$REPO" worktree add -q --detach "$T/wt" 2>/dev/null; REPO="$T/wt"; refuse "a linked worktree" "linked worktree"
 fixture root; mkdir -p "$T/elsewhere"
 env -u CLAUDE_CONFIG_DIR CLAUDECODE= HOME="$H" STUB_LOG="$LOGF" STUB_REPO="$T/elsewhere" STUB_GI="$T/gi" STUB_SKILLS="$T/skills" STUB_B8="$T/b8" sh "$REPO/bin/deploy.sh" --live >"$T/out.txt" 2>&1 </dev/null; RC=$?
-t_eq "HARBOR_SCOPE_REPO at another checkout" 1 "$RC"; t_has "HARBOR_SCOPE_REPO at another checkout: reason" "$(out)" "not this checkout"
+t_eq "HARBOR_REPO at another checkout" 1 "$RC"; t_has "HARBOR_REPO at another checkout: reason" "$(out)" "not this checkout"
 fixture ccd
 env CLAUDE_CONFIG_DIR="$T_TMP" CLAUDECODE= HOME="$H" STUB_LOG="$LOGF" STUB_REPO="$REPO" STUB_GI="$T/gi" STUB_SKILLS="$T/skills" STUB_B8="$T/b8" sh "$REPO/bin/deploy.sh" --live >"$T/out.txt" 2>&1 </dev/null; RC=$?
 t_eq "CLAUDE_CONFIG_DIR elsewhere is refused before any work, exit 2" 2 "$RC"; t_has "CLAUDE_CONFIG_DIR elsewhere: reason" "$(out)" "CLAUDE_CONFIG_DIR is $T_TMP, not the target $C"
@@ -219,7 +219,7 @@ t_eq "...its fix keeps the rest of that selection" "  fix: sh '$REPO/bin/deploy.
 
 t_section "the [y/N] gate: nothing is written without a person's yes"
 fixture eof  # a pty with stdin from /dev/null, so a real terminal running this suite is never read
-pty env -u CLAUDE_CONFIG_DIR -u HARBOR_SCOPE_LOCAL_BIN -u HARBOR_LOCAL_BIN CLAUDECODE= HOME="$H" STUB_LOG="$LOGF" STUB_REPO="$REPO" STUB_GI="$T/gi" STUB_SKILLS="$T/skills" STUB_B8="$T/b8" \
+pty env -u CLAUDE_CONFIG_DIR -u HARBOR_LOCAL_BIN CLAUDECODE= HOME="$H" STUB_LOG="$LOGF" STUB_REPO="$REPO" STUB_GI="$T/gi" STUB_SKILLS="$T/skills" STUB_B8="$T/b8" \
   sh "$REPO/bin/deploy.sh" --apply --live </dev/null >"$T/out" 2>&1; RC=$?
 tr -d '\r' <"$T/out" >"$T/out.txt"
 t_eq "end of input answers No" 1 "$RC"; t_has "and says nothing was installed" "$(out)" "nothing was installed"
@@ -311,7 +311,7 @@ t_has "a child's lines are relayed on screen" "$(out)" "  ok: deploy-runtime-ins
 t_has "...and kept in deploy's log, timestamped" "$(dlog)" "Z   ok: deploy-runtime-install.sh stub ran (apply)"
 t_has "deploy's own lines are in its log too" "$(dlog)" "  ok: snapshot: "
 t_has "the run ends naming its log" "$(tail -1 "$T/out.txt")" "log: $C/backups/deploy/"
-t_eq "every child of the apply ran with HARBOR_DEPLOY_ACTIVE=1 (#285)" no "$([ -s "$LOGF.nodeploy" ] && echo yes || echo no)"
+t_eq "every child of the apply ran with HARBOR_DEPLOY=1 (#285)" no "$([ -s "$LOGF.nodeploy" ] && echo yes || echo no)"
 t_eq "no check-mark, cross or bar glyph in an apply's output" 0 "$(grep -cE '✓|✗|│' "$T/out.txt")"
 fixture happyloss; run 'y\n' --apply --live --accept-loss
 t_eq "an apply with --accept-loss" 0 "$RC"

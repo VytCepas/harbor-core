@@ -235,15 +235,15 @@ fi
 # stated premise — "the drift came back after a night, so whatever cleared it did
 # not hold" — and gives a fortnight-apart pair the two independent episodes it is.
 #
-# NOT `date` ALONE. HARBOR_AUDIT_TRIAGE_NOW pins today so a fixture dated 2026-08-02 does
+# NOT `date` ALONE. HARBOR_FC_NOW pins today so a fixture dated 2026-08-02 does
 # not age out of its own test next week, which would turn this suite into a
 # clock-dependent time bomb — a test that starts failing for a reason unrelated
 # to the thing it guards. BSD `date -j -v` first, GNU `date -d` second; if
 # NEITHER resolves, FC_CUTOFF stays empty and every rule reverts to all-history.
 # Fail LOUD: an unreadable clock must never be the thing that silences a crit.
-FC_HORIZON="${HARBOR_AUDIT_TRIAGE_HORIZON_DAYS:-${HARBOR_FC_HORIZON_DAYS:-7}}"
+FC_HORIZON="${HARBOR_FC_HORIZON_DAYS:-7}"
 case "$FC_HORIZON" in ''|*[!0-9]*|0) FC_HORIZON=7 ;; esac
-FC_TODAY="${HARBOR_AUDIT_TRIAGE_NOW:-${HARBOR_FC_NOW:-$(date -u +%F 2>/dev/null || true)}}"
+FC_TODAY="${HARBOR_FC_NOW:-$(date -u +%F 2>/dev/null || true)}"
 case "$FC_TODAY" in
   [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
   *) FC_TODAY="" ;;

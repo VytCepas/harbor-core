@@ -40,8 +40,8 @@ esac
 log_init idea; LOG_FD=2
 
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-POOL_DIR="${HARBOR_MEMORY_LOG_DIR:-${HARBOR_LOG_DIR:-$CFG/MEMORY}}"
-TOKEN_FILE="${HARBOR_MEMORY_LOG_TOKEN_FILE:-${HARBOR_LOG_TOKEN_FILE:-$CFG/.helm-log-token}}"
+POOL_DIR="${HARBOR_LOG_DIR:-$CFG/MEMORY}"
+TOKEN_FILE="${HARBOR_LOG_TOKEN_FILE:-$CFG/.helm-log-token}"
 FILE="$POOL_DIR/IDEAS.md"
 SECRET="${HARBOR_SECRET_BIN:-$(command -v secret 2>/dev/null || true)}"; [ -n "$SECRET" ] || SECRET="$HOME/.local/bin/secret"
 
@@ -70,7 +70,7 @@ die() {
 
 [ -d "$POOL_DIR/.git" ] || die "no log repo at $POOL_DIR"
 # The log repo is the pool's own GitHub origin, never a name core carries (harbor#1149); none means local only.
-REPO="${HARBOR_MEMORY_LOG_REPO:-${HARBOR_LOG_REPO:-$(slug_of_url "$(git -C "$POOL_DIR" config --get remote.origin.url 2>/dev/null)")}}"
+REPO="${HARBOR_LOG_REPO:-$(slug_of_url "$(git -C "$POOL_DIR" config --get remote.origin.url 2>/dev/null)")}"
 
 PUSH=1
 case "${1:-}" in

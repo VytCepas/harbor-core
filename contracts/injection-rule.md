@@ -117,7 +117,7 @@ Without `guard-lib.sh` there are no shell targets, and the engine stays silent.
 
 **Computed once, by the engine, on the three tool events.** `hooks/injection-rule/injection-rule.sh`
 works the answer out before any pack is read, and hands it to every `run:` pack
-as `HARBOR_CONTEXT_TOUCHED`, one physical tree per line. `HARBOR_CONTEXT_REACHED` lists the
+as `HARBOR_TOUCHED`, one physical tree per line. `HARBOR_REACHED` lists the
 subset whose `scope: box` packs were swept. `repo-tier.sh` reads both instead of
 repeating the definition, so the report and the delivery cannot disagree about
 which tree a call reached. It carried its own copy for one PR (#601), and a

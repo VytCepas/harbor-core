@@ -57,7 +57,7 @@ sh "$TOOL" --registry "$FX/none.tsv" --gh "$GH" >/dev/null 2>&1; RC=$?
 t_eq "missing registry exits 2" 2 "$RC"
 
 # ── the registry: scope-roots.sh --repos first, the private layer's projects.tsv when there is none ─────────
-# A fixture workspace: PORT_ROOT holds the checkouts, the private layer holds repos.tsv (id path kind remote, the path relative to PORT_ROOT). HARBOR_SCOPE_ROOT is
+# A fixture workspace: PORT_ROOT holds the checkouts, the private layer holds repos.tsv (id path kind remote, the path relative to PORT_ROOT). HARBOR_ROOT is
 # a root whose bin/, contracts/ and standards/ are the real ones. A second private layer carries only inject.d/box/projects.tsv (harbor#1149: core ships none), so the fallback names nothing of this box.
 WS="$FX/ws"; PRIV="$FX/private"; HR="$FX/hroot"; PROJ="$FX/projonly"
 mkdir -p "$WS" "$PRIV" "$HR" "$PROJ/inject.d/box"
@@ -68,7 +68,7 @@ printf 'fallbackrow\t%s\tonly in projects.tsv\n' "$FX/pub" > "$PROJ/inject.d/box
 mkdir -p "$PRIV/inject.d/box"; cp "$PROJ/inject.d/box/projects.tsv" "$PRIV/inject.d/box/projects.tsv"   # beside repos.tsv: never read
 envrun() { # <private dir> [tool args…] → the tool run in the fixture workspace; stdout then stderr in $FX/e.out / e.err
   _p="$1"; shift
-  HARBOR_SCOPE_ROOT="$HR" HARBOR_SCOPE_PRIVATE="$_p" PORT_ROOT="$WS" sh "$TOOL" "$@" > "$FX/e.out" 2> "$FX/e.err"; ERC=$?
+  HARBOR_ROOT="$HR" HARBOR_SCOPE_PRIVATE="$_p" PORT_ROOT="$WS" sh "$TOOL" "$@" > "$FX/e.out" 2> "$FX/e.err"; ERC=$?
 }
 
 t_section "the repos come from scope-roots.sh --repos when the private layer has a registry"

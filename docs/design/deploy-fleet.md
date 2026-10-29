@@ -165,10 +165,10 @@ A merge-only repo is two lines: `repo owner/name` and, if it has several workflo
 | The lock, the run log, and every plan, apply, verify, restore and merge-stack log | `~/.local/state/harbor/ship/` (`backups/deploy-fleet/<ts>/`) |
 | Queued approvals | written only by `gate-queue.sh add <kind> <owner/repo> <sha> [<pr>] --reason <text>`, id `<kind>-<owner>_<name>[-<pr>]-<sha12>` (§5a.2); the gate emits `approval.open` |
 | The morning report | `~/Deliverables/<date>-ship/REPORT.md` (`HARBOR_DEPLOY_FLEET_REPORT_DIR` moves it): one section per run, newest last: merged, deployed (sha range), rolled back (failing check, log, snapshot), skipped red, left for the next night, queued (each with its `gate-approve.sh` command and queue id), problems |
-| The check | one `[check:deploy.fleet]` line per run in `~/.claude/cache/checks.log`, and the receipt `<config>/cache/checks/deploy.fleet.json` (docs/reference/checks.md `deploy.fleet`) |
+| The check | one `[check:ship]` line per run in `~/.claude/cache/checks.log`, and the receipt `<config>/cache/checks/ship.json` (docs/reference/checks.md `ship`) |
 
 A finding is the receipt: red over `<owner/name>:<stage>` (`rollback`, `plan`, `merge`, `queue`, `checkout`, …), which
-`lint-findings.sh reconcile` files as `check/deploy.fleet`. It stays red while a rollback stops the night.
+`lint-findings.sh reconcile` files as `check/ship`. It stays red while a rollback stops the night.
 
 ## Not handled, on purpose
 

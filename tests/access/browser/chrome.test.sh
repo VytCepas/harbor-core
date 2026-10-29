@@ -2,7 +2,7 @@
 # `harbor chrome` and Chrome itself (2026-10-14): the state probe, tab ownership and focus, the
 # signed-out stop and wait-signin, and the upload guard. Split from browser-test.sh for its line budget.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-AGENT="$T_ROOT/bin/access-browser-agent.sh"; unset HARBOR_ACCESS_CHROME HARBOR_CHROME
+AGENT="$T_ROOT/bin/access-browser-agent.sh"; unset HARBOR_CHROME
 HARBOR_CHROME_SETTLE=0; export HARBOR_CHROME_SETTLE
 . "$(dirname "$0")/../../cli/browser/agent-stub.sh"
 OWN="$T_TMP/harbor-browser/claude-abc123def456/.owned-tabs"
@@ -70,9 +70,16 @@ t_has "it says why" "$(out)" "fragment already"
 printf '%s\n' "9${TAB}1${TAB}true${TAB}$U1" > "$OSA_TABS"
 t_eq "an AppleScript failure on front is refused" "exit 1" "$(STUB_URL="$U1"; STUB_OSA_FAIL=1; export STUB_URL STUB_OSA_FAIL; ag front)"
 t_has "naming the Automation permission" "$(out)" "Automation"
-t_eq "front never raises a window or activates Chrome" no "$(sed -n '/^  front)/,/^    ;;/p' "$AGENT" | grep -qE '^ *(activate|set index of)' && echo yes || echo no)"
-t_eq "front that leaves the page hidden is refused, not ok" "exit 1" "$(STUB_URL="$U1"; STUB_HIDDEN=1; export STUB_URL STUB_HIDDEN; HARBOR_CHROME_SETTLE=0 ag front)"
-t_has "naming minimising" "$(out)" "never minimise a harbor window"
+_rz0="$(osa 'raise 9')"; STUB_URL="$U1"; export STUB_URL; ag front >/dev/null; unset STUB_URL
+t_eq "front on a visible page raises no window" "$_rz0" "$(osa 'raise 9')"
+t_eq "front never activates Chrome" no "$(sed -n '/^  front)/,/^    ;;/p' "$AGENT" | grep -qE '^ *activate$|application "Google Chrome" to activate' && echo yes || echo no)"
+: > "$T_TMP/covered"
+t_eq "front on a covered window passes" "exit 0" "$(STUB_URL="$U1"; STUB_COVERED="$T_TMP/covered"; export STUB_URL STUB_COVERED; ag front)"
+t_eq "by raising that window" "$((_rz0 + 1))" "$(osa 'raise 9')"
+t_has "and says it was covered" "$(out)" "was covered by another window"
+t_eq "front that leaves the page hidden after the raise is refused, not ok" "exit 1" "$(STUB_URL="$U1"; STUB_HIDDEN=1; export STUB_URL STUB_HIDDEN; ag front)"
+t_has "naming another app or Space" "$(out)" "another app's window covers it, or it is on another Space"
+t_hasnt "and never blames minimising" "$(out)" "minimise"
 printf '%s\n' "7${TAB}1${TAB}true${TAB}https://www.facebook.com/messages/t/123${TAB}11" "9${TAB}1${TAB}true${TAB}https://ads.x.com/campaigns/5${TAB}501" "9${TAB}2${TAB}false${TAB}$U1${TAB}502" > "$OSA_TABS"
 printf '501\n' > "$OWN"
 STUB_URL="$U1"; export STUB_URL; ag tabs >/dev/null; unset STUB_URL

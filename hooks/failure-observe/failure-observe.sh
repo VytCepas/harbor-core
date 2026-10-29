@@ -206,7 +206,7 @@ case "$F_ERR" in
   '')                                                                          _e=empty ;;
   *)                                                                           _e=other ;;
 esac
-# browser-agent's own refusals that hand the next step to the operator (signed out, a minimised window,
+# browser-agent's own refusals that hand the next step to the operator (signed out, a hidden window,
 # a destructive click, an off-list host): its rules working, not the tool failing. Its server only.
 [ "$_t" != mcp__harbor_chrome ] || case "$F_ERR" in *"fail: hand-off:"*) _e=handoff ;; esac
 

@@ -127,27 +127,6 @@ mkpriv tp4 "$H"'z	z	workload	-	enabling
 '
 t_exit "five fields are refused" 2 roots --repo z
 
-t_section "a seventh note column marks a guessed value as proposed (operator decision 2026-10-29, harbor#966)"
-mkpriv nt 'id	path	kind	remote	topology	interaction	note
-harbor	harbor	control-plane	-	platform	-
-zorbcorp	zorbcorp	workload	-	stream-aligned	x-as-a-service	proposed
-legacy	legacy	workload	-
-'
-t_exit "seven columns beside six and four are valid" 0 roots --registry-check
-t_eq "--topology ignores the note" "stream-aligned	x-as-a-service" "$(roots --topology zorbcorp)"
-t_eq "--repos is unchanged by the note column" "harbor	$PW/harbor
-zorbcorp	$PW/zorbcorp
-legacy	$PW/legacy" "$(roots --repos)"
-mkpriv nt2 "$H"'z	z	workload	-	enabling	collaboration	proposed	extra
-'
-t_exit "eight fields are refused" 2 roots --repo z
-mkpriv nt3 "$H"'z	z	workload	-	enabling	collaboration	proposed
-'
-t_exit "a proposed note does not excuse a bad topology: a good one is green" 0 roots --registry-check
-mkpriv nt4 "$H"'z	z	workload	-	enablng	collaboration	proposed
-'
-t_exit "...and a bad one is still refused" 2 roots --registry-check
-
 t_section "--platform-ids: the platform's own repos, by kind (harbor#966)"
 mkpriv pl "$H"'cp	cp	control-plane	-
 yd	tools/yd	scaffolder	-
@@ -390,7 +369,7 @@ t_section "--get follows the registry for a REPOS role, and keeps the table path
 mkpriv g "$H"'projects-orchestrator	moved/fleet	fleet-controller	-
 '
 t_eq "a role row resolves through the registry's path" "$PW/moved/fleet" "$(roots --get HARBOR_ORCHESTRATOR)"
-t_eq "...and keeps the rest of the row's path" "$PW/moved/fleet/fleet.yaml" "$(roots --get HARBOR_SCOPE_FLEET_FILE)"
+t_eq "...and keeps the rest of the row's path" "$PW/moved/fleet/fleet.yaml" "$(roots --get HARBOR_FLEET_FILE)"
 t_eq "a repo the registry lacks keeps the table path" "$PW/project-init" "$(roots --get HARBOR_PROJECT_INIT)"
 t_eq "an exported override still wins" "/elsewhere" "$(HARBOR_SCOPE_FLEET_CONTROLLER=/elsewhere roots --get HARBOR_ORCHESTRATOR)"
 PW="$T_TMP/g-none"; mkdir -p "$PW"

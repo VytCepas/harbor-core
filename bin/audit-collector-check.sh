@@ -2,7 +2,7 @@
 # audit-collector-check.sh (harbor#1181 lane 5) — the destination for the collector's findings: reads its world-readable
 # status.json as the operator and files the collector.health receipt. Red when the heartbeat is older than 15 min,
 # a source is unreadable (the read ACL removed?), or a new tamper event (truncated, edited, unreadable) appeared
-# since the last run; red also appends one [check:audit.collector-health] line to checks.log. Stood down when no
+# since the last run; red also appends one [check:collector.health] line to checks.log. Stood down when no
 # collector is installed. Runs on fleet-snapshot-refresh's schedule (docs/reference/checks.md).
 set -eu
 case "${1:-}" in -h|--help) awk 'NR<2{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$0"; exit 0 ;; esac
@@ -15,7 +15,7 @@ ST="$STORE/status.json"; SEEN="$CFG/cache/collector-check.seen"; RD="$(receipt_d
 STALE="${HARBOR_COLLECTOR_STALE:-900}"
 if [ ! -f "$ST" ]; then
   log_skip "no collector at $STORE: not installed, nothing to judge"
-  log_receipt "$RD" audit.collector-health stood-down not-installed || log_warn "could not write the receipt in $RD"
+  log_receipt "$RD" collector.health stood-down not-installed || log_warn "could not write the receipt in $RD"
   log_end; exit 0
 fi
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required to read $ST"; log_fix "$(pkg_hint jq)"; exit 1; }
@@ -61,14 +61,14 @@ if [ -n "$why" ]; then
   # one checks.log line per CHANGE of reasons: a standing outage is the red receipt, not a line every tick
   _last=""; { [ -f "$SEEN.why" ] && IFS= read -r _last < "$SEEN.why"; } 2>/dev/null || :
   if [ "$_last" != "$why" ]; then
-    printf '[check:audit.collector-health] %s%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$why" >> "$CFG/cache/checks.log" 2>/dev/null || :
+    printf '[check:collector.health] %s%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$why" >> "$CFG/cache/checks.log" 2>/dev/null || :
   fi
   printf "%s\n" "$why" > "$SEEN.why" 2>/dev/null || :
   # shellcheck disable=SC2086 # the reasons are one word each, by construction above
-  log_receipt "$RD" audit.collector-health red $why || log_warn "could not write the receipt in $RD"
+  log_receipt "$RD" collector.health red $why || log_warn "could not write the receipt in $RD"
   log_end || :; exit 1
 fi
 rm -f "$SEEN.why" 2>/dev/null || :
 log_ok "collector heartbeat ${age}s ago, no unreadable source, no new event"
-log_receipt "$RD" audit.collector-health green || log_warn "could not write the receipt in $RD"
+log_receipt "$RD" collector.health green || log_warn "could not write the receipt in $RD"
 log_end

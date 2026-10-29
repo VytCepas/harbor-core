@@ -28,7 +28,7 @@ never a total.
 
 `🧹N` is the count of rows that need a person; `SWEEP N ·age` means it is due —
 at least one RISK row, or enough DECIDE rows. The fleet refresher records it at
-09:00 and 16:00 (`bin/housekeeping-clean.sh --record`, check `housekeeping.clean` in `docs/reference/checks.md`).
+09:00 and 16:00 (`bin/housekeeping-clean.sh --record`, check `sweep` in `docs/reference/checks.md`).
 
 **Done looks like:** every DECIDE and RISK row has the operator's disposition —
 **act**, **keep** (with a reason), or **later** — asked in **one batch grouped by
@@ -75,7 +75,7 @@ that put it in the table.
 **1 · Uncommitted work is the most expensive thing on the box, and `git status`
 is not enough to find it.** Concurrent sessions revert uncommitted work while
 `git status` reads clean (memory `concurrent-sessions-revert-uncommitted-work`).
-Measured 2026-09-06: a workload repo held **69 uncommitted lines** of `docs/reports/rejected-approaches.md`
+Measured 2026-09-06: a workload repo held **69 uncommitted lines** of `docs/decisions/rejected-approaches.md`
 — two dead ends from a Citadele session, the kind of knowledge nothing
 regenerates. A sweep that started with `rm` would have destroyed it. So the
 FIRST action of any cleanup is to find and commit unsaved work, before a single

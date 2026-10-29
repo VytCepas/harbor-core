@@ -3,8 +3,8 @@
 # Each case is a throwaway git checkout with its own registers; the terms are made up, so this file names no real tool.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/checks/lint-fixture.sh"
-DM() { HARBOR_SCOPE_ROOT="$1" sh "$T_ROOT/bin/lint-domain.sh" "$2" 2>&1; }
-red() { HARBOR_SCOPE_ROOT="$1" sh "$T_ROOT/bin/lint-domain.sh" "${2:---check}" >/dev/null 2>&1; echo $?; }
+DM() { HARBOR_ROOT="$1" sh "$T_ROOT/bin/lint-domain.sh" "$2" 2>&1; }
+red() { HARBOR_ROOT="$1" sh "$T_ROOT/bin/lint-domain.sh" "${2:---check}" >/dev/null 2>&1; echo $?; }
 mk() { # <name> <baseline> → 3 pairs: bin/a.sh (acme, ledgr), docs/d.md (acme); dev, allowed and near-miss files add none
   _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/contracts" "$_d/docs/ok" "$_d/notes"
   printf 'path\tlayer\tnote\nbin/\tcore\t\ncontracts/\tcore\t\ndocs/\tcore\t\nnotes/\tdev\t\n.gitignore\tcore\t\n' > "$_d/contracts/layers.tsv"
@@ -45,7 +45,7 @@ t_eq "below is still green" "0" "$(red "$D")"
 t_has "...and asks for a lower baseline" "$OUT" "lower contracts/lint-domain-baseline.txt to 3"
 D="$(mk nobase x)"; t_eq "a non-numeric baseline is red" "1" "$(red "$D")"
 mkdir -p "$T_TMP/nogit"
-t_exit "a non-checkout inspected nothing and is not a pass" 2 env HARBOR_SCOPE_ROOT="$T_TMP/nogit" sh "$T_ROOT/bin/lint-domain.sh" --check
+t_exit "a non-checkout inspected nothing and is not a pass" 2 env HARBOR_ROOT="$T_TMP/nogit" sh "$T_ROOT/bin/lint-domain.sh" --check
 
 t_section "--zero is the export gate: red on any hit"
 D="$(mk zero 9)"; t_eq "three hits under a baseline of 9 are still red" "1" "$(red "$D" --zero)"
@@ -74,7 +74,7 @@ t_eq "no terms register" "2" "$(red "$D")"
 t_section "--repos: workload repo names from the private registry, only where they read as a repo (harbor#1273)"
 PV="$T_TMP/pv/inject.d/box"; mkdir -p "$PV"
 printf '# name\tpath\twhat\nzorbcorp\t~/x\tmade up\nbrook\t~/b\tan English word\nharbor\t~/h\tthe control plane\n' > "$PV/projects.tsv"
-DR() { HARBOR_SCOPE_PRIVATE="$T_TMP/pv" HARBOR_SCOPE_ROOT="$1" sh "$T_ROOT/bin/lint-domain.sh" --repos "$2" 2>&1; }
+DR() { HARBOR_SCOPE_PRIVATE="$T_TMP/pv" HARBOR_ROOT="$1" sh "$T_ROOT/bin/lint-domain.sh" --repos "$2" 2>&1; }
 D="$(mk repos 3)"
 printf 'cd ~/zorbcorp\nsee brook/bin/x.sh and `brook`\n' > "$D/docs/r.md"
 printf 'the brook ran by; a zorbcorporate thing; ~/harbor/bin\n' > "$D/docs/word.md"
@@ -91,17 +91,17 @@ t_hasnt "a dev-layer file does not" "$L" "notes/dev.md"
 t_hasnt "an allowed prefix does not" "$L" "docs/ok/allowed.md"
 t_eq "three pairs" "3" "$(DR "$D" --count)"
 printf '3\n' > "$D/contracts/lint-domain-repos-baseline.txt"
-t_eq "at its own baseline: green" "0" "$(HARBOR_SCOPE_PRIVATE="$T_TMP/pv" HARBOR_SCOPE_ROOT="$D" sh "$T_ROOT/bin/lint-domain.sh" --repos --check >/dev/null 2>&1; echo $?)"
+t_eq "at its own baseline: green" "0" "$(HARBOR_SCOPE_PRIVATE="$T_TMP/pv" HARBOR_ROOT="$D" sh "$T_ROOT/bin/lint-domain.sh" --repos --check >/dev/null 2>&1; echo $?)"
 printf 'cd ~/zorbcorp\n' > "$D/docs/new.md"
-t_eq "a new mention: red" "1" "$(HARBOR_SCOPE_PRIVATE="$T_TMP/pv" HARBOR_SCOPE_ROOT="$D" sh "$T_ROOT/bin/lint-domain.sh" --repos --check >/dev/null 2>&1; echo $?)"
+t_eq "a new mention: red" "1" "$(HARBOR_SCOPE_PRIVATE="$T_TMP/pv" HARBOR_ROOT="$D" sh "$T_ROOT/bin/lint-domain.sh" --repos --check >/dev/null 2>&1; echo $?)"
 t_has "...worded as a workload repo" "$(DR "$D" --check)" "name a workload repo, the limit is 3"
-t_eq "no registry: green" "0" "$(HARBOR_SCOPE_PRIVATE="$T_TMP/none" HARBOR_SCOPE_ROOT="$D" sh "$T_ROOT/bin/lint-domain.sh" --repos --check >/dev/null 2>&1; echo $?)"
-t_has "...and it says names were not judged" "$(HARBOR_SCOPE_PRIVATE="$T_TMP/none" HARBOR_SCOPE_ROOT="$D" sh "$T_ROOT/bin/lint-domain.sh" --repos --check 2>&1)" "workload repo names were not judged"
+t_eq "no registry: green" "0" "$(HARBOR_SCOPE_PRIVATE="$T_TMP/none" HARBOR_ROOT="$D" sh "$T_ROOT/bin/lint-domain.sh" --repos --check >/dev/null 2>&1; echo $?)"
+t_has "...and it says names were not judged" "$(HARBOR_SCOPE_PRIVATE="$T_TMP/none" HARBOR_ROOT="$D" sh "$T_ROOT/bin/lint-domain.sh" --repos --check 2>&1)" "workload repo names were not judged"
 t_eq "the term ratchet is untouched by the repo mode" "3" "$(DM "$D" --count)"
-t_eq "--zero over hits: red" "1" "$(HARBOR_SCOPE_PRIVATE="$T_TMP/pv" HARBOR_SCOPE_ROOT="$D" sh "$T_ROOT/bin/lint-domain.sh" --repos --zero >/dev/null 2>&1; echo $?)"
-t_eq "--zero with no registry: the export gate is red, not a silent pass" "2" "$(HARBOR_SCOPE_PRIVATE="$T_TMP/none" HARBOR_SCOPE_ROOT="$D" sh "$T_ROOT/bin/lint-domain.sh" --repos --zero >/dev/null 2>&1; echo $?)"
+t_eq "--zero over hits: red" "1" "$(HARBOR_SCOPE_PRIVATE="$T_TMP/pv" HARBOR_ROOT="$D" sh "$T_ROOT/bin/lint-domain.sh" --repos --zero >/dev/null 2>&1; echo $?)"
+t_eq "--zero with no registry: the export gate is red, not a silent pass" "2" "$(HARBOR_SCOPE_PRIVATE="$T_TMP/none" HARBOR_ROOT="$D" sh "$T_ROOT/bin/lint-domain.sh" --repos --zero >/dev/null 2>&1; echo $?)"
 Z="$(mk repos-zero 3)"; printf 'path\tterm\treason\n' > "$Z/contracts/domain-repos-allow.tsv"
-t_eq "--zero over a tree naming no repo: green" "0" "$(HARBOR_SCOPE_PRIVATE="$T_TMP/pv" HARBOR_SCOPE_ROOT="$Z" sh "$T_ROOT/bin/lint-domain.sh" --repos --zero >/dev/null 2>&1; echo $?)"
+t_eq "--zero over a tree naming no repo: green" "0" "$(HARBOR_SCOPE_PRIVATE="$T_TMP/pv" HARBOR_ROOT="$Z" sh "$T_ROOT/bin/lint-domain.sh" --repos --zero >/dev/null 2>&1; echo $?)"
 
 t_section "lint.domain runs the same check"
 D="$(mk lintok 3)"

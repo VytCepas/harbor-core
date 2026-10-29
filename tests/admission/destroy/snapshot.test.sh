@@ -134,8 +134,8 @@ _guard "$R2/sub-does-not-matter" "git -C $R2 restore a.txt"
 t_eq "an absolute -C beats an unknown cwd" 6 "$(_n "$R2")"
 _guard - "git restore a.txt; git checkout -- a.txt"   # two blind discards, one line
 t_eq "no .cwd: allowed" "0:" "$RC:$OUT"
-t_has "no .cwd: said once" "$ERR" "[check:admission.destroy-snapshot]"
-t_eq "no .cwd: one line for two discards" 1 "$(printf '%s\n' "$ERR" | grep -c 'check:admission.destroy-snapshot')"
+t_has "no .cwd: said once" "$ERR" "[check:destroy-snapshot]"
+t_eq "no .cwd: one line for two discards" 1 "$(printf '%s\n' "$ERR" | grep -c 'check:destroy-snapshot')"
 _guard "$R3" 'cd "$(mktemp -d)" && git restore a.txt'
 t_has "an unresolvable cd: said" "$ERR" "nothing was snapshotted"
 t_eq "an unresolvable cd: no snapshot in the cwd" 2 "$(_n "$R3")"
@@ -179,7 +179,7 @@ if [ -w "$R6/.git/objects" ]; then  # root ignores modes: make the index copy fa
 fi
 _guard "$R6" "git checkout -- a.txt"
 t_eq "unwritable: allowed" "0:" "$RC:$OUT"
-t_has "unwritable: said" "$ERR" "[check:admission.destroy-snapshot]"
+t_has "unwritable: said" "$ERR" "[check:destroy-snapshot]"
 t_has "unwritable: says it runs unprotected" "$ERR" "runs unprotected"
 t_eq "unwritable: one line" 1 "$(printf '%s\n' "$ERR" | grep -c .)"
 _guard "$R6" "git reset --hard"

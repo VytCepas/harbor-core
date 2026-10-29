@@ -10,25 +10,25 @@ W="$T_TMP/w"; mkdir -p "$W/bin" "$W/cfg" "$W/cache"
 cp "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/status-fleet-snapshot-refresh.sh" "$W/bin/"
 printf '#!/bin/sh\nprintf "[{\\"id\\":1}]"\n' > "$W/orch"; chmod +x "$W/orch"
 AG="$HOME/Library/LaunchAgents"; SU="$HOME/.config/systemd/user"; mkdir -p "$AG" "$SU"
-for _j in status.usage status.usage-sessions audit.triage; do : > "$AG/com.harbor.$_j.plist"; : > "$SU/harbor-$(printf %s "$_j" | tr . -).timer"; done
+for _j in usage usage-sessions judge; do : > "$AG/com.harbor.$_j.plist"; : > "$SU/harbor-$_j.timer"; done
 : > "$AG/com.example.other.plist"; : > "$SU/other-thing.timer"   # not ours: never counted
 TAB="$(printf '\t')"
 
 # macOS: launchctl lists `pid status label`; "-" is a loaded job that is between runs, which is normal.
 # A harbor job is listed LAST: $(...) strips the final newline, which once hid it from the anchored match.
 MAC="$T_TMP/mac"; mkdir -p "$MAC"
-printf '#!/bin/sh\nprintf "PID\\tStatus\\tLabel\\n-\\t0\\tcom.apple.Finder\\n-\\t0\\tcom.harbor.status.usage-sessions\\n4242\\t0\\tcom.harbor.audit.triage\\n"\n' > "$MAC/launchctl"
+printf '#!/bin/sh\nprintf "PID\\tStatus\\tLabel\\n-\\t0\\tcom.apple.Finder\\n-\\t0\\tcom.harbor.usage-sessions\\n4242\\t0\\tcom.harbor.judge\\n"\n' > "$MAC/launchctl"
 chmod +x "$MAC/launchctl"
 # Linux: neither real tool on PATH; systemctl answers `--user is-active --quiet <unit>`.
 LX="$T_TMP/lx"; linux_path "$LX" launchctl systemctl
-printf '#!/bin/sh\ncase "$4" in harbor-status-usage-sessions.timer|harbor-audit-triage.timer) exit 0 ;; esac\nexit 3\n' > "$LX/systemctl"
+printf '#!/bin/sh\ncase "$4" in harbor-usage-sessions.timer|harbor-judge.timer) exit 0 ;; esac\nexit 3\n' > "$LX/systemctl"
 chmod +x "$LX/systemctl"
 BARE="$T_TMP/bare"; linux_path "$BARE" launchctl systemctl   # a box with no scheduler at all
 
 # run <bindir> <PATH> -> the cache line the statusline reads, or "absent"
 run() {
   rm -f "$W/cfg/.helm-watch"
-  PATH="$2" CLAUDE_CONFIG_DIR="$W/cfg" HARBOR_SCOPE_CACHE_DIR="$W/cache" HARBOR_SCOPE_FLEET_CONTROLLER_BIN="$W/orch" HARBOR_SCOPE_FLEET_FILE="$W/fleet.yaml" \
+  PATH="$2" CLAUDE_CONFIG_DIR="$W/cfg" HARBOR_CACHE_DIR="$W/cache" HARBOR_ORCH_BIN="$W/orch" HARBOR_FLEET_FILE="$W/fleet.yaml" \
     sh "$1/status-fleet-snapshot-refresh.sh" >/dev/null 2>&1
   cat "$W/cfg/.helm-watch" 2>/dev/null || echo absent
 }
@@ -48,7 +48,7 @@ t_eq "macOS with nothing installed: no file" absent "$(run "$W/bin" "$MAC:$PATH"
 t_eq "Linux with nothing installed: no file" absent "$(run "$W/bin" "$LX")"
 mv "$AG.off" "$AG"; mv "$SU.off" "$SU"
 printf 'watch 9 9\n' > "$W/cfg/.helm-watch"
-PATH="$BARE" CLAUDE_CONFIG_DIR="$W/cfg" HARBOR_SCOPE_CACHE_DIR="$W/cache" HARBOR_SCOPE_FLEET_CONTROLLER_BIN="$W/orch" sh "$W/bin/status-fleet-snapshot-refresh.sh" >/dev/null 2>&1
+PATH="$BARE" CLAUDE_CONFIG_DIR="$W/cfg" HARBOR_CACHE_DIR="$W/cache" HARBOR_ORCH_BIN="$W/orch" sh "$W/bin/status-fleet-snapshot-refresh.sh" >/dev/null 2>&1
 t_eq "no scheduler leaves an earlier cache alone (it did not look)" "watch 9 9" "$(cat "$W/cfg/.helm-watch")"
 rm -f "$W/cfg/.helm-watch"
 printf '#!/bin/sh\nexit 3\n' > "$LX/systemctl"
@@ -57,8 +57,8 @@ printf '#!/bin/sh\nprintf "PID\\tStatus\\tLabel\\n"\n' > "$MAC/launchctl"
 t_eq "macOS with nothing loaded: a real zero" "watch 0 3" "$(run "$W/bin" "$MAC:$PATH")"
 
 t_section "red-proof: each branch's mutant answers a different fact"
-printf '#!/bin/sh\nprintf "PID\\tStatus\\tLabel\\n-\\t0\\tcom.apple.Finder\\n-\\t0\\tcom.harbor.status.usage-sessions\\n4242\\t0\\tcom.harbor.audit.triage\\n"\n' > "$MAC/launchctl"
-printf '#!/bin/sh\ncase "$4" in harbor-status-usage-sessions.timer|harbor-audit-triage.timer) exit 0 ;; esac\nexit 3\n' > "$LX/systemctl"
+printf '#!/bin/sh\nprintf "PID\\tStatus\\tLabel\\n-\\t0\\tcom.apple.Finder\\n-\\t0\\tcom.harbor.usage-sessions\\n4242\\t0\\tcom.harbor.judge\\n"\n' > "$MAC/launchctl"
+printf '#!/bin/sh\ncase "$4" in harbor-usage-sessions.timer|harbor-judge.timer) exit 0 ;; esac\nexit 3\n' > "$LX/systemctl"
 # mutate <name> <awk program>: the refresher with one line changed, alone in its own bin/
 mutate() {
   _d="$T_TMP/mut-$1"; rm -rf "$_d"; mkdir -p "$_d"; cp "$W/bin/library-log.sh" "$_d/"

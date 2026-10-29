@@ -41,7 +41,7 @@
 # WHAT IT READS, and what it says when an input is absent: every input is a `# input` row at the top
 # of the graph, read or absent, so a graph built in CI (no box, no siblings) says what it left out
 # instead of reading as complete. The roots come from contracts/roots.tsv through scope-roots.sh; the
-# memory-store is the work-log checkout (HARBOR_MEMORY_LOG_DIR, worklog-push's own default), and the notes store
+# memory-store is the work-log checkout (HARBOR_LOG_DIR, worklog-push's own default), and the notes store
 # is memory-route's key for $HOME.
 #
 # PYTHON, NOT AWK, and that is a fit decision: the core is an overlapping multi-pattern substring scan
@@ -814,8 +814,8 @@ TMP="${TMPDIR:-/tmp}"; TMP="${TMP%/}/graph-gen.$$"
 trap 'rm -f "$TMP" "$TMP.d"' EXIT INT TERM
 _gen() {
   _py gen "out=$TMP" "root=$ROOT" "home=$HOME" "cfg=$CFG" \
-    "harbor_repo=$(_root HARBOR_SCOPE_REPO)" "fleet=$(_root HARBOR_SCOPE_FLEET_CONTROLLER)" "yard=$(_root HARBOR_SCOPE_SCAFFOLDER)" \
-    "memory_store=${HARBOR_MEMORY_LOG_DIR:-${HARBOR_LOG_DIR:-$CFG/MEMORY}}" "local_bin=$(_root HARBOR_SCOPE_LOCAL_BIN)"
+    "harbor_repo=$(_root HARBOR_REPO)" "fleet=$(_root HARBOR_SCOPE_FLEET_CONTROLLER)" "yard=$(_root HARBOR_SCOPE_SCAFFOLDER)" \
+    "memory_store=${HARBOR_LOG_DIR:-$CFG/MEMORY}" "local_bin=$(_root HARBOR_LOCAL_BIN)"
 }
 if [ "$MODE" = dangling ]; then
   # A failed scan is 3 (unchecked), never 1: reference-check read 1 as "rows found", so a scan that died on an

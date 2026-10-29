@@ -64,8 +64,8 @@ ship	deploy-fleet.sh	no	merge and deploy opted-in fleet repos unattended, restor
 # rather than failing with "not found" on a path the caller never saw.
 #
 # AN EXPLICIT OVERRIDE THAT IS WRONG IS AN ERROR, NOT A FALLBACK. The first cut
-# tried HARBOR_SCOPE_BIN, then the dispatcher's directory, then ~/harbor/bin, and took
-# the first that had the scripts — so `HARBOR_SCOPE_BIN=/typo harbor status` quietly ran
+# tried HARBOR_BIN, then the dispatcher's directory, then ~/harbor/bin, and took
+# the first that had the scripts — so `HARBOR_BIN=/typo harbor status` quietly ran
 # the repo copy and reported success. The operator would have believed they had
 # tested a different tree. Caught while writing the 127 test, which could not fail
 # for exactly this reason.
@@ -75,7 +75,7 @@ _self_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 # with none, the two 127 failures below still print what failed and the fix, because recovery must
 # not need a file that may be part of what broke.
 _lld=''
-for _c in "$_self_dir" "${HARBOR_SCOPE_BIN:-${HARBOR_BIN:-}}" "${PORT_ROOT:-$HOME/port}/harbor/bin"; do
+for _c in "$_self_dir" "${HARBOR_BIN:-}" "${PORT_ROOT:-$HOME/port}/harbor/bin"; do
   if [ -n "$_c" ] && [ -f "$_c/library-log.sh" ]; then _lld="$_c"; break; fi
 done
 if [ -n "$_lld" ]; then
@@ -99,11 +99,11 @@ case "$(uname -s 2>/dev/null || :)" in MINGW*|MSYS*|CYGWIN*)
   if [ -n "$_lld" ]; then log_fail "$_w"; log_fix "$_wf"; log_end || :; else printf 'harbor: %s\n  fix: %s\n' "$_w" "$_wf" >&2; fi
   exit 1 ;;
 esac
-if [ -n "${HARBOR_SCOPE_BIN:-${HARBOR_BIN:-}}" ]; then
-  if [ -f "${HARBOR_SCOPE_BIN:-${HARBOR_BIN:-}}/status-generate.sh" ]; then
-    BIN="${HARBOR_SCOPE_BIN:-${HARBOR_BIN:-}}"
+if [ -n "${HARBOR_BIN:-}" ]; then
+  if [ -f "$HARBOR_BIN/status-generate.sh" ]; then
+    BIN="$HARBOR_BIN"
   else
-    _fail127 "HARBOR_SCOPE_BIN=${HARBOR_SCOPE_BIN:-${HARBOR_BIN:-}} has no status-generate.sh — refusing to fall back" "unset HARBOR_SCOPE_BIN HARBOR_BIN"
+    _fail127 "HARBOR_BIN=$HARBOR_BIN has no status-generate.sh — refusing to fall back" "unset HARBOR_BIN"
   fi
 else
   for _c in "$_self_dir" "${PORT_ROOT:-$HOME/port}/harbor/bin"; do
@@ -181,7 +181,7 @@ if [ -z "${BIN:-}" ] || [ ! -f "$BIN/$SCRIPT" ]; then
   _fix="none automatic — see contracts/cli.md (which script each verb runs)"
   _hb="${PORT_ROOT:-$HOME/port}/harbor/bin"
   if [ "${BIN:-}" != "$_hb" ] && [ -f "$_hb/$SCRIPT" ]; then
-    _fix="HARBOR_SCOPE_BIN='$_hb' harbor $VERB"
+    _fix="HARBOR_BIN='$_hb' harbor $VERB"
   fi
   _fail127 "$SCRIPT is not installed next to the dispatcher (looked in: ${BIN:-$_self_dir, $_hb})" "$_fix"
 fi

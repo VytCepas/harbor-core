@@ -22,7 +22,7 @@
 # THE BASELINE. contracts/redteam-baseline.tsv accepts a miss or false positive by id, with its reason. A run is red
 # while any is not accepted; deploy-push's release gate reads that through --print. A row added needs the operator's
 # review (CODEOWNERS); a row removed is an ordinary commit. --print is also red when the guards or pins changed since.
-# FINDINGS: one `[check:eval.redteam-corpus]` line per corpus per run in cache/checks.log: new, cleared, standing of the
+# FINDINGS: one `[check:redteam-corpus]` line per corpus per run in cache/checks.log: new, cleared, standing of the
 # total, unaccepted and the oldest standing age. A new one opens obligation `redteam-corpus`; none unaccepted closes it.
 # POSIX sh, jq, git; node for ccg (absent: ccg is skipped, and a skipped corpus is red, never green).
 set -eu
@@ -81,11 +81,11 @@ done
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required"; log_fix "$(pkg_hint jq)"; log_end || :; exit 2; }
 
 CORPDIR="${HARBOR_REDTEAM_DIR:-$(sh "$ROOT/bin/scope-roots.sh" --get HARBOR_REDTEAM_DIR)}"
-CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
+CACHE_DIR="${HARBOR_CACHE_DIR:-$HOME/.claude/cache}"
 STATE="$CACHE_DIR/redteam"; LOG="$CACHE_DIR/checks.log"
 SOURCES="${HARBOR_REDTEAM_SOURCES:-$ROOT/contracts/redteam-sources.tsv}"
 BASELINE="${HARBOR_REDTEAM_BASELINE:-$ROOT/contracts/redteam-baseline.tsv}"
-NOW="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"; case "$NOW" in ''|*[!0-9]*) NOW="$(date +%s)" ;; esac
+NOW="${HARBOR_NOW:-$(date +%s)}"; case "$NOW" in ''|*[!0-9]*) NOW="$(date +%s)" ;; esac
 NODE="${HARBOR_NODE:-node}"
 iso() { date -u -r "$NOW" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d "@$NOW" +%Y-%m-%dT%H:%M:%SZ; }
 age() { # <seconds>
@@ -257,7 +257,7 @@ record() { # <corpus> <status> <total> [reason]
   _f="$STATE/$(printf '%s' "$1" | tr '/' '.').misses"
   if [ "$2" != ok ]; then
     printf '%s\t%s\t-\t-\t-\t-\t-\t-\t%s\n' "$1" "$2" "${4:-}" >> "$TMP/last.tsv"
-    printf '[check:eval.redteam-corpus] %s %s %s: %s\n' "$(iso)" "$1" "$2" "${4:-}" >> "$LOG" 2>/dev/null || :
+    printf '[check:redteam-corpus] %s %s %s: %s\n' "$(iso)" "$1" "$2" "${4:-}" >> "$LOG" 2>/dev/null || :
     log_fail "$1: $2 - ${4:-}"; log_fix "a skipped or failed corpus is red, never green: fix the cause above, then $SELFCMD"
     UNALL=$((UNALL + 1)); return 0
   fi
@@ -274,7 +274,7 @@ record() { # <corpus> <status> <total> [reason]
   _un="$(cut -f1 "$_f" | unacc "$1")"
   printf '%s\tok\t%s\t%s\t%s\t%s\t%s\t%s\t\n' "$1" "$3" "$_mis" "$_fp" "$_new" "$_clr" "${_old:--}" >> "$TMP/last.tsv"
   _oa=''; [ -z "$_old" ] || _oa=" oldest=$(age $((NOW - _old)))"
-  printf '[check:eval.redteam-corpus] %s %s new=%s cleared=%s standing=%s of %s unaccepted=%s%s\n' \
+  printf '[check:redteam-corpus] %s %s new=%s cleared=%s standing=%s of %s unaccepted=%s%s\n' \
     "$(iso)" "$1" "$_new" "$_clr" "$((_mis + _fp))" "$3" "$_un" "$_oa" >> "$LOG" 2>/dev/null || :
   _line="$1: $_mis miss(es), $_fp false positive(s) of $3; new $_new, cleared $_clr, $_un not accepted$_oa"
   if [ "$_un" = 0 ]; then log_ok "$_line"

@@ -91,9 +91,9 @@ wrun() {
   printf '%s\n' "$1" > "$WR/emit.json"
   cp "$WR/prior.json" "$WR/cache/fleet-snapshot.json"
   mkdir -p "$WR/home" "$WR/scratch"
-  CLAUDE_CONFIG_DIR="$WR" HARBOR_SCOPE_CACHE_DIR="$WR/cache" HARBOR_SCOPE_FLEET_CONTROLLER_BIN="$WR/orch" \
-    HARBOR_HOUSEKEEPING_CLEAN_HOME="$WR/home" HARBOR_HOUSEKEEPING_CLEAN_SCRATCH="$WR/scratch" HARBOR_HOUSEKEEPING_CLEAN_GH=none \
-    HARBOR_SCOPE_FLEET_FILE="$WR/fleet.yaml" "$SH" "$SRC/status-fleet-snapshot-refresh.sh" >/dev/null 2>&1
+  CLAUDE_CONFIG_DIR="$WR" HARBOR_CACHE_DIR="$WR/cache" HARBOR_ORCH_BIN="$WR/orch" \
+    HARBOR_CLEAN_HOME="$WR/home" HARBOR_CLEAN_SCRATCH="$WR/scratch" HARBOR_CLEAN_GH=none \
+    HARBOR_FLEET_FILE="$WR/fleet.yaml" "$SH" "$SRC/status-fleet-snapshot-refresh.sh" >/dev/null 2>&1
 }
 for _wd in 'null-padded:[{"status":{"dirty":false}},null]' 'all-null:[null]' \
            'scalar:[{"status":{}},1]' 'nested-array:[[]]'; do

@@ -8,7 +8,7 @@
 # not. Exit 2 = bad usage. Exit 3 = under --status only, it could not look (no
 # jq): nothing was judged, which is never a green. READ-ONLY: this script opens
 # files and writes none, except that `--status` keeps when each finding was first
-# seen in <config-dir>/cache/reconcile/drift.reference-check.tsv.
+# seen in <config-dir>/cache/reconcile/reference-check.tsv.
 #
 # `--status` is the reconcile form (contracts/reconcile.md, harbor#1031): the same
 # findings, one row each as desired / observed / delta / age, and its exit code
@@ -119,7 +119,7 @@ fi
 log_init reference-check
 # --json's stdout is data, byte-identical to before; its log lines, if any, go to stderr. So is --status's.
 [ "$JSON$STATUS" = 00 ] || LOG_FD=2
-[ "$STATUS" = 0 ] || status_init drift.reference-check "$DIR" || exit 3
+[ "$STATUS" = 0 ] || status_init reference-check "$DIR" || exit 3
 # Every report loop below reads a here-document, and a shell that cannot create one's temp file runs them on
 # nothing and reports clean (seen in a sandboxed subagent, 2026-10-27). `read` is a builtin, so a PATH with no
 # coreutils still probes. Refused, never read as a pass.
@@ -230,7 +230,7 @@ finding() { # <rule> <subject> <what-breaks> [<fix command>] — the fix is the 
 _phys() { CDPATH= cd -P -- "$1" 2>/dev/null && pwd -P || printf '%s' "$1"; }
 _sq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 _install_fix() { # <component> <installer>
-  _if_r="$(sh "$SELF/scope-roots.sh" --get HARBOR_SCOPE_REPO 2>/dev/null || :)"; [ -n "$_if_r" ] || _if_r="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}"
+  _if_r="$(sh "$SELF/scope-roots.sh" --get HARBOR_REPO 2>/dev/null || :)"; [ -n "$_if_r" ] || _if_r="${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}"
   LIVE="$HOME/.claude"  # deploy's live target, whatever CLAUDE_CONFIG_DIR says: deploy refuses a differing one
   if [ "$(_phys "$DIR")" = "$(_phys "$LIVE")" ]; then
     printf 'sh %s --apply --only %s --live' "$(_sq "$_if_r/bin/deploy.sh")" "$1"
@@ -657,7 +657,7 @@ fi
 # neither the count says 0 examined, which is not a pass.
 _gg="$SELF/doc-graph-generate.sh"
 if [ ! -f "$_gg" ]; then
-  _gg="$(sh "$SELF/scope-roots.sh" --get HARBOR_SCOPE_REPO 2>/dev/null || :)"; _gg="${_gg:-${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}}/bin/doc-graph-generate.sh"
+  _gg="$(sh "$SELF/scope-roots.sh" --get HARBOR_REPO 2>/dev/null || :)"; _gg="${_gg:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}/bin/doc-graph-generate.sh"
 fi
 if [ -f "$DIR/.harbor-manifest" ] && [ -f "$_gg" ] && command -v python3 >/dev/null 2>&1; then
   # Held in a variable, not a temp file: an unwritable TMPDIR made the file's 473 rows read as none (2026-10-27).

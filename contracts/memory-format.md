@@ -34,13 +34,13 @@ fourth home is exactly how "which one is canonical" becomes unanswerable.*
 
 | Record | Home | Writer | Why it is separate |
 |---|---|---|---|
-| **An approach tried and rejected** | `docs/reports/rejected-approaches.md` — append-only, in-repo | a human, at the moment of rejection | Must survive any tool being deleted, and must be readable by someone with nothing but `git`. It is the only one that is *in the repo rather than in memory* on purpose. |
+| **An approach tried and rejected** | `docs/decisions/rejected-approaches.md` — append-only, in-repo | a human, at the moment of rejection | Must survive any tool being deleted, and must be readable by someone with nothing but `git`. It is the only one that is *in the repo rather than in memory* on purpose. |
 | **What actually happened, per decision** | `MEMORY/OBSERVABILITY/<host>/guard-decisions.jsonl` — append-only, host-partitioned, size-rotated; closed generations move to `archive/` (never overwritten) | a hook (harbor#41) | Machine-written, high-volume, redacted **by construction** (rule id, verdict, shape class, truncated hash — never the command text). Nothing else can answer "did this rule fire, and was it right?" |
 | **A durable lesson** | `MEMORY/KNOWLEDGE/<Type>/` (workstream **D**) | a human or a gated synthesis step | Typed, cross-linked, queryable. This is the layer that is *worth* reading a year later. |
 | **A note the operator must reach from a phone** | a tracker Doc, via `bin/cu.sh` (`cu note`) — **CU-1** | the operator, or an agent on their behalf | The only row that is deliberately **outside** this repo and outside `MEMORY`. The other three are canonical-because-git-diffable; this one exists because git is not reachable from a phone at a client meeting. It is a **convenience surface, never a source of truth**: anything that matters is written to one of the rows above as well. Egress applies — a tracker Doc leaves the machine, so `~/.claude` content must never be written to one ([policy/constitution.md](../policy/constitution.md) §3). |
 
 **The per-decision row was the one that did not exist, and the others depend on
-it.** Without a record of what happened, both `docs/reports/rejected-approaches.md` and
+it.** Without a record of what happened, both `docs/decisions/rejected-approaches.md` and
 `MEMORY/KNOWLEDGE/` are written from recollection — which is the failure the
 whole doc-truth mechanism exists to prevent, relocated one level up.
 

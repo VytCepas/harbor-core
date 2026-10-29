@@ -3,7 +3,7 @@
 # Each case is a throwaway git checkout; the baseline is the only thing that differs between green and red.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/checks/lint-fixture.sh"
-SL() { HARBOR_SCOPE_ROOT="$1" sh "$T_ROOT/bin/lint-siblings.sh" "$2" 2>&1; }
+SL() { HARBOR_ROOT="$1" sh "$T_ROOT/bin/lint-siblings.sh" "$2" 2>&1; }
 mk() { # <name> <baseline> → a checkout with 3 literals in 2 files, harbor's own paths, and excluded dirs
   _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/contracts/fixtures" "$_d/skills/x" "$_d/tests" "$_d/bin/tests" "$_d/skills/test-strength/targets"
   printf 'A=$HOME/port/zorbcorp\nB=${PORT_ROOT}/blorp\n' > "$_d/bin/a.sh"
@@ -15,7 +15,7 @@ mk() { # <name> <baseline> → a checkout with 3 literals in 2 files, harbor's o
   ( cd "$_d" && git init -q . && git add -A && git -c user.email=t@t -c user.name=t commit -qm x ) >/dev/null 2>&1
   printf '%s' "$_d"
 }
-red() { HARBOR_SCOPE_ROOT="$1" sh "$T_ROOT/bin/lint-siblings.sh" --check >/dev/null 2>&1; echo $?; }
+red() { HARBOR_ROOT="$1" sh "$T_ROOT/bin/lint-siblings.sh" --check >/dev/null 2>&1; echo $?; }
 
 t_section "--count counts occurrences, in every tracked dir, and leaves harbor's own paths and excluded dirs out"
 D="$(mk eq 3)"
@@ -35,7 +35,7 @@ t_eq "below is still green" "0" "$(red "$D")"
 t_has "...and tells you to lower the baseline" "$OUT" "lower contracts/lint-siblings-baseline.txt to 3"
 D="$(mk nobase x)"; t_eq "a non-numeric baseline is red" "1" "$(red "$D")"
 mkdir -p "$T_TMP/nogit"
-t_exit "a non-checkout inspected nothing and is not a pass" 2 env HARBOR_SCOPE_ROOT="$T_TMP/nogit" sh "$T_ROOT/bin/lint-siblings.sh" --check
+t_exit "a non-checkout inspected nothing and is not a pass" 2 env HARBOR_ROOT="$T_TMP/nogit" sh "$T_ROOT/bin/lint-siblings.sh" --check
 
 t_section "growth the file count missed is red"
 D="$(mk grow 3)"

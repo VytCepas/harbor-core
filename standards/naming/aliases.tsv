@@ -45,7 +45,7 @@ governance-note	provenance-stamp	legacy	glossary,registry,record,memory-prose	20
 audit-log	decision-log	legacy	glossary,registry,record,memory-prose	2026-11-15	research/02: OPA's term
 handoff	handover	legacy	glossary,registry,record,memory-prose	2026-11-15	D-7
 dead-end	decision-record	legacy	glossary,registry,record,memory-prose	2026-11-15	a decision record with status: rejected
-dead-ends	decision-record	legacy	glossary,registry,record,memory-prose	2026-11-15	DEAD-ENDS.md becomes docs/reports/rejected-approaches.md
+dead-ends	decision-record	legacy	glossary,registry,record,memory-prose	2026-11-15	docs/decisions/rejected-approaches.md becomes docs/decisions/
 ship	deploy	codename	path,env,check-id,command,glossary,registry,record,memory-prose	never	the ship contract's unattended merge and deploy (v1.1 §5a.8): .agents/ship.conf, SHIP_*, check id ship, harbor ship. Was a legacy alias of workload (D-6), and is still never a repo's name
 governed-repo	workload	legacy	glossary,registry,record,memory-prose	2026-11-15	D-6
 shipwright	proposal-pipeline	legacy	glossary,registry,record,memory-prose	2026-11-15	§1.2

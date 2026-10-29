@@ -9,7 +9,7 @@
 
 # The caller variables t_init keeps (lint C10 reads this line): status-gen's re-entry marker must
 # reach a suite it runs and that suite's children, or the suite runs status-gen back (harbor#288).
-T_PASS_ENV='HARBOR_TEST_IN_SUITE'
+T_PASS_ENV='HARBOR_IN_SUITE'
 
 t_init() { # [name] — defaults to the file name without .sh
   T_NAME="${1:-$(basename "$0" .sh)}"
@@ -33,7 +33,7 @@ t_init() { # [name] — defaults to the file name without .sh
   PATH="$T_BIN:$PATH"
   export HOME CLAUDE_CONFIG_DIR TMPDIR PATH
   # Knobs from the caller's shell must not decide a verdict here: every HELM_*, HARBOR_* (CI's
-  # HARBOR_STATUS_SUITE_COUNTS cost floor.status-test 4 passes, harbor#773) and GIT_* (a suite's own
+  # HARBOR_SUITE_COUNTS cost floor.status-test 4 passes, harbor#773) and GIT_* (a suite's own
   # `git -C "$T_TMP/…"` inherits GIT_DIR, harbor#824) and XDG_* (a runner's outranks HOME, harbor#865).
   for _v in $(env | sed -n -e 's/^\(HELM_[A-Za-z0-9_]*\)=.*/\1/p' -e 's/^\(HARBOR_[A-Za-z0-9_]*\)=.*/\1/p') \
             CLOUD_POSTURE CLOUDSDK_CONFIG FAST XDG_CONFIG_HOME XDG_CACHE_HOME XDG_DATA_HOME XDG_STATE_HOME \

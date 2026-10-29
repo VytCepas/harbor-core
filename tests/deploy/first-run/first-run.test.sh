@@ -3,9 +3,9 @@
 # Every tool that meets that says so FIRST, as a FAIL line, with the command that removes it, instead of failing on its
 # own downstream error. A sandbox HOME with nothing in it is the stranger's box; nothing outside it is read or written.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDE_CONFIG_DIR CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY CI GITHUB_ACTIONS
+unset CLAUDE_CONFIG_DIR CLAUDECODE HARBOR_DEPLOY CI GITHUB_ACTIONS
 B="$T_ROOT/bin"; C="$HOME/.claude"; CP="$(cd "$HOME" && pwd -P)/.claude"  # a dir that exists is reported physically (il_target)
-HARBOR_SCOPE_REPO="$T_ROOT"; export HARBOR_SCOPE_REPO
+HARBOR_REPO="$T_ROOT"; export HARBOR_REPO
 FIX="sh '$T_ROOT/bin/harbor' scope install"   # the one spelling, il_first_run_cmd's
 run() { "$@" > "$T_TMP/out" 2>&1; echo "exit $?"; }  # the exit; the output is in $T_TMP/out
 out() { cat "$T_TMP/out"; }
@@ -19,17 +19,17 @@ mkdir -p "$T_TMP/bare"; cp "$B/library-log.sh" "$B/deploy-install-lib.sh" "$T_TM
 printf '#!/bin/sh\nset -eu\n. "%s/bare/library-log.sh"\n. "%s/bare/deploy-install-lib.sh"\nil_first_run_cmd "$@"\n' "$T_TMP" "$T_TMP" > "$T_TMP/bare/spell.sh"
 spell() { env -u PORT_ROOT "$@" sh "$T_TMP/bare/spell.sh" "$SPELL_ARG"; }
 SPELL_ARG="/x y/harbor"
-t_eq "a given checkout is spelled as the harbor verb, single-quoted" "sh '/x y/harbor/bin/harbor' scope install" "$(spell -u HARBOR_SCOPE_REPO -u HARBOR_REPO)"
+t_eq "a given checkout is spelled as the harbor verb, single-quoted" "sh '/x y/harbor/bin/harbor' scope install" "$(spell -u HARBOR_REPO)"
 SPELL_ARG=""
-t_eq "with none given and no scope-roots.sh beside it, HARBOR_SCOPE_REPO" "sh '/from/env/bin/harbor' scope install" "$(spell HARBOR_SCOPE_REPO=/from/env)"
-t_eq "...and with that unset, the conventional path under HOME" "sh '$HOME/port/harbor/bin/harbor' scope install" "$(spell -u HARBOR_SCOPE_REPO -u HARBOR_REPO)"
-# A tool run from a checkout names THAT checkout's verb: a clone anywhere, with HARBOR_SCOPE_REPO unset, got the conventional path.
+t_eq "with none given and no scope-roots.sh beside it, HARBOR_REPO" "sh '/from/env/bin/harbor' scope install" "$(spell HARBOR_REPO=/from/env)"
+t_eq "...and with that unset, the conventional path under HOME" "sh '$HOME/port/harbor/bin/harbor' scope install" "$(spell -u HARBOR_REPO)"
+# A tool run from a checkout names THAT checkout's verb: a clone anywhere, with HARBOR_REPO unset, got the conventional path.
 mkdir -p "$T_TMP/clone/bin"; cp "$B/library-log.sh" "$B/deploy-install-lib.sh" "$T_TMP/clone/bin/"; : > "$T_TMP/clone/bin/harbor"
 cp "$T_TMP/bare/spell.sh" "$T_TMP/clone/bin/spell.sh"; sed -i.bak "s#$T_TMP/bare/#$T_TMP/clone/bin/#g" "$T_TMP/clone/bin/spell.sh"
 SPELL_ARG=""
 t_eq "with none given, a bin/harbor beside the script is the checkout, wherever it was cloned" "sh '$T_TMP/clone/bin/harbor' scope install" \
-  "$(env -u PORT_ROOT -u HARBOR_SCOPE_REPO -u HARBOR_REPO sh "$T_TMP/clone/bin/spell.sh" "")"
-t_eq "...and that beats HARBOR_SCOPE_REPO" "sh '$T_TMP/clone/bin/harbor' scope install" "$(env -u PORT_ROOT HARBOR_SCOPE_REPO=/from/env sh "$T_TMP/clone/bin/spell.sh" "")"
+  "$(env -u PORT_ROOT -u HARBOR_REPO sh "$T_TMP/clone/bin/spell.sh" "")"
+t_eq "...and that beats HARBOR_REPO" "sh '$T_TMP/clone/bin/harbor' scope install" "$(env -u PORT_ROOT HARBOR_REPO=/from/env sh "$T_TMP/clone/bin/spell.sh" "")"
 
 t_section "floor-verify --live on a box with no config dir"
 t_eq "it answers, it does not misuse: exit 1" "exit 1" "$(run sh "$B/floor-verify.sh" --live)"
@@ -106,8 +106,8 @@ t_eq "--apply says the same" "exit 1" "$(run sh "$B/pin-instructions.sh" --apply
 t_eq "...with the same fix" "  fix: $FIX" "$(fixof)"
 t_eq "a --dir that does not exist keeps its own message" "  FAIL: no such config dir: $T_TMP/other" "$(run sh "$B/pin-instructions.sh" --dir "$T_TMP/other" >/dev/null; first)"
 t_has "...and the checkout copy of the script runs before any deploy, which is the order's point" "$(sed -n '/^# ORDER/,/^# NO /p' "$B/pin-instructions.sh")" "sh <checkout>/bin/pin-instructions.sh --apply --live"
-t_section "a checkout cloned anywhere names itself, with HARBOR_SCOPE_REPO unset"
+t_section "a checkout cloned anywhere names itself, with HARBOR_REPO unset"
 cp -R "$B" "$T_TMP/clone/binall"; CFIX="sh '$T_TMP/clone/binall/harbor' scope install"
-t_eq "pin-instructions --live" "  fix: $CFIX" "$(run env -u HARBOR_SCOPE_REPO -u HARBOR_REPO sh "$T_TMP/clone/binall/pin-instructions.sh" --live >/dev/null; fixof)"
-t_eq "floor-verify --live" "  fix: $CFIX" "$(run env -u HARBOR_SCOPE_REPO -u HARBOR_REPO sh "$T_TMP/clone/binall/floor-verify.sh" --live >/dev/null; fixof)"
+t_eq "pin-instructions --live" "  fix: $CFIX" "$(run env -u HARBOR_REPO sh "$T_TMP/clone/binall/pin-instructions.sh" --live >/dev/null; fixof)"
+t_eq "floor-verify --live" "  fix: $CFIX" "$(run env -u HARBOR_REPO sh "$T_TMP/clone/binall/floor-verify.sh" --live >/dev/null; fixof)"
 t_done

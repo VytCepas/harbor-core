@@ -10,7 +10,7 @@ cat > "$PROJ/p/s.jsonl" <<'EOJ'
 {"type":"assistant","sessionId":"sess-1","cwd":"/tmp/w","requestId":"r1","timestamp":"2026-08-01T10:00:00.000Z","entrypoint":"cli","message":{"model":"m","usage":{"input_tokens":10,"output_tokens":5,"cache_read_input_tokens":3},"content":[{"type":"text","text":"abc"}]}}
 {"type":"assistant","sessionId":"sess-1","cwd":"/tmp/w","requestId":"r2","timestamp":"2026-08-01T10:01:00.000Z","entrypoint":"cli","message":{"model":"m","usage":{"input_tokens":7,"output_tokens":1},"content":[{"type":"text","text":"de"}]}}
 EOJ
-export HARBOR_SESSION_TRANSCRIPTS="$PROJ"
+export HARBOR_TRANSCRIPTS="$PROJ"
 ua() { sh "$TOOL" "$@" >"$B/out" 2>"$B/err"; echo "exit $?"; }
 OUT() { cat "$B/out"; }; ERR() { cat "$B/err"; }
 after_fail() { awk '/^  FAIL:/ { f = 1; next } f { print; exit }' "$B/err"; }
@@ -53,7 +53,7 @@ t_has "its FAIL names it" "$(ERR)" "  FAIL: unknown option --nonsuch: nothing wa
 t_eq "its fix reads the help" "  fix: sh $TOOL --help" "$(after_fail)"
 t_eq "a bad --since exits 2" "exit 2" "$(ua --since yesterday "$CFG")"
 t_has "its FAIL names the value" "$(ERR)" "  FAIL: --since wants YYYY-MM-DD, got yesterday"
-t_eq "no transcript store exits 2" "exit 2" "$(HARBOR_SESSION_TRANSCRIPTS="$B/none" ua "$CFG")"
+t_eq "no transcript store exits 2" "exit 2" "$(HARBOR_TRANSCRIPTS="$B/none" ua "$CFG")"
 t_has "its FAIL names the path" "$(ERR)" "  FAIL: no transcript store at $B/none"
-t_has "its fix names the variable" "$(after_fail)" "  fix: HARBOR_SESSION_TRANSCRIPTS=<projects dir> sh $TOOL"
+t_has "its fix names the variable" "$(after_fail)" "  fix: HARBOR_TRANSCRIPTS=<projects dir> sh $TOOL"
 t_done

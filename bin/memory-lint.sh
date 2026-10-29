@@ -110,7 +110,7 @@ trap 'rm -rf "$TMP"' EXIT INT TERM HUP
 # indexes/ is the derived tier. -print0 is not portable, so the file list is
 # newline-delimited and every consumer sets IFS accordingly; a note filename
 # containing a space is in the fixture corpus precisely to keep that honest.
-# -L, AND IT IS NOT COSMETIC (harbor#608). docs/reference/checks.md's `memory.route` row
+# -L, AND IT IS NOT COSMETIC (harbor#608). docs/reference/checks.md's `memory-route` row
 # routes a governed repo's silo to the one $HOME store BY SYMLINK, so $STORE is
 # a LINK and not a directory for 25 of this box's 200 silos — harbor's own and
 # all three trio repos among them. `find` does not follow a symlinked START

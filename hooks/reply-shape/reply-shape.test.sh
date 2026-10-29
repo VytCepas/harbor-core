@@ -32,7 +32,7 @@ fixture old_write  "$PROMPT" "$(tool Edit '{"file_path":"/a/b.sh"}')" "$RESULT" 
 
 t_section "a turn that wrote and cites no evidence draws the note"
 run edit_noev;   t_has "Edit, bare claim: note" "$(msg)" 'cites no command output'
-t_has "the note names its id" "$(msg)" '[check:session.reply-shape]'
+t_has "the note names its id" "$(msg)" '[check:reply-shape]'
 t_has "the note says answer-first is review-only" "$(msg)" 'review-only'
 t_has "the note carries the disable command" "$(msg)" 'reply-shape.off'
 run bash_write;  t_has "a writing Bash call counts as a write" "$(msg)" 'cites no command output'

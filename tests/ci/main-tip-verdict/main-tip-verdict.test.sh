@@ -57,7 +57,7 @@ byrun() {
 }
 # wfstate <state> — the repo's workflows list: one workflow, id 7, in that state (an unrelated active one beside it).
 wfstate() { printf '{"workflows":[{"id":7,"state":"%s"},{"id":9,"state":"active"}]}\n' "$1" > "$(fxname "repos/$R/actions/workflows?per_page=100")"; }
-run() { FX="$FX" CLAUDE_CONFIG_DIR="$CFGD" HARBOR_TEST_GH="$GH" HARBOR_CI_TIP_REPO="$R" HARBOR_TIP_STRICT="$R" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CHECK_RECEIPTS="$CACHE/checks" HARBOR_TEST_NOW="${AT:-$NOW}" \
+run() { FX="$FX" CLAUDE_CONFIG_DIR="$CFGD" HARBOR_GH="$GH" HARBOR_TIP_REPO="$R" HARBOR_TIP_STRICT="$R" HARBOR_CACHE_DIR="$CACHE" HARBOR_RECEIPTS="$CACHE/checks" HARBOR_NOW="${AT:-$NOW}" \
           sh "$T_ROOT/bin/ci-main-tip-verdict.sh" "$@"; }
 get() { jq -r ".repos[0] | $1" "$CACHE/main-tip-verdict.json"; }
 getr() { jq -r ".repos[] | select(.repo == \"$1\") | $2" "$CACHE/main-tip-verdict.json"; }   # one repo's field in the fleet cache
@@ -67,7 +67,7 @@ CFGD="$T_TMP/cfg"; mkdir -p "$CFGD"; printf '[]\n' > "$T_TMP/snap.json"
 # Harbor's own slug is named by log-lib's repo_slug (harbor#1149): the fleet cases run a copy laid out as runtime-install lays it, with
 # the pin beside it, so the slug is o/harbor whatever remote this checkout has.
 MTI="$T_TMP/inst/bin"; mkdir -p "$MTI"; cp "$T_ROOT/bin/ci-main-tip-verdict.sh" "$T_ROOT/bin/library-log.sh" "$MTI/"; printf '# pin\no/harbor\n' > "$MTI/repo-slug.txt"
-fleet() { FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CHECK_RECEIPTS="$CACHE/checks" HARBOR_TEST_NOW="${AT:-$NOW}" CLAUDE_CONFIG_DIR="$CFGD" HARBOR_FLEET_SNAPSHOT="$T_TMP/snap.json" \
+fleet() { FX="$FX" HARBOR_GH="$GH" HARBOR_CACHE_DIR="$CACHE" HARBOR_RECEIPTS="$CACHE/checks" HARBOR_NOW="${AT:-$NOW}" CLAUDE_CONFIG_DIR="$CFGD" HARBOR_FLEET_SNAPSHOT="$T_TMP/snap.json" \
           sh "$MTI/ci-main-tip-verdict.sh" "$@"; }
 TIP_AGE=$((3 * 3600))
 
@@ -80,7 +80,7 @@ t_eq "no commit is non-green" 0 "$(get .nongreen)"
 t_eq "every commit in the window is judged" 4 "$(get .window)"
 t_eq "a green history stamps nothing in checks.log" no "$([ -s "$CACHE/checks.log" ] && echo yes || echo no)"
 t_exit "--print exits 0 on a green tip" 0 run --print
-t_eq "its receipt is green, with no subjects (harbor#896)" "green 0" "$(jq -r '"\(.status) \(.subjects | length)"' "$CACHE/checks/ci.main-tip-verdict.json")"
+t_eq "its receipt is green, with no subjects (harbor#896)" "green 0" "$(jq -r '"\(.status) \(.subjects | length)"' "$CACHE/checks/main-tip-verdict.json")"
 
 t_section "planted: a failed tip is RED, with its age"
 reset; runs a1:failure a2:success a3:success a4:success
@@ -88,15 +88,15 @@ run
 t_eq "the tip reads failed" failed "$(get .tip.verdict)"
 t_eq "a failed tip is red" true "$(get .tip.red)"
 t_eq "it has been red since the failing run completed (half an hour ago), not since the commit landed" 1799 "$(get .tip.red_for)"
-t_eq "its receipt is red over the non-green commit's short sha" 'red ["r:a1"]' "$(jq -c -r '"\(.status) \(.subjects | tojson)"' "$CACHE/checks/ci.main-tip-verdict.json")"
-rm -f "$CACHE/checks/ci.main-tip-verdict.json"; run --print >/dev/null 2>&1 || :
-t_eq "--print leaves no receipt" no "$([ -f "$CACHE/checks/ci.main-tip-verdict.json" ] && echo yes || echo no)"
+t_eq "its receipt is red over the non-green commit's short sha" 'red ["r:a1"]' "$(jq -c -r '"\(.status) \(.subjects | tojson)"' "$CACHE/checks/main-tip-verdict.json")"
+rm -f "$CACHE/checks/main-tip-verdict.json"; run --print >/dev/null 2>&1 || :
+t_eq "--print leaves no receipt" no "$([ -f "$CACHE/checks/main-tip-verdict.json" ] && echo yes || echo no)"
 run
 t_exit "--print exits 1 on a red tip" 1 run --print
 P="$(run --print || true)"
 t_has "--print says RED and for how long" "$P" 'RED for 29m (one run'
 t_has "--print names the tip" "$P" 'main tip a1'
-t_has "a red tip stamps one line in checks.log under its registry id" "$(cat "$CACHE/checks.log")" '[check:ci.main-tip-verdict]'
+t_has "a red tip stamps one line in checks.log under its registry id" "$(cat "$CACHE/checks.log")" '[check:main-tip-verdict]'
 
 t_section "planted: cancelled-only and no-run tips are RED; a green one next to them is not"
 reset; runs a1:cancelled a2:success a3:success a4:success; run
@@ -185,7 +185,7 @@ AT=$((NOW + 300))
 t_exit "an unanswered read, no red judged, exits 3 (D-29 unchecked), not the 1 of a red tip" 3 run
 t_eq "the previous cache is kept" failed "$(get .tip.verdict)"
 t_eq "…and flagged unread" true "$(get .unread)"
-t_eq "its receipt says stood-down: GitHub did not answer, nothing was judged" stood-down "$(jq -r .status "$CACHE/checks/ci.main-tip-verdict.json")"
+t_eq "its receipt says stood-down: GitHub did not answer, nothing was judged" stood-down "$(jq -r .status "$CACHE/checks/main-tip-verdict.json")"
 t_has "--print says UNREAD" "$(run --print || true)" 'UNREAD'
 rm -f "$CACHE/main-tip-verdict.json"; run || true
 t_eq "no cache to keep still writes an unread marker" true "$(get .unread)"
@@ -235,10 +235,10 @@ t_eq "a repo whose main workflows are all disabled is disabled, not red" "disabl
 t_eq "a repo GitHub did not answer for is unread, never green" "unread true" "$(getr o/gone '"\(.state) \(.unread)"')"
 t_eq "the cache says it has an unread repo" true "$(jq -r .unread "$CACHE/main-tip-verdict.json")"
 t_eq "one line for the failed repo, one for the disabled repo, none for the rest" 2 "$(wc -l < "$CACHE/checks.log" | tr -d ' ')"
-t_has "the failed repo's line names it" "$(cat "$CACHE/checks.log")" '[check:ci.main-tip-verdict]'
+t_has "the failed repo's line names it" "$(cat "$CACHE/checks.log")" '[check:main-tip-verdict]'
 t_has "…and says tip s1 failed" "$(cat "$CACHE/checks.log")" 'o/sched tip s1 failed'
 t_has "the disabled repo is reported as such, once" "$(cat "$CACHE/checks.log")" 'o/off main CI disabled'
-t_eq "its receipt is red over the failed repo's commit, name-prefixed" 'red ["sched:s1"]' "$(jq -c -r '"\(.status) \(.subjects | tojson)"' "$CACHE/checks/ci.main-tip-verdict.json")"
+t_eq "its receipt is red over the failed repo's commit, name-prefixed" 'red ["sched:s1"]' "$(jq -c -r '"\(.status) \(.subjects | tojson)"' "$CACHE/checks/main-tip-verdict.json")"
 
 t_section "fleet: --print is the delta; a green repo is a word, not a block"
 P="$(AT=$NOW fleet --print || true)"
@@ -298,17 +298,17 @@ R=other/fork; commits f1 f2; wfstate active; runs f1:success f2:success
 TREE="$T_TMP/tree"; mkdir -p "$TREE/bin" "$TREE/contracts"; cp "$T_ROOT/bin/ci-main-tip-verdict.sh" "$T_ROOT/bin/library-log.sh" "$TREE/bin/"
 printf 'o/pinned\n' > "$TREE/contracts/repo-slug.txt"; git -C "$TREE" init -q; git -C "$TREE" remote add origin https://github.com/other/fork.git
 GH_LOG="$T_TMP/calls2.log"; export GH_LOG; : > "$GH_LOG"
-FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CHECK_RECEIPTS="$CACHE/checks" HARBOR_TEST_NOW="$NOW" CLAUDE_CONFIG_DIR="$CFGD" HARBOR_FLEET_SNAPSHOT="$T_TMP/snap.json" \
+FX="$FX" HARBOR_GH="$GH" HARBOR_CACHE_DIR="$CACHE" HARBOR_RECEIPTS="$CACHE/checks" HARBOR_NOW="$NOW" CLAUDE_CONFIG_DIR="$CFGD" HARBOR_FLEET_SNAPSHOT="$T_TMP/snap.json" \
   sh "$TREE/bin/ci-main-tip-verdict.sh" >/dev/null 2>&1 || :
 t_eq "a copy in a checkout judges that checkout's origin as harbor, not the pin" "other/fork" "$(jq -r '[.repos[].repo] | join(" ")' "$CACHE/main-tip-verdict.json")"
 t_eq "...and asks GitHub about nothing else" 0 "$(grep -c 'o/pinned\|o/harbor' "$GH_LOG" | tr -d ' ')"
 unset GH_LOG
 NOPIN="$T_TMP/nopin/bin"; mkdir -p "$NOPIN"; cp "$T_ROOT/bin/ci-main-tip-verdict.sh" "$T_ROOT/bin/library-log.sh" "$NOPIN/"; rm -f "$CACHE/main-tip-verdict.json"
-_np="$(FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_SCOPE_CACHE_DIR="$CACHE" CLAUDE_CONFIG_DIR="$CFGD" HARBOR_FLEET_SNAPSHOT="$T_TMP/snap.json" sh "$NOPIN/ci-main-tip-verdict.sh" 2>&1; echo "rc=$?")"
+_np="$(FX="$FX" HARBOR_GH="$GH" HARBOR_CACHE_DIR="$CACHE" CLAUDE_CONFIG_DIR="$CFGD" HARBOR_FLEET_SNAPSHOT="$T_TMP/snap.json" sh "$NOPIN/ci-main-tip-verdict.sh" 2>&1; echo "rc=$?")"
 t_has "an install with no pin cannot name harbor: it judges nothing and exits 3 (unchecked)" "$_np" 'rc=3'
 t_has "...and says why" "$_np" 'harbor'"'"'s own repository is not derivable'
 t_eq "...and writes no verdict that would leave harbor out" no "$([ -f "$CACHE/main-tip-verdict.json" ] && echo yes || echo no)"
-_np1="$(FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_CI_TIP_REPO=other/fork HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CHECK_RECEIPTS="$CACHE/checks" HARBOR_TEST_NOW="$NOW" sh "$NOPIN/ci-main-tip-verdict.sh" 2>&1; echo "rc=$?")"
-t_has "...unless HARBOR_CI_TIP_REPO names the one repo to judge" "$_np1" 'rc=0'
+_np1="$(FX="$FX" HARBOR_GH="$GH" HARBOR_TIP_REPO=other/fork HARBOR_CACHE_DIR="$CACHE" HARBOR_RECEIPTS="$CACHE/checks" HARBOR_NOW="$NOW" sh "$NOPIN/ci-main-tip-verdict.sh" 2>&1; echo "rc=$?")"
+t_has "...unless HARBOR_TIP_REPO names the one repo to judge" "$_np1" 'rc=0'
 
 t_done

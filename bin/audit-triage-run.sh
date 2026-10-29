@@ -18,7 +18,7 @@
 #
 # WHY NOT A Stop OR SessionStart HOOK, which is the obvious wiring. Measured on
 # this box, same day: a full run is 7 SECONDS. That is the argument
-# launchd/com.harbor.status.usage.plist already records for the usage aggregator at 10s
+# launchd/com.harbor.usage.plist already records for the usage aggregator at 10s
 # — CONSTITUTION §2.11, a gate that makes ordinary work wait is a gate that gets
 # switched off, and a switched-off gate protects nothing. So the judging runs
 # daily off the session path and writes a cache; the session only READS it.

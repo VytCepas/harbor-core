@@ -14,7 +14,7 @@
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
+ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
 KINDS="${SHARE_KINDS:-$ROOT/standards/naming/kinds.tsv}"
 . "$SRC/library-log.sh"
 log_init lint-share
@@ -51,12 +51,12 @@ files_of() {
 }
 
 gather() { # → path TAB share, every file that has a share
-  files_of "$ROOT" | HARBOR_SCOPE_ROOT="$ROOT" sh "$SRC/scope-layers.sh" --classify | awk -F'\t' '$2 == "core" { print $1 "\tcore" }'
-  _pv="$(HARBOR_SCOPE_ROOT="$ROOT" sh "$SRC/scope-roots.sh" --private 2>/dev/null)" || _pv=""
+  files_of "$ROOT" | HARBOR_ROOT="$ROOT" sh "$SRC/scope-layers.sh" --classify | awk -F'\t' '$2 == "core" { print $1 "\tcore" }'
+  _pv="$(HARBOR_ROOT="$ROOT" sh "$SRC/scope-roots.sh" --private 2>/dev/null)" || _pv=""
   if [ -n "$_pv" ] && [ -d "$_pv" ]; then
     files_of "$_pv" | awk '{ print ($0 ~ /^hub\// ? "private:" $0 "\thub" : "private:" $0 "\tpersonal") }'
-    HARBOR_SCOPE_ROOT="$ROOT" sh "$SRC/scope-roots.sh" --conf packs 2>/dev/null | tr ',[]"' '    ' | tr -s ' ' '\n' | grep -v '^$' | while IFS= read -r _id; do
-      _rd="$(HARBOR_SCOPE_ROOT="$ROOT" sh "$SRC/scope-roots.sh" --repo "$_id" 2>/dev/null)" || continue
+    HARBOR_ROOT="$ROOT" sh "$SRC/scope-roots.sh" --conf packs 2>/dev/null | tr ',[]"' '    ' | tr -s ' ' '\n' | grep -v '^$' | while IFS= read -r _id; do
+      _rd="$(HARBOR_ROOT="$ROOT" sh "$SRC/scope-roots.sh" --repo "$_id" 2>/dev/null)" || continue
       [ -d "$_rd/harbor-pack" ] && files_of "$_rd/harbor-pack" | awk -v id="$_id" '{ print "pack:" id ":" $0 "\tworkload" }'
     done
   fi

@@ -11,7 +11,7 @@
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
+ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
 . "$SRC/library-log.sh"
 log_init lint-pr
 T="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -rf "$T"' EXIT
@@ -63,10 +63,10 @@ if [ "$HAVE_B" -eq 1 ]; then
   done
   grep -qE '#[0-9]+' "$T/body" || finding lint.pr-issue-link "the body references no issue: add #<n> or <repo>#<n>"
   # The pattern is read out of hooks/commit-msg, as lint C2 does; no second copy lives here.
-  _ere="$(sed -n "s/^HARBOR_LINT_ATTRIBUTION_ERE='\(.*\)'$/\1/p" "$ROOT/hooks/commit-msg" 2>/dev/null | head -1)"
-  if [ -z "$_ere" ]; then die "hooks/commit-msg defines no HARBOR_LINT_ATTRIBUTION_ERE: the attribution rule has no pattern"
+  _ere="$(sed -n "s/^HARBOR_ATTRIBUTION_ERE='\(.*\)'$/\1/p" "$ROOT/hooks/commit-msg" 2>/dev/null | head -1)"
+  if [ -z "$_ere" ]; then die "hooks/commit-msg defines no HARBOR_ATTRIBUTION_ERE: the attribution rule has no pattern"
   elif grep -vE '^[[:space:]]*#' "$T/body" | grep -qiE "$_ere"; then
-    finding lint.pr-no-ai-attribution "the body carries an AI attribution line (hooks/commit-msg HARBOR_LINT_ATTRIBUTION_ERE)"
+    finding lint.pr-no-ai-attribution "the body carries an AI attribution line (hooks/commit-msg HARBOR_ATTRIBUTION_ERE)"
   fi
 fi
 log_end || :

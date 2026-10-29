@@ -7,7 +7,7 @@ SRC="$T_ROOT/bin"; TMP="$T_TMP"; CFG="$T_TMP/cfg"; TAB="$(printf '\t')"
 TR="$TMP/projects/p"; mkdir -p "$TR"
 rec() { printf '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Bash","input":{"command":"%s"}}]}}\n' "$1"; }
 { rec 'ls -la /tmp'; rec 'echo hello world'; rec 'rm -rf /'; rec 'git status --short'; } > "$TR/s.jsonl"
-export HARBOR_SESSION_TRANSCRIPTS="$TMP/projects"
+export HARBOR_TRANSCRIPTS="$TMP/projects"
 corpus() { CLAUDE_CONFIG_DIR="$CFG" sh "$SRC/eval-replay-corpus.sh" "$@" >"$TMP/out" 2>"$TMP/err"; echo "exit $?"; }
 replay() { CLAUDE_CONFIG_DIR="$CFG" sh "$SRC/eval-replay.sh" "$@" >"$TMP/out" 2>"$TMP/err"; echo "exit $?"; }
 OUT() { cat "$TMP/out"; }; ERR() { cat "$TMP/err"; }

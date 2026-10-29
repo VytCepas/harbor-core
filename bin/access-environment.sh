@@ -31,7 +31,7 @@
 set -u
 
 case "$0" in */*) _SRC="${0%/*}" ;; *) _SRC=. ;; esac
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$_SRC/.." && pwd)}}"
+ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$_SRC/.." && pwd)}"
 . "$ROOT/bin/library-log.sh"
 log_init access-environment
 LOG_FD=2

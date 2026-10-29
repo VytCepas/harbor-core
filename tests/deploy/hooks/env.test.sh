@@ -172,7 +172,7 @@ mkdir -p "$T_TMP/gov-cache/ci-governor/slots"
 printf 'at=%s\nslots=4\n' "$(date +%s)" > "$T_TMP/gov-cache/ci-governor/state"
 rm -f "$MARK_L" "$MARK_F"
 ( cd "$FR2" && printf 'refs/heads/main %s refs/heads/main %s\n' "$LOCAL_SHA" "$BASE_SHA" \
-    | GIT_DIR="$FR2/.git" HARBOR_SCOPE_CACHE_DIR="$T_TMP/gov-cache" sh hooks/pre-push ) >"$T_TMP/pp2.out" 2>&1
+    | GIT_DIR="$FR2/.git" HARBOR_CACHE_DIR="$T_TMP/gov-cache" sh hooks/pre-push ) >"$T_TMP/pp2.out" 2>&1
 _pp_rc=$?
 t_eq "hooks/pre-push exits 0 with the governor in the path" 0 "$_pp_rc"
 t_has "...and still runs the floor smoke" "$(cat "$T_TMP/pp2.out")" 'run   floor-test.sh smoke'

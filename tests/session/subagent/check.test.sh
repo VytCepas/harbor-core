@@ -22,7 +22,7 @@ RUN88='[{"id":"bg-88","type":"shell","status":"running","command":"sleep 99"}]'
 t_section "duplicate final report"
 run ag1 'Report A' "$NONE";  t_eq "first stop: silent" "" "$(msg)"
 run ag1 'Report A' "$NONE";  t_has "same hash as the previous stop: note" "$(msg)" 'duplicate'
-t_has "the note names its id" "$(msg)" '[check:session.subagent-stop]'
+t_has "the note names its id" "$(msg)" '[check:subagent-stop]'
 t_has "the note carries the disable command" "$(msg)" 'subagent-stop.off'
 run ag1 'Report B' "$NONE";  t_eq "a different report: silent" "" "$(msg)"
 run ag2 'Report A' "$NONE";  t_eq "the same text from ANOTHER agent: silent" "" "$(msg)"

@@ -182,7 +182,7 @@ reset() {
   mkdir -p "$FX/var"; printf 'port-linux-runner:local\nport-linux-runner:interim\n' > "$FX/images"
   AT=$NOW
 }
-run() { FX="$FX" HARBOR_CI_MOUNT_ROOT="${MROOT:-}" HARBOR_TEST_GH="$GH" HARBOR_DOCKER="$DOCKER" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_TEST_NOW="${AT:-$NOW}" \
-          HARBOR_CI_EVENTS_DIR="${EVDIR:-$EVENTS}" HARBOR_SCOPE_FLEET_CONTROLLER_BIN=/nonexistent-orch sh "$T_ROOT/bin/ci-runners.sh" "$@" 2>&1; }
+run() { FX="$FX" HARBOR_CI_MOUNT_ROOT="${MROOT:-}" HARBOR_GH="$GH" HARBOR_DOCKER="$DOCKER" HARBOR_CACHE_DIR="$CACHE" HARBOR_NOW="${AT:-$NOW}" \
+          HARBOR_CI_EVENTS_DIR="${EVDIR:-$EVENTS}" HARBOR_ORCH_BIN=/nonexistent-orch sh "$T_ROOT/bin/ci-runners.sh" "$@" 2>&1; }
 nlines() { if [ -f "$1" ]; then wc -l < "$1" | tr -d ' '; else echo 0; fi; }
-nlog() { if [ -f "$CACHE/checks.log" ]; then grep -c 'check:ci.runners' "$CACHE/checks.log"; else echo 0; fi; }
+nlog() { if [ -f "$CACHE/checks.log" ]; then grep -c 'check:ci-runners' "$CACHE/checks.log"; else echo 0; fi; }

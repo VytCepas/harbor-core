@@ -446,7 +446,7 @@ _cfg_is_live=0
 [ "$(cd -P -- "$CFG" 2>/dev/null && pwd -P)" = "$(cd -P -- "$LIVE_DIR" 2>/dev/null && pwd -P)" ] && _cfg_is_live=1
 if [ "$_cfg_is_live" -eq 0 ]; then
   printf '%-46s %8s  %s\n' "SessionStart injection" 0 "NOT MEASURABLE — \$CLAUDE_CONFIG_DIR is not the live dir"
-elif [ -f "$_injector" ] && [ "${HARBOR_CONTEXT_BUDGET_NO_PROBE:-${HARBOR_BUDGET_NO_PROBE:-0}}" != 1 ]; then
+elif [ -f "$_injector" ] && [ "${HARBOR_BUDGET_NO_PROBE:-0}" != 1 ]; then
   inj_local="$(_inject_bytes "$PWD")"; : "${inj_local:=0}"
   row "SessionStart injection (this cwd)" "$inj_local" "probed via hooks/injection-rule/injection-rule.sh"
   # The worst case is a session started where no repo governs — the case that
@@ -458,7 +458,7 @@ elif [ -f "$_injector" ] && [ "${HARBOR_CONTEXT_BUDGET_NO_PROBE:-${HARBOR_BUDGET
   [ "$inj_max" -gt "$inj_local" ] && \
     printf '%-46s %8s  %s\n' "  ↳ largest injection on this box (not this cwd)" "$inj_max" "$inj_max_where"
 else
-  printf '%-46s %8s  %s\n' "SessionStart injection" 0 "NOT PROBED — no injector, or HARBOR_CONTEXT_BUDGET_NO_PROBE=1"
+  printf '%-46s %8s  %s\n' "SessionStart injection" 0 "NOT PROBED — no injector, or HARBOR_BUDGET_NO_PROBE=1"
 fi
 
 # ── what L2 and D WILL add — projected, and counted separately ──────────────

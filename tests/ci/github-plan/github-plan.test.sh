@@ -26,17 +26,17 @@ esac
 STUB
 chmod +x "$GH"
 NOW=1790000000
-run() { FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_PLAN_REPO=o/r HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_TEST_NOW="${AT:-$NOW}" sh "$T_ROOT/bin/ci-github-plan.sh" "$@" 2>&1; }
+run() { FX="$FX" HARBOR_GH="$GH" HARBOR_PLAN_REPO=o/r HARBOR_CACHE_DIR="$CACHE" HARBOR_NOW="${AT:-$NOW}" sh "$T_ROOT/bin/ci-github-plan.sh" "$@" 2>&1; }
 state() { printf '%s\n' "$1" > "$FX/plan"; printf '%s\n' "$2" > "$FX/prot"; }
 reset() { rm -f "$CACHE/gh-plan.json" "$CACHE/checks.log" "$FX/plan.fail" "$FX/calls.log"; state pro github; }
-nlog() { if [ -f "$CACHE/checks.log" ]; then grep -c 'check:ci.github-plan' "$CACHE/checks.log"; else echo 0; fi; }
+nlog() { if [ -f "$CACHE/checks.log" ]; then grep -c 'check:gh-plan' "$CACHE/checks.log"; else echo 0; fi; }
 last() { tail -n 1 "$CACHE/checks.log"; }
 get() { jq -r "$1" "$CACHE/gh-plan.json"; }
 
 t_section "the state Harbor was built on: Pro, protection requiring checks"
 reset; run >/dev/null
 t_eq "the first reading is one line, so a box that is already degraded says so once" 1 "$(nlog)"
-t_has "...stamped with the registry id" "$(last)" "[check:ci.github-plan]"
+t_has "...stamped with the registry id" "$(last)" "[check:gh-plan]"
 t_has "...naming the plan and the gate" "$(last)" "plan pro, gate github"
 t_eq "the cache has the plan" pro "$(get .plan)"
 t_eq "...and the gate" github "$(get .gate)"

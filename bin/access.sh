@@ -25,7 +25,7 @@ set -eu
 LC_ALL=C; export LC_ALL   # [a-z] below means ASCII lower case, whatever the caller's locale
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
+ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
 . "$SRC/library-log.sh"
 log_init access
 LOG_FD=2

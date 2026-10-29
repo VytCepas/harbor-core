@@ -8,16 +8,16 @@ t_eq "an unknown argument is a usage error" 2 "$(sh "$X" --bogus >/dev/null 2>&1
 t_eq "a platform that is neither is refused" 1 "$(HARBOR_COLLECTOR_OS=Plan9 sh "$X" --dry-run >/dev/null 2>&1; echo $?)"
 
 t_section "the templates"
-for p in com.harbor.audit.collector com.harbor.audit.collector-checkpoint com.harbor.audit.otlp-receiver; do
+for p in com.harbor.collector com.harbor.collector-checkpoint com.harbor.otlp-receiver; do
   t_has "$p runs as the second uid" "$(cat "$R/launchd/$p.plist")" "<key>UserName</key><string>_harborlog</string>"
   t_has "$p runs the installed copy, a placeholder setup fills" "$(cat "$R/launchd/$p.plist")" "@BIN@/"
 done
-for u in harbor-audit-collector.service harbor-audit-collector-checkpoint.service harbor-audit-otlp-receiver.service; do
+for u in harbor-collector.service harbor-collector-checkpoint.service harbor-otlp-receiver.service; do
   t_has "$u runs as the second uid" "$(cat "$R/systemd/$u")" "User=harborlog"
 done
-t_has "the Linux ingest unit reads through a capability, not an ACL a chmod would mask" "$(cat "$R/systemd/harbor-audit-collector.service")" "AmbientCapabilities=CAP_DAC_READ_SEARCH"
+t_has "the Linux ingest unit reads through a capability, not an ACL a chmod would mask" "$(cat "$R/systemd/harbor-collector.service")" "AmbientCapabilities=CAP_DAC_READ_SEARCH"
 t_eq "and only that unit holds it" 1 "$(grep -l CAP_DAC_READ_SEARCH "$R"/systemd/harbor-*.service | grep -c .)"
-t_eq "no template names a real home or user" 0 "$(cat "$R"/launchd/com.harbor.audit.collector*.plist "$R"/launchd/com.harbor.audit.otlp-receiver.plist "$R"/systemd/harbor-audit-collector* "$R"/systemd/harbor-audit-otlp-receiver.service | grep -c -E '/Users/|/home/')"
+t_eq "no template names a real home or user" 0 "$(cat "$R"/launchd/com.harbor.collector*.plist "$R"/launchd/com.harbor.otlp-receiver.plist "$R"/systemd/harbor-collector* "$R"/systemd/harbor-otlp-receiver.service | grep -c -E '/Users/|/home/')"
 
 H="$T_TMP/home"; mkdir -p "$H/.claude/MEMORY/OBSERVABILITY/h" "$H/.local/state/harbor/events" "$H/.claude/cache"; : > "$H/.claude/cache/checks.log"
 SRCS="$H/.claude/MEMORY/OBSERVABILITY:$H/.local/state/harbor/events:$H/.claude/cache/checks.log:$H/absent"
@@ -29,8 +29,8 @@ t_eq "a Linux dry run exits 0" 0 "$rc"
 t_has "a system user with no shell and no home" "$O" 'useradd --system --user-group --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin'
 t_has "the code goes to a root-owned dir" "$O" 'chown -R root:root /opt/harbor/collector-bin'
 t_eq "and no ACL is planned: the capability reads" 0 "$(printf '%s\n' "$O" | grep -c -E 'chmod [+-]a|setfacl')"
-t_has "five units are written" "$O" 'would write /etc/systemd/system/harbor-audit-otlp-receiver.service'
-t_has "and enabled" "$O" 'systemctl enable --now harbor-audit-collector.timer harbor-audit-collector-checkpoint.timer harbor-audit-otlp-receiver.service'
+t_has "five units are written" "$O" 'would write /etc/systemd/system/harbor-otlp-receiver.service'
+t_has "and enabled" "$O" 'systemctl enable --now harbor-collector.timer harbor-collector-checkpoint.timer harbor-otlp-receiver.service'
 t_has "and nothing changes" "$O" 'dry run: nothing changed'
 
 if [ "$(uname -s)" = Darwin ]; then
@@ -47,7 +47,7 @@ if [ "$(uname -s)" = Darwin ]; then
   t_eq "nothing above the home is granted" 0 "$(printf '%s\n' "$O" | grep 'allow search' | grep -vc " $H")"
   t_has "a source that does not exist is not wired" "$O" "not wired, absent today: $H/absent"
   t_has "the user has no shell" "$O" 'UserShell /usr/bin/false'
-  t_has "three daemons are planned" "$O" 'would write /Library/LaunchDaemons/com.harbor.audit.otlp-receiver.plist'
+  t_has "three daemons are planned" "$O" 'would write /Library/LaunchDaemons/com.harbor.otlp-receiver.plist'
   t_has "and nothing changes" "$O" 'dry run: nothing changed'
   O="$(HARBOR_COLLECTOR_USER=root plan Darwin)"
   t_has "a collector user that already exists is kept" "$O" "user root exists"

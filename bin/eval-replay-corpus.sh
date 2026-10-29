@@ -55,7 +55,7 @@ CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 while [ "${CFG%/}" != "$CFG" ] && [ "$CFG" != "/" ]; do CFG="${CFG%/}"; done
 case "$CFG" in /*) ;; *) die "config dir must be absolute: $CFG" "CLAUDE_CONFIG_DIR=\$HOME/.claude sh $0 --help" ;; esac
 
-SRC_DIR="${HARBOR_SESSION_TRANSCRIPTS:-${HARBOR_TRANSCRIPTS:-$HOME/.claude/projects}}"
+SRC_DIR="${HARBOR_TRANSCRIPTS:-$HOME/.claude/projects}"
 OUT=""            # required: where to write. There is no default on purpose.
 LIMIT=0
 EXCL_FILE=""      # --exclude-file: a caller-supplied file, one glob per line
@@ -91,7 +91,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-[ -d "$SRC_DIR" ] || die "no transcripts at $SRC_DIR" "HARBOR_SESSION_TRANSCRIPTS=<projects dir> sh $0 --help"
+[ -d "$SRC_DIR" ] || die "no transcripts at $SRC_DIR" "HARBOR_TRANSCRIPTS=<projects dir> sh $0 --help"
 command -v jq >/dev/null 2>&1 || die "jq is required" "$(pkg_hint jq)"
 
 # umask BEFORE mkdir (#47 finding 8): $TMP was created 0755 at a PID-predictable

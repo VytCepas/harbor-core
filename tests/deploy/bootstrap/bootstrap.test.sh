@@ -6,7 +6,7 @@
 # What it proves: the private layer says what a machine is. core clones, downloads and needs nothing beyond harbor, and
 # a repo whose registry row has a remote is cloned from THAT remote, not from <harbor's owner>/<id>.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY
+unset CLAUDECODE HARBOR_DEPLOY
 T_TMP="$(cd "$T_TMP" && pwd -P)"
 TAB='	'
 _inst='#!/bin/sh
@@ -327,8 +327,8 @@ refused "a component that does not exist" "harbor.toml components: 'bogus' is no
 box oddowner 'components = ["core", "yard"]'; run "git clone -q '$REM/acme/harbor.git' ~/port/harbor && $BOOT"
 refused "repos to clone and an origin that names no owner" "so the repos to clone have no owner"
 box elsewhere 'components = ["core"]'; run "gh repo clone acme/harbor ~/src/harbor && sh ~/src/harbor/bin/deploy-bootstrap.sh"
-t_eq "a checkout outside HARBOR_SCOPE_REPO: exit" 1 "$RC"
-t_has "...reason" "$(out)" "but HARBOR_SCOPE_REPO is $H/port/harbor"
+t_eq "a checkout outside HARBOR_REPO: exit" 1 "$RC"
+t_has "...reason" "$(out)" "but HARBOR_REPO is $H/port/harbor"
 t_eq "...nothing cloned beside it" "acme/harbor" "$(clones | sed 's/ $//')"
 for badrem in 'https://user:s3cr3tT0ken@github.com/other/thing.git' 'http://github.com/other/thing.git' 'ext::sh -c id' \
               'file:///etc/passwd' '--upload-pack=id' 'git@gitlab.com:other/thing.git' 'https://github.com/other/thing/extra.git' \

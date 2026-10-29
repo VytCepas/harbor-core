@@ -18,11 +18,11 @@
 # (Linux is $0.008 a minute, so 1 dollar is 125 minutes), or the env HARBOR_CI_BUDGET_MIN. Absent means 0.
 #
 # IT WRITES ONLY WHEN THE VALUE WOULD CHANGE. An unset variable already means self-hosted (the workflow's own default), so
-# it is read that way. A change is ONE line in cache/checks.log (`[check:ci.runner-switch]`), never one per tick, and the
+# it is read that way. A change is ONE line in cache/checks.log (`[check:runner-switch]`), never one per tick, and the
 # cache feeds fleet-glyph's `CI→local` token (the Mac and the Linux container both run self-hosted). A read that fails
 # (the bill, the repo list or the variable) flips NOTHING: it warns, marks the cache `unread`, and logs once on the way in, not on every tick of a standing outage.
 #
-# Run by status-fleet-snapshot-refresh.sh every 300s: no schedule of its own. POSIX sh, jq, gh (HARBOR_TEST_GH swaps in a fake).
+# Run by status-fleet-snapshot-refresh.sh every 300s: no schedule of its own. POSIX sh, jq, gh (HARBOR_GH swaps in a fake).
 set -eu
 . "$(dirname -- "$0")/library-log.sh"
 log_init runner-switch
@@ -43,16 +43,16 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-REPO="${HARBOR_CI_SWITCH_REPO:-${HARBOR_SWITCH_REPO:-$(repo_slug)}}"   # harbor's own OWNER/NAME (harbor#1149); --org never reads it, the rest refuses an empty one
-BUSER="${HARBOR_CI_BILLING_USER:-${HARBOR_BILLING_USER:-${REPO%%/*}}}"  # the account billed for the minutes is the repo's owner unless named
+REPO="${HARBOR_SWITCH_REPO:-$(repo_slug)}"   # harbor's own OWNER/NAME (harbor#1149); --org never reads it, the rest refuses an empty one
+BUSER="${HARBOR_BILLING_USER:-${REPO%%/*}}"  # the account billed for the minutes is the repo's owner unless named
 VARNAME=HARBOR_RUNNER
 PCT=90
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
+CACHE_DIR="${HARBOR_CACHE_DIR:-$HOME/.claude/cache}"
 OUT="$CACHE_DIR/runner-switch.json"
 LOG="$CACHE_DIR/checks.log"
-NOW="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
-GH="${HARBOR_TEST_GH:-${HARBOR_GH:-gh}}"
+NOW="${HARBOR_NOW:-$(date +%s)}"
+GH="${HARBOR_GH:-gh}"
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required"; log_fix "$(pkg_hint jq)"; exit 2; }
 case "$NOW" in ''|*[!0-9]*) NOW="$(date +%s)" ;; esac
 
@@ -81,7 +81,7 @@ mkdir -p "$CACHE_DIR"
 # repos are private, and a deleted repo's minutes still count). cap = `org ORG N` in $CLAUDE_CONFIG_DIR/.harbor-ci-runners,
 # default 2000. used >= cap -> self-hosted. It sets NO variable: cache/runner-switch.<ORG>.json is the verdict, and
 # ci-runners.sh flips the org-level CI_RUNS_ON only while the org's runner is online. The 1st and a failed read are as above;
-# a change of verdict is one `[check:ci.runner-switch-org]` line.
+# a change of verdict is one `[check:runner-switch-org]` line.
 if [ -n "$ORG" ]; then
   OUT="$CACHE_DIR/runner-switch.$ORG.json"
   CAP="$(awk -v o="$ORG" '$1 == "org" && $2 == o && $3 ~ /^[0-9]+$/ { print $3; exit }' "$CFG/.harbor-ci-runners" 2>/dev/null || true)"
@@ -90,7 +90,7 @@ if [ -n "$ORG" ]; then
   if [ -f "$OUT" ] && jq -e . "$OUT" >/dev/null 2>&1; then
     PREV_UNREAD="$(jq -r '.unread // false' "$OUT")"; PREV_RUNNER="$(jq -r '.runner // ""' "$OUT")"
   fi
-  ologline() { [ "$PRINT" = 1 ] || printf '[check:ci.runner-switch-org] %s %s\n' "$(fmt %Y-%m-%dT%H:%M:%SZ)" "$1" >> "$LOG" 2>/dev/null || :; }
+  ologline() { [ "$PRINT" = 1 ] || printf '[check:runner-switch-org] %s %s\n' "$(fmt %Y-%m-%dT%H:%M:%SZ)" "$1" >> "$LOG" 2>/dev/null || :; }
   ounread() { # <what> — no new verdict: the last one kept and marked unread, one line on the way in
     log_warn "$ORG: $1 did not answer; its verdict is left as it is"; log_fix "gh auth status (the org's bill needs admin:org)"
     [ "$PRINT" = 1 ] && exit 2
@@ -139,7 +139,7 @@ if [ -f "$OUT" ] && jq -e . "$OUT" >/dev/null 2>&1; then
 fi
 logline() { # <message> — one checks.log line, never from --print
   [ "$PRINT" = 1 ] && return 0
-  printf '[check:ci.runner-switch] %s %s\n' "$(date -u -r "$NOW" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d "@$NOW" +%Y-%m-%dT%H:%M:%SZ)" "$1" >> "$LOG" 2>/dev/null || :
+  printf '[check:runner-switch] %s %s\n' "$(date -u -r "$NOW" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d "@$NOW" +%Y-%m-%dT%H:%M:%SZ)" "$1" >> "$LOG" 2>/dev/null || :
 }
 # A failed read: no flip, a warning, the cache marked unread (the last good fields kept), one log line on entry.
 unread() { # <what>
@@ -156,7 +156,7 @@ unread() { # <what>
 }
 
 # No name for harbor's own repository: nothing below can be read, so it is an unread (cache marked, one line) and flips nothing.
-[ -n "$REPO" ] || { REPO='?'; unread "the repository name (no origin in this checkout, no repo-slug.txt beside this install; set HARBOR_CI_SWITCH_REPO=<owner/name>)"; }
+[ -n "$REPO" ] || { REPO='?'; unread "the repository name (no origin in this checkout, no repo-slug.txt beside this install; set HARBOR_SWITCH_REPO=<owner/name>)"; }
 
 # ── the current value: unset reads as self-hosted, which is what the workflow does with it ──
 CUR="$("$GH" variable get "$VARNAME" -R "$REPO" 2>"$T/vget.err" || true)"

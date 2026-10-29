@@ -98,8 +98,7 @@ the flag for anything else.
 ## Who adopts — derived, never listed
 
 An adopter is a check row of [`standards/naming/controls.tsv`](../standards/naming/controls.tsv) (`type`
-`check`) whose script, `bin/<emitted>.sh` with each dot of the id a dash (`drift.reference-check` runs
-`bin/drift-reference-check.sh`), answers `--status`: it calls `status_init`, or takes the flag.
+`check`) whose script, `bin/<emitted>.sh`, answers `--status`: it calls `status_init`, or takes the flag.
 The derivation runs both ways, so it is neither a list nor a marker someone has to remember: a script that
 calls `status_init` and has no check row naming it is red too.
 

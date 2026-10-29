@@ -223,10 +223,10 @@ t_section "red-proof: mutants of the two gates go green where the real code is r
 mkdir -p "$T_TMP/mut"; cp "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/scope-roots.sh" "$T_ROOT/bin/secret" "$T_TMP/mut/"
 sed 's/case "\$__hs" in 0) return 0 ;; 4) return 4 ;; esac/case "$__hs" in 0) return 0 ;; esac/' "$T_ROOT/bin/access.sh" > "$T_TMP/mut/access.sh"
 t_eq "mutant 1 built: revoked no longer short-circuits" 0 "$(grep -c '4) return 4' "$T_TMP/mut/access.sh")"
-t_eq "mutant 1 admits the revoked ref through the legacy list" 3 "$(ACCESS_LEGACY_REFS="$LEG" HARBOR_SCOPE_ROOT="$T_ROOT" rc sh "$T_TMP/mut/access.sh" has rot-ref)"
+t_eq "mutant 1 admits the revoked ref through the legacy list" 3 "$(ACCESS_LEGACY_REFS="$LEG" HARBOR_ROOT="$T_ROOT" rc sh "$T_TMP/mut/access.sh" has rot-ref)"
 sed 's/^    if "\$@" < \/dev\/null > \/dev\/null 2>&1; then$/    if true; then/' "$T_ROOT/bin/secret" > "$T_TMP/mut/secret"
 t_eq "mutant 2 built: the rotate probe is skipped" 1 "$(grep -c '^    if true; then$' "$T_TMP/mut/secret")"
 cp "$T_ROOT/bin/access.sh" "$T_TMP/mut/access.sh"
 entry mut-one mut-ref "$(alive mut-ref)" "$EXPECT"; put mut-ref good-m
-t_eq "mutant 2 keeps a bad value the real code refuses" 0 "$(printf 'bad-m' | HARBOR_SCOPE_ROOT="$T_ROOT" rc sh "$T_TMP/mut/access.sh" rotate mut-one --value-stdin)"
+t_eq "mutant 2 keeps a bad value the real code refuses" 0 "$(printf 'bad-m' | HARBOR_ROOT="$T_ROOT" rc sh "$T_TMP/mut/access.sh" rotate mut-one --value-stdin)"
 t_done

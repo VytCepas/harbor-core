@@ -84,7 +84,7 @@ ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 . "$ROOT/bin/library-log.sh"; log_init skill-catalog
 . "$ROOT/bin/deploy-install-lib.sh"
 TAB='	'
-LOCAL_BIN="${HARBOR_SCOPE_LOCAL_BIN:-${HARBOR_LOCAL_BIN:-$HOME/.local/bin}}"
+LOCAL_BIN="${HARBOR_LOCAL_BIN:-$HOME/.local/bin}"
 OUT="$ROOT/skills/skill-catalog/SKILL.md"
 ROUTER="$ROOT/contracts/skill-book-router.tsv"
 NONTOOLS="$ROOT/contracts/catalog-non-tools.tsv"

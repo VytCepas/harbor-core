@@ -57,8 +57,8 @@ done
 t_eq "the rerouted copy is kept as evidence" 1 "$(find "$D/cfg" -maxdepth 1 -name 'settings.json.apiroute-*' | wc -l | tr -d ' ')"
 t_has "the evidence copy carries the credential value" "$(cat "$D"/cfg/settings.json.apiroute-* 2>/dev/null)" "TESTVALUE"
 t_hasnt "no credential VALUE reaches the output" "$OUT$ERR" "TESTVALUE"
-t_eq "the repair is stamped [check:admission.api-route] in checks.log" 1 \
-  "$(grep -c '^\[check:admission.api-route\] .*action=restored the last accepted copy' "$D/cfg/cache/checks.log" 2>/dev/null)"
+t_eq "the repair is stamped [check:api-route] in checks.log" 1 \
+  "$(grep -c '^\[check:api-route\] .*action=restored the last accepted copy' "$D/cfg/cache/checks.log" 2>/dev/null)"
 
 t_section "first sight keeps an operator's existing route, and says so once (#547)"
 D="$(fresh legit)"; put "$D/cfg/settings.json" "$LEGIT"; cp "$D/cfg/settings.json" "$D/before"

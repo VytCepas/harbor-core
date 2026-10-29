@@ -15,11 +15,11 @@
 #                                       which is what this tool has always done —
 #                                       harbor#267). The chosen one is printed.
 #
-#   HARBOR_SCOPE_REPO   owner/name; default comes from the checkout's remote, and
+#   HARBOR_REPO   owner/name; default comes from the checkout's remote, and
 #                 falling back to THIS SCRIPT'S checkout when cwd is elsewhere.
 #                 NOT a path — bin/drift-renew-check.sh reads the same name as a path;
 #                 a value that is not owner/name is REFUSED here, see repo().
-#   HARBOR_GATE_BRANCH the protected branch (default: main)
+#   HARBOR_BRANCH the protected branch (default: main)
 #   HARBOR_REQUIRED_CHECKS
 #                 the local gate's declaration (default: contracts/required-checks.tsv
 #                 beside this script, followed by the private layer's required-checks.tsv
@@ -69,7 +69,7 @@ LOG_FD=2
 
 usage() { sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; }
 
-BRANCH="${HARBOR_GATE_BRANCH:-${HARBOR_BRANCH:-main}}"
+BRANCH="${HARBOR_BRANCH:-main}"
 DO_MERGE=0; FORCE=0; PR=""; MODE=check; SUBJECT=""; MATCH=""; DELETE=0; REQUIRED_ONLY=0
 # ── THE STRATEGY IS A CHOICE, AND IT WAS HARDCODED (harbor#267) ──────────────
 # `--merge` MEANS TWO DIFFERENT THINGS in this file, which is the whole reason
@@ -128,16 +128,16 @@ done
 command -v gh >/dev/null 2>&1 || { echo "merge-check: gh is not installed" >&2; exit 2; }
 
 # ONE NAME, TWO MEANINGS — and only one of them can be right here. This file
-# documents HARBOR_SCOPE_REPO as `owner/name`; bin/drift-renew-check.sh:38 uses the SAME
-# variable as a FILESYSTEM PATH (`REPO="${HARBOR_SCOPE_REPO:-${PORT_ROOT:-$HOME/port}/harbor}"`) and its
+# documents HARBOR_REPO as `owner/name`; bin/drift-renew-check.sh:38 uses the SAME
+# variable as a FILESYSTEM PATH (`REPO="${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}"`) and its
 # header tells the operator to set it that way. Measured 2026-08-13 with the
 # renew-check spelling exported:
 #
-#   HARBOR_SCOPE_REPO="$HOME/harbor" sh bin/gate-merge-check.sh --protection
+#   HARBOR_REPO="$HOME/harbor" sh bin/gate-merge-check.sh --protection
 #   -> PROTECTION ABSENT  $HOME/harbor/main is reachable and carries no rule
 #
 # Wrong, on the one question this file exists to answer. `gh api
-# repos/$HARBOR_SCOPE_REPO/branches/main/protection` 404s, and the 404 arm
+# repos/$HARBOR_REPO/branches/main/protection` 404s, and the 404 arm
 # below correctly means "reachable, no rule configured" — so a nonsense repo id
 # is indistinguishable from a real lapse. The asymmetry is what makes it a
 # defect rather than a nuisance: renew-check STANDS DOWN and says so when the
@@ -154,16 +154,16 @@ command -v gh >/dev/null 2>&1 || { echo "merge-check: gh is not installed" >&2; 
 # whatever cwd the session is in and `gh repo view` needs to be inside a git
 # remote. Same shape as bin/status-generate.sh:80: the script knows where it lives.
 repo() {
-  if [ -n "${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-}}" ]; then
-    case "${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-}}" in
+  if [ -n "${HARBOR_REPO:-}" ]; then
+    case "$HARBOR_REPO" in
       */*/*|/*|*[[:space:]]*|*/)
-        printf 'merge-check: HARBOR_SCOPE_REPO=%s is not owner/name.\n' "${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-}}" >&2
+        printf 'merge-check: HARBOR_REPO=%s is not owner/name.\n' "$HARBOR_REPO" >&2
         printf '  This tool wants a GitHub repo id; bin/drift-renew-check.sh wants a PATH from the\n' >&2
-        printf '  same variable name. Unset it here, or export HARBOR_SCOPE_REPO=owner/name.\n' >&2
+        printf '  same variable name. Unset it here, or export HARBOR_REPO=owner/name.\n' >&2
         printf '' ;;
-      */*) printf '%s' "${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-}}" ;;
+      */*) printf '%s' "$HARBOR_REPO" ;;
       *)
-        printf 'merge-check: HARBOR_SCOPE_REPO=%s is not owner/name (no slash).\n' "${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-}}" >&2
+        printf 'merge-check: HARBOR_REPO=%s is not owner/name (no slash).\n' "$HARBOR_REPO" >&2
         printf '' ;;
     esac
     return 0

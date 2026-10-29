@@ -46,7 +46,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}}"
+ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
 FIX="$ROOT/fixtures/mutation-tier/cases.json"
 [ -n "$DIR" ] || { [ "$LIVE_OK" -eq 1 ] && DIR="$LIVE_DIR"; }
 CFG="${DIR:-${CLAUDE_CONFIG_DIR:-$LIVE_DIR}}"
@@ -220,7 +220,7 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 if [ ! -f "$FIX" ]; then
   log_fail "no fixture at $FIX — the tier table the report is built from"
-  log_nofix "fixtures/mutation-tier/cases.json in a harbor checkout (HARBOR_SCOPE_ROOT names it)"
+  log_nofix "fixtures/mutation-tier/cases.json in a harbor checkout (HARBOR_ROOT names it)"
   log_end || :; exit 1
 fi
 

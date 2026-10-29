@@ -194,7 +194,7 @@ t_eq "...listener_pid included" true "$(jq 'has("listener_pid") and has("linux")
 
 t_section "a job event from any container reaches a decision"
 fresh; printf 'sample_interval=0.2\n' > "$CONF"; ctr quuxmail-linux; busy harbor-linux
-HARBOR_TEST_NOW="$AT" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CI_RUNNERS_DIR="$RUNNERS" sh "$GOV" listen >/dev/null 2>&1 & LST=$!
+HARBOR_NOW="$AT" HARBOR_CACHE_DIR="$CACHE" HARBOR_RUNNERS_DIR="$RUNNERS" sh "$GOV" listen >/dev/null 2>&1 & LST=$!
 _i=0; while [ ! -f "$FX/notify.waiting" ] && [ "$_i" -lt 100 ]; do sleep 0.1; _i=$((_i + 1)); done
 _i=0; while [ "$(ccpus harbor-linux)" != 4 ] && [ "$_i" -lt 50 ]; do sleep 0.1; _i=$((_i + 1)); done
 t_eq "(setup) the listener gave harbor-linux the budget" 4 "$(ccpus harbor-linux)"

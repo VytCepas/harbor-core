@@ -40,7 +40,7 @@ t_eq "the spend is read from total_cost_usd" "0.0500" "$(cost_today)"
 t_section "the agent starts from env -i: no key or token, only the allowlist (review #5, #6)"
 leaked="$(grep -E '^(ANTHROPIC_|CLAUDE_CODE_OAUTH_TOKEN|GH_TOKEN|GITHUB_TOKEN|AWS_|HARBOR_TEST_SECRET)' "$T_TMP/claude.envdump" | cut -d= -f1 | tr '\n' ' ')"
 t_eq "no ANTHROPIC_*, CLAUDE_CODE_OAUTH_TOKEN, GH_TOKEN, AWS_* or stray variable reached it" "" "$leaked"
-want="$(for v in HOME USER LOGNAME SHELL TMPDIR LANG CLAUDE_CONFIG_DIR HARBOR_EVENT_DIR HARBOR_SCOPE_CACHE_DIR HARBOR_CACHE_DIR HARBOR_EVENT_BUS_SKEW; do
+want="$(for v in HOME USER LOGNAME SHELL TMPDIR LANG CLAUDE_CONFIG_DIR HARBOR_EVENT_DIR HARBOR_CACHE_DIR HARBOR_EVENT_BUS_SKEW; do
   eval "[ -z \"\${$v+1}\" ] || echo $v"; done; printf '%s\n' PATH ENABLE_CLAUDEAI_MCP_SERVERS SHIP_UNATTENDED HARBOR_EVENT_CAUSE HARBOR_EVENT_RULE)"
 t_eq "its environment is exactly the allowlist" "$(printf '%s\n' "$want" | sort | tr '\n' ' ')" \
   "$(cut -d= -f1 "$T_TMP/claude.envdump" | grep -v -x -E 'PWD|OLDPWD|SHLVL|_' | sort | tr '\n' ' ')"

@@ -22,8 +22,8 @@ t_has "...the run log" "$R" "— log: $HOME/.local/state/harbor/ship/backups/dep
 t_has "the night stopped" "$R" "stopped: acme/api was rolled back"
 t_has "web was not reached" "$R" "acme/web: not reached, the night stopped"
 t_eq "...so #21 did not merge" "merge api #11 " "$(fx_merged)"
-t_eq "the finding: the receipt is red over the repo" "red acme/api:rollback" "$(jq -r '"\(.status) \(.subjects | join(" "))"' "$CLAUDE_CONFIG_DIR/cache/checks/deploy.fleet.json")"
-t_has "checks.log carries one red line" "$(grep -c 'check:deploy.fleet.* red night' "$T_TMP/cache/checks.log")" 1
+t_eq "the finding: the receipt is red over the repo" "red acme/api:rollback" "$(jq -r '"\(.status) \(.subjects | join(" "))"' "$CLAUDE_CONFIG_DIR/cache/checks/ship.json")"
+t_has "checks.log carries one red line" "$(grep -c 'check:ship.* red night' "$T_TMP/cache/checks.log")" 1
 t_eq "the baseline did not move" "$B0" "$(fx_state api .sha)"
 t_eq "the bad commit is recorded as rolled back" "$BAD" "$(fx_state api '.rolled_back[0].sha')"
 fx_mutant "MB1 the baseline moves before verify" \
@@ -41,7 +41,7 @@ fx_later 3600
 t_eq "an hour later: exit 0" 0 "$(ship night)"
 t_eq "nothing more merged or applied" "merge api #11  1" "$(fx_merged) $(fx_ops apply)"
 t_has "the report says why" "$(fx_report)" "stopped the night (acme/api $BAD)"
-t_eq "the receipt stays red" red "$(jq -r .status "$CLAUDE_CONFIG_DIR/cache/checks/deploy.fleet.json")"
+t_eq "the receipt stays red" red "$(jq -r .status "$CLAUDE_CONFIG_DIR/cache/checks/ship.json")"
 t_eq "an unattended ship deploy is refused too" "0 1" "$(ship deploy acme/api --sha "$BAD") $(fx_ops apply)"
 fx_mutant "MB3 a rollback stops only its own run" 's/\[ \$((NOW - _lr)) -lt "\$NIGHT" \] || return 1/return 1/'
 bad_world; ship night >/dev/null; fx_later 3600; ship night >/dev/null

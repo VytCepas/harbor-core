@@ -32,7 +32,7 @@ never let a reader believe. Everything here was measured, not recalled.
 | Helm vendors the schemas + freshness check | **cannot** — there is nothing to vendor |
 | additive-only within a version | unenforced; no version exists to be additive within |
 
-**Consumer side is nevertheless LIVE, on a timer.** `com.harbor.status.fleet-snapshot`
+**Consumer side is nevertheless LIVE, on a timer.** `com.harbor.fleet-snapshot`
 (launchd, 5 min) writes `$CFG/cache/fleet-snapshot.json` — an unversioned bare
 array — and `status-fleet-glyph.sh` reads it on **every statusline tick**. So harbor
 consumes another repo's unschema'd output continuously while the seam that is

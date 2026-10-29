@@ -16,7 +16,7 @@
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
+ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
 . "$SRC/library-log.sh"
 log_init scope
 
@@ -120,7 +120,7 @@ kind_of() { # <id> <checkout>
   __rt="$ROOT/contracts/roots.tsv"; [ -f "$__rt" ] || __rt="$SRC/roots.tsv"   # installed: the table ships beside bin/
   __roles=" $(awk -F'\t' -v i="$1" '$2 == "REPOS" { n = $3; sub(/\/.*/, "", n); if (n == i) printf "%s ", $1 }' "$__rt" 2>/dev/null) "
   case "$__roles" in
-    *" HARBOR_SCOPE_REPO "*) echo control-plane ;; *" HARBOR_SCOPE_SCAFFOLDER "*) echo scaffolder ;;
+    *" HARBOR_REPO "*) echo control-plane ;; *" HARBOR_SCOPE_SCAFFOLDER "*) echo scaffolder ;;
     *" HARBOR_SCOPE_FLEET_CONTROLLER "*) echo fleet-controller ;;
     *) echo workload ;;
   esac

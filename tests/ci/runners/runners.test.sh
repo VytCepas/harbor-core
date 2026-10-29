@@ -77,7 +77,7 @@ t_hasnt "...not on the screen" "$OUT" "TOKEN-SECRET"
 t_hasnt "...and not in checks.log" "$(cat "$CACHE/checks.log")" "TOKEN-SECRET"
 t_eq "the creation is one checks.log line" 1 "$(grep -c 'created for' "$CACHE/checks.log")"
 t_eq "...beside the first install of the job hook" 2 "$(nlog)"
-t_has "...that quotes the registry id and the container" "$(cat "$CACHE/checks.log")" "[check:ci.runners]"
+t_has "...that quotes the registry id and the container" "$(cat "$CACHE/checks.log")" "[check:ci-runners]"
 run up --apply >/dev/null
 t_eq "idempotent: a second apply creates nothing more" 1 "$(grep -c '^run -d' "$FX/docker.log")"
 t_eq "...asks for no second token" 1 "$(nlines "$FX/token.asked")"
@@ -117,8 +117,8 @@ state; runner alpha online false 21; OUT="$(run down alpha --apply)"
 t_has "idle: the container is removed" "$(cat "$FX/docker.log")" "rm -f alpha-linux"
 t_has "...and the registration is deleted by id, with no token" "$(cat "$FX/deletes.log")" "repos/VytCepas/alpha/actions/runners/21"
 t_eq "...as one checks.log line" 1 "$(nlog)"
-t_exit "harbor-linux is not a fleet runner: refused" 2 env FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_DOCKER="$DOCKER" HARBOR_SCOPE_CACHE_DIR="$CACHE" sh "$T_ROOT/bin/ci-runners.sh" down harbor --apply
-t_exit "a repo name that is not a name is refused" 2 env FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_DOCKER="$DOCKER" HARBOR_SCOPE_CACHE_DIR="$CACHE" sh "$T_ROOT/bin/ci-runners.sh" down 'a;b' --apply
+t_exit "harbor-linux is not a fleet runner: refused" 2 env FX="$FX" HARBOR_GH="$GH" HARBOR_DOCKER="$DOCKER" HARBOR_CACHE_DIR="$CACHE" sh "$T_ROOT/bin/ci-runners.sh" down harbor --apply
+t_exit "a repo name that is not a name is refused" 2 env FX="$FX" HARBOR_GH="$GH" HARBOR_DOCKER="$DOCKER" HARBOR_CACHE_DIR="$CACHE" sh "$T_ROOT/bin/ci-runners.sh" down 'a;b' --apply
 
 t_section "an org runner and an extra repo: listed (harbor#1060)"
 reset; orgconf; list
@@ -378,7 +378,7 @@ rm -f "$FX/docker.runfail"; run refresh --apply --include-governance >/dev/null
 t_has "an absent harbor-linux is made again by the same command" "$(grep '^run -d' "$FX/docker.log" | tail -n 1)" "--name harbor-linux"
 t_has "...with the defaults for what it cannot read: 4g and the configured events dir" "$(grep '^run -d' "$FX/docker.log" | tail -n 1)" "--memory 4g"
 t_has "...the events dir" "$(grep '^run -d' "$FX/docker.log" | tail -n 1)" "-v $EVENTS:/gov-events"
-t_exit "--include-governance on any other command is refused" 2 env FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_DOCKER="$DOCKER" HARBOR_SCOPE_CACHE_DIR="$CACHE" sh "$T_ROOT/bin/ci-runners.sh" switch --apply --include-governance
+t_exit "--include-governance on any other command is refused" 2 env FX="$FX" HARBOR_GH="$GH" HARBOR_DOCKER="$DOCKER" HARBOR_CACHE_DIR="$CACHE" sh "$T_ROOT/bin/ci-runners.sh" switch --apply --include-governance
 
 t_section "up, switch, down and the cache never act on the governance row (harbor#1083)"
 gfx; run up --apply >/dev/null; run switch --apply >/dev/null; run tick >/dev/null

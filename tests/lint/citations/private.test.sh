@@ -7,7 +7,7 @@ FIX="$TMP/cit"; mkdir -p "$FIX/docs/reference" "$TMP/pv-empty"
 printf '# ledger\n\n| URL | HTTP |\n|---|---|\n| `https://github.com/VytCepas/harbor` | 200 |\n' > "$FIX/docs/reference/citations.md"
 printf 'The tool is documented at `https://docs.example-vendor.io/guide` and on help.example-vendor.io today.\n' > "$FIX/DOC.md"
 PV="$TMP/pv"; mkdir -p "$PV"
-t7() { env HARBOR_SCOPE_PRIVATE="$1" HARBOR_SCOPE_ROOT="$FIX" sh "$LINT" --only T7 2>&1 | grep -F 'VIOLATION [doc.urls-cited]'; }
+t7() { env HARBOR_SCOPE_PRIVATE="$1" HARBOR_ROOT="$FIX" sh "$LINT" --only T7 2>&1 | grep -F 'VIOLATION [doc.urls-cited]'; }
 
 t_section "a host in neither ledger is a violation"
 t_has "the URL is reported" "$(t7 "$PV")" 'docs.example-vendor.io/guide'

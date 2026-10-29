@@ -1,11 +1,11 @@
 #!/usr/bin/env sh
 # status-usage-aggregate.sh, M9 (harbor#44, #119, #185). Every run reads a synthetic transcript
-# tree (HARBOR_SESSION_TRANSCRIPTS) into a throwaway config dir: never the operator's store.
+# tree (HARBOR_TRANSCRIPTS) into a throwaway config dir: never the operator's store.
 # The ledger is idempotent and monotonic, because transcripts are garbage-collected.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 TOOL="$T_ROOT/bin/status-usage-aggregate.sh"; TMP="$T_TMP/ua"
 PROJ="$TMP/projects"; CFG="$TMP/cfg"; mkdir -p "$PROJ/p1" "$CFG"
-export HARBOR_SESSION_TRANSCRIPTS="$PROJ"
+export HARBOR_TRANSCRIPTS="$PROJ"
 # Line 4 is a user turn with no usage block; line 5 is junk (U-1).
 cat > "$PROJ/p1/s1.jsonl" <<'EOJ'
 {"type":"assistant","timestamp":"2026-08-01T10:00:00.000Z","entrypoint":"cli","message":{"model":"claude-opus-5","usage":{"input_tokens":10,"output_tokens":5,"cache_creation_input_tokens":2,"cache_read_input_tokens":3}}}
@@ -14,9 +14,9 @@ cat > "$PROJ/p1/s1.jsonl" <<'EOJ'
 {"type":"user","timestamp":"2026-08-02T09:00:01.000Z","message":{"role":"user"}}
 { this line is not json
 EOJ
-run() { HARBOR_SESSION_TRANSCRIPTS="$PROJ" sh "$TOOL" "$@" 2>/dev/null; }
-ua() { _t="$1"; shift; HARBOR_SESSION_TRANSCRIPTS="$_t" sh "$TOOL" "$@" 2>/dev/null; }  # <transcripts> <args…>
-ux() { _l="$1"; _w="$2"; _t="$3"; shift 3; t_exit "$_l" "$_w" env HARBOR_SESSION_TRANSCRIPTS="$_t" sh "$TOOL" "$@"; }
+run() { HARBOR_TRANSCRIPTS="$PROJ" sh "$TOOL" "$@" 2>/dev/null; }
+ua() { _t="$1"; shift; HARBOR_TRANSCRIPTS="$_t" sh "$TOOL" "$@" 2>/dev/null; }  # <transcripts> <args…>
+ux() { _l="$1"; _w="$2"; _t="$3"; shift 3; t_exit "$_l" "$_w" env HARBOR_TRANSCRIPTS="$_t" sh "$TOOL" "$@"; }
 field() { run --json "$CFG" | jq -r --arg d "$1" ".rows[] | select(.day==\$d) | .$2" | head -1; }  # <day> <field>
 day_inp() { jq -r "select(.day==\"$2\").inp" "$1" 2>/dev/null; }  # <ledger> <day>
 rows_of() { wc -l < "$1" 2>/dev/null | tr -d ' '; }
@@ -79,14 +79,14 @@ ux "U-12 exit 0" 0 "$TMP/empty" "$CFG"
 
 t_section "U-13: this suite is not pointed at the tool's default store"
 LIVE_DIR="$HOME/.claude"  # named only to refuse it (lint D1)
-t_eq "U-13 transcripts are not the default store" yes "$([ "${HARBOR_SESSION_TRANSCRIPTS:-}" != "$LIVE_DIR/projects" ] && echo yes || echo no)"
+t_eq "U-13 transcripts are not the default store" yes "$([ "$HARBOR_TRANSCRIPTS" != "$LIVE_DIR/projects" ] && echo yes || echo no)"
 t_eq "U-13 the config dir is not the live dir" outside "$(case "$CFG" in ("$LIVE_DIR"|"$LIVE_DIR"/*) echo inside ;; (*) echo outside ;; esac)"
 
 t_section "U-14: --apply refuses the live dir without --live (lint D2), however spelled"
 mkdir -p "$LIVE_DIR"; ln -s "$LIVE_DIR" "$TMP/live-link"
 ux "U-14 the live dir" 1 "$PROJ" --apply "$LIVE_DIR"
 ux "U-14 a symlinked spelling of it" 1 "$PROJ" --apply "$TMP/live-link"
-t_has "U-14 the refusal names the gate" "$(HARBOR_SESSION_TRANSCRIPTS="$PROJ" sh "$TOOL" --apply "$TMP/live-link" 2>&1)" "refusing to write the LIVE ledger"
+t_has "U-14 the refusal names the gate" "$(HARBOR_TRANSCRIPTS="$PROJ" sh "$TOOL" --apply "$TMP/live-link" 2>&1)" "refusing to write the LIVE ledger"
 t_eq "U-14 nothing reached the live dir" no "$([ -d "$LIVE_DIR/MEMORY" ] && echo yes || echo no)"
 
 t_section "U-15: a shrinking source window must not destroy a durable total"
@@ -105,7 +105,7 @@ t_eq "U-15 a growing window still raises it" 5600 "$(day_inp "$_gcl" 2026-07-01)
 
 t_section "U-16..U-18: the scheduled jobs stay pointed at a shipped script and real flags"
 _payload=" $(sed -n 's/^FILES="\(.*\)"$/\1/p' "$T_ROOT/bin/deploy-runtime-install.sh" | head -1) "
-for _pl in "$T_ROOT/launchd/com.harbor.status.usage.plist" "$T_ROOT/launchd/com.harbor.status.usage-sessions.plist"; do
+for _pl in "$T_ROOT/launchd/com.harbor.usage.plist" "$T_ROOT/launchd/com.harbor.usage-sessions.plist"; do
   _b="$(basename "$_pl")"
   t_eq "U-16 $_b exists" yes "$([ -f "$_pl" ] && echo yes || echo no)"
   if command -v plutil >/dev/null 2>&1; then t_exit "U-17 $_b is valid XML" 0 plutil -lint "$_pl"
@@ -161,7 +161,7 @@ printf '%s\n' '{"session":"sess-1","calls":999,"records":999,"wall_s":9,"inp":9,
 ua "$SES/projects" --sessions --apply "$SES/cfg" >/dev/null
 t_eq "U-32 a narrower window does not lower a stored session" 9999 "$(jq -r 'select(.session=="sess-1").cr' "$_slf" 2>/dev/null)"
 # No target given: the default is the active config dir, which on the operator's box is live.
-t_exit "U-33 --sessions --apply refuses the default live dir" 1 env -u CLAUDE_CONFIG_DIR HARBOR_SESSION_TRANSCRIPTS="$SES/projects" sh "$TOOL" --sessions --apply
+t_exit "U-33 --sessions --apply refuses the default live dir" 1 env -u CLAUDE_CONFIG_DIR HARBOR_TRANSCRIPTS="$SES/projects" sh "$TOOL" --sessions --apply
 
 t_section "U-34..U-39: one row per session, across parent and subagent files"
 SUB="$TMP/sub"; mkdir -p "$SUB/projects/p/sess/subagents" "$SUB/cfg"

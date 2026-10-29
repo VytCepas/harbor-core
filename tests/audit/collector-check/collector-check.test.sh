@@ -4,8 +4,8 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 K="$(cd "$(dirname "$0")/../../.." && pwd)/bin/audit-collector-check.sh"
 CF="$T_TMP/cfg"; ST="$T_TMP/store"; mkdir -p "$CF/cache"
-run() { CLAUDE_CONFIG_DIR="$CF" HARBOR_COLLECTOR_STORE="$ST" HARBOR_CHECK_RECEIPTS="$CF/cache/checks" sh "$K" >/dev/null 2>&1; echo $?; }
-rec() { jq -r .status "$CF/cache/checks/audit.collector-health.json" 2>/dev/null; }
+run() { CLAUDE_CONFIG_DIR="$CF" HARBOR_COLLECTOR_STORE="$ST" HARBOR_RECEIPTS="$CF/cache/checks" sh "$K" >/dev/null 2>&1; echo $?; }
+rec() { jq -r .status "$CF/cache/checks/collector.health.json" 2>/dev/null; }
 stat_json() { mkdir -p "$ST"; printf '{"ts":"x","files":3,"bytes_this_pass":0,"unreadable":%s,"events_total":%s}\n' "$1" "$2" > "$ST/status.json"; }
 
 t_eq "no collector: exit 0" 0 "$(run)"
@@ -15,7 +15,7 @@ t_eq "a fresh clean heartbeat is green" 0 "$(run)"
 t_eq "green receipt" green "$(rec)"
 touch -t 202001010000 "$ST/status.json"
 t_eq "a stale heartbeat is red" 1 "$(run)"
-t_has "and says so in checks.log" "$(cat "$CF/cache/checks.log")" '[check:audit.collector-health]'
+t_has "and says so in checks.log" "$(cat "$CF/cache/checks.log")" '[check:collector.health]'
 touch "$ST/pass.started"
 t_eq "a pass that started recently is alive, however old the last end is" 0 "$(run)"
 touch -t 202001010000 "$ST/pass.started"
@@ -36,7 +36,7 @@ D="$(date -u +%Y-%m-%d)"; G="$CF/MEMORY/OBSERVABILITY/h"; mkdir -p "$G"; stat_js
 printf "{\"%s\":{\"claude_code.tool_decision\":25}}\n" "$D" > "$ST/cc-summary.json"
 printf "{\"ts\":\"%sT01:00:00Z\",\"d\":\"armed\"}\n" "$D" > "$G/guard-decisions.jsonl"
 t_eq "25 client decisions and only a session row is red" 1 "$(run)"
-t_has "and names it" "$(jq -r .subjects[] "$CF/cache/checks/audit.collector-health.json" | tr "\n" " ")" guard-silent
+t_has "and names it" "$(jq -r .subjects[] "$CF/cache/checks/collector.health.json" | tr "\n" " ")" guard-silent
 printf "{\"ts\":\"%sT01:05:00Z\",\"d\":\"allow\"}\n" "$D" >> "$G/guard-decisions.jsonl"
 t_eq "one tool-call row today is green" 0 "$(run)"
 printf "{\"%s\":{\"claude_code.tool_decision\":5}}\n" "$D" > "$ST/cc-summary.json"; : > "$G/guard-decisions.jsonl"
@@ -49,6 +49,6 @@ t_eq "its copy lands in MEMORY/CHECKPOINTS/<host>, beside its signature" "2026-1
 t_eq "a second run anchors nothing new and stays green" 0 "$(run)"
 printf '# day=2026-10-08\nf1\t10\tFORGED\n' > "$ST/checkpoints/2026-10-08.tsv"
 t_eq "a signed day rewritten in the store is red" 1 "$(run)"
-t_has "and names it" "$(jq -r '.subjects[]' "$CF/cache/checks/audit.collector-health.json" | tr '\n' ' ')" checkpoint-changed
+t_has "and names it" "$(jq -r '.subjects[]' "$CF/cache/checks/collector.health.json" | tr '\n' ' ')" checkpoint-changed
 t_eq "the anchored copy keeps the original" abc "$(cut -f3 "$CF/MEMORY/CHECKPOINTS/Box-9/2026-10-08.tsv" | tail -n 1)"
 t_done

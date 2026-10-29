@@ -20,4 +20,3 @@ vendor/naming/MANIFEST.tsv	sh bin/standard-vendor.sh --check .	sh bin/standard-v
 -	lint-module.sh	a lint over the graph
 -	standard-shape.sh	a lint over the graph
 -	doc-fresh-verify.sh	this runner
--	standard-fleet-names.sh	the weekly fleet naming check: it runs other repos' --check modes and writes a receipt, it generates nothing

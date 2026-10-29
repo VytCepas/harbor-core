@@ -5,7 +5,7 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 RH="$T_ROOT/bin/lint-rule-health.sh"; F="$T_TMP/rh"; mkdir -p "$F"
 CLAUDE_CONFIG_DIR="$F/cfg"; export CLAUDE_CONFIG_DIR
-REC="$F/cfg/cache/checks/lint.rule-health.json"
+REC="$F/cfg/cache/checks/rule-health.json"
 
 # The fixture linter: three rules, A3 a declared ratchet; `--only A1 --plant` goes red the way bad() does.
 cat > "$F/lint.sh" <<'LINT'
@@ -42,33 +42,33 @@ g() { git -C "$TREE" -c user.email=t@t -c user.name=t -c commit.gpgsign=false "$
 # The reconcile's own receipt: silence is judged only while it is ok and recent (review #931).
 rstate() { mkdir -p "$F/cfg/cache"; printf '{"ran_at":"%sT06:34:59Z","status":"%s"}\n' "$1" "$2" > "$F/cfg/cache/findings-state.json"; }
 rstate 2026-11-30 ok
-rh() { HARBOR_SCOPE_ROOT="$TREE" HARBOR_LINT_RULE_HEALTH_LINT="$F/lint.sh" HARBOR_LINT_FINDINGS_REPO=o/r HARBOR_LINT_RULE_HEALTH_NOW=2026-12-01 sh "$RH" "$@" 2>&1; }
+rh() { HARBOR_ROOT="$TREE" HARBOR_RH_LINT="$F/lint.sh" HARBOR_FINDINGS_REPO=o/r HARBOR_RH_NOW=2026-12-01 sh "$RH" "$@" 2>&1; }
 
 t_section "an unproven rule is a candidate; a proven one is not"
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s1.sh" rh)"; RC=$?
+OUT="$(HARBOR_RH_SUITES="$F/s1.sh" rh)"; RC=$?
 t_eq "exit 1: candidates" 1 "$RC"
 t_eq "the receipt is red over the unproven rules only" 'red ["unproven:A2","unproven:A3"]' "$(jq -c -r '"\(.status) \(.subjects)"' "$REC")"
 t_eq "it counts as a run for eight days" 8 "$(jq -r .fresh_days "$REC")"
 t_has "the budget states both numbers" "$OUT" "2 of 3 have no red proof"
 
 t_section "a failing suite stands the run down: its red log proves nothing"
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s1.sh $F/s2.sh" rh)"; RC=$?
+OUT="$(HARBOR_RH_SUITES="$F/s1.sh $F/s2.sh" rh)"; RC=$?
 t_eq "exit 3 (D-29 unchecked), not the 2 of a usage error" 3 "$RC"
 t_eq "stood-down, with no subject" "stood-down []" "$(jq -c -r '"\(.status) \(.subjects)"' "$REC")"
 t_has "and names the suite" "$OUT" "s2.sh exited 1"
 
 t_section "silence is not judged on a ledger under eight weeks old"
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s1.sh" HARBOR_LINT_RULE_HEALTH_COST_S=0 rh)"
+OUT="$(HARBOR_RH_SUITES="$F/s1.sh" HARBOR_RH_COST_S=0 rh)"
 t_has "said, not passed" "$OUT" "silence not judged: the ledger is 1 day(s) old"
 t_hasnt "and nothing is called silent" "$(jq -c .subjects "$REC")" "silent:"
 t_has "positive control: the receipt was read" "$(jq -c .subjects "$REC")" "unproven:A2"
 
 t_section "on eight weeks of ledger, a costly rule with no fire is silent — never a ratchet, never one that fired"
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s1.sh" HARBOR_LINT_RULE_HEALTH_COST_S=0 GH_AGE=2026-09-01 GH_SEEN_A2=1 rh)"
+OUT="$(HARBOR_RH_SUITES="$F/s1.sh" HARBOR_RH_COST_S=0 GH_AGE=2026-09-01 GH_SEEN_A2=1 rh)"
 t_eq "A1 is silent; A3 is a ratchet and A2 fired" 'red ["unproven:A2","unproven:A3","silent:A1"]' "$(jq -c -r '"\(.status) \(.subjects)"' "$REC")"
 
 t_section "harbor#957: a finding filed under a rule's deprecated letter is that rule firing"
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s1.sh" HARBOR_LINT_RULE_HEALTH_COST_S=0 GH_AGE=2026-09-01 GH_SEEN_A2=1 GH_SEEN_KEY=Q2 rh)"
+OUT="$(HARBOR_RH_SUITES="$F/s1.sh" HARBOR_RH_COST_S=0 GH_AGE=2026-09-01 GH_SEEN_A2=1 GH_SEEN_KEY=Q2 rh)"
 t_eq "lint/Q2 seen firing is A2 firing: A2 is not silent" 'red ["unproven:A2","unproven:A3","silent:A1"]' "$(jq -c -r '"\(.status) \(.subjects)"' "$REC")"
 
 t_section "every rule proven and nothing silent is green"
@@ -76,63 +76,63 @@ cat > "$F/s3.sh" <<S3
 #!/bin/sh
 for r in A1 A2 A3; do sh "$F/lint.sh" --only \$r --plant >/dev/null; done; echo "s3: 3 passed, 0 failed"
 S3
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s3.sh" rh)"; RC=$?
+OUT="$(HARBOR_RH_SUITES="$F/s3.sh" rh)"; RC=$?
 t_eq "exit 0" 0 "$RC"
 t_eq "green, no subjects" "green []" "$(jq -c -r '"\(.status) \(.subjects)"' "$REC")"
 # green on a 1-day ledger is honest: no silent: finding can exist before the ledger is 8 weeks old
 
 t_section "review #909: a store that cannot be read stands down; a green would close an open silent: as fixed"
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s3.sh" GH_FAIL=auth rh)"; RC=$?
+OUT="$(HARBOR_RH_SUITES="$F/s3.sh" GH_FAIL=auth rh)"; RC=$?
 t_eq "exit 3 (D-29 unchecked)" 3 "$RC"
 t_eq "stood-down, never green" "stood-down []" "$(jq -c -r '"\(.status) \(.subjects)"' "$REC")"
 t_has "and names why" "$OUT" "HTTP 401: Bad credentials"
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s3.sh" GH_FAIL=html rh)"; RC=$?
+OUT="$(HARBOR_RH_SUITES="$F/s3.sh" GH_FAIL=html rh)"; RC=$?
 t_eq "an answer that is not JSON stands down too, with the documented exit" 3 "$RC"
 t_has "and says so" "$OUT" "not a list of issues"
 
 t_section "review #915: only a clean checkout at origin/main writes a receipt"
 rm -f "$REC"; : > "$TREE/wip"
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s3.sh" rh)"; RC=$?
+OUT="$(HARBOR_RH_SUITES="$F/s3.sh" rh)"; RC=$?
 t_eq "the verdict still prints and exits" 0 "$RC"
 t_eq "a dirty tree writes nothing" no "$([ -f "$REC" ] && echo yes || echo no)"
 t_has "and says why" "$OUT" "no receipt written: $TREE has uncommitted changes"
 g add wip; g commit -qm ahead
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s3.sh" rh)"
+OUT="$(HARBOR_RH_SUITES="$F/s3.sh" rh)"
 t_eq "a commit not on origin/main writes nothing" no "$([ -f "$REC" ] && echo yes || echo no)"
 t_has "and names the commit" "$OUT" "not origin/main"
 git -C "$TREE" update-ref refs/remotes/origin/main HEAD
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s3.sh" rh)"
+OUT="$(HARBOR_RH_SUITES="$F/s3.sh" rh)"
 t_eq "positive control: once published, the receipt is written" "green []" "$(jq -c -r '"\(.status) \(.subjects)"' "$REC")"
 
 t_section "review #915: a rule that fires in this run has fired, whatever a frozen seen= says"
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s1.sh" HARBOR_LINT_RULE_HEALTH_COST_S=0 GH_AGE=2026-09-01 GH_SEEN_A2=1 FIX_FIRE=A1 rh)"
+OUT="$(HARBOR_RH_SUITES="$F/s1.sh" HARBOR_RH_COST_S=0 GH_AGE=2026-09-01 GH_SEEN_A2=1 FIX_FIRE=A1 rh)"
 t_eq "A1 fires today, so it is not silent" 'red ["unproven:A2","unproven:A3"]' "$(jq -c -r '"\(.status) \(.subjects)"' "$REC")"
 
 t_section "review #915: a dead reconcile is not judged, or every costly rule reads silent"
 rstate 2026-10-01 ok
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s1.sh" HARBOR_LINT_RULE_HEALTH_COST_S=0 GH_AGE=2026-09-01 GH_SEEN_A2=1 rh)"
+OUT="$(HARBOR_RH_SUITES="$F/s1.sh" HARBOR_RH_COST_S=0 GH_AGE=2026-09-01 GH_SEEN_A2=1 rh)"
 t_has "a reconcile last run 61 days ago is said" "$OUT" "the reconcile last ran 61 day(s) ago"
 t_hasnt "and nothing is called silent" "$(jq -c .subjects "$REC")" "silent:"
 t_has "positive control: the receipt was written" "$(jq -c .subjects "$REC")" "unproven:A2"
 rstate 2026-11-30 failed
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s1.sh" HARBOR_LINT_RULE_HEALTH_COST_S=0 GH_AGE=2026-09-01 GH_SEEN_A2=1 rh)"
+OUT="$(HARBOR_RH_SUITES="$F/s1.sh" HARBOR_RH_COST_S=0 GH_AGE=2026-09-01 GH_SEEN_A2=1 rh)"
 t_has "a reconcile that failed is not judged on" "$OUT" "does not say ok (status: failed)"
 rm -f "$F/cfg/cache/findings-state.json"
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s1.sh" HARBOR_LINT_RULE_HEALTH_COST_S=0 GH_AGE=2026-09-01 GH_SEEN_A2=1 rh)"
+OUT="$(HARBOR_RH_SUITES="$F/s1.sh" HARBOR_RH_COST_S=0 GH_AGE=2026-09-01 GH_SEEN_A2=1 rh)"
 t_has "no reconcile receipt at all is not judged either" "$OUT" "(status: none)"
 rstate 2026-11-30 ok
 # all findings accepted: no seen= moves, and a live reconcile still judges (review #931)
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s1.sh" HARBOR_LINT_RULE_HEALTH_COST_S=0 GH_AGE=2026-09-01 GH_SEEN_A2=1 GH_SEEN=2026-10-01 rh)"
+OUT="$(HARBOR_RH_SUITES="$F/s1.sh" HARBOR_RH_COST_S=0 GH_AGE=2026-09-01 GH_SEEN_A2=1 GH_SEEN=2026-10-01 rh)"
 t_has "a frozen seen= under a live reconcile is still judged" "$(jq -c .subjects "$REC")" "silent:A1"
 
 t_section "review #915: a malformed createdAt stands down with a receipt, never aborts"
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s3.sh" GH_FAIL=baddate rh)"; RC=$?
+OUT="$(HARBOR_RH_SUITES="$F/s3.sh" GH_FAIL=baddate rh)"; RC=$?
 t_eq "exit 3 (D-29 unchecked)" 3 "$RC"
 t_eq "stood-down" "stood-down []" "$(jq -c -r '"\(.status) \(.subjects)"' "$REC")"
 t_has "and says what it could not read" "$OUT" "createdAt is not a date"
 
 t_section "review #915: a rule that crashes alone is filed as crashed, never timed as cheap or silent"
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s3.sh" HARBOR_LINT_RULE_HEALTH_COST_S=0 GH_AGE=2026-09-01 GH_SEEN_A2=1 GH_SEEN_KEY=A9 FIX_CRASH=A2 rh)"; RC=$?
+OUT="$(HARBOR_RH_SUITES="$F/s3.sh" HARBOR_RH_COST_S=0 GH_AGE=2026-09-01 GH_SEEN_A2=1 GH_SEEN_KEY=A9 FIX_CRASH=A2 rh)"; RC=$?
 t_eq "exit 1" 1 "$RC"
 t_eq "crashed:A2 and never silent; A1 is silent, A3 a ratchet" 'red ["silent:A1","crashed:A2"]' "$(jq -c -r '"\(.status) \(.subjects)"' "$REC")"
 t_has "and says so" "$OUT" "crashed when run alone (--only exited above 1): A2"
@@ -179,16 +179,16 @@ ROW fix.young warn lint $S1 "lands 27 days before today" >> "$P/standards/naming
 # fix.late's row is old, but its red-proof suite is new: the suite's first commit is what holds it
 ROW fix.late warn lint tests/checks/fix-late-test.sh "its row is old, its red proof is not" >> "$P/standards/naming/controls.tsv"; pc 2026-09-01 "late row"
 printf '#!/bin/sh\n[ -z "${LINT_REDLOG:-}" ] || echo fix.late >> "$LINT_REDLOG"\necho "late: 1 passed, 0 failed"\n' > "$P/tests/checks/fix-late-test.sh"; pc 2026-10-10 "late suite"
-# the fixture linter: a rule's findings are the records it writes to HARBOR_LINT_FINDINGS_OUT, as lint-conventions does,
+# the fixture linter: a rule's findings are the records it writes to HARBOR_FINDINGS_OUT, as lint-conventions does,
 # and a rule that ran says so with an R record. doc.refs-conform is the relay key bin/doc-refs.sh's rules share.
 cat > "$F/plint.sh" <<'PLINT'
 #!/bin/sh
 case "$1" in
   --list) printf '  fix.old a\n  fix.edge b\n  fix.young c\n  fix.accepted d\n  fix.open e\n  fix.unproven f\n  fix.blocked g\n  fix.check h\n  fix.late i\n  fix.renamed j\n  fix.oldacc k\n  fix.norun l\n  doc.refs-conform m\n' ;;
   --ids)  printf 'id\tdeprecated\nfix.old\t-\nfix.renamed\tZ9\n' ;;
-  *) [ -z "${HARBOR_LINT_FINDINGS_OUT:-${HARBOR_FINDINGS_OUT:-}}" ] || {
-       for _r in fix.old fix.edge fix.young fix.accepted fix.open fix.unproven fix.blocked fix.late fix.renamed fix.oldacc doc.refs-conform; do printf 'R\t%s\n' "$_r" >> "${HARBOR_LINT_FINDINGS_OUT:-${HARBOR_FINDINGS_OUT:-}}"; done
-       printf 'A\tfix.open\tthe one open subject\n' >> "${HARBOR_LINT_FINDINGS_OUT:-${HARBOR_FINDINGS_OUT:-}}"; } ;;
+  *) [ -z "${HARBOR_FINDINGS_OUT:-}" ] || {
+       for _r in fix.old fix.edge fix.young fix.accepted fix.open fix.unproven fix.blocked fix.late fix.renamed fix.oldacc doc.refs-conform; do printf 'R\t%s\n' "$_r" >> "$HARBOR_FINDINGS_OUT"; done
+       printf 'A\tfix.open\tthe one open subject\n' >> "$HARBOR_FINDINGS_OUT"; } ;;
 esac
 PLINT
 acc() { # <key> <closed> — one accepted-as-false finding in the store
@@ -198,7 +198,7 @@ ACC="[$(acc lint/fix.accepted 2026-10-10),$(acc lint/Z9 2026-10-10),$(acc lint/d
 PRO() { env "$@" sh "$RH" --promotion 2>&1; }
 line_of() { printf '%s\n' "$OUT" | awk -v id="$1" '$1 == id'; }
 rm -f "$REC"
-OUT="$(PRO HARBOR_SCOPE_ROOT="$P" HARBOR_LINT_RULE_HEALTH_LINT="$F/plint.sh" HARBOR_LINT_FINDINGS_REPO=o/r HARBOR_LINT_RULE_HEALTH_NOW=2026-10-14 GH_ACCEPTED="$ACC")"; RC=$?
+OUT="$(PRO HARBOR_ROOT="$P" HARBOR_RH_LINT="$F/plint.sh" HARBOR_FINDINGS_REPO=o/r HARBOR_RH_NOW=2026-10-14 GH_ACCEPTED="$ACC")"; RC=$?
 t_eq "exit 0: the report is not a gate" 0 "$RC"
 t_has "a rule red and landed long ago is ready" "$(line_of fix.old)" "ready"
 t_eq "and a finding accepted under another tier's key (check/...) is not its record" 0 "$(line_of fix.old | awk '{ print $6 }')"
@@ -224,7 +224,7 @@ t_has "and the heading says why none is judged: no finding counter" "$OUT" "not 
 t_has "the summary names the ready count and the earliest date" "$OUT" "5 lint rule(s) ready now; earliest not-before: 2026-10-15"
 t_eq "it writes no receipt" no "$([ -f "$REC" ] && echo yes || echo no)"
 t_eq "it writes nothing into the tree it judges" "" "$(git -C "$P" status --porcelain)"
-OUT="$(PRO HARBOR_SCOPE_ROOT="$P" HARBOR_LINT_RULE_HEALTH_LINT="$F/plint.sh" HARBOR_LINT_FINDINGS_REPO=o/r HARBOR_LINT_RULE_HEALTH_NOW=2026-10-14 GH_FAIL=auth)"; RC=$?
+OUT="$(PRO HARBOR_ROOT="$P" HARBOR_RH_LINT="$F/plint.sh" HARBOR_FINDINGS_REPO=o/r HARBOR_RH_NOW=2026-10-14 GH_FAIL=auth)"; RC=$?
 t_eq "a finding store that cannot be read stands the report down (3, D-29 unchecked)" 3 "$RC"
 t_has "and says why: no accepted count, so no ready verdict" "$OUT" "could not be read"
 t_hasnt "and no rule is called ready" "$OUT" "ready"
@@ -258,7 +258,7 @@ SUITE
   ROW name.bothbad warn lint tests/checks/nm-test.sh "red, a finding in rb" bin/lint-name.sh; } > "$N/standards/naming/controls.tsv"
 git -C "$N" add -A; git -C "$N" -c user.email=t@t -c user.name=t -c commit.gpgsign=false commit -qm seed
 printf '#!/bin/sh\ncase "$1" in --list) printf "  name.clean a\n  name.dirty b\n  name.multi c\n  name.unred d\n  name.bothbad e\n" ;; --ids) printf "id\tdeprecated\n" ;; esac\n' > "$F/nl-conv.sh"
-NPRO() { env HARBOR_SCOPE_ROOT="$N" HARBOR_LINT_RULE_HEALTH_LINT="$F/nl-conv.sh" HARBOR_RH_NAMELINT="$F/nlint.sh" HARBOR_RH_REPOS="$F/repos.tsv" HARBOR_LINT_FINDINGS_REPO=o/r HARBOR_LINT_RULE_HEALTH_NOW=2026-10-28 GH_ACCEPTED="[]" "$@" sh "$RH" --promotion 2>&1; }
+NPRO() { env HARBOR_ROOT="$N" HARBOR_RH_LINT="$F/nl-conv.sh" HARBOR_RH_NAMELINT="$F/nlint.sh" HARBOR_RH_REPOS="$F/repos.tsv" HARBOR_FINDINGS_REPO=o/r HARBOR_RH_NOW=2026-10-28 GH_ACCEPTED="[]" "$@" sh "$RH" --promotion 2>&1; }
 OUT="$(NPRO NL_FIND="name.dirty@ra:3 name.multi@ra:1 name.multi@rb:2 name.bothbad@rb:1")"; RC=$?
 t_eq "exit 0: still a report" 0 "$RC"
 t_eq "red and 0 findings everywhere: eligible, on the day its row landed" "eligible" "$(line_of name.clean | sed 's/.*  //')"
@@ -292,21 +292,21 @@ while IFS= read -r _k; do t_has "relay key $_k is a rule the linter lists" "$REG
 
 t_section "a bad argument is a usage error (2): nothing runs, no receipt, never the 3 of a stood-down run"
 rm -f "$REC"
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s2.sh" rh --bogus)"; RC=$?
+OUT="$(HARBOR_RH_SUITES="$F/s2.sh" rh --bogus)"; RC=$?
 t_eq "exit 2" 2 "$RC"
 t_has "it names the argument" "$OUT" "unknown argument: --bogus"
 # contracts/logging.md: a usage error is not a run, so its words go to stderr and it ends with no summary line.
-HARBOR_SCOPE_ROOT="$TREE" HARBOR_LINT_RULE_HEALTH_LINT="$F/lint.sh" HARBOR_LINT_FINDINGS_REPO=o/r HARBOR_LINT_RULE_HEALTH_NOW=2026-12-01 sh "$RH" --bogus > "$F/u.out" 2> "$F/u.err"
+HARBOR_ROOT="$TREE" HARBOR_RH_LINT="$F/lint.sh" HARBOR_FINDINGS_REPO=o/r HARBOR_RH_NOW=2026-12-01 sh "$RH" --bogus > "$F/u.out" 2> "$F/u.err"
 t_eq "usage leaves stdout empty" "" "$(cat "$F/u.out")"
 t_has "...and is said on stderr" "$(cat "$F/u.err")" "unknown argument: --bogus"
 t_eq "...with no summary line on either stream, because it is not a run" "" "$(cat "$F/u.out" "$F/u.err" | grep -E '^rule-health: [0-9]+ ok' || :)"
 t_eq "no suite ran, so no receipt exists (the failing s2 would have written a stood-down one)" no "$([ -f "$REC" ] && echo yes || echo no)"
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s1.sh" rh)"
+OUT="$(HARBOR_RH_SUITES="$F/s1.sh" rh)"
 t_has "valid: a real run still ends with its summary line" "$OUT" "rule-health: "
 OUT="$(rh --help)"; RC=$?
 t_eq "valid: --help still exits 0" 0 "$RC"
 
-OUT="$(HARBOR_LINT_RULE_HEALTH_SUITES="$F/s2.sh" rh --promotion --bogus)"; RC=$?
+OUT="$(HARBOR_RH_SUITES="$F/s2.sh" rh --promotion --bogus)"; RC=$?
 t_eq "--promotion with a second argument is a usage error too" 2 "$RC"
 
 t_done

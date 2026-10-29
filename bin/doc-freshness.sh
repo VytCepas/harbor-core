@@ -45,11 +45,11 @@ LOG_FD=2
 . "$ROOT/bin/library-log.sh"
 log_init freshness
 
-# D1: the config dir is a variable, never a bare ~/.claude. HARBOR_DOC_TELOS_DIR
+# D1: the config dir is a variable, never a bare ~/.claude. HARBOR_TELOS_DIR
 # overrides the whole corpus root so the suite can score a fixture instead of
 # reading the operator's real goals — a test that needs live personal files to
 # pass is a test nobody can run.
-TELOS_ROOT="${HARBOR_DOC_TELOS_DIR:-${HARBOR_TELOS_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/MEMORY}}"
+TELOS_ROOT="${HARBOR_TELOS_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/MEMORY}"
 
 # Thresholds in days, by what the document is FOR. A contract that froze a seam
 # should outlive a handoff brief by a wide margin; PROVENANCE tracks an upstream
@@ -60,7 +60,7 @@ threshold() {
     docs/how-to/handover.md|docs/generated/status.md)     echo 30  ;;   # "resume here" — wrong fast
     policy/constitution.md)          echo 180 ;;   # should move slowly or it is not constitutional
     contracts/*)              echo 120 ;;   # frozen seams
-    docs/reports/rejected-approaches.md)             echo 365 ;;   # append-only; silence is legitimate
+    docs/decisions/rejected-approaches.md)             echo 365 ;;   # append-only; silence is legitimate
     docs/reports/handover-archive.md)       echo 365 ;;   # superseded records — OLD BY DESIGN.
                                             # The default 90 would nag forever
                                             # about a file whose whole job is to
@@ -169,7 +169,7 @@ if [ "$MODE" = "--open" ]; then
   # exact fail-open shape lint rule F2 exists to catch in the guards.
   _open="$(git -C "$ROOT" grep -nwEi '(TBD|TODO|FIXME|still open|awaiting an owner|undecided|not adjudicated)' \
       -- '*.md' 2>/dev/null \
-    | grep -vE '^(vendor/|docs/reports/rejected-approaches\.md|bin/)' \
+    | grep -vE '^(vendor/|docs/decisions/rejected-approaches\.md|bin/)' \
     | cut -c1-160 | sed 's/^/  /' || true)"
   if [ -n "$_open" ]; then printf '%s\n' "$_open"; log_note "$(printf '%s\n' "$_open" | wc -l | tr -d ' ') open marker(s) listed above"
   else log_ok "no open markers"; fi

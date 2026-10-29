@@ -10,8 +10,8 @@
 #
 #   A failed --run ends with `log: <path>`, the file that keeps the suite's output (harbor#774).
 #
-#   HARBOR_TEST_CHANGED   newline-separated changed paths; overrides the git diff
-#   HARBOR_CI_BASE      base ref for the diff (default: origin/main)
+#   HARBOR_CHANGED   newline-separated changed paths; overrides the git diff
+#   HARBOR_BASE      base ref for the diff (default: origin/main)
 #   HARBOR_CI_HEAD   head ref for the diff (default: HEAD)
 #
 # WHAT THIS IS FOR. No path filters anywhere in governance.yml and one serialised
@@ -46,16 +46,16 @@
 # `case` patterns are unaffected by `-f`; nothing here relies on expansion.
 set -euf
 
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}}"
+ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
 DECL="$ROOT/contracts/suite-paths.txt"
 MAN="$ROOT/contracts/suites.txt"
-BASE="${HARBOR_CI_BASE:-${HARBOR_BASE:-origin/main}}"
+BASE="${HARBOR_BASE:-origin/main}"
 
 case "${1:-}" in
   -h|--help|'') sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 esac
 # Its own failures are log-lib lines (contracts/logging.md); a usage error stays a plain exit 2.
-# Beside this file, never under $ROOT: HARBOR_SCOPE_ROOT may name a tree with no bin/ of its own.
+# Beside this file, never under $ROOT: HARBOR_ROOT may name a tree with no bin/ of its own.
 . "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-log.sh"
 log_init suite-select
 
@@ -165,9 +165,7 @@ _matches() { # <path> <glob>...
 # that resolves to running everything rather than to running nothing. --no-renames: a moved file
 # lists BOTH paths, so the old path still selects its declarers (a rename shows only the new one).
 CHANGED=""
-if [ -n "${HARBOR_TEST_CHANGED+x}" ]; then
-  CHANGED="$HARBOR_TEST_CHANGED"
-elif [ -n "${HARBOR_CHANGED+x}" ]; then   # the old name, read until 2026-11-15 (harbor#961 W5)
+if [ -n "${HARBOR_CHANGED+x}" ]; then
   CHANGED="$HARBOR_CHANGED"
 else
   if CHANGED="$(git -C "$ROOT" diff --name-only --no-renames "$BASE...$HEADREF" 2>/dev/null)"; then
@@ -261,7 +259,7 @@ if [ -z "$ALL_WHY" ] && { [ -n "$APPENDED" ] || [ -n "$GROWN" ]; }; then
   ADDED="$(git -C "$ROOT" diff --name-only --no-renames --diff-filter=A "$BASE...$HEADREF" 2>/dev/null)" \
     || ALL_WHY="rows were appended to the selector's inputs and git cannot list the paths this changeset adds"
   # New files not yet committed are added paths too (see the changeset above).
-  [ -n "$ALL_WHY" ] || [ "$HEADREF" != HEAD ] || [ -n "${HARBOR_TEST_CHANGED+x}${HARBOR_CHANGED+x}" ] \
+  [ -n "$ALL_WHY" ] || [ "$HEADREF" != HEAD ] || [ -n "${HARBOR_CHANGED+x}" ] \
     || ADDED="$ADDED${ADDED:+
 }$( { git -C "$ROOT" diff --name-only --no-renames --diff-filter=A HEAD; git -C "$ROOT" ls-files --others --exclude-standard; } 2>/dev/null)"
 fi

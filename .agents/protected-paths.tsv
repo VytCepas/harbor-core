@@ -115,7 +115,6 @@ bin/ci-lost-job.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/ci-main-tip-verdict.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/ci-mirror.sh	ci-gate	derived: called by .github/workflows/public-ci.yml
 bin/ci-queue.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/ci-release-names.sh	installed	derived: called by bin/standard-fleet-names.sh
 bin/ci-runner-switch.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/ci-runners-fleet-lib.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/ci-runners-github-lib.sh	installed	derived: shipped by deploy-runtime-install.sh
@@ -219,7 +218,6 @@ bin/lint-locale-ranges.awk	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-module.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-name.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-platform.sh	ci-gate	derived: called by bin/lint-conventions.sh
-bin/lint-renderer.sh	installed	derived: called by bin/standard-vendor.sh
 bin/lint-secrets.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-share.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-siblings.sh	ci-gate	derived: called by bin/lint-conventions.sh
@@ -251,11 +249,8 @@ bin/skill-catalog.sh	ship	derived: called by bin/deploy.sh
 bin/skill-collision-verify.sh	ship	derived: called by bin/skill-install.sh
 bin/skill-install.sh	ship	derived: called by bin/deploy-live-verify.sh
 bin/standard-catalog.sh	ci-gate	derived: called by bin/deploy-push.sh
-bin/standard-fleet-names-run.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/standard-fleet-names.sh	installed	derived: called by bin/standard-fleet-names-run.sh
 bin/standard-frozen-generate.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/standard-shape.sh	ci-gate	derived: called by bin/lint-conventions.sh
-bin/standard-vendor.sh	installed	derived: called by bin/standard-fleet-names.sh
 bin/status-fleet-glyph.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/status-fleet-snapshot-refresh.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/status-generate.sh	ci-gate	derived: called by .github/workflows/governance.yml

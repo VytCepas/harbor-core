@@ -1,12 +1,12 @@
 #!/usr/bin/env sh
 # The harbor dispatcher (CLI-1, harbor#42): every contracts/cli.md verb dispatches and no other does,
-# exit codes pass through verbatim, --json is refused where a verb has none, and a wrong HARBOR_SCOPE_BIN
+# exit codes pass through verbatim, --json is refused where a verb has none, and a wrong HARBOR_BIN
 # fails instead of falling back. Stub verbs in $T_TMP/sbin, so no real suite or installer runs;
 # the unknown-flag section alone runs real scripts, only ones that refuse before any write.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset HARBOR_SCOPE_BIN HARBOR_BIN
+unset HARBOR_BIN
 H="$T_ROOT/bin/harbor"; SB="$T_TMP/sbin"; mkdir -p "$SB"
-hb() { HARBOR_SCOPE_BIN="$SB" sh "$H" "$@" 2>&1; }  # the dispatcher against the stub tree
+hb() { HARBOR_BIN="$SB" sh "$H" "$@" 2>&1; }  # the dispatcher against the stub tree
 # `harbor <verb>` <TAB> script <TAB> the fixed words the verb passes first (harbor#800: `deploy.sh --only floor`).
 VERBS_C="$(grep -E '^\| `harbor [a-z-]+` \| `[a-z0-9.-]+\.sh( [a-z0-9-]+)*` \|' "$T_ROOT/contracts/cli.md" \
   | sed -E 's/^\| `harbor ([a-z-]+)` \| `([a-z0-9.-]+\.sh)( ([a-z0-9 -]+))?` \|.*/\1 \2 \4/')"
@@ -97,25 +97,25 @@ for v in $(printf '%s\n' "$VERBS_C" | awk '{print $1}'); do
 done
 t_eq "version prints the contract version" 1 "$(hb version | grep -c 'contract v[0-9]')"
 
-t_section "an explicit HARBOR_SCOPE_BIN that is wrong FAILS, never falls back"
-t_exit "a bad HARBOR_SCOPE_BIN exits 127" 127 env HARBOR_SCOPE_BIN="$T_TMP/nonexistent" sh "$H" status
-t_has "a bad HARBOR_SCOPE_BIN says it is refusing" "$(HARBOR_SCOPE_BIN="$T_TMP/nonexistent" sh "$H" status 2>&1)" "refusing to fall back"
+t_section "an explicit HARBOR_BIN that is wrong FAILS, never falls back"
+t_exit "a bad HARBOR_BIN exits 127" 127 env HARBOR_BIN="$T_TMP/nonexistent" sh "$H" status
+t_has "a bad HARBOR_BIN says it is refusing" "$(HARBOR_BIN="$T_TMP/nonexistent" sh "$H" status 2>&1)" "refusing to fall back"
 t_section "its own failures are log lines on stderr: FAIL, the fix, the summary (harbor#771)"
 hbe() { "$@" > "$T_TMP/hb.out" 2> "$T_TMP/hb.err"; echo $?; }  # the exit code; stdout and stderr kept apart
-t_eq "a bad HARBOR_SCOPE_BIN exits 127" 127 "$(hbe env HARBOR_SCOPE_BIN="$T_TMP/nonexistent" sh "$H" status)"
+t_eq "a bad HARBOR_BIN exits 127" 127 "$(hbe env HARBOR_BIN="$T_TMP/nonexistent" sh "$H" status)"
 t_eq "...with nothing on stdout" "" "$(cat "$T_TMP/hb.out")"
 t_eq "...and FAIL, its fix, then the summary on stderr" \
-  "$(printf '%s\n' "  FAIL: HARBOR_SCOPE_BIN=$T_TMP/nonexistent has no status-generate.sh — refusing to fall back" \
-     '  fix: unset HARBOR_SCOPE_BIN HARBOR_BIN' 'harbor: 0 ok, 1 failed, 0 warnings')" "$(cat "$T_TMP/hb.err")"
-t_eq "the fix resolves it: unset, the dispatcher runs" 0 "$(hbe env -u HARBOR_SCOPE_BIN -u HARBOR_BIN sh "$H" version)"
+  "$(printf '%s\n' "  FAIL: HARBOR_BIN=$T_TMP/nonexistent has no status-generate.sh — refusing to fall back" \
+     '  fix: unset HARBOR_BIN' 'harbor: 0 ok, 1 failed, 0 warnings')" "$(cat "$T_TMP/hb.err")"
+t_eq "the fix resolves it: unset, the dispatcher runs" 0 "$(hbe env -u HARBOR_BIN sh "$H" version)"
 rm -f "$SB/deploy-restore.sh"  # the argv section above put one back
-t_eq "a missing script exits 127" 127 "$(hbe env HARBOR_SCOPE_BIN="$SB" sh "$H" restore)"
+t_eq "a missing script exits 127" 127 "$(hbe env HARBOR_BIN="$SB" sh "$H" restore)"
 t_has "...its FAIL names the script and where it looked" "$(cat "$T_TMP/hb.err")" \
   "  FAIL: deploy-restore.sh is not installed next to the dispatcher (looked in: $SB)"
 t_has "...with no checkout to point at, the fix says where to look" "$(cat "$T_TMP/hb.err")" \
   '  fix: none automatic — see contracts/cli.md'
 t_has "...then the summary" "$(tail -1 "$T_TMP/hb.err")" 'harbor: 0 ok, 1 failed, 0 warnings'
-t_eq "a usage error is not a run" 2 "$(hbe env HARBOR_SCOPE_BIN="$SB" sh "$H" nosuchverb)"
+t_eq "a usage error is not a run" 2 "$(hbe env HARBOR_BIN="$SB" sh "$H" nosuchverb)"
 t_hasnt "...so it prints no summary line" "$(cat "$T_TMP/hb.err")" 'harbor: 0 ok'
 t_has "...only its usage message" "$(cat "$T_TMP/hb.err")" 'harbor: unknown verb "nosuchverb"'
 
@@ -136,7 +136,7 @@ UB="$T_TMP/uname-bin"; mkdir -p "$UB"
 for _u in MINGW64_NT-10.0 MSYS_NT-10.0 CYGWIN_NT-10.0; do
   printf '#!/bin/sh\necho %s\n' "$_u" > "$UB/uname"; chmod +x "$UB/uname"
   for _v in status deploy help; do
-    t_eq "harbor $_v under $_u exits 1" 1 "$(hbe env PATH="$UB:$PATH" HARBOR_SCOPE_BIN="$SB" sh "$H" "$_v")"
+    t_eq "harbor $_v under $_u exits 1" 1 "$(hbe env PATH="$UB:$PATH" HARBOR_BIN="$SB" sh "$H" "$_v")"
     t_has "...naming WSL2" "$(cat "$T_TMP/hb.err")" "WSL2"
     t_hasnt "...having run nothing" "$(cat "$T_TMP/hb.out" "$T_TMP/hb.err")" "STUB"
   done
@@ -144,16 +144,16 @@ done
 for _u in Linux Darwin; do
   printf '#!/bin/sh\necho %s\n' "$_u" > "$UB/uname"
   t_eq "the control: harbor status under $_u still dispatches" "STUB status-generate.sh argv=" \
-    "$(env PATH="$UB:$PATH" HARBOR_SCOPE_BIN="$SB" sh "$H" status 2>&1)"
+    "$(env PATH="$UB:$PATH" HARBOR_BIN="$SB" sh "$H" status 2>&1)"
 done
 
 t_section "a checkout that holds the script makes the fix exact, and the fix works"
 mkdir -p "$HOME/port/harbor/bin"; cp "$T_ROOT/bin/library-log.sh" "$HOME/port/harbor/bin/"
 printf '#!/usr/bin/env sh\necho "CHECKOUT restore $*"\n' > "$HOME/port/harbor/bin/deploy-restore.sh"
 printf '#!/usr/bin/env sh\necho ok\n' > "$HOME/port/harbor/bin/status-generate.sh"
-t_eq "a missing script in HARBOR_SCOPE_BIN exits 127" 127 "$(hbe env HARBOR_SCOPE_BIN="$SB" sh "$H" restore)"
+t_eq "a missing script in HARBOR_BIN exits 127" 127 "$(hbe env HARBOR_BIN="$SB" sh "$H" restore)"
 _fx="$(sed -n 's/^  fix: //p' "$T_TMP/hb.err")"
-t_eq "the fix names the checkout" "HARBOR_SCOPE_BIN='$HOME/port/harbor/bin' harbor restore" "$_fx"
+t_eq "the fix names the checkout" "HARBOR_BIN='$HOME/port/harbor/bin' harbor restore" "$_fx"
 t_eq "...and run as printed (harbor = this dispatcher), it reaches the script" "CHECKOUT restore --live" \
   "$(eval "$(printf '%s' "$_fx" | sed "s|harbor restore\$|sh '$H' restore --live|")" 2>&1)"
 t_done

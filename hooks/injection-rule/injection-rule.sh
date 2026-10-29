@@ -706,7 +706,7 @@ explain() { [ "$MODE" = explain ] && printf '%s\n' "$*" >&2 || true; }
 # ── the trees this call touches (harbor#599) ───────────────────────────────
 # ONE DEFINITION, written in contracts/injection-rule.md ("The tree a call touches") and
 # computed HERE for both of its readers: `scope: box` delivery below, and
-# repo-tier.sh's report, which receives the result as HARBOR_CONTEXT_TOUCHED instead of
+# repo-tier.sh's report, which receives the result as HARBOR_TOUCHED instead of
 # working it out a second time. It was repo-tier.sh's own code for one PR
 # (#601); a second reader is what made it a seam.
 #   · a file tool — the path it names (`file_path`, `notebook_path`, `path`)
@@ -892,8 +892,8 @@ TREES
 esac
 # repo-tier.sh reports what was delivered and what was withheld, and must read
 # the same answer the sweep acted on rather than a copy of how it was reached.
-HARBOR_CONTEXT_TOUCHED="$TOUCHED"; HARBOR_CONTEXT_REACHED="$REACHED"
-export HARBOR_CONTEXT_TOUCHED HARBOR_CONTEXT_REACHED
+HARBOR_TOUCHED="$TOUCHED"; HARBOR_REACHED="$REACHED"
+export HARBOR_TOUCHED HARBOR_REACHED
 
 # ── evaluate every pack ─────────────────────────────────────────────────────
 # Three sources, one line per rule file in sweep order: `<file> TAB <tree it speaks for> TAB <reached>`.

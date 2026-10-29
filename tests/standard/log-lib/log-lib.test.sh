@@ -124,10 +124,10 @@ t_section "a FAIL with no fix line is caught statically, by lint LOG1"
 FX="$T_TMP/fx"; mkdir -p "$FX/bin" "$FX/contracts"; cp "$LIB" "$FX/bin/library-log.sh"
 printf 'path\tkind\twhy\n' > "$FX/contracts/log-exempt.tsv"
 printf '#!/usr/bin/env sh\n# fx (harbor#771)\nset -u\n. "$(dirname "$0")/library-log.sh"\nlog_init fx\nlog_fail "x"\nlog_ok "y"\nlog_end\n' > "$FX/bin/fx.sh"
-t_has 'LOG1 names the file and line of the FAIL' "$(HARBOR_SCOPE_ROOT="$FX" sh "$T_ROOT/bin/lint-conventions.sh" --only LOG1 2>&1)" \
+t_has 'LOG1 names the file and line of the FAIL' "$(HARBOR_ROOT="$FX" sh "$T_ROOT/bin/lint-conventions.sh" --only LOG1 2>&1)" \
   "VIOLATION [lint.log-contract] bin/fx.sh:6"
 sed 's/^log_ok "y"$/log_fix "sh bin\/fx.sh --apply"/' "$FX/bin/fx.sh" > "$FX/bin/fx.tmp" && mv "$FX/bin/fx.tmp" "$FX/bin/fx.sh"
-t_has '...and is silent once a fix follows it' "$(HARBOR_SCOPE_ROOT="$FX" sh "$T_ROOT/bin/lint-conventions.sh" --only LOG1 2>&1)" \
+t_has '...and is silent once a fix follows it' "$(HARBOR_ROOT="$FX" sh "$T_ROOT/bin/lint-conventions.sh" --only LOG1 2>&1)" \
   "1 rules, 0 violations"
 
 t_section "the reconcile interface: rows, the first-seen state, ages, cleared, could-not-judge (harbor#1031)"
@@ -313,7 +313,7 @@ t_eq "a pin that is only comments: nothing" "" "$(rslug "$RS/inst2/bin")"
 t_eq "a directory that does not exist: nothing" "" "$(rslug "$RS/nowhere/bin")"
 mktree "$RS/registered" evil/pin https://github.com/evil/harbor.git
 t_eq "an install never reads the registered checkout, PORT_ROOT, the environment or the private layer" "acme/installed" \
-  "$(HARBOR_SCOPE_REPO="$RS/registered" PORT_ROOT="$RS" HARBOR_SCOPE_PRIVATE="$RS/registered" GITHUB_REPOSITORY=evil/env HARBOR_SLUG=evil/slug rslug "$RS/inst/bin")"
+  "$(HARBOR_REPO="$RS/registered" PORT_ROOT="$RS" HARBOR_SCOPE_PRIVATE="$RS/registered" GITHUB_REPOSITORY=evil/env HARBOR_SLUG=evil/slug rslug "$RS/inst/bin")"
 t_eq "...nor does a checkout read the environment" "other/fork" \
   "$(GITHUB_REPOSITORY=evil/env HARBOR_SLUG=evil/slug rslug "$RS/fork/bin")"
 printf '#!/bin/sh\n. "%s"\nrepo_slug\n' "$LIB" > "$RS/fork/bin/ask.sh"

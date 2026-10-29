@@ -142,7 +142,7 @@ t_has "L0-5d context-resolve.sh is wired to SessionStart" \
   "$(jq -r '[.hooks.SessionStart[]?.hooks[]?.command // empty] | .[]' "$L5/cfg/settings.json" 2>/dev/null)" 'context-resolve.sh'
 cp "$T_ROOT/hooks/worklog-push/worklog-push.sh" "$L5/cfg/bin/"
 _l5push() { printf '{"session_id":"%s","cwd":"%s"}' "$1" "$L5/plain" \
-  | CLAUDE_CONFIG_DIR="$L5/cfg" HARBOR_MEMORY_LOG_DIR="$L5/log" sh "$L5/cfg/bin/worklog-push.sh" >/dev/null 2>&1; }
+  | CLAUDE_CONFIG_DIR="$L5/cfg" HARBOR_LOG_DIR="$L5/log" sh "$L5/cfg/bin/worklog-push.sh" >/dev/null 2>&1; }
 _l5n() { find "$L5/log/WORK" -type f 2>/dev/null | wc -l | tr -d ' '; }
 printf '{"hook_event_name":"SessionStart","session_id":"L5-a","cwd":"%s"}' "$L5/plain" \
   | CLAUDE_CONFIG_DIR="$L5/cfg" sh "$L5/cfg/bin/context-resolve.sh" >/dev/null 2>&1
@@ -163,7 +163,7 @@ printf 'role, expertise, constraints\n' > "$C1A/IDENTITY.md"
 { printf -- '- `G1` · %s · active · CANARY-fresh\n' "$(date +%Y-%m-%d)"
   printf -- '- `G2` · 2020-01-02 · active · CANARY-stale\n'
   printf -- '- `G3` · active · CANARY-undated\n'; } > "$C1A/TELOS/GOALS.md"
-_fresh() { HARBOR_DOC_TELOS_DIR="$1" sh "$SRC/doc-freshness.sh" 2>&1; }
+_fresh() { HARBOR_TELOS_DIR="$1" sh "$SRC/doc-freshness.sh" 2>&1; }
 _c1a="$(_fresh "$C1A")"
 t_hasnt "C1a the report prints ids and ages, never goal TEXT (§3)" "$_c1a" 'CANARY'
 t_exit "C1a a goal reviewed today scores fresh per entry" 0 ere '^  G1 +[0-9]+d +90d +fresh' "$_c1a"
@@ -208,7 +208,7 @@ printf '# a durable note\n'  > "$C1G/KNOWLEDGE/note.md"
 printf '{"hook_event_name":"SessionStart","session_id":"C1A-log","cwd":"%s"}' "$TMP/plainish" \
   | CLAUDE_CONFIG_DIR="$L5/cfg" sh "$L5/cfg/bin/context-resolve.sh" >/dev/null 2>&1
 printf '{"session_id":"C1A-log","cwd":"%s"}' "$TMP/plainish" \
-  | CLAUDE_CONFIG_DIR="$L5/cfg" HARBOR_MEMORY_LOG_DIR="$C1G" sh "$L5/cfg/bin/worklog-push.sh" >/dev/null 2>&1
+  | CLAUDE_CONFIG_DIR="$L5/cfg" HARBOR_LOG_DIR="$C1G" sh "$L5/cfg/bin/worklog-push.sh" >/dev/null 2>&1
 _tracked="$(git -C "$C1G" ls-files)"
 t_exit "C1a the allowlist committed something (the two exclusions below can fail)" 0 ere '^KNOWLEDGE/note\.md$' "$_tracked"
 t_exit "C1a worklog-push commits no TELOS file" 1 ere '^TELOS/' "$_tracked"

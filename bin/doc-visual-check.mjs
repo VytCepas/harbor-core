@@ -30,8 +30,7 @@ const EXIT = { pass: 0, fail: 1, usage: 2, unchecked: 3 };
 
 // The probe host is where Playwright and a Chrome channel live. Overridable so
 // this never hard-codes one machine's home into a public repo (No.3).
-const PROBE_DIR = process.env.HARBOR_ACCESS_PROBE_DIR
-  || process.env.HARBOR_PROBE_DIR   // the old name, read until 2026-11-15 (harbor#961 W5)
+const PROBE_DIR = process.env.HARBOR_PROBE_DIR
   || path.join(process.env.HOME || '', '.local/lib/browser-probes');
 
 const VIEWPORTS = [
@@ -66,7 +65,7 @@ try {
 } catch (err) {
   // UNCHECKED, never a pass (D-29). A missing verifier is reported as missing: nothing was judged.
   process.stderr.write(`  FAIL: unchecked — ${err.message}, so nothing was judged\n`);
-  process.stderr.write('  fix: set HARBOR_ACCESS_PROBE_DIR to a tree with playwright installed\n');
+  process.stderr.write('  fix: set HARBOR_PROBE_DIR to a tree with playwright installed\n');
   process.exit(EXIT.unchecked);
 }
 

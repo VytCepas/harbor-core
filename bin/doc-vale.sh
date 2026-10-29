@@ -11,7 +11,7 @@ HERE="$(CDPATH='' cd -- "$HERE" && pwd)"
 LOG_FD=2   # stdout stays the checker's own output
 . "$HERE/library-log.sh"
 log_init doc-vale
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$HERE/..}}"
+ROOT="${HARBOR_ROOT:-$HERE/..}"
 case "${1:-}" in ''|-h|--help) awk 'NR < 2 { next } !/^#/ { exit } { sub(/^# ?/, ""); print }' "$HERE/${0##*/}"; [ -n "${1:-}" ] && exit 0; exit 2 ;; esac
 command -v vale >/dev/null 2>&1 || { log_fail "vale is not on PATH — verified NOTHING"; log_fix "$(pkg_hint vale)"; log_end || :; exit 3; }
 sh "$HERE/lint-name.sh" --root "$ROOT" --gen vale >/dev/null 2>&1 || { log_fail "--gen vale failed — verified NOTHING"; log_fix "sh $HERE/lint-name.sh --gen vale"; log_end || :; exit 3; }

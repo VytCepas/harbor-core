@@ -6,7 +6,7 @@
 #   sh bin/eval-hook-replay.sh --commits    the two git-hook replays only (no transcript read)
 #   sh bin/eval-hook-replay.sh --bash       the govern-hook matcher only
 #   sh bin/eval-hook-replay.sh --self-test  prove this tool's own classifier discriminates
-#   HARBOR_SESSION_TRANSCRIPTS   override the transcript store (default: <config>/projects)
+#   HARBOR_TRANSCRIPTS   override the transcript store (default: <config>/projects)
 #
 # THE QUESTION THIS ANSWERS, AND WHY IT IS THE ONE THAT DECIDES ADOPTION.
 # CONSTITUTION §2.11: a false positive is a defect, not safety — a guard that
@@ -50,8 +50,8 @@ log_init hook-replay
 # die <what failed> <fix> <exit> — FAIL, its fix, the summary, the exit code the tool always had.
 die() { log_fail "$1"; log_fix "$2"; log_end || :; exit "$3"; }
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-SRC_DIR="${HARBOR_SESSION_TRANSCRIPTS:-${HARBOR_TRANSCRIPTS:-$CFG/projects}}"
-BASE="${HARBOR_CI_BASE_BRANCH:-${HARBOR_BASE_BRANCH:-origin/main}}"
+SRC_DIR="${HARBOR_TRANSCRIPTS:-$CFG/projects}"
+BASE="${HARBOR_BASE_BRANCH:-origin/main}"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -rf "$TMP"' EXIT INT TERM
 
 MODE=all
@@ -129,7 +129,7 @@ if [ "$MODE" = all ] || [ "$MODE" = commits ]; then
     changed="$(git -C "$ROOT" diff-tree --no-commit-id --name-only -r "$sha" 2>/dev/null || true)"
     [ -n "$changed" ] || continue
     n=$(( n + 1 ))
-    sel="$(HARBOR_TEST_CHANGED="$changed" sh "$ROOT/bin/test-suite-select.sh" --list 2>/dev/null | grep -c '^RUN ' || true)"
+    sel="$(HARBOR_CHANGED="$changed" sh "$ROOT/bin/test-suite-select.sh" --list 2>/dev/null | grep -c '^RUN ' || true)"
     sel="${sel:-0}"
     sum=$(( sum + sel ))
     printf '%s\n' "$sel" >> "$TMP/dist"

@@ -9,9 +9,9 @@ R="$T_TMP/repo"; mkdir -p "$R/bin" "$R/hooks"
 git -C "$R" init -q; git -C "$R" config user.email t@t; git -C "$R" config user.name t; git -C "$R" config commit.gpgsign false
 printf 'v1\n' > "$R/bin/thing.sh"; printf 'g1\n' > "$R/bin/guard-x.sh"; printf 'm1\n' > "$R/bin/proposal.sh"
 git -C "$R" add -A >/dev/null; git -C "$R" commit -qm base
-pr() { HARBOR_SCOPE_REPO="$R" sh "$P" "$@" 2>/dev/null; }
-err() { HARBOR_SCOPE_REPO="$R" sh "$P" "$@" 2>&1 >/dev/null; }
-px() { _pl="$1"; _pw="$2"; shift 2; t_exit "$_pl" "$_pw" env HARBOR_SCOPE_REPO="$R" sh "$P" "$@"; }
+pr() { HARBOR_REPO="$R" sh "$P" "$@" 2>/dev/null; }
+err() { HARBOR_REPO="$R" sh "$P" "$@" 2>&1 >/dev/null; }
+px() { _pl="$1"; _pw="$2"; shift 2; t_exit "$_pl" "$_pw" env HARBOR_REPO="$R" sh "$P" "$@"; }
 clean() { git -C "$R" checkout -- . 2>/dev/null; git -C "$R" clean -fdq bin hooks 2>/dev/null; }
 isdir() { [ -d "$1" ] && echo yes || echo no; }
 
@@ -121,11 +121,11 @@ t_section "9b · new never blocks on stdin"
 _F="$T_TMP/fifo"; rm -f "$_F"; mkfifo "$_F"
 ( exec 9>"$_F"; sleep 3 ) &
 _t0="$(date +%s)"
-HARBOR_SCOPE_REPO="$R" sh "$P" new p-nohang --falsifier x < "$_F" >/dev/null 2>&1
+HARBOR_REPO="$R" sh "$P" new p-nohang --falsifier x < "$_F" >/dev/null 2>&1
 _t1="$(date +%s)"; wait
 t_eq "new returned within a second on an open, silent stdin" yes "$([ $((_t1 - _t0)) -lt 2 ] && echo yes || echo "no ($((_t1 - _t0))s)")"
 t_has "absent evidence is recorded" "$(cat "$R/proposals/p-nohang/evidence.md" 2>/dev/null)" "NO EVIDENCE SUPPLIED"
-printf 'measured\n' | HARBOR_SCOPE_REPO="$R" sh "$P" new p-ev --falsifier x --evidence - >/dev/null 2>&1
+printf 'measured\n' | HARBOR_REPO="$R" sh "$P" new p-ev --falsifier x --evidence - >/dev/null 2>&1
 t_has "--evidence - reads stdin" "$(cat "$R/proposals/p-ev/evidence.md" 2>/dev/null)" "measured"
 rm -rf "$R/proposals/p-nohang" "$R/proposals/p-ev"
 

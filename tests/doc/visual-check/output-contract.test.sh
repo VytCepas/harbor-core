@@ -6,7 +6,7 @@
 TOOL="$T_ROOT/bin/doc-visual-check.sh"
 printf '#!/bin/sh\ncase "$2" in *bad.html) exit 1 ;; esac\n[ -z "$STUB_OUT" ] || printf "%%s\\n" "$STUB_OUT"\nexit "${STUB_RC:-0}"\n' > "$T_BIN/node"; chmod +x "$T_BIN/node"
 printf '<!doctype html><style>p{color:#111}</style><p>x</p>\n' > "$T_TMP/p.html"
-export HARBOR_DOC_ARCHIFY_DIR="$T_TMP/no-archify" STUB_RC=0 STUB_OUT=""
+export HARBOR_ARCHIFY="$T_TMP/no-archify" STUB_RC=0 STUB_OUT=""
 run() { sh "$TOOL" "$@" >"$T_TMP/out" 2>"$T_TMP/err"; echo "exit $?"; }
 with() { _v="$1"; shift; ( export "$_v"; "$@" ); }
 OUT() { cat "$T_TMP/out"; }; ERR() { cat "$T_TMP/err"; }
@@ -30,9 +30,9 @@ t_eq "a FAIL the probe left without a fix still gets one" "exit 1" "$(with STUB_
 t_has "none automatic" "$(after_fail)" "  fix: none automatic — see bin/doc-visual-check.mjs"
 
 t_section "an unavailable verifier is unchecked (D-29), never a pass: FAIL, its fix, the summary, exit 3"
-t_eq "the probe's unchecked exits 3" "exit 3" "$(with STUB_RC=3 with "STUB_OUT=  FAIL: unchecked — no playwright at /x, so nothing was judged${NL}  fix: set HARBOR_ACCESS_PROBE_DIR to a tree with playwright installed" run "$T_TMP/p.html")"
+t_eq "the probe's unchecked exits 3" "exit 3" "$(with STUB_RC=3 with "STUB_OUT=  FAIL: unchecked — no playwright at /x, so nothing was judged${NL}  fix: set HARBOR_PROBE_DIR to a tree with playwright installed" run "$T_TMP/p.html")"
 t_has "the FAIL line names the reason" "$(OUT)" "  FAIL: unchecked — no playwright at /x, so nothing was judged"
-t_has "the next line is its fix" "$(after_fail)" "  fix: set HARBOR_ACCESS_PROBE_DIR to a tree with playwright installed"
+t_has "the next line is its fix" "$(after_fail)" "  fix: set HARBOR_PROBE_DIR to a tree with playwright installed"
 t_eq "the summary counts it as a failure, so 0 still means failed is 0" "visual-check: 0 ok, 1 failed, 0 warnings" "$(OUT | tail -1)"
 t_eq "the probe's usage error stays 2, not 3" "exit 2" "$(with STUB_RC=2 with "STUB_OUT=  FAIL: no such file: x${NL}  fix: sh bin/doc-visual-check.sh <an existing .html file>" run "$T_TMP/p.html")"
 mkdir -p "$T_TMP/nonode"; ln -s "$(command -v dirname)" "$T_TMP/nonode/dirname"  # the one command it runs before looking for node

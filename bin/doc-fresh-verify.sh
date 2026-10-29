@@ -14,7 +14,7 @@ set -eu
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 . "$SRC/library-log.sh"
 log_init fresh-check
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
+ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
 TABLE="$ROOT/contracts/fresh-checks.tsv"
 while [ $# -gt 0 ]; do
   case "$1" in

@@ -212,7 +212,7 @@ fi
 # commit-tree on HEAD. The real index is never written; a clean tree takes no
 # snapshot; a branch switch takes none. Refs older than 7 days go when the next
 # one is written. Nothing here refuses a discard: a failure is one stderr line
-# stamped [check:admission.destroy-snapshot]. The one refusal is a push that would publish
+# stamped [check:destroy-snapshot]. The one refusal is a push that would publish
 # refs/snapshots. Contract, recovery and limits: docs/explanation/admission-baseline.md, harbor#1290.
 _snap_plan() { # stdout rows: SNAP|MAYBE|PUSH <tab> <dir> <tab> <verb|arg|explicit>, or BLIND <tab> <verb> <tab> <why>
   # NO APOSTROPHES IN THIS PROGRAM: it is a single-quoted shell string.
@@ -348,7 +348,7 @@ _snap_plan() { # stdout rows: SNAP|MAYBE|PUSH <tab> <dir> <tab> <verb|arg|explic
 _snap_say() { # <text> — the one stderr line a call gets, however many worktrees it touched
   [ -z "${_SNAP_SAID:-}" ] || return 0
   _SNAP_SAID=1
-  printf '[check:admission.destroy-snapshot] guard-destroy: %s (harbor#1290)\n' "$1" >&2
+  printf '[check:destroy-snapshot] guard-destroy: %s (harbor#1290)\n' "$1" >&2
 }
 
 # _snap_take <dir> <verb> — snapshot the worktree holding <dir>. Silent when <dir> is in no worktree

@@ -48,7 +48,7 @@ usage() {
     {product:"actions", sku:"Actions Linux", unitType:"Minutes", quantity:5000, repositoryName:"pub"}]')"
   printf '{"usageItems":%s}\n' "$_j" > "$FX/billing.json"
 }
-run() { FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_CI_SWITCH_REPO="o/r" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_TEST_NOW="${AT:-$NOW}" \
+run() { FX="$FX" HARBOR_GH="$GH" HARBOR_SWITCH_REPO="o/r" HARBOR_CACHE_DIR="$CACHE" HARBOR_NOW="${AT:-$NOW}" \
           sh "$T_ROOT/bin/ci-runner-switch.sh" "$@" 2>&1; }
 reset() { rm -f "$FX/var" "$WRITES" "$CALLS" "$FX/billing.fail" "$FX/repos.fail" "$FX/var.fail" "$FX/plan.fail" "$FX/unexpected.log" \
             "$CACHE/runner-switch.json" "$CACHE/checks.log" "$CLAUDE_CONFIG_DIR/.harbor-ci-budget"
@@ -56,7 +56,7 @@ reset() { rm -f "$FX/var" "$WRITES" "$CALLS" "$FX/billing.fail" "$FX/repos.fail"
 nwrites() { if [ -f "$WRITES" ]; then wc -l < "$WRITES" | tr -d ' '; else echo 0; fi; }
 varnow() { cat "$FX/var" 2>/dev/null || echo unset; }
 get() { jq -r "$1" "$CACHE/runner-switch.json"; }
-nlog() { if [ -f "$CACHE/checks.log" ]; then grep -c 'check:ci.runner-switch' "$CACHE/checks.log"; else echo 0; fi; }
+nlog() { if [ -f "$CACHE/checks.log" ]; then grep -c 'check:runner-switch' "$CACHE/checks.log"; else echo 0; fi; }
 
 t_section "below the threshold: no write"
 reset; usage priv:2699; echo github-hosted > "$FX/var"
@@ -75,7 +75,7 @@ t_eq "2700 of 3000 is 90 percent, so it writes" 1 "$(nwrites)"
 t_eq "...self-hosted" self-hosted "$(varnow)"
 t_eq "the switch is one line in checks.log" 1 "$(nlog)"
 t_has "...that says which way and why" "$(cat "$CACHE/checks.log")" "github-hosted -> self-hosted"
-t_has "...and quotes the registry id" "$(cat "$CACHE/checks.log")" "[check:ci.runner-switch]"
+t_has "...and quotes the registry id" "$(cat "$CACHE/checks.log")" "[check:runner-switch]"
 t_has "...and the usage" "$(cat "$CACHE/checks.log")" "2700/3000"
 t_eq "the cache says the runner is self-hosted" self-hosted "$(get .runner)"
 t_eq "the cache says it is a fallback, for the statusline" true "$(get .fallback)"
@@ -194,7 +194,7 @@ orgusage() {
 }
 orun() { run --org SomeOrg "$@"; }
 oget() { jq -r "$1" "$CACHE/runner-switch.SomeOrg.json"; }
-olog() { if [ -f "$CACHE/checks.log" ]; then grep -c 'check:ci.runner-switch-org' "$CACHE/checks.log"; else echo 0; fi; }
+olog() { if [ -f "$CACHE/checks.log" ]; then grep -c 'check:runner-switch-org' "$CACHE/checks.log"; else echo 0; fi; }
 oreset() { reset; rm -f "$CACHE/runner-switch.SomeOrg.json" "$FX/orgbill.fail" "$CLAUDE_CONFIG_DIR/.harbor-ci-runners"; }
 oreset; orgusage a:1000 gone:999; orun >/dev/null
 t_eq "1999 of a 2000-minute cap is under it: hosted" github-hosted "$(oget .runner)"
@@ -228,22 +228,22 @@ t_eq "an answer that is not the bill's shape is unread, not zero" true "$(oget .
 oreset; orgusage a:2400; OUT="$(orun --print)"
 t_has "--print says the usage and the verdict" "$OUT" "SomeOrg used 2400 of its 2000-minute cap"
 t_eq "...and writes no cache" no "$([ -f "$CACHE/runner-switch.SomeOrg.json" ] && echo yes || echo no)"
-t_exit "an --org with no name is refused" 2 env FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_SCOPE_CACHE_DIR="$CACHE" sh "$T_ROOT/bin/ci-runner-switch.sh" --org
-t_exit "an --org that is not a name is refused" 2 env FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_SCOPE_CACHE_DIR="$CACHE" sh "$T_ROOT/bin/ci-runner-switch.sh" --org 'a;b'
+t_exit "an --org with no name is refused" 2 env FX="$FX" HARBOR_GH="$GH" HARBOR_CACHE_DIR="$CACHE" sh "$T_ROOT/bin/ci-runner-switch.sh" --org
+t_exit "an --org that is not a name is refused" 2 env FX="$FX" HARBOR_GH="$GH" HARBOR_CACHE_DIR="$CACHE" sh "$T_ROOT/bin/ci-runner-switch.sh" --org 'a;b'
 
 t_section "harbor's own repository is derived, never spelled (harbor#1149)"
 # a copy beside no checkout and no pin names no repository: an unread, nothing written
 reset; usage priv:2700; echo github-hosted > "$FX/var"
 mkdir -p "$FX/inst/bin"; cp "$T_ROOT/bin/ci-runner-switch.sh" "$T_ROOT/bin/library-log.sh" "$FX/inst/bin/"
-OUT="$(FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_TEST_NOW="$NOW" sh "$FX/inst/bin/ci-runner-switch.sh" 2>&1)"
+OUT="$(FX="$FX" HARBOR_GH="$GH" HARBOR_CACHE_DIR="$CACHE" HARBOR_NOW="$NOW" sh "$FX/inst/bin/ci-runner-switch.sh" 2>&1)"
 t_eq "with no name for the repository nothing is written" 0 "$(nwrites)"
 t_has "...and the note says it could not be derived" "$OUT" "repository name"
-# HARBOR_CI_BILLING_USER names the billed account; without it the billed account is the repo's owner
+# HARBOR_BILLING_USER names the billed account; without it the billed account is the repo's owner
 reset; usage priv:100; echo github-hosted > "$FX/var"; run >/dev/null
 t_has "the billing read goes to the repository's owner" "$(cat "$CALLS")" "/users/o/settings/billing"
 reset; usage priv:100; echo github-hosted > "$FX/var"
-FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_CI_SWITCH_REPO="o/r" HARBOR_CI_BILLING_USER=someone HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_TEST_NOW="$NOW" sh "$T_ROOT/bin/ci-runner-switch.sh" >/dev/null 2>&1
-t_has "HARBOR_CI_BILLING_USER still names the billed account" "$(cat "$CALLS")" "/users/someone/settings/billing"
+FX="$FX" HARBOR_GH="$GH" HARBOR_SWITCH_REPO="o/r" HARBOR_BILLING_USER=someone HARBOR_CACHE_DIR="$CACHE" HARBOR_NOW="$NOW" sh "$T_ROOT/bin/ci-runner-switch.sh" >/dev/null 2>&1
+t_has "HARBOR_BILLING_USER still names the billed account" "$(cat "$CALLS")" "/users/someone/settings/billing"
 
 t_section "the stub is the only gh, and it was told every call"
 t_eq "no unexpected gh call across the whole suite" "none" "$(cat "$FX/unexpected.log" 2>/dev/null || echo none)"

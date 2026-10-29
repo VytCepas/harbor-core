@@ -13,7 +13,7 @@
 set -eu
 
 SRC="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
+ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
 . "$SRC/library-log.sh"
 . "$SRC/deploy-install-lib.sh"
 log_init pack
@@ -203,7 +203,7 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
   # Client-free (D-85): the export-mode leak gate over exactly the staged files (no tests/fixtures skip, no layers.tsv, binary as text).
   git -C "$WORK/stage" init -q . 2>/dev/null; git -C "$WORK/stage" add -f -A 2>/dev/null
   _lrc=0
-  LEAKS_EXPORT=1 HARBOR_SCOPE_ROOT="$WORK/stage" LEAKS_CORE_PATTERNS="$ROOT/contracts/leak-patterns.tsv" sh "$SRC/lint-leaks.sh" --list > "$WORK/leaks.pack" 2> "$WORK/leaks.err" || _lrc=$?
+  LEAKS_EXPORT=1 HARBOR_ROOT="$WORK/stage" LEAKS_CORE_PATTERNS="$ROOT/contracts/leak-patterns.tsv" sh "$SRC/lint-leaks.sh" --list > "$WORK/leaks.pack" 2> "$WORK/leaks.err" || _lrc=$?
   [ "$_lrc" -eq 0 ] || refuse "the leak gate could not run cleanly (exit $_lrc)" "sh bin/lint-leaks.sh --list, in $DIR" || return 1
   if [ -s "$WORK/leaks.pack" ]; then
     refuse "names a client or account ($(wc -l < "$WORK/leaks.pack" | tr -d ' ') leak hit(s), first $(head -n 1 "$WORK/leaks.pack")); a pack is client-free" \

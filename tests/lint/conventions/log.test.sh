@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # lint-conventions.sh (harbor#3), part: LOG1, the one log format (harbor#771, contracts/logging.md).
 # Each arm plants one defect beside a clean twin and asks LOG1 alone about a root holding only what it
-# reads. The ratchet arms run on a git fixture: a base, a stale-branch control, and a HARBOR_CI_BASE override.
+# reads. The ratchet arms run on a git fixture: a base, a stale-branch control, and a HARBOR_BASE override.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/checks/lint-fixture.sh"
 R="$TMP/log1"
@@ -110,15 +110,15 @@ printf 'echo edited\n' >> "$G/bin/old.sh"
 t_has 'an edited exempt file is red, uncommitted' "$(L "$G")" "VIOLATION [lint.log-contract] bin/old.sh changed since the base and is exempt"
 gx commit -qam edit
 t_has '...and committed' "$(L "$G")" "VIOLATION [lint.log-contract] bin/old.sh changed since the base and is exempt"
-gx tag later; t_has 'HARBOR_CI_BASE names the base: at a ref holding the edit, it is no change' \
-  "$(HARBOR_CI_BASE=later lint1 LOG1 "$G")" '1 rules, 0 violations'
+gx tag later; t_has 'HARBOR_BASE names the base: at a ref holding the edit, it is no change' \
+  "$(HARBOR_BASE=later lint1 LOG1 "$G")" '1 rules, 0 violations'
 gx reset -q --hard main; chmod 755 "$G/bin/old.sh"
 green "a mode change alone (content is compared, the bit is S6's)" "$G"
 gx checkout -q main; printf 'echo main-moved\n' >> "$G/bin/old.sh"; gx commit -qam 'main edits old'
 gx update-ref refs/remotes/origin/main main; gx checkout -q feature
 t_eq 'the control: main edited old.sh after this branch forked' 1 "$(git -C "$G" diff --name-only origin/main -- bin/old.sh | grep -c .)"
 green "a stale branch behind a main that edited an exempt file (the merge-base, not the tip)" "$G"
-t_has 'no base resolves: said, never read as clean' "$(HARBOR_CI_BASE=nope lint1 LOG1 "$G")" "ADVISORY [lint.log-contract] no base (nope)"
+t_has 'no base resolves: said, never read as clean' "$(HARBOR_BASE=nope lint1 LOG1 "$G")" "ADVISORY [lint.log-contract] no base (nope)"
 rm "$G/bin/gone.sh"
 t_has 'a row whose file is gone is an advisory' "$(L "$G")" "ADVISORY [lint.log-contract] contracts/log-exempt.tsv lists bin/gone.sh, which is gone"
 t_has '...not a violation' "$(L "$G")" '1 rules, 0 violations'

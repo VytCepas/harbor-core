@@ -20,7 +20,7 @@ TOP="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null)" || exit 0
 CH="$(git -C "$TOP" diff --name-only origin/main...HEAD 2>/dev/null | grep -c .)" || CH=0
 [ "${CH:-0}" -gt 0 ] || exit 0
 OUT="$RSTATE_DIR/sessions/$RSID.check"
-LINT="$(HARBOR_SCOPE_ROOT="$TOP" sh "$TOP/bin/lint-conventions.sh" 2>&1)"; RC=$?
+LINT="$(HARBOR_ROOT="$TOP" sh "$TOP/bin/lint-conventions.sh" 2>&1)"; RC=$?
 V="$(printf '%s\n' "$LINT" | grep -c 'VIOLATION')"
 if [ "$RC" -eq 0 ]; then R=ok; else R="red ${V:-$RC}"; fi
 printf '%s\n' "$R" > "$OUT.new" 2>/dev/null && mv -f "$OUT.new" "$OUT" 2>/dev/null

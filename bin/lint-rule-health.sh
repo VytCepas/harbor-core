@@ -5,8 +5,8 @@
 #   sh bin/lint-rule-health.sh --promotion   which warn rules may go to block (harbor#968, D-64, D-92): eligible or not, and why; reads, never writes
 #   exit 0 = every rule earns its keep · 1 = candidates, named · 2 = usage · 3 = stood down, nothing judged
 #   (D-29: 3 is unchecked; before D-49 it exited 2 for stood down. No script reads its exit, so no reader window.)
-#   receipt: ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/cache/checks/lint.rule-health.json, which the findings
-#   reconcile files as check/lint.rule-health in the PROPOSE lane (contracts/finding.md)
+#   receipt: ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/cache/checks/rule-health.json, which the findings
+#   reconcile files as check/rule-health in the PROPOSE lane (contracts/finding.md)
 #
 # THE OPERATOR'S DECISIONS (harbor#577, 2026-10-02), and what each one costs here:
 # - A rule must be red-proved. That is DERIVED, never read off the test text: the lint suites run
@@ -18,7 +18,7 @@
 #   is: a ratchet at zero is supposed to be silent. Until the ledger holds 8 weeks of history the
 #   silence half is reported as not judged, never as passed.
 # - It proposes, never acts: nothing here edits a rule. Retiring one is a person's PR, with its
-#   defect class recorded in docs/reports/rejected-approaches.md.
+#   defect class recorded in docs/decisions/rejected-approaches.md.
 # - The budget is two numbers, the linter's cost in seconds and the unproven count. Lines and rule
 #   count are not budgeted, because they penalise the documentation this repo asks for.
 #
@@ -33,12 +33,12 @@
 # `--only` pass has fired, whatever an accepted finding's frozen seen= says. A `--only` that exits
 # above 1 crashed: it is filed as crashed:<ID>, never timed as cheap.
 #
-#   HARBOR_SCOPE_ROOT         the checkout to judge (default: the one this script is in)
-#   HARBOR_LINT_RULE_HEALTH_LINT      the linter (default: $HARBOR_SCOPE_ROOT/bin/lint-conventions.sh) — for the suite
-#   HARBOR_LINT_RULE_HEALTH_SUITES    the suites, space-separated (default: tests/lint/conventions/conventions.test.sh and lint.*-test.sh)
-#   HARBOR_LINT_RULE_HEALTH_COST_S    the cost floor in whole seconds (default 5)
-#   HARBOR_LINT_RULE_HEALTH_NOW       today, YYYY-MM-DD (default: the date)
-#   HARBOR_LINT_FINDINGS_REPO  owner/name of the finding store (default: this checkout's origin)
+#   HARBOR_ROOT         the checkout to judge (default: the one this script is in)
+#   HARBOR_RH_LINT      the linter (default: $HARBOR_ROOT/bin/lint-conventions.sh) — for the suite
+#   HARBOR_RH_SUITES    the suites, space-separated (default: tests/lint/conventions/conventions.test.sh and lint.*-test.sh)
+#   HARBOR_RH_COST_S    the cost floor in whole seconds (default 5)
+#   HARBOR_RH_NOW       today, YYYY-MM-DD (default: the date)
+#   HARBOR_FINDINGS_REPO  owner/name of the finding store (default: this checkout's origin)
 set -eu
 PROMOTION=no
 case "${1:-}" in
@@ -51,11 +51,11 @@ log_init rule-health
 # It takes no argument but --promotion: one it does not know is a usage error (exit 2, D-29), never a three-minute run of the wrong question.
 # Not a run (contracts/logging.md): the words go to stderr and there is no summary line.
 [ $# -eq 0 ] || { LOG_FD=2; log_fail "unknown argument: $1"; log_fix "sh $0 --help"; exit 2; }
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH='' cd -- "$HERE/.." && pwd)}}"
-LINT="${HARBOR_LINT_RULE_HEALTH_LINT:-${HARBOR_RH_LINT:-$ROOT/bin/lint-conventions.sh}}"
+ROOT="${HARBOR_ROOT:-$(CDPATH='' cd -- "$HERE/.." && pwd)}"
+LINT="${HARBOR_RH_LINT:-$ROOT/bin/lint-conventions.sh}"
 CTL="$ROOT/standards/naming/controls.tsv"
-COST_S="${HARBOR_LINT_RULE_HEALTH_COST_S:-${HARBOR_RH_COST_S:-5}}"; case "$COST_S" in ''|*[!0-9]*) COST_S=5 ;; esac
-TODAY="${HARBOR_LINT_RULE_HEALTH_NOW:-${HARBOR_RH_NOW:-$(date -u +%Y-%m-%d)}}"
+COST_S="${HARBOR_RH_COST_S:-5}"; case "$COST_S" in ''|*[!0-9]*) COST_S=5 ;; esac
+TODAY="${HARBOR_RH_NOW:-$(date -u +%Y-%m-%d)}"
 RD="$(receipt_dir)"
 SILENT_DAYS=56
 # D-64 (standards/naming.md section 10.3): a warn rule outside lint-name.sh may go to block once it has gone red and
@@ -79,7 +79,7 @@ receipt() { # <status> [subject...] — weekly, so it counts as a run for 8 days
   if [ -n "$UNPUBLISHED" ]; then
     log_note "no receipt written: $UNPUBLISHED, and the reconcile files receipts against main"; return 0
   fi
-  LOG_RECEIPT_FRESH_DAYS=8 log_receipt "$RD" lint.rule-health "$@" || log_warn "no receipt written to $RD"
+  LOG_RECEIPT_FRESH_DAYS=8 log_receipt "$RD" rule-health "$@" || log_warn "no receipt written to $RD"
 }
 stand_down() { # <why> <fix>
   receipt stood-down
@@ -88,8 +88,8 @@ stand_down() { # <why> <fix>
 }
 now_s() { perl -MTime::HiRes=time -e 'printf "%.2f", time' 2>/dev/null || date +%s; }
 
-[ -f "$LINT" ] || stand_down "no linter at $LINT" "HARBOR_LINT_RULE_HEALTH_LINT=<linter> sh $0"
-HARBOR_SCOPE_ROOT="$ROOT" sh "$LINT" --list 2>/dev/null | sed 's/^  //' > "$T/titles"
+[ -f "$LINT" ] || stand_down "no linter at $LINT" "HARBOR_RH_LINT=<linter> sh $0"
+HARBOR_ROOT="$ROOT" sh "$LINT" --list 2>/dev/null | sed 's/^  //' > "$T/titles"
 awk '{ print $1 }' "$T/titles" | sort -u > "$T/rules"
 [ -s "$T/rules" ] || stand_down "the linter listed no rules" "sh $LINT --list"
 awk 'tolower($0) ~ /ratchet/ { print $1 }' "$T/titles" | sort -u > "$T/ratchets"
@@ -167,13 +167,13 @@ promotion() {
   done
   : > "$T/p.rep"; : > "$T/p.repbad"; : > "$T/p.repall"
   if awk -F'\t' '$2 == "lint" && $3 == "bin/lint-name.sh" { f = 1 } END { exit !f }' "$T/p.warn"; then name_scan; fi
-  HARBOR_LINT_FINDINGS_OUT="$T/p.lc" HARBOR_SCOPE_ROOT="$ROOT" sh "$LINT" > /dev/null 2>&1 || :
+  HARBOR_FINDINGS_OUT="$T/p.lc" HARBOR_ROOT="$ROOT" sh "$LINT" > /dev/null 2>&1 || :
   awk -F'\t' '$1 == "R" { print $2 }' "$T/p.lc" | sort -u > "$T/p.ran"
   awk -F'\t' '$1 == "A" || $1 == "V" { print $2 }' "$T/p.lc" >> "$T/p.cnt"
   awk '{ c[$1]++ } END { for (k in c) print k "\t" c[k] }' "$T/p.cnt" > "$T/p.cntn"
   # accepted-as-false: the finding store's issues labelled finding:accepted, keyed lint/<key>
-  _repo="${HARBOR_LINT_FINDINGS_REPO:-${HARBOR_FINDINGS_REPO:-$(git -C "$ROOT" remote get-url origin 2>/dev/null | sed -e 's#^.*github\.com[:/]##' -e 's#\.git$##')}}"
-  [ -n "$_repo" ] || stand_down "no finding store to read, so accepted-as-false cannot be counted" "HARBOR_LINT_FINDINGS_REPO=<owner/name> sh $0 --promotion"
+  _repo="${HARBOR_FINDINGS_REPO:-$(git -C "$ROOT" remote get-url origin 2>/dev/null | sed -e 's#^.*github\.com[:/]##' -e 's#\.git$##')}"
+  [ -n "$_repo" ] || stand_down "no finding store to read, so accepted-as-false cannot be counted" "HARBOR_FINDINGS_REPO=<owner/name> sh $0 --promotion"
   gh issue list -R "$_repo" --label finding:accepted --state all --limit 1000 --json body,createdAt,closedAt > "$T/p.acc.json" 2>"$T/gh.err" \
     || stand_down "the finding store $_repo could not be read ($(head -1 "$T/gh.err")), so accepted-as-false cannot be counted" "gh auth status"
   jq -e 'type == "array" and all(.[]; ((.closedAt // .createdAt) // "") | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T"))' "$T/p.acc.json" > /dev/null 2>&1 \
@@ -181,7 +181,7 @@ promotion() {
   jq -r '.[] | ((.body // "") | capture("key=lint/(?<k>[^ ]+) digest=")?) as $m | [$m.k, ((.closedAt // .createdAt) // "")[0:10]] | @tsv' "$T/p.acc.json" > "$T/p.acc" \
     || stand_down "the finding store $_repo could not be parsed for accepted findings" "gh issue list -R $_repo --label finding:accepted --state all --json body,closedAt"
   # a marker that still spells a deprecated letter id joins under its successor (contracts/finding.md)
-  HARBOR_SCOPE_ROOT="$ROOT" sh "$LINT" --ids 2>/dev/null | awk -F'\t' 'NF == 2 && NR > 1 && $2 != "-" { print $2 "\t" $1 }' > "$T/succ" || :
+  HARBOR_ROOT="$ROOT" sh "$LINT" --ids 2>/dev/null | awk -F'\t' 'NF == 2 && NR > 1 && $2 != "-" { print $2 "\t" $1 }' > "$T/succ" || :
   awk -F'\t' -v S="$T/succ" 'BEGIN { while ((getline l < S) > 0) { split(l, p, "\t"); s[p[1]] = p[2] } }
        $1 != "" { k = $1; if (k in s) k = s[k]; n[k]++; if ($2 > last[k]) last[k] = $2 }
        END { for (k in n) print k "\t" n[k] "\t" last[k] }' "$T/p.acc" > "$T/p.accn"
@@ -271,9 +271,9 @@ promotion() {
 }
 
 # 1 · which rules the passing lint suites watched go red
-if [ -n "${HARBOR_LINT_RULE_HEALTH_SUITES:-${HARBOR_RH_SUITES:-}}" ]; then
+if [ -n "${HARBOR_RH_SUITES:-}" ]; then
   # shellcheck disable=SC2086 # a space-separated list, split on purpose
-  printf '%s\n' ${HARBOR_LINT_RULE_HEALTH_SUITES:-${HARBOR_RH_SUITES:-}} > "$T/suites"
+  printf '%s\n' $HARBOR_RH_SUITES > "$T/suites"
 else
   # harbor#961 W2: the lint suite and its parts moved from tests/checks/lint*-test.sh
   { find "$ROOT/tests/lint/conventions" -maxdepth 1 -type f -name '*.test.sh' ! -name 'mktemp-template.test.sh' 2>/dev/null
@@ -300,7 +300,7 @@ if [ "$PROMOTION" = yes ]; then promotion; log_end || :; exit 0; fi
 : > "$T/costs"; : > "$T/now"; : > "$T/crashed"
 while IFS= read -r _id; do
   _a="$(now_s)"; _rc=0
-  LINT_REDLOG="$T/now" HARBOR_SCOPE_ROOT="$ROOT" sh "$LINT" --only "$_id" > /dev/null 2>&1 || _rc=$?
+  LINT_REDLOG="$T/now" HARBOR_ROOT="$ROOT" sh "$LINT" --only "$_id" > /dev/null 2>&1 || _rc=$?
   _b="$(now_s)"
   [ "$_rc" -le 1 ] || printf '%s\n' "$_id" >> "$T/crashed"
   printf '%s %s\n' "$_id" "$(awk -v a="$_a" -v b="$_b" 'BEGIN { printf "%.1f", b - a }')" >> "$T/costs"
@@ -310,11 +310,11 @@ _total="$(awk '{ s += $2 } END { printf "%.0f", s }' "$T/costs")"
 awk -v f="$COST_S" '$2 > f { print $1 }' "$T/costs" | sort -u > "$T/costly"
 
 # 3 · the ledger's fire history, and whether it is long enough to judge silence
-_repo="${HARBOR_LINT_FINDINGS_REPO:-${HARBOR_FINDINGS_REPO:-$(git -C "$ROOT" remote get-url origin 2>/dev/null | sed -e 's#^.*github\.com[:/]##' -e 's#\.git$##')}}"
+_repo="${HARBOR_FINDINGS_REPO:-$(git -C "$ROOT" remote get-url origin 2>/dev/null | sed -e 's#^.*github\.com[:/]##' -e 's#\.git$##')}"
 # An unread store STANDS DOWN, never "not judged": a green receipt would close an open silent:
 # finding as fixed. A young ledger is green honestly — no silent: can be filed before 8 weeks of it.
 : > "$T/silent"; _judged=no
-[ -n "$_repo" ] || stand_down "no finding store to read, so silence cannot be judged" "HARBOR_LINT_FINDINGS_REPO=<owner/name> sh $0"
+[ -n "$_repo" ] || stand_down "no finding store to read, so silence cannot be judged" "HARBOR_FINDINGS_REPO=<owner/name> sh $0"
 gh issue list -R "$_repo" --label finding --state all --limit 1000 --json createdAt,body > "$T/store.json" 2>"$T/gh.err" \
   || stand_down "the finding store $_repo could not be read ($(head -1 "$T/gh.err")), so silence cannot be judged" "gh auth status"
 jq -e 'type == "array"' "$T/store.json" > /dev/null 2>&1 \
@@ -329,7 +329,7 @@ RS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/cache/findings-state.json"   # the recon
 _rstat="$(jq -r '.status // empty' "$RS" 2>/dev/null)" || _rstat=""
 _rran="$(jq -r '.ran_at // empty | .[0:10]' "$RS" 2>/dev/null)" || _rran=""
 _span="$(days "${_oldest:-$TODAY}")"
-case "$_span" in ''|*[!0-9-]*) stand_down "the ledger's age could not be computed from $_oldest to $TODAY" "HARBOR_LINT_RULE_HEALTH_NOW=YYYY-MM-DD sh $0" ;; esac
+case "$_span" in ''|*[!0-9-]*) stand_down "the ledger's age could not be computed from $_oldest to $TODAY" "HARBOR_RH_NOW=YYYY-MM-DD sh $0" ;; esac
 _live=""; [ -z "$_rran" ] || _live="$(days "$_rran")"
 if [ "$_span" -lt "$SILENT_DAYS" ]; then
   _why="the ledger is $_span day(s) old, under the $SILENT_DAYS it needs"
@@ -345,7 +345,7 @@ else
       | select((($b|strptime("%Y-%m-%d")|mktime) - (.s|strptime("%Y-%m-%d")|mktime)) / 86400 <= $w) | .k' "$T/store.json" > "$T/fired" 2>/dev/null \
     || stand_down "a seen= date in the finding store $_repo does not parse" "gh issue list -R $_repo --label finding --state all --json number,body"
   # A finding filed under a deprecated letter (lint/X5) fired as its successor (D-19, harbor#957).
-  HARBOR_SCOPE_ROOT="$ROOT" sh "$LINT" --ids 2>/dev/null | awk -F'\t' 'NF == 2 && NR > 1 && $2 != "-" { print $2 "\t" $1 }' > "$T/succ" || :
+  HARBOR_ROOT="$ROOT" sh "$LINT" --ids 2>/dev/null | awk -F'\t' 'NF == 2 && NR > 1 && $2 != "-" { print $2 "\t" $1 }' > "$T/succ" || :
   awk -F'\t' -v S="$T/succ" 'BEGIN { while ((getline l < S) > 0) { split(l, p, "\t"); s[p[1]] = p[2] } }
        { print (($1 in s) ? s[$1] : $1) }' "$T/fired" > "$T/fired.c" && mv "$T/fired.c" "$T/fired"
   sort -u "$T/now" "$T/crashed" "$T/fired" -o "$T/fired"

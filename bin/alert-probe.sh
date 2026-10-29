@@ -56,12 +56,12 @@
 set -eu
 
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$CFG/cache}}"
+CACHE_DIR="${HARBOR_CACHE_DIR:-$CFG/cache}"
 FLEET_CACHE="$CACHE_DIR/fleet-snapshot.json"
 # Six times the refresher's own interval. Narrower than that and a machine that
 # slept through one wake-up reports a dead fleet job every morning, which is the
 # false positive that gets a channel muted (CONSTITUTION №2.11).
-FLEET_MAX_AGE="${HARBOR_ALERT_PROBE_FLEET_MAX_AGE:-${HARBOR_FLEET_MAX_AGE:-1800}}"
+FLEET_MAX_AGE="${HARBOR_FLEET_MAX_AGE:-1800}"
 MODE="${1:-}"
 
 case "$MODE" in
@@ -287,7 +287,7 @@ check_fleet() {
 # gone. Overridable, because a box on a different cadence should not have to
 # patch this file.
 CUDOCTOR_STATE="$CACHE_DIR/cu-doctor-state.json"
-CUDOCTOR_MAX_AGE="${HARBOR_ALERT_PROBE_CLICKUP_DOCTOR_MAX_AGE:-${HARBOR_CUDOCTOR_MAX_AGE:-259200}}"
+CUDOCTOR_MAX_AGE="${HARBOR_CUDOCTOR_MAX_AGE:-259200}"
 check_cudoctor() {
   if [ ! -f "$CUDOCTOR_STATE" ]; then
     emit cudoctor unknown "no cu doctor receipt has been written yet"; return 0
@@ -365,7 +365,7 @@ check_worklog() {
   _last="$(git -C "$_m" log -1 --format=%ct -- 'WORK/sessions' 2>/dev/null || printf '')"
   case "$_last" in ''|*[!0-9]*) emit worklog ok "in sync with the remote"; return 0 ;; esac
   _age=$(( $(date +%s) - _last ))
-  if [ "$_age" -gt "${HARBOR_ALERT_PROBE_WORKLOG_MAX_AGE:-${HARBOR_WORKLOG_MAX_AGE:-604800}}" ]; then
+  if [ "$_age" -gt "${HARBOR_WORKLOG_MAX_AGE:-604800}" ]; then
     emit worklog warn "nothing committed in $((_age / 86400))d — either nothing ran, or the Stop gate is refusing"
   else
     emit worklog ok "every session record has reached the remote"

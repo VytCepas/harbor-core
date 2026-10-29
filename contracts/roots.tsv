@@ -31,11 +31,11 @@
 #
 # COLUMNS  var <TAB> base <TAB> rel <TAB> what breaks when it is wrong <TAB> why a shared path is deliberate (only when shared)
 var	base	rel	breaks	shared
-HARBOR_SCOPE_REPO	REPOS	harbor	the renewal check reads a missing repo and reports nothing to renew
+HARBOR_REPO	REPOS	harbor	the renewal check reads a missing repo and reports nothing to renew
 HARBOR_SCOPE_FLEET_CONTROLLER	REPOS	projects-orchestrator	the marker fixtures SKIP the descriptor role and the suite still exits 0
-HARBOR_SCOPE_FLEET_FILE	REPOS	projects-orchestrator/fleet.yaml	fleet discovery finds zero projects and raises no error
+HARBOR_FLEET_FILE	REPOS	projects-orchestrator/fleet.yaml	fleet discovery finds zero projects and raises no error
 HARBOR_SCOPE_SCAFFOLDER	REPOS	project-init	the marker fixtures SKIP the allowlist role and the suite still exits 0	the marker and test-strength suites export this name; renaming it breaks them and any operator who sets it
 PROJECT_INIT_SRC	REPOS	project-init	prod-guard-install ships nothing and lint drift.prod-policy-copy (was X5) compares against a missing source	prod-guard-install and its lint rule read this name; an operator may export either, so the pair stays until one is chosen
-HARBOR_SCOPE_LOCAL_BIN	BOX	.local/bin	deploy writes the operator's shims somewhere nothing is on PATH
-HARBOR_SCOPE_FLEET_CONTROLLER_BIN	BOX	.local/bin/projects-orchestrator	the fleet CLI is not found: the fleet snapshot, the ship report and the runner table read fleet as absent
+HARBOR_LOCAL_BIN	BOX	.local/bin	deploy writes the operator's shims somewhere nothing is on PATH
+HARBOR_ORCH_BIN	BOX	.local/bin/projects-orchestrator	the fleet CLI is not found: the fleet snapshot, the ship report and the runner table read fleet as absent
 HARBOR_REDTEAM_DIR	REPOS	vendor-src	redteam-corpus finds no corpus, skips every one and stays red with nothing scored

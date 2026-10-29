@@ -4,12 +4,12 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 TOOL="$T_ROOT/bin/doc-isa-index.sh"; STORE="$T_TMP/WORK"; OUT="$T_TMP/isa-index.md"
 mkdir -p "$STORE"
-run() { HARBOR_DOC_ISA_STORE="$STORE" HARBOR_DOC_ISA_OUT="$OUT" CLAUDE_CONFIG_DIR="$T_TMP" sh "$TOOL" "$@" > "$T_TMP/out" 2>&1; }
+run() { HARBOR_ISA_STORE="$STORE" HARBOR_ISA_OUT="$OUT" CLAUDE_CONFIG_DIR="$T_TMP" sh "$TOOL" "$@" > "$T_TMP/out" 2>&1; }
 
 t_section "an empty or absent store is a result, not a crash"
 run; t_eq "an empty store: exit" 0 "$?"
 t_has "an empty store gives an honest empty index" "$(cat "$OUT")" 'Empty is a result'
-t_exit "an absent store reports zero" 0 env HARBOR_DOC_ISA_STORE="$T_TMP/nope" HARBOR_DOC_ISA_OUT="$OUT" sh "$TOOL"
+t_exit "an absent store reports zero" 0 env HARBOR_ISA_STORE="$T_TMP/nope" HARBOR_ISA_OUT="$OUT" sh "$TOOL"
 
 t_section "a run is indexed by reference, from its own frontmatter and body"
 ISA="$STORE/20260201-090000_beanline-v1/ISA.md"; mkdir -p "$(dirname "$ISA")"
@@ -54,5 +54,5 @@ mkdir -p "$STORE/20260401-080000_bare"; printf '# no frontmatter at all\n' > "$S
 run
 t_has "a run with no frontmatter slug is keyed by its directory" "$(cat "$OUT")" '`20260401-080000_bare`'
 t_has "the index names the store it read" "$(cat "$OUT")" "$(basename "$STORE")"
-t_exit "an unknown flag refuses" 2 env HARBOR_DOC_ISA_STORE="$STORE" HARBOR_DOC_ISA_OUT="$OUT" sh "$TOOL" --wat
+t_exit "an unknown flag refuses" 2 env HARBOR_ISA_STORE="$STORE" HARBOR_ISA_OUT="$OUT" sh "$TOOL" --wat
 t_done

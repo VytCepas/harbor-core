@@ -3,7 +3,7 @@
 # a refusal is FAIL, its fix, the summary. Everything is a fixture.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 TOOL="$T_ROOT/bin/doc-isa-index.sh"; STORE="$T_TMP/WORK"; OUTF="$T_TMP/isa-index.md"; mkdir -p "$STORE"
-run() { env HARBOR_DOC_ISA_STORE="$STORE" HARBOR_DOC_ISA_OUT="$OUTF" sh "$TOOL" "$@" >"$T_TMP/out" 2>"$T_TMP/err"; echo "exit $?"; }
+run() { env HARBOR_ISA_STORE="$STORE" HARBOR_ISA_OUT="$OUTF" sh "$TOOL" "$@" >"$T_TMP/out" 2>"$T_TMP/err"; echo "exit $?"; }
 OUT() { cat "$T_TMP/out"; }; ERR() { cat "$T_TMP/err"; }
 
 t_section "a write run: an ok line and the summary, no legacy shape"

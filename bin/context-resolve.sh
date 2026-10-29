@@ -250,7 +250,7 @@ peer_write "$(git -C "$_lcwd" rev-parse --show-toplevel 2>/dev/null || printf '%
 # did not measure.
 PEERS=""
 if [ -x "$DIR/context-peers.sh" ] || [ -f "$DIR/context-peers.sh" ]; then
-  PEERS="$(HARBOR_CONTEXT_PEER_EXCLUDE="$SID" sh "$DIR/context-peers.sh" --peers 2>/dev/null || true)"
+  PEERS="$(HARBOR_PEER_EXCLUDE="$SID" sh "$DIR/context-peers.sh" --peers 2>/dev/null || true)"
 fi
 if [ -n "$PEERS" ] || [ -n "$DEFER_MSG" ]; then
   _msg="$DEFER_MSG"

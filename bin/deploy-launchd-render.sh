@@ -14,8 +14,8 @@
 #
 # PLACEHOLDERS, and the one place each comes from:
 #   @HOME@        the BOX base: the home directory (scope-roots.sh --base BOX, which is $HOME with no trailing slash)
-#   @<VAR>@       any variable in contracts/roots.tsv, as `scope-roots.sh --get <VAR>` answers it: HARBOR_SCOPE_LOCAL_BIN is $HOME/.local/bin
-#                 unless an exported HARBOR_SCOPE_LOCAL_BIN says otherwise. HARBOR_SCOPE_ROOTS_TABLE points at another table (the suite's copy).
+#   @<VAR>@       any variable in contracts/roots.tsv, as `scope-roots.sh --get <VAR>` answers it: HARBOR_LOCAL_BIN is $HOME/.local/bin
+#                 unless an exported HARBOR_LOCAL_BIN says otherwise. HARBOR_ROOTS_TABLE points at another table (the suite's copy).
 # Anything else is refused, not left in: a plist installed with a literal @NAME@ in it loads and then fails when it runs,
 # and `launchctl list` shows it healthy. @BIN@, @SOURCES@ and @STORE@ are audit-collector-install.sh's (system daemons, filled under
 # sudo by its own render); this tool names them and leaves those plists alone.
@@ -28,8 +28,8 @@
 # WHAT THIS DOES NOT DO, ON PURPOSE. It writes to stdout and nowhere else. A session that can stand up its own scheduled job
 # can stand up anything (the floor blocks a redirect into LaunchAgents, a cp naming it, and `launchctl load|bootstrap`), so
 # installing stays the operator's act, from a terminal:
-#   sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.audit.triage.plist > ~/Library/LaunchAgents/com.harbor.audit.triage.plist
-#   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.harbor.audit.triage.plist
+#   sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.judge.plist > ~/Library/LaunchAgents/com.harbor.judge.plist
+#   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.harbor.judge.plist
 # Lint X9 renders the tracked plist before it compares it with the installed one, so a box whose plists were installed
 # this way reads as in sync.
 #
@@ -39,7 +39,7 @@ set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 SRC="$(CDPATH= cd -- "$SRC" && pwd -P)"
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd -P)}}"
+ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd -P)}"
 . "$SRC/library-log.sh"
 LOG_FD=2; log_init launchd-render
 
@@ -63,8 +63,7 @@ strip() {
 # names <file>: the distinct @NAME@ tokens, one per line.
 names() { LC_ALL=C grep -o '@[A-Z][A-Z0-9_]*@' "$1" 2>/dev/null | sed 's/^@//; s/@$//' | LC_ALL=C sort -u || :; }
 
-# one name per line; the old names of renamed rows too, which --get still answers until 2026-11-15 (harbor#961 W5)
-known_roots() { sh "$SRC/scope-roots.sh" --list 2>/dev/null | awk 'NR > 1 { print $1 }'; sh "$SRC/scope-roots.sh" --aliases 2>/dev/null | cut -f1; }
+known_roots() { sh "$SRC/scope-roots.sh" --list 2>/dev/null | awk 'NR > 1 { print $1 }'; }   # one name per line
 
 is_foreign() { case " $FOREIGN " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 
@@ -185,7 +184,7 @@ $(owned)"; fi
       log_ok "$_b renders"
     done
     IFS="$_ifs"
-    [ "$_seen" -gt 0 ] || { log_fail "no plist to check under $ROOT/launchd"; log_fix "pass a plist: sh bin/deploy-launchd-render.sh --check launchd/com.harbor.alert.probe.plist"; log_end || :; exit 1; }
+    [ "$_seen" -gt 0 ] || { log_fail "no plist to check under $ROOT/launchd"; log_fix "pass a plist: sh bin/deploy-launchd-render.sh --check launchd/com.harbor.pulse.plist"; log_end || :; exit 1; }
     [ "$_xml" -eq 0 ] && log_note "neither plutil nor xmllint is installed here: the rendered text was not parsed as a plist"
     log_end || exit 1
     ;;

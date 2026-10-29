@@ -29,7 +29,7 @@
 #   - inject-install --projects: it writes other repos.
 # Opt-ins are read from the box (harbor#762): a wired Stop gate and an installed B6 are refreshed.
 # One log format (contracts/logging.md): deploy's own lines are log-lib's; its children's lines are
-# relayed verbatim, and on --apply both go to backups/deploy/<TS>/log. Children run with HARBOR_DEPLOY_ACTIVE=1.
+# relayed verbatim, and on --apply both go to backups/deploy/<TS>/log. Children run with HARBOR_DEPLOY=1.
 set -eu
 
 ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
@@ -111,10 +111,10 @@ il_target
 # It named the target itself if it passed il_target; children get the target from --live alone.
 unset CLAUDE_CONFIG_DIR
 CFG="$IL_TARGET"
-LOCAL_BIN="${HARBOR_SCOPE_LOCAL_BIN:-${HARBOR_LOCAL_BIN:-$HOME/.local/bin}}"
-BASE="${HARBOR_CI_BASE_BRANCH:-${HARBOR_BASE_BRANCH:-main}}"
+LOCAL_BIN="${HARBOR_LOCAL_BIN:-$HOME/.local/bin}"
+BASE="${HARBOR_BASE_BRANCH:-main}"
 # Installers under deploy skip the next steps deploy itself performs (harbor#285).
-HARBOR_DEPLOY_ACTIVE=1; export HARBOR_DEPLOY_ACTIVE
+HARBOR_DEPLOY=1; export HARBOR_DEPLOY
 AL=''; [ "$IL_ACCEPT_LOSS" -eq 0 ] || AL=' --accept-loss'
 # deploy's own command line, for the fix lines that send the operator back here: its --only and opt-ins kept.
 _deploy_cmd() { # [<checkout>] [--accept-loss] — the apply, spelled for its gate
@@ -304,12 +304,12 @@ _preflight() {
   # --with-b6 onto a box with no floor is refused here, with the reason (docs/explanation/admission-baseline.md order).
   _optins
 
-  # Shims and CLAUDE.md's path root point at HARBOR_SCOPE_REPO, not at whichever checkout runs this.
-  _hr="$(sh "$ROOT/bin/scope-roots.sh" --get HARBOR_SCOPE_REPO 2>/dev/null || true)"
-  if [ "$(_phys "${_hr:-?}")" = "$(_phys "$ROOT")" ]; then log_ok 'HARBOR_SCOPE_REPO resolves to this checkout'
+  # Shims and CLAUDE.md's path root point at HARBOR_REPO, not at whichever checkout runs this.
+  _hr="$(sh "$ROOT/bin/scope-roots.sh" --get HARBOR_REPO 2>/dev/null || true)"
+  if [ "$(_phys "${_hr:-?}")" = "$(_phys "$ROOT")" ]; then log_ok 'HARBOR_REPO resolves to this checkout'
   elif [ -n "$_hr" ] && [ -f "$_hr/bin/deploy.sh" ]; then
     _bad "shims and CLAUDE.md would point at $_hr, not this checkout" "sh '$_hr/bin/deploy.sh' --live$AL"
-  else _bad "shims and CLAUDE.md would point at ${_hr:-<unresolved>}, not this checkout" 'none: contracts/roots.tsv — HARBOR_SCOPE_REPO'; fi
+  else _bad "shims and CLAUDE.md would point at ${_hr:-<unresolved>}, not this checkout" 'none: contracts/roots.tsv — HARBOR_REPO'; fi
 
   if command -v jq >/dev/null 2>&1; then log_ok 'jq present'; else _bad 'jq is missing; every installer needs it' "$(_jq_fix)"; fi
   if [ -f "$CFG/settings.json" ]; then log_ok 'config dir has settings.json'

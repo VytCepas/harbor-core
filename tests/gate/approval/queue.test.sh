@@ -7,7 +7,7 @@
 Q() { cat "$HOME/.local/state/harbor/approvals/queue.jsonl"; }
 ob() { # <fold|reconcile> [register] → the ledger's rows as {id, kind, state, title}
   rm -f "$T_TMP/obl/.fold.lock"
-  HARBOR_OBLIGATION_DIR="$T_TMP/obl" HARBOR_SCOPE_CACHE_DIR="$T_TMP/cache" HARBOR_STATUS_OBLIGATION_KINDS="${2:-$T_ROOT/contracts/obligation-kinds.tsv}" \
+  HARBOR_OBLIGATION_DIR="$T_TMP/obl" HARBOR_CACHE_DIR="$T_TMP/cache" HARBOR_STATUS_OBLIGATION_KINDS="${2:-$T_ROOT/contracts/obligation-kinds.tsv}" \
     CLAUDE_BIN=/nonexistent sh "$T_ROOT/bin/status-obligations.sh" "$1" >"$T_TMP/ob.out" 2>&1
   jq -c '[.obligations[] | {id, kind, state, title}]' "$T_TMP/obl/current.json" 2>/dev/null || echo '[]'
 }

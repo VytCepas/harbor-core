@@ -19,7 +19,7 @@
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
+ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
 BASE="${SECRETS_BASELINE:-$ROOT/contracts/lint-secrets-baseline.txt}"
 PATTERNS="${SECRETS_PATTERNS:-$ROOT/contracts/credential-patterns.tsv}"
 . "$SRC/library-log.sh"

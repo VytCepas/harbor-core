@@ -3,7 +3,7 @@
 # Each case is a throwaway source checkout, a throwaway export target and a throwaway private layer.
 # The "secret" below is a made-up word, never a real entity.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset HARBOR_TEST_IN_SUITE HARBOR_IN_SUITE
+unset HARBOR_IN_SUITE
 GIT_AUTHOR_NAME=t; GIT_AUTHOR_EMAIL=t@t.test; GIT_COMMITTER_NAME=t; GIT_COMMITTER_EMAIL=t@t.test
 export GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
 HDR='id	kind	pattern	note'
@@ -31,8 +31,8 @@ mk() { # <name> → a source checkout: core bin and docs, a dev notes file, laye
   printf '%s' "$_d"
 }
 tgt() { _t="$T_TMP/t-$1"; mkdir -p "$_t"; ( cd "$_t" && git init -q . ) >/dev/null 2>&1; printf '%s' "$_t"; }
-push() { _s="$1"; shift; HARBOR_SCOPE_ROOT="$_s" HARBOR_SCOPE_PRIVATE="${PVX:-$PV}" sh "$_s/bin/deploy-push.sh" "$@" 2>&1; }
-prc() { _s="$1"; shift; HARBOR_SCOPE_ROOT="$_s" HARBOR_SCOPE_PRIVATE="${PVX:-$PV}" sh "$_s/bin/deploy-push.sh" "$@" >/dev/null 2>&1; echo $?; }
+push() { _s="$1"; shift; HARBOR_ROOT="$_s" HARBOR_SCOPE_PRIVATE="${PVX:-$PV}" sh "$_s/bin/deploy-push.sh" "$@" 2>&1; }
+prc() { _s="$1"; shift; HARBOR_ROOT="$_s" HARBOR_SCOPE_PRIVATE="${PVX:-$PV}" sh "$_s/bin/deploy-push.sh" "$@" >/dev/null 2>&1; echo $?; }
 ncommits() { git -C "$1" rev-list --count HEAD 2>/dev/null || echo 0; }
 files() { git -C "$1" ls-tree -r --name-only HEAD 2>/dev/null | tr '\n' ' '; }
 unset PVX
@@ -126,25 +126,25 @@ t_eq "no target and no --dry-run is a usage error" "2" "$(prc "$S")"
 
 t_section "every tracked path is classified exactly once"
 S="$(mk cls)"
-t_eq "the fixture is green" "0" "$(HARBOR_SCOPE_ROOT="$S" sh "$S/bin/scope-layers.sh" --check >/dev/null 2>&1; echo $?)"
+t_eq "the fixture is green" "0" "$(HARBOR_ROOT="$S" sh "$S/bin/scope-layers.sh" --check >/dev/null 2>&1; echo $?)"
 printf 'x\n' > "$S/stray.txt"; ( cd "$S" && git add -A && git commit -qm stray ) >/dev/null 2>&1
-t_eq "a path matching no row is red" "1" "$(HARBOR_SCOPE_ROOT="$S" sh "$S/bin/scope-layers.sh" --check >/dev/null 2>&1; echo $?)"
-t_has "...and named" "$(HARBOR_SCOPE_ROOT="$S" sh "$S/bin/scope-layers.sh" --check 2>&1)" "stray.txt matches no row"
+t_eq "a path matching no row is red" "1" "$(HARBOR_ROOT="$S" sh "$S/bin/scope-layers.sh" --check >/dev/null 2>&1; echo $?)"
+t_has "...and named" "$(HARBOR_ROOT="$S" sh "$S/bin/scope-layers.sh" --check 2>&1)" "stray.txt matches no row"
 T="$(tgt cls)"
 t_eq "push refuses it too" "1" "$(prc "$S" "$T")"
 t_eq "...writing nothing" "0" "$(ncommits "$T")"
 S="$(mk dbl)"; printf 'docs/a.md\tdev\tover\n' >> "$S/contracts/layers.tsv"; ( cd "$S" && git add -A && git commit -qm dbl ) >/dev/null 2>&1
-t_eq "a path matching two rows is red" "1" "$(HARBOR_SCOPE_ROOT="$S" sh "$S/bin/scope-layers.sh" --check >/dev/null 2>&1; echo $?)"
-t_has "...and named" "$(HARBOR_SCOPE_ROOT="$S" sh "$S/bin/scope-layers.sh" --check 2>&1)" "docs/a.md matches more than one row"
+t_eq "a path matching two rows is red" "1" "$(HARBOR_ROOT="$S" sh "$S/bin/scope-layers.sh" --check >/dev/null 2>&1; echo $?)"
+t_has "...and named" "$(HARBOR_ROOT="$S" sh "$S/bin/scope-layers.sh" --check 2>&1)" "docs/a.md matches more than one row"
 t_eq "push refuses it" "1" "$(prc "$S" "$(tgt dbl)")"
 S="$(mk badrow)"; printf 'docs/x\tpublic\tn\n' >> "$S/contracts/layers.tsv"
-t_eq "a row with an unknown layer is red" "1" "$(HARBOR_SCOPE_ROOT="$S" sh "$S/bin/scope-layers.sh" --check >/dev/null 2>&1; echo $?)"
+t_eq "a row with an unknown layer is red" "1" "$(HARBOR_ROOT="$S" sh "$S/bin/scope-layers.sh" --check >/dev/null 2>&1; echo $?)"
 t_eq "the real tree is classified" "0" "$(sh "$T_ROOT/bin/scope-layers.sh" --check >/dev/null 2>&1; echo $?)"
 
 t_section "the ratchet counts the whole tree, dev paths included"
 S="$(mk scope)"
-t_eq "--zero sees a dev path despite layers.tsv" "1" "$(HARBOR_SCOPE_ROOT="$S" HARBOR_SCOPE_PRIVATE="$PV" sh "$S/bin/lint-leaks.sh" --zero >/dev/null 2>&1; echo $?)"
-t_has "--list names the dev notes file" "$(HARBOR_SCOPE_ROOT="$S" HARBOR_SCOPE_PRIVATE="$PV" sh "$S/bin/lint-leaks.sh" --list 2>&1; echo end)" "NOTES.md"
+t_eq "--zero sees a dev path despite layers.tsv" "1" "$(HARBOR_ROOT="$S" HARBOR_SCOPE_PRIVATE="$PV" sh "$S/bin/lint-leaks.sh" --zero >/dev/null 2>&1; echo $?)"
+t_has "--list names the dev notes file" "$(HARBOR_ROOT="$S" HARBOR_SCOPE_PRIVATE="$PV" sh "$S/bin/lint-leaks.sh" --list 2>&1; echo end)" "NOTES.md"
 
 t_section "the export scans tests and fixtures too"
 S="$(mk tfx)"; T="$(tgt tfx)"
@@ -154,7 +154,7 @@ t_eq "clean tests and fixtures export" "0" "$(prc "$S" --dry-run)"
 printf 'a client Zorblax fixture\n' > "$S/tests/planted.sh"; ( cd "$S" && git add -A && git commit -qm planted ) >/dev/null 2>&1
 t_eq "a client term only in a staged tests/ file refuses the push" "1" "$(prc "$S" "$T")"
 t_eq "...writing nothing" "0" "$(ncommits "$T")"
-t_hasnt "...while the ratchet scope still excludes tests/" "$(HARBOR_SCOPE_ROOT="$S" HARBOR_SCOPE_PRIVATE="$PV" sh "$S/bin/lint-leaks.sh" --list 2>&1; echo end)" "tests/planted.sh"
+t_hasnt "...while the ratchet scope still excludes tests/" "$(HARBOR_ROOT="$S" HARBOR_SCOPE_PRIVATE="$PV" sh "$S/bin/lint-leaks.sh" --list 2>&1; echo end)" "tests/planted.sh"
 S="$(mk fxf)"; T="$(tgt fxf)"; mkdir -p "$S/fixtures"; printf 'fixtures/\tcore\tfixtures\n' >> "$S/contracts/layers.tsv"
 printf 'Zorblax\n' > "$S/fixtures/f.txt"; ( cd "$S" && git add -A && git commit -qm f ) >/dev/null 2>&1
 t_eq "the same in fixtures/" "1" "$(prc "$S" "$T")"
@@ -175,7 +175,7 @@ t_eq "...writing nothing" "0" "$(ncommits "$T")"
 S="$(mk own)"; printf 'Zorblax\n' > "$S/docs/own.md"
 sed 's|^docs/.*|docs/\tdev\tn|' "$S/contracts/layers.tsv" > "$S/contracts/l.new"; mv "$S/contracts/l.new" "$S/contracts/layers.tsv"
 ( cd "$S" && git add -A && git commit -qm own ) >/dev/null 2>&1
-t_eq "export mode ignores the scanned repo's own layers.tsv" "1" "$(LEAKS_EXPORT=1 HARBOR_SCOPE_ROOT="$S" HARBOR_SCOPE_PRIVATE="$PV" sh "$S/bin/lint-leaks.sh" --zero >/dev/null 2>&1; echo $?)"
+t_eq "export mode ignores the scanned repo's own layers.tsv" "1" "$(LEAKS_EXPORT=1 HARBOR_ROOT="$S" HARBOR_SCOPE_PRIVATE="$PV" sh "$S/bin/lint-leaks.sh" --zero >/dev/null 2>&1; echo $?)"
 
 t_section "gitleaks scans the same stage: a secret refuses, and so does a missing scanner (harbor#1149)"
 cm() { ( cd "$1" && git add -A && git commit -qm "$2" ) >/dev/null 2>&1; }
@@ -188,7 +188,7 @@ t_eq "a token-shaped literal refuses the push" "1" "$(prc "$S" "$T")"
 OUT="$(push "$S" "$T")"
 t_has "...named as file:rule:line" "$OUT" "docs/tok.md:github-pat:1"
 t_hasnt "...never by its text" "$OUT" "Zq8LmN2pR7tY4wXc9Vb"
-t_eq "...the leak gate alone was green" "0" "$(LEAKS_EXPORT=1 HARBOR_SCOPE_ROOT="$S" HARBOR_SCOPE_PRIVATE="$PV" sh "$S/bin/lint-leaks.sh" --count core 2>/dev/null)"
+t_eq "...the leak gate alone was green" "0" "$(LEAKS_EXPORT=1 HARBOR_ROOT="$S" HARBOR_SCOPE_PRIVATE="$PV" sh "$S/bin/lint-leaks.sh" --count core 2>/dev/null)"
 t_eq "...no commit in the target" "0" "$(ncommits "$T")"
 t_eq "...and the dry run is red" "1" "$(prc "$S" --dry-run)"
 printf '[extend]\nuseDefault = true\n[allowlist]\npaths = [%s]\n' "'''docs/tok[.]md'''" > "$T_TMP/loose.toml"
@@ -219,7 +219,7 @@ for _d in $(printf '%s' "$PATH" | tr ':' ' '); do
 done
 t_eq "positive control: gitleaks is gone from the farm" no "$(env PATH="$FARM" sh -c 'command -v gitleaks' >/dev/null 2>&1 && echo yes || echo no)"
 S="$(mk nogl)"; T="$(tgt nogl)"
-nogl() { HARBOR_SCOPE_ROOT="$S" HARBOR_SCOPE_PRIVATE="$PV" env PATH="$FARM" sh "$S/bin/deploy-push.sh" "$@" 2>&1; }
+nogl() { HARBOR_ROOT="$S" HARBOR_SCOPE_PRIVATE="$PV" env PATH="$FARM" sh "$S/bin/deploy-push.sh" "$@" 2>&1; }
 t_eq "no gitleaks refuses the push rather than skipping the scan" "1" "$(nogl "$T" >/dev/null; echo $?)"
 t_has "...and says so" "$(nogl "$T")" "gitleaks is missing, so the stage was not scanned"
 t_eq "...no commit in the target" "0" "$(ncommits "$T")"
@@ -259,7 +259,7 @@ t_has "no check at HEAD: red, never a silent pass" "$(push "$S" --dry-run)" "no 
 
 t_section "harbor deploy push reaches the script"
 S="$(mk disp)"; T="$(tgt disp)"
-t_eq "the dispatcher routes deploy push" "0" "$(HARBOR_SCOPE_BIN="$S/bin" HARBOR_SCOPE_ROOT="$S" HARBOR_SCOPE_PRIVATE="$PV" sh "$S/bin/harbor" deploy push "$T" >/dev/null 2>&1; echo $?)"
+t_eq "the dispatcher routes deploy push" "0" "$(HARBOR_BIN="$S/bin" HARBOR_ROOT="$S" HARBOR_SCOPE_PRIVATE="$PV" sh "$S/bin/harbor" deploy push "$T" >/dev/null 2>&1; echo $?)"
 t_eq "...and it wrote the snapshot" "1" "$(ncommits "$T")"
 
 t_section "--ci-base: a CI mirror's comparison base skips the two release rows, never the leak rows (harbor#1149)"

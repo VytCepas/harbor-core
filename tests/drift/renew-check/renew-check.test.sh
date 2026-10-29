@@ -27,7 +27,7 @@ provision() { # a fully deployed box; the constitution comes from origin/main, n
 }
 # The launchd cases run as macOS whatever the host is; 2b runs the same checks as Linux (harbor#618).
 UD="$T/uname-darwin"; mkdir -p "$UD"; printf '#!/bin/sh\necho Darwin\n' > "$UD/uname"; chmod +x "$UD/uname"
-run() { PATH="$UD:$PATH" HARBOR_RENEW_DAEMONS="$T/daemons" HARBOR_SCOPE_REPO="$REPO" env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/drift-renew-check.sh" --dir "$CFG" "$@" 2>/dev/null; }
+run() { PATH="$UD:$PATH" HARBOR_RENEW_DAEMONS="$T/daemons" HARBOR_REPO="$REPO" env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/drift-renew-check.sh" --dir "$CFG" "$@" 2>/dev/null; }
 head1() { run "$@" | head -1; }
 
 t_section "1 · a fully deployed box reports renew 0"
@@ -53,14 +53,14 @@ t_section "2b · Linux: the footprint is systemd/ against ~/.config/systemd/user
 UX="$T/uname-linux"; mkdir -p "$UX"; printf '#!/bin/sh\necho Linux\n' > "$UX/uname"; chmod +x "$UX/uname"
 SU="$HOME/.config/systemd/user"; mkdir -p "$REPO/systemd" "$SU"
 : > "$REPO/systemd/harbor-one.service"; : > "$REPO/systemd/harbor-one.timer"
-lrun() { PATH="$UX:$PATH" HARBOR_SCOPE_REPO="$REPO" env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/drift-renew-check.sh" --dir "$CFG" "$@" 2>/dev/null; }
+lrun() { PATH="$UX:$PATH" HARBOR_REPO="$REPO" env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/drift-renew-check.sh" --dir "$CFG" "$@" 2>/dev/null; }
 provision; rm -f "$AG/com.harbor.one.plist"; cp "$REPO/systemd/harbor-one.timer" "$SU/"
 t_eq "a Linux box with its timer installed and no LaunchAgents" "renew 0" "$(lrun | head -1)"
 rm -f "$SU/harbor-one.timer"
 t_has "a Linux box missing a timer built here" "$(lrun | head -1)" "jobs1"
 t_has "...whose listing names systemd/, not launchd/" "$(lrun)" "systemd/*.timer"
 provision; rm -f "$CFG/.helm-judge"
-t_has "Linux: the never-written judge's remedy is the systemd timer" "$(lrun)" "systemctl --user enable --now harbor-audit-triage.timer"
+t_has "Linux: the never-written judge's remedy is the systemd timer" "$(lrun)" "systemctl --user enable --now harbor-judge.timer"
 rm -rf "$REPO/systemd" "$SU"
 
 t_section "2c · a system daemon is installed, and a plist that declares itself inert is not a missed job (false alarm: STALE jobs4)"
@@ -110,7 +110,7 @@ t_has "one undeployed commit" "$(head1)" "const1"
 printf 'C v3\n' > "$REPO/policy/constitution.md"; g commit -qam const3 >/dev/null; publish
 t_has "the distance advances to 2" "$(head1)" "const2"
 # A capped walk must not fall through to const+, whose remedy is a back-port, not a deploy.
-_l="$(HARBOR_SCOPE_REPO="$REPO" HARBOR_DRIFT_CONSTITUTION_WALK_MAX=1 env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/drift-renew-check.sh" --dir "$CFG" 2>/dev/null | head -1)"
+_l="$(HARBOR_REPO="$REPO" HARBOR_CONST_WALK_MAX=1 env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/drift-renew-check.sh" --dir "$CFG" 2>/dev/null | head -1)"
 t_has "a truncated walk stands down" "$_l" "const?"
 t_hasnt "a truncated walk is not unsourced live text" "$_l" "const+"
 g show origin/main:policy/constitution.md > "$CFG/CLAUDE.md"
@@ -155,14 +155,14 @@ t_hasnt "...so it is still one commit" "$_l" "runtime2"
 
 t_section "4 · no checkout: say so, never up to date"
 provision
-_l="$(HARBOR_SCOPE_REPO="$T/nope" env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/drift-renew-check.sh" --dir "$CFG" 2>/dev/null | head -1)"
+_l="$(HARBOR_REPO="$T/nope" env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/drift-renew-check.sh" --dir "$CFG" 2>/dev/null | head -1)"
 t_has "an absent checkout stands down loudly" "$_l" "repo?"
 t_hasnt "and is not a clean box" "$_l" "renew 0"
 
 t_section "4b · a git worktree is a checkout too (.git is a file there)"
 provision
 g worktree add -q "$T/wt" -b wtbranch 2>/dev/null
-t_hasnt "a worktree is not 'no checkout'" "$(HARBOR_SCOPE_REPO="$T/wt" env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/drift-renew-check.sh" --dir "$CFG" 2>/dev/null | head -1)" "repo?"
+t_hasnt "a worktree is not 'no checkout'" "$(HARBOR_REPO="$T/wt" env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/drift-renew-check.sh" --dir "$CFG" 2>/dev/null | head -1)" "repo?"
 
 t_section "5 · the judge's cache: absent vs stopped"
 provision; rm -f "$CFG/.helm-judge"
@@ -170,8 +170,8 @@ t_has "a never-written judge cache" "$(head1)" "judge!"
 provision; touch -t 202601010000 "$CFG/.helm-judge"
 t_has "a stopped judge cache" "$(head1)" "judge?"
 provision; rm -f "$CFG/.helm-judge"
-t_has "macOS: the never-written judge's remedy renders the plist template (harbor#630)" "$(run)" "sh $REPO/bin/deploy-launchd-render.sh $REPO/launchd/com.harbor.audit.triage.plist > ~/Library/LaunchAgents/com.harbor.audit.triage.plist"
-t_hasnt "…and no longer cp's it, which would install the placeholders" "$(run)" "cp $REPO/launchd/com.harbor.audit.triage.plist"
+t_has "macOS: the never-written judge's remedy renders the plist template (harbor#630)" "$(run)" "sh $REPO/bin/deploy-launchd-render.sh $REPO/launchd/com.harbor.judge.plist > ~/Library/LaunchAgents/com.harbor.judge.plist"
+t_hasnt "…and no longer cp's it, which would install the placeholders" "$(run)" "cp $REPO/launchd/com.harbor.judge.plist"
 
 t_section "6 · unpinned instruction surfaces"
 provision; rm -f "$CFG/.helm-instructions.sha256"
@@ -194,7 +194,7 @@ t_exit "a positional target is a usage error: there is none (harbor#800)" 2 rcli
 # Its scheduled caller, status-fleet-snapshot-refresh.sh, names a sandbox by --dir (harbor#800). The orchestrator
 # is absent here, so the job ends in its one FAIL; renew-check ran before it.
 provision; rm -f "$CFG/.helm-renew"
-_fs="$(CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_REPO="$REPO" HARBOR_SCOPE_FLEET_CONTROLLER_BIN="$T/no-orchestrator" HARBOR_SCOPE_CACHE_DIR="$T/cache" \
+_fs="$(CLAUDE_CONFIG_DIR="$CFG" HARBOR_REPO="$REPO" HARBOR_ORCH_BIN="$T/no-orchestrator" HARBOR_CACHE_DIR="$T/cache" \
   sh "$T_ROOT/bin/status-fleet-snapshot-refresh.sh" 2>&1)"
 t_eq "the refresher writes a sandbox's renew cache through renew-check --dir" yes "$([ -f "$CFG/.helm-renew" ] && echo yes || echo no)"
 t_has "...and its own failure is a FAIL line with its fix (contracts/logging.md)" "$(printf '%s\n' "$_fs" | grep -A1 '^  FAIL: ')" "  fix: none automatic — see fleet"
@@ -206,13 +206,13 @@ cp "$UX/uname" "$LX/uname"
 printf '#!/bin/sh\n[ "$4" = harbor-one.timer ]\n' > "$LX/systemctl"; chmod +x "$LX/systemctl"
 SU="$HOME/.config/systemd/user"; mkdir -p "$SU"; : > "$SU/harbor-one.timer"; : > "$SU/harbor-two.timer"
 rm -f "$CFG/.helm-watch"
-( PATH="$LX"; export PATH; CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_REPO="$REPO" HARBOR_SCOPE_FLEET_CONTROLLER_BIN="$T/no-orchestrator" \
-  HARBOR_SCOPE_CACHE_DIR="$T/cache" sh "$T_ROOT/bin/status-fleet-snapshot-refresh.sh" >/dev/null 2>&1 )
+( PATH="$LX"; export PATH; CLAUDE_CONFIG_DIR="$CFG" HARBOR_REPO="$REPO" HARBOR_ORCH_BIN="$T/no-orchestrator" \
+  HARBOR_CACHE_DIR="$T/cache" sh "$T_ROOT/bin/status-fleet-snapshot-refresh.sh" >/dev/null 2>&1 )
 t_eq "Linux: the refresher's watch is active timers over installed ones" "watch 1 2" "$(cat "$CFG/.helm-watch" 2>/dev/null)"
 rm -rf "$SU"
 
 t_section "8 · the statusline renders it as STALE, and renders nothing at zero (harbor#293)"
-glyph() { printf '{}' | HARBOR_GLYPH_MACHINE=0 CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$T/nocache" sh "$T_ROOT/bin/status-fleet-glyph.sh" 2>/dev/null; }
+glyph() { printf '{}' | HARBOR_GLYPH_MACHINE=0 CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$T/nocache" sh "$T_ROOT/bin/status-fleet-glyph.sh" 2>/dev/null; }
 printf 'renew 3 floor11·jobs1\n' > "$CFG/.helm-renew"
 _s="$(glyph)"
 t_has "the token is rendered verbatim" "$_s" "STALE floor11·jobs1"
@@ -239,7 +239,7 @@ t_eq "both installers are reported behind" 2 "$(printf '%s\n' "$_ord" | grep -c 
 t_eq "runtime-install is printed first" runtime-install "$(printf '%s\n' "$_ord" | head -1)"
 t_section "11 · every fix is aimed at the box it measured (harbor#800)"
 CFGP="$(cd -P "$CFG" && pwd -P)"
-live() { HARBOR_SCOPE_REPO="$REPO" env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/drift-renew-check.sh" --live 2>/dev/null; }
+live() { HARBOR_REPO="$REPO" env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/drift-renew-check.sh" --live 2>/dev/null; }
 mirror() { rm -rf "$HOME/.claude"; mkdir -p "$HOME/.claude"; cp -R "$CFG/." "$HOME/.claude/"; }  # the sandbox HOME's live dir := $CFG
 provision; rm -f "$CFG/.helm-instructions.sha256"
 _o="$(run)"

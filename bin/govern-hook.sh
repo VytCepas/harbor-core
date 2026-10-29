@@ -299,7 +299,7 @@ if [ "$BOX" = 1 ]; then
 else
   [ -n "$REPO" ] || exit 0
 fi
-BASE="${HARBOR_CI_BASE_BRANCH:-${HARBOR_BASE_BRANCH:-main}}"
+BASE="${HARBOR_BASE_BRANCH:-main}"
 
 emit() { # <event> <model-text> [user-line] — or nothing at all
   [ -n "$2" ] || return 0
@@ -541,7 +541,7 @@ if [ "$EVENT" = PreToolUse ] && matches gh 'pr merge'; then
       # under `set -e` a nonzero exit inside a substitution would end the hook
       # and fail OPEN silently — the one failure mode a gate cannot have.
       if [ -n "$_trepo" ]; then
-        _mc="$(cd "$_TDIR" && HARBOR_SCOPE_REPO="$_trepo" sh bin/gate-merge-check.sh "$_pr" 2>&1)" && _rc=0 || _rc=$?
+        _mc="$(cd "$_TDIR" && HARBOR_REPO="$_trepo" sh bin/gate-merge-check.sh "$_pr" 2>&1)" && _rc=0 || _rc=$?
       else
         _mc="$(cd "$_TDIR" && sh bin/gate-merge-check.sh "$_pr" 2>&1)" && _rc=0 || _rc=$?
       fi
@@ -575,7 +575,7 @@ MERGESEGS
     [ "$BOX" = 0 ] || _vwhere=" (in $_vdir)"
     if [ "$_verdict" = refuse ]; then
       _log deny merge-backstop
-      deny "[check:gate.merge-backstop] The merge backstop refuses this merge, so it was not run.
+      deny "[check:merge-backstop] The merge backstop refuses this merge, so it was not run.
 
 $_vtext
 
@@ -589,7 +589,7 @@ Route$_vwhere: sh bin/gate-merge-check.sh --merge $_vpr — it re-checks and mer
   fi
 
   # NO DOC-STALENESS GATE HERE, AND THAT IS A MEASURED DECISION rather than an
-  # omission. One was built and cut the same hour; docs/reports/rejected-approaches.md carries the
+  # omission. One was built and cut the same hour; docs/decisions/rejected-approaches.md carries the
   # numbers. Short version: "a tracked doc cites a path this branch changed"
   # selected 20 documents on a 13-file branch, and narrowing it to a markdown
   # link — harbor's own T3 citation form — made it WORSE at 40, because T3

@@ -147,11 +147,11 @@ ghjob() {
   [ -f "$FX/jobs.$1" ] || echo '{"jobs":[]}' > "$FX/jobs.$1"
   jq --arg s "$3" --arg l "$4" '.jobs += [{id: (.jobs | length + 1), status: $s, labels: ($l | split(","))}]' "$FX/jobs.$1" > "$FX/x" && mv "$FX/x" "$FX/jobs.$1"
 }
-gov() { HARBOR_TEST_NOW="$AT" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CI_RUNNERS_DIR="$RUNNERS" sh "$GOV" "$@" 2>&1; }
+gov() { HARBOR_NOW="$AT" HARBOR_CACHE_DIR="$CACHE" HARBOR_RUNNERS_DIR="$RUNNERS" sh "$GOV" "$@" 2>&1; }
 tick() { AT=$((AT + ${1:-30})); gov tick >/dev/null; }
 st() { awk -F= -v k="$1" '$1 == k { sub(/^[^=]*=/, ""); print }' "$CACHE/ci-governor/state"; }
 cpus() { echo $(( $(cat "$FX/nano") / 1000000000 )); }
-nlog() { if [ -f "$CACHE/checks.log" ]; then grep -c 'check:ci.governor' "$CACHE/checks.log"; else echo 0; fi; }
+nlog() { if [ -f "$CACHE/checks.log" ]; then grep -c 'check:ci-governor' "$CACHE/checks.log"; else echo 0; fi; }
 nsvc() { if [ -f "$FX/svc.log" ]; then grep -c "$1" "$FX/svc.log"; else echo 0; fi; }
 ngh() { if [ -f "$FX/gh.calls" ]; then grep -c "$1" "$FX/gh.calls"; else echo 0; fi; }
 nupd() { if [ -f "$FX/updates" ]; then wc -l < "$FX/updates" | tr -d ' '; else echo 0; fi; }

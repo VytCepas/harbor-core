@@ -28,7 +28,7 @@ t_eq "...and so is a repo that does not read the variable" unset "$(varnow plain
 t_eq "one write" 1 "$(writes)"
 t_eq "one checks.log line for the change" 1 "$(nlog)"
 t_has "...saying which repo and which way" "$(cat "$CACHE/checks.log")" "alpha CI_RUNS_ON unset -> self-hosted"
-t_has "...and quoting the registry id" "$(cat "$CACHE/checks.log")" "[check:ci.runners]"
+t_has "...and quoting the registry id" "$(cat "$CACHE/checks.log")" "[check:ci-runners]"
 run switch --apply >/dev/null; run switch --apply >/dev/null
 t_eq "control: two more ticks write nothing" 1 "$(writes)"
 t_eq "control: ...and log nothing" 1 "$(nlog)"

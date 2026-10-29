@@ -8,12 +8,12 @@ for _dep in jq cmp shasum; do
 done
 T="$T_TMP/p"; OUT="$T/out"; ERR="$T/err"; RC=0; O=""
 mkdir -p "$T/work"
-# HR is HARBOR_SCOPE_ROOT as the engine sees it, PTH its PATH: only the tripwire and hasher arms move them.
+# HR is HARBOR_ROOT as the engine sees it, PTH its PATH: only the tripwire and hasher arms move them.
 _defaults() { PT="$T/targets"; BUD=900; EXT=1; WRK="$T/work"; CNT=/dev/null; HR="$T_ROOT"; PTH="$PATH"; }
 _defaults
 _run_engine() { # <engine> <args…> — a VAR=x prefix on a function call persists under /bin/sh
   _eng=$1; shift; RC=0
-  env PATH="$PTH" HARBOR_SCOPE_ROOT="$HR" PROVE_TARGETS="$PT" PROVE_WORK="$WRK" PROVE_BUDGET="$BUD" \
+  env PATH="$PTH" HARBOR_ROOT="$HR" PROVE_TARGETS="$PT" PROVE_WORK="$WRK" PROVE_BUDGET="$BUD" \
     PROVE_ALLOW_EXTERNAL="$EXT" PROVE_TEST_COUNT="$CNT" sh "$_eng" "$@" >"$OUT" 2>"$ERR" || RC=$?
   O="$(cat "$OUT")"; _defaults
 }

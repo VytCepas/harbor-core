@@ -62,7 +62,7 @@
 # list that silently came back empty is the exact defect harbor#626 records, and
 # a sweep that says "nothing to do" because gh was logged out is worse than none.
 #
-# IN docs/reference/checks.md AS `housekeeping.clean`, AND THE LINE IT DRAWS. The REPORT runs on a schedule:
+# IN docs/reference/checks.md AS `sweep`, AND THE LINE IT DRAWS. The REPORT runs on a schedule:
 # --record writes a one-line count the statusline renders as 🧹N, and SWEEP when
 # it is time. The DELETE does not, and nothing scheduled ever passes --apply.
 # Counting is observation; deciding what to remove stays human-gated —
@@ -79,7 +79,7 @@
 # scripts that were exempted because their --apply arm only ever wrote inside the
 # repo. This one is not that shape, so it takes the gate rather than a sixth
 # exemption: --apply says act, --live says act on the REAL ~/.claude. Neither
-# implies the other, and HARBOR_HOUSEKEEPING_CLEAN_HOME is a test hook, never a safety
+# implies the other, and HARBOR_CLEAN_HOME is a test hook, never a safety
 # boundary — a suite that pins an env var proves nothing about what happens when
 # the operator forgets to.
 #
@@ -101,17 +101,17 @@
 # The operator's "leave it" has to be durable, or the same row is asked about
 # twice a day forever and the count becomes wallpaper.
 # ENV
-#   HARBOR_HOUSEKEEPING_CLEAN_HOME     root to scan (default $HOME) — the suite pins this
-#   HARBOR_HOUSEKEEPING_CLEAN_AGE      age floor in days for log classes (default 14)
-#   HARBOR_HOUSEKEEPING_CLEAN_IDLE     days before unmerged work counts as idle (default 7)
-#   HARBOR_HOUSEKEEPING_CLEAN_GH       the gh binary; `none` switches the GitHub layer off,
+#   HARBOR_CLEAN_HOME     root to scan (default $HOME) — the suite pins this
+#   HARBOR_CLEAN_AGE      age floor in days for log classes (default 14)
+#   HARBOR_CLEAN_IDLE     days before unmerged work counts as idle (default 7)
+#   HARBOR_CLEAN_GH       the gh binary; `none` switches the GitHub layer off,
 #                         which reports every GitHub repo as unread
-#   HARBOR_HOUSEKEEPING_CLEAN_SCRATCH  session scratch root (default /tmp/claude-<uid>)
-#   HARBOR_HOUSEKEEPING_CLEAN_SLOTS    record hours for --if-due (default "9 16", operator
+#   HARBOR_CLEAN_SCRATCH  session scratch root (default /tmp/claude-<uid>)
+#   HARBOR_CLEAN_SLOTS    record hours for --if-due (default "9 16", operator
 #                         decision 2026-09-22)
-#   HARBOR_HOUSEKEEPING_CLEAN_DUE      rows that make the count due (default 10)
-#   HARBOR_TEST_NOW            epoch to judge ages against — the suite pins this
-#   HARBOR_HOUSEKEEPING_CLEAN_BOUND    seconds before a GitHub read is killed (default: each read's
+#   HARBOR_CLEAN_DUE      rows that make the count due (default 10)
+#   HARBOR_NOW            epoch to judge ages against — the suite pins this
+#   HARBOR_CLEAN_BOUND    seconds before a GitHub read is killed (default: each read's
 #                         own, 90-120) — the suite shortens it (harbor#768)
 set -eu
 # The report's header, notes and summary are log-lib lines (contracts/logging.md); its rows are data.
@@ -119,15 +119,15 @@ set -eu
 . "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-fs.sh"
 log_init harbor-clean
 
-HOME_DIR="${HARBOR_HOUSEKEEPING_CLEAN_HOME:-${HARBOR_CLEAN_HOME:-$HOME}}"
+HOME_DIR="${HARBOR_CLEAN_HOME:-$HOME}"
 CFG="${CLAUDE_CONFIG_DIR:-$HOME_DIR/.claude}"
-AGE="${HARBOR_HOUSEKEEPING_CLEAN_AGE:-${HARBOR_CLEAN_AGE:-14}}"
-IDLE="${HARBOR_HOUSEKEEPING_CLEAN_IDLE:-${HARBOR_CLEAN_IDLE:-7}}"
-GH="${HARBOR_HOUSEKEEPING_CLEAN_GH:-${HARBOR_CLEAN_GH:-gh}}"
-SCRATCH="${HARBOR_HOUSEKEEPING_CLEAN_SCRATCH:-${HARBOR_CLEAN_SCRATCH:-/tmp/claude-$(id -u)}}"
-SLOTS="${HARBOR_HOUSEKEEPING_CLEAN_SLOTS:-${HARBOR_CLEAN_SLOTS:-9 16}}"
-DUE_AT="${HARBOR_HOUSEKEEPING_CLEAN_DUE:-${HARBOR_CLEAN_DUE:-10}}"
-NOW="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
+AGE="${HARBOR_CLEAN_AGE:-14}"
+IDLE="${HARBOR_CLEAN_IDLE:-7}"
+GH="${HARBOR_CLEAN_GH:-gh}"
+SCRATCH="${HARBOR_CLEAN_SCRATCH:-/tmp/claude-$(id -u)}"
+SLOTS="${HARBOR_CLEAN_SLOTS:-9 16}"
+DUE_AT="${HARBOR_CLEAN_DUE:-10}"
+NOW="${HARBOR_NOW:-$(date +%s)}"
 KEEPF="$CFG/.helm-sweep-keep"
 APPLY=0
 JSON=0
@@ -417,7 +417,7 @@ repos() {
       for _d in "$HOME_DIR"/*/ "${PORT_ROOT:-$HOME_DIR/port}"/*/; do
         [ -e "$_d/.git" ] && printf '%s\n' "${_d%/}"
       done
-      _fs="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$CFG/cache}}/fleet-snapshot.json"
+      _fs="${HARBOR_CACHE_DIR:-$CFG/cache}/fleet-snapshot.json"
       if [ -f "$_fs" ] && command -v jq >/dev/null 2>&1; then
         jq -r '.[]? | .descriptor.path? // empty' "$_fs" 2>/dev/null || true
       fi
@@ -608,11 +608,11 @@ link_phys() {
   if [ -d "$__p" ]; then _phys "$__p"; else printf '%s/%s' "$(_phys "${__p%/*}")" "${__p##*/}"; fi
 }
 
-# The install root is roots.tsv's HARBOR_SCOPE_LOCAL_BIN (ROOT1 checks this default), based at the scanned home.
+# The install root is roots.tsv's HARBOR_LOCAL_BIN (ROOT1 checks this default), based at the scanned home.
 # A worktree one of its symlinks resolves into is an installed runtime, not finished work (harbor#922).
 install_links() {
   [ -f "$TMPD/installs" ] && return 0
-  __ib="$(HOME="$HOME_DIR"; printf '%s' "${HARBOR_SCOPE_LOCAL_BIN:-${HARBOR_LOCAL_BIN:-$HOME/.local/bin}}")"
+  __ib="$(HOME="$HOME_DIR"; printf '%s' "${HARBOR_LOCAL_BIN:-$HOME/.local/bin}")"
   find "$__ib" -maxdepth 1 -type l 2>/dev/null | sort | while IFS= read -r __l; do
     if __t="$(link_phys "$__l")"; then printf '%s\t%s\n' "$__t" "${__l#"$HOME_DIR"/}"; fi
   done > "$TMPD/installs"
@@ -662,7 +662,7 @@ _kill_tree() {
 # timeout(1), and neither does this box. The watchdog kills its own sleep when it
 # is stopped, so a finished call leaves nothing behind.
 bounded() {
-  _t="${HARBOR_HOUSEKEEPING_CLEAN_BOUND:-${HARBOR_CLEAN_BOUND:-$1}}"; shift
+  _t="${HARBOR_CLEAN_BOUND:-$1}"; shift
   "$@" & _bp=$!
   ( trap 'kill "$_bs" 2>/dev/null; exit 0' TERM
     sleep "$_t" & _bs=$!; wait "$_bs"; _kill_tree "$_bp" ) & _bw=$!
@@ -674,7 +674,7 @@ bounded() {
 
 # A list that FILLED its limit is a list that was cut off — the `cu find` lesson.
 # Overridable only so the suite can prove the cut is caught without 2,000 PRs.
-PR_LIMIT="${HARBOR_HOUSEKEEPING_CLEAN_PR_LIMIT:-${HARBOR_CLEAN_PR_LIMIT:-2000}}"
+PR_LIMIT="${HARBOR_CLEAN_PR_LIMIT:-2000}"
 GHQ='query($owner:String!,$name:String!,$endCursor:String){repository(owner:$owner,name:$name){issues(states:OPEN,first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{number updatedAt body subIssuesSummary{total completed} closedByPullRequestsReferences(first:10,includeClosedPrs:true){nodes{state}}}}}}'
 
 # gh_try <out> <cmd…> — bounded, retried up to 3 times on a 5xx or gateway timeout, never on a 4xx.
@@ -1119,7 +1119,7 @@ if [ "$RECORD" -eq 1 ]; then
   exec 1>&3 3>&-
   ( umask 077; printf '%s\n' "$SUMMARY" > "$REC.tmp" ) && mv -f "$REC.tmp" "$REC"
   ( umask 077; cat "$TMPD/rows.jsonl" > "$REC.jsonl.tmp" ) && mv -f "$REC.jsonl.tmp" "$REC.jsonl"
-  printf '%s  [check:housekeeping.clean]\n' "$SUMMARY"
+  printf '%s  [check:sweep]\n' "$SUMMARY"
   exit 0
 fi
 

@@ -14,7 +14,7 @@
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
+ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
 . "$SRC/library-log.sh"
 log_init deploy-push
 LOG_FD=2
@@ -101,7 +101,7 @@ fi
 PRIV="${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}"
 [ -d "${PRIV%/}" ] || refuse "no private layer, so the private terms cannot be checked" "set HARBOR_SCOPE_PRIVATE; the export gate is core patterns plus those terms"
 GATE=0
-LEAKS_EXPORT=1 HARBOR_SCOPE_ROOT="$STAGE" LEAKS_CORE_PATTERNS="$ROOT/contracts/leak-patterns.tsv" sh "$SRC/lint-leaks.sh" --zero || GATE=$?
+LEAKS_EXPORT=1 HARBOR_ROOT="$STAGE" LEAKS_CORE_PATTERNS="$ROOT/contracts/leak-patterns.tsv" sh "$SRC/lint-leaks.sh" --zero || GATE=$?
 
 # gitleaks over the same stage (harbor#1149): the token shapes no leak pattern names. Missing is a refusal, never a skip.
 # The staged .gitleaks.toml decides, never an inherited GITLEAKS_CONFIG. 8.19+ says `dir`, 8.18 `detect --no-git`.
@@ -167,7 +167,7 @@ hist_scan() {
     { hist_err "writing the messages"; return 1; }
   git -C "$_h" add -f -A || { hist_err "indexing the messages"; return 1; }
   _r=0
-  LEAKS_EXPORT=1 HARBOR_SCOPE_ROOT="$_h" LEAKS_CORE_PATTERNS="$ROOT/contracts/leak-patterns.tsv" sh "$SRC/lint-leaks.sh" --list \
+  LEAKS_EXPORT=1 HARBOR_ROOT="$_h" LEAKS_CORE_PATTERNS="$ROOT/contracts/leak-patterns.tsv" sh "$SRC/lint-leaks.sh" --list \
     > "$TMP/hist.hits" 2> "$TMP/hist.err" || { _r=1; log_fail "history: the leak scan did not complete: $(grep -E 'FAIL' "$TMP/hist.err" | head -1 | sed 's/^ *//')"; log_fix "$FIXL"; }
   if [ -s "$TMP/hist.hits" ]; then
     _r=1; sed -e 's/^\([0-9a-f]\{12\}\)-[0-9a-f]\{12\}\/\(.*\):\([^:]*\)$/commit \1 \2 pattern \3/' \
@@ -200,9 +200,9 @@ fi
 
 # Domain ratchet at zero over the stage (harbor#1274): core carries no workload tool's name.
 DOMAIN=0
-HARBOR_SCOPE_ROOT="$STAGE" sh "$SRC/lint-domain.sh" --zero >&2 || DOMAIN=1
+HARBOR_ROOT="$STAGE" sh "$SRC/lint-domain.sh" --zero >&2 || DOMAIN=1
 # and no workload repo's name (harbor#1273): the ids come from the private registry, so none is named here
-HARBOR_SCOPE_ROOT="$STAGE" sh "$SRC/lint-domain.sh" --repos --zero >&2 || DOMAIN=1
+HARBOR_ROOT="$STAGE" sh "$SRC/lint-domain.sh" --repos --zero >&2 || DOMAIN=1
 # pass-score (decision 17 on harbor#1149): HEAD's docs/explanation/admission-baseline.md, so its pass table, not the working tree's.
 PASSS=0
 # --ci-base (ci-mirror.sh): the PR's base, only the point a mirror's suites are selected against. The leak, secrets,
@@ -218,7 +218,7 @@ else PASSS=1; PASSV="no bin/eval-pass-score.sh at HEAD"; fi
 RTS=0
 if [ "$CIBASE" = 1 ]; then RTV="not run: a CI comparison base, never a release"
 elif [ -f "$RAW/bin/eval-redteam-corpus.sh" ]; then
-  env -u HARBOR_REDTEAM_BASELINE -u HARBOR_REDTEAM_SOURCES -u HARBOR_SCOPE_CACHE_DIR -u HARBOR_CACHE_DIR sh "$RAW/bin/eval-redteam-corpus.sh" --print \
+  env -u HARBOR_REDTEAM_BASELINE -u HARBOR_REDTEAM_SOURCES -u HARBOR_CACHE_DIR sh "$RAW/bin/eval-redteam-corpus.sh" --print \
     > "$TMP/redteam.out" 2>&1 || RTS=1
   RTV="$(grep -cE '^  ok: ' "$TMP/redteam.out" | tr -d ' ') corpus line(s) ok, $(grep -cE '^  FAIL: ' "$TMP/redteam.out" | tr -d ' ') red"
 else RTS=1; RTV="no bin/eval-redteam-corpus.sh at HEAD"; fi

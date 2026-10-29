@@ -11,8 +11,8 @@
 #   sh bin/standard-issue-label.sh --falsifiers      open issues that state no falsifier
 #   sh bin/standard-issue-label.sh --labels          the taxonomy, as the connector reads it
 #
-#   HARBOR_STANDARD_ISSUE_REPO   owner/name; defaults to this checkout's origin
-#   HARBOR_STANDARD_TAXONOMY     path to the taxonomy; defaults to contracts/issue-taxonomy.tsv
+#   HARBOR_ISSUE_REPO   owner/name; defaults to this checkout's origin
+#   HARBOR_TAXONOMY     path to the taxonomy; defaults to contracts/issue-taxonomy.tsv
 #
 # IT SUGGESTS A THEME AND NEVER A TYPE, and the asymmetry is the design. A theme is
 # a claim about which part of the tree an issue is about, so it can be derived from
@@ -50,7 +50,7 @@
 set -eu
 
 ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
-TAX="${HARBOR_STANDARD_TAXONOMY:-${HARBOR_TAXONOMY:-$ROOT/contracts/issue-taxonomy.tsv}}"
+TAX="${HARBOR_TAXONOMY:-$ROOT/contracts/issue-taxonomy.tsv}"
 
 # The one log format (contracts/logging.md). Diagnostics go to stderr, so stdout stays data for every
 # mode except --audit and --falsifiers, which set LOG_FD=1 because their stdout is the report.
@@ -69,7 +69,7 @@ esac
 # `git remote` already holds, and this script runs from worktrees whose origin is
 # the same repo.
 repo() {
-  if [ -n "${HARBOR_STANDARD_ISSUE_REPO:-${HARBOR_ISSUE_REPO:-}}" ]; then printf '%s\n' "${HARBOR_STANDARD_ISSUE_REPO:-${HARBOR_ISSUE_REPO:-}}"; return 0; fi
+  if [ -n "${HARBOR_ISSUE_REPO:-}" ]; then printf '%s\n' "$HARBOR_ISSUE_REPO"; return 0; fi
   git -C "$ROOT" remote get-url origin 2>/dev/null \
     | sed -e 's|^git@[^:]*:||' -e 's|^https://[^/]*/||' -e 's|\.git$||'
 }

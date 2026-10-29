@@ -2,9 +2,9 @@
 # deploy-live-verify.sh (harbor#735) — does the INSTALLED box work? The read-only live tier of the test
 # contract (contracts/test-contract.md rule 6): every live check, one line each with its id.
 #   sh deploy-live-verify.sh --live [--probes]    or: harbor check --live [--probes]
-#   READ-ONLY. The box is $HOME/.claude and the shims in HARBOR_SCOPE_LOCAL_BIN; a sandbox is a HOME.
+#   READ-ONLY. The box is $HOME/.claude and the shims in HARBOR_LOCAL_BIN; a sandbox is a HOME.
 #   --probes   also the real-system probes harbor#667 moved behind stubs: the Keychain lookup contract,
-#              the live-dir refusal, and the browser consent arm when HARBOR_ACCESS_BROWSER_LIVE_URL names a
+#              the live-dir refusal, and the browser consent arm when HARBOR_BROWSER_LIVE_URL names a
 #              site whose analytics you own. None adds, reads or deletes a real secret.
 #   Exit 0 = every check green. 1 = one is red. 2 = usage, --apply or --dir, or CI: it never runs there.
 # secret-seam: macOS-only — probe:secret asks the Keychain for its own answer on an absent item (44), which
@@ -29,7 +29,7 @@ if [ -n "${CI:-}" ] || [ -n "${GITHUB_ACTIONS:-}" ]; then
 fi
 il_target
 CFG="$IL_TARGET"
-ID='[check:deploy.live-verify]'
+ID='[check:live-verify]'
 _td="${TMPDIR:-/tmp}"; W="$(mktemp -d "${_td%/}/live-verify.XXXXXX")" || exit 1
 trap 'rm -rf "$W"' EXIT
 trap 'exit 130' INT TERM HUP
@@ -184,12 +184,12 @@ fi
 
 # The browser's consent arm drives a real page, so it runs only on a URL the operator names: the
 # default is a client's live site, and a probe there writes a visit into that client's analytics.
-if [ -z "${HARBOR_ACCESS_BROWSER_LIVE_URL:-${HARBOR_BROWSER_LIVE_URL:-}}" ]; then
-  log_skip "$ID probe:browser — set HARBOR_ACCESS_BROWSER_LIVE_URL to a site whose analytics you own"
+if [ -z "${HARBOR_BROWSER_LIVE_URL:-}" ]; then
+  log_skip "$ID probe:browser — set HARBOR_BROWSER_LIVE_URL to a site whose analytics you own"
 else
   sh "$HERE/access-browser.sh" --self-test-live < /dev/null > "$W/browser" 2>&1; _r=$?
   case "$_r" in
-    0) log_ok "$ID probe:browser — the consent arms pass on ${HARBOR_ACCESS_BROWSER_LIVE_URL:-${HARBOR_BROWSER_LIVE_URL:-}}" ;;
+    0) log_ok "$ID probe:browser — the consent arms pass on $HARBOR_BROWSER_LIVE_URL" ;;
     2) log_skip "$ID probe:browser — $(grep -m1 'SKIP' "$W/browser" || echo 'backend unavailable')" ;;
     *) log_fail "$ID probe:browser — --self-test-live exited $_r: $(grep -m1 'FAIL' "$W/browser")"
        log_nofix "sh $HERE/access-browser.sh --self-test-live" ;;

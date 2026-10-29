@@ -9,8 +9,8 @@
 # CLAUDE_CONFIG_DIR-aware: in a sandbox session this resolves to the sandbox,
 # whose MEMORY has no .git — the hook stands down instead of touching live.
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-WORKLOG_DIR="${HARBOR_MEMORY_LOG_DIR:-${HARBOR_LOG_DIR:-$CFG/MEMORY}}"
-TOKEN_FILE="${HARBOR_MEMORY_LOG_TOKEN_FILE:-${HARBOR_LOG_TOKEN_FILE:-$CFG/.helm-log-token}}"
+WORKLOG_DIR="${HARBOR_LOG_DIR:-$CFG/MEMORY}"
+TOKEN_FILE="${HARBOR_LOG_TOKEN_FILE:-$CFG/.helm-log-token}"
 
 # ONE marker implementation, not three (H2, contracts/marker.md). This hook used
 # to walk the tree itself with `[ -e "$d/.agents" ]` — the exact predicate

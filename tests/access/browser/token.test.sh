@@ -13,7 +13,7 @@ VAL="fake-extension-token-0123456789"
 STUB="$T_TMP/pw-stub"
 printf '#!/bin/sh\nprintf "STUB args=%%s token=%%s\\n" "$*" "${PLAYWRIGHT_MCP_EXTENSION_TOKEN:-none}"\n' > "$STUB"; chmod +x "$STUB"
 PH="$T_TMP/private-hosts.txt"; printf '# a private vendor\nintranet.example.net\n' > "$PH"
-ag() { env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_BROWSER_PRIVATE_HOSTS="$PH" HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" \
+ag() { env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_BROWSER_PRIVATE_HOSTS="$PH" HARBOR_PW_CLI="$STUB" \
   CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" "$@" > "$T_TMP/out" 2>&1; echo "exit $?"; }
 out() { cat "$T_TMP/out"; }
 
@@ -33,7 +33,7 @@ t_eq "a later verb runs" "exit 0" "$(ag goto https://ads.google.com/)"
 t_has "without the token: only attach carries it" "$(out)" "token=none"
 
 t_section "a token in the caller's env is still refused"
-t_eq "attach with an ambient token exits 1" "exit 1" "$(env PLAYWRIGHT_MCP_EXTENSION_TOKEN=x HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" attach > "$T_TMP/out" 2>&1; echo "exit $?")"
+t_eq "attach with an ambient token exits 1" "exit 1" "$(env PLAYWRIGHT_MCP_EXTENSION_TOKEN=x HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" attach > "$T_TMP/out" 2>&1; echo "exit $?")"
 t_hasnt "and the CLI never ran" "$(out)" "STUB"
 
 t_section "hosts: the allow-list goto and tab-new read"

@@ -15,7 +15,7 @@
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
+ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
 LAYERS="${LAYERS_FILE:-$ROOT/contracts/layers.tsv}"
 ALLOW="${DEV_PATHS_ALLOW:-$ROOT/contracts/dev-paths-allow.tsv}"
 BASE="${DEV_PATHS_BASELINE:-$ROOT/contracts/lint-dev-paths-baseline.txt}"
@@ -55,7 +55,7 @@ hits() { # file TAB dev path, one line per pair, sorted
                        if (f ~ /\.(md|html|tsv|txt|json|jsonl|csv)$/) next
                        print f "\t" d }' || :
   done < "$T/devs" | sort -u > "$T/pairs"
-  cut -f1 "$T/pairs" | sort -u | HARBOR_SCOPE_ROOT="$ROOT" LAYERS_FILE="$LAYERS" sh "$SRC/scope-layers.sh" --core > "$T/core"
+  cut -f1 "$T/pairs" | sort -u | HARBOR_ROOT="$ROOT" LAYERS_FILE="$LAYERS" sh "$SRC/scope-layers.sh" --core > "$T/core"
   rows "$ALLOW" > "$T/allow"
   awk -F'\t' -v core="$T/core" -v allow="$T/allow" '
     BEGIN { while ((getline l < core) > 0) C[l] = 1

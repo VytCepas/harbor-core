@@ -83,7 +83,7 @@ get what a run gives them:
 
 | Reader | Reads | From a `cached` row |
 |---|---|---|
-| `test-suite-run.sh --tally` (the required contexts' relays) | col 1 (not `fail`, not `skip` = ran), col 4 count | ran, the recorded count — so `floor_count`, `normalize_count`, `marker_count` and status-gen's `HARBOR_STATUS_SUITE_COUNTS` are the pass's |
+| `test-suite-run.sh --tally` (the required contexts' relays) | col 1 (not `fail`, not `skip` = ran), col 4 count | ran, the recorded count — so `floor_count`, `normalize_count`, `marker_count` and status-gen's `HARBOR_SUITE_COUNTS` are the pass's |
 | `test-suite-run.sh --combine` | one row per candidate | passed through; counted as `N cached` in its note |
 | the CI `results_<K>` outputs | the whole TSV, base64 | unchanged |
 | `--record` / `--record-from` | col 2 | **ignored**: the table keeps measured times, never replayed ones |

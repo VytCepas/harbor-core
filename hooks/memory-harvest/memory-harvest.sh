@@ -40,10 +40,10 @@
 set -u
 
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-WORKLOG_DIR="${HARBOR_MEMORY_LOG_DIR:-${HARBOR_LOG_DIR:-$CFG/MEMORY}}"
-PROJECTS="${HARBOR_MEMORY_TRANSCRIPT_DIR:-${HARBOR_TRANSCRIPT_DIR:-$CFG/projects}}"
-DAYS="${HARBOR_MEMORY_HARVEST_DAYS:-${HARBOR_HARVEST_DAYS:-7}}"
-CAP="${HARBOR_MEMORY_HARVEST_CAP:-${HARBOR_HARVEST_CAP:-25}}"
+WORKLOG_DIR="${HARBOR_LOG_DIR:-$CFG/MEMORY}"
+PROJECTS="${HARBOR_TRANSCRIPT_DIR:-$CFG/projects}"
+DAYS="${HARBOR_HARVEST_DAYS:-7}"
+CAP="${HARBOR_HARVEST_CAP:-25}"
 
 # harbor#813: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./guard-lib.sh from it.
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac

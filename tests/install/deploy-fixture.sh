@@ -5,13 +5,13 @@
 # shellcheck disable=SC2089,SC2090
 INSTALLERS='policy-constitution-install.sh deploy-shim-install.sh deploy-harden.sh deploy-runtime-install.sh floor-install.sh prod-guard-install.sh skill-install.sh skill-catalog.sh context-injection-install.sh pack.sh'
 # A stub logs argv, fails when STUB_FAIL names "<script>:dry|apply", runs STUB_HOOK_<name> on apply.
-# It records a child run WITHOUT HARBOR_DEPLOY_ACTIVE=1 (#285) or WITH a CLAUDE_CONFIG_DIR, both of which deploy
+# It records a child run WITHOUT HARBOR_DEPLOY=1 (#285) or WITH a CLAUDE_CONFIG_DIR, both of which deploy
 # must never hand a child, and prints one line in the log shape, for the relay into deploy's log.
 _stub_body='#!/bin/sh
 n=$(basename "$0")
 L="$STUB_LOG"; [ -z "${CLAUDE_CONFIG_DIR:-}" ] || L="$STUB_LOG.rehearse"
 printf "%s %s\n" "$n" "$*" >> "$L"
-[ "${HARBOR_DEPLOY_ACTIVE:-${HARBOR_DEPLOY:-}}" = 1 ] || printf "%s\n" "$n" >> "$STUB_LOG.nodeploy"
+[ "${HARBOR_DEPLOY:-}" = 1 ] || printf "%s\n" "$n" >> "$STUB_LOG.nodeploy"
 case " $* " in *" --apply "*) m=apply ;; *) m=dry ;; esac
 v=$(printf %s "$n" | tr -d ".-"); eval "h=\${STUB_HOOK_$v:-}"
 [ "$m" = apply ] && [ -n "$h" ] && sh -c "$h"
@@ -115,11 +115,11 @@ run() { # [answers] -- deploy args. With answers, under a pty; without, stdin is
   if [ -n "$_ans" ]; then
     rm -f "$T/done"
     { sleep 1; printf "$_ans"; _i=0; while [ ! -f "$T/done" ] && [ "$_i" -lt 90 ]; do sleep 1; _i=$((_i + 1)); done; } \
-      | { cd "$_cwd" && pty env -u CLAUDE_CONFIG_DIR -u HARBOR_SCOPE_LOCAL_BIN -u HARBOR_LOCAL_BIN CLAUDECODE="${CC:-}" $_env sh "$@" >"$T/out" 2>&1; echo $? >"$T/rc"; touch "$T/done"; }
+      | { cd "$_cwd" && pty env -u CLAUDE_CONFIG_DIR -u HARBOR_LOCAL_BIN CLAUDECODE="${CC:-}" $_env sh "$@" >"$T/out" 2>&1; echo $? >"$T/rc"; touch "$T/done"; }
     RC="$(cat "$T/rc")"
   else
     RC=0
-    ( cd "$_cwd" && env -u CLAUDE_CONFIG_DIR -u HARBOR_SCOPE_LOCAL_BIN -u HARBOR_LOCAL_BIN CLAUDECODE="${CC:-}" $_env sh "$@" ) >"$T/out" 2>&1 </dev/null || RC=$?
+    ( cd "$_cwd" && env -u CLAUDE_CONFIG_DIR -u HARBOR_LOCAL_BIN CLAUDECODE="${CC:-}" $_env sh "$@" ) >"$T/out" 2>&1 </dev/null || RC=$?
   fi
   tr -d '\r' <"$T/out" >"$T/out.txt"
 }

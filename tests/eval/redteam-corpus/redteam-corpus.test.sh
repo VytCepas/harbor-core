@@ -15,8 +15,8 @@ corpus() { # <file> <decision:command>… — one JSONL line each
   for _l in "$@"; do jq -nc --arg d "${_l%%:*}" --arg c "${_l#*:}" '{command: $c, decision: $d}' >> "$_cf"; done
 }
 BUS="$HOME/.local/state/harbor/events"  # the sandbox HOME's bus, handed over: the cache here is not the live one
-run() { HARBOR_EVENT_DIR="${BUSX-$BUS}" HARBOR_REDTEAM_DIR="$C" HARBOR_SCOPE_CACHE_DIR="${CACHEX:-$CACHE}" HARBOR_REDTEAM_BASELINE="$BL" HARBOR_REDTEAM_SOURCES="$SRC" \
-          HARBOR_NODE="${NODEBIN:-/nonexistent/node}" HARBOR_TEST_NOW="${AT:-1790000000}" sh "$TOOL" "$@" > "$T_TMP/out" 2>&1
+run() { HARBOR_EVENT_DIR="${BUSX-$BUS}" HARBOR_REDTEAM_DIR="$C" HARBOR_CACHE_DIR="${CACHEX:-$CACHE}" HARBOR_REDTEAM_BASELINE="$BL" HARBOR_REDTEAM_SOURCES="$SRC" \
+          HARBOR_NODE="${NODEBIN:-/nonexistent/node}" HARBOR_NOW="${AT:-1790000000}" sh "$TOOL" "$@" > "$T_TMP/out" 2>&1
         _rr=$?; cat "$T_TMP/out" >> "$T_TMP/all.out"; echo "exit $_rr"; }
 OUT() { cat "$T_TMP/out"; }
 st() { cut -f1 "$CACHE/redteam/shguard.guardfall.misses" | tr '\n' ' '; }
@@ -26,7 +26,7 @@ t_section "first run: a miss and a false positive, both new and not accepted, so
 corpus guardfall "Block:echo $MARK" "Allow:git status" "Allow:git reset --hard"
 t_eq "it exits 1" "exit 1" "$(run --no-refresh)"
 t_eq "the labelled-Block echo that Harbor allows is miss:1; the ask before a discard is fp:3" "miss:1 fp:3 " "$(st)"
-t_has "checks.log carries the registry id and the delta" "$(lastlog)" "[check:eval.redteam-corpus] "
+t_has "checks.log carries the registry id and the delta" "$(lastlog)" "[check:redteam-corpus] "
 t_has "...new 2, cleared 0, standing 2 of 3" "$(lastlog)" "new=2 cleared=0 standing=2 of 3 unaccepted=2"
 t_has "the run names the corpus and its counts" "$(OUT)" "shguard/guardfall: 1 miss(es), 1 false positive(s) of 3"
 t_has "node absent: ccg is skipped" "$(OUT)" "ccg: skipped - node is not installed"

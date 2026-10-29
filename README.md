@@ -65,7 +65,7 @@ warns about the rest. Not "the system rewrites itself."
 
 Already three separate things, deliberately:
 
-- **`docs/reports/rejected-approaches.md`** — approaches tried and *rejected*, append-only.
+- **`docs/decisions/rejected-approaches.md`** — approaches tried and *rejected*, append-only.
   In-repo and git-diffable because it must survive any tool being deleted.
 - **`~/.claude/MEMORY/KNOWLEDGE/`** — the durable library (workstream **D**).
 - **The missing middle** — what actually happened, per decision (harbor#41).
@@ -119,7 +119,7 @@ Start Claude Code once first, so that `~/.claude/settings.json` exists: deploy r
 
 ## Documents
 
-The planning notes below, `docs/reports/rejected-approaches.md`, `docs/generated/status.md` and `docs/how-to/handover.md` are among the files `contracts/layers.tsv` marks `dev`: they stay in the development checkout and the exported core does not carry them, so a core document names them in code font and never links them.
+The planning notes below, `docs/decisions/rejected-approaches.md`, `docs/generated/status.md` and `docs/how-to/handover.md` are among the files `contracts/layers.tsv` marks `dev`: they stay in the development checkout and the exported core does not carry them, so a core document names them in code font and never links them.
 
 `harbor#N` and `(#N)` throughout the tree cite the private development tracker. They record where a rule came from; they are not links you can open.
 

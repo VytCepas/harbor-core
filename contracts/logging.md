@@ -135,7 +135,7 @@ are not tags and stay green. The guard channel's `BLOCKED` is channel 2's protoc
   own (D-29) and are not outcomes. **The reader window (D-49):** a reader of a migrated check's status
   also accepts the old 2 as "could not judge" until a person closes the window, and marks each such line
   `D-49 window`. `git grep -n 'D-49 window'` is the whole list, and closing the window is deleting what it
-  names. The migrated checks are `memory.route`, `lint.rule-health`, `lint.port-paths`, `ci.main-tip-verdict` and
+  names. The migrated checks are `memory-route`, `rule-health`, `port-paths`, `main-tip-verdict` and
   `visual-check`; their exit-3 and exit-2 arms are in each check's own suite.
 - **A wrapper that ends in `exec` has no run to summarise once the command it hands over to starts.**
   `gcx` and the `gcloud` wrapper log on stderr, because stdout is the wrapped command's: a success prints
@@ -198,7 +198,7 @@ fix line, so its output is byte-identical to before. *tests/test/lib/lib.test.sh
   the row); a row whose file is **new since the base**; a row for a file that **already conforms**; an
   unknown kind, an empty why, a duplicate, a path LOG1 cannot read. A row whose file is gone is an
   advisory: it can exempt nothing, because a file re-created under it is new since the base.
-- **The base is `test-suite-select.sh`'s:** `HARBOR_CI_BASE`, default `origin/main`, taken from the merge-base
+- **The base is `test-suite-select.sh`'s:** `HARBOR_BASE`, default `origin/main`, taken from the merge-base
   with HEAD — so a branch behind a main that edited an exempt file is not blamed for main's edit. The
   comparison is by content, to the working tree, so an uncommitted edit counts and a mode change is
   S6's. With no base, LOG1 says the ratchet was **not** checked rather than reading clean.

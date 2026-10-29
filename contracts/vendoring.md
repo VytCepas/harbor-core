@@ -96,7 +96,7 @@ does not name its tier is incomplete.
 | vendor | `docs/reference/provenance.md` for a skill; `vendor/<name>/docs/reference/provenance.md` for a tool: pin, exclusions, re-pin test |
 | depend | beside the pin, and the ticket that chose it |
 | take the idea | the authored file cites its source |
-| refuse | the ticket, and `docs/reports/rejected-approaches.md` when the refusal is a pattern |
+| refuse | the ticket, and `docs/decisions/rejected-approaches.md` when the refusal is a pattern |
 
 When #447 makes the provenance record machine-readable, the verdict and its tier
 become fields there. Until then this table is the convention and nothing checks it.

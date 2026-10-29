@@ -12,7 +12,7 @@ Nothing here edits `.github/workflows/` or `~/.claude`; the operator steps are a
 
 ## 1. Infrastructure-failed jobs are re-run once
 
-`rerun-lost` (check id `ci.lost-rerun`, same `cache/ci-lost-reruns.tsv`, same one `checks.log` line per action) grew from one
+`rerun-lost` (check id `ci-lost-rerun`, same `cache/ci-lost-reruns.tsv`, same one `checks.log` line per action) grew from one
 shape to three. All three are a job that **failed or was cancelled with no step concluded `failure`**; a job with a failed
 step is a real failure and its annotations are not even read.
 
@@ -31,7 +31,7 @@ run id in the same file, and the `attempt == 1` filter (a re-run run is on attem
 re-run is left to a person). Falsifier: `sh tests/ci/runners/lost.test.sh`.
 
 Unverified against live GitHub: that a human-cancelled job never carries a step with a null conclusion. The suite stubs the shape
-the operator's definition gives; if a cancelled job ever re-runs by mistake, the `[check:ci.lost-rerun]` line names the reason
+the operator's definition gives; if a cancelled job ever re-runs by mistake, the `[check:ci-lost-rerun]` line names the reason
 (`a step left with no conclusion`) and `lost-rerun off` disables the whole check.
 
 ## 2. Load timeouts: the governor lifts an old low-priority job
@@ -47,7 +47,7 @@ ran. A job that started under that cut, or ran into one, could not finish inside
 - **No starvation:** the lift is capped so every other busy container keeps `linux_min`, so a priority repo is never cut under the floor
   to pay for it; with a single day-to-day job on budget 4 it gets 2 cores instead of 3, only while a harbor job is past 900s. An
   emergency (rung c) overrides the lift like every cap, and nothing else changes: young low jobs are cut exactly as before.
-- **Visible:** the `[check:ci.governor]` line says `harbor-linux --cpus 1 -> 2 (job over 900s keeps its lift)`; `status` marks the
+- **Visible:** the `[check:ci-governor]` line says `harbor-linux --cpus 1 -> 2 (job over 900s keeps its lift)`; `status` marks the
   runner `aged`.
 - **Falsifier:** `sh tests/ci/governor/priority.test.sh` (boundary 899s/900s, the floors, `lift_after=0`, config keys, the
   unread age, an aged and a young low job together, the emergency).
@@ -76,7 +76,7 @@ sh bin/ci-runners.sh list
 sh bin/ci-governor.sh status
 ```
 
-What it buys and costs. It removes the queue (two harbor jobs at once), and the alarm (`ci.runner-alarm`) and `rerun-lost` already watch
+What it buys and costs. It removes the queue (two harbor jobs at once), and the alarm (`ci-runner-alarm`) and `rerun-lost` already watch
 it by name. It does **not** add cores: the governor's budget (4 active, 8 idle) is split between two busy low runners, so each job runs
 slower. Pair it with the lift above, or the second runner trades queueing for timeouts.
 
@@ -85,7 +85,7 @@ in `sh bin/ci-runners.sh list --json`), then `governance 1`.
 
 ## 4. The wedge alarm already exists
 
-The #1060 item "a registered runner offline, or jobs queued > N minutes with no runner" is `ci.runner-alarm` (docs/reference/checks.md), built on
+The #1060 item "a registered runner offline, or jobs queued > N minutes with no runner" is `ci-runner-alarm` (docs/reference/checks.md), built on
 `ci-runners.sh tick`'s reads with no poll of its own; `sh tests/ci/runner/alarm.test.sh` replays the 2026-10-05 reboot. Not added again.
 Its one blind spot is by design: a job queued **behind a busy runner** is not "no runner able to take it", so the 2026-10-06 queue of
 eight runs would not raise it; that queue is what `ci-queue.sh` estimates (the statusline `⏳N ·~Mm`) and what the second runner relieves.

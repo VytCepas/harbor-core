@@ -23,7 +23,7 @@ else case "$(uname -s)" in
   Darwin) FILE='/Library/Application Support/ClaudeCode/managed-settings.json' ;;
   *) FILE='/etc/claude-code/managed-settings.json' ;;
 esac; fi
-RECV="${HARBOR_RECEIVER_PLIST:-/Library/LaunchDaemons/com.harbor.audit.otlp-receiver.plist}"
+RECV="${HARBOR_RECEIVER_PLIST:-/Library/LaunchDaemons/com.harbor.otlp-receiver.plist}"
 BASE="$(dirname -- "$FILE")"
 MODE=install
 for a in "$@"; do case "$a" in

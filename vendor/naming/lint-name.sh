@@ -27,7 +27,7 @@
 #   --format findings   also print one `<A|V> TAB <rule> TAB <subject>` record per finding on stdout
 #   --root <dir>        the tree to judge (default: this checkout)
 #   --registry <dir>    the registry (default: <root>/standards/naming)
-#   --base <ref>        the base for --changed, --added and name.exemption-grow (default: $HARBOR_CI_BASE or origin/main)
+#   --base <ref>        the base for --changed, --added and name.exemption-grow (default: $HARBOR_BASE or origin/main)
 #   --today YYYY-MM-DD  the date alias and exemption expiry is judged against (default: today in UTC, D-51)
 #   --exemptions-base <file>   the base exemptions.tsv for name.exemption-grow (default: read from git)
 #   HARBOR_SCOPE_PRIVATE=<dir>  the private layer whose terms.tsv overlays client and system terms (D-85; default: $PORT_ROOT/harbor-private)
@@ -58,7 +58,7 @@ log_init lint-name
 
 usage() { awk 'NR < 2 { next } /^# DELIBERATELY/ || !/^#/ { exit } { sub(/^# ?/, ""); print }' "$SELF"; }
 
-ACTION=tree; FORMAT=""; ROOT=""; REG=""; BASE="${HARBOR_CI_BASE:-${HARBOR_BASE:-origin/main}}"; TODAY=""; EXBASE=""
+ACTION=tree; FORMAT=""; ROOT=""; REG=""; BASE="${HARBOR_BASE:-origin/main}"; TODAY=""; EXBASE=""
 UNCHECKED=3   # D-49: pass 0, fail 1, usage 2, unchecked 3
 SURFACE=""; NAME=""; VIEW=""; SLOTS=""
 while [ $# -gt 0 ]; do
@@ -162,7 +162,7 @@ REL_REG="${REG#"$ROOT"/}"
 _rg="$(reg_file registers.tsv)"
 [ -r "$_rg" ] || { log_fail "the registry has no readable registers.tsv — nothing was judged"; log_fix "ls $REG"; log_end || :; exit "$UNCHECKED"; }
 FILES="$(awk -F'\t' '/^#/ || /^[ \t]*$/ { next } !h++ { next } $2 ~ /^[a-z][a-z0-9-]*\.tsv$/ && !s[$2]++ { printf "%s ", $2 }' "$_rg")"
-for _f in terms.tsv aliases.tsv exemptions.tsv controls.tsv surfaces.tsv kinds.tsv repo-kinds.tsv registers.tsv renames.tsv words.tsv; do
+for _f in terms.tsv aliases.tsv exemptions.tsv controls.tsv surfaces.tsv kinds.tsv repo-kinds.tsv registers.tsv words.tsv; do
   case " $FILES " in *" $_f "*) ;; *)
     log_fail "registers.tsv has no row naming $_f, which the judge reads — nothing was judged"
     log_fix "add its row to $REL_REG/registers.tsv (id, file, select, census, note)"; log_end || :; exit "$UNCHECKED" ;;
@@ -206,13 +206,12 @@ function emit(rule, subject, msg,   k, e) {
   if (k in DONE) return
   DONE[k] = 1
   if (!regrule(rule)) { e = exempt(rule, subject); if (e != "") { USED[e] = 1; NSUP++; return } }
-  print "F", rule, ((FORCEWARN == 1) ? "warn" : (rule in MODE) ? MODE[rule] : "warn"), subject, msg
+  print "F", rule, ((rule in MODE) ? MODE[rule] : "warn"), subject, msg
 }
 function exempt(rule, subject,   k, i, b, b2) {
   if (selfpath(subject)) return ""
   k = rule SUBSEP subject
   if (k in EXACT) return EXACT[k]
-  if (subject in RENWIN) return RENWIN[subject]   # an env name in its dual-read window (renames.tsv, harbor#961 W5)
   for (i = 1; i <= NPRE; i++) if ((PRER[i] == rule || PRER[i] == "*") && index(subject, PRES[i]) == 1) return PREI[i]
   b = base(subject); b2 = b; sub(/\.tmpl$/, "", b2)
   for (i = 1; i <= NGLOB; i++) if ((GLR[i] == rule || GLR[i] == "*") && (b ~ GLB[i] || b2 ~ GLB[i])) return GLI[i]
@@ -731,7 +730,8 @@ FILENAME != recfile {
     if (AKD[id] == "legacy" && !isdate(AREM[id])) emit("name.registry-term", "alias:" id, "a legacy alias has a remove_by date")
     if (AKD[id] == "codename" && AKD[id] != "" && AREM[id] != "never") emit("name.registry-term", "alias:" id, "a codename never expires: remove_by is never")
     if (AKD[id] == "spelling" && (AREM[id] != "never" || ASURF[id] != "-")) emit("name.registry-term", "alias:" id, "a spelling is allowed nowhere and never expires: surfaces -, remove_by never (D-16)")
-    if (isdate(AREM[id]) && TODAYN >= jdn(AREM[id]) - 14) AEXP[++NAEXP] = id   # judged at END, once controls.tsv has set the mode of the rule
+    if (isdate(AREM[id]) && TODAYN >= jdn(AREM[id]) - 14)
+      emit("name.alias-expired", "alias:" id, q(id) " is removed by " AREM[id] (TODAYN >= jdn(AREM[id]) ? ", which has passed" : ", within 14 days") ": rename what still uses it (§10.3)")
     if (AKD[id] == "codename") for (i = 1; i <= split(ASURF[id], SS, ","); i++) if (SS[i] == "env-prefix") SYS[++NSYS] = id
   } else if (sh == "exemptions.tsv") {
     er = col(f, "rule"); es = col(f, "subject"); ek = col(f, "kind"); ed = col(f, "remove_by")
@@ -751,13 +751,6 @@ FILENAME != recfile {
       NGLOB++; GLR[NGLOB] = er; GLB[NGLOB] = "^" g "$"; GLI[NGLOB] = id }
     else if (es ~ /\/$/) { NPRE++; PRER[NPRE] = er; PRES[NPRE] = es; PREI[NPRE] = id }
     else EXACT[er, es] = id
-  } else if (sh == "renames.tsv") {
-    # An env row with a remove_by date is a dual-read window: until that date every reader reads the new name, then the
-    # old one, so the old name stays in the tree on purpose and the row, not an exemptions.tsv row, is what it rests on.
-    # Past the date it is judged again, which is when bin/standard-rename.sh --apply collapses the reads. A --check
-    # judges a name at its birth, and a first scan (--gen exemptions) judges the tree bare, so neither applies it.
-    ro = col(f, "old"); rd = col(f, "remove_by")
-    if (col(f, "surface") == "env" && ro ~ /^env:/ && isdate(rd) && TODAYN <= jdn(rd) && mode != "check" && nolegacy != 1) RENWIN[ro] = id
   } else if (sh == "controls.tsv") {
     RULE[++NRULE] = id; ctype = col(f, "type"); cm = col(f, "mode"); mm = (cm in LEGMODE) ? LEGMODE[cm] : cm
     MODE[id] = mm; CTYPE[id] = ctype; CENG[id] = col(f, "engine"); CSURF[id] = col(f, "surfaces"); CRED[id] = col(f, "red_proof")
@@ -842,12 +835,6 @@ $1 == "V" { sid = $2
   if (VERR != "") { print "V", sid, "err", VERR; next }
   print "V", sid, "ok", "^(" body ")$"; next }
 END {
-  # An alias warns until its remove_by date and blocks from it (operator decision 2026-10-29, harbor#968).
-  for (i = 1; i <= NAEXP; i++) {
-    id = AEXP[i]; FORCEWARN = (TODAYN < jdn(AREM[id]))
-    emit("name.alias-expired", "alias:" id, q(id) " is removed by " AREM[id] (TODAYN >= jdn(AREM[id]) ? ", which has passed" : ", within 14 days") ": rename what still uses it (§10.3)")
-  }
-  FORCEWARN = 0
   for (i = 1; i <= NREG; i++) {
     f = REGF[i]
     if (!(f in WHY)) shape(f, "no `# WHY` line in the header (§4)")

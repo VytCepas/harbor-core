@@ -5,8 +5,8 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/checks/lint-fixture.sh"
 : # nopriv is deliberately never created
-LK() { HARBOR_SCOPE_ROOT="$1" HARBOR_SCOPE_PRIVATE="${PV:-$T_TMP/nopriv}" sh "$T_ROOT/bin/lint-leaks.sh" "$2" ${3:+"$3"} 2>&1; }
-rc() { HARBOR_SCOPE_ROOT="$1" HARBOR_SCOPE_PRIVATE="${PV:-$T_TMP/nopriv}" sh "$T_ROOT/bin/lint-leaks.sh" "$2" >/dev/null 2>&1; echo $?; }
+LK() { HARBOR_ROOT="$1" HARBOR_SCOPE_PRIVATE="${PV:-$T_TMP/nopriv}" sh "$T_ROOT/bin/lint-leaks.sh" "$2" ${3:+"$3"} 2>&1; }
+rc() { HARBOR_ROOT="$1" HARBOR_SCOPE_PRIVATE="${PV:-$T_TMP/nopriv}" sh "$T_ROOT/bin/lint-leaks.sh" "$2" >/dev/null 2>&1; echo $?; }
 PATH_HDR='id	kind	pattern	note'
 # Real-looking home paths are built from parts so this file holds no literal one (an export scan of the tree counts tests).
 UH=/Users; HH=/home
@@ -46,7 +46,7 @@ D="$(mk corenb x)"; t_eq "a non-numeric baseline is red" "1" "$(rc "$D" --check)
 D="$(mk coregrow 2)"; printf "cd $UH/jdoe/more\n" >> "$D/bin/a.sh"
 t_eq "a third occurrence in a file already listed is red" "1" "$(rc "$D" --check)"
 mkdir -p "$T_TMP/nogit"
-t_exit "a non-checkout inspected nothing and is not a pass" 2 env HARBOR_SCOPE_ROOT="$T_TMP/nogit" sh "$T_ROOT/bin/lint-leaks.sh" --check
+t_exit "a non-checkout inspected nothing and is not a pass" 2 env HARBOR_ROOT="$T_TMP/nogit" sh "$T_ROOT/bin/lint-leaks.sh" --check
 
 t_section "each private kind matches, and its near-miss does not"
 kinds() { # <kind> <pattern> <hit line> <near-miss line>
@@ -140,18 +140,18 @@ printf 'allow-bad\tallow\tno-equals-sign\tn\n' >> "$D/contracts/leak-patterns.ts
 t_has "an allow pattern without <id>=<text> is named" "$(LK "$D" --check)" "an allow pattern is <pattern-id>=<exact matched text>"
 PV="$(pv alpriv "p1	allow	home-path=$UH/jdoe/	n")"; cp "$T_TMP/lp.keep" "$D/contracts/leak-patterns.tsv"
 t_has "an allow row in the private layer is a finding" "$(LK "$D" --check)" "kind allow is for the core file only"
-t_eq "...and it forgives nothing" "2" "$(HARBOR_SCOPE_ROOT="$D" HARBOR_SCOPE_PRIVATE="$PV" sh "$T_ROOT/bin/lint-leaks.sh" --count core 2>/dev/null)"
+t_eq "...and it forgives nothing" "2" "$(HARBOR_ROOT="$D" HARBOR_SCOPE_PRIVATE="$PV" sh "$T_ROOT/bin/lint-leaks.sh" --count core 2>/dev/null)"
 unset PV
 # An allow row names one pattern: the same text under another core id still counts. The pattern file sits outside the checkout.
 { cat "$T_ROOT/contracts/leak-patterns.tsv"
   printf "alt-home\tregex\t$UH/qa-[a-z]+/\tn\nallow-qa\tallow\thome-path=$UH/qa-probe/\tn\n"; } > "$T_TMP/lp-scope.tsv"
 D="$(mk alscope 2)"; printf "P=$UH/qa-probe/a\n" > "$D/bin/ph.sh"
-t_eq "an allow row forgives only the pattern it names" "3" "$(HARBOR_SCOPE_ROOT="$D" HARBOR_SCOPE_PRIVATE="$T_TMP/nopriv" LEAKS_CORE_PATTERNS="$T_TMP/lp-scope.tsv" sh "$T_ROOT/bin/lint-leaks.sh" --count core 2>/dev/null)"
+t_eq "an allow row forgives only the pattern it names" "3" "$(HARBOR_ROOT="$D" HARBOR_SCOPE_PRIVATE="$T_TMP/nopriv" LEAKS_CORE_PATTERNS="$T_TMP/lp-scope.tsv" sh "$T_ROOT/bin/lint-leaks.sh" --count core 2>/dev/null)"
 FU=fixuser; export LEAKS_OWN_USER="$FU"
 D="$(mk alown 2)"; printf "P=$UH/$FU/a\n" > "$D/bin/me.sh"
 printf "allow-own\tallow\thome-path=$UH/$FU/\tn\n" >> "$D/contracts/leak-patterns.tsv"
 t_has "an allow row naming the operator is a finding" "$(LK "$D" --check)" "allow row allow-own would forgive the operator's own user name"
-t_eq "...it forgives nothing: the path and the row's own line both count" "4" "$(HARBOR_SCOPE_ROOT="$D" HARBOR_SCOPE_PRIVATE="$T_TMP/nopriv" sh "$T_ROOT/bin/lint-leaks.sh" --count core 2>/dev/null)"
+t_eq "...it forgives nothing: the path and the row's own line both count" "4" "$(HARBOR_ROOT="$D" HARBOR_SCOPE_PRIVATE="$T_TMP/nopriv" sh "$T_ROOT/bin/lint-leaks.sh" --count core 2>/dev/null)"
 t_hasnt "...and the user name is never printed" "$(LK "$D" --check)" "$FU"
 t_eq "...and the ratchet is red" "1" "$(rc "$D" --check)"
 D="$(mk alownc 2)"; printf "P=$UH/FIXUSER/a\n" > "$D/bin/me.sh"
@@ -163,7 +163,7 @@ printf "allow-pv\tallow\thome-path=$UH/zorblax/\tn\n" >> "$D/contracts/leak-patt
 ALL="$(LK "$D" --check)"
 t_has "an allow row matching a private pattern is a finding that names the pattern id" "$ALL" "allow row allow-pv would forgive private pattern p1"
 t_hasnt "...and never its text" "$ALL" "zorblax"
-t_eq "...and it forgives nothing" "4" "$(HARBOR_SCOPE_ROOT="$D" HARBOR_SCOPE_PRIVATE="$PV" sh "$T_ROOT/bin/lint-leaks.sh" --count core 2>/dev/null)"
+t_eq "...and it forgives nothing" "4" "$(HARBOR_ROOT="$D" HARBOR_SCOPE_PRIVATE="$PV" sh "$T_ROOT/bin/lint-leaks.sh" --count core 2>/dev/null)"
 unset PV LEAKS_OWN_USER
 
 commit() { ( cd "$1" && git add -A && git -c user.email=t@t -c user.name=t commit -qm y ) >/dev/null 2>&1; }
@@ -176,8 +176,8 @@ planted() {
   rm -f "$D/$3"; git -C "$D" add -A
   t_eq "...green once removed" "0" "$($1 "$D" --zero >/dev/null 2>&1; echo $?)"
 }
-RT() { HARBOR_SCOPE_ROOT="$1" HARBOR_SCOPE_PRIVATE="${PV:-$T_TMP/nopriv}" sh "$T_ROOT/bin/lint-leaks.sh" "$2" ${3:+"$3"}; }
-EX() { LEAKS_EXPORT=1 HARBOR_SCOPE_ROOT="$1" HARBOR_SCOPE_PRIVATE="${PV:-$T_TMP/nopriv}" sh "$T_ROOT/bin/lint-leaks.sh" "$2" ${3:+"$3"}; }
+RT() { HARBOR_ROOT="$1" HARBOR_SCOPE_PRIVATE="${PV:-$T_TMP/nopriv}" sh "$T_ROOT/bin/lint-leaks.sh" "$2" ${3:+"$3"}; }
+EX() { LEAKS_EXPORT=1 HARBOR_ROOT="$1" HARBOR_SCOPE_PRIVATE="${PV:-$T_TMP/nopriv}" sh "$T_ROOT/bin/lint-leaks.sh" "$2" ${3:+"$3"}; }
 
 t_section "a word ends at _ and a domain at -, so a joined id is a hit (harbor#1149)"
 PV="$(pv widen 'k1	word	Zorb	n' 'k2	domain	wibble.test	n')"
@@ -208,7 +208,7 @@ t_eq "the ratchet does not count it: export mode only" "0" "$(RT "$D" --count co
 printf '~%sx -Users-%ss-p %s/%sx\n' "$FU" "$FU" "$HH" "$FU" > "$D/bin/o.txt"; git -C "$D" add -A
 t_eq "a longer name is not the user" "0" "$(EX "$D" --count core 2>/dev/null)"
 rm -f "$D/bin/o.txt"; git -C "$D" add -A; unset LEAKS_OWN_USER
-EXH() { HOME="$T_TMP/h/fixhome" LEAKS_EXPORT=1 HARBOR_SCOPE_ROOT="$1" HARBOR_SCOPE_PRIVATE="$T_TMP/nopriv" sh "$T_ROOT/bin/lint-leaks.sh" "$2" ${3:+"$3"}; }
+EXH() { HOME="$T_TMP/h/fixhome" LEAKS_EXPORT=1 HARBOR_ROOT="$1" HARBOR_SCOPE_PRIVATE="$T_TMP/nopriv" sh "$T_ROOT/bin/lint-leaks.sh" "$2" ${3:+"$3"}; }
 planted EXH "without LEAKS_OWN_USER, the name from HOME" bin/h.txt "see ~fixhome/x" own-user
 
 t_section "lint.leaks runs the same check"

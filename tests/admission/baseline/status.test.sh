@@ -2,15 +2,15 @@
 # The numbers the floor suite feeds (harbor#727): status-gen's re-entry guard (harbor#288), the
 # dashboard as a view of status-gen (VIZ-1), docs/generated/status.md host-invariance and its observed twin (#91), and
 # counts supplied by a run that already paid for them (#120). Every status-gen here is sandboxed by
-# HARBOR_SCOPE_ROOT/HARBOR_DEPLOY_LIVE_DIR, and every suite it could spawn is a stub.
+# HARBOR_ROOT/HARBOR_DEPLOY_LIVE_DIR, and every suite it could spawn is a stub.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$(dirname "$0")/fixture.sh"
 _ne() { [ "$1" != "$2" ] && echo differs || echo "same: $1"; }   # <a> <b>
 
 t_section "RE-ENTRY-0 (harbor#773): the part inherits none of status-gen's inputs from its caller"
 # Derived from status-gen itself; the re-entry marker is the fixture's own, and RE-ENTRY-1 pins it.
-_sg_in="$(grep -oE '[$][{](HARBOR_[A-Z0-9_]+|HELM_[A-Z0-9_]+|FAST)' "$SRC/status-generate.sh" | sed 's/^..//' | sort -u | grep -vxE 'HARBOR_(TEST_)?IN_SUITE')"
-t_eq "RE-ENTRY-0 status-gen reads the variables this row checks" yes "$(printf '%s\n' "$_sg_in" | grep -qx HARBOR_STATUS_SUITE_COUNTS && echo yes)"
+_sg_in="$(grep -oE '[$][{](HARBOR_[A-Z0-9_]+|HELM_[A-Z0-9_]+|FAST)' "$SRC/status-generate.sh" | sed 's/^..//' | sort -u | grep -vx HARBOR_IN_SUITE)"
+t_eq "RE-ENTRY-0 status-gen reads the variables this row checks" yes "$(printf '%s\n' "$_sg_in" | grep -qx HARBOR_SUITE_COUNTS && echo yes)"
 t_eq "RE-ENTRY-0 none of them is set in the part: $(printf '%s ' $_sg_in)" "" \
   "$(for _v in $_sg_in; do env | grep -q "^$_v=" && printf '%s ' "$_v"; done)"
 
@@ -28,16 +28,16 @@ _re_fixture() { # <dir> — a bin-only tree, a stub tests/admission/baseline/bas
 }
 _re_spawns() { [ -f "$1/spawned" ] && grep -c spawned "$1/spawned" 2>/dev/null || echo 0; }  # <dir>
 # The marker must reach a CHILD: a plain assignment satisfies an in-shell test and blinds every child.
-t_eq "RE-ENTRY-1 HARBOR_TEST_IN_SUITE reaches a child" 1 "$(sh -c 'printf %s "${HARBOR_TEST_IN_SUITE:-}"' 2>/dev/null)"
-t_eq "RE-ENTRY-1 HARBOR_TEST_IN_SUITE is set in the part's own shell" 1 "${HARBOR_TEST_IN_SUITE:-}"
+t_eq "RE-ENTRY-1 HARBOR_IN_SUITE reaches a child" 1 "$(sh -c 'printf %s "${HARBOR_IN_SUITE:-}"' 2>/dev/null)"
+t_eq "RE-ENTRY-1 HARBOR_IN_SUITE is set in the part's own shell" 1 "${HARBOR_IN_SUITE:-}"
 _re_fixture "$RE/nested"
-HARBOR_TEST_IN_SUITE=1 HARBOR_SCOPE_ROOT="$RE/nested" sh "$SRC/status-generate.sh" --json-fast \
+HARBOR_IN_SUITE=1 HARBOR_ROOT="$RE/nested" sh "$SRC/status-generate.sh" --json-fast \
   >"$RE/nested/out" 2>"$RE/nested/err" || true
 t_eq "RE-ENTRY-1 nested: status-gen runs no suite from inside one" 0 "$(_re_spawns "$RE/nested")"
 t_has "RE-ENTRY-1 nested: the refusal says why" "$(cat "$RE/nested/err" 2>/dev/null)" 'harbor#288'
 # The negative control: marker cleared, same fixture, the stub MUST run, or the two above prove nothing.
 _re_fixture "$RE/toplevel"
-env -u HARBOR_TEST_IN_SUITE -u HARBOR_IN_SUITE HARBOR_SCOPE_ROOT="$RE/toplevel" sh "$SRC/status-generate.sh" --json-fast \
+env -u HARBOR_IN_SUITE HARBOR_ROOT="$RE/toplevel" sh "$SRC/status-generate.sh" --json-fast \
   >"$RE/toplevel/out" 2>/dev/null || true
 t_eq "RE-ENTRY-1 control: top level reaches the run branch" 1 "$(_re_spawns "$RE/toplevel")"
 t_eq "RE-ENTRY-1 control: the stub's count is read" 7 "$(jq -r '.assertions."floor-test"' "$RE/toplevel/out" 2>/dev/null)"
@@ -47,7 +47,7 @@ rm -f "$RE/warm/bin/floor-test.sh"
 printf '#!/bin/sh\nprintf "spawned\\n" >> "%s/spawned"\nexit 0\n' "$RE/warm" > "$RE/warm/tests/admission/baseline/baseline.test.sh"
 chmod +x "$RE/warm/tests/admission/baseline/baseline.test.sh"
 printf '| `floor-test` assertions | 4242 |\n' > "$RE/warm/docs/generated/status.md"
-_re_warm="$(HARBOR_TEST_IN_SUITE=1 HARBOR_SCOPE_ROOT="$RE/warm" sh "$SRC/status-generate.sh" --json-fast 2>/dev/null \
+_re_warm="$(HARBOR_IN_SUITE=1 HARBOR_ROOT="$RE/warm" sh "$SRC/status-generate.sh" --json-fast 2>/dev/null \
             | jq -r '.assertions."floor-test"' 2>/dev/null)"
 t_eq "RE-ENTRY-1 a nested FAST read of docs/generated/status.md still answers" 4242 "$_re_warm"
 t_eq "RE-ENTRY-1 the FAST branch runs no suite" 0 "$(_re_spawns "$RE/warm")"
@@ -66,7 +66,7 @@ t_eq "VIZ-1 the page references no external resource (renders with the wifi off)
   "pattern:$(printf '%s' '<script src="https://cdn.example/x.js">' | grep -qE "$_vzre" && echo hit || echo miss) page:$(printf '%s' "$_viz" | grep -qE "$_vzre" && echo external || echo none)"
 mkdir -p "$VZ/hollow/bin"
 t_exit "VIZ-1 no numbers behind it: dashboard-gen refuses to render" 1 \
-  env HARBOR_SCOPE_ROOT="$VZ/hollow" sh "$SRC/status-dashboard-generate.sh" --stdout
+  env HARBOR_ROOT="$VZ/hollow" sh "$SRC/status-dashboard-generate.sh" --stdout
 
 t_section "VIZ-1: --open uses the opener this OS has, and says where the page is when it has none (harbor#618)"
 # A PATH of every tool this host has minus the openers and gh; each case adds only the opener under test.
@@ -77,7 +77,7 @@ for _op in open xdg-open wslview; do
   mkdir -p "$VZ/o-$_op"; printf '#!/bin/sh\nprintf "%s %%s\\n" "$1" >> "%s"\n' "$_op" "$VZ/opened.log" > "$VZ/o-$_op/$_op"; chmod +x "$VZ/o-$_op/$_op"
 done
 mkdir -p "$VZ/o-none"
-oprun() { env HARBOR_TEST_IN_SUITE=1 HARBOR_SCOPE_ROOT="$VO" PATH="$VZ/stub:$VZ/o-$1:$VZ/noopen" sh "$VO/bin/status-dashboard-generate.sh" --open 2>&1; }
+oprun() { env HARBOR_IN_SUITE=1 HARBOR_ROOT="$VO" PATH="$VZ/stub:$VZ/o-$1:$VZ/noopen" sh "$VO/bin/status-dashboard-generate.sh" --open 2>&1; }
 t_eq "control: the opener-free PATH has none of them" "" "$(PATH="$VZ/noopen" command -v open xdg-open wslview)"
 oprun open >/dev/null
 t_eq "macOS: open gets the page" "open $VO/build/dashboard.html" "$(cat "$VZ/opened.log")"
@@ -121,7 +121,7 @@ SGR="$SG/root"; mkdir -p "$SGR/docs/generated"
 for _l in bin vendor contracts fixtures tests; do
   [ -e "$HROOT/$_l" ] && ln -sf "$HROOT/$_l" "$SGR/$_l"
 done
-_sgen() { FAST=1 HARBOR_SCOPE_ROOT="$SGR" HARBOR_DEPLOY_LIVE_DIR="$1" sh "$SRC/status-generate.sh" ${2:-} 2>/dev/null; }
+_sgen() { FAST=1 HARBOR_ROOT="$SGR" HARBOR_DEPLOY_LIVE_DIR="$1" sh "$SRC/status-generate.sh" ${2:-} 2>/dev/null; }
 cp "$T_ROOT/fixtures/status/seed.md" "$SGR/docs/generated/status.md"   # a seed, not the repo's docs/generated/status.md: that is dev-layer and not in the export
 _s_full="$(_sgen "$SG/full")"
 _s_decoy="$(_sgen "$SG/decoy")"
@@ -138,11 +138,11 @@ t_eq "STATUS-1/#91 the tracked file carries no machine-observed row (the observe
 # Red-green for T1's mechanism: a stale REPO-DERIVED count must still fail --check-fast.
 _sgen "$SG/full" --apply >/dev/null 2>&1
 t_exit "STATUS-1/#91 a freshly generated docs/generated/status.md passes --check-fast" 0 \
-  env FAST=1 HARBOR_SCOPE_ROOT="$SGR" HARBOR_DEPLOY_LIVE_DIR="$SG/full" sh "$SRC/status-generate.sh" --check-fast
+  env FAST=1 HARBOR_ROOT="$SGR" HARBOR_DEPLOY_LIVE_DIR="$SG/full" sh "$SRC/status-generate.sh" --check-fast
 sed 's/^| lint rules | [0-9]*/| lint rules | 99999/' "$SGR/docs/generated/status.md" > "$SGR/docs/generated/status.md.x" \
   && mv "$SGR/docs/generated/status.md.x" "$SGR/docs/generated/status.md"
 t_exit "STATUS-1/#91 a wrong repo-derived count fails --check-fast" 1 \
-  env FAST=1 HARBOR_SCOPE_ROOT="$SGR" HARBOR_DEPLOY_LIVE_DIR="$SG/full" sh "$SRC/status-generate.sh" --check-fast
+  env FAST=1 HARBOR_ROOT="$SGR" HARBOR_DEPLOY_LIVE_DIR="$SG/full" sh "$SRC/status-generate.sh" --check-fast
 
 t_section "SUPPLIED-1 (harbor#120): a count a real run paid for, without re-running it"
 # Pinned both ways: a supplied count must skip the run, and must still be able to go red.
@@ -151,7 +151,7 @@ _tf="$(grep -F '`floor-test` assertions' "$SGR/docs/generated/status.md" 2>/dev/
 _tn="$(grep -F '`normalize-test` assertions' "$SGR/docs/generated/status.md" 2>/dev/null | grep -oE '[0-9]+' | head -1)"
 _tm="$(grep -F '`marker-test` assertions' "$SGR/docs/generated/status.md" 2>/dev/null | grep -oE '[0-9]+' | head -1)"
 _sgc() { # <counts> — --check with NO FAST, so only the supplied value can stop a suite running
-  _sgc_out="$(HARBOR_STATUS_SUITE_COUNTS="$1" HARBOR_SCOPE_ROOT="$SGR" HARBOR_DEPLOY_LIVE_DIR="$SG/full" \
+  _sgc_out="$(HARBOR_SUITE_COUNTS="$1" HARBOR_ROOT="$SGR" HARBOR_DEPLOY_LIVE_DIR="$SG/full" \
     sh "$SRC/status-generate.sh" --check 2>&1)"; _sgc_rc=$?
 }
 _sgc "floor-test=$_tf normalize-test=$_tn marker-test=$_tm"
@@ -163,10 +163,10 @@ t_eq "SUPPLIED-1 a wrong supplied count fails --check" 1 "$_sgc_rc"
 # Malformed is exit 2, never a silent fallback to running the suite, and never 1 ("stale").
 for _badv in 'floor-test' 'flor-test=1' 'floor-test=abc' 'floor-test=' 'floor-test=1,normalize-test=x'; do
   _sgc "$_badv"
-  t_eq "SUPPLIED-1 malformed HARBOR_STATUS_SUITE_COUNTS '$_badv' exits 2" 2 "$_sgc_rc"
+  t_eq "SUPPLIED-1 malformed HARBOR_SUITE_COUNTS '$_badv' exits 2" 2 "$_sgc_rc"
 done
 t_exit "SUPPLIED-1 --check-fast is unmoved by a supplied count" 0 \
-  env FAST=1 HARBOR_STATUS_SUITE_COUNTS="floor-test=424242" HARBOR_SCOPE_ROOT="$SGR" HARBOR_DEPLOY_LIVE_DIR="$SG/full" \
+  env FAST=1 HARBOR_SUITE_COUNTS="floor-test=424242" HARBOR_ROOT="$SGR" HARBOR_DEPLOY_LIVE_DIR="$SG/full" \
   sh "$SRC/status-generate.sh" --check-fast
 ff_sealed
 t_done

@@ -4,10 +4,10 @@
 # descriptor through one adapter process each. Only the resolver's fixtures are COUNTED; the siblings'
 # answers are reported on their own line, so docs/generated/status.md's count reads the same on every box (2026-09-06).
 # A sibling that disagrees, or an adapter that answers short, still fails. A missing clone SKIPS.
-#   sh marker-test.sh --unsettled   the cases the spec does not decide;  HARBOR_TEST_SKIP_CROSS=1  resolver only
+#   sh marker-test.sh --unsettled   the cases the spec does not decide;  HARBOR_SKIP_CROSS=1  resolver only
 PI_DIR="${HARBOR_SCOPE_SCAFFOLDER:-${HARBOR_PROJECT_INIT:-${PORT_ROOT:-$HOME/port}/project-init}}"          # located before t_init sandboxes HOME;
 PO_DIR="${HARBOR_SCOPE_FLEET_CONTROLLER:-${HARBOR_ORCHESTRATOR:-${PORT_ROOT:-$HOME/port}/projects-orchestrator}}"  # the suite never writes there
-SKIP_CROSS="${HARBOR_TEST_SKIP_CROSS:-${HARBOR_SKIP_CROSS:-0}}"  # and before t_init clears the caller's HARBOR_* (harbor#773)
+SKIP_CROSS="${HARBOR_SKIP_CROSS:-0}"  # and before t_init clears the caller's HARBOR_* (harbor#773)
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 CASES="$T_ROOT/fixtures/marker/cases.json"; M="$T_TMP/m"; mkdir -p "$M"; TAB="$(printf '\t')"
 command -v jq >/dev/null 2>&1 || { echo "marker-test: jq is required" >&2; exit 1; }
@@ -99,7 +99,7 @@ x_report() { # <role> <label> <outfile>
 PYTHONDONTWRITEBYTECODE=1; export PYTHONDONTWRITEBYTECODE  # no __pycache__ in a sibling clone
 echo
 if [ "$SKIP_CROSS" = "1" ]; then
-  echo "  · cross-repo   SKIPPED (HARBOR_TEST_SKIP_CROSS=1) — the resolver only"
+  echo "  · cross-repo   SKIPPED (HARBOR_SKIP_CROSS=1) — the resolver only"
 else
   PI_HOOK="$PI_DIR/templates/base/dot_agents/hooks/prod_guard.py"
   if [ -f "$PI_HOOK" ] && command -v python3 >/dev/null 2>&1; then

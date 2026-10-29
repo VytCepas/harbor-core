@@ -11,7 +11,7 @@ is_link() { [ -L "$1" ] && echo link || echo "not a link"; }
 mkdir -p "$(route_of "$T")"; printf -- '---\nname: a\n---\nx\n' > "$(route_of "$T")/a.md"
 printf 'main\t~/main\tw\nother\t~/other\tw\n' > "$PRIV/inject.d/box/projects.tsv"
 # `other` is a registry row that is not a worktree: it is routed only if the hook ran the router.
-G() { HOME="$T" PORT_ROOT="$T/port" HARBOR_SCOPE_PRIVATE="$PRIV" HARBOR_SCOPE_REPO="$REPOROOT" CLAUDE_CONFIG_DIR="$CFG" git -C "$T/main" -c core.hooksPath="$T_ROOT/hooks" "$@"; }
+G() { HOME="$T" PORT_ROOT="$T/port" HARBOR_SCOPE_PRIVATE="$PRIV" HARBOR_REPO="$REPOROOT" CLAUDE_CONFIG_DIR="$CFG" git -C "$T/main" -c core.hooksPath="$T_ROOT/hooks" "$@"; }
 git -C "$T/main" init -q; git -C "$T/main" config user.email t@t; git -C "$T/main" config user.name t
 : > "$T/main/f"; git -C "$T/main" add -A >/dev/null 2>&1; git -C "$T/main" commit -qm base >/dev/null 2>&1
 
@@ -31,7 +31,7 @@ t_eq "…by the one router, so the registry's other rows are too" link "$(is_lin
 
 t_section "a later checkout INSIDE a linked worktree is ordinary again"
 rm -f "$(route_of "$T/other")"
-HOME="$T" PORT_ROOT="$T/port" HARBOR_SCOPE_PRIVATE="$PRIV" HARBOR_SCOPE_REPO="$REPOROOT" CLAUDE_CONFIG_DIR="$CFG" git -C "$T/main-wt-side" -c core.hooksPath="$T_ROOT/hooks" checkout -q -b again >/dev/null 2>&1
+HOME="$T" PORT_ROOT="$T/port" HARBOR_SCOPE_PRIVATE="$PRIV" HARBOR_REPO="$REPOROOT" CLAUDE_CONFIG_DIR="$CFG" git -C "$T/main-wt-side" -c core.hooksPath="$T_ROOT/hooks" checkout -q -b again >/dev/null 2>&1
 t_eq "a branch switch in a worktree routes nothing" "not a link" "$(is_link "$(route_of "$T/other")")"
 
 t_section "harbor#966: another repo's raw worktree is blind until the hook is wired box-wide"
@@ -41,7 +41,7 @@ git init -q "$T/wl"; git -C "$T/wl" config user.email t@t; git -C "$T/wl" config
 : > "$T/wl/f"; git -C "$T/wl" add -A >/dev/null 2>&1; git -C "$T/wl" commit -qm base >/dev/null 2>&1
 : > "$T/gc-none"
 printf '[hook "harbor-memory-route"]\n\tevent = post-checkout\n\tcommand = %s\n' "$T_ROOT/hooks/post-checkout" > "$T/gc-hook"
-W() { _gc="$1"; shift; HOME="$T" PORT_ROOT="$T/port" HARBOR_SCOPE_PRIVATE="$PRIV" HARBOR_SCOPE_REPO="$REPOROOT" CLAUDE_CONFIG_DIR="$CFG" \
+W() { _gc="$1"; shift; HOME="$T" PORT_ROOT="$T/port" HARBOR_SCOPE_PRIVATE="$PRIV" HARBOR_REPO="$REPOROOT" CLAUDE_CONFIG_DIR="$CFG" \
       GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL="$_gc" "$@"; }
 route() { W "$T/gc-none" sh "$T_ROOT/bin/memory-route.sh" --dir "$CFG" 2>/dev/null; }
 W "$T/gc-none" git -C "$T/wl" worktree add -q -b a "$T/wl-wt-a" >/dev/null 2>&1

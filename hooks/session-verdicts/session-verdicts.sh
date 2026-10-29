@@ -162,8 +162,8 @@ if [ -f "$JV" ]; then
   if [ -n "$(find "$JV" -mtime +2 -print 2>/dev/null)" ]; then
     # The job's own restart, per platform (harbor#618): launchd on macOS, a systemd user unit elsewhere.
     case "$(uname -s 2>/dev/null)" in
-      Darwin) _jcheck="launchctl kickstart -k gui/\$(id -u)/com.harbor.audit.triage" ;;
-      *) _jcheck="systemctl --user start harbor-audit-triage.service; journalctl --user -u harbor-audit-triage.service -n 20" ;;
+      Darwin) _jcheck="launchctl kickstart -k gui/\$(id -u)/com.harbor.judge" ;;
+      *) _jcheck="systemctl --user start harbor-judge.service; journalctl --user -u harbor-judge.service -n 20" ;;
     esac
     add "ledger judge STALE: last verdict $_jstamp and the daily job has not written since. The judge is not reporting clean — it is not reporting. Check: $_jcheck"
   else
@@ -201,7 +201,7 @@ fi
 # wallpaper failure the header opens by naming. The detail is one command away and
 # the line says which one.
 #
-# STAMPED `[check:drift.reference-check]` because docs/reference/checks.md requires it: every alert
+# STAMPED `[check:reference-check]` because docs/reference/checks.md requires it: every alert
 # resolves to its registry row, and from there to the command that switches it
 # off, without anyone opening the source.
 #
@@ -221,10 +221,10 @@ if [ -f "$RCHK" ] && command -v jq >/dev/null 2>&1; then
     _rn="$(printf '%s' "$_rj" | jq -r '.findings | length')"
     if [ "${_rn:-0}" -gt 0 ] 2>/dev/null; then
       _rr="$(printf '%s' "$_rj" | jq -r '[.findings[].rule] | group_by(.) | map("\(.[0])x\(length)") | join(" ")')"
-      add "[check:drift.reference-check] INSTALLED SURFACE: $_rn reference(s) do not resolve ($_rr). This is the copy every session loads. Detail: sh $CFGQ/bin/drift-reference-check.sh $RCQ"
+      add "[check:reference-check] INSTALLED SURFACE: $_rn reference(s) do not resolve ($_rr). This is the copy every session loads. Detail: sh $CFGQ/bin/drift-reference-check.sh $RCQ"
     fi
   else
-    add "[check:drift.reference-check] could not run the installed-surface check — that is not a clean result. Try: sh $CFGQ/bin/drift-reference-check.sh $RCQ"
+    add "[check:reference-check] could not run the installed-surface check — that is not a clean result. Try: sh $CFGQ/bin/drift-reference-check.sh $RCQ"
   fi
 fi
 

@@ -82,7 +82,7 @@ t_section "8 · a cache that stopped being written is a verdict of its own"
 touch -t 202601010000 "$JV"
 t_has "a dead scheduled job reads stale" "$(sv)" "ledger judge STALE"
 UB="$T/uname"; mkdir -p "$UB"
-for _u in Darwin:launchctl Linux:'systemctl --user start harbor-audit-triage.service'; do
+for _u in Darwin:launchctl Linux:'systemctl --user start harbor-judge.service'; do
   printf '#!/bin/sh\necho %s\n' "${_u%%:*}" > "$UB/uname"; chmod +x "$UB/uname"
   t_has "${_u%%:*}: the stale verdict's check is that platform's (harbor#618)" "$(PATH="$UB:$PATH" sv)" "Check: ${_u#*:}"
 done

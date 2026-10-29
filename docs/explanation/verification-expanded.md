@@ -201,7 +201,7 @@ files that forbid it.
 Unmeasurable today, and that is the point of harbor#41: `floor_block()` prints to
 stderr and exits, so nothing records which rule fired on what. A rule the system
 cannot measure is a rule the system cannot honour. See also
-`docs/reports/rejected-approaches.md` DE-10, where a "covered" verdict was reached by
+`docs/decisions/rejected-approaches.md` DE-10, where a "covered" verdict was reached by
 matching capability names instead of reading the artefacts.
 
 ## Endogenous and exogenous instruments

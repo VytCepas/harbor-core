@@ -52,7 +52,7 @@
 #
 # KEYS, NEVER VALUES, in every message: an ANTHROPIC_AUTH_TOKEN value is a
 # credential. Values are compared inside jq and never printed. Registered in
-# docs/reference/checks.md as `admission.api-route`; every repair is stamped `[check:admission.api-route]` in
+# docs/reference/checks.md as `api-route`; every repair is stamped `[check:api-route]` in
 # $CLAUDE_CONFIG_DIR/cache/checks.log.
 #
 # FAILS OPEN. An error in this hook must never stop a session doing ordinary
@@ -169,7 +169,7 @@ mark() {
 # stamp <file> <keys> <action> — the registry line every verdict carries.
 stamp() {
   mkdir -p "$CFG/cache" 2>/dev/null \
-    && printf '[check:admission.api-route] %s %s keys=%s action=%s\n' "$ts" "$1" "$2" "$3" >>"$CFG/cache/checks.log" 2>/dev/null
+    && printf '[check:api-route] %s %s keys=%s action=%s\n' "$ts" "$1" "$2" "$3" >>"$CFG/cache/checks.log" 2>/dev/null
   return 0
 }
 

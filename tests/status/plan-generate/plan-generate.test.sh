@@ -5,7 +5,7 @@
 TOOL="$T_ROOT/bin/status-plan-generate.sh"; P="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"
 # Not plan.md and docs/generated/plan.md: on a case-insensitive volume those are one file (the harbor#239 trap).
 PLAN="$P/tickets.md"; OUT="$P/derived.md"
-run() { HARBOR_STATUS_PLAN_SRC="$PLAN" HARBOR_STATUS_PLAN_OUT="$OUT" sh "$TOOL" "$@" > "$P/out" 2>&1; echo $?; }
+run() { HARBOR_PLAN_SRC="$PLAN" HARBOR_PLAN_OUT="$OUT" sh "$TOOL" "$@" > "$P/out" 2>&1; echo $?; }
 state() { grep -F "| \`$1\` |" "$OUT" | awk -F'|' '{ gsub(/ /, "", $3); print $3 }'; }  # <ticket id>
 : > "$P/present.txt"
 cat > "$PLAN" <<EOF
@@ -61,14 +61,14 @@ t_eq "--check passes on a freshly written file" 0 "$(run --check)"
 printf '\n**Z6 · added later** — effort S\n- Evidence: %s\n' "$P/present.txt" >> "$PLAN"
 t_eq "--check fails when the plan moved and the file did not" 1 "$(run --check)"
 t_has "…and says the file is stale" "$(cat "$P/out")" 'stale'
-t_eq "an absent plan refuses" 1 "$(HARBOR_STATUS_PLAN_SRC="$P/nope.md" HARBOR_STATUS_PLAN_OUT="$OUT" sh "$TOOL" --summary > "$P/out" 2>&1; echo $?)"
+t_eq "an absent plan refuses" 1 "$(HARBOR_PLAN_SRC="$P/nope.md" HARBOR_PLAN_OUT="$OUT" sh "$TOOL" --summary > "$P/out" 2>&1; echo $?)"
 t_has "…and says there is no plan" "$(cat "$P/out")" 'no plan at'
 
 t_section "host: is named, never evaluated, so the derivation is HOME-independent"
 # Teeth first: a cmd: reaching into $HOME must differ across two HOMEs, or the host: arm is
 # vacuous. $HOME stays literal in the fixture; status-plan-generate.sh expands it in its own eval.
 HA="$P/homeA"; HB="$P/homeB"; mkdir -p "$HA" "$HB"; : > "$HA/on-this-box-only"; HP="$P/hostdep.md"
-derive() { HOME="$2" HARBOR_STATUS_PLAN_SRC="$HP" HARBOR_STATUS_PLAN_OUT="$P/$1.md" sh "$TOOL" >/dev/null 2>&1; }  # <out> <home>
+derive() { HOME="$2" HARBOR_PLAN_SRC="$HP" HARBOR_PLAN_OUT="$P/$1.md" sh "$TOOL" >/dev/null 2>&1; }  # <out> <home>
 printf '## H · fixture\n\n**H1 · a falsifier that reaches into $HOME** — effort S\n- Evidence: cmd: test -f "$HOME/on-this-box-only"\n' > "$HP"
 derive h-a "$HA"; derive h-b "$HB"
 t_exit "a HOME-dependent cmd: differs across two HOMEs" 1 cmp -s "$P/h-a.md" "$P/h-b.md"

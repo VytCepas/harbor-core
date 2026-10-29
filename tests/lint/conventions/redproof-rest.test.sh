@@ -96,8 +96,8 @@ _rp_red ROOT1 "ignores PORT_ROOT" "a site default spelled flat, which ignores PO
 t_section "SHIM1: a shim the table names that the live dir lacks (harbor#588)"
 _rp_fresh; mkdir -p "$RP/contracts"
 cp "$SRC/deploy-shim-install.sh" "$SRC/scope-roots.sh" "$SRC/library-log.sh" "$SRC/deploy-install-lib.sh" "$RP/bin/"
-printf 'var\tbase\trel\tbreaks\nHARBOR_SCOPE_LOCAL_BIN\tBOX\t.local/bin\tx\nHARBOR_SCOPE_REPO\tREPOS\tharbor\tx\n' > "$RP/contracts/roots.tsv"
-printf 'name\troot\trel\nzz-probe\tHARBOR_SCOPE_REPO\tbin/zz-probe\n' > "$RP/contracts/shims.tsv"
+printf 'var\tbase\trel\tbreaks\nHARBOR_LOCAL_BIN\tBOX\t.local/bin\tx\nHARBOR_REPO\tREPOS\tharbor\tx\n' > "$RP/contracts/roots.tsv"
+printf 'name\troot\trel\nzz-probe\tHARBOR_REPO\tbin/zz-probe\n' > "$RP/contracts/shims.tsv"
 _rp_sh "$RP/bin/zz-probe"; chmod 755 "$RP/bin/zz-probe"
 _SH0="$HOME"; HOME="$TMP/rp-shim-home"; export HOME; mkdir -p "$HOME/.local/bin" "$HOME/port"
 ln -s "$RP" "$HOME/port/harbor"; ln -s "$HOME/port/harbor/bin/zz-probe" "$HOME/.local/bin/zz-probe"
@@ -116,10 +116,10 @@ _IJ_OH="$HOME"; _IJ_OC="${CLAUDE_CONFIG_DIR:-}"; _IJ_OP="${HARBOR_SCOPE_PRIVATE:
 t_has "IJ6 sees the routed repo as loading the store" "$(_rp IJ6)" "every governed repo on this box loads the memory store"
 rm "$_IJ_K/memory"
 _rp_red IJ6 "ADVISORY [memory.repo-reachable] 1 governed repo(s) start with NO memory" "a governed repo with no memory door"
-# harbor#896: the ledger hears this once, as check/memory.route from the receipt the run just wrote
-: > "$TMP/ij6.rec"; HARBOR_LINT_FINDINGS_OUT="$TMP/ij6.rec" HARBOR_SCOPE_ROOT="$RP" sh "$LINT" --only IJ6 >/dev/null 2>&1 || :
+# harbor#896: the ledger hears this once, as check/memory-route from the receipt the run just wrote
+: > "$TMP/ij6.rec"; HARBOR_FINDINGS_OUT="$TMP/ij6.rec" HARBOR_ROOT="$RP" sh "$LINT" --only IJ6 >/dev/null 2>&1 || :
 t_eq "IJ6 records that it ran, and no subject of its own" "R memory.repo-reachable" "$(tr '\t' ' ' < "$TMP/ij6.rec" | sort -u | tr '\n' ' ' | sed 's/ $//')"
-t_eq "the run wrote memory-route's red receipt" red "$(jq -r .status "$CLAUDE_CONFIG_DIR/cache/checks/memory.route.json" 2>/dev/null)"
+t_eq "the run wrote memory-route's red receipt" red "$(jq -r .status "$CLAUDE_CONFIG_DIR/cache/checks/memory-route.json" 2>/dev/null)"
 # D-49: a stood-down tool is never a finding, whichever code it exits (3 is D-29 unchecked, 2 the code it had before); a 1 still is
 cp "$RP/bin/memory-route.sh" "$TMP/ij6.real-route"
 for _ij_c in 3 2; do
@@ -194,10 +194,10 @@ _sk dead 'Runs `bin/gone.sh` for you. USE WHEN x. NOT FOR y.'
 _rp_red skill.cited-path-exists "skills/dead cites bin/gone.sh, which is not in the tree" "a description citing a script that does not exist"
 
 
-t_section "N3 (block): a NOT FOR handoff to a tracked slash command resolves (harbor#1010)"
-_rp_fresh; mkdir -p "$RP/skills/giver" "$RP/commands" "$HOME/.claude/skills"
+t_section "N3 (advisory): a NOT FOR handoff to a tracked slash command resolves (harbor#1010)"
+_rp_fresh; mkdir -p "$RP/skills/giver" "$RP/commands"
 printf -- '---\nname: giver\ndescription: Gives. USE WHEN giving. NOT FOR merging (merge-gate).\n---\n' > "$RP/skills/giver/SKILL.md"
-_rp_red N3 'VIOLATION [skill.not-for-target-exists] giver hands off to "merge-gate"' "a handoff to a command that is not tracked"
+_rp_red N3 'ADVISORY [skill.not-for-target-exists] giver hands off to "merge-gate"' "a handoff to a command that is not tracked"
 printf '# merge-gate\n' > "$RP/commands/merge-gate.md"
 _rp_green N3 "a handoff to commands/merge-gate.md"
 
@@ -206,7 +206,7 @@ CR="$T_TMP/cr"; rm -rf "$CR"; mkdir -p "$CR/bin" "$CR/standards/naming"; cp "$T_
 printf 'id\tmode\n' > "$CR/standards/naming/controls.tsv"
 git -C "$CR" init -q -b main; git -C "$CR" add -A; git -C "$CR" -c user.email=t@e.invalid -c user.name=t commit -q -m base
 git -C "$CR" checkout -q -b feature
-_cr() { ( HARBOR_CI_BASE="${1:-main}"; export HARBOR_CI_BASE; _rp lint.comment-conform "$CR" ); }
+_cr() { ( HARBOR_BASE="${1:-main}"; export HARBOR_BASE; _rp lint.comment-conform "$CR" ); }
 t_has "a branch adding nothing is clean, and the engine ran" "$(_cr)" "1 rules, 0 violations"
 t_eq "...with no advisory" "" "$(_cr | grep -F 'ADVISORY [lint.comment-conform]')"
 printf '#!/usr/bin/env sh\n# whatever\nx=1\n' > "$CR/bin/nohead.sh"

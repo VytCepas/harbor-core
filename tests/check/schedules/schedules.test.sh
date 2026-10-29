@@ -2,8 +2,6 @@
 # docs/reference/checks.md's Platforms table (harbor#617): every register row states where it runs, and every
 # launchd-scheduled row either has a systemd user timer that runs the same argv on the same
 # schedule, or says why it has none. The plist is the source; the unit is held to it.
-# The names are derived from the id, both ways (harbor#961 W5): the plist is launchd/com.harbor.<id>.plist and the
-# units are systemd/harbor-<unit>.{service,timer}, where <unit> is the id with each dot a dash (audit.triage, harbor-audit-triage).
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 R="${SCHED_ROOT:-$T_ROOT}"
 CK="$R/docs/reference/checks.md"
@@ -14,7 +12,6 @@ reg="$(awk -F'|' '/^## / { p = ($0 ~ /^## Register/) } p && /^\| `[a-z0-9.-]+` \
 # every "| `id` |" row in the file as a register row.
 plat="$(awk -F'|' '/^## Platforms/ { p = 1; next } /^## / { p = 0 } p && /^\| [a-z0-9.-]+ \|/ && $2 != " id " {
   id = $2; gsub(/ /, "", id); v = $3; gsub(/^ +| +$/, "", v); print id "\t" v }' "$CK")"
-unit_of() { printf '%s' "$1" | tr . -; }   # <id> → the systemd unit stem: a unit name carries no dot before its suffix
 cell() { awk -F'|' -v id="$1" -v c="$2" '/^## Platforms/ { p = 1; next } /^## / { p = 0 }
   p && $2 == " " id " " { print $c; exit }' "$CK"; }
 
@@ -58,7 +55,7 @@ t_section "a launchd row that runs on Linux has a systemd user timer equal to it
 _n=0
 for id in $(printf '%s\n' "$reg" | awk '$2 == "launchd" { print $1 }'); do
   v="$(printf '%s\n' "$plat" | awk -F'\t' -v id="$id" '$1 == id { print $2 }')"
-  u="$(unit_of "$id")"; svc="$R/systemd/harbor-$u.service"; tmr="$R/systemd/harbor-$u.timer"; pl="$R/launchd/com.harbor.$id.plist"
+  svc="$R/systemd/harbor-$id.service"; tmr="$R/systemd/harbor-$id.timer"; pl="$R/launchd/com.harbor.$id.plist"
   case "$v" in
     'macOS, Linux')
       _n=$((_n + 1))
@@ -72,16 +69,16 @@ for id in $(printf '%s\n' "$reg" | awk '$2 == "launchd" { print $1 }'); do
         t_eq "$id: argv equals the plist's" "$(plist_facts "$pl" | cut -f1)" "$(sed -n 's/^ExecStart=//p' "$svc")"
         t_eq "$id: it is restarted like KeepAlive" Restart=always "$(grep '^Restart=' "$svc")"
         t_eq "$id: no timer claims a daemon" no "$([ -f "$tmr" ] && echo yes || echo no)"
-        t_has "$id: the disable cell stops the service" "$(cell "$id" 5)" "sudo systemctl disable --now harbor-$u.service"
+        t_has "$id: the disable cell stops the service" "$(cell "$id" 5)" "sudo systemctl disable --now harbor-$id.service"
         t_has "$id: ...and the launchd job" "$(cell "$id" 5)" "launchctl bootout system/com.harbor.$id"
         continue
       fi
       t_eq "$id: both units are tracked" "yes yes" "$([ -f "$svc" ] && echo yes || echo no) $([ -f "$tmr" ] && echo yes || echo no)"
       [ -f "$svc" ] && [ -f "$tmr" ] || continue
       t_eq "$id: argv, schedule and run-at-start equal the plist's" "$(plist_facts "$pl")" "$(unit_facts "$svc" "$tmr")"
-      t_eq "$id: the timer starts its own service" "Unit=harbor-$u.service" "$(grep '^Unit=' "$tmr")"
+      t_eq "$id: the timer starts its own service" "Unit=harbor-$id.service" "$(grep '^Unit=' "$tmr")"
       t_eq "$id: the timer is enabled into timers.target" "WantedBy=timers.target" "$(grep '^WantedBy=' "$tmr")"
-      _stop="systemctl --user disable --now harbor-$u.timer"; [ "$_sys" = no ] || _stop="sudo systemctl disable --now harbor-$u.timer"
+      _stop="systemctl --user disable --now harbor-$id.timer"; [ "$_sys" = no ] || _stop="sudo systemctl disable --now harbor-$id.timer"
       [ "$_sys" = no ] || t_has "$id: a system unit runs as its own user" "$(grep '^User=' "$svc")" User=
       t_has "$id: the disable cell stops the systemd timer" "$(cell "$id" 5)" "$_stop"
       _dom="gui/\$(id -u)"; [ "$_sys" = no ] || _dom=system
@@ -99,18 +96,17 @@ t_eq "at least one row is ported, so the parity checks above ran" yes "$([ "$_n"
 
 t_section "every tracked unit belongs to a ported row"
 _orph=''
-_ported="$(printf '%s\n' "$plat" | awk -F'\t' '$2 == "macOS, Linux" { print $1 }' | tr . -)"   # each ported row's unit stem
 for u in "$R"/systemd/harbor-*.service "$R"/systemd/harbor-*.timer; do
   [ -f "$u" ] || continue
-  _s="${u##*/harbor-}"; _s="${_s%.*}"
-  printf '%s\n' "$_ported" | grep -qxF -- "$_s" || _orph="$_orph ${u##*/}"
+  id="${u##*/harbor-}"; id="${id%.*}"
+  [ "$(printf '%s\n' "$plat" | awk -F'\t' -v id="$id" '$1 == id { print $2 }')" = 'macOS, Linux' ] || _orph="$_orph ${u##*/}"
 done
 t_eq "no unit without a 'macOS, Linux' row" "" "$_orph"
 
 t_section "the plist reader is not blind (a parser that returns nothing would make every unit 'equal')"
-t_eq "alert.probe's plist reads as the argv, interval and run-at-load it holds" \
-  "$(printf '/bin/sh %%h/.claude/bin/alert-notify.sh\tevery 900s\tyes')" "$(plist_facts "$R/launchd/com.harbor.alert.probe.plist")"
-t_eq "audit.triage's reads its calendar time" "daily 05:23" "$(plist_facts "$R/launchd/com.harbor.audit.triage.plist" | cut -f2)"
+t_eq "pulse's plist reads as the argv, interval and run-at-load it holds" \
+  "$(printf '/bin/sh %%h/.claude/bin/alert-notify.sh\tevery 900s\tyes')" "$(plist_facts "$R/launchd/com.harbor.pulse.plist")"
+t_eq "judge's reads its calendar time" "daily 05:23" "$(plist_facts "$R/launchd/com.harbor.judge.plist" | cut -f2)"
 
 t_section "every event rule's schedule names its trigger events and its disable command (harbor#1044)"
 _nr=0

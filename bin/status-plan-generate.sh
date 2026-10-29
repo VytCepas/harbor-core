@@ -54,8 +54,8 @@ case "${1:-}" in
   *)         log_fail "unknown flag $1"; log_fix "sh $0 --help"; log_end || :; exit 2 ;;
 esac
 
-SRC="${HARBOR_STATUS_PLAN_SRC:-${HARBOR_PLAN_SRC:-$ROOT/docs/reports/platform-build-tickets.md}}"
-OUT="${HARBOR_STATUS_PLAN_OUT:-${HARBOR_PLAN_OUT:-$ROOT/docs/generated/plan.md}}"
+SRC="${HARBOR_PLAN_SRC:-$ROOT/docs/reports/platform-build-tickets.md}"
+OUT="${HARBOR_PLAN_OUT:-$ROOT/docs/generated/plan.md}"
 if [ ! -f "$SRC" ]; then
   log_fail "no plan at ${SRC#$ROOT/}"
   log_fix "git -C $ROOT checkout -- ${SRC#$ROOT/}"

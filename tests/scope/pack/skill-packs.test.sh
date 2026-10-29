@@ -12,7 +12,7 @@ for _l in bin contracts docs/reference/checks.md standards; do ln -s "$T_ROOT/$_
 printf -- '---\nname: plain\n---\nA skill that reads no packs.\n' > "$FR/skills/plain/SKILL.md"
 printf 'the packs directory the skill keeps\n' > "$FR/skills/reader/packs/README.md"
 printf -- '---\npack: measurement\ntriggers: x\n---\nA pack the core skill ships.\n' > "$FR/skills/reader/packs/measurement.md"
-pk() { env -u CLAUDE_CONFIG_DIR PORT_ROOT="$PW" HARBOR_SCOPE_PRIVATE="$PRIV" HARBOR_SCOPE_ROOT="$FR" sh "$T_ROOT/bin/pack.sh" "$@"; }
+pk() { env -u CLAUDE_CONFIG_DIR PORT_ROOT="$PW" HARBOR_SCOPE_PRIVATE="$PRIV" HARBOR_ROOT="$FR" sh "$T_ROOT/bin/pack.sh" "$@"; }
 
 # skpack <id> [<skill> [<file>]]: a clean committed pack holding one pack file for a core skill.
 skpack() {

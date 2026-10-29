@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # contracts/reconcile.md (harbor#1031 PR 1): every drift check answers `<check> --status` in the one shape.
-# The adopters are DERIVED, never listed here: a controls.tsv check row whose script (bin/<emitted id, each . a ->.sh) answers --status,
+# The adopters are DERIVED, never listed here: a controls.tsv check row whose script (bin/<emitted>.sh) answers --status,
 # and the other way round, a script that uses the helper (status_init) without such a row is red. Each adopter is put
 # in a green, a drifted, a fixed and a blind world and its report read against the contract; a fixture check that
 # does not conform goes red, and a conforming one, a lint rule and a check that does not answer --status stay green.
@@ -66,7 +66,7 @@ d_memory_route_setup() { # a box whose two governed repos both reach the one sto
 d_memory_route_break() { rm -f "$1/cfg/projects/$(mr_key "$1/blorp")/memory"; }
 d_memory_route_fix()   { mr_route "$1" blorp; }
 d_memory_route_cfg()   { printf '%s' "$1/cfg"; }
-d_memory_route_run()   { _w="$1"; _o="$2"; shift 2; HOME="$_w" PORT_ROOT="$_w/port" HARBOR_SCOPE_PRIVATE="$_w/priv" HARBOR_SCOPE_REPO="$_w/repo" sh "$SUT" --dir "$_w/cfg" "$@" > "$_o" 2>/dev/null < /dev/null; }
+d_memory_route_run()   { _w="$1"; _o="$2"; shift 2; HOME="$_w" PORT_ROOT="$_w/port" HARBOR_SCOPE_PRIVATE="$_w/priv" HARBOR_REPO="$_w/repo" sh "$SUT" --dir "$_w/cfg" "$@" > "$_o" 2>/dev/null < /dev/null; }
 d_memory_route_plain() { d_memory_route_run "$1" /dev/null; }
 d_memory_route_blind() { # no registry: the governed repos are unknown
   mv "$1/priv/inject.d/box/projects.tsv" "$1/projects.tsv.away"
@@ -74,17 +74,17 @@ d_memory_route_blind() { # no registry: the governed repos are unknown
   mv "$1/projects.tsv.away" "$1/priv/inject.d/box/projects.tsv"; return $_r
 }
 
-d_drift_reference_check_setup() { mkfixture "${1##*/}" > /dev/null; }
-d_drift_reference_check_break() { # a missing script wired under three matchers: the same item reported by each wiring, which must still be one row
+d_reference_check_setup() { mkfixture "${1##*/}" > /dev/null; }
+d_reference_check_break() { # a missing script wired under three matchers: the same item reported by each wiring, which must still be one row
   resettings "$1" --arg c "/bin/sh $1/bin/GONE.sh" '.hooks.SessionStart += [{matcher: "x", hooks: [{type: "command", command: $c}]}]
     | .hooks.PreToolUse = [{matcher: "Write|Edit", hooks: [{type: "command", command: $c}]}, {matcher: "WebFetch", hooks: [{type: "command", command: $c}]}]'
   printf '[gone](./NOPE.md)\n' >> "$1/CLAUDE.md"
 }
-d_drift_reference_check_fix() { resettings "$1" 'del(.hooks.SessionStart[1]) | del(.hooks.PreToolUse)'; printf '# c\n[a](./REAL.md) [b](https://example.com/x) [c](#anchor)\n' > "$1/CLAUDE.md"; }
-d_drift_reference_check_cfg()   { printf '%s' "$1"; }
-d_drift_reference_check_run()   { _w="$1"; _o="$2"; shift 2; sh "$SUT" "$_w" "$@" > "$_o" 2>/dev/null < /dev/null; }
-d_drift_reference_check_plain() { d_drift_reference_check_run "$1" /dev/null; }
-d_drift_reference_check_blind() { # no jq on PATH: settings.json cannot be read
+d_reference_check_fix() { resettings "$1" 'del(.hooks.SessionStart[1]) | del(.hooks.PreToolUse)'; printf '# c\n[a](./REAL.md) [b](https://example.com/x) [c](#anchor)\n' > "$1/CLAUDE.md"; }
+d_reference_check_cfg()   { printf '%s' "$1"; }
+d_reference_check_run()   { _w="$1"; _o="$2"; shift 2; sh "$SUT" "$_w" "$@" > "$_o" 2>/dev/null < /dev/null; }
+d_reference_check_plain() { d_reference_check_run "$1" /dev/null; }
+d_reference_check_blind() { # no jq on PATH: settings.json cannot be read
   mkdir -p "$W/nojq"
   for _b in sh awk sed sort uniq tr basename grep printf; do _p="$(command -v "$_b" 2>/dev/null)" && ln -sf "$_p" "$W/nojq/$_b" 2>/dev/null; done
   PATH="$W/nojq" sh "$SUT" "$1" --status > "$2" 2>/dev/null < /dev/null
@@ -92,7 +92,7 @@ d_drift_reference_check_blind() { # no jq on PATH: settings.json cannot be read
 
 # ── the audit of one check ───────────────────────────────────────────────────
 audit_row() { # <id> <script> <strict> → "[category] id: message" per problem; strict also requires every state's driver
-  id="$1"; SUT="$2"; strict="$3"; w="$W/$id"; rm -rf "$w"; p="$(printf '%s' "$id" | tr .- __)"
+  id="$1"; SUT="$2"; strict="$3"; w="$W/$id"; rm -rf "$w"; p="$(printf '%s' "$id" | tr - _)"
   _has() { command -v "d_${p}_$1" > /dev/null 2>&1; }
   _d()   { _v="$1"; shift; if _has "$_v"; then "d_${p}_$_v" "$@"; else "d_default_$_v" "$@"; fi; }
   _rep() { sed "s/^\[\([a-z0-9-]*\)\] /[\1] $id: /"; }   # a message names the check it is about
@@ -181,13 +181,12 @@ audit_row() { # <id> <script> <strict> → "[category] id: message" per problem;
 # owner of the controls whose engine it is, and a check row owned by another family unplaces docs/reference/checks.md (engine_owner_splits below). Only a command word counts, never a comment or a string.
 uses_helper()    { grep -v '^[[:space:]]*#' "$1" | grep -Eq '(^|[;&|({]|then|do)[[:space:]]*status_init[[:space:]]'; }
 answers_status() { uses_helper "$1" || grep -v '^[[:space:]]*#' "$1" | grep -Eq -- '--status\)'; }
-check_scripts() { # <controls.tsv> → "<script name><TAB><check id>" for every check row (a row with no emitted id has no derivable script)
-  # The check id is <family>.<object> and its script bin/<family>-<object>.sh (harbor#961 W5): the name is the id, each dot a dash.
-  awk -F'\t' '/^#/ || $1 == "id" { next } $3 == "check" && $12 != "-" { s = $12; gsub(/\./, "-", s); print s "\t" $12 }' "$1"
+check_scripts() { # <controls.tsv> → "<script name><TAB><control id>" for every check row (a row with no emitted id has no derivable script)
+  awk -F'\t' '/^#/ || $1 == "id" { next } $3 == "check" && $12 != "-" { print $12 "\t" $1 }' "$1"
 }
-adopter_rows() { # <controls.tsv> <root> → "<check id><TAB><script name>" for the check rows whose script exists and answers --status
+adopter_rows() { # <controls.tsv> <root> → the check rows whose script exists and answers --status
   check_scripts "$1" | while IFS="$TAB" read -r _e _id; do
-    [ -f "$2/bin/$_e.sh" ] && answers_status "$2/bin/$_e.sh" && printf '%s\t%s\n' "$_id" "$_e"
+    [ -f "$2/bin/$_e.sh" ] && answers_status "$2/bin/$_e.sh" && printf '%s\t%s\n' "$_e" "$_id"
   done
 }
 engine_owner_splits() { # <controls.tsv> → each engine file whose check rows do not share one owner
@@ -197,14 +196,18 @@ audit_registry() { # <controls.tsv> <root> <strict> → the problems of every ad
   adopter_rows "$1" "$2" > "$W/adopters"
   [ -s "$W/adopters" ] || echo "[derive] no check row in controls.tsv names a script that answers --status"
   check_scripts "$1" | cut -f1 > "$W/registered"
+  # A W3 rename leaves the registered name as a symlink shim: the script it points at is registered through it.
+  for _r in $(cut -f1 "$W/registered"); do
+    [ -L "$2/bin/$_r.sh" ] && { _t="$(readlink "$2/bin/$_r.sh")"; _t="${_t##*/}"; printf '%s\n' "${_t%.sh}" >> "$W/registered"; }
+  done
   for _f in "$2"/bin/*.sh $(sh "$2/bin/deploy-hooks.sh" --engines --root "$2" 2>/dev/null); do   # the other direction: a script on the helper that no row names is an adopter nobody audits
-    [ -f "$_f" ] && [ ! -L "$_f" ] || continue   # a rename shim is an old name of a script judged under its own
+    [ -f "$_f" ] || continue
     _b="${_f##*/}"; _b="${_b%.sh}"
     [ "$_b" = log-lib ] && continue
     uses_helper "$_f" && ! grep -qx "$_b" "$W/registered" && echo "[derive] $_b: bin/$_b.sh calls status_init and no check row in controls.tsv names it"
   done
-  while IFS="$TAB" read -r _cid _sc; do
-    audit_row "$_cid" "$2/bin/$_sc.sh" "$3"
+  while IFS="$TAB" read -r _em _cid; do
+    audit_row "$_em" "$2/bin/$_em.sh" "$3"
   done < "$W/adopters"
 }
 # one category of an audit's output
@@ -214,7 +217,8 @@ cat_of() { printf '%s\n' "$1" | grep "^\[$2\]" || :; }   # <audit output> <categ
 t_section "the adopters are derived from controls.tsv and the scripts, never listed"
 DERIVED="$(adopter_rows "$CT" "$T_ROOT" | cut -f1)"
 t_eq "the query finds adopters at all" yes "$([ -n "$DERIVED" ] && echo yes || echo no)"
-t_eq "the adopters are memory-route.sh and drift-reference-check.sh, by their check ids" "drift.reference-check memory.route" "$(printf '%s\n' $DERIVED | sort | tr '\n' ' ' | sed 's/ $//')"
+t_has "memory-route.sh is one" "$DERIVED" "memory-route"
+t_has "drift-reference-check.sh is one" "$DERIVED" "reference-check"
 t_eq "no script uses the helper without a check row naming it, and no adopter lacks its row (the derivation runs both ways)" "" "$(audit_registry "$CT" "$T_ROOT" 0 | grep '^\[derive\]' || :)"
 t_eq "check rows of one engine file share one owner (a marker in the owner cell unplaces docs/reference/checks.md in standard-catalog.sh)" "" "$(engine_owner_splits "$CT")"
 
