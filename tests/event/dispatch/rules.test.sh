@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# bin/event-dispatch.sh on (harbor#1044): a rule exists only with a docs/reference/checks.md row naming its trigger and its
+# bin/event-dispatch.sh on (harbor#1044): a rule exists only with a CHECKS.md row naming its trigger and its
 # disable command; it fires once per event id, debounced per (rule, subject), never on its own output coming
 # back round or past the cause chain's depth, at most --rate times an hour, and at least once per --backstop.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
@@ -10,9 +10,9 @@ handler default "$H"   # what the installed stand-in handler (fixture.sh) runs f
 ran() { awk -v r="$1" '$1 == r { print $2 }' "$OUT" 2>/dev/null | tr '\n' ' '; }
 dispatch_once   # the first start: offsets at the end of an empty bus
 
-t_section "on: a rule exists only with its docs/reference/checks.md row"
+t_section "on: a rule exists only with its CHECKS.md row"
 register event.test-a test.a
-register event.no-disable test.a; sed -i.bak 's/; off: `harbor event on --off event.no-disable`//' "$CKS"; record docs/reference/checks.md
+register event.no-disable test.a; sed -i.bak 's/; off: `harbor event on --off event.no-disable`//' "$CKS"; record CHECKS.md
 register event.wrong-kind test.other
 t_exit "an id with no register row is refused" 1 sh "$ED" on '"kind":"test\.a"' --id event.unregistered -- sh "$HND"
 t_exit "a row that does not name the trigger is refused" 1 sh "$ED" on '"kind":"test\.a"' --id event.wrong-kind -- sh "$HND"
@@ -102,7 +102,7 @@ t_eq "...recorded as refused" "refused=1 " "$(outcomes event.test-tools)"
 t_has "...and --list says so" "$(sh "$ED" on --list 2>/dev/null)" "REFUSED: tools Bash is not one of"
 printf 'id=event.ghost\npattern="kind":"test\\.ghost"\ndebounce=0\nrate=60\nbackstop=300\ncwd=%s\ncreated=0\nkind=cmd\nargv=sh\nargv=%s\n' "$T_TMP" "$HND" > "$GT/rules/event.ghost.rule"
 emit test.ghost g1 >/dev/null; dispatch_once 2>/dev/null
-t_eq "a hand-written rule with no docs/reference/checks.md row runs nothing" "" "$(ran event.ghost)"
+t_eq "a hand-written rule with no CHECKS.md row runs nothing" "" "$(ran event.ghost)"
 t_eq "...recorded as refused" "refused=1 " "$(outcomes event.ghost)"
 t_has "...with one checks.log line naming it" "$(cat "$CACHE/checks.log")" "rule event.ghost is refused"
 emit test.ghost g2 >/dev/null; dispatch_once 2>/dev/null

@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# 20-post-compaction-carry — the numbers-are-copies text, then bin/context-compaction-digest.sh's digest of the
+# 20-post-compaction-carry — the numbers-are-copies text, then bin/compaction-digest.sh's digest of the
 # traps THIS session sprang (harbor#569). Silent digest means the text is exactly what it was before.
 set -u
 P="$(cat)"
@@ -37,4 +37,4 @@ case "$_sid" in ''|*[!A-Za-z0-9_-]*) ;; *)
   fi ;;
 esac
 cd "$CFG" 2>/dev/null || exit 0
-printf '%s' "$P" | sh bin/context-compaction-digest.sh 2>/dev/null || :
+printf '%s' "$P" | sh bin/compaction-digest.sh 2>/dev/null || :

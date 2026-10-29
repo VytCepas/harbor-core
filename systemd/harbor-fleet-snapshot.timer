@@ -1,4 +1,4 @@
-# harbor#617 — the schedule of launchd/com.harbor.fleet-snapshot.plist; docs/reference/checks.md row `fleet-snapshot`.
+# harbor#617 — the schedule of launchd/com.harbor.fleet-snapshot.plist; CHECKS.md row `fleet-snapshot`.
 [Unit]
 Description=Harbor check fleet-snapshot (schedule)
 

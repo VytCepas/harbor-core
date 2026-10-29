@@ -1,0 +1,5 @@
+# lint-siblings-baseline.txt (harbor#966) - occurrences of another repo's path in the tree. Only goes down.
+# Derive:  sh bin/lint-siblings.sh --count
+# (git grep -I --untracked -n -oE <PAT> over every tracked and untracked-not-ignored file, minus tests/,
+#  fixtures/, EVALS-DATA/ and skills/test-strength/targets/; PAT and the x exclusions are in the script.)
+0

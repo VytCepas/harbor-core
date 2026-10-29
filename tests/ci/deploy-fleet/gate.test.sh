@@ -5,13 +5,13 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/ci/deploy-fleet/fixture.sh"
 G="${FX_GATE_SRC:-$T_ROOT/bin}"
-if [ ! -f "$G/gate-queue.sh" ] || [ ! -f "$G/gate-classify.sh" ] || [ ! -f "$G/library-gate.sh" ]; then
+if [ ! -f "$G/gate-queue.sh" ] || [ ! -f "$G/gate-classify.sh" ] || [ ! -f "$G/gate-lib.sh" ]; then
   t_section "the approval gate's scripts are not in this tree: NOT RUN (FX_GATE_SRC=<dir> runs it)"
   t_eq "gate-queue.sh is absent from $G" absent "$([ -f "$G/gate-queue.sh" ] && echo present || echo absent)"
   t_done
 fi
-real_gate() { for _f in gate-classify.sh gate-queue.sh library-gate.sh; do cp "$G/$_f" "$CLAUDE_CONFIG_DIR/bin/$_f"; done
-  cp "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/library-fs.sh" "$T_ROOT/bin/event-bus.sh" "$CLAUDE_CONFIG_DIR/bin/"; chmod +x "$CLAUDE_CONFIG_DIR"/bin/*.sh; }
+real_gate() { for _f in gate-classify.sh gate-queue.sh gate-lib.sh; do cp "$G/$_f" "$CLAUDE_CONFIG_DIR/bin/$_f"; done
+  cp "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/fs-lib.sh" "$T_ROOT/bin/event-bus.sh" "$CLAUDE_CONFIG_DIR/bin/"; chmod +x "$CLAUDE_CONFIG_DIR"/bin/*.sh; }
 Q="$(CDPATH= cd -P -- "$CLAUDE_CONFIG_DIR" && pwd -P)/bin/gate-approve.sh"
 
 t_section "night 1 through the real gate: a protected PR and the first deploy are queued by gate-queue.sh"

@@ -58,7 +58,7 @@ if [ "$(_phys "$CFG")" = "$(_phys "$LIVE_DIR")" ]; then TGT="--live"; else TGT="
 _shq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 CFGQ="$(_shq "$CFG")"
 # The floor-deny re-pin takes install-lib's spelling (harbor#800): '--live', or --dir '<cfg>' — never a
-# positional dir, which it now refuses. drift-reference-check.sh still takes its target positionally.
+# positional dir, which it now refuses. reference-check.sh still takes its target positionally.
 if [ "$TGT" = --live ]; then TGTQ="$(_shq "$TGT")"; else TGTQ="--dir $CFGQ"; fi
 RCQ="$(_shq "$TGT")"
 S="$CFG/settings.json"
@@ -100,7 +100,7 @@ for h in worklog-push.sh; do
       # sandbox by the installer at that dir, --dir spelled (harbor#800). Each behind the same check.
       _wl="work-log DEAD: bin/$h sources bin/$dep, which is not installed — the log has not synced. Fix, after confirming the checkout is clean (a session can write to it):"
       if [ "$TGT" = --live ]; then add "$_wl git -C ~/port/harbor diff --quiet HEAD -- bin/ && sh ~/port/harbor/bin/deploy.sh --only runtime --apply --live"
-      else add "$_wl git -C ~/port/harbor diff --quiet HEAD -- bin/ && sh ~/port/harbor/bin/deploy-runtime-install.sh --apply --dir $CFGQ"; fi
+      else add "$_wl git -C ~/port/harbor diff --quiet HEAD -- bin/ && sh ~/port/harbor/bin/runtime-install.sh --apply --dir $CFGQ"; fi
       break
     fi
   fi
@@ -137,11 +137,11 @@ fi
 if [ -f "$S" ] && command -v jq >/dev/null 2>&1; then
   _g="$(jq '[.hooks.PreToolUse[]?.hooks[]?.command // empty] | map(select(test("guard-"))) | length' "$S" 2>/dev/null || echo 0)"
   [ "${_g:-0}" -eq 0 ] && \
-    add "no guard is wired: B1 deny is live, B2-B6 are not. bin/eval-pass-score.sh exits 2 — the latest adversarial pass still reports criticals, so this is the CURRENT CORRECT STATE, not a todo."
+    add "no guard is wired: B1 deny is live, B2-B6 are not. bin/pass-score.sh exits 2 — the latest adversarial pass still reports criticals, so this is the CURRENT CORRECT STATE, not a todo."
 fi
 
 # ── 5 · the judge ────────────────────────────────────────────────────────────
-# bin/audit-triage-run.sh writes this cache from a scheduled job; nothing here runs the
+# bin/judge-run.sh writes this cache from a scheduled job; nothing here runs the
 # judge, because judging is 7 seconds and this hook is on the session's own path.
 #
 # SILENT WHEN THE CACHE IS ABSENT, and that is not an oversight. A box where the
@@ -179,14 +179,14 @@ if [ -f "$JV" ]; then
 fi
 
 # ── 6 · the installed surface's own references (harbor#462) ─────────────────
-# WHY THIS IS HERE AND NOT ON A SCHEDULE. bin/drift-reference-check.sh asks whether the
+# WHY THIS IS HERE AND NOT ON A SCHEDULE. bin/reference-check.sh asks whether the
 # copy of Harbor that actually RUNS holds together: every hook command names a
 # file that exists, every pin has its file, every citation in the constitution
 # resolves. It has existed since 2026-08-03 and NOTHING HAS EVER RUN IT — it is
-# in no hook, no plist and no CI job, only in docs/how-to/handover.md as a command a human
+# in no hook, no plist and no CI job, only in HANDOFF.md as a command a human
 # types. A checker nobody runs is a checker that does not exist.
 #
-# INLINE, NOT A CACHE, AND THE REASON IS THE MEASUREMENT. audit-triage-run.sh was moved
+# INLINE, NOT A CACHE, AND THE REASON IS THE MEASUREMENT. judge-run.sh was moved
 # off the session path because a full judge is 7 SECONDS; this is 0.22s, measured
 # five times on this box 2026-09-06 AFTER this rewrite — the pre-rewrite figure
 # was 0.19s and citing it would be quoting a number for code that does not ship. Below a threshold the cache stops being an
@@ -201,7 +201,7 @@ fi
 # wallpaper failure the header opens by naming. The detail is one command away and
 # the line says which one.
 #
-# STAMPED `[check:reference-check]` because docs/reference/checks.md requires it: every alert
+# STAMPED `[check:reference-check]` because CHECKS.md requires it: every alert
 # resolves to its registry row, and from there to the command that switches it
 # off, without anyone opening the source.
 #
@@ -211,20 +211,20 @@ fi
 # copy would let any session inject code into every future session on this box.
 # Silent when it is not installed — a box whose operator has not deployed it is
 # not a box to nag every session (§2.11).
-RCHK="$CFG/bin/drift-reference-check.sh"
+RCHK="$CFG/bin/reference-check.sh"
 if [ -f "$RCHK" ] && command -v jq >/dev/null 2>&1; then
   _rj="$(sh "$RCHK" "$CFG" --json 2>/dev/null)"
-  # An unparseable payload is NOT silence. Same rule as audit-triage-run.sh applies to
+  # An unparseable payload is NOT silence. Same rule as judge-run.sh applies to
   # its own cache: "I could not look" must never render as "there is nothing to
   # see", which is the precise failure this whole section exists to end.
   if printf '%s' "$_rj" | jq -e 'has("findings")' >/dev/null 2>&1; then
     _rn="$(printf '%s' "$_rj" | jq -r '.findings | length')"
     if [ "${_rn:-0}" -gt 0 ] 2>/dev/null; then
       _rr="$(printf '%s' "$_rj" | jq -r '[.findings[].rule] | group_by(.) | map("\(.[0])x\(length)") | join(" ")')"
-      add "[check:reference-check] INSTALLED SURFACE: $_rn reference(s) do not resolve ($_rr). This is the copy every session loads. Detail: sh $CFGQ/bin/drift-reference-check.sh $RCQ"
+      add "[check:reference-check] INSTALLED SURFACE: $_rn reference(s) do not resolve ($_rr). This is the copy every session loads. Detail: sh $CFGQ/bin/reference-check.sh $RCQ"
     fi
   else
-    add "[check:reference-check] could not run the installed-surface check — that is not a clean result. Try: sh $CFGQ/bin/drift-reference-check.sh $RCQ"
+    add "[check:reference-check] could not run the installed-surface check — that is not a clean result. Try: sh $CFGQ/bin/reference-check.sh $RCQ"
   fi
 fi
 

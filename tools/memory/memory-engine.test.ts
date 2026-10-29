@@ -1,6 +1,6 @@
 // memory · the engine's assertions (harbor#6 — workstream D, K3).
 //
-// Every Bun-dependent assertion lives here, in ONE file, and tests/memory/memory/memory.test.sh
+// Every Bun-dependent assertion lives here, in ONE file, and tests/memory/memory-test.sh
 // invokes it as a single folded assertion. That split is deliberate: CI's
 // preflight does not include bun, so a suite that needed it would either fail on
 // a hosted runner or be quietly skipped — and a suite that skips itself reports
@@ -111,7 +111,7 @@ check(
   check("a quoted list item containing a comma stays one item",
     quotedComma.tags, ["san francisco, ca", "other"]);
 
-  // The sh lint is held to the same behaviour in tests/memory/memory/memory.test.sh — the two
+  // The sh lint is held to the same behaviour in tests/memory/memory-test.sh — the two
   // readers must agree about what counts as a link, or the shared arbiter is
   // arbitrating two different questions.
   const withCode = parseNote(

@@ -14,7 +14,7 @@
 #
 # standard_version: 2.0.0
 old_path	new_path	wave	recommendation	confidence	reason	remove_by	frozen	surface	reader
-bin/gcloud-credentials	bin/gcloud-credentials	W4	rename	high	PATH command; creds is a banned abbreviation	2027-02-21			contracts/shims.tsv (~/.local/bin command); memory notes; ~/.local/bin link gcloud-creds
-bin/gcloud	bin/gcloud	W4	rename	high	PATH command is the vendor name with no extension (D-56)	2027-02-21			contracts/shims.tsv (~/.local/bin command); memory notes; repo azimuth (+2)
-bin/idea	bin/idea	W4	rename	med	PATH command, no extension and no family (D-56)	2027-02-21			contracts/shims.tsv (~/.local/bin command); memory notes; ~/.local/bin link idea
-bin/deploy-shim-install.sh	bin/deploy-shim-install.sh	W4	rename	high	installs the ~/.local/bin commands from shims.tsv	2027-02-21			repo azimuth
+bin/gcloud-creds	bin/gcloud-credentials	W4	rename	high	PATH command; creds is a banned abbreviation	2027-02-21			CONTRACTS/shims.tsv (~/.local/bin command); memory notes; ~/.local/bin link gcloud-creds
+bin/gcloud-wrapper.sh	bin/gcloud	W4	rename	high	PATH command is the vendor name with no extension (D-56)	2027-02-21			CONTRACTS/shims.tsv (~/.local/bin command); memory notes; repo azimuth (+2)
+bin/idea.sh	bin/idea	W4	rename	med	PATH command, no extension and no family (D-56)	2027-02-21			CONTRACTS/shims.tsv (~/.local/bin command); memory notes; ~/.local/bin link idea
+bin/shim-install.sh	bin/deploy-shim-install.sh	W4	rename	high	installs the ~/.local/bin commands from shims.tsv	2027-02-21			repo azimuth

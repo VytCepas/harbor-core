@@ -1,11 +1,11 @@
 #!/usr/bin/env sh
-# tests/lib/run.sh — `just test` (contracts/test-contract.md rule 3, harbor#734): every suite in
-# contracts/suites.txt in manifest order, or the ones named, then one total line a fleet runner reads.
+# tests/lib/run.sh — `just test` (CONTRACTS/test-contract.md rule 3, harbor#734): every suite in
+# CONTRACTS/suites.txt in manifest order, or the ones named, then one total line a fleet runner reads.
 #   sh tests/lib/run.sh [suite …]   a suite is its path, or its name as in `cu` for tests/cli/cu-test.sh
 # Exit 0 iff every suite exited 0 and none counted a failure; 1 otherwise; 2 on an unknown suite.
 set -u
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
-MANIFEST="$ROOT/contracts/suites.txt"
+MANIFEST="$ROOT/CONTRACTS/suites.txt"
 LINE_RE='^[A-Za-z0-9._-]+: [0-9]+ passed, [0-9]+ failed$'
 [ -f "$MANIFEST" ] || { printf 'run: no suite manifest at %s\n' "$MANIFEST" >&2; exit 2; }
 _td="${TMPDIR:-/tmp}"; LOGS="$(mktemp -d "${_td%/}/harbor-test.XXXXXX")" || exit 2
@@ -20,7 +20,7 @@ if [ $# -eq 0 ]; then manifest > "$LIST"; else
   : > "$LIST"
   for a in "$@"; do
     s="$(resolve "$a")"
-    [ -n "$s" ] || { printf 'run: %s is not a suite in contracts/suites.txt\n' "$a" >&2; rm -rf "$LOGS"; exit 2; }
+    [ -n "$s" ] || { printf 'run: %s is not a suite in CONTRACTS/suites.txt\n' "$a" >&2; rm -rf "$LOGS"; exit 2; }
     printf '%s\n' "$s" >> "$LIST"
   done
 fi

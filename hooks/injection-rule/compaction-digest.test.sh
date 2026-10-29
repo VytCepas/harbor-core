@@ -2,13 +2,13 @@
 # The post-compaction carry names the traps THIS session sprang, from the guard and tool-failure
 # ledgers, capped, with no command text and no section when nothing was hit (harbor#569).
 . "$(dirname "$0")/../../tests/lib/core.sh"; t_init
-. "$T_ROOT/tests/context/injection-rule/fixture.sh"
+. "$T_ROOT/tests/hooks/inject-fixture.sh"
 BOX="$T/dcfg"; OD="$BOX/MEMORY/OBSERVABILITY/testhost"
 mkdir -p "$BOX/inject.d" "$BOX/bin" "$OD"
-cp -R "$T_ROOT"/context-rules/user/. "$BOX/inject.d/"; cp "$T_ROOT/bin/guard-lib.sh" "$T_ROOT/bin/context-compaction-digest.sh" "$BOX/bin/"
+cp -R "$T_ROOT"/context-rules/user/. "$BOX/inject.d/"; cp "$T_ROOT/bin/guard-lib.sh" "$T_ROOT/bin/compaction-digest.sh" "$BOX/bin/"
 printf 'testhost\n' > "$BOX/.helm-obs-host"; printf '0123456789abcdef0123456789abcdef\n' > "$BOX/.helm-obs-salt"
-skof() { sh "$BOX/bin/context-compaction-digest.sh" --keys "$1" | cut -d" " -f1; }
-sof()  { sh "$BOX/bin/context-compaction-digest.sh" --keys "$1" | cut -d" " -f2; }
+skof() { sh "$BOX/bin/compaction-digest.sh" --keys "$1" | cut -d" " -f1; }
+sof()  { sh "$BOX/bin/compaction-digest.sh" --keys "$1" | cut -d" " -f2; }
 grow() { printf '{"v":1,"ts":"2026-10-01T10:00:00Z","g":"%s","d":"%s","r":"%s","s":"meta","t":"Bash","h":"-","sk":"%s"}\n' "$1" "$2" "$3" "$4" >> "$OD/guard-decisions.jsonl"; }
 carry() { fire_cfg "$BOX" "{\"hook_event_name\":\"SessionStart\",\"source\":\"compact\",\"session_id\":\"$1\"}"; }
 BASE="$(carry nobody)"
@@ -36,7 +36,7 @@ t_has "a cd refusal from tool-failures is a recognised trap" "$(carry sx)" 'shel
 
 t_section "3 · capped at 10 lines"
 _i=0; while [ "$_i" -lt 14 ]; do grow bash block "rule-$_i" "$X"; _i=$((_i+1)); done
-_n="$(printf '{"session_id":"sx"}' | sh "$BOX/bin/context-compaction-digest.sh" | sed -n '/^Traps this session/,$p' | wc -l | tr -d ' ')"
+_n="$(printf '{"session_id":"sx"}' | sh "$BOX/bin/compaction-digest.sh" | sed -n '/^Traps this session/,$p' | wc -l | tr -d ' ')"
 t_eq "digest is at most 10 lines" "10" "$_n"
 
 t_section "4 · no raw command text"

@@ -14,7 +14,7 @@
 set -eu
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 LOG_FD=2
-. "$HERE/library-log.sh"
+. "$HERE/log-lib.sh"
 log_init status-console
 
 case "${1:-}" in -h|--help) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac

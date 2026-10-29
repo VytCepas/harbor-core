@@ -2,5 +2,5 @@
 # input	sysa	~/fixture/sysa	3 files
 # input	sysb	~/fixture/sysb	3 files
 edge	from	to	site
-references	sysa:bin/alpha-run.sh	sysb:contracts/zeta-contract.md	sysa:bin/alpha-run.sh:4
-references	sysb:bin/beta-run.sh	sysa:contracts/zeta-contract.md	sysb:bin/beta-run.sh:4
+references	sysa:bin/alpha-run.sh	sysb:CONTRACTS/zeta-contract.md	sysa:bin/alpha-run.sh:4
+references	sysb:bin/beta-run.sh	sysa:CONTRACTS/zeta-contract.md	sysb:bin/beta-run.sh:4

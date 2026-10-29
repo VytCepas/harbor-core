@@ -156,7 +156,7 @@ t_has "...with a checks.log line that says it is not following" "$(cat "$CACHE/c
 t_eq "...and a receipt pulse reads: down" down "$(jq -r .status "$CACHE/event-dispatch-state.json" 2>/dev/null)"
 t_has "...carrying the reason" "$(jq -r .reason "$CACHE/event-dispatch-state.json" 2>/dev/null)" "does not pass HARBOR_EVENT_CAUSE"
 t_eq "...which pulse's dispatch row reports as crit, so pulse-notify speaks" crit \
-  "$(HARBOR_CACHE_DIR="$CACHE" sh "$T_ROOT/bin/alert-probe.sh" --json 2>/dev/null | jq -r '.checks.dispatch.verdict')"
+  "$(HARBOR_CACHE_DIR="$CACHE" sh "$T_ROOT/bin/pulse.sh" --json 2>/dev/null | jq -r '.checks.dispatch.verdict')"
 cp "$T_TMP/bus.keep" "$EB"
 dispatch_once
 t_eq "the bus restored: the held seed runs once, its echo is a loop" 1 "$(lines "$T_TMP/echo.out")"
@@ -183,16 +183,16 @@ t_section "the bus is asked again before every spawn, not only when its bytes ch
 # the per-spawn probe sees that the cause is now dropped.
 register event.test-spawnbus test.spawnbus
 sh "$ED" on '"kind":"test\.spawnbus"' --id event.test-spawnbus --debounce 0 --rate 60 --spawn 'Summarise.' 2>/dev/null
-: > "$GT/spawn.on"; : > "$T_TMP/claude.starts"; cp "$CFG/bin/library-log.sh" "$T_TMP/loglib.keep"
+: > "$GT/spawn.on"; : > "$T_TMP/claude.starts"; cp "$CFG/bin/log-lib.sh" "$T_TMP/loglib.keep"
 sh "$ED" dispatch 2>"$T_TMP/sb.err" & FP=$!
-sleep 1; { cat "$T_TMP/loglib.keep"; printf 'unset HARBOR_EVENT_CAUSE\n'; } > "$CFG/bin/library-log.sh"
+sleep 1; { cat "$T_TMP/loglib.keep"; printf 'unset HARBOR_EVENT_CAUSE\n'; } > "$CFG/bin/log-lib.sh"
 emit test.spawnbus sb1 >/dev/null
 n=0; while kill -0 "$FP" 2>/dev/null && [ "$n" -lt 100 ]; do sleep 0.1; n=$((n + 1)); done
 kill "$FP" 2>/dev/null; wait "$FP"; rc=$?
 t_eq "no agent was spawned" 0 "$(lines "$T_TMP/claude.starts")"
 t_eq "the follower went down by itself, exit 0" 0 "$rc"
 t_has "...saying the bus does not pass the cause on" "$(cat "$T_TMP/sb.err")" "does not pass HARBOR_EVENT_CAUSE on"
-cp "$T_TMP/loglib.keep" "$CFG/bin/library-log.sh"; dispatch_once 2>/dev/null
+cp "$T_TMP/loglib.keep" "$CFG/bin/log-lib.sh"; dispatch_once 2>/dev/null
 t_eq "the library restored: the held event spawns once" 1 "$(lines "$T_TMP/claude.starts")"
 rm -f "$GT/spawn.on"; sh "$ED" on --off event.test-spawnbus 2>/dev/null
 

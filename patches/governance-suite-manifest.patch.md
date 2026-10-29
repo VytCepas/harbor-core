@@ -1,6 +1,6 @@
-# Operator patch — make CI read `contracts/suites.txt` (harbor#61)
+# Operator patch — make CI read `CONTRACTS/suites.txt` (harbor#61)
 
-**STATUS: OBSOLETE (2026-10-14).** The one-pool workflow (harbor#679) runs every line of `contracts/suites.txt` through `bin/test-suite-run.sh`, and the per-suite jobs this file proposed to sit beside no longer exist. `grep -c suite-manifest .github/workflows/governance.yml` prints 0. Kept for its measurements; nothing in it applies to the current workflow.
+**STATUS: OBSOLETE (2026-10-14).** The one-pool workflow (harbor#679) runs every line of `CONTRACTS/suites.txt` through `bin/suite-run.sh`, and the per-suite jobs this file proposed to sit beside no longer exist. `grep -c suite-manifest .github/workflows/governance.yml` prints 0. Kept for its measurements; nothing in it applies to the current workflow.
 
 **Why this is a file and not a commit.** `permissions.deny` covers
 `.github/workflows/**`, deliberately: that deny exists so an agent cannot rewrite
@@ -10,7 +10,7 @@ performed **once**, is what removes it for every future suite.
 
 ## What is already landed
 
-- `contracts/suites.txt` — the tracked, agent-editable suite list.
+- `CONTRACTS/suites.txt` — the tracked, agent-editable suite list.
 - Rule **C3** now checks the manifest in both directions: every `bin/*-test.sh`
   appears in it, and every line in it names a file that exists.
 - C3 also refuses to accept the manifest as decoration. Until `governance.yml`
@@ -31,7 +31,7 @@ cover, so nothing runs twice.
     steps:
       - uses: actions/checkout@v5
 
-      # Runs every suite in contracts/suites.txt that does NOT already have a job
+      # Runs every suite in CONTRACTS/suites.txt that does NOT already have a job
       # of its own in this file. Adding a suite becomes one line in the manifest,
       # with no workflow edit — which is the entire point of harbor#61.
       #
@@ -50,15 +50,15 @@ cover, so nothing runs twice.
             printf '== %s\n' "$s"
             sh "bin/$s"
             ran=$((ran + 1))
-          done < contracts/suites.txt
+          done < CONTRACTS/suites.txt
           printf '\nmanifest suites run: %d\n' "$ran"
 ```
 
 ## After applying
 
-C3's `grep -q 'contracts/suites.txt'` on `governance.yml` starts matching, and
+C3's `grep -q 'CONTRACTS/suites.txt'` on `governance.yml` starts matching, and
 the fallback branch stops running. From then on, an agent adding
-`bin/foo-test.sh` writes one line in `contracts/suites.txt` and CI runs it.
+`bin/foo-test.sh` writes one line in `CONTRACTS/suites.txt` and CI runs it.
 
 Verify with:
 

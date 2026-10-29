@@ -1,4 +1,4 @@
-# Why it is wired this way (moved from bin/deploy-runtime-install.sh, harbor#1272):
+# Why it is wired this way (moved from bin/runtime-install.sh, harbor#1272):
 # TICKET-NOTE, THE THIRD Stop HOOK. It is wired here rather than in
 # floor-install.sh because it is not a guard: it blocks nothing, refuses nothing,
 # and speaks only to the operator through `systemMessage`. The floor's teeth and
@@ -7,7 +7,7 @@
 #
 # NO `timeout` KEY, deliberately, matching memory-harvest above. The harness
 # default is longer than any bound we would set, and a hook that exceeds its
-# timeout is SKIPPED (docs/explanation/admission-baseline.md) — so a tight timeout here would buy a silent
+# timeout is SKIPPED (FLOOR.md) — so a tight timeout here would buy a silent
 # stand-down, not safety. The script bounds its own work instead: a 10 MB scan
 # window, measured at ~0.1s/MB.
 key	value

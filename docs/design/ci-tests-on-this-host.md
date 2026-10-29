@@ -16,15 +16,15 @@ Local suites and CI jobs share one Mac. `bin/ci-governor.sh` budgets cores for b
 
 ## Suites and lint
 
-- Suites: `sh bin/test-suite-run.sh --select` (the changeset's suites; every uncertainty selects all). Flags: `sed -n 2,17p bin/test-suite-run.sh`.
-  Never a hand-rolled `xargs` loop over the manifest (`contracts/suites.txt`): one ran nothing and reported green.
+- Suites: `sh bin/suite-run.sh --select` (the changeset's suites; every uncertainty selects all). Flags: `sed -n 2,17p bin/suite-run.sh`.
+  Never a hand-rolled `xargs` loop over the manifest (`CONTRACTS/suites.txt`): one ran nothing and reported green.
 - Lint: `sh bin/lint-conventions.sh`.
 
 ## Where CI runs
 
 A harbor PR is mirrored by `.github/workflows/public-ci.yml` (`bin/ci-mirror.sh`) to the public `VytCepas/harbor-core`, where
 governance CI runs on the self-hosted `harbor-linux` runners. The result returns as the `public-ci` status on the PR head,
-which is harbor's required check (`grep harbor contracts/required-checks.tsv`). Other repos' required checks are in the same file.
+which is harbor's required check (`grep harbor CONTRACTS/required-checks.tsv`). Other repos' required checks are in the same file.
 
 ## Identity
 

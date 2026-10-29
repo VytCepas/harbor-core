@@ -5,7 +5,7 @@
 #                                       this run makes it reconcile too (HARBOR_STATUS_OBLIGATION_ON_OVERDUE=off: not)
 #   sh status-obligations.sh reconcile  fold, then ask the real state about every row still open (below)
 #   sh status-obligations.sh show       what a person or the console reads (`harbor status obligations`), read-only:
-#                                       --json   the frozen shape (contracts/cli.md), age_s and an expired row's `overdue` computed at read;
+#                                       --json   the frozen shape (CONTRACTS/cli.md), age_s and an expired row's `overdue` computed at read;
 #                                                generated_ts is the fold's own clock, read_ts (added last) the read's
 #                                       --print  a short view: overdue, then new, then oldest; never every row
 #                                       --since <N>s|m|h|d  only rows opened or changed within that window
@@ -28,17 +28,17 @@
 #                                               and its YOU row; epochs, so the age is counted at print time (default ~/.claude/cache).
 #                                               `you` is up to 8 open rows the operator acts on, oldest first: the operator-owned
 #                                               intents (handoffs) and approvals (PRs left 2026-10-16), as {k: kind, o: overdue, t: label}
-#   $HARBOR_CACHE_DIR/checks/status.obligations.json   the check's receipt (docs/reference/checks.md row `status.obligations`): red over the
-#                                               ids of every row more than 24h past its deadline, else green; `lint-findings.sh
+#   $HARBOR_CACHE_DIR/checks/status.obligations.json   the check's receipt (CHECKS.md row `status.obligations`): red over the
+#                                               ids of every row more than 24h past its deadline, else green; `findings.sh
 #                                               reconcile` files red as `check/status.obligations`. The file is named for the id.
 # INPUT: $HARBOR_EVENT_DIR/YYYY-MM-DD.jsonl (default ~/.local/state/harbor/events), one event per line.
-# THE REGISTER: $HARBOR_STATUS_OBLIGATION_KINDS (default contracts/obligation-kinds.tsv beside this checkout, else bin/obligation-kinds.tsv beside the installed script).
+# THE REGISTER: $HARBOR_STATUS_OBLIGATION_KINDS (default CONTRACTS/obligation-kinds.tsv beside this checkout, else bin/obligation-kinds.tsv beside the installed script).
 #   An event no row names opens and closes nothing, and neither does an open event whose data fails the row's opens_when
 #   (a background Bash, harbor#1049): it is counted as matching no row. HARBOR_STATUS_OBLIGATION_NOW pins the clock for a suite.
 #
 # THE RECONCILER. One bounded read per source, made only when a live row asks about it, each read killed after
 # HARBOR_STATUS_OBLIGATION_READ_TIMEOUT seconds (10) and every read of a run after HARBOR_STATUS_OBLIGATION_BUDGET (40).
-#   sessions       bin/context-peers.sh --json: a session whose id is not live closes (closed_by=reconcile); the
+#   sessions       bin/fleet-sessions.sh --json: a session whose id is not live closes (closed_by=reconcile); the
 #                  background work it owns is abandoned unless the register says it outlives the session. A session
 #                  `claude agents` still lists as running is not dead, and a row under HARBOR_STATUS_OBLIGATION_GRACE
 #                  seconds old (300) is not judged: the registry file lags exec.
@@ -55,7 +55,7 @@
 #                  only, linked to the row by the Monitor's own `Monitor started (task X, expires in …)` tool_result; a Monitor a subagent
 #                  started, once that subagent ended or the stated expiry passed; an agent's final notice (task id = agent id) written after
 #                  the row opened, so a completed notice from before a resume never closes the resumed agent.
-#   sweep          the housekeeping-clean.sh --record rows: each RISK or DECIDE row is a `leftover` obligation owned by the
+#   sweep          the harbor-clean.sh --record rows: each RISK or DECIDE row is a `leftover` obligation owned by the
 #                  operator while the record names it, closed when the next record does not. $HOME is shown as ~.
 # A source that fails, times out, prints what is not a list, or is older than it may be (the sweep record, 36h)
 # gives no verdict, so it flips nothing; a gh read that failed leaves that row alone. Knobs that swap a source for a
@@ -89,17 +89,17 @@ case "${1:-}" in
   -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); print; next } {exit}' "$0"; exit 0 ;;
 esac
 LOG_FD=2
-. "$HERE/library-log.sh"
-. "$HERE/library-fs.sh"
+. "$HERE/log-lib.sh"
+. "$HERE/fs-lib.sh"
 log_init status-obligations
 
 EVDIR="${HARBOR_EVENT_DIR:-$HOME/.local/state/harbor/events}"
 DIR="${HARBOR_OBLIGATION_DIR:-$HOME/.local/state/harbor/obligations}"
-# The register: the checkout's contracts/ when it is beside bin/, else the copy runtime-install ships next to this script
-# (an installed config dir has no contracts/ entry of its own: deploy's snapshot set would not cover one, harbor#1115).
+# The register: the checkout's CONTRACTS/ when it is beside bin/, else the copy runtime-install ships next to this script
+# (an installed config dir has no CONTRACTS/ entry of its own: deploy's snapshot set would not cover one, harbor#1115).
 KINDS="${HARBOR_STATUS_OBLIGATION_KINDS:-}"
 if [ -z "$KINDS" ]; then
-  KINDS="$HERE/../contracts/obligation-kinds.tsv"; [ -f "$KINDS" ] || KINDS="$HERE/obligation-kinds.tsv"
+  KINDS="$HERE/../CONTRACTS/obligation-kinds.tsv"; [ -f "$KINDS" ] || KINDS="$HERE/obligation-kinds.tsv"
 fi
 LEDGER="$DIR/ledger.jsonl"; CURRENT="$DIR/current.json"; OFFSET="$DIR/offset"; LOCK="$DIR/.fold.lock"; SOURCES="$DIR/sources.json"
 SNAP="$DIR/snapshot.json"
@@ -211,7 +211,7 @@ case "${1:-}" in fold|reconcile) [ $# -eq 1 ] && MODE="$1" || MODE="" ;; *) MODE
 
 # The register is checked before it is trusted: a row the fold would have to guess at is refused.
 check_kinds() {
-  [ -f "$KINDS" ] || { log_fail "no register at $KINDS"; log_fix "git checkout origin/main -- contracts/obligation-kinds.tsv"; return 1; }
+  [ -f "$KINDS" ] || { log_fail "no register at $KINDS"; log_fix "git checkout origin/main -- CONTRACTS/obligation-kinds.tsv"; return 1; }
   _bad="$(awk -F'\t' '
     /^[[:space:]]*(#|$)/ { next }
     $1 == "kind" { next }
@@ -611,7 +611,7 @@ read_sessions() {
   _to="$(slot)"; [ "$_to" -gt 0 ] || { src_set sessions false "read budget spent"; return 0; }
   if [ -n "$SESSIONS_BIN" ]; then _rc=0; _out="$(bounded "$_to" "$SESSIONS_BIN" --json </dev/null 2>/dev/null)" || _rc=$?
   elif [ ! -d "${HARBOR_SESSIONS_DIR:-$CFG/sessions}" ]; then src_set sessions false "no session registry on this box"; return 0
-  else _rc=0; _out="$(bounded "$_to" sh "$HERE/context-peers.sh" --json </dev/null 2>/dev/null)" || _rc=$?; fi
+  else _rc=0; _out="$(bounded "$_to" sh "$HERE/fleet-sessions.sh" --json </dev/null 2>/dev/null)" || _rc=$?; fi
   [ "$_rc" -eq 0 ] || { src_set sessions false "$(why "$_rc" "$_to")"; return 0; }
   printf '%s' "$_out" | jq -e 'type == "array"' >/dev/null 2>&1 || { src_set sessions false "the registry read was not a list"; return 0; }
   src_set sessions true "" "$(printf '%s' "$_out" | jq -c '{live: [.[] | .sessionId | select(type == "string")]}')"
@@ -760,7 +760,7 @@ read_queue() {
 }
 
 # A PR merged or closed on GitHub runs no local hook, so the read that saw it is the producer of pr.merged and pr.closed
-# (harbor#1367, contracts/event-kinds.tsv): one event per pr row this run closed by gh-pr. Emit never fails the run, and
+# (harbor#1367, CONTRACTS/event-kinds.tsv): one event per pr row this run closed by gh-pr. Emit never fails the run, and
 # the fold reading the event back closes nothing twice.
 publish_pr_closes() {
   [ -f "$HERE/event-bus.sh" ] || return 0
@@ -808,7 +808,7 @@ read_gh() { # <gh-pr|gh-run>
   else src_set "$_src" false "$_bad of $_n reads failed (last: $_last)" "$_ans"; fi
 }
 
-# The sweep record: housekeeping-clean.sh --record writes the rows (.jsonl) and, beside them, a summary line carrying the
+# The sweep record: harbor-clean.sh --record writes the rows (.jsonl) and, beside them, a summary line carrying the
 # epoch it started at. Only RISK and DECIDE rows are leftovers; $HOME becomes ~ so no row carries an absolute path.
 read_sweep() {
   EMPTYROWS='{"rows": []}'

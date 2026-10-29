@@ -1,0 +1,172 @@
+<section>
+<h2 id="vocabulary">Vocabulary — the words for shape and evidence</h2>
+
+<p class="lede">A fixed lexicon for the two questions this repository keeps asking:
+what shape is this, and does the evidence support the claim. Imported from
+complexity science and information theory, each term kept only where it names
+something Harbor already does in a paragraph.</p>
+
+<p>Five structural words — <strong>module</strong>, <strong>interface</strong>,
+<strong>depth</strong>, <strong>seam</strong>, <strong>adapter</strong> — are
+defined in <code>DOCTRINE/modularity.md</code> and are not restated here. A
+definition stated twice is a copy, and copies drift while reading perfectly. This
+chapter adds the words that had no home.</p>
+
+<h3>Structure and measurement</h3>
+<div class="scroll">
+<table class="grid">
+<tr><th>Term</th><th>Definition</th><th>What it names here</th></tr>
+<tr><td>Real Pattern</td><td>Dennett — a pattern is real iff describing the system
+through it <em>compresses</em> predictive information beyond the alternatives.</td>
+<td>The criterion the deletion test was missing. It is computable: compare the
+compressed size of the parts against the whole. A split that costs bits is
+bookkeeping, not structure.</td></tr>
+<tr><td>Hidden variety</td><td>Ashby — variety a regulator absorbs that never
+reaches its caller. Depth stated as a count rather than a judgement.</td>
+<td>Lines of implementation per externally callable symbol.</td></tr>
+<tr><td>Requisite variety</td><td>Ashby — a regulator must carry at least as much
+variety as the system it regulates.</td><td>Why the argv layer cannot win by
+adding rules. The floor regulates a shell grammar with strictly more variety than
+its regex set, which is a proof about the approach rather than an item of
+backlog.</td></tr>
+<tr><td>Coarse-graining</td><td>A quotient map identifying distinct microstates as
+one macrostate. <strong>A quotient, not a compression — it generates new
+relations.</strong></td><td>What segmentation does to a command line, and what
+compaction does to a session. The warning is the second clause: the quotient can
+invent adjacencies the original never had.</td></tr>
+<tr><td>Multiple realizability</td><td>One macro pattern instantiated by many
+distinct micro configurations.</td><td>Reading a skill file and invoking the skill
+tool are two realizations of one event. An instrument that counts only one scores
+the other as failure.</td></tr>
+<tr><td>Sufficient statistic</td><td>A function of the data preserving all
+information about a target and discarding the rest; the information bottleneck is
+compression <em>with a purpose</em>.</td><td>What a skill description is for. A
+description advertising a method inventory is high in content and useless for
+routing.</td></tr>
+<tr><td>Markov blanket</td><td>The minimal set making a system conditionally
+independent of everything else.</td><td>A testable form of
+<em>interface</em>: it can be checked by conditional independence rather than
+argued.</td></tr>
+</table>
+</div>
+
+<h3>Behaviour over time</h3>
+<div class="scroll">
+<table class="grid">
+<tr><th>Term</th><th>Definition</th><th>What it names here</th></tr>
+<tr><td>Metastability</td><td>Stable on intermediate timescales, ultimately
+decaying. Most real macroscopic structure is metastable.</td><td>A green suite and
+an unrevisited defect register. Neither is stable; both decay, and the decay reads
+flattering.</td></tr>
+<tr><td>Resilience</td><td>Capacity to absorb perturbation without changing basin
+— <em>distinct from robustness</em>, which resists all change.</td><td>The
+false-positive rule in one word. A guard optimised for robustness blocks ordinary
+work and gets switched off, and a switched-off guard protects nothing.</td></tr>
+<tr><td>Delay / lag</td><td>Time between cause and effect. Delays produce
+oscillation and overshoot.</td><td>Confident fixes whose defects surface a pass
+later. The incident is recorded; this names the mechanism.</td></tr>
+<tr><td>Path dependence</td><td>State depends on the trajectory taken, not only on
+present conditions.</td><td>An installed tree is not a checkout. A file no
+installer ships keeps whatever version it was born with.</td></tr>
+<tr><td>Leverage points</td><td>Meadows — places where a small intervention
+produces a large change. Higher leverage is paradigms; lower is
+parameters.</td><td>Orders the layers a fix can land in: constitution, doctrine,
+lint rule, guard pattern, note. The ordering was assumed and is now
+named.</td></tr>
+</table>
+</div>
+
+<h3>Evidence</h3>
+<div class="scroll">
+<table class="grid">
+<tr><th>Term</th><th>Definition</th><th>What it names here</th></tr>
+<tr><td>Observer / reflexivity</td><td>The observer is part of the system observed.
+Measurement, partition and modelling are not extra-systemic.</td><td>The failure
+mode of every instrument here: a skill-firing probe leaking its own fixture into
+the prompt, a ledger assertion writing to the ledger it reads, a routing counter
+blind to the route this repository trains. Four separate incidents that had no
+shared name.</td></tr>
+<tr><td>Semantic information</td><td>Kolchinsky &amp; Wolpert — the subset of
+syntactic information whose erasure, by graded scrambling, reduces
+viability.</td><td>Not a term but a method: scramble a section of the instruction
+surface and measure whether the work degrades. It is the only proposed route to
+finding which pinned bytes are load-bearing.</td></tr>
+<tr><td>Endogenous / exogenous</td><td>Whether a measurement reads the system's own
+output or an independent signal.</td><td>Defined in
+<code>DOCTRINE/verification-expanded.md</code>. Every check that reads a pipeline's
+own output proves consistency, never correctness.</td></tr>
+</table>
+</div>
+
+<h3 id="shape">Shape: modular and microservice are two axes, not one</h3>
+
+<p>The confusion this section exists to end is that <em>modular</em> and
+<em>microservice</em> sound like the same direction. They are perpendicular, and
+every combination of them occurs.</p>
+
+<div class="scroll">
+<table class="grid">
+<tr><th></th><th>One module</th><th>Many modules</th></tr>
+<tr><td>Deep</td><td><strong>Deep monolith.</strong> Large implementation, small
+interface. Nothing wrong with it.</td><td><strong>Services.</strong> Each module
+deep, few seams crossed per task. The target.</td></tr>
+<tr><td>Shallow</td><td><strong>Ball of mud.</strong> Everything public, nothing
+hidden. Interface nearly as complex as the implementation.</td>
+<td><strong>Distributed monolith.</strong> Many modules, each thin, all reaching
+into each other. The worst cell, and the one reached by splitting for its own
+sake.</td></tr>
+</table>
+</div>
+
+<p><strong>Splitting a file moves one axis only.</strong> Cut a deep module into
+seven pieces and its hidden variety per symbol does not change — the same
+implementation sits behind the same symbols. What changes is how many seams a task
+crosses. So fragmentation is never evidence of modularity, and a file count is
+never evidence of either.</p>
+
+<div class="note why">
+<span class="tag">The falsifier for a seam</span>
+<p>Cutting that deep module at arbitrary line boundaries makes the parts cost
+substantially <em>more</em> compressed bits than the whole, while cutting it along
+real function boundaries costs almost nothing. That gap is Dennett's criterion
+made operational: <strong>a boundary that costs bits is not a real pattern</strong>,
+and it can be detected without reading the code.</p>
+</div>
+
+<div class="note hazard">
+<span class="tag">A real boundary is not a boundary worth crossing</span>
+<p>The compression test answers whether structure exists at a file's own
+boundaries. It does <em>not</em> answer whether anything should be split, and
+treating one question as the other is how a measurement talks a codebase into
+fragmenting. Run across every file here over three hundred lines, the reality test
+alone marks <strong>36 of 52</strong> — every test suite included, because a suite
+genuinely <em>is</em> a flat list of independent blocks whose boundaries nothing
+crosses. The second question is the two-adapter rule made countable: symbols with
+at least <strong>two callers outside the file</strong>. Two files clear that bar,
+and under <em>both</em> conditions <strong>not one file earns a split</strong>.</p>
+<p>The shared guard library is the instructive case: thirteen of its symbols are
+called from two or more other files, and its own function boundaries score below
+the reality threshold. It is correctly <em>one</em> deep library rather than a set
+of them.</p>
+</div>
+
+<div class="note hazard">
+<span class="tag">Density, not edge count</span>
+<p>Coupling has to be measured as the <em>fraction of possible module pairs that
+actually call each other</em>. A raw edge count cannot distinguish one shared deep
+library with many independent callers — a hub, which is the good shape — from
+every module reaching every other, which is the distributed monolith. Both produce
+large counts. Only density separates them, and the same trap catches destination
+entropy, which scores a pipeline and a mesh alike.</p>
+</div>
+
+<p>Harbor's own <code>bin/</code> was measured against these definitions on
+2026-08-30 and sits in the deep-and-fragmented cell with a hub topology: depth
+roughly a hundred lines per public symbol, near-zero call density, and the large
+majority of cross-file calls landing on the shared guard library. Both questions
+are re-derivable — <code>bin/module-shape.sh</code>, whose suite builds ten
+synthetic codebases and proves each lands in the quadrant it was constructed for.
+<strong>The suite is the load-bearing half</strong>: the instrument mis-measured
+four times before it settled, every one caught by a control rather than by review,
+and every one wrong in the direction that made a split look earned.</p>
+</section>

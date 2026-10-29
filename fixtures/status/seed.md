@@ -1,7 +1,7 @@
 # STATUS — generated, do not edit
 
 Every number Harbor states about itself lives here and nowhere else.
-Regenerate with `sh bin/status-generate.sh --apply`; lint rule **T1** fails if this
+Regenerate with `sh bin/status-gen.sh --apply`; lint rule **T1** fails if this
 file is stale, and **T2** fails if another document states one of these counts
 in prose.
 
@@ -16,7 +16,7 @@ deliberately not in git: it moved on every deploy and reddened CI until someone
 regenerated it. Ask for it when you want it:
 
 ```
-sh bin/status-generate.sh --observed      # or: harbor status --observed
+sh bin/status-gen.sh --observed      # or: harbor status --observed
 ```
 
 ## Counted from the repo

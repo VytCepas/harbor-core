@@ -7,7 +7,7 @@
 # did not apply fails too, so a proof cannot pass for want of a change.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 
-BIN="$T_ROOT/bin/status-obligations.sh"; KINDS="$T_ROOT/contracts/obligation-kinds.tsv"
+BIN="$T_ROOT/bin/status-obligations.sh"; KINDS="$T_ROOT/CONTRACTS/obligation-kinds.tsv"
 W="$T_TMP/w"; EV="$W/ev"; OB="$W/ob"; CACHE="$W/cache"; MUTD="$T_TMP/mut"; FHOME="$T_TMP/zed"; D=2026-10-06.jsonl
 NOW=2026-10-06T02:00:00Z; N=0; LAST=""; FAULT=""; RETAIN=""; LGRACE=""; EMPTY='{}'
 mkdir -p "$MUTD" "$FHOME"

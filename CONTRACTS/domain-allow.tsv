@@ -1,0 +1,54 @@
+# domain-allow.tsv (harbor#1274) - core paths that may name a workload tool because harbor's own logic needs the name.
+# Columns, tab-separated, one header row:  path  term  reason
+#   path    a tracked file, or a directory prefix ending in "/"
+#   term    an id from CONTRACTS/domain-terms.tsv, or * for every term
+#   reason  required: why this is harbor logic and not workload knowledge (e.g. a guard that must know a command to refuse it)
+# Read by bin/lint-domain.sh; a row without a reason, or naming no such term, refuses the run. harbor#1273 classifies the
+# census: each hit becomes a move or a row here, never a quiet baseline.
+path	term	reason
+bin/floor-normalize.awk	bq	normalizer comment naming the cloud CLI whose invocations it must see through
+bin/floor-normalize.awk	gtm	normalizer comment naming the cloud CLI whose invocations it must see through
+bin/floor-verify.sh	bigquery	security floor: the guard must know this cloud command to refuse it
+bin/floor-verify.sh	bq	security floor: the guard must know this cloud command to refuse it
+bin/guard-cloud.sh	bigquery	security floor: the guard must know this cloud command to refuse it
+bin/guard-cloud.sh	bq	security floor: the guard must know this cloud command to refuse it
+bin/guard-cloud.sh	dbt	security floor: the guard must know this cloud command to refuse it
+bin/guard-cloud.sh	gtm	security floor: the guard must know this cloud command to refuse it
+bin/guard-lib.sh	bq	security floor: the guard must know this cloud command to refuse it
+bin/port-paths.sh	dbt	security floor: the guard must know this cloud command to refuse it
+bin/prod-guard-ambient.sh	bq	security floor: the guard must know this cloud command to refuse it
+bin/prod-guard-install.sh	bq	security floor: the guard must know this cloud command to refuse it
+DOCTRINE/credential-boundary.md	bigquery	floor documentation: names the cloud command the floor blocks
+DOCTRINE/credential-boundary.md	bq	floor documentation: names the cloud command the floor blocks
+DOCTRINE/credential-boundary.md	gtm	floor documentation: names the cloud command the floor blocks
+FLOOR.md	bigquery	floor documentation: names the cloud command the floor blocks
+FLOOR.md	bq	floor documentation: names the cloud command the floor blocks
+context-rules/user/variable-is-one-argument.sh	bq	guard/floor test corpus: the command or tool name is the fixture the guard must act on
+tests/floor/floor.b6-test.sh	bigquery	guard/floor test corpus: the command or tool name is the fixture the guard must act on
+tests/floor/floor.install-test.sh	bq	guard/floor test corpus: the command or tool name is the fixture the guard must act on
+tests/floor/normalize-test.sh	bq	guard/floor test corpus: the command or tool name is the fixture the guard must act on
+tests/floor/normalize-test.sh	gtm	guard/floor test corpus: the command or tool name is the fixture the guard must act on
+tests/guards/bash.destroy.jsonl	ga4	guard/floor test corpus: the command or tool name is the fixture the guard must act on
+tests/guards/bash.destroy.jsonl	gtm	guard/floor test corpus: the command or tool name is the fixture the guard must act on
+tests/guards/benign.jsonl	bq	guard/floor test corpus: the command or tool name is the fixture the guard must act on
+tests/guards/cloud.jsonl	bigquery	guard/floor test corpus: the command or tool name is the fixture the guard must act on
+tests/guards/cloud.jsonl	bq	guard/floor test corpus: the command or tool name is the fixture the guard must act on
+tests/guards/cloud.jsonl	gtm	guard/floor test corpus: the command or tool name is the fixture the guard must act on
+tests/guards/cloud.msg.jsonl	gtm	guard/floor test corpus: the command or tool name is the fixture the guard must act on
+tests/guards/exemptions.jsonl	bq	guard/floor test corpus: the command or tool name is the fixture the guard must act on
+tests/guards/guards.jsonl	bq	guard/floor test corpus: the command or tool name is the fixture the guard must act on
+hooks/injection-rule/packs.test.sh	bq	guard/floor test corpus: the command or tool name is the fixture the guard must act on
+hooks/injection-rule/scope.test.sh	bq	guard/floor test corpus: the command or tool name is the fixture the guard must act on
+vendor/archify/brand-marks/catalog.json	pinterest	vendored third-party brand-icon catalog; the name is an icon, not harbor workload
+vendor/archify/brand-marks/catalog.json	tiktok	vendored third-party brand-icon catalog; the name is an icon, not harbor workload
+vendor/archify/renderers/shared/generated-brand-marks.mjs	pinterest	vendored third-party brand-icon catalog; the name is an icon, not harbor workload
+vendor/archify/renderers/shared/generated-brand-marks.mjs	tiktok	vendored third-party brand-icon catalog; the name is an icon, not harbor workload
+vendor/skills-archive/private-investigator/SKILL.md	tiktok	vendored OSINT skill naming the network as a social site, not marketing measurement
+vendor/skills-archive/private-investigator/Workflows/FindPerson.md	tiktok	vendored OSINT skill naming the network as a social site, not marketing measurement
+vendor/skills-archive/private-investigator/Workflows/SocialMediaSearch.md	tiktok	vendored OSINT skill naming the network as a social site, not marketing measurement
+fixtures/inject/notes.tsv	bq	fixture row: the route table maps this command, so the row must name it to fire
+tests/skills/skill-catalog-test.sh	gtm	fixture: bin/skill-catalog.sh keys a CLI row to the sibling checkout by this name; retire with that row (harbor#1273)
+standards/naming/controls.tsv	dbt	control rows register injected notes whose ids are set by files in the private layer (inject.d/<repo>); a row id must equal the note id it registers, so the registry has to carry the name
+standards/naming/frozen.tsv	gtm	freezes the cloud guard rule id cloud-gtm-version, a refusal operators read (harbor#1276)
+tests/lint/frozen/freeze.test.sh	clickup	asserts the moved-out names never enter the freeze (harbor#1276 done-when 3)
+standards/rename-maps/sitting-b.md	dbt	a rename-map record quotes a name it renames; naming data, not workload logic (harbor#961)

@@ -67,7 +67,7 @@ GREP=/usr/bin/grep
 # 10 MB 0.95s, 20 MB 2.01s), so 10 MB covers the 95th percentile ENTIRELY at
 # under a second, against a 10s hook timeout.
 #
-# A full pass was tried first and rejected: 87 MB took 7.3s, and docs/explanation/admission-baseline.md's
+# A full pass was tried first and rejected: 87 MB took 7.3s, and FLOOR.md's
 # finding is that a hook exceeding its timeout is SKIPPED — latency here is not
 # discomfort, it is the check silently switching itself off. A `grep -F`
 # prefilter was tried too and bought nothing (7.1s): `86` appears on nearly
@@ -86,14 +86,14 @@ MAX_SHOW="${TICKET_NOTE_MAX_SHOW:-6}"
 # actual origin remotes of the checkouts on this box, not from recall.
 # Falsifier: work on a repo under a fourth owner produces no GitHub line.
 # The operator's own account is core's; any other owner is the private layer's (github_owners in harbor.toml,
-# contracts/private-layer.md), read through the resolver beside this script. No resolver or no key: the account alone.
+# CONTRACTS/private-layer.md), read through the resolver beside this script. No resolver or no key: the account alone.
 GH_OWNERS="${TICKET_NOTE_GH_OWNERS:-}"
 if [ -z "$GH_OWNERS" ]; then
   GH_OWNERS="VytCepas"
   case "$0" in */*) _hd="${0%/*}" ;; *) _hd=. ;; esac
   [ ! -f "$_hd/manifest.tsv" ] || _hd="$_hd/../../bin"  # D-88: in the repo an engine sits beside its manifest in hooks/<engine>/; deployed, flat beside its libraries
-  if [ -f "$_hd/scope-roots.sh" ]; then
-    _more="$(sh "$_hd/scope-roots.sh" --conf github_owners 2>/dev/null | paste -sd'|' - 2>/dev/null || true)"
+  if [ -f "$_hd/roots.sh" ]; then
+    _more="$(sh "$_hd/roots.sh" --conf github_owners 2>/dev/null | paste -sd'|' - 2>/dev/null || true)"
     [ -z "$_more" ] || GH_OWNERS="$GH_OWNERS|$_more"
   fi
 fi

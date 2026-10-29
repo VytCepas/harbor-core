@@ -4,7 +4,7 @@
 # follows the call into a REGISTERED repo only, and repo-tier reports what stayed home
 # (harbor#599, #619, 2026-08-28, 2026-09-24).
 . "$(dirname "$0")/../../tests/lib/core.sh"; t_init
-. "$T_ROOT/tests/context/injection-rule/fixture.sh"
+. "$T_ROOT/tests/hooks/inject-fixture.sh"
 
 t_section "project-pointer: a linked worktree is the same project"
 PP="$T_ROOT/context-rules/user/project-pointer.sh"; W="$T/wtcase"

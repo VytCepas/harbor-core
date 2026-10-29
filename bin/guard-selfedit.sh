@@ -1,10 +1,10 @@
 #!/usr/bin/env sh
-[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
+[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0
 # B2 (harbor#3) — PreToolUse(Write|Edit|MultiEdit) system-file guard.
 # Blocks an agent from editing the Helm floor's OWN control surfaces inside the
 # active config dir: settings.json, the guard scripts (bin/guard-*.sh,
 # bin/floor-*.sh, bin/guard-lib.sh), the hooks tree, the integrity pins
-# (.sec0-baseline.sha256 and the integrity rows of contracts/control-plane-state.md)
+# (.sec0-baseline.sha256 and the integrity rows of CONTRACTS/helm-state.md)
 # and deploy's snapshots under backups/. Everything else — user files, and
 # notably the rest of ~/.claude — is ALLOWED (matches upstream's "you may edit
 # ~/.claude freely" stance; we protect only the floor's teeth, not the whole
@@ -96,7 +96,7 @@ is_protected() {
       "$root/claude.md"|"$root/claude.local.md") return 0 ;;
       "$root/.helm-pins"|"$root"/.helm-pins/*) return 0 ;;
       "$root/.helm-log-token") return 0 ;;
-      # harbor#779 — the rest of contracts/control-plane-state.md's integrity rows; lint F14 holds this list to it.
+      # harbor#779 — the rest of CONTRACTS/helm-state.md's integrity rows; lint F14 holds this list to it.
       # A directory is refused by its own name too, so a file there cannot stop its writer's mkdir.
       "$root/.helm-obs-salt") return 0 ;;
       "$root/.helm-obs-host"|"$root/.helm-govern-salt") return 0 ;;
@@ -112,7 +112,7 @@ is_protected() {
       # harbor#787 — deploy snapshots, which guard-bash refuses since harbor#772. Top level only.
       "$root/backups"|"$root"/backups/*) return 0 ;;
       "$root"/hooks/*) return 0 ;;
-      "$root"/bin/*) return 0 ;;   # incl. deploy-restore.sh / baseline-pin.sh — the recovery path
+      "$root"/bin/*) return 0 ;;   # incl. restore.sh / baseline-pin.sh — the recovery path
     esac
   done
   return 1
@@ -133,9 +133,9 @@ case "$(lower "$ABS")" in
   */.claude/settings.json|*/.claude/settings.local.json)
     _sw="$(floor_field '[.tool_input.content, .tool_input.new_string, (.tool_input.edits[]?.new_string)] | map(select(type == "string")) | join("\n")')"
     case "$_sw" in
-      *HARBOR_ADMISSION_DISABLE*|*HARBOR_ADMISSION_SHADOW*|*HELM_DISABLE_FLOOR*|*HELM_FLOOR_SHADOW*)
+      *HELM_DISABLE_FLOOR*|*HELM_FLOOR_SHADOW*)
         floor_block selfedit \
-          "a floor switch (HARBOR_ADMISSION_DISABLE or HARBOR_ADMISSION_SHADOW, or an old name of one) written into a settings file reaches every later session's hooks — the operator sets it at launch" \
+          "a floor switch (HELM_DISABLE_FLOOR or HELM_FLOOR_SHADOW) written into a settings file reaches every later session's hooks — the operator sets it at launch" \
           switch-in-settings.content
         ;;
     esac ;;

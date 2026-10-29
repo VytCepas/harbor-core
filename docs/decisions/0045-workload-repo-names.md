@@ -15,7 +15,7 @@ Naming-standard decision D-45, from standard-draft.md §12. Core keeps the rule;
 - Operator decision, 2026-10-04 (standard draft 4, §12 header).
 - Source: research/08-gap-review.md
 - Moved (harbor#1273): the original text lists which workload repo takes which name, which is this operator's data. It is
-  in the private layer's `notes/repo-names.md` (`sh bin/scope-roots.sh --private`), byte for byte. This stub keeps D-45 citable.
+  in the private layer's `notes/repo-names.md` (`sh bin/roots.sh --private`), byte for byte. This stub keeps D-45 citable.
 
 ## Decision
 

@@ -2,7 +2,7 @@
 
 > **Path root:** `~/port/harbor` — every `./`-prefixed path below resolves there, not
 > against the directory this skill is installed into. Checked by
-> `bin/drift-reference-check.sh` REF-9 **where the skill is READ**: the `../../` form
+> `bin/reference-check.sh` REF-9 **where the skill is READ**: the `../../` form
 > this replaced was green in the repo and dead from `~/.claude/skills/atlas/`,
 > which is the same defect harbor#462 fixed for `dev-tracking` and this file
 > reintroduced when atlas moved out of `plugins/` (found by REF-9 on the install,
@@ -31,7 +31,7 @@ active in every session on the machine — and `claude plugin details atlas` put
 costs **zero**. The tier was buying nothing and cost real governance: seven of eight
 Harbor gates greped `plugins/` zero times, so this tree was invisible to the context
 budget, absent from the generated skill-catalog, and shipping a `check.mjs` registered in no
-suite while its manifest advertised one. Retired: `./docs/explanation/no-authored-plugins.md`,
+suite while its manifest advertised one. Retired: `./DOCTRINE/no-authored-plugins.md`,
 enforced by lint **X10**.
 
 **The §2 argument still stands** — a session not building an atlas should not carry it.

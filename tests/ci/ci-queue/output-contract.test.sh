@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# ci-queue.sh's output follows contracts/logging.md (harbor#771): each repo is a log-lib line, an unread repo or
+# ci-queue.sh's output follows CONTRACTS/logging.md (harbor#771): each repo is a log-lib line, an unread repo or
 # a stall is a WARN with its fix, the cache write is an ok line, and the run ends with the summary, in both modes.
 # A fake gh serves fixtures; nothing reaches GitHub.
 . "$(dirname "$0")/../../lib/core.sh"; t_init

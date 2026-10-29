@@ -4,7 +4,7 @@
   "corpus": {
     "files_on_disk": 19,
     "notes_indexed": 17,
-    "_ignored": "assets/logo.svg is not markdown; .agents/memory/hidden-note.md is an L3 store (a different scope, contracts/memory-format.md); indexes/derived.md is the derived tier.",
+    "_ignored": "assets/logo.svg is not markdown; .agents/memory/hidden-note.md is an L3 store (a different scope, CONTRACTS/memory-format.md); indexes/derived.md is the derived tier.",
     "graph_nodes": 15,
     "_nodes_why": "17 notes minus the 2 duplicate carriers of the colliding slug — a graph node is a slug. The self-link in graph-hub.md is deliberately NOT an edge.",
     "graph_edges": 5

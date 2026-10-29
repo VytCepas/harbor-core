@@ -3,15 +3,15 @@
 # harbor#3). Sourced by bin/guard-*.sh AFTER their kill-switch line. One side
 # effect at source time: the locale below. Pure POSIX + jq; when jq is absent the field helpers
 # return empty and guards fail OPEN — the un-swallowable permissions.deny
-# layer (B1) is the backstop, per docs/how-to/harden-the-host.md's layering.
+# layer (B1) is the backstop, per SEC-0.md's layering.
 #
-# DELIBERATELY ONE FILE (docs/explanation/modularity.md). Every guard sources this, and
+# DELIBERATELY ONE FILE (DOCTRINE/modularity.md). Every guard sources this, and
 # B6 hash-pins each floor file individually — splitting it multiplies the pin
 # surface, and a sourced helper that lives in five files has five places for a
 # tamper to hide. Size is the price of one auditable unit.
 #
 # Provenance: floor_in_repo re-implements the resolution algorithm frozen in
-# harbor contracts/marker.md (walk up; .agents/ or legacy .claude/config.yaml;
+# harbor CONTRACTS/marker.md (walk up; .agents/ or legacy .claude/config.yaml;
 # innermost marker wins). Deliberately NOT an import of project-init's private
 # prod_guard._find_config — three parallel implementations, one shared fixture
 # suite (marker.md:17).
@@ -33,7 +33,7 @@ floor_config_dir() {
 }
 
 # floor_port_root — the workspace root the governed repos live under, per
-# contracts/port-root.md. ONE setting with three readers: Harbor reads it here,
+# CONTRACTS/port-root.md. ONE setting with three readers: Harbor reads it here,
 # project-init's config walk stops before it, projects-orchestrator defaults PO_FLEET_ROOT
 # and fleet.yaml's scan root from it (harbor#619). Same shape as the marker
 # spec next door — one frozen resolution rule, re-implemented per language,
@@ -41,7 +41,7 @@ floor_config_dir() {
 # import a Python resolver across a language boundary.
 #
 # Resolution, in order: an exported PORT_ROOT, else `$HOME/port`. The default is
-# per OS; native Windows is refused (contracts/platforms.md) and WSL2 is Linux.
+# per OS; native Windows is refused (CONTRACTS/platforms.md) and WSL2 is Linux.
 #
 # EMPTY IS UNSET. `PORT_ROOT=` in a profile is someone clearing the variable,
 # never someone naming the root the empty string. The `:-` colon form is what
@@ -71,7 +71,7 @@ floor_port_root() {
 # floor_ere_quote <string> — the string with every ERE metacharacter escaped, so
 # it matches LITERALLY wherever a rule interpolates it.
 #
-# WHY (docs/explanation/admission-baseline.md P12-configdir-ere-injection-03, critical; reproduced 2026-08-30).
+# WHY (FLOOR.md P12-configdir-ere-injection-03, critical; reproduced 2026-08-30).
 # floor_config_dir returns CLAUDE_CONFIG_DIR verbatim and the surface rules
 # interpolate it straight into CFG_RE / CFGDIR_RE / CFG_TOK. A value carrying an
 # UNBALANCED metacharacter makes the whole expression invalid, grep exits
@@ -201,15 +201,15 @@ floor_switch_settings_files() {
   return 0
 }
 
-# floor_switch_in_settings <file> -- the switch names (HARBOR_ADMISSION_DISABLE, HARBOR_ADMISSION_SHADOW) that the file's
+# floor_switch_in_settings <file> -- the switch names (HELM_DISABLE_FLOOR, HELM_FLOOR_SHADOW) that the file's
 # `env` block sets to 1, one per line. It reads the FILE, with jq, so the decoded key is what is matched: a `\u`
 # escape, a split edit, a symlinked .claude, a writer after a pipe and a two-step copy all end as the same bytes,
-# and a check on how it was written cannot see them. Only the literal 1 opens a switch (docs/explanation/admission-baseline.md), so only 1 counts.
+# and a check on how it was written cannot see them. Only the literal 1 opens a switch (FLOOR.md), so only 1 counts.
 # Empty on a missing, unreadable or unparsable file: the harness would not load one either.
 floor_switch_in_settings() {
   [ -f "$1" ] || return 0
   "$FLOOR_JQ" -r '(.env // {}) | if type == "object" then
-      to_entries[] | select(.key == "HARBOR_ADMISSION_DISABLE" or .key == "HARBOR_ADMISSION_SHADOW" or .key == "HELM_DISABLE_FLOOR" or .key == "HELM_FLOOR_SHADOW")
+      to_entries[] | select(.key == "HELM_DISABLE_FLOOR" or .key == "HELM_FLOOR_SHADOW")
       | select((.value | tostring) == "1") | .key else empty end' "$1" 2>/dev/null | sort -u || :
 }
 
@@ -245,8 +245,8 @@ floor_no_human() {
 }
 
 # floor_in_repo — exit 0 iff cwd is inside a governed repo per
-# contracts/marker.md (the B5 seam: inside, the floor narrows to global-only
-# concerns; the veto itself never stands down — docs/reports/platform-epic.md:44).
+# CONTRACTS/marker.md (the B5 seam: inside, the floor narrows to global-only
+# concerns; the veto itself never stands down — harbor-epic.md:44).
 # The marker must be a real, NON-SYMLINK FILE inside a real, non-symlink
 # `.agents/` — `[ -e .agents ]` accepted a zero-byte file or a
 # symlink-to-anywhere, letting an attacker-authored tree forge governed status
@@ -639,7 +639,7 @@ floor_expand_home() {
 #    ~110 bytes; the cap is asserted at 512 to keep half the real margin spare.
 #
 # NOT SETTABLE FROM THE ENVIRONMENT, deliberately: an overridable sink path or a
-# HARBOR_ADMISSION_OBSERVE_DISABLE switch would be an undocumented SECOND kill switch for the
+# HELM_OBS_DISABLE switch would be an undocumented SECOND kill switch for the
 # block ledger, settable from a project settings.json `env` block — the exact
 # class already refused for FLOOR_GREP, FLOOR_AWK and FLOOR_INSTR_SURFACES.
 #
@@ -814,7 +814,7 @@ floor_log_decision() { # <guard> <verdict> <rule.shape>
   # THE SESSION KEY, `sk` (harbor#309): which session wrote the record, so a block can be joined to
   # what that session did next. Salted like `h` under a `sid:` prefix, never the raw id. Read by
   # expansion, not jq: no fork for the read, one hash (on allow records too, which carry no `h`).
-  # ANCHORED to the payload's first key, as the harness sends it (fixtures/pretooluse-bash-real.json):
+  # ANCHORED to the payload's first key, as the harness sends it (fixtures/pretooluse-bash.real.json):
   # a reordered payload gives `-` rather than an MCP tool's `session_id` argument, and nothing past
   # the prefix is scanned. Any doubt gives `-`; the verdict never depends on it.
   _osid=""
@@ -835,7 +835,7 @@ floor_log_decision() { # <guard> <verdict> <rule.shape>
   # THE CONFINEMENT FIELD, `c` (harbor#1298, #555): a closed enum, never a payload byte. `off` while no confinement is
   # installed (no marker beside managed settings: deploy-confinement.sh writes it), `unconfined` when the call asked for
   # the unsandboxed retry, `confined` otherwise, `-` for a tool the confinement does not wrap. `-f` and a case match
-  # only: no fork on the hot path. Read by admission-observe-report.sh --confinement for #555 decision 10 (a), the escape rate.
+  # only: no fork on the hot path. Read by observe-report.sh --confinement for #555 decision 10 (a), the escape rate.
   _oc=-
   if [ "$_ot" = Bash ]; then
     _oc=off
@@ -935,7 +935,7 @@ floor_obs_digest() { # <cfg-dir> [subject]
 # hand. Lint F16 keeps the blanket hatch out of every guard but the two where it
 # is the true remedy.
 #
-# SHADOW (harbor#482): under HARBOR_ADMISSION_SHADOW=1, set by the operator at launch
+# SHADOW (harbor#482): under HELM_FLOOR_SHADOW=1, set by the operator at launch
 # like the kill-switch, a rule records `shadow` and RETURNS instead of exiting,
 # so the guard keeps evaluating: every would-be block is recorded, and a later
 # rule that stays enforcing (floor_shadow_enforces) is still reached and still
@@ -949,7 +949,7 @@ floor_block() {
     FLOOR_SHADOWED=1
     return 0
   fi
-  if [ "${HARBOR_ADMISSION_SHADOW:-${HELM_FLOOR_SHADOW:-0}}" = 1 ] && ! floor_shadow_enforces "$1" "${3%.*}"; then
+  if [ "${HELM_FLOOR_SHADOW:-0}" = 1 ] && ! floor_shadow_enforces "$1" "${3%.*}"; then
     printf 'HELM FLOOR [%s:%s]: SHADOW — would have blocked; recorded, not enforced\n' "$1" "${3%.*}" >&2
     floor_log_decision "$1" shadow "${3:-}" || :
     FLOOR_SHADOWED=1
@@ -991,7 +991,7 @@ FLOOR_SHADOWED=
 # floor.ledger-test SH-11 derives every guard-bash rule whose message names a floor
 # surface or the config dir and fails if one falls outside these patterns.
 # Everything else is measured, not enforced. guard-cloud and guard-destroy decide
-# through permissionDecision and do not read shadow at all (docs/explanation/admission-baseline.md).
+# through permissionDecision and do not read shadow at all (FLOOR.md).
 floor_shadow_enforces() { # <guard> <rule>
   case "$1" in selfedit) return 0 ;; esac
   case "$2" in
@@ -1004,7 +1004,7 @@ floor_shadow_enforces() { # <guard> <rule>
 # floor_confinement_covers <guard> <rule> — 0 iff this block is skipped because the confinement already denies its
 # target (harbor#1300, #555 P3): the rule is in the covered set, the call runs confined, the operator turned the skip
 # on, and the config dir is outside everything the sandbox lets a command write. Any doubt is 1, and the rule blocks.
-# The set mirrors contracts/confinement-coverage.tsv, and tests/admission/baseline/confinement.test.sh holds the two equal:
+# The set mirrors CONTRACTS/confinement-coverage.tsv, and tests/floor/floor.confinement-test.sh holds the two equal:
 # rules whose whole target is the config dir or a floor surface in it. Never a rule whose target can sit in the write
 # zone or above the config dir, a remote action, or a file tool (the sandbox wraps Bash alone).
 # NOTHING HERE IS READ FROM THE ENVIRONMENT. A project's settings `env` block reaches every hook, so the marker and the
@@ -1199,7 +1199,7 @@ floor_is_executor() {
   # NOT A WEAKENING, MEASURED RATHER THAN ARGUED. Both shapes that could have
   # lost cover were run against HEAD and against this file: `sed 's/x/…/e'` and
   # `sed -n 'w <floor surface>'` are allowed BY BOTH, so neither was coverage
-  # this removed — they are pre-existing gaps, now recorded in docs/explanation/admission-baseline.md rather
+  # this removed — they are pre-existing gaps, now recorded in FLOOR.md rather
   # than quietly inherited. The write that IS caught, `sed -i '' 's/a/b/'
   # <surface>`, still blocks after the change, because there the surface is its
   # own operand and the rule reads it from DATA without ever needing CODE.
@@ -1957,7 +1957,7 @@ floor_heredoc_inert_only() {
 # floor_hd_drop_doc_bodies [--writers] <cmd> — <cmd> without the body of each LEADING
 # document heredoc (harbor#716): the opener line is one simple command run by git
 # commit|tag|notes, gh issue|pr|release|gist, jq, yq, echo, printf, true, false, :
-# (and cat, tee with --writers). Anything else comes back unchanged. docs/explanation/admission-baseline.md has the rule.
+# (and cat, tee with --writers). Anything else comes back unchanged. FLOOR.md has the rule.
 floor_hd_drop_doc_bodies() {
   _hdbw=0; _hdbp=0
   while :; do
@@ -2100,7 +2100,7 @@ floor_hd_drop_doc_bodies() {
 # `<enclosing> … $(cat <<EOF)` argument form, which is how commits and PR bodies
 # are written here. Self-contained: it only PEELS the envelope off line 1 and then
 # delegates the delicate heredoc parsing to floor_hd_drop_doc_bodies, so both
-# consumer/interpreter safety and the leading case stay in one place. docs/explanation/admission-baseline.md has
+# consumer/interpreter safety and the leading case stay in one place. FLOOR.md has
 # the rule.
 #
 # WHY THE ENVELOPE IS SAFE TO PEEL. A compound prefix runs before the consumer and
@@ -2345,7 +2345,7 @@ floor_hd_literalize_bodies() {
 
 # floor_seg_unwrap <cmd-ERE> — append a synthetic segment wherever a word matching the
 # lowercase <cmd-ERE> stands in argv behind a wrapper the peel does not know, walking
-# until a text sink (harbor#715; docs/explanation/admission-baseline.md has the rule). Additive only; call it after
+# until a text sink (harbor#715; FLOOR.md has the rule). Additive only; call it after
 # floor_heredoc_inert_only, whose last-segment test a synthetic id would move.
 floor_seg_unwrap() {
   [ -n "${FLOOR_SEGS:-}" ] || return 0
@@ -2884,7 +2884,7 @@ floor_seg_cwd_under() { # <dir> [<dir> …]
 #     cd ~ && rm -rf .cl*aude       — via any later hop
 # exited 0 while 'rm -rf ~/.claude' blocked: the operand was relative, so no
 # path rule could see a config dir in it, and the cwd was ~ rather than ~/.claude,
-# so the fold said "outside". docs/explanation/admission-baseline.md records this class as P12-argv-01, rated
+# so the fold said "outside". FLOOR.md records this class as P12-argv-01, rated
 # critical and left unpatched; the fold it needed did not exist when it was
 # written, and it does now.
 #
@@ -2901,12 +2901,12 @@ floor_seg_cwd_under() { # <dir> [<dir> …]
 # same fail-open direction as its sibling, and the flat rules stay alongside.
 floor_seg_operand_under() { # [--dest-only] <verb-ERE> <dir> [<dir> …]
   # --dest-only JUDGES THE LAST OPERAND AND NOTHING ELSE, which is what makes this
-  # usable for `cp`. docs/explanation/admission-baseline.md records three false positives (P12-argv-fp-01/02/03)
+  # usable for `cp`. FLOOR.md records three false positives (P12-argv-fp-01/02/03)
   # from rules that matched a config-dir operand without asking which SIDE of the
   # copy it was on: `cp <cfg>/x /tmp/backup` is a READ and must stay allowed, while
   # `cp /tmp/evil <cfg>/settings.json` is the write that matters. One flag rather
   # than a sibling function, because a second copy of the cd-chain fold is two
-  # spellings of one rule and that is the drift docs/explanation/modularity.md is about.
+  # spellings of one rule and that is the drift DOCTRINE/modularity.md is about.
   [ -n "${FLOOR_SEGS:-}" ] || return 1
   _soum=any
   if [ "${1:-}" = "--dest-only" ]; then _soum=last; shift; fi
@@ -2949,7 +2949,7 @@ floor_seg_operand_under() { # [--dest-only] <verb-ERE> <dir> [<dir> …]
     # design"); what is protected is the dir ITSELF and its teeth, so the dir is
     # passed exact and bin/ and hooks/ are passed as subtrees.
     # A LEADING `%` MEANS "MATCH THIS ERE", which is how a PINNED FILE inside a
-    # writable directory is named without matching the directory (docs/explanation/admission-baseline.md
+    # writable directory is named without matching the directory (FLOOR.md
     # EDGE-cdbridge-01, reproduced 2026-08-30: `cd ~ && rm .claude/settings.json`
     # exited 0). This is the fix the record itself prescribes, and the reason the
     # obvious alternative is wrong: widening the config dir to a subtree closes
@@ -3237,7 +3237,7 @@ floor_seg_cd_fold() { # <dir>… [+<subtree>…] -> FOLD: lines and SEG rows
 # a session's context at the moment of a tool call — text loaded into every
 # FUTURE session that nothing else here reports. It is arguably the sharpest
 # surface on the list: a pack arrives at the instant of an action rather than in
-# a prefix a reader may skim, which is measurably why it works (docs/reports/evals.md E6, E10)
+# a prefix a reader may skim, which is measurably why it works (EVALS.md E6, E10)
 # and exactly why an unreviewed edit to one matters MORE than an unreviewed edit
 # to CLAUDE.md. Caught by checking, on the same branch that built it.
 # `context-rules` is the same surface after harbor#1010; inject.d stays while the engine reads it.

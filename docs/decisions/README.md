@@ -6,8 +6,8 @@ its successor in `superseded_by`; a partial revision keeps the record accepted a
 in `revised_by`. Format: MADR status (`proposed`, `accepted`, `rejected`, `superseded`).
 
 The table of every record is generated into docs/index.html (the decisions section), not kept here by hand.
-That page is built on demand (`sh bin/doc-index-generate.sh --apply`) and not committed; `--check` is red when it cannot be built.
+That page is built on demand (`sh bin/docs-gen.sh --apply`) and not committed; `--check` is red when it cannot be built.
 
 Two lint rules hold the citations to the records: `standard.decision-dangling` (a D-n with no record) and
 `standard.decision-orphan` (a record nothing outside this folder cites, unless listed in
-`contracts/decision-orphans.tsv`). `sh bin/doc-graph-generate.sh --refs D-n` lists every site that cites a decision.
+`CONTRACTS/decision-orphans.tsv`). `sh bin/graph-gen.sh --refs D-n` lists every site that cites a decision.

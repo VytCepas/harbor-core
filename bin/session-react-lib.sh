@@ -4,16 +4,16 @@
 #   . "$HERE/session-react-lib.sh"
 #   react_event       parse $HARBOR_EVENT: RKIND RSID RSTATE RLINK; returns 1 unless RSID is a plain session id
 #   react_rec <key>   one field of the session's state record (empty when there is none)
-#   react_notify <subtitle> <body>   a desktop banner through bin/library-alert.sh's chain; 1 when it was only logged
+#   react_notify <subtitle> <body>   a desktop banner through bin/alert-lib.sh's chain; 1 when it was only logged
 #   react_log <id> <text>            one line in $RSTATE_DIR/reactions.log
 #
 # The event is the dispatcher's own raw bus line, data and not an instruction: every field is checked against a short
 # charset before use, and nothing from it reaches a shell string.
 # `set -u` is the callers' own mode (every handler sets it before sourcing), so this leaks nothing.
 set -u
-[ -n "${_LOG_LIB:-}" ] || . "${HERE:?session-react-lib.sh: set HERE to the caller bin/ before sourcing}/library-log.sh"
+[ -n "${_LOG_LIB:-}" ] || . "${HERE:?session-react-lib.sh: set HERE to the caller bin/ before sourcing}/log-lib.sh"
 RSTATE_DIR="${HARBOR_STATUS_DIR:-${HOME:-/nonexistent}/.local/state/harbor}"
-ALERT_LIB_DIR="$HERE"; . "$HERE/library-alert.sh"
+ALERT_LIB_DIR="$HERE"; . "$HERE/alert-lib.sh"
 
 react_event() {
   RKIND=""; RSID=""; RSTATE=""; RLINK=""; RDSID=""
@@ -29,7 +29,7 @@ react_rec() { # <key>
   jq -r --arg k "$1" '.[$k] // empty | tostring' "$RSTATE_DIR/sessions/$RSID.json" 2>/dev/null || :
 }
 
-react_notify() { # <subtitle> <body> -> 0 only if a desktop channel took it (bin/library-alert.sh, harbor#618)
+react_notify() { # <subtitle> <body> -> 0 only if a desktop channel took it (bin/alert-lib.sh, harbor#618)
   harbor_notify "$1" "$2"
   [ "$NOTIFY_SINK" != log ]
 }

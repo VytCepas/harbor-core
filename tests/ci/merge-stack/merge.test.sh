@@ -59,8 +59,8 @@ t_eq "...and merges nothing" "" "$(cat "$MS_FIX/merge.log" 2>/dev/null)"
 
 t_section "after a sync push, green waits for GitHub to show the pushed head (harbor#1115) (red-proof)"
 stale() { ms_world harbor
-  ms_branch feat-a; ms_add contracts/suites.txt tests/p/pr.test.sh; ms_push feat-a; ms_pr 11 feat-a
-  OLD="$(ms_tip feat-a)"; ms_main contracts/suites.txt tests/m/main.test.sh
+  ms_branch feat-a; ms_add CONTRACTS/suites.txt tests/p/pr.test.sh; ms_push feat-a; ms_pr 11 feat-a
+  OLD="$(ms_tip feat-a)"; ms_main CONTRACTS/suites.txt tests/m/main.test.sh
   ms_plan "$PL" 11
   printf '[{"databaseId":555,"status":"completed","conclusion":"success"}]\n' > "$MS_FIX/runs/$OLD.1"
   echo "$OLD" > "$MS_FIX/stale/11.old"; echo 3 > "$MS_FIX/stale/11.count"; }

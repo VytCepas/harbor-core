@@ -1,7 +1,7 @@
 // memory · the entity graph and its traversal (harbor#6 — workstream D, D1).
 //
 // A node is a note; an edge is a link one note declares to another, in either
-// of the two canonical dialects contracts/memory-format.md allows — a
+// of the two canonical dialects CONTRACTS/memory-format.md allows — a
 // [[wikilink]] in the body, or a `related:` entry in the frontmatter. Nothing
 // is inferred. Upstream's MemoryGraph.ts:230-267 additionally synthesises edges
 // from IDF-weighted shared-token cosine similarity, which invents relationships

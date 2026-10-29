@@ -77,7 +77,7 @@ t_section "refusal 3b: a shims.tsv that links nothing the pack installs, or a na
 mkpack sm1; printf 'name\trel\nno-such\tbin/no-such\n' > "$PW/sm1/harbor-pack/shims.tsv"; G "$PW/sm1" add -A; G "$PW/sm1" commit -q -m s
 refused shim-no-file sm1 "bin/no-such is not a bin/ file this pack installs"
 mkpack sm2; printf 'name\trel\nsecret\tbin/demo-tool\n' > "$PW/sm2/harbor-pack/shims.tsv"; G "$PW/sm2" add -A; G "$PW/sm2" commit -q -m s
-refused shim-core-name sm2 "secret is a command core's contracts/shims.tsv owns"
+refused shim-core-name sm2 "secret is a command core's CONTRACTS/shims.tsv owns"
 mkpack sm3; printf 'demo-tool\tbin/demo-tool\n' > "$PW/sm3/harbor-pack/shims.tsv"; G "$PW/sm3" add -A; G "$PW/sm3" commit -q -m s
 refused shim-no-header sm3 "its header is not name, rel"
 mkpack sm4; printf 'name\trel\ndemo-tool\tbin/demo-tool\ndemo-tool\tbin/demo-tool\n' > "$PW/sm4/harbor-pack/shims.tsv"; G "$PW/sm4" add -A; G "$PW/sm4" commit -q -m s
@@ -123,7 +123,7 @@ refused leak-in-skill-tests gt "client-free"
 mkpack gf; mkdir -p "$PW/gf/harbor-pack/skills/demo/fixtures"
 printf '%s\n' "$LEAK" > "$PW/gf/harbor-pack/skills/demo/fixtures/f.md"; G "$PW/gf" add -A; G "$PW/gf" commit -q -m f
 refused leak-in-skill-fixtures gf "client-free"
-mkpack gl; mkdir -p "$PW/gl/contracts"; printf 'path\tlayer\tnote\nharbor-pack/\tdev\tn\n' > "$PW/gl/contracts/layers.tsv"
+mkpack gl; mkdir -p "$PW/gl/CONTRACTS"; printf 'path\tlayer\tnote\nharbor-pack/\tdev\tn\n' > "$PW/gl/CONTRACTS/layers.tsv"
 printf '%s\n' "$LEAK" > "$PW/gl/harbor-pack/skills/demo/SKILL.md"; G "$PW/gl" add -A; G "$PW/gl" commit -q -m l
 refused leak-with-own-layers-tsv gl "client-free"
 mkpack gn; printf '%s\n\0\n' "$LEAK" > "$PW/gn/harbor-pack/skills/demo/data.md"; G "$PW/gn" add -A; G "$PW/gn" commit -q -m n
@@ -145,7 +145,7 @@ t_hasnt "secret: never by its text" "$OUT" "Zq8LmN2pR7tY4wXc9Vb"
 printf '[extend]\nuseDefault = true\n[allowlist]\npaths = [%s]\n' "'''.*'''" > "$T_TMP/loose.toml"
 mkdir -p "$T_TMP/tg-loose"
 t_has "an inherited GITLEAKS_CONFIG does not loosen it" "$(GITLEAKS_CONFIG="$T_TMP/loose.toml" pk install sk --apply --dir "$T_TMP/tg-loose" 2>&1)" "carries a secret"
-# The real PATH as one directory of links minus gitleaks, as tests/deploy/push/push.test.sh does.
+# The real PATH as one directory of links minus gitleaks, as tests/export/push.test.sh does.
 FARM="$T_TMP/farm"; mkdir -p "$FARM"
 for _d in $(printf '%s' "$PATH" | tr ':' ' '); do
   [ -d "$_d" ] || continue
@@ -229,7 +229,7 @@ t_eq "...and the target is byte-identical" "$B" "$(snap "$TG")"
 TG="$T_TMP/tg-mv3"; coremf "$TG" 'core wrote this'; : > "$TG/.harbor-manifest"
 t_exit "a skill no manifest names is the operator's, and refuses" 1 pk install mv --apply --dir "$TG"
 
-t_section "the private layer's own pack: id harbor-private is the layer scope-roots.sh --private resolves, not a repos.tsv row (harbor#1273)"
+t_section "the private layer's own pack: id harbor-private is the layer roots.sh --private resolves, not a repos.tsv row (harbor#1273)"
 # A layer that is a git checkout with a harbor-pack/, a registry that does NOT name it, and a decoy checkout at PORT_ROOT/harbor-private.
 PL="$T_TMP/elsewhere/layer"; mkdir -p "$T_TMP/elsewhere"; mkpack lyr; mv "$PW/lyr" "$PL"
 printf 'packs = ["harbor-private"]\n' > "$PL/harbor.toml"; printf 'id\tpath\tkind\tremote\n' > "$PL/repos.tsv"
@@ -253,12 +253,12 @@ TG="$T_TMP/tg-ck"; mkdir -p "$TG/bin" "$TG/skills"; B0="$(snap "$TG")"
 t_exit "a pack with conf-keys.txt installs" 0 pk install ck --apply --dir "$TG"
 t_eq "...its keys land at conf-keys.d/<repo-id>.txt" "ck_project" "$(grep -v '^#' "$TG/conf-keys.d/ck.txt")"
 PVK="$T_TMP/pv-ck"; mkdir -p "$PVK"; printf 'ck_project = "p1"\n' > "$PVK/harbor.toml"
-t_eq "scope-roots.sh reads a key an installed pack declares" "p1" \
-  "$(CLAUDE_CONFIG_DIR="$TG" HARBOR_SCOPE_PRIVATE="$PVK" sh "$T_ROOT/bin/scope-roots.sh" --conf ck_project 2>&1)"
+t_eq "roots.sh reads a key an installed pack declares" "p1" \
+  "$(CLAUDE_CONFIG_DIR="$TG" HARBOR_SCOPE_PRIVATE="$PVK" sh "$T_ROOT/bin/roots.sh" --conf ck_project 2>&1)"
 t_exit "remove exits 0" 0 pk remove ck --apply --dir "$TG"
 t_eq "...and takes the keys back, the target byte-identical" "$B0" "$(snap "$TG")"
 t_exit "with the pack gone the key is unknown again (exit 2)" 2 \
-  env CLAUDE_CONFIG_DIR="$TG" HARBOR_SCOPE_PRIVATE="$PVK" sh "$T_ROOT/bin/scope-roots.sh" --conf ck_project
+  env CLAUDE_CONFIG_DIR="$TG" HARBOR_SCOPE_PRIVATE="$PVK" sh "$T_ROOT/bin/roots.sh" --conf ck_project
 mkpack kc; printf 'channel\n' > "$PW/kc/harbor-pack/conf-keys.txt"; G "$PW/kc" add -A; G "$PW/kc" commit -q -m k
 refused conf-key-core kc "is a core harbor.toml key"
 mkpack lg; printf 'gads_secret_project\n' > "$PW/lg/harbor-pack/conf-keys.txt"; G "$PW/lg" add -A; G "$PW/lg" commit -q -m k

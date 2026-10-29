@@ -3,7 +3,7 @@
 #   Renamed from skill-book.sh (harbor#1010): bin/skill-book.sh stays for one release as an alias that runs this file and says so on stderr.
 #   EVERY ROW CARRIES A TIER, derived from where the skill lives and never typed: core (skills/), vendored (vendor/skills/),
 #   pack (an installed pack's manifest in <config dir>/.harbor-packs lists it), box (installed, and nothing here tracks it); a
-#   tool in ~/.local/bin is tier cli. An executable that is no tool (contracts/catalog-non-tools.tsv) is not a row.
+#   tool in ~/.local/bin is tier cli. An executable that is no tool (CONTRACTS/catalog-non-tools.tsv) is not a row.
 #   sh bin/skill-catalog.sh [--check]    the TRACKED book, skills/skill-catalog/SKILL.md: only the skills the export ships (skills/; vendor/skills/ is dev-layer); --check diffs instead of writing (lint T9)
 #   sh bin/skill-catalog.sh install [--check] [--apply] (--live | --dir PATH)
 #   sh bin/skill-catalog.sh install --manifest (--live | --dir PATH)
@@ -22,7 +22,7 @@
 # WHY THIS IS GENERATED AND NOT WRITTEN. An index of this many skills maintained
 # by hand drifts the moment one is added, renamed or hidden, and an index that
 # lies is worse than no index because it is trusted. Same reasoning that makes
-# docs/generated/status.md generated and lint rules T1/T2 forbid a hand-typed count — including
+# STATUS.md generated and lint rules T1/T2 forbid a hand-typed count — including
 # in this comment, which said "33 skills" while the box had 36.
 #
 # `--check` diffs instead of writing, so a lint rule can flag a stale book. T9 is advisory, so nothing fails
@@ -55,9 +55,9 @@
 # one question nobody asks mid-task. The meta triggers are kept — they were not
 # wrong, only insufficient.
 #
-# THE "START HERE" TABLE IS DATA (harbor#1149): contracts/skill-book-router.tsv, one row per situation, and a row is
+# THE "START HERE" TABLE IS DATA (harbor#1149): CONTRACTS/skill-book-router.tsv, one row per situation, and a row is
 # printed only when its skill is in the book being written, so the tracked book never routes to a skill the repo does
-# not ship. On the box, <private layer>/skill-book-router.tsv (contracts/private-layer.md) replaces the text of a row in
+# not ship. On the box, <private layer>/skill-book-router.tsv (CONTRACTS/private-layer.md) replaces the text of a row in
 # place, or appends a row for a skill core does not route. Only `install` reads it.
 set -eu
 
@@ -81,13 +81,13 @@ LC_ALL=C
 export LC_ALL
 
 ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
-. "$ROOT/bin/library-log.sh"; log_init skill-catalog
-. "$ROOT/bin/deploy-install-lib.sh"
+. "$ROOT/bin/log-lib.sh"; log_init skill-catalog
+. "$ROOT/bin/install-lib.sh"
 TAB='	'
 LOCAL_BIN="${HARBOR_LOCAL_BIN:-$HOME/.local/bin}"
 OUT="$ROOT/skills/skill-catalog/SKILL.md"
-ROUTER="$ROOT/contracts/skill-book-router.tsv"
-NONTOOLS="$ROOT/contracts/catalog-non-tools.tsv"
+ROUTER="$ROOT/CONTRACTS/skill-book-router.tsv"
+NONTOOLS="$ROOT/CONTRACTS/catalog-non-tools.tsv"
 
 # An unrecognised argument must NOT fall through to the write branch. `--chekc`
 # used to overwrite the very file it was asked to verify and exit 0 — the exact
@@ -129,7 +129,7 @@ if [ "$MODE" = install ]; then
       case "$SHOWN" in "$_h"/*) SHOWN="~${SHOWN#"$_h"}"; break ;; esac
     done
   fi
-  PRIV="$(sh "$ROOT/bin/scope-roots.sh" --private 2>/dev/null || :)"
+  PRIV="$(sh "$ROOT/bin/roots.sh" --private 2>/dev/null || :)"
   [ -d "$SKILL_DIR" ] || { log_fail "no skills dir at $SKILL_DIR"; log_nofix "the header of bin/skill-catalog.sh"; log_end || :; exit "$RC_BROKEN"; }
   if [ "$MANIFEST" -eq 1 ]; then
     # Every installed skill is owned by a recorded install: core and vendored skills by a row of the deploy's manifest, a pack's by
@@ -255,7 +255,7 @@ describe() {
 # sib_path <repo-id> [<file>] — a sibling repo's path via the registry (harbor#966), `~`-shortened,
 # or nothing when a registry exists on this box and lacks it.
 sib_path() {
-  __sp="$(sh "$ROOT/bin/scope-roots.sh" --repo "$1" 2>/dev/null)" && [ -n "$__sp" ] || return 1
+  __sp="$(sh "$ROOT/bin/roots.sh" --repo "$1" 2>/dev/null)" && [ -n "$__sp" ] || return 1
   case "$__sp" in "$HOME"/*) __sp="~${__sp#"$HOME"}" ;; esac
   printf '%s/%s' "$__sp" "${2:-}"
 }
@@ -279,9 +279,9 @@ contract_for() {
     return 0
   fi
   case "$1" in
-    harbor)                 printf '`~/port/harbor/contracts/cli.md`' ;;
-    memory)                 printf '`~/port/harbor/contracts/memory-format.md`' ;;
-    projects-orchestrator)  printf '`~/port/harbor/contracts/fleet-controller-json.md`' ;;
+    harbor)                 printf '`~/port/harbor/CONTRACTS/cli.md`' ;;
+    memory)                 printf '`~/port/harbor/CONTRACTS/memory-format.md`' ;;
+    projects-orchestrator)  printf '`~/port/harbor/CONTRACTS/orchestrator-json.md`' ;;
     claude)                 printf '— the harness itself' ;;
     *)                      printf '**none yet**' ;;
   esac
@@ -295,7 +295,7 @@ tier_of() {
   else printf box; fi
 }
 
-# non_tool <executable name> — is it listed in contracts/catalog-non-tools.tsv (a glob, then why)? Such a name leaves the CLI table.
+# non_tool <executable name> — is it listed in CONTRACTS/catalog-non-tools.tsv (a glob, then why)? Such a name leaves the CLI table.
 non_tool() {
   [ -f "$NONTOOLS" ] || return 1
   awk -F'\t' -v n="$1" '
@@ -400,7 +400,7 @@ HEAD
   cat <<'HEAD2'
 
 **This table is generated with the rest of the file.** It lives in
-`contracts/skill-book-router.tsv`, not in the output — a hand-written block here
+`CONTRACTS/skill-book-router.tsv`, not in the output — a hand-written block here
 would be destroyed by the next regeneration, which is exactly why the book was
 called unusable as a router. Editing the data fixes that; editing the book does
 not.
@@ -475,7 +475,7 @@ TOOLS
       done
     fi
     if [ -s "$WORK/skipped" ]; then
-      printf '\n_Not tools, so not rows (contracts/catalog-non-tools.tsv): %s._\n' "$(sed 's/.*/`&`/' "$WORK/skipped" | paste -sd, - | sed 's/,/, /g')"
+      printf '\n_Not tools, so not rows (CONTRACTS/catalog-non-tools.tsv): %s._\n' "$(sed 's/.*/`&`/' "$WORK/skipped" | paste -sd, - | sed 's/,/, /g')"
     fi
   fi
 
@@ -507,7 +507,7 @@ if [ "$MODE" = install ] && [ -n "$PRIV" ] && [ -f "$PRIV/cli-contracts.tsv" ]; 
         printf "%s line %d: expected tool, repo (or -), file (or -), note (or -)\n", f, FNR > "/dev/stderr"; bad = 1; next }
       { print } END { exit bad }' "$PRIV/cli-contracts.tsv" > "$WORK/clis" 2> "$WORK/clis.err"; then
     while IFS= read -r _e; do log_fail "$_e"; done < "$WORK/clis.err"
-    log_fix "fix the row it names in the private layer's cli-contracts.tsv (contracts/private-layer.md)"
+    log_fix "fix the row it names in the private layer's cli-contracts.tsv (CONTRACTS/private-layer.md)"
     log_end || :; exit "$RC_BROKEN"
   fi
 fi
@@ -515,7 +515,7 @@ router_rows > "$WORK/router"
 if grep -q '^E' "$WORK/router"; then
   awk -F'\t' '$1 == "E" { print $2 }' "$WORK/router" > "$WORK/router.err"
   while IFS= read -r _e; do log_fail "$_e"; done < "$WORK/router.err"
-  log_fix "fix the row it names: contracts/skill-book-router.tsv, or the private layer's skill-book-router.tsv (contracts/private-layer.md)"
+  log_fix "fix the row it names: CONTRACTS/skill-book-router.tsv, or the private layer's skill-book-router.tsv (CONTRACTS/private-layer.md)"
   log_end || :; exit "$RC_BROKEN"
 fi
 emit > "$WORK/book"

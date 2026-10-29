@@ -6,8 +6,8 @@
 # scopes repo packs to the session's PROJECT directory (CLAUDE_PROJECT_DIR, else
 # the hook's cwd). A session launched at $HOME and then worked in a worktree has
 # a project directory of $HOME and a working directory of the worktree, so the
-# repo tier is $HOME's (`$HOME/.claude/context-rules/user` is the BOX pack dir, or the old
-# `$HOME/.claude/inject.d` until it moves; `tree_dirs()` drops it as a duplicate), and the tree the session is actually editing governs
+# repo tier is $HOME's (`$HOME/.claude/inject.d` is the BOX pack dir, which
+# `tree_dirs()` drops as a duplicate), and the tree the session is actually editing governs
 # nothing. Measured 2026-08-29 in the session auditing this very question: three
 # harbor packs — including the whole merge-governance chain — were not loaded,
 # and NOTHING said so. The engine detects the collision and is silent about it,
@@ -15,7 +15,7 @@
 #
 # WHY A PACK AND NOT AN ENGINE CHANGE. The engine's job is to load packs; a
 # note about which packs did not load is a note, and notes are data here. This
-# also buys the pack the notes suite for free — tests/context/injection-rule/notes.test.sh fails
+# also buys the pack the notes suite for free — tests/hooks/inject-notes-test.sh fails
 # unless every tracked id has both a FIRE and a SILENT row.
 #
 # THE PAYLOAD IS THE ONLY SOURCE FOR "WHERE THE SESSION IS STANDING". The
@@ -113,7 +113,7 @@ fi
 # tree THIS CALL reaches into, and only when that tree carries rules.
 #
 # WHICH TREE A CALL REACHES INTO IS THE ENGINE'S ANSWER, NOT THIS FILE'S. The
-# definition is written once in contracts/injection-rule.md ("The tree a call touches")
+# definition is written once in CONTRACTS/inject.md ("The tree a call touches")
 # and computed once, in hooks/injection-rule/injection-rule.sh, which hands it to every `run:` pack
 # as HARBOR_TOUCHED: one physical tree per line. This pack computed it itself
 # for one PR (#601); `scope: box` delivery (#599) became the second reader, and

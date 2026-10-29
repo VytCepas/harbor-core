@@ -5,7 +5,7 @@
 # THE BOOTSTRAP LIMIT, STATED RATHER THAN PAPERED OVER. prove.sh cannot catch a
 # defect that blinds it the same way twice — a mutation that removes a check AND
 # removes the assertion about that check is invisible from in here. The
-# independent judge is tests/skill/prove/prove.test.sh, whose expected exit codes are
+# independent judge is tests/skills/prove-test.sh, whose expected exit codes are
 # hand-written and do not use this engine's machinery to decide pass or fail.
 # That asymmetry is the design, not a gap this target can close.
 #
@@ -17,13 +17,13 @@
 # turns it red with no literal for the sed to move. What that still cannot pin is
 # WHICH word is which: any rename that keeps the three distinct passes. Only a
 # file the mutation cannot reach can pin the label contract, and that file is
-# tests/skill/prove/prove.test.sh. Do not read block C as closing the bootstrap limit.
+# tests/skills/prove-test.sh. Do not read block C as closing the bootstrap limit.
 #
-# WHY --self-test AND NOT tests/skill/prove/prove.test.sh. The self-test is hermetic: it
+# WHY --self-test AND NOT tests/skills/prove-test.sh. The self-test is hermetic: it
 # builds its fixtures in a mktemp dir and reads nothing from the repo, so a
 # mutant engine cannot pass by accident because some repo file happened to be
 # right. Pointing this at the suite would also make the target depend on a file
-# in another owner's tree, which is the cross-repo shape contracts/gates.md
+# in another owner's tree, which is the cross-repo shape CONTRACTS/gates.md
 # rules out one directory over.
 #
 # `sites 2` IS A COST DECISION AND IT IS VISIBLE. Every capped class shows
@@ -89,7 +89,7 @@ plant   INERT-1 sed -e 's/if cmp -s "$SEED" "$_mf"; then/if false; then/' -e 's/
 # the counter is a tripwire for a state a correct engine never reaches. So no
 # SINGLE mutation of this file can make its absence visible; it takes a second
 # one that actually skips a phase, built from outside — which is what
-# tests/skill/prove/prove.test.sh does, by dropping a `RUNS=$((RUNS + 1))` and requiring the
+# tests/skills/prove-test.sh does, by dropping a `RUNS=$((RUNS + 1))` and requiring the
 # report to say `run counter mismatch`. NO ARM ID IS NAMED HERE ON PURPOSE: an
 # id written into this file is a copy of a fact that lives in that one, and a
 # copy drifts silently while reading correctly. Grep the suite for the reason
@@ -97,7 +97,7 @@ plant   INERT-1 sed -e 's/if cmp -s "$SEED" "$_mf"; then/if false; then/' -e 's/
 # permanent survivor teaches a reader to skim the survivor list, which is the
 # one thing this report cannot afford.
 manual  RUNS-1   the run-counter tripwire guards a state a correct engine never reaches, so its absence is invisible to any single mutation of this file; only a fixture built OUTSIDE the engine, which skips a phase deliberately and requires the report to say "run counter mismatch", can measure it
-manual  DOUBLE-1 a defect that blinds the engine and its own self-test in the same way is invisible from here by construction; tests/skill/prove/prove.test.sh is the independent judge and its expected exits are hand-written
+manual  DOUBLE-1 a defect that blinds the engine and its own self-test in the same way is invisible from here by construction; tests/skills/prove-test.sh is the independent judge and its expected exits are hand-written
 manual  TIME-1   a mutation that makes the engine HANG is bounded but never scored: PROVE_RUN_TIMEOUT kills it and the target reports COULD-NOT-LOOK, because nobody watched the mutant finish and a guess in the generous direction is how recall gets manufactured
 
 # A cmd control, because a valid-but-unusual INPUT to a shell subject is an

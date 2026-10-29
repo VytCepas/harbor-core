@@ -1,6 +1,6 @@
 ---
 name: housekeeping
-description: "Reclaim a drifted box: the measured trash classes that accumulate here, the detector for each, and — the load-bearing half — the things that LOOK like trash and are live. Every class carries a safe-to-delete predicate and what breaks if you get it wrong. `bin/housekeeping-clean.sh` decides the machine-decidable part and is --dry-run until told otherwise; the rows only a person can decide (merged branches, finished worktrees, green PRs, done issues) come to the operator as ONE batch. USE WHEN the statusline shows 🧹 or SWEEP, clean up, sweep, free disk space, the box feels cluttered, tidy the fleet, obsolete worktrees or branches, stale sessions, what is safe to delete, disk is full, prune caches, retire a PR nobody will merge, merge what is waiting, garbage collect. NOT FOR deleting one file you can already name, or a repo's own build artefacts (its justfile owns those)."
+description: "Reclaim a drifted box: the measured trash classes that accumulate here, the detector for each, and — the load-bearing half — the things that LOOK like trash and are live. Every class carries a safe-to-delete predicate and what breaks if you get it wrong. `bin/harbor-clean.sh` decides the machine-decidable part and is --dry-run until told otherwise; the rows only a person can decide (merged branches, finished worktrees, green PRs, done issues) come to the operator as ONE batch. USE WHEN the statusline shows 🧹 or SWEEP, clean up, sweep, free disk space, the box feels cluttered, tidy the fleet, obsolete worktrees or branches, stale sessions, what is safe to delete, disk is full, prune caches, retire a PR nobody will merge, merge what is waiting, garbage collect. NOT FOR deleting one file you can already name, or a repo's own build artefacts (its justfile owns those)."
 argument-hint: [--apply] [class]
 disable-model-invocation: true
 ---
@@ -28,7 +28,7 @@ never a total.
 
 `🧹N` is the count of rows that need a person; `SWEEP N ·age` means it is due —
 at least one RISK row, or enough DECIDE rows. The fleet refresher records it at
-09:00 and 16:00 (`bin/housekeeping-clean.sh --record`, check `sweep` in `docs/reference/checks.md`).
+09:00 and 16:00 (`bin/harbor-clean.sh --record`, check `sweep` in `CHECKS.md`).
 
 **Done looks like:** every DECIDE and RISK row has the operator's disposition —
 **act**, **keep** (with a reason), or **later** — asked in **one batch grouped by
@@ -39,9 +39,9 @@ twice: a *keep* lands in `~/.claude/.helm-sweep-keep` as
 `class<TAB>subject<TAB>reason`, and that row stops counting.
 
 The rows: `~/.claude/.helm-sweep.jsonl` if under an hour old, otherwise
-`sh ~/port/harbor/bin/housekeeping-clean.sh --json`. An aggregated row (`old-scratch`,
-`old-downloads`) lists its members with `sh ~/port/harbor/bin/housekeeping-clean.sh <class>`.
-Re-record with `sh ~/port/harbor/bin/housekeeping-clean.sh --record --live`.
+`sh ~/port/harbor/bin/harbor-clean.sh --json`. An aggregated row (`old-scratch`,
+`old-downloads`) lists its members with `sh ~/port/harbor/bin/harbor-clean.sh <class>`.
+Re-record with `sh ~/port/harbor/bin/harbor-clean.sh --record --live`.
 
 The gates, none of which a batch approval waives:
 
@@ -54,7 +54,7 @@ The gates, none of which a batch approval waives:
 - **Bundle before the first ref delete** (below). `git branch -D` on a
   squash-merged branch is only safe because the PR carried every commit, and the
   row says so only when that was proven; a row that says *unproven* gets a look.
-- **Merge through the repo's gate**: harbor's rows carry `sh bin/gate-merge-check.sh
+- **Merge through the repo's gate**: harbor's rows carry `sh bin/merge-check.sh
   --merge N --squash --delete-branch`. After a merge, diff what actually closed
   against what the PR claimed (memory `would-close-is-a-closing-keyword`).
 - **Deleting a GitHub branch and closing an issue are outward** — they belong to
@@ -65,7 +65,7 @@ The gates, none of which a batch approval waives:
 
 ## Read this before deleting anything
 
-`bin/housekeeping-clean.sh` is the mechanism; run it with no flags for a dry run.
+`bin/harbor-clean.sh` is the mechanism; run it with no flags for a dry run.
 `references/classes.md` carries the measured table: every class, its detector,
 its safe-to-delete predicate, its growth rate where measured, and the incident
 that put it in the table.
@@ -75,7 +75,7 @@ that put it in the table.
 **1 · Uncommitted work is the most expensive thing on the box, and `git status`
 is not enough to find it.** Concurrent sessions revert uncommitted work while
 `git status` reads clean (memory `concurrent-sessions-revert-uncommitted-work`).
-Measured 2026-09-06: a workload repo held **69 uncommitted lines** of `docs/decisions/rejected-approaches.md`
+Measured 2026-09-06: a workload repo held **69 uncommitted lines** of `DEAD-ENDS.md`
 — two dead ends from a Citadele session, the kind of knowledge nothing
 regenerates. A sweep that started with `rm` would have destroyed it. So the
 FIRST action of any cleanup is to find and commit unsaved work, before a single
@@ -109,8 +109,8 @@ each was **refused on evidence**:
 | looks dead | actually | how you know |
 |---|---|---|
 | `~/.claude/security/agent-sdk-venv` (282 MB, untouched 50d) | LIVE plugin state | `ensure_agent_sdk.py` in the `security-guidance` plugin recreates it — grep the plugin tree before believing a venv is orphaned |
-| `~/.claude/.helm-replay/` (820 KB, 31d) | LIVE corpus | `eval-replay.sh`, `eval-replay-corpus.sh` and `eval-pass-score.sh` read it |
-| `~/.claude/backups/` (139 files) | the recovery store | `deploy-restore.sh`'s subject; it grows one file per install by design |
+| `~/.claude/.helm-replay/` (820 KB, 31d) | LIVE corpus | `replay.sh`, `replay-corpus.sh` and `pass-score.sh` read it |
+| `~/.claude/backups/` (139 files) | the recovery store | `restore.sh`'s subject; it grows one file per install by design |
 | `~/.claude/.helm-*` pins, salts, teeth | floor state | deleting breaks `guard-integrity`; the obs salt makes the ledger unreadable |
 | an old unmerged branch | unlanded work | `merge-tree --write-tree` vs `origin/main`; only a tree EQUAL to main's is landed |
 | a worktree in another session's scratchpad | another live session | it still exists on disk and `worktree prune` refuses it — `hb-444` was on `c2-clean` |
@@ -137,7 +137,7 @@ a dated branch-cleanup deliverable of 2026-09-03.
 ## The guards will stop you, and they are usually right
 
 Cleanup shapes trip the floor by design. Do not reach for
-`HARBOR_ADMISSION_DISABLE=1`; change the command:
+`HELM_DISABLE_FLOOR=1`; change the command:
 
 - `find … -delete` rooted under `$HOME` → `find-xargs-spray`. Add a selective
   filter (`-name '*.log'`) and name one directory, not a home-rooted set.

@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # trigger-probe.sh — does a REAL session route a REAL request to this skill?
-# Ticket: R5 / contracts/gates.md. The checker behind `subject-kind
+# Ticket: R5 / CONTRACTS/gates.md. The checker behind `subject-kind
 # trigger-routing` in skills/test-strength/bin/prove.sh.
 #
 #   sh trigger-probe.sh --card <SKILL.md> --queries <file> [flags]
@@ -497,7 +497,7 @@ while IFS= read -r _row; do
 done < "$WORK/rows"
 
 # THE SUMMARY LINE IS A CONTRACT, not a convenience: prove.sh reads `pos` off
-# it to compute the ablation delta, and contracts/prove-targets.md pins the
+# it to compute the ablation delta, and CONTRACTS/prove-targets.md pins the
 # shape. One line, first on stdout, always emitted.
 printf 'trigger-probe: pos %d/%d  neg %d/%d  unstable %d  shadowed %d  truncated %d  errors %d  sessions %d  cost_usd %s\n' \
   "$POSF" "$((NPOS * RUNS))" "$NEGF" "$((NNEG * RUNS))" "$UNSTABLE" "$SHADOWED" "$TRUNCATED" "$ERRORS" "$SESSIONS" "$COST"

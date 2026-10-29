@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
 # ci-runners-github-lib.sh (harbor#1060) — what the runners do on GitHub: `switch` (CI_RUNS_ON), `rerun-refused`, `rerun-lost`.
 # Sourced by ci-runners.sh, never run: it sets no shell option and reads the entry point's variables ($T, $CONF, $GH, $DOCKER, ...).
-. "$(dirname -- "$0")/library-log.sh"   # a second source keeps the run's counts (library-log.sh)
+. "$(dirname -- "$0")/log-lib.sh"   # a second source keeps the run's counts (log-lib.sh)
 
-# ── switch: CI_RUNS_ON follows the minutes rule ci-runner-switch.sh decided ───────────────────────
+# ── switch: CI_RUNS_ON follows the minutes rule runner-switch.sh decided ───────────────────────
 CHANGED=0
 # owner_verdict <slug> — each owner's own minutes verdict: sets want and why, or fails when there is none fresh to trust
 owner_verdict() {
@@ -20,7 +20,7 @@ do_switch() {
     [ "$w" = 1 ] && [ "$verdict" != hold ] || continue
     case "$_sd" in *" $slug "*) continue ;; esac
     [ "$cstate" != absent ] || [ "$runner" = online ] || [ "$runner" = offline ] || continue
-    _src="ci-runner-switch.sh"; case "$slug" in */*) ;; *) _src="ci-runner-switch.sh --org $slug" ;; esac
+    _src="runner-switch.sh"; case "$slug" in */*) ;; *) _src="runner-switch.sh --org $slug" ;; esac
     owner_verdict "$slug" || { _sd="$_sd$slug "; log_skip "$slug: no fresh verdict from $_src; CI_RUNS_ON left as it is"; continue; }
     if [ "$want" = self-hosted ]; then
       [ "$cstate" = running ] && [ "$runner" = online ] && [ "$cur" != self-hosted ] && [ "$cur" != '?' ] || continue

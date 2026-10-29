@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Resolve conflict blocks where both sides only ADDED entries to a list, keeping both. harbor#1060 · merge-stack's
 resolver. INTERPRETER EXCEPTION: python3, because the shapes below are regular expressions over multi-line blocks
-and POSIX sh/awk would make each one a fragile parse; doc-graph-generate.sh and standard-rename.sh already run python3 from
-bin/ and deploy-doctor.sh probes it. Without python3 a conflicted file is left for a person, which is the safe outcome.
+and POSIX sh/awk would make each one a fragile parse; graph-gen.sh and standard-rename.sh already run python3 from
+bin/ and doctor.sh probes it. Without python3 a conflicted file is left for a person, which is the safe outcome.
 Reads conflicts in git's diff3 style (the tool pins merge.conflictStyle=diff3): every block has ours, the BASE and theirs.
 A block is resolved only if both sides are pure ADDITIONS relative to the base: nothing the base had is missing from either
 side, so a deletion or an edit (a deletion plus an addition) is refused, never silently brought back. Shapes accepted:

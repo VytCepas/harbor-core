@@ -1,0 +1,5 @@
+# lint-dev-paths-baseline.txt (harbor#1275) - (core code file, dev-layer path) pairs in the tree. Only goes down.
+# Derive:  sh bin/lint-dev-paths.sh --count
+# (git grep per `dev` row of CONTRACTS/layers.tsv, non-comment lines of core files that are not documentation or data,
+#  minus the rows of CONTRACTS/dev-paths-allow.tsv.)
+0

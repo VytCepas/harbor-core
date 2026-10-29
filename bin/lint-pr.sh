@@ -12,7 +12,7 @@ set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
-. "$SRC/library-log.sh"
+. "$SRC/log-lib.sh"
 log_init lint-pr
 T="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -rf "$T"' EXIT
 CONTROLS="$ROOT/standards/naming/controls.tsv"

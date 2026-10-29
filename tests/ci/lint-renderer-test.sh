@@ -5,11 +5,11 @@
 . "$(dirname "$0")/../lib/core.sh"; t_init
 LR="$T_ROOT/bin/lint-renderer.sh"
 F="$T_TMP/fx"
-mk() { rm -rf "$F"; mkdir -p "$F/bin" "$F/hooks" "$F/standards/naming"; cp "$T_ROOT/bin/library-log.sh" "$F/bin/"
+mk() { rm -rf "$F"; mkdir -p "$F/bin" "$F/hooks" "$F/standards/naming"; cp "$T_ROOT/bin/log-lib.sh" "$F/bin/"
   cp "$T_ROOT/standards/naming/writers.tsv" "$F/standards/naming/"
   printf 'name.renderer-used\twarn\tcheck\tbin/lint-renderer.sh\n' > "$F/standards/naming/controls.tsv"
   printf '%s\n' '#!/bin/sh' 'N="$(sh bin/lint-name.sh --render branch type=fix issue=1 slug=x)"' 'git switch -c "$N"' > "$F/bin/worktree.sh"
-  printf '%s\n' '#!/bin/sh' 'N="$(sh bin/lint-name.sh --render issue-title family=a)"' 'gh issue create --title "$N"' > "$F/bin/lint-findings.sh"
+  printf '%s\n' '#!/bin/sh' 'N="$(sh bin/lint-name.sh --render issue-title family=a)"' 'gh issue create --title "$N"' > "$F/bin/findings.sh"
   printf '%s\n' '#!/bin/sh' 'N="$(sh bin/lint-name.sh --render branch type=ci issue=1 slug=x)"' 'git switch -c "$N"' > "$F/bin/ci-runs-on.sh"; }
 run() { HARBOR_ROOT="$F" sh "$LR" "$@" 2>&1; }
 
@@ -33,8 +33,8 @@ mk; printf '%s\n' '#!/bin/sh' 'git worktree add --detach /x HEAD' > "$F/bin/deta
 t_has "a detached worktree names nothing" "$(run)" "0 failed, 0 warnings"
 
 t_section "a registered writer that is gone warns; only block fails"
-mk; rm "$F/bin/lint-findings.sh"
-t_has "missing writer" "$(run)" "bin/lint-findings.sh is a registered writer but is not there"
+mk; rm "$F/bin/findings.sh"
+t_has "missing writer" "$(run)" "bin/findings.sh is a registered writer but is not there"
 mk; printf '%s\n' '#!/bin/sh' 'git switch -c x' > "$F/bin/worktree.sh"
 sed 's/\twarn\t/\tblock\t/' "$F/standards/naming/controls.tsv" > "$F/c" && mv "$F/c" "$F/standards/naming/controls.tsv"
 out="$(run)"; rc=$?

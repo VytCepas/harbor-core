@@ -20,17 +20,17 @@
 #   $DIR/bin/prod-guard-ambient.sh   ← the deferral shim
 # A hook wired at a git working tree changes meaning on `git checkout`, which
 # would make the global guard depend on which branch happens to be out. Both
-# copies land in the config dir, the same reasoning deploy-runtime-install.sh uses.
+# copies land in the config dir, the same reasoning runtime-install.sh uses.
 #
 # IT WIRES ONE PreToolUse HOOK, which floor-install.sh's gate does not cover and
-# should not: eval-pass-score.sh blocks the FLOOR (six guards, exit-2 vetoes). This is
+# should not: pass-score.sh blocks the FLOOR (six guards, exit-2 vetoes). This is
 # one `ask`-posture guard whose corpus the floor deliberately excludes, and
 # harbor#56 argues at length why it is not a floor guard. Its blast radius is a
 # prompt on ~0.4% of Bash calls (46 of 11,505 historical).
 set -eu
 SRC="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
-. "$SRC/library-log.sh"
-. "$SRC/deploy-install-lib.sh"
+. "$SRC/log-lib.sh"
+. "$SRC/install-lib.sh"
 log_init prod-guard-install
 il_parse "$@"
 il_target
@@ -53,7 +53,7 @@ command -v jq >/dev/null 2>&1 || { log_fail "jq is required"; log_fix "$(pkg_hin
 # The fix exists upstream and reaches nothing, because the distribution channel
 # between them is stale. Preferring the source repo when it is present is the
 # only ordering that cannot install a known-vulnerable guard.
-PI_SRC="${PROJECT_INIT_SRC:-$(sh "$SRC/scope-roots.sh" --get HARBOR_SCOPE_SCAFFOLDER)}/templates/base/dot_agents/hooks/prod_guard.py"
+PI_SRC="${PROJECT_INIT_SRC:-$(sh "$SRC/roots.sh" --get HARBOR_PROJECT_INIT)}/templates/base/dot_agents/hooks/prod_guard.py"
 # The mirror is the TARGET's own marketplace clone, never one CLAUDE_CONFIG_DIR points at.
 PLUGIN_MIRROR="$DIR/plugins/marketplaces/project-init/plugins/project-init-workflow/hooks/prod_guard.py"
 if [ -f "$PI_SRC" ]; then PLUGIN="$PI_SRC"; SRC_KIND="upstream source repo"
@@ -171,7 +171,7 @@ il_write_json "$NEW" "$S" || { log_end; exit 1; }
 log_ok "settings.json: PreToolUse Bash wired to the shim"
 log_note "backup: $IL_BK"
 
-# RE-PIN, for the reason deploy-runtime-install.sh:139 gives and this installer originally
+# RE-PIN, for the reason runtime-install.sh:139 gives and this installer originally
 # missed: it just wrote settings.json, so the teeth pin is stale BY OUR OWN HAND.
 # Leaving it would hand the operator a drift alarm caused by the tool that told them
 # to run it — the statusline flips floor✓ → floor DRIFT — and would make B6, once

@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
-# bin/check-registry-generate.sh: the one check registry, core docs/reference/checks.md plus the private layer's checks.md (harbor#1149).
+# bin/check-registry-generate.sh: the one check registry, core CHECKS.md plus the private layer's checks.md (harbor#1149).
 # Every layer here is a throwaway directory named by --private; the ids are made up and name no real entity.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 GEN="$T_ROOT/bin/check-registry-generate.sh"
-CORE="$T_TMP/docs/reference/checks.md"; mkdir -p "$T_TMP/docs/reference"
+CORE="$T_TMP/CHECKS.md"
 cat > "$CORE" <<'EOF'
 # CHECKS
 
@@ -76,7 +76,7 @@ refuses() { # <label> <layer dir> <message needle>
   _o="$(sh "$GEN" --core "$CORE" --private "$2" 2>"$T_TMP/err")"; _r=$?
   t_eq "$1: exit 2" 2 "$_r"; t_eq "$1: nothing on stdout" "" "$_o"; t_has "$1: says why" "$(cat "$T_TMP/err")" "$3"
 }
-refuses "an id already in core" "$(frag dupcore '| `core-one` | x | hourly | desktop | y |' '| core-one | macOS only | w | d |')" "is in core docs/reference/checks.md"
+refuses "an id already in core" "$(frag dupcore '| `core-one` | x | hourly | desktop | y |' '| core-one | macOS only | w | d |')" "is in core CHECKS.md"
 refuses "an id twice in the fragment" "$(frag duppriv "$(printf '%s\n%s' "$REG" "$(printf '%s' "$REG" | sed -n 1p)")" "$PLAT")" "repeats line"
 refuses "a register row without cells" "$(frag short '| `acme-feed` | only | three |' '| acme-feed | macOS only | w | d |')" "not a register row"
 refuses "a register row whose id is not in backticks" "$(frag bare '| acme-feed | a | hourly | desktop | r |' '| acme-feed | macOS only | w | d |')" "not a register row"
@@ -96,10 +96,10 @@ t_exit "an unknown argument is exit 2" 2 sh "$GEN" --nope
 t_exit "a missing core is exit 2" 2 sh "$GEN" --core "$T_TMP/none.md" --private "$T_TMP/nowhere"
 
 t_section "the real tree: the insertion points are there, and core alone is the registry"
-t_eq "docs/reference/checks.md has one register insertion point" 1 "$(grep -cx '<!-- private:register -->' "$T_ROOT/docs/reference/checks.md")"
-t_eq "docs/reference/checks.md has one platforms insertion point" 1 "$(grep -cx '<!-- private:platforms -->' "$T_ROOT/docs/reference/checks.md")"
-t_exit "with no layer the generator prints docs/reference/checks.md unchanged" 0 sh -c "sh '$GEN' --core '$T_ROOT/docs/reference/checks.md' --private '$T_TMP/nowhere' | cmp -s - '$T_ROOT/docs/reference/checks.md'"
-OUT="$(sh "$GEN" --core "$T_ROOT/docs/reference/checks.md" --private "$(frag real "$REG" "$PLAT")")"
-t_eq "a layer joins the real register: two more ids" "$(( $(ids < "$T_ROOT/docs/reference/checks.md" | wc -l) + 2 ))" "$(printf '%s\n' "$OUT" | ids | wc -l | tr -d ' ')"
-t_eq "...and two more platforms rows" "$(( $(pids < "$T_ROOT/docs/reference/checks.md" | wc -l) + 2 ))" "$(printf '%s\n' "$OUT" | pids | wc -l | tr -d ' ')"
+t_eq "CHECKS.md has one register insertion point" 1 "$(grep -cx '<!-- private:register -->' "$T_ROOT/CHECKS.md")"
+t_eq "CHECKS.md has one platforms insertion point" 1 "$(grep -cx '<!-- private:platforms -->' "$T_ROOT/CHECKS.md")"
+t_exit "with no layer the generator prints CHECKS.md unchanged" 0 sh -c "sh '$GEN' --core '$T_ROOT/CHECKS.md' --private '$T_TMP/nowhere' | cmp -s - '$T_ROOT/CHECKS.md'"
+OUT="$(sh "$GEN" --core "$T_ROOT/CHECKS.md" --private "$(frag real "$REG" "$PLAT")")"
+t_eq "a layer joins the real register: two more ids" "$(( $(ids < "$T_ROOT/CHECKS.md" | wc -l) + 2 ))" "$(printf '%s\n' "$OUT" | ids | wc -l | tr -d ' ')"
+t_eq "...and two more platforms rows" "$(( $(pids < "$T_ROOT/CHECKS.md" | wc -l) + 2 ))" "$(printf '%s\n' "$OUT" | pids | wc -l | tr -d ' ')"
 t_done

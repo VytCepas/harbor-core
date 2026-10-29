@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
-# session-workflow-progress.sh's output follows contracts/logging.md (harbor#771): a finished or active agent is an ok line, a slow
+# wf-progress.sh's output follows CONTRACTS/logging.md (harbor#771): a finished or active agent is an ok line, a slow
 # one a note, a stalled one a WARN with its fix, and the run ends with the summary. A stall exits 3, the tool's own
 # contract, with 0 failed. HOME is a fixture, so no real transcript is read.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-TOOL="$T_ROOT/bin/session-workflow-progress.sh"
+TOOL="$T_ROOT/bin/wf-progress.sh"
 H="$T_TMP/home"; W="$H/.claude/projects/p/wf_fixture"; mkdir -p "$W"
 printf '%s\n' '{"type":"started","agentId":"aaa"}' '{"type":"started","agentId":"bbb"}' '{"type":"started","agentId":"ccc"}' \
   '{"type":"result","agentId":"aaa"}' > "$W/journal.jsonl"

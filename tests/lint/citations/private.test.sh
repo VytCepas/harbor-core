@@ -1,10 +1,10 @@
 #!/usr/bin/env sh
-# Lint rule T7 (doc.urls-cited) reads the private layer's citations.md beside docs/reference/citations.md (harbor#1149): the
+# Lint rule T7 (doc.urls-cited) reads the private layer's citations.md beside CITATIONS.md (harbor#1149): the
 # rows for hosts core does not name. Each arm points the rule at a throwaway root and a throwaway layer.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/checks/lint-fixture.sh"
-FIX="$TMP/cit"; mkdir -p "$FIX/docs/reference" "$TMP/pv-empty"
-printf '# ledger\n\n| URL | HTTP |\n|---|---|\n| `https://github.com/VytCepas/harbor` | 200 |\n' > "$FIX/docs/reference/citations.md"
+FIX="$TMP/cit"; mkdir -p "$FIX" "$TMP/pv-empty"
+printf '# ledger\n\n| URL | HTTP |\n|---|---|\n| `https://github.com/VytCepas/harbor` | 200 |\n' > "$FIX/CITATIONS.md"
 printf 'The tool is documented at `https://docs.example-vendor.io/guide` and on help.example-vendor.io today.\n' > "$FIX/DOC.md"
 PV="$TMP/pv"; mkdir -p "$PV"
 t7() { env HARBOR_SCOPE_PRIVATE="$1" HARBOR_ROOT="$FIX" sh "$LINT" --only T7 2>&1 | grep -F 'VIOLATION [doc.urls-cited]'; }

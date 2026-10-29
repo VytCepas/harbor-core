@@ -6,7 +6,7 @@ HAVE_VALE=1; command -v vale >/dev/null 2>&1 || HAVE_VALE=0   # the runner has n
 [ "$HAVE_VALE" = 1 ] || printf 'SKIP: vale is not installed here, so the warnings arm is NOT exercised (the missing-vale arm below still is)\n'
 DV="$T_ROOT/bin/doc-vale.sh"
 R="$T_TMP/r"; mkdir -p "$R/standards" "$R/bin"; cp -R "$T_ROOT/standards/naming" "$R/standards/naming"
-cp "$T_ROOT/bin/lint-name.sh" "$T_ROOT/bin/library-log.sh" "$DV" "$R/bin/"
+cp "$T_ROOT/bin/lint-name.sh" "$T_ROOT/bin/log-lib.sh" "$DV" "$R/bin/"
 printf 'The floor is high.\n\nPaint it the colour red.\n' > "$T_TMP/bad.md"
 printf 'Use `floor` and `colour` in code.\n' > "$T_TMP/ticks.md"
 printf 'Nothing to say here.\n' > "$T_TMP/clean.md"

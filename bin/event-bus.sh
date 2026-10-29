@@ -15,11 +15,11 @@
 
 # Not $(dirname): a hook will run this (F15, harbor#813).
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
-if [ -f "$HERE/library-log.sh" ]; then
-  . "$HERE/library-log.sh"
+if [ -f "$HERE/log-lib.sh" ]; then
+  . "$HERE/log-lib.sh"
 else
   # emit never fails its caller, even with its library gone.
-  printf 'event-bus: %s/library-log.sh is missing — nothing was done\n' "$HERE" >&2
+  printf 'event-bus: %s/log-lib.sh is missing — nothing was done\n' "$HERE" >&2
   [ "${1-}" = emit ] && exit 0
   exit 2
 fi
@@ -120,7 +120,7 @@ offsets_lock() {
 
 consumer_ok() { case "$1" in ''|*[!A-Za-z0-9._-]*) return 1 ;; esac; }
 
-# ── prune: retention (docs/reference/checks.md event.retention) ─────────────────────────────
+# ── prune: retention (CHECKS.md event.retention) ─────────────────────────────
 # prune <quiet>: delete every day file dated more than KEEP_DAYS days before today (UTC), so every
 # event is kept at least KEEP_DAYS days. quiet=1 says only what failed. Returns 1 if one survived.
 prune() {

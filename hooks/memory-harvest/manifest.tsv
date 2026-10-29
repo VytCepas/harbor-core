@@ -1,4 +1,4 @@
-# Why it is wired this way (moved from bin/deploy-runtime-install.sh, harbor#1272):
+# Why it is wired this way (moved from bin/runtime-install.sh, harbor#1272):
 # harbor#6 — the work-log reconciler, wired at STOP rather than SessionStart.
 #
 # D1's ticket says SessionStart, and that is where it does NOT work. Every hook

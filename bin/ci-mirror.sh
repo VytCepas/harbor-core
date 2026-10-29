@@ -23,7 +23,7 @@ set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
-. "$SRC/library-log.sh"
+. "$SRC/log-lib.sh"
 log_init ci-mirror
 LOG_FD=2
 

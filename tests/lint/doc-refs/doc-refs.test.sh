@@ -48,15 +48,15 @@ t_has "an example: link target is counted as example-marked" "$OUT" "1 example-m
 t_has "...while the same path without it is a finding" "$OUT" "README.md:1 cites out/report.html"
 
 t_section "what is cited, and what is not"
-D="$(mktree shape)"; mkdir -p "$D/docs" "$D/contracts"; : > "$D/docs/context-map.md"; : > "$D/contracts/note.md"
+D="$(mktree shape)"; mkdir -p "$D/docs" "$D/CONTRACTS"; : > "$D/docs/context-map.md"; : > "$D/CONTRACTS/note.md"
 cat > "$D/README.md" <<'DOC'
-Link [ok](contracts/note.md), [dead](contracts/gone.md), [site](https://x.org/a/gone.md), [anchor](#top), [mail](mailto:a@b.c).
+Link [ok](CONTRACTS/note.md), [dead](CONTRACTS/gone.md), [site](https://x.org/a/gone.md), [anchor](#top), [mail](mailto:a@b.c).
 Span `bin/tool.sh:3`, `bin/tool.sh#frag`, dead `bin/gone-span.sh`, a word `sh bin/gone-word.sh -v`, a dir `bin/`, a bare `GONE.md`.
 Not paths: `/abs/gone.md`, `~/gone.md`, `bin/*.sh`, `bin/{a,b}.sh`, `a/b`, `and/or`, `$HOME/x.md`, `<x>/y.md`.
 DOC
 commit "$D"
 OUT="$(DR "$D")"
-t_has "a dead link" "$OUT" "README.md -> contracts/gone.md"
+t_has "a dead link" "$OUT" "README.md -> CONTRACTS/gone.md"
 t_has "a dead span with a slash" "$OUT" "README.md -> bin/gone-span.sh"
 t_has "a dead word inside a longer span" "$OUT" "README.md -> bin/gone-word.sh"
 t_eq "...and nothing else: 3 findings" "3" "$(printf '%s\n' "$OUT" | grep -c '^A')"
@@ -148,7 +148,7 @@ t_has "gamma: no checkout, said" "$OUT" "gamma	-	-	-	-	checkout absent"
 
 t_section "bin/lint-conventions.sh relays the findings as advisories and exits clean"
 D="$T_TMP/relay"; mkdir -p "$D/bin" "$D/standards"
-cp "$T_ROOT/bin/doc-refs.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/scope-roots.sh" "$D/bin/"; mkdir -p "$D/contracts"; cp "$T_ROOT/contracts/roots.tsv" "$D/contracts/"
+cp "$T_ROOT/bin/doc-refs.sh" "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/roots.sh" "$D/bin/"; mkdir -p "$D/CONTRACTS"; cp "$T_ROOT/CONTRACTS/roots.tsv" "$D/CONTRACTS/"
 cp -R "$REG" "$D/standards/naming"
 printf '# r\n\nSee `bin/gone-relay.sh`.\n' > "$D/README.md"
 ( cd "$D" && git init -q . && git add -A && git -c user.email=t@t -c user.name=t commit -qm x ) >/dev/null 2>&1

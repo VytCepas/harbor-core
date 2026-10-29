@@ -40,9 +40,9 @@
 set -eu
 # harbor#521: touched, so converted (LOG1 ratchet). Stdout is the report; the log goes to stderr.
 HERE="$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)" || HERE=""
-[ -n "$HERE" ] && [ -f "$HERE/library-log.sh" ] || { echo "skill-usage: library-log.sh is missing beside $0" >&2; exit 1; }
+[ -n "$HERE" ] && [ -f "$HERE/log-lib.sh" ] || { echo "skill-usage: log-lib.sh is missing beside $0" >&2; exit 1; }
 LOG_FD=2
-. "$HERE/library-log.sh"
+. "$HERE/log-lib.sh"
 log_init skill-usage
 stop() { log_fail "$1"; log_fix "$2"; log_end || :; exit 1; } # <what failed> <fix command>
 
@@ -83,7 +83,7 @@ _sessions="$(wc -l < "$LIST" | tr -d ' ')"
 # separates "nothing wanted it" from "the description never triggered" — while
 # having no idea how large its own window was, and printing `have NEVER been
 # invoked` about it. Measured 2026-08-21: the store held 498 session files whose
-# oldest mtime was 8 days old, and `bin/status-usage-aggregate.sh`'s header already
+# oldest mtime was 8 days old, and `bin/usage-aggregate.sh`'s header already
 # records why — *"the transcript store is garbage-collected"*. So "never" was a
 # claim about a rolling window, stated as a claim about all time, by the one tool
 # whose whole purpose is to price a permanent decision.

@@ -1,0 +1,21 @@
+# merge-stack-union.txt (harbor#1060) — the line lists whose pure additions `harbor merge-stack` keeps from both sides.
+#
+# WHY THIS FILE EXISTS. Each merge changes main, so the next PR conflicts in the lists every PR appends to. For a file
+# listed here, bin/gate-merge-stack-resolve.py --lines resolves a conflict block only when both sides purely ADDED whole
+# lines to the base: ours kept, theirs' new lines after it. A block where either side lost a base line (a deletion, or an
+# edit) stops for a person. Only .txt and .tsv files are honoured: a line list is data, never code.
+#
+# NOT git's `union` driver, for any file: it keeps both sides of a block whatever they are, so a line main deleted came
+# back beside the PR's edit of it (r4 #2: bin/harbor ended with two ALLOW= lines). Every entry below is a list whose
+# lines are independent and whose order does not matter; no entry is append-only by definition (each one also loses
+# lines), which is why each goes through the resolver's only-adds check instead.
+#
+# Audited 2026-10-07 and dropped: bin/harbor (code: a dispatcher), CONTRACTS/cli.md (a document: prose and a verb table
+# lint CLI1 cross-checks against bin/harbor). A conflict in either stops for a person.
+# Line-internal word lists (FILES="…", a case a|b) are the resolver's other shapes, in any sh file.
+#
+# FORMAT: one repo-relative path per line.
+CONTRACTS/suites.txt
+CONTRACTS/suite-paths.txt
+CONTRACTS/idle-tools.txt
+CONTRACTS/log-exempt.tsv
