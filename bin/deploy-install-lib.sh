@@ -51,8 +51,6 @@
 #   il_mf_blob <cfg> <relpath>   the blob recorded for one path, or nothing
 #   il_known <cfg> <relpath> <file> <repo> <repo-path>…   0 when the file's bytes are recorded for relpath
 #                                in the manifest, or were committed at a repo path: not a box-only edit
-#   il_renamed_retire <repo> <pins 0|1> <name>…   the old names of these just-installed bin/ names (renames.tsv):
-#                                each old copy becomes the checkout's shim (or goes), its pin goes when <pins> is 1
 #
 # Set before il_target when the default is wrong: IL_LIVE_DIR (the live target, default $HOME/.claude),
 # IL_ENV (the variable that must agree with the target, default CLAUDE_CONFIG_DIR, empty for none),
@@ -411,60 +409,6 @@ il_known() { # <cfg> <relpath> <file> <repo> <repo-path>…
   [ $# -gt 0 ] && git -C "$_ik_r" rev-parse --git-dir >/dev/null 2>&1 || return 1
   git -C "$_ik_r" log --format= --raw --no-abbrev -- "$@" 2>/dev/null \
     | awk -v h="$_ik_b" '$3 == h || $4 == h { f = 1 } END { exit !f }'
-}
-
-# THE OLD NAME OF A RENAMED FILE (harbor#949). A box installed before a rename keeps the old name's copy and,
-# for a floor file, its B6 pin: B6 then checks a file no installer writes, install-drift reads it stale, and
-# the deploy that ships the rename fails its own verify and restores itself. The installer of the new name
-# leaves the old one as the checkout has it: the shim while renames.tsv keeps it, nothing once it is gone.
-# The shim, not a removal: LaunchAgents and notes still name old paths until standard-rename's box half
-# rewrites them. The checkout's link is copied as it is (cp -P); no link is made here (harbor#708).
-# A pinned copy is floor-install's (<pins> 1) and is never touched by another installer. Bytes in no commit
-# and not matching their pin are box-only work: kept with their pin, and named. Everything moved is backed up.
-il_renamed_retire() { # <repo root> <own the pins: 0|1> <installed name>…
-  _ir_r="$1"; _ir_own="$2"; shift 2
-  [ -f "$_ir_r/standards/naming/renames.tsv" ] || return 0
-  _ir_rows="$(printf '%s\n' "$@" | awk -F'\t' 'NR == FNR { w[$0] = 1; next }
-      /^#/ || NF < 3 { next }
-      $2 ~ /^bin\/[^\/]+$/ && $3 ~ /^bin\/[^\/]+$/ {
-        o = substr($2, 5); n = substr($3, 5); if ((n in w) && o != n) print o " " n }' - "$_ir_r/standards/naming/renames.tsv")"
-  _ir_done=''; _ir_kept=''
-  while read -r _ir_o _ir_n; do
-    [ -n "$_ir_o" ] && [ -f "$IL_TARGET/bin/$_ir_n" ] || continue
-    _ir_c="$IL_TARGET/bin/$_ir_o"; _ir_p="$IL_TARGET/.helm-pins/$_ir_o.sha256"
-    if [ -f "$_ir_p" ] && [ "$_ir_own" != 1 ]; then continue; fi
-    _ir_file=0; [ -f "$_ir_c" ] && [ ! -L "$_ir_c" ] && _ir_file=1
-    [ "$_ir_file" -eq 1 ] || [ -f "$_ir_p" ] || continue
-    if [ "$_ir_file" -eq 1 ] && ! il_known "$IL_TARGET" "bin/$_ir_o" "$_ir_c" "$_ir_r" "bin/$_ir_o"; then
-      _ir_h="$( { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; } < "$_ir_c" | awk '{print $1}')"
-      if [ ! -f "$_ir_p" ] || [ "$(cat "$_ir_p" 2>/dev/null)" != "$_ir_h" ]; then _ir_kept="$_ir_kept bin/$_ir_o"; continue; fi
-    fi
-    _ir_done="$_ir_done $_ir_o->$_ir_n"
-    [ "$IL_APPLY" -eq 1 ] || continue
-    il_backup "$_ir_p" || return 1
-    if [ "$_ir_file" -eq 1 ]; then
-      il_backup "$_ir_c" || return 1
-      if [ -L "$_ir_r/bin/$_ir_o" ]; then
-        cp -P "$_ir_r/bin/$_ir_o" "$_ir_c.tmp.$$" && mv -f "$_ir_c.tmp.$$" "$_ir_c" || {
-          rm -f "$_ir_c.tmp.$$"; log_fail "could not replace bin/$_ir_o with its shim — it is unchanged"; log_nofix "the cp/mv error above"; return 1; }
-        il_manifest "bin/$_ir_o"
-      else
-        rm -f "$_ir_c"; il_manifest_drop "bin/$_ir_o"
-      fi
-    fi
-    rm -f "$_ir_p"
-  done <<IREOF
-$_ir_rows
-IREOF
-  if [ -n "$_ir_done" ]; then
-    if [ "$IL_APPLY" -eq 1 ]; then log_ok "the old name of a renamed file is now the checkout's shim or gone, its B6 pin removed, both backed up in $IL_BK:$_ir_done"
-    else log_note "the old name of a renamed file WOULD become the checkout's shim or go, with its B6 pin:$_ir_done"; fi
-  fi
-  if [ -n "$_ir_kept" ]; then
-    log_warn "kept the old name of a renamed file:$_ir_kept — its bytes are in no commit and match no pin, so it is box-only work; B6 and install-drift go on naming it"
-    log_fix "compare it with the file it was renamed to (standards/naming/renames.tsv), keep what you need, then delete it and its .helm-pins entry"
-  fi
-  return 0
 }
 
 # THE GIT VERBS REGISTER (harbor#1291). floor-deny adds the allow and ask rules contracts/git-verbs.md's rows imply

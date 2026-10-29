@@ -408,4 +408,3 @@ tests/policy/resolve/order.test.sh
 tests/standard/vendor/vendor.test.sh
 tests/memory/memory-names-test.sh
 tests/standard/rename/sandbox-home.test.sh
-tests/deploy/install/renamed.test.sh

@@ -124,8 +124,8 @@ fi
 # exactly one place on this box", although it had been committed for weeks and
 # was replaced on purpose. An operator trained to answer every refusal with
 # --accept-loss answers the real one the same way. The known set is therefore
-# the current file plus every version `git log --follow -- policy/constitution.md`
-# reaches, under each name it had: 22 revisions on 2026-09-24, about half a second at load 10.
+# the current file plus every version `git rev-list HEAD -- policy/constitution.md`
+# reaches: 22 revisions on 2026-09-24, about half a second at load 10.
 #
 # OUTSIDE A GIT CHECKOUT the history cannot be read, so the known set falls back
 # to the current file alone, and the refusal says so. Stricter, never looser.
@@ -137,7 +137,7 @@ fi
 # records it).
 #
 # A HISTORY READ THAT FAILS IS SAID, NEVER PASSED OFF AS COMPLETE (review of
-# #685). If `git log` fails (a corrupt or partial object store), or some
+# #685). If `git rev-list` fails (a corrupt or partial object store), or some
 # `git show` does, the known set shrinks. That only makes the gate stricter, so
 # nothing live is ever let through. But the first cut then claimed "none of the 0
 # committed versions", a search that never happened, so the refusal reported a
@@ -152,16 +152,12 @@ if [ -f "$DEST" ]; then
   trap 'rm -rf "$_bp_tmp"' EXIT INT TERM
   _known_from="the current policy/constitution.md does not — $ROOT is not a git checkout, so its history could not be read"
   if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    # ACROSS RENAMES (harbor#949): the W2 move left `rev-list -- policy/constitution.md` one version, and 17
-    # lines committed under CONSTITUTION.md refused. --follow pairs each version with the path it had then.
-    if git -C "$ROOT" log --follow --diff-filter=d --format=@%H --name-only HEAD -- policy/constitution.md 2>/dev/null \
-         | awk '/^@/ { r = substr($0, 2); next } NF && r != "" { print r " " $0; r = "" }' > "$_bp_tmp/revs" \
-       && [ -s "$_bp_tmp/revs" ]; then
+    if git -C "$ROOT" rev-list HEAD -- policy/constitution.md > "$_bp_tmp/revs" 2>/dev/null; then
       _n_rev="$(awk 'NF { n++ } END { print n + 0 }' "$_bp_tmp/revs")"
       _n_bad=0
       cp "$SRC" "$_bp_tmp/known"
-      while read -r _rev _rp; do
-        git -C "$ROOT" show "$_rev:$_rp" >> "$_bp_tmp/known" 2>/dev/null || _n_bad=$((_n_bad + 1))
+      while IFS= read -r _rev; do
+        git -C "$ROOT" show "$_rev:policy/constitution.md" >> "$_bp_tmp/known" 2>/dev/null || _n_bad=$((_n_bad + 1))
       done < "$_bp_tmp/revs"
       if [ "$_n_bad" -eq 0 ]; then
         _known_from="found in none of the $_n_rev committed version(s) of policy/constitution.md, nor in the current file"
@@ -170,7 +166,7 @@ if [ -f "$DEST" ]; then
       fi
       sed '/^[[:space:]]*$/d' "$_bp_tmp/known" | sort -u > "$_bp_tmp/src"
     else
-      _known_from="the current policy/constitution.md does not — git log --follow failed in $ROOT, so its history could not be read (a partial or damaged clone?)"
+      _known_from="the current policy/constitution.md does not — git rev-list failed in $ROOT, so its history could not be read (a partial or damaged clone?)"
       sed '/^[[:space:]]*$/d' "$SRC" | sort -u > "$_bp_tmp/src"
     fi
   else
