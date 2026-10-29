@@ -3,7 +3,7 @@
 # from `order:`, and the old inject.d/ still read for one release, the new tree winning an id clash.
 # engine.test.sh drives the old layout end to end; this suite is the new one and the two side by side.
 . "$(dirname "$0")/../../tests/lib/core.sh"; t_init
-. "$T_ROOT/tests/hooks/inject-fixture.sh"
+. "$T_ROOT/tests/context/injection-rule/fixture.sh"
 NEWBOX="$CFG/context-rules/user"; NEWREPO="$REPO/context-rules/repo"
 note() { printf -- '---\nevent: SubagentStart\nwhen: always\nonce: never\n%s---\n%s\n' "${2:-}" "$1"; }
 sub() { fire '{"hook_event_name":"SubagentStart","session_id":"l"}'; }

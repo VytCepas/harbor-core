@@ -13,7 +13,7 @@ set -eu
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH='' cd -- "$HERE" && pwd)"; ROOT="$(CDPATH='' cd -- "$HERE/.." && pwd)"
 LOG_FD=2
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 log_init gate-codeowners
 REG="$ROOT/.agents/protected-paths.tsv"; CONF="$ROOT/.agents/ship.conf"; OUT="$ROOT/.github/CODEOWNERS"
 case "${1:-}" in

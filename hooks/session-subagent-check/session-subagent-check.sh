@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# session-subagent-check (harbor#445 item E) — advisory SubagentStop hook. Registered in CHECKS.md as `subagent-stop`.
+# session-subagent-check (harbor#445 item E) — advisory SubagentStop hook. Registered in docs/reference/checks.md as `subagent-stop`.
 # Warns, never blocks, when a subagent (1) stops with the same final report as its previous stop, or
 # (2) stops while a background task it started is still running.
 #
@@ -15,7 +15,7 @@
 set -u
 
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-case "${1:-}" in --help|-h) echo "usage: session-subagent-check.sh < SubagentStop payload  (advisory hook; see CHECKS.md subagent-stop)"; exit 0 ;; esac
+case "${1:-}" in --help|-h) echo "usage: session-subagent-check.sh < SubagentStop payload  (advisory hook; see docs/reference/checks.md subagent-stop)"; exit 0 ;; esac
 case "${SUBAGENT_STOP_CHECK:-on}" in off|OFF|0|no|false) exit 0 ;; esac
 [ -e "$CFG/subagent-stop.off" ] && exit 0
 

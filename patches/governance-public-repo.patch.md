@@ -5,7 +5,7 @@ before the visibility flip, which is the order it needs: a public repo with the 
 selector still sends a fork PR to whatever `HARBOR_RUNNER` says. Edits 1 to 5 are in,
 except that Edit 1's selector does NOT carry `|| 'github-hosted'`: unset
 `HARBOR_RUNNER` on a PRIVATE repo still means `self-hosted`, as the file's header and
-`bin/runner-switch.sh` read it, so this repo's runner does not move to billed minutes
+`bin/ci-runner-switch.sh` read it, so this repo's runner does not move to billed minutes
 the day it lands. A public repo is hosted through `!github.event.repository.private`
 alone, unset variable or not. The operator's controls below are settings pages, not
 files, and nothing here applies them.
@@ -50,19 +50,19 @@ settings page the operator opens.
    *Fork pull request workflows from outside collaborators* → **Require approval
    for all outside collaborators**. First-time contributors are not enough: a
    returning contributor's second PR would run unapproved.
-3. **Check `bin/runner-switch.sh` does not reset `HARBOR_RUNNER`.** It runs every
-   300 s from `fleet-snapshot-refresh.sh` on the box and writes `self-hosted` into
+3. **Check `bin/ci-runner-switch.sh` does not reset `HARBOR_RUNNER`.** It runs every
+   300 s from `status-fleet-snapshot-refresh.sh` on the box and writes `self-hosted` into
    the repo variable when the account's *private-repo* Actions minutes pass 90 %
    of the allowance. After the flip harbor's own minutes stop counting (public
    repos are free) but other private repos still count, so the variable can still
    be set to `self-hosted` by the box. Edit 1 below makes the variable irrelevant
    on a public repo, so this is a belt check, not the control: after the flip run
-   `sh bin/runner-switch.sh --print` and confirm it neither errors on a public
+   `sh bin/ci-runner-switch.sh --print` and confirm it neither errors on a public
    repo nor is the only thing standing between a fork PR and the Mac.
 
 If lane 2 chooses a **fresh public repo** rather than flipping this one, the
 variable is unset there; Edit 1 treats unset as hosted, which is why that default
-matters. `runner-switch.sh` hard-codes `VytCepas/harbor` (`REPO=`), so it will
+matters. `ci-runner-switch.sh` hard-codes `VytCepas/harbor` (`REPO=`), so it will
 not touch the new repo at all.
 
 ## How to verify (the done-when's verifier)
@@ -111,7 +111,7 @@ After (each of the six):
 
 Behaviour change on the still-private repo: an **unset** `HARBOR_RUNNER` used to
 mean `self-hosted` and now means hosted (billed minutes). Check
-`gh variable get HARBOR_RUNNER -R VytCepas/harbor` first; `runner-switch.sh`
+`gh variable get HARBOR_RUNNER -R VytCepas/harbor` first; `ci-runner-switch.sh`
 normally keeps it set, so this should change nothing today. To keep unset =
 self-hosted while private, drop `|| 'github-hosted'` from the After line.
 
@@ -210,7 +210,7 @@ Before (lines 20–21):
 
 ```yaml
 #                          holds no ~/.claude. Any value but `github-hosted` lands
-#                          here, so bin/runner-switch.sh needs no change.
+#                          here, so bin/ci-runner-switch.sh needs no change.
 ```
 
 After:
@@ -294,7 +294,7 @@ block against the file before applying, do not apply on faith.
 
 ## After applying
 
-- `sh bin/lint-conventions.sh` and the workflow-shape suites (`tests/floor/floor.shards-test.sh`
+- `sh bin/lint-conventions.sh` and the workflow-shape suites (`tests/admission/baseline/shards.test.sh`
   checks the `floor` relay against the pool) stay green; run the selected suites.
 - Push to a branch and watch one `pull_request` run: on the still-private repo every
   job lands on the runner `HARBOR_RUNNER` names; `gh run view <id> --json jobs` lists it.

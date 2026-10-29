@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0
+[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
 # guard-cloud (harbor#194 item 3, harbor#193 warning-layer) — PreToolUse(Bash)
 # ASK-gate for destructive cloud operations.
 #
@@ -11,7 +11,7 @@
 # prod_guard runs PER-REPO (`.agents/hooks/`); the ambient $HOME session where the
 # delete actually ran has no prod_guard at all. This guard fills that ambient seam.
 #
-# It is the WARNING layer, not the boundary. FLOOR.md's four adversarial passes
+# It is the WARNING layer, not the boundary. docs/explanation/admission-baseline.md's four adversarial passes
 # established that a text scanner over shell syntax does not converge, and
 # credential-boundary.md states the wall is an identity that CANNOT perform the
 # act (harbor#193, the narrow service account). This guard raises the cost of the
@@ -19,7 +19,7 @@
 # Known-open by construction (same residuals as the rest of the floor):
 #   • runtime string assembly:  C=bq; $C rm …
 #   • interpreter one-liners:    python3 -c "from google.cloud import bigquery; …"
-#   • a session that sets HELM_DISABLE_FLOOR or edits the wiring
+#   • a session that sets HARBOR_ADMISSION_DISABLE or edits the wiring
 # An UNLISTED wrapper (`gtimeout 5 gcx … bq rm`, P12-argv-04) no longer hides the
 # verb: floor_seg_unwrap below makes the tool word reachable anywhere in argv
 # (harbor#715).
@@ -29,7 +29,7 @@
 # POSTURE. Default is ASK (permissionDecision:"ask") — Claude Code prompts the
 # human, which is the request: stop autonomous deletion, let a person approve a
 # legitimate one. Set CLOUD_POSTURE=deny to hard-block instead (no in-prompt
-# approve; the operator re-runs in a session launched with HELM_DISABLE_FLOOR=1).
+# approve; the operator re-runs in a session launched with HARBOR_ADMISSION_DISABLE=1).
 # ASK is the default because a false positive on a hard block gets the whole floor
 # switched off (§2.11), and destructive cloud verbs are rare enough that a
 # confirmation costs almost nothing.
@@ -425,7 +425,7 @@ fi
 # raw REST DELETE — DENIES ALWAYS, regardless of posture. These are irreversible
 # on shared CLIENT infrastructure, and an ASK auto-approves in an unattended
 # session, which is the exact failure this guard exists for. The operator who
-# genuinely means one runs it in a session launched with HELM_DISABLE_FLOOR=1.
+# genuinely means one runs it in a session launched with HARBOR_ADMISSION_DISABLE=1.
 # The SOFT tier (single-table rm, generic `gcloud … delete`) asks; CLOUD_POSTURE
 # =deny escalates the soft tier too, for fully unattended sessions.
 # NO-HUMAN AUTO-ESCALATION (harbor#194, the subagent finding). An `ask` prompts

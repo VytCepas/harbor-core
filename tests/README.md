@@ -2,8 +2,8 @@
 
 Where a Harbor test goes, what shape it takes, and which check enforces each rule (harbor#667).
 
-This is Harbor's implementation of the cross-repo test contract, [CONTRACTS/test-contract.md](../CONTRACTS/test-contract.md) (harbor#734): its six rules say what every governed repo's tests owe, and this file says how Harbor meets them. `just test` runs every suite in `CONTRACTS/suites.txt` through `tests/lib/run.sh` and ends with the total `harbor: N passed, M failed`; `just test <name>` runs one. The live tier is `harbor check --live`, never a suite.
-Legacy suites in `bin/*-test.sh` move here in batches. The floor guards' single-input verdicts left the floor suite for `tests/guards`. What stays in `tests/floor/floor-test.sh` and its `floor.<part>-test.sh` parts needs state a row cannot carry (the decision ledger, a mutated guard, a section's own fixture), and the smoke's few liveness checks.
+This is Harbor's implementation of the cross-repo test contract, [contracts/test-contract.md](../contracts/test-contract.md) (harbor#734): its six rules say what every governed repo's tests owe, and this file says how Harbor meets them. `just test` runs every suite in `contracts/suites.txt` through `tests/lib/run.sh` and ends with the total `harbor: N passed, M failed`; `just test <name>` runs one. The live tier is `harbor check --live`, never a suite.
+Legacy suites in `bin/*-test.sh` move here in batches. The floor guards' single-input verdicts left the floor suite for `tests/guards`. What stays in `tests/admission/baseline/baseline.test.sh` and its `floor.<part>-test.sh` parts needs state a row cannot carry (the decision ledger, a mutated guard, a section's own fixture), and the smoke's few liveness checks.
 
 ## Where a test goes
 
@@ -30,7 +30,7 @@ A new kind of check gets its own table and runner, never a flag that makes the r
 - `want`: what the guard answers today. One of `allow`, `ask`, `deny`, `block`.
 - The payload is exactly one of: `cmd` (Bash); `tool` + `path` (file tools); `tool` + `input` (any other `tool_input`).
 - Placeholders in any string: `{home}` the sandbox HOME, `{cfg}` the config dir, `{tmp}` the suite's temp dir, `{root}` the repo checkout.
-- `{j}` expands to nothing. Write a token-shaped literal split by it (`sk_{j}live_...`) so no secret scanner matches the tracked row while the guard still receives the joined string (harbor#1149). `fixtures/guard-corpus.jsonl` takes the same `{j}`, deleted by `bin/floor-equiv.sh`.
+- `{j}` expands to nothing. Write a token-shaped literal split by it (`sk_{j}live_...`) so no secret scanner matches the tracked row while the guard still receives the joined string (harbor#1149). `fixtures/admission-corpus.jsonl` takes the same `{j}`, deleted by `bin/floor-equiv.sh`.
 - **Optional fields:**
   - `why`: the incident or reason.
   - `todo`: the verdict once a known gap is fixed. It is reported every run and never fails.
@@ -45,13 +45,13 @@ Rows run on `$T_JOBS` workers (default 3), and assertions then run in row order.
 
 | | Rule | Checked by |
 |---|---|---|
-| T1 | A suite sources `tests/lib/core.sh`, calls `t_init` and `t_done`, and defines no assertion helpers of its own. | `check.sh` |
-| T2 | Files are at most 500 lines. A file header is at most 8 comment lines; after it, comment runs are at most 3. The story goes in the commit or the issue. | `check.sh` |
-| T3 | Every row has the keys its runner reads, a real verdict, one payload, and an id unique across the guard's tables. | `check.sh` |
-| T4 | Every table belongs to a registered guard, and every part table has its part suite. Every registered guard has its guard script, a table and a suite. Every suite is listed in `CONTRACTS/suites.txt`. | `check.sh` |
-| T5 | Every rule the guard's source names has a row that fires it and an `allow` row beside it. Names come from the `rules` pattern in `guards.jsonl`, read with `\`-continued lines joined. | `check.sh` |
-| T6 | Every exemption matches a shared row, and either changes its verdict or records a `todo`. | `check.sh` |
-| T7 | Every table can fail. Against a guard that always allows, and one that always denies, exactly the rows expecting otherwise fail. | `check-test.sh` |
+| test.harness-only | A suite sources `tests/lib/core.sh`, calls `t_init` and `t_done`, and defines no assertion helpers of its own. | `check.sh` |
+| test.file-budget | Files are at most 500 lines. A file header is at most 8 comment lines; after it, comment runs are at most 3. The story goes in the commit or the issue. | `check.sh` |
+| test.row-shape | Every row has the keys its runner reads, a real verdict, one payload, and an id unique across the guard's tables. | `check.sh` |
+| test.guard-routing | Every table belongs to a registered guard, and every part table has its part suite. Every registered guard has its guard script, a table and a suite. Every suite is listed in `contracts/suites.txt`. | `check.sh` |
+| test.rule-coverage | Every rule the guard's source names has a row that fires it and an `allow` row beside it. Names come from the `rules` pattern in `guards.jsonl`, read with `\`-continued lines joined. | `check.sh` |
+| test.exemption-effect | Every exemption matches a shared row, and either changes its verdict or records a `todo`. | `check.sh` |
+| test.table-can-fail | Every table can fail. Against a guard that always allows, and one that always denies, exactly the rows expecting otherwise fail. | `check-test.sh` |
 
 **The harness** (`tests/lib/core.sh`, checked by `lib-test.sh`):
 - HOME, the config dir and TMPDIR are sandboxed, and the caller's `HELM_*` and `HARBOR_*` knobs and status-gen's `FAST` are cleared, so a verdict never depends on who ran the suite (harbor#773). `T_PASS_ENV` names what travels: status-gen's re-entry marker. A suite that takes a knob from its caller reads it before `t_init`. Lint C10 finds a suite the clearing cannot reach: one that runs a program reading a `T_PASS_ENV` knob, or sits off the harness, without clearing it, and one that reads a knob after `t_init` emptied it.
@@ -82,9 +82,9 @@ One batch is one branch (`sh bin/worktree.sh new test/667-<batch>`) and one PR. 
 2. **Rewrite** it as `tests/<area>/<name>-test.sh` on `core.sh`:
    - Every legacy assertion keeps a counterpart. The count may rise, for example when a compound check splits. If it falls, the PR says why.
    - Exit codes are exact: a legacy `-ne 0` becomes the real code.
-   - Local functions may build fixtures or wrap `t_*` calls. They never count passes, and never use T1's reserved names.
+   - Local functions may build fixtures or wrap `t_*` calls. They never count passes, and never use test.harness-only's reserved names.
    - HOME, the config dir and TMPDIR are sandboxed. A case that read the real HOME now reads the sandbox; the PR says whether its meaning changed.
-   - The long WHY header moves to the commit message. The file keeps the issue refs within T2's budgets. T2 counts `#` lines inside heredoc stubs too.
+   - The long WHY header moves to the commit message. The file keeps the issue refs within test.file-budget's budgets. test.file-budget counts `#` lines inside heredoc stubs too.
    - Every negative needs evidence that its needle could appear:
      - a prose `t_hasnt … 'x'` needs `t_has … 'x'` (lint F9);
      - any other `t_hasnt` needs a check that the input it reads could hold the needle.
@@ -94,7 +94,7 @@ One batch is one branch (`sh bin/worktree.sh new test/667-<batch>`) and one PR. 
    - Anchor short needles: `ok` matches inside `invoked`.
    - A suite that also runs as a `~/.local/bin` shim resolves its own path through the symlink before sourcing `core.sh`.
    - A verifier outside the sandbox, such as Playwright or Chrome, is located before `t_init`, preferably from an explicit variable (`HARBOR_PROBE_DIR`). The suite never writes there.
-   - Over 500 lines, split by subject, or into `<name>.<part>-test.sh`. The main part keeps `<name>-test.sh` where one exists. A fixture the parts share gets its own file, like `tests/guards/floor-fixture.sh`.
+   - Over 500 lines, split by subject, or into `<name>.<part>-test.sh`. The main part keeps `<name>-test.sh` where one exists. A fixture the parts share gets its own file, like `tests/admission/bash/fixture.sh`.
 3. **Prove it can fail.**
    - Mutate each subject at least 3 times, one mutant per behaviour the suite claims.
    - Run the legacy and new suites on each mutant. The new suite must be red wherever the legacy one was.
@@ -107,14 +107,14 @@ One batch is one branch (`sh bin/worktree.sh new test/667-<batch>`) and one PR. 
    - The PR carries the table.
 4. **Wire it:**
    - `git rm` the legacy file.
-   - Rename its line in `CONTRACTS/suites.txt`.
-   - Re-key its line in `CONTRACTS/suite-paths.txt`: add its new path, `tests/lib/core.sh`, and any file it exercises that the line does not declare yet.
+   - Rename its line in `contracts/suites.txt`.
+   - Re-key its line in `contracts/suite-paths.txt`: add its new path, `tests/lib/core.sh`, and any file it exercises that the line does not declare yet.
      - An `always` suite keeps the bare word `always`. Globs added beside it make it glob-selected, and no lint catches that.
-   - Drop its name from `CONTRACTS/cli.md`.
-   - Repoint what `git grep <name>-test` finds. In `bin/` that means path-only edits, including a subject that names its own suite in logic: suite-select's SELF list, proposal's machinery list, port-paths' pathspec. A `CONTRACTS/shims.tsv` row naming the suite moves too, and the operator re-runs the shim installer after merge. Hits outside `bin/` count as well: a skill's `SKILL.md`, and its test-strength control copy. Leave dated records alone: `docs/audits/`, `COVERAGE-INCIDENTS.tsv`, `patches/`.
-   - A path on an Evidence line in `harbor-build-tickets.md` gets repointed too, then run `sh bin/plan-status.sh`. PLAN.md derives DONE from those paths, and lint T1c fails on a stale one.
-   - Drop the rows in `CONTRACTS/port-paths-exempt.tsv` keyed on the old path.
-   - Run `sh bin/docs-gen.sh --check` (the page is not committed; this proves it still builds).
+   - Drop its name from `contracts/cli.md`.
+   - Repoint what `git grep <name>-test` finds. In `bin/` that means path-only edits, including a subject that names its own suite in logic: suite-select's SELF list, proposal's machinery list, port-paths' pathspec. A `contracts/shims.tsv` row naming the suite moves too, and the operator re-runs the shim installer after merge. Hits outside `bin/` count as well: a skill's `SKILL.md`, and its test-strength control copy. Leave dated records alone: `docs/audits/`, `registries/coverage-incidents.tsv`, `patches/`.
+   - A path on an Evidence line in `docs/reports/platform-build-tickets.md` gets repointed too, then run `sh bin/status-plan-generate.sh`. docs/generated/plan.md derives DONE from those paths, and lint T1c fails on a stale one.
+   - Drop the rows in `contracts/port-paths-exempt.tsv` keyed on the old path.
+   - Run `sh bin/doc-index-generate.sh --check` (the page is not committed; this proves it still builds).
 5. **Gates:** each new suite green; `sh tests/lib/check.sh` at 0 violations; `sh bin/lint-conventions.sh` green; every `tests/checks/lint*-test.sh` part too if `bin/lint-conventions.sh` changed.
 
 **Not an agent's to move:** a suite with its own CI job. CI names those in a workflow an agent cannot edit, so they stay in `bin/` until the operator changes it. List them with `grep -o -- '--run [a-z-]*-test\.sh' .github/workflows/governance.yml`.
@@ -126,5 +126,5 @@ One batch is one branch (`sh bin/worktree.sh new test/667-<batch>`) and one PR. 
 - Under /bin/sh, `case x in pat)` inside `$(…)` is a syntax error. Write `(pat)`.
 - ugrep skips a file containing a NUL byte (`hooks/failure-observe/failure-observe.sh`). Use `grep -a` or awk there.
 - Never edit a suite while it runs: `sh` reads the file as it goes.
-- On a rebase, conflicts in `CONTRACTS/suites.txt`, `suite-paths.txt`, `cli.md` and `PLAN.md` are expected. Keep both sides, then rerun `plan-status.sh`. `docs/index.html` is built, not committed, so it never conflicts.
+- On a rebase, conflicts in `contracts/suites.txt`, `suite-paths.txt`, `cli.md` and `docs/generated/plan.md` are expected. Keep both sides, then rerun `status-plan-generate.sh`. `docs/index.html` is built, not committed, so it never conflicts.
 - The floor refuses a Bash heredoc whose body mentions a document path like `~/x.pdf` (#716). Write such files with the editor tool.

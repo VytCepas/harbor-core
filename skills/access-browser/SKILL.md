@@ -1,6 +1,6 @@
 ---
 name: access-browser
-description: "Pick the right browser backend and drive it, then say what the run's absence is and is not evidence for. Two axes — does it need a login, and does it run attended or unattended — six rows, one of them refused because its backend is an unledgered credential. `harbor browser route` prints the contract; `harbor browser hosts` is the only instrument here that can support a NEGATIVE. USE WHEN which browser tool, does the pixel fire, no pixel fired, is the tag absent, what third parties load, subresource list, instrument a storefront, headless vs extension, drive a logged-in dashboard, harbor chrome lost or hidden tab, add a Commerce Manager data feed, screenshot someone else's site, consent banner changes what fires. NOT FOR administering a tag-manager or analytics container (its workload skill owns that), historical numbers (reporting-apis), or checking our OWN generated HTML — that is bin/visual-check.sh, a build gate."
+description: "Pick the right browser backend and drive it, then say what the run's absence is and is not evidence for. Two axes — does it need a login, and does it run attended or unattended — six rows, one of them refused because its backend is an unledgered credential. `harbor browser route` prints the contract; `harbor browser hosts` is the only instrument here that can support a NEGATIVE. USE WHEN which browser tool, does the pixel fire, no pixel fired, is the tag absent, what third parties load, subresource list, instrument a storefront, headless vs extension, drive a logged-in dashboard, harbor chrome lost or hidden tab, add a Commerce Manager data feed, screenshot someone else's site, consent banner changes what fires. NOT FOR administering a tag-manager or analytics container (its workload skill owns that), historical numbers (reporting-apis), or checking our OWN generated HTML — that is bin/doc-visual-check.sh, a build gate."
 argument-hint: [url or question]
 disable-model-invocation: true
 ---
@@ -17,13 +17,13 @@ changes the answer. A reader can tell what the run would have had to look like
 for the claim to be wrong.
 
 **The router is one file and this skill is not a second copy of it.**
-`CONTRACTS/browser-routing.md` owns the decision. Read it with:
+`contracts/browser-routing.md` owns the decision. Read it with:
 
 ```sh
 harbor browser route
 ```
 
-That is a `cat` of the contract, asserted byte-identical by `tests/cli/browser-test.sh`
+That is a `cat` of the contract, asserted byte-identical by `tests/access/browser/browser.test.sh`
 so the two cannot drift. This page teaches *when to reach for the thing*; the
 contract says *which row you land on*.
 
@@ -87,7 +87,7 @@ with a message rather than a verdict.
 **A `2` is never a pass.** It means no Node, no Chrome, no Playwright, or a
 navigation this run could not make — an unavailable verifier defers rather than
 being downgraded to weaker evidence (No.2.7). Read the reason: it names the
-missing verifier. A `2` that names nothing is a defect, and `tests/cli/browser-test.sh`
+missing verifier. A `2` that names nothing is a defect, and `tests/access/browser/browser.test.sh`
 asserts against exactly that.
 
 ## Driving a logged-in vendor UI — `harbor chrome`
@@ -113,7 +113,7 @@ harbor chrome detach        # when done; idle-timeout releases it anyway after 3
 - **Read-only unless the operator names the write.** A click that saves, creates,
   publishes or invites is a write in his account; ask in chat first.
 - **Work UIs only.** `goto`/`tab-new` refuse any host not in
-  `CONTRACTS/browser-agent-hosts.txt`. A client's live site goes through the tag debugger,
+  `contracts/browser-agent-hosts.txt`. A client's live site goes through the tag debugger,
   never this verb — his logged-in cookies would land in the client's analytics.
 - **Refused verbs stay refused.** No `run-code`, `eval`, cookies, storage or state,
   request bodies. If a job seems to need one, stop and say which and why.
@@ -160,7 +160,7 @@ the whole mechanism.
 
 | you want | go to |
 |---|---|
-| Our own generated HTML — contrast, dark mode, sideways scroll | `bin/visual-check.sh`. A **build gate**, not this. It judges our output; this drives someone else's site |
+| Our own generated HTML — contrast, dark mode, sideways scroll | `bin/doc-visual-check.sh`. A **build gate**, not this. It judges our output; this drives someone else's site |
 | Administering a tag-manager or analytics container | its workload skill. The web UI is not the access path and never was |
 | Historical analytics numbers, 30-day windows, event counts | `reporting-apis` — the warehouse. Cheaper, exact, no session |
 | Mapping what vendors are even on a stack before probing | `topology` |

@@ -27,7 +27,7 @@ set -eu
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH='' cd -- "$HERE" && pwd)"; ROOT="$(CDPATH='' cd -- "$HERE/.." && pwd)"
 LOG_FD=2
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 log_init deploy-hooks
 usage() { log_fail "$1"; log_fix "sh $0 --plan ~/.claude"; log_end || :; exit 2; }
 MODE=''; CFG=''; IN=''; MATCHERS=''; REWIRE=''; INSTALLER=''
@@ -60,7 +60,7 @@ T="$(mktemp -d "${TMPDIR:-/tmp}/deploy-hooks.XXXXXX")"; trap 'rm -rf "$T"' EXIT
 REC="$CFG/.harbor-hooks-wired"  # top level, so deploy's snapshot restores it with the settings.json it describes
 
 # ── read and judge every manifest: $T/wires holds engine TAB event TAB matcher TAB timeout ────────────────────────────
-# The events the harness accepts a command hook on (CONTRACTS/hooks.md); a misspelt event would be wired and never fire.
+# The events the harness accepts a command hook on (contracts/hooks.md); a misspelt event would be wired and never fire.
 EVENTS=' PreToolUse PostToolUse PostToolUseFailure PostToolBatch PermissionRequest SessionStart SessionEnd Stop SubagentStart SubagentStop UserPromptSubmit UserPromptExpansion Notification PreCompact PostCompact InstructionsLoaded PostModelSwitch '
 : > "$T/wires"; : > "$T/errors"; : > "$T/engines"; : > "$T/installers"
 for _m in "$ROOT"/hooks/*/manifest.tsv; do

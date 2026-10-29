@@ -1,6 +1,6 @@
 # gitleaks config (harbor#1149): the defaults, plus one reasoned exception.
 # Guard test inputs carry no scannable token: they split each token-shaped literal with a `{j}`
-# joiner that tests/lib/row.sh (and bin/floor-equiv.sh for fixtures/guard-corpus.jsonl) deletes
+# joiner that tests/lib/row.sh (and bin/floor-equiv.sh for fixtures/admission-corpus.jsonl) deletes
 # before the guard sees the row. Nothing under tests/ or fixtures/ is allow-listed.
 title = "harbor"
 

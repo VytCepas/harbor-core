@@ -16,7 +16,7 @@ substring predicate: the rule needs to know that a loop keyword is UNBOUNDED
 computed anywhere in the command. That is a parse, not a match.
 
 `once: match` because the subject of a PreToolUse Bash pack is the raw command
-(CONTRACTS/inject.md, harbor#180) — two different wait loops in one session are
+(contracts/injection-rule.md, harbor#180) — two different wait loops in one session are
 two different mistakes and both deserve the note.
 
 OWNER. The fact lives in the operator's auto-memory as

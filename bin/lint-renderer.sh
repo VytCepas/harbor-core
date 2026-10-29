@@ -10,7 +10,7 @@ set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
-. "$SRC/log-lib.sh"
+. "$SRC/library-log.sh"
 log_init lint-renderer
 die() { echo "lint-renderer: $1" >&2; exit 2; }
 while [ "$#" -gt 0 ]; do

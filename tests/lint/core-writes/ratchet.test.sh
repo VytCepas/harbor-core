@@ -6,9 +6,9 @@
 CW() { HARBOR_ROOT="$1" sh "$T_ROOT/bin/lint-core-writes.sh" "$2" 2>&1; }
 red() { HARBOR_ROOT="$1" sh "$T_ROOT/bin/lint-core-writes.sh" --check >/dev/null 2>&1; echo $?; }
 mk() { # <name> <baseline> → 5 hits: bin/a.sh (out.txt, b.txt, state.tsv, d/), bin/b.sh (>> stray.log); every other shape adds none
-  _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/CONTRACTS" "$_d/docs" "$_d/tests" "$_d/DEV"
-  printf 'path\tlayer\tnote\nbin/\tcore\t\nCONTRACTS/\tcore\t\ndocs/\tcore\t\ntests/\tcore\t\n.gitignore\tcore\t\nDEV/\tdev\t\n' > "$_d/CONTRACTS/layers.tsv"
-  printf 'path\ttarget\treason\nbin/allowed.sh\t*\tthe operator asked for the file\n' > "$_d/CONTRACTS/core-writes-allow.tsv"
+  _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/contracts" "$_d/docs" "$_d/tests" "$_d/DEV"
+  printf 'path\tlayer\tnote\nbin/\tcore\t\ncontracts/\tcore\t\ndocs/\tcore\t\ntests/\tcore\t\n.gitignore\tcore\t\nDEV/\tdev\t\n' > "$_d/contracts/layers.tsv"
+  printf 'path\ttarget\treason\nbin/allowed.sh\t*\tthe operator asked for the file\n' > "$_d/contracts/core-writes-allow.tsv"
   printf '/build/\n' > "$_d/.gitignore"
   cat > "$_d/bin/a.sh" <<'EOF'
 ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
@@ -33,8 +33,8 @@ EOF
   printf 'echo x > "$ROOT/in-doc"\n' > "$_d/docs/d.md"
   printf 'ROOT=$(cd "$(dirname "$0")/.." && pwd)\necho x > "$ROOT/DEV/note"\n' > "$_d/bin/dev.sh"
   printf 'old\n' > "$_d/docs/gen.md"; printf 'x\n' > "$_d/DEV/note"
-  cp "$T_ROOT/bin/lint-core-writes.sh" "$T_ROOT/bin/layers.sh" "$T_ROOT/bin/log-lib.sh" "$_d/bin/"
-  printf '%s\n' "$2" > "$_d/CONTRACTS/lint-core-writes-baseline.txt"
+  cp "$T_ROOT/bin/lint-core-writes.sh" "$T_ROOT/bin/scope-layers.sh" "$T_ROOT/bin/library-log.sh" "$_d/bin/"
+  printf '%s\n' "$2" > "$_d/contracts/lint-core-writes-baseline.txt"
   ( cd "$_d" && git init -q . && git add -A && git -c user.email=t@t -c user.name=t commit -qm x ) >/dev/null 2>&1
   printf '%s' "$_d"
 }
@@ -62,7 +62,7 @@ t_has "...and says the count and the baseline" "$OUT" "6 core file(s)-and-target
 t_has "...and the fix" "$OUT" "state directory"
 D="$(mk under 9)"; OUT="$(CW "$D" --check)"
 t_eq "below is still green" "0" "$(red "$D")"
-t_has "...and asks for a lower baseline" "$OUT" "lower CONTRACTS/lint-core-writes-baseline.txt to 6"
+t_has "...and asks for a lower baseline" "$OUT" "lower contracts/lint-core-writes-baseline.txt to 6"
 D="$(mk nobase x)"; t_eq "a non-numeric baseline is red" "1" "$(red "$D")"
 mkdir -p "$T_TMP/nogit"
 t_exit "a non-checkout inspected nothing and is not a pass" 2 env HARBOR_ROOT="$T_TMP/nogit" sh "$T_ROOT/bin/lint-core-writes.sh" --check
@@ -76,9 +76,9 @@ D="$(mk igntarget 6)"; printf '/new.out\n' >> "$D/.gitignore"; printf 'ROOT=$(cd
 t_eq "a gitignored target does not count" "0" "$(red "$D")"
 
 t_section "a register that does not parse refuses the run, never counts as clean"
-D="$(mk noreason 6)"; printf 'bin/a.sh\tout.txt\t\n' >> "$D/CONTRACTS/core-writes-allow.tsv"
+D="$(mk noreason 6)"; printf 'bin/a.sh\tout.txt\t\n' >> "$D/contracts/core-writes-allow.tsv"
 t_eq "an allow row with no reason" "2" "$(red "$D")"
-D="$(mk allowrow 6)"; printf 'bin/a.sh\tout.txt\tthe operator asked for it\n' >> "$D/CONTRACTS/core-writes-allow.tsv"
+D="$(mk allowrow 6)"; printf 'bin/a.sh\tout.txt\tthe operator asked for it\n' >> "$D/contracts/core-writes-allow.tsv"
 t_eq "an allow row with a reason removes its pair" "5" "$(CW "$D" --count)"
 
 t_section "lint.core-writes runs the same check"

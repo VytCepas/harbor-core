@@ -18,7 +18,7 @@ Naming-standard decision D-37. The decision text is imported unchanged from stan
 
 ## Decision
 
-**`scope: project` like any repo** (operator chose this over the recommended `platform` value). Consequence to handle: inside harbor, `guard-bash` force-push rules stand down to a repo-owned `github_command_guard` that harbor doesn't have yet, and work-log push/pull and memory harvest stop for harbor sessions (`CONTRACTS/marker.md` stand-down table)
+**`scope: project` like any repo** (operator chose this over the recommended `platform` value). Consequence to handle: inside harbor, `guard-bash` force-push rules stand down to a repo-owned `github_command_guard` that harbor doesn't have yet, and work-log push/pull and memory harvest stop for harbor sessions (`contracts/marker.md` stand-down table)
 
 ## Consequences
 

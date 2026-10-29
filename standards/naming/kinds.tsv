@@ -7,7 +7,7 @@
 # exactly one row. Whether a given path conforms is a later check; today the lint refuses a row that
 # names a layer, level, lifecycle or surface the registry does not have.
 #
-# The kind and layer of each top-level repo entry are mapped in CONTRACTS/layout-map.tsv (harbor#1272), checked by bin/lint-layout-map.sh.
+# The kind and layer of each top-level repo entry are mapped in contracts/layout-map.tsv (harbor#1272), checked by bin/lint-layout-map.sh.
 #
 # standard_version: 2.0.0
 #
@@ -44,7 +44,7 @@ finding	-	a GitHub issue keyed <tier>/<id>	label	key fingerprint	report	element	
 lint-rule	standards/naming/	standards/naming/controls.tsv row	rule-id	id mode title	source	element	versioned	-	core	red-proof:1..*	D-62: a control of type lint
 fixture	fixtures/	fixtures/<family>/<subject>/	fixture	-	source	element	living	-	core,workload	-	§4
 eval	evals/	evals/<family>/<experiment>/	path	-	source	component	dated	-	core,personal	-	D-56: one experiment per folder
-check	registries/	a controls.tsv row of type check; CHECKS.md until a generator reads it	check-id	id watches schedule notifies red_means	source	element	versioned	-	core,hub,workload,personal	registered-in:1..1 notifies:1..* disabled-by:1..* findings-land-in:1..*	D-20, D-62
+check	registries/	a controls.tsv row of type check; docs/reference/checks.md until a generator reads it	check-id	id watches schedule notifies red_means	source	element	versioned	-	core,hub,workload,personal	registered-in:1..1 notifies:1..* disabled-by:1..* findings-land-in:1..*	D-20, D-62
 template	templates/	templates/<target-name>.tmpl	path	-	source	component	living	-	core	-	§4: the layer never goes into a name; .tmpl sits beside its render
 registry	registries/	<folder>/<name>.tsv	registry	id column first; # WHY header; standard_version	source	component	versioned	-	core,hub,personal	-	§4, D-9
 runbook	docs/runbooks/	docs/runbooks/<slug>.md	path	front_matter	source	component	living	-	core	-	§4

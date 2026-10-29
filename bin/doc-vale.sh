@@ -9,7 +9,7 @@ set -u
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH='' cd -- "$HERE" && pwd)"
 LOG_FD=2   # stdout stays the checker's own output
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 log_init doc-vale
 ROOT="${HARBOR_ROOT:-$HERE/..}"
 case "${1:-}" in ''|-h|--help) awk 'NR < 2 { next } !/^#/ { exit } { sub(/^# ?/, ""); print }' "$HERE/${0##*/}"; [ -n "${1:-}" ] && exit 0; exit 2 ;; esac
