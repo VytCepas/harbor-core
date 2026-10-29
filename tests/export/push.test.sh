@@ -84,6 +84,28 @@ printf 'path\tterm\treason\ndocs/tool.md\tquuxtool\tharbor logic must name it\n'
 ( cd "$S" && git add -A && git commit -qm allow ) >/dev/null 2>&1
 t_eq "the same hit in an allow-listed path is green" "0" "$(prc "$S" --dry-run)"
 
+t_section "a tree in the renamed layout: contracts/ is read, on a case-sensitive disk too (harbor#949)"
+# public-ci runs main's deploy-push against a PR head, which may carry contracts/ in place of CONTRACTS/.
+mkl() { # <name> → mk's fixture with CONTRACTS/ renamed contracts/ (via a temporary name: a case-insensitive disk keeps it)
+  _d="$(mk "$1")"; ( cd "$_d" && git mv CONTRACTS c.tmp && git mv c.tmp contracts &&
+    awk -F'\t' -v OFS='\t' '$1 == "CONTRACTS/" { $1 = "contracts/" } { print }' contracts/layers.tsv > l.tmp && mv l.tmp contracts/layers.tsv &&
+    printf '# header\no/dev\n' > contracts/repo-slug.txt && git remote add origin https://github.com/o/dev.git &&
+    git add -A && git commit -qm layout ) >/dev/null 2>&1; printf '%s' "$_d"; }
+S="$(mkl layout)"; T="$(tgt layout)"; git -C "$T" remote add origin https://github.com/o/core.git
+t_eq "the fixture tracks contracts/ and no CONTRACTS/" "contracts/layers.tsv" "$(git -C "$S" ls-files | grep -i '^contracts/layers')"
+t_eq "dry-run is green" "0" "$(prc "$S" --dry-run "$T")"
+t_eq "push is green" "0" "$(prc "$S" "$T")"
+t_has "...exporting contracts/" "$(files "$T")" "contracts/layers.tsv contracts/leak-patterns.tsv contracts/repo-slug.txt"
+t_eq "...with contracts/repo-slug.txt naming the target" "o/core" "$(git -C "$T" show HEAD:contracts/repo-slug.txt | grep -v '^#')"
+S="$(mkl layout-domain)"
+printf 'set up quuxtool here\n' > "$S/docs/tool.md"; ( cd "$S" && git add -A && git commit -qm tool ) >/dev/null 2>&1
+t_has "a planted workload term is red on the ratchet's row" "$(push "$S" --dry-run)" "FAIL: release gate · domain ratchet 0: red"
+printf 'path\tterm\treason\ndocs/tool.md\tquuxtool\tharbor logic must name it\n' > "$S/contracts/domain-allow.tsv"
+( cd "$S" && git add -A && git commit -qm allow ) >/dev/null 2>&1
+t_eq "...and green once contracts/domain-allow.tsv allows it" "0" "$(prc "$S" --dry-run)"
+( cd "$S" && git rm -q contracts/layers.tsv && git commit -qm nolayers ) >/dev/null 2>&1
+t_has "a renamed tree with no layers.tsv still refuses" "$(push "$S" --dry-run)" "no CONTRACTS/layers.tsv at HEAD"
+
 t_section "a dev-only file that names the secret does not block"
 S="$(mk devleak)"; T="$(tgt devleak)"
 t_eq "the fixture holds the secret in NOTES.md and EVALS-DATA" "2" "$(git -C "$S" grep -l Zorblax | wc -l | tr -d ' ')"

@@ -53,20 +53,23 @@ fi
 SHA="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null)" || refuse "$ROOT is not a git checkout with a commit" ""
 RAW="$TMP/raw"; STAGE="$TMP/stage"; mkdir -p "$RAW" "$STAGE"
 git -C "$ROOT" archive HEAD | tar -xf - -C "$RAW"
-[ -f "$RAW/CONTRACTS/layers.tsv" ] || refuse "no CONTRACTS/layers.tsv at HEAD, so no core set" "commit CONTRACTS/layers.tsv"
 git -C "$ROOT" ls-tree -r --name-only HEAD > "$TMP/all.files"
-LAYERS_FILE="$RAW/CONTRACTS/layers.tsv" sh "$SRC/layers.sh" --classify < "$TMP/all.files" > "$TMP/classes" ||
-  refuse "CONTRACTS/layers.tsv is malformed" "sh bin/layers.sh --check"
+# HEAD's contract directory: contracts/ in the renamed layout (harbor#949), else CONTRACTS/. Read from HEAD's tracked
+# paths, never the disk, which on a case-insensitive one answers yes to both; a CI mirror gates either layout.
+C=CONTRACTS; ! grep -qx 'contracts/layers\.tsv' "$TMP/all.files" || C=contracts
+[ -f "$RAW/$C/layers.tsv" ] || refuse "no $C/layers.tsv at HEAD, so no core set" "commit $C/layers.tsv"
+LAYERS_FILE="$RAW/$C/layers.tsv" sh "$SRC/layers.sh" --classify < "$TMP/all.files" > "$TMP/classes" ||
+  refuse "$C/layers.tsv is malformed" "sh bin/layers.sh --check"
 BAD="$(awk -F'\t' '$NF == "none" || $NF == "multi"' "$TMP/classes" | wc -l | tr -d ' ')"
 [ "$BAD" = 0 ] || refuse "$BAD path(s) at HEAD match no layers.tsv row or two" "sh bin/layers.sh --check names them"
 awk -F'\t' '$NF == "core" { sub(/\t[^\t]*$/, ""); print }' "$TMP/classes" > "$TMP/core.files"
 NCORE="$(wc -l < "$TMP/core.files" | tr -d ' ')"
-[ "$NCORE" -gt 0 ] || refuse "the core set is empty" "check CONTRACTS/layers.tsv"
+[ "$NCORE" -gt 0 ] || refuse "the core set is empty" "check $C/layers.tsv"
 tar -cf - -C "$RAW" -T "$TMP/core.files" | tar -xf - -C "$STAGE"
 
 # The export names itself, never the dev repo: findings-run.sh fetches and runs what repo-slug.txt names (harbor#1149).
 # The slug is the target's GitHub origin, the answer repo_slug gives inside a clone; none, or the source's own, refuses.
-SLUGF="$STAGE/CONTRACTS/repo-slug.txt"; XSLUG=''; SLUGERR=''
+SLUGF="$STAGE/$C/repo-slug.txt"; XSLUG=''; SLUGERR=''
 if [ -f "$SLUGF" ]; then
   SSLUG="$(slug_of_url "$(git -C "$ROOT" config --get remote.origin.url 2>/dev/null || :)")"
   [ -n "$SSLUG" ] || SSLUG="$(_rs_pin "$SLUGF")"
@@ -101,7 +104,7 @@ fi
 PRIV="${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}"
 [ -d "${PRIV%/}" ] || refuse "no private layer, so the private terms cannot be checked" "set HARBOR_SCOPE_PRIVATE; the export gate is core patterns plus those terms"
 GATE=0
-LEAKS_EXPORT=1 HARBOR_ROOT="$STAGE" LEAKS_CORE_PATTERNS="$ROOT/CONTRACTS/leak-patterns.tsv" sh "$SRC/lint-leaks.sh" --zero || GATE=$?
+LEAKS_EXPORT=1 HARBOR_ROOT="$STAGE" LEAKS_CORE_PATTERNS="$ROOT/$C/leak-patterns.tsv" sh "$SRC/lint-leaks.sh" --zero || GATE=$?
 
 # gitleaks over the same stage (harbor#1149): the token shapes no leak pattern names. Missing is a refusal, never a skip.
 # The staged .gitleaks.toml decides, never an inherited GITLEAKS_CONFIG. 8.19+ says `dir`, 8.18 `detect --no-git`.
@@ -167,7 +170,7 @@ hist_scan() {
     { hist_err "writing the messages"; return 1; }
   git -C "$_h" add -f -A || { hist_err "indexing the messages"; return 1; }
   _r=0
-  LEAKS_EXPORT=1 HARBOR_ROOT="$_h" LEAKS_CORE_PATTERNS="$ROOT/CONTRACTS/leak-patterns.tsv" sh "$SRC/lint-leaks.sh" --list \
+  LEAKS_EXPORT=1 HARBOR_ROOT="$_h" LEAKS_CORE_PATTERNS="$ROOT/$C/leak-patterns.tsv" sh "$SRC/lint-leaks.sh" --list \
     > "$TMP/hist.hits" 2> "$TMP/hist.err" || { _r=1; log_fail "history: the leak scan did not complete: $(grep -E 'FAIL' "$TMP/hist.err" | head -1 | sed 's/^ *//')"; log_fix "$FIXL"; }
   if [ -s "$TMP/hist.hits" ]; then
     _r=1; sed -e 's/^\([0-9a-f]\{12\}\)-[0-9a-f]\{12\}\/\(.*\):\([^:]*\)$/commit \1 \2 pattern \3/' \
@@ -200,9 +203,12 @@ fi
 
 # Domain ratchet at zero over the stage (harbor#1274): core carries no workload tool's name.
 DOMAIN=0
-HARBOR_ROOT="$STAGE" sh "$SRC/lint-domain.sh" --zero >&2 || DOMAIN=1
+# Its registers and core set are the stage's own, in HEAD's contract directory: the defaults are CONTRACTS/ only.
+domain() { LAYERS_FILE="$STAGE/$C/layers.tsv" DOMAIN_TERMS="$STAGE/$C/domain-terms.tsv" DOMAIN_ALLOW="$STAGE/$C/domain-allow.tsv" \
+  DOMAIN_REPOS_ALLOW="$STAGE/$C/domain-repos-allow.tsv" HARBOR_ROOT="$STAGE" sh "$SRC/lint-domain.sh" "$@"; }
+domain --zero >&2 || DOMAIN=1
 # and no workload repo's name (harbor#1273): the ids come from the private registry, so none is named here
-HARBOR_ROOT="$STAGE" sh "$SRC/lint-domain.sh" --repos --zero >&2 || DOMAIN=1
+domain --repos --zero >&2 || DOMAIN=1
 # pass-score (decision 17 on harbor#1149): HEAD's FLOOR.md, so its pass table, not the working tree's.
 PASSS=0
 # --ci-base (ci-mirror.sh): the PR's base, only the point a mirror's suites are selected against. The leak, secrets,
