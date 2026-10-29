@@ -1,4 +1,4 @@
-# Why it is wired this way (moved from bin/runtime-install.sh, harbor#1272):
+# Why it is wired this way (moved from bin/deploy-runtime-install.sh, harbor#1272):
 # FO-1 (harbor#465) — the PostToolUseFailure recorder.
 #
 # INSTALLED HERE AND NOT BY floor-install.sh, deliberately. It lives beside the
@@ -7,7 +7,7 @@
 # part of guard-integrity.sh's floor MINIMUM, after which a MISSING RECORDER
 # BLOCKS THE SESSION. It gates nothing and blocks nothing; a recorder outage is a
 # ledger with a hole, never a floor with one, and escalating the first into the
-# second is how a control gets switched off. Its analyser (failure-capture.sh) is
+# second is how a control gets switched off. Its analyser (audit-triage.sh) is
 # already this installer's, which is the other half of the argument.
 key	value
 engine	failure-observe
@@ -16,4 +16,4 @@ wire	PostToolUseFailure	-	-
 senses	every failed tool call
 acts-on	MEMORY/OBSERVABILITY, one record per failure
 findings	the failure ledger
-closer	failure-capture.sh, run daily by judge-run.sh
+closer	audit-triage.sh, run daily by audit-triage-run.sh

@@ -39,9 +39,12 @@ for F in "$CFG"/name-create.d/*.tsv; do
     done
     NAME="${NAME#[\'\"]}"; NAME="${NAME%[\'\"]}"
     case "$NAME" in ''|*[\$\`\;\&\|\(\)\<\>\\]*) continue ;; esac
-    if [ -n "$LROOT" ]; then OUT="$(sh "$LINT" --root "$LROOT" --check "$SURF" "$NAME" 2>&1)" || continue
-    else OUT="$(sh "$LINT" --check "$SURF" "$NAME" 2>&1)" || continue; fi
-    FIND="$(printf '%s\n' "$OUT" | sed -n 's/^[[:space:]]*WARN: \(\[[^]]*\] \)\(.*\)$/\1\2/p')"
+    # exit 1 is a block-mode finding, which is what the note is for; 2 and above judged nothing.
+    _rc=0
+    if [ -n "$LROOT" ]; then OUT="$(sh "$LINT" --root "$LROOT" --check "$SURF" "$NAME" 2>&1)" || _rc=$?
+    else OUT="$(sh "$LINT" --check "$SURF" "$NAME" 2>&1)" || _rc=$?; fi
+    [ "$_rc" -le 1 ] || continue
+    FIND="$(printf '%s\n' "$OUT" | sed -n -E 's/^[[:space:]]*(WARN|FAIL): (\[[^]]*\] )(.*)$/\2\3/p')"
     [ -n "$FIND" ] || continue
     printf '%s\n' "Name check (harbor#978, advisory, the command was not blocked). \`$NAME\` is a new $SURF name, and the naming standard (standards/naming/) says: $(printf '%s' "$FIND" | awk 'NR > 1 { printf "; " } { printf "%s", $0 }').${NOTE:+ $NOTE} Choose the name before the thing exists: a rename later has to move every reference with it."
     exit 0

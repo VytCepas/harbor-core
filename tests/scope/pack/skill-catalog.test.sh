@@ -5,9 +5,9 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$(dirname "$0")/fixture.sh"
 case "$HOME" in "$T_TMP"/*) ;; *) echo "skill-catalog.test: HOME is not the sandbox: $HOME" >&2; exit 2 ;; esac
-R="$T_TMP/root"; mkdir -p "$R/bin" "$R/skills/skill-catalog" "$R/CONTRACTS"
-cp "$T_ROOT/bin/skill-catalog.sh" "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/roots.sh" "$T_ROOT/bin/install-lib.sh" "$R/bin/"
-cp "$T_ROOT/CONTRACTS/roots.tsv" "$T_ROOT/CONTRACTS/skill-book-router.tsv" "$R/CONTRACTS/"
+R="$T_TMP/root"; mkdir -p "$R/bin" "$R/skills/skill-catalog" "$R/contracts"
+cp "$T_ROOT/bin/skill-catalog.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/scope-roots.sh" "$T_ROOT/bin/deploy-install-lib.sh" "$R/bin/"
+cp "$T_ROOT/contracts/roots.tsv" "$T_ROOT/contracts/skill-book-router.tsv" "$R/contracts/"
 cp "$T_ROOT/skills/skill-catalog/SKILL.md" "$R/skills/skill-catalog/SKILL.md"; TRACKED_SUM="$(cksum < "$R/skills/skill-catalog/SKILL.md")"
 SK="$HOME/.claude/skills"; mkdir -p "$SK/alpha" "$SK/skill-catalog"
 printf -- '---\nname: alpha\ndescription: "Alpha. USE WHEN alpha work."\n---\n' > "$SK/alpha/SKILL.md"

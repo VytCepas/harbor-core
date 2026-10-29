@@ -4,7 +4,7 @@
 #   sh ci-wait.sh <owner/repo>#<n> | <github.com pull URL> [--timeout S]
 #   harbor event ci …                       the same: a sub-verb of `harbor event`, which hands it here
 #
-# It reads `gh pr checks` once, then sleeps on `event-bus.sh wait` for the next ci.job.done (CONTRACTS/event-kinds.tsv)
+# It reads `gh pr checks` once, then sleeps on `event-bus.sh wait` for the next ci.job.done (contracts/event-kinds.tsv)
 # and reads again, a few times over 30 s because GitHub posts a verdict after the job's own hook. A job on a runner
 # this box does not host emits nothing, so each sleep is capped at HARBOR_CI_WAIT_BACKSTOP (300 s) and the read
 # runs anyway: a slower answer, never a missed one.
@@ -20,7 +20,7 @@ case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 usage() { awk 'NR < 2 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"; }
 case "${1:-}" in -h|--help) usage; exit 0 ;; '') usage >&2; exit 2 ;; esac
 # The verdict is the one line on stdout; every refusal goes through the house log on stderr.
-. "$HERE/log-lib.sh"; LOG_FD=2; log_init ci-wait
+. "$HERE/library-log.sh"; LOG_FD=2; log_init ci-wait
 die() { log_fail "$2"; log_nofix "sh $0 --help"; log_end >/dev/null 2>&1 || :; exit "$1"; }  # <exit code> <why>
 
 NOT_CI="${HARBOR_CI_NOT_CHECKS-review/decision}"

@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0
+[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
 # guard-apiroute (harbor#545) — PostToolUse(Bash|Write|Edit|MultiEdit) and
 # SessionStart. Claude Code's own API route is not a setting anything a session
 # runs may change.
@@ -52,7 +52,7 @@
 #
 # KEYS, NEVER VALUES, in every message: an ANTHROPIC_AUTH_TOKEN value is a
 # credential. Values are compared inside jq and never printed. Registered in
-# CHECKS.md as `api-route`; every repair is stamped `[check:api-route]` in
+# docs/reference/checks.md as `api-route`; every repair is stamped `[check:api-route]` in
 # $CLAUDE_CONFIG_DIR/cache/checks.log.
 #
 # FAILS OPEN. An error in this hook must never stop a session doing ordinary

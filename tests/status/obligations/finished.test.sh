@@ -5,12 +5,16 @@
 # old copy is `git show` of the merge base, so a case that cannot fail on the old code fails the suite.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 
-BIN="$T_ROOT/bin/status-obligations.sh"; KINDS="$T_ROOT/CONTRACTS/obligation-kinds.tsv"
+BIN="$T_ROOT/bin/status-obligations.sh"; KINDS="$T_ROOT/contracts/obligation-kinds.tsv"
 W="$T_TMP/w"; EV="$W/ev"; OB="$W/ob"; FIX="$W/fix"; OLD="$T_TMP/old"; MUTD="$T_TMP/mut"
 NOW=2026-10-06T02:00:00Z; N=0; D=2026-10-06.jsonl; BAD=""; EMPTY='{}'; P="$FIX/tr/p"
 mkdir -p "$OLD" "$MUTD"
-for _d in "$OLD" "$MUTD"; do for _l in log-lib.sh fs-lib.sh event-bus.sh; do ln -sf "$T_ROOT/bin/$_l" "$_d/$_l"; done; done
+for _d in "$OLD" "$MUTD"; do for _l in library-log.sh library-fs.sh event-bus.sh; do ln -sf "$T_ROOT/bin/$_l" "$_d/$_l"; done; done
 _base="$(git -C "$T_ROOT" merge-base HEAD origin/main 2>/dev/null)" || _base=""
+# A branch that leaves the script alone has the fix at its merge base too: the old copy is then the one before the script's last change.
+if [ -n "$_base" ] && git -C "$T_ROOT" diff --quiet "$_base" HEAD -- bin/status-obligations.sh 2>/dev/null; then
+  _last="$(git -C "$T_ROOT" log -1 --format=%H HEAD -- bin/status-obligations.sh 2>/dev/null)"; _base="${_last:+$_last^}"
+fi
 [ -n "$_base" ] && git -C "$T_ROOT" show "$_base:bin/status-obligations.sh" > "$OLD/status-obligations.sh" 2>/dev/null
 [ -s "$OLD/status-obligations.sh" ] || t_fail "no merge base to show the old script from"
 cat > "$T_TMP/sessions" <<'STUB'

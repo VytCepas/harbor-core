@@ -13,7 +13,7 @@
 #   --only floor --uninstall   remove the floor (harbor uninstall): the same gates and snapshot, and a
 #                   verify that expects the floor GONE; the snapshot is offered back. Every installed pack goes
 #                   with it (bin/pack.sh remove), and the skill catalog is regenerated without their skills
-#   --accept-loss   passed to constitution-, runtime-, floor- and skills-install and to restore.sh;
+#   --accept-loss   passed to constitution-, runtime-, floor- and skills-install and to deploy-restore.sh;
 #                   deploy's own regression check then warns instead of refusing
 #   --unattended    the ship runner's apply (deploy-fleet.sh, ship contract §6), never a person's: needs --apply,
 #                   SHIP_UNATTENDED=1 and SHIP_SNAPSHOT naming an empty file. Installs without the [y/N], writes
@@ -28,17 +28,17 @@
 #     so it gets No; script(1) can fake one, so this is an accident gate, not a wall.
 #   - inject-install --projects: it writes other repos.
 # Opt-ins are read from the box (harbor#762): a wired Stop gate and an installed B6 are refreshed.
-# One log format (CONTRACTS/logging.md): deploy's own lines are log-lib's; its children's lines are
+# One log format (contracts/logging.md): deploy's own lines are log-lib's; its children's lines are
 # relayed verbatim, and on --apply both go to backups/deploy/<TS>/log. Children run with HARBOR_DEPLOY=1.
 set -eu
 
 ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
-. "$ROOT/bin/log-lib.sh"
-. "$ROOT/bin/install-lib.sh"
+. "$ROOT/bin/library-log.sh"
+. "$ROOT/bin/deploy-install-lib.sh"
 log_init deploy
 # A native Windows shell is refused before anything, even arguments: no floor on an unproved platform (harbor#833).
 case "$(uname -s 2>/dev/null || :)" in MINGW*|MSYS*|CYGWIN*)
-  log_fail "native Windows shell ($(uname -s)): Harbor runs on macOS and Linux, and on Windows only inside WSL2 (CONTRACTS/platforms.md)"
+  log_fail "native Windows shell ($(uname -s)): Harbor runs on macOS and Linux, and on Windows only inside WSL2 (contracts/platforms.md)"
   log_fix "install WSL2 (wsl --install), clone Harbor inside the WSL filesystem (~/port/harbor), and run deploy there"
   log_end || :; exit 1 ;;
 esac
@@ -62,12 +62,12 @@ for _c in $(printf '%s' "$ONLY" | tr ',' ' '); do
 done
 [ -z "$ONLY" ] || [ -n "$(printf '%s' "$ONLY" | tr -d ', ')" ] || il_usage_error '--only needs a component'
 # The default set is core plus the optional components harbor.toml `components` names (harbor#1149).
-# roots.sh --conf exits 0 with the list, 1 when the key is unset (the legacy full set), anything else a usage error.
-# stderr is not captured: roots.sh's own notes (a BOM or CRLF file) reach the operator, and never the list.
+# scope-roots.sh --conf exits 0 with the list, 1 when the key is unset (the legacy full set), anything else a usage error.
+# stderr is not captured: scope-roots.sh's own notes (a BOM or CRLF file) reach the operator, and never the list.
 CORE_SET='constitution shim sec0 runtime floor skills inject packs'
 DEFSET="$COMPONENTS"; COMP_NOTE=''
 if [ -z "$ONLY" ] && [ "$PRUNE" -eq 0 ]; then
-  _cv="$(sh "$ROOT/bin/roots.sh" --conf components)" && _crc=0 || _crc=$?
+  _cv="$(sh "$ROOT/bin/scope-roots.sh" --conf components)" && _crc=0 || _crc=$?
   case "$_crc" in
     0)
       DEFSET="$CORE_SET"
@@ -82,10 +82,10 @@ if [ -z "$ONLY" ] && [ "$PRUNE" -eq 0 ]; then
         esac
       done
       COMP_NOTE="components: core + $(printf '%s' "$_cv" | tr '\n' ' ')(harbor.toml)"
-      [ -z "${_ccoll:-}" ] || COMP_NOTE="$COMP_NOTE; collector is installed by root: sudo sh $ROOT/bin/collector-setup.sh"
+      [ -z "${_ccoll:-}" ] || COMP_NOTE="$COMP_NOTE; collector is installed by root: sudo sh $ROOT/bin/audit-collector-install.sh"
       ;;
     1) COMP_NOTE='components unset, so it installs the legacy default (every component); set components in harbor.toml' ;;
-    *) il_usage_error "harbor.toml components: roots.sh could not read it (exit $_crc); its message is above" ;;
+    *) il_usage_error "harbor.toml components: scope-roots.sh could not read it (exit $_crc); its message is above" ;;
   esac
 fi
 if [ "$UNINSTALL" -eq 1 ]; then  # the floor is the one component with an uninstaller (harbor#808)
@@ -150,7 +150,7 @@ FAILS=0
 _interrupted() {
   printf '\n'
   log_fail 'INTERRUPTED: the config dir may be half-installed'
-  if [ -n "$SNAP" ]; then log_fix "sh '$ROOT/bin/restore.sh' --live --from '$SNAP'   # the restore plan for the pre-run copy"
+  if [ -n "$SNAP" ]; then log_fix "sh '$ROOT/bin/deploy-restore.sh' --live --from '$SNAP'   # the restore plan for the pre-run copy"
   else log_nofix 'nothing was snapshotted yet, so nothing was installed'; fi
   log_end || :
   exit 130
@@ -201,7 +201,7 @@ _ask() {
 _b6_verdict() {
   _g="$CFG/bin/guard-integrity.sh"
   [ -f "$_g" ] || _g="$ROOT/bin/guard-integrity.sh"
-  _g_out="$(env -u HELM_DISABLE_FLOOR -u HELM_FLOOR_SHADOW CLAUDE_CONFIG_DIR="$CFG" sh "$_g" </dev/null 2>/dev/null || true)"
+  _g_out="$(env -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW -u HELM_DISABLE_FLOOR -u HELM_FLOOR_SHADOW CLAUDE_CONFIG_DIR="$CFG" sh "$_g" </dev/null 2>/dev/null || true)"
   if [ -z "$_g_out" ]; then printf 'clean'; return; fi
   # `.continue == false`, never `//`: jq's alternative operator treats false as missing.
   if printf '%s' "$_g_out" | jq -e '.continue == false' >/dev/null 2>&1; then
@@ -230,7 +230,7 @@ _in_history() { # <repo-path> <file under $CFG>
 # The same question of the private layer's own history (harbor#1149): the box packs and the project registry it carries are
 # installed into <config>/context-rules/user (inject.d before harbor#1010), so a past version of one is as much "an install put it there" as a core pack is.
 _in_private_history() { # <repo-path in the private layer> <file under $CFG>
-  _pv="$(sh "$ROOT/bin/roots.sh" --private 2>/dev/null)" && [ -d "$_pv" ] || return 1
+  _pv="$(sh "$ROOT/bin/scope-roots.sh" --private 2>/dev/null)" && [ -d "$_pv" ] || return 1
   il_known "$CFG" "${2#"$CFG"/}" "$2" "$_pv" "$1"
 }
 
@@ -301,15 +301,15 @@ _checkout() {
 _preflight() {
   log_head 'preflight · nothing is written unless every check here passes'
   _checkout
-  # --with-b6 onto a box with no floor is refused here, with the reason (FLOOR.md order).
+  # --with-b6 onto a box with no floor is refused here, with the reason (docs/explanation/admission-baseline.md order).
   _optins
 
   # Shims and CLAUDE.md's path root point at HARBOR_REPO, not at whichever checkout runs this.
-  _hr="$(sh "$ROOT/bin/roots.sh" --get HARBOR_REPO 2>/dev/null || true)"
+  _hr="$(sh "$ROOT/bin/scope-roots.sh" --get HARBOR_REPO 2>/dev/null || true)"
   if [ "$(_phys "${_hr:-?}")" = "$(_phys "$ROOT")" ]; then log_ok 'HARBOR_REPO resolves to this checkout'
   elif [ -n "$_hr" ] && [ -f "$_hr/bin/deploy.sh" ]; then
     _bad "shims and CLAUDE.md would point at $_hr, not this checkout" "sh '$_hr/bin/deploy.sh' --live$AL"
-  else _bad "shims and CLAUDE.md would point at ${_hr:-<unresolved>}, not this checkout" 'none: CONTRACTS/roots.tsv — HARBOR_REPO'; fi
+  else _bad "shims and CLAUDE.md would point at ${_hr:-<unresolved>}, not this checkout" 'none: contracts/roots.tsv — HARBOR_REPO'; fi
 
   if command -v jq >/dev/null 2>&1; then log_ok 'jq present'; else _bad 'jq is missing; every installer needs it' "$(_jq_fix)"; fi
   if [ -f "$CFG/settings.json" ]; then log_ok 'config dir has settings.json'
@@ -318,7 +318,7 @@ _preflight() {
   # Refused here rather than midway: floor-install refusing AFTER runtime-install wrote = lockout.
   for _i in runtime-install floor-install; do
     _want "${_i%-install}" || continue
-    if sh "$ROOT/bin/install-stamp.sh" --check "$CFG" "$_i" >"$WORK/stamp" 2>&1; then
+    if sh "$ROOT/bin/deploy-install-stamp.sh" --check "$CFG" "$_i" >"$WORK/stamp" 2>&1; then
       log_ok "$_i: no regression against what is installed"
     elif [ "$IL_ACCEPT_LOSS" -eq 1 ]; then
       log_warn "--accept-loss: $_i would REMOVE installed work (harbor#115); the lines below name it"
@@ -330,13 +330,13 @@ _preflight() {
     fi
   done
 
-  # Runtime without floor (harbor#916): runtime-install replaces B6-pinned files (log-lib.sh) and
+  # Runtime without floor (harbor#916): runtime-install replaces B6-pinned files (library-log.sh) and
   # only floor-install re-pins them, so the next session is BLOCKED. Measured 2026-10-02: preflight
   # passed, verify failed after the write, and the operator restored. Refused here, before any write.
   if _want runtime && ! _want floor && [ -d "$CFG/.helm-pins" ]; then
-    _rf="$(sed -n 's/^FILES="\(.*\)"$/\1/p' "$ROOT/bin/runtime-install.sh" 2>/dev/null)"; _pd=''
+    _rf="$(sed -n 's/^FILES="\(.*\)"$/\1/p' "$ROOT/bin/deploy-runtime-install.sh" 2>/dev/null)"; _pd=''
     if [ -z "$_rf" ]; then
-      _bad "cannot read runtime-install's FILES, so whether it replaces a B6-pinned file is unknown" 'none: harbor#916 — bin/runtime-install.sh FILES='
+      _bad "cannot read runtime-install's FILES, so whether it replaces a B6-pinned file is unknown" 'none: harbor#916 — bin/deploy-runtime-install.sh FILES='
     else
       for _f in $_rf; do
         [ -f "$CFG/.helm-pins/$_f.sha256" ] && [ -f "$ROOT/$(il_src "$ROOT" "$_f")" ] || continue
@@ -369,13 +369,13 @@ _preflight() {
 
   # Shims: shim-install's own dry run refuses a regular file where a shim belongs (exit 1).
   if ! _want shim; then :
-  elif sh "$ROOT/bin/shim-install.sh" --live >"$WORK/shim" 2>&1; then
+  elif sh "$ROOT/bin/deploy-shim-install.sh" --live >"$WORK/shim" 2>&1; then
     log_ok "shims: $(grep -c ': would ' "$WORK/shim" || :) to write, none blocked"
     [ -z "$LOG_PATH" ] || _relay "$WORK/shim" >/dev/null
   else
     _relay --brief "$WORK/shim"
     _bad 'shims: a regular file sits where a shim belongs; shim-install --apply would refuse it (its FAIL lines above)' \
-      'none: the shim-install fix lines above — remove the file, or drop its row from CONTRACTS/shims.tsv'
+      'none: the shim-install fix lines above — remove the file, or drop its row from contracts/shims.tsv'
     if grep -q '^  FAIL: harbor: ' "$WORK/shim"; then
       log_note "harbor: that is the copy older runtime-installs made; it is safe to remove: rm '$LOCAL_BIN/harbor'"
     fi
@@ -386,7 +386,7 @@ _preflight() {
   if ! _want skills; then :
   elif [ ! -d "$CFG/skills" ]; then
     log_note 'no skills dir yet: every tracked skill will be installed new'
-  elif sh "$ROOT/bin/skills-install.sh" --all --live$AL >"$WORK/skills" 2>&1; then
+  elif sh "$ROOT/bin/skill-install.sh" --all --live$AL >"$WORK/skills" 2>&1; then
     log_ok "skills: $(grep -c ': would update ' "$WORK/skills" || :) to update, $(grep -c ': would install ' "$WORK/skills" || :) new, none blocked"
     [ -z "$LOG_PATH" ] || _relay "$WORK/skills" >/dev/null
   else
@@ -394,21 +394,21 @@ _preflight() {
     _bad 'skills: skills-install --all --apply would refuse (its FAIL lines above)' 'none: the skills-install fix lines above'
   fi
 
-  # The always-on ratchet: what this deploy installs may not cost every session more than CONTEXT-RATCHET.tsv records.
+  # The always-on ratchet: what this deploy installs may not cost every session more than registries/context-ratchet.tsv records.
   # A checkout without the file (harbor-core) has no ratchet to apply.
   if ! _want_any constitution skills; then :
-  elif [ ! -f "$ROOT/CONTEXT-RATCHET.tsv" ]; then log_note 'context ratchet: no CONTEXT-RATCHET.tsv in this checkout, so no always-on bound to apply'
+  elif [ ! -f "$ROOT/registries/context-ratchet.tsv" ]; then log_note 'context ratchet: no registries/context-ratchet.tsv in this checkout, so no always-on bound to apply'
   elif sh "$ROOT/bin/context-budget.sh" --ratchet >"$WORK/ratchet" 2>&1; then
     log_ok "$(sed -n 's/^  ok: //p' "$WORK/ratchet" | head -1)"
     [ -z "$LOG_PATH" ] || _relay "$WORK/ratchet" >/dev/null
   else
     _relay "$WORK/ratchet"
-    _bad 'context ratchet: the core always-on surface grew past CONTEXT-RATCHET.tsv (its FAIL lines above)' 'none: the ratchet fix line above'
+    _bad 'context ratchet: the core always-on surface grew past registries/context-ratchet.tsv (its FAIL lines above)' 'none: the ratchet fix line above'
   fi
 
   # Commands are overwritten with no collide check; a box copy in no commit is someone's edit.
   : >"$WORK/cmds"
-  _want skills && { sh "$ROOT/bin/skills-install.sh" commands --all --live >"$WORK/cmds" 2>&1 || true; }
+  _want skills && { sh "$ROOT/bin/skill-install.sh" commands --all --live >"$WORK/cmds" 2>&1 || true; }
   _cm_bad=0
   for _n in $(sed -n 's/^  note: \([^:]*\): would update .*/\1/p' "$WORK/cmds"); do
     if [ -f "$CFG/commands/$_n.md" ] && ! _in_history "commands/$_n.md" "$CFG/commands/$_n.md"; then
@@ -475,7 +475,7 @@ _optins() {
   elif _stop_wired; then FLOOR_OPTS="$FLOOR_OPTS --with-stop-gate"; log_note 'Stop gate: wired on this box, so floor-install refreshes it (--with-stop-gate, harbor#762)'; fi
   if [ "$WITH_B6" -eq 1 ]; then
     FLOOR_OPTS="$FLOOR_OPTS --with-b6"
-    # B6 installs LAST (FLOOR.md): onto a floor that exists and a session that ran on it, never with it.
+    # B6 installs LAST (docs/explanation/admission-baseline.md): onto a floor that exists and a session that ran on it, never with it.
     if [ -d "$CFG/.helm-pins" ]; then log_note 'B6: opted in by --with-b6'
     else _bad 'B6 installs last: this box has no floor yet (no .helm-pins), so --with-b6 would install the gate with the floor it checks' \
       "sh '$ROOT/bin/deploy.sh' --apply --live   # then restart a session, then add --with-b6"; fi
@@ -488,7 +488,7 @@ _optins() {
 PACKS_LIST=''
 _packs_conf() { # sets PACKS_LIST; returns 0 when packs are listed, 1 when none (a note is already logged), 2 when harbor.toml is unreadable
   PACKS_LIST=''; _pc_rc=0
-  PACKS_LIST="$(sh "$ROOT/bin/roots.sh" --conf packs)" || _pc_rc=$?
+  PACKS_LIST="$(sh "$ROOT/bin/scope-roots.sh" --conf packs)" || _pc_rc=$?
   case "$_pc_rc" in
     0) [ -n "$PACKS_LIST" ] || _pc_rc=1 ;;
   esac
@@ -510,7 +510,7 @@ _packs_plan() {
   _packs_conf && _pk_rc=0 || _pk_rc=$?
   case "$_pk_rc" in
     1) return 0 ;;
-    2) _bad "harbor.toml packs: roots.sh could not read it (exit 2); its message is above" 'none: CONTRACTS/private-layer.md — harbor.toml'; return 0 ;;
+    2) _bad "harbor.toml packs: scope-roots.sh could not read it (exit 2); its message is above" 'none: contracts/private-layer.md — harbor.toml'; return 0 ;;
   esac
   _r_rc=0
   sh "$ROOT/bin/pack.sh" install --live >"$WORK/out" 2>&1 </dev/null || _r_rc=$?
@@ -525,7 +525,7 @@ _packs_plan() {
 }
 _packs_install() { # run after inject-install, which rebuilds the box tier and so drops a pack's notes
   _packs_conf && _pk_rc=0 || _pk_rc=$?
-  case "$_pk_rc" in 1) return 0 ;; 2) _INSTALL_FAILED='harbor.toml packs: roots.sh could not read it'; return 1 ;; esac
+  case "$_pk_rc" in 1) return 0 ;; 2) _INSTALL_FAILED='harbor.toml packs: scope-roots.sh could not read it'; return 1 ;; esac
   log_note 'running: pack.sh install --apply --live'
   if ! _run sh "$ROOT/bin/pack.sh" install --apply --live; then
     _INSTALL_FAILED="pack.sh install --apply --live: $(_packs_refusals "$WORK/out")"
@@ -559,7 +559,7 @@ _packs_uninstall() {
 # The documented interface (yard#1047, fleet#318): a dry run by default that
 # exits 1 when --apply would refuse, and --check non-zero on drift. A repo it cannot run fails preflight (UNREACHABLE).
 XR_PI=''; XR_PO=''
-_xr_dir() { case "$1" in project-init) sh "$ROOT/bin/roots.sh" --get HARBOR_PROJECT_INIT 2>/dev/null ;; *) sh "$ROOT/bin/roots.sh" --get HARBOR_ORCHESTRATOR 2>/dev/null ;; esac; }
+_xr_dir() { case "$1" in project-init) sh "$ROOT/bin/scope-roots.sh" --get HARBOR_SCOPE_SCAFFOLDER 2>/dev/null ;; *) sh "$ROOT/bin/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER 2>/dev/null ;; esac; }
 _xr_set() { if [ "$1" = project-init ]; then XR_PI="$2"; else XR_PO="$2"; fi; }
 _xr_get() { if [ "$1" = project-init ]; then printf '%s' "$XR_PI"; else printf '%s' "$XR_PO"; fi; }
 _just() { _jd="$1"; shift; just --justfile "$_jd/justfile" --working-directory "$_jd" "$@"; }
@@ -645,7 +645,7 @@ _plan() {
   log_head "plan · each installer's own dry run (its verdicts here; the full text in the plan file)"
   # The installers print `(replace)` for identical files too; install-drift says what really differs.
   if [ -d "$CFG/bin" ] && _want_any runtime floor; then
-    sh "$ROOT/bin/install-drift.sh" --dir "$CFG" --ref HEAD >"$WORK/drift.pre" 2>&1 || true
+    sh "$ROOT/bin/drift-install.sh" --dir "$CFG" --ref HEAD >"$WORK/drift.pre" 2>&1 || true
     cat "$WORK/drift.pre" >>"$PLAN"
     [ -z "$LOG_PATH" ] || _relay "$WORK/drift.pre" >/dev/null
     log_note "installed bin/ vs this commit: $(sed -n 's/.*\(current=[0-9]* stale=[0-9]* modified=[0-9]* unsourced=[0-9]*\).*/\1/p' "$WORK/drift.pre" | tail -1)"
@@ -655,8 +655,8 @@ _plan() {
       awk '$1=="FAIL:" && $2=="modified" { sub(/^  FAIL: /, ""); print }' "$WORK/drift.pre" | _notes
     fi
   fi
-  for _p in "runtime:runtime-install.sh --live$AL" "floor:floor-install.sh --live$AL$FLOOR_OPTS" 'prod-guard:prod-guard-install.sh --live' \
-            "constitution:constitution-install.sh --live$AL" 'inject:inject-install.sh --live' 'sec0:sec0-harden.sh --live'; do
+  for _p in "runtime:deploy-runtime-install.sh --live$AL" "floor:floor-install.sh --live$AL$FLOOR_OPTS" 'prod-guard:prod-guard-install.sh --live' \
+            "constitution:policy-constitution-install.sh --live$AL" 'inject:context-injection-install.sh --live' 'sec0:deploy-harden.sh --live'; do
     _want "${_p%%:*}" || continue
     _p="${_p#*:}"
     _r_rc=0
@@ -736,32 +736,32 @@ _unreachable() {
 # shim again after packs: a pack's commands are linked from the shims.d fragment its install wrote (harbor#1149), which the
 # first shim run, before the packs, could not have read on a box that never had them.
 # The two other repos last (harbor#736): Harbor's floor is in place before any other tool is replaced.
-# The packs step recomposes bin/CHECKS.md when a pack's checks.d changed in this deploy, after runtime-install recorded
+# The packs step recomposes bin/docs/reference/checks.md when a pack's checks.d changed in this deploy, after runtime-install recorded
 # it; event-dispatch reads the register only at its recorded blob, so every preset was refused (harbor#1044). Then
 # runtime-install runs again: it composes the register with the packs as they now are, and records that.
 _register_rerecord() {
   _want runtime || return 0
-  _rr_want="$(awk '!/^#/ && NF == 5 && $3 == "bin/CHECKS.md" && $4 == "runtime-install" { b = $1 } END { print b }' "$CFG/.harbor-manifest" 2>/dev/null)"
-  _rr_have="$(git hash-object --no-filters -- "$CFG/bin/CHECKS.md" 2>/dev/null)" || _rr_have=''
+  _rr_want="$(awk '!/^#/ && NF == 5 && $3 == "bin/docs/reference/checks.md" && $4 == "runtime-install" { b = $1 } END { print b }' "$CFG/.harbor-manifest" 2>/dev/null)"
+  _rr_have="$(git hash-object --no-filters -- "$CFG/bin/docs/reference/checks.md" 2>/dev/null)" || _rr_have=''
   { [ -n "$_rr_want" ] && [ "$_rr_want" != "$_rr_have" ]; } || return 0
-  log_note "the packs step recomposed bin/CHECKS.md after runtime-install recorded it; running runtime-install again to record it"
-  _rr_p="runtime-install.sh --live --apply$AL"
+  log_note "the packs step recomposed bin/docs/reference/checks.md after runtime-install recorded it; running runtime-install again to record it"
+  _rr_p="deploy-runtime-install.sh --live --apply$AL"
   # shellcheck disable=SC2086
-  _run sh "$ROOT/bin/"$_rr_p || { _INSTALL_FAILED="$_rr_p (re-recording bin/CHECKS.md after the packs)"; return 1; }
+  _run sh "$ROOT/bin/"$_rr_p || { _INSTALL_FAILED="$_rr_p (re-recording bin/docs/reference/checks.md after the packs)"; return 1; }
 }
 _install() {
   log_head 'install'
-  for _p in "constitution:constitution-install.sh --apply --live$AL" \
-            'shim:shim-install.sh --live --apply' \
-            'sec0:sec0-harden.sh --apply --live' \
-            "runtime:runtime-install.sh --live --apply$AL" \
+  for _p in "constitution:policy-constitution-install.sh --apply --live$AL" \
+            'shim:deploy-shim-install.sh --live --apply' \
+            'sec0:deploy-harden.sh --apply --live' \
+            "runtime:deploy-runtime-install.sh --live --apply$AL" \
             "floor:floor-install.sh --live --apply$AL$FLOOR_OPTS" \
             'prod-guard:prod-guard-install.sh --live --apply' \
-            "skills:skills-install.sh --all --apply --live$AL" \
-            "skills:skills-install.sh commands --all --apply --live$AL" \
-            'inject:inject-install.sh --live --apply' \
+            "skills:skill-install.sh --all --apply --live$AL" \
+            "skills:skill-install.sh commands --all --apply --live$AL" \
+            'inject:context-injection-install.sh --live --apply' \
             'packs:PACKS' \
-            'packs:shim-install.sh --live --apply' \
+            'packs:deploy-shim-install.sh --live --apply' \
             'skills:skill-catalog.sh install --apply --live' \
             'project-init:XREPO' 'projects-orchestrator:XREPO'; do
     _c="${_p%%:*}"; _p="${_p#*:}"
@@ -778,7 +778,7 @@ _install() {
     case "$_p" in
       prod-guard-install*) [ "$PROD_GUARD" -eq 1 ] || continue ;;
       # skills-install treats a missing skills dir as a precondition, and no installer creates it.
-      'skills-install.sh --all'*) mkdir -p "$CFG/skills" ;;
+      'skill-install.sh --all'*) mkdir -p "$CFG/skills" ;;
     esac
     log_note "running: $_p"
     # shellcheck disable=SC2086
@@ -787,8 +787,8 @@ _install() {
 }
 
 _sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
-# The row restore.sh demands (harbor#769): the snapshot's hash, its path, when, and the hashes of its set
-# and of its ~/.local/bin record (harbor#770), which restore.sh reads only through this row.
+# The row deploy-restore.sh demands (harbor#769): the snapshot's hash, its path, when, and the hashes of its set
+# and of its ~/.local/bin record (harbor#770), which deploy-restore.sh reads only through this row.
 _ledger_row() {
   _lh="$(_sha256 <"$SNAP/config.tgz")" && _ls="$(_sha256 <"$SNAP/set.txt")" && _lb="$(_sha256 <"$SNAP/local-bin.tsv")" || return 1
   [ "${#_lh}" -eq 64 ] && [ "${#_ls}" -eq 64 ] && [ "${#_lb}" -eq 64 ] || return 1
@@ -797,9 +797,9 @@ _ledger_row() {
 
 # The shims.tsv target a name is linked to, or nothing: a regular file with those bytes is a copy.
 _shim_want() { # <name>
-  _sw="$(awk -F'\t' -v n="$1" '$1 == n && NF >= 3 { print $2 "\t" $3; exit }' "$ROOT/CONTRACTS/shims.tsv" 2>/dev/null || :)"
+  _sw="$(awk -F'\t' -v n="$1" '$1 == n && NF >= 3 { print $2 "\t" $3; exit }' "$ROOT/contracts/shims.tsv" 2>/dev/null || :)"
   [ -n "$_sw" ] || return 0
-  printf '%s/%s' "$(sh "$ROOT/bin/roots.sh" --get "${_sw%%	*}" 2>/dev/null || :)" "${_sw#*	}"
+  printf '%s/%s' "$(sh "$ROOT/bin/scope-roots.sh" --get "${_sw%%	*}" 2>/dev/null || :)" "${_sw#*	}"
 }
 # ~/.local/bin as a restore can use it (harbor#770): the listing it replaces could not put a link back.
 _local_bin_record() { # <out>
@@ -826,7 +826,7 @@ _snapshot() {
   log_head 'snapshot · everything the installers write, before they write it'
   SNAP="$CFG/backups/deploy-$(date +%Y%m%d-%H%M%S)-$$"
   mkdir -p "$SNAP"
-  # set.txt is what restore.sh moves aside, absent entries included, so files a run ADDS go too.
+  # set.txt is what deploy-restore.sh moves aside, absent entries included, so files a run ADDS go too.
   set -f
   # shellcheck disable=SC2086
   printf '%s\n' $SNAP_SET >"$SNAP/set.txt"
@@ -843,27 +843,27 @@ _snapshot() {
     ls -A "$CFG" >"$SNAP/top-level.txt"
     cp "$PLAN" "$SNAP/plan.txt" 2>/dev/null || true
     log_ok "snapshot: $SNAP/config.tgz ($(du -h "$SNAP/config.tgz" | awk '{print $1}')), recorded in .helm-snapshots"
-    log_ok "snapshot: $SNAP/local-bin.tsv, every entry of $LOCAL_BIN as restore.sh can put a link back (harbor#770)"
+    log_ok "snapshot: $SNAP/local-bin.tsv, every entry of $LOCAL_BIN as deploy-restore.sh can put a link back (harbor#770)"
   else
     _bad 'snapshot failed; nothing has been installed' "none: the tar error above; $SNAP"; return 1
   fi
 }
 
-# One restore code path (harbor#765): restore.sh's own plan, then the operator's yes. --accept-loss,
+# One restore code path (harbor#765): deploy-restore.sh's own plan, then the operator's yes. --accept-loss,
 # because removing floor surfaces this run ADDED is exactly what undoing the run means.
 _restore_offer() {
-  log_note 'restore puts the config dir back as it was before this run, through bin/restore.sh:'
-  if ! _run sh "$ROOT/bin/restore.sh" --live --from "$SNAP" --accept-loss; then
-    _bad "restore.sh cannot restore this run's snapshot (above); the pre-run state is $SNAP/config.tgz" \
-      'none: the restore.sh FAIL and fix lines above'
+  log_note 'restore puts the config dir back as it was before this run, through bin/deploy-restore.sh:'
+  if ! _run sh "$ROOT/bin/deploy-restore.sh" --live --from "$SNAP" --accept-loss; then
+    _bad "deploy-restore.sh cannot restore this run's snapshot (above); the pre-run state is $SNAP/config.tgz" \
+      'none: the deploy-restore.sh FAIL and fix lines above'
     return 0
   fi
   if ! _ask 'Restore the snapshot now?'; then
     log_note 'not restored. To restore later, from a terminal:'
-    il_next "sh '$ROOT/bin/restore.sh' --apply --live --from '$SNAP' --accept-loss"
+    il_next "sh '$ROOT/bin/deploy-restore.sh' --apply --live --from '$SNAP' --accept-loss"
     return 0
   fi
-  if _run sh "$ROOT/bin/restore.sh" --apply --live --from "$SNAP" --accept-loss; then
+  if _run sh "$ROOT/bin/deploy-restore.sh" --apply --live --from "$SNAP" --accept-loss; then
     _v="$(_b6_verdict)"
     case "$_v" in
       BLOCKED:*) _bad "restored, but the next session would be BLOCKED: ${_v#BLOCKED:}" 'none: the B6 reason above, which names its own recovery' ;;
@@ -871,7 +871,7 @@ _restore_offer() {
     esac
     _recheck
   else
-    _bad "restore FAILED (above): the pre-run state is $SNAP/config.tgz" 'none: the restore.sh FAIL and fix lines above'
+    _bad "restore FAILED (above): the pre-run state is $SNAP/config.tgz" 'none: the deploy-restore.sh FAIL and fix lines above'
   fi
 }
 
@@ -898,7 +898,7 @@ _verify() {
 
   # stale/modified = an install did not land; unsourced is the box's own extra file (advisory).
   if _want_any runtime floor; then
-    sh "$ROOT/bin/install-drift.sh" --dir "$CFG" --ref HEAD >"$WORK/drift" 2>&1 || true
+    sh "$ROOT/bin/drift-install.sh" --dir "$CFG" --ref HEAD >"$WORK/drift" 2>&1 || true
     [ -z "$LOG_PATH" ] || _relay "$WORK/drift" >/dev/null
     _sum="$(sed -n 's/.*\(current=[0-9]* stale=[0-9]* modified=[0-9]* unsourced=[0-9]*\).*/\1/p' "$WORK/drift" | tail -1)"
     case " $_sum " in
@@ -931,12 +931,12 @@ _verify() {
          tail -5 "$WORK/xcheck" | _notes; fi
   done
 
-  sh "$ROOT/bin/install-stamp.sh" --show "$CFG" 2>/dev/null | sed 's/^/install stamp: /' | _notes || true
+  sh "$ROOT/bin/deploy-install-stamp.sh" --show "$CFG" 2>/dev/null | sed 's/^/install stamp: /' | _notes || true
 }
 
 _refcheck() { # advisory: does the installed surface hold together (every hook, pin and citation)?
-  if sh "$ROOT/bin/reference-check.sh" --live >"$WORK/ref" 2>&1; then log_ok 'reference-check: the installed surface holds together'
-  else log_note "reference-check --live reports findings (advisory): sh '$ROOT/bin/reference-check.sh' --live"; fi
+  if sh "$ROOT/bin/drift-reference-check.sh" --live >"$WORK/ref" 2>&1; then log_ok 'reference-check: the installed surface holds together'
+  else log_note "reference-check --live reports findings (advisory): sh '$ROOT/bin/drift-reference-check.sh' --live"; fi
   [ -z "$LOG_PATH" ] || _relay "$WORK/ref" >/dev/null
 }
 
@@ -945,7 +945,7 @@ _floor_verify() {
   _want_any runtime floor sec0 prod-guard || return 0
   log_head 'floor-verify · fires known-blocked shapes at the installed floor'
   _fv_rc=0
-  env -u HELM_DISABLE_FLOOR -u HELM_FLOOR_SHADOW CLAUDE_CONFIG_DIR="$CFG" sh "$ROOT/bin/floor-verify.sh" --live >"$WORK/fv" 2>&1 || _fv_rc=$?
+  env -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW -u HELM_DISABLE_FLOOR -u HELM_FLOOR_SHADOW CLAUDE_CONFIG_DIR="$CFG" sh "$ROOT/bin/floor-verify.sh" --live >"$WORK/fv" 2>&1 || _fv_rc=$?
   _fvv="$(sed -n 's/^  note: \(FLOOR IS .*\)$/\1/p' "$WORK/fv" | tail -1)"; [ -n "$_fvv" ] || _fvv="$(tail -1 "$WORK/fv")"
   if [ "$_fv_rc" -eq 0 ]; then
     log_ok "floor-verify: $_fvv"
@@ -1036,7 +1036,7 @@ _pr_find() {
   fi
   # 2 · files the repo shipped and no longer ships: install-drift's "deleted from the repo" rows, and only
   # when the bytes are a commit's (il_known), so box-only work is never taken for a leftover.
-  sh "$ROOT/bin/install-drift.sh" --dir "$CFG" --ref HEAD >"$WORK/drift.prune" 2>&1 || :
+  sh "$ROOT/bin/drift-install.sh" --dir "$CFG" --ref HEAD >"$WORK/drift.prune" 2>&1 || :
   awk '$1 == "FAIL:" && $2 == "unsourced" && /deleted from the repo/ { print $3 }' "$WORK/drift.prune" | while IFS= read -r _b; do
     case "$_b" in */*) _r="$_b" ;; *) _r="bin/$_b" ;; esac
     _pr_has "$CFG/$_r" && continue
@@ -1122,7 +1122,7 @@ _pr_find() {
     if [ ! -e "$_l" ]; then _pr_add "$_l" "a dangling link: $_t does not exist"; continue; fi
     _w="$(_shim_want "${_l##*/}")"
     if [ -n "$_w" ] && [ "$_t" != "$_w" ]; then
-      case "$_t" in "$CFG"/*) _pr_add "$_l" "double-owned: CONTRACTS/shims.tsv owns it (-> $_w), this link -> $_t is the retired runtime-install one (harbor#708)"; SHIM_AFTER=1 ;; esac
+      case "$_t" in "$CFG"/*) _pr_add "$_l" "double-owned: contracts/shims.tsv owns it (-> $_w), this link -> $_t is the retired runtime-install one (harbor#708)"; SHIM_AFTER=1 ;; esac
     fi
   done
   return 0
@@ -1252,7 +1252,7 @@ _uninstall() {
     _restore_offer; log_end || :; exit 1
   fi
   log_note 'the floor is removed. Restart Claude Code sessions to unload it. To put it back, from a terminal:'
-  il_next "sh '$ROOT/bin/restore.sh' --apply --live --from '$SNAP' --accept-loss"
+  il_next "sh '$ROOT/bin/deploy-restore.sh' --apply --live --from '$SNAP' --accept-loss"
   log_end; exit $?
 }
 

@@ -11,7 +11,7 @@ run: skill-first-use.sh
 <!--
 A 30-day transcript audit found 28-38% of sessions that ran a skill's CLI never read its SKILL.md, and
 75 of 81 that spawned agents never read agent-routing. Prose in the skill did not bind; a note at the tool
-call does (EVALS.md E6: 0/4 as prose, 4/4 injected).
+call does (docs/reports/evals.md E6: 0/4 as prose, 4/4 injected).
 
 `when: always` with the gate in the script: which command belongs to which skill is DERIVED from the
 installed skills' own frontmatter (owns-commands, owns-tools, inline-section; skills/README.md), so core

@@ -10,7 +10,7 @@ it is the wrong one here: the operator has just told you the shape of this desig
 is not settled, which is the one condition under which a set of questions IS the
 deliverable and an artefact is not.
 
-This override is why the doctrine failed on its own. `DOCTRINE/grilling.md`
+This override is why the doctrine failed on its own. `docs/explanation/grilling.md`
 carries the method and gates itself on a self-assessment — *"roughly one turn in
 twenty"* — and it ships two clauses you can grant yourself: that gate, and the
 constitution's own instruction to flag an interpretation fork in one line and
@@ -29,7 +29,7 @@ nothing was asked that you could have looked up. That is a checkable bound; "we
 have a shared understanding" is not, and premature completion is the failure this
 whole procedure replaces.
 
-Read `DOCTRINE/grilling.md` for the method — the frontier, the rounds, the four
+Read `docs/explanation/grilling.md` for the method — the frontier, the rounds, the four
 properties, and the fact/decision split. It is the argument; this is the
 mechanism, and where they differ, the paragraph below wins because it is in the
 turn.
@@ -77,7 +77,7 @@ design grows a branch nobody chose.
 
 ## Read-only until the operator says otherwise
 
-A resolved frontier is not a licence to write. `CONSTITUTION.md` §5 still governs
+A resolved frontier is not a licence to write. `policy/constitution.md` §5 still governs
 the verb: this command resolves a design, it does not build one. When the
 frontier is empty, hand back the resolved tree and the plan it implies, and stop
 there.

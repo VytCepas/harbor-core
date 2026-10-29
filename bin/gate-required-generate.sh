@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# gate-required-generate.sh (harbor#1149, D-79) - the rows a local merge gate reads: core's CONTRACTS/required-checks.tsv
+# gate-required-generate.sh (harbor#1149, D-79) - the rows a local merge gate reads: core's contracts/required-checks.tsv
 # (harbor's own checks and every repo whose name may be public) followed by the private layer's required-checks.tsv (the
 # rows whose repo cannot be named in a public tree).
 #
@@ -20,22 +20,22 @@
 # tab-separated fields, a repo that is not owner/name, an empty check name, a carriage return, or a file that exists and is
 # not a readable file. Skipping the row would answer "this repo requires nothing" for a repo whose row is only mistyped, and a
 # merge gate must not fail open on a typo.
-# Readers: runtime-install.sh (the installed bin/required-checks.tsv), install-drift.sh (what that file is held to),
-# merge-check.sh and pr-wait.sh (their default list, run from a checkout), gate-merge-stack.sh (harbor's rows, from a checkout).
+# Readers: deploy-runtime-install.sh (the installed bin/required-checks.tsv), drift-install.sh (what that file is held to),
+# gate-merge-check.sh and gate-pr-wait.sh (their default list, run from a checkout), gate-merge-stack.sh (harbor's rows, from a checkout).
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
-. "$SRC/log-lib.sh"
+. "$SRC/library-log.sh"
 log_init gate-required-generate
 LOG_FD=2
 
-CORE="$ROOT/CONTRACTS/required-checks.tsv"
+CORE="$ROOT/contracts/required-checks.tsv"
 PRIV="${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}"
 REV=""; LAYER_REVS=0
 while [ $# -gt 0 ]; do
   case "$1" in
-    --core) [ $# -ge 2 ] || { log_fail "--core takes a file"; log_fix "sh $0 --core CONTRACTS/required-checks.tsv"; log_end || :; exit 2; }; CORE="$2"; shift 2 ;;
+    --core) [ $# -ge 2 ] || { log_fail "--core takes a file"; log_fix "sh $0 --core contracts/required-checks.tsv"; log_end || :; exit 2; }; CORE="$2"; shift 2 ;;
     --private) [ $# -ge 2 ] || { log_fail "--private takes a directory"; log_fix "sh $0 --private DIR"; log_end || :; exit 2; }; PRIV="$2"; shift 2 ;;
     --private-rev) [ $# -ge 2 ] || { log_fail "--private-rev takes a commit"; log_fix "sh $0 --layer-revs"; log_end || :; exit 2; }; REV="$2"; shift 2 ;;
     --layer-revs) LAYER_REVS=1; shift ;;
@@ -48,7 +48,7 @@ if [ "$LAYER_REVS" = 1 ]; then git -C "$PRIV" log --format=%H -- required-checks
 [ -f "$CORE" ] || { log_fail "no required-checks list at $CORE"; log_fix "sh $0 --core <path to required-checks.tsv>"; log_end || :; exit 2; }
 
 OVL="$PRIV/required-checks.tsv"
-FIXROWS="correct the private layer's required-checks.tsv (CONTRACTS/private-layer.md); its rows are repo<TAB>check name"
+FIXROWS="correct the private layer's required-checks.tsv (contracts/private-layer.md); its rows are repo<TAB>check name"
 _refuse() { # <what is wrong with the layer's file> [fix]
   log_fail "$OVL $1"
   if [ $# -ge 2 ]; then log_fix "$2"; else log_fix "$FIXROWS"; fi

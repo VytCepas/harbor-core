@@ -72,7 +72,7 @@
 # PRIVACY (CONSTITUTION §3). A harvested corpus contains real commands and real
 # absolute paths from this operator's sessions. It is written under build/, which
 # is gitignored, and it is never committed, printed in full, or sent anywhere.
-# fixtures/guard-corpus.jsonl is the small, hand-shaped, committable corpus so CI
+# fixtures/admission-corpus.jsonl is the small, hand-shaped, committable corpus so CI
 # has something deterministic; harvesting is a local superset.
 set -eu
 
@@ -83,9 +83,9 @@ case "${1:-}" in
 esac
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-# The report is the run's log (CONTRACTS/logging.md, harbor#771); the verdict is the exit code, so stdout carries
+# The report is the run's log (contracts/logging.md, harbor#771); the verdict is the exit code, so stdout carries
 # no data.
-. "$ROOT/bin/log-lib.sh"
+. "$ROOT/bin/library-log.sh"
 log_init floor-equiv
 # die <what failed> <fix> — a refusal or a usage error: FAIL, its fix, the summary, exit 2.
 die() { log_fail "$1"; log_fix "$2"; log_end || :; exit 2; }
@@ -95,8 +95,8 @@ BASE=""; CAND=""; CORPUS=""; LIMIT=0; GUARD="guard-bash.sh"
 # review, P1). Every guard fire calls floor_log_decision, which appends to
 # $CLAUDE_CONFIG_DIR/MEMORY/OBSERVABILITY/<host>/guard-decisions.jsonl. A
 # two-tree run over 597 payloads therefore writes ~1,200 synthetic rows into the
-# ledger that feeds the statusline's block count, observe-report.sh and
-# failure-capture.sh's recurrence counts — turning an observability record of real
+# ledger that feeds the statusline's block count, admission-observe-report.sh and
+# audit-triage.sh's recurrence counts — turning an observability record of real
 # tool calls into a record of a test harness. MEASURED, not predicted: building
 # this tool put 9,837 rows into the live ledger in three hours.
 #
@@ -174,7 +174,7 @@ POOL="$WORK/corpus.jsonl"
 
 # ── the corpus ──────────────────────────────────────────────────────────────
 if [ -n "$CORPUS" ]; then
-  [ -f "$CORPUS" ] || die "no corpus at $CORPUS" "ls fixtures/guard-corpus.jsonl"
+  [ -f "$CORPUS" ] || die "no corpus at $CORPUS" "ls fixtures/admission-corpus.jsonl"
   # `@HOME@` IS RENDERED TO THIS RUNNER'S HOME (harbor#602). The committed corpus
   # names the config dir by absolute path, a spelling the `$HOME` and `~` rows do
   # not cover, and it used to name ONE operator's home: on any other machine
@@ -224,7 +224,7 @@ else
   cp "$WORK/uniq.jsonl" "$WORK/corpus.final"
 fi
 N="$(wc -l < "$WORK/corpus.final" | tr -d ' ')"
-[ "$N" -gt 0 ] || die "the corpus is EMPTY — nothing was compared, which is not a pass" "sh $0 --baseline $BASE --candidate $CAND --corpus fixtures/guard-corpus.jsonl"
+[ "$N" -gt 0 ] || die "the corpus is EMPTY — nothing was compared, which is not a pass" "sh $0 --baseline $BASE --candidate $CAND --corpus fixtures/admission-corpus.jsonl"
 
 # ── one verdict ─────────────────────────────────────────────────────────────
 # Exit code plus the rule id parsed out of whatever the guard said. A guard that
@@ -331,7 +331,7 @@ if [ "$M" -eq 0 ]; then
   die "REFUSING TO REPORT COVERAGE — no rule ids could be derived from $GUARD; a ratio against zero reads as coverage and is not" "sh $0 --baseline $BASE --candidate $CAND --guard guard-bash.sh"
 fi
 if [ "$SEEN" -eq 0 ]; then
-  die "REFUSING TO CALL THIS EQUIVALENT — the corpus triggered NO rule at all, so it could not have detected a deleted one" "sh $0 --baseline $BASE --candidate $CAND --corpus fixtures/guard-corpus.jsonl"
+  die "REFUSING TO CALL THIS EQUIVALENT — the corpus triggered NO rule at all, so it could not have detected a deleted one" "sh $0 --baseline $BASE --candidate $CAND --corpus fixtures/admission-corpus.jsonl"
 fi
 if [ "$SEEN" -gt "$M" ]; then
   die "REFUSING — $SEEN rule(s) fired but only $M could be derived from the source, so the universe is provably incomplete and the coverage figure would understate what is untested" "sh $0 --coverage --baseline $BASE --guard $GUARD --verbose"

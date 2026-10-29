@@ -21,7 +21,7 @@ t_eq "exit 1" 1 "$RC"
 t_eq "nothing merged" "" "$(ag_merged)"
 t_has "the refusal prints the exact approve command" "$OUT" "$GB/gate-approve.sh merge $AG_R 7 $SHA_A"
 t_has "...and names the protected path" "$OUT" "protected: bin/guard-bash.sh (guard)"
-t_eq "the FAIL's next line is its fix (CONTRACTS/logging.md)" "  fix: $GB/gate-approve.sh merge $AG_R 7 $SHA_A" \
+t_eq "the FAIL's next line is its fix (contracts/logging.md)" "  fix: $GB/gate-approve.sh merge $AG_R 7 $SHA_A" \
   "$(printf '%s\n' "$OUT" | awk '/^  FAIL:/ { f = 1; next } f { print; exit }')"
 t_hasnt "...so the log never flags itself" "$OUT" "no fix line followed the FAIL"
 t_eq "one queue row" 1 "$(grep -c . "$HOME/.local/state/harbor/approvals/queue.jsonl")"
@@ -47,7 +47,7 @@ t_eq "the manifest is protected whatever the register says" 1 "$RC"
 ag_world; ag_files "$SHA_A" .github/workflows/ci.yml
 ag_run gate-merge.sh "$AG_R" 7
 t_eq ".github/ is protected whatever the register says" 1 "$RC"
-ag_mutant "M1 the rename's old path is not judged" gate-lib.sh 's/jq -r .\.files\[\] | \.filename, (\.previous_filename \/\/ empty)./jq -r ".files[] | .filename"/'
+ag_mutant "M1 the rename's old path is not judged" library-gate.sh 's/jq -r .\.files\[\] | \.filename, (\.previous_filename \/\/ empty)./jq -r ".files[] | .filename"/'
 ag_files "$SHA_A" "bin/guard-x.sh=>docs/x.sh"; ag_run gate-merge.sh "$AG_R" 7
 t_eq "M1: the mutant merges a rename out of the floor" 0 "$RC"
 
@@ -64,7 +64,7 @@ ag_run gate-approve.sh merge "$AG_R" 7 "$SHA_A"
 t_eq "gate-approve.sh: a failing check (merge-check) refuses" 1 "$RC"
 t_eq "...nothing merged" "" "$(ag_merged)"
 t_eq "...ledger: refused-red" "approve-merge	$AG_R 7 $SHA_A	refused-red" "$(ag_ledger)"
-ag_mutant "M2 the merge skips merge-stack" gate-lib.sh 's|sh "\$GATE_BIN/gate-merge-stack.sh" merge "\$GATE_TMP/plan"|gh pr merge "$1" -R "$R" --squash|'
+ag_mutant "M2 the merge skips merge-stack" library-gate.sh 's|sh "\$GATE_BIN/gate-merge-stack.sh" merge "\$GATE_TMP/plan"|gh pr merge "$1" -R "$R" --squash|'
 ag_run gate-approve.sh merge "$AG_R" 7 "$SHA_A"
 t_eq "M2: without merge-stack a red PR merges" 0 "$RC"
 
@@ -89,7 +89,7 @@ ag_mutant "M3 approve does not compare the head" gate-approve.sh 's/if \[ "\$H" 
 ag_run gate-approve.sh merge "$AG_R" 7 "$SHA_A"
 t_eq "M3: the second wall, merge-stack's pin, still refuses (needs-rebase)" 1 "$RC"
 t_eq "...nothing merged" "" "$(ag_merged)"
-ag_mutant "M3b ...nor is the plan pinned" gate-lib.sh "s/'repo %s\\\\ncheckout %s\\\\npr %s head %s\\\\n' \"\\\$R\" \"\\\$GATE_ROOT\" \"\\\$1\" \"\\\$2\"/'repo %s\\\\ncheckout %s\\\\npr %s\\\\n' \"\\\$R\" \"\\\$GATE_ROOT\" \"\\\$1\"/"
+ag_mutant "M3b ...nor is the plan pinned" library-gate.sh "s/'repo %s\\\\ncheckout %s\\\\npr %s head %s\\\\n' \"\\\$R\" \"\\\$GATE_ROOT\" \"\\\$1\" \"\\\$2\"/'repo %s\\\\ncheckout %s\\\\npr %s\\\\n' \"\\\$R\" \"\\\$GATE_ROOT\" \"\\\$1\"/"
 ag_run gate-approve.sh merge "$AG_R" 7 "$SHA_A"
 t_eq "M3b: with both walls gone the mutant merges the head nobody clicked" "pr merge 7 --repo $AG_R --squash --match-head-commit $SHA_B" "$(ag_merged)"
 
@@ -130,7 +130,7 @@ t_eq "the queue row is closed" true "$(tail -1 "$HOME/.local/state/harbor/approv
 t_has "an approval.close on the bus" "$(cat "$T_TMP"/bus/*.jsonl)" '"kind":"approval.close","subject":"merge-acme_widgets-7-aaaaaaaaaaaa"'
 
 t_section "only the installed copy runs, and only on a trusted click"
-ag_world; mkdir -p "$T_TMP/elsewhere"; cp "$GB/gate-approve.sh" "$GB/gate-lib.sh" "$GB/log-lib.sh" "$GB/fs-lib.sh" "$T_TMP/elsewhere/"
+ag_world; mkdir -p "$T_TMP/elsewhere"; cp "$GB/gate-approve.sh" "$GB/library-gate.sh" "$GB/library-log.sh" "$GB/library-fs.sh" "$T_TMP/elsewhere/"
 RC=0; sh "$T_TMP/elsewhere/gate-approve.sh" merge "$AG_R" 7 "$SHA_A" >"$T_TMP/out" 2>&1 || RC=$?
 t_eq "a copy elsewhere refuses" 1 "$RC"
 t_has "...naming the installed path" "$(cat "$T_TMP/out")" "the gate runs only as $GB/gate-approve.sh"
@@ -169,7 +169,7 @@ ag_run gate-merge.sh "$AG_R" 7
 t_eq "no .agents/ship.conf on main: nothing is unattended" 1 "$RC"
 t_eq "...nothing merged" "" "$(ag_merged)"
 ag_world; : > "$CFG/.harbor-autoship.off"
-ag_mutant "M5 the kill switch is not read" gate-lib.sh 's|gate_killed() { \[ -e "\$GATE_CFG/.harbor-autoship.off" \]; }|gate_killed() { false; }|'
+ag_mutant "M5 the kill switch is not read" library-gate.sh 's|gate_killed() { \[ -e "\$GATE_CFG/.harbor-autoship.off" \]; }|gate_killed() { false; }|'
 ag_run gate-merge.sh "$AG_R" 7
 t_eq "M5: the mutant merges under the kill switch" 0 "$RC"
 t_done

@@ -17,7 +17,7 @@
 #   sh bin/lint-name.sh --render <surface> k=v..  a tuple rendered by surfaces.tsv's grammar, e.g.
 #                                                 --render bin family=admission object=bash ext=sh
 #   sh bin/lint-name.sh --parse <surface> <name>  a name parsed back into its slots, one k=v per line
-#   sh bin/lint-name.sh --gen <view>              glossary | naming-guide | cli-tree | labels | vale | exemptions |
+#   sh bin/lint-name.sh --gen <view>              glossary | naming-guide | cli-tree | labels | vale | exemptions | vendors |
 #                                                 issue-taxonomy,
 #                                                 written under build/ (untracked)
 #   sh bin/lint-name.sh --list                    every lint rule id, its mode and title: controls.tsv's, then
@@ -36,7 +36,7 @@
 #   LINT_REDLOG=<file> appends the id of every rule that goes red, as bin/lint-conventions.sh does.
 #   mode (D-29, D-64): block fails the run, warn prints, shadow only records (LINT_REDLOG and the count).
 #
-# DELIBERATELY ONE FILE (DOCTRINE/modularity.md): one POSIX sh + awk program so the scaffolder can
+# DELIBERATELY ONE FILE (docs/explanation/modularity.md): one POSIX sh + awk program so the scaffolder can
 # vendor it into any repo with no toolchain (standards/naming.md §10.2). The awk does the judging;
 # the sh around it only collects names and formats. Every rule is a controls.tsv row, every term a
 # terms.tsv row and every surface's grammar a surfaces.tsv cell: nothing about the vocabulary or the
@@ -53,7 +53,7 @@ case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH='' cd -- "$HERE" && pwd)"
 SELF="$HERE/${0##*/}"
 LOG_FD=2   # stdout carries --check, --format findings and --gen output; the log goes to stderr
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 log_init lint-name
 
 usage() { awk 'NR < 2 { next } /^# DELIBERATELY/ || !/^#/ { exit } { sub(/^# ?/, ""); print }' "$SELF"; }
@@ -162,7 +162,7 @@ REL_REG="${REG#"$ROOT"/}"
 _rg="$(reg_file registers.tsv)"
 [ -r "$_rg" ] || { log_fail "the registry has no readable registers.tsv — nothing was judged"; log_fix "ls $REG"; log_end || :; exit "$UNCHECKED"; }
 FILES="$(awk -F'\t' '/^#/ || /^[ \t]*$/ { next } !h++ { next } $2 ~ /^[a-z][a-z0-9-]*\.tsv$/ && !s[$2]++ { printf "%s ", $2 }' "$_rg")"
-for _f in terms.tsv aliases.tsv exemptions.tsv controls.tsv surfaces.tsv kinds.tsv repo-kinds.tsv registers.tsv; do
+for _f in terms.tsv aliases.tsv exemptions.tsv controls.tsv surfaces.tsv kinds.tsv repo-kinds.tsv registers.tsv words.tsv; do
   case " $FILES " in *" $_f "*) ;; *)
     log_fail "registers.tsv has no row naming $_f, which the judge reads — nothing was judged"
     log_fix "add its row to $REL_REG/registers.tsv (id, file, select, census, note)"; log_end || :; exit "$UNCHECKED" ;;
@@ -240,6 +240,12 @@ function alias_check(subj, W, from, n, ctx,   a, k, j, m, ok) {
     }
   }
 }
+# A word of a name is known when it is a term, a word of a multi-word term, an alias (judged by its own rule),
+# a registered word, or a private-overlay term. KW is empty only if words.tsv is absent, and then nothing is flagged.
+function wordknown(w,   k, j, nwk, WK) {
+  if (!NKW_LOADED) { for (k in T) { nwk = split(k, WK, "-"); for (j = 1; j <= nwk; j++) TW[WK[j]] = 1 }; NKW_LOADED = 1 }
+  return (length(w) < 2) || (w in KW) || (w in T) || (w in TW) || (w in AL) || (w in OVT) || (!HAVEWORDS)
+}
 # The words of one name: the date prefix and a decision-record number are not words (§6.3).
 function word_check(subj, W, n, path,   i, start) {
   start = 1
@@ -252,6 +258,8 @@ function word_check(subj, W, n, path,   i, start) {
   for (i = start; i <= n; i++) {
     if (W[i] == "") { emit("name.word", subj, "an empty word: a leading, trailing or doubled separator (§6.3)"); continue }
     if (W[i] ~ /^[0-9]/) emit("name.word", subj, "the word " q(W[i]) " starts with a digit (§6.3)")
+    else if (W[i] != "" && W[i] !~ /[0-9]/ && !wordknown(W[i]))
+      emit("name.word-unregistered", subj, q(W[i]) " is in no registry: a name is built of terms and registered English words, so spell it out or add a row to standards/naming/words.tsv (D-18)")
   }
   return start
 }
@@ -516,6 +524,19 @@ function release_check(subj, name) {
   if (name !~ /^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/)
     emit("name.release-tag", subj, "a release tag is v<major>.<minor>.<patch> (SemVer 2.0), and the release title is the tag: " q(name) " (harbor#957)")
 }
+# harbor#1001: one field grammar for a JSON key, a registry column and a config key: snake; an instant ends _at, a day _date,
+# a duration _s or _ms, a size _bytes, an id _id, a boolean starts is_ or has_. Retired spellings are listed.
+function field_check(subj, name,   bad, last) {
+  if (name !~ /^[a-z][a-z0-9]*(_[a-z0-9]+)*$/) { emit("name.field", subj, "a field is lowercase snake_case: " q(name) " (harbor#1001)"); return }
+  last = name; sub(/^.*_/, "", last)
+  if (last ~ /^(ts|time|timestamp|datetime|tstamp)$/) bad = "an instant ends _at, a day ends _date"
+  else if (last ~ /^(sec|secs|second|seconds)$/) bad = "seconds end _s"
+  else if (last ~ /^(msec|millis|milliseconds)$/) bad = "milliseconds end _ms"
+  else if (last ~ /^(kb|mb|gb|size)$/) bad = "a size ends _bytes"
+  else if (last ~ /^(uid|ident)$/) bad = "an identifier ends _id"
+  else if (last == "flag") bad = "a boolean starts is_ or has_"
+  if (bad != "") emit("name.field", subj, q(name) ": " bad " (harbor#1001)")
+}
 # harbor#978 (D-21): a commit subject, which is also a PR title, is <type>(<family>): <subject>, the type a commit-type term.
 # Scope = a register domain: the same family-or-domain set a name slot takes (operator, 2026-10-27).
 function commit_check(subj, name,   t, sc, n, S, i, rest) {
@@ -607,6 +628,7 @@ function check_rec(sf, nm,   p) {
   else if (sf == "env") env_check("env:" nm, nm)
   else if (sf == "mcp-tool") mcp_check("mcp-tool:" nm, nm)
   else if (sf == "release-tag") release_check("release-tag:" nm, nm)
+  else if (sf == "field") field_check("field:" nm, nm)
   else if (sf == "commit") commit_check("commit:" nm, nm)
   else if (sf == "branch") branch_check("branch:" nm, nm)
   else if (sf == "rule-id" || sf == "check-id") id_check(sf ":" nm, nm, sf)
@@ -625,7 +647,7 @@ function repokind_check(label, kind, tok, state,   sj) {
 BEGIN {
   FS = "\t"; OFS = "\t"
   _npk = split(packt, _PK, " "); for (i = 1; i <= _npk; i++) ISPACK[_PK[i]] = 1   # the pack overlays (harbor#950)
-  split("family verb domain client abbreviation kind layer concept system extension subject level mode outcome decision severity state control-type moment function lifecycle share relation modality tier commit-type", L, " ")
+  split("family verb domain client abbreviation kind layer concept system extension subject level mode outcome decision severity priority state control-type moment function lifecycle share relation modality tier commit-type", L, " ")
   for (i in L) CLASS[L[i]] = 1
   split("codename legacy banned abbreviation spelling", L, " "); for (i in L) AKIND[L[i]] = 1
   split("tool-required world-name legacy", L, " "); for (i in L) EKIND[L[i]] = 1
@@ -673,7 +695,7 @@ FILENAME != recfile {
     next
   }
   if ($0 ~ /^[ \t]*$/) next
-  if (!(f in HDR)) { if (SHORT[f] == "terms.tsv") THDR = $0; HDR[f] = NF; HDR1[f] = $1; for (i = 1; i <= NF; i++) COL[f, $i] = i; next }
+  if (!(f in HDR)) { if (SHORT[f] == "terms.tsv") THDR = $0; HDR[f] = NF; HDR1[f] = $1; for (i = 1; i <= NF; i++) { COL[f, $i] = i; field_check("column:" SHORT[f] ":" $i, $i) }; next }
   if (NF != HDR[f]) shape(f, "line " FNR " has " NF " columns, the header has " HDR[f])
   sh = SHORT[f]; reg = sh; sub(/s?\.tsv$/, "", reg); sub(/ie$/, "y", reg)
   id = $1
@@ -698,6 +720,8 @@ FILENAME != recfile {
     st = col(f, "stability")
     if (st != "experimental" && st != "stable" && st != "deprecated") emit("name.registry-term", "term:" id, "stability " q(st) " is not experimental, stable or deprecated (D-19)")
     if (st == "deprecated" && !(col(f, "successor") ~ /^[a-z]/)) emit("name.registry-term", "term:" id, "a deprecated term names its successor (D-19)")
+  } else if (sh == "words.tsv") {
+    KW[id] = 1; HAVEWORDS = 1   # an English or technical word a name may carry beyond the terms (D-18, harbor#984)
   } else if (sh == "aliases.tsv") {
     AL[id] = 1; AKD[id] = col(f, "kind"); ATERM[id] = col(f, "term"); ASURF[id] = col(f, "surfaces"); AREM[id] = col(f, "remove_by")
     AWN[id] = split(id, AW, "-"); for (i = 1; i <= AWN[id]; i++) AWORD[id, i] = AW[i]
@@ -827,6 +851,13 @@ END {
   # terms: depends_on edges between families, and the level chain (D-57)
   for (id in T) {
     nd = split(DEP[id], DD, ",")
+    # harbor#1001: a severity sets one default priority; its depends_on names that priority term, one severity per priority
+    if (("severity" SUBSEP id) in IS) {
+      if (nd != 1 || !(("priority" SUBSEP DD[1]) in IS)) emit("name.registry-term", "term:" id, "a severity names the one priority it sets in depends_on (p0..p3, harbor#1001)")
+      else if (SEVOF[DD[1]] != "") emit("name.registry-term", "term:" id, "the priority " q(DD[1]) " is already set by " q(SEVOF[DD[1]]) ": one priority per severity (harbor#1001)")
+      else SEVOF[DD[1]] = id
+      continue
+    }
     for (i = 1; i <= nd; i++) {
       d = DD[i]; if (d == "" || d == "-") continue
       if (!(("family" SUBSEP d) in IS)) emit("name.registry-term", "term:" id, "depends_on " q(d) " is not a family (M3, D-60)")
@@ -1179,6 +1210,14 @@ gen() { # <view> -> writes under build/, prints the path
                           print "legacy\tlabel\tstatus" }
         /^#/ || !H[FILENAME]++ { next } $3 != "-" { printf "%s\t%s\t%s\n", $4, $1, $8 }' "$(reg_file label-axes.tsv)" > "$_out/label-map.tsv"
       printf '%s\n' "$_out/issue-taxonomy.tsv" ;;
+    vendors)
+      # harbor#985: the vendor-token map a dialect checker reads (azimuth's check-naming), so the vendor list has one source.
+      # `use` is the current term; a token row is a legacy alias valid inside a dialect until touched (D-54).
+      awk -F'\t' 'BEGIN { print "# generated by bin/lint-name.sh --gen vendors from standards/naming/aliases.tsv and terms.tsv — do not edit"
+                          print "token\tuse\tstatus\tremove_by" }
+        FILENAME == ARGV[1] { if ($0 !~ /^#/ && H1++ && $2 != "-" ) { n = split($4, S, ","); for (i = 1; i <= n; i++) if (S[i] == "dialect") { printf "%s\t%s\tlegacy\t%s\n", $1, $2, $5; U[$2] = 1 } } next }
+        $0 !~ /^#/ && H2++ && ($1 in U) { printf "%s\t%s\tcurrent\t-\n", $1, $1 }' "$(reg_file aliases.tsv)" "$(reg_file terms.tsv)" > "$_out/vendors.tsv"
+      printf '%s\n' "$_out/vendors.tsv" ;;
     exemptions)
       # The first scan (harbor#950): one legacy row per finding the rules make on this tree today,
       # judged with no legacy row applied. A person reviews and commits the rows; after that the
@@ -1196,7 +1235,7 @@ gen() { # <view> -> writes under build/, prints the path
           function batch(s,   a, n) {
             if (s ~ /^env:/) return "5 W5 state, env and launchd"
             n = split(s, a, "/")
-            if (a[1] == "EVALS-DATA") return "1 W1 eval data " (n > 2 ? a[2] : "(root)")
+            if (a[1] == "evals") return "1 W1 eval data " (n > 2 ? a[2] : "(root)")
             if (a[1] == "tests" || a[1] == "fixtures") return "2 W2 tests"
             if (a[1] == "bin" && n == 2 && a[2] ~ /^(guard-|floor-hook|guard-integrity)/) return "6 W6 admission"
             if (a[1] == "bin" && n == 2 && a[2] !~ /\./) return "4 W4 PATH"
@@ -1244,7 +1283,7 @@ validators_to() { # <file> -> writes the validators; nonzero when a grammar cann
 
 if [ "$ACTION" = gen ]; then
   _rc=0; gen "$VIEW" || _rc=$?
-  if [ "$_rc" -eq 2 ]; then log_fail "unknown view: $VIEW"; log_fix "sh $SELF --gen glossary|naming-guide|cli-tree|labels|vale|exemptions|issue-taxonomy|validators"; log_end || :; exit 2; fi
+  if [ "$_rc" -eq 2 ]; then log_fail "unknown view: $VIEW"; log_fix "sh $SELF --gen glossary|naming-guide|cli-tree|labels|vale|exemptions|issue-taxonomy|vendors|validators"; log_end || :; exit 2; fi
   if [ "$_rc" -ne 0 ]; then log_end || :; exit 1; fi
   log_ok "wrote --gen $VIEW under ${ROOT##*/}/build/"; log_end || :; exit 0
 fi

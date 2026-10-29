@@ -1,0 +1,65 @@
+# Hosts `harbor chrome` may navigate to (goto, tab-new): the big platforms any
+# operator signs in to. https only; a line also admits its subdomains,
+# so a vendor is ONE line on the domain it owns outright.
+# A vendor stays on exact hosts when other parties live under its domain
+# (portal.azure.com: *.azure.com are customer endpoints), or when only one of its
+# subdomains is a work UI (example.com, amazon.com).
+# NOT here on purpose: client live sites (the registered live-walk repo's fenced walk —
+# a logged-in visit pollutes the client's data), banking, payments and password
+# managers. Every line sits under a comment naming its vendor; the suite fails one
+# with none. Hosts stay bare — the Claude-in-Chrome route pack reads field one.
+# One operator's own stack is not core's: its ad, data, commerce and training vendors, a company's
+# internal UIs, a client's tools and its tenants are the private layer's browser-hosts.txt
+# (contracts/private-layer.md, harbor#1273), read beside this list.
+
+# Google — accounts, Workspace (Gmail, Drive, Docs), the Cloud console and its other
+# product UIs; its sign-in hop (accounts.youtube.com), Gmail and Forms short links,
+# YouTube. Editing Sheets/Docs (docs.google.com) stays on Claude in Chrome: the route
+# pack's EDITORS (browser-routing.md, row 4)
+google.com
+youtube.com
+gmail.com
+forms.gle
+# Google — the g.co / goo.gl short links
+g.co
+goo.gl
+
+# Meta — Business Suite, Accounts Center, developers
+facebook.com
+meta.com
+
+# Microsoft — Teams, M365, the live.com / microsoftonline sign-in, VS Code;
+# Azure is the portal only: *.azure.com also holds customer endpoints
+# (<name>.openai.azure.com, <name>.cognitiveservices.azure.com)
+microsoft.com
+portal.azure.com
+live.com
+microsoftonline.com
+visualstudio.com
+vscode.dev
+# Microsoft 365 — Office, OneDrive, Outlook, the *.cloud.microsoft apps and short links;
+# SharePoint is never listed by its bare domain: *.sharepoint.com is every tenant, so a
+# tenant's exact hosts belong in the private layer
+office.com
+office365.com
+microsoft365.com
+cloud.microsoft
+onedrive.com
+1drv.ms
+outlook.com
+
+# Social platforms — their business centres
+reddit.com
+x.com
+linkedin.com
+
+# Work tools — GitHub, OpenAI (platform, ChatGPT), Anthropic (Claude, Console, Academy)
+github.com
+openai.com
+chatgpt.com
+claude.ai
+claude.com
+anthropic.com
+# Anthropic Academy — exact: skilljar.com hosts every Skilljar customer
+anthropic.skilljar.com
+accounts.skilljar.com

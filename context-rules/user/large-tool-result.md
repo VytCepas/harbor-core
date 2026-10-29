@@ -22,7 +22,7 @@ transcripts on 2026-08-22, 6,249 results and 88 MB,
 58 of those 88 MB unmentioned.
 
 The first draft declared NO `tool:` at all, meaning "any tool", and that was
-worse than wrong — it was silently narrower. `bin/inject-install.sh` wired the
+worse than wrong — it was silently narrower. `bin/context-injection-install.sh` wired the
 engine's PostToolUse hook with a hardcoded `Read|Bash|Grep|WebFetch`, so the
 harness never invoked it for a single browser call and this pack could not fire
 on the traffic it exists for. Every arm in the suite passed, because they call

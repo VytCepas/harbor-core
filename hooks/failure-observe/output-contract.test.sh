@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
-# failure-observe.sh is Claude Code PostToolUseFailure hook output (channel 3 of CONTRACTS/logging.md, a `protocol`
-# row in CONTRACTS/log-exempt.tsv): its stdout would be session context, so it prints NOTHING on any path, stdout or
+# failure-observe.sh is Claude Code PostToolUseFailure hook output (channel 3 of contracts/logging.md, a `protocol`
+# row in contracts/log-exempt.tsv): its stdout would be session context, so it prints NOTHING on any path, stdout or
 # stderr, and exits 0 on every one (harbor#771). A log line here would corrupt the protocol. Fixtures only.
 . "$(dirname "$0")/../../tests/lib/core.sh"; t_init
 SRC="$T_ROOT/bin"; D="$T_TMP/fo"; mkdir -p "$D/bin" "$D/MEMORY/OBSERVABILITY/h1"

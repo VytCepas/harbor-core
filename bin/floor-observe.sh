@@ -2,7 +2,7 @@
 # OBSERVE-1 (harbor#41) — the SessionStart half of the guard-decision ledger.
 #
 # THIS SCRIPT HAS NO KILL-SWITCH LINE, AND THAT IS THE ENTIRE POINT.
-# Every guard and floor-hook.sh open with `[ "${HELM_DISABLE_FLOOR:-0}" = "1" ]
+# Every guard and floor-hook.sh open with `[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ]
 # && exit 0` on line 2, and floor-install.sh wires every PreToolUse guard THROUGH
 # floor-hook.sh. So under an override the wrapper returns at line 2 and the guard
 # is never spawned: zero processes, zero rule evaluations, nothing anywhere in
@@ -184,7 +184,7 @@ fi
 obs_prepare_sink "$ODIR/tool-failures.jsonl" || :
 
 # ── the stream root (harbor#1181) ───────────────────────────────────────────
-# harbor_emit (stream-lib.sh) writes <host>/streams/<stream>/<day>/, and the host dir is 0500 for the rest of the
+# harbor_emit (audit-stream-lib.sh) writes <host>/streams/<stream>/<day>/, and the host dir is 0500 for the rest of the
 # session, so the root is made here. A writable subdir cannot swap the guard sinks: those are entries of the host
 # dir itself. A non-directory or a symlink at the path is left alone and every emit spills, which says so.
 if [ ! -e "$ODIR/streams" ] && [ ! -L "$ODIR/streams" ]; then mkdir -m 0700 "$ODIR/streams" 2>/dev/null || :; fi
@@ -252,7 +252,7 @@ chmod 0500 "$ODIR" 2>/dev/null || :
 [ -t 0 ] || floor_read_stdin || :
 # ── a settings `env` block that sets either switch (harbor#954 PR B, from #977) ──
 # The write-time guards (killswitch-assign, switch-in-settings) catch the plain spellings of putting a switch in
-# a settings file and miss five shapes (FLOOR.md residuals). This reads the files instead, so how the switch got
+# a settings file and miss five shapes (docs/explanation/admission-baseline.md residuals). This reads the files instead, so how the switch got
 # there no longer matters. It lives HERE because this script runs when the switch is set, which is exactly when
 # every guard has stood down. A report, never a refusal: a SessionStart hook cannot block, and the operator may
 # have set it on purpose. Keys only, never values.
@@ -278,9 +278,9 @@ fi
 # almost nothing blocks. It is its own record, never `armed`, so a shadow session
 # cannot inflate the denominator of a rate it does not enforce. The kill-switch
 # wins when both are set, because then no guard runs at all.
-if [ "${HELM_DISABLE_FLOOR:-0}" = "1" ]; then
+if [ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ]; then
   floor_log_decision session override floor-disabled.meta || :
-elif [ "${HELM_FLOOR_SHADOW:-0}" = "1" ]; then
+elif [ "${HARBOR_ADMISSION_SHADOW:-${HELM_FLOOR_SHADOW:-0}}" = "1" ]; then
   floor_log_decision session shadow floor-shadow.meta || :
 else
   floor_log_decision session armed floor-armed.meta || :

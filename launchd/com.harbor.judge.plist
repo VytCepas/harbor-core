@@ -4,14 +4,14 @@
      THIS FILE IS A TEMPLATE (harbor#630). Do not cp it: @HOME@ and the other placeholders in it would be
      installed as literal text, and launchd loads such a job and then fails every time it runs. Render it:
 
-       sh ~/port/harbor/bin/launchd-render.sh ~/port/harbor/launchd/com.harbor.judge.plist > ~/Library/LaunchAgents/com.harbor.judge.plist
+       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.judge.plist > ~/Library/LaunchAgents/com.harbor.judge.plist
 
      A cp line in the comment below predates the template. It is kept so the rendered file stays byte-identical
      to the one already installed: follow this block, not that line. This block is not installed;
-     bin/launchd-render.sh drops it. -->
+     bin/deploy-launchd-render.sh drops it. -->
 <!-- judge-run — run the ledger judge daily, off the session path.
 
-     WHY THIS EXISTS. bin/failure-capture.sh judges the guard-decision ledger and
+     WHY THIS EXISTS. bin/audit-triage.sh judges the guard-decision ledger and
      nothing ran it. On 2026-08-13 a manual run reported 10 findings over 70,702
      records, worst `crit`, none of which any human had seen — including a
      wrapper-guard-missing and an integrity advisory raised on 11 separate days.
@@ -28,7 +28,7 @@
      property rather than a convention. A session can write to ~/port/harbor/bin; it
      cannot write under ~/.claude/bin (guard-selfedit.sh). A scheduled job aimed
      at the repo would let any session schedule arbitrary code on this machine.
-     PREREQUISITE: judge-run.sh, failure-capture.sh and floor-verify.sh must all
+     PREREQUISITE: audit-triage-run.sh, audit-triage.sh and floor-verify.sh must all
      be installed — the judge is resolved from its own directory, and it needs
      floor-verify.sh beside it to exclude the verifier's own probe traffic from
      the recurrence counts. Installed without floor-verify.sh it still runs and
@@ -42,7 +42,7 @@
      a cp/mv/ln naming that path, and `launchctl load|bootstrap|setenv`.
      Operator steps:
 
-       sh ~/port/harbor/bin/runtime-install.sh --live --apply
+       sh ~/port/harbor/bin/deploy-runtime-install.sh --live --apply
        cp launchd/com.harbor.judge.plist ~/Library/LaunchAgents/
        launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.harbor.judge.plist
 
@@ -63,7 +63,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/sh</string>
-    <string>@HOME@/.claude/bin/judge-run.sh</string>
+    <string>@HOME@/.claude/bin/audit-triage-run.sh</string>
     <string>--live</string>
     <string>--apply</string>
   </array>

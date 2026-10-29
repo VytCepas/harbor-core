@@ -9,7 +9,7 @@ set -eu
 # from its plugin is the exact defect fleet#199 exists to fix.
 # So the copy stays byte-identical to the marketplace version — assertable, and
 # asserted by prod-guard-test.sh — and the deferral lives here, in Helm, where
-# the detect-and-defer doctrine (CONTRACTS/marker.md) already lives.
+# the detect-and-defer doctrine (contracts/marker.md) already lives.
 #
 # WHY IT DEFERS AT ALL. Measured on Claude Code 2.1.220 (harbor#56, the run
 # table): two PreToolUse hooks that both return `ask` produce ONE prompt, and
@@ -188,7 +188,7 @@ wires_prod_guard() { # <settings-file> [other]
 # `stat -f '%d:%i'` also works and is what a reviewer will suggest; it is rejected
 # because `-f` is BSD-only and the floor is pure POSIX that must also run on GNU.
 # `CDPATH=''` not the bare `CDPATH=` used elsewhere in bin/: identical in sh, but
-# the linter reads the bare form as a typo'd assignment (SC1007) — pass-score.sh:17
+# the linter reads the bare form as a typo'd assignment (SC1007) — eval-pass-score.sh:17
 # already uses this spelling. (A comment line may not START with the linter's own
 # name: it is then parsed as a directive, and SC1072 silently stops the analysis of
 # the whole file — which is how this very block hid itself for one round.)

@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# reply-shape (harbor#952, #949 D-23) — advisory Stop hook. Registered in CHECKS.md as `reply-shape`.
+# reply-shape (harbor#952, #949 D-23) — advisory Stop hook. Registered in docs/reference/checks.md as `reply-shape`.
 # Flags, never blocks, a turn whose reply breaks the shape: a turn that WROTE (Write, Edit, a writing
 # Bash call) whose final reply cites no command output, test result or diff; or a reply far longer
 # than an answer-first reply runs.
@@ -12,7 +12,7 @@
 # as ticket-note.sh: a Stop hook has no additionalContext arm. Outcome word (D-29 mode): warn.
 #
 # THE LENGTH THRESHOLD IS 300 WORDS, from the only reply text readable without PII: the 154 final
-# replies in EVALS-DATA/e10inject and e5trap (claude -p results; p50 55, p90 85, p95 107, max 141
+# replies in evals/context/e10inject and evals/skill/e5trap (claude -p results; p50 55, p90 85, p95 107, max 141
 # words, measured 2026-10-04). 300 is ~2x that max, so an ordinary reply never trips it. It was NOT
 # measured on real operator sessions (their transcripts are private); a reply that carries a table or
 # a design can legitimately exceed it, which is why the note is a question, not a verdict.

@@ -8,7 +8,7 @@
 # HARBOR_AUTOCOMPACT_DELAY seconds (2) for the prompt to return, then types /compact into the macOS Terminal tab
 # whose tty is <tty>. Nothing else is judged here: the Stop hook already did. $STATE/compact-auto.off stops it.
 # One run per session at a time (a pid file). Every outcome is one line in
-# $STATE/backups/session-autocompact/<run>/log (log-lib.sh). Exit 0 on every path.
+# $STATE/backups/session-autocompact/<run>/log (library-log.sh). Exit 0 on every path.
 set -u
 case "${1:-}" in -h|--help) awk 'NR < 2 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"; exit 0 ;; esac
 SID="${1:-}"; TTY="${2:-}"
@@ -18,7 +18,7 @@ STATE="${HARBOR_STATUS_DIR:-${HOME:-/nonexistent}/.local/state/harbor}"
 DELAY="${HARBOR_AUTOCOMPACT_DELAY:-2}"; case "$DELAY" in ''|*[!0-9.]*) DELAY=2 ;; esac
 OSA="${HARBOR_AUTOCOMPACT_OSA:-osascript}"
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 LOG_FD=2; log_init session-autocompact
 log() { log_note "$(printf '%.8s' "$SID") $1"; }
 

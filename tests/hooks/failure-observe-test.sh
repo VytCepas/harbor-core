@@ -2,7 +2,7 @@
 # failure-observe.sh: the MCP server segment survives into the ledger (never the tool, never arguments),
 # and FC-10 names that server instead of rendering `mcp -> -`.
 . "$(dirname "$0")/../lib/core.sh"; t_init
-. "$T_ROOT/tests/hooks/failure-capture-fixture.sh"
+. "$T_ROOT/tests/audit/triage/fixture.sh"
 OBSF="$(mkfixture obs)"
 cp "$T_ROOT/hooks/failure-observe/failure-observe.sh" "$OBSF/bin/failure-observe.sh"
 printf '%s\n' "$HOST" > "$OBSF/.helm-obs-host"

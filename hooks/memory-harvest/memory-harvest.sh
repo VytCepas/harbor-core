@@ -25,7 +25,7 @@
 # worklog-push.sh, which reads it there). A crashed session is still reconciled
 # with no operator action — at the end of the next session rather than the start.
 # Buying the ticket's literal wording by weakening the stand-down default would
-# trade a safety property for a schedule. CONTRACTS/cli.md records this.
+# trade a safety property for a schedule. contracts/cli.md records this.
 # (Since harbor#954 the stand-down reads only the repo's `worklog: off`.)
 #
 # BOUNDED, because a Stop hook is still on a path the operator waits for.
@@ -49,8 +49,8 @@ CAP="${HARBOR_HARVEST_CAP:-25}"
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
 [ ! -f "$DIR/manifest.tsv" ] || DIR="$DIR/../../bin"  # D-88: in the repo an engine sits beside its manifest in hooks/<engine>/; deployed, flat beside its libraries
 . "$DIR/guard-lib.sh"
-# Its one line goes to stderr: a Stop hook's stdout is the harness's (CONTRACTS/logging.md).
-LOG_FD=2; . "$DIR/log-lib.sh"
+# Its one line goes to stderr: a Stop hook's stdout is the harness's (contracts/logging.md).
+LOG_FD=2; . "$DIR/library-log.sh"
 
 # Stdin FIRST: the shared resolver reads .cwd from the payload, and the
 # stand-down decision depends on it. Same order as worklog-push.sh.

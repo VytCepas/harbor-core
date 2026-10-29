@@ -9,7 +9,7 @@
 #                  /tmp/smoke-venv, gitleaks-action's /tmp/gitleaks.tmp) failed the next job on that runner
 #
 # Each line is `<epoch> <run_id> <job> <start|done> <owner/repo>` (harbor#1367): `listen` publishes it as ci.job.start or
-# ci.job.done on the event bus (CONTRACTS/event-kinds.tsv). The runner calls this one file for both hooks, so
+# ci.job.done on the event bus (contracts/event-kinds.tsv). The runner calls this one file for both hooks, so
 # the phase is a marker per (run, runner): one runner runs one job at a time, matrix legs on others do not share it.
 # On a host runner, with no mount, it emits to the bus itself.
 #
@@ -18,7 +18,7 @@
 set -u
 # Beside the governor it logs the house way; copied alone into the container's mount it has no log to write.
 HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-[ ! -f "$HERE/log-lib.sh" ] || . "$HERE/log-lib.sh"
+[ ! -f "$HERE/library-log.sh" ] || . "$HERE/library-log.sh"
 case "${1:-}" in -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
 EV="${HARBOR_GOV_EVENTS:-/gov-events}"
 # One word each: the line is split on spaces by `listen`, and an odd character never reaches the bus.

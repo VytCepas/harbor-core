@@ -7,7 +7,7 @@ HARBOR_SCOPE_PRIVATE="$TMP/no-private"; export HARBOR_SCOPE_PRIVATE; unset PORT_
 . "$T_ROOT/tests/checks/lint-fixture.sh"
 LN="$T_ROOT/bin/lint-name.sh"
 REG="$T_ROOT/standards/naming"
-. "$T_ROOT/tests/checks/lint.name-fixture.sh"
+. "$T_ROOT/tests/lint/name/fixture.sh"
 M="$TMP/validators"; mini "$M"; cp "$T_ROOT/bin/name-check" "$M/bin/"
 V="$M/build/validators.txt"; NC="$M/bin/name-check"
 SURF="$M/standards/naming/surfaces.tsv"

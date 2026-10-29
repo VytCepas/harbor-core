@@ -46,12 +46,12 @@ STALL=6
 MAXT=3600
 
 # Every line is log-lib's, on stderr (the predicate's stdout is discarded and there is no other output). Installed as
-# a link in ~/.local/bin, so log-lib.sh is looked for beside the file the link resolves to.
+# a link in ~/.local/bin, so library-log.sh is looked for beside the file the link resolves to.
 _me="$0"
 while [ -L "$_me" ]; do _ml="$(readlink "$_me")"; case "$_ml" in /*) _me="$_ml" ;; *) _me="${_me%/*}/$_ml" ;; esac; done
 case "$_me" in */*) _here="${_me%/*}" ;; *) _here=. ;; esac
-[ -f "$_here/log-lib.sh" ] || { printf 'wait-for: log-lib.sh is missing beside %s\n' "$_me" >&2; exit 2; }
-. "$_here/log-lib.sh"
+[ -f "$_here/library-log.sh" ] || { printf 'wait-for: library-log.sh is missing beside %s\n' "$_me" >&2; exit 2; }
+. "$_here/library-log.sh"
 log_init wait-for; LOG_FD=2
 
 # die <what failed>: FAIL, its fix, the summary, exit 2 (a usage error is not a wait).
