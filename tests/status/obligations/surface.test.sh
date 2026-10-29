@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # surface.test.sh (harbor#1050 PR 3) — what a person, the statusline, the console and the finding ledger read of the
 # obligations ledger: `harbor status obligations` (--json, --print, --since), the `OVERDUE N ·age` alarm and the YOU queue,
-# the receipt that goes red over 24h overdue, and the dotted id `status.obligations` being SEEN by every reader of CHECKS.md.
+# the receipt that goes red over 24h overdue, and the dotted id `status.obligations` being SEEN by every reader of docs/reference/checks.md.
 #
 # THE RED-PROOFS ARE IN THE SUITE, as in reconcile.test.sh. Each surface is a case function that prints ok or what was
 # wrong, and runs twice: against the real file (must print ok) and against a copy with one line broken (must not). A
@@ -9,7 +9,7 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/obs/findings-fixture.sh"   # the stub GitHub, the published checkout and `rec`; sets F, TMP, PUB, RCD, GH_STATE
 
-BIN="$T_ROOT/bin/status-obligations.sh"; REAL_KINDS="$T_ROOT/CONTRACTS/obligation-kinds.tsv"
+BIN="$T_ROOT/bin/status-obligations.sh"; REAL_KINDS="$T_ROOT/contracts/obligation-kinds.tsv"
 # The scenarios below need a row that goes overdue, and the real register gives a session NO deadline (harbor#1115), so they run on
 # a copy that restores the old 24h one. The one case that asks about a long-lived session reads the REAL register (case_long_session).
 TAB="$(printf '\t')"; KINDS="$T_TMP/kinds-session24h.tsv"
@@ -100,7 +100,7 @@ case_receipt() { _x="$1"
   chk "over the id of the row, never a count" '["session:S1"]' "$(jq -c '.subjects' "$_r" 2>/dev/null)"
   chk "the statusline cache says one overdue" 1 "$(jq '.overdue' "$CACHE/status-obligations.json" 2>/dev/null)"
   chk "and counts the live rows (S1, the PR, the agent)" 3 "$(jq '.live' "$CACHE/status-obligations.json" 2>/dev/null)"
-  chk "the cache holds the overdue epoch, not an age" "$(epoch 2026-10-06T01:00:00Z)" "$(jq '.overdue_since' "$CACHE/status-obligations.json" 2>/dev/null)"
+  chk "the cache holds the epoch the oldest overdue row opened, not an age" "$(epoch 2026-10-05T01:00:00Z)" "$(jq '.overdue_since' "$CACHE/status-obligations.json" 2>/dev/null)"
   scenario; AT=2026-10-07T00:59:00Z; ob "$_x" fold >/dev/null
   chk "23h59m overdue: overdue, but not yet the finding" green "$(jq -r '.status' "$_r" 2>/dev/null)"
   chk "the alarm half still counts it" 1 "$(jq '.overdue' "$CACHE/status-obligations.json" 2>/dev/null)"
@@ -162,11 +162,11 @@ case_route() { _d="$1"; scenario; ob "$BIN" fold >/dev/null
   chk "--print goes the same way" "$(obq "$BIN" show --print)" "$(_h status obligations --print)"
   _rc=0; _h status obligations --since banana >/dev/null || _rc=$?
   chk "a bad --since is a usage error, exit 2" 2 "$_rc"
-  chk "harbor status without the sub-verb is still status-gen.sh" yes "$(has "$(_h status --help)" 'generate STATUS.md')"
+  chk "harbor status without the sub-verb is still status-generate.sh" yes "$(has "$(_h status --help)" 'generate docs/generated/status.md')"
   verdict
 }
 
-# The dotted id: written by log_receipt, read by findings.sh (file name = id), lint FL1 (lanes keys) and lint X9 (the register).
+# The dotted id: written by log_receipt, read by lint-findings.sh (file name = id), lint FL1 (lanes keys) and lint X9 (the register).
 case_dotted_receipt() { _l="$1"; rm -rf "$W/lib"; mkdir -p "$W/lib"
   ( . "$_l"; log_receipt "$W/lib" status.obligations red 'session:S1' ) 2>/dev/null; chk "log_receipt writes <id>.json for a dotted id" yes "$([ -s "$W/lib/status.obligations.json" ] && echo yes || echo no)"
   for _bad in .hidden a..b trailing. a/b A.b ''; do
@@ -180,19 +180,19 @@ case_findings() { _f="$1"; scenario; ob "$BIN" fold >/dev/null
   : > "$GH_LOG"; rm -f "$GH_STATE"
   records "$TMP/c1" lint.long-file-reason -- lint.long-file-reason:bin/big.sh
   _o="$(HARBOR_ROOT="$PUB" HARBOR_FINDINGS_NOW="$(date -u +%F)" GH_NOW="$(date -u +%F)" sh "$_f" reconcile --from "$TMP/c1" --apply 2>&1)"
-  chk "findings.sh files the dotted id from its receipt" yes "$(has "$_o" 'check/status.obligations (1 subject(s))')"
-  chk "and does not refuse it as a receipt with no row" no "$(has "$_o" 'receipt with no CHECKS.md row')"
+  chk "lint-findings.sh files the dotted id from its receipt" yes "$(has "$_o" 'check/status.obligations (1 subject(s))')"
+  chk "and does not refuse it as a receipt with no row" no "$(has "$_o" 'receipt with no docs/reference/checks.md row')"
   chk "the issue exists, open, keyed by the id" "OPEN" "$(jq -r '[.issues[] | select(.body | contains("key=check/status.obligations "))][0].state' "$GH_STATE" 2>/dev/null)"
   chk "its subject is the row id" yes "$(has "$(jq -r '[.issues[] | select(.body | contains("key=check/status.obligations "))][0].body' "$GH_STATE" 2>/dev/null)" 'session:S1')"
   verdict
 }
-case_lint() { _l="$1"; _lr="$W/lintroot"; rm -rf "$_lr"; mkdir -p "$_lr/CONTRACTS" "$_lr/bin" "$_lr/launchd"
-  cp "$T_ROOT/CONTRACTS/finding.md" "$_lr/CONTRACTS/"; cp "$T_ROOT/CHECKS.md" "$_lr/"; : > "$_lr/bin/skill-book.sh"; : > "$_lr/bin/memory-route.sh"
-  awk '/^<!-- lanes:end -->$/ { print "| PROPOSE | `check/status.obligations` | `*` | `-` | #1050 |" } { print }' "$_lr/CONTRACTS/finding.md" > "$_lr/f.md" && mv "$_lr/f.md" "$_lr/CONTRACTS/finding.md"
+case_lint() { _l="$1"; _lr="$W/lintroot"; rm -rf "$_lr"; mkdir -p "$_lr/contracts" "$_lr/bin" "$_lr/launchd"
+  cp "$T_ROOT/contracts/finding.md" "$_lr/contracts/"; mkdir -p "$_lr/docs/reference"; cp "$T_ROOT/docs/reference/checks.md" "$_lr/docs/reference/"; : > "$_lr/bin/skill-catalog.sh"; : > "$_lr/bin/memory-route.sh"
+  awk '/^<!-- lanes:end -->$/ { print "| PROPOSE | `check/status.obligations` | `*` | `-` | #1050 |" } { print }' "$_lr/contracts/finding.md" > "$_lr/f.md" && mv "$_lr/f.md" "$_lr/contracts/finding.md"
   _o="$(HARBOR_ROOT="$_lr" sh "$_l" --only FL1 2>&1)"
-  chk "FL1 joins a lanes key check/status.obligations to its CHECKS.md row" no "$(has "$_o" 'names no CHECKS.md row')"
-  _x9="$W/x9"; rm -rf "$_x9"; mkdir -p "$_x9/bin" "$_x9/launchd"
-  printf '# Register\n\n| id | watches | schedule | notifies | red means |\n|---|---|---|---|---|\n| `status.obligations` | w | daily 09:00 | n | r |\n' > "$_x9/CHECKS.md"
+  chk "FL1 joins a lanes key check/status.obligations to its docs/reference/checks.md row" no "$(has "$_o" 'names no docs/reference/checks.md row')"
+  _x9="$W/x9"; rm -rf "$_x9"; mkdir -p "$_x9/bin" "$_x9/launchd" "$_x9/docs/reference"
+  printf '# Register\n\n| id | watches | schedule | notifies | red means |\n|---|---|---|---|---|\n| `status.obligations` | w | daily 09:00 | n | r |\n' > "$_x9/docs/reference/checks.md"
   _o="$(HARBOR_ROOT="$_x9" sh "$_l" --only X9 2>&1)"
   chk "X9 reads the dotted row: a launchd row with no plist is named" yes "$(has "$_o" 'com.harbor.status.obligations.plist')"
   verdict
@@ -292,26 +292,26 @@ t_section "the receipt: red over the ids of rows more than 24h overdue, green ot
 t_eq "the case passes on the real script" ok "$(case_receipt "$BIN")"
 redproof "receipt: the 24h line moved to ten days" case_receipt "$BIN" 'RED_AFTER_S=86400' 'RED_AFTER_S=864000'
 redproof "receipt: red names no row" case_receipt "$BIN" 'status.obligations red "$@"' 'status.obligations green'
-redproof "cache: the overdue epoch dropped" case_receipt "$BIN" 'overdue_since: ([$od[] | ts(.deadline_ts)] | min // 0)' 'overdue_since: 0'
+redproof "cache: the overdue epoch dropped" case_receipt "$BIN" 'overdue_since: ([$od[] | ts(.opened_ts)] | min // 0)' 'overdue_since: 0'
 scenario; : > "$W/notdir"; _rc=0
 _o="$(env HARBOR_EVENT_DIR="$EV" HARBOR_OBLIGATION_DIR="$OB" HARBOR_CACHE_DIR="$W/notdir/c" HARBOR_STATUS_OBLIGATION_NOW="$AT" HARBOR_STATUS_OBLIGATION_KINDS="$KINDS" HARBOR_STATUS_OBLIGATION_ON_OVERDUE=off sh "$BIN" fold 2>&1)" || _rc=$?
 t_eq "a fold that cannot write its cache still exits 0" 0 "$_rc"
 t_has "and says so" "$_o" "no statusline cache or receipt written"
 
 t_section "the statusline: OVERDUE N ·age and the operator queue on YOU; nothing from a stale, absent or malformed cache"
-t_eq "the case passes on the real glyph" ok "$(case_glyph "$T_ROOT/bin/fleet-glyph.sh")"
-redproof "glyph: the staleness ceiling removed" case_glyph "$T_ROOT/bin/fleet-glyph.sh" '($now - $at) > 900 then "⧗?", "", ""' '($now - $at) > 9000000 then "⧗?", "", ""'
-redproof "glyph: the queue dropped" case_glyph "$T_ROOT/bin/fleet-glyph.sh" 'OBLTOK="$_ol"; YOUQ="$_oq"' 'OBLTOK="$_ol"; YOUQ=""'
-redproof "glyph: an overdue item not told apart" case_glyph "$T_ROOT/bin/fleet-glyph.sh" 'def col($o): if $o == true then $red' 'def col($o): if false then $red'
-redproof "glyph: the overdue alarm dropped" case_glyph "$T_ROOT/bin/fleet-glyph.sh" '[ -n "$OBLTOK" ] && alarm "$OBLTOK"' ':'
-redproof "glyph: the age counted from the wrong epoch" case_glyph "$T_ROOT/bin/fleet-glyph.sh" '(($now - $since) | if . < 3600' '((0 - $since) | if . < 3600'
+t_eq "the case passes on the real glyph" ok "$(case_glyph "$T_ROOT/bin/status-fleet-glyph.sh")"
+redproof "glyph: the staleness ceiling removed" case_glyph "$T_ROOT/bin/status-fleet-glyph.sh" '($now - $at) > 900 then "⧗?", "", ""' '($now - $at) > 9000000 then "⧗?", "", ""'
+redproof "glyph: the queue dropped" case_glyph "$T_ROOT/bin/status-fleet-glyph.sh" 'OBLTOK="$_ol"; YOUQ="$_oq"' 'OBLTOK="$_ol"; YOUQ=""'
+redproof "glyph: an overdue item not told apart" case_glyph "$T_ROOT/bin/status-fleet-glyph.sh" 'def col($o): if $o == true then $red' 'def col($o): if false then $red'
+redproof "glyph: the overdue alarm dropped" case_glyph "$T_ROOT/bin/status-fleet-glyph.sh" '[ -n "$OBLTOK" ] && alarm "$OBLTOK"' ':'
+redproof "glyph: the age counted from the wrong epoch" case_glyph "$T_ROOT/bin/status-fleet-glyph.sh" '(($now - $since) | if . < 3600' '((0 - $since) | if . < 3600'
 
 t_section "an end to end: a fold writes the cache, and the statusline reads that file"
 scenario; ev 2026-10-07T02:00:00Z obligation.open handoff-cleanup '{"title":"run cleanup.sh"}'
 ob "$BIN" fold >/dev/null; cp "$CACHE/status-obligations.json" "$GC/status-obligations.json"
-t_has "26h overdue renders OVERDUE 1 ·1d, the age counted at print time" "$(glyph "$T_ROOT/bin/fleet-glyph.sh")" "OVERDUE 1 ·1d"
+t_has "oldest overdue row opened 2d ago renders OVERDUE 1 ·2d, the age counted at print time" "$(glyph "$T_ROOT/bin/status-fleet-glyph.sh")" "OVERDUE 1 ·2d"
 t_eq "the cache lists what the operator acts on: the handoff, and no PR" '[{"k":"intent","o":false,"t":"run cleanup.sh"}]' "$(jq -c '.you' "$CACHE/status-obligations.json")"
-t_has "and the YOU row reads them" "$(glyph "$T_ROOT/bin/fleet-glyph.sh")" "run cleanup.sh │ OVERDUE 1 ·1d"
+t_has "and the YOU row reads them" "$(glyph "$T_ROOT/bin/status-fleet-glyph.sh")" "run cleanup.sh │ OVERDUE 1 ·2d"
 t_hasnt "a session row is not the operator's" "$(jq -c '.you' "$CACHE/status-obligations.json")" 'S1'
 rm -f "$GC/status-obligations.json"
 
@@ -322,11 +322,11 @@ farm; t_eq "control: the farm of unbroken symlinks passes the same case" ok "$(c
 t_eq "bin/harbor's verb table has no obligations verb" 0 "$(grep -c '^obligations	' "$T_ROOT/bin/harbor" | tr -d ' ')"
 
 t_section "the dotted id status.obligations is SEEN by every reader that must see it"
-t_eq "log_receipt writes a dotted id and refuses a path-shaped one" ok "$(case_dotted_receipt "$T_ROOT/bin/log-lib.sh")"
-redproof "log_receipt: dots refused" case_dotted_receipt "$T_ROOT/bin/log-lib.sh" '*[!abcdefghijklmnopqrstuvwxyz0-9.-]*) return 1' '*[!abcdefghijklmnopqrstuvwxyz0-9-]*) return 1'
-redproof "log_receipt: a leading dot allowed" case_dotted_receipt "$T_ROOT/bin/log-lib.sh" "''|.*|*..*|*.|" "''|"
-t_eq "findings.sh files check/status.obligations from the receipt the fold wrote" ok "$(case_findings "$T_ROOT/bin/findings.sh")"
-redproof "findings.sh: the CHECKS.md reader without the dot" case_findings "$T_ROOT/bin/findings.sh" '/^\| `[a-z0-9.-]+` \|/ { id = $2;' '/^\| `[a-z0-9-]+` \|/ { id = $2;'
+t_eq "log_receipt writes a dotted id and refuses a path-shaped one" ok "$(case_dotted_receipt "$T_ROOT/bin/library-log.sh")"
+redproof "log_receipt: dots refused" case_dotted_receipt "$T_ROOT/bin/library-log.sh" '*[!abcdefghijklmnopqrstuvwxyz0-9.-]*) return 1' '*[!abcdefghijklmnopqrstuvwxyz0-9-]*) return 1'
+redproof "log_receipt: a leading dot allowed" case_dotted_receipt "$T_ROOT/bin/library-log.sh" "''|.*|*..*|*.|" "''|"
+t_eq "lint-findings.sh files check/status.obligations from the receipt the fold wrote" ok "$(case_findings "$T_ROOT/bin/lint-findings.sh")"
+redproof "lint-findings.sh: the docs/reference/checks.md reader without the dot" case_findings "$T_ROOT/bin/lint-findings.sh" '/^\| `[a-z0-9.-]+` \|/ { id = $2;' '/^\| `[a-z0-9-]+` \|/ { id = $2;'
 t_eq "lint FL1 and X9 read the dotted row" ok "$(case_lint "$T_ROOT/bin/lint-conventions.sh")"
 redproof "lint FL1: the row reader without the dot" case_lint "$T_ROOT/bin/lint-conventions.sh" "_fl1chk=\" \$(sed -n 's/^| \`\\([a-z0-9.-]*\\)\` |.*/\\1/p'" "_fl1chk=\" \$(sed -n 's/^| \`\\([a-z0-9-]*\\)\` |.*/\\1/p'"
 redproof "lint X9: the row reader without the dot" case_lint "$T_ROOT/bin/lint-conventions.sh" '  /^\| `[a-z0-9.-]+` \|/ {
@@ -334,7 +334,7 @@ redproof "lint X9: the row reader without the dot" case_lint "$T_ROOT/bin/lint-c
     if (NF != 7)' '  /^\| `[a-z0-9-]+` \|/ {
     id = $2; gsub(/[` ]/, "", id)
     if (NF != 7)'
-t_eq "the register row itself exists, with its five cells and its disable command" yes "$(grep '^| `status.obligations` |' "$T_ROOT/CHECKS.md" | awk -F'|' 'NF == 7 && $6 ~ /Disable:/ && $5 ~ /OVERDUE/ { print "yes" }')"
-t_eq "and has its Platforms row" 1 "$(grep -c '^| status.obligations | inherits' "$T_ROOT/CHECKS.md" | tr -d ' ')"
+t_eq "the register row itself exists, with its five cells and its disable command" yes "$(grep '^| `status.obligations` |' "$T_ROOT/docs/reference/checks.md" | awk -F'|' 'NF == 7 && $6 ~ /Disable:/ && $5 ~ /OVERDUE/ { print "yes" }')"
+t_eq "and has its Platforms row" 1 "$(grep -c '^| status.obligations | inherits' "$T_ROOT/docs/reference/checks.md" | tr -d ' ')"
 
 t_done

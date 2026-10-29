@@ -28,7 +28,7 @@ annotation, a failed step beside an open one.
 
 **Once** is three guards, any one of which stops a second re-run: the job id in `ci-lost-reruns.tsv` (written before the call), the
 run id in the same file, and the `attempt == 1` filter (a re-run run is on attempt 2, so a second infrastructure failure of the
-re-run is left to a person). Falsifier: `sh tests/ci/ci-runners-lost-test.sh`.
+re-run is left to a person). Falsifier: `sh tests/ci/runners/lost.test.sh`.
 
 Unverified against live GitHub: that a human-cancelled job never carries a step with a null conclusion. The suite stubs the shape
 the operator's definition gives; if a cancelled job ever re-runs by mistake, the `[check:ci-lost-rerun]` line names the reason
@@ -49,7 +49,7 @@ ran. A job that started under that cut, or ran into one, could not finish inside
   emergency (rung c) overrides the lift like every cap, and nothing else changes: young low jobs are cut exactly as before.
 - **Visible:** the `[check:ci-governor]` line says `harbor-linux --cpus 1 -> 2 (job over 900s keeps its lift)`; `status` marks the
   runner `aged`.
-- **Falsifier:** `sh tests/ci/ci-governor-priority-test.sh` (boundary 899s/900s, the floors, `lift_after=0`, config keys, the
+- **Falsifier:** `sh tests/ci/governor/priority.test.sh` (boundary 899s/900s, the floors, `lift_after=0`, config keys, the
   unread age, an aged and a young low job together, the emergency).
 
 **What it does not fix:** a job that needs more than the lift at load 20+ still times out. The operator-side options, neither done
@@ -85,7 +85,7 @@ in `sh bin/ci-runners.sh list --json`), then `governance 1`.
 
 ## 4. The wedge alarm already exists
 
-The #1060 item "a registered runner offline, or jobs queued > N minutes with no runner" is `ci-runner-alarm` (CHECKS.md), built on
-`ci-runners.sh tick`'s reads with no poll of its own; `sh tests/ci/ci-runner-alarm-test.sh` replays the 2026-10-05 reboot. Not added again.
+The #1060 item "a registered runner offline, or jobs queued > N minutes with no runner" is `ci-runner-alarm` (docs/reference/checks.md), built on
+`ci-runners.sh tick`'s reads with no poll of its own; `sh tests/ci/runner/alarm.test.sh` replays the 2026-10-05 reboot. Not added again.
 Its one blind spot is by design: a job queued **behind a busy runner** is not "no runner able to take it", so the 2026-10-06 queue of
 eight runs would not raise it; that queue is what `ci-queue.sh` estimates (the statusline `⏳N ·~Mm`) and what the second runner relieves.

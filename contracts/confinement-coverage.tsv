@@ -1,0 +1,175 @@
+# confinement-coverage.tsv (harbor#1300, #555 P3) — for every admission rule in standards/naming/controls.tsv,
+# whether the confinement already denies its target. `covered`: a confined Bash call skips the rule once the operator's
+# install turns the skip on (harbor.toml `confinement_skip = "true"`, then sudo sh bin/deploy-confinement.sh); the
+# guard records `covered` and the sandbox decides. `judged`: the rule always runs. No rule is deleted here: un-covering
+# one is one cell.
+#
+# WHY A SIBLING FILE AND NOT A controls.tsv COLUMN (the ticket asked for a column). A column changes the controls.tsv
+# header, which every pack's controls fragment must equal byte for byte (bin/pack.sh), so the private layer's pack would
+# refuse to install until it moved in lockstep. This file names every admission id instead, and the suite fails when
+# the two id sets differ, or when the covered rows differ from floor_confinement_covers in bin/guard-lib.sh.
+#
+# NEVER COVERED: a rule whose target can sit in the write zone ($PORT_ROOT, deliverables_dir, the temp trees) or above
+# the config dir, a remote action, a file tool (the sandbox wraps Bash alone), or anything that is not a file write.
+#
+# COLUMNS  id <TAB> coverage <TAB> why
+id	coverage	why
+admission.cd-config-then-fetch	covered	its whole target is the config dir or a floor surface in it
+admission.destructive-at-config-path	judged	a glob: it can expand into the write zone
+admission.outdir-onto-surface	covered	its whole target is the config dir or a floor surface in it
+admission.perm-onto-surface	judged	its target can be a directory above the config dir, inside the write zone
+admission.api-route-ccr	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.api-route-config	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.api-route-router	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.api-route-setup-models	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.approved-raw	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.argv-blind-filesystem	judged	an unparsed call can name a target anywhere, the write zone included
+admission.at-batch-schedule	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.awk-write-at-surface	judged	judged until floor_confinement_covers lists it (pass 14)
+admission.cd-bridge-copy	covered	its whole target is the config dir or a floor surface in it
+admission.cd-bridge-destroy	covered	its whole target is the config dir or a floor surface in it
+admission.cd-bridge-move	covered	its whole target is the config dir or a floor surface in it
+admission.cd-config-then-extract	covered	its whole target is the config dir or a floor surface in it
+admission.cd-config-then-find-exec	covered	its whole target is the config dir or a floor surface in it
+admission.cd-config-then-mutate	covered	its whole target is the config dir or a floor surface in it
+admission.cd-config-then-plutil	covered	its whole target is the config dir or a floor surface in it
+admission.cd-config-then-redirect	covered	its whole target is the config dir or a floor surface in it
+admission.chmod-world-writable-recursive	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.chmod-recursive-home	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.chmod-recursive-root	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.chmod-recursive-systree	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.container-bind-surface	judged	the container runtime mounts it from outside the sandbox
+admission.cred-cd-bridge-copy	judged	a credential store, outside the P3 baseline (#555): kept judged until measured
+admission.cred-cd-bridge-destroy	judged	a credential store, outside the P3 baseline (#555): kept judged until measured
+admission.cred-cd-bridge-move	judged	a credential store, outside the P3 baseline (#555): kept judged until measured
+admission.cred-destroy	judged	a credential store, outside the P3 baseline (#555): kept judged until measured
+admission.cred-move	judged	a credential store, outside the P3 baseline (#555): kept judged until measured
+admission.crontab-install	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.dasel-at-surface	covered	its whole target is the config dir or a floor surface in it
+admission.dd-at-surface	covered	its whole target is the config dir or a floor surface in it
+admission.dd-to-device	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.deploy-raw	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.destructive-at-config	covered	its whole target is the config dir or a floor surface in it
+admission.docker-privileged	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.eval-fetched-subst	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.event-dispatch-operator	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.extract-into-config	covered	its whole target is the config dir or a floor surface in it
+admission.extractor-writes-config	covered	its whole target is the config dir or a floor surface in it
+admission.fetch-exec-procsub	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.fetch-then-exec	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.find-xargs-spray	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.finding-label-alias	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.finding-label-api	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.finding-label-issue	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.finding-label-rename	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.force-push	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.force-push-protected	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.fork-bomb	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.gate-nohuman	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.gate-noncanonical	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.gh-alias-bang	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.gh-alias-shell	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.gh-alias-stdin	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.handover-shell	judged	a stop-gate rule on the final message: not a Bash write
+admission.git-write-at-surface	covered	its whole target is the config dir or a floor surface in it
+admission.inplace-baseline-surface	covered	its whole target is the config dir or a floor surface in it
+admission.interpreter-at-surface	judged	running a surface is not a write the sandbox denies
+admission.jq-rewrites-surface	covered	its whole target is the config dir or a floor surface in it
+admission.killswitch-assign	judged	its target can sit in the write zone, or it is not a file write
+admission.killswitch-persist	judged	its target can sit in the write zone, or it is not a file write
+admission.launchctl-mutate	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.merge-raw	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.mkfs-device	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.dd-variant-to-device	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.device-badblocks	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.device-parted	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.device-sgdisk	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.device-wipe-verb	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.device-wipefs	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.decoded-command-word	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.zsh-glob-qualifier-exec	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.dd-to-system-file	judged	judged until floor_confinement_covers lists it (harbor#1313)
+admission.extract-over-cfg-ancestor	judged	its target can be a directory above the config dir, inside the write zone
+admission.mutate-aimed-surface	covered	its whole target is the config dir or a floor surface in it
+admission.mutate-into-config	covered	its whole target is the config dir or a floor surface in it
+admission.mutate-onto-surface	covered	its whole target is the config dir or a floor surface in it
+admission.netcat-backdoor	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.node-e-exec	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.outflag-onto-surface	covered	its whole target is the config dir or a floor surface in it
+admission.php-r-exec	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.pipe-to-shell	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.playwright-direct	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.plutil-writes-config	covered	its whole target is the config dir or a floor surface in it
+admission.python-c-exec	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.redirect-baseline-surface	covered	its whole target is the config dir or a floor surface in it
+admission.redirect-into-config	covered	its whole target is the config dir or a floor surface in it
+admission.redirect-system-file	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.redirect-to-device	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.rm-rf-home	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.rm-rf-root	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.rm-rf-systree	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.rsync-delete-config	covered	its whole target is the config dir or a floor surface in it
+admission.rsync-delete-destination	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.ruby-perl-e-exec	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.shell-c-fetched	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.startup-file-dd	judged	its target can sit in the write zone, or it is not a file write
+admission.startup-file-inplace	judged	its target can sit in the write zone, or it is not a file write
+admission.startup-file-overwrite	judged	its target can sit in the write zone, or it is not a file write
+admission.startup-file-rewrite	judged	its target can sit in the write zone, or it is not a file write
+admission.startup-file-write	judged	its target can sit in the write zone, or it is not a file write
+admission.systemctl-mutate	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.systemd-run-timer	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.tar-archive-at-surface	covered	its whole target is the config dir or a floor surface in it
+admission.tee-to-device	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.unit-file-install	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.unit-file-write	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.cd-cred-then-read	judged	a remote action: the host list does not decide what a permitted host receives
+admission.env-dump-interpolate	judged	a remote action: the host list does not decide what a permitted host receives
+admission.env-dump-pipe	judged	a remote action: the host list does not decide what a permitted host receives
+admission.env-dump-socket	judged	a remote action: the host list does not decide what a permitted host receives
+admission.env-staged-then-sent	judged	a remote action: the host list does not decide what a permitted host receives
+admission.gh-credential-operand	judged	a remote action: the host list does not decide what a permitted host receives
+admission.gh-publish-secret	judged	a remote action: the host list does not decide what a permitted host receives
+admission.gh-publish-unread	judged	a remote action: the host list does not decide what a permitted host receives
+admission.gh-soft-credential-operand	judged	a remote action: the host list does not decide what a permitted host receives
+admission.gh-soft-credential-positional	judged	a remote action: the host list does not decide what a permitted host receives
+admission.key-material-egress	judged	a remote action: the host list does not decide what a permitted host receives
+admission.key-material-read	judged	a remote action: the host list does not decide what a permitted host receives
+admission.keychain-dump	judged	a remote action: the host list does not decide what a permitted host receives
+admission.privileged-jwt-egress	judged	a remote action: the host list does not decide what a permitted host receives
+admission.project-cred-egress	judged	a remote action: the host list does not decide what a permitted host receives
+admission.provider-secret-egress	judged	a remote action: the host list does not decide what a permitted host receives
+admission.secret-to-disk	judged	a remote action: the host list does not decide what a permitted host receives
+admission.baseline-surface	judged	a file tool: the sandbox wraps Bash alone
+admission.switch-in-settings	judged	a file tool: the sandbox wraps Bash alone
+admission.class-cloud-destroy	judged	a remote action or a command class: the sandbox does not see its effect
+admission.cloud-kubectl-delete	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.cloud-terraform-destroy	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.cloud-aws-destroy	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.class-deploy	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.class-force-push	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.class-secret-read	judged	a remote action: the host list does not decide what a permitted host receives
+admission.editor-at-surface	judged	judged until floor_confinement_covers lists it (pass 14)
+admission.find-destroy-at-config	judged	judged until floor_confinement_covers lists it (pass 14)
+admission.git-clean-force	judged	its target can sit in the write zone, or it is not a file write
+admission.git-reset-hard	judged	its target can sit in the write zone, or it is not a file write
+admission.git-stash-drop	judged	its target can sit in the write zone, or it is not a file write
+admission.git-reflog-expire	judged	its target can sit in the write zone, or it is not a file write
+admission.git-worktree-remove-force	judged	its target can sit in the write zone, or it is not a file write
+admission.deliverable-home-loose	judged	its target can sit in the write zone, or it is not a file write
+admission.deliverable-dropzone	judged	its target can sit in the write zone, or it is not a file write
+admission.deliverable-root-bare	judged	its target can sit in the write zone, or it is not a file write
+admission.diskutil-wipe	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.device-node-replace	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.git-push-snapshots	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
+admission.diskutil-argv-blind	judged	an unparsed call can name a target anywhere, the write zone included
+admission.external-content-label	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
+admission.session-context-record	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
+admission.event-record	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
+admission.floor-fail-closed	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
+admission.override-ledger	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
+admission.merge-backstop-box	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
+admission.governance-token	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
+admission.api-route-repair	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
+admission.floor-integrity	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
+admission.prod-guard-ambient	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect

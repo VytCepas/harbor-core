@@ -51,15 +51,13 @@ tool-0020	name.case	**/LICENSE	tool-required	never	D-1: README, LICENSE and CHAN
 tool-0021	name.case	**/CHANGELOG.md	tool-required	never	D-1: README, LICENSE and CHANGELOG stay uppercase by convention
 tool-0022	name.abbreviation	**/commit-msg	tool-required	never	git runs the commit-msg hook by name
 tool-0024	name.separator	**/dot_*	tool-required	never	D-56: the scaffolder's template engine reads the dot_ prefix as a leading dot
+tool-0026	name.skill-dir	skills/review-fanout	tool-required	never	Claude Code's Skill tool still resolves the old name review-fanout through this alias stub until 2026-11-15 (renames.tsv rename-0029); the row goes with the stub
 tool-0023	name.extension	**/com.*.plist	tool-required	never	launchd defines the label, so a plist name carries the id's dots: com.harbor.<id>.plist (§6.3)
 world-0001	*	vendor/	world-name	never	D-52: a vendored upstream tree keeps the upstream's names; our wrappers follow the standard
-legacy-0001	name.abbreviation	EVALS-DATA/sliced/gen_corpus.py	legacy	2027-01-18	first scan, harbor#950; W1 eval data sliced
-legacy-0002	name.abbreviation	bin/dashboard-gen.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0003	name.abbreviation	bin/docs-gen.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0004	name.abbreviation	bin/floor-equiv.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0005	name.abbreviation	bin/gcloud-creds	legacy	2027-02-08	first scan, harbor#950; W4 PATH
 legacy-0006	name.abbreviation	bin/status-gen.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0007	name.abbreviation	bin/wf-progress.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0008	name.abbreviation	env:FLOOR_OBS_GUARDS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0009	name.abbreviation	env:FLOOR_OBS_SHAPES	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0010	name.abbreviation	env:FLOOR_OBS_SUBJECT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
@@ -67,42 +65,17 @@ legacy-0011	name.abbreviation	env:FLOOR_OBS_TOOLS	legacy	2027-02-15	first scan, 
 legacy-0012	name.abbreviation	env:FLOOR_OBS_VERDICTS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0013	name.abbreviation	env:FLOOR_SEG_CMD	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0014	name.abbreviation	env:HELM_OBS_DISABLE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0015	name.abbreviation	patches/governance-docs-gen-check.patch.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0016	name.abbreviation	skills/platform-signals/references/vocab-map.md	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0017	name.abbreviation	skills/topology/bin/report-gen.sh	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
-legacy-0018	name.abbreviation	tests/checks/docs-gen-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0019	name.abbreviation	tests/ci/status-gen-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0020	name.abbreviation	tests/cli/gcloud-creds-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0021	name.abbreviation	tests/floor/floor-equiv-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0022	name.abbreviation	tests/obs	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0023	name.abbreviation	tests/obs/obs-digest-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0024	name.alias	.claude/inject.d	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0025	name.alias	CONTRACTS/box-profile.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0026	name.alias	CONTRACTS/helm-state.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0027	name.alias	CONTRACTS/inject.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0028	name.alias	CONTRACTS/orchestrator-json.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0029	name.alias	CONTRACTS/pilot.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-0025	name.alias	contracts/box-profile.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-0026	name.alias	contracts/helm-state.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-0029	name.alias	contracts/pilot.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0030	name.alias	DEAD-ENDS.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0031	name.alias	DOCTRINE	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0032	name.alias	EVALS-DATA/e7scale/raw_a/BOX__IN__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0033	name.alias	EVALS-DATA/e7scale/raw_a/BOX__IN__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0034	name.alias	EVALS-DATA/e7scale/raw_a/BOX__IN__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0035	name.alias	EVALS-DATA/e7scale/raw_a/BOX__IN__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0036	name.alias	EVALS-DATA/e7scale/raw_a/BOX__OUT__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0037	name.alias	EVALS-DATA/e7scale/raw_a/BOX__OUT__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0038	name.alias	EVALS-DATA/e7scale/raw_a/BOX__OUT__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0039	name.alias	EVALS-DATA/e7scale/raw_a/BOX__OUT__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0040	name.alias	EVALS-DATA/e7scale/raw_b/BOX__IN__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0041	name.alias	EVALS-DATA/e7scale/raw_b/BOX__IN__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0042	name.alias	EVALS-DATA/e7scale/raw_b/BOX__IN__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0043	name.alias	EVALS-DATA/e7scale/raw_b/BOX__IN__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0044	name.alias	EVALS-DATA/e7scale/raw_b/BOX__OUT__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0045	name.alias	EVALS-DATA/e7scale/raw_b/BOX__OUT__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0046	name.alias	EVALS-DATA/e7scale/raw_b/BOX__OUT__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0047	name.alias	EVALS-DATA/e7scale/raw_b/BOX__OUT__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0048	name.alias	EVALS-DATA/ecc-2026-09-07/subagent-reports/Map-other-repos-on-this-box.md	legacy	2027-01-11	first scan, harbor#950; W1 eval data ecc-2026-09-07
 legacy-0049	name.alias	FLOOR.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0050	name.alias	HANDOFF-ARCHIVE.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0051	name.alias	HANDOFF.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0052	name.alias	bin/failure-capture.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0053	name.alias	bin/floor-deny.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
@@ -124,8 +97,6 @@ legacy-0068	name.alias	bin/guard-lib.sh	legacy	2027-02-22	first scan, harbor#950
 legacy-0069	name.alias	bin/guard-selfedit.sh	legacy	2027-02-22	first scan, harbor#950; W6 admission
 legacy-0070	name.alias	bin/guard-stop.sh	legacy	2027-02-22	first scan, harbor#950; W6 admission
 legacy-0071	name.alias	bin/harbor-clean.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0072	name.alias	bin/inject-hook.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0073	name.alias	bin/inject-install.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0074	name.alias	bin/judge-run.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0075	name.alias	bin/prod-guard-ambient.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0076	name.alias	bin/prod-guard-install.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
@@ -134,9 +105,6 @@ legacy-0078	name.alias	bin/pulse.sh	legacy	2027-02-01	first scan, harbor#950; W3
 legacy-0079	name.alias	commands/harbor-context.md	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0080	name.alias	commands/harbor-merge.md	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0081	name.alias	commands/harbor-skills.md	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
-legacy-0082	name.alias	docs/src/20-floor.html	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0083	name.alias	docs/src/30-inject.html	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0084	name.alias	docs/src/80-monitor.html	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0085	name.alias	env:BOX_SKILLS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0086	name.alias	env:FLOOR_AWK	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0087	name.alias	env:FLOOR_COLLAPSE_AWK	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
@@ -160,12 +128,8 @@ legacy-0104	name.alias	env:FLOOR_WIRED	legacy	2027-02-15	first scan, harbor#950;
 legacy-0105	name.alias	env:GADS_ALLOWLIST	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0106	name.alias	env:GADS_ALLOW_ANY_CUSTOMER	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0107	name.alias	env:GADS_QUOTA_PROJECT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0108	name.alias	env:GUARD_EGRESS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0109	name.alias	env:HARBOR_ORCHESTRATOR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0110	name.alias	env:HARBOR_PROJECT_INIT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0111	name.alias	env:HARBOR_PULSE_LAST_RUN	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0112	name.alias	env:HARBOR_PULSE_REMIND	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0113	name.alias	env:HARBOR_PULSE_STATE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0114	name.alias	env:HELM_CRED_OCC	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0115	name.alias	env:HELM_DESTROY_POSTURE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0116	name.alias	env:HELM_DISABLE_FLOOR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
@@ -174,396 +138,36 @@ legacy-0118	name.alias	env:HELM_FLOOR_SHADOW	legacy	2027-02-15	first scan, harbo
 legacy-0119	name.alias	env:HELM_LIVE_DIR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0120	name.alias	env:HELM_OBS_DISABLE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0121	name.alias	env:HELM_SANDBOX_DIR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0122	name.alias	fixtures/guard-corpus.jsonl	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0123	name.alias	fixtures/inject	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0124	name.alias	harbor-build-tickets.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0125	name.alias	harbor-epic.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0126	name.alias	inject.d	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0127	name.alias	inject.d/box	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0128	name.alias	inject.d/box/65-browser-route-harbor-chrome.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-0128	name.alias	context-rules/user/browser-route-harbor-chrome.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0131	name.alias	launchd/com.harbor.judge.plist	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0132	name.alias	launchd/com.harbor.pulse.plist	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0133	name.alias	patches/governance-security-floor-shard.patch.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0134	name.alias	skills/test-strength/targets/floor	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0135	name.alias	skills/test-strength/targets/floor.target	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0136	name.alias	systemd/harbor-judge.service	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0137	name.alias	systemd/harbor-judge.timer	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0138	name.alias	systemd/harbor-pulse.service	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0139	name.alias	systemd/harbor-pulse.timer	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0140	name.alias	tests/cli/harbor-clean-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0141	name.alias	tests/cli/harbor-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0142	name.alias	tests/floor	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0143	name.alias	tests/floor/floor-equiv-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0144	name.alias	tests/floor/floor-fixture.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0145	name.alias	tests/floor/floor-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0146	name.alias	tests/floor/floor.b6-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0147	name.alias	tests/floor/floor.b8-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0148	name.alias	tests/floor/floor.install-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0149	name.alias	tests/floor/floor.ledger-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0150	name.alias	tests/floor/floor.session-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0151	name.alias	tests/floor/floor.shards-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0152	name.alias	tests/floor/floor.status-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0153	name.alias	tests/guards/floor-fixture.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0154	name.alias	tests/hooks/apiroute-guard-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0155	name.alias	tests/hooks/failure-capture-fixture.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0156	name.alias	tests/hooks/failure-capture-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0157	name.alias	tests/hooks/failure-capture.fc5-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0158	name.alias	tests/hooks/failure-capture.ledger-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0159	name.alias	tests/hooks/inject-fixture.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0160	name.alias	tests/hooks/inject-hook.detector-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0161	name.alias	tests/hooks/inject-hook.engine-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0162	name.alias	tests/hooks/inject-hook.packs-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0163	name.alias	tests/hooks/inject-hook.scope-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0164	name.alias	tests/hooks/inject-notes-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0165	name.alias	tests/hooks/prod-guard-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0166	name.alias	tests/hooks/stop-guard-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0167	name.alias	tests/install/floor-uninstall-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0168	name.alias	tests/install/inject-install-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0169	name.alias	tests/lib/guard.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0170	name.alias	tests/obs/judge-run-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0171	name.alias	tests/obs/pulse-notify-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0172	name.alias	tests/obs/pulse-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0179	name.case	APPROACH.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0180	name.case	BOUNDARY.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0181	name.case	CHECKS.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0182	name.case	CITATIONS.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0183	name.case	CONSTITUTION.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0184	name.case	CONTEXT-BASELINE.tsv	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0185	name.case	CONTRACTS	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0186	name.case	COVERAGE-INCIDENTS.tsv	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0187	name.case	COVERAGE.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0188	name.case	DEAD-ENDS.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0189	name.case	DOCTRINE	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0190	name.case	EVALS-DATA	legacy	2026-11-23	first scan, harbor#950; W1 eval data (root)
-legacy-0191	name.case	EVALS-DATA/e10inject/raw_a/clean__CONST-HOOK__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0192	name.case	EVALS-DATA/e10inject/raw_a/clean__CONST-HOOK__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0193	name.case	EVALS-DATA/e10inject/raw_a/clean__CONST-HOOK__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0194	name.case	EVALS-DATA/e10inject/raw_a/clean__CONST-HOOK__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0195	name.case	EVALS-DATA/e10inject/raw_a/clean__CONST-HOOK__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0196	name.case	EVALS-DATA/e10inject/raw_a/clean__CONST-HOOK__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0197	name.case	EVALS-DATA/e10inject/raw_a/clean__CONST__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0198	name.case	EVALS-DATA/e10inject/raw_a/clean__CONST__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0199	name.case	EVALS-DATA/e10inject/raw_a/clean__CONST__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0200	name.case	EVALS-DATA/e10inject/raw_a/clean__CONST__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0201	name.case	EVALS-DATA/e10inject/raw_a/clean__CONST__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0202	name.case	EVALS-DATA/e10inject/raw_a/clean__CONST__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0203	name.case	EVALS-DATA/e10inject/raw_a/clean__HOOK__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0204	name.case	EVALS-DATA/e10inject/raw_a/clean__HOOK__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0205	name.case	EVALS-DATA/e10inject/raw_a/clean__HOOK__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0206	name.case	EVALS-DATA/e10inject/raw_a/clean__HOOK__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0207	name.case	EVALS-DATA/e10inject/raw_a/clean__HOOK__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0208	name.case	EVALS-DATA/e10inject/raw_a/clean__HOOK__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0209	name.case	EVALS-DATA/e10inject/raw_a/clean__NONE__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0210	name.case	EVALS-DATA/e10inject/raw_a/clean__NONE__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0211	name.case	EVALS-DATA/e10inject/raw_a/clean__NONE__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0212	name.case	EVALS-DATA/e10inject/raw_a/clean__NONE__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0213	name.case	EVALS-DATA/e10inject/raw_a/clean__NONE__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0214	name.case	EVALS-DATA/e10inject/raw_a/clean__NONE__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0215	name.case	EVALS-DATA/e10inject/raw_a/harder__CONST-HOOK__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0216	name.case	EVALS-DATA/e10inject/raw_a/harder__CONST-HOOK__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0217	name.case	EVALS-DATA/e10inject/raw_a/harder__CONST-HOOK__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0218	name.case	EVALS-DATA/e10inject/raw_a/harder__CONST-HOOK__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0219	name.case	EVALS-DATA/e10inject/raw_a/harder__CONST-HOOK__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0220	name.case	EVALS-DATA/e10inject/raw_a/harder__CONST-HOOK__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0221	name.case	EVALS-DATA/e10inject/raw_a/harder__CONST__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0222	name.case	EVALS-DATA/e10inject/raw_a/harder__CONST__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0223	name.case	EVALS-DATA/e10inject/raw_a/harder__CONST__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0224	name.case	EVALS-DATA/e10inject/raw_a/harder__CONST__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0225	name.case	EVALS-DATA/e10inject/raw_a/harder__CONST__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0226	name.case	EVALS-DATA/e10inject/raw_a/harder__CONST__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0227	name.case	EVALS-DATA/e10inject/raw_a/harder__HOOK__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0228	name.case	EVALS-DATA/e10inject/raw_a/harder__HOOK__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0229	name.case	EVALS-DATA/e10inject/raw_a/harder__HOOK__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0230	name.case	EVALS-DATA/e10inject/raw_a/harder__HOOK__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0231	name.case	EVALS-DATA/e10inject/raw_a/harder__HOOK__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0232	name.case	EVALS-DATA/e10inject/raw_a/harder__HOOK__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0233	name.case	EVALS-DATA/e10inject/raw_a/harder__NONE__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0234	name.case	EVALS-DATA/e10inject/raw_a/harder__NONE__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0235	name.case	EVALS-DATA/e10inject/raw_a/harder__NONE__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0236	name.case	EVALS-DATA/e10inject/raw_a/harder__NONE__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0237	name.case	EVALS-DATA/e10inject/raw_a/harder__NONE__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0238	name.case	EVALS-DATA/e10inject/raw_a/harder__NONE__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0239	name.case	EVALS-DATA/e10inject/raw_a/quiet__CONST-HOOK__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0240	name.case	EVALS-DATA/e10inject/raw_a/quiet__CONST-HOOK__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0241	name.case	EVALS-DATA/e10inject/raw_a/quiet__CONST-HOOK__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0242	name.case	EVALS-DATA/e10inject/raw_a/quiet__CONST-HOOK__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0243	name.case	EVALS-DATA/e10inject/raw_a/quiet__CONST-HOOK__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0244	name.case	EVALS-DATA/e10inject/raw_a/quiet__CONST-HOOK__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0245	name.case	EVALS-DATA/e10inject/raw_a/quiet__CONST__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0246	name.case	EVALS-DATA/e10inject/raw_a/quiet__CONST__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0247	name.case	EVALS-DATA/e10inject/raw_a/quiet__CONST__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0248	name.case	EVALS-DATA/e10inject/raw_a/quiet__CONST__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0249	name.case	EVALS-DATA/e10inject/raw_a/quiet__CONST__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0250	name.case	EVALS-DATA/e10inject/raw_a/quiet__CONST__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0251	name.case	EVALS-DATA/e10inject/raw_a/quiet__HOOK__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0252	name.case	EVALS-DATA/e10inject/raw_a/quiet__HOOK__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0253	name.case	EVALS-DATA/e10inject/raw_a/quiet__HOOK__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0254	name.case	EVALS-DATA/e10inject/raw_a/quiet__HOOK__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0255	name.case	EVALS-DATA/e10inject/raw_a/quiet__HOOK__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0256	name.case	EVALS-DATA/e10inject/raw_a/quiet__HOOK__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0257	name.case	EVALS-DATA/e10inject/raw_a/quiet__NONE__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0258	name.case	EVALS-DATA/e10inject/raw_a/quiet__NONE__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0259	name.case	EVALS-DATA/e10inject/raw_a/quiet__NONE__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0260	name.case	EVALS-DATA/e10inject/raw_a/quiet__NONE__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0261	name.case	EVALS-DATA/e10inject/raw_a/quiet__NONE__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0262	name.case	EVALS-DATA/e10inject/raw_a/quiet__NONE__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0263	name.case	EVALS-DATA/e12rule9/CONFOUND.md	legacy	2026-12-07	first scan, harbor#950; W1 eval data e12rule9
-legacy-0264	name.case	EVALS-DATA/e5trap/raw_a/MANY__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0265	name.case	EVALS-DATA/e5trap/raw_a/MANY__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0266	name.case	EVALS-DATA/e5trap/raw_a/MANY__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0267	name.case	EVALS-DATA/e5trap/raw_a/MANY__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0268	name.case	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0269	name.case	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0270	name.case	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0271	name.case	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0272	name.case	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-N__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0273	name.case	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-N__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0274	name.case	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-N__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0275	name.case	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-N__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0276	name.case	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-R__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0277	name.case	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-R__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0278	name.case	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-R__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0279	name.case	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-R__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0280	name.case	EVALS-DATA/e5trap/raw_b/MANY__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0281	name.case	EVALS-DATA/e5trap/raw_b/MANY__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0282	name.case	EVALS-DATA/e5trap/raw_b/MANY__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0283	name.case	EVALS-DATA/e5trap/raw_b/MANY__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0284	name.case	EVALS-DATA/e5trap/raw_b/MANY__T-N__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0285	name.case	EVALS-DATA/e5trap/raw_b/MANY__T-N__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0286	name.case	EVALS-DATA/e5trap/raw_b/MANY__T-N__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0287	name.case	EVALS-DATA/e5trap/raw_b/MANY__T-N__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0288	name.case	EVALS-DATA/e5trap/raw_b/MANY__T-R__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0289	name.case	EVALS-DATA/e5trap/raw_b/MANY__T-R__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0290	name.case	EVALS-DATA/e5trap/raw_b/MANY__T-R__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0291	name.case	EVALS-DATA/e5trap/raw_b/MANY__T-R__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0292	name.case	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0293	name.case	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0294	name.case	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0295	name.case	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0296	name.case	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-N__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0297	name.case	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-N__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0298	name.case	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-N__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0299	name.case	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-N__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0300	name.case	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-R__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0301	name.case	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-R__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0302	name.case	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-R__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0303	name.case	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-R__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0304	name.case	EVALS-DATA/e5trap/raw_c/DESC-GREP__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0305	name.case	EVALS-DATA/e5trap/raw_c/DESC-GREP__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0306	name.case	EVALS-DATA/e5trap/raw_c/DESC-GREP__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0307	name.case	EVALS-DATA/e5trap/raw_c/DESC-GREP__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0308	name.case	EVALS-DATA/e5trap/raw_c/DESC-GREP__T-M__r5.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0309	name.case	EVALS-DATA/e5trap/raw_c/DESC-GREP__T-M__r6.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0310	name.case	EVALS-DATA/e5trap/raw_c/MANY__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0311	name.case	EVALS-DATA/e5trap/raw_c/MANY__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0312	name.case	EVALS-DATA/e5trap/raw_c/MANY__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0313	name.case	EVALS-DATA/e5trap/raw_c/MANY__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0314	name.case	EVALS-DATA/e5trap/raw_c/MANY__T-M__r5.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0315	name.case	EVALS-DATA/e5trap/raw_c/MANY__T-M__r6.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0316	name.case	EVALS-DATA/e5trap/raw_c/NO-INDEX__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0317	name.case	EVALS-DATA/e5trap/raw_c/NO-INDEX__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0318	name.case	EVALS-DATA/e5trap/raw_c/NO-INDEX__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0319	name.case	EVALS-DATA/e5trap/raw_c/NO-INDEX__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0320	name.case	EVALS-DATA/e5trap/raw_c/NO-INDEX__T-M__r5.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0321	name.case	EVALS-DATA/e5trap/raw_c/NO-INDEX__T-M__r6.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0322	name.case	EVALS-DATA/e5trap/raw_d/DESC-GREP__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0323	name.case	EVALS-DATA/e5trap/raw_d/DESC-GREP__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0324	name.case	EVALS-DATA/e5trap/raw_d/DESC-GREP__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0325	name.case	EVALS-DATA/e5trap/raw_d/DESC-GREP__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0326	name.case	EVALS-DATA/e5trap/raw_d/MANY__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0327	name.case	EVALS-DATA/e5trap/raw_d/MANY__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0328	name.case	EVALS-DATA/e5trap/raw_d/MANY__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0329	name.case	EVALS-DATA/e5trap/raw_d/MANY__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0330	name.case	EVALS-DATA/e5trap/raw_d/NO-INDEX__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0331	name.case	EVALS-DATA/e5trap/raw_d/NO-INDEX__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0332	name.case	EVALS-DATA/e5trap/raw_d/NO-INDEX__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0333	name.case	EVALS-DATA/e5trap/raw_d/NO-INDEX__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0334	name.case	EVALS-DATA/e5trap/raw_e/HOOK-DENY__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0335	name.case	EVALS-DATA/e5trap/raw_e/HOOK-DENY__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0336	name.case	EVALS-DATA/e5trap/raw_e/HOOK-DENY__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0337	name.case	EVALS-DATA/e5trap/raw_e/HOOK-DENY__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0338	name.case	EVALS-DATA/e5trap/raw_e/HOOK-INFORM__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0339	name.case	EVALS-DATA/e5trap/raw_e/HOOK-INFORM__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0340	name.case	EVALS-DATA/e5trap/raw_e/HOOK-INFORM__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0341	name.case	EVALS-DATA/e5trap/raw_e/HOOK-INFORM__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0342	name.case	EVALS-DATA/e5trap/raw_e/PROSE__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0343	name.case	EVALS-DATA/e5trap/raw_e/PROSE__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0344	name.case	EVALS-DATA/e5trap/raw_e/PROSE__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0345	name.case	EVALS-DATA/e5trap/raw_e/PROSE__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0346	name.case	EVALS-DATA/e7scale/raw_a/BOX__IN__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0347	name.case	EVALS-DATA/e7scale/raw_a/BOX__IN__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0348	name.case	EVALS-DATA/e7scale/raw_a/BOX__IN__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0349	name.case	EVALS-DATA/e7scale/raw_a/BOX__IN__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0350	name.case	EVALS-DATA/e7scale/raw_a/BOX__OUT__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0351	name.case	EVALS-DATA/e7scale/raw_a/BOX__OUT__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0352	name.case	EVALS-DATA/e7scale/raw_a/BOX__OUT__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0353	name.case	EVALS-DATA/e7scale/raw_a/BOX__OUT__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0354	name.case	EVALS-DATA/e7scale/raw_a/SCOPED-POINTER__IN__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0355	name.case	EVALS-DATA/e7scale/raw_a/SCOPED-POINTER__IN__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0356	name.case	EVALS-DATA/e7scale/raw_a/SCOPED-POINTER__IN__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0357	name.case	EVALS-DATA/e7scale/raw_a/SCOPED-POINTER__IN__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0358	name.case	EVALS-DATA/e7scale/raw_a/SCOPED-POINTER__OUT__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0359	name.case	EVALS-DATA/e7scale/raw_a/SCOPED-POINTER__OUT__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0360	name.case	EVALS-DATA/e7scale/raw_a/SCOPED-POINTER__OUT__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0361	name.case	EVALS-DATA/e7scale/raw_a/SCOPED-POINTER__OUT__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0362	name.case	EVALS-DATA/e7scale/raw_a/SCOPED__IN__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0363	name.case	EVALS-DATA/e7scale/raw_a/SCOPED__IN__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0364	name.case	EVALS-DATA/e7scale/raw_a/SCOPED__IN__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0365	name.case	EVALS-DATA/e7scale/raw_a/SCOPED__IN__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0366	name.case	EVALS-DATA/e7scale/raw_a/SCOPED__OUT__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0367	name.case	EVALS-DATA/e7scale/raw_a/SCOPED__OUT__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0368	name.case	EVALS-DATA/e7scale/raw_a/SCOPED__OUT__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0369	name.case	EVALS-DATA/e7scale/raw_a/SCOPED__OUT__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0370	name.case	EVALS-DATA/e7scale/raw_b/BOX__IN__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0371	name.case	EVALS-DATA/e7scale/raw_b/BOX__IN__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0372	name.case	EVALS-DATA/e7scale/raw_b/BOX__IN__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0373	name.case	EVALS-DATA/e7scale/raw_b/BOX__IN__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0374	name.case	EVALS-DATA/e7scale/raw_b/BOX__OUT__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0375	name.case	EVALS-DATA/e7scale/raw_b/BOX__OUT__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0376	name.case	EVALS-DATA/e7scale/raw_b/BOX__OUT__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0377	name.case	EVALS-DATA/e7scale/raw_b/BOX__OUT__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0378	name.case	EVALS-DATA/e7scale/raw_b/SCOPED-POINTER__IN__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0379	name.case	EVALS-DATA/e7scale/raw_b/SCOPED-POINTER__IN__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0380	name.case	EVALS-DATA/e7scale/raw_b/SCOPED-POINTER__IN__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0381	name.case	EVALS-DATA/e7scale/raw_b/SCOPED-POINTER__IN__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0382	name.case	EVALS-DATA/e7scale/raw_b/SCOPED-POINTER__OUT__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0383	name.case	EVALS-DATA/e7scale/raw_b/SCOPED-POINTER__OUT__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0384	name.case	EVALS-DATA/e7scale/raw_b/SCOPED-POINTER__OUT__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0385	name.case	EVALS-DATA/e7scale/raw_b/SCOPED-POINTER__OUT__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0386	name.case	EVALS-DATA/e7scale/raw_b/SCOPED__IN__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0387	name.case	EVALS-DATA/e7scale/raw_b/SCOPED__IN__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0388	name.case	EVALS-DATA/e7scale/raw_b/SCOPED__IN__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0389	name.case	EVALS-DATA/e7scale/raw_b/SCOPED__IN__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0390	name.case	EVALS-DATA/e7scale/raw_b/SCOPED__OUT__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0391	name.case	EVALS-DATA/e7scale/raw_b/SCOPED__OUT__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0392	name.case	EVALS-DATA/e7scale/raw_b/SCOPED__OUT__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0393	name.case	EVALS-DATA/e7scale/raw_b/SCOPED__OUT__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-0394	name.case	EVALS-DATA/e8dilute/raw_a/CUT__r1.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0395	name.case	EVALS-DATA/e8dilute/raw_a/CUT__r2.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0396	name.case	EVALS-DATA/e8dilute/raw_a/CUT__r3.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0397	name.case	EVALS-DATA/e8dilute/raw_a/CUT__r4.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0398	name.case	EVALS-DATA/e8dilute/raw_a/CUT__r5.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0399	name.case	EVALS-DATA/e8dilute/raw_a/CUT__r6.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0400	name.case	EVALS-DATA/e8dilute/raw_a/FULL__r1.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0401	name.case	EVALS-DATA/e8dilute/raw_a/FULL__r2.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0402	name.case	EVALS-DATA/e8dilute/raw_a/FULL__r3.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0403	name.case	EVALS-DATA/e8dilute/raw_a/FULL__r4.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0404	name.case	EVALS-DATA/e8dilute/raw_a/FULL__r5.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0405	name.case	EVALS-DATA/e8dilute/raw_a/FULL__r6.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0406	name.case	EVALS-DATA/e8dilute/raw_a/MINIMAL__r1.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0407	name.case	EVALS-DATA/e8dilute/raw_a/MINIMAL__r2.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0408	name.case	EVALS-DATA/e8dilute/raw_a/MINIMAL__r3.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0409	name.case	EVALS-DATA/e8dilute/raw_a/MINIMAL__r4.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0410	name.case	EVALS-DATA/e8dilute/raw_a/MINIMAL__r5.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0411	name.case	EVALS-DATA/e8dilute/raw_a/MINIMAL__r6.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0412	name.case	EVALS-DATA/e8dilute/raw_a/NONE__r1.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0413	name.case	EVALS-DATA/e8dilute/raw_a/NONE__r2.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0414	name.case	EVALS-DATA/e8dilute/raw_a/NONE__r3.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0415	name.case	EVALS-DATA/e8dilute/raw_a/NONE__r4.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0416	name.case	EVALS-DATA/e8dilute/raw_a/NONE__r5.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0417	name.case	EVALS-DATA/e8dilute/raw_a/NONE__r6.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-0418	name.case	EVALS-DATA/e9ablate/raw_b/OPS__ABLATED__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0419	name.case	EVALS-DATA/e9ablate/raw_b/OPS__ABLATED__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0420	name.case	EVALS-DATA/e9ablate/raw_b/OPS__ABLATED__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0421	name.case	EVALS-DATA/e9ablate/raw_b/OPS__ABLATED__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0422	name.case	EVALS-DATA/e9ablate/raw_b/OPS__FULL__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0423	name.case	EVALS-DATA/e9ablate/raw_b/OPS__FULL__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0424	name.case	EVALS-DATA/e9ablate/raw_b/OPS__FULL__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0425	name.case	EVALS-DATA/e9ablate/raw_b/OPS__FULL__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0426	name.case	EVALS-DATA/e9ablate/raw_b/OPS__NONE__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0427	name.case	EVALS-DATA/e9ablate/raw_b/OPS__NONE__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0428	name.case	EVALS-DATA/e9ablate/raw_b/OPS__NONE__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0429	name.case	EVALS-DATA/e9ablate/raw_b/OPS__NONE__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0430	name.case	EVALS-DATA/e9ablate/raw_b/R5__ABLATED__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0431	name.case	EVALS-DATA/e9ablate/raw_b/R5__ABLATED__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0432	name.case	EVALS-DATA/e9ablate/raw_b/R5__ABLATED__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0433	name.case	EVALS-DATA/e9ablate/raw_b/R5__ABLATED__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0434	name.case	EVALS-DATA/e9ablate/raw_b/R5__FULL__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0435	name.case	EVALS-DATA/e9ablate/raw_b/R5__FULL__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0436	name.case	EVALS-DATA/e9ablate/raw_b/R5__FULL__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0437	name.case	EVALS-DATA/e9ablate/raw_b/R5__FULL__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0438	name.case	EVALS-DATA/e9ablate/raw_b/R5__NONE__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0439	name.case	EVALS-DATA/e9ablate/raw_b/R5__NONE__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0440	name.case	EVALS-DATA/e9ablate/raw_b/R5__NONE__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0441	name.case	EVALS-DATA/e9ablate/raw_b/R5__NONE__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0442	name.case	EVALS-DATA/e9ablate/raw_b/SEC__ABLATED__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0443	name.case	EVALS-DATA/e9ablate/raw_b/SEC__ABLATED__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0444	name.case	EVALS-DATA/e9ablate/raw_b/SEC__ABLATED__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0445	name.case	EVALS-DATA/e9ablate/raw_b/SEC__ABLATED__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0446	name.case	EVALS-DATA/e9ablate/raw_b/SEC__FULL__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0447	name.case	EVALS-DATA/e9ablate/raw_b/SEC__FULL__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0448	name.case	EVALS-DATA/e9ablate/raw_b/SEC__FULL__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0449	name.case	EVALS-DATA/e9ablate/raw_b/SEC__FULL__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0450	name.case	EVALS-DATA/e9ablate/raw_b/SEC__NONE__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0451	name.case	EVALS-DATA/e9ablate/raw_b/SEC__NONE__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0452	name.case	EVALS-DATA/e9ablate/raw_b/SEC__NONE__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0453	name.case	EVALS-DATA/e9ablate/raw_b/SEC__NONE__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0454	name.case	EVALS-DATA/e9ablate/raw_b/VER__ABLATED__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0455	name.case	EVALS-DATA/e9ablate/raw_b/VER__ABLATED__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0456	name.case	EVALS-DATA/e9ablate/raw_b/VER__ABLATED__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0457	name.case	EVALS-DATA/e9ablate/raw_b/VER__ABLATED__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0458	name.case	EVALS-DATA/e9ablate/raw_b/VER__FULL__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0459	name.case	EVALS-DATA/e9ablate/raw_b/VER__FULL__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0460	name.case	EVALS-DATA/e9ablate/raw_b/VER__FULL__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0461	name.case	EVALS-DATA/e9ablate/raw_b/VER__FULL__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0462	name.case	EVALS-DATA/e9ablate/raw_b/VER__NONE__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0463	name.case	EVALS-DATA/e9ablate/raw_b/VER__NONE__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0464	name.case	EVALS-DATA/e9ablate/raw_b/VER__NONE__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0465	name.case	EVALS-DATA/e9ablate/raw_b/VER__NONE__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0466	name.case	EVALS-DATA/e9ablate/raw_c/SEC__ABLATED__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0467	name.case	EVALS-DATA/e9ablate/raw_c/SEC__ABLATED__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0468	name.case	EVALS-DATA/e9ablate/raw_c/SEC__ABLATED__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0469	name.case	EVALS-DATA/e9ablate/raw_c/SEC__ABLATED__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0470	name.case	EVALS-DATA/e9ablate/raw_c/SEC__ABLATED__r5.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0471	name.case	EVALS-DATA/e9ablate/raw_c/SEC__ABLATED__r6.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0472	name.case	EVALS-DATA/e9ablate/raw_c/SEC__ABLATED__r7.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0473	name.case	EVALS-DATA/e9ablate/raw_c/SEC__ABLATED__r8.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0474	name.case	EVALS-DATA/e9ablate/raw_c/SEC__FULL__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0475	name.case	EVALS-DATA/e9ablate/raw_c/SEC__FULL__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0476	name.case	EVALS-DATA/e9ablate/raw_c/SEC__FULL__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0477	name.case	EVALS-DATA/e9ablate/raw_c/SEC__FULL__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0478	name.case	EVALS-DATA/e9ablate/raw_c/SEC__FULL__r5.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0479	name.case	EVALS-DATA/e9ablate/raw_c/SEC__FULL__r6.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0480	name.case	EVALS-DATA/e9ablate/raw_c/SEC__FULL__r7.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0481	name.case	EVALS-DATA/e9ablate/raw_c/SEC__FULL__r8.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0482	name.case	EVALS-DATA/e9ablate/raw_c/SEC__NONE__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0483	name.case	EVALS-DATA/e9ablate/raw_c/SEC__NONE__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0484	name.case	EVALS-DATA/e9ablate/raw_c/SEC__NONE__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0485	name.case	EVALS-DATA/e9ablate/raw_c/SEC__NONE__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0486	name.case	EVALS-DATA/e9ablate/raw_c/SEC__NONE__r5.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0487	name.case	EVALS-DATA/e9ablate/raw_c/SEC__NONE__r6.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0488	name.case	EVALS-DATA/e9ablate/raw_c/SEC__NONE__r7.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0489	name.case	EVALS-DATA/e9ablate/raw_c/SEC__NONE__r8.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-0490	name.case	EVALS-DATA/ecc-2026-09-07/EPIC-BODY.md	legacy	2027-01-11	first scan, harbor#950; W1 eval data ecc-2026-09-07
-legacy-0491	name.case	EVALS-DATA/ecc-2026-09-07/subagent-reports/Characterise-ECC-test-suite-method.md	legacy	2027-01-11	first scan, harbor#950; W1 eval data ecc-2026-09-07
-legacy-0492	name.case	EVALS-DATA/ecc-2026-09-07/subagent-reports/ECC-agentic-architecture-deep-dive.md	legacy	2027-01-11	first scan, harbor#950; W1 eval data ecc-2026-09-07
-legacy-0493	name.case	EVALS-DATA/ecc-2026-09-07/subagent-reports/ECC-coding-capability-deep-dive.md	legacy	2027-01-11	first scan, harbor#950; W1 eval data ecc-2026-09-07
-legacy-0494	name.case	EVALS-DATA/ecc-2026-09-07/subagent-reports/ECC-context-economy-numbers.md	legacy	2027-01-11	first scan, harbor#950; W1 eval data ecc-2026-09-07
-legacy-0495	name.case	EVALS-DATA/ecc-2026-09-07/subagent-reports/ECC-hook-engine-and-eval-internals.md	legacy	2027-01-11	first scan, harbor#950; W1 eval data ecc-2026-09-07
-legacy-0496	name.case	EVALS-DATA/ecc-2026-09-07/subagent-reports/ECC-memory-and-context-economy.md	legacy	2027-01-11	first scan, harbor#950; W1 eval data ecc-2026-09-07
-legacy-0497	name.case	EVALS-DATA/ecc-2026-09-07/subagent-reports/ECC-session-continuity-mechanics.md	legacy	2027-01-11	first scan, harbor#950; W1 eval data ecc-2026-09-07
-legacy-0498	name.case	EVALS-DATA/ecc-2026-09-07/subagent-reports/Map-other-repos-on-this-box.md	legacy	2027-01-11	first scan, harbor#950; W1 eval data ecc-2026-09-07
-legacy-0499	name.case	EVALS-DATA/ecc-2026-09-07/subagent-reports/Mine-ECC-docs-for-scars-and-reversals.md	legacy	2027-01-11	first scan, harbor#950; W1 eval data ecc-2026-09-07
-legacy-0500	name.case	EVALS-DATA/ecc-2026-09-07/subagent-reports/Sample-ECC-hook-test-suite.md	legacy	2027-01-11	first scan, harbor#950; W1 eval data ecc-2026-09-07
-legacy-0501	name.case	EVALS-DATA/ecc-2026-09-07/subagent-reports/Survey-our-repos-tickets-and-ledgers.md	legacy	2027-01-11	first scan, harbor#950; W1 eval data ecc-2026-09-07
 legacy-0502	name.case	EVALS.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0503	name.case	FLOOR.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0504	name.case	HANDOFF-ARCHIVE.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0505	name.case	HANDOFF.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0506	name.case	PLAN.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0507	name.case	PROVENANCE.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0508	name.case	QA-PLAN.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0509	name.case	REVIEW-2026-07-23.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0510	name.case	RUNTIME.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0511	name.case	SEC-0.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0512	name.case	STATUS.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0513	name.case	fixtures/memory/corpus/KNOWLEDGE	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0514	name.case	fixtures/memory/corpus/KNOWLEDGE/Companies	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0515	name.case	fixtures/memory/corpus/KNOWLEDGE/Ideas	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0516	name.case	fixtures/memory/corpus/KNOWLEDGE/People	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0517	name.case	fixtures/memory/corpus/KNOWLEDGE/Research	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0518	name.case	fixtures/memory/corpus/LEARNING	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0519	name.case	fixtures/memory/corpus/TELOS	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0520	name.case	skills/UNIFICATION.md	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0521	name.case	skills/ad-inventory/EVALS	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0522	name.case	skills/ad-inventory/EVALS/R2-lens-or-glossary.md	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
@@ -573,7 +177,6 @@ legacy-0525	name.case	skills/casefile/EVALS/R1-does-it-fire.md	legacy	2027-03-01
 legacy-0526	name.case	skills/casefile/EVALS/SIM	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0527	name.case	skills/casefile/EVALS/SIM/RESULTS.md	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0535	name.date	EVALS-DATA/ecc-2026-09-07	legacy	2026-11-23	first scan, harbor#950; W1 eval data (root)
-legacy-0536	name.date	REVIEW-2026-07-23.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0544	name.env	env:BOX_SKILLS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0545	name.env	env:FLEET_CACHE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0546	name.env	env:FLEET_MAX_AGE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
@@ -599,124 +202,120 @@ legacy-0565	name.env	env:FLOOR_WIRED	legacy	2027-02-15	first scan, harbor#950; W
 legacy-0566	name.env	env:GADS_ALLOWLIST	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0567	name.env	env:GADS_ALLOW_ANY_CUSTOMER	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0568	name.env	env:GADS_QUOTA_PROJECT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0569	name.env	env:GUARD_EGRESS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0570	name.env	env:HARBOR_ARCHIFY	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0571	name.env	env:HARBOR_ATTRIBUTION_ERE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0572	name.env	env:HARBOR_BASE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0573	name.env	env:HARBOR_BASE_BRANCH	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0574	name.env	env:HARBOR_BILLING_USER	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0575	name.env	env:HARBOR_BIN	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0576	name.env	env:HARBOR_BRANCH	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0577	name.env	env:HARBOR_BROWSER_CONFIRM	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0578	name.env	env:HARBOR_BROWSER_IDLE_MS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0579	name.env	env:HARBOR_BROWSER_LIVE_ACCEPT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0580	name.env	env:HARBOR_BROWSER_LIVE_URL	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0581	name.env	env:HARBOR_BROWSER_PROFILE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0582	name.env	env:HARBOR_BROWSER_SESSION	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0583	name.env	env:HARBOR_BUDGET_NO_PROBE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0584	name.env	env:HARBOR_CACHE_DIR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0585	name.env	env:HARBOR_CHANGED	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0586	name.env	env:HARBOR_CHROME	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0587	name.env	env:HARBOR_CHROME_DATA	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0588	name.env	env:HARBOR_CLAUDE_JSON	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0589	name.env	env:HARBOR_CLEAN_AGE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0590	name.env	env:HARBOR_CLEAN_BOUND	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0591	name.env	env:HARBOR_CLEAN_DUE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0592	name.env	env:HARBOR_CLEAN_GH	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0593	name.env	env:HARBOR_CLEAN_HOME	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0594	name.env	env:HARBOR_CLEAN_IDLE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0595	name.env	env:HARBOR_CLEAN_PR_LIMIT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0596	name.env	env:HARBOR_CLEAN_SCRATCH	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0597	name.env	env:HARBOR_CLEAN_SLOTS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0598	name.env	env:HARBOR_CONST_WALK_MAX	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0599	name.env	env:HARBOR_CUDOCTOR_MAX_AGE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0600	name.env	env:HARBOR_CURL	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0601	name.env	env:HARBOR_DEPLOY	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0602	name.env	env:HARBOR_DRIVE_MOUNT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0603	name.env	env:HARBOR_DRIVE_WAIT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0604	name.env	env:HARBOR_ESTATE_ROOT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0605	name.env	env:HARBOR_FC_HORIZON_DAYS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0606	name.env	env:HARBOR_FC_NOW	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0607	name.env	env:HARBOR_FINDINGS_NOW	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0608	name.env	env:HARBOR_FINDINGS_OUT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0609	name.env	env:HARBOR_FINDINGS_REPO	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0610	name.env	env:HARBOR_FINDINGS_URL	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0611	name.env	env:HARBOR_FLEET_FILE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0612	name.env	env:HARBOR_FLEET_MAX_AGE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0613	name.env	env:HARBOR_GH	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0614	name.env	env:HARBOR_GLYPH_COLS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0615	name.env	env:HARBOR_GLYPH_DUMP	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0616	name.env	env:HARBOR_GLYPH_NAME_CAP	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0617	name.env	env:HARBOR_GLYPH_STALE_S	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0618	name.env	env:HARBOR_HARVEST_CAP	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0619	name.env	env:HARBOR_HARVEST_DAYS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0620	name.env	env:HARBOR_HOSTS_FILE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0621	name.env	env:HARBOR_INDEX_BYTES_PER_POINTER	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0622	name.env	env:HARBOR_INDEX_STRUCTURE_BYTES	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0623	name.env	env:HARBOR_IN_SUITE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0624	name.env	env:HARBOR_ISA_OUT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0625	name.env	env:HARBOR_ISA_STORE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0626	name.env	env:HARBOR_ISSUE_REPO	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0627	name.env	env:HARBOR_K	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0628	name.env	env:HARBOR_LEVEL	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0629	name.env	env:HARBOR_LOCAL_BIN	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0630	name.env	env:HARBOR_LOG_DIR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0631	name.env	env:HARBOR_LOG_REPO	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0632	name.env	env:HARBOR_LOG_TOKEN_FILE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0633	name.env	env:HARBOR_M	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0634	name.env	env:HARBOR_NOW	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0635	name.env	env:HARBOR_ORCHESTRATOR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0636	name.env	env:HARBOR_ORCH_BIN	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0637	name.env	env:HARBOR_PEERS_DIR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0638	name.env	env:HARBOR_PEER_EXCLUDE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0639	name.env	env:HARBOR_PLANTED	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0640	name.env	env:HARBOR_PLAN_OUT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0641	name.env	env:HARBOR_PLAN_SRC	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0642	name.env	env:HARBOR_PREPUSH_FULL	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0643	name.env	env:HARBOR_PROBE_DIR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0644	name.env	env:HARBOR_PROJECT_INIT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0645	name.env	env:HARBOR_PULSE_LAST_RUN	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0646	name.env	env:HARBOR_PULSE_REMIND	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0647	name.env	env:HARBOR_PULSE_STATE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0648	name.env	env:HARBOR_PW_CLI	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0649	name.env	env:HARBOR_Q	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0650	name.env	env:HARBOR_REACHED	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0651	name.env	env:HARBOR_RECEIPTS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0652	name.env	env:HARBOR_REPO	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0654	name.env	env:HARBOR_REQUIRE_BUN	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0655	name.env	env:HARBOR_REQUIRE_GITLEAKS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0656	name.env	env:HARBOR_RESULT_BYTES	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0657	name.env	env:HARBOR_RH_COST_S	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0658	name.env	env:HARBOR_RH_LINT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0659	name.env	env:HARBOR_RH_NOW	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0660	name.env	env:HARBOR_RH_SUITES	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0661	name.env	env:HARBOR_ROOT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0662	name.env	env:HARBOR_ROOTS_TABLE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0663	name.env	env:HARBOR_RUNNER	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0664	name.env	env:HARBOR_RUNNERS_DIR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0665	name.env	env:HARBOR_SESSIONS_DIR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0666	name.env	env:HARBOR_SHIMS_TABLE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0667	name.env	env:HARBOR_SKIP_CROSS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0668	name.env	env:HARBOR_STATUSLINE_REFRESH	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0669	name.env	env:HARBOR_SUBGLYPH_DUMP	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0670	name.env	env:HARBOR_SUITE_COUNTS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0671	name.env	env:HARBOR_SUITE_JOBS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0672	name.env	env:HARBOR_SUITE_TAIL	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0673	name.env	env:HARBOR_SUITE_TIMEOUT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0674	name.env	env:HARBOR_SWITCH_REPO	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0675	name.env	env:HARBOR_TAXONOMY	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0676	name.env	env:HARBOR_TELOS_DIR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0677	name.env	env:HARBOR_TIP_BRANCH	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0678	name.env	env:HARBOR_TIP_PENDING_SEC	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0679	name.env	env:HARBOR_TIP_REPO	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0680	name.env	env:HARBOR_TIP_WINDOW	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0681	name.env	env:HARBOR_TOUCHED	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0682	name.env	env:HARBOR_TRANSCRIPTS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0683	name.env	env:HARBOR_TRANSCRIPT_DIR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0684	name.env	env:HARBOR_WORKFLOW	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0685	name.env	env:HARBOR_WORKLOG_MAX_AGE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0686	name.env	env:HARBOR_X	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0687	name.env	env:HARBOR_Z	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
+legacy-0570	name.env	env:HARBOR_ARCHIFY	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0571	name.env	env:HARBOR_ATTRIBUTION_ERE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0572	name.env	env:HARBOR_BASE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0573	name.env	env:HARBOR_BASE_BRANCH	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0574	name.env	env:HARBOR_BILLING_USER	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0575	name.env	env:HARBOR_BIN	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0576	name.env	env:HARBOR_BRANCH	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0577	name.env	env:HARBOR_BROWSER_CONFIRM	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0578	name.env	env:HARBOR_BROWSER_IDLE_MS	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0579	name.env	env:HARBOR_BROWSER_LIVE_ACCEPT	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0580	name.env	env:HARBOR_BROWSER_LIVE_URL	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0581	name.env	env:HARBOR_BROWSER_PROFILE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0582	name.env	env:HARBOR_BROWSER_SESSION	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0583	name.env	env:HARBOR_BUDGET_NO_PROBE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0584	name.env	env:HARBOR_CACHE_DIR	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0585	name.env	env:HARBOR_CHANGED	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0586	name.env	env:HARBOR_CHROME	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0587	name.env	env:HARBOR_CHROME_DATA	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0588	name.env	env:HARBOR_CLAUDE_JSON	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0589	name.env	env:HARBOR_CLEAN_AGE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0590	name.env	env:HARBOR_CLEAN_BOUND	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0591	name.env	env:HARBOR_CLEAN_DUE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0592	name.env	env:HARBOR_CLEAN_GH	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0593	name.env	env:HARBOR_CLEAN_HOME	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0594	name.env	env:HARBOR_CLEAN_IDLE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0595	name.env	env:HARBOR_CLEAN_PR_LIMIT	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0596	name.env	env:HARBOR_CLEAN_SCRATCH	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0597	name.env	env:HARBOR_CLEAN_SLOTS	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0598	name.env	env:HARBOR_CONST_WALK_MAX	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0599	name.env	env:HARBOR_CUDOCTOR_MAX_AGE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0600	name.env	env:HARBOR_CURL	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0601	name.env	env:HARBOR_DEPLOY	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0602	name.env	env:HARBOR_DRIVE_MOUNT	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0603	name.env	env:HARBOR_DRIVE_WAIT	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0604	name.env	env:HARBOR_ESTATE_ROOT	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0605	name.env	env:HARBOR_FC_HORIZON_DAYS	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0606	name.env	env:HARBOR_FC_NOW	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0607	name.env	env:HARBOR_FINDINGS_NOW	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0608	name.env	env:HARBOR_FINDINGS_OUT	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0609	name.env	env:HARBOR_FINDINGS_REPO	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0610	name.env	env:HARBOR_FINDINGS_URL	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0611	name.env	env:HARBOR_FLEET_FILE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0612	name.env	env:HARBOR_FLEET_MAX_AGE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0613	name.env	env:HARBOR_GH	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0614	name.env	env:HARBOR_GLYPH_COLS	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0615	name.env	env:HARBOR_GLYPH_DUMP	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0616	name.env	env:HARBOR_GLYPH_NAME_CAP	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0617	name.env	env:HARBOR_GLYPH_STALE_S	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0618	name.env	env:HARBOR_HARVEST_CAP	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0619	name.env	env:HARBOR_HARVEST_DAYS	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0620	name.env	env:HARBOR_HOSTS_FILE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0621	name.env	env:HARBOR_INDEX_BYTES_PER_POINTER	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0622	name.env	env:HARBOR_INDEX_STRUCTURE_BYTES	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0623	name.env	env:HARBOR_IN_SUITE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0624	name.env	env:HARBOR_ISA_OUT	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0625	name.env	env:HARBOR_ISA_STORE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0626	name.env	env:HARBOR_ISSUE_REPO	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0627	name.env	env:HARBOR_K	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0628	name.env	env:HARBOR_LEVEL	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0629	name.env	env:HARBOR_LOCAL_BIN	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0630	name.env	env:HARBOR_LOG_DIR	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0631	name.env	env:HARBOR_LOG_REPO	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0632	name.env	env:HARBOR_LOG_TOKEN_FILE	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0633	name.env	env:HARBOR_M	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0634	name.env	env:HARBOR_NOW	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0635	name.env	env:HARBOR_ORCHESTRATOR	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0636	name.env	env:HARBOR_ORCH_BIN	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0637	name.env	env:HARBOR_PEERS_DIR	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0638	name.env	env:HARBOR_PEER_EXCLUDE	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0639	name.env	env:HARBOR_PLANTED	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0640	name.env	env:HARBOR_PLAN_OUT	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0641	name.env	env:HARBOR_PLAN_SRC	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0642	name.env	env:HARBOR_PREPUSH_FULL	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0643	name.env	env:HARBOR_PROBE_DIR	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0644	name.env	env:HARBOR_PROJECT_INIT	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0648	name.env	env:HARBOR_PW_CLI	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0649	name.env	env:HARBOR_Q	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0650	name.env	env:HARBOR_REACHED	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0651	name.env	env:HARBOR_RECEIPTS	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0652	name.env	env:HARBOR_REPO	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0654	name.env	env:HARBOR_REQUIRE_BUN	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0655	name.env	env:HARBOR_REQUIRE_GITLEAKS	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0656	name.env	env:HARBOR_RESULT_BYTES	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0657	name.env	env:HARBOR_RH_COST_S	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0658	name.env	env:HARBOR_RH_LINT	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0659	name.env	env:HARBOR_RH_NOW	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0660	name.env	env:HARBOR_RH_SUITES	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0661	name.env	env:HARBOR_ROOT	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0662	name.env	env:HARBOR_ROOTS_TABLE	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0663	name.env	env:HARBOR_RUNNER	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0664	name.env	env:HARBOR_RUNNERS_DIR	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0665	name.env	env:HARBOR_SESSIONS_DIR	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0666	name.env	env:HARBOR_SHIMS_TABLE	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0667	name.env	env:HARBOR_SKIP_CROSS	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0668	name.env	env:HARBOR_STATUSLINE_REFRESH	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0669	name.env	env:HARBOR_SUBGLYPH_DUMP	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0670	name.env	env:HARBOR_SUITE_COUNTS	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0671	name.env	env:HARBOR_SUITE_JOBS	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0672	name.env	env:HARBOR_SUITE_TAIL	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0673	name.env	env:HARBOR_SUITE_TIMEOUT	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0674	name.env	env:HARBOR_SWITCH_REPO	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0675	name.env	env:HARBOR_TAXONOMY	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0676	name.env	env:HARBOR_TELOS_DIR	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0677	name.env	env:HARBOR_TIP_BRANCH	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0678	name.env	env:HARBOR_TIP_PENDING_SEC	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0679	name.env	env:HARBOR_TIP_REPO	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0680	name.env	env:HARBOR_TIP_WINDOW	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0681	name.env	env:HARBOR_TOUCHED	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0682	name.env	env:HARBOR_TRANSCRIPTS	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0683	name.env	env:HARBOR_TRANSCRIPT_DIR	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0684	name.env	env:HARBOR_WORKFLOW	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0685	name.env	env:HARBOR_WORKLOG_MAX_AGE	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0686	name.env	env:HARBOR_X	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
+legacy-0687	name.env	env:HARBOR_Z	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
 legacy-0688	name.env	env:HELM_CRED_OCC	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0689	name.env	env:HELM_DESTROY_POSTURE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0690	name.env	env:HELM_DISABLE_FLOOR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
@@ -725,8 +324,6 @@ legacy-0692	name.env	env:HELM_FLOOR_SHADOW	legacy	2027-02-15	first scan, harbor#
 legacy-0693	name.env	env:HELM_LIVE_DIR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0694	name.env	env:HELM_OBS_DISABLE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0695	name.env	env:HELM_SANDBOX_DIR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0696	name.extension	fixtures/pretooluse-bash.real.json	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0697	name.extension	fixtures/pretooluse-write.real.json	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0698	name.extension	skills/test-strength/targets/casefile.target	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0699	name.extension	skills/test-strength/targets/floor.target	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0700	name.extension	skills/test-strength/targets/platform.target	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
@@ -734,76 +331,16 @@ legacy-0701	name.extension	skills/test-strength/targets/prove-engine.target	lega
 legacy-0702	name.extension	skills/test-strength/targets/topology-structure.target	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0703	name.extension	skills/test-strength/targets/topology-trigger.target	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0704	name.extension	skills/test-strength/targets/topology.target	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
-legacy-0705	name.extension	tests/checks/lint.c9-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0706	name.extension	tests/checks/lint.cli-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0707	name.extension	tests/checks/lint.docs-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0708	name.extension	tests/checks/lint.findings-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0709	name.extension	tests/checks/lint.git-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0710	name.extension	tests/checks/lint.inject-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0711	name.extension	tests/checks/lint.install-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0712	name.extension	tests/checks/lint.log-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0713	name.extension	tests/checks/lint.name-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0714	name.extension	tests/checks/lint.redproof-rest-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0715	name.extension	tests/checks/lint.redproof-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0716	name.extension	tests/checks/lint.skills-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0717	name.extension	tests/checks/lint.suites-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0718	name.extension	tests/checks/reference-check.skills-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0727	name.extension	tests/floor/floor.b6-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0728	name.extension	tests/floor/floor.b8-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0729	name.extension	tests/floor/floor.install-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0730	name.extension	tests/floor/floor.ledger-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0731	name.extension	tests/floor/floor.session-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0732	name.extension	tests/floor/floor.shards-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0733	name.extension	tests/floor/floor.status-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0734	name.extension	tests/guards/bash.cd-fold-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0735	name.extension	tests/guards/bash.cd-fold.jsonl	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0736	name.extension	tests/guards/bash.config-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0737	name.extension	tests/guards/bash.destroy-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0738	name.extension	tests/guards/bash.destroy.jsonl	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0739	name.extension	tests/guards/bash.exec-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0740	name.extension	tests/guards/bash.exec.jsonl	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0741	name.extension	tests/guards/bash.floor-surface-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0742	name.extension	tests/guards/bash.floor-surface.jsonl	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0743	name.extension	tests/guards/bash.state-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0744	name.extension	tests/guards/bash.state.jsonl	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0745	name.extension	tests/guards/cloud.msg.jsonl	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0746	name.extension	tests/guards/deliverables.msg.jsonl	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0747	name.extension	tests/guards/destroy.msg.jsonl	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0748	name.extension	tests/hooks/failure-capture.fc5-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0749	name.extension	tests/hooks/failure-capture.ledger-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0750	name.extension	tests/hooks/inject-hook.detector-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0751	name.extension	tests/hooks/inject-hook.engine-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0752	name.extension	tests/hooks/inject-hook.packs-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0753	name.extension	tests/hooks/inject-hook.scope-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0754	name.extension	tests/hooks/statusline.fleet-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0755	name.extension	tests/hooks/statusline.row2-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0756	name.extension	tests/hooks/statusline.subagent-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0757	name.extension	tests/install/deploy.prune-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0758	name.extension	tests/install/deploy.standard-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0759	name.extension	tests/obs/findings.heal-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0760	name.extension	tests/skills/prove.cli-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0761	name.extension	tests/skills/prove.engine-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0762	name.extension	tests/skills/prove.report-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0763	name.extension	tests/skills/prove.watchdog-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0764	name.extension	tests/skills/skill-gates.maps-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0765	name.family	bin/ab-tally.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0766	name.family	bin/adoption-check.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0767	name.family	bin/annotate-web.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0768	name.family	bin/bootstrap.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0769	name.family	bin/browser-agent.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0770	name.family	bin/browser-cdp.mjs	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0771	name.family	bin/browser-hosts-add.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0774	name.family	bin/browser.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0775	name.family	bin/cite-verify.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0776	name.family	bin/cited-paths.awk	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0777	name.family	bin/constitution-install.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0780	name.family	bin/dashboard-gen.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0781	name.family	bin/deliver-drive.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0782	name.family	bin/deny-hash.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0783	name.family	bin/docs-gen.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0784	name.family	bin/doctor.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0785	name.family	bin/failure-capture.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0786	name.family	bin/failure-observe.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0787	name.family	bin/findings-run.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0788	name.family	bin/findings.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0789	name.family	bin/fleet-glyph.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
@@ -832,61 +369,42 @@ legacy-0811	name.family	bin/guard-lib.sh	legacy	2027-02-22	first scan, harbor#95
 legacy-0812	name.family	bin/guard-selfedit.sh	legacy	2027-02-22	first scan, harbor#950; W6 admission
 legacy-0813	name.family	bin/guard-stop.sh	legacy	2027-02-22	first scan, harbor#950; W6 admission
 legacy-0814	name.family	bin/harbor-clean.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0815	name.family	bin/hook-replay.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0816	name.family	bin/idea.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0817	name.family	bin/inject-hook.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0818	name.family	bin/inject-install.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0819	name.family	bin/install-drift.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0820	name.family	bin/install-lib.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0821	name.family	bin/install-stamp.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0822	name.family	bin/isa-index.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0823	name.family	bin/issue-connector.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0824	name.family	bin/judge-run.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0825	name.family	bin/live-verify.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0826	name.family	bin/log-lib.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0827	name.family	bin/main-tip-verdict.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0828	name.family	bin/marker-backfill.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0829	name.family	bin/merge-check.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0830	name.family	bin/merged-check.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0831	name.family	bin/module-shape.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0832	name.family	bin/mutation-tier.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0833	name.family	bin/observe-report.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0834	name.family	bin/pass-score.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0835	name.family	bin/pin-instructions.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0836	name.family	bin/plan-status.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0837	name.family	bin/port-paths.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0838	name.family	bin/pr-wait.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0839	name.family	bin/prod-guard-ambient.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0840	name.family	bin/prod-guard-install.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0841	name.family	bin/pulse-notify.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0842	name.family	bin/pulse.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0843	name.family	bin/reference-check.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0844	name.family	bin/renew-check.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0845	name.family	bin/replay-corpus.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0846	name.family	bin/replay-worker.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0847	name.family	bin/replay.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0848	name.family	bin/report-contract.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0849	name.family	bin/restore.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0850	name.family	bin/roots.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0851	name.family	bin/rule-health.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0852	name.family	bin/runner-switch.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0853	name.family	bin/runtime-install.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0854	name.family	bin/sandbox-make.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0855	name.family	bin/save-log-token.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0856	name.family	bin/sec0-harden.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0858	name.family	bin/shim-install.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0859	name.family	bin/skills-collide.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0860	name.family	bin/skills-install.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0861	name.family	bin/store-check.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0862	name.family	bin/subagent-glyph.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0863	name.family	bin/suite-run.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0864	name.family	bin/suite-select.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0865	name.family	bin/ticket-note.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0866	name.family	bin/usage-aggregate.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0867	name.family	bin/visual-check.mjs	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0868	name.family	bin/visual-check.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0869	name.family	bin/wf-progress.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0871	name.family	bin/worklog-push.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0872	name.family	bin/wrapper-falsify.py	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0876	name.launchd	launchd/com.harbor.findings.plist	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0877	name.launchd	launchd/com.harbor.fleet-snapshot.plist	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
@@ -895,371 +413,16 @@ legacy-0879	name.launchd	launchd/com.harbor.pulse.plist	legacy	2027-02-15	first 
 legacy-0880	name.launchd	launchd/com.harbor.usage-sessions.plist	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0881	name.launchd	launchd/com.harbor.usage.plist	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0882	name.separator	EVALS-DATA/e10inject/raw_a	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0883	name.separator	EVALS-DATA/e10inject/raw_a/clean__CONST-HOOK__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0884	name.separator	EVALS-DATA/e10inject/raw_a/clean__CONST-HOOK__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0885	name.separator	EVALS-DATA/e10inject/raw_a/clean__CONST-HOOK__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0886	name.separator	EVALS-DATA/e10inject/raw_a/clean__CONST-HOOK__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0887	name.separator	EVALS-DATA/e10inject/raw_a/clean__CONST-HOOK__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0888	name.separator	EVALS-DATA/e10inject/raw_a/clean__CONST-HOOK__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0889	name.separator	EVALS-DATA/e10inject/raw_a/clean__CONST__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0890	name.separator	EVALS-DATA/e10inject/raw_a/clean__CONST__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0891	name.separator	EVALS-DATA/e10inject/raw_a/clean__CONST__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0892	name.separator	EVALS-DATA/e10inject/raw_a/clean__CONST__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0893	name.separator	EVALS-DATA/e10inject/raw_a/clean__CONST__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0894	name.separator	EVALS-DATA/e10inject/raw_a/clean__CONST__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0895	name.separator	EVALS-DATA/e10inject/raw_a/clean__HOOK__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0896	name.separator	EVALS-DATA/e10inject/raw_a/clean__HOOK__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0897	name.separator	EVALS-DATA/e10inject/raw_a/clean__HOOK__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0898	name.separator	EVALS-DATA/e10inject/raw_a/clean__HOOK__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0899	name.separator	EVALS-DATA/e10inject/raw_a/clean__HOOK__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0900	name.separator	EVALS-DATA/e10inject/raw_a/clean__HOOK__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0901	name.separator	EVALS-DATA/e10inject/raw_a/clean__NONE__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0902	name.separator	EVALS-DATA/e10inject/raw_a/clean__NONE__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0903	name.separator	EVALS-DATA/e10inject/raw_a/clean__NONE__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0904	name.separator	EVALS-DATA/e10inject/raw_a/clean__NONE__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0905	name.separator	EVALS-DATA/e10inject/raw_a/clean__NONE__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0906	name.separator	EVALS-DATA/e10inject/raw_a/clean__NONE__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0907	name.separator	EVALS-DATA/e10inject/raw_a/harder__CONST-HOOK__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0908	name.separator	EVALS-DATA/e10inject/raw_a/harder__CONST-HOOK__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0909	name.separator	EVALS-DATA/e10inject/raw_a/harder__CONST-HOOK__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0910	name.separator	EVALS-DATA/e10inject/raw_a/harder__CONST-HOOK__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0911	name.separator	EVALS-DATA/e10inject/raw_a/harder__CONST-HOOK__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0912	name.separator	EVALS-DATA/e10inject/raw_a/harder__CONST-HOOK__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0913	name.separator	EVALS-DATA/e10inject/raw_a/harder__CONST__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0914	name.separator	EVALS-DATA/e10inject/raw_a/harder__CONST__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0915	name.separator	EVALS-DATA/e10inject/raw_a/harder__CONST__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0916	name.separator	EVALS-DATA/e10inject/raw_a/harder__CONST__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0917	name.separator	EVALS-DATA/e10inject/raw_a/harder__CONST__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0918	name.separator	EVALS-DATA/e10inject/raw_a/harder__CONST__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0919	name.separator	EVALS-DATA/e10inject/raw_a/harder__HOOK__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0920	name.separator	EVALS-DATA/e10inject/raw_a/harder__HOOK__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0921	name.separator	EVALS-DATA/e10inject/raw_a/harder__HOOK__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0922	name.separator	EVALS-DATA/e10inject/raw_a/harder__HOOK__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0923	name.separator	EVALS-DATA/e10inject/raw_a/harder__HOOK__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0924	name.separator	EVALS-DATA/e10inject/raw_a/harder__HOOK__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0925	name.separator	EVALS-DATA/e10inject/raw_a/harder__NONE__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0926	name.separator	EVALS-DATA/e10inject/raw_a/harder__NONE__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0927	name.separator	EVALS-DATA/e10inject/raw_a/harder__NONE__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0928	name.separator	EVALS-DATA/e10inject/raw_a/harder__NONE__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0929	name.separator	EVALS-DATA/e10inject/raw_a/harder__NONE__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0930	name.separator	EVALS-DATA/e10inject/raw_a/harder__NONE__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0931	name.separator	EVALS-DATA/e10inject/raw_a/quiet__CONST-HOOK__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0932	name.separator	EVALS-DATA/e10inject/raw_a/quiet__CONST-HOOK__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0933	name.separator	EVALS-DATA/e10inject/raw_a/quiet__CONST-HOOK__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0934	name.separator	EVALS-DATA/e10inject/raw_a/quiet__CONST-HOOK__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0935	name.separator	EVALS-DATA/e10inject/raw_a/quiet__CONST-HOOK__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0936	name.separator	EVALS-DATA/e10inject/raw_a/quiet__CONST-HOOK__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0937	name.separator	EVALS-DATA/e10inject/raw_a/quiet__CONST__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0938	name.separator	EVALS-DATA/e10inject/raw_a/quiet__CONST__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0939	name.separator	EVALS-DATA/e10inject/raw_a/quiet__CONST__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0940	name.separator	EVALS-DATA/e10inject/raw_a/quiet__CONST__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0941	name.separator	EVALS-DATA/e10inject/raw_a/quiet__CONST__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0942	name.separator	EVALS-DATA/e10inject/raw_a/quiet__CONST__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0943	name.separator	EVALS-DATA/e10inject/raw_a/quiet__HOOK__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0944	name.separator	EVALS-DATA/e10inject/raw_a/quiet__HOOK__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0945	name.separator	EVALS-DATA/e10inject/raw_a/quiet__HOOK__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0946	name.separator	EVALS-DATA/e10inject/raw_a/quiet__HOOK__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0947	name.separator	EVALS-DATA/e10inject/raw_a/quiet__HOOK__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0948	name.separator	EVALS-DATA/e10inject/raw_a/quiet__HOOK__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0949	name.separator	EVALS-DATA/e10inject/raw_a/quiet__NONE__r1.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0950	name.separator	EVALS-DATA/e10inject/raw_a/quiet__NONE__r2.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0951	name.separator	EVALS-DATA/e10inject/raw_a/quiet__NONE__r3.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0952	name.separator	EVALS-DATA/e10inject/raw_a/quiet__NONE__r4.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0953	name.separator	EVALS-DATA/e10inject/raw_a/quiet__NONE__r5.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0954	name.separator	EVALS-DATA/e10inject/raw_a/quiet__NONE__r6.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0955	name.separator	EVALS-DATA/e10inject/rows_a.json	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0956	name.separator	EVALS-DATA/e10inject/run_one.sh	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
-legacy-0957	name.separator	EVALS-DATA/e12rule9/grade-disclose.py	legacy	2026-12-07	first scan, harbor#950; W1 eval data e12rule9
-legacy-0958	name.separator	EVALS-DATA/e12rule9/grade-verify.py	legacy	2026-12-07	first scan, harbor#950; W1 eval data e12rule9
-legacy-0959	name.separator	EVALS-DATA/e12rule9/rows_a.json	legacy	2026-12-07	first scan, harbor#950; W1 eval data e12rule9
-legacy-0960	name.separator	EVALS-DATA/e12rule9/rows_b.json	legacy	2026-12-07	first scan, harbor#950; W1 eval data e12rule9
-legacy-0961	name.separator	EVALS-DATA/e12rule9/rows_b2_haiku.json	legacy	2026-12-07	first scan, harbor#950; W1 eval data e12rule9
-legacy-0962	name.separator	EVALS-DATA/e12rule9/rows_b2_sonnet.json	legacy	2026-12-07	first scan, harbor#950; W1 eval data e12rule9
-legacy-0963	name.separator	EVALS-DATA/e12rule9/rows_c2.json	legacy	2026-12-07	first scan, harbor#950; W1 eval data e12rule9
-legacy-0964	name.separator	EVALS-DATA/e12rule9/rows_c_inturn.json	legacy	2026-12-07	first scan, harbor#950; W1 eval data e12rule9
-legacy-0965	name.separator	EVALS-DATA/e12rule9/rows_d.json	legacy	2026-12-07	first scan, harbor#950; W1 eval data e12rule9
 legacy-0966	name.separator	EVALS-DATA/e5trap/raw_a	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0967	name.separator	EVALS-DATA/e5trap/raw_a/MANY__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0968	name.separator	EVALS-DATA/e5trap/raw_a/MANY__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0969	name.separator	EVALS-DATA/e5trap/raw_a/MANY__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0970	name.separator	EVALS-DATA/e5trap/raw_a/MANY__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
 legacy-0971	name.separator	EVALS-DATA/e5trap/raw_b	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0972	name.separator	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0973	name.separator	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0974	name.separator	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0975	name.separator	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0976	name.separator	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-N__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0977	name.separator	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-N__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0978	name.separator	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-N__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0979	name.separator	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-N__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0980	name.separator	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-R__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0981	name.separator	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-R__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0982	name.separator	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-R__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0983	name.separator	EVALS-DATA/e5trap/raw_b/DESC-GREP__T-R__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0984	name.separator	EVALS-DATA/e5trap/raw_b/MANY__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0985	name.separator	EVALS-DATA/e5trap/raw_b/MANY__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0986	name.separator	EVALS-DATA/e5trap/raw_b/MANY__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0987	name.separator	EVALS-DATA/e5trap/raw_b/MANY__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0988	name.separator	EVALS-DATA/e5trap/raw_b/MANY__T-N__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0989	name.separator	EVALS-DATA/e5trap/raw_b/MANY__T-N__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0990	name.separator	EVALS-DATA/e5trap/raw_b/MANY__T-N__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0991	name.separator	EVALS-DATA/e5trap/raw_b/MANY__T-N__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0992	name.separator	EVALS-DATA/e5trap/raw_b/MANY__T-R__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0993	name.separator	EVALS-DATA/e5trap/raw_b/MANY__T-R__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0994	name.separator	EVALS-DATA/e5trap/raw_b/MANY__T-R__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0995	name.separator	EVALS-DATA/e5trap/raw_b/MANY__T-R__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0996	name.separator	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0997	name.separator	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0998	name.separator	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-0999	name.separator	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1000	name.separator	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-N__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1001	name.separator	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-N__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1002	name.separator	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-N__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1003	name.separator	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-N__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1004	name.separator	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-R__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1005	name.separator	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-R__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1006	name.separator	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-R__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1007	name.separator	EVALS-DATA/e5trap/raw_b/NO-INDEX__T-R__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
 legacy-1008	name.separator	EVALS-DATA/e5trap/raw_c	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1009	name.separator	EVALS-DATA/e5trap/raw_c/DESC-GREP__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1010	name.separator	EVALS-DATA/e5trap/raw_c/DESC-GREP__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1011	name.separator	EVALS-DATA/e5trap/raw_c/DESC-GREP__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1012	name.separator	EVALS-DATA/e5trap/raw_c/DESC-GREP__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1013	name.separator	EVALS-DATA/e5trap/raw_c/DESC-GREP__T-M__r5.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1014	name.separator	EVALS-DATA/e5trap/raw_c/DESC-GREP__T-M__r6.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1015	name.separator	EVALS-DATA/e5trap/raw_c/MANY__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1016	name.separator	EVALS-DATA/e5trap/raw_c/MANY__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1017	name.separator	EVALS-DATA/e5trap/raw_c/MANY__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1018	name.separator	EVALS-DATA/e5trap/raw_c/MANY__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1019	name.separator	EVALS-DATA/e5trap/raw_c/MANY__T-M__r5.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1020	name.separator	EVALS-DATA/e5trap/raw_c/MANY__T-M__r6.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1021	name.separator	EVALS-DATA/e5trap/raw_c/NO-INDEX__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1022	name.separator	EVALS-DATA/e5trap/raw_c/NO-INDEX__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1023	name.separator	EVALS-DATA/e5trap/raw_c/NO-INDEX__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1024	name.separator	EVALS-DATA/e5trap/raw_c/NO-INDEX__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1025	name.separator	EVALS-DATA/e5trap/raw_c/NO-INDEX__T-M__r5.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1026	name.separator	EVALS-DATA/e5trap/raw_c/NO-INDEX__T-M__r6.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
 legacy-1027	name.separator	EVALS-DATA/e5trap/raw_d	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1028	name.separator	EVALS-DATA/e5trap/raw_d/DESC-GREP__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1029	name.separator	EVALS-DATA/e5trap/raw_d/DESC-GREP__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1030	name.separator	EVALS-DATA/e5trap/raw_d/DESC-GREP__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1031	name.separator	EVALS-DATA/e5trap/raw_d/DESC-GREP__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1032	name.separator	EVALS-DATA/e5trap/raw_d/MANY__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1033	name.separator	EVALS-DATA/e5trap/raw_d/MANY__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1034	name.separator	EVALS-DATA/e5trap/raw_d/MANY__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1035	name.separator	EVALS-DATA/e5trap/raw_d/MANY__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1036	name.separator	EVALS-DATA/e5trap/raw_d/NO-INDEX__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1037	name.separator	EVALS-DATA/e5trap/raw_d/NO-INDEX__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1038	name.separator	EVALS-DATA/e5trap/raw_d/NO-INDEX__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1039	name.separator	EVALS-DATA/e5trap/raw_d/NO-INDEX__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
 legacy-1040	name.separator	EVALS-DATA/e5trap/raw_e	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1041	name.separator	EVALS-DATA/e5trap/raw_e/HOOK-DENY__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1042	name.separator	EVALS-DATA/e5trap/raw_e/HOOK-DENY__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1043	name.separator	EVALS-DATA/e5trap/raw_e/HOOK-DENY__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1044	name.separator	EVALS-DATA/e5trap/raw_e/HOOK-DENY__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1045	name.separator	EVALS-DATA/e5trap/raw_e/HOOK-INFORM__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1046	name.separator	EVALS-DATA/e5trap/raw_e/HOOK-INFORM__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1047	name.separator	EVALS-DATA/e5trap/raw_e/HOOK-INFORM__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1048	name.separator	EVALS-DATA/e5trap/raw_e/HOOK-INFORM__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1049	name.separator	EVALS-DATA/e5trap/raw_e/PROSE__T-M__r1.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1050	name.separator	EVALS-DATA/e5trap/raw_e/PROSE__T-M__r2.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1051	name.separator	EVALS-DATA/e5trap/raw_e/PROSE__T-M__r3.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1052	name.separator	EVALS-DATA/e5trap/raw_e/PROSE__T-M__r4.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1053	name.separator	EVALS-DATA/e5trap/rows_a.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1054	name.separator	EVALS-DATA/e5trap/rows_b.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1055	name.separator	EVALS-DATA/e5trap/rows_c.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1056	name.separator	EVALS-DATA/e5trap/rows_d.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1057	name.separator	EVALS-DATA/e5trap/rows_e.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1058	name.separator	EVALS-DATA/e5trap/run_one.sh	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1059	name.separator	EVALS-DATA/e5trap/runlist_a.txt	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1060	name.separator	EVALS-DATA/e5trap/runlist_b.txt	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1061	name.separator	EVALS-DATA/e5trap/runlist_c.txt	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1062	name.separator	EVALS-DATA/e5trap/runlist_d.txt	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1063	name.separator	EVALS-DATA/e5trap/runlist_e.txt	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1064	name.separator	EVALS-DATA/e5trap/runner_a.log	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1065	name.separator	EVALS-DATA/e5trap/runner_b.log	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1066	name.separator	EVALS-DATA/e5trap/runner_c.log	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1067	name.separator	EVALS-DATA/e5trap/runner_d.log	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1068	name.separator	EVALS-DATA/e5trap/runner_e.log	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1069	name.separator	EVALS-DATA/e5trap/trace_a.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1070	name.separator	EVALS-DATA/e5trap/trace_b.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1071	name.separator	EVALS-DATA/e5trap/trace_c.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1072	name.separator	EVALS-DATA/e5trap/trace_d.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
-legacy-1073	name.separator	EVALS-DATA/e5trap/trace_e.json	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
 legacy-1074	name.separator	EVALS-DATA/e7scale/raw_a	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1075	name.separator	EVALS-DATA/e7scale/raw_a/BOX__IN__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1076	name.separator	EVALS-DATA/e7scale/raw_a/BOX__IN__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1077	name.separator	EVALS-DATA/e7scale/raw_a/BOX__IN__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1078	name.separator	EVALS-DATA/e7scale/raw_a/BOX__IN__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1079	name.separator	EVALS-DATA/e7scale/raw_a/BOX__OUT__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1080	name.separator	EVALS-DATA/e7scale/raw_a/BOX__OUT__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1081	name.separator	EVALS-DATA/e7scale/raw_a/BOX__OUT__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1082	name.separator	EVALS-DATA/e7scale/raw_a/BOX__OUT__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1083	name.separator	EVALS-DATA/e7scale/raw_a/SCOPED-POINTER__IN__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1084	name.separator	EVALS-DATA/e7scale/raw_a/SCOPED-POINTER__IN__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1085	name.separator	EVALS-DATA/e7scale/raw_a/SCOPED-POINTER__IN__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1086	name.separator	EVALS-DATA/e7scale/raw_a/SCOPED-POINTER__IN__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1087	name.separator	EVALS-DATA/e7scale/raw_a/SCOPED-POINTER__OUT__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1088	name.separator	EVALS-DATA/e7scale/raw_a/SCOPED-POINTER__OUT__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1089	name.separator	EVALS-DATA/e7scale/raw_a/SCOPED-POINTER__OUT__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1090	name.separator	EVALS-DATA/e7scale/raw_a/SCOPED-POINTER__OUT__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1091	name.separator	EVALS-DATA/e7scale/raw_a/SCOPED__IN__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1092	name.separator	EVALS-DATA/e7scale/raw_a/SCOPED__IN__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1093	name.separator	EVALS-DATA/e7scale/raw_a/SCOPED__IN__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1094	name.separator	EVALS-DATA/e7scale/raw_a/SCOPED__IN__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1095	name.separator	EVALS-DATA/e7scale/raw_a/SCOPED__OUT__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1096	name.separator	EVALS-DATA/e7scale/raw_a/SCOPED__OUT__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1097	name.separator	EVALS-DATA/e7scale/raw_a/SCOPED__OUT__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1098	name.separator	EVALS-DATA/e7scale/raw_a/SCOPED__OUT__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
 legacy-1099	name.separator	EVALS-DATA/e7scale/raw_b	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1100	name.separator	EVALS-DATA/e7scale/raw_b/BOX__IN__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1101	name.separator	EVALS-DATA/e7scale/raw_b/BOX__IN__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1102	name.separator	EVALS-DATA/e7scale/raw_b/BOX__IN__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1103	name.separator	EVALS-DATA/e7scale/raw_b/BOX__IN__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1104	name.separator	EVALS-DATA/e7scale/raw_b/BOX__OUT__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1105	name.separator	EVALS-DATA/e7scale/raw_b/BOX__OUT__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1106	name.separator	EVALS-DATA/e7scale/raw_b/BOX__OUT__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1107	name.separator	EVALS-DATA/e7scale/raw_b/BOX__OUT__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1108	name.separator	EVALS-DATA/e7scale/raw_b/SCOPED-POINTER__IN__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1109	name.separator	EVALS-DATA/e7scale/raw_b/SCOPED-POINTER__IN__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1110	name.separator	EVALS-DATA/e7scale/raw_b/SCOPED-POINTER__IN__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1111	name.separator	EVALS-DATA/e7scale/raw_b/SCOPED-POINTER__IN__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1112	name.separator	EVALS-DATA/e7scale/raw_b/SCOPED-POINTER__OUT__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1113	name.separator	EVALS-DATA/e7scale/raw_b/SCOPED-POINTER__OUT__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1114	name.separator	EVALS-DATA/e7scale/raw_b/SCOPED-POINTER__OUT__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1115	name.separator	EVALS-DATA/e7scale/raw_b/SCOPED-POINTER__OUT__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1116	name.separator	EVALS-DATA/e7scale/raw_b/SCOPED__IN__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1117	name.separator	EVALS-DATA/e7scale/raw_b/SCOPED__IN__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1118	name.separator	EVALS-DATA/e7scale/raw_b/SCOPED__IN__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1119	name.separator	EVALS-DATA/e7scale/raw_b/SCOPED__IN__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1120	name.separator	EVALS-DATA/e7scale/raw_b/SCOPED__OUT__r1.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1121	name.separator	EVALS-DATA/e7scale/raw_b/SCOPED__OUT__r2.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1122	name.separator	EVALS-DATA/e7scale/raw_b/SCOPED__OUT__r3.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1123	name.separator	EVALS-DATA/e7scale/raw_b/SCOPED__OUT__r4.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1124	name.separator	EVALS-DATA/e7scale/rows_a.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1125	name.separator	EVALS-DATA/e7scale/rows_b.json	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1126	name.separator	EVALS-DATA/e7scale/run_one.sh	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1127	name.separator	EVALS-DATA/e7scale/runlist_a.txt	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1128	name.separator	EVALS-DATA/e7scale/runlist_b.txt	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1129	name.separator	EVALS-DATA/e7scale/runner_a.log	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
-legacy-1130	name.separator	EVALS-DATA/e7scale/runner_b.log	legacy	2026-12-21	first scan, harbor#950; W1 eval data e7scale
 legacy-1131	name.separator	EVALS-DATA/e8dilute/raw_a	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1132	name.separator	EVALS-DATA/e8dilute/raw_a/CUT__r1.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1133	name.separator	EVALS-DATA/e8dilute/raw_a/CUT__r2.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1134	name.separator	EVALS-DATA/e8dilute/raw_a/CUT__r3.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1135	name.separator	EVALS-DATA/e8dilute/raw_a/CUT__r4.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1136	name.separator	EVALS-DATA/e8dilute/raw_a/CUT__r5.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1137	name.separator	EVALS-DATA/e8dilute/raw_a/CUT__r6.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1138	name.separator	EVALS-DATA/e8dilute/raw_a/FULL__r1.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1139	name.separator	EVALS-DATA/e8dilute/raw_a/FULL__r2.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1140	name.separator	EVALS-DATA/e8dilute/raw_a/FULL__r3.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1141	name.separator	EVALS-DATA/e8dilute/raw_a/FULL__r4.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1142	name.separator	EVALS-DATA/e8dilute/raw_a/FULL__r5.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1143	name.separator	EVALS-DATA/e8dilute/raw_a/FULL__r6.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1144	name.separator	EVALS-DATA/e8dilute/raw_a/MINIMAL__r1.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1145	name.separator	EVALS-DATA/e8dilute/raw_a/MINIMAL__r2.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1146	name.separator	EVALS-DATA/e8dilute/raw_a/MINIMAL__r3.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1147	name.separator	EVALS-DATA/e8dilute/raw_a/MINIMAL__r4.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1148	name.separator	EVALS-DATA/e8dilute/raw_a/MINIMAL__r5.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1149	name.separator	EVALS-DATA/e8dilute/raw_a/MINIMAL__r6.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1150	name.separator	EVALS-DATA/e8dilute/raw_a/NONE__r1.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1151	name.separator	EVALS-DATA/e8dilute/raw_a/NONE__r2.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1152	name.separator	EVALS-DATA/e8dilute/raw_a/NONE__r3.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1153	name.separator	EVALS-DATA/e8dilute/raw_a/NONE__r4.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1154	name.separator	EVALS-DATA/e8dilute/raw_a/NONE__r5.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1155	name.separator	EVALS-DATA/e8dilute/raw_a/NONE__r6.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1156	name.separator	EVALS-DATA/e8dilute/rows_a.json	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1157	name.separator	EVALS-DATA/e8dilute/run_one.sh	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1158	name.separator	EVALS-DATA/e8dilute/runlist_a.txt	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
-legacy-1159	name.separator	EVALS-DATA/e8dilute/runner_a.log	legacy	2026-12-28	first scan, harbor#950; W1 eval data e8dilute
 legacy-1160	name.separator	EVALS-DATA/e9ablate/raw_b	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1161	name.separator	EVALS-DATA/e9ablate/raw_b/OPS__ABLATED__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1162	name.separator	EVALS-DATA/e9ablate/raw_b/OPS__ABLATED__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1163	name.separator	EVALS-DATA/e9ablate/raw_b/OPS__ABLATED__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1164	name.separator	EVALS-DATA/e9ablate/raw_b/OPS__ABLATED__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1165	name.separator	EVALS-DATA/e9ablate/raw_b/OPS__FULL__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1166	name.separator	EVALS-DATA/e9ablate/raw_b/OPS__FULL__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1167	name.separator	EVALS-DATA/e9ablate/raw_b/OPS__FULL__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1168	name.separator	EVALS-DATA/e9ablate/raw_b/OPS__FULL__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1169	name.separator	EVALS-DATA/e9ablate/raw_b/OPS__NONE__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1170	name.separator	EVALS-DATA/e9ablate/raw_b/OPS__NONE__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1171	name.separator	EVALS-DATA/e9ablate/raw_b/OPS__NONE__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1172	name.separator	EVALS-DATA/e9ablate/raw_b/OPS__NONE__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1173	name.separator	EVALS-DATA/e9ablate/raw_b/R5__ABLATED__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1174	name.separator	EVALS-DATA/e9ablate/raw_b/R5__ABLATED__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1175	name.separator	EVALS-DATA/e9ablate/raw_b/R5__ABLATED__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1176	name.separator	EVALS-DATA/e9ablate/raw_b/R5__ABLATED__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1177	name.separator	EVALS-DATA/e9ablate/raw_b/R5__FULL__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1178	name.separator	EVALS-DATA/e9ablate/raw_b/R5__FULL__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1179	name.separator	EVALS-DATA/e9ablate/raw_b/R5__FULL__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1180	name.separator	EVALS-DATA/e9ablate/raw_b/R5__FULL__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1181	name.separator	EVALS-DATA/e9ablate/raw_b/R5__NONE__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1182	name.separator	EVALS-DATA/e9ablate/raw_b/R5__NONE__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1183	name.separator	EVALS-DATA/e9ablate/raw_b/R5__NONE__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1184	name.separator	EVALS-DATA/e9ablate/raw_b/R5__NONE__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1185	name.separator	EVALS-DATA/e9ablate/raw_b/SEC__ABLATED__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1186	name.separator	EVALS-DATA/e9ablate/raw_b/SEC__ABLATED__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1187	name.separator	EVALS-DATA/e9ablate/raw_b/SEC__ABLATED__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1188	name.separator	EVALS-DATA/e9ablate/raw_b/SEC__ABLATED__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1189	name.separator	EVALS-DATA/e9ablate/raw_b/SEC__FULL__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1190	name.separator	EVALS-DATA/e9ablate/raw_b/SEC__FULL__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1191	name.separator	EVALS-DATA/e9ablate/raw_b/SEC__FULL__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1192	name.separator	EVALS-DATA/e9ablate/raw_b/SEC__FULL__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1193	name.separator	EVALS-DATA/e9ablate/raw_b/SEC__NONE__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1194	name.separator	EVALS-DATA/e9ablate/raw_b/SEC__NONE__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1195	name.separator	EVALS-DATA/e9ablate/raw_b/SEC__NONE__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1196	name.separator	EVALS-DATA/e9ablate/raw_b/SEC__NONE__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1197	name.separator	EVALS-DATA/e9ablate/raw_b/VER__ABLATED__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1198	name.separator	EVALS-DATA/e9ablate/raw_b/VER__ABLATED__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1199	name.separator	EVALS-DATA/e9ablate/raw_b/VER__ABLATED__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1200	name.separator	EVALS-DATA/e9ablate/raw_b/VER__ABLATED__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1201	name.separator	EVALS-DATA/e9ablate/raw_b/VER__FULL__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1202	name.separator	EVALS-DATA/e9ablate/raw_b/VER__FULL__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1203	name.separator	EVALS-DATA/e9ablate/raw_b/VER__FULL__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1204	name.separator	EVALS-DATA/e9ablate/raw_b/VER__FULL__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1205	name.separator	EVALS-DATA/e9ablate/raw_b/VER__NONE__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1206	name.separator	EVALS-DATA/e9ablate/raw_b/VER__NONE__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1207	name.separator	EVALS-DATA/e9ablate/raw_b/VER__NONE__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1208	name.separator	EVALS-DATA/e9ablate/raw_b/VER__NONE__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
 legacy-1209	name.separator	EVALS-DATA/e9ablate/raw_c	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1210	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__ABLATED__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1211	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__ABLATED__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1212	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__ABLATED__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1213	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__ABLATED__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1214	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__ABLATED__r5.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1215	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__ABLATED__r6.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1216	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__ABLATED__r7.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1217	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__ABLATED__r8.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1218	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__FULL__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1219	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__FULL__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1220	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__FULL__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1221	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__FULL__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1222	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__FULL__r5.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1223	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__FULL__r6.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1224	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__FULL__r7.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1225	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__FULL__r8.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1226	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__NONE__r1.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1227	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__NONE__r2.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1228	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__NONE__r3.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1229	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__NONE__r4.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1230	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__NONE__r5.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1231	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__NONE__r6.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1232	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__NONE__r7.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1233	name.separator	EVALS-DATA/e9ablate/raw_c/SEC__NONE__r8.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1234	name.separator	EVALS-DATA/e9ablate/rows_b.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1235	name.separator	EVALS-DATA/e9ablate/rows_c.json	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1236	name.separator	EVALS-DATA/e9ablate/run_one.sh	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1237	name.separator	EVALS-DATA/e9ablate/runlist_b.txt	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1238	name.separator	EVALS-DATA/e9ablate/runlist_c.txt	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1239	name.separator	EVALS-DATA/e9ablate/runner_b.log	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1240	name.separator	EVALS-DATA/e9ablate/runner_c.log	legacy	2027-01-04	first scan, harbor#950; W1 eval data e9ablate
-legacy-1241	name.separator	EVALS-DATA/sliced/prompts_routed.json	legacy	2027-01-18	first scan, harbor#950; W1 eval data sliced
-legacy-1242	name.separator	EVALS-DATA/sliced/prompts_spont.json	legacy	2027-01-18	first scan, harbor#950; W1 eval data sliced
-legacy-1243	name.separator	EVALS-DATA/sliced/results2_rows.json	legacy	2027-01-18	first scan, harbor#950; W1 eval data sliced
-legacy-1244	name.separator	EVALS-DATA/sliced/run_four.sh	legacy	2027-01-18	first scan, harbor#950; W1 eval data sliced
-legacy-1245	name.separator	EVALS-DATA/sliced/run_one.sh	legacy	2027-01-18	first scan, harbor#950; W1 eval data sliced
-legacy-1246	name.separator	EVALS-DATA/sliced/run_two.sh	legacy	2027-01-18	first scan, harbor#950; W1 eval data sliced
-legacy-1247	name.separator	fixtures/memory/corpus/LEARNING/spaced name.md	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1248	name.skill-dir	skills/ad-inventory	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-1249	name.skill-dir	skills/atlas	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-1250	name.skill-dir	skills/browser	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
@@ -1270,181 +433,48 @@ legacy-1256	name.skill-dir	skills/learning-artifact	legacy	2027-03-01	first scan
 legacy-1258	name.skill-dir	skills/platform-signals	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-1261	name.skill-dir	skills/topology	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-1262	name.test-path	tests/checks	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1263	name.test-path	tests/checks/docs-gen-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1264	name.test-path	tests/checks/lint-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1265	name.test-path	tests/checks/lint.c9-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1266	name.test-path	tests/checks/lint.cli-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1267	name.test-path	tests/checks/lint.docs-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1268	name.test-path	tests/checks/lint.findings-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1269	name.test-path	tests/checks/lint.git-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1270	name.test-path	tests/checks/lint.inject-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1271	name.test-path	tests/checks/lint.install-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1272	name.test-path	tests/checks/lint.log-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1273	name.test-path	tests/checks/lint.name-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1274	name.test-path	tests/checks/lint.redproof-rest-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1275	name.test-path	tests/checks/lint.redproof-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1276	name.test-path	tests/checks/lint.skills-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1277	name.test-path	tests/checks/lint.suites-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1278	name.test-path	tests/checks/module-shape-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1279	name.test-path	tests/checks/reference-check-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1280	name.test-path	tests/checks/reference-check.skills-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1281	name.test-path	tests/checks/rule-health-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1282	name.test-path	tests/checks/schedules-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1283	name.test-path	tests/checks/test-contract-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1284	name.test-path	tests/checks/visual-check-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1285	name.test-path	tests/ci/ci-queue-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1286	name.test-path	tests/ci/hooks-env-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1287	name.test-path	tests/ci/main-tip-verdict-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1288	name.test-path	tests/ci/merge-check-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1289	name.test-path	tests/ci/merged-check-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1290	name.test-path	tests/ci/plan-status-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1291	name.test-path	tests/ci/pr-wait-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1292	name.test-path	tests/ci/runner-switch-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1293	name.test-path	tests/ci/status-gen-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1294	name.test-path	tests/ci/suite-run-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1295	name.test-path	tests/ci/suite-select-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1296	name.test-path	tests/ci/worktree-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1297	name.test-path	tests/cli	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1298	name.test-path	tests/cli/browser-hosts-add-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1299	name.test-path	tests/cli/browser-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1309	name.test-path	tests/cli/gcloud-creds-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1310	name.test-path	tests/cli/gcx-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1311	name.test-path	tests/cli/harbor-clean-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1312	name.test-path	tests/cli/harbor-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1313	name.test-path	tests/cli/issue-connector-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1314	name.test-path	tests/cli/live-verify-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1315	name.test-path	tests/cli/secret-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1316	name.test-path	tests/floor	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1317	name.test-path	tests/floor/deny-hash-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1318	name.test-path	tests/floor/floor-equiv-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1319	name.test-path	tests/floor/floor-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1320	name.test-path	tests/floor/floor.b6-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1321	name.test-path	tests/floor/floor.b8-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1322	name.test-path	tests/floor/floor.install-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1323	name.test-path	tests/floor/floor.ledger-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1324	name.test-path	tests/floor/floor.session-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1325	name.test-path	tests/floor/floor.shards-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1326	name.test-path	tests/floor/floor.status-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1327	name.test-path	tests/floor/marker-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1328	name.test-path	tests/floor/mutation-tier-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1329	name.test-path	tests/floor/normalize-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1330	name.test-path	tests/floor/recover-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1331	name.test-path	tests/floor/replay-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1332	name.test-path	tests/guards	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1333	name.test-path	tests/guards/bash-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1334	name.test-path	tests/guards/bash.cd-fold-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1335	name.test-path	tests/guards/bash.config-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1336	name.test-path	tests/guards/bash.destroy-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1337	name.test-path	tests/guards/bash.exec-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1338	name.test-path	tests/guards/bash.floor-surface-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1339	name.test-path	tests/guards/bash.state-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1340	name.test-path	tests/guards/cloud-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1341	name.test-path	tests/guards/deliverables-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1342	name.test-path	tests/guards/destroy-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1343	name.test-path	tests/guards/egress-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1344	name.test-path	tests/guards/selfedit-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1345	name.test-path	tests/hooks	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1346	name.test-path	tests/hooks/apiroute-guard-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1347	name.test-path	tests/hooks/failure-capture-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1348	name.test-path	tests/hooks/failure-capture.fc5-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1349	name.test-path	tests/hooks/failure-capture.ledger-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1350	name.test-path	tests/hooks/failure-observe-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1351	name.test-path	tests/hooks/govern-hook-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1352	name.test-path	tests/hooks/inject-hook.detector-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1353	name.test-path	tests/hooks/inject-hook.engine-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1354	name.test-path	tests/hooks/inject-hook.packs-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1355	name.test-path	tests/hooks/inject-hook.scope-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1356	name.test-path	tests/hooks/inject-notes-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1357	name.test-path	tests/hooks/prod-guard-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1358	name.test-path	tests/hooks/save-log-token-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1359	name.test-path	tests/hooks/statusline-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1360	name.test-path	tests/hooks/statusline.fleet-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1361	name.test-path	tests/hooks/statusline.row2-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1362	name.test-path	tests/hooks/statusline.subagent-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1363	name.test-path	tests/hooks/stop-guard-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1364	name.test-path	tests/hooks/ticket-note-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1365	name.test-path	tests/install	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1366	name.test-path	tests/install/bootstrap-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1367	name.test-path	tests/install/constitution-install-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1368	name.test-path	tests/install/deploy-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1369	name.test-path	tests/install/deploy.prune-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1370	name.test-path	tests/install/deploy.standard-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1371	name.test-path	tests/install/doctor-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1372	name.test-path	tests/install/floor-uninstall-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1373	name.test-path	tests/install/inject-install-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1374	name.test-path	tests/install/install-drift-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1375	name.test-path	tests/install/install-stamp-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1376	name.test-path	tests/install/port-paths-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1377	name.test-path	tests/install/roots-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1378	name.test-path	tests/install/runtime-install-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1379	name.test-path	tests/install/sec0-harden-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1380	name.test-path	tests/install/shim-install-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1381	name.test-path	tests/install/skills-collide-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1382	name.test-path	tests/install/skills-install-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1383	name.test-path	tests/lib	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1384	name.test-path	tests/lib/check-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1385	name.test-path	tests/lib/install-lib-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1386	name.test-path	tests/lib/lib-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1387	name.test-path	tests/lib/log-lib-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1388	name.test-path	tests/memory/context-budget-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1389	name.test-path	tests/memory/isa-index-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1390	name.test-path	tests/memory/memory-route-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1391	name.test-path	tests/memory/memory-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1392	name.test-path	tests/memory/store-check-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1393	name.test-path	tests/obs	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1394	name.test-path	tests/obs/ab-tally-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1395	name.test-path	tests/obs/findings-run-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1396	name.test-path	tests/obs/findings-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1397	name.test-path	tests/obs/findings.heal-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1398	name.test-path	tests/obs/fleet-sessions-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1399	name.test-path	tests/obs/judge-run-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1400	name.test-path	tests/obs/obs-digest-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1401	name.test-path	tests/obs/observe-report-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1402	name.test-path	tests/obs/proposal-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1403	name.test-path	tests/obs/pulse-notify-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1404	name.test-path	tests/obs/pulse-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1405	name.test-path	tests/obs/renew-check-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1406	name.test-path	tests/obs/skill-fire-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1407	name.test-path	tests/obs/skill-usage-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1408	name.test-path	tests/obs/usage-aggregate-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1409	name.test-path	tests/skills	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1410	name.test-path	tests/skills/eval-runners-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1411	name.test-path	tests/skills/prove-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1412	name.test-path	tests/skills/prove.cli-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1413	name.test-path	tests/skills/prove.engine-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1414	name.test-path	tests/skills/prove.report-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1415	name.test-path	tests/skills/prove.watchdog-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1416	name.test-path	tests/skills/skill-gates-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-1417	name.test-path	tests/skills/skill-gates.maps-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-1418	name.word	.claude/inject.d/10-constitution-edit-is-undeployed.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1419	name.word	.claude/inject.d/20-merge-governance.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1420	name.word	.claude/inject.d/21-post-merge-state.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1418	name.word	context-rules/harbor/constitution-edit-is-undeployed.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1419	name.word	context-rules/harbor/merge-governance.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1420	name.word	context-rules/harbor/post-merge-state.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-1421	name.word	SEC-0.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1422	name.word	docs/src/00-overview.html	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1423	name.word	docs/src/10-timing.html	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1424	name.word	docs/src/20-floor.html	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1425	name.word	docs/src/30-inject.html	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1426	name.word	docs/src/40-govern.html	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1427	name.word	docs/src/50-truth.html	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1428	name.word	docs/src/60-quality.html	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1429	name.word	docs/src/70-skills.html	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1430	name.word	docs/src/80-monitor.html	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1431	name.word	docs/src/90-extend.html	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1432	name.word	docs/src/95-vocabulary.html	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1434	name.word	inject.d/box/10-subagent-contract.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1435	name.word	inject.d/box/20-post-compaction-carry.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1436	name.word	inject.d/box/30-external-content-is-data.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1437	name.word	inject.d/box/40-repo-skills-pointer.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1438	name.word	inject.d/box/45-access-route-pointer.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1439	name.word	inject.d/box/50-project-pointer.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1440	name.word	inject.d/box/60-variable-is-one-argument.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1441	name.word	inject.d/box/65-browser-route-harbor-chrome.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1442	name.word	inject.d/box/66-browser-route-reminder.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1434	name.word	context-rules/user/subagent-contract.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1435	name.word	context-rules/user/post-compaction-carry.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1436	name.word	context-rules/user/external-content-is-data.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1437	name.word	context-rules/user/repo-skills-pointer.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1438	name.word	context-rules/user/access-route-pointer.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1439	name.word	context-rules/user/project-pointer.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1440	name.word	context-rules/user/variable-is-one-argument.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1441	name.word	context-rules/user/browser-route-harbor-chrome.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1442	name.word	context-rules/user/browser-route-reminder.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-1443	name.word	inject.d/box/70-measurement-skills-are-hidden.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-1444	name.word	inject.d/box/75-client-work-is-a-measurement-change.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1445	name.word	inject.d/box/80-large-tool-result.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1446	name.word	inject.d/box/85-tool-failure-is-not-a-result.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1447	name.word	inject.d/box/90-unbounded-wait-loop.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1448	name.word	inject.d/box/95-repo-tier-not-loaded.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-1449	name.word	inject.d/box/97-agent-model-required.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1445	name.word	context-rules/user/large-tool-result.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1446	name.word	context-rules/user/tool-failure-is-not-a-result.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1447	name.word	context-rules/user/unbounded-wait-loop.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1448	name.word	context-rules/user/repo-tier-not-loaded.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
+legacy-1449	name.word	context-rules/user/agent-model-required.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-1463	name.word	skills/casefile/EVALS/SIM/04-promotion-closing.md	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
+tool-0025	name.case	**/NOTICE	tool-required	never	Apache 2.0 NOTICE file: like LICENSE, it has no extension and keeps its name (sitting B Q11)
+world-0002	name.case	fixtures/memory/corpus/	world-name	never	the fixture imitates a real memory store whose directory names are what the tests read (sitting B Q11)
+world-0003	name.separator	fixtures/memory/corpus/	world-name	never	the fixture imitates a real memory store; a note with a space in its name is a case the tests cover (sitting B Q11)
+world-0004	name.abbreviation	fixtures/lint-module/	world-name	never	the fixture trees are the inputs of the module lint, and their package is named pkg on purpose (sitting B Q11)
+world-0005	name.alias	rule:admission.floor-fail-closed	world-name	never	D-19: a rule id is permanent once published, so it keeps the word it was born with (sitting B Q11)
+world-0006	name.alias	rule:admission.floor-integrity	world-name	never	D-19: a rule id is permanent once published, so it keeps the word it was born with (sitting B Q11)
+world-0007	name.alias	rule:admission.merge-backstop-box	world-name	never	D-19: a rule id is permanent once published, so it keeps the word it was born with (sitting B Q11)
+world-0008	name.alias	rule:admission.prod-guard-ambient	world-name	never	D-19: a rule id is permanent once published, so it keeps the word it was born with (sitting B Q11)
+world-0009	name.abbreviation	rule:admission.extract-over-cfg-ancestor	world-name	never	D-19: a rule id is permanent once published, so it keeps the word it was born with (sitting B Q11)

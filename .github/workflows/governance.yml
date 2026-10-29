@@ -1,8 +1,8 @@
-# GOVERNANCE — the enforcement CONTRACTS/README.md always claimed existed.
+# GOVERNANCE — the enforcement contracts/README.md always claimed existed.
 #
 # An audit on 2026-07-25 found harbor had no CI, no active git hooks, and
 # exactly one continuously-enforced rule (the work-log gitleaks pre-push gate),
-# while CONTRACTS/README.md asserted "a CI freshness check fails if a consumer's
+# while contracts/README.md asserted "a CI freshness check fails if a consumer's
 # vendored copy drifts". This file makes the claim true.
 #
 # ── WHICH RUNNER, AND WHY IT IS A CHOICE ────────────────────────────────────
@@ -18,7 +18,7 @@
 #                          userland, so the awk/`ls`/`getline` divergences these
 #                          suites exist to catch ARE covered, and the container
 #                          holds no ~/.claude. On a PRIVATE repo any value but `github-hosted`
-#                          lands here, so bin/runner-switch.sh needs no change; a PUBLIC repo
+#                          lands here, so bin/ci-runner-switch.sh needs no change; a PUBLIC repo
 #                          never does (the selector is hosted whatever the variable says).
 #
 #   github-hosted          ubuntu-latest. Disposable, no access to anything of
@@ -68,7 +68,7 @@ on:
         default: self-hosted
         options: [self-hosted, github-hosted, colima]
       level:
-        description: "quick runs CONTRACTS/suites-quick.txt only and skips the STATUS.md check"
+        description: "quick runs contracts/suites-quick.txt only and skips the STATUS.md check"
         type: choice
         default: full
         options: [full, quick]
@@ -88,7 +88,7 @@ permissions:
 # where the push run passed every job and the pull_request run failed two.
 #
 # A CI that fails for reasons unrelated to the change teaches people to re-run
-# until green, which is how a real failure gets waved through (CONSTITUTION.md
+# until green, which is how a real failure gets waved through (policy/constitution.md
 # §2.11). Superseded runs are cancelled rather than raced.
 # The key must be the HEAD BRANCH, not github.ref: on `push` that is
 # refs/heads/<branch> but on `pull_request` it is refs/pull/<n>/merge, so keying
@@ -147,7 +147,7 @@ jobs:
         run: sh bin/ci-verified.sh "${{ github.sha }}" "${{ github.event.before }}"
 
   # ── THE POOL, IN SHARDS (harbor#679, harbor#1172) ───────────────────────────
-  # Every Linux suite runs through bin/suite-run.sh, 3 x CPUs at a time, longest
+  # Every Linux suite runs through bin/test-suite-run.sh, 3 x CPUs at a time, longest
   # first by tests/suite-durations.tsv. Since harbor#1172 the selection is split
   # over SHARDS: `suite-shard` is a matrix, each leg runs `--shard K/N` (K its
   # matrix value, N the matrix size), and `suites` combines the legs' results.
@@ -164,14 +164,14 @@ jobs:
   # MEDIAN in-CI time per suite over 85 sharded-era logs (so CI contention is
   # already in it, not a 2.73x factor on top) plus a lint-conventions row that
   # pre-loads shard 1: the full manifest predicts 2954 s per leg / 3 at a time
-  # = 16.4 min, so 33 is 2x. Re-derive with `sh bin/suite-run.sh --plan --shard 1/2`.
+  # = 16.4 min, so 33 is 2x. Re-derive with `sh bin/test-suite-run.sh --plan --shard 1/2`.
   #
   # RESULTS CROSS JOBS AS OUTPUTS, not artifacts (actions/checkout stays the only
   # action). Each leg sets results_<K> and green_<K> only: matrix outputs with
   # distinct names are combined, the same name is last-writer-wins. A leg that
   # never reports leaves its suites with no row, and --combine fails them LOST.
   #
-  # STAND-DOWN STAYS PER SUITE (CI-2): suite-run --select asks bin/suite-select.sh
+  # STAND-DOWN STAYS PER SUITE (CI-2): suite-run --select asks bin/test-suite-select.sh
   # once for the whole manifest in every leg, and shard 1 writes the `skip` rows.
   suite-shard:
     name: suites ${{ matrix.shard }}/${{ strategy.job-total }}
@@ -218,7 +218,7 @@ jobs:
           done
           if [ -n "$miss" ]; then
             echo "governance: missing required tool(s):$miss" >&2
-            echo "on a self-hosted runner the box must carry these; see bin/doctor.sh" >&2
+            echo "on a self-hosted runner the box must carry these; see bin/deploy-doctor.sh" >&2
             exit 1
           fi
           echo "runner=$RUNNER_OS  all required tools present"
@@ -261,17 +261,17 @@ jobs:
       - name: The changeset this run is judging
         run: |
           echo "base=$HARBOR_BASE level=${HARBOR_LEVEL:-full}"
-          sh bin/suite-select.sh --changed
-          sh bin/suite-select.sh --list > "$RUNNER_TEMP/verdicts.txt"
+          sh bin/test-suite-select.sh --changed
+          sh bin/test-suite-select.sh --list > "$RUNNER_TEMP/verdicts.txt"
           cat "$RUNNER_TEMP/verdicts.txt"
           { echo '### change class'; echo '```'; cat "$RUNNER_TEMP/verdicts.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       # A stale generated file fails here, before the pool (harbor#1287). Shard 1 only.
       - name: Generated files are current (fresh-check)
         if: ${{ matrix.shard == 1 }}
-        run: sh bin/fresh-check.sh
+        run: sh bin/doc-fresh-verify.sh
       # CONTINUE-ON-ERROR, NOT `|| :`: the outcome is what `conventions linter`
       # relays, and the last step below still fails this leg on it. Shard 1 only.
-      - name: Enforce CONTRACTS/naming.md + house style
+      - name: Enforce contracts/naming.md + house style
         id: conv
         if: ${{ matrix.shard == 1 }}
         continue-on-error: true
@@ -294,21 +294,21 @@ jobs:
         id: run
         continue-on-error: true
         run: |
-          set -- --select --list CONTRACTS/suites.txt --results "$RUNNER_TEMP/suites.tsv" --shard "${{ matrix.shard }}/${{ strategy.job-total }}"
-          [ "$HARBOR_LEVEL" != quick ] || set -- "$@" --include CONTRACTS/suites-quick.txt
-          sh bin/suite-run.sh "$@"
+          set -- --select --list contracts/suites.txt --results "$RUNNER_TEMP/suites.tsv" --shard "${{ matrix.shard }}/${{ strategy.job-total }}"
+          [ "$HARBOR_LEVEL" != quick ] || set -- "$@" --include contracts/suites-quick.txt
+          sh bin/test-suite-run.sh "$@"
       # Under dash as well as sh: macOS /bin/sh forgives bashisms dash will not.
       # A suite run WITH ARGUMENTS cannot go through the pool, so it is asked directly.
-      # Which suites: CONTRACTS/suites-dash.txt (harbor#961). An empty list fails. Shard 1 only.
+      # Which suites: contracts/suites-dash.txt (harbor#961). An empty list fails. Shard 1 only.
       - name: Statusline golden output (dash)
         id: dash
         if: ${{ matrix.shard == 1 }}
         continue-on-error: true
         run: |
-          set -- $(awk '!/^[[:space:]]*(#|$)/ { print $1 }' CONTRACTS/suites-dash.txt)
-          [ $# -gt 0 ] || { echo "CONTRACTS/suites-dash.txt names no suite" >&2; exit 1; }
+          set -- $(awk '!/^[[:space:]]*(#|$)/ { print $1 }' contracts/suites-dash.txt)
+          [ $# -gt 0 ] || { echo "contracts/suites-dash.txt names no suite" >&2; exit 1; }
           for s; do
-            sh bin/suite-select.sh "$s" > /dev/null || continue
+            sh bin/test-suite-select.sh "$s" > /dev/null || continue
             sh "$s" --dash || exit 1
           done
       # results_<K>: this leg's results TSV, base64 on one line. green_<K>: every
@@ -371,7 +371,7 @@ jobs:
         with:
           persist-credentials: false
       # Every shard listed must report, and every candidate must have exactly one
-      # row across them (bin/suite-run.sh --combine: LOST, DUPLICATE, STRAY).
+      # row across them (bin/test-suite-run.sh --combine: LOST, DUPLICATE, STRAY).
       - name: Every shard's results, each suite in exactly one
         id: combine
         continue-on-error: true
@@ -398,11 +398,11 @@ jobs:
           done
           [ $# -gt 0 ] || { echo "HARBOR_SUITE_SHARDS names no shard" >&2; exit 1; }
           set -- --combine "$RUNNER_TEMP/suites.tsv" "$@"
-          [ "$HARBOR_LEVEL" != quick ] || set -- --include CONTRACTS/suites-quick.txt "$@"
-          sh bin/suite-run.sh "$@" || bad=1
+          [ "$HARBOR_LEVEL" != quick ] || set -- --include contracts/suites-quick.txt "$@"
+          sh bin/test-suite-run.sh "$@" || bad=1
           exit "$bad"
       # One verdict per required group, from the combined results. Each group's suites
-      # are CONTRACTS/suites-tally.txt (harbor#961); the group names stay here, as they
+      # are contracts/suites-tally.txt (harbor#961); the group names stay here, as they
       # are this step's outputs. The floor's parts are a GLOB there, so a new part is
       # tallied the day it lands (floor.shards-test). An empty group publishes nothing,
       # and nothing is not `pass`.
@@ -413,7 +413,7 @@ jobs:
           set +e
           r="$RUNNER_TEMP/suites.tsv"
           for g in floor lint normalize marker; do
-            sh bin/suite-run.sh --tally "$r" "$g" $(awk -v g="$g" '$1 == g { print $2 }' CONTRACTS/suites-tally.txt)
+            sh bin/test-suite-run.sh --tally "$r" "$g" $(awk -v g="$g" '$1 == g { print $2 }' contracts/suites-tally.txt)
           done
           exit 0
       - name: The pool is green only if every shard and the combine were
@@ -447,7 +447,7 @@ jobs:
           [ "${{ needs.verified.outputs.verified }}" = true ] || [ "${{ needs.suites.outputs.lint }}" = pass ]
 
   # THE REQUIRED CONTEXT `security-floor suite`, and the `floor` id `status`
-  # needs. tests/floor/floor.shards-test.sh checks this relay against the pool.
+  # needs. tests/admission/baseline/shards.test.sh checks this relay against the pool.
   floor:
     name: security-floor suite
     timeout-minutes: 5
@@ -490,20 +490,20 @@ jobs:
       # differs by host still arrives here and still fails against STATUS.md.
       - name: STATUS.md must be regenerated, not hand-edited
         run: |
-          # The export carries no STATUS.md (dev-layer, CONTRACTS/layers.tsv) and lint doc.status-generated skips aloud there;
-          # so does this. The witnesses are the lint rule's: dev in layers.tsv, and absent: STATUS.md and its source.
-          if [ ! -e STATUS.md ] && [ ! -e harbor-build-tickets.md ] \
-             && awk -F'\t' '$1 == "STATUS.md" && $2 == "dev" { f = 1 } END { exit !f }' CONTRACTS/layers.tsv; then
-            echo "STATUS.md is dev-layer and this tree carries none of the dev layer: nothing to judge"
+          # The export carries no docs/generated/status.md (dev-layer, contracts/layers.tsv) and lint doc.status-generated skips aloud there;
+          # so does this. The witnesses are the lint rule's: dev in layers.tsv, and absent: the status doc and its source.
+          if [ ! -e docs/generated/status.md ] && [ ! -e docs/reports/platform-build-tickets.md ] \
+             && awk -F'\t' '$1 == "docs/generated/status.md" && $2 == "dev" { f = 1 } END { exit !f }' contracts/layers.tsv; then
+            echo "docs/generated/status.md is dev-layer and this tree carries none of the dev layer: nothing to judge"
             exit 0
           fi
           if [ "${{ needs.floor.outputs.ran }}" = "true" ] \
              && [ "${{ needs.suites.outputs.normalize_ran }}" = "true" ] \
              && [ "${{ needs.suites.outputs.marker_ran }}" = "true" ]; then
             HARBOR_SUITE_COUNTS="floor-test=${{ needs.floor.outputs.count }},normalize-test=${{ needs.suites.outputs.normalize_count }},marker-test=${{ needs.suites.outputs.marker_count }}" \
-              sh bin/status-gen.sh --check
+              sh bin/status-generate.sh --check
           else
             echo "count-bearing suites stood down for this change class —"
             echo "checking the repo-counted fields only."
-            sh bin/status-gen.sh --check-fast
+            sh bin/status-generate.sh --check-fast
           fi

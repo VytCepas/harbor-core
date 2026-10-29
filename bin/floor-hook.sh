@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0
+[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
 # B9 (harbor#39) — fail-CLOSED wrapper for the PreToolUse floor guards.
 #
 # THE PROBLEM IT SOLVES: every dependency failure in the guard chain was silent,
@@ -24,7 +24,7 @@
 # and guard-integrity is not wrapped at all (it is already fail-closed itself).
 #
 # THE ESCAPE HATCH IS FIRST, DELIBERATELY: a broken floor must never lock the
-# operator out of fixing it. `HELM_DISABLE_FLOOR=1 claude` always opens.
+# operator out of fixing it. `HARBOR_ADMISSION_DISABLE=1 claude` always opens.
 set -u
 
 ADVISORY=0
@@ -70,7 +70,7 @@ obs() { # <rule>
   # class that means "the floor is broken", on the channel FC-2 reads.
   #
   # LATENT WHEN WRITTEN, NOT WHEN EXPLOITED. Every reader of `h` still filters
-  # `.d=="block"` (failure-capture.sh:489,582,605,750 and observe-report.sh:141),
+  # `.d=="block"` (audit-triage.sh:489,582,605,750 and admission-observe-report.sh:141),
   # so nothing consumes it today. Widening those readers is the obvious next step
   # after harbor#350, and the hole opens the moment it happens — so it is closed
   # here rather than left as a note on a ticket.
@@ -86,7 +86,7 @@ obs() { # <rule>
 deny() { # <reason> [rule]
   printf 'HELM FLOOR [wrapper]: BLOCKED — %s\n' "$1" >&2
   printf 'The floor could not evaluate this call, so it denied it (fail-closed).\n' >&2
-  printf 'Fix the guard, or open an unguarded session: HELM_DISABLE_FLOOR=1 claude\n' >&2
+  printf 'Fix the guard, or open an unguarded session: HARBOR_ADMISSION_DISABLE=1 claude\n' >&2
   obs "${2:-wrapper-unknown.meta}"
   exit 2
 }
@@ -182,6 +182,18 @@ _ef="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/floor-hook.XXXXXX" 2>/dev/null || mktemp
 OUT="$(printf '%s' "$IN" | sh "$GUARD" 2>"$_ef")"
 RC=$?
 ERR="$("$_cat" "$_ef" 2>/dev/null)" || ERR="fork: the guard's stderr could not be read"
+# A builtin printf (bash 3.2 as sh) whose blocked write a signal interrupts exits 1 with this text
+# and no verdict. The guard is pure, so re-running it is safe: at most twice, ONLY for that text on
+# a code other than 0/2, and the retry's verdict is the verdict. Any other exit keeps the deny below.
+_try=0
+while [ "$_try" -lt 2 ]; do
+  case "$RC" in 0|2) break ;; esac
+  case "$ERR" in *"Interrupted system call"*) ;; *) break ;; esac
+  _try=$((_try + 1))
+  OUT="$(printf '%s' "$IN" | sh "$GUARD" 2>"$_ef")"
+  RC=$?
+  ERR="$("$_cat" "$_ef" 2>/dev/null)" || ERR="fork: the guard's stderr could not be read"
+done
 rm -f "$_ef"
 
 # harbor#810: a fork or descriptor that failed inside a rule reads as "no match", so an allow that

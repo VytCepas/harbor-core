@@ -48,14 +48,14 @@ fi
 # ── M11 (harbor#44) · guard BEHAVIOUR, not just style, when the floor is touched
 #
 # THE GAP THIS CLOSES. The linter above checks style and — through T1 — that
-# STATUS.md is fresh. It asserts nothing about whether a guard still BLOCKS what it
+# docs/generated/status.md is fresh. It asserts nothing about whether a guard still BLOCKS what it
 # is supposed to block. `floor-test.sh` does assert that, but only in CI, so until
 # now a guard could regress and reach a push with style checking behind it.
 #
 # CONDITIONAL, AND THAT IS THE WHOLE DESIGN. The linter already costs ~14s on this
 # machine and `--smoke` adds ~10-16s. Paying that on every commit — most of which
 # touch documents — is how a hook becomes the thing people reflexively bypass, and
-# a gate that is routinely skipped protects nothing (CONSTITUTION.md §2.11). So the
+# a gate that is routinely skipped protects nothing (policy/constitution.md §2.11). So the
 # cost lands exactly where the risk is: a commit that stages a floor surface.
 #
 # STAGED PATHS ONLY (`--cached`), because the hook must judge what is being
@@ -71,12 +71,12 @@ _floor_staged=""
 while IFS= read -r _p; do
   [ -n "$_p" ] || continue
   case "$_p" in
-    # sec0-harden.sh IS a floor surface for this purpose (PR #124 review): the
+    # deploy-harden.sh IS a floor surface for this purpose (PR #124 review): the
     # smoke set installs it and asserts the B1 deny and path-anchoring guarantees
     # before the boundary, so a bad SEC-0 deny edit was reaching a push with only
     # the style linter behind it. guard-lib.sh and floor-*.sh are already covered
     # by the two globs above it.
-    bin/guard-*.sh|bin/floor-*.sh|bin/floor-*.awk|bin/sec0-harden.sh|hooks/*)
+    bin/guard-*.sh|bin/floor-*.sh|bin/floor-*.awk|bin/deploy-harden.sh|hooks/*)
       _floor_staged="$_floor_staged$_p
 " ;;
   esac
@@ -114,23 +114,27 @@ if [ -n "$_floor_staged" ]; then
     echo ""
     echo "pre-commit: a GUARD REGRESSED — the smoke suite went red on the STAGED floor changes."
     echo "            This is behaviour, not style, and it is the staged bytes, not your worktree."
-    echo "            Run the full suites before pushing:  sh tests/floor/floor*-test.sh, sh tests/guards/<guard>-test.sh"
+    echo "            Run the full suites before pushing:  sh tests/admission/baseline/*.test.sh, sh tests/admission/<guard>/*.test.sh"
     echo "            Bypass only if you know why: git commit --no-verify"
     exit 1
   }
-  hook_scrub_run T_SMOKE=1 sh "$_idx/tests/floor/floor-test.sh" || _smoke_red  # harbor#727: the main part's smoke
-  # harbor#667: the guards' verdicts are tables in tests/guards. Smoke the staged guards'
+  hook_scrub_run T_SMOKE=1 sh "$_idx/tests/admission/baseline/baseline.test.sh" || _smoke_red  # harbor#727: the main part's smoke
+  # harbor#667: the guards' verdicts are tables in tests/admission/<guard>/ and tests/guards. Smoke the staged guards'
   # suites (first row per rule and verdict); a shared floor file stages every guard.
   _gs=""
   for _p in $_floor_staged; do
     case "$_p" in
-      bin/guard-lib.sh|bin/floor-*|bin/sec0-harden.sh|hooks/*) _gs=" all"; break ;;
+      bin/guard-lib.sh|bin/floor-*|bin/deploy-harden.sh|hooks/*) _gs=" all"; break ;;
       bin/guard-*.sh) _g="${_p#bin/guard-}"; _gs="$_gs ${_g%.sh}" ;;
     esac
   done
-  for _t in "$_idx"/tests/guards/*-test.sh; do
-    _n="$(basename "$_t" -test.sh)"
-    case "$_gs " in *" all "*|*" ${_n%%.*} "*) hook_scrub_run T_SMOKE=1 T_JOBS=8 sh "$_t" || _smoke_red ;; esac
+  # harbor#961 W2: a guard's suites are tests/admission/<guard>/*.test.sh; the directory names the guard
+  for _t in "$_idx"/tests/admission/bash/*.test.sh "$_idx"/tests/admission/cloud/*.test.sh \
+            "$_idx"/tests/admission/deliverables/*.test.sh "$_idx"/tests/admission/destroy/*.test.sh \
+            "$_idx"/tests/admission/egress/*.test.sh "$_idx"/tests/admission/selfedit/*.test.sh; do
+    [ -f "$_t" ] || continue
+    _n="${_t%/*}"; _n="${_n##*/}"
+    case "$_gs " in *" all "*|*" $_n "*) hook_scrub_run T_SMOKE=1 T_JOBS=8 sh "$_t" || _smoke_red ;; esac
   done
   rm -rf "$_idx"
 fi

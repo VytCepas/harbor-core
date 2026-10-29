@@ -14,7 +14,7 @@
 
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH= cd -- "$HERE" && pwd)"
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 set -eu
 log_init deploy-fleet
 umask 077
@@ -46,8 +46,10 @@ STATE="$CFG/.helm-ship"                               # <owner>_<name>.json per 
 WORK="$HOME/.local/state/harbor/ship"                 # the lock and the run logs
 CACHE_DIR="${HARBOR_CACHE_DIR:-$HOME/.claude/cache}"
 SNAP="${HARBOR_FLEET_SNAPSHOT:-$CACHE_DIR/fleet-snapshot.json}"
-FLEET="${HARBOR_FLEET_FILE:-${PORT_ROOT:-$HOME/port}/projects-orchestrator/fleet.yaml}"
-ORCH="${HARBOR_ORCH_BIN:-$HOME/.local/bin/projects-orchestrator}"
+# the fleet file through the registry-aware reader beside this script (harbor#966)
+FLEET="${HARBOR_FLEET_FILE:-$(sh "$HERE/scope-roots.sh" --get HARBOR_FLEET_FILE 2>/dev/null || :)}"
+# the fleet CLI, a roots.tsv row read through the same reader (harbor#966)
+ORCH="${HARBOR_ORCH_BIN:-$(sh "$HERE/scope-roots.sh" --get HARBOR_ORCH_BIN 2>/dev/null || :)}"
 GMS="$HERE/gate-merge-stack.sh"
 NOW="${HARBOR_DEPLOY_FLEET_NOW:-$(date +%s)}"; case "$NOW" in ''|*[!0-9]*) NOW="$(date +%s)" ;; esac
 NIGHT=57600                                           # a rollback stops every unattended run for 16 hours

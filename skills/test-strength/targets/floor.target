@@ -30,7 +30,7 @@ stage         copy-tree repo:bin $WORK/base
 stage         copy-tree repo:bin $WORK/cand
 stage         mkdir $WORK/cfg
 place         $WORK/cand/guard-bash.sh
-checker-cmd   sh bin/floor-equiv.sh --baseline $WORK/base --candidate $WORK/cand --corpus fixtures/guard-corpus.jsonl --limit 30 --config $WORK/cfg
+checker-cmd   sh bin/floor-equiv.sh --baseline $WORK/base --candidate $WORK/cand --corpus fixtures/admission-corpus.jsonl --limit 30 --config $WORK/cfg
 green         0
 red           1
 

@@ -18,7 +18,7 @@ on:
   pull_request:
     paths:
       - bin/**
-      - CONTRACTS/**
+      - contracts/**
       - tests/install/stranger-ubuntu.sh
       - .github/workflows/stranger-install.yml
 

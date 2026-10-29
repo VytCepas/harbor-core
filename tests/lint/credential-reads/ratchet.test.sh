@@ -10,14 +10,14 @@ FAKE="ghp_$(printf 'b%.0s' $(seq 1 36))"
 KCREAD='security find-generic-password -s k -w'
 KCADD='security add-generic-password -s k -w v'
 mk() { # <name> <baseline> → a checkout with one env read, a declared keychain file, comments, and excluded dirs
-  _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/CONTRACTS" "$_d/tests" "$_d/fixtures" "$_d/docs" "$_d/EVALS-DATA"
+  _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/contracts" "$_d/tests" "$_d/fixtures" "$_d/docs" "$_d/evals"
   printf '#!/bin/sh\n# a comment about ${API_TOKEN} and %s\ncurl -H "X: ${API_TOKEN}" u\n' "$KCREAD" > "$_d/bin/uses-env.sh"
   printf '#!/bin/sh\n# secret-seam: macOS-only, because a test said so\n%s\n' "$KCREAD" > "$_d/bin/declared.sh"
-  printf 'x=$(%s)\nT=%s\nP=${DB_PASSWORD}\n' "$KCREAD" "$FAKE" | tee "$_d/tests/t.sh" "$_d/fixtures/f.txt" "$_d/docs/d.md" "$_d/EVALS-DATA/e.txt" > /dev/null
+  printf 'x=$(%s)\nT=%s\nP=${DB_PASSWORD}\n' "$KCREAD" "$FAKE" | tee "$_d/tests/t.sh" "$_d/fixtures/f.txt" "$_d/docs/d.md" "$_d/evals/e.txt" > /dev/null
   printf '#!/bin/sh\n%s\n' "$KCADD" | tee "$_d/bin/guard-x.sh" "$_d/bin/secret" > /dev/null
-  cp "$T_ROOT/bin/lint-secrets.sh" "$T_ROOT/bin/log-lib.sh" "$_d/bin/"
-  cp "$T_ROOT/CONTRACTS/credential-patterns.tsv" "$_d/CONTRACTS/"
-  printf '%s\n' "$2" > "$_d/CONTRACTS/lint-secrets-baseline.txt"
+  cp "$T_ROOT/bin/lint-secrets.sh" "$T_ROOT/bin/library-log.sh" "$_d/bin/"
+  cp "$T_ROOT/contracts/credential-patterns.tsv" "$_d/contracts/"
+  printf '%s\n' "$2" > "$_d/contracts/lint-secrets-baseline.txt"
   ( cd "$_d" && git init -q . && git add -A && git -c user.email=t@t -c user.name=t commit -qm x ) >/dev/null 2>&1
   printf '%s' "$_d"
 }
@@ -26,7 +26,7 @@ t_section "--count counts code reads, and leaves declared files, comments, the s
 D="$(mk eq 1)"
 t_eq "one hit: the env read in uses-env.sh" "1" "$(LS "$D" --count)"
 t_has "--list names file:line and the class" "$(LS "$D" --list)" "bin/uses-env.sh:3	env"
-for gone in tests/ fixtures/ docs/ EVALS-DATA/ declared.sh guard-x bin/secret; do t_hasnt "...not $gone" "$(LS "$D" --list)" "$gone"; done
+for gone in tests/ fixtures/ docs/ evals/ declared.sh guard-x bin/secret; do t_hasnt "...not $gone" "$(LS "$D" --list)" "$gone"; done
 
 t_section "--check: red above the baseline, green at it, a nudge below it"
 D="$(mk at 1)"; t_eq "equal is green" "0" "$(rc "$D")"
@@ -36,7 +36,7 @@ t_has "...and says the count and the baseline" "$OUT" "1 credential read(s) outs
 t_has "...and the fix" "$OUT" "secret run"
 D="$(mk under 5)"; OUT="$(LS "$D" --check)"
 t_eq "below is still green" "0" "$(rc "$D")"
-t_has "...and tells you to lower the baseline" "$OUT" "lower CONTRACTS/lint-secrets-baseline.txt to 1"
+t_has "...and tells you to lower the baseline" "$OUT" "lower contracts/lint-secrets-baseline.txt to 1"
 D="$(mk nobase x)"; t_eq "a non-numeric baseline is red" "1" "$(rc "$D")"
 mkdir -p "$T_TMP/nogit"
 t_exit "a non-checkout inspected nothing and is not a pass" 2 env HARBOR_ROOT="$T_TMP/nogit" sh "$T_ROOT/bin/lint-secrets.sh" --check

@@ -4,7 +4,7 @@
 #   sh floor-uninstall.sh --apply (--live | --dir PATH)   write; every removed file is MOVED into the run's backup
 #   --accept-loss   accepted, and changes nothing: nothing here is lost, since every removed file is kept
 #
-# WHY THIS EXISTS: the QA review (QA-PLAN.md, R7) found there was no way out.
+# WHY THIS EXISTS: the QA review (docs/reports/qa-plan.md, R7) found there was no way out.
 # An operator who wanted the floor gone had to hand-edit settings.json — which
 # B1's own Edit(~/.claude/settings.json) deny and B2's self-edit guard both
 # forbid. A control you cannot remove is not a control the operator owns.
@@ -22,8 +22,8 @@
 # guards it checks while it is still armed would block the next session.
 set -eu
 SRC="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
-. "$SRC/log-lib.sh"
-. "$SRC/install-lib.sh"
+. "$SRC/library-log.sh"
+. "$SRC/deploy-install-lib.sh"
 log_init floor-uninstall
 # THE INSTALL STANDARD'S INTERFACE (harbor#766, #765), from install-lib (lint D7): no positional
 # target — the old loop let the LAST bare word win, so `<sandbox> --live --apply` stripped live —
@@ -51,7 +51,7 @@ RECOVERY="$(sed -n "s/^RECOVERY='\(.*\)'/\1/p" "$FI" 2>/dev/null | head -1)"
 EVENTS="$(sed -n "s/^EVENTS='\(.*\)'/\1/p" "$FI" 2>/dev/null | head -1)"  # harbor#1043: the producers and their bus
 GATES="$(sed -n "s/^GATES='\(.*\)'/\1/p" "$FI" 2>/dev/null | head -1)"  # harbor#1018: the approval gate's tools
 ROWS="$(awk '/^floor_hooks\(\)/ { f = 1; next } f && /^ROWS$/ { exit } f && !/^#/ && /;/' "$FI" 2>/dev/null)"
-RT_FILES="$(sed -n 's/^FILES="\(.*\)"/\1/p' "$SRC/runtime-install.sh" 2>/dev/null | head -1)"
+RT_FILES="$(sed -n 's/^FILES="\(.*\)"/\1/p' "$SRC/deploy-runtime-install.sh" 2>/dev/null | head -1)"
 # An empty list strips nothing and reports success, so an unreadable one refuses.
 if [ -z "$GUARDS" ] || [ -z "$ROWS" ] || [ -z "$RT_FILES" ]; then
   il_refuse "could not read the floor's payload and wiring from $FI (or runtime-install's payload beside it), so nothing would be removed" \
@@ -217,5 +217,5 @@ if [ -n "$_failed" ]; then
 fi
 [ "$_mf_ok" -eq 1 ] || { log_end; exit 1; }
 log_ok "floor files moved into $BK (with settings.json as it was)"
-log_note "the B1 deny entries are still present: inert without the guards and the un-swallowable layer, so removing them is a separate, deliberate step — edit permissions.deny by hand, or restore an older snapshot with restore.sh"
+log_note "the B1 deny entries are still present: inert without the guards and the un-swallowable layer, so removing them is a separate, deliberate step — edit permissions.deny by hand, or restore an older snapshot with deploy-restore.sh"
 log_end; exit $?
