@@ -40,6 +40,6 @@ runner this box hosts reports ci.job.done, reads the checks once, and prints one
 3 still running at --timeout (default 1800 s). It never waits on `review/decision`: that status is a person's
 review, pending until approved, and a poll for "nothing pending" sat 31 minutes on it with CI green. For a PR
 you just opened, a bare `gh pr create` (no pipe after it) already starts the same wait and a banner
-(event.session-ci-watch). Other kinds on the bus, and their emitters: CONTRACTS/event-kinds.tsv; any of them
+(event.session-ci-watch). Other kinds on the bus, and their emitters: contracts/event-kinds.tsv; any of them
 can be waited on with `harbor event wait '<pattern>' --timeout N`.
 EOF

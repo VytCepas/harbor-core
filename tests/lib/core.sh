@@ -14,10 +14,10 @@ T_PASS_ENV='HARBOR_IN_SUITE'
 t_init() { # [name] — defaults to the file name without .sh
   T_NAME="${1:-$(basename "$0" .sh)}"
   T_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-  while [ "$T_ROOT" != / ] && [ ! -f "$T_ROOT/CONTRACTS/suites.txt" ]; do
+  while [ "$T_ROOT" != / ] && [ ! -f "$T_ROOT/contracts/suites.txt" ]; do
     T_ROOT="$(dirname "$T_ROOT")"
   done
-  if [ ! -f "$T_ROOT/CONTRACTS/suites.txt" ]; then
+  if [ ! -f "$T_ROOT/contracts/suites.txt" ]; then
     # A suite the box carries sets T_STANDALONE=1 (harbor#727): with no checkout, its root is the dir above its own.
     [ "${T_STANDALONE:-0}" = 1 ] || { echo "$T_NAME: repo root not found" >&2; exit 2; }
     T_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
@@ -71,7 +71,7 @@ t_section() { # <title>
 }
 _t_close() { [ -z "$T_SEC" ] || [ "$T_SEC_N" -gt 0 ] || t_fail "section ran no assertions"; }
 
-# The repo file an installed name ships from: bin/<name>, else its hook engine folder (D-88; il_src in bin/install-lib.sh).
+# The repo file an installed name ships from: bin/<name>, else its hook engine folder (D-88; il_src in bin/deploy-install-lib.sh).
 t_src() { if [ -f "$T_ROOT/bin/$1" ] || [ ! -f "$T_ROOT/hooks/${1%.*}/$1" ]; then printf '%s' "$T_ROOT/bin/$1"; else printf '%s' "$T_ROOT/hooks/${1%.*}/$1"; fi; }
 t_eq()    { [ "$3" = "$2" ] && t_pass || t_fail "$1 (want '$2', got '$3')"; }        # <label> <want> <got>
 t_has()   { case "$2" in *"$3"*) t_pass ;; *) t_fail "$1 (missing: $3)" ;; esac; }  # <label> <text> <needle>
@@ -89,7 +89,7 @@ t_done() {
   _tk="$(_t_cfg_leak | sed 's/=.*//' | tr '\n' ' ')"
   [ -z "$_tk" ] || t_fail "wrote the shared git config of $T_ROOT (added: ${_tk% }) — a suite must touch only its temp repo (harbor#1152)"
   [ $((T_PASS + T_FAIL)) -gt 0 ] || t_fail "the suite ran no assertions"
-  # A failed suite's FAIL lines end in one fix line naming its file (CONTRACTS/logging.md, harbor#771).
+  # A failed suite's FAIL lines end in one fix line naming its file (contracts/logging.md, harbor#771).
   [ "$T_FAIL" -eq 0 ] || printf '  fix: none automatic — see %s\n' "$T_SELF" >&2
   if [ "${T_SMOKE:-0}" = 1 ]; then printf '%s smoke: %d passed, %d failed (NOT a full run)\n' "$T_NAME" "$T_PASS" "$T_FAIL"
   else printf '%s: %d passed, %d failed\n' "$T_NAME" "$T_PASS" "$T_FAIL"; fi

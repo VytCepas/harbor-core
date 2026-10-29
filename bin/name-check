@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # name-check (harbor#1259) — does a string conform to its surface's allowlist validator? A PATH command (no extension,
-# so no family needed, D-11), installed as ~/.local/bin/name-check through CONTRACTS/shims.tsv.
+# so no family needed, D-11), installed as ~/.local/bin/name-check through contracts/shims.tsv.
 #
 #   name-check <surface> <string>   exit 0 conforms · 1 does not · 2 usage, an unknown surface, or a surface with no
 #                                   validator (its renderer is prose) · 3 the validators could not be derived
@@ -23,7 +23,7 @@ LN="$HERE/lint-name.sh"
 V="$ROOT/build/validators.txt"
 SURFACES="$ROOT/standards/naming/surfaces.tsv"
 LOG_FD=2   # stdout is never written: a verdict is the exit code
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 log_init name-check
 
 if [ $# -ne 2 ]; then

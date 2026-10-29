@@ -11,7 +11,7 @@
 # the machine is broken, so the dispatcher must not need a runtime that might be
 # part of what broke.
 #
-# THE VERB LIST IS EMBEDDED, NOT PARSED FROM THE CONTRACT. CONTRACTS/cli.md is the
+# THE VERB LIST IS EMBEDDED, NOT PARSED FROM THE CONTRACT. contracts/cli.md is the
 # human source of truth and lint rule CLI1 asserts this table is identical to it —
 # the mechanism against a drifting second copy is the equality check, not a
 # generation step. Reading a markdown file out of a repo checkout to print --help
@@ -28,25 +28,25 @@ CONTRACT_VERSION=1
 # is the live box's check, whose target is named by --live and never implied. `deploy` is deploy.sh
 # whole, every argument passed through (an operator-approved CLI1 amendment, 2026-09-30).
 VERBS="
-status	status-gen.sh	yes	the generated counts (STATUS.md)
-doctor	doctor.sh	yes	external dependencies, each row naming what breaks
+status	status-generate.sh	yes	the generated counts (docs/generated/status.md)
+doctor	deploy-doctor.sh	yes	external dependencies, each row naming what breaks
 verify	floor-verify.sh --live	no	is the floor ON here? fires known-blocked shapes at ~/.claude
-check	live-verify.sh	no	the live tier: does the installed box work? every live check, read-only (--live [--probes])
+check	deploy-live-verify.sh	no	the live tier: does the installed box work? every live check, read-only (--live [--probes])
 lint	lint-conventions.sh	no	the conventions gate
-fresh	freshness.sh	no	document + working-context staleness (--open for markers)
-cite	cite-verify.sh	no	citation drift against CITATIONS.md (network)
-observe	observe-report.sh	no	the guard-decision ledger
-dash	dashboard-gen.sh	no	render build/dashboard.html (--open to open it)
+fresh	doc-freshness.sh	no	document + working-context staleness (--open for markers)
+cite	doc-cite-verify.sh	no	citation drift against docs/reference/citations.md (network)
+observe	admission-observe-report.sh	no	the guard-decision ledger
+dash	status-dashboard-generate.sh	no	render build/dashboard.html (--open to open it)
 deploy	deploy.sh	no	install everything onto this box, from any directory: --live plans, --apply --live installs
 install	deploy.sh --only floor	no	install the floor through deploy: --live plans, --apply --live installs
 uninstall	deploy.sh --only floor --uninstall	no	remove the floor through deploy: --live plans, --apply --live removes
-restore	restore.sh	no	put the config dir back from a deploy snapshot (dry-run unless --apply)
+restore	deploy-restore.sh	no	put the config dir back from a deploy snapshot (dry-run unless --apply)
 skills	deploy.sh --only skills	no	every tracked skill and command, through deploy: --live plans, --apply --live installs
 inject	deploy.sh --only inject	no	the just-in-time injector, through deploy: --live plans, --apply --live installs
-constitution	deploy.sh --only constitution	no	CONSTITUTION.md to the box CLAUDE.md, through deploy: --live plans, --apply --live installs
-browser	browser.sh	yes	which browser backend, and drive it (route/doctor/probe/hosts/cdp)
-chrome	browser-agent.sh	yes	the operator's Chrome through the Playwright Extension, attended and guarded (router row 4)
-refs	graph-gen.sh --refs	no	every edge touching a path or id: references, deploys, generators, stamps (--sites: git grep's shape)
+constitution	deploy.sh --only constitution	no	policy/constitution.md to the box CLAUDE.md, through deploy: --live plans, --apply --live installs
+browser	access-browser.sh	yes	which browser backend, and drive it (route/doctor/probe/hosts/cdp)
+chrome	access-browser-agent.sh	yes	the operator's Chrome through the Playwright Extension, attended and guarded (router row 4)
+refs	doc-graph-generate.sh --refs	no	every edge touching a path or id: references, deploys, generators, stamps (--sites: git grep's shape)
 find	standard-catalog.sh --find	no	the scripts, tests, checks, docs and controls of a family, subsystem, domain or system
 tree	standard-catalog.sh --tree	no	the seven D-57 levels from the registry, down to the families' components and elements (--files lists paths)
 event	event-bus.sh	no	the local event bus: emit, wait (0 match, 3 deadline), since, tail, prune; dispatch, on, pull, subscribe (E2)
@@ -70,16 +70,16 @@ ship	deploy-fleet.sh	no	merge and deploy opted-in fleet repos unattended, restor
 # tested a different tree. Caught while writing the 127 test, which could not fail
 # for exactly this reason.
 _self_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-# ITS OWN FAILURES ARE LOG LINES (CONTRACTS/logging.md, harbor#771), on stderr so a verb's stdout stays
-# its own. log-lib.sh is looked for beside the dispatcher, then in the checkouts it would dispatch to;
+# ITS OWN FAILURES ARE LOG LINES (contracts/logging.md, harbor#771), on stderr so a verb's stdout stays
+# its own. library-log.sh is looked for beside the dispatcher, then in the checkouts it would dispatch to;
 # with none, the two 127 failures below still print what failed and the fix, because recovery must
 # not need a file that may be part of what broke.
 _lld=''
 for _c in "$_self_dir" "${HARBOR_BIN:-}" "${PORT_ROOT:-$HOME/port}/harbor/bin"; do
-  if [ -n "$_c" ] && [ -f "$_c/log-lib.sh" ]; then _lld="$_c"; break; fi
+  if [ -n "$_c" ] && [ -f "$_c/library-log.sh" ]; then _lld="$_c"; break; fi
 done
 if [ -n "$_lld" ]; then
-  . "$_lld/log-lib.sh"
+  . "$_lld/library-log.sh"
   LOG_FD=2; log_init harbor
 fi
 _fail127() { # <what failed, and where> <the command that fixes it>
@@ -92,22 +92,22 @@ _fail127() { # <what failed, and where> <the command that fixes it>
   fi
   exit 127
 }
-# A native Windows shell is refused before any verb, help included (harbor#833, CONTRACTS/platforms.md).
+# A native Windows shell is refused before any verb, help included (harbor#833, contracts/platforms.md).
 case "$(uname -s 2>/dev/null || :)" in MINGW*|MSYS*|CYGWIN*)
-  _w="native Windows shell ($(uname -s)): Harbor runs on macOS and Linux, and on Windows only inside WSL2 (CONTRACTS/platforms.md)"
+  _w="native Windows shell ($(uname -s)): Harbor runs on macOS and Linux, and on Windows only inside WSL2 (contracts/platforms.md)"
   _wf="install WSL2 (wsl --install), clone Harbor inside the WSL filesystem (~/port/harbor), and run harbor there"
   if [ -n "$_lld" ]; then log_fail "$_w"; log_fix "$_wf"; log_end || :; else printf 'harbor: %s\n  fix: %s\n' "$_w" "$_wf" >&2; fi
   exit 1 ;;
 esac
 if [ -n "${HARBOR_BIN:-}" ]; then
-  if [ -f "$HARBOR_BIN/status-gen.sh" ]; then
+  if [ -f "$HARBOR_BIN/status-generate.sh" ]; then
     BIN="$HARBOR_BIN"
   else
-    _fail127 "HARBOR_BIN=$HARBOR_BIN has no status-gen.sh — refusing to fall back" "unset HARBOR_BIN"
+    _fail127 "HARBOR_BIN=$HARBOR_BIN has no status-generate.sh — refusing to fall back" "unset HARBOR_BIN"
   fi
 else
   for _c in "$_self_dir" "${PORT_ROOT:-$HOME/port}/harbor/bin"; do
-    if [ -f "$_c/status-gen.sh" ]; then BIN="$_c"; break; fi
+    if [ -f "$_c/status-generate.sh" ]; then BIN="$_c"; break; fi
   done
 fi
 
@@ -131,7 +131,7 @@ EOF
 
 Verbs marked --json accept it and pass it through. Exit codes: 0 success,
 1 the verb reported a problem, 2 usage error, 127 the verb's script is missing.
-Frozen in CONTRACTS/cli.md; lint rule CLI1 keeps this table equal to it.
+Frozen in contracts/cli.md; lint rule CLI1 keeps this table equal to it.
 EOF
 }
 
@@ -144,7 +144,7 @@ shift
 
 _run="$(verb_field "$VERB" 2)"
 # `harbor status obligations …` (harbor#1050) is the obligations ledger's read side. The verb table is frozen under CLI1, so the
-# sub-verb is routed here, before the script is picked, and every other `harbor status` call reaches status-gen.sh unchanged.
+# sub-verb is routed here, before the script is picked, and every other `harbor status` call reaches status-generate.sh unchanged.
 if [ "$VERB" = status ] && [ "${1:-}" = obligations ]; then shift; _run="status-obligations.sh show"; fi
 # `harbor deploy push <target>` (harbor#1149) shares the core set: a sub-verb row, since the verb table is frozen.
 SUBVERBS="
@@ -178,7 +178,7 @@ fi
 
 if [ -z "${BIN:-}" ] || [ ! -f "$BIN/$SCRIPT" ]; then
   # The fix is exact only when the conventional checkout holds the script; otherwise say where to look.
-  _fix="none automatic — see CONTRACTS/cli.md (which script each verb runs)"
+  _fix="none automatic — see contracts/cli.md (which script each verb runs)"
   _hb="${PORT_ROOT:-$HOME/port}/harbor/bin"
   if [ "${BIN:-}" != "$_hb" ] && [ -f "$_hb/$SCRIPT" ]; then
     _fix="HARBOR_BIN='$_hb' harbor $VERB"
@@ -195,9 +195,9 @@ if [ "$_run" != "$SCRIPT" ]; then
 fi
 # `harbor verify` re-judges after it verifies, so the .helm-judge counter reflects the box the operator just checked and not
 # the 05:23 run (no new schedule). Best effort and on stderr: the verdict and exit status stay floor-verify's own.
-if [ "$VERB" = verify ] && [ -f "$BIN/judge-run.sh" ] && [ "${HARBOR_NO_JUDGE:-}" != 1 ]; then
+if [ "$VERB" = verify ] && [ -f "$BIN/audit-triage-run.sh" ] && [ "${HARBOR_AUDIT_TRIAGE_DISABLE:-}" != 1 ]; then
   sh "$BIN/$SCRIPT" "$@"; _rc=$?
-  sh "$BIN/judge-run.sh" --live --apply >/dev/null 2>&1 || :
+  sh "$BIN/audit-triage-run.sh" --live --apply >/dev/null 2>&1 || :
   exit "$_rc"
 fi
 # exec, so the target's exit status IS harbor's — never remapped, never swallowed.

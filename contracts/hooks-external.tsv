@@ -1,0 +1,11 @@
+# hooks-external.tsv — hooks the live box runs that NO installer in bin/ wires. harbor#813.
+#
+# Lint F15 derives "every script a hook runs" from the installers' wiring, so a hook wired any
+# other way is invisible to it: worklog-push.sh runs at Stop
+# on this box (CONSTITUTION's degraded-state section names it), deploy-runtime-install.sh ships it, and
+# nothing in harbor or ~/port writes its settings.json entry (searched 2026-09-29).
+# A row here puts a script in F15's set, and floor.session-test's B9c wires and runs it.
+# Remove a row when an installer wires the hook, or when the box stops running it.
+# Empty since harbor#1272: worklog-push.sh is a hook engine, wired by runtime-install from its manifest.
+#
+# script	event	why

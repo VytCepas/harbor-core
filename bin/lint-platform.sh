@@ -7,12 +7,12 @@
 # A file that calls launchctl, plutil, ditto, caffeinate, pbcopy, pbpaste, osascript, notifyutil, pmset, scutil, dscl,
 # xattr or brew (comments stripped, extensionless files included) names a Linux counterpart for each in its own code
 # (systemctl, a clipboard tool, pkg_hint, useradd), or carries `# platform: macOS-only — <reason>` in its first 40 lines.
-# osascript has no counterpart: a notification goes through bin/alert-lib.sh, the one helper allowed to call it.
+# osascript has no counterpart: a notification goes through bin/library-alert.sh, the one helper allowed to call it.
 # Guards and the lint hold a call as a pattern they refuse or match, so they are not judged. Run by lint.platform-calls.
 # The `<file>: <tool>` lines are data on stdout; the verdict is log-lib's, on stderr. Exit 0 clean, 1 a bare call, 2 usage.
 set -eu
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 log_init lint-platform
 LOG_FD=2
 CALLS='launchctl|plutil|ditto|caffeinate|pbcopy|pbpaste|osascript|notifyutil|pmset|scutil|dscl|xattr|brew'
@@ -22,15 +22,16 @@ CLIP='wl-paste|wl-copy|xclip|xsel|powershell\.exe|clip\.exe'
 # the lint's own rules, this file, and the wrapper-name list the command normalizer reads. A new name is a decision.
 exempt() { case "$1" in guard-*.sh|lint-conventions.sh|lint-platform.sh|floor-normalize.awk) return 0 ;; esac; return 1; }
 # The helpers: the one place each call is allowed to live (harbor#618).
-helper() { case "$1" in alert-lib.sh) return 0 ;; esac; return 1; }
-# doctor.sh is macOS-only for its optional `launchctl` probe, declared here and not in its header: lint LOG1's
+helper() { case "$1" in library-alert.sh) return 0 ;; esac; return 1; }
+# deploy-doctor.sh is macOS-only for its optional `launchctl` probe, declared here and not in its header: lint LOG1's
 # ratchet makes any edit to it convert the file onto log-lib, a rewrite of its table output. Move the line into its header then.
-declared_here() { case "$1" in doctor.sh) return 0 ;; esac; return 1; }
+declared_here() { case "$1" in deploy-doctor.sh) return 0 ;; esac; return 1; }
 counter() { case "$1" in launchctl) echo 'systemctl' ;; pbcopy|pbpaste) echo "$CLIP" ;; brew) echo 'pkg_hint|apt-get|= Darwin' ;; dscl) echo 'useradd' ;; *) echo '' ;; esac; }
 
 uncovered() { # <dir>
   for _f in "$1"/*; do
     [ -f "$_f" ] || continue
+    [ -L "$_f" ] && continue   # a rename shim (harbor#961) is judged under its new name
     _n="${_f##*/}"; exempt "$_n" && continue
     helper "$_n" && continue
     declared_here "$_n" && continue
@@ -65,5 +66,5 @@ _out="$(uncovered "$DIR")"
 if [ -z "$_out" ]; then log_ok "no bare macOS-only call in $DIR"; log_end || :; exit 0; fi
 printf '%s\n' "$_out"
 log_fail "$(printf '%s\n' "$_out" | wc -l | tr -d ' ') bare macOS-only call(s)"
-log_fix "port each beside its Linux counterpart, call bin/alert-lib.sh for a notification, or declare it in the header"
+log_fix "port each beside its Linux counterpart, call bin/library-alert.sh for a notification, or declare it in the header"
 log_end || :; exit 1

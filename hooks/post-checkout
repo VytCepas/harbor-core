@@ -2,18 +2,34 @@
 # GOVERNANCE (harbor#1116) — a new linked worktree is born with the memory store routed.
 #
 # Install:  ln -sf ../../hooks/post-checkout .git/hooks/post-checkout   (core.hooksPath needs nothing)
+# Box-wide, every repo (harbor#966): git config --global hook.harbor-memory-route.event post-checkout
+#                                     git config --global hook.harbor-memory-route.command <harbor>/hooks/post-checkout
 #
 # bin/worktree.sh new routes at creation (harbor#589), but a raw `git worktree add` skips it, and
 # that is how worktrees are really made here, so the repair did not survive worktree creation.
 # git runs this on every checkout; only a worktree's first one (previous HEAD all zeros, git-dir
 # differing from the common dir) acts. memory-route.sh --apply stays the one linker. It writes
 # symlinks only, and nothing here can fail the checkout: exit 0 on every path.
+#
+# WHY BOX-WIDE (harbor#966). Wired through harbor's core.hooksPath, this ran for harbor's trees only:
+# a raw worktree of any other governed repo stayed blind until the next harbor worktree routed the box,
+# so memory-route's colour depended on which happened last (2026-10-04: RED 1 of 56, then GREEN).
+# A config hook (git >= 2.36's hook.<name>.event) runs beside each repo's own hooks, whatever its hooksPath.
 set -u
 _prev="${1:-}"
 case "$_prev" in *[!0]*|"") exit 0 ;; esac   # not all zeros: an ordinary checkout
 _gd="$(CDPATH= cd -P -- "$(git rev-parse --git-dir 2>/dev/null)" 2>/dev/null && pwd -P)" || exit 0
 _cd="$(CDPATH= cd -P -- "$(git rev-parse --git-common-dir 2>/dev/null)" 2>/dev/null && pwd -P)" || exit 0
 [ "$_gd" != "$_cd" ] || exit 0               # a fresh clone is not a linked worktree
+
+_phys() { CDPATH= cd -P -- "$1" 2>/dev/null && pwd -P || printf '%s' "$1"; }
+_cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+_top="$(_phys "$(git rev-parse --show-toplevel 2>/dev/null)")"
+# Box-wide, this runs for every scratch worktree too; the router's registry rows are ~/ paths, so a tree
+# outside $HOME (a suite's fixture under $TMPDIR) is never one it routes, and costs no 3 s router run.
+case "$_top/" in "$(_phys "$HOME")/"*) ;; *) exit 0 ;; esac
+# Already routed (harbor's own hooksPath copy ran first, when both are wired): nothing left to do.
+[ ! -L "$_cfg/projects/$(printf '%s' "$_top" | sed 's|/|-|g')/memory" ] || exit 0
 
 # $0 is the symlink path when installed by `ln -s`, so resolve it to find bin/ (see hooks/pre-commit).
 _hk_self="$0"
@@ -25,8 +41,6 @@ _hk_root="$(CDPATH= cd -- "$(dirname -- "$_hk_self")/.." && pwd)"
 [ -f "$_hk_root/bin/memory-route.sh" ] || exit 0
 
 # --live only when the config dir IS the live one: the tool's write gate demands it spelled out.
-_cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-_phys() { CDPATH= cd -P -- "$1" 2>/dev/null && pwd -P || printf '%s' "$1"; }
 if [ "$(_phys "$_cfg")" = "$(_phys "$HOME/.claude")" ]; then set -- --live; else set -- --dir "$_cfg"; fi
 
 # git exports GIT_DIR into hooks, and memory-route runs `git worktree list` on other trees

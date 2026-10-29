@@ -14,16 +14,16 @@
 #
 # standard_version: 2.0.0
 old_path	new_path	wave	recommendation	confidence	reason	remove_by	frozen	surface	reader
-bin/collector.sh	bin/audit-collector.sh	W5	rename	high	scheduled by com.harbor.collector.plist, so it moves with the launchd set	-			none found
-bin/findings-run.sh	bin/lint-findings-run.sh	W5	rename	high	scheduled by com.harbor.findings.plist; moves with the launchd set	2027-02-28			deployed copy ~/.claude/bin/; ~/Library/LaunchAgents plist
-bin/fleet-snapshot-refresh.sh	bin/status-fleet-snapshot-refresh.sh	W5	rename	high	scheduled by com.harbor.fleet-snapshot.plist; moves with the launchd set	2027-02-28			deployed copy ~/.claude/bin/; memory notes; ~/Library/LaunchAgents plist
-bin/judge-run.sh	bin/audit-triage-run.sh	W5	rename	high	judge is a legacy alias of triage; scheduled by com.harbor.judge.plist	2027-02-28			deployed copy ~/.claude/bin/; ~/Library/LaunchAgents plist
-bin/launchd-render.sh	bin/deploy-launchd-render.sh	W5	rename	high	renders plists from the roots table; moves with the launchd set	2027-02-28			repo harbor-private; ~/Library/LaunchAgents plist
-bin/otlp-receiver.py	bin/audit-otlp-receiver.py	W5	rename	high	telemetry receiver of the collector; scheduled by com.harbor.otlp-receiver.plist	-			none found
-bin/pulse-notify.sh	bin/alert-notify.sh	W5	rename	high	pulse is a legacy alias of alerting; edge trigger and sink	2027-02-28			deployed copy ~/.claude/bin/; ~/Library/LaunchAgents plist
-bin/pulse.sh	bin/alert-probe.sh	W5	rename	high	between-sessions health probe; scheduled by com.harbor.pulse.plist	2027-02-28			deployed copy ~/.claude/bin/
-bin/redteam-corpus-run.sh	bin/eval-redteam-corpus-run.sh	W5	rename	high	scheduled by com.harbor.redteam-corpus.plist	2027-02-28			deployed copy ~/.claude/bin/; ~/Library/LaunchAgents plist
-bin/usage-aggregate.sh	bin/status-usage-aggregate.sh	W5	rename	med	scheduled by com.harbor.usage.plist; moves with the launchd set	2027-02-28			deployed copy ~/.claude/bin/; ~/Library/LaunchAgents plist
+bin/audit-collector.sh	bin/audit-collector.sh	W5	rename	high	scheduled by com.harbor.collector.plist, so it moves with the launchd set	-			none found
+bin/lint-findings-run.sh	bin/lint-findings-run.sh	W5	rename	high	scheduled by com.harbor.findings.plist; moves with the launchd set	2027-02-28			deployed copy ~/.claude/bin/; ~/Library/LaunchAgents plist
+bin/status-fleet-snapshot-refresh.sh	bin/status-fleet-snapshot-refresh.sh	W5	rename	high	scheduled by com.harbor.fleet-snapshot.plist; moves with the launchd set	2027-02-28			deployed copy ~/.claude/bin/; memory notes; ~/Library/LaunchAgents plist
+bin/audit-triage-run.sh	bin/audit-triage-run.sh	W5	rename	high	judge is a legacy alias of triage; scheduled by com.harbor.judge.plist	2027-02-28			deployed copy ~/.claude/bin/; ~/Library/LaunchAgents plist
+bin/deploy-launchd-render.sh	bin/deploy-launchd-render.sh	W5	rename	high	renders plists from the roots table; moves with the launchd set	2027-02-28			repo harbor-private; ~/Library/LaunchAgents plist
+bin/audit-otlp-receiver.py	bin/audit-otlp-receiver.py	W5	rename	high	telemetry receiver of the collector; scheduled by com.harbor.otlp-receiver.plist	-			none found
+bin/alert-notify.sh	bin/alert-notify.sh	W5	rename	high	pulse is a legacy alias of alerting; edge trigger and sink	2027-02-28			deployed copy ~/.claude/bin/; ~/Library/LaunchAgents plist
+bin/alert-probe.sh	bin/alert-probe.sh	W5	rename	high	between-sessions health probe; scheduled by com.harbor.pulse.plist	2027-02-28			deployed copy ~/.claude/bin/
+bin/eval-redteam-corpus-run.sh	bin/eval-redteam-corpus-run.sh	W5	rename	high	scheduled by com.harbor.redteam-corpus.plist	2027-02-28			deployed copy ~/.claude/bin/; ~/Library/LaunchAgents plist
+bin/status-usage-aggregate.sh	bin/status-usage-aggregate.sh	W5	rename	med	scheduled by com.harbor.usage.plist; moves with the launchd set	2027-02-28			deployed copy ~/.claude/bin/; ~/Library/LaunchAgents plist
 launchd/com.harbor.ci-governor.plist	launchd/com.harbor.ci.governor.plist	W5	rename	high	launchd label is com.<system>.<family>.<object> (D-5); the Label key inside the plist changes with it	2027-02-28		path	loaded LaunchAgent twin; ~/Library/LaunchAgents plist
 launchd/com.harbor.collector-checkpoint.plist	launchd/com.harbor.audit.collector-checkpoint.plist	W5	rename	high	launchd label is com.<system>.<family>.<object> (D-5); the Label key inside the plist changes with it	-		path	none found
 launchd/com.harbor.collector.plist	launchd/com.harbor.audit.collector.plist	W5	rename	high	launchd label is com.<system>.<family>.<object> (D-5); the Label key inside the plist changes with it	-		path	none found
@@ -39,19 +39,19 @@ systemd/harbor-judge.service	systemd/harbor-audit-triage.service	W5	rename	high	
 systemd/harbor-judge.timer	systemd/harbor-audit-triage.timer	W5	rename	high	systemd unit is harbor-<id>; judge and pulse are legacy aliases	-		path	none found
 systemd/harbor-pulse.service	systemd/harbor-alert-probe.service	W5	rename	high	systemd unit is harbor-<id>; judge and pulse are legacy aliases	-		path	none found
 systemd/harbor-pulse.timer	systemd/harbor-alert-probe.timer	W5	rename	high	systemd unit is harbor-<id>; judge and pulse are legacy aliases	-		path	none found
-env:HELM_DISABLE_FLOOR	env:HARBOR_ADMISSION_DISABLE	W5	rename	high	kill switch, both spellings read until remove_by (#961 done-when 8)	2027-02-28	kill-switch	env	frozen.tsv kill-switch; memory notes; repo azimuth (+2)
-env:HELM_FLOOR_SHADOW	env:HARBOR_ADMISSION_SHADOW	W5	rename	high	kill switch, both spellings read until remove_by (#961 done-when 8)	2027-02-28	kill-switch	env	frozen.tsv kill-switch
-env:HELM_CRED_OCC	env:HARBOR_ADMISSION_CRED_OCC	W5	rename	high	HELM_ becomes HARBOR_ (D-3); read by the egress guard	-		env	none found
-env:HELM_DESTROY_POSTURE	env:HARBOR_ADMISSION_DESTROY_POSTURE	W5	rename	high	HELM_ becomes HARBOR_ (D-3)	-		env	none found
-env:HELM_DRIFT_REF	env:HARBOR_DRIFT_REF	W5	rename	high	HELM_ becomes HARBOR_ (D-3)	-		env	none found
-env:HELM_LIVE_DIR	env:HARBOR_DEPLOY_LIVE_DIR	W5	rename	high	HELM_ becomes HARBOR_ (D-3); the live config dir is a deploy target	-		env	none found
-env:HELM_SANDBOX_DIR	env:HARBOR_TEST_SANDBOX_DIR	W5	rename	high	HELM_ becomes HARBOR_ (D-3); the disposable copy is a test sandbox	-		env	none found
-env:HELM_OBS_DISABLE	env:HARBOR_ADMISSION_OBSERVE_DISABLE	W5	rename	high	HELM_ becomes HARBOR_ (D-3); obs is an unregistered abbreviation	-		env	none found
-env:HARBOR_NO_JUDGE	env:HARBOR_AUDIT_TRIAGE_DISABLE	W5	rename	high	judge is a legacy alias of triage	-		env	none found
-env:HARBOR_PULSE_LAST_RUN	env:HARBOR_ALERT_PROBE_LAST_RUN	W5	rename	high	pulse is a legacy alias of alerting	-		env	none found
-env:HARBOR_PULSE_REMIND	env:HARBOR_ALERT_PROBE_REMIND	W5	rename	high	pulse is a legacy alias of alerting	-		env	none found
-env:HARBOR_PULSE_STATE	env:HARBOR_ALERT_PROBE_STATE	W5	rename	high	pulse is a legacy alias of alerting	-		env	none found
-env:HARBOR_REQUIRE_PROD_GUARD_PARITY	env:HARBOR_ADMISSION_REQUIRE_PROD_PARITY	W5	rename	high	guard is a legacy alias of admission-hook	-		env	none found
-env:GUARD_EGRESS	env:HARBOR_ADMISSION_EGRESS	W5	rename	high	guard is a legacy alias of admission-hook; no repo prefix	-		env	none found
-env:HARBOR_ORCHESTRATOR	env:HARBOR_SCOPE_FLEET_CONTROLLER	W5	rename	med	orchestrator is a legacy alias of fleet-controller; repo renamed fleet	2027-02-28	env:HARBOR_ORCHESTRATOR	env	frozen.tsv env:HARBOR_ORCHESTRATOR
-env:HARBOR_PROJECT_INIT	env:HARBOR_SCOPE_SCAFFOLDER	W5	rename	med	project-init is a legacy alias of scaffolder; repo renamed yard	2027-02-28	env:HARBOR_PROJECT_INIT	env	frozen.tsv env:HARBOR_PROJECT_INIT
+env:HARBOR_ADMISSION_DISABLE	env:HARBOR_ADMISSION_DISABLE	W5	rename	high	kill switch, both spellings read until remove_by (#961 done-when 8)	2027-02-28	kill-switch	env	frozen.tsv kill-switch; memory notes; repo azimuth (+2)
+env:HARBOR_ADMISSION_SHADOW	env:HARBOR_ADMISSION_SHADOW	W5	rename	high	kill switch, both spellings read until remove_by (#961 done-when 8)	2027-02-28	kill-switch	env	frozen.tsv kill-switch
+env:HARBOR_ADMISSION_CRED_OCC	env:HARBOR_ADMISSION_CRED_OCC	W5	rename	high	HELM_ becomes HARBOR_ (D-3); read by the egress guard	-		env	none found
+env:HARBOR_ADMISSION_DESTROY_POSTURE	env:HARBOR_ADMISSION_DESTROY_POSTURE	W5	rename	high	HELM_ becomes HARBOR_ (D-3)	-		env	none found
+env:HARBOR_DRIFT_REF	env:HARBOR_DRIFT_REF	W5	rename	high	HELM_ becomes HARBOR_ (D-3)	-		env	none found
+env:HARBOR_DEPLOY_LIVE_DIR	env:HARBOR_DEPLOY_LIVE_DIR	W5	rename	high	HELM_ becomes HARBOR_ (D-3); the live config dir is a deploy target	-		env	none found
+env:HARBOR_TEST_SANDBOX_DIR	env:HARBOR_TEST_SANDBOX_DIR	W5	rename	high	HELM_ becomes HARBOR_ (D-3); the disposable copy is a test sandbox	-		env	none found
+env:HARBOR_ADMISSION_OBSERVE_DISABLE	env:HARBOR_ADMISSION_OBSERVE_DISABLE	W5	rename	high	HELM_ becomes HARBOR_ (D-3); obs is an unregistered abbreviation	-		env	none found
+env:HARBOR_AUDIT_TRIAGE_DISABLE	env:HARBOR_AUDIT_TRIAGE_DISABLE	W5	rename	high	judge is a legacy alias of triage	-		env	none found
+env:HARBOR_ALERT_PROBE_LAST_RUN	env:HARBOR_ALERT_PROBE_LAST_RUN	W5	rename	high	pulse is a legacy alias of alerting	-		env	none found
+env:HARBOR_ALERT_PROBE_REMIND	env:HARBOR_ALERT_PROBE_REMIND	W5	rename	high	pulse is a legacy alias of alerting	-		env	none found
+env:HARBOR_ALERT_PROBE_STATE	env:HARBOR_ALERT_PROBE_STATE	W5	rename	high	pulse is a legacy alias of alerting	-		env	none found
+env:HARBOR_ADMISSION_REQUIRE_PROD_PARITY	env:HARBOR_ADMISSION_REQUIRE_PROD_PARITY	W5	rename	high	guard is a legacy alias of admission-hook	-		env	none found
+env:HARBOR_ADMISSION_EGRESS	env:HARBOR_ADMISSION_EGRESS	W5	rename	high	guard is a legacy alias of admission-hook; no repo prefix	-		env	none found
+env:HARBOR_SCOPE_FLEET_CONTROLLER	env:HARBOR_SCOPE_FLEET_CONTROLLER	W5	rename	med	orchestrator is a legacy alias of fleet-controller; repo renamed fleet	2027-02-28	env:HARBOR_SCOPE_FLEET_CONTROLLER	env	frozen.tsv env:HARBOR_SCOPE_FLEET_CONTROLLER
+env:HARBOR_SCOPE_SCAFFOLDER	env:HARBOR_SCOPE_SCAFFOLDER	W5	rename	med	project-init is a legacy alias of scaffolder; repo renamed yard	2027-02-28	env:HARBOR_SCOPE_SCAFFOLDER	env	frozen.tsv env:HARBOR_SCOPE_SCAFFOLDER

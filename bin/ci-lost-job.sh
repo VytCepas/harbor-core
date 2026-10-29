@@ -28,14 +28,14 @@
 # spread over every kind of job, each read as a failing suite until somebody
 # opened the annotation. Re-running it is a repair with no judgment in it; the
 # read that tells the two apart is this one, and it lives in one place so
-# pr-wait.sh and merge-check.sh cannot drift apart on the phrase.
+# gate-pr-wait.sh and gate-merge-check.sh cannot drift apart on the phrase.
 #
 # EVERY ANNOTATION, NOT ANY. A job that ran, failed and was ALSO annotated is a
 # failure first; calling it lost would send someone to re-run a real red. Zero
 # annotations is not lost either — that is the ordinary shape of a failed step.
 set -eu
 LOG_FD=2   # stdout is this tool's answer (the re-run command), so the log goes to stderr
-. "$(dirname -- "$0")/log-lib.sh"
+. "$(dirname -- "$0")/library-log.sh"
 die() { log_fail "$1"; log_fix "$2"; log_end || :; exit 2; }
 
 # GitHub's refusal text for an unpaid account; the operator rule is NEVER to raise the limit.

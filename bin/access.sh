@@ -1,12 +1,12 @@
 #!/usr/bin/env sh
 # access.sh (harbor#1205, harbor#1149) - `harbor access`: the access register, the one list of every identity an
-# agent may use, and the only door to a secret's name. CONTRACTS/access-register.md is the format.
+# agent may use, and the only door to a secret's name. contracts/access-register.md is the format.
 #
 #   harbor access add <id> --kind K --what T --use-when T --reaches T --cannot T --grant T
 #                          (--secret REF | --no-secret) [--value-stdin] [--probe CMD]
 #                          [--check CMD --expect T] [--expires YYYY-MM-DD] [--renew T] [--revoke T]
 #   harbor access list                    the entries: id, kind, secret ref, what
-#   harbor access has <ref>               exit 0 registered, 3 grandfathered (CONTRACTS/secret-legacy-refs.txt), 4 revoked, 1 neither
+#   harbor access has <ref>               exit 0 registered, 3 grandfathered (contracts/secret-legacy-refs.txt), 4 revoked, 1 neither
 #   harbor access refs                    the registered secret refs, one per line
 #   harbor access check                   is the register well formed, and free of a credential value
 #   harbor access stored                  every item bin/secret holds, and whether an entry names it (exit 1 if not)
@@ -19,19 +19,19 @@
 # bin/secret's own prompt on a terminal; it is never an argument. A missing field is asked for on a terminal and a
 # usage error (exit 2) elsewhere. --probe runs CMD after the store: a failing probe exits 1 and keeps the entry.
 # With no private layer the register is empty: every ref is unregistered, add refuses, list prints nothing.
-# status, rotate and revoke make the register the one controller of a credential's life (CONTRACTS/access-register.md,
+# status, rotate and revoke make the register the one controller of a credential's life (contracts/access-register.md,
 # "Lifecycle"): the entry's check:/expect: is run by check-routes.sh --probe, the classifier the cards use.
 set -eu
 LC_ALL=C; export LC_ALL   # [a-z] below means ASCII lower case, whatever the caller's locale
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
-. "$SRC/log-lib.sh"
+. "$SRC/library-log.sh"
 log_init access
 LOG_FD=2
 GREP=/usr/bin/grep   # grep here is ugrep on the operator's box; BSD semantics are the contract
-LEGACY="${ACCESS_LEGACY_REFS:-$ROOT/CONTRACTS/secret-legacy-refs.txt}"
-PATTERNS="${ACCESS_CREDENTIAL_PATTERNS:-$ROOT/CONTRACTS/credential-patterns.tsv}"
+LEGACY="${ACCESS_LEGACY_REFS:-$ROOT/contracts/secret-legacy-refs.txt}"
+PATTERNS="${ACCESS_CREDENTIAL_PATTERNS:-$ROOT/contracts/credential-patterns.tsv}"
 KINDS='account role app mailbox token'
 FIELDS='kind what use-when reaches cannot grant secret verified check expect expires renew revoke rotated revoked'
 DATE_FIELDS='expires rotated revoked'
@@ -44,7 +44,7 @@ usage() { sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 
 # The register file: <access dir>/register.md. Empty stdout and exit 1 when there is no register directory.
 register_file() {
-  __d="$(sh "$SRC/roots.sh" --access 2>/dev/null)" || return 1
+  __d="$(sh "$SRC/scope-roots.sh" --access 2>/dev/null)" || return 1
   printf '%s/register.md' "$__d"
 }
 
@@ -130,7 +130,7 @@ cmd_list() {
 
 # Is the register well formed, and does any value look like a credential? Prints FAIL lines; returns 1 on any.
 cmd_check() {
-  __rf="$(register_file)" || { printf 'access check: no access register, so NOTHING was checked and this is not a pass.\n' >&2; printf '              Create the private layer first (harbor scope install, CONTRACTS/private-layer.md).\n' >&2; exit 2; }
+  __rf="$(register_file)" || { printf 'access check: no access register, so NOTHING was checked and this is not a pass.\n' >&2; printf '              Create the private layer first (harbor scope install, contracts/private-layer.md).\n' >&2; exit 2; }
   [ -f "$__rf" ] || { printf 'access check: %s does not exist, so NOTHING was checked and this is not a pass.\n' "$__rf" >&2; exit 2; }
   __tmp="$(mktemp -d "${TMPDIR:-/tmp}/access.XXXXXX")" || exit 2
   trap 'rm -rf "$__tmp"' EXIT INT TERM
@@ -139,7 +139,7 @@ cmd_check() {
   # The grammar's own problems.
   while IFS="$(printf '\t')" read -r _t _m; do
     [ "$_t" = E ] || continue
-    log_fail "${__rf##*/} $_m"; log_fix "fix the line in $__rf (CONTRACTS/access-register.md)"; __bad=1
+    log_fail "${__rf##*/} $_m"; log_fix "fix the line in $__rf (contracts/access-register.md)"; __bad=1
   done < "$__tmp/rows"
   # Required fields, the kind enum, the secret ref shape, the date, and a ref named by one entry only.
   awk -F'\t' -v req="$REQUIRED" -v all="$FIELDS" -v kinds="$KINDS" -v dates="$DATE_FIELDS" "$AWK_DATES"'
@@ -166,7 +166,7 @@ cmd_check() {
     }' "$__tmp/rows" > "$__tmp/problems"
   while IFS= read -r _p; do
     [ -n "$_p" ] || continue
-    log_fail "${__rf##*/} $_p"; log_fix "fix the entry in $__rf (CONTRACTS/access-register.md)"; __bad=1
+    log_fail "${__rf##*/} $_p"; log_fix "fix the entry in $__rf (contracts/access-register.md)"; __bad=1
   done < "$__tmp/problems"
   # A value that looks like a credential. The line is reported, never the value.
   if [ -f "$PATTERNS" ]; then
@@ -514,8 +514,8 @@ cmd_rotate() {
   case "$__rc" in
     0) ;;
     1) fail "'$__id' was NOT rotated: its check failed against the new value, and the old one is back" "check the new value at its source, then rotate again" 1 ;;
-    5) fail "'$__id' was NOT rotated: the new value could not be stored, and the old one is back" "read bin/secret's lines above (SEC-0.md)" 1 ;;
-    *) fail "'$__id': bin/secret rotate exited $__rc; read its lines above before anything else" "SEC-0.md" "$__rc" ;;
+    5) fail "'$__id' was NOT rotated: the new value could not be stored, and the old one is back" "read bin/secret's lines above (docs/how-to/harden-the-host.md)" 1 ;;
+    *) fail "'$__id': bin/secret rotate exited $__rc; read its lines above before anything else" "docs/how-to/harden-the-host.md" "$__rc" ;;
   esac
   # The value is already kept: a busy or unwritable register costs the dates, never the rotation.
   if lock_register "$REG" soft && set_date "$REG" "$__id" rotated "$(today)" && set_date "$REG" "$__id" verified "$(today)"; then :

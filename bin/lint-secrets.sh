@@ -3,30 +3,30 @@
 #
 #   sh lint-secrets.sh --count    the number of hits (occurrences, not files)
 #   sh lint-secrets.sh --list     each one as file:line TAB class
-#   sh lint-secrets.sh --check    red if the count is above CONTRACTS/lint-secrets-baseline.txt;
+#   sh lint-secrets.sh --check    red if the count is above contracts/lint-secrets-baseline.txt;
 #                                    green but says to lower the baseline when it is below
 #
-# A credential reaches code through bin/secret and nowhere else (CONTRACTS/access-register.md). Four classes:
-#   literal  a value shaped like a credential (CONTRACTS/credential-patterns.tsv), anywhere in the tree
+# A credential reaches code through bin/secret and nowhere else (contracts/access-register.md). Four classes:
+#   literal  a value shaped like a credential (contracts/credential-patterns.tsv), anywhere in the tree
 #   keychain a direct `security <find|add|delete|dump>-...` or `secret-tool <lookup|store|clear|search>` call in
 #            command position; a file whose first 40 lines carry `# secret-seam: <why>` is declared and skipped
 #   env      a read of a variable named *TOKEN, *SECRET, *PASSWORD or *API_KEY (code files, not comments)
 #   appid    an app's identity written into code (code files, not comments): a GitHub App id, installation id or client id,
 #            or a Google OAuth client id. An identity is a register entry in the private layer, never a literal in core
 # A line carrying `secret-seam:` is declared, whichever class. Scope: every tracked file plus untracked ones git does
-# not ignore, minus tests, fixtures, EVALS-DATA, docs, worklog, vendor, the floor (guard-*, floor-*, FLOOR.md), bin/secret
+# not ignore, minus tests, fixtures, evals, docs, worklog, vendor, the floor (guard-*, floor-*, docs/explanation/admission-baseline.md), bin/secret
 # (the seam), this file and the pattern table. The baseline only goes down: a new read goes through `secret run`.
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
-BASE="${SECRETS_BASELINE:-$ROOT/CONTRACTS/lint-secrets-baseline.txt}"
-PATTERNS="${SECRETS_PATTERNS:-$ROOT/CONTRACTS/credential-patterns.tsv}"
-. "$SRC/log-lib.sh"
+BASE="${SECRETS_BASELINE:-$ROOT/contracts/lint-secrets-baseline.txt}"
+PATTERNS="${SECRETS_PATTERNS:-$ROOT/contracts/credential-patterns.tsv}"
+. "$SRC/library-log.sh"
 log_init lint-secrets
 LOG_FD=2
 
-# Command position for a keychain CLI, as tests/cli/secret-seam-test.sh derives it.
+# Command position for a keychain CLI, as tests/access/secret/seam.test.sh derives it.
 CALL='(^|[;&|(`{!]|[$][(]|(^|[[:space:]])(then|else|do|if))[[:space:]]*(security[[:space:]]+(find|add|delete|dump)-[a-z-]+|secret-tool[[:space:]]+(lookup|store|clear|search))([[:space:]]|$)'
 ENVRE='[$][{]?[A-Z][A-Z0-9_]*(TOKEN|SECRET|PASSWORD|API_KEY|APIKEY)([^A-Za-z0-9_]|$)'
 # An app id key followed by a number (app_id: 123456, APP_ID=123456, --app-id 123456, "installationId": 123456), a JWT
@@ -37,9 +37,9 @@ APPRE="(((app|client|installation)[_-]?(id|Id|ID)|APP_ID|CLIENT_ID|INSTALLATION_
 # git grep, not grep: grep here is ugrep and skips gitignored files. --untracked adds a new unstaged file.
 gg() { # <ERE> [-f file]
   git -C "$ROOT" grep -I --untracked -n -E "$@" -- . \
-    ':!tests/**' ':!fixtures/**' ':!EVALS-DATA/**' ':!**/tests/**' ':!**/fixtures/**' ':!docs/**' ':!worklog/**' ':!vendor/**' \
-    ':!skills/test-strength/targets/**' ':!skills/*/EVALS/**' ':!bin/guard-*' ':!bin/floor-*' ':!FLOOR.md' ':!bin/secret' ':!bin/lint-secrets.sh' \
-    ':!CONTRACTS/credential-patterns.tsv' ':!CONTRACTS/lint-secrets-baseline.txt' 2>/dev/null || :
+    ':!tests/**' ':!fixtures/**' ':!evals/**' ':!**/tests/**' ':!**/fixtures/**' ':!docs/**' ':!worklog/**' ':!vendor/**' \
+    ':!skills/test-strength/targets/**' ':!skills/*/EVALS/**' ':!bin/guard-*' ':!bin/floor-*' ':!docs/explanation/admission-baseline.md' ':!bin/secret' ':!bin/lint-secrets.sh' \
+    ':!contracts/credential-patterns.tsv' ':!contracts/lint-secrets-baseline.txt' 2>/dev/null || :
 }
 declared() { # <file> - a `# secret-seam:` header in the first 40 lines
   head -40 "$ROOT/$1" 2>/dev/null | /usr/bin/grep -q '^# *secret-seam:'
@@ -51,9 +51,9 @@ hits() { # file:line TAB class
     awk -F'\t' '/^[[:space:]]*(#|$)/ { next } $1 == "id" { next } NF >= 2 { print $2 }' "$PATTERNS" > "$__pf"
     if [ -s "$__pf" ]; then
       git -C "$ROOT" grep -I --untracked -n -E -f "$__pf" -- . \
-        ':!tests/**' ':!fixtures/**' ':!EVALS-DATA/**' ':!**/tests/**' ':!**/fixtures/**' ':!docs/**' ':!worklog/**' ':!vendor/**' \
-        ':!skills/test-strength/targets/**' ':!skills/*/EVALS/**' ':!bin/guard-*' ':!bin/floor-*' ':!FLOOR.md' ':!bin/secret' ':!bin/lint-secrets.sh' \
-        ':!CONTRACTS/credential-patterns.tsv' ':!CONTRACTS/lint-secrets-baseline.txt' 2>/dev/null |
+        ':!tests/**' ':!fixtures/**' ':!evals/**' ':!**/tests/**' ':!**/fixtures/**' ':!docs/**' ':!worklog/**' ':!vendor/**' \
+        ':!skills/test-strength/targets/**' ':!skills/*/EVALS/**' ':!bin/guard-*' ':!bin/floor-*' ':!docs/explanation/admission-baseline.md' ':!bin/secret' ':!bin/lint-secrets.sh' \
+        ':!contracts/credential-patterns.tsv' ':!contracts/lint-secrets-baseline.txt' 2>/dev/null |
         awk -F: '$0 !~ /secret-seam:/ { printf "%s:%s\tliteral\n", $1, $2 }' || :
     fi
     rm -f "$__pf"
@@ -86,7 +86,7 @@ case "${1:-}" in
     GOT="$(printf '%s' "$LIST" | grep -c . || :)"
     if [ "$GOT" -gt "$WANT" ]; then
       log_fail "$GOT credential read(s) outside bin/secret in the tree, baseline is $WANT"
-      log_fix "read a credential through 'secret run <ref> VAR -- <cmd>'; the ref, or an app's id, is a register entry ('harbor access add', CONTRACTS/access-register.md)"
+      log_fix "read a credential through 'secret run <ref> VAR -- <cmd>'; the ref, or an app's id, is a register entry ('harbor access add', contracts/access-register.md)"
       # The delta, not the census: files this branch touched that hold a hit.
       __chg="$(git -C "$ROOT" diff --name-only "$(git -C "$ROOT" merge-base HEAD origin/main 2>/dev/null || echo HEAD)" 2>/dev/null || :)"
       printf '%s\n' "$LIST" | cut -f1 | cut -d: -f1 | sort -u | while IFS= read -r f; do

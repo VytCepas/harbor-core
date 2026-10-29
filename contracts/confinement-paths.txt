@@ -1,0 +1,36 @@
+# confinement-paths.txt (harbor#1298, #555) — what a confined shell command may write and read, core's half.
+# One row per line: <kind> <path>. kind is write (filesystem.allowWrite), deny-write (filesystem.denyWrite),
+# read (filesystem.allowRead, which re-opens a path a Read deny rule closes) or secret (sandbox.credentials deny,
+# written only when harbor.toml sets confinement_credentials = "true", #555 P5). @PORT_ROOT@ and @DELIVERABLES@
+# resolve per contracts/port-root.md and harbor.toml `deliverables_dir`. Paths are RESOLVED paths: Seatbelt
+# ignores a symlinked spelling (#1297 round 2). The private layer's confinement-paths.txt is read after this.
+
+# The write zone (#555 decision 4): every governed repo, and the deliverables folder
+write @PORT_ROOT@
+write @DELIVERABLES@
+# Claude Code protects these only in the working folder; in the zone they would let a command plant code
+# that runs outside the confinement (a hook, an MCP server, a settings file) or rewrite a repo's git config
+deny-write @PORT_ROOT@/**/.git/hooks
+deny-write @PORT_ROOT@/**/.git/config
+deny-write @PORT_ROOT@/**/.claude/settings.json
+deny-write @PORT_ROOT@/**/.claude/settings.local.json
+deny-write @PORT_ROOT@/**/.claude/hooks
+deny-write @PORT_ROOT@/**/.agents/hooks
+deny-write @PORT_ROOT@/**/.mcp.json
+# CI workflows judge the agent (harbor#88); the guards already refuse a Bash write there, so denying it here costs
+# nothing and lets the *-surface admission rules count as covered (#555 P3 baseline, 2026-10-18)
+deny-write @PORT_ROOT@/**/.github/workflows
+# uv's cache: every `uv run --script` tool writes it
+write ~/.cache/uv
+# CA bundles a Read deny rule closes (`Read(//**/*.pem)`): the system bundle, and certifi inside uv's cache
+read /etc/ssl/cert.pem
+read /private/etc/ssl/cert.pem
+read ~/.cache/uv/**/certifi/cacert.pem
+# Key stores core can name (#555 P5): a confined command never needs to read them. The rest stays with #193.
+secret ~/.ssh
+secret ~/.aws/credentials
+secret ~/.netrc
+secret ~/.config/gh/hosts.yml
+secret ~/.docker/config.json
+secret ~/.kube/config
+secret ~/.config/harbor-app

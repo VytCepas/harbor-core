@@ -37,7 +37,7 @@ sibling.
 | Which account, which login, what am I allowed to touch | `access-ledger` |
 
 **This table is generated with the rest of the file.** It lives in
-`CONTRACTS/skill-book-router.tsv`, not in the output — a hand-written block here
+`contracts/skill-book-router.tsv`, not in the output — a hand-written block here
 would be destroyed by the next regeneration, which is exactly why the book was
 called unusable as a router. Editing the data fixes that; editing the book does
 not.
@@ -66,13 +66,13 @@ section is the only thing standing between them and being lost.
 |---|---|---|---|
 | `access-browser` | core | Pick the right browser backend and drive it, then say what the run's absence is and is not evidence for.…<br>_NOT FOR administering a tag-manager or analytics container (its workload skill owns that),…_ | `~/.claude/skills/access-browser/SKILL.md` |
 | `agent-routing` | core | Which model tier and effort each delegated agent runs on — Agent tool calls, headless `claude -p` runs,…<br>_NOT FOR reviewing a diff (audit-review-fanout), or API code that calls Claude (claude-api)._ | `~/.claude/skills/agent-routing/SKILL.md` |
-| `atlas` | core | The old name of the doc-atlas skill, kept as an alias until 2027-01-31 (harbor#1010): read…<br>_NOT FOR anything the atlas skill does not already answer (doc-atlas)._ | `~/.claude/skills/atlas/SKILL.md` |
-| `browser` | core | The old name of the access-browser skill, kept as an alias until 2027-01-31 (harbor#1010): read…<br>_NOT FOR anything the browser route does not already answer (access-browser)._ | `~/.claude/skills/browser/SKILL.md` |
-| `deliverable-contract` | core | The old name of the doc-deliverable-contract skill, kept as an alias until 2027-01-31 (harbor#1010): read…<br>_NOT FOR anything the deliverable contract does not already answer (doc-deliverable-contract)._ | `~/.claude/skills/deliverable-contract/SKILL.md` |
+| `atlas` | core | The old name of the doc-atlas skill, kept as an alias until 2026-11-15 (harbor#1010): read…<br>_NOT FOR anything the atlas skill does not already answer (doc-atlas)._ | `~/.claude/skills/atlas/SKILL.md` |
+| `browser` | core | The old name of the access-browser skill, kept as an alias until 2026-11-15 (harbor#1010): read…<br>_NOT FOR anything the browser route does not already answer (access-browser)._ | `~/.claude/skills/browser/SKILL.md` |
+| `deliverable-contract` | core | The old name of the doc-deliverable-contract skill, kept as an alias until 2026-11-15 (harbor#1010): read…<br>_NOT FOR anything the deliverable contract does not already answer (doc-deliverable-contract)._ | `~/.claude/skills/deliverable-contract/SKILL.md` |
 | `doc-learning-artifact` | core | The approved house style and build kit for study pages — an exam guide, a course explainer, a revision…<br>_NOT FOR an architecture or system diagram (`doc-atlas`), a status report or findings, or…_ | `~/.claude/skills/doc-learning-artifact/SKILL.md` |
 | `housekeeping` | core | Reclaim a drifted box: the measured trash classes that accumulate here, the detector for each, and —…<br>_NOT FOR deleting one file you can already name, or a repo's own build artefacts (its justfile…_ | `~/.claude/skills/housekeeping/SKILL.md` |
-| `learning-artifact` | core | The old name of the doc-learning-artifact skill, kept as an alias until 2027-01-31 (harbor#1010): read…<br>_NOT FOR anything the study-page skill does not already answer (doc-learning-artifact)._ | `~/.claude/skills/learning-artifact/SKILL.md` |
-| `review-fanout` | core | The old name of the audit-review-fanout skill, kept as an alias until 2027-01-31 (harbor#1010): read…<br>_NOT FOR anything the fan-out review does not already answer (audit-review-fanout)._ | `~/.claude/skills/review-fanout/SKILL.md` |
+| `learning-artifact` | core | The old name of the doc-learning-artifact skill, kept as an alias until 2026-11-15 (harbor#1010): read…<br>_NOT FOR anything the study-page skill does not already answer (doc-learning-artifact)._ | `~/.claude/skills/learning-artifact/SKILL.md` |
+| `review-fanout` | core | The old name of the audit-review-fanout skill, kept as an alias until 2026-11-15 (harbor#1010): read…<br>_NOT FOR anything the fan-out review does not already answer (audit-review-fanout)._ | `~/.claude/skills/review-fanout/SKILL.md` |
 | `skill-book` | core | The old name of the skill-catalog skill, kept as an alias for one release (harbor#1010): read…<br>_NOT FOR anything the catalog does not already answer (skill-catalog)._ | `~/.claude/skills/skill-book/SKILL.md` |
 | `test-strength` | core | Prove a load-bearing test can actually fail, and that it fails for the right reason. Break the thing it…<br>_NOT FOR reviewing a diff for defects (audit-review-fanout), or running a suite to see it pass…_ | `~/.claude/skills/test-strength/SKILL.md` |
 

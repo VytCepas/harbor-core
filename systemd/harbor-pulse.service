@@ -1,9 +1,9 @@
-# harbor#617 — the Linux/WSL2 twin of launchd/com.harbor.pulse.plist, CHECKS.md row `pulse`.
-# Install and disable: CHECKS.md, "Platforms". WSL2 needs [boot] systemd=true in /etc/wsl.conf.
+# harbor#617 — the Linux/WSL2 twin of launchd/com.harbor.pulse.plist, docs/reference/checks.md row `pulse`.
+# Install and disable: docs/reference/checks.md, "Platforms". WSL2 needs [boot] systemd=true in /etc/wsl.conf.
 [Unit]
 Description=Harbor check pulse: between-sessions health probe, notifies on state changes
 
 [Service]
 Type=oneshot
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=/bin/sh %h/.claude/bin/pulse-notify.sh
+ExecStart=/bin/sh %h/.claude/bin/alert-notify.sh

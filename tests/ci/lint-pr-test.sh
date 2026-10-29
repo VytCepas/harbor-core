@@ -28,7 +28,10 @@ t_has "no warning" "$out" "0 failed, 0 warnings"
 t_section "a title that breaks it warns and names the rule"
 out="$(run --title 'feat(PI-42): x' --body-file "$GOODBODY" --branch 'fix/949-admission-missing-hook')"; rc=$?
 t_has "the rule id is named" "$out" "[name.commit]"
-t_eq "warn mode exits 0" 0 "$rc"
+W="$T_TMP/warnroot"; mkdir -p "$W/standards" "$W/hooks"; cp -R "$T_ROOT/bin" "$W/bin"; cp -R "$T_ROOT/standards/naming" "$W/standards/naming"; cp "$T_ROOT/hooks/commit-msg" "$W/hooks/"
+sed 's/^name.commit\t[a-z]*/name.commit\twarn/' "$T_ROOT/standards/naming/controls.tsv" > "$W/standards/naming/controls.tsv"
+t_eq "warn mode exits 0" 0 "$(HARBOR_ROOT="$W" sh "$GC" --title 'feat(PI-42): x' >/dev/null 2>&1; echo $?)"
+t_eq "a block-mode rule (controls.tsv today) exits 1" 1 "$rc"
 
 t_section "a body that breaks it warns"
 printf '%s\n' '**What:** x (#949).' 'Co-Authored-By: Claude <noreply@anthropic.com>' > "$T_TMP/ai.md"
@@ -45,7 +48,7 @@ t_has "a bad branch names its rule" "$(run --title 'fix(admission): x' --body-fi
 
 t_section "only a block rule fails the run"
 B="$T_TMP/blockroot"; mkdir -p "$B/standards" "$B/hooks"; cp -R "$T_ROOT/bin" "$B/bin"; cp -R "$T_ROOT/standards/naming" "$B/standards/naming"; cp "$T_ROOT/hooks/commit-msg" "$B/hooks/"
-sed 's/^name.commit\twarn/name.commit\tblock/' "$T_ROOT/standards/naming/controls.tsv" > "$B/standards/naming/controls.tsv"
+sed 's/^name.commit\t[a-z]*/name.commit\tblock/' "$T_ROOT/standards/naming/controls.tsv" > "$B/standards/naming/controls.tsv"
 out="$(HARBOR_ROOT="$B" sh "$GC" --title 'feat(PI-42): x' 2>&1)"; rc=$?
 t_eq "a block rule exits 1" 1 "$rc"
 t_has "and prints FAIL with its id" "$out" "FAIL: [name.commit]"

@@ -5,17 +5,17 @@
 #   sh pack.sh install [<repo-id>...] --apply (--live | --dir PATH)
 #   sh pack.sh remove <repo-id>... --apply (--live | --dir PATH)   delete what install wrote, nothing else
 # No <repo-id> on install means every repo in harbor.toml `packs`. A refused pack is skipped by name, the rest
-# still install, and the run exits 1. CONTRACTS/pack.md is the format, the refusals and the manifest.
+# still install, and the run exits 1. contracts/pack.md is the format, the refusals and the manifest.
 # A pack's check rows are a checks.md fragment (plus an optional controls.tsv), the private layer's own shape; install puts
-# them at checks.d/<repo-id>.md and recomposes the installed bin/CHECKS.md through check-registry-generate.sh.
-# A pack's commands on PATH are a shims.tsv (name TAB bin/<file>): install puts it at shims.d/<repo-id>.tsv, and shim-install.sh
-# links ~/.local/bin/<name> to the installed copy, so core's own CONTRACTS/shims.tsv names no pack command.
+# them at checks.d/<repo-id>.md and recomposes the installed bin/docs/reference/checks.md through check-registry-generate.sh.
+# A pack's commands on PATH are a shims.tsv (name TAB bin/<file>): install puts it at shims.d/<repo-id>.tsv, and deploy-shim-install.sh
+# links ~/.local/bin/<name> to the installed copy, so core's own contracts/shims.tsv names no pack command.
 set -eu
 
 SRC="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
-. "$SRC/log-lib.sh"
-. "$SRC/install-lib.sh"
+. "$SRC/library-log.sh"
+. "$SRC/deploy-install-lib.sh"
 log_init pack
 LOG_FD=2
 IL_LOG=0   # a pack run keeps no backups dir: install -> remove must leave the target byte-identical
@@ -85,14 +85,14 @@ mf_rows() { awk -F'\t' -v t="$2" '$1 == t { print $2 }' "$MFD/$1.tsv" 2>/dev/nul
 
 plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src TAB rel) and $WORK/meta
   ID="$1"; : > "$WORK/plan"
-  sh "$SRC/roots.sh" --conf packs 2>/dev/null | awk -v i="$ID" '$0 == i { f = 1 } END { exit !f }' ||
-    refuse "not listed in harbor.toml packs" "add \"$ID\" to packs in harbor.toml (CONTRACTS/private-layer.md)" || return 1
-  # harbor-private is the private layer's own pack (harbor#1273): its checkout is what roots.sh --private resolves, never a
+  sh "$SRC/scope-roots.sh" --conf packs 2>/dev/null | awk -v i="$ID" '$0 == i { f = 1 } END { exit !f }' ||
+    refuse "not listed in harbor.toml packs" "add \"$ID\" to packs in harbor.toml (contracts/private-layer.md)" || return 1
+  # harbor-private is the private layer's own pack (harbor#1273): its checkout is what scope-roots.sh --private resolves, never a
   # repos.tsv row, so HARBOR_SCOPE_PRIVATE moves the layer and its pack together.
   if [ "$ID" = harbor-private ]; then
-    DIR="$(sh "$SRC/roots.sh" --private 2>/dev/null)" && [ -d "$DIR" ] || refuse "no private layer at ${DIR:-<unresolved>}" "sh bin/roots.sh --private" || return 1
+    DIR="$(sh "$SRC/scope-roots.sh" --private 2>/dev/null)" && [ -d "$DIR" ] || refuse "no private layer at ${DIR:-<unresolved>}" "sh bin/scope-roots.sh --private" || return 1
   else
-    DIR="$(sh "$SRC/roots.sh" --repo "$ID" 2>/dev/null)" && [ -n "$DIR" ] || refuse "no checkout registered for the repo" "add it to repos.tsv" || return 1
+    DIR="$(sh "$SRC/scope-roots.sh" --repo "$ID" 2>/dev/null)" && [ -n "$DIR" ] || refuse "no checkout registered for the repo" "add it to repos.tsv" || return 1
   fi
   PK="$DIR/harbor-pack"
   [ -f "$PK/pack.toml" ] || refuse "no harbor-pack/pack.toml in $DIR" || return 1
@@ -127,7 +127,7 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
     esac
     case "$_r" in
       pack.toml|tests/*|README*) ;;
-      checks.tsv) refuse "checks.tsv is retired: check rows are a checks.md fragment (CONTRACTS/pack.md)" "convert checks.tsv to checks.md, the register's own row shape, and commit it" || return 1 ;;
+      checks.tsv) refuse "checks.tsv is retired: check rows are a checks.md fragment (contracts/pack.md)" "convert checks.tsv to checks.md, the register's own row shape, and commit it" || return 1 ;;
       checks.md) printf '%s\t%s\n' "$_p" "checks.d/$ID.md" >> "$WORK/plan" ;;
       controls.tsv) printf '%s\t%s\n' "$_p" "checks.d/$ID.controls.tsv" >> "$WORK/plan" ;;
       shims.tsv) printf '%s\t%s\n' "$_p" "shims.d/$ID.tsv" >> "$WORK/plan" ;;
@@ -143,7 +143,7 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
         # A pack that ADDS packs to a core skill, without claiming the skill's name or its directory (harbor#1149).
         _s="${_r#skill-packs/}"; _s="${_s%%/*}"; _sf="${_r##*/}"
         _core=0; for _c in "$ROOT"/skills/*/; do [ "${_c%/}" != "$ROOT/skills/$_s" ] || [ ! -d "$_c/packs" ] || _core=1; done
-        [ "$_core" -eq 1 ] || refuse "$_r: core has no skill $_s with a packs/ directory to add to" "a pack may add packs only to a core skill that reads them (CONTRACTS/pack.md)" || return 1
+        [ "$_core" -eq 1 ] || refuse "$_r: core has no skill $_s with a packs/ directory to add to" "a pack may add packs only to a core skill that reads them (contracts/pack.md)" || return 1
         [ ! -e "$ROOT/skills/$_s/packs/$_sf" ] ||
           refuse "$_r is also in core skills/$_s/packs/: a pack in two places is a duplicate, and the reader refuses it" "remove it from one of them" || return 1
         printf '%s\t%s\n' "$_p" "$_r" >> "$WORK/plan" ;;
@@ -162,7 +162,7 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       # the installed box tier, context-rules/user/pack-<name>--<f>.md.
       context-rules/user/*/*|inject.d/*/*) refuse "${_r%/*}/ is flat; $_r is nested" || return 1 ;;
       context-rules/user/*.md|inject.d/*.md)
-        # run: names a script beside the pack whose stdout may be a deny verdict (CONTRACTS/inject.md).
+        # run: names a script beside the pack whose stdout may be a deny verdict (contracts/injection-rule.md).
         git -C "$DIR" show "HEAD:$_p" | tr -d '\r' | awk '/^[ \t]*run[ \t]*:/ { f = 1 } END { exit f }' ||
           refuse "inject pack $_r has run: (it could deny); packs inject notes only" || return 1
         printf '%s\t%s\n' "$_p" "context-rules/user/pack-$NAME--${_r##*/}" >> "$WORK/plan" ;;
@@ -179,12 +179,12 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
     mkdir -p "$WORK/stage/${_r%/*}"
     git -C "$DIR" show "HEAD:$_s" > "$WORK/stage/$_r"
     if [ "$(git -C "$DIR" ls-files -s -- "$_s" | awk '{ print $1 }')" = 100755 ]; then chmod 755 "$WORK/stage/$_r"; else chmod 644 "$WORK/stage/$_r"; fi
-    # Front matter is an ALLOWLIST, not a denylist (harbor#1149): canonical opener, top-level keys in CONTRACTS/pack-frontmatter-keys.txt (skill-pack-frontmatter-keys.txt for skill-packs/), never hooks.
+    # Front matter is an ALLOWLIST, not a denylist (harbor#1149): canonical opener, top-level keys in contracts/pack-frontmatter-keys.txt (skill-pack-frontmatter-keys.txt for skill-packs/), never hooks.
     case "$_r" in checks.d/*) ;; *.[Mm][Dd])
       [ "$(head -c 3 "$WORK/stage/$_r" | od -An -tx1 | tr -d ' \n')" != efbbbf ] ||
         refuse "$_r starts with a UTF-8 BOM: front matter must be canonical" || return 1
       _fk=pack-frontmatter-keys.txt; case "$_r" in skill-packs/*|skills/*/packs/*) _fk=skill-pack-frontmatter-keys.txt ;; esac
-      _fm="$(tr -d '\r' < "$WORK/stage/$_r" | awk -v al="$ROOT/CONTRACTS/$_fk" -v fkn="$_fk" '
+      _fm="$(tr -d '\r' < "$WORK/stage/$_r" | awk -v al="$ROOT/contracts/$_fk" -v fkn="$_fk" '
         BEGIN { while ((getline l < al) > 0) if (l !~ /^#/ && l != "") ok[l] = 1 }
         NR == 1 { if (substr($0, 1, 3) != "---") exit 0
                   if ($0 != "---") { print "its opening line is not exactly ---"; bad = 1; exit 0 }
@@ -194,7 +194,7 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
         fm { if ($0 !~ /^[a-z][a-z0-9_-]*:( .*)?$/) { print "a top-level line is not key: value"; bad = 1; exit 0 }
              k = $0; sub(/:.*/, "", k)
              if (k == "hooks") { print "it has a hooks: key (a pack may not register a hook)"; bad = 1; exit 0 }
-             if (!(k in ok)) { print "key " k " is not in CONTRACTS/" fkn; bad = 1; exit 0 } }
+             if (!(k in ok)) { print "key " k " is not in contracts/" fkn; bad = 1; exit 0 } }
         END { if (fm == 1 && !bad) print "front matter has no closing ---" }')"
       [ -z "$_fm" ] || refuse "$_r has non-canonical front matter: $_fm" || return 1 ;;
     esac
@@ -203,7 +203,7 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
   # Client-free (D-85): the export-mode leak gate over exactly the staged files (no tests/fixtures skip, no layers.tsv, binary as text).
   git -C "$WORK/stage" init -q . 2>/dev/null; git -C "$WORK/stage" add -f -A 2>/dev/null
   _lrc=0
-  LEAKS_EXPORT=1 HARBOR_ROOT="$WORK/stage" LEAKS_CORE_PATTERNS="$ROOT/CONTRACTS/leak-patterns.tsv" sh "$SRC/lint-leaks.sh" --list > "$WORK/leaks.pack" 2> "$WORK/leaks.err" || _lrc=$?
+  LEAKS_EXPORT=1 HARBOR_ROOT="$WORK/stage" LEAKS_CORE_PATTERNS="$ROOT/contracts/leak-patterns.tsv" sh "$SRC/lint-leaks.sh" --list > "$WORK/leaks.pack" 2> "$WORK/leaks.err" || _lrc=$?
   [ "$_lrc" -eq 0 ] || refuse "the leak gate could not run cleanly (exit $_lrc)" "sh bin/lint-leaks.sh --list, in $DIR" || return 1
   if [ -s "$WORK/leaks.pack" ]; then
     refuse "names a client or account ($(wc -l < "$WORK/leaks.pack" | tr -d ' ') leak hit(s), first $(head -n 1 "$WORK/leaks.pack")); a pack is client-free" \
@@ -225,10 +225,10 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
   fi
 
   # Shims (harbor#1149): every row links a command to a bin/ file THIS pack installs, under a name core's own table does not
-  # own, once. shim-install.sh reads the installed copy, so a row it cannot resolve would be a link to nothing.
+  # own, once. deploy-shim-install.sh reads the installed copy, so a row it cannot resolve would be a link to nothing.
   if [ -f "$WORK/stage/shims.d/$ID.tsv" ]; then
     awk -F'\t' '{ print $2 }' "$WORK/plan" > "$WORK/plan.rels"
-    _sm="$(tr -d '\r' < "$WORK/stage/shims.d/$ID.tsv" | awk -F'\t' -v rels="$WORK/plan.rels" -v core="$ROOT/CONTRACTS/shims.tsv" '
+    _sm="$(tr -d '\r' < "$WORK/stage/shims.d/$ID.tsv" | awk -F'\t' -v rels="$WORK/plan.rels" -v core="$ROOT/contracts/shims.tsv" '
       BEGIN { while ((getline l < rels) > 0) have[l] = 1
               while ((getline l < core) > 0) { sub(/#.*/, "", l); split(l, c, "\t"); if (c[1] != "" && c[1] != "name") owned[c[1]] = 1 } }
       /^[ \t]*#/ || /^[ \t]*$/ { next }
@@ -236,17 +236,17 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       NF != 2 { print "line " NR " has " NF " columns, not 2"; exit }
       $1 !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/ { print "line " NR ": " $1 " is not a command name ([A-Za-z0-9._-])"; exit }
       $2 !~ /^bin\/[A-Za-z0-9._-]+$/ || !($2 in have) { print "line " NR ": " $2 " is not a bin/ file this pack installs"; exit }
-      ($1 in owned) { print "line " NR ": " $1 " is a command core\047s CONTRACTS/shims.tsv owns"; exit }
+      ($1 in owned) { print "line " NR ": " $1 " is a command core\047s contracts/shims.tsv owns"; exit }
       ($1 in seen) { print "line " NR ": " $1 " is listed twice"; exit }
       { seen[$1] = 1 }
       END { if (!hdr) print "it has no header row" }')"
-    [ -z "$_sm" ] || refuse "shims.tsv: $_sm" "the shape is CONTRACTS/pack.md: name TAB bin/<file>, with the header row" || return 1
+    [ -z "$_sm" ] || refuse "shims.tsv: $_sm" "the shape is contracts/pack.md: name TAB bin/<file>, with the header row" || return 1
   fi
 
   # harbor.toml keys (#949): a pack declares the keys its own tools read, so core names none of them. One key per line,
-  # [a-z][a-z0-9_]*, never a core key (roots.sh --conf-keys) and never one another installed pack declares.
+  # [a-z][a-z0-9_]*, never a core key (scope-roots.sh --conf-keys) and never one another installed pack declares.
   if [ -f "$WORK/stage/conf-keys.d/$ID.txt" ]; then
-    sh "$SRC/roots.sh" --conf-keys > "$WORK/keys.core" 2>/dev/null || refuse "roots.sh --conf-keys could not list core's keys" "sh bin/roots.sh --conf-keys" || return 1
+    sh "$SRC/scope-roots.sh" --conf-keys > "$WORK/keys.core" 2>/dev/null || refuse "scope-roots.sh --conf-keys could not list core's keys" "sh bin/scope-roots.sh --conf-keys" || return 1
     : > "$WORK/keys.other"
     for _f in "$T"/conf-keys.d/*.txt; do
       [ -f "$_f" ] && [ "$_f" != "$T/conf-keys.d/$ID.txt" ] || continue
@@ -260,7 +260,7 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       ($0 in p) { print "line " NR ": " $0 " is declared by the installed pack " p[$0]; exit }
       ($0 in seen) { print "line " NR ": " $0 " is listed twice"; exit }
       { seen[$0] = 1 }')"
-    [ -z "$_km" ] || refuse "conf-keys.txt: $_km" "one harbor.toml key per line (CONTRACTS/pack.md)" || return 1
+    [ -z "$_km" ] || refuse "conf-keys.txt: $_km" "one harbor.toml key per line (contracts/pack.md)" || return 1
   fi
 
   # System terms (harbor#950): a workload's pack registers its own systems, so core's terms.tsv names no workload.
@@ -288,7 +288,7 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       ($1 in seen) { out("line " NR ": " $1 " is listed twice") }
       { seen[$1] = 1 }
       END { if (!done && !hdr) print "it has no header row" }')"
-    [ -z "$_tm" ] || refuse "terms.tsv: $_tm" "system rows in the columns of standards/naming/terms.tsv (CONTRACTS/pack.md)" || return 1
+    [ -z "$_tm" ] || refuse "terms.tsv: $_tm" "system rows in the columns of standards/naming/terms.tsv (contracts/pack.md)" || return 1
   fi
 
   # Check rows (harbor#1149): checks.md must compose into the ONE register beside core, the private layer and every OTHER
@@ -299,11 +299,11 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       if [ -f "$_f" ] && [ "${_f##*/}" != "$ID.md" ]; then cp "$_f" "$WORK/ck/"; fi
     done
     cp "$WORK/stage/checks.d/$ID.md" "$WORK/ck/$ID.md"
-    _grc=0; sh "$SRC/check-registry-generate.sh" --core "$ROOT/CHECKS.md" --packs "$WORK/ck" > /dev/null 2> "$WORK/ck.err" || _grc=$?
+    _grc=0; sh "$SRC/check-registry-generate.sh" --core "$ROOT/docs/reference/checks.md" --packs "$WORK/ck" > /dev/null 2> "$WORK/ck.err" || _grc=$?
     if [ "$_grc" -ne 0 ]; then
       _gm="$(sed -n 's/^.*FAIL[: ]*//p' "$WORK/ck.err" | head -n 1 | sed "s|$WORK/ck/|checks.d/|g")"
       refuse "checks.md does not compose into the register (exit $_grc): ${_gm:-see sh bin/check-registry-generate.sh}" \
-        "fix checks.md in the pack, or the id it repeats; the shape is CONTRACTS/private-layer.md checks.md"
+        "fix checks.md in the pack, or the id it repeats; the shape is contracts/private-layer.md checks.md"
       return 1
     fi
   fi
@@ -352,18 +352,18 @@ release_core() {
   log_note "$ID: took over $(wc -l < "$WORK/release" | tr -d ' ') file(s) core no longer ships"
 }
 
-# The installed register is core + private + every installed pack's fragment: recompose bin/CHECKS.md when the pack's
-# check rows came or went. A target with no bin/CHECKS.md has no runtime yet, and runtime-install composes it then.
+# The installed register is core + private + every installed pack's fragment: recompose bin/docs/reference/checks.md when the pack's
+# check rows came or went. A target with no bin/docs/reference/checks.md has no runtime yet, and runtime-install composes it then.
 recompose() {
-  [ -f "$T/bin/CHECKS.md" ] || return 0
-  _crc=0; sh "$SRC/check-registry-generate.sh" --core "$ROOT/CHECKS.md" --packs "$T/checks.d" > "$WORK/CHECKS.md" 2> "$WORK/recompose.err" || _crc=$?
+  [ -f "$T/bin/docs/reference/checks.md" ] || return 0
+  _crc=0; sh "$SRC/check-registry-generate.sh" --core "$ROOT/docs/reference/checks.md" --packs "$T/checks.d" > "$WORK/checks.md" 2> "$WORK/recompose.err" || _crc=$?
   if [ "$_crc" -ne 0 ]; then
     log_fail "$ID: the register does not recompose (exit $_crc): $(sed -n 's/^.*FAIL[: ]*//p' "$WORK/recompose.err" | head -n 1)"
     log_fix "sh $SRC/check-registry-generate.sh --packs '$T/checks.d'   # names the line"
     return 1
   fi
-  if ! cmp -s "$WORK/CHECKS.md" "$T/bin/CHECKS.md"; then
-    cp "$WORK/CHECKS.md" "$T/bin/CHECKS.md.pack.$$" && chmod "$(stat_mode "$T/bin/CHECKS.md")" "$T/bin/CHECKS.md.pack.$$" && mv -f "$T/bin/CHECKS.md.pack.$$" "$T/bin/CHECKS.md"
+  if ! cmp -s "$WORK/checks.md" "$T/bin/docs/reference/checks.md"; then
+    cp "$WORK/checks.md" "$T/bin/docs/reference/checks.md.pack.$$" && chmod "$(stat_mode "$T/bin/docs/reference/checks.md")" "$T/bin/docs/reference/checks.md.pack.$$" && mv -f "$T/bin/docs/reference/checks.md.pack.$$" "$T/bin/docs/reference/checks.md"
   fi
 }
 stat_mode() { [ -x "$1" ] && echo 755 || echo 644; }
@@ -426,7 +426,7 @@ RC=0
 case "$VERB" in
   install)
     if [ -z "$IDS" ]; then
-      IDS="$(sh "$SRC/roots.sh" --conf packs 2>/dev/null | tr '\n' ' ')" || IDS=''
+      IDS="$(sh "$SRC/scope-roots.sh" --conf packs 2>/dev/null | tr '\n' ' ')" || IDS=''
       [ -n "$IDS" ] || { log_note 'harbor.toml lists no packs: nothing to install'; log_end || :; exit 0; }
     fi
     for _i in $IDS; do install_one "$_i" || RC=1; done ;;
@@ -439,7 +439,7 @@ case "$VERB" in
       awk -F'\t' '$1 == "# name" { n = $2 } $1 == "# version" { v = $2 } $1 == "# commit" { c = $2 } $1 == "# repo" { r = $2 }
                   $1 == "F" { f++ } END { printf "%s\t%s\t%s\t%s\t%d files\n", r, n, v, substr(c, 1, 12), f }' "$_m"
     done
-    for _i in $(sh "$SRC/roots.sh" --conf packs 2>/dev/null || :); do
+    for _i in $(sh "$SRC/scope-roots.sh" --conf packs 2>/dev/null || :); do
       [ -f "$MFD/$_i.tsv" ] || printf '%s\tnot installed\n' "$_i"
     done ;;
 esac

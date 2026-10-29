@@ -4,11 +4,11 @@
 #   session-cleanup.sh <session_id>
 #
 # Started DETACHED by hooks/session-state/session-state.sh when the agent ends a turn with the line [cleanup-ok]
-# (the hook asks once each time a PR this session opened merges). It runs `harbor-clean.sh --apply --live`, which
+# (the hook asks once each time a PR this session opened merges). It runs `housekeeping-clean.sh --apply --live`, which
 # acts on RECLAIM rows only — a clean worktree whose PR merged with every commit, landed branches, empty session
 # dirs — and never on DECIDE or RISK. Then it re-records the count the statusline shows. $STATE/cleanup-auto.off
 # stops it. One run at a time (a pid file). Every outcome is a line in
-# $STATE/backups/session-cleanup/<run>/log (log-lib.sh). Exit 0 on every path. Its report-only sibling, which
+# $STATE/backups/session-cleanup/<run>/log (library-log.sh). Exit 0 on every path. Its report-only sibling, which
 # removes nothing, is session-cleanup-report.sh (the event.session-cleanup-report rule).
 set -u
 case "${1:-}" in -h|--help) awk 'NR < 2 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"; exit 0 ;; esac
@@ -16,8 +16,8 @@ SID="${1:-}"
 case "$SID" in ''|*[!A-Za-z0-9_-]*) exit 0 ;; esac
 STATE="${HARBOR_STATUS_DIR:-${HOME:-/nonexistent}/.local/state/harbor}"
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
-CLEAN="${HARBOR_CLEANUP_TOOL:-$HERE/harbor-clean.sh}"
-. "$HERE/log-lib.sh"
+CLEAN="${HARBOR_CLEANUP_TOOL:-$HERE/housekeeping-clean.sh}"
+. "$HERE/library-log.sh"
 LOG_FD=2; log_init session-cleanup
 log() { log_note "$(printf '%.8s' "$SID") $1"; }
 

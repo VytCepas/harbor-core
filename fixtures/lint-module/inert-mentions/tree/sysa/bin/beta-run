@@ -1,3 +1,3 @@
 #!/bin/sh
 . bin/alpha-run
-# the seam is CONTRACTS/seam.md of sysb, named in a comment
+# the seam is contracts/seam.md of sysb, named in a comment

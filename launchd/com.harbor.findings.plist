@@ -4,24 +4,24 @@
      THIS FILE IS A TEMPLATE (harbor#630). Do not cp it: @HOME@ and the other placeholders in it would be
      installed as literal text, and launchd loads such a job and then fails every time it runs. Render it:
 
-       sh ~/port/harbor/bin/launchd-render.sh ~/port/harbor/launchd/com.harbor.findings.plist > ~/Library/LaunchAgents/com.harbor.findings.plist
+       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.findings.plist > ~/Library/LaunchAgents/com.harbor.findings.plist
 
      A cp line in the comment below predates the template. It is kept so the rendered file stays byte-identical
      to the one already installed: follow this block, not that line. This block is not installed;
-     bin/launchd-render.sh drops it. -->
-<!-- CHECKS.md `findings` (harbor#856): once a day, reconcile the lint census into the finding
+     bin/deploy-launchd-render.sh drops it. -->
+<!-- docs/reference/checks.md `findings` (harbor#856): once a day, reconcile the lint census into the finding
      issues, then run the HEAL-lane repairs. Approved by the operator on 2026-10-02: daily,
      reconcile and heal, as the operator's own `gh` login, from main fetched off GitHub.
 
-     It runs the INSTALLED findings-run.sh, never the checkout (see its header), and that copy
+     It runs the INSTALLED lint-findings-run.sh, never the checkout (see its header), and that copy
      clones main fresh from a pinned URL, with system and global git config off, and runs that
-     clone's own findings.sh.
+     clone's own lint-findings.sh.
      Heal opens draft PRs at most; nothing merges without the operator.
 
      TEMPLATE: launchd does not expand $HOME, so replace @HOME@ with your home dir on
      install. An agent cannot install this, by design. Operator steps, in order:
 
-       sh ~/port/harbor/bin/runtime-install.sh --live --apply
+       sh ~/port/harbor/bin/deploy-runtime-install.sh --live --apply
        # then install this plist into ~/Library/LaunchAgents and bootstrap it under gui/$(id -u)
 
      See it work: `launchctl kickstart -k gui/$(id -u)/com.harbor.findings`, then
@@ -30,7 +30,7 @@
      IT NEEDS THE KEYCHAIN for `gh`'s token, hence Aqua. DAILY AT 09:23: a full lint run is about
      70 seconds, and an off-minute keeps it clear of the jobs at 08:47 and 09:00.
 
-     Disable (CHECKS.md's two-lookup rule):
+     Disable (docs/reference/checks.md's two-lookup rule):
        launchctl bootout gui/$(id -u)/com.harbor.findings
        rm ~/Library/LaunchAgents/com.harbor.findings.plist -->
 <plist version="1.0">
@@ -39,7 +39,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/sh</string>
-    <string>@HOME@/.claude/bin/findings-run.sh</string>
+    <string>@HOME@/.claude/bin/lint-findings-run.sh</string>
   </array>
   <key>StartCalendarInterval</key>
   <dict>
