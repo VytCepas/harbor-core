@@ -1,0 +1,73 @@
+# ===== DRAFT, NOT APPROVED; for #967's own sitting. THIS TABLE IS THE projects-orchestrator REPO'S, NOT HARBOR'S. Every path is in that repo. Harbor does not import it. =====
+# fleet-modules-in-projects-orchestrator.tsv (harbor#961, lane E): the mapping for NOT HARBOR: the projects-orchestrator repo (becomes fleet, harbor#967). DRAFT, NOT APPROVED; for the #967 sitting. Never imported here
+#
+# WHY THIS FILE EXISTS. The six-wave rename needs one reviewed table per wave before any file moves; the operator approves it wholesale at sitting B
+# (SITTING-B.md lists only the rows that need a decision). Names come from registered terms only (standards/naming/terms.tsv).
+#
+# COLUMNS  old_path TAB new_path TAB wave TAB recommendation TAB confidence TAB reason TAB remove_by TAB frozen TAB surface TAB reader
+#   recommendation  rename (imported) or decide (a question in SITTING-B.md; the importer skips it)
+#   confidence      high, med or low; low rows are asked in SITTING-B.md
+#   remove_by       the date the old name stops working. The importer ignores this column and writes "-": set it after the import (sitting-b.md has the command).
+#                   "-" here means no outside reader was found, a case-only move (a forwarder would be the file itself) or an internal constant (plain rename, no dual-read window)
+#   frozen          the frozen.tsv name this row touches (a stranger types it); such a row keeps an alias until remove_by
+#   surface         empty = bin or path (the importer picks); env and rule-id are not file moves
+#   reader          what outside the repo reads the old path (hook command, loaded LaunchAgent, deployed copy, PATH link, another repo, a memory note, frozen.tsv); "none found" means remove_by is - and no symlink is left. Checked 2026-10-27.
+#
+# standard_version: 2.0.0
+old_path	new_path	wave	recommendation	confidence	reason	remove_by	frozen	surface
+src/projects_orchestrator/adapters/cloud.py	src/fleet/access/cloud.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/adapters/forge.py	src/fleet/access/forge.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/adapters/gcp.py	src/fleet/access/gcp.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/adapters/generic.py	src/fleet/access/generic.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/adapters/github.py	src/fleet/access/github.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/adapters/gitlab.py	src/fleet/access/gitlab.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/adapters/project_init.py	src/fleet/deploy/scaffolder.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/adapters/status_url.py	src/fleet/status/url.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/ask.py	src/fleet/context/ask.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/audit.py	src/fleet/audit/audit.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/briefing.py	src/fleet/status/briefing.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/cache.py	src/fleet/status/cache.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/campaign.py	src/fleet/proposal/campaign.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/capabilities.py	src/fleet/access/capabilities.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/checks.py	src/fleet/check/checks.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/controller.py	src/fleet/session/controller.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/cost.py	src/fleet/status/cost.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/descriptor.py	src/fleet/scope/descriptor.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/detail.py	src/fleet/status/detail.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/digest.py	src/fleet/status/digest.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/doctor.py	src/fleet/deploy/doctor.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/drift.py	src/fleet/drift/drift.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/fleet.py	src/fleet/session/fleet.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/freshness.py	src/fleet/doc/freshness.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/gcloud_identity.py	src/fleet/access/gcloud_identity.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/hardening.py	src/fleet/deploy/hardening.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/heal.py	src/fleet/housekeeping/heal.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/heal_issues.py	src/fleet/housekeeping/heal_issues.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/history.py	src/fleet/status/history.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/host.py	src/fleet/scope/host.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/html.py	src/fleet/status/html.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/landing.py	src/fleet/status/landing.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/memory.py	src/fleet/memory/memory.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/models.py	src/fleet/session/models.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/naming.py	src/fleet/standard/naming.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/notify.py	src/fleet/alert/notify.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/observability.py	src/fleet/audit/observability.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/orphans.py	src/fleet/drift/orphans.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/persist.py	src/fleet/session/persist.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/pool.py	src/fleet/session/pool.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/procs.py	src/fleet/session/procs.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/registry.py	src/fleet/session/registry.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/runner.py	src/fleet/session/runner.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/runs.py	src/fleet/session/runs.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/sandbox.py	src/fleet/test/sandbox.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/selector.py	src/fleet/session/selector.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/server.py	src/fleet/status/server.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/status.py	src/fleet/status/status.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/supervisor.py	src/fleet/session/supervisor.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/testfleet.py	src/fleet/test/testfleet.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/tui.py	src/fleet/status/tui.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/upgrade.py	src/fleet/deploy/upgrade.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/urlguard.py	src/fleet/admission/urlguard.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/watchdog.py	src/fleet/session/watchdog.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/work.py	src/fleet/session/work.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		
+src/projects_orchestrator/worktree.py	src/fleet/worktree/worktree.py	F	rename	low	python module nested by family under the repo's new package name (D-32, D-41); the family per module is QUESTION 7	2027-03-21		

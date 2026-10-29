@@ -1,12 +1,12 @@
 #!/usr/bin/env sh
 set -eu
-# B10 (harbor#56) — the ambient shim for project-init's `prod_guard.py`.
+# B10 (harbor#56) — the ambient shim for yard's `prod_guard.py`.
 #
-# WHY A SHIM AND NOT A FORK. `prod_guard.py` is project-init's file and owns the
+# WHY A SHIM AND NOT A FORK. `prod_guard.py` is yard's file and owns the
 # cloud/data destruction corpus by contract (bin/guard-bash.sh:6-8, which is why
 # the floor's Bash guard deliberately omits that class). Editing an installed
 # copy to add deferral would fork it, and a scaffolded copy silently diverging
-# from its plugin is the exact defect projects-orchestrator#199 exists to fix.
+# from its plugin is the exact defect fleet#199 exists to fix.
 # So the copy stays byte-identical to the marketplace version — assertable, and
 # asserted by prod-guard-test.sh — and the deferral lives here, in Helm, where
 # the detect-and-defer doctrine (CONTRACTS/marker.md) already lives.
@@ -290,13 +290,9 @@ _broken() { # <reason>
   fi
   : > "$_stamp" 2>/dev/null || true
   _log ask prod-broken.meta
-  # THE MESSAGE BELOW UNDERSTATES THE CORPUS (harbor#954 item 8). Its bq/gsutil
-  # caveat went stale with project-init ff2749d (PI-916, 2026-08-01), which added
-  # `bq rm`, `bq truncate`, `gsutil rm -r` and `gcloud storage rm -r` to DENY_RULES;
-  # probed 2026-10-11 at project-init e81f144, `bq rm` and `gsutil rm -r` both ask.
-  # guard-cloud.sh answers the same verbs: controls.tsv admission.class-cloud-destroy
-  # names the floor's one owner. Rewording the message is the operator's call.
-  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"prod-guard-ambient is INSTALLED BUT NOT FUNCTIONING: %s. Nothing is evaluating terraform/tofu destroy, kubectl/helm delete, aws/gcloud/az delete, SQL DROP/TRUNCATE or rm -rf. (bq and gsutil are NOT in the corpus even when it works.) Reported once per session; it will stand down silently for the rest of this session."}}\n' "$1"
+  # The corpus as prod_guard.py's DENY_RULES hold it, bq and gsutil included since yard ff2749d (PI-916);
+  # checked 2026-10-23 at yard 22852b9: each bq, gsutil and gcloud storage removal verb asks (harbor#954 item 8).
+  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"prod-guard-ambient is INSTALLED BUT NOT FUNCTIONING: %s. Nothing is evaluating terraform/tofu destroy, kubectl/helm delete, aws/gcloud/az delete, warehouse table and dataset removal, recursive bucket removal, SQL DROP/TRUNCATE or rm -rf. Reported once per session; it will stand down silently for the rest of this session."}}\n' "$1"
   exit 0
 }
 [ -f "$GUARD" ] || _broken "no guard file at $GUARD"
@@ -306,7 +302,7 @@ command -v python3 >/dev/null 2>&1 || _broken "python3 not on PATH"
 # path, so it is written to be byte-transparent and is asserted that way.
 #
 # prod_guard.py's contract, read from the authoritative copy
-# (project-init plugins/project-init-workflow/hooks/prod_guard.py:1028-1040):
+# (yard plugins/project-init-workflow/hooks/prod_guard.py:1028-1040):
 # it writes ONE json.dumps object with NO trailing newline on a verdict, writes
 # NOTHING at all on an allow, and returns 0 on every path including its own
 # internal exception handler. Diagnostics go to stderr, which `$(...)` does not

@@ -115,6 +115,23 @@ out="$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov --squash' "$ELSE")"
 t_has "a -R slug from outside the repo is denied on a refusal" "$out" '"permissionDecision":"deny"'
 t_eq "the box deny is valid JSON" 0 "$(printf '%s' "$out" | jq -e . >/dev/null 2>&1; echo $?)"
 t_has "the deny names the repo the route runs in" "$out" "(in $GOVP)"
+# the decision log (harbor#957 item 4): the box deny is recorded under g=govern; the --note route is inject's
+mkledger() { # <dir> <script>… → a config dir whose bin/ holds the scripts and guard-lib.sh, with a sink; prints the sink
+  mkdir -p "$1/bin" "$1/MEMORY/OBSERVABILITY/probehost"; _lt="$1"; shift
+  cp "$@" "$T_ROOT/bin/guard-lib.sh" "$_lt/bin/"; printf 'probehost\n' > "$_lt/.helm-obs-host"
+  : > "$_lt/MEMORY/OBSERVABILITY/probehost/guard-decisions.jsonl"; chmod 0500 "$_lt/MEMORY/OBSERVABILITY/probehost"
+  printf '%s' "$_lt/MEMORY/OBSERVABILITY/probehost/guard-decisions.jsonl"
+}
+GLS="$(mkledger "$T/gledger" "$SUT")"; _sut="$SUT"; SUT="$T/gledger/bin/govern-hook.sh"
+t_has "the deny still comes through the ledger copy (control)" "$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov --squash' "$ELSE")" '"permissionDecision":"deny"'
+t_has "...and is recorded under g=govern" "$(cat "$GLS")" '"g":"govern"'
+t_has "...as deny" "$(cat "$GLS")" '"d":"deny"'
+t_eq "...with nothing in the catch-all" 0 "$(grep -c '"g":"other"' "$GLS")"
+_n="$(grep -c . "$GLS")"
+printf '%s' 'gh pr merge 7 -R Own/Gov' | jq -Rs --arg c "$ELSE" '{hook_event_name:"PreToolUse",tool_name:"Bash",cwd:$c,tool_input:{command:.}}' \
+  | CLAUDE_PROJECT_DIR="$ELSE" CLAUDE_CONFIG_DIR="$CFGB" PORT_ROOT="$PORTB" sh "$SUT" --note >/dev/null 2>&1
+t_eq "the --note route writes nothing here: inject-hook records it" "$_n" "$(grep -c . "$GLS")"
+SUT="$_sut"
 t_has "the slug is matched case-insensitively" "$(fireb PreToolUse 'gh pr merge 7 --repo own/gov' "$ELSE")" '"permissionDecision":"deny"'
 t_has "a HOST/OWNER/REPO slug is matched" "$(fireb PreToolUse 'gh pr merge 7 -R github.com/Own/Gov' "$ELSE")" '"permissionDecision":"deny"'
 t_has "with no -R, the call's working folder names the repo" "$(fireb PreToolUse 'gh pr merge 7' "$GOV")" '"permissionDecision":"deny"'
@@ -122,14 +139,18 @@ t_eq "a slug with no checkout is silent" "" "$(fireb PreToolUse 'gh pr merge 7 -
 t_eq "outside any repo with no -R is silent" "" "$(fireb PreToolUse 'gh pr merge 7' "$ELSE")"
 t_eq "a non-merge command is silent" "" "$(fireb PreToolUse 'gh pr view 7 -R Own/Gov' "$ELSE")"
 t_eq "PostToolUse is not the box gate's event" "" "$(fireb PostToolUse 'gh pr merge 7 -R Own/Gov' "$ELSE")"
-mkdir -p "$GOV/.claude/inject.d"; printf 'x\n' > "$GOV/.claude/inject.d/merge-note.sh"
+mkdir -p "$GOV/context-rules/harbor"; printf 'x\n' > "$GOV/context-rules/harbor/merge-note.sh"
 t_eq "standing in the repo with its merge pack, the pack checks it and --box stays silent" "" \
   "$(fireb PreToolUse 'gh pr merge 7' "$GOV" "$GOV")"
 t_has "the same repo reached from outside is still checked" "$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov' "$ELSE")" '"permissionDecision":"deny"'
-rm -rf "$GOV/.claude"
+rm -rf "$GOV/context-rules"
 : > "$CFGB/inject.d/projects.tsv"
 t_eq "an unregistered checkout never runs its merge-check.sh" "" "$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov' "$ELSE")"
-printf 'gov\t%s\tfixture\n' "$GOV" > "$CFGB/inject.d/projects.tsv"
+mkdir -p "$CFGB/context-rules/user"; printf 'gov\t%s\tfixture\n' "$GOV" > "$CFGB/context-rules/user/projects.tsv"
+t_has "the registry beside the new box tier is read (harbor#1010)" "$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov' "$ELSE")" '"permissionDecision":"deny"'
+: > "$CFGB/context-rules/user/projects.tsv"
+t_eq "...and wins over the old one" "" "$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov' "$ELSE")"
+rm -rf "$CFGB/context-rules"; printf 'gov\t%s\tfixture\n' "$GOV" > "$CFGB/inject.d/projects.tsv"
 bstub 0 'ok  #7 — 3 check(s) pass'
 out="$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov' "$ELSE")"
 t_hasnt "a green PR from outside is not interrupted" "$out" 'permissionDecision'
@@ -146,7 +167,7 @@ printf '#!/usr/bin/env sh\necho "ok  stale copy"\nexit 0\n' > "$WT/bin/merge-che
 t_has "from a worktree, the OWNER's backstop decides, not the worktree's copy" \
   "$(fireb PreToolUse 'gh pr merge 7' "$WT")" 'owner says no'
 mkdir -p "$WT/.claude/inject.d"; printf 'x\n' > "$WT/.claude/inject.d/merge-note.sh"
-t_eq "a session launched in a worktree with the merge pack is left to the pack, even via -R" "" \
+t_eq "a session launched in a worktree with the merge pack (the old layout) is left to the pack, even via -R" "" \
   "$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov' "$WT" "$WT")"
 # A folder whose .git FILE names the registered repo must not get its own script run.
 FAKE="$T/fake"; mkdir -p "$FAKE/bin"; printf 'gitdir: %s/.git\n' "$GOV" > "$FAKE/.git"

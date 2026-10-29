@@ -156,6 +156,39 @@ want allow "nor one inside a commit message" "$T"
 T="$(tx)"; tr_res orphan "floor-test: 1500 passed, 25 failed" >> "$T"
 want allow "an orphan result with no command" "$T"
 
+t_section "a background run pairs through the read of its own task output file"
+tr_bg() { tr_res "$1" "Command running in background with ID: $2. Output is being written to: /t/tasks/$2.output. You will be notified."; }
+tu_read() { jq -cn --arg i "$1" --arg p "$2" '{type:"assistant",message:{content:[{type:"tool_use",id:$i,name:"Read",input:{file_path:$p}}]}}'; }
+ALL="for f in tests/floor/floor*-test.sh; do sh \$f; done"
+T="$(tx)"; { tu_edit "$GB"; tu_bash b1 "$ALL"; tr_bg b1 bq1; tu_bash c2 "tail -3 /t/tasks/bq1.output"; tr_res c2 "$FULL"; } >> "$T"
+want allow "SG-1: a background run of every part, read from its task file" "$T"
+T="$(tx)"; { tu_edit "$GB"; tu_bash b1 "$ALL"; tr_bg b1 bq1; tu_read r2 /t/tasks/bq1.output; \
+             tr_res r2 "$(printf '1\tfloor-test: 10 passed, 0 failed\n2\tfloor.a-test: 5 passed, 0 failed')"; } >> "$T"
+want allow "SG-1: the same output read with the Read tool" "$T"
+T="$(tx)"; { tu_edit "$GB"; tu_bash b1 "$ALL"; tr_res b1 "Command did not complete within its 120s timeout and was moved to \
+the background (ID: bq4). Output is being written to: /t/tasks/bq4.output."; tu_bash c2 "cat /t/tasks/bq4.output"; tr_res c2 "$FULL"; } >> "$T"
+want allow "SG-1: a run moved to the background at its timeout pairs the same way" "$T"
+T="$(tx)"; { tu_bash b1 "$ALL"; tr_bg b1 bq1; tu_edit "$GB"; tu_bash c2 "cat /t/tasks/bq1.output"; tr_res c2 "$FULL"; } >> "$T"
+want block "SG-1: a background run launched before the edit is not evidence" "$T"
+T="$(tx)"; { tu_edit "$GB"; tu_bash c1 "cat /t/tasks/bq1.output"; tr_res c1 "$FULL"; } >> "$T"
+want block "SG-1: a cat of a task file no suite of this session wrote does not count" "$T"
+T="$(tx)"; { tu_bash b1 "sleep 300"; tr_bg b1 bq2; tu_bash c2 "cat /t/tasks/bq2.output"; tr_res c2 "floor-test: 9 passed, 1 failed"; } >> "$T"
+want allow "SG-2: the task file of a background NON-suite command pairs with nothing" "$T"
+T="$(tx)"; { tu_bash c1 "sh hooks/injection-rule/packs.test.sh"; tr_res c1 "packs.test: 114 passed, 2 failed"; } >> "$T"
+want block "SG-2: a dotted suite name (packs.test.sh) pairs" "$T"
+T="$(tx)"; { tu_bash c1 "sh tests/floor/floor.b8-test.sh"; tr_res c1 "floor.b8-test: 114 passed, 1 failed"; \
+             tu_bash b2 "sh tests/floor/floor.b8-test.sh"; tr_bg b2 bq3; tu_bash c3 "tail -1 /t/tasks/bq3.output"; \
+             tr_res c3 "floor.b8-test: 115 passed, 0 failed"; } >> "$T"
+want allow "SG-2: a later background green clears an earlier mutation red" "$T"
+
+t_section "once per state: a red suite whose counts move is the same state"
+_s4="$(new_sid)"; T="$(tx)"; { tu_bash c1 "$FT"; tr_res c1 "floor-test: 10 passed, 3 failed"; } >> "$T"
+t_eq "the red is refused once" block "$(verdict_at "$_s4" "$T")"
+{ tu_bash c2 "$FT"; tr_res c2 "floor-test: 11 passed, 2 failed"; } >> "$T"
+t_eq "a re-run that only moves the counts is not refused again" allow "$(verdict_at "$_s4" "$T")"
+{ tu_bash c3 "sh bin/normalize-test.sh"; tr_res c3 "normalize-test: 5 passed, 1 failed"; } >> "$T"
+t_eq "another suite going red is a new state" block "$(verdict_at "$_s4" "$T")"
+
 t_section "both rules at once: one block, not two"
 T="$(tx)"; { tu_edit "$GB"; tu_bash c1 "sh bin/normalize-test.sh"; \
              tr_res c1 "normalize-test: 100 passed, 1 failed"; } >> "$T"
@@ -288,7 +321,7 @@ t_has "no message in the payload: the transcript's last text is read" \
 # The prompt list is derived from the scripts, never trusted: a bin/*.sh that prompts and is not
 # in SG3_TTY is red here (comment lines are not prompts).
 _tty="$(sed -n "s/^SG3_TTY='\(.*\)'\$/\1/p" "$GUARD")"
-for _f in "$T_ROOT"/bin/*.sh; do
+for _f in "$T_ROOT"/bin/*.sh $(sh "$T_ROOT/bin/deploy-hooks.sh" --engines --root "$T_ROOT" 2>/dev/null); do
   awk '/^[ \t]*#/ { next } /\/dev\/tty|\[y\/N\]/ { f = 1; exit } END { exit !f }' "$_f" || continue
   t_has "$(basename "$_f") prompts, so SG3_TTY names it" "$_tty" "$(basename "$_f")"
 done

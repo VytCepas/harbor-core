@@ -62,7 +62,7 @@ t_has "CONSTITUTION.md citing ./HANDOFF.md" "$_o" "CONSTITUTION.md $DEAD HANDOFF
 # the rest of the exported markdown: a dev link here resolves in the dev checkout and dangles in the export, so only the
 # export can see it. One file per directory the sweep used to skip, picked from what is staged.
 first_md() { find "$S/$1" -type f -name '*.md' | LC_ALL=C sort | sed -n 1p | sed "s#^$S/##"; }
-for _d in skills commands inject.d patches vendor/archify fixtures; do
+for _d in skills commands context-rules patches vendor/archify fixtures; do
   _f="$(first_md "$_d")"
   [ -n "$_f" ] || { t_fail "$_d has no staged markdown to plant in, so its sweep went unproved"; continue; }
   _up="$(printf '%s' "${_f%/*}" | sed 's#[^/][^/]*#..#g')"; [ "$_f" != "${_f%/*}" ] || _up=.
@@ -75,7 +75,7 @@ t_has "...doc.paths-resolve is green again once the plants are put back" "$(lint
 t_has "...policy.constitution-paths is green again too" "$(lint policy.constitution-paths)" "$GREEN"
 
 t_section "files an adopter writes do not make the export a dev tree"
-# core tells a session to write HANDOFF.md (bin/session-state.sh) and names DEAD-ENDS.md as the in-repo ledger
+# core tells a session to write HANDOFF.md (hooks/session-state/session-state.sh) and names DEAD-ENDS.md as the in-repo ledger
 # (CONTRACTS/memory-format.md). Both are dev-layer rows, neither is a witness, and neither may turn the rules red with a
 # fix the export cannot run (plan-status.sh: "no plan at harbor-build-tickets.md").
 both() { printf '%s\n%s\n' "$(lint doc.status-generated)" "$(lint doc.plan-generated)"; }

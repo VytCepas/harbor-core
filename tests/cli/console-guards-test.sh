@@ -27,6 +27,7 @@ if [ -z "$UI_BUN" ]; then
   t_eq "HARBOR_REQUIRE_BUN is off where bun is absent" 0 "$REQ_BUN"
   t_done
 fi
+ui_require_listen "the server arms"
 
 t_section "the runner image carries bun, pinned and checksummed; until it is rebuilt both suites skip, loudly (harbor#738)"
 DF="$T_ROOT/runners/linux/Dockerfile"

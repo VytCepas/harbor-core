@@ -138,6 +138,8 @@ sw 12 1 0 1 "$((_now - 7200))"
 t_eq "a due sweep is SWEEP 12 ·2h on YOU" yes "$(ends "$(youw)" "SWEEP 12 ·2h")"
 t_has "SWEEP is yellow: waiting, not broken" "$(youraw "{$WS}")" "${ESC}[33mSWEEP 12"
 t_hasnt "no 🧹 tile beside the alarm" "$(anyrow)" '🧹'
+sw 12 1 2 1 "$((_now - 7200))"
+t_eq "unread repos mark the count a lower bound: SWEEP 12? ·2h" yes "$(ends "$(youw)" "SWEEP 12? ·2h")"
 sw 4 0 2 0 "$((_now - 3600))"; nosweep "an unread repo with nothing due renders nothing" "$(anyrow)"
 printf 'sweep items=banana due=1 at=%s\n' "$_now" > "$CFG/.helm-sweep"; nosweep "a malformed sweep file renders nothing" "$(anyrow)"
 printf 'sweep items=3 due=1\n' > "$CFG/.helm-sweep"; nosweep "a sweep line without unread/at renders nothing" "$(anyrow)"
@@ -171,6 +173,9 @@ O="$(youraw "{$WS}")"
 t_has "control: the cache title does carry the escape sequence" "$(jq -r '.you[0].t' "$CFG/cache/status-obligations.json")" "${ESC}[31mPAINTED"
 t_hasnt "a control character in a title never reaches the terminal" "$O" "${ESC}[31mPAINTED"
 t_has "the text around it survives" "$(youw)" "x[31mPAINTED"
+oq "$_now" '[{"k":"intent","o":false,"t":"Ask Claude Primary Owner: Team or Enterprise? + one single-day spend export"},{"k":"intent","o":false,"t":"exactly forty columns of handoff title k"}]'
+t_eq "a title over 40 columns is cut to 39 and an ellipsis; one of exactly 40 is whole" \
+  "Ask Claude Primary Owner: Team or Enter… │ exactly forty columns of handoff title k" "$(youw)"
 oq "$((_now - 901))" '[{"k":"pr","o":false,"t":"harbor#1263"}]'
 t_eq "a stale cache claims no queue" "" "$(youw)"
 oq "$_now" '"not a list"'
@@ -242,6 +247,14 @@ mtv '{"at":'"$NOW"',"unread":true,"repos":[{"repo":"o/blorp","tip":{"red":true,"
 t_has "a red repo that was read is still said when another repo is unread" "$(row3at)" "MAIN RED blorp 3h"
 mtv '{"at":'"$NOW"',"unread":true,"repos":[{"repo":"o/ok","tip":{"red":false,"at":'"$NOW"'}},{"repo":"o/gone","unread":true,"state":"unread"}]}'
 t_has "an unread repo and nothing red says main?" "$(row3at)" "main?"
+mtv '{"at":'"$NOW"',"repos":[{"repo":"o/tagscope","tip":{"red":true,"single":true,"at":'"$((NOW - 86400))"',"red_at":'"$((NOW - 600))"'}}]}'
+t_has "a red tip's age counts from the failing run (red_at), not the commit" "$(row3at)" "MAIN RED tagscope 10m ·1 run"
+mtv '{"at":'"$NOW"',"repos":[{"repo":"o/blorp","tip":{"red":true,"single":false,"at":'"$((NOW - 10800))"'}}]}'
+t_hasnt "a red tip that is not a single run carries no ·1 run" "$(row3at)" '·1 run'
+mtv '{"at":'"$NOW"',"repos":[{"repo":"o/idea-to-live","tip":{"red":false,"verdict":"green","at":'"$NOW"',"sched":["Scheduled readings"]}}]}'
+O="$(row3at)"
+t_has "a failing scheduled workflow beside a green tip is SCHED, named by repo" "$O" "SCHED idea-to-live"
+t_hasnt "…and is not MAIN RED" "$O" 'MAIN RED'
 mtv '{"at":'"$NOW"',"repos":[{"repo":"o/off","state":"disabled","tip":{"red":false,"at":'"$NOW"'}}]}'
 t_eq "a disabled repo raises nothing: no row 3" 2 "$(rowsat)"
 rm -f "$CFG/cache/main-tip-verdict.json"
@@ -358,6 +371,10 @@ t_section "YOU: SHARED TREE is an alarm, not inventory"
 # here > 1 is the condition under which uncommitted work has been lost on this box.
 mkdir -p "$CFG/.helm-peers"
 printf 'tree=%s\nsrc=launch\npid=%s\n' "$TMP/notrepo" "$$" > "$CFG/.helm-peers/peer-a"
+t_hasnt "a plain folder is not a shared tree: each session works in its own worktree" "$(run '{"session_id":"mine",'"$WS"'}')" 'SHARED TREE'
+git init -q "$TMP/arepo"; RT="$(git -C "$TMP/arepo" rev-parse --show-toplevel)"
+printf 'tree=%s\nsrc=launch\npid=%s\n' "$RT" "$$" > "$CFG/.helm-peers/peer-a"
+WS='"workspace":{"current_dir":"'"$TMP"'/arepo"}'
 t_has "a peer in this tree raises an alarm" "$(you '{"session_id":"mine",'"$WS"'}')" "SHARED TREE 2"
 t_has "SHARED TREE is red" "$(youraw '{"session_id":"mine",'"$WS"'}')" "${ESC}[31mSHARED TREE 2"
 O="$(printf '%s' '{"session_id":"mine",'"$WS"'}' | HARBOR_GLYPH_COLS=60 CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$CFG/cache" \
@@ -365,9 +382,9 @@ O="$(printf '%s' '{"session_id":"mine",'"$WS"'}' | HARBOR_GLYPH_COLS=60 CLAUDE_C
 t_has "SHARED TREE survives the narrow tier, which drops inventory" "$O" "SHARED TREE 2"
 printf 'tree=%s\nsrc=launch\npid=%s\n' "/somewhere/else" "$$" > "$CFG/.helm-peers/peer-a"
 t_hasnt "a peer in another tree raises no alarm" "$(run '{"session_id":"mine",'"$WS"'}')" 'SHARED TREE'
-printf 'tree=%s\nsrc=write\npid=%s\n' "$TMP/notrepo" "2147483646" > "$CFG/.helm-peers/peer-a"
+printf 'tree=%s\nsrc=write\npid=%s\n' "$RT" "2147483646" > "$CFG/.helm-peers/peer-a"
 t_hasnt "a dead pid is not a peer" "$(run '{"session_id":"mine",'"$WS"'}')" 'SHARED TREE'
-rm -rf "$CFG/.helm-peers"
+rm -rf "$CFG/.helm-peers"; WS='"workspace":{"current_dir":"'"$TMP"'/notrepo"}'  # the fixture's own value again
 
 t_section "the ships count comes from the REGISTRY, which sees idle sessions"
 # Two pids this suite owns: `kill -0` on another user's process is EPERM and reads as dead.

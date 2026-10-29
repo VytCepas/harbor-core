@@ -125,7 +125,7 @@ t_hasnt "C2 the notice does not inject constitutional text" "$_c2ctx" 'CONSTITUT
 
 t_section "§4-1 (harbor#85): the work-log credential never reaches a URL"
 # Source assertions on non-comment lines: a real push needs a network and a live credential.
-_wpush="$(grep -v '^[[:space:]]*#' "$SRC/worklog-push.sh" 2>/dev/null)"
+_wpush="$(grep -v '^[[:space:]]*#' "$T_ROOT/hooks/worklog-push/worklog-push.sh" 2>/dev/null)"
 t_exit "§4-1 worklog-push.sh embeds no credential in a URL" 1 ere 'https://[^"]*:\$|@github\.com' "$_wpush"
 t_exit "§4-1 worklog-push.sh pushes to the origin remote" 0 ere 'push .*origin main' "$_wpush"
 t_has "§4-1 worklog-push.sh reports a push failure" "$_wpush" 'push FAILED'
@@ -140,7 +140,7 @@ t_eq "L0-5d runtime-install copies fleet-sessions.sh (the peer report's reader)"
   "$([ -f "$L5/cfg/bin/fleet-sessions.sh" ] && echo yes || echo no)"
 t_has "L0-5d context-resolve.sh is wired to SessionStart" \
   "$(jq -r '[.hooks.SessionStart[]?.hooks[]?.command // empty] | .[]' "$L5/cfg/settings.json" 2>/dev/null)" 'context-resolve.sh'
-cp "$SRC/worklog-push.sh" "$L5/cfg/bin/"
+cp "$T_ROOT/hooks/worklog-push/worklog-push.sh" "$L5/cfg/bin/"
 _l5push() { printf '{"session_id":"%s","cwd":"%s"}' "$1" "$L5/plain" \
   | CLAUDE_CONFIG_DIR="$L5/cfg" HARBOR_LOG_DIR="$L5/log" sh "$L5/cfg/bin/worklog-push.sh" >/dev/null 2>&1; }
 _l5n() { find "$L5/log/WORK" -type f 2>/dev/null | wc -l | tr -d ' '; }
@@ -237,20 +237,20 @@ CLAUDE_CONFIG_DIR="$B9CC" PROJECT_INIT_SRC="$B9C/pi" sh "$SRC/prod-guard-install
 { jq -r '(.hooks // {} | to_entries[] | .key as $e | .value[]? | .hooks[]? | [$e, .command] | @tsv),
          (.statusLine.command // empty | ["statusLine", .] | @tsv),
          (.subagentStatusLine.command // empty | ["subagentStatusLine", .] | @tsv)' "$B9CC/settings.json"
-  for _b9k in "$B9CC"/inject.d/*.md; do
+  for _b9k in "$B9CC"/context-rules/user/*.md; do
     _b9r="$(sed -n 's/^run:[[:space:]]*//p' "$_b9k" | head -n 1)"
-    [ -z "$_b9r" ] || printf 'inject.d\t/bin/sh "%s"\n' "$B9CC/inject.d/$_b9r"
+    [ -z "$_b9r" ] || printf 'context-rules\t/bin/sh "%s"\n' "$B9CC/context-rules/user/$_b9r"
   done
   grep -vE '^[[:space:]]*(#|$)' "$HROOT/CONTRACTS/hooks-external.tsv" | while IFS='	' read -r _b9s _b9e _b9y; do
     printf '%s\t/bin/sh %s\n' "$_b9e" "$B9CC/$_b9s"; done; } | awk '!s[$0]++' > "$B9C/wired"
 t_eq "B9c the sandbox install wires every installer's hooks (floor, runtime, inject, prod-guard, box packs)" 5 \
-  "$(for _b9w in floor-hook.sh session-verdicts.sh inject-hook.sh prod-guard-ambient.sh project-pointer.sh; do
+  "$(for _b9w in floor-hook.sh session-verdicts.sh injection-rule.sh prod-guard-ambient.sh project-pointer.sh; do
        grep -F "/$_b9w" "$B9C/wired" | head -n 1; done | grep -c .)"
-t_eq "B9c every declared external hook is installed, and wired here (worklog-push)" 1 \
+t_eq "B9c worklog-push is installed and wired here (from its manifest since harbor#1272; it was wired by hand)" 1 \
   "$(for _b9w in worklog-push.sh; do grep -F "/bin/$_b9w" "$B9C/wired" | head -n 1 | cut -f2 \
        | sed 's#^/bin/sh ##' | while IFS= read -r _b9f; do [ -f "$_b9f" ] && echo y; done; done | grep -c y)"
 # The plant: a marker under every installed .sh and .awk name, and a registry row project-pointer would name.
-for _b9f in "$B9CC"/bin/* "$B9CC"/inject.d/*; do
+for _b9f in "$B9CC"/bin/* "$B9CC"/context-rules/user/*; do
   _b9b="${_b9f##*/}"
   case "$_b9b" in
     *.sh)  printf 'echo %s >> "%s/ran"\nexit 0\n' "$_b9b" "$B9C" > "$B9CP/$_b9b" ;;

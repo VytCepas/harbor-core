@@ -124,6 +124,11 @@ CONTRACTS/suites-tally.txt CONTRACTS/suites-dash.txt'
 #   - the two files are judged as ordinary changed paths (their readers declare them);
 #   - an appended row may classify a path this changeset ADDS, never one that already existed:
 #     a change must not be able to classify its own previously unclassified file.
+# AND A ROW THAT ONLY GROWS (harbor#1149). In suite-paths.txt, a row edited in place whose globs keep every
+# word they had and add more can only select its suite MORE often; nothing else reads it. That suite runs,
+# and so do APPEND_SUITES; for a path this changeset does not add, the row classifies with its BASE globs,
+# so a grown row cannot classify its own previously unclassified file either. Never for an `@` key (a
+# grown @no-suite would hide paths), a row that is or becomes `always`, or a key the base lists twice.
 # Anything else — a removed or edited line, a reused key, a git that cannot show the diff, a
 # changeset that names the file while git sees no change in it — is SELF again: everything runs.
 APPENDABLE='CONTRACTS/suites.txt CONTRACTS/suite-paths.txt'
@@ -163,29 +168,56 @@ CHANGED=""
 if [ -n "${HARBOR_CHANGED+x}" ]; then
   CHANGED="$HARBOR_CHANGED"
 else
-  CHANGED="$(git -C "$ROOT" diff --name-only --no-renames "$BASE...$HEADREF" 2>/dev/null)" || CHANGED=""
+  if CHANGED="$(git -C "$ROOT" diff --name-only --no-renames "$BASE...$HEADREF" 2>/dev/null)"; then
+    # Uncommitted work counts when judging the local HEAD: before the first commit the committed diff is empty, and
+    # empty selects EVERY suite (399 for a 13-file change, 2026-10-27). Only once the base resolved, so an
+    # unreachable base still runs everything.
+    if [ "$HEADREF" = HEAD ]; then
+      _wt="$( { git -C "$ROOT" diff --name-only --no-renames HEAD && git -C "$ROOT" ls-files --others --exclude-standard; } 2>/dev/null)" || _wt=""
+      CHANGED="$(printf '%s\n%s\n' "$CHANGED" "$_wt" | awk 'NF && !s[$0]++')"
+    fi
+  else
+    CHANGED=""
+  fi
 fi
 
-# <file> → the keys of the rows the diff from the merge base ADDS to it, one per line; exit 1
-# when the diff removes or edits a line, re-adds a key the base had, or cannot be read. `-U0`
-# with no context: after the first `@@`, a line starting `-` is a removal whatever it says.
+# <file> → `A<TAB>key` per row the diff from the merge base ADDS to it and `G<TAB>key<TAB>base globs` per
+# row it only GROWS (suite-paths.txt only); exit 1 when the diff removes or edits any other line, re-adds a
+# key the base had, or cannot be read. `-U0` with no context: after the first `@@`, every `-` line is a removal.
 _appended() {
   _mb="$(git -C "$ROOT" merge-base "$BASE" "$HEADREF" 2>/dev/null)" || return 1
   [ -n "$_mb" ] || return 1
   _bf="$(git -C "$ROOT" show "$_mb:$1" 2>/dev/null)" || return 1
   _df="$(git -C "$ROOT" diff --no-color --no-ext-diff --no-renames -U0 "$_mb" "$HEADREF" -- "$1" 2>/dev/null)" || return 1
   # ENVIRON, not -v: -v would interpret a backslash in a glob as an escape.
-  printf '%s\n' "$_df" | _B="$_bf" awk '
+  _grow=0; [ "$1" != CONTRACTS/suite-paths.txt ] || _grow=1
+  printf '%s\n' "$_df" | _B="$_bf" _G="$_grow" awk '
     function key(s) { sub(/^[[:space:]]+/, "", s); split(s, f, /[[:space:]]+/); return f[1] }
+    function rest(s) { sub(/^[[:space:]]+/, "", s); sub(/^[^[:space:]]+[[:space:]]*/, "", s); sub(/[[:space:]]+$/, "", s); return s }
+    function words(s, w,   n, a, i) { delete w; n = split(s, a, /[[:space:]]+/); for (i = 1; i <= n; i++) if (a[i] != "") w[a[i]] = 1 }
     BEGIN { n = split(ENVIRON["_B"], b, "\n")
-            for (i = 1; i <= n; i++) if (b[i] !~ /^[[:space:]]*(#|$)/) had[key(b[i])] = 1 }
+            for (i = 1; i <= n; i++) if (b[i] !~ /^[[:space:]]*(#|$)/) { k = key(b[i]); had[k]++ } }
     /^@@/ { hunk = 1; next }
     !hunk { next }
-    /^-/ || /^\\/ { bad = 1; exit }
+    /^\\/ { bad = 1; exit }
+    /^-/ { r = substr($0, 2); k = key(r)
+           if (ENVIRON["_G"] != 1 || r ~ /^[[:space:]]*(#|$)/ || k ~ /^@/ || had[k] != 1 || (k in gone)) { bad = 1; exit }
+           gone[k] = rest(r); next }
     /^\+/ { r = substr($0, 2); if (r ~ /^[[:space:]]*(#|$)/) next
-            k = key(r); if (k in had || k in seen) { bad = 1; exit }
-            seen[k] = 1; print k }
-    END { exit (bad || !hunk) ? 1 : 0 }'
+            k = key(r); if (k in seen) { bad = 1; exit }
+            seen[k] = 1
+            if (k in gone) { grew[k] = rest(r); next }
+            if (k in had) { bad = 1; exit }
+            print "A\t" k; next }
+    END { if (bad || !hunk) exit 1
+          for (k in gone) {
+            if (!(k in grew)) exit 1
+            o = gone[k]; nw = grew[k]
+            if ((" " o " ") ~ / always / || (" " nw " ") ~ / always /) exit 1
+            words(nw, NW); words(o, OW)
+            for (x in OW) if (!(x in NW)) exit 1
+            print "G\t" k "\t" o }
+          exit 0 }'
 }
 
 # ALL_WHY non-empty means every suite runs, and says why in one line.
@@ -200,7 +232,7 @@ fi
 
 # APPENDED: the keys appended to an APPENDABLE file (one per line); APPEND_ON=1 when the changeset
 # touches one. ADDED: the paths this changeset creates, which appended rows may classify.
-APPENDED=""; APPEND_ON=0; ADDED=""
+APPENDED=""; APPEND_ON=0; ADDED=""; GROWN=""   # GROWN: `key<TAB>base globs` per row that only grew
 if [ -z "$ALL_WHY" ]; then
   # shellcheck disable=SC2086
   while IFS= read -r _p; do
@@ -213,19 +245,28 @@ if [ -z "$ALL_WHY" ]; then
       ALL_WHY="changeset touches the selector's own inputs ($_p: a line removed or edited, a key reused, or no diff git can show against $BASE)"
       break
     fi
-    APPEND_ON=1; APPENDED="$APPENDED${_k:+$_k
+    APPEND_ON=1
+    _ka="$(printf '%s\n' "$_k" | awk -F'\t' '$1 == "A" { print $2 }')"
+    _kg="$(printf '%s\n' "$_k" | awk -F'\t' '$1 == "G" { print $2 "\t" $3 }')"
+    APPENDED="$APPENDED${_ka:+$_ka
+}"; GROWN="$GROWN${_kg:+$_kg
 }"
   done <<CHANGES
 $CHANGED
 CHANGES
 fi
-if [ -z "$ALL_WHY" ] && [ -n "$APPENDED" ]; then
+if [ -z "$ALL_WHY" ] && { [ -n "$APPENDED" ] || [ -n "$GROWN" ]; }; then
   ADDED="$(git -C "$ROOT" diff --name-only --no-renames --diff-filter=A "$BASE...$HEADREF" 2>/dev/null)" \
     || ALL_WHY="rows were appended to the selector's inputs and git cannot list the paths this changeset adds"
+  # New files not yet committed are added paths too (see the changeset above).
+  [ -n "$ALL_WHY" ] || [ "$HEADREF" != HEAD ] || [ -n "${HARBOR_CHANGED+x}" ] \
+    || ADDED="$ADDED${ADDED:+
+}$( { git -C "$ROOT" diff --name-only --no-renames --diff-filter=A HEAD; git -C "$ROOT" ls-files --others --exclude-standard; } 2>/dev/null)"
 fi
 NL='
 '
 _in() { case "$NL$2$NL" in *"$NL$1$NL"*) return 0 ;; esac; return 1; }  # <line> <lines>: quoted, so literal
+_grown_base() { printf '%s\n' "$GROWN" | awk -F'\t' -v k="$1" '$1 == k { print $2; f = 1; exit } END { exit !f }'; }  # <key> → its base globs
 
 if [ -z "$ALL_WHY" ]; then
   _nosuite="$(_globs '@no-suite')"
@@ -233,7 +274,7 @@ if [ -z "$ALL_WHY" ]; then
   while IFS= read -r _p; do
     [ -n "$_p" ] || continue
     _matches "$_p" $APPENDABLE && continue  # judged above, and matched as a path in decide()
-    _new=0; [ -z "$APPENDED" ] || ! _in "$_p" "$ADDED" || _new=1
+    _new=0; { [ -z "$APPENDED" ] && [ -z "$GROWN" ]; } || ! _in "$_p" "$ADDED" || _new=1
     _seen=0
     _matches "$_p" $_nosuite && _seen=1
     if [ "$_seen" -eq 0 ]; then
@@ -241,7 +282,8 @@ if [ -z "$ALL_WHY" ]; then
         [ -n "$_s" ] || continue
         # An appended row classifies only a path this changeset adds (see APPENDABLE above).
         [ "$_new" -eq 1 ] || [ -z "$APPENDED" ] || ! _in "$_s" "$APPENDED" || continue
-        _g="$(_globs "$_s")"
+        # A grown row classifies a path this changeset did not add with its base globs (see APPENDABLE above).
+        if [ "$_new" -eq 0 ] && [ -n "$GROWN" ] && _gb="$(_grown_base "$_s")"; then _g="$_gb"; else _g="$(_globs "$_s")"; fi
         [ -n "$_g" ] || continue
         # shellcheck disable=SC2086
         if _matches "$_p" $_g; then _seen=1; break; fi
@@ -264,6 +306,7 @@ REASON=""
 decide() {
   if [ -n "$ALL_WHY" ]; then REASON="$ALL_WHY"; return 0; fi
   if _in "$1" "$APPENDED"; then REASON="appended to the selector's inputs by this changeset"; return 0; fi
+  if [ -n "$GROWN" ] && _grown_base "$1" >/dev/null; then REASON="its declaration only grew in this changeset"; return 0; fi
   # shellcheck disable=SC2086
   if [ "$APPEND_ON" -eq 1 ] && _matches "$1" $APPEND_SUITES; then
     REASON="the selector's own suite: this changeset appends to its inputs"; return 0

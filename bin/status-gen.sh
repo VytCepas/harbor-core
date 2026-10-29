@@ -255,7 +255,7 @@ suite_supplied() {
 # harbor#727: tests/ too, since the count-bearing suites and their harness moved there.
 _sc_fingerprint() {
   # The workflow too: floor.shards-test reads it, or HARBOR_WORKFLOW's proposal (harbor#727).
-  cat "$ROOT"/bin/*.sh "$ROOT"/bin/*.awk "$ROOT"/tests/*/*.sh \
+  cat "$ROOT"/bin/*.sh "$ROOT"/bin/*.awk "$ROOT"/hooks/*/*.sh "$ROOT"/tests/*/*.sh \
       "${HARBOR_WORKFLOW:-$ROOT/.github/workflows/governance.yml}" 2>/dev/null \
     | { sha256sum 2>/dev/null || shasum -a 256 2>/dev/null; } \
     | awk '{print $1; exit}'
@@ -482,7 +482,7 @@ if [ -s "$LIVE/bin/guard-integrity.sh" ]; then
 fi
 
 # prod_guard is NOT part of the floor at all. The floor deliberately omits the
-# cloud/data corpus (guard-bash.sh:6-8) because project-init's guard owns it, so
+# cloud/data corpus (guard-bash.sh:6-8) because yard's guard owns it, so
 # this is a separate control with a separate install path and it gets its own
 # row. Giving it one is also what stops the floor's row from borrowing its
 # evidence, which is precisely how the substring defect above stayed invisible.
@@ -512,7 +512,7 @@ fi
 constitution_live="no"; [ -f "$LIVE/CLAUDE.md" ] && constitution_live="yes"
 n_drift=0
 if [ -d "$LIVE/bin" ]; then
-  for f in "$ROOT"/bin/*.sh; do
+  for f in "$ROOT"/bin/*.sh $(sh "$ROOT/bin/deploy-hooks.sh" --engines --root "$ROOT" 2>/dev/null); do
     b="$(basename "$f")"; [ -f "$LIVE/bin/$b" ] || continue
     cmp -s "$f" "$LIVE/bin/$b" || n_drift=$((n_drift + 1))
   done

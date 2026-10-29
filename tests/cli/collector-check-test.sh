@@ -16,6 +16,11 @@ t_eq "green receipt" green "$(rec)"
 touch -t 202001010000 "$ST/status.json"
 t_eq "a stale heartbeat is red" 1 "$(run)"
 t_has "and says so in checks.log" "$(cat "$CF/cache/checks.log")" '[check:collector.health]'
+touch "$ST/pass.started"
+t_eq "a pass that started recently is alive, however old the last end is" 0 "$(run)"
+touch -t 202001010000 "$ST/pass.started"
+t_eq "...and a pass that started long ago and never ended is stale" 1 "$(run)"
+rm -f "$ST/pass.started"
 stat_json 1 0
 t_eq "an unreadable source is red" 1 "$(run)"
 stat_json 0 2

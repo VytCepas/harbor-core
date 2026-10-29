@@ -39,12 +39,11 @@ harbor/bin/lint-conventions.sh	`[ -d ~/harbor/.git ]` is	history: Verified on th
 harbor/bin/memory-lint.sh	Measured 2026-09-21 with cwd ~/harbor	history: dated measurement
 harbor/bin/merge-check.sh	HARBOR_REPO="$HOME/harbor" sh bin/merge-check.sh --protection	history: command as run under Measured 2026-08-13
 harbor/bin/merge-check.sh	PROTECTION ABSENT  $HOME/harbor/main	history: that run's output
-harbor/bin/session-verdicts.sh	under ~/harbor/bin, all blocked under $CFG/bin	history: the measured write-shape result; the present-tense security claim was rewritten
+harbor/hooks/session-verdicts/session-verdicts.sh	under ~/harbor/bin, all blocked under $CFG/bin	history: the measured write-shape result; the present-tense security claim was rewritten
 harbor/bin/store-check.sh	Measured 2026-09-16 from ~/harbor	history: dated measurement
 harbor/bin/store-check.sh	Measured 2026-09-21 with cwd ~/harbor	history: dated measurement
 harbor/bin/worktree.sh	`~/harbor-ci` is a WORKTREE of `~/harbor`	describes a setup that no longer exists (~/harbor-ci is at neither address); a prefix rewrite would leave it half-true
 harbor/HANDOFF-ARCHIVE.md	*	record: archived handoffs
-harbor/EVALS.md	*	record: eval run log
 harbor/harbor-build-tickets.md	*	record: historical build-ticket list
 # harbor instruction surfaces kept as dated record — harbor#639 (harbor#629), 2026-09-23
 harbor/CONTRACTS/cli.md	`~/harbor-ci` is a **worktree** of `~/harbor`	rationale for worktree.sh describing the state that motivated it; ~/harbor-ci exists at neither address, so rewriting half the clause would assert a false present
@@ -52,8 +51,8 @@ harbor/CONTRACTS/cli.md	from `~/harbor` and `186%, over` from `$HOME` in the sam
 harbor/DOCTRINE/verification-expanded.md	**Measured 2026-08-27, on `~/harbor/bin`:**	dated measurement; the path is its object
 harbor/HANDOFF.md	Nobody opened `~/project-init` or `~/projects-orchestrator` this session	session record of what was not opened
 harbor/PLAN.md	the ACCESS book at ~/harbor/ACCESS	generated, same as above
-harbor/inject.d/box/project-pointer.sh	handed `harbor (~/harbor)` in the list of projects	quote of the pointer's output measured 2026-08-28
-harbor/inject.d/box/repo-skills.sh	from cwd=~/harbor, 0 of 36 do	re-measured 2026-09-06
+harbor/context-rules/user/project-pointer.sh	handed `harbor (~/harbor)` in the list of projects	quote of the pointer's output measured 2026-08-28
+harbor/context-rules/user/repo-skills.sh	from cwd=~/harbor, 0 of 36 do	re-measured 2026-09-06
 harbor/skills/UNIFICATION.md	(Superseded the 2026-08 state where `~/harbor` sat on a	history (line 271's "run governance from here" was rewritten)
 harbor/skills/UNIFICATION.md	!`sh ~/harbor/bin/context-budget.sh 2>&1`	quote of /harbor-context as it read during that sweep
 harbor/skills/access-ledger/bin/check-routes.sh	Consolidating the card store into ~/harbor/ACCESS	2026-09-15 incident
@@ -61,3 +60,5 @@ harbor/skills/housekeeping/references/classes.md	set **`core.bare = true` on `~/
 # sentence-ending history lines surfaced by the full-stop separator fix, and a workload-repo ticket — 2026-09-23
 harbor/bin/context-resolve.sh	had spent its entire life editing ~/harbor.	history: the harbor#75 measurement of launch cwd vs write tree
 harbor/bin/fleet-sessions.sh	# ~/harbor. Grouping on either one	history: the re-measured 2026-08-02 observation of two sessions
+harbor/tests/lint/domain/ratchet.test.sh	the brook ran by; a zorbcorporate thing; ~/harbor/bin	fixture: a word-boundary case for the domain ratchet, data not a path
+harbor-core/tests/lint/domain/ratchet.test.sh	the brook ran by; a zorbcorporate thing; ~/harbor/bin	fixture: the same case in the public mirror

@@ -174,8 +174,36 @@ t_eq "…and so does the other one: not everything" SKIP "$(gv beta-test.sh)"
 t_hasnt "…and the fallback is not taken" "$L" "selector's own inputs ("
 edit_row() { sed 's|^beta-test.sh docs/\*$|beta-test.sh docs/* other/*|' "$G/CONTRACTS/suite-paths.txt" > "$G/x" && mv "$G/x" "$G/CONTRACTS/suite-paths.txt"; app; }
 glane edit_row
-t_eq "an edited row beside appended ones runs everything" RUN "$(gv alpha-test.sh)"
+# A row that only GROWS selects its suite more, never less (harbor#1149): that suite runs, not everything.
+L="$(gsel)"
+t_eq "a row that only grew: its suite runs" RUN "$(gv beta-test.sh)"
+t_has "…because its declaration grew" "$(printf '%s\n' "$L" | grep ' beta-test.sh ')" 'its declaration only grew'
+t_eq "…the selector's own suite runs" RUN "$(gv tests/ci/suite-run-test.sh)"
+t_eq "…an unrelated suite stands down: not everything" SKIP "$(gv alpha-test.sh)"
+t_hasnt "…and the fallback is not taken" "$L" "selector's own inputs ("
+shrink_row() { sed 's|^alpha-test.sh bin/\*$|alpha-test.sh other/*|' "$G/CONTRACTS/suite-paths.txt" > "$G/x" && mv "$G/x" "$G/CONTRACTS/suite-paths.txt"; }
+glane shrink_row
+t_eq "a row that lost a glob runs everything" RUN "$(gv beta-test.sh)"
 t_has "…and names the file" "$(gsel)" "selector's own inputs (CONTRACTS/suite-paths.txt: a line removed or edited"
+grow_at() { sed 's|^@no-suite \*\.md$|@no-suite *.md bin/*|' "$G/CONTRACTS/suite-paths.txt" > "$G/x" && mv "$G/x" "$G/CONTRACTS/suite-paths.txt"; }
+glane grow_at
+t_eq "a grown @ row (@no-suite would hide paths) runs everything" RUN "$(gv beta-test.sh)"
+grow_always() { sed 's|^always-test.sh always$|always-test.sh always bin/*|' "$G/CONTRACTS/suite-paths.txt" > "$G/x" && mv "$G/x" "$G/CONTRACTS/suite-paths.txt"; }
+glane grow_always
+t_eq "a grown always row runs everything" RUN "$(gv beta-test.sh)"
+to_always() { sed 's|^beta-test.sh docs/\*$|beta-test.sh docs/* always|' "$G/CONTRACTS/suite-paths.txt" > "$G/x" && mv "$G/x" "$G/CONTRACTS/suite-paths.txt"; }
+glane to_always
+t_eq "a row grown into always runs everything" RUN "$(gv alpha-test.sh)"
+grow_old() { sed 's|^beta-test.sh docs/\*$|beta-test.sh docs/* newdir/*|' "$G/CONTRACTS/suite-paths.txt" > "$G/x" && mv "$G/x" "$G/CONTRACTS/suite-paths.txt"; echo x >> "$G/newdir/old.conf"; }
+glane grow_old
+t_eq "a grown row cannot classify a path that already existed" RUN "$(gv alpha-test.sh)"
+t_has "…which stays unclassified" "$(gsel)" 'no declaration mentions newdir/old.conf'
+grow_new() { sed 's|^beta-test.sh docs/\*$|beta-test.sh docs/* newdir/*|' "$G/CONTRACTS/suite-paths.txt" > "$G/x" && mv "$G/x" "$G/CONTRACTS/suite-paths.txt"; : > "$G/newdir/new2.conf"; }
+glane grow_new
+t_eq "a grown row may classify a path the changeset adds" SKIP "$(gv alpha-test.sh)"
+grow_manifest() { sed 's|^beta-test.sh$|beta-test.sh x|' "$G/CONTRACTS/suites.txt" > "$G/x" && mv "$G/x" "$G/CONTRACTS/suites.txt"; }
+glane grow_manifest
+t_eq "an edited manifest row runs everything (growth is suite-paths.txt only)" RUN "$(gv alpha-test.sh)"
 drop_row() { grep -v '^beta-test.sh' "$G/CONTRACTS/suite-paths.txt" > "$G/x" && mv "$G/x" "$G/CONTRACTS/suite-paths.txt"; app; }
 glane drop_row
 t_eq "a removed declaration row runs everything" RUN "$(gv alpha-test.sh)"
@@ -203,6 +231,19 @@ other_self() { app; echo 'echo x' >> "$G/bin/suite-run.sh"; }  # a pure addition
 glane other_self
 t_eq "appended rows beside another selector input run everything" RUN "$(gv beta-test.sh)"
 t_has "…and name that input" "$(gsel)" "selector's own inputs (bin/suite-run.sh)"
+
+t_section "uncommitted work is part of the local changeset; an unreachable base still runs everything"
+gq checkout -q -B wip main
+echo x >> "$G/docs/d.txt"
+t_eq "an uncommitted edit selects its declarer" RUN "$(gv beta-test.sh)"
+t_eq "…and only it: not everything" SKIP "$(gv alpha-test.sh)"
+gq checkout -q -- docs/d.txt; : > "$G/docs/new.txt"
+t_eq "an untracked new file selects its declarer" RUN "$(gv beta-test.sh)"
+t_eq "…and only it" SKIP "$(gv alpha-test.sh)"
+t_eq "an unreachable base runs everything, whatever the working tree" RUN \
+  "$( ( cd "$CWD" && HARBOR_ROOT="$G" HARBOR_BASE=no-such-ref sh "$SEL" --list ) 2>&1 | awk '$2 == "alpha-test.sh" { print $1 }')"
+rm -f "$G/docs/new.txt"; gq checkout -q main
+t_eq "a clean tree on the base itself still runs everything" RUN "$(gv alpha-test.sh)"
 
 t_section ".github/CODEOWNERS is not a selector input; a workflow still is (harbor#150)"
 t_has "CODEOWNERS is judged like any path" "$(sel '.github/CODEOWNERS' --list)" 'no declaration mentions .github/CODEOWNERS'

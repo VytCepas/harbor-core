@@ -19,7 +19,11 @@ if [ ! -f "$ST" ]; then
   log_end; exit 0
 fi
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required to read $ST"; log_fix "$(pkg_hint jq)"; exit 1; }
-age=$(( $(date +%s) - $(fs_mtime "$ST") ))
+# The heartbeat is the newer of a pass's end (status.json) and its start (pass.started): alive means a pass began
+# within STALE, so a slow pass under load is not a dead collector, and a hung one still goes stale.
+_hb="$(fs_mtime "$ST")"
+[ ! -f "$STORE/pass.started" ] || { _ps="$(fs_mtime "$STORE/pass.started")"; [ "${_ps:-0}" -le "$_hb" ] 2>/dev/null || _hb="$_ps"; }
+age=$(( $(date +%s) - _hb ))
 unread="$(jq -r '.unreadable // 0' "$ST" 2>/dev/null || echo x)"; total="$(jq -r '.events_total // 0' "$ST" 2>/dev/null || echo x)"
 seen=0; { [ -f "$SEEN" ] && IFS= read -r seen < "$SEEN"; } 2>/dev/null || :
 case "$seen" in ''|*[!0-9]*) seen=0 ;; esac

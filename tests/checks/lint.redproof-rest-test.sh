@@ -153,4 +153,73 @@ t_has "X5 is red on a copy missing the symlink refusal" "$(_x5)" "ADVISORY [drif
 printf 'def guard():\n    return path.is_symlink() and 1\n' > "$_X5_H/port/r1/.agents/hooks/prod_guard.py"
 t_has "X5 is red on a copy that has the refusal but differs" "$(_x5)" "ADVISORY [drift.prod-policy-copy] differs from the source repo (has the refusal): port/r1/.agents/hooks/prod_guard.py"
 
+t_section "lint.platform-calls: a bare macOS-only call in bin/ (harbor#618)"
+_PC="$T_TMP/pcroot"; mkdir -p "$_PC/bin"; cp "$T_ROOT/bin/lint-platform.sh" "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/alert-lib.sh" "$_PC/bin/"
+printf '#!/usr/bin/env sh\nlaunchctl list || systemctl --user list-timers\n' > "$_PC/bin/ported.sh"
+t_eq "lint.platform-calls is silent on a ported call and the helper's own osascript" "" "$(viol lint.platform-calls "$_PC")"
+printf '#!/usr/bin/env sh\npbcopy < x\n' > "$_PC/bin/bare.sh"
+t_has "lint.platform-calls is red on a bare pbcopy" "$(viol lint.platform-calls "$_PC")" "VIOLATION [lint.platform-calls] bin/bare.sh: pbcopy"
+
+t_section "event.kind-registered: a preset never waits on a kind nothing emits (harbor#1367)"
+_ek_reg() { printf 'kind\tshape\tsubject\temitter\tmeaning\nx.done\tterminal\ts\t%s\tm\n' "$1" > "$RP/CONTRACTS/event-kinds.tsv"; }
+_rp_fresh; _rp_sh "$RP/bin/x.sh"; printf 'sh "$BUS" emit x.done s\nharbor_emit telemetry.only\n' >> "$RP/bin/x.sh"; _rp_sh "$RP/bin/y.sh"
+_ek_reg bin/x.sh; printf 'event.x\t"kind":"(x\\.done)"\t60\n' > "$RP/CONTRACTS/event-rules.tsv"
+_rp_green event.kind-registered "a preset whose kind is emitted by a file that names it, and a telemetry harbor_emit"
+_ek_reg bin/y.sh
+_rp_red event.kind-registered "x.done: its emitter bin/y.sh never names it" "a row naming an emitter that does not emit it"
+_ek_reg bin/x.sh; printf 'emit_event z.new s\n' >> "$RP/bin/x.sh"
+_rp_red event.kind-registered "bin/x.sh emits z.new, which CONTRACTS/event-kinds.tsv does not register" "an emitted kind with no row"
+_rp_sh "$RP/bin/x.sh"; _ek_reg -
+_rp_red event.kind-registered "event.x listens for x.done, which nothing on this box emits" "a preset on a kind with no producer (the ci.job.done gap)"
+printf 'event.x\t"kind":"(x\\.gone)"\t60\n' > "$RP/CONTRACTS/event-rules.tsv"
+_rp_red event.kind-registered "event.x names x.gone, which CONTRACTS/event-kinds.tsv does not register" "a preset on an unregistered kind"
+
+t_section "skill.description-shape and skill.cited-path-exists: one description shape, no dead path (harbor#1010)"
+_sk() { mkdir -p "$RP/skills/$1" "$RP/bin"; printf -- '---\nname: %s\ndescription: "%s"\n%s---\n' "$1" "$2" "${3:-}" > "$RP/skills/$1/SKILL.md"; }
+_rp_fresh; _rp_sh "$RP/bin/real.sh"
+_sk ok 'Does a thing with `bin/real.sh` and `~/box/only` and `a/*`. USE WHEN x. NOT FOR y (z).' 'disable-model-invocation: true
+'
+_rp_green skill.description-shape "a skill with USE WHEN then NOT FOR and one visibility key"
+_rp_green skill.cited-path-exists "a description citing a real repo path and a box path"
+_sk nofor 'Does a thing. USE WHEN x.'
+_rp_red skill.description-shape "skills/nofor description lacks a USE WHEN or a NOT FOR clause" "a description with no NOT FOR"
+_sk nofor 'Does a thing. NOT FOR y. USE WHEN x.'
+_rp_red skill.description-shape "skills/nofor puts NOT FOR before USE WHEN" "a NOT FOR placed before USE WHEN"
+_sk nofor 'Does a thing. USE WHEN x. NOT FOR y.' 'disable-model-invocation: true
+user-invocable: false
+'
+_rp_red skill.description-shape "skills/nofor declares 2 visibility keys" "two visibility keys on one skill"
+_sk nofor 'Does a thing. USE WHEN x. NOT FOR y.'
+_sk dead 'Runs `bin/gone.sh` for you. USE WHEN x. NOT FOR y.'
+_rp_red skill.cited-path-exists "skills/dead cites bin/gone.sh, which is not in the tree" "a description citing a script that does not exist"
+
+
+t_section "N3 (advisory): a NOT FOR handoff to a tracked slash command resolves (harbor#1010)"
+_rp_fresh; mkdir -p "$RP/skills/giver" "$RP/commands"
+printf -- '---\nname: giver\ndescription: Gives. USE WHEN giving. NOT FOR merging (merge-gate).\n---\n' > "$RP/skills/giver/SKILL.md"
+_rp_red N3 'ADVISORY [skill.not-for-target-exists] giver hands off to "merge-gate"' "a handoff to a command that is not tracked"
+printf '# merge-gate\n' > "$RP/commands/merge-gate.md"
+_rp_green N3 "a handoff to commands/merge-gate.md"
+
+t_section "lint.comment-conform: bin/lint-comment.sh's findings on a branch are relayed, never silent (harbor#978)"
+CR="$T_TMP/cr"; rm -rf "$CR"; mkdir -p "$CR/bin" "$CR/standards/naming"; cp "$T_ROOT/bin/lint-comment.sh" "$T_ROOT/bin/log-lib.sh" "$CR/bin/"
+printf 'id\tmode\n' > "$CR/standards/naming/controls.tsv"
+git -C "$CR" init -q -b main; git -C "$CR" add -A; git -C "$CR" -c user.email=t@e.invalid -c user.name=t commit -q -m base
+git -C "$CR" checkout -q -b feature
+_cr() { ( HARBOR_BASE="${1:-main}"; export HARBOR_BASE; _rp lint.comment-conform "$CR" ); }
+t_has "a branch adding nothing is clean, and the engine ran" "$(_cr)" "1 rules, 0 violations"
+t_eq "...with no advisory" "" "$(_cr | grep -F 'ADVISORY [lint.comment-conform]')"
+printf '#!/usr/bin/env sh\n# whatever\nx=1\n' > "$CR/bin/nohead.sh"
+git -C "$CR" add -A; git -C "$CR" -c user.email=t@e.invalid -c user.name=t commit -q -m branch
+t_has "an added script without the header is an advisory under the relay id" "$(_cr)" "ADVISORY [lint.comment-conform] [lint.file-header] bin/nohead.sh:2"
+t_has "...and still no violation" "$(_cr)" "0 violations"
+t_has "no base is said as an advisory, never silence" "$(_cr no-such-ref)" "ADVISORY [lint.comment-conform] unchecked: no base to compare against"
+t_has "...and does not fail the build" "$(_cr no-such-ref)" "0 violations"
+printf 'id\tmode\nlint.file-header\tblock\n' > "$CR/standards/naming/controls.tsv"
+t_has "a block row's finding is a violation" "$(_cr)" "VIOLATION [lint.comment-conform] [lint.file-header] bin/nohead.sh:2"
+rm "$CR/bin/log-lib.sh"
+t_has "an engine that cannot run is a violation, not a pass" "$(_cr)" "VIOLATION [lint.comment-conform] bin/lint-comment.sh exited"
+rm "$CR/bin/lint-comment.sh"
+t_has "a tree without the engine is skipped, said so" "$(_cr)" "skip: no bin/lint-comment.sh"
+
 t_done

@@ -61,7 +61,7 @@ t_eq "no repo root: usage, exit 2" 2 "$RC"
 
 t_section "harbor's register: the policy's paths are protected"
 for p in CONSTITUTION.md DOCTRINE/verification-expanded.md bin/guard-bash.sh bin/floor-install.sh bin/guard-lib.sh \
-         bin/floor-normalize.awk hooks/pre-commit inject.d/box/x.md .claude/inject.d/merge-note.sh skills/x/SKILL.md \
+         bin/floor-normalize.awk hooks/pre-commit context-rules/user/x.md context-rules/harbor/merge-note.sh skills/x/SKILL.md \
          bin/runtime-install.sh bin/deploy.sh bin/restore.sh bin/sec0-harden.sh bin/pin-instructions.sh \
          CONTRACTS/required-checks.tsv CONTRACTS/hooks.md .github/workflows/governance.yml bin/gate-approve.sh \
          bin/gate-lib.sh bin/merge-check.sh .agents/protected-paths.tsv .agents/ship.conf; do
@@ -76,15 +76,15 @@ grep -v '	ci-gate	the generic patterns of the leak gate' "$T_ROOT/.agents/protec
 t_exit "RED-PROOF: without the leak-patterns row, the register is open there" 0 \
   sh "$C" "$T_TMP/lp" CONTRACTS/leak-patterns.tsv
 
-t_section "harbor's register: the skill book's router is an instruction surface (harbor#1149)"
-# deploy writes this file's text into the installed skill book, so a change to it is a change to what every session reads.
+t_section "harbor's register: the skill catalog's router is an instruction surface (harbor#1149)"
+# deploy writes this file's text into the installed skill catalog, so a change to it is a change to what every session reads.
 t_eq "CONTRACTS/skill-book-router.tsv is protected as instructions" instructions "$(sh "$C" "$T_ROOT" CONTRACTS/skill-book-router.tsv | cut -f3)"
-t_eq "...as is the generator that reads it, and the tracked book it writes" "ship instructions" "$(sh "$C" "$T_ROOT" bin/skill-book.sh skills/skill-book/SKILL.md | cut -f3 | tr '\n' ' ' | sed 's/ $//')"
+t_eq "...as is the generator that reads it, and the tracked book it writes" "ship instructions" "$(sh "$C" "$T_ROOT" bin/skill-catalog.sh skills/skill-catalog/SKILL.md | cut -f3 | tr '\n' ' ' | sed 's/ $//')"
 mkdir -p "$T_TMP/sbr/.agents"; cp "$T_ROOT/.agents/ship.conf" "$T_TMP/sbr/.agents/"
 grep -v '	instructions	the Start-here text deploy writes' "$T_ROOT/.agents/protected-paths.tsv" > "$T_TMP/sbr/.agents/protected-paths.tsv"
 t_exit "RED-PROOF: without the router row, a change touching only the router is open" 0 \
   sh "$C" "$T_TMP/sbr" CONTRACTS/skill-book-router.tsv
-t_exit "...and the row is the only difference: the generator is still protected there" 1 sh "$C" "$T_TMP/sbr" bin/skill-book.sh
+t_exit "...and the row is the only difference: the generator is still protected there" 1 sh "$C" "$T_TMP/sbr" bin/skill-catalog.sh
 t_eq "CODEOWNERS owns it too" "/CONTRACTS/skill-book-router.tsv" "$(grep -o '^/CONTRACTS/skill-book-router.tsv' "$T_ROOT/.github/CODEOWNERS")"
 
 t_section "harbor's register: a persistent job always queues for the click"
@@ -152,20 +152,31 @@ rp "the two registers" '/decides what ~\/.local\/bin points at/d' CONTRACTS/shim
 rp "ship.conf commands" 's/^for _k in plan apply verify restore deployed;/for _k in none;/' bin/live-verify.sh
 rp "the suite manifests" 's|"\$ROOT"/CONTRACTS/suites\*\.txt ||' CONTRACTS/suites.txt
 rp "the runner and test-library globs" 's/^for _d in runners tests\/lib;/for _d in none;/' tests/lib/row.sh
+t_exit "a script only a workflow the gate does not judge calls is protected: the mirror runs governance.yml (harbor#1149)" \
+  1 sh "$C" "$T_ROOT" bin/fresh-check.sh
+rp "every workflow, not only the judged one" 's|for _wp in "\$ROOT"/.github/workflows/\*\.yml; do|for _wp in "$ROOT"/.github/workflows/public-ci.yml; do|' bin/fresh-check.sh
 
 t_section "harbor's register: every script an installer wires as a hook or statusline, and every installer"
-wired() { # the bin/ files an installer names as <dir>/bin/<file> (hooks, statusline), and floor-install's wiring table
+wired() { # what an installer wires, each as the repo file it ships from (an engine's is in its folder, D-88)
+  _wired_raw "$1" | while IFS= read -r _wp; do
+    case "$_wp" in bin/*) _wp="$(t_src "${_wp#bin/}")"; _wp="${_wp#"$T_ROOT"/}" ;; esac
+    printf '%s\n' "$_wp"
+  done
+}
+_wired_raw() { # the bin/ files an installer names as <dir>/bin/<file> (hooks, statusline), and floor-install's wiring table
   grep -ohE '\$DIR/bin/[a-z0-9_-]+\.(sh|awk|py)' "$1"/bin/*-install.sh | sed 's|\$DIR/||'
   awk '/^floor_hooks\(\)/ { f = 1; next } f && /^ROWS$/ { exit } f && !/^#/ && /;/' "$1/bin/floor-install.sh" | cut -d';' -f3 \
     | tr ' ' '\n' | grep -v '^-' | sed 's|^|bin/|'
   git -C "$1" ls-files 'bin/*-install.sh'
+  # a hook engine is wired by its manifest (D-88)
+  for _wm in "$1"/hooks/*/manifest.tsv; do [ -f "$_wm" ] || continue; _we="${_wm%/manifest.tsv}"; _we="${_we##*/}"; printf 'hooks/%s/%s.sh\n' "$_we" "$_we"; done
 }
 _w="$(wired "$T_ROOT" | sort -u)"
 t_eq "the derivation finds them (more than 30)" yes "$([ "$(printf '%s\n' "$_w" | grep -c .)" -gt 30 ] && echo yes || echo no)"
 _open="$(printf '%s\n' "$_w" | sh "$C" "$T_ROOT" | cut -f2 | sort | comm -13 - "$(printf '%s\n' "$_w" > "$T_TMP/w"; echo "$T_TMP/w")")"
 t_eq "none of them is open" "" "$_open"
 cp -R "$T_ROOT/.agents" "$T_TMP/h"; mkdir -p "$T_TMP/hr"; mv "$T_TMP/h" "$T_TMP/hr/.agents"
-grep -v '^bin/reply-shape.sh' "$T_ROOT/.agents/protected-paths.tsv" > "$T_TMP/hr/.agents/protected-paths.tsv"
+grep -v '^bin/context-resolve\.sh' "$T_ROOT/.agents/protected-paths.tsv" > "$T_TMP/hr/.agents/protected-paths.tsv"
 _open="$(printf '%s\n' "$_w" | sh "$C" "$T_TMP/hr" | cut -f2 | sort | comm -13 - "$T_TMP/w")"
-t_eq "RED-PROOF: a register missing a hook row leaves exactly that hook open" bin/reply-shape.sh "$_open"
+t_eq "RED-PROOF: a register missing a hook row leaves exactly that hook open" bin/context-resolve.sh "$_open"
 t_done
