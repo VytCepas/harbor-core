@@ -119,7 +119,9 @@ step chown -R "root:$GRP" "$BIN"
 step chmod 0755 "$BIN" "$BIN/audit-collector.sh" "$BIN/library-log.sh" "$BIN/library-fs.sh" "$BIN/audit-otlp-receiver.py"
 # 3. the store and the signing key belong to the collector alone
 step mkdir -p "$STORE/key"
-step chown -R "$U:$U" "$STORE"
+# Only what the collector does not own yet: its sealed data files are append-only (uappnd), which refuses
+# chown even to root, so a recursive chown made every reinstall onto a used store exit here (harbor#949).
+step find "$STORE" ! -user "$U" -exec chown "$U:$U" {} +
 step chmod 0755 "$STORE"
 step chmod 0700 "$STORE/key"
 if [ ! -f "$STORE/key/collector" ]; then

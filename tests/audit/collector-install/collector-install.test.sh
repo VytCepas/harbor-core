@@ -39,6 +39,7 @@ if [ "$(uname -s)" = Darwin ]; then
   O="$(HARBOR_COLLECTOR_USER=_harbor-test-absent plan Darwin)"; rc=$?
   t_eq "a macOS dry run exits 0" 0 "$rc"
   t_has "the code goes to a root-owned dir" "$O" 'chown -R root:wheel /Library/Application Support/Harbor/collector-bin'
+  t_has "...and the store changes owner only where the collector does not own it (a sealed file refuses chown)" "$O" 'find /Library/Application Support/Harbor/collector ! -user'
   t_has "directories get list and search, inherited" "$O" 'allow list,search,readattr,readextattr,file_inherit,directory_inherit'
   t_has "files get read" "$O" 'allow read,readattr,readextattr'
   t_eq "no grant anywhere writes, appends or deletes" "" "$(printf '%s\n' "$O" | grep 'chmod +a' | grep -E 'write|append|delete|add_file|add_subdirectory')"
