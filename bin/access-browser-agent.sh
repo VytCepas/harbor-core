@@ -678,7 +678,7 @@ on run argv
       set w to window id wid
       repeat with t from 1 to (count tabs of w)
         if URL of tab t of w ends with u then
-          -- shown, not raised: a covered window still paints; a minimised one does not
+          -- shown first, raised only if the page then reads hidden (below)
           set active tab index of w to t
           if minimized of w then set minimized of w to false
           set res to "window " & wid & " tab " & t
@@ -700,7 +700,23 @@ OSA
     sleep "${HARBOR_CHROME_SETTLE:-1}"
     _p="$(_cli_run "-s=$S" --raw eval "$STATE_EXPR" 2>/dev/null)" || _p=''
     case "$_p" in *'visibility\":\"hidden'*|*'"visibility":"hidden'*)
-      _handoff "front: $_r is active in its window, but the page is still hidden (the window is minimised again, or on another Space)" 'harbor chrome tabs   # then bring that window up by hand; never minimise a harbor window' ;;
+      # A window fully covered by another, same-size one reads hidden too (macOS occlusion), and
+      # attach puts the operator's window back over ours (2026-10-29). Raise ours; focus goes back.
+      _w="${_r#window }"; _w="${_w%% *}"
+      _osa "$_w" >/dev/null 2>&1 <<'OSA' || :
+on run argv
+  tell application "System Events" to set prev to bundle identifier of first process whose frontmost is true
+  tell application "Google Chrome" to set index of (window id ((item 1 of argv) as integer)) to 1
+  delay 0.5
+  if prev is not "com.google.Chrome" then tell application id prev to activate
+end run
+OSA
+      sleep "${HARBOR_CHROME_SETTLE:-1}"
+      _p="$(_cli_run "-s=$S" --raw eval "$STATE_EXPR" 2>/dev/null)" || _p=''
+      case "$_p" in *'visibility\":\"hidden'*|*'"visibility":"hidden'*)
+        _handoff "front: $_r is raised in Chrome, but the page is still hidden (another app's window covers it, or it is on another Space)" 'harbor chrome tabs   # then move that window where it shows' ;;
+      esac
+      log_ok "front: $_r was covered by another window; raised it, focus left where it was"; exit 0 ;;
     esac
     log_ok "front: $_r is the tab Chrome shows; focus left where it was"
     ;;

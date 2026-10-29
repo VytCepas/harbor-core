@@ -16,9 +16,10 @@ each failure means, what has already been tried and failed, and step-by-step tas
    show, so one goes `hidden` and its clicks time out. `tab-new` is for a second page
    in the same lane that only gets read.
 3. **Never take the operator's focus.** `attach` hands focus straight back to the app
-   they were in; `front` shows the tab without raising its window or activating Chrome.
-   A covered window still paints; a **minimised** one does not, so a harbor window is
-   covered, never minimised.
+   they were in; `front` shows the tab and never activates Chrome. A window fully
+   covered by another, same-size one reads `hidden` just like a minimised one (macOS
+   occlusion), so `front` raises harbor's window only when the page still reads
+   `hidden`, then hands focus back.
 4. **The operator is in the same browser.** A tab that switched, a banner that went,
    an input that emptied is, most of the time, the operator. Before blaming a bug or
    a session, ask whether the operator did it, and prefer evidence the operator

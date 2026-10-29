@@ -20,9 +20,10 @@ case " \$* " in *" tab-list "*) [ -z "\${STUB_URL:-}" ] || { printf -- '- 0: (cu
 # STUB_LATE_BLANK: the tab goes blank 0.3 s after a fill, as the real detach did.
 case " \$* " in *" fill "*) [ -z "\${STUB_LATE_BLANK:-}" ] || ( sleep 0.3; : > "\$STUB_LATE_BLANK" ) & ;; esac
 # eval answers the state probe in the real --raw shape: a JSON string, quotes escaped.
+# STUB_COVERED: a file; the page reads hidden until a raise removes it, as an occluded window does.
 case " \$* " in *" eval "*)
   [ -z "\${STUB_EVAL_FAIL:-}" ] || { echo "Error: Execution context was destroyed"; exit 1; }
-  if [ -n "\${STUB_HIDDEN:-}" ]; then printf '%s\n' '"{\"visibility\":\"hidden\",\"host\":\"business.facebook.com\",\"blank\":false}"'
+  if [ -n "\${STUB_HIDDEN:-}" ] || { [ -n "\${STUB_COVERED:-}" ] && [ -e "\$STUB_COVERED" ]; }; then printf '%s\n' '"{\"visibility\":\"hidden\",\"host\":\"business.facebook.com\",\"blank\":false}"'
   elif [ -n "\${STUB_BLANK:-}" ] || { [ -n "\${STUB_LATE_BLANK:-}" ] && [ -e "\$STUB_LATE_BLANK" ]; }; then printf '%s\n' '"{\"host\":\"\",\"blank\":true}"'
   else printf '%s\n' '"{\"host\":\"business.facebook.com\",\"blank\":false}"'; fi
   exit 0 ;;
@@ -77,7 +78,7 @@ cat > "$OSA" <<EOF
 sc="\$(cat)"
 case "\$sc" in
   *'make new window'*) echo window >> "$OSACALLS"; printf '9\t%s\t%s\t7' "\${STUB_NEW_TAB:-501}" "\${STUB_PREV_APP:-com.apple.Terminal}" ;;
-  *'set index of'*) echo "raise \$2" >> "$OSACALLS" ;;
+  *'set index of'*) echo "raise \$2" >> "$OSACALLS"; [ -z "\${STUB_COVERED:-}" ] || rm -f "\$STUB_COVERED" ;;
   *'whose id is'*) shift; echo "close \$*" >> "$OSACALLS"
     [ -z "\${STUB_OSA_FAIL:-}" ] || exit 1
     echo "\$#" ;;
