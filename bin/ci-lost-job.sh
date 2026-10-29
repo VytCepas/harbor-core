@@ -28,14 +28,14 @@
 # spread over every kind of job, each read as a failing suite until somebody
 # opened the annotation. Re-running it is a repair with no judgment in it; the
 # read that tells the two apart is this one, and it lives in one place so
-# pr-wait.sh and merge-check.sh cannot drift apart on the phrase.
+# gate-pr-wait.sh and gate-merge-check.sh cannot drift apart on the phrase.
 #
 # EVERY ANNOTATION, NOT ANY. A job that ran, failed and was ALSO annotated is a
 # failure first; calling it lost would send someone to re-run a real red. Zero
 # annotations is not lost either — that is the ordinary shape of a failed step.
 set -eu
 LOG_FD=2   # stdout is this tool's answer (the re-run command), so the log goes to stderr
-. "$(dirname -- "$0")/log-lib.sh"
+. "$(dirname -- "$0")/library-log.sh"
 die() { log_fail "$1"; log_fix "$2"; log_end || :; exit 2; }
 
 # GitHub's refusal text for an unpaid account; the operator rule is NEVER to raise the limit.
@@ -57,7 +57,7 @@ JOB="$(printf '%s' "$LINK" | sed -n 's#.*/actions/runs/[0-9][0-9]*/job/\([0-9][0
 [ -n "$RUN" ] && [ -n "$JOB" ] || die "not an Actions job link: $LINK" "pass the link gh pr checks --json link prints for an Actions job"
 
 LOST_PHRASE='was not acquired by Runner'
-GH="${HARBOR_GH:-gh}"   # a test swaps in a fake
+GH="${HARBOR_TEST_GH:-${HARBOR_GH:-gh}}"   # a test swaps in a fake
 msgs="$($GH api "repos/$REPO/check-runs/$JOB/annotations" --jq '.[].message' 2>/dev/null)" \
   || die "cannot read the annotations of check run $JOB" "gh auth status"
 [ -n "$msgs" ] || exit 1

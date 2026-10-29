@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # trigger-probe.sh — does a REAL session route a REAL request to this skill?
-# Ticket: R5 / CONTRACTS/gates.md. The checker behind `subject-kind
+# Ticket: R5 / contracts/gates.md. The checker behind `subject-kind
 # trigger-routing` in skills/test-strength/bin/prove.sh.
 #
 #   sh trigger-probe.sh --card <SKILL.md> --queries <file> [flags]
@@ -416,7 +416,7 @@ _one_session() {  # $1 = query text ; $2 = log path ; sets FIRED/SHADOW/ERR
     # plant and the original, and a session that routes to the original scores
     # as a MISS while having routed perfectly well. Measured 2026-08-31 on the
     # account default model, a session whose plant was NOT the winner: its
-    # decisions ran Skill{skill-book} → Glob ~/.claude/skills → Read
+    # decisions ran Skill{skill-catalog} → Glob ~/.claude/skills → Read
     # ~/.claude/skills/topology/SKILL.md. Note what that means for the rule
     # above: under the first-decision rule that session is NOFIRE, because its
     # FIRST decision was the operator's index skill, not the installed twin.
@@ -497,7 +497,7 @@ while IFS= read -r _row; do
 done < "$WORK/rows"
 
 # THE SUMMARY LINE IS A CONTRACT, not a convenience: prove.sh reads `pos` off
-# it to compute the ablation delta, and CONTRACTS/prove-targets.md pins the
+# it to compute the ablation delta, and contracts/prove-targets.md pins the
 # shape. One line, first on stdout, always emitted.
 printf 'trigger-probe: pos %d/%d  neg %d/%d  unstable %d  shadowed %d  truncated %d  errors %d  sessions %d  cost_usd %s\n' \
   "$POSF" "$((NPOS * RUNS))" "$NEGF" "$((NNEG * RUNS))" "$UNSTABLE" "$SHADOWED" "$TRUNCATED" "$ERRORS" "$SESSIONS" "$COST"

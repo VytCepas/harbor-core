@@ -1,0 +1,41 @@
+# roots.tsv — every named root, and the base it hangs off. harbor#630.
+#
+# WHY THIS FILE EXISTS. Measured 2026-09-23: 91 non-comment, non-markdown lines
+# in this repo name a repo root, and 13 of them go through a `${VAR:-...}`
+# override. The other 78 are bare literals, and the 13 that are not disagree
+# with each other — PROJECT_INIT_SRC and HARBOR_SCOPE_SCAFFOLDER are two variables
+# for one repo with one default. Nothing checked any of it against anything, so
+# every default read correctly at every site while drifting from its siblings.
+#
+# THE BASE COLUMN IS THE POINT. A root is `<base>/<rel>`, and `base` is symbolic:
+# REPOS is where the governed repositories live. It was $HOME until harbor#619
+# moved them on 2026-09-23, and is $HOME/port since — ONE edit in bin/scope-roots.sh,
+# not thirteen across the tree. BOX is the per-machine config tier and never moves.
+#
+# ENFORCED by lint ROOT1, which reads this file and refuses a default in the
+# tree that disagrees with it. Without that rule this is another copy, and a
+# copy is the thing it was written to remove.
+#
+# HONOURS PORT_ROOT. `scope-roots.sh --get`, `--list` and `--repos` resolve a REPOS row under
+# an exported PORT_ROOT (default $HOME/port) and a BOX row under $HOME, and an exported
+# <var> still wins over both. A site spells the same default as
+# ${VAR:-${PORT_ROOT:-$HOME/port}/<rel>}: --check reads that nested form, compares it
+# with this table, and REFUSES the flat form ${VAR:-$HOME/port/<rel>} for a REPOS row,
+# because the flat form answers $HOME/port on a machine whose workspace is elsewhere.
+#
+# TWO NAMES FOR ONE PATH ARE A DECISION, NOT A DRIFT. --check refuses rows that share a
+# path unless every one of them carries a reason in the fifth column (a # cannot appear
+# in it: a # starts a comment). PROJECT_INIT_SRC and HARBOR_SCOPE_SCAFFOLDER are such a pair:
+# merging them changes an env contract (suites and operators set either by hand), so the
+# names stay and the reason is recorded rather than a merge being done in passing.
+#
+# COLUMNS  var <TAB> base <TAB> rel <TAB> what breaks when it is wrong <TAB> why a shared path is deliberate (only when shared)
+var	base	rel	breaks	shared
+HARBOR_SCOPE_REPO	REPOS	harbor	the renewal check reads a missing repo and reports nothing to renew
+HARBOR_SCOPE_FLEET_CONTROLLER	REPOS	projects-orchestrator	the marker fixtures SKIP the descriptor role and the suite still exits 0
+HARBOR_SCOPE_FLEET_FILE	REPOS	projects-orchestrator/fleet.yaml	fleet discovery finds zero projects and raises no error
+HARBOR_SCOPE_SCAFFOLDER	REPOS	project-init	the marker fixtures SKIP the allowlist role and the suite still exits 0	the marker and test-strength suites export this name; renaming it breaks them and any operator who sets it
+PROJECT_INIT_SRC	REPOS	project-init	prod-guard-install ships nothing and lint drift.prod-policy-copy (was X5) compares against a missing source	prod-guard-install and its lint rule read this name; an operator may export either, so the pair stays until one is chosen
+HARBOR_SCOPE_LOCAL_BIN	BOX	.local/bin	deploy writes the operator's shims somewhere nothing is on PATH
+HARBOR_SCOPE_FLEET_CONTROLLER_BIN	BOX	.local/bin/projects-orchestrator	the fleet CLI is not found: the fleet snapshot, the ship report and the runner table read fleet as absent
+HARBOR_REDTEAM_DIR	REPOS	vendor-src	redteam-corpus finds no corpus, skips every one and stays red with nothing scored

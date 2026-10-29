@@ -7,7 +7,7 @@
 Q() { cat "$HOME/.local/state/harbor/approvals/queue.jsonl"; }
 ob() { # <fold|reconcile> [register] → the ledger's rows as {id, kind, state, title}
   rm -f "$T_TMP/obl/.fold.lock"
-  HARBOR_OBLIGATION_DIR="$T_TMP/obl" HARBOR_CACHE_DIR="$T_TMP/cache" HARBOR_STATUS_OBLIGATION_KINDS="${2:-$T_ROOT/CONTRACTS/obligation-kinds.tsv}" \
+  HARBOR_OBLIGATION_DIR="$T_TMP/obl" HARBOR_SCOPE_CACHE_DIR="$T_TMP/cache" HARBOR_STATUS_OBLIGATION_KINDS="${2:-$T_ROOT/contracts/obligation-kinds.tsv}" \
     CLAUDE_BIN=/nonexistent sh "$T_ROOT/bin/status-obligations.sh" "$1" >"$T_TMP/ob.out" 2>&1
   jq -c '[.obligations[] | {id, kind, state, title}]' "$T_TMP/obl/current.json" 2>/dev/null || echo '[]'
 }
@@ -21,7 +21,7 @@ t_eq "stdout is the id" "$MID" "$(grep -v '^  note:' "$T_TMP/out")"
 t_eq "the row carries the exact approve command" "$GB/gate-approve.sh merge $AG_R 7 $SHA_A" "$(Q | jq -r .command)"
 t_eq "the row's keys are the contract's" '["command","id","kind","pr","reason","repo","sha","ts"]' "$(Q | jq -c 'keys')"
 t_eq "the id is <kind>-<owner>_<name>-<pr>-<sha12>" "$MID" "$(Q | jq -r .id)"
-ag_run gate-queue.sh add deploy "$AG_R" "$SHA_M" --reason "protected: CONSTITUTION.md"
+ag_run gate-queue.sh add deploy "$AG_R" "$SHA_M" --reason "protected: policy/constitution.md"
 t_eq "a deploy id has no pr" "$DID" "$(Q | tail -1 | jq -r .id)"
 t_eq "...and its command is approve deploy" "$GB/gate-approve.sh deploy $AG_R $SHA_M" "$(Q | tail -1 | jq -r .command)"
 ag_run gate-queue.sh add deploy "$AG_R" "$SHA_M" --reason "again"
@@ -36,7 +36,7 @@ t_eq "--json: two open rows" 2 "$(sh "$GB/gate-queue.sh" list --json 2>/dev/null
 t_section "the obligations ledger folds them as kind approval"
 t_eq "two approval rows, open" "[\"approval:$DID open\",\"approval:$MID open\"]" "$(ob fold | jq -c 'map("\(.id) \(.state)") | sort')"
 t_has "...titled for the operator" "$(ob fold)" "approve $MID: protected"
-grep -v '^approval	' "$T_ROOT/CONTRACTS/obligation-kinds.tsv" > "$T_TMP/kinds-noapproval.tsv"; rm -rf "$T_TMP/obl"
+grep -v '^approval	' "$T_ROOT/contracts/obligation-kinds.tsv" > "$T_TMP/kinds-noapproval.tsv"; rm -rf "$T_TMP/obl"
 t_eq "RED-PROOF: without the register row they open nothing" '[]' "$(ob fold "$T_TMP/kinds-noapproval.tsv")"
 rm -rf "$T_TMP/obl"; ob fold >/dev/null
 

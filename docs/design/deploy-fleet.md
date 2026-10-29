@@ -37,14 +37,14 @@ harbor ship deploy <owner/repo> --sha <sha> [--approved]
 Opt-in, the manifest and the protected register are read from **`origin/<default branch>`**, never from the working
 tree: the checkout of a merge-only repo is never pulled, so its files can be any age. The default branch is what
 `git ls-remote --symref origin HEAD` names. The classifier is handed a scratch root holding the manifest and the
-register exactly as origin has them. A merge-stack `merge-check.sh` comes from merge-stack's own install (§5a.6),
+register exactly as origin has them. A merge-stack `gate-merge-check.sh` comes from merge-stack's own install (§5a.6),
 so a repo needs none of harbor's scripts.
 
 **The recorded baseline is checked twice before it is trusted.** It lives in `<config>/.helm-ship/`, which the floor
 guards (#1127), and each file carries `.sum`, the sha256 of the rest: a file that fails it is not trusted and the
 deploy is queued. The sum is not keyed, so it catches an edit that did not recompute it; the guard is what stops a
 deliberate one. And when the manifest has `deployed`, the live install's commit must equal the recorded sha: a
-restore outside the runner (a manual `restore.sh`) undoes a deploy without telling it, so a disagreement means no
+restore outside the runner (a manual `deploy-restore.sh`) undoes a deploy without telling it, so a disagreement means no
 trusted baseline, and the deploy is queued for the click.
 
 ## One night
@@ -165,10 +165,10 @@ A merge-only repo is two lines: `repo owner/name` and, if it has several workflo
 | The lock, the run log, and every plan, apply, verify, restore and merge-stack log | `~/.local/state/harbor/ship/` (`backups/deploy-fleet/<ts>/`) |
 | Queued approvals | written only by `gate-queue.sh add <kind> <owner/repo> <sha> [<pr>] --reason <text>`, id `<kind>-<owner>_<name>[-<pr>]-<sha12>` (§5a.2); the gate emits `approval.open` |
 | The morning report | `~/Deliverables/<date>-ship/REPORT.md` (`HARBOR_DEPLOY_FLEET_REPORT_DIR` moves it): one section per run, newest last: merged, deployed (sha range), rolled back (failing check, log, snapshot), skipped red, left for the next night, queued (each with its `gate-approve.sh` command and queue id), problems |
-| The check | one `[check:ship]` line per run in `~/.claude/cache/checks.log`, and the receipt `<config>/cache/checks/ship.json` (CHECKS.md `ship`) |
+| The check | one `[check:deploy.fleet]` line per run in `~/.claude/cache/checks.log`, and the receipt `<config>/cache/checks/deploy.fleet.json` (docs/reference/checks.md `deploy.fleet`) |
 
 A finding is the receipt: red over `<owner/name>:<stage>` (`rollback`, `plan`, `merge`, `queue`, `checkout`, …), which
-`findings.sh reconcile` files as `check/ship`. It stays red while a rollback stops the night.
+`lint-findings.sh reconcile` files as `check/deploy.fleet`. It stays red while a rollback stops the night.
 
 ## Not handled, on purpose
 

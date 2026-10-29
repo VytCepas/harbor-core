@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # ci-runners-watch-lib.sh (harbor#1060) — watching: the alarm, the drift cache, and `tick`.
 # Sourced by ci-runners.sh, never run: it sets no shell option and reads the entry point's variables ($T, $CONF, $GH, $DOCKER, ...).
-. "$(dirname -- "$0")/log-lib.sh"   # a second source keeps the run's counts (log-lib.sh)
+. "$(dirname -- "$0")/library-log.sh"   # a second source keeps the run's counts (library-log.sh)
 
 # ── alarm: a runner that cannot take work, or work no runner can take (harbor#1060, check ci-runner-alarm) ──────────
 # 2026-10-05 19:53 the Mac rebooted, Colima did not start, every Linux runner sat offline ~18 min and nothing said so.
@@ -11,7 +11,7 @@
 # runner updating itself is not an alarm; a runner the governor parked is not one either. `alarm off` in CONF disables it.
 ALARM_SEC="${HARBOR_CI_NORUNNER_SEC:-600}"
 ALARM_CONFIRM=240
-alarmline() { printf '[check:ci-runner-alarm] %s %s\n' "$(iso "$NOW")" "$1" >> "$LOG" 2>/dev/null || :; }
+alarmline() { printf '[check:ci.runner-alarm] %s %s\n' "$(iso "$NOW")" "$1" >> "$LOG" 2>/dev/null || :; }
 
 # ── WEDGED: online and busy on a job that is dead in the water (harbor#1060, 2026-10-13) ──────────────────────────
 # An org runner's mutmut forked 8 workers in its 1 GiB, the kernel OOM-killed one, and the job sat 3h at 0.4% CPU while
@@ -193,17 +193,29 @@ write_cache() {
   OUT="$CACHE_DIR/ci-runners.json"
   jq -cn --argjson at "$NOW" --argjson desired "$(awk -F'\t' '$3 == 1' "$T/rows.tsv" | wc -l | tr -d ' ')" \
     --arg missing "$(names missing)" --arg offline "$(names offline)" --arg stopped "$(names stopped)" --arg extra "$(names extra)" \
-    --arg held "$(names hold)" --arg ok "$(names ok)" \
+    --arg held "$(names hold)" --arg ok "$(names ok)" --arg stale "$(names stale)" --arg unread "$(names unknown)" \
     '{at: $at, desired: $desired, ok: ($ok | split(" ") | map(select(. != ""))), missing: ($missing | split(" ") | map(select(. != ""))),
       offline: ($offline | split(" ") | map(select(. != ""))), stopped: ($stopped | split(" ") | map(select(. != ""))),
-      held: ($held | split(" ") | map(select(. != ""))), extra: ($extra | split(" ") | map(select(. != "")))}' > "$OUT.tmp.$$" \
+      held: ($held | split(" ") | map(select(. != ""))), extra: ($extra | split(" ") | map(select(. != ""))),
+      stale: ($stale | split(" ") | map(select(. != ""))), unread: ($unread | split(" ") | map(select(. != "")))}' > "$OUT.tmp.$$" \
     && mv -f "$OUT.tmp.$$" "$OUT" || { rm -f "$OUT.tmp.$$"; return 1; }
 }
 do_tick() {
   OUT="$CACHE_DIR/ci-runners.json"; prev=""
   [ -f "$OUT" ] && prev="$(jq -c '[.missing, .offline, .stopped, .extra]' "$OUT" 2>/dev/null || :)"
+  # stale (an image older than the tag) and unread (GitHub did not list the runners) are not drift, but a cache that
+  # dropped them read "9 desired, 0 ok, nothing wrong" while every container ran a 3-day-old image (2026-10-27).
+  # One line when the stale set changes; `refresh --apply` stays the operator's.
+  pstale=""; [ -f "$OUT" ] && pstale="$(jq -r '(.stale // []) | join(" ")' "$OUT" 2>/dev/null || :)"
   collect
   if [ "$DOCKER_OK" = 1 ]; then write_cache; now="$(jq -c '[.missing, .offline, .stopped, .extra]' "$OUT")"; else now="$prev"; fi
+  if [ "$DOCKER_OK" = 1 ]; then
+    nstale="$(names stale)"
+    if [ "$nstale" != "$pstale" ]; then
+      if [ -n "$nstale" ]; then logline "stale: $nstale on an image older than $IMAGE; sh bin/ci-runners.sh refresh --apply recreates the idle ones"
+      elif [ -n "$pstale" ]; then logline "stale cleared"; fi
+    fi
+  fi
   if [ "$now" != "$prev" ]; then
     d=""
     for _k in missing offline stopped extra; do _l="$(names "$_k")"; [ -z "$_l" ] || d="$d${d:+; }$_k $_l"; done

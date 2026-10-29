@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- harbor:template-only
+     THIS FILE IS A TEMPLATE (harbor#630). Do not cp it: @HOME@ and the other placeholders in it would be
+     installed as literal text, and launchd loads such a job and then fails every time it runs. Render it:
+
+       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.audit.triage.plist > ~/Library/LaunchAgents/com.harbor.audit.triage.plist
+
+     A cp line in the comment below predates the template. It is kept so the rendered file stays byte-identical
+     to the one already installed: follow this block, not that line. This block is not installed;
+     bin/deploy-launchd-render.sh drops it. -->
+<!-- judge-run — run the ledger judge daily, off the session path.
+
+     WHY THIS EXISTS. bin/audit-triage.sh judges the guard-decision ledger and
+     nothing ran it. On 2026-08-13 a manual run reported 10 findings over 70,702
+     records, worst `crit`, none of which any human had seen — including a
+     wrapper-guard-missing and an integrity advisory raised on 11 separate days.
+     The judging was built; the schedule was the missing half.
+
+     WHY NOT A HOOK. Measured the same day on this box: a full run is 7 SECONDS.
+     The usage plist beside this one records the identical argument at 10s —
+     CONSTITUTION §2.11, a gate that makes ordinary work wait gets switched off.
+     So the job writes `<config>/.helm-judge` here, and hooks/session-verdicts/session-verdicts.sh
+     READS it at SessionStart in microseconds, speaking only on `crit` or on a
+     cache that has stopped being written.
+
+     IT POINTS AT THE INSTALLED COPY, NOT THE REPO, and that is a security
+     property rather than a convention. A session can write to ~/port/harbor/bin; it
+     cannot write under ~/.claude/bin (guard-selfedit.sh). A scheduled job aimed
+     at the repo would let any session schedule arbitrary code on this machine.
+     PREREQUISITE: audit-triage-run.sh, audit-triage.sh and floor-verify.sh must all
+     be installed — the judge is resolved from its own directory, and it needs
+     floor-verify.sh beside it to exclude the verifier's own probe traffic from
+     the recurrence counts. Installed without floor-verify.sh it still runs and
+     says loudly that it could not separate probe traffic.
+
+     TEMPLATE — launchd does not expand $HOME: replace @HOME@ with your
+     home dir on install.
+
+     AN AGENT CANNOT INSTALL THIS, BY DESIGN. The same three floor rules that
+     block the pulse and usage jobs block this one: a redirect into LaunchAgents,
+     a cp/mv/ln naming that path, and `launchctl load|bootstrap|setenv`.
+     Operator steps:
+
+       sh ~/port/harbor/bin/deploy-runtime-install.sh --live --apply
+       cp launchd/com.harbor.audit.triage.plist ~/Library/LaunchAgents/
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.harbor.audit.triage.plist
+
+     Then see it work rather than assume it — three different questions:
+
+       launchctl kickstart -k gui/$(id -u)/com.harbor.audit.triage
+       tail -3 /tmp/com.harbor.audit.triage.out      # did the job run
+       head -1 ~/.claude/.helm-judge          # did it reach a verdict, and when
+       # then start a NEW session: a crit shows up as a standing verdict
+
+     DAILY, AND AN HOUR AFTER THE USAGE JOB. The ledger it reads is appended by
+     every session all day; a second run adds a fresher verdict and nothing else.
+     The cadence that matters is the staleness threshold in session-verdicts.sh
+     (2 days), which is what turns "the job died" from silence into a verdict. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.harbor.audit.triage</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>@HOME@/.claude/bin/audit-triage-run.sh</string>
+    <string>--live</string>
+    <string>--apply</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>5</integer>
+    <key>Minute</key><integer>23</integer>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>ProcessType</key><string>Background</string>
+  <key>LowPriorityIO</key><true/>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin:@HARBOR_SCOPE_LOCAL_BIN@</string>
+  </dict>
+  <key>StandardOutPath</key><string>/tmp/com.harbor.audit.triage.out</string>
+  <key>StandardErrorPath</key><string>/tmp/com.harbor.audit.triage.err</string>
+</dict>
+</plist>

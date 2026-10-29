@@ -62,12 +62,12 @@ case "${1:-}" in
              exit 0 ;;
 esac
 DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
-ROOT="${HARBOR_REPO:-$(CDPATH= cd -- "$DIR/.." && pwd -P)}"
+ROOT="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-$(CDPATH= cd -- "$DIR/.." && pwd -P)}}"
 STORE="$ROOT/proposals"
 
 _sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
 # Status lines are log-lib's, on stderr: stdout is the verb's data (list, count, show, a dry run's files).
-. "$DIR/log-lib.sh"
+. "$DIR/library-log.sh"
 log_init proposal; LOG_FD=2
 # die <what failed> [exit code, default 2] [fix command]: FAIL, its fix, the summary, exit.
 die() {
@@ -83,7 +83,7 @@ meta() { sed -n "s/^$2=//p" "$STORE/$1/meta" 2>/dev/null | tail -1; }
 # match is anchored per path and cannot be widened by a stray glob.
 touches_machinery() { # <patch-file>
   _files_in "$1" | while IFS= read -r f; do
-    case "$f" in bin/proposal.sh|tests/obs/proposal-test.sh) printf '%s\n' "$f" ;; esac
+    case "$f" in bin/proposal.sh|tests/proposal/proposal/proposal.test.sh) printf '%s\n' "$f" ;; esac
   done
 }
 # Floor-adjacent: allowed, but only when the operator types --floor as well. The

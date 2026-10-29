@@ -2,11 +2,11 @@
 # P3 (harbor#1300, #555): a confined Bash call skips the admission rules whose target the confinement denies, and an
 # unconfined one runs every rule. The skip reads pinned paths, never the environment, so the suite drives a COPY of the
 # installed floor whose guard-lib names a fixture system dir and this user as root (HOST-1's pattern); the real copy
-# is then shown to ignore HARBOR_MANAGED_SETTINGS. Also holds CONTRACTS/confinement-coverage.tsv equal to controls.tsv
+# is then shown to ignore HARBOR_MANAGED_SETTINGS. Also holds contracts/confinement-coverage.tsv equal to controls.tsv
 # and to floor_confinement_covers.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-. "$T_ROOT/tests/floor/floor-fixture.sh"
-ME="$(id -u)"; SYS="$T_TMP/sys"; X="$T_TMP/xcfg"; COV="$T_ROOT/CONTRACTS/confinement-coverage.tsv"
+. "$T_ROOT/tests/admission/baseline/fixture.sh"
+ME="$(id -u)"; SYS="$T_TMP/sys"; X="$T_TMP/xcfg"; COV="$T_ROOT/contracts/confinement-coverage.tsv"
 mkdir -p "$SYS" "$T_TMP/port"
 cp -R "$CFG" "$X"; chmod -R u+w "$X" 2>/dev/null || :
 sed -e "s|^_FLOOR_CONF_DIRS=.*|_FLOOR_CONF_DIRS='$SYS'|" -e "s|^_FLOOR_CONF_TMP=.*|_FLOOR_CONF_TMP='/nonexistent-tmp'|" -e "s|^_FLOOR_CONF_UID=0$|_FLOOR_CONF_UID=$ME|" "$SRC/guard-lib.sh" > "$X/bin/guard-lib.sh"
@@ -92,7 +92,7 @@ mkdir -p "$T_TMP/envsys"; cp "$SYS/harbor-confinement" "$SYS/managed-settings.js
 t_eq "the installed floor, HARBOR_MANAGED_SETTINGS naming a fixture with the skip: it blocks" 2 \
   "$(printf '%s' "$W" | CLAUDE_CONFIG_DIR="$CFG" HARBOR_MANAGED_SETTINGS="$T_TMP/envsys/managed-settings.json" TMPDIR=/nonexistent-zone sh "$CFG/bin/guard-bash.sh" >/dev/null 2>&1; echo $?)"
 
-t_section "CONTRACTS/confinement-coverage.tsv: every admission rule, the guard's set, never a remote or zone rule"
+t_section "contracts/confinement-coverage.tsv: every admission rule, the guard's set, never a remote or zone rule"
 _adm="$(awk -F'\t' '!/^#/ && $3 == "admission" { print $1 }' "$T_ROOT/standards/naming/controls.tsv" | sort)"
 _cov="$(awk -F'\t' '!/^#/ && $1 != "id" && NF { print $1 }' "$COV" | sort)"
 t_eq "CONTROL: controls.tsv has admission rows" yes "$([ "$(printf '%s\n' "$_adm" | grep -c .)" -ge 100 ] && echo yes || echo no)"
