@@ -464,6 +464,7 @@ EOF
 fi
 il_stop
 if [ "$IL_APPLY" -eq 0 ]; then
+  il_renamed_retire "$SRC/.." 0 $FILES $REFRESH_ONLY
   [ "$IL_REFUSED" -eq 1 ] || il_apply_next runtime
   log_end; exit $?
 fi
@@ -479,6 +480,8 @@ for _p in $SUITE $DATA; do
 done
 for f in $FILES; do il_install_exec "$(_src "$f")" "$DIR/bin/$f"; il_manifest "bin/$f"; done
 log_ok "copied $(printf '%s\n' $FILES | wc -l | tr -d ' ') files into $DIR/bin"
+# The old names this payload's renames left (harbor#949); a pinned one is floor-install's.
+il_renamed_retire "$SRC/.." 0 $FILES $REFRESH_ONLY || { log_end; exit 1; }
 for _p in $SUITE; do
   mkdir -p "$DIR/$(dirname "${_p#*:}")"
   case "${_p#*:}" in

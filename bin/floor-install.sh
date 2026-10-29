@@ -309,6 +309,7 @@ if [ "$IL_APPLY" -eq 0 ]; then
   else
     log_skip "stop gate: not included; to install it: $(il_apply_cmd floor) --with-stop-gate"
   fi
+  il_renamed_retire "$SRC/.." 1 $GUARDS $RECOVERY $EVENTS $GATES
   [ "$IL_REFUSED" -eq 1 ] || il_apply_next floor
   log_end; exit $?
 fi
@@ -380,6 +381,8 @@ for g in $GUARDS $RECOVERY; do
   [ -f "$DIR/bin/$g" ] && _sha < "$DIR/bin/$g" > "$DIR/.helm-pins/$g.sha256"
 done
 log_ok "content-pinned in $DIR/.helm-pins: every guard and the recovery tooling (harbor#275)"
+# A rename leaves the old name's copy and pin behind; B6 would check it for a kill-switch (harbor#949).
+il_renamed_retire "$SRC/.." 1 $GUARDS $RECOVERY $EVENTS $GATES || { log_end; exit 1; }
 # B8 (harbor#38) — pin the persistent INSTRUCTION surfaces. Not a lock: these stay
 # writable, but from here a change to CLAUDE.md / agents / skills / commands is
 # reported at the next SessionStart instead of loading unseen.

@@ -47,6 +47,29 @@ t_eq "replaying the #581 shape" 0 "$(deploy "$C" "$V1")"
 t_hasnt "the gate does not refuse text in a commit" "$(cat "$T_TMP/out" "$T_TMP/err")" "FAIL:"
 t_exit "the live file is the new version" 0 cmp -s "$C/policy/constitution.md" "$C.cfg/CLAUDE.md"
 
+t_section "the history follows the file across a rename (W2: CONSTITUTION.md -> policy/constitution.md)"
+# The real move kept most of the file, which is what lets git see a rename; a body the two versions share does the same here.
+BODY="$(i=1; while [ $i -le 20 ]; do printf 'Shared rule %s, unchanged by the move.\n' $i; i=$((i + 1)); done)"
+moved() { # <name> → V1 committed as CONSTITUTION.md, then moved and replaced by V2 in one commit, then the old name's shim
+  _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/policy"
+  cp "$T_ROOT/bin/policy-constitution-install.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/deploy-install-lib.sh" "$_d/bin/"
+  ( cd "$_d" && git init -q . && git symbolic-ref HEAD refs/heads/main
+    printf '%s\n%s\n' "$V1" "$BODY" > CONSTITUTION.md; git add -A && git -c user.email=t@t -c user.name=t commit -qm v1
+    git mv CONSTITUTION.md policy/constitution.md && printf '%s\n%s\n' "$V2" "$BODY" > policy/constitution.md
+    git add -A && git -c user.email=t@t -c user.name=t commit -qm 'move and edit, as #1395 did'
+    ln -s policy/constitution.md CONSTITUTION.md && git add -A && git -c user.email=t@t -c user.name=t commit -qm shim ) >/dev/null 2>&1
+  printf '%s' "$_d"
+}
+C="$(moved renamed)"
+t_eq "a line committed only under the old name is not a loss" 0 "$(deploy "$C" "$V1")"
+t_hasnt "...and is not refused" "$(cat "$T_TMP/out" "$T_TMP/err")" "FAIL:"
+C="$(moved renamed-unique)"
+t_eq "a live-only line still refuses across the rename" 1 "$(deploy "$C" "$V1
+LIVE-ONLY: never committed.")"
+t_has "...counting the versions under both names, and not the shim's commit" "$(out)" \
+  "found in none of the 2 committed version(s) of policy/constitution.md"
+t_hasnt "...and does not list the old-name paragraph" "$(out)" "| **It defers inside a governed repo.**"
+
 t_section "a line in no commit still refuses, and is named"
 C="$(checkout unique)"
 LIVE="$V1
@@ -84,10 +107,10 @@ t_has "says why" "$(out)" "is not a git checkout, so its history could not be re
 
 t_section "a failed history read is reported as failed (review of #685)"
 C="$(checkout revlist-fails)"; FB="$T_TMP/fakebin"; mkdir -p "$FB"
-printf '#!/bin/sh\nfor a in "$@"; do [ "$a" = rev-list ] && { echo "fatal: bad object" >&2; exit 128; }; done\nexec %s "$@"\n' \
+printf '#!/bin/sh\nfor a in "$@"; do case "$a" in rev-list|log) echo "fatal: bad object" >&2; exit 128 ;; esac; done\nexec %s "$@"\n' \
   "$(command -v git)" > "$FB/git"; chmod +x "$FB/git"
-t_eq "rev-list failing: the replaced paragraph refuses" 1 "$(PATH="$FB:$PATH" deploy "$C" "$V1")"
-t_has "names the failed rev-list" "$(out)" "git rev-list failed in"
+t_eq "the history read failing: the replaced paragraph refuses" 1 "$(PATH="$FB:$PATH" deploy "$C" "$V1")"
+t_has "names the failed history read" "$(out)" "git log --follow failed in"
 t_hasnt "claims no history search" "$(out)" "committed version(s) of policy/constitution.md"
 C="$(checkout show-fails)"
 B="$(git -C "$C" rev-parse HEAD~1:policy/constitution.md)"; rm -f "$C/.git/objects/$(printf '%s' "$B" | cut -c1-2)/$(printf '%s' "$B" | cut -c3-)"
