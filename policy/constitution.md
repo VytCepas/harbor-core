@@ -242,8 +242,12 @@ still readable, and the index carries the path.
 the operator has it, ask — with an explicit way to say "proceed with your
 defaults". Ask the whole **frontier** in one round, numbered, each carrying your
 recommended answer: batch what is independent, serialise only what genuinely
-depends on something, and never ask for a fact you could go and find. Method and
-the failure modes: `./docs/explanation/grilling.md`.
+depends on something, and never ask for a fact you could go and find. **Every
+option carries its pros, its cons and its consequence** — what changes, what must
+follow, the cost, whether it can be undone, who else it touches — and the
+recommended option comes first with why, and with what would flip it. Record each
+answer where it binds, in the same turn. Method and the failure modes:
+`./docs/explanation/grilling.md`.
 
 When one interpretation fork would change what you ship, **flag it in one line and
 keep going** (`Picking X over Y because R; redirect if wrong`) rather than

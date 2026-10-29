@@ -127,6 +127,7 @@ tests/admission/confinement/covered.test.sh
 tests/access/chrome/mcp.test.sh
 tests/context/injection-rule/notes.test.sh
 tests/context/injection-rule/agent-brief.test.sh
+tests/context/injection-rule/decision-question.test.sh
 tests/context/injection-rule/skill-first-use.test.sh
 tests/context/injection-rule/name-note.test.sh
 tests/admission/destroy/destroy.test.sh

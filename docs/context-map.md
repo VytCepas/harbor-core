@@ -33,7 +33,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | skill | skills/ | component | source | living | 47 |
 | fixture | fixtures/ | element | source | living | 261 |
 | registry | registries/ | component | source | versioned | 52 |
-| test | tests/ | component | source | living | 447 |
+| test | tests/ | component | source | living | 448 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
@@ -41,7 +41,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | how-to | docs/how-to/ | component | source | living | 1 |
 | reference | docs/reference/ | component | generated | generated | 5 |
 | explanation | docs/explanation/ | component | source | living | 14 |
-| (no kind) | - | - | - | - | 236 |
+| (no kind) | - | - | - | - | 239 |
 
 ## Folders
 
@@ -53,7 +53,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `DOCTRINE/` | 4 | 1 | 1 |
 | `bin/` | 279 | 28 | 2 |
 | `commands/` | 8 | 4 | 1 |
-| `context-rules/` | 43 | 6 | 1 |
+| `context-rules/` | 46 | 6 | 1 |
 | `contracts/` | 84 | 9 | 2 |
 | `docs/` | 137 | 11 | 8 |
 | `fixtures/` | 261 | 10 | 1 |
@@ -66,7 +66,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `skills/` | 47 | 8 | 1 |
 | `standards/` | 26 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 447 | 27 | 1 |
+| `tests/` | 448 | 27 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 92 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -82,7 +82,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | audit | control-plane | 13 | 14 | 0 | 5 | 0 | 2 |
 | check | observability | 1 | 4 | 0 | 1 | 51 | 0 |
 | ci | coordination | 20 | 50 | 2 | 5 | 1 | 5 |
-| context | control-plane | 8 | 10 | 1 | 4 | 0 | 34 |
+| context | control-plane | 8 | 11 | 1 | 4 | 0 | 36 |
 | deploy | control-plane | 22 | 26 | 1 | 1 | 0 | 7 |
 | doc | control-plane | 21 | 12 | 0 | 33 | 0 | 17 |
 | drift | control-plane | 7 | 6 | 0 | 4 | 2 | 13 |
@@ -672,7 +672,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `.github/` | 2 |
 | `bin/` | 24 |
 | `commands/` | 2 |
-| `context-rules/` | 31 |
+| `context-rules/` | 34 |
 | `contracts/` | 66 |
 | `docs/` | 34 |
 | `fixtures/` | 222 |
