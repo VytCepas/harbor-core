@@ -2,18 +2,18 @@
 # input	sysa	~/fixture/sysa	8 files
 # input	sysb	~/fixture/sysb	2 files
 edge	from	to	site
-derives_from	sysa:PLAN.md	sysa:bin/plan-gen	sysa:PLAN.md:1
+derives_from	sysa:docs/generated/plan.md	sysa:bin/plan-gen	sysa:docs/generated/plan.md:1
 derives_from	sysa:docs/generated/index.txt	sysa:bin/alpha-gen	sysa:docs/generated/index.txt:1
 references	sysa:bin/alpha-run	sysa:docs/generated/index.txt	sysa:bin/alpha-run:2
 references	sysa:bin/alpha-run	sysa:docs/generated/index.txt	sysa:bin/alpha-run:4
-references	sysa:bin/alpha-run	sysa:PLAN.md	sysa:bin/alpha-run:3
+references	sysa:bin/alpha-run	sysa:docs/generated/plan.md	sysa:bin/alpha-run:3
 references	sysa:src/pkg/alpha/mod	sysb:src/internal/engine	sysa:src/pkg/alpha/mod:2
-references	sysa:CONTRACTS/roots.tsv	sysb:src/internal/engine	sysa:CONTRACTS/roots.tsv:2
+references	sysa:contracts/roots.tsv	sysb:src/internal/engine	sysa:contracts/roots.tsv:2
 references	sysa:standards/naming/rows.tsv	sysb:src/internal/engine	sysa:standards/naming/rows.tsv:2
 references	sysa:tests/alpha/run.test	sysb:src/internal/engine	sysa:tests/alpha/run.test:2
 references	sysa:tests/alpha/run.test	sysa:bin/beta-run	sysa:tests/alpha/run.test:3
 references	sysa:bin/beta-run	sysa:bin/alpha-run	sysa:bin/beta-run:2
 references	sysa:bin/alpha-run	sysa:bin/beta-run	sysa:bin/alpha-run:5
-references	sysa:bin/beta-run	sysb:CONTRACTS/seam.md	sysa:bin/beta-run:3
-references	sysb:bin/engine-run	sysa:CONTRACTS/roots.tsv	sysb:bin/engine-run:2
-references	sysa:tests/alpha/run.test	sysb:CONTRACTS/seam.md	sysa:tests/alpha/run.test:4
+references	sysa:bin/beta-run	sysb:contracts/seam.md	sysa:bin/beta-run:3
+references	sysb:bin/engine-run	sysa:contracts/roots.tsv	sysb:bin/engine-run:2
+references	sysa:tests/alpha/run.test	sysb:contracts/seam.md	sysa:tests/alpha/run.test:4

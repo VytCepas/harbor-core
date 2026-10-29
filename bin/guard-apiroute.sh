@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0
+[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
 # guard-apiroute (harbor#545) — PostToolUse(Bash|Write|Edit|MultiEdit) and
 # SessionStart. Claude Code's own API route is not a setting anything a session
 # runs may change.
@@ -52,7 +52,7 @@
 #
 # KEYS, NEVER VALUES, in every message: an ANTHROPIC_AUTH_TOKEN value is a
 # credential. Values are compared inside jq and never printed. Registered in
-# CHECKS.md as `api-route`; every repair is stamped `[check:api-route]` in
+# docs/reference/checks.md as `api-route`; every repair is stamped `[check:api-route]` in
 # $CLAUDE_CONFIG_DIR/cache/checks.log.
 #
 # FAILS OPEN. An error in this hook must never stop a session doing ordinary
@@ -275,6 +275,9 @@ TEXT=""
 [ -n "$MSGS" ] && TEXT="HELM FLOOR [api-route]: Claude Code's API route was changed —$MSGS Those keys send every request from every session on this box somewhere else; the last time, it was a port nothing listened on and every session failed with 'Connection refused'. Do not run that command again. A gateway the operator really wants is allowed by listing its keys in $ALLOW."
 [ -n "$NOTES" ] && TEXT="${TEXT:+$TEXT }HELM FLOOR [api-route]: first read of a settings file that already routes Claude Code —$NOTES If the operator did not set them, they should be removed by hand; a gateway that is wanted can be made explicit in $ALLOW."
 printf '%s\n' "$TEXT" >&2
+# The decision log (harbor#957 item 4): it repairs rather than refuses, so a record is advise, never deny.
+[ -z "$MSGS" ] || floor_log_decision apiroute advise route-repaired.meta
+[ -z "$NOTES" ] || floor_log_decision apiroute advise route-baseline.meta
 if [ "$EVENT" = "SessionStart" ]; then
   printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":%s}}\n' "$(printf '%s' "$TEXT" | json_str)"
 elif [ -n "$MSGS" ]; then

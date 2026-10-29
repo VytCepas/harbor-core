@@ -1,4 +1,4 @@
-# harbor#617 — the schedule of launchd/com.harbor.judge.plist; CHECKS.md row `judge`.
+# harbor#617 — the schedule of launchd/com.harbor.judge.plist; docs/reference/checks.md row `judge`.
 [Unit]
 Description=Harbor check judge (schedule)
 

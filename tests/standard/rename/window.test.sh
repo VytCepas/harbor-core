@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # standard-rename.sh (harbor#996): a row with remove_by keeps the old name working until then, a symlink shim for a path and a
-# dual read for an env name, and a form no rewrite decides is residual. Split from tests/checks/standard-rename-test.sh at the
+# dual read for an env name, and a form no rewrite decides is residual. Split from tests/standard/rename/rename.test.sh at the
 # 500-line budget (tests/README.md T2); the fixture repos come from tests/checks/standard-rename-fixture.sh.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 TOOL="$T_ROOT/bin/standard-rename.sh"
@@ -26,9 +26,9 @@ mkshim() { # <dir> [noregs] — an executable, a sourced executable library, a p
   printf 'rename-0006\tbin/old-job.py\tbin/standard-job.py\tbin\tW4\t2099-12-31\tan executable run through an interpreter\n' >> "$CR/standards/naming/renames.tsv"
   printf 'rename-0007\tbin/old-check-test.sh\tbin/standard-check-test.sh\tbin\tW4\t2099-12-31\ta test script\n' >> "$CR/standards/naming/renames.tsv"
   if [ "${2:-}" != noregs ]; then   # the two registers lint reads for a bin tool
-    mkdir -p "$CR/CONTRACTS"
-    printf '# idle tools (fixture)\n#\nold-lib.sh             IDLE  a library nothing calls\n' > "$CR/CONTRACTS/idle-tools.txt"
-    printf '# cli (fixture)\n\n## Internal scripts\n\n| Script | Why it is not a verb |\n|---|---|\n| `old-tool.sh` | internal |\n\n**Out of scope:** prose after the table.\n' > "$CR/CONTRACTS/cli.md"
+    mkdir -p "$CR/contracts"
+    printf '# idle tools (fixture)\n#\nold-lib.sh             IDLE  a library nothing calls\n' > "$CR/contracts/idle-tools.txt"
+    printf '# cli (fixture)\n\n## Internal scripts\n\n| Script | Why it is not a verb |\n|---|---|\n| `old-tool.sh` | internal |\n\n**Out of scope:** prose after the table.\n' > "$CR/contracts/cli.md"
   fi
   git -C "$CR" init -q; cc base
 }
@@ -60,26 +60,26 @@ t_has "...and the caller sources the new library" "$(cat "$CR/bin/user.sh")" 'st
 t_has "...a lookalike stays" "$(cat "$CR/docs/use.md")" "not it: xold-tool.sh, old-tool.sh-bak"
 t_eq "the old name's exemption row stays while the shim lives" 1 "$(grep -c 'bin/old-tool.sh' "$CR/standards/naming/exemptions.tsv")"
 t_has "the report names each shim" "$REP" "shim	rename-0001	bin/old-tool.sh	symlink	2099-12-31"
-# What lint asks of a bin/*.sh: its name in a CONTRACTS/cli.md table and a caller or an idle line. The rewrite moved the register's
+# What lint asks of a bin/*.sh: its name in a contracts/cli.md table and a caller or an idle line. The rewrite moved the register's
 # own rows to the new names, so the old names need their own, marked with the row, and only a bin/*.sh needs them.
 M1='forwarding shim (harbor#996 rename-0001)'
-t_eq "the register's own rows moved to the new names" "1 1" "$(grep -c '`standard-tool.sh`' "$CR/CONTRACTS/cli.md") $(grep -c '^standard-lib.sh' "$CR/CONTRACTS/idle-tools.txt")"
-t_eq "a bin/*.sh shim has its line in the idle list (lint.tool-has-caller)" 1 "$(grep -c "^old-tool.sh .*$M1" "$CR/CONTRACTS/idle-tools.txt")"
-t_eq "...and its row in the internal-scripts table (lint.cli-contract)" 1 "$(grep -c "^| \`old-tool.sh\` | $M1" "$CR/CONTRACTS/cli.md")"
-t_eq "...the row sits inside the table, before the prose that follows it" yes "$(awk '/^\| `old-lib.sh`/ { r = NR } /^\*\*Out of scope/ { o = NR } END { print (r && o && r < o) ? "yes" : "no" }' "$CR/CONTRACTS/cli.md")"
-t_eq "a test script needs a table row and no idle line" "0 1" "$(grep -c '^old-check-test.sh' "$CR/CONTRACTS/idle-tools.txt") $(grep -c '^| `old-check-test.sh`' "$CR/CONTRACTS/cli.md")"
-t_eq "a python job and a data file are no bin/*.sh: neither register hears of them" 0 "$(grep -c 'old-job.py\|old-list.md' "$CR/CONTRACTS/idle-tools.txt" "$CR/CONTRACTS/cli.md" | awk -F: '{s += $2} END {print s}')"
-t_has "the report names the register lines" "$REP" "shim-rows	rename-0001	CONTRACTS/idle-tools.txt"
+t_eq "the register's own rows moved to the new names" "1 1" "$(grep -c '`standard-tool.sh`' "$CR/contracts/cli.md") $(grep -c '^standard-lib.sh' "$CR/contracts/idle-tools.txt")"
+t_eq "a bin/*.sh shim has its line in the idle list (lint.tool-has-caller)" 1 "$(grep -c "^old-tool.sh .*$M1" "$CR/contracts/idle-tools.txt")"
+t_eq "...and its row in the internal-scripts table (lint.cli-contract)" 1 "$(grep -c "^| \`old-tool.sh\` | $M1" "$CR/contracts/cli.md")"
+t_eq "...the row sits inside the table, before the prose that follows it" yes "$(awk '/^\| `old-lib.sh`/ { r = NR } /^\*\*Out of scope/ { o = NR } END { print (r && o && r < o) ? "yes" : "no" }' "$CR/contracts/cli.md")"
+t_eq "a test script needs a table row and no idle line" "0 1" "$(grep -c '^old-check-test.sh' "$CR/contracts/idle-tools.txt") $(grep -c '^| `old-check-test.sh`' "$CR/contracts/cli.md")"
+t_eq "a python job and a data file are no bin/*.sh: neither register hears of them" 0 "$(grep -c 'old-job.py\|old-list.md' "$CR/contracts/idle-tools.txt" "$CR/contracts/cli.md" | awk -F: '{s += $2} END {print s}')"
+t_has "the report names the register lines" "$REP" "shim-rows	rename-0001	contracts/idle-tools.txt"
 cc applied
 t_exit "a second --apply is a no-op" 0 crun --apply --wave W4
 t_eq "...and changes nothing, the register lines included" "" "$(git -C "$CR" status --porcelain -- . ':!build')"
 t_exit "the register lines name the old path on purpose: they are no residual" 0 crun --residual --wave W4
-sed -i.bak '/rename-0001/d' "$CR/CONTRACTS/idle-tools.txt"; rm -f "$CR/CONTRACTS/idle-tools.txt.bak"
+sed -i.bak '/rename-0001/d' "$CR/contracts/idle-tools.txt"; rm -f "$CR/contracts/idle-tools.txt.bak"
 t_exit "a shim whose line was dropped from the idle list is residual" 1 crun --residual --wave W4
 t_has "...naming the rule that would fail" "$(crun --residual --wave W4 2>/dev/null)" "no line for the shim at bin/old-tool.sh (lint.tool-has-caller)"
 t_exit "...and --apply writes it again" 0 crun --apply --wave W4
-t_eq "...once" 1 "$(grep -c "^old-tool.sh .*$M1" "$CR/CONTRACTS/idle-tools.txt")"
-git -C "$CR" checkout -q -- CONTRACTS/idle-tools.txt
+t_eq "...once" 1 "$(grep -c "^old-tool.sh .*$M1" "$CR/contracts/idle-tools.txt")"
+git -C "$CR" checkout -q -- contracts/idle-tools.txt
 # The box. A hook command may name the new file only once it is installed; a shim at the old path does not install it.
 SB="$H/shimbox/.claude"; mkdir -p "$SB/bin"
 git -C "$CR" show "$(git -C "$CR" rev-list --max-parents=0 HEAD):bin/old-tool.sh" > "$SB/bin/old-tool.sh"; chmod +x "$SB/bin/old-tool.sh"
@@ -109,7 +109,7 @@ t_exit "apply removes it" 0 crun --apply --id rename-0001
 t_eq "the old path is gone" "" "$(git -C "$CR" ls-files bin/old-tool.sh)"
 t_eq "...the new file stays" "bin/standard-tool.sh" "$(git -C "$CR" ls-files bin/standard-tool.sh)"
 t_eq "...its exemption row is retired" 0 "$(grep -c 'bin/old-tool.sh' "$CR/standards/naming/exemptions.tsv")"
-t_eq "...and its lines leave both registers, the other shims' stay" "0 0 1 1" "$(grep -c 'rename-0001' "$CR/CONTRACTS/idle-tools.txt") $(grep -c 'rename-0001' "$CR/CONTRACTS/cli.md") $(grep -c 'rename-0002' "$CR/CONTRACTS/idle-tools.txt") $(grep -c 'rename-0002' "$CR/CONTRACTS/cli.md")"
+t_eq "...and its lines leave both registers, the other shims' stay" "0 0 1 1" "$(grep -c 'rename-0001' "$CR/contracts/idle-tools.txt") $(grep -c 'rename-0001' "$CR/contracts/cli.md") $(grep -c 'rename-0002' "$CR/contracts/idle-tools.txt") $(grep -c 'rename-0002' "$CR/contracts/cli.md")"
 t_exit "...and the residual is 0 again" 0 crun --residual --id rename-0001
 t_eq "the other shims are untouched" "120000" "$(git -C "$CR" ls-files -s bin/old-lib.sh | cut -d' ' -f1)"
 cc "expired"
@@ -119,7 +119,7 @@ printf 'rename-0005\tdocs/Case.md\tdocs/case.md\tpath\tW4\t2099-12-31\tcase only
 cc late
 t_exit "a date already past when the row first runs writes no shim" 0 crun --apply --id rename-0004
 t_eq "...the old path is simply gone" "" "$(git -C "$CR" ls-files bin/old-late.sh)"
-t_eq "...and no register hears of it" 0 "$(grep -c 'old-late' "$CR/CONTRACTS/idle-tools.txt" "$CR/CONTRACTS/cli.md" | awk -F: '{s += $2} END {print s}')"
+t_eq "...and no register hears of it" 0 "$(grep -c 'old-late' "$CR/contracts/idle-tools.txt" "$CR/contracts/cli.md" | awk -F: '{s += $2} END {print s}')"
 t_exit "a case-only move cannot have a shim: it would be the file itself" 1 crun --plan --id rename-0005
 t_has "...and says so" "$(crun --plan --id rename-0005 2>&1)" "would be the file docs/case.md itself"
 mkshim "$H/shim-noregs" noregs

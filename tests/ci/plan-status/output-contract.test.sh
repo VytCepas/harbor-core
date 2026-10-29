@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
-# plan-status.sh's output follows CONTRACTS/logging.md (harbor#771): --summary's stdout is the counts line lint T1c
-# reads and only that; the run log is on stderr; a stale PLAN.md or a missing plan is a FAIL with its fix; the run
-# ends with the summary. A fixture plan stands in for harbor-build-tickets.md.
+# status-plan-generate.sh's output follows contracts/logging.md (harbor#771): --summary's stdout is the counts line lint T1c
+# reads and only that; the run log is on stderr; a stale docs/generated/plan.md or a missing plan is a FAIL with its fix; the run
+# ends with the summary. A fixture plan stands in for docs/reports/platform-build-tickets.md.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-TOOL="$T_ROOT/bin/plan-status.sh"; P="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"
+TOOL="$T_ROOT/bin/status-plan-generate.sh"; P="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"
 PLAN="$P/tickets.md"; OUT="$P/derived.md"; : > "$P/present.txt"
 printf '## X · fixture\n\n**Z1 · built** — effort S\n- Evidence: %s\n\n**Z2 · not built** — effort S\n- Evidence: %s\n' "$P/present.txt" "$P/absent.txt" > "$PLAN"
 run() { HARBOR_PLAN_SRC="${SRC:-$PLAN}" HARBOR_PLAN_OUT="$OUT" sh "$TOOL" "$@" >"$P/out" 2>"$P/err"; echo "exit $?"; }

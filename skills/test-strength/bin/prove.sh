@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # prove.sh — a DETECTOR-RECALL engine. Mutate the artefact a gate guards, and
-# measure whether the gate notices. Ticket: R5 / CONTRACTS/gates.md.
+# measure whether the gate notices. Ticket: R5 / contracts/gates.md.
 #
 #   sh prove.sh <selector>...        run the targets a name or a path selects
 #   sh prove.sh --all                every declared target
@@ -33,7 +33,7 @@
 # failure this engine exists to detect. Do not wire it up. See the `scanner`
 # implementation near the bottom for the same rule applied to every adapter.
 #
-# VOCABULARY, AND TWO COLLISIONS DELIBERATELY AVOIDED. `bin/mutation-tier.sh`
+# VOCABULARY, AND TWO COLLISIONS DELIBERATELY AVOIDED. `bin/admission-mutation-tier.sh`
 # already owns the phrase "mutation tier" and means something else entirely
 # (which config paths let an agent reach the floor), and "operator" means the
 # human everywhere else in Harbor. So this file never says tier, mutation tier,
@@ -1053,7 +1053,7 @@ validate_controls() { # $1 = resolved seed path
     # copied file nobody edited), the control must still be ACCEPTED by the
     # checker to score green, and `varies:` and `why:` are mandatory prose that
     # a human reads. Trading a bounded false negative for two proven false
-    # positives is the trade this file exists to make. CONTRACTS/prove-targets.md
+    # positives is the trade this file exists to make. contracts/prove-targets.md
     # carries the binding wording.
     #
     # THE `#` DISCOUNT SURVIVES FOR posix-shell, MINUS THE SHEBANG. There a `#`
@@ -1098,7 +1098,7 @@ validate_controls() { # $1 = resolved seed path
 }
 
 # THE SAME LAYER, POINTED AT PLANTINGS, AND IT WAS ABSENT. `why:` is MANDATORY
-# on a plant in CONTRACTS/prove-targets.md, and until 2026-08-30 only
+# on a plant in contracts/prove-targets.md, and until 2026-08-30 only
 # bin/lint-conventions.sh rule C6 enforced it: the engine ran the same file to a
 # verdict while the linter refused it. Two enforcers of one contract disagreeing
 # is worse than either rule alone, because whichever one a reader met first
@@ -1452,7 +1452,7 @@ run_target() {
     else
       # THE DELTA IS READ OFF THE CHECKER'S OWN CONTRACT LINE, BY LABEL RATHER
       # THAN BY POSITION, so a field added to that line later cannot silently
-      # shift the number this reads. CONTRACTS/prove-targets.md pins the line.
+      # shift the number this reads. contracts/prove-targets.md pins the line.
       _abp=$(_probe_field "$WORK/runs/ablation.log" pos)
       _bap=$(_probe_field "$WORK/runs/baseline.log" pos)
       if [ -n "$_abp" ] && [ -n "$_bap" ]; then
@@ -1928,6 +1928,7 @@ mode_explain() {
 _cov_checkers() {
   { find "$ROOT/bin" -maxdepth 1 -name '*-test.sh' -type f 2>/dev/null
     find "$ROOT/tests" -mindepth 2 -maxdepth 2 -name '*-test.sh' -type f 2>/dev/null
+    find "$ROOT/tests" -mindepth 3 -maxdepth 3 -name '*.test.sh' -type f 2>/dev/null   # tests/<family>/<subject>/<aspect>.test.sh
     find "$ROOT/skills" -type f -name 'check-*.sh' 2>/dev/null; } | LC_ALL=C sort
 }
 
@@ -1968,13 +1969,13 @@ COV
 }
 
 # ============================================================== SELF-TEST
-# THE PORTABLE SELF-PROOF (CONTRACTS/gates.md property 3). Sections A and B of
+# THE PORTABLE SELF-PROOF (contracts/gates.md property 3). Sections A and B of
 # the build spec: the null-checker falsifier pair, and the vacuity guards. It
 # builds its OWN fixtures in a mktemp dir and reads nothing from this repo, so
 # the skill can be installed anywhere and still go red before anyone trusts it
 # green.
 #
-# ITS FIXTURES ARE DELIBERATELY NOT THE SUITE'S. tests/skills/prove-test.sh carries the
+# ITS FIXTURES ARE DELIBERATELY NOT THE SUITE'S. tests/skill/prove/prove.test.sh carries the
 # pinned `demo` fixture and the byte-exact report sample; if this engine shipped
 # a copy of that file the two implementations could drift into agreement by
 # sharing it, which is the one thing a two-implementer split exists to prevent.
@@ -2464,7 +2465,7 @@ ST
   # never WHICH word is which. `s/PROVEN/SURVIVORS/g;s/SURVIVORS/PROVEN/g`-style
   # swaps, and any rename that keeps them distinct, still pass here. Only a file
   # the mutation cannot reach can pin the label contract, which is why
-  # tests/skills/prove-test.sh asserts the labels themselves and why prove-engine.target
+  # tests/skill/prove/prove.test.sh asserts the labels themselves and why prove-engine.target
   # calls this the bootstrap limit. These cases narrow it; they do not close it.
   _report_word() { # $1 = report label, $2 = target -> the word printed after it
     # The exit code is deliberately not the assertion here: these cases are

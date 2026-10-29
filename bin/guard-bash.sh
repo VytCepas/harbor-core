@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0
+[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
 # B3 (harbor#3) — PreToolUse(Bash) shell-injection / local-exec guard.
 # Ports upstream DANGEROUS_PATTERNS @ a4e8e74 (safety-classifier.ts:44-76),
 # trimmed for POSIX+WSL (dropped the OpenRouter/email routing shapes → B4).
@@ -10,12 +10,12 @@
 # Linux has none of them, and their Linux forms (python/sed -i, tar/unzip/cp) are in the same lists.
 #
 # Blocking (exit 2), not "de-auto-approve": upstream routes these to a native
-# prompt, but Helm's floor is a hard veto (harbor-epic.md:44 — guard-hooks are
+# prompt, but Helm's floor is a hard veto (docs/reports/platform-epic.md:44 — guard-hooks are
 # veto-only and compose). Anti-evasion pre-pass (guard-lib floor_bash_targets)
 # neutralizes single-quote-data false positives and executed-quoted-arg /
 # command-substitution false negatives (Cato H2/H3, issue #732).
 #
-# DELIBERATELY ONE FILE (DOCTRINE/modularity.md): lint F1 requires the
+# DELIBERATELY ONE FILE (docs/explanation/modularity.md): lint F1 requires the
 # kill-switch to be the FIRST LIVE LINE of a guard, B6 pins this file's hash, and
 # per-rule files would add a fork per rule — DE-09 records a fork regression that
 # turned SessionStart into a fail-OPEN bypass.
@@ -72,7 +72,7 @@ hit() { [ -n "$TARGETS" ] || return 1; "$FLOOR_GREP" -iEq -- "$1" <<FLOOR_HIT_EO
 $TARGETS
 FLOOR_HIT_EOF
 }
-# The STRUCTURED table the migrated rules read (B-rewrite, FLOOR.md). Loaded
+# The STRUCTURED table the migrated rules read (B-rewrite, docs/explanation/admission-baseline.md). Loaded
 # once; fail-open exactly like every other scanner here — an empty table makes
 # floor_seg_* return "no match", never "block".
 floor_seg_load "$CMD"
@@ -145,16 +145,16 @@ hit '(^|[^[:alnum:]_])(sh|bash|zsh|dash|source|\.)[[:space:]]+(<[[:space:]]*)?<[
 # (red-team pass 6). The floor's own kill-switch was the worst case: the Bash
 # tool's shell is initialized from the user's profile, so one append to ~/.zshrc
 # disabled every guard permanently, and the block message names the variable.
-# HELM_FLOOR_SHADOW (harbor#482) is a second switch of the same class — a shadow
+# HARBOR_ADMISSION_SHADOW (harbor#482) is a second switch of the same class — a shadow
 # session blocks almost nothing — so it is guarded by the same two rules, which
 # stay enforcing in shadow (floor_shadow_enforces).
-rawhit '(^|[^[:alnum:]_])(export[[:space:]]+)?(HELM_DISABLE_FLOOR|HELM_FLOOR_SHADOW)[[:space:]]*=' \
-  && floor_block bash "assigning a floor switch (HELM_DISABLE_FLOOR or HELM_FLOOR_SHADOW) — both are set by the operator on the command line, never by a session" killswitch-assign.flat
+rawhit '(^|[^[:alnum:]_])(export[[:space:]]+)?(HARBOR_ADMISSION_DISABLE|HARBOR_ADMISSION_SHADOW|HELM_DISABLE_FLOOR|HELM_FLOOR_SHADOW)[[:space:]]*=' \
+  && floor_block bash "assigning a floor switch (HARBOR_ADMISSION_DISABLE or HARBOR_ADMISSION_SHADOW, or their old names HELM_DISABLE_FLOOR and HELM_FLOOR_SHADOW) — both are set by the operator on the command line, never by a session" killswitch-assign.flat
 # `launchctl setenv` puts a switch into every process launchd starts later, the
 # next Terminal included. The second alternative is a switch name REDIRECTED into
 # a settings file: a settings.json `env` block reaches every hook, and
 # `printf '{"env":…}' > f` names no writer before the name.
-rawhit "(>[|!&]?|>>!?|tee|sed|perl|python[0-9.]*|cat|launchctl[[:space:]]+setenv)[^;&|]*(HELM_DISABLE_FLOOR|HELM_FLOOR_SHADOW)|(HELM_DISABLE_FLOOR|HELM_FLOOR_SHADOW)[^;&|]*(>[|!&]?|>>!?)[^;&|]*settings[^;&|]*\.json" \
+rawhit "(>[|!&]?|>>!?|tee|sed|perl|python[0-9.]*|cat|launchctl[[:space:]]+setenv)[^;&|]*(HARBOR_ADMISSION_DISABLE|HARBOR_ADMISSION_SHADOW|HELM_DISABLE_FLOOR|HELM_FLOOR_SHADOW)|(HARBOR_ADMISSION_DISABLE|HARBOR_ADMISSION_SHADOW|HELM_DISABLE_FLOOR|HELM_FLOOR_SHADOW)[^;&|]*(>[|!&]?|>>!?)[^;&|]*settings[^;&|]*\.json" \
   && floor_block bash "persisting a floor switch into a file would disable or shadow the floor for every later session" killswitch-persist.flat
 RCFILE='(\.zshrc|\.zshenv|\.zprofile|\.zlogin|\.bashrc|\.bash_profile|\.bash_login|\.profile|/etc/profile|/etc/profile\.d|/etc/paths|/etc/zsh(env|rc|profile|login)?|\.config/fish/(config\.fish|conf\.d)|\.cshrc|\.kshrc|\.ssh/(authorized_keys2?|config|rc|environment))([^.a-zA-Z0-9_-]|$)'
 hit "(>[|!&]?|>>!?)[[:space:]]*[^[:space:];&|]*$RCFILE" \
@@ -266,7 +266,7 @@ hit "$GH_ALIAS_SET[^;&|]*[[:space:]]('|\")?!" \
 hit "$GH_ALIAS_SET[^;&|]*[[:space:]]-([[:space:]]|$)" \
   && floor_block bash "gh alias set - reads the expansion from stdin, so the shell string it stores never reaches this scanner (unreviewable deferred execution)" gh-alias-stdin.flat
 
-# A FINDING'S DISPOSITION IS A PERSON'S (harbor#855, CONTRACTS/finding.md). findings.sh accept
+# A FINDING'S DISPOSITION IS A PERSON'S (harbor#855, contracts/finding.md). lint-findings.sh accept
 # refuses inside an agent session, but the session holds the same gh login, so it could apply
 # the label by hand and the reconcile could not tell who did. This hook runs only inside an
 # agent session, so the reconcile's own finding:fixed (launchd, outside one) is never refused.
@@ -277,7 +277,7 @@ hit "$GH_ALIAS_SET[^;&|]*[[:space:]]-([[:space:]]|$)" \
 FDISP='[Ff][Ii][Nn][Dd][Ii][Nn][Gg](:|%3[Aa])([Aa][Cc][Cc][Ee][Pp][Tt][Ee][Dd]|[Ss][Uu][Pp][Ee][Rr][Ss][Ee][Dd][Ee][Dd]|[Ff][Ii][Xx][Ee][Dd])'
 FTOK="^[^[:space:]]*${FDISP}([^[:alnum:]_-]|\$)|(^|,)[[:space:]]*${FDISP}[[:space:]]*(,|\$)"
 GHC='^([a-zA-Z0-9_./-]*/)?gh$'
-_fl_msg="a finding's disposition label is a person's act at their own terminal (sh bin/findings.sh accept|supersede), never an agent's"
+_fl_msg="a finding's disposition label is a person's act at their own terminal (sh bin/lint-findings.sh accept|supersede), never an agent's"
 floor_seg_has "$GHC" '^issue$' '^(edit|create)$' "$FTOK" && floor_block bash "$_fl_msg" finding-label-issue.argv
 # An alias or a renamed label is the same act one step removed (review #934). An alias is judged on
 # its expansion naming a writing verb, so `gh alias set fl 'issue list --label finding:…'` stays a read.
@@ -356,7 +356,7 @@ case "${FLOOR_SEGS:-}" in   # a builtin gate: every form names "event", and most
 esac
 
 # NO `gh pr merge` RULE HERE, AND THAT IS DELIBERATE (harbor#254). The merge
-# moment already has an owner: CONTRACTS/hooks.md's layer-split table assigns
+# moment already has an owner: contracts/hooks.md's layer-split table assigns
 # `gh pr merge` to bin/govern-hook.sh's PreToolUse arm, which knows the PR
 # number, can consult the backstop, and stays silent on a green PR. A second
 # rule here would be a copy of that decision in the file that enforces T2, and
@@ -375,7 +375,7 @@ esac
 #     git commit -am "fix: crontab -l parsing in the report"
 # Timestamps are the evidence format this repo's own discipline asks for
 # (CONSTITUTION №2.1/№2.4), so the rule was taxing the constitution it enforces —
-# and the escape hatch it printed, HELM_DISABLE_FLOOR=1, turns off all seventy
+# and the escape hatch it printed, HARBOR_ADMISSION_DISABLE=1, turns off all seventy
 # other rules to get a commit message through (№2.11). The measured workaround
 # was `git commit -F <file>`, which produces the identical commit: the rule
 # stopped nothing, it only chose the syntax.
@@ -536,7 +536,7 @@ hit '(^|[^[:alnum:]_])(mkfs(\.|[[:space:]])|newfs(_[a-z0-9]+)?[[:space:]])' \
 # /dev/sd* is not the only node. The rules below close the rest of the
 # irreversible device-destruction class the floor already hard-blocks, each in
 # the voice of the four above. MOST ARE LINUX-ONLY (blkdiscard, wipefs, mke2fs,
-# sgdisk, mkswap, badblocks, dcfldd) — blocked anyway: FLOOR.md B-sd-3 records
+# sgdisk, mkswap, badblocks, dcfldd) — blocked anyway: docs/explanation/admission-baseline.md B-sd-3 records
 # that a Linux-only device gap is still a finding, and a session may run in a
 # Linux CI sandbox. guard-destroy.sh already calls diskutil "same class, one
 # spelling missing"; these are the other spellings.
@@ -688,12 +688,12 @@ RM_RECUR='^(-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)$'
 HOME_RE="$(floor_surface_re "$HOME")"
 RM_HOME="^(~|\\\$HOME|\\\$\\{HOME\\}|${HOME_RE})(/+(\\./+)*\\.?)?\\*?\$"
 RM_ROOT='^/+((\.|\.\.)/*)*\*?$'
-# THE SYMLINK SPELLINGS ARE NOT THE ONLY SPELLINGS (FLOOR.md P12-argv-09,
+# THE SYMLINK SPELLINGS ARE NOT THE ONLY SPELLINGS (docs/explanation/admission-baseline.md P12-argv-09,
 # reproduced 2026-08-30). /etc, /var and /tmp are symlinks into /private on
 # macOS, and the data volume is reachable through its firmlink — so
 # 'rm -rf /private/var' and 'rm -rf /System/Volumes/Data' deleted exactly what
 # 'rm -rf /var' is blocked for, and both exited 0. A rule that catches only the
-# convenient spelling of a path is the defect FLOOR.md pass 11 already recorded
+# convenient spelling of a path is the defect docs/explanation/admission-baseline.md pass 11 already recorded
 # once, in the shape of a tar bundle.
 #
 # The real roots are enumerated rather than folded into the first alternation,
@@ -1233,7 +1233,7 @@ function judge(s,   n, w, i, j, p, k, prog, nx, redir, put) {
     if (w[j] == "push") { for (p = j + 1; p <= n; p++) {
         if (w[p] ~ /^--(all|mirror)$/) { print "PUSHMAIN"; return }
         if (w[p] !~ /^-/ && w[p] ~ /^\+?([^:]*:)?(refs\/heads\/)?(main|master)$/ && p > j + 1 + (w[j + 1] ~ /^-/ ? 1 : 0)) { print "PUSHMAIN"; return } } } }
-  if (prog ~ /^merge-check(\.sh)?$/) { for (j = i + 1; j <= n; j++) if (w[j] == "--merge") { print "MERGE"; return } }
+  if (prog ~ /^(gate-)?merge-check(\.sh)?$/) { for (j = i + 1; j <= n; j++) if (w[j] == "--merge") { print "MERGE"; return } }
   if (prog ~ /^gate-merge-stack(\.sh)?$/ && nx == "merge") { print "MERGE"; return }
   if (prog == "harbor" && nx == "merge-stack" && w[i + 2] == "merge") { print "MERGE"; return }
   if (prog ~ /^deploy-fleet(\.sh)?$/ || (prog == "harbor" && nx == "ship"))
@@ -1241,7 +1241,7 @@ function judge(s,   n, w, i, j, p, k, prog, nx, redir, put) {
   if (prog ~ /^deploy(\.sh)?$/ || (prog == "harbor" && nx ~ /^(deploy|install|uninstall|skills|inject|constitution|restore)$/))
     for (j = i + 1; j <= n; j++) if (w[j] ~ /^--apply(=|$)/) { print "DEPLOY"; return }
   # an installer run straight at the live box skips the deploy preflight and snapshot: --live with a write (p30)
-  if (prog ~ /(-install|^sec0-harden|^floor-deny|^floor-uninstall|^restore|^pin-instructions)(\.sh)?$/) {
+  if (prog ~ /(-install|^sec0-harden|^deploy-harden|^floor-deny|^floor-uninstall|^restore|^deploy-restore|^pin-instructions)(\.sh)?$/) {
     lv = 0; wr = 0
     for (j = i + 1; j <= n; j++) { if (w[j] == "--live") lv = 1; if (w[j] ~ /^--(apply|repin)(=|$)/) wr = 1 }
     if (lv && wr) { print "DEPLOY"; return } }
@@ -1391,7 +1391,7 @@ CFG_RE="(${CFG_ABS_RE}|${LIVE_RE}|~/\\.claude|${TILDE_CFG}|\\\$HOME/\\.claude|\\
 # jq-with-write. Nothing here fires on `cat`, `grep`, `git` or `diff`, and the
 # suite pins that: a guard that stopped an agent READING the constitution would
 # be a false positive against the file it is supposed to make people follow.
-# harbor#779 — every integrity row of CONTRACTS/helm-state.md and nothing else; lint F14 holds this line
+# harbor#779 — every integrity row of contracts/control-plane-state.md and nothing else; lint F14 holds this line
 # to the table. The salts, the Stop-gate state, the install stamp, the judge verdict, the ledger's host
 # token and the defer verdict joined it: a redirect onto them was refused, and tee -a, cp and sed -i were not.
 # harbor#1044 review r3 #1: .helm-dispatch (the event dispatcher's rules, ledger, spend and spawn.on) is a
@@ -1403,7 +1403,7 @@ FILES="(settings(\\.local)?\\.json|CLAUDE(\\.local)?\\.md|\\.sec0-baseline\\.sha
 # invisible: `cp /tmp/settings.json ~/.claude/` replaced settings.json (deny
 # 57 -> 0, hooks gone) and `mv ~/.claude/bin ~/.claude/bin.off` unhooked the
 # whole floor — both proven end-to-end (red-team pass 5).
-# harbor#772 — deploy snapshots: restore.sh restores from backups/deploy-*/config.tgz, and a snapshot
+# harbor#772 — deploy snapshots: deploy-restore.sh restores from backups/deploy-*/config.tgz, and a snapshot
 # carries its own pins, so a rewritten one restores a weakened floor. Top level only, never `*backups*`.
 CFG_SNAPDIR=backups
 CFGDIR_RE="(${CFG_ABS_RE}|${LIVE_RE}|~/\\.claude|${TILDE_CFG}|\\\$HOME/\\.claude|\\\$\\{HOME\\}/\\.claude)(/+(bin|hooks|${CFG_SNAPDIR})/*)?"
@@ -1914,7 +1914,7 @@ esac
 # — pipe-to-shell, `curl -o p && sh p`, process substitution. A fetch that
 # merely WRITES a remote payload onto a guard and never executes it matched
 # nothing, and B6 would report the altered guard only at the NEXT SessionStart:
-# detection, never containment, which FLOOR.md states in those words.
+# detection, never containment, which docs/explanation/admission-baseline.md states in those words.
 #
 # NO VERB IS NAMED, and that is the whole design (harbor#196, and harbor#94's
 # fourth Done-when — replace a list with a shape, never add four more words).
@@ -2040,7 +2040,7 @@ CFG_TOK="(${CFG_ABS_RE}|${LIVE_RE}|~/\\.claude|${TILDE_CFG}|\\\$HOME/\\.claude|\
 # suffix — read as an extract flag, so `tar --xz -cf backup.tar.xz -C ~/.claude`
 # (a backup, which only READS) was blocked (pass 12, P12-argv-fp-04). `--get` is
 # GNU tar's documented third spelling of extract and was missing (P12-argv-08).
-# THE BUNDLE IS NOT LENGTH-BOUNDED (FLOOR.md P12-argv-10, reproduced
+# THE BUNDLE IS NOT LENGTH-BOUNDED (docs/explanation/admission-baseline.md P12-argv-10, reproduced
 # 2026-08-30). Four letters each side of the x meant `tar -xvvvzf a.tgz -C
 # ~/.claude` was not recognised as extract mode at all, so the segment scored
 # read-only and bought the exemption that skips all four archive rules — exit 0
@@ -2065,7 +2065,7 @@ ARCHCMD='^SEGC:[0-9]+:([a-zA-Z0-9_./-]*/)?(tar|bsdtar|gtar|unzip|ditto|cpio|pax|
 #   tar -xzf ~/.claude/backups/config-baseline.tgz -C /tmp/restore
 #   ditto ~/.claude /tmp/backup
 #
-# — while B6's OWN block message is what sends the operator to restore.sh. A
+# — while B6's OWN block message is what sends the operator to deploy-restore.sh. A
 # control that forbids the recovery it prescribes is a control that gets turned
 # off, and a disabled guard protects nothing (CONSTITUTION No.2.11). `unzip -l`
 # is the clearest case: it lists a table of contents and writes not one byte.
@@ -2104,7 +2104,7 @@ ARCHCMD='^SEGC:[0-9]+:([a-zA-Z0-9_./-]*/)?(tar|bsdtar|gtar|unzip|ditto|cpio|pax|
 # different options and `hit`'s -i would fuse them.
 #
 # THE DASHLESS BUNDLE IS NOT OPTIONAL. tar's old-style spelling `tar xzC dir -f
-# a.tgz` carries no leading dash, and requiring one is the exact defect FLOOR.md
+# a.tgz` carries no leading dash, and requiring one is the exact defect docs/explanation/admission-baseline.md
 # pass 11 recorded as critical: a rule that catches only the less common
 # spelling of a command is not a rule. This fix reproduced it — `tar xzC
 # ~/.claude -f /tmp/evil.tgz` went from 2 to 0 while the dashed spelling still
@@ -2243,7 +2243,7 @@ $(_arch_rd "$_arid")"
     # is consulted.
     _arch_names_cfg "$(_arch_rd_out "$_arid")" && return 1
     # AND AN INPUT REDIRECT IS A SOURCE — the other half of the sentence three
-    # comments up, which was written and then only half applied (FLOOR.md
+    # comments up, which was written and then only half applied (docs/explanation/admission-baseline.md
     # P12-argv-fp-05, reproduced 2026-08-30). If the config dir is named ONLY in
     # a `<` redirect — never in argv, never in an output redirect — the segment
     # READS an archive or a diff out of the config dir and writes nowhere near
@@ -2560,7 +2560,7 @@ hit "(^|[^[:alnum:]_])dasel[^;&|]*[[:space:]](put|delete)[^;&|]*$SURFACE" \
 # emptied. It is B1's whole containment layer removed by a macOS binary that is
 # in no verb list here, in no interpreter list, and needs no redirect.
 #
-# FLOOR.md RECORDED THIS AS HAVING NO SHAPE, and that finding is wrong. The
+# docs/explanation/admission-baseline.md RECORDED THIS AS HAVING NO SHAPE, and that finding is wrong. The
 # argument was that `plutil -replace <keypath> <operand>` is structurally
 # identical to `jq . <operand>` and `unzip -l <operand>`, so only knowing what
 # plutil DOES separates them — "a verb list by definition". Both halves of that
@@ -3073,7 +3073,7 @@ cfg_redirect_outside_allowlist \
 #     &&` bridge, and a copy of the script made somewhere else. Inject-then-
 #     bless was demonstrated end-to-end through the allowed spelling.
 #   • and it blocked ordinary text: `sed -n '/floor-install.sh --live/p'
-#     FLOOR.md` and `git commit -am "…floor-deny.sh --live…"` were refused as
+#     docs/explanation/admission-baseline.md` and `git commit -am "…floor-deny.sh --live…"` were refused as
 #     "a --live floor operation", because reading a document that quotes a
 #     command is indistinguishable from running it to a substring match.
 #
@@ -3084,7 +3084,7 @@ cfg_redirect_outside_allowlist \
 # in-script live-dir refusal that floor-deny/floor-install/floor-uninstall/
 # sec0-harden already had, and lint rule D2 holds all six to it.
 #
-# Residual, stated plainly in FLOOR.md: a session with unrestricted Bash can
+# Residual, stated plainly in docs/explanation/admission-baseline.md: a session with unrestricted Bash can
 # still silence the B8 advisory. Only B1's tool-level deny and OS permissions
 # stand behind that, and neither covers a Bash redirect. B8 is a detection
 # control; it was never a containment one.
@@ -3115,7 +3115,7 @@ cfg_redirect_outside_allowlist \
 # FLOOR_MAX_NORM, where floor_seg_load returns an empty table and every argv
 # question in this file goes silent. Padding a command must not switch a rule
 # off (QA plan R4).
-# THE CD-BRIDGE, ANSWERED WHERE IT IS ASKED (edge pass 2026-08-29, FLOOR.md
+# THE CD-BRIDGE, ANSWERED WHERE IT IS ASKED (edge pass 2026-08-29, docs/explanation/admission-baseline.md
 # P12-argv-01). The rule below arms when the command is STANDING in the config
 # dir. It never armed for the commoner spelling — standing NEXT to it and
 # reaching in by a relative name — so `cd ~ && rm -rf .claude` and its `;`,
@@ -3125,7 +3125,7 @@ cfg_redirect_outside_allowlist \
 #
 # ONLY THE UNAMBIGUOUS VERBS. `rm`, `shred` and `truncate` destroy whatever they
 # name, in any operand position. `cp`, `mv`, `ditto` and `rsync` are deliberately
-# ABSENT: their config-dir operand may be the SOURCE, and FLOOR.md already
+# ABSENT: their config-dir operand may be the SOURCE, and docs/explanation/admission-baseline.md already
 # records three false positives (P12-argv-fp-01/02/03) from rules that matched a
 # surface without asking which side of the copy it was on. Adding them here would
 # reproduce that class rather than learn from it.
@@ -3148,7 +3148,7 @@ fi
 # BLOCKED and all four mv/cp shapes ALLOWED.
 #
 # THE TWO VERBS NEED DIFFERENT RULES, and collapsing them is precisely the mistake
-# FLOOR.md records three times (P12-argv-fp-01/02/03): a rule that matched a
+# docs/explanation/admission-baseline.md records three times (P12-argv-fp-01/02/03): a rule that matched a
 # config-dir operand without asking which side of the copy it sat on.
 #
 #   mv  ANY operand. Both directions destroy: moving a pinned file OUT loses it,
@@ -3251,7 +3251,7 @@ esac
 # RESIDUAL, NAMED RATHER THAN QUIETLY LEFT: a FLAT `cp /tmp/x <store>/…/adc.json`
 # is not covered. `floor_seg_has` cannot ask which side of the copy an operand sat
 # on, and matching any operand would block `cp <adc> /tmp/backup` — taking a
-# backup, which is the false-positive class FLOOR.md records three times and the
+# backup, which is the false-positive class docs/explanation/admission-baseline.md records three times and the
 # exact work `gcloud-creds` exists to encourage. The cd-bridge form below IS
 # covered, because that helper has --dest-only. Closing the flat half needs a
 # position-aware argv helper, which is a separate change.
@@ -3406,7 +3406,7 @@ if floor_seg_cwd_under "$CFG_ABS" "$LIVE_DIR" \
   # `cd ~/.claude && tar xzf /tmp/evil.tgz` extracts into the CURRENT directory,
   # so no argument names the config dir and every path-matching rule above —
   # argv and flat alike — sees a tar whose only operand is under /tmp. It is
-  # FLOOR.md pass 10's own bypass with the destination left implicit.
+  # docs/explanation/admission-baseline.md pass 10's own bypass with the destination left implicit.
   #
   # This is the one place the cwd is knowable: the cd is right there in the same
   # command. Elsewhere a bare `tar xzf x.tgz` stays allowed, because a hook is

@@ -4,11 +4,11 @@
      THIS FILE IS A TEMPLATE (harbor#630). Do not cp it: @HOME@ and the other placeholders in it would be
      installed as literal text, and launchd loads such a job and then fails every time it runs. Render it:
 
-       sh ~/port/harbor/bin/launchd-render.sh ~/port/harbor/launchd/com.harbor.pulse.plist > ~/Library/LaunchAgents/com.harbor.pulse.plist
+       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.pulse.plist > ~/Library/LaunchAgents/com.harbor.pulse.plist
 
      A cp line in the comment below predates the template. It is kept so the rendered file stays byte-identical
      to the one already installed: follow this block, not that line. This block is not installed;
-     bin/launchd-render.sh drops it. -->
+     bin/deploy-launchd-render.sh drops it. -->
 <!-- harbor#9 (workstream E, E1): the between-sessions health probe.
 
      TEMPLATE — launchd does not expand $HOME: replace @HOME@ with your
@@ -22,7 +22,7 @@
      agent can restart and inspect it. Operator steps (repo is source, ~/.claude
      is the deploy target):
 
-       sh ~/port/harbor/bin/runtime-install.sh --live --apply
+       sh ~/port/harbor/bin/deploy-runtime-install.sh --live --apply
        cp launchd/com.harbor.pulse.plist ~/Library/LaunchAgents/
        launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.harbor.pulse.plist
 
@@ -44,7 +44,7 @@
      sends nothing, and a suppressed banner looks exactly the same. For the
      sink, fire one unconditionally:
 
-       sh ~/.claude/bin/pulse-notify.sh --selftest
+       sh ~/.claude/bin/alert-notify.sh --selftest
 
      STDOUT IS DECLARED, NOT ONLY STDERR. The fleet-snapshot job declares stderr
      alone, and its error file has been zero bytes across every run since it was
@@ -77,7 +77,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/sh</string>
-    <string>@HOME@/.claude/bin/pulse-notify.sh</string>
+    <string>@HOME@/.claude/bin/alert-notify.sh</string>
   </array>
   <key>StartInterval</key><integer>900</integer>
   <key>RunAtLoad</key><true/>

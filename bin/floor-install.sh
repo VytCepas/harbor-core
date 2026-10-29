@@ -12,9 +12,9 @@
 # already present (keyed by command string). Assumes the SEC-0 read-deny base is
 # already applied (it is, live). B6 (the recurring integrity gate) is deliberately
 # NOT installed by default — it lands LAST, after this install is verified
-# (FLOOR.md order).
+# (docs/explanation/admission-baseline.md order).
 #
-# --help, the target and every standard flag come from bin/install-lib.sh (lint D7):
+# --help, the target and every standard flag come from bin/deploy-install-lib.sh (lint D7):
 # physical paths, so `~/.claude/` or a symlink cannot reach live without --live
 # (P11-01); intent is a flag, never a position (harbor#52: `<sandbox> --live` used to
 # write live, the last word winning); CLAUDE_CONFIG_DIR never picks the dir. Every
@@ -22,13 +22,13 @@
 # (harbor#95, #142 — a hint the gate refuses teaches the operator to delete the gate).
 set -eu
 SRC="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-. "$SRC/log-lib.sh"
-. "$SRC/install-lib.sh"
+. "$SRC/library-log.sh"
+. "$SRC/deploy-install-lib.sh"
 log_init floor-install
 WITH_B6=0
 # SG (harbor#291) — the Stop gate is OPT-IN, on the same reasoning that makes B6
 # opt-in: a gate that can refuse to let a TURN end must be a deliberate act on each
-# box, not a side effect of deploying the floor. runtime-install.sh's header
+# box, not a side effect of deploying the floor. deploy-runtime-install.sh's header
 # invariant — "installs no guard and wires no hook" — is why the wiring lives here.
 WITH_STOP=0
 il_opt() {
@@ -52,70 +52,43 @@ fi
 S="$DIR/settings.json"
 if [ ! -f "$S" ]; then
   log_fail "no settings.json at $S"
-  log_nofix "SEC-0.md — a config dir Claude Code has started in once, hardened by sec0-harden.sh"
+  log_nofix "docs/how-to/harden-the-host.md — a config dir Claude Code has started in once, hardened by deploy-harden.sh"
   log_end; exit 1
 fi
 
 GUARDS='floor-hook.sh guard-lib.sh floor-normalize.awk guard-selfedit.sh guard-bash.sh guard-egress.sh annotate-web.sh pin-instructions.sh context-resolve.sh floor-observe.sh guard-cloud.sh guard-destroy.sh guard-deliverables.sh guard-apiroute.sh govern-hook.sh'
 # THE RECOVERY PATH, SEPARATE FROM THE GUARDS AND INSTALLED WITH THEM (harbor#275).
 # These are not guards — nothing wires them to a hook — but B6's own block message
-# is `sh $CFG/bin/restore.sh …`, so a floor whose gate can fire without them
+# is `sh $CFG/bin/deploy-restore.sh …`, so a floor whose gate can fire without them
 # present hands a locked-out operator a command that is not there. Held apart from
 # $GUARDS because that variable is read by floor-test.sh's X13 payload derivation,
 # guard-integrity.sh's floor MINIMUM and floor-uninstall.sh's removal list, and
 # widening it would change all three by accident.
 # baseline-pin.sh left this list when deploy's snapshots replaced it (harbor#765).
-# log-lib.sh and install-lib.sh are what restore.sh, sec0-harden.sh and pin-instructions.sh source
+# library-log.sh and deploy-install-lib.sh are what deploy-restore.sh, deploy-harden.sh and pin-instructions.sh source
 # (harbor#771, #765), so they are the recovery path too: copied, and content-pinned, with it.
-RECOVERY='restore.sh sec0-harden.sh log-lib.sh install-lib.sh'
+RECOVERY='deploy-restore.sh deploy-harden.sh library-log.sh deploy-install-lib.sh'
 # THE EVENT PRODUCERS (harbor#1043, PR 2): the hook and the bus it calls. Not guards — nothing here
 # can veto a call, and the floor never depends on them — so they are copied and recorded in the
 # manifest but NOT content-pinned and not in $GUARDS (B6's minimum, floor-test's X13 payload and
 # the removal list all read that variable). floor-uninstall reads this line too. event-bus.sh
-# sources log-lib.sh, which $RECOVERY already ships beside it.
+# sources library-log.sh, which $RECOVERY already ships beside it.
 EVENTS='event-bus.sh event-hook.sh'
 # THE APPROVAL GATE (harbor#1018): the tools the ask and allow rules name, the library they share, and merge-stack
 # with its merge backstop, which every gate merge goes through (ship contract §5b.10). Copied and recorded, NOT content-pinned and NOT in $GUARDS: no hook runs them, and
 # B6 blocks every session over a pinned file with no kill-switch line. The rules name these installed copies because
 # a session cannot write <cfg>/bin (B1, guard-bash, guard-selfedit). Required checks are each repo's own
 # .agents/required-checks.tsv, read from GitHub (contract §5a.6). floor-uninstall reads this line too.
-GATES='fs-lib.sh gate-lib.sh gate-classify.sh gate-merge.sh gate-approve.sh gate-queue.sh merge-check.sh gate-merge-stack.sh gate-merge-stack-resolve.py deploy-fleet.sh'
+GATES='library-fs.sh library-gate.sh gate-classify.sh gate-merge.sh gate-approve.sh gate-queue.sh gate-merge-check.sh gate-merge-stack.sh gate-merge-stack-resolve.py deploy-fleet.sh'
 
 # The floor hook wiring: event, matcher, guard. guard-egress covers Bash+Write;
 # guard-bash Bash; guard-selfedit Write|Edit|MultiEdit; annotate-web the web/MCP
 # content sources on PostToolUse.
-# <onfail> is `block` for a veto (P13E-2): a PreToolUse hook that times out or crashes otherwise lets the
-# call through ("A timed-out command hook doesn't block the tool call", code.claude.com/docs/en/hooks), so
-# padding a payload until the guard is slow was a way past every rule. Set on a hook already wired, too.
-merge_hook() { # <settings-json> <event> <matcher> <cmd> [<onfail>]  → new json on stdout
-  jq --arg ev "$2" --arg m "$3" --arg cmd "$4" --arg of "${5:-}" '
-    ({type:"command", command:$cmd} + (if $of == "" then {} else {onFailure:$of} end)) as $h
-    | .hooks //= {}
-    | .hooks[$ev] //= []
-    # find or create the matcher bucket
-    | (.hooks[$ev] | map(.matcher == $m) | index(true)) as $i
-    | if $i == null
-      then .hooks[$ev] += [{matcher:$m, hooks:[$h]}]
-      else (.hooks[$ev][$i].hooks |= (
-              if (map(.command) | index($cmd)) == null
-              then . + [$h]
-              elif $of == "" then .
-              else map(if .command == $cmd then . + {onFailure:$of} else . end) end)) end
-  ' "$1"
-}
+# <onfail> is `block` for a veto (P13E-2): padding a payload until the guard is slow was a way past every
+# rule. il_merge_hook (install-lib) sets it on a hook already wired, too.
 
-# onFailure needs Claude Code 2.1.295 or later (code.claude.com/docs/en/hooks). FLOOR_ONFAILURE=1|0 decides
-# for a sandbox or a box without `claude` on PATH; otherwise the installed version does, and an unknown
-# version gets no field, because an older client may not accept a key it does not know.
-floor_onfailure() {
-  case "${FLOOR_ONFAILURE:-}" in 1) echo block; return 0 ;; 0) return 0 ;; esac
-  _ofv="$(claude --version 2>/dev/null | sed -n 's/^\([0-9][0-9]*\)\.\([0-9][0-9]*\)\.\([0-9][0-9]*\).*/\1 \2 \3/p' | head -n 1)"
-  [ -n "$_ofv" ] || return 0
-  set -- $_ofv
-  if [ "$1" -gt 2 ] || { [ "$1" -eq 2 ] && { [ "$2" -gt 1 ] || { [ "$2" -eq 1 ] && [ "$3" -ge 295 ]; }; }; }; then echo block; fi
-  return 0
-}
-ONFAIL="$(floor_onfailure)"
+# onFailure needs Claude Code 2.1.295 or later: il_onfailure decides, FLOOR_ONFAILURE=1|0 overriding it.
+ONFAIL="$(il_onfailure)"
 
 # THE WIRING TABLE (harbor#766), one row per hook: <event>;<matcher>;<argv after /bin/sh>;<opt-in>;
 # <also wired by>. A bare name in the argv is a file in <dir>/bin. The dry run and the apply both
@@ -183,7 +156,7 @@ PostToolUse;WebFetch|WebSearch|ToolSearch|mcp__.*;floor-hook.sh --advisory annot
 # PostToolUse/Stop hook can read it. Claude Code spawns each hook fresh, so a
 # SessionStart hook cannot export it; a per-session file is the only channel.
 # Wired WITHOUT floor-hook.sh: it is a recorder, never a veto, and every path
-# in it already exits 0. runtime-install.sh wires this same hook (RESOLVER_HOOK),
+# in it already exits 0. deploy-runtime-install.sh wires this same hook (RESOLVER_HOOK),
 # so floor-uninstall.sh leaves it wired while that installer is on the box.
 SessionStart;;context-resolve.sh;;runtime-install
 # L0-11 (harbor#75) — the SAME recorder at PostToolUse, where it learns which
@@ -212,7 +185,7 @@ SubagentStart;;event-hook.sh
 SubagentStop;;event-hook.sh
 PostToolUse;Monitor|ScheduleWakeup|CronCreate|Workflow|Bash|Skill|Read;event-hook.sh
 # The two opt-ins, last so a default install wires exactly what it did before.
-# B6 (--with-b6) is fail-CLOSED and lands after the floor is verified (FLOOR.md
+# B6 (--with-b6) is fail-CLOSED and lands after the floor is verified (docs/explanation/admission-baseline.md
 # order). SG (harbor#291, --with-stop-gate) can refuse to let a TURN end, so it
 # is a deliberate act per box; STANDALONE because floor-hook.sh speaks the
 # PreToolUse protocol and this verdict is `decision:"block"`.
@@ -243,7 +216,7 @@ wire_floor() {
             log_end; exit 1 ;;
     esac
     _of=''; [ "$_ev" != PreToolUse ] || _of="$ONFAIL"   # every PreToolUse row is a veto
-    NEW="$(printf '%s' "$NEW" | merge_hook /dev/stdin "$_ev" "$_m" "$(_hook_cmd "$_argv")" "$_of")"
+    NEW="$(printf '%s' "$NEW" | il_merge_hook /dev/stdin "$_ev" "$_m" "$(_hook_cmd "$_argv")" "$_of")"
   done <<EOF
 $(floor_hooks)
 EOF
@@ -253,30 +226,30 @@ wire_floor
 
 if [ "$IL_APPLY" -eq 1 ]; then log_head "apply to $DIR"; else log_head "plan for $DIR (dry run: nothing is written)"; fi
 # THE VERDICT, AT THE MOMENT OF DECISION (2026-08-03). Five documents described
-# `pass-score.sh` as the gate on this installer. It is not one and never was: no
+# `eval-pass-score.sh` as the gate on this installer. It is not one and never was: no
 # CI job wraps this script, so `--live --apply` was never blocked by anything. The
 # fix is DISCLOSURE, not a gate: the install decision is the operator's policy
 # call, and a script that refuses on a score turns a judgement into a number the
 # next person routes around with a flag. Advisory by construction — a failure to
 # compute it is reported as that, never as approval.
 # LINT X7 REPORTS THIS CALL AND THAT ADVISORY IS CORRECT — it stands on purpose.
-# pass-score.sh is repo-scoped: it reads $ROOT/FLOOR.md, the adversarial pass
+# eval-pass-score.sh is repo-scoped: it reads $ROOT/docs/explanation/admission-baseline.md, the adversarial pass
 # register, which is not shipped to a config dir either; shipping the script alone
-# would make it RUN AND FAIL on every install, and shipping FLOOR.md to fix that
+# would make it RUN AND FAIL on every install, and shipping docs/explanation/admission-baseline.md to fix that
 # would put the defect register on every box to serve one advisory line. So the
 # call stays repo-only and the ABSENCE is announced (CONSTITUTION No.2 clause 7).
-if [ -x "$SRC/pass-score.sh" ] || [ -f "$SRC/pass-score.sh" ]; then
+if [ -x "$SRC/eval-pass-score.sh" ] || [ -f "$SRC/eval-pass-score.sh" ]; then
   # The scorer's own status, never tail's: an unavailable verifier reported as exit 0 is the defect.
   _pstmp=$(mktemp "${TMPDIR:-/tmp}/harbor.XXXXXX"); _psrc=0
-  sh "$SRC/pass-score.sh" > "$_pstmp" 2>&1 || _psrc=$?
+  sh "$SRC/eval-pass-score.sh" > "$_pstmp" 2>&1 || _psrc=$?
   _ps="$(tail -3 "$_pstmp")"; rm -f "$_pstmp"
   if [ -n "$_ps" ]; then
     while IFS= read -r _l; do log_note "pass-score (ADVISORY — nothing here is gated on it): $_l"; done <<EOF
 $_ps
 EOF
-  else log_note "pass-score.sh produced no output (exit $_psrc) — that is not an approval"; fi
+  else log_note "eval-pass-score.sh produced no output (exit $_psrc) — that is not an approval"; fi
 else
-  log_note "pass-score verdict: UNAVAILABLE — no pass-score.sh beside $SRC (this is the installed copy; the register it scores lives in the repo, so run this installer from a harbor checkout for the number). Absence of a verdict is not an approval."
+  log_note "pass-score verdict: UNAVAILABLE — no eval-pass-score.sh beside $SRC (this is the installed copy; the register it scores lives in the repo, so run this installer from a harbor checkout for the number). Absence of a verdict is not an approval."
 fi
 for g in $GUARDS; do log_note "guard to copy into $DIR/bin: $g"; done
 for g in $EVENTS; do log_note "event producer to copy into $DIR/bin: $g (not a guard: no content pin)"; done
@@ -310,12 +283,12 @@ fi
 # exit code to predict the apply before anything is written.
 #
 # "THE CHECK SAID NO" AND "THE CHECK COULD NOT RUN" ARE DIFFERENT ANSWERS (harbor#313):
-# an install-stamp.sh that is simply NOT THERE was once announced as a regression that
+# an deploy-install-stamp.sh that is simply NOT THERE was once announced as a regression that
 # did not exist. STILL FAIL-CLOSED: an unrunnable check is not permission to deploy
 # over live work; only the diagnosis differs, decided by existence, not exit code.
-_stamp_tool="$SRC/install-stamp.sh"
+_stamp_tool="$SRC/deploy-install-stamp.sh"
 if [ ! -f "$_stamp_tool" ]; then
-  il_loss "the regression check could not run: install-stamp.sh is not next to this script ($_stamp_tool), so nothing says this deploy is safe (run it from a checkout, or re-run the runtime installer so the installed copy has it — harbor#313)" \
+  il_loss "the regression check could not run: deploy-install-stamp.sh is not next to this script ($_stamp_tool), so nothing says this deploy is safe (run it from a checkout, or re-run the runtime installer so the installed copy has it — harbor#313)" \
     "$(il_cmd --apply --accept-loss)"
 elif _st="$(sh "$_stamp_tool" --check "$DIR" floor-install 2>&1)"; then
   log_ok "no regression against what is installed (install-stamp)"
@@ -361,7 +334,7 @@ done
 if [ -n "$_gmiss" ]; then log_warn "approval gate NOT installed:$_gmiss not beside $SRC; deploy the floor from a checkout"
 else log_ok "approval gate copied into $DIR/bin: $(echo $GATES | tr ' ' ',') (harbor#1018)"; fi
 # ── NEVER ROLL BACK A FILE THE OTHER INSTALLER OWNS (PR #276 review, P1) ─────
-# Two of $RECOVERY are in runtime-install.sh's own $FILES, so copying them
+# Two of $RECOVERY are in deploy-runtime-install.sh's own $FILES, so copying them
 # unconditionally would, after a runtime deploy from a newer checkout and a floor
 # deploy from an older one, silently revert them to the older bytes and pin them —
 # while the runtime stamp goes on claiming the newer version is installed. The
@@ -372,7 +345,7 @@ else log_ok "approval gate copied into $DIR/bin: $(echo $GATES | tr ' ' ',') (ha
 # current author. Lexical compare is correct for same-offset ISO-8601, which one box
 # writes; a DST change between two installs makes it fail SAFE, toward copying.
 # THE SHARED SET IS DERIVED, never listed here (the T2 defect harbor#275 was made of).
-_rt_files="$(sed -n 's/^FILES="\(.*\)"/\1/p' "$SRC/runtime-install.sh" 2>/dev/null || true)"
+_rt_files="$(sed -n 's/^FILES="\(.*\)"/\1/p' "$SRC/deploy-runtime-install.sh" 2>/dev/null || true)"
 _stamp_f="$DIR/.helm-install-stamp"
 _rt_ts="$(sed -n 's/^runtime-install [0-9a-f]* \([^ ]*\).*/\1/p' "$_stamp_f" 2>/dev/null | tail -1)"
 _fl_ts="$(sed -n 's/^floor-install [0-9a-f]* \([^ ]*\).*/\1/p'   "$_stamp_f" 2>/dev/null | tail -1)"
@@ -467,18 +440,18 @@ CLAUDE_CONFIG_DIR="$DIR" sh "$DIR/bin/floor-observe.sh" </dev/null >/dev/null 2>
 # not write what its own line above says it writes.
 if [ -n "$KEPT" ]; then
   log_warn "KEPT the installed copy of: $KEPT — runtime-install stamped this dir AFTER the last floor deploy, and those files are in its payload too, so overwriting them would roll it back; they are pinned to the bytes now on disk, so B6 stays quiet. To make this floor source the author, deploy the runtime from it first"
-  log_fix "sh $(dirname "$0")/runtime-install.sh --apply $(il_spell)"
+  log_fix "sh $(dirname "$0")/deploy-runtime-install.sh --apply $(il_spell)"
 fi
 # RECORD WHAT WAS DEPLOYED (harbor#115), only after the apply ran, so a refused or
 # aborted install never claims to be installed. --live is install-stamp's own gate.
 _stw_rc=0
-if [ "$IL_LIVE" -eq 1 ]; then _stw="$(sh "$SRC/install-stamp.sh" --write "$DIR" floor-install --live 2>&1)" || _stw_rc=$?
-else _stw="$(sh "$SRC/install-stamp.sh" --write "$DIR" floor-install 2>&1)" || _stw_rc=$?; fi
+if [ "$IL_LIVE" -eq 1 ]; then _stw="$(sh "$SRC/deploy-install-stamp.sh" --write "$DIR" floor-install --live 2>&1)" || _stw_rc=$?
+else _stw="$(sh "$SRC/deploy-install-stamp.sh" --write "$DIR" floor-install 2>&1)" || _stw_rc=$?; fi
 if [ "$_stw_rc" -eq 0 ]; then
   log_ok "install-stamp: recorded floor-install in $DIR/.helm-install-stamp"
 else
   log_warn "install-stamp could not record this deploy, so the next run cannot detect a rollback: $(printf '%s\n' "$_stw" | tail -1)"
-  log_fix "sh $SRC/install-stamp.sh --write '$DIR' floor-install$( [ "$IL_LIVE" -eq 1 ] && echo ' --live' )"
+  log_fix "sh $SRC/deploy-install-stamp.sh --write '$DIR' floor-install$( [ "$IL_LIVE" -eq 1 ] && echo ' --live' )"
 fi
 # What this run installed, one row per file (install standard §3). B6's .helm-pins above is the
 # separate store: the tamper gate never reads a record written by the thing it checks.

@@ -1,14 +1,14 @@
 #!/usr/bin/env sh
 # bin/lint-name.sh (harbor#950): --added and its relay standard.names-added (harbor#968), --gen, the share column (D-83), the
-# private overlay (D-85). Split from tests/checks/lint.name-test.sh at the 500-line budget (tests/README.md T2); the fixture
-# tree comes from tests/checks/lint.name-fixture.sh.
+# private overlay (D-85). Split from tests/lint/name/name.test.sh at the 500-line budget (tests/README.md T2); the fixture
+# tree comes from tests/lint/name/fixture.sh.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 # the suite never reads the box's private overlay (D-85)
 HARBOR_SCOPE_PRIVATE="$TMP/no-private"; export HARBOR_SCOPE_PRIVATE; unset PORT_ROOT
 . "$T_ROOT/tests/checks/lint-fixture.sh"
 LN="$T_ROOT/bin/lint-name.sh"
 REG="$T_ROOT/standards/naming"
-. "$T_ROOT/tests/checks/lint.name-fixture.sh"
+. "$T_ROOT/tests/lint/name/fixture.sh"
 t_section "--added judges only the paths a branch adds, and standard.names-added relays it (harbor#968)"
 AD="$TMP/addedmode"; mini "$AD"
 : > "$AD/Legacy_Old.md"; mkdir -p "$AD/docs" "$AD/scripts"; printf 'one\n' > "$AD/docs/keep-me.md"
@@ -95,12 +95,12 @@ t_hasnt "…and is not told as a missing base" "$_nb" "no base to compare agains
 t_has "…and the rule's record goes red, because it could not judge" "$(cat "$_nr")" "standard.names-added"
 cp "$REG/registers.tsv" "$AD/standards/naming/registers.tsv"
 t_hasnt "restored, the same tree is no violation" "$(na)" "VIOLATION"
-t_eq "controls.tsv holds the rule at warn, owned by standard, with this suite as its red proof" "standard.names-added	warn	lint	bin/lint-conventions.sh	tests/checks/lint.name-test.sh" \
+t_eq "controls.tsv holds the rule at warn, owned by standard, with this suite as its red proof" "standard.names-added	warn	lint	bin/lint-conventions.sh	tests/lint/name/name.test.sh" \
   "$(awk -F'\t' '$1 == "standard.names-added" { print $1 "\t" $2 "\t" $3 "\t" $4 "\t" $11 }' "$REG/controls.tsv")"
 t_has "--list names it beside its sibling" "$(sh "$LN" --list)" "standard.names-added"
 
 t_section "--gen writes every view under build/, from the registry"
-M="$TMP/gen"; mini "$M"   # a copy of its own: in tests/checks/lint.name-test.sh this ran on the mutant tree
+M="$TMP/gen"; mini "$M"   # a copy of its own: in tests/lint/name/name.test.sh this ran on the mutant tree
 for _v in glossary naming-guide cli-tree labels vale; do
   t_exit "--gen $_v exits 0" 0 sh "$M/bin/lint-name.sh" --root "$M" --gen "$_v"
 done
@@ -110,13 +110,26 @@ t_has "…and its broader chain is whole" "$(grep '^| \*\*lint\*\*' "$M/build/na
 t_has "the CLI tree parses a family script back into its tuple" "$(cat "$M/build/naming/cli-tree.txt")" "harbor lint name    <- bin/lint-name.sh"
 t_has "the label set is <axis>:<value>" "$(cat "$M/build/naming/labels.tsv")" "$(printf 'family:admission\t')"
 t_has "the Vale swap list comes from the legacy aliases" "$(cat "$M/build/vale/styles/Harbor/Legacy.yml")" "'floor': security baseline"
+t_has "…and the spelling swap from the spelling aliases (D-16)" "$(cat "$M/build/vale/styles/Harbor/Spelling.yml")" "'behaviour': behavior"
 if command -v vale > /dev/null 2>&1; then
-  printf '# Notes\n\nThe floor blocks it.\n' > "$M/vale-probe.md"
-  t_has "vale runs the generated config and flags a legacy term" \
-    "$(cd "$M" && vale --config build/vale/.vale.ini vale-probe.md 2>&1)" "security baseline"
+  printf '# Notes\n\nThe floor blocks it. Its behaviour holds.\n' > "$M/vale-probe.md"
+  _vl="$(cd "$M" && vale --config build/vale/.vale.ini vale-probe.md 2>&1)"
+  t_has "vale runs the generated config and flags a legacy term" "$_vl" "security baseline"
+  t_has "…and a UK spelling" "$_vl" "Use behavior instead of behaviour"
 else
   t_eq "vale is absent: the generated config was not run (verified NOTHING about it)" absent absent
 fi
+
+t_section "spelling (D-16): a UK spelling is allowed nowhere and never expires"
+SP="$TMP/spelling"; mini "$SP"
+_al="$SP/standards/naming/aliases.tsv"; awk -F'\t' '$1 != "colour"' "$_al" > "$_al.new" && mv "$_al.new" "$_al"
+printf 'colour\tcolor\tspelling\tglossary\t2027-01-31\tD-16\n' >> "$_al"
+printf '#!/usr/bin/env sh\nCOLOUR_MODE_X=1\n' > "$SP/bin/probe.sh"
+_spf="$(sh "$SP/bin/lint-name.sh" --root "$SP" --format findings 2>/dev/null)"
+t_has "a spelling row with a surface or a date goes red" "$(sh "$SP/bin/lint-name.sh" --root "$SP" 2>&1)" \
+  "[name.registry-term] alias:colour — a spelling is allowed nowhere and never expires"
+t_hasnt "…and a spelling's US word is never judged as a term" "$_spf" "alias:behaviour"
+t_hasnt "a spelling is never an env prefix: a token under it in the tree is not judged" "$_spf" "env:COLOUR_MODE_X"
 
 t_section "share (D-83): a kind names the SET of shares it may take, and the lint refuses a missing or unknown one"
 SH="$TMP/share"; mini "$SH"
@@ -186,4 +199,38 @@ _hst="$(HARBOR_SCOPE_PRIVATE="$PV" sh "$LN" --self-test 2>&1)"; _hstrc=$?
 t_eq "--self-test never reads the box's overlay, even a bad one" "exit 0" "exit $_hstrc"
 rm -f "$PV/terms.tsv"
 t_eq "restored, no overlay means no overlay finding" "" "$(ovf)"
+
+t_section "pack overlays (harbor#950): <config dir>/terms.d/<id>.tsv adds a workload's system terms and nothing else"
+PK="$CLAUDE_CONFIG_DIR/terms.d"; mkdir -p "$PK"
+t_has "positive control: with no pack overlay a workload's prefix is unregistered" "$(chk env WIDGETSYS_LINT_X)" "not a registered system"
+{ printf '%s\n' "$_hdr"; _row widgetsys system; } > "$PK/widget.tsv"
+t_eq "a system row is accepted" "" "$(ovf)"
+t_has "…and takes effect: its env prefix is registered" "$(chk env WIDGETSYS_LINT_X)" "no finding"
+{ printf '%s\n' "$_hdr"; _row widget client; } > "$PK/widget.tsv"
+t_has "a client row goes red: a pack registers systems only" "$(ovf)" "private-term:widget"
+t_has "…as a block finding naming the pack file" "$(chk env HARBOR_SCOPE_X)" "terms.d/widget.tsv (pack overlay"
+{ printf '%s\n' "$_hdr"; _row widgetsys system; } > "$PK/widget.tsv"; cp "$PK/widget.tsv" "$PK/other.tsv"
+t_has "the same term in two packs goes red" "$(ovf)" "name.registry-duplicate"
+rm -f "$PK/other.tsv"; cp "$PK/widget.tsv" "$PV/terms.tsv"
+t_has "…and so does a term the private overlay also registers" "$(ovf)" "name.registry-duplicate"
+rm -f "$PV/terms.tsv"; { printf '%s\n' "$_hdr"; _row family system; } > "$PK/widget.tsv"
+t_has "a core term goes red" "$(ovf)" "name.registry-duplicate"
+printf 'id\tclass\nwidgetsys\tsystem\n' > "$PK/widget.tsv"
+t_has "a header that differs from core's goes red" "$(ovf)" "name.registry-shape"
+t_exit "…and fails the run" 1 sh -c 'HARBOR_SCOPE_PRIVATE="$1" sh "$2" --root "$3" --check env HARBOR_SCOPE_X >/dev/null 2>&1' _ "$PV" "$OV/bin/lint-name.sh" "$OV"
+_hst="$(sh "$LN" --self-test 2>&1)"; _hstrc=$?
+t_eq "--self-test never reads a pack overlay, even a bad one" "exit 0" "exit $_hstrc"
+CS="$TMP/cfg space"; mkdir -p "$CS/terms.d"; { printf '%s\n' "$_hdr"; _row widgetsys system; } > "$CS/terms.d/widget.tsv"
+t_exit "a pack overlay path with whitespace is unchecked, never read short" 3 env CLAUDE_CONFIG_DIR="$CS" sh "$OV/bin/lint-name.sh" --root "$OV" --check env WIDGETSYS_LINT_X
+rm -rf "$PK"
+t_eq "restored, no pack overlay means no finding" "" "$(ovf)"
+
+t_section "field grammar and severity priority (harbor#1001)"
+t_has "a retired time spelling goes red" "$(sh "$LN" --check field created_ts 2>&1)" "[name.field] field:created_ts"
+t_hasnt "its successor stays green" "$(sh "$LN" --check field created_at 2>&1)" "name.field"
+F="$TMP/field"; mini "$F"
+sed 's/^\(id.term.kind.surfaces.remove_by.\)note$/\1note_ts/' "$F/standards/naming/aliases.tsv" > "$TMP/al"; mv "$TMP/al" "$F/standards/naming/aliases.tsv"
+t_has "a register header column off the grammar goes red" "$(sh "$F/bin/lint-name.sh" --root "$F" 2>&1)" "column:aliases.tsv:note_ts"
+sed 's/^\(critical.*	\)p0\(	\)/\1p1\2/' "$F/standards/naming/terms.tsv" > "$TMP/tm"; mv "$TMP/tm" "$F/standards/naming/terms.tsv"
+t_has "two severities setting one priority go red" "$(sh "$F/bin/lint-name.sh" --root "$F" 2>&1)" "is already set by"
 t_done

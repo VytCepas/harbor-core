@@ -1,6 +1,6 @@
 # Shared by tests/event/dispatch/*.test.sh (harbor#1044), sourced after t_init: a hermetic bus pinned to noon
 # UTC today, the dispatcher installed into the sandbox config dir as runtime-install would (bytes and manifest
-# rows), a CHECKS.md register installed beside it that the suite writes rows into, and a stub `claude` that never
+# rows), a docs/reference/checks.md register installed beside it that the suite writes rows into, and a stub `claude` that never
 # spends anything. The installed copy is what runs: `dispatch` refuses any other (review r3 #1), and the register
 # is read only from {cfg}/bin with its recorded blob (r3 #5). Not a Claude session: the suite is the operator.
 unset CLAUDECODE
@@ -15,16 +15,16 @@ record() { # <name>: {cfg}/bin/<name>'s blob, as the runtime-install row of {cfg
   mv -f "$CFG/.harbor-manifest.new" "$CFG/.harbor-manifest"
 }
 install_bin() { # <name> <file>: copy into {cfg}/bin and record its blob as runtime-install does
-  mkdir -p "$CFG/bin"; cp "$2" "$CFG/bin/$1"; chmod 755 "$CFG/bin/$1"; record "$1"
+  mkdir -p "$(dirname "$CFG/bin/$1")"; cp "$2" "$CFG/bin/$1"; chmod 755 "$CFG/bin/$1"; record "$1"
 }
-for _f in event-dispatch.sh event-bus.sh log-lib.sh; do install_bin "$_f" "$T_ROOT/bin/$_f"; done
-ED="$CFG/bin/event-dispatch.sh"; EB="$CFG/bin/event-bus.sh"; CKS="$CFG/bin/CHECKS.md"
-printf '# fixture\n\n## Register\n\n| id | watches | schedule | notifies | red means |\n|---|---|---|---|---|\n' > "$CKS"; record CHECKS.md
+for _f in event-dispatch.sh event-bus.sh library-log.sh; do install_bin "$_f" "$T_ROOT/bin/$_f"; done
+ED="$CFG/bin/event-dispatch.sh"; EB="$CFG/bin/event-bus.sh"; CKS="$CFG/bin/docs/reference/checks.md"; mkdir -p "$CFG/bin/docs/reference"
+printf '# fixture\n\n## Register\n\n| id | watches | schedule | notifies | red means |\n|---|---|---|---|---|\n' > "$CKS"; record docs/reference/checks.md
 register() { # <id> <kind>... — a register row naming each kind and the disable command, re-recorded
   _rid="$1"; shift; _ks=""
   for _k in "$@"; do _ks="$_ks \`$_k\`"; done
   printf '| `%s` | a test rule | fires on%s; off: `harbor event on --off %s` | none | a test failed |\n' "$_rid" "$_ks" "$_rid" >> "$CKS"
-  record CHECKS.md
+  record docs/reference/checks.md
 }
 spend_file() { echo "$GT/spend/$(( ($(date -u +%s) + ${HARBOR_EVENT_BUS_SKEW:-0}) / 86400 ))"; }   # today's, as the dispatcher counts it
 emit() { sh "$EB" emit "$@" 2>/dev/null; }                     # <kind> <subject> [opts] → the id
@@ -56,9 +56,9 @@ STUB
 chmod +x "$T_BIN/claude"
 stub_cost() { if [ -n "${1-}" ]; then printf '%s\n' "$1" > "$T_TMP/stub.cost"; else rm -f "$T_TMP/stub.cost"; fi; }
 # A cmd rule runs only `sh {cfg}/bin/<allowlisted script>` whose bytes {cfg}/.harbor-manifest records (review r2
-# #1). The suites install a stand-in pulse-notify.sh there, with the row runtime-install would write, that runs
+# #1). The suites install a stand-in alert-notify.sh there, with the row runtime-install would write, that runs
 # $T_TMP/h/<rule id>.sh, else $T_TMP/h/default.sh: the real allowlist and hash check, each test's own behaviour.
-HND="$CFG/bin/pulse-notify.sh"
+HND="$CFG/bin/alert-notify.sh"
 printf '#!/bin/sh\nf="%s/h/$HARBOR_EVENT_RULE.sh"; [ -f "$f" ] || f="%s/h/default.sh"\nexec /bin/sh "$f" "$@"\n' "$T_TMP" "$T_TMP" > "$T_TMP/router.sh"
-install_bin pulse-notify.sh "$T_TMP/router.sh"
+install_bin alert-notify.sh "$T_TMP/router.sh"
 handler() { mkdir -p "$T_TMP/h"; cp "$2" "$T_TMP/h/$1.sh"; }   # <rule id | default> <script>

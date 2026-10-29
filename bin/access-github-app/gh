@@ -1,0 +1,58 @@
+#!/bin/sh
+# gh shim (harbor#1018): inside a Claude Code session (CLAUDECODE=1) gh acts as the harbor-claude GitHub App,
+# with a 1-hour token; everywhere else it is the operator's own gh, untouched.
+REAL=/opt/homebrew/bin/gh
+# The target repo's owner, in priority order: -R/--repo, `gh repo <verb> OWNER/REPO`, a github.com URL argument,
+# an api repos/ or orgs/ path, else the cwd's origin.
+_owner() {
+  _prev=
+  for _a in "$@"; do
+    case "$_prev" in -R|--repo) printf '%s\n' "${_a%%/*}"; return ;; esac
+    case "$_a" in --repo=*) _a="${_a#--repo=}"; printf '%s\n' "${_a%%/*}"; return ;; esac
+    _prev="$_a"
+  done
+  if [ "${1:-}" = repo ] && [ $# -ge 3 ]; then
+    case "$3" in *github.com/*|-*) ;; */*) printf '%s\n' "${3%%/*}"; return ;; esac
+  fi
+  for _a in "$@"; do
+    case "$_a" in
+      https://github.com/*|http://github.com/*|github.com/*) _a="${_a#*github.com/}"; printf '%s\n' "${_a%%/*}"; return ;;
+      repos/*|/repos/*|orgs/*|/orgs/*) _a="${_a#/}"; _a="${_a#*/}"; printf '%s\n' "${_a%%/*}"; return ;;
+    esac
+  done
+  # `api graphql -f owner=X`: the query names its repo in a field, not in a path.
+  if [ "${1:-}" = api ] && [ "${2:-}" = graphql ]; then
+    for _a in "$@"; do
+      case "$_a" in owner=*) _a="${_a#owner=}"; case "$_a" in ''|*[!A-Za-z0-9._-]*) ;; *) printf '%s\n' "$_a"; return ;; esac ;; esac
+    done
+  fi
+  _u="$(git config --get remote.origin.url 2>/dev/null)" || return 0
+  case "$_u" in *github.com[:/]*) _u="${_u#*github.com[:/]}"; printf '%s\n' "${_u%%/*}" ;; esac
+}
+# Under the confinement ~/.config/harbor-app is OS-denied (harbor#1298, #555 decision 7): the access-confinement hook,
+# which runs outside it, copies the table and mints each account's token into this cache, readable from inside.
+_C="${HARBOR_CONFINEMENT_CACHE:-$HOME/.cache/harbor/confinement}"
+# One App installation per account: an owner listed in ~/.config/harbor-app/orgs.tsv (owner<TAB>account, owner
+# case-insensitive) gets that account's installation; every other owner, and a box with no table, keeps the default.
+# awk's own open decides, not `[ -r ]`: under Seatbelt access(2) can say readable for a file open(2) refuses.
+_account() {
+  for _tf in "$HOME/.config/harbor-app/orgs.tsv" "$_C/orgs.tsv"; do
+    _a="$(awk -F'\t' -v o="$1" 'tolower($1) == tolower(o) { print $2; exit }' "$_tf" 2>/dev/null)" && { printf '%s\n' "$_a"; return 0; }
+  done; return 0
+}
+# _cached <account> -> the hook-minted token while it has a minute left; 1 otherwise (absent, stale, unreadable)
+_cached() {
+  { read -r _e && read -r _k; } < "$_C/gh-${1:-VytCepas}" 2>/dev/null || return 1
+  case "$_e" in ''|*[!0-9]*) return 1 ;; esac
+  [ "$_e" -gt $(($(date +%s) + 60)) ] && [ -n "$_k" ] && printf '%s\n' "$_k"
+}
+if [ "${CLAUDECODE:-}" = 1 ]; then
+  _acct="$(_account "$(_owner "$@")")"
+  _t="$(_cached "$_acct")" || _t="$(sh "$HOME/.config/harbor-app/mint-token.sh" $_acct)" || { echo "gh shim: could not mint the App token (see above); refusing to fall back to the operator's login" >&2; exit 1; }
+  # gh opens its config dir on start; a confined command cannot open the operator's, so it gets a writable one.
+  if [ -z "${GH_CONFIG_DIR:-}" ] && ! cat "$HOME/.config/gh/config.yml" >/dev/null 2>&1; then
+    GH_CONFIG_DIR="${TMPDIR:-/tmp}/harbor-gh-config"; mkdir -p "$GH_CONFIG_DIR"; export GH_CONFIG_DIR
+  fi
+  GH_TOKEN="$_t" exec "$REAL" "$@"
+fi
+exec "$REAL" "$@"

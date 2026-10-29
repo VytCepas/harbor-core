@@ -2,7 +2,7 @@
 
 **Status:** E1 of the Events milestone (harbor#1043). PR 1 lands the bus: `bin/event-bus.sh`, the
 `harbor event` verb, its suites under `tests/event/bus/`, and the `event.retention` row in
-[CHECKS.md](../../CHECKS.md). PR 2 adds the producers below (harbor#1051 PR 1 adds the tool and agent ones); the CI waits that
+[docs/reference/checks.md](../../docs/reference/checks.md). PR 2 adds the producers below (harbor#1051 PR 1 adds the tool and agent ones); the CI waits that
 move onto `wait` (PR 3) are not built yet. E2 (harbor#1044), the dispatcher that reacts to events, is
 [below](#e2--reacting-harbor1044); it ships inert. Design origin: the operator's research brief of 2026-10-05, adapted here to the
 standard names (#949) and to the night-stack contract of 2026-10-06.
@@ -64,22 +64,11 @@ The suite now runs 12 writers × 50 near-cap emits, where the shell-`printf` app
 
 ## Kinds and subjects
 
-| start kind | terminal kind(s) | subject |
-|---|---|---|
-| `session.start` | `session.stop` | Claude Code `session_id` |
-| `agent.spawn` | `agent.done` | the subagent's `agent_id` (else `<session_id>:<tool_use_id>`) |
-| `tool.background.start` | `tool.background.done` | `<session_id>:<tool_use_id>` |
-| `pr.opened` | `pr.merged`, `pr.closed` | `<owner>/<repo>#<n>` |
-| `ci.job.start` | `ci.job.done` | `<owner>/<repo>:<run_id>:<job>` |
-| `obligation.open` | `obligation.close` | the obligation id |
-| `approval.open` | `approval.close` | the approvals queue id, `<kind>-<owner>_<name>[-<pr>]-<sha12>` (harbor#1018; emitted by `bin/gate-lib.sh`) |
-| `skill.call` | none: a point event | the skill name (harbor#1181 lane 7) |
-| `memory.read` | none: a point event | the memory note's basename, never its path (harbor#1181 lane 7) |
-| `session.state` | none: a point event, only on a change | `session_id`; `data.title` is the state (waiting-agents, waiting-operator, blocked, done, idle), `data.evidence` its reason (harbor#1043; `bin/session-state.sh`) |
-| `session.save-now` | none: a point event | `session_id`; `data.title` is `ctx N%` (the save-now nudge was sent) |
-| — | `git.commit`, `git.merge` | the commit sha |
-| — | `check.<id>.ran` | the check id |
-| — | `obligation.repair` | the obligation id |
+**The register is [contracts/event-kinds.tsv](../../contracts/event-kinds.tsv)** (harbor#1367): every kind, its shape
+(start, terminal or point), its subject and the file that emits it. It replaced the table that stood here, because a
+prose table let two presets and the `ci` obligation listen for `ci.job.done` while nothing emitted it. Lint
+`event.kind-registered` holds it to the code: an emitted kind with no row, a row whose emitter never names it, and a
+preset listening for a kind nothing emits are each red.
 
 A start and its terminal share the subject verbatim, so the obligations ledger (#1050) pairs them
 without guessing. `emit` checks only the shape of a kind (dotted lower case), not membership.
@@ -96,8 +85,8 @@ without guessing. `emit` checks only the shape of a kind (dotted lower case), no
 | `bin/event-hook.sh` | `PostToolUse` on `Skill` | `skill.call` (`data` = `session_id`) | the skill name | `hook.post-tool-use` |
 | `bin/event-hook.sh` | `PostToolUse` on `Read` of `*/memory/*.md`, `MEMORY.md` or `INDEX-FULL.md` | `memory.read` (`data` = `session_id`) | the basename | `hook.post-tool-use` |
 | `bin/event-hook.sh` | `PostToolUse` on `Bash` whose command's last simple command is `gh pr create` and whose stdout ends in one github.com pull URL | `pr.opened` (`data` = `session_id`, `link`) | `<owner>/<repo>#<n>` | `hook.post-tool-use` |
-| `bin/session-state.sh` | Claude Code `Stop`, when the session's state changed | `session.state` (`data` = `session_id`, `title`, `evidence`) | `session_id` | `hook.session-state` |
-| `bin/session-state.sh` | Claude Code `Stop`, when `event.session-save-now` is on and the nudge is sent | `session.save-now` (`data` = `session_id`, `title`) | `session_id` | `hook.session-state` |
+| `hooks/session-state/session-state.sh` | Claude Code `Stop`, when the session's state changed | `session.state` (`data` = `session_id`, `title`, `evidence`) | `session_id` | `hook.session-state` |
+| `hooks/session-state/session-state.sh` | Claude Code `Stop`, when `event.session-save-now` is on and the nudge is sent | `session.save-now` (`data` = `session_id`, `title`) | `session_id` | `hook.session-state` |
 | `hooks/post-commit` | `git commit`, `--amend`, a single `cherry-pick` (not a rebase or a multi-commit sequence: those replay commits that already have an event) | `git.commit` | the new sha | `git.post-commit` |
 | `hooks/post-merge` | `git merge`, fast-forward or not (not `--squash`) | `git.merge` | the sha HEAD ends at | `git.post-merge` |
 
@@ -110,10 +99,10 @@ without guessing. `emit` checks only the shape of a kind (dotted lower case), no
 - **Wiring.** `bin/floor-install.sh` copies `event-hook.sh` and `event-bus.sh` into the config dir (not
   content-pinned: nothing depends on them) and wires the hook once per event, standalone and fail-open.
   `floor-uninstall.sh` removes both. The git hooks run where `git config core.hooksPath hooks` is set, as
-  for the other hooks (CONTRACTS/README.md); a merge commit fires `post-merge` only, not `post-commit`.
+  for the other hooks (contracts/README.md); a merge commit fires `post-merge` only, not `post-commit`.
 - **Off:** `touch <bus dir>/producers.off`; remove it to turn the producers back on.
 - **Never a cost to the caller.** Every path exits 0 and prints nothing, with the bus dir unwritable, a
-  file in its place, `event-bus.sh` or `log-lib.sh` missing, or a garbage payload
+  file in its place, `event-bus.sh` or `library-log.sh` missing, or a garbage payload
   (`tests/event/producer/failsafe.test.sh`). One emit is about 50 ms on the dev box.
 - **Bounded.** Reading the payload and the emit each get `HARBOR_EVENT_BUS_TIMEOUT` seconds (default 2,
   1 to 60); a hung `event-bus.sh` is killed with its children, a stdin that never closes is abandoned,
@@ -150,9 +139,10 @@ without guessing. `emit` checks only the shape of a kind (dotted lower case), no
   that never had a `SubagentStart`. Its payload (2.1.292 hook reference) has no final-versus-interim field:
   `stop_hook_active` only says a stop hook is already continuing the turn. So the producer emits all of them and
   the fold dedupes: the first done closes the row, later ones are no-ops, and a new `agent.spawn` opens it again.
-- **Not here:** `ci.job.*` (the runner's hook, PR #1072), a `claude agents` dispatch (it is an ordinary
-  Bash call; not told apart from one), and a producer for `pr.merged` / `pr.closed`. A new Claude Code
+- **Not here:** a `claude agents` dispatch (it is an ordinary Bash call; not told apart from one). A new Claude Code
   producer is one `case` arm in `event-hook.sh` plus one row in `floor-install.sh`'s wiring table.
+- **Elsewhere (harbor#1367):** `ci.job.*` from the runner job hook through `ci-governor listen` (or the hook itself on a
+  host runner), and `pr.merged` / `pr.closed` from the obligations reconcile, which is what sees GitHub merge a PR.
 
 ## The tool
 
@@ -206,7 +196,7 @@ It reads `--since-offset` and never moves it. A `wait` killed with SIGKILL canno
 | A wait across UTC midnight follows the new day's file | `wait.test.sh` |
 | The bus lives under `~/.local/state/harbor/events/` unless `HARBOR_EVENT_DIR` says otherwise | `emit.test.sh` |
 
-**Retention** is `event.retention` in CHECKS.md. It rides the first `emit` of each UTC day rather
+**Retention** is `event.retention` in docs/reference/checks.md. It rides the first `emit` of each UTC day rather
 than a schedule, because a recurring job needs the operator's yes and the bus already has a writer
 that runs daily; `prune.off` in the bus dir turns it off.
 
@@ -239,7 +229,7 @@ integrity path the floor refuses to a session (below). Its place on the bus is `
 2. **Caps:** $0.25 per spawned agent, $5 per UTC day, enforced by the dispatcher from `total_cost_usd`.
 3. **Orchestrator:** a standing `claude --bg` session subscribes; projects-orchestrator does not change.
    It waits on `subscribe`, which is refused until the socket is verified (below).
-4. **Ships inert.** Merging and deploying change nothing at runtime. `runtime-install.sh` copies
+4. **Ships inert.** Merging and deploying change nothing at runtime. `deploy-runtime-install.sh` copies
    `event-dispatch.sh` into the config dir and nothing runs it: no installer loads the launchd plist, writes a
    rule, creates `spawn.on` or wires the catch-up hook. Each is a step the operator takes (opting in, below).
 
@@ -304,23 +294,23 @@ harbor event on '<grep -E pattern>' --id event.<object> [--debounce S] [--rate N
 harbor event on --preset <id> | --list | --off <id>
 ```
 
-- **A rule exists only with its CHECKS.md row.** `on` refuses an id with no register row, a row whose
+- **A rule exists only with its docs/reference/checks.md row.** `on` refuses an id with no register row, a row whose
   schedule cell does not name, in backticks, every dotted kind the pattern names, and a row without
   `` `harbor event on --off <id>` ``. The pattern is exactly `"kind":"<kind>"` or `"kind":"(<kind>|<kind>…)"`,
   so the named kinds are all it can match (review r3 #10: `"kind":"probe\.go"|.` fired on every event). The
-  register and the presets are read only from `{cfg}/bin/CHECKS.md` and `{cfg}/bin/event-rules.tsv`, which
+  register and the presets are read only from `{cfg}/bin/docs/reference/checks.md` and `{cfg}/bin/event-rules.tsv`, which
   runtime-install ships as DATA, and only while their bytes are the blob its manifest records: never a working
   tree, whose checked-out branch decided whether a preset was valid (review r3 #5). `{cfg}` is spelled one way
   at `on` and at load, a trailing `/` dropped.
-  So "every rule is a CHECKS.md row naming its trigger and its disable" is enforced where a rule is made, and
-  `tests/checks/schedules-test.sh` holds the shipped presets to it.
+  So "every rule is a docs/reference/checks.md row naming its trigger and its disable" is enforced where a rule is made, and
+  `tests/check/schedules/schedules.test.sh` holds the shipped presets to it.
 - **And again on every load.** A rule file is re-checked each time the dispatcher reads it: its id against its
   file name, `kind` (`cmd` or `spawn`), the tools allowlist, the numbers, its register row and its handler. A
   file edited or written by hand after `on` is refused the way `on` would refuse it: it runs nothing, gets no
   backstop, is a `refused` ledger line, one `[check:event.dispatch]` line a day, and `REFUSED: <why>` in `--list`.
 - **A handler is an installed Harbor script, and nothing else.** A cmd rule's argv is exactly
   `sh {cfg}/bin/<script>`, where `<script>` is on the dispatcher's `HANDLERS` allowlist (the handler scripts of
-  `CONTRACTS/event-rules.tsv`, held equal by `registry.test.sh`) and the file's git blob is the one
+  `contracts/event-rules.tsv`, held equal by `registry.test.sh`) and the file's git blob is the one
   `runtime-install` recorded for it in `{cfg}/.harbor-manifest`. `on` refuses anything else (exit 4) and every
   load refuses it again, so a rule file edited by hand, or a script edited after `on`, runs nothing. A denylist
   cannot hold: review r2 reached an agent through an absolute path, a script, a PATH edit, a copied binary,
@@ -400,7 +390,7 @@ injection, and it has no row for a per-turn hook. Its DELIBERATE SURFACE read 42
 with or without the hook, because nothing wires it. The 0-bytes-when-empty property is measured in
 `tests/event/dispatch/pull.test.sh` instead (`wc -c` of the output). Wired, the hook costs 0 bytes on a turn
 with no news and at most 400 on one with news, every turn after; that is the per-turn multiplier
-`CONTRACTS/hooks.md` refuses `UserPromptSubmit` for, which is why it is opt-in and not installed.
+`contracts/hooks.md` refuses `UserPromptSubmit` for, which is why it is opt-in and not installed.
 
 ### The messaging socket
 
@@ -426,9 +416,9 @@ builds it: a delivered event becomes user-turn text in a live session, so it mus
 
 ### fleet-snapshot and pulse
 
-`CONTRACTS/event-rules.tsv` ships two presets, **neither on**: `event.fleet-snapshot` runs
-`fleet-snapshot-refresh.sh` on `session.start`, `session.stop`, `pr.opened`, `pr.merged`, `git.merge` or
-`ci.job.done`, and `event.pulse` runs `pulse-notify.sh` on `ci.job.done`, `obligation.open`,
+`contracts/event-rules.tsv` ships two presets, **neither on**: `event.fleet-snapshot` runs
+`status-fleet-snapshot-refresh.sh` on `session.start`, `session.stop`, `pr.opened`, `pr.merged`, `git.merge` or
+`ci.job.done`, and `event.pulse` runs `alert-notify.sh` on `ci.job.done`, `obligation.open`,
 `obligation.close` or `git.merge`, each with an hourly backstop. Their 300 s and 900 s launchd timers are
 untouched; moving one is the operator's: install the preset, then boot out its timer.
 
@@ -438,7 +428,7 @@ untouched; moving one is the operator's: install the preset, then boot out its t
 review r3 #1 wrote every one of them from a session. They are now refused to a session where Harbor's floor
 refuses anything:
 
-- `{cfg}/.helm-dispatch/` is an integrity row of `CONTRACTS/helm-state.md`, so guard-bash (every write verb
+- `{cfg}/.helm-dispatch/` is an integrity row of `contracts/control-plane-state.md`, so guard-bash (every write verb
   `FILES` models, `touch` and a `cd` into the dir included), guard-selfedit (Write, Edit) and the B1 deny list
   (`Edit(~/.claude/.helm-dispatch/**)`) refuse it, and lint F14 holds the three layers to the row.
 - `{cfg}/.harbor-autoship.off` is in guard-bash's `FILES`: deleting or moving it lifts the switch. Write and
@@ -448,35 +438,35 @@ refuses anything:
   path, `event-bus.sh dispatch|on` and `harbor event dispatch|on`; `on --list` and every other bus verb stay
   open. The script refuses the same acts itself when `CLAUDECODE` is set, which covers a script a session wrote.
 - **Residual.** A session that writes a script which does the write itself, and unsets `CLAUDECODE` first, is
-  harbor#114's general residual (FLOOR.md): the guards read command text. What stays fail-closed behind that is
+  harbor#114's general residual (docs/explanation/admission-baseline.md): the guards read command text. What stays fail-closed behind that is
   the spend record's size mark and the per-load re-checks of every rule.
 
 ### Opting in (the operator's steps)
 
 1. Deploy as usual: `event-dispatch.sh` lands in `~/.claude/bin`, and nothing runs it.
 2. The follower: render `launchd/com.harbor.event.dispatch.plist` into `~/Library/LaunchAgents/` (a template: its
-   home paths are placeholders that `sh bin/launchd-render.sh <plist> > ~/Library/LaunchAgents/<plist>` fills from
-   `CONTRACTS/roots.tsv`, as for every plist there), bootstrap it in `gui/$(id -u)`, and see `launchctl list | grep event.dispatch`.
-3. A rule: `harbor event on --preset event.fleet-snapshot` (or write a CHECKS.md row, then `harbor event on`).
+   home paths are placeholders that `sh bin/deploy-launchd-render.sh <plist> > ~/Library/LaunchAgents/<plist>` fills from
+   `contracts/roots.tsv`, as for every plist there), bootstrap it in `gui/$(id -u)`, and see `launchctl list | grep event.dispatch`.
+3. A rule: `harbor event on --preset event.fleet-snapshot` (or write a docs/reference/checks.md row, then `harbor event on`).
 4. Spawning, only for `--spawn` rules: `touch ~/.claude/.helm-dispatch/spawn.on`, from your own terminal.
 5. Catch-up: add a `UserPromptSubmit` command hook,
    `/bin/sh "$HOME/.claude/bin/event-dispatch.sh" pull --hook`, to `~/.claude/settings.json`.
 6. fleet-snapshot or pulse on events: step 3 with its preset, then boot out its timer.
 
 Off again, in reverse: remove the hook, `rm ~/.claude/.helm-dispatch/spawn.on`, `harbor event on --off <id>`, boot out
-`com.harbor.event.dispatch` and remove its plist (CHECKS.md `event.dispatch`).
+`com.harbor.event.dispatch` and remove its plist (docs/reference/checks.md `event.dispatch`).
 
 ### E2 robustness rules, each a test
 
 | rule | where it is held |
 |---|---|
 | Killed mid-batch with a handler running, it resumes: no event lost, none doubled; the offsets did not move | `tests/event/dispatch/resume.test.sh` |
-| `dispatch.off` mid-batch stops before the next event; a bus that drops the cause, no jq or no perl: refused (4 `--once`, 0 as the follower) with a `NOT FOLLOWING` line and a `down` receipt pulse reads as crit; a bus swapped under a running follower stops it before the next fire; a probe that cannot write is exit 1 with that reason | `resume.test.sh`, `tests/obs/pulse-test.sh`; the installed pair: `tests/install/runtime-install-test.sh` |
-| The operator's gates: `.helm-dispatch/` and the kill switch refused to a session's writes, and starting the follower or writing a rule refused by argv; the script refuses both inside a session, outside its install, and with another `CLAUDE_CONFIG_DIR`; the cap survives six ledger truncations; a cut spend record fails closed | `tests/guards/bash.state.jsonl`, `bash.floor-surface.jsonl`, `bash.exec.jsonl`, `selfedit.jsonl` (rows `ed1044-*`); `spawn.test.sh` |
+| `dispatch.off` mid-batch stops before the next event; a bus that drops the cause, no jq or no perl: refused (4 `--once`, 0 as the follower) with a `NOT FOLLOWING` line and a `down` receipt pulse reads as crit; a bus swapped under a running follower stops it before the next fire; a probe that cannot write is exit 1 with that reason | `resume.test.sh`, `tests/alert/probe/probe.test.sh`; the installed pair: `tests/deploy/runtime-install/runtime-install.test.sh` |
+| The operator's gates: `.helm-dispatch/` and the kill switch refused to a session's writes, and starting the follower or writing a rule refused by argv; the script refuses both inside a session, outside its install, and with another `CLAUDE_CONFIG_DIR`; the cap survives six ledger truncations; a cut spend record fails closed | `tests/admission/bash/state.jsonl`, `bash.floor-surface.jsonl`, `bash.exec.jsonl`, `selfedit.jsonl` (rows `ed1044-*`); `spawn.test.sh` |
 | The kill switch stops a handler (and its child) and an agent already running within 6 s, recorded `killed:autoship-off`; the live `~/.claude` switch holds too | `spawn.test.sh` |
-| The register and presets are read only as installed, hash-checked data, never `~/port/harbor`; a trailing `/` in `CLAUDE_CONFIG_DIR` loads the same; both presets install in a sandbox runtime-install | `registry.test.sh`, `tests/install/runtime-install-test.sh` |
+| The register and presets are read only as installed, hash-checked data, never `~/port/harbor`; a trailing `/` in `CLAUDE_CONFIG_DIR` loads the same; both presets install in a sandbox runtime-install | `registry.test.sh`, `tests/deploy/runtime-install/runtime-install.test.sh` |
 | A first start fires nothing on history; a running follower wakes on a new line; one follower per bus, with 12 started at once past a dead holder's leftovers, and the ledger intact; TERM and `dispatch.off` stop it, asleep or not | `resume.test.sh` |
-| A rule is refused without its CHECKS.md row, its trigger in it, or its disable command, at `on` and at every load (tools, kind, id) | `rules.test.sh`, `registry.test.sh`, `tests/checks/schedules-test.sh` |
+| A rule is refused without its docs/reference/checks.md row, its trigger in it, or its disable command, at `on` and at every load (tools, kind, id) | `rules.test.sh`, `registry.test.sh`, `tests/check/schedules/schedules.test.sh` |
 | Idempotent by event id; debounced per (rule, subject); the loop guard (own output, depth 3); rate per rule; backstop | `rules.test.sh` |
 | Inert without `spawn.on`; the exact argv; `env -i` and the allowlist, no key or token; `agent.result` with its cause; $5 a UTC day; a missing cost is the cap; an overrun is an alarm; a `--` handler is only `sh {cfg}/bin/<allowlisted>` with its recorded bytes (every r2 probe form refused); its own empty cwd; `SHIP_UNATTENDED=1`; the kill switch; no rule approves; a spawn killed four times ran once and kept its reservation | `spawn.test.sh`, `registry.test.sh` |
 | One line or 0 bytes; this repo only; never the session's own; a first offset without reading the bus; as a hook, exit 0 and silent on a garbage payload, a hung bus, a hung git, an open stdin, a missing library | `pull.test.sh` |
@@ -508,7 +498,7 @@ Off again, in reverse: remove the hook, `rm ~/.claude/.helm-dispatch/spawn.on`, 
   reach. *Proposed fix:* before each fire, verify every runtime-install manifest row in one
   `git hash-object --stdin-paths` call and refuse on any mismatch; record projects-orchestrator's bytes in a
   manifest (or have the preset call a read-only refresh mode that runs no orchestrator and no gh write); and
-  say in CHECKS.md which writes the preset makes.
+  say in docs/reference/checks.md which writes the preset makes.
 - **The check-to-exec window is the whole run (r3 #7).** *Exposure:* `/bin/sh` reads a handler script as it
   runs, so bytes appended in place after the hash check run in that same run (the next load refuses the
   file). Writing them needs `{cfg}/bin`, which every floor layer refuses to a session. *Proposed fix:* copy the

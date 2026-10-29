@@ -1,4 +1,4 @@
-# harbor#617 — the schedule of launchd/com.harbor.pulse.plist; CHECKS.md row `pulse`.
+# harbor#617 — the schedule of launchd/com.harbor.pulse.plist; docs/reference/checks.md row `pulse`.
 [Unit]
 Description=Harbor check pulse (schedule)
 

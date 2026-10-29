@@ -27,3 +27,4 @@ systemd/harbor-audit-triage.timer	-
 standards/naming/terms.tsv	-
 hooks/commit-msg	-
 docs/drift-ref-env.md	-
+docs/reference/checkpoint-widgets.md	-
