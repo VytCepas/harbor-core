@@ -33,7 +33,7 @@
 // it is the likelier of the two on any box that is not this one, because the probe
 // directory is hard-coded.
 //
-// 2 is what contracts/gates.md prescribes for a verifier that could not run. The 127 for
+// 2 is what CONTRACTS/gates.md prescribes for a verifier that could not run. The 127 for
 // a missing node predates that contract and still stands; both mean deferral, and the
 // docs now say so. Anything else here is a real verdict.
 let chromium;

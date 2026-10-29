@@ -300,7 +300,7 @@ function isredirop(w) { return (w ~ /^(&?[0-9]*>>?[&|!]?[0-9]*|<|<<|<<<|[0-9]*>&
 # saw a plutil segment. Every flat rule is wrapper-agnostic by construction and
 # every migrated argv rule inherits this list, which means a name missing here
 # silently weakens the argv half of the file relative to the flat half. That is
-# docs/explanation/admission-baseline.md pass-13 refusal reason #1 at its root, one level below where it was
+# FLOOR.md pass-13 refusal reason #1 at its root, one level below where it was
 # diagnosed.
 #
 # `arch` is macOS's own architecture selector and takes only flags. `script`
@@ -592,7 +592,7 @@ function seg_flush_tok(id, t, pend) {
 # named `import`, `os.system` and `rm -rf /`. None of those match a rule, so it
 # was noise rather than a false positive, but noise in a security table is how
 # a future rule acquires one. Non-shell one-liners stay covered by the flat CODE
-# variant, and their full reach is already an accepted residual in docs/explanation/admission-baseline.md.
+# variant, and their full reach is already an accepted residual in FLOOR.md.
 function isinterp(w) { return (w ~ /^([a-zA-Z0-9_.\/-]*\/)?(sh|bash|zsh|ksh|dash|ash|busybox|fish|csh|tcsh)$/) }
 # BUNDLED code flags count (pass 12, P12-argv-02, critical). Accepting only the
 # exact `-c` meant `bash -lc "tar xzf … -C ~/.claude"` left the payload as one
@@ -652,7 +652,7 @@ function isenv(w)      { return (w ~ /^([a-zA-Z0-9_.~\/-]*\/)?g?env$/) }
 # rather than leaving it to be re-discovered as a bug.
 #
 # ONE LEVEL, NO CROSS PRODUCTS, NO `{1..9}` RANGES. Those are real shell
-# behaviour and are NOT covered; docs/explanation/admission-baseline.md's residual set is where that belongs,
+# behaviour and are NOT covered; FLOOR.md's residual set is where that belongs,
 # because a tokenizer that recursed here would be re-implementing the shell,
 # which passes 9-13 measured as the thing that does not converge.
 # SPELLED OUT AS CHARACTER TESTS RATHER THAN ONE REGEX. The first cut read

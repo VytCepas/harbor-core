@@ -46,7 +46,7 @@ if grep -vE '^[[:space:]]*#' "$MSG" | grep -qiE "$HARBOR_ATTRIBUTION_ERE"; then
   echo "commit-msg: AI attribution in the commit message." >&2
   grep -nvE '^[[:space:]]*#' "$MSG" | grep -iE "$HARBOR_ATTRIBUTION_ERE" | sed 's/^/            /' >&2
   echo "" >&2
-  echo "            policy/constitution.md: no AI-attribution trailers in commits or PRs." >&2
+  echo "            CONSTITUTION.md: no AI-attribution trailers in commits or PRs." >&2
   echo "            Remove the trailer. Bypass deliberately with: git commit --no-verify" >&2
   exit 1
 fi

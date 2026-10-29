@@ -43,8 +43,8 @@ sh "$CAT_TOOL" --map --root "$R" >/dev/null 2>&1
 awk -F'\t' -v OFS='\t' '$1 == "drift" { $4 = "observability" } { print }' "$R/standards/naming/terms.tsv" > "$T_TMP/t" && cp "$T_TMP/t" "$R/standards/naming/terms.tsv"
 t_exit "moving a family to another subsystem makes the map stale" 1 chk
 
-if [ -d "$T_ROOT/evals" ]; then
+if [ -d "$T_ROOT/EVALS-DATA" ]; then
   t_section "check: this checkout's docs/context-map.md is fresh (the CI gate)"
   t_exit "docs/context-map.md equals a fresh map" 0 sh "$CAT_TOOL" --check --root "$T_ROOT"
-fi   # an exported core tree has no evals: the map of the full tree is not re-derivable there, so the section is not opened
+fi   # an exported core tree has no EVALS-DATA: the map of the full tree is not re-derivable there, so the section is not opened
 t_done

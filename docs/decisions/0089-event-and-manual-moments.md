@@ -13,7 +13,7 @@ Naming-standard decision D-89. Extends the `moment` class of `standards/naming/t
 ## Context
 
 - Operator decision, 2026-10-24 (harbor#950, the research note of 2026-10-14).
-- 50 of the 52 `check` rows in `controls.tsv` said `moment=schedule`, while `docs/reference/checks.md` called 23 of them
+- 50 of the 52 `check` rows in `controls.tsv` said `moment=schedule`, while `CHECKS.md` called 23 of them
   "not scheduled". The share of checks started by events could not be derived from the register.
 
 ## Decision

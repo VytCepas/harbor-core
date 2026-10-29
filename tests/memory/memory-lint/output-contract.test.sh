@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# memory-lint.sh's output follows contracts/logging.md (harbor#771): stdout is the findings (or the JSON) and only
+# memory-lint.sh's output follows CONTRACTS/logging.md (harbor#771): stdout is the findings (or the JSON) and only
 # that; the verdict is log-lib's, on stderr; a FAIL is followed by its fix and the run ends with the summary, whose
 # exit agrees. The store is a fixture; nothing reads the operator's.
 . "$(dirname "$0")/../../lib/core.sh"; t_init

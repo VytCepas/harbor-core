@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # ci-runners-provision-lib.sh (harbor#1060) — container lifecycle: sync_hook, `up`, `refresh`, the governance runners, `down`.
 # Sourced by ci-runners.sh, never run: it sets no shell option and reads the entry point's variables ($T, $CONF, $GH, $DOCKER, ...).
-. "$(dirname -- "$0")/library-log.sh"   # a second source keeps the run's counts (library-log.sh)
+. "$(dirname -- "$0")/log-lib.sh"   # a second source keeps the run's counts (log-lib.sh)
 
 # Every container runs the job hook from the shared events mount, so this copy is the one they run: kept equal to
 # the hook beside this script on each up --apply and tick. It was hand-copied, so a fix to it reached no runner.

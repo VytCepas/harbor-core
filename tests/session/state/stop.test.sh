@@ -1,20 +1,20 @@
 #!/usr/bin/env sh
 # hooks/session-state/session-state.sh, the Stop hook (harbor#1043, #1044): the five states in rule order, one test per waiting
-# pattern in contracts/session-waiting.tsv, SG-2 parity with guard-stop.sh, an event only on a change, the record's
+# pattern in CONTRACTS/session-waiting.tsv, SG-2 parity with guard-stop.sh, an event only on a change, the record's
 # fields, the save-now continuation (once, off without its rule, off under stop_hook_active), and a speed bound.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-TOOL="$T_ROOT/hooks/session-state/session-state.sh"; GSTOP="$T_ROOT/bin/guard-stop.sh"; TABLE="$T_ROOT/contracts/session-waiting.tsv"
+TOOL="$T_ROOT/hooks/session-state/session-state.sh"; GSTOP="$T_ROOT/bin/guard-stop.sh"; TABLE="$T_ROOT/CONTRACTS/session-waiting.tsv"
 T="$T_TMP"; ST="$T/state"; REPO="$T/repo"; CFG="$T/cfg"
 export HARBOR_STATUS_DIR="$ST" HARBOR_EVENT_DIR="$T/bus"
 # Auto-compact off for every section but its own, and never a real osascript: a test must not type into a terminal.
 export HARBOR_AUTOCOMPACT_PCT=101 HARBOR_AUTOCOMPACT_OSA=false
-mkdir -p "$REPO/docs/how-to" "$CFG"
+mkdir -p "$REPO" "$CFG"
 git -C "$REPO" init -q && git -C "$REPO" config user.email t@t && git -C "$REPO" config user.name t
-git -C "$REPO" checkout -q -b work; printf 'a\n' > "$REPO/f"; printf 'h\n' > "$REPO/docs/how-to/handover.md"
+git -C "$REPO" checkout -q -b work; printf 'a\n' > "$REPO/f"; printf 'h\n' > "$REPO/HANDOFF.md"
 git -C "$REPO" add . && git -C "$REPO" commit -q -m init
-touch -t 201901010000 "$REPO/docs/how-to/handover.md"  # older than every fixture transcript: the handoff is not this session's
+touch -t 201901010000 "$REPO/HANDOFF.md"  # older than every fixture transcript: the handoff is not this session's
 git init -q --bare "$T/origin.git" && git -C "$REPO" remote add origin "$T/origin.git" && git -C "$REPO" push -q -u origin work 2>/dev/null
-REPO2="$T/repo2"; git init -q "$REPO2" && git -C "$REPO2" config user.email t@t && git -C "$REPO2" config user.name t   # no docs/how-to/handover.md at all
+REPO2="$T/repo2"; git init -q "$REPO2" && git -C "$REPO2" config user.email t@t && git -C "$REPO2" config user.name t   # no HANDOFF.md at all
 git -C "$REPO2" checkout -q -b work; printf 'a\n' > "$REPO2/f"; git -C "$REPO2" add . && git -C "$REPO2" commit -q -m init
 git init -q --bare "$T/origin2.git" && git -C "$REPO2" remote add origin "$T/origin2.git" && git -C "$REPO2" push -q -u origin work 2>/dev/null
 REPO2="$(CDPATH= cd -P -- "$REPO2" && pwd -P)"
@@ -90,7 +90,7 @@ t_has "...and the extraction found it" "$(pair_of "$TOOL")" 'BGT'
 run s-redq red 'Which one?'; t_eq "a question outranks blocked" waiting-operator "$(rec s-redq state)"
 
 t_section "done: committed or pushed this session, nothing edited since, clean tree, branch pushed; the handoff is no gate"
-wr() { jq -nc --arg ts "$1" '{type:"assistant",timestamp:$ts,message:{content:[{type:"tool_use",id:"w1",name:"Write",input:{file_path:"/x/docs/how-to/handover.md"}}]}}'; }
+wr() { jq -nc --arg ts "$1" '{type:"assistant",timestamp:$ts,message:{content:[{type:"tool_use",id:"w1",name:"Write",input:{file_path:"/x/HANDOFF.md"}}]}}'; }
 tx ms "$(tu c5 2020-01-01T00:00:00.000Z 'git commit -m x')" "$(tr_ c5 ok)" "$(tu c5b 2020-01-01T00:00:01.000Z 'git push')" "$(tr_ c5b ok)"
 run s-done ms 'All set.'; t_eq "pushed, clean, nothing edited since, stale handoff: done" done "$(rec s-done state)"
 t_eq "the record carries the branch" work "$(rec s-done branch)"
@@ -98,16 +98,12 @@ t_eq "...the change count" 0 "$(rec s-done dirty)"
 t_eq "...a stale handoff as a field, not a gate" "yes" "$(rec s-done handover_stale)"
 tx wc "$(tu c0 2020-01-01T00:00:00.000Z 'ls')" "$(wr 2020-01-01T00:00:01.000Z)" "$(tu c5 2020-01-01T00:00:02.000Z 'git commit -am handoff')" "$(tr_ c5 ok)" "$(tu c5b 2020-01-01T00:00:03.000Z 'git push')" "$(tr_ c5b ok)"
 run s-wc wc 'Handoff committed.'; t_eq "write the handoff, THEN commit and push it: done" done "$(rec s-wc state)"
-touch "$REPO/docs/how-to/handover.md"
+touch "$REPO/HANDOFF.md"
 run s-fresh2 ms 'All set.'; t_eq "...and a handoff newer than the milestone reads fresh" no "$(rec s-fresh2 handover_stale)"
 run s-touch plain 'All set.'; t_eq "touch on the handoff alone never fires done" idle "$(rec s-touch state)"
-touch -t 201901010000 "$REPO/docs/how-to/handover.md"
-run s-nohand ms 'All set.' '[]' false "$REPO2"; t_eq "a repo with no docs/how-to/handover.md reaches done" done "$(rec s-nohand state)"
+touch -t 201901010000 "$REPO/HANDOFF.md"
+run s-nohand ms 'All set.' '[]' false "$REPO2"; t_eq "a repo with no HANDOFF.md reaches done" done "$(rec s-nohand state)"
 t_eq "...handover_at 0 and stale" "0 yes" "$(rec s-nohand handover_at) $(rec s-nohand handover_stale)"
-# Any other repo keeps its handoff at the root as HANDOFF.md, and it still counts (harbor#949).
-touch "$REPO2/HANDOFF.md"
-run s-roothand ms 'All set.' '[]' false "$REPO2"; t_eq "...a root HANDOFF.md newer than the milestone reads fresh" no "$(rec s-roothand handover_stale)"
-rm -f "$REPO2/HANDOFF.md"
 tx late "$(tu c0 2020-01-01T00:00:00.000Z 'ls')" "$(tu c6 2020-01-01T00:00:01.000Z 'git push')" "$(tr_ c6 ok)" "$(wr 2020-01-01T00:00:05.000Z)"
 run s-late late 'All set.'; t_eq "an edit AFTER the push: idle" idle "$(rec s-late state)"
 printf 'x\n' > "$REPO/untracked"
@@ -140,7 +136,7 @@ since1="$(rec s-ev since)"; run s-ev plain 'Which one again?'
 t_eq "an unchanged state keeps its since" "$since1" "$(rec s-ev since)"
 
 t_section "save-now: one continuation, only with its rule, never inside a stop-hook continuation"
-mkdir -p "$ST/ctx"; printf '95\n' > "$ST/ctx/s-save"; touch -t 201901010000 "$REPO/docs/how-to/handover.md"  # a year before the transcript, in any TZ
+mkdir -p "$ST/ctx"; printf '95\n' > "$ST/ctx/s-save"; touch -t 201901010000 "$REPO/HANDOFF.md"  # a year before the transcript, in any TZ
 run s-save plain 'Done.'
 t_eq "no rule installed: no continuation" "" "$(cat "$T/out")"
 mkdir -p "$CFG/.helm-dispatch/rules"; : > "$CFG/.helm-dispatch/rules/event.session-save-now.rule"
@@ -155,7 +151,7 @@ t_eq "the same trigger does not repeat" "" "$(cat "$T/out")"
 settle; t_eq "the nudge is on the bus once" 1 "$(events session.save-now s-save | tr -d ' ')"
 printf '80\n' > "$ST/ctx/s-80"; run s-80 plain 'Done.'
 t_eq "80% with no new milestone: no continuation" "" "$(cat "$T/out")"
-printf '95\n' > "$ST/ctx/s-fresh"; touch "$REPO/docs/how-to/handover.md"; run s-fresh plain 'Done.'
+printf '95\n' > "$ST/ctx/s-fresh"; touch "$REPO/HANDOFF.md"; run s-fresh plain 'Done.'
 t_eq "95% but the handoff is newer than the last milestone: no continuation" "" "$(cat "$T/out")"
 
 t_section "compact: a finished turn asks the agent once; the agent's [compact-ok] as the last line types /compact"

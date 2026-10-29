@@ -50,7 +50,7 @@ run_hook_at() { # <hook path> <label>
 }
 run_hook_at "$T_TMP/bare/event-hook.sh" "event-bus.sh is missing"
 mkdir -p "$T_TMP/nolib"; cp "$EH" "$T_ROOT/bin/event-bus.sh" "$T_TMP/nolib/"
-run_hook_at "$T_TMP/nolib/event-hook.sh" "library-log.sh is missing beside the bus"
+run_hook_at "$T_TMP/nolib/event-hook.sh" "log-lib.sh is missing beside the bus"
 t_eq "...and the bus wrote nothing, since it could not run" 0 "$(find "$T_TMP/bus-x" -name '*.jsonl' 2>/dev/null | wc -l | tr -d ' ')"
 mkdir -p "$T_TMP/junk/bin"; cp "$EH" "$T_TMP/junk/bin/"; printf 'exit 7\n' > "$T_TMP/junk/bin/event-bus.sh"
 run_hook_at "$T_TMP/junk/bin/event-hook.sh" "event-bus.sh exits 7"

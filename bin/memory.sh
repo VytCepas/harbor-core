@@ -7,15 +7,15 @@
 # this file is POSIX sh rather than part of the engine: a ladder whose bottom
 # rung needs the runtime that is missing is not a ladder.
 #
-# WHY THE FRONT DOOR IS NOT THE ENGINE. bin/deploy-doctor.sh classifies bun as
+# WHY THE FRONT DOOR IS NOT THE ENGINE. bin/doctor.sh classifies bun as
 # OPTIONAL — "the floor is deliberately zero-Bun" — and CI preflights a fixed
 # list of binaries that does not include it. Anything Harbor must be able to run
 # on any machine lives in bin/ and is sh; the retrieval algorithms live in
 # tools/memory/ and are TypeScript, which is the language-by-layer rule from
-# policy/constitution.md applied rather than restated.
+# CONSTITUTION.md applied rather than restated.
 #
 # Writes nothing. Reads markdown. Every index is rebuilt per invocation by the
-# engine and discarded (contracts/memory-format.md).
+# engine and discarded (CONTRACTS/memory-format.md).
 set -u
 
 # NOGLOB, AND IT IS LOAD-BEARING. Splitting a list by setting IFS and expanding
@@ -49,24 +49,16 @@ DIR="$(CDPATH= cd -- "$(dirname -- "$_self")" && pwd)"
 REPO="$(CDPATH= cd -- "$DIR/.." && pwd)"
 ENGINE="$REPO/tools/memory/memory-engine.ts"
 
-# Status lines are log-lib's, on stderr: stdout is the answer (contracts/logging.md). A clean search logs
+# Status lines are log-lib's, on stderr: stdout is the answer (CONTRACTS/logging.md). A clean search logs
 # nothing; a refusal ends with the summary after its fix line. Found beside the file the link resolves to.
-[ -f "$DIR/library-log.sh" ] || { printf 'memory: library-log.sh is missing beside %s\n' "$_self" >&2; exit 2; }
-. "$DIR/library-log.sh"
+[ -f "$DIR/log-lib.sh" ] || { printf 'memory: log-lib.sh is missing beside %s\n' "$_self" >&2; exit 2; }
+. "$DIR/log-lib.sh"
 log_init memory; LOG_FD=2
 # die <exit> <what failed> <fix command>: FAIL, its fix, the summary, exit.
 die() { _x="$1"; log_fail "$2"; log_fix "$3"; log_end || :; exit "$_x"; }
 
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-# THE DEFAULT IS THE NOTES STORE (harbor#1010 PR 4, D-68): the $HOME silo, projects/<home-key>/memory, which is where
-# the notes and their index live and where every governed repo's silo is routed (memory-route.sh). The old
-# $CFG/MEMORY tree is the fallback only when that silo does not exist, so a box without notes still answers.
-# Same key rule as memory-route.sh: the physical $HOME with every `/` turned into `-`.
-STORE="${HARBOR_MEMORY_ROOT:-}"
-if [ -z "$STORE" ]; then
-  _hk="$(CDPATH= cd -- "$HOME" 2>/dev/null && pwd -P | sed 's|/|-|g')"
-  if [ -n "$_hk" ] && [ -d "$CFG/projects/$_hk/memory" ]; then STORE="$CFG/projects/$_hk/memory"; else STORE="$CFG/MEMORY"; fi
-fi
+STORE="${HARBOR_MEMORY_ROOT:-$CFG/MEMORY}"
 
 # PIN grep, for the same reason bin/guard-lib.sh pins $FLOOR_GREP. On this
 # machine the `grep` first in PATH is a ugrep wrapper carrying `-I
@@ -86,8 +78,7 @@ memory (harbor#6) — on-demand L0 memory retrieval
   memory graph <slug>          notes linked to <slug> (needs bun)
   memory stats                 corpus summary (needs bun)
 
-  --root DIR   read this store instead of the notes store (${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/<home-key>/memory;
-               the old .../MEMORY tree only when that does not exist)
+  --root DIR   read this store instead of ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/MEMORY
   --json       machine-readable output
   --limit N    cap the result count
   --depth N    graph traversal depth

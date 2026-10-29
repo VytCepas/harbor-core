@@ -120,7 +120,7 @@ cell meaning *not recorded*, which is not the same as *no access*.
   regenerate both:
 
 ```sh
-A="$(sh ~/port/harbor/bin/scope-roots.sh --access)" && cd ~/port/harbor \
+A="$(sh ~/port/harbor/bin/roots.sh --access)" && cd ~/port/harbor \
   && sh skills/access-ledger/bin/check-routes.sh --accounts "$A" > "$A/ACCOUNTS.md" \
   && sh skills/access-ledger/bin/check-routes.sh --dispatch "$A" > "$A/DISPATCH.md"
 ```
@@ -132,13 +132,13 @@ sh ~/.claude/skills/access-ledger/bin/check-routes.sh                  # structu
 sh ~/.claude/skills/access-ledger/bin/check-routes.sh --run            # substance: RUN every check
 sh ~/.claude/skills/access-ledger/bin/check-routes.sh --report         # derive the capability table
 sh ~/.claude/skills/access-ledger/bin/check-routes.sh --accounts       # derive which account connects to what
-sh ~/.claude/skills/access-ledger/bin/check-routes.sh --coverage "$(sh ~/port/harbor/bin/scope-roots.sh --repo estate)"
+sh ~/.claude/skills/access-ledger/bin/check-routes.sh --coverage "$(sh ~/port/harbor/bin/roots.sh --repo estate)"
 sh ~/.claude/skills/access-ledger/bin/check-routes.sh --self-test      # it prints its own count; run it before trusting a green
 ```
 
 `--report` regenerates the "what we can reach today" table from the cards rather
 than restating it. A hand-written capability summary is a copy, and copies drift
-while still reading correctly (`docs/explanation/doc-truth.md`).
+while still reading correctly (`DOCTRINE/doc-truth.md`).
 
 **The two halves are separate on purpose, and the first one alone is not enough.**
 The default gate asserts a card *has* a check; it never runs one. Measured

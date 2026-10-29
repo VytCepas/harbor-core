@@ -1,6 +1,6 @@
 # Operator patch — `lint-test.sh` runs TWICE in every CI run
 
-**STATUS: OBSOLETE (2026-10-14).** The double run came from the `suite-manifest` job's dedup, which is gone. `lint-test.sh` is one line of `contracts/suites.txt` (`grep -c 'tests/lint/conventions/conventions.test.sh' contracts/suites.txt` prints 1) and the pool runs each line once. Kept for its measurements; nothing in it applies to the current workflow.
+**STATUS: OBSOLETE (2026-10-14).** The double run came from the `suite-manifest` job's dedup, which is gone. `lint-test.sh` is one line of `CONTRACTS/suites.txt` (`grep -c 'tests/checks/lint-test.sh' CONTRACTS/suites.txt` prints 1) and the pool runs each line once. Kept for its measurements; nothing in it applies to the current workflow.
 
 **Why this is a file and not a commit.** `permissions.deny` covers
 `.github/workflows/**`, deliberately: that deny exists so an agent cannot rewrite
@@ -22,7 +22,7 @@ workflow for the `--run` spelling:
 if grep -q -- "--run $s" .github/workflows/governance.yml; then
 ```
 
-Every dedicated suite job invokes `sh bin/test-suite-select.sh --run <suite>` — except
+Every dedicated suite job invokes `sh bin/suite-select.sh --run <suite>` — except
 the conventions job, which calls the suite **directly**:
 
 ```yaml
@@ -62,7 +62,7 @@ with:
 
 ```yaml
       - name: conventions linter suite
-        run: sh bin/test-suite-select.sh --run lint-test.sh
+        run: sh bin/suite-select.sh --run lint-test.sh
 ```
 
 ## Why this spelling and not a dedup exception
@@ -70,9 +70,9 @@ with:
 Routing it through `--run` is what every other suite already does, and it makes
 the suite **visible to the dedup by construction** rather than by a second list
 that can drift out of agreement with the first — the same reasoning that put
-`contracts/suites.txt` in a tracked file instead of inside the workflow.
+`CONTRACTS/suites.txt` in a tracked file instead of inside the workflow.
 
-**It is behaviour-preserving.** `contracts/suite-paths.txt` declares
+**It is behaviour-preserving.** `CONTRACTS/suite-paths.txt` declares
 `lint-test.sh always`, so `--run` runs it unconditionally, exactly as the direct
 call does today. It does not become path-gated by this change.
 

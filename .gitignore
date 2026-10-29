@@ -1,5 +1,5 @@
-# /build/ is generated output, never a source. status-dashboard-generate.sh renders
-# build/dashboard.html from status-generate.sh --json, doc-freshness.sh and git at render
+# /build/ is generated output, never a source. dashboard-gen.sh renders
+# build/dashboard.html from status-gen.sh --json, freshness.sh and git at render
 # time; committing it would turn a VIEW of the numbers into a second COPY of
 # them, which is what lint T2 exists to prevent — and a stale chart is read as
 # current far longer than stale prose is.
@@ -49,9 +49,9 @@ __pycache__/
 
 # The context baseline lives in the user's state directory (harbor#1275); this keeps a stray copy at the root of a
 # harbor-core clone from being staged. The dev checkout's tracked seed is unaffected: ignore rules never untrack.
-/registries/context-baseline.tsv
+/CONTEXT-BASELINE.tsv
 
-# docs/index.html is BUILT on demand, never committed (harbor#1197): `sh bin/doc-index-generate.sh --apply` (~14 s). Committed, it
+# docs/index.html is BUILT on demand, never committed (harbor#1197): `sh bin/docs-gen.sh --apply` (~14 s). Committed, it
 # was touched by 126 of 317 first-parent main commits in 30 days, and every pair of open PRs conflicted on it; merge-stack
 # refuses an HTML conflict, so each one stopped for a person. The export builds it into the core snapshot (bin/deploy-push.sh).
 /docs/index.html

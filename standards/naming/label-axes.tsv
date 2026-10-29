@@ -1,10 +1,10 @@
 # label-axes.tsv (harbor#978) — every issue label as <axis>:<value>, and the legacy label each one replaces.
-# WHY THIS FILE EXISTS. contracts/issue-taxonomy.tsv is the connector's only list of labels (harbor#512), but the
+# WHY THIS FILE EXISTS. CONTRACTS/issue-taxonomy.tsv is the connector's only list of labels (harbor#512), but the
 # standard says every label is `<axis>:<value>` (D-30) and the family axis already lives in terms.tsv: two lists
 # would drift. This file holds the axes, their cardinality and the mapping from each bare or `theme:` label, and
 # `sh bin/lint-name.sh --gen issue-taxonomy` renders the connector's format and a legacy-to-new map from it into
 # untracked build/naming/. Nothing is renamed on GitHub by this file: creating, renaming or deleting a label is an
-# operator write (harbor#978), and the connector keeps reading contracts/issue-taxonomy.tsv until that sitting.
+# operator write (harbor#978), and the connector keeps reading CONTRACTS/issue-taxonomy.tsv until that sitting.
 #
 # standard_version: 2.0.0
 #
@@ -21,7 +21,7 @@ family	family	-	-	-	1	99	ok	the connector suggests from globs; the filer confirm
 epic	epic	-	-	-	0	1	ok	the filer: what kind of parent this is; membership is the native sub-issue edge
 priority	priority	-	-	-	0	1	ok	the filer: p0 only, capped at three open
 blocked	blocked	-	-	-	0	1	ok	triage: absent means not blocked
-finding	finding	-	-	-	0	1	ok	the findings reconciler (bin/lint-findings.sh)
+finding	finding	-	-	-	0	1	ok	the findings reconciler (bin/findings.sh)
 system	system	-	-	-	0	99	ok	the filer: campaign reporting across trees
 type:bug	type	bug	bug	-	-	-	ok	measurably wrong behaviour, now
 type:feature	type	feature	feature	-	-	-	ok	new capability
@@ -32,16 +32,16 @@ type:chore	type	chore	chore	-	-	-	ok	routine maintenance
 epic:workstream	epic	workstream	epic:workstream	-	-	-	ok	a capability being built; closes when its children do
 epic:provenance	epic	provenance	epic:provenance	-	-	-	ok	origin record of an audit or research pass; closes when its children are triaged
 epic:framing	epic	framing	epic:framing	-	-	-	ok	a problem statement awaiting a design decision
-theme:floor	theme	floor	theme:floor	bin/guard-*.sh bin/floor-*.sh bin/deploy-restore.sh bin/lint-conventions.sh docs/explanation/admission-baseline.md	-	-	gap	guard and floor correctness — what the gates see and refuse
-family:memory	family	memory	theme:memory	bin/memory*.sh hooks/memory-harvest/* hooks/worklog-push/* worklog/* contracts/memory-format.md	-	-	ok	capture, recall, index, staleness
-family:context	family	context	theme:context	bin/context-budget.sh bin/memory-store-check.sh context-rules/* registries/context-baseline.tsv policy/constitution.md	-	-	ok	always-on surface and per-call context economy
-theme:doc-truth	theme	doc-truth	theme:doc-truth	docs/explanation/doc-truth.md contracts/README.md docs/reports/qa-plan.md docs/reports/evals.md docs/generated/status.md docs/reference/coverage.md	-	-	gap	records that contradict the system they describe
-family:ci	family	ci	theme:ci	.github/workflows/* bin/gate-merge-check.sh bin/worktree.sh bin/deploy-doctor.sh	-	-	ok	CI, worktrees, deployment and drift between repo and box
-theme:observability	theme	observability	theme:observability	bin/status-fleet-glyph.sh bin/admission-observe-report.sh tests/hooks/statusline*.sh bin/status-dashboard-generate.sh bin/audit-triage.sh	-	-	gap	making running state legible: statusline, ledger, reports
-theme:subagent	theme	subagent	theme:subagent	context-rules/user/subagent-contract.md evals/*/*/subagent-reports/*	-	-	gap	delegation: what a subagent may do and must return
-theme:architecture	theme	architecture	theme:architecture	contracts/descriptor.md contracts/marker.md	-	-	gap	architecture records and the cross-repo system graph
-theme:vendoring	theme	vendoring	theme:vendoring	vendor/* docs/reference/provenance.md docs/explanation/skill-unification.md bin/skill-install.sh bin/skill-collision-verify.sh	-	-	gap	intake of third-party code: copy, depend, or take the idea
-theme:browser	theme	browser	theme:browser	contracts/browser-routing.md bin/access-browser.sh bin/doc-visual-check.sh	-	-	gap	browser capability and its backends
+theme:floor	theme	floor	theme:floor	bin/guard-*.sh bin/floor-*.sh bin/restore.sh bin/lint-conventions.sh FLOOR.md	-	-	gap	guard and floor correctness — what the gates see and refuse
+family:memory	family	memory	theme:memory	bin/memory*.sh hooks/memory-harvest/* hooks/worklog-push/* worklog/* CONTRACTS/memory-format.md	-	-	ok	capture, recall, index, staleness
+family:context	family	context	theme:context	bin/context-budget.sh bin/store-check.sh context-rules/* CONTEXT-BASELINE.tsv CONSTITUTION.md	-	-	ok	always-on surface and per-call context economy
+theme:doc-truth	theme	doc-truth	theme:doc-truth	DOCTRINE/doc-truth.md CONTRACTS/README.md QA-PLAN.md EVALS.md STATUS.md COVERAGE.md	-	-	gap	records that contradict the system they describe
+family:ci	family	ci	theme:ci	.github/workflows/* bin/merge-check.sh bin/worktree.sh bin/doctor.sh	-	-	ok	CI, worktrees, deployment and drift between repo and box
+theme:observability	theme	observability	theme:observability	bin/fleet-glyph.sh bin/observe-report.sh tests/hooks/statusline*.sh bin/dashboard-gen.sh bin/failure-capture.sh	-	-	gap	making running state legible: statusline, ledger, reports
+theme:subagent	theme	subagent	theme:subagent	context-rules/user/subagent-contract.md EVALS-DATA/*/subagent-reports/*	-	-	gap	delegation: what a subagent may do and must return
+theme:architecture	theme	architecture	theme:architecture	CONTRACTS/descriptor.md CONTRACTS/marker.md	-	-	gap	architecture records and the cross-repo system graph
+theme:vendoring	theme	vendoring	theme:vendoring	vendor/* PROVENANCE.md skills/UNIFICATION.md bin/skills-*.sh	-	-	gap	intake of third-party code: copy, depend, or take the idea
+theme:browser	theme	browser	theme:browser	CONTRACTS/browser-routing.md bin/browser.sh bin/visual-check.sh	-	-	gap	browser capability and its backends
 family:access	family	access	theme:access	-	-	-	ok	identity, credentials and permission boundaries — lives outside this tree
 theme:distribution	theme	distribution	theme:distribution	-	-	-	gap	packaging, publishing, discoverability — lives outside this tree
 type:task	type	task	task	-	-	-	ok	a concrete, implementable piece of work with no defect claim behind it

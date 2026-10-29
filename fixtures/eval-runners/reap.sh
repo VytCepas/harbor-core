@@ -1,4 +1,4 @@
-# evals/context/tools/reap.sh — sourced by every runner that starts billed `claude -p` sessions in the background
+# EVALS-DATA/reap.sh — sourced by every runner that starts billed `claude -p` sessions in the background
 # (harbor#768). An async list ignores SIGINT, and a TERM or HUP reaches the runner alone, so a signal
 # left every session running and billing. Now INT, TERM and HUP kill every descendant, then exit.
 _reap() {

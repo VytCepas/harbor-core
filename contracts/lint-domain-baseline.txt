@@ -1,5 +1,0 @@
-# lint-domain-baseline.txt (harbor#1274) - (core file, workload term) pairs in the tree. Only goes down; harbor#1273 takes it to 0.
-# Derive:  sh bin/lint-domain.sh --count
-# (git grep -I --untracked -i -w -l per contracts/domain-terms.tsv row, kept where bin/scope-layers.sh --core says core,
-#  minus the two registers and the rows of contracts/domain-allow.tsv.)
-0

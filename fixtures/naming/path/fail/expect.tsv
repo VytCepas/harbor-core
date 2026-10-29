@@ -20,7 +20,6 @@ FLOOR/notes.md	name.case,name.alias
 docs/helm-log-export.md	name.alias
 docs/cfg-loader.md	name.abbreviation
 src/obs/digest_report.py	name.abbreviation
-bin/docs-gen-x.sh	name.abbreviation,name.family
+bin/docs-gen.sh	name.abbreviation,name.family
 launchd/com.harbor.judge.plist	name.launchd,name.alias
-tests/checks/lint.names-test.sh	name.test-path,name.extension
-docs/reference/qzxv-notes.md	name.word-unregistered
+tests/checks/lint.name-test.sh	name.test-path,name.extension

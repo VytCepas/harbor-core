@@ -11,13 +11,13 @@ PATH_HDR='id	kind	pattern	note'
 # Real-looking home paths are built from parts so this file holds no literal one (an export scan of the tree counts tests).
 UH=/Users; HH=/home
 mk() { # <name> <core baseline> → a checkout: 2 home paths in core, a private-looking word, excluded dirs
-  _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/contracts" "$_d/tests" "$_d/fixtures" "$_d/evals"
+  _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/CONTRACTS" "$_d/tests" "$_d/fixtures" "$_d/EVALS-DATA"
   printf "A=$UH/jdoe/x\nB=$HH/avery/y\nC=/Users/<u>/z\n" > "$_d/bin/a.sh"
   printf 'the Zorblax client\nzorblaxion is not it\n' > "$_d/README.md"
-  printf "T=$UH/jdoe/x zorblax\n" | tee "$_d/tests/t.sh" "$_d/fixtures/f.txt" "$_d/evals/e.txt" > /dev/null
-  cp "$T_ROOT/bin/lint-leaks.sh" "$T_ROOT/bin/library-log.sh" "$_d/bin/"
-  cp "$T_ROOT/contracts/leak-patterns.tsv" "$_d/contracts/"
-  printf '%s\n' "$2" > "$_d/contracts/lint-leaks-baseline.txt"
+  printf "T=$UH/jdoe/x zorblax\n" | tee "$_d/tests/t.sh" "$_d/fixtures/f.txt" "$_d/EVALS-DATA/e.txt" > /dev/null
+  cp "$T_ROOT/bin/lint-leaks.sh" "$T_ROOT/bin/log-lib.sh" "$_d/bin/"
+  cp "$T_ROOT/CONTRACTS/leak-patterns.tsv" "$_d/CONTRACTS/"
+  printf '%s\n' "$2" > "$_d/CONTRACTS/lint-leaks-baseline.txt"
   ( cd "$_d" && git init -q . && git add -A && git -c user.email=t@t -c user.name=t commit -qm x ) >/dev/null 2>&1
   printf '%s' "$_d"
 }
@@ -32,7 +32,7 @@ unset PV; D="$(mk core 2)"
 t_eq "two home paths count, the placeholder and the excluded dirs do not" "2" "$(LK "$D" --count core)"
 t_eq "...and private is 0" "0" "$(LK "$D" --count private)"
 t_has "--list names file:line:id" "$(LK "$D" --list)" "bin/a.sh:1:home-path"
-for gone in tests/ fixtures/ evals/ "bin/a.sh:3"; do t_hasnt "...not $gone" "$(LK "$D" --list)" "$gone"; done
+for gone in tests/ fixtures/ EVALS-DATA/ "bin/a.sh:3"; do t_hasnt "...not $gone" "$(LK "$D" --list)" "$gone"; done
 t_eq "an absent private layer is green" "0" "$(rc "$D" --check)"
 t_has "...and says private was not checked" "$(LK "$D" --check)" "private patterns not checked"
 
@@ -132,34 +132,34 @@ D="$(mk alnear 2)"; printf "A=$UH/probe2/a B=$UH/PROBE/b C=$HH/probe/c\n" > "$D/
 t_eq "an allow row is the exact text: a longer, upper-case or other-root name still counts" "5" "$(LK "$D" --count core)"
 D="$(mk aldrop 2)"; printf 'P=/Users/zed/a\n' > "$D/bin/ph.sh"
 t_eq "with its row, the placeholder is free" "2" "$(LK "$D" --count core)"
-grep -v 'allow-home-zed' "$D/contracts/leak-patterns.tsv" > "$D/contracts/lp.new"; mv "$D/contracts/lp.new" "$D/contracts/leak-patterns.tsv"
+grep -v 'allow-home-zed' "$D/CONTRACTS/leak-patterns.tsv" > "$D/CONTRACTS/lp.new"; mv "$D/CONTRACTS/lp.new" "$D/CONTRACTS/leak-patterns.tsv"
 t_eq "removing that one allow row counts the placeholder" "3" "$(LK "$D" --count core)"
 t_eq "...and turns the ratchet red" "1" "$(rc "$D" --check)"
-D="$(mk albad 9)"; cp "$D/contracts/leak-patterns.tsv" "$T_TMP/lp.keep"
-printf 'allow-bad\tallow\tno-equals-sign\tn\n' >> "$D/contracts/leak-patterns.tsv"
+D="$(mk albad 9)"; cp "$D/CONTRACTS/leak-patterns.tsv" "$T_TMP/lp.keep"
+printf 'allow-bad\tallow\tno-equals-sign\tn\n' >> "$D/CONTRACTS/leak-patterns.tsv"
 t_has "an allow pattern without <id>=<text> is named" "$(LK "$D" --check)" "an allow pattern is <pattern-id>=<exact matched text>"
-PV="$(pv alpriv "p1	allow	home-path=$UH/jdoe/	n")"; cp "$T_TMP/lp.keep" "$D/contracts/leak-patterns.tsv"
+PV="$(pv alpriv "p1	allow	home-path=$UH/jdoe/	n")"; cp "$T_TMP/lp.keep" "$D/CONTRACTS/leak-patterns.tsv"
 t_has "an allow row in the private layer is a finding" "$(LK "$D" --check)" "kind allow is for the core file only"
 t_eq "...and it forgives nothing" "2" "$(HARBOR_ROOT="$D" HARBOR_SCOPE_PRIVATE="$PV" sh "$T_ROOT/bin/lint-leaks.sh" --count core 2>/dev/null)"
 unset PV
 # An allow row names one pattern: the same text under another core id still counts. The pattern file sits outside the checkout.
-{ cat "$T_ROOT/contracts/leak-patterns.tsv"
+{ cat "$T_ROOT/CONTRACTS/leak-patterns.tsv"
   printf "alt-home\tregex\t$UH/qa-[a-z]+/\tn\nallow-qa\tallow\thome-path=$UH/qa-probe/\tn\n"; } > "$T_TMP/lp-scope.tsv"
 D="$(mk alscope 2)"; printf "P=$UH/qa-probe/a\n" > "$D/bin/ph.sh"
 t_eq "an allow row forgives only the pattern it names" "3" "$(HARBOR_ROOT="$D" HARBOR_SCOPE_PRIVATE="$T_TMP/nopriv" LEAKS_CORE_PATTERNS="$T_TMP/lp-scope.tsv" sh "$T_ROOT/bin/lint-leaks.sh" --count core 2>/dev/null)"
 FU=fixuser; export LEAKS_OWN_USER="$FU"
 D="$(mk alown 2)"; printf "P=$UH/$FU/a\n" > "$D/bin/me.sh"
-printf "allow-own\tallow\thome-path=$UH/$FU/\tn\n" >> "$D/contracts/leak-patterns.tsv"
+printf "allow-own\tallow\thome-path=$UH/$FU/\tn\n" >> "$D/CONTRACTS/leak-patterns.tsv"
 t_has "an allow row naming the operator is a finding" "$(LK "$D" --check)" "allow row allow-own would forgive the operator's own user name"
 t_eq "...it forgives nothing: the path and the row's own line both count" "4" "$(HARBOR_ROOT="$D" HARBOR_SCOPE_PRIVATE="$T_TMP/nopriv" sh "$T_ROOT/bin/lint-leaks.sh" --count core 2>/dev/null)"
 t_hasnt "...and the user name is never printed" "$(LK "$D" --check)" "$FU"
 t_eq "...and the ratchet is red" "1" "$(rc "$D" --check)"
 D="$(mk alownc 2)"; printf "P=$UH/FIXUSER/a\n" > "$D/bin/me.sh"
-printf "allow-own\tallow\thome-path=$UH/FIXUSER/\tn\n" >> "$D/contracts/leak-patterns.tsv"
+printf "allow-own\tallow\thome-path=$UH/FIXUSER/\tn\n" >> "$D/CONTRACTS/leak-patterns.tsv"
 t_has "...in any case" "$(LK "$D" --check)" "would forgive the operator's own user name"
 D="$(mk alpvt 2)"; PV="$(pv alpvt "p1	word	zorblax	n")"
 printf "P=$UH/zorblax/a\n" > "$D/bin/me.sh"
-printf "allow-pv\tallow\thome-path=$UH/zorblax/\tn\n" >> "$D/contracts/leak-patterns.tsv"
+printf "allow-pv\tallow\thome-path=$UH/zorblax/\tn\n" >> "$D/CONTRACTS/leak-patterns.tsv"
 ALL="$(LK "$D" --check)"
 t_has "an allow row matching a private pattern is a finding that names the pattern id" "$ALL" "allow row allow-pv would forgive private pattern p1"
 t_hasnt "...and never its text" "$ALL" "zorblax"
@@ -190,7 +190,7 @@ t_eq "...a longer word or domain is still not a hit" "0" "$(RT "$D" --count priv
 
 t_section "export mode counts the running user's name where home-path does not (harbor#1149)"
 unset PV; FU=fixuser; export LEAKS_OWN_USER="$FU"
-D="$(mk own 99)"; printf 'clean\n' > "$D/bin/a.sh"; rm -rf "$D/tests" "$D/fixtures" "$D/evals"; commit "$D"
+D="$(mk own 99)"; printf 'clean\n' > "$D/bin/a.sh"; rm -rf "$D/tests" "$D/fixtures" "$D/EVALS-DATA"; commit "$D"
 planted EX "~user" bin/o.txt "see ~$FU/notes" own-user
 planted EX "an encoded -Users-user project dir" bin/o.txt "cd -Users-$FU-port-harbor" own-user
 planted EX "an encoded -home-user project dir" bin/o.txt "cd -home-$FU-port" own-user

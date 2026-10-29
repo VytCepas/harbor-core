@@ -1,0 +1,9 @@
+{"id":"ask-names-the-human","cmd":"git reset --hard","has":"Confirm a HUMAN intends this"}
+{"id":"ask-lists-safe-forms","cmd":"git clean -fdx","has":"git clean -n"}
+{"id":"blind-deny-says-why","cmd":"diskutil eraseSomethingNew disk9","pad":33000,"has":"could not parse this call"}
+{"id":"blind-deny-is-flat","cmd":"diskutil eraseSomethingNew disk9","pad":33000,"hasnt":"Confirm a HUMAN"}
+{"id":"no-human-note","cmd":"git clean -fdx","ctx":{"agent_type":"workflow-subagent"},"has":"[no-human context"}
+{"id":"posture-deny-has-no-note","cmd":"git clean -fdx","env":{"HELM_DESTROY_POSTURE":"deny"},"hasnt":"[no-human context"}
+{"id":"deny-tier-has-no-note","cmd":"diskutil eraseDisk JHFS+ x /dev/disk9","ctx":{"agent_type":"workflow-subagent"},"hasnt":"[no-human context","why":"the note explains an escalated ask; a deny needs none"}
+{"id":"push-1290-says-why","cmd":"git push --mirror origin","has":"refs/snapshots"}
+{"id":"push-1290-no-human-tail","cmd":"git push --mirror origin","hasnt":"Confirm a HUMAN"}

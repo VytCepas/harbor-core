@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # ci-runners-fleet-lib.sh (harbor#1060) — the fleet view: the desired set (load_fleet), the actual set (collect, gov_row), `list`, and the mount lines.
 # Sourced by ci-runners.sh, never run: it sets no shell option and reads the entry point's variables ($T, $CONF, $GH, $DOCKER, ...).
-. "$(dirname -- "$0")/library-log.sh"   # a second source keeps the run's counts (library-log.sh)
+. "$(dirname -- "$0")/log-lib.sh"   # a second source keeps the run's counts (log-lib.sh)
 
 # ── the desired set: fleet repos whose workflows read vars.CI_RUNS_ON ──────────────────────────
 load_fleet() {

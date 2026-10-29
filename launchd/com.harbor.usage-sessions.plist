@@ -4,11 +4,11 @@
      THIS FILE IS A TEMPLATE (harbor#630). Do not cp it: @HOME@ and the other placeholders in it would be
      installed as literal text, and launchd loads such a job and then fails every time it runs. Render it:
 
-       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.usage-sessions.plist > ~/Library/LaunchAgents/com.harbor.usage-sessions.plist
+       sh ~/port/harbor/bin/launchd-render.sh ~/port/harbor/launchd/com.harbor.usage-sessions.plist > ~/Library/LaunchAgents/com.harbor.usage-sessions.plist
 
      A cp line in the comment below predates the template. It is kept so the rendered file stays byte-identical
      to the one already installed: follow this block, not that line. This block is not installed;
-     bin/deploy-launchd-render.sh drops it. -->
+     bin/launchd-render.sh drops it. -->
 <!-- harbor#185 — the PER-SESSION half of the same ledger.
 
      EVERY ARGUMENT FOR THE DAILY JOB APPLIES UNCHANGED and is not restated
@@ -41,7 +41,7 @@
 
      Operator steps (an agent is blocked from all three by the floor):
 
-       sh ~/port/harbor/bin/deploy-runtime-install.sh --live --apply
+       sh ~/port/harbor/bin/runtime-install.sh --live --apply
        cp launchd/com.harbor.usage-sessions.plist ~/Library/LaunchAgents/
        launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.harbor.usage-sessions.plist
 
@@ -59,7 +59,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/sh</string>
-    <string>@HOME@/.claude/bin/status-usage-aggregate.sh</string>
+    <string>@HOME@/.claude/bin/usage-aggregate.sh</string>
     <string>--sessions</string>
     <string>--apply</string>
     <string>--live</string>

@@ -2,14 +2,14 @@
 # input	sysa	~/fixture/sysa	6 files
 # input	sysb	~/fixture/sysb	1 files
 edge	from	to	site
-derives_from	sysa:docs/generated/plan.md	sysa:bin/plan-gen	sysa:docs/generated/plan.md:1
+derives_from	sysa:PLAN.md	sysa:bin/plan-gen	sysa:PLAN.md:1
 derives_from	sysa:docs/generated/index.txt	sysa:bin/alpha-gen	sysa:docs/generated/index.txt:1
 references	sysa:bin/alpha-run	sysa:docs/generated/index.txt	sysa:bin/alpha-run:2
 references	sysa:bin/alpha-run	sysa:docs/generated/index.txt	sysa:bin/alpha-run:3
-references	sysa:bin/alpha-run	sysa:docs/generated/plan.md	sysa:bin/alpha-run:4
+references	sysa:bin/alpha-run	sysa:PLAN.md	sysa:bin/alpha-run:4
 references	sysa:src/pkg/alpha/mod	sysb:src/internal/engine	sysa:src/pkg/alpha/mod:2
 references	sysa:ops/roots.tsv	sysb:src/internal/engine	sysa:ops/roots.tsv:2
 references	sysa:bin/gamma-run	sysa:docs/generated/index.txt	sysa:bin/gamma-run:2
-references	sysa:bin/gamma-run	sysa:docs/generated/plan.md	sysa:bin/gamma-run:99
+references	sysa:bin/gamma-run	sysa:PLAN.md	sysa:bin/gamma-run:99
 references	sysa:bin/alpha-run	sysa:bin/beta-run	sysa:bin/alpha-run:5
 references	sysa:bin/beta-run	sysa:bin/alpha-run	sysa:bin/beta-run:2

@@ -13,8 +13,8 @@ set -eu
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH='' cd -P -- "$HERE" && pwd -P)"
 LOG_FD=2   # stdout is the list, or the queued id
-. "$HERE/library-log.sh"
-. "$HERE/library-gate.sh"
+. "$HERE/log-lib.sh"
+. "$HERE/gate-lib.sh"
 log_init gate-queue
 usage() { sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; }
 _hex40() { case "$1" in *[!0-9abcdef]*) return 1 ;; esac; [ "${#1}" -eq 40 ]; }

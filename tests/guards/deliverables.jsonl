@@ -167,4 +167,3 @@
 {"id":"dv793-verb-suffix-is-not-the-verb","rule":"home-loose","want":"allow","cmd":"/opt/tools/mycp /tmp/a.html ~/x793.html","why":"harbor#793 control: the prefix ends in a slash, so mycp is not cp"}
 {"id":"dv793-verb-extension-is-not-the-verb","rule":"dropzone","want":"allow","cmd":"/usr/local/bin/teex ~/Documents/n793d.md","why":"harbor#793 control: teex is not tee"}
 {"id":"sh482-d1-shadow-session-records-a-loose-deliverable","rule":"home-loose","want":"allow","env":{"HELM_FLOOR_SHADOW":"1"},"tool":"Write","path":"{home}/report.html","why":"harbor#482: under shadow the deny is recorded, not returned"}
-{"id":"sh482-d1-shadow-session-records-a-loose-deliverable-harbor-name","rule":"home-loose","want":"allow","env":{"HARBOR_ADMISSION_SHADOW":"1"},"tool":"Write","path":"{home}/report.html","why":"harbor#482: under shadow the deny is recorded, not returned"}

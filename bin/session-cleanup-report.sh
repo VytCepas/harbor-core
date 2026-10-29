@@ -8,7 +8,7 @@
 set -u
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 case "${1:-}" in -h|--help) awk 'NR < 2 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"; exit 0 ;; esac
-. "$HERE/library-log.sh"
+. "$HERE/log-lib.sh"
 LOG_FD=2; log_init "session-cleanup-report"
 . "$HERE/session-react-lib.sh"
 react_event || exit 0

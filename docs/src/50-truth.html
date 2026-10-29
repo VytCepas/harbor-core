@@ -1,0 +1,158 @@
+<section>
+<h2 id="truth">Doc-truth</h2>
+
+<p>A governance system's documents are part of its attack surface. If a page says
+there are eighteen rules and there are twenty-one, a reader cannot tell which
+other sentence is also stale — and the failure is invisible, because the wrong
+number reads exactly as well as the right one.</p>
+
+<p>A sweep of this repository once found the same fact stated differently in three
+documents, repeatedly. None of them were lies when written. They rotted.</p>
+
+<h3>The rule, and the three things that enforce it</h3>
+
+<p><strong>Do not state a fact that lives somewhere else — derive it.</strong>
+A count, a status or a path written into prose is a copy. So there is exactly one
+generated document that states numbers about this repository, and any other
+document that wants a count links to it instead.</p>
+
+<ul>
+<li><code>T1</code> fails when the generated status document is stale.</li>
+<li><code>T2</code> fails when any <em>other</em> document states a countable claim in numerals.</li>
+<li><code>T3</code> fails when a path cited by a tracked document does not resolve.</li>
+</ul>
+
+<p>Two exemptions are deliberate: dated records of what was true at a given
+pass. Their numbers are evidence about a moment, not claims about now.</p>
+
+<div class="note why">
+<span class="tag">This page is in that system</span>
+<p>Every table on this page is generated from the repository at build time by
+<code>bin/docs-gen.sh</code>. The prose is hand-written in
+<code>docs/src/*.html</code> and is where improvements go; the inventories are
+holes the generator fills. The page is built on demand
+(<code>sh bin/docs-gen.sh --apply</code>) and not committed, so it has no stale copy
+to drift; <code>sh bin/docs-gen.sh --check</code> fails when it cannot be built. An unknown hole is
+a build failure rather than an empty space — a section that silently renders as
+nothing is how a document loses a chapter without anyone noticing.</p>
+</div>
+
+<h3>A rule with no mechanism is a wish</h3>
+
+<p>The test applied to every rule in this system: <em>name the thing that fails
+when this is broken.</em> If nothing does, it is documentation, not a rule, and it
+gets labelled that way rather than dressed up. Some rules genuinely have no
+mechanism — no lint can read a response, so the requirement to give a critique
+alongside the work is unenforced and says so in its own text.</p>
+
+<p>Where a fix belongs is decided the same way, by structure rather than by
+convenience:</p>
+
+<div class="scroll">
+<table class="grid">
+<thead><tr><th>The thing</th><th>Where it lives</th></tr></thead>
+<tbody>
+<tr><td>A convention agents must follow</td><td>the repository's own instructions</td></tr>
+<tr><td>Something that must be <em>enforced</em></td><td>a lint rule, a CI job, a pre-commit hook</td></tr>
+<tr><td>A guard's behaviour</td><td>the guard, plus a pinned assertion in its suite</td></tr>
+<tr><td>A cross-repository seam</td><td>a frozen contract plus a fixture both sides run</td></tr>
+<tr><td>A durable fact about the world</td><td>the work-log</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Measured 2026-08-29: every rule sampled can still fail, and the gaps are in what they look at</h3>
+
+<p>A green linter is worth exactly as much as its ability to go red, so the rules
+were mutation-tested against a throwaway copy of the tree: plant the violation each
+one guards, watch it fire, revert. <strong>Two dozen rules across both linters were
+sampled and every one went red.</strong> Two apparent non-fires turned out to be
+documented design rather than dead rules — one is advisory on the base branch by
+intent and blocking elsewhere, and the other ignores a row it cannot parse while
+carrying a floor that fails loudly if the row format ever changes wholesale.</p>
+
+<p>No dead rule was found. What was found is that the rules are narrower than the
+prose they are trusted to police, in three specific ways.</p>
+
+<div class="note hazard">
+<span class="tag">Three coverage gaps, each with a live instance except the last</span>
+<ul>
+<li><strong>The count rule reads markdown only.</strong> A number written into a
+build file's comment or a shell script's header is outside it — and the build file
+currently states a script count that the repository passed some time ago, having
+grown by roughly a fifth since.</li>
+<li><strong>A count spelled as a word rather than a numeral evades it.</strong> Two
+documents understate the number of guards in words. One of them does so in the
+same sentence that asserts the count is stated nowhere but the generated file —
+which is the evasion the coverage document itself describes, committed in the
+document describing it.</li>
+<li><strong>The generalised path rule is narrower than the rule it
+generalises.</strong> The constitutional check learned to read both citation forms
+— the markdown link and the backticked path — when the decision was taken to cite
+repository-only documents in the second form. Its generalisation to every tracked
+document still parses only the first. Every backticked path outside the
+constitution was checked by hand and all of them are prose rather than citations,
+so the gap is real and currently empty.</li>
+</ul>
+</div>
+
+<div class="note hazard">
+<span class="tag">A verifier is red right now, and it is wrong</span>
+<p>The citation checker exits non-zero on a configuration value containing a
+wildcard — it fetches the literal string, receives a not-found, and reports a
+broken citation. The rule that scans for the same thing already skips wildcards;
+the checker does not, and a comment in the linter states that the two share one
+skip-list. They do not, and the difference is that single pattern. This matters
+more than the one false row: the whole value of a verifier is that its verdict is
+believed, and one that cries wolf gets its exit code ignored, which is the same
+failure as a test that cannot fail arriving from the other direction.</p>
+</div>
+
+<div class="note why">
+<span class="tag">An advisory gate is a report, not a gate</span>
+<p>The index of the skills a session cannot see is generated, and it is stale
+against the machine right now — two skills exist that it does not name. The rule
+covering it is advisory, so nothing fails. That is the correct severity for a
+surface whose truth depends on machine state a build cannot read, and it is also
+the reason this particular file drifts: the only thing standing between it and a
+reader is somebody noticing a line in a report.</p>
+</div>
+
+<div class="note why">
+<span class="tag">This page's own generator has a blind spot, and it fails safe</span>
+<p>The command that lists every derived hole and whether it is filled matches token
+names conservatively, while the code that fills them accepts any name. A hole whose
+name contains a digit is therefore invisible to the inventory — but still a build
+failure, because an unknown token stops the generation rather than rendering
+nothing. The audit tool under-reports; the gate does not. That is the correct
+direction for the pair to disagree in, and it is worth knowing which one to
+believe.</p>
+</div>
+
+<h4>The lint rules</h4>
+<p class="derived">Greyed rows are advisory: they report without failing the
+build, because a rule that blocks ordinary work gets switched off.</p>
+<div class="scroll">
+<!--gen:lint-->
+</div>
+
+<h4>The frozen contracts</h4>
+<div class="scroll">
+<!--gen:contracts-->
+</div>
+
+<h4>The doctrine documents</h4>
+<p class="derived">Reasoning that would swamp a rule file: the incidents behind each
+rule, the failure modes of each clause, and what is deliberately absent.</p>
+<div class="scroll">
+<!--gen:doctrine-->
+</div>
+
+<h4>The decisions</h4>
+<p class="derived">One row per decision record in <code>docs/decisions/</code>. A citation of
+a decision id anywhere in the tree resolves to its row's record; a citation with no row is
+red under <code>standard.decision-dangling</code>.</p>
+<div class="scroll">
+<!--gen:decisions-->
+</div>
+</section>

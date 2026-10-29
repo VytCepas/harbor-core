@@ -1,23 +1,23 @@
 #!/usr/bin/env sh
 # scope.sh (harbor#966, harbor#1149) - `harbor scope install`: the PORT_ROOT skeleton and an empty
-# private layer, idempotent. contracts/private-layer.md is the shape of what it creates.
+# private layer, idempotent. CONTRACTS/private-layer.md is the shape of what it creates.
 #
 #   harbor scope install [--dry-run] [--seed-from-projects] [--private-only]
 #
 #   --dry-run             print what would be created and kept, write nothing
-#   --seed-from-projects  also write repos.tsv rows from the private layer's projects.tsv (scope-roots.sh --projects) and the git
+#   --seed-from-projects  also write repos.tsv rows from the private layer's projects.tsv (roots.sh --projects) and the git
 #                         checkouts already under PORT_ROOT; only ids not yet in repos.tsv are added
 #   --private-only        leave the PORT_ROOT skeleton and the config dir alone and create only harbor-private/
 #
 # The one file it writes outside PORT_ROOT is the Claude Code config dir's settings.json, as an empty {}, and only when
 # it is absent (harbor#457): deploy's preflight refuses a box without one, and a machine where Claude Code never ran has
 # none. A present file, a symlink, or a CLAUDE_CONFIG_DIR naming another dir (deploy refuses that too) is left alone.
-# Never overwrites a file and never deletes. PORT_ROOT and HARBOR_SCOPE_PRIVATE are read as scope-roots.sh reads them.
+# Never overwrites a file and never deletes. PORT_ROOT and HARBOR_SCOPE_PRIVATE are read as roots.sh reads them.
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
-. "$SRC/library-log.sh"
+. "$SRC/log-lib.sh"
 log_init scope
 
 DRY=0; SEED=0; PONLY=0
@@ -34,9 +34,9 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-# scope-roots.sh is the one resolver of both roots (PORT_ROOT, HARBOR_SCOPE_PRIVATE).
-PORT="$(sh "$SRC/scope-roots.sh" --port-root)" || { log_fail "no workspace root"; log_fix "export PORT_ROOT=<dir>"; log_end || :; exit 1; }
-PRIV="$(sh "$SRC/scope-roots.sh" --private)" || { log_fail "no private layer root"; log_fix "export HARBOR_SCOPE_PRIVATE=<dir>"; log_end || :; exit 1; }
+# roots.sh is the one resolver of both roots (PORT_ROOT, HARBOR_SCOPE_PRIVATE).
+PORT="$(sh "$SRC/roots.sh" --port-root)" || { log_fail "no workspace root"; log_fix "export PORT_ROOT=<dir>"; log_end || :; exit 1; }
+PRIV="$(sh "$SRC/roots.sh" --private)" || { log_fail "no private layer root"; log_fix "export HARBOR_SCOPE_PRIVATE=<dir>"; log_end || :; exit 1; }
 
 mkdir_p() { # <dir>
   if [ -d "$1" ]; then log_note "kept     $1/"; return 0; fi
@@ -51,7 +51,7 @@ put() { # <file> <content> - writes only when the file is absent
 }
 
 TOML='# harbor.toml - this machine'"'"'s Harbor settings. Flat TOML: key = "value" or a one-line array, no tables.
-# Read by `sh bin/scope-roots.sh --conf <key>`; contracts/private-layer.md lists every key.
+# Read by `sh bin/roots.sh --conf <key>`; CONTRACTS/private-layer.md lists every key.
 #
 # packs = []                        # workload repos whose harbor-pack/ folder is installed box-wide
 components = ["core"]             # core, plus any of: yard, fleet, prod-guard, collector (deploy.sh reads it)
@@ -64,7 +64,7 @@ REPOS_HEAD='id	path	kind	remote
 REGISTER='# Access register
 
 Every identity an agent may use: an account, role, app, mailbox or token, one `## <id>` entry each. The format is
-contracts/access-register.md in the Harbor checkout. An entry holds a `secret:` reference, never a value, and
+CONTRACTS/access-register.md in the Harbor checkout. An entry holds a `secret:` reference, never a value, and
 `bin/secret` refuses a ref no entry names. Empty until `harbor access add` records one.
 '
 PERSONAL='# Personal operating rules
@@ -109,19 +109,16 @@ seed_settings() {
 [ "$PONLY" = 1 ] || seed_settings
 
 # kind by the checkout's own `repo-kind:` line in .agents/config.yaml, when it names a kind in
-# standards/naming/repo-kinds.tsv; else a platform repo's kind follows its role row in the roots table
-# (harbor#966), everything else is a workload. A repo's kind is never listed here (harbor#1273): the registry
-# row is the operator's to correct.
+# standards/naming/repo-kinds.tsv; else the three platform repos have one each, everything else is a
+# workload. A repo's kind is never listed here (harbor#1273): the registry row is the operator's to correct.
 kind_of() { # <id> <checkout>
   __k="$(sed -n 's/^repo-kind:[[:space:]]*\([a-z-]*\).*/\1/p' "$2/.agents/config.yaml" 2>/dev/null | head -1)"
   if [ -n "$__k" ] && awk -F'\t' -v k="$__k" '$1 == k { f = 1 } END { exit !f }' "$ROOT/standards/naming/repo-kinds.tsv" 2>/dev/null; then
     echo "$__k"; return 0
   fi
-  __rt="$ROOT/contracts/roots.tsv"; [ -f "$__rt" ] || __rt="$SRC/roots.tsv"   # installed: the table ships beside bin/
-  __roles=" $(awk -F'\t' -v i="$1" '$2 == "REPOS" { n = $3; sub(/\/.*/, "", n); if (n == i) printf "%s ", $1 }' "$__rt" 2>/dev/null) "
-  case "$__roles" in
-    *" HARBOR_REPO "*) echo control-plane ;; *" HARBOR_SCOPE_SCAFFOLDER "*) echo scaffolder ;;
-    *" HARBOR_SCOPE_FLEET_CONTROLLER "*) echo fleet-controller ;;
+  case "$1" in
+    harbor) echo control-plane ;; project-init) echo scaffolder ;;
+    projects-orchestrator) echo fleet-controller ;;
     *) echo workload ;;
   esac
 }
@@ -138,7 +135,7 @@ if [ "$SEED" = 1 ]; then
   REG="$PRIV/repos.tsv"
   # No temp file: --dry-run writes nothing anywhere. Candidates are lines in a variable.
   CAND=""
-  PROJ="${HARBOR_SCOPE_PROJECTS_TSV:-$(sh "$SRC/scope-roots.sh" --projects 2>/dev/null || :)}"
+  PROJ="${HARBOR_SCOPE_PROJECTS_TSV:-$(sh "$SRC/roots.sh" --projects 2>/dev/null || :)}"
   if [ -f "$PROJ" ]; then
     # Rows name ~/port/<dir>; anything else is not under PORT_ROOT and is left for the operator.
     while IFS="$(printf '\t')" read -r __n __p __c; do
@@ -161,21 +158,21 @@ EOF
 "
   done
   # The registry as it will be: what is there, plus each accepted row. Every candidate is judged by
-  # scope-roots.sh --registry-check, the reader's own rules, before it is added; a registry already invalid
+  # roots.sh --registry-check, the reader's own rules, before it is added; a registry already invalid
   # is not appended to.
   if [ -f "$REG" ]; then BODY="$(cat "$REG")"; else BODY="$(printf 'id\tpath\tkind\tremote')"; fi
-  __e="$(sh "$SRC/scope-roots.sh" --registry-check - 2>&1 >/dev/null <<EOF
+  __e="$(sh "$SRC/roots.sh" --registry-check - 2>&1 >/dev/null <<EOF
 $BODY
 EOF
 )" || {
     log_fail "$REG is already invalid, so nothing is appended: $(printf '%s' "$__e" | tail -1)"
-    log_fix "sh $SRC/scope-roots.sh --registry-check"; log_end || :; exit 1; }
+    log_fix "sh $SRC/roots.sh --registry-check"; log_end || :; exit 1; }
   ADDED=0; REJ=0; NEW=""
   while IFS="$(printf '\t')" read -r __id __rel; do
     [ -n "$__id" ] || continue
     __rel="${__rel%/}"
     __row="$(printf '%s\t%s\t%s\t%s' "$__id" "$__rel" "$(kind_of "$__id" "$PORT/$__rel")" "$(remote_of "$PORT/$__rel")")"
-    __err="$(sh "$SRC/scope-roots.sh" --registry-check - 2>&1 >/dev/null <<EOF
+    __err="$(sh "$SRC/roots.sh" --registry-check - 2>&1 >/dev/null <<EOF
 $BODY
 $__row
 EOF

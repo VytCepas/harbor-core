@@ -42,7 +42,7 @@ OUT="$(run 'gh issue list -R VytCepas/harbor' 2>&1)"
 t_eq "gh: the default account and the table's are minted" 2 "$(calls mint)"
 t_eq "...copied into the cache" tok-VytCepas "$(sed -n 2p "$C/gh-VytCepas")"
 t_eq "...for the org too" tok-Acme-Org "$(sed -n 2p "$C/gh-Acme-Org")"
-. "$T_ROOT/bin/library-fs.sh"; t_eq "...mode 600" 600 "$(fs_mode "$C/gh-VytCepas")"
+. "$T_ROOT/bin/fs-lib.sh"; t_eq "...mode 600" 600 "$(fs_mode "$C/gh-VytCepas")"
 t_eq "the hook printed nothing, on stderr either, though no cache file existed yet" "" "$OUT"
 run 'git push' >/dev/null
 t_eq "a fresh cache is not re-minted" 2 "$(calls mint)"

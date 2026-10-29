@@ -3,12 +3,12 @@
 # <pack>/skill-packs/<core skill>/<name>.md lands at <target>/skill-packs/<core skill>/<name>.md, outside skills/, where the
 # skill's checker searches for it. Same throwaway PORT_ROOT and --dir as pack.test.sh.
 # No core skill reads domain packs since the topology skill, and its reader, left for the measurement pack (harbor#1149), so
-# the core is a fixture here: a root that links this one's bin/, contracts/, docs/reference/checks.md and standards/ and has a skills/ of its
+# the core is a fixture here: a root that links this one's bin/, CONTRACTS/, CHECKS.md and standards/ and has a skills/ of its
 # own, holding `reader` (keeps a packs/ directory, so it takes packs) and `plain` (keeps none).
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$(dirname "$0")/fixture.sh"
 FR="$T_TMP/fakecore"; mkdir -p "$FR/skills/reader/packs" "$FR/skills/plain"
-for _l in bin contracts docs/reference/checks.md standards; do ln -s "$T_ROOT/$_l" "$FR/$_l"; done
+for _l in bin CONTRACTS CHECKS.md standards; do ln -s "$T_ROOT/$_l" "$FR/$_l"; done
 printf -- '---\nname: plain\n---\nA skill that reads no packs.\n' > "$FR/skills/plain/SKILL.md"
 printf 'the packs directory the skill keeps\n' > "$FR/skills/reader/packs/README.md"
 printf -- '---\npack: measurement\ntriggers: x\n---\nA pack the core skill ships.\n' > "$FR/skills/reader/packs/measurement.md"
@@ -77,7 +77,7 @@ refused not-md nm "holds <skill>/<name>.md"
 
 t_section "refused: front matter outside the skill-pack keys"
 skpack fk; printf -- '---\nname: demo\ntriggers: x\n---\nbody\n' > "$PW/fk/harbor-pack/skill-packs/reader/demo-pack.md"; recommit fk
-refused key-not-listed fk "key name is not in contracts/skill-pack-frontmatter-keys.txt"
+refused key-not-listed fk "key name is not in CONTRACTS/skill-pack-frontmatter-keys.txt"
 skpack hk; printf -- '---\npack: x\nhooks: y\n---\nbody\n' > "$PW/hk/harbor-pack/skill-packs/reader/demo-pack.md"; recommit hk
 refused hooks-key hk "hooks: key"
 skpack ob; printf -- '---\r\npack: x\r\n---\r\nbody\r\n' > "$PW/ob/harbor-pack/skill-packs/reader/demo-pack.md"; recommit ob

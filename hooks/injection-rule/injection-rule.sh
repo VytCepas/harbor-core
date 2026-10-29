@@ -5,7 +5,7 @@
 #   sh hooks/injection-rule/injection-rule.sh --list                      what packs exist, and where
 #   sh hooks/injection-rule/injection-rule.sh --explain < payload.json    which rules matched, and why
 #
-# DELIBERATELY ONE FILE (lint G1, docs/explanation/modularity.md): splitting the
+# DELIBERATELY ONE FILE (lint G1, DOCTRINE/modularity.md): splitting the
 # predicate vocabulary from the pack loader would put the two halves of one
 # contract in two files, and the thing this replaces is exactly that scatter.
 #
@@ -17,7 +17,7 @@
 # ONCE and the rules become DATA: a repo declares `context-rules/<repo>/<id>.md` and
 # gets just-in-time governance with no shell of its own.
 #
-# WHAT MAKES THIS WORTH THE BYTES, MEASURED. E6 (docs/reports/evals.md) ran the same sentence
+# WHAT MAKES THIS WORTH THE BYTES, MEASURED. E6 (EVALS.md) ran the same sentence
 # two ways: as prose inside a runbook the model had already opened it scored
 # 0/4, and injected at the tool call it scored 4/4. E8 then showed that volume in
 # the prefix changes nothing — a 595 B constitution and a 17,845 B one both score
@@ -299,7 +299,7 @@ strip_heredocs() {
 # newline WITHOUT regard to quoting, so
 #   git commit -m "docs: record the gate (gh pr create needs the agents first)"
 # produced a segment reading `gh pr create needs the agents first` and fired the
-# a workload pack — on a commit, not on a PR. contracts/injection-rule.md stated the
+# a workload pack — on a commit, not on a PR. CONTRACTS/inject.md stated the
 # opposite as a guarantee. And the second-order effect is worse than the noise:
 # those packs are `once: session`, so the benign commit SPENT the ledger key and
 # the real `gh pr create` later in the same session got total silence. A rule
@@ -554,7 +554,7 @@ own_committed_file() { # <path> -> 0 iff tracked, clean, in a known repo and ope
   # Operator-reviewed only: a row of the committed protected-paths register (the CODEOWNERS source).
   # Vendored, captured and fixture text stays external whoever merged it.
   _oc_rel="$(git -C "$_oc_pd" ls-files --full-name -- "$_oc_fn" 2>/dev/null)"; [ -n "$_oc_rel" ] || return 1
-  case "$_oc_rel" in vendor/*|evals/*|fixtures/*|tests/*.jsonl|tests/*/*.jsonl|tests/*/*/*.jsonl) return 1 ;; esac
+  case "$_oc_rel" in vendor/*|EVALS-DATA/*|fixtures/*|tests/*.jsonl|tests/*/*.jsonl|tests/*/*/*.jsonl) return 1 ;; esac
   _oc_ok=1
   while IFS="$(printf '\t')" read -r _oc_g _oc_rest; do
     case "$_oc_g" in ''|'#'*|glob) continue ;; esac
@@ -704,7 +704,7 @@ _GREP=/usr/bin/grep; [ -x "$_GREP" ] || _GREP=grep
 explain() { [ "$MODE" = explain ] && printf '%s\n' "$*" >&2 || true; }
 
 # ── the trees this call touches (harbor#599) ───────────────────────────────
-# ONE DEFINITION, written in contracts/injection-rule.md ("The tree a call touches") and
+# ONE DEFINITION, written in CONTRACTS/inject.md ("The tree a call touches") and
 # computed HERE for both of its readers: `scope: box` delivery below, and
 # repo-tier.sh's report, which receives the result as HARBOR_TOUCHED instead of
 # working it out a second time. It was repo-tier.sh's own code for one PR
@@ -1049,7 +1049,7 @@ WHEN
       # markdown body cannot acquire blocking power by containing a sentence.
       #
       # AND ONLY WHERE THE HARNESS HAS A CHANNEL FOR IT. `permissionDecision` is
-      # PreToolUse-only (contracts/hooks.md). On any other event the sentinel is
+      # PreToolUse-only (CONTRACTS/hooks.md). On any other event the sentinel is
       # stripped and the text is delivered as an ordinary note, with the
       # downgrade stated to the operator — because a decision the harness
       # discards is the PreCompact failure this file already carries a comment
@@ -1127,7 +1127,7 @@ NOTES="${NOTES% }"
 # context-less event without `mode: notify`, so this class cannot return quietly.
 #
 # The list tracks the harness, not our preferences. When it changes, this line
-# and contracts/injection-rule.md's table change together.
+# and CONTRACTS/inject.md's table change together.
 #
 # READ OFF THE BINARY'S OWN SCHEMA ON 2026-09-02, not inferred and not recalled.
 # `hookSpecificOutput` is a discriminated union in 2.1.258 and every arm either
@@ -1138,7 +1138,7 @@ NOTES="${NOTES% }"
 # a list of what the harness accepts, maintained by hand, drifts toward SMALLER
 # than the truth, and every omission is a pack that silently talks to nobody.
 #
-# AND `PostCompact` IS NOT IN THE UNION AT ALL. contracts/hooks.md carried it as
+# AND `PostCompact` IS NOT IN THE UNION AT ALL. CONTRACTS/hooks.md carried it as
 # "receives the summary — could verify what survived", which reads like an open
 # avenue; it is the same closed door as PreCompact. The post-compaction rule
 # stays on SessionStart + `source-is compact`, which is the only channel there is.
@@ -1162,7 +1162,7 @@ fi
 # A DECISION SHORT-CIRCUITS THE NOTE, because they are answers to different
 # questions and only one of them stops the call. The reason reaches the model as
 # `permissionDecisionReason`, which is the channel a deny already travels on
-# (contracts/hooks.md: confirmed live — guard-bash.sh's denial landed mid-turn
+# (CONTRACTS/hooks.md: confirmed live — guard-bash.sh's denial landed mid-turn
 # and redirected the work), so it does not also need to be an additionalContext.
 if [ "${DECISION:-}" = deny ]; then
   jq -cn --arg e "$EVENT" --arg r "$STAMP $DREASON" \

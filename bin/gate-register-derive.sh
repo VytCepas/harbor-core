@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # gate-register-derive.sh (harbor#1018, review finding 3) — the rows of harbor's protected-paths register that are
 # DERIVED, never kept by hand: every file an installer ships into the config dir, every script an installer wires
-# as a hook or statusline, every shim target contracts/shims.tsv links into ~/.local/bin, every file a ship.conf
+# as a hook or statusline, every shim target CONTRACTS/shims.tsv links into ~/.local/bin, every file a ship.conf
 # command runs, what decides the required checks' content, and everything those and the gate tools source or call,
 # followed to a fixpoint.
 #
@@ -17,7 +17,7 @@ LC_ALL=C; export LC_ALL
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH='' cd -- "$HERE" && pwd)"; ROOT="$(CDPATH='' cd -- "$HERE/.." && pwd)"
 LOG_FD=2
-. "$HERE/library-log.sh"
+. "$HERE/log-lib.sh"
 log_init gate-register-derive
 REG="${2:-$ROOT/.agents/protected-paths.tsv}"
 CONF="$ROOT/.agents/ship.conf"
@@ -64,14 +64,14 @@ done >> "$T/seed"
 # a bare name that left bin/ for its engine folder is shipped from there
 awk -F'\t' -v OFS='\t' 'NR == FNR { e["bin/" $1] = $2; next } ($1 in e) { $1 = e[$1] } { print }' "$T/engines" "$T/seed" > "$T/seed2" && mv "$T/seed2" "$T/seed"
 # 3 · what the box runs from this repo OUTSIDE a session, as the operator (review finding 1): every shim whose root
-#     (contracts/roots.tsv) is this repo or under it, and both registers, which decide what ~/.local/bin points at
+#     (CONTRACTS/roots.tsv) is this repo or under it, and both registers, which decide what ~/.local/bin points at
 _me="$(conf repo | head -1)"; _me="${_me##*/}"
 awk -F'\t' -v me="${_me:-harbor}" 'NR == FNR { if ($1 !~ /^#/ && NF >= 3) rel[$1] = $3; next }
   $1 ~ /^#/ || $1 == "name" || NF < 3 { next }
   { r = rel[$2]; if (r == me) p = $3; else if (index(r, me "/") == 1) p = substr(r, length(me) + 2) "/" $3; else next
-    print p "\tlinked into ~/.local/bin as " $1 " by contracts/shims.tsv\toperator-run" }' \
-  "$ROOT/contracts/roots.tsv" "$ROOT/contracts/shims.tsv" >> "$T/seed"
-printf 'contracts/%s\tdecides what ~/.local/bin points at\toperator-run\n' shims.tsv roots.tsv >> "$T/seed"
+    print p "\tlinked into ~/.local/bin as " $1 " by CONTRACTS/shims.tsv\toperator-run" }' \
+  "$ROOT/CONTRACTS/roots.tsv" "$ROOT/CONTRACTS/shims.tsv" >> "$T/seed"
+printf 'CONTRACTS/%s\tdecides what ~/.local/bin points at\toperator-run\n' shims.tsv roots.tsv >> "$T/seed"
 # 4 · every file a ship.conf command runs: plan, apply, verify, restore, deployed run unattended (review finding 2)
 for _k in plan apply verify restore deployed; do
   conf "$_k" | tr ' \t' '\n\n' | tr -d "\"'" | awk -v k="$_k" '/\// && !/^[\/$-]/ && !/\.\./ { print $0 "\truns as ship.conf " k "\tship" }'
@@ -80,7 +80,7 @@ done >> "$T/seed"
 #     required list, the push-run skip, the runner images and the test library, and what every workflow calls, not only
 #     the one ship.conf judges: the public mirror runs governance.yml inside public-ci (harbor#1149). Individual test
 #     files stay open: protecting tests/** would put nearly every PR behind the click.
-for _f in "$ROOT"/contracts/suites*.txt contracts/suite-paths.txt contracts/required-checks.tsv bin/ci-verified.sh; do
+for _f in "$ROOT"/CONTRACTS/suites*.txt CONTRACTS/suite-paths.txt CONTRACTS/required-checks.tsv bin/ci-verified.sh; do
   printf '%s\tdecides what a required check runs\tci-gate\n' "${_f#"$ROOT"/}"
 done >> "$T/seed"
 for _wp in "$ROOT"/.github/workflows/*.yml; do

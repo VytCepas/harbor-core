@@ -1,5 +1,0 @@
-# registries/context-ratchet.tsv: the deploy gate for the CORE always-on surface (bin/context-budget.sh --ratchet).
-# Format: <bytes><TAB><date><TAB><why>, one row, the LAST row counts. It may only go down.
-# Raise it deliberately by editing the row and saying why in the commit; lower it when --ratchet reports a saving.
-# Covers policy/constitution.md + tracked ambient skill descriptions only; not the memory index, plugins, commands or injection.
-31278	2026-10-28	raised 119 B from 31159: the constitution cites its moved docs by longer paths (docs/explanation/, docs/reference/) in harbor#961 W1

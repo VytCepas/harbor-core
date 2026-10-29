@@ -1,11 +1,11 @@
-# harbor#617 — the Linux/WSL2 twin of launchd/com.harbor.usage.plist, docs/reference/checks.md row `usage`.
-# Install and disable: docs/reference/checks.md, "Platforms". WSL2 needs [boot] systemd=true in /etc/wsl.conf.
+# harbor#617 — the Linux/WSL2 twin of launchd/com.harbor.usage.plist, CHECKS.md row `usage`.
+# Install and disable: CHECKS.md, "Platforms". WSL2 needs [boot] systemd=true in /etc/wsl.conf.
 [Unit]
 Description=Harbor check usage: durable per-day token usage
 
 [Service]
 Type=oneshot
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=/bin/sh %h/.claude/bin/status-usage-aggregate.sh --apply --live
+ExecStart=/bin/sh %h/.claude/bin/usage-aggregate.sh --apply --live
 IOSchedulingClass=idle
 Nice=10

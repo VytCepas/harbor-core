@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # ci-runners-watch-lib.sh (harbor#1060) — watching: the alarm, the drift cache, and `tick`.
 # Sourced by ci-runners.sh, never run: it sets no shell option and reads the entry point's variables ($T, $CONF, $GH, $DOCKER, ...).
-. "$(dirname -- "$0")/library-log.sh"   # a second source keeps the run's counts (library-log.sh)
+. "$(dirname -- "$0")/log-lib.sh"   # a second source keeps the run's counts (log-lib.sh)
 
 # ── alarm: a runner that cannot take work, or work no runner can take (harbor#1060, check ci-runner-alarm) ──────────
 # 2026-10-05 19:53 the Mac rebooted, Colima did not start, every Linux runner sat offline ~18 min and nothing said so.

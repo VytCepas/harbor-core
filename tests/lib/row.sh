@@ -5,7 +5,7 @@
 # and reads `timeout`, so a loop cannot hang the suite (harbor#768). A pad is words, not one token:
 # a single 33 KB token costs guard-egress ~5 s of CPU (quadratic -o scan), >60 s under CI load (harbor#1092).
 # {j} expands to nothing: it splits a token-shaped literal in a row so no scanner sees it in the tracked file (harbor#1149).
-. "$(dirname "$0")/../admission/helper/lib.sh"
+. "$(dirname "$0")/guard.sh"
 _g="$1"; _o="$3"
 _root="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 _row="$(jq -c --arg home "$HOME" --arg cfg "${CLAUDE_CONFIG_DIR:-}" --arg tmp "$4" --arg root "$_root" '

@@ -1,16 +1,16 @@
 #!/usr/bin/env sh
 # Sourced by the deploy-fleet suites after t_init. Two fake repos behind local bare remotes (url.insteadOf), no harbor file in
 # either: acme/api deploys (default branch trunk; plan, apply, two verify, restore over a fake live dir), acme/web merges only.
-# The tools run from an install dir, as §5b.9 installs them; `gh`, gate-merge-check.sh, gate-classify.sh and gate-queue.sh are stubs
+# The tools run from an install dir, as §5b.9 installs them; `gh`, merge-check.sh, gate-classify.sh and gate-queue.sh are stubs
 # to the contract's CLI. fx_world builds it; fx_pr/fx_red/fx_main/fx_base build the night; fx_mutant copies the runner.
-fx_inst() { # <dir> — the runner and merge-stack side by side, with a stub gate-merge-check.sh
-  mkdir -p "$1/bin" "$1/contracts"
-  cp "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/event-bus.sh" "$T_ROOT/bin/gate-merge-stack.sh" "$T_ROOT/bin/gate-merge-stack-resolve.py" \
-    "$T_ROOT/bin/deploy-fleet.sh" "$T_ROOT/bin/scope-roots.sh" "$1/bin/"
-  cp "$T_ROOT/contracts/roots.tsv" "$1/bin/roots.tsv"   # the installed runner finds the fleet file through scope-roots.sh (harbor#966)
-  cp "$T_ROOT/contracts/merge-stack-union.txt" "$1/contracts/"
-  : > "$1/contracts/required-checks.tsv"   # harbor's own rows, which name no acme repo (merge-stack reads them since #1126 r4)
-  cat > "$1/bin/gate-merge-check.sh" <<'EOF'
+fx_inst() { # <dir> — the runner and merge-stack side by side, with a stub merge-check.sh
+  mkdir -p "$1/bin" "$1/CONTRACTS"
+  cp "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/event-bus.sh" "$T_ROOT/bin/gate-merge-stack.sh" "$T_ROOT/bin/gate-merge-stack-resolve.py" \
+    "$T_ROOT/bin/deploy-fleet.sh" "$T_ROOT/bin/roots.sh" "$1/bin/"
+  cp "$T_ROOT/CONTRACTS/roots.tsv" "$1/bin/roots.tsv"   # the installed runner finds the fleet file through roots.sh (harbor#966)
+  cp "$T_ROOT/CONTRACTS/merge-stack-union.txt" "$1/CONTRACTS/"
+  : > "$1/CONTRACTS/required-checks.tsv"   # harbor's own rows, which name no acme repo (merge-stack reads them since #1126 r4)
+  cat > "$1/bin/merge-check.sh" <<'EOF'
 #!/bin/sh
 # stub merge-check: squash-merge the PR into the bare default branch, as GitHub does; refuses a --match-head-commit mismatch
 n=''; mh=''; prev=''; for a in "$@"; do case "$prev" in --merge) n="$a" ;; --match-head-commit) mh="$a" ;; esac; prev="$a"; done
@@ -22,7 +22,7 @@ git -C "$m" merge -q --squash "origin/$b" >/dev/null 2>&1 || { git -C "$m" reset
 git -C "$m" commit -q -m "$(cat "$D/pr/$n.title") (#$n)" && git -C "$m" push -q origin "${db#origin/}" && echo MERGED > "$D/pr/$n.state"
 [ ! -f "$SF/kill-after-merge" ] || touch "$CLAUDE_CONFIG_DIR/.harbor-autoship.off"
 EOF
-  chmod +x "$1/bin/gate-merge-check.sh"
+  chmod +x "$1/bin/merge-check.sh"
 }
 fx_db() { case "$1" in api) echo trunk ;; *) echo main ;; esac; }
 fx_world() {
@@ -43,7 +43,7 @@ plan sh ops/plan.sh
 apply sh ops/apply.sh
 verify sh ops/health.sh
 verify sh ops/smoke.sh   # the second check
-restore sh ops/deploy-restore.sh
+restore sh ops/restore.sh
 deployed cat "$LIVE/sha"
 timeout.verify 3'
   git -C "$P/api" worktree add -q "$P/.wt-api" -b side 2>/dev/null
@@ -80,7 +80,7 @@ echo verify-health >> "$SF/ops.log"
 grep -qx ok "$LIVE/health.txt"
 EOF
   printf 'echo verify-smoke >> "$SF/ops.log"; [ -s "$LIVE/sha" ]\n' > "$_w/ops/smoke.sh"
-  cat > "$_w/ops/deploy-restore.sh" <<'EOF'
+  cat > "$_w/ops/restore.sh" <<'EOF'
 echo "restore $SHIP_SNAPSHOT_ID" >> "$SF/ops.log"; [ -d "$SF/snaps/$SHIP_SNAPSHOT_ID" ] || exit 1
 rm -rf "${LIVE:?}"; mkdir -p "$LIVE"; cp -R "$SF/snaps/$SHIP_SNAPSHOT_ID/." "$LIVE/"
 EOF

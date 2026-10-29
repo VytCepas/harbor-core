@@ -38,20 +38,20 @@ t_section "a mention that cannot read is set aside, and the live twin of each st
 t_eq "a comment, a longer name, a register, a test: nothing is a finding" "" "$(findings inert-mentions)"
 t_eq "...and --format inert lists exactly what was set aside, with why: every pair, a family or system edge too, and a test's path of another system, but not a test's contract or its own system" "comment	sysa:bin/alpha-run -> sysa:bin/beta-run	sysa:bin/alpha-run:5
 comment	sysa:bin/alpha-run -> sysa:docs/generated/index.txt	sysa:bin/alpha-run:2
-comment	sysa:bin/beta-run -> sysb:contracts/seam.md	sysa:bin/beta-run:3
+comment	sysa:bin/beta-run -> sysb:CONTRACTS/seam.md	sysa:bin/beta-run:3
 comment	sysa:src/pkg/alpha/mod -> sysb:src/internal/engine	sysa:src/pkg/alpha/mod:2
-longer-name	sysa:bin/alpha-run -> sysa:docs/generated/plan.md	sysa:bin/alpha-run:3
+longer-name	sysa:bin/alpha-run -> sysa:PLAN.md	sysa:bin/alpha-run:3
 test	sysa:tests/alpha/run.test -> sysb:src/internal/engine	sysa:tests/alpha/run.test:2" "$(findings inert-mentions --format inert)"
 t_has "...and the run counts them, so the count in the log is the list's length" "$(messages inert-mentions)" "6 pair(s) set aside"
 t_exit "...and exits 0" 0 sh "$TOOL" --root "$T_ROOT" --terms "$FX/inert-mentions/terms.tsv" --graph "$FX/inert-mentions/graph.tsv" --sites "$FX/inert-mentions/tree"
 LIVE="$(findings live-mentions)"
 t_has "a code line with a trailing comment still reads (layer-direction)" "$LIVE" "A	module.layer-direction	sysa:bin/alpha-run -> sysa:docs/generated/index.txt"
-t_has "a line holding docs/reports/qa-plan.md AND docs/generated/plan.md still reads docs/generated/plan.md" "$LIVE" "A	module.layer-direction	sysa:bin/alpha-run -> sysa:docs/generated/plan.md"
+t_has "a line holding QA-PLAN.md AND PLAN.md still reads PLAN.md" "$LIVE" "A	module.layer-direction	sysa:bin/alpha-run -> sysa:PLAN.md"
 t_has "a code line in a TypeScript file with a trailing // comment still reads (cross-system-path)" "$LIVE" "A	module.cross-system-path	sysa:src/pkg/alpha/mod -> sysb:src/internal/engine"
 t_has "a register-shaped file OUTSIDE the contract areas is still judged" "$LIVE" "A	module.cross-system-path	sysa:ops/roots.tsv -> sysb:src/internal/engine"
 t_has "a family cycle between two code files still goes red" "$LIVE" "A	module.family-cycle	alpha,beta"
 t_has "a graph whose cited line no longer holds the path is never inert" "$LIVE" "A	module.layer-direction	sysa:bin/gamma-run -> sysa:docs/generated/index.txt"
-t_has "a cited line past the end of the file is never inert" "$LIVE" "A	module.layer-direction	sysa:bin/gamma-run -> sysa:docs/generated/plan.md"
+t_has "a cited line past the end of the file is never inert" "$LIVE" "A	module.layer-direction	sysa:bin/gamma-run -> sysa:PLAN.md"
 t_has "a pair with a comment site AND a code site names the code site" "$(messages live-mentions)" "sysa:bin/alpha-run -> sysa:docs/generated/index.txt — source code reads a generated file; a layer reads only the one below it (standard section 5; sysa:bin/alpha-run:3)"
 t_hasnt "...and never the comment before it" "$(messages live-mentions)" "sysa:bin/alpha-run:2)"
 t_eq "a case with no tree/ cannot be read, so every finding stands: the older fixtures judge the graph alone" "A	module.layer-direction	sysa:bin/alpha-run.sh -> sysa:docs/generated/index.txt" "$(findings layer-direction)"
@@ -59,7 +59,7 @@ t_eq "a case with no tree/ cannot be read, so every finding stands: the older fi
 t_section "red proof: break each cut and the fixtures notice (a mutant of bin/lint-module.sh, then the tool as shipped)"
 # mutant <name> [sed script] → a root holding a copy of the tool, with one cut broken by the script; NOCHANGE when it matched nothing
 mutant() {
-  _m="$(mkroot "mut-$1")"; mkdir -p "$_m/bin"; cp "$T_ROOT/bin/library-log.sh" "$_m/bin/"
+  _m="$(mkroot "mut-$1")"; mkdir -p "$_m/bin"; cp "$T_ROOT/bin/log-lib.sh" "$_m/bin/"
   if [ -z "${2-}" ]; then cp "$TOOL" "$_m/bin/lint-module.sh"; printf '%s' "$_m"; return 0; fi
   sed "$2" "$TOOL" > "$_m/bin/lint-module.sh"
   if cmp -s "$TOOL" "$_m/bin/lint-module.sh"; then printf 'NOCHANGE'; else printf '%s' "$_m"; fi
@@ -77,7 +77,7 @@ M="$(mutant longer-name 's/return whole ? "" : "longer-name"/return ""/')"
 t_eq "a longer name no longer set aside -> the pass fixture goes red, self-test exits 1" "1" "$(mself "$M")"
 M="$(mutant register 's/ || contract(n)) }/) }/')"
 t_eq "a register row judged again -> the pass fixture goes red, self-test exits 1" "1" "$(mself "$M")"
-M="$(mutant tests 's/evals|tests|fixtures/evals/')"
+M="$(mutant tests 's/EVALS-DATA|tests|fixtures/EVALS-DATA/')"
 t_eq "tests judged again -> the pass fixture goes red, self-test exits 1" "1" "$(mself "$M")"
 M="$(mutant fam-edge '/layer = (generated/,$ s/if (s == "") { inertrec(f, t, SITE\[k, 1\]); continue }/if (s == "") { inertrec(f, t, SITE[k, 1]); if (famedge) addedge("fam", ff, ft); continue }/')"
 t_eq "a comment-only family edge counted in the cycle graph again -> the pass fixture goes red (alpha,beta), self-test exits 1" "1" "$(mself "$M")"
@@ -89,17 +89,17 @@ minert() { mrun "$1" "$2" --format inert 2>/dev/null; }
 M="$(mutant list-fam '/layer = (generated/,$ s/if (s == "") { inertrec(f, t, SITE\[k, 1\]); continue }/if (s == "") { if (layer || (famedge \&\& private(t))) inertrec(f, t, SITE[k, 1]); continue }/')"
 t_hasnt "a comment-only family edge left out of --format inert (the old condition) -> it is no longer listed" "$(minert "$M" inert-mentions)" "sysa:bin/alpha-run -> sysa:bin/beta-run"
 M="$(mutant list-contract '/^      if (sf != st) {/,/^      }$/ s/if (s == "") { inertrec(f, t, SITE\[k, 1\]); continue }/if (s == "") { if (!contract(t)) inertrec(f, t, SITE[k, 1]); continue }/')"
-t_hasnt "a comment-only edge to another system's contract left out of --format inert -> it is no longer listed" "$(minert "$M" inert-mentions)" "contracts/seam.md"
+t_hasnt "a comment-only edge to another system's contract left out of --format inert -> it is no longer listed" "$(minert "$M" inert-mentions)" "CONTRACTS/seam.md"
 M="$(mutant list-test 's/{ WHY = "test"; inertrec(f, t, SITE\[k, 1\]) }/{ }/')"
 t_hasnt "a test's path of another system not listed -> the cut is silent again" "$(minert "$M" inert-mentions)" "sysa:tests/alpha/run.test"
 M="$(mutant list-test-contract 's/sf != st \&\& !contract(t) \&\& pathof(f)/sf != st \&\& pathof(f)/')"
-t_has "a test's contract path listed too -> noise on ordinary work, caught" "$(minert "$M" inert-mentions)" "test	sysa:tests/alpha/run.test -> sysb:contracts/seam.md"
+t_has "a test's contract path listed too -> noise on ordinary work, caught" "$(minert "$M" inert-mentions)" "test	sysa:tests/alpha/run.test -> sysb:CONTRACTS/seam.md"
 M="$(mutant unreadable 's/if (t == SENT) return ""/if (t == SENT) return "comment"/')"
 t_eq "an unreadable line counted as inert -> the older fixtures go quiet, self-test exits 1" "1" "$(mself "$M")"
 M="$(mutant any-hash '/if (t ~ .*return "comment"/s/.*/    if (index(t, "#") > 0) return "comment"/')"
 t_hasnt "a # ANYWHERE counted as a comment -> a code line with a trailing comment stops reading" "$(mfind "$M" live-mentions)" "sysa:bin/alpha-run -> sysa:docs/generated/index.txt"
 M="$(mutant any-tail 's/) whole = 1$/) whole = 0/')"
-t_hasnt "any occurrence counted as a longer name -> a line that also holds docs/generated/plan.md whole stops reading" "$(mfind "$M" live-mentions)" "sysa:bin/alpha-run -> sysa:docs/generated/plan.md"
+t_hasnt "any occurrence counted as a longer name -> a line that also holds PLAN.md whole stops reading" "$(mfind "$M" live-mentions)" "sysa:bin/alpha-run -> sysa:PLAN.md"
 M="$(mutant stale 's/if (n == 0) return ""/if (n == 0) return "comment"/')"
 t_hasnt "a line that does not hold the path counted as inert -> the stale-graph finding vanishes" "$(mfind "$M" live-mentions)" "sysa:bin/gamma-run -> sysa:docs/generated/index.txt"
 M="$(mutant first-site 's/if (r == "") return SITE\[k, j\]/if (r == "") return SITE[k, 1]/')"
@@ -136,22 +136,22 @@ t_exit "no fixtures at all is unchecked, not a pass" 3 sh "$TOOL" --self-test --
 
 t_section "bin/lint-conventions.sh relays the findings as advisories and exits clean"
 if command -v python3 >/dev/null 2>&1; then
-  D="$T_TMP/relay"; mkdir -p "$D/bin" "$D/standards" "$D/contracts" "$D/docs/generated"
-  cp "$T_ROOT/bin/lint-module.sh" "$T_ROOT/bin/doc-graph-generate.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/scope-roots.sh" "$D/bin/"; cp "$T_ROOT/contracts/roots.tsv" "$D/contracts/"
+  D="$T_TMP/relay"; mkdir -p "$D/bin" "$D/standards" "$D/CONTRACTS"
+  cp "$T_ROOT/bin/lint-module.sh" "$T_ROOT/bin/graph-gen.sh" "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/roots.sh" "$D/bin/"; cp "$T_ROOT/CONTRACTS/roots.tsv" "$D/CONTRACTS/"
   cp -R "$REG" "$D/standards/naming"
-  printf '#!/bin/sh\ncat docs/generated/status.md\n' > "$D/bin/deploy-doctor.sh"
-  printf '# STATUS\n\nRegenerate with `sh bin/status-generate.sh`\n' > "$D/docs/generated/status.md"
-  printf '#!/bin/sh\n: generator\n' > "$D/bin/status-generate.sh"
+  printf '#!/bin/sh\ncat STATUS.md\n' > "$D/bin/doctor.sh"
+  printf '# STATUS\n\nRegenerate with `sh bin/status-gen.sh`\n' > "$D/STATUS.md"
+  printf '#!/bin/sh\n: generator\n' > "$D/bin/status-gen.sh"
   ( cd "$D" && git init -q . && git add -A && git -c user.email=t@t -c user.name=t commit -qm x ) >/dev/null 2>&1
   OUT="$(lint1 module.graph-conform "$D")"
-  t_has "the advisory carries the relayed id and both ends" "$OUT" "ADVISORY [module.graph-conform] [module.layer-direction] harbor:bin/deploy-doctor.sh -> harbor:docs/generated/status.md"
+  t_has "the advisory carries the relayed id and both ends" "$OUT" "ADVISORY [module.graph-conform] [module.layer-direction] harbor:bin/doctor.sh -> harbor:STATUS.md"
   t_eq "no violation: a warn rule never fails the run" "0" "$(vcount "$OUT")"
   t_has "...and the run says so" "$OUT" "0 violations"
   RED="$T_TMP/red2"; : > "$RED"; LINT_REDLOG="$RED" lint1 module.graph-conform "$D" >/dev/null
   t_has "the red log names the module rule, not the relay" "$(cat "$RED")" "module.layer-direction"
   t_hasnt "...and never the relay id for a warn finding" "$(cat "$RED"; echo x)" "module.graph-conform"
 else
-  D="$T_TMP/relay"; mkdir -p "$D/bin"; cp "$T_ROOT/bin/lint-module.sh" "$T_ROOT/bin/doc-graph-generate.sh" "$D/bin/"
+  D="$T_TMP/relay"; mkdir -p "$D/bin"; cp "$T_ROOT/bin/lint-module.sh" "$T_ROOT/bin/graph-gen.sh" "$D/bin/"
   t_has "without python3 the advisory says it could not look" "$(lint1 module.graph-conform "$D")" "unchecked: python3 is absent"
 fi
 D="$T_TMP/bare"; mkdir -p "$D/bin"

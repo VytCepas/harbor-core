@@ -828,7 +828,7 @@ def diagnostics_html(d: dict) -> str:
 # So the companion is written from the same `data` the page is built from, and the drawn
 # connectivity is compared against the declared connectivity in BOTH directions: declared
 # but not drawn is an omission, drawn but not declared is an invention with no source, and
-# the second is worse. contracts/reports.md, property 6.
+# the second is worse. CONTRACTS/reports.md, property 6.
 
 DRAWN_NODE = re.compile(r'data-node-id="([^"]+)"')
 DRAWN_EDGE = re.compile(r'data-edge-id="([^"]+)"')

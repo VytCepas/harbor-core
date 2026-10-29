@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- docs/reference/checks.md `event.dispatch` (harbor#1044, E2): `event-dispatch.sh dispatch`, the one follower of the event
+<!-- CHECKS.md `event.dispatch` (harbor#1044, E2): `event-dispatch.sh dispatch`, the one follower of the event
      bus. It wakes on a new bus line (`event-bus.sh wait`, tail -F), never on a timer, and at least hourly for
      rule backstops. Its position is the byte offset in ~/.local/state/harbor/events/dispatch/offsets.
 
-     SHIPPED, NOT INSTALLED (harbor:shipped-inert is the marker bin/drift-renew-check.sh reads: a plist that carries it
+     SHIPPED, NOT INSTALLED (harbor:shipped-inert is the marker bin/renew-check.sh reads: a plist that carries it
      and sits on no schedule is not a missed job). Installing it is the operator's decision at deploy time, and even installed it is
      inert until a rule exists (`harbor event on`), and spawns nothing until ~/.claude/.helm-dispatch/spawn.on exists.
 
@@ -15,12 +15,12 @@
      through OAuth, whose credentials are in the login keychain.
 
      TEMPLATE: launchd does not expand $HOME, so the home and local-bin paths below are placeholders that
-     bin/deploy-launchd-render.sh fills in from contracts/roots.tsv when the plist is installed; never cp this file (harbor#630).
+     bin/launchd-render.sh fills in from CONTRACTS/roots.tsv when the plist is installed; never cp this file (harbor#630).
      An agent cannot install this, by design. Operator steps: docs/design/events.md, "E2 — opting in":
-       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.event.dispatch.plist > ~/Library/LaunchAgents/com.harbor.event.dispatch.plist
+       sh ~/port/harbor/bin/launchd-render.sh ~/port/harbor/launchd/com.harbor.event.dispatch.plist > ~/Library/LaunchAgents/com.harbor.event.dispatch.plist
        launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.harbor.event.dispatch.plist
 
-     Disable (docs/reference/checks.md's two-lookup rule):
+     Disable (CHECKS.md's two-lookup rule):
        launchctl bootout gui/$(id -u)/com.harbor.event.dispatch
        rm ~/Library/LaunchAgents/com.harbor.event.dispatch.plist -->
 <plist version="1.0">

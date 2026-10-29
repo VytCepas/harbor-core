@@ -12,7 +12,7 @@ CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 WORKLOG_DIR="${HARBOR_LOG_DIR:-$CFG/MEMORY}"
 TOKEN_FILE="${HARBOR_LOG_TOKEN_FILE:-$CFG/.helm-log-token}"
 
-# ONE marker implementation, not three (H2, contracts/marker.md). This hook used
+# ONE marker implementation, not three (H2, CONTRACTS/marker.md). This hook used
 # to walk the tree itself with `[ -e "$d/.agents" ]` — the exact predicate
 # floor_in_repo was hardened away from after the 2026-07-24 marker-forgery
 # finding, because it accepts a zero-byte FILE or a symlink to anywhere. Verified
@@ -26,9 +26,9 @@ TOKEN_FILE="${HARBOR_LOG_TOKEN_FILE:-$CFG/.helm-log-token}"
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
 [ ! -f "$DIR/manifest.tsv" ] || DIR="$DIR/../../bin"  # D-88: in the repo an engine sits beside its manifest in hooks/<engine>/; deployed, flat beside its libraries
 . "$DIR/guard-lib.sh"
-# A Stop hook's stdout is the harness's, so its log goes to stderr (contracts/logging.md). Every
+# A Stop hook's stdout is the harness's, so its log goes to stderr (CONTRACTS/logging.md). Every
 # path still exits 0: a blocked commit is a WARN with its fix, never a blocked session.
-LOG_FD=2; . "$DIR/library-log.sh"
+LOG_FD=2; . "$DIR/log-lib.sh"
 floor_read_stdin
 IN="${FLOOR_IN:-}"
 # Stands down only where the repo's .agents/config.yaml says `worklog: off` (harbor#954).
@@ -116,13 +116,13 @@ if [ -f "$_wl_secret" ] && sh "$_wl_secret" run worklog-token WORKLOG_TOKEN -- t
   _wl_via=store; rm -f "$CFG/.worklog-token-warned.legacy" "$CFG/.worklog-token-warned.missing" 2>/dev/null || :
 elif [ -f "$TOKEN_FILE" ]; then
   wl_warn_once legacy "the work-log token is still the plaintext $TOKEN_FILE, not the store (harbor#1205)" \
-    "copy the token on GitHub, then: sh $DIR/memory-log-token-save.sh   # stores it and removes the file"
+    "copy the token on GitHub, then: sh $DIR/save-log-token.sh   # stores it and removes the file"
   WORKLOG_TOKEN="$(cat "$TOKEN_FILE" 2>/dev/null)" || exit 0
   [ -n "$WORKLOG_TOKEN" ] || exit 0
   export WORKLOG_TOKEN
 else
   wl_warn_once missing "no worklog-token in the store, so the work log is committed here and never pushed (harbor#1205)" \
-    "copy the token on GitHub, then: sh $DIR/memory-log-token-save.sh"
+    "copy the token on GitHub, then: sh $DIR/save-log-token.sh"
   exit 0
 fi
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
-# gate-merged-check.sh's output follows contracts/logging.md (harbor#771): stdout is the verdict lines worktree.sh,
-# govern-hook.sh and deploy-install-stamp.sh parse, and only those; the run log is on stderr; a refused base is a FAIL
+# merged-check.sh's output follows CONTRACTS/logging.md (harbor#771): stdout is the verdict lines worktree.sh,
+# govern-hook.sh and install-stamp.sh parse, and only those; the run log is on stderr; a refused base is a FAIL
 # with its fix and exit 2. Fixtures are real git.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-TOOL="$T_ROOT/bin/gate-merged-check.sh"
+TOOL="$T_ROOT/bin/merged-check.sh"
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; export GIT_CONFIG_NOSYSTEM=1
 R="$T_TMP/repo"; mkdir -p "$R"; git init -q "$R"; git -C "$R" symbolic-ref HEAD refs/heads/main
 g() { git -C "$R" -c user.email=t@t -c user.name=t -c commit.gpgsign=false "$@"; }

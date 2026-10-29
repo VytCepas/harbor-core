@@ -1,5 +1,5 @@
 // The Obligations tab (harbor#1053): what is unfinished on the box, new first, then overdue, then oldest.
-// Its ONLY input is `sh <root>/bin/status-obligations.sh show --json` (the output of `harbor status obligations --json`, contracts/cli.md),
+// Its ONLY input is `sh <root>/bin/status-obligations.sh show --json` (the output of `harbor status obligations --json`, CONTRACTS/cli.md),
 // run from the console's own checkout and never through a PATH-resolved `harbor`. Every string in it is attacker-influenced text
 // from hooks, so each one is clipped and reaches the page through esc(). Nothing here runs a command or touches a file.
 import { esc } from "./render.ts";

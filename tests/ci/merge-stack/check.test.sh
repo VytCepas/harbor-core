@@ -25,7 +25,7 @@ t_has "the summary counts the two failures" "$(OUT)" "2 failed"
 ms_plan "$PL" 11 12 14
 t_eq "merged + green + unfinished only: exit 0" 0 "$(chk)"
 touch "$MS_FIX/noauth"; t_eq "gh not logged in: exit 1" 1 "$(chk)"; t_has "...with the login as the fix" "$(OUT)" "fix: gh auth login"; rm "$MS_FIX/noauth"
-rm "$MS_INST/bin/gate-merge-check.sh"; t_eq "an install without gate-merge-check.sh: exit 1" 1 "$(chk)"; t_has "...naming it" "$(OUT)" "no $MS_INST/bin/gate-merge-check.sh"
+rm "$MS_INST/bin/merge-check.sh"; t_eq "an install without merge-check.sh: exit 1" 1 "$(chk)"; t_has "...naming it" "$(OUT)" "no $MS_INST/bin/merge-check.sh"
 
 t_section "check writes nothing (red-proof)"
 ro() { ms_world; ms_branch feat-a; ms_add a.txt one; ms_push feat-a; ms_pr 11 feat-a; ms_plan "$PL" 11; : > "$MS_FIX/calls.log"; }

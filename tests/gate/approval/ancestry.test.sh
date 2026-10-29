@@ -4,7 +4,7 @@
 # against the TOOL here, through a process tree shaped like the real one; then the trust check's fail-closed paths.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/gate/approval/fixture.sh"
-. "$T_ROOT/bin/library-log.sh"; HERE="$T_ROOT/bin"; . "$T_ROOT/bin/library-gate.sh"
+. "$T_ROOT/bin/log-lib.sh"; HERE="$T_ROOT/bin"; . "$T_ROOT/bin/gate-lib.sh"
 SNAPPRE() { printf '/bin/zsh -c source %s/shell-snapshots/snapshot-zsh-1-ab12.sh 2>/dev/null || true && setopt NO_EXTENDED_GLOB 2>/dev/null || true' "$1"; }
 argv_of() { # <cfg> <command text> → the Bash-tool shell argv Claude Code builds for it
   printf "%s && eval '%s' < /dev/null && pwd -P >| /tmp/claude-ab12-cwd" "$(SNAPPRE "$1")" "$(printf '%s' "$2" | sed "s/'/'\"'\"'/g")"
@@ -50,15 +50,15 @@ t_hasnt "...not the shell" "$OUT" "no click launched this run"
 t_eq "...nothing merged" "" "$(ag_merged)"
 
 t_section "red-proofs: the identity check, then the shell check, are each load-bearing"
-ag_mutant "M1 the identity is not checked" library-gate.sh 's/^  _gexe="\$(gate_claude_exe "\$GATE_CLAUDE_PID")"$/  PATH="$_gapath"; return 0/'
+ag_mutant "M1 the identity is not checked" gate-lib.sh 's/^  _gexe="\$(gate_claude_exe "\$GATE_CLAUDE_PID")"$/  PATH="$_gapath"; return 0/'
 ag_tree "$C"
 t_eq "M1: the canonical text in the tree now merges, so the tree is the real shape" "pr merge 7 --repo $AG_R --squash --match-head-commit $SHA_A" "$(ag_merged)"
-ag_world; ag_mutant "M1 again" library-gate.sh 's/^  _gexe="\$(gate_claude_exe "\$GATE_CLAUDE_PID")"$/  PATH="$_gapath"; return 0/'
+ag_world; ag_mutant "M1 again" gate-lib.sh 's/^  _gexe="\$(gate_claude_exe "\$GATE_CLAUDE_PID")"$/  PATH="$_gapath"; return 0/'
 ag_tree "$GB/gate-ap*.sh $A"
 t_eq "M1: a glob is still refused by the shell check" "" "$(ag_merged)"
 sed -e 's/^  _gexe="\$(gate_claude_exe "\$GATE_CLAUDE_PID")"$/  PATH="$_gapath"; return 0/' -e 's/^gate_ancestry_judge() {$/gate_ancestry_judge() { return 0/' \
-  "$T_ROOT/bin/library-gate.sh" > "$GB/library-gate.sh"
-t_eq "M2: both mutations apply" yes "$(grep -q 'gate_ancestry_judge() { return 0' "$GB/library-gate.sh" && grep -qx '  return 0' "$GB/library-gate.sh" && echo yes)"
+  "$T_ROOT/bin/gate-lib.sh" > "$GB/gate-lib.sh"
+t_eq "M2: both mutations apply" yes "$(grep -q 'gate_ancestry_judge() { return 0' "$GB/gate-lib.sh" && grep -qx '  return 0' "$GB/gate-lib.sh" && echo yes)"
 ag_tree "$GB/gate-ap*.sh $A"
 t_eq "M2: with the shell check gone too, the glob merges with no click" "pr merge 7 --repo $AG_R --squash --match-head-commit $SHA_A" "$(ag_merged)"
 unset HARBOR_GATE_ENFORCE_ANCESTRY
@@ -82,7 +82,7 @@ ag_world; mkdir -p "$T_TMP/ext/p/hooks" "$CFG/plugins"; printf '{"hooks":{"Permi
 printf '{"plugins":{"x@o":[{"installPath":"%s"}]}}\n' "$T_TMP/ext/p" > "$CFG/plugins/installed_plugins.json"
 ag_tree "$C"
 t_eq "an installed plugin outside cache/ is scanned: refuses" 1 "$RC"
-ag_mutant "M7 installPath is not scanned" library-gate.sh 's/^  \[ ! -f "\$_gtj" \] || _gti=.*$/  :/'
+ag_mutant "M7 installPath is not scanned" gate-lib.sh 's/^  \[ ! -f "\$_gtj" \] || _gti=.*$/  :/'
 ag_tree "$C"
 t_eq "M7: the mutant merges past that plugin's hook" 0 "$RC"
 rm -rf "$T_TMP/ext"
@@ -102,7 +102,7 @@ ag_world; ag_tree "/bin/sleep 2; touch $CFG/settings.json; $C"
 t_eq "settings changed after the session started: refused" 1 "$RC"
 t_has "...saying so" "$OUT" "changed after this Claude Code session started"
 t_eq "...nothing merged" "" "$(ag_merged)"
-ag_mutant "M3 the session-start check is gone" library-gate.sh 's/^  if \[ -n "\$_gtpid" \]; then$/  if false; then/'
+ag_mutant "M3 the session-start check is gone" gate-lib.sh 's/^  if \[ -n "\$_gtpid" \]; then$/  if false; then/'
 ag_tree "/bin/sleep 2; touch $CFG/settings.json; $C"
 t_eq "M3: the mutant merges on settings the session never loaded" 0 "$RC"
 ag_world; printf '#!/bin/sh\nexit 3\n' > "$T_BIN/jq"; chmod +x "$T_BIN/jq"
@@ -110,14 +110,14 @@ ag_run gate-approve.sh merge "$AG_R" 7 "$SHA_A"
 t_eq "a broken jq refuses" 1 "$RC"
 t_has "...saying so" "$OUT" "jq does not work here"
 rm -f "$T_BIN/jq"
-ag_world; rm -f "$GB/library-gate.sh"
+ag_world; rm -f "$GB/gate-lib.sh"
 ag_run gate-approve.sh merge "$AG_R" 7 "$SHA_A"
-t_eq "a missing library-gate.sh: nothing merged" "" "$(ag_merged)"
+t_eq "a missing gate-lib.sh: nothing merged" "" "$(ag_merged)"
 t_eq "...and a non-zero exit" yes "$([ "$RC" -ne 0 ] && echo yes || echo no)"
 t_section "shims earlier on PATH cannot lie to the proof (#1127 r2 #1): it reads system tools only"
 HARBOR_GATE_ENFORCE_ANCESTRY=1; export HARBOR_GATE_ENFORCE_ANCESTRY
 # a ps that shows the canonical argv for the Bash-tool shell, whatever it really ran; an id naming nobody
-ag_world; ag_mutant "M5 base: the identity is not checked (isolates the shell check)" library-gate.sh 's/^  _gexe="\$(gate_claude_exe "\$GATE_CLAUDE_PID")"$/  PATH="$_gapath"; return 0/'
+ag_world; ag_mutant "M5 base: the identity is not checked (isolates the shell check)" gate-lib.sh 's/^  _gexe="\$(gate_claude_exe "\$GATE_CLAUDE_PID")"$/  PATH="$_gapath"; return 0/'
 SHIM_ARGV="$(argv_of "$CFG" "$C")"; export SHIM_ARGV
 printf '#!/bin/sh\n_o="$(/bin/ps "$@")"; case "$_o" in claude*) printf "%%s\\n" "$_o" ;; *"eval "*) printf "%%s\\n" "$SHIM_ARGV" ;; *) printf "%%s\\n" "$_o" ;; esac\n' > "$T_BIN/ps"
 chmod +x "$T_BIN/ps"
@@ -125,19 +125,19 @@ ag_tree "$GB/gate-ap*.sh $A"
 t_eq "a ps shim: the glob still merges nothing" "" "$(ag_merged)"
 t_has "...refused as no click" "$OUT" "no click launched this run"
 sed -e 's/^  _gexe="\$(gate_claude_exe "\$GATE_CLAUDE_PID")"$/  PATH="$_gapath"; return 0/' -e 's#^  _gapath="\$PATH"; PATH=/usr/bin:/bin:/usr/sbin:/sbin$#  _gapath="$PATH"#' \
-  "$T_ROOT/bin/library-gate.sh" > "$GB/library-gate.sh"
-t_exit "M5: the PATH pin mutation applies" 1 cmp -s "$GB/library-gate.sh" "$T_ROOT/bin/library-gate.sh"
+  "$T_ROOT/bin/gate-lib.sh" > "$GB/gate-lib.sh"
+t_exit "M5: the PATH pin mutation applies" 1 cmp -s "$GB/gate-lib.sh" "$T_ROOT/bin/gate-lib.sh"
 ag_tree "$GB/gate-ap*.sh $A"
 t_eq "M5: without the PATH pin, the ps shim makes the glob merge with no click" "pr merge 7 --repo $AG_R --squash --match-head-commit $SHA_A" "$(ag_merged)"
 rm -f "$T_BIN/ps"; unset SHIM_ARGV
 ag_world; unset HARBOR_GATE_ENFORCE_ANCESTRY
 printf '#!/bin/sh\necho nobody-here-x\n' > "$T_BIN/id"; chmod +x "$T_BIN/id"
-ag_mutant "M6 base: the account dir is unreadable" library-gate.sh 's/^  _gu="\$(id -un)"; /  _gu=nobody-here-x; /'
+ag_mutant "M6 base: the account dir is unreadable" gate-lib.sh 's/^  _gu="\$(id -un)"; /  _gu=nobody-here-x; /'
 ag_tree "$GB/gate-ap*.sh $A"
 t_eq "an unreadable account dir is not a sandbox: the proof runs, the glob merges nothing" "" "$(ag_merged)"
 t_hasnt "...and it never says the check was skipped" "$OUT" "ancestry not checked"
 sed -e 's/^  _gu="\$(id -un)"; /  _gu=nobody-here-x; /' -e 's/^  if \[ -n "\$_glive" \] && \[ "\$GATE_CFG" != "\$_glive" \]/  if [ "$GATE_CFG" != "$_glive" ]/' \
-  "$T_ROOT/bin/library-gate.sh" > "$GB/library-gate.sh"
+  "$T_ROOT/bin/gate-lib.sh" > "$GB/gate-lib.sh"
 ag_tree "$GB/gate-ap*.sh $A"
 t_eq "M6: treating it as a sandbox skips the proof and the glob merges" "pr merge 7 --repo $AG_R --squash --match-head-commit $SHA_A" "$(ag_merged)"
 rm -f "$T_BIN/id"; HARBOR_GATE_ENFORCE_ANCESTRY=1; export HARBOR_GATE_ENFORCE_ANCESTRY

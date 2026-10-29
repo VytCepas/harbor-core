@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- harbor#1181 lane 5: a SYSTEM daemon (/Library/LaunchDaemons) running as _harborlog, the second uid the observed
-     agent cannot write as. TEMPLATE: bin/audit-collector-install.sh fills @SOURCES@ with the operator's existing sources and
-     installs it with sudo; a session cannot (it needs root). Disable: sudo sh bin/audit-collector-install.sh --uninstall -->
+     agent cannot write as. TEMPLATE: bin/collector-setup.sh fills @SOURCES@ with the operator's existing sources and
+     installs it with sudo; a session cannot (it needs root). Disable: sudo sh bin/collector-setup.sh --uninstall -->
 <plist version="1.0">
 <dict>
   <key>Label</key><string>com.harbor.collector</string>
   <key>UserName</key><string>_harborlog</string>
   <key>GroupName</key><string>_harborlog</string>
-  <key>ProgramArguments</key><array><string>/bin/sh</string><string>@BIN@/audit-collector.sh</string></array>
+  <key>ProgramArguments</key><array><string>/bin/sh</string><string>@BIN@/collector.sh</string></array>
   <key>EnvironmentVariables</key><dict>
     <key>HARBOR_COLLECTOR_SRC</key><string>@SOURCES@</string>
     <key>HARBOR_COLLECTOR_STORE</key><string>@STORE@</string>

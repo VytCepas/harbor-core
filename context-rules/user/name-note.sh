@@ -23,11 +23,9 @@ R="$(git -C "$DP" rev-parse --show-toplevel 2>/dev/null)" || exit 0
 [ -f "$R/bin/lint-name.sh" ] && [ -f "$R/standards/naming/surfaces.tsv" ] || exit 0
 case "$DP" in "$R") REL="$TAIL" ;; "$R"/*) REL="${DP#"$R"/}/$TAIL" ;; *) exit 0 ;; esac
 
-# exit 1 is a block-mode finding, which is exactly what the note is for; 2 and above judged nothing.
-_rc=0; OUT="$(sh "$R/bin/lint-name.sh" --root "$R" --check path "$REL" 2>&1)" || _rc=$?
-[ "$_rc" -le 1 ] || exit 0
-# `WARN|FAIL: [name.x] <subject> — <message>`; a subject already on disk is a choice made before this write.
-FIND="$(printf '%s\n' "$OUT" | sed -n -E 's/^[[:space:]]*(WARN|FAIL): (\[[^]]*\] )(.*)$/\2\3/p' | while IFS= read -r _l; do
+OUT="$(sh "$R/bin/lint-name.sh" --root "$R" --check path "$REL" 2>&1)" || exit 0
+# `WARN: [name.x] <subject> — <message>`; a subject already on disk is a choice made before this write.
+FIND="$(printf '%s\n' "$OUT" | sed -n 's/^[[:space:]]*WARN: \(\[[^]]*\] \)\(.*\)$/\1\2/p' | while IFS= read -r _l; do
   _s="${_l#*] }"; _s="${_s%% — *}"
   [ -e "$R/$_s" ] || printf '%s\n' "$_l"
 done)"

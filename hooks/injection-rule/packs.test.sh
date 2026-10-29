@@ -3,9 +3,9 @@
 # must, only context-bearing events emit, every tracked pack is well-formed, and the merge gate
 # denies end to end through .claude/inject.d (harbor#173, #181, #184, #254, #315).
 . "$(dirname "$0")/../../tests/lib/core.sh"; t_init
-. "$T_ROOT/tests/context/injection-rule/fixture.sh"
+. "$T_ROOT/tests/hooks/inject-fixture.sh"
 BOX="$T/boxcfg"; mkdir -p "$BOX/inject.d"; cp -R "$T_ROOT"/context-rules/user/. "$BOX/inject.d/"
-# The untitled-session note fires on every first tool call; its own cases live in fixtures/injection-rule/notes.tsv (harbor#1257).
+# The untitled-session note fires on every first tool call; its own cases live in fixtures/inject/notes.tsv (harbor#1257).
 : > "$BOX/session-title.off"
 # The registry is the private layer's file (harbor#1149): core ships none, so a fixture with example names stands in,
 # beside the packs where the installer puts it. It resolves against $HOME, the sandbox: stand up the directories it names.
@@ -198,19 +198,19 @@ E2E="$T/e2e"; mkdir -p "$E2E/repo/bin" "$E2E/repo/.claude/inject.d" "$E2E/cfg"
 cp "$T_ROOT/bin/govern-hook.sh" "$E2E/repo/bin/"; cp "$T_ROOT/context-rules/harbor/merge-note.sh" "$E2E/repo/.claude/inject.d/"
 for _mp in "$T_ROOT"/context-rules/harbor/*merge*.md; do cp "$_mp" "$E2E/repo/.claude/inject.d/"; done
 _e2e() { # <exit> <text> <command>
-  printf '#!/usr/bin/env sh\nprintf "%%s\\n" "%s"\nexit %s\n' "$2" "$1" > "$E2E/repo/bin/gate-merge-check.sh"
+  printf '#!/usr/bin/env sh\nprintf "%%s\\n" "%s"\nexit %s\n' "$2" "$1" > "$E2E/repo/bin/merge-check.sh"
   jq -cn --arg c "$3" '{hook_event_name:"PreToolUse",tool_name:"Bash",session_id:"e-1",tool_input:{command:$c}}' \
     | CLAUDE_CONFIG_DIR="$E2E/cfg" CLAUDE_PROJECT_DIR="$E2E/repo" sh "$SUT" 2>/dev/null
 }
 t_has "a refusing backstop denies through the shipped pack" "$(_e2e 1 'REFUSED  a check is not passing on #253' 'gh pr merge 253 --squash')" '"permissionDecision":"deny"'
 t_has "the harbor#254 incident command is denied" \
-  "$(_e2e 1 'REFUSED  pending' 'sh bin/gate-merge-check.sh 253 2>&1 | tail -2 && gh pr merge 253 --squash')" '"permissionDecision":"deny"'
+  "$(_e2e 1 'REFUSED  pending' 'sh bin/merge-check.sh 253 2>&1 | tail -2 && gh pr merge 253 --squash')" '"permissionDecision":"deny"'
 t_hasnt "a green PR is not interrupted" "$(_e2e 0 'ok  #253 — 12 check(s) pass' 'gh pr merge 253 --squash')" 'permissionDecision'
 t_hasnt "a tooling fault fails open" "$(_e2e 2 'merge-check: gh is not installed' 'gh pr merge 253')" 'permissionDecision'
 
 t_section "the browser route: Claude in Chrome is refused on a host harbor chrome covers (2026-09-30)"
 _HR="$HOME/$(awk -F'\t' '$1 == "harbor" { sub(/^~\//, "", $2); print $2; exit }' "$BOX/inject.d/projects.tsv")"
-mkdir -p "$_HR/contracts"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" "$_HR/contracts/"
+mkdir -p "$_HR/CONTRACTS"; cp "$T_ROOT/CONTRACTS/browser-agent-hosts.txt" "$_HR/CONTRACTS/"
 nav_ev() { printf '{"hook_event_name":"PreToolUse","session_id":"%s","tool_name":"mcp__claude-in-chrome__navigate","tool_input":{"url":"%s","tabId":1}}' "$2" "$1"; }
 batch_ev() { printf '{"hook_event_name":"PreToolUse","session_id":"%s","tool_name":"mcp__claude-in-chrome__browser_batch","tool_input":{"actions":[{"name":"computer","input":{"action":"wait"}},{"name":"navigate","input":{"tabId":1,"url":"%s"}}]}}' "$2" "$1"; }
 t_has "a navigate to ads.reddit.com is denied" "$(firebox "$(nav_ev https://ads.reddit.com/ br1)")" '"permissionDecision":"deny"'
@@ -228,7 +228,7 @@ t_hasnt "an editor inside browser_batch is not refused" "$(firebox "$(batch_ev h
 t_has "another google.com host is still denied" "$(firebox "$(nav_ev https://ads.google.com/aw/overview br13)")" '"permissionDecision":"deny"'
 t_has "a lookalike editor host is still denied" "$(firebox "$(nav_ev https://docs.google.com.ads.google.com/ br14)")" '"permissionDecision":"deny"'
 t_has "the first Claude-in-Chrome call gets the route reminder" "$(firebox "$(nav_ev https://en.wikipedia.org/ br9)")" 'ToolSearch will never show it'
-mv "$_HR/contracts/browser-agent-hosts.txt" "$_HR/contracts/hosts.off"
+mv "$_HR/CONTRACTS/browser-agent-hosts.txt" "$_HR/CONTRACTS/hosts.off"
 t_hasnt "no hosts file fails open" "$(firebox "$(nav_ev https://ads.reddit.com/ br10)")" 'permissionDecision'
-mv "$_HR/contracts/hosts.off" "$_HR/contracts/browser-agent-hosts.txt"
+mv "$_HR/CONTRACTS/hosts.off" "$_HR/CONTRACTS/browser-agent-hosts.txt"
 t_done

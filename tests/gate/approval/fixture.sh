@@ -14,12 +14,12 @@ ag_world() {
   GF="$T_TMP/gf";rm -rf "$GF" "$HOME/.local" "$CLAUDE_CONFIG_DIR"; export GF
   mkdir -p "$GF/contents/.agents" "$GF/pr" "$GF/compare" "$GF/runs" "$GF/watch" "$GF/checks" "$CLAUDE_CONFIG_DIR/bin"
   CFG="$(CDPATH='' cd -P -- "$CLAUDE_CONFIG_DIR" && pwd -P)"; GB="$CFG/bin"
-  for f in library-log.sh library-fs.sh library-gate.sh gate-classify.sh gate-merge.sh gate-approve.sh gate-queue.sh gate-merge-check.sh event-bus.sh \
+  for f in log-lib.sh fs-lib.sh gate-lib.sh gate-classify.sh gate-merge.sh gate-approve.sh gate-queue.sh merge-check.sh event-bus.sh \
            gate-merge-stack.sh gate-merge-stack-resolve.py; do
     cp "$T_ROOT/bin/$f" "$GB/$f"
   done
   : > "$GB/required-checks.tsv"   # as runtime-install ships them beside merge-stack; harbor's own rows name no acme repo
-  cp "$T_ROOT/contracts/merge-stack-union.txt" "$GB/"
+  cp "$T_ROOT/CONTRACTS/merge-stack-union.txt" "$GB/"
   printf '%s\tCI gate\n' "$AG_R" > "$GF/contents/.agents/required-checks.tsv"
   jq -n --arg a "Bash($GB/gate-approve.sh *)" '{permissions: {ask: [$a], allow: [], deny: [], disableBypassPermissionsMode: "disable"}}' > "$CFG/settings.json"
   printf 'repo %s\nworkflow ci.yml\n' "$AG_R" > "$GF/contents/.agents/ship.conf"
