@@ -5,7 +5,7 @@ skill. Sizes are that day's; the detector is what re-measures them, and the
 predicate is what makes a delete safe. Where a class has an incident, it is
 named — a rule whose reason has been deleted is one nobody can re-examine.
 
-`bin/harbor-clean.sh` implements the machine-decidable rows. The rows it does
+`bin/housekeeping-clean.sh` implements the machine-decidable rows. The rows it does
 **not** implement are marked *judgement* and say why.
 
 ## A · Session residue (harness-written, high count, low bytes)
@@ -26,7 +26,7 @@ named — a rule whose reason has been deleted is one nobody can re-examine.
 | `~/.claude/.last-cleanup` | — | written by the harness, not by harbor. Its presence is why "nothing cleans this box" was a false premise about *transcripts* only |
 
 Lowering `cleanupPeriodDays` is the supported lever. Deleting transcripts by
-hand is not, and `usage-aggregate.sh` reads them.
+hand is not, and `status-usage-aggregate.sh` reads them.
 
 ## C · Build and CI residue (the real bytes)
 
@@ -76,7 +76,7 @@ in this table because the same shape reaches any content-hash over a source tree
 ### E2 · What only the PR knows (the GitHub layer, 2026-09-22)
 
 A squash merge leaves a branch whose tree is **not** main's, so the rows above
-never claim it; the PR is the evidence. `harbor-clean.sh` reads each repo's PRs,
+never claim it; the PR is the evidence. `housekeeping-clean.sh` reads each repo's PRs,
 branches, open PRs and open issues once, and every class below joins against
 that read. A repo it cannot read is reported `unread` — its rows are missing,
 never clean. Verdicts: **DECIDE** needs a person; **RISK** is work that exists in
@@ -121,7 +121,7 @@ git for-each-ref refs/heads         # for names no human chose
 |---|---|---|---|
 | **host-sharded store forked in two** | `WORK/sessions/Mac/` (51 files) beside `<owner>s-MacBook-Air/` (807) | `memory-lint.sh` → collisions; `ls <store>/*/` | union-merge, ASSERT absorption line by line, archive, then remove. 37 collisions → 0 |
 | MEMORY.md over its byte ceiling | 12,387 B; worst case 40,569 vs 40,000 | `bin/context-budget.sh` | move task-specific pointers to `INDEX-FULL.md`. **Third time in four days** (09-03, 09-04, 09-06) — this regrows weekly, so it is maintenance, not a repair |
-| `CONTEXT-BASELINE.tsv` stale | recorded 21,844 vs measured 28,182 | `context-budget.sh --check` | `--record`, then write an ATTRIBUTED reason. Recording without attribution defeats the instrument |
+| `registries/context-baseline.tsv` stale | recorded 21,844 vs measured 28,182 | `context-budget.sh --check` | `--record`, then write an ATTRIBUTED reason. Recording without attribution defeats the instrument |
 | dangling memory wikilinks | 3 | `memory-lint.sh` | write the note, or drop the link |
 
 ### Why the host fork happens, and why it stopped
@@ -150,7 +150,7 @@ prevent. The 859 MB figure for runner logs is the class size; the >14d cut
 actually returned 210 MB, and reporting the first as if it were the second is
 the kind of drift No.2 forbids.
 
-**No schedule.** Nothing here is registered in `CHECKS.md`, on purpose: that
+**No schedule.** Nothing here is registered in `docs/reference/checks.md`, on purpose: that
 file is the register of things that run on a schedule, lint X9 requires a
 tracked plist for every row in it, and a row for a hand-run command would make
 X9 report a plist that should not exist. Deciding what to delete is a

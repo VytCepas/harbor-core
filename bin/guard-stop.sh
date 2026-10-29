@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
-[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0
-# SG (harbor#291) — the ONE Stop-event gate. COVERAGE.md:86 read "Harbor has no
-# Stop gate at all", and COVERAGE.md:38 read "№2 Verification is Harbor's longest
+[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
+# SG (harbor#291) — the ONE Stop-event gate. docs/reference/coverage.md:86 read "Harbor has no
+# Stop gate at all", and docs/reference/coverage.md:38 read "№2 Verification is Harbor's longest
 # constitutional rule and has no mechanism, in a file that says 'a rule with no
 # mechanism is a wish'". This is that mechanism, narrowed to the part a shell
 # script can decide without judgement.
@@ -15,14 +15,14 @@
 #   SG-3  it will not run where it lands; warn by default, see its block below
 #
 # THE TRANSCRIPT IS THE EVIDENCE, NOT THE WORDING. That is upstream's whole
-# insight and COVERAGE.md:250 records it: "VerificationGate.hook.ts grades
+# insight and docs/reference/coverage.md:250 records it: "VerificationGate.hook.ts grades
 # evidence FROM THE TRANSCRIPT, not from the message's wording, so rewording
 # never passes it." A gate that read the assistant's prose would be satisfied by
 # a rewrite, which is the opposite of №2.
 #
 # WHY TEETH ARE DEFENSIBLE HERE AND WERE NOT FOR M5. FailureCapture declined to
 # block because "a failure worth healing" is a judgement and fails
-# CONSTITUTION.md's `deterministic` criterion. Neither rule below is a judgement:
+# policy/constitution.md's `deterministic` criterion. Neither rule below is a judgement:
 # what counts as evidence is defined by the repo (its own suite), and both
 # predicates are orderings over tool calls that either happened or did not.
 #
@@ -59,7 +59,7 @@
 # SessionStart and that is right there: a session that will not START costs one
 # restart. Here the blast radius of the opposite choice is worse than it first
 # looks — this hook runs at the end of EVERY turn, so a fail-closed internal error
-# refuses every turn for the rest of the session, and HELM_DISABLE_FLOOR is read
+# refuses every turn for the rest of the session, and HARBOR_ADMISSION_DISABLE is read
 # at startup so it cannot rescue a refusal already under way. Missing jq,
 # unreadable transcript, bad JSON, any surprise ⇒ allow. The cost is a missed
 # nudge; that is the correct trade at this event, and it is why nothing else in
@@ -97,7 +97,7 @@ fi
 # (worklog-push.sh, memory-harvest.sh). Those are ENGINE hooks: standing down
 # means not acting, and no rule is withdrawn. This is a GATE for №2 Verification,
 # and harbor#581 decided the five constitutional rules never yield inside a
-# governed repo. CONTRACTS/marker.md lists every stand-down site and lint M2
+# governed repo. contracts/marker.md lists every stand-down site and lint M2
 # holds that list to the code, so re-adding a stand-down here fails the lint
 # unless it is declared, with a ticket.
 #
@@ -130,6 +130,11 @@ command -v jq >/dev/null 2>&1 || exit 0
 #
 # `.text? // ""` and the array/scalar test on `.content`: both shapes occur, and
 # a missing `.text` on a non-text block must not abort the whole extraction.
+#
+# BGT carries a background task's id (launched so, or moved there at the timeout),
+# and a Read of a task output file is a
+# CMD record, so a run in the background pairs through the later read of its own
+# output file (SG_PAIR below). A Read result's `N<tab>` line prefix is stripped.
 STREAM="$(jq -r '
   if .type=="assistant" then
     (.message.content[]? | select(.type=="tool_use") |
@@ -137,6 +142,8 @@ STREAM="$(jq -r '
         then "MUT\t-\t" + (.input.file_path // "")
       elif .name=="Bash"
         then "CMD\t" + (.id // "-") + "\t" + ((.input.command // "") | gsub("[\n\t]"; " "))
+      elif .name=="Read" and ((.input.file_path // "") | test("/tasks/[A-Za-z0-9]+\\.output$"))
+        then "CMD\t" + (.id // "-") + "\t" + .input.file_path
       else empty end)
   elif .type=="user" and (.message.content|type)=="string" then
     (.message.content | split("\n")[]
@@ -148,8 +155,9 @@ STREAM="$(jq -r '
       (if (.content|type)=="array"
          then ([.content[]? | .text? // ""] | join("\n"))
          else (.content|tostring) end)
-      | split("\n")[]
-      | if test("^[a-z][a-z0-9 .-]*: [0-9]+ (passed|rules), [0-9]+ (failed|violations)") then "RES\t" + $id + "\t" + .
+      | split("\n")[] | sub("^ *[0-9]+\t"; "")
+      | if test("^Command .*Output is being written to: [^ ]*/tasks/[A-Za-z0-9]+\\.output") then "BGT\t" + $id + "\t" + (capture("/tasks/(?<t>[A-Za-z0-9]+)\\.output") | .t)
+        elif test("^[a-z][a-z0-9 .-]*: [0-9]+ (passed|rules), [0-9]+ (failed|violations)") then "RES\t" + $id + "\t" + .
         elif test("github\\.com/[^ ]+/pull/[0-9]+") then "PRU\t" + $id + "\t" + (capture("github\\.com/(?<r>[^/ ]+/[^/ ]+)/pull/(?<n>[0-9]+)") | .r + "#" + .n)
         elif test("[Mm]erged pull request [^ ]*#[0-9]+") then "PRM\t-\t" + (capture("[Mm]erged pull request (?<r>[^ ]*)#(?<n>[0-9]+)") | .r + "#" + .n)
         else empty end)
@@ -255,16 +263,25 @@ fi
 # prepended to each awk program: strip through the last ` <rc> `.
 SG_SUITE_FN='function suite_key(s) { sub(/^.* [0-9]+ /, "", s); return s }'
 
+# ── WHICH TOOL CALLS PRODUCED A VERDICT, SHARED BY SG-1 AND SG-2 ────────────
+# A suite command (foreground), or a read of the task output file of a background
+# suite command this session launched: a `cat` of any other log pairs with nothing.
+# `[-.]test`: hooks/injection-rule/packs.test.sh is a suite too.
+SG_PAIR='
+  $1 == "CMD" { if ($3 ~ /([-.]test|lint-conventions|floor-equiv|pass-score)[a-z-]*\.sh/) ran[$2] = 1
+                else for (t in bg) if (index($3, "tasks/" t ".output")) ran[$2] = 1 }
+  $1 == "BGT" && ($2 in ran) { bg[$3] = 1 }'
+
 # ── SG-1 · a floor surface was edited and the suite did not run after it ────
 # PATH-SCOPED, and the pattern is the floor's own file set: bin/guard-*.sh,
 # bin/floor-*.sh, bin/floor-normalize.awk. `bin/` is required, so a note called
 # guard-notes.sh in a docs dir is not a floor surface.
 #
 # ONLY THE FULL SUITE COUNTS AS EVIDENCE. Since harbor#727 the floor suite is
-# tests/floor/floor-test.sh plus every tests/floor/floor.<part>-test.sh, so the
+# tests/admission/baseline/baseline.test.sh plus every tests/admission/baseline/<part>.test.sh, so the
 # evidence is a verdict line from EVERY part, from a suite-invoking command, after
 # the edit: one part is a fraction, as a shard was (harbor#679). The pre-commit
-# smoke prints `floor-test smoke: …`, another name, so it is refused like the
+# smoke prints `baseline.test smoke: …`, another name, so it is refused like the
 # `--smoke` it replaced (№2.7 — "unavailable verifier means defer, never
 # substitute"): it is the right depth for a commit gate, not for "verified".
 #
@@ -276,7 +293,7 @@ SG_SUITE_FN='function suite_key(s) { sub(/^.* [0-9]+ /, "", s); return s }'
 # found by review on #684). Once this gate stopped standing down inside governed
 # repos, a project's own bin/guard-auth.sh matched the pattern, and the gate
 # demanded Harbor's floor-test for code that suite never touches — §2.11. So a
-# path counts only when the tree above its bin/ holds tests/floor/floor-test.sh (a
+# path counts only when the tree above its bin/ holds tests/admission/baseline/baseline.test.sh (a
 # Harbor checkout or worktree, wherever it lives: the tree whose suite would verify
 # the edit), or when it is the installed floor in the config dir. The parts owed
 # are that tree's; the config dir has none beside it, so it owes the cwd's, else
@@ -294,7 +311,7 @@ _sg_cwd="$(floor_field '.cwd')"
 _sg_cands="$(printf '%s\n' "$STREAM" | awk -F '\t' '
   $1 == "MUT" && $3 ~ /(^|\/)bin\/(guard|floor)-[a-z-]*\.(sh|awk)$/ { print $3 }' | sort -u)"
 _sg_parts() { # <tree> -> the floor parts' names, space-separated (harbor#727)
-  for _f in "$1"/tests/floor/floor-test.sh "$1"/tests/floor/floor.*-test.sh; do
+  for _f in "$1"/tests/admission/baseline/*.test.sh; do
     [ -f "$_f" ] && printf '%s ' "$(basename "$_f" .sh)"
   done
   return 0
@@ -303,7 +320,7 @@ SG1_OK=""; SG1_PARTS=""
 while IFS= read -r _p; do
   [ -n "$_p" ] || continue
   _a="$_p"; case "$_a" in /*) ;; *) _a="${_sg_cwd%/}/$_a" ;; esac
-  if [ -f "${_a%/bin/*}/tests/floor/floor-test.sh" ]; then
+  if [ -f "${_a%/bin/*}/tests/admission/baseline/baseline.test.sh" ]; then
     SG1_OK="$SG1_OK$_p
 "; SG1_PARTS="$SG1_PARTS $(_sg_parts "${_a%/bin/*}")"
   elif [ "${_a%/*}" = "$_sg_cfgbin" ]; then
@@ -314,13 +331,13 @@ done <<EOF
 $_sg_cands
 EOF
 [ -n "${SG1_PARTS# }" ] || { [ -n "$_sg_cwd" ] && SG1_PARTS="$(_sg_parts "$_sg_cwd")"; }
-[ -n "${SG1_PARTS# }" ] || SG1_PARTS="floor-test"
+[ -n "${SG1_PARTS# }" ] || SG1_PARTS="baseline.test"   # harbor#961 W2: the main part, by the label it prints
 export SG1_OK SG1_PARTS
-SG1="$(printf '%s\n' "$STREAM" | awk -F '\t' "$SG_SUITE_FN"'
+# A background run launched before the edit verified the code it replaced: the edit drops it.
+SG1="$(printf '%s\n' "$STREAM" | awk -F '\t' "$SG_SUITE_FN$SG_PAIR"'
   BEGIN { n = split(ENVIRON["SG1_OK"], a, "\n"); for (i = 1; i <= n; i++) if (a[i] != "") ok[a[i]] = 1
           n = split(ENVIRON["SG1_PARTS"], a, " "); for (i = 1; i <= n; i++) if (a[i] != "") need[a[i]] = 1 }
-  $1 == "MUT" && ($3 in ok) { mut = NR; path = $3; split("", seen) }
-  $1 == "CMD" && $3 ~ /(-test|lint-conventions|floor-equiv|pass-score)[a-z-]*\.sh/ { ran[$2] = 1 }
+  $1 == "MUT" && ($3 in ok) { mut = NR; path = $3; split("", seen); split("", bg) }
   $1 == "RES" && mut > 0 && ($2 in ran) { c = index($3, ":"); if (c > 1) { k = suite_key(substr($3, 1, c - 1)); if (k in need) seen[k] = 1 } }
   END { if (mut > 0) for (k in need) if (!(k in seen)) { print path; exit } }
 ')"
@@ -335,9 +352,9 @@ SG1="$(printf '%s\n' "$STREAM" | awk -F '\t' "$SG_SUITE_FN"'
 # run — №2.7 again, from the other side.
 #
 # The id gate is the first clause: a verdict whose tool_use id belongs to no
-# suite-invoking command is a verdict this session READ, not one it produced.
-SG2="$(printf '%s\n' "$STREAM" | awk -F '\t' "$SG_SUITE_FN"'
-  $1 == "CMD" && $3 ~ /(-test|lint-conventions|floor-equiv|pass-score)[a-z-]*\.sh/ { ran[$2] = 1 }
+# suite-invoking command, nor to a read of a background suite's own output file
+# (SG_PAIR), is a verdict this session READ, not one it produced.
+SG2="$(printf '%s\n' "$STREAM" | awk -F '\t' "$SG_SUITE_FN$SG_PAIR"'
   $1 == "RES" && ($2 in ran) {
     line = $3
     n = index(line, ":")
@@ -387,7 +404,10 @@ fi
 # Bounded chattiness: keyed on the path, so a session editing three floor files
 # without running the suite is refused three times, not once and not thirty.
 # Precision beats quiet here — each refusal names a different real defect.
-SG_KEY="$(printf 'SG1:%s|SG2:%s|SG3:%s' "$SG1" "$(printf '%s' "$SG2" | sort | tr '\n' ';')" "$(printf '%s' "$SG3" | sort | tr '\n' ';')" | floor_sha 2>/dev/null)"
+# SG-2 keys on the red suites' NAMES, not their counts, so a re-run that moves the counts is the
+# same state. Given up: a different new failure in that suite goes unflagged until it is green once.
+SG2_NAMES="$(printf '%s\n' "$SG2" | awk "$SG_SUITE_FN"'{ c = index($0, ":"); if (c > 1) print suite_key(substr($0, 1, c - 1)) }' | sort -u | tr '\n' ';')"
+SG_KEY="$(printf 'SG1:%s|SG2:%s|SG3:%s' "$SG1" "$SG2_NAMES" "$(printf '%s' "$SG3" | sort | tr '\n' ';')" | floor_sha 2>/dev/null)"
 SG_SID="$(floor_field '.session_id')"
 case "$SG_SID" in ''|*[!A-Za-z0-9_-]*) SG_SID='' ;; esac
 SG_SEEN=""
@@ -415,12 +435,12 @@ fi
 # so that is what is said.
 MSG="HELM STOP GATE — the turn was BLOCKED because this session's own transcript does not carry the evidence №2 requires."
 if [ -n "$SG1" ]; then
-  MSG="$MSG SG-1: ${SG1} was edited this session and the floor suite did not run after that edit: every part, tests/floor/floor-test.sh and each tests/floor/floor.<part>-test.sh. Run them — a T_SMOKE=1 run does not count, it is the smoke and not the suite — or say plainly which assertion you are deferring and why."
+  MSG="$MSG SG-1: ${SG1} was edited this session and the floor suite did not run after that edit: every part, tests/admission/baseline/baseline.test.sh and each tests/admission/baseline/<part>.test.sh. Run them — a T_SMOKE=1 run does not count, it is the smoke and not the suite — or say plainly which assertion you are deferring and why."
 fi
 if [ -n "$SG2" ]; then
   MSG="$MSG SG-2: the last verdict for a suite this session ran is not clean — $(printf '%s' "$SG2" | tr '\n' ';'). Re-run it green, or say which run was a deliberate mutation and what it proved."
 fi
-MSG="$MSG (Stop fires at the end of every turn, so this refusal is raised ONCE for this state and the next turn is not held; a new unverified edit is a new state. HELM_DISABLE_FLOOR is read at session start and cannot lift a refusal already under way.)"
+MSG="$MSG (Stop fires at the end of every turn, so this refusal is raised ONCE for this state and the next turn is not held; a new unverified edit is a new state. HARBOR_ADMISSION_DISABLE (or HELM_DISABLE_FLOOR) is read at session start and cannot lift a refusal already under way.)"
 
 # THE STATE IS RECORDED BEFORE THE VERDICT IS EMITTED, so a caller that reads
 # stdout and exits cannot leave this turn refused and the next one refused again
@@ -452,7 +472,7 @@ else
 fi
 
 # One ledger record PER RULE that fired, not a fused id. A compound token would
-# be a rule name that appears in no source file, and failure-capture.sh ranks by
+# be a rule name that appears in no source file, and audit-triage.sh ranks by
 # rule token — a fused id would rank as its own never-before-seen rule every
 # time the pair coincided.
 [ -n "$SG1" ] && { floor_log_decision session gate floor-edited-unverified.meta || :; }

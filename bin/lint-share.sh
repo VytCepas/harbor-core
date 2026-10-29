@@ -5,18 +5,18 @@
 #   sh lint-share.sh --count    the number of files whose share is outside that set
 #   sh lint-share.sh --check    WARN per such file, exit 0 (warn mode); --strict makes any warning exit 1
 #
-# A file's share comes from where it lives: the harbor checkout is core where CONTRACTS/layers.tsv marks the path core (dev
-# and unlisted paths are not exported and have no share, so are not judged); the private layer (roots.sh --private) is
-# personal, and its hub/ folder hub; a registered workload repo's harbor-pack/ (roots.sh --conf packs) is workload.
+# A file's share comes from where it lives: the harbor checkout is core where contracts/layers.tsv marks the path core (dev
+# and unlisted paths are not exported and have no share, so are not judged); the private layer (scope-roots.sh --private) is
+# personal, and its hub/ folder hub; a registered workload repo's harbor-pack/ (scope-roots.sh --conf packs) is workload.
 # Its kind is read from standards/naming/kinds.tsv: every kind whose folder is a prefix of the path (case-folded, a
 # <placeholder> and what follows cut off); the set allowed is the union of those kinds' share cells. No kind, not judged.
 # --tree DIR=SHARE adds a tree to judge (tests, and a layer outside the registry). Cannot read the registers: exit 2.
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
 KINDS="${SHARE_KINDS:-$ROOT/standards/naming/kinds.tsv}"
-. "$SRC/log-lib.sh"
+. "$SRC/library-log.sh"
 log_init lint-share
 LOG_FD=2
 T="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -rf "$T"' EXIT
@@ -51,12 +51,12 @@ files_of() {
 }
 
 gather() { # → path TAB share, every file that has a share
-  files_of "$ROOT" | HARBOR_ROOT="$ROOT" sh "$SRC/layers.sh" --classify | awk -F'\t' '$2 == "core" { print $1 "\tcore" }'
-  _pv="$(HARBOR_ROOT="$ROOT" sh "$SRC/roots.sh" --private 2>/dev/null)" || _pv=""
+  files_of "$ROOT" | HARBOR_SCOPE_ROOT="$ROOT" sh "$SRC/scope-layers.sh" --classify | awk -F'\t' '$2 == "core" { print $1 "\tcore" }'
+  _pv="$(HARBOR_SCOPE_ROOT="$ROOT" sh "$SRC/scope-roots.sh" --private 2>/dev/null)" || _pv=""
   if [ -n "$_pv" ] && [ -d "$_pv" ]; then
     files_of "$_pv" | awk '{ print ($0 ~ /^hub\// ? "private:" $0 "\thub" : "private:" $0 "\tpersonal") }'
-    HARBOR_ROOT="$ROOT" sh "$SRC/roots.sh" --conf packs 2>/dev/null | tr ',[]"' '    ' | tr -s ' ' '\n' | grep -v '^$' | while IFS= read -r _id; do
-      _rd="$(HARBOR_ROOT="$ROOT" sh "$SRC/roots.sh" --repo "$_id" 2>/dev/null)" || continue
+    HARBOR_SCOPE_ROOT="$ROOT" sh "$SRC/scope-roots.sh" --conf packs 2>/dev/null | tr ',[]"' '    ' | tr -s ' ' '\n' | grep -v '^$' | while IFS= read -r _id; do
+      _rd="$(HARBOR_SCOPE_ROOT="$ROOT" sh "$SRC/scope-roots.sh" --repo "$_id" 2>/dev/null)" || continue
       [ -d "$_rd/harbor-pack" ] && files_of "$_rd/harbor-pack" | awk -v id="$_id" '{ print "pack:" id ":" $0 "\tworkload" }'
     done
   fi

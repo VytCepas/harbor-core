@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-case "${1:-}:${HELM_DISABLE_FLOOR:-0}" in --box:1) exit 0 ;; esac
+case "${1:-}:${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" in --box:1) exit 0 ;; esac
 # govern-hook.sh (harbor#7) — just-in-time governance. Inject the rule at the
 # moment it applies, instead of paying for it in every session's prefix.
 #
@@ -33,7 +33,7 @@ case "${1:-}:${HELM_DISABLE_FLOOR:-0}" in --box:1) exit 0 ;; esac
 # estate. Any hook that accumulated shared state would inherit that fork.
 #
 # NO guard-lib.sh, DELIBERATELY. This is plugin payload for a repo, not floor
-# payload for the box: CONTRACTS/box-profile.md's D7 says a governed repo must
+# payload for the box: contracts/host-profile.md's D7 says a governed repo must
 # work with no upstream platform installed, and sourcing the floor's library would make
 # this hook require the floor. It reimplements the two lines it needs.
 #
@@ -42,7 +42,7 @@ case "${1:-}:${HELM_DISABLE_FLOOR:-0}" in --box:1) exit 0 ;; esac
 # repo, and every merge in 30 days ran from somewhere else. In that mode the
 # target repo comes from the call: a `-R` slug mapped to its checkout under the
 # port root, else the call's working folder. Only REGISTERED projects
-# (inject.d/projects.tsv) run their bin/merge-check.sh, and a session standing in
+# (inject.d/projects.tsv) run their bin/gate-merge-check.sh, and a session standing in
 # the repo is left to the repo pack, so the merge is checked once.
 #
 # FAIL-OPEN EVERYWHERE. No jq, malformed JSON, a git call that errors, a
@@ -68,7 +68,7 @@ esac
 # is silence, because unlike the external-content banner nothing here is a
 # safety boundary — a missed reminder costs a reminder.
 #
-# `--note` PRINTS THE TEXT AND NOT THE ENVELOPE (harbor#173). bin/inject-hook.sh
+# `--note` PRINTS THE TEXT AND NOT THE ENVELOPE (harbor#173). hooks/injection-rule/injection-rule.sh
 # is the engine that now carries every other just-in-time rule in this estate,
 # and its `run:` contract is "stdout is the note". This branch computes exactly
 # what it always computed and skips the jq wrapper, so the merge governance below
@@ -131,10 +131,10 @@ STAMP='[HARBOR GOVERNANCE]'
 #
 # WHAT IS LEFT IS THE PART THAT COULD NOT MOVE. The merge notes are computed —
 # which local branches this merge just retired, which of those a worktree is
-# pinning, how far behind origin the checkout now is — and CONTRACTS/hooks.md
+# pinning, how far behind origin the checkout now is — and contracts/hooks.md
 # gives the reason no other layer can reach it: a PR merge is server-side, so no
 # local git process runs and no `post-merge` git hook fires, in this repo or any
-# repo, ever. bin/inject-hook.sh calls back into this file through `--note`.
+# repo, ever. hooks/injection-rule/injection-rule.sh calls back into this file through `--note`.
 TOOL="$(field '.tool_name')"
 case "$TOOL" in Bash|Monitor) ;; *) exit 0 ;; esac   # Monitor runs a shell command too (pass 14 E-4)
 CMD="$(field '.tool_input.command')"
@@ -161,7 +161,7 @@ CMD="$(field '.tool_input.command')"
 # alias or function (`ghm 172`), the program in a variable (`$GH pr merge`),
 # backslash-newline continuation inside the phrase, and a segment reached only
 # through `xargs` or `find -exec`. Each is asserted as a MISS in
-# tests/hooks/govern-hook-test.sh, so the hole is a pinned fact rather than an
+# tests/context/govern-hook/govern-hook.test.sh, so the hole is a pinned fact rather than an
 # assumption someone later mistakes for coverage.
 # THE HEREDOC BODY IS NOT CODE, and stripping it is the only thing that makes
 # the rest of this honest. segments() splits on newline, so a documentation line
@@ -213,7 +213,7 @@ is_merge_cmd() { # <segment> -> 0 when this is genuinely `gh pr merge …`
 # which flags consume the next word, or `--subject 42 261` reports #42.
 #
 # THE VALUE-TAKING FLAG LIST IS A COPY OF gh's INTERFACE, which is the kind of
-# copy that rots silently (T2). It is not left to rot: tests/hooks/govern-hook-test.sh reads
+# copy that rots silently (T2). It is not left to rot: tests/context/govern-hook/govern-hook.test.sh reads
 # `gh pr merge --help` and fails when gh grows a value-taking flag this list does
 # not carry, so the drift is loud instead of a wrong verdict about a wrong PR.
 merge_target() {
@@ -299,11 +299,11 @@ if [ "$BOX" = 1 ]; then
 else
   [ -n "$REPO" ] || exit 0
 fi
-BASE="${HARBOR_BASE_BRANCH:-main}"
+BASE="${HARBOR_CI_BASE_BRANCH:-${HARBOR_BASE_BRANCH:-main}}"
 
 emit() { # <event> <model-text> [user-line] — or nothing at all
   [ -n "$2" ] || return 0
-  # --note: the caller is bin/inject-hook.sh, whose contract is "stdout is the
+  # --note: the caller is hooks/injection-rule/injection-rule.sh, whose contract is "stdout is the
   # note". The systemMessage half has no equivalent there and is dropped rather
   # than smuggled into the model's copy — a line written for the operator that
   # arrives as model context is a line addressed to the wrong reader.
@@ -326,14 +326,14 @@ emit() { # <event> <model-text> [user-line] — or nothing at all
 }
 
 # deny <reason> — the ONE blocking output in this file, PreToolUse only
-# (CONTRACTS/hooks.md: "the only one that can block"; `permissionDecision` is
+# (contracts/hooks.md: "the only one that can block"; `permissionDecision` is
 # accepted on no other event). Exit status stays 0 — a decision travels on
 # stdout, exactly as guard-cloud.sh and guard-destroy.sh emit theirs; exit 2
 # would be the floor's channel, and this file is repo payload, not floor payload.
 #
 # WHY `deny` AND NOT `ask`. An `ask` prompts the operator, and an operator who
 # wants this merge will approve it — leaving no record anywhere that a red PR was
-# merged deliberately. `merge-check.sh --merge --force` writes that decision into
+# merged deliberately. `gate-merge-check.sh --merge --force` writes that decision into
 # the merge commit, which is the one place it survives the scrollback, so the
 # deny's job is to route to it rather than to substitute for it. It also survives
 # a subagent, where an `ask` with no human attached is toothless.
@@ -341,16 +341,16 @@ emit() { # <event> <model-text> [user-line] — or nothing at all
 # ── AND IT HAS TO SURVIVE THE ROUTE THE OPERATOR ACTUALLY RUNS ───────────────
 # Found by review, not by this file's suite, and it is §2.6 exactly: the suite
 # fired the hook DIRECTLY while production goes through
-# `.claude/inject.d/merge-note.sh`, which execs `govern-hook.sh --note` because
+# `context-rules/harbor/merge-note.sh`, which execs `govern-hook.sh --note` because
 # `run:` packs contract that stdout IS the note. So a deny degraded to prose,
 # `inject-hook.sh` wrapped that prose as additionalContext, and every red PR
 # still merged — with a green suite either side of it. A gate that is inert on
 # the installed path is the decorative gate harbor#254 is about, one layer down.
 #
 # The sentinel is the fix: `--note` prints a line the ENGINE recognises, and
-# bin/inject-hook.sh turns it back into a real permissionDecision on PreToolUse
+# hooks/injection-rule/injection-rule.sh turns it back into a real permissionDecision on PreToolUse
 # (and refuses to pretend on every other event, where the harness has no channel
-# for one). CONTRACTS/inject.md carries the contract.
+# for one). contracts/injection-rule.md carries the contract.
 deny() {
   if [ "$NOTE_ONLY" = 1 ]; then printf 'HARBOR-DECISION deny: %s\n' "$1"; return 0; fi
   jq -cn --arg r "$STAMP $1" \
@@ -358,12 +358,24 @@ deny() {
     2>/dev/null || true
 }
 
+# THE DECISION LOG (harbor#957 item 4). Under --note the caller is inject-hook, which records the fire as
+# g=inject; every other route records it here as g=govern, through the floor's writer. Read lazily and
+# in a subshell, so the library cannot touch the verdict, and silent when there is no ledger.
+_log() { # <deny|advise> <rule>
+  [ "$NOTE_ONLY" = 1 ] && return 0
+  [ -f "$SELF_DIR/guard-lib.sh" ] || return 0
+  ( set +eu; FLOOR_TOOL="${TOOL:-}"; FLOOR_IN="$PAYLOAD"; . "$SELF_DIR/guard-lib.sh"
+    floor_log_decision govern "$1" "$2.meta" ) >/dev/null 2>&1 || :
+}
+
 # ── --box: which repo a merge belongs to (harbor#516) ───────────────────────
-# _registered <tree>: a row in inject.d/projects.tsv, or a worktree of one. The
+# _registered <tree>: a row in the box tier's projects.tsv, or a worktree of one. The
 # registry is the trust boundary, as for inject-hook's `scope: box`: a merge
 # naming a cloned third-party repo must not run that repo's script in a hook.
 _registered() {
-  _reg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/inject.d/projects.tsv"
+  # Beside the box tier, which moved in harbor#1010; the old place is read while no new one is installed.
+  _reg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/context-rules/user/projects.tsv"
+  [ -f "$_reg" ] || _reg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/inject.d/projects.tsv"
   [ -f "$_reg" ] || return 1
   _me="$(cd "$1" 2>/dev/null && pwd -P || true)"
   _own="$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
@@ -396,7 +408,7 @@ _checkout_of() {
   return 0
 }
 # _box_target <slug-or-empty>: the repo whose backstop judges this merge, or
-# nothing. Nothing when it has no merge-check.sh, is unregistered, or is the
+# nothing. Nothing when it has no gate-merge-check.sh, is unregistered, or is the
 # session's own repo with the merge pack in it (that pack checks it already).
 _box_target() {
   if [ -n "$1" ]; then _bt="$(_checkout_of "$1")"; else _bt="$REPO"; fi
@@ -404,10 +416,12 @@ _box_target() {
   # The OWNER's backstop decides: a worktree's copy can be stale or half-edited,
   # and a `.git` file naming a registered repo must not get its own script run.
   _bt="$(_owner "$_bt")"
-  [ -n "$_bt" ] && [ -f "$_bt/bin/merge-check.sh" ] || return 0
+  [ -n "$_bt" ] && [ -f "$_bt/bin/gate-merge-check.sh" ] || return 0
   _registered "$_bt" || return 0
   # Once: a session in that repo, or a worktree of it, with the merge pack is the pack's.
-  if [ -n "$PROJ" ] && [ -f "$PROJ/.claude/inject.d/merge-note.sh" ] && [ "$(_owner "$PROJ")" = "$_bt" ]; then return 0; fi
+  if [ -n "$PROJ" ] && [ "$(_owner "$PROJ")" = "$_bt" ]; then  # either layout carries the pack (harbor#1010)
+    for _mn in "$PROJ"/context-rules/*/merge-note.sh "$PROJ/.claude/inject.d/merge-note.sh"; do [ ! -f "$_mn" ] || return 0; done
+  fi
   printf '%s' "$_bt"
 }
 # _owner <tree>: the main checkout it belongs to, physical; itself when it is one.
@@ -423,7 +437,7 @@ _owner() {
 # THIS CHANNEL IS CONFIRMED — probe P1 passed 2026-08-07, a nonce injected here
 # came back verbatim through a real `claude -p --settings` session. (This comment
 # said the opposite until an adversarial review found it contradicting
-# CONTRACTS/hooks.md inside the same commit.)
+# contracts/hooks.md inside the same commit.)
 #
 # The failure mode was still chosen before the feature, and it is why P1 failing
 # would have cost nothing: an unavailable channel means the merge proceeds
@@ -435,10 +449,10 @@ _owner() {
 # On 2026-08-21 the backstop refused PR #253 and the PR merged in the same
 # command:
 #
-#   sh bin/merge-check.sh 253 2>&1 | tail -2 && gh pr merge 253 --squash …
+#   sh bin/gate-merge-check.sh 253 2>&1 | tail -2 && gh pr merge 253 --squash …
 #
 # A pipeline's exit status is its LAST command's, so `tail`'s 0 satisfied the
-# `&&` and the refusal was decorative. Nothing was wrong with merge-check.sh —
+# `&&` and the refusal was decorative. Nothing was wrong with gate-merge-check.sh —
 # it found the pending check, printed REFUSED and exited nonzero. The defect is
 # the TWO-STEP: a gate that depends on the caller reading the exit status of the
 # right process is a gate that works until somebody writes a pipeline. A note
@@ -447,7 +461,7 @@ _owner() {
 #
 # BOTH REMEDIES THE TICKET PROPOSED WERE ALREADY IN THE TREE, which is why this
 # arm is the fix instead of a new script. `bin/merge.sh <pr>` — "one command that
-# runs the backstop and merges only on a pass" — is `merge-check.sh --merge`,
+# runs the backstop and merges only on a pass" — is `gate-merge-check.sh --merge`,
 # which has done exactly that in one process since 6e038d3. And `REFUSED` has
 # been on stderr since that same commit: the incident redirected `2>&1` INTO the
 # pipe, so moving it would have changed nothing. Both are recorded on the issue.
@@ -461,17 +475,17 @@ _owner() {
 #   fail-open           no gh, no PR number, offline, the tool absent → note only
 #
 # The cost is one `gh pr checks` round-trip per merge (~1s, once), and the oracle
-# stays merge-check.sh rather than a second reading of the same checks (T2).
+# stays gate-merge-check.sh rather than a second reading of the same checks (T2).
 # ════════════════════════════════════════════════════════════════════════════
 if [ "$EVENT" = PreToolUse ] && matches gh 'pr merge'; then
   note=''; user=''
-  # Conditional on the tool EXISTING. In a repo with no merge-check.sh there is
+  # Conditional on the tool EXISTING. In a repo with no gate-merge-check.sh there is
   # no advice to give, and inventing one would be a citation to nothing.
-  if [ "$BOX" = 1 ] || [ -f "$REPO/bin/merge-check.sh" ]; then
-    note="A PR merge is about to run. This repo owns bin/merge-check.sh, the backstop for the day branch protection lapses silently — a private repo on a free plan gets 403 from the protection endpoint and every rule stops applying with nothing turning red. It answers both questions: sh bin/merge-check.sh <pr> and sh bin/merge-check.sh --protection."
+  if [ "$BOX" = 1 ] || [ -f "$REPO/bin/gate-merge-check.sh" ]; then
+    note="A PR merge is about to run. This repo owns bin/gate-merge-check.sh, the backstop for the day branch protection lapses silently — a private repo on a free plan gets 403 from the protection endpoint and every rule stops applying with nothing turning red. It answers both questions: sh bin/gate-merge-check.sh <pr> and sh bin/gate-merge-check.sh --protection."
     case " $(printf '%s' "$CMD" | tr -s '[:space:]' ' ') " in
       *' --admin '*|*' --admin')
-        note="$note GitHub's --admin bypasses required checks and leaves no record of the decision anywhere but the audit log; merge-check.sh --merge --force writes the override into the merge commit instead, which is where the question 'was this merged red, and did someone decide that?' is answerable six weeks later." ;;
+        note="$note GitHub's --admin bypasses required checks and leaves no record of the decision anywhere but the audit log; gate-merge-check.sh --merge --force writes the override into the merge commit instead, which is where the question 'was this merged red, and did someone decide that?' is answerable six weeks later." ;;
     esac
 
     # ── EVERY INVOCATION, AND ITS OWN TARGET (PR #262 review, P1) ────────────
@@ -527,15 +541,15 @@ if [ "$EVENT" = PreToolUse ] && matches gh 'pr merge'; then
       # under `set -e` a nonzero exit inside a substitution would end the hook
       # and fail OPEN silently — the one failure mode a gate cannot have.
       if [ -n "$_trepo" ]; then
-        _mc="$(cd "$_TDIR" && HARBOR_REPO="$_trepo" sh bin/merge-check.sh "$_pr" 2>&1)" && _rc=0 || _rc=$?
+        _mc="$(cd "$_TDIR" && HARBOR_SCOPE_REPO="$_trepo" sh bin/gate-merge-check.sh "$_pr" 2>&1)" && _rc=0 || _rc=$?
       else
-        _mc="$(cd "$_TDIR" && sh bin/merge-check.sh "$_pr" 2>&1)" && _rc=0 || _rc=$?
+        _mc="$(cd "$_TDIR" && sh bin/gate-merge-check.sh "$_pr" 2>&1)" && _rc=0 || _rc=$?
       fi
       # ── A VERDICT IS EXIT 1. EVERYTHING ELSE IS A FAULT ────────────────────
-      # merge-check.sh already separates the two and this arm has to honour the
+      # gate-merge-check.sh already separates the two and this arm has to honour the
       # distinction, because collapsing them makes a broken tool block every
       # merge — §2.11's false positive, on the gate. Measured while building
-      # this: a fixture whose merge-check.sh was a one-line stub exited 127
+      # this: a fixture whose gate-merge-check.sh was a one-line stub exited 127
       # (`x: command not found`) and the first draft denied on it, which would
       # deny every merge in any repo whose backstop is missing a dependency.
       #   1  refused — a real verdict about a real PR
@@ -543,7 +557,7 @@ if [ "$EVENT" = PreToolUse ] && matches gh 'pr merge'; then
       #   *  the script itself is broken
       # A fault FAILS OPEN, and says so in the note: a gate that cannot run and
       # stays quiet is indistinguishable from one that passed, which is the same
-      # "unknown is not ok" argument merge-check.sh makes about protection.
+      # "unknown is not ok" argument gate-merge-check.sh makes about protection.
       if [ "$_rc" -eq 1 ]; then
         _verdict=refuse; _vpr="$_pr"; _vtext="$_mc"; _vdir="$_TDIR"
         break
@@ -560,11 +574,12 @@ MERGESEGS
     _vwhere=''
     [ "$BOX" = 0 ] || _vwhere=" (in $_vdir)"
     if [ "$_verdict" = refuse ]; then
-      deny "[check:merge-backstop] The merge backstop refuses this merge, so it was not run.
+      _log deny merge-backstop
+      deny "[check:gate.merge-backstop] The merge backstop refuses this merge, so it was not run.
 
 $_vtext
 
-Route$_vwhere: sh bin/merge-check.sh --merge $_vpr — it re-checks and merges in ONE process, so no pipeline can drop the refusal (harbor#254; on 2026-08-21 one did, and the PR merged over a pending check). If the refusal is the wrong answer, sh bin/merge-check.sh --merge $_vpr --force overrides it and writes the override into the merge commit, which is where 'was this merged red, and did someone decide that?' is answerable six weeks later."
+Route$_vwhere: sh bin/gate-merge-check.sh --merge $_vpr — it re-checks and merges in ONE process, so no pipeline can drop the refusal (harbor#254; on 2026-08-21 one did, and the PR merged over a pending check). If the refusal is the wrong answer, sh bin/gate-merge-check.sh --merge $_vpr --force overrides it and writes the override into the merge commit, which is where 'was this merged red, and did someone decide that?' is answerable six weeks later."
       exit 0
     fi
     # --box with no in-scope merge: the repo pack or nothing speaks, never both.
@@ -574,7 +589,7 @@ Route$_vwhere: sh bin/merge-check.sh --merge $_vpr — it re-checks and merges i
   fi
 
   # NO DOC-STALENESS GATE HERE, AND THAT IS A MEASURED DECISION rather than an
-  # omission. One was built and cut the same hour; DEAD-ENDS.md carries the
+  # omission. One was built and cut the same hour; docs/reports/rejected-approaches.md carries the
   # numbers. Short version: "a tracked doc cites a path this branch changed"
   # selected 20 documents on a 13-file branch, and narrowing it to a markdown
   # link — harbor's own T3 citation form — made it WORSE at 40, because T3
@@ -583,6 +598,7 @@ Route$_vwhere: sh bin/merge-check.sh --merge $_vpr — it re-checks and merges i
   # three lint rules that run at COMMIT time, which is earlier and cheaper than
   # merge.
 
+  [ -z "$note" ] || _log advise merge-note
   emit PreToolUse "$note" "$user"
   exit 0
 fi
@@ -617,7 +633,7 @@ if [ "$EVENT" = PostToolUse ] && matches gh 'pr merge'; then
       exit 0 ;;
   esac
   # MERGE-CONSEQUENT STATE ONLY. The tempting version of this hook prints a
-  # hygiene checklist — uncommitted changes, stale STATUS.md, unpushed commits —
+  # hygiene checklist — uncommitted changes, stale docs/generated/status.md, unpushed commits —
   # and every one of those is equally true before the merge, after a failed
   # merge, and on a Tuesday. Firing on all of them would make the reminder
   # unfalsifiable and, worse, indistinguishable from wallpaper by its third
@@ -640,10 +656,10 @@ if [ "$EVENT" = PostToolUse ] && matches gh 'pr merge'; then
   # went unnoticed longest: an under-reporting reminder reads as a quiet week.
   #
   # ONE CALL FOR ALL BRANCHES, not one per branch. This runs at SessionStart, and
-  # merged-check.sh builds its patch-id index once per invocation — a call per
+  # gate-merged-check.sh builds its patch-id index once per invocation — a call per
   # branch would rebuild it per branch and pay the cost that made memory-lint a
   # gate nobody could afford to run.
-  _mc="$SELF_DIR/merged-check.sh"
+  _mc="$SELF_DIR/gate-merged-check.sh"
   if [ -f "$_mc" ]; then
     _brs="$(git for-each-ref --format='%(refname:short)' refs/heads 2>/dev/null \
             | while IFS= read -r b; do
@@ -708,6 +724,7 @@ if [ "$EVENT" = PostToolUse ] && matches gh 'pr merge'; then
   # unreachable — `user` lost its only assignment when the doc gate was cut.
   _user=''
   [ -n "$merged" ] && _user="harbor: merged and still local — $merged"
+  [ -z "${note# }" ] || _log advise merged-local
   emit PostToolUse "${note# }" "$_user"
   exit 0
 fi

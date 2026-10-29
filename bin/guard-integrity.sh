@@ -1,16 +1,16 @@
 #!/usr/bin/env sh
-[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0
+[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
 # B6 (harbor#3) — recurring fail-CLOSED SessionStart integrity gate.
 # Asserts, at every session start, that the floor is intact:
 #   1. permissions.deny + mode locks + plugins + marketplaces hash-match the
-#      pinned baseline (.sec0-baseline.sha256, sec0-harden.sh:82 recipe)
+#      pinned baseline (.sec0-baseline.sha256, deploy-harden.sh:82 recipe)
 #   2. every floor guard is present, non-empty, and still carries the
-#      HELM_DISABLE_FLOOR kill-switch on its first live line
+#      HARBOR_ADMISSION_DISABLE kill-switch on its first live line
 #   3. every floor hook is still wired in settings.json, and every hook command
 #      wired into this bin/ names a file that runs as wired (harbor#960)
 # On drift it BLOCKS the session; a clean state passes silently.
 #
-# INSTALLS LAST, after the floor is live and verified (FLOOR.md order): a gate
+# INSTALLS LAST, after the floor is live and verified (docs/explanation/admission-baseline.md order): a gate
 # that blocks sessions must never be the thing that breaks the install.
 #
 # Mechanism (verified against the hooks docs): a SessionStart hook CANNOT block
@@ -19,7 +19,7 @@
 # alongside systemMessage (operator) and additionalContext (model). Threat
 # model per REVIEW F10: the mutators are InstallHooks.ts / InstallSettings.ts,
 # which re-edit settings.json after any fork upgrade — exactly the drift this
-# catches (harbor-epic.md:160, "the floor is swallowable over time").
+# catches (docs/reports/platform-epic.md:160, "the floor is swallowable over time").
 set -u
 # harbor#810: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./guard-lib.sh.
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
@@ -38,7 +38,7 @@ PINDIR="$CFG/.helm-pins"
 sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
 
 # WHICH DIR THE RECOVERY COMMAND NAMES (harbor#110). Every hint below used to
-# hardcode `--live`, and `--live` in floor-deny.sh/restore.sh means literally
+# hardcode `--live`, and `--live` in floor-deny.sh/deploy-restore.sh means literally
 # $HOME/.claude — it does NOT follow CLAUDE_CONFIG_DIR, deliberately, because
 # those tools use it as the accident gate that stops a caller who meant a
 # sandbox from rewriting the real box. But $CFG here comes from
@@ -62,7 +62,7 @@ LIVE_DIR="$HOME/.claude"
 if [ "$(_phys "$CFG")" = "$(_phys "$LIVE_DIR")" ]; then TGT="--live"; else TGT="$CFG"; fi
 # THE HINT IS A COMMAND THE OPERATOR PASTES, so every path in it has to survive
 # the shell a second time (PR #113, Codex P2). A config dir carrying a space —
-# `/tmp/harbor test` — split into two arguments: restore.sh would restore
+# `/tmp/harbor test` — split into two arguments: deploy-restore.sh would restore
 # `/tmp/harbor` while floor-deny.sh took `test` as its target. That is harbor#110
 # one level in: the hint naming a directory other than the one the verdict was
 # measured against, this time by word-splitting rather than by flag semantics.
@@ -72,9 +72,9 @@ _shq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 CFGQ="$(_shq "$CFG")"
 # floor-deny takes --live or --dir PATH, never a positional dir (harbor#800): a sandbox is spelled --dir.
 if [ "$TGT" = "--live" ]; then TGTQ="$(_shq "$TGT")"; else TGTQ="--dir $CFGQ"; fi
-# restore.sh takes --live or --dir, and writes only with --apply (harbor#765).
-if [ "$(_phys "$CFG")" = "$(_phys "$LIVE_DIR")" ]; then RESTORE="sh $CFGQ/bin/restore.sh '--live' --apply"
-else RESTORE="sh $CFGQ/bin/restore.sh --dir $CFGQ --apply"; fi
+# deploy-restore.sh takes --live or --dir, and writes only with --apply (harbor#765).
+if [ "$(_phys "$CFG")" = "$(_phys "$LIVE_DIR")" ]; then RESTORE="sh $CFGQ/bin/deploy-restore.sh '--live' --apply"
+else RESTORE="sh $CFGQ/bin/deploy-restore.sh --dir $CFGQ --apply"; fi
 # pin-instructions.sh takes the same two spellings (the install standard, harbor#765): its --live is
 # $HOME/.claude only, so a sandbox verdict must name --dir, or the re-pin blesses the wrong box.
 if [ "$(_phys "$CFG")" = "$(_phys "$LIVE_DIR")" ]; then REPIN_B8="sh $CFGQ/bin/pin-instructions.sh --apply --live"
@@ -149,9 +149,9 @@ else
       # nothing to add and `--apply` is the wrong verb twice over: it re-adds the
       # full B1 entry set, which RESURRECTS any entry the operator withdrew
       # deliberately (floor-deny.sh's WITHDRAWN list), and it is the flag whose
-      # blast radius made runtime-install.sh choose `--repin` for exactly this
+      # blast radius made deploy-runtime-install.sh choose `--repin` for exactly this
       # situation ("--repin adds no deny entry, so a withdrawn entry stays
-      # withdrawn", runtime-install.sh). The checkout path matches the idiom
+      # withdrawn", deploy-runtime-install.sh). The checkout path matches the idiom
       # session-verdicts.sh already prints for the same recovery.
       ADVISORY="settings.json changed outside the floor's teeth since the baseline was pinned — plugins, marketplaces, a permissions field other than deny/the locks, or a new top-level key (deny + locks intact) — re-pin with: sh $CFGQ/bin/floor-deny.sh $TGTQ --repin (adds nothing)"
     else
@@ -259,7 +259,7 @@ fi
 # This line used to read `for g in $GUARDS guard-lib.sh floor-normalize.awk`,
 # which made it the third of FOUR hand-maintained copies of one set:
 # floor-install.sh:82 (the payload it writes pins for), $GUARDS above,
-# runtime-install.sh's drift report, and floor-verify.sh's presence loop. Copies
+# deploy-runtime-install.sh's drift report, and floor-verify.sh's presence loop. Copies
 # drift silently while reading correctly, and these had already drifted.
 #
 # MEASURED 2026-08-14 on a clean `floor-install.sh --with-b6` install:
@@ -280,7 +280,7 @@ for _pf in "$PINDIR"/*.sha256; do
   # so this is a real guard and not a formality on a box with no pins yet.
   [ -f "$_pf" ] || continue
   _g="${_pf##*/}"; _g="${_g%.sha256}"
-  # B6 DOES NOT CHECK B6, and that is §2.11, not an oversight. runtime-install.sh
+  # B6 DOES NOT CHECK B6, and that is §2.11, not an oversight. deploy-runtime-install.sh
   # carries guard-integrity.sh in REFRESH_ONLY and deliberately does NOT move its
   # pin ("the pin on the gate is the operator's to move"), so checking it here
   # would make every `runtime-install --apply` block the next session with an
@@ -315,22 +315,22 @@ for g in $CHECK; do
     # first live lines on 2026-08-14 are `set -u` / `set -eu`, so requiring the
     # kill-switch of them would have raised a session-BLOCKING alarm the moment the
     # pin dir became the source of truth — the §2.11 defect, shipped by the fix for
-    # a §2.11 defect. sec0-harden.sh is the one that proved it: floor-install.sh:223
+    # a §2.11 defect. deploy-harden.sh is the one that proved it: floor-install.sh:223
     # pins it whenever it happens to be in bin/, which the recovery fixture does, so
     # the widened loop turned the RESTORE path into a lockout (floor-test Q-R6 went
     # red — the assertion that exists because that lockout already happened once).
     #
     # floor-observe.sh is the sharp one: it IS a wired hook (SessionStart,
     # floor-install.sh:143), so its exemption is a finding rather than a category —
-    # a wired hook that does not honour HELM_DISABLE_FLOOR. Left as it is on purpose
+    # a wired hook that does not honour HARBOR_ADMISSION_DISABLE. Left as it is on purpose
     # (an observer writing a ledger under a disabled floor is not a gate acting),
     # and floor-test X15 asserts this line stays the EXHAUSTIVE set, so the next
     # pinned file without a kill-switch goes red in CI instead of at the operator's
     # next SessionStart.
     # baseline-pin.sh is retired (harbor#765) but stays exempt while boxes still carry its pin.
-    # log-lib.sh and install-lib.sh are sourced libraries of the recovery path (harbor#771, #765).
+    # library-log.sh and deploy-install-lib.sh are sourced libraries of the recovery path (harbor#771, #765).
     # NO-KILLSWITCH (read by floor-test X15 — keep it one line, `|`-separated):
-    guard-lib.sh|floor-normalize.awk|pin-instructions.sh|floor-observe.sh|restore.sh|baseline-pin.sh|sec0-harden.sh|log-lib.sh|install-lib.sh) ;;
+    guard-lib.sh|floor-normalize.awk|pin-instructions.sh|floor-observe.sh|deploy-restore.sh|baseline-pin.sh|deploy-harden.sh|library-log.sh|deploy-install-lib.sh) ;;
     *)
       # $FLOOR_GREP, not bare grep: this file sources guard-lib and therefore has
       # the pinned interpreter in scope, and this IS the kill-switch presence
@@ -338,7 +338,7 @@ for g in $CHECK; do
       # the session (convention audit 2026-07-25).
       line="$("$FLOOR_GREP" -vE '^[[:space:]]*(#|$)' "$f" 2>/dev/null | "$FLOOR_GREP" -vE '^#!' | head -1)"
       case "$line" in
-        *HELM_DISABLE_FLOOR*) ;;
+        *HARBOR_ADMISSION_DISABLE*|*HELM_DISABLE_FLOOR*) ;;
         *) note "kill-switch missing from $g (first live line: ${line:-<empty>})" ;;
       esac
       ;;
@@ -443,8 +443,8 @@ if [ -f "$CFG/.helm-instructions.sha256" ]; then
   # a number that must agree with HARBOR_CONTEXT_CEILING — the exact thing
   # store-check's own header refuses. A gap that re-fires beats a copy that
   # silently disagrees.
-  if [ "${_nmem:-0}" -gt 0 ] && [ -x "$CFG/bin/store-check.sh" ]; then
-    _sc="$(sh "$CFG/bin/store-check.sh" --json 2>/dev/null || true)"
+  if [ "${_nmem:-0}" -gt 0 ] && [ -x "$CFG/bin/memory-store-check.sh" ]; then
+    _sc="$(sh "$CFG/bin/memory-store-check.sh" --json 2>/dev/null || true)"
     case "$_sc" in
       *'"over":true'*)
         _ib="$(printf '%s' "$_sc" | sed -n 's/.*"bytes":\([0-9]*\).*/\1/p' | head -1)"
@@ -453,7 +453,7 @@ if [ -f "$CFG/.helm-instructions.sha256" ]; then
           *'"tiered":true'*) _ihow="move more pointers to INDEX-FULL.md" ;;
           *)                 _ihow="tier it — keep the always-on pointers in MEMORY.md and move the rest to INDEX-FULL.md, which is searched and never loaded" ;;
         esac
-        ADVISORY="${ADVISORY:+$ADVISORY; }the memory INDEX is OVER its allowance (${_ib:-?} B against ${_ia:-?} B) — that overage is spent before your first word in EVERY session; $_ihow, or raise HARBOR_CONTEXT_CEILING deliberately. What to move: sh $CFG/bin/store-check.sh"
+        ADVISORY="${ADVISORY:+$ADVISORY; }the memory INDEX is OVER its allowance (${_ib:-?} B against ${_ia:-?} B) — that overage is spent before your first word in EVERY session; $_ihow, or raise HARBOR_CONTEXT_CEILING deliberately. What to move: sh $CFG/bin/memory-store-check.sh"
         ;;
     esac
   fi
@@ -486,7 +486,7 @@ fi
 # guard CONTENT drift — for which it does nothing whatever: floor-deny mentions
 # .helm-pins only inside the deny LIST it writes, and never refreshes a content
 # pin. So the gate blocked the session and handed the operator an instruction
-# that could not unblock it. Found live, after runtime-install.sh replaced
+# that could not unblock it. Found live, after deploy-runtime-install.sh replaced
 # guard-lib.sh and context-resolve.sh with their (identical-to-main) copies.
 #
 # THE PIN REFRESH IS DELIBERATELY NOT WRAPPED IN A TOOL. Re-baselining the file
@@ -504,9 +504,9 @@ if [ -n "$PINDRIFT" ]; then
   # recovery hint must name the dir the verdict was measured against, and the fix
   # for it landed on the settings branch below while THIS branch kept both halves
   # of the bug: a hardcoded `--live`, which means literally $HOME/.claude in
-  # restore.sh regardless of CLAUDE_CONFIG_DIR, and an unquoted $CFG, which the
+  # deploy-restore.sh regardless of CLAUDE_CONFIG_DIR, and an unquoted $CFG, which the
   # header at :60 explains splits a config dir containing a space into two
-  # arguments. So a content drift measured on a SANDBOX printed "restore.sh
+  # arguments. So a content drift measured on a SANDBOX printed "deploy-restore.sh
   # --live": paste it and you overwrite the real box from a verdict that was never
   # taken there — the exact inversion harbor#110 exists to prevent, in the one
   # message a locked-out operator has to act on.
@@ -521,10 +521,10 @@ else
   # half of the same sentence.
   #
   # The path: NO INSTALLER SHIPS floor-deny.sh. floor-install.sh copies its GUARDS
-  # list plus guard-integrity.sh; runtime-install.sh copies FILES plus
+  # list plus guard-integrity.sh; deploy-runtime-install.sh copies FILES plus
   # REFRESH_ONLY. floor-deny.sh is in none of them, and was confirmed ABSENT from
   # the live ~/.claude/bin on 2026-08-02 — so this line named a file that is not
-  # there. Lint X7 reports it. restore.sh above is fine: it IS in FILES.
+  # there. Lint X7 reports it. deploy-restore.sh above is fine: it IS in FILES.
   #
   # It is NOT fixed by adding floor-deny.sh to a payload. floor-deny --repin
   # re-pins .sec0-baseline and .helm-floor-teeth — the two hashes THIS gate checks
@@ -549,7 +549,7 @@ if [ -n "$WIREDRIFT" ]; then
   if [ -z "$PINDRIFT" ] && [ -z "$OTHERDRIFT" ]; then RECOVER=""; else RECOVER="${RECOVER}; "; fi
   RECOVER="${RECOVER}for a wired hook file: $RESTORE puts back the file it last deployed, or — if the script was renamed on purpose — point the hook in $CFGQ/settings.json at its new path from your OWN terminal (hook wiring is outside the baseline, so no re-pin is needed)"
 fi
-MSG="HELM FLOOR INTEGRITY GATE — session BLOCKED. Drift detected: ${DRIFT}. Recover: ${RECOVER}. To open an unguarded session: HELM_DISABLE_FLOOR=1 claude"
+MSG="HELM FLOOR INTEGRITY GATE — session BLOCKED. Drift detected: ${DRIFT}. Recover: ${RECOVER}. To open an unguarded session: HARBOR_ADMISSION_DISABLE=1 claude"
 
 if command -v jq >/dev/null 2>&1; then
   jq -cn --arg m "$MSG" \
@@ -557,7 +557,7 @@ if command -v jq >/dev/null 2>&1; then
       hookSpecificOutput:{hookEventName:"SessionStart", additionalContext:$m}}'
 else
   # No jq — emit the literal JSON rather than failing open on a drift verdict.
-  printf '{"continue":false,"stopReason":"HELM FLOOR INTEGRITY GATE: drift detected and jq is unavailable to describe it. Run %s, or HELM_DISABLE_FLOOR=1 claude."}\n' "$RESTORE"
+  printf '{"continue":false,"stopReason":"HELM FLOOR INTEGRITY GATE: drift detected and jq is unavailable to describe it. Run %s, or HARBOR_ADMISSION_DISABLE=1 claude."}\n' "$RESTORE"
 fi
 floor_log_decision integrity gate integrity-drift.meta
 exit 0

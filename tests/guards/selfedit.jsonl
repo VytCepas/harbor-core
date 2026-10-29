@@ -24,69 +24,69 @@
 {"id":"r7-mid-path","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/./settings.json"}
 {"id":"r7-traversal","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/bin/../settings.json"}
 {"id":"v6-content-pin","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-pins/guard-bash.sh.sha256"}
-{"id":"v6-restore-sh","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/bin/restore.sh"}
+{"id":"v6-restore-sh-harbor-name","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/bin/deploy-restore.sh"}
 {"id":"v6-teeth-pin","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-floor-teeth"}
 {"id":"h769-write-snapshot-ledger","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-snapshots"}
 {"id":"h769-edit-snapshot-ledger","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-snapshots"}
 {"id":"write-a-guard","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/bin/guard-bash.sh"}
-{"id":"hs779-apiroute-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-apiroute/x","why":"harbor#779: an integrity row of CONTRACTS/helm-state.md"}
+{"id":"hs779-apiroute-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-apiroute/x","why":"harbor#779: an integrity row of contracts/control-plane-state.md"}
 {"id":"hs779-apiroute-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-apiroute/x"}
-{"id":"hs779-apiroute-allow-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-apiroute-allow","why":"harbor#779: an integrity row of CONTRACTS/helm-state.md"}
+{"id":"hs779-apiroute-allow-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-apiroute-allow","why":"harbor#779: an integrity row of contracts/control-plane-state.md"}
 {"id":"hs779-apiroute-allow-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-apiroute-allow"}
-{"id":"hs779-baseline-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-baseline","why":"harbor#779: an integrity row of CONTRACTS/helm-state.md"}
+{"id":"hs779-baseline-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-baseline","why":"harbor#779: an integrity row of contracts/control-plane-state.md"}
 {"id":"hs779-baseline-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-baseline"}
-{"id":"hs779-context-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-context/s1","why":"harbor#779: an integrity row of CONTRACTS/helm-state.md"}
+{"id":"hs779-context-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-context/s1","why":"harbor#779: an integrity row of contracts/control-plane-state.md"}
 {"id":"hs779-context-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-context/s1"}
-{"id":"hs779-floor-teeth-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-floor-teeth","why":"harbor#779: an integrity row of CONTRACTS/helm-state.md"}
+{"id":"hs779-floor-teeth-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-floor-teeth","why":"harbor#779: an integrity row of contracts/control-plane-state.md"}
 {"id":"hs779-floor-teeth-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-floor-teeth"}
-{"id":"hs779-govern-salt-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-govern-salt","why":"harbor#779: an integrity row of CONTRACTS/helm-state.md"}
+{"id":"hs779-govern-salt-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-govern-salt","why":"harbor#779: an integrity row of contracts/control-plane-state.md"}
 {"id":"hs779-govern-salt-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-govern-salt"}
-{"id":"hs779-install-stamp-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-install-stamp","why":"harbor#779: an integrity row of CONTRACTS/helm-state.md"}
+{"id":"hs779-install-stamp-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-install-stamp","why":"harbor#779: an integrity row of contracts/control-plane-state.md"}
 {"id":"hs779-install-stamp-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-install-stamp"}
-{"id":"hs779-instructions-sha256-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-instructions.sha256","why":"harbor#779: an integrity row of CONTRACTS/helm-state.md"}
+{"id":"hs779-instructions-sha256-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-instructions.sha256","why":"harbor#779: an integrity row of contracts/control-plane-state.md"}
 {"id":"hs779-instructions-sha256-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-instructions.sha256"}
-{"id":"hs779-judge-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-judge","why":"harbor#779: an integrity row of CONTRACTS/helm-state.md"}
+{"id":"hs779-judge-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-judge","why":"harbor#779: an integrity row of contracts/control-plane-state.md"}
 {"id":"hs779-judge-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-judge"}
-{"id":"hs779-log-token-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-log-token","why":"harbor#779: an integrity row of CONTRACTS/helm-state.md"}
+{"id":"hs779-log-token-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-log-token","why":"harbor#779: an integrity row of contracts/control-plane-state.md"}
 {"id":"hs779-log-token-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-log-token"}
-{"id":"hs779-obs-host-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-obs-host","why":"harbor#779: an integrity row of CONTRACTS/helm-state.md"}
+{"id":"hs779-obs-host-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-obs-host","why":"harbor#779: an integrity row of contracts/control-plane-state.md"}
 {"id":"hs779-obs-host-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-obs-host"}
-{"id":"hs779-obs-salt-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-obs-salt","why":"harbor#779: an integrity row of CONTRACTS/helm-state.md"}
+{"id":"hs779-obs-salt-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-obs-salt","why":"harbor#779: an integrity row of contracts/control-plane-state.md"}
 {"id":"hs779-obs-salt-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-obs-salt"}
-{"id":"hs779-peers-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-peers/s1","why":"harbor#779: an integrity row of CONTRACTS/helm-state.md"}
+{"id":"hs779-peers-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-peers/s1","why":"harbor#779: an integrity row of contracts/control-plane-state.md"}
 {"id":"hs779-peers-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-peers/s1"}
-{"id":"hs779-pins-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-pins/x","why":"harbor#779: an integrity row of CONTRACTS/helm-state.md"}
+{"id":"hs779-pins-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-pins/x","why":"harbor#779: an integrity row of contracts/control-plane-state.md"}
 {"id":"hs779-pins-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-pins/x"}
-{"id":"hs779-snapshots-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-snapshots","why":"harbor#779: an integrity row of CONTRACTS/helm-state.md"}
+{"id":"hs779-snapshots-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-snapshots","why":"harbor#779: an integrity row of contracts/control-plane-state.md"}
 {"id":"hs779-snapshots-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-snapshots"}
-{"id":"hs779-stop-gate-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-stop-gate/s1","why":"harbor#779: an integrity row of CONTRACTS/helm-state.md"}
+{"id":"hs779-stop-gate-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-stop-gate/s1","why":"harbor#779: an integrity row of contracts/control-plane-state.md"}
 {"id":"hs779-stop-gate-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-stop-gate/s1"}
-{"id":"hs779-bin--helm-suite-payloads-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/bin/.helm-suite-payloads","why":"harbor#779: an integrity row of CONTRACTS/helm-state.md"}
+{"id":"hs779-bin--helm-suite-payloads-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/bin/.helm-suite-payloads","why":"harbor#779: an integrity row of contracts/control-plane-state.md"}
 {"id":"hs779-bin--helm-suite-payloads-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/bin/.helm-suite-payloads"}
 {"id":"hs779-apiroute-dir-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-apiroute","why":"a file at the directory's own name"}
 {"id":"hs779-context-dir-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-context","why":"a file at the directory's own name"}
 {"id":"hs779-peers-dir-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-peers","why":"a file at the directory's own name"}
 {"id":"hs779-pins-dir-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-pins","why":"a file at the directory's own name"}
 {"id":"hs779-stop-gate-dir-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-stop-gate","why":"a file at the directory's own name"}
-{"id":"hs779-cache-deny-hashes-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-deny-hashes","why":"harbor#779: a cache row of CONTRACTS/helm-state.md stays writable"}
+{"id":"hs779-cache-deny-hashes-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-deny-hashes","why":"harbor#779: a cache row of contracts/control-plane-state.md stays writable"}
 {"id":"hs779-cache-deny-hashes-edit","rule":"floor-surface","want":"allow","tool":"Edit","path":"{cfg}/.helm-deny-hashes"}
-{"id":"hs779-cache-deny-terms-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-deny-terms","why":"harbor#779: a cache row of CONTRACTS/helm-state.md stays writable"}
+{"id":"hs779-cache-deny-terms-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-deny-terms","why":"harbor#779: a cache row of contracts/control-plane-state.md stays writable"}
 {"id":"hs779-cache-deny-terms-edit","rule":"floor-surface","want":"allow","tool":"Edit","path":"{cfg}/.helm-deny-terms"}
-{"id":"hs779-cache-props-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-props","why":"harbor#779: a cache row of CONTRACTS/helm-state.md stays writable"}
+{"id":"hs779-cache-props-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-props","why":"harbor#779: a cache row of contracts/control-plane-state.md stays writable"}
 {"id":"hs779-cache-props-edit","rule":"floor-surface","want":"allow","tool":"Edit","path":"{cfg}/.helm-props"}
-{"id":"hs779-cache-renew-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-renew","why":"harbor#779: a cache row of CONTRACTS/helm-state.md stays writable"}
+{"id":"hs779-cache-renew-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-renew","why":"harbor#779: a cache row of contracts/control-plane-state.md stays writable"}
 {"id":"hs779-cache-renew-edit","rule":"floor-surface","want":"allow","tool":"Edit","path":"{cfg}/.helm-renew"}
-{"id":"hs779-cache-replay-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-replay/baseline.tsv","why":"harbor#779: a cache row of CONTRACTS/helm-state.md stays writable"}
+{"id":"hs779-cache-replay-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-replay/baseline.tsv","why":"harbor#779: a cache row of contracts/control-plane-state.md stays writable"}
 {"id":"hs779-cache-replay-edit","rule":"floor-surface","want":"allow","tool":"Edit","path":"{cfg}/.helm-replay/baseline.tsv"}
-{"id":"hs779-cache-sandbox-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-sandbox","why":"harbor#779: a cache row of CONTRACTS/helm-state.md stays writable"}
+{"id":"hs779-cache-sandbox-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-sandbox","why":"harbor#779: a cache row of contracts/control-plane-state.md stays writable"}
 {"id":"hs779-cache-sandbox-edit","rule":"floor-surface","want":"allow","tool":"Edit","path":"{cfg}/.helm-sandbox"}
-{"id":"hs779-cache-sweep-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-sweep","why":"harbor#779: a cache row of CONTRACTS/helm-state.md stays writable"}
+{"id":"hs779-cache-sweep-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-sweep","why":"harbor#779: a cache row of contracts/control-plane-state.md stays writable"}
 {"id":"hs779-cache-sweep-edit","rule":"floor-surface","want":"allow","tool":"Edit","path":"{cfg}/.helm-sweep"}
-{"id":"hs779-cache-sweep-keep-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-sweep-keep","why":"harbor#779: a cache row of CONTRACTS/helm-state.md stays writable"}
+{"id":"hs779-cache-sweep-keep-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-sweep-keep","why":"harbor#779: a cache row of contracts/control-plane-state.md stays writable"}
 {"id":"hs779-cache-sweep-keep-edit","rule":"floor-surface","want":"allow","tool":"Edit","path":"{cfg}/.helm-sweep-keep"}
-{"id":"hs779-cache-sweep-jsonl-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-sweep.jsonl","why":"harbor#779: a cache row of CONTRACTS/helm-state.md stays writable"}
+{"id":"hs779-cache-sweep-jsonl-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-sweep.jsonl","why":"harbor#779: a cache row of contracts/control-plane-state.md stays writable"}
 {"id":"hs779-cache-sweep-jsonl-edit","rule":"floor-surface","want":"allow","tool":"Edit","path":"{cfg}/.helm-sweep.jsonl"}
-{"id":"hs779-cache-watch-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-watch","why":"harbor#779: a cache row of CONTRACTS/helm-state.md stays writable"}
+{"id":"hs779-cache-watch-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-watch","why":"harbor#779: a cache row of contracts/control-plane-state.md stays writable"}
 {"id":"hs779-cache-watch-edit","rule":"floor-surface","want":"allow","tool":"Edit","path":"{cfg}/.helm-watch"}
 {"id":"h787-write-snapshot","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/backups/deploy-1/config.tgz","why":"harbor#787: guard-bash refuses the same write since harbor#772"}
 {"id":"h787-edit-snapshot-log","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/backups/deploy-1/log"}
@@ -99,7 +99,7 @@
 {"id":"h787-allow-memory-note","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/MEMORY/backups-notes.md","why":"only the top-level backups/ is a surface, as in guard-bash"}
 {"id":"h787-allow-nested-name","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/skills/x/backups/y.md"}
 {"id":"h787-allow-project-backups","rule":"floor-surface","want":"allow","tool":"Write","path":"{tmp}/proj/backups/x.tgz"}
-{"id":"hs779-cache-sweep-lock-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-sweep.lock/x","why":"harbor#779: a cache row of CONTRACTS/helm-state.md stays writable"}
+{"id":"hs779-cache-sweep-lock-write","rule":"floor-surface","want":"allow","tool":"Write","path":"{cfg}/.helm-sweep.lock/x","why":"harbor#779: a cache row of contracts/control-plane-state.md stays writable"}
 {"id":"sh482-s1-shadow-switch-written-into-project-settings","rule":"switch-in-settings","want":"block","tool":"Write","input":{"file_path":"{tmp}/proj/.claude/settings.local.json","content":"{\"env\":{\"HELM_FLOOR_SHADOW\":\"1\"}}"},"why":"harbor#482: a settings env block reaches every hook"}
 {"id":"sh482-s2-kill-switch-edited-into-project-settings","rule":"switch-in-settings","want":"block","tool":"Edit","input":{"file_path":"{tmp}/proj/.claude/settings.json","old_string":"\"env\": {","new_string":"\"env\": {\"HELM_DISABLE_FLOOR\": \"1\","},"why":"harbor#482: the same hole, for the older switch"}
 {"id":"sh482-s3-switch-in-a-multiedit","rule":"switch-in-settings","want":"block","tool":"MultiEdit","input":{"file_path":"{tmp}/proj/.claude/settings.local.json","edits":[{"old_string":"a","new_string":"b"},{"old_string":"c","new_string":"HELM_FLOOR_SHADOW"}]},"why":"harbor#482: every edit's new text is read"}
@@ -110,9 +110,11 @@
 {"id":"ed1044-rule-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-dispatch/rules/event.x.rule"}
 {"id":"ed1044-ledger-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-dispatch/ledger"}
 {"id":"ed1044-dir-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-dispatch","why":"a file at the directory's own name"}
-{"id":"ag1018-approvals-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-approvals/ledger.tsv","why":"harbor#1018: the approval ledger, an integrity row of CONTRACTS/helm-state.md"}
+{"id":"ag1018-approvals-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-approvals/ledger.tsv","why":"harbor#1018: the approval ledger, an integrity row of contracts/control-plane-state.md"}
 {"id":"ag1018-approvals-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-approvals/ledger.tsv"}
-{"id":"ag1018-approvals-dir-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-approvals","why":"harbor#1018: the approval ledger, an integrity row of CONTRACTS/helm-state.md"}
-{"id":"ship1128-ship-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-ship/VytCepas_harbor.json","why":"harbor#1018: the ship runner state, an integrity row of CONTRACTS/helm-state.md"}
+{"id":"ag1018-approvals-dir-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-approvals","why":"harbor#1018: the approval ledger, an integrity row of contracts/control-plane-state.md"}
+{"id":"ship1128-ship-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-ship/VytCepas_harbor.json","why":"harbor#1018: the ship runner state, an integrity row of contracts/control-plane-state.md"}
 {"id":"ship1128-ship-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-ship/VytCepas_harbor.json"}
-{"id":"ship1128-ship-dir-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-ship","why":"harbor#1018: the ship runner state, an integrity row of CONTRACTS/helm-state.md"}
+{"id":"ship1128-ship-dir-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-ship","why":"harbor#1018: the ship runner state, an integrity row of contracts/control-plane-state.md"}
+{"id":"sh482-s6-shadow-session-keeps-the-floor-surface-harbor-name","rule":"floor-surface","want":"block","env":{"HARBOR_ADMISSION_SHADOW":"1"},"tool":"Write","path":"{cfg}/settings.json","why":"harbor#482: selfedit stays enforcing in shadow"}
+{"id":"v6-restore-sh","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/bin/restore.sh"}

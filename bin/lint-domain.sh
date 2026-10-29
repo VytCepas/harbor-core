@@ -3,26 +3,26 @@
 #
 #   sh lint-domain.sh --count    the number of hits: (file, term) pairs, not occurrences
 #   sh lint-domain.sh --list     each hit as file TAB term-id
-#   sh lint-domain.sh --check    red if the count is above CONTRACTS/lint-domain-baseline.txt;
+#   sh lint-domain.sh --check    red if the count is above contracts/lint-domain-baseline.txt;
 #                                   green but says to lower the baseline when it is below
 #   sh lint-domain.sh --zero     red on any hit: the export gate once harbor#1273 has emptied it (--repos: no registry is red too)
 #   sh lint-domain.sh --repos <mode>   the same over workload repo names (harbor#1273), its own baseline and allow list
 #
-# Terms: CONTRACTS/domain-terms.tsv (id TAB pattern TAB note), each pattern an ERE matched case-insensitively as a whole
-# word. Allowed: CONTRACTS/domain-allow.tsv (path TAB term TAB reason), harbor logic that must name a tool; path is a file
+# Terms: contracts/domain-terms.tsv (id TAB pattern TAB note), each pattern an ERE matched case-insensitively as a whole
+# word. Allowed: contracts/domain-allow.tsv (path TAB term TAB reason), harbor logic that must name a tool; path is a file
 # or a dir/ prefix, term an id or *, and the reason is required. Scope: every tracked file, plus untracked ones git does
-# not ignore, whose layer is core (bin/layers.sh --core), minus the two registers. Workload repo ids are not in the
+# not ignore, whose layer is core (bin/scope-layers.sh --core), minus the two registers. Workload repo ids are not in the
 # register, since core cannot list them without naming them: --repos reads them from the private project registry
 # (Harbor's own repos excluded) and matches each only where it reads as a repo (~/<id>, <id>/..., `<id>`, <id>#N,
 # "<id> repo"), because several are English words too. With no registry, --repos judges nothing and says so.
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
-TERMS="${DOMAIN_TERMS:-$ROOT/CONTRACTS/domain-terms.tsv}"
-ALLOW="${DOMAIN_ALLOW:-$ROOT/CONTRACTS/domain-allow.tsv}"
-BASE="${DOMAIN_BASELINE:-$ROOT/CONTRACTS/lint-domain-baseline.txt}"
-. "$SRC/log-lib.sh"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
+TERMS="${DOMAIN_TERMS:-$ROOT/contracts/domain-terms.tsv}"
+ALLOW="${DOMAIN_ALLOW:-$ROOT/contracts/domain-allow.tsv}"
+BASE="${DOMAIN_BASELINE:-$ROOT/contracts/lint-domain-baseline.txt}"
+. "$SRC/library-log.sh"
 log_init lint-domain
 LOG_FD=2
 TAB="$(printf '\t')"
@@ -31,11 +31,14 @@ T="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -rf "$T"' EXIT
 GW=-w; REPOS=0; REG=''; WHAT="workload tool"
 if [ "${1:-}" = --repos ]; then
   REPOS=1; GW=''; WHAT="workload repo"; shift
-  REG="${DOMAIN_REPO_REGISTRY:-${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}/inject.d/box/projects.tsv}"
-  BASE="${DOMAIN_REPOS_BASELINE:-$ROOT/CONTRACTS/lint-domain-repos-baseline.txt}"
-  ALLOW="${DOMAIN_REPOS_ALLOW:-$ROOT/CONTRACTS/domain-repos-allow.tsv}"
-  # Harbor's own repos (the control plane, Yard, Fleet) are not workloads.
-  OWN=' harbor project-init projects-orchestrator '
+  _pvl="${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}"
+  _pvr="$_pvl/context-rules/user/projects.tsv"; [ -f "$_pvr" ] || _pvr="$_pvl/inject.d/box/projects.tsv"  # harbor#1010
+  REG="${DOMAIN_REPO_REGISTRY:-$_pvr}"
+  BASE="${DOMAIN_REPOS_BASELINE:-$ROOT/contracts/lint-domain-repos-baseline.txt}"
+  ALLOW="${DOMAIN_REPOS_ALLOW:-$ROOT/contracts/domain-repos-allow.tsv}"
+  # The platform's own repos (control plane, yard, fleet) are not workloads: their ids come from the registry (harbor#966).
+  _pids="$(env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$SRC/scope-roots.sh" --platform-ids)" || { echo "lint-domain: scope-roots.sh --platform-ids failed" >&2; exit 2; }
+  OWN=" $(printf '%s' "$_pids" | tr '\n' ' ') "
   TERMS="$T/repo-terms.tsv"
   { printf 'id\tpattern\tnote\n'
     [ ! -f "$REG" ] || sed 's/\r$//' "$REG" | grep -vE '^[[:space:]]*(#|$)' | cut -f1 | while read -r id; do
@@ -68,7 +71,7 @@ hits() { # file TAB term-id, one line per pair, sorted
   rows "$TERMS" | while IFS="$TAB" read -r id pat _note; do
     git -C "$ROOT" grep -I --untracked -i $GW -l -E -e "$pat" -- . 2>/dev/null | awk -v id="$id" '{ print $0 "\t" id }' || :
   done > "$T/pairs"
-  cut -f1 "$T/pairs" | sort -u | HARBOR_ROOT="$ROOT" sh "$SRC/layers.sh" --core > "$T/core"
+  cut -f1 "$T/pairs" | sort -u | HARBOR_SCOPE_ROOT="$ROOT" sh "$SRC/scope-layers.sh" --core > "$T/core"
   rows "$ALLOW" > "$T/allow"
   awk -F'\t' -v core="$T/core" -v allow="$T/allow" -v t="${TERMS#$ROOT/}" -v a="${ALLOW#$ROOT/}" '
     BEGIN { while ((getline l < core) > 0) C[l] = 1
@@ -91,7 +94,7 @@ case "${1:-}" in
       # The export gate refuses a silent pass: no registry there means no export (harbor#1273).
       if [ "$1" = --zero ]; then
         log_fail "no project registry at ${REG#$HOME/}: workload repo names were not judged"
-        log_fix "export from the box, where the private layer holds inject.d/box/projects.tsv"; log_end || :; exit 2
+        log_fix "export from the box, where the private layer holds context-rules/user/projects.tsv"; log_end || :; exit 2
       fi
       log_note "no project registry at ${REG#$HOME/}: workload repo names were not judged"; log_end; exit 0
     fi

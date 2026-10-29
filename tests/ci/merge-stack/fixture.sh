@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # Sourced by the merge-stack suites (harbor#1060) after t_init. No network, no real repo: a local bare repository is the
 # GitHub remote (url.insteadOf), `gh` a stub answering from files under $MS_FIX with each PR's head and mergeability
-# computed from that bare repo, `sleep` a logging no-op, and the checkout's bin/merge-check.sh a stub that squash-merges
+# computed from that bare repo, `sleep` a logging no-op, and the checkout's bin/gate-merge-check.sh a stub that squash-merges
 # into the bare main. ms_world builds it; ms_branch/ms_add/ms_del/ms_push/ms_main/ms_pr build PRs; ms_mutant copies the tool.
 MS_R=acme/widgets
 ms_world() { # [harbor] — a bare repo; `harbor` adds harbor's own files, otherwise the repo owns none of them
@@ -15,14 +15,14 @@ ms_world() { # [harbor] — a bare repo; `harbor` adds harbor's own files, other
   git config --global url."$MS_BARE".insteadOf "https://github.com/$MS_R.git"
   git init -q --bare "$MS_BARE"
   git clone -q "$MS_BARE" "$W" 2>/dev/null
-  MS_INST="$T_TMP/inst"; mkdir -p "$MS_INST/bin" "$MS_INST/CONTRACTS"
-  cp "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/gate-merge-stack.sh" "$T_ROOT/bin/gate-merge-stack-resolve.py" "$MS_INST/bin/"
-  cp "$T_ROOT/CONTRACTS/merge-stack-union.txt" "$T_ROOT/CONTRACTS/required-checks.tsv" "$MS_INST/CONTRACTS/"; GMS="$MS_INST/bin/gate-merge-stack.sh"
-  cat > "$MS_INST/bin/merge-check.sh" <<'EOF'
+  MS_INST="$T_TMP/inst"; mkdir -p "$MS_INST/bin" "$MS_INST/contracts"
+  cp "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/gate-merge-stack.sh" "$T_ROOT/bin/gate-merge-stack-resolve.py" "$MS_INST/bin/"
+  cp "$T_ROOT/contracts/merge-stack-union.txt" "$T_ROOT/contracts/required-checks.tsv" "$MS_INST/contracts/"; GMS="$MS_INST/bin/gate-merge-stack.sh"
+  cat > "$MS_INST/bin/gate-merge-check.sh" <<'EOF'
 #!/bin/sh
 # stub merge-check: squash-merge PR N into the bare remote's default branch, as GitHub does, and mark it merged
 echo "merge-check $1 $2 $3" >> "$MS_FIX/merge.log"
-echo "repo=${HARBOR_REPO:-} rc=${HARBOR_REQUIRED_CHECKS:-} br=${HARBOR_BRANCH:-}" >> "$MS_FIX/env.log"
+echo "repo=${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-}} rc=${HARBOR_REQUIRED_CHECKS:-} br=${HARBOR_GATE_BRANCH:-${HARBOR_BRANCH:-}}" >> "$MS_FIX/env.log"
 [ -z "${HARBOR_REQUIRED_CHECKS:-}" ] || cat "$HARBOR_REQUIRED_CHECKS" >> "$MS_FIX/rc.log"   # what the file said when merge-check read it
 echo "$*" >> "$MS_FIX/args.log"
 MS_PR="$3" sh "$MS_FIX/../merge-into.sh" "$@"
@@ -43,13 +43,13 @@ echo MERGED > "$MS_FIX/pr/$n.state"
 EOF
   echo "readme" > "$W/README.md"
   if [ "$MS_FLAVOR" = harbor ]; then
-    mkdir -p "$W/bin" "$W/CONTRACTS" "$W/docs" "$W/tests/lib"
-    printf '# suites\ntests/a/one.test.sh\ntests/a/two.test.sh\n' > "$W/CONTRACTS/suites.txt"
-    printf '# paths\n' > "$W/CONTRACTS/suite-paths.txt"
-    printf 'cli one\n' > "$W/CONTRACTS/cli.md"
-    printf 'status 0\n' > "$W/STATUS.md"; mkdir -p "$W/docs" "$W/tests/lib"; echo 'site 0' > "$W/docs/index.html"
-    printf '#!/bin/sh\ncd "$(dirname "$0")/.." || exit 1\n[ "$1" != --check-fast ] || exit 1\necho "generated: $(grep -c . CONTRACTS/suites.txt) suites" > STATUS.md\n' > "$W/bin/status-gen.sh"
-    printf '#!/bin/sh\ncd "$(dirname "$0")/.." || exit 1\necho "site: $(grep -c . CONTRACTS/suites.txt) suites" > docs/index.html\n' > "$W/bin/docs-gen.sh"
+    mkdir -p "$W/bin" "$W/contracts" "$W/docs/generated" "$W/tests/lib"
+    printf '# suites\ntests/a/one.test.sh\ntests/a/two.test.sh\n' > "$W/contracts/suites.txt"
+    printf '# paths\n' > "$W/contracts/suite-paths.txt"
+    printf 'cli one\n' > "$W/contracts/cli.md"
+    printf 'status 0\n' > "$W/docs/generated/status.md"; mkdir -p "$W/docs" "$W/tests/lib"; echo 'site 0' > "$W/docs/index.html"
+    printf '#!/bin/sh\ncd "$(dirname "$0")/.." || exit 1\n[ "$1" != --check-fast ] || exit 1\necho "generated: $(grep -c . contracts/suites.txt) suites" > docs/generated/status.md\n' > "$W/bin/status-generate.sh"
+    printf '#!/bin/sh\ncd "$(dirname "$0")/.." || exit 1\necho "site: $(grep -c . contracts/suites.txt) suites" > docs/index.html\n' > "$W/bin/doc-index-generate.sh"
     printf '#!/bin/sh\ncd "$(dirname "$0")/.." || exit 1\nif [ -f LINT_FAIL ]; then echo "VIOLATION x"; echo "lint: 1 violation"; exit 1; fi\necho "lint: 0 violations"\n' > "$W/bin/lint-conventions.sh"
     printf '#!/bin/sh\necho "check: 0 violations"\n' > "$W/tests/lib/check.sh"
     printf '#!/bin/sh\ncd "$(dirname "$0")/.." || exit 1\nif [ -f DEPLOY_FAIL ]; then echo "  FAIL: repo behind"; echo "deploy: 2 ok, 1 failed, 0 warnings"; exit 1; fi\necho "deploy: 3 ok, 0 failed, 0 warnings"\n' > "$W/bin/deploy.sh"
@@ -142,12 +142,12 @@ ms_footprint() {
 ms_mutates() { grep -cE '^(pr (merge|create|close)|run rerun)' "$MS_FIX/calls.log" || true; }
 # A mutant: <label> <sed expr> — a copy of the tool with one line changed, in a tree shaped like the repo.
 ms_mutant() {
-  M="$T_TMP/mut"; rm -rf "$M"; mkdir -p "$M/bin" "$M/CONTRACTS"
+  M="$T_TMP/mut"; rm -rf "$M"; mkdir -p "$M/bin" "$M/contracts"
   cp "$MS_INST"/bin/* "$M/bin/"
-  cp "$T_ROOT/CONTRACTS/merge-stack-union.txt" "$MS_INST/CONTRACTS/required-checks.tsv" "$M/CONTRACTS/"
+  cp "$T_ROOT/contracts/merge-stack-union.txt" "$MS_INST/contracts/required-checks.tsv" "$M/contracts/"
   sed "$2" "$T_ROOT/bin/gate-merge-stack.sh" > "$M/bin/gate-merge-stack.sh"
   t_exit "$1: the mutation applies" 1 cmp -s "$M/bin/gate-merge-stack.sh" "$T_ROOT/bin/gate-merge-stack.sh"
 }
 # The REAL merge-check beside the tool instead of the stub: it asks the stub gh for protection (403/404/200 per
 # $MS_FIX/protection.{rc,out}) and for the PR's check rows ($MS_FIX/checks.tsv), and merges through the stub's `pr merge`.
-ms_real_check() { cp "$T_ROOT/bin/merge-check.sh" "$T_ROOT/bin/ci-lost-job.sh" "$T_ROOT/bin/log-lib.sh" "$MS_INST/bin/"; }
+ms_real_check() { cp "$T_ROOT/bin/gate-merge-check.sh" "$T_ROOT/bin/ci-lost-job.sh" "$T_ROOT/bin/library-log.sh" "$MS_INST/bin/"; }

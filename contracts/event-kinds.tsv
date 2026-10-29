@@ -1,0 +1,43 @@
+# event-kinds.tsv (harbor#1367) — every kind on the local event bus: its shape, its subject, and the file that emits it.
+#
+# WHY THIS FILE EXISTS. The kinds were a prose table in docs/design/events.md, and the presets event.pulse and
+# event.fleet-snapshot and the `ci` obligation listened for ci.job.done for weeks while nothing emitted it: the bus held
+# 0 ci.* events (2026-10-25), and pr.merged / pr.closed had no producer either. A table nobody checks cannot say a
+# listener waits on silence. Lint `event.kind-registered` holds this file to the code:
+#   · every kind bin/ or hooks/ emits by name (`emit <kind>`, `emit_event`, `hook_event`) is a row here;
+#   · every row's emitter exists and names its kind (a row whose emitter is `-` is a kind nothing here emits);
+#   · every kind contracts/event-rules.tsv or contracts/obligation-kinds.tsv names is a row here, and a kind a preset
+#     listens for has an emitter.
+# A new kind is a row before it is an emit; how to wait on one is `harbor event wait`, and on CI `harbor event ci`.
+#
+# COLUMNS  kind <TAB> shape <TAB> subject <TAB> emitter <TAB> meaning
+#   shape    start | terminal | point (docs/design/events.md: a start kind opens what its terminal kind closes)
+#   emitter  space-separated repo paths that emit it, or - (documented, emitted by nothing on this box)
+kind	shape	subject	emitter	meaning
+session.start	start	Claude Code session_id	bin/event-hook.sh	a session began
+session.stop	terminal	Claude Code session_id	bin/event-hook.sh	a session ended
+agent.spawn	start	the subagent's agent_id, else <session_id>:<tool_use_id>	bin/event-hook.sh	a subagent started
+agent.done	terminal	as agent.spawn	bin/event-hook.sh	a subagent finished
+agent.result	point	<rule id>:<event id>	bin/event-dispatch.sh	an agent a dispatcher rule spawned reported its result and cost
+tool.background.start	start	<session_id>:<tool_use_id>	bin/event-hook.sh	a background tool began
+tool.background.done	terminal	<session_id>:<tool_use_id>	bin/event-hook.sh	a background tool finished
+pr.opened	start	<owner>/<repo>#<n>	bin/event-hook.sh	a session opened a PR (`gh pr create` whose output ends in its URL)
+pr.merged	terminal	<owner>/<repo>#<n>	bin/status-obligations.sh	the reconcile saw GitHub report the PR MERGED
+pr.closed	terminal	<owner>/<repo>#<n>	bin/status-obligations.sh	the reconcile saw GitHub report the PR CLOSED unmerged
+ci.job.start	start	<owner>/<repo>:<run_id>:<job>	bin/ci-governor.sh bin/ci-governor-hook.sh	a job began on a runner this box hosts
+ci.job.done	terminal	<owner>/<repo>:<run_id>:<job>	bin/ci-governor.sh bin/ci-governor-hook.sh	a job finished on a runner this box hosts: the moment to read a PR's checks
+obligation.open	start	the obligation id	bin/eval-redteam-corpus.sh	an obligation opened (a handoff to the operator; also `harbor event emit`)
+obligation.close	terminal	the obligation id	bin/eval-redteam-corpus.sh	an obligation closed
+approval.open	start	the approvals queue id	bin/library-gate.sh	a gated action waits for the operator's approval (harbor#1018)
+approval.close	terminal	the approvals queue id	bin/library-gate.sh	the approval was answered
+skill.call	point	the skill name	bin/event-hook.sh	a skill was invoked (harbor#1181 lane 7)
+memory.read	point	the memory note's basename	bin/event-hook.sh	a memory note was read (harbor#1181 lane 7)
+session.state	point	session_id	hooks/session-state/session-state.sh	a session's state changed (waiting-agents, waiting-operator, blocked, done, idle)
+session.save-now	point	session_id	hooks/session-state/session-state.sh	the save-now nudge was sent (ctx at or above 90%)
+git.commit	point	the commit sha	hooks/post-commit	a commit landed in a checkout with hooks installed
+git.merge	point	the sha HEAD is at after the merge	hooks/post-merge	a merge or pull moved a checkout
+rule.backstop	point	the rule id	bin/event-dispatch.sh	a dispatcher rule had not fired within its backstop window
+notify.unshown	point	the notification's subtitle	bin/library-alert.sh	a banner could not be shown, so it is kept on the bus
+dispatch.probe	point	cause	bin/event-dispatch.sh	the dispatcher's own probe that the bus passes a cause on
+check.<id>.ran	point	the check id	-	designed, not built: a check finished its run
+obligation.repair	point	the obligation id	-	designed, not built: a repair was attempted on an obligation

@@ -2,16 +2,17 @@
 # ci-queue.sh (harbor#657) — how long until this box's CI runners are free: the
 # jobs still to run, and when the last of them should finish, for the statusline.
 #
-#   sh ci-queue.sh            write $HARBOR_CACHE_DIR/ci-queue.json (default ~/.claude/cache)
+#   sh ci-queue.sh            write $HARBOR_SCOPE_CACHE_DIR/ci-queue.json (default ~/.claude/cache)
 #   sh ci-queue.sh --print    print one line per repo instead of writing the cache
 #
 # WHAT IT ANSWERS. "How long until CI is done" — asked 2026-09-23 while three
 # runners worked through two overlapping runs, when the answer took five API
-# reads and a schedule worked out by hand. fleet-glyph.sh renders it as ⏳N ·~Mm.
+# reads and a schedule worked out by hand. status-fleet-glyph.sh renders it as ⏳N ·~Mm.
 #
-# THE REPOS ARE DERIVED, NEVER LISTED. Every <runner>/.runner under
-# HARBOR_RUNNERS_DIR (default ~/runners) names the repo it serves, and the number
-# of runner folders per repo is the parallelism the estimate schedules against.
+# THE REPOS ARE DERIVED, NEVER LISTED. Every running runner container's
+# RUNNER_URL, and every <runner>/.runner under HARBOR_CI_RUNNERS_DIR (default
+# ~/runners), names the repo it serves, and the number of runners per repo is the
+# parallelism the estimate schedules against.
 # Adding or removing a runner changes the estimate with no edit here.
 #
 # THE ESTIMATE. A job's typical length is the median of its last three successful
@@ -23,7 +24,7 @@
 # no history takes the longest known typical, so an unknown job never shortens it.
 #
 # ABSOLUTE TIMES ONLY. The cache stores the epoch each repo should be free (`eta`),
-# never a countdown: fleet-glyph.sh subtracts the clock at print time, as row 1
+# never a countdown: status-fleet-glyph.sh subtracts the clock at print time, as row 1
 # does for the rate-limit reset (harbor#84), because the harness can skip or cancel
 # any tick and a stored countdown is wrong by however long it was left standing.
 #
@@ -46,8 +47,8 @@
 # runners endpoint needs repo admin; when it cannot be read the stall is UNKNOWN
 # (`idle: null`) and the estimate above is untouched.
 #
-# Run by fleet-snapshot-refresh.sh every 300s. Writes atomically; on any failure
-# the previous cache is kept. POSIX sh, jq, gh (HARBOR_GH swaps in a fake).
+# Run by status-fleet-snapshot-refresh.sh every 300s. Writes atomically; on any failure
+# the previous cache is kept. POSIX sh, jq, gh (HARBOR_TEST_GH swaps in a fake).
 set -eu
 
 case "${1:-}" in
@@ -55,7 +56,7 @@ case "${1:-}" in
              printf '\n(flags, if any, are in the header above and the source below.)\n'
              exit 0 ;;
 esac
-. "$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)/log-lib.sh"
+. "$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)/library-log.sh"
 log_init ci-queue
 PRINT=0
 case "${1:-}" in
@@ -64,11 +65,12 @@ case "${1:-}" in
   *) log_fail "unknown option $1"; log_fix "sh $0 --help"; log_end || :; exit 2 ;;
 esac
 
-RUNNERS_DIR="${HARBOR_RUNNERS_DIR:-$HOME/runners}"
-CACHE_DIR="${HARBOR_CACHE_DIR:-$HOME/.claude/cache}"
+RUNNERS_DIR="${HARBOR_CI_RUNNERS_DIR:-${HARBOR_RUNNERS_DIR:-$HOME/runners}}"
+CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
 OUT="$CACHE_DIR/ci-queue.json"
-NOW="${HARBOR_NOW:-$(date +%s)}"
-GH="${HARBOR_GH:-gh}"
+NOW="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
+GH="${HARBOR_TEST_GH:-${HARBOR_GH:-gh}}"
+DOCKER="${HARBOR_DOCKER:-docker}"
 STALL_SEC="${HARBOR_CI_STALL_SEC:-600}"
 STALL_CONFIRM=240   # a second refresh, less jitter: 300s apart, never one sample
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required and is not on PATH"; log_fix "$(pkg_hint jq)"; log_end || :; exit 2; }
@@ -88,6 +90,14 @@ for _f in "$RUNNERS_DIR"/*/.runner; do
   [ -f "$_f" ] || continue
   tr -d '\357\273\277' < "$_f" | jq -r '.gitHubUrl // empty' 2>/dev/null \
     | sed -n 's#^https://github\.com/\([^/][^/]*/[^/][^/]*\)/*$#\1#p' >> "$T/repos" || :
+done
+# Runner CONTAINERS (the fleet since ci-runners.sh, harbor#1060) carry no .runner on the host: each names its repo in
+# RUNNER_URL. Read only from .runner folders, the queue was empty while every runner was busy (2026-10-27). A gate
+# container runs gate jobs only, so it is not parallelism here; an org URL names no repo; docker down adds nothing.
+for _c in $("$DOCKER" ps --format '{{.Names}}' 2>/dev/null); do
+  case "$_c" in *-gate|*-gate-[0-9]) continue ;; esac
+  "$DOCKER" inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$_c" 2>/dev/null \
+    | sed -n 's#^RUNNER_URL=https://github\.com/\([^/][^/]*/[^/][^/]*\)/*$#\1#p' >> "$T/repos" || :
 done
 
 : > "$T/out.jsonl"
