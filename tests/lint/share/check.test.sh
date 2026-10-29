@@ -4,7 +4,7 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/checks/lint-fixture.sh"
 NOPRIV="$T_TMP/no-private"
-LS() { HARBOR_ROOT="$1" HARBOR_SCOPE_PRIVATE="${PV:-$NOPRIV}" sh "$T_ROOT/bin/lint-share.sh" "$2" ${3:+"$3" "$4"} 2>&1; }
+LS() { HARBOR_SCOPE_ROOT="$1" HARBOR_SCOPE_PRIVATE="${PV:-$NOPRIV}" sh "$T_ROOT/bin/lint-share.sh" "$2" ${3:+"$3" "$4"} 2>&1; }
 mk() { # <name> → a checkout: notes/ is personal-only, bin/ core or workload, docs/ core; plus a dev file and an unknown path
   _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/contracts" "$_d/standards/naming" "$_d/notes" "$_d/docs" "$_d/misc" "$_d/devonly"
   printf 'path\tlayer\tnote\nbin/\tcore\t\ncontracts/\tcore\t\nstandards/\tcore\t\nnotes/\tcore\t\ndocs/\tcore\t\nmisc/\tcore\t\ndevonly/\tdev\t\n' > "$_d/contracts/layers.tsv"
@@ -29,8 +29,8 @@ D="$(mk planted)"; printf 'x\n' > "$D/notes/me.md"
 t_eq "one file is outside its set" "1" "$(LS "$D" --count)"
 OUT="$(LS "$D" --check)"
 t_has "--check names the file, its share and the set" "$OUT" "notes/me.md — share core is not in {personal}"
-t_exit "...and exits 0: warn mode" 0 env HARBOR_ROOT="$D" HARBOR_SCOPE_PRIVATE="$NOPRIV" sh "$T_ROOT/bin/lint-share.sh" --check
-t_exit "...but --strict exits 1" 1 env HARBOR_ROOT="$D" HARBOR_SCOPE_PRIVATE="$NOPRIV" sh "$T_ROOT/bin/lint-share.sh" --check --strict
+t_exit "...and exits 0: warn mode" 0 env HARBOR_SCOPE_ROOT="$D" HARBOR_SCOPE_PRIVATE="$NOPRIV" sh "$T_ROOT/bin/lint-share.sh" --check
+t_exit "...but --strict exits 1" 1 env HARBOR_SCOPE_ROOT="$D" HARBOR_SCOPE_PRIVATE="$NOPRIV" sh "$T_ROOT/bin/lint-share.sh" --check --strict
 t_has "an untracked file counts as well" "$(LS "$D" --list)" "notes/me.md	core	note	personal"
 
 t_section "the share comes from where the file lives"
@@ -50,11 +50,11 @@ t_has "a folder is matched case-folded (contracts/ against contracts/)" "$(LS "$
 
 t_section "a register that does not parse refuses the run, never counts as clean"
 D="$(mk badshare)"; printf 'x\tz/\tz\tprivate\n' >> "$D/standards/naming/kinds.tsv"
-t_exit "an unknown share term" 2 env HARBOR_ROOT="$D" HARBOR_SCOPE_PRIVATE="$NOPRIV" sh "$T_ROOT/bin/lint-share.sh" --check
+t_exit "an unknown share term" 2 env HARBOR_SCOPE_ROOT="$D" HARBOR_SCOPE_PRIVATE="$NOPRIV" sh "$T_ROOT/bin/lint-share.sh" --check
 D="$(mk nocol)"; printf '# kinds\nid\tfolder\tpath_pattern\nx\tz/\tz\n' > "$D/standards/naming/kinds.tsv"
-t_exit "no share column" 2 env HARBOR_ROOT="$D" HARBOR_SCOPE_PRIVATE="$NOPRIV" sh "$T_ROOT/bin/lint-share.sh" --check
+t_exit "no share column" 2 env HARBOR_SCOPE_ROOT="$D" HARBOR_SCOPE_PRIVATE="$NOPRIV" sh "$T_ROOT/bin/lint-share.sh" --check
 D="$(mk nokinds)"; rm "$D/standards/naming/kinds.tsv"
-t_exit "no kinds register" 2 env HARBOR_ROOT="$D" HARBOR_SCOPE_PRIVATE="$NOPRIV" sh "$T_ROOT/bin/lint-share.sh" --check
+t_exit "no kinds register" 2 env HARBOR_SCOPE_ROOT="$D" HARBOR_SCOPE_PRIVATE="$NOPRIV" sh "$T_ROOT/bin/lint-share.sh" --check
 
 t_section "lint.share turns each finding into a violation (block since the tree reached zero, harbor#1274)"
 D="$(mk lintok)"; cp "$T_ROOT/bin/lint-conventions.sh" "$D/bin/" 2>/dev/null

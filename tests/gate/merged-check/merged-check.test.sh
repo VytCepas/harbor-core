@@ -148,7 +148,7 @@ done
 t_eq "the pre-226 mutant flips all three broken-git arms" 3 "$FLIPPED"
 g worktree add -q "$P/wt-unmerged" genuinely-unmerged 2>/dev/null
 shim cherry
-GC="$(HARBOR_ROOT="$R" HARBOR_BASE=main PATH="$SHIMD:$PATH" sh "$T_ROOT/bin/worktree.sh" gc 2>/dev/null)"
+GC="$(HARBOR_SCOPE_ROOT="$R" HARBOR_CI_BASE=main PATH="$SHIMD:$PATH" sh "$T_ROOT/bin/worktree.sh" gc 2>/dev/null)"
 t_has "worktree gc reports on the fixture worktree" "$GC" 'wt-unmerged'
 t_eq "worktree gc keeps unmerged work when git cherry fails" 0 "$(printf '%s\n' "$GC" | grep -c 'would remove.*wt-unmerged')"
 shim nothing-is-broken-here

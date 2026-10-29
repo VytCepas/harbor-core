@@ -4,12 +4,12 @@
      THIS FILE IS A TEMPLATE (harbor#630). Do not cp it: @HOME@ and the other placeholders in it would be
      installed as literal text, and launchd loads such a job and then fails every time it runs. Render it:
 
-       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.findings.plist > ~/Library/LaunchAgents/com.harbor.findings.plist
+       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.lint.findings.plist > ~/Library/LaunchAgents/com.harbor.lint.findings.plist
 
      A cp line in the comment below predates the template. It is kept so the rendered file stays byte-identical
      to the one already installed: follow this block, not that line. This block is not installed;
      bin/deploy-launchd-render.sh drops it. -->
-<!-- docs/reference/checks.md `findings` (harbor#856): once a day, reconcile the lint census into the finding
+<!-- docs/reference/checks.md `lint.findings` (harbor#856): once a day, reconcile the lint census into the finding
      issues, then run the HEAL-lane repairs. Approved by the operator on 2026-10-02: daily,
      reconcile and heal, as the operator's own `gh` login, from main fetched off GitHub.
 
@@ -24,18 +24,18 @@
        sh ~/port/harbor/bin/deploy-runtime-install.sh --live --apply
        # then install this plist into ~/Library/LaunchAgents and bootstrap it under gui/$(id -u)
 
-     See it work: `launchctl kickstart -k gui/$(id -u)/com.harbor.findings`, then
-     `jq . ~/.claude/cache/findings-state.json` and `cat /tmp/com.harbor.findings.out`.
+     See it work: `launchctl kickstart -k gui/$(id -u)/com.harbor.lint.findings`, then
+     `jq . ~/.claude/cache/findings-state.json` and `cat /tmp/com.harbor.lint.findings.out`.
 
      IT NEEDS THE KEYCHAIN for `gh`'s token, hence Aqua. DAILY AT 09:23: a full lint run is about
      70 seconds, and an off-minute keeps it clear of the jobs at 08:47 and 09:00.
 
      Disable (docs/reference/checks.md's two-lookup rule):
-       launchctl bootout gui/$(id -u)/com.harbor.findings
-       rm ~/Library/LaunchAgents/com.harbor.findings.plist -->
+       launchctl bootout gui/$(id -u)/com.harbor.lint.findings
+       rm ~/Library/LaunchAgents/com.harbor.lint.findings.plist -->
 <plist version="1.0">
 <dict>
-  <key>Label</key><string>com.harbor.findings</string>
+  <key>Label</key><string>com.harbor.lint.findings</string>
   <key>ProgramArguments</key>
   <array>
     <string>/bin/sh</string>
@@ -57,7 +57,7 @@
     <key>PATH</key><string>/usr/bin:/bin:/opt/homebrew/bin</string>
     <key>HOME</key><string>@HOME@</string>
   </dict>
-  <key>StandardOutPath</key><string>/tmp/com.harbor.findings.out</string>
-  <key>StandardErrorPath</key><string>/tmp/com.harbor.findings.err</string>
+  <key>StandardOutPath</key><string>/tmp/com.harbor.lint.findings.out</string>
+  <key>StandardErrorPath</key><string>/tmp/com.harbor.lint.findings.err</string>
 </dict>
 </plist>

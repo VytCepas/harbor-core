@@ -15,9 +15,9 @@
 # `absent` (404). Any other answer is UNREAD and changes nothing.
 # THE ALARM is the state against the ACKNOWLEDGED one (default pro + github, the state Harbor was built on): it holds
 # until a person runs `ack`, so a downgrade is never wallpaper the box decided was fine.
-# FINDINGS: `[check:gh-plan]` lines in cache/checks.log, one per change of plan or gate (and one on a first read, so a
+# FINDINGS: `[check:ci.github-plan]` lines in cache/checks.log, one per change of plan or gate (and one on a first read, so a
 # box that is already degraded says so once), one on the way into an unread state; never one per tick.
-# Run by status-fleet-snapshot-refresh.sh every 300s. Reads no billing. POSIX sh, jq, gh (HARBOR_GH swaps in a fake).
+# Run by status-fleet-snapshot-refresh.sh every 300s. Reads no billing. POSIX sh, jq, gh (HARBOR_TEST_GH swaps in a fake).
 set -eu
 . "$(dirname -- "$0")/library-log.sh"
 log_init gh-plan
@@ -37,15 +37,15 @@ esac
 
 REPO="${HARBOR_PLAN_REPO:-$(repo_slug)}"   # harbor's own OWNER/NAME (harbor#1149); empty is an unread below
 BRANCH=main
-CACHE_DIR="${HARBOR_CACHE_DIR:-$HOME/.claude/cache}"
+CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
 OUT="$CACHE_DIR/gh-plan.json"
 LOG="$CACHE_DIR/checks.log"
-NOW="${HARBOR_NOW:-$(date +%s)}"
-GH="${HARBOR_GH:-gh}"
+NOW="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
+GH="${HARBOR_TEST_GH:-${HARBOR_GH:-gh}}"
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required"; log_fix "$(pkg_hint jq)"; exit 2; }
 case "$NOW" in ''|*[!0-9]*) NOW="$(date +%s)" ;; esac
 iso() { date -u -r "$NOW" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d "@$NOW" +%Y-%m-%dT%H:%M:%SZ; }
-logline() { [ "$MODE" = print ] || printf '[check:gh-plan] %s %s\n' "$(iso)" "$1" >> "$LOG" 2>/dev/null || :; }
+logline() { [ "$MODE" = print ] || printf '[check:ci.github-plan] %s %s\n' "$(iso)" "$1" >> "$LOG" 2>/dev/null || :; }
 mkdir -p "$CACHE_DIR"
 
 # the previous reading and what a person accepted; absent or unparsable is no previous reading

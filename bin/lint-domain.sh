@@ -18,7 +18,7 @@
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
 TERMS="${DOMAIN_TERMS:-$ROOT/contracts/domain-terms.tsv}"
 ALLOW="${DOMAIN_ALLOW:-$ROOT/contracts/domain-allow.tsv}"
 BASE="${DOMAIN_BASELINE:-$ROOT/contracts/lint-domain-baseline.txt}"
@@ -37,7 +37,7 @@ if [ "${1:-}" = --repos ]; then
   BASE="${DOMAIN_REPOS_BASELINE:-$ROOT/contracts/lint-domain-repos-baseline.txt}"
   ALLOW="${DOMAIN_REPOS_ALLOW:-$ROOT/contracts/domain-repos-allow.tsv}"
   # The platform's own repos (control plane, yard, fleet) are not workloads: their ids come from the registry (harbor#966).
-  _pids="$(env -u HARBOR_ROOT sh "$SRC/scope-roots.sh" --platform-ids)" || { echo "lint-domain: scope-roots.sh --platform-ids failed" >&2; exit 2; }
+  _pids="$(env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$SRC/scope-roots.sh" --platform-ids)" || { echo "lint-domain: scope-roots.sh --platform-ids failed" >&2; exit 2; }
   OWN=" $(printf '%s' "$_pids" | tr '\n' ' ') "
   TERMS="$T/repo-terms.tsv"
   { printf 'id\tpattern\tnote\n'
@@ -71,7 +71,7 @@ hits() { # file TAB term-id, one line per pair, sorted
   rows "$TERMS" | while IFS="$TAB" read -r id pat _note; do
     git -C "$ROOT" grep -I --untracked -i $GW -l -E -e "$pat" -- . 2>/dev/null | awk -v id="$id" '{ print $0 "\t" id }' || :
   done > "$T/pairs"
-  cut -f1 "$T/pairs" | sort -u | HARBOR_ROOT="$ROOT" sh "$SRC/scope-layers.sh" --core > "$T/core"
+  cut -f1 "$T/pairs" | sort -u | HARBOR_SCOPE_ROOT="$ROOT" sh "$SRC/scope-layers.sh" --core > "$T/core"
   rows "$ALLOW" > "$T/allow"
   awk -F'\t' -v core="$T/core" -v allow="$T/allow" -v t="${TERMS#$ROOT/}" -v a="${ALLOW#$ROOT/}" '
     BEGIN { while ((getline l < core) > 0) C[l] = 1

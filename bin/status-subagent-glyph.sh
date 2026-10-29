@@ -38,8 +38,8 @@
 #
 # FLAGS / ENV:
 #   --help                 this header
-#   HARBOR_SUBGLYPH_DUMP=<f>  append the raw payload to <f> (off unless set)
-#   HARBOR_NOW=<epoch>     freeze the clock (the suite pins this)
+#   HARBOR_STATUS_SUBAGENT_GLYPH_DUMP=<f>  append the raw payload to <f> (off unless set)
+#   HARBOR_TEST_NOW=<epoch>     freeze the clock (the suite pins this)
 set -eu
 
 case "${1:-}" in
@@ -52,12 +52,12 @@ IN="$(cat 2>/dev/null || true)"
 [ -n "$IN" ] || exit 0
 command -v jq >/dev/null 2>&1 || exit 0
 
-if [ -n "${HARBOR_SUBGLYPH_DUMP:-}" ]; then
-  ( umask 077; printf '%s\n' "$IN" >> "$HARBOR_SUBGLYPH_DUMP" ) 2>/dev/null || true
+if [ -n "${HARBOR_STATUS_SUBAGENT_GLYPH_DUMP:-${HARBOR_SUBGLYPH_DUMP:-}}" ]; then
+  ( umask 077; printf '%s\n' "$IN" >> "${HARBOR_STATUS_SUBAGENT_GLYPH_DUMP:-${HARBOR_SUBGLYPH_DUMP:-}}" ) 2>/dev/null || true
 fi
 
 E="$(printf '\033')"
-NOW_EPOCH="${HARBOR_NOW:-$(date +%s)}"
+NOW_EPOCH="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
 
 # ONE jq PASS, AND ALL ARITHMETIC INSIDE IT — the same rule status-fleet-glyph.sh states
 # and for the same measured reason: `[ 41.7 -ge 85 ]` is not false in POSIX sh, it

@@ -4,10 +4,10 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 ADD="$T_ROOT/bin/access-browser-hosts-add.sh"
 F="$T_TMP/hosts.txt"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" "$F"
-HARBOR_HOSTS_FILE="$F"; export HARBOR_HOSTS_FILE
+HARBOR_ACCESS_HOSTS_FILE="$F"; export HARBOR_ACCESS_HOSTS_FILE
 STUB="$T_TMP/curl"
 stub() { printf '#!/bin/sh\nprintf %%s %s\n' "'$1'" > "$STUB"; chmod +x "$STUB"; }  # <what curl -w prints>
-HARBOR_CURL="$STUB"; export HARBOR_CURL
+HARBOR_TEST_CURL="$STUB"; export HARBOR_TEST_CURL
 rc() { "$@" > "$T_TMP/out" 2>"$T_TMP/err"; echo "exit $?"; }
 sum() { cksum < "$F"; }
 WHY='Example — a vendor UI'

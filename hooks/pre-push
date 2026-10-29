@@ -40,7 +40,7 @@
 #
 # So the default is the same pair pre-commit already proved affordable — the
 # conventions linter, plus the guard smoke suite when a floor surface is in the
-# pushed range — and the full selected set is opt-in via HARBOR_PREPUSH_FULL=1.
+# pushed range — and the full selected set is opt-in via HARBOR_GATE_PREPUSH_FULL=1.
 # The cheap default still catches the class that must never reach a PR; the
 # expensive one is there for the push you actually want to be sure about.
 #
@@ -49,7 +49,7 @@
 # occupies the single runner every other branch is queued behind.
 set -eu
 ROOT="$(git rev-parse --show-toplevel)"
-BASE_BRANCH="${HARBOR_BASE_BRANCH:-main}"
+BASE_BRANCH="${HARBOR_CI_BASE_BRANCH:-${HARBOR_BASE_BRANCH:-main}}"
 
 [ -f "$ROOT/bin/test-suite-select.sh" ] || exit 0
 [ -f "$ROOT/contracts/suites.txt" ] || exit 0
@@ -121,11 +121,11 @@ if [ "$_refs" -gt 0 ] && [ "$_deleted" -eq "$_refs" ]; then
 fi
 
 if [ -n "$_range" ]; then
-  HARBOR_CHANGED="$(git -C "$ROOT" diff --name-only --no-renames "$_range" 2>/dev/null || true)"
-  export HARBOR_CHANGED
-  [ -n "$HARBOR_CHANGED" ] || unset HARBOR_CHANGED
+  HARBOR_TEST_CHANGED="$(git -C "$ROOT" diff --name-only --no-renames "$_range" 2>/dev/null || true)"
+  export HARBOR_TEST_CHANGED
+  [ -n "${HARBOR_TEST_CHANGED:-${HARBOR_CHANGED:-}}" ] || unset HARBOR_TEST_CHANGED HARBOR_CHANGED
 fi
-export HARBOR_BASE="origin/$BASE_BRANCH"
+export HARBOR_CI_BASE="origin/$BASE_BRANCH"
 
 echo ""
 _ran=0; _stood=0; _rc=0
@@ -146,9 +146,9 @@ if [ -f "$ROOT/bin/doc-fresh-verify.sh" ]; then
   fi
 fi
 
-if [ "${HARBOR_PREPUSH_FULL:-0}" = 1 ]; then
+if [ "${HARBOR_GATE_PREPUSH_FULL:-${HARBOR_PREPUSH_FULL:-0}}" = 1 ]; then
   echo "pre-push: FULL mode — every suite bin/test-suite-select.sh picks for this push."
-  [ -n "${HARBOR_CHANGED:-}" ] && printf '%s\n' "$HARBOR_CHANGED" | sed 's/^/          /'
+  [ -n "${HARBOR_TEST_CHANGED:-${HARBOR_CHANGED:-}}" ] && printf '%s\n' "${HARBOR_TEST_CHANGED:-${HARBOR_CHANGED:-}}" | sed 's/^/          /'
   while IFS= read -r _s; do
     case "$_s" in ''|\#*) continue ;; esac
     # A path entry is relative to the repo root; a bare name lives in bin/ (harbor#695).
@@ -164,7 +164,7 @@ if [ "${HARBOR_PREPUSH_FULL:-0}" = 1 ]; then
   done < "$ROOT/contracts/suites.txt"
 else
   echo "pre-push: conventions + the guard smoke suite if a floor surface moved."
-  echo "          (HARBOR_PREPUSH_FULL=1 for every selected suite — median 24 of 25 here.)"
+  echo "          (HARBOR_GATE_PREPUSH_FULL=1 for every selected suite — median 24 of 25 here.)"
   # THE ONLY LOCAL RUN OF THE LINTER, since 2026-09-05. It used to run here AND
   # unconditionally in pre-commit, so a session of ten commits paid 62s eleven
   # times for one answer. hooks/pre-commit says why it moved; the short version
@@ -188,7 +188,7 @@ else
   # `-I --ignore-files` and a matcher whose behaviour depends on PATH order means
   # something different on the CI runner.
   _floor=0; _floor_ran=0
-  for _p in ${HARBOR_CHANGED:-}; do
+  for _p in ${HARBOR_TEST_CHANGED:-${HARBOR_CHANGED:-}}; do
     case "$_p" in
       bin/guard-*.sh|bin/floor-*.sh|bin/floor-*.awk|bin/deploy-harden.sh|hooks/*) _floor=1 ;;
     esac

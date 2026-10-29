@@ -63,7 +63,7 @@ are not gated. No verb prints a value; there is still no `get`.
 - **No private layer:** the register is empty, so every ref is refused.
 - **Grandfathered refs:** `contracts/secret-legacy-refs.txt` lists the refs the gate still serves with no entry. It held
   the consumers that predated the register until each was registered in the private layer; what remains is not a
-  credential (the `live-verify` probe's absent name, which must pass the gate to reach the store). The list only goes
+  credential (the `deploy.live-verify` probe's absent name, which must pass the gate to reach the store). The list only goes
   down: `harbor access check` names a listed ref that an entry now names. A new ref is never added to it; it is registered.
 - The floor (`guard-*`, `floor-*`) never reads the register.
 

@@ -69,8 +69,8 @@ trap '[ -z "$_fvv" ] || { rm -f "$_fvv/bin"; rmdir "$_fvv"; } 2>/dev/null' EXIT
 # live entry (the install standard §4); a sandbox is fixed by the installer itself, --dir spelled.
 _q() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 _deploy() { # <component> [opt-in]
-  _dr="$(sh "$HERE/scope-roots.sh" --get HARBOR_REPO 2>/dev/null || :)"
-  [ -n "$_dr" ] || _dr="${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}"
+  _dr="$(sh "$HERE/scope-roots.sh" --get HARBOR_SCOPE_REPO 2>/dev/null || :)"
+  [ -n "$_dr" ] || _dr="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}"
   printf "sh '%s/bin/deploy.sh' --only %s --apply --live%s" "$_dr" "$1" "${2:+ $2}"
 }
 _install_fix() { # <component> <installer> [opt-in]

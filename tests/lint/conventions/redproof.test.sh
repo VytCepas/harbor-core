@@ -311,13 +311,6 @@ rm -rf "$RP/skills/Zz_Probe"
 printf -- '---\nname: good-skill\ndescription: Does a thing, and says nothing about when.\n---\n' > "$RP/skills/good-skill/SKILL.md"
 _rp_red T11 "skills/good-skill description carries no USE WHEN triggers" "a description with no USE WHEN"
 
-t_section "N3 (advisory): a NOT FOR handoff to a skill that does not exist"
-_rp_fresh; mkdir -p "$RP/skills/giver" "$RP/skills/taker"
-printf -- '---\nname: taker\ndescription: Takes. USE WHEN taking.\n---\n' > "$RP/skills/taker/SKILL.md"
-printf -- '---\nname: giver\ndescription: Gives. USE WHEN giving. NOT FOR taking (use taker).\n---\n' > "$RP/skills/giver/SKILL.md"
-_rp_green N3 "a handoff to a skill that exists"
-printf -- '---\nname: giver\ndescription: Gives. USE WHEN giving. NOT FOR taking (use zz-missing).\n---\n' > "$RP/skills/giver/SKILL.md"
-_rp_red N3 'ADVISORY [skill.not-for-target-exists] giver hands off to "zz-missing"' "a handoff to zz-missing"
 
 t_section "G1 (advisory): a long script whose header does not say why"
 _rp_fresh

@@ -29,7 +29,7 @@ Injected to every subagent by the `subagent-contract` pack: report once; a messa
 
 ## The stop check
 
-`hooks/session-subagent-check/session-subagent-check.sh`, CHECKS id `subagent-stop`, advisory, exit 0 on every path. It warns the operator through `systemMessage` (no non-blocking channel reaches the parent model) when:
+`hooks/session-subagent-check/session-subagent-check.sh`, CHECKS id `session.subagent-stop`, advisory, exit 0 on every path. It warns the operator through `systemMessage` (no non-blocking channel reaches the parent model) when:
 
 - the agent's final message hashes the same as its previous stop (state: `$HARBOR_SESSION_STATE_DIR/agent-stop/<agent_id>`, default `~/.local/state/harbor`);
 - a `background_tasks` entry with `status` "running" or "pending" has its launch receipt (`with ID: <id>`) in this agent's own transcript and is not the agent itself (a background agent's task id is its agent id, and fills its transcript). Because the array is parent-scoped, a task with no receipt, or no readable transcript, stays silent.

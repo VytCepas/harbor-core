@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # context-peers.sh (L0-11, harbor#75): a recycled PID must not read as alive, and a UTC
 # registry stamp against a local-time ps must be reconciled, not string-matched. The
-# registry is a fixture (HARBOR_SESSIONS_DIR) and a ps stub decides what the OS says.
+# registry is a fixture (HARBOR_SESSION_REGISTRY_DIR) and a ps stub decides what the OS says.
 # PEER-2/3: peer records and registry names reach another session's context, so they are
 # validated or dropped.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
@@ -21,7 +21,7 @@ mkses() { # <file> <pid> <cwd> <procStart> <status> <name>
   printf '{"pid":%s,"sessionId":"sid-%s","cwd":"%s","procStart":"%s","startedAt":%s,"status":"%s","name":"%s","kind":"interactive"}\n' \
     "$2" "$2" "$3" "$4" "${NOW_EPOCH}000" "$5" "$6" > "$TMP/sessions/$1.json"
 }
-run() { PATH="$TMP/stub:$PATH" HARBOR_SESSIONS_DIR="$TMP/sessions" HARBOR_PEERS_DIR="$TMP/peers" sh "$FS" "$@" 2>&1; }
+run() { PATH="$TMP/stub:$PATH" HARBOR_SESSION_REGISTRY_DIR="$TMP/sessions" HARBOR_CONTEXT_PEERS_DIR="$TMP/peers" sh "$FS" "$@" 2>&1; }
 mkpeer() { # <sessionId> <tree> <src> [pid] [branch]
   mkdir -p "$TMP/peers"
   printf 'tree=%s\nsrc=%s\npid=%s\nbranch=%s\n' "$2" "$3" "${4:-}" "${5:-}" > "$TMP/peers/$1"
@@ -64,8 +64,8 @@ t_eq "a one-element array with a pid" true "$(printf '%s' "$J" | jq -c 'type=="a
 t_eq "tree, branch and context are present" true "$(printf '%s' "$J" | jq -c '.[0]|has("tree") and has("branch") and has("context")' 2>/dev/null)"
 
 t_section "usage and absence"
-t_exit "an unknown flag (contracts/cli.md)" 2 env PATH="$TMP/stub:$PATH" HARBOR_SESSIONS_DIR="$TMP/sessions" sh "$FS" --nonesuch
-t_exit "an absent registry is silence" 0 env PATH="$TMP/stub:$PATH" HARBOR_SESSIONS_DIR="$TMP/nope" sh "$FS"
+t_exit "an unknown flag (contracts/cli.md)" 2 env PATH="$TMP/stub:$PATH" HARBOR_SESSION_REGISTRY_DIR="$TMP/sessions" sh "$FS" --nonesuch
+t_exit "an absent registry is silence" 0 env PATH="$TMP/stub:$PATH" HARBOR_SESSION_REGISTRY_DIR="$TMP/nope" sh "$FS"
 
 t_section "PEER-1: the tree a session writes beats the one it launched in"
 rm -f "$TMP/sessions"/*.json 2>/dev/null
@@ -86,8 +86,8 @@ mkpeer "sid-$LIVE_PID" "$TMP/observed-tree" write "$LIVE_PID" feat/x
 P="$(run --peers)"
 t_has "--peers identifies the session by pid" "$P" "$LIVE_PID"
 t_has "--peers names the tree" "$P" "$TMP/observed-tree"
-t_eq "--peers excludes the calling session" "" "$(PATH="$TMP/stub:$PATH" HARBOR_SESSIONS_DIR="$TMP/sessions" \
-  HARBOR_PEERS_DIR="$TMP/peers" HARBOR_PEER_EXCLUDE="sid-$LIVE_PID" sh "$FS" --peers 2>&1)"
+t_eq "--peers excludes the calling session" "" "$(PATH="$TMP/stub:$PATH" HARBOR_SESSION_REGISTRY_DIR="$TMP/sessions" \
+  HARBOR_CONTEXT_PEERS_DIR="$TMP/peers" HARBOR_CONTEXT_PEER_EXCLUDE="sid-$LIVE_PID" sh "$FS" --peers 2>&1)"
 rm -f "$TMP/sessions"/*.json 2>/dev/null
 t_eq "no peers is silence, not a zero" "" "$(run --peers)"
 mkpeer "sid-$DEAD_PID" "$TMP/observed-tree" write "$DEAD_PID" feat/x

@@ -2,7 +2,7 @@
 # status-generate.sh's suite-count cache (harbor#117). docs/generated/status.md is the one place a count may be stated,
 # so the arms that matter are the invalidation ones, not the hit. Suites are three-line fakes.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset HARBOR_IN_SUITE  # t_init keeps the re-entry marker; these cold runs must reach the run branch (harbor#773)
+unset HARBOR_TEST_IN_SUITE HARBOR_IN_SUITE  # t_init keeps the re-entry marker; these cold runs must reach the run branch (harbor#773)
 P="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"; R="$P/repo"
 mkdir -p "$R/bin" "$R/build" "$R/docs/generated"; cp "$T_ROOT/bin/status-generate.sh" "$T_ROOT/bin/library-log.sh" "$R/bin/"
 mk_suite() { # <name> <label> <count> — the runs.<name> file tells a cache hit from a re-run
@@ -13,7 +13,7 @@ mk_suite floor-test.sh     floor-test     1438
 mk_suite normalize-test.sh normalize-test 164
 mk_suite marker-test.sh    marker-test    80
 runs() { if [ -f "$P/runs.$1" ]; then wc -l < "$P/runs.$1" | tr -d ' '; else echo 0; fi; }
-gen() { HARBOR_ROOT="$R" sh "$R/bin/status-generate.sh" --apply > "$P/out" 2>&1; echo $?; }
+gen() { HARBOR_SCOPE_ROOT="$R" sh "$R/bin/status-generate.sh" --apply > "$P/out" 2>&1; echo $?; }
 TSV="$R/build/suite-counts.tsv"
 
 t_section "a cold run executes the suites and records their counts"
@@ -72,7 +72,7 @@ mk_at() { # <path under $M> <label> <count>
 }
 mruns() { if [ -f "$P/mruns.$1" ]; then wc -l < "$P/mruns.$1" | tr -d ' '; else echo 0; fi; }
 row() { grep -F "\`$1\` assertions" "$M/docs/generated/status.md" 2>/dev/null | grep -oE '[0-9]+' | head -1; }  # <suite>
-mgen() { HARBOR_ROOT="$M" sh "$M/bin/status-generate.sh" "$@" > "$P/mout" 2>&1; echo $?; }
+mgen() { HARBOR_SCOPE_ROOT="$M" sh "$M/bin/status-generate.sh" "$@" > "$P/mout" 2>&1; echo $?; }
 mk_at tests/admission/baseline/baseline.test.sh baseline.test 10
 mk_at tests/admission/baseline/a.test.sh a.test 20
 mk_at tests/admission/baseline/b.test.sh b.test 5
@@ -105,8 +105,8 @@ _b="$(mruns a.test)"; mgen --apply >/dev/null
 t_eq "an unchanged workflow serves the cache" "$_b" "$(mruns a.test)"
 printf 'b\n' >> "$M/.github/workflows/governance.yml"; mgen --apply >/dev/null
 t_eq "editing the workflow re-runs the floor suite" "$((_b + 1))" "$(mruns a.test)"
-printf 'c\n' > "$P/proposed.yml"; ( HARBOR_WORKFLOW="$P/proposed.yml"; export HARBOR_WORKFLOW; mgen --apply >/dev/null )
-t_eq "a proposed workflow (HARBOR_WORKFLOW) is keyed too" "$((_b + 2))" "$(mruns a.test)"
+printf 'c\n' > "$P/proposed.yml"; ( HARBOR_STATUS_WORKFLOW="$P/proposed.yml"; export HARBOR_STATUS_WORKFLOW; mgen --apply >/dev/null )
+t_eq "a proposed workflow (HARBOR_STATUS_WORKFLOW) is keyed too" "$((_b + 2))" "$(mruns a.test)"
 
 t_section "one silent part unmeasures the whole floor suite (harbor#727)"
 cp "$M/docs/generated/status.md" "$P/moved.good"; rm -f "$M/build/suite-counts.tsv"
@@ -116,13 +116,13 @@ t_has "…naming the silent part" "$(cat "$P/mout")" 'tests/admission/baseline/b
 t_exit "docs/generated/status.md survives the refusal" 0 cmp -s "$M/docs/generated/status.md" "$P/moved.good"
 mk_at tests/admission/baseline/b.test.sh b.test 5; mgen --apply >/dev/null
 
-t_section "HARBOR_SUITE_COUNTS names a moved suite by its name (harbor#727)"
+t_section "HARBOR_STATUS_SUITE_COUNTS names a moved suite by its name (harbor#727)"
 t_eq "the true supplied counts pass --check" 0 \
-  "$(HARBOR_SUITE_COUNTS='floor-test=35 normalize-test=164 marker-test=80' mgen --check)"
+  "$(HARBOR_STATUS_SUITE_COUNTS='floor-test=35 normalize-test=164 marker-test=80' mgen --check)"
 _b="$(mruns a.test)"
 t_eq "a wrong supplied floor count fails --check" 1 \
-  "$(HARBOR_SUITE_COUNTS='floor-test=36 normalize-test=164 marker-test=80' mgen --check)"
+  "$(HARBOR_STATUS_SUITE_COUNTS='floor-test=36 normalize-test=164 marker-test=80' mgen --check)"
 t_eq "…without running a part" "$_b" "$(mruns a.test)"
-t_eq "a key naming no suite at either path is exit 2" 2 "$(HARBOR_SUITE_COUNTS='flor-test=1' mgen --check)"
+t_eq "a key naming no suite at either path is exit 2" 2 "$(HARBOR_STATUS_SUITE_COUNTS='flor-test=1' mgen --check)"
 t_has "…and says where it looked" "$(cat "$P/mout")" 'no such suite bin/flor-test.sh, nor floor-test, normalize-test or marker-test'
 t_done

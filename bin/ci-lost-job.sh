@@ -57,7 +57,7 @@ JOB="$(printf '%s' "$LINK" | sed -n 's#.*/actions/runs/[0-9][0-9]*/job/\([0-9][0
 [ -n "$RUN" ] && [ -n "$JOB" ] || die "not an Actions job link: $LINK" "pass the link gh pr checks --json link prints for an Actions job"
 
 LOST_PHRASE='was not acquired by Runner'
-GH="${HARBOR_GH:-gh}"   # a test swaps in a fake
+GH="${HARBOR_TEST_GH:-${HARBOR_GH:-gh}}"   # a test swaps in a fake
 msgs="$($GH api "repos/$REPO/check-runs/$JOB/annotations" --jq '.[].message' 2>/dev/null)" \
   || die "cannot read the annotations of check run $JOB" "gh auth status"
 [ -n "$msgs" ] || exit 1

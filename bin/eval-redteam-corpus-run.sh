@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# eval-redteam-corpus-run.sh (harbor#1313) — the scheduled entry of docs/reference/checks.md `redteam-corpus`: score main's guards.
+# eval-redteam-corpus-run.sh (harbor#1313) — the scheduled entry of docs/reference/checks.md `eval.redteam-corpus`: score main's guards.
 #   sh eval-redteam-corpus-run.sh          fetch main from the pinned URL, run its eval-redteam-corpus.sh
 #   sh eval-redteam-corpus-run.sh --help   this text
 #   exit: eval-redteam-corpus.sh's own (0 green, 1 red, 3 not run); 1 when main could not be fetched
@@ -24,7 +24,7 @@ for _v in $(env | sed -n 's/^\(HARBOR_[A-Za-z0-9_]*\)=.*/\1/p') PORT_ROOT; do un
 CHECKS_LOG="$CFG_DIR/cache/checks.log"
 stamp() { date -u '+%Y-%m-%dT%H:%M:%SZ'; }
 refuse() { # <note> <fix>
-  printf '[check:redteam-corpus] %s not run: %s\n' "$(stamp)" "$1" >> "$CHECKS_LOG" 2>/dev/null || :
+  printf '[check:eval.redteam-corpus] %s not run: %s\n' "$(stamp)" "$1" >> "$CHECKS_LOG" 2>/dev/null || :
   log_fail "$1"; log_fix "$2"; log_end || :; exit 1
 }
 [ -n "$URL" ] || refuse "this copy names no repository (no repo-slug.txt beside it)" "deploy harbor again: the install carries bin/repo-slug.txt"
@@ -51,7 +51,7 @@ git clone --quiet --single-branch --branch main "$URL" "$T/main" 2>"$T/fetch.err
 [ "$(git -C "$T/main" rev-parse refs/remotes/origin/main)" = "$(git -C "$T/main" rev-parse HEAD)" ] \
   || refuse "the clone of $URL is not at its own origin/main" "git clone $URL"
 log_note "main at $(git -C "$T/main" rev-parse --short HEAD)"
-_rc=0; HARBOR_CACHE_DIR="$CFG_DIR/cache" HARBOR_REDTEAM_SELF='sh bin/eval-redteam-corpus.sh (in the harbor checkout)' \
+_rc=0; HARBOR_SCOPE_CACHE_DIR="$CFG_DIR/cache" HARBOR_REDTEAM_SELF='sh bin/eval-redteam-corpus.sh (in the harbor checkout)' \
   sh "$T/main/bin/eval-redteam-corpus.sh" || _rc=$?
 log_end || :
 exit "$_rc"

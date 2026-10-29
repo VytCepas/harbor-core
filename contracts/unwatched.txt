@@ -25,7 +25,7 @@
 # and docs/generated/status.md carries it, so its history is the trend.
 #
 # SCOPE, so nobody reads it as more than it is: the sweep covered every issue
-# labelled `bug` or `tech-debt` (open and closed), docs/decisions/rejected-approaches.md and both HANDOFF
+# labelled `bug` or `tech-debt` (open and closed), docs/reports/rejected-approaches.md and both HANDOFF
 # files. Incidents recorded only in PR threads, commit messages or other repos
 # were not swept, and an incident nobody recorded cannot appear here.
 

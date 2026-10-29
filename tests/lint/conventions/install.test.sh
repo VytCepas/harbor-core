@@ -113,7 +113,7 @@ printf 'FILES="shipped.sh"\n' > "$X24R/bin/deploy-runtime-install.sh"
 mkdir -p "$X24R/contracts"; printf 'name\troot\trel\none\tHARBOR_REPO\tbin/one.sh\n' > "$X24R/contracts/shims.tsv"  # harbor#708: the links' owner
 printf 'FILES=""\n' > "$X24R/bin/floor-install.sh"
 printf 'STAMP_NAME=".helm-install-stamp"\n' > "$X24R/bin/deploy-install-stamp.sh"
-x24() { HARBOR_DEPLOY_LIVE_DIR="$X24L" HARBOR_LOCAL_BIN="$X24B" CLAUDE_CONFIG_DIR="$X24C" advs "$1" "$X24R" || true; }
+x24() { HARBOR_DEPLOY_LIVE_DIR="$X24L" HARBOR_SCOPE_LOCAL_BIN="$X24B" CLAUDE_CONFIG_DIR="$X24C" advs "$1" "$X24R" || true; }
 X2_RUN='run the installer'
 touch -t 202001010000 "$X24R/bin/shipped.sh"; touch -t 202006010000 "$X24L/bin/shipped.sh"
 _o="$(x24 X2)"; _o_sh="$(printf '%s\n' "$_o" | grep 'shipped\.sh')"
@@ -167,7 +167,7 @@ X9R="$TMP/x9"; mkdir -p "$X9R/bin" "$X9R/launchd" "$X9R/docs/reference"; cp "$LI
 _x9_head='| id | watches | schedule | notifies | red means |
 |---|---|---|---|---|'
 reg() { printf '# Register\n\n%s\n%s\n' "$_x9_head" "$1" > "$X9R/docs/reference/checks.md"; }
-_x9() { HARBOR_ROOT="$X9R" sh "$X9R/bin/lint-conventions.sh" --only X9 2>&1 | grep -E 'ADVISORY \[drift.launchd-plist\]|registered check\(s\)' || true; }
+_x9() { HARBOR_SCOPE_ROOT="$X9R" sh "$X9R/bin/lint-conventions.sh" --only X9 2>&1 | grep -E 'ADVISORY \[drift.launchd-plist\]|registered check\(s\)' || true; }
 reg '| `zz-fixture-cron` | a thing | hourly | desktop | it broke |'
 t_has "a launchd-scheduled check with no tracked plist is reported" "$(_x9)" 'NO COMMIT: com.harbor.zz-fixture-cron.plist'
 reg '| `zz-fixture-manual` | a thing | **not scheduled — run it by hand** | stdout | it broke |'
@@ -222,7 +222,7 @@ mkdir -p "$X9R/contracts" "$HOME/Library/LaunchAgents"
 cp "$ROOT/bin/deploy-launchd-render.sh" "$ROOT/bin/scope-roots.sh" "$ROOT/bin/library-log.sh" "$X9R/bin/"; cp "$ROOT/contracts/roots.tsv" "$X9R/contracts/"
 reg '| `zz-fixture-cron` | a thing | hourly | desktop | it broke |'
 X9T="$X9R/launchd/com.harbor.zz-fixture-cron.plist"; X9I="$HOME/Library/LaunchAgents/com.harbor.zz-fixture-cron.plist"
-printf '<string>@HOME@/.claude/bin/zz.sh</string>\n<key>PATH</key><string>@HARBOR_LOCAL_BIN@</string>\n' > "$X9T"
+printf '<string>@HOME@/.claude/bin/zz.sh</string>\n<key>PATH</key><string>@HARBOR_SCOPE_LOCAL_BIN@</string>\n' > "$X9T"
 sh "$X9R/bin/deploy-launchd-render.sh" "$X9T" > "$X9I"
 t_hasnt "the install made from the template is in sync (a raw cmp would call it drift)" "$(_x9)" 'installed copy differs'
 t_has "…and the count says so" "$(_x9)" '1 registered check(s): 0 not launchd-scheduled, 0 untracked, 0 drifted from the installed copy'
@@ -238,7 +238,7 @@ t_has "…and differing from it, drift" "$(_x9)" 'installed copy differs'
 rm -f "$X9T" "$X9I"
 
 t_section "X9: the REAL register is fully readable (harbor#1110)"
-_x9real="$(HARBOR_ROOT="$ROOT" sh "$LINT" --only X9 2>&1 | grep -E 'ADVISORY \[drift.launchd-plist\]|registered check\(s\)' || true)"
+_x9real="$(HARBOR_SCOPE_ROOT="$ROOT" sh "$LINT" --only X9 2>&1 | grep -E 'ADVISORY \[drift.launchd-plist\]|registered check\(s\)' || true)"
 t_hasnt "no row of docs/reference/checks.md has a column count X9 cannot read (a literal pipe in a cell)" "$_x9real" 'wrong column count'
 t_hasnt "no row of docs/reference/checks.md names no schedule kind" "$_x9real" 'names no launchd time'
 t_hasnt "no row of docs/reference/checks.md owes a plist that is in no commit" "$_x9real" 'NO COMMIT'
@@ -247,7 +247,7 @@ t_has "…and the totals say so" "$_x9real" ', 0 untracked,'
 t_section "X11: the hand-installed work-log pre-push against worklog/pre-push (harbor#511)"
 X11R="$TMP/x11"; mkdir -p "$X11R/bin" "$X11R/worklog" "$X11R/cfg/MEMORY/.git/hooks"; cp "$LINT" "$X11R/bin/"
 printf '#!/bin/sh\necho tracked\n' > "$X11R/worklog/pre-push"
-_x11() { CLAUDE_CONFIG_DIR="$X11R/cfg" HARBOR_ROOT="$X11R" sh "$X11R/bin/lint-conventions.sh" --only X11 2>&1 | grep -E 'drift\.work-log-hook\]|work-log pre-push' || true; }
+_x11() { CLAUDE_CONFIG_DIR="$X11R/cfg" HARBOR_SCOPE_ROOT="$X11R" sh "$X11R/bin/lint-conventions.sh" --only X11 2>&1 | grep -E 'drift\.work-log-hook\]|work-log pre-push' || true; }
 t_has "no hook installed is reported" "$(_x11)" "the work-log repository has no pre-push hook"
 printf '#!/bin/sh\necho old\n' > "$X11R/cfg/MEMORY/.git/hooks/pre-push"
 t_has "a differing installed copy is reported" "$(_x11)" "the installed work-log pre-push differs from worklog/pre-push"

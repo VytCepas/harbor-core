@@ -10,14 +10,14 @@
 # ANYTHING ELSE IS false, and false runs the suites as before: a stale base, a direct push, an unreadable API,
 # a missing run. Only ever skips work; never turns a red into a green (the relays still read a real verdict).
 #
-# `base` (harbor#1289) is for the push that is NOT verified. On a push to main HARBOR_BASE (origin/main) is the pushed commit
+# `base` (harbor#1289) is for the push that is NOT verified. On a push to main HARBOR_CI_BASE (origin/main) is the pushed commit
 # itself, so bin/test-suite-select.sh sees an empty changeset and runs every suite. When this script identifies the merged PR, base is
 # merge-base(the PR's head, <before>), the commit the PR branched from as far as main was concerned: diffing base..<sha> covers
 # the PR's changes AND everything main gained since it branched, the cross-PR interaction set the selector should judge. It is
 # EMPTY (the full pool, as before) when there is no PR, the API does not answer, the answer is not a full sha, or anything is
 # doubtful. Like verified, it only ever narrows work the selector would still be asked to justify.
 #
-# POSIX sh, git, jq, curl (HARBOR_CURL swaps in a fake). Token from GH_TOKEN, sent as a header, never in a URL.
+# POSIX sh, git, jq, curl (HARBOR_TEST_CURL swaps in a fake). Token from GH_TOKEN, sent as a header, never in a URL.
 set -eu
 . "$(dirname -- "$0")/library-log.sh"
 log_init ci-verified
@@ -29,7 +29,7 @@ esac
 SHA="$1"; BEFORE="$2"
 REPO="${GITHUB_REPOSITORY:-$(repo_slug)}"   # Actions always sets it; a hand run names this checkout's origin (harbor#1149)
 API="${GITHUB_API_URL:-https://api.github.com}/repos/$REPO"
-CURL="${HARBOR_CURL:-curl}"
+CURL="${HARBOR_TEST_CURL:-${HARBOR_CURL:-curl}}"
 
 BASE=""   # set once the merged PR is identified and the API names a merge-base; every verdict prints it, empty or not
 verdict() { # <true|false> <why>

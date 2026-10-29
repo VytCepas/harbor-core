@@ -41,7 +41,7 @@ case "${1:-}" in
              printf '\n(flags, if any, are in the header above and the source below.)\n'
              exit 0 ;;
 esac
-ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}}"
 # One log format (contracts/logging.md), on stderr: stdout is the page itself under --stdout.
 . "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-log.sh"
 LOG_FD=2; log_init dashboard-gen
@@ -105,11 +105,11 @@ case "$o_hooks" in yes) guards_wired="$n_guards" ;; esac
 PCFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 # TWO STEPS, IN THE WRITER'S ORDER. alert-notify.sh resolves the cache dir first
 # and the state path from it, so a reader that jumps straight to the config dir
-# looks in a different place the moment HARBOR_CACHE_DIR is set without the more
+# looks in a different place the moment HARBOR_SCOPE_CACHE_DIR is set without the more
 # specific override — the fleet tile would honour the custom dir while the Pulse
 # tile reported that no probe had ever run. Same shape as the resolution bug the
 # seam survey found in status-fleet-snapshot-refresh.sh.
-PCACHE="${HARBOR_CACHE_DIR:-$PCFG/cache}"
+PCACHE="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$PCFG/cache}}"
 PSTATE="${HARBOR_ALERT_PROBE_STATE:-$PCACHE/pulse-state.json}"
 FSNAP="$PCACHE/fleet-snapshot.json"
 PJ='{}'
@@ -346,7 +346,7 @@ if [ "$PJ" = '{}' ]; then
   # NOT the word "unavailable": the ticket panel below owns that string, and a
   # second producer of it would make VIZ-1's whole-page assertion pass for the
   # wrong reason. This says the specific thing that is true instead.
-  printf '<p class="none">No probe has run on this machine. <code>launchd/com.harbor.pulse.plist</code> is what fires it; until that is bootstrapped, nothing checks this box while no session is open.</p>\n'
+  printf '<p class="none">No probe has run on this machine. <code>launchd/com.harbor.alert.probe.plist</code> is what fires it; until that is bootstrapped, nothing checks this box while no session is open.</p>\n'
 else
   _pran="$(printf '%s' "$PJ" | jq -r '.ran_at // 0')"
   _page=$(( $(date +%s) - _pran ))
@@ -474,7 +474,7 @@ if [ -f "$FSNAP" ]; then
     printf '<p class="none">Governance hooks are the column that means something is broken; an unpushed commit or a dirty tree is work in progress, which is why neither raises a verdict in <code>alert-probe.sh</code>.</p>\n'
   fi
 else
-  printf '<p class="none">No fleet snapshot on this machine. <code>launchd/com.harbor.fleet-snapshot.plist</code> is what writes it.</p>\n'
+  printf '<p class="none">No fleet snapshot on this machine. <code>launchd/com.harbor.status.fleet-snapshot.plist</code> is what writes it.</p>\n'
 fi
 printf '</section>\n'
 

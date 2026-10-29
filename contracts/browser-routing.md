@@ -166,14 +166,14 @@ boundary**; a click can still navigate anywhere.
 | default-deny verbs | no `run-code`, `eval`, `cookie-*`, `*storage-*`, `state-*`, `requests`/`request*`, `route`, `drop`, `install`, `open` (`upload` is allowed, row below) | suite, per verb |
 | official work UIs only | `goto`/`tab-new` need `https://` on a host in [`browser-agent-hosts.txt`](./browser-agent-hosts.txt): one line per vendor on the domain it owns outright (a line admits its subdomains), exact hosts where others live under the domain (`*.example.com`), each under a comment saying why; the operator's own stack, internal UIs and client tools are the private layer's `browser-hosts.txt`, read beside it; client live sites stay on the live-walk repo the private layer's `harbor.toml` names (`live_walk_repo`), and banking, payments and password managers stay off (2026-10-02) | suite: a goto loop over every vendor UI, a client site refused, a host line with no reason fails |
 | no destructive click unconfirmed | `click`/`dblclick` take a snapshot ref only, take a fresh **full** snapshot, read the target's label (a nameless target: its subtree) and refuse whole words such as *delete, remove, pause, publish, pay* and their Lithuanian forms (`DESTRUCTIVE` in the script is the list); a stale ref or a selector is refused, because neither has a label to check | suite, incl. a mutant without the guard line |
-| per-call confirm | the operator runs `HARBOR_BROWSER_CONFIRM=<ref> harbor chrome click <ref>`: it must name that ref, and set on any other verb it is refused as exported | suite |
+| per-call confirm | the operator runs `HARBOR_ACCESS_BROWSER_CONFIRM=<ref> harbor chrome click <ref>`: it must name that ref, and set on any other verb it is refused as exported | suite |
 | forced click | `click <ref> --force` presses the mouse at the target's box centre (the pinned CLI's click has no force), behind the same guard, and refused when any top-frame element whose box holds that point carries a destructive label (the press lands on whatever is on top); refused for `dblclick`, an iframe target (its box is frame-relative), a zero-size box or one with a negative coordinate. A box below the fold is not detected and the press lands on nothing | suite; live on a local overlay page 2026-10-01 |
-| releases the browser | `attach --idle-timeout` (4 h default, the bounded ceiling, so one *Connect* covers a working block; `HARBOR_BROWSER_IDLE_MS`); `detach` when done | suite asserts the flag |
+| releases the browser | `attach --idle-timeout` (4 h default, the bounded ceiling, so one *Connect* covers a working block; `HARBOR_ACCESS_BROWSER_IDLE_MS`); `detach` when done | suite asserts the flag |
 | says why it dropped | `attach` sets the daemon's `DEBUG=pw:mcp:relay` (CDP method names and close reasons; a relay error also logs the message it failed on) and `status` prints the last `WebSocket closed` reason | suite |
-| names the profile | `PLAYWRIGHT_MCP_PROFILE_DIR_NAME` (`HARBOR_BROWSER_PROFILE`, default `Default`); `doctor` flags the extension in any other profile | suite (doctor fixtures) |
+| names the profile | `PLAYWRIGHT_MCP_PROFILE_DIR_NAME` (`HARBOR_ACCESS_BROWSER_PROFILE`, default `Default`); `doctor` flags the extension in any other profile | suite (doctor fixtures) |
 | default-deny options | only `--filename=<bare name>`, negative numbers and, on `click`/`dblclick`, the CLI's `--modifiers=<key>` plus `--force` on `click`; `--session <url>` once smuggled an off-list URL, and `--filename` wrote anywhere (the CLI skips its path check in skill mode) | suite, per bypass |
 | no CLI reconfiguration | refused while any `PLAYWRIGHT_*` variable is set (e.g. an init script that runs on every page) or a `.playwright` config exists in `$HOME` or up the workdir tree; `DEBUG` is overwritten at attach, because `DEBUG=pw:protocol` wrote every request's headers to the daemon's readable `.err` (measured 2026-10-01) | suite |
-| bounded idle | `HARBOR_BROWSER_IDLE_MS` 1 min–4 h; `0` would disable the CLI's timer | suite |
+| bounded idle | `HARBOR_ACCESS_BROWSER_IDLE_MS` 1 min–4 h; `0` would disable the CLI's timer | suite |
 | page state, read-only | `state` prints the page's visibility, focus, load state, host and whether it is `about:blank`, through one fixed expression; `eval` itself stays refused, and `state` takes no arguments | suite, incl. a mutant |
 | a lost tab is refused, not "done" | after every input verb (`click`, `fill`, `type`, `press`, `select`, `check`, `drag`, the mouse and key verbs) the same probe runs, 1 s after it (the detach lands ~300 ms late); a page that is now `about:blank` means the tab was lost, so the verb exits 1 naming the relay's last `Target.detachedFromTarget`. A failed probe gives no verdict | suite, incl. mutants; live 2026-10-14, covered-window raise reproduced 2026-10-29 |
 | a hidden tab is named | a failed input verb runs the probe too: a `hidden` page never paints, so the CLI's waits time out, and the verb exits 1 with `harbor chrome front` as the fix | suite, incl. a mutant; live 2026-10-14 |
@@ -290,7 +290,7 @@ from `visual-check` is our bug, a red from `harbor browser` is someone else's
 site or our network.
 
 They do share one thing deliberately: the Playwright resolution in
-`bin/doc-visual-check.mjs` (`HARBOR_PROBE_DIR` + `pathToFileURL`) is the pattern the
+`bin/doc-visual-check.mjs` (`HARBOR_ACCESS_PROBE_DIR` + `pathToFileURL`) is the pattern the
 browser workers reuse, so there is one answer to "where is Playwright" and not
 two.
 

@@ -14,7 +14,7 @@
 # not hypothetical. Measured 2026-08-13: `.helm-install-stamp` pins the floor at
 # 4f997de (2026-08-09) with **11 later commits touching bin/ and hooks/**, which
 # is precisely why guard-cloud.sh and guard-destroy.sh — written, tested, merged
-# — gate nothing on this machine. And `launchd/com.harbor.usage.plist` has a
+# — gate nothing on this machine. And `launchd/com.harbor.status.usage.plist` has a
 # counterpart in no LaunchAgents directory, so the durable usage ledger M9 built
 # has never been written by a schedule.
 #
@@ -29,7 +29,7 @@
 # the operator runs it in their own terminal.
 #
 # THE CHECKOUT IS FOUND, NEVER ASSUMED. Installed at $CFG/bin there is no repo
-# above this file, so the comparison needs $HARBOR_REPO (default ~/port/harbor). If
+# above this file, so the comparison needs $HARBOR_SCOPE_REPO (default ~/port/harbor). If
 # that is not a git checkout the git-dependent checks STAND DOWN and say so —
 # never "0 behind", which would read as up to date.
 set -u
@@ -38,7 +38,7 @@ HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 . "$HERE/library-log.sh"
 . "$HERE/deploy-install-lib.sh"
 log_init renew-check
-REPO="${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}"
+REPO="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}"
 AGENTS="$HOME/Library/LaunchAgents"
 # Where a schedule is built and installed: launchd on macOS, systemd user units elsewhere (harbor#618).
 case "$(uname -s 2>/dev/null)" in
@@ -173,7 +173,7 @@ if [ "$_repo_ok" = 1 ]; then
     fi
   done
 else
-  note "repo?" "no git checkout at $REPO — the installed-vs-built comparison stood down rather than reporting 0 behind" "none:contracts/roots.tsv (set HARBOR_REPO to the harbor checkout)"
+  note "repo?" "no git checkout at $REPO — the installed-vs-built comparison stood down rather than reporting 0 behind" "none:contracts/roots.tsv (set HARBOR_SCOPE_REPO to the harbor checkout)"
 fi
 
 # ── 1b · the running constitution against origin/main ────────────────────────
@@ -207,7 +207,7 @@ CONST_LIVE="$TGT/CLAUDE.md"
 # two OPPOSITE remedies and the suite has to be able to reach the branch where it
 # binds; 60 against a path with 19 commits in its entire history (measured
 # 2026-09-20) is slack, not a limit anyone will meet.
-CONST_WALK_MAX="${HARBOR_CONST_WALK_MAX:-60}"
+CONST_WALK_MAX="${HARBOR_DRIFT_CONSTITUTION_WALK_MAX:-${HARBOR_CONST_WALK_MAX:-60}}"
 if [ ! -f "$CONST_LIVE" ]; then
   note "const!" "no CLAUDE.md in ${TGT#"$HOME"/} — the constitution has never been deployed to this config dir" "$(_fix constitution constitution-install)"
 elif [ "$_repo_ok" = 1 ]; then
@@ -247,7 +247,7 @@ elif [ "$_repo_ok" = 1 ]; then
       # standing down over-reports uncertainty, which costs a second look, while
       # either of the other two verdicts being wrong costs the operator a
       # destructive edit or a constitution left stale.
-      note "const?" "the running constitution matches none of the last $_cb revisions of policy/constitution.md and the walk stopped there — the distance was NOT determined, which is not the same as the box being current" "HARBOR_CONST_WALK_MAX=$((CONST_WALK_MAX * 4)) sh $HERE/drift-renew-check.sh $(il_spell)"
+      note "const?" "the running constitution matches none of the last $_cb revisions of policy/constitution.md and the walk stopped there — the distance was NOT determined, which is not the same as the box being current" "HARBOR_DRIFT_CONSTITUTION_WALK_MAX=$((CONST_WALK_MAX * 4)) sh $HERE/drift-renew-check.sh $(il_spell)"
     else
       # A SEPARATE TOKEN BECAUSE IT IS A SEPARATE REMEDY, AND THE WRONG ONE IS
       # DESTRUCTIVE. harbor#462: the live file was 1,933 B LARGER than the repo's
@@ -303,14 +303,14 @@ JV="$TGT/.helm-judge"
 if [ ! -f "$JV" ]; then
   if [ "$JOBGLOB" = '*.plist' ]; then
     # The plist is a template (harbor#630): rendering fills this box's roots in, a cp would install the placeholders.
-    _jfix="sh $REPO/bin/deploy-launchd-render.sh $REPO/launchd/com.harbor.judge.plist > ~/Library/LaunchAgents/com.harbor.judge.plist && launchctl bootstrap gui/\$(id -u) ~/Library/LaunchAgents/com.harbor.judge.plist"
+    _jfix="sh $REPO/bin/deploy-launchd-render.sh $REPO/launchd/com.harbor.audit.triage.plist > ~/Library/LaunchAgents/com.harbor.audit.triage.plist && launchctl bootstrap gui/\$(id -u) ~/Library/LaunchAgents/com.harbor.audit.triage.plist"
   else
-    _jfix="cp $REPO/systemd/harbor-judge.service $REPO/systemd/harbor-judge.timer $JOBDEST/ && systemctl --user daemon-reload && systemctl --user enable --now harbor-judge.timer"
+    _jfix="cp $REPO/systemd/harbor-audit-triage.service $REPO/systemd/harbor-audit-triage.timer $JOBDEST/ && systemctl --user daemon-reload && systemctl --user enable --now harbor-audit-triage.timer"
   fi
   note "judge!" "no ledger verdict has ever been written — the daily judge is not installed" "$_jfix"
 elif [ -n "$(find "$JV" -mtime +2 -print 2>/dev/null)" ]; then
-  if [ "$JOBGLOB" = '*.plist' ]; then _jwhy="none:launchd/com.harbor.judge.plist (its StandardErrorPath names the job's own error file)"
-  else _jwhy="none:systemd/harbor-judge.timer (journalctl --user -u harbor-judge.service shows its runs)"; fi
+  if [ "$JOBGLOB" = '*.plist' ]; then _jwhy="none:launchd/com.harbor.audit.triage.plist (its StandardErrorPath names the job's own error file)"
+  else _jwhy="none:systemd/harbor-audit-triage.timer (journalctl --user -u harbor-audit-triage.service shows its runs)"; fi
   note "judge?" "the ledger verdict has not been rewritten in over 2 days — the job is not reporting clean, it is not reporting" "$_jwhy"
 fi
 

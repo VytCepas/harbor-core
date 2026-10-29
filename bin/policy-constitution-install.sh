@@ -65,7 +65,7 @@ fi
 # The dry run runs every gate --apply runs (the dry-run exit rule), so deploy's plan sees a refusal.
 _branch="$(cd "$ROOT" && git rev-parse --abbrev-ref HEAD 2>/dev/null || printf unknown)"
 _dirty="$(cd "$ROOT" && git status --porcelain -- policy/constitution.md 2>/dev/null || true)"
-_base="${HARBOR_BASE_BRANCH:-main}"
+_base="${HARBOR_CI_BASE_BRANCH:-${HARBOR_BASE_BRANCH:-main}}"
 log_note "source: $_branch$([ -n "$_dirty" ] && printf ' (UNCOMMITTED changes to policy/constitution.md)')"
 if [ "$_branch" != "$_base" ] && [ "$FROM_BRANCH" -eq 0 ]; then
   il_refuse "deploying from '$_branch', not $_base (DE-30): a feature branch is text nobody has reviewed, and this file governs every future session" \

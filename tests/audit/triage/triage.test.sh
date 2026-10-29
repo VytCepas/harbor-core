@@ -214,9 +214,9 @@ FH8="$(mkfixture h8)"; unseal "$FH8"; census "$FH8" 2; sessions "$FH8" 2
 rec "$FH8" integrity advise integrity-advisory "2026-07-30T10:00:00Z"
 rec "$FH8" integrity advise integrity-advisory "2026-08-03T10:00:00Z"; seal "$FH8"
 t_eq "FC-4 on an advisory today" yes "$(has_rule "$FH8" FC-4)"
-HARBOR_FC_NOW=not-a-date  # no resolvable today: every rule reverts to loud all-history
+HARBOR_AUDIT_TRIAGE_NOW=not-a-date  # no resolvable today: every rule reverts to loud all-history
 t_eq "an unreadable clock does not silence FC-3" crit "$(sev_of "$FH1" FC-3)"
-HARBOR_FC_NOW=2026-08-03
+HARBOR_AUDIT_TRIAGE_NOW=2026-08-03
 
 t_section "mutation: FC-1's verify-run subtraction is load-bearing"
 MUT="$TMP/mut-fc1.sh"

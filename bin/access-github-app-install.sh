@@ -24,7 +24,7 @@ IL_ENV=''
 il_parse "$@"
 if [ "$IL_LIVE" -eq 1 ] && [ -d "${HOME:-}/.claude" ]; then IL_STATE="$HOME/.claude"; fi
 il_target
-if [ "$IL_LIVE" -eq 1 ]; then BIN="$(sh "$SRC/scope-roots.sh" --get HARBOR_LOCAL_BIN)"; else BIN="$IL_TARGET/.local/bin"; fi
+if [ "$IL_LIVE" -eq 1 ]; then BIN="$(sh "$SRC/scope-roots.sh" --get HARBOR_SCOPE_LOCAL_BIN)"; else BIN="$IL_TARGET/.local/bin"; fi
 CFG="$IL_TARGET/.config/harbor-app"
 il_session "$(il_cmd --apply)"
 il_stop

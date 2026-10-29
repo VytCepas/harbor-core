@@ -1073,7 +1073,7 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <div class="scroll">
 <table class="grid"><thead><tr><th>Rule</th><th>What fails the build</th></tr></thead><tbody>
 <tr><td><code>skill.dir-matches-name</code> (was N1)</td><td>skill dirs are kebab-case and equal their name: field (standards/naming.md)</td></tr>
-<tr class="advisory"><td><code>skill.not-for-target-exists</code> (was N3)</td><td>a NOT FOR handoff in a description names a skill that exists (advisory) (harbor#273)</td></tr>
+<tr><td><code>skill.not-for-target-exists</code> (was N3)</td><td>a NOT FOR handoff in a description names a skill that exists (block) (harbor#273, #1010)</td></tr>
 <tr><td><code>skill.frontmatter-keys</code> (was N2)</td><td>frontmatter uses harness-defined keys only (known legacy allowed)</td></tr>
 <tr><td><code>standard.names-conform</code> (was N4)</td><td>every name passes bin/lint-name.sh against standards/naming/ (warn) (harbor#950)</td></tr>
 <tr><td><code>standard.names-added</code></td><td>every path the branch adds passes bin/lint-name.sh (warn) (harbor#968)</td></tr>
@@ -1188,8 +1188,8 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <tr><td><code>standard.decision-dangling</code></td><td>every D-n cited in the tree resolves to a decision record (docs/decisions/, harbor#1029)</td></tr>
 <tr><td><code>standard.decision-orphan</code></td><td>every decision record is cited outside docs/decisions/, or allow-listed in contracts/decision-orphans.tsv (harbor#1029)</td></tr>
 <tr><td><code>event.kind-registered</code></td><td>every event kind is a row of contracts/event-kinds.tsv, its emitter names it, and no preset waits on a kind nothing emits (harbor#1367)</td></tr>
-<tr><td><code>skill.description-shape</code></td><td>an authored skill's description carries USE WHEN then NOT FOR, and its frontmatter has at most one visibility key (warn, harbor#1010)</td></tr>
-<tr><td><code>skill.cited-path-exists</code></td><td>a backticked repo path in an authored skill's description exists in the tree (warn, harbor#1010)</td></tr>
+<tr><td><code>skill.description-shape</code></td><td>an authored skill's description carries USE WHEN then NOT FOR, and its frontmatter has at most one visibility key (block, harbor#1010)</td></tr>
+<tr><td><code>skill.cited-path-exists</code></td><td>a backticked repo path in an authored skill's description exists in the tree (block, harbor#1010)</td></tr>
 <tr><td><code>drift.skill-manifest</code></td><td>every skill installed in the config dir has a row in .harbor-manifest or a pack's manifest, and every skill row an installed skill (advisory, harbor#1010)</td></tr>
 </tbody></table>
 </div>
@@ -1486,7 +1486,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/admission/observe-report/observe-report.test.sh</code></td><td><code>bin/admission-observe-report.sh bin/audit-triage.sh bin/floor-verify.sh bin/guard-lib.sh bin/library-log.sh bin/floor-normalize.awk tests/admission/observe-report/observe-report.test.sh tests/audit/triage/fixture.sh tests/admission/baseline/fixture.sh tests/admission/baseline/baseline.test.sh tests/admission/baseline/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/findings/findings.test.sh</code></td><td><code>bin/lint-findings.sh bin/library-log.sh bin/lint-conventions.sh contracts/finding.md docs/reference/checks.md tests/lint/findings/findings.test.sh tests/obs/findings-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/findings/heal.test.sh</code></td><td><code>bin/lint-findings.sh bin/library-log.sh contracts/finding.md docs/reference/checks.md tests/lint/findings/heal.test.sh tests/obs/findings-fixture.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/lint/findings-run/findings-run.test.sh</code></td><td><code>bin/lint-findings-run.sh bin/library-log.sh bin/deploy-runtime-install.sh bin/deploy-launchd-render.sh bin/scope-roots.sh contracts/roots.tsv launchd/com.harbor.findings.plist tests/lint/findings-run/findings-run.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/lint/findings-run/findings-run.test.sh</code></td><td><code>bin/lint-findings-run.sh bin/library-log.sh bin/deploy-runtime-install.sh bin/deploy-launchd-render.sh bin/scope-roots.sh contracts/roots.tsv launchd/com.harbor.lint.findings.plist tests/lint/findings-run/findings-run.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/conventions/findings.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/lint/name/name.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/lint/rule-health/rule-health.test.sh</code></td><td><code>bin/lint-rule-health.sh bin/library-log.sh bin/lint-conventions.sh tests/lint/rule-health/rule-health.test.sh tests/lib/core.sh</code></td></tr>
@@ -1739,6 +1739,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/ci/lint-renderer-test.sh</code></td><td><code>bin/lint-renderer.sh bin/library-log.sh standards/naming/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/policy/resolve/order.test.sh</code></td><td><code>bin/policy-resolve.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/standard/vendor/vendor.test.sh</code></td><td><code>bin/standard-vendor.sh bin/lint-name.sh bin/lint-renderer.sh bin/library-log.sh standards/naming/* tests/standard/vendor/vendor.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/standard/fleet-names/job.test.sh</code></td><td><code>bin/standard-fleet-names.sh bin/standard-fleet-names-run.sh bin/lint-name.sh bin/standard-vendor.sh bin/ci-release-names.sh bin/scope-roots.sh bin/library-log.sh standards/naming/* contracts/roots.tsv tests/standard/fleet-names/job.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/memory/memory-names-test.sh</code></td><td><code>bin/memory-lint.sh bin/memory.sh bin/library-log.sh tests/memory/memory-names-test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/standard/rename/sandbox-home.test.sh</code></td><td><code>bin/standard-rename.sh bin/floor-install.sh bin/floor-verify.sh bin/pin-instructions.sh bin/lint-name.sh bin/library-log.sh bin/deploy-install-lib.sh bin/guard-* bin/floor-* tests/admission/baseline/b6.test.sh tests/floor/* tests/guards/* standards/naming/* tests/standard/rename/sandbox-home.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/deploy/install/renamed.test.sh</code></td><td><code>bin/* hooks/* standards/naming/renames.tsv tests/deploy/install/renamed.test.sh tests/lib/core.sh</code></td></tr>
@@ -2151,7 +2152,7 @@ score a plumbing gap as a verdict on the idea.</p>
 <tr><td><code>doc-cited-paths.awk</code></td><td>  awk -f doc-cited-paths.awk &lt;file&gt;      one cited path per line, in file order</td></tr>
 <tr><td><code>drift-reference-check.sh</code></td><td>M8 · ReferenceCheck (harbor#44) — validate the INSTALLED surface.</td></tr>
 <tr><td><code>drift-renew-check.sh</code></td><td>renew-check (harbor#44 follow-through, harbor#800) — what is BUILT here and NOT RUNNING there.</td></tr>
-<tr><td><code>eval-redteam-corpus-run.sh</code></td><td>eval-redteam-corpus-run.sh (harbor#1313) — the scheduled entry of docs/reference/checks.md <code>redteam-corpus</code>: score main's guards.</td></tr>
+<tr><td><code>eval-redteam-corpus-run.sh</code></td><td>eval-redteam-corpus-run.sh (harbor#1313) — the scheduled entry of docs/reference/checks.md <code>eval.redteam-corpus</code>: score main's guards.</td></tr>
 <tr><td><code>event-bus.sh</code></td><td>event-bus.sh (harbor#1043, E1) — the local append-only event bus: one JSON line per event.</td></tr>
 <tr><td><code>event-dispatch.sh</code></td><td>event-dispatch.sh (harbor#1044, E2) — agents react to events: one follower of the bus, <code>on</code> rules, a capped spawner.</td></tr>
 <tr><td><code>failure-observe.sh</code></td><td>FO-1 (harbor#465) — the PostToolUseFailure sink: one durable record per failed</td></tr>
@@ -2172,7 +2173,7 @@ score a plumbing gap as a verdict on the idea.</p>
 <tr><td><code>memory-log-token-save.sh</code></td><td>memory-log-token-save.sh (harbor#431) — put the memory-store token on disk without ever</td></tr>
 <tr><td><code>memory-store-check.sh</code></td><td>store-check (CX1, harbor#150 Phase 5 · harbor#183/#184) — bound the memory</td></tr>
 <tr><td><code>recover-test.sh</code></td><td>RECOVER (harbor#34, #765): deploy-restore.sh parses every flag, writes only with --apply, restores exactly a</td></tr>
-<tr><td><code>reply-shape.sh</code></td><td>reply-shape (harbor#952, #949 D-23) — advisory Stop hook. Registered in docs/reference/checks.md as <code>reply-shape</code>.</td></tr>
+<tr><td><code>reply-shape.sh</code></td><td>reply-shape (harbor#952, #949 D-23) — advisory Stop hook. Registered in docs/reference/checks.md as <code>session.reply-shape</code>.</td></tr>
 <tr><td><code>scope-roots.sh</code></td><td>scope-roots.sh — resolve the named roots in contracts/roots.tsv, and check that the</td></tr>
 <tr><td><code>session-autocompact.sh</code></td><td>session-autocompact.sh (harbor#187) — types /compact into a session's Terminal tab, on the agent's word.</td></tr>
 <tr><td><code>session-check.sh</code></td><td>session-check.sh (harbor#1043, #1044) — rule event.session-check: lint what a finished session changed.</td></tr>
@@ -2183,9 +2184,10 @@ score a plumbing gap as a verdict on the idea.</p>
 <tr><td><code>session-react-lib.sh</code></td><td>session-react-lib.sh (harbor#1043, #1044) — what the session.* reaction handlers share. Sourced, never run.</td></tr>
 <tr><td><code>session-save-now.sh</code></td><td>session-save-now.sh (harbor#1043, #1044) — rule event.session-save-now: the audit trail of a "write the handoff now" nudge.</td></tr>
 <tr><td><code>session-state.sh</code></td><td>session-state.sh (harbor#1043, #1044) — the Stop hook that says what this session is WAITING ON.</td></tr>
-<tr><td><code>session-subagent-check.sh</code></td><td>session-subagent-check (harbor#445 item E) — advisory SubagentStop hook. Registered in docs/reference/checks.md as <code>subagent-stop</code>.</td></tr>
+<tr><td><code>session-subagent-check.sh</code></td><td>session-subagent-check (harbor#445 item E) — advisory SubagentStop hook. Registered in docs/reference/checks.md as <code>session.subagent-stop</code>.</td></tr>
 <tr><td><code>session-title.sh</code></td><td>session-title.sh (harbor#1257) — applies the title the MODEL wrote for this session, via sessionTitle.</td></tr>
 <tr><td><code>session-verdicts.sh</code></td><td>L0-5b (harbor#59) — SessionStart standing verdicts, printed ONCE per session.</td></tr>
+<tr><td><code>standard-fleet-names-run.sh</code></td><td>standard-fleet-names-run.sh (harbor#967) — the scheduled entry of docs/reference/checks.md <code>standard.fleet-names</code>: the weekly naming check.</td></tr>
 <tr><td><code>status-fleet-glyph.sh</code></td><td>L0-5 (harbor#21, extended harbor#59, redesigned harbor#293) — Claude Code statusline.</td></tr>
 <tr><td><code>status-fleet-snapshot-refresh.sh</code></td><td>L0-5-interim (harbor#21) — write the fleet snapshot cache the statusline glyph reads.</td></tr>
 <tr><td><code>status-obligations.sh</code></td><td>status-obligations.sh (harbor#1050) — the obligations ledger: a projection of the event bus.</td></tr>
@@ -2488,7 +2490,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/drift-renew-check.sh</code></td><td>renew-check (harbor#44 follow-through, harbor#800) — what is BUILT here and NOT RUNNING there.</td></tr>
 <tr><td><code>bin/eval-hook-replay.sh</code></td><td>eval-hook-replay.sh (harbor#7) — measure the hook layer against REAL traffic, not</td></tr>
 <tr><td><code>bin/eval-pass-score.sh</code></td><td>eval-pass-score.sh — MAD confidence gating over docs/explanation/admission-baseline.md's adversarial pass table.</td></tr>
-<tr><td><code>bin/eval-redteam-corpus-run.sh</code></td><td>eval-redteam-corpus-run.sh (harbor#1313) — the scheduled entry of docs/reference/checks.md <code>redteam-corpus</code>: score main's guards.</td></tr>
+<tr><td><code>bin/eval-redteam-corpus-run.sh</code></td><td>eval-redteam-corpus-run.sh (harbor#1313) — the scheduled entry of docs/reference/checks.md <code>eval.redteam-corpus</code>: score main's guards.</td></tr>
 <tr><td><code>bin/eval-redteam-corpus.sh</code></td><td>eval-redteam-corpus.sh (harbor#1313, decision 23 on harbor#1149) — score the pinned external red-team corpora against this</td></tr>
 <tr><td><code>bin/eval-replay-corpus.sh</code></td><td>M2 · DoctrineReplay (harbor#44) — build the real-traffic replay corpus.</td></tr>
 <tr><td><code>bin/eval-replay-worker.sh</code></td><td>eval-replay-worker.sh — adjudicate ONE corpus record, print exactly ONE verdict.</td></tr>
@@ -2587,14 +2589,14 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/pin-instructions.sh</code></td><td>B8 (harbor#38) — pin the PERSISTENT INSTRUCTION surfaces of a config dir (the install standard, harbor#765).</td></tr>
 <tr><td><code>bin/policy-constitution-install.sh</code></td><td>policy-constitution-install.sh (harbor#173 · A2) — deploy policy/constitution.md to the box.</td></tr>
 <tr><td><code>bin/policy-resolve.sh</code></td><td>policy-resolve.sh (harbor#957, #1001) — one config order: flag, then env, then repo config, then user config, then default.</td></tr>
-<tr><td><code>bin/port-drift.sh</code></td><td>port-drift.sh (harbor#966, check id <code>port-drift</code>) - every directory under PORT_ROOT is a registered repo or an exempt kind.</td></tr>
+<tr><td><code>bin/port-drift.sh</code></td><td>port-drift.sh (harbor#966, check id <code>drift.port-root</code>) - every directory under PORT_ROOT is a registered repo or an exempt kind.</td></tr>
 <tr><td><code>bin/port-paths.sh</code></td><td>lint-port-paths.sh (harbor#629, harbor#619) — literals naming a repo at its PRE-MOVE address.</td></tr>
 <tr><td><code>bin/prod-guard-ambient.sh</code></td><td>B10 (harbor#56) — the ambient shim for yard's <code>prod_guard.py</code>.</td></tr>
 <tr><td><code>bin/prod-guard-install.sh</code></td><td>B10 (harbor#56) — install prod_guard AMBIENTLY, which nothing currently does.</td></tr>
 <tr><td><code>bin/proposal.sh</code></td><td>proposal (harbor#44 follow-through) — self-improvement packets a human ingests.</td></tr>
 <tr><td><code>bin/pulse-notify.sh</code></td><td>pulse-notify (harbor#9 — workstream E, E1) — the edge trigger and the sink.</td></tr>
 <tr><td><code>bin/pulse.sh</code></td><td>pulse (harbor#9 — workstream E, E1) — the between-sessions health probe.</td></tr>
-<tr><td><code>bin/redteam-corpus-run.sh</code></td><td>eval-redteam-corpus-run.sh (harbor#1313) — the scheduled entry of docs/reference/checks.md <code>redteam-corpus</code>: score main's guards.</td></tr>
+<tr><td><code>bin/redteam-corpus-run.sh</code></td><td>eval-redteam-corpus-run.sh (harbor#1313) — the scheduled entry of docs/reference/checks.md <code>eval.redteam-corpus</code>: score main's guards.</td></tr>
 <tr><td><code>bin/redteam-corpus.sh</code></td><td>eval-redteam-corpus.sh (harbor#1313, decision 23 on harbor#1149) — score the pinned external red-team corpora against this</td></tr>
 <tr><td><code>bin/reference-check.sh</code></td><td>M8 · ReferenceCheck (harbor#44) — validate the INSTALLED surface.</td></tr>
 <tr><td><code>bin/renew-check.sh</code></td><td>renew-check (harbor#44 follow-through, harbor#800) — what is BUILT here and NOT RUNNING there.</td></tr>
@@ -2631,6 +2633,8 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/skill-usage.sh</code></td><td>skill-usage.sh (harbor#173 · A7, harbor#518) — how often is a skill invoked, and when last?</td></tr>
 <tr><td><code>bin/skills-install.sh</code></td><td>skill-install.sh (harbor#7 · I1) — install a tracked skill into ~/.claude/skills.</td></tr>
 <tr><td><code>bin/standard-catalog.sh</code></td><td>standard-catalog.sh (harbor#996 D1-D3) — the catalog: every tracked file placed on the D-57 levels, read from the registry.</td></tr>
+<tr><td><code>bin/standard-fleet-names-run.sh</code></td><td>standard-fleet-names-run.sh (harbor#967) — the scheduled entry of docs/reference/checks.md <code>standard.fleet-names</code>: the weekly naming check.</td></tr>
+<tr><td><code>bin/standard-fleet-names.sh</code></td><td>standard-fleet-names.sh (harbor#967, harbor#957) — the weekly naming check over the whole fleet: check id standard.fleet-names.</td></tr>
 <tr><td><code>bin/standard-frozen-generate.sh</code></td><td>standard-frozen-generate.sh (harbor#1276, #949) - the names a stranger types or reads, frozen in standards/naming/frozen.tsv.</td></tr>
 <tr><td><code>bin/standard-issue-label.sh</code></td><td>issue-connector (harbor#512) — label an issue from the one taxonomy, and tell it</td></tr>
 <tr><td><code>bin/standard-rename.sh</code></td><td>standard-rename.sh (harbor#996 B2, B3) — the rename codemod: renames.tsv rows in; moved files, rewritten references, a residual list out.</td></tr>
@@ -2663,9 +2667,9 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/failure-observe.sh</code></td><td>FO-1 (harbor#465) — the PostToolUseFailure sink: one durable record per failed</td></tr>
 <tr><td><code>bin/injection-rule.sh</code></td><td>injection-rule.sh (harbor#173 · A1; renamed from inject-hook.sh, harbor#1272) — the injector. One engine, many rule packs.</td></tr>
 <tr><td><code>bin/memory-harvest.sh</code></td><td>memory-harvest (harbor#6 — workstream D, D1) — the work-log reconciler.</td></tr>
-<tr><td><code>bin/reply-shape.sh</code></td><td>reply-shape (harbor#952, #949 D-23) — advisory Stop hook. Registered in docs/reference/checks.md as <code>reply-shape</code>.</td></tr>
+<tr><td><code>bin/reply-shape.sh</code></td><td>reply-shape (harbor#952, #949 D-23) — advisory Stop hook. Registered in docs/reference/checks.md as <code>session.reply-shape</code>.</td></tr>
 <tr><td><code>bin/session-state.sh</code></td><td>session-state.sh (harbor#1043, #1044) — the Stop hook that says what this session is WAITING ON.</td></tr>
-<tr><td><code>bin/session-subagent-check.sh</code></td><td>session-subagent-check (harbor#445 item E) — advisory SubagentStop hook. Registered in docs/reference/checks.md as <code>subagent-stop</code>.</td></tr>
+<tr><td><code>bin/session-subagent-check.sh</code></td><td>session-subagent-check (harbor#445 item E) — advisory SubagentStop hook. Registered in docs/reference/checks.md as <code>session.subagent-stop</code>.</td></tr>
 <tr><td><code>bin/session-title.sh</code></td><td>session-title.sh (harbor#1257) — applies the title the MODEL wrote for this session, via sessionTitle.</td></tr>
 <tr><td><code>bin/session-verdicts.sh</code></td><td>L0-5b (harbor#59) — SessionStart standing verdicts, printed ONCE per session.</td></tr>
 <tr><td><code>bin/ticket-note.sh</code></td><td>ticket-note (harbor#354) — Stop hook. When a session touched a ticket, remind the operator</td></tr>

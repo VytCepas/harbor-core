@@ -29,8 +29,8 @@ t_eq "the merge row carries the contract's fields" "merge acme/api 12 $H12" "$(f
 t_eq "the deploy row has no pr" "null" "$(fx_queue | jq -r 'select(.kind == "deploy") | .pr')"
 t_eq "the queue ids are the contract's (§5a.2)" "deploy-acme_api-$(echo "$M1" | cut -c1-12) merge-acme_api-12-$(echo "$H12" | cut -c1-12)" "$(fx_queue | jq -r .id | sort | tr '\n' ' ' | sed 's/ $//')"
 t_has "...and the report names each one" "$R" "(queue id merge-acme_api-12-$(echo "$H12" | cut -c1-12))"
-t_has "one [check:ship] line, green" "$(cat "$T_TMP/cache/checks.log")" "[check:ship] 2026-10-06T23:00:00Z green night: merged 2, deployed 0"
-t_eq "the receipt is green" green "$(jq -r .status "$CLAUDE_CONFIG_DIR/cache/checks/ship.json")"
+t_has "one [check:deploy.fleet] line, green" "$(cat "$T_TMP/cache/checks.log")" "[check:deploy.fleet] 2026-10-06T23:00:00Z green night: merged 2, deployed 0"
+t_eq "the receipt is green" green "$(jq -r .status "$CLAUDE_CONFIG_DIR/cache/checks/deploy.fleet.json")"
 t_has "api ran from its main checkout, on its default branch" "$(cat "$T_TMP/out")" "acme/api ($T_TMP/port/api, trunk)"
 t_hasnt "...never the linked worktree" "$(cat "$T_TMP/out")" ".wt-api"
 

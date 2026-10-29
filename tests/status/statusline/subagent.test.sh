@@ -3,7 +3,7 @@
 # and the only surface that shows two agents sharing one working directory. `--dash`: under dash.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$(dirname "$0")/../../hooks/statusline-fixture.sh"
-sub() { printf '%s' "$1" | HARBOR_NOW=1787514000 "$SH" "$SRC/status-subagent-glyph.sh" 2>/dev/null; }
+sub() { printf '%s' "$1" | HARBOR_TEST_NOW=1787514000 "$SH" "$SRC/status-subagent-glyph.sh" 2>/dev/null; }
 # The row's text with its colours decoded: jq writes ESC as a literal \u001b, which plain() cannot see.
 row() { sub "$1" | jq -r '.content' | plain; }
 

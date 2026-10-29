@@ -2,7 +2,7 @@
 # lint-findings-run.sh (harbor#856) — the scheduled entry of contracts/finding.md: reconcile, then heal.
 #   sh lint-findings-run.sh          fetch main from the pinned URL, run its lint-findings.sh, stamp a receipt
 #   sh lint-findings-run.sh --help   this text
-#   sh lint-findings-run.sh --overrides   honour HARBOR_FINDINGS_URL, HARBOR_FINDINGS_REPO and
+#   sh lint-findings-run.sh --overrides   honour HARBOR_LINT_FINDINGS_URL, HARBOR_LINT_FINDINGS_REPO and
 #                               CLAUDE_CONFIG_DIR from the environment — for its suite, never for launchd
 #   exit 0 = reconcile and heal ran clean · exit 1 = a step failed or was refused
 #   receipt: $CLAUDE_CONFIG_DIR/cache/findings-state.json — `ran_at` is liveness
@@ -43,7 +43,7 @@ log_init findings-run
 URL=""; STORE=""; _slug="$(repo_slug)"; [ -z "$_slug" ] || URL="https://github.com/$_slug.git"
 CFG_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)"
 if [ "$OVERRIDES" = 1 ]; then
-  URL="${HARBOR_FINDINGS_URL:-$URL}"; STORE="${HARBOR_FINDINGS_REPO:-}"
+  URL="${HARBOR_LINT_FINDINGS_URL:-${HARBOR_FINDINGS_URL:-$URL}}"; STORE="${HARBOR_LINT_FINDINGS_REPO:-${HARBOR_FINDINGS_REPO:-}}"
   CFG_DIR="${CLAUDE_CONFIG_DIR:?--overrides needs CLAUDE_CONFIG_DIR}"
 fi
 for _v in $(env | sed -n 's/^\(HARBOR_[A-Za-z0-9_]*\)=.*/\1/p'); do unset "$_v"; done
@@ -83,7 +83,7 @@ refuse() { # <note> <fix>
 }
 
 [ -n "$URL" ] || refuse "this copy names no repository (no origin in its checkout, no repo-slug.txt beside it)" "deploy harbor again: the install carries bin/repo-slug.txt"
-case "$STORE" in */*) ;; *) refuse "no finding store derivable from $URL" "HARBOR_FINDINGS_REPO=<owner/name> sh $0" ;; esac
+case "$STORE" in */*) ;; *) refuse "no finding store derivable from $URL" "HARBOR_LINT_FINDINGS_REPO=<owner/name> sh $0" ;; esac
 
 # 1 · main as GitHub has it, in a clone nothing else has touched
 # The repository variables are test-contract.md's list (harbor#824); the rest steer config and transport.
@@ -113,10 +113,10 @@ SHA="$(git -C "$WT" rev-parse HEAD)"
 SHA7="$(printf '%.7s' "$SHA")"
 
 # 2 · reconcile, then heal — each run by main's own lint-findings.sh
-_rr=0; HARBOR_ROOT="$WT" HARBOR_FINDINGS_REPO="$STORE" sh "$WT/bin/lint-findings.sh" reconcile --apply > "$T/reconcile.out" 2>&1 || _rr=$?
+_rr=0; HARBOR_SCOPE_ROOT="$WT" HARBOR_LINT_FINDINGS_REPO="$STORE" sh "$WT/bin/lint-findings.sh" reconcile --apply > "$T/reconcile.out" 2>&1 || _rr=$?
 _hr=-
 if [ "$_rr" -eq 0 ]; then
-  _hr=0; HARBOR_ROOT="$WT" HARBOR_FINDINGS_REPO="$STORE" sh "$WT/bin/lint-findings.sh" heal --apply > "$T/heal.out" 2>&1 || _hr=$?
+  _hr=0; HARBOR_SCOPE_ROOT="$WT" HARBOR_LINT_FINDINGS_REPO="$STORE" sh "$WT/bin/lint-findings.sh" heal --apply > "$T/heal.out" 2>&1 || _hr=$?
 else
   : > "$T/heal.out"
 fi
@@ -131,7 +131,7 @@ if ! receipt "$_st" "$SHA7" "$_rr" "$_hr" "${_why:-clean}"; then
 fi
 if [ "$_st" != ok ] || grep -qE '^  (new |subjects changed|fixed:|re-filed|repaired:|proposed:|FAILED)' "$T/reconcile.out" "$T/heal.out"; then
   _sum="$(head -1 "$T/reconcile.out" | cut -c1-200)"
-  log_line "[check:findings] $(stamp) $_st at $SHA7 — ${_why:-$_sum}"
+  log_line "[check:lint.findings] $(stamp) $_st at $SHA7 — ${_why:-$_sum}"
 fi
 if [ "$_st" = ok ]; then log_ok "reconciled and healed main at $SHA7 (receipt: $STATE)"
 else log_fail "$_why at $SHA7 (receipt: $STATE)"; log_fix "sh $0   # the output above names the step"; fi

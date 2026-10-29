@@ -6,7 +6,7 @@
 #   sh test-suite-run.sh --tally <results> <key> <suite>...   one group's verdict from a run's results
 #   sh test-suite-run.sh --combine <out> [--list F] [--include F] <results>...   N shards' results as one run's
 #
-#   -j, --jobs N       suites at once (HARBOR_SUITE_JOBS; default 3 x CPUs, 3 on macOS)
+#   -j, --jobs N       suites at once (HARBOR_TEST_SUITE_JOBS; default 3 x CPUs, 3 on macOS)
 #   --list FILE        the candidate suites (default contracts/suites.txt)
 #   --include FILE     keep only the suites FILE names
 #   --select           ask bin/test-suite-select.sh which suites this changeset needs; the rest stand down
@@ -15,7 +15,7 @@
 #   --record           rewrite tests/suite-durations.tsv from this run's timings
 #   --record-from FILE the same from a results file another run kept (a CI shard's), running nothing
 #   --lint SECS        with --record/--record-from: the seconds shard 1 spends in bin/lint-conventions.sh (kept if omitted)
-#   HARBOR_SUITE_TIMEOUT  seconds a suite may print nothing before it is cut off (default 900, 0 = none)
+#   HARBOR_TEST_SUITE_TIMEOUT  seconds a suite may print nothing before it is cut off (default 900, 0 = none)
 #   HARBOR_SUITE_HARD_TIMEOUT  seconds in all, however much it prints (default 4 x the above, 0 = none)
 #   HARBOR_SUITE_CACHE=1  a queued suite whose inputs already passed is a `cached` row, not a run (bin/test-suite-cache.sh)
 #
@@ -40,7 +40,7 @@
 set -eu
 
 DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$DIR/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$DIR/.." && pwd)}}"
 DUR="$ROOT/tests/suite-durations.tsv"
 TAB="$(printf '\t')"
 
@@ -183,7 +183,7 @@ if [ "${1:-}" = "--tally" ]; then
 fi
 
 # ── options ───────────────────────────────────────────────────────────────────
-JOBS="${HARBOR_SUITE_JOBS:-}"; LIST="$ROOT/contracts/suites.txt"; INC=""; SEL=0; RES=""; REC=0; PLAN=0
+JOBS="${HARBOR_TEST_SUITE_JOBS:-${HARBOR_SUITE_JOBS:-}}"; LIST="$ROOT/contracts/suites.txt"; INC=""; SEL=0; RES=""; REC=0; PLAN=0
 SHARD=""; COMB=""; RECFROM=""; LINT=""; LINTKEY="bin/lint-conventions.sh"
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -315,7 +315,7 @@ fi
 # ── selection: one suite-select --list for the lot, not one call per suite ────
 : > "$RES"   # here, not earlier: --record-from and --combine read results files and must not empty one
 if [ "$SEL" = 1 ]; then
-  if ! HARBOR_ROOT="$ROOT" sh "$DIR/test-suite-select.sh" --list > "$WORK/verdicts" 2> "$WORK/verdicts.err"; then
+  if ! HARBOR_SCOPE_ROOT="$ROOT" sh "$DIR/test-suite-select.sh" --list > "$WORK/verdicts" 2> "$WORK/verdicts.err"; then
     log_head select; log_fail "bin/test-suite-select.sh --list failed: $(head -3 "$WORK/verdicts.err" | tr '\n' ' ')"
     log_nofix "bin/test-suite-select.sh"; log_end; exit 1
   fi
@@ -360,7 +360,7 @@ if [ "$PLAN" = 1 ]; then [ -z "$SHNOTE" ] || printf "%s\n" "$SHNOTE" >&2; cat "$
 # time and count, so --tally, --combine and the counts read it as they read a run. Unset: nothing here runs.
 CNOTE=""
 if [ "${HARBOR_SUITE_CACHE:-}" = 1 ]; then
-  if CNOTE="$(HARBOR_ROOT="$ROOT" sh "$DIR/test-suite-cache.sh" lookup "$WORK/queue" "$WORK/keys" "$WORK/hits" 2>&1)"; then
+  if CNOTE="$(HARBOR_SCOPE_ROOT="$ROOT" sh "$DIR/test-suite-cache.sh" lookup "$WORK/queue" "$WORK/keys" "$WORK/hits" 2>&1)"; then
     cat "$WORK/hits" >> "$RES"
     awk -F '\t' -v hf="$WORK/hits" 'FILENAME == hf { h[$5] = 1; next } !($1 in h)' "$WORK/hits" "$WORK/queue" > "$WORK/next"
     mv "$WORK/next" "$WORK/queue"
@@ -379,9 +379,9 @@ _skips="$(awk -F '\t' '$1 == "skip"' "$RES")"
 [ -z "$_skips" ] || printf '%s\n' "$_skips" | while IFS="$TAB" read -r _v _x _y _z _s _why; do log_skip "$_s stood down — $_why"; done
 
 # ── run: xargs keeps JOBS workers busy in queue order; this loop reports as they finish ──
-_SR_LOGS="$WORK/logs"; _SR_RES="$RES"; _SR_TMO="${HARBOR_SUITE_TIMEOUT:-900}"; _SR_JOBS="$JOBS"
+_SR_LOGS="$WORK/logs"; _SR_RES="$RES"; _SR_TMO="${HARBOR_TEST_SUITE_TIMEOUT:-${HARBOR_SUITE_TIMEOUT:-900}}"; _SR_JOBS="$JOBS"
 export _SR_LOGS _SR_RES _SR_TMO _SR_JOBS
-case "$_SR_TMO" in *[!0-9]*) printf 'suite-run: HARBOR_SUITE_TIMEOUT wants seconds, got %s\n' "$_SR_TMO" >&2; exit 2 ;; esac
+case "$_SR_TMO" in *[!0-9]*) printf 'suite-run: HARBOR_TEST_SUITE_TIMEOUT wants seconds, got %s\n' "$_SR_TMO" >&2; exit 2 ;; esac
 _SR_HARD="${HARBOR_SUITE_HARD_TIMEOUT:-$(( _SR_TMO * 4 ))}"; export _SR_HARD
 case "$_SR_HARD" in *[!0-9]*) printf 'suite-run: HARBOR_SUITE_HARD_TIMEOUT wants seconds, got %s\n' "$_SR_HARD" >&2; exit 2 ;; esac
 T0="$(date +%s)"
@@ -426,14 +426,14 @@ _nc=""
 if [ -f "$WORK/keys" ]; then
   _nc=", $(awk -F '\t' '$1 == "cached"' "$RES" | grep -c . || :) cached"
   if [ -s "$WORK/lost" ]; then log_note "cache: nothing recorded — the results are damaged"
-  else log_note "cache: $(HARBOR_ROOT="$ROOT" sh "$DIR/test-suite-cache.sh" record "$WORK/keys" "$RES" 2>&1 | head -1)"; fi
+  else log_note "cache: $(HARBOR_SCOPE_ROOT="$ROOT" sh "$DIR/test-suite-cache.sh" record "$WORK/keys" "$RES" 2>&1 | head -1)"; fi
 fi
 log_note "$_np passed$_nc, $_nf failed, $_ns stood down, wall ${WALL}s at P=$JOBS — results: $RES${_rk:-}"
 
 # The tail of each failed suite's log, after the list, so the cause is on the page.
 awk -F '\t' '$1 == "fail" { print $5 }' "$RES" | while IFS= read -r _s; do
   log_head "tail of $_s"
-  tail -n "${HARBOR_SUITE_TAIL:-40}" "$WORK/logs/$(printf '%s' "$_s" | tr '/' '_').log" | sed 's/^/    /'
+  tail -n "${HARBOR_TEST_SUITE_TAIL:-${HARBOR_SUITE_TAIL:-40}}" "$WORK/logs/$(printf '%s' "$_s" | tr '/' '_').log" | sed 's/^/    /'
 done
 
 [ "$REC" != 1 ] || _record "$RES"

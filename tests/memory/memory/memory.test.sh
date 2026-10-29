@@ -2,10 +2,10 @@
 # The memory store's two readers, memory.sh (engine and grep rungs) and memory-lint.sh, and
 # the work-log reconciler memory-harvest.sh, against fixtures/memory (harbor#6: D1 D3 D7 K3).
 # Staleness defects: harbor#216. Symlinked stores: harbor#608. Secret gate: harbor#81.
-# HARBOR_REQUIRE_BUN=1 and HARBOR_REQUIRE_GITLEAKS=1 turn a missing tool into a failure.
+# HARBOR_TEST_REQUIRE_BUN=1 and HARBOR_TEST_REQUIRE_GITLEAKS=1 turn a missing tool into a failure.
 LIVE_CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"  # read before t_init sandboxes it
 # The caller's knobs too, before t_init clears every HARBOR_* (harbor#773). memory.sh reads the bun one.
-MEM_BUN="${HARBOR_MEMORY_BUN:-}"; REQ_BUN="${HARBOR_REQUIRE_BUN:-0}"; REQ_GITLEAKS="${HARBOR_REQUIRE_GITLEAKS:-0}"
+MEM_BUN="${HARBOR_MEMORY_BUN:-}"; REQ_BUN="${HARBOR_TEST_REQUIRE_BUN:-${HARBOR_REQUIRE_BUN:-0}}"; REQ_GITLEAKS="${HARBOR_TEST_REQUIRE_GITLEAKS:-${HARBOR_REQUIRE_GITLEAKS:-0}}"
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 [ -z "$MEM_BUN" ] || { HARBOR_MEMORY_BUN="$MEM_BUN"; export HARBOR_MEMORY_BUN; }
 FIX="$T_ROOT/fixtures/memory"; CORPUS="$FIX/corpus"; EXPECT="$FIX/expected.json"
@@ -232,7 +232,7 @@ t_eq "only the prose link is reported" '["a-real-link"]' "$(sh "$LINT" --root "$
 t_section "no silent caps"
 printf 'ambient\n' > "$HV/.helm-context/probe"; rm -rf "$HV/MEMORY/WORK"
 t_has "the cap says what it dropped" \
-  "$(printf '{"session_id":"probe","cwd":"/tmp"}' | CLAUDE_CONFIG_DIR="$HV" HARBOR_HARVEST_CAP=1 sh "$T_ROOT/hooks/memory-harvest/memory-harvest.sh" 2>&1)" 'still unrecorded'
+  "$(printf '{"session_id":"probe","cwd":"/tmp"}' | CLAUDE_CONFIG_DIR="$HV" HARBOR_MEMORY_HARVEST_CAP=1 sh "$T_ROOT/hooks/memory-harvest/memory-harvest.sh" 2>&1)" 'still unrecorded'
 
 t_section "one writer, not two"
 t_has "worklog-push.sh writes through floor_worklog_record" "$(cat "$T_ROOT/hooks/worklog-push/worklog-push.sh")" floor_worklog_record
@@ -254,13 +254,13 @@ if [ "$HAVE_BUN" -eq 1 ]; then
   _rc=$?; sed 's/^/    /' "$T_TMP/bun.log"
   t_eq "memory-engine.test.ts passes" 0 "$_rc"
 else
-  t_eq "bun is absent, so HARBOR_REQUIRE_BUN must be off" 0 "$REQ_BUN"
+  t_eq "bun is absent, so HARBOR_TEST_REQUIRE_BUN must be off" 0 "$REQ_BUN"
   echo "memory-test: SKIPPED the engine assertions (no bun on PATH)"
 fi
 
 t_section "the work-log secret gate, red and green (harbor#81)"
 if ! command -v gitleaks >/dev/null 2>&1; then
-  t_eq "gitleaks is absent, so HARBOR_REQUIRE_GITLEAKS must be off" 0 "$REQ_GITLEAKS"
+  t_eq "gitleaks is absent, so HARBOR_TEST_REQUIRE_GITLEAKS must be off" 0 "$REQ_GITLEAKS"
   echo "memory-test: SKIPPED the work-log secret gate (no gitleaks on PATH)"
 else
   GLT="$T_TMP/gl"; GLR="$GLT/worklog"; REC="$GLR/WORK/sessions/testhost/2026-09-16.md"

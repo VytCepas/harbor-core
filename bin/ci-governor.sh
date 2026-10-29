@@ -79,13 +79,13 @@
 # (a paused runner sends GitHub no heartbeat, and how long GitHub waits is unmeasured). Recovery needs
 # clear_secs (60) with no hot sample, then the slow raise above. A sample over 60s old counts as clear.
 #
-# OUTPUT. One `[check:ci-governor]` line in cache/checks.log per change of budget or runner state, never per
+# OUTPUT. One `[check:ci.governor]` line in cache/checks.log per change of budget or runner state, never per
 # tick; cache/ci-governor.json for the statusline. POSIX sh; docker, gh, ioreg, sysctl, pgrep, iostat, pmset,
 # notifyutil, taskpolicy from PATH.
 set -eu
 # `run` with nothing to govern is a plain exec, before any config is read: every CI suite passes through here.
 if [ "${1:-}" = run ] && { [ -n "${GITHUB_ACTIONS:-}" ] || [ -n "${HARBOR_GOV_SLOT:-}" ] \
-     || [ ! -d "${HARBOR_GOVERNOR_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}/ci-governor}" ]; }; then
+     || [ ! -d "${HARBOR_GOVERNOR_DIR:-${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}/ci-governor}" ]; }; then
   shift; _o=""
   [ "${1:-}" != --out ] || { _o="${2:-}"; shift 2; }
   [ "${1:-}" != -- ] || shift
@@ -102,12 +102,12 @@ usage() { awk 'NR<2{next} /^#/{ sub(/^# ?/,""); if ($0=="") exit; print; next } 
 
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 CONF="$CFG/.harbor-ci-governor"
-CACHE_DIR="${HARBOR_CACHE_DIR:-$HOME/.claude/cache}"
+CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
 STATE_DIR="${HARBOR_GOVERNOR_DIR:-$CACHE_DIR/ci-governor}"
 STATE="$STATE_DIR/state"
 OUT="$CACHE_DIR/ci-governor.json"
 LOG="$CACHE_DIR/checks.log"
-RUNNERS_DIR="${HARBOR_RUNNERS_DIR:-$HOME/runners}"
+RUNNERS_DIR="${HARBOR_CI_RUNNERS_DIR:-${HARBOR_RUNNERS_DIR:-$HOME/runners}}"
 EMERG="$STATE_DIR/emergency"      # the sampler's state (key=value)
 STOPPED="$STATE_DIR/stopped"      # "pid lstart" of every process SIGSTOPped, for the SIGCONT
 LISTENER="$STATE_DIR/listener"    # "pid lstart" of the live `listen`
@@ -116,7 +116,7 @@ EVENT_KEY=com.harbor.ci-governor.event
 OS_KEYS="com.apple.system.thermalpressurelevel com.apple.system.memorystatus kern.memorystatus_level"
 BGED="$STATE_DIR/backgrounded"    # "pid lstart" of every process moved to darwin background
 
-now() { case "${HARBOR_NOW:-}" in ''|*[!0-9]*) date +%s ;; *) printf '%s' "$HARBOR_NOW" ;; esac; }
+now() { case "${HARBOR_TEST_NOW:-${HARBOR_NOW:-}}" in ''|*[!0-9]*) date +%s ;; *) printf '%s' "${HARBOR_TEST_NOW:-${HARBOR_NOW:-}}" ;; esac; }
 NOW="$(now)"
 
 # cfg <key> <default> — a number from the config file; anything else is the default.
@@ -588,7 +588,7 @@ ladder() {
   fi
 }
 
-logline() { printf '[check:ci-governor] %s %s\n' "$(date -u -r "$NOW" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" >> "$LOG" 2>/dev/null || :; }
+logline() { printf '[check:ci.governor] %s %s\n' "$(date -u -r "$NOW" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" >> "$LOG" 2>/dev/null || :; }
 
 write_out() {
   _tmp="$STATE.tmp.$$"

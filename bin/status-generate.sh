@@ -27,7 +27,7 @@
 #   sh status-generate.sh --json       # both halves, machine-readable
 #   sh status-generate.sh --json-fast  # ditto, suite totals read from docs/generated/status.md
 #
-#   HARBOR_SUITE_COUNTS='floor-test=1095'   # a count a real run already printed,
+#   HARBOR_STATUS_SUITE_COUNTS='floor-test=1095'   # a count a real run already printed,
 #                                           # so --check does not re-run it. See
 #                                           # the block above suite_count().
 #
@@ -89,7 +89,7 @@ case "${1:-}" in
              printf '\n(flags, if any, are in the header above and the source below.)\n'
              exit 0 ;;
 esac
-ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}}"
 # WHERE IT WRITES (harbor#1275): docs/generated/status.md is a dev-layer file (contracts/layers.tsv). A checkout that has the layer table but
 # not the file is harbor-core, whose tree is read-only at runtime, so its docs/generated/status.md and build/ go to the state directory.
 # HARBOR_STATUS_IN_TREE=1 forces the tree (a dev checkout that has lost its docs/generated/status.md); a tree with no layer table is a fixture.
@@ -98,7 +98,7 @@ if [ -f "$ROOT/contracts/layers.tsv" ] && [ ! -f "$ROOT/docs/generated/status.md
   OUTD="${HARBOR_STATUS_DIR:-${HOME:-/nonexistent}/.local/state/harbor}/status"
 fi
 # stdout is the generated document or JSON, so the run log is on stderr (contracts/logging.md). The library is
-# read from this script's own directory, because HARBOR_ROOT may name a tree that has none.
+# read from this script's own directory, because HARBOR_SCOPE_ROOT may name a tree that has none.
 LOG_FD=2
 . "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-log.sh"
 log_init status-gen
@@ -164,7 +164,7 @@ FAST="${FAST:-0}"
 #
 # So a count may be SUPPLIED by whoever already paid for it:
 #
-#   HARBOR_SUITE_COUNTS='floor-test=1095 normalize-test=94' sh status-generate.sh --check
+#   HARBOR_STATUS_SUITE_COUNTS='floor-test=1095 normalize-test=94' sh status-generate.sh --check
 #
 # Separators are whitespace or commas. The suite is named WITHOUT `.sh`, the way
 # docs/generated/status.md names it.
@@ -184,7 +184,7 @@ FAST="${FAST:-0}"
 #
 # suite_files <suite-without-.sh> — the file(s) that suite runs as, one per line.
 # harbor#727: bin/<name>.sh until it moves. The keys stay the old suite names, which CI passes in
-# HARBOR_SUITE_COUNTS; harbor#961 W2 moved the files: floor-test is tests/admission/baseline/baseline.test.sh
+# HARBOR_STATUS_SUITE_COUNTS; harbor#961 W2 moved the files: floor-test is tests/admission/baseline/baseline.test.sh
 # plus its <part>.test.sh siblings (the count is the parts' sum), normalize-test and marker-test one file each.
 suite_files() {
   if [ -f "$ROOT/bin/$1.sh" ]; then printf '%s\n' "$ROOT/bin/$1.sh"; return 0; fi
@@ -204,28 +204,28 @@ suite_files() {
 # suite_count() runs inside a `$( )` command substitution, where `exit 2` ends
 # only the subshell and the caller carries on with an empty string — so a
 # rejected value would have been indistinguishable from "the suite reported 0".
-if [ -n "${HARBOR_SUITE_COUNTS:-}" ]; then
-  for _pair in $(printf '%s' "$HARBOR_SUITE_COUNTS" | tr ',' ' '); do
+if [ -n "${HARBOR_STATUS_SUITE_COUNTS:-${HARBOR_SUITE_COUNTS:-}}" ]; then
+  for _pair in $(printf '%s' "${HARBOR_STATUS_SUITE_COUNTS:-${HARBOR_SUITE_COUNTS:-}}" | tr ',' ' '); do
     case "$_pair" in
       *=*) ;;
-      *) log_fail "HARBOR_SUITE_COUNTS: $_pair is not <suite>=<count>"; log_fix "unset HARBOR_SUITE_COUNTS"; log_end || :; exit 2 ;;
+      *) log_fail "HARBOR_STATUS_SUITE_COUNTS: $_pair is not <suite>=<count>"; log_fix "unset HARBOR_STATUS_SUITE_COUNTS HARBOR_SUITE_COUNTS"; log_end || :; exit 2 ;;
     esac
     _k="${_pair%%=*}"; _v="${_pair#*=}"
     # The key must name a suite that EXISTS. Without this a typo falls through to
     # running the suite, which is the silently-inert case described above.
     if ! suite_files "$_k" >/dev/null; then
-      log_fail "HARBOR_SUITE_COUNTS: no such suite bin/$_k.sh, nor floor-test, normalize-test or marker-test"; log_fix "unset HARBOR_SUITE_COUNTS"; log_end || :; exit 2
+      log_fail "HARBOR_STATUS_SUITE_COUNTS: no such suite bin/$_k.sh, nor floor-test, normalize-test or marker-test"; log_fix "unset HARBOR_STATUS_SUITE_COUNTS HARBOR_SUITE_COUNTS"; log_end || :; exit 2
     fi
     case "$_v" in
       ''|*[!0-9]*)
-        log_fail "HARBOR_SUITE_COUNTS: $_pair is not an integer count"; log_fix "unset HARBOR_SUITE_COUNTS"; log_end || :; exit 2 ;;
+        log_fail "HARBOR_STATUS_SUITE_COUNTS: $_pair is not an integer count"; log_fix "unset HARBOR_STATUS_SUITE_COUNTS HARBOR_SUITE_COUNTS"; log_end || :; exit 2 ;;
     esac
   done
 fi
 
 # ── THE OVERRIDE IS SCOPED TO `--check`, AND NOTHING ELSE (PR #121 review) ───
 #
-# The first cut honoured HARBOR_SUITE_COUNTS in EVERY generation mode. So an
+# The first cut honoured HARBOR_STATUS_SUITE_COUNTS in EVERY generation mode. So an
 # operator who exported the variable — in a shell profile, or once for a CI
 # experiment — would find `--apply` writing those numbers straight into docs/generated/status.md
 # without running anything. That corrupts the one file the T rules make the single
@@ -239,12 +239,12 @@ INVOKED_AS="${1:-}"
 
 # suite_supplied <suite-without-.sh> — print the supplied count, or return 1.
 suite_supplied() {
-  [ -n "${HARBOR_SUITE_COUNTS:-}" ] || return 1
+  [ -n "${HARBOR_STATUS_SUITE_COUNTS:-${HARBOR_SUITE_COUNTS:-}}" ] || return 1
   # `--check` is the only mode that merely COMPARES. Every other mode either
   # writes docs/generated/status.md or answers a question about it, and neither may rest on a
   # number this process did not watch a suite print.
   [ "$INVOKED_AS" = "--check" ] || return 1
-  for _p in $(printf '%s' "$HARBOR_SUITE_COUNTS" | tr ',' ' '); do
+  for _p in $(printf '%s' "${HARBOR_STATUS_SUITE_COUNTS:-${HARBOR_SUITE_COUNTS:-}}" | tr ',' ' '); do
     case "$_p" in "$1"=*) printf '%s' "${_p#*=}"; return 0 ;; esac
   done
   return 1
@@ -262,10 +262,10 @@ suite_supplied() {
 # Empty output means no key, and no key means no cache — the slow, correct path.
 # harbor#727: tests/ too, since the count-bearing suites and their harness moved there.
 _sc_fingerprint() {
-  # The workflow too: tests/admission/baseline/shards.test.sh reads it, or HARBOR_WORKFLOW's proposal (harbor#727).
+  # The workflow too: tests/admission/baseline/shards.test.sh reads it, or HARBOR_STATUS_WORKFLOW's proposal (harbor#727).
   # harbor#961 W2: a suite is tests/<family>/<subject>/<aspect>.test.sh, one level deeper than tests/*/.
   cat "$ROOT"/bin/*.sh "$ROOT"/bin/*.awk "$ROOT"/hooks/*/*.sh "$ROOT"/tests/*/*.sh "$ROOT"/tests/*/*/*.sh \
-      "${HARBOR_WORKFLOW:-$ROOT/.github/workflows/governance.yml}" 2>/dev/null \
+      "${HARBOR_STATUS_WORKFLOW:-${HARBOR_WORKFLOW:-$ROOT/.github/workflows/governance.yml}}" 2>/dev/null \
     | { sha256sum 2>/dev/null || shasum -a 256 2>/dev/null; } \
     | awk '{print $1; exit}'
 }
@@ -332,7 +332,7 @@ suite_count() { # <suite> <label>
   #
   # IT YIELDS 0 RATHER THAN FAILING, and that is a deliberate, bounded choice. An
   # `exit` here would not propagate: suite_count() runs inside `$( )`, which the
-  # note at the head of this file already records as the reason HARBOR_SUITE_COUNTS
+  # note at the head of this file already records as the reason HARBOR_STATUS_SUITE_COUNTS
   # is validated at top level. Every nested caller that exists today is answered by
   # one of the three branches above — VIZ-1 and `_obs` are `--json-fast` against a
   # tree that has docs/generated/status.md, `_sgen --apply` carries FAST=1 and a seeded fixture,
@@ -340,8 +340,8 @@ suite_count() { # <suite> <label>
   # that used to fork-bomb, where a loud 0 is the correct answer and a running
   # suite is not. The stderr line is not decoration: it is the only thing that
   # distinguishes "the suite reports zero" from "no suite was run".
-  if [ -n "${HARBOR_IN_SUITE:-}" ]; then
-    log_note "NOT running bin/$1: already inside a suite run (HARBOR_IN_SUITE set), and running it here is harbor#288 (the suite runs this tool, and this tool runs the suite); reporting 0 for $2 rather than recursing, no count was measured"
+  if [ -n "${HARBOR_TEST_IN_SUITE:-${HARBOR_IN_SUITE:-}}" ]; then
+    log_note "NOT running bin/$1: already inside a suite run (HARBOR_TEST_IN_SUITE set), and running it here is harbor#288 (the suite runs this tool, and this tool runs the suite); reporting 0 for $2 rather than recursing, no count was measured"
     printf '0'
     return 0
   fi
@@ -396,7 +396,7 @@ suite_count() { # <suite> <label>
   [ -n "$_sc_list" ] || _sc_list="$ROOT/bin/$1"
   while IFS= read -r _sc_f; do
     _sc_rc=0
-    HARBOR_IN_SUITE=1 sh "$_sc_f" > "$_sc_raw" 2>&1 || _sc_rc=$?
+    HARBOR_TEST_IN_SUITE=1 sh "$_sc_f" > "$_sc_raw" 2>&1 || _sc_rc=$?
     _sc_n="$(awk -v k="$(basename "$_sc_f" .sh):" '$1 == k && $3 == "passed," { print $2; exit }' "$_sc_raw" 2>/dev/null)"
     case "${_sc_n:-}" in
       ''|*[!0-9]*)
@@ -677,7 +677,7 @@ case "$MODE" in
     # The check reads the RENDERED TEXT rather than a flag from suite_count(),
     # because that function runs inside `$( )` and cannot set a variable in this
     # shell — the same constraint the recursion arm and the top-level
-    # HARBOR_SUITE_COUNTS validation are both shaped by. It therefore also catches
+    # HARBOR_STATUS_SUITE_COUNTS validation are both shaped by. It therefore also catches
     # the recursion arm's deliberate 0, which is correct: that 0 is a safe answer
     # to give a caller, never a number to write into the file others link to.
     # NOT `grep '| 0 |'`. The value can also come out EMPTY — see the `||` note in

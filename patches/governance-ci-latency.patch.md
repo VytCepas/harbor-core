@@ -151,7 +151,7 @@ keeps a full verdict. Contract and limits: `contracts/suite-cache.md`.
 
 - **A applied before the runners are labelled:** jobs sit in `queued` with no
   runner. Fix by doing the "Before applying" steps; nothing else is wrong.
-- **`harbor-gate` down:** the small jobs wait. `[check:ci-runner-alarm]` fires
+- **`harbor-gate` down:** the small jobs wait. `[check:ci.runner-alarm]` fires
   after a gate-labelled job is queued over 10 minutes; restart the container.
 - **B blocks a PR for a file it cannot regenerate in CI:** `doc-fresh-verify.sh`
   treats a check that cannot judge (exit not 0/1) as WARN, not FAIL; a FAIL

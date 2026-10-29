@@ -7,7 +7,7 @@
 # relays that pool's `--tally ... floor` verdict and count. The workflow is checked in whichever shape it
 # has — shard jobs present means the shard rules — with the same four finding classes either way.
 # Checked against governance.yml, and against workflows written here that break each clause.
-WF_IN="${HARBOR_WORKFLOW:-}"  # a proposed workflow, read before t_init clears the caller's HARBOR_* (harbor#773)
+WF_IN="${HARBOR_STATUS_WORKFLOW:-${HARBOR_WORKFLOW:-}}"  # a proposed workflow, read before t_init clears the caller's HARBOR_* (harbor#773)
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 
 wf_table() { # <workflow> -> TAB rows: run <job> <step-id> <path> | sum <job> <step-id> <ref> | out <job> <step-id> | needs <job> <job>

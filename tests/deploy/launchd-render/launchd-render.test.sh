@@ -13,7 +13,7 @@ printf '%s\n' '<?xml version="1.0"?>' \
   '<!-- harbor:template-only' '     do not cp this: it is documentation for the repo file' '     @HOME@ is named here and must not be needed -->' \
   '<!-- kept: replace @HOME@ with your home -->' \
   '<string>@HOME@/.claude/bin/x.sh</string>' \
-  '<key>PATH</key><string>/usr/bin:@HARBOR_LOCAL_BIN@</string>' '</plist>' > "$FX/ok.plist"
+  '<key>PATH</key><string>/usr/bin:@HARBOR_SCOPE_LOCAL_BIN@</string>' '</plist>' > "$FX/ok.plist"
 printf '%s\n' '<?xml version="1.0"?>' \
   '<!-- kept: replace '"$HOME"' with your home -->' \
   '<string>'"$HOME"'/.claude/bin/x.sh</string>' \
@@ -51,7 +51,7 @@ t_eq "XML-escaped, nothing eaten as a sed or awk metacharacter" '<string>'"$T_TM
 
 t_section "the real templates: no operator home in any of them, and every one renders"
 t_eq "no tracked plist spells a home directory" "" "$(grep -n -E '/Users/[A-Za-z]|/home/[A-Za-z]' "$T_ROOT"/launchd/*.plist || true)"
-t_eq "…nor spells ~/.local/bin in a value: that root comes from the table (@HARBOR_LOCAL_BIN@), or moving it would miss the plist" "" "$(grep -n -E '<string>[^<]*/\.local/bin' "$T_ROOT"/launchd/*.plist || true)"
+t_eq "…nor spells ~/.local/bin in a value: that root comes from the table (@HARBOR_SCOPE_LOCAL_BIN@), or moving it would miss the plist" "" "$(grep -n -E '<string>[^<]*/\.local/bin' "$T_ROOT"/launchd/*.plist || true)"
 _owned=0; for _p in "$T_ROOT"/launchd/*.plist; do grep -q '@\(BIN\|SOURCES\|STORE\)@' "$_p" || _owned=$((_owned + 1)); done
 # Not a census: plists leave core for packs (harbor#1273), so any found is the control, and --check below counts them.
 t_eq "positive control: the templates this tool owns were found" yes "$([ "$_owned" -ge 1 ] && echo yes || echo no)"
@@ -59,7 +59,7 @@ _chk="$(sh "$X" --check 2>&1)"; _rc=$?
 t_eq "--check is green on the tree" 0 "$_rc"
 t_has "…and says how many it rendered" "$_chk" "launchd-render: $_owned ok, 0 failed"
 t_eq "the collector's system-daemon plists are left to audit-collector-install.sh" 0 "$(printf '%s\n' "$_chk" | grep -c 'collector\|otlp')"
-t_has "--list names HOME and a root of the table" "$(sh "$X" --list)" "HARBOR_LOCAL_BIN	$HOME/.local/bin"
+t_has "--list names HOME and a root of the table" "$(sh "$X" --list)" "HARBOR_SCOPE_LOCAL_BIN	$HOME/.local/bin"
 
 t_section "--check can fail: an unknown placeholder, a missing newline, an unclosed block"
 t_exit "an unknown placeholder fails the check" 1 sh -c 'sh "$1" --check "$2" >/dev/null 2>&1' sh "$X" "$FX/unknown.plist"
@@ -75,7 +75,7 @@ else
 fi
 
 t_section "the table decides: change one root in a copy of it and every plist that names it changes (harbor#630)"
-sed 's|^\(HARBOR_LOCAL_BIN[[:space:]]*BOX[[:space:]]*\)\.local/bin|\1.local/moved-bin|' "$T_ROOT/contracts/roots.tsv" > "$T_TMP/roots-moved.tsv"
+sed 's|^\(HARBOR_SCOPE_LOCAL_BIN[[:space:]]*BOX[[:space:]]*\)\.local/bin|\1.local/moved-bin|' "$T_ROOT/contracts/roots.tsv" > "$T_TMP/roots-moved.tsv"
 t_eq "positive control: the copy really differs from the table" 1 "$(diff "$T_ROOT/contracts/roots.tsv" "$T_TMP/roots-moved.tsv" | grep -c '^>')"
 MV="$T_TMP/moved"; ST="$T_TMP/same"; mkdir -p "$MV" "$ST"
 _hit=0; _miss=0; _wrong=""
@@ -83,8 +83,8 @@ for _p in "$T_ROOT"/launchd/*.plist; do
   grep -q '@\(BIN\|SOURCES\|STORE\)@' "$_p" && continue
   _b="${_p##*/}"
   render "$_p" > "$ST/$_b"
-  env HARBOR_ROOTS_TABLE="$T_TMP/roots-moved.tsv" sh "$X" "$_p" > "$MV/$_b"
-  if grep -q '@HARBOR_LOCAL_BIN@' "$_p"; then
+  env HARBOR_SCOPE_ROOTS_TABLE="$T_TMP/roots-moved.tsv" sh "$X" "$_p" > "$MV/$_b"
+  if grep -q '@HARBOR_SCOPE_LOCAL_BIN@' "$_p"; then
     _hit=$((_hit + 1))
     cmp -s "$ST/$_b" "$MV/$_b" && _wrong="$_wrong $_b(did-not-move)"
     t_has "$_b: the moved root is in its PATH" "$(cat "$MV/$_b")" "$HOME/.local/moved-bin"
@@ -95,7 +95,7 @@ for _p in "$T_ROOT"/launchd/*.plist; do
   fi
 done
 t_eq "every plist that names the root moved, none that does not" "" "$_wrong"
-t_eq "positive control: some plists name HARBOR_LOCAL_BIN" yes "$([ "$_hit" -ge 5 ] && echo yes || echo no)"
+t_eq "positive control: some plists name HARBOR_SCOPE_LOCAL_BIN" yes "$([ "$_hit" -ge 5 ] && echo yes || echo no)"
 t_eq "positive control: some do not (the check is not vacuous)" yes "$([ "$_miss" -ge 1 ] && echo yes || echo no)"
 t_eq "the only lines that moved are the ones holding the root" "" "$(diff -r "$ST" "$MV" | grep '^[<>]' | grep -v 'moved-bin\|\.local/bin' || true)"
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# bin/test-suite-cache.sh through bin/test-suite-run.sh, against a fake git repo of tiny suites (HARBOR_ROOT), harbor#1288.
+# bin/test-suite-cache.sh through bin/test-suite-run.sh, against a fake git repo of tiny suites (HARBOR_SCOPE_ROOT), harbor#1288.
 # Each section plants what it guards: a pass to be served, a byte changed in a declared input, a failing suite,
 # an input the suite reads but does not declare, a run on main, a changeset that runs everything, a store
 # another identity wrote. The cache is the first thing that can turn a changed input into a green run that
@@ -35,11 +35,11 @@ echo dy > "$R/data/dy.txt"; echo m > "$R/src/m.txt"; echo d > "$R/docs/d.md"
 g init -q -b work; g add -A; g commit -qm seed
 CH='src/a/x.txt'   # a real selection: a b-only change would stand a down
 # run [suite...] — the cache on, the store in T_TMP; prints suite-run's output
-run() { : > "$ORD"; HARBOR_ROOT="$R" HARBOR_CHANGED="${CHG-$CH}" HARBOR_SUITE_CACHE="${CACHE-1}" HARBOR_SUITE_CACHE_DIR="${SCD:-$ST}" \
+run() { : > "$ORD"; HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_CHANGED="${CHG-$CH}" HARBOR_SUITE_CACHE="${CACHE-1}" HARBOR_SUITE_CACHE_DIR="${SCD:-$ST}" \
   sh "$SR" -j 2 --results "$T_TMP/res" "$@" 2>&1; }
 ran() { sort "$ORD" | tr '\n' ' ' | sed 's/ $//'; }
 row() { awk -F '\t' -v s="tests/x/$1.sh" '$5 == s { print $1; exit }' "$T_TMP/res"; }
-key() { HARBOR_ROOT="$R" HARBOR_SUITE_CACHE_DIR="$ST" sh "$SC" key "tests/x/$1.sh" | cut -f2; }
+key() { HARBOR_SCOPE_ROOT="$R" HARBOR_SUITE_CACHE_DIR="$ST" sh "$SC" key "tests/x/$1.sh" | cut -f2; }
 
 t_section "the same key is reported cached and does not run"
 O="$(run tests/x/a.sh)"
@@ -98,9 +98,9 @@ t_eq "the rows are pass rows" pass "$(row a)"
 # The runner never even calls the cache: a stub beside a copy of the runner records any call.
 G="$T_TMP/gbin"; mkdir -p "$G"; cp "$T_ROOT/bin/test-suite-run.sh" "$T_ROOT/bin/test-suite-select.sh" "$T_ROOT/bin/library-log.sh" "$G/"
 printf '#!/bin/sh\necho called >> "%s"\nexit 1\n' "$T_TMP/stub-called" > "$G/test-suite-cache.sh"
-HARBOR_ROOT="$R" HARBOR_CHANGED="$CH" sh "$G/test-suite-run.sh" tests/x/a.sh > /dev/null 2>&1
+HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_CHANGED="$CH" sh "$G/test-suite-run.sh" tests/x/a.sh > /dev/null 2>&1
 t_eq "unset: bin/test-suite-cache.sh is never run" no "$([ -f "$T_TMP/stub-called" ] && echo yes || echo no)"
-HARBOR_ROOT="$R" HARBOR_CHANGED="$CH" HARBOR_SUITE_CACHE=1 sh "$G/test-suite-run.sh" tests/x/a.sh > /dev/null 2>&1
+HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_CHANGED="$CH" HARBOR_SUITE_CACHE=1 sh "$G/test-suite-run.sh" tests/x/a.sh > /dev/null 2>&1
 t_eq "control: set, it is" yes "$([ -f "$T_TMP/stub-called" ] && echo yes || echo no)"
 
 t_section "never on main, never when everything runs"
@@ -126,16 +126,16 @@ t_eq "control: the same changeset as before is served again" "" "$(ran)"
 t_section "what is never cached: always, git on the checkout"
 run tests/x/al.sh tests/x/gt.sh > /dev/null; O="$(run tests/x/al.sh tests/x/gt.sh)"
 t_eq "an always suite and a git -C \$T_ROOT suite run every time" "al gt" "$(ran)"
-t_has "always: the key says why" "$(HARBOR_ROOT="$R" sh "$SC" key tests/x/al.sh)" "declared always"
-t_has "git: the key says why" "$(HARBOR_ROOT="$R" sh "$SC" key tests/x/gt.sh)" "runs git on the checkout"
+t_has "always: the key says why" "$(HARBOR_SCOPE_ROOT="$R" sh "$SC" key tests/x/al.sh)" "declared always"
+t_has "git: the key says why" "$(HARBOR_SCOPE_ROOT="$R" sh "$SC" key tests/x/gt.sh)" "runs git on the checkout"
 
 t_section "an input the suite reads but does not declare (the false pass this is built against)"
 run tests/x/r.sh > /dev/null; run tests/x/r.sh > /dev/null
 t_eq "control: r is served" "" "$(ran)"
-t_has "the static check names data/r.txt as undeclared" "$(HARBOR_ROOT="$R" sh "$SC" undeclared tests/x/r.sh)" "data/r.txt"
+t_has "the static check names data/r.txt as undeclared" "$(HARBOR_SCOPE_ROOT="$R" sh "$SC" undeclared tests/x/r.sh)" "data/r.txt"
 echo r2 > "$R/data/r.txt"; run tests/x/r.sh > /dev/null
 t_eq "a byte in data/r.txt, which r names and does not declare: r runs" r "$(ran)"
-t_has "the manifest holds it" "$(HARBOR_ROOT="$R" sh "$SC" manifest tests/x/r.sh)" " data/r.txt"
+t_has "the manifest holds it" "$(HARBOR_SCOPE_ROOT="$R" sh "$SC" manifest tests/x/r.sh)" " data/r.txt"
 # The stated limit (contracts/suite-cache.md): a path built at runtime is invisible to a static reader.
 run tests/x/dy.sh > /dev/null; K0="$(key dy)"; echo dy2 > "$R/data/dy.txt"
 t_eq "LIMIT: a path built at runtime does not move the key (stated, not caught)" "$K0" "$(key dy)"
@@ -155,11 +155,11 @@ t_eq "a and b both cached" "cached cached" "$(row a) $(row b)"
 : > "$T_TMP/gho"; GITHUB_OUTPUT="$T_TMP/gho" sh "$SR" --tally "$T_TMP/res" k tests/x/a.sh tests/x/b.sh > /dev/null 2>&1; rc=$?
 t_eq "--tally: pass, ran, the recorded counts summed" "rc=0 k=pass k_ran=true k_count=2 " "rc=$rc $(tr '\n' ' ' < "$T_TMP/gho")"
 printf 'tests/x/a.sh\ntests/x/b.sh\n' > "$T_TMP/ab"
-O="$(HARBOR_ROOT="$R" sh "$SR" --list "$T_TMP/ab" --combine "$T_TMP/all" "$T_TMP/res" 2>&1)"; rc=$?
+O="$(HARBOR_SCOPE_ROOT="$R" sh "$SR" --list "$T_TMP/ab" --combine "$T_TMP/all" "$T_TMP/res" 2>&1)"; rc=$?
 t_eq "--combine: exit 0" 0 "$rc"
 t_has "...counting them" "$O" "0 passed, 2 cached"
 printf '# t\n77\ttests/x/a.sh\n' > "$R/tests/suite-durations.tsv"
-HARBOR_ROOT="$R" sh "$SR" --record-from "$T_TMP/res" > /dev/null 2>&1
+HARBOR_SCOPE_ROOT="$R" sh "$SR" --record-from "$T_TMP/res" > /dev/null 2>&1
 t_eq "--record keeps a's measured time, not the replayed one" 77 "$(awk -F '\t' '$2 == "tests/x/a.sh" { print $1 }' "$R/tests/suite-durations.tsv")"
 rm -f "$R/tests/suite-durations.tsv"
 
@@ -188,7 +188,7 @@ t_section "globs match as suite-select's case patterns do"
 mkdir -p "$R/src/c/d"; for p in src/c/x.txt src/c/d/y.txt src/c/a.md src/c/ab.md src/cx.txt; do echo . > "$R/$p"; done
 printf 'tests/x/a.sh tests/x/a.sh src/c/*.txt src/c/?.md\n' > "$T_TMP/decl"; cat "$R/contracts/suite-paths.txt" >> "$T_TMP/decl"
 cp "$R/contracts/suite-paths.txt" "$T_TMP/decl.keep"; cp "$T_TMP/decl" "$R/contracts/suite-paths.txt"
-got="$(HARBOR_ROOT="$R" sh "$SC" manifest tests/x/a.sh | awk '$2 ~ /^src\/c/ { print $2 }' | sort | tr '\n' ' ')"
+got="$(HARBOR_SCOPE_ROOT="$R" sh "$SC" manifest tests/x/a.sh | awk '$2 ~ /^src\/c/ { print $2 }' | sort | tr '\n' ' ')"
 cm() { case "$1" in src/c/*.txt|src/c/?.md) echo "$1" ;; esac; }   # the same globs, as suite-select reads them
 want="$(for p in src/c/x.txt src/c/d/y.txt src/c/a.md src/c/ab.md src/cx.txt; do cm "$p"; done | sort | tr '\n' ' ')"
 t_eq "* crosses /, ? is one character, the dot is literal" "$want" "$got"

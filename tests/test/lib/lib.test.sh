@@ -48,9 +48,9 @@ o="$(HARBOR_ADMISSION_DISABLE=1 HELM_DISABLE_FLOOR=1 CLOUD_POSTURE=deny child 't
 t_has 'HOME, config dir and knobs are the sandbox' "$o" "rc=0"
 _ct="$(printf '%s\n' "$o" | sed -n 's/^tmp=//p')"
 [ -n "$_ct" ] && [ ! -e "$_ct" ] && t_pass || t_fail "the child's sandbox was not removed: ${_ct:-no path printed}"
-# harbor#773: CI's HARBOR_SUITE_COUNTS reached floor.status-test through its caller.
-o="$(export HARBOR_SUITE_COUNTS=floor-test=1,normalize-test=1 HARBOR_ROOT=/elsewhere HARBOR_WORKFLOW=/x.yml FAST=1 HARBOR_IN_SUITE=1
-     child 't_section a; t_eq x 1 1; printf "cleared:%s|%s|%s|%s kept:%s\n" "${HARBOR_SUITE_COUNTS-unset}" "${HARBOR_ROOT-unset}" "${HARBOR_WORKFLOW-unset}" "${FAST-unset}" "${HARBOR_IN_SUITE-unset}"; t_done')"
+# harbor#773: CI's HARBOR_STATUS_SUITE_COUNTS reached floor.status-test through its caller.
+o="$(export HARBOR_STATUS_SUITE_COUNTS=floor-test=1,normalize-test=1 HARBOR_SCOPE_ROOT=/elsewhere HARBOR_STATUS_WORKFLOW=/x.yml FAST=1 HARBOR_TEST_IN_SUITE=1
+     child 't_section a; t_eq x 1 1; printf "cleared:%s|%s|%s|%s kept:%s\n" "${HARBOR_STATUS_SUITE_COUNTS-unset}" "${HARBOR_SCOPE_ROOT-unset}" "${HARBOR_STATUS_WORKFLOW-unset}" "${FAST-unset}" "${HARBOR_TEST_IN_SUITE-unset}"; t_done')"
 t_has "the caller's HARBOR_* knobs and status-gen's FAST never reach a suite" "$o" 'cleared:unset|unset|unset|unset '
 t_has '...but T_PASS_ENV, the re-entry marker, does' "$o" ' kept:1'
 # harbor#824: git exports GIT_DIR into every hook it fires (GIT_WORK_TREE/GIT_INDEX_FILE from a

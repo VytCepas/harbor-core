@@ -64,7 +64,7 @@ LIVE="$HOME/.claude"
 set_gates() {
   GATE="$CFG/.helm-dispatch"; RULES="$GATE/rules"; LEDGER="$GATE/ledger"; SPEND="$GATE/spend"; SPAWN_ON="$GATE/spawn.on"
   KILL="$CFG/.harbor-autoship.off"; KILL_LIVE="$(lexcanon "$LIVE")/.harbor-autoship.off"
-  RECEIPT="${HARBOR_CACHE_DIR:-$CFG/cache}/event-dispatch-state.json"
+  RECEIPT="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$CFG/cache}}/event-dispatch-state.json"
 }
 set_gates
 # The ship contract's kill switch (SHIP-CONTRACT §4), read in the config dir AND the live ~/.claude: a dispatcher
@@ -78,7 +78,7 @@ HANDLERS='status-fleet-snapshot-refresh.sh alert-notify.sh session-notify.sh ses
 # A handler or agent starts from env -i and gets only these (harbor#1044 review #5): no key or token reaches it.
 # OAuth still works: macOS reads the login keychain as $USER, keyed to CLAUDE_CONFIG_DIR when set; Linux reads
 # $HOME/.claude/.credentials.json (code.claude.com/docs/en/authentication, "Credential management").
-KEEP_ENV='HOME USER LOGNAME SHELL TMPDIR LANG CLAUDE_CONFIG_DIR HARBOR_EVENT_DIR HARBOR_CACHE_DIR HARBOR_EVENT_BUS_SKEW'
+KEEP_ENV='HOME USER LOGNAME SHELL TMPDIR LANG CLAUDE_CONFIG_DIR HARBOR_EVENT_DIR HARBOR_SCOPE_CACHE_DIR HARBOR_CACHE_DIR HARBOR_EVENT_BUS_SKEW'   # HARBOR_CACHE_DIR: the old name, until 2026-11-15 (harbor#961 W5)
 US="$(printf '\037')"
 NL='
 '
@@ -161,7 +161,7 @@ need_jq() { command -v jq >/dev/null 2>&1 || fail "[check:event.dispatch] jq is 
 alarm() {
   log_warn "[check:$1] $2"
   now
-  _cl="${HARBOR_CACHE_DIR:-$CFG/cache}"
+  _cl="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$CFG/cache}}"
   { mkdir -p "$_cl" && printf '[check:%s] %s %s\n' "$1" "$(iso)" "$2" >> "$_cl/checks.log"; } 2>/dev/null || :
 }
 

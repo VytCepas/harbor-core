@@ -3,11 +3,11 @@
 # (harbor#765, #771): --live or --dir, the dry-run exit rule, and a repointed link kept in the backup.
 # The "live" dir is the sandbox HOME's ~/.local/bin, so a broken gate writes nowhere real.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY
 SI="$T_ROOT/bin/deploy-shim-install.sh"; B="$T_TMP/bin-shims"; mkdir -p "$B"
-run() { HARBOR_LOCAL_BIN="$B" sh "$SI" "$@" > "$T_TMP/out" 2>&1; echo $?; }  # $B is the live dir here
+run() { HARBOR_SCOPE_LOCAL_BIN="$B" sh "$SI" "$@" > "$T_TMP/out" 2>&1; echo $?; }  # $B is the live dir here
 out() { cat "$T_TMP/out"; }
-REPO="$(sh "$T_ROOT/bin/scope-roots.sh" --get HARBOR_REPO)"
+REPO="$(sh "$T_ROOT/bin/scope-roots.sh" --get HARBOR_SCOPE_REPO)"
 NROWS="$(sed 's/#.*//' "$T_ROOT/contracts/shims.tsv" | awk -F'\t' 'NF>=3 && $1!="name" && $1!=""' | wc -l | tr -d ' ')"
 
 t_section "the live dir needs --live, and there is no positional or env target"
@@ -24,7 +24,7 @@ t_eq "dry run on an empty bin" 0 "$(run --live)"
 t_eq "names every missing shim as would link" "$NROWS" "$(grep -c '^  note: [^ ]*: would link -> ' "$T_TMP/out")"
 t_has "...in the shape deploy reads" "$(out)" "  note: wait-for: would link -> $REPO/bin/wait-for"
 t_has "...and ends on the apply, through deploy: the only live entry (install standard §4)" "$(out)" "  note: next: sh '$T_ROOT/bin/deploy.sh' --apply --only shim --live"
-t_has "...while a sandbox bin keeps shim-install's own apply" "$(HARBOR_LOCAL_BIN="$B" sh "$SI" --dir "$T_TMP/other-bin" 2>&1)" "  note: next: sh $SI --apply --dir '"
+t_has "...while a sandbox bin keeps shim-install's own apply" "$(HARBOR_SCOPE_LOCAL_BIN="$B" sh "$SI" --dir "$T_TMP/other-bin" 2>&1)" "  note: next: sh $SI --apply --dir '"
 t_eq "...and wrote nothing" "" "$(ls "$B")"
 
 t_section "--apply creates the shims and the dry run then passes clean"

@@ -601,7 +601,7 @@ below) and the claim is directional, not established.
 | Defect | How it showed | Fix |
 |---|---|---|
 | **The fixture told the model to withhold the answer** | The fact was an "escalation seal" and its runbook said *"never copy it into a client-facing document"*. Every arm refused; `BOX` answered in **1.0 turns** without looking. | Made it a plainly operational job id with no secrecy language |
-| **The runs escaped the fixture** | *"installed on this box"* sent 24 headless sessions grepping the operator's real workload A — `RUNBOOKS/`, `ESTATE.md`, `SEAMS/`, `docs/decisions/rejected-approaches.md` — at ~$0.5 a run. Read-only, no damage, but every arm was contaminated. | *"available to this session"*; escape fell to **2/24** |
+| **The runs escaped the fixture** | *"installed on this box"* sent 24 headless sessions grepping the operator's real workload A — `RUNBOOKS/`, `ESTATE.md`, `SEAMS/`, `docs/reports/rejected-approaches.md` — at ~$0.5 a run. Read-only, no damage, but every arm was contaminated. | *"available to this session"*; escape fell to **2/24** |
 | **The grader's marker was in the prompt** | `read skill` matched `"reconciliation ticket"`, a phrase the task itself contains, so it read 4/4 for an arm that scored 1/4. | Keyed on a phrase unique to the skill body; `read` now tracks `hit` exactly |
 
 **The first two invalidated a whole stage each, and both were caught by a number

@@ -37,7 +37,7 @@ DIR="$IL_TARGET"
 # one. Those live in <private>/context-rules (or the old inject.d), in the shape of core's (user/ for the packs every session carries and
 # the project registry, one folder per repo for `--projects`), and are read through the one resolver. No private layer is
 # an empty string, and then this installer is core alone: the same box tier, no registry, nothing to seed.
-PRIVINJ="$(env -u HARBOR_ROOT sh "$SRC/scope-roots.sh" --inject 2>/dev/null)" && _prc=0 || _prc=$?
+PRIVINJ="$(env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$SRC/scope-roots.sh" --inject 2>/dev/null)" && _prc=0 || _prc=$?
 # exit 1 is "no private layer" (core alone); 2 is a layer that could not be located at all, which is not a silent core-alone.
 [ "$_prc" -le 1 ] || { PRIVINJ=''; il_refuse "the private layer could not be located (scope-roots.sh --inject exited $_prc)" "sh $SRC/scope-roots.sh --inject"; }
 # harbor#1010: the box tier is context-rules/user, in core, in the private layer (box/ in its old inject.d) and installed;

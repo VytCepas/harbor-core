@@ -19,7 +19,7 @@ esac
 exit 9
 STUB
 chmod +x "$T_BIN/gh"
-TMP_EDITLOG="$T_TMP/edits.log"; HARBOR_ISSUE_REPO=owner/repo; export TMP_EDITLOG HARBOR_ISSUE_REPO
+TMP_EDITLOG="$T_TMP/edits.log"; HARBOR_STANDARD_ISSUE_REPO=owner/repo; export TMP_EDITLOG HARBOR_STANDARD_ISSUE_REPO
 STUB_LABELS="$T_TMP/l1"; STUB_BODY="$T_TMP/b1"; STUB_LIST="$T_TMP/fl"; export STUB_LABELS STUB_BODY STUB_LIST
 STUB_LIST_FAIL=no; export STUB_LIST_FAIL   # yes: the stub fails `gh issue list`, as a network or auth error would
 kinds()  { awk -F'\t' -v k="$2" '/^#/ || NF < 4 { next } $1 == k { n++ } END { print n+0 }' "$1"; }  # <tax> <kind>
@@ -43,7 +43,7 @@ t_eq "--labels prints every theme the file declares" "$(kinds "$TAX_REAL" theme)
   "$(sh "$SUT" --labels | awk '/^themes:/{f=1;next} f && NF {n++} END{print n+0}')"
 t_eq "the taxonomy declares at least one type and one theme" yes \
   "$([ "$(kinds "$TAX_REAL" type)" -gt 0 ] && [ "$(kinds "$TAX_REAL" theme)" -gt 0 ] && echo yes)"
-t_eq "a missing taxonomy exits 2, not read as empty" 2 "$(HARBOR_TAXONOMY="$T_TMP/nope.tsv" sh "$SUT" --labels >/dev/null 2>&1; echo $?)"
+t_eq "a missing taxonomy exits 2, not read as empty" 2 "$(HARBOR_STANDARD_TAXONOMY="$T_TMP/nope.tsv" sh "$SUT" --labels >/dev/null 2>&1; echo $?)"
 
 t_section "every theme glob matches a tracked path (the arm that earns column 3)"
 t_eq "no theme glob is dead" "" "$(dead "$TAX_REAL")"
@@ -114,7 +114,7 @@ status	blocked:review	-	waiting on a PR review
 TAXEOF
 aud() { # <issue-list> [--strict] — the audit's stdout; its exit lands in $T_TMP/aud.rc
   STUB_LIST="$1" STUB_LABELS_LIVE="$T_TMP/live.txt" STUB_GRAPH="$T_TMP/graph.json" \
-    HARBOR_TAXONOMY="$AUD_TAX" sh "$SUT" --audit ${2:-} 2>/dev/null; echo "exit $?" > "$T_TMP/aud.rc"
+    HARBOR_STANDARD_TAXONOMY="$AUD_TAX" sh "$SUT" --audit ${2:-} 2>/dev/null; echo "exit $?" > "$T_TMP/aud.rc"
 }
 issues() { printf "$2" > "$T_TMP/$1"; printf '%s' "$T_TMP/$1"; }  # <name> <lines> — prints the list file
 graph()  { printf '{"data":{"repository":{"issues":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[%s]}}}}\n' "$1" > "$T_TMP/graph.json"; }

@@ -7,7 +7,7 @@ The directory is `${HARBOR_SCOPE_PRIVATE:-$PORT_ROOT/harbor-private}`, with `POR
 
 | File | Format | Read by |
 |---|---|---|
-| `repos.tsv` | `id` TAB `path` TAB `kind` TAB `remote`, optionally TAB `topology` TAB `interaction`; `#` lines and the header skipped | `bin/scope-roots.sh --repos`, `--repo <id>`, `--remote <id>`, `--topology <id>`, `--platform-ids`, `--registry-check`; through `--platform-ids`, `lint-domain.sh --repos` and `lint-constitution.sh` know the platform's own repos; through `--repo` and `--remote`, `deploy-bootstrap.sh` finds a pack's checkout and where to clone it from |
+| `repos.tsv` | `id` TAB `path` TAB `kind` TAB `remote`, optionally TAB `topology` TAB `interaction` and TAB `note`; `#` lines and the header skipped | `bin/scope-roots.sh --repos`, `--repo <id>`, `--remote <id>`, `--topology <id>`, `--platform-ids`, `--registry-check`; through `--platform-ids`, `lint-domain.sh --repos` and `lint-constitution.sh` know the platform's own repos; through `--repo` and `--remote`, `deploy-bootstrap.sh` finds a pack's checkout and where to clone it from |
 | `harbor.toml` | flat TOML subset (below) | `bin/scope-roots.sh --conf <key>`; `bin/deploy.sh` and `bin/deploy-bootstrap.sh` read `components` and `packs` through it |
 | `terms.tsv` | client and system terms, in the core `terms.tsv` columns | `bin/lint-name.sh`, the naming overlay (D-85) |
 | `leaks.tsv` | the leak gate's patterns, never terms: `id` TAB `kind` TAB `pattern` TAB `note`, kind one of literal, word, domain, email-domain, regex | `bin/lint-leaks.sh` (D-79, D-85; harbor#1149) |
@@ -46,16 +46,18 @@ The directory is `${HARBOR_SCOPE_PRIVATE:-$PORT_ROOT/harbor-private}`, with `POR
   Topologies type, one of `platform`, `stream-aligned`, `enabling`, `complicated-subsystem`; `interaction` is its mode
   with the platform, one of `x-as-a-service`, `collaboration`, `facilitating`; `-` is unset in either. A four-field row
   reads as `-` `-`. Only `--registry-check` judges the two vocabularies; `--topology <id>` prints them, TAB-separated.
+  An optional seventh column, `note`, is free text no reader prints; `proposed` marks a topology or interaction value that
+  is a guess awaiting the operator's yes, and a row without it is decided.
 - `--platform-ids` prints the platform's own repos, one id per line: the rows whose `kind` is `control-plane`,
   `scaffolder` or `fleet-controller` (kind, not topology: a workload can be a platform to its users and is still not
-  harbor's), and with no registry the first segment of the roots table's `HARBOR_REPO`, `HARBOR_SCOPE_SCAFFOLDER` and
+  harbor's), and with no registry the first segment of the roots table's `HARBOR_SCOPE_REPO`, `HARBOR_SCOPE_SCAFFOLDER` and
   `HARBOR_SCOPE_FLEET_CONTROLLER` rows.
 - `remote` is a URL with no credentials, or `-`. `deploy-bootstrap.sh` clones a missing checkout from it: an `https://` URL, or a github.com
   `owner/repo` (`https://`, `git@github.com:` or `ssh://git@github.com/`; `gh` when logged in, else git over https). `-` means
   `<owner of harbor's origin>/<id>`. Anything else (a `user:token@`, `http://`, `ext::`, a query) refuses the run before any write.
 - `--repo <id>` prints the resolved checkout. When a registry exists and lacks the row it is "not registered": exit 1, nothing on stdout.
 - `--remote <id>` prints the row's `remote`. No registry, no such row, and a remote of `-` or empty are each exit 1 with nothing on stdout (the caller then applies its own rule); an unreadable registry is exit 2.
-- `--get <VAR>` for a `roots.tsv` row on the workspace base (`HARBOR_SCOPE_FLEET_CONTROLLER`, `HARBOR_FLEET_FILE`, `HARBOR_SCOPE_SCAFFOLDER`) follows the registry: the row's first path segment is a repo id, and the registry's path for it replaces that segment. An id the registry lacks, or no registry, keeps the table's path; an exported override wins over both. A script that needs a sibling's checkout asks for its role this way and names no repo (harbor#966).
+- `--get <VAR>` for a `roots.tsv` row on the workspace base (`HARBOR_SCOPE_FLEET_CONTROLLER`, `HARBOR_SCOPE_FLEET_FILE`, `HARBOR_SCOPE_SCAFFOLDER`) follows the registry: the row's first path segment is a repo id, and the registry's path for it replaces that segment. An id the registry lacks, or no registry, keeps the table's path; an exported override wins over both. A script that needs a sibling's checkout asks for its role this way and names no repo (harbor#966).
 - **No registry file:** `--repos` answers from `contracts/roots.tsv`, and `--repo <id>` prints `PORT_ROOT/<id>` whether or not that directory exists, the old literal, so a box with no layer behaves as before. `harbor scope install --seed-from-projects` writes the registry.
 
 ## `harbor.toml`
@@ -73,7 +75,7 @@ any other shape (a backslash or an empty string inside a value included) are ref
 | `mail_account` | the mailbox a `cu` message link opens in (`?authuser=`) | unset: the link carries no authuser and opens the browser's default account. `CU_MAIL_ACCOUNT` and a caller's argument win. `cu` installs by copy, so it reads this one line itself instead of calling `scope-roots.sh` |
 | `github_owners` | GitHub owners besides the operator's own account whose issue URLs `ticket-note.sh` counts as the operator's tickets | unset: the operator's account alone. `TICKET_NOTE_GH_OWNERS` replaces the whole list |
 | `live_walk_repo` | the `repos.tsv` id of the repo client live sites are walked through, which `harbor chrome` names when it refuses a client host | unset: the refusal says no live-walk repo is set, never a guessed path |
-| `browser_live_url` | the storefront `harbor browser --self-test-live` loads, one with a consent banner | unset: that arm is SKIPPED (exit 2), never a pass. `HARBOR_BROWSER_LIVE_URL` wins |
+| `browser_live_url` | the storefront `harbor browser --self-test-live` loads, one with a consent banner | unset: that arm is SKIPPED (exit 2), never a pass. `HARBOR_ACCESS_BROWSER_LIVE_URL` wins |
 | `confinement_strict` | `"true"` closes the confinement's unsandboxed retry (#555 P4): `deploy-confinement.sh` writes `allowUnsandboxedCommands: false`. The operator's edit, after the P1 week passes #555 decision 10 | unset = `false`: the retry stays open |
 | `confinement_credentials` | `"true"` writes the `secret` rows of the confinement paths as `sandbox.credentials` deny (#555 P5) | unset = `false` |
 | `confinement_skip` | `"true"` lets a confined Bash call skip the admission rules `controls.tsv` marks `covered` (#555 P3). The operator's edit, after decision 10 (b) passes | unset = `false`: every rule runs on every call |
@@ -134,7 +136,7 @@ every box needs and none that names a client or another repo. The rest is here, 
 --inject` prints `<private>/context-rules`, or the old `<private>/inject.d` while the layer has not moved (harbor#1010), and
 `--projects` the registry, `<rules>/user/projects.tsv` (`box/projects.tsv` under `inject.d/`); with no layer, neither
 directory or no registry each prints nothing, says
-why on stderr and exits 1, and no reader treats that as a pass: the installer is core alone, `memory-route` stands
+why on stderr and exits 1, and no reader treats that as a pass: the installer is core alone, `memory.route` stands
 down naming where it looked, and lint IJ2 says it did not check.
 
 - **It is data.** `bin/context-injection-install.sh` copies only `*.md` and `projects.tsv` from `user/` (or `box/`) into

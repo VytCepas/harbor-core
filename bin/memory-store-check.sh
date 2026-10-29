@@ -215,7 +215,7 @@ bytes() { [ -f "$1" ] && wc -c < "$1" | tr -d ' ' || echo 0; }
 # ── the corpus ──────────────────────────────────────────────────────────────
 # memory-lint's walk, for the same reasons: dot-directories are history or
 # another scope, indexes/ is the derived tier, and -print0 is not portable.
-# -L, AND IT IS NOT COSMETIC (harbor#608). docs/reference/checks.md's `memory-route` row
+# -L, AND IT IS NOT COSMETIC (harbor#608). docs/reference/checks.md's `memory.route` row
 # routes a governed repo's silo to the one $HOME store BY SYMLINK, so $STORE is
 # a LINK and not a directory for 25 of this box's 200 silos — harbor's own and
 # all three trio repos among them. `find` does not follow a symlinked START
@@ -359,8 +359,8 @@ N_ORPHAN="$(wc -l < "$TMP/orphan" | tr -d ' ')"
 # knob exists for a box whose index legitimately carries more structure. What the
 # overage is actually made of, same measurement: 34 of 52 pointer lines exceed
 # 150 B, median 200, longest 576 — so ~94% of it is pointers, not preamble.
-BYTES_PER_PTR="${HARBOR_INDEX_BYTES_PER_POINTER:-150}"
-IDX_STRUCTURE="${HARBOR_INDEX_STRUCTURE_BYTES:-600}"
+BYTES_PER_PTR="${HARBOR_MEMORY_INDEX_BYTES_PER_POINTER:-${HARBOR_INDEX_BYTES_PER_POINTER:-150}}"
+IDX_STRUCTURE="${HARBOR_MEMORY_INDEX_STRUCTURE_BYTES:-${HARBOR_INDEX_STRUCTURE_BYTES:-600}}"
 ALLOW=$(( N_PTR_ALWAYS * BYTES_PER_PTR + IDX_STRUCTURE ))
 
 # ZERO POINTERS IS NOT A ZERO ALLOWANCE — IT IS A PARSE THAT RETURNED NOTHING.

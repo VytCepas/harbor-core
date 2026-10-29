@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # harbor merge-stack for a repo that is not harbor (harbor#1060, ship contract 5a.6): gate-merge-check.sh comes from the tool's
-# own install dir, with HARBOR_REPO and the required-checks list as origin/<default branch> holds it, empty when it has none
+# own install dir, with HARBOR_SCOPE_REPO and the required-checks list as origin/<default branch> holds it, empty when it has none
 # (5b.11: never the working tree). A repo with NO bin/ merges.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/ci/merge-stack/fixture.sh"
@@ -42,9 +42,9 @@ plain
 t_eq "the mutant is refused at the preflight" 1 "$(run "$M/bin/gate-merge-stack.sh")"
 t_has "...for the missing script in the repo" "$(cat "$T_TMP/out")" "no $H/bin/gate-merge-check.sh"
 t_eq "...and merges nothing" "" "$(cat "$MS_FIX/merge.log" 2>/dev/null)"
-ms_mutant "M17 the repo is not passed to merge-check" 's/HARBOR_REPO="\$R"; export HARBOR_REPO; //'
+ms_mutant "M17 the repo is not passed to merge-check" 's/HARBOR_SCOPE_REPO="\$R"; export HARBOR_SCOPE_REPO; //'
 plain; run "$M/bin/gate-merge-stack.sh" >/dev/null
-t_eq "the mutant's merge-check got no HARBOR_REPO" "repo= rc=/ br=main" "$(sed 's#rc=/[^ ]*#rc=/#' "$MS_FIX/env.log")"
+t_eq "the mutant's merge-check got no HARBOR_SCOPE_REPO" "repo= rc=/ br=main" "$(sed 's#rc=/[^ ]*#rc=/#' "$MS_FIX/env.log")"
 
 t_section "another repo's own docs/index.html is never taken from the base, nor regenerated (red-proof)"
 site() { ms_world; mkdir -p "$W/docs"; echo "theirs v0" > "$W/docs/index.html"; wg add -A; wg commit -q -m site; wg push -q origin "HEAD:$MS_DEF" 2>/dev/null

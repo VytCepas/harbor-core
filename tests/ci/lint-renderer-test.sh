@@ -11,7 +11,7 @@ mk() { rm -rf "$F"; mkdir -p "$F/bin" "$F/hooks" "$F/standards/naming"; cp "$T_R
   printf '%s\n' '#!/bin/sh' 'N="$(sh bin/lint-name.sh --render branch type=fix issue=1 slug=x)"' 'git switch -c "$N"' > "$F/bin/worktree.sh"
   printf '%s\n' '#!/bin/sh' 'N="$(sh bin/lint-name.sh --render issue-title family=a)"' 'gh issue create --title "$N"' > "$F/bin/lint-findings.sh"
   printf '%s\n' '#!/bin/sh' 'N="$(sh bin/lint-name.sh --render branch type=ci issue=1 slug=x)"' 'git switch -c "$N"' > "$F/bin/ci-runs-on.sh"; }
-run() { HARBOR_ROOT="$F" sh "$LR" "$@" 2>&1; }
+run() { HARBOR_SCOPE_ROOT="$F" sh "$LR" "$@" 2>&1; }
 
 t_section "writers that call the renderer are clean"
 mk; out="$(run)"; rc=$?

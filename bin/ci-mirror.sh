@@ -7,7 +7,7 @@
 #   ci-mirror.sh --status <pr>      set the `public-ci` commit status on the harbor PR head from the mirror branch's run
 #   ci-mirror.sh --close <pr>       close the mirror PR and delete its branch
 #
-# Staging and every gate are bin/deploy-push.sh's, run from THIS checkout against the PR head (HARBOR_ROOT), so a PR cannot
+# Staging and every gate are bin/deploy-push.sh's, run from THIS checkout against the PR head (HARBOR_SCOPE_ROOT), so a PR cannot
 # weaken the gate that judges it. Any red gate and nothing is pushed. The mirror checkout (HARBOR_CORE_MIRROR_DIR, required;
 # its origin is harbor-core) must be clean and on a branch; the branch starts from origin/main
 # and each mirror is two more snapshot commits on it, the base then the head, so a push is a fast-forward and never forced.
@@ -22,7 +22,7 @@
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
 . "$SRC/library-log.sh"
 log_init ci-mirror
 LOG_FD=2
@@ -132,7 +132,7 @@ fi
 git -C "$ROOT" worktree add -q --detach "$WT" "$HEAD_SHA" || refuse "cannot check out $HEAD_SHA" ""
 BASE_SHA="$(git -C "$ROOT" merge-base "$HEAD_SHA" HEAD 2>/dev/null)" || refuse "no merge-base of $HEAD_SHA and this checkout's HEAD" "check out the PR's base with its history (fetch-depth: 0)"
 
-gate() { HARBOR_ROOT="$WT" sh "$SRC/deploy-push.sh" "$@"; }
+gate() { HARBOR_SCOPE_ROOT="$WT" sh "$SRC/deploy-push.sh" "$@"; }
 
 if [ "$DRY" = 1 ]; then
   gate --dry-run "$TDIR" || refuse "a gate is red; a mirror would push nothing" "each release gate row above names its fix"
@@ -156,7 +156,7 @@ fi
 
 # The base first, so the head's commit diffs against it. Its gates are deploy-push's leak, secrets, history and domain rows.
 git -C "$ROOT" worktree add -q --detach "$WTB" "$BASE_SHA" || refuse "cannot check out the base $BASE_SHA" ""
-HARBOR_ROOT="$WTB" sh "$SRC/deploy-push.sh" --ci-base "$TDIR" || refuse "the PR's base $(printf '%s' "$BASE_SHA" | cut -c1-12) failed a gate; nothing was pushed" "the release gate rows above name the fix"
+HARBOR_SCOPE_ROOT="$WTB" sh "$SRC/deploy-push.sh" --ci-base "$TDIR" || refuse "the PR's base $(printf '%s' "$BASE_SHA" | cut -c1-12) failed a gate; nothing was pushed" "the release gate rows above name the fix"
 BASE_COMMIT="$(git -C "$TDIR" rev-parse HEAD)"
 
 # Staging, history scan and every gate: deploy-push's, unchanged. Refused or red, it wrote nothing and nothing is pushed.

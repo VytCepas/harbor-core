@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# reply-shape (harbor#952, #949 D-23) — advisory Stop hook. Registered in docs/reference/checks.md as `reply-shape`.
+# reply-shape (harbor#952, #949 D-23) — advisory Stop hook. Registered in docs/reference/checks.md as `session.reply-shape`.
 # Flags, never blocks, a turn whose reply breaks the shape: a turn that WROTE (Write, Edit, a writing
 # Bash call) whose final reply cites no command output, test result or diff; or a reply far longer
 # than an answer-first reply runs.
@@ -80,7 +80,7 @@ if [ "$WORDS" -gt "$MAX_WORDS" ]; then
 fi
 [ -n "$MSG" ] || exit 0
 
-MSG="[check:reply-shape] warn (advisory, never blocks)
+MSG="[check:session.reply-shape] warn (advisory, never blocks)
 $MSG
 Not checked: whether line one answers the question. That stays review-only.
 Disable: touch $CFG/reply-shape.off"

@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # lint FL1 and FL2, and the finding emitter (harbor#590, contracts/finding.md). FL1: lanes are declared
 # once, by a person, and every row joins. FL2: every ADVISORY line records its subject. The emitter:
-# with HARBOR_FINDINGS_OUT set a run writes R/A lines, and a count never reaches a subject.
+# with HARBOR_LINT_FINDINGS_OUT set a run writes R/A lines, and a count never reaches a subject.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/checks/lint-fixture.sh"
 
@@ -70,14 +70,14 @@ t_has "an unpaired line" "$(viol FL2 "$F2")" "bin/lint-conventions.sh:3 prints A
 printf '%s\n' "_adv drift.config-bin a; echo \"  ADVISORY [drift.sandbox-copy] wrong id\"" > "$F2/bin/lint-conventions.sh"
 t_has "a line paired with another rule's id" "$(viol FL2 "$F2")" "prints ADVISORY [drift.sandbox-copy] with no"
 
-t_section "the emitter: records with HARBOR_FINDINGS_OUT, nothing without it"
+t_section "the emitter: records with HARBOR_LINT_FINDINGS_OUT, nothing without it"
 E="$TMP/emit"; mkdir -p "$E/bin"
 { echo '#!/usr/bin/env sh'; _i=0; while [ "$_i" -lt 330 ]; do echo "echo line $_i"; _i=$((_i + 1)); done; } > "$E/bin/big.sh"
 : > "$TMP/emit.tsv"
-HARBOR_FINDINGS_OUT="$TMP/emit.tsv" HARBOR_ROOT="$E" sh "$LINT" --only G1 >/dev/null 2>&1
+HARBOR_LINT_FINDINGS_OUT="$TMP/emit.tsv" HARBOR_SCOPE_ROOT="$E" sh "$LINT" --only G1 >/dev/null 2>&1
 t_eq "the rule that ran, and its subject, under its id" "R lint.long-file-reason|A lint.long-file-reason bin/big.sh|" "$(tr '\t\n' ' |' < "$TMP/emit.tsv")"
 t_hasnt "the line count stays in the message" "$(cat "$TMP/emit.tsv")" "330"
 t_has "and the census still prints it" "$(lint1 G1 "$E")" "ADVISORY [lint.long-file-reason] bin/big.sh is 330 lines"
-t_eq "unset, nothing is written anywhere" "" "$(cd "$E" && HARBOR_ROOT="$E" sh "$LINT" --only G1 >/dev/null 2>&1; find "$E" -newer "$TMP/emit.tsv" -type f)"
+t_eq "unset, nothing is written anywhere" "" "$(cd "$E" && HARBOR_SCOPE_ROOT="$E" sh "$LINT" --only G1 >/dev/null 2>&1; find "$E" -newer "$TMP/emit.tsv" -type f)"
 
 t_done

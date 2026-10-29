@@ -20,7 +20,7 @@
 #   il_session <fix>             inside a Claude session: FAIL on --apply, a note on a dry run (the exception)
 #   il_loss <what> <fix>         refused without --accept-loss; with it, a WARN naming exactly what is lost
 #   il_stop                      on --apply, end the run here (exit 1) if anything was refused
-#   il_next [--deploy-does] <cmd>   a next step; under deploy (HARBOR_DEPLOY=1) one deploy performs is skipped
+#   il_next [--deploy-does] <cmd>   a next step; under deploy (HARBOR_DEPLOY_ACTIVE=1) one deploy performs is skipped
 #   il_apply_cmd <component> [<implied word>…]   this run's --apply: on the live box, deploy.sh beside this
 #                                script with --only <component> (§4), unless the run holds a word deploy lacks;
 #                                an implied word (skills-install's --all) is one --only <component> already means
@@ -29,7 +29,7 @@
 #   il_first_run_cmd [<checkout>]   the first-run step, spelled for its gate: `sh <checkout>/bin/harbor scope install`,
 #                                which seeds <config dir>/settings.json when absent (harbor#457). The checkout is
 #                                the argument, else the one this script runs from (a bin/harbor beside it), else
-#                                HARBOR_REPO (scope-roots.sh beside this script), else the conventional path
+#                                HARBOR_SCOPE_REPO (scope-roots.sh beside this script), else the conventional path
 #   il_installed <config dir>    0 when a deploy has installed here (bin/ or .harbor-manifest): a missing settings.json
 #                                is then a file LOST after the first run, not a first run not yet taken
 #   il_lost_settings_fix <config dir> <deploy-restore.sh>   the fix for that: restore's dry run when a deploy snapshot exists,
@@ -226,7 +226,7 @@ il_stop() {
 }
 
 il_next() { # [--deploy-does] <command>
-  if [ "${1-}" = --deploy-does ]; then shift; [ "${HARBOR_DEPLOY:-0}" = 1 ] && return 0; fi
+  if [ "${1-}" = --deploy-does ]; then shift; [ "${HARBOR_DEPLOY_ACTIVE:-${HARBOR_DEPLOY:-0}}" = 1 ] && return 0; fi
   log_note "next: ${1-}"
 }
 
@@ -266,8 +266,8 @@ il_first_run_cmd() { # [<checkout>]
     printf 'sh %s scope install' "$(_il_sq "${IL_SELF%/*}/harbor")"; return 0
   fi
   if [ -z "$_fr_r" ]; then
-    _fr_r="$(sh "${IL_SELF%/*}/scope-roots.sh" --get HARBOR_REPO 2>/dev/null || :)"
-    [ -n "$_fr_r" ] || _fr_r="${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}"  # spelled as contracts/roots.tsv has it (scope-roots.sh --check)
+    _fr_r="$(sh "${IL_SELF%/*}/scope-roots.sh" --get HARBOR_SCOPE_REPO 2>/dev/null || :)"
+    [ -n "$_fr_r" ] || _fr_r="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}"  # spelled as contracts/roots.tsv has it (scope-roots.sh --check)
   fi
   printf 'sh %s scope install' "$(_il_sq "$_fr_r/bin/harbor")"
 }

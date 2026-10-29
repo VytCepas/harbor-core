@@ -5,7 +5,7 @@
 # Then the install standard (harbor#765, #771): --live or --dir, the dry-run exit rule, --accept-loss,
 # and a backup of what an install replaces or a rename removes.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY
 SUT="$T_ROOT/bin/skill-install.sh"; ROOT="$T_TMP/repo"; CFG="$CLAUDE_CONFIG_DIR"
 mkdir -p "$ROOT/bin" "$ROOT/skills/alpha" "$ROOT/vendor/skills/beta" "$CFG/skills"
 cp "$SUT" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/deploy-install-lib.sh" "$T_ROOT/bin/library-fs.sh" "$ROOT/bin/"

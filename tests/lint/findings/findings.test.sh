@@ -27,7 +27,7 @@ t_eq "one read, no write" "issue list" "$(tr '\n' '|' < "$GH_LOG" | sed 's/ -R.*
 
 t_section "--apply refuses a checkout that is not the published default branch"
 : > "$GH_LOG"; echo drift > "$PUB/untracked"
-t_exit "exit 1" 1 env HARBOR_ROOT="$PUB" sh "$F" reconcile --from "$TMP/r1" --apply
+t_exit "exit 1" 1 env HARBOR_SCOPE_ROOT="$PUB" sh "$F" reconcile --from "$TMP/r1" --apply
 t_eq "and nothing was read or written" 0 "$(grep -c . "$GH_LOG" | tr -d ' ')"
 rm -f "$PUB/untracked"
 
@@ -75,10 +75,10 @@ tty_run() {
   fi
 }
 t_section "a person at a terminal accepts; a wrong key typed back changes nothing"
-OUT="$(tty_run lint/drift.launchd-plist env HARBOR_ROOT="$PUB" sh "$F" accept lint/lint.long-file-reason --reason "reviewed")"
+OUT="$(tty_run lint/drift.launchd-plist env HARBOR_SCOPE_ROOT="$PUB" sh "$F" accept lint/lint.long-file-reason --reason "reviewed")"
 t_has "the mismatch is refused" "$OUT" "not lint/lint.long-file-reason — nothing changed"
 t_eq "still open" "2 OPEN  finding" "$(issue_of lint/lint.long-file-reason)"
-OUT="$(tty_run lint/lint.long-file-reason env HARBOR_ROOT="$PUB" sh "$F" accept lint/lint.long-file-reason --reason "the header says why (#578)")"
+OUT="$(tty_run lint/lint.long-file-reason env HARBOR_SCOPE_ROOT="$PUB" sh "$F" accept lint/lint.long-file-reason --reason "the header says why (#578)")"
 t_has "accepted" "$OUT" "is accepted"
 t_eq "closed not planned, labelled" "2 CLOSED NOT_PLANNED finding,finding:accepted" "$(issue_of lint/lint.long-file-reason)"
 
@@ -103,12 +103,12 @@ t_eq "and only once" 1 "$(jq '[.issues[] | select(.state == "OPEN" and (.body | 
 
 t_section "a store that cannot be read is a FAIL, never an empty store"
 : > "$GH_LOG"
-t_exit "exit 1" 1 env GH_FAIL=list HARBOR_ROOT="$PUB" sh "$F" reconcile --from "$TMP/r3" --apply
-t_has "it names the store" "$(GH_FAIL=list HARBOR_ROOT="$PUB" sh "$F" reconcile --from "$TMP/r3" 2>&1)" "could not read the finding store at o/r"
+t_exit "exit 1" 1 env GH_FAIL=list HARBOR_SCOPE_ROOT="$PUB" sh "$F" reconcile --from "$TMP/r3" --apply
+t_has "it names the store" "$(GH_FAIL=list HARBOR_SCOPE_ROOT="$PUB" sh "$F" reconcile --from "$TMP/r3" 2>&1)" "could not read the finding store at o/r"
 t_eq "and wrote nothing" 0 "$(writes)"
 
 t_section "report is the ages and the last write, never the census"
-OUT="$(HARBOR_ROOT="$PUB" HARBOR_FINDINGS_NOW=2026-10-07 sh "$F" report 2>&1)"
+OUT="$(HARBOR_SCOPE_ROOT="$PUB" HARBOR_LINT_FINDINGS_NOW=2026-10-07 sh "$F" report 2>&1)"
 t_has "when the store was last written" "$OUT" "last reconcile:  2026-10-07"
 t_has "the oldest open" "$OUT" "oldest open:"
 t_has "the age buckets" "$OUT" "under a week"
@@ -157,12 +157,12 @@ t_eq "…and the same day writes nothing" 0 "$(writes)"
 
 # ── the check tier (harbor#896) ──────────────────────────────────────────────
 t_section "log_receipt writes one atomic, valid receipt, and refuses a bad status or id"
-RD="$TMP/rl"; ( . "$T_ROOT/bin/library-log.sh"; log_receipt "$RD" memory-route red 'har"bor/wt' labkit )
-t_eq "valid JSON with its subjects" 'red ["har\"bor/wt","labkit"]' "$(jq -c -r '"\(.status) \(.subjects | tojson)"' "$RD/memory-route.json")"
-t_has "stamped" "$(jq -r .ran_at "$RD/memory-route.json")" "T"
-t_eq "a bad status returns 1" 1 "$( . "$T_ROOT/bin/library-log.sh"; log_receipt "$RD" memory-route amber x; echo $?)"
+RD="$TMP/rl"; ( . "$T_ROOT/bin/library-log.sh"; log_receipt "$RD" memory.route red 'har"bor/wt' labkit )
+t_eq "valid JSON with its subjects" 'red ["har\"bor/wt","labkit"]' "$(jq -c -r '"\(.status) \(.subjects | tojson)"' "$RD/memory.route.json")"
+t_has "stamped" "$(jq -r .ran_at "$RD/memory.route.json")" "T"
+t_eq "a bad status returns 1" 1 "$( . "$T_ROOT/bin/library-log.sh"; log_receipt "$RD" memory.route amber x; echo $?)"
 ( . "$T_ROOT/bin/library-log.sh"; log_receipt "$RD" 'Bad Id' red x || : )
-t_eq "a bad status leaves the receipt as it was" red "$(jq -r .status "$RD/memory-route.json")"
+t_eq "a bad status leaves the receipt as it was" red "$(jq -r .status "$RD/memory.route.json")"
 t_eq "a bad id writes nothing" 1 "$(find "$RD" -name '*.json' | grep -c .)"
 t_eq "no temp file is left" 0 "$(find "$RD" -name '.*' -type f | grep -c .)"
 
@@ -170,33 +170,33 @@ GH_STATE="$TMP/gh-check.json"; export GH_STATE
 records "$TMP/c0" lint.long-file-reason -- lint.long-file-reason:bin/big.sh
 
 t_section "check tier · a red receipt files check/<id> over its subjects, with the receipt as evidence"
-rcpt memory-route red 2026-10-21 harbor/wt-a labkit
+rcpt memory.route red 2026-10-21 harbor/wt-a labkit
 NOW=2026-10-21; OUT="$(rec "$TMP/c0" --apply)"
-t_has "filed, in the HEAL lane" "$OUT" "check/memory-route (2 subject(s)) · HEAL · filed"
-_cb="$(jq -r '[.issues[] | select(.body | contains("key=check/memory-route "))][0].body' "$GH_STATE")"
+t_has "filed, in the HEAL lane" "$OUT" "check/memory.route (2 subject(s)) · HEAL · filed"
+_cb="$(jq -r '[.issues[] | select(.body | contains("key=check/memory.route "))][0].body' "$GH_STATE")"
 t_has "digested over the subjects" "$_cb" "digest=$(sh "$F" digest harbor/wt-a labkit)"
-t_has "the rule line names the receipt" "$_cb" '`~/.claude/cache/checks/memory-route.json`'
+t_has "the rule line names the receipt" "$_cb" '`~/.claude/cache/checks/memory.route.json`'
 t_has "the evidence is the receipt" "$_cb" '"status":"red"'
 
 t_section "check tier · a stale receipt is not seen, never fixed"
-rcpt memory-route green 2026-10-21
+rcpt memory.route green 2026-10-21
 NOW=2026-10-25; OUT="$(rec "$TMP/c0" --apply)"
-t_has "not seen" "$OUT" "check/memory-route (#"
+t_has "not seen" "$OUT" "check/memory.route (#"
 t_has "and said so" "$OUT" "the rule did not run)"
-t_eq "still open" OPEN "$(jq -r '[.issues[] | select(.body | contains("key=check/memory-route "))][0].state' "$GH_STATE")"
+t_eq "still open" OPEN "$(jq -r '[.issues[] | select(.body | contains("key=check/memory.route "))][0].state' "$GH_STATE")"
 
 t_section "check tier · a fresh green receipt closes it as fixed"
-rcpt memory-route green 2026-10-25
+rcpt memory.route green 2026-10-25
 NOW=2026-10-25; OUT="$(rec "$TMP/c0" --apply)"
-t_has "fixed" "$OUT" "check/memory-route #"
-t_eq "closed completed, labelled" "CLOSED COMPLETED" "$(jq -r '[.issues[] | select(.body | contains("key=check/memory-route "))][0] | "\(.state) \(.stateReason)"' "$GH_STATE")"
+t_has "fixed" "$OUT" "check/memory.route #"
+t_eq "closed completed, labelled" "CLOSED COMPLETED" "$(jq -r '[.issues[] | select(.body | contains("key=check/memory.route "))][0] | "\(.state) \(.stateReason)"' "$GH_STATE")"
 t_has "the close says the receipt was green, not that a commit ran" "$(grep '^issue close' "$GH_LOG" | tail -1)" "its receipt was fresh and green on 2026-10-25"
 
 t_section "check tier · a stood-down run is a finding of its own"
-rcpt memory-route stood-down 2026-10-26
+rcpt memory.route stood-down 2026-10-26
 NOW=2026-10-26; OUT="$(rec "$TMP/c0" --apply)"
-t_has "filed again over stood-down" "$OUT" "check/memory-route → filed"
-t_has "with stood-down as its subject" "$(jq -r '[.issues[] | select(.body | contains("key=check/memory-route "))] | max_by(.number) | .body' "$GH_STATE")" '- `stood-down`'
+t_has "filed again over stood-down" "$OUT" "check/memory.route → filed"
+t_has "with stood-down as its subject" "$(jq -r '[.issues[] | select(.body | contains("key=check/memory.route "))] | max_by(.number) | .body' "$GH_STATE")" '- `stood-down`'
 
 t_section "check tier · a receipt whose id is not a docs/reference/checks.md row is refused, not filed"
 rcpt not-a-check red 2026-10-26 x
@@ -217,72 +217,103 @@ t_eq "...and a filing for it exists" 1 "$(jq '[.issues[] | select(.body | contai
 rm -f "$RCD/acme-feed.json"
 
 t_section "check tier · review #898: a receipt with an unknown status is refused, never read as a run"
-rcpt memory-route red 2026-10-26 harbor/wt-z
+rcpt memory.route red 2026-10-26 harbor/wt-z
 NOW=2026-10-26; rec "$TMP/c0" --apply > /dev/null
-rcpt memory-route amber 2026-10-26
+rcpt memory.route amber 2026-10-26
 OUT="$(NOW=2026-10-26 rec "$TMP/c0" --apply)"
 t_has "refused, naming the status" "$OUT" "receipt status amber is not green, red or stood-down"
-t_eq "the open finding is not closed as fixed" OPEN "$(jq -r '[.issues[] | select(.body | contains("key=check/memory-route "))] | max_by(.number) | .state' "$GH_STATE")"
+t_eq "the open finding is not closed as fixed" OPEN "$(jq -r '[.issues[] | select(.body | contains("key=check/memory.route "))] | max_by(.number) | .state' "$GH_STATE")"
 
 t_section "check tier · review #898: a receipt dated in the future is refused, never fresh"
-rcpt memory-route green 2026-11-30
+rcpt memory.route green 2026-11-30
 OUT="$(NOW=2026-10-26 rec "$TMP/c0" --apply)"
-t_has "refused, naming the date" "$OUT" "check/memory-route (receipt dated after 2026-10-26)"
-t_eq "the open finding is not closed as fixed" OPEN "$(jq -r '[.issues[] | select(.body | contains("key=check/memory-route "))] | max_by(.number) | .state' "$GH_STATE")"
+t_has "refused, naming the date" "$OUT" "check/memory.route (receipt dated after 2026-10-26)"
+t_eq "the open finding is not closed as fixed" OPEN "$(jq -r '[.issues[] | select(.body | contains("key=check/memory.route "))] | max_by(.number) | .state' "$GH_STATE")"
 
 t_section "check tier · review: the freshness window is two days, exactly"
-rcpt memory-route red 2026-10-24 harbor/wt-w
+rcpt memory.route red 2026-10-24 harbor/wt-w
 OUT="$(NOW=2026-10-26 rec "$TMP/c0")"
-t_has "two days old is a run" "$OUT" "check/memory-route"
+t_has "two days old is a run" "$OUT" "check/memory.route"
 t_hasnt "and not 'not seen'" "$OUT" "seen 2026-10-24) — the rule did not run"
-rcpt memory-route red 2026-10-23 harbor/wt-w
+rcpt memory.route red 2026-10-23 harbor/wt-w
 OUT="$(NOW=2026-10-26 rec "$TMP/c0")"
 t_has "three days old is not seen" "$OUT" "the rule did not run"
 
 t_section "check tier · review: a receipt whose file name is not its id is refused; the id is a literal"
-rcpt memory-route red 2026-10-26 x; mv "$RCD/memory-route.json" "$RCD/main-tip-verdict.json"
+rcpt memory.route red 2026-10-26 x; mv "$RCD/memory.route.json" "$RCD/ci.main-tip-verdict.json"
 OUT="$(NOW=2026-10-26 rec "$TMP/c0")"
-t_has "refused" "$OUT" "receipt main-tip-verdict.json names another id"
-rm -f "$RCD/main-tip-verdict.json"
-jq -n '{id: "memory.route", ran_at: "2026-10-26T09:00:00Z", status: "red", subjects: ["x"]}' > "$RCD/memory.route.json"
+t_has "refused" "$OUT" "receipt ci.main-tip-verdict.json names another id"
+rm -f "$RCD/ci.main-tip-verdict.json"
+jq -n '{id: "memory.rou.e", ran_at: "2026-10-26T09:00:00Z", status: "red", subjects: ["x"]}' > "$RCD/memory.rou.e.json"
 OUT="$(NOW=2026-10-26 rec "$TMP/c0")"
-t_has "a regex-shaped id matches no row" "$OUT" "check/memory.route (receipt with no docs/reference/checks.md row)"
-rm -f "$RCD/memory.route.json"
+t_has "a regex-shaped id matches no row" "$OUT" "check/memory.rou.e (receipt with no docs/reference/checks.md row)"
+rm -f "$RCD/memory.rou.e.json"
 
 t_section "check tier · harbor#904: a writer and the reconcile resolve one receipt dir, CLAUDE_CONFIG_DIR set elsewhere"
 _cfg="$TMP/cfg904"; rm -rf "$_cfg"; mkdir -p "$_cfg"
-( unset HARBOR_RECEIPTS HARBOR_CACHE_DIR; CLAUDE_CONFIG_DIR="$_cfg" HOME="$TMP/home904" HARBOR_GH=false \
+( unset HARBOR_CHECK_RECEIPTS HARBOR_RECEIPTS HARBOR_SCOPE_CACHE_DIR HARBOR_CACHE_DIR; CLAUDE_CONFIG_DIR="$_cfg" HOME="$TMP/home904" HARBOR_TEST_GH=false \
     sh "$T_ROOT/bin/ci-main-tip-verdict.sh" >/dev/null 2>&1 || : )
-t_eq "main-tip-verdict wrote its receipt under CLAUDE_CONFIG_DIR" stood-down "$(jq -r .status "$_cfg/cache/checks/main-tip-verdict.json" 2>/dev/null)"
-OUT="$( unset HARBOR_RECEIPTS; CLAUDE_CONFIG_DIR="$_cfg" NOW="$(date -u +%Y-%m-%d)" rec "$TMP/c0" )"
-t_has "the reconcile read it" "$OUT" "check/main-tip-verdict"
+t_eq "main-tip-verdict wrote its receipt under CLAUDE_CONFIG_DIR" stood-down "$(jq -r .status "$_cfg/cache/checks/ci.main-tip-verdict.json" 2>/dev/null)"
+OUT="$( unset HARBOR_CHECK_RECEIPTS HARBOR_RECEIPTS; CLAUDE_CONFIG_DIR="$_cfg" NOW="$(date -u +%Y-%m-%d)" rec "$TMP/c0" )"
+t_has "the reconcile read it" "$OUT" "check/ci.main-tip-verdict"
 
 t_section "check tier · harbor#904: the report counts rules and checks apart"
-rm -f "$RCD"/*.json; rcpt memory-route red 2026-10-26 x
+rm -f "$RCD"/*.json; rcpt memory.route red 2026-10-26 x
 OUT="$(NOW=2026-10-26 rec "$TMP/c0")"
 t_has "one rule, one check" "$OUT" "examined 1 rules and 1 checks"
 
 t_section "check tier · review: log_receipt escapes a backslash, and refuses too few arguments"
-( . "$T_ROOT/bin/library-log.sh"; log_receipt "$RD" memory-route red 'a\b' )
-t_eq "the backslash survives the round trip" 'a\b' "$(jq -r '.subjects[0]' "$RD/memory-route.json")"
-t_eq "two arguments is a failure" 1 "$( . "$T_ROOT/bin/library-log.sh"; log_receipt "$RD" memory-route; echo $?)"
+( . "$T_ROOT/bin/library-log.sh"; log_receipt "$RD" memory.route red 'a\b' )
+t_eq "the backslash survives the round trip" 'a\b' "$(jq -r '.subjects[0]' "$RD/memory.route.json")"
+t_eq "two arguments is a failure" 1 "$( . "$T_ROOT/bin/library-log.sh"; log_receipt "$RD" memory.route; echo $?)"
 
 t_section "check tier · log_receipt never writes through a planted symlink"
 RD2="$TMP/rl2"; mkdir -p "$RD2"; printf 'protected\n' > "$TMP/prot"
-ln -s "$TMP/prot" "$RD2/.memory-route.json.$$"; ln -s "$TMP/prot" "$RD2/.memory-route.json.planted"
-( . "$T_ROOT/bin/library-log.sh"; log_receipt "$RD2" memory-route green )
+ln -s "$TMP/prot" "$RD2/.memory.route.json.$$"; ln -s "$TMP/prot" "$RD2/.memory.route.json.planted"
+( . "$T_ROOT/bin/library-log.sh"; log_receipt "$RD2" memory.route green )
 t_eq "the protected file is untouched" protected "$(cat "$TMP/prot")"
-t_eq "and the receipt is a plain file" "file green" "$([ -L "$RD2/memory-route.json" ] && echo link || echo file) $(jq -r .status "$RD2/memory-route.json")"
+t_eq "and the receipt is a plain file" "file green" "$([ -L "$RD2/memory.route.json" ] && echo link || echo file) $(jq -r .status "$RD2/memory.route.json")"
 
 t_section "check tier · a receipt's own fresh_days widens its window (a weekly check, harbor#577)"
 GH_STATE="$TMP/gh-check.json"; export GH_STATE
-jq -n '{id: "memory-route", ran_at: "2026-10-21T09:00:00Z", status: "red", subjects: ["harbor/wt-weekly"], fresh_days: 8}' > "$RCD/memory-route.json"
+jq -n '{id: "memory.route", ran_at: "2026-10-21T09:00:00Z", status: "red", subjects: ["harbor/wt-weekly"], fresh_days: 8}' > "$RCD/memory.route.json"
 OUT="$(NOW=2026-10-26 rec "$TMP/c0")"
 t_hasnt "five days old with fresh_days 8 is a run, not 'not seen'" "$OUT" "the rule did not run"
-t_has "positive control: the finding is judged" "$OUT" "check/memory-route"
-jq -n '{id: "memory-route", ran_at: "2026-10-21T09:00:00Z", status: "red", subjects: ["harbor/wt-weekly"]}' > "$RCD/memory-route.json"
+t_has "positive control: the finding is judged" "$OUT" "check/memory.route"
+jq -n '{id: "memory.route", ran_at: "2026-10-21T09:00:00Z", status: "red", subjects: ["harbor/wt-weekly"]}' > "$RCD/memory.route.json"
 OUT="$(NOW=2026-10-26 rec "$TMP/c0")"
 t_has "without it, five days old is not seen" "$OUT" "the rule did not run"
+
+t_section "check tier · harbor#961 W5: an old check id is its family id's until remove_by (receipts, finding keys)"
+# The rows are the real renames.tsv's: the alias reader is the registry, never a list in the test.
+mkdir -p "$PUB/standards/naming"; cp "$T_ROOT/standards/naming/renames.tsv" "$PUB/standards/naming/"
+git -C "$PUB" -c user.email=t@t -c user.name=t add -A; git -C "$PUB" -c user.email=t@t -c user.name=t commit -qm renames
+git -C "$PUB" update-ref refs/remotes/origin/main HEAD
+t_eq "the registry carries the ship row" "check:ship	check:deploy.fleet	2026-11-15" \
+  "$(awk -F'\t' '$4 == "check-id" && $2 == "check:ship" { print $2 "\t" $3 "\t" $6 }' "$PUB/standards/naming/renames.tsv")"
+GH_STATE="$TMP/gh-alias.json"; export GH_STATE
+_ad="$(sh "$F" digest acme/api:plan)"
+jq -n --arg b "<!-- harbor:finding key=check/ship digest=$_ad seen=2026-10-28 schema=1 -->" \
+  '{issues: [{number: 1, state: "OPEN", stateReason: "", labels: [{name: "finding"}], createdAt: "2026-10-28T09:00:00Z", title: "finding check/ship: x", body: $b}],
+    labels: ["finding", "finding:accepted", "finding:superseded", "finding:fixed"]}' > "$GH_STATE"
+records "$TMP/al0" lint.long-file-reason
+rm -f "$RCD"/*.json; rcpt ship red 2026-10-29 acme/api:plan
+: > "$GH_LOG"; OUT="$(NOW=2026-10-29 rec "$TMP/al0")"
+t_hasnt "an old-id receipt is not refused" "$OUT" "check/ship (receipt"
+t_has "the old-keyed issue is the new id's, on the same issue" "$OUT" "check/ship → check/deploy.fleet (#1)"
+t_hasnt "and nothing is filed new" "$OUT" "would file"
+t_has "nothing is orphaned" "$OUT" "could not classify 0"
+: > "$GH_LOG"; OUT="$(NOW=2026-10-29 rec "$TMP/al0" --apply)"
+t_has "--apply rewrites the marker to the new id" "$(jq -r '.issues[0].body' "$GH_STATE")" "key=check/deploy.fleet digest=$_ad "
+t_eq "...and files nothing new" 1 "$(jq '.issues | length' "$GH_STATE")"
+t_section "check tier · harbor#961 W5: the new id's own receipt wins over the old one, and the window closes on its date"
+rcpt deploy.fleet green 2026-10-29
+OUT="$(NOW=2026-10-29 rec "$TMP/al0")"
+t_has "the new receipt is the one read: green fixes the finding" "$OUT" "check/deploy.fleet #1"
+rm -f "$RCD/deploy.fleet.json"
+OUT="$(NOW=2026-11-16 rec "$TMP/al0")"
+t_has "past remove_by the old receipt is an unregistered id again" "$OUT" "check/ship (receipt with no docs/reference/checks.md row)"
+rm -f "$RCD"/*.json
 
 t_section "context.budget-ceiling end to end (harbor#585, No.2.10): a planted regrowth reaches the store, its restore closes it"
 # The real linter and the real context-budget.sh against a fixture box, read by the real reconcile.
@@ -293,7 +324,7 @@ printf 'a constitution\n' > "$XC/CLAUDE.md"
 x3() { # <dir> — one context.budget-ceiling run over the fixture box, captured the way the reconcile reads a lint run
   mkdir -p "$1"; : > "$1/records.tsv"
   ( cd "$XW" && CLAUDE_CONFIG_DIR="$XC" HARBOR_CONTEXT_CEILING=99999999 HARBOR_CONTEXT_BASELINE="$XB" \
-      HARBOR_ROOT="$XR" HARBOR_FINDINGS_OUT="$1/records.tsv" sh "$T_ROOT/bin/lint-conventions.sh" --only context.budget-ceiling ) > "$1/lint.log" 2>&1
+      HARBOR_SCOPE_ROOT="$XR" HARBOR_LINT_FINDINGS_OUT="$1/records.tsv" sh "$T_ROOT/bin/lint-conventions.sh" --only context.budget-ceiling ) > "$1/lint.log" 2>&1
 }
 x3body() { jq -r '[.issues[] | select(.body | contains("key=lint/context.budget-ceiling "))] | max_by(.number) | .body' "$GH_STATE"; }
 ( cd "$XW" && CLAUDE_CONFIG_DIR="$XC" HARBOR_CONTEXT_BASELINE="$XB" sh "$XR/bin/context-budget.sh" --record ) >/dev/null 2>&1
@@ -321,7 +352,7 @@ rm -rf "$XC/commands"
 XS="$TMP/x3stub"; mkdir -p "$XS/bin"
 printf '#!/usr/bin/env sh\ncase "${1:-}" in --check) echo "boom: measuring failed" >&2; exit 3 ;; esac\n' > "$XS/bin/context-budget.sh"
 mkdir -p "$TMP/x3e"; : > "$TMP/x3e/records.tsv"
-HARBOR_ROOT="$XS" HARBOR_FINDINGS_OUT="$TMP/x3e/records.tsv" sh "$T_ROOT/bin/lint-conventions.sh" --only context.budget-ceiling > "$TMP/x3e/lint.log" 2>&1
+HARBOR_SCOPE_ROOT="$XS" HARBOR_LINT_FINDINGS_OUT="$TMP/x3e/records.tsv" sh "$T_ROOT/bin/lint-conventions.sh" --only context.budget-ceiling > "$TMP/x3e/lint.log" 2>&1
 t_eq "a --check that prints no kind files verdict-unreadable" "R context.budget-ceiling|A context.budget-ceiling verdict-unreadable:registries/context-baseline.tsv|" "$(tr '\t\n' ' |' < "$TMP/x3e/records.tsv")"
 t_has "with the tool's own line as the message" "$(cat "$TMP/x3e/lint.log")" 'ADVISORY [context.budget-ceiling] boom: measuring failed'
 

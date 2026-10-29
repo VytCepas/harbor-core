@@ -31,9 +31,9 @@ fixtures() { # the control: every condition holds
   printf '{"workflow_runs":[{"html_url":"https://x/run/1"}]}' \
     > "$FX/$(key "actions/workflows/governance.yml/runs?head_sha=$H&event=pull_request&status=success&per_page=1")"
 }
-cv() { ( cd "$R" && env FX="$FX" HARBOR_CURL="$CURL" GITHUB_REPOSITORY=o/r GH_TOKEN=sekrit GITHUB_OUTPUT="$FX/out" \
+cv() { ( cd "$R" && env FX="$FX" HARBOR_TEST_CURL="$CURL" GITHUB_REPOSITORY=o/r GH_TOKEN=sekrit GITHUB_OUTPUT="$FX/out" \
   sh "$CV" "$@" 2>&1 ) | grep '^verified=' ; }
-cb() { ( cd "$R" && env FX="$FX" HARBOR_CURL="$CURL" GITHUB_REPOSITORY=o/r GH_TOKEN=sekrit GITHUB_OUTPUT="$FX/out" \
+cb() { ( cd "$R" && env FX="$FX" HARBOR_TEST_CURL="$CURL" GITHUB_REPOSITORY=o/r GH_TOKEN=sekrit GITHUB_OUTPUT="$FX/out" \
   sh "$CV" "$@" 2>&1 ) | grep '^base=' ; }   # harbor#1289: the merge-base line, "base=" when empty
 
 t_section "verified only when the tree is one CI already passed"
@@ -64,7 +64,7 @@ behind() { # a PR that branched at $B while main moved on: compare is diverged a
   fixtures; printf '{"status":"diverged","merge_base_commit":{"sha":"%s"}}' "$MB" > "$FX/$(key "compare/$MAIN2...$H")"; }
 behind
 t_eq "behind-main merge: verified is false and base is the PR's merge-base" "verified=false base=$MB" \
-  "$(cd "$R" && env FX="$FX" HARBOR_CURL="$CURL" GITHUB_REPOSITORY=o/r GH_TOKEN=x GITHUB_OUTPUT="$FX/out" sh "$CV" "$S" "$MAIN2" 2>&1 | grep -E '^(verified|base)=' | tr '\n' ' ' | sed 's/ $//')"
+  "$(cd "$R" && env FX="$FX" HARBOR_TEST_CURL="$CURL" GITHUB_REPOSITORY=o/r GH_TOKEN=x GITHUB_OUTPUT="$FX/out" sh "$CV" "$S" "$MAIN2" 2>&1 | grep -E '^(verified|base)=' | tr '\n' ' ' | sed 's/ $//')"
 t_has "and it is written to GITHUB_OUTPUT for the workflow" "$(cat "$FX/out")" "base=$MB"
 fixtures; printf '{"status":"ahead","merge_base_commit":{"sha":"%s"}}' "$MB" > "$FX/$(key "compare/$B...$H")"
 t_eq "an up-to-date merge also names its merge-base" "base=$MB" "$(cb "$S" "$B")"

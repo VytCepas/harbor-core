@@ -58,7 +58,7 @@ PROBE="$SELF/visual-check.mjs"
 . "$SELF/library-log.sh"
 log_init visual-check
 [ -f "$PROBE" ] || { log_fail "missing $PROBE"; log_nofix "the header of bin/doc-visual-check.sh"; log_end || :; exit 1; }
-ARCHIFY="${HARBOR_ARCHIFY:-$ROOT/vendor/archify}"
+ARCHIFY="${HARBOR_DOC_ARCHIFY_DIR:-${HARBOR_ARCHIFY:-$ROOT/vendor/archify}}"
 
 # A flag this script does not know is a usage error (2, D-29), judged before anything that can be unavailable, so a
 # typo is never read as a missing verifier. A page whose name starts with `-` is written `./-name.html`.

@@ -37,7 +37,7 @@ harbor/bin/lint-conventions.sh	stat'ed the OPERATOR's ~/harbor instead	history: 
 harbor/bin/lint-conventions.sh	`sh '~/harbor/bin/x.sh'` both arrived	history: the inputs that were observed arriving quoted
 harbor/bin/lint-conventions.sh	`[ -d ~/harbor/.git ]` is	history: Verified on this checkout record
 harbor/bin/memory-lint.sh	Measured 2026-09-21 with cwd ~/harbor	history: dated measurement
-harbor/bin/gate-merge-check.sh	HARBOR_REPO="$HOME/harbor" sh bin/gate-merge-check.sh --protection	history: command as run under Measured 2026-08-13
+harbor/bin/gate-merge-check.sh	HARBOR_SCOPE_REPO="$HOME/harbor" sh bin/gate-merge-check.sh --protection	history: command as run under Measured 2026-08-13
 harbor/bin/gate-merge-check.sh	PROTECTION ABSENT  $HOME/harbor/main	history: that run's output
 harbor/hooks/session-verdicts/session-verdicts.sh	under ~/harbor/bin, all blocked under $CFG/bin	history: the measured write-shape result; the present-tense security claim was rewritten
 harbor/bin/memory-store-check.sh	Measured 2026-09-16 from ~/harbor	history: dated measurement

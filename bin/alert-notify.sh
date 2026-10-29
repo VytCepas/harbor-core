@@ -82,7 +82,7 @@ SRC="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 . "$SRC/library-log.sh"
 LOG_FD=2; log_init pulse-notify
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-CACHE_DIR="${HARBOR_CACHE_DIR:-$CFG/cache}"
+CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$CFG/cache}}"
 STATE="${HARBOR_ALERT_PROBE_STATE:-$CACHE_DIR/pulse-state.json}"
 # A CRIT that nobody has fixed is still worth one reminder a day. Anything more
 # frequent is the standing-condition spam this file exists to avoid.

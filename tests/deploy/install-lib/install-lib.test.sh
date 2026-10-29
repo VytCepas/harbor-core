@@ -6,7 +6,7 @@ set -u
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 LOGL="$T_ROOT/bin/library-log.sh"; IL="$T_ROOT/bin/deploy-install-lib.sh"; W="$T_TMP/w"; mkdir -p "$W"
 LIVE="$HOME/.claude"; mkdir -p "$LIVE"; SB="$T_TMP/sb"; mkdir -p "$SB"
-unset CLAUDE_CONFIG_DIR CLAUDECODE HARBOR_DEPLOY  # a run inside a session or a deploy must not decide a case
+unset CLAUDE_CONFIG_DIR CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY  # a run inside a session or a deploy must not decide a case
 mk() { # <body> — the tool is $W/demo.sh; its header is the usage il_usage prints
   printf '#!/bin/sh\n# demo — a tool on the install standard.\n#   sh demo.sh [--apply] (--live | --dir PATH)\n\nset -eu\n. "%s"\n. "%s"\nlog_init demo\n%s\n' \
     "$LOGL" "$IL" "$1" > "$W/demo.sh"
@@ -96,8 +96,8 @@ envrun CLAUDE_CONFIG_DIR="$SB/" --dir "$SB"
 t_eq 'CLAUDE_CONFIG_DIR naming the same dir (a slash apart) is accepted' 0 "$RC"
 envrun CLAUDE_CONFIG_DIR='' --dir "$SB"
 t_eq 'an empty CLAUDE_CONFIG_DIR is unset' 0 "$RC"
-mk 'IL_ENV=HARBOR_X; '"$PARSE"
-envrun HARBOR_X="$T_TMP/elsewhere" --dir "$SB"; t_eq 'IL_ENV names the variable that must agree' 2 "$RC"
+mk 'IL_ENV=HARBOR_TEST_X; '"$PARSE"
+envrun HARBOR_TEST_X="$T_TMP/elsewhere" --dir "$SB"; t_eq 'IL_ENV names the variable that must agree' 2 "$RC"
 envrun CLAUDE_CONFIG_DIR="$T_TMP/elsewhere" --dir "$SB"; t_eq '...and only that one' 0 "$RC"
 mk 'IL_ENV=; '"$PARSE"
 envrun CLAUDE_CONFIG_DIR="$T_TMP/elsewhere" --dir "$SB"; t_eq 'an empty IL_ENV checks none' 0 "$RC"
@@ -254,7 +254,7 @@ mk 'il_next "sh x --apply --live"; il_next --deploy-does "sh pin --apply --live"
 sh "$W/demo.sh" > "$W/out" 2>&1
 t_has 'a next step prints' "$(out)" '  note: next: sh x --apply --live'
 t_has '...and so does a deploy step, outside deploy' "$(out)" '  note: next: sh pin --apply --live'
-HARBOR_DEPLOY=1 sh "$W/demo.sh" > "$W/out" 2>&1
+HARBOR_DEPLOY_ACTIVE=1 sh "$W/demo.sh" > "$W/out" 2>&1
 t_has 'under deploy the ordinary next step still prints' "$(out)" '  note: next: sh x --apply --live'
 t_hasnt '...and the one deploy performs does not' "$(out)" 'sh pin --apply'
 
@@ -269,7 +269,7 @@ run --live atlas
 t_has 'a word deploy does not take keeps the tool'"'"'s own command' "$(out)" "  note: next: sh $W/demo.sh --apply atlas --live"
 run --dir "$SB"
 t_has 'a sandbox keeps the tool'"'"'s own command' "$(out)" "  note: next: sh $W/demo.sh --apply --dir '$SBP'"
-HARBOR_DEPLOY=1 sh "$W/demo.sh" --live > "$W/out" 2>&1
+HARBOR_DEPLOY_ACTIVE=1 sh "$W/demo.sh" --live > "$W/out" 2>&1
 t_hasnt 'under deploy, deploy performs it, so it is not printed' "$(out)" 'next:'
 mk 'il_opt() { case "$1" in --all|commands) IL_TAKE=1 ;; *) IL_TAKE=0 ;; esac; }; il_parse "$@"; il_target; il_apply_next skills --all; log_end'
 run --live --all

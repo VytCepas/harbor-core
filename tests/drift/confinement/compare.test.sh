@@ -8,11 +8,11 @@ DC="$T_ROOT/bin/drift-confinement.sh"; INST="$T_ROOT/bin/deploy-confinement.sh"
 PORT_ROOT="$T_TMP/port"; mkdir -p "$PORT_ROOT"; export PORT_ROOT
 PRIV="$T_TMP/priv"; mkdir -p "$PRIV"
 M="$T_TMP/managed/managed-settings.json"; mkdir -p "$T_TMP/managed"
-export HARBOR_MANAGED_SETTINGS="$M" HARBOR_CONFINEMENT_PRIVATE="$PRIV" HARBOR_CONFINEMENT_OS=Darwin HARBOR_RECEIPTS="$T_TMP/receipts"
+export HARBOR_MANAGED_SETTINGS="$M" HARBOR_CONFINEMENT_PRIVATE="$PRIV" HARBOR_CONFINEMENT_OS=Darwin HARBOR_CHECK_RECEIPTS="$T_TMP/receipts"
 dc() { sh "$DC" "$@" 2>&1; }
 rc() { sh "$DC" >/dev/null 2>&1; echo $?; }
 state() { sh "$DC" --state 2>/dev/null; }
-receipt() { jq -r .status "$HARBOR_RECEIPTS/drift.confinement.json" 2>/dev/null; }
+receipt() { jq -r .status "${HARBOR_CHECK_RECEIPTS:-}/drift.confinement.json" 2>/dev/null; }
 
 t_section "not installed is a stood-down state, never drift"
 t_eq "no managed file: exit 0" 0 "$(rc)"
@@ -30,8 +30,8 @@ t_has "...and a matched ok line, stamped with the check id" "$OUT" "ok: [check:d
 t_eq "...the state says match" match "$(state)"
 t_eq "...the receipt is green" green "$(receipt)"
 t_eq "--state keeps stdout to the one word" match "$(sh "$DC" --state 2>/dev/null | tr -d '\n')"
-rm -f "$HARBOR_RECEIPTS/drift.confinement.json"; state >/dev/null
-t_eq "--state (floor-verify's read) writes no receipt: a verifier writes nothing" absent "$([ -e "$HARBOR_RECEIPTS/drift.confinement.json" ] && echo present || echo absent)"
+rm -f "${HARBOR_CHECK_RECEIPTS:-}/drift.confinement.json"; state >/dev/null
+t_eq "--state (floor-verify's read) writes no receipt: a verifier writes nothing" absent "$([ -e "$HARBOR_CHECK_RECEIPTS/drift.confinement.json" ] && echo present || echo absent)"
 t_eq "CONTROL: a direct run writes it" green "$(rc >/dev/null; receipt)"
 cp "$M" "$T_TMP/good.json"
 jq '.sandbox.network.allowedDomains |= reverse' "$T_TMP/good.json" > "$M"
@@ -48,7 +48,7 @@ t_has "...with the install as the fix" "$OUT" "fix: sudo sh $T_ROOT/bin/deploy-c
 t_has "CONTROL: log-lib names a FAIL left without a fix this way" "$(sh -c '. "$1"; log_init x; log_fail y; log_end' _ "$T_ROOT/bin/library-log.sh" 2>&1)" "no fix line followed"
 t_hasnt "...a fix line after the FAIL, as contracts/logging.md asks" "$OUT" "no fix line followed"
 t_eq "...the receipt is red" red "$(receipt)"
-t_has "...naming its subjects" "$(jq -r '.subjects[]' "$HARBOR_RECEIPTS/drift.confinement.json")" "marker-without-block"
+t_has "...naming its subjects" "$(jq -r '.subjects[]' "${HARBOR_CHECK_RECEIPTS:-}/drift.confinement.json")" "marker-without-block"
 cp "$T_TMP/good.json" "$M"
 t_eq "restored: green again" "0 match" "$(rc) $(state)"
 

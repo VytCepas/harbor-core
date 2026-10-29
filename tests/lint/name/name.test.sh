@@ -375,6 +375,15 @@ t_eq "core registers no workload system term: a workload's pack does, and the pr
 t_eq "no control id of the modularity rules collides with a lint id" 0 "$(grep -c '^M[0-9]' "$REG/controls.tsv")"
 t_eq "…the rules are module.* ids: D-60's five, layer-direction and module.graph-conform (harbor#996)" 7 "$(grep -c '^module\.' "$REG/controls.tsv")"
 
+t_section "an alias warns until its remove_by date and blocks from it (harbor#968)"
+_ae() { sh "$LN" --check registry "$REG" --root "$T_ROOT" --registry "$REG" --today "$1" 2>&1; echo "exit $?"; }
+_aw="$(_ae 2026-11-02)"
+t_has "within 14 days of 2026-11-15: a warning" "$_aw" "WARN: [name.alias-expired] alias:aboard"
+t_has "…and the run exits 0" "$_aw" "exit 0"
+_ab="$(_ae 2026-11-15)"
+t_has "on 2026-11-15 itself: a block" "$_ab" "FAIL: [name.alias-expired] alias:aboard"
+t_has "…and the run exits 1" "$_ab" "exit 1"
+
 t_section "exemptions expire by rename wave, never on one day (harbor#950)"
 _ex="$(awk -F'\t' '/^#/ || $1 == "id" { next } $4 == "legacy" { n++; d[$5]++ } END { m = 0; for (k in d) if (d[k] > m) { m = d[k]; dk = k }; printf "%d %d %s", n, m, dk }' "$REG/exemptions.tsv")"
 _exn="${_ex%% *}"; _exm="${_ex#* }"; _exm="${_exm%% *}"
@@ -411,15 +420,15 @@ t_has "a new bad name is an N4 advisory" "$_a" "ADVISORY [standard.names-conform
 t_has "…naming the separator rule too" "$_a" "[name.separator] docs/Bad_Name.md"
 t_eq "…and an advisory is not a violation" "" "$(viol N4 "$N")"
 _fo="$TMP/n4.findings"; : > "$_fo"
-HARBOR_ROOT="$N" HARBOR_FINDINGS_OUT="$_fo" sh "$LINT" --only N4 > /dev/null 2>&1
+HARBOR_SCOPE_ROOT="$N" HARBOR_LINT_FINDINGS_OUT="$_fo" sh "$LINT" --only N4 > /dev/null 2>&1
 t_has "…and its finding record carries the path as subject" "$(cat "$_fo")" "$(printf 'A\tstandard.names-conform\tdocs/Bad_Name.md')"
 _nr="$TMP/n4.red"; : > "$_nr"
-HARBOR_ROOT="$N" LINT_REDLOG="$_nr" sh "$LINT" --only N4 > /dev/null 2>&1
+HARBOR_SCOPE_ROOT="$N" LINT_REDLOG="$_nr" sh "$LINT" --only N4 > /dev/null 2>&1
 t_has "…and LINT_REDLOG carries each finding's own rule id" "$(sort -u "$_nr")" "name.case"
 t_eq "…and never N4 for a naming finding, so each rule has its own record" "" "$(grep -x "$(lid N4)" "$_nr")"
 rm "$N/standards/naming/terms.tsv"
 t_has "a registry that cannot be read is a VIOLATION, never clean" "$(viol N4 "$N")" "judged nothing"
-: > "$_nr"; HARBOR_ROOT="$N" LINT_REDLOG="$_nr" sh "$LINT" --only N4 > /dev/null 2>&1
+: > "$_nr"; HARBOR_SCOPE_ROOT="$N" LINT_REDLOG="$_nr" sh "$LINT" --only N4 > /dev/null 2>&1
 t_has "…and that is when N4 itself is red in LINT_REDLOG, by its id" "$(cat "$_nr")" "$(lid N4)"
 rm "$N/bin/lint-name.sh"
 t_has "no lint at all is a VIOLATION" "$(viol N4 "$N")" "no bin/lint-name.sh"
@@ -447,6 +456,22 @@ t_eq "every record is A TAB name.<rule> TAB subject" "" "$(printf '%s\n' "$_ff" 
 t_has "a bad path is a record" "$_ff" "$(printf 'A\tname.case\tdocs/Notes.md')"
 t_has "an env name read from code is a record" "$_ff" "$(printf 'A\tname.env\tenv:HELM_PROBE_FIXTURE')"
 t_has "…and its legacy prefix is an alias finding" "$_ff" "$(printf 'A\tname.alias\tenv:HELM_PROBE_FIXTURE')"
+
+t_section "an env rename's dual-read window exempts the old name until remove_by (harbor#961 W5)"
+# The names are built from pieces, so this suite's own source holds no env token for the tree lint to judge.
+H=HARBOR; WO="${H}_WINDOWPROBE_X"; WN="${H}_TEST_WINDOW_PROBE"; WP="${H}_WINDOWPROBE_Y"
+W="$TMP/window"; mini "$W"
+printf '#!/usr/bin/env sh\nx="${%s:-${%s:-}}"\n' "$WN" "$WO" > "$W/bin/window-probe.sh"
+_w0="$(sh "$W/bin/lint-name.sh" --root "$W" --today 2026-11-01 2>&1)"
+t_has "control: with no row the old name is a finding" "$_w0" "[name.env] env:$WO"
+t_hasnt "…and the new one is not" "$_w0" "env:$WN"
+printf 'rename-9999\tenv:%s\tenv:%s\tenv\tW5\t2026-11-15\ta fixture window\n' "$WO" "$WN" >> "$W/standards/naming/renames.tsv"
+t_hasnt "an open window exempts the old name" "$(sh "$W/bin/lint-name.sh" --root "$W" --today 2026-11-15 2>&1)" "env:$WO"
+t_has "…and a window past its date does not" "$(sh "$W/bin/lint-name.sh" --root "$W" --today 2026-11-16 2>&1)" "[name.env] env:$WO"
+t_has "…nor does --check, which judges a name at its birth" "$(sh "$W/bin/lint-name.sh" --root "$W" --today 2026-11-01 --check env "$WO" 2>&1)" "name.env"
+printf 'rename-9998\tenv:%s\tenv:%s_PLAIN\tenv\tW5\t-\ta plain rename\n' "$WP" "$WN" >> "$W/standards/naming/renames.tsv"
+printf 'y="${%s:-}"\n' "$WP" >> "$W/bin/window-probe.sh"
+t_has "a plain rename (no remove_by) opens no window" "$(sh "$W/bin/lint-name.sh" --root "$W" --today 2026-11-01 2>&1)" "[name.env] env:$WP"
 
 t_section "--changed judges only what a branch adds"
 G="$TMP/git"; mini "$G"; : > "$G/Legacy_Old.md"

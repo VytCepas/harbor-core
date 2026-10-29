@@ -95,7 +95,7 @@ do_rerun() {
 # 1 jobs read, plus 1 annotation read per failed/cancelled job that has no failed step; a run that held
 # no such job is remembered in ci-lost-seen.tsv and never read again. An idle fleet costs one call a repo (plus one for
 # the governance runner).
-lostline() { printf '[check:ci-lost-rerun] %s %s\n' "$(iso "$NOW")" "$1" >> "$LOG" 2>/dev/null || :; }
+lostline() { printf '[check:ci.lost-rerun] %s %s\n' "$(iso "$NOW")" "$1" >> "$LOG" 2>/dev/null || :; }
 do_rerun_lost() {
   [ "$(conf lost-rerun)" != off ] || return 0
   LOSTS="$CACHE_DIR/ci-lost-reruns.tsv"; SEEN="$CACHE_DIR/ci-lost-seen.tsv"; touch "$LOSTS" "$SEEN"

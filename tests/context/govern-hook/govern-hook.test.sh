@@ -75,10 +75,10 @@ t_has "a value-taking flag does not swallow the target" "$(fire PreToolUse 'gh p
 t_has "a URL target is parsed" "$(fire PreToolUse 'gh pr merge https://github.com/o/r/pull/7 --squash' "$MC")" '--merge 7'
 _da="$(fire PreToolUse 'gh pr merge 253 --disable-auto' "$MC")"
 t_hasnt "--disable-auto reaches no verdict" "${_da:-<empty>}" 'permissionDecision'
-printf '#!/usr/bin/env sh\nprintf "REFUSED  saw repo=%%s pr=%%s\\n" "${HARBOR_REPO:-none}" "$1"\nexit 1\n' > "$MC/bin/gate-merge-check.sh"
+printf '#!/usr/bin/env sh\nprintf "REFUSED  saw repo=%%s pr=%%s\\n" "${HARBOR_SCOPE_REPO:-none}" "$1"\nexit 1\n' > "$MC/bin/gate-merge-check.sh"
 t_has "-R is handed to the backstop with that invocation's number" "$(fire PreToolUse 'gh pr merge -R other/repo 7' "$MC")" 'repo=other/repo pr=7'
 # harbor#1153: the PR's own repo, judged by that repo's checks. The stub passes only for the repo it is handed.
-printf '#!/usr/bin/env sh\ncase "${HARBOR_REPO:-none}" in second/repo) echo "ok  checks green in second/repo"; exit 0 ;; *) echo "REFUSED  checks missing in ${HARBOR_REPO:-none}"; exit 1 ;; esac\n' > "$MC/bin/gate-merge-check.sh"
+printf '#!/usr/bin/env sh\ncase "${HARBOR_SCOPE_REPO:-none}" in second/repo) echo "ok  checks green in second/repo"; exit 0 ;; *) echo "REFUSED  checks missing in ${HARBOR_SCOPE_REPO:-none}"; exit 1 ;; esac\n' > "$MC/bin/gate-merge-check.sh"
 for _c in 'gh pr merge 7 -R second/repo --auto' 'gh pr merge 7 --repo second/repo' 'gh pr merge 7 --repo=second/repo' 'gh pr merge -Rsecond/repo 7'; do
   _o="$(fire PreToolUse "$_c" "$MC")"
   t_hasnt "second repo is judged by its own checks: $_c" "$_o" 'permissionDecision'
@@ -160,7 +160,7 @@ out="$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov' "$ELSE")"
 t_hasnt "a broken backstop fails OPEN in --box too" "$out" 'permissionDecision'
 t_has "and says nothing was verified" "$out" 'could NOT be consulted'
 bstub 1 'REFUSED  owner says no'
-t_has "the deny carries its docs/reference/checks.md id" "$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov' "$ELSE")" '[check:merge-backstop]'
+t_has "the deny carries its docs/reference/checks.md id" "$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov' "$ELSE")" '[check:gate.merge-backstop]'
 # A worktree of the registered repo: its own copy of gate-merge-check.sh would pass, the owner's refuses.
 WT="$T/gov-wt"; gitq -C "$GOV" worktree add -q "$WT" -b wt-branch
 printf '#!/usr/bin/env sh\necho "ok  stale copy"\nexit 0\n' > "$WT/bin/gate-merge-check.sh"
@@ -271,9 +271,9 @@ t_eq "blocks a Claude-Session trailer (harbor#584)" 1 "$(cm "$(printf 'fix: a su
 t_eq "allows the Claude-Session trailer to be named mid-line" 0 "$(cm 'docs: why the Claude-Session: trailer is attribution')"
 t_eq "ignores a git comment line" 0 "$(cm '# Co-Authored-By: Claude')"
 t_eq "allows the rule to be discussed mid-line" 0 "$(cm 'docs: explain why Co-Authored-By trailers are banned')"
-_ere="$(sed -n "s/^HARBOR_ATTRIBUTION_ERE='\(.*\)'$/\1/p" "$HOOKS/commit-msg" | head -1)"
+_ere="$(sed -n "s/^HARBOR_LINT_ATTRIBUTION_ERE='\(.*\)'$/\1/p" "$HOOKS/commit-msg" | head -1)"
 t_eq "lint C2 can still extract the pattern from the hook" yes "${_ere:+yes}"
-t_has "lint C2 consumes the hook definition rather than a copy" "$(cat "$T_ROOT/bin/lint-conventions.sh")" 'HARBOR_ATTRIBUTION_ERE'
+t_has "lint C2 consumes the hook definition rather than a copy" "$(cat "$T_ROOT/bin/lint-conventions.sh")" 'HARBOR_LINT_ATTRIBUTION_ERE'
 # Through real `git commit`: the unit cases passed while a 644 mode bit made git skip the hook.
 E2E="$T/e2e"; mkdir -p "$E2E/hooks"; gitq -C "$E2E" init; id_cfg "$E2E"
 cp -p "$HOOKS/commit-msg" "$E2E/hooks/commit-msg"; ln -sf ../../hooks/commit-msg "$E2E/.git/hooks/commit-msg"
@@ -297,11 +297,11 @@ _del="$( cd "$DELR" && printf 'refs/heads/x 000000000000000000000000000000000000
 t_has "ignores a ref deletion" "$_del" 'rc=0'
 t_has "reaches its summary on a deletion (the guard is live)" "$_del" 'check(s) run'
 t_has "prints what it did NOT run (no silent cap)" "$(cat "$HOOKS/pre-push")" 'suite(s) NOT run here'
-_pp="$( cd "$DELR" && HARBOR_CHANGED='README.md' sh "$HOOKS/pre-push" </dev/null 2>&1 )"
+_pp="$( cd "$DELR" && HARBOR_TEST_CHANGED='README.md' sh "$HOOKS/pre-push" </dev/null 2>&1 )"
 t_hasnt "the default is not the full selection" "$_pp" 'FULL mode'
 t_has "the default is the cheap lane" "$_pp" 'check(s) run'
-t_has "the expensive mode is still an opt-in" "$( cd "$DELR" && HARBOR_PREPUSH_FULL=1 HARBOR_CHANGED='README.md' sh "$HOOKS/pre-push" </dev/null 2>&1 )" 'FULL mode'
-t_has "the opt-in is still named in the hook" "$(cat "$HOOKS/pre-push")" 'HARBOR_PREPUSH_FULL'
+t_has "the expensive mode is still an opt-in" "$( cd "$DELR" && HARBOR_GATE_PREPUSH_FULL=1 HARBOR_TEST_CHANGED='README.md' sh "$HOOKS/pre-push" </dev/null 2>&1 )" 'FULL mode'
+t_has "the opt-in is still named in the hook" "$(cat "$HOOKS/pre-push")" 'HARBOR_GATE_PREPUSH_FULL'
 # Through real `git push` (harbor#575); the linter stub leaves a marker, so "did it run" is a file.
 PPR="$T/pp-repo"; PPREM="$T/pp-remote.git"; PPMARK="$T/pp-lint-ran"
 mkdir -p "$PPR/bin" "$PPR/contracts" "$PPR/.hooks"; gitq init --bare "$PPREM"; gitq -C "$PPR" init; id_cfg "$PPR"

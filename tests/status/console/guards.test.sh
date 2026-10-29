@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 # harbor ui's guards (harbor#738): loopback bind, token, Origin and Host, the allowlist, the idle stop, the verb.
 # Every guard is also deleted from a copy of the server, and the same probe must then fail: the red proofs.
-# HARBOR_REQUIRE_BUN=1 turns a missing bun into a failure; the runner image carries bun once rebuilt.
-REAL_HOME="$HOME"; UI_BUN="${HARBOR_STATUS_CONSOLE_BUN:-}"; REQ_BUN="${HARBOR_REQUIRE_BUN:-0}"  # before t_init clears them
+# HARBOR_TEST_REQUIRE_BUN=1 turns a missing bun into a failure; the runner image carries bun once rebuilt.
+REAL_HOME="$HOME"; UI_BUN="${HARBOR_STATUS_CONSOLE_BUN:-}"; REQ_BUN="${HARBOR_TEST_REQUIRE_BUN:-${HARBOR_REQUIRE_BUN:-0}}"  # before t_init clears them
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/lib/linux-sim.sh"; . "$T_ROOT/tests/cli/console-fixture.sh"
 [ -n "$UI_BUN" ] || UI_BUN="$(command -v bun 2>/dev/null || true)"
@@ -24,7 +24,7 @@ t_has "and says what is missing and the fix" "$NB" "bun is not installed"
 if [ -z "$UI_BUN" ]; then
   echo "  SKIP the server arms: no bun on PATH (the runner image carries it once rebuilt)"
   t_section "bun is absent: only an image that does not promise it may skip"
-  t_eq "HARBOR_REQUIRE_BUN is off where bun is absent" 0 "$REQ_BUN"
+  t_eq "HARBOR_TEST_REQUIRE_BUN is off where bun is absent" 0 "$REQ_BUN"
   t_done
 fi
 ui_require_listen "the server arms"

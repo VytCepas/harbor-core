@@ -22,7 +22,7 @@
 #   665 results over 32 KB carry 92% of all result bytes
 #
 # So 32 KB sits just under p90 and selects the 10.6% of calls that are 92% of the
-# problem. HARBOR_RESULT_BYTES overrides it — for the suite, and for a box whose
+# problem. HARBOR_CONTEXT_RESULT_BYTES overrides it — for the suite, and for a box whose
 # distribution differs. It is a knob with a measured default, not a second
 # ceiling, and the note prints the number so a reader can argue with it.
 #
@@ -37,7 +37,7 @@
 # `Bash` is 4,055 calls at 1 KB — its lever is call COUNT, not result size, which
 # is harbor#184's lever 1 and not this pack's business.
 #
-# NO SIZE IS QUOTED FROM THE RESULT ITSELF, only its length. docs/decisions/rejected-approaches.md DE-16
+# NO SIZE IS QUOTED FROM THE RESULT ITSELF, only its length. docs/reports/rejected-approaches.md DE-16
 # refused a durable corpus built out of transcript content; the same discipline
 # holds here, one channel over — a length is not a payload.
 #
@@ -53,7 +53,7 @@ TOOL="$(printf '%s' "$PAYLOAD" | jq -r '.tool_name // empty' 2>/dev/null || true
 BYTES="$(printf '%s' "$PAYLOAD" | jq -r '(.tool_response // empty) | tostring | utf8bytelength' 2>/dev/null || true)"
 case "$BYTES" in ''|*[!0-9]*) exit 0 ;; esac
 
-LIMIT="${HARBOR_RESULT_BYTES:-32768}"
+LIMIT="${HARBOR_CONTEXT_RESULT_BYTES:-${HARBOR_RESULT_BYTES:-32768}}"
 case "$LIMIT" in ''|*[!0-9]*) LIMIT=32768 ;; esac
 [ "$BYTES" -gt "$LIMIT" ] || exit 0
 
@@ -88,6 +88,6 @@ esac
 
 # THE NOTE DOES NOT ARGUE FOR THE THRESHOLD, it reports it. The derivation is in
 # this header, where it costs nothing at runtime, and quoting it in the note would
-# be a claim that goes false the moment HARBOR_RESULT_BYTES is overridden.
+# be a claim that goes false the moment HARBOR_CONTEXT_RESULT_BYTES is overridden.
 printf '%s returned %s KB, over this box'"'"'s %s KB result threshold. It sits in the prefix now and is re-read on every later call in the session — cache reads are 58%% of this account'"'"'s bill, at 176:1 against output tokens. Next call: %s. For a read-heavy task as a whole, a subagent returns the conclusion instead of the corpus (~200:1 measured). Once per session.\n' \
   "${TOOL:-a tool}" "$KB" "$(( LIMIT / 1024 ))" "$FIX"

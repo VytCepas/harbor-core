@@ -60,7 +60,7 @@ HIT="$(printf '%s\n' "$OUT" | /usr/bin/grep -oE "$SIG" 2>/dev/null | head -1 || 
 # checkout it is beside this file; installed, it is in the harbor checkout.
 case "$0" in */*) _H="${0%/*}" ;; *) _H=. ;; esac
 _R="$_H/../../bin/scope-roots.sh"
-[ -f "$_R" ] && [ -f "$_H/../../contracts/roots.tsv" ] || _R="${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}/bin/scope-roots.sh"
+[ -f "$_R" ] && [ -f "$_H/../../contracts/roots.tsv" ] || _R="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}/bin/scope-roots.sh"
 DIR="$(sh "$_R" --access 2>/dev/null)" || exit 0
 [ -n "$DIR" ] || exit 0
 

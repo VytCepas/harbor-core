@@ -33,7 +33,7 @@ shared is these rules, one entry point — `just test` — and one summary line 
      `tests/contracts/test_test_contract.py`, which scaffolds a repo, plants a test asserting
      `Path.home()` is not the real home, and runs it.
    - *Known class — an inherited knob:* a suite that reads a `HARBOR_*` variable its caller
-     exported. CI's `HARBOR_SUITE_COUNTS` changed what `floor.status-test` counted, so the
+     exported. CI's `HARBOR_STATUS_SUITE_COUNTS` changed what `floor.status-test` counted, so the
      environment decided the verdict. Clearing every inherited `HARBOR_*` in `t_init`, and the
      check that finds a suite the clearing cannot reach, are harbor#773's.
    - **A test never writes outside its own sandbox — including into a repo it merely reads
@@ -113,7 +113,7 @@ shared is these rules, one entry point — `just test` — and one summary line 
      red. `--probes` adds the opt-in real-system
      probes harbor#667 moved behind stubs. It refuses to run in CI, writes nothing (proved by a
      stamp and `find -newer` in [live-verify-test.sh](../tests/deploy/live-verify/live-verify.test.sh)), and
-     is the `live-verify` row of [docs/reference/checks.md](../docs/reference/checks.md).
+     is the `deploy.live-verify` row of [docs/reference/checks.md](../docs/reference/checks.md).
    - *Python:* rule 1's fixture keeps the real home out of every test. A live check is a
      command, never a pytest test.
 

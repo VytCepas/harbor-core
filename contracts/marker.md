@@ -52,7 +52,7 @@ This section read *"three implementations of one predicate"* until 2026-08-02. *
 
 Only the resolver walks up **and** accepts every marker spelling. The allowlist role walks but needs `.agents/config.yaml` specifically — `project-init.md` carries no allowlist. The descriptor role does not walk at all: the fleet has already pointed it at a project directory, and a walk would make a subdirectory resolve as a project.
 
-So each fixture declares the `roles` it applies to (absent ⇒ all three), and **`tests/scope/marker/marker.test.sh` drives all three from the one file** — the shell inline, the two Python roles through one adapter process each. A missing sibling clone SKIPS loudly; a clone that is present and disagrees FAILS, because harbor owns the contract. `HARBOR_SKIP_CROSS=1` runs the shell alone.
+So each fixture declares the `roles` it applies to (absent ⇒ all three), and **`tests/scope/marker/marker.test.sh` drives all three from the one file** — the shell inline, the two Python roles through one adapter process each. A missing sibling clone SKIPS loudly; a clone that is present and disagrees FAILS, because harbor owns the contract. `HARBOR_TEST_SKIP_CROSS=1` runs the shell alone.
 
 The POSIX floor must still **NOT** import the private `_find_config` across a language boundary — it re-implements the same spec, and the fixtures are what pin the two together.
 

@@ -68,8 +68,8 @@ acl() { # <+|->
 # The jobs are the committed templates (launchd/, systemd/; lint X9 and schedules-test hold docs/reference/checks.md to them).
 render() { sed -e "s|@SOURCES@|$SRC|g" -e "s|@BIN@|$BIN|g" -e "s|@STORE@|$STORE|g" "$1"; }   # <template>
 case "$OS" in
-  Darwin) TPL="$HERE/../launchd"; JOBS="com.harbor.collector com.harbor.collector-checkpoint com.harbor.otlp-receiver" ;;
-  Linux)  TPL="$HERE/../systemd"; JOBS="harbor-collector.service harbor-collector.timer harbor-collector-checkpoint.service harbor-collector-checkpoint.timer harbor-otlp-receiver.service" ;;
+  Darwin) TPL="$HERE/../launchd"; JOBS="com.harbor.audit.collector com.harbor.audit.collector-checkpoint com.harbor.audit.otlp-receiver" ;;
+  Linux)  TPL="$HERE/../systemd"; JOBS="harbor-audit-collector.service harbor-audit-collector.timer harbor-audit-collector-checkpoint.service harbor-audit-collector-checkpoint.timer harbor-audit-otlp-receiver.service" ;;
 esac
 for j in $JOBS; do
   case "$OS" in Darwin) _t="$TPL/$j.plist" ;; *) _t="$TPL/$j" ;; esac
@@ -82,7 +82,7 @@ if [ "$MODE" = uninstall ]; then
   case "$OS" in
     Darwin) for j in $JOBS; do launchctl bootout "system/$j" 2>/dev/null || :; rm -f "/Library/LaunchDaemons/$j.plist"; done
             acl - 2>/dev/null || : ;;
-    Linux)  systemctl disable --now harbor-collector.timer harbor-collector-checkpoint.timer harbor-otlp-receiver.service 2>/dev/null || :
+    Linux)  systemctl disable --now harbor-audit-collector.timer harbor-audit-collector-checkpoint.timer harbor-audit-otlp-receiver.service 2>/dev/null || :
             for j in $JOBS; do rm -f "/etc/systemd/system/$j"; done; systemctl daemon-reload 2>/dev/null || : ;;
   esac
   log_ok "jobs and read access removed; $STORE and the $U user are kept (sudo cat \"$STORE/events.jsonl\")"; log_end; exit 0
@@ -142,17 +142,17 @@ case "$OS" in
       render "$TPL/$j" > "/etc/systemd/system/$j"; chown "root:$GRP" "/etc/systemd/system/$j"; chmod 0644 "/etc/systemd/system/$j"
     done
     step systemctl daemon-reload
-    step systemctl enable --now harbor-collector.timer harbor-collector-checkpoint.timer harbor-otlp-receiver.service ;;
+    step systemctl enable --now harbor-audit-collector.timer harbor-audit-collector-checkpoint.timer harbor-audit-otlp-receiver.service ;;
 esac
 [ "$MODE" = dry ] && { log_note "dry run: nothing changed"; log_end; exit 0; }
 # 6. see it work rather than assume it
 case "$OS" in
-  Darwin) launchctl kickstart -k system/com.harbor.collector 2>/dev/null || : ;;
-  Linux)  systemctl start harbor-collector.service 2>/dev/null || : ;;
+  Darwin) launchctl kickstart -k system/com.harbor.audit.collector 2>/dev/null || : ;;
+  Linux)  systemctl start harbor-audit-collector.service 2>/dev/null || : ;;
 esac
 sleep 3
-[ -s "$STORE/status.json" ] || { log_fail "the first ingest wrote no $STORE/status.json"; log_nofix "macOS: sudo cat \"$STORE/com.harbor.collector.log\"; Linux: journalctl -u harbor-collector"; exit 1; }
+[ -s "$STORE/status.json" ] || { log_fail "the first ingest wrote no $STORE/status.json"; log_nofix "macOS: sudo cat \"$STORE/com.harbor.audit.collector.log\"; Linux: journalctl -u harbor-audit-collector"; exit 1; }
 _rc="$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" --data "{}" http://127.0.0.1:4318/v1/logs 2>/dev/null || true)"
-[ "$_rc" = 200 ] || { log_fail "the OTLP receiver does not answer on 127.0.0.1:4318 (got ${_rc:-nothing})"; log_nofix "macOS: sudo cat \"$STORE/com.harbor.otlp-receiver.log\"; Linux: journalctl -u harbor-otlp-receiver"; exit 1; }
+[ "$_rc" = 200 ] || { log_fail "the OTLP receiver does not answer on 127.0.0.1:4318 (got ${_rc:-nothing})"; log_nofix "macOS: sudo cat \"$STORE/com.harbor.audit.otlp-receiver.log\"; Linux: journalctl -u harbor-audit-otlp-receiver"; exit 1; }
 log_ok "collector running as $U: $(cat "$STORE/status.json")"
 log_end

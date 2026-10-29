@@ -65,9 +65,9 @@
 # beyond raising its memory live (the LIMITS rule above).
 # THE TOKEN goes GitHub -> a 0600 file -> docker --env-file -> deleted: never an argv, a URL, a log line or the screen.
 # NOTHING HERE READS OR WRITES BILLING: the minutes rule is ci-runner-switch.sh's, read from its cache.
-# `lost-rerun off` in CONF turns rerun-lost off (tick then skips it). Its lines are `[check:ci-lost-rerun]`, each naming the reason.
-# Findings: one `[check:ci-runners]` line in cache/checks.log per CHANGE (and per change of drift), cache/ci-runners.json.
-# POSIX sh, jq, gh, docker (HARBOR_GH and HARBOR_DOCKER swap in fakes).
+# `lost-rerun off` in CONF turns rerun-lost off (tick then skips it). Its lines are `[check:ci.lost-rerun]`, each naming the reason.
+# Findings: one `[check:ci.runners]` line in cache/checks.log per CHANGE (and per change of drift), cache/ci-runners.json.
+# POSIX sh, jq, gh, docker (HARBOR_TEST_GH and HARBOR_DOCKER swap in fakes).
 # SPLIT (harbor#1060, docs/explanation/modularity; `lint-module-shape.sh --seam` called it earned): this file is the entry point, the
 # flags and the config; each verb group is a sourced lib beside it: ci-runners-fleet-lib.sh (the desired and actual
 # sets, `list`, mounts), -provision-lib.sh (`up`, `refresh`, `down`, the governance runners, the hook sync),
@@ -103,21 +103,21 @@ esac
 [ "$INCGOV" = 0 ] || [ "$CMD" = refresh ] || [ "$CMD" = up ] || { log_fail "--include-governance belongs to refresh and up only"; log_fix "sh $0 refresh --apply --include-governance"; exit 2; }
 
 OWNER="${HARBOR_CI_OWNER:-VytCepas}"
-GH="${HARBOR_GH:-gh}"
+GH="${HARBOR_TEST_GH:-${HARBOR_GH:-gh}}"
 DOCKER="${HARBOR_DOCKER:-docker}"
-GOV_REPO="${HARBOR_SWITCH_REPO:-$OWNER/harbor}"   # the repo harbor's own checks run on (the governance runners)
+GOV_REPO="${HARBOR_CI_SWITCH_REPO:-${HARBOR_SWITCH_REPO:-$OWNER/harbor}}"   # the repo harbor's own checks run on (the governance runners)
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 CONF="$CFG/.harbor-ci-runners"
-CACHE_DIR="${HARBOR_CACHE_DIR:-$HOME/.claude/cache}"
+CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
 LOG="$CACHE_DIR/checks.log"
 SNAP="${HARBOR_FLEET_SNAPSHOT:-$CACHE_DIR/fleet-snapshot.json}"
 # the fleet file through the registry-aware reader beside this script (harbor#966)
-FLEET="${HARBOR_FLEET_FILE:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_FLEET_FILE 2>/dev/null || :)}"
+FLEET="${HARBOR_SCOPE_FLEET_FILE:-${HARBOR_FLEET_FILE:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_FLEET_FILE 2>/dev/null || :)}}"
 # the fleet CLI, a roots.tsv row read through the same reader (harbor#966)
-ORCH="${HARBOR_ORCH_BIN:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_ORCH_BIN 2>/dev/null || :)}"
+ORCH="${HARBOR_SCOPE_FLEET_CONTROLLER_BIN:-${HARBOR_ORCH_BIN:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER_BIN 2>/dev/null || :)}}"
 EVENTS="${HARBOR_CI_EVENTS_DIR:-$HOME/runners/harbor-linux/events}"
 LABELS="${HARBOR_CI_LABELS:-self-hosted,Linux,ARM64}"
-NOW="${HARBOR_NOW:-$(date +%s)}"
+NOW="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
 case "$NOW" in ''|*[!0-9]*) NOW="$(date +%s)" ;; esac
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required"; log_fix "$(pkg_hint jq)"; exit 2; }
 
@@ -148,7 +148,7 @@ T="$(mktemp -d "${TMPDIR:-/tmp}/ci-runners.XXXXXX")"
 trap 'rm -rf "$T"' EXIT INT TERM
 mkdir -p "$CACHE_DIR"
 logline() { # <message> — one checks.log line, only ever called on a write path
-  printf '[check:ci-runners] %s %s\n' "$(iso "$NOW")" "$1" >> "$LOG" 2>/dev/null || :
+  printf '[check:ci.runners] %s %s\n' "$(iso "$NOW")" "$1" >> "$LOG" 2>/dev/null || :
 }
 TAB="$(printf '\t')"
 # the verbs, one lib each (harbor#1060 split; each is sourced, never run): fleet view, container lifecycle, GitHub side, watching

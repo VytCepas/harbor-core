@@ -21,7 +21,7 @@ plant() {
 NOSTEPS='[]'; STEPS='[{"name":"Run tests","conclusion":"failure"}]'
 reruns() { cat "$FX/reruns.log" 2>/dev/null || :; }
 jobreruns() { reruns | grep ' job ' || :; }
-llog() { _n="$(grep -c 'check:ci-lost-rerun' "$CACHE/checks.log" 2>/dev/null)" || _n=0; echo "${_n:-0}"; }
+llog() { _n="$(grep -c 'check:ci.lost-rerun' "$CACHE/checks.log" 2>/dev/null)" || _n=0; echo "${_n:-0}"; }
 plantall() {
   plant alpha 301 cancelled 1 3600 "$NOSTEPS" "$LOST"
   plant alpha 302 failure 1 3600 "$STEPS" "$REAL"
@@ -40,7 +40,7 @@ t_eq "...and re-runs nothing" 0 "$(nlines "$FX/reruns.log")"
 t_eq "...and remembers nothing" 0 "$(nlines "$CACHE/ci-lost-reruns.tsv")"
 run rerun-lost --apply >/dev/null
 t_eq "apply re-runs job 3010 of run 301, by job, and nothing else" "rerun 301 VytCepas/alpha job 3010" "$(reruns)"
-t_eq "one [check:ci-lost-rerun] line" 1 "$(llog)"
+t_eq "one [check:ci.lost-rerun] line" 1 "$(llog)"
 t_has "...naming repo, run and job" "$(cat "$CACHE/checks.log")" "VytCepas/alpha run 301 job 3010"
 run rerun-lost --apply >/dev/null; run rerun-lost --apply >/dev/null
 t_eq "second and third tick re-run nothing" 1 "$(nlines "$FX/reruns.log")"
@@ -111,7 +111,7 @@ t_eq "never a failed step beside an open one (315)" 0 "$(reruns | grep -c ' 315 
 t_eq "never lost-communication text beside another annotation (316)" 0 "$(reruns | grep -c ' 316 ' || true)"
 t_eq "never a cancel or a timeout (317)" 0 "$(reruns | grep -c ' 317 ' || true)"
 t_eq "never a failure with no annotation and nothing open (318)" 0 "$(reruns | grep -c ' 318 ' || true)"
-t_eq "one [check:ci-lost-rerun] line per re-run" 4 "$(llog)"
+t_eq "one [check:ci.lost-rerun] line per re-run" 4 "$(llog)"
 t_has "...saying why: a step with no conclusion" "$(grep ' 311 ' "$CACHE/checks.log" || grep 'run 311' "$CACHE/checks.log")" "a step left with no conclusion"
 t_has "...saying why: the runner lost its connection" "$(grep 'run 312' "$CACHE/checks.log")" "runner lost its connection"
 : > "$FX/reruns.log"; run rerun-lost --apply >/dev/null; run tick >/dev/null

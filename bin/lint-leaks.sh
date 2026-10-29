@@ -28,7 +28,7 @@
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
 BASE="${LEAKS_BASELINE:-$ROOT/contracts/lint-leaks-baseline.txt}"
 CORE="${LEAKS_CORE_PATTERNS:-$ROOT/contracts/leak-patterns.tsv}"
 PRIV="${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}"

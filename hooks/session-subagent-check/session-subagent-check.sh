@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# session-subagent-check (harbor#445 item E) — advisory SubagentStop hook. Registered in docs/reference/checks.md as `subagent-stop`.
+# session-subagent-check (harbor#445 item E) — advisory SubagentStop hook. Registered in docs/reference/checks.md as `session.subagent-stop`.
 # Warns, never blocks, when a subagent (1) stops with the same final report as its previous stop, or
 # (2) stops while a background task it started is still running.
 #
@@ -59,7 +59,7 @@ if [ -n "$TX" ] && [ -f "$TX" ] && [ -r "$TX" ]; then
 fi
 [ -n "$MSG" ] || exit 0
 
-MSG="[check:subagent-stop] warn (advisory, never blocks) agent $AID
+MSG="[check:session.subagent-stop] warn (advisory, never blocks) agent $AID
 $MSG
 Disable: touch $CFG/subagent-stop.off"
 printf '%s' "$MSG" | "$JQ" -Rs '{systemMessage: .}' 2>/dev/null || true

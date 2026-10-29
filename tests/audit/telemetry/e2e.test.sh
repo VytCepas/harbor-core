@@ -12,7 +12,7 @@ session() { CLAUDE_CONFIG_DIR="$CF" sh "$CF/bin/floor-observe.sh" </dev/null >/d
 guard() { _gn=$((${_gn:-0} + 1)); CLAUDE_CONFIG_DIR="$CF" sh "$CF/bin/guard-stub.sh" "$1" "echo e2e-command-$_gn" >/dev/null 2>&1; }
 H="$(. "$B/guard-lib.sh" 2>/dev/null; floor_host_token)"; O="$CF/MEMORY/OBSERVABILITY"; OH="$O/$H"; L="$OH/guard-decisions.jsonl"
 collect() { HARBOR_COLLECTOR_SRC="$O:$BUS" HARBOR_COLLECTOR_STORE="$ST" sh "$B/audit-collector.sh" "$@" >/dev/null 2>&1; echo $?; }
-health() { CLAUDE_CONFIG_DIR="$CF" HARBOR_COLLECTOR_STORE="$ST" HARBOR_RECEIPTS="$CF/cache/checks" sh "$B/audit-collector-check.sh" >/dev/null 2>&1; echo $?; }
+health() { CLAUDE_CONFIG_DIR="$CF" HARBOR_COLLECTOR_STORE="$ST" HARBOR_CHECK_RECEIPTS="$CF/cache/checks" sh "$B/audit-collector-check.sh" >/dev/null 2>&1; echo $?; }
 events() { grep -c "\"kind\":\"$1\"" "$ST/events.jsonl" 2>/dev/null | tr -d ' '; }
 
 t_section "1. a session starts and the floor records"
@@ -41,7 +41,7 @@ chmod 0700 "$OH"; : > "$L"; chmod 0500 "$OH"
 collect >/dev/null; collect >/dev/null
 t_eq "a truncated ledger is one truncated event, however many passes see it" 1 "$(events truncated)"
 t_eq "the check turns red" 1 "$(health)"
-t_eq "and writes one checks.log line" 1 "$(grep -c '\[check:collector.health\]' "$CF/cache/checks.log")"
+t_eq "and writes one checks.log line" 1 "$(grep -c '\[check:audit.collector-health\]' "$CF/cache/checks.log")"
 t_eq "the next run, nothing new: green again" 0 "$(health)"
 t_eq "the store still holds the truncated rows" yes "$(cat "$ST"/data/*.jsonl | grep -q '"d":"block"' && echo yes || echo no)"
 
@@ -64,7 +64,7 @@ chmod 0500 "$OH"; guard allow   # a writable host dir is refused by design: the 
 t_eq "with guard rows today, the cross-check is quiet" 0 "$(collect >/dev/null; health >/dev/null; health)"
 chmod 0700 "$OH"; grep '"d":"armed"' "$L" > "$T_TMP/armed" || :; cat "$T_TMP/armed" > "$L"; rm -f "$OH"/guard-decisions.jsonl.1
 t_eq "with only session rows today, it is red: guard-silent" 1 "$(health)"
-t_has "and says so" "$(jq -r '.subjects[]' "$CF/cache/checks/collector.health.json" | tr '\n' ' ')" guard-silent
+t_has "and says so" "$(jq -r '.subjects[]' "$CF/cache/checks/audit.collector-health.json" | tr '\n' ' ')" guard-silent
 
 t_section "6. a release"
 t_eq "the guard ledger exports through the scrub gate" 0 "$(python3 -I "$B/audit-stream-export.py" guard.decisions --out "$T_TMP/rel" --cfg "$CF" --key-file "$KEY" >/dev/null 2>&1; echo $?)"

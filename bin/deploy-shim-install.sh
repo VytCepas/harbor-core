@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # deploy-shim-install.sh — the ~/.local/bin commands, from contracts/shims.tsv. harbor#630.
 #   sh deploy-shim-install.sh [--apply] (--live | --dir BIN)   DRY RUN unless --apply
-#     --live is the operator's shim dir (HARBOR_LOCAL_BIN, default ~/.local/bin); --dir BIN any other.
+#     --live is the operator's shim dir (HARBOR_SCOPE_LOCAL_BIN, default ~/.local/bin); --dir BIN any other.
 #     The table is core's contracts/shims.tsv plus the shims.tsv of every installed pack (contracts/pack.md): `harbor pack
 #     install` copies a pack's to <config dir>/shims.d/<repo-id>.tsv, and each row links to the pack's installed bin/ file.
 #     --live reads ~/.claude/shims.d; a --dir run reads HARBOR_PACK_SHIMS_DIR, and with neither it links core's table alone.
@@ -33,10 +33,10 @@ SRC="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 . "$SRC/library-log.sh"
 . "$SRC/deploy-install-lib.sh"
 log_init shim-install
-ROOT="${HARBOR_ROOT:-$(CDPATH='' cd -- "$SRC/.." && pwd)}"
-TABLE="${HARBOR_SHIMS_TABLE:-$ROOT/contracts/shims.tsv}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH='' cd -- "$SRC/.." && pwd)}}"
+TABLE="${HARBOR_DEPLOY_SHIMS_TABLE:-${HARBOR_SHIMS_TABLE:-$ROOT/contracts/shims.tsv}}"
 # The live dir is the operator's PATH dir, from the roots table; no variable must agree with a --dir.
-IL_LIVE_DIR="$(sh "$SRC/scope-roots.sh" --get HARBOR_LOCAL_BIN)"
+IL_LIVE_DIR="$(sh "$SRC/scope-roots.sh" --get HARBOR_SCOPE_LOCAL_BIN)"
 IL_ENV=''
 il_parse "$@"
 # Backups and the log go to the config dir for the live PATH dir, not into a dir that is on PATH.
@@ -50,7 +50,7 @@ fi
 if [ "$IL_APPLY" -eq 1 ]; then log_head "apply to $BIN"; else log_head "plan for $BIN (dry run: nothing is written)"; fi
 if [ ! -f "$TABLE" ]; then
   log_fail "no shim table at $TABLE"
-  log_nofix "contracts/shims.tsv (HARBOR_SHIMS_TABLE overrides it)"
+  log_nofix "contracts/shims.tsv (HARBOR_DEPLOY_SHIMS_TABLE overrides it)"
   log_end; exit 1
 fi
 

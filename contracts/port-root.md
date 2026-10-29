@@ -62,7 +62,7 @@ so the M14 stop still has work to do for every path outside the workspace.
 
 **Unset is not an opt-out.** The stop applies to the default just as it applies
 to an exported value. The pre-move audit for harbor#619 found `PORT_ROOT`,
-`HARBOR_REPO`, `ESTATE_DIR` and three more unset in `.zshrc`, `.zprofile` and a
+`HARBOR_SCOPE_REPO`, `ESTATE_DIR` and three more unset in `.zshrc`, `.zprofile` and a
 live shell — a guarantee that only held for an exported value would be off on
 exactly the machine it was built for.
 

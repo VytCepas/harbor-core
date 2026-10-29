@@ -54,17 +54,17 @@ tool-0024	name.separator	**/dot_*	tool-required	never	D-56: the scaffolder's tem
 tool-0026	name.skill-dir	skills/review-fanout	tool-required	never	Claude Code's Skill tool still resolves the old name review-fanout through this alias stub until 2026-11-15 (renames.tsv rename-0029); the row goes with the stub
 tool-0023	name.extension	**/com.*.plist	tool-required	never	launchd defines the label, so a plist name carries the id's dots: com.harbor.<id>.plist (§6.3)
 world-0001	*	vendor/	world-name	never	D-52: a vendored upstream tree keeps the upstream's names; our wrappers follow the standard
-legacy-0003	name.abbreviation	bin/docs-gen.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0004	name.abbreviation	bin/floor-equiv.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
+legacy-0003	name.abbreviation	bin/docs-gen.sh	legacy	2027-01-25	first scan, harbor#950; W3 bin
+legacy-0004	name.abbreviation	bin/floor-equiv.sh	legacy	2027-01-25	first scan, harbor#950; W3 bin
 legacy-0005	name.abbreviation	bin/gcloud-creds	legacy	2027-02-08	first scan, harbor#950; W4 PATH
-legacy-0006	name.abbreviation	bin/status-gen.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0008	name.abbreviation	env:FLOOR_OBS_GUARDS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0009	name.abbreviation	env:FLOOR_OBS_SHAPES	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0010	name.abbreviation	env:FLOOR_OBS_SUBJECT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0011	name.abbreviation	env:FLOOR_OBS_TOOLS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0012	name.abbreviation	env:FLOOR_OBS_VERDICTS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0013	name.abbreviation	env:FLOOR_SEG_CMD	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0014	name.abbreviation	env:HELM_OBS_DISABLE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
+legacy-0006	name.abbreviation	bin/status-gen.sh	legacy	2027-01-25	first scan, harbor#950; W3 bin
+legacy-0008	name.abbreviation	env:FLOOR_OBS_GUARDS	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0009	name.abbreviation	env:FLOOR_OBS_SHAPES	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0010	name.abbreviation	env:FLOOR_OBS_SUBJECT	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0011	name.abbreviation	env:FLOOR_OBS_TOOLS	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0012	name.abbreviation	env:FLOOR_OBS_VERDICTS	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0013	name.abbreviation	env:FLOOR_SEG_CMD	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0014	name.abbreviation	env:HELM_OBS_DISABLE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
 legacy-0016	name.abbreviation	skills/platform-signals/references/vocab-map.md	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0017	name.abbreviation	skills/topology/bin/report-gen.sh	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0020	name.abbreviation	tests/cli/gcloud-creds-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
@@ -77,15 +77,15 @@ legacy-0030	name.alias	DEAD-ENDS.md	legacy	2026-11-16	first scan, harbor#950; W1
 legacy-0031	name.alias	DOCTRINE	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0049	name.alias	FLOOR.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0051	name.alias	HANDOFF.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0052	name.alias	bin/failure-capture.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0053	name.alias	bin/floor-deny.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0054	name.alias	bin/floor-equiv.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
+legacy-0052	name.alias	bin/failure-capture.sh	legacy	2027-01-25	first scan, harbor#950; W3 bin
+legacy-0053	name.alias	bin/floor-deny.sh	legacy	2027-01-25	first scan, harbor#950; W3 bin
+legacy-0054	name.alias	bin/floor-equiv.sh	legacy	2027-01-25	first scan, harbor#950; W3 bin
 legacy-0055	name.alias	bin/floor-hook.sh	legacy	2027-02-22	first scan, harbor#950; W6 admission
-legacy-0056	name.alias	bin/floor-install.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0057	name.alias	bin/floor-normalize.awk	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0058	name.alias	bin/floor-observe.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0059	name.alias	bin/floor-uninstall.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0060	name.alias	bin/floor-verify.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
+legacy-0056	name.alias	bin/floor-install.sh	legacy	2027-01-25	first scan, harbor#950; W3 bin
+legacy-0057	name.alias	bin/floor-normalize.awk	legacy	2027-01-25	first scan, harbor#950; W3 bin
+legacy-0058	name.alias	bin/floor-observe.sh	legacy	2027-01-25	first scan, harbor#950; W3 bin
+legacy-0059	name.alias	bin/floor-uninstall.sh	legacy	2027-01-25	first scan, harbor#950; W3 bin
+legacy-0060	name.alias	bin/floor-verify.sh	legacy	2027-01-25	first scan, harbor#950; W3 bin
 legacy-0061	name.alias	bin/guard-apiroute.sh	legacy	2027-02-22	first scan, harbor#950; W6 admission
 legacy-0062	name.alias	bin/guard-bash.sh	legacy	2027-02-22	first scan, harbor#950; W6 admission
 legacy-0063	name.alias	bin/guard-cloud.sh	legacy	2027-02-22	first scan, harbor#950; W6 admission
@@ -96,60 +96,52 @@ legacy-0067	name.alias	bin/guard-integrity.sh	legacy	2027-02-22	first scan, harb
 legacy-0068	name.alias	bin/guard-lib.sh	legacy	2027-02-22	first scan, harbor#950; W6 admission
 legacy-0069	name.alias	bin/guard-selfedit.sh	legacy	2027-02-22	first scan, harbor#950; W6 admission
 legacy-0070	name.alias	bin/guard-stop.sh	legacy	2027-02-22	first scan, harbor#950; W6 admission
-legacy-0071	name.alias	bin/harbor-clean.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0074	name.alias	bin/judge-run.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0075	name.alias	bin/prod-guard-ambient.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0076	name.alias	bin/prod-guard-install.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0077	name.alias	bin/pulse-notify.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0078	name.alias	bin/pulse.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
+legacy-0071	name.alias	bin/harbor-clean.sh	legacy	2027-01-25	first scan, harbor#950; W3 bin
+legacy-0074	name.alias	bin/judge-run.sh	legacy	2027-01-25	first scan, harbor#950; W3 bin
+legacy-0075	name.alias	bin/prod-guard-ambient.sh	legacy	2027-01-25	first scan, harbor#950; W3 bin
+legacy-0076	name.alias	bin/prod-guard-install.sh	legacy	2027-01-25	first scan, harbor#950; W3 bin
+legacy-0077	name.alias	bin/pulse-notify.sh	legacy	2027-01-25	first scan, harbor#950; W3 bin
+legacy-0078	name.alias	bin/pulse.sh	legacy	2027-01-25	first scan, harbor#950; W3 bin
 legacy-0079	name.alias	commands/harbor-context.md	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0080	name.alias	commands/harbor-merge.md	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0081	name.alias	commands/harbor-skills.md	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
-legacy-0085	name.alias	env:BOX_SKILLS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0086	name.alias	env:FLOOR_AWK	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0087	name.alias	env:FLOOR_COLLAPSE_AWK	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0088	name.alias	env:FLOOR_FIX	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0089	name.alias	env:FLOOR_GREP	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0090	name.alias	env:FLOOR_IN	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0091	name.alias	env:FLOOR_INSTR_SURFACES	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0092	name.alias	env:FLOOR_JQ	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0093	name.alias	env:FLOOR_MAX_NORM	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0094	name.alias	env:FLOOR_OBS_GUARDS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0095	name.alias	env:FLOOR_OBS_SHAPES	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0096	name.alias	env:FLOOR_OBS_SUBJECT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0097	name.alias	env:FLOOR_OBS_TOOLS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0098	name.alias	env:FLOOR_OBS_VERDICTS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0099	name.alias	env:FLOOR_OPTS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0100	name.alias	env:FLOOR_SEGS	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0101	name.alias	env:FLOOR_SEG_CMD	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0102	name.alias	env:FLOOR_SHADOWED	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0103	name.alias	env:FLOOR_TOOL	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0104	name.alias	env:FLOOR_WIRED	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0105	name.alias	env:GADS_ALLOWLIST	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0106	name.alias	env:GADS_ALLOW_ANY_CUSTOMER	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0107	name.alias	env:GADS_QUOTA_PROJECT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0109	name.alias	env:HARBOR_ORCHESTRATOR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0110	name.alias	env:HARBOR_PROJECT_INIT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0114	name.alias	env:HELM_CRED_OCC	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0115	name.alias	env:HELM_DESTROY_POSTURE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0116	name.alias	env:HELM_DISABLE_FLOOR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0117	name.alias	env:HELM_DRIFT_REF	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0118	name.alias	env:HELM_FLOOR_SHADOW	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0119	name.alias	env:HELM_LIVE_DIR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0120	name.alias	env:HELM_OBS_DISABLE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0121	name.alias	env:HELM_SANDBOX_DIR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
+legacy-0085	name.alias	env:BOX_SKILLS	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0086	name.alias	env:FLOOR_AWK	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0087	name.alias	env:FLOOR_COLLAPSE_AWK	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0088	name.alias	env:FLOOR_FIX	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0089	name.alias	env:FLOOR_GREP	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0090	name.alias	env:FLOOR_IN	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0091	name.alias	env:FLOOR_INSTR_SURFACES	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0092	name.alias	env:FLOOR_JQ	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0093	name.alias	env:FLOOR_MAX_NORM	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0094	name.alias	env:FLOOR_OBS_GUARDS	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0095	name.alias	env:FLOOR_OBS_SHAPES	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0096	name.alias	env:FLOOR_OBS_SUBJECT	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0097	name.alias	env:FLOOR_OBS_TOOLS	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0098	name.alias	env:FLOOR_OBS_VERDICTS	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0099	name.alias	env:FLOOR_OPTS	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0100	name.alias	env:FLOOR_SEGS	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0101	name.alias	env:FLOOR_SEG_CMD	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0102	name.alias	env:FLOOR_SHADOWED	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0103	name.alias	env:FLOOR_TOOL	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0104	name.alias	env:FLOOR_WIRED	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0105	name.alias	env:GADS_ALLOWLIST	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0106	name.alias	env:GADS_ALLOW_ANY_CUSTOMER	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0107	name.alias	env:GADS_QUOTA_PROJECT	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0114	name.alias	env:HELM_CRED_OCC	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0115	name.alias	env:HELM_DESTROY_POSTURE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0116	name.alias	env:HELM_DISABLE_FLOOR	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0117	name.alias	env:HELM_DRIFT_REF	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0118	name.alias	env:HELM_FLOOR_SHADOW	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0119	name.alias	env:HELM_LIVE_DIR	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0120	name.alias	env:HELM_OBS_DISABLE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
+legacy-0121	name.alias	env:HELM_SANDBOX_DIR	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
 legacy-0123	name.alias	fixtures/inject	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0126	name.alias	inject.d	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0127	name.alias	inject.d/box	legacy	2026-11-16	first scan, harbor#950; W1 docs
 legacy-0128	name.alias	context-rules/user/browser-route-harbor-chrome.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
-legacy-0131	name.alias	launchd/com.harbor.judge.plist	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0132	name.alias	launchd/com.harbor.pulse.plist	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0134	name.alias	skills/test-strength/targets/floor	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0135	name.alias	skills/test-strength/targets/floor.target	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
-legacy-0136	name.alias	systemd/harbor-judge.service	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0137	name.alias	systemd/harbor-judge.timer	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0138	name.alias	systemd/harbor-pulse.service	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0139	name.alias	systemd/harbor-pulse.timer	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0142	name.alias	tests/floor	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0164	name.alias	tests/hooks/inject-notes-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
 legacy-0179	name.case	APPROACH.md	legacy	2026-11-16	first scan, harbor#950; W1 docs
@@ -202,120 +194,7 @@ legacy-0565	name.env	env:FLOOR_WIRED	legacy	2027-02-15	first scan, harbor#950; W
 legacy-0566	name.env	env:GADS_ALLOWLIST	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0567	name.env	env:GADS_ALLOW_ANY_CUSTOMER	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0568	name.env	env:GADS_QUOTA_PROJECT	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0570	name.env	env:HARBOR_ARCHIFY	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0571	name.env	env:HARBOR_ATTRIBUTION_ERE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0572	name.env	env:HARBOR_BASE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0573	name.env	env:HARBOR_BASE_BRANCH	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0574	name.env	env:HARBOR_BILLING_USER	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0575	name.env	env:HARBOR_BIN	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0576	name.env	env:HARBOR_BRANCH	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0577	name.env	env:HARBOR_BROWSER_CONFIRM	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0578	name.env	env:HARBOR_BROWSER_IDLE_MS	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0579	name.env	env:HARBOR_BROWSER_LIVE_ACCEPT	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0580	name.env	env:HARBOR_BROWSER_LIVE_URL	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0581	name.env	env:HARBOR_BROWSER_PROFILE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0582	name.env	env:HARBOR_BROWSER_SESSION	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0583	name.env	env:HARBOR_BUDGET_NO_PROBE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0584	name.env	env:HARBOR_CACHE_DIR	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0585	name.env	env:HARBOR_CHANGED	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0586	name.env	env:HARBOR_CHROME	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0587	name.env	env:HARBOR_CHROME_DATA	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0588	name.env	env:HARBOR_CLAUDE_JSON	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0589	name.env	env:HARBOR_CLEAN_AGE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0590	name.env	env:HARBOR_CLEAN_BOUND	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0591	name.env	env:HARBOR_CLEAN_DUE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0592	name.env	env:HARBOR_CLEAN_GH	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0593	name.env	env:HARBOR_CLEAN_HOME	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0594	name.env	env:HARBOR_CLEAN_IDLE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0595	name.env	env:HARBOR_CLEAN_PR_LIMIT	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0596	name.env	env:HARBOR_CLEAN_SCRATCH	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0597	name.env	env:HARBOR_CLEAN_SLOTS	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0598	name.env	env:HARBOR_CONST_WALK_MAX	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0599	name.env	env:HARBOR_CUDOCTOR_MAX_AGE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0600	name.env	env:HARBOR_CURL	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0601	name.env	env:HARBOR_DEPLOY	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0602	name.env	env:HARBOR_DRIVE_MOUNT	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0603	name.env	env:HARBOR_DRIVE_WAIT	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0604	name.env	env:HARBOR_ESTATE_ROOT	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0605	name.env	env:HARBOR_FC_HORIZON_DAYS	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0606	name.env	env:HARBOR_FC_NOW	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0607	name.env	env:HARBOR_FINDINGS_NOW	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0608	name.env	env:HARBOR_FINDINGS_OUT	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0609	name.env	env:HARBOR_FINDINGS_REPO	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0610	name.env	env:HARBOR_FINDINGS_URL	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0611	name.env	env:HARBOR_FLEET_FILE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0612	name.env	env:HARBOR_FLEET_MAX_AGE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0613	name.env	env:HARBOR_GH	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0614	name.env	env:HARBOR_GLYPH_COLS	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0615	name.env	env:HARBOR_GLYPH_DUMP	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0616	name.env	env:HARBOR_GLYPH_NAME_CAP	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0617	name.env	env:HARBOR_GLYPH_STALE_S	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0618	name.env	env:HARBOR_HARVEST_CAP	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0619	name.env	env:HARBOR_HARVEST_DAYS	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0620	name.env	env:HARBOR_HOSTS_FILE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0621	name.env	env:HARBOR_INDEX_BYTES_PER_POINTER	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0622	name.env	env:HARBOR_INDEX_STRUCTURE_BYTES	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0623	name.env	env:HARBOR_IN_SUITE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0624	name.env	env:HARBOR_ISA_OUT	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0625	name.env	env:HARBOR_ISA_STORE	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0626	name.env	env:HARBOR_ISSUE_REPO	legacy	2027-02-08	first scan, harbor#950; W5 state, env and launchd
-legacy-0627	name.env	env:HARBOR_K	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0628	name.env	env:HARBOR_LEVEL	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0629	name.env	env:HARBOR_LOCAL_BIN	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0630	name.env	env:HARBOR_LOG_DIR	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0631	name.env	env:HARBOR_LOG_REPO	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0632	name.env	env:HARBOR_LOG_TOKEN_FILE	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0633	name.env	env:HARBOR_M	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0634	name.env	env:HARBOR_NOW	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0635	name.env	env:HARBOR_ORCHESTRATOR	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0636	name.env	env:HARBOR_ORCH_BIN	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0637	name.env	env:HARBOR_PEERS_DIR	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0638	name.env	env:HARBOR_PEER_EXCLUDE	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0639	name.env	env:HARBOR_PLANTED	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0640	name.env	env:HARBOR_PLAN_OUT	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0641	name.env	env:HARBOR_PLAN_SRC	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0642	name.env	env:HARBOR_PREPUSH_FULL	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0643	name.env	env:HARBOR_PROBE_DIR	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0644	name.env	env:HARBOR_PROJECT_INIT	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0648	name.env	env:HARBOR_PW_CLI	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0649	name.env	env:HARBOR_Q	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0650	name.env	env:HARBOR_REACHED	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0651	name.env	env:HARBOR_RECEIPTS	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0652	name.env	env:HARBOR_REPO	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0654	name.env	env:HARBOR_REQUIRE_BUN	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0655	name.env	env:HARBOR_REQUIRE_GITLEAKS	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0656	name.env	env:HARBOR_RESULT_BYTES	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0657	name.env	env:HARBOR_RH_COST_S	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0658	name.env	env:HARBOR_RH_LINT	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0659	name.env	env:HARBOR_RH_NOW	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0660	name.env	env:HARBOR_RH_SUITES	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0661	name.env	env:HARBOR_ROOT	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0662	name.env	env:HARBOR_ROOTS_TABLE	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
 legacy-0663	name.env	env:HARBOR_RUNNER	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0664	name.env	env:HARBOR_RUNNERS_DIR	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0665	name.env	env:HARBOR_SESSIONS_DIR	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0666	name.env	env:HARBOR_SHIMS_TABLE	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0667	name.env	env:HARBOR_SKIP_CROSS	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0668	name.env	env:HARBOR_STATUSLINE_REFRESH	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0669	name.env	env:HARBOR_SUBGLYPH_DUMP	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0670	name.env	env:HARBOR_SUITE_COUNTS	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0671	name.env	env:HARBOR_SUITE_JOBS	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0672	name.env	env:HARBOR_SUITE_TAIL	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0673	name.env	env:HARBOR_SUITE_TIMEOUT	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0674	name.env	env:HARBOR_SWITCH_REPO	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0675	name.env	env:HARBOR_TAXONOMY	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0676	name.env	env:HARBOR_TELOS_DIR	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0677	name.env	env:HARBOR_TIP_BRANCH	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0678	name.env	env:HARBOR_TIP_PENDING_SEC	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0679	name.env	env:HARBOR_TIP_REPO	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0680	name.env	env:HARBOR_TIP_WINDOW	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0681	name.env	env:HARBOR_TOUCHED	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0682	name.env	env:HARBOR_TRANSCRIPTS	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0683	name.env	env:HARBOR_TRANSCRIPT_DIR	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0684	name.env	env:HARBOR_WORKFLOW	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0685	name.env	env:HARBOR_WORKLOG_MAX_AGE	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0686	name.env	env:HARBOR_X	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
-legacy-0687	name.env	env:HARBOR_Z	legacy	2027-02-22	first scan, harbor#950; W5 state, env and launchd
 legacy-0688	name.env	env:HELM_CRED_OCC	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0689	name.env	env:HELM_DESTROY_POSTURE	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0690	name.env	env:HELM_DISABLE_FLOOR	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
@@ -332,9 +211,9 @@ legacy-0702	name.extension	skills/test-strength/targets/topology-structure.targe
 legacy-0703	name.extension	skills/test-strength/targets/topology-trigger.target	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0704	name.extension	skills/test-strength/targets/topology.target	legacy	2027-03-01	first scan, harbor#950; skills (D-35)
 legacy-0764	name.extension	tests/skills/skill-gates.maps-test.sh	legacy	2027-01-25	first scan, harbor#950; W2 tests
-legacy-0767	name.family	bin/annotate-web.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0769	name.family	bin/browser-agent.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0774	name.family	bin/browser.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
+legacy-0767	name.family	bin/annotate-web.sh	legacy	2027-01-25	first scan, harbor#950; W3 bin
+legacy-0769	name.family	bin/browser-agent.sh	legacy	2027-01-25	first scan, harbor#950; W3 bin
+legacy-0774	name.family	bin/browser.sh	legacy	2027-01-25	first scan, harbor#950; W3 bin
 legacy-0775	name.family	bin/cite-verify.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0776	name.family	bin/cited-paths.awk	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0777	name.family	bin/constitution-install.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
@@ -406,12 +285,6 @@ legacy-0866	name.family	bin/usage-aggregate.sh	legacy	2027-02-01	first scan, har
 legacy-0867	name.family	bin/visual-check.mjs	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0868	name.family	bin/visual-check.sh	legacy	2027-02-01	first scan, harbor#950; W3 bin
 legacy-0872	name.family	bin/wrapper-falsify.py	legacy	2027-02-01	first scan, harbor#950; W3 bin
-legacy-0876	name.launchd	launchd/com.harbor.findings.plist	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0877	name.launchd	launchd/com.harbor.fleet-snapshot.plist	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0878	name.launchd	launchd/com.harbor.judge.plist	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0879	name.launchd	launchd/com.harbor.pulse.plist	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0880	name.launchd	launchd/com.harbor.usage-sessions.plist	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
-legacy-0881	name.launchd	launchd/com.harbor.usage.plist	legacy	2027-02-15	first scan, harbor#950; W5 state, env and launchd
 legacy-0882	name.separator	EVALS-DATA/e10inject/raw_a	legacy	2026-11-30	first scan, harbor#950; W1 eval data e10inject
 legacy-0966	name.separator	EVALS-DATA/e5trap/raw_a	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap
 legacy-0971	name.separator	EVALS-DATA/e5trap/raw_b	legacy	2026-12-14	first scan, harbor#950; W1 eval data e5trap

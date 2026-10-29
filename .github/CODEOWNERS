@@ -91,6 +91,7 @@
 /bin/ci-main-tip-verdict.sh @VytCepas
 /bin/ci-mirror.sh @VytCepas
 /bin/ci-queue.sh @VytCepas
+/bin/ci-release-names.sh @VytCepas
 /bin/ci-runner-switch.sh @VytCepas
 /bin/ci-runners-fleet-lib.sh @VytCepas
 /bin/ci-runners-github-lib.sh @VytCepas
@@ -181,6 +182,7 @@
 /bin/lint-module.sh @VytCepas
 /bin/lint-name.sh @VytCepas
 /bin/lint-platform.sh @VytCepas
+/bin/lint-renderer.sh @VytCepas
 /bin/lint-secrets.sh @VytCepas
 /bin/lint-share.sh @VytCepas
 /bin/lint-siblings.sh @VytCepas
@@ -210,8 +212,11 @@
 /bin/skill-collision-verify.sh @VytCepas
 /bin/skill-install.sh @VytCepas
 /bin/standard-catalog.sh @VytCepas
+/bin/standard-fleet-names-run.sh @VytCepas
+/bin/standard-fleet-names.sh @VytCepas
 /bin/standard-frozen-generate.sh @VytCepas
 /bin/standard-shape.sh @VytCepas
+/bin/standard-vendor.sh @VytCepas
 /bin/status-fleet-snapshot-refresh.sh @VytCepas
 /bin/status-generate.sh @VytCepas
 /bin/status-obligations.sh @VytCepas

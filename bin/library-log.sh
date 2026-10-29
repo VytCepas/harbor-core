@@ -144,9 +144,9 @@ log_end() {
 _receipt_json() { # <string> → a JSON string literal; control characters dropped
   printf '"%s"' "$(printf '%s' "$1" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g')"
 }
-# The one receipt dir, for every writer and the reconcile (harbor#904): HARBOR_RECEIPTS, else
-# <config dir>/cache/checks. A writer's own cache dir (HARBOR_CACHE_DIR) never moves it.
-receipt_dir() { printf '%s' "${HARBOR_RECEIPTS:-${1:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}/cache/checks}"; }
+# The one receipt dir, for every writer and the reconcile (harbor#904): HARBOR_CHECK_RECEIPTS, else
+# <config dir>/cache/checks. A writer's own cache dir (HARBOR_SCOPE_CACHE_DIR) never moves it.
+receipt_dir() { printf '%s' "${HARBOR_CHECK_RECEIPTS:-${HARBOR_RECEIPTS:-${1:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}/cache/checks}}"; }
 log_receipt() {
   [ "$#" -ge 3 ] || return 1
   _rd="$1"; _ri="$2"; _rs="$3"; shift 3

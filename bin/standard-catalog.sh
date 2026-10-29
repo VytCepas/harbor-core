@@ -591,7 +591,7 @@ _layout() {
   [ -f "$ROOT/contracts/layout-map.tsv" ] || return 0
   printf '\n## Top-level layout\n\nEvery tracked top-level entry, its kind and layer from `contracts/layout-map.tsv`; Ships is read from `contracts/layers.tsv` (core ships in harbor-core, dev is box or dev data). `bin/lint-layout-map.sh` is red on an entry with no row.\n\n'
   printf '| Entry | Kind | Layer | Ships |\n|---|---|---|---|\n'
-  HARBOR_ROOT="$ROOT" sh "$ROOT/bin/lint-layout-map.sh" --list | awk -F'\t' '{ printf "| `%s` | %s | %s | %s |\n", $1, $2, $3, ($4 == "core" ? "core" : "dev") }'
+  HARBOR_SCOPE_ROOT="$ROOT" sh "$ROOT/bin/lint-layout-map.sh" --list | awk -F'\t' '{ printf "| `%s` | %s | %s | %s |\n", $1, $2, $3, ($4 == "core" ? "core" : "dev") }'
 }
 
 _build() { _census "$TMP/catalog.tsv" "$TMP/findings.tsv"; }

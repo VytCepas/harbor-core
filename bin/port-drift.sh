@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# port-drift.sh (harbor#966, check id `port-drift`) - every directory under PORT_ROOT is a registered repo or an exempt kind.
+# port-drift.sh (harbor#966, check id `drift.port-root`) - every directory under PORT_ROOT is a registered repo or an exempt kind.
 #
 #   sh port-drift.sh            list each unregistered directory (one per line, with its age), exit 1 if any
 #   sh port-drift.sh --names    just the names, for a script
