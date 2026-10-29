@@ -8,7 +8,7 @@ command -v python3 >/dev/null 2>&1 || { t_fail "python3 is required (the server'
 X="$T_TMP/x"; mkdir -p "$X"; cp "$SRV" "$X/access-chrome-mcp.py"
 cat > "$X/access-browser-agent.sh" <<'EOF'
 for a in "$@"; do printf 'arg=%s\n' "$a"; done
-printf 'session=%s lane=%s\n' "${HARBOR_BROWSER_SESSION:-}" "${HARBOR_BROWSER_LANE:-}"
+printf 'session=%s lane=%s\n' "${HARBOR_ACCESS_BROWSER_SESSION:-${HARBOR_BROWSER_SESSION:-}}" "${HARBOR_BROWSER_LANE:-}"
 printf 'path=%s private=%s\n' "$PATH" "${HARBOR_BROWSER_PRIVATE_HOSTS:-none}"
 case "$1" in fail) echo 'FAIL: refused by the stub' >&2; exit 1 ;; esac
 EOF

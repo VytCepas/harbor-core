@@ -68,7 +68,7 @@ t_has "...naming the rule" "$(run --plan --id rename-0003 2>&1)" "name.family"
 t_eq "...and nothing moved" "bin/other.sh" "$(git -C "$HB" ls-files bin/other.sh)"
 row rename-0004 launchd:com.helm.x launchd:com.harbor.x launchd W5 - "a label"
 t_exit "a surface the codemod does not move yet is unchecked" 3 run --apply --id rename-0004
-row rename-0005 env:helm_x env:HARBOR_X env W5 - "an env name in lower case"
+row rename-0005 env:helm_x env:HARBOR_TEST_X env W5 - "an env name in lower case"
 t_exit "an env row must name env:UPPER_CASE_NAME twice" 1 run --plan --id rename-0001
 t_has "...and the refusal says which row and why, not only that the plan exits 1" "$(run --plan --id rename-0001 2>&1)" "an env row names env:UPPER_CASE_NAME twice"
 sed -i.bak '/^rename-000[345]/d' "$HB/standards/naming/renames.tsv"; rm -f "$HB/standards/naming/renames.tsv.bak"

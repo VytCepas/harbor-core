@@ -24,7 +24,7 @@ df_set() { printf "Filesystem 1024-blocks Used Available Capacity Mounted on\n/d
 sysctl_set() { # <pressure level> <swap used, with unit>
   printf 'kern.memorystatus_vm_pressure_level: %s\nvm.swapusage: total = 8192.00M  used = %s  free = 100.00M  (encrypted)\nvm.loadavg: { 12.41 11.20 10.10 }\nhw.memsize: 25769803776\n' "$1" "$2" > "$D/sysctl"
 }
-m() { printf '%s' "$1" | PATH="$SHIMS:$PATH" CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$CFG/cache" HARBOR_NOW="$NOW" \
+m() { printf '%s' "$1" | PATH="$SHIMS:$PATH" CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" HARBOR_TEST_NOW="$NOW" \
   HARBOR_GLYPH_MACHINE=1 HARBOR_GLYPH_MACHINE_REFRESH="${REFRESH:-0}" HARBOR_GLYPH_FW="$SHIMS/socketfilterfw" "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null; }
 # The fleet tile closes BOX and is the fleet suite.s subject: with no fleet cache here it reads `fleet: unknown`.
 nofleet() { sed "s/ │ fleet: unknown$//; s/^fleet: unknown$//"; }
@@ -125,7 +125,7 @@ printf 'what\n' > "$D/vm_stat"; printf 'Filesystem\n/dev/x lots none 9%%\n' > "$
 O="$(m "$P" | plain)"
 t_eq "garbage everywhere: BOX carries no machine segment" "" "$(row3 "$P")"
 t_eq "and nothing from the machine leaks into any row" 0 "$(printf '%s\n' "$O" | grep -cE "CPU|GPU|RAM|SSD|swap|load")"
-t_eq "nothing is printed to stderr" "" "$(printf '%s' "$P" | PATH="$SHIMS:$PATH" CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$CFG/cache" HARBOR_NOW="$NOW" HARBOR_GLYPH_MACHINE=1 HARBOR_GLYPH_MACHINE_REFRESH=0 "$SH" "$SRC/status-fleet-glyph.sh" 2>&1 >/dev/null)"
+t_eq "nothing is printed to stderr" "" "$(printf '%s' "$P" | PATH="$SHIMS:$PATH" CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" HARBOR_TEST_NOW="$NOW" HARBOR_GLYPH_MACHINE=1 HARBOR_GLYPH_MACHINE_REFRESH=0 "$SH" "$SRC/status-fleet-glyph.sh" 2>&1 >/dev/null)"
 
 t_section "row 3: no source at all (a Linux CI container) is no machine segment, no error"
 reset; for _c in ioreg vm_stat sysctl df ps iostat; do rm -f "$D/$_c"; done; rm -f "$CPUC"
@@ -137,16 +137,16 @@ BARE="$TMP/bare"; mkdir -p "$BARE"
 for _c in jq date cat awk sed head tail stat tr grep cut sort wc sha256sum shasum git basename dirname mkdir ls uname id readlink env; do
   _p="$(command -v "$_c" 2>/dev/null || true)"; case "$_p" in /*) ln -sf "$_p" "$BARE/$_c" ;; esac
 done
-O="$(printf '%s' "$P" | PATH="$BARE" CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$CFG/cache" HARBOR_NOW="$NOW" HARBOR_GLYPH_MACHINE=1 "$SH" "$SRC/status-fleet-glyph.sh" 2>&1 | plain)"
+O="$(printf '%s' "$P" | PATH="$BARE" CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" HARBOR_TEST_NOW="$NOW" HARBOR_GLYPH_MACHINE=1 "$SH" "$SRC/status-fleet-glyph.sh" 2>&1 | plain)"
 t_eq "with no ioreg/vm_stat/sysctl/df/ps/iostat on PATH at all: no machine segment" "" "$(printf '%s\n' "$O" | sed -n 3p | nofleet)"
 t_has "control: a missing command in that PATH does say 'not found'" "$(PATH="$BARE" "$SH" -c 'nosuchcmd_x' 2>&1)" 'not found'
 t_hasnt "no 'not found' noise" "$O" 'not found'
 t_has "row 1 survives" "$O" "Opus 5"
-t_eq "no stdin: PLACE and BOX only" 2 "$(printf '' | PATH="$BARE" CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$CFG/cache" "$SH" "$SRC/status-fleet-glyph.sh" 2>&1 | wc -l | tr -d ' ')"
+t_eq "no stdin: PLACE and BOX only" 2 "$(printf '' | PATH="$BARE" CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" "$SH" "$SRC/status-fleet-glyph.sh" 2>&1 | wc -l | tr -d ' ')"
 
 t_section "row 3: the off switch"
 reset
-t_eq "HARBOR_GLYPH_MACHINE=0 prints no machine segment" "" "$(printf '%s' "$P" | PATH="$SHIMS:$PATH" CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$CFG/cache" HARBOR_NOW="$NOW" HARBOR_GLYPH_MACHINE=0 "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null | plain | sed -n 3p | nofleet)"
+t_eq "HARBOR_GLYPH_MACHINE=0 prints no machine segment" "" "$(printf '%s' "$P" | PATH="$SHIMS:$PATH" CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" HARBOR_TEST_NOW="$NOW" HARBOR_GLYPH_MACHINE=0 "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null | plain | sed -n 3p | nofleet)"
 
 t_section "BOX: CI inventory follows the machine; CI alarms go to YOU"
 reset
@@ -160,10 +160,10 @@ box() { m "$@" | plain | tail -1 | nofleet; }
 t_eq "a CI alarm is the YOU row, between PLACE and BOX" "MAIN RED 2h" "$(row3 "$P")"
 t_has "MAIN RED is red" "$(m "$P" | sed -n 3p)" "${ESC}[31mMAIN RED 2h"
 t_eq "and BOX keeps the machine and the CI inventory" "CPU 63% ·load 12.4 │ GPU 8% │ RAM 17.9/24G │ SSD 725/925G │ swap 0.4/8G │ ⏳2 ·~5m │ CI→local 100%" "$(box "$P")"
-O="$(printf '%s' "$P" | HARBOR_GLYPH_COLS=60 PATH="$SHIMS:$PATH" CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$CFG/cache" HARBOR_NOW="$NOW" HARBOR_GLYPH_MACHINE=1 HARBOR_GLYPH_MACHINE_REFRESH=0 "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null | plain)"
+O="$(printf '%s' "$P" | HARBOR_STATUS_GLYPH_COLS=60 PATH="$SHIMS:$PATH" CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" HARBOR_TEST_NOW="$NOW" HARBOR_GLYPH_MACHINE=1 HARBOR_GLYPH_MACHINE_REFRESH=0 "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null | plain)"
 t_eq "narrow: the alarm keeps its YOU row" "MAIN RED 2h" "$(printf '%s\n' "$O" | sed -n 3p)"
 t_eq "narrow: BOX keeps the machine and drops the CI inventory" "CPU 63% ·load 12.4 │ GPU 8% │ RAM 17.9/24G │ SSD 725/925G │ swap 0.4/8G" "$(printf '%s\n' "$O" | sed -n 4p)"
-off() { printf '%s' "$P" | PATH="$SHIMS:$PATH" CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$CFG/cache" HARBOR_NOW="$NOW" HARBOR_GLYPH_MACHINE=0 "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null | plain; }
+off() { printf '%s' "$P" | PATH="$SHIMS:$PATH" CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" HARBOR_TEST_NOW="$NOW" HARBOR_GLYPH_MACHINE=0 "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null | plain; }
 t_eq "MACHINE=0 keeps the CI inventory on BOX and drops the machine" "⏳2 ·~5m │ CI→local 100%" "$(off | tail -1 | nofleet)"
 rm -f "$CQ" "$RS" "$MT"
 t_eq "MACHINE=0 and no CI: BOX holds only the fleet tile" "fleet: unknown" "$(off | tail -1)"
@@ -224,9 +224,9 @@ t_has "this session not linked: phone off" "$(row3 "$SP")" "🔓 📵 │"
 t_hasnt "another session's link is not ours" "$(row3 '{"session_id":"zzz-999",'"${P#\{}")" "📱"
 t_eq "no session_id in the payload: no RC icon" "🔓 │ $GOLD" "$(row3 "$P")"
 t_eq "a session with no file: no RC icon" "🔓 │ $GOLD" "$(row3 '{"session_id":"nope",'"${P#\{}")"
-O="$(printf '%s' "$SP" | HARBOR_GLYPH_COLS=60 PATH="$SHIMS:$PATH" CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$CFG/cache" HARBOR_NOW="$NOW" HARBOR_GLYPH_MACHINE=1 HARBOR_GLYPH_MACHINE_REFRESH=0 HARBOR_GLYPH_FW="$SHIMS/socketfilterfw" "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null | plain | sed -n 3p)"
+O="$(printf '%s' "$SP" | HARBOR_STATUS_GLYPH_COLS=60 PATH="$SHIMS:$PATH" CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" HARBOR_TEST_NOW="$NOW" HARBOR_GLYPH_MACHINE=1 HARBOR_GLYPH_MACHINE_REFRESH=0 HARBOR_GLYPH_FW="$SHIMS/socketfilterfw" "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null | plain | sed -n 3p)"
 t_has "narrow tier keeps the icons" "$O" "🔓 📵"
-t_eq "MACHINE=0 drops the icons with the machine" "fleet: unknown" "$(printf "%s" "$SP" | PATH="$SHIMS:$PATH" CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$CFG/cache" HARBOR_NOW="$NOW" HARBOR_GLYPH_MACHINE=0 HARBOR_GLYPH_FW="$SHIMS/socketfilterfw" "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null | plain | tail -1)"
+t_eq "MACHINE=0 drops the icons with the machine" "fleet: unknown" "$(printf "%s" "$SP" | PATH="$SHIMS:$PATH" CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" HARBOR_TEST_NOW="$NOW" HARBOR_GLYPH_MACHINE=0 HARBOR_GLYPH_FW="$SHIMS/socketfilterfw" "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null | plain | tail -1)"
 rm -rf "$CFG/sessions" "$D/socketfilterfw" "$D/route" "$D/arp"
 
 t_section "row 3: the CPU sampler is detached, rate-limited and never blocks a render"

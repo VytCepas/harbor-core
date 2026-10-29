@@ -14,7 +14,7 @@ awk '/^<!-- lanes:begin -->$/ { print; print "| lane | key | subject | repair | 
        print "| HEAL | `lint/lint.exec-bit-kept` | `bin/*` | `chmod +x <subject>` | #574 |"
        print "| HEAL | `lint/skill.book-current` | `skills/skill-catalog/SKILL.md` | `sh bin/book.sh` | #591 |"
        print "| HEAL | `lint/memory.repo-reachable` | `*` | `sh bin/route.sh` | #589 |"
-       print "| HEAL | `check/memory-route` | `*` | `sh bin/route.sh` | #589 |"
+       print "| HEAL | `check/memory.route` | `*` | `sh bin/route.sh` | #589 |"
        print "| HEAL | `lint/skill.not-for-target-exists` | `*` | `sh bin/fail.sh` | #590 |"
        print "| PROPOSE | `lint/lint.long-file-reason` | `*` | `chmod +x <subject>` | #590 |"; t = 1; next }
      /^<!-- lanes:end -->$/ { t = 0 } !t' "$T_ROOT/contracts/finding.md" > "$HP/contracts/finding.md"
@@ -28,8 +28,8 @@ git -C "$HP" -c user.email=t@t -c user.name=t commit -qm fixture
 git -C "$HP" remote add origin "$HO"; git -C "$HP" push -q origin HEAD:main; git -C "$HP" fetch -q origin
 git -C "$HP" config user.email t@t; git -C "$HP" config user.name t
 MAIN0="$(git -C "$HO" rev-parse main)"
-heal() { HARBOR_ROOT="$HP" HARBOR_FINDINGS_NOW="${NOW:-2026-10-10}" GH_NOW="${NOW:-2026-10-10}" sh "$F" heal --from "$@" 2>&1; }
-hrec() { HARBOR_ROOT="$HP" HARBOR_FINDINGS_NOW="${NOW:-2026-10-10}" GH_NOW="${NOW:-2026-10-10}" sh "$F" reconcile --from "$@" 2>&1; }
+heal() { HARBOR_SCOPE_ROOT="$HP" HARBOR_LINT_FINDINGS_NOW="${NOW:-2026-10-10}" GH_NOW="${NOW:-2026-10-10}" sh "$F" heal --from "$@" 2>&1; }
+hrec() { HARBOR_SCOPE_ROOT="$HP" HARBOR_LINT_FINDINGS_NOW="${NOW:-2026-10-10}" GH_NOW="${NOW:-2026-10-10}" sh "$F" reconcile --from "$@" 2>&1; }
 comments_on() { jq -r --argjson n "$1" '[(.comments // [])[] | select(.issue == $n) | .body] | join("\n---\n")' "$GH_STATE"; }
 num_of() { jq -r --arg k "$1" '[.issues[] | select(.body | contains("key=" + $k + " "))] | max_by(.number) | .number' "$GH_STATE"; }
 records "$TMP/h1" lint.exec-bit-kept lint.long-file-reason memory.repo-reachable skill.book-current -- lint.exec-bit-kept:bin/tool.sh 'lint.exec-bit-kept:bin/x;touch PWNED' lint.long-file-reason:bin/tool.sh memory.repo-reachable:zorbcorp memory.repo-reachable:studio skill.book-current:generator-failed
@@ -47,13 +47,13 @@ t_has "lint.exec-bit-kept on its path, the subject passed as \$1" "$OUT" 'lint/l
 t_eq "a repair with no <subject> runs once, not once per subject" 1 "$(printf '%s\n' "$OUT" | grep -c 'sh bin/route.sh')"
 t_has "a subject that is not a plain path is refused" "$OUT" "refused:                 lint/lint.exec-bit-kept bin/x;touch PWNED"
 t_has "PROPOSE keys, and a HEAL key's unmatched subject, are not repaired" "$OUT" "not HEAL, not repaired:  lint/lint.long-file-reason lint/skill.book-current"
-t_has "a HEAL key the census cannot see says so" "$OUT" "not visible:             check/memory-route"
+t_has "a HEAL key the census cannot see says so" "$OUT" "not visible:             check/memory.route"
 t_eq "no write" 0 "$(writes)"
 t_eq "no repair ran" no "$([ -f "$MARK" ] && echo yes || echo no)"
 
 t_section "heal · --apply refuses anything but the published default branch"
 : > "$HP/dirty"
-t_exit "a dirty tree" 1 env HARBOR_ROOT="$HP" sh "$F" heal --from "$TMP/h1" --apply
+t_exit "a dirty tree" 1 env HARBOR_SCOPE_ROOT="$HP" sh "$F" heal --from "$TMP/h1" --apply
 t_has "and says why" "$(heal "$TMP/h1" --apply)" "--apply heals only the published default branch"
 rm -f "$HP/dirty"
 
@@ -108,7 +108,7 @@ t_section "heal · review #891: a failed repair publishes nothing and fails the 
 records "$TMP/h2" skill.not-for-target-exists -- skill.not-for-target-exists:bin/tool.sh
 hrec "$TMP/h2" --apply > /dev/null
 _prs="$(jq '.prs | length' "$GH_STATE")"
-t_exit "the run exits 1" 1 env HARBOR_ROOT="$HP" HARBOR_FINDINGS_NOW=2026-10-15 GH_NOW=2026-10-15 sh "$F" heal --from "$TMP/h2" --apply
+t_exit "the run exits 1" 1 env HARBOR_SCOPE_ROOT="$HP" HARBOR_LINT_FINDINGS_NOW=2026-10-15 GH_NOW=2026-10-15 sh "$F" heal --from "$TMP/h2" --apply
 t_eq "no PR for the partial change" "$_prs" "$(jq '.prs | length' "$GH_STATE")"
 t_eq "no skill.not-for-target-exists branch on origin" "" "$(git -C "$HO" for-each-ref refs/heads/heal/lint-skill.not-for-target-exists-)"
 t_has "the failure and its output are in the finding" "$(comments_on "$(num_of lint/skill.not-for-target-exists)")" "route table locked"
@@ -120,7 +120,7 @@ jq '(.prs[] | select(.state == "OPEN")).state = "MERGED"' "$GH_STATE" > "$GH_STA
 printf 'again\n' > "$HP/moved"; git -C "$HP" commit -qam "main moves again"
 git -C "$HP" push -q origin HEAD:main; git -C "$HP" fetch -q origin
 _prs="$(jq '.prs | length' "$GH_STATE")"
-t_exit "a failed PR create fails the run" 1 env GIT_AUTHOR_DATE=2026-10-16T09:00:00 GIT_COMMITTER_DATE=2026-10-16T09:00:00 GH_FAIL=prcreate HARBOR_ROOT="$HP" HARBOR_FINDINGS_NOW=2026-10-16 GH_NOW=2026-10-16 sh "$F" heal --from "$TMP/h1" --apply
+t_exit "a failed PR create fails the run" 1 env GIT_AUTHOR_DATE=2026-10-16T09:00:00 GIT_COMMITTER_DATE=2026-10-16T09:00:00 GH_FAIL=prcreate HARBOR_SCOPE_ROOT="$HP" HARBOR_LINT_FINDINGS_NOW=2026-10-16 GH_NOW=2026-10-16 sh "$F" heal --from "$TMP/h1" --apply
 t_eq "no PR" "$_prs" "$(jq '.prs | length' "$GH_STATE")"
 t_eq "no worktree left registered" 1 "$(git -C "$HP" worktree list | grep -c .)"
 t_eq "no local heal branch" "" "$(git -C "$HP" branch --list 'heal/*')"
@@ -147,31 +147,31 @@ git -C "$HP" push -q origin HEAD:main; git -C "$HP" fetch -q origin
 printf 'chmod +x "$1"; kill -TERM $PPID_HEAL\n' > "$TMP/killer.sh"
 sed -i.bak 's#`chmod +x <subject>` | \#574#`sh '"$TMP"'/killer.sh <subject>` | \#574#' "$HP/contracts/finding.md"; rm -f "$HP/contracts/finding.md.bak"
 git -C "$HP" commit -qam "a repair that is interrupted"; git -C "$HP" push -q origin HEAD:main; git -C "$HP" fetch -q origin
-HARBOR_ROOT="$HP" HARBOR_FINDINGS_NOW=2026-10-19 GH_NOW=2026-10-19 sh -c 'PPID_HEAL=$$; export PPID_HEAL; exec sh "$0" heal --from "$1" --apply' "$F" "$TMP/h1" > /dev/null 2>&1
+HARBOR_SCOPE_ROOT="$HP" HARBOR_LINT_FINDINGS_NOW=2026-10-19 GH_NOW=2026-10-19 sh -c 'PPID_HEAL=$$; export PPID_HEAL; exec sh "$0" heal --from "$1" --apply' "$F" "$TMP/h1" > /dev/null 2>&1
 t_eq "no worktree left registered" 1 "$(git -C "$HP" worktree list | grep -c .)"
 t_eq "no local heal branch" "" "$(git -C "$HP" branch --list 'heal/*')"
 
-t_section "check tier · heal sees check/memory-route and runs its repair"
+t_section "check tier · heal sees check/memory.route and runs its repair"
 GH_STATE="$TMP/gh-heal.json"; export GH_STATE
 mkdir -p "$HP/docs/reference"; cp "$T_ROOT/docs/reference/checks.md" "$HP/docs/reference/checks.md"; git -C "$HP" add docs/reference/checks.md; git -C "$HP" commit -qm "the registry"
 git -C "$HP" push -q origin HEAD:main; git -C "$HP" fetch -q origin
-rcpt memory-route red 2026-10-27 harbor/wt-a
+rcpt memory.route red 2026-10-27 harbor/wt-a
 records "$TMP/c1" lint.long-file-reason -- lint.long-file-reason:bin/big.sh
 NOW=2026-10-27; hrec "$TMP/c1" --apply > /dev/null
 : > "$MARK"; NOW=2026-10-27; OUT="$(heal "$TMP/c1" --apply)"
-t_has "planned and run" "$OUT" "check/memory-route → sh bin/route.sh"
+t_has "planned and run" "$OUT" "check/memory.route → sh bin/route.sh"
 t_eq "the repair ran once" 1 "$(grep -c . "$MARK")"
-t_has "and is written into the finding" "$(comments_on "$(num_of check/memory-route)")" '`sh bin/route.sh` → exit 0'
-t_hasnt "it is no longer reported as not visible" "$OUT" "not visible:             check/memory-route"
+t_has "and is written into the finding" "$(comments_on "$(num_of check/memory.route)")" '`sh bin/route.sh` → exit 0'
+t_hasnt "it is no longer reported as not visible" "$OUT" "not visible:             check/memory.route"
 t_has "positive control: the run printed its header" "$OUT" "findings heal:"
 
 t_section "check tier · review: a stood-down subject is never repaired, whatever the HEAL glob"
 GH_STATE="$TMP/gh-heal.json"; export GH_STATE
-rcpt memory-route stood-down 2026-10-28
+rcpt memory.route stood-down 2026-10-28
 NOW=2026-10-28; hrec "$TMP/c1" --apply > /dev/null
 : > "$MARK"; OUT="$(NOW=2026-10-28 heal "$TMP/c1" --apply)"; _rc=$?
 t_eq "the repair did not run" 0 "$(grep -c . "$MARK")"
 t_eq "and heal does not fail on it" 0 "$_rc"
-t_has "it is listed as not repaired" "$OUT" "check/memory-route"
+t_has "it is listed as not repaired" "$OUT" "check/memory.route"
 
 t_done

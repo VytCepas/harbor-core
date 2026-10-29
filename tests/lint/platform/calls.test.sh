@@ -103,10 +103,10 @@ t_eq "doc-drive-push.sh without its header line" "doc-drive-push.sh: xattr" "$(u
 t_section "the rule itself: a planted bare call fails the linter (lint.platform-calls)"
 LR="$T_TMP/lroot"; mkdir -p "$LR/bin"; cp "$T_ROOT/bin/lint-platform.sh" "$T_ROOT/bin/library-alert.sh" "$T_ROOT/bin/library-log.sh" "$LR/bin/"
 printf '#!/usr/bin/env sh\necho ok\n' > "$LR/bin/clean.sh"
-_lo="$(HARBOR_ROOT="$LR" sh "$T_ROOT/bin/lint-conventions.sh" --only lint.platform-calls 2>&1)"
+_lo="$(HARBOR_SCOPE_ROOT="$LR" sh "$T_ROOT/bin/lint-conventions.sh" --only lint.platform-calls 2>&1)"
 t_hasnt "control: a clean bin/ with the helper in it raises nothing" "$_lo" "VIOLATION [lint.platform-calls]"
 printf 'osascript -e x\n' >> "$LR/bin/clean.sh"
-_lo="$(HARBOR_ROOT="$LR" sh "$T_ROOT/bin/lint-conventions.sh" --only lint.platform-calls 2>&1)"
+_lo="$(HARBOR_SCOPE_ROOT="$LR" sh "$T_ROOT/bin/lint-conventions.sh" --only lint.platform-calls 2>&1)"
 t_has "a planted osascript call is a violation naming the file" "$_lo" "VIOLATION [lint.platform-calls] bin/clean.sh: osascript"
 t_has "...and the linter exits red" "$_lo" "1 violation(s)"
 t_done

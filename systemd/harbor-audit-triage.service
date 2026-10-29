@@ -1,4 +1,4 @@
-# harbor#617 — the Linux/WSL2 twin of launchd/com.harbor.judge.plist, docs/reference/checks.md row `judge`.
+# harbor#617 — the Linux/WSL2 twin of launchd/com.harbor.audit.triage.plist, docs/reference/checks.md row `audit.triage`.
 # Install and disable: docs/reference/checks.md, "Platforms". WSL2 needs [boot] systemd=true in /etc/wsl.conf.
 [Unit]
 Description=Harbor check judge: the ledger JUDGE off the session path

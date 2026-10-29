@@ -115,7 +115,7 @@ registries/context-baseline.tsv	registries/context-baseline.tsv	W1	rename	med	D-
 registries/context-ratchet.tsv	registries/context-ratchet.tsv	W1	rename	med	D-4: a registry at the root in lowercase	-			none found
 registries/coverage-incidents.tsv	registries/coverage-incidents.tsv	W1	rename	med	D-4: a registry at the root in lowercase	-			none found
 docs/reference/coverage.md	docs/reference/coverage.md	W1	rename	high	D-1 lowercase; reference (upstream hook surface and dispositions)	-			none found
-docs/decisions/rejected-approaches.md	docs/decisions/rejected-approaches.md	W1	rename	low	dead-ends is a legacy alias of decision-record (status: rejected); QUESTION 3 asks whether to split it	2027-01-31			memory notes; repo azimuth; repo estate (+1)
+docs/reports/rejected-approaches.md	docs/reports/rejected-approaches.md	W1	rename	low	dead-ends is a legacy alias of decision-record (status: rejected); QUESTION 3 asks whether to split it	2027-01-31			memory notes; repo azimuth; repo estate (+1)
 docs/reports/evals.md	docs/reports/evals.md	W1	rename	high	D-1 lowercase; a dated measurement write-up is a report	2027-01-31			repo harbor-private
 docs/explanation/admission-baseline.md	docs/explanation/admission-baseline.md	W1	rename	low	floor is a legacy alias of baseline; #961 W1 also splits this file, QUESTION 3	2027-01-31			memory notes
 docs/how-to/handover.md	docs/how-to/handover.md	W1	rename	med	handoff is a legacy alias of handover (D-7); a start-here brief for resuming is a how-to	2027-01-31			memory notes; repo azimuth; repo idea-to-live

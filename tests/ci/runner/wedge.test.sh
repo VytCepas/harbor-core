@@ -7,8 +7,8 @@
 . "$T_ROOT/tests/ci/ci-runners-fixture.sh"
 export HARBOR_CI_UNWEDGE_GRACE=0
 A="$CACHE/ci-runner-alarm.json"
-alog() { if [ -f "$CACHE/checks.log" ]; then grep -c 'check:ci-runner-alarm' "$CACHE/checks.log"; else echo 0; fi; }
-last() { grep 'check:ci-runner-alarm' "$CACHE/checks.log" | tail -n 1; }
+alog() { if [ -f "$CACHE/checks.log" ]; then grep -c 'check:ci.runner-alarm' "$CACHE/checks.log"; else echo 0; fi; }
+last() { grep 'check:ci.runner-alarm' "$CACHE/checks.log" | tail -n 1; }
 get() { jq -r "$1" "$A"; }
 tick() { AT="$1" run tick >/dev/null; }
 C=someorg-linux
@@ -34,7 +34,7 @@ t_eq "the first tick it is true (0.3s CPU in 5m): a suspicion, not an alarm" 0 "
 t_eq "...recorded, so the next tick can confirm it" "$((NOW + 600))" "$(get '.since["wedged:'$C'"]')"
 cg "$C" 1 60500000 87 720; tick "$((NOW + 900))"
 t_eq "the second tick confirms it: one line" 1 "$(alog)"
-t_has "...stamped with the registry id" "$(last)" "[check:ci-runner-alarm]"
+t_has "...stamped with the registry id" "$(last)" "[check:ci.runner-alarm]"
 t_has "...naming the container and how long the job has run" "$(last)" "wedged $C: job running 0h12m"
 t_has "...the evidence: the oom_kill delta and the CPU seconds in the window" "$(last)" "oom_kill +1 during it, 0.5s CPU in the 10m since"
 t_has "...and the exact clearing command" "$(last)" "clear: sh bin/ci-runners.sh unwedge $C --apply"

@@ -11,7 +11,7 @@
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
 MAP="${LAYOUT_MAP:-$ROOT/contracts/layout-map.tsv}"
 KINDS="${KINDS_FILE:-$ROOT/standards/naming/kinds.tsv}"
 . "$SRC/library-log.sh"

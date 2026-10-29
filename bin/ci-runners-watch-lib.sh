@@ -11,7 +11,7 @@
 # runner updating itself is not an alarm; a runner the governor parked is not one either. `alarm off` in CONF disables it.
 ALARM_SEC="${HARBOR_CI_NORUNNER_SEC:-600}"
 ALARM_CONFIRM=240
-alarmline() { printf '[check:ci-runner-alarm] %s %s\n' "$(iso "$NOW")" "$1" >> "$LOG" 2>/dev/null || :; }
+alarmline() { printf '[check:ci.runner-alarm] %s %s\n' "$(iso "$NOW")" "$1" >> "$LOG" 2>/dev/null || :; }
 
 # ── WEDGED: online and busy on a job that is dead in the water (harbor#1060, 2026-10-13) ──────────────────────────
 # An org runner's mutmut forked 8 workers in its 1 GiB, the kernel OOM-killed one, and the job sat 3h at 0.4% CPU while

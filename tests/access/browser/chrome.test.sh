@@ -2,7 +2,7 @@
 # `harbor chrome` and Chrome itself (2026-10-14): the state probe, tab ownership and focus, the
 # signed-out stop and wait-signin, and the upload guard. Split from browser-test.sh for its line budget.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-AGENT="$T_ROOT/bin/access-browser-agent.sh"; unset HARBOR_CHROME
+AGENT="$T_ROOT/bin/access-browser-agent.sh"; unset HARBOR_ACCESS_CHROME HARBOR_CHROME
 HARBOR_CHROME_SETTLE=0; export HARBOR_CHROME_SETTLE
 . "$(dirname "$0")/../../cli/browser/agent-stub.sh"
 OWN="$T_TMP/harbor-browser/claude-abc123def456/.owned-tabs"

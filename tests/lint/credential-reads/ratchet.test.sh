@@ -4,8 +4,8 @@
 # The "credentials" below are made-up shapes, never real ones.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/checks/lint-fixture.sh"
-LS() { HARBOR_ROOT="$1" sh "$T_ROOT/bin/lint-secrets.sh" "$2" 2>&1; }
-rc() { HARBOR_ROOT="$1" sh "$T_ROOT/bin/lint-secrets.sh" --check >/dev/null 2>&1; echo $?; }
+LS() { HARBOR_SCOPE_ROOT="$1" sh "$T_ROOT/bin/lint-secrets.sh" "$2" 2>&1; }
+rc() { HARBOR_SCOPE_ROOT="$1" sh "$T_ROOT/bin/lint-secrets.sh" --check >/dev/null 2>&1; echo $?; }
 FAKE="ghp_$(printf 'b%.0s' $(seq 1 36))"
 KCREAD='security find-generic-password -s k -w'
 KCADD='security add-generic-password -s k -w v'
@@ -39,7 +39,7 @@ t_eq "below is still green" "0" "$(rc "$D")"
 t_has "...and tells you to lower the baseline" "$OUT" "lower contracts/lint-secrets-baseline.txt to 1"
 D="$(mk nobase x)"; t_eq "a non-numeric baseline is red" "1" "$(rc "$D")"
 mkdir -p "$T_TMP/nogit"
-t_exit "a non-checkout inspected nothing and is not a pass" 2 env HARBOR_ROOT="$T_TMP/nogit" sh "$T_ROOT/bin/lint-secrets.sh" --check
+t_exit "a non-checkout inspected nothing and is not a pass" 2 env HARBOR_SCOPE_ROOT="$T_TMP/nogit" sh "$T_ROOT/bin/lint-secrets.sh" --check
 
 t_section "red-proof: each class of bypass, planted in a new file that was never added, is red"
 D="$(mk plant1 1)"; printf '#!/bin/sh\nT=%s\n' "$FAKE" > "$D/bin/new.sh"

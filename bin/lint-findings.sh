@@ -22,8 +22,8 @@
 # what a HEAL row in the contract names, on the subjects it matches, as a draft PR when a tracked
 # file changes. `heal` without --apply prints the plan and runs nothing.
 #
-#   HARBOR_FINDINGS_REPO   owner/name of the store; defaults to this checkout's origin
-#   HARBOR_ROOT            the checkout to reconcile; defaults to the one this script is in
+#   HARBOR_LINT_FINDINGS_REPO   owner/name of the store; defaults to this checkout's origin
+#   HARBOR_SCOPE_ROOT            the checkout to reconcile; defaults to the one this script is in
 #
 # Deliberately one file (docs/explanation/modularity.md): its parts share one census, one store and one temp
 # dir, and nothing outside calls them. Re-ask with `sh bin/lint-module-shape.sh --seam bin/lint-findings.sh`.
@@ -32,12 +32,12 @@ case "${1:-}" in
   -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); if ($0=="") exit; print; next } {exit}' "$0"; exit 0 ;;
 esac
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
-ROOT="${HARBOR_ROOT:-$(CDPATH='' cd -- "$HERE/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH='' cd -- "$HERE/.." && pwd)}}"
 . "$HERE/library-log.sh"
 log_init findings
 LINT="$HERE/lint-conventions.sh"
 CONTRACT="$ROOT/contracts/finding.md"
-TODAY="${HARBOR_FINDINGS_NOW:-$(date -u +%Y-%m-%d)}"
+TODAY="${HARBOR_LINT_FINDINGS_NOW:-${HARBOR_FINDINGS_NOW:-$(date -u +%Y-%m-%d)}}"
 case "$TODAY" in [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;; *) TODAY="$(date -u +%Y-%m-%d)" ;; esac
 umask 077
 T="$(mktemp -d "${TMPDIR:-/tmp}/findings.XXXXXX")"
@@ -58,7 +58,7 @@ _sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a
 digest_of_file() { LC_ALL=C sort -u "$1" | _sha | cut -c1-16; }
 
 repo() {
-  [ -z "${HARBOR_FINDINGS_REPO:-}" ] || { printf '%s' "$HARBOR_FINDINGS_REPO"; return 0; }
+  [ -z "${HARBOR_LINT_FINDINGS_REPO:-${HARBOR_FINDINGS_REPO:-}}" ] || { printf '%s' "${HARBOR_LINT_FINDINGS_REPO:-${HARBOR_FINDINGS_REPO:-}}"; return 0; }
   git -C "$ROOT" remote get-url origin 2>/dev/null \
     | sed -e 's#^.*github\.com[:/]##' -e 's#\.git$##'
 }
@@ -129,10 +129,20 @@ recent_findings() {
 successors() { # → $T/succ: `letter TAB id`
   [ -f "$T/succ" ] || { sh "$LINT" --ids 2>/dev/null | awk -F'\t' 'NR > 1 && $2 != "-" { print $2 "\t" $1 }' > "$T/succ" || :; }
 }
+# A check renamed to its family id (harbor#961 W5, decided 2026-10-29) is the same check: its renames.tsv row of
+# surface check-id (old check:<id>, new check:<id>) is read until its remove_by date, so an issue keyed check/<old> joins
+# under check/<new> exactly as a letter id does, and a receipt <old>.json counts as <new>'s until <new>.json exists.
+# Past remove_by the row is not read: the old key is then a check with no row, as any unregistered id is.
+check_aliases() { # → $T/calias: `old TAB new`, the check ids whose alias window is open on TODAY
+  [ -f "$T/calias" ] || awk -F'\t' -v d="$TODAY" '$1 ~ /^rename-/ && $4 == "check-id" && $2 ~ /^check:/ && $3 ~ /^check:/ \
+      && $6 ~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ && d <= $6 { print substr($2, 7) "\t" substr($3, 7) }' \
+      "$ROOT/standards/naming/renames.tsv" > "$T/calias" 2>/dev/null || : > "$T/calias"
+}
 canon_key() { # <key> → the key under its current id
-  successors
-  awk -F'\t' -v k="$1" 'BEGIN { split(k, p, "/") } p[1] == "lint" && $1 == substr(k, 6) { print "lint/" $2; f = 1; exit }
-                         END { if (!f) print k }' "$T/succ"
+  successors; check_aliases
+  awk -F'\t' -v k="$1" 'BEGIN { split(k, p, "/") } FILENAME == ARGV[1] && p[1] == "lint" && $1 == substr(k, 6) { print "lint/" $2; f = 1; exit }
+                         FILENAME == ARGV[2] && p[1] == "check" && $1 == substr(k, 7) { print "check/" $2; f = 1; exit }
+                         END { if (!f) print k }' "$T/succ" "$T/calias"
 }
 read_store() { # → $T/store.tsv: number state reason dispositions created key digest seen schema marker-key
   gh issue list -R "$REPO" --label finding --state all --limit 1000 \
@@ -147,10 +157,11 @@ read_store() { # → $T/store.tsv: number state reason dispositions created key 
     | map(tostring | if . == "" then "-" else . end) | @tsv' \
     "$T/store.json" | sort -t'	' -k1,1nr > "$T/store.raw" \
     || stop "the finding store at $REPO did not parse" "gh issue list -R $REPO --label finding --state all --json number,body"
-  successors
+  successors; check_aliases
   # The map is read in BEGIN, never as a first file: an empty map would make NR == FNR hold for the
   # store itself and swallow every row, and an empty store files every finding again.
-  awk -F'\t' -v OFS='\t' -v S="$T/succ" 'BEGIN { while ((getline l < S) > 0) { split(l, p, "\t"); s["lint/" p[1]] = "lint/" p[2] } }
+  awk -F'\t' -v OFS='\t' -v S="$T/succ" -v C="$T/calias" 'BEGIN { while ((getline l < S) > 0) { split(l, p, "\t"); s["lint/" p[1]] = "lint/" p[2] }
+                                                    while ((getline l < C) > 0) { split(l, p, "\t"); s["check/" p[1]] = "check/" p[2] } }
        { m = "-"; if ($6 in s) { m = $6; $6 = s[$6] } print $0, m }' "$T/store.raw" > "$T/store.tsv"
 }
 # latest <key> → the newest issue's row for that key, or nothing
@@ -163,7 +174,7 @@ last_written() { awk -F'\t' '$2 == "open" && $8 != "-" { print $8 }' "$T/store.t
 
 # ── report ───────────────────────────────────────────────────────────────────
 cmd_report() {
-  REPO="$(repo)"; [ -n "$REPO" ] || stop "no store: this checkout has no origin" "HARBOR_FINDINGS_REPO=<owner/name> sh $HERE/lint-findings.sh report"
+  REPO="$(repo)"; [ -n "$REPO" ] || stop "no store: this checkout has no origin" "HARBOR_LINT_FINDINGS_REPO=<owner/name> sh $HERE/lint-findings.sh report"
   read_store
   _n="$(grep -c . "$T/store.tsv" | tr -d ' ')"; _bad="$(unreadable | grep -c . | tr -d ' ')"
   _last="$(last_written)"
@@ -227,11 +238,11 @@ ensure_labels() {
 census() {
   if [ -n "$FROM" ]; then
     { [ -f "$FROM/records.tsv" ] && [ -f "$FROM/lint.log" ]; } \
-      || stop "--from $FROM holds no records.tsv and lint.log" "HARBOR_FINDINGS_OUT=$FROM/records.tsv sh $LINT > $FROM/lint.log 2>&1"
+      || stop "--from $FROM holds no records.tsv and lint.log" "HARBOR_LINT_FINDINGS_OUT=$FROM/records.tsv sh $LINT > $FROM/lint.log 2>&1"
     cp "$FROM/records.tsv" "$T/records.tsv"; cp "$FROM/lint.log" "$T/lint.log"
   else
     : > "$T/records.tsv"
-    HARBOR_ROOT="$ROOT" HARBOR_FINDINGS_OUT="$T/records.tsv" sh "$LINT" > "$T/lint.log" 2>&1 || :
+    HARBOR_SCOPE_ROOT="$ROOT" HARBOR_LINT_FINDINGS_OUT="$T/records.tsv" sh "$LINT" > "$T/lint.log" 2>&1 || :
   fi
   # A capture from a linter that still spoke letter ids (--from) is read under the current ids.
   successors
@@ -239,7 +250,7 @@ census() {
        ($1 == "R" || $1 == "A" || $1 == "V") && ($2 in s) { $2 = s[$2] } { print }' "$T/records.tsv" > "$T/records.c" \
     && mv "$T/records.c" "$T/records.tsv"
   awk -F'\t' '$1 == "R" { print "lint/" $2 }' "$T/records.tsv" | sort -u > "$T/ran"
-  [ -s "$T/ran" ] || stop "lint recorded no rule running — the emitter is not wired, so there is nothing to reconcile" "HARBOR_FINDINGS_OUT=/dev/stdout sh $LINT --only T9"
+  [ -s "$T/ran" ] || stop "lint recorded no rule running — the emitter is not wired, so there is nothing to reconcile" "HARBOR_LINT_FINDINGS_OUT=/dev/stdout sh $LINT --only T9"
   sh "$LINT" --list 2>/dev/null | sed 's/^  //; s#^#lint/#' > "$T/titles"
   awk -F'\t' '($1 == "A" || $1 == "V") && $3 != "" { print "lint/" $2 "\t" $3 }' "$T/records.tsv" > "$T/pairs"
   receipts
@@ -261,6 +272,7 @@ receipts() {
     | sort -u > "$T/checks.ids"
   sed 's#^\(.*\)$#check/\1 the `\1` check (docs/reference/checks.md)#' "$T/checks.ids" >> "$T/titles"
   [ -d "$_rdir" ] || return 0
+  check_aliases
   for _rf in "$_rdir"/*.json; do
     [ -f "$_rf" ] || continue
     jq -r --arg now "$TODAY" --argjson max "$RECEIPT_DAYS" '
@@ -272,6 +284,9 @@ receipts() {
     [ -s "$T/r1" ] || continue
     IFS='	' read -r _ri _rs _rfr _ < "$T/r1"
     [ "${_rf##*/}" = "$_ri.json" ] || { printf 'check/%s (receipt %s names another id)\n' "$_ri" "${_rf##*/}" >> "$T/receipt.refused"; continue; }
+    # A receipt under an old id is its new id's until the new one writes its own (check_aliases).
+    _rn="$(awk -F'\t' -v i="$_ri" '$1 == i { print $2; exit }' "$T/calias")"
+    if [ -n "$_rn" ]; then [ -f "$_rdir/$_rn.json" ] && continue; _ri="$_rn"; fi
     if ! grep -qxF "$_ri" "$T/checks.ids"; then printf 'check/%s (receipt with no docs/reference/checks.md row)\n' "$_ri" >> "$T/receipt.refused"; continue; fi
     # An unknown status is refused, never read as a run: a run that fires nothing would close the finding.
     case "$_rs" in green|red|stood-down) ;; *) printf 'check/%s (receipt status %s is not green, red or stood-down)\n' "$_ri" "$_rs" >> "$T/receipt.refused"; continue ;; esac
@@ -302,7 +317,7 @@ published() {
   if [ "$SHA" = "$PUB" ] && [ -z "$(git -C "$ROOT" status --porcelain 2>/dev/null)" ]; then ON_MAIN=1; else ON_MAIN=0; fi
   if [ "$APPLY" = 1 ] && [ "$ON_MAIN" = 0 ]; then
     stop "--apply ${1}s only the published default branch, and $ROOT is at $SHA7 with origin/main at $(printf '%.7s' "${PUB:-none}")$( [ -z "$(git -C "$ROOT" status --porcelain 2>/dev/null)" ] || printf ', with local changes')" \
-      "git -C $ROOT fetch origin && git -C $ROOT worktree add --detach $ROOT.findings origin/main && HARBOR_ROOT=$ROOT.findings sh $HERE/lint-findings.sh $1 --apply"
+      "git -C $ROOT fetch origin && git -C $ROOT worktree add --detach $ROOT.findings origin/main && HARBOR_SCOPE_ROOT=$ROOT.findings sh $HERE/lint-findings.sh $1 --apply"
   fi
 }
 
@@ -316,7 +331,7 @@ cmd_reconcile() {
     esac
     shift
   done
-  REPO="$(repo)"; [ -n "$REPO" ] || stop "no store: this checkout has no origin" "HARBOR_FINDINGS_REPO=<owner/name> sh $HERE/lint-findings.sh reconcile"
+  REPO="$(repo)"; [ -n "$REPO" ] || stop "no store: this checkout has no origin" "HARBOR_LINT_FINDINGS_REPO=<owner/name> sh $HERE/lint-findings.sh reconcile"
   [ -f "$CONTRACT" ] || stop "no contract at $CONTRACT — nothing says what a finding is" "git -C $ROOT checkout origin/main -- contracts/finding.md"
   published reconcile
 
@@ -455,7 +470,7 @@ cmd_heal() {
     esac
     shift
   done
-  REPO="$(repo)"; [ -n "$REPO" ] || stop "no store: this checkout has no origin" "HARBOR_FINDINGS_REPO=<owner/name> sh $HERE/lint-findings.sh heal"
+  REPO="$(repo)"; [ -n "$REPO" ] || stop "no store: this checkout has no origin" "HARBOR_LINT_FINDINGS_REPO=<owner/name> sh $HERE/lint-findings.sh heal"
   [ -f "$CONTRACT" ] || stop "no contract at $CONTRACT — nothing says what may repair" "git -C $ROOT checkout origin/main -- contracts/finding.md"
   published heal
   census
@@ -595,7 +610,7 @@ cmd_dispose() { # <accepted|superseded> <key> <--reason|--by> <text>
     || stop "a disposition is a person's, and this is an agent session (CLAUDECODE is set)" "sh $HERE/lint-findings.sh $_cmd $_k $_want \"...\"   # in your own terminal"
   { [ -t 0 ] && [ -t 1 ]; } \
     || stop "a disposition is a person's, and there is no terminal on stdin and stdout" "sh $HERE/lint-findings.sh $_cmd $_k $_want \"...\"   # in your own terminal"
-  REPO="$(repo)"; [ -n "$REPO" ] || stop "no store: this checkout has no origin" "HARBOR_FINDINGS_REPO=<owner/name> sh $HERE/lint-findings.sh report"
+  REPO="$(repo)"; [ -n "$REPO" ] || stop "no store: this checkout has no origin" "HARBOR_LINT_FINDINGS_REPO=<owner/name> sh $HERE/lint-findings.sh report"
   read_store
   _k="$(canon_key "$_k")"
   _row="$(latest "$_k")"

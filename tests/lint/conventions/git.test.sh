@@ -13,7 +13,7 @@ _c2git update-ref refs/remotes/origin/main HEAD
 # Built, never spelled: a literal trailer in a tracked file is the thing under test.
 _C2T="Co-Authored-By:"" Claude <noreply@anthropic.com>"
 # GITHUB_ACTIONS is set per call: C2 suppresses its hook advisory under it (#346).
-_c2lines() { GITHUB_ACTIONS= HARBOR_ROOT="${1:-$C2R}" sh "$C2R/bin/lint-conventions.sh" --only C2 2>&1 | grep '\[git.no-ai-attribution\]' || true; }
+_c2lines() { GITHUB_ACTIONS= HARBOR_SCOPE_ROOT="${1:-$C2R}" sh "$C2R/bin/lint-conventions.sh" --only C2 2>&1 | grep '\[git.no-ai-attribution\]' || true; }
 C2_NOHOOK='NOT installed'
 
 t_section "C2: a planted trailer ahead of the pushed tip is a violation"
@@ -32,7 +32,7 @@ C2W="$TMP/c2wt"
 if git -C "$C2R" worktree add -q -b c2branch "$C2W" >/dev/null 2>&1; then
   mkdir -p "$C2W/bin" "$C2W/hooks"; cp "$LINT" "$C2W/bin/"; cp "$ROOT/hooks/commit-msg" "$C2W/hooks/"
   t_eq "the worktree's .git is a file" yes "$([ -f "$C2W/.git" ] && [ ! -d "$C2W/.git" ] && echo yes || echo no)"
-  t_has "C2 inspects commits from a worktree" "$(HARBOR_ROOT="$C2W" sh "$C2W/bin/lint-conventions.sh" --only C2 2>&1)" 'VIOLATION [git.no-ai-attribution]'
+  t_has "C2 inspects commits from a worktree" "$(HARBOR_SCOPE_ROOT="$C2W" sh "$C2W/bin/lint-conventions.sh" --only C2 2>&1)" 'VIOLATION [git.no-ai-attribution]'
 else
   t_fail "could not create the C2 worktree fixture: the harbor#307 layout is untested"
 fi
@@ -55,9 +55,9 @@ git -C "$C2M" -c user.email=t@t.invalid -c user.name=t commit -q --allow-empty -
 
 $_C2T" >/dev/null 2>&1
 t_has "with no origin/main, a local main is the base" \
-  "$(HARBOR_ROOT="$C2M" sh "$C2M/bin/lint-conventions.sh" --only C2 2>&1)" 'not yet on main carry AI attribution'
+  "$(HARBOR_SCOPE_ROOT="$C2M" sh "$C2M/bin/lint-conventions.sh" --only C2 2>&1)" 'not yet on main carry AI attribution'
 t_has "no base ref at all is said out loud, never read as clean" \
-  "$(HARBOR_ROOT="$C2N" sh "$C2N/bin/lint-conventions.sh" --only C2 2>&1 | grep 'ADVISORY \[git.no-ai-attribution\]')" 'NO commit was inspected'
+  "$(HARBOR_SCOPE_ROOT="$C2N" sh "$C2N/bin/lint-conventions.sh" --only C2 2>&1 | grep 'ADVISORY \[git.no-ai-attribution\]')" 'NO commit was inspected'
 
 t_section "C2: the hook that PREVENTS a trailer is reported when uninstalled"
 t_eq "the uninstalled commit-msg hook is named" yes "$(hasre "$(_c2lines)" "ADVISORY \[git.no-ai-attribution\].*$C2_NOHOOK.*commit-msg")"
@@ -67,7 +67,7 @@ git -C "$C2H" -c user.email=t@t.invalid -c user.name=t commit -q --allow-empty -
 git -C "$C2H" update-ref refs/remotes/origin/main HEAD
 ln -sf ../../hooks/commit-msg "$C2H/.git/hooks/commit-msg"
 t_eq "the symlink fixture installs commit-msg" yes "$([ -e "$C2H/.git/hooks/commit-msg" ] && echo yes || echo no)"
-_c2h() { ( cd "$1" && GITHUB_ACTIONS= HARBOR_ROOT="$C2H" sh "$C2H/bin/lint-conventions.sh" --only C2 2>&1 ); }
+_c2h() { ( cd "$1" && GITHUB_ACTIONS= HARBOR_SCOPE_ROOT="$C2H" sh "$C2H/bin/lint-conventions.sh" --only C2 2>&1 ); }
 _o="$(_c2h "$C2H")"
 t_has "C2 ran from the repo root" "$_o" 'lint-conventions: 1 rules,'
 t_hasnt "a symlink in .git/hooks counts as installed" "$_o" "$C2_NOHOOK"
@@ -82,7 +82,7 @@ git -C "$C2A" init -q -b main >/dev/null 2>&1
 git -C "$C2A" -c user.email=t@t.invalid -c user.name=t commit -q --allow-empty -m base >/dev/null 2>&1
 git -C "$C2A" update-ref refs/remotes/origin/main HEAD
 ln -sf ../../hooks/commit-msg "$C2A/.git/hooks/commit-msg"
-_c2all() { GITHUB_ACTIONS= HARBOR_ROOT="$C2A" sh "$C2A/bin/lint-conventions.sh" --only C2 2>&1 | grep "ADVISORY \[git.no-ai-attribution\].*$C2_NOHOOK" || true; }
+_c2all() { GITHUB_ACTIONS= HARBOR_SCOPE_ROOT="$C2A" sh "$C2A/bin/lint-conventions.sh" --only C2 2>&1 | grep "ADVISORY \[git.no-ai-attribution\].*$C2_NOHOOK" || true; }
 _o="$(_c2all)"
 t_has "an uninstalled pre-push is named (the only local linter run)" "$_o" 'pre-push'
 t_has "an uninstalled pre-commit is named" "$_o" 'pre-commit'
@@ -94,7 +94,7 @@ t_hasnt "core.hooksPath=hooks satisfies the advisory" "[$(_c2lines)]" "$C2_NOHOO
 git -C "$C2R" config --unset core.hooksPath
 
 t_section "C2: the CI suppression, in its own direction (#346)"
-_c2ci() { GITHUB_ACTIONS="$1" HARBOR_ROOT="$C2R" sh "$C2R/bin/lint-conventions.sh" --only C2 2>&1; }
+_c2ci() { GITHUB_ACTIONS="$1" HARBOR_SCOPE_ROOT="$C2R" sh "$C2R/bin/lint-conventions.sh" --only C2 2>&1; }
 _o="$(_c2ci true)"
 t_has "C2 ran under GITHUB_ACTIONS" "$_o" 'lint-conventions: 1 rules,'
 t_hasnt "the hook advisory is silent under GITHUB_ACTIONS" "$_o" "$C2_NOHOOK"

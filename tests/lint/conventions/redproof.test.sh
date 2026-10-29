@@ -311,13 +311,20 @@ rm -rf "$RP/skills/Zz_Probe"
 printf -- '---\nname: good-skill\ndescription: Does a thing, and says nothing about when.\n---\n' > "$RP/skills/good-skill/SKILL.md"
 _rp_red T11 "skills/good-skill description carries no USE WHEN triggers" "a description with no USE WHEN"
 
-t_section "N3 (advisory): a NOT FOR handoff to a skill that does not exist"
-_rp_fresh; mkdir -p "$RP/skills/giver" "$RP/skills/taker"
+t_section "N3 (block): a NOT FOR handoff to a skill that does not exist"
+_rp_fresh; mkdir -p "$RP/skills/giver" "$RP/skills/taker" "$HOME/.claude/skills"   # an installed-skills dir to look in: with nowhere outside harbor to look, a target is noted, not judged
 printf -- '---\nname: taker\ndescription: Takes. USE WHEN taking.\n---\n' > "$RP/skills/taker/SKILL.md"
 printf -- '---\nname: giver\ndescription: Gives. USE WHEN giving. NOT FOR taking (use taker).\n---\n' > "$RP/skills/giver/SKILL.md"
 _rp_green N3 "a handoff to a skill that exists"
 printf -- '---\nname: giver\ndescription: Gives. USE WHEN giving. NOT FOR taking (use zz-missing).\n---\n' > "$RP/skills/giver/SKILL.md"
-_rp_red N3 'ADVISORY [skill.not-for-target-exists] giver hands off to "zz-missing"' "a handoff to zz-missing"
+_rp_red N3 'VIOLATION [skill.not-for-target-exists] giver hands off to "zz-missing"' "a handoff to zz-missing"
+# a target that lives outside harbor resolves from the installed skills, a registered pack or the harness bundle (harbor#1010)
+mkdir -p "$HOME/.claude/skills/casefile"
+printf -- '---\nname: giver\ndescription: Gives. USE WHEN giving. NOT FOR taking (use casefile), or API code (claude-api).\n---\n' > "$RP/skills/giver/SKILL.md"
+_rp_green N3 "handoffs to an installed skill and to the harness-bundled claude-api"
+printf -- '---\nname: giver\ndescription: Gives. USE WHEN giving. NOT FOR taking (use casefil).\n---\n' > "$RP/skills/giver/SKILL.md"
+_rp_red N3 'VIOLATION [skill.not-for-target-exists] giver hands off to "casefil"' "a typo of an installed skill while installed skills are listable"
+rm -rf "$HOME/.claude/skills"
 
 t_section "G1 (advisory): a long script whose header does not say why"
 _rp_fresh

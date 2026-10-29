@@ -52,7 +52,7 @@ HAVE_NODE=0; ! command -v node >/dev/null 2>&1 || HAVE_NODE=1
 if [ "$HAVE_NODE" = 1 ]; then
   P="$T_TMP/probe"; mkdir -p "$P/node_modules/playwright" "$T_TMP/empty"
   printf '%s\n' "export const chromium = { launch: async () => { throw new Error('stub'); } };" > "$P/node_modules/playwright/index.mjs"
-  t_eq "it passes" "exit 0" "$(run env HARBOR_PROBE_DIR="$P" sh "$BROWSER" --self-test)"
+  t_eq "it passes" "exit 0" "$(run env HARBOR_ACCESS_PROBE_DIR="$P" sh "$BROWSER" --self-test)"
   t_has "the header is the library's" "$(OUT)" "── browser · self-test"
   t_has "a case is an ok line" "$(OUT)" "  ok: route prints the contract (exit 0)"
   t_eq "the summary is the last stdout line" 1 "$(OUT | tail -1 | grep -c '^browser: [0-9][0-9]* ok, 0 failed, 0 warnings$')"
@@ -63,12 +63,12 @@ else echo "  SKIP --self-test shape: no node on this host (the runner image carr
 t_section "--self-test-live needs a storefront, and takes it from the environment or the private layer"
 PV="$T_TMP/pv"; mkdir -p "$PV"
 t_eq "with none it is a skip, exit 2" "exit 2" "$(run env HARBOR_SCOPE_PRIVATE="$PV" sh "$BROWSER" --self-test-live)"
-t_has "the skip says where to set it" "$(OUT)" "  skip: SKIPPED — no storefront to load: set HARBOR_BROWSER_LIVE_URL, or browser_live_url in harbor.toml"
+t_has "the skip says where to set it" "$(OUT)" "  skip: SKIPPED — no storefront to load: set HARBOR_ACCESS_BROWSER_LIVE_URL, or browser_live_url in harbor.toml"
 t_eq "and the summary counts no failure" "browser: 0 ok, 0 failed, 0 warnings" "$(OUT | tail -1)"
 printf 'browser_live_url = "https://shop.example.invalid"\n' > "$PV/harbor.toml"
-run env HARBOR_SCOPE_PRIVATE="$PV" HARBOR_PROBE_DIR="$T_TMP/empty" PATH="$T_TMP/nonode" /bin/sh "$BROWSER" --self-test-live >/dev/null
+run env HARBOR_SCOPE_PRIVATE="$PV" HARBOR_ACCESS_PROBE_DIR="$T_TMP/empty" PATH="$T_TMP/nonode" /bin/sh "$BROWSER" --self-test-live >/dev/null
 t_has "browser_live_url in harbor.toml is the storefront" "$(OUT)" "  note: needs network; url: https://shop.example.invalid"
 t_has "an unavailable backend is a skip" "$(OUT)" "  skip: backend unavailable"
-run env HARBOR_SCOPE_PRIVATE="$PV" HARBOR_BROWSER_LIVE_URL=https://other.example.invalid HARBOR_PROBE_DIR="$T_TMP/empty" PATH="$T_TMP/nonode" /bin/sh "$BROWSER" --self-test-live >/dev/null
-t_has "HARBOR_BROWSER_LIVE_URL wins over the file" "$(OUT)" "url: https://other.example.invalid"
+run env HARBOR_SCOPE_PRIVATE="$PV" HARBOR_ACCESS_BROWSER_LIVE_URL=https://other.example.invalid HARBOR_ACCESS_PROBE_DIR="$T_TMP/empty" PATH="$T_TMP/nonode" /bin/sh "$BROWSER" --self-test-live >/dev/null
+t_has "HARBOR_ACCESS_BROWSER_LIVE_URL wins over the file" "$(OUT)" "url: https://other.example.invalid"
 t_done

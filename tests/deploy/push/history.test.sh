@@ -3,7 +3,7 @@
 # Each case is a throwaway source checkout and a throwaway export target; nothing is pushed anywhere.
 # The "secret" below is a made-up word, never a real entity.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset HARBOR_IN_SUITE
+unset HARBOR_TEST_IN_SUITE HARBOR_IN_SUITE
 GIT_AUTHOR_NAME=t; GIT_AUTHOR_EMAIL=t@t.test; GIT_COMMITTER_NAME=t; GIT_COMMITTER_EMAIL=t@t.test
 export GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
 mkdir -p "$T_TMP/pv"; printf 'id\tkind\tpattern\tnote\nk1\tword\tZorblax\tn\n' > "$T_TMP/pv/leaks.tsv"
@@ -26,8 +26,8 @@ mk() { # <name> → a source checkout whose release gate rows are green
 cm() { ( cd "$1" && git add -A && git commit -qm "$2" ) >/dev/null 2>&1; }
 bump() { printf '%s\n' "$2" > "$1/docs/a.md"; cm "$1" "$2"; }   # a changed source, so the next push has a commit to write
 tgt() { _t="$T_TMP/t-$1"; mkdir -p "$_t"; ( cd "$_t" && git init -q . ) >/dev/null 2>&1; printf '%s' "$_t"; }
-push() { _s="$1"; shift; HARBOR_ROOT="$_s" HARBOR_SCOPE_PRIVATE="$PV" sh "$_s/bin/deploy-push.sh" "$@" 2>&1; }
-prc() { _s="$1"; shift; HARBOR_ROOT="$_s" HARBOR_SCOPE_PRIVATE="$PV" sh "$_s/bin/deploy-push.sh" "$@" >/dev/null 2>&1; echo $?; }
+push() { _s="$1"; shift; HARBOR_SCOPE_ROOT="$_s" HARBOR_SCOPE_PRIVATE="$PV" sh "$_s/bin/deploy-push.sh" "$@" 2>&1; }
+prc() { _s="$1"; shift; HARBOR_SCOPE_ROOT="$_s" HARBOR_SCOPE_PRIVATE="$PV" sh "$_s/bin/deploy-push.sh" "$@" >/dev/null 2>&1; echo $?; }
 head_of() { git -C "$1" rev-parse -q --verify HEAD 2>/dev/null; }
 # plant <target> <file> <text> [message]: an earlier export carried <text>, a later commit took the file out again.
 plant() {
@@ -138,7 +138,7 @@ for r in "leak gate 0: green" "secrets 0: green" "domain ratchet 0: green" "pass
          "export history: not run" "stranger install: not run" "export suite: not run"; do
   t_has "the row: $r" "$OUT" "release gate · $r"
 done
-t_hasnt "the dry run's stdout is the file list alone (stranger-ubuntu reads it)" "$(HARBOR_ROOT="$S" HARBOR_SCOPE_PRIVATE="$PV" sh "$S/bin/deploy-push.sh" --dry-run 2>/dev/null)" "release gate"
+t_hasnt "the dry run's stdout is the file list alone (stranger-ubuntu reads it)" "$(HARBOR_SCOPE_ROOT="$S" HARBOR_SCOPE_PRIVATE="$PV" sh "$S/bin/deploy-push.sh" --dry-run 2>/dev/null)" "release gate"
 T="$(tgt dom)"
 printf 'uses quuxtool\n' > "$S/docs/d.md"; cm "$S" dom
 t_eq "a workload term in core refuses the push" "1" "$(prc "$S" "$T")"

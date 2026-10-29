@@ -43,7 +43,7 @@ YAML
 X6ROOT="$TMP/x6-root"; mkdir -p "$X6ROOT/bin"
 X6_CLEAN='every governed repo under a fleet root is reachable'
 # Verdict lines only: the rule header prints even with no fleet file, and a bare 'X6' would match it.
-x6() { HARBOR_FLEET_FILE="$1" HARBOR_ROOT="$X6ROOT" sh "$LINT" --only X6 2>&1 | grep -E "ADVISORY \[scope.repo-discoverable\]|$X6_CLEAN"; }
+x6() { HARBOR_SCOPE_FLEET_FILE="$1" HARBOR_SCOPE_ROOT="$X6ROOT" sh "$LINT" --only X6 2>&1 | grep -E "ADVISORY \[scope.repo-discoverable\]|$X6_CLEAN"; }
 
 t_section "X6: a governed repo the fleet's discovery cannot reach"
 OUT="$(x6 "$TMP/fleet-excl.yaml")"
@@ -95,7 +95,7 @@ t_eq "every rule function declares one id, so the dispatcher runs every function
   "$(printf '%s\n' "$_ro_called" | grep -c .)"
 t_eq "--ids lists every id the file declares" "$_ro_called" "$(sed 1d "$LINT_IDS" | cut -f1 | sort)"
 _ro_id="$(printf '%s\n' "$_ro_called" | head -1)"
-_ro_out="$(HARBOR_ROOT="$ORT" sh "$LINT" --only "$_ro_id" 2>&1)"
+_ro_out="$(HARBOR_SCOPE_ROOT="$ORT" sh "$LINT" --only "$_ro_id" 2>&1)"
 t_has "--only runs the rule it was given" "$_ro_out" "── $_ro_id "
 t_has "--only runs exactly one rule, by the summary line" "$_ro_out" "lint-conventions: 1 rules,"
 t_eq "--only prints one rule header" 1 "$(printf '%s\n' "$_ro_out" | grep -c '^── ')"
@@ -105,7 +105,7 @@ t_eq "--list lists every rule the file defines" "$_ro_called" \
 # harbor#957: ids are <family>.<slug>; the letters they replaced are deprecated and still resolve (D-19).
 t_section "a deprecated letter id runs its successor, and every letter has one"
 _ro_lt="$(awk -F'\t' 'NR > 1 && $2 != "-" { print $2 "\t" $1; exit }' "$LINT_IDS")"
-_ro_lo="$(HARBOR_ROOT="$ORT" sh "$LINT" --only "${_ro_lt%%	*}" 2>&1)"
+_ro_lo="$(HARBOR_SCOPE_ROOT="$ORT" sh "$LINT" --only "${_ro_lt%%	*}" 2>&1)"
 t_has "--only <letter> runs the rule under its successor id" "$_ro_lo" "── ${_ro_lt#*	} "
 t_eq "…and runs exactly one rule" 1 "$(printf '%s\n' "$_ro_lo" | grep -c '^── ')"
 t_eq "the kill-switch rule's letter resolves to admission.kill-switch-first" "admission.kill-switch-first" "$(lid F1)"
@@ -114,17 +114,17 @@ t_eq "every rule born with a letter keeps it as its deprecated id" \
   "$(awk -F'\t' 'NR > 1 && $2 != "-"' "$LINT_IDS" | grep -c .)"
 _ro_rl="$TMP/ro.red"; : > "$_ro_rl"
 printf '#!/usr/bin/env sh\n# no ticket\n' > "$ORT/bin/zz-noticket.sh"
-LINT_REDLOG="$_ro_rl" HARBOR_ROOT="$ORT" sh "$LINT" --only "$(awk -F'\t' '$2 == "S3" { print $1 }' "$LINT_IDS")" > /dev/null 2>&1
+LINT_REDLOG="$_ro_rl" HARBOR_SCOPE_ROOT="$ORT" sh "$LINT" --only "$(awk -F'\t' '$2 == "S3" { print $1 }' "$LINT_IDS")" > /dev/null 2>&1
 t_eq "LINT_REDLOG records the id, never the letter" "$(lid S3)" "$(sort -u "$_ro_rl")"
 rm -f "$ORT/bin/zz-noticket.sh"
 
 t_section "a bad invocation is an error, never a clean run of nothing"
-_ro_bad="$(HARBOR_ROOT="$ORT" sh "$LINT" --only ZZ9 2>&1)"; _ro_rc=$?
+_ro_bad="$(HARBOR_SCOPE_ROOT="$ORT" sh "$LINT" --only ZZ9 2>&1)"; _ro_rc=$?
 t_eq "--only with an unknown id exits 2" "exit 2" "exit $_ro_rc"
 t_hasnt "--only with an unknown id reports no clean result" "$_ro_bad" '0 violations'
 t_has "…and names the id it could not find" "$_ro_bad" 'no such rule: ZZ9'
-t_exit "--only with no id exits 2" 2 env HARBOR_ROOT="$ORT" sh "$LINT" --only
-t_exit "an unknown option exits 2" 2 env HARBOR_ROOT="$ORT" sh "$LINT" --onlt
+t_exit "--only with no id exits 2" 2 env HARBOR_SCOPE_ROOT="$ORT" sh "$LINT" --only
+t_exit "an unknown option exits 2" 2 env HARBOR_SCOPE_ROOT="$ORT" sh "$LINT" --onlt
 
 t_section "--help is answered by running it, not by a matcher over source"
 _rh_out="$(sh "$LINT" --help 2>&1)"; _rh_rc=$?
@@ -139,7 +139,7 @@ printf '#!/usr/bin/env sh\nset -u\necho hi\n' > "$_RI_FX/bin/sample.sh"
 _RI_BAD=''; _RI_RAN=0
 for _ri_id in $_ro_called; do
   _RI_RAN=$((_RI_RAN + 1))
-  _ri_err="$(HARBOR_ROOT="$_RI_FX" CLAUDE_CONFIG_DIR="$_RI_FX/cfg" sh "$LINT" --only "$_ri_id" 2>&1 \
+  _ri_err="$(HARBOR_SCOPE_ROOT="$_RI_FX" CLAUDE_CONFIG_DIR="$_RI_FX/cfg" sh "$LINT" --only "$_ri_id" 2>&1 \
              | grep -E 'unbound variable|command not found|bad substitution|syntax error|parameter not set' | head -1)"
   [ -n "$_ri_err" ] && _RI_BAD="$_RI_BAD $_ri_id"
 done

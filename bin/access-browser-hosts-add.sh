@@ -18,8 +18,8 @@ LOG_FD=2
 . "$HERE/library-log.sh"
 log_init browser-hosts-add
 
-HOSTS_FILE="${HARBOR_HOSTS_FILE:-$ROOT/contracts/browser-agent-hosts.txt}"   # test seam
-CURL="${HARBOR_CURL:-curl}"                                                    # test seam
+HOSTS_FILE="${HARBOR_ACCESS_HOSTS_FILE:-${HARBOR_HOSTS_FILE:-$ROOT/contracts/browser-agent-hosts.txt}}"   # test seam
+CURL="${HARBOR_TEST_CURL:-${HARBOR_CURL:-curl}}"                                                    # test seam
 
 _usage() { sed -n '/^#   sh bin\/access-browser-hosts-add.sh --why/,/^#   --no-probe/p' "$0" | sed 's/^# \{0,2\}//'; }
 _refuse() { log_fail "$1"; log_fix "${2:-sh bin/access-browser-hosts-add.sh --help}"; log_end || :; exit 1; }

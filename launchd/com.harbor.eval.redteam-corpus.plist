@@ -3,10 +3,10 @@
 <!-- harbor:template-only
      THIS FILE IS A TEMPLATE (harbor#630). Do not cp it: render it.
 
-       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.redteam-corpus.plist > ~/Library/LaunchAgents/com.harbor.redteam-corpus.plist
+       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.eval.redteam-corpus.plist > ~/Library/LaunchAgents/com.harbor.eval.redteam-corpus.plist
 
      This block is not installed; bin/deploy-launchd-render.sh drops it. -->
-<!-- docs/reference/checks.md `redteam-corpus` (harbor#1313): once a week, score the pinned external red-team corpora against
+<!-- docs/reference/checks.md `eval.redteam-corpus` (harbor#1313): once a week, score the pinned external red-team corpora against
      main's guards in a throwaway floor and log the delta. Approved by the operator on 2026-10-18: weekly,
      Monday 09:00 Vilnius, as the operator's own user, beside the other com.harbor.* agents.
 
@@ -19,18 +19,18 @@
        sh ~/port/harbor/bin/deploy-runtime-install.sh --live --apply
        # then render this plist into ~/Library/LaunchAgents and bootstrap it under gui/$(id -u)
 
-     See it work: `launchctl kickstart -k gui/$(id -u)/com.harbor.redteam-corpus`, then
-     `sh ~/port/harbor/bin/eval-redteam-corpus.sh --print` and `cat /tmp/com.harbor.redteam-corpus.out`.
+     See it work: `launchctl kickstart -k gui/$(id -u)/com.harbor.eval.redteam-corpus`, then
+     `sh ~/port/harbor/bin/eval-redteam-corpus.sh --print` and `cat /tmp/com.harbor.eval.redteam-corpus.out`.
 
      IT NEEDS THE KEYCHAIN for `gh`'s token (main is a private clone), hence Aqua. MONDAY 09:00 LOCAL
      (the box runs Vilnius time). A full run is minutes, not seconds; 09:00 is clear of findings at 09:23.
 
      Disable (docs/reference/checks.md's two-lookup rule):
-       launchctl bootout gui/$(id -u)/com.harbor.redteam-corpus
-       rm ~/Library/LaunchAgents/com.harbor.redteam-corpus.plist -->
+       launchctl bootout gui/$(id -u)/com.harbor.eval.redteam-corpus
+       rm ~/Library/LaunchAgents/com.harbor.eval.redteam-corpus.plist -->
 <plist version="1.0">
 <dict>
-  <key>Label</key><string>com.harbor.redteam-corpus</string>
+  <key>Label</key><string>com.harbor.eval.redteam-corpus</string>
   <key>ProgramArguments</key>
   <array>
     <string>/bin/sh</string>
@@ -47,11 +47,11 @@
   <key>ProcessType</key><string>Background</string>
   <key>EnvironmentVariables</key>
   <dict>
-    <!-- System dirs first and no ~/.local/bin, as com.harbor.findings: /opt/homebrew/bin last, for gh, jq and node. -->
+    <!-- System dirs first and no ~/.local/bin, as com.harbor.lint.findings: /opt/homebrew/bin last, for gh, jq and node. -->
     <key>PATH</key><string>/usr/bin:/bin:/opt/homebrew/bin</string>
     <key>HOME</key><string>@HOME@</string>
   </dict>
-  <key>StandardOutPath</key><string>/tmp/com.harbor.redteam-corpus.out</string>
-  <key>StandardErrorPath</key><string>/tmp/com.harbor.redteam-corpus.err</string>
+  <key>StandardOutPath</key><string>/tmp/com.harbor.eval.redteam-corpus.out</string>
+  <key>StandardErrorPath</key><string>/tmp/com.harbor.eval.redteam-corpus.err</string>
 </dict>
 </plist>

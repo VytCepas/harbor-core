@@ -55,8 +55,8 @@ case "${1:-}" in
 esac
 
 CFG_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-STORE="${HARBOR_ISA_STORE:-$CFG_DIR/MEMORY/WORK}"
-OUT="${HARBOR_ISA_OUT:-$ROOT/build/isa-index.md}"
+STORE="${HARBOR_DOC_ISA_STORE:-${HARBOR_ISA_STORE:-$CFG_DIR/MEMORY/WORK}}"
+OUT="${HARBOR_DOC_ISA_OUT:-${HARBOR_ISA_OUT:-$ROOT/build/isa-index.md}}"
 
 fm() { # <file> <key> -> the frontmatter value, or empty
   awk -v k="$2" '

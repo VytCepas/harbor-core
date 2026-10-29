@@ -406,5 +406,6 @@ tests/hooks/name-note-create-test.sh
 tests/ci/lint-renderer-test.sh
 tests/policy/resolve/order.test.sh
 tests/standard/vendor/vendor.test.sh
+tests/standard/fleet-names/job.test.sh
 tests/memory/memory-names-test.sh
 tests/standard/rename/sandbox-home.test.sh

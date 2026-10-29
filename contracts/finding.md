@@ -2,7 +2,7 @@
 
 `schema_version: 1` · **written 2026-09-22 (harbor#590); the lint tier and its HEAL runner are
 implemented (`bin/lint-findings.sh`, lint FL1 and FL2) and scheduled daily** (launchd
-`com.harbor.findings`, operator yes 2026-10-02) — its `docs/reference/checks.md` row is `findings`. The check tier
+`com.harbor.lint.findings`, operator yes 2026-10-02) — its `docs/reference/checks.md` row is `lint.findings`. The check tier
 is implemented too: a registered check's receipt under `~/.claude/cache/checks/` is filed as
 `check/<id>` (harbor#896). The CI, review and floor tiers below are still the intent, and this line says so.
 
@@ -46,7 +46,7 @@ One open issue per finding, identified by a hidden marker in its body:
 
 | field | what it is | rule |
 |---|---|---|
-| `key` | `<tier>/<rule>` — `lint/drift.prod-policy-copy`, `check/renew-check`, `ci/floor`, `floor/bash:redirect-into-cfg` | must match `^[a-z]+/[A-Za-z0-9._:-]+$`; a key that does not is **not filed**, and the reconcile says so, rather than filed under a mangled name |
+| `key` | `<tier>/<rule>` — `lint/drift.prod-policy-copy`, `check/drift.renew-check`, `ci/floor`, `floor/bash:redirect-into-cfg` | must match `^[a-z]+/[A-Za-z0-9._:-]+$`; a key that does not is **not filed**, and the reconcile says so, rather than filed under a mangled name |
 | `digest` | 16 hex of `sha256` over the finding's **subject set** | see **The digest** |
 | `seen` | the date of the last reconcile that ran this rule and found it still firing | written by the reconcile only |
 | `schema` | this contract's `schema_version` | a reader refuses a marker with a higher major version |
@@ -55,6 +55,9 @@ The rule's id **joins** to where the rule is registered, and is never restated:
 `lint/<id>` to `sh bin/lint-conventions.sh --list`, `check/<id>` to a `docs/reference/checks.md` row,
 `ci/<job>` to a job in `governance.yml`. A key whose rule is not registered is refused
 the same way as a malformed key. This keeps it from becoming a fifth register.
+A renamed check keeps its history: a `standards/naming/renames.tsv` row of surface `check-id`
+(`check:<old>` to `check:<new>`) is read until its `remove_by` date, so `check/<old>` is re-keyed to `check/<new>`
+on the same issue, as a letter id is, and a receipt `<old>.json` counts as `<new>`'s until `<new>.json` exists.
 `docs/reference/checks.md` registers what runs, `contracts/idle-tools.txt` what runs on nothing,
 `contracts/unwatched.txt` what nothing watches, and this, what is currently firing.
 
@@ -107,7 +110,7 @@ holds it to the three rows above.
 
 Every `ADVISORY` line in `bin/lint-conventions.sh` is printed beside
 `_adv <ID> <subject>…`, and **lint FL2 fails a line that is not**. With
-`HARBOR_FINDINGS_OUT` set, each run appends `R <ID>` for every rule that ran, `A <ID>
+`HARBOR_LINT_FINDINGS_OUT` set, each run appends `R <ID>` for every rule that ran, `A <ID>
 <subject>` for every advisory subject and `V <ID> <subject>` for every violation, one
 tab-separated line each. With it unset, which is every push and every CI run, `_adv` is
 one `[ -z ]` and writes nothing.
@@ -196,16 +199,16 @@ self-repair exemption never had (*"the exemption is a list, not a judgement"*).
 - `<subject>` in a repair is replaced with the subject being repaired.
 - A repair that changes a tracked file lands as a **draft PR**, never as a push
   (the #591 decision record, po#162).
-- The HEAL members are the four the operator approved on 2026-09-30, and `check/ci-lost-rerun` (operator yes 2026-10-06, harbor#675: re-run a job GitHub cancelled because no runner acquired it, at most once per job, never one that ran; it runs on `ci-runners.sh tick`'s own 5-minute schedule, off with `lost-rerun off` in `~/.claude/.harbor-ci-runners`). `sh bin/lint-findings.sh
+- The HEAL members are the four the operator approved on 2026-09-30, and `check/ci.lost-rerun` (operator yes 2026-10-06, harbor#675: re-run a job GitHub cancelled because no runner acquired it, at most once per job, never one that ran; it runs on `ci-runners.sh tick`'s own 5-minute schedule, off with `lost-rerun off` in `~/.claude/.harbor-ci-runners`). `sh bin/lint-findings.sh
   heal` runs them (harbor#856): a dry run prints the plan and runs nothing, and `--apply`,
   from the published default branch only, runs each matched repair in a throwaway worktree.
   The subject reaches the repair as `"$1"`, never spliced into the text, and a subject that
   is not a plain path or id is refused. A repair with no `<subject>` runs once per finding.
   Each repair is commented into its finding's issue, and a finding with no issue yet is
   not repaired. A repair that exits nonzero publishes nothing, is written into the finding
-  with its output, and fails the run. It runs daily from launchd `com.harbor.findings`
+  with its output, and fails the run. It runs daily from launchd `com.harbor.lint.findings`
   (operator yes 2026-10-02), after a clean reconcile only. The check tier now emits (harbor#896),
-  so `check/memory-route` is filed from its receipt; a check with no fresh receipt is reported as
+  so `check/memory.route` is filed from its receipt; a check with no fresh receipt is reported as
   not visible, never as healthy.
 
 **Lint FL1** reads the block and fails when there is not exactly one block or a lane
@@ -218,12 +221,12 @@ a `bin/` script that does not exist.
 | lane | key | subject | repair | ticket |
 |---|---|---|---|---|
 | HEAL | `lint/skill.book-current` | `skills/skill-catalog/SKILL.md` | `sh bin/skill-catalog.sh` | #591 |
-| HEAL | `check/memory-route` | `*` | `sh bin/memory-route.sh --live --apply` | #589 |
+| HEAL | `check/memory.route` | `*` | `sh bin/memory-route.sh --live --apply` | #589 |
 | HEAL | `lint/lint.exec-bit-kept` | `bin/*` | `chmod +x <subject>` | #574 |
-| HEAL | `check/ci-lost-rerun` | `*` | `sh bin/ci-runners.sh rerun-lost --apply` | #675 |
+| HEAL | `check/ci.lost-rerun` | `*` | `sh bin/ci-runners.sh rerun-lost --apply` | #675 |
 <!-- lanes:end -->
 
-`check/memory-route` is the worktree born blind (#589). memory-route is the check that sees it, and
+`check/memory.route` is the worktree born blind (#589). memory-route is the check that sees it, and
 its daily run is lint IJ6 inside the reconcile's own census, which writes the receipt the reconcile
 then reads. IJ6 still prints its advisory, but records no subject, so the condition is one finding,
 not two (harbor#896). A `stood-down` subject is never HEAL, whatever a row's glob says: the repair
@@ -237,10 +240,10 @@ budget. Assuming one budget for all of them would be wrong.
 | tier | fires | what it may do | store |
 |---|---|---|---|
 | `floor` | per tool call | **one local append, no fork on the allow path, no network.** Unchanged from `guard-lib.sh` today | the local guard-decision JSONL (salted digest) |
-| `floor`, promoted | daily, inside the `judge` run | aggregates by the salted `h` and promotes only candidates above a threshold. The subject set is the salted digests, which are comparable **within one install only**, and the contract says so rather than pretending otherwise | issues |
+| `floor`, promoted | daily, inside the `audit.triage` run | aggregates by the salted `h` and promotes only candidates above a threshold. The subject set is the salted digests, which are comparable **within one install only**, and the contract says so rather than pretending otherwise | issues |
 | `lint` | per push, in the census | nothing new: the census still prints in full at push time | — |
-| `lint`, reconciled | daily at most, against the published default branch — `sh bin/lint-findings.sh reconcile --apply`, daily from launchd `com.harbor.findings` (operator yes 2026-10-02) | one `gh` read of the finding issues, plus at most one write per finding per day | issues |
-| `check` | on each check's own `docs/reference/checks.md` schedule | the check writes one receipt per run, `~/.claude/cache/checks/<id>.json` = `{id, ran_at, status: green\|red\|stood-down, subjects}`, through log-lib's `log_receipt` (harbor#896). The reconcile reads it and never re-runs the check: red fires over the subjects, stood-down fires over `stood-down`, a receipt at most two days old is a run (so green closes as fixed), an older or missing one is not seen, and an id with no `docs/reference/checks.md` row is refused. Adopted by `memory-route` and `main-tip-verdict` | issues |
+| `lint`, reconciled | daily at most, against the published default branch — `sh bin/lint-findings.sh reconcile --apply`, daily from launchd `com.harbor.lint.findings` (operator yes 2026-10-02) | one `gh` read of the finding issues, plus at most one write per finding per day | issues |
+| `check` | on each check's own `docs/reference/checks.md` schedule | the check writes one receipt per run, `~/.claude/cache/checks/<id>.json` = `{id, ran_at, status: green\|red\|stood-down, subjects}`, through log-lib's `log_receipt` (harbor#896). The reconcile reads it and never re-runs the check: red fires over the subjects, stood-down fires over `stood-down`, a receipt at most two days old is a run (so green closes as fixed), an older or missing one is not seen, and an id with no `docs/reference/checks.md` row is refused. Adopted by `memory.route` and `ci.main-tip-verdict` | issues |
 | `ci` | per merge | a red verdict on a commit already on `main` (#586) | issues |
 | `review` | per push to a PR | the reviewer (projects-orchestrator#312) writes the same marker in its PR review. The finding lives and dies with the PR, so it never files an issue | the PR's review thread |
 

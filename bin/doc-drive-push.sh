@@ -43,7 +43,7 @@ log_init deliver-drive; LOG_FD=2
 # by hand is a duplicate that drifts the day one of them is renamed. So look for the
 # real thing first and treat any alias as a convenience, never as the contract.
 find_mount() {
-  [ -n "${HARBOR_DRIVE_MOUNT:-}" ] && { printf '%s' "$HARBOR_DRIVE_MOUNT"; return 0; }
+  [ -n "${HARBOR_DOC_DRIVE_MOUNT:-${HARBOR_DRIVE_MOUNT:-}}" ] && { printf '%s' "${HARBOR_DOC_DRIVE_MOUNT:-${HARBOR_DRIVE_MOUNT:-}}"; return 0; }
   for _m in "$HOME"/Library/CloudStorage/GoogleDrive-*; do
     [ -d "$_m/My Drive" ] && { printf '%s' "$_m"; return 0; }
   done
@@ -55,7 +55,7 @@ find_mount() {
 MOUNT="$(find_mount || true)"
 ROOT="$MOUNT/My Drive/Artefacts"
 IDATTR='com.google.drivefs.item-id#S'
-WAIT="${HARBOR_DRIVE_WAIT:-30}"
+WAIT="${HARBOR_DOC_DRIVE_WAIT:-${HARBOR_DRIVE_WAIT:-30}}"
 
 usage() {
   cat <<'USAGE'
@@ -69,8 +69,8 @@ The directory must be a ~/Deliverables/<YYYY-MM-DD>-<slug>/ folder; the Drive co
 keeps that exact name so the two can be compared without translation.
 
 Environment:
-  HARBOR_DRIVE_MOUNT   override; otherwise the CloudStorage mount is found
-  HARBOR_DRIVE_WAIT    seconds to wait for the Drive id (default 30)
+  HARBOR_DOC_DRIVE_MOUNT   override; otherwise the CloudStorage mount is found
+  HARBOR_DOC_DRIVE_WAIT    seconds to wait for the Drive id (default 30)
 USAGE
 }
 
@@ -98,22 +98,22 @@ self_test() {
   # in Drive under a name that says nothing, which is the filing failure this repo
   # already has a guard for.
   set +e
-  ( HARBOR_DRIVE_MOUNT="$_tmp" sh "$0" "$_tmp/not-a-deliverable" --shared ) >/dev/null 2>&1
+  ( HARBOR_DOC_DRIVE_MOUNT="$_tmp" sh "$0" "$_tmp/not-a-deliverable" --shared ) >/dev/null 2>&1
   _t "an undated folder name is refused" "$?" "2"
 
   printf 'x' > "$_tmp/plain.html"
-  ( HARBOR_DRIVE_MOUNT="$_tmp" sh "$0" "$_tmp/plain.html" --shared ) >/dev/null 2>&1
+  ( HARBOR_DOC_DRIVE_MOUNT="$_tmp" sh "$0" "$_tmp/plain.html" --shared ) >/dev/null 2>&1
   _t "a bare file is refused" "$?" "2"
 
   mkdir -p "$_tmp/2026-09-04-probe"
-  ( HARBOR_DRIVE_MOUNT="$_tmp" sh "$0" "$_tmp/2026-09-04-probe" ) >/dev/null 2>&1
+  ( HARBOR_DOC_DRIVE_MOUNT="$_tmp" sh "$0" "$_tmp/2026-09-04-probe" ) >/dev/null 2>&1
   _t "no destination flag is refused" "$?" "2"
 
-  ( HARBOR_DRIVE_MOUNT="$_tmp" sh "$0" "$_tmp/2026-09-04-probe" --team ) >/dev/null 2>&1
+  ( HARBOR_DOC_DRIVE_MOUNT="$_tmp" sh "$0" "$_tmp/2026-09-04-probe" --team ) >/dev/null 2>&1
   _t "a removed flag (--team) is refused" "$?" "2"
 
   # A missing mount must not be reported as a missing deliverable.
-  ( HARBOR_DRIVE_MOUNT="$_tmp/no-such-mount" sh "$0" "$_tmp/2026-09-04-probe" --shared ) \
+  ( HARBOR_DOC_DRIVE_MOUNT="$_tmp/no-such-mount" sh "$0" "$_tmp/2026-09-04-probe" --shared ) \
     >/dev/null 2>&1
   _t "an absent Drive mount is refused" "$?" "3"
 
@@ -148,7 +148,7 @@ case "${SRC##*/}" in
 esac
 [ -d "$ROOT" ] || {
   log_fail "no Drive mount at $ROOT: is Drive for Desktop running and signed in?"
-  log_fix "open -a 'Google Drive'    # or set HARBOR_DRIVE_MOUNT"
+  log_fix "open -a 'Google Drive'    # or set HARBOR_DOC_DRIVE_MOUNT"
   log_end || :; exit 3
 }
 

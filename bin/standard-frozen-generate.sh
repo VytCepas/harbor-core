@@ -14,7 +14,7 @@ set -eu
 case "${1:-}" in -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
 FROZEN="${FROZEN_FILE:-$ROOT/standards/naming/frozen.tsv}"
 RENAMES="${RENAMES_FILE:-$ROOT/standards/naming/renames.tsv}"
 . "$SRC/library-log.sh"
@@ -28,7 +28,7 @@ need() { [ -f "$ROOT/$1" ] || { log_fail "no $1, so its names cannot be read"; l
 names() {
   need contracts/cli.md; need contracts/pack.md; need contracts/roots.tsv; need bin/scope-roots.sh
   grep -o '^| `harbor [a-z][a-z-]*' "$ROOT/contracts/cli.md" | sed 's/^| `harbor /cli	/'
-  HARBOR_ROOT="$ROOT" sh "$ROOT/bin/scope-roots.sh" --conf-keys | sed 's/^/toml	/'
+  HARBOR_SCOPE_ROOT="$ROOT" sh "$ROOT/bin/scope-roots.sh" --conf-keys | sed 's/^/toml	/'
   sed -n 's/^pack\.toml[[:space:]][[:space:]]*\([a-z_, ]*\) - .*/\1/p' "$ROOT/contracts/pack.md" | tr ',' '\n' | tr -d ' ' | grep -v '^$' | sed 's/^/pack-toml	/'
   grep -vE '^[[:space:]]*(#|$)' "$ROOT/contracts/roots.tsv" | sed 1d | cut -f1 | sed 's/^/env	/'
   for _d in "$ROOT"/skills/*/; do [ -f "$_d/SKILL.md" ] && { _s="${_d%/}"; printf 'skill\t%s\n' "${_s##*/}"; }; done

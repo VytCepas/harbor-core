@@ -124,7 +124,7 @@ skill and a test may be the bare family (`bin/worktree.sh`), the family's defaul
 
 - **The CLI is `harbor`, never `helm`.** `helm` is the Kubernetes package manager, and project-init's
   `prod_guard` denies `helm uninstall` in every repo it scaffolds, so a `helm` command would be blocked by our own
-  guard. Lint T5 holds it; docs/decisions/rejected-approaches.md records the rejected guard exception.
+  guard. Lint T5 holds it; docs/reports/rejected-approaches.md records the rejected guard exception.
 - **Domains of work take the world's word.** A thing that exists without Harbor (a tag manager, a data estate, a reporting
   API) keeps its own name, so someone who has never heard of Harbor can find it. The system's own parts take
   technical terms (§0, principle 4); the nautical words survive as `aliases.tsv` rows, `harbor` and `yard` as
@@ -183,7 +183,7 @@ the tool that forces it.**
      reports 0 findings in every governed repo (`sh bin/rule-health.sh --promotion`). Any other rule keeps D-64: red,
      then 4 weeks with no finding accepted as false.
    - There are no inline ignores.
-   - An expiring alias becomes a finding 14 days before its date (`name.alias-expired`).
+   - An expiring alias warns from 14 days before its date and blocks from it (`name.alias-expired`).
 4. **Self-reference:**
    - The registry and the lint are lint subjects like any other file.
    - `exemptions.tsv` refuses any row about the registry, the lint or its fixtures, and the lint never applies one.

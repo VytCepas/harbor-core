@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# bin/test-suite-run.sh against a fake repo of tiny suites (HARBOR_ROOT), so no real suite runs. Each section
+# bin/test-suite-run.sh against a fake repo of tiny suites (HARBOR_SCOPE_ROOT), so no real suite runs. Each section
 # plants the thing it guards — a long suite queued late, a failing suite, a worker's lost result, a pair
 # of suites that only pass when they overlap — and checks that the runner notices.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
@@ -10,7 +10,7 @@ mk() { # <name> [body] — a suite that records its start, runs body, prints its
   printf '#!/bin/sh\necho %s >> "%s"\n%s\necho "%s: 1 passed, 0 failed"\n' "$1" "$ORD" "${2:-:}" "$1" > "$R/tests/x/$1.sh"
 }
 man() { printf 'tests/x/%s.sh\n' "$@" > "$R/contracts/suites.txt"; }
-run() { HARBOR_ROOT="$R" HARBOR_SUITE_TIMEOUT="${TMO:-900}" sh "$SR" "$@" 2>&1; }
+run() { HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_SUITE_TIMEOUT="${TMO:-900}" sh "$SR" "$@" 2>&1; }
 for s in a b c d u; do mk "$s"; done
 man a b c d u
 printf '# generated\n5\ttests/x/a.sh\n30\ttests/x/b.sh\n10\ttests/x/c.sh\n30\ttests/x/d.sh\n' > "$R/tests/suite-durations.tsv"
@@ -43,8 +43,8 @@ t_section "suites run at the same time (each waits for the other; one at a time 
 mk p 'touch "$T_RV/p"; i=0; while [ ! -f "$T_RV/q" ] && [ $i -lt 40 ]; do sleep 0.25; i=$((i+1)); done; [ -f "$T_RV/q" ] || exit 1'
 mk q 'touch "$T_RV/q"; i=0; while [ ! -f "$T_RV/p" ] && [ $i -lt 40 ]; do sleep 0.25; i=$((i+1)); done; [ -f "$T_RV/p" ] || exit 1'
 man p q; mkdir -p "$T_TMP/rv"
-rm -f "$T_TMP/rv/"*; t_exit "-j 2 runs them together" 0 env T_RV="$T_TMP/rv" HARBOR_ROOT="$R" sh "$SR" -j 2
-rm -f "$T_TMP/rv/"*; t_exit "-j 1 cannot, so the control fails" 1 env T_RV="$T_TMP/rv" HARBOR_ROOT="$R" sh "$SR" -j 1
+rm -f "$T_TMP/rv/"*; t_exit "-j 2 runs them together" 0 env T_RV="$T_TMP/rv" HARBOR_SCOPE_ROOT="$R" sh "$SR" -j 2
+rm -f "$T_TMP/rv/"*; t_exit "-j 1 cannot, so the control fails" 1 env T_RV="$T_TMP/rv" HARBOR_SCOPE_ROOT="$R" sh "$SR" -j 1
 
 t_section "every queued suite must come back with exactly one result"
 mk k ': > "$_SR_RES"'   # destroys the results the runner had collected before it
@@ -87,16 +87,16 @@ for s in c1 c2 c3 c4; do mk "$s" 'mkdir -p "$T_CON/run"; : > "$T_CON/run/$$"; n=
 man c1 c2 c3 c4; rm -f "$R/tests/suite-durations.tsv"
 peak() { sort -n "$CON/seen" | tail -1 | tr -d ' '; }
 rm -rf "$CON"; mkdir -p "$CON"; echo '50000 100000' > "$CM"
-T_CON="$CON" HARBOR_CPU_MAX="$CM" HARBOR_ROOT="$R" sh "$SR" -j 4 >/dev/null 2>&1
+T_CON="$CON" HARBOR_CPU_MAX="$CM" HARBOR_SCOPE_ROOT="$R" sh "$SR" -j 4 >/dev/null 2>&1
 t_eq "half a CPU: never more than one suite at once, though --jobs is 4" 1 "$(peak)"
 rm -rf "$CON"; mkdir -p "$CON"; echo '200000 100000' > "$CM"
-T_CON="$CON" HARBOR_CPU_MAX="$CM" HARBOR_ROOT="$R" sh "$SR" -j 4 >/dev/null 2>&1
+T_CON="$CON" HARBOR_CPU_MAX="$CM" HARBOR_SCOPE_ROOT="$R" sh "$SR" -j 4 >/dev/null 2>&1
 t_eq "control: two CPUs allow all four" 4 "$(peak)"
 # xargs starts the workers together, so which suite takes the one slot first is not fixed: every suite raises the
 # quota and holds until a second one has started, so the pool must widen whoever goes first (harbor#1032).
 for s in c1 c2 c3 c4; do mk "$s" 'mkdir -p "$T_CON/run"; : > "$T_CON/run/$$"; n=$(ls "$T_CON/run" | wc -l); echo $n >> "$T_CON/seen"; echo "200000 100000" > "$T_CM"; i=0; while [ "$(wc -l < "$T_CON/seen" | tr -d " ")" -lt 2 ] && [ $i -lt 100 ]; do sleep 0.1; i=$((i+1)); done; rm -f "$T_CON/run/$$"'; done
 rm -rf "$CON"; mkdir -p "$CON"; echo '50000 100000' > "$CM"
-T_CM="$CM" T_CON="$CON" HARBOR_CPU_MAX="$CM" HARBOR_ROOT="$R" sh "$SR" -j 4 >/dev/null 2>&1
+T_CM="$CM" T_CON="$CON" HARBOR_CPU_MAX="$CM" HARBOR_SCOPE_ROOT="$R" sh "$SR" -j 4 >/dev/null 2>&1
 t_eq "a quota raised mid-run (by whichever suite starts first) widens the pool for the rest" yes "$([ "$(peak)" -ge 2 ] && echo yes || echo no)"
 rm -f "$R/tests/suite-durations.tsv"
 
@@ -104,15 +104,15 @@ t_section "include, and a stale list is refused"
 man a b c
 printf '# only\ntests/x/c.sh\n' > "$T_TMP/in"; t_eq "--include keeps only it" "tests/x/c.sh" "$(run --include "$T_TMP/in" --plan)"
 printf 'tests/x/gone.sh\n' > "$T_TMP/stale"
-t_exit "an include naming a suite that is not a candidate exits 2" 2 env HARBOR_ROOT="$R" sh "$SR" --include "$T_TMP/stale" --plan
+t_exit "an include naming a suite that is not a candidate exits 2" 2 env HARBOR_SCOPE_ROOT="$R" sh "$SR" --include "$T_TMP/stale" --plan
 # --exclude only ever served the macOS lane's list, gone with macOS CI (harbor#1060): it is refused, not ignored.
 printf 'tests/x/b.sh\n' > "$T_TMP/ex"
-t_exit "--exclude is no longer an option" 2 env HARBOR_ROOT="$R" sh "$SR" --exclude "$T_TMP/ex" --plan
-t_exit "a positional suite that does not exist exits 2" 2 env HARBOR_ROOT="$R" sh "$SR" --plan tests/x/gone.sh
+t_exit "--exclude is no longer an option" 2 env HARBOR_SCOPE_ROOT="$R" sh "$SR" --exclude "$T_TMP/ex" --plan
+t_exit "a positional suite that does not exist exits 2" 2 env HARBOR_SCOPE_ROOT="$R" sh "$SR" --plan tests/x/gone.sh
 
 t_section "--select stands down what the changeset does not touch, and says so"
 printf '@no-suite docs/*\ntests/x/a.sh tests/x/a.sh src/a/*\ntests/x/b.sh tests/x/b.sh src/b/*\ntests/x/c.sh always\n' > "$R/contracts/suite-paths.txt"
-: > "$ORD"; O="$(HARBOR_CHANGED='src/a/f.txt' run -j 2 --select --results "$T_TMP/sel.tsv")"; rc=$?
+: > "$ORD"; O="$(HARBOR_TEST_CHANGED='src/a/f.txt' run -j 2 --select --results "$T_TMP/sel.tsv")"; rc=$?
 t_eq "exit 0" 0 "$rc"
 t_eq "a and c ran, b did not" "a c" "$(sort "$ORD" | tr '\n' ' ' | sed 's/ $//')"
 t_has "b's stand-down is a skip line with its reason" "$O" "  skip: tests/x/b.sh stood down — no changed path matches"
@@ -132,7 +132,7 @@ t_eq "a ran member with no count: refused, never summed as 0" "rc=1 k=fail k_ran
 t_section "--shard K/N: the selection split by recorded time, every suite in exactly one shard (harbor#1172)"
 for s in a b c d e u; do mk "$s"; done; man a b c d e u
 printf '# generated\n50\ttests/x/a.sh\n40\ttests/x/b.sh\n30\ttests/x/c.sh\n20\ttests/x/d.sh\n10\ttests/x/e.sh\n' > "$R/tests/suite-durations.tsv"
-planq() { HARBOR_ROOT="$R" sh "$SR" --plan "$@" 2>/dev/null; }   # stdout only: --plan puts the shard note on stderr
+planq() { HARBOR_SCOPE_ROOT="$R" sh "$SR" --plan "$@" 2>/dev/null; }   # stdout only: --plan puts the shard note on stderr
 plan() { planq "$@" | tr '\n' ' ' | sed 's/ $//'; }
 # longest first, each to the lighter shard: a50->1 b40->2 c30->2 u30->1 d20->2 e10->1, 90 s each
 t_eq "shard 1/2, its own queue order (u is unknown, so first)" "tests/x/u.sh tests/x/a.sh tests/x/e.sh" "$(plan --shard 1/2)"
@@ -147,7 +147,7 @@ mv "$R/tests/suite-durations.tsv" "$T_TMP/dur.keep"
 t_eq "no table: every suite weighs the same, so manifest order round robin" "tests/x/a.sh tests/x/c.sh tests/x/e.sh" "$(plan --shard 1/2)"
 mv "$T_TMP/dur.keep" "$R/tests/suite-durations.tsv"
 for bad in 0/2 3/2 1/0 01/2 x/2 1/2/3 2; do
-  t_exit "--shard $bad is refused" 2 env HARBOR_ROOT="$R" sh "$SR" --plan --shard "$bad"
+  t_exit "--shard $bad is refused" 2 env HARBOR_SCOPE_ROOT="$R" sh "$SR" --plan --shard "$bad"
 done
 
 t_section "shard 1 starts with the linter's weight, from the table's own row (harbor#1172)"
@@ -156,8 +156,8 @@ t_section "shard 1 starts with the linter's weight, from the table's own row (ha
 printf '# generated\n50\ttests/x/a.sh\n40\ttests/x/b.sh\n40\tbin/lint-conventions.sh\n30\ttests/x/c.sh\n20\ttests/x/d.sh\n10\ttests/x/e.sh\n' > "$R/tests/suite-durations.tsv"
 t_eq "shard 1 takes less suite time: u b" "tests/x/u.sh tests/x/b.sh" "$(plan --shard 1/2)"
 t_eq "shard 2 takes the rest: a c d e" "tests/x/a.sh tests/x/c.sh tests/x/d.sh tests/x/e.sh" "$(plan --shard 2/2)"
-t_has "the note shows every shard's total, linter included" "$(HARBOR_ROOT="$R" sh "$SR" --plan --shard 1/2 2>&1 >/dev/null)" "every shard: 110s 110s"
-t_has "...and says what the linter weighs" "$(HARBOR_ROOT="$R" sh "$SR" --plan --shard 2/2 2>&1 >/dev/null)" "linter 40s on shard 1"
+t_has "the note shows every shard's total, linter included" "$(HARBOR_SCOPE_ROOT="$R" sh "$SR" --plan --shard 1/2 2>&1 >/dev/null)" "every shard: 110s 110s"
+t_has "...and says what the linter weighs" "$(HARBOR_SCOPE_ROOT="$R" sh "$SR" --plan --shard 2/2 2>&1 >/dev/null)" "linter 40s on shard 1"
 # 110s per shard needs u at 30, the mean of the five suites: a lint row in the mean would make it 33
 t_eq "N=3 with the lint row: it opens shard 1, so b and u share shard 3" "tests/x/u.sh tests/x/b.sh" "$(plan --shard 3/3)"
 t_eq "only shard 1 carries it: the unsharded plan lists no linter" 0 "$(planq | grep -c lint-conventions || :)"
@@ -166,20 +166,20 @@ run --record-from "$T_TMP/kept.tsv" >/dev/null
 t_eq "--record-from keeps the lint row when --lint is omitted" 40 "$(awk -F '\t' '$2 == "bin/lint-conventions.sh" { print $1 }' "$R/tests/suite-durations.tsv")"
 run --record-from "$T_TMP/kept.tsv" --lint 95 >/dev/null
 t_eq "--lint SECS refreshes it" 95 "$(awk -F '\t' '$2 == "bin/lint-conventions.sh" { print $1 }' "$R/tests/suite-durations.tsv")"
-t_exit "--lint wants whole seconds" 2 env HARBOR_ROOT="$R" sh "$SR" --record-from "$T_TMP/kept.tsv" --lint 1.5
+t_exit "--lint wants whole seconds" 2 env HARBOR_SCOPE_ROOT="$R" sh "$SR" --record-from "$T_TMP/kept.tsv" --lint 1.5
 printf '# generated\n50\ttests/x/a.sh\n40\ttests/x/b.sh\n30\ttests/x/c.sh\n20\ttests/x/d.sh\n10\ttests/x/e.sh\n' > "$R/tests/suite-durations.tsv"   # back to the table the next sections expect
 
 t_section "shards run apart and --combine makes them one run: each suite once, or red (harbor#1172)"
 for s in a b c d e u; do printf 'tests/x/%s.sh tests/x/%s.sh src/%s/*\n' "$s" "$s" "$s"; done > "$R/contracts/suite-paths.txt"
 CH="$(printf 'src/a/f\nsrc/b/f\nsrc/e/f\nsrc/u/f')"   # selects a b e u; c d stand down
 # a50->1 b40->2 u30->2 e10->1
-: > "$ORD"; HARBOR_CHANGED="$CH" run --select --shard 1/2 --results "$T_TMP/r1" >/dev/null
+: > "$ORD"; HARBOR_TEST_CHANGED="$CH" run --select --shard 1/2 --results "$T_TMP/r1" >/dev/null
 t_eq "shard 1 ran a and e" "a e" "$(sort "$ORD" | tr '\n' ' ' | sed 's/ $//')"
-: > "$ORD"; HARBOR_CHANGED="$CH" run --select --shard 2/2 --results "$T_TMP/r2" >/dev/null
+: > "$ORD"; HARBOR_TEST_CHANGED="$CH" run --select --shard 2/2 --results "$T_TMP/r2" >/dev/null
 t_eq "shard 2 ran b and u" "b u" "$(sort "$ORD" | tr '\n' ' ' | sed 's/ $//')"
 t_eq "the stand-downs are shard 1's rows, not shard 2's" "2 0" \
   "$(awk -F '\t' '$1 == "skip"' "$T_TMP/r1" | grep -c .) $(awk -F '\t' '$1 == "skip"' "$T_TMP/r2" | grep -c . || :)"
-t_exit "the two combine" 0 env HARBOR_ROOT="$R" sh "$SR" --combine "$T_TMP/all" "$T_TMP/r1" "$T_TMP/r2"
+t_exit "the two combine" 0 env HARBOR_SCOPE_ROOT="$R" sh "$SR" --combine "$T_TMP/all" "$T_TMP/r1" "$T_TMP/r2"
 t_eq "...to one row per candidate" "a b c d e u" "$(cut -f5 "$T_TMP/all" | sed 's|tests/x/||; s|\.sh$||' | sort | tr '\n' ' ' | sed 's/ $//')"
 t_eq "...that --tally reads as one run's" "rc=0 k=pass k_ran=true k_count=2 " \
   "$(: > "$T_TMP/gho"; GITHUB_OUTPUT="$T_TMP/gho" sh "$SR" --tally "$T_TMP/all" k tests/x/a.sh tests/x/b.sh >/dev/null 2>&1; echo "rc=$? $(tr '\n' ' ' < "$T_TMP/gho")")"
@@ -195,9 +195,9 @@ printf 'pass\t1\t0\t1\ttests/x/zz.sh\t\n' > "$T_TMP/r3"
 O="$(run --combine "$T_TMP/all" "$T_TMP/r1" "$T_TMP/r2" "$T_TMP/r3")"; rc=$?
 t_eq "a result for a suite that is not a candidate: red" 1 "$rc"
 t_has "...named STRAY" "$O" "STRAY: tests/x/zz.sh"
-t_exit "a results file that is not there: red" 1 env HARBOR_ROOT="$R" sh "$SR" --combine "$T_TMP/all" "$T_TMP/r1" "$T_TMP/r2" "$T_TMP/none"
+t_exit "a results file that is not there: red" 1 env HARBOR_SCOPE_ROOT="$R" sh "$SR" --combine "$T_TMP/all" "$T_TMP/r1" "$T_TMP/r2" "$T_TMP/none"
 # the two shards judged different changesets (each job reads the base for itself)
-HARBOR_CHANGED='src/a/f' run --select --shard 1/2 --results "$T_TMP/r1" >/dev/null
+HARBOR_TEST_CHANGED='src/a/f' run --select --shard 1/2 --results "$T_TMP/r1" >/dev/null
 O="$(run --combine "$T_TMP/all" "$T_TMP/r1" "$T_TMP/r2")"; rc=$?
 t_eq "shards that split different selections: red" 1 "$rc"
 t_has "...b stood down in one and ran in the other" "$O" "DUPLICATE: tests/x/b.sh"
@@ -209,7 +209,7 @@ t_eq "a takes the file's 7 s; b stood down there, so it keeps 40" "7 40" \
   "$(awk -F '\t' '$2 == "tests/x/a.sh" { a = $1 } $2 == "tests/x/b.sh" { b = $1 } END { print a, b }' "$R/tests/suite-durations.tsv")"
 t_eq "no suite ran" marker "$(cat "$ORD")"
 t_eq "the results file is read, not emptied" 2 "$(grep -c . "$T_TMP/kept.tsv")"
-t_exit "a results file that is not there exits 2" 2 env HARBOR_ROOT="$R" sh "$SR" --record-from "$T_TMP/none.tsv"
+t_exit "a results file that is not there exits 2" 2 env HARBOR_SCOPE_ROOT="$R" sh "$SR" --record-from "$T_TMP/none.tsv"
 
 t_section "--record rewrites the table, longest first, and drops suites the manifest lost"
 mk slow 'sleep 2'; man a slow
@@ -238,7 +238,7 @@ t_has "a suite that never stops printing hits the hard cap" "$O" "timed out: no 
 # A governor waiting for a CPU slot has written no log yet: that wait is bounded by its deadline, not a hang.
 G="$T_TMP/gbin"; mkdir -p "$G"; cp "$T_ROOT/bin/test-suite-run.sh" "$T_ROOT/bin/library-log.sh" "$G/"; mk gw; man gw
 printf '#!/bin/sh\nshift 2; o="$1"; shift 2; sleep 4; exec "$@" > "$o" 2>&1\n' > "$G/ci-governor.sh"
-O="$(HARBOR_ROOT="$R" HARBOR_SUITE_TIMEOUT=2 HARBOR_SUITE_HARD_TIMEOUT=20 sh "$G/test-suite-run.sh" -j 1 2>&1)"
+O="$(HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_SUITE_TIMEOUT=2 HARBOR_SUITE_HARD_TIMEOUT=20 sh "$G/test-suite-run.sh" -j 1 2>&1)"
 t_has "a 4s wait for a slot outlives a 2s idle limit" "$O" "ok: "
 t_hasnt "...and is not called timed out" "$O" "timed out"
 
@@ -261,7 +261,7 @@ if [ "$OWNPG" = yes ]; then
   t_eq "...and its child is killed through the process group" no "$(kill -0 "$(cat "$T_TMP/hang.pid")" 2>/dev/null && echo yes || echo no)"
   # A stop sent to the run's own group no longer reaches a suite in its group: the worker passes it on.
   rm -f "$T_TMP/hang.pid"
-  ( set -m 2>/dev/null; HARBOR_ROOT="$R" HARBOR_SUITE_TIMEOUT=900 sh "$SR" -j 1 >/dev/null 2>&1 & echo $! > "$T_TMP/run.pid"; wait ) </dev/null &
+  ( set -m 2>/dev/null; HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_SUITE_TIMEOUT=900 sh "$SR" -j 1 >/dev/null 2>&1 & echo $! > "$T_TMP/run.pid"; wait ) </dev/null &
   i=0; while [ ! -s "$T_TMP/hang.pid" ] && [ $i -lt 40 ]; do sleep 0.25; i=$((i + 1)); done
   t_eq "CONTROL: the hung suite's child is running" yes "$(kill -0 "$(cat "$T_TMP/hang.pid" 2>/dev/null)" 2>/dev/null && echo yes || echo no)"
   kill -TERM "-$(cat "$T_TMP/run.pid")" 2>/dev/null; sleep 2

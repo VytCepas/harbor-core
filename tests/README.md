@@ -93,7 +93,7 @@ One batch is one branch (`sh bin/worktree.sh new test/667-<batch>`) and one PR. 
    - A sandboxed live-dir case creates the sandbox's `$HOME/.claude` first. Otherwise the not-a-directory check can exit with the gate's own code, and the case passes vacuously.
    - Anchor short needles: `ok` matches inside `invoked`.
    - A suite that also runs as a `~/.local/bin` shim resolves its own path through the symlink before sourcing `core.sh`.
-   - A verifier outside the sandbox, such as Playwright or Chrome, is located before `t_init`, preferably from an explicit variable (`HARBOR_PROBE_DIR`). The suite never writes there.
+   - A verifier outside the sandbox, such as Playwright or Chrome, is located before `t_init`, preferably from an explicit variable (`HARBOR_ACCESS_PROBE_DIR`). The suite never writes there.
    - Over 500 lines, split by subject, or into `<name>.<part>-test.sh`. The main part keeps `<name>-test.sh` where one exists. A fixture the parts share gets its own file, like `tests/admission/bash/fixture.sh`.
 3. **Prove it can fail.**
    - Mutate each subject at least 3 times, one mutant per behaviour the suite claims.

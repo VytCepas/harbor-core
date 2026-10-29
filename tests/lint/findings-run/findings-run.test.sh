@@ -14,8 +14,8 @@ git init -q --bare "$G"; git -C "$G" symbolic-ref HEAD refs/heads/main   # whate
 mkdir -p "$S/bin"
 cat > "$S/bin/lint-findings.sh" <<'FAKE'
 #!/bin/sh
-printf '%s %s %s\n' "$1" "$HARBOR_ROOT" "$HARBOR_FINDINGS_REPO" >> "$CALLS"
-env | grep -E '^(HARBOR_PLANTED|GIT_TRACE|https_proxy)=' >> "$CALLS.env" || :
+printf '%s %s %s\n' "$1" "${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-}}" "${HARBOR_LINT_FINDINGS_REPO:-${HARBOR_FINDINGS_REPO:-}}" >> "$CALLS"
+env | grep -E '^(HARBOR_TEST_PLANTED|GIT_TRACE|https_proxy)=' >> "$CALLS.env" || :
 case "$1" in
   reconcile) printf 'findings: reconciled — examined 1 rules\n'; [ -z "${FAKE_NEW:-}" ] || printf '  new (first reconcile):      lint/X1\n'; exit "${FAKE_RC_RECONCILE:-0}" ;;
   heal)      printf 'findings heal: dry\n'; exit "${FAKE_RC_HEAL:-0}" ;;
@@ -31,7 +31,7 @@ git -C "$ES" -c user.email=t@t -c user.name=t commit -qm evil; git -C "$ES" push
 t_section "the fixture is what the cases below assume"
 t_eq "main has the recording lint-findings.sh" yes "$(git -C "$G" show main:bin/lint-findings.sh | grep -q CALLS && echo yes || echo no)"
 MAIN="$(git -C "$G" rev-parse main)"; MAIN7="$(printf '%.7s' "$MAIN")"
-run() { HARBOR_FINDINGS_URL="$G" HARBOR_FINDINGS_REPO=o/r sh "$R" --overrides 2>&1; }
+run() { HARBOR_LINT_FINDINGS_URL="$G" HARBOR_LINT_FINDINGS_REPO=o/r sh "$R" --overrides 2>&1; }
 wts() { find "$TMPDIR" -maxdepth 1 -name 'findings-run.*' | grep -c .; }
 
 t_section "a clean run reconciles, then heals, main as the remote has it, and stamps ok"
@@ -47,7 +47,7 @@ t_eq "a run that changed nothing writes no checks.log line" no "$([ -s "$CLOG" ]
 
 t_section "a run that changed something writes one checks.log line"
 FAKE_NEW=1 run > /dev/null
-t_eq "one line" 1 "$(grep -c '^\[check:findings\]' "$CLOG")"
+t_eq "one line" 1 "$(grep -c '^\[check:lint.findings\]' "$CLOG")"
 t_has "naming main" "$(cat "$CLOG")" "ok at $MAIN7"
 
 t_section "review #895: a session-written global git config cannot redirect the fetch"
@@ -106,7 +106,7 @@ printf '# pin\nacme/pinned\n' > "$TMP/home/.claude/bin/repo-slug.txt"
 # the registered checkout as a session could leave it: its origin and its own pin both redirected to another repo
 mkdir -p "$TMP/home/port/harbor/contracts"; git -C "$TMP/home/port/harbor" init -q
 git -C "$TMP/home/port/harbor" remote add origin https://github.com/evil/harbor.git; printf 'evil/harbor\n' > "$TMP/home/port/harbor/contracts/repo-slug.txt"
-OUT="$(PATH="$TMP/stubgit:$PATH" HOME="$TMP/home" HARBOR_FINDINGS_URL="$E" CLAUDE_CONFIG_DIR="$TMP/elsewhere" \
+OUT="$(PATH="$TMP/stubgit:$PATH" HOME="$TMP/home" HARBOR_LINT_FINDINGS_URL="$E" CLAUDE_CONFIG_DIR="$TMP/elsewhere" \
   sh "$TMP/home/.claude/bin/lint-findings-run.sh" 2>&1)"
 t_eq "the attacker's repo was never run" no "$([ -f "$EVIL" ] && echo yes || echo no)"
 t_has "the clone asked for the URL the install pins" "$(cat "$TMP/git.args")" "https://github.com/acme/pinned.git"
@@ -145,7 +145,7 @@ rmdir "$STATE"
 
 t_section "an inherited HARBOR_*, proxy or trace variable never reaches main's lint-findings.sh"
 : > "$CALLS.env"
-HARBOR_PLANTED=1 GIT_TRACE="$TMP/trace" https_proxy=http://127.0.0.1:9 run > /dev/null
+HARBOR_TEST_PLANTED=1 GIT_TRACE="$TMP/trace" https_proxy=http://127.0.0.1:9 run > /dev/null
 t_eq "none of the three arrived" "" "$(cat "$CALLS.env")"
 t_eq "and git wrote no trace" no "$([ -e "$TMP/trace" ] && echo yes || echo no)"
 t_eq "positive control: main still ran" ok "$(jq -r .status "$STATE")"
@@ -164,7 +164,7 @@ t_eq "exit 1" 1 "$_rc"
 t_eq "the receipt says so" "failed heal exited 1" "$(jq -r '"\(.status) \(.note)"' "$STATE")"
 
 t_section "a fetch that fails is refused: nothing runs, and the receipt says so"
-: > "$CALLS"; OUT="$(HARBOR_FINDINGS_URL="$TMP/nowhere.git" HARBOR_FINDINGS_REPO=o/r sh "$R" --overrides 2>&1)"; _rc=$?
+: > "$CALLS"; OUT="$(HARBOR_LINT_FINDINGS_URL="$TMP/nowhere.git" HARBOR_LINT_FINDINGS_REPO=o/r sh "$R" --overrides 2>&1)"; _rc=$?
 t_eq "exit 1" 1 "$_rc"
 t_eq "nothing ran" "" "$(cat "$CALLS")"
 t_eq "refused" refused "$(jq -r .status "$STATE")"
@@ -172,7 +172,7 @@ t_has "naming the URL" "$OUT" "could not fetch main from $TMP/nowhere.git"
 
 t_section "the schedule runs the installed copy, and the installer ships it"
 # The plist is a template (harbor#630): what launchd runs is what it renders to, so that is what is read.
-FPL="$(sh "$T_ROOT/bin/deploy-launchd-render.sh" "$T_ROOT/launchd/com.harbor.findings.plist")"
+FPL="$(sh "$T_ROOT/bin/deploy-launchd-render.sh" "$T_ROOT/launchd/com.harbor.lint.findings.plist")"
 t_has "the plist names ~/.claude/bin/lint-findings-run.sh" "$FPL" "$HOME/.claude/bin/lint-findings-run.sh</string>"
 t_hasnt "its PATH searches no ~/.local/bin, where a session can Write a git" "$(printf '%s\n' "$FPL" | grep -A0 '<key>PATH</key>')" ".local/bin"
 t_has "positive control: the PATH line was read" "$(printf '%s\n' "$FPL" | grep -A0 '<key>PATH</key>')" "/usr/bin:/bin"

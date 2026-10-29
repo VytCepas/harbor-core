@@ -89,7 +89,7 @@ while IFS="$(printf '\t')" read -r pack shape id arm label payload; do
   _p="$(printf '%s' "$payload" | sed "s|@REPO@|$REPO|g; s|@OTHER@|$OTHER|g; s|@BARE@|$BARE|g; s|@TRANSCRIPT@|$T/transcript.jsonl|g")"
   case "$_p" in *'@BIG@'*) _p="$(printf '%s' "$_p" | sed "s|@BIG@|$BIG|")" ;; esac
   out="$(printf '%s' "$_p" | CLAUDE_CONFIG_DIR="$T/cfg" CLAUDE_PROJECT_DIR="$REPO" PORT_ROOT="$T" \
-          HARBOR_REPO="$T_ROOT" ACCESS_DIR="$T/access" HARBOR_MANAGED_SETTINGS="$T/managed/managed-settings.json" \
+          HARBOR_SCOPE_REPO="$T_ROOT" ACCESS_DIR="$T/access" HARBOR_MANAGED_SETTINGS="$T/managed/managed-settings.json" \
           /bin/sh "$ENGINE" --explain 2>&1)"
   # A run: pack that returns the decision sentinel logs DECIDE, not FIRE: the `deny` arm the
   # fixture header documents, which this loop read as silent until harbor#843 shipped one.

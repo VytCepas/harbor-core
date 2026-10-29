@@ -42,11 +42,12 @@ if (!url) {
 // EVERY BACKEND HERE RUNS ON THE SYSTEM CHROME. Measured 2026-09-06:
 // `~/.cache/puppeteer` does not exist on this box and ms-playwright holds no
 // binaries, so a row promising Chrome for Testing would be a dead end.
-// HARBOR_CHROME first, and it is not a convenience: tests/access/browser/browser.test.sh points it
+// HARBOR_ACCESS_CHROME first, and it is not a convenience: tests/access/browser/browser.test.sh points it
 // at a path that does not exist to prove the no-Chrome path still SKIPS rather
 // than passing vacuously. A hardcoded list makes that assertion unwritable.
 const CHROME_CANDIDATES = [
-  process.env.HARBOR_CHROME,
+  process.env.HARBOR_ACCESS_CHROME,
+  process.env.HARBOR_CHROME,   // the old name, read until 2026-11-15 (harbor#961 W5)
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   '/usr/bin/google-chrome',
   '/usr/bin/google-chrome-stable',

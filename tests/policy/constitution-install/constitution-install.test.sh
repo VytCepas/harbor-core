@@ -4,7 +4,7 @@
 # Each case is a throwaway checkout with a V1 -> V2 history, deploying into its own config dir.
 # Then the install standard (harbor#765, #771): the interface, the dry-run exit rule, backups and the log.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY
 V1='# Rules
 
 **It defers inside a governed repo.** Where a project carries the marker,
@@ -159,7 +159,7 @@ env -u CLAUDE_CONFIG_DIR HOME="$C.home" sh "$C/bin/policy-constitution-install.s
 t_has "a live apply names the re-pin, in pin-instructions' own interface" "$(out)" \
   "  note: next: sh $(cd "$C.home/.claude" && pwd -P)/bin/pin-instructions.sh --apply --live"
 printf '%s\n' "$V1" > "$C.home/.claude/CLAUDE.md"
-env -u CLAUDE_CONFIG_DIR HOME="$C.home" HARBOR_DEPLOY=1 sh "$C/bin/policy-constitution-install.sh" --apply --live >"$T_TMP/out" 2>&1
+env -u CLAUDE_CONFIG_DIR HOME="$C.home" HARBOR_DEPLOY_ACTIVE=1 sh "$C/bin/policy-constitution-install.sh" --apply --live >"$T_TMP/out" 2>&1
 t_hasnt "under deploy it does not" "$(out)" "pin-instructions.sh --apply --live"
 t_has "...though the install itself ran" "$(out)" "  ok: installed"
 t_section "the install manifest (install standard §3): CLAUDE.md is a row, written on --apply only"

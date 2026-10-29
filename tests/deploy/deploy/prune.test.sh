@@ -5,7 +5,7 @@
 # The throwaway repo is deploy-test's (deploy-fixture.sh), with history added and the REAL
 # drift-install.sh, whose "deleted from the repo" rows are what the first class reads.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY  # a run inside a session or a deploy must not decide a case
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY  # a run inside a session or a deploy must not decide a case
 T_TMP="$(cd "$T_TMP" && pwd -P)"  # deploy reports the config dir physically (install-lib's il_target)
 . "$(dirname "$0")/../../install/deploy-fixture.sh"
 yn() { if "$@"; then echo yes; else echo no; fi; }

@@ -1,18 +1,18 @@
 #!/usr/bin/env sh
 # access-browser.sh: the offline gates, a router derived from its contract, honest skips (harbor#446, #457, #458, #724).
 # Playwright is a stub probe dir, so the offline arms run the same on every host. The live
-# consent arms run only when HARBOR_PROBE_DIR is exported at a real Playwright install.
-LIVE_PROBE="${HARBOR_PROBE_DIR:-}"; LIVE_URL="${HARBOR_BROWSER_LIVE_URL:-}"  # before t_init clears them
+# consent arms run only when HARBOR_ACCESS_PROBE_DIR is exported at a real Playwright install.
+LIVE_PROBE="${HARBOR_ACCESS_PROBE_DIR:-${HARBOR_PROBE_DIR:-}}"; LIVE_URL="${HARBOR_ACCESS_BROWSER_LIVE_URL:-${HARBOR_BROWSER_LIVE_URL:-}}"  # before t_init clears them
 REQUIRE_NODE="${HARBOR_REQUIRE_NODE:-}"  # set by the runner image that carries node (harbor#1060)
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 BROWSER="$T_ROOT/bin/access-browser.sh"; AGENT="$T_ROOT/bin/access-browser-agent.sh"; ROUTING="$T_ROOT/contracts/browser-routing.md"
-unset HARBOR_CHROME
+unset HARBOR_ACCESS_CHROME HARBOR_CHROME
 # No settle after input verbs, except in the one test that measures the race.
 HARBOR_CHROME_SETTLE=0; export HARBOR_CHROME_SETTLE
 P="$T_TMP/probe"; mkdir -p "$P/node_modules/playwright" "$T_TMP/empty"
 printf '%s\n' "export const chromium = { launch: async () => { throw new Error('playwright stub: no launch offline'); } };" \
   > "$P/node_modules/playwright/index.mjs"
-HARBOR_PROBE_DIR="$P"; export HARBOR_PROBE_DIR
+HARBOR_ACCESS_PROBE_DIR="$P"; export HARBOR_ACCESS_PROBE_DIR
 . "$(dirname "$0")/../../cli/browser/agent-stub.sh"
 
 # The gates and workers run on node; a runner whose image has none yet skips those arms, loudly (harbor#1060).
@@ -48,7 +48,7 @@ t_section "a missing backend SKIPS and names the missing verifier"
 t_eq "no pack worker exits 2" "exit 2" "$(rc sh "$BROWSER" hosts https://example.com)"
 t_has "the skip names the worker" "$(out)" "SKIPPED — no bin/browser-hosts.mjs"
 t_eq "probe skips the same way" "exit 2" "$(rc sh "$BROWSER" probe https://example.com)"
-t_eq "the no-Chrome self-test passes" "exit 0" "$(rc env HARBOR_CHROME="$T_TMP/no-such-chrome" sh "$BROWSER" --self-test)"
+t_eq "the no-Chrome self-test passes" "exit 0" "$(rc env HARBOR_ACCESS_CHROME="$T_TMP/no-such-chrome" sh "$BROWSER" --self-test)"
 t_eq "and runs 10 or more arms, none failing" yes "$(awk '/^browser: .* ok, 0 failed/ && $2 + 0 >= 10 { print "yes"; exit }' "$T_TMP/out")"
 fi
 
@@ -64,7 +64,7 @@ t_eq "and the CLI never ran" no "$(grep -q STUB "$T_TMP/out" && echo yes || echo
 # The live-walk repo is harbor.toml's live_walk_repo, its path the repo registry's (harbor#966, #1273).
 PRIV="$T_TMP/priv"; mkdir -p "$PRIV"; printf 'live_walk_repo = "walker"\n' > "$PRIV/harbor.toml"
 printf 'walker\tw-checkout\tworkload\t-\n' > "$PRIV/repos.tsv"
-agr() { rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" PORT_ROOT="$T_TMP/pr" HARBOR_SCOPE_PRIVATE="$PRIV" sh "$AGENT" "$@"; }
+agr() { rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" PORT_ROOT="$T_TMP/pr" HARBOR_SCOPE_PRIVATE="$PRIV" sh "$AGENT" "$@"; }
 t_eq "registry row: the refusal still exits 1" "exit 1" "$(agr goto https://www.autogidas.lt/)"
 t_has "registry row: the refusal names the configured repo" "$(out)" "client live sites go through walker"
 t_has "registry row: the hint cds into the registered checkout" "$(out)" "cd $T_TMP/pr/w-checkout && just live"
@@ -96,7 +96,7 @@ t_eq "attach passes" "exit 0" "$(ag attach)"
 t_has "attach uses the extension and an idle timeout" "$(out)" "args=-s=claude-abc123def456 attach --extension=chrome --idle-timeout=14400000"
 t_has "attach names the Chrome profile" "$(out)" "STUB profile=Default"
 t_eq "attach pins the daemon's DEBUG to relay close reasons" yes \
-  "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN DEBUG=pw:protocol HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" attach >/dev/null; grep -q 'debug=pw:mcp:relay,pw:mcp:error$' "$T_TMP/out" && echo yes)"
+  "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN DEBUG=pw:protocol HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" attach >/dev/null; grep -q 'debug=pw:mcp:relay,pw:mcp:error$' "$T_TMP/out" && echo yes)"
 t_has "attach tells the operator what to click" "$(out)" "click Connect"
 _w0="$(osa window)"; ag attach >/dev/null
 t_eq "attach first opens a Chrome window of its own" "$((_w0 + 1))" "$(osa window)"
@@ -144,14 +144,14 @@ t_hasnt "and hides the token too" "$(out)" "SEKRET99"
 rm -f "$OWN"
 t_eq "attach still connects when AppleScript fails" "exit 0" "$(STUB_OSA_FAIL=1; export STUB_OSA_FAIL; HARBOR_OSASCRIPT=/no/such/osascript; export HARBOR_OSASCRIPT; ag attach)"
 t_has "and warns that the tab shares a window" "$(out)" "no window of its own"
-t_eq "the approval token is refused" "exit 1" "$(rc env PLAYWRIGHT_MCP_EXTENSION_TOKEN=x HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc sh "$AGENT" tab-list)"
+t_eq "the approval token is refused" "exit 1" "$(rc env PLAYWRIGHT_MCP_EXTENSION_TOKEN=x HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc sh "$AGENT" tab-list)"
 t_eq "a lane passes" "exit 0" "$(HARBOR_BROWSER_LANE=ads1; export HARBOR_BROWSER_LANE; ag tab-list)"
 t_has "as this session's own name plus the lane" "$(out)" "args=-s=claude-abc123def456-ads1 tab-list"
 t_eq "a lane with other characters is refused" "exit 1" "$(HARBOR_BROWSER_LANE='x/../y'; export HARBOR_BROWSER_LANE; ag tab-list)"
 t_eq "a lane in capitals is refused, whatever the locale" "exit 1" "$(LANG=en_NZ.UTF-8 LC_ALL=en_NZ.UTF-8 HARBOR_BROWSER_LANE=ADS; export HARBOR_BROWSER_LANE; ag tab-list)"
 t_eq "a lane over 12 characters is refused" "exit 1" "$(HARBOR_BROWSER_LANE=abcdefghijklm; export HARBOR_BROWSER_LANE; ag tab-list)"
-t_eq "no session id is refused" "exit 1" "$(rc env -u CLAUDE_CODE_SESSION_ID -u HARBOR_BROWSER_SESSION -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_PW_CLI="$STUB" sh "$AGENT" tab-list)"
-t_eq "a non-numeric idle timeout is refused" "exit 1" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_BROWSER_IDLE_MS=soon HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc sh "$AGENT" attach)"
+t_eq "no session id is refused" "exit 1" "$(rc env -u CLAUDE_CODE_SESSION_ID -u HARBOR_ACCESS_BROWSER_SESSION -u HARBOR_BROWSER_SESSION -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" sh "$AGENT" tab-list)"
+t_eq "a non-numeric idle timeout is refused" "exit 1" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_BROWSER_IDLE_MS=soon HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc sh "$AGENT" attach)"
 
 t_section "agent: the bypasses the 2026-09-30 adversarial review found"
 t_eq "--session cannot smuggle an off-list URL" "exit 1" "$(ag goto --session https://ads.reddit.com https://evil.example/)"
@@ -160,9 +160,9 @@ t_eq "goto takes exactly one url" "exit 1" "$(ag goto https://ads.reddit.com/ ht
 t_eq "tab-new takes at most one url" "exit 1" "$(ag tab-new https://ads.reddit.com/ https://evil.example/)"
 t_eq "a backslash host is refused" "exit 1" "$(ag goto 'https://evil.example\.ads.reddit.com/')"
 t_eq "a percent-encoded host is refused" "exit 1" "$(ag goto 'https://evil%2eexample.ads.reddit.com/')"
-t_eq "an idle timeout of 0 is refused" "exit 1" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_BROWSER_IDLE_MS=0 HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc TMPDIR="$T_TMP" sh "$AGENT" attach)"
-t_eq "an init script in the env is refused" "exit 1" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN PLAYWRIGHT_MCP_INIT_SCRIPT=x HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc TMPDIR="$T_TMP" sh "$AGENT" attach)"
-t_eq "a CLI config env is refused" "exit 1" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN PLAYWRIGHT_MCP_CONFIG=/tmp/x HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc TMPDIR="$T_TMP" sh "$AGENT" tab-list)"
+t_eq "an idle timeout of 0 is refused" "exit 1" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_BROWSER_IDLE_MS=0 HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc TMPDIR="$T_TMP" sh "$AGENT" attach)"
+t_eq "an init script in the env is refused" "exit 1" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN PLAYWRIGHT_MCP_INIT_SCRIPT=x HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc TMPDIR="$T_TMP" sh "$AGENT" attach)"
+t_eq "a CLI config env is refused" "exit 1" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN PLAYWRIGHT_MCP_CONFIG=/tmp/x HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc TMPDIR="$T_TMP" sh "$AGENT" tab-list)"
 mkdir -p "$T_TMP/harbor-browser/.playwright"
 t_eq "a .playwright config up the tree is refused" "exit 1" "$(ag tab-list)"
 rm -rf "$T_TMP/harbor-browser/.playwright"
@@ -172,7 +172,7 @@ t_eq "a dotfile --filename is refused" "exit 1" "$(ag pdf --filename=.zshrc)"
 t_eq "a bare --filename passes" "exit 0" "$(ag snapshot --filename=page.yml)"
 t_eq "any other option is refused" "exit 1" "$(ag click e1 --config=/tmp/c.json)"
 t_eq "a negative number passes" "exit 0" "$(ag mousewheel 0 -300)"
-t_eq "inside Claude Code the session cannot be named" "exit 0" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_BROWSER_SESSION=claude-other HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" tab-list)"
+t_eq "inside Claude Code the session cannot be named" "exit 0" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_BROWSER_SESSION=claude-other HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" tab-list)"
 t_has "it stays this session's own" "$(out)" "args=-s=claude-abc123def456 tab-list"
 
 t_section "agent: every core vendor UI opens, a client site does not (2026-10-01)"
@@ -202,7 +202,7 @@ t_eq "every host line sits under a comment saying why" "" \
 # real ones live in harbor-private/browser-hosts.txt. The overlay opens them, core alone refuses them, and its tenants are exact hosts.
 OV="$T_TMP/overlay-hosts.txt"
 printf '# A partner agency\npartner.example.net\n# A university tenant, exact hosts (*.sharepoint.com is every tenant)\ntenant-a.sharepoint.com\ntenant-a-my.sharepoint.com\n# The university LMS\nlms.example.edu\n' > "$OV"
-ago() { rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_BROWSER_PRIVATE_HOSTS="$OV" HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" "$@"; }
+ago() { rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_BROWSER_PRIVATE_HOSTS="$OV" HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" "$@"; }
 _bad=''
 for u in https://partner.example.net/roadmap https://lms.example.edu/course/1 https://tenant-a-my.sharepoint.com/personal/x https://tenant-a.sharepoint.com/; do
   [ "$(ago goto "$u")" = "exit 0" ] || _bad="$_bad $u"
@@ -220,7 +220,7 @@ t_eq "and the click itself ran" 1 "$(called 'click e3')"
 t_eq "a Delete button is refused" "exit 1" "$(ag click e4)"
 t_has "...as a hand-off, so the failure ledger does not count it (FC-10)" "$(out)" "FAIL: hand-off: destructive click refused"
 t_has "naming the label and the word" "$(out)" "'button \"Delete campaign\"' (e4) matches 'delete'"
-t_has "with the per-call confirm as its fix" "$(out)" "fix: HARBOR_BROWSER_CONFIRM=e4 harbor chrome click e4"
+t_has "with the per-call confirm as its fix" "$(out)" "fix: HARBOR_ACCESS_BROWSER_CONFIRM=e4 harbor chrome click e4"
 t_eq "and the click never reached the CLI" 0 "$(called 'click e4')"
 t_eq "dblclick is guarded too" "exit 1" "$(ag dblclick e4)"
 t_eq "an aria-label Remove is refused" "exit 1" "$(ag click e5)"
@@ -242,10 +242,10 @@ t_eq "a leading number cannot shift the CLI's target" "exit 1" "$(ag click -5 e3
 t_eq "nor an empty argument" "exit 1" "$(ag click '' e3)"
 t_eq "a ref missing from the snapshot is refused" "exit 1" "$(ag click e99)"
 t_has "as stale" "$(out)" "not in the current snapshot"
-t_eq "the operator's per-call confirm clicks it" "exit 0" "$(rc env HARBOR_BROWSER_CONFIRM=e4 HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" click e4)"
+t_eq "the operator's per-call confirm clicks it" "exit 0" "$(rc env HARBOR_ACCESS_BROWSER_CONFIRM=e4 HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" click e4)"
 t_has "and says so" "$(out)" "WARN: operator-confirmed destructive click"
-t_eq "a confirm naming another ref is refused" "exit 1" "$(rc env HARBOR_BROWSER_CONFIRM=e3 HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc TMPDIR="$T_TMP" sh "$AGENT" click e4)"
-t_eq "a confirm set on any other verb is refused (exported)" "exit 1" "$(rc env HARBOR_BROWSER_CONFIRM=e4 HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc TMPDIR="$T_TMP" sh "$AGENT" snapshot)"
+t_eq "a confirm naming another ref is refused" "exit 1" "$(rc env HARBOR_ACCESS_BROWSER_CONFIRM=e3 HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc TMPDIR="$T_TMP" sh "$AGENT" click e4)"
+t_eq "a confirm set on any other verb is refused (exported)" "exit 1" "$(rc env HARBOR_ACCESS_BROWSER_CONFIRM=e4 HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc TMPDIR="$T_TMP" sh "$AGENT" snapshot)"
 t_has "naming it per-call" "$(out)" "never exported"
 # The guard line removed, the same Delete click must go through: the arms above can fail.
 M="$T_TMP/mutant"; mkdir -p "$M/bin" "$M/contracts"
@@ -253,7 +253,7 @@ sed 's/^\( *\)_handoff "destructive .*/\1:/' "$AGENT" > "$M/bin/access-browser-a
 cp "$T_ROOT/bin/library-log.sh" "$M/bin/"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" "$M/contracts/"
 t_eq "the mutant differs from the script" yes "$(cmp -s "$AGENT" "$M/bin/access-browser-agent.sh" || echo yes)"
 t_eq "and without the guard line the Delete click goes through" "exit 0" \
-  "$(rc env HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc TMPDIR="$T_TMP" sh "$M/bin/access-browser-agent.sh" click e4)"
+  "$(rc env HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc TMPDIR="$T_TMP" sh "$M/bin/access-browser-agent.sh" click e4)"
 
 t_section "agent: click options the pinned CLI has, and harbor's --force"
 : > "$CALLS"
@@ -290,8 +290,8 @@ t_section "doctor looks where Chrome keeps its profiles on this OS (harbor#618)"
 LXU="$T_TMP/lxu"; mkdir -p "$LXU/linux" "$LXU/darwin"
 printf '#!/bin/sh\necho Linux\n' > "$LXU/linux/uname"; printf '#!/bin/sh\necho Darwin\n' > "$LXU/darwin/uname"; chmod +x "$LXU/linux/uname" "$LXU/darwin/uname"
 printf '{}\n' > "$T_TMP/claude-os.json"
-dd_os() { # <uname dir> [XDG_CONFIG_HOME] -> doctor with no HARBOR_CHROME_DATA override
-  rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN -u HARBOR_CHROME_DATA -u XDG_CONFIG_HOME ${2:+XDG_CONFIG_HOME="$2"} PATH="$LXU/$1:$PATH" HARBOR_CLAUDE_JSON="$T_TMP/claude-os.json" sh "$AGENT" doctor
+dd_os() { # <uname dir> [XDG_CONFIG_HOME] -> doctor with no HARBOR_ACCESS_CHROME_DATA override
+  rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN -u HARBOR_ACCESS_CHROME_DATA -u HARBOR_CHROME_DATA -u XDG_CONFIG_HOME ${2:+XDG_CONFIG_HOME="$2"} PATH="$LXU/$1:$PATH" HARBOR_ACCESS_CLAUDE_JSON="$T_TMP/claude-os.json" sh "$AGENT" doctor
 }
 dd_os linux >/dev/null; t_has "Linux: ~/.config/google-chrome" "$(out)" "under $HOME/.config/google-chrome"
 dd_os linux "$T_TMP/xdg" >/dev/null; t_has "Linux: XDG_CONFIG_HOME is honoured" "$(out)" "under $T_TMP/xdg/google-chrome"
@@ -299,7 +299,7 @@ dd_os darwin >/dev/null; t_has "macOS: ~/Library/Application Support/Google/Chro
 
 t_section "doctor derives row 4 from the box"
 CD="$T_TMP/chrome"; mkdir -p "$CD/Default"
-dr() { rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_CHROME_DATA="$CD" HARBOR_CLAUDE_JSON="$T_TMP/claude.json" sh "$AGENT" doctor; }
+dr() { rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_CHROME_DATA="$CD" HARBOR_ACCESS_CLAUDE_JSON="$T_TMP/claude.json" sh "$AGENT" doctor; }
 printf '{"mcpServers":{"playwright":{"args":["@playwright/mcp@latest"]}}}\n' > "$T_TMP/claude.json"
 t_eq "no extension anywhere fails doctor" "exit 1" "$(dr)"
 t_has "and says where to install it" "$(out)" "the Playwright Extension is in no Chrome profile"
@@ -319,20 +319,20 @@ if command -v jq >/dev/null 2>&1; then
   printf '{"extensions":{"settings":{"%s":{"disable_reasons":[1]}}}}\n' "$ID" > "$CD/Default/Secure Preferences"
   t_eq "an extension switched off fails doctor" "exit 1" "$(dr)"
   t_has "and names the fix" "$(out)" "switch Playwright Extension on"
-  t_eq "attach refuses while it is switched off" "exit 1" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_CHROME_DATA="$CD" HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc sh "$AGENT" attach)"
+  t_eq "attach refuses while it is switched off" "exit 1" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_CHROME_DATA="$CD" HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc sh "$AGENT" attach)"
   t_eq "and the CLI never ran" no "$(grep -q STUB "$T_TMP/out" && echo yes || echo no)"
   printf '{"extensions":{"settings":{"%s":{"disable_reasons":[]}}}}\n' "$ID" > "$CD/Default/Secure Preferences"
   dr >/dev/null; t_has "switched on reads ok" "$(out)" "ok: the extension is switched on in Chrome profile Default"
   rm -f "$CD/Default/Secure Preferences"
 else echo "  SKIP switched-off arms: no jq on this host"; fi
-t_eq "doctor with the token set fails" "exit 1" "$(rc env PLAYWRIGHT_MCP_EXTENSION_TOKEN=x HARBOR_CHROME_DATA="$CD" HARBOR_CLAUDE_JSON="$T_TMP/claude.json" sh "$AGENT" doctor)"
+t_eq "doctor with the token set fails" "exit 1" "$(rc env PLAYWRIGHT_MCP_EXTENSION_TOKEN=x HARBOR_ACCESS_CHROME_DATA="$CD" HARBOR_ACCESS_CLAUDE_JSON="$T_TMP/claude.json" sh "$AGENT" doctor)"
 t_has "naming the variable" "$(out)" "FAIL: PLAYWRIGHT_* set in the environment: PLAYWRIGHT_MCP_EXTENSION_TOKEN"
 t_eq "--help answers (lint S4)" "exit 0" "$(rc sh "$AGENT" --help)"
 t_eq "no verb is a usage error, exit 2" "exit 2" "$(rc sh "$AGENT")"
 t_has "a refusal carries its fix line" "$(ag run-code x; out)" "fix: harbor chrome help"
 
 t_section "agent: a session whose Chrome is gone says so, and how to reconnect (harbor#920)"
-_gone() { rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN STUB_GONE=1 XDG_CACHE_HOME="$T_TMP/cache" HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" "$@"; }
+_gone() { rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN STUB_GONE=1 XDG_CACHE_HOME="$T_TMP/cache" HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" "$@"; }
 t_eq "a verb on a gone session fails" "exit 1" "$(_gone tab-list)"
 t_has "naming the session" "$(out)" "no Chrome is connected to session claude-abc123def456"
 t_has "and the reconnect, not the CLI's own advice" "$(out)" "fix: harbor chrome attach"
@@ -345,11 +345,11 @@ t_has "with the relay's recorded close when there is one" "$(out)" "the relay la
 t_eq "a verb that works still passes its output through" "exit 0" "$(ag tab-list)"
 t_has "positive control: the stub's own line is on stdout" "$(out)" "STUB profile="
 printf '#!/bin/sh\necho "Error: ref e9 not found"; exit 3\n' > "$T_TMP/pwfail"; chmod +x "$T_TMP/pwfail"
-t_eq "a CLI failure that is not a gone session keeps its exact exit" "exit 3" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_PW_CLI="$T_TMP/pwfail" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" tab-list)"
+t_eq "a CLI failure that is not a gone session keeps its exact exit" "exit 3" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_PLAYWRIGHT_CLI="$T_TMP/pwfail" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" tab-list)"
 t_has "and its text" "$(out)" "Error: ref e9 not found"
 t_hasnt "and is not called a gone session" "$(out)" "no Chrome is connected"
 printf '#!/bin/sh\necho "Error: Dialog is not open"; exit 1\n' > "$T_TMP/pwdialog"; chmod +x "$T_TMP/pwdialog"
-rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_PW_CLI="$T_TMP/pwdialog" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" tab-list > /dev/null
+rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_PLAYWRIGHT_CLI="$T_TMP/pwdialog" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" tab-list > /dev/null
 t_has "a page error that merely says 'is not open' passes through as itself" "$(out)" "Error: Dialog is not open"
 t_hasnt "and is not called a gone session" "$(out)" "no Chrome is connected"
 t_eq "click on a gone session: the guard's snapshot is told apart too" "exit 1" "$(_gone click e3)"
@@ -359,14 +359,14 @@ t_eq "no held output is left in the workdir" "" "$(find "$T_TMP/harbor-browser" 
 
 URL="$LIVE_URL"
 if [ -z "$LIVE_PROBE" ]; then
-  echo "  SKIP live consent arms: export HARBOR_PROBE_DIR at a Playwright install to run them"
+  echo "  SKIP live consent arms: export HARBOR_ACCESS_PROBE_DIR at a Playwright install to run them"
 elif [ -z "$URL" ]; then
-  echo "  SKIP live consent arms: export HARBOR_BROWSER_LIVE_URL at a storefront with a consent banner"
+  echo "  SKIP live consent arms: export HARBOR_ACCESS_BROWSER_LIVE_URL at a storefront with a consent banner"
 elif ! curl -sS -o /dev/null --max-time 8 --head "$URL" >/dev/null 2>&1; then
   echo "  SKIP live consent arms: $URL is not reachable"
 else
   t_section "the live consent arms"
-  R="$(rc env HARBOR_PROBE_DIR="$LIVE_PROBE" HARBOR_BROWSER_LIVE_URL="$URL" sh "$BROWSER" --self-test-live)"
+  R="$(rc env HARBOR_ACCESS_PROBE_DIR="$LIVE_PROBE" HARBOR_ACCESS_BROWSER_LIVE_URL="$URL" sh "$BROWSER" --self-test-live)"
   if [ "$R" = "exit 2" ]; then t_has "--self-test-live's skip names the missing verifier" "$(out)" "SKIPPED"
   else t_eq "--self-test-live passes" "exit 0" "$R"; fi
 fi

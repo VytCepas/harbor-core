@@ -16,7 +16,7 @@ printf 'y\n' > "$R/f"; git -C "$R" commit -q -am "BAD trailer here"
 printf '#!/bin/sh\ngrep -q "pr merge" && echo fired\nexit 0\n' > "$R/bin/govern-hook.sh"
 printf '%s\n' '{"message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"gh pr merge 1"}}]}}' \
   '{"message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"ls"}}]}}' > "$B/store/p/s.jsonl"
-hr() { HARBOR_BASE_BRANCH=main HARBOR_TRANSCRIPTS="$B/store" sh "$TOOL" "$@" >"$B/out" 2>"$B/err"; echo "exit $?"; }
+hr() { HARBOR_CI_BASE_BRANCH=main HARBOR_SESSION_TRANSCRIPTS="$B/store" sh "$TOOL" "$@" >"$B/out" 2>"$B/err"; echo "exit $?"; }
 OUT() { cat "$B/out"; }
 after_fail() { awk '/^  FAIL:/ { f = 1; next } f { print; exit }' "$B/out"; }
 shaped() { OUT | grep -vcE '^(── |  (ok|FAIL|WARN|note|skip|fix): |hook-replay: [0-9]+ ok, [0-9]+ failed, [0-9]+ warnings$)'; }

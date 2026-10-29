@@ -1,0 +1,11 @@
+# harbor#617 — the schedule of launchd/com.harbor.alert.probe.plist; docs/reference/checks.md row `alert.probe`.
+[Unit]
+Description=Harbor check pulse (schedule)
+
+[Timer]
+OnActiveSec=30s
+OnUnitActiveSec=900s
+Unit=harbor-alert-probe.service
+
+[Install]
+WantedBy=timers.target

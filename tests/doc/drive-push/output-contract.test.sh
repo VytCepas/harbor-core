@@ -10,7 +10,7 @@ printf '#!/bin/sh\nif [ -n "${STUB_ID:-}" ]; then printf "%%s" "$STUB_ID"; else 
 run() { "$@" >"$T_TMP/out" 2>"$T_TMP/err"; echo "exit $?"; }
 OUT() { cat "$T_TMP/out"; }; ERR() { cat "$T_TMP/err"; }
 after_fail() { awk '/^  FAIL:/ { f = 1; next } f { print; exit }' "$T_TMP/err"; }
-dd() { env HARBOR_DRIVE_MOUNT="$M" HARBOR_DRIVE_WAIT=1 "$@"; }
+dd() { env HARBOR_DOC_DRIVE_MOUNT="$M" HARBOR_DOC_DRIVE_WAIT=1 "$@"; }
 
 t_section "a delivery: the link alone on stdout, the log on stderr"
 t_eq "it delivers" "exit 0" "$(run dd STUB_ID=abc123 sh "$TOOL" "$D" --shared)"
@@ -38,7 +38,7 @@ mkdir -p "$T_TMP/plain"
 t_eq "an undated folder that exists" "exit 2" "$(run dd sh "$TOOL" "$T_TMP/plain" --shared)"
 t_has "its FAIL names the shape" "$(ERR)" "  FAIL: plain is not <YYYY-MM-DD>-<slug>"
 t_has "its fix renames it" "$(after_fail)" "  fix: mv "
-t_eq "no mount" "exit 3" "$(run env HARBOR_DRIVE_MOUNT="$T_TMP/none" sh "$TOOL" "$D" --shared)"
+t_eq "no mount" "exit 3" "$(run env HARBOR_DOC_DRIVE_MOUNT="$T_TMP/none" sh "$TOOL" "$D" --shared)"
 t_has "its FAIL" "$(ERR)" "  FAIL: no Drive mount at $T_TMP/none/My Drive/Artefacts"
 t_eq "every refusal ends with the summary" "deliver-drive: 0 ok, 1 failed, 0 warnings" "$(ERR | tail -1)"
 t_eq "no legacy deliver-drive: prefix is left" 0 "$(ERR | grep -c '^deliver-drive: [^0-9]')"

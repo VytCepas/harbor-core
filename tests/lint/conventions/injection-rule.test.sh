@@ -110,7 +110,7 @@ cp "$IJ4P/inject.d/oldseed/10-oldseed.md" "$IJ4H/oldseed/.claude/inject.d/"
 printf 'tampered\n' >> "$IJ4H/drifted/context-rules/drifted/10-drifted.md"
 printf '# name\tpath\tcovers\nnever\t~/never\ttracked but never seeded\ngood\t~/good\tseeded and current\ndrifted\t~/drifted\tseeded then edited in place\noldseed\t~/oldseed\tseeded before the move\nabsent\t~/absent\tthe repo is not on this box\n' \
   > "$IJ4P/inject.d/box/projects.tsv"
-ij4() { HOME="$IJ4H" HARBOR_ESTATE_ROOT="$IJ4H" HARBOR_SCOPE_PRIVATE="$IJ4P" CLAUDE_CONFIG_DIR="$IJ4H/$1" lint1 IJ4 "$IJ4R"; }
+ij4() { HOME="$IJ4H" HARBOR_LINT_ESTATE_ROOT="$IJ4H" HARBOR_SCOPE_PRIVATE="$IJ4P" CLAUDE_CONFIG_DIR="$IJ4H/$1" lint1 IJ4 "$IJ4R"; }
 RAW_IJ4="$(ij4 cfg)"
 OUT_IJ4="$(printf '%s\n' "$RAW_IJ4" | grep 'ADVISORY \[drift.pack-installed\]' || true)"
 t_has "a tracked pack that was NEVER SEEDED is reported" "$OUT_IJ4" 'never pack is tracked but NEVER SEEDED'
@@ -135,7 +135,7 @@ mkdir -p "$IJ3P/inject.d/box" "$IJ3R" "$IJ3H/registered/.git" "$IJ3H/registered/
          "$IJ3H/unregistered/.git" "$IJ3H/unregistered/.agents" "$IJ3H/with-skills/.git" \
          "$IJ3H/with-skills/.claude/skills" "$IJ3H/plain-checkout/.git" "$IJ3H/not-a-repo/.claude"
 printf '# name\tpath\tcovers\nregistered\t~/registered\ta project somebody registered\n' > "$IJ3P/inject.d/box/projects.tsv"
-OUT_IJ3="$(HARBOR_ESTATE_ROOT="$IJ3H" HARBOR_SCOPE_PRIVATE="$IJ3P" lint1 IJ3 "$IJ3R" \
+OUT_IJ3="$(HARBOR_LINT_ESTATE_ROOT="$IJ3H" HARBOR_SCOPE_PRIVATE="$IJ3P" lint1 IJ3 "$IJ3R" \
           | grep -E 'ADVISORY \[context.repo-registered\]|governed repo\(s\)')"
 IJ3_UN='governed but unregistered:'
 t_has "a governed repo with no registry row is reported" "$OUT_IJ3" "$IJ3_UN unregistered"
@@ -150,7 +150,7 @@ t_has "the count names how many of how many" "$OUT_IJ3" '2 of 3 governed repo(s)
 t_section "IJ5: every registry row still resolves to a directory"
 IJ5H="$TMP/ij5-home"; IJ5R="$TMP/ij5-root"; IJ5P="$TMP/ij5-priv"; mkdir -p "$IJ5R" "$IJ5P/inject.d/box" "$IJ5H/alive"
 ij5_reg() { printf '# name\tpath\tcovers\n%s' "$1" > "$IJ5P/inject.d/box/projects.tsv"; }
-ij5() { HARBOR_ESTATE_ROOT="$IJ5H" HARBOR_SCOPE_PRIVATE="$IJ5P" lint1 IJ5 "$IJ5R" \
+ij5() { HARBOR_LINT_ESTATE_ROOT="$IJ5H" HARBOR_SCOPE_PRIVATE="$IJ5P" lint1 IJ5 "$IJ5R" \
           | grep -E 'ADVISORY \[context.registry-resolves\]|registry row'; }
 IJ5_DEAD='registry row points at nothing:'
 ij5_reg 'alive	~/alive	a project that is here

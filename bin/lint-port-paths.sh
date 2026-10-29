@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # lint-port-paths.sh (harbor#629, harbor#619) — literals naming a repo at its PRE-MOVE address.
 # That is ~/<repo>, $HOME/<repo> or <home>/<repo>, where the repo now lives
-# under ${PORT_ROOT:-$HOME/port}. Registered in docs/reference/checks.md as `port-paths`.
+# under ${PORT_ROOT:-$HOME/port}. Registered in docs/reference/checks.md as `lint.port-paths`.
 #   sh bin/lint-port-paths.sh              inventory: one TSV row per hit, exit 0
 #   sh bin/lint-port-paths.sh --verify     gate: exit 1 if ANY CODE row remains; logs
 #                                     note: CODE=n DOC=n EXEMPT=n (stale: n)
@@ -80,7 +80,7 @@ CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 # `[ -d … ] || continue`, so on the day the gate matters most it would have
 # looked at nothing and reported CODE=0. Measured by reading, before phase C ran.
 PORT="${PORT_ROOT:-$HOME_DIR/port}"
-FLEETF="$(sh "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/scope-roots.sh" --get HARBOR_FLEET_FILE)" || exit 3   # harbor#966
+FLEETF="$(sh "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/scope-roots.sh" --get HARBOR_SCOPE_FLEET_FILE)" || exit 3   # harbor#966
 
 # THE REPOS ARE DERIVED FROM $PORT, NEVER LISTED. The Deliverables copy carried a
 # hand-written list of thirteen names, and a hand list of what lives in a
@@ -324,7 +324,7 @@ harbor_grep() { # <repo> <git-grep-flags>
 # --selftest. The two load-bearing parts are the regex and classify(); everything
 # else is a file list. Each case below was watched FAIL on a deliberate mutant
 # (CONSTITUTION No.2.10): dropping the trailing separator group from PAT makes
-# "harborage" and "com.harbor.judge" match, and removing the '#' arm of
+# "harborage" and "com.harbor.audit.triage" match, and removing the '#' arm of
 # classify() turns the commented case CODE. The matcher is built from FIXED
 # names here, not from $PORT, so the cases test the construction and do not
 # depend on which repos this box happens to hold.
@@ -342,10 +342,10 @@ if [ "$MODE" = selftest ]; then
 
   # `:=`, not `:-`: lint ROOT1 (scope-roots.sh --check) reads every `${VAR:-<home>/…}`
   # in the tree as a root default, and this is a test vector, not a root.
-  t_match 'shell default with $HOME'     'REPO="${HARBOR_REPO:=$HOME/harbor}"'          1
+  t_match 'shell default with $HOME'     'REPO="${HARBOR_SCOPE_REPO:=$HOME/harbor}"'          1
   t_match 'tilde form in a skill'        'read ~/zorbcorp/CLIENTS/ACME/TOPOLOGY.md'       1
   t_match 'absolute form in a plist'     '<string>'"$HOME_DIR"'/zorbcorp</string>'        1
-  t_match 'launchd LABEL is not a path'  '<string>com.harbor.judge</string>'             0
+  t_match 'launchd LABEL is not a path'  '<string>com.harbor.audit.triage</string>'             0
   t_match 'helm ledger name'             'CFG/.helm-harbor-state'                        0
   t_match 'repo name with no prefix'     'cd harbor && git status'                       0
   # These three are the ONLY cases that exercise the trailing separator group.
@@ -582,7 +582,7 @@ scan claude-json "$HOME_DIR/.claude.json"
 scan fleet "$FLEETF"
 #     The root line names $HOME itself, which PAT cannot see — it carries no
 #     repo name. Scanning $HOME at depth 1 after phase C finds zero projects and
-#     raises no error (roots.tsv, HARBOR_FLEET_FILE), so it is checked by value.
+#     raises no error (roots.tsv, HARBOR_SCOPE_FLEET_FILE), so it is checked by value.
 grep -nE "^[[:space:]]*-[[:space:]]*${HOME_DIR}/?[[:space:]]*\$" "$FLEETF" 2>/dev/null |
   while IFS=: read -r __ln __txt; do
     printf 'CODE\tfleet\t%s\t%s\t%s (roots: must be %s)\n' "$FLEETF" "$__ln" "$(printf '%s' "$__txt" | sed 's/^[[:space:]]*//')" "$PORT"

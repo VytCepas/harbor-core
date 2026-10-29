@@ -156,7 +156,7 @@ t_has "...with a checks.log line that says it is not following" "$(cat "$CACHE/c
 t_eq "...and a receipt pulse reads: down" down "$(jq -r .status "$CACHE/event-dispatch-state.json" 2>/dev/null)"
 t_has "...carrying the reason" "$(jq -r .reason "$CACHE/event-dispatch-state.json" 2>/dev/null)" "does not pass HARBOR_EVENT_CAUSE"
 t_eq "...which pulse's dispatch row reports as crit, so pulse-notify speaks" crit \
-  "$(HARBOR_CACHE_DIR="$CACHE" sh "$T_ROOT/bin/alert-probe.sh" --json 2>/dev/null | jq -r '.checks.dispatch.verdict')"
+  "$(HARBOR_SCOPE_CACHE_DIR="$CACHE" sh "$T_ROOT/bin/alert-probe.sh" --json 2>/dev/null | jq -r '.checks.dispatch.verdict')"
 cp "$T_TMP/bus.keep" "$EB"
 dispatch_once
 t_eq "the bus restored: the held seed runs once, its echo is a loop" 1 "$(lines "$T_TMP/echo.out")"

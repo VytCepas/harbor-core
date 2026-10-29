@@ -3,13 +3,13 @@
 # JSON and only that; the run log is on stderr; a stale or unmeasured docs/generated/status.md is a FAIL or WARN with its fix, and
 # the run ends with the summary. Suites are three-line fakes in a fixture tree.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset HARBOR_IN_SUITE HARBOR_SUITE_COUNTS  # t_init keeps the re-entry marker; these runs must reach the run branch
+unset HARBOR_TEST_IN_SUITE HARBOR_IN_SUITE HARBOR_STATUS_SUITE_COUNTS HARBOR_SUITE_COUNTS  # t_init keeps the re-entry marker; these runs must reach the run branch
 P="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"; R="$P/repo"; mkdir -p "$R/bin" "$R/build"
 cp "$T_ROOT/bin/status-generate.sh" "$T_ROOT/bin/library-log.sh" "$R/bin/"
 mk_suite() { printf '#!/usr/bin/env sh\necho "%s: %s passed, 0 failed"\n' "$2" "$3" > "$R/bin/$1"; }
 mk_suite floor-test.sh floor-test 100; mk_suite normalize-test.sh normalize-test 20; mk_suite marker-test.sh marker-test 8
 TOOL="$R/bin/status-generate.sh"
-run() { HARBOR_ROOT="$R" sh "$TOOL" "$@" >"$P/out" 2>"$P/err"; echo "exit $?"; }
+run() { HARBOR_SCOPE_ROOT="$R" sh "$TOOL" "$@" >"$P/out" 2>"$P/err"; echo "exit $?"; }
 OUT() { cat "$P/out"; }; ERR() { cat "$P/err"; }
 after() { awk -v p="$1" '$0 ~ p { f = 1; next } f { print; exit }' "$P/err"; }
 LOGLINE='^  \(ok\|FAIL\|WARN\|note\|skip\|fix\):'
@@ -56,16 +56,16 @@ t_has "the FAIL says docs/generated/status.md is untouched" "$(ERR)" "  FAIL: an
 t_eq "the summary counts 1 failed and the warning" 1 "$(ERR | tail -1 | grep -c '^status-gen: [0-9][0-9]* ok, 1 failed, 1 warnings$')"
 t_exit "docs/generated/status.md survives" 0 cmp -s "$R/docs/generated/status.md" "$P/good.md"
 
-t_section "a bad HARBOR_SUITE_COUNTS: FAIL, its fix, exit 2"
-t_eq "exit 2" "exit 2" "$(HARBOR_SUITE_COUNTS=zz run --check)"
-t_has "the FAIL" "$(ERR)" "  FAIL: HARBOR_SUITE_COUNTS: zz is not <suite>=<count>"
-t_eq "its fix" "  fix: unset HARBOR_SUITE_COUNTS" "$(after '^  FAIL: HARBOR_SUITE_COUNTS')"
+t_section "a bad HARBOR_STATUS_SUITE_COUNTS: FAIL, its fix, exit 2"
+t_eq "exit 2" "exit 2" "$(HARBOR_STATUS_SUITE_COUNTS=zz run --check)"
+t_has "the FAIL" "$(ERR)" "  FAIL: HARBOR_STATUS_SUITE_COUNTS: zz is not <suite>=<count>"
+t_eq "its fix" "  fix: unset HARBOR_STATUS_SUITE_COUNTS HARBOR_SUITE_COUNTS" "$(after '^  FAIL: HARBOR_STATUS_SUITE_COUNTS')"
 t_section "a core-only checkout (a layer table, no docs/generated/status.md) writes to the state directory, never the tree (harbor#1275)"
 C="$P/core"; SD="$P/state"; mkdir -p "$C/bin" "$C/contracts" "$SD"
 cp "$T_ROOT/bin/status-generate.sh" "$T_ROOT/bin/library-log.sh" "$C/bin/"
 for _s in floor-test normalize-test marker-test; do printf '#!/usr/bin/env sh\necho "%s: 7 passed, 0 failed"\n' "$_s" > "$C/bin/$_s.sh"; done
 printf 'path\tlayer\tnote\nbin/\tcore\t\nSTATUS.md\tdev\t\n' > "$C/contracts/layers.tsv"
-corerun() { HARBOR_ROOT="$C" HARBOR_STATUS_DIR="$SD" sh "$C/bin/status-generate.sh" "$@" >"$P/out" 2>"$P/err"; echo "exit $?"; }
+corerun() { HARBOR_SCOPE_ROOT="$C" HARBOR_STATUS_DIR="$SD" sh "$C/bin/status-generate.sh" "$@" >"$P/out" 2>"$P/err"; echo "exit $?"; }
 t_eq "--apply exits 0" "exit 0" "$(corerun --apply)"
 t_eq "docs/generated/status.md is in the state directory" yes "$([ -s "$SD/status/docs/generated/status.md" ] && echo yes || echo no)"
 t_eq "the tree gained no docs/generated/status.md and no build/" 0 "$(find "$C" \( -name docs/generated/status.md -o -name 'docs/generated/status.md.tmp.*' -o -name build \) | wc -l | tr -d ' ')"

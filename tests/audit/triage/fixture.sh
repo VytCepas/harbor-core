@@ -5,7 +5,7 @@ SRC="$T_ROOT/bin"; FC="$SRC/audit-triage.sh"; FCT="$FC"; TMP="$T_TMP/fc"; mkdir 
 cp "$SRC/floor-verify.sh" "$SRC/guard-lib.sh" "$TMP/"  # a mutant in $TMP derives the probes from these
 HOST=testhost
 SALT=0123456789abcdef0123456789abcdef  # 32 hex, the length floor_obs_digest requires
-HARBOR_FC_NOW=2026-08-03; export HARBOR_FC_NOW
+HARBOR_AUDIT_TRIAGE_NOW=2026-08-03; export HARBOR_AUDIT_TRIAGE_NOW
 mkfixture() { # <name> → the dir: floor wired, guard-lib present, sealed host dir, empty sink
   _d="$TMP/$1"; mkdir -p "$_d/bin" "$_d/MEMORY/OBSERVABILITY/$HOST"
   cp "$SRC/guard-lib.sh" "$_d/bin/guard-lib.sh"

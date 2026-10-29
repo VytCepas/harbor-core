@@ -4,9 +4,9 @@
 #   -h, --help   this text
 # (harbor#966) Reads the private layer's harbor.toml and clones only what it names: yard and prod-guard need the yard checkout,
 # fleet needs the fleet checkout, each pack its own repo, from the registry's remote or else the owner of harbor's own
-# origin. uv and just are installed into HARBOR_LOCAL_BIN for yard or fleet only. Then it hands off to `deploy.sh --live`:
+# origin. uv and just are installed into HARBOR_SCOPE_LOCAL_BIN for yard or fleet only. Then it hands off to `deploy.sh --live`:
 # the DRY RUN. core alone clones nothing, downloads nothing and needs no gh. The apply stays the operator's; this never runs it.
-# Refused before any write: a native Windows shell, a checkout outside HARBOR_REPO, no private layer (a stranger runs
+# Refused before any write: a native Windows shell, a checkout outside HARBOR_SCOPE_REPO, no private layer (a stranger runs
 # `harbor scope install` first). No token passes through here: gh and git hold the credential. A clone uses gh when it is
 # logged in, else plain git over https.
 set -eu
@@ -54,12 +54,12 @@ case "$_os" in
 esac
 [ "$FAILS" -eq 0 ] || _refused
 
-# A pack's checkout and the other repos land beside HARBOR_REPO, so a checkout elsewhere would scatter them.
-_hr="$(sh "$ROOT/bin/scope-roots.sh" --get HARBOR_REPO 2>/dev/null || true)"
-if [ -n "$_hr" ] && [ "$(_phys "$_hr")" = "$ROOT" ]; then log_ok "running from HARBOR_REPO ($ROOT)"
-else _bad "running from $ROOT, but HARBOR_REPO is ${_hr:-<unresolved>}" "none: README.md — clone harbor into ${_hr:-${PORT_ROOT:-$HOME/port}/harbor} and run its bin/deploy-bootstrap.sh from there"; fi
-LOCAL_BIN="$(sh "$ROOT/bin/scope-roots.sh" --get HARBOR_LOCAL_BIN 2>/dev/null || true)"
-case "$LOCAL_BIN" in /*) ;; *) _bad "HARBOR_LOCAL_BIN resolves to '${LOCAL_BIN}', not an absolute path" 'none: contracts/roots.tsv — HARBOR_LOCAL_BIN' ;; esac
+# A pack's checkout and the other repos land beside HARBOR_SCOPE_REPO, so a checkout elsewhere would scatter them.
+_hr="$(sh "$ROOT/bin/scope-roots.sh" --get HARBOR_SCOPE_REPO 2>/dev/null || true)"
+if [ -n "$_hr" ] && [ "$(_phys "$_hr")" = "$ROOT" ]; then log_ok "running from HARBOR_SCOPE_REPO ($ROOT)"
+else _bad "running from $ROOT, but HARBOR_SCOPE_REPO is ${_hr:-<unresolved>}" "none: README.md — clone harbor into ${_hr:-${PORT_ROOT:-$HOME/port}/harbor} and run its bin/deploy-bootstrap.sh from there"; fi
+LOCAL_BIN="$(sh "$ROOT/bin/scope-roots.sh" --get HARBOR_SCOPE_LOCAL_BIN 2>/dev/null || true)"
+case "$LOCAL_BIN" in /*) ;; *) _bad "HARBOR_SCOPE_LOCAL_BIN resolves to '${LOCAL_BIN}', not an absolute path" 'none: contracts/roots.tsv — HARBOR_SCOPE_LOCAL_BIN' ;; esac
 
 if command -v git >/dev/null 2>&1; then log_ok 'git present'; else _bad 'git is missing' 'none: install git (on macOS: xcode-select --install)'; fi
 

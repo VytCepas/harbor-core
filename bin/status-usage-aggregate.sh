@@ -45,7 +45,7 @@
 # mode that touches disk, and it writes exactly one file: the ledger below.
 #
 # IT NEVER RECORDS PAYLOAD TEXT. Every value it keeps is an integer, a date, a
-# model id or an entrypoint label. docs/decisions/rejected-approaches.md DE-16 refused a durable corpus
+# model id or an entrypoint label. docs/reports/rejected-approaches.md DE-16 refused a durable corpus
 # built out of transcript CONTENT, and that refusal is why this reads usage
 # counters and nothing else: the class is unreachable rather than mitigated,
 # so there is no scrubber here and none is needed. harbor#185 adds BYTE COUNTS
@@ -143,7 +143,7 @@ fi
 # can point this at a synthetic tree and never read a real transcript. Sharing the
 # name matters: two spellings of "where the transcripts are" is two things to
 # redirect, and a suite that redirects one of them reads the operator's store.
-SRC_DIR="${HARBOR_TRANSCRIPTS:-$CFG/projects}"
+SRC_DIR="${HARBOR_SESSION_TRANSCRIPTS:-${HARBOR_TRANSCRIPTS:-$CFG/projects}}"
 
 command -v jq >/dev/null 2>&1 || die "jq is required" "$(pkg_hint jq)"
 
@@ -178,7 +178,7 @@ SLEDGER="$LEDGER_DIR/sessions.jsonl"
 # `<synthetic>` models are harness-generated and are kept, labelled as they come,
 # because dropping them would make the totals disagree with the transcript.
 if [ ! -d "$SRC_DIR" ]; then
-  die "no transcript store at $SRC_DIR" "HARBOR_TRANSCRIPTS=<projects dir> sh $0"
+  die "no transcript store at $SRC_DIR" "HARBOR_SESSION_TRANSCRIPTS=<projects dir> sh $0"
 fi
 
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"

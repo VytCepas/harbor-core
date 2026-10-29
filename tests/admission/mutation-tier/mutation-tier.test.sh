@@ -62,7 +62,7 @@ cp "$FIX" "$MR/fixtures/mutation-tier/"; cp "$T_ROOT/bin/guard-lib.sh" "$MR/bin/
 sed '/"\$root\/\.helm-obs-salt"/d' "$T_ROOT/bin/guard-selfedit.sh" > "$MR/bin/guard-selfedit.sh"
 _mt5() { printf '%s\n' "$1" | awk '$1 == ".helm-obs-salt"'; }  # <report> → the salt's row
 t_has "MT-5b the report flags a deny-only tier-0 path (the salt's guard arm cut)" \
-  "$(_mt5 "$(HARBOR_ROOT="$MR" sh "$TOOL" --report "$CFG" 2>/dev/null)")" 'guard does not cover it'
+  "$(_mt5 "$(HARBOR_SCOPE_ROOT="$MR" sh "$TOOL" --report "$CFG" 2>/dev/null)")" 'guard does not cover it'
 t_hasnt "MT-5d the real guard covers the salt, so the report does not flag it (harbor#779)" "$(_mt5 "$rep")" 'guard does not cover it'
 t_has "MT-5d ...and the row it read is the salt's" "$(_mt5 "$rep")" '.helm-obs-salt'
 n="$(printf '%s' "$rep" | sed -n 's/^  note: single-layer or unprotected tier-0\/1 paths: //p')"
@@ -87,7 +87,7 @@ cls="$(CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" "$CFG/settings.json" "$CFG/bin/x.sh" 
 t_eq "MT-12j the classifier prints data only: one line per path, no summary" \
   "$(printf 'tier 0  settings.json\ntier 1  bin/x.sh')" "$cls"
 NOFX="$B/nofix"; mkdir -p "$NOFX/bin"; cp "$TOOL" "$T_ROOT/bin/library-log.sh" "$NOFX/bin/"
-nf_rc=0; HARBOR_ROOT="$NOFX" sh "$NOFX/bin/admission-mutation-tier.sh" --report "$CFG" > "$B/nf.out" 2>&1 || nf_rc=$?
+nf_rc=0; HARBOR_SCOPE_ROOT="$NOFX" sh "$NOFX/bin/admission-mutation-tier.sh" --report "$CFG" > "$B/nf.out" 2>&1 || nf_rc=$?
 t_eq "MT-12k a missing fixture fails the report, exit 1 (a failed run, not a usage error)" 1 "$nf_rc"
 t_has "MT-12l ...with a FAIL naming the path" "$(cat "$B/nf.out")" "  FAIL: no fixture at $NOFX/fixtures/mutation-tier/cases.json"
 t_has "MT-12m ...its fix line" "$(cat "$B/nf.out")" '  fix: none automatic — see fixtures/mutation-tier/cases.json'

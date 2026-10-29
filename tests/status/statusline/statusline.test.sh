@@ -51,7 +51,7 @@ O="$(runat '{"model":{"display_name":"O"},'"$WS"',"rate_limits":{"seven_day":{"u
 t_has "7d counts down in days and hours" "$O" "7d 42% ·in 4d04h"
 
 t_section "row 1: vanishes entirely without stdin (never a blank line)"
-O="$(printf '' | CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$CFG/cache" "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null)"
+O="$(printf '' | CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null)"
 t_eq "no blank line with no stdin" "$(printf '%s\n' "$O" | wc -l | tr -d ' ')" "$(printf '%s\n' "$O" | grep -c .)"
 t_hasnt "no stdin: no SESSION row (no model, no ctx)" "$(printf "%s\n" "$O" | head -1 | plain)" "ctx"
 

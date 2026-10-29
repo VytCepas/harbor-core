@@ -10,7 +10,7 @@ printf 'x\n' > "$R/FRESH.md"; printf 'x\n' > "$R/OLD.md"; printf 'todo: later\n'
 git -C "$R" add -A
 GIT_COMMITTER_DATE="2020-01-01T00:00:00Z" GIT_AUTHOR_DATE="2020-01-01T00:00:00Z" git -C "$R" commit -q -m old -- OLD.md
 git -C "$R" commit -q -m new
-export HARBOR_TELOS_DIR="$T_TMP/no-telos"
+export HARBOR_DOC_TELOS_DIR="$T_TMP/no-telos"
 run() { sh "$R/bin/doc-freshness.sh" "$@" >"$T_TMP/out" 2>"$T_TMP/err"; echo "exit $?"; }
 OUT() { cat "$T_TMP/out"; }; ERR() { cat "$T_TMP/err"; }
 

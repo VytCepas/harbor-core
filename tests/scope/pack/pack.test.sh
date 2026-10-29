@@ -303,5 +303,5 @@ tp t2 "widgetsys system"; listed '"t2"'
 t_has "a term another installed pack declares is refused, naming it" "$(pk install t2 --apply --dir "$TG2" 2>&1)" "declared by the installed pack tm.tsv"
 
 t_exit "no target is a usage error" 2 pk list
-t_exit "the real dispatcher routes harbor pack" 2 env HARBOR_BIN="$T_ROOT/bin" sh "$T_ROOT/bin/harbor" pack
+t_exit "the real dispatcher routes harbor pack" 2 env HARBOR_SCOPE_BIN="$T_ROOT/bin" sh "$T_ROOT/bin/harbor" pack
 t_done

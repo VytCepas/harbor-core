@@ -55,7 +55,7 @@ _rel() { case "$1" in "$HOME") printf '~' ;; "$HOME"/*) printf '~/%s' "${1#"$HOM
 #
 # AND SAY WHICH ONES CROSSED (harbor#599). A pack that declares `scope: box` is
 # delivered by the engine when this call reaches its tree and that tree is
-# registered — the engine says which trees those were in HARBOR_REACHED. Such a
+# registered — the engine says which trees those were in HARBOR_CONTEXT_REACHED. Such a
 # pack is not lost, so it is named as delivered, and a tree whose every rule
 # crossed has lost nothing and is not reported at all.
 # Returns 1 when nothing in <tree> is withheld.
@@ -63,7 +63,7 @@ _rules() { # <tree>
   sent=''; kept=''; nk=0
   _crossed=0
   case "
-${HARBOR_REACHED:-}" in *"
+${HARBOR_CONTEXT_REACHED:-${HARBOR_REACHED:-}}" in *"
 $1
 "*) _crossed=1 ;; esac
   # Both layouts for one release, new first, an id once (harbor#1010); the id is derived when id: is absent.
@@ -115,12 +115,12 @@ fi
 # WHICH TREE A CALL REACHES INTO IS THE ENGINE'S ANSWER, NOT THIS FILE'S. The
 # definition is written once in contracts/injection-rule.md ("The tree a call touches")
 # and computed once, in hooks/injection-rule/injection-rule.sh, which hands it to every `run:` pack
-# as HARBOR_TOUCHED: one physical tree per line. This pack computed it itself
+# as HARBOR_CONTEXT_TOUCHED: one physical tree per line. This pack computed it itself
 # for one PR (#601); `scope: box` delivery (#599) became the second reader, and
 # two readers of one definition is the point at which a copy starts drifting.
 # Run by hand, with no engine above it, the variable is empty and the pack is
 # silent here, which is the fail-open direction every pack takes.
-[ -n "${HARBOR_TOUCHED:-}" ] || exit 0
+[ -n "${HARBOR_CONTEXT_TOUCHED:-${HARBOR_TOUCHED:-}}" ] || exit 0
 while IFS= read -r _t; do
   [ -n "$_t" ] || continue
   [ "$_t" != "$GOVERNED" ] || continue
@@ -128,5 +128,5 @@ while IFS= read -r _t; do
   _say "This call reaches into $(_rel "$_t") from $(_rel "$(_phys "$CWD")"), which is inside no repository"
   exit 0
 done <<EOF
-$HARBOR_TOUCHED
+${HARBOR_CONTEXT_TOUCHED:-${HARBOR_TOUCHED:-}}
 EOF

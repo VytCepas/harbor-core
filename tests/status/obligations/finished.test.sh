@@ -10,13 +10,13 @@ W="$T_TMP/w"; EV="$W/ev"; OB="$W/ob"; FIX="$W/fix"; OLD="$T_TMP/old"; MUTD="$T_T
 NOW=2026-10-06T02:00:00Z; N=0; D=2026-10-06.jsonl; BAD=""; EMPTY='{}'; P="$FIX/tr/p"
 mkdir -p "$OLD" "$MUTD"
 for _d in "$OLD" "$MUTD"; do for _l in library-log.sh library-fs.sh event-bus.sh; do ln -sf "$T_ROOT/bin/$_l" "$_d/$_l"; done; done
-_base="$(git -C "$T_ROOT" merge-base HEAD origin/main 2>/dev/null)" || _base=""
-# A branch that leaves the script alone has the fix at its merge base too: the old copy is then the one before the script's last change.
-if [ -n "$_base" ] && git -C "$T_ROOT" diff --quiet "$_base" HEAD -- bin/status-obligations.sh 2>/dev/null; then
-  _last="$(git -C "$T_ROOT" log -1 --format=%H HEAD -- bin/status-obligations.sh 2>/dev/null)"; _base="${_last:+$_last^}"
-fi
+# The old copy is the parent of the commit that added this suite with its fix: a merge base or a script's last change is
+# a later, already-fixed copy once a rename touches the script (harbor#961). It sources the libraries by their pre-W3 names.
+ln -sf "$T_ROOT/bin/library-log.sh" "$OLD/log-lib.sh"; ln -sf "$T_ROOT/bin/library-fs.sh" "$OLD/fs-lib.sh"
+_fix="$(git -C "$T_ROOT" log --follow --diff-filter=A --format=%H -- tests/status/obligations/finished.test.sh 2>/dev/null | tail -1)"
+_base="${_fix:+$_fix^}"
 [ -n "$_base" ] && git -C "$T_ROOT" show "$_base:bin/status-obligations.sh" > "$OLD/status-obligations.sh" 2>/dev/null
-[ -s "$OLD/status-obligations.sh" ] || t_fail "no merge base to show the old script from"
+[ -s "$OLD/status-obligations.sh" ] || t_fail "no pre-fix commit to show the old script from"
 cat > "$T_TMP/sessions" <<'STUB'
 #!/bin/sh
 printf '[{"sessionId":"S6","pid":1}]'

@@ -11,7 +11,7 @@ permission entry; there is no server-wide allow. The tool runs bin/access-browse
 list, never a shell string, so every guardrail of the CLI (the verb allowlist, the host allowlist read from
 contracts/browser-agent-hosts.txt then the private layer's browser-hosts.txt, the upload and filename checks) is the
 one that decides. A project's settings `env` reaches this process too, so the CLI runs under /bin/sh with a fixed PATH
-and only the locale, HOME, TMPDIR and session variables passed on: the CLI's own test seams (HARBOR_PW_CLI, the private
+and only the locale, HOME, TMPDIR and session variables passed on: the CLI's own test seams (HARBOR_ACCESS_PLAYWRIGHT_CLI, the private
 host list) cannot be set from a repo.
 The CLI names its browser session from CLAUDE_CODE_SESSION_ID; without it this process names one per parent session
 (mcp-<ppid>), so two sessions never share a page. `harbor chrome` on the CLI stays for the operator's own terminal."""
@@ -63,7 +63,7 @@ def session_env():
     env = {k: os.environ[k] for k in KEEP if os.environ.get(k)}
     env['PATH'] = PATH
     if not env.get('CLAUDE_CODE_SESSION_ID'):
-        env['HARBOR_BROWSER_SESSION'] = 'mcp-%d' % os.getppid()
+        env['HARBOR_ACCESS_BROWSER_SESSION'] = 'mcp-%d' % os.getppid()
     return env
 
 def call(name, arguments):

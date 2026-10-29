@@ -19,7 +19,7 @@
 set -u
 
 case "$0" in */*) _SRC="${0%/*}" ;; *) _SRC=. ;; esac
-ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$_SRC/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$_SRC/.." && pwd)}}"
 . "$ROOT/bin/library-log.sh"
 log_init ci-release-names
 LOG_FD=2

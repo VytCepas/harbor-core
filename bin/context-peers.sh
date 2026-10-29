@@ -19,7 +19,7 @@
 set -eu
 
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-SESS="${HARBOR_SESSIONS_DIR:-$CFG/sessions}"
+SESS="${HARBOR_SESSION_REGISTRY_DIR:-${HARBOR_SESSIONS_DIR:-$CFG/sessions}}"
 # harbor#813: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./guard-lib.sh from it.
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
 # stdout is the table or JSON a caller parses, so the log goes to stderr (contracts/logging.md).
@@ -27,10 +27,10 @@ LOG_FD=2; . "$DIR/library-log.sh"
 FORMAT=table
 ONLY_REPO=""
 
-# HARBOR_PEER_EXCLUDE lets the SessionStart caller drop ITSELF from the report.
+# HARBOR_CONTEXT_PEER_EXCLUDE lets the SessionStart caller drop ITSELF from the report.
 # "3 sessions are here" when one of them is you is the kind of off-by-one that
 # makes a warning get ignored.
-EXCLUDE_SID="${HARBOR_PEER_EXCLUDE:-}"
+EXCLUDE_SID="${HARBOR_CONTEXT_PEER_EXCLUDE:-${HARBOR_PEER_EXCLUDE:-}}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -117,7 +117,7 @@ is_live() { # <pid> <procStart>
 # `src=write`; the launch tree is the fallback and is reported AS the fallback.
 # A column that cannot tell a measurement from a guess is how the registry's cwd
 # passed for a working directory in the first place.
-PEER_DIR="${HARBOR_PEERS_DIR:-$CFG/.helm-peers}"
+PEER_DIR="${HARBOR_CONTEXT_PEERS_DIR:-${HARBOR_PEERS_DIR:-$CFG/.helm-peers}}"
 # VALIDATED ON READ AS WELL AS ON WRITE, because the writer is not the only way a
 # record gets there. Pass 13 (P13-peer-04) showed a plain Bash redirect into
 # $CFG/.helm-peers/ returns rc=0, and this value is rendered into another

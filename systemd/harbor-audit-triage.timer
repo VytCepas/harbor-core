@@ -1,4 +1,4 @@
-# harbor#617 — the schedule of launchd/com.harbor.judge.plist; docs/reference/checks.md row `judge`.
+# harbor#617 — the schedule of launchd/com.harbor.audit.triage.plist; docs/reference/checks.md row `audit.triage`.
 [Unit]
 Description=Harbor check judge (schedule)
 
@@ -6,7 +6,7 @@ Description=Harbor check judge (schedule)
 OnActiveSec=30s
 OnCalendar=*-*-* 05:23:00
 Persistent=true
-Unit=harbor-judge.service
+Unit=harbor-audit-triage.service
 
 [Install]
 WantedBy=timers.target

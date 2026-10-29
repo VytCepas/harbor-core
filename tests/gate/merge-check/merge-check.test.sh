@@ -38,7 +38,7 @@ exit 0
 STUB
 chmod +x "$STUB/gh"
 
-mc() { : > "$LOG"; PATH="$STUB:$PATH" HARBOR_REPO=VytCepas/harbor HARBOR_REQUIRED_CHECKS="$RCF" sh "$MC" "$@" 2>&1; }
+mc() { : > "$LOG"; PATH="$STUB:$PATH" HARBOR_SCOPE_REPO=VytCepas/harbor HARBOR_REQUIRED_CHECKS="$RCF" sh "$MC" "$@" 2>&1; }
 rc() { mc "$@" >/dev/null; echo $?; }
 merges() { grep -c '^pr merge' "$LOG"; }  # 1 when the last call ran gh pr merge
 glog() { cat "$LOG"; }
@@ -304,8 +304,8 @@ t_eq "no arguments prints usage" 0 "$(rc)"
 t_eq "an unknown flag" 2 "$(rc --nonesuch)"
 t_eq "a non-numeric PR" 2 "$(rc not-a-number)"
 
-t_section "HARBOR_REPO is owner/name here, a PATH in renew-check"
-mcenv() { _v="$1"; shift; : > "$LOG"; PATH="$STUB:$PATH" HARBOR_REPO="$_v" sh "$MC" "$@" 2>&1; }
+t_section "HARBOR_SCOPE_REPO is owner/name here, a PATH in renew-check"
+mcenv() { _v="$1"; shift; : > "$LOG"; PATH="$STUB:$PATH" HARBOR_SCOPE_REPO="$_v" sh "$MC" "$@" 2>&1; }
 OUT="$(mcenv "$HOME/port/harbor" --protection)"
 t_has "a path is named as the wrong kind of value" "$OUT" 'not owner/name'
 t_hasnt "a path never reads PROTECTION ABSENT" "$OUT" 'PROTECTION ABSENT'
@@ -320,7 +320,7 @@ t_section "local gate: the private layer's rows join core's when run from a chec
 CK="$T_TMP/ck"; PV="$T_TMP/pv"; mkdir -p "$CK/bin" "$CK/contracts" "$PV"
 cp "$T_ROOT/bin/gate-merge-check.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/gate-required-generate.sh" "$CK/bin/"
 printf 'acme/harbor\tconventions linter\n' > "$CK/contracts/required-checks.tsv"
-mcck() { _r="$1"; shift; : > "$LOG"; PATH="$STUB:$PATH" HARBOR_REPO="$_r" HARBOR_SCOPE_PRIVATE="$PV" sh "$CK/bin/gate-merge-check.sh" "$@" 2>&1; }
+mcck() { _r="$1"; shift; : > "$LOG"; PATH="$STUB:$PATH" HARBOR_SCOPE_REPO="$_r" HARBOR_SCOPE_PRIVATE="$PV" sh "$CK/bin/gate-merge-check.sh" "$@" 2>&1; }
 rcck() { mcck "$@" >/dev/null; echo $?; }
 prot "$P403" 1
 rows2 "$GREEN" ""

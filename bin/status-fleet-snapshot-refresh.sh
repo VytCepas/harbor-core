@@ -21,12 +21,12 @@ esac
 # says what failed and how to see why, on the stdout launchd keeps.
 . "$(dirname -- "$0")/library-log.sh"
 log_init fleet-snapshot-refresh
-CACHE_DIR="${HARBOR_CACHE_DIR:-$HOME/.claude/cache}"
+CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
 CACHE="$CACHE_DIR/fleet-snapshot.json"
 # the fleet file through the registry-aware reader beside this script (harbor#966)
-FLEET="${HARBOR_FLEET_FILE:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_FLEET_FILE 2>/dev/null || :)}"
+FLEET="${HARBOR_SCOPE_FLEET_FILE:-${HARBOR_FLEET_FILE:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_FLEET_FILE 2>/dev/null || :)}}"
 # the fleet CLI, a roots.tsv row read through the same reader (harbor#966)
-ORCH="${HARBOR_ORCH_BIN:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_ORCH_BIN 2>/dev/null || :)}"
+ORCH="${HARBOR_SCOPE_FLEET_CONTROLLER_BIN:-${HARBOR_ORCH_BIN:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER_BIN 2>/dev/null || :)}}"
 
 mkdir -p "$CACHE_DIR"
 TMP="$CACHE.tmp.$$"
@@ -113,7 +113,7 @@ fi
 # reads per repo. The cache holds epochs only; status-fleet-glyph.sh does the countdown.
 # BEFORE the orchestrator block, for the sweep's reason: that block can exit 1.
 if [ -f "$SRC_DIR/ci-queue.sh" ]; then
-  HARBOR_CACHE_DIR="$CACHE_DIR" sh "$SRC_DIR/ci-queue.sh" >/dev/null 2>&1 || true
+  HARBOR_SCOPE_CACHE_DIR="$CACHE_DIR" sh "$SRC_DIR/ci-queue.sh" >/dev/null 2>&1 || true
 fi
 
 # ── main's tip: does every recent commit on main carry a green CI verdict? ─────
@@ -121,7 +121,7 @@ fi
 # operator's yes, and one bounded read of main's runs a tick is cheaper than the ⏳ tile's.
 # Writes cache/main-tip-verdict.json (the statusline's MAIN RED) and one checks.log line per change.
 if [ -f "$SRC_DIR/ci-main-tip-verdict.sh" ]; then
-  HARBOR_CACHE_DIR="$CACHE_DIR" sh "$SRC_DIR/ci-main-tip-verdict.sh" >/dev/null 2>&1 || true
+  HARBOR_SCOPE_CACHE_DIR="$CACHE_DIR" sh "$SRC_DIR/ci-main-tip-verdict.sh" >/dev/null 2>&1 || true
 fi
 
 # ── the obligations ledger: fold the bus, then ask the real state about what is still open (harbor#1050) ──
@@ -136,7 +136,7 @@ fi
 # Pro -> Free on 2026-10-05 turned protection off and cut the minutes, and surfaced only when a merge was refused.
 # Two reads a tick; one checks.log line per change, and the statusline's PLAN/GATE alarm until `ci-github-plan.sh ack`.
 if [ -f "$SRC_DIR/ci-github-plan.sh" ]; then
-  HARBOR_CACHE_DIR="$CACHE_DIR" sh "$SRC_DIR/ci-github-plan.sh" >/dev/null 2>&1 || true
+  HARBOR_SCOPE_CACHE_DIR="$CACHE_DIR" sh "$SRC_DIR/ci-github-plan.sh" >/dev/null 2>&1 || true
 fi
 
 # ── the CI runner: GitHub-hosted until the month's Actions minutes run short ───
@@ -144,10 +144,10 @@ fi
 # month's bill a tick; sets the repo variable HARBOR_RUNNER only when the value would change, and logs
 # one checks.log line per change. A read that fails flips nothing (bin/ci-runner-switch.sh).
 if [ -f "$SRC_DIR/ci-runner-switch.sh" ]; then
-  HARBOR_CACHE_DIR="$CACHE_DIR" sh "$SRC_DIR/ci-runner-switch.sh" >/dev/null 2>&1 || true
+  HARBOR_SCOPE_CACHE_DIR="$CACHE_DIR" sh "$SRC_DIR/ci-runner-switch.sh" >/dev/null 2>&1 || true
   # each `org ORG` in .harbor-ci-runners gets its own verdict, against its own cap (harbor#1060)
   for _org in $(awk '$1 == "org" && $2 ~ /^[A-Za-z0-9][A-Za-z0-9-]*$/ { print $2 }' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.harbor-ci-runners" 2>/dev/null); do
-    HARBOR_CACHE_DIR="$CACHE_DIR" sh "$SRC_DIR/ci-runner-switch.sh" --org "$_org" >/dev/null 2>&1 || true
+    HARBOR_SCOPE_CACHE_DIR="$CACHE_DIR" sh "$SRC_DIR/ci-runner-switch.sh" --org "$_org" >/dev/null 2>&1 || true
   done
 fi
 
@@ -156,7 +156,7 @@ fi
 # billing-refused runs once, logs drift on change, and raises the ci-runner-alarm (a runner offline, docker down, a job no
 # runner can take). It creates no container and reads or writes no billing (bin/ci-runners.sh).
 if [ -f "$SRC_DIR/ci-runners.sh" ]; then
-  HARBOR_CACHE_DIR="$CACHE_DIR" sh "$SRC_DIR/ci-runners.sh" tick >/dev/null 2>&1 || true
+  HARBOR_SCOPE_CACHE_DIR="$CACHE_DIR" sh "$SRC_DIR/ci-runners.sh" tick >/dev/null 2>&1 || true
 fi
 
 # -- the watch . are the schedulers this board depends on actually loaded ------
@@ -197,7 +197,7 @@ if command -v launchctl >/dev/null 2>&1; then
     _inst=$((_inst + 1))
     _lbl="${_pl##*/}"; _lbl="${_lbl%.plist}"
     # Anchored on both sides: a bare substring match would count
-    # com.harbor.usage as loaded because com.harbor.usage-sessions is. The listing is wrapped in
+    # com.harbor.status.usage as loaded because com.harbor.status.usage-sessions is. The listing is wrapped in
     # newlines because $(...) strips the last one: a harbor job listed last must still match.
     case "
 $_listing

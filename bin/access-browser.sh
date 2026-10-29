@@ -48,7 +48,7 @@ EXIT_SKIP=2
 # Playwright" and not two. Overridable so no machine's home is hard-coded into a
 # public repo (No.3), and so the suite can point at an empty tree to prove the
 # skip path fires.
-PROBE_DIR="${HARBOR_PROBE_DIR:-$HOME/.local/lib/browser-probes}"
+PROBE_DIR="${HARBOR_ACCESS_PROBE_DIR:-${HARBOR_PROBE_DIR:-$HOME/.local/lib/browser-probes}}"
 
 # The gated backend from row 5. Named here so `doctor` can report it without a
 # second copy of the path living in the routing contract's prose.
@@ -60,7 +60,7 @@ SESSION_PROFILE="$HOME/.local/share/playwright-mcp-profile"
 # exactly that risk — a suite that silently skips everywhere is the vacuous gate
 # C3 exists to prevent. tests/access/browser/browser.test.sh points this at a path that does not
 # exist and asserts the suite still passes real assertions.
-CHROME_MAC="${HARBOR_CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
+CHROME_MAC="${HARBOR_ACCESS_CHROME:-${HARBOR_CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}}"
 
 _die()  { log_fail "$1"; log_fix "${2:-harbor browser help}"; log_end || :; exit "$EXIT_FAIL"; }
 # A skip has no failure to count, and its exit stays the contract's 2: never a pass.
@@ -84,7 +84,7 @@ _chrome_version() {
 # pixel is not there", which is the finding this whole capability exists to make
 # trustworthy.
 #
-# CHROME IS RESOLVED HERE AND NOWHERE ELSE, then handed down in HARBOR_CHROME —
+# CHROME IS RESOLVED HERE AND NOWHERE ELSE, then handed down in HARBOR_ACCESS_CHROME —
 # three workers with three copies of a path list is three facts that drift, and
 # docs/explanation/doc-truth.md says derive rather than duplicate.
 #
@@ -103,8 +103,8 @@ _chrome_version() {
 # NORMAL no-Chrome answer, so a construct that might abort instead of returning
 # empty would turn "no Chrome" into "the tool died". Written out long.
 _resolve_chrome() {
-  if [ -n "${HARBOR_CHROME:-}" ]; then
-    if [ -x "$HARBOR_CHROME" ]; then printf '%s' "$HARBOR_CHROME"; fi
+  if [ -n "${HARBOR_ACCESS_CHROME:-${HARBOR_CHROME:-}}" ]; then
+    if [ -x "${HARBOR_ACCESS_CHROME:-${HARBOR_CHROME:-}}" ]; then printf '%s' "${HARBOR_ACCESS_CHROME:-${HARBOR_CHROME:-}}"; fi
     return 0
   fi
   if [ -x "$CHROME_MAC" ]; then
@@ -124,7 +124,9 @@ _run_worker() {
   _worker="$1"; shift
   [ -f "$BIN/$_worker" ] || _die "missing worker: bin/$_worker" "git -C $ROOT checkout -- bin/$_worker"
   command -v node >/dev/null 2>&1 || _skip 'no node on PATH'
-  HARBOR_PROBE_DIR="$PROBE_DIR" HARBOR_CHROME="$(_resolve_chrome)" \
+  _chrome="$(_resolve_chrome)"
+  # A pack's worker may still read the old names (azimuth's browser-probe.mjs does), so both are set until 2026-11-15 (harbor#961 W5).
+  HARBOR_ACCESS_PROBE_DIR="$PROBE_DIR" HARBOR_ACCESS_CHROME="$_chrome" HARBOR_PROBE_DIR="$PROBE_DIR" HARBOR_CHROME="$_chrome" \
     node "$BIN/$_worker" "$@"
 }
 
@@ -244,13 +246,13 @@ _self_test_live() {
   # shellcheck disable=SC2064
   trap "rm -rf '$_t'" EXIT INT TERM HUP
   # THE STOREFRONT IS THE OPERATOR'S: core names none. It needs a consent banner to test against, so it
-  # comes from HARBOR_BROWSER_LIVE_URL, else `browser_live_url` in the private layer's harbor.toml, else
+  # comes from HARBOR_ACCESS_BROWSER_LIVE_URL, else `browser_live_url` in the private layer's harbor.toml, else
   # the arm is SKIPPED (never a pass).
-  _u="${HARBOR_BROWSER_LIVE_URL:-$(sh "$BIN/scope-roots.sh" --conf browser_live_url 2>/dev/null || true)}"
-  _accept="${HARBOR_BROWSER_LIVE_ACCEPT:-#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll}"
+  _u="${HARBOR_ACCESS_BROWSER_LIVE_URL:-${HARBOR_BROWSER_LIVE_URL:-$(sh "$BIN/scope-roots.sh" --conf browser_live_url 2>/dev/null || true)}}"
+  _accept="${HARBOR_ACCESS_BROWSER_LIVE_ACCEPT:-${HARBOR_BROWSER_LIVE_ACCEPT:-#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll}}"
   log_head "self-test-live"
   if [ -z "$_u" ]; then
-    log_skip "SKIPPED — no storefront to load: set HARBOR_BROWSER_LIVE_URL, or browser_live_url in harbor.toml"
+    log_skip "SKIPPED — no storefront to load: set HARBOR_ACCESS_BROWSER_LIVE_URL, or browser_live_url in harbor.toml"
     log_end || :
     return "$EXIT_SKIP"
   fi

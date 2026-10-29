@@ -438,7 +438,7 @@ every time, so the selector correctly hands back nearly everything on the median
 push. A gate that costs 24 suites before every push is one that gets
 `--no-verify`'d within a week, and it duplicates CI besides. The default is now
 the conventions linter plus the smoke suite when a floor surface moved (~14s);
-the full selection is opt-in with `HARBOR_PREPUSH_FULL=1`.
+the full selection is opt-in with `HARBOR_GATE_PREPUSH_FULL=1`.
 
 **T0c's number survived a circular grader, which is worth recording.** The first
 adjudicator classified the 119 fires by reimplementing the hook's own

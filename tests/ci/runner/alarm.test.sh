@@ -6,8 +6,8 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/ci/ci-runners-fixture.sh"
 A="$CACHE/ci-runner-alarm.json"
-alog() { if [ -f "$CACHE/checks.log" ]; then grep -c 'check:ci-runner-alarm' "$CACHE/checks.log"; else echo 0; fi; }
-last() { grep 'check:ci-runner-alarm' "$CACHE/checks.log" | tail -n 1; }
+alog() { if [ -f "$CACHE/checks.log" ]; then grep -c 'check:ci.runner-alarm' "$CACHE/checks.log"; else echo 0; fi; }
+last() { grep 'check:ci.runner-alarm' "$CACHE/checks.log" | tail -n 1; }
 get() { jq -r "$1" "$A"; }
 tick() { AT="$1" run tick >/dev/null; }
 ago() { date -u -r "$(($1))" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d "@$(($1))" +%Y-%m-%dT%H:%M:%SZ; }
@@ -32,7 +32,7 @@ t_eq "one tick is a suspicion, not an alarm" 0 "$(alog)"
 t_eq "...recorded, so the next tick can confirm it" "$NOW" "$(get '.since.docker')"
 tick "$((NOW + 300))"
 t_eq "the second tick confirms it: one line" 1 "$(alog)"
-t_has "...stamped with the registry id" "$(last)" "[check:ci-runner-alarm]"
+t_has "...stamped with the registry id" "$(last)" "[check:ci.runner-alarm]"
 t_has "...saying docker is down" "$(last)" "docker down"
 t_has "...and which registered runners are offline" "$(last)" "offline alpha-linux harbor-linux"
 t_eq "the cache says so, for the statusline" "true alpha-linux harbor-linux" "$(get '"\(.docker_down) \(.offline | join(" "))"')"

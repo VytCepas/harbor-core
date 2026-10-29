@@ -41,7 +41,7 @@ Three consumers, in the order the data moves:
 | `skills/topology/bin/archify-embed.mjs` | the **rendered page**, taken apart: 16.7 KB of SVG and a scoped subset of the 186 KB stylesheet, so `report-gen.sh` carries the diagram instead of linking 710 KB beside it |
 | `bin/doc-visual-check.sh` | `visual-check`, as a SECOND verifier — it reads geometry and greps zero times for contrast, ours reads contrast and nothing about geometry |
 
-`HARBOR_ARCHIFY` overrides the path everywhere. Harbor uses **only the CLI, the
+`HARBOR_DOC_ARCHIFY_DIR` overrides the path everywhere. Harbor uses **only the CLI, the
 schema and the rendered output**; it does not load archify's prompts, and no
 archify code was copied into Harbor's own tree.
 

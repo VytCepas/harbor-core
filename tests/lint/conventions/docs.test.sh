@@ -213,7 +213,7 @@ t_section "T2: the numeral and the phrase, however they are spaced"
 T2R="$TMP/t2root"; mkdir -p "$T2R"
 t2() { printf '%s\n' "$1" > "$T2R/PROBE.md"; viol T2 "$T2R" | grep -c . ; }
 t_eq "one space — the shape that always worked" 1 "$(t2 'There are 7 floor guards.')"
-t_exit "…and the violation fails the run" 1 env HARBOR_ROOT="$T2R" sh "$LINT" --only T2
+t_exit "…and the violation fails the run" 1 env HARBOR_SCOPE_ROOT="$T2R" sh "$LINT" --only T2
 t_eq "two spaces — the reflow that used to escape" 1 "$(t2 'There are 7  floor guards.')"
 t_eq "a tab between numeral and phrase (a table cell)" 1 "$(t2 "$(printf 'There are 7\tfloor guards.')")"
 # No docs/generated/status.md on the probe line: T2 drops such lines from its printout, which hid a lost anchor.

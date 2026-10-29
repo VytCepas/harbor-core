@@ -91,7 +91,7 @@ t_eq "the user coming back cuts at once, no waiting" 4 "$(st budget)"
 t_section "one line per change, never one per tick"
 reset; : > "$FX/lbusy"; gov tick >/dev/null; tick; tick; tick
 t_eq "four ticks with nothing changing: one line (the first tick's)" 1 "$(nlog)"
-t_has "...stamped with the register id" "$(cat "$CACHE/checks.log")" "[check:ci-governor]"
+t_has "...stamped with the register id" "$(cat "$CACHE/checks.log")" "[check:ci.governor]"
 echo 9.00 > "$FX/load"; tick
 t_eq "a cut adds one" 2 "$(nlog)"
 t_has "...that carries the cap change" "$(tail -1 "$CACHE/checks.log")" "harbor-linux --cpus 4 -> 2"
@@ -150,7 +150,7 @@ t_eq "the cache carries the budget" 4 "$(jq -r .budget "$CACHE/ci-governor.json"
 t_eq "...and says it is held under the target" true "$(jq -r .held "$CACHE/ci-governor.json")"
 
 # ── run ─────────────────────────────────────────────────────────────────────────────────────────
-runc() { HARBOR_NOW="$AT" HARBOR_CACHE_DIR="$CACHE" HARBOR_GOV_POLL=0.2 sh "$GOV" run "$@"; }
+runc() { HARBOR_TEST_NOW="$AT" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_GOV_POLL=0.2 sh "$GOV" run "$@"; }
 nslots() { find "$SD/slots" -type f 2>/dev/null | wc -l | tr -d ' '; }
 
 t_section "run: no state dir, so it just runs (a CI container)"

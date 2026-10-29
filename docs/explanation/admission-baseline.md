@@ -1327,7 +1327,7 @@ than "not a confirmation oracle" full stop, and it is the honest one
 2. **The host directory is held at 0500 and the writer refuses unless
    `[ ! -w ]`.** A file-type check bounds a static FIFO plant but not the race,
    and `timeout`/`gtimeout` are both absent on macOS — so a hang is a *total
-   bypass of all 70 rules*, not a slow log. See DE-11 in `docs/decisions/rejected-approaches.md`.
+   bypass of all 70 rules*, not a slow log. See DE-11 in `docs/reports/rejected-approaches.md`.
 3. **The hot path creates nothing.** No `mkdir`, no `>`, no rotation. See
    DE-13 — the version that could `mkdir` escaped into the
    operator's live `~/.claude/MEMORY` during this ticket's own design.
@@ -1714,7 +1714,7 @@ not in the command text. So the ban has two halves:
   it absent loses only its route keys, deleted with jq. The rerouted copy is kept beside the file, the tool call
   is answered with a block reason naming the KEYS (never their values: an
   `ANTHROPIC_AUTH_TOKEN` is a credential), and the repair is stamped
-  `[check:api-route]` in `checks.log`. The agent that ran the command learns
+  `[check:admission.api-route]` in `checks.log`. The agent that ran the command learns
   what it did before its next request leaves the machine.
 
 **First sight is a baseline, never a repair** (Codex on harbor PR #547). A
@@ -1770,7 +1770,7 @@ folder. It runs that repo's `bin/gate-merge-check.sh` only if the repo is a
 `scope: box` uses for the same reason: a merge naming a cloned third-party repo
 must not run that repo's script inside a hook. It stays silent when the session
 stands in the repo and its merge pack is there, so a merge is checked once. The
-deny carries `[check:merge-backstop]` (docs/reference/checks.md).
+deny carries `[check:gate.merge-backstop]` (docs/reference/checks.md).
 
 **Fail-OPEN and standalone**, the guard-cloud wiring. A refusal (exit 1) is a
 JSON deny on stdout. Any other exit, a missing `gh`, or an unresolvable target
@@ -2896,7 +2896,7 @@ the posture and removes the finality: the command runs exactly as before.
   names a branch. A snapshot's sha typed into a refspec, or a branch made from one, is not caught.
   To purge: drop the refs, then `git gc --prune=now`.
 - *Never blocks a discard:* a snapshot that cannot be taken is one stderr line stamped
-  `[check:destroy-snapshot]` (docs/reference/checks.md), and the command runs unprotected. Success is silent.
+  `[check:admission.destroy-snapshot]` (docs/reference/checks.md), and the command runs unprotected. Success is silent.
 - *Opt out per repo:* `touch "$(git rev-parse --git-common-dir)/harbor-snapshot-off"`.
 
 **Recovery is one command once you have the id:**

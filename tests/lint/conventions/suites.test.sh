@@ -56,22 +56,22 @@ t_has "a deleted suite-paths.txt is reported" "$(_c5 | grep 'VIOLATION \[test.su
 
 t_section "C10: a suite never inherits a HARBOR_* knob (harbor#773)"
 C10R="$TMP/c10"; H='. "$(dirname "$0")/../../lib/core.sh"; t_init'
-_c10_setup() { # <suite body> — one suite; bin/prog.sh reads HARBOR_K and HARBOR_M unset by default
+_c10_setup() { # <suite body> — one suite; bin/prog.sh reads HARBOR_TEST_K and HARBOR_TEST_M unset by default
   rm -rf "$C10R"; mkdir -p "$C10R/bin" "$C10R/contracts" "$C10R/tests/lib" "$C10R/tests/area"
-  printf '#!/usr/bin/env sh\nk="${HARBOR_K:-}"; m="${HARBOR_M-}"\n' > "$C10R/bin/prog.sh"
-  printf "T_PASS_ENV='HARBOR_M'\n" > "$C10R/tests/lib/core.sh"
+  printf '#!/usr/bin/env sh\nk="${HARBOR_TEST_K:-}"; m="${HARBOR_TEST_M-}"\n' > "$C10R/bin/prog.sh"
+  printf "T_PASS_ENV='HARBOR_TEST_M'\n" > "$C10R/tests/lib/core.sh"
   printf 'tests/area/s-test.sh\n' > "$C10R/contracts/suites.txt"; printf '%s\n' "$1" > "$C10R/tests/area/s-test.sh"
 }
 c10() { _c10_setup "$1"; viol C10 "$C10R" | grep -c .; }
 t_eq "off the harness, a suite that runs a knob-reading program and clears nothing" 2 "$(c10 'sh "$R/bin/prog.sh"')"
 t_has "…is named, with the program and the knob" "$(_c10_setup 'sh "$R/bin/prog.sh"'; viol C10 "$C10R")" \
-  'tests/area/s-test.sh runs prog.sh, which reads HARBOR_K unset by default'
-t_eq "…and is silent once it unsets both" 0 "$(c10 'unset HARBOR_K HARBOR_M
+  'tests/area/s-test.sh runs prog.sh, which reads HARBOR_TEST_K unset by default'
+t_eq "…and is silent once it unsets both" 0 "$(c10 'unset HARBOR_TEST_K HARBOR_TEST_M
 sh "$R/bin/prog.sh"')"
-t_eq "a statement that is only an assignment clears one" 1 "$(c10 'HARBOR_K=; export HARBOR_K
+t_eq "a statement that is only an assignment clears one" 1 "$(c10 'HARBOR_TEST_K=; export HARBOR_TEST_K
 sh "$R/bin/prog.sh"')"
 t_eq "a per-command prefix clears nothing: the calls it does not prefix still inherit" 2 \
-  "$(c10 'HARBOR_K=1 HARBOR_M=2 sh "$R/bin/prog.sh"')"
+  "$(c10 'HARBOR_TEST_K=1 HARBOR_TEST_M=2 sh "$R/bin/prog.sh"')"
 t_eq "a program named only as data is not run" 0 "$(c10 'cp "$R/bin/prog.sh" "$T/x"')"
 t_eq "a comment that runs it is not code" 0 "$(c10 '# sh "$R/bin/prog.sh"')"
 t_eq "a program run through a variable is run" 2 "$(c10 'P="$R/bin/prog.sh"
@@ -79,21 +79,21 @@ sh "$P"')"
 t_eq "on the harness t_init clears one knob, and the T_PASS_ENV one is left" 1 "$(c10 "$H"'
 sh "$R/bin/prog.sh"')"
 t_eq "a suite that reads a knob after t_init emptied it" 1 "$(c10 "$H"'
-x="${HARBOR_Q:-}"')"
-t_eq "…is silent when it reads the knob before t_init" 0 "$(c10 'x="${HARBOR_Q:-}"
+x="${HARBOR_TEST_Q:-}"')"
+t_eq "…is silent when it reads the knob before t_init" 0 "$(c10 'x="${HARBOR_TEST_Q:-}"
 '"$H")"
 t_eq "…or assigns it first" 0 "$(c10 "$H"'
-HARBOR_Q=1; export HARBOR_Q
-y="${HARBOR_Q:-}"')"
+HARBOR_TEST_Q=1; export HARBOR_TEST_Q
+y="${HARBOR_TEST_Q:-}"')"
 t_eq "a single-quoted stub body is not the suite reading the knob" 0 "$(c10 "$H
-printf 'x=\"\${HARBOR_Q:-}\"' > \"\$T/stub\"")"
+printf 'x=\"\${HARBOR_TEST_Q:-}\"' > \"\$T/stub\"")"
 t_eq "…nor is a quoted heredoc body" 0 "$(c10 "$H
 cat > \"\$T/stub\" <<'EOF'
-x=\"\${HARBOR_Q:-}\"
+x=\"\${HARBOR_TEST_Q:-}\"
 EOF")"
 t_eq "…but an unquoted one expands in the suite, so it is" 1 "$(c10 "$H
 cat > \"\$T/stub\" <<EOF
-x=\"\${HARBOR_Q:-}\"
+x=\"\${HARBOR_TEST_Q:-}\"
 EOF")"
 
 t_section "C6: prove targets take their kinds from the engine (skills/test-strength)"

@@ -494,7 +494,7 @@ Off again, in reverse: remove the hook, `rm ~/.claude/.helm-dispatch/spawn.on`, 
   records and a session can rewrite (guard-bash refuses neither a Write to it nor `uv tool install --force`).
   The preset also makes credentialed `gh` calls, including runner-switch's `HARBOR_RUNNER` variable path, with
   `SHIP_UNATTENDED=1`, and a planted absolute-path `claude` there passes the noclaude shim. The same reach
-  already exists through `com.harbor.fleet-snapshot` every 300 s; the dispatcher adds event-timed runs, not
+  already exists through `com.harbor.status.fleet-snapshot` every 300 s; the dispatcher adds event-timed runs, not
   reach. *Proposed fix:* before each fire, verify every runtime-install manifest row in one
   `git hash-object --stdin-paths` call and refuse on any mismatch; record projects-orchestrator's bytes in a
   manifest (or have the preset call a read-only refresh mode that runs no orchestrator and no gh write); and

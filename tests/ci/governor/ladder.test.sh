@@ -5,13 +5,13 @@
 . "$(dirname "$0")/../ci-governor-fixture.sh"
 
 # ── emergency: a spike seen in seconds, a ladder undone on recovery ─────────────────────────────
-samp() { AT=$((AT + ${1:-3})); HARBOR_NOW="$AT" HARBOR_CACHE_DIR="$CACHE" HARBOR_RUNNERS_DIR="$RUNNERS" sh "$GOV" sample >/dev/null 2>&1; }
+samp() { AT=$((AT + ${1:-3})); HARBOR_TEST_NOW="$AT" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CI_RUNNERS_DIR="$RUNNERS" sh "$GOV" sample >/dev/null 2>&1; }
 ek() { awk -F= -v k="$1" '$1 == k { sub(/^[^=]*=/, ""); print }' "$SD/emergency"; }
 pstat() { ps -o stat= -p "$1" 2>/dev/null | cut -c1; }
 child_of() { ps -A -o pid=,ppid=,comm= | awk -v p="$1" '$2 == p && $3 ~ /sleep$/ { print $1; exit }'; }   # the sleep, not a passing notifyutil
 # slot_up — a real local run (sleep 60) holding a slot; sets SLOT (the run) and KID (the sleep under it).
 slot_up() {
-  HARBOR_NOW="$AT" HARBOR_CACHE_DIR="$CACHE" sh "$GOV" run -- sleep 60 >/dev/null 2>&1 & SLOT=$!
+  HARBOR_TEST_NOW="$AT" HARBOR_SCOPE_CACHE_DIR="$CACHE" sh "$GOV" run -- sleep 60 >/dev/null 2>&1 & SLOT=$!
   KID=""; _i=0
   while [ -z "$KID" ] && [ "$_i" -lt 50 ]; do sleep 0.1; [ -f "$SD/slots/$SLOT" ] && KID="$(child_of "$SLOT")"; _i=$((_i + 1)); done
 }
@@ -86,7 +86,7 @@ t_has "...and says what it did" "$O" "continued (resumed by hand)"
 slot_down
 reset; gov tick >/dev/null; slot_up; echo 4 > "$FX/mem"
 printf 'sample_interval=0.2\n' >> "$CLAUDE_CONFIG_DIR/.harbor-ci-governor"
-HARBOR_NOW="$AT" HARBOR_CACHE_DIR="$CACHE" HARBOR_RUNNERS_DIR="$RUNNERS" sh "$GOV" sampler >/dev/null 2>&1 & W=$!
+HARBOR_TEST_NOW="$AT" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CI_RUNNERS_DIR="$RUNNERS" sh "$GOV" sampler >/dev/null 2>&1 & W=$!
 _i=0; while [ "$(stopped "$KID")" = no ] && [ "$_i" -lt 50 ]; do sleep 0.2; _i=$((_i + 1)); done
 t_eq "the sampler stops the slot within its own loop" yes "$(stopped "$KID")"
 kill -TERM "$W"; wait "$W" 2>/dev/null
@@ -145,7 +145,7 @@ slot_down
 
 t_section "emergency --dry-run decides and does nothing"
 reset; gov tick >/dev/null; slot_up; echo 4 > "$FX/mem"
-O="$(HARBOR_NOW="$((AT + 3))" HARBOR_CACHE_DIR="$CACHE" HARBOR_RUNNERS_DIR="$RUNNERS" sh "$GOV" sample --dry-run 2>&1)"
+O="$(HARBOR_TEST_NOW="$((AT + 3))" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CI_RUNNERS_DIR="$RUNNERS" sh "$GOV" sample --dry-run 2>&1)"
 t_has "it says it is an emergency" "$O" "emergency 1 (memory pressure level 4)"
 t_has "...and what it would stop" "$O" "would: SIGSTOP local slot processes"
 t_eq "...and stops nothing" no "$(stopped "$KID")"
@@ -162,7 +162,7 @@ LST=""
 listen_up() {
   printf 'sample_interval=0.2\n' >> "$CLAUDE_CONFIG_DIR/.harbor-ci-governor"
   rm -f "$FX/notify.waiting"
-  HARBOR_NOW="$AT" HARBOR_CACHE_DIR="$CACHE" HARBOR_RUNNERS_DIR="$RUNNERS" sh "$GOV" listen >/dev/null 2>&1 & LST=$!
+  HARBOR_TEST_NOW="$AT" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CI_RUNNERS_DIR="$RUNNERS" sh "$GOV" listen >/dev/null 2>&1 & LST=$!
   _i=0; while [ ! -f "$SD/state" ] && [ "$_i" -lt 50 ]; do sleep 0.1; _i=$((_i + 1)); done
   _i=0; while [ ! -f "$FX/notify.waiting" ] && [ "$_i" -lt 100 ]; do sleep 0.1; _i=$((_i + 1)); done   # it is LISTENING
 }
@@ -293,7 +293,7 @@ git init -q -b main "$FR" >/dev/null 2>&1
 
 t_section "wiring: hooks/pre-push takes a slot per check"
 full_box
-O="$(cd "$FR" && printf '' | HARBOR_CACHE_DIR="$CACHE" HARBOR_GOV_POLL=0.2 sh hooks/pre-push 2>&1)"; RC=$?
+O="$(cd "$FR" && printf '' | HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_GOV_POLL=0.2 sh hooks/pre-push 2>&1)"; RC=$?
 t_has "the linter waited for the only slot, and said so" "$O" "waiting for a CPU slot: 1 of 1 in use"
 t_has "...on its own line, not inside the hook's run line" "$O" "run   lint-conventions.sh
 ci-governor: waiting"
@@ -302,7 +302,7 @@ kill "$HOLDER" 2>/dev/null; wait "$HOLDER" 2>/dev/null
 
 t_section "wiring: bin/test-suite-run.sh takes a slot per suite"
 full_box
-O="$(HARBOR_CACHE_DIR="$CACHE" HARBOR_GOV_POLL=0.2 sh "$FR/bin/test-suite-run.sh" -j 1 tests/x/x-test.sh 2>&1)"; RC=$?
+O="$(HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_GOV_POLL=0.2 sh "$FR/bin/test-suite-run.sh" -j 1 tests/x/x-test.sh 2>&1)"; RC=$?
 t_has "the suite waited for the only slot, and said so" "$O" "waiting for a CPU slot: 1 of 1 in use"
 t_eq "...then passed" 0 "$RC"
 t_hasnt "...and the wait is not in the suite's verdict" "$O" "FAIL"
@@ -310,7 +310,7 @@ kill "$HOLDER" 2>/dev/null; wait "$HOLDER" 2>/dev/null
 
 t_section "wiring: just test (tests/lib/run.sh) takes a slot per suite"
 full_box
-O="$(HARBOR_CACHE_DIR="$CACHE" HARBOR_GOV_POLL=0.2 sh "$FR/tests/lib/run.sh" 2>&1)"; RC=$?
+O="$(HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_GOV_POLL=0.2 sh "$FR/tests/lib/run.sh" 2>&1)"; RC=$?
 t_has "the suite waited for the only slot, and said so" "$O" "waiting for a CPU slot: 1 of 1 in use"
 t_has "...then ran, its summary read from the log --out wrote" "$O" "harbor: 1 passed, 0 failed"
 t_eq "...and run.sh exits 0" 0 "$RC"

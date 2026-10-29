@@ -24,7 +24,7 @@
 set -eu
 
 DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$DIR/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$DIR/.." && pwd)}}"
 DECL="$ROOT/contracts/suite-paths.txt"
 TAB="$(printf '\t')"
 FORMAT=v1   # the entry and manifest format; bumping it is a cold cache
@@ -228,7 +228,7 @@ _gate() {
   if [ "${GITHUB_REF:-}" = refs/heads/main ]; then echo "a run on main keeps a full verdict"; return; fi
   if [ "$(git -C "$ROOT" symbolic-ref -q --short HEAD 2>/dev/null || :)" = main ]; then echo "the checkout is on main, which keeps a full verdict"; return; fi
   if [ "${GITHUB_ACTIONS:-}" = true ] && [ -z "${RUNNER_NAME:-}" ]; then echo "under Actions with no RUNNER_NAME, so no trust domain"; return; fi
-  _rc=0; _all="$(HARBOR_ROOT="$ROOT" sh "$DIR/test-suite-select.sh" --why-all 2>/dev/null)" || _rc=$?
+  _rc=0; _all="$(HARBOR_SCOPE_ROOT="$ROOT" sh "$DIR/test-suite-select.sh" --why-all 2>/dev/null)" || _rc=$?
   case "$_rc" in
     0) echo "every suite runs: $_all"; return ;;
     1) ;;

@@ -247,7 +247,7 @@ fixof() { awk -v r="$1" 'f { print; exit } index($0, "  FAIL: " r " ") == 1 { f 
 t_eq "REF-7 off the live box: its fix is inject-install on that dir" \
   "  fix: sh '$(cd -P "$SRC" && pwd -P)/context-injection-install.sh' --apply --dir '$R7C'" "$(sh "$RC" "$R7C" 2>&1 | fixof REF-7)"
 LIVE="$HOME/.claude"; cp -R "$R7C" "$LIVE"
-_hr="$(sh "$SRC/scope-roots.sh" --get HARBOR_REPO)"
+_hr="$(sh "$SRC/scope-roots.sh" --get HARBOR_SCOPE_REPO)"
 t_eq "REF-7 on the live box (--live): its fix is deploy --only inject" \
   "  fix: sh '$_hr/bin/deploy.sh' --apply --only inject --live" "$(env -u CLAUDE_CONFIG_DIR sh "$RC" --live 2>&1 | fixof REF-7)"
 t_eq "...and the same when the live dir is named by its path" \
@@ -281,7 +281,7 @@ TB="$(printf '\t')"
 rst() { sh "$RC" "$1" --status 2>/dev/null; }   # stdout alone: it is data
 t_exit "a clean config dir is exit 0, the plain run's" 0 sh "$RC" "$CLEAN" --status
 rst "$CLEAN" > "$TMP/st-clean.out"
-t_eq "...the header, then a summary that examined something and drifted nothing" "reconcile${TB}1${TB}reference-check ok" \
+t_eq "...the header, then a summary that examined something and drifted nothing" "reconcile${TB}1${TB}drift.reference-check ok" \
   "$(awk -F'\t' 'NR == 1 { printf "%s", $1 FS $2 FS $3 } NR == 2 { printf " %s", ($1 == "summary" && $2 ~ /^[1-9][0-9]*$/ && $3 == 0 && $4 == 0) ? "ok" : "bad" } END { if (NR != 2) printf " lines=%d", NR }' "$TMP/st-clean.out")"
 sh "$RC" "$FMIX" --status > "$TMP/st-mix1.out" 2>/dev/null; rc=$?   # the FIRST run on this dir: its rows are the new ones
 t_eq "a config dir with findings is exit 1, the plain run's" 1 "$rc"
@@ -310,7 +310,7 @@ find "$FRO" -type f -exec cksum {} + | LC_ALL=C sort > "$TMP/st-before.cks"
 rst "$FRO" > /dev/null
 find "$FRO" -name cache -prune -o -type f -exec cksum {} + | LC_ALL=C sort > "$TMP/st-after.cks"
 t_eq "it wrote nothing outside cache/ (the surface it checks is read-only)" "" "$(diff "$TMP/st-before.cks" "$TMP/st-after.cks")"
-t_eq "...and the one thing it writes is the first-seen state" "reference-check.tsv" "$(ls "$FRO/cache/reconcile")"
+t_eq "...and the one thing it writes is the first-seen state" "drift.reference-check.tsv" "$(ls "$FRO/cache/reconcile")"
 
 # One script wired under two matchers is two wirings of one item. REF-1 reports each wiring, so the same subject comes twice,
 # and a key is unique within a report: --status lists the item once. This box wires guard-egress.sh twice on purpose.
@@ -335,12 +335,12 @@ t_eq "...the second run: the same three, all standing, none new, none twice" "0 
   "$(awk -F'\t' '$1 == "new" { n++ } $1 == "standing" { s++; k[$2]++ } END { d = 0; for (x in k) if (k[x] > 1) d++; print n + 0, s + 0, d }' "$TMP/st-dup2.out")"
 
 t_section "--status that cannot judge is exit 3, an unchecked record, and leaves the ages alone"
-cp "$FMIX/cache/reconcile/reference-check.tsv" "$TMP/st-state.keep"
+cp "$FMIX/cache/reconcile/drift.reference-check.tsv" "$TMP/st-state.keep"
 PATH="$TMP/nojq" sh "$RC" "$FMIX" --status > "$TMP/st-nojq.out" 2>/dev/null; rc=$?
 t_eq "with jq masked: exit" 3 "$rc"
 t_eq "...the header and an unchecked record, no summary" "reconcile unchecked" "$(awk -F'\t' '$1 == "reconcile" { a = $1 } $1 == "unchecked" { b = $1 } $1 == "summary" { b = "SUMMARY" } END { print a " " b }' "$TMP/st-nojq.out")"
 t_eq "...and the plain run keeps its own code for it (B9: 1, which a caller cannot filter as a typo)" 1 "$(PATH="$TMP/nojq" sh "$RC" "$FMIX" >/dev/null 2>&1; echo $?)"
-t_eq "...and the first-seen state is untouched" yes "$(cmp -s "$FMIX/cache/reconcile/reference-check.tsv" "$TMP/st-state.keep" && echo yes || echo no)"
+t_eq "...and the first-seen state is untouched" yes "$(cmp -s "$FMIX/cache/reconcile/drift.reference-check.tsv" "$TMP/st-state.keep" && echo yes || echo no)"
 NOLIBS="$(sh "$NOLIB/drift-reference-check.sh" "$CLEAN" --status 2>/dev/null)"; rc=$?
 t_eq "a copy with no library-log.sh beside it: exit" 3 "$rc"
 t_has "...it says unchecked on stdout, in the contract's shape" "$NOLIBS" "unchecked${TB}library-log.sh is missing beside this copy"

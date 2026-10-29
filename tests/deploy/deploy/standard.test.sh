@@ -5,7 +5,7 @@
 # The throwaway repo and stubs are deploy-test's (deploy-fixture.sh); one section runs the REAL
 # installers into a sandbox to derive what the snapshot must cover.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY  # a run inside a session or a deploy must not decide a case
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY  # a run inside a session or a deploy must not decide a case
 T_TMP="$(cd "$T_TMP" && pwd -P)"  # deploy reports the config dir physically (install-lib's il_target)
 . "$(dirname "$0")/../../install/deploy-fixture.sh"
 need_pty
@@ -178,7 +178,7 @@ if "gcloud" in p.get("tool_input", {}).get("command", ""):
 PY
 SNAPSET="$(sed -n "s/^SNAP_SET='\(.*\)'$/\1/p" "$T_ROOT/bin/deploy.sh")"
 t_has "deploy.sh's SNAP_SET is read" "$SNAPSET" "settings.json"
-ri() { printf "=== %s\n" "$*" >>"$T_TMP/snapset/out"; env -u CLAUDE_CONFIG_DIR HARBOR_DEPLOY=1 PROJECT_INIT_SRC="$PI_FAKE" sh "$T_ROOT/bin/$@" >>"$T_TMP/snapset/out" 2>&1; echo $?; }
+ri() { printf "=== %s\n" "$*" >>"$T_TMP/snapset/out"; env -u CLAUDE_CONFIG_DIR HARBOR_DEPLOY_ACTIVE=1 PROJECT_INIT_SRC="$PI_FAKE" sh "$T_ROOT/bin/$@" >>"$T_TMP/snapset/out" 2>&1; echo $?; }
 for _i in "deploy-harden.sh --apply --dir $SB" "deploy-runtime-install.sh --apply --dir $SB" \
           "floor-install.sh --apply --dir $SB --with-b6 --with-stop-gate" "policy-constitution-install.sh --apply --dir $SB --from-branch" \
           "prod-guard-install.sh --apply --dir $SB" "skill-install.sh --all --apply --dir $SB" \

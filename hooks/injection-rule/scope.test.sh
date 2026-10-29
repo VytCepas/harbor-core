@@ -44,7 +44,7 @@ CARD
 acc() { # <command> <stderr> <session> → the engine's stdout
   jq -cn --arg c "$1" --arg e "$2" --arg s "$3" \
     '{hook_event_name:"PostToolUse",tool_name:"Bash",session_id:$s,tool_input:{command:$c},tool_response:{stdout:"",stderr:$e,interrupted:false}}' \
-    | HARBOR_REPO="$T_ROOT" ACCESS_DIR="${ACC_DIR:-$T/access}" CLAUDE_CONFIG_DIR="$ACCCFG" CLAUDE_PROJECT_DIR="$REPO" sh "$SUT" 2>/dev/null
+    | HARBOR_SCOPE_REPO="$T_ROOT" ACCESS_DIR="${ACC_DIR:-$T/access}" CLAUDE_CONFIG_DIR="$ACCCFG" CLAUDE_PROJECT_DIR="$REPO" sh "$SUT" 2>/dev/null
 }
 _acc="$(acc 'gcx me bq ls example-project:core_marts' 'ERROR: (bq) Reauthentication failed.' a1)"
 t_has "an expired login on a routed command names its card" "$_acc" 'Access failure on **example**'

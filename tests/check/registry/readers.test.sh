@@ -3,7 +3,7 @@
 # the composition at the ref, and drift.launchd-plist finds a private check's plist in the layer's jobs/.
 # Layers are throwaway directories; the ids are made up and name no real entity.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY
 T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"
 REG='| `acme-feed` | the Acme feed | hourly | desktop | the feed stopped |'
 PLAT='| acme-feed | macOS only | client watcher | `launchctl bootout a` |'
@@ -70,7 +70,7 @@ t_section "drift.launchd-plist: a private check's plist is found in the layer's 
 X9R="$T/x9"; mkdir -p "$X9R/bin" "$X9R/launchd" "$X9R/docs/reference"
 cp "$T_ROOT/bin/lint-conventions.sh" "$T_ROOT/bin/check-registry-generate.sh" "$T_ROOT/bin/library-log.sh" "$X9R/bin/"
 cp "$R/docs/reference/checks.md" "$X9R/docs/reference/checks.md"; : > "$X9R/launchd/com.harbor.core-one.plist"
-x9() { HARBOR_SCOPE_PRIVATE="$1" HARBOR_ROOT="$X9R" sh "$X9R/bin/lint-conventions.sh" --only X9 2>&1 | grep -E 'ADVISORY \[drift.launchd-plist\]|registered check\(s\)' || true; }
+x9() { HARBOR_SCOPE_PRIVATE="$1" HARBOR_SCOPE_ROOT="$X9R" sh "$X9R/bin/lint-conventions.sh" --only X9 2>&1 | grep -E 'ADVISORY \[drift.launchd-plist\]|registered check\(s\)' || true; }
 PV="$(layer c)"
 t_has "with the layer, the private row is counted" "$(x9 "$PV")" "2 registered check(s)"
 t_eq "...and its plist in jobs/ owes nothing" "0" "$(x9 "$PV" | grep -c 'NO COMMIT')"

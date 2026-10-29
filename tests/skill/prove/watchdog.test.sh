@@ -59,7 +59,7 @@ _reap "$PTS"
 
 # `env … &`, never a function: `f &` backgrounds a subshell, and $! would be the subshell, not the engine.
 : > "$PTS"
-env HARBOR_ROOT="$T_ROOT" PROVE_TARGETS="$WD" PROVE_WORK="$T/work" PROVE_RUN_TIMEOUT=60 \
+env HARBOR_SCOPE_ROOT="$T_ROOT" PROVE_TARGETS="$WD" PROVE_WORK="$T/work" PROVE_RUN_TIMEOUT=60 \
   sh "$ENGINE" --all > "$OUT" 2> "$ERR" &
 _pp=$!; _await "$PTS" 2
 kill -TERM "$_pp"; RC=0; wait "$_pp" || RC=$?

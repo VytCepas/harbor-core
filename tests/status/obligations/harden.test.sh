@@ -25,7 +25,7 @@ evj() { # <kind> <subject> <title> [link] — through jq, so any text is a legal
 }
 ob() { # <script> <mode…> — the real or the broken script on this bus and this state, stdout and stderr together
   _s="$1"; shift
-  env HOME="$FHOME" HARBOR_EVENT_DIR="$EV" HARBOR_OBLIGATION_DIR="$OB" HARBOR_CACHE_DIR="$CACHE" HARBOR_STATUS_OBLIGATION_NOW="$NOW" \
+  env HOME="$FHOME" HARBOR_EVENT_DIR="$EV" HARBOR_OBLIGATION_DIR="$OB" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_STATUS_OBLIGATION_NOW="$NOW" \
     HARBOR_STATUS_OBLIGATION_KINDS="$KINDS" HARBOR_STATUS_OBLIGATION_ON_OVERDUE=off ${FAULT:+HARBOR_STATUS_OBLIGATION_FAULT="$FAULT"} \
     ${RETAIN:+HARBOR_STATUS_OBLIGATION_RETAIN="$RETAIN"} ${LGRACE:+HARBOR_STATUS_OBLIGATION_LOCK_GRACE="$LGRACE"} sh "$_s" "$@" 2>&1
 }

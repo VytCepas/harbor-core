@@ -5,7 +5,7 @@
 # The wiring matrix and the floor predicate are copies (of floor-install.sh, status-generate.sh);
 # the drift and agreement cases fail when a copy drifts. The notifier is pulse-notify-test.sh.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset HARBOR_IN_SUITE  # t_init keeps status-gen's re-entry marker; this suite runs status-gen at top level (harbor#773)
+unset HARBOR_TEST_IN_SUITE HARBOR_IN_SUITE  # t_init keeps status-gen's re-entry marker; this suite runs status-gen at top level (harbor#773)
 P="$T_ROOT/bin/alert-probe.sh"; TMP="$T_TMP/pulse"; mkdir -p "$TMP"
 mkcfg() { # <name> <deny: sentinel|unrelated|empty> <hooks: full|no-mcp|no-advis|bash-only|shim|odd|none> <missing-guard|->
   _d="$TMP/$1"; mkdir -p "$_d/bin" "$_d/cache"
@@ -44,8 +44,8 @@ mkcfg() { # <name> <deny: sentinel|unrelated|empty> <hooks: full|no-mcp|no-advis
       | map({key: .[0].event, value: map({matcher:.matcher, hooks:[{type:"command", command:.command}]})}) | from_entries)}' > "$_d/settings.json"
   printf '%s' "$_d"
 }
-run() { CLAUDE_CONFIG_DIR="$1" HARBOR_CACHE_DIR="$1/cache" sh "$P" --json 2>/dev/null; }
-runv() { _c="$1"; shift; env CLAUDE_CONFIG_DIR="$_c" HARBOR_CACHE_DIR="$_c/cache" "$@" sh "$P" --json 2>/dev/null; }  # <cfg> VAR=… …
+run() { CLAUDE_CONFIG_DIR="$1" HARBOR_SCOPE_CACHE_DIR="$1/cache" sh "$P" --json 2>/dev/null; }
+runv() { _c="$1"; shift; env CLAUDE_CONFIG_DIR="$_c" HARBOR_SCOPE_CACHE_DIR="$_c/cache" "$@" sh "$P" --json 2>/dev/null; }  # <cfg> VAR=… …
 verdict() { printf '%s' "$1" | jq -r --arg k "$2" '.checks[$k].verdict // "ABSENT"'; }
 detail()  { printf '%s' "$1" | jq -r --arg k "$2" '.checks[$k].detail // ""'; }
 sg() { FAST=1 HARBOR_DEPLOY_LIVE_DIR="$1" sh "$T_ROOT/bin/status-generate.sh" --json-fast 2>/dev/null | jq -r ".observed.$2" 2>/dev/null || echo '?'; }
@@ -174,7 +174,7 @@ t_eq "a receipt minutes old is not stale" ok "$(cudv)"
 # A 60-second margin, never a sub-second one: age 0 flaked 3 of 5 runs (2026-09-02).
 cud "$(date -u -r $(( $(date +%s) - 120 )) '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date -u -d '120 seconds ago' '+%Y-%m-%dT%H:%M:%SZ')" green 0
 t_eq "a two-minute-old receipt under the 3-day default" ok "$(cudv)"
-t_eq "HARBOR_CUDOCTOR_MAX_AGE=60 moves the window" warn "$(verdict "$(runv "$WIRED" HARBOR_CUDOCTOR_MAX_AGE=60)" cudoctor)"
+t_eq "HARBOR_ALERT_PROBE_CLICKUP_DOCTOR_MAX_AGE=60 moves the window" warn "$(verdict "$(runv "$WIRED" HARBOR_ALERT_PROBE_CLICKUP_DOCTOR_MAX_AGE=60)" cudoctor)"
 cud "$NOWZ" someday 0
 t_eq "a status the writer does not emit is unknown" unknown "$(cudv)"
 printf 'not json at all' > "$WIRED/cache/cu-doctor-state.json"
@@ -217,7 +217,7 @@ t_eq "a pushed work-log is ok" ok "$(verdict "$(run "$WIRED")" worklog)"
 O="$(run "$WIRED")"
 t_eq "an unpushed record is warn" warn "$(verdict "$O" worklog)"
 t_has "the unpushed count" "$(detail "$O" worklog)" "1 session record"
-t_eq "a work-log that committed nothing inside the window is warn" warn "$(verdict "$(runv "$WIRED" HARBOR_WORKLOG_MAX_AGE=0)" worklog)"
+t_eq "a work-log that committed nothing inside the window is warn" warn "$(verdict "$(runv "$WIRED" HARBOR_ALERT_PROBE_WORKLOG_MAX_AGE=0)" worklog)"
 
 t_section "worklog: an unrelated commit does not refresh its age (REVIEW #106)"
 # The dates must differ, or the scoped and unscoped readings agree and nothing discriminates.
@@ -225,8 +225,8 @@ t_section "worklog: an unrelated commit does not refresh its age (REVIEW #106)"
   && GIT_AUTHOR_DATE='2026-01-01T00:00:00' GIT_COMMITTER_DATE='2026-01-01T00:00:00' git commit -qm 'an old session record' ) >/dev/null 2>&1
 ( cd "$WIRED/MEMORY" && echo i > IDEAS.md && git add IDEAS.md && git commit -qm 'a fresh idea' ) >/dev/null 2>&1
 ( cd "$WIRED/MEMORY" && git push -q origin HEAD:refs/heads/main ) >/dev/null 2>&1  # else the ahead-count answers first
-t_eq "a fresh IDEAS.md commit leaves the session-record age stale" warn "$(verdict "$(runv "$WIRED" HARBOR_WORKLOG_MAX_AGE=3600)" worklog)"
-t_eq "a window covering the old record is ok" ok "$(verdict "$(runv "$WIRED" HARBOR_WORKLOG_MAX_AGE=99999999)" worklog)"
+t_eq "a fresh IDEAS.md commit leaves the session-record age stale" warn "$(verdict "$(runv "$WIRED" HARBOR_ALERT_PROBE_WORKLOG_MAX_AGE=3600)" worklog)"
+t_eq "a window covering the old record is ok" ok "$(verdict "$(runv "$WIRED" HARBOR_ALERT_PROBE_WORKLOG_MAX_AGE=99999999)" worklog)"
 
 t_section "the envelope: unknown is not counted as an answer"
 O="$(run "$BARE")"

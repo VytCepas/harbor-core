@@ -48,7 +48,7 @@ ACCESS_DIR_DEFAULT=''
 register_dir() {
   case "$0" in */*) _rh="${0%/*}" ;; *) _rh=. ;; esac
   _rr="$_rh/../../../bin/scope-roots.sh"   # run from a checkout; an installed copy asks the checkout
-  [ -f "$_rr" ] && [ -f "$_rh/../../../contracts/roots.tsv" ] || _rr="${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}/bin/scope-roots.sh"
+  [ -f "$_rr" ] && [ -f "$_rh/../../../contracts/roots.tsv" ] || _rr="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}/bin/scope-roots.sh"
   if ACCESS_DIR_DEFAULT="$(sh "$_rr" --access)"; then return 0; fi
   printf 'check-routes: no access register, so NOTHING was checked and this is not a pass.\n' >&2
   printf '              Pass a card directory, or create the private layer (harbor scope install, contracts/private-layer.md).\n' >&2

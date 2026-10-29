@@ -41,7 +41,7 @@ il_target
 DIR="$IL_TARGET"
 # The commit column of this run's .harbor-manifest rows (install standard §3): the checkout it runs from.
 il_source "$SRC/.."
-REFRESH="${HARBOR_STATUSLINE_REFRESH:-10}"
+REFRESH="${HARBOR_STATUS_LINE_REFRESH:-${HARBOR_STATUSLINE_REFRESH:-10}}"
 if ! command -v jq >/dev/null 2>&1; then
   log_fail "jq is required, and is not on PATH"
   log_fix "$(pkg_hint jq)"
@@ -117,7 +117,7 @@ fi
 #
 # audit-triage-run.sh, audit-triage.sh AND floor-verify.sh JOIN AS A SET, and the
 # reason is the same unplantability argument one paragraph up. launchd/
-# com.harbor.judge.plist runs the judge daily as the operator; a job aimed at
+# com.harbor.audit.triage.plist runs the judge daily as the operator; a job aimed at
 # ~/port/harbor/bin would let ANY session schedule arbitrary code on this machine,
 # because a session can write there and cannot write under $CFG/bin. So the
 # scheduled path must be the installed one.
@@ -199,7 +199,7 @@ fi
 # ci-runners-{fleet,provision,github,watch}-lib.sh COME WITH IT (harbor#1060 split): it sources all four from its own dir,
 # so a copy without one dies on the first verb. ci-lost-job.sh COMES WITH IT TOO: ci-runners reads the billing phrase from it (harbor#1091), so a copy without it re-runs nothing.
 # ci-github-plan.sh (harbor#1060) likewise: it reads the account plan and main's protection and logs when either moves.
-# ci-governor.sh is run by launchd/com.harbor.ci-governor.plist from here, never from a checkout a session can edit;
+# ci-governor.sh is run by launchd/com.harbor.ci.governor.plist from here, never from a checkout a session can edit;
 # ci-governor-hook.sh is the host runners' job hook (ACTIONS_RUNNER_HOOK_JOB_STARTED and _COMPLETED point at it).
 # status-obligations.sh (harbor#1050) likewise: fleet-snapshot-refresh runs its `reconcile` every tick from here. It reads its
 # register from ../contracts/obligation-kinds.tsv in a checkout and from bin/obligation-kinds.tsv beside itself once installed, so DATA
@@ -216,7 +216,7 @@ fi
 # event-dispatch.sh (harbor#1044) is what launchd/com.harbor.event.dispatch.plist runs from here; shipped inert: no
 # installer loads that plist or writes a rule. event-bus.sh ships with it (floor-install copies it too): the loop
 # guard needs the bus that passes HARBOR_EVENT_CAUSE on, and a dispatcher beside an older bus refuses to follow.
-FILES="scope-roots.sh guard-lib.sh access-confinement.sh memory-log-token-save.sh lint-findings-run.sh eval-redteam-corpus-run.sh ticket-note.sh reply-shape.sh session-subagent-check.sh session-autocompact.sh session-cleanup.sh context-resolve.sh floor-deny.sh floor-install.sh deploy-install-stamp.sh gate-merged-check.sh status-fleet-glyph.sh status-subagent-glyph.sh context-peers.sh status-fleet-snapshot-refresh.sh housekeeping-clean.sh ci-queue.sh ci-main-tip-verdict.sh ci-github-plan.sh ci-runner-switch.sh ci-runners.sh ci-lost-job.sh ci-governor.sh ci-governor-hook.sh session-verdicts.sh admission-observe-report.sh deploy-restore.sh test-sandbox-make.sh worklog-push.sh memory-harvest.sh alert-probe.sh alert-notify.sh status-usage-aggregate.sh audit-triage-run.sh audit-triage.sh floor-verify.sh decider-set.sh drift-renew-check.sh memory-store-check.sh context-budget.sh drift-reference-check.sh doc-cited-paths.awk failure-observe.sh library-log.sh deploy-install-lib.sh library-fs.sh library-alert.sh status-obligations.sh ci-runners-fleet-lib.sh ci-runners-provision-lib.sh ci-runners-github-lib.sh ci-runners-watch-lib.sh gate-merge-stack.sh gate-merge-stack-resolve.py gate-merge-check.sh event-dispatch.sh event-bus.sh audit-stream-lib.sh audit-collector-check.sh session-state.sh session-react-lib.sh session-notify.sh session-save-now.sh session-ci-watch.sh ci-wait.sh session-cleanup-report.sh session-check.sh session-title.sh"
+FILES="scope-roots.sh guard-lib.sh access-confinement.sh memory-log-token-save.sh lint-findings-run.sh eval-redteam-corpus-run.sh standard-fleet-names-run.sh ticket-note.sh reply-shape.sh session-subagent-check.sh session-autocompact.sh session-cleanup.sh context-resolve.sh floor-deny.sh floor-install.sh deploy-install-stamp.sh gate-merged-check.sh status-fleet-glyph.sh status-subagent-glyph.sh context-peers.sh status-fleet-snapshot-refresh.sh housekeeping-clean.sh ci-queue.sh ci-main-tip-verdict.sh ci-github-plan.sh ci-runner-switch.sh ci-runners.sh ci-lost-job.sh ci-governor.sh ci-governor-hook.sh session-verdicts.sh admission-observe-report.sh deploy-restore.sh test-sandbox-make.sh worklog-push.sh memory-harvest.sh alert-probe.sh alert-notify.sh status-usage-aggregate.sh audit-triage-run.sh audit-triage.sh floor-verify.sh decider-set.sh drift-renew-check.sh memory-store-check.sh context-budget.sh drift-reference-check.sh doc-cited-paths.awk failure-observe.sh library-log.sh deploy-install-lib.sh library-fs.sh library-alert.sh status-obligations.sh ci-runners-fleet-lib.sh ci-runners-provision-lib.sh ci-runners-github-lib.sh ci-runners-watch-lib.sh gate-merge-stack.sh gate-merge-stack-resolve.py gate-merge-check.sh event-dispatch.sh event-bus.sh audit-stream-lib.sh audit-collector-check.sh session-state.sh session-react-lib.sh session-notify.sh session-save-now.sh session-ci-watch.sh ci-wait.sh session-cleanup-report.sh session-check.sh session-title.sh"
 # The restore-path suite and the harness it sources, as <checkout path>:<config-dir path> (harbor#727).
 # Same relative layout as the repo, so bin/recover-test.sh finds ../lib/core.sh with no checkout.
 SUITE="tests/deploy/restore/recover.test.sh:bin/recover-test.sh tests/lib/core.sh:lib/core.sh"
@@ -598,7 +598,7 @@ if [ -f "$DIR/.helm-floor-teeth" ] || [ -f "$DIR/.sec0-baseline.sha256" ]; then
   fi
 fi
 
-log_note "verify the work-log is alive, asserting the record and not the exit code: P=\$(mktemp -d); git -C \"\$P\" init -q; printf '{\"session_id\":\"probe-1\",\"cwd\":\"'\"\$HOME\"'\"}' > \"\$P/payload.json\"; /bin/sh $DIR/bin/context-resolve.sh < \"\$P/payload.json\"; HARBOR_LOG_DIR=\"\$P\" /bin/sh $DIR/bin/worklog-push.sh < \"\$P/payload.json\"; find \"\$P/WORK\" -type f   # expect ONE session record"
+log_note "verify the work-log is alive, asserting the record and not the exit code: P=\$(mktemp -d); git -C \"\$P\" init -q; printf '{\"session_id\":\"probe-1\",\"cwd\":\"'\"\$HOME\"'\"}' > \"\$P/payload.json\"; /bin/sh $DIR/bin/context-resolve.sh < \"\$P/payload.json\"; HARBOR_MEMORY_LOG_DIR=\"\$P\" /bin/sh $DIR/bin/worklog-push.sh < \"\$P/payload.json\"; find \"\$P/WORK\" -type f   # expect ONE session record"
 
 # NOT A FALSE ALARM (harbor#285): floor-install copies then re-pins its own payload, so a stale pin on
 # a file it carries is a note naming it; only a pin it does not carry keeps the banner. Read from
@@ -609,7 +609,7 @@ for f in $_pin_drift; do
   case "$_fi_pay" in *" $f "*) _pin_cov="${_pin_cov}${_pin_cov:+ }$f" ;; *) _pin_hard="${_pin_hard}${_pin_hard:+ }$f" ;; esac
 done
 if [ -n "$_pin_cov" ]; then
-  if [ "${HARBOR_DEPLOY:-0}" = 1 ]; then
+  if [ "${HARBOR_DEPLOY_ACTIVE:-${HARBOR_DEPLOY:-0}}" = 1 ]; then
     log_note "content pins behind for: $_pin_cov — floor-install re-pins them next in this deploy"
   else
     log_note "content pins behind for: $_pin_cov — floor-install re-pins them: sh $SRC/floor-install.sh $(il_spell) --apply, next in the documented order (B6 blocks a new session until it runs)"

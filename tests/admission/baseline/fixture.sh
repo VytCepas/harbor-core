@@ -5,7 +5,7 @@
 . "$T_ROOT/tests/admission/bash/fixture.sh"
 SRC="$T_ROOT/bin"; HROOT="$T_ROOT"; CFG="$CLAUDE_CONFIG_DIR"; TMP="$T_TMP"
 REPO_GOV="$T_TMP/governed"; REPO_BARE="$T_TMP/bare"; REPO_EMPTY="$T_TMP/empty-agents"
-HARBOR_IN_SUITE=1; export HARBOR_IN_SUITE  # status-gen must never run a floor part back (harbor#288)
+HARBOR_TEST_IN_SUITE=1; export HARBOR_TEST_IN_SUITE  # status-gen must never run a floor part back (harbor#288)
 cd "$T_ROOT" || exit 2
 _x9sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
 

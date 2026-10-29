@@ -4,7 +4,7 @@
 # bin/required-checks.tsv and install-drift holds it to the composition at the ref. Layers are throwaway directories; the repos
 # and checks are made up and name no real entity.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY
 T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"; TAB="$(printf '\t')"
 GEN="$T_ROOT/bin/gate-required-generate.sh"
 CORE="$T/core.tsv"; printf '# core: harbor only\nacme/core\tgate\n' > "$CORE"

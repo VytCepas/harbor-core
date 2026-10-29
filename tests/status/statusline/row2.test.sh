@@ -193,7 +193,7 @@ ciq '{"at":'"$NOW"',"repos":[{"repo":"o/r","runners":4,"left":0,"eta":null}]}'
 t_eq "idle runners render nothing: no row 3" 2 "$(rowsat)"
 ciq '{"at":'"$((NOW - 60))"',"repos":[{"repo":"o/r","runners":4,"left":3,"eta":'"$((NOW + 800))"'}]}'
 t_has "800s left rounds UP to 14m" "$(row3at)" "⏳3 ·~14m"
-O="$(printf '%s' "{$WS}" | CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$CFG/cache" HARBOR_NOW="$((NOW + 240))" \
+O="$(printf '%s' "{$WS}" | CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" HARBOR_TEST_NOW="$((NOW + 240))" \
   "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null | plain | sed -n 3p)"
 t_has "the same cache 240s later counts down" "$O" "⏳3 ·~10m"
 ciq '{"at":'"$NOW"',"repos":[{"repo":"o/a","runners":4,"left":2,"eta":'"$((NOW + 300))"'},{"repo":"o/b","runners":1,"left":1,"eta":'"$((NOW + 3900))"'}]}'
@@ -216,7 +216,7 @@ t_eq "an absent CI cache renders nothing: no row 3" 2 "$(rowsat)"
 t_section "row 3: CI STALL is an alarm, and only from a fresh cache (harbor#152)"
 ciq '{"at":'"$NOW"',"repos":[{"repo":"o/r","runners":4,"left":1,"eta":'"$((NOW + 600))"',"stall":true}]}'
 t_has "a stalled repo in a fresh cache raises CI STALL" "$(row3at)" "CI STALL"
-O="$(printf '%s' "{$WS}" | HARBOR_GLYPH_COLS=60 CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$CFG/cache" HARBOR_NOW="$NOW" \
+O="$(printf '%s' "{$WS}" | HARBOR_STATUS_GLYPH_COLS=60 CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" HARBOR_TEST_NOW="$NOW" \
   "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null | plain | sed -n 3p)"
 t_has "CI STALL survives the narrow tier, which drops the CI ambient" "$O" "CI STALL"
 ciq '{"at":'"$((NOW - 1000))"',"repos":[{"repo":"o/r","runners":4,"left":1,"eta":'"$((NOW + 600))"',"stall":true}]}'
@@ -342,7 +342,7 @@ ciq '{"at":'"$NOW"',"repos":[{"repo":"o/r","runners":4,"left":3,"eta":'"$((NOW +
 mtv '{"at":'"$((NOW - 1000))"',"tip":{"sha":"abc","verdict":"green","at":'"$((NOW - 60))"',"red":false}}'
 rsw '{"at":'"$NOW"',"runner":"self-hosted","fallback":true,"percent":100,"unread":false}'
 gvc '{"at":'"$NOW"',"listener_pid":'"$$"',"budget":2,"target":8,"held":true}'
-r3narrow() { printf '%s' "{$WS}" | HARBOR_GLYPH_COLS=60 CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$CFG/cache" HARBOR_NOW="$NOW" \
+r3narrow() { printf '%s' "{$WS}" | HARBOR_STATUS_GLYPH_COLS=60 CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" HARBOR_TEST_NOW="$NOW" \
   "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null | plain; }
 t_eq "ambient CI, golden BOX" "⏳3 ·~14m │ main? │ CI→local 100% │ CI⇣2/8" "$(row3at)"
 O="$(row2at)"
@@ -377,7 +377,7 @@ printf 'tree=%s\nsrc=launch\npid=%s\n' "$RT" "$$" > "$CFG/.helm-peers/peer-a"
 WS='"workspace":{"current_dir":"'"$TMP"'/arepo"}'
 t_has "a peer in this tree raises an alarm" "$(you '{"session_id":"mine",'"$WS"'}')" "SHARED TREE 2"
 t_has "SHARED TREE is red" "$(youraw '{"session_id":"mine",'"$WS"'}')" "${ESC}[31mSHARED TREE 2"
-O="$(printf '%s' '{"session_id":"mine",'"$WS"'}' | HARBOR_GLYPH_COLS=60 CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$CFG/cache" \
+O="$(printf '%s' '{"session_id":"mine",'"$WS"'}' | HARBOR_STATUS_GLYPH_COLS=60 CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" \
   "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null | plain | sed -n 3p)"
 t_has "SHARED TREE survives the narrow tier, which drops inventory" "$O" "SHARED TREE 2"
 printf 'tree=%s\nsrc=launch\npid=%s\n' "/somewhere/else" "$$" > "$CFG/.helm-peers/peer-a"
@@ -409,7 +409,7 @@ t_hasnt "a session never reports zero sessions" "$O" '⛵0'
 t_section "width tiers: COLUMNS is the only readable width, and 0 means unknown"
 printf '%s\n' '[{"status":{"dirty":true},"drift":{"status":"clean","total":0}}]' > "$FS"
 printf '%s\n' 'watch 5 5' > "$CFG/.helm-watch"
-tier() { printf '%s' "$2" | CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$CFG/cache" HARBOR_GLYPH_COLS="$1" "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null | plain; }
+tier() { printf '%s' "$2" | CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" HARBOR_STATUS_GLYPH_COLS="$1" "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null | plain; }
 PL='{"model":{"display_name":"Opus 5"},"context_window":{"used_percentage":30,"current_usage":{"input_tokens":10,"cache_read_input_tokens":90,"cache_creation_input_tokens":0}},"rate_limits":{"five_hour":{"used_percentage":5},"seven_day":{"used_percentage":9}},'"$WS"'}'
 t_has "an UNKNOWN width takes the full render" "$(tier 0 "$PL")" "cache 90%"
 O="$(tier 200 "$PL")"
@@ -436,8 +436,8 @@ rm -f "$CFG/.helm-watch"
 t_section "the payload dump hook (the only way to verify a field really arrives)"
 DUMP="$TMP/dump.jsonl"
 printf '%s' '{"model":{"display_name":"Opus 5"},'"$WS"'}' \
-  | CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$CFG/cache" HARBOR_GLYPH_DUMP="$DUMP" "$SH" "$SRC/status-fleet-glyph.sh" >/dev/null 2>&1
-t_eq "HARBOR_GLYPH_DUMP captures the raw payload" yes "$(yn [ -s "$DUMP" ])"
+  | CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" HARBOR_STATUS_GLYPH_DUMP="$DUMP" "$SH" "$SRC/status-fleet-glyph.sh" >/dev/null 2>&1
+t_eq "HARBOR_STATUS_GLYPH_DUMP captures the raw payload" yes "$(yn [ -s "$DUMP" ])"
 t_has "the dump is the payload VERBATIM" "$(cat "$DUMP" 2>/dev/null)" '"display_name":"Opus 5"'
 rm -f "$DUMP"; run '{"model":{"display_name":"Opus 5"},'"$WS"'}' >/dev/null
 t_eq "the dump hook is off by default" no "$(yn [ -f "$DUMP" ])"

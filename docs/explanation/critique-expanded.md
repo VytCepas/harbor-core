@@ -24,7 +24,7 @@ converged on a constitution-deploy mechanism whose equality oracle would have
 converted a *detectable* defect into an undetectable one. Four adversarial passes
 killed it. Had that critique arrived one turn later, the mechanism would already
 have been built, shipped, and trusted — and the argument against it would have
-had to overcome the fact that it existed. See `docs/decisions/rejected-approaches.md` DE-30.
+had to overcome the fact that it existed. See `docs/reports/rejected-approaches.md` DE-30.
 
 ## Why the alternative is mandatory, not optional
 

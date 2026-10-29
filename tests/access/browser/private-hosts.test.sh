@@ -7,7 +7,7 @@ STUB="$T_TMP/pw-stub"; printf '#!/bin/sh\necho "STUB $*"\n' > "$STUB"; chmod +x 
 PH="$T_TMP/private-hosts.txt"
 rc() { "$@" >"$T_TMP/out" 2>&1 && echo "exit 0" || echo "exit $?"; }
 out() { cat "$T_TMP/out"; }
-ag() { rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_BROWSER_PRIVATE_HOSTS="$PH" HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" "$@"; }
+ag() { rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_BROWSER_PRIVATE_HOSTS="$PH" HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" "$@"; }
 
 t_section "with no private list only the core allowlist counts"
 t_eq "a core vendor UI opens" "exit 0" "$(ag goto https://ads.reddit.com/)"
@@ -32,10 +32,10 @@ t_eq "the formerly listed host is refused again" "exit 1" "$(ag goto https://wik
 t_section "the private layer is found through the resolver when no seam is given"
 PV="$T_TMP/priv"; mkdir -p "$PV"
 printf '# An internal wiki\nwiki.example.invalid\n' > "$PV/browser-hosts.txt"
-rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN -u HARBOR_BROWSER_PRIVATE_HOSTS HARBOR_SCOPE_PRIVATE="$PV" HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" goto https://wiki.example.invalid/ >/dev/null
-t_eq "HARBOR_SCOPE_PRIVATE/browser-hosts.txt admits its host" "exit 0" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN -u HARBOR_BROWSER_PRIVATE_HOSTS HARBOR_SCOPE_PRIVATE="$PV" HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" goto https://wiki.example.invalid/)"
+rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN -u HARBOR_BROWSER_PRIVATE_HOSTS HARBOR_SCOPE_PRIVATE="$PV" HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" goto https://wiki.example.invalid/ >/dev/null
+t_eq "HARBOR_SCOPE_PRIVATE/browser-hosts.txt admits its host" "exit 0" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN -u HARBOR_BROWSER_PRIVATE_HOSTS HARBOR_SCOPE_PRIVATE="$PV" HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" goto https://wiki.example.invalid/)"
 rm -f "$PV/browser-hosts.txt"
-t_eq "and without the file it is refused" "exit 1" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN -u HARBOR_BROWSER_PRIVATE_HOSTS HARBOR_SCOPE_PRIVATE="$PV" HARBOR_PW_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" goto https://wiki.example.invalid/)"
+t_eq "and without the file it is refused" "exit 1" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN -u HARBOR_BROWSER_PRIVATE_HOSTS HARBOR_SCOPE_PRIVATE="$PV" HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" goto https://wiki.example.invalid/)"
 
 t_section "the Claude-in-Chrome route hook reads the same list"
 HK="$T_ROOT/context-rules/user/browser-route.sh"

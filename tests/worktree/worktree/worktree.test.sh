@@ -34,8 +34,8 @@ printf '{"pid":%s,"sessionId":"sid-held","cwd":"%s","procStart":"%s","startedAt"
   "$LIVE_PID" "$P/held" "$REC_UTC" "${NOW}000" > "$P/sessions/held.json"
 wtb() { # <base ref> <args…>
   _wb="$1"; shift
-  PATH="$P/stub:$PATH" PORT_ROOT="$P/port" HARBOR_ROOT="$REPO" HARBOR_BASE="$_wb" CLAUDE_CONFIG_DIR="$P/cfg" \
-    HARBOR_SESSIONS_DIR="$P/sessions" HARBOR_PEERS_DIR="$P/peers" sh "$WT" "$@" 2>&1
+  PATH="$P/stub:$PATH" PORT_ROOT="$P/port" HARBOR_SCOPE_ROOT="$REPO" HARBOR_CI_BASE="$_wb" CLAUDE_CONFIG_DIR="$P/cfg" \
+    HARBOR_SESSION_REGISTRY_DIR="$P/sessions" HARBOR_CONTEXT_PEERS_DIR="$P/peers" sh "$WT" "$@" 2>&1
 }
 wt() { wtb origin/main "$@"; }
 vof() { wt list | awk -v p="$P/$1" '$2 == p { print $1; exit }'; }        # <name> → verdict
@@ -168,7 +168,7 @@ HK="$(printf '%s' "$P" | sed 's|/|-|g')"
 mkdir -p "$P/cfg/projects/$HK/memory" "$P/mrrepo" "$P/priv/inject.d/box"   # the registry is the private layer's (harbor#1149)
 printf 'note\n' > "$P/cfg/projects/$HK/memory/a.md"
 printf 'repo\t~/repo\tw\n' > "$P/priv/inject.d/box/projects.tsv"
-HOME="$P" PORT_ROOT="$P/port" HARBOR_SCOPE_PRIVATE="$P/priv" HARBOR_REPO="$P/mrrepo" wt new feat/mem >/dev/null
+HOME="$P" PORT_ROOT="$P/port" HARBOR_SCOPE_PRIVATE="$P/priv" HARBOR_SCOPE_REPO="$P/mrrepo" wt new feat/mem >/dev/null
 WK="$(printf '%s' "$P/port/.worktrees/repo/feat-mem" | sed 's|/|-|g')"
 t_eq "the new worktree's memory route is a symlink" yes "$(yn [ -L "$P/cfg/projects/$WK/memory" ])"
 t_eq "it resolves to a non-empty store (what a session there loads)" 1 "$(find "$P/cfg/projects/$WK/memory/" -maxdepth 1 -name '*.md' | grep -c .)"

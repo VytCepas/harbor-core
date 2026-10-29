@@ -17,7 +17,7 @@ The answer was not what the question expected:
 | Security floor | `floor-verify --live` — present, wired, blocking |
 | Dependencies | `doctor` — every probed dependency present |
 | Conventions | `lint-conventions` — clean; it prints the rule count, so this table does not carry a copy of it |
-| Reference integrity | `reference-check` — every hook, pin and citation resolves |
+| Reference integrity | `drift.reference-check` — every hook, pin and citation resolves |
 | Routing content | every tracked skill carries `USE WHEN` triggers — lint **T11**, so this table does not carry a count of them either (it read *50 skills*, undated, harbor#490) |
 
 Nothing was wrong with the rules. What failed was **delivery**: four places where
@@ -67,7 +67,7 @@ done slightly worse*, forever, with nothing to notice.
 | **An inject pack** | a moment, a citation to where the rule already lives, and a falsifier — plus a fire row **and** a silent row in `fixtures/injection-rule/notes.tsv` |
 | **A count** | it is derived at runtime, never typed. See [doc-truth.md](./doc-truth.md) |
 
-## Why `memory-route` is one store with many doors
+## Why `memory.route` is one store with many doors
 
 A store per repo would re-create the same invisibility one level down and
 multiply the index nobody reads. Instead every governed repo's key gets its
@@ -84,7 +84,7 @@ than a tidy one.
 ## What a routing fix must prove
 
 Config, compiled and behavioural are the tiers a workload skill names, and they
-apply here unchanged. `memory-route` was closed at all three, and the third is
+apply here unchanged. `memory.route` was closed at all three, and the third is
 the only one that settles it:
 
 ```
@@ -102,6 +102,6 @@ returned `NONE - no memory index loaded`; routed quoted the `ugrep` note.
 ## The failure mode this document is itself exposed to
 
 This file is content. It is delivered by being cited from `policy/constitution.md` and
-by `reference-check` REF-5 asserting that citation resolves. If that citation is
+by `drift.reference-check` REF-5 asserting that citation resolves. If that citation is
 ever dropped, this becomes another correct document nobody reads — which is the
 entire subject of the document.

@@ -82,8 +82,8 @@ _x8c="$TMP/b6nag"; mkcfg "$_x8c" "$PERM" $B6FILES
 t_has "X8b a plain --apply still prints the B6 NEXT" "$(fi_run floor-install.sh "$_x8c" --apply 2>&1)" 'B6 installs LAST'
 # harbor#285: deploy prints its own B6 advice, so under it the installer's --with-b6 step is not repeated.
 _x8d="$TMP/b6deploy"; mkcfg "$_x8d" "$PERM" $B6FILES
-_x8do="$(env -u CLAUDE_CONFIG_DIR HARBOR_DEPLOY=1 sh "$SRC/floor-install.sh" --apply --dir "$_x8d" 2>&1)"
-t_hasnt "X8b under deploy (HARBOR_DEPLOY=1) no --with-b6 next step is printed" "$_x8do" '--with-b6'
+_x8do="$(env -u CLAUDE_CONFIG_DIR HARBOR_DEPLOY_ACTIVE=1 sh "$SRC/floor-install.sh" --apply --dir "$_x8d" 2>&1)"
+t_hasnt "X8b under deploy (HARBOR_DEPLOY_ACTIVE=1) no --with-b6 next step is printed" "$_x8do" '--with-b6'
 t_has "X8b ...while outside deploy it is, as a command its own gate takes" "$(fi_run floor-install.sh "$_x8c" --apply 2>&1)" \
   "  note: next: sh $SRC/floor-install.sh --apply --dir '$(phys "$_x8c")' --with-b6"
 t_eq "X8b an apply keeps its pre-run settings.json beside its log, in backups/floor-install/<TS>/" "$(printf '%s\n' "$PERM" | jq -c .)" \

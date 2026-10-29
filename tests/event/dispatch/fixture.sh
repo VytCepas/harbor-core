@@ -6,7 +6,7 @@
 unset CLAUDECODE
 set -- $(date -u "+%s %Y-%m-%d"); D="$2"; NOON=$(( $1 / 86400 * 86400 + 43200 - $1 ))
 BUSDIR="$T_TMP/bus"; CACHE="$T_TMP/cache"   # suites read these, never the knobs
-export HARBOR_EVENT_BUS_SKEW="$NOON" HARBOR_EVENT_DIR="$BUSDIR" HARBOR_CACHE_DIR="$CACHE"
+export HARBOR_EVENT_BUS_SKEW="$NOON" HARBOR_EVENT_DIR="$BUSDIR" HARBOR_SCOPE_CACHE_DIR="$CACHE"
 CFG="$CLAUDE_CONFIG_DIR"; GT="$CFG/.helm-dispatch"
 ST="$BUSDIR/dispatch"; OUT="$T_TMP/out"; LEDGER="$GT/ledger"
 record() { # <name>: {cfg}/bin/<name>'s blob, as the runtime-install row of {cfg}/.harbor-manifest

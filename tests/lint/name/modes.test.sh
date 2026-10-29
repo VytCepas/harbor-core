@@ -54,32 +54,32 @@ t_has "…saying it found nothing, not judging the file list as paths (an empty 
 t_hasnt "…and --changed on an unchanged tree the same" "$(sh "$AB/bin/lint-name.sh" --root "$AB" --base main --changed 2>&1)" "100644"
 
 t_section "standard.names-added: bin/lint-conventions.sh relays --added on its own record"
-na() { HARBOR_ROOT="$AD" HARBOR_BASE=main sh "$LINT" --only standard.names-added 2>&1; }
+na() { HARBOR_SCOPE_ROOT="$AD" HARBOR_CI_BASE=main sh "$LINT" --only standard.names-added 2>&1; }
 _nao="$(na)"
 t_has "an added bad name is an advisory of the rule" "$_nao" "ADVISORY [standard.names-added] [name.case] New_Bad.md"
 t_has "…and a renamed-to-bad one" "$_nao" "ADVISORY [standard.names-added] [name.case] docs/Renamed_Bad.md"
 t_hasnt "…and not a legacy name the branch only modified" "$_nao" "Legacy_Old.md"
 t_eq "…and an advisory is not a violation" "" "$(printf '%s\n' "$_nao" | grep 'VIOLATION')"
 _nf="$TMP/na.findings"; : > "$_nf"
-HARBOR_ROOT="$AD" HARBOR_BASE=main HARBOR_FINDINGS_OUT="$_nf" sh "$LINT" --only standard.names-added > /dev/null 2>&1
+HARBOR_SCOPE_ROOT="$AD" HARBOR_CI_BASE=main HARBOR_LINT_FINDINGS_OUT="$_nf" sh "$LINT" --only standard.names-added > /dev/null 2>&1
 t_has "…its finding record carries the added path as subject" "$(cat "$_nf")" "$(printf 'A\tstandard.names-added\tNew_Bad.md')"
 _nr="$TMP/na.red"; : > "$_nr"
-HARBOR_ROOT="$AD" HARBOR_BASE=main LINT_REDLOG="$_nr" sh "$LINT" --only standard.names-added > /dev/null 2>&1
+HARBOR_SCOPE_ROOT="$AD" HARBOR_CI_BASE=main LINT_REDLOG="$_nr" sh "$LINT" --only standard.names-added > /dev/null 2>&1
 t_has "LINT_REDLOG records the rule's own id" "$(sort -u "$_nr")" "standard.names-added"
 t_has "…beside the name.* rule the path went red on" "$(sort -u "$_nr")" "name.case"
 git -C "$AD" checkout -q main
 _ncl="$(na)"
 t_hasnt "on a branch that adds nothing the rule is silent" "$_ncl" "ADVISORY"
 t_has "…and says it judged" "$_ncl" "lint-name:"
-: > "$_nr"; HARBOR_ROOT="$AD" HARBOR_BASE=main LINT_REDLOG="$_nr" sh "$LINT" --only standard.names-added > /dev/null 2>&1
+: > "$_nr"; HARBOR_SCOPE_ROOT="$AD" HARBOR_CI_BASE=main LINT_REDLOG="$_nr" sh "$LINT" --only standard.names-added > /dev/null 2>&1
 t_eq "…and writes nothing to LINT_REDLOG" "" "$(cat "$_nr")"
 git -C "$AD" checkout -q feature
-_nu="$(HARBOR_ROOT="$AD" HARBOR_BASE=no-such-ref sh "$LINT" --only standard.names-added 2>&1)"
+_nu="$(HARBOR_SCOPE_ROOT="$AD" HARBOR_CI_BASE=no-such-ref sh "$LINT" --only standard.names-added 2>&1)"
 t_has "with no base the rule says it could not look, as an advisory" "$_nu" "ADVISORY [standard.names-added] unchecked: no base to compare against"
 t_eq "…which is not a violation" "" "$(printf '%s\n' "$_nu" | grep 'VIOLATION')"
-: > "$_nr"; HARBOR_ROOT="$AD" HARBOR_BASE=no-such-ref LINT_REDLOG="$_nr" sh "$LINT" --only standard.names-added > /dev/null 2>&1
+: > "$_nr"; HARBOR_SCOPE_ROOT="$AD" HARBOR_CI_BASE=no-such-ref LINT_REDLOG="$_nr" sh "$LINT" --only standard.names-added > /dev/null 2>&1
 t_eq "…and 'could not look' is not the rule going red: LINT_REDLOG stays empty" "" "$(cat "$_nr")"
-t_has "a tree that is not git is skipped, and says so" "$(HARBOR_ROOT="$NG" sh "$LINT" --only standard.names-added 2>&1)" "skip: not a git tree"
+t_has "a tree that is not git is skipped, and says so" "$(HARBOR_SCOPE_ROOT="$NG" sh "$LINT" --only standard.names-added 2>&1)" "skip: not a git tree"
 mv "$AD/bin/lint-name.sh" "$TMP/ln.keep"
 t_has "no lint at all is skipped by name, never read as a clean branch" "$(na)" "skip: no bin/lint-name.sh in this tree"
 cp "$TMP/ln.keep" "$AD/bin/lint-name.sh"
@@ -91,7 +91,7 @@ _nb="$(na)"
 t_has "a registry the lint cannot read, with a base that exists, is a VIOLATION of the rule" "$_nb" \
   "VIOLATION [standard.names-added] bin/lint-name.sh exited 3 and judged nothing: registers.tsv has no row naming aliases.tsv"
 t_hasnt "…and is not told as a missing base" "$_nb" "no base to compare against"
-: > "$_nr"; HARBOR_ROOT="$AD" HARBOR_BASE=main LINT_REDLOG="$_nr" sh "$LINT" --only standard.names-added > /dev/null 2>&1
+: > "$_nr"; HARBOR_SCOPE_ROOT="$AD" HARBOR_CI_BASE=main LINT_REDLOG="$_nr" sh "$LINT" --only standard.names-added > /dev/null 2>&1
 t_has "…and the rule's record goes red, because it could not judge" "$(cat "$_nr")" "standard.names-added"
 cp "$REG/registers.tsv" "$AD/standards/naming/registers.tsv"
 t_hasnt "restored, the same tree is no violation" "$(na)" "VIOLATION"

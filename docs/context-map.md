@@ -33,15 +33,15 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | skill | skills/ | component | source | living | 47 |
 | fixture | fixtures/ | element | source | living | 261 |
 | registry | registries/ | component | source | versioned | 52 |
-| test | tests/ | component | source | living | 445 |
+| test | tests/ | component | source | living | 446 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| script | bin/ | component | source | living | 273 |
+| script | bin/ | component | source | living | 275 |
 | how-to | docs/how-to/ | component | source | living | 1 |
 | reference | docs/reference/ | component | generated | generated | 5 |
 | explanation | docs/explanation/ | component | source | living | 14 |
-| (no kind) | - | - | - | - | 235 |
+| (no kind) | - | - | - | - | 236 |
 
 ## Folders
 
@@ -51,14 +51,14 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
 | `DOCTRINE/` | 4 | 1 | 1 |
-| `bin/` | 277 | 28 | 2 |
+| `bin/` | 279 | 28 | 2 |
 | `commands/` | 8 | 4 | 1 |
 | `context-rules/` | 43 | 6 | 1 |
 | `contracts/` | 84 | 9 | 2 |
 | `docs/` | 137 | 11 | 8 |
 | `fixtures/` | 261 | 10 | 1 |
 | `hooks/` | 43 | 6 | 1 |
-| `launchd/` | 12 | 3 | 1 |
+| `launchd/` | 13 | 8 | 1 |
 | `patches/` | 12 | 3 | 1 |
 | `policy/` | 1 | 1 | 1 |
 | `registries/` | 1 | 1 | 1 |
@@ -66,7 +66,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `skills/` | 47 | 8 | 1 |
 | `standards/` | 26 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 445 | 27 | 1 |
+| `tests/` | 446 | 27 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 92 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -78,20 +78,20 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | access | control-plane | 12 | 20 | 2 | 6 | 0 | 0 |
 | admission | control-plane | 19 | 82 | 0 | 4 | 0 | 167 |
 | agent | control-plane | 0 | 1 | 0 | 5 | 0 | 0 |
-| alert | observability | 5 | 3 | 0 | 1 | 0 | 0 |
-| audit | control-plane | 13 | 14 | 0 | 1 | 0 | 2 |
+| alert | observability | 5 | 3 | 0 | 2 | 0 | 0 |
+| audit | control-plane | 13 | 14 | 0 | 5 | 0 | 2 |
 | check | observability | 1 | 4 | 0 | 1 | 51 | 0 |
 | ci | coordination | 20 | 50 | 2 | 5 | 1 | 5 |
 | context | control-plane | 8 | 10 | 1 | 4 | 0 | 34 |
 | deploy | control-plane | 22 | 25 | 1 | 1 | 0 | 7 |
 | doc | control-plane | 21 | 12 | 0 | 33 | 0 | 17 |
 | drift | control-plane | 7 | 6 | 0 | 4 | 2 | 13 |
-| eval | control-plane | 11 | 7 | 0 | 0 | 0 | 0 |
+| eval | control-plane | 11 | 7 | 0 | 1 | 0 | 0 |
 | event | observability | 3 | 18 | 0 | 3 | 0 | 2 |
 | gate | control-plane | 15 | 10 | 0 | 2 | 0 | 0 |
 | housekeeping | control-plane | 2 | 1 | 0 | 2 | 0 | 0 |
 | library | policy-function | 6 | 0 | 0 | 0 | 0 | 0 |
-| lint | control-plane | 27 | 54 | 0 | 8 | 3 | 34 |
+| lint | control-plane | 27 | 54 | 0 | 9 | 3 | 34 |
 | memory | memory-store | 8 | 10 | 1 | 23 | 0 | 1 |
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
 | policy | policy-function | 3 | 2 | 6 | 0 | 0 | 3 |
@@ -99,8 +99,8 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | scope | coordination | 9 | 15 | 0 | 0 | 0 | 4 |
 | session | data-plane | 14 | 4 | 0 | 3 | 0 | 0 |
 | skill | catalog | 7 | 18 | 0 | 10 | 0 | 13 |
-| standard | policy-function | 6 | 13 | 119 | 0 | 1 | 48 |
-| status | observability | 15 | 20 | 0 | 1 | 0 | 0 |
+| standard | policy-function | 8 | 14 | 119 | 1 | 2 | 48 |
+| status | observability | 15 | 20 | 0 | 4 | 0 | 0 |
 | test | control-plane | 7 | 5 | 2 | 7 | 0 | 14 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
 
@@ -170,6 +170,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/pulse-notify.sh`
 - `bin/pulse.sh`
 - `docs/src/alert.html`
+- `launchd/com.harbor.alert.probe.plist`
 
 ### audit
 
@@ -186,6 +187,10 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/failure-capture.sh`
 - `bin/judge-run.sh`
 - `bin/stream-lib.sh`
+- `launchd/com.harbor.audit.collector-checkpoint.plist`
+- `launchd/com.harbor.audit.collector.plist`
+- `launchd/com.harbor.audit.otlp-receiver.plist`
+- `launchd/com.harbor.audit.triage.plist`
 - `skills/audit-review-fanout/SKILL.md`
 
 ### check
@@ -221,7 +226,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `context-rules/user/ci-wait-on-the-bus.sh`
 - `docs/design/ci-local-heal.md`
 - `docs/design/ci-tests-on-this-host.md`
-- `launchd/com.harbor.ci-governor.plist`
+- `launchd/com.harbor.ci.governor.plist`
 
 ### context
 
@@ -316,6 +321,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/pass-score.sh`
 - `bin/redteam-corpus-run.sh`
 - `bin/redteam-corpus.sh`
+- `launchd/com.harbor.eval.redteam-corpus.plist`
 
 ### event
 
@@ -397,6 +403,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `contracts/lint-leaks-baseline.txt`
 - `contracts/lint-secrets-baseline.txt`
 - `contracts/lint-siblings-baseline.txt`
+- `launchd/com.harbor.lint.findings.plist`
 
 ### memory
 
@@ -488,6 +495,8 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 ### standard
 
 - `bin/standard-catalog.sh`
+- `bin/standard-fleet-names-run.sh`
+- `bin/standard-fleet-names.sh`
 - `bin/standard-frozen-generate.sh`
 - `bin/standard-issue-label.sh`
 - `bin/standard-rename.sh`
@@ -586,6 +595,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `docs/decisions/0091-object-slot-open.md`
 - `docs/decisions/0092-promote-name-rules-on-evidence.md`
 - `docs/decisions/README.md`
+- `launchd/com.harbor.standard.fleet-names.plist`
 - `standards/modularity.md`
 - `standards/naming.md`
 - `standards/naming/aliases.tsv`
@@ -630,6 +640,9 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/status-usage-aggregate.sh`
 - `bin/subagent-glyph.sh`
 - `bin/usage-aggregate.sh`
+- `launchd/com.harbor.status.fleet-snapshot.plist`
+- `launchd/com.harbor.status.usage-sessions.plist`
+- `launchd/com.harbor.status.usage.plist`
 
 ### test
 
@@ -664,7 +677,6 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `docs/` | 34 |
 | `fixtures/` | 222 |
 | `hooks/` | 32 |
-| `launchd/` | 10 |
 | `patches/` | 10 |
 | `runners/` | 2 |
 | `skills/` | 7 |
