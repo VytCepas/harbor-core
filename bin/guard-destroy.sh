@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0
+[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
 # guard-destroy (harbor#201) — PreToolUse(Bash) ASK/DENY gate for LOCAL work
 # destruction, the deletion class an UNATTENDED agent is most likely to cause.
 #
@@ -19,7 +19,7 @@
 #     costs nothing and ASK would auto-approve under an unattended/bypass session
 #     — the exact failure this guard exists for.
 #   • WORK-LOSS (git clean -f*, git reset --hard) → ASK by default (a human
-#     confirms; git reset is often recoverable via reflog). HELM_DESTROY_POSTURE
+#     confirms; git reset is often recoverable via reflog). HARBOR_ADMISSION_DESTROY_POSTURE
 #     =deny escalates these to DENY too, which is the right setting for a session
 #     that runs unattended, where there is no human to answer an ASK.
 #
@@ -121,7 +121,7 @@ esac
 # verbs) live in guard-bash and deny; node replacement is a weaker, recoverable
 # act the operator chose to ASK on, so it sits here beside the git work-loss
 # asks (and escalates to deny with no human, like them). Root-only and absent on
-# macOS, blocked anyway (FLOOR.md B-sd-3). Each operand is expanded and its
+# macOS, blocked anyway (docs/explanation/admission-baseline.md B-sd-3). Each operand is expanded and its
 # ./ // ../ collapsed first, so `/dev/shm/../sda` reads as the `/dev/sda` it
 # resolves to and a `-t /dev` target directory is seen; a mv/install that names
 # no device node is untouched.
@@ -213,7 +213,7 @@ fi
 # snapshot; a branch switch takes none. Refs older than 7 days go when the next
 # one is written. Nothing here refuses a discard: a failure is one stderr line
 # stamped [check:destroy-snapshot]. The one refusal is a push that would publish
-# refs/snapshots. Contract, recovery and limits: FLOOR.md, harbor#1290.
+# refs/snapshots. Contract, recovery and limits: docs/explanation/admission-baseline.md, harbor#1290.
 _snap_plan() { # stdout rows: SNAP|MAYBE|PUSH <tab> <dir> <tab> <verb|arg|explicit>, or BLIND <tab> <verb> <tab> <why>
   # NO APOSTROPHES IN THIS PROGRAM: it is a single-quoted shell string.
   { printf 'CWD:%s\n' "$(floor_field '.cwd')"; printf '%s\n' "$FLOOR_SEGS"; } | awk -v home="$HOME" '
@@ -377,7 +377,7 @@ $_st_top
   if [ -f "$_st_idx" ]; then cp -p "$_st_idx" "$_st_tmp.index" 2>/dev/null || { rm -f "$_st_tmp.index"; _snap_say "could not snapshot $_st_top before git $2: its git dir is not writable — the command runs unprotected"; return 0; }; fi
   # NO SIZE CAP, AND THAT IS A MEASURED CHOICE: a cap needs an untracked listing and a stat pass,
   # +45 ms at load 16 on harbor, more than the whole budget. A large untracked file that is not
-  # ignored is rehashed on each discard; FLOOR.md (harbor#1290) names the remedy, .gitignore it.
+  # ignored is rehashed on each discard; docs/explanation/admission-baseline.md (harbor#1290) names the remedy, .gitignore it.
   _st_tree=""
   GIT_INDEX_FILE="$_st_tmp.index" git -C "$_st_top" add -A >/dev/null 2>&1 \
     && _st_tree="$(GIT_INDEX_FILE="$_st_tmp.index" git -C "$_st_top" write-tree 2>/dev/null)"
@@ -464,7 +464,7 @@ fi
 # interactive main-loop ask is untouched (see guard-lib floor_no_human).
 _NHNOTE=""
 if [ "$DECISION" = "ask" ]; then
-  if [ "${HELM_DESTROY_POSTURE:-ask}" = "deny" ]; then DECISION="deny"
+  if [ "${HARBOR_ADMISSION_DESTROY_POSTURE:-${HELM_DESTROY_POSTURE:-ask}}" = "deny" ]; then DECISION="deny"
   elif floor_no_human; then DECISION="deny"; _NHNOTE=" [no-human context — an ask would auto-approve here, so escalated to deny]"
   fi
 fi

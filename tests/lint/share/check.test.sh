@@ -6,12 +6,12 @@
 NOPRIV="$T_TMP/no-private"
 LS() { HARBOR_ROOT="$1" HARBOR_SCOPE_PRIVATE="${PV:-$NOPRIV}" sh "$T_ROOT/bin/lint-share.sh" "$2" ${3:+"$3" "$4"} 2>&1; }
 mk() { # <name> → a checkout: notes/ is personal-only, bin/ core or workload, docs/ core; plus a dev file and an unknown path
-  _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/CONTRACTS" "$_d/standards/naming" "$_d/notes" "$_d/docs" "$_d/misc" "$_d/devonly"
-  printf 'path\tlayer\tnote\nbin/\tcore\t\nCONTRACTS/\tcore\t\nstandards/\tcore\t\nnotes/\tcore\t\ndocs/\tcore\t\nmisc/\tcore\t\ndevonly/\tdev\t\n' > "$_d/CONTRACTS/layers.tsv"
+  _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/contracts" "$_d/standards/naming" "$_d/notes" "$_d/docs" "$_d/misc" "$_d/devonly"
+  printf 'path\tlayer\tnote\nbin/\tcore\t\ncontracts/\tcore\t\nstandards/\tcore\t\nnotes/\tcore\t\ndocs/\tcore\t\nmisc/\tcore\t\ndevonly/\tdev\t\n' > "$_d/contracts/layers.tsv"
   printf '# kinds\nid\tfolder\tpath_pattern\tshare\nnote\tnotes/\tnotes/<x>.md\tpersonal\nscript\tbin/\tbin/<x>.sh\tcore,workload\ndoc\tdocs/\tdocs/<x>.md\tcore\ndev\tdevonly/\tdevonly/<x>\tpersonal\nnone\t-\ta secret store\tpersonal\n' > "$_d/standards/naming/kinds.tsv"
   printf 'x\n' > "$_d/bin/a.sh"; printf 'x\n' > "$_d/docs/d.md"; printf 'x\n' > "$_d/misc/m.md"; printf 'x\n' > "$_d/devonly/v"
-  cp "$T_ROOT/CONTRACTS/roots.tsv" "$_d/CONTRACTS/"
-  cp "$T_ROOT/bin/lint-share.sh" "$T_ROOT/bin/layers.sh" "$T_ROOT/bin/roots.sh" "$T_ROOT/bin/log-lib.sh" "$_d/bin/"
+  cp "$T_ROOT/contracts/roots.tsv" "$_d/contracts/"
+  cp "$T_ROOT/bin/lint-share.sh" "$T_ROOT/bin/scope-layers.sh" "$T_ROOT/bin/scope-roots.sh" "$T_ROOT/bin/library-log.sh" "$_d/bin/"
   ( cd "$_d" && git init -q . && git add -A && git -c user.email=t@t -c user.name=t commit -qm x ) >/dev/null 2>&1
   printf '%s' "$_d"
 }
@@ -45,8 +45,8 @@ t_eq "so a hub note and a private docs file are the two outside their sets" "2" 
 PV=""
 
 t_section "kind lookup"
-D="$(mk case)"; printf 'x\n' > "$D/CONTRACTS/u.md"; printf 'contract\tcontracts/\tc\tpersonal\n' >> "$D/standards/naming/kinds.tsv"
-t_has "a folder is matched case-folded (CONTRACTS/ against contracts/)" "$(LS "$D" --list)" "CONTRACTS/u.md	core	contract	personal"
+D="$(mk case)"; printf 'x\n' > "$D/contracts/u.md"; printf 'contract\tcontracts/\tc\tpersonal\n' >> "$D/standards/naming/kinds.tsv"
+t_has "a folder is matched case-folded (contracts/ against contracts/)" "$(LS "$D" --list)" "contracts/u.md	core	contract	personal"
 
 t_section "a register that does not parse refuses the run, never counts as clean"
 D="$(mk badshare)"; printf 'x\tz/\tz\tprivate\n' >> "$D/standards/naming/kinds.tsv"

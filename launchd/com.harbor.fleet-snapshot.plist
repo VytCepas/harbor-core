@@ -4,16 +4,16 @@
      THIS FILE IS A TEMPLATE (harbor#630). Do not cp it: @HOME@ and the other placeholders in it would be
      installed as literal text, and launchd loads such a job and then fails every time it runs. Render it:
 
-       sh ~/port/harbor/bin/launchd-render.sh ~/port/harbor/launchd/com.harbor.fleet-snapshot.plist > ~/Library/LaunchAgents/com.harbor.fleet-snapshot.plist
+       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.fleet-snapshot.plist > ~/Library/LaunchAgents/com.harbor.fleet-snapshot.plist
 
      A cp line in the comment below predates the template. It is kept so the rendered file stays byte-identical
      to the one already installed: follow this block, not that line. This block is not installed;
-     bin/launchd-render.sh drops it. -->
+     bin/deploy-launchd-render.sh drops it. -->
 <!-- L0-5-interim (harbor#21): interval refresher for the statusline fleet glyph.
      TEMPLATE — launchd does not expand $HOME: replace @HOME@ with your
      home dir on install. Install (Phase-0 home rule: repo is source, ~/.claude is
      the deploy target):
-       cp bin/fleet-snapshot-refresh.sh bin/fleet-glyph.sh ~/.claude/bin/
+       cp bin/status-fleet-snapshot-refresh.sh bin/status-fleet-glyph.sh ~/.claude/bin/
        cp launchd/com.harbor.fleet-snapshot.plist ~/Library/LaunchAgents/
        launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.harbor.fleet-snapshot.plist -->
 <plist version="1.0">
@@ -22,7 +22,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/sh</string>
-    <string>@HOME@/.claude/bin/fleet-snapshot-refresh.sh</string>
+    <string>@HOME@/.claude/bin/status-fleet-snapshot-refresh.sh</string>
   </array>
   <key>StartInterval</key><integer>300</integer>
   <key>RunAtLoad</key><true/>

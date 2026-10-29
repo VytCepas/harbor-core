@@ -7,11 +7,11 @@
 #   sh access-environment.sh --check [--settings FILE] [--registry FILE] [--gh PATH] [--controls FILE]
 #                                                                      does the live block carry these lines?
 #
-# THE REGISTRY. By default the governed repos are read through `roots.sh --repos` (harbor-private/repos.tsv, the
-# one registry, harbor#966); a box with no repos.tsv falls back to the private layer's inject.d/box/projects.tsv
-# (`roots.sh --projects`, harbor#1149). --registry FILE
+# THE REGISTRY. By default the governed repos are read through `scope-roots.sh --repos` (harbor-private/repos.tsv, the
+# one registry, harbor#966); a box with no repos.tsv falls back to the private layer's projects.tsv
+# (`scope-roots.sh --projects`, harbor#1149). --registry FILE
 # names a file instead: any TSV whose first two columns are name and path (projects.tsv, or the output of
-# `roots.sh --repos`). A row's path is resolved against $HOME (a leading ~/ is expanded) and its `origin` remote
+# `scope-roots.sh --repos`). A row's path is resolved against $HOME (a leading ~/ is expanded) and its `origin` remote
 # names the GitHub repo asked about. A row with no checkout, no origin, a non-GitHub origin, or a failed `gh`
 # call is UNKNOWN and says why. The render exits 2 when the registry cannot be read; otherwise 0, whatever the
 # visibility verdicts. The block is stdout; the log is stderr.
@@ -32,7 +32,7 @@ set -u
 
 case "$0" in */*) _SRC="${0%/*}" ;; *) _SRC=. ;; esac
 ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$_SRC/.." && pwd)}"
-. "$ROOT/bin/log-lib.sh"
+. "$ROOT/bin/library-log.sh"
 log_init access-environment
 LOG_FD=2
 CONTROL_ID="drift.repo-visibility"
@@ -64,17 +64,17 @@ load_registry() {
     [ -r "$REG" ] || { REGWHY="registry not readable: $REG"; return 1; }
     cp "$REG" "$T/reg"; REGFROM="$REG"; return 0
   fi
-  _priv="$(sh "$ROOT/bin/roots.sh" --private 2>/dev/null)" || _priv=""
+  _priv="$(sh "$ROOT/bin/scope-roots.sh" --private 2>/dev/null)" || _priv=""
   if [ -n "$_priv" ] && [ -f "$_priv/repos.tsv" ]; then
     # A registry that exists and is invalid refuses the whole read: falling back past it would render a
     # different set of repos than the one the box registered.
-    sh "$ROOT/bin/roots.sh" --repos > "$T/reg" 2> "$T/reg.err" || { REGWHY="roots.sh --repos refused $_priv/repos.tsv: $(tr '\n' ' ' < "$T/reg.err")"; return 1; }
-    REGFROM="roots.sh --repos"; return 0
+    sh "$ROOT/bin/scope-roots.sh" --repos > "$T/reg" 2> "$T/reg.err" || { REGWHY="scope-roots.sh --repos refused $_priv/repos.tsv: $(tr '\n' ' ' < "$T/reg.err")"; return 1; }
+    REGFROM="scope-roots.sh --repos"; return 0
   fi
-  # The fallback is the private layer's projects.tsv (harbor#1149): core ships none, and roots.sh is its one resolver.
-  _proj="$(sh "$ROOT/bin/roots.sh" --projects 2>/dev/null)" || _proj=""
-  [ -n "$_proj" ] && [ -r "$_proj" ] || { REGWHY="no repos.tsv and no inject.d/box/projects.tsv in the private layer: no registry of governed repos"; return 1; }
-  cp "$_proj" "$T/reg"; REGFROM="inject.d/box/projects.tsv"; return 0
+  # The fallback is the private layer's projects.tsv (harbor#1149): core ships none, and scope-roots.sh is its one resolver.
+  _proj="$(sh "$ROOT/bin/scope-roots.sh" --projects 2>/dev/null)" || _proj=""
+  [ -n "$_proj" ] && [ -r "$_proj" ] || { REGWHY="no repos.tsv and no projects.tsv in the private layer: no registry of governed repos"; return 1; }
+  cp "$_proj" "$T/reg"; REGFROM="${_proj#"${_proj%/*/*/*}"/}"; return 0
 }
 
 # render_lines <registry> → one visibility line per registry row on stdout; comments and blank lines skipped.

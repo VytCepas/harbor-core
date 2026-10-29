@@ -1,7 +1,7 @@
 # tests/obs/findings-fixture.sh — what the findings suites share (harbor#590): a stub GitHub that keeps
 # its issues in one JSON file and logs every call, a published checkout, and the census and receipt writers.
 # Sourced after core.sh's t_init.
-F="$T_ROOT/bin/findings.sh"
+F="$T_ROOT/bin/lint-findings.sh"
 TMP="$T_TMP/f"; mkdir -p "$TMP"
 GH_STATE="$TMP/gh.json"; GH_LOG="$TMP/gh.log"; export GH_STATE GH_LOG
 HARBOR_FINDINGS_REPO=o/r; export HARBOR_FINDINGS_REPO
@@ -76,8 +76,8 @@ GHSTUB
 chmod +x "$T_BIN/gh"
 
 # A published checkout: HEAD is origin/main and the tree is clean. The contract is the real one.
-PUB="$TMP/pub"; mkdir -p "$PUB/CONTRACTS"
-cp "$T_ROOT/CONTRACTS/finding.md" "$PUB/CONTRACTS/"; cp "$T_ROOT/CHECKS.md" "$PUB/"
+PUB="$TMP/pub"; mkdir -p "$PUB/contracts"
+cp "$T_ROOT/contracts/finding.md" "$PUB/contracts/"; mkdir -p "$PUB/docs/reference"; cp "$T_ROOT/docs/reference/checks.md" "$PUB/docs/reference/"
 git -C "$PUB" init -q; git -C "$PUB" -c user.email=t@t -c user.name=t add -A
 git -C "$PUB" -c user.email=t@t -c user.name=t commit -qm fixture; git -C "$PUB" update-ref refs/remotes/origin/main HEAD
 

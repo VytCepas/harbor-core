@@ -13,7 +13,7 @@
 # Idempotent: a rewritten job is an expression, so a second --apply finds nothing. POSIX sh and awk, no yq.
 set -eu
 HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 log_init ci-runs-on
 
 case "${1:-}" in -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); print; next } {exit}' "$0"; exit 0 ;; esac

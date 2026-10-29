@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # module.* rules (harbor#996 C1): a graph that is missing, stale or not a graph is UNCHECKED (exit 3), never a pass.
-# Each case is a throwaway git checkout whose graph graph-gen.sh builds, so "stale" means what graph-gen --check says.
+# Each case is a throwaway git checkout whose graph doc-graph-generate.sh builds, so "stale" means what graph-gen --check says.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 TOOL="$T_ROOT/bin/lint-module.sh"; REG="$T_ROOT/standards/naming"
 LM() { _r="$1"; shift; sh "$TOOL" --root "$_r" "$@" 2>&1; }
@@ -17,7 +17,7 @@ rc() { sh "$TOOL" --root "$@" >/dev/null 2>&1; echo $?; }
 t_section "a missing graph is unchecked, and says how to build it"
 D="$(mk missing)"
 t_eq "no build/graph.tsv -> exit 3" "3" "$(rc "$D")"
-t_has "...naming the fix" "$(LM "$D")" "sh bin/graph-gen.sh"
+t_has "...naming the fix" "$(LM "$D")" "sh bin/doc-graph-generate.sh"
 t_hasnt "...and never a 'no finding' pass line" "$(LM "$D")" "no finding"
 
 t_section "an explicit graph that is absent or is not a graph is unchecked"
@@ -34,7 +34,7 @@ t_eq "--format with anything else" "2" "$(rc "$D" --format json)"
 
 if command -v python3 >/dev/null 2>&1; then
   t_section "a current graph is judged; a stale one is unchecked"
-  D="$(mk stale)"; sh "$T_ROOT/bin/graph-gen.sh" --root "$D" >/dev/null 2>&1
+  D="$(mk stale)"; sh "$T_ROOT/bin/doc-graph-generate.sh" --root "$D" >/dev/null 2>&1
   t_eq "a graph just built -> exit 0" "0" "$(rc "$D")"
   t_has "...and judged it" "$(LM "$D")" "no finding"
   printf '#!/bin/sh\n: calls bin/alpha-run.sh\n' > "$D/bin/beta-run.sh"
@@ -42,7 +42,7 @@ if command -v python3 >/dev/null 2>&1; then
   t_eq "a tracked file added since -> stale -> exit 3" "3" "$(rc "$D")"
   t_has "...said stale, with the fix" "$(LM "$D")" "is stale"
   t_hasnt "...and not judged" "$(LM "$D")" "no finding"
-  sh "$T_ROOT/bin/graph-gen.sh" --root "$D" >/dev/null 2>&1
+  sh "$T_ROOT/bin/doc-graph-generate.sh" --root "$D" >/dev/null 2>&1
   t_eq "rebuilt -> exit 0 again" "0" "$(rc "$D")"
   printf '# now calls bin/beta-run.sh\n' >> "$D/bin/alpha-run.sh"; ( cd "$D" && git add -A ) >/dev/null 2>&1
   t_eq "a tracked file edited to add an edge since -> exit 3" "3" "$(rc "$D")"

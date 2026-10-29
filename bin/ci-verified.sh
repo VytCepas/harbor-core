@@ -11,7 +11,7 @@
 # a missing run. Only ever skips work; never turns a red into a green (the relays still read a real verdict).
 #
 # `base` (harbor#1289) is for the push that is NOT verified. On a push to main HARBOR_BASE (origin/main) is the pushed commit
-# itself, so bin/suite-select.sh sees an empty changeset and runs every suite. When this script identifies the merged PR, base is
+# itself, so bin/test-suite-select.sh sees an empty changeset and runs every suite. When this script identifies the merged PR, base is
 # merge-base(the PR's head, <before>), the commit the PR branched from as far as main was concerned: diffing base..<sha> covers
 # the PR's changes AND everything main gained since it branched, the cross-PR interaction set the selector should judge. It is
 # EMPTY (the full pool, as before) when there is no PR, the API does not answer, the answer is not a full sha, or anything is
@@ -19,7 +19,7 @@
 #
 # POSIX sh, git, jq, curl (HARBOR_CURL swaps in a fake). Token from GH_TOKEN, sent as a header, never in a URL.
 set -eu
-. "$(dirname -- "$0")/log-lib.sh"
+. "$(dirname -- "$0")/library-log.sh"
 log_init ci-verified
 
 case "${1:-}" in
@@ -40,7 +40,7 @@ verdict() { # <true|false> <why>
   log_end || :; exit 0
 }
 api() { # <path> — the JSON, or nothing on any failure
-  "$CURL" -fsS -H "Authorization: Bearer ${GH_TOKEN:-}" -H 'Accept: application/vnd.github+json' "$API/$1" 2>/dev/null || :
+  "$CURL" -fsS -H "Authorization: Bearer ${GH_TOKEN:-}" -H 'Accept: application/vnd.github+json' "$API/$1" 2>/dev/null || :  # secret-seam: Actions GITHUB_TOKEN (entry github-actions-token)
 }
 
 [ -n "$REPO" ] || verdict false "no repository is named (GITHUB_REPOSITORY is unset and this checkout has no github.com origin)"

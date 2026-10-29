@@ -4,9 +4,9 @@
 # Hermetic: a fixture harbor tree with two commits. Every relation has a lookalike that must stay out, because a
 # shape judged over an over-collected graph passes instances that carry nothing.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-TOOL="$T_ROOT/bin/graph-gen.sh"
+TOOL="$T_ROOT/bin/doc-graph-generate.sh"
 command -v python3 >/dev/null 2>&1 || { t_section "python3 is absent"; t_exit "graph-gen is unchecked without python3" 3 sh "$TOOL"; t_done; }
-HB="$T_TMP/hb"; mkdir -p "$HB/standards/naming" "$HB/bin" "$HB/tests" "$HB/launchd" "$HB/CONTRACTS" "$HB/docs/decisions" "$HB/EVALS-DATA"
+HB="$T_TMP/hb"; mkdir -p "$HB/standards/naming" "$HB/bin" "$HB/tests" "$HB/launchd" "$HB/contracts" "$HB/docs/decisions" "$HB/evals" "$HB/docs/reference" "$HB/policy"
 TAB="$(printf '\t')"
 { printf '# controls.tsv fixture\n'
   printf 'id\tmode\ttype\tengine\tsurfaces\tmoment\tfunction\tstability\tsuccessor\towner\tred_proof\temitted\ttitle\n'
@@ -24,7 +24,7 @@ printf '#!/bin/sh\necho "[check:beat] up"\n' > "$HB/bin/stamp-only.sh"
 printf '#!/bin/sh\nlog_receipt "$RD" beat green\n' > "$HB/bin/receipt-only.sh"
 printf '#!/bin/sh\n: proof\n' > "$HB/tests/x.test.sh"
 chmod +x "$HB/bin/lint-x.sh" "$HB/bin/beat.sh" "$HB/bin/stamp-only.sh" "$HB/bin/receipt-only.sh" "$HB/tests/beat-test.sh" "$HB/tests/x.test.sh"
-cat > "$HB/CHECKS.md" <<'EOF'
+cat > "$HB/docs/reference/checks.md" <<'EOF'
 # CHECKS
 
 ## Register
@@ -56,7 +56,7 @@ systemctl --user disable --now harbor-<id>.timer    # stop now and for good
 EOF
 printf '<plist><string>com.harbor.beat</string></plist>\n' > "$HB/launchd/com.harbor.beat.plist"
 printf '<plist><string>com.harbor.daemon</string></plist>\n' > "$HB/launchd/com.harbor.daemon.plist"
-cat > "$HB/CONTRACTS/finding.md" <<'EOF'
+cat > "$HB/contracts/finding.md" <<'EOF'
 | lane | key | subject | repair | ticket |
 |---|---|---|---|---|
 | HEAL | `lint/lint.ghost` | `*` | `sh bin/outside.sh` | #1 |
@@ -67,8 +67,8 @@ cat > "$HB/CONTRACTS/finding.md" <<'EOF'
 | DECIDE | `lint/lint.x` | `*` | - | #3 |
 <!-- lanes:end -->
 EOF
-printf -- '- **No AI trailers.** Enforced by lint rule **Q1**.\n- **The critique rule.** **Nothing enforces this rule**, by judgment.\n- GitHub enforces no required check here, and this sentence then names `lint.ghost` far away.\n- What is enforced; `lint.y` sits past the break.\n' > "$HB/CONSTITUTION.md"
-printf 'a report on another repo: enforced by **Q1**\n' > "$HB/EVALS-DATA/notes.md"
+printf -- '- **No AI trailers.** Enforced by lint rule **Q1**.\n- **The critique rule.** **Nothing enforces this rule**, by judgment.\n- GitHub enforces no required check here, and this sentence then names `lint.ghost` far away.\n- What is enforced; `lint.y` sits past the break.\n' > "$HB/policy/constitution.md"
+printf 'a report on another repo: enforced by **Q1**\n' > "$HB/evals/notes.md"
 printf -- '---\nkind: decision-record\nstatus: accepted\nalias: D-1\n---\n\n# One\n\nMotivated by harbor#7.\n' > "$HB/docs/decisions/0001-one.md"
 git -C "$HB" init -q && git -C "$HB" add -A
 git -C "$HB" -c user.email=t@t -c user.name=t commit -qm "feat(standard): the registry (harbor#19)" -m "Refs: #18"
@@ -93,7 +93,7 @@ t_eq "owned-by its owner family" 1 "$(row owned-by control:lint.x family:lint)"
 t_eq "red-proof names its tracked suite" 1 "$(row red-proof control:lint.x harbor:tests/x.test.sh)"
 t_eq "a red proof that is not tracked is no edge" 0 "$(cnt red-proof control:lint.ghost)"
 t_eq "the engine implements the control" 1 "$(row implements harbor:bin/lint-x.sh control:lint.x)"
-t_eq "a markdown register is no implementation" 0 "$(awk -F'\t' '$1 == "implements" && $2 == "harbor:CHECKS.md"' "$G" | wc -l | tr -d ' ')"
+t_eq "a markdown register is no implementation" 0 "$(awk -F'\t' '$1 == "implements" && $2 == "harbor:docs/reference/checks.md"' "$G" | wc -l | tr -d ' ')"
 t_eq "the code that stamps and receipts a check implements it" 1 "$(row implements harbor:bin/beat.sh control:check.beat)"
 t_eq "...code that only stamps [check:<id>] implements it" 1 "$(row implements harbor:bin/stamp-only.sh control:check.beat)"
 t_eq "...and code that only writes its receipt" 1 "$(row implements harbor:bin/receipt-only.sh control:check.beat)"
@@ -102,19 +102,19 @@ t_eq "a test that stamps a check id implements nothing" 0 "$(row implements harb
 t_section "enforces and enforced-by"
 t_eq "a D-n in the row: enforces" 1 "$(row enforces control:lint.x decision:D-1)"
 t_eq "...and enforced-by, read backward" 1 "$(row enforced-by decision:D-1 control:lint.x)"
-t_eq "a retired letter beside 'Enforced by' reaches the control" 1 "$(row enforces control:lint.x harbor:CONSTITUTION.md)"
-t_eq "...and the clause file is enforced-by it" 1 "$(row enforced-by harbor:CONSTITUTION.md control:lint.x)"
-t_eq "'Nothing enforces this rule' is a declared judgment" 1 "$(row enforced-by harbor:CONSTITUTION.md judgment:unenforced)"
+t_eq "a retired letter beside 'Enforced by' reaches the control" 1 "$(row enforces control:lint.x harbor:policy/constitution.md)"
+t_eq "...and the clause file is enforced-by it" 1 "$(row enforced-by harbor:policy/constitution.md control:lint.x)"
+t_eq "'Nothing enforces this rule' is a declared judgment" 1 "$(row enforced-by harbor:policy/constitution.md judgment:unenforced)"
 t_eq "a control named far from the word enforces nothing" 0 "$(cnt enforces control:lint.ghost)"
 t_eq "a control past a sentence break from the word enforces nothing" 0 "$(cnt enforces control:lint.y)"
-t_eq "recorded prose (EVALS-DATA) states no clause" 0 "$(awk -F'\t' '$3 ~ /EVALS-DATA/ || $2 ~ /EVALS-DATA/' "$G" | grep -c '^enforce' || :)"
+t_eq "recorded prose (evals) states no clause" 0 "$(awk -F'\t' '$3 ~ /evals/ || $2 ~ /evals/' "$G" | grep -c '^enforce' || :)"
 
-t_section "CHECKS.md: registered-in, notifies, disabled-by"
-t_eq "a check is registered in CHECKS.md by the id it prints" 1 "$(row registered-in control:check.beat harbor:CHECKS.md)"
+t_section "docs/reference/checks.md: registered-in, notifies, disabled-by"
+t_eq "a check is registered in docs/reference/checks.md by the id it prints" 1 "$(row registered-in control:check.beat harbor:docs/reference/checks.md)"
 t_eq "...once: the Platforms table is not the register" 1 "$(cnt registered-in control:check.beat)"
-t_eq "a lint control is no check, though a check prints its id" 0 "$(row registered-in control:lint.x harbor:CHECKS.md)"
-t_eq "...the check that prints it is registered" 1 "$(row registered-in control:check.lint.x harbor:CHECKS.md)"
-t_eq "...or by its own id when it prints no other" 1 "$(row registered-in control:check.quiet harbor:CHECKS.md)"
+t_eq "a lint control is no check, though a check prints its id" 0 "$(row registered-in control:lint.x harbor:docs/reference/checks.md)"
+t_eq "...the check that prints it is registered" 1 "$(row registered-in control:check.lint.x harbor:docs/reference/checks.md)"
+t_eq "...or by its own id when it prints no other" 1 "$(row registered-in control:check.quiet harbor:docs/reference/checks.md)"
 t_eq "a register row with no control is no edge" 0 "$(grep -c 'unregistered' "$G" || :)"
 t_eq "notifies: desktop" 1 "$(row notifies control:check.beat channel:desktop)"
 t_eq "notifies: checks.log, from the same cell" 1 "$(row notifies control:check.beat channel:checks-log)"
@@ -153,9 +153,9 @@ t_has "refs control:lint.x" "$(gen --refs control:lint.x 2>/dev/null)" "owned-by
 t_has "refs lint.x" "$(gen --refs lint.x 2>/dev/null)" "red-proof${TAB}control:lint.x"
 
 t_section "a source that is absent derives nothing, and says so by its missing # relation row"
-git -C "$HB" rm -q CHECKS.md
+git -C "$HB" rm -q docs/reference/checks.md
 gen >/dev/null 2>&1
-t_eq "no CHECKS.md: no registered-in row" 0 "$(grep -c "^# relation${TAB}registered-in" "$G" || :)"
+t_eq "no docs/reference/checks.md: no registered-in row" 0 "$(grep -c "^# relation${TAB}registered-in" "$G" || :)"
 t_eq "...and no registered-in edge" 0 "$(grep -c '^registered-in' "$G" || :)"
 
 t_section "same input, same bytes"

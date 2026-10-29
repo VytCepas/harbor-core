@@ -23,7 +23,7 @@ t_eq "a dry run writes nothing" "$B0" "$(snap "$TG")"
 t_exit "install --apply exits 0" 0 pk install ok --apply --dir "$TG"
 t_eq "skill lands" "A demo skill." "$(tail -n 1 "$TG/skills/demo/SKILL.md")"
 t_eq "bin lands, executable" "yes" "$([ -x "$TG/bin/demo-tool" ] && echo yes || echo no)"
-t_eq "inject pack lands under a pack-owned name" "yes" "$([ -f "$TG/inject.d/pack-demo-ok--demo.md" ] && echo yes || echo no)"
+t_eq "inject pack lands under a pack-owned name" "yes" "$([ -f "$TG/context-rules/user/pack-demo-ok--demo.md" ] && echo yes || echo no)"
 t_has "check rows land in a per-pack fragment" "$(cat "$TG/checks.d/ok.md")" '| `demo-ok` |'
 t_has "the pack's shims land in a per-pack fragment, which shim-install reads" "$(cat "$TG/shims.d/ok.tsv")" "demo-tool	bin/demo-tool"
 t_has "...and its control rows beside it" "$(cat "$TG/checks.d/ok.controls.tsv")" 'check.demo-ok	warn'
@@ -50,6 +50,17 @@ refused hooks hk "hooks/"
 mkpack gd; printf 'x\n' > "$PW/gd/harbor-pack/bin/guard-thing.sh"; G "$PW/gd" add -A; G "$PW/gd" commit -q -m g
 refused guard gd "guard-*"
 
+t_section "harbor#1010: a pack's rules in the new layout, context-rules/user/, land in the same installed tier"
+mkpack nl; mkdir -p "$PW/nl/harbor-pack/context-rules/user"; G "$PW/nl" mv harbor-pack/inject.d/demo.md harbor-pack/context-rules/user/demo.md
+G "$PW/nl" commit -q -m layout; listed '"nl"'
+t_eq "the fixture pack carries no inject.d/" "harbor-pack/context-rules/user/demo.md" "$(G "$PW/nl" ls-files | grep 'demo\.md$')"
+TGN="$T_TMP/tg-nl"; mkdir -p "$TGN/bin" "$TGN/skills"
+t_exit "install --apply exits 0" 0 pk install nl --apply --dir "$TGN"
+t_eq "the new-layout rule lands under a pack-owned name" "yes" "$([ -f "$TGN/context-rules/user/pack-demo-nl--demo.md" ] && echo yes || echo no)"
+mkpack ns; mkdir -p "$PW/ns/harbor-pack/context-rules/demo"; G "$PW/ns" mv harbor-pack/inject.d/demo.md harbor-pack/context-rules/demo/demo.md
+G "$PW/ns" commit -q -m scope
+refused scope ns "a repo scope is that repo's own"
+
 t_section "refusal 2: an inject pack with run:"
 mkpack rn; printf -- '---\nid: r\nevent: PreToolUse\nwhen: always\nrun: check.sh\n---\nn\n' > "$PW/rn/harbor-pack/inject.d/r.md"; G "$PW/rn" add -A; G "$PW/rn" commit -q -m r
 refused run rn "run:"
@@ -66,7 +77,7 @@ t_section "refusal 3b: a shims.tsv that links nothing the pack installs, or a na
 mkpack sm1; printf 'name\trel\nno-such\tbin/no-such\n' > "$PW/sm1/harbor-pack/shims.tsv"; G "$PW/sm1" add -A; G "$PW/sm1" commit -q -m s
 refused shim-no-file sm1 "bin/no-such is not a bin/ file this pack installs"
 mkpack sm2; printf 'name\trel\nsecret\tbin/demo-tool\n' > "$PW/sm2/harbor-pack/shims.tsv"; G "$PW/sm2" add -A; G "$PW/sm2" commit -q -m s
-refused shim-core-name sm2 "secret is a command core's CONTRACTS/shims.tsv owns"
+refused shim-core-name sm2 "secret is a command core's contracts/shims.tsv owns"
 mkpack sm3; printf 'demo-tool\tbin/demo-tool\n' > "$PW/sm3/harbor-pack/shims.tsv"; G "$PW/sm3" add -A; G "$PW/sm3" commit -q -m s
 refused shim-no-header sm3 "its header is not name, rel"
 mkpack sm4; printf 'name\trel\ndemo-tool\tbin/demo-tool\ndemo-tool\tbin/demo-tool\n' > "$PW/sm4/harbor-pack/shims.tsv"; G "$PW/sm4" add -A; G "$PW/sm4" commit -q -m s
@@ -112,7 +123,7 @@ refused leak-in-skill-tests gt "client-free"
 mkpack gf; mkdir -p "$PW/gf/harbor-pack/skills/demo/fixtures"
 printf '%s\n' "$LEAK" > "$PW/gf/harbor-pack/skills/demo/fixtures/f.md"; G "$PW/gf" add -A; G "$PW/gf" commit -q -m f
 refused leak-in-skill-fixtures gf "client-free"
-mkpack gl; mkdir -p "$PW/gl/CONTRACTS"; printf 'path\tlayer\tnote\nharbor-pack/\tdev\tn\n' > "$PW/gl/CONTRACTS/layers.tsv"
+mkpack gl; mkdir -p "$PW/gl/contracts"; printf 'path\tlayer\tnote\nharbor-pack/\tdev\tn\n' > "$PW/gl/contracts/layers.tsv"
 printf '%s\n' "$LEAK" > "$PW/gl/harbor-pack/skills/demo/SKILL.md"; G "$PW/gl" add -A; G "$PW/gl" commit -q -m l
 refused leak-with-own-layers-tsv gl "client-free"
 mkpack gn; printf '%s\n\0\n' "$LEAK" > "$PW/gn/harbor-pack/skills/demo/data.md"; G "$PW/gn" add -A; G "$PW/gn" commit -q -m n
@@ -134,7 +145,7 @@ t_hasnt "secret: never by its text" "$OUT" "Zq8LmN2pR7tY4wXc9Vb"
 printf '[extend]\nuseDefault = true\n[allowlist]\npaths = [%s]\n' "'''.*'''" > "$T_TMP/loose.toml"
 mkdir -p "$T_TMP/tg-loose"
 t_has "an inherited GITLEAKS_CONFIG does not loosen it" "$(GITLEAKS_CONFIG="$T_TMP/loose.toml" pk install sk --apply --dir "$T_TMP/tg-loose" 2>&1)" "carries a secret"
-# The real PATH as one directory of links minus gitleaks, as tests/export/push.test.sh does.
+# The real PATH as one directory of links minus gitleaks, as tests/deploy/push/push.test.sh does.
 FARM="$T_TMP/farm"; mkdir -p "$FARM"
 for _d in $(printf '%s' "$PATH" | tr ':' ' '); do
   [ -d "$_d" ] || continue
@@ -218,7 +229,7 @@ t_eq "...and the target is byte-identical" "$B" "$(snap "$TG")"
 TG="$T_TMP/tg-mv3"; coremf "$TG" 'core wrote this'; : > "$TG/.harbor-manifest"
 t_exit "a skill no manifest names is the operator's, and refuses" 1 pk install mv --apply --dir "$TG"
 
-t_section "the private layer's own pack: id harbor-private is the layer roots.sh --private resolves, not a repos.tsv row (harbor#1273)"
+t_section "the private layer's own pack: id harbor-private is the layer scope-roots.sh --private resolves, not a repos.tsv row (harbor#1273)"
 # A layer that is a git checkout with a harbor-pack/, a registry that does NOT name it, and a decoy checkout at PORT_ROOT/harbor-private.
 PL="$T_TMP/elsewhere/layer"; mkdir -p "$T_TMP/elsewhere"; mkpack lyr; mv "$PW/lyr" "$PL"
 printf 'packs = ["harbor-private"]\n' > "$PL/harbor.toml"; printf 'id\tpath\tkind\tremote\n' > "$PL/repos.tsv"
@@ -242,12 +253,12 @@ TG="$T_TMP/tg-ck"; mkdir -p "$TG/bin" "$TG/skills"; B0="$(snap "$TG")"
 t_exit "a pack with conf-keys.txt installs" 0 pk install ck --apply --dir "$TG"
 t_eq "...its keys land at conf-keys.d/<repo-id>.txt" "ck_project" "$(grep -v '^#' "$TG/conf-keys.d/ck.txt")"
 PVK="$T_TMP/pv-ck"; mkdir -p "$PVK"; printf 'ck_project = "p1"\n' > "$PVK/harbor.toml"
-t_eq "roots.sh reads a key an installed pack declares" "p1" \
-  "$(CLAUDE_CONFIG_DIR="$TG" HARBOR_SCOPE_PRIVATE="$PVK" sh "$T_ROOT/bin/roots.sh" --conf ck_project 2>&1)"
+t_eq "scope-roots.sh reads a key an installed pack declares" "p1" \
+  "$(CLAUDE_CONFIG_DIR="$TG" HARBOR_SCOPE_PRIVATE="$PVK" sh "$T_ROOT/bin/scope-roots.sh" --conf ck_project 2>&1)"
 t_exit "remove exits 0" 0 pk remove ck --apply --dir "$TG"
 t_eq "...and takes the keys back, the target byte-identical" "$B0" "$(snap "$TG")"
 t_exit "with the pack gone the key is unknown again (exit 2)" 2 \
-  env CLAUDE_CONFIG_DIR="$TG" HARBOR_SCOPE_PRIVATE="$PVK" sh "$T_ROOT/bin/roots.sh" --conf ck_project
+  env CLAUDE_CONFIG_DIR="$TG" HARBOR_SCOPE_PRIVATE="$PVK" sh "$T_ROOT/bin/scope-roots.sh" --conf ck_project
 mkpack kc; printf 'channel\n' > "$PW/kc/harbor-pack/conf-keys.txt"; G "$PW/kc" add -A; G "$PW/kc" commit -q -m k
 refused conf-key-core kc "is a core harbor.toml key"
 mkpack lg; printf 'gads_secret_project\n' > "$PW/lg/harbor-pack/conf-keys.txt"; G "$PW/lg" add -A; G "$PW/lg" commit -q -m k
@@ -260,6 +271,36 @@ mkpack k2; printf 'ck_project\n' > "$PW/k2/harbor-pack/conf-keys.txt"; G "$PW/k2
 listed '"k2"'
 _o2="$(pk install k2 --apply --dir "$TG2" 2>&1)"
 t_has "a key another installed pack declares is refused, naming it" "$_o2" "declared by the installed pack ck.txt"
+
+t_section "terms.tsv: a pack registers its workload's system terms, so core's registry names none (harbor#950)"
+THDR="$(grep -v '^#' "$T_ROOT/standards/naming/terms.tsv" | awk 'NF { print; exit }')"
+trow() { printf '%s\t%s\t%s\t-\t-\texperimental\t-\ttest\t-\t-\ta fixture system\n' "$1" "$2" "$1"; }
+# tp <id> <"term class">...: a committed pack whose terms.tsv is core's header and these rows
+tp() { _i="$1"; shift; mkpack "$_i"; { printf '%s\n' "$THDR"; for _r; do trow $_r; done; } > "$PW/$_i/harbor-pack/terms.tsv"
+  G "$PW/$_i" add -A; G "$PW/$_i" commit -q -m t; }
+lnc() { env CLAUDE_CONFIG_DIR="$1" HARBOR_SCOPE_PRIVATE="$PRIV" sh "$T_ROOT/bin/lint-name.sh" --check env WIDGETSYS_LINT_X 2>&1; }
+tp tm "widgetsys system"; listed '"tm"'
+TG="$T_TMP/tg-tm"; mkdir -p "$TG/bin" "$TG/skills"; B0="$(snap "$TG")"
+t_has "positive control: before install the workload's prefix is unregistered" "$(lnc "$TG")" "not a registered system"
+t_exit "a pack with terms.tsv installs" 0 pk install tm --apply --dir "$TG"
+t_eq "...its rows land at terms.d/<repo-id>.tsv" "$(cat "$PW/tm/harbor-pack/terms.tsv")" "$(cat "$TG/terms.d/tm.tsv")"
+t_has "...and bin/lint-name.sh reads them: the prefix is registered" "$(lnc "$TG")" "no finding"
+t_exit "remove exits 0" 0 pk remove tm --apply --dir "$TG"
+t_eq "...and takes the terms back, the target byte-identical" "$B0" "$(snap "$TG")"
+tp tc "widget client"; refused terms-class tc "has class client: a pack registers system terms only"
+tp tf "family system"; refused terms-core tf "family is a core term"
+tp tk "WidgetSys system"; refused terms-kebab tk "is not a lowercase kebab term"
+tp tw "widgetsys system" "widgetsys system"; refused terms-twice tw "widgetsys is listed twice"
+mkpack th; printf 'id\tclass\nwidgetsys\tsystem\n' > "$PW/th/harbor-pack/terms.tsv"; G "$PW/th" add -A; G "$PW/th" commit -q -m t
+refused terms-header th "its header is not the core terms.tsv header"
+mkpack tn; { printf '%s\n' "$THDR"; printf 'widgetsys\tsystem\twidgetsys\n'; } > "$PW/tn/harbor-pack/terms.tsv"; G "$PW/tn" add -A; G "$PW/tn" commit -q -m t
+refused terms-columns tn "has 3 columns, the header has 11"
+{ printf '%s\n' "$THDR"; trow widgetsys system; } > "$PRIV/terms.tsv"; tp tv "widgetsys system"
+refused terms-private tv "names a client or account"   # the private overlay's rows are leak patterns (D-85)
+rm -f "$PRIV/terms.tsv"
+TG2="$T_TMP/tg-tm2"; mkdir -p "$TG2/bin" "$TG2/skills"; listed '"tm"'; pk install tm --apply --dir "$TG2" >/dev/null 2>&1
+tp t2 "widgetsys system"; listed '"t2"'
+t_has "a term another installed pack declares is refused, naming it" "$(pk install t2 --apply --dir "$TG2" 2>&1)" "declared by the installed pack tm.tsv"
 
 t_exit "no target is a usage error" 2 pk list
 t_exit "the real dispatcher routes harbor pack" 2 env HARBOR_BIN="$T_ROOT/bin" sh "$T_ROOT/bin/harbor" pack

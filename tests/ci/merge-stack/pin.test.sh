@@ -45,8 +45,8 @@ ms_mutant "M19 a pin is not checked" 's/^    if \[ -n "\$_pin" \] \&\& ! head_is
 t_eq "the mutant merges the moved head" 0 "$(run "$M/bin/gate-merge-stack.sh")"
 
 t_section "a pinned PR is never synced, even when it conflicts (red-proof)"
-conf() { ms_world harbor; ms_branch feat; ms_add CONTRACTS/suites.txt tests/p/pr.test.sh; ms_push feat; ms_pr 11 feat; HEAD1="$(ms_tip feat)"
-  ms_main CONTRACTS/suites.txt tests/m/main.test.sh; ms_plan "$PL" 11; pin "head $HEAD1"; }
+conf() { ms_world harbor; ms_branch feat; ms_add contracts/suites.txt tests/p/pr.test.sh; ms_push feat; ms_pr 11 feat; HEAD1="$(ms_tip feat)"
+  ms_main contracts/suites.txt tests/m/main.test.sh; ms_plan "$PL" 11; pin "head $HEAD1"; }
 conf
 t_eq "the merge fails on the conflict: exit 1" 1 "$(run)"
 t_eq "the PR branch was not rebased or pushed" "$HEAD1" "$(ms_tip feat)"

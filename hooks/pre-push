@@ -14,8 +14,8 @@
 # where the cost is proportionate — it happens once per branch, not once per
 # thought, and it is the last point before CI spends the runner.
 #
-# THE SELECTOR DOES THE CONDITIONALITY, AND IT ALREADY EXISTS. bin/suite-select.sh
-# is CI-2's change-class decision procedure, declared in CONTRACTS/suite-paths.txt.
+# THE SELECTOR DOES THE CONDITIONALITY, AND IT ALREADY EXISTS. bin/test-suite-select.sh
+# is CI-2's change-class decision procedure, declared in contracts/suite-paths.txt.
 # Reimplementing that here would be a second copy of a policy that lives somewhere
 # else, and it would drift in the direction that is silent — a local gate that
 # stands down MORE suites than CI does comes back green and shorter, which reads
@@ -23,7 +23,7 @@
 #
 # ── THE DEFAULT IS NARROW, AND A MEASUREMENT IS WHY (harbor#7) ──────────────
 # The first cut of this hook ran every suite the selector picked, justified by a
-# demo: a docs-only push selects 2 of 25. `bin/hook-replay.sh --commits` then
+# demo: a docs-only push selects 2 of 25. `bin/eval-hook-replay.sh --commits` then
 # replayed all 143 real changesets in this repo's history through that same
 # selector, and the demo turns out to be the unrepresentative case:
 #
@@ -51,8 +51,8 @@ set -eu
 ROOT="$(git rev-parse --show-toplevel)"
 BASE_BRANCH="${HARBOR_BASE_BRANCH:-main}"
 
-[ -f "$ROOT/bin/suite-select.sh" ] || exit 0
-[ -f "$ROOT/CONTRACTS/suites.txt" ] || exit 0
+[ -f "$ROOT/bin/test-suite-select.sh" ] || exit 0
+[ -f "$ROOT/contracts/suites.txt" ] || exit 0
 
 # harbor#824: everything below this point that runs a suite or the linter goes through
 # hook_scrub_run (hooks/lib.sh), which drops the GIT_* vars git exports into this hook — a suite
@@ -131,14 +131,14 @@ echo ""
 _ran=0; _stood=0; _rc=0
 
 # A STALE GENERATED FILE FAILS HERE, IN SECONDS (harbor#1287). 7 of 12 failed PR runs 2026-10-14..17 were one, found only
-# after the 15-20 min CI pool. bin/fresh-check.sh runs every generator --check that answers in seconds (CONTRACTS/fresh-checks.tsv)
+# after the 15-20 min CI pool. bin/doc-fresh-verify.sh runs every generator --check that answers in seconds (contracts/fresh-checks.tsv)
 # and names the fix; it goes BEFORE the linter and the suites because a stale file makes the rest of the run moot.
-if [ -f "$ROOT/bin/fresh-check.sh" ]; then
+if [ -f "$ROOT/bin/doc-fresh-verify.sh" ]; then
   _ran=$(( _ran + 1 ))
-  if _fc="$(hook_scrub_run sh "$ROOT/bin/fresh-check.sh" 2>&1)"; then
-    printf '          run   fresh-check.sh  ok\n'
+  if _fc="$(hook_scrub_run sh "$ROOT/bin/doc-fresh-verify.sh" 2>&1)"; then
+    printf '          run   doc-fresh-verify.sh  ok\n'
   else
-    printf '          run   fresh-check.sh  FAILED\n'
+    printf '          run   doc-fresh-verify.sh  FAILED\n'
     printf '%s\n' "$_fc" | sed 's/^/          /'
     echo "" >&2
     echo "pre-push: a generated file is STALE. Run the fix above, commit it, push again — or push deliberately with --no-verify." >&2
@@ -147,21 +147,21 @@ if [ -f "$ROOT/bin/fresh-check.sh" ]; then
 fi
 
 if [ "${HARBOR_PREPUSH_FULL:-0}" = 1 ]; then
-  echo "pre-push: FULL mode — every suite bin/suite-select.sh picks for this push."
+  echo "pre-push: FULL mode — every suite bin/test-suite-select.sh picks for this push."
   [ -n "${HARBOR_CHANGED:-}" ] && printf '%s\n' "$HARBOR_CHANGED" | sed 's/^/          /'
   while IFS= read -r _s; do
     case "$_s" in ''|\#*) continue ;; esac
     # A path entry is relative to the repo root; a bare name lives in bin/ (harbor#695).
     case "$_s" in */*) _sp="$ROOT/$_s" ;; *) _sp="$ROOT/bin/$_s" ;; esac
     [ -f "$_sp" ] || continue
-    if hook_scrub_run sh "$ROOT/bin/suite-select.sh" "$_s" >/dev/null 2>&1; then
+    if hook_scrub_run sh "$ROOT/bin/test-suite-select.sh" "$_s" >/dev/null 2>&1; then
       _ran=$(( _ran + 1 ))
       printf '          run   %s' "$_s"
       if _quiet sh "$_sp"; then printf '  ok\n'; else printf '  FAILED\n'; _rc=1; fi
     else
       _stood=$(( _stood + 1 ))
     fi
-  done < "$ROOT/CONTRACTS/suites.txt"
+  done < "$ROOT/contracts/suites.txt"
 else
   echo "pre-push: conventions + the guard smoke suite if a floor surface moved."
   echo "          (HARBOR_PREPUSH_FULL=1 for every selected suite — median 24 of 25 here.)"
@@ -190,14 +190,14 @@ else
   _floor=0; _floor_ran=0
   for _p in ${HARBOR_CHANGED:-}; do
     case "$_p" in
-      bin/guard-*.sh|bin/floor-*.sh|bin/floor-*.awk|bin/sec0-harden.sh|hooks/*) _floor=1 ;;
+      bin/guard-*.sh|bin/floor-*.sh|bin/floor-*.awk|bin/deploy-harden.sh|hooks/*) _floor=1 ;;
     esac
   done
-  if [ "$_floor" = 1 ] && [ -f "$ROOT/tests/floor/floor-test.sh" ]; then
+  if [ "$_floor" = 1 ] && [ -f "$ROOT/tests/admission/baseline/baseline.test.sh" ]; then
     _ran=$(( _ran + 1 ))
     _floor_ran=1
     printf '          run   floor-test.sh smoke'
-    if _quiet env T_SMOKE=1 sh "$ROOT/tests/floor/floor-test.sh"; then printf '  ok\n'; else printf '  FAILED\n'; _rc=1; fi
+    if _quiet env T_SMOKE=1 sh "$ROOT/tests/admission/baseline/baseline.test.sh"; then printf '  ok\n'; else printf '  FAILED\n'; _rc=1; fi
   fi
   # THE COUNT MIXED TWO POPULATIONS AND WAS OFF BY ONE. It reported
   # "<all suites> - 1" while `lint-conventions.sh` is not in suites.txt at all
@@ -210,7 +210,7 @@ else
   # failing substitution kills the shell — a degenerate suites.txt would have
   # aborted the push after every check passed, with no message at all. `|| true`
   # is the whole fix and it is not cosmetic.
-  _total="$(grep -cvE '^[[:space:]]*(#|$)' "$ROOT/CONTRACTS/suites.txt" 2>/dev/null || true)"
+  _total="$(grep -cvE '^[[:space:]]*(#|$)' "$ROOT/contracts/suites.txt" 2>/dev/null || true)"
   _total="${_total:-0}"
   _stood="$(( _total - _floor_ran ))"
 fi

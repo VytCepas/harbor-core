@@ -1,0 +1,86 @@
+# dev-paths-allow.tsv (harbor#1275) - core code that may name a dev-layer path because it works without it in the export.
+# Columns, tab-separated, one header row:  path  dev  reason
+#   path    a tracked file, or a directory prefix ending in "/"
+#   dev     a dev row of contracts/layers.tsv, or * for every one
+#   reason  required: why harbor-core still works (e.g. it asserts the path is absent, or reads it behind a missing-is-fine check)
+# Read by bin/lint-dev-paths.sh; a row without a reason, or naming no dev row, refuses the run. harbor#1275 classifies the
+# rest: each hit becomes a fix, a move, or a row here, never a quiet baseline.
+path	dev	reason
+tests/deploy/push/selfcontained.test.sh	*	asserts the export carries no dev-layer file, so it must name them
+.gitignore	registries/context-baseline.tsv	ignores the old in-tree baseline so a core clone never stages it (harbor#1275)
+tests/context/ratchet/ratchet.test.sh	vendor/skills/	builds its own fixture tree
+tests/context/budget/budget.test.sh	registries/context-baseline.tsv	proves the migration reads an in-tree seed only when present and never writes it (harbor#1275)
+tests/doc/fresh-verify/fresh-verify.test.sh	docs/generated/status.md	the real-tree arm runs only when docs/generated/status.md exists; the export has no dev layer and skips it
+.github/workflows/governance.yml	*	the docs/generated/status.md check runs only when docs/generated/status.md and docs/reports/platform-build-tickets.md exist; other hits are messages
+bin/context-budget.sh	*	reads the old in-tree seed only when it is present, else the state-dir baseline (harbor#1275)
+bin/status-dashboard-generate.sh	*	charts docs/generated/status.md's git history; with no history it prints that there is no second data point
+bin/doc-refs.sh	*	lists the entry docs that exist, each behind [ -f ]; an absent one is not judged
+bin/deploy-doctor.sh	*	names the file in a probe's message, never reads it
+bin/doc-freshness.sh	*	case labels giving a dev document its age budget; an absent file is never aged
+bin/gate-merge-stack.sh	*	knows docs/generated/status.md as a generated file to rebuild only when bin/status-generate.sh is present, and excludes it from the conflict scan
+bin/doc-graph-generate.sh	*	excludes the path from the graph walk; absent in the export, the exclusion is a no-op
+bin/harbor	*	help text for the status verb, never a read
+hooks/injection-rule/injection-rule.sh	*	case label that skips the path; absent in the export, it never matches
+bin/lint-conventions.sh	*	rules skip when the dev file is absent (_export_tree) and other hits are exclusions or messages; selfcontained.test.sh runs those rules green over the export
+bin/lint-leaks.sh	*	git pathspec exclusion; absent in the export, it excludes nothing
+bin/lint-secrets.sh	*	git pathspec exclusion; absent in the export, it excludes nothing
+bin/lint-siblings.sh	*	git pathspec exclusion; absent in the export, it excludes nothing
+bin/status-plan-generate.sh	*	its subject is the dev-only plan: in the export it refuses with "no plan" and lint doc.plan-generated skips (harbor#1275)
+bin/lint-port-paths.sh	*	git pathspec exclusion; absent in the export, it excludes nothing
+hooks/session-state/session-state.sh	*	the session repo's own docs/how-to/handover.md, read behind [ -f ]; not harbor's dev layer
+bin/status-generate.sh	*	writes docs/generated/status.md only in the dev checkout; in a tree with layers.tsv and no docs/generated/status.md it stands down
+fixtures/lint-module/inert-mentions/tree/sysa/bin/alpha-run	*	fixture text the module lint reads as a mention, never run
+fixtures/lint-module/live-mentions/tree/sysa/bin/alpha-run	*	fixture text the module lint reads as a mention, never run
+justfile	*	help text for the status recipe, never a read
+tests/doc/graph-generate/graph-generate.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/lint/conventions/git.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/lint/conventions/redproof.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/standard/rename/rename.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/ci/merge-stack/fixture.sh	*	writes its own docs/generated/status.md into a temp world; its suites ran green in a core-only clone (2026-10-17)
+tests/ci/merge-stack/rehearse.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/ci/merge-stack/sync.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/status/generate/generate.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/ci/status-gen/output-contract.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/test/suite-select/suite-select.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/standard/issue-label/issue-label.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/deploy/push/push.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/admission/baseline/baseline.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/admission/baseline/status.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/admission/baseline/worklog.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/scope/marker/marker.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+hooks/injection-rule/detector.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/lint/port-paths/port-paths.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/lint/credential-reads/ratchet.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/lint/leaks/ratchet.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/lint/module/rules.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/lint/findings/findings.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/session/state/stop.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/skill/eval-runners/eval-runners.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/standard/relation/graph.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/status/obligations/surface.test.sh	*	writes or excludes its own fixture of that name in a temp tree, or names it in a label; green in a core-only clone (2026-10-17)
+tests/doc/decision/table.test.sh	docs/generated/status.md	the export has no dev layer, so no docs/generated/status.md marks the tree that tracks the page deploy-push built
+tests/deploy/push/ci-mirror.test.sh	*	writes or excludes its own fixture of that name in a temp tree (the harbor source it mirrors from), never reads the real one (2026-10-19)
+.github/CODEOWNERS	vendor/skills/	an ownership glob for a tree the export lacks; it matches nothing there
+.gitleaks.toml	vendor/skills-archive/	an allow-list path for one dev-layer file; absent in the export, it allows nothing
+.gitleaks.toml	vendor/skills/	an allow-list path for one dev-layer file; absent in the export, it allows nothing
+bin/lint-adoption.sh	vendor/skills/	skips aloud when vendor/skills is absent (dev layer)
+bin/deploy.sh	vendor/skills/	asks git for the tracked skill names; with no vendor/skills the list is only skills/
+bin/doc-index-generate.sh	vendor/skills/	globs vendor/skills/*/SKILL.md behind [ -f ]; an absent tree yields no rows
+bin/lint-name.sh	vendor/skills/	matches a tracked path prefix; absent in the export, it never matches
+vendor/naming/lint-name.sh	vendor/skills/	the vendored copy of bin/lint-name.sh (bin/standard-vendor.sh); same reason as that row
+bin/pack.sh	vendor/skills/	tests for a name clash with [ -e ]; an absent tree clashes with nothing
+bin/skill-catalog.sh	vendor/skills-archive/	names the archive in the catalog's own text; it reads nothing from it
+bin/skill-catalog.sh	vendor/skills/	lists skills/ then vendor/skills/ behind [ -d ]; an absent tree adds none
+bin/skill-collision-verify.sh	vendor/skills/	reads vendor/skills/ behind [ -d ] and [ -f ]; an absent tree adds none
+bin/skill-install.sh	vendor/skills/	reads vendor/skills/ behind [ -d ] and [ -f ]; an absent tree adds none
+tests/lint/adoption/output-contract.test.sh	vendor/skills/	builds its own fixture tree
+tests/lint/conventions/docs.test.sh	vendor/skills/	builds its own fixture tree
+tests/lint/conventions/redproof-rest.test.sh	vendor/skills/	builds its own fixture tree
+tests/lint/conventions/skills.test.sh	vendor/skills/	builds its own fixture tree
+tests/deploy/push/license.test.sh	vendor/skills-archive/	checks the archived fabric licence only when the tree exists, so it must name it
+tests/deploy/push/license.test.sh	vendor/skills/	checks the skills licence only when the tree exists, so it must name it
+tests/skill/collision-verify/collision-verify.test.sh	vendor/skills/	builds its own fixture tree
+tests/skill/install/install.test.sh	vendor/skills/	builds its own fixture tree
+tests/lint/decision/citation.test.sh	vendor/skills/	builds its own fixture tree
+tests/skill/catalog/catalog.test.sh	vendor/skills/	builds its own fixture tree
+tests/skill/fire/output-contract.test.sh	evals/	names the vendored evals skill dir under a temp tree, not the eval corpus (harbor#961)

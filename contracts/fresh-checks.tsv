@@ -1,0 +1,22 @@
+# fresh-checks.tsv (harbor#1287) — the generated files bin/doc-fresh-verify.sh proves current, each in seconds.
+#
+# file <TAB> check (sh, run from the repo root; exit 0 fresh, 1 stale, anything else unchecked) <TAB> fix <TAB> needs
+# `needs` is the path that must exist for the row to apply (default: the file itself) — an exported tree carries no
+# dev layer, and a row with nothing to judge is SKIPPED, never red. A `-` row names a script that has a --check mode
+# and is NOT a generated-file freshness check, with the reason: tests/doc/fresh-verify/fresh-verify.test.sh fails on any bin/ script
+# with a --check mode that talks about staleness and is in neither list, so a new generator must be decided here.
+docs/generated/status.md	sh bin/status-generate.sh --check-fast	sh bin/status-generate.sh --apply	
+docs/context-map.md	sh bin/standard-catalog.sh --check	sh bin/standard-catalog.sh --map	
+.agents/protected-paths.tsv	sh bin/gate-register-derive.sh --check	sh bin/gate-register-derive.sh --write	
+.github/CODEOWNERS	sh bin/gate-codeowners.sh --check	sh bin/gate-codeowners.sh --write	
+docs/generated/plan.md	sh bin/status-plan-generate.sh --check	sh bin/status-plan-generate.sh	docs/reports/platform-build-tickets.md
+skills/skill-catalog/SKILL.md	sh bin/skill-catalog.sh --check	sh bin/skill-catalog.sh	
+docs/index.html	sh bin/doc-index-generate.sh --check	sh bin/doc-index-generate.sh --apply	
+vendor/naming/MANIFEST.tsv	sh bin/standard-vendor.sh --check .	sh bin/standard-vendor.sh .	
+-	access-environment.sh	checks a live settings.json, not a tracked file
+-	decider-set.sh	wiring-versus-table drift, not a generated file
+-	doc-graph-generate.sh	build/graph.tsv is an untracked build product, absent on a fresh checkout
+-	deploy-install-stamp.sh	judges an installed config dir
+-	lint-module.sh	a lint over the graph
+-	standard-shape.sh	a lint over the graph
+-	doc-fresh-verify.sh	this runner
