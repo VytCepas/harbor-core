@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
 # B10 (harbor#56) — install prod_guard AMBIENTLY, which nothing currently does.
 #   sh prod-guard-install.sh [--apply] (--live | --dir PATH)   DRY RUN unless --apply; backup-first
-#     --live is the only way to target ~/.claude. PROJECT_INIT_SRC names the project-init checkout.
+#     --live is the only way to target ~/.claude. PROJECT_INIT_SRC names the yard checkout.
 #
-# WHY. project-init's prod_guard.py owns the cloud/data destruction corpus by
+# WHY. yard's prod_guard.py owns the cloud/data destruction corpus by
 # contract (bin/guard-bash.sh:6-8 — the floor's Bash guard omits that class on
 # the understanding that this guard covers it). Measured machine-wide
 # (harbor#56): the number of settings files that wire prod_guard is ZERO. The
@@ -43,7 +43,7 @@ command -v jq >/dev/null 2>&1 || { log_fail "jq is required"; log_fix "$(pkg_hin
 # The first version of this installer copied from the marketplace clone, and that
 # clone is a MIRROR that goes stale silently. Measured: its HEAD is c2b81b1
 # (2026-07-13, release 1.1.7) while the PI-903 symlink refusal landed upstream in
-# ac85947 (2026-07-26, project-init#904). All three installed plugin copies —
+# ac85947 (2026-07-26, yard#904). All three installed plugin copies —
 # marketplace, its templates, and the 0.8.0 cache — are 266 lines with ZERO
 # `is_symlink` occurrences. So this installer would have deployed, ambiently and
 # machine-wide, exactly the version a planted symlink defeats: `.agents` pointing
@@ -53,7 +53,7 @@ command -v jq >/dev/null 2>&1 || { log_fail "jq is required"; log_fix "$(pkg_hin
 # The fix exists upstream and reaches nothing, because the distribution channel
 # between them is stale. Preferring the source repo when it is present is the
 # only ordering that cannot install a known-vulnerable guard.
-PI_SRC="${PROJECT_INIT_SRC:-${PORT_ROOT:-$HOME/port}/project-init}/templates/base/dot_agents/hooks/prod_guard.py"
+PI_SRC="${PROJECT_INIT_SRC:-$(sh "$SRC/roots.sh" --get HARBOR_PROJECT_INIT)}/templates/base/dot_agents/hooks/prod_guard.py"
 # The mirror is the TARGET's own marketplace clone, never one CLAUDE_CONFIG_DIR points at.
 PLUGIN_MIRROR="$DIR/plugins/marketplaces/project-init/plugins/project-init-workflow/hooks/prod_guard.py"
 if [ -f "$PI_SRC" ]; then PLUGIN="$PI_SRC"; SRC_KIND="upstream source repo"
@@ -66,7 +66,7 @@ if [ ! -f "$S" ]; then
 fi
 if [ ! -f "$PLUGIN" ]; then
   log_fail "no prod_guard.py at $PLUGIN"
-  log_nofix "harbor#56: prod_guard.py comes from a project-init checkout (PROJECT_INIT_SRC, default ~/port/project-init)"
+  log_nofix "harbor#56: prod_guard.py comes from a yard checkout (PROJECT_INIT_SRC, else the registry's yard checkout)"
   log_end; exit 1
 fi
 log_note "source: $PLUGIN ($SRC_KIND)"
@@ -80,7 +80,7 @@ log_note "source: $PLUGIN ($SRC_KIND)"
 # which source won above or how the channel drifts later.
 if ! grep -q 'is_symlink' "$PLUGIN"; then
   il_refuse "the selected prod_guard.py has no symlink refusal (PI-903): a planted .agents symlink would supply its own safety.allow and disable the deny table" \
-    "none automatic — see project-init#904 (ac85947); fix the source, then: $(il_cmd --apply)"
+    "none automatic — see yard#904 (ac85947); fix the source, then: $(il_cmd --apply)"
 fi
 
 # Verified at install time so the runtime never has to: the shim's own
@@ -93,20 +93,10 @@ G_DST="$DIR/hooks/prod_guard.py"
 S_DST="$DIR/bin/prod-guard-ambient.sh"
 CMD="/bin/sh $S_DST $G_DST"
 
-# floor-install.sh:73-99's idempotent additive merge, reused verbatim in shape.
-merge_hook() { # <settings-json> <event> <matcher> <cmd> → new json on stdout
-  jq --arg ev "$2" --arg m "$3" --arg cmd "$4" '
-    .hooks //= {}
-    | .hooks[$ev] //= []
-    | (.hooks[$ev] | map(.matcher == $m) | index(true)) as $i
-    | if $i == null
-      then .hooks[$ev] += [{matcher:$m, hooks:[{type:"command", command:$cmd}]}]
-      else (.hooks[$ev][$i].hooks |= (
-              if (map(.command) | index($cmd)) == null
-              then . + [{type:"command", command:$cmd}] else . end)) end
-  ' "$1"
-}
-NEW="$(merge_hook "$S" PreToolUse "Bash" "$CMD")"
+# Wired as floor-install wires its vetoes, onFailure included: a prod_guard that times out otherwise lets
+# the call through (harbor#1277). A hook already wired gains the key.
+ONFAIL="$(il_onfailure)"
+NEW="$(il_merge_hook "$S" PreToolUse "Bash" "$CMD" "$ONFAIL")"
 
 if [ "$IL_APPLY" -eq 0 ]; then
   log_note "guard: would copy $PLUGIN to $G_DST"
@@ -117,7 +107,7 @@ fi
 # This installer is now safe from it; anything SCAFFOLDED from the mirror is not.
 if [ -f "$PI_SRC" ] && [ -f "$PLUGIN_MIRROR" ] && ! cmp -s "$PI_SRC" "$PLUGIN_MIRROR"; then
   log_warn "the marketplace mirror differs from the source repo, so a plugin update would install a stale guard — anything SCAFFOLDED from it is still vulnerable"
-  log_nofix "project-init#904: update the project-init marketplace plugin"
+  log_nofix "yard#904: update the yard marketplace plugin"
 fi
 # The mirror is what an update WOULD install; the copy Claude Code loads is the installed one, and a
 # current mirror over a stale install read green (harbor#925). One line per install path.
@@ -145,7 +135,11 @@ $_ins
 EOF
 fi
 if [ "$(jq -r --arg c "$CMD" '[.hooks.PreToolUse[]? | select(.matcher == "Bash") | .hooks[]?.command] | index($c) != null' "$S")" = true ]; then
-  log_ok "PreToolUse Bash: $CMD already wired"
+  if [ -z "$ONFAIL" ] || [ "$(jq -r --arg c "$CMD" '[.hooks.PreToolUse[]? | select(.matcher == "Bash") | .hooks[]? | select(.command == $c) | .onFailure // ""] | first' "$S")" = "$ONFAIL" ]; then
+    log_ok "PreToolUse Bash: $CMD already wired"
+  else
+    log_note "PreToolUse Bash: $CMD is wired; would set onFailure $ONFAIL on it"
+  fi
 else
   log_note "PreToolUse Bash: would wire $CMD"
 fi
@@ -169,7 +163,7 @@ fi
 log_ok "guard: copied $PLUGIN to $G_DST"
 log_ok "shim: copied $SRC/prod-guard-ambient.sh to $S_DST"
 # Their rows in the install manifest (install standard §3), each with its own source's commit: the guard
-# comes from project-init (or the marketplace mirror), the shim from this checkout.
+# comes from yard (or the marketplace mirror), the shim from this checkout.
 il_source "$(dirname -- "$PLUGIN")"; il_manifest hooks/prod_guard.py
 il_source "$SRC/.."; il_manifest bin/prod-guard-ambient.sh
 il_manifest_write || { log_end; exit 1; }

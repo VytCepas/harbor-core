@@ -80,6 +80,7 @@ CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 # `[ -d … ] || continue`, so on the day the gate matters most it would have
 # looked at nothing and reported CODE=0. Measured by reading, before phase C ran.
 PORT="${PORT_ROOT:-$HOME_DIR/port}"
+FLEETF="$(sh "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/roots.sh" --get HARBOR_FLEET_FILE)" || exit 3   # harbor#966
 
 # THE REPOS ARE DERIVED FROM $PORT, NEVER LISTED. The Deliverables copy carried a
 # hand-written list of thirteen names, and a hand list of what lives in a
@@ -311,9 +312,13 @@ scan() {
 #   literals, quoted as data; scanned, they turn the gate red on its own test
 #   data (suite case 8). The cost, named: a real pre-move default written here would
 #   go unseen here — its defaults derive from PORT_ROOT and HOME instead.
+#   ONE LIST, applied to every repo scan (1b too): harbor-core mirrors these files and the private layer keeps its own
+#   exemption table, and scanned there they were 157 of 159 CODE rows on 2026-10-27, the gate red on its own data. The
+#   suite split into tests/install/port-paths/ is listed beside the file it came from.
+INSTRUMENT_SPEC=':!bin/port-paths.sh :!tests/install/port-paths-test.sh :!tests/install/port-paths/* :!CONTRACTS/port-paths-exempt.tsv :!port-paths-exempt.tsv'
 harbor_grep() { # <repo> <git-grep-flags>
-  git -C "$1" grep "$2" "$PAT" -- . ':!EVALS-DATA' ':!*/EVALS/*' ':!COVERAGE-INCIDENTS.tsv' \
-      ':!bin/port-paths.sh' ':!tests/install/port-paths-test.sh' ':!CONTRACTS/port-paths-exempt.tsv' 2>/dev/null
+  # shellcheck disable=SC2086  # INSTRUMENT_SPEC is pathspecs with no spaces, split on purpose
+  git -C "$1" grep "$2" "$PAT" -- . ':!EVALS-DATA' ':!*/EVALS/*' ':!COVERAGE-INCIDENTS.tsv' $INSTRUMENT_SPEC 2>/dev/null
 }
 
 # --selftest. The two load-bearing parts are the regex and classify(); everything
@@ -450,11 +455,20 @@ if [ "$MODE" = verify ]; then
         # `(pattern)`: this loop runs inside $( ), where bash 3.2 reads a bare
         # `pattern)` as the end of the substitution.
         case "$__et" in (*@HOME@*) __er="$(printf '%s' "$__et" | sed "s|@HOME@|$HOME_DIR|g")" ;; esac
-        if [ "$__et" = '*' ]; then
-          grep -qE "$PAT" "$PORT/$__ef" 2>/dev/null && continue
-        else
-          grep -qF -- "$__er" "$PORT/$__ef" 2>/dev/null && continue
-        fi
+        # The file of the row AND the installed copy the scan maps onto it (FINISH_AWK: skills/, bin/, CLAUDE.md):
+        # a skill retired from the tree but still installed kept its row live, and was reported stale (2026-10-27).
+        # No apostrophe in a comment here: inside $( ) bash 3.2 reads one as an open quote.
+        set -- "$PORT/$__ef"
+        case "$__ef" in
+          (harbor/skills/*|harbor/bin/*) [ -z "$CFG" ] || set -- "$@" "$CFG/${__ef#harbor/}" ;;
+          (harbor/CONSTITUTION.md) [ -z "$CFG" ] || set -- "$@" "$CFG/CLAUDE.md" ;;
+        esac
+        __live=0
+        for __eg in "$@"; do
+          if [ "$__et" = '*' ]; then grep -qE "$PAT" "$__eg" 2>/dev/null && __live=1
+          else grep -qF -- "$__er" "$__eg" 2>/dev/null && __live=1; fi
+        done
+        [ "$__live" = 0 ] || continue
         echo "$__ef$(printf '\t')$__et"
       done)"
   fi
@@ -530,7 +544,8 @@ for __r in $TARGETS; do
   fi
   #    estate's AUDITS/<date>-data/ is excluded for the EVALS reason: a dated
   #    audit's findings.json quotes the paths it measured on that day.
-  git -C "$__d" grep -nE "$PAT" -- . ':!*/EVALS/*' ':!AUDITS/*' 2>/dev/null |
+  # shellcheck disable=SC2086
+  git -C "$__d" grep -nE "$PAT" -- . ':!*/EVALS/*' ':!AUDITS/*' $INSTRUMENT_SPEC 2>/dev/null |
     while IFS=: read -r __f __ln __txt; do
       raw "repo:$__r" "$__d/$__f" "$__ln" "$__txt"
     done
@@ -564,13 +579,13 @@ scan claude-json "$HOME_DIR/.claude.json"
 # 4 · fleet discovery. Gitignored by design (.gitignore:68), so it has NO version
 #     history — and po#305 measured that register() silently drops two fields and
 #     every comment. Edit it by hand, never by tool.
-scan fleet "$PORT/projects-orchestrator/fleet.yaml"
+scan fleet "$FLEETF"
 #     The root line names $HOME itself, which PAT cannot see — it carries no
 #     repo name. Scanning $HOME at depth 1 after phase C finds zero projects and
 #     raises no error (roots.tsv, HARBOR_FLEET_FILE), so it is checked by value.
-grep -nE "^[[:space:]]*-[[:space:]]*${HOME_DIR}/?[[:space:]]*\$" "$PORT/projects-orchestrator/fleet.yaml" 2>/dev/null |
+grep -nE "^[[:space:]]*-[[:space:]]*${HOME_DIR}/?[[:space:]]*\$" "$FLEETF" 2>/dev/null |
   while IFS=: read -r __ln __txt; do
-    printf 'CODE\tfleet\t%s\t%s\t%s (roots: must be %s)\n' "$PORT/projects-orchestrator/fleet.yaml" "$__ln" "$(printf '%s' "$__txt" | sed 's/^[[:space:]]*//')" "$PORT"
+    printf 'CODE\tfleet\t%s\t%s\t%s (roots: must be %s)\n' "$FLEETF" "$__ln" "$(printf '%s' "$__txt" | sed 's/^[[:space:]]*//')" "$PORT"
   done
 
 # 5 · launchd. These cannot use $HOME, so every path here is unavoidably absolute.

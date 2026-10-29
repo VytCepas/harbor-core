@@ -5,7 +5,7 @@
 #   harbor scope install [--dry-run] [--seed-from-projects] [--private-only]
 #
 #   --dry-run             print what would be created and kept, write nothing
-#   --seed-from-projects  also write repos.tsv rows from the private layer's inject.d/box/projects.tsv and the git
+#   --seed-from-projects  also write repos.tsv rows from the private layer's projects.tsv (roots.sh --projects) and the git
 #                         checkouts already under PORT_ROOT; only ids not yet in repos.tsv are added
 #   --private-only        leave the PORT_ROOT skeleton and the config dir alone and create only harbor-private/
 #

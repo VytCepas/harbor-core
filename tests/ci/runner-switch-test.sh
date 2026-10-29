@@ -158,6 +158,10 @@ t_eq "the cache is marked unread" true "$(get .unread)"
 t_eq "the first failure is one checks.log line" 1 "$(nlog)"
 run >/dev/null
 t_eq "a second failed tick adds no line: a standing state is not a change" 1 "$(nlog)"
+rm -f "$FX/billing.fail"; run >/dev/null
+t_eq "the first good read after says so once, so the log does not end on the failure" 1 "$(grep -c 'read answers again' "$CACHE/checks.log")"
+_n="$(nlog)"; run >/dev/null
+t_eq "...and a second good read adds nothing" "$_n" "$(nlog)"
 reset; usage priv:2900; echo github-hosted > "$FX/var"; : > "$FX/billing.fail"
 run >/dev/null
 t_eq "control: high usage in the file does not matter when the API errored" 0 "$(nwrites)"

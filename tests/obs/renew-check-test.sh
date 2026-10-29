@@ -197,7 +197,7 @@ provision; rm -f "$CFG/.helm-renew"
 _fs="$(CLAUDE_CONFIG_DIR="$CFG" HARBOR_REPO="$REPO" HARBOR_ORCH_BIN="$T/no-orchestrator" HARBOR_CACHE_DIR="$T/cache" \
   sh "$T_ROOT/bin/fleet-snapshot-refresh.sh" 2>&1)"
 t_eq "the refresher writes a sandbox's renew cache through renew-check --dir" yes "$([ -f "$CFG/.helm-renew" ] && echo yes || echo no)"
-t_has "...and its own failure is a FAIL line with its fix (CONTRACTS/logging.md)" "$(printf '%s\n' "$_fs" | grep -A1 '^  FAIL: ')" "  fix: none automatic — see projects-orchestrator"
+t_has "...and its own failure is a FAIL line with its fix (CONTRACTS/logging.md)" "$(printf '%s\n' "$_fs" | grep -A1 '^  FAIL: ')" "  fix: none automatic — see fleet"
 t_exit "a CLAUDE_CONFIG_DIR naming another dir is a usage error: it never picks the target" 2 \
   env CLAUDE_CONFIG_DIR="$T" sh "$T_ROOT/bin/renew-check.sh" --dir "$CFG"
 # Linux (harbor#618): no launchctl, so the watch counts harbor-*.timer units and asks systemctl which run.

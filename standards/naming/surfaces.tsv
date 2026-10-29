@@ -51,13 +51,14 @@ python-module	snake, nested by family	-	no	fleet/drift/undeployed.py	-	-	ruff N 
 ts-file	kebab, kind in the extension chain	-	tree	browser-probe.test.ts	-	-	checked as a path
 field	snake; harness keys verbatim	-	no	schema_version	-	-	JSON, TSV and YAML fields
 record	JSONL, ts in UTC, snake fields	-	no	{"ts":"2026-10-04T09:12:03Z"}	-	-	LOG1 and F5 (D-34)
-branch	<type>/<issue>-<slug>	-	no	fix/949-admission-missing-hook	-	-	D-21
-commit	<type>(<family>): <subject> + Refs: <repo>#<n>	-	no	fix(admission): stop exit-127	-	-	lint C2 and the commit hook (D-21)
+branch	<type>/<issue>-<slug>	-	check	fix/949-admission-missing-hook	-	-	D-21; a PR's head branch, read by --check only: the grammar is a regex in bin/lint-name.sh because the type is a commit-type term, which no slot spells (harbor#978)
+commit	<type>(<family>): <subject> + Refs: <repo>#<n>	-	check	fix(admission): stop exit-127	-	-	lint C2 and the commit hook (D-21); the subject, which is also a PR title, is read by --check only; the Refs trailer is the commit hook's (harbor#978)
 worktree	$PORT_ROOT/.worktrees/<repo>/<slug> (legacy sibling <repo>-wt-<name>)	-	no	.worktrees/harbor/949	-	-	bin/worktree.sh
 label	<axis>:<value>	-	no	family:admission	-	-	generated as the label set (`--gen labels`, D-30)
 issue-title	<family>: <outcome>	required	no	admission: stop exit-127	-	-	D-30
 stamp	[<register>:<id>]	-	no	[check:audit.triage]	-	-	D-20
 mcp-tool	mcp__<object>__<name>	-	check	mcp__harbor_chrome__tab_new	name.mcp-tool	-	an MCP tool as Claude Code names it, mcp__<server>__<tool>: both snake, since the harness joins them with __ (harbor#1301)
+release-tag	v<major>.<minor>.<patch>, SemVer 2.0	-	check	v1.2.3	-	-	a release tag, and the title of its release; read by --check only, never by a tree scan. The grammar is a regex in bin/lint-name.sh because a version is digits and dots, which no slot spells (harbor#957)
 secret	<system>-<service>-<identity>-<purpose>	-	no	harbor-github-vytcepas-pr-read	-	-	never a value, client data or email (D-36)
 cloud-resource	<system>-<family>-<object>[-<env>]	-	no	frobapp-api-prod	-	-	a warehouse keeps one dialect per repo, dialects.tsv (D-33)
 test	tests/<family>/<subject>/<aspect>.test.<ext>	required	tree	tests/admission/bash/destroy.test.sh	name.test-path	-	Python keeps test_<aspect>.py (D-14)

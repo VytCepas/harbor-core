@@ -289,6 +289,14 @@ t_eq "GitHub not answering: nothing is removed" 0 "$(grep -c '^rm ' "$FX/docker.
 t_has "...and it says why" "$OUT" "GitHub did not answer, so it cannot be told whether the runner is busy"
 t_eq "...and fails" 1 "$RC"
 
+fxbusy; run tick >/dev/null 2>&1
+t_eq "tick: the cache names the stale containers, not only the five drift sets" "alpha-linux beta-linux" "$(jq -r '.stale | join(" ")' "$CACHE/ci-runners.json")"
+t_eq "...as one checks.log line naming the refresh" 1 "$(grep -c 'stale: alpha-linux beta-linux on an image older than .*refresh --apply' "$CACHE/checks.log")"
+run tick >/dev/null 2>&1
+t_eq "...and no second line while the set is unchanged" 1 "$(grep -c 'stale: ' "$CACHE/checks.log")"
+reset; container alpha-linux port-linux-runner:local running; runner alpha online false; run tick >/dev/null 2>&1
+t_eq "...a cache with none stale writes an empty list" '[]' "$(jq -c '.stale' "$CACHE/ci-runners.json")"
+
 fx; touch "$FX/docker.runfail"; OUT="$(run refresh --apply)"; RC=$?
 t_eq "a create that fails stops the loop: one run attempted" 1 "$(grep -c '^run -d' "$FX/docker.log")"
 t_eq "...only alpha was removed, beta is untouched" "rm -f alpha-linux" "$(grep '^rm ' "$FX/docker.log")"

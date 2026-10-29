@@ -78,7 +78,7 @@ probe mkfifo   degraded "the O-22 FIFO plant and the DE-11 spinner. Without it t
 
 # ── optional: a named feature is unavailable, nothing lies ──────────────────
 probe bun      optional "skill-tools (telos, prompting, evals, context-search, knowledge) and the memory engine. The floor is deliberately zero-Bun, so this stays optional — but tests/memory/memory-test.sh runs 56 engine assertions only when it can find bun, and 'optional' is why nobody noticed CI skipping all 56 on a box that HAS it: the runner service's PATH omits ~/.bun/bin (harbor#165, patches/governance-bun.patch.md). Absent here means the memory front door answers on its grep rung, which is a supported degrade, not a break"
-probe python3  optional "project-init's prod_guard and the trio's own tooling"
+probe python3  optional "yard's prod_guard and the trio's own tooling"
 # launchctl is macOS's: Linux/WSL2 runs that job under systemd, and a "launchctl missing" note there is noise (harbor#618).
 if [ "$(uname -s)" = Darwin ]; then probe launchctl optional "the fleet-snapshot refresh job (macOS only)"; fi
 probe mktemp   optional "test harnesses"

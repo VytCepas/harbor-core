@@ -1,0 +1,12 @@
+# Why it is wired this way (moved from bin/runtime-install.sh, harbor#1272):
+# access-confinement.sh (harbor#1298, #555 decisions 7 and 8) — PreToolUse(Bash): mints a confined command's GitHub
+# App and gcx tokens outside the confinement, into a cache it can read. Inert until deploy-confinement.sh's marker
+# exists, prints nothing, exits 0. Same off contract: the sentinel $DIR/access-confinement.off stops it being wired.
+key	value
+engine	access-confinement
+installer	runtime-install
+wire	PreToolUse	Bash	30
+senses	a Bash call about to run inside the confinement
+acts-on	the confined command's GitHub App and gcx token cache
+findings	none: it prints nothing and exits 0
+closer	nobody

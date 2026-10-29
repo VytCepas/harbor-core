@@ -68,7 +68,7 @@ esac
 # is silence, because unlike the external-content banner nothing here is a
 # safety boundary — a missed reminder costs a reminder.
 #
-# `--note` PRINTS THE TEXT AND NOT THE ENVELOPE (harbor#173). bin/inject-hook.sh
+# `--note` PRINTS THE TEXT AND NOT THE ENVELOPE (harbor#173). hooks/injection-rule/injection-rule.sh
 # is the engine that now carries every other just-in-time rule in this estate,
 # and its `run:` contract is "stdout is the note". This branch computes exactly
 # what it always computed and skips the jq wrapper, so the merge governance below
@@ -134,7 +134,7 @@ STAMP='[HARBOR GOVERNANCE]'
 # pinning, how far behind origin the checkout now is — and CONTRACTS/hooks.md
 # gives the reason no other layer can reach it: a PR merge is server-side, so no
 # local git process runs and no `post-merge` git hook fires, in this repo or any
-# repo, ever. bin/inject-hook.sh calls back into this file through `--note`.
+# repo, ever. hooks/injection-rule/injection-rule.sh calls back into this file through `--note`.
 TOOL="$(field '.tool_name')"
 case "$TOOL" in Bash|Monitor) ;; *) exit 0 ;; esac   # Monitor runs a shell command too (pass 14 E-4)
 CMD="$(field '.tool_input.command')"
@@ -303,7 +303,7 @@ BASE="${HARBOR_BASE_BRANCH:-main}"
 
 emit() { # <event> <model-text> [user-line] — or nothing at all
   [ -n "$2" ] || return 0
-  # --note: the caller is bin/inject-hook.sh, whose contract is "stdout is the
+  # --note: the caller is hooks/injection-rule/injection-rule.sh, whose contract is "stdout is the
   # note". The systemMessage half has no equivalent there and is dropped rather
   # than smuggled into the model's copy — a line written for the operator that
   # arrives as model context is a line addressed to the wrong reader.
@@ -341,14 +341,14 @@ emit() { # <event> <model-text> [user-line] — or nothing at all
 # ── AND IT HAS TO SURVIVE THE ROUTE THE OPERATOR ACTUALLY RUNS ───────────────
 # Found by review, not by this file's suite, and it is §2.6 exactly: the suite
 # fired the hook DIRECTLY while production goes through
-# `.claude/inject.d/merge-note.sh`, which execs `govern-hook.sh --note` because
+# `context-rules/harbor/merge-note.sh`, which execs `govern-hook.sh --note` because
 # `run:` packs contract that stdout IS the note. So a deny degraded to prose,
 # `inject-hook.sh` wrapped that prose as additionalContext, and every red PR
 # still merged — with a green suite either side of it. A gate that is inert on
 # the installed path is the decorative gate harbor#254 is about, one layer down.
 #
 # The sentinel is the fix: `--note` prints a line the ENGINE recognises, and
-# bin/inject-hook.sh turns it back into a real permissionDecision on PreToolUse
+# hooks/injection-rule/injection-rule.sh turns it back into a real permissionDecision on PreToolUse
 # (and refuses to pretend on every other event, where the harness has no channel
 # for one). CONTRACTS/inject.md carries the contract.
 deny() {
@@ -358,12 +358,24 @@ deny() {
     2>/dev/null || true
 }
 
+# THE DECISION LOG (harbor#957 item 4). Under --note the caller is inject-hook, which records the fire as
+# g=inject; every other route records it here as g=govern, through the floor's writer. Read lazily and
+# in a subshell, so the library cannot touch the verdict, and silent when there is no ledger.
+_log() { # <deny|advise> <rule>
+  [ "$NOTE_ONLY" = 1 ] && return 0
+  [ -f "$SELF_DIR/guard-lib.sh" ] || return 0
+  ( set +eu; FLOOR_TOOL="${TOOL:-}"; FLOOR_IN="$PAYLOAD"; . "$SELF_DIR/guard-lib.sh"
+    floor_log_decision govern "$1" "$2.meta" ) >/dev/null 2>&1 || :
+}
+
 # ── --box: which repo a merge belongs to (harbor#516) ───────────────────────
-# _registered <tree>: a row in inject.d/projects.tsv, or a worktree of one. The
+# _registered <tree>: a row in the box tier's projects.tsv, or a worktree of one. The
 # registry is the trust boundary, as for inject-hook's `scope: box`: a merge
 # naming a cloned third-party repo must not run that repo's script in a hook.
 _registered() {
-  _reg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/inject.d/projects.tsv"
+  # Beside the box tier, which moved in harbor#1010; the old place is read while no new one is installed.
+  _reg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/context-rules/user/projects.tsv"
+  [ -f "$_reg" ] || _reg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/inject.d/projects.tsv"
   [ -f "$_reg" ] || return 1
   _me="$(cd "$1" 2>/dev/null && pwd -P || true)"
   _own="$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
@@ -407,7 +419,9 @@ _box_target() {
   [ -n "$_bt" ] && [ -f "$_bt/bin/merge-check.sh" ] || return 0
   _registered "$_bt" || return 0
   # Once: a session in that repo, or a worktree of it, with the merge pack is the pack's.
-  if [ -n "$PROJ" ] && [ -f "$PROJ/.claude/inject.d/merge-note.sh" ] && [ "$(_owner "$PROJ")" = "$_bt" ]; then return 0; fi
+  if [ -n "$PROJ" ] && [ "$(_owner "$PROJ")" = "$_bt" ]; then  # either layout carries the pack (harbor#1010)
+    for _mn in "$PROJ"/context-rules/*/merge-note.sh "$PROJ/.claude/inject.d/merge-note.sh"; do [ ! -f "$_mn" ] || return 0; done
+  fi
   printf '%s' "$_bt"
 }
 # _owner <tree>: the main checkout it belongs to, physical; itself when it is one.
@@ -560,6 +574,7 @@ MERGESEGS
     _vwhere=''
     [ "$BOX" = 0 ] || _vwhere=" (in $_vdir)"
     if [ "$_verdict" = refuse ]; then
+      _log deny merge-backstop
       deny "[check:merge-backstop] The merge backstop refuses this merge, so it was not run.
 
 $_vtext
@@ -583,6 +598,7 @@ Route$_vwhere: sh bin/merge-check.sh --merge $_vpr — it re-checks and merges i
   # three lint rules that run at COMMIT time, which is earlier and cheaper than
   # merge.
 
+  [ -z "$note" ] || _log advise merge-note
   emit PreToolUse "$note" "$user"
   exit 0
 fi
@@ -708,6 +724,7 @@ if [ "$EVENT" = PostToolUse ] && matches gh 'pr merge'; then
   # unreachable — `user` lost its only assignment when the doc gate was cut.
   _user=''
   [ -n "$merged" ] && _user="harbor: merged and still local — $merged"
+  [ -z "${note# }" ] || _log advise merged-local
   emit PostToolUse "${note# }" "$_user"
   exit 0
 fi

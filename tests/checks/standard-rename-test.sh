@@ -9,7 +9,7 @@ command -v python3 >/dev/null 2>&1 || { t_section "python3 is absent"; t_exit "t
 H="$HOME"; HB="$H/port/harbor"; CFG="$H/box/.claude"   # a sandbox HOME of its own: --dir never reaches $HOME/.claude
 unset CLAUDE_CONFIG_DIR   # the box target is named by --dir; the env must not disagree with it
 mkdir -p "$HB/bin" "$HB/docs" "$HB/launchd" "$HB/tests" "$HB/standards/naming" "$HB/fixtures"
-for f in terms aliases controls surfaces kinds registers repo-kinds dialects frozen; do cp "$T_ROOT/standards/naming/$f.tsv" "$HB/standards/naming/"; done
+for f in terms aliases controls surfaces kinds registers repo-kinds dialects frozen label-axes writers; do cp "$T_ROOT/standards/naming/$f.tsv" "$HB/standards/naming/"; done
 sed -n '/^id	old	new/q;p' "$T_ROOT/standards/naming/renames.tsv" > "$HB/standards/naming/renames.tsv"
 printf 'id\told\tnew\tsurface\twave\tremove_by\treason\n' >> "$HB/standards/naming/renames.tsv"
 { sed -n '/^id	rule	subject/q;p' "$T_ROOT/standards/naming/exemptions.tsv"
@@ -323,7 +323,10 @@ t_section "the research/03 rename TSV is no input (ticket item 4)"
 t_eq "git grep -l 03-harbor-renames -- bin" "" "$(git -C "$T_ROOT" grep -l 03-harbor-renames -- bin || :)"
 
 t_section "the real tree: bin/harbor's graph sites inside bin/harbor-clean.sh are never rewritten"
-REAL="$T_TMP/real"; git clone -q "$T_ROOT" "$REAL" 2>/dev/null
+REAL="$T_TMP/real"
+# A clone that fails leaves an empty dir: the byte-identical arm would compare two empty counts and pass, the others
+# would blame the codemod. Say it once instead (the Claude sandbox refuses .github/workflows, harbor#1272).
+if git clone -q "$T_ROOT" "$REAL" 2>/dev/null && [ -f "$REAL/bin/standard-rename.sh" ]; then
 # The clone is HEAD; carry the working tree's codemod and register so an uncommitted run tests itself.
 # The register is its header alone: a tree whose own rows already ran must not change this proof.
 cp "$TOOL" "$REAL/bin/standard-rename.sh"; sed -n '1,/^id	old	new/p' "$T_ROOT/standards/naming/renames.tsv" > "$REAL/standards/naming/renames.tsv"
@@ -334,4 +337,7 @@ sh "$REAL/bin/standard-rename.sh" --root "$REAL" --apply --id rename-0001 >/dev/
 t_eq "every bin/harbor-clean.sh line in the real tree is byte-identical after" "$C0" "$(git -C "$REAL" grep -c -F 'bin/harbor-clean.sh' | sort)"
 t_eq "...the substring sites the graph listed are in the report" yes "$(grep -q '^substring	bin/harbor	' "$REAL/build/rename-report.tsv" && echo yes || echo no)"
 t_eq "...and no true reference to bin/harbor is left" 0 "$(git -C "$REAL" grep -P -c '(?<![A-Za-z0-9_-])bin/harbor(?![A-Za-z0-9_-])' -- . ':!standards/naming/renames.tsv' | wc -l | tr -d ' ')"
+else
+  t_fail "could not clone this repo into $REAL, so the real-tree proof ran nothing (a sandbox refusing .github/workflows does this)"
+fi
 t_done

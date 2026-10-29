@@ -18,10 +18,10 @@ CONTRACTS/	core	interface contracts
 DOCTRINE/	core	rule reasoning
 bin/	core	the tools
 commands/	core	slash commands
+context-rules/	core	session injectors (inject.d/ before harbor#1010)
 docs/	core	documentation
 fixtures/	core	test fixtures
 hooks/	core	git hooks
-inject.d/	core	session injectors
 launchd/	core	macOS schedules
 patches/	core	vendor patches
 runners/	core	CI runner setup
@@ -33,6 +33,7 @@ tools/	core	helper programs
 vendor/archify/	core	vendored upstream code
 vendor/complexity-atlas/	core	vendored upstream code
 vendor/skills/	dev	skills derived from an upstream project; installed from the dev checkout
+vendor/skills-archive/	dev	archived upstream skills: in git, not installed, not indexed (vendor/skills-archive/PROVENANCE.md)
 worklog/	core	push hook
 EVALS-DATA/	dev	eval corpora, bulk data
 .gitignore	core	
@@ -44,6 +45,7 @@ CHECKS.md	core
 CITATIONS.md	core	
 CLAUDE.md	core	
 CONSTITUTION.md	core	
+CONTEXT-RATCHET.tsv	core	the deploy ratchet baseline read by bin/context-budget.sh --ratchet
 CONTRIBUTING.md	core	how to contribute to the export
 COVERAGE.md	core	
 EVALS.md	core	

@@ -1,6 +1,6 @@
 ---
 name: access-ledger
-description: "Which account to use on each system, the role it holds and what it cannot reach: harbor-private/access/ACCOUNTS.md, generated from the route cards; plus the one-ask access ledger. USE WHEN which account, wrong account, 401, 403, permission denied, Reauthentication failed, do I have access, can I reach X, need access, credentials, token, least privilege."
+description: "Which account to use on each system, the role it holds and what it cannot reach: harbor-private/access/ACCOUNTS.md, generated from the route cards; plus the one-ask access ledger. USE WHEN which account, wrong account, 401, 403, permission denied, Reauthentication failed, do I have access, can I reach X, need access, credentials, token, least privilege. NOT FOR obtaining or storing a credential (the operator holds those), or a number that is wrong (a casefile pack owns that)."
 argument-hint: [system or client]
 ---
 
@@ -113,7 +113,7 @@ cell meaning *not recorded*, which is not the same as *no access*.
   in the browser (`BROWSER`, below). Where nothing can read it, the line says
   `none - <why>` so the gap stays on the page instead of looking covered.
 - **An access failure points here by itself.** The box pack
-  `inject.d/box/45-access-route-pointer.md` fires on a Bash result carrying a
+  `context-rules/user/access-route-pointer.md` fires on a Bash result carrying a
   401, 403, `PERMISSION_DENIED` or `Reauthentication failed` from a system that
   has a card, and names the account that card says to use.
 - **The gate fails a stale `ACCOUNTS.md` or `DISPATCH.md`.** Edit a card, then

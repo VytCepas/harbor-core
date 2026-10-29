@@ -112,7 +112,7 @@ for _t in sh jq mktemp stat date git sed wc tr cat; do _w="$(command -v "$_t" 2>
 O="$(runv "$WIRED" PATH="$TMP/minpath")"
 t_eq "no gitleaks or sink is warn" warn "$(verdict "$O" deps)"
 t_has "the detail names gitleaks" "$(detail "$O" deps)" "gitleaks"
-t_has "...and the missing sink" "$(detail "$O" deps)" "osascript"
+t_has "...and the missing desktop notifier" "$(detail "$O" deps)" "desktop-notifier"
 printf '#!/bin/sh\nexit 0\n' > "$TMP/minpath/gitleaks"; printf '#!/bin/sh\nexit 0\n' > "$TMP/minpath/notify-send"
 chmod +x "$TMP/minpath/gitleaks" "$TMP/minpath/notify-send"
 t_eq "Linux: notify-send is a sink, so gitleaks and it present is ok (harbor#618)" ok "$(verdict "$(runv "$WIRED" PATH="$TMP/minpath")" deps)"

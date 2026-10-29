@@ -119,6 +119,8 @@ if [ -n "$ORG" ]; then
     log_end >/dev/null || :
     exit 0
   fi
+  # The "did not answer" line promised the next good read clears it: say so once, or the log ends on the failure.
+  [ "$PREV_UNREAD" != true ] || ologline "$ORG: the org billing usage read answers again"
   [ "$WANT" = "$PREV_RUNNER" ] || ologline "$ORG ${PREV_RUNNER:-none} -> $WANT ($WHY)"
   FALLBACK=false; [ "$WANT" = self-hosted ] && FALLBACK=true
   jq -cn --argjson now "$NOW" --arg owner "$ORG" --arg runner "$WANT" --argjson used "$USED" --argjson cap "$CAP" \
@@ -212,6 +214,7 @@ if [ "$WANT" != "$CUR" ]; then
   fi
 fi
 
+[ "$PREV_UNREAD" != true ] || logline "$REPO: the HARBOR_RUNNER read answers again"
 FALLBACK=false; [ "$WANT" = self-hosted ] && FALLBACK=true
 jq -cn --argjson now "$NOW" --arg repo "$REPO" --arg runner "$WANT" --argjson used "$USED" --argjson allow "$ALLOW" \
   --argjson fb "$FALLBACK" --argjson nm "$NEWMONTH" --arg plan "${PLAN:-}" \

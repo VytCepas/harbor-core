@@ -3,7 +3,7 @@
 # nine columns on every row and the seven seed roles, every row names a stop rule, and the pack carries
 # the five universal rules inside its byte budget.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-TSV="$T_ROOT/CONTRACTS/agents.tsv"; PACK="$T_ROOT/inject.d/box/10-subagent-contract.md"
+TSV="$T_ROOT/CONTRACTS/agents.tsv"; PACK="$T_ROOT/context-rules/user/subagent-contract.md"
 t_section "agents.tsv shape"
 t_eq "header is the nine columns" "role	model	effort	tools	input	output	done_when	must_not	stop_rule" "$(head -n 1 "$TSV")"
 t_eq "every row has nine fields" "9" "$(awk -F'\t' '{print NF}' "$TSV" | sort -u)"

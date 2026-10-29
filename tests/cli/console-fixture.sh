@@ -68,7 +68,8 @@ ui_start() {
   UI_PID=$!
   # 60 s, not 10: Bun on a loaded CI runner (P=24) started past 10 s and every check after read an empty page (harbor#738)
   _i=0
-  while [ $_i -lt 600 ] && ! grep -q 'token=' "$T_TMP/$_n.out" 2>/dev/null; do sleep 0.1; _i=$((_i + 1)); done
+  # A server that exited (a refused listen, a crash) ends the wait at once: 60 s per start was 54 min in the sandbox.
+  while [ $_i -lt 600 ] && ! grep -q 'token=' "$T_TMP/$_n.out" 2>/dev/null && kill -0 "$UI_PID" 2>/dev/null; do sleep 0.1; _i=$((_i + 1)); done
   _url="$(sed -n 's/^harbor ui: \(http[^ ]*\)$/\1/p' "$T_TMP/$_n.out" | head -1)"
   [ -n "$_url" ] || printf 'console-fixture: ui_start %s printed no URL in 60 s; stderr: %s\n' "$_n" "$(head -c 300 "$T_TMP/$_n.err" 2>/dev/null)" >&2
   UI_CODE="${_url##*token=}"; UI_PORT="$(printf '%s' "$_url" | sed -n 's#^http://127.0.0.1:\([0-9]*\)/.*#\1#p')"
@@ -76,6 +77,24 @@ ui_start() {
   # The launch code is good once: swap it for the session cookie, unless the caller wants to spend it itself (UI_NOEX=1).
   [ -n "${UI_NOEX:-}" ] || UI_TOKEN="$(curl -s -D - -o /dev/null "$UI_URL/?token=$UI_CODE" | tr -d '\r' | sed -n "s/^[Ss]et-[Cc]ookie: harbor_ui_[0-9]*=\([0-9a-f]*\);.*/\1/p")"
   UI_COOKIE="harbor_ui_$UI_PORT=$UI_TOKEN"
+}
+# ui_can_listen — can bun listen on 127.0.0.1 here? The Claude sandbox refuses it (allowLocalBinding off), and then
+# every ui_start would only time out. 0 = listens, 1 = refused or no answer in 10 s.
+ui_can_listen() {
+  printf 'Bun.serve({port:0,hostname:"127.0.0.1",fetch(){return new Response("")}});console.log("up")\n' > "$T_TMP/listen.ts"
+  "$UI_BUN" "$T_TMP/listen.ts" > "$T_TMP/listen.out" 2>&1 & _lp=$!
+  _i=0; while [ $_i -lt 100 ] && ! grep -q '^up' "$T_TMP/listen.out" 2>/dev/null && kill -0 "$_lp" 2>/dev/null; do sleep 0.1; _i=$((_i + 1)); done
+  _lr=1; grep -q '^up' "$T_TMP/listen.out" 2>/dev/null && _lr=0
+  kill "$_lp" 2>/dev/null; wait "$_lp" 2>/dev/null; return $_lr
+}
+# ui_require_listen <what> — skip the suite loudly where loopback is refused; HARBOR_REQUIRE_BUN=1 (CI) makes that a failure.
+ui_require_listen() {
+  ui_can_listen && return 0
+  if [ "${REQ_BUN:-0}" = 1 ]; then t_fail "bun cannot listen on 127.0.0.1 ($(head -c 200 "$T_TMP/listen.out" 2>/dev/null))"; t_done; fi
+  echo "  SKIP $1: bun cannot listen on 127.0.0.1 here (the Claude sandbox refuses it; rerun outside it)"
+  t_section "loopback listen refused: the server arms stand down"
+  t_eq "HARBOR_REQUIRE_BUN is off where listening is refused" 0 "${REQ_BUN:-0}"
+  t_done
 }
 ui_stop() { kill "$UI_PID" 2>/dev/null; wait "$UI_PID" 2>/dev/null; return 0; }
 

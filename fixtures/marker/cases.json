@@ -414,6 +414,42 @@
       "settled": true
     },
     {
+      "id": "M38-scope-user-opt-out",
+      "why": "harbor#966, D-12. The standard spells the marker's value `scope: project|user`; `scope: user` is the owner opting back in to the global layer, the same decision `context: ambient` records. A reader that knew only the legacy key would resolve it `repo` and stand the floor down.",
+      "files": {
+        ".agents/config.yaml": "scope: user\nproject:\n  name: \"opted-out\"\n"
+      },
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos"
+    },
+    {
+      "id": "M39-scope-project-is-governed",
+      "why": "harbor#966. The other half of the new spelling and harbor's own marker: `scope: project` is a governed repo, not an opt-out. Without it, the fix above could be 'any scope key means ambient' and still pass M38.",
+      "files": {
+        ".agents/config.yaml": "scope: project\nstandard_version: 1.0.0\n"
+      },
+      "cwd": ".",
+      "expect": "repo",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far"
+    },
+    {
+      "id": "M40-either-key-opts-out",
+      "why": "harbor#966. A config in transition carries both keys (harbor's own did). When either one opts out the floor stays armed: ambient is the safe direction for a guard, so `context: repo` beside `scope: user` is ambient.",
+      "files": {
+        ".agents/config.yaml": "context: repo\nscope: \"user\"\n"
+      },
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far"
+    },
+    {
       "id": "M33-marker-at-port-root",
       "why": "harbor#619. The walk STOPS BEFORE PORT_ROOT, the workspace root the governed repos live under, so a marker written there is never examined and every repo beneath it resolves on its own merits. This is M14's hazard one level down and a likelier one: ~/port is a directory the operator is told to create, harbor#620 exists to put root instruction files IN it, and one .agents/config.yaml there would resolve every repo under the workspace to repo - the session hooks stand down and the force-push guard defers to a repo guard that does not exist.",
       "tree": [

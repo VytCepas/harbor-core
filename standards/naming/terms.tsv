@@ -22,7 +22,7 @@
 #   id          the canonical word: lowercase kebab, a digit never starts a word
 #   class       one or more of family verb domain client abbreviation kind layer concept
 #               system extension subject level mode outcome decision severity state
-#               control-type moment function lifecycle share relation modality tier, comma-separated.
+#               control-type moment function lifecycle share relation modality tier commit-type, comma-separated.
 #               family and verb never overlap. level terms form one containment chain by `broader` (D-57).
 #               relation: the typed edges a policy row or a kind's required_relations names (research/15 §3).
 #               modality: duty, prohibition, permission (ODRL). tier: constitutional, policy, standard, repo,
@@ -260,11 +260,12 @@ generator	concept	component generator	proposal-pipeline	S2	experimental	-	resear
 promotion	concept	promotion ladder	proposal-pipeline	S4	experimental	-	research/02: knowledge management (maturity ladder)	knowledge ladder; rungs 1-5	-	candidate, note, field standard, user-only skill, enforcement; each climb approved
 retirement	concept	retirement	proposal-pipeline	S4	experimental	-	research/02: software lifecycle (deprecation, sunset)	G6; growth budget	-	Removing a component that usage evidence shows nobody uses
 gate	family	gate	admission	-	stable	-	standard §3 (D-17)	-	-	Family: merge gate, PR wait
-test	family,kind,extension	test	audit	-	stable	-	standard §3 (D-17); standard §4; harbor#950 (standard §6.3)	-	-	Family: suites, mutation, fixtures
+test	family,kind,extension,commit-type	test	audit	-	stable	-	standard §3 (D-17); standard §4; harbor#950 (standard §6.3)	-	-	Family: suites, mutation, fixtures
 doc	family	doc	audit	-	stable	-	standard §3 (D-17)	-	-	Family: derived docs and their truth
 status	family	status	observability	-	stable	-	standard §3 (D-17)	-	-	Family: status reports, dashboard, status line
 housekeeping	family	housekeeping	deploy	-	stable	-	standard §3 (D-17)	-	-	Family: cleanup
-ci	family,abbreviation,control-type,moment	ci	coordination	-	stable	-	standard §3 (D-17); standard §1.1 (D-18)	-	-	Family: CI tooling
+ci	family,abbreviation,control-type,moment,commit-type	ci	coordination	-	stable	-	standard §3 (D-17); standard §1.1 (D-18)	-	-	Family: CI tooling
+library	family	library	standard	-	stable	-	sitting B Q2 (harbor#961), 2026-10-27	-	-	Family: shared helpers sourced by other scripts, never run (fs, log, alert, gate)
 memory	family	memory	memory-store	-	stable	-	standard §3 (D-17)	-	-	Family: notes, work log, ideas
 access	family	access	control-plane	-	stable	-	standard §3 (D-17)	-	-	Family: routes, identity matrix
 install	verb	install	-	-	stable	-	standard §3	-	-	Verb: the last word of a name that performs it
@@ -292,7 +293,7 @@ context-map	kind	context map	-	-	stable	-	standard §4	-	-	Kind: docs/context-ma
 generated-doc	kind	generated doc	-	-	stable	-	standard §4	-	-	Kind: docs/generated/ or build/
 script	kind	script	-	-	stable	-	standard §4	-	-	Kind: bin/<family>-<object>[-<verb>].<ext>
 module	kind,subject	module	-	-	stable	-	standard §4	-	-	Kind: src/<pkg>/<family>/<object>.py
-agent	kind	agent	-	-	stable	-	standard §4	-	-	Kind: agents/<name>.md
+agent	family,kind	agent	control-plane	-	stable	-	standard §3 (D-17); standard §4	-	-	Family: delegated agents and their routing. Kind: agents/<name>.md
 workflow	kind	workflow	-	-	stable	-	standard §4	-	-	Kind: workflows, <family>-<verb>
 record	kind,layer	record	-	-	stable	-	standard §4; standard §5	-	-	Kind: host only, ~/.claude/harbor/records/
 secret	kind	secret	-	-	stable	-	standard §4	-	-	Kind: secret store, <system>-<service>-<identity>-<purpose>
@@ -372,7 +373,7 @@ bash	extension	bash	-	-	stable	-	harbor#950 (standard §6.3)	-	-	Registered exte
 family	concept,level	family	subsystem	-	experimental	-	standard D-57	module; area (workloads)	-	A module of the platform and level five of the hierarchy: the first word on a flat surface and the subpackage in code. It belongs to one subsystem and is not one (D-57, D-59)
 ops	domain	ops	domain	S1	experimental	-	standard D-69	-	-	Domain: operational tools, such as mail and calendar and the wiki mirror
 product	domain	product	domain	S1	experimental	-	standard D-69	-	-	Domain: products the operator ships, such as a pipeline product and the client portal
-event	family	event	observability	-	experimental	-	harbor#1049 (operator decision 2026-10-05, D-77)	-	-	Family: the event bus and its dispatcher (emit, follow, rules)
+event	family,moment	event	observability	-	experimental	-	harbor#1049 (operator decision 2026-10-05, D-77); moment: D-89	-	-	Family: the event bus and its dispatcher (emit, follow, rules). Moment: started by an event it receives (a bus line, a host notification, an incoming signal), not by a timer or a harness hook
 obligation	concept	obligation	status	S3*	experimental	-	harbor#1049 (D-77)	open loop (not used: in control theory it is a loop without feedback)	-	One unit of unfinished work the box tracks from the event that opens it to the event that closes it; the ledger of them is the status family's
 shadow	mode	shadow	-	-	stable	-	standard D-29, D-64	-	-	A control that records a finding and prints nothing (D-29)
 warn	mode	warn	-	-	stable	-	standard D-29, D-64	advisory; inform	-	A control that prints a finding and never fails the run (D-29, D-64)
@@ -397,6 +398,7 @@ commit	moment	commit	-	-	stable	-	standard 09a S2	-	-	At git commit
 merge	moment	merge	-	-	stable	-	standard 09a S2	-	-	At merge
 runtime	moment	runtime	-	-	stable	-	standard 09a S2	-	-	While the agent runs, at a tool call or a session event
 schedule	moment	schedule	-	-	stable	-	standard 09a S2	-	-	On a timer
+manual	moment	manual	-	-	experimental	-	harbor#950 (operator decision 2026-10-24, D-89)	on demand; terminal-run	-	A person or a session runs it on demand; nothing starts it on its own
 preventive	function	preventive	-	-	stable	-	standard 09a S2	-	-	Acts before the harm: refuses or steers
 detective	function	detective	-	-	stable	-	standard 09a S2	-	-	Finds the harm after the fact
 corrective	function	corrective	-	-	stable	-	standard 09a S2	-	-	Repairs the harm; renames are always proposals
@@ -425,8 +427,16 @@ duty	modality	duty	-	-	experimental	-	W3C ODRL (research/15 §2-3)	-	-	A clause 
 prohibition	modality	prohibition	-	-	experimental	-	W3C ODRL (research/15 §2-3)	-	-	A clause that forbids: the subject must not do the thing
 permission	modality	permission	-	-	experimental	-	W3C ODRL (research/15 §2-3)	-	-	A clause that allows: the subject may do the thing, and nothing is implied beyond it
 constitutional	tier	constitutional	-	-	experimental	-	research/15 §3 (CLAUDE.md: the five, №1-№5)	-	-	The highest tier: the five constitutional rules and the meta-rules; changes by a person's PR with a named reviewer
-tutorial	kind	tutorial	-	-	experimental	-	harbor#949 composition review (2026-10-04); Diataxis (Procida)	-	-	A learning-oriented doc that takes a reader through one lesson to a working result
-how-to	kind	how-to guide	-	-	experimental	-	harbor#949 composition review (2026-10-04); Diataxis (Procida)	-	-	A task-oriented doc that gives the steps to reach one goal the reader already has
-reference	kind	reference	-	-	experimental	-	harbor#949 composition review (2026-10-04); Diataxis (Procida)	-	-	An information-oriented doc that describes the machinery; generated from the registers where it can be
-explanation	kind	explanation	-	-	experimental	-	harbor#949 composition review (2026-10-04); Diataxis (Procida)	-	-	An understanding-oriented doc that holds the why: doctrine lives here
-estate	concept,system	estate	workload	-	experimental	-	standard D-45 (data-estate); D-58 (system term)	data-estate	-	Data workload: repo data-estate (D-45). The system term is the short name used in references and env prefixes
+tutorial	kind	tutorial	-	-	stable	-	harbor#949 composition review (2026-10-04); Diataxis (Procida); D-90	-	-	A learning-oriented doc that takes a reader through one lesson to a working result
+how-to	kind	how-to guide	-	-	stable	-	harbor#949 composition review (2026-10-04); Diataxis (Procida); D-90	-	-	A task-oriented doc that gives the steps to reach one goal the reader already has
+reference	kind	reference	-	-	stable	-	harbor#949 composition review (2026-10-04); Diataxis (Procida); D-90	-	-	An information-oriented doc that describes the machinery; generated from the registers where it can be
+explanation	kind	explanation	-	-	stable	-	harbor#949 composition review (2026-10-04); Diataxis (Procida); D-90	-	-	An understanding-oriented doc that holds the why: doctrine lives here
+feat	commit-type	feat	-	-	stable	-	Conventional Commits 1.0; standards/naming.md D-21	-	-	A commit or PR that adds behaviour a user can see
+fix	commit-type	fix	-	-	stable	-	Conventional Commits 1.0; standards/naming.md D-21	-	-	A commit or PR that repairs behaviour that was wrong
+docs	commit-type	docs	-	-	stable	-	Conventional Commits 1.0; standards/naming.md D-21	-	-	A commit or PR that changes documentation only
+style	commit-type	style	-	-	stable	-	Conventional Commits 1.0; standards/naming.md D-21	-	-	A commit or PR that changes formatting and no meaning
+refactor	commit-type	refactor	-	-	stable	-	Conventional Commits 1.0; standards/naming.md D-21	-	-	A commit or PR that restructures code and keeps its behaviour
+build	commit-type	build	-	-	stable	-	Conventional Commits 1.0; standards/naming.md D-21	-	-	A commit or PR that changes how the repo is built or packaged
+chore	commit-type	chore	-	-	stable	-	Conventional Commits 1.0; standards/naming.md D-21	-	-	A commit or PR that maintains the repo and changes no behaviour
+revert	commit-type	revert	-	-	stable	-	Conventional Commits 1.0; standards/naming.md D-21	-	-	A commit or PR that undoes an earlier one
+perf	commit-type	perf	-	-	stable	-	Conventional Commits 1.0; standards/naming.md D-21; 12 perf commits on main	-	-	A commit or PR that improves performance and changes no behaviour
