@@ -11,7 +11,7 @@
 # breaking it. Run the script to see the real figure; the registry's own header
 # is where the "keep it short" instruction belongs, and it is there.
 #
-# THE TRADE THIS IMPLEMENTS, MEASURED (docs/reports/evals.md E7). Skill descriptions stack
+# THE TRADE THIS IMPLEMENTS, MEASURED (EVALS.md E7). Skill descriptions stack
 # with projects: twelve ambient skills cost 5,710 B of every session, and at ten
 # projects a box-level layout costs 35,770 B in descriptions alone — 149% of the
 # whole context ceiling before CLAUDE.md exists. Repo-scoping makes that slope

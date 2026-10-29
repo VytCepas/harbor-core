@@ -1,14 +1,14 @@
 #!/usr/bin/env sh
-# bin/test-suite-cache.sh through bin/test-suite-run.sh, against a fake git repo of tiny suites (HARBOR_ROOT), harbor#1288.
+# bin/suite-cache.sh through bin/suite-run.sh, against a fake git repo of tiny suites (HARBOR_ROOT), harbor#1288.
 # Each section plants what it guards: a pass to be served, a byte changed in a declared input, a failing suite,
 # an input the suite reads but does not declare, a run on main, a changeset that runs everything, a store
 # another identity wrote. The cache is the first thing that can turn a changed input into a green run that
 # never happened, so every case here is the direction that would be a false pass.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 unset RUNNER_TEMP GITHUB_ACTIONS GITHUB_REF RUNNER_NAME
-SR="$T_ROOT/bin/test-suite-run.sh"; SC="$T_ROOT/bin/test-suite-cache.sh"
+SR="$T_ROOT/bin/suite-run.sh"; SC="$T_ROOT/bin/suite-cache.sh"
 R="$T_TMP/repo"; ORD="$T_TMP/order"; ST="$T_TMP/store"
-mkdir -p "$R/tests/x" "$R/tests/lib" "$R/contracts" "$R/src/a" "$R/src/b" "$R/data" "$R/docs"
+mkdir -p "$R/tests/x" "$R/tests/lib" "$R/CONTRACTS" "$R/src/a" "$R/src/b" "$R/data" "$R/docs"
 g() { git -C "$R" -c user.name=t -c user.email=t@example.invalid "$@"; }
 mk() { # <name> [body] — a suite that records its start, runs body, prints its count line
   printf '#!/bin/sh\necho %s >> "%s"\n%s\necho "%s: 1 passed, 0 failed"\n' "$1" "$ORD" "${2:-:}" "$1" > "$R/tests/x/$1.sh"
@@ -18,8 +18,8 @@ mk r 'cat "$(dirname "$0")/../../data/r.txt" >/dev/null'           # names data/
 mk dy 'd=da; cat "$(dirname "$0")/../../${d}ta/dy.txt" >/dev/null'  # builds the path: nothing to read statically
 mk gt 'git -C "$T_ROOT" rev-parse HEAD >/dev/null 2>&1 || :'
 mk m 'echo more >> "$(dirname "$0")/../../src/m.txt"'               # edits its own declared input while it runs
-printf '%s\n' a b f al r dy gt m | sed 's|^|tests/x/|; s|$|.sh|' > "$R/contracts/suites.txt"
-cat > "$R/contracts/suite-paths.txt" <<'EOF'
+printf '%s\n' a b f al r dy gt m | sed 's|^|tests/x/|; s|$|.sh|' > "$R/CONTRACTS/suites.txt"
+cat > "$R/CONTRACTS/suite-paths.txt" <<'EOF'
 @no-suite docs/*
 tests/x/a.sh tests/x/a.sh src/a/*
 tests/x/b.sh tests/x/b.sh src/b/*
@@ -96,11 +96,11 @@ t_hasnt "...and no cached count" "$O2" "cached"
 t_eq "no store was made" no "$([ -e "$ST" ] && echo yes || echo no)"
 t_eq "the rows are pass rows" pass "$(row a)"
 # The runner never even calls the cache: a stub beside a copy of the runner records any call.
-G="$T_TMP/gbin"; mkdir -p "$G"; cp "$T_ROOT/bin/test-suite-run.sh" "$T_ROOT/bin/test-suite-select.sh" "$T_ROOT/bin/library-log.sh" "$G/"
-printf '#!/bin/sh\necho called >> "%s"\nexit 1\n' "$T_TMP/stub-called" > "$G/test-suite-cache.sh"
-HARBOR_ROOT="$R" HARBOR_CHANGED="$CH" sh "$G/test-suite-run.sh" tests/x/a.sh > /dev/null 2>&1
-t_eq "unset: bin/test-suite-cache.sh is never run" no "$([ -f "$T_TMP/stub-called" ] && echo yes || echo no)"
-HARBOR_ROOT="$R" HARBOR_CHANGED="$CH" HARBOR_SUITE_CACHE=1 sh "$G/test-suite-run.sh" tests/x/a.sh > /dev/null 2>&1
+G="$T_TMP/gbin"; mkdir -p "$G"; cp "$T_ROOT/bin/suite-run.sh" "$T_ROOT/bin/suite-select.sh" "$T_ROOT/bin/log-lib.sh" "$G/"
+printf '#!/bin/sh\necho called >> "%s"\nexit 1\n' "$T_TMP/stub-called" > "$G/suite-cache.sh"
+HARBOR_ROOT="$R" HARBOR_CHANGED="$CH" sh "$G/suite-run.sh" tests/x/a.sh > /dev/null 2>&1
+t_eq "unset: bin/suite-cache.sh is never run" no "$([ -f "$T_TMP/stub-called" ] && echo yes || echo no)"
+HARBOR_ROOT="$R" HARBOR_CHANGED="$CH" HARBOR_SUITE_CACHE=1 sh "$G/suite-run.sh" tests/x/a.sh > /dev/null 2>&1
 t_eq "control: set, it is" yes "$([ -f "$T_TMP/stub-called" ] && echo yes || echo no)"
 
 t_section "never on main, never when everything runs"
@@ -117,7 +117,7 @@ t_eq "an empty changeset (every suite runs) runs a" a "$(ran)"
 t_has "...and says why" "$O" "cache off — every suite runs: changeset is empty"
 O="$(CHG='zzz/unclassified' run tests/x/a.sh)"
 t_eq "an unclassified path (every suite runs) runs a" a "$(ran)"
-O="$(CHG='bin/test-suite-select.sh' run tests/x/a.sh)"
+O="$(CHG='bin/suite-select.sh' run tests/x/a.sh)"
 t_eq "a selector input (every suite runs) runs a" a "$(ran)"
 t_has "...and says why" "$O" "selector's own inputs"
 O="$(run tests/x/a.sh)"
@@ -136,7 +136,7 @@ t_has "the static check names data/r.txt as undeclared" "$(HARBOR_ROOT="$R" sh "
 echo r2 > "$R/data/r.txt"; run tests/x/r.sh > /dev/null
 t_eq "a byte in data/r.txt, which r names and does not declare: r runs" r "$(ran)"
 t_has "the manifest holds it" "$(HARBOR_ROOT="$R" sh "$SC" manifest tests/x/r.sh)" " data/r.txt"
-# The stated limit (contracts/suite-cache.md): a path built at runtime is invisible to a static reader.
+# The stated limit (CONTRACTS/suite-cache.md): a path built at runtime is invisible to a static reader.
 run tests/x/dy.sh > /dev/null; K0="$(key dy)"; echo dy2 > "$R/data/dy.txt"
 t_eq "LIMIT: a path built at runtime does not move the key (stated, not caught)" "$K0" "$(key dy)"
 
@@ -186,17 +186,17 @@ t_eq "...and a runs" a "$(ran)"
 
 t_section "globs match as suite-select's case patterns do"
 mkdir -p "$R/src/c/d"; for p in src/c/x.txt src/c/d/y.txt src/c/a.md src/c/ab.md src/cx.txt; do echo . > "$R/$p"; done
-printf 'tests/x/a.sh tests/x/a.sh src/c/*.txt src/c/?.md\n' > "$T_TMP/decl"; cat "$R/contracts/suite-paths.txt" >> "$T_TMP/decl"
-cp "$R/contracts/suite-paths.txt" "$T_TMP/decl.keep"; cp "$T_TMP/decl" "$R/contracts/suite-paths.txt"
+printf 'tests/x/a.sh tests/x/a.sh src/c/*.txt src/c/?.md\n' > "$T_TMP/decl"; cat "$R/CONTRACTS/suite-paths.txt" >> "$T_TMP/decl"
+cp "$R/CONTRACTS/suite-paths.txt" "$T_TMP/decl.keep"; cp "$T_TMP/decl" "$R/CONTRACTS/suite-paths.txt"
 got="$(HARBOR_ROOT="$R" sh "$SC" manifest tests/x/a.sh | awk '$2 ~ /^src\/c/ { print $2 }' | sort | tr '\n' ' ')"
 cm() { case "$1" in src/c/*.txt|src/c/?.md) echo "$1" ;; esac; }   # the same globs, as suite-select reads them
 want="$(for p in src/c/x.txt src/c/d/y.txt src/c/a.md src/c/ab.md src/cx.txt; do cm "$p"; done | sort | tr '\n' ' ')"
 t_eq "* crosses /, ? is one character, the dot is literal" "$want" "$got"
-cp "$T_TMP/decl.keep" "$R/contracts/suite-paths.txt"
+cp "$T_TMP/decl.keep" "$R/CONTRACTS/suite-paths.txt"
 # The real declarations against the real tree, for suites with a wildcard: every path `case` matches is an input.
 if git -C "$T_ROOT" rev-parse --git-dir > /dev/null 2>&1; then
-  for s in tests/test/suite-run/suite-run.test.sh tests/status/observe/digest.test.sh tests/check/schedules/schedules.test.sh; do
-    gl="$(awk -v k="$s" '$1 == k { $1 = ""; print; exit }' "$T_ROOT/contracts/suite-paths.txt")"
+  for s in tests/ci/suite-run-test.sh tests/obs/obs-digest-test.sh tests/checks/schedules-test.sh; do
+    gl="$(awk -v k="$s" '$1 == k { $1 = ""; print; exit }' "$T_ROOT/CONTRACTS/suite-paths.txt")"
     sh "$SC" manifest "$s" 2>/dev/null | awk 'NR > 8 { print $2 }' | sort > "$T_TMP/m.got"
     git -C "$T_ROOT" ls-files | while IFS= read -r p; do set -f; for x in $gl; do case "$p" in $x) echo "$p"; break ;; esac; done; set +f; done | sort > "$T_TMP/m.want"
     t_eq "$s: every path its declaration covers is in its key" "" "$(comm -23 "$T_TMP/m.want" "$T_TMP/m.got" | head -3)"

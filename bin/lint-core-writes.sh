@@ -5,7 +5,7 @@
 #
 #   sh lint-core-writes.sh --count    the number of hits: (file, target) pairs, not occurrences
 #   sh lint-core-writes.sh --list     each hit as file TAB target (the path under the tree, "<root>" when it is the tree itself)
-#   sh lint-core-writes.sh --check    red if the count is above contracts/lint-core-writes-baseline.txt;
+#   sh lint-core-writes.sh --check    red if the count is above CONTRACTS/lint-core-writes-baseline.txt;
 #                                       green but says to lower the baseline when it is below
 #
 # A WRITE is, on a non-comment line of a core shell script, a redirect (> >>), tee, touch, mkdir, or the last argument of
@@ -13,16 +13,16 @@
 # of them (NAME="$ROOT/x", NAME="${V:-$ROOT/x}"). Not a hit: a target .gitignore covers (it cannot be staged), a file the core
 # export tracks (a diff, reviewed like any edit), a mkdir of a directory the tree tracks. Not followed: a path built through a
 # variable that copies $ROOT (B=$ROOT; "$B/x").
-# Scope: tracked and untracked-not-ignored files of layer core (bin/scope-layers.sh --core), outside tests/, fixtures/, vendor/,
+# Scope: tracked and untracked-not-ignored files of layer core (bin/layers.sh --core), outside tests/, fixtures/, vendor/,
 # docs/ (they act on fixture trees or are text); .sh files and files with an sh shebang. Writers in Python or TypeScript are
-# not seen. Allowed: contracts/core-writes-allow.tsv (path TAB target or * TAB reason), the reason required.
+# not seen. Allowed: CONTRACTS/core-writes-allow.tsv (path TAB target or * TAB reason), the reason required.
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
-ALLOW="${CORE_WRITES_ALLOW:-$ROOT/contracts/core-writes-allow.tsv}"
-BASE="${CORE_WRITES_BASELINE:-$ROOT/contracts/lint-core-writes-baseline.txt}"
-. "$SRC/library-log.sh"
+ALLOW="${CORE_WRITES_ALLOW:-$ROOT/CONTRACTS/core-writes-allow.tsv}"
+BASE="${CORE_WRITES_BASELINE:-$ROOT/CONTRACTS/lint-core-writes-baseline.txt}"
+. "$SRC/log-lib.sh"
 log_init lint-core-writes
 LOG_FD=2
 T="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -rf "$T"' EXIT
@@ -110,7 +110,7 @@ FNR == 1 { delete N; N["ROOT"] = ""; N["HARBOR_ROOT"] = "" }
 
 hits() { # file TAB target, one line per pair, sorted
   ( cd "$ROOT" && git ls-files --cached --others --exclude-standard ) | sort -u |
-    HARBOR_ROOT="$ROOT" sh "$SRC/scope-layers.sh" --core |
+    HARBOR_ROOT="$ROOT" sh "$SRC/layers.sh" --core |
     grep -vE '^(tests|fixtures|vendor|docs)/' | grep -vE '\.(md|html|tsv|txt|json|jsonl|csv|py|ts|js|mjs)$' > "$T/files" || :
   : > "$T/code"
   while IFS= read -r f; do
@@ -118,7 +118,7 @@ hits() { # file TAB target, one line per pair, sorted
     printf '%s\n' "$f"
   done < "$T/files" > "$T/code"
   ( cd "$ROOT" && [ ! -s "$T/code" ] || xargs awk "$CAND" < "$T/code" ) | sort -u > "$T/cand"
-  ( cd "$ROOT" && git ls-files ) | HARBOR_ROOT="$ROOT" sh "$SRC/scope-layers.sh" --core > "$T/tcore" || :
+  ( cd "$ROOT" && git ls-files ) | HARBOR_ROOT="$ROOT" sh "$SRC/layers.sh" --core > "$T/tcore" || :
   while IFS="$(printf '\t')" read -r f p; do
     # A file the core export tracks is rewritten as a diff, reviewed like any edit: never a stray untracked file.
     if grep -qxF -- "$p" "$T/tcore"; then continue; fi
@@ -151,7 +151,7 @@ case "${1:-}" in
     hits > "$T/hits"; GOT="$(wc -l < "$T/hits" | tr -d ' ')"
     if [ "$GOT" -gt "$WANT" ]; then
       log_fail "$GOT core file(s)-and-target pair(s) write into the tree, baseline is $WANT"
-      log_fix "write to the state directory (sh bin/scope-roots.sh, \${HARBOR_STATUS_DIR:-\$HOME/.local/state/harbor}) or a gitignored path, or allow-list it in ${ALLOW#$ROOT/} with a reason (harbor#1275)"
+      log_fix "write to the state directory (sh bin/roots.sh, \${HARBOR_STATUS_DIR:-\$HOME/.local/state/harbor}) or a gitignored path, or allow-list it in ${ALLOW#$ROOT/} with a reason (harbor#1275)"
       # The delta, not the census: files this branch touched that hold a hit.
       __chg="$(git -C "$ROOT" diff --name-only "$(git -C "$ROOT" merge-base HEAD origin/main 2>/dev/null || echo HEAD)" 2>/dev/null || :)"
       cut -f1 "$T/hits" | sort -u | while IFS= read -r f; do

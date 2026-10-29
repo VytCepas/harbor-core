@@ -7,12 +7,12 @@
 #   sh drift-confinement.sh --state    the same, plus one word on stdout: match | drift | not-installed | unchecked,
 #                                      and no receipt (floor-verify's read; a verifier writes nothing)
 # Read-only: it never writes managed settings; the fix is the operator's `sudo sh deploy-confinement.sh`.
-# Every finding line carries [check:drift.confinement]; the receipt goes to log_receipt's dir (docs/reference/checks.md).
+# Every finding line carries [check:drift.confinement]; the receipt goes to log_receipt's dir (CHECKS.md).
 # HARBOR_MANAGED_SETTINGS moves the target, as in deploy-confinement.sh (tests, no root).
 set -u
 case "${1:-}" in -h|--help) awk 'NR<2{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$0"; exit 0 ;; esac
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
-. "$HERE/library-log.sh"
+. "$HERE/log-lib.sh"
 log_init drift-confinement
 STATE=0
 case "${1:-}" in

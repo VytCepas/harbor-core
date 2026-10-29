@@ -1,7 +1,7 @@
 // `harbor ui` (harbor#738): a localhost console of Harbor's live state, read-only. One Bun.serve, no framework, no dependencies.
 //   bun tools/ui/server.ts [--port N] [--idle SECS] [--wait SECS] [--min-age SECS] [--timeout SECS] [--open]
 // Security: loopback only, a Host and Origin check, a single-use launch code swapped for a session cookie, and a table of commands it may run (sources.ts).
-// Each guard line below carries a `// guard:<name>` mark; tests/status/console/guards.test.sh deletes each in turn and the suite goes red.
+// Each guard line below carries a `// guard:<name>` mark; tests/cli/console-guards-test.sh deletes each in turn and the suite goes red.
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";

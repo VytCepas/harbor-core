@@ -8,7 +8,7 @@ T="$T_TMP"; CFG="$T/cfg"; REPO="$T/repo"; BARE="$T/bare"
 mkdir -p "$CFG/inject.d" "$CFG/bin" "$CFG/name-create.d" "$REPO/bin" "$REPO/standards" "$BARE"
 cp "$T_ROOT/context-rules/user/name-note-create.md" "$T_ROOT/context-rules/user/name-note-create.sh" "$CFG/inject.d/"
 cp "$T_ROOT/hooks/injection-rule/injection-rule.sh" "$T_ROOT/bin/guard-lib.sh" "$CFG/bin/"
-cp "$T_ROOT/bin/lint-name.sh" "$T_ROOT/bin/library-log.sh" "$REPO/bin/"; cp -R "$T_ROOT/standards/naming" "$REPO/standards/"
+cp "$T_ROOT/bin/lint-name.sh" "$T_ROOT/bin/log-lib.sh" "$REPO/bin/"; cp -R "$T_ROOT/standards/naming" "$REPO/standards/"
 printf 'x\n' > "$REPO/README.md"
 for _r in "$REPO" "$BARE"; do git -C "$_r" init -q . 2>/dev/null; done
 printf 'fixturectl[[:space:]]+create[[:space:]]+\tskill\tUse the form the grammar names.\n' > "$CFG/name-create.d/fixture.tsv"

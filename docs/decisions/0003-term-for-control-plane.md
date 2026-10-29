@@ -18,7 +18,7 @@ Naming-standard decision D-3. The decision text is imported unchanged from stand
 
 ## Decision
 
-**`control plane`**. Verified: `lint-findings.sh reconcile` diffs lint output against the finding store and applies the difference, and Kubernetes' control plane includes admission.
+**`control plane`**. Verified: `findings.sh reconcile` diffs lint output against the finding store and applies the difference, and Kubernetes' control plane includes admission.
 
 ## Consequences
 

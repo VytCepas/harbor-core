@@ -8,7 +8,7 @@
 # it only if a memory note happened to be loaded. A 403 read as "we have no
 # access" when the answer was "that is the wrong account" is the failure this
 # exists for; the operator asked for it by name. A rule the model has to go and
-# fetch does not bind (docs/reports/evals.md E6: 0/4 as prose in a runbook, 4/4 injected at
+# fetch does not bind (EVALS.md E6: 0/4 as prose in a runbook, 4/4 injected at
 # the tool call), which is why this rides the call rather than a document.
 #
 # PostToolUse, NOT PostToolUseFailure. A Bash command that exits non-zero is a
@@ -56,15 +56,15 @@ SIG='Reauthentication failed|PERMISSION_DENIED|UNAUTHENTICATED|ACCESS_TOKEN_SCOP
 HIT="$(printf '%s\n' "$OUT" | /usr/bin/grep -oE "$SIG" 2>/dev/null | head -1 || true)"
 [ -n "$HIT" ] || exit 0
 
-# The register comes from the one resolver (bin/scope-roots.sh --access, $ACCESS_DIR wins). Run from a
+# The register comes from the one resolver (bin/roots.sh --access, $ACCESS_DIR wins). Run from a
 # checkout it is beside this file; installed, it is in the harbor checkout.
 case "$0" in */*) _H="${0%/*}" ;; *) _H=. ;; esac
-_R="$_H/../../bin/scope-roots.sh"
-[ -f "$_R" ] && [ -f "$_H/../../contracts/roots.tsv" ] || _R="${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}/bin/scope-roots.sh"
+_R="$_H/../../bin/roots.sh"
+[ -f "$_R" ] && [ -f "$_H/../../CONTRACTS/roots.tsv" ] || _R="${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}/bin/roots.sh"
 DIR="$(sh "$_R" --access 2>/dev/null)" || exit 0
 [ -n "$DIR" ] || exit 0
 
-# Command -> card. The table is the register's own: <register>/routes.tsv, `pattern<TAB>card` per line (contracts/access-card.md),
+# Command -> card. The table is the register's own: <register>/routes.tsv, `pattern<TAB>card` per line (CONTRACTS/access-card.md),
 # because which command belongs to which card names the systems this box reaches, and core names none (harbor#1149). No table
 # is silence, like no card. First match wins, so the specific rows sit above the general ones: a `gcx me <tool>` against a
 # project's own dataset is that project before it is the warehouse CLI, and that before it is gcloud. @B@ in a pattern is a word

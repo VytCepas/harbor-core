@@ -1,6 +1,6 @@
 ---
 name: test-strength
-description: Prove a load-bearing test can actually fail, and that it fails for the right reason. Break the thing it guards, watch it go red, restore — then check it stays green on a valid-but-unusual input, because red on a mutant proves discrimination, not correctness. USE WHEN a suite is written or changed, a guard is trusted, a gate reports zero, or a green result is about to be cited as evidence. NOT FOR reviewing a diff for defects (audit-review-fanout), or running a suite to see it pass (`bin/test-suite-run.sh`).
+description: Prove a load-bearing test can actually fail, and that it fails for the right reason. Break the thing it guards, watch it go red, restore — then check it stays green on a valid-but-unusual input, because red on a mutant proves discrimination, not correctness. USE WHEN a suite is written or changed, a guard is trusted, a gate reports zero, or a green result is about to be cited as evidence. NOT FOR reviewing a diff for defects (audit-review-fanout), or running a suite to see it pass (`bin/suite-run.sh`).
 disable-model-invocation: true
 ---
 
@@ -8,12 +8,12 @@ disable-model-invocation: true
 
 > **Path root:** `~/port/harbor` — every `./`-prefixed path below resolves there, not
 > against the directory this skill is installed into. Paths with no `./` ship
-> beside this file. Checked by `bin/drift-reference-check.sh` REF-9 where the skill is
+> beside this file. Checked by `bin/reference-check.sh` REF-9 where the skill is
 > READ; the `../../` form this replaced was green in the repo and dead from
 > `~/.claude/skills/test-strength/` (harbor#462) — this skill's own pointer to
 > the prove-targets contract handed the reader nothing.
 
-policy/constitution.md §№2 rule 10 says a test that cannot fail is worse than no test.
+CONSTITUTION.md §№2 rule 10 says a test that cannot fail is worse than no test.
 This is the procedure that discharges it, and the reason it exists as a file is
 that the rule had no mechanism: measured 2026-08-27, **2 of 44 `bin/*-test.sh`
 suites plant a violation at all**, and nothing distinguishes a suite that has
@@ -38,7 +38,7 @@ case: the 48-character label against a 48-character cap, the quoted string, the
 diacritic, the empty-but-lawful list. This is the check a mutant sweep can never
 generate, because mutants are derived from the thing under test — so an
 over-broad rule that refuses everything passes check 1 perfectly and fails here.
-policy/constitution.md §№2 rule 11 is the consequence: a rule that blocks ordinary work
+CONSTITUTION.md §№2 rule 11 is the consequence: a rule that blocks ordinary work
 gets switched off, and a switched-off guard protects nothing.
 
 **3 · A gate that reports ZERO gets an *eligible* planted violation.** A zero is
@@ -60,7 +60,7 @@ guards, runs the gate, and reports every mutant the gate did not notice.
 It discharges check 1 by construction (a survivor is a mutant that lived),
 check 2 by refusing to score a target that declares no valid-but-unusual
 control, and check 3 by reporting every empty class with a reason rather than a
-zero. The declaration format is `./contracts/prove-targets.md`;
+zero. The declaration format is `./CONTRACTS/prove-targets.md`;
 lint **C6** keeps the declarations gate-shaped between runs.
 
 ## Bound both sides of every threshold
@@ -119,10 +119,10 @@ down.
 
 Re-authored for Harbor from `project-init`'s `verify-test-strength`
 (L3, `plugins/project-init-workflow/`), read 2026-08-28. **Not a copy and not a
-move:** `contracts/host-profile.md` makes the box profile the only up-pointing
+move:** `CONTRACTS/box-profile.md` makes the box profile the only up-pointing
 edge, so an L0 session may not depend on a Yard plugin — the idea comes up, the
 file does not. What changed in the re-authoring: the upstream leads with a
 Python `mutmut` runner and treats the manual loop as a fallback, which inverts
 for a POSIX-`sh` estate where the manual loop is the only path; and checks 2 and
 3 above are Harbor's, from
-`./docs/explanation/verification-expanded.md`.
+`./DOCTRINE/verification-expanded.md`.

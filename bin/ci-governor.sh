@@ -93,8 +93,8 @@ if [ "${1:-}" = run ] && { [ -n "${GITHUB_ACTIONS:-}" ] || [ -n "${HARBOR_GOV_SL
   set -- run
 fi
 HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-. "$HERE/library-log.sh"
-# shellcheck disable=SC2034  # read by library-log.sh: stdout is status output, the log goes to stderr
+. "$HERE/log-lib.sh"
+# shellcheck disable=SC2034  # read by log-lib.sh: stdout is status output, the log goes to stderr
 LOG_FD=2
 log_init ci-governor
 
@@ -820,7 +820,7 @@ cmd_sampler() {
   rm -f "$SAMPLER"
 }
 
-# A container job's trigger line becomes ci.job.start or ci.job.done on the event bus (harbor#1367, contracts/event-kinds.tsv),
+# A container job's trigger line becomes ci.job.start or ci.job.done on the event bus (harbor#1367, CONTRACTS/event-kinds.tsv),
 # detached so the bus never delays a decision. An old three-field line, or one with an odd field, publishes nothing.
 publish_job() { # <trigger line>
   [ -f "$HERE/event-bus.sh" ] || return 0

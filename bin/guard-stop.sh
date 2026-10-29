@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
-[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
-# SG (harbor#291) — the ONE Stop-event gate. docs/reference/coverage.md:86 read "Harbor has no
-# Stop gate at all", and docs/reference/coverage.md:38 read "№2 Verification is Harbor's longest
+[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0
+# SG (harbor#291) — the ONE Stop-event gate. COVERAGE.md:86 read "Harbor has no
+# Stop gate at all", and COVERAGE.md:38 read "№2 Verification is Harbor's longest
 # constitutional rule and has no mechanism, in a file that says 'a rule with no
 # mechanism is a wish'". This is that mechanism, narrowed to the part a shell
 # script can decide without judgement.
@@ -15,14 +15,14 @@
 #   SG-3  it will not run where it lands; warn by default, see its block below
 #
 # THE TRANSCRIPT IS THE EVIDENCE, NOT THE WORDING. That is upstream's whole
-# insight and docs/reference/coverage.md:250 records it: "VerificationGate.hook.ts grades
+# insight and COVERAGE.md:250 records it: "VerificationGate.hook.ts grades
 # evidence FROM THE TRANSCRIPT, not from the message's wording, so rewording
 # never passes it." A gate that read the assistant's prose would be satisfied by
 # a rewrite, which is the opposite of №2.
 #
 # WHY TEETH ARE DEFENSIBLE HERE AND WERE NOT FOR M5. FailureCapture declined to
 # block because "a failure worth healing" is a judgement and fails
-# policy/constitution.md's `deterministic` criterion. Neither rule below is a judgement:
+# CONSTITUTION.md's `deterministic` criterion. Neither rule below is a judgement:
 # what counts as evidence is defined by the repo (its own suite), and both
 # predicates are orderings over tool calls that either happened or did not.
 #
@@ -59,7 +59,7 @@
 # SessionStart and that is right there: a session that will not START costs one
 # restart. Here the blast radius of the opposite choice is worse than it first
 # looks — this hook runs at the end of EVERY turn, so a fail-closed internal error
-# refuses every turn for the rest of the session, and HARBOR_ADMISSION_DISABLE is read
+# refuses every turn for the rest of the session, and HELM_DISABLE_FLOOR is read
 # at startup so it cannot rescue a refusal already under way. Missing jq,
 # unreadable transcript, bad JSON, any surprise ⇒ allow. The cost is a missed
 # nudge; that is the correct trade at this event, and it is why nothing else in
@@ -97,7 +97,7 @@ fi
 # (worklog-push.sh, memory-harvest.sh). Those are ENGINE hooks: standing down
 # means not acting, and no rule is withdrawn. This is a GATE for №2 Verification,
 # and harbor#581 decided the five constitutional rules never yield inside a
-# governed repo. contracts/marker.md lists every stand-down site and lint M2
+# governed repo. CONTRACTS/marker.md lists every stand-down site and lint M2
 # holds that list to the code, so re-adding a stand-down here fails the lint
 # unless it is declared, with a ticket.
 #
@@ -278,10 +278,10 @@ SG_PAIR='
 # guard-notes.sh in a docs dir is not a floor surface.
 #
 # ONLY THE FULL SUITE COUNTS AS EVIDENCE. Since harbor#727 the floor suite is
-# tests/admission/baseline/baseline.test.sh plus every tests/admission/baseline/<part>.test.sh, so the
+# tests/floor/floor-test.sh plus every tests/floor/floor.<part>-test.sh, so the
 # evidence is a verdict line from EVERY part, from a suite-invoking command, after
 # the edit: one part is a fraction, as a shard was (harbor#679). The pre-commit
-# smoke prints `baseline.test smoke: …`, another name, so it is refused like the
+# smoke prints `floor-test smoke: …`, another name, so it is refused like the
 # `--smoke` it replaced (№2.7 — "unavailable verifier means defer, never
 # substitute"): it is the right depth for a commit gate, not for "verified".
 #
@@ -293,7 +293,7 @@ SG_PAIR='
 # found by review on #684). Once this gate stopped standing down inside governed
 # repos, a project's own bin/guard-auth.sh matched the pattern, and the gate
 # demanded Harbor's floor-test for code that suite never touches — §2.11. So a
-# path counts only when the tree above its bin/ holds tests/admission/baseline/baseline.test.sh (a
+# path counts only when the tree above its bin/ holds tests/floor/floor-test.sh (a
 # Harbor checkout or worktree, wherever it lives: the tree whose suite would verify
 # the edit), or when it is the installed floor in the config dir. The parts owed
 # are that tree's; the config dir has none beside it, so it owes the cwd's, else
@@ -311,7 +311,7 @@ _sg_cwd="$(floor_field '.cwd')"
 _sg_cands="$(printf '%s\n' "$STREAM" | awk -F '\t' '
   $1 == "MUT" && $3 ~ /(^|\/)bin\/(guard|floor)-[a-z-]*\.(sh|awk)$/ { print $3 }' | sort -u)"
 _sg_parts() { # <tree> -> the floor parts' names, space-separated (harbor#727)
-  for _f in "$1"/tests/admission/baseline/*.test.sh; do
+  for _f in "$1"/tests/floor/floor-test.sh "$1"/tests/floor/floor.*-test.sh; do
     [ -f "$_f" ] && printf '%s ' "$(basename "$_f" .sh)"
   done
   return 0
@@ -320,7 +320,7 @@ SG1_OK=""; SG1_PARTS=""
 while IFS= read -r _p; do
   [ -n "$_p" ] || continue
   _a="$_p"; case "$_a" in /*) ;; *) _a="${_sg_cwd%/}/$_a" ;; esac
-  if [ -f "${_a%/bin/*}/tests/admission/baseline/baseline.test.sh" ]; then
+  if [ -f "${_a%/bin/*}/tests/floor/floor-test.sh" ]; then
     SG1_OK="$SG1_OK$_p
 "; SG1_PARTS="$SG1_PARTS $(_sg_parts "${_a%/bin/*}")"
   elif [ "${_a%/*}" = "$_sg_cfgbin" ]; then
@@ -331,7 +331,7 @@ done <<EOF
 $_sg_cands
 EOF
 [ -n "${SG1_PARTS# }" ] || { [ -n "$_sg_cwd" ] && SG1_PARTS="$(_sg_parts "$_sg_cwd")"; }
-[ -n "${SG1_PARTS# }" ] || SG1_PARTS="baseline.test"   # harbor#961 W2: the main part, by the label it prints
+[ -n "${SG1_PARTS# }" ] || SG1_PARTS="floor-test"
 export SG1_OK SG1_PARTS
 # A background run launched before the edit verified the code it replaced: the edit drops it.
 SG1="$(printf '%s\n' "$STREAM" | awk -F '\t' "$SG_SUITE_FN$SG_PAIR"'
@@ -435,12 +435,12 @@ fi
 # so that is what is said.
 MSG="HELM STOP GATE — the turn was BLOCKED because this session's own transcript does not carry the evidence №2 requires."
 if [ -n "$SG1" ]; then
-  MSG="$MSG SG-1: ${SG1} was edited this session and the floor suite did not run after that edit: every part, tests/admission/baseline/baseline.test.sh and each tests/admission/baseline/<part>.test.sh. Run them — a T_SMOKE=1 run does not count, it is the smoke and not the suite — or say plainly which assertion you are deferring and why."
+  MSG="$MSG SG-1: ${SG1} was edited this session and the floor suite did not run after that edit: every part, tests/floor/floor-test.sh and each tests/floor/floor.<part>-test.sh. Run them — a T_SMOKE=1 run does not count, it is the smoke and not the suite — or say plainly which assertion you are deferring and why."
 fi
 if [ -n "$SG2" ]; then
   MSG="$MSG SG-2: the last verdict for a suite this session ran is not clean — $(printf '%s' "$SG2" | tr '\n' ';'). Re-run it green, or say which run was a deliberate mutation and what it proved."
 fi
-MSG="$MSG (Stop fires at the end of every turn, so this refusal is raised ONCE for this state and the next turn is not held; a new unverified edit is a new state. HARBOR_ADMISSION_DISABLE (or HELM_DISABLE_FLOOR) is read at session start and cannot lift a refusal already under way.)"
+MSG="$MSG (Stop fires at the end of every turn, so this refusal is raised ONCE for this state and the next turn is not held; a new unverified edit is a new state. HELM_DISABLE_FLOOR is read at session start and cannot lift a refusal already under way.)"
 
 # THE STATE IS RECORDED BEFORE THE VERDICT IS EMITTED, so a caller that reads
 # stdout and exits cannot leave this turn refused and the next one refused again
@@ -472,7 +472,7 @@ else
 fi
 
 # One ledger record PER RULE that fired, not a fused id. A compound token would
-# be a rule name that appears in no source file, and audit-triage.sh ranks by
+# be a rule name that appears in no source file, and failure-capture.sh ranks by
 # rule token — a fused id would rank as its own never-before-seen rule every
 # time the pair coincided.
 [ -n "$SG1" ] && { floor_log_decision session gate floor-edited-unverified.meta || :; }

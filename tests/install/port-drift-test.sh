@@ -6,8 +6,7 @@ TOOL="$T_ROOT/bin/port-drift.sh"
 T="$(CDPATH='' cd -P -- "$T_TMP" && pwd -P)"; TAB="$(printf '\t')"
 unset PORT_ROOT HARBOR_SCOPE_PRIVATE
 P="$T/port"; V="$T/priv"; mkdir -p "$P" "$V" "$T/home"; export HOME="$T/home"
-# Six columns (topology, interaction; harbor#966) beside a four-column row: both are registered.
-printf 'id\tpath\tkind\tremote\ttopology\tinteraction\nalpha\talpha\tworkload\t-\tstream-aligned\tx-as-a-service\nbeta\tgroup/beta\tworkload\t-\n' > "$V/repos.tsv"
+printf 'id\tpath\tkind\tremote\nalpha\talpha\tworkload\t-\nbeta\tgroup/beta\tworkload\t-\n' > "$V/repos.tsv"
 mkdir -p "$P/alpha" "$P/group/beta" "$P/.worktrees/x" "$P/.scratch" "$P/history/old" "$P/harbor-private" \
          "$P/alpha-wt-fix" "$P/vendor-src" "$P/harbor"
 printf 'note\n' > "$P/loose-file.md"

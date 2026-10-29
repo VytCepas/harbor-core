@@ -4,17 +4,17 @@
      THIS FILE IS A TEMPLATE (harbor#630). Do not cp it: @HOME@ and the other placeholders in it would be
      installed as literal text, and launchd loads such a job and then fails every time it runs. Render it:
 
-       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.usage.plist > ~/Library/LaunchAgents/com.harbor.usage.plist
+       sh ~/port/harbor/bin/launchd-render.sh ~/port/harbor/launchd/com.harbor.usage.plist > ~/Library/LaunchAgents/com.harbor.usage.plist
 
      A cp line in the comment below predates the template. It is kept so the rendered file stays byte-identical
      to the one already installed: follow this block, not that line. This block is not installed;
-     bin/deploy-launchd-render.sh drops it. -->
+     bin/launchd-render.sh drops it. -->
 <!-- M9 (harbor#44) — keep the durable usage ledger alive past transcript GC.
 
      WHY THIS EXISTS AT ALL. Claude Code records per-message token usage in the
      session transcript, and the transcript store is garbage-collected at 30
      days. So the only durable record of what this machine spent is the one
-     something writes before the transcript disappears. `status-usage-aggregate.sh`
+     something writes before the transcript disappears. `usage-aggregate.sh`
      writes it — and until 2026-08-09 it had never been run with `--apply`, so
      there was no ledger and July was already unrecoverable by inspection.
 
@@ -35,7 +35,7 @@
      naming that path, and `launchctl load|bootstrap|setenv`. A session that can
      stand up its own scheduled job can stand up anything. Operator steps:
 
-       sh ~/port/harbor/bin/deploy-runtime-install.sh --live --apply
+       sh ~/port/harbor/bin/runtime-install.sh --live --apply
        cp launchd/com.harbor.usage.plist ~/Library/LaunchAgents/
        launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.harbor.usage.plist
 
@@ -68,7 +68,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/sh</string>
-    <string>@HOME@/.claude/bin/status-usage-aggregate.sh</string>
+    <string>@HOME@/.claude/bin/usage-aggregate.sh</string>
     <string>--apply</string>
     <string>--live</string>
   </array>

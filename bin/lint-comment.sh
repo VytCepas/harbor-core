@@ -16,7 +16,7 @@ set -u
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH='' cd -- "$HERE" && pwd)"
 LOG_FD=2
-. "$HERE/library-log.sh"
+. "$HERE/log-lib.sh"
 log_init lint-comment
 usage() { awk 'NR < 2 { next } !/^#/ { exit } { sub(/^# ?/, ""); print }' "$HERE/${0##*/}"; }
 ROOT=""; REG=""; BASE="${HARBOR_BASE:-origin/main}"

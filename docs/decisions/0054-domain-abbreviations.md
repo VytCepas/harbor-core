@@ -8,7 +8,7 @@ source: research/09b-implementation-traceability.md
 
 # Domain abbreviations
 
-Naming-standard decision D-54. The decision text is imported unchanged from standard-draft.md §12. The registered terms themselves are workload vocabulary: the record that lists them lives in the measurement workload repo, at `STANDARD/harbor-registers/0054-domain-abbreviations.md` (repo path: `sh bin/scope-roots.sh --repo <id>`, the id is in the private layer's `repos.tsv`). This stub keeps D-54 citable from core.
+Naming-standard decision D-54. The decision text is imported unchanged from standard-draft.md §12. The registered terms themselves are workload vocabulary: the record that lists them lives in the measurement workload repo, at `STANDARD/harbor-registers/0054-domain-abbreviations.md` (repo path: `sh bin/roots.sh --repo <id>`, the id is in the private layer's `repos.tsv`). This stub keeps D-54 citable from core.
 
 ## Decision
 

@@ -1,2 +1,2 @@
 #!/bin/sh
-cat contracts/roots.tsv
+cat CONTRACTS/roots.tsv

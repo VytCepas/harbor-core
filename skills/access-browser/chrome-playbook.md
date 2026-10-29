@@ -1,7 +1,7 @@
 # `harbor chrome` playbook — rules, recovery, dead ends, recipes
 
 The working half of row 4. `SKILL.md` says when to reach for `harbor chrome`; the
-contract (`contracts/browser-routing.md`, row 4) says what each verb may do. This page
+contract (`CONTRACTS/browser-routing.md`, row 4) says what each verb may do. This page
 is what was learned driving the operator's Chrome: how to keep control of a tab, what
 each failure means, what has already been tried and failed, and step-by-step tasks.
 

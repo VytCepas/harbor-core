@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# bin/library-alert.sh (harbor#618): one notification helper, a fallback chain that is never silent and never an error.
+# bin/alert-lib.sh (harbor#618): one notification helper, a fallback chain that is never silent and never an error.
 # Every channel is a stub on a PATH without the host's own, so nothing is shown and nothing leaves the test.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/lib/linux-sim.sh"
@@ -11,7 +11,7 @@ stub() { # <name> <exit>: records its argv and the two text variables, then exit
 }
 unstub() { rm -f "$P/$1"; }
 # one call in a child shell, as a notifier would make it: prints the channel and the exit
-say() { PATH="$P" WSL_DISTRO_NAME="${WSLD:-}" ALERT_LIB_DIR="$T_ROOT/bin" sh -c '. "$1/bin/library-alert.sh"; harbor_notify "$2" "$3"; echo "rc=$? sink=$NOTIFY_SINK"' _ "$T_ROOT" "$1" "$2" 2>"$T_TMP/err"; }
+say() { PATH="$P" WSL_DISTRO_NAME="${WSLD:-}" ALERT_LIB_DIR="$T_ROOT/bin" sh -c '. "$1/bin/alert-lib.sh"; harbor_notify "$2" "$3"; echo "rc=$? sink=$NOTIFY_SINK"' _ "$T_ROOT" "$1" "$2" 2>"$T_TMP/err"; }
 events() { cat "$HOME"/.local/state/harbor/events/*.jsonl 2>/dev/null | grep -c '"kind":"notify.unshown"'; }
 
 t_section "the chain: the first channel that takes it"

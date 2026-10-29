@@ -4,7 +4,7 @@
 #
 # WHY THIS EXISTS: an audit on 2026-07-25 found harbor had NO CI, NO active git
 # hooks, and exactly ONE continuously-enforced rule (the work-log gitleaks
-# pre-push gate). Everything else — including contracts/README.md's claim that
+# pre-push gate). Everything else — including CONTRACTS/README.md's claim that
 # "a CI freshness check fails if a consumer's vendored copy drifts" — was prose.
 # A convention nobody checks is a suggestion; this file is what makes them real.
 #
@@ -18,7 +18,7 @@
 # admission.kill-switch-first. A rule born after harbor#957 has no letter: its function is
 # named after its id (`rule_lint_id_one_meaning`). Output, LINT_REDLOG and the finding records
 # carry the id; lint.id-one-meaning holds the map to one meaning per id.
-# DELIBERATELY ONE FILE (docs/explanation/modularity.md): a flat list of independent
+# DELIBERATELY ONE FILE (DOCTRINE/modularity.md): a flat list of independent
 # rules. Same argument as floor-test.sh — no rule can affect another, so a
 # split relocates lines without shrinking any blast radius.
 #
@@ -35,7 +35,7 @@ bad()  { FAIL=$((FAIL+1)); printf '  VIOLATION [%s] %s\n' "$1" "$2" >&2  # <ID> 
 rule() { RULES=$((RULES+1)); printf '── %s\n' "$1"
          [ -z "${HARBOR_FINDINGS_OUT:-}" ] || printf 'R\t%s\n' "${1%% *}" >> "$HARBOR_FINDINGS_OUT"; }
 
-# ── the finding record (harbor#590, contracts/finding.md) ────────────────────
+# ── the finding record (harbor#590, CONTRACTS/finding.md) ────────────────────
 # Every ADVISORY line is printed beside `_adv <ID> <subject>…`, and lint FL2 fails a line that is
 # not. The SUBJECT IS SUPPLIED HERE, NEVER PARSED FROM THE MESSAGE: a repo-relative path, a skill or
 # repo name, a `kind:name` — never a count, a size or a date, which stay in the message as evidence.
@@ -44,9 +44,9 @@ rule() { RULES=$((RULES+1)); printf '── %s\n' "$1"
 # above it and adds no subject.
 #
 # COST: with HARBOR_FINDINGS_OUT unset — every push, every CI run — it is one `[ -z ]` per line and
-# writes nothing. bin/lint-findings.sh sets it, once a day at most, to reconcile the census into issues.
+# writes nothing. bin/findings.sh sets it, once a day at most, to reconcile the census into issues.
 # LINT_REDLOG (harbor#577): bad and _adv append the rule id to it, so a run of the lint suites names
-# every rule that went red at least once. bin/lint-rule-health.sh reads it; unset, it costs one [ -z ].
+# every rule that went red at least once. bin/rule-health.sh reads it; unset, it costs one [ -z ].
 # NOT A HARBOR_* KNOB, deliberately: it can never change a verdict (a failed append is swallowed),
 # so it must reach every suite's linter, and t_init clears inherited HARBOR_* to keep knobs out (C10).
 _adv() { [ -z "${LINT_REDLOG:-}" ] || printf '%s\n' "$1" >> "$LINT_REDLOG" 2>/dev/null || :
@@ -144,7 +144,7 @@ SKILL_HOMES="$ROOT/vendor/skills $ROOT/skills"
 # defect: SEVEN of eight gates could not see it (context-budget, skill-catalog,
 # freshness, doctor, status-gen, skills-install, skills-collide all grep `plugins/`
 # zero times), so teaching one linter about it left six holes open. atlas moved to
-# `skills/atlas/` and the tier is retired — see docs/explanation/no-authored-plugins.md and
+# `skills/atlas/` and the tier is retired — see DOCTRINE/no-authored-plugins.md and
 # lint rule X6, which fails if it comes back.
 
 # ── N1 · skill directories are kebab-case and match their name: field ────────
@@ -159,20 +159,20 @@ SKILL_HOMES="$ROOT/vendor/skills $ROOT/skills"
 ALLOWED='name|description|when_to_use|user-invocable|argument-hint|allowed-tools|disable-model-invocation|version|effort|context|model|license|metadata|owns-commands|owns-tools|inline-section'
 PROV="$ROOT/vendor/skills/PROVENANCE.md"
 CI="$ROOT/.github/workflows/governance.yml"
-_MAN="$ROOT/contracts/suites.txt"
+_MAN="$ROOT/CONTRACTS/suites.txt"
 _man_list() { grep -vE '^[[:space:]]*(#|$)' "$_MAN" 2>/dev/null; }
 # _export_tree <dev-path>...: this tree does not carry the dev layer, as far as <dev-path>... can tell (harbor#1149).
-# True when contracts/layers.tsv lists every argument as a dev row and none of them is on disk or in the index; no layers.tsv,
+# True when CONTRACTS/layers.tsv lists every argument as a dev row and none of them is on disk or in the index; no layers.tsv,
 # or an argument it does not list as dev, is never an export. The arguments are WITNESSES, not "any dev path", and the choice
-# is load-bearing: core tells an adopter to write docs/how-to/handover.md (hooks/session-state/session-state.sh) and docs/decisions/rejected-approaches.md (contracts/memory-format.md),
+# is load-bearing: core tells an adopter to write HANDOFF.md (hooks/session-state/session-state.sh) and DEAD-ENDS.md (CONTRACTS/memory-format.md),
 # so a tree holding either is still the export and must not turn the two rules below red with a fix the export cannot run
-# (status-plan-generate.sh needs docs/reports/platform-build-tickets.md). The index counts as well as the disk, so a witness deleted from a dev
+# (plan-status.sh needs harbor-build-tickets.md). The index counts as well as the disk, so a witness deleted from a dev
 # checkout and not yet committed stays red there. Used by the two rules whose subject is a generated dev-layer file
 # (doc.status-generated, doc.plan-generated).
 _export_tree() (
-  [ -f "$ROOT/contracts/layers.tsv" ] && [ "$#" -gt 0 ] || exit 1
+  [ -f "$ROOT/CONTRACTS/layers.tsv" ] && [ "$#" -gt 0 ] || exit 1
   for _et_p in "$@"; do
-    awk -F'\t' -v p="$_et_p" '$1 == p && $2 == "dev" { f = 1 } END { exit !f }' "$ROOT/contracts/layers.tsv" || exit 1
+    awk -F'\t' -v p="$_et_p" '$1 == p && $2 == "dev" { f = 1 } END { exit !f }' "$ROOT/CONTRACTS/layers.tsv" || exit 1
     [ ! -e "$ROOT/$_et_p" ] || exit 1
     [ -z "$(git -C "$ROOT" ls-files -- "$_et_p" 2>/dev/null)" ] || exit 1
   done
@@ -194,26 +194,17 @@ _x8_repo_time() { # <file in $ROOT> -> epoch seconds, or empty
   fi
   _x8_mtime "$1"
 }
-# The installers: bin/*-install.sh, not a rename shim (an old name of one, harbor#961) and not the two scripts
-# W3 named -install that install nothing (the collector's setup, the drift check of installs).
-_installers() {
-  for _ii in "$ROOT"/bin/*-install.sh; do
-    [ -f "$_ii" ] && [ ! -L "$_ii" ] || continue
-    case "${_ii##*/}" in audit-collector-install.sh|drift-install.sh) continue ;; esac
-    printf '%s\n' "$_ii"
-  done
-}
 _installer_payload() {
-  sed -n 's/^FILES="\(.*\)"/\1/p'        $(_installers) 2>/dev/null
-  sed -n 's/^REFRESH_ONLY="\(.*\)"/\1/p' $(_installers) 2>/dev/null
-  sed -n "s/^GUARDS='\(.*\)'/\1/p"       $(_installers) 2>/dev/null
-  sed -n "s/^PAYLOAD='\(.*\)'/\1/p"      $(_installers) 2>/dev/null
+  sed -n 's/^FILES="\(.*\)"/\1/p'        "$ROOT"/bin/*-install.sh 2>/dev/null
+  sed -n 's/^REFRESH_ONLY="\(.*\)"/\1/p' "$ROOT"/bin/*-install.sh 2>/dev/null
+  sed -n "s/^GUARDS='\(.*\)'/\1/p"       "$ROOT"/bin/*-install.sh 2>/dev/null
+  sed -n "s/^PAYLOAD='\(.*\)'/\1/p"      "$ROOT"/bin/*-install.sh 2>/dev/null
   # Copied by name rather than through a list, so it cannot be derived above.
-  grep -ohE 'cp "\$SRC/[a-z0-9-]+\.sh"'   $(_installers) 2>/dev/null \
+  grep -ohE 'cp "\$SRC/[a-z0-9-]+\.sh"'   "$ROOT"/bin/*-install.sh 2>/dev/null \
     | sed -E 's#.*/##; s/"$//'
 }
-LIVEBIN="${HARBOR_DEPLOY_LIVE_DIR:-${HELM_LIVE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}}/bin"
-# The repo file an installed name ships from: bin/<name>, else its hook engine folder (D-88; il_src in bin/deploy-install-lib.sh).
+LIVEBIN="${HELM_LIVE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}/bin"
+# The repo file an installed name ships from: bin/<name>, else its hook engine folder (D-88; il_src in bin/install-lib.sh).
 _payload_src() { if [ -f "$ROOT/bin/$1" ] || [ ! -f "$ROOT/hooks/${1%.*}/$1" ]; then printf '%s' "$ROOT/bin/$1"; else printf '%s' "$ROOT/hooks/${1%.*}/$1"; fi; }
 _x7_src_is_own_dir() { # <bin-relative script> [variable, default SRC]
   grep -qE '^'"${2:-SRC}"'="\$\(CDPATH= cd -- "\$\(dirname -- "\$0"\)" && pwd\)"' "$(_payload_src "$1")" 2>/dev/null
@@ -273,7 +264,7 @@ _sc_scope() {
   _sc_files=''
   # tests/*/*.sh: suites and the harness left bin/ for tests/ (harbor#667) and must stay POSIX.
   for f in "$ROOT"/bin/*.sh "$ROOT"/bin/harbor "$ROOT"/bin/gcx "$ROOT"/hooks/* "$ROOT"/hooks/*/*.sh \
-           "$ROOT"/worklog/* "$ROOT"/skills/*/bin/*.sh "$ROOT"/tests/*/*.sh "$ROOT"/tests/*/*/*.sh; do
+           "$ROOT"/worklog/* "$ROOT"/skills/*/bin/*.sh "$ROOT"/tests/*/*.sh; do
     [ -f "$f" ] || continue; case "$f" in *.md) continue ;; esac
     _sc_files="$_sc_files $f"
   done
@@ -503,19 +494,19 @@ rm -f "$_nao"
 # Builds the graph into a temp file (never build/graph.tsv: a stale one is exactly what this must not judge)
 # and RUNS bin/lint-module.sh on it, relaying its findings as advisories like N4 does: the rules, their modes
 # and their ids are lint-module.sh's and controls.tsv's, so a second spelling here would be the copy the
-# registry exists to remove. Cost: one doc-graph-generate.sh build, about 9 s on the box. Without python3 the graph
+# registry exists to remove. Cost: one graph-gen.sh build, about 9 s on the box. Without python3 the graph
 # cannot be built, and that is said as an advisory, never silence: "could not look" must not read as clean.
 # A tree that carries neither tool is not a harbor checkout and is skipped, as the fixture trees are.
 rule_module_graph_conform() {
 rule "module.graph-conform the reference graph passes bin/lint-module.sh: system, family and layer edges (warn) (harbor#996)"
-_mg="$ROOT/bin/lint-module.sh"; _mgg="$ROOT/bin/doc-graph-generate.sh"
-if [ ! -f "$_mg" ] || [ ! -f "$_mgg" ]; then say "  skip: no bin/lint-module.sh and bin/doc-graph-generate.sh in this tree, so no graph was judged"; return 0; fi
+_mg="$ROOT/bin/lint-module.sh"; _mgg="$ROOT/bin/graph-gen.sh"
+if [ ! -f "$_mg" ] || [ ! -f "$_mgg" ]; then say "  skip: no bin/lint-module.sh and bin/graph-gen.sh in this tree, so no graph was judged"; return 0; fi
 _mgd="${TMPDIR:-/tmp}/mg.$$"; mkdir -p "$_mgd"; _mgrc=0
 sh "$_mgg" --root "$ROOT" --out "$_mgd/graph.tsv" > /dev/null 2> "$_mgd/gen.err" || _mgrc=$?
 if [ "$_mgrc" -eq 3 ]; then
   _adv module.graph-conform build/graph.tsv; printf '  ADVISORY [module.graph-conform] unchecked: python3 is absent, so no module edge was judged (install python3)\n' >&2
 elif [ "$_mgrc" -ne 0 ]; then
-  bad module.graph-conform "bin/doc-graph-generate.sh exited $_mgrc and built no graph: $(grep -m1 'FAIL:' "$_mgd/gen.err" | sed 's/^ *FAIL: //')"
+  bad module.graph-conform "bin/graph-gen.sh exited $_mgrc and built no graph: $(grep -m1 'FAIL:' "$_mgd/gen.err" | sed 's/^ *FAIL: //')"
 else
   _mgred="${LINT_REDLOG:-}"; _mgrc=0
   LINT_REDLOG="$_mgred" sh "$_mg" --root "$ROOT" --graph "$_mgd/graph.tsv" > /dev/null 2> "$_mgd/out" || _mgrc=$?
@@ -568,19 +559,19 @@ rm -f "$_drd"
 # ── standard.shape-conform · every instance carries its kinds.tsv shapes (warn, harbor#996 G2) ──
 # Builds the graph into a temp file (never build/graph.tsv: a stale one is what this must not judge) and RUNS
 # bin/standard-shape.sh on it, relaying its findings as advisories as module.graph-conform does: the rule, its mode
-# and its id are standard-shape.sh's and controls.tsv's. Cost: a second doc-graph-generate.sh build (about 9 s of CPU on the
+# and its id are standard-shape.sh's and controls.tsv's. Cost: a second graph-gen.sh build (about 9 s of CPU on the
 # box) and one catalog listing (under 1 s). Without python3 no graph is built, and that is an advisory, never silence.
 # A tree that carries neither tool is not a harbor checkout and is skipped, as the fixture trees are.
 rule_standard_shape_conform() {
 rule "standard.shape-conform every instance of a kind carries its kinds.tsv shapes, judged by bin/standard-shape.sh (warn) (harbor#996)"
-_ss="$ROOT/bin/standard-shape.sh"; _ssg="$ROOT/bin/doc-graph-generate.sh"
-if [ ! -f "$_ss" ] || [ ! -f "$_ssg" ]; then say "  skip: no bin/standard-shape.sh and bin/doc-graph-generate.sh in this tree, so no shape was judged"; return 0; fi
+_ss="$ROOT/bin/standard-shape.sh"; _ssg="$ROOT/bin/graph-gen.sh"
+if [ ! -f "$_ss" ] || [ ! -f "$_ssg" ]; then say "  skip: no bin/standard-shape.sh and bin/graph-gen.sh in this tree, so no shape was judged"; return 0; fi
 _ssd="${TMPDIR:-/tmp}/ss.$$"; mkdir -p "$_ssd"; _ssrc=0
 sh "$_ssg" --root "$ROOT" --out "$_ssd/graph.tsv" > /dev/null 2> "$_ssd/gen.err" || _ssrc=$?
 if [ "$_ssrc" -eq 3 ]; then
   _adv standard.shape-conform build/graph.tsv; printf '  ADVISORY [standard.shape-conform] unchecked: python3 is absent, so no shape was judged (install python3)\n' >&2
 elif [ "$_ssrc" -ne 0 ]; then
-  bad standard.shape-conform "bin/doc-graph-generate.sh exited $_ssrc and built no graph: $(grep -m1 'FAIL:' "$_ssd/gen.err" | sed 's/^ *FAIL: //')"
+  bad standard.shape-conform "bin/graph-gen.sh exited $_ssrc and built no graph: $(grep -m1 'FAIL:' "$_ssd/gen.err" | sed 's/^ *FAIL: //')"
 else
   _ssred="${LINT_REDLOG:-}"; _ssrc=0
   LINT_REDLOG="$_ssred" sh "$_ss" --root "$ROOT" --graph "$_ssd/graph.tsv" > /dev/null 2> "$_ssd/out" || _ssrc=$?
@@ -639,20 +630,19 @@ rule_S1() {
 rule "posix.shebang-strict bin/*.sh use #!/usr/bin/env sh + strict mode (documented exceptions only)"
 # EXEMPT, with reasons — encoded so the rule does not flag correct design:
 #   guard-lib.sh   — SOURCED, so `set -eu` would leak into every caller
-#   library-log.sh     — SOURCED, the same reason (harbor#771)
-#   deploy-install-lib.sh — SOURCED, the same reason (the install standard, harbor#765)
-#   library-fs.sh      — SOURCED, the same reason (harbor#618)
+#   log-lib.sh     — SOURCED, the same reason (harbor#771)
+#   install-lib.sh — SOURCED, the same reason (the install standard, harbor#765)
+#   fs-lib.sh      — SOURCED, the same reason (harbor#618)
 #   ci-runners-*-lib.sh — SOURCED by ci-runners.sh, which holds the strict mode (harbor#1060 split)
-#   library-gate.sh    — SOURCED, the same reason (harbor#1018)
-#   audit-stream-lib.sh  — SOURCED, the same reason (harbor#1181)
-#   library-alert.sh   — SOURCED, the same reason (harbor#618)
+#   gate-lib.sh    — SOURCED, the same reason (harbor#1018)
+#   stream-lib.sh  — SOURCED, the same reason (harbor#1181)
+#   alert-lib.sh   — SOURCED, the same reason (harbor#618)
 #   worklog-*.sh   — contractually fail-open ("every path exits 0"); -e would abort
 for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
-  [ -L "$f" ] && continue   # a rename shim (renames.tsv remove_by) is an old name of a file judged under its own (harbor#961)
   b="$(basename "$f")"
   head -1 "$f" | grep -q '^#!/usr/bin/env sh$' || bad posix.shebang-strict "wrong shebang: ${f#$ROOT/}"
-  case "$b" in guard-lib.sh|library-log.sh|deploy-install-lib.sh|library-fs.sh|library-gate.sh|audit-stream-lib.sh|library-alert.sh|worklog-push.sh|ci-runners-fleet-lib.sh|ci-runners-provision-lib.sh|ci-runners-github-lib.sh|ci-runners-watch-lib.sh) continue ;; esac
+  case "$b" in guard-lib.sh|log-lib.sh|install-lib.sh|fs-lib.sh|gate-lib.sh|stream-lib.sh|alert-lib.sh|worklog-push.sh|ci-runners-fleet-lib.sh|ci-runners-provision-lib.sh|ci-runners-github-lib.sh|ci-runners-watch-lib.sh) continue ;; esac
   grep -qE '^set -(eu|u|euo)' "$f" || bad posix.shebang-strict "no strict mode: ${f#$ROOT/}"
 done
 # EXTENSIONLESS EXECUTABLES ARE SCRIPTS TOO (2026-07-30). Every rule in this file
@@ -669,7 +659,6 @@ done
 # satisfy a linter would trade a verified control for a green check.
 for f in "$ROOT"/bin/*; do
   [ -f "$f" ] || continue
-  [ -L "$f" ] && continue   # a rename shim (renames.tsv remove_by) is an old name of a file judged under its own (harbor#961)
   b="$(basename "$f")"
   case "$b" in *.sh|*.awk|*.md) continue ;; esac
   head -1 "$f" | grep -q '^#!' || continue          # data file, not a script
@@ -732,16 +721,16 @@ done
 # harbor#140 asks for exactly this: an exemption is a decision, and a silent one
 # is indistinguishable from an oversight.
 #
-#   *-test.sh      a suite is invoked by CI through contracts/suites.txt and by
+#   *-test.sh      a suite is invoked by CI through CONTRACTS/suites.txt and by
 #                  `harbor lint`, never typed at a prompt. Its name IS its
 #                  surface, and 53 of them would make this rule noise.
 #   the hook list  invoked by the HARNESS with a JSON payload on stdin, never by
 #                  a person. A --help case on one is dead code at best; on a
 #                  guard it is a branch in the security floor's hot path, which
 #                  is ~790 invocations per suite run.
-#   guard-lib.sh   sourced, not executed. It has no argv at all. library-log.sh too
+#   guard-lib.sh   sourced, not executed. It has no argv at all. log-lib.sh too
 #                  (harbor#771): a --help arm there would answer the CALLER's $1.
-#   replay-worker  spawned by eval-replay.sh as a background pipeline, same argument.
+#   replay-worker  spawned by replay.sh as a background pipeline, same argument.
 #
 # NOT EXEMPT, DELIBERATELY: the installers and the pinners. They are the scripts
 # an operator runs by hand least often and therefore remembers least, and they
@@ -749,13 +738,12 @@ done
 rule_S4() {
 rule "lint.help-flag every hand-invocable bin/*.sh answers --help (harbor#140)"
 _S4_HOOKS="floor-hook floor-observe context-resolve annotate-web prod-guard-ambient
-worklog-push memory-harvest injection-rule eval-replay-worker guard-bash
+worklog-push memory-harvest injection-rule replay-worker guard-bash
 guard-egress guard-selfedit guard-integrity guard-cloud guard-destroy guard-lib
 guard-deliverables guard-apiroute
-guard-stop session-verdicts audit-triage failure-observe statusline ticket-note reply-shape library-log deploy-install-lib library-fs library-alert ci-runners-fleet-lib ci-runners-provision-lib ci-runners-github-lib ci-runners-watch-lib library-gate audit-stream-lib session-react-lib"
+guard-stop session-verdicts failure-capture failure-observe statusline ticket-note reply-shape log-lib install-lib fs-lib alert-lib ci-runners-fleet-lib ci-runners-provision-lib ci-runners-github-lib ci-runners-watch-lib gate-lib stream-lib session-react-lib"
 for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
-  [ -L "$f" ] && continue   # a rename shim (harbor#961) answers under its new name
   _s4b="$(basename "$f" .sh)"
   case "$_s4b" in *-test) continue ;; esac
   case " $(printf '%s' "$_S4_HOOKS" | tr '\n' ' ') " in *" $_s4b "*) continue ;; esac
@@ -775,13 +763,13 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   # the script can, and running all of them is not free: #140 measured a sweep
   # past five minutes because a script without a parser does its work on
   # --help, and #144 owns the mutators among them. So this rule proves the arm
-  # exists, and the running proof lives where it is cheap — tests/lint/conventions/conventions.test.sh
+  # exists, and the running proof lives where it is cheap — tests/checks/lint-test.sh
   # runs this linter with --help and fails if it prints a report.
-  # A tool on the install standard answers it through il_parse (bin/deploy-install-lib.sh), whose own arm is
+  # A tool on the install standard answers it through il_parse (bin/install-lib.sh), whose own arm is
   # held to this rule by the install-lib suite: the call AND the source line, or il_parse is undefined.
   _s4c="$(sed -e '/^[[:space:]]*#/d' -e 's/[[:space:]]#.*$//' "$f")"
   if printf '%s\n' "$_s4c" | grep -qE '(^|[;&|[:space:]])il_parse[[:space:]]+"\$@"' \
-     && printf '%s\n' "$_s4c" | grep -qE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*deploy-install-lib\.sh'; then continue; fi
+     && printf '%s\n' "$_s4c" | grep -qE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*install-lib\.sh'; then continue; fi
   printf '%s\n' "$_s4c" \
     | grep -qE '(^|[^a-zA-Z-])(-h\||-h\)|--help\)|--help\|)' \
     || bad lint.help-flag "answers no --help: ${f#"$ROOT"/}"
@@ -821,7 +809,7 @@ fi
 
 # ── S6 · a script that was executable stays executable (harbor#574) ───────
 # NOTHING IN THIS REPO READ A FILE MODE. A one-line comment edit to
-# bin/drift-install.sh went through a temp file, `mv` did not carry the mode,
+# bin/install-drift.sh went through a temp file, `mv` did not carry the mode,
 # and 100755 -> 100644 rode 8/8 CI checks, 78 lint rules and four suites. Every
 # caller ran it as `sh <path>`, so nothing exercised the bit, and the only place
 # the change was ever visible was a `git diff` the operator happened to read.
@@ -871,9 +859,9 @@ if git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
 fi
 }
 
-# ── F1 · the floor's kill-switch convention (docs/explanation/admission-baseline.md) ──────────────────────
+# ── F1 · the floor's kill-switch convention (FLOOR.md) ──────────────────────
 rule_F1() {
-rule "admission.kill-switch-first every wired decider's first live line is the HARBOR_ADMISSION_DISABLE check, or it is listed exempt with a reason (harbor#954)"
+rule "admission.kill-switch-first every wired decider's first live line is the HELM_DISABLE_FLOOR check, or it is listed exempt with a reason (harbor#954)"
 # THE SET IS bin/decider-set.sh's, derived from the wiring floor-install writes (harbor#1003). It used to be
 # `bin/guard-*.sh` + annotate-web.sh: 10 files that missed inject-hook.sh and prod-guard-ambient.sh, two
 # wired deciders that read no switch. floor-test, floor-verify and B6's list are diffed against it.
@@ -890,14 +878,14 @@ for _s in $(sh "$_f1set" --switch); do
   [ -f "$f" ] || { bad admission.kill-switch-first "wired decider is not in bin/: $_s"; continue; }
   line="$(grep -vE '^[[:space:]]*(#|$)' "$f" 2>/dev/null | grep -vE '^#!' | head -1)"
   case "$line" in
-    *HARBOR_ADMISSION_DISABLE*|*HELM_DISABLE_FLOOR*) ;;   # either spelling until 2026-11-15 (harbor#961 W5)
+    *HELM_DISABLE_FLOOR*) ;;
     *) bad admission.kill-switch-first "kill-switch is not the first live line: bin/$_s" ;;
   esac
 done
 # the second switch: a decider declared to record under shadow must reach floor_block or read the switch
 for _s in $(sh "$_f1set" --records); do
-  grep -qE 'floor_block|HARBOR_ADMISSION_SHADOW|HELM_FLOOR_SHADOW' "$ROOT/bin/$_s" 2>/dev/null \
-    || bad admission.kill-switch-first "bin/$_s is declared to record under HARBOR_ADMISSION_SHADOW and reaches neither floor_block nor the switch"
+  grep -qE 'floor_block|HELM_FLOOR_SHADOW' "$ROOT/bin/$_s" 2>/dev/null \
+    || bad admission.kill-switch-first "bin/$_s is declared to record under HELM_FLOOR_SHADOW and reaches neither floor_block nor the switch"
 done
 }
 
@@ -919,7 +907,7 @@ done
 
 # ── F5 · every floor_block call site carries a <rule>.<shape> id ───────────
 # Without one the record logs `unclassified` and the block is invisible to
-# `admission-observe-report.sh` — a rule that fires and cannot be counted, which is the
+# `observe-report.sh` — a rule that fires and cannot be counted, which is the
 # exact condition harbor#41 exists to end. Silent, so it needs a mechanism.
 rule_F5() {
 rule "admission.block-id every floor_block passes a <rule>.<shape> id (harbor#41)"
@@ -953,7 +941,7 @@ done
 }
 
 # ── F16 · a refusal prints its narrowest true remedy, not the kill-switch ──
-# floor_block printed `HARBOR_ADMISSION_DISABLE=1 claude` under every one of ~110
+# floor_block printed `HELM_DISABLE_FLOOR=1 claude` under every one of ~110
 # rules: turn all of them off to get past one (harbor#482). The narrow remedy
 # for one refused call is a `!` command, which is not a tool call. The blanket
 # hatch is the TRUE remedy in exactly two places, named here with why:
@@ -972,13 +960,13 @@ for f in "$ROOT"/bin/guard-*.sh $(for _f16b in $_f16g; do printf '%s ' "$ROOT/bi
   case "$_f16seen" in *" $_f16b "*) continue ;; esac
   _f16seen="$_f16seen$_f16b "
   case "$_f16b" in guard-integrity.sh|floor-hook.sh) continue ;; esac
-  _f16n="$(grep -vE '^[[:space:]]*#' "$f" 2>/dev/null | grep -cE '(HARBOR_ADMISSION_DISABLE|HELM_DISABLE_FLOOR)=1' || true)"
+  _f16n="$(grep -vE '^[[:space:]]*#' "$f" 2>/dev/null | grep -c 'HELM_DISABLE_FLOOR=1' || true)"
   [ "${_f16n:-0}" -eq 0 ] || bad admission.kill-switch-remedy "bin/$_f16b prints the kill-switch as a remedy on $_f16n code line(s); print the narrowest true one (a \`!\` command for one call)"
 done
 }
 
 # ── G1 · large files carry their reason, and new ones stay small ───────────
-# See docs/explanation/modularity.md. The point is NOT to forbid large files — the floor
+# See DOCTRINE/modularity.md. The point is NOT to forbid large files — the floor
 # guards are deliberately monolithic (F1 needs the kill-switch as the first live
 # line; B6 hash-pins each file; per-rule files would add a fork per rule, and
 # DE-09 records that a fork regression turned SessionStart into a fail-OPEN
@@ -994,9 +982,9 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   _tot="$(wc -l < "$f" | tr -d ' ')"
   # NON-COMMENT LINES, because the rule was penalising the header it exists to
   # require. It counted every line, so a file that answered G1 properly — a long
-  # WHY block above the code, which docs/explanation/modularity.md and this whole repo
-  # ask for — crossed the threshold BECAUSE it was well documented. eval-replay.sh and
-  # eval-replay-corpus.sh were advised on for months while carrying exactly the
+  # WHY block above the code, which DOCTRINE/modularity.md and this whole repo
+  # ask for — crossed the threshold BECAUSE it was well documented. replay.sh and
+  # replay-corpus.sh were advised on for months while carrying exactly the
   # explanation the rule wanted; measured 2026-08-01, they are 375 and 328 total
   # lines but 207 and 183 lines of actual code.
   #
@@ -1022,19 +1010,19 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   # window stopped at line 2 and advised on guard-bash.sh — a rule obeying F1 was
   # penalised by G1. So the kill-switch line is skipped when it sits in the first
   # three lines, which is exactly where F1 puts it, and nowhere else.
-  if awk 'NR <= 3 && /HARBOR_ADMISSION_DISABLE|HELM_DISABLE_FLOOR/ { next }
+  if awk 'NR <= 3 && /HELM_DISABLE_FLOOR/ { next }
           /^[[:space:]]*(#|$)/ { print; next } { exit }' "$f" \
-       | grep -qiE 'deliberately (one file|monolithic)|single file by design|docs/explanation/modularity'; then
+       | grep -qiE 'deliberately (one file|monolithic)|single file by design|DOCTRINE/modularity'; then
     :
   else
-    # ADVISORY, printed like X2/X3 — NOT `bad`. docs/explanation/modularity.md says in
+    # ADVISORY, printed like X2/X3 — NOT `bad`. DOCTRINE/modularity.md says in
     # so many words that "promoting a smell to a build failure is how a linter
     # becomes something people route around", and the first version of this rule
     # contradicted the doctrine it was written to enforce. It caught that by
-    # firing on bin/eval-replay.sh at 311 lines, which is the rule working: a file
+    # firing on bin/replay.sh at 311 lines, which is the rule working: a file
     # crossed the line as it grew, and the right response is a note to carry into
     # the next PLANNING session, not a mid-task split under a full context window.
-    _adv lint.long-file-reason "${f#$ROOT/}"; printf "  ADVISORY [lint.long-file-reason] %s is %s lines of code (%s total) and its header does not say why (docs/explanation/modularity.md)\n" "${f#$ROOT/}" "$_n" "$_tot"
+    _adv lint.long-file-reason "${f#$ROOT/}"; printf "  ADVISORY [lint.long-file-reason] %s is %s lines of code (%s total) and its header does not say why (DOCTRINE/modularity.md)\n" "${f#$ROOT/}" "$_n" "$_tot"
   fi
 done
 }
@@ -1068,7 +1056,7 @@ rule "test.config-dir-isolated no test spawns a guard without CLAUDE_CONFIG_DIR 
 #       stop-guard-test. The destroy and cloud guard suites were not on
 #       it, and both fire a guard with no CLAUDE_CONFIG_DIR. Now derived from
 #       bin/*-test.sh, so a new suite there is covered BY DEFAULT. Suites under tests/
-#       spawn guards through tests/admission/helper/lib.sh, whose t_init exports a sandbox config dir.
+#       spawn guards through tests/lib/guard.sh, whose t_init exports a sandbox config dir.
 #
 #   2 · STAGE 2 REQUIRED THE GUARD FILENAME ON THE SPAWN LINE, and every suite
 #       assigns the path once (`GUARD="$DIR/guard-destroy.sh"`) then spawns through
@@ -1174,27 +1162,27 @@ rule "posix.stat-fallback no stat -f/-c fallback captured in one expression (GNU
 # THE MECHANISM BEHIND A FIX THAT DID NOT PROPAGATE. `stat -f` means "format" to
 # BSD stat and "file system status" to GNU stat, so on Linux the first call PRINTS
 # a block of filesystem fields to stdout and THEN fails — and `a || b` evaluated
-# in ONE expression appends b's answer to that garbage. bin/alert-probe.sh:93 states the
+# in ONE expression appends b's answer to that garbage. bin/pulse.sh:93 states the
 # rule ("VALIDATE THE OUTPUT, NEVER THE EXIT CODE") after a review reported it
-# there, and bin/skill-collision-verify.sh followed it. FOUR other live call sites never
+# there, and bin/skills-collide.sh followed it. FOUR other live call sites never
 # did, and were found on 2026-09-06 only because a Linux box happened to run the
 # suites: `harbor fresh` aborted part-way through its own report, skills-install
 # could not install ANY skill, wf-progress lost the liveness verdict it exists to
 # give, and save-log-token-test went red for the box rather than the code.
 #
 # Three hand-propagations and a miss is the argument for this rule existing. A
-# rule with no mechanism is a wish (docs/explanation/doc-truth.md), and until now this one
+# rule with no mechanism is a wish (DOCTRINE/doc-truth.md), and until now this one
 # was a comment in one file hoping to be read by the author of the next.
 #
 # THE DISCRIMINATOR IS THE INTERVENING ASSIGNMENT, NOT THE PRESENCE OF `||`.
-# bin/status-fleet-glyph.sh:588 and :757 are CORRECT and must stay green:
+# bin/fleet-glyph.sh:588 and :757 are CORRECT and must stay green:
 # `if mt="$(stat -f …)" || mt="$(stat -c …)"` runs two SEPARATE captures and the
 # second overwrites the first, so the garbage never survives the line. The broken
 # shape has no `="$(` between the two calls, which is precisely what lets one
 # capture hold both answers. Checked in that order, so a whole-line grep — which
 # matches `_m="$(stat -f …` at the START of the broken line too — cannot be used.
 #
-# tests/drift/reference-check/reference-check.test.sh IS EXEMPT BY PATH, WITH THE REASON. It carries the
+# tests/checks/reference-check-test.sh IS EXEMPT BY PATH, WITH THE REASON. It carries the
 # broken idiom as harbor#226's own probe FIXTURE, and a suite proving the trap is
 # detected must be able to write the trap down. Named rather than globbed to
 # `*-test.sh`, because bin/save-log-token-test.sh:74 (now tests/hooks/) held a REAL instance of this
@@ -1214,9 +1202,9 @@ cat > "$_F11P" <<'F11AWK'
 F11AWK
 _f11=''
 # tests/*/*.sh: a suite moved out of bin/ stays scanned, so the exemption stays one file (harbor#667).
-for f in "$ROOT"/bin/*.sh "$ROOT"/hooks/* "$ROOT"/hooks/*/*.sh "$ROOT"/worklog/* "$ROOT"/skills/*/bin/*.sh "$ROOT"/tests/*/*.sh "$ROOT"/tests/*/*/*.sh; do
+for f in "$ROOT"/bin/*.sh "$ROOT"/hooks/* "$ROOT"/hooks/*/*.sh "$ROOT"/worklog/* "$ROOT"/skills/*/bin/*.sh "$ROOT"/tests/*/*.sh; do
   [ -f "$f" ] || continue
-  case "${f#"$ROOT"/}" in tests/drift/reference-check/reference-check.test.sh) continue ;; esac
+  case "${f#"$ROOT"/}" in tests/checks/reference-check-test.sh) continue ;; esac
   _f11hit="$(awk -f "$_F11P" "$f" 2>/dev/null || true)"
   [ -z "$_f11hit" ] || _f11="$_f11 ${_f11hit#$ROOT/}"
 done
@@ -1225,7 +1213,7 @@ rm -f "$_F11P"
 # first run). This message named BOTH spellings in one line, so the rule reported
 # its own text at bin/lint-conventions.sh:554. It now names the first only; the
 # comment block above carries the full explanation and is skipped as comment.
-[ -z "$_f11" ] || bad posix.stat-fallback "a BSD-first stat fallback captured in one expression — on GNU the first spelling PRINTS filesystem fields and THEN fails, so the captured value is garbage plus the answer. Call bin/library-fs.sh (fs_mtime, fs_size, fs_mode, fs_uid), or validate the output and never the exit code, at:$_f11"
+[ -z "$_f11" ] || bad posix.stat-fallback "a BSD-first stat fallback captured in one expression — on GNU the first spelling PRINTS filesystem fields and THEN fails, so the captured value is garbage plus the answer. Call bin/fs-lib.sh (fs_mtime, fs_size, fs_mode, fs_uid), or validate the output and never the exit code, at:$_f11"
 }
 
 # ── F12 · no POSIX-compatibility violations under `sh` (shellcheck SC3xxx) ──
@@ -1249,8 +1237,8 @@ rule "posix.shellcheck every script is POSIX under sh — no shellcheck SC3xxx (
 # grows.
 #
 # IT WOULD HAVE CAUGHT A REAL DEFECT, which is the only argument that matters.
-# bin/normalize-test.sh (now tests/admission/normalize/) carried one `$'…'`; dash could not parse the file, the
-# suite reported ZERO assertions on every dash box while docs/generated/status.md claimed 173,
+# bin/normalize-test.sh (now tests/floor/) carried one `$'…'`; dash could not parse the file, the
+# suite reported ZERO assertions on every dash box while STATUS.md claimed 173,
 # and status-gen wrote that zero into the file. shellcheck flags it as SC3003 at
 # exactly that line. Nothing in shellcheck's output catches the `stat -f` dialect
 # (F11's class) — checked, not assumed — so these two rules are complements and
@@ -1258,7 +1246,7 @@ rule "posix.shellcheck every script is POSIX under sh — no shellcheck SC3xxx (
 #
 # ADVISORY WHEN THE TOOL IS ABSENT, and LOUD about it, in the idiom X7 already
 # uses: a rule that silently passes because its instrument is missing is worse
-# than no rule. bin/deploy-doctor.sh probes shellcheck as `degraded` for the same reason.
+# than no rule. bin/doctor.sh probes shellcheck as `degraded` for the same reason.
 # This becomes a real gate on the runner the moment governance.yml's preflight
 # installs it, which is a workflow change and the operator's to make.
 if command -v shellcheck >/dev/null 2>&1; then
@@ -1316,7 +1304,7 @@ fi
 # ── F13 · an apostrophe inside a single-quoted program (harbor#299) ─────────
 # ONE APOSTROPHE IN A COMMENT INSIDE A SINGLE-QUOTED awk OR jq PROGRAM CLOSES THE
 # QUOTE, and the shell then parses the rest of the program as shell code. harbor#299
-# measured it twice in bin/status-fleet-glyph.sh on 2026-08-24 — the second time inside a
+# measured it twice in bin/fleet-glyph.sh on 2026-08-24 — the second time inside a
 # comment WARNING about the first — and it happened again in THIS file on 2026-09-16,
 # from the word "item's" in the comment above T12's awk program.
 #
@@ -1348,11 +1336,11 @@ fi
 # the same pass. That version was correct only because every rule always ran, in
 # order: `--only F13` met an unset `$_F12RAW` the first time one rule ran alone.
 #
-# DECLARED AT COLUMN 0, AND THAT IS NOT COSMETIC. bin/status-generate.sh counts rules with
+# DECLARED AT COLUMN 0, AND THAT IS NOT COSMETIC. bin/status-gen.sh counts rules with
 # `grep -c '^rule "'` — anchored, no leading space — because harbor#117 made it the
 # single answer to "how many lint rules are there". The first cut of this rule sat
 # INSIDE F12's if/else and was declared in both branches, so the repo briefly held
-# three answers: 77 in docs/generated/status.md, which cannot see an indented declaration at all,
+# three answers: 77 in STATUS.md, which cannot see an indented declaration at all,
 # 78 at runtime, and 79 to a static scan allowing indent. T1 stayed GREEN throughout,
 # because status-gen's number never moved. An indented rule is an invisible rule.
 rule_F13() {
@@ -1379,17 +1367,17 @@ fi
 rule_F10() {
 rule "deploy.baseline-projection every writer and reader of .sec0-baseline uses the SAME jq projection (harbor#221)"
 # THE MECHANISM BEHIND harbor#221's FIX. The projection that decides what B6
-# watches in settings.json is written out by deploy-harden.sh and floor-deny.sh
+# watches in settings.json is written out by sec0-harden.sh and floor-deny.sh
 # and read back by guard-integrity.sh — seven literal copies of one jq program
 # across three files. A fact copied seven times drifts silently, and here the
 # drift is not cosmetic: if a WRITER pins one shape and the GUARD computes
 # another, the hashes never match, B6 reports drift at every SessionStart
 # forever, and the operator learns to scroll past the one gate that would have
 # told them their deny list had been emptied. §2.11, with the whole file behind
-# it. A rule with no mechanism is a wish (docs/explanation/doc-truth.md), so this is the
+# it. A rule with no mechanism is a wish (DOCTRINE/doc-truth.md), so this is the
 # mechanism: they are compared as strings, and any disagreement is a violation.
 _f10n=0; _f10ref=""
-for f in "$ROOT"/bin/deploy-harden.sh "$ROOT"/bin/floor-deny.sh "$ROOT"/bin/guard-integrity.sh; do
+for f in "$ROOT"/bin/sec0-harden.sh "$ROOT"/bin/floor-deny.sh "$ROOT"/bin/guard-integrity.sh; do
   [ -f "$f" ] || continue
   # Only the FULL baseline projection, which is the one keyed on `perms:`. The
   # narrower `{deny, locks}` teeth projection is a different question with a
@@ -1404,7 +1392,7 @@ for f in "$ROOT"/bin/deploy-harden.sh "$ROOT"/bin/floor-deny.sh "$ROOT"/bin/guar
 $(sed -n "s/.*\(-S '{perms:[^']*}'\).*/\1/p" "$f")
 EOF
 done
-[ "$_f10n" -ge 3 ] || bad deploy.baseline-projection "expected the baseline projection in all three of deploy-harden.sh, floor-deny.sh and guard-integrity.sh; found $_f10n copy/copies"
+[ "$_f10n" -ge 3 ] || bad deploy.baseline-projection "expected the baseline projection in all three of sec0-harden.sh, floor-deny.sh and guard-integrity.sh; found $_f10n copy/copies"
 }
 
 # ── F3 · guards pin the interpreter they match with ────────────────────────
@@ -1423,7 +1411,7 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   # construction instead of being caught. The rule protects RULE MATCHING inside
   # guards, where grep resolution decides a security verdict.
   case "$(basename "$f")" in lint-conventions.sh|*-test.sh) continue ;; esac
-  # SOURCES it, not merely mentions it. deploy-doctor.sh READS guard-lib.sh to report
+  # SOURCES it, not merely mentions it. doctor.sh READS guard-lib.sh to report
   # which grep the floor pins; floor-install.sh names it in a copy list. Neither
   # has $FLOOR_GREP in scope, so flagging them was the rule mis-scoping itself.
   grep -qE '^[[:space:]]*\.[[:space:]]+"[^"]*guard-lib\.sh"' "$f" 2>/dev/null || continue
@@ -1433,7 +1421,7 @@ done
 }
 
 # ── D1 · the config dir is resolved, never hardcoded ───────────────────────
-# baseline-pin.sh WRITES the pointer into ${CLAUDE_CONFIG_DIR:-…}; deploy-restore.sh
+# baseline-pin.sh WRITES the pointer into ${CLAUDE_CONFIG_DIR:-…}; restore.sh
 # read it from $HOME/.claude unconditionally, so the two halves of RECOVER
 # disagreed about which dir they meant.
 rule_D1() {
@@ -1463,11 +1451,10 @@ rule "deploy.live-flag every settings.json mutator requires an explicit --live f
 # a pin or a settings file counts, however it spells its apply flag.
 for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
-  [ -L "$f" ] && continue   # a rename shim (renames.tsv remove_by) is an old name of a file judged under its own (harbor#961)
-  # status-generate.sh has an --apply arm but writes docs/generated/status.md IN THE REPO — it never
+  # status-gen.sh has an --apply arm but writes STATUS.md IN THE REPO — it never
   # touches a config dir, so a --live gate would be meaningless ceremony. The
   # rule is about scripts that can rewrite the LIVE config.
-  # scope-marker-backfill.sh (H3) writes ONE line into OTHER repositories' descriptors
+  # marker-backfill.sh (H3) writes ONE line into OTHER repositories' descriptors
   # and never a config surface — it REFUSES any target that resolves inside the
   # config dir, so a --live gate would name a directory it is forbidden to
   # reach. The refusal is the control, not this exemption, and floor-test's H3
@@ -1477,11 +1464,11 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   # then demands a control that only makes sense for a config-dir writer. It
   # removes git worktrees and never reads or writes a config surface at all, so a
   # `--live` gate would name a directory it has no business touching. Its
-  # equivalent control is stronger and is asserted in tests/worktree/worktree/worktree.test.sh: `gc`
+  # equivalent control is stronger and is asserted in tests/ci/worktree-test.sh: `gc`
   # is a dry run unless `--apply`, and dirty / session-held / main-worktree are
   # refusals no flag overrides.
   #
-  # doc-index-generate.sh (harbor#173) is the FOURTH exemption and is status-generate.sh's exact
+  # docs-gen.sh (harbor#173) is the FOURTH exemption and is status-gen.sh's exact
   # shape: an --apply arm that writes a GENERATED FILE IN THE REPO (docs/index.html)
   # and never reads or writes a config surface. Four of these now, which is no
   # longer a run of special cases — it is the trigger being wrong. Recorded on
@@ -1495,7 +1482,7 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   # proposal.sh (harbor#44 follow-through) is the FIFTH of this exact shape: an
   # --apply arm that writes inside the REPO (proposals/ and, at apply, the tree
   # via `git apply`) and never reads or writes a config surface. It has its own
-  # stronger controls, asserted in tests/proposal/proposal/proposal.test.sh: a dry run unless
+  # stronger controls, asserted in tests/obs/proposal-test.sh: a dry run unless
   # --apply, a refusal on any refuted review, a refusal on a patch whose bytes
   # changed since review, and an unoverridable refusal on a patch touching the
   # packet machinery. Five exemptions is the same finding harbor#144 already
@@ -1509,13 +1496,13 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   # sandbox by construction (guard-lib.sh: a writer that cannot mkdir cannot
   # pollute what it cannot find).
   #
-  # standard-issue-label.sh (harbor#512) is the SIXTH named exemption of one shape, and
+  # issue-connector.sh (harbor#512) is the SIXTH named exemption of one shape, and
   # six is past the point where the list is the finding. Its --apply arm writes
   # LABELS TO THE GITHUB TRACKER through `gh issue edit` — not a config dir, not a
   # settings file, nothing on this disk — so a --live gate would name a directory it
   # is not reaching. Its controls are stronger than a flag and are asserted in
-  # tests/standard/issue-label/issue-label.test.sh: every label is checked against
-  # contracts/issue-taxonomy.tsv and one outside it is refused, the refusal writes
+  # tests/cli/issue-connector-test.sh: every label is checked against
+  # CONTRACTS/issue-taxonomy.tsv and one outside it is refused, the refusal writes
   # NOTHING (asserted against an edit log, not inferred), --apply with no labels is
   # refused, and --suggest never applies what it prints.
   #
@@ -1525,30 +1512,30 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   # and does not belong in the commit that tripped over it.
   case "$(basename "$f")" in
     *-test.sh) continue ;;
-    status-generate.sh|doc-index-generate.sh|scope-marker-backfill.sh|worktree.sh|proposal.sh) continue ;;
-    standard-frozen-generate.sh) continue ;;  # --apply writes standards/naming/frozen.tsv in the repo, never the live box (harbor#1276)
-    standard-issue-label.sh) continue ;;
-    # lint-findings.sh (harbor#590) writes GitHub issues and never a config dir; its --apply is gated
-    # on the checkout being origin/main instead, asserted in tests/lint/findings/findings.test.sh. The
+    status-gen.sh|docs-gen.sh|marker-backfill.sh|worktree.sh|proposal.sh) continue ;;
+    frozen-gen.sh) continue ;;  # --apply writes standards/naming/frozen.tsv in the repo, never the live box (harbor#1276)
+    issue-connector.sh) continue ;;
+    # findings.sh (harbor#590) writes GitHub issues and never a config dir; its --apply is gated
+    # on the checkout being origin/main instead, asserted in tests/obs/findings-test.sh. The
     # seventh of harbor#144's shape: the trigger is the flag when it should be the write.
-    lint-findings.sh) continue ;;
+    findings.sh) continue ;;
     # ci-runners.sh (harbor#1060) writes docker containers and GitHub runner variables, never a config dir;
-    # its gate is a dry run unless --apply, asserted in tests/ci/runners/runners.test.sh (the same finding, harbor#144).
+    # its gate is a dry run unless --apply, asserted in tests/ci/ci-runners-test.sh (the same finding, harbor#144).
     ci-runners.sh) continue ;;
     # ci-runners-watch-lib.sh is `tick`, sourced by ci-runners.sh and run only through it: the same gate, the same suite.
     ci-runners-watch-lib.sh) continue ;;
     # ci-runs-on.sh (harbor#1060) rewrites the workflow files of a checkout it is handed, never a config dir;
-    # dry run unless --apply, asserted in tests/ci/runs-on/runs-on.test.sh (harbor#144's shape again).
+    # dry run unless --apply, asserted in tests/ci/ci-runs-on-test.sh (harbor#144's shape again).
     ci-runs-on.sh) continue ;;
-    # access-browser-hosts-add.sh (harbor#900) writes one repo file, contracts/browser-agent-hosts.txt,
+    # browser-hosts-add.sh (harbor#900) writes one repo file, CONTRACTS/browser-agent-hosts.txt,
     # and never a config dir; the live box reads the deployed copy, so deploy.sh is its gate.
-    access-browser-hosts-add.sh) continue ;;
+    browser-hosts-add.sh) continue ;;
   esac
   grep -qE 'APPLY=1|MODE="--apply"|\-\-apply\)' "$f" 2>/dev/null || continue
   # ON THE INSTALL STANDARD, the gate is install-lib's il_target and D7 holds the file to it; its
   # `"$(il_cmd --apply)"` hints match the trigger above and are not a second parser.
   _d2il="$(grep -v '^[[:space:]]*#' "$f" 2>/dev/null)"
-  if printf '%s\n' "$_d2il" | grep -qE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*deploy-install-lib\.sh' \
+  if printf '%s\n' "$_d2il" | grep -qE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*install-lib\.sh' \
      && printf '%s\n' "$_d2il" | grep -qE '(^|[;&|[:space:]])il_target([;&|[:space:]]|$)'; then continue; fi
   # COMMENTS STRIPPED FIRST (harbor#212). This was a bare grep over the whole file,
   # so a mutator with no gate whatsoever passed if it merely MENTIONED the phrase in
@@ -1638,7 +1625,7 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   # a hint to an operator. Their own coverage of the printed hints is floor-test's
   # WIRE-2 section, which runs the tools and reads what they actually print.
   case "$(basename "$f")" in *-test.sh) continue ;; esac
-  # A SCRIPT WHOSE TARGET CAN NEVER BE LIVE needs no --live spelling. test-sandbox-make.sh
+  # A SCRIPT WHOSE TARGET CAN NEVER BE LIVE needs no --live spelling. sandbox-make.sh
   # refuses the live dir unconditionally — there is no `--live)` in its arg loop to
   # open it — so `floor-install.sh "$DIR" --apply` is the ONLY correct form there,
   # and demanding --live would be a §2.11 false positive on a script forbidden to
@@ -1677,23 +1664,20 @@ done
 }
 
 # ── D7 · one interface, parsed once (the install standard, harbor#765) ────────
-# `[--apply] (--live | --dir PATH) [--accept-loss] [-h]` is parsed in bin/deploy-install-lib.sh and nowhere
+# `[--apply] (--live | --dir PATH) [--accept-loss] [-h]` is parsed in bin/install-lib.sh and nowhere
 # else. A second parser is how `<sandbox> --live --apply` wrote live (the last word won), how a typo
 # became a target, and how CLAUDE_CONFIG_DIR chose the dir a restore overwrote (review 2026-09-27 §2).
 rule_D7() {
-rule "deploy.target-from-lib every installer takes its target from deploy-install-lib.sh: il_parse, il_target, no second parser, no env target"
+rule "deploy.target-from-lib every installer takes its target from install-lib.sh: il_parse, il_target, no second parser, no env target"
 # floor-deny, floor-verify and renew-check name a config dir too (harbor#800): the same one parser.
-for f in "$ROOT"/bin/*-install.sh "$ROOT"/bin/floor-uninstall.sh "$ROOT"/bin/deploy-restore.sh \
-         "$ROOT"/bin/pin-instructions.sh "$ROOT"/bin/deploy-harden.sh \
-         "$ROOT"/bin/floor-deny.sh "$ROOT"/bin/floor-verify.sh "$ROOT"/bin/drift-renew-check.sh; do
+for f in "$ROOT"/bin/*-install.sh "$ROOT"/bin/floor-uninstall.sh "$ROOT"/bin/restore.sh \
+         "$ROOT"/bin/pin-instructions.sh "$ROOT"/bin/sec0-harden.sh \
+         "$ROOT"/bin/floor-deny.sh "$ROOT"/bin/floor-verify.sh "$ROOT"/bin/renew-check.sh; do
   [ -f "$f" ] || continue
-  [ -L "$f" ] && continue   # a rename shim (renames.tsv remove_by) is an old name of a file judged under its own (harbor#961)
-  # harbor#961 W3 gave two non-installers an -install name: the collector's setup and the drift check of installs
-  case "${f##*/}" in audit-collector-install.sh|drift-install.sh) continue ;; esac
   _d7="${f#"$ROOT"/}"
   _d7c="$(sed -e '/^[[:space:]]*#/d' -e 's/[[:space:]]#.*$//' "$f")"
-  if ! printf '%s\n' "$_d7c" | grep -qE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*deploy-install-lib\.sh'; then
-    bad deploy.target-from-lib "$_d7 does not source bin/deploy-install-lib.sh"; continue
+  if ! printf '%s\n' "$_d7c" | grep -qE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*install-lib\.sh'; then
+    bad deploy.target-from-lib "$_d7 does not source bin/install-lib.sh"; continue
   fi
   printf '%s\n' "$_d7c" | grep -qE '(^|[;&|[:space:]])il_parse[[:space:]]+"\$@"' \
     || bad deploy.target-from-lib "$_d7 never calls il_parse \"\$@\""
@@ -1762,7 +1746,7 @@ done
 # would make this rule demand that Harbor blind itself to its own controls.
 rule_D5() {
 rule "deploy.deny-read-edit-pair every path a writer denies for Read also has an Edit twin (Read does not cover Write/NotebookEdit)"
-_d5src="$ROOT/bin/floor-deny.sh $ROOT/bin/deploy-harden.sh"
+_d5src="$ROOT/bin/floor-deny.sh $ROOT/bin/sec0-harden.sh"
 # Comments are stripped first: both files QUOTE deny entries while explaining
 # them, and a rule that reads its own documentation as data is the substring
 # defect DE-22 records.
@@ -1787,7 +1771,7 @@ fi
 
 # ── TS1 · the TypeScript tool tree stays zero-setup and writes nothing ──────
 # D1 (harbor#6) adds the repo's FIRST first-party TypeScript. It sits in the Bun
-# skill-tool layer, not the floor layer (policy/constitution.md § Operational rules —
+# skill-tool layer, not the floor layer (CONSTITUTION.md § Operational rules —
 # "language by layer, not by decree"), and two properties are what make it safe
 # to keep in a governance repo. Neither is self-evident from reading the code,
 # and both are one line away from being false:
@@ -1798,7 +1782,7 @@ fi
 #     runs on the machine that has the package cached. The import allowlist is
 #     the mechanism; without it, "zero-setup" is a claim in a README.
 #
-# (b) THE INDEX IS NEVER PERSISTED. contracts/memory-format.md fixes the derived
+# (b) THE INDEX IS NEVER PERSISTED. CONTRACTS/memory-format.md fixes the derived
 #     graph/BM25 layer as "rebuilt in-memory at query time. No DB is the source
 #     of truth." A cache is the obvious optimisation and it is exactly what the
 #     contract forbids, so the ban is checked here rather than trusted — a rule
@@ -1824,7 +1808,7 @@ for f in "$ROOT"/tools/*/*.ts; do
   # process.stdout/stderr.write is OUTPUT, not a filesystem write, and a CLI that
   # streams results is the normal case. Excluded explicitly: a rule that fires on
   # the ordinary way to print gets switched off, and a disabled rule protects
-  # nothing (policy/constitution.md §2.11).
+  # nothing (CONSTITUTION.md §2.11).
   _ts_wr="$(grep -nE '(writeFileSync|appendFileSync|mkdirSync|createWriteStream|Bun\.write|\.write\(|rmSync|unlinkSync)' "$f" 2>/dev/null \
             | grep -vE '^[0-9]+:[[:space:]]*(\*|//)' \
             | grep -vE 'process\.(stdout|stderr)\.write' || true)"
@@ -1839,12 +1823,12 @@ done
 # a new bin/*.sh nobody classified. All three are silent.
 #
 # THREE CHECKS, and the second is why bin/harbor may embed its own table at all:
-# contracts/cli.md argues that a recovery command must not parse a markdown file
+# CONTRACTS/cli.md argues that a recovery command must not parse a markdown file
 # out of a repo checkout to print --help. The equality assertion here is what makes
 # the embedded copy safe — remove it and the contract becomes decoration.
 rule_CLI1() {
-rule "lint.cli-contract harbor's verbs, its contract, and bin/ agree (contracts/cli.md)"
-_cli="$ROOT/contracts/cli.md"
+rule "lint.cli-contract harbor's verbs, its contract, and bin/ agree (CONTRACTS/cli.md)"
+_cli="$ROOT/CONTRACTS/cli.md"
 _disp="$ROOT/bin/harbor"
 if [ -f "$_cli" ] && [ -f "$_disp" ]; then
   # (1) + (2): the dispatcher's verb<TAB>script pairs vs the contract's table rows.
@@ -1854,7 +1838,7 @@ if [ -f "$_cli" ] && [ -f "$_disp" ]; then
   _c_pairs="$(grep -E '^\| `harbor [a-z-]+` \| `[a-z0-9.-]+\.sh( [a-z0-9-]+)*` \|' "$_cli" \
               | sed -E 's/^\| `harbor ([a-z-]+)` \| `([a-z0-9.-]+\.sh( [a-z0-9-]+)*)` \|.*/\1=\2/' | sort)"
   if [ "$_d_pairs" != "$_c_pairs" ]; then
-    bad lint.cli-contract "bin/harbor's verb table and contracts/cli.md disagree:"
+    bad lint.cli-contract "bin/harbor's verb table and CONTRACTS/cli.md disagree:"
     printf '%s\n' "$_d_pairs" > "${TMPDIR:-/tmp}/cli-d.$$"
     printf '%s\n' "$_c_pairs" > "${TMPDIR:-/tmp}/cli-c.$$"
     diff "${TMPDIR:-/tmp}/cli-d.$$" "${TMPDIR:-/tmp}/cli-c.$$" | sed 's/^/      /' >&2 || true
@@ -1896,7 +1880,7 @@ CLIEOF
   _c_json="$(grep -E '^\| `harbor [a-z-]+` \| `[a-z0-9.-]+\.sh( [a-z0-9-]+)*` \|' "$_cli" \
              | sed -E 's/^\| `harbor ([a-z-]+)` \| `[a-z0-9.-]+\.sh( [a-z0-9-]+)*` \| *([a-z]+) *\|.*/\1=\3/' | sort)"
   if [ "$_d_json" != "$_c_json" ]; then
-    bad lint.cli-contract "bin/harbor and contracts/cli.md disagree about which verbs take --json:"
+    bad lint.cli-contract "bin/harbor and CONTRACTS/cli.md disagree about which verbs take --json:"
     printf '%s\n' "$_d_json" > "${TMPDIR:-/tmp}/cli-dj.$$"
     printf '%s\n' "$_c_json" > "${TMPDIR:-/tmp}/cli-cj.$$"
     diff "${TMPDIR:-/tmp}/cli-dj.$$" "${TMPDIR:-/tmp}/cli-cj.$$" | sed 's/^/      /' >&2 || true
@@ -1917,7 +1901,7 @@ CLIEOF
   for f in "$ROOT"/bin/*.sh $(_engines); do
     [ -f "$f" ] || continue
     b="$(basename "$f")"
-    grep -qF "\`$b\`" "$_cli" || bad lint.cli-contract "${f#"$ROOT"/} appears in no contracts/cli.md table — verb or internal?"
+    grep -qF "\`$b\`" "$_cli" || bad lint.cli-contract "${f#"$ROOT"/} appears in no CONTRACTS/cli.md table — verb or internal?"
   done
 fi
 }
@@ -1925,7 +1909,7 @@ fi
 rule_D3() {
 rule "admission.exit-codes exit 2 appears only in floor_block(); every hook ends with exit 0"
 # Scope: HOOK scripts only. exit 2 is the ordinary usage-error code for a CLI
-# tool (deploy-restore.sh, test-sandbox-make.sh), which is not what this rule is about.
+# tool (restore.sh, sandbox-make.sh), which is not what this rule is about.
 # memory-harvest.sh (harbor#6) is a SessionStart hook, so it is in scope for
 # both loops. A hook whose FILENAME escapes this glob is a fail-open contract
 # nothing checks: it may exit non-zero on a bad day and the harness treats that
@@ -1952,22 +1936,22 @@ for f in "$ROOT"/bin/guard-bash.sh "$ROOT"/bin/guard-egress.sh "$ROOT"/bin/guard
 done
 }
 
-# ── V1 · vendored-copy freshness (the check contracts/README long claimed) ──
+# ── V1 · vendored-copy freshness (the check CONTRACTS/README long claimed) ──
 # HONEST SCOPE, stated so this claim does not outrun the code a third time:
 # this is a MANIFEST check, not a content diff against the upstream remote. It
 # proves the vendored set and its provenance agree — a skill added or removed
-# without updating vendor/skills/PROVENANCE.md fails. A true content diff needs the pinned
-# upstream clone, which CI does not have; vendor/skills/PROVENANCE.md documents that manual
+# without updating PROVENANCE.md fails. A true content diff needs the pinned
+# upstream clone, which CI does not have; PROVENANCE.md documents that manual
 # re-sync, and V2 below asserts the pin is at least declared.
 rule_V1() {
-rule "skill.vendor-provenance every vendored skill is listed in vendor/skills/PROVENANCE.md (and vice versa)"
+rule "skill.vendor-provenance every vendored skill is listed in PROVENANCE.md (and vice versa)"
 # PROV is defined in the shared section at the top (harbor#537) — another rule reads it.
 if [ -f "$PROV" ]; then
   for d in "$ROOT"/vendor/skills/*/; do
     [ -d "$d" ] || continue
     n="$(basename "$d")"
     # A ROW, NOT A SUBSTRING ANYWHERE IN THE FILE (harbor#447). This was a bare
-    # grep over the whole of vendor/skills/PROVENANCE.md, and the file carries narrative on
+    # grep over the whole of PROVENANCE.md, and the file carries narrative on
     # purpose — so a skill named in a prose paragraph satisfied a rule that claims
     # to check it is LISTED. Measured 2026-09-16: with every table row deleted, V1
     # still passed for 18 of 28 vendored skills, because the surrounding prose
@@ -1980,7 +1964,7 @@ if [ -f "$PROV" ]; then
     # is blocked (§2.11).
     grep '^|' "$PROV" 2>/dev/null \
       | grep -qiE "(^|[^a-z0-9-])$n([^a-z0-9-]|$)" \
-      || bad skill.vendor-provenance "vendored skill has no vendor/skills/PROVENANCE.md table ROW: $n (a prose mention is not a listing)"
+      || bad skill.vendor-provenance "vendored skill has no PROVENANCE.md table ROW: $n (a prose mention is not a listing)"
   done
   # ── THE REVERSE WALK — a row whose directory is gone (harbor#7) ───────────
   # The rule's title has said "and vice versa" since it was written and only
@@ -1990,7 +1974,7 @@ if [ -f "$PROV" ]; then
   # deletion is precisely what the skills unification does 25 times over. A
   # vendored skill removed without its PROVENANCE row leaves the document
   # asserting an upstream lineage for a directory that no longer exists, and
-  # vendor/skills/PROVENANCE.md's re-sync clause is the only written route back to upstream
+  # PROVENANCE.md's re-sync clause is the only written route back to upstream
   # fixes, so a lying row is worse than a missing one.
   #
   # THE FIRST COLUMN OF THE PER-SKILL TABLE, NOT EVERY BACKTICKED WORD. This
@@ -2004,7 +1988,7 @@ if [ -f "$PROV" ]; then
   while IFS= read -r _row; do
     [ -n "$_row" ] || continue
     [ -d "$ROOT/vendor/skills/$_row" ] && continue
-    bad skill.vendor-provenance "vendor/skills/PROVENANCE.md has a row for '$_row' but vendor/skills/$_row is gone — delete the row in the same commit as the directory"
+    bad skill.vendor-provenance "PROVENANCE.md has a row for '$_row' but vendor/skills/$_row is gone — delete the row in the same commit as the directory"
   done < "${TMPDIR:-/tmp}/v1-rows.$$"
   rm -f "${TMPDIR:-/tmp}/v1-rows.$$"
 elif _export_tree vendor/skills/; then
@@ -2015,15 +1999,15 @@ fi
 }
 
 rule_V2() {
-rule "admission.upstream-sha-pinned vendor/skills/PROVENANCE.md pins an upstream SHA, and the guards cite the same one"
+rule "admission.upstream-sha-pinned PROVENANCE.md pins an upstream SHA, and the guards cite the same one"
 if [ -f "$PROV" ]; then
   psha="$(grep -oE '\b[0-9a-f]{7,40}\b' "$PROV" | head -1)"
-  [ -n "$psha" ] || bad admission.upstream-sha-pinned "vendor/skills/PROVENANCE.md declares no upstream SHA"
+  [ -n "$psha" ] || bad admission.upstream-sha-pinned "PROVENANCE.md declares no upstream SHA"
   if [ -n "$psha" ]; then
     short="$(printf '%s' "$psha" | cut -c1-7)"
     for f in "$ROOT"/bin/guard-bash.sh "$ROOT"/bin/guard-egress.sh; do
       [ -f "$f" ] || continue
-      grep -q "$short" "$f" || bad admission.upstream-sha-pinned "guard cites a different upstream SHA than vendor/skills/PROVENANCE.md ($short): ${f#$ROOT/}"
+      grep -q "$short" "$f" || bad admission.upstream-sha-pinned "guard cites a different upstream SHA than PROVENANCE.md ($short): ${f#$ROOT/}"
     done
   fi
 fi
@@ -2031,26 +2015,25 @@ fi
 
 # ── C1 · every contract declares its status and owner ──────────────────────
 rule_C1() {
-rule "doc.contract-index contracts/*.md are listed in contracts/README.md"
-if [ -d "$ROOT/contracts" ]; then
-  for f in "$ROOT"/contracts/*.md; do
+rule "doc.contract-index CONTRACTS/*.md are listed in CONTRACTS/README.md"
+if [ -d "$ROOT/CONTRACTS" ]; then
+  for f in "$ROOT"/CONTRACTS/*.md; do
     b="$(basename "$f")"
     [ "$b" = "README.md" ] && continue
-    [ -L "$f" ] && continue   # a rename shim (renames.tsv remove_by) is not a contract (harbor#961)
-    grep -q "$b" "$ROOT/contracts/README.md" || bad doc.contract-index "contract not indexed in README: $b"
+    grep -q "$b" "$ROOT/CONTRACTS/README.md" || bad doc.contract-index "contract not indexed in README: $b"
   done
 fi
 }
 
 # ── M1 · ONE marker implementation, never a private re-walk ────────────────
-# contracts/marker.md freezes one detect-and-defer spec across three REPOS, and
+# CONTRACTS/marker.md freezes one detect-and-defer spec across three REPOS, and
 # harbor was already violating it inside a single repo: the two work-log hooks
 # each walked the tree themselves with `[ -e "$d/.agents" ]` — the forgeable
 # predicate floor_in_repo was hardened away from after the 2026-07-24
 # marker-forgery finding — while the guards used the hardened one. A planted
 # zero-byte `.agents` file silently stopped work-log sync.
 rule_M1() {
-rule "scope.marker-walk-once the marker walk lives ONLY in floor_in_repo (contracts/marker.md)"
+rule "scope.marker-walk-once the marker walk lives ONLY in floor_in_repo (CONTRACTS/marker.md)"
 for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   b="$(basename "$f")"
@@ -2074,7 +2057,7 @@ done
 #
 # WHAT IT READS. Every non-comment call to floor_in_repo, floor_repo_wires or
 # floor_engine_stand_down in bin/'s shell scripts, against the table under "What
-# stands down inside a governed repo" in contracts/marker.md. Both directions: a
+# stands down inside a governed repo" in CONTRACTS/marker.md. Both directions: a
 # call with no row is an undeclared stand-down, and a row with no call is a stale
 # claim that reads as coverage. A `constitutional` row is an exception to (A) and
 # must name the ticket that owns it.
@@ -2098,10 +2081,10 @@ done
 # reviewable, not correct. A stand-down that bypasses all three is invisible
 # here; M1 is what keeps marker-based stand-downs on floor_in_repo.
 rule_M2() {
-rule "scope.stand-down-declared every governed-repo stand-down in bin/ and the hook engines is declared in contracts/marker.md, and a constitutional one names its ticket (harbor#581)"
-_m2_doc="$ROOT/contracts/marker.md"
+rule "scope.stand-down-declared every governed-repo stand-down in bin/ and the hook engines is declared in CONTRACTS/marker.md, and a constitutional one names its ticket (harbor#581)"
+_m2_doc="$ROOT/CONTRACTS/marker.md"
 if [ ! -f "$_m2_doc" ]; then
-  bad scope.stand-down-declared "contracts/marker.md is missing — no stand-down can be checked"; return 0
+  bad scope.stand-down-declared "CONTRACTS/marker.md is missing — no stand-down can be checked"; return 0
 fi
 _m2_rows="${TMPDIR:-/tmp}/harbor-m2-rows.$$"; _m2_code="${TMPDIR:-/tmp}/harbor-m2-code.$$"
 # The table, one row per line: file|fn|tier|ticket. `|` and not a tab, because a
@@ -2112,7 +2095,7 @@ awk '/^## What stands down inside a governed repo/ { s = 1; next }
   | awk -F'|' '{ for (i = 2; i <= 6; i++) { gsub(/^[ \t]+|[ \t]+$/, "", $i); gsub(/`/, "", $i) }
                  print $2 "|" $3 "|" $4 "|" $6 }' > "$_m2_rows"
 [ -s "$_m2_rows" ] \
-  || bad scope.stand-down-declared "contracts/marker.md has no rows under \"What stands down inside a governed repo\""
+  || bad scope.stand-down-declared "CONTRACTS/marker.md has no rows under \"What stands down inside a governed repo\""
 # The shell scripts among the files given: a `.sh` name, or a first line that is
 # a sh-family shebang. One awk reads only line 1 of each file. Regular files only: mawk stops at the first
 # directory operand (bin/harbor-app), so every later script went unread and two live rows read stale (harbor#1149).
@@ -2130,7 +2113,6 @@ _m2_nl='
 _m2_shells "$ROOT"/bin/* $_m2_eng > "$_m2_list"
 while IFS= read -r f; do
   [ -f "$f" ] || continue
-  [ -L "$f" ] && continue   # a rename shim (renames.tsv remove_by) is an old name of a file judged under its own (harbor#961)
   b="$(basename "$f")"
   # guard-lib DEFINES them; the linter names them to check them; a suite drives them.
   case "$b" in guard-lib.sh|lint-conventions.sh|*-test.sh) continue ;; esac
@@ -2145,7 +2127,7 @@ while IFS= read -r f; do
 done < "$_m2_list"
 while IFS='|' read -r _m2_f _m2_fn; do
   awk -F'|' -v f="$_m2_f" -v fn="$_m2_fn" '$1 == f && $2 == fn { hit = 1 } END { exit !hit }' "$_m2_rows" \
-    || bad scope.stand-down-declared "$_m2_f stands down via $_m2_fn inside a governed repo, and contracts/marker.md does not declare it — add a row with its tier"
+    || bad scope.stand-down-declared "$_m2_f stands down via $_m2_fn inside a governed repo, and CONTRACTS/marker.md does not declare it — add a row with its tier"
 done < "$_m2_code"
 while IFS='|' read -r _m2_f _m2_fn _m2_tier _m2_tk; do
   case "$_m2_tier" in
@@ -2156,7 +2138,7 @@ while IFS='|' read -r _m2_f _m2_fn _m2_tier _m2_tk; do
     *) bad scope.stand-down-declared "$_m2_f declares tier '$_m2_tier' — it must be project, engine, report or constitutional" ;;
   esac
   awk -F'|' -v f="$_m2_f" -v fn="$_m2_fn" '$1 == f && $2 == fn { hit = 1 } END { exit !hit }' "$_m2_code" \
-    || bad scope.stand-down-declared "contracts/marker.md declares $_m2_f standing down via $_m2_fn, and no such call exists — a stale row reads as coverage"
+    || bad scope.stand-down-declared "CONTRACTS/marker.md declares $_m2_f standing down via $_m2_fn, and no such call exists — a stale row reads as coverage"
 done < "$_m2_rows"
 # The scope premise: nothing outside bin/ can reach any of them. Read from a
 # file, not a pipe: `bad` inside `find | while` runs in a subshell, prints its
@@ -2166,7 +2148,7 @@ find "$ROOT" -type f -not -path "$ROOT/bin/*" -not -path '*/.git/*' -print0 2>/d
   > "$_m2_list"
 while IFS= read -r f; do
   # The suite that drives floor_in_repo, exempt here as it was in bin/ (harbor#727).
-  case "${f#$ROOT/}" in tests/scope/marker/marker.test.sh) continue ;; esac
+  case "${f#$ROOT/}" in tests/floor/marker-test.sh) continue ;; esac
   case "$_m2_nl$_m2_eng$_m2_nl" in *"$_m2_nl$f$_m2_nl"*) continue ;; esac  # an engine, scanned above
   grep -qE '^[[:space:]]*(\.|source)[[:space:]].*guard-lib\.sh' "$f" 2>/dev/null \
     && bad scope.stand-down-declared "${f#$ROOT/} sources guard-lib.sh from outside bin/ and the hook engines — M2 scans only those, so widen it"
@@ -2178,7 +2160,7 @@ rm -f "$_m2_rows" "$_m2_code" "$_m2_list"
 # ── F14 · every .helm-* name in bin/ is classified, and the layers agree ─────
 # harbor#779: 13 of the box's 20 .helm-* state files were session-writable,
 # the salts, the Stop-gate state and the install stamp among them, because
-# nothing said which of them the floor trusts. contracts/control-plane-state.md says it
+# nothing said which of them the floor trusts. CONTRACTS/helm-state.md says it
 # now, one row per name, and this rule holds that table to the code.
 #
 # BOTH DIRECTIONS, as M2 does: a name in bin/ with no row is unclassified, and
@@ -2194,10 +2176,10 @@ rm -f "$_m2_rows" "$_m2_code" "$_m2_list"
 # layer is not behaviour either: tests/guards/bash.state and selfedit.jsonl fire
 # the real guards per row, and floor.install-test the applied deny list.
 rule_F14() {
-rule "admission.state-file-registered every .helm-* name in bin/ has a row in contracts/control-plane-state.md, and the three layers protect exactly its integrity rows (harbor#779)"
-_f14_doc="$ROOT/contracts/control-plane-state.md"
+rule "admission.state-file-registered every .helm-* name in bin/ has a row in CONTRACTS/helm-state.md, and the three layers protect exactly its integrity rows (harbor#779)"
+_f14_doc="$ROOT/CONTRACTS/helm-state.md"
 if [ ! -f "$_f14_doc" ]; then
-  bad admission.state-file-registered "contracts/control-plane-state.md is missing, so no .helm-* name can be classified"; return 0
+  bad admission.state-file-registered "CONTRACTS/helm-state.md is missing, so no .helm-* name can be classified"; return 0
 fi
 _f14_rows="${TMPDIR:-/tmp}/harbor-f14-rows.$$"; _f14_code="${TMPDIR:-/tmp}/harbor-f14-code.$$"
 _f14_lay="${TMPDIR:-/tmp}/harbor-f14-lay.$$"
@@ -2205,12 +2187,12 @@ _f14_lay="${TMPDIR:-/tmp}/harbor-f14-lay.$$"
 awk '/^## The table/ { s = 1; next } s && /^## / { s = 0 }
      s && /^\| `\.helm-/ { split($0, c, "|"); for (i = 2; i <= 4; i++) gsub(/^[ \t]+|[ \t]+$|`/, "", c[i])
                            print c[2] "\t" c[3] "\t" c[4] }' "$_f14_doc" > "$_f14_rows"
-[ -s "$_f14_rows" ] || bad admission.state-file-registered "contracts/control-plane-state.md has no rows under \"The table\""
+[ -s "$_f14_rows" ] || bad admission.state-file-registered "CONTRACTS/helm-state.md has no rows under \"The table\""
 awk -F'\t' '{ n[$1]++ } n[$1] == 2 { print $1 }' "$_f14_rows" > "$_f14_lay"
-while IFS= read -r _f14_n; do bad admission.state-file-registered "contracts/control-plane-state.md has two rows for $_f14_n"; done < "$_f14_lay"
+while IFS= read -r _f14_n; do bad admission.state-file-registered "CONTRACTS/helm-state.md has two rows for $_f14_n"; done < "$_f14_lay"
 while IFS='	' read -r _f14_n _f14_w _f14_c; do
   case "$_f14_c" in integrity|cache|scratch) ;;
-    *) bad admission.state-file-registered "contracts/control-plane-state.md classes $_f14_n as '$_f14_c': it must be integrity, cache or scratch" ;;
+    *) bad admission.state-file-registered "CONTRACTS/helm-state.md classes $_f14_n as '$_f14_c': it must be integrity, cache or scratch" ;;
   esac
 done < "$_f14_rows"
 # _f14_names: every .helm-* token on stdin, one per line. A regex spells a dot
@@ -2229,11 +2211,11 @@ while IFS= read -r f; do
 done < "$_f14_lay"
 while IFS='	' read -r _f14_f _f14_n; do
   awk -F'\t' -v n="$_f14_n" '$1 == n { hit = 1 } END { exit !hit }' "$_f14_rows" \
-    || bad admission.state-file-registered "$_f14_f names $_f14_n, which has no row in contracts/control-plane-state.md; classify it integrity, cache or scratch"
+    || bad admission.state-file-registered "$_f14_f names $_f14_n, which has no row in CONTRACTS/helm-state.md; classify it integrity, cache or scratch"
 done < "$_f14_code"
 while IFS='	' read -r _f14_n _f14_w _f14_c; do
   awk -F'\t' -v n="$_f14_n" '$2 == n { hit = 1 } END { exit !hit }' "$_f14_code" \
-    || bad admission.state-file-registered "contracts/control-plane-state.md has a row for $_f14_n and no file in bin/ names it; a stale row reads as coverage"
+    || bad admission.state-file-registered "CONTRACTS/helm-state.md has a row for $_f14_n and no file in bin/ names it; a stale row reads as coverage"
 done < "$_f14_rows"
 # The layers: layer<TAB>name for every .helm-* name each one protects.
 : > "$_f14_lay"
@@ -2256,7 +2238,7 @@ done < "$_f14_rows"
 while IFS='	' read -r _f14_l _f14_n; do
   _f14_c="$(awk -F'\t' -v n="$_f14_n" '$1 == n { print $3; exit }' "$_f14_rows")"
   [ "$_f14_c" = integrity ] \
-    || bad admission.state-file-registered "$_f14_l protects $_f14_n, which contracts/control-plane-state.md classes as '${_f14_c:-no row}'; protect only integrity rows"
+    || bad admission.state-file-registered "$_f14_l protects $_f14_n, which CONTRACTS/helm-state.md classes as '${_f14_c:-no row}'; protect only integrity rows"
 done < "$_f14_lay"
 say "  $(wc -l < "$_f14_rows" | tr -d ' ') .helm-* name(s) classified, $(awk -F'\t' '$3 == "integrity"' "$_f14_rows" | wc -l | tr -d ' ') of them integrity."
 rm -f "$_f14_rows" "$_f14_code" "$_f14_lay"
@@ -2275,7 +2257,7 @@ rm -f "$_f14_rows" "$_f14_code" "$_f14_lay"
 #   closed  what those execute or source (`.`, sh, bash, exec) through a path ending in a file
 #           beside them or in bin/, outside a quoted string: a hint that only NAMES a command runs nothing.
 #   declared a hook the box runs that no installer wires (worklog-push) is a row in
-#           contracts/hooks-external.tsv, read here as one more wiring.
+#           CONTRACTS/hooks-external.tsv, read here as one more wiring.
 # A repo pack's scripts (context-rules/<repo>, or the old .claude/inject.d) are out: they run the session repo's own code, so a file
 # planted beside them has the same author. The behaviour is pinned by floor-test B9c.
 rule_F15() {
@@ -2284,7 +2266,7 @@ _f15t="${TMPDIR:-/tmp}"; _f15t="${_f15t%/}/harbor-f15.$$"; rm -rf "$_f15t"; mkdi
 _f15_code() { sed -e 's/^[[:space:]]*#.*$//' -e 's/[[:space:]]#.*$//' "$1"; }  # comments blanked, lines kept
 : > "$_f15t/wired"
 for _f15i in "$ROOT"/bin/*install*.sh; do
-  [ -f "$_f15i" ] && [ ! -L "$_f15i" ] || continue   # not a rename shim (harbor#961)
+  [ -f "$_f15i" ] || continue
   _f15_code "$_f15i" | awk -v src="${_f15i#"$ROOT"/}" '
     /\(\) *\{ *cat <<.?ROWS.?$/ { t = 1; next }
     t && /^ROWS$/ { t = 0; next }
@@ -2314,12 +2296,12 @@ for _f15m in "$ROOT"/hooks/*/manifest.tsv; do
   [ -f "$_f15m" ] && grep -q '^wire	' "$_f15m" || continue
   _f15d="${_f15m%/manifest.tsv}"; printf '%s\t%s\n' "${_f15d#"$ROOT"/}/${_f15d##*/}.sh" "${_f15m#"$ROOT"/}" >> "$_f15t/wired"
 done
-_f15_x="$ROOT/contracts/hooks-external.tsv"
+_f15_x="$ROOT/CONTRACTS/hooks-external.tsv"
 if [ -f "$_f15_x" ]; then
   grep -vE '^[[:space:]]*(#|$)' "$_f15_x" > "$_f15t/ext"
   while IFS='	' read -r _f15s _f15e _f15y; do  # not in a pipe: bad() counts in this shell
-    [ -n "$_f15e" ] || bad admission.no-dirname "contracts/hooks-external.tsv: $_f15s names no event"
-    printf '%s\t%s\n' "$_f15s" "contracts/hooks-external.tsv, $_f15e" >> "$_f15t/wired"
+    [ -n "$_f15e" ] || bad admission.no-dirname "CONTRACTS/hooks-external.tsv: $_f15s names no event"
+    printf '%s\t%s\n' "$_f15s" "CONTRACTS/hooks-external.tsv, $_f15e" >> "$_f15t/wired"
   done < "$_f15t/ext"
 fi
 # The closure: <rel> of each file a member runs or sources, judged on code outside quotes.
@@ -2374,7 +2356,7 @@ rm -rf "$_f15t"
 }
 
 # ── C3 · every test suite is actually wired into CI ────────────────────────
-# contracts/README.md claimed `bin/marker-test.sh` runs in "CI + on demand"
+# CONTRACTS/README.md claimed `bin/marker-test.sh` runs in "CI + on demand"
 # within ten minutes of the file being written, and it did not — the same
 # claim-without-mechanism that made this whole linter necessary. A suite nobody
 # runs is a suite that is already broken; this makes the claim checkable.
@@ -2384,7 +2366,7 @@ rule "test.suite-in-manifest every tracked *-test.sh is in the suite manifest, a
 # where the list lives. Requiring each suite to be NAMED in governance.yml made
 # adding one a human round-trip forever, because permissions.deny covers
 # .github/workflows/** and that deny exists to stop an agent rewriting the gate
-# that judges it (harbor#61). contracts/suites.txt is tracked, agent-editable and
+# that judges it (harbor#61). CONTRACTS/suites.txt is tracked, agent-editable and
 # not a workflow file.
 #
 # BOTH DIRECTIONS, or the list rots: a new suite missing from the manifest is the
@@ -2400,11 +2382,11 @@ rule "test.suite-in-manifest every tracked *-test.sh is in the suite manifest, a
 # promises no suite sits outside CI: a skill's bin/*-preflight-test.sh plants
 # broken fixtures and no job ever ran it, with this rule green. A suite in bin/
 # is listed by NAME; anywhere else, by its path from the repo root, which
-# bin/test-suite-select.sh --run resolves the same way.
+# bin/suite-select.sh --run resolves the same way.
 #
-# ONE PREFIX IS EXEMPT, AND IT IS DATA: evals/ holds eval corpora and the
+# ONE PREFIX IS EXEMPT, AND IT IS DATA: EVALS-DATA/ holds eval corpora and the
 # fixtures an eval shipped with (e5trap's gate-test.sh writes a hooktest dir
-# beside itself). They are evidence for docs/reports/evals.md, run by the eval that owns
+# beside itself). They are evidence for EVALS.md, run by the eval that owns
 # them, never a gate on this repo's code.
 if [ -f "$_MAN" ]; then
   _c3l="${TMPDIR:-/tmp}/c3.$$"
@@ -2414,22 +2396,21 @@ if [ -f "$_MAN" ]; then
     ( cd "$ROOT" && find . \( -name '*-test.sh' -o -name '*.test.sh' \) -not -path './.git/*' | sed 's#^\./##' ) > "$_c3l"
   fi
   while IFS= read -r _c3p; do
-    case "$_c3p" in ''|evals/*) continue ;; esac
+    case "$_c3p" in ''|EVALS-DATA/*) continue ;; esac
     [ -f "$ROOT/$_c3p" ] || continue
-    [ -L "$ROOT/$_c3p" ] && continue   # a rename shim (renames.tsv remove_by) is an old name, not a second suite (harbor#961)
     case "$_c3p" in bin/*/*) _c3k="$_c3p" ;; bin/*) _c3k="${_c3p#bin/}" ;; *) _c3k="$_c3p" ;; esac
-    _man_list | grep -Fxq "$_c3k" || bad test.suite-in-manifest "test suite missing from contracts/suites.txt: $_c3p"
+    _man_list | grep -Fxq "$_c3k" || bad test.suite-in-manifest "test suite missing from CONTRACTS/suites.txt: $_c3p"
   done < "$_c3l"
   rm -f "$_c3l"
   while IFS= read -r _b; do
     [ -n "$_b" ] || continue
     case "$_b" in */*) _bp="$_b" ;; *) _bp="bin/$_b" ;; esac
-    [ -f "$ROOT/$_bp" ] || bad test.suite-in-manifest "contracts/suites.txt names a suite that does not exist: $_bp"
+    [ -f "$ROOT/$_bp" ] || bad test.suite-in-manifest "CONTRACTS/suites.txt names a suite that does not exist: $_bp"
   done <<C3MAN
 $(_man_list)
 C3MAN
 else
-  bad test.suite-in-manifest "contracts/suites.txt is missing — the suite manifest is the source of truth"
+  bad test.suite-in-manifest "CONTRACTS/suites.txt is missing — the suite manifest is the source of truth"
 fi
 # A MANIFEST NOBODY READS IS DECORATION. Until the operator lands the workflow
 # patch that iterates it, the old per-suite wiring is still what actually runs,
@@ -2437,7 +2418,7 @@ fi
 # early would let a suite fall out of CI while the linter stayed green — exactly
 # the silence C3 exists to prevent.
 if [ -f "$CI" ]; then
-  if grep -q 'contracts/suites.txt' "$CI"; then
+  if grep -q 'CONTRACTS/suites.txt' "$CI"; then
     :
   else
     # EVERY MANIFEST ENTRY, PATH ENTRIES INCLUDED (Codex on #701): walking only
@@ -2456,13 +2437,13 @@ fi
 }
 
 rule_C4() {
-rule "test.ci-tools-probed every tool CI preflights is probed by deploy-doctor.sh (one dependency list, not two)"
+rule "test.ci-tools-probed every tool CI preflights is probed by doctor.sh (one dependency list, not two)"
 # Since governance.yml moved to a self-hosted runner, "is this binary present"
-# is answered in two places: preflight fails the run, deploy-doctor.sh tells you what
+# is answered in two places: preflight fails the run, doctor.sh tells you what
 # breaks without it. Two hand-maintained lists of the same fact drift silently
 # and read correctly the whole time — the T-rule failure mode, in shell. This
 # does not merge them; it makes the divergence a build failure.
-DOC="$ROOT/bin/deploy-doctor.sh"
+DOC="$ROOT/bin/doctor.sh"
 if [ -f "$CI" ] && [ -f "$DOC" ]; then
   # the `for t in ... ; do` list inside preflight's existence check
   _tools="$(sed -n 's/.*for t in \(.*\); do.*/\1/p' "$CI" | head -1)"
@@ -2471,7 +2452,7 @@ if [ -f "$CI" ] && [ -f "$DOC" ]; then
   else
     for t in $_tools; do
       grep -qE "^probe $t([[:space:]]|$)" "$DOC" \
-        || bad test.ci-tools-probed "CI preflights '$t' but bin/deploy-doctor.sh does not probe it — a fresh box passes doctor and fails CI"
+        || bad test.ci-tools-probed "CI preflights '$t' but bin/doctor.sh does not probe it — a fresh box passes doctor and fails CI"
     done
   fi
 fi
@@ -2485,11 +2466,11 @@ fi
 # with no declaration is one nobody decided about, and a declaration naming a
 # suite that no longer exists is a narrowing nobody can see is dead.
 rule_C5() {
-rule "test.suite-paths every manifest suite declares its selecting paths (contracts/suite-paths.txt)"
-_DECL="$ROOT/contracts/suite-paths.txt"
+rule "test.suite-paths every manifest suite declares its selecting paths (CONTRACTS/suite-paths.txt)"
+_DECL="$ROOT/CONTRACTS/suite-paths.txt"
 _decl_keys() { awk '!/^[[:space:]]*(#|$)/ { print $1 }' "$_DECL" 2>/dev/null; }
 if [ ! -f "$_DECL" ]; then
-  bad test.suite-paths "contracts/suite-paths.txt is missing — the change-class table is the source of truth for what CI may skip"
+  bad test.suite-paths "CONTRACTS/suite-paths.txt is missing — the change-class table is the source of truth for what CI may skip"
 elif [ -f "$_MAN" ]; then
   # HEREDOCS, NOT PIPES, throughout: `bad` increments FAIL, and a `| while` loop
   # runs in a subshell where that increment is discarded — the rule would report
@@ -2498,7 +2479,7 @@ elif [ -f "$_MAN" ]; then
   while IFS= read -r _b; do
     [ -n "$_b" ] || continue
     awk -v k="$_b" '$1 == k { f = 1 } END { exit !f }' "$_DECL" \
-      || bad test.suite-paths "suite declares no paths in contracts/suite-paths.txt: $_b"
+      || bad test.suite-paths "suite declares no paths in CONTRACTS/suite-paths.txt: $_b"
   done <<C5MAN
 $(_man_list)
 C5MAN
@@ -2506,7 +2487,7 @@ C5MAN
     [ -n "$_k" ] || continue
     case "$_k" in '@no-suite') continue ;; esac
     _man_list | grep -Fxq "$_k" \
-      || bad test.suite-paths "contracts/suite-paths.txt declares a suite the manifest does not list: $_k"
+      || bad test.suite-paths "CONTRACTS/suite-paths.txt declares a suite the manifest does not list: $_k"
   done <<C5DECL
 $(_decl_keys)
 C5DECL
@@ -2536,7 +2517,7 @@ fi
 # as a working one is how a repo ends up believing it has a control it does not,
 # so it is reported every run until the patch lands.
 if [ -f "$CI" ] && [ -f "$_DECL" ] && ! grep -q 'suite-select' "$CI"; then
-  _adv test.suite-paths governance.yml; printf '  ADVISORY [test.suite-paths] governance.yml does not call bin/test-suite-select.sh yet — the declarations are inert until patches/governance-change-class.patch.md is applied\n'
+  _adv test.suite-paths governance.yml; printf '  ADVISORY [test.suite-paths] governance.yml does not call bin/suite-select.sh yet — the declarations are inert until patches/governance-change-class.patch.md is applied\n'
 fi
 }
 
@@ -2593,7 +2574,7 @@ if [ -d "$_PT" ]; then
       # grew `trigger-routing`, this line still named two kinds, and a lawful
       # target became a lint violation while the engine ran it happily. Two
       # spellings of one predicate drift in silence, and the copy always reads
-      # correct. `tests/lint/conventions/suites.test.sh` pins the pair against the engine so a third
+      # correct. `tests/checks/lint.suites-test.sh` pins the pair against the engine so a third
       # kind cannot reintroduce the divergence.
       _c6_kind="$(_c6_get subject-kind)"
       printf '%s\n' "$_c6_lib" | awk '{ print $1 }' | /usr/bin/grep -qx -- "$_c6_kind" \
@@ -2612,7 +2593,7 @@ if [ -d "$_PT" ]; then
 
       # Every seed and control file resolves. `repo:` is the repo root, absolute
       # is itself, anything else is relative to the .target file — one rule,
-      # stated once in contracts/prove-targets.md and applied here.
+      # stated once in CONTRACTS/prove-targets.md and applied here.
       _tdir="$(dirname "$_t")"
       _c6_path() {
         case "$1" in
@@ -2729,7 +2710,7 @@ if [ -f "$_GL" ]; then
   else
     # COMMAND POSITION, NOT MERE PRESENCE, and the first draft of this rule proves
     # why. Matching the bare name anywhere on a non-comment line reported three
-    # violations on its first run -- `refused` and `refuses` from audit-triage.sh
+    # violations on its first run -- `refused` and `refuses` from failure-capture.sh
     # PROSE ("...means floor_log_decision refused every write"), and `but` from THIS
     # RULE'S OWN MESSAGE STRING, which the linter scans along with everything else.
     # Every one of them was a token nobody could act on, in a file nobody had
@@ -2767,20 +2748,20 @@ fi
 }
 
 # ── C8 · a tool nothing runs is a DECLARED state, never a silent one ────────
-# harbor#466, generalised from #462. `bin/drift-reference-check.sh` was built for a
+# harbor#466, generalised from #462. `bin/reference-check.sh` was built for a
 # real defect on 2026-08-03, was correct about what it watched, and NOTHING EVER
-# RAN IT — no hook, no plist, no CI job, only a line in docs/how-to/handover.md naming a
+# RAN IT — no hook, no plist, no CI job, only a line in HANDOFF.md naming a
 # command a human types. Nobody typed it. Sixteen scripts were in that state and
 # none of them was visible as being in it.
 #
-# docs/reference/checks.md registers what is SCHEDULED. This registers the opposite: what is
+# CHECKS.md registers what is SCHEDULED. This registers the opposite: what is
 # built, asserts something, and is wired to nothing. Both directions, like C3 —
 # a tool that quietly loses its last caller must show up here, and a line for a
 # tool that has since GAINED one is a stale entry nobody can see is dead.
 #
 # THE PREDICATE, AND WHAT IT DELIBERATELY IS NOT. "Called" means: some file that
 # is not a test names this script in COMMAND POSITION — after `sh`/`bash`/`exec`,
-# or as the tail of a path. A mention is not a call (lint-module-shape.sh encodes the
+# or as the tail of a path. A mention is not a call (module-shape.sh encodes the
 # same distinction, for the same reason), and a TEST calling a tool is not a
 # caller at all — CI proving the instrument works while nothing points it at the
 # real subject IS the #466 defect, so counting a suite as a caller would make
@@ -2802,7 +2783,7 @@ fi
 # one to delete.
 rule_C8() {
 rule "lint.tool-has-caller every bin/ tool has a caller or a declared reason it has none (harbor#466)"
-_C8_MAN="$ROOT/contracts/idle-tools.txt"
+_C8_MAN="$ROOT/CONTRACTS/idle-tools.txt"
 _C8_N="${TMPDIR:-/tmp}/c8-names.$$"
 _C8_C="${TMPDIR:-/tmp}/c8-called.$$"
 _C8_D="${TMPDIR:-/tmp}/c8-declared.$$"
@@ -2845,7 +2826,7 @@ if [ -f "$_C8_MAN" ]; then
         # the first run: every tool with a `usage()` heredoc quoting its own
         # invocation came back CALLED, including the five #466 names by name.
         # "One caller is the file talking to itself through a longer path" —
-        # lint-module-shape.sh says it about symbols; it is truer about whole files.
+        # module-shape.sh says it about symbols; it is truer about whole files.
         if (index(FILENAME, "/" b) == length(FILENAME) - length(b)) continue
         if (t ~ /\//) { print b; continue }      # a PATH is command position
         p = (i > 1) ? F[i-1] : ""
@@ -2853,7 +2834,7 @@ if [ -f "$_C8_MAN" ]; then
         # A BARE NAME INSIDE ANOTHER SCRIPT IS ALSO A WIRING, and requiring
         # command position there was measured wrong on the first run: it called
         # `worklog-push.sh` idle while it runs at Stop on every box,
-        # because deploy-runtime-install.sh carries it in a PAYLOAD list (`FILES="…"`)
+        # because runtime-install.sh carries it in a PAYLOAD list (`FILES="…"`)
         # and session-verdicts.sh checks it in a `for h in …` — neither of which
         # is an invocation and both of which are wirings. The relaxation is
         # confined to bin/ scripts and the dispatcher, whose VERBS rows are the
@@ -2886,19 +2867,19 @@ if [ -f "$_C8_MAN" ]; then
     while IFS='	' read -r _k _b; do
       [ -n "${_b:-}" ] || continue
       case "$_k" in
-        M) bad lint.tool-has-caller "nothing calls bin/$_b and it is not declared in contracts/idle-tools.txt — a tool nobody runs must say so out loud" ;;
-        X) bad lint.tool-has-caller "contracts/idle-tools.txt calls bin/$_b idle, but something invokes it — delete the line, the declaration has gone stale" ;;
+        M) bad lint.tool-has-caller "nothing calls bin/$_b and it is not declared in CONTRACTS/idle-tools.txt — a tool nobody runs must say so out loud" ;;
+        X) bad lint.tool-has-caller "CONTRACTS/idle-tools.txt calls bin/$_b idle, but something invokes it — delete the line, the declaration has gone stale" ;;
       esac
     done < "${TMPDIR:-/tmp}/c8-verdict.$$"
     rm -f "${TMPDIR:-/tmp}/c8-verdict.$$"
     while IFS= read -r _b; do
       [ -n "$_b" ] || continue
-      [ -f "$ROOT/bin/$_b" ] || bad lint.tool-has-caller "contracts/idle-tools.txt names a tool that does not exist: bin/$_b"
+      [ -f "$ROOT/bin/$_b" ] || bad lint.tool-has-caller "CONTRACTS/idle-tools.txt names a tool that does not exist: bin/$_b"
     done < "$_C8_D"
   fi
   rm -f "$_C8_N" "$_C8_C" "$_C8_D"
 else
-  bad lint.tool-has-caller "contracts/idle-tools.txt is missing — 'nothing runs this' becomes a state a tool can be in silently"
+  bad lint.tool-has-caller "CONTRACTS/idle-tools.txt is missing — 'nothing runs this' becomes a state a tool can be in silently"
 fi
 }
 
@@ -2950,18 +2931,16 @@ fi
 # a hard failure, not an advisory. So the comment was wrong about the code five lines
 # under it, which is the defect this whole sweep is about, committed by the person
 # writing the rule against it. C9 therefore appears in its own list until it has an
-# arm, like everything else, and tests/lint/conventions/c9.test.sh gives it one.
+# arm, like everything else, and tests/checks/lint.c9-test.sh gives it one.
 rule_C9() {
-rule "lint.rule-has-test every rule in this file has a mention in the lint suite, tests/lint/conventions/*.test.sh or an assertion in tests/lint/**/*.test.sh — a rule added without an arm fails the build (the #577 ratchet)"
+rule "lint.rule-has-test every rule in this file has a mention in the lint suite, tests/checks/lint*-test.sh or an assertion in tests/lint/**/*.test.sh — a rule added without an arm fails the build (the #577 ratchet)"
 _C9_L="$ROOT/bin/lint-conventions.sh"
-_C9_T="$ROOT/tests/lint/conventions"
+_C9_T="$ROOT/tests/checks"
 _C9_D="$ROOT/tests/lint"
-# The suite is conventions.test.sh and its <part>.test.sh parts (harbor#667; moved from tests/checks/lint*-test.sh by
-# harbor#961 W2, lint.name-test.sh to tests/lint/name/): a mention in any part counts.
+# The suite is lint-test.sh and its lint.<part>-test.sh parts (harbor#667): a mention in any part counts.
 _c9_all="${TMPDIR:-/tmp}/c9-suite.$$"
-{ find "$_C9_T" -maxdepth 1 -type f -name '*.test.sh' ! -name 'mktemp-template.test.sh'
-  [ -f "$ROOT/tests/lint/name/name.test.sh" ] && printf '%s\n' "$ROOT/tests/lint/name/name.test.sh"
-} 2>/dev/null | while IFS= read -r _c9f; do cat "$_c9f"; done > "$_c9_all" 2>/dev/null
+find "$_C9_T" -maxdepth 1 -type f \( -name 'lint-test.sh' -o -name 'lint.*-test.sh' \) \
+  -exec cat {} + > "$_c9_all" 2>/dev/null
 # D-14 puts a rule's own suite at tests/lint/<subject>/<aspect>.test.sh. There a mention counts only as an
 # assertion: comment lines and anything under fixtures/ are not read, so a note cannot arm a rule.
 [ -d "$_C9_D" ] && find "$_C9_D" -type f -name '*.test.sh' -not -path '*/fixtures/*' \
@@ -2986,7 +2965,7 @@ if [ -f "$_C9_L" ] && [ -s "$_c9_all" ]; then
   done
   if [ -n "$_c9_un" ]; then
     _c9_n=$(printf '%s' "$_c9_un" | wc -w | tr -d ' ')
-    bad lint.rule-has-test "$_c9_n of $_c9_tot rules are never mentioned in tests/lint/conventions/*.test.sh or tests/lint/**/*.test.sh — never watched fail (harbor#577): add a red-proof arm in tests/lint/conventions/redproof*.test.sh for$_c9_un" $_c9_un
+    bad lint.rule-has-test "$_c9_n of $_c9_tot rules are never mentioned in tests/checks/lint*-test.sh or tests/lint/**/*.test.sh — never watched fail (harbor#577): add a red-proof arm in tests/checks/lint.redproof*-test.sh for$_c9_un" $_c9_un
   fi
 else
   bad lint.rule-has-test "cannot read the linter or its suite — C9 has nothing to compare"
@@ -2996,8 +2975,8 @@ rm -f "$_c9_all"
 
 # ── lint.id-one-meaning · one id per rule, one rule per id (harbor#957) ─────────
 # WHY THIS EXISTS: 23 of the 93 letter ids meant something else as well. K1 was this file's
-# constitution-path rule, docs/generated/plan.md's security-floor workstream, and in docs/explanation/admission-baseline.md the kill-switch check
-# that is F1's; check.sh's T1-T7 are now test.<slug> ids. A grep-first reader landed on the wrong
+# constitution-path rule, PLAN.md's security-floor workstream, and in FLOOR.md the kill-switch check
+# that is F1's; T1-T7 are also tests/lib/check.sh ids. A grep-first reader landed on the wrong
 # meaning in 1 of 3 sampled ids (research 11b §2.3). The ids are now <family>.<slug> (D-10), and
 # this rule holds what makes one id one meaning, on the linter it is pointed at (the C9 trick, so a
 # fixture can plant a bad one):
@@ -3093,7 +3072,6 @@ _c10_pass="$(sed -n "s/^T_PASS_ENV='\\([^']*\\)'.*/\\1/p" "$ROOT/tests/lib/core.
 # The knobs: every `${HARBOR_X` + a default operator in a shell program the repo ships.
 for _c10p in "$ROOT"/bin/* "$ROOT"/hooks/* $(_engines) "$ROOT"/skills/*/bin/*; do
   [ -f "$_c10p" ] || continue
-  [ -L "$_c10p" ] && continue   # a rename shim (harbor#961): its knobs are its target's, read under the new name
   case "${_c10p##*/}" in *-test.sh|*-fixture.sh) continue ;; *.sh) ;; *.*) continue ;;
     *) case "$(head -1 "$_c10p")" in '#!'*sh*) ;; *) continue ;; esac ;; esac
   _c10_lex "$_c10p" | cut -f2- | grep -oE '[$][{]HARBOR_[A-Z0-9_]+:?[-+=?]' \
@@ -3103,12 +3081,12 @@ _c10_src() { # <file> — the fixtures it sources under tests/, one path per lin
   _c10_lex "$1" | cut -f2- | grep -E '(^|[;&|[:space:]])[.][[:space:]]' | grep -oE '[A-Za-z0-9_.-]+[.]sh' \
     | while IFS= read -r _c10b; do
       case "$_c10b" in core.sh) continue ;; esac
-      for _c10c in "${1%/*}/$_c10b" "$ROOT/tests/lib/$_c10b" "$ROOT"/tests/*/"$_c10b" "$ROOT"/tests/*/*/"$_c10b"; do
+      for _c10c in "${1%/*}/$_c10b" "$ROOT/tests/lib/$_c10b" "$ROOT"/tests/*/"$_c10b"; do
         [ -f "$_c10c" ] && { printf '%s\n' "$_c10c"; break; }
       done
     done
 }
-grep -vE '^[[:space:]]*(#|$)' "$ROOT/contracts/suites.txt" 2>/dev/null > "$_c10t/suites"
+grep -vE '^[[:space:]]*(#|$)' "$ROOT/CONTRACTS/suites.txt" 2>/dev/null > "$_c10t/suites"
 while IFS= read -r _c10s; do
   case "$_c10s" in */*) _c10f="$ROOT/$_c10s" ;; *) _c10f="$ROOT/bin/$_c10s" ;; esac
   [ -f "$_c10f" ] || continue
@@ -3218,23 +3196,23 @@ say "  $(grep -c . "$_c10t/suites") suites, $(cut -f2 "$_c10t/knobs" | sort -u |
 rm -rf "$_c10t"
 }
 
-# ── T1 · docs/generated/status.md is generated and current ────────────────────────────────
+# ── T1 · STATUS.md is generated and current ────────────────────────────────
 # The T rules exist because of one measured failure: on 2026-07-26 a sweep found
-# contracts/README.md claiming "18 rules" and "492 assertions" (actual 21, 573),
-# docs/reference/provenance.md claiming "19 skills" (actual 28), and docs/reports/qa-plan.md §6 listing risks
+# CONTRACTS/README.md claiming "18 rules" and "492 assertions" (actual 21, 573),
+# PROVENANCE.md claiming "19 skills" (actual 28), and QA-PLAN.md §6 listing risks
 # as OPEN that §7 of the SAME FILE said had shipped. None was a lie when written.
 # They rotted because a count in prose is a COPY of a fact that lives in the
 # code, and copies drift silently while reading correct.
 rule_T1() {
-rule "doc.status-generated docs/generated/status.md is regenerated, not hand-edited (the single source for counts)"
+rule "doc.status-generated STATUS.md is regenerated, not hand-edited (the single source for counts)"
 # --check-fast: the linter runs on every commit, and the full check RUNS all
 # three suites (minutes). CI runs the full one, so a suite that silently stops
 # reporting is still caught — at push time rather than at commit time.
-if _export_tree docs/generated/status.md docs/reports/platform-build-tickets.md; then
-  printf '  (skipped: docs/generated/status.md is dev-layer and this tree carries none of the dev layer, so there is no docs/generated/status.md to judge)\n'
+if _export_tree STATUS.md harbor-build-tickets.md; then
+  printf '  (skipped: STATUS.md is dev-layer and this tree carries none of the dev layer, so there is no STATUS.md to judge)\n'
 else
-  sh "$ROOT/bin/status-generate.sh" --check-fast >/dev/null 2>&1 \
-    || bad doc.status-generated "docs/generated/status.md is stale — run: sh bin/status-generate.sh --apply"
+  sh "$ROOT/bin/status-gen.sh" --check-fast >/dev/null 2>&1 \
+    || bad doc.status-generated "STATUS.md is stale — run: sh bin/status-gen.sh --apply"
 fi
 }
 
@@ -3263,11 +3241,7 @@ rule "test.negative-has-control a NEGATIVE assertion on a tool's prose needs a p
 # cannot affect it. harbor#145's own list included it by mistake, which is the
 # discrimination this rule has to get right or it becomes noise.
 # tests/ suites (harbor#667) spell the pair `t_hasnt … 'phrase'` / `t_has … 'phrase'`.
-# harbor#961 W2 moved tests/*/*-test.sh to tests/<family>/<subject>/<aspect>.test.sh; the moved ones stay read, derived
-# from renames.tsv. The rest of tests/*/*/*.test.sh was never read by this rule (a scope gap reported on #961, not widened here).
-_nhc_moved="$(awk -F'\t' -v R="$ROOT" '$1 ~ /^rename-/ && $2 ~ /^tests\/[^\/]+\/[^\/]+-test\.sh$/ { print R "/" $3 }' "$ROOT/standards/naming/renames.tsv" 2>/dev/null)"
-# shellcheck disable=SC2086 # the moved list is one path a line, none with a space
-for f in "$ROOT"/bin/*-test.sh "$ROOT"/tests/*/*-test.sh $_nhc_moved "$ROOT"/hooks/*/*.test.sh; do
+for f in "$ROOT"/bin/*-test.sh "$ROOT"/tests/*/*-test.sh "$ROOT"/hooks/*/*.test.sh; do
   [ -f "$f" ] || continue
   # Phrase (literal or "$VAR") from every pipeline-fed `grep -q` whose assertion
   # reaches `&& bad` within two lines — the negative direction.
@@ -3372,7 +3346,7 @@ done
 rule_T1b() {
 rule "doc.site-generated docs/index.html builds from docs/src with no unknown hole (harbor#1197)"
 # THE SAME ARGUMENT AS T1, FOR THE OTHER GENERATED DOCUMENT, and it was unguarded.
-# doc-index-generate.sh --check has existed since harbor#173 and NOTHING ran it: not a CI
+# docs-gen.sh --check has existed since harbor#173 and NOTHING ran it: not a CI
 # job, not a rule here, not a suite. A staleness gate nobody invokes is a gate.
 #
 # MEASURED 2026-08-14, and the demonstration is this very commit: adding two suites
@@ -3382,7 +3356,7 @@ rule "doc.site-generated docs/index.html builds from docs/src with no unknown ho
 # contracts, skills — so every change to any of those rots it silently while it
 # keeps reading perfectly. That is T1's lesson exactly, one document over.
 #
-# WHY HERE AND NOT IN CI. patches/doc-generate-check.patch.md proposes a
+# WHY HERE AND NOT IN CI. patches/governance-docs-gen-check.patch.md proposes a
 # step in .github/workflows/governance.yml, which is agent-denied by design — so
 # that patch has waited for an operator keystroke while the page kept drifting. The
 # linter is the surface that already owns "a generated document is current" (T1),
@@ -3395,15 +3369,15 @@ rule "doc.site-generated docs/index.html builds from docs/src with no unknown ho
 # this box, against status-gen's full check, which ran three suites and took minutes
 # until harbor#117 cached their counts on content (0.33s warm, 4:48 cold). A
 # rule that costs two seconds on every commit is affordable; if it ever stops being
-# so, the fix is a --check-fast in doc-index-generate.sh, not dropping the gate.
+# so, the fix is a --check-fast in docs-gen.sh, not dropping the gate.
 # SINCE harbor#1197 THE PAGE IS NOT COMMITTED, so the rule above no longer asks "is it fresh": --check builds it to a temp
 # path and fails on a build error or an unknown <!--gen:NAME--> hole, which is what a committed copy could not show anyway.
-_ds="$(sh "$ROOT/bin/doc-index-generate.sh" --check 2>&1)" \
-  || bad doc.site-generated "docs/index.html cannot be built: $(printf '%s\n' "$_ds" | grep -m1 'FAIL' | sed 's/^ *FAIL: //') — run: sh bin/doc-index-generate.sh --check"
+_ds="$(sh "$ROOT/bin/docs-gen.sh" --check 2>&1)" \
+  || bad doc.site-generated "docs/index.html cannot be built: $(printf '%s\n' "$_ds" | grep -m1 'FAIL' | sed 's/^ *FAIL: //') — run: sh bin/docs-gen.sh --check"
 }
 
 # ── H1 · a colour token defined for light is redefined in every dark branch ──
-# MEASURED 2026-08-31. bin/status-dashboard-generate.sh defines `--unk:#6b6b68` in `:root`
+# MEASURED 2026-08-31. bin/dashboard-gen.sh defines `--unk:#6b6b68` in `:root`
 # and its dark block redefines every OTHER token. So the "unknown"/"unavailable"
 # status text rendered a light-ground grey on a #151514 dark ground — 3.42:1,
 # under the 4.5:1 AA floor — while its light-mode twin `--dim` gets #9a9a96 for
@@ -3512,15 +3486,15 @@ done
 # ── T2 · no other document restates a countable fact ───────────────────────
 # The structural half, and the one that actually prevents recurrence. Checking
 # copies harder does not help; the fix is that there is only ever one copy.
-# A document that wants to cite a count links to docs/generated/status.md instead.
+# A document that wants to cite a count links to STATUS.md instead.
 #
-# Scoped to the counts docs/generated/status.md owns, and only in the numeral form that rots —
+# Scoped to the counts STATUS.md owns, and only in the numeral form that rots —
 # "21 lint rules". Prose like "every lint rule" or "the rule count" is fine, and
-# so is a historical statement inside a dated record: docs/explanation/admission-baseline.md's pass tables and
+# so is a historical statement inside a dated record: FLOOR.md's pass tables and
 # the git log are ACCOUNTS OF THE PAST and must keep their numbers, or the
 # project loses the evidence its own conclusions rest on.
 rule_T2() {
-rule "doc.counts-in-status-only only docs/generated/status.md states a countable fact in numerals (link to it instead)"
+rule "doc.counts-in-status-only only STATUS.md states a countable fact in numerals (link to it instead)"
 # `[[:space:]]+`, not a literal space (edge pass 2026-08-29): `7  floor guards`
 # with two spaces walked past the rule while `7 floor guards` was caught, and a
 # reflowed paragraph or a markdown table cell produces exactly that. A rule whose
@@ -3529,15 +3503,15 @@ rule "doc.counts-in-status-only only docs/generated/status.md states a countable
 # a count split across two lines is out of reach of this shape either way, and
 # pretending otherwise in the pattern would be the more misleading of the two.
 COUNTABLE='[0-9]+[[:space:]]+(lint rules|vendored skills|frozen contracts|floor guards|marker fixtures)'
-for f in "$ROOT"/*.md "$ROOT"/contracts/*.md "$ROOT"/docs/explanation/*.md; do
+for f in "$ROOT"/*.md "$ROOT"/CONTRACTS/*.md "$ROOT"/DOCTRINE/*.md; do
   [ -f "$f" ] || continue
   b="$(basename "$f")"
-  # docs/generated/status.md is the source. docs/explanation/admission-baseline.md and docs/reports/qa-plan.md are dated records of what
+  # STATUS.md is the source. FLOOR.md and QA-PLAN.md are dated records of what
   # was true at each pass — their numbers are evidence, not claims about now.
-  case "$b" in docs/generated/status.md|docs/explanation/admission-baseline.md|docs/reports/qa-plan.md) continue ;; esac
-  grep -nEi "$COUNTABLE" "$f" 2>/dev/null | grep -v 'docs/generated/status.md' | head -3 \
+  case "$b" in STATUS.md|FLOOR.md|QA-PLAN.md) continue ;; esac
+  grep -nEi "$COUNTABLE" "$f" 2>/dev/null | grep -v 'STATUS.md' | head -3 \
     | while IFS= read -r hit; do
-        [ -n "$hit" ] && printf '  VIOLATION [doc.counts-in-status-only] %s restates a docs/generated/status.md count: %s\n' "${f#$ROOT/}" "$(printf '%s' "$hit" | cut -c1-90)" >&2
+        [ -n "$hit" ] && printf '  VIOLATION [doc.counts-in-status-only] %s restates a STATUS.md count: %s\n' "${f#$ROOT/}" "$(printf '%s' "$hit" | cut -c1-90)" >&2
       done
   if grep -qEi "$COUNTABLE" "$f" 2>/dev/null; then FAIL=$((FAIL+1)); fi
 done
@@ -3565,19 +3539,19 @@ rule "doc.repos-exist documents name only repos that exist (VytCepas/*)"
 # deleted or renamed repo stayed on the list forever, and T4 kept certifying
 # every document that named it.
 #
-# The existence proof now comes from docs/reference/citations.md, which is the file whose job
+# The existence proof now comes from CITATIONS.md, which is the file whose job
 # is to hold verified external facts — each row records the URL, the HTTP
 # status, the fetcher, and the date. Only rows with a 2xx/3xx status count.
 # A lint rule must work offline and in CI, and this keeps it offline: the
-# network round-trip already happened, in bin/doc-cite-verify.sh, and was written
+# network round-trip already happened, in bin/cite-verify.sh, and was written
 # down. NOTE the asymmetry that column exists for — these repos are PRIVATE, so
 # they answer 200 to an authenticated `gh` and 404 to a bare `curl`; an
 # existence check that ignored the VIA column would call every one of them
 # missing.
-_t4_cited="$(grep -E '^\| `https://github\.com/VytCepas/[^`]+` \| *[23][0-9][0-9] ' "$ROOT/docs/reference/citations.md" 2>/dev/null \
+_t4_cited="$(grep -E '^\| `https://github\.com/VytCepas/[^`]+` \| *[23][0-9][0-9] ' "$ROOT/CITATIONS.md" 2>/dev/null \
              | sed -E 's|.*github\.com/VytCepas/([A-Za-z0-9_.-]+).*|\1|' | sort -u | tr '\n' '|' | sed 's/|$//')"
 # The residual: repos that exist and that no document cites by URL, so there is
-# nothing for docs/reference/citations.md to hold. Adding a row for one of these would be
+# nothing for CITATIONS.md to hold. Adding a row for one of these would be
 # inventing a citation to satisfy a lint rule, which is the failure the file
 # exists to prevent. Each name here should disappear the day a document cites it.
 #   helm-log              the private work-log remote; named in prose, never linked
@@ -3592,7 +3566,7 @@ _t4_cited="$(grep -E '^\| `https://github\.com/VytCepas/[^`]+` \| *[23][0-9][0-9
 # a deleted or renamed repo that stays on the list forever.
 _t4_uncited='helm-log|projects-orchestrator'  # two workload ids left when no core doc named them (harbor#1273)
 KNOWN_REPOS="${_t4_cited:+$_t4_cited|}$_t4_uncited"
-for f in "$ROOT"/*.md "$ROOT"/contracts/*.md "$ROOT"/docs/explanation/*.md; do
+for f in "$ROOT"/*.md "$ROOT"/CONTRACTS/*.md "$ROOT"/DOCTRINE/*.md; do
   [ -f "$f" ] || continue
   # Trailing sentence punctuation is stripped: `.` is in the name character
   # class (repos like `foo.bar` exist), so a repo named at the END OF A SENTENCE
@@ -3646,7 +3620,7 @@ rule "doc.no-legacy-cli the CLI is \`harbor\` — no document describes a \`helm
 # defect — not safety.
 #
 # The subject is Harbor's own verb surface, and that list is already frozen in
-# contracts/cli.md under CLI1. Derive it rather than restating it.
+# CONTRACTS/cli.md under CLI1. Derive it rather than restating it.
 #
 # BUT DERIVING IT IS NOT ENOUGH, and the ticket (#83) was wrong about this: it
 # proposed keying on Harbor's verbs and named `install`/`uninstall`/`upgrade`/
@@ -3663,7 +3637,7 @@ rule "doc.no-legacy-cli the CLI is \`harbor\` — no document describes a \`helm
 # precision. "the `helm` command" still fires regardless of verb, which is the
 # phrasing the naming decision was actually about.
 _t5_k8s='completion|create|dependency|docs|env|get|help|history|install|lint|list|package|plugin|pull|push|registry|repo|rollback|search|show|status|template|test|uninstall|upgrade|verify|version'
-_t5_verbs="$(grep -E '^\| `harbor [a-z-]+` \|' "$ROOT/contracts/cli.md" 2>/dev/null \
+_t5_verbs="$(grep -E '^\| `harbor [a-z-]+` \|' "$ROOT/CONTRACTS/cli.md" 2>/dev/null \
              | sed -E 's/^\| `harbor ([a-z-]+)`.*/\1/' | grep -vxE "$_t5_k8s" \
              | sort -u | tr '\n' '|' | sed 's/|$//')"
 if [ -z "$_t5_verbs" ]; then
@@ -3671,12 +3645,12 @@ if [ -z "$_t5_verbs" ]; then
   # noise, never toward silence: a rule that quietly stops checking because its
   # input moved is worse than one that over-reports, and the fallback is visible.
   _t5_verbs='[a-z]+'
-  printf '  (T5: no verb table in contracts/cli.md — falling back to the broad pattern)\n'
+  printf '  (T5: no verb table in CONTRACTS/cli.md — falling back to the broad pattern)\n'
 fi
-for f in "$ROOT"/*.md "$ROOT"/contracts/*.md "$ROOT"/docs/explanation/*.md; do
+for f in "$ROOT"/*.md "$ROOT"/CONTRACTS/*.md "$ROOT"/DOCTRINE/*.md; do
   [ -f "$f" ] || continue
-  # naming.md records the decision; docs/decisions/rejected-approaches.md records the REJECTED alternative
-  case "$(basename "$f")" in naming.md|docs/decisions/rejected-approaches.md) continue ;; esac
+  # naming.md records the decision; DEAD-ENDS.md records the REJECTED alternative
+  case "$(basename "$f")" in naming.md|DEAD-ENDS.md) continue ;; esac
   # A backticked `helm` followed by one of HARBOR'S verbs, or "the `helm` command".
   grep -nE "\`helm ($_t5_verbs)([^a-z]|\$)|the \`helm\` command" "$f" 2>/dev/null \
     | grep -qviE 'not |never|~~|instead of' \
@@ -3687,20 +3661,20 @@ done
 # ── T8 · every upstream hook has a disposition ─────────────────────────────
 # The 2026-07-26 coverage sweep found 73 capabilities neither built, ticketed
 # nor declined, and wrote that finding into a COMMIT MESSAGE. Two days later the
-# answer to "is the backlog recorded?" was no. docs/reference/coverage.md is the file version;
+# answer to "is the backlog recorded?" was no. COVERAGE.md is the file version;
 # this rule keeps it complete. The point is that a gap must be VISIBLE, not that
 # it must be closed — an OPEN row passes, a missing row does not.
 rule_T8() {
-rule "doc.coverage-row-per-hook every upstream hook has a row in docs/reference/coverage.md (gaps must be visible)"
+rule "doc.coverage-row-per-hook every upstream hook has a row in COVERAGE.md (gaps must be visible)"
 _mir="${HARBOR_UPSTREAM_MIRROR:-$HOME/.harbor-upstream}"
 _up="$_mir"
 for _d in "$_mir"/*/install/hooks; do [ -d "$_d" ] && { _up="$_d"; break; }; done
-if [ -d "$_up" ] && [ -f "$ROOT/docs/reference/coverage.md" ]; then
+if [ -d "$_up" ] && [ -f "$ROOT/COVERAGE.md" ]; then
   for h in "$_up"/*.hook.*; do
     [ -f "$h" ] || continue
     n="$(basename "$h")"; n="${n%%.hook.*}"
-    grep -qF "\`$n\`" "$ROOT/docs/reference/coverage.md" \
-      || bad doc.coverage-row-per-hook "upstream hook with no disposition in docs/reference/coverage.md: $n"
+    grep -qF "\`$n\`" "$ROOT/COVERAGE.md" \
+      || bad doc.coverage-row-per-hook "upstream hook with no disposition in COVERAGE.md: $n"
   done
 elif [ ! -d "$_up" ]; then
   printf '  (skipped: no upstream mirror at %s)\n' "$_up"
@@ -3709,19 +3683,19 @@ fi
 
 # ── T7 · every external citation is on the verified list ───────────────────
 # Offline half of the UrlVerificationProtocol taken from upstream Research
-# (docs/reference/provenance.md). bin/doc-cite-verify.sh does the network half by hand; this asks
+# (PROVENANCE.md). bin/cite-verify.sh does the network half by hand; this asks
 # only "was this URL ever verified at all", which is the question that catches a
 # hallucinated citation. Fixtures (attack payloads, template placeholders) are
 # not citations and are skipped by pattern. `_fx` below is the ONE definition of
-# that list: bin/doc-cite-verify.sh reads this very line out of this file rather than
+# that list: bin/cite-verify.sh reads this very line out of this file rather than
 # keeping its own copy, because it kept one and the copy drifted the moment #255
 # widened this rule alone. Edit it here; nothing else defines it.
 rule_T7() {
-rule "doc.urls-cited every external URL a doc cites is listed in docs/reference/citations.md"
+rule "doc.urls-cited every external URL a doc cites is listed in CITATIONS.md"
 # A URL CONTAINING A GLOB IS A PATTERN, NOT A SOURCE (harbor#255). Capturing
-# `skills/reporting-apis` forced a docs/reference/citations.md row for
+# `skills/reporting-apis` forced a CITATIONS.md row for
 # `https://mcp.facebook.com/*` — the value inside a `deniedMcpServers` config
-# example. doc-cite-verify.sh then fetched it and got a 404, because a wildcard path
+# example. cite-verify.sh then fetched it and got a 404, because a wildcard path
 # cannot resolve by construction, and the only way to clear the gate was to record
 # a non-fact in a table whose entire value is that its last column is a human
 # judgement about whether content supports a claim.
@@ -3729,7 +3703,7 @@ rule "doc.urls-cited every external URL a doc cites is listed in docs/reference/
 # `*` IS THE DISCRIMINATOR, AND IT IS THE ONLY ONE THAT IS MECHANICAL. The ticket
 # proposed skipping code spans instead; that was measured and rejected — the glob
 # sits in INLINE backticks in prose, exactly like every real citation in this tree
-# and every row in docs/reference/citations.md itself, so a rule that skipped inline code would
+# and every row in CITATIONS.md itself, so a rule that skipped inline code would
 # ignore the glob and silently stop watching most of the corpus. That is
 # harbor#212's shape: a check satisfied by markup. A `*` in the path says
 # "pattern" with no semantics required.
@@ -3748,13 +3722,13 @@ rule "doc.urls-cited every external URL a doc cites is listed in docs/reference/
 # pass — which does not skip code the way the hostname pass does — extracted
 # command operands as citations. Three could never verify by construction:
 # `admin.shopify.com/store/<handle`, `api.example.com/api$1`, and a URL carrying a
-# shell quote. Recording a non-fact in docs/reference/citations.md to clear a gate is the failure
+# shell quote. Recording a non-fact in CITATIONS.md to clear a gate is the failure
 # that table exists to prevent, which is exactly what harbor#255 said about the
 # glob. The fence inconsistency itself is still the deferred fix, not this.
 # AN OAUTH SCOPE IS A URN THAT LOOKS LIKE A URL, and it is the same class as the
 # glob and the placeholder above (2026-09-15). `https://www.googleapis.com/auth/
 # cloud-platform` is an IDENTIFIER in a consent request — it is never fetched,
-# there is nothing at the other end to read, and a row in docs/reference/citations.md claiming
+# there is nothing at the other end to read, and a row in CITATIONS.md claiming
 # it was verified as a source would be exactly the non-fact that table exists to
 # keep out. Anchored on the `/auth/` path so it cannot swallow a real
 # googleapis.com endpoint, which is a genuine citation and must stay checked.
@@ -3764,27 +3738,27 @@ _t7_tmp="${TMPDIR:-/tmp}/harbor-t7.$$"
 # pointed at a fixture tree via HARBOR_ROOT the way X6 uses HARBOR_FLEET_FILE.
 _t7_files() {
   if git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
-    (cd "$ROOT" && git ls-files '*.md' ':!vendor/*' ':!docs/reference/citations.md' 2>/dev/null | sed "s|^|$ROOT/|")
+    (cd "$ROOT" && git ls-files '*.md' ':!vendor/*' ':!CITATIONS.md' 2>/dev/null | sed "s|^|$ROOT/|")
   else
-    find "$ROOT" -name '*.md' -not -path '*/vendor/*' -not -name 'docs/reference/citations.md' 2>/dev/null
+    find "$ROOT" -name '*.md' -not -path '*/vendor/*' -not -name 'CITATIONS.md' 2>/dev/null
   fi
   # The access cards are private data (harbor#1149), so where the register exists they are judged
   # in place, as they were when they sat in the tree; where it does not, the rule says it skipped them.
   [ -z "$_t7_acc" ] || find "$_t7_acc" -maxdepth 1 -name '*.md' 2>/dev/null
 }
 _t7_acc=''
-# The resolver beside this script, not $ROOT/bin: a HARBOR_ROOT fixture holds no scope-roots.sh, and the
+# The resolver beside this script, not $ROOT/bin: a HARBOR_ROOT fixture holds no roots.sh, and the
 # resolver would then read the fixture's table instead of its own.
-_t7_acc="$(env -u HARBOR_ROOT sh "$(dirname -- "$0")/scope-roots.sh" --access 2>/dev/null || :)"
+_t7_acc="$(env -u HARBOR_ROOT sh "$(dirname -- "$0")/roots.sh" --access 2>/dev/null || :)"
 [ -n "$_t7_acc" ] || printf '  (skipped: no private layer, so the access cards were not scanned)\n'
 # An empty register would make the case patterns below read /*.md, which is every file.
 _t7_accp="${_t7_acc:-/no-access-register}"
-# The ledger is docs/reference/citations.md plus the private layer's citations.md: the rows for hosts core does not name (harbor#1149).
+# The ledger is CITATIONS.md plus the private layer's citations.md: the rows for hosts core does not name (harbor#1149).
 # Read beside the core file, never instead of it; absent is the core ledger alone.
-_t7_pcit="$(env -u HARBOR_ROOT sh "$(dirname -- "$0")/scope-roots.sh" --private 2>/dev/null || :)"
+_t7_pcit="$(env -u HARBOR_ROOT sh "$(dirname -- "$0")/roots.sh" --private 2>/dev/null || :)"
 [ -z "$_t7_pcit" ] || _t7_pcit="$_t7_pcit/citations.md"
-if [ -f "$ROOT/docs/reference/citations.md" ]; then
-  cat "$ROOT/docs/reference/citations.md" > "$_t7_tmp.cit"
+if [ -f "$ROOT/CITATIONS.md" ]; then
+  cat "$ROOT/CITATIONS.md" > "$_t7_tmp.cit"
   [ -z "$_t7_pcit" ] || [ ! -f "$_t7_pcit" ] || cat "$_t7_pcit" >> "$_t7_tmp.cit"
   _t7_files > "$_t7_tmp.files" 2>/dev/null || : > "$_t7_tmp.files"
   : > "$_t7_tmp.url"; : > "$_t7_tmp.host"
@@ -3813,11 +3787,11 @@ if [ -f "$ROOT/docs/reference/citations.md" ]; then
   # exactly those fields, including an opt-in mode that RUNS them. Coverage moves;
   # it does not vanish. Card PROSE is still scanned, which is the half that can
   # hold a real source — stape's helpdesk article and price page are in
-  # docs/reference/citations.md precisely because this carve-out leaves them visible.
+  # CITATIONS.md precisely because this carve-out leaves them visible.
   #
   # THE FIELD LIST IS READ OUT OF THE CHECKER, NEVER COPIED. check-routes.sh owns
   # the card schema; a second copy here would drift the first time a field is
-  # added — the same reason doc-cite-verify.sh reads `_fx` out of this file instead of
+  # added — the same reason cite-verify.sh reads `_fx` out of this file instead of
   # keeping its own. An unreadable list yields an EMPTY pattern and therefore NO
   # carve-out: the failure direction is stricter, never looser.
   _t7_routes=''
@@ -3868,21 +3842,21 @@ if [ -f "$ROOT/docs/reference/citations.md" ]; then
   rm -f "$_t7_tmp.card"
   for u in $(sed 's/[.,;]*$//' "$_t7_tmp.url" | grep -vE "$_fx" | sort -u); do
     grep -qF "$u" "$_t7_tmp.cit" \
-      || bad doc.urls-cited "cited but never verified: $u (add it via sh bin/doc-cite-verify.sh)"
+      || bad doc.urls-cited "cited but never verified: $u (add it via sh bin/cite-verify.sh)"
   done
   # A host already appearing anywhere in the ledger — including inside a listed
   # URL — counts as listed. Otherwise every doc naming `github.com` would owe a
   # row for a host the file already carries thirty times.
   for h in $(grep -vE "$_fx" "$_t7_tmp.host" 2>/dev/null | sort -u); do
     grep -qF "$h" "$_t7_tmp.cit" \
-      || bad doc.urls-cited "cited as a bare hostname and never verified: $h (add it via sh bin/doc-cite-verify.sh)"
+      || bad doc.urls-cited "cited as a bare hostname and never verified: $h (add it via sh bin/cite-verify.sh)"
   done
   rm -f "$_t7_tmp.files" "$_t7_tmp.url" "$_t7_tmp.host" "$_t7_tmp.cit"
 fi
 }
 
 # ── T6 · a "not taken" list must not name something we took ────────────────
-# docs/reference/provenance.md's not-taken list was copied from docs/reports/platform-epic.md §6 TRIM and then
+# PROVENANCE.md's not-taken list was copied from harbor-epic.md §6 TRIM and then
 # I1-ext vendored seven of the names on it. Nobody noticed for two days, because
 # a not-taken list is only ever read to STOP looking at something.
 #
@@ -3890,7 +3864,7 @@ fi
 # `vendor/skills/<slug>` existing, so check the prose against the disk.
 rule_T6() {
 rule "skill.not-taken-consistent no document lists a skill as not-taken while vendor/skills/ holds it"
-for f in "$ROOT"/*.md "$ROOT"/contracts/*.md "$ROOT"/docs/explanation/*.md; do
+for f in "$ROOT"/*.md "$ROOT"/CONTRACTS/*.md "$ROOT"/DOCTRINE/*.md; do
   [ -f "$f" ] || continue
   # The section runs from the NOT-taken heading to the next heading.
   sec="$(sed -n '/^## What was NOT taken/,/^## [^W]/p' "$f" 2>/dev/null)"
@@ -3914,7 +3888,7 @@ done
 # with a wrong picture of what upstream owes us, and neither is visible by
 # reading — a 29th vendored skill with no row looks exactly like 28 with rows.
 #
-# The check lives in bin/lint-adoption.sh because A4's own falsifier calls it
+# The check lives in bin/adoption-check.sh because A4's own falsifier calls it
 # too. One mechanism, two callers; a second copy here would be the drift T2 is
 # about, in the file that enforces T2.
 #
@@ -3926,8 +3900,8 @@ done
 # directory, so the rule is live exactly where the claim can be wrong.
 rule_T6b() {
 rule "skill.vendor-provenance-row every vendor/skills/ directory has a row in its PROVENANCE, and vice versa"
-if [ -d "$ROOT/vendor/skills" ] && [ -x "$ROOT/bin/lint-adoption.sh" ]; then
-  _ac="$(sh "$ROOT/bin/lint-adoption.sh" 2>&1)" || {
+if [ -d "$ROOT/vendor/skills" ] && [ -x "$ROOT/bin/adoption-check.sh" ]; then
+  _ac="$(sh "$ROOT/bin/adoption-check.sh" 2>&1)" || {
     printf '%s\n' "$_ac" | while IFS= read -r _l; do
       case "$_l" in "  FAIL: "*) bad skill.vendor-provenance-row "${_l#  FAIL: }" ;; esac
     done
@@ -3936,7 +3910,7 @@ fi
 }
 
 # ── T3 · every repo path a document cites resolves ─────────────────────────
-# K1 does this for policy/constitution.md alone. The same sweep found ~/.claude/CLAUDE.md
+# K1 does this for CONSTITUTION.md alone. The same sweep found ~/.claude/CLAUDE.md
 # named as "the sole root constitution" by TWO documents, for a file that has
 # never existed — so the class is not constitution-specific.
 rule_T3() {
@@ -3944,18 +3918,18 @@ rule "doc.paths-resolve every ./path cited by a tracked doc resolves (generalise
 # TWO WIDENINGS, 2026-08-02 (harbor#6). Both were fail-open, and both were found
 # by needing the rule to cover a link this workstream actually writes:
 #   1. `../path` was never extracted at all — only `./path` was. Every contract
-#      in contracts/ points UP at the repo root (`](../docs/decisions/rejected-approaches.md)`), so the
+#      in CONTRACTS/ points UP at the repo root (`](../DEAD-ENDS.md)`), so the
 #      directory whose links are most load-bearing was the one directory whose
 #      links this rule did not read.
 #   2. The extractor was `sed -n 's/.*](...)/\1/p'`, and `.*` is greedy: on a
 #      line carrying two links it captured only the LAST one. A dangling first
 #      link on a two-link line was invisible. grep -o returns every match.
 # THE SWEEP IS EVERY TRACKED MARKDOWN FILE (harbor#1149), because that is what this rule's title says. It was a list of
-# globs, and the list was the defect twice: docs/README.md linked ../docs/generated/status.md, a dev-layer file the export does not
+# globs, and the list was the defect twice: docs/README.md linked ../STATUS.md, a dev-layer file the export does not
 # carry, and docs/ was not on it; then the glob list still left ~500 exported files unread (vendor/skills, skills/,
 # commands/, inject.d/, patches/), so a dev link planted in a skill or an injected session note stayed green. The link
-# resolves in the dev checkout and dangles in the export, which is why tests/deploy/push/selfcontained.test.sh runs this rule
-# over the staged export and a core document NAMES a dev-layer file (contracts/layers.tsv) in code font, never links it.
+# resolves in the dev checkout and dangles in the export, which is why tests/export/selfcontained.test.sh runs this rule
+# over the staged export and a core document NAMES a dev-layer file (CONTRACTS/layers.tsv) in code font, never links it.
 # The set comes from git when ROOT is a checkout, so untracked output (build/, a scratch note) is not judged; a root with
 # no git (a throwaway fixture) falls back to every *.md under it. _t3_deliberate is the one file that cites a dead path ON
 # PURPOSE, as the input of a memory-tool test; a new deliberate dead citer is added here, by name, on purpose.
@@ -3969,7 +3943,6 @@ while IFS= read -r _t3_rel; do
   [ -n "$_t3_rel" ] && [ "$_t3_rel" != "$_t3_deliberate" ] || continue
   f="$ROOT/$_t3_rel"
   [ -f "$f" ] || continue
-  [ -L "$f" ] && continue   # a rename shim reads relative to the wrong directory; its target is judged (harbor#961)
   d="$(dirname "$f")"
   # `set -f` around the loop ONLY, never file-wide: this linter's other rules
   # iterate `"$ROOT"/bin/*.sh`, which IS pathname expansion and must keep working.
@@ -3980,7 +3953,7 @@ while IFS= read -r _t3_rel; do
   for p in $(grep -oE '\]\(\.\.?/[^)#]*' "$f" 2>/dev/null | sed 's/^](//' | sort -u); do
     [ -n "$p" ] || continue
     # RELATIVE TO THE CITING FILE, not to the repo root. `./marker.md` inside
-    # contracts/README.md means contracts/marker.md — resolving it against $ROOT
+    # CONTRACTS/README.md means CONTRACTS/marker.md — resolving it against $ROOT
     # made this rule fire on six correct links the first time it ran.
     [ -e "$d/$p" ] || bad doc.paths-resolve "${f#$ROOT/} cites a path that does not exist: $p"
   done
@@ -3997,7 +3970,7 @@ EOF_T3
 #
 # That one is not cosmetic, and this block twice stated it larger than the
 # evidence — corrected 2026-08-04 by reading the live copy rather than recalling
-# it. What is measured: the live deploy-restore.sh DOES carry .helm-floor-teeth and
+# it. What is measured: the live restore.sh DOES carry .helm-floor-teeth and
 # .helm-pins in its slot list; what it lacks is .helm-instructions.sha256, the
 # per-pin granularity check, and the floor-loss pre-flight, so a baseline that
 # predates the floor restores over a floored box without refusing.
@@ -4005,7 +3978,7 @@ EOF_T3
 # The second claim was worse, because it was load-bearing: this block asserted
 # the drift was "inert today only because the floor is not installed", inside
 # the file that gates every commit. The floor IS installed — ask the box, not
-# this comment: `sh bin/status-generate.sh --observed`. The live-vs-repo lag is
+# this comment: `sh bin/status-gen.sh --observed`. The live-vs-repo lag is
 # machine state and is deliberately not written here (harbor#91); that is the
 # whole reason this rule reports instead of asserting a number.
 # Drift has to fail the build, not wait to be noticed at the worst moment.
@@ -4112,13 +4085,13 @@ if [ -d "$_sk_live" ]; then
 fi
 
 # ── shared: how old is each side? (used by X2, X8 and CM3) ─────────────────
-# A SECOND COPY OF alert-probe.sh's mtime(), deliberately: this file is a standalone
+# A SECOND COPY OF pulse.sh's mtime(), deliberately: this file is a standalone
 # linter and sourcing another bin script into it would make every rule depend on
 # that script existing. The gotcha it encodes is not cosmetic and is why the copy
 # is verbatim rather than rewritten — `stat -f` means "file system" to GNU stat
 # and "format" to BSD, so on Linux the first call PRINTS filesystem fields and
 # then fails, and an `||` chain appends the second call's answer to that garbage.
-# Digits or nothing. See bin/alert-probe.sh:93 for the incident.
+# Digits or nothing. See bin/pulse.sh:93 for the incident.
 # _x8_mtime is defined in the shared section at the top (harbor#537) — another rule reads it.
 # THE REPO SIDE'S AGE COMES FROM GIT, AND THE FILESYSTEM IS THE FALLBACK — never
 # the other way round. `git worktree add` stamps every checked-out file with the
@@ -4148,13 +4121,13 @@ fi
 
 # ── THE INSTALLER PAYLOADS, ENUMERATED ONCE ────────────────────────────────
 # TWO RULES ASKED "does an installer ship this?" AND BOTH ANSWERED FROM THEIR OWN
-# LIST OF INSTALLERS. Both lists said deploy-runtime-install.sh and floor-install.sh, and
-# this box has a THIRD — bin/context-injection-install.sh, whose `PAYLOAD=` ships
+# LIST OF INSTALLERS. Both lists said runtime-install.sh and floor-install.sh, and
+# this box has a THIRD — bin/inject-install.sh, whose `PAYLOAD=` ships
 # inject-hook.sh and govern-token.sh into the live bin. So X2 reported the live
 # engine as UNOWNED ("no installer ships it there, so no install can refresh it")
 # about a file an installer ships and refreshes on every run, and X7 could not see
 # either script as a legitimate call target. Measured 2026-09-02, and it is the
-# copy-drifts-silently shape docs/explanation/doc-truth.md is about: neither list was
+# copy-drifts-silently shape DOCTRINE/doc-truth.md is about: neither list was
 # wrong when written, and nothing failed when a third installer arrived.
 #
 # DERIVED FROM bin/*-install.sh RATHER THAN NAMED, so a fourth installer is
@@ -4167,15 +4140,15 @@ fi
 rule_X2() {
 rule "drift.config-bin the live ~/.claude/bin does not lag the repo (advisory)"
 # THE CONFIG DIR IS WHEREVER CLAUDE_CONFIG_DIR SAYS, and this rule did not ask.
-# bin/skill-install.sh:43 writes to `${CLAUDE_CONFIG_DIR:-$HOME/.claude}`; these
-# advisories read `${HARBOR_DEPLOY_LIVE_DIR:-$HOME/.claude}`. With CLAUDE_CONFIG_DIR set —
+# bin/skills-install.sh:43 writes to `${CLAUDE_CONFIG_DIR:-$HOME/.claude}`; these
+# advisories read `${HELM_LIVE_DIR:-$HOME/.claude}`. With CLAUDE_CONFIG_DIR set —
 # which is exactly how every hermetic suite on this box isolates itself — the
 # installer writes one place and the drift check reads another, so it compares the
 # repo against a directory nothing installed into. The worse half is silent: if
 # that directory has no commands/, CM3's "not installed is a choice" arm skips
 # every file and the advisory reports nothing at all. Latent rather than firing
 # here (the variable is unset in an ordinary session), which is precisely why it
-# would have survived. HARBOR_DEPLOY_LIVE_DIR stays FIRST so the existing override still
+# would have survived. HELM_LIVE_DIR stays FIRST so the existing override still
 # wins for a caller that sets it deliberately.
 # LIVEBIN is defined in the shared section at the top (harbor#537) — another rule reads it.
 # <checkout file> <live file> <path under ~/.claude>: the direction verdict bin/ and SUITE share (harbor#753).
@@ -4195,7 +4168,7 @@ if [ -d "$LIVEBIN" ]; then
     b="$(basename "$f")"
     [ -f "$LIVEBIN/$b" ] || continue          # not deployed is a choice, not drift
     # THE TWO STALENESSES ARE DIFFERENT DEFECTS WITH DIFFERENT FIXES, and calling
-    # both "lags the repo" gave one of them a remedy that can never work. bin/idea
+    # both "lags the repo" gave one of them a remedy that can never work. bin/idea.sh
     # sat in the live bin from 2026-07-29, reported by this line on every run, while
     # NO INSTALLER SHIPS IT THERE — so "run the installer" would have refreshed
     # nothing, forever. An advisory whose fix does not exist is one the reader learns
@@ -4204,7 +4177,7 @@ if [ -d "$LIVEBIN" ]; then
     # UNOWNED, NOT ORPHANED, AND THE FIRST WORDING SAID "REMOVE IT". THAT WAS WRONG,
     # measured 2026-08-31: this rule reads the two installer payloads and NOTHING
     # ELSE, so what it can prove is that no install will refresh the file — never
-    # that nothing uses it. bin/idea is the target of a live alias in the
+    # that nothing uses it. bin/idea.sh is the target of a live alias in the
     # operator shell rc, and acting on the advice as first written would have
     # deleted a working command. A check states what it measured; the remedy belongs
     # to the reader, who can see the shell config, the crontab and the aliases this
@@ -4232,7 +4205,7 @@ fi
 # above never saw them. An installer ships every pair, so no UNOWNED arm. Parsed here, not in
 # _installer_payload: its bare names would let X7 accept $DIR/core.sh for lib/core.sh (harbor#753).
 _x2_cfg="${LIVEBIN%/bin}"
-for _x2p in $(sed -n 's/^SUITE="\(.*\)"$/\1/p' $(_installers) 2>/dev/null); do
+for _x2p in $(sed -n 's/^SUITE="\(.*\)"$/\1/p' "$ROOT"/bin/*-install.sh 2>/dev/null); do
   case "$_x2p" in ?*:?*) ;; *) continue ;; esac
   _x2s="$ROOT/${_x2p%%:*}"; _x2d="${_x2p#*:}"
   [ -f "$_x2s" ] && [ -f "$_x2_cfg/$_x2d" ] || continue   # not deployed is a choice, not drift
@@ -4241,8 +4214,8 @@ done
 }
 
 # ── X2b · the OTHER install prefix, which nothing watched ───────────────────
-# X2 checks ~/.claude/bin only, and `idea` and `memory.sh` install
-# to **~/.local/bin** under their own one-word names (contracts/cli.md's internal
+# X2 checks ~/.claude/bin only, and `idea.sh` and `memory.sh` install
+# to **~/.local/bin** under their own one-word names (CONTRACTS/cli.md's internal
 # table says so, and says why). So the tools an operator types most often had no
 # drift check at all.
 #
@@ -4261,19 +4234,19 @@ done
 # would fire on a box where the tool is simply installed from somewhere else.
 rule_X2b() {
 rule "drift.local-bin the ~/.local/bin installs do not differ from the repo (advisory)"
-# HARBOR_LOCAL_BIN, the same name deploy-runtime-install.sh takes, so the rule and the
+# HARBOR_LOCAL_BIN, the same name runtime-install.sh takes, so the rule and the
 # installer can be pointed at one fixture together. Without it this rule could
 # only ever be tested against the operator's real ~/.local/bin — which is to say
 # not tested, which is how its never-deployed arm stayed missing (harbor#384).
 _localbin="${HARBOR_LOCAL_BIN:-$HOME/.local/bin}"
 if [ -d "$_localbin" ]; then
   # THE LIST IS READ OUT OF THE INSTALLER, NOT TYPED HERE. Whichever commands
-  # deploy-runtime-install.sh ships are the ones this rule must watch, and a second copy
-  # of that list would drift silently while reading correctly (docs/explanation/doc-truth).
+  # runtime-install.sh ships are the ones this rule must watch, and a second copy
+  # of that list would drift silently while reading correctly (DOCTRINE/doc-truth).
   #
   # BOTH PAYLOAD LISTS, and reading only one of them was this rule's blind spot.
   # LINK_CMDS ships symlinks precisely because "a link cannot go stale"
-  # (contracts/cli.md) — so the list this rule derived from was, by construction,
+  # (CONTRACTS/cli.md) — so the list this rule derived from was, by construction,
   # the list of commands that CANNOT drift, while the one command that must be a
   # COPY was invisible. `harbor` copies so that `harbor restore` survives the
   # checkout disappearing, which means it can never join LINK_CMDS; the list it
@@ -4284,19 +4257,19 @@ if [ -d "$_localbin" ]; then
   # `constitution` and `browser`. Three had been unreachable for over a month.
   # Every `harbor <verb>` typed outside the checkout answered `unknown verb` and
   # exit 2. Nothing in the repo could see it: CLI1 compares bin/harbor against
-  # contracts/cli.md and both were correct — the defect was one directory over.
+  # CONTRACTS/cli.md and both were correct — the defect was one directory over.
   #
   # Still DERIVED from the installer, never typed here, so adding a payload
-  # extends the watch automatically (docs/explanation/doc-truth.md).
-  # harbor#708: the one-word links' single owner is contracts/shims.tsv (runtime-install's LINK_CMDS is
+  # extends the watch automatically (DOCTRINE/doc-truth.md).
+  # harbor#708: the one-word links' single owner is CONTRACTS/shims.tsv (runtime-install's LINK_CMDS is
   # gone), so the pairs are read from there: every bin/ row, as <file>:<name>.
-  _x2b_owned="$(sed 's/#.*//' "$ROOT/contracts/shims.tsv" 2>/dev/null \
+  _x2b_owned="$(sed 's/#.*//' "$ROOT/CONTRACTS/shims.tsv" 2>/dev/null \
     | awk -F'\t' 'NF >= 3 && $1 != "name" && $3 ~ /^bin\// { sub(/^bin\//, "", $3); printf "%s:%s ", $3, $1 }')"
-  _x2b_stamp="${HARBOR_DEPLOY_LIVE_DIR:-${HELM_LIVE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}}/$(awk -F\" '/^STAMP_NAME=/{print $2; exit}' "$ROOT/bin/deploy-install-stamp.sh" 2>/dev/null || printf '.helm-install-stamp')"
-  # access-github-app-install.sh's copies into ~/.local/bin (`put <bin/access-github-app file> "$BIN/<name>"`), read from its own put
+  _x2b_stamp="${HELM_LIVE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}/$(awk -F\" '/^STAMP_NAME=/{print $2; exit}' "$ROOT/bin/install-stamp.sh" 2>/dev/null || printf '.helm-install-stamp')"
+  # harbor-app-install.sh's copies into ~/.local/bin (`put <bin/harbor-app file> "$BIN/<name>"`), read from its own put
   # lines: the gh shim lagged its #1381 fix for nine days and the sweep could not read 7 repos (2026-10-27). Compared
   # only (DIFFERS or DANGLING): their absence is the operator's choice not to install the App, never NEVER DEPLOYED.
-  _x2b_app="$(awk '$1 == "put" && $3 ~ /^"\$BIN\// { d = $3; gsub(/"/, "", d); sub(/^\$BIN\//, "", d); printf "access-github-app/%s:%s ", $2, d }' "$ROOT/bin/access-github-app-install.sh" 2>/dev/null)"
+  _x2b_app="$(awk '$1 == "put" && $3 ~ /^"\$BIN\// { d = $3; gsub(/"/, "", d); sub(/^\$BIN\//, "", d); printf "harbor-app/%s:%s ", $2, d }' "$ROOT/bin/harbor-app-install.sh" 2>/dev/null)"
   # source .sh -> installed one-word name
   for _pair in $_x2b_owned $_x2b_app; do
     _src="$ROOT/bin/${_pair%%:*}"
@@ -4323,7 +4296,7 @@ if [ -d "$_localbin" ]; then
       case " $_x2b_owned " in
         *" $_pair "*)
           if [ -f "$_x2b_stamp" ] && grep -q '^runtime-install ' "$_x2b_stamp" 2>/dev/null; then
-            _adv drift.local-bin "never-deployed:~/.local/bin/${_pair#*:}"; printf "  ADVISORY [drift.local-bin] NEVER DEPLOYED: ~/.local/bin/%s is absent, though deploy-runtime-install.sh ships it and has run on this box — re-run it\\n" "${_pair#*:}"
+            _adv drift.local-bin "never-deployed:~/.local/bin/${_pair#*:}"; printf "  ADVISORY [drift.local-bin] NEVER DEPLOYED: ~/.local/bin/%s is absent, though runtime-install.sh ships it and has run on this box — re-run it\\n" "${_pair#*:}"
           fi ;;
       esac
       continue
@@ -4382,12 +4355,12 @@ fi
 # rather than a changed byte, which a single-file `cmp` cannot see.
 #
 # vendor/skills/ USED TO BE out of scope, and the stated reason conflated two
-# different comparisons (found by the 2026-08-13 audit). "Those carry docs/reference/provenance.md
+# different comparisons (found by the 2026-08-13 audit). "Those carry PROVENANCE.md
 # and a documented re-sync diff procedure, so divergence there is a workflow rather
 # than drift" is true of repo↔UPSTREAM divergence and says nothing about
 # repo↔INSTALLED divergence, which is drift in exactly the sense this rule means.
 # The cost of that conflation, measured: the de-persona intake fix landed in the
-# repo on 2026-07-26 and `docs/explanation/absent-by-decision.md` recorded it "closed the
+# repo on 2026-07-26 and `DOCTRINE/absent-by-decision.md` recorded it "closed the
 # same day", while the INSTALLED copies still rendered `{{PRINCIPAL_NAME}}`
 # literally in three Fabric READMEs and still said "the principal" in four more —
 # for seventeen days, loadable in every session, and unfalsifiable from inside the
@@ -4738,13 +4711,13 @@ fi
 #
 # Both were found on 2026-08-02, in one session, on this box:
 #   · context-resolve.sh:203 guards its SessionStart peer report on
-#     `[ -f "$DIR/context-peers.sh" ]` and prints nothing when absent — correct,
+#     `[ -f "$DIR/fleet-sessions.sh" ]` and prints nothing when absent — correct,
 #     since the reader must never print a count it could not measure. No
-#     installer shipped context-peers.sh, so that guard was permanently false
+#     installer shipped fleet-sessions.sh, so that guard was permanently false
 #     and the report had NEVER FIRED, on a box that routinely runs four
 #     concurrent sessions across two worktrees of one repo.
 #   · guard-integrity.sh had no update path at all outside floor-install
-#     --with-b6, which the install order holds back (eval-pass-score.sh reports on
+#     --with-b6, which the install order holds back (pass-score.sh reports on
 #     the floor; it does not gate the installer — floor-install.sh never calls it).
 # Neither was invisible for want of a test. Both were invisible because nothing
 # asked the one question that spans the two lists: does the payload contain
@@ -4764,7 +4737,7 @@ fi
 # $SRC IS NOT ALWAYS THE REPO, AND THAT EXEMPTION HID harbor#313 FOR AS LONG AS IT
 # STOOD. This comment used to end "a reference through $SRC is a repo-local call and
 # correctly invisible here". That is true only of a script which is never installed.
-# `test-sandbox-make.sh` sets SRC to `dirname "$0"` — its OWN directory — and is itself in
+# `sandbox-make.sh` sets SRC to `dirname "$0"` — its OWN directory — and is itself in
 # runtime-install's FILES, so on a real box its $SRC is $CFG/bin. Its
 # `sh "$SRC/floor-install.sh"` therefore resolved to nothing, `--with-floor` worked
 # from a checkout and failed from the install, and this rule — the one rule whose
@@ -4779,26 +4752,26 @@ fi
 # and correct point.
 #
 # MEASURED BEFORE AND AFTER on this tree: two payload scripts resolve SRC to their
-# own directory (alert-notify.sh, test-sandbox-make.sh), and the widened scan reports
+# own directory (pulse-notify.sh, sandbox-make.sh), and the widened scan reports
 # EXACTLY ONE finding — the harbor#313 call. So this does not trade a blind spot for
 # noise, which would get the advisory skimmed and cost more than it bought.
 # _x7_src_is_own_dir is defined in the shared section at the top (harbor#537) — another rule reads it.
 # A READ IS NOT A CALL INTO NOTHING, and that is the only exemption this rule can
 # safely carry. "Is the call guarded?" is NOT the axis — the first attempt at this
 # used it and lint-test's own arm 2 went red within a minute, correctly: X7's
-# FOUNDING case is context-resolve.sh guarding `[ -f "$DIR/context-peers.sh" ]`,
+# FOUNDING case is context-resolve.sh guarding `[ -f "$DIR/fleet-sessions.sh" ]`,
 # where the existence test is precisely what HID the loss for months. Exempting
 # guarded calls would have retired the rule's reason for existing while leaving it
 # in the file, which is worse than deleting it.
 #
 # So the axis is EXECUTED vs READ. floor-install.sh reads runtime-install's FILES
-# line with `sed -n … "$SRC/deploy-runtime-install.sh"`, and the comment above it records
+# line with `sed -n … "$SRC/runtime-install.sh"`, and the comment above it records
 # that an empty read fails SAFE, toward copying — an absent file there degrades a
 # derivation, it does not call into nothing. Every other reference in this tree is
 # `sh "$SRC/x"`, the same shape as the founding case.
 #
 # IT FAILS TOWARD REPORTING. A reference is exempt only when EVERY non-comment
-# occurrence is a read tool; an assignment (`_mc="$SRC/gate-merged-check.sh"`, executed
+# occurrence is a read tool; an assignment (`_mc="$SRC/merged-check.sh"`, executed
 # later through the variable) matches no read pattern and is therefore reported,
 # which is the direction a rule about missing files has to lean.
 # _x7_read_only is defined in the shared section at the top (harbor#537) — another rule reads it.
@@ -4841,7 +4814,7 @@ else
     # the line rather than guessing which of three spellings was matched.
     _x7vars='(DIR|CFG)'
     _x7_src_is_own_dir "$_t" && _x7vars='(DIR|CFG|SRC)'
-    # $SRC_DIR is the same variable under the name status-fleet-snapshot-refresh.sh (and the scripts launchd runs) use. The pattern above
+    # $SRC_DIR is the same variable under the name fleet-snapshot-refresh.sh (and the scripts launchd runs) use. The pattern above
     # read `$DIR` and `$SRC` only, so a call through `$SRC_DIR/` was never scanned: status-obligations.sh sat out of every payload
     # while its sibling callees were in it (harbor#1115). Same proviso as $SRC: only where it provably is the script's own dir.
     _x7_src_is_own_dir "$_t" SRC_DIR && _x7vars="${_x7vars%)}|SRC_DIR)"
@@ -4856,7 +4829,7 @@ else
   done
   # A SUITE pair ships a suite that runs on the box and calls its subjects through $B/, the installed
   # bin/ (recover-test's B="$T_ROOT/bin"), which the loop above never read (harbor#756).
-  for _x7p in $(sed -n 's/^SUITE="\(.*\)"$/\1/p' $(_installers) 2>/dev/null | tr ' ' '\n' | grep ':' | sort -u); do
+  for _x7p in $(sed -n 's/^SUITE="\(.*\)"$/\1/p' "$ROOT"/bin/*-install.sh 2>/dev/null | tr ' ' '\n' | grep ':' | sort -u); do
     _x7s="${_x7p%%:*}"
     if [ ! -f "$ROOT/$_x7s" ]; then
       _adv drift.payload-closure "suite-missing:$_x7s"; printf '  ADVISORY [drift.payload-closure] SUITE %s is not in this checkout — its calls were NOT checked\n' "$_x7s" >&2; continue
@@ -4917,7 +4890,7 @@ rule "drift.prod-policy-copy every deployed prod_guard.py matches the AUTHORITAT
 # Fourth instance of one class in this ticket: the artifact under governance is
 # not the artifact doing the work. Here the artifact was the BASELINE.
 _CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-_SRC="${PROJECT_INIT_SRC:-$(env -u HARBOR_ROOT sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_SCAFFOLDER 2>/dev/null || :)}/templates/base/dot_agents/hooks/prod_guard.py"  # harbor#966
+_SRC="${PROJECT_INIT_SRC:-$(env -u HARBOR_ROOT sh "$(dirname -- "$0")/roots.sh" --get HARBOR_PROJECT_INIT 2>/dev/null || :)}/templates/base/dot_agents/hooks/prod_guard.py"  # harbor#966
 _MIRROR="$_CFG/plugins/marketplaces/project-init/plugins/project-init-workflow/hooks/prod_guard.py"
 if [ -f "$_SRC" ]; then _BASE="$_SRC"; _BKIND="source repo"
 else _BASE="$_MIRROR"; _BKIND="marketplace mirror"; fi
@@ -4982,18 +4955,18 @@ fi
 # ── X9 · every registered check has a plist in a commit, and it matches ─────
 # FIFTH SURFACE OF ONE CLASS, and X2/X4/X5's own headers name the first four:
 # the artifact under governance is not the artifact doing the work. Here the
-# artifact is the SCHEDULE. docs/reference/checks.md is the registry, `launchd/` is the tracked
+# artifact is the SCHEDULE. CHECKS.md is the registry, `launchd/` is the tracked
 # definition, and ~/Library/LaunchAgents is what launchd actually loaded —
 # nothing related the three, so both failure directions ran unnoticed:
 #
 #   MEASURED 2026-09-06. A client monitor's job had been firing hourly since
 #   2026-09-04 with a registry row, a tracked monitor script in a workload repo, and NO
-#   PLIST IN ANY COMMIT — the same defect harbor#436 closed for memory-log-token-save.sh,
+#   PLIST IN ANY COMMIT — the same defect harbor#436 closed for save-log-token.sh,
 #   one layer up. And `com.harbor.pulse.plist` installed was 14 comment-lines
 #   BEHIND the repo copy, so the tree documented a delivery observation the box
 #   had never been given.
 #
-# WHY THAT MATTERS RATHER THAN BEING TIDINESS. docs/reference/checks.md's own 2026-09-04
+# WHY THAT MATTERS RATHER THAN BEING TIDINESS. CHECKS.md's own 2026-09-04
 # incident is the argument: launchd keeps the job it LOADED, so a plist that is
 # missing, truncated or stale looks perfectly healthy in `launchctl list` and the
 # loss first shows at reboot, as a check that silently stopped existing. Recovery
@@ -5009,12 +4982,12 @@ fi
 # THE REGISTRY IS THE LIST, never a glob of launchd/. Globbing would make an
 # untracked check invisible to the very rule that exists to find it, which is
 # the shape of a detector that cannot see its own subject.
-# THE REGISTER AND THE PLISTS ARE EACH TWO SOURCES (harbor#1149): core docs/reference/checks.md and launchd/, plus, where a private layer
+# THE REGISTER AND THE PLISTS ARE EACH TWO SOURCES (harbor#1149): core CHECKS.md and launchd/, plus, where a private layer
 # exists, its checks.md rows and its jobs/ plists. _registry prints the composed register (rc 2: the private rows refuse);
 # _plist_of <id> prints the tracked plist for a check id, from launchd/ first. No layer: core alone, as CI sees it.
 _registry() {
-  if [ -f "$ROOT/bin/check-registry-generate.sh" ]; then sh "$ROOT/bin/check-registry-generate.sh" --core "$ROOT/docs/reference/checks.md"
-  else cat "$ROOT/docs/reference/checks.md" 2>/dev/null; fi
+  if [ -f "$ROOT/bin/check-registry-generate.sh" ]; then sh "$ROOT/bin/check-registry-generate.sh" --core "$ROOT/CHECKS.md"
+  else cat "$ROOT/CHECKS.md" 2>/dev/null; fi
 }
 _plist_of() { # <id> -> the plist path, or nothing
   for _po_d in "$ROOT/launchd" "${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}/jobs"; do
@@ -5023,7 +4996,7 @@ _plist_of() { # <id> -> the plist path, or nothing
   return 0
 }
 rule_X9() {
-rule "drift.launchd-plist every launchd-scheduled docs/reference/checks.md check has a tracked plist, and the installed copy matches (advisory)"
+rule "drift.launchd-plist every launchd-scheduled CHECKS.md check has a tracked plist, and the installed copy matches (advisory)"
 # THE SCHEDULE COLUMN IS PART OF THE REGISTER, AND THIS RULE USED TO IGNORE IT.
 # X9 demanded `launchd/com.harbor.<id>.plist` for EVERY row, while the register's
 # own third column says of eight of the fifteen that they are not launchd jobs at
@@ -5060,7 +5033,7 @@ rule "drift.launchd-plist every launchd-scheduled docs/reference/checks.md check
 # cell cannot be trusted, so the row keeps the old strict behaviour and the shape
 # is reported — never quietly dropped from the count.
 _x9_la="$HOME/Library/LaunchAgents"
-_x9_reg="$(_registry 2>/dev/null)" || { _adv drift.launchd-plist registry-refused; printf '  ADVISORY [drift.launchd-plist] the private layer'"'"'s checks.md does not compose into the register (sh bin/check-registry-generate.sh names the line), so core docs/reference/checks.md alone was read\n'; _x9_reg="$(cat "$ROOT/docs/reference/checks.md" 2>/dev/null)"; }
+_x9_reg="$(_registry 2>/dev/null)" || { _adv drift.launchd-plist registry-refused; printf '  ADVISORY [drift.launchd-plist] the private layer'"'"'s checks.md does not compose into the register (sh bin/check-registry-generate.sh names the line), so core CHECKS.md alone was read\n'; _x9_reg="$(cat "$ROOT/CHECKS.md" 2>/dev/null)"; }
 _x9_rows="$(printf '%s\n' "$_x9_reg" | awk -F'|' '
   /^\| `[a-z0-9.-]+` \|/ {
     id = $2; gsub(/[` ]/, "", id)
@@ -5080,7 +5053,7 @@ _x9_rows="$(printf '%s\n' "$_x9_reg" | awk -F'|' '
       print id " unread"
   }' 2>/dev/null)"
 if [ -z "$_x9_rows" ]; then
-  _adv drift.launchd-plist no-rows; printf '  ADVISORY [drift.launchd-plist] docs/reference/checks.md has no registry rows this rule can read — the register or its table shape moved\n'
+  _adv drift.launchd-plist no-rows; printf '  ADVISORY [drift.launchd-plist] CHECKS.md has no registry rows this rule can read — the register or its table shape moved\n'
 else
   _x9_n=0; _x9_other=0; _x9_untracked=0; _x9_drift=0; _x9_unread=0
   _x9_tmp="${TMPDIR:-/tmp}/harbor-x9.$$"
@@ -5097,7 +5070,7 @@ else
     elif [ "$_x9_kind" = other ]; then
       # Registered, governed, and not a launchd job. Counted so the register's
       # own arithmetic stays visible: silence about these would make the total
-      # disagree with docs/reference/checks.md for no stated reason.
+      # disagree with CHECKS.md for no stated reason.
       _x9_other=$(( _x9_other + 1 )); continue
     elif [ "$_x9_kind" = unread ] && [ -z "$(_plist_of "$_x9_id")" ]; then
       # a tracked plist is evidence enough that it is a launchd job; without one, say what is unknown
@@ -5115,12 +5088,12 @@ else
     [ -f "$_x9_la/com.harbor.$_x9_id.plist" ] || continue
     # The tracked plist is a TEMPLATE (launchd/ names no home, harbor#630); what was installed is what it renders to on this
     # box, so that is what is compared. One that does not render is compared as it stands, which reads as drift.
-    if sh "$ROOT/bin/deploy-launchd-render.sh" "$_x9_repo" > "$_x9_tmp" 2>/dev/null; then
+    if sh "$ROOT/bin/launchd-render.sh" "$_x9_repo" > "$_x9_tmp" 2>/dev/null; then
       cmp -s "$_x9_tmp" "$_x9_la/com.harbor.$_x9_id.plist" && continue
     else
       cmp -s "$_x9_repo" "$_x9_la/com.harbor.$_x9_id.plist" && continue
     fi
-    _adv drift.launchd-plist "differs:com.harbor.$_x9_id.plist"; printf '  ADVISORY [drift.launchd-plist] installed copy differs from what the repo renders to: %s — render it again (sh bin/deploy-launchd-render.sh), or commit what the box is running\n' "com.harbor.$_x9_id.plist"
+    _adv drift.launchd-plist "differs:com.harbor.$_x9_id.plist"; printf '  ADVISORY [drift.launchd-plist] installed copy differs from what the repo renders to: %s — render it again (sh bin/launchd-render.sh), or commit what the box is running\n' "com.harbor.$_x9_id.plist"
     _x9_drift=$(( _x9_drift + 1 ))
   done
   rm -f "$_x9_tmp"
@@ -5130,14 +5103,14 @@ fi
 }
 # ── X3 · the always-on context surface stays under its ceiling ─────────────
 # bin/context-budget.sh existed and NOTHING RAN IT — which is exactly the shape
-# policy/constitution.md calls a wish. Advisory rather than fatal, like X2: the ceiling
+# CONSTITUTION.md calls a wish. Advisory rather than fatal, like X2: the ceiling
 # is a round arguable number, and a hard failure on an arguable threshold is how
 # a check gets commented out. Advisory means it is SEEN every build.
 # ── T9 · the skill catalog matches the skills on disk ──────────────────────────
 # An index of this many skills maintained by hand drifts the moment one is added,
 # renamed or hidden — and an index that lies is WORSE than no index, because
 # the whole reason it exists is to be trusted by a session that cannot see the
-# skills it lists. Same reasoning as T1's "docs/generated/status.md is generated, not
+# skills it lists. Same reasoning as T1's "STATUS.md is generated, not
 # ── T10 · every authored skill is answered for in skills/README.md ──────────
 # skills/README.md carries an Inhabitants table whose column is "Why it exists",
 # and it is the only place a reader learns whether a skill earns its always-on
@@ -5169,7 +5142,7 @@ fi
 # Advisory, and deliberately so: the subject is ~/.claude/skills, outside the
 # repo, so a hard failure would fire on a box where the skills are installed
 # differently or not at all. A false positive gets a check deleted rather than
-# fixed (policy/constitution.md §2.11).
+# fixed (CONSTITUTION.md §2.11).
 # ── T11 · a skill the router cannot match is a skill nobody reaches ─────────
 # `context-rules/user/repo-skills.sh` makes a hidden skill reachable by emitting its
 # TRIGGER PHRASES, not its prose: it extracts `USE WHEN...` from the description
@@ -5240,7 +5213,7 @@ fi
 # case — it reads as a claim about NOW and was a claim about THEN, and nothing in
 # the sentence says which.
 #
-# Measured 2026-09-16 over contracts/ + docs/explanation/ (26 files, 4,294 lines): 101
+# Measured 2026-09-16 over CONTRACTS/ + DOCTRINE/ (26 files, 4,294 lines): 101
 # magnitude claims in prose, 68 already dated, SIX undated and sitting beside one
 # of this repo's own tools. Four of those six are checkable by running the tool
 # they name, and THREE WERE WRONG: `lint-conventions` "73 rules" against 76,
@@ -5265,7 +5238,7 @@ fi
 # a ratchet instead of a hand-kept set that drifts smaller than the truth. It also
 # killed this rule's only false positive independently of the regex fix that also
 # killed it: the first draft matched `check-seams.sh` in
-# docs/explanation/wiring-new-capability.md, and that script DOES NOT EXIST here, so a
+# DOCTRINE/wiring-new-capability.md, and that script DOES NOT EXIST here, so a
 # derived vocabulary cannot name it. (The dangling citation is a real defect and
 # belongs to K1 / reference-check, not to this rule.)
 rule_T12() {
@@ -5278,7 +5251,7 @@ if [ -n "$_T12_CMDS" ]; then
   _T12_CRE='`('"$_T12_CMDS"')([.]sh)?( --?[a-z-]+)*`'
   _T12_MRE='(^|[^0-9A-Za-z.:#-])([0-9]+ of [0-9]+|[0-9]+([.][0-9]+)?[ ]?%|[0-9][0-9]?[0-9]?(,[0-9][0-9][0-9])+|[0-9]+ (B|KB|MB|GB)|[0-9]+ (rules?|files?|lines?|skills?|checks?|violations?|copies|repos?|scripts?|assertions?))'
   _T12="$(
-    find "$ROOT/contracts" "$ROOT/docs/explanation" -maxdepth 1 -name '*.md' 2>/dev/null | sort |
+    find "$ROOT/CONTRACTS" "$ROOT/DOCTRINE" -maxdepth 1 -name '*.md' 2>/dev/null | sort |
     while IFS= read -r _t12f; do
       # A DATE ANYWHERE IN THE PARAGRAPH SATISFIES IT, and for a markdown table
       # that means one stamp in the header covers every row — which is the right
@@ -5290,7 +5263,7 @@ if [ -n "$_T12_CMDS" ]; then
         # different times, and there a dated bullet SHELTERS an undated one. Probed
         # 2026-09-16: two bullets in one block, the first dated, the second an
         # undated `doctor` -- 4 of 4, went unreported. Tightening costs nothing
-        # today (measured: zero new hits across contracts/ + docs/explanation/), which is
+        # today (measured: zero new hits across CONTRACTS/ + DOCTRINE/), which is
         # why it ships now rather than as a known hole.
         function dated(lo, hi,   i, s) {
           s = ""
@@ -5354,14 +5327,14 @@ rule "context.budget-ceiling the always-on context surface stays under its ceili
 # REGROWTH, so the primary verdict is now a recorded prior measurement — T1's
 # mechanism applied to a surface. The deliberate surface (constitution + ambient
 # skill descriptions + repo-scoped) is the half a baseline can bind; the memory
-# index changes whenever a memory is written and is memory-store-check.sh's to bound.
+# index changes whenever a memory is written and is store-check.sh's to bound.
 # The subject is the verdict's KIND, which the tool prints (harbor#585): an instrument change and
 # regrowth are different findings, and a flip between grew and shrank re-opens an accepted one.
 if [ -f "$ROOT/bin/context-budget.sh" ]; then
   _x3b="$(sh "$ROOT/bin/context-budget.sh" --check --kind 2>&1)" || {
     _x3k="$(printf '%s\n' "$_x3b" | sed -n 's/^kind=\([a-z-]*\)$/\1/p' | tail -1)"
     _x3m="$(printf '%s\n' "$_x3b" | grep -v '^kind=' | head -1)"
-    _adv context.budget-ceiling "${_x3k:-verdict-unreadable}:registries/context-baseline.tsv"; printf '  ADVISORY [context.budget-ceiling] %s\n' "$_x3m"; }
+    _adv context.budget-ceiling "${_x3k:-verdict-unreadable}:CONTEXT-BASELINE.tsv"; printf '  ADVISORY [context.budget-ceiling] %s\n' "$_x3m"; }
 fi
 if [ -x "$ROOT/bin/context-budget.sh" ] || [ -f "$ROOT/bin/context-budget.sh" ]; then
   # Match the verdict LINE, not a position: the OVER branch prints a blank line
@@ -5375,7 +5348,7 @@ if [ -x "$ROOT/bin/context-budget.sh" ] || [ -f "$ROOT/bin/context-budget.sh" ];
            # is actionable is WHICH surface to trim, and on this box that is the
            # cwd-keyed memory index — 22,467 B of a 44,311 B total on 2026-08-20,
            # larger than CLAUDE.md and bounded by nothing until CX1.
-           _adv context.budget-ceiling -; printf '  ADVISORY [context.budget-ceiling] the breakdown, and what to trim: sh bin/memory-store-check.sh\n' ;;
+           _adv context.budget-ceiling -; printf '  ADVISORY [context.budget-ceiling] the breakdown, and what to trim: sh bin/store-check.sh\n' ;;
     *%*)   printf '  %s\n' "$_cb" ;;
   esac
 fi
@@ -5398,7 +5371,7 @@ fi
 # see the thing being justified by it), absent from the generated skill-catalog
 # (0 hits), and its build/check.mjs was registered in no suite while its own
 # manifest advertised "Ships its own browser acceptance suite" and
-# contracts/suite-paths.txt recorded "atlas ships no suite and has no prove
+# CONTRACTS/suite-paths.txt recorded "atlas ships no suite and has no prove
 # target". Two documents, one tree, opposite claims.
 #
 # AND THE TIER BOUGHT NOTHING. Verified 2026-09-06: a `.claude-plugin/plugin.json`
@@ -5411,20 +5384,20 @@ fi
 #
 # SO THE RULE IS NARROW, AND SO IS ITS EXIT. This fails on a Harbor-AUTHORED
 # plugin tier only. The security floor watching the BOX's third-party plugin
-# surface (guard-lib.sh, deploy-harden.sh, guard-integrity.sh, and the
+# surface (guard-lib.sh, sec0-harden.sh, guard-integrity.sh, and the
 # `plugins/marketplaces/...` paths elsewhere in this file) is a defence against
 # somebody else's plugin and is untouched — weakening it to satisfy this rule
 # would be the exact move the constitution forbids while degraded.
 #
 # IF DISTRIBUTION EVER BECOMES REAL, this rule is what you delete, deliberately,
-# with the reasoning in docs/explanation/no-authored-plugins.md updated to say why.
+# with the reasoning in DOCTRINE/no-authored-plugins.md updated to say why.
 rule_X10() {
-rule "policy.no-authored-plugins no Harbor-authored plugin tier (docs/explanation/no-authored-plugins.md)"
+rule "policy.no-authored-plugins no Harbor-authored plugin tier (DOCTRINE/no-authored-plugins.md)"
 if [ -d "$ROOT/plugins" ]; then
-  bad policy.no-authored-plugins "plugins/ is back — capability belongs in skills/ + bin/; see docs/explanation/no-authored-plugins.md"
+  bad policy.no-authored-plugins "plugins/ is back — capability belongs in skills/ + bin/; see DOCTRINE/no-authored-plugins.md"
 fi
 if [ -f "$ROOT/.claude-plugin/marketplace.json" ]; then
-  bad policy.no-authored-plugins "marketplace.json is back — it buys only off-repo install; see docs/explanation/no-authored-plugins.md"
+  bad policy.no-authored-plugins "marketplace.json is back — it buys only off-repo install; see DOCTRINE/no-authored-plugins.md"
 fi
 for _pm in "$ROOT"/skills/*/.claude-plugin/plugin.json "$ROOT"/vendor/skills/*/.claude-plugin/plugin.json; do
   # A manifest INSIDE a skill dir is the sanctioned escape hatch (it loads as
@@ -5438,7 +5411,7 @@ unset _pm
 # ── X6 · a governed repo the fleet scan cannot reach ────────────────────────
 # THE GAP THIS CLOSES. The layout convention — "this Mac keeps repos flat under
 # $HOME" — lived in exactly two pieces of prose: a comment inside the GITIGNORED
-# fleet.yaml, and one line of docs/reports/platform-build-tickets.md. Nothing checked it. So a
+# fleet.yaml, and one line of harbor-build-tickets.md. Nothing checked it. So a
 # governed repo cloned into ~/Documents sat outside the fleet while every command
 # reported success, because fleet scans `roots:` one level deep
 # and drops `exclude:` trees — and a project it never enumerates cannot be
@@ -5485,7 +5458,7 @@ rule "scope.repo-discoverable every governed repo is reachable by fleet.yaml's o
 # It also never parsed `projects:`, so a repo registered there explicitly — the
 # supported way to include something outside every root — was reported as
 # unreachable while the fleet was reading it fine.
-_FLEET="$(env -u HARBOR_ROOT sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_FLEET_FILE 2>/dev/null || :)"  # harbor#966
+_FLEET="$(env -u HARBOR_ROOT sh "$(dirname -- "$0")/roots.sh" --get HARBOR_FLEET_FILE 2>/dev/null || :)"  # harbor#966
 if [ -f "$_FLEET" ]; then
   # One awk pass, TAB-tagged by key, so the shell can tell the three lists apart
   # without word-splitting a path. awk and not a YAML library: this layer is
@@ -5569,7 +5542,7 @@ fi
 }
 
 # ── K1 · the constitution may not cite a path that does not exist ──────────
-# policy/constitution.md's own opening promise is "every mechanism named below exists in
+# CONSTITUTION.md's own opening promise is "every mechanism named below exists in
 # this repo and is cited by path". That promise is the whole reason the file is
 # trustworthy: a constitution that references machinery it does not have is a
 # constitution that LIES, and a reader who catches one dead citation has no way
@@ -5581,8 +5554,8 @@ fi
 # pointer would not even fail loudly: it would resolve, into the engine the
 # no-fork decision excluded.
 rule_K1() {
-rule "policy.constitution-paths every repo path cited by policy/constitution.md resolves"
-CON="$ROOT/policy/constitution.md"
+rule "policy.constitution-paths every repo path cited by CONSTITUTION.md resolves"
+CON="$ROOT/CONSTITUTION.md"
 if [ -f "$CON" ]; then
   # Markdown links of the form (./path) or (./path#anchor) — the only citation
   # form the file uses, deliberately, so this rule can be exhaustive rather than
@@ -5592,7 +5565,7 @@ if [ -f "$CON" ]; then
   # K1" and the two were born with one extractor; fixing it in T3 and leaving it
   # here would be the "finding not generalised" failure this repo has already
   # recorded once. `sed 's/.*](…)/\1/'` anchors on `.*`, which is greedy, so on a
-  # line carrying two links only the LAST was ever checked. policy/constitution.md has
+  # line carrying two links only the LAST was ever checked. CONSTITUTION.md has
   # no two-link line today — measured, both extractors return the same 16 paths —
   # so this changes no verdict now and closes the hole before it opens.
   #
@@ -5604,11 +5577,11 @@ if [ -f "$CON" ]; then
   # runs its body in a SUBSHELL, so `bad` increments a counter that dies with
   # it: the first cut of this rule printed the violation and still reported
   # "0 violations" — a rule that reports but cannot fail, which is the exact
-  # class policy/constitution.md §2 forbids and which this repo has now hit three
+  # class CONSTITUTION.md §2 forbids and which this repo has now hit three
   # times in three different shapes.
-  # TWO CITATION FORMS, ONE RULE (2026-08-03). policy/constitution.md is the only repo
+  # TWO CITATION FORMS, ONE RULE (2026-08-03). CONSTITUTION.md is the only repo
   # document that is also DEPLOYED — it is copied to ~/.claude/CLAUDE.md, where
-  # `./docs/explanation/…` resolves against a directory tree that is not there. Twelve
+  # `./DOCTRINE/…` resolves against a directory tree that is not there. Twelve
   # markdown links were dead on the surface that is actually read, while this
   # rule stayed green against the checkout: the file's own instruction to report
   # an unresolvable citation was unfollowable in the place it was being read.
@@ -5620,25 +5593,25 @@ if [ -f "$CON" ]; then
   # checks went 16 → 16.
   #
   # `./` STAYS MANDATORY IN BOTH FORMS, which is what keeps this exhaustive
-  # rather than heuristic. A bare `docs/explanation/admission-baseline.md` in backticks would be indistinguish-
+  # rather than heuristic. A bare `FLOOR.md` in backticks would be indistinguish-
   # able from prose, and widening to "any backticked token containing a dot"
   # would have to decide whether `permissions.deny`, `absent  CLAUDE.md` and
   # `harbor#44` are paths. They are not, and a rule that guesses is a rule that
   # gets muted (№2.11).
   #
-  # awk, NOT grep, for the same reason drift-reference-check.sh uses it: `grep` here is
+  # awk, NOT grep, for the same reason reference-check.sh uses it: `grep` here is
   # a ugrep wrapper carrying -I --ignore-files, and a citation it silently skips
   # produces FEWER violations — a false green in the rule that guards the
   # constitution's own honesty.
   # THE EXTRACTOR MOVED OUT OF THIS RULE (harbor#462) and that is the whole fix,
-  # not a tidy-up. This rule and drift-reference-check.sh REF-5 ask the same question of
+  # not a tidy-up. This rule and reference-check.sh REF-5 ask the same question of
   # the same document against two different roots, and each carried its own copy
   # of the parsing. When commit 8b50867 migrated this file's citation dialect to
   # backticks, the copy HERE was taught the new form and the copy THERE was not —
   # so REF-5 went from 12 findings to 0 and read like a repair, while ten dead
   # pointers sat on the surface that every session actually loads, undetected
   # until 2026-09-06. Two copies of a parser is what made a dialect change able to
-  # blind one reader and not the other, so now there is one: bin/doc-cited-paths.awk.
+  # blind one reader and not the other, so now there is one: bin/cited-paths.awk.
   #
   # THE ROOTS STAY DIFFERENT ON PURPOSE, and that is not the duplication being
   # reintroduced. K1 asks "does this resolve IN THE REPO" and must resolve against
@@ -5658,11 +5631,11 @@ if [ -f "$CON" ]; then
   # HARBOR_ROOT — lint-test.sh points it at a fixture that has no bin/ until 50
   # lines after the K1 cases run, so resolving there made the rule report "the
   # extractor is missing" instead of checking citations. It is also the same
-  # trust rule drift-reference-check.sh and audit-triage.sh both carry: a tool taken
+  # trust rule reference-check.sh and failure-capture.sh both carry: a tool taken
   # from the inspected tree lets that tree choose what the checker can see.
-  _K1_AWK="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)/doc-cited-paths.awk"
+  _K1_AWK="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)/cited-paths.awk"
   if [ ! -f "$_K1_AWK" ]; then
-    bad policy.constitution-paths "bin/doc-cited-paths.awk is missing — NO citation in policy/constitution.md was checked, and this is not a pass"
+    bad policy.constitution-paths "bin/cited-paths.awk is missing — NO citation in CONSTITUTION.md was checked, and this is not a pass"
   fi
   _k1_cited() {
     [ -f "$_K1_AWK" ] || return 0
@@ -5674,14 +5647,14 @@ if [ -f "$CON" ]; then
   }
   for p in $(_k1_cited); do
     [ -n "$p" ] || continue
-    [ -e "$ROOT/$p" ] || bad policy.constitution-paths "policy/constitution.md cites a path that does not exist: $p"
+    [ -e "$ROOT/$p" ] || bad policy.constitution-paths "CONSTITUTION.md cites a path that does not exist: $p"
   done
   set +f
 fi
 }
 
 # ── MAG1 · a magnitude in the constitution carries the command that derives it ─
-# policy/constitution.md says it itself — "a magnitude that decides something carries the
+# CONSTITUTION.md says it itself — "a magnitude that decides something carries the
 # command that derives it" — and was caught breaking it three times (harbor#583):
 # "two thirds" (really 39 of 50), "52 files / NOT ONE earns a split" (one did, two
 # weeks later), "10 of 10 repos blind" (fixed the day it was measured, still read
@@ -5701,8 +5674,8 @@ fi
 # one bullet cannot borrow the fence under another. The denominator is printed:
 # "0 violations" over 0 examined would read as clean and mean nothing.
 rule_MAG1() {
-rule "policy.magnitude-derived a magnitude in policy/constitution.md carries the command that derives it (harbor#583)"
-CON="$ROOT/policy/constitution.md"
+rule "policy.magnitude-derived a magnitude in CONSTITUTION.md carries the command that derives it (harbor#583)"
+CON="$ROOT/CONSTITUTION.md"
 if [ -f "$CON" ]; then
   _cm1="$(awk '
     function strip(t) {
@@ -5723,11 +5696,11 @@ if [ -f "$CON" ]; then
     }' "$CON")"
   for _l in $(printf '%s\n' "$_cm1" | sed -n 's/^BAD \([0-9]*\) .*/\1/p'); do
     _t="$(printf '%s\n' "$_cm1" | sed -n "s/^BAD $_l //p")"
-    bad policy.magnitude-derived "policy/constitution.md:$_l states the magnitude '$_t' with no fenced derive command beside it — add the command, or remove the number and keep the sentence (harbor#583)"
+    bad policy.magnitude-derived "CONSTITUTION.md:$_l states the magnitude '$_t' with no fenced derive command beside it — add the command, or remove the number and keep the sentence (harbor#583)"
   done
-  say "  $(printf '%s\n' "$_cm1" | sed -n 's/^EXAMINED //p') digit magnitude(s) examined in policy/constitution.md; spelled-out numbers are not read."
+  say "  $(printf '%s\n' "$_cm1" | sed -n 's/^EXAMINED //p') digit magnitude(s) examined in CONSTITUTION.md; spelled-out numbers are not read."
 else
-  bad policy.magnitude-derived "policy/constitution.md is missing — NO magnitude was checked, and this is not a pass"
+  bad policy.magnitude-derived "CONSTITUTION.md is missing — NO magnitude was checked, and this is not a pass"
 fi
 }
 
@@ -5746,7 +5719,7 @@ rule "drift.sandbox-copy the dev sandbox's guards are byte-identical to bin/ (QA
 # "$SBX/bin" ] && ls ...` with NO else branch, so on a box with no dev sandbox it
 # examined zero items and reported green without saying so. Measured 2026-09-16:
 # there is no sandbox on this box, so that is exactly what it had been doing. The
-# advisory below is F12's idiom, and docs/reference/checks.md already states the principle about a
+# advisory below is F12's idiom, and CHECKS.md already states the principle about a
 # sibling repo's seam — "it also fails when it examines ZERO files, because a seam
 # whose glob stopped matching must not report green". It is ADVISORY and not `bad`
 # because a box without a sandbox is a legitimate state, and failing on it would be
@@ -5763,7 +5736,7 @@ rule "drift.sandbox-copy the dev sandbox's guards are byte-identical to bin/ (QA
 # this rule names does `cp -R "$LIVE/bin"` — the whole directory — and on
 # 2026-09-16 the live config dir carried all 9 guards and all 4 non-guard floor
 # files. So a correctly built sandbox cannot fail the wider check (§2.11).
-SBX="${HARBOR_TEST_SANDBOX_DIR:-${HELM_SANDBOX_DIR:-$HOME/.claude-sandbox}}"
+SBX="${HELM_SANDBOX_DIR:-$HOME/.claude-sandbox}"
 # DERIVED, NOT LISTED, for the guards. The four non-guard floor components are
 # named because no glob selects exactly those four — but they are named ONCE now,
 # and the presence check and the byte check read the same list instead of two.
@@ -5787,11 +5760,11 @@ if [ -d "$SBX/bin" ]; then
     # Every file the repo ships into the floor must be PRESENT in the sandbox, or
     # the sandbox tests a smaller floor than the one being shipped — R8 exactly.
     if [ ! -f "$SBX/bin/$b" ]; then
-      bad drift.sandbox-copy "sandbox is missing $b (rebuild: sh bin/test-sandbox-make.sh --fresh --with-floor)"
+      bad drift.sandbox-copy "sandbox is missing $b (rebuild: sh bin/sandbox-make.sh --fresh --with-floor)"
       continue
     fi
     [ -f "$ROOT/bin/$b" ] || continue
-    cmp -s "$SBX/bin/$b" "$ROOT/bin/$b" || bad drift.sandbox-copy "sandbox copy is stale: $b (rebuild: sh bin/test-sandbox-make.sh --fresh --with-floor)"
+    cmp -s "$SBX/bin/$b" "$ROOT/bin/$b" || bad drift.sandbox-copy "sandbox copy is stale: $b (rebuild: sh bin/sandbox-make.sh --fresh --with-floor)"
   done <<X1EOF
 $_X1_WANT
 X1EOF
@@ -5803,7 +5776,7 @@ X1EOF
   fi
 else
   _adv drift.sandbox-copy no-dev-sandbox; printf '  ADVISORY [drift.sandbox-copy] no dev sandbox at %s — this rule verified NOTHING.\n' "$SBX" >&2
-  printf '           build one: sh bin/test-sandbox-make.sh --fresh --with-floor\n' >&2
+  printf '           build one: sh bin/sandbox-make.sh --fresh --with-floor\n' >&2
 fi
 }
 
@@ -5823,12 +5796,12 @@ fi
 # registry, live in <private>/context-rules (or the old <private>/inject.d, harbor#1010), in the shape of this tree's. They are not tracked
 # here, but they are installed and seeded from there, so a malformed one is the same silent
 # never-fired defect and IJ1..IJ5 read that tree too. `_inj_load` asks the one resolver beside this
-# script (a HARBOR_ROOT fixture holds no scope-roots.sh): _INJ_DIR is the private rules root, empty when
+# script (a HARBOR_ROOT fixture holds no roots.sh): _INJ_DIR is the private rules root, empty when
 # there is none, _INJ_BOX its box tier (user/, or box/ in the old layout), and _INJ_REG the registry inside it, empty when there is none.
 _inj_load() {
   [ -z "${_INJ_LOADED:-}" ] || return 0
   _INJ_LOADED=1
-  _INJ_DIR="$(env -u HARBOR_ROOT sh "$(dirname -- "$0")/scope-roots.sh" --inject 2>/dev/null || :)"
+  _INJ_DIR="$(env -u HARBOR_ROOT sh "$(dirname -- "$0")/roots.sh" --inject 2>/dev/null || :)"
   _INJ_REG=''; _INJ_BOX=''
   if [ -n "$_INJ_DIR" ]; then
     case "$_INJ_DIR" in */context-rules) _INJ_BOX="$_INJ_DIR/user" ;; *) _INJ_BOX="$_INJ_DIR/box" ;; esac
@@ -5836,7 +5809,7 @@ _inj_load() {
   fi
 }
 rule_IJ1() {
-rule "context.pack-shape every tracked rule pack declares an event, a predicate and a body (contracts/injection-rule.md)"
+rule "context.pack-shape every tracked rule pack declares an event, a predicate and a body (CONTRACTS/inject.md)"
 _inj_load
 _ij_fm() { awk 'NR==1 && $0 !~ /^---[[:space:]]*$/ { exit }
                 NR>1  && $0 ~  /^---[[:space:]]*$/ { exit }
@@ -5926,7 +5899,7 @@ for f in "$ROOT"/context-rules/*/*.md "${_INJ_DIR:-/nonexistent}"/*/*.md; do
 done
 # A PACK OUTSIDE THE DECLARED LOCATION IS A PACK NOTHING READS (harbor#588).
 # The glob above is `context-rules/*/*.md` (harbor#1010; it was `inject.d/*/*.md` and `.claude/inject.d/*.md`), which is
-# exactly where contracts/injection-rule.md says packs live — and so a pack one level
+# exactly where CONTRACTS/inject.md says packs live — and so a pack one level
 # off, at `inject.d/x.md` or `inject.d/box/sub/x.md`, was not validated and not
 # reported either. The installer copies `inject.d/<name>/` and the engine reads
 # one directory deep, so such a pack is committed, reviewed and never fires.
@@ -5948,7 +5921,7 @@ while IFS= read -r f; do
   case "$_lbl" in inject.d/*|.claude/inject.d/*)
     bad context.pack-shape "rule sits in the retired inject.d/ layout, which nothing installs; move it to context-rules/<scope>/<id>.md: $_lbl"; continue ;; esac
   [ "$(printf '%s' "$_rel" | awk -F/ '{ print NF }')" -eq 3 ] \
-    || bad context.pack-shape "pack sits where nothing installs or reads it (contracts/injection-rule.md names context-rules/<scope>/): $_lbl"
+    || bad context.pack-shape "pack sits where nothing installs or reads it (CONTRACTS/inject.md names context-rules/<scope>/): $_lbl"
 done < "$_ijl"
 rm -f "$_ijl"
 # The subshell above cannot increment FAIL — the same defect CLI1's header
@@ -5992,7 +5965,7 @@ if [ -n "$_reg" ]; then
     #
     # The filed remedy was a format change — a fourth column, a sentinel path, a
     # self-row convention — on a tracked contract that three things read. It is not
-    # needed: docs/explanation/doc-truth.md's rule is to DERIVE a fact rather than write a
+    # needed: DOCTRINE/doc-truth.md's rule is to DERIVE a fact rather than write a
     # copy of it, and "does anything govern this project" is derivable from the two
     # places a pack can live. A declared column would be a third copy that drifts
     # while reading perfectly, and it would make every existing row wrong until
@@ -6033,19 +6006,19 @@ fi
 # prose lost — harbor#117's "stale checkboxes", on the one document that says
 # what Harbor still owes.
 #
-# docs/generated/plan.md is derived from each ticket's own `- Evidence:` line and this rule
-# fails when it is stale, exactly as T1 does for docs/generated/status.md. The advisory beside
+# PLAN.md is derived from each ticket's own `- Evidence:` line and this rule
+# fails when it is stale, exactly as T1 does for STATUS.md. The advisory beside
 # it counts UNDECLARED tickets — the ones naming no falsifier at all — because
 # that number, not the open count, is how much of the plan is still prose.
 rule_T1c() {
-rule "doc.plan-generated docs/generated/plan.md is regenerated, not hand-edited (harbor#117)"
-if _export_tree docs/reports/platform-build-tickets.md; then
-  printf '  (skipped: docs/generated/plan.md is generated from docs/reports/platform-build-tickets.md, which is dev-layer and not in this tree, so there is nothing to regenerate it from)\n'
-elif [ -f "$ROOT/bin/status-plan-generate.sh" ]; then
-  if ! sh "$ROOT/bin/status-plan-generate.sh" --check >/dev/null 2>&1; then
-    bad doc.plan-generated "docs/generated/plan.md is stale — run: sh bin/status-plan-generate.sh"
+rule "doc.plan-generated PLAN.md is regenerated, not hand-edited (harbor#117)"
+if _export_tree harbor-build-tickets.md; then
+  printf '  (skipped: PLAN.md is generated from harbor-build-tickets.md, which is dev-layer and not in this tree, so there is nothing to regenerate it from)\n'
+elif [ -f "$ROOT/bin/plan-status.sh" ]; then
+  if ! sh "$ROOT/bin/plan-status.sh" --check >/dev/null 2>&1; then
+    bad doc.plan-generated "PLAN.md is stale — run: sh bin/plan-status.sh"
   fi
-  _t1c="$(sh "$ROOT/bin/status-plan-generate.sh" --summary 2>/dev/null || true)"
+  _t1c="$(sh "$ROOT/bin/plan-status.sh" --summary 2>/dev/null || true)"
   case "$_t1c" in
     *' 0 UNDECLARED'*) printf '  every plan ticket names a falsifier.\n' ;;
     *UNDECLARED*)      _adv doc.plan-generated undeclared-falsifiers; printf '  ADVISORY [doc.plan-generated] %s — an UNDECLARED ticket cannot be proven finished\n' "$_t1c" ;;
@@ -6109,10 +6082,10 @@ fi
 # is delivered: is the pack in the project's own tree, where the engine reads it?
 #
 # THE INCIDENT, 2026-08-29. inject.d/<repo>/ was committed 2026-08-25. Seeding
-# is opt-in (`context-injection-install.sh --projects`) and the last seeding run was
+# is opt-in (`inject-install.sh --projects`) and the last seeding run was
 # 2026-08-23, so ~/<repo>/.claude/inject.d never existed and the note warning
 # that `<tool> --full-refresh` destroys 2.5 years of history had never been
-# delivered once. context-injection-install.sh's own status line said `absent or drifted`
+# delivered once. inject-install.sh's own status line said `absent or drifted`
 # the whole time — the detector was right and nothing consulted it. That is the
 # gap this rule closes: not a missing check, a check nobody ran.
 #
@@ -6125,7 +6098,7 @@ _inj_load
 _ij4_reg="$_INJ_REG"
 _ij4_home="${HARBOR_ESTATE_ROOT:-$HOME}"
 _ij4_bad=0; _ij4_seen=0
-# THE PROJECT PACKS ARE THE PRIVATE LAYER'S (harbor#1149): <private>/context-rules/<name>/ (or inject.d/<name>/) seeded by `context-injection-install.sh
+# THE PROJECT PACKS ARE THE PRIVATE LAYER'S (harbor#1149): <private>/context-rules/<name>/ (or inject.d/<name>/) seeded by `inject-install.sh
 # --projects`. With no registry there is nothing to seed them by, and the box tier below is still judged.
 if [ -n "$_ij4_reg" ]; then
   for _d in "$_INJ_DIR"/*/; do
@@ -6136,20 +6109,13 @@ if [ -n "$_ij4_reg" ]; then
     # No row, or no such directory on this box, is IJ2's business and IJ3's.
     { [ -n "$_t" ] && [ -d "$_t" ]; } || continue
     _ij4_seen=$(( _ij4_seen + 1 ))
-    # Seeded into the repo's own context-rules/<name>/ since harbor#1010; a copy only in the old .claude/inject.d still
-    # fires (rename-0031) and is named as a re-seed, not as never seeded.
-    _ij4_sd="context-rules/$_n"
-    if [ ! -d "$_t/$_ij4_sd" ] && diff -r "$_d" "$_t/.claude/inject.d" >/dev/null 2>&1; then
-      _adv drift.pack-installed "old-layout:$_n"; printf '  ADVISORY [drift.pack-installed] %s pack is seeded only in the old %s/.claude/inject.d: re-seed into %s\n' \
-        "$_n" "${_t#"$_ij4_home"/}" "$_ij4_sd"
+    if [ ! -d "$_t/.claude/inject.d" ]; then
+      _adv drift.pack-installed "never-seeded:$_n"; printf '  ADVISORY [drift.pack-installed] %s pack is tracked but NEVER SEEDED: %s/.claude/inject.d does not exist\n' \
+        "$_n" "${_t#"$_ij4_home"/}"
       _ij4_bad=$(( _ij4_bad + 1 ))
-    elif [ ! -d "$_t/$_ij4_sd" ]; then
-      _adv drift.pack-installed "never-seeded:$_n"; printf '  ADVISORY [drift.pack-installed] %s pack is tracked but NEVER SEEDED: %s/%s does not exist\n' \
-        "$_n" "${_t#"$_ij4_home"/}" "$_ij4_sd"
-      _ij4_bad=$(( _ij4_bad + 1 ))
-    elif ! diff -r "$_d" "$_t/$_ij4_sd" >/dev/null 2>&1; then
-      _adv drift.pack-installed "drifted:$_n"; printf '  ADVISORY [drift.pack-installed] %s pack has drifted from the repo copy: %s/%s\n' \
-        "$_n" "${_t#"$_ij4_home"/}" "$_ij4_sd"
+    elif ! diff -r "$_d" "$_t/.claude/inject.d" >/dev/null 2>&1; then
+      _adv drift.pack-installed "drifted:$_n"; printf '  ADVISORY [drift.pack-installed] %s pack has drifted from the repo copy: %s/.claude/inject.d\n' \
+        "$_n" "${_t#"$_ij4_home"/}"
       _ij4_bad=$(( _ij4_bad + 1 ))
     fi
   done
@@ -6186,7 +6152,7 @@ if [ "$_ij4_seen" -gt 0 ]; then
   if [ "$_ij4_bad" -eq 0 ]; then
     printf '  all %s tracked pack set(s) present on this box are installed and current.\n' "$_ij4_seen"
   else
-    printf '  %s of %s need: sh bin/context-injection-install.sh --live --apply --projects\n' "$_ij4_bad" "$_ij4_seen"
+    printf '  %s of %s need: sh bin/inject-install.sh --live --apply --projects\n' "$_ij4_bad" "$_ij4_seen"
   fi
 fi
 }
@@ -6199,7 +6165,7 @@ fi
 # X7's scan for `$DIR/x.sh` inside installed SCRIPTS never looks at it.
 #
 # ALL THREE OF harbor's COMMANDS WERE BROKEN, measured 2026-08-13. Every one
-# invoked `sh bin/<script>.sh` — a repo-relative path — while `skill-install.sh`
+# invoked `sh bin/<script>.sh` — a repo-relative path — while `skills-install.sh`
 # installs them to `$CFG/commands/`, where they are GLOBAL and run in whatever cwd
 # the session has. There is no in-repo `.claude/commands/`, so global is the only
 # ── IJ5 · the registry against the DISK, in the direction nothing else walks ─
@@ -6394,8 +6360,8 @@ rm -f "$_cm_scripts"
 # this box rather than assumed: the operator's own settings distinguish
 # `Bash(cu note:*)` from `Bash(cu notes)`, which is meaningless unless `:*` is an
 # argument wildcard, and harbor's own commands depend on it —
-# commands/gate-merge.md declares `Bash(gh pr view:*)` and runs `gh pr view $1`,
-# commands/context-budget.md declares `Bash(wc:*)` and `Bash(ls:*)`. Under the old
+# commands/harbor-merge.md declares `Bash(gh pr view:*)` and runs `gh pr view $1`,
+# commands/harbor-context.md declares `Bash(wc:*)` and `Bash(ls:*)`. Under the old
 # predicate all three of those were violations.
 #
 # So the question is not "does the frontmatter contain this string" but "does any
@@ -6447,7 +6413,7 @@ done
 # ── CM3 · the installed slash commands must not drift from the repo ────────
 # THE SAME BLIND SPOT, A THIRD TIME. X2 covers $CFG/bin, X8 covers installed
 # skills (authored, and vendored since harbor#214) — and `commands/` was in
-# neither, on a box where `skill-install.sh` installs it as a third payload kind
+# neither, on a box where `skills-install.sh` installs it as a third payload kind
 # and already computes `current`/`DRIFTED`/`absent` in its dry run. The capability
 # existed; nothing in the lint sweep asked for it, so the answer only appeared if
 # somebody happened to run that command. X2's own scope note describes exactly
@@ -6465,7 +6431,7 @@ done
 # existed only on the box.
 rule_CM3() {
 rule "drift.slash-commands the installed slash commands do not drift from the repo (advisory)"
-_cm3_live="${HARBOR_DEPLOY_LIVE_DIR:-${HELM_LIVE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}}/commands"
+_cm3_live="${HELM_LIVE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}/commands"
 _cm3_n=0
 for f in "$ROOT"/commands/*.md; do
   [ -f "$f" ] || continue
@@ -6493,7 +6459,7 @@ for f in "$ROOT"/commands/*.md; do
   fi
   _cm3_n=$(( _cm3_n + 1 ))
 done
-[ "$_cm3_n" -eq 0 ] || echo "  $_cm3_n installed command(s) have drifted — sh bin/skill-install.sh commands --all --live" >&2
+[ "$_cm3_n" -eq 0 ] || echo "  $_cm3_n installed command(s) have drifted — sh bin/skills-install.sh commands --all --live" >&2
 }
 
 # ── C2 · no Claude attribution in commit messages ──────────────────────────
@@ -6649,14 +6615,14 @@ rule "lint.no-home-path no tracked file names the running user's home directory 
 # `~`; in a corpus fixture write `@HOME@`, which bin/floor-equiv.sh renders.
 #
 # EXCLUDED, EACH FOR A STATED REASON:
-#   evals/                 captured run data: it records what actually happened,
+#   EVALS-DATA/            captured run data: it records what actually happened,
 #   skills/*/EVALS/RUN-*/  and a rewritten path would record a run nobody ran.
-#   docs/explanation/admission-baseline.md               measured bypass payloads: the guard's verdict depends
+#   FLOOR.md               measured bypass payloads: the guard's verdict depends
 #                          on the literal spelling, so a rewrite would record a
 #                          payload nobody measured.
 # launchd/ WAS EXCLUDED UNTIL harbor#630: launchd does not expand $HOME, so a plist
 # had to spell it. The plists are templates now (@HOME@, rendered at install by
-# bin/deploy-launchd-render.sh from contracts/roots.tsv), so they are scanned like any file.
+# bin/launchd-render.sh from CONTRACTS/roots.tsv), so they are scanned like any file.
 _hp1_home="${HOME:-}"
 case "$_hp1_home" in
   ''|/) _adv lint.no-home-path home-unset; printf '  ADVISORY [lint.no-home-path] $HOME is "%s" — NO file was inspected\n' "$_hp1_home" >&2 ;;
@@ -6669,8 +6635,8 @@ case "$_hp1_home" in
       _hp1_tmp="${TMPDIR:-/tmp}/harbor-hp1.$$"
       _hp1_rc=0
       git -C "$ROOT" grep -n -I -F -e "$_hp1_home" -- . \
-        ':(exclude)evals' ':(exclude,glob)skills/*/EVALS/RUN-*/**' \
-        ':(exclude)docs/explanation/admission-baseline.md' > "$_hp1_tmp" 2>/dev/null || _hp1_rc=$?
+        ':(exclude)EVALS-DATA' ':(exclude,glob)skills/*/EVALS/RUN-*/**' \
+        ':(exclude)FLOOR.md' > "$_hp1_tmp" 2>/dev/null || _hp1_rc=$?
       [ "$_hp1_rc" -le 1 ] || bad lint.no-home-path "git grep exited $_hp1_rc — NO file was inspected, and this is not a pass"
       # The path and line only: the matched text carries the home it is about.
       while IFS=: read -r _hp1_f _hp1_n _hp1_rest; do
@@ -6683,28 +6649,28 @@ case "$_hp1_home" in
 esac
 }
 
-# ── ROOT1 · every root default agrees with contracts/roots.tsv (harbor#630) ──
+# ── ROOT1 · every root default agrees with CONTRACTS/roots.tsv (harbor#630) ──
 rule_ROOT1() {
-rule "scope.root-defaults every repo-root default matches contracts/roots.tsv"
+rule "scope.root-defaults every repo-root default matches CONTRACTS/roots.tsv"
 # WHY THIS EXISTS. Measured 2026-09-23: 91 non-comment, non-markdown lines here
 # name a governed repo and 13 go through an override variable. Those 13 were
 # written one at a time and had already diverged — PROJECT_INIT_SRC and
-# HARBOR_SCOPE_SCAFFOLDER are two names for one repo with one default, and nothing
+# HARBOR_PROJECT_INIT are two names for one repo with one default, and nothing
 # compared them, so both read correctly at every site.
 #
 # THE TABLE IS NOT THE RULE. A table with no check is one more copy, and a copy
-# is what this removes. bin/scope-roots.sh --check is the check; this rule is how it
-# runs on every commit. Its own suite (tests/scope/roots/roots.test.sh) holds four negative
+# is what this removes. bin/roots.sh --check is the check; this rule is how it
+# runs on every commit. Its own suite (tests/install/roots-test.sh) holds four negative
 # cases, because a --check that cannot go red would make this rule decorative.
 #
-# NOT A SECOND IMPLEMENTATION. The comparison lives in scope-roots.sh alone; this
+# NOT A SECOND IMPLEMENTATION. The comparison lives in roots.sh alone; this
 # calls it and reports. A lint rule that re-derived the answer would be the
 # third spelling of a rule that exists to stop there being two.
 _root1_out="${TMPDIR:-/tmp}/harbor-root1.$$"
-if sh "$ROOT/bin/scope-roots.sh" --check > "$_root1_out" 2>&1; then
+if sh "$ROOT/bin/roots.sh" --check > "$_root1_out" 2>&1; then
   say "  $(tail -1 "$_root1_out")"
 else
-  # scope-roots.sh --check logs its disagreements through bin/library-log.sh (harbor#771): each is a
+  # roots.sh --check logs its disagreements through bin/log-lib.sh (harbor#771): each is a
   # "  FAIL: <what>" line, not the pre-LOG1 "ROOTS  <what>" this used to key on.
   while IFS= read -r _root1_l; do
     case "$_root1_l" in
@@ -6717,7 +6683,7 @@ rm -f "$_root1_out"
 
 # ── SHIM1 · the operator's PATH shims still point at a file (advisory) ───────
 rule_SHIM1() {
-rule "drift.shim-targets every shim in contracts/shims.tsv points where the table says (advisory)"
+rule "drift.shim-targets every shim in CONTRACTS/shims.tsv points where the table says (advisory)"
 # ADVISORY, and that is the honest level. Nineteen symlinks in ~/.local/bin point
 # into this repo and NOTHING created them — the set on any box is whatever its
 # operator typed, so a fresh clone legitimately has none of them and a hard
@@ -6736,12 +6702,12 @@ rule "drift.shim-targets every shim in contracts/shims.tsv points where the tabl
 # The install standard (harbor#765): shim-install needs a target, and its dry run of the live dir
 # reads, never writes. A shim to link or repoint is a note there, a collision a FAIL.
 _shim1_out="${TMPDIR:-/tmp}/harbor-shim1.$$"
-sh "$ROOT/bin/deploy-shim-install.sh" --live > "$_shim1_out" 2>&1 || :
+sh "$ROOT/bin/shim-install.sh" --live > "$_shim1_out" 2>&1 || :
 _shim1_n="$(grep -cE '^  (note: [^ ]+: would (link|repoint) |FAIL: )' "$_shim1_out" || true)"
 if [ "${_shim1_n:-0}" -eq 0 ] && grep -q '^  ok: ' "$_shim1_out"; then
   say "  all $(grep -c '^  ok: ' "$_shim1_out") shim(s) point where the table says."
 else
-  _adv drift.shim-targets shims; printf '  ADVISORY [drift.shim-targets] %s shim(s) missing, mispointed or blocked — sh bin/deploy-shim-install.sh --live, then --apply --live\n' \
+  _adv drift.shim-targets shims; printf '  ADVISORY [drift.shim-targets] %s shim(s) missing, mispointed or blocked — sh bin/shim-install.sh --live, then --apply --live\n' \
     "${_shim1_n:-0}" >&2
 fi
 grep -E '^  WARN: .* is unmanaged' "$_shim1_out" 2>/dev/null | while IFS= read -r _shim1_u; do
@@ -6751,23 +6717,23 @@ rm -f "$_shim1_out"
 }
 
 # ── LOG1 · one log format: log-lib, FAIL-then-fix, and a ratchet (harbor#771) ─
-# contracts/logging.md is the rule; this makes it binding over every shell program in bin/. A floor
+# CONTRACTS/logging.md is the rule; this makes it binding over every shell program in bin/. A floor
 # file (channel 2), a protocol row (channel 3) and the two named files below are in it by other means.
 rule_LOG1() {
-rule "lint.log-contract bin/ logs through library-log.sh, every FAIL has a fix, and contracts/log-exempt.tsv only shrinks (contracts/logging.md)"
+rule "lint.log-contract bin/ logs through log-lib.sh, every FAIL has a fix, and CONTRACTS/log-exempt.tsv only shrinks (CONTRACTS/logging.md)"
 _l1t="${TMPDIR:-/tmp}/log1.$$"; rm -rf "$_l1t"; mkdir -p "$_l1t"; : > "$_l1t/msgs"; : > "$_l1t/rows"
-_l1_tsv="$ROOT/contracts/log-exempt.tsv"
+_l1_tsv="$ROOT/CONTRACTS/log-exempt.tsv"
 [ ! -f "$_l1_tsv" ] || grep -vE '^[[:space:]]*(#|$)' "$_l1_tsv" | awk -F'\t' 'NR > 1 || $1 != "path"' > "$_l1t/rows"
 # The library itself, and this linter: its VIOLATION lines and summary are parsed by the lint suites
-# and guard-stop, a protocol like the test harness's summary rather than a run log. library-fs.sh prints a
+# and guard-stop, a protocol like the test harness's summary rather than a run log. fs-lib.sh prints a
 # value and logs nothing: a library, like log-lib.
-# library-alert.sh is a library too: its one stderr line IS the notification, said when no desktop channel takes it.
-_l1_named='bin/library-log.sh bin/lint-conventions.sh bin/library-fs.sh bin/library-alert.sh'
+# alert-lib.sh is a library too: its one stderr line IS the notification, said when no desktop channel takes it.
+_l1_named='bin/log-lib.sh bin/lint-conventions.sh bin/fs-lib.sh bin/alert-lib.sh'
 _l1_code() { sed -e 's/^[[:space:]]*#.*$//' -e 's/[[:space:]]#.*$//' "$1"; }  # comments blanked, lines kept
-_l1_uses() { _l1_code "$1" | grep -qE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*library-log\.sh'; }
+_l1_uses() { _l1_code "$1" | grep -qE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*log-lib\.sh'; }
 _l1_floor() { # channel 2: guard-lib.sh, or F1's mark of an installed floor file
   [ "${1##*/}" = guard-lib.sh ] && return 0
-  grep -vE '^[[:space:]]*(#|$)' "$1" 2>/dev/null | head -1 | grep -qE 'HARBOR_ADMISSION_DISABLE|HELM_DISABLE_FLOOR'
+  grep -vE '^[[:space:]]*(#|$)' "$1" 2>/dev/null | head -1 | grep -q HELM_DISABLE_FLOOR
 }
 # Channel 3 evidence that the harness reads a file's stdout (harbor#771): an installer composes it as a
 # harness command (not in an echoed instruction), a rule pack runs it, or it builds Claude Code hook JSON.
@@ -6776,7 +6742,7 @@ _l1_harness() { # <rel>
   # A hook engine is harness-run when its manifest binds it: bin/deploy-hooks.sh renders that wiring (D-88).
   case "$1" in hooks/*/*.sh) grep -q '^wire	' "$ROOT/${1%/*}/manifest.tsv" 2>/dev/null && return 0 ;; esac
   for _l1i in "$ROOT"/bin/*install*.sh; do
-    [ -f "$_l1i" ] && [ ! -L "$_l1i" ] || continue   # not a rename shim (harbor#961)
+    [ -f "$_l1i" ] || continue
     _l1_code "$_l1i" | grep -vE '^[[:space:]]*(echo|printf)[[:space:]]' \
       | grep -qF -e "/bin/sh \$DIR/bin/$_l1h" -e "/bin/sh \\\"\$DIR/bin/$_l1h" -e "/bin/sh \"\$DIR/bin/$_l1h" && return 0
     # The table form (harbor#766): <event>;<matcher>;<argv>;... rows in a `cat <<'ROWS'` heredoc, where
@@ -6793,7 +6759,6 @@ _l1_harness() { # <rel>
 _l1_consumer='Claude Code (statusLine|subagentStatusLine|(SessionStart|UserPromptSubmit|PreToolUse|PostToolUse|PostToolUseFailure|Stop|SubagentStart|SubagentStop|PreCompact|Notification|SessionEnd) hook)'
 for _l1f in "$ROOT"/bin/* $(_engines); do
   [ -f "$_l1f" ] || continue
-  [ -L "$_l1f" ] && continue   # a rename shim (renames.tsv remove_by) is an old name of a file judged under its own (harbor#961)
   case "${_l1f##*/}" in
     *.sh) ;;
     *.*) continue ;;  # .awk .mjs .py cannot source a sh library
@@ -6815,7 +6780,7 @@ _l1_markers() { # <file> <rel>
     function judge(s) {
       if (s ~ /^[[:space:]]*(•|!!)/) return "a • or !! status mark"
       if (s ~ /^[[:space:]]*([A-Za-z0-9._-]+:[[:space:]]+)?(ERROR:|REFUSING|FAILED:)/) return "an ERROR:/REFUSING/FAILED: status prefix"
-      # The words D-29 retired from a log line (contracts/logging.md, "Retired tags"), as a tag: the word, then a colon.
+      # The words D-29 retired from a log line (CONTRACTS/logging.md, "Retired tags"), as a tag: the word, then a colon.
       # PASSWORD: and SKIPPED_COUNT= are not tags, and neither is a padded report label (`WARNING      :`) or a
       # the SKIP column of a suite listing, so the colon must follow the word directly.
       if (match(s, /^[[:space:]]*(PASS|PASSED|OK|SKIP|SKIPPED|UNCHECKED|WARNING|ERR|FATAL):/)) {
@@ -6838,7 +6803,7 @@ _l1_markers() { # <file> <rel>
         sub(/^(-[A-Za-z-]*[[:space:]]+)*/, "", r)
         why = (r ~ /(✓|✗)/) ? "a ✓/✗ status mark" : judge(lit(r))
         if (why == "" && lit(r) ~ /^[[:space:]]*%s/) { a = substr(r, length(lit(r)) + 3); sub(/^[[:space:]]+/, "", a); why = judge(lit(a)) }
-        if (why != "") { printf "%s:%d: prints %s itself, around log-lib (contracts/logging.md)\n", rel, NR, why; break }
+        if (why != "") { printf "%s:%d: prints %s itself, around log-lib (CONTRACTS/logging.md)\n", rel, NR, why; break }
       } }'
 }
 
@@ -6872,7 +6837,7 @@ _l1_stderr() { # <file> <rel>
     />&2/ && match($0, /(^|[^A-Za-z0-9_])(printf|echo)[[:space:]]+/) {
       r = substr($0, RSTART + RLENGTH); sub(/^(-[A-Za-z-]*[[:space:]]+)*/, "", r); s = lit(r)
       if (r ~ /(✓|✗)/ || (s !~ /^(── |  (ok|FAIL|WARN|note|skip|fix): |HELM FLOOR \[)/ && s !~ /^[%$]/ && s != ""))
-        printf "%s:%d: a stderr diagnostic outside the line shape, in a touched protocol file (contracts/logging.md)\n", rel, NR
+        printf "%s:%d: a stderr diagnostic outside the line shape, in a touched protocol file (CONTRACTS/logging.md)\n", rel, NR
     }'
 }
 
@@ -6893,11 +6858,11 @@ while IFS='	' read -r _l1p _l1k; do
   case "$_l1k" in
     protocol)  # its stdout is the harness's, so only a log on stderr is allowed, and it keeps FAIL-then-fix
       if _l1_uses "$_l1f"; then
-        _l1_code "$_l1f" | grep -q 'LOG_FD=2' || printf '%s is harness protocol output and sources library-log.sh without LOG_FD=2 — its log would land in the protocol\n' "$_l1p" >> "$_l1t/msgs"
+        _l1_code "$_l1f" | grep -q 'LOG_FD=2' || printf '%s is harness protocol output and sources log-lib.sh without LOG_FD=2 — its log would land in the protocol\n' "$_l1p" >> "$_l1t/msgs"
         _l1_fixes "$_l1f" "$_l1p" >> "$_l1t/msgs"
       fi ;;
     floor)
-      _l1_uses "$_l1f" && printf '%s is a floor file (channel 2) and sources library-log.sh — its stdout and stderr are the harness'"'"'s\n' "$_l1p" >> "$_l1t/msgs"
+      _l1_uses "$_l1f" && printf '%s is a floor file (channel 2) and sources log-lib.sh — its stdout and stderr are the harness'"'"'s\n' "$_l1p" >> "$_l1t/msgs"
       _l1_markers "$_l1f" "$_l1p" >> "$_l1t/msgs" ;;
     user)
       _l1_markers "$_l1f" "$_l1p" >> "$_l1t/msgs"
@@ -6913,7 +6878,7 @@ done < "$_l1t/class"
 # (c) the ratchet: a row may only name an unconverted shell program unchanged since the base, which is
 # suite-select's (HARBOR_BASE, default origin/main, from the merge-base), compared by content.
 if [ ! -f "$_l1_tsv" ]; then
-  printf 'contracts/log-exempt.tsv is missing — every bin/ file outside the standard is unaccounted for\n' >> "$_l1t/msgs"
+  printf 'CONTRACTS/log-exempt.tsv is missing — every bin/ file outside the standard is unaccounted for\n' >> "$_l1t/msgs"
 else
   _l1_mb=""
   if git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
@@ -6926,25 +6891,25 @@ else
   else
     _adv lint.log-contract no-base; printf '  ADVISORY [lint.log-contract] no base (%s) to compare against — NO exempt file was checked for change\n' "${HARBOR_BASE:-origin/main}" >&2
   fi
-  cut -f1 "$_l1t/rows" | sort | uniq -d | sed 's#^#contracts/log-exempt.tsv lists it twice: #' >> "$_l1t/msgs"
+  cut -f1 "$_l1t/rows" | sort | uniq -d | sed 's#^#CONTRACTS/log-exempt.tsv lists it twice: #' >> "$_l1t/msgs"
   while IFS='	' read -r _l1p _l1k _l1w; do
     [ -n "$_l1p" ] || continue
-    case "$_l1k" in wave-B|ratchet|protocol) ;; *) printf 'contracts/log-exempt.tsv: %s has kind "%s" — wave-B, ratchet or protocol\n' "$_l1p" "$_l1k" >> "$_l1t/msgs"; continue ;; esac
-    [ -n "${_l1w:-}" ] || printf 'contracts/log-exempt.tsv: %s has an empty why\n' "$_l1p" >> "$_l1t/msgs"
+    case "$_l1k" in wave-B|ratchet|protocol) ;; *) printf 'CONTRACTS/log-exempt.tsv: %s has kind "%s" — wave-B, ratchet or protocol\n' "$_l1p" "$_l1k" >> "$_l1t/msgs"; continue ;; esac
+    [ -n "${_l1w:-}" ] || printf 'CONTRACTS/log-exempt.tsv: %s has an empty why\n' "$_l1p" >> "$_l1t/msgs"
     if [ ! -e "$ROOT/$_l1p" ]; then  # it can exempt nothing: a file re-created here is new since the base
-      _adv lint.log-contract "gone:$_l1p"; printf '  ADVISORY [lint.log-contract] contracts/log-exempt.tsv lists %s, which is gone — drop the row\n' "$_l1p" >&2; continue
+      _adv lint.log-contract "gone:$_l1p"; printf '  ADVISORY [lint.log-contract] CONTRACTS/log-exempt.tsv lists %s, which is gone — drop the row\n' "$_l1p" >&2; continue
     fi
     if [ "$_l1k" = protocol ]; then
       printf '%s\n' "${_l1w:-}" | grep -qE "$_l1_consumer" \
-        || printf 'contracts/log-exempt.tsv: %s is a protocol row that names no consumer — say "Claude Code statusLine", or "Claude Code <Event> hook"\n' "$_l1p" >> "$_l1t/msgs"
+        || printf 'CONTRACTS/log-exempt.tsv: %s is a protocol row that names no consumer — say "Claude Code statusLine", or "Claude Code <Event> hook"\n' "$_l1p" >> "$_l1t/msgs"
       _l1_harness "$_l1p" \
-        || printf 'contracts/log-exempt.tsv: %s is a protocol row, but nothing shows the harness reads its output — no installer runs it as a harness command, no rule pack runs it, and it builds no hook JSON\n' "$_l1p" >> "$_l1t/msgs"
+        || printf 'CONTRACTS/log-exempt.tsv: %s is a protocol row, but nothing shows the harness reads its output — no installer runs it as a harness command, no rule pack runs it, and it builds no hook JSON\n' "$_l1p" >> "$_l1t/msgs"
     fi
     _l1c="$(awk -F'\t' -v p="$_l1p" '$1 == p { print $2 }' "$_l1t/class")"
     case "$_l1c" in
       out|protocol) ;;
-      '') printf 'contracts/log-exempt.tsv lists %s, which is not a shell program in bin/ — LOG1 cannot read it\n' "$_l1p" >> "$_l1t/msgs"; continue ;;
-      *) printf 'contracts/log-exempt.tsv lists %s, which already conforms (%s) — drop the row\n' "$_l1p" "$_l1c" >> "$_l1t/msgs"; continue ;;
+      '') printf 'CONTRACTS/log-exempt.tsv lists %s, which is not a shell program in bin/ — LOG1 cannot read it\n' "$_l1p" >> "$_l1t/msgs"; continue ;;
+      *) printf 'CONTRACTS/log-exempt.tsv lists %s, which already conforms (%s) — drop the row\n' "$_l1p" "$_l1c" >> "$_l1t/msgs"; continue ;;
     esac
     [ -n "$_l1_mb" ] || continue
     _l1b="$(awk -F'\t' -v p="$_l1p" '$1 == p { print $2 }' "$_l1t/base")"
@@ -6952,42 +6917,42 @@ else
       [ -n "$_l1b" ] && [ "$_l1b" = "$(git -C "$ROOT" hash-object -- "$_l1p" 2>/dev/null)" ] \
         || _l1_stderr "$ROOT/$_l1p" "$_l1p" >> "$_l1t/msgs"
     elif [ -z "$_l1b" ]; then
-      printf '%s is new since the base, so it cannot be exempt — source bin/library-log.sh and drop its row\n' "$_l1p" >> "$_l1t/msgs"
+      printf '%s is new since the base, so it cannot be exempt — source bin/log-lib.sh and drop its row\n' "$_l1p" >> "$_l1t/msgs"
     elif [ "$_l1b" != "$(git -C "$ROOT" hash-object -- "$_l1p" 2>/dev/null)" ]; then
-      printf '%s changed since the base and is exempt — convert it onto bin/library-log.sh, then drop its row\n' "$_l1p" >> "$_l1t/msgs"
+      printf '%s changed since the base and is exempt — convert it onto bin/log-lib.sh, then drop its row\n' "$_l1p" >> "$_l1t/msgs"
     fi
   done < "$_l1t/rows"
 fi
 awk -F'\t' 'FILENAME == ARGV[1] { row[$1] = 1; next } $2 == "out" && !($1 in row) { print $1 }' "$_l1t/rows" "$_l1t/class" \
-  | sed 's#$# logs outside the standard and has no row in contracts/log-exempt.tsv — source bin/library-log.sh#' >> "$_l1t/msgs"
+  | sed 's#$# logs outside the standard and has no row in CONTRACTS/log-exempt.tsv — source bin/log-lib.sh#' >> "$_l1t/msgs"
 while IFS= read -r _l1m; do bad lint.log-contract "$_l1m"; done < "$_l1t/msgs"
 say "  $(grep -c '	user$' "$_l1t/class") on log-lib, $(grep -c '	floor$' "$_l1t/class") on the guard channel, $(grep -c '	protocol$' "$_l1t/class") harness protocol, $(grep -c . "$_l1t/rows") row(s)."
 rm -rf "$_l1t"
 }
 
 # ── FL1 · a finding's lane is declared by a person, in one table, and joins (harbor#590) ──
-# contracts/finding.md § Lanes holds the ONLY lane declaration. A lane is a property of the key,
+# CONTRACTS/finding.md § Lanes holds the ONLY lane declaration. A lane is a property of the key,
 # written by a person: the system never infers one at run time, because a model deciding at run
 # time that a finding is safe to auto-fix is the promotion CONSTITUTION forbids. So this rule checks
 # the table and nothing else can add a lane: one block, a known lane, a well-formed key that joins
 # to where its rule is registered (never restated), and a HEAL row whose repair names a script that
 # exists. Adding a HEAL row is the human-gated act; this rule is what makes it the only one.
 rule_FL1() {
-rule "audit.finding-lanes finding lanes are declared once, in contracts/finding.md, and every row joins (harbor#590)"
-_fl1c="$ROOT/contracts/finding.md"
+rule "audit.finding-lanes finding lanes are declared once, in CONTRACTS/finding.md, and every row joins (harbor#590)"
+_fl1c="$ROOT/CONTRACTS/finding.md"
 if [ ! -f "$_fl1c" ]; then
-  [ ! -f "$ROOT/bin/lint-findings.sh" ] || bad audit.finding-lanes "bin/lint-findings.sh exists and contracts/finding.md does not — the lanes it reads are gone"
+  [ ! -f "$ROOT/bin/findings.sh" ] || bad audit.finding-lanes "bin/findings.sh exists and CONTRACTS/finding.md does not — the lanes it reads are gone"
   return 0
 fi
 _fl1n="$(grep -c '^<!-- lanes:begin -->$' "$_fl1c" 2>/dev/null | tr -d ' ')"
-[ "${_fl1n:-0}" = 1 ] || { bad audit.finding-lanes "contracts/finding.md has ${_fl1n:-0} lanes blocks — exactly one <!-- lanes:begin --> … <!-- lanes:end -->"; return 0; }
-for _fl1o in "$ROOT"/contracts/*.md "$ROOT"/bin/*.sh $(_engines); do
+[ "${_fl1n:-0}" = 1 ] || { bad audit.finding-lanes "CONTRACTS/finding.md has ${_fl1n:-0} lanes blocks — exactly one <!-- lanes:begin --> … <!-- lanes:end -->"; return 0; }
+for _fl1o in "$ROOT"/CONTRACTS/*.md "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$_fl1o" ] && [ "$_fl1o" != "$_fl1c" ] && [ "$_fl1o" != "$ROOT/bin/lint-conventions.sh" ] || continue
-  grep -q '^<!-- lanes:begin -->$' "$_fl1o" 2>/dev/null && bad audit.finding-lanes "${_fl1o#$ROOT/} declares lanes — contracts/finding.md is the only place a lane is written"
+  grep -q '^<!-- lanes:begin -->$' "$_fl1o" 2>/dev/null && bad audit.finding-lanes "${_fl1o#$ROOT/} declares lanes — CONTRACTS/finding.md is the only place a lane is written"
 done
 _fl1ids=" $(_rule_map | cut -f2 | tr '\n' ' ') "
 _fl1regf="$(mktemp "${TMPDIR:-/tmp}/fl1-register.XXXXXX")" || return 0
-_registry > "$_fl1regf" 2>/dev/null || { bad audit.finding-lanes "the private layer's checks.md does not compose into the register (sh bin/check-registry-generate.sh names the line)"; cat "$ROOT/docs/reference/checks.md" > "$_fl1regf" 2>/dev/null; }
+_registry > "$_fl1regf" 2>/dev/null || { bad audit.finding-lanes "the private layer's checks.md does not compose into the register (sh bin/check-registry-generate.sh names the line)"; cat "$ROOT/CHECKS.md" > "$_fl1regf" 2>/dev/null; }
 _fl1chk=" $(sed -n 's/^| `\([a-z0-9.-]*\)` |.*/\1/p' "$_fl1regf" 2>/dev/null | tr '\n' ' ') "
 rm -f "$_fl1regf"
 _fl1rows="$(awk '/^<!-- lanes:begin -->$/ { t = 1; next } /^<!-- lanes:end -->$/ { t = 0 } t && /^\|/' "$_fl1c" \
@@ -7007,7 +6972,7 @@ while IFS='	' read -r _fl1l _fl1k _fl1s _fl1r _fl1t _fl1nf; do
                _fl1s2="$(_rule_map | awk -F'\t' -v l="${_fl1k#lint/}" '$3 == l { print $2 }')"
                if [ -n "$_fl1s2" ]; then bad audit.finding-lanes "lanes key '$_fl1k' names a deprecated id — its successor is lint/$_fl1s2 (D-19)"
                else bad audit.finding-lanes "lanes key '$_fl1k' names no lint rule — see sh bin/lint-conventions.sh --list"; fi ;; esac ;;
-    check/*) case "$_fl1chk" in *" ${_fl1k#check/} "*) ;; *) bad audit.finding-lanes "lanes key '$_fl1k' names no docs/reference/checks.md row" ;; esac ;;
+    check/*) case "$_fl1chk" in *" ${_fl1k#check/} "*) ;; *) bad audit.finding-lanes "lanes key '$_fl1k' names no CHECKS.md row" ;; esac ;;
     *)       bad audit.finding-lanes "lanes key '$_fl1k' is in a tier FL1 cannot join yet — lint/ and check/ only" ;;
   esac
   printf '%s\n' "$_fl1t" | grep -qE '^#[0-9]+$' || bad audit.finding-lanes "lanes row '$_fl1k' cites no ticket (#<n>) — '$_fl1t'"
@@ -7047,11 +7012,11 @@ FL2MSGS
 }
 
 # ── lint.sibling-literals · core names no more sibling repos by path than the baseline (harbor#966) ─
-# Core reaches a sibling through `scope-roots.sh --repo <id>` (the registry), not a literal path. The count
+# Core reaches a sibling through `roots.sh --repo <id>` (the registry), not a literal path. The count
 # is derived by bin/lint-siblings.sh and may only fall; a rise is red, a fall asks for the baseline.
 rule_lint_sibling_literals() {
-rule "lint.sibling-literals occurrences of another repo's path in core only go down (contracts/lint-siblings-baseline.txt, harbor#966)"
-if [ -f "$ROOT/bin/lint-siblings.sh" ] && [ -f "$ROOT/contracts/lint-siblings-baseline.txt" ]; then
+rule "lint.sibling-literals occurrences of another repo's path in core only go down (CONTRACTS/lint-siblings-baseline.txt, harbor#966)"
+if [ -f "$ROOT/bin/lint-siblings.sh" ] && [ -f "$ROOT/CONTRACTS/lint-siblings-baseline.txt" ]; then
   _sl_out="$(HARBOR_ROOT="$ROOT" sh "$ROOT/bin/lint-siblings.sh" --check 2>&1)" \
     || bad lint.sibling-literals "$(printf '%s' "$_sl_out" | grep -E 'FAIL:|fix:|changed and' | sed 's/^ *//' | tr '\n' ' ')"
 fi
@@ -7059,15 +7024,15 @@ fi
 
 # ── lint.domain · core files name no more workload tools than the baseline (harbor#1274) ─
 # Core holds only harbor's own logic (harbor#1149). bin/lint-domain.sh counts (core file, term) pairs over
-# contracts/domain-terms.tsv minus contracts/domain-allow.tsv; the count may only fall.
+# CONTRACTS/domain-terms.tsv minus CONTRACTS/domain-allow.tsv; the count may only fall.
 rule_lint_platform_calls() {
 rule "lint.platform-calls a bin/ script calls no bare macOS-only tool: ported, declared or in a helper (harbor#618)"
-# The derive is bin/lint-platform.sh; tests/lint/platform/calls.test.sh is its red-proof. Approved by the operator 2026-10-20.
+# The derive is bin/lint-platform.sh; tests/checks/platform-calls-test.sh is its red-proof. Approved by the operator 2026-10-20.
 if [ -f "$ROOT/bin/lint-platform.sh" ]; then
   _pc_out="$(sh "$ROOT/bin/lint-platform.sh" "$ROOT/bin" 2>/dev/null)" || :
   while IFS= read -r _pcl; do
     [ -n "$_pcl" ] || continue
-    bad lint.platform-calls "bin/$_pcl is a bare macOS-only call: port it beside its Linux counterpart, go through bin/library-alert.sh for a notification, or declare \`# platform: macOS-only — <reason>\` in its first 40 lines" "bin/${_pcl%%:*}"
+    bad lint.platform-calls "bin/$_pcl is a bare macOS-only call: port it beside its Linux counterpart, go through bin/alert-lib.sh for a notification, or declare \`# platform: macOS-only — <reason>\` in its first 40 lines" "bin/${_pcl%%:*}"
   done <<PLATFORM
 $_pc_out
 PLATFORM
@@ -7075,23 +7040,23 @@ fi
 }
 
 rule_lint_domain() {
-rule "lint.domain core files naming a workload tool only go down (contracts/lint-domain-baseline.txt, harbor#1274)"
-if [ -f "$ROOT/bin/lint-domain.sh" ] && [ -f "$ROOT/contracts/lint-domain-baseline.txt" ]; then
+rule "lint.domain core files naming a workload tool only go down (CONTRACTS/lint-domain-baseline.txt, harbor#1274)"
+if [ -f "$ROOT/bin/lint-domain.sh" ] && [ -f "$ROOT/CONTRACTS/lint-domain-baseline.txt" ]; then
   _dm_out="$(HARBOR_ROOT="$ROOT" sh "$ROOT/bin/lint-domain.sh" --check 2>&1)" \
     || bad lint.domain "$(printf '%s' "$_dm_out" | grep -E 'FAIL:|fix:|changed and' | sed 's/^ *//' | tr '\n' ' ')"
 fi
 # Workload repo names too (harbor#1273), from the private registry: their own baseline, judged only where it exists.
-if [ -f "$ROOT/bin/lint-domain.sh" ] && [ -f "$ROOT/contracts/lint-domain-repos-baseline.txt" ]; then
+if [ -f "$ROOT/bin/lint-domain.sh" ] && [ -f "$ROOT/CONTRACTS/lint-domain-repos-baseline.txt" ]; then
   _dr_out="$(HARBOR_ROOT="$ROOT" sh "$ROOT/bin/lint-domain.sh" --repos --check 2>&1)" \
     || bad lint.domain "$(printf '%s' "$_dr_out" | grep -E 'FAIL:|fix:|changed and' | sed 's/^ *//' | tr '\n' ' ')"
 fi
 }
 
 # ── doc.constitution-abstract · the constitution states rules, never their cases (harbor#1273) ─
-# No date, ticket, absolute home path or workload repo name outside a fence; the cases are docs/explanation/case-law.md.
+# No date, ticket, absolute home path or workload repo name outside a fence; the cases are DOCTRINE/case-law.md.
 rule_doc_constitution_abstract() {
-rule "doc.constitution-abstract policy/constitution.md names no date, ticket, absolute path or workload repo (harbor#1273)"
-if [ -f "$ROOT/bin/lint-constitution.sh" ] && [ -f "$ROOT/policy/constitution.md" ]; then
+rule "doc.constitution-abstract CONSTITUTION.md names no date, ticket, absolute path or workload repo (harbor#1273)"
+if [ -f "$ROOT/bin/lint-constitution.sh" ] && [ -f "$ROOT/CONSTITUTION.md" ]; then
   # Green needs the summary line too: a script that died early must not read as a clean constitution.
   if ! _ca_out="$(HARBOR_ROOT="$ROOT" sh "$ROOT/bin/lint-constitution.sh" --check 2>&1)" \
      || ! printf '%s\n' "$_ca_out" | grep -q '^lint-constitution: [0-9]* ok, 0 failed'; then
@@ -7102,10 +7067,10 @@ fi
 
 # ── lint.dev-paths · core code names no more dev-layer paths than the baseline (harbor#1275) ─
 # harbor-core has no dev layer, so a core script or test that reads or writes one fails or litters the export.
-# bin/lint-dev-paths.sh counts (core code file, dev path) pairs from contracts/layers.tsv; the count may only fall.
+# bin/lint-dev-paths.sh counts (core code file, dev path) pairs from CONTRACTS/layers.tsv; the count may only fall.
 rule_lint_dev_paths() {
-rule "lint.dev-paths core code naming a dev-layer path only goes down (contracts/lint-dev-paths-baseline.txt, harbor#1275)"
-if [ -f "$ROOT/bin/lint-dev-paths.sh" ] && [ -f "$ROOT/contracts/lint-dev-paths-baseline.txt" ]; then
+rule "lint.dev-paths core code naming a dev-layer path only goes down (CONTRACTS/lint-dev-paths-baseline.txt, harbor#1275)"
+if [ -f "$ROOT/bin/lint-dev-paths.sh" ] && [ -f "$ROOT/CONTRACTS/lint-dev-paths-baseline.txt" ]; then
   _dp_out="$(HARBOR_ROOT="$ROOT" sh "$ROOT/bin/lint-dev-paths.sh" --check 2>&1)" \
     || bad lint.dev-paths "$(printf '%s' "$_dp_out" | grep -E 'FAIL:|fix:|changed and' | sed 's/^ *//' | tr '\n' ' ')"
 fi
@@ -7115,8 +7080,8 @@ fi
 # The core tree is read-only at runtime: a run's output belongs in the state directory, and an untracked file at the root of
 # a harbor-core clone is one `git add -A` from a PR. bin/lint-core-writes.sh counts (script, target) pairs; the count may only fall.
 rule_lint_core_writes() {
-rule "lint.core-writes core scripts writing into the checkout only goes down (contracts/lint-core-writes-baseline.txt, harbor#1275)"
-if [ -f "$ROOT/bin/lint-core-writes.sh" ] && [ -f "$ROOT/contracts/lint-core-writes-baseline.txt" ]; then
+rule "lint.core-writes core scripts writing into the checkout only goes down (CONTRACTS/lint-core-writes-baseline.txt, harbor#1275)"
+if [ -f "$ROOT/bin/lint-core-writes.sh" ] && [ -f "$ROOT/CONTRACTS/lint-core-writes-baseline.txt" ]; then
   _cw_out="$(HARBOR_ROOT="$ROOT" sh "$ROOT/bin/lint-core-writes.sh" --check 2>&1)" \
     || bad lint.core-writes "$(printf '%s' "$_cw_out" | grep -E 'FAIL:|fix:|changed and' | sed 's/^ *//' | tr '\n' ' ')"
 fi
@@ -7146,43 +7111,43 @@ fi
 }
 
 # ── lint.layout-map · every tracked top-level entry has a kind and a layer in the map (harbor#1272) ─
-# bin/lint-layout-map.sh is red on an entry with no row in contracts/layout-map.tsv and on a row naming no entry.
+# bin/lint-layout-map.sh is red on an entry with no row in CONTRACTS/layout-map.tsv and on a row naming no entry.
 rule_lint_layout_map() {
-rule "lint.layout-map every tracked top-level entry is in contracts/layout-map.tsv with a kind and a layer (harbor#1272)"
-if [ -f "$ROOT/bin/lint-layout-map.sh" ] && [ -f "$ROOT/contracts/layout-map.tsv" ]; then
+rule "lint.layout-map every tracked top-level entry is in CONTRACTS/layout-map.tsv with a kind and a layer (harbor#1272)"
+if [ -f "$ROOT/bin/lint-layout-map.sh" ] && [ -f "$ROOT/CONTRACTS/layout-map.tsv" ]; then
   _lm_out="$(HARBOR_ROOT="$ROOT" sh "$ROOT/bin/lint-layout-map.sh" --check 2>&1)" \
     || bad lint.layout-map "$(printf '%s' "$_lm_out" | grep -E 'FAIL:|fix:' | sed 's/^ *//' | tr '\n' ' ')"
 fi
 }
 
 # ── lint.frozen-names · a name a stranger types never vanishes without an alias (harbor#1276) ─
-# bin/standard-frozen-generate.sh is red on a name not yet in standards/naming/frozen.tsv and on a frozen one gone from its source
+# bin/frozen-gen.sh is red on a name not yet in standards/naming/frozen.tsv and on a frozen one gone from its source
 # with no renames.tsv row carrying its alias.
 rule_lint_frozen_names() {
 rule "lint.frozen-names every CLI family, toml key, env root, core skill and guard rule id is frozen, and a rename keeps an alias (harbor#1276)"
-if [ -f "$ROOT/bin/standard-frozen-generate.sh" ] && [ -f "$ROOT/standards/naming/frozen.tsv" ]; then
-  _fz_out="$(HARBOR_ROOT="$ROOT" sh "$ROOT/bin/standard-frozen-generate.sh" --check 2>&1)" \
+if [ -f "$ROOT/bin/frozen-gen.sh" ] && [ -f "$ROOT/standards/naming/frozen.tsv" ]; then
+  _fz_out="$(HARBOR_ROOT="$ROOT" sh "$ROOT/bin/frozen-gen.sh" --check 2>&1)" \
     || bad lint.frozen-names "$(printf '%s' "$_fz_out" | grep -E 'FAIL:|fix:' | sed 's/^ *//' | tr '\n' ' ')"
 fi
 }
 
 # ── lint.leaks · the tree names no more clients, companies or accounts than the baseline (harbor#1149) ─
-# bin/lint-leaks.sh counts the generic patterns of contracts/leak-patterns.tsv. CI has no private layer, so
+# bin/lint-leaks.sh counts the generic patterns of CONTRACTS/leak-patterns.tsv. CI has no private layer, so
 # only the core count is judged here (HARBOR_SCOPE_PRIVATE is emptied); the private count is a local --check.
 rule_lint_leaks() {
-rule "lint.leaks occurrences of a leak-gate core pattern in the tree only go down (contracts/lint-leaks-baseline.txt, harbor#1149)"
-if [ -f "$ROOT/bin/lint-leaks.sh" ] && [ -f "$ROOT/contracts/lint-leaks-baseline.txt" ]; then
+rule "lint.leaks occurrences of a leak-gate core pattern in the tree only go down (CONTRACTS/lint-leaks-baseline.txt, harbor#1149)"
+if [ -f "$ROOT/bin/lint-leaks.sh" ] && [ -f "$ROOT/CONTRACTS/lint-leaks-baseline.txt" ]; then
   _lk_out="$(HARBOR_ROOT="$ROOT" HARBOR_SCOPE_PRIVATE="${TMPDIR:-/tmp}/lint-leaks-no-private" sh "$ROOT/bin/lint-leaks.sh" --check 2>&1)" \
     || bad lint.leaks "$(printf '%s' "$_lk_out" | grep -E 'FAIL:|fix:|changed and' | sed 's/^ *//' | tr '\n' ' ')"
 fi
 }
 
 # ── lint.credential-reads · no more credential reads outside bin/secret than the baseline (harbor#1205) ─
-# A credential reaches code through bin/secret and a register entry (contracts/access-register.md). The count is
+# A credential reaches code through bin/secret and a register entry (CONTRACTS/access-register.md). The count is
 # derived by bin/lint-secrets.sh (a literal value, a direct keychain call, an env token read) and may only fall.
 rule_lint_credential_reads() {
-rule "lint.credential-reads credential reads outside bin/secret only go down (contracts/lint-secrets-baseline.txt, harbor#1205)"
-if [ -f "$ROOT/bin/lint-secrets.sh" ] && [ -f "$ROOT/contracts/lint-secrets-baseline.txt" ]; then
+rule "lint.credential-reads credential reads outside bin/secret only go down (CONTRACTS/lint-secrets-baseline.txt, harbor#1205)"
+if [ -f "$ROOT/bin/lint-secrets.sh" ] && [ -f "$ROOT/CONTRACTS/lint-secrets-baseline.txt" ]; then
   _cr_out="$(HARBOR_ROOT="$ROOT" sh "$ROOT/bin/lint-secrets.sh" --check 2>&1)" \
     || bad lint.credential-reads "$(printf '%s' "$_cr_out" | grep -E 'FAIL:|fix:|changed and' | sed 's/^ *//' | tr '\n' ' ')"
 fi
@@ -7250,10 +7215,10 @@ fi
 # A record's own text does not cite, so its `alias:` and `revised_by:` lines count only for dangling, and
 # docs/index.html, whose decision table quotes every record, is excluded: built, untracked here since harbor#1197,
 # but tracked in the exported core (bin/deploy-push.sh:82), where it would make every record cited.
-# contracts/decision-orphans.tsv is the deliberate-orphan allow-list: one id per row, and a row that is
+# CONTRACTS/decision-orphans.tsv is the deliberate-orphan allow-list: one id per row, and a row that is
 # cited or names no record is itself red. Output: `path TAB line TAB D-n`, one row per citation.
 _decision_cites() {
-  git -C "$ROOT" grep -InE '(^|[^A-Za-z0-9_-])D-[0-9]+([^0-9A-Za-z]|$)' -- . ':(exclude)vendor' ':(exclude)contracts/decision-orphans.tsv' ':(exclude)docs/index.html' 2>/dev/null \
+  git -C "$ROOT" grep -InE '(^|[^A-Za-z0-9_-])D-[0-9]+([^0-9A-Za-z]|$)' -- . ':(exclude)vendor' ':(exclude)CONTRACTS/decision-orphans.tsv' ':(exclude)docs/index.html' 2>/dev/null \
     | LC_ALL=C awk '{
         p = $0; i = index(p, ":"); path = substr(p, 1, i - 1); rest = substr(p, i + 1)
         j = index(rest, ":"); ln = substr(rest, 1, j - 1); txt = substr(rest, j + 1)
@@ -7288,18 +7253,18 @@ rm -f "$_dd.recs" "$_dd.cites" "$_dd.out"
 }
 
 rule_standard_decision_orphan() {
-rule "standard.decision-orphan every decision record is cited outside docs/decisions/, or allow-listed in contracts/decision-orphans.tsv (harbor#1029)"
+rule "standard.decision-orphan every decision record is cited outside docs/decisions/, or allow-listed in CONTRACTS/decision-orphans.tsv (harbor#1029)"
 if ! git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
   bad standard.decision-orphan "$ROOT is not a git checkout, so no record was judged"; return 0
 fi
 _do="${TMPDIR:-/tmp}/do.$$"
 _decision_records > "$_do.recs"; _decision_cites > "$_do.cites"
 LC_ALL=C awk -F'\t' '$1 !~ /^docs\/decisions\// { print $3 }' "$_do.cites" | LC_ALL=C sort -u > "$_do.cited"
-if [ -f "$ROOT/contracts/decision-orphans.tsv" ]; then
-  awk -F'\t' '!/^#/ && NF { print $1 }' "$ROOT/contracts/decision-orphans.tsv" | LC_ALL=C sort -u > "$_do.allow"
-  _do_al="contracts/decision-orphans.tsv"
+if [ -f "$ROOT/CONTRACTS/decision-orphans.tsv" ]; then
+  awk -F'\t' '!/^#/ && NF { print $1 }' "$ROOT/CONTRACTS/decision-orphans.tsv" | LC_ALL=C sort -u > "$_do.allow"
+  _do_al="CONTRACTS/decision-orphans.tsv"
 else
-  : > "$_do.allow"; _do_al="contracts/decision-orphans.tsv (absent)"
+  : > "$_do.allow"; _do_al="CONTRACTS/decision-orphans.tsv (absent)"
 fi
 LC_ALL=C awk -F'\t' -v al="$_do_al" '
   FILENAME == ARGV[1] { cited[$1] = 1; next }
@@ -7322,11 +7287,11 @@ rm -f "$_do.recs" "$_do.cites" "$_do.cited" "$_do.allow" "$_do.out"
 # ── event.kind-registered · the event bus has one register of kinds, and nothing waits on silence ──
 # The presets event.pulse and event.fleet-snapshot listened for ci.job.done while nothing emitted it, and pr.merged had
 # no producer either: the kinds were a prose table, and no rule could say a listener waits on a kind nobody emits
-# (harbor#1367). contracts/event-kinds.tsv is the register; this holds it to the code in both directions.
+# (harbor#1367). CONTRACTS/event-kinds.tsv is the register; this holds it to the code in both directions.
 rule_event_kind_registered() {
-rule "event.kind-registered every event kind is a row of contracts/event-kinds.tsv, its emitter names it, and no preset waits on a kind nothing emits (harbor#1367)"
-_ekf="$ROOT/contracts/event-kinds.tsv"
-[ -f "$_ekf" ] || { bad event.kind-registered "contracts/event-kinds.tsv is missing: the register of event kinds"; return 0; }
+rule "event.kind-registered every event kind is a row of CONTRACTS/event-kinds.tsv, its emitter names it, and no preset waits on a kind nothing emits (harbor#1367)"
+_ekf="$ROOT/CONTRACTS/event-kinds.tsv"
+[ -f "$_ekf" ] || { bad event.kind-registered "CONTRACTS/event-kinds.tsv is missing: the register of event kinds"; return 0; }
 _ek="${TMPDIR:-/tmp}/ek.$$"
 awk -F'\t' '!/^#/ && NF && $1 != "kind" { print $1 "\t" $4 }' "$_ekf" > "$_ek.reg"
 cut -f1 "$_ek.reg" | LC_ALL=C sort -u > "$_ek.kinds"
@@ -7334,20 +7299,20 @@ cut -f1 "$_ek.reg" | LC_ALL=C sort -u > "$_ek.kinds"
 while IFS="$(printf '\t')" read -r _ekk _eke; do
   [ -n "$_ekk" ] && [ "$_eke" != - ] || continue
   for _ekp in $_eke; do
-    if [ ! -f "$ROOT/$_ekp" ]; then bad event.kind-registered "$_ekk: its emitter $_ekp does not exist" "contracts/event-kinds.tsv"
+    if [ ! -f "$ROOT/$_ekp" ]; then bad event.kind-registered "$_ekk: its emitter $_ekp does not exist" "CONTRACTS/event-kinds.tsv"
     elif ! grep -Fq -- "$_ekk" "$ROOT/$_ekp"; then bad event.kind-registered "$_ekk: its emitter $_ekp never names it" "$_ekp"; fi
   done
 done < "$_ek.reg"
 # Every kind the code emits by name is registered.
 { find "$ROOT/bin" "$ROOT/hooks" -type f \( -name '*.sh' -o ! -name '*.*' \) 2>/dev/null || :; } | while IFS= read -r _ekf2; do
-  # A word of its own: harbor_emit (audit-stream-lib.sh) writes a telemetry stream, not a bus event.
+  # A word of its own: harbor_emit (stream-lib.sh) writes a telemetry stream, not a bus event.
   grep -oE '(^|[^A-Za-z0-9_])(emit|emit_event|hook_event) "?[a-z][a-z0-9_-]*(\.[a-z0-9_-]+)+' "$_ekf2" 2>/dev/null \
     | sed -E 's/^[^a-z]*//; s/^[a-z_]+ "?//' | while IFS= read -r _ekk; do
         grep -Fxq -- "$_ekk" "$_ek.kinds" || printf '%s\t%s\n' "${_ekf2#"$ROOT"/}" "$_ekk"
       done
 done | LC_ALL=C sort -u > "$_ek.emitted"
 while IFS="$(printf '\t')" read -r _ekp _ekk; do
-  [ -n "$_ekk" ] && bad event.kind-registered "$_ekp emits $_ekk, which contracts/event-kinds.tsv does not register" "$_ekp"
+  [ -n "$_ekk" ] && bad event.kind-registered "$_ekp emits $_ekk, which CONTRACTS/event-kinds.tsv does not register" "$_ekp"
 done < "$_ek.emitted"
 # Every kind a preset or an obligation names is registered, and a preset never listens for a kind nothing emits.
 _ek_kinds_of() { # <pattern> → one kind per line: `"kind":"(a\.b|c\.d)"` or `a\.b|c\.d`
@@ -7355,15 +7320,15 @@ _ek_kinds_of() { # <pattern> → one kind per line: `"kind":"(a\.b|c\.d)"` or `a
 }
 # The pipes below run in subshells, so findings go to a file and bad() runs in this shell.
 for _ekt in event-rules obligation-kinds; do
-  [ -f "$ROOT/contracts/$_ekt.tsv" ] || continue
+  [ -f "$ROOT/CONTRACTS/$_ekt.tsv" ] || continue
   awk -F'\t' -v t="$_ekt" '!/^#/ && NF && $1 != "kind" { if (t == "event-rules") print $1 "\t" $2; else { print $1 "\t" $2; print $1 "\t" $3 } }' \
-    "$ROOT/contracts/$_ekt.tsv" | while IFS="$(printf '\t')" read -r _ekid _ekpat; do
+    "$ROOT/CONTRACTS/$_ekt.tsv" | while IFS="$(printf '\t')" read -r _ekid _ekpat; do
       [ "$_ekpat" != - ] || continue
       _ek_kinds_of "$_ekpat" | while IFS= read -r _ekk; do
         if ! grep -Fxq -- "$_ekk" "$_ek.kinds"; then
-          printf 'contracts/%s.tsv\tcontracts/%s.tsv %s names %s, which contracts/event-kinds.tsv does not register\n' "$_ekt" "$_ekt" "$_ekid" "$_ekk"
+          printf 'CONTRACTS/%s.tsv\tCONTRACTS/%s.tsv %s names %s, which CONTRACTS/event-kinds.tsv does not register\n' "$_ekt" "$_ekt" "$_ekid" "$_ekk"
         elif [ "$_ekt" = event-rules ] && [ "$(awk -F'\t' -v k="$_ekk" '$1 == k { print $2; exit }' "$_ek.reg")" = - ]; then
-          printf 'contracts/event-rules.tsv\tcontracts/event-rules.tsv %s listens for %s, which nothing on this box emits\n' "$_ekid" "$_ekk"
+          printf 'CONTRACTS/event-rules.tsv\tCONTRACTS/event-rules.tsv %s listens for %s, which nothing on this box emits\n' "$_ekid" "$_ekk"
         fi
       done
     done
@@ -7440,7 +7405,7 @@ fi
 }
 
 # ── the dispatcher ───────────────────────────────────────────────────────────
-# THE ORDER IS DERIVED, NOT DECLARED (harbor#537, docs/explanation/doc-truth.md). A
+# THE ORDER IS DERIVED, NOT DECLARED (harbor#537, DOCTRINE/doc-truth.md). A
 # hand-written registry of 78 ids is a copy, and a copy that drops one entry
 # silently stops running that rule while the summary still says "78 rules". The
 # source is the only thing that cannot disagree with itself, so the list comes

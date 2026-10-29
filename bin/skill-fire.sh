@@ -13,7 +13,7 @@
 # it was listed against a proportionate task. Neither fact was predictable from
 # the SKILL.md. So the roster is decided by running it.
 #
-# THE MEASUREMENT IS EXOGENOUS (docs/explanation/verification-expanded.md). The input is
+# THE MEASUREMENT IS EXOGENOUS (DOCTRINE/verification-expanded.md). The input is
 # a real session's real tool calls, not this repo's opinion of what should have
 # happened. Nothing here scores an answer's quality — only whether the skill
 # fired — because quality is a judgement and `sh` cannot make one.
@@ -52,8 +52,8 @@
 set -eu
 
 # The per-case table and the score line on stdout are the report the suite and --json readers consume, so they
-# stay byte-identical; the log is on stderr (LOG_FD=2, contracts/logging.md, harbor#771).
-. "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-log.sh"
+# stay byte-identical; the log is on stderr (LOG_FD=2, CONTRACTS/logging.md, harbor#771).
+. "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/log-lib.sh"
 log_init skill-fire; LOG_FD=2
 # die <what failed> <fix> <exit> — FAIL, its fix, the summary, the exit code the tool always had.
 die() { log_fail "$1"; log_fix "$2"; log_end || :; exit "$3"; }
@@ -93,10 +93,10 @@ CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 # first cut missed is the SESSIONS: every case is a real `claude -p`, and every
 # one of those lands a transcript in $CFG/projects/<slug>/. A ten-case sweep
 # therefore deposits ten sessions in the live store, which is the surface
-# memory-store-check.sh bounds and B8 pins. D2 keys on the write, not on the intent,
+# store-check.sh bounds and B8 pins. D2 keys on the write, not on the intent,
 # and it was right to flag this.
 # Paths are compared RESOLVED, never as strings: a trailing slash is a measured
-# bypass of the string form (context-injection-install.sh records it).
+# bypass of the string form (inject-install.sh records it).
 _phys() { CDPATH='' cd -P -- "$1" 2>/dev/null && pwd -P || printf '%s' "$1"; }
 LIVE_DIR="$HOME/.claude"
 _is_live() { [ "$(_phys "$CFG")" = "$(_phys "$LIVE_DIR")" ]; }
@@ -174,7 +174,7 @@ while IFS='	' read -r id want prompt; do
   #
   # THE LEAK IS SILENT AND IT READS AS SUCCESS. Nothing errored, the exit code
   # was 0, and a contaminated sweep scores BETTER than a clean one — which is
-  # why this is a comment and not a one-word fix. tests/skill/fire/fire.test.sh stubs
+  # why this is a comment and not a one-word fix. tests/obs/skill-fire-test.sh stubs
   # `claude` and asserts stdin arrives empty, because that is the only evidence
   # that this line still does its job.
   out="$( cd "$PROJ" && claude -p "$prompt" --output-format json </dev/null 2>/dev/null )" || out=''

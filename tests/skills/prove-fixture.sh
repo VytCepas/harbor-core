@@ -1,4 +1,4 @@
-# tests/skills/prove-fixture.sh — what the prove suites share (R5, contracts/gates.md). Source after
+# tests/skills/prove-fixture.sh — what the prove suites share (R5, CONTRACTS/gates.md). Source after
 # t_init. The fixtures are built at run time and are never the engine's own: two implementations
 # sharing a fixture can drift into agreement (spec §9/§10). _prove sets RC, O (stdout) and $ERR.
 ENGINE="$T_ROOT/skills/test-strength/bin/prove.sh"

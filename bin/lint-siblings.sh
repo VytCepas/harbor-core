@@ -3,20 +3,20 @@
 #
 #   sh lint-siblings.sh --count    the number of sibling-path literals (occurrences, not files)
 #   sh lint-siblings.sh --list     each one as file:line TAB literal
-#   sh lint-siblings.sh --check    red if the count is above contracts/lint-siblings-baseline.txt;
+#   sh lint-siblings.sh --check    red if the count is above CONTRACTS/lint-siblings-baseline.txt;
 #                                     green but says to lower the baseline when it is below
 #
 # A literal is a workspace-root spelling followed by /<x>: ~/port, $HOME/port in any quoting, $PORT_ROOT
 # (braced, defaulted with - or :-), $(... --port-root), $PORT, or an absolute /Users/<u>/port or /home/<u>/port. x is not harbor,
 # harbor-private or a workspace dir. Scope: every tracked file, plus untracked ones git does not ignore,
-# minus tests, fixtures, evals and skills/test-strength/targets. Core reaches a sibling through
-# `scope-roots.sh --repo <id>`; the baseline only goes down.
+# minus tests, fixtures, EVALS-DATA and skills/test-strength/targets. Core reaches a sibling through
+# `roots.sh --repo <id>`; the baseline only goes down.
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
-BASE="${SIBLING_BASELINE:-$ROOT/contracts/lint-siblings-baseline.txt}"
-. "$SRC/library-log.sh"
+BASE="${SIBLING_BASELINE:-$ROOT/CONTRACTS/lint-siblings-baseline.txt}"
+. "$SRC/log-lib.sh"
 log_init lint-siblings
 LOG_FD=2
 
@@ -25,7 +25,7 @@ LOG_FD=2
 PAT='(~/port|[$][{]?HOME[}]?"?/port"?|[$]PORT_ROOT"?|[$][{]PORT_ROOT(:?-[^}]*)?[}]"?|[$][{]?PORT[}]?"?|[$][(][^)]*--port-root[^)]*[)]"?|/(Users|home)/[^/]+/port)/"?[A-Za-z0-9._-]+'
 files() { # file:line TAB literal, one per occurrence
   git -C "$ROOT" grep -I --untracked -n -oE -e "$PAT" -- . \
-      ':!tests/**' ':!fixtures/**' ':!evals/**' ':!**/tests/**' ':!**/fixtures/**' ':!**/evals/**' ':!skills/test-strength/targets/**' \
+      ':!tests/**' ':!fixtures/**' ':!EVALS-DATA/**' ':!**/tests/**' ':!**/fixtures/**' ':!**/EVALS-DATA/**' ':!skills/test-strength/targets/**' \
       ':!hooks/*/*.test.sh' 2>/dev/null |  # a hook engine's tests sit in its folder (D-88)
     awk -F: '{ l = $0; sub(/^[^:]*:[^:]*:/, "", l); x = l; sub(/^.*\//, "", x); gsub(/"/, "", x)
                if (x == "harbor" || x == "harbor-private" || x == ".worktrees" || x == ".scratch" || x == "history") next
@@ -43,7 +43,7 @@ case "${1:-}" in
     GOT="$(files | wc -l | tr -d ' ')"
     if [ "$GOT" -gt "$WANT" ]; then
       log_fail "$GOT sibling-path literal(s) in the tree, baseline is $WANT"
-      log_fix "reach the sibling with 'sh bin/scope-roots.sh --repo <id>' instead of a literal path (contracts/private-layer.md)"
+      log_fix "reach the sibling with 'sh bin/roots.sh --repo <id>' instead of a literal path (CONTRACTS/private-layer.md)"
       # The delta, not the census: files this branch touched that hold a literal.
       __chg="$(git -C "$ROOT" diff --name-only "$(git -C "$ROOT" merge-base HEAD origin/main 2>/dev/null || echo HEAD)" 2>/dev/null || :)"
       files | cut -f1 | cut -d: -f1 | sort -u | while IFS= read -r f; do

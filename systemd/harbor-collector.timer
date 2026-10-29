@@ -1,6 +1,6 @@
 # harbor#1181 — the Linux twin of launchd/com.harbor.collector.plist: a SYSTEM unit running as the harborlog user, the second
-# uid the observed agent cannot write as. TEMPLATE: bin/audit-collector-install.sh fills @BIN@, @STORE@ and @SOURCES@ and
-# installs it under /etc/systemd/system with sudo; a session cannot. Disable: docs/reference/checks.md, "Platforms".
+# uid the observed agent cannot write as. TEMPLATE: bin/collector-setup.sh fills @BIN@, @STORE@ and @SOURCES@ and
+# installs it under /etc/systemd/system with sudo; a session cannot. Disable: CHECKS.md, "Platforms".
 [Unit]
 Description=Harbor collector, every 300 s
 

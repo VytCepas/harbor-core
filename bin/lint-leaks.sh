@@ -3,12 +3,12 @@
 #
 #   sh lint-leaks.sh --count [core|private]  occurrences (not files); no argument prints both
 #   sh lint-leaks.sh --list                  each one as file:line:pattern-id, for local triage
-#   sh lint-leaks.sh --check                 the ratchet: red if core is above contracts/lint-leaks-baseline.txt, or
+#   sh lint-leaks.sh --check                 the ratchet: red if core is above CONTRACTS/lint-leaks-baseline.txt, or
 #                                               private is above <private>/leaks-baseline.txt (when that file exists);
 #                                               green but says to lower the baseline when below
 #   sh lint-leaks.sh --zero                  red on any match from any source; the gate for `harbor deploy push`
 #
-# Patterns, three sources. core: contracts/leak-patterns.tsv (tracked, generic, names no real entity).
+# Patterns, three sources. core: CONTRACTS/leak-patterns.tsv (tracked, generic, names no real entity).
 # private: $HARBOR_SCOPE_PRIVATE/leaks.tsv (id TAB kind TAB pattern TAB note; kind is literal, word, domain,
 # email-domain or regex) and the client and system rows of its terms.tsv, matched as whole words, any case.
 # An absent private layer is not an error; a malformed file is a finding (exit 1) and its bad rows are skipped.
@@ -17,7 +17,7 @@
 # an allow row in the private layer is a finding, and so is one whose text matches a private pattern or names the
 # operator (LEAKS_OWN_USER overrides id -un and $HOME): it is skipped and forgives nothing. Remove the row and the placeholder counts again (harbor#1149).
 # PRIVACY: no mode prints a private pattern's text, only its id (a terms.tsv row is named terms.tsv:L<line>).
-# Scope: every tracked file plus untracked ones git does not ignore, minus tests, fixtures, evals and
+# Scope: every tracked file plus untracked ones git does not ignore, minus tests, fixtures, EVALS-DATA and
 # skills/test-strength/targets, as lint-siblings.sh. The ratchets count that whole tracked tree, never narrowed by
 # layers.tsv, so a client name regrowing in a dev-only file is still counted (harbor#1149).
 # LEAKS_EXPORT=1 is the write gate (deploy push, pack install) over a staging checkout holding exactly the files to be
@@ -29,11 +29,11 @@ set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
-BASE="${LEAKS_BASELINE:-$ROOT/contracts/lint-leaks-baseline.txt}"
-CORE="${LEAKS_CORE_PATTERNS:-$ROOT/contracts/leak-patterns.tsv}"
+BASE="${LEAKS_BASELINE:-$ROOT/CONTRACTS/lint-leaks-baseline.txt}"
+CORE="${LEAKS_CORE_PATTERNS:-$ROOT/CONTRACTS/leak-patterns.tsv}"
 PRIV="${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}"
 PRIV="${PRIV%/}"
-. "$SRC/library-log.sh"
+. "$SRC/log-lib.sh"
 log_init lint-leaks
 LOG_FD=2
 
@@ -85,7 +85,7 @@ esc() { sed 's/[.[\*^$(){}?+|]/\\&/g'; }
 gg() {
   if [ "${LEAKS_EXPORT:-0}" = 1 ]; then git -C "$ROOT" grep -a -n -o "$@" -- . 2>/dev/null; return 0; fi
   git -C "$ROOT" grep -I --untracked -n -o "$@" -- . \
-      ':!tests/**' ':!fixtures/**' ':!evals/**' ':!**/tests/**' ':!**/fixtures/**' ':!**/evals/**' ':!skills/test-strength/targets/**' 2>/dev/null || return 0
+      ':!tests/**' ':!fixtures/**' ':!EVALS-DATA/**' ':!**/tests/**' ':!**/fixtures/**' ':!**/EVALS-DATA/**' ':!skills/test-strength/targets/**' 2>/dev/null || return 0
 }
 
 # mkre <kind> <pattern>: sets _hf (grep flags) and _hp (the ERE or fixed string) for one pattern row.
@@ -173,7 +173,7 @@ check_allow() {
 
 collect() {
   git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1 || { log_fail "$ROOT is not a git checkout, nothing was inspected"; log_nofix "bin/lint-leaks.sh"; log_end || :; exit 2; }
-  if [ ! -f "$CORE" ]; then log_fail "no core patterns at ${CORE#$ROOT/}"; log_fix "restore contracts/leak-patterns.tsv"; log_end || :; exit 1; fi
+  if [ ! -f "$CORE" ]; then log_fail "no core patterns at ${CORE#$ROOT/}"; log_fix "restore CONTRACTS/leak-patterns.tsv"; log_end || :; exit 1; fi
   load "$CORE" "leak-patterns.tsv" pat core
   if [ -d "$PRIV" ]; then
     load "$PRIV/leaks.tsv" "leaks.tsv" pat private
@@ -193,7 +193,7 @@ collect() {
 report_findings() {
   [ "$NFIND" -gt 0 ] || return 0
   while IFS= read -r _f; do log_fail "$_f"; done < "$TMP/findings"
-  log_fix "correct the file; its bad rows were skipped, so the count is a lower bound (contracts/private-layer.md)"
+  log_fix "correct the file; its bad rows were skipped, so the count is a lower bound (CONTRACTS/private-layer.md)"
 }
 
 base_of() { grep -vE '^[[:space:]]*(#|$)' "$1" 2>/dev/null | head -1 | tr -d ' ' || :; }
@@ -233,7 +233,7 @@ case "${1:-}" in
   --check)
     collect; RC=0
     report_findings; [ "$NFIND" -eq 0 ] || RC=1
-    ratchet core "$NCORE" "$BASE" "name no real entity in the tree; real names live in the private layer (contracts/private-layer.md)" || RC=1
+    ratchet core "$NCORE" "$BASE" "name no real entity in the tree; real names live in the private layer (CONTRACTS/private-layer.md)" || RC=1
     if [ ! -d "$PRIV" ]; then log_note "no private layer at the private path: private patterns not checked"
     elif [ -f "$PRIV/leaks-baseline.txt" ]; then ratchet private "$NPRIV" "$PRIV/leaks-baseline.txt" "move the named client, company or account out of the tracked file into the private layer" || RC=1
     else log_note "no leaks-baseline.txt in the private layer: private count ($NPRIV) not ratcheted"; fi

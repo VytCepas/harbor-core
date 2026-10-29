@@ -5,7 +5,7 @@
 #   <cache>/orgs.tsv                the owner->account table (not secret; the denied dir hides it from the shim)
 #   <cache>/gcloud-<role>           a gcx role's access token alone, for CLOUDSDK_AUTH_ACCESS_TOKEN_FILE
 #   <cache>/gcloud-<role>.exp       its refresh-by time;  <cache>/gcloud-<role>.properties  the role's config (no secret)
-# The cache is readable from inside the confinement and writable only outside it (contracts/confinement-paths.txt).
+# The cache is readable from inside the confinement and writable only outside it (CONTRACTS/confinement-paths.txt).
 # It acts only while the confinement is installed (the marker deploy-confinement.sh leaves beside managed settings).
 # A credential is minted when the command names its tool (gh, git, wait-for; gcx <role>), and one minted before is
 # refreshed near expiry on any call, so a script that reaches gh or gcx indirectly still finds it fresh. The named ones
@@ -22,10 +22,10 @@ C="$HOME/.cache/harbor/confinement"
 APPD="$HOME/.config/harbor-app"
 IDS="$HOME/.config/gcloud/identities"
 GCX="$HOME/.local/bin/gcx"
-# Seconds the hook spends on credentials the command does not name, a third of the 30 s hook timeout (deploy-runtime-install.sh):
+# Seconds the hook spends on credentials the command does not name, a third of the 30 s hook timeout (runtime-install.sh):
 # a gcloud refresh is cut off at their end, and gh's starts only inside them, so at most one gh mint runs past.
 BUDGET=10
-# The marker path is deploy-confinement.sh's; tests/admission/baseline/confinement.test.sh holds the copies equal.
+# The marker path is deploy-confinement.sh's; tests/floor/floor.confinement-test.sh holds the copies equal.
 MK='/Library/Application Support/ClaudeCode/harbor-confinement'
 [ -f "$MK" ] || MK=/etc/claude-code/harbor-confinement
 [ -f "$MK" ] || exit 0

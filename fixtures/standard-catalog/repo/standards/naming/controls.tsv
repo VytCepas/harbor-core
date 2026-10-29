@@ -2,6 +2,6 @@
 id	mode	type	engine	surfaces	moment	function	stability	successor	owner	red_proof	emitted	title
 drift.config-bin	warn	lint	bin/lint-all.sh	-	ci	detective	experimental	-	drift	-	-	the live bin does not lag the repo
 drift.sandbox-copy	block	lint	bin/lint-all.sh	-	ci	detective	experimental	-	drift	-	-	the sandbox copy is byte-identical
-drift.undeployed	warn	check	docs/reference/checks.md	-	schedule	detective	experimental	-	drift	-	undeployed	is every tracked script installed
+drift.undeployed	warn	check	CHECKS.md	-	schedule	detective	experimental	-	drift	-	undeployed	is every tracked script installed
 deploy.snapshot	warn	admission	bin/deploy-push.sh	-	deploy	preventive	experimental	-	deploy	-	-	a deploy takes a snapshot first
 lint.shape	warn	lint	bin/lint-all.sh	-	ci	detective	experimental	-	lint	-	-	a file has its header

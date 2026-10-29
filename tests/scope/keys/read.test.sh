@@ -5,8 +5,8 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 PV="$T_TMP/pv"; mkdir -p "$PV"; export HARBOR_SCOPE_PRIVATE="$PV"
 CLAUDE_CONFIG_DIR="$T_TMP/cfg"; mkdir -p "$CLAUDE_CONFIG_DIR"; export CLAUDE_CONFIG_DIR
-conf() { sh "$T_ROOT/bin/scope-roots.sh" --conf "$@" 2>"$T_TMP/err"; }
-rc() { sh "$T_ROOT/bin/scope-roots.sh" --conf "$1" >/dev/null 2>&1; echo $?; }
+conf() { sh "$T_ROOT/bin/roots.sh" --conf "$@" 2>"$T_TMP/err"; }
+rc() { sh "$T_ROOT/bin/roots.sh" --conf "$1" >/dev/null 2>&1; echo $?; }
 PACK_KEYS='reconcile_bq_project antibot_trap_param gads_secret_project'
 
 t_section "unset is exit 1 and nothing on stdout, never a default"
@@ -17,7 +17,7 @@ done
 
 t_section "a pack's keys are not core's: with no pack installed they are refused (harbor#1273)"
 for k in $PACK_KEYS; do t_eq "$k with no pack: exit 2" 2 "$(rc $k)"; done
-t_hasnt "...and the key list does not offer them" "$(sh "$T_ROOT/bin/scope-roots.sh" --conf nope 2>&1 || true)" "gads_secret_project"
+t_hasnt "...and the key list does not offer them" "$(sh "$T_ROOT/bin/roots.sh" --conf nope 2>&1 || true)" "gads_secret_project"
 
 t_section "each key reads back, a pack's once its conf-keys.d file declares it"
 mkdir -p "$CLAUDE_CONFIG_DIR/conf-keys.d"; printf '# a made-up pack\n%s\n' $PACK_KEYS > "$CLAUDE_CONFIG_DIR/conf-keys.d/zorbcorp.txt"
@@ -38,8 +38,8 @@ t_eq "gads_secret_project" "example-secrets" "$(conf gads_secret_project)"
 t_section "a typo is still refused"
 printf 'mail_acount = "x"\n' > "$PV/harbor.toml"
 t_eq "an unknown key exits 2" 2 "$(rc mail_account)"
-t_has "and names the key" "$(sh "$T_ROOT/bin/scope-roots.sh" --conf mail_account 2>&1 >/dev/null)" 'unknown key "mail_acount"'
-t_exit "asking for a key that does not exist exits 2" 2 sh "$T_ROOT/bin/scope-roots.sh" --conf mail_acount
-t_has "and the message lists the new keys" "$(sh "$T_ROOT/bin/scope-roots.sh" --conf nope 2>&1 || true)" "mail_account, github_owners"
-t_has "a declared pack key among them" "$(sh "$T_ROOT/bin/scope-roots.sh" --conf nope 2>&1 || true)" "antibot_trap_param,"
+t_has "and names the key" "$(sh "$T_ROOT/bin/roots.sh" --conf mail_account 2>&1 >/dev/null)" 'unknown key "mail_acount"'
+t_exit "asking for a key that does not exist exits 2" 2 sh "$T_ROOT/bin/roots.sh" --conf mail_acount
+t_has "and the message lists the new keys" "$(sh "$T_ROOT/bin/roots.sh" --conf nope 2>&1 || true)" "mail_account, github_owners"
+t_has "a declared pack key among them" "$(sh "$T_ROOT/bin/roots.sh" --conf nope 2>&1 || true)" "antibot_trap_param,"
 t_done

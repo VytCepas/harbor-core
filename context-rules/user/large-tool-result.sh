@@ -37,7 +37,7 @@
 # `Bash` is 4,055 calls at 1 KB — its lever is call COUNT, not result size, which
 # is harbor#184's lever 1 and not this pack's business.
 #
-# NO SIZE IS QUOTED FROM THE RESULT ITSELF, only its length. docs/decisions/rejected-approaches.md DE-16
+# NO SIZE IS QUOTED FROM THE RESULT ITSELF, only its length. DEAD-ENDS.md DE-16
 # refused a durable corpus built out of transcript content; the same discipline
 # holds here, one channel over — a length is not a payload.
 #

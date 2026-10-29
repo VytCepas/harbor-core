@@ -14,4 +14,3 @@ are recorded in PROVENANCE.md and vendor/archify/PROVENANCE.md.
               "architecture-diagram-generator")
 
 Not third-party: vendor/complexity-atlas/ is original work (see its README).
-Not third-party: vendor/naming/ is this repo's own naming package, vendored by bin/standard-vendor.sh.

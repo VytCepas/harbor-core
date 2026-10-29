@@ -134,7 +134,7 @@ any future suite that looks for bun by name.
 
 **Not preflight.** Adding `bun` to the `for t in …` loop at `governance.yml:119`
 would fail the `github-hosted` leg, which has no bun and is not supposed to.
-Rule **C4** would stay satisfied — `bin/deploy-doctor.sh:59` already probes bun — but
+Rule **C4** would stay satisfied — `bin/doctor.sh:59` already probes bun — but
 the loop is a hard failure for every runner, and bun is `optional` by design:
 the security floor is deliberately zero-Bun.
 

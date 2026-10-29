@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # session-state.sh (harbor#1043, #1044) — the Stop hook that says what this session is WAITING ON.
 #
-# Stop fires at the end of EVERY turn (contracts/hooks.md). This hook reads the payload and the transcript,
+# Stop fires at the end of EVERY turn (CONTRACTS/hooks.md). This hook reads the payload and the transcript,
 # decides one state by ordered rules, writes the record, and appends a `session.state` event to the bus
 # ONLY when the state changed. It never blocks: it prints nothing, except the one `session.save-now`
 # continuation below. Exit 0 on every path; HARBOR_STATUS_DIR/session-state.off turns it off.
@@ -24,10 +24,10 @@
 #
 # THE RECORD  $STATE/sessions/<session_id>.json: {state, since, cwd, branch, dirty, pr, background_tasks[],
 # ctx_pct, handover_at, reason} + handover_stale, agents, prompt_id, updated, save_now. $STATE defaults to
-# ~/.local/state/harbor. ctx_pct is what status-fleet-glyph.sh wrote to $STATE/ctx/<session_id>.
+# ~/.local/state/harbor. ctx_pct is what fleet-glyph.sh wrote to $STATE/ctx/<session_id>.
 #
 # THE EVENT  session.state, subject = session_id, data {session_id, title: <state>, evidence: <reason>}
-# (the bus keeps only that allowlist). The reaction presets in contracts/event-rules.tsv follow it.
+# (the bus keeps only that allowlist). The reaction presets in CONTRACTS/event-rules.tsv follow it.
 #
 # SAVE-NOW  when the operator turned the `event.session-save-now` rule on (its rule file exists), the
 # turn is not already a Stop-hook continuation, ctx_pct >= 90 (or >= 75 right after a commit/PR) and the
@@ -57,7 +57,7 @@ case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 case "${1-}" in -h|--help) sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
 command -v jq >/dev/null 2>&1 || exit 0
 LC_ALL=C; export LC_ALL
-[ -f "$HERE/library-fs.sh" ] && . "$HERE/library-fs.sh" || fs_mtime() { :; }
+[ -f "$HERE/fs-lib.sh" ] && . "$HERE/fs-lib.sh" || fs_mtime() { :; }
 
 STATE="${HARBOR_STATUS_DIR:-${HOME:-/nonexistent}/.local/state/harbor}"
 [ ! -e "$STATE/session-state.off" ] || exit 0
@@ -154,14 +154,12 @@ if [ -n "$CWD" ] && [ -d "$CWD" ]; then
     DIRTY="$(printf '%s\n' "$GS" | awk 'NR > 1 && NF { n++ } END { print n + 0 }')"
     case "$_l1" in *'...'*) case "$_l1" in *ahead*|*gone*) ;; *) PUSHED=1 ;; esac ;; esac
     _top="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null)" || _top=""
-    # Harbor's handover moved to docs/how-to/; every other repo keeps a root HANDOFF.md (harbor#949).
-    for _hf in docs/how-to/handover.md HANDOFF.md; do
-      [ -n "$_top" ] && [ -f "$_top/$_hf" ] || continue
-      HANDOVER_AT="$(fs_mtime "$_top/$_hf")"; break
-    done
+    if [ -n "$_top" ] && [ -f "$_top/HANDOFF.md" ]; then
+      HANDOVER_AT="$(fs_mtime "$_top/HANDOFF.md")"
+    fi
   fi
 fi
-# Neither file: the newest file in the session's memory store, projects/<cwd with / and . as ->/memory.
+# No HANDOFF.md: the newest file in the session's memory store, projects/<cwd with / and . as ->/memory.
 if [ "${HANDOVER_AT:-0}" = 0 ] && [ -n "$CWD" ]; then
   _md="$CFG/projects/$(printf '%s' "$CWD" | sed 's#[/.]#-#g')/memory"
   _nf="$(ls -t "$_md" 2>/dev/null | sed -n 1p)"
@@ -175,7 +173,7 @@ case "$CTX" in ''|*[!0-9]*) CTX="" ;; esac
 
 # ── the waiting-operator table ─────────────────────────────────────────────────────────────────
 WAITING=""
-TABLE="$HERE/session-waiting.tsv"; [ -f "$TABLE" ] || TABLE="$HERE/../contracts/session-waiting.tsv"
+TABLE="$HERE/session-waiting.tsv"; [ -f "$TABLE" ] || TABLE="$HERE/../CONTRACTS/session-waiting.tsv"
 if [ -n "$MSG" ] && [ -f "$TABLE" ]; then
   WAITING="$(WMSG="$MSG" awk -F '\t' 'BEGIN { m = tolower(ENVIRON["WMSG"]) }
     /^#/ || NF < 2 { next }
@@ -215,7 +213,7 @@ if [ "$ACTIVE" != true ] && [ -n "$CTX" ] && [ -f "$CFG/.helm-dispatch/rules/eve
     _trig="$_why:$_ref"
     if [ "${PSAVE:-}" != "$_trig" ]; then
       SAVE="$_trig"
-      SAVEMSG="Context is at ${CTX}% of the compaction window and the handoff is older than your last commit or PR. Write the handoff now (docs/how-to/handover.md: what changed, the evidence, what is open) so a compaction loses nothing. One short reply; do not start other work."
+      SAVEMSG="Context is at ${CTX}% of the compaction window and the handoff is older than your last commit or PR. Write the handoff now (HANDOFF.md: what changed, the evidence, what is open) so a compaction loses nothing. One short reply; do not start other work."
     fi
   fi
 fi

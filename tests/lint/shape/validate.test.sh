@@ -79,26 +79,26 @@ t_exit "kinds.tsv's shapes all parse" 0 sh "$TOOL" --root "$T_ROOT" --graph "$FX
 TG="$(sh "$T_ROOT/bin/standard-catalog.sh" --targets 2>/dev/null)"
 t_has "a lint rule is a control of kind lint-rule" "$TG" "control:name.case	lint-rule"
 t_has "a check row is a control of kind check" "$TG" "control:check.alerting	check"
-t_has "the constitution is an instance of policy" "$TG" "harbor:policy/constitution.md	policy"
+t_has "the constitution is an instance of policy" "$TG" "harbor:CONSTITUTION.md	policy"
 t_eq "a file the census cannot place is no instance" 0 "$(printf '%s\n' "$TG" | awk -F'\t' '$2 == "-"' | wc -l | tr -d ' ')"
 
 t_section "the real tree, in warn: a fresh graph is judged and the run exits 0"
 if command -v python3 >/dev/null 2>&1; then
-  sh "$T_ROOT/bin/doc-graph-generate.sh" --out "$T_TMP/real-graph.tsv" >/dev/null 2>&1
+  sh "$T_ROOT/bin/graph-gen.sh" --out "$T_TMP/real-graph.tsv" >/dev/null 2>&1
   _rc=0; OUT="$(sh "$TOOL" --registry "$PIN" --graph "$T_TMP/real-graph.tsv" 2>&1)" || _rc=$?
   t_eq "exits 0: every finding is warn" 0 "$_rc"
   t_hasnt "no shape is left unchecked: graph-gen derives every relation kinds.tsv requires" "$OUT
 x" "unchecked:"
-  t_eq "every check is registered in docs/reference/checks.md exactly once" 0 "$(printf '%s\n' "$OUT" | grep -c ' registered-in — ' || :)"
+  t_eq "every check is registered in CHECKS.md exactly once" 0 "$(printf '%s\n' "$OUT" | grep -c ' registered-in — ' || :)"
 else
   t_section "python3 is absent: the real graph cannot be built here"
 fi
 
 t_section "bin/lint-conventions.sh relays the findings as advisories and exits clean"
 if command -v python3 >/dev/null 2>&1; then
-  D="$T_TMP/relay"; mkdir -p "$D/bin" "$D/standards" "$D/contracts"
-  for _b in standard-shape.sh doc-graph-generate.sh standard-catalog.sh library-log.sh scope-roots.sh; do cp "$T_ROOT/bin/$_b" "$D/bin/"; done
-  cp "$T_ROOT/contracts/roots.tsv" "$D/contracts/"; cp -R "$PIN" "$D/standards/naming"
+  D="$T_TMP/relay"; mkdir -p "$D/bin" "$D/standards" "$D/CONTRACTS"
+  for _b in standard-shape.sh graph-gen.sh standard-catalog.sh log-lib.sh roots.sh; do cp "$T_ROOT/bin/$_b" "$D/bin/"; done
+  cp "$T_ROOT/CONTRACTS/roots.tsv" "$D/CONTRACTS/"; cp -R "$PIN" "$D/standards/naming"
   ( cd "$D" && git init -q . && git add -A && git -c user.email=t@t -c user.name=t commit -qm x ) >/dev/null 2>&1
   OUT="$(lint1 standard.shape-conform "$D")"
   t_has "the advisory carries the relayed id and the instance" "$OUT" "ADVISORY [standard.shape-conform] [standard.shape] control:name.case red-proof"
@@ -112,7 +112,7 @@ if command -v python3 >/dev/null 2>&1; then
   RED="$T_TMP/red3"; : > "$RED"; LINT_REDLOG="$RED" lint1 standard.shape-conform "$D" >/dev/null
   t_has "...under the relay id" "$(cat "$RED")" "standard.shape-conform"
 else
-  D="$T_TMP/relay"; mkdir -p "$D/bin"; cp "$T_ROOT/bin/standard-shape.sh" "$T_ROOT/bin/doc-graph-generate.sh" "$D/bin/"
+  D="$T_TMP/relay"; mkdir -p "$D/bin"; cp "$T_ROOT/bin/standard-shape.sh" "$T_ROOT/bin/graph-gen.sh" "$D/bin/"
   t_has "without python3 the advisory says it could not look" "$(lint1 standard.shape-conform "$D")" "unchecked: python3 is absent"
 fi
 D="$T_TMP/bare"; mkdir -p "$D/bin"

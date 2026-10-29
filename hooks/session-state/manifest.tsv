@@ -1,4 +1,4 @@
-# Why it is wired this way (moved from bin/deploy-runtime-install.sh, harbor#1272):
+# Why it is wired this way (moved from bin/runtime-install.sh, harbor#1272):
 # session-state.sh (harbor#1043, #1044) — the Stop hook that records what the session waits on. It prints nothing but one
 # opt-in continuation (see its header). Same off contract as reply-shape: the sentinel $DIR/session-state.off stops it
 # being wired; deduped by basename. Unlike ticket-note it carries `timeout: 5`: it is fail-open by design, so a

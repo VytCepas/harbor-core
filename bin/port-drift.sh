@@ -4,15 +4,15 @@
 #   sh port-drift.sh            list each unregistered directory (one per line, with its age), exit 1 if any
 #   sh port-drift.sh --names    just the names, for a script
 #
-# Registered: a repo of `scope-roots.sh --repos` (the private registry, else the roots table), a directory a REPOS row of
-# `scope-roots.sh --list` names, and the first path segment of either (a container such as data-flow/). Exempt kinds:
+# Registered: a repo of `roots.sh --repos` (the private registry, else the roots table), a directory a REPOS row of
+# `roots.sh --list` names, and the first path segment of either (a container such as data-flow/). Exempt kinds:
 # a dot-directory (.worktrees, .scratch), `harbor-private` (the private layer), `history` (the registered
 # archives), and `<registered id>-wt-<x>` (a sibling worktree). Files are not judged. A lookup that fails is exit 2,
 # never an empty list read as clean.
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-. "$SRC/library-log.sh"
+. "$SRC/log-lib.sh"
 log_init port-drift
 LOG_FD=2
 
@@ -26,10 +26,10 @@ esac
 
 die() { log_fail "$1"; log_fix "$2"; log_end || :; exit 2; }
 
-PR="$(sh "$SRC/scope-roots.sh" --port-root)" || die "scope-roots.sh could not resolve the workspace root" "sh bin/scope-roots.sh --port-root"
+PR="$(sh "$SRC/roots.sh" --port-root)" || die "roots.sh could not resolve the workspace root" "sh bin/roots.sh --port-root"
 [ -d "$PR" ] || die "no workspace at $PR, so nothing was inspected" "set PORT_ROOT to the workspace root"
-REPOS="$(sh "$SRC/scope-roots.sh" --repos)" || die "scope-roots.sh --repos refused the registry" "sh bin/scope-roots.sh --registry-check"
-LIST="$(sh "$SRC/scope-roots.sh" --list)" || die "scope-roots.sh --list failed" "sh bin/scope-roots.sh --list"
+REPOS="$(sh "$SRC/roots.sh" --repos)" || die "roots.sh --repos refused the registry" "sh bin/roots.sh --registry-check"
+LIST="$(sh "$SRC/roots.sh" --list)" || die "roots.sh --list failed" "sh bin/roots.sh --list"
 
 # The first segment under PR of every registered or table-named checkout, one per line.
 KNOWN="$( { printf '%s\n' "$REPOS" | awk -F'\t' 'NF >= 2 { print $2 }'

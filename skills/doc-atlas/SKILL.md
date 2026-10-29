@@ -308,7 +308,7 @@ carries **↑ Inside of <part>** back to it (operator, 2026-10-19).
   from a second copy. The build places the child's tab right after its parent's,
   whatever order the config lists them in.
 - **The build refuses**: an unknown diagram or part, a diagram inside itself, two inside
-  views on one part, and a cycle (`tests/skill/atlas/inside.test.sh`).
+  views on one part, and a cycle (`tests/skills/atlas-inside-test.sh`).
 - **`--check` walks every pair**: click the part, follow the link down, follow the link
   back, and the panel must name the part again — `inside views open and lead back: N/N`.
 - **Draw the inside at the next level of detail, not the same one.** A server's inside view

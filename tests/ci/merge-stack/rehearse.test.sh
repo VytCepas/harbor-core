@@ -4,7 +4,7 @@
 # throwaway branch. A PR that cannot be built from origin stops the rehearsal.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/ci/merge-stack/fixture.sh"
-GMS="$T_ROOT/bin/gate-merge-stack.sh"; PL="$T_TMP/plan"; SU=contracts/suites.txt; T=ci/integration-test
+GMS="$T_ROOT/bin/gate-merge-stack.sh"; PL="$T_TMP/plan"; SU=CONTRACTS/suites.txt; T=ci/integration-test
 HARBOR_GATE_REHEARSE_DIR="$T_TMP/scratch"; export HARBOR_GATE_REHEARSE_DIR; S="$HARBOR_GATE_REHEARSE_DIR/acme_widgets"
 reh() { sh "$GMS" rehearse "$PL" "$@" >"$T_TMP/out" 2>&1; echo $?; }
 OUT() { cat "$T_TMP/out"; }
@@ -21,7 +21,7 @@ t_has "a PR that is not open is skipped, not failed" "$(OUT)" "skip: #13 (not op
 t_has "lint and suites are left to CI on --push" "$(OUT)" "lint and suites of the combined tree run in CI, never here"
 t_has "it ends clean" "$(OUT)" "ok: rehearsal clean"
 t_eq "the scratch tree holds both PRs' suites" "1 1" "$(tree "$SU" | grep -cxF tests/p/one.test.sh) $(tree "$SU" | grep -cxF tests/p/two.test.sh)"
-t_eq "...and the generated files are main's, not rebuilt" "status 0" "$(tree docs/generated/status.md)"
+t_eq "...and the generated files are main's, not rebuilt" "status 0" "$(tree STATUS.md)"
 t_eq "...with the closed PR's file absent" "" "$(tree x.txt)"
 t_eq "nothing was pushed" "" "$(git --git-dir="$MS_BARE" for-each-ref "refs/heads/ci")"
 t_eq "...and no PR was created or merged" 0 "$(ms_mutates)"
