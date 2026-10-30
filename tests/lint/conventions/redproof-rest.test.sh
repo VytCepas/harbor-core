@@ -33,13 +33,13 @@ _rp_red D4 "deny entry for a tool whose path rules are never consulted" "a Write
 
 t_section "F10: the .sec0-baseline projection is ONE shape (harbor#588)"
 _rp_fresh
-for _f10f in deploy-harden floor-deny admission-integrity; do
+for _f10f in deploy-harden admission-deny admission-integrity; do
   _rp_sh "$RP/bin/$_f10f.sh"; printf "jq -S '{perms:.permissions}' s\n" >> "$RP/bin/$_f10f.sh"
 done
 _rp_green F10 "three copies of one projection"
-printf "jq -S '{perms:.permissions, extra:1}' s\n" >> "$RP/bin/floor-deny.sh"
-_rp_red F10 "baseline projection differs from the first copy: bin/floor-deny.sh" "a writer pinning a second projection"
-rm "$RP/bin/admission-integrity.sh"; _rp_sh "$RP/bin/floor-deny.sh"; printf "jq -S %s s\n" "'{perms:.permissions}'" >> "$RP/bin/floor-deny.sh"
+printf "jq -S '{perms:.permissions, extra:1}' s\n" >> "$RP/bin/admission-deny.sh"
+_rp_red F10 "baseline projection differs from the first copy: bin/admission-deny.sh" "a writer pinning a second projection"
+rm "$RP/bin/admission-integrity.sh"; _rp_sh "$RP/bin/admission-deny.sh"; printf "jq -S %s s\n" "'{perms:.permissions}'" >> "$RP/bin/admission-deny.sh"
 _rp_red F10 "found 2 copy/copies" "a copy gone missing: the floor of three is not met"
 
 t_section "M1: a private marker walk (harbor#588)"

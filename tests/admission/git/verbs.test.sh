@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # git verbs (harbor#1291): contracts/git-verbs.md is the one list of git shapes. This holds it to the three things
-# that must agree with it: the allow/ask/deny rules bin/floor-deny.sh actually WRITES (run, not read), guard-bash's
+# that must agree with it: the allow/ask/deny rules bin/admission-deny.sh actually WRITES (run, not read), guard-bash's
 # read-only git list, and the floor rule ids it cites. And it refuses any derived allow rule that matches a gated
 # shape with no ask, deny or floor block over it. Every disagreement kind is driven red below on a mutated copy.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
@@ -21,11 +21,11 @@ gv_glob() { # <rule body> <command> -> 0 iff the rule matches it as a permission
 }
 gv_derive() { # <tree> <dir> -> <dir>/settings.json as floor-deny --apply writes it into an empty one
   mkdir -p "$2"; printf '{"permissions":{"allow":[],"deny":[]}}\n' > "$2/settings.json"
-  CLAUDE_CONFIG_DIR="$2" sh "$1/bin/floor-deny.sh" --apply --dir "$2" > "$2/fd.log" 2>&1; echo "$?" > "$2/fd.rc"
+  CLAUDE_CONFIG_DIR="$2" sh "$1/bin/admission-deny.sh" --apply --dir "$2" > "$2/fd.log" 2>&1; echo "$?" > "$2/fd.rc"
 }
 gv_tree() { # <dir> -> a tree holding floor-deny and the libraries it sources, with a copy of the register
   mkdir -p "$1/bin" "$1/contracts"
-  cp "$T_ROOT/bin/floor-deny.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/deploy-install-lib.sh" "$1/bin/"
+  cp "$T_ROOT/bin/admission-deny.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/deploy-install-lib.sh" "$1/bin/"
   cp "$REG" "$1/contracts/git-verbs.md"
 }
 # Spellings no allow rule may pass unguarded. The register's own gated rows are checked too; these are the

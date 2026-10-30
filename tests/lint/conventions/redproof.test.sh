@@ -167,14 +167,14 @@ _rp_red F5 "1 of 1 floor_block call site(s) carry no rule id" "a call with no id
 
 t_section "F16: a floor guard printing the kill-switch as its remedy (harbor#482)"
 _rp_fresh
-printf "#!/usr/bin/env sh\nGUARDS='guard-zz.sh admission-hook.sh pin-zz.sh'\n" > "$RP/bin/floor-install.sh"
+printf "#!/usr/bin/env sh\nGUARDS='guard-zz.sh admission-hook.sh pin-zz.sh'\n" > "$RP/bin/admission-install.sh"
 _rp_sh "$RP/bin/guard-zz.sh"; printf "printf 'run it once as a ! command\\\\n' >&2\n# the old hatch was HARBOR_ADMISSION_DISABLE=1 claude\n" >> "$RP/bin/guard-zz.sh"
 _rp_sh "$RP/bin/admission-hook.sh"; printf "printf 'Fix the guard, or open an unguarded session: HELM_DISABLE_FLOOR=1 claude\\\\n' >&2\n" >> "$RP/bin/admission-hook.sh"
 _rp_sh "$RP/bin/pin-zz.sh"
 _rp_green F16 "a narrow remedy, the hatch in a comment, and the wrapper where it is the true one"
 printf "printf '(operator escape hatch: HELM_DISABLE_FLOOR=1 claude)\\\\n' >&2\n" >> "$RP/bin/pin-zz.sh"
 _rp_red F16 "bin/pin-zz.sh prints the kill-switch as a remedy on 1 code line(s)" "the hatch in a file only the GUARDS line names"
-printf '#!/usr/bin/env sh\n' > "$RP/bin/floor-install.sh"
+printf '#!/usr/bin/env sh\n' > "$RP/bin/admission-install.sh"
 _rp_red F16 "has no GUARDS=" "an installer whose floor file set cannot be derived"
 
 t_section "F14: a .helm-* name with no row, a stale row, and a layer that disagrees (harbor#779)"
@@ -194,8 +194,8 @@ _f14_fx() { # [extra-row] [FILES-line] [selfedit-arm] [deny-entry] — clean unl
   _rp_sh "$RP/bin/admission-self-edit.sh"
   printf '%s\n' 'is_protected() {' '  case "$1" in' '    # the trust dir is .helm-zz-trust' "${3-$_F14_SELF}" \
     '    "$root/.helm-zz-pin.sha256") return 0 ;;   # the pin' '  esac' '}' >> "$RP/bin/admission-self-edit.sh"
-  _rp_sh "$RP/bin/floor-deny.sh"
-  printf '%s\n' "ADD='[" "${4-$_F14_DENY}" '  "Edit(~/.claude/.helm-zz-pin.sha256)"' "]'" >> "$RP/bin/floor-deny.sh"
+  _rp_sh "$RP/bin/admission-deny.sh"
+  printf '%s\n' "ADD='[" "${4-$_F14_DENY}" '  "Edit(~/.claude/.helm-zz-pin.sha256)"' "]'" >> "$RP/bin/admission-deny.sh"
 }
 _f14_fx
 _rp_green F14 "a row per name, and three layers naming exactly the integrity rows (one only as a regex)"
@@ -262,7 +262,7 @@ _f15_fx; printf '%s\n' "$_F15_DIRTY" >> "$RP/bin/zz-shim.sh"
 _rp_red F15 "bin/zz-shim.sh:5 resolves" "a hook named through V=\"\$DIR/bin/X\""
 _f15_fx; _f15_dirty context-rules/user/zz-pack.sh
 _rp_red F15 "context-rules/user/zz-pack.sh:3 resolves" "a box pack's run: script"
-_f15_fx; _f15_dirty bin/zz-lib.sh 'FLOOR_AWK="${DIR:-$(dirname -- "${0:-.}")}/floor-normalize.awk"'
+_f15_fx; _f15_dirty bin/zz-lib.sh 'FLOOR_AWK="${DIR:-$(dirname -- "${0:-.}")}/admission-normalize.awk"'
 _rp_red F15 "bin/zz-lib.sh:3 resolves" "guard-lib's \${0:-.} fallback spelling"
 _f15_fx; _f15_dirty bin/zz-lib.sh 'D=`dirname $0`'
 _rp_red F15 "bin/zz-lib.sh:3 resolves" "the backtick spelling"
@@ -468,18 +468,18 @@ _rp_inst deploy-harden.sh 'il_parse "$@"'
 _rp_red D7 "bin/deploy-harden.sh does not source bin/deploy-install-lib.sh" "a named box tool (sec0-harden) off the library"
 rm "$RP/bin/deploy-harden.sh"
 # harbor#800: the three tools that still parsed a positional dir are named in D7's scope.
-_rp_inst floor-deny.sh 'for a in "$@"; do case "$a" in --live) DIR="$HOME/.claude" ;; *) DIR="$a" ;; esac; done'
-_rp_red D7 "bin/floor-deny.sh does not source bin/deploy-install-lib.sh" "floor-deny's positional parser, off the library (harbor#800)"
-rm "$RP/bin/floor-deny.sh"
-_rp_inst floor-verify.sh 'case "${1:-}" in' "  ''|--live) DIR=\"\${CLAUDE_CONFIG_DIR:-\$HOME/.claude}\" ;;" '  *) DIR="$1" ;;' 'esac'
-_rp_red D7 "bin/floor-verify.sh does not source bin/deploy-install-lib.sh" "floor-verify's \$1 parser, off the library (harbor#800)"
-_rp_inst floor-verify.sh "$_IL_SRC" 'DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"' 'il_parse "$@"; il_target'
-_rp_red D7 "bin/floor-verify.sh reads CLAUDE_CONFIG_DIR as a default target" "floor-verify on the library that still lets the env pick the box"
-rm "$RP/bin/floor-verify.sh"
+_rp_inst admission-deny.sh 'for a in "$@"; do case "$a" in --live) DIR="$HOME/.claude" ;; *) DIR="$a" ;; esac; done'
+_rp_red D7 "bin/admission-deny.sh does not source bin/deploy-install-lib.sh" "floor-deny's positional parser, off the library (harbor#800)"
+rm "$RP/bin/admission-deny.sh"
+_rp_inst admission-verify.sh 'case "${1:-}" in' "  ''|--live) DIR=\"\${CLAUDE_CONFIG_DIR:-\$HOME/.claude}\" ;;" '  *) DIR="$1" ;;' 'esac'
+_rp_red D7 "bin/admission-verify.sh does not source bin/deploy-install-lib.sh" "floor-verify's \$1 parser, off the library (harbor#800)"
+_rp_inst admission-verify.sh "$_IL_SRC" 'DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"' 'il_parse "$@"; il_target'
+_rp_red D7 "bin/admission-verify.sh reads CLAUDE_CONFIG_DIR as a default target" "floor-verify on the library that still lets the env pick the box"
+rm "$RP/bin/admission-verify.sh"
 _rp_inst drift-renew-check.sh "$_IL_SRC" 'while [ $# -gt 0 ]; do case "$1" in' '  --live) T="$HOME/.claude" ;;' 'esac; shift; done' 'il_parse "$@"; il_target'
 _rp_red D7 "bin/drift-renew-check.sh parses a standard flag itself" "renew-check with its own --live arm beside il_parse (harbor#800)"
 rm "$RP/bin/drift-renew-check.sh"
-_rp_inst raw-install.sh "$_IL_SRC" 'il_parse "$@"; il_target' 'echo "  sh floor-install.sh $DIR --apply"'
+_rp_inst raw-install.sh "$_IL_SRC" 'il_parse "$@"; il_target' 'echo "  sh admission-install.sh $DIR --apply"'
 _rp_red D6 "printed command its own gate refuses" "a hint that spells a raw \$DIR, beside il_parse"
 rm "$RP/bin/raw-install.sh"
 _rp_inst hint-install.sh "$_IL_SRC" 'il_parse "$@"; il_target' 'x="$(il_cmd --apply)"'

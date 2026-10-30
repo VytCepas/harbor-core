@@ -135,7 +135,7 @@ if [ "$_hd" != ok ]; then
 fi
 
 # An absent config dir is an ANSWER, not a misuse — the same argument
-# floor-verify.sh:44 makes. Nothing is installed, so nothing dangles.
+# admission-verify.sh:44 makes. Nothing is installed, so nothing dangles.
 if [ ! -d "$DIR" ]; then
   if [ "$STATUS" = 1 ]; then status_end; exit $?; fi
   if [ "$JSON" = 1 ]; then printf '{"dir":"%s","installed":false,"findings":[]}\n' "$DIR"; exit 0; fi
@@ -375,7 +375,7 @@ fi
 #
 # DIRECTION MATTERS AND THE OPPOSITE FILTER DISARMS THE FLOOR. It drops the
 # bucket with NO `matcher` key and keeps the `matcher: ""` one — because that is
-# the bucket also carrying floor-observe.sh and admission-integrity.sh. Selecting the
+# the bucket also carrying admission-observe.sh and admission-integrity.sh. Selecting the
 # other way removes two hooks and reports success. Verified on a copy of the live
 # settings.json 2026-08-03: REF-2 cleared, all five SessionStart commands intact.
 #
@@ -847,7 +847,7 @@ fi
 # is indistinguishable from "there was nothing to check" is the exact failure it
 # was built to catch, and it shipped that way on 2026-08-03 — found the same day
 # by an adversarial pass, which also found `harbor verify` green on the same box
-# for the same reason (floor-verify.sh now carries the B8 half of this).
+# for the same reason (admission-verify.sh now carries the B8 half of this).
 #
 # THE PREDICATE IS `settings.json`, NOT the directory. An empty or absent dir is
 # answered above: nothing is installed, so nothing dangles. A dir carrying

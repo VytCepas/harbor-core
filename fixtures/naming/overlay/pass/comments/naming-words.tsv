@@ -1,0 +1,4 @@
+# naming-words.tsv — a repo overlay fixture (harbor#967): a header and comments, no rows.
+
+id	note
+# a comment after the header

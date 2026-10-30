@@ -29,9 +29,9 @@ docs/explanation/verification-expanded.md	doctrine	the constitution's expanded r
 docs/explanation/wiring-new-capability.md	doctrine	the constitution's expanded rules, cited from it (moved from DOCTRINE/ in W1)
 bin/admission-*	guard	the floor's guards: PreToolUse vetoes, the Stop gate and B6
 bin/guard-*	guard	the guards' old names: rename shims to bin/admission-* until 2026-11-15 (harbor#961 W6)
-bin/floor-*	floor	the floor's installer, deny list, hook wrapper, observer, verifier and normalizer
+bin/floor-*	floor	the floor tools' old names: rename shims to bin/admission-* until 2026-12-01 (harbor#949 W7; floor-hook.sh until 2026-11-15)
 bin/library-admission.sh	floor	the library every guard sources
-floor-normalize.awk	floor	the tokenizer guard-bash reads commands through, should it move to the root
+admission-normalize.awk	floor	the tokenizer guard-bash reads commands through, should it move to the root
 bin/admission-mutation-tier.sh	floor	the config-dir write classifier the floor's surfaces are tiered by
 bin/library-log.sh	floor	sourced by every installed gate tool, installer and recovery tool
 bin/deploy-harden.sh	settings	writes the SEC-0 read-deny base into settings.json and pins it
@@ -97,20 +97,26 @@ standards/naming/controls.tsv	ci-gate	the control register: each control's mode,
 bin/access-browser.sh	ship	derived: called by bin/deploy-live-verify.sh
 bin/access-github-app-install.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/access.sh	operator-run	derived: called by bin/secret
-bin/admission-api-route.sh	installed	derived: shipped by floor-install.sh
-bin/admission-bash.sh	installed	derived: shipped by floor-install.sh
-bin/admission-cloud.sh	installed	derived: shipped by floor-install.sh
-bin/admission-deliverables.sh	installed	derived: shipped by floor-install.sh
-bin/admission-destroy.sh	installed	derived: shipped by floor-install.sh
-bin/admission-egress.sh	installed	derived: shipped by floor-install.sh
-bin/admission-hook.sh	installed	derived: shipped by floor-install.sh
+bin/admission-api-route.sh	installed	derived: shipped by admission-install.sh
+bin/admission-bash.sh	installed	derived: shipped by admission-install.sh
+bin/admission-cloud.sh	installed	derived: shipped by admission-install.sh
+bin/admission-deliverables.sh	installed	derived: shipped by admission-install.sh
+bin/admission-deny.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/admission-destroy.sh	installed	derived: shipped by admission-install.sh
+bin/admission-egress.sh	installed	derived: shipped by admission-install.sh
+bin/admission-hook.sh	installed	derived: shipped by admission-install.sh
+bin/admission-install.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/admission-integrity.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/admission-normalize.awk	installed	derived: shipped by admission-install.sh
 bin/admission-observe-report.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/admission-self-edit.sh	installed	derived: shipped by floor-install.sh
-bin/admission-stop.sh	installed	derived: wired by floor-install.sh
+bin/admission-observe.sh	installed	derived: shipped by admission-install.sh
+bin/admission-remove.sh	ship	derived: called by bin/deploy.sh
+bin/admission-self-edit.sh	installed	derived: shipped by admission-install.sh
+bin/admission-stop.sh	installed	derived: wired by admission-install.sh
+bin/admission-verify.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/alert-notify.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/alert-probe.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/annotate-web.sh	installed	derived: shipped by floor-install.sh
+bin/annotate-web.sh	installed	derived: shipped by admission-install.sh
 bin/audit-collector-check.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/audit-collector-install.sh	ship	derived: called by bin/deploy.sh
 bin/audit-collector.sh	ship	derived: called by bin/audit-collector-install.sh
@@ -138,20 +144,20 @@ bin/ci-wait.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/context-budget.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/context-injection-install.sh	installed	derived: called by bin/decider-set.sh
 bin/context-peers.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/context-resolve.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/context-resolve.sh	installed	derived: shipped by admission-install.sh
 bin/decider-set.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/deploy-confinement.sh	installed	derived: called by bin/floor-verify.sh
+bin/deploy-confinement.sh	installed	derived: called by bin/admission-verify.sh
 bin/deploy-doctor.sh	ci-gate	derived: called by .github/workflows/governance.yml
-bin/deploy-fleet.sh	installed	derived: shipped by floor-install.sh
-bin/deploy-harden.sh	installed	derived: shipped by floor-install.sh
+bin/deploy-fleet.sh	installed	derived: shipped by admission-install.sh
+bin/deploy-harden.sh	installed	derived: shipped by admission-install.sh
 bin/deploy-hooks.sh	ci-gate	derived: called by bin/lint-conventions.sh
-bin/deploy-install-lib.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/deploy-install-lib.sh	installed	derived: shipped by admission-install.sh
 bin/deploy-install-stamp.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/deploy-launchd-render.sh	installed	derived: called by bin/drift-renew-check.sh
 bin/deploy-live-verify.sh	ship	derived: runs as ship.conf verify
 bin/deploy-push.sh	ci-gate	derived: called by bin/ci-mirror.sh
-bin/deploy-restore.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/deploy-runtime-install.sh	installed	derived: called by bin/audit-triage-run.sh
+bin/deploy-restore.sh	installed	derived: shipped by admission-install.sh
+bin/deploy-runtime-install.sh	installed	derived: called by bin/admission-install.sh
 bin/deploy-shim-install.sh	ship	derived: called by bin/deploy-live-verify.sh
 bin/deploy.sh	ship	derived: runs as ship.conf plan
 bin/doc-cite-verify.sh	ci-gate	derived: called by bin/lint-conventions.sh
@@ -160,50 +166,44 @@ bin/doc-fresh-verify.sh	ci-gate	derived: called by .github/workflows/governance.
 bin/doc-graph-generate.sh	installed	derived: called by bin/drift-reference-check.sh
 bin/doc-index-generate.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/doc-refs.sh	ci-gate	derived: called by .github/workflows/governance.yml
-bin/drift-confinement.sh	installed	derived: called by bin/floor-verify.sh
-bin/drift-install.sh	ship	derived: called by bin/deploy-live-verify.sh
+bin/drift-confinement.sh	installed	derived: called by bin/admission-verify.sh
+bin/drift-install.sh	installed	derived: called by bin/admission-verify.sh
 bin/drift-reference-check.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/drift-renew-check.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/eval-pass-score.sh	installed	derived: called by bin/floor-install.sh
+bin/eval-pass-score.sh	installed	derived: called by bin/admission-install.sh
 bin/eval-redteam-corpus-run.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/eval-redteam-corpus.sh	ci-gate	derived: called by .github/workflows/public-ci.yml
 bin/eval-replay-corpus.sh	ci-gate	derived: called by bin/deploy-doctor.sh
 bin/eval-replay-worker.sh	installed	derived: called by bin/eval-replay.sh
 bin/eval-replay.sh	installed	derived: called by bin/eval-pass-score.sh
-bin/event-bus.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/event-bus.sh	installed	derived: shipped by admission-install.sh
 bin/event-dispatch.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/event-hook.sh	installed	derived: shipped by floor-install.sh
-bin/floor-deny.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/floor-install.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/floor-normalize.awk	installed	derived: shipped by floor-install.sh
-bin/floor-observe.sh	installed	derived: shipped by floor-install.sh
-bin/floor-uninstall.sh	ship	derived: called by bin/deploy.sh
-bin/floor-verify.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/gate-approve.sh	installed	derived: shipped by floor-install.sh
-bin/gate-classify.sh	installed	derived: shipped by floor-install.sh
+bin/event-hook.sh	installed	derived: shipped by admission-install.sh
+bin/gate-approve.sh	installed	derived: shipped by admission-install.sh
+bin/gate-classify.sh	installed	derived: shipped by admission-install.sh
 bin/gate-codeowners.sh	installed	derived: the approval gate
 bin/gate-lib.sh	installed	derived: the approval gate
-bin/gate-merge-check.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/gate-merge-stack-resolve.py	installed	derived: shipped by deploy-runtime-install.sh
-bin/gate-merge-stack.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/gate-merge.sh	installed	derived: shipped by floor-install.sh
+bin/gate-merge-check.sh	installed	derived: shipped by admission-install.sh
+bin/gate-merge-stack-resolve.py	installed	derived: shipped by admission-install.sh
+bin/gate-merge-stack.sh	installed	derived: shipped by admission-install.sh
+bin/gate-merge.sh	installed	derived: shipped by admission-install.sh
 bin/gate-merged-check.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/gate-pr-wait.sh	installed	derived: the approval gate
-bin/gate-queue.sh	installed	derived: shipped by floor-install.sh
+bin/gate-queue.sh	installed	derived: shipped by admission-install.sh
 bin/gate-register-derive.sh	installed	derived: the approval gate
 bin/gate-required-generate.sh	installed	derived: the approval gate
 bin/gcloud	operator-run	derived: linked into ~/.local/bin as gcloud by contracts/shims.tsv
 bin/gcloud-credentials	operator-run	derived: linked into ~/.local/bin as gcloud-creds by contracts/shims.tsv
-bin/govern-hook.sh	installed	derived: shipped by floor-install.sh
+bin/govern-hook.sh	installed	derived: shipped by admission-install.sh
 bin/govern-token.sh	installed	derived: wired by context-injection-install.sh
 bin/harbor	operator-run	derived: linked into ~/.local/bin as harbor by contracts/shims.tsv
 bin/housekeeping-clean.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/idea	operator-run	derived: linked into ~/.local/bin as idea by contracts/shims.tsv
-bin/library-admission.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/library-admission.sh	installed	derived: shipped by admission-install.sh
 bin/library-alert.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/library-fs.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/library-gate.sh	installed	derived: shipped by floor-install.sh
-bin/library-log.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/library-fs.sh	installed	derived: shipped by admission-install.sh
+bin/library-gate.sh	installed	derived: shipped by admission-install.sh
+bin/library-log.sh	installed	derived: shipped by admission-install.sh
 bin/lint-adoption.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-comment-commands.awk	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-comment.sh	ci-gate	derived: called by bin/lint-conventions.sh
@@ -218,6 +218,7 @@ bin/lint-layout-map.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-leaks.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-locale-ranges.awk	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-module.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/lint-name-ratchet.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-name.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-platform.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-renderer.sh	installed	derived: called by bin/standard-vendor.sh
@@ -231,13 +232,13 @@ bin/memory-store-check.sh	installed	derived: shipped by deploy-runtime-install.s
 bin/memory.sh	operator-run	derived: linked into ~/.local/bin as memory by contracts/shims.tsv
 bin/name-check	operator-run	derived: linked into ~/.local/bin as name-check by contracts/shims.tsv
 bin/pack.sh	ship	derived: called by bin/deploy.sh
-bin/pin-instructions.sh	installed	derived: shipped by floor-install.sh
-bin/policy-constitution-install.sh	installed	derived: called by bin/drift-renew-check.sh
+bin/pin-instructions.sh	installed	derived: shipped by admission-install.sh
+bin/policy-constitution-install.sh	installed	derived: called by bin/admission-verify.sh
 bin/prod-guard-ambient.sh	installed	derived: wired by prod-guard-install.sh
 bin/prod-guard-install.sh	installed	derived: called by bin/prod-guard-ambient.sh
 bin/proposal.sh	installed	derived: called by bin/drift-renew-check.sh
 bin/scope-layers.sh	ci-gate	derived: called by bin/deploy-push.sh
-bin/scope-managed-mods.sh	installed	derived: called by bin/floor-verify.sh
+bin/scope-managed-mods.sh	installed	derived: called by bin/admission-verify.sh
 bin/scope-roots.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/secret	operator-run	derived: linked into ~/.local/bin as secret by contracts/shims.tsv
 bin/session-autocompact.sh	installed	derived: shipped by deploy-runtime-install.sh

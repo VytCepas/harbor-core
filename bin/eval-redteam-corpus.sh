@@ -14,7 +14,7 @@
 # PINNED. contracts/redteam-sources.tsv pins each upstream to a commit; a refresh fetches that commit, never HEAD. ccg's
 # harness is JavaScript this job executes, and a corpus that moves would move the ratchet for reasons that are not
 # Harbor's. Upstream ahead of its pin is a note; adopting it is a reviewed edit to the pin.
-# ISOLATION. The guards are this checkout's bin/, installed by floor-install.sh into a throwaway HOME and config dir, so
+# ISOLATION. The guards are this checkout's bin/, installed by admission-install.sh into a throwaway HOME and config dir, so
 # no live ledger records a run. A case is judged by every PreToolUse hook that install wires to its tool, as Claude
 # Code runs them, for a main-loop session with a human present: exit 2 or a deny refuses, an ask asks, else allow.
 # NO CASE TEXT. A case is `<corpus>:<kind>:<n>`, n a JSONL line number or ccg's row index. Nothing here prints, logs or
@@ -96,8 +96,8 @@ rows() { grep -v '^#' "$1" | sed '1d' | grep -v '^[[:space:]]*$' || :; }  # a re
 
 # the guard tree a run judged: floor-install's own file lists, then the pins. A change to either makes a run stale.
 digest() { # <root>
-  _fi="$1/bin/floor-install.sh"
-  { for _f in $(sed -nE "s/^(GUARDS|RECOVERY|EVENTS)='([^']*)'.*/\2/p" "$_fi" 2>/dev/null) floor-install.sh floor-deny.sh; do
+  _fi="$1/bin/admission-install.sh"
+  { for _f in $(sed -nE "s/^(GUARDS|RECOVERY|EVENTS)='([^']*)'.*/\2/p" "$_fi" 2>/dev/null) admission-install.sh admission-deny.sh; do
       [ -f "$1/bin/$_f" ] && cat "$1/bin/$_f"; printf '%s\n' "$_f"
     done; cat "$SOURCES" 2>/dev/null; } | cksum | cut -d' ' -f1
 }
@@ -160,10 +160,10 @@ LIVE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 [ "$(_phys "$SBX/cfg")" != "$(_phys "$LIVE_DIR")" ] ||
   { log_fail "the sandbox config dir resolves to the live one ($LIVE_DIR)"; log_fix "TMPDIR=<a scratch dir> $SELFCMD"; log_end || :; exit 3; }
 if ! (cd "$SBX/work" && env -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW -u HELM_DISABLE_FLOOR -u HELM_FLOOR_SHADOW HOME="$SBX/home" CLAUDE_CONFIG_DIR="$SBX/cfg" \
-        TMPDIR="$SBX/tmp" sh -c 'sh "$1/bin/deploy-harden.sh" --apply --dir "$2" && sh "$1/bin/floor-install.sh" --apply --dir "$2"' \
+        TMPDIR="$SBX/tmp" sh -c 'sh "$1/bin/deploy-harden.sh" --apply --dir "$2" && sh "$1/bin/admission-install.sh" --apply --dir "$2"' \
         _ "$ROOT" "$SBX/cfg") > "$TMP/install.out" 2>&1; then
   log_fail "the sandbox floor did not install: $(grep FAIL "$TMP/install.out" | head -1 | sed 's/^ *//')"
-  log_fix "sh $ROOT/bin/floor-install.sh --apply --dir <empty dir>"; log_end || :; exit 3
+  log_fix "sh $ROOT/bin/admission-install.sh --apply --dir <empty dir>"; log_end || :; exit 3
 fi
 # Canaries: a Write onto the sandbox's own settings must be refused and a bare `true` allowed. Either one wrong means
 # the floor is not judging, and scoring a corpus through it would report a lie.
@@ -171,7 +171,7 @@ _cw="$(jq -nc --arg p "$SBX/cfg/settings.json" '{tool_name:"Write",tool_input:{f
 _ct="$(jq -nc '{tool_name:"Bash",tool_input:{command:"true"}}' | rt_judge "$SBX" | cut -f1)"
 if [ "$_cw" != deny ] || [ "$_ct" != allow ]; then
   log_fail "the sandbox floor is not judging (settings write: $_cw, true: $_ct); nothing was scored"
-  log_fix "sh $ROOT/bin/floor-verify.sh --dir $SBX/cfg"; log_end || :; exit 3
+  log_fix "sh $ROOT/bin/admission-verify.sh --dir $SBX/cfg"; log_end || :; exit 3
 fi
 
 if [ "$REFRESH" = 1 ]; then

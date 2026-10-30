@@ -71,7 +71,7 @@ for g in $guards; do
        printf '%s\tBLOCK\t%s\n' "$id" "${rid:-unattributed}"
        log_ok "record $id: BLOCK ${rid:-unattributed}"; finish ;;
     *) printf '%s\tERROR\t%s-rc%s\n' "$id" "${g%.sh}" "$rc"
-       log_warn "record $id: $g exited $rc, not 0 or 2: it reached no verdict"; log_fix "sh bin/floor-verify.sh --live"; finish ;;
+       log_warn "record $id: $g exited $rc, not 0 or 2: it reached no verdict"; log_fix "sh bin/admission-verify.sh --live"; finish ;;
   esac
 done
 printf '%s\tALLOW\t-\n' "$id"

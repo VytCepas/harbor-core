@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
 # FO-1 (harbor#465) — the PostToolUseFailure sink: one durable record per failed
-# tool call, in the shape floor-observe.sh established.
+# tool call, in the shape admission-observe.sh established.
 #
 # WHAT WAS MISSING, AND IT IS NOT WHAT IT LOOKS LIKE. Harbor already registers,
-# analyses and notifies end to end: floor-observe.sh writes guard-decisions.jsonl,
+# analyses and notifies end to end: admission-observe.sh writes guard-decisions.jsonl,
 # audit-triage.sh judges it, audit-triage-run.sh runs that daily, session-verdicts.sh
 # speaks the verdict. All of it works. It watches GUARD DECISIONS — what the floor
 # decided ABOUT a call — and records nothing about what the call then DID. So a
@@ -27,7 +27,7 @@
 #
 # ── FIVE PROPERTIES INHERITED FROM THE GUARD LEDGER, NOT REINVENTED ─────────
 #
-# 1. THIS SCRIPT CREATES NOTHING. floor-observe.sh is the only component allowed
+# 1. THIS SCRIPT CREATES NOTHING. admission-observe.sh is the only component allowed
 #    to create, at SessionStart, where a fork costs nothing and no verdict is
 #    pending. It holds the host directory at 0500 for the rest of the session, so
 #    an append into an existing 0600 file works and a create does not. A recorder
@@ -106,7 +106,7 @@ fi
 
 # THE TWO GATES, IN THIS ORDER. The directory gate is what keeps the file gate's
 # answer true one instruction later: a writable host dir means somebody other
-# than floor-observe.sh can swap the sink between the check and the append.
+# than admission-observe.sh can swap the sink between the check and the append.
 ODIR="$CFG/MEMORY/OBSERVABILITY/$HOST"
 [ ! -w "$ODIR" ] || exit 0
 SINK="$ODIR/tool-failures.jsonl"

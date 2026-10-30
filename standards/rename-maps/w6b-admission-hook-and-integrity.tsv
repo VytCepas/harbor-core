@@ -1,4 +1,4 @@
-# w6b-admission-floor-hook-and-integrity.tsv (harbor#961, lane E): the mapping for admission-hook.sh and admission-integrity.sh behind a forwarder
+# w6b-admission-hook-and-integrity.tsv (harbor#961, lane E): the mapping for admission-hook.sh and admission-integrity.sh behind a forwarder
 #
 # WHY THIS FILE EXISTS. The six-wave rename needs one reviewed table per wave before any file moves; the operator approves it wholesale at sitting B
 # (SITTING-B.md lists only the rows that need a decision). Names come from registered terms only (standards/naming/terms.tsv).

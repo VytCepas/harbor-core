@@ -6,7 +6,7 @@
 # not observe (VERIFY-1). Stateful: K1b's $B6 is SEAM-1's fixture.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$(dirname "$0")/fixture.sh"
-SCANNERS='admission-bash.sh admission-egress.sh admission-self-edit.sh annotate-web.sh pin-instructions.sh library-admission.sh floor-normalize.awk'
+SCANNERS='admission-bash.sh admission-egress.sh admission-self-edit.sh annotate-web.sh pin-instructions.sh library-admission.sh admission-normalize.awk'
 EMPTY_SETTINGS='{"permissions":{"allow":[],"deny":[],"disableBypassPermissionsMode":"disable","disableAutoMode":"disable"}}'
 pinned_dir() { # <dir> — the scanners and B6 copied in, every scanner content-pinned, a bare deny
   mkdir -p "$1/bin" "$1/.helm-pins"
@@ -19,7 +19,7 @@ b6msg() { # <cfg> — the systemMessage B6 emits for that config dir
 }
 installed_b6() { # <dir> — a clean floor-install --with-b6 into an empty config dir
   mkdir -p "$1/bin"; printf '%s\n' "$EMPTY_SETTINGS" > "$1/settings.json"
-  env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-install.sh" --dir "$1" --apply --with-b6 >/dev/null 2>&1
+  env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-install.sh" --dir "$1" --apply --with-b6 >/dev/null 2>&1
 }
 no_live() { # <text> — "live" if a recovery in it is aimed at --live, bare or shell-quoted
   case "$1" in (*" --live "*|*" --live"|*"'--live'"*) echo live ;; (*) echo sandbox ;; esac
@@ -30,24 +30,24 @@ X9="$TMP/x9"; pinned_dir "$X9"
 printf '\n# content drift\n' >> "$X9/bin/library-admission.sh"
 X9_CONTENT="$(b6msg "$X9")"
 t_has "X9 content drift: the recovery names the content pin" "$X9_CONTENT" '.helm-pins'
-t_hasnt "X9 content drift must not recommend floor-deny.sh, which never writes .helm-pins" "$X9_CONTENT" 'floor-deny.sh'
+t_hasnt "X9 content drift must not recommend admission-deny.sh, which never writes .helm-pins" "$X9_CONTENT" 'admission-deny.sh'
 t_has "X9 content drift names WHICH file drifted" "$X9_CONTENT" 'library-admission.sh'
-# Settings drift is the class floor-deny.sh does fix (harbor#103).
+# Settings drift is the class admission-deny.sh does fix (harbor#103).
 _x9sha < "$X9/bin/library-admission.sh" > "$X9/.helm-pins/library-admission.sh.sha256"
 printf 'deliberately-not-a-hash\n' > "$X9/.sec0-baseline.sha256"
 X9_SETTINGS="$(b6msg "$X9")"
-t_has "X9 settings drift keeps the floor-deny recovery" "$X9_SETTINGS" 'floor-deny.sh'
+t_has "X9 settings drift keeps the floor-deny recovery" "$X9_SETTINGS" 'admission-deny.sh'
 
 t_section "X9b (harbor#110) · the recovery names the dir the verdict was measured on"
 t_eq "X9b a sandbox verdict must not print a recovery aimed at LIVE" sandbox "$(no_live "$X9_SETTINGS")"
 t_has "X9b the sandbox recovery names the sandbox it measured" "$X9_SETTINGS" "'$X9' --repin"
-t_has "X9b ...as --dir, the only target form floor-deny takes (harbor#800)" "$X9_SETTINGS" "floor-deny.sh --dir '$X9' --repin"
+t_has "X9b ...as --dir, the only target form floor-deny takes (harbor#800)" "$X9_SETTINGS" "admission-deny.sh --dir '$X9' --repin"
 # The discrimination half: when the config dir IS live, --live is the only spelling the tools take.
 H110="$TMP/h110"; pinned_dir "$H110/.claude"
 printf 'deliberately-not-a-hash\n' > "$H110/.claude/.sec0-baseline.sha256"
 X9_LIVE="$(env HOME="$H110" CLAUDE_CONFIG_DIR="$H110/.claude" sh "$H110/.claude/bin/admission-integrity.sh" \
              </dev/null 2>/dev/null | jq -r '.systemMessage // ""' 2>/dev/null)"
-t_has "X9b a LIVE verdict keeps the --live spelling those tools require" "$X9_LIVE" "floor-deny.sh '--live' --repin"
+t_has "X9b a LIVE verdict keeps the --live spelling those tools require" "$X9_LIVE" "admission-deny.sh '--live' --repin"
 t_has "X9b a LIVE verdict names deploy-restore.sh --live" "$X9_LIVE" "deploy-restore.sh '--live'"
 t_has "X9b ...in the form deploy-restore.sh's gate takes: --live --apply (harbor#765)" "$X9_LIVE" "deploy-restore.sh '--live' --apply"
 # session-verdicts.sh prints the same idiom; its live spelling is shell-quoted, so the bare
@@ -56,7 +56,7 @@ t_has "X9b session-verdicts on the LIVE dir names --live (the needle below can a
   "$(env HOME="$H110" CLAUDE_CONFIG_DIR="$H110/.claude" sh "$T_ROOT/hooks/session-verdicts/session-verdicts.sh" 2>/dev/null)" "'--live' --repin"
 SV110="$(env HOME="$H110" CLAUDE_CONFIG_DIR="$X9" sh "$T_ROOT/hooks/session-verdicts/session-verdicts.sh" 2>/dev/null || true)"
 t_eq "X9b session-verdicts must not print a LIVE recovery from a sandbox" sandbox "$(no_live "$SV110")"
-t_has "X9b ...its sandbox re-pin is --dir spelled, the only target form floor-deny takes (harbor#800)" "$SV110" "floor-deny.sh --dir '$X9' --repin"
+t_has "X9b ...its sandbox re-pin is --dir spelled, the only target form floor-deny takes (harbor#800)" "$SV110" "admission-deny.sh --dir '$X9' --repin"
 
 t_section "X15 (2026-08-14): what B6 verifies is DERIVED from the pins on disk"
 X15="$TMP/x15"; installed_b6 "$X15"
@@ -71,7 +71,7 @@ t_eq "X15 restoring the guards clears the verdict" "" "$(b6msg "$X15")"
 # Unwiring is cheaper than editing; gated on the pin so an older box is not false-alarmed.
 jq 'del(.hooks.PreToolUse[]?.hooks[]? | select(.command | test("admission-cloud")))' \
    "$X15/settings.json" > "$X15/s.tmp" && mv "$X15/s.tmp" "$X15/settings.json"
-env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$X15" --repin >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-deny.sh" --dir "$X15" --repin >/dev/null 2>&1
 t_has "X15 admission-cloud.sh unwired from PreToolUse(Bash) is reported" "$(b6msg "$X15")" 'admission-cloud.sh'
 rm -f "$X15/.helm-pins/admission-cloud.sh.sha256" "$X15/bin/admission-cloud.sh"
 t_eq "X15 an install with no guard-cloud pin is not blocked for a guard it never had" absent \
@@ -111,7 +111,7 @@ t_has "X15 runtime-install names the PINNED deploy-restore.sh it replaced (a not
 t_has "X15 B6 actually blocks on the deploy-restore.sh the installer warned about" "$(b6msg "$X15R")" 'deploy-restore.sh'
 # floor-verify fires guard-cloud and guard-destroy (cli.md: firing every guard is its job), red-green.
 X15V="$(cd -P "$TMP" && pwd -P)/x15v"; installed_b6 "$X15V"  # physical: floor-verify reports the dir it resolved
-X15V_OUT="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-verify.sh" --dir "$X15V" 2>&1 || true)"
+X15V_OUT="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-verify.sh" --dir "$X15V" 2>&1 || true)"
 t_eq "X15 floor-verify fires admission-cloud.sh" yes \
   "$(case "$X15V_OUT" in (*decides*"BigQuery table delete"*) echo yes ;; (*) echo no ;; esac)"
 t_eq "X15 floor-verify fires admission-destroy.sh" yes \
@@ -119,7 +119,7 @@ t_eq "X15 floor-verify fires admission-destroy.sh" yes \
 for _g in admission-cloud.sh admission-destroy.sh; do
   printf '#!/usr/bin/env sh\n[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0\nexit 0\n' > "$X15V/bin/$_g"
 done
-X15V_GUT="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-verify.sh" --dir "$X15V" 2>&1 || true)"
+X15V_GUT="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-verify.sh" --dir "$X15V" 2>&1 || true)"
 t_has "X15 floor-verify fails the decides() probe on two gutted guards (№2.10)" "$X15V_GUT" 'NO DECISION'
 t_has "X15 floor-verify's verdict line honours its own failed probes" "$X15V_GUT" 'FLOOR IS NOT FULLY ON'
 
@@ -136,9 +136,9 @@ t_eq "X13 the recovery-path scan still reaches >= 3 scripts, or the check above 
   "$([ "${_x13_n:-0}" -ge 3 ] && echo yes || echo "no (${_x13_n:-0})")"
 # --apply re-adds the whole B1 set and resurrects withdrawn entries; re-pinning is --repin. Code only.
 t_exit "X13 admission-integrity.sh must not tell the operator to re-pin with --apply" 1 \
-  sh -c 'grep -v "^[[:space:]]*#" "$1" | grep -q "floor-deny\.sh --live --apply"' _ "$SRC/admission-integrity.sh"
+  sh -c 'grep -v "^[[:space:]]*#" "$1" | grep -q "admission-deny\.sh --live --apply"' _ "$SRC/admission-integrity.sh"
 for _x13p in bin/admission-integrity.sh hooks/session-verdicts/session-verdicts.sh; do _x13="${_x13p##*/}"
-  t_exit "X13 $_x13 names the re-pin command its twin prints" 0 grep -q 'bin/floor-deny\.sh \$TGTQ --repin' "$T_ROOT/$_x13p"
+  t_exit "X13 $_x13 names the re-pin command its twin prints" 0 grep -q 'bin/admission-deny\.sh \$TGTQ --repin' "$T_ROOT/$_x13p"
   t_exit "X13 $_x13 resolves the recovery target against the live dir" 0 grep -q 'TGT="--live"' "$T_ROOT/$_x13p"
   t_exit "X13 $_x13 shell-quotes the path it prints (PR #113)" 0 grep -q '_shq()' "$T_ROOT/$_x13p"
 done
@@ -159,11 +159,11 @@ done
 
 t_section "QA PLAN Q-R6: the restore path is not a lockout"
 QW="$TMP/qa-recover"; mkdir -p "$QW/bin"; printf '%s' "$EMPTY_SETTINGS" > "$QW/settings.json"
-for _g in library-admission.sh floor-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh annotate-web.sh \
-          admission-integrity.sh floor-deny.sh floor-install.sh deploy-restore.sh deploy-harden.sh; do
+for _g in library-admission.sh admission-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh annotate-web.sh \
+          admission-integrity.sh admission-deny.sh admission-install.sh deploy-restore.sh deploy-harden.sh; do
   cp "$SRC/$_g" "$QW/bin/" 2>/dev/null
 done
-env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-install.sh" --dir "$QW" --apply --with-b6 >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-install.sh" --dir "$QW" --apply --with-b6 >/dev/null 2>&1
 # deploy's snapshot in deploy's format, over deploy's own SNAP_SET (baseline-pin is retired, harbor#765).
 _qs="$QW/backups/deploy-20260101-000000-1"; mkdir -p "$_qs"
 _qset="$(sed -n "s/^SNAP_SET='\(.*\)'$/\1/p" "$SRC/deploy.sh")"
@@ -183,12 +183,12 @@ t_eq "Q-R6 after restore the integrity gate does not block (recovery is not a lo
 t_section "K1b: B6 integrity gate (fail-CLOSED SessionStart)"
 # exit 2 does not block at SessionStart; {"continue": false} on stdout is the only hard stop.
 B6="$TMP/b6"; mkdir -p "$B6/bin"; printf '%s\n' "$EMPTY_SETTINGS" > "$B6/settings.json"
-for _g in library-admission.sh floor-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh annotate-web.sh \
-          floor-deny.sh floor-install.sh admission-integrity.sh; do
+for _g in library-admission.sh admission-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh annotate-web.sh \
+          admission-deny.sh admission-install.sh admission-integrity.sh; do
   cp "$SRC/$_g" "$B6/bin/$_g"
 done
 chmod +x "$B6"/bin/*.sh
-env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-install.sh" --dir "$B6" --apply >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-install.sh" --dir "$B6" --apply >/dev/null 2>&1
 b6run() { printf '{"hook_event_name":"SessionStart","source":"startup"}' \
   | CLAUDE_CONFIG_DIR="$B6" sh "$B6/bin/admission-integrity.sh" 2>/dev/null; }
 b6cont() { b6run | jq -r '.continue' 2>/dev/null; }
@@ -197,7 +197,7 @@ not_false() { case "$1" in (false) echo false ;; (*) echo 'not false' ;; esac; }
 t_eq "K1b B6 is silent on a clean state" "" "$(b6run)"
 b6edit '.permissions.deny = []'
 t_eq "K1b B6 blocks after the deny array is tampered" false "$(b6cont)"
-env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$B6" --apply >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-deny.sh" --dir "$B6" --apply >/dev/null 2>&1
 t_eq "K1b B6 is silent once the baseline is re-pinned" "" "$(b6run)"
 printf '#!/bin/sh\nexit 0\n' > "$B6/bin/admission-bash.sh"
 t_eq "K1b B6 blocks after a guard is neutered" false "$(b6cont)"
@@ -209,29 +209,29 @@ t_eq "K1b HARBOR_ADMISSION_DISABLE=1 opens the gate even with drift present" "" 
 
 t_section "SEAM-1 (harbor#221): B6 owns settings.json as a FILE, not four fields"
 # Rebuilt, not inherited: K1b ends with PreToolUse deleted.
-env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-install.sh" --dir "$B6" --apply >/dev/null 2>&1
-env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$B6" --apply >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-install.sh" --dir "$B6" --apply >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-deny.sh" --dir "$B6" --apply >/dev/null 2>&1
 t_eq "SEAM-1 the fixture starts clean" "" "$(b6run)"
 b6edit '.permissions.allow += ["Bash(curl:*)"]'
 t_has "SEAM-1 an allow entry added outside Edit is seen (the 2026-08-16 seam)" "$(b6run)" "outside the floor's teeth"
 t_eq "SEAM-1 an allow entry is advisory, never a hard stop (§2.11)" 'not false' "$(not_false "$(b6cont)")"
-env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$B6" --repin >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-deny.sh" --dir "$B6" --repin >/dev/null 2>&1
 t_eq "SEAM-1 silent after the baseline is re-pinned" "" "$(b6run)"
 b6edit '.autoMode = {"enabled":true}'
 t_has "SEAM-1 a NEW TOP-LEVEL KEY is seen" "$(b6run)" "outside the floor's teeth"
-env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$B6" --repin >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-deny.sh" --dir "$B6" --repin >/dev/null 2>&1
 t_eq "SEAM-1 silent after re-pin over the new key" "" "$(b6run)"
 b6edit '.permissions.defaultMode = "bypassPermissions"'
 t_has "SEAM-1 a changed permissions.defaultMode is reported" "$(b6run)" "outside the floor's teeth"
-env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$B6" --repin >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-deny.sh" --dir "$B6" --repin >/dev/null 2>&1
 b6edit '.permissions.deny = []'
 t_eq "SEAM-1 an emptied deny array still HARD STOPS (the teeth tier is unchanged)" false "$(b6cont)"
-env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$B6" --apply >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-deny.sh" --dir "$B6" --apply >/dev/null 2>&1
 t_eq "SEAM-1 clean again after the teeth test" "" "$(b6run)"
 b6edit '.enabledPlugins = {"acme@marketplace":true}'
 t_eq "SEAM-1 a plugin install does not block the session (red-team pass 3)" 'not false' "$(not_false "$(b6cont)")"
 t_has "SEAM-1 a plugin install is still reported" "$(b6run)" "outside the floor's teeth"
-env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$B6" --repin >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-deny.sh" --dir "$B6" --repin >/dev/null 2>&1
 # Pin with the WRITER, check with the GUARD. sec0-harden takes --dir now; CLAUDE_CONFIG_DIR must agree with it.
 # $B6's settings.json has never held an `env` key (EMPTY_SETTINGS has none): this is also harbor#816's
 # first-time case — a NEW top-level key sec0-harden adds itself, re-pinned by the same apply that added it.
@@ -239,57 +239,57 @@ CLAUDE_CONFIG_DIR="$B6" sh "$SRC/deploy-harden.sh" --apply --dir "$B6" >/dev/nul
 t_eq "harbor#816: the four decided env keys are set" '1 1 1 1' \
   "$(jq -r '[.env.DISABLE_ERROR_REPORTING, .env.DISABLE_FEEDBACK_COMMAND, .env.CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY, .env.CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL] | @tsv' "$B6/settings.json" | tr '\t' ' ')"
 t_eq "...and sec0-harden's own re-pin already covered the new env key: no B6 block right after apply, before floor-deny --repin" "" "$(b6run)"
-env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$B6" --repin >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-deny.sh" --dir "$B6" --repin >/dev/null 2>&1
 t_eq "SEAM-1 the baseline a WRITER pins is the one the GUARD checks (lint F10's behavioural half)" "" "$(b6run)"
 
 t_section "VERIFY-1: floor-verify cannot report a block it did not observe"
 FV="$(cd -P "$TMP" && pwd -P)/fv"; mkdir -p "$FV/empty/bin"; printf '{}\n' > "$FV/empty/settings.json"
-_fvo="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-verify.sh" --dir "$FV/empty" 2>&1 || true)"
+_fvo="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-verify.sh" --dir "$FV/empty" 2>&1 || true)"
 t_hasnt "VERIFY-1 no guard on disk: no block may be claimed" "$_fvo" 'blocks:'
 t_has "VERIFY-1 an uninstalled guard says nothing was tested" "$_fvo" 'CANNOT PROBE'
 # The header wording is named once (harbor#145, F9): the negative and its positive share it.
 _FV_HDR='── floor-verify · '
 mkdir -p "$FV/home/.claude/bin"; printf '{}\n' > "$FV/home/.claude/settings.json"
-_fvl="$(env -u CLAUDE_CONFIG_DIR HOME="$FV/home" sh "$SRC/floor-verify.sh" --live 2>&1 || true)"
+_fvl="$(env -u CLAUDE_CONFIG_DIR HOME="$FV/home" sh "$SRC/admission-verify.sh" --live 2>&1 || true)"
 t_hasnt "VERIFY-1 --live is a flag, never the config dir" "$_fvl" "$_FV_HDR--live"
 t_has "VERIFY-1 --live is \$HOME/.claude, the only way to name the live dir (harbor#800)" "$_fvl" "$_FV_HDR$FV/home/.claude"
 t_exit "VERIFY-1 a CLAUDE_CONFIG_DIR naming another dir never picks the target: usage exit 2 (harbor#800)" 2 \
-  env HOME="$FV/home" CLAUDE_CONFIG_DIR="$FV/empty" sh "$SRC/floor-verify.sh" --live
-t_exit "VERIFY-1 a positional config dir is a usage error: there is none (harbor#800)" 2 env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-verify.sh" "$FV/empty"
-t_exit "VERIFY-1 no target is a usage error: it is named, never implied" 2 env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-verify.sh"
-t_exit "VERIFY-1 --apply is a usage error: floor-verify is read-only" 2 env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-verify.sh" --apply --dir "$FV/empty"
+  env HOME="$FV/home" CLAUDE_CONFIG_DIR="$FV/empty" sh "$SRC/admission-verify.sh" --live
+t_exit "VERIFY-1 a positional config dir is a usage error: there is none (harbor#800)" 2 env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-verify.sh" "$FV/empty"
+t_exit "VERIFY-1 no target is a usage error: it is named, never implied" 2 env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-verify.sh"
+t_exit "VERIFY-1 --apply is a usage error: floor-verify is read-only" 2 env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-verify.sh" --apply --dir "$FV/empty"
 # The fix for the LIVE box is deploy, the one live entry (the install standard §4); a sandbox's is its installer.
 t_has "VERIFY-1 a live box missing its guards is fixed by deploy's floor component (harbor#800)" "$_fvl" \
   "  fix: sh '$FV/home/port/harbor/bin/deploy.sh' --only floor --apply --live"
 # drift-install.sh (install-drift.sh before W3) is the read-only drift check, not an installer.
 t_eq "VERIFY-1 ...no live fix line runs an installer bare, where the sandbox's all do (the control)" "0 yes" \
-  "$(printf '%s\n' "$_fvl" | grep '^  fix: ' | grep -v 'drift-install\.sh' | grep -c 'install\.sh') $([ "$(env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-verify.sh" --dir "$FV/empty" 2>&1 | grep '^  fix: ' | grep -c 'floor-install\.sh')" -gt 0 ] && echo yes || echo no)"
+  "$(printf '%s\n' "$_fvl" | grep '^  fix: ' | grep -v 'drift-install\.sh' | grep -c 'install\.sh') $([ "$(env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-verify.sh" --dir "$FV/empty" 2>&1 | grep '^  fix: ' | grep -c 'admission-install\.sh')" -gt 0 ] && echo yes || echo no)"
 t_has "VERIFY-1 a live box without B1 is fixed by deploy too, not floor-deny run bare" \
-  "$(printf '{"permissions":{"deny":[]}}\n' > "$FV/home/.claude/settings.json"; env -u CLAUDE_CONFIG_DIR HOME="$FV/home" sh "$SRC/floor-verify.sh" --live 2>&1 | grep -A1 '^  FAIL: B1:')" \
+  "$(printf '{"permissions":{"deny":[]}}\n' > "$FV/home/.claude/settings.json"; env -u CLAUDE_CONFIG_DIR HOME="$FV/home" sh "$SRC/admission-verify.sh" --live 2>&1 | grep -A1 '^  FAIL: B1:')" \
   "  fix: sh '$FV/home/port/harbor/bin/deploy.sh' --only floor --apply --live"
-t_exit "VERIFY-1 an unknown option is the contract's usage exit 2" 2 sh "$SRC/floor-verify.sh" --nonesuch
+t_exit "VERIFY-1 an unknown option is the contract's usage exit 2" 2 sh "$SRC/admission-verify.sh" --nonesuch
 t_exit "VERIFY-1 an absent config dir is floor-not-on (exit 1), not a usage error" 1 \
-  env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-verify.sh" --dir "$TMP/no-such-config-dir"
+  env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-verify.sh" --dir "$TMP/no-such-config-dir"
 # sh exits 2 on a syntax error too, so a broken guard used to read as a block.
 mkdir -p "$FV/broken/bin"; printf '{}\n' > "$FV/broken/settings.json"
 for _g in admission-bash.sh admission-egress.sh admission-self-edit.sh; do printf '#!/bin/sh\nif [ broken\n' > "$FV/broken/bin/$_g"; done
-_fvb="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-verify.sh" --dir "$FV/broken" 2>&1 || true)"
+_fvb="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-verify.sh" --dir "$FV/broken" 2>&1 || true)"
 t_hasnt "VERIFY-1 a syntactically broken guard is not reported as blocking" "$_fvb" '  ok: blocks:'
 t_has "VERIFY-1 a broken guard's exit 2 is told apart from a verdict" "$_fvb" '  FAIL: EXITED 2 WITHOUT BLOCKING'
 t_eq "VERIFY-1 every FAIL is followed by its fix line (contracts/logging.md)" "$(printf '%s\n' "$_fvb" | grep -c '^  FAIL: ')" \
   "$(printf '%s\n' "$_fvb" | grep -A1 '^  FAIL: ' | grep -c '^  fix: ')"
 t_has "VERIFY-1 ...and the fix reinstalls the floor at that dir, spelled for floor-install's gate" "$_fvb" \
-  "  fix: sh $SRC/floor-install.sh --apply --dir '$FV/broken'"
+  "  fix: sh $SRC/admission-install.sh --apply --dir '$FV/broken'"
 t_eq "VERIFY-1 every line is a header, a TAG line or the summary" "" \
   "$(printf '%s\n' "$_fvb" | grep -vE '^(── floor-verify · |  (ok|FAIL|WARN|note|skip|fix): |floor-verify: [0-9]+ ok, [0-9]+ failed, [0-9]+ warnings$)')"
 t_has "VERIFY-1 a fully installed fixture still reports a real block (№2.11)" \
-  "$(env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-verify.sh" --dir "$CFG" 2>&1 || true)" '  ok: blocks: pipe-to-shell'
+  "$(env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-verify.sh" --dir "$CFG" 2>&1 || true)" '  ok: blocks: pipe-to-shell'
 
 t_section "VERIFY-2 (harbor#767): a B6 block fails the verify; a B6 advisory does not"
 V2="$(cd -P "$TMP" && pwd -P)/verify2"; installed_b6 "$V2"; cp "$V2/settings.json" "$TMP/v2.clean"
 b6out() { CLAUDE_CONFIG_DIR="$1" sh "$1/bin/admission-integrity.sh" </dev/null 2>/dev/null; }
 # The verdict is the line before the summary (contracts/logging.md: the summary ends every run).
-fv2() { _v2="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-verify.sh" --dir "$V2" 2>&1)"; _v2rc=$?; _v2last="$(printf '%s\n' "$_v2" | tail -2 | head -1)"; _v2sum="$(printf '%s\n' "$_v2" | tail -1)"; }
+fv2() { _v2="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-verify.sh" --dir "$V2" 2>&1)"; _v2rc=$?; _v2last="$(printf '%s\n' "$_v2" | tail -2 | head -1)"; _v2sum="$(printf '%s\n' "$_v2" | tail -1)"; }
 fv2
 t_eq "VERIFY-2 CONTROL: a clean --with-b6 install verifies" "0 yes" \
   "$_v2rc $(case "$_v2" in (*'  ok: B6: installed, reports clean'*) echo yes ;; (*) echo no ;; esac)"
@@ -381,7 +381,7 @@ t_eq "WIRE-960 probe 3: script and pin renamed, old wiring left — the session 
 W9MSG="$(w9 | jq -r .systemMessage)"
 t_has "WIRE-960 probe 3: the refusal names the dangling path" "$W9MSG" "$W9/bin/admission-deliverables.sh"
 t_has "WIRE-960 probe 3: the recovery names the wiring as a way out" "$W9MSG" "settings.json at its new path"
-t_hasnt "WIRE-960 probe 3: ...and not floor-deny, which re-pins neither file nor wiring" "$W9MSG" 'floor-deny.sh'
+t_hasnt "WIRE-960 probe 3: ...and not floor-deny, which re-pins neither file nor wiring" "$W9MSG" 'admission-deny.sh'
 sed "s#/bin/admission-deliverables.sh#/bin/guard-filing.sh#g" "$TMP/w960.clean" > "$W9/settings.json"
 t_eq "WIRE-960 probe 3 CONTROL: rewired to the new name, it passes (the rename is not the fault)" silent "$(w9c)"
 mv "$W9/bin/guard-filing.sh" "$W9/bin/admission-deliverables.sh"

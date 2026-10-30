@@ -15,7 +15,7 @@ recn  3 "$F" bash block mutate-onto-surface "2026-08-02T12:00:00Z" "$D_OP"
 seal "$F"
 
 t_section "failure-capture --exclusion-set names the probe digest"
-t_eq "a probe subject is derived from floor-verify.sh" yes "$([ -n "$PROBE_SUBJ" ] && echo yes || echo no)"
+t_eq "a probe subject is derived from admission-verify.sh" yes "$([ -n "$PROBE_SUBJ" ] && echo yes || echo no)"
 t_has "the probe digest is in the set" "$(sh "$FC" "$F" --exclusion-set 2>/dev/null)" "probe $D_PROBE_T"
 t_hasnt "the operator digest is not" "$(sh "$FC" "$F" --exclusion-set 2>/dev/null)" "$D_OP"
 t_exit "it refuses --json beside it" 2 sh "$FC" "$F" --exclusion-set --json

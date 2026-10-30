@@ -13,7 +13,7 @@ _t_run_rows() { # <guard-path> <rows.jsonl> — fills $_tw/in and $_tw/out
   for _fx in nonorm copy; do
     mkdir -p "$T_TMP/fx-$_fx"; cp "$1" "$_gd/library-admission.sh" "$T_TMP/fx-$_fx/" 2>/dev/null
   done
-  cp "$_gd/floor-normalize.awk" "$T_TMP/fx-copy/" 2>/dev/null
+  cp "$_gd/admission-normalize.awk" "$T_TMP/fx-copy/" 2>/dev/null
   jq -c -s 'if env.T_SMOKE == "1" then reduce .[] as $r ({seen: {}, out: []};  # smoke: first row per rule and verdict
       ([$r.rule, $r.want] | tojson) as $k | if $r.rule != null and .seen[$k] then . else .seen[$k] = true | .out += [$r] end) | .out
     else . end | .[]' "$2" | awk -v d="$_tw/in" '{ f = sprintf("%s/%04d", d, NR); print > f; close(f) }'

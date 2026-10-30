@@ -14,7 +14,7 @@
 # apart, and hooks/hooks.json sat unadopted for exactly that reason — it was
 # payload nobody had a vehicle for.
 #
-# ADDITIVE AND IDEMPOTENT, like floor-install.sh, whose merge_hook this borrows
+# ADDITIVE AND IDEMPOTENT, like admission-install.sh, whose merge_hook this borrows
 # verbatim rather than re-deriving. It never removes a foreign hook, and running
 # it twice changes nothing the second time.
 #
@@ -291,11 +291,11 @@ status() { # <step> — one log line per fact, under its own header
   # parser, which the FLOOR installs and this payload deliberately does not — one
   # installer per file. Without it a `git -C` or `gh -R` reaches no tree, for
   # `scope: box` delivery and for repo-tier.sh alike, and nothing else says so.
-  if [ -f "$DIR/bin/library-admission.sh" ] && [ -f "$DIR/bin/floor-normalize.awk" ]; then
+  if [ -f "$DIR/bin/library-admission.sh" ] && [ -f "$DIR/bin/admission-normalize.awk" ]; then
     log_ok "parser: present (library-admission.sh: git -C and gh -R reach their trees)"
   else
     log_warn "parser: ABSENT — git -C and gh -R reach no tree; install the floor to add library-admission.sh"
-    log_fix "sh $SRC/floor-install.sh --apply $(il_spell)"
+    log_fix "sh $SRC/admission-install.sh --apply $(il_spell)"
   fi
   # THE ANNOUNCE HAS ITS OWN ROW, because the loop above counts only injection-rule.sh
   # and would have reported SessionStart "wired" with the provenance announce
@@ -512,7 +512,7 @@ il_manifest_write || { log_end; exit 1; }
 status "after the apply"
 log_note "backup: $IL_BK"
 if [ "$IL_LIVE" -eq 1 ]; then
-  # THE PINNER'S GATE IS NOT OURS TO PASS. floor-install.sh records the reasoning
+  # THE PINNER'S GATE IS NOT OURS TO PASS. admission-install.sh records the reasoning
   # at length: re-pinning blesses whatever the instruction surfaces now say, so an
   # installer run from a session must never do it for the operator.
   #

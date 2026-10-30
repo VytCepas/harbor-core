@@ -10,7 +10,7 @@ ME="$(id -u)"
 M="$TMP/managed/managed-settings.json"
 KEY='cc-plugin-sec-default@builtin'
 fv() { # run floor-verify against the sandbox config dir with the managed path moved; stdout only
-  HARBOR_MANAGED_SETTINGS="$M" HARBOR_MANAGED_OWNER_UID="${OWNER:-$ME}" sh "$SRC/floor-verify.sh" --dir "$CFG" 2>&1 | grep 'managed'
+  HARBOR_MANAGED_SETTINGS="$M" HARBOR_MANAGED_OWNER_UID="${OWNER:-$ME}" sh "$SRC/admission-verify.sh" --dir "$CFG" 2>&1 | grep 'managed'
 }
 good() { mkdir -p "$(dirname "$M")"; jq -n --arg k "$KEY" \
   '{pluginConfigs:{($k):{options:{allowManagedModsOnly:true}}},disableSideloadFlags:true}' > "$M"; }
