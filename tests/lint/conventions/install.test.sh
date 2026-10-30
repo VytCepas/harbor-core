@@ -77,7 +77,7 @@ t_has "a SUITE source this checkout lacks is said out loud, never read as clean"
 
 t_section "X1: the dev sandbox's guards are byte-identical to bin/ (harbor#517)"
 X1R="$TMP/x1root"; X1S="$TMP/x1sbx"; mkdir -p "$X1R/bin" "$X1R/skills" "$X1S/bin"
-for _x1b in guard-alpha.sh guard-beta.sh annotate-web.sh floor-hook.sh pin-instructions.sh; do
+for _x1b in guard-alpha.sh guard-beta.sh annotate-web.sh admission-hook.sh pin-instructions.sh; do
   printf '#!/usr/bin/env sh\n# x1 fixture (harbor#517)\nprintf "%%s\\n" %s\n' "$_x1b" > "$X1R/bin/$_x1b"
   cp "$X1R/bin/$_x1b" "$X1S/bin/$_x1b"
 done

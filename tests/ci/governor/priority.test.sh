@@ -65,6 +65,12 @@ t_eq "...and quuxmail-linux back at its floor" 1 "$(ccpus quuxmail-linux)"
 fresh; ctr project-init-linux busy; ctr studio-linux busy; gov tick >/dev/null
 t_eq "Yard (project-init-linux) is low too: cut to 1 under studio-linux's job" 1 "$(ccpus project-init-linux)"
 t_eq "...studio-linux 3" 3 "$(ccpus studio-linux)"
+# harbor#966: the default names the registry's ids, so a renamed yard's runner keeps its class.
+RP="$T_TMP/rnport"; mkdir -p "$RP/harbor-private"
+printf 'id\tpath\tkind\tremote\nyard\tyard\tscaffolder\t-\nfleet\tfleet\tfleet-controller\t-\n' > "$RP/harbor-private/repos.tsv"
+fresh; ctr yard-linux busy; ctr studio-linux busy; ( PORT_ROOT="$RP"; export PORT_ROOT; gov tick >/dev/null )
+t_eq "a renamed Yard (yard-linux, from the registry) is low too" 1 "$(ccpus yard-linux)"
+t_eq "...studio-linux 3" 3 "$(ccpus studio-linux)"
 
 t_section "two normal jobs split evenly; a low job is never starved"
 fresh; ctr quuxmail-linux busy; ctr estate-linux busy; gov tick >/dev/null

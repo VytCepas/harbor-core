@@ -21,7 +21,7 @@ printf 'id\told\tnew\tsurface\twave\tremove_by\treason\n' >> "$HB/standards/nami
 
 # ── the fixture tree: a guard named bare, by path, by pin, and three lookalikes that are not it
 printf '#!/bin/sh\n# guard-demo.sh: the demo guard\nlog_init guard-demo\n' > "$HB/bin/guard-demo.sh"
-printf '#!/bin/sh\nGUARDS='"'"'floor-hook.sh guard-demo.sh other.sh'"'"'\n' > "$HB/bin/installer.sh"
+printf '#!/bin/sh\nGUARDS='"'"'admission-hook.sh guard-demo.sh other.sh'"'"'\n' > "$HB/bin/installer.sh"
 printf '#!/bin/sh\n: other\n' > "$HB/bin/other.sh"
 printf '#!/bin/sh\n: the cli\n' > "$HB/bin/harbor"
 printf '#!/bin/sh\n: clean\n' > "$HB/bin/harbor-clean.sh"
@@ -88,7 +88,7 @@ t_eq "apply exits 0" 0 "$RC"
 t_eq "residual 0" "residual 0" "$A"
 t_eq "git mv: the new path is tracked" "bin/admission-demo.sh" "$(git -C "$HB" ls-files bin/admission-demo.sh)"
 t_eq "...and the old one is not" "" "$(git -C "$HB" ls-files bin/guard-demo.sh)"
-t_has "the bare name in a GUARDS list" "$(cat "$HB/bin/installer.sh")" "floor-hook.sh admission-demo.sh other.sh"
+t_has "the bare name in a GUARDS list" "$(cat "$HB/bin/installer.sh")" "admission-hook.sh admission-demo.sh other.sh"
 t_has "the path in prose" "$(cat "$HB/docs/guide.md")" "see bin/admission-demo.sh"
 t_has "the pin name, followed by a dot" "$(cat "$HB/docs/guide.md")" ".helm-pins/admission-demo.sh.sha256"
 t_has "lookalikes stay: xguard-demo.sh, prod-guard-demo.sh, guard-demo.shell" "$(cat "$HB/docs/guide.md")" "not it: xguard-demo.sh, prod-guard-demo.sh, guard-demo.shell"
@@ -115,6 +115,17 @@ t_section "re-running is a no-op: a conflict on main is a re-run, never a hand m
 t_exit "a second --apply" 0 run --apply --id rename-0001
 t_eq "...changes nothing" "" "$(git -C "$HB" status --porcelain -- . ':!build')"
 
+t_section "a re-run on an applied row writes nothing in the repo: a deliberate old-name input stays (harbor#961, the W3 box half)"
+printf '{"cmd":"sh ~/.claude/bin/guard-demo.sh"}\n' > "$HB/tests/old-name-input.jsonl"; commit "a test feeds the old name on purpose"
+t_exit "--apply on the applied row" 0 run --apply --id rename-0001
+t_eq "...leaves the deliberate input as written" '{"cmd":"sh ~/.claude/bin/guard-demo.sh"}' "$(cat "$HB/tests/old-name-input.jsonl")"
+t_eq "...and the tree clean" "" "$(git -C "$HB" status --porcelain -- . ':!build')"
+t_has "...and says what it left" "$(run --apply --id rename-0001 2>&1)" "name an old path of a row applied before this run"
+t_exit "--residual still judges it: RED" 1 run --residual --id rename-0001
+t_exit "--plan on the applied row predicts nothing to rewrite" 0 run --plan --id rename-0001
+t_has "...and says so" "$(run --plan --id rename-0001 2>&1)" "lines to rewrite: nothing"
+git -C "$HB" rm -q tests/old-name-input.jsonl; commit "drop the deliberate input"
+
 t_section "--residual goes RED on a reference added after the apply, GREEN once it is gone"
 printf 'stale: bin/guard-demo.sh\n' >> "$HB/docs/guide.md"
 t_exit "a stale reference" 1 run --residual --id rename-0001
@@ -136,15 +147,15 @@ commit "apply rename-0006"
 
 t_section "the box: refused until the new name is deployed, then rewired with residual 0"
 mkdir -p "$CFG/bin" "$CFG/.helm-pins" "$CFG/projects/-x/memory" "$H/box/Library/LaunchAgents" "$H/.claude"
-cp "$HB/bin/installer.sh" "$CFG/bin/floor-hook.sh"
+cp "$HB/bin/installer.sh" "$CFG/bin/admission-hook.sh"
 git -C "$HB" show "$(git -C "$HB" rev-list --max-parents=0 HEAD):bin/guard-demo.sh" > "$CFG/bin/guard-demo.sh"
 echo pin > "$CFG/.helm-pins/guard-demo.sh.sha256"
 printf '# .harbor-manifest\n%s 100755 bin/guard-demo.sh floor-install c0\n' "$(git hash-object "$CFG/bin/guard-demo.sh")" > "$CFG/.harbor-manifest"
 cat > "$CFG/settings.json" <<JSON
 {"permissions":{"deny":["Edit(~/.claude/bin/guard-demo.sh)"]},
  "hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[
-   {"type":"command","command":"/bin/sh $CFG/bin/floor-hook.sh guard-demo.sh"},
-   {"type":"command","command":"/bin/sh $CFG/bin/floor-hook.sh admission-demo.sh"}]}]}}
+   {"type":"command","command":"/bin/sh $CFG/bin/admission-hook.sh guard-demo.sh"},
+   {"type":"command","command":"/bin/sh $CFG/bin/admission-hook.sh admission-demo.sh"}]}]}}
 JSON
 printf 'the guard is ~/.claude/bin/guard-demo.sh\n' > "$CFG/projects/-x/memory/note.md"
 sed "s#~#$H/box#" "$HB/launchd/com.harbor.demo.plist" | sed 's/admission-demo/guard-demo/' > "$H/box/Library/LaunchAgents/com.harbor.demo.plist"
@@ -157,7 +168,9 @@ t_exit "a permissions rule naming the old path is RED: no rewrite reaches it" 1 
 t_has "...named as outside the hook commands" "$(out --plan --id rename-0001 --dir "$CFG" || :)" "outside the hook commands"
 jq '.permissions.deny = ["Edit(~/.claude/bin/**)"]' "$CFG/settings.json" > "$CFG/s.tmp" && mv "$CFG/s.tmp" "$CFG/settings.json"
 t_exit "GREEN once the rule is edited" 0 run --plan --id rename-0001 --dir "$CFG"
+printf '{"cmd":"sh ~/.claude/bin/guard-demo.sh"}\n' > "$HB/tests/old-name-input.jsonl"; commit "a deliberate input again"
 B="$(out --apply --id rename-0001 --dir "$CFG")"; RC=$?
+t_eq "the box half wrote nothing in the repo: the deliberate input stays" "" "$(git -C "$HB" status --porcelain -- . ':!build')"
 t_eq "the box half exits 0" 0 "$RC"
 t_eq "box residual 0" "residual 0" "$B"
 t_eq "the hook names the new guard, once (the duplicate dropped)" 1 "$(jq '[.hooks.PreToolUse[0].hooks[].command | select(test("admission-demo.sh$"))] | length' "$CFG/settings.json")"

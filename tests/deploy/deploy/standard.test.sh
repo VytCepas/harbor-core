@@ -11,10 +11,10 @@ T_TMP="$(cd "$T_TMP" && pwd -P)"  # deploy reports the config dir physically (in
 need_pty
 yn() { if "$@"; then echo yes; else echo no; fi; }
 floorline() { grep '^floor-install.sh' "$LOGF" | grep -- "$1" | head -1; }  # <--apply|--live$> the first such line
-stopwire() { printf '{"hooks":{"Stop":[{"matcher":"","hooks":[{"type":"command","command":"/bin/sh %s/bin/guard-stop.sh"}]}]}}\n' "$C" > "$C/settings.json"; }
+stopwire() { printf '{"hooks":{"Stop":[{"matcher":"","hooks":[{"type":"command","command":"/bin/sh %s/bin/admission-stop.sh"}]}]}}\n' "$C" > "$C/settings.json"; }
 b6wire() {
-  printf '#!/bin/sh\nexit 0\n' > "$C/bin/guard-integrity.sh" 2>/dev/null || { mkdir -p "$C/bin"; printf '#!/bin/sh\nexit 0\n' > "$C/bin/guard-integrity.sh"; }
-  printf '{"hooks":{"SessionStart":[{"matcher":"","hooks":[{"type":"command","command":"/bin/sh %s/bin/guard-integrity.sh"}]}]}}\n' "$C" > "$C/settings.json"
+  printf '#!/bin/sh\nexit 0\n' > "$C/bin/admission-integrity.sh" 2>/dev/null || { mkdir -p "$C/bin"; printf '#!/bin/sh\nexit 0\n' > "$C/bin/admission-integrity.sh"; }
+  printf '{"hooks":{"SessionStart":[{"matcher":"","hooks":[{"type":"command","command":"/bin/sh %s/bin/admission-integrity.sh"}]}]}}\n' "$C" > "$C/settings.json"
 }
 
 t_section "refused up front, before any check or plan (install standard §4)"
@@ -86,7 +86,7 @@ done
 
 t_section "opt-ins are read from the box: a wired Stop gate and an installed B6 are refreshed (harbor#762)"
 fixture stopwired; stopwire; run 'y\nn\n' --apply --live
-t_eq "a deploy onto a box that wires guard-stop.sh" 0 "$RC"
+t_eq "a deploy onto a box that wires admission-stop.sh" 0 "$RC"
 t_has "...refreshes the Stop gate in floor-install's apply" "$(floorline --apply)" "--with-stop-gate"
 t_has "...and plans it in floor-install's own dry run" "$(grep '^floor-install.sh --live' "$LOGF" | grep -v -- --apply)" "--with-stop-gate"
 t_has "...saying why" "$(out)" "Stop gate: wired on this box, so floor-install refreshes it"
@@ -100,8 +100,8 @@ fixture b6in; b6wire; run 'y\nn\n' --apply --live
 t_eq "a deploy onto a box that runs B6" 0 "$RC"
 t_has "...refreshes it and its pin through floor-install --with-b6" "$(floorline --apply)" "--with-b6"
 t_has "...and says B6 is enabled afterwards" "$(out)" "  ok: B6 is enabled; floor-install refreshed it and its pin"
-fixture b6file; mkdir -p "$C/bin"; printf '#!/bin/sh\nexit 0\n' > "$C/bin/guard-integrity.sh"; run 'y\nn\n' --apply --live
-t_hasnt "a guard-integrity.sh nothing wires is not B6 installed" "$(floorline --apply)" "--with-b6"
+fixture b6file; mkdir -p "$C/bin"; printf '#!/bin/sh\nexit 0\n' > "$C/bin/admission-integrity.sh"; run 'y\nn\n' --apply --live
+t_hasnt "a admission-integrity.sh nothing wires is not B6 installed" "$(floorline --apply)" "--with-b6"
 t_has "...and the B6 next step goes through deploy" "$(out)" "  note: next: sh '$REPO/bin/deploy.sh' --apply --only floor --with-b6 --live"
 fixture b6first; rm -rf "$C/.helm-pins"; run '' --live --with-b6
 t_eq "--with-b6 on a box with no floor yet" 1 "$RC"
@@ -208,29 +208,29 @@ t_section "the other repos' just install, after Harbor's (harbor#736)"
 fixture xr; STUB_PI="$T/pi"; STUB_PO="$T/po"; export STUB_PI STUB_PO; xrepo "$STUB_PI" 'install lint'; xrepo "$STUB_PO" 'install test'
 run '' --live
 t_eq "a dry run with both repos" 0 "$RC"
-t_has "...plans project-init's own dry run" "$(out)" "  ok: project-init: its dry run (just install) passes"
-t_has "...and projects-orchestrator's" "$(out)" "  ok: projects-orchestrator: its dry run (just install) passes"
+t_has "...plans yard's own dry run" "$(out)" "  ok: yard: its dry run (just install) passes"
+t_has "...and fleet's" "$(out)" "  ok: fleet: its dry run (just install) passes"
 t_eq "...as each repo's own recipe, with no flag" "just $STUB_PI install,just $STUB_PO install," "$(grep '^just ' "$LOGF" | tr '\n' ',')"
 t_eq "...and writes nothing" "" "$(applied)"
 : > "$LOGF"; run 'y\nn\n' --apply --live
 t_eq "an apply with both repos" 0 "$RC"
-t_eq "...runs them after Harbor's installers, project-init first" "context-injection-install.sh,just $STUB_PI install --apply,just $STUB_PO install --apply," \
+t_eq "...runs them after Harbor's installers, yard first" "context-injection-install.sh,just $STUB_PI install --apply,just $STUB_PO install --apply," \
   "$(grep -e '--apply' "$LOGF" | grep -e '^context-injection-install' -e '^just ' | sed 's/ --live --apply$//' | awk '{ if ($1 == "just") print; else print $1 }' | tr '\n' ',')"
 t_eq "...and its verify runs each one's --check" "just $STUB_PI install --check,just $STUB_PO install --check," "$(grep -- '--check' "$LOGF" | tr '\n' ',')"
-t_has "...reporting the match" "$(out)" "  ok: project-init: the installed build matches its tree (just install --check)"
+t_has "...reporting the match" "$(out)" "  ok: yard: the installed build matches its tree (just install --check)"
 fixture xrfail; STUB_PI="$T/pi"; STUB_PO="$T/po"; export STUB_PI STUB_PO; xrepo "$STUB_PI" install; xrepo "$STUB_PO" install
 echo 3 > "$STUB_PI/.rc.apply"; run 'y\nn\n' --apply --live
 t_eq "a sub-installer exiting 3 fails the deploy" 1 "$RC"
-t_has "...naming it and its exit code" "$(out)" "stopped at: project-init: just install --apply (rc=3)"
+t_has "...naming it and its exit code" "$(out)" "stopped at: yard: just install --apply (rc=3)"
 t_eq "...and the rest of the chain does not run" 0 "$(grep -c "^just $STUB_PO install --apply" "$LOGF")"
 t_has "...the snapshot is offered back" "$(out)" "Restore the snapshot now?"
 fixture xrdry; STUB_PI="$T/pi"; STUB_PO="$T/po"; export STUB_PI STUB_PO; xrepo "$STUB_PI" install; xrepo "$STUB_PO" install
-echo 1 > "$STUB_PO/.rc.dry"; refuse "projects-orchestrator's dry run refusing" "projects-orchestrator: its own dry run (just install, in $STUB_PO) refuses (rc=1)"
+echo 1 > "$STUB_PO/.rc.dry"; refuse "fleet's dry run refusing" "fleet: its own dry run (just install, in $STUB_PO) refuses (rc=1)"
 fixture xrunreach; unset STUB_PO; xrepo "$STUB_PI" 'lint test'; run '' --live
 t_eq "a repo with no install recipe, and one unresolved: the dry run fails" 1 "$RC"
 t_has "...in preflight, before any write" "$(out)" "PREFLIGHT FAILED (1) — nothing was installed"
-t_has "...naming the repo with no install recipe" "$(out)" "  note: project-init: $STUB_PI has no \`install\` recipe"
-t_has "...and the unresolved one" "$(out)" "  note: projects-orchestrator: no justfile at <unresolved>"
+t_has "...naming the repo with no install recipe" "$(out)" "  note: yard: $STUB_PI has no \`install\` recipe"
+t_has "...and the unresolved one" "$(out)" "  note: fleet: no justfile at <unresolved>"
 t_eq "...and its recipe is never run" 0 "$(grep -c '^just ' "$LOGF")"
 XFIX="$(grep -A1 '^  FAIL: cannot install ' "$T/out.txt" | sed -n 2p)"
 t_eq "...its fix: this run with --only every other component" \
@@ -246,30 +246,30 @@ t_eq "...and its --apply installs Harbor's components" 0 "$RC"
 t_has "...ending verified" "$(out)" "installed and verified"
 run '' --live --with-stop-gate
 t_has "the fix keeps this run's opt-ins" "$(grep -A1 '^  FAIL: cannot install ' "$T/out.txt" | sed -n 2p)" "--only constitution,shim,sec0,runtime,floor,prod-guard,skills,inject,packs --with-stop-gate --live"
-run '' --only floor,project-init --live
+run '' --only floor,yard --live
 t_eq "--only a subset holding an unreachable repo fails too" 1 "$RC"
 t_eq "...its fix keeps the rest of that subset" "  fix: sh '$REPO/bin/deploy.sh' --only floor --live" "$(grep -A1 '^  FAIL: cannot install ' "$T/out.txt" | sed -n 2p)"
-run '' --only projects-orchestrator --live
+run '' --only fleet --live
 t_eq "--only an unreachable repo alone fails" 1 "$RC"
 t_has "...with no --only left to offer, so its fix is to make it reachable" "$(grep -A1 '^  FAIL: cannot install ' "$T/out.txt" | sed -n 2p)" "  fix: none automatic — see "
 unset STUB_PI; run '' --only floor --live
 t_eq "the control: a box with neither repo, deploying only what it can reach" 0 "$RC"
-t_hasnt "...names neither repo" "$(out)" "project-init"
+t_hasnt "...names neither repo" "$(out)" "yard"
 fixture xrcheck; xrepo "$STUB_PI" install; echo 1 > "$STUB_PI/.rc.check"
 run 'y\nn\n' --apply --live
 t_eq "an installed build that differs from its tree fails verify" 1 "$RC"
-t_has "...saying so" "$(out)" "  FAIL: project-init: the installed build differs from its tree (just install --check, rc=1)"
-t_has "...with the one-component deploy as its fix" "$(out)" "  fix: sh '$REPO/bin/deploy.sh' --apply --only project-init --live"
+t_has "...saying so" "$(out)" "  FAIL: yard: the installed build differs from its tree (just install --check, rc=1)"
+t_has "...with the one-component deploy as its fix" "$(out)" "  fix: sh '$REPO/bin/deploy.sh' --apply --only yard --live"
 fixture xronly; STUB_PI="$T/pi"; STUB_PO="$T/po"; export STUB_PI STUB_PO; xrepo "$STUB_PI" install; xrepo "$STUB_PO" install
-run 'y\nn\n' --apply --only projects-orchestrator --live
-t_eq "--only projects-orchestrator runs that repo alone" "just $STUB_PO install,just $STUB_PO install --apply,just $STUB_PO install --check," "$(grep '^just ' "$LOGF" | tr '\n' ',')"
+run 'y\nn\n' --apply --only fleet --live
+t_eq "--only fleet runs that repo alone" "just $STUB_PO install,just $STUB_PO install --apply,just $STUB_PO install --check," "$(grep '^just ' "$LOGF" | tr '\n' ',')"
 t_eq "...and no Harbor installer" "" "$(grep -v '^just ' "$LOGF" | grep -e '--apply' || true)"
 t_section "a cross-repo clone behind its origin fails preflight, judged against a fresh fetch (harbor#736)"
 fixture xrsync; STUB_PI="$T/pi"; STUB_PO="$T/po"; export STUB_PI STUB_PO; xrepo "$STUB_PI" install; xrepo "$STUB_PO" install
 xgit "$STUB_PI"; xgit "$STUB_PO"; rm -f "$STUB_PI/.git/FETCH_HEAD" "$STUB_PO/.git/FETCH_HEAD"
 run '' --live
 t_eq "the control: both clones in sync" 0 "$RC"
-t_has "...says so, per repo" "$(out)" "  ok: project-init: $STUB_PI is in sync with origin/main (fetched just now)"
+t_has "...says so, per repo" "$(out)" "  ok: yard: $STUB_PI is in sync with origin/main (fetched just now)"
 t_eq "...and the dry run left no FETCH_HEAD in either clone (a dry run writes nothing to an up-to-date box)" "" "$(ls "$STUB_PI/.git/FETCH_HEAD" "$STUB_PO/.git/FETCH_HEAD" 2>/dev/null)"
 xadvance "$STUB_PO"
 t_eq "origin moved on, the clone's last-fetched ref still says in sync" "" "$(git -C "$STUB_PO" rev-list HEAD..origin/main)"
@@ -277,24 +277,24 @@ t_eq "origin moved on, the clone's last-fetched ref still says in sync" "" "$(gi
 run '' --apply --live
 t_eq "a clone behind: the deploy fails" 1 "$RC"
 t_has "...in preflight" "$(out)" "PREFLIGHT FAILED (1) — nothing was installed"
-t_has "...naming the repo, its path and how far behind" "$(out)" "  FAIL: projects-orchestrator: $STUB_PO is not in sync with origin/main (ahead 0, behind 1)"
-t_eq "...with the pull as its fix" "  fix: git -C '$STUB_PO' pull --ff-only origin main" "$(grep -A1 '^  FAIL: projects-orchestrator: .* not in sync' "$T/out.txt" | sed -n 2p)"
+t_has "...naming the repo, its path and how far behind" "$(out)" "  FAIL: fleet: $STUB_PO is not in sync with origin/main (ahead 0, behind 1)"
+t_eq "...with the pull as its fix" "  fix: git -C '$STUB_PO' pull --ff-only origin main" "$(grep -A1 '^  FAIL: fleet: .* not in sync' "$T/out.txt" | sed -n 2p)"
 t_eq "...before anything was written" "" "$(applied)"
 t_exit "...every FAIL followed by its fix line" 0 fixfollows
-sh -c "$(grep -A1 '^  FAIL: projects-orchestrator: .* not in sync' "$T/out.txt" | sed -n 2p | sed 's/^  fix: //')" >/dev/null 2>&1
+sh -c "$(grep -A1 '^  FAIL: fleet: .* not in sync' "$T/out.txt" | sed -n 2p | sed 's/^  fix: //')" >/dev/null 2>&1
 run '' --live
 t_eq "that fix, run as printed, clears it" 0 "$RC"
 fixture xrfetch; STUB_PI="$T/pi"; STUB_PO="$T/po"; export STUB_PI STUB_PO; xrepo "$STUB_PI" install; xrepo "$STUB_PO" install
 xgit "$STUB_PI"; xgit "$STUB_PO"; git -C "$STUB_PI" remote set-url origin "$T/unreachable.git"
-refuse "a clone whose origin cannot be fetched" "  FAIL: project-init: cannot fetch origin/main in $STUB_PI, so whether the clone is current cannot be confirmed"
-t_eq "...with the fetch as its fix" "  fix: git -C '$STUB_PI' fetch origin main" "$(grep -A1 '^  FAIL: project-init: cannot fetch' "$T/out.txt" | sed -n 2p)"
+refuse "a clone whose origin cannot be fetched" "  FAIL: yard: cannot fetch origin/main in $STUB_PI, so whether the clone is current cannot be confirmed"
+t_eq "...with the fetch as its fix" "  fix: git -C '$STUB_PI' fetch origin main" "$(grep -A1 '^  FAIL: yard: cannot fetch' "$T/out.txt" | sed -n 2p)"
 fixture xrahead; STUB_PI="$T/pi"; STUB_PO="$T/po"; export STUB_PI STUB_PO; xrepo "$STUB_PI" install; xrepo "$STUB_PO" install
 xgit "$STUB_PI"; xgit "$STUB_PO"; printf 'local\n' > "$STUB_PI/local.txt"
 git -C "$STUB_PI" add -A && git -C "$STUB_PI" -c user.name=t -c user.email=t@t commit -qm local
-refuse "a clone ahead of its origin" "project-init: $STUB_PI is not in sync with origin/main (ahead 1, behind 0)"
+refuse "a clone ahead of its origin" "yard: $STUB_PI is not in sync with origin/main (ahead 1, behind 0)"
 fixture xrnotgit; STUB_PI="$T/pi"; export STUB_PI; xrepo "$STUB_PI" install
 run '' --live
-t_has "a clone that is not a git checkout is said so, not passed silently" "$(out)" "  note: project-init: $STUB_PI is not a git checkout, so its sync with origin/main was not checked"
+t_has "a clone that is not a git checkout is said so, not passed silently" "$(out)" "  note: yard: $STUB_PI is not a git checkout, so its sync with origin/main was not checked"
 
 t_section "a child's apply-time refusal becomes deploy's own FAIL and fix lines (harbor#736)"
 xrfail2() { fixture "$1"; STUB_PI="$T/pi"; STUB_PO="$T/po"; export STUB_PI STUB_PO; xrepo "$STUB_PI" install; xrepo "$STUB_PO" install; echo 1 > "$STUB_PO/.rc.apply"; }
@@ -304,22 +304,22 @@ xrfail2 xrline
 printf '  FAIL: not in sync with origin/main (ahead 0, behind 5)\n  fix: git -C /x/po pull --ff-only origin main\n' > "$STUB_PO/.out.apply"
 run 'y\nn\n' --apply --live
 t_eq "a child refusing at apply fails the deploy" 1 "$RC"
-t_eq "...deploy's FAIL carries the child's reason" "  FAIL: stopped at: projects-orchestrator: just install --apply (rc=1) — not in sync with origin/main (ahead 0, behind 5) (later steps did not run)" \
+t_eq "...deploy's FAIL carries the child's reason" "  FAIL: stopped at: fleet: just install --apply (rc=1) — not in sync with origin/main (ahead 0, behind 5) (later steps did not run)" \
   "$(grep '^  FAIL: stopped at' "$T/out.txt")"
 t_eq "...and its fix is the child's" "  fix: git -C /x/po pull --ff-only origin main" "$(grep -A1 '^  FAIL: stopped at' "$T/out.txt" | sed -n 2p)"
 t_hasnt "...no pointer to lines that are not there" "$(out)" "see its FAIL and fix lines above"
-t_has "...and the same two lines are in deploy's log file" "$(dlog)" "FAIL: stopped at: projects-orchestrator: just install --apply (rc=1) — not in sync with origin/main (ahead 0, behind 5)"
+t_has "...and the same two lines are in deploy's log file" "$(dlog)" "FAIL: stopped at: fleet: just install --apply (rc=1) — not in sync with origin/main (ahead 0, behind 5)"
 t_exit "...every FAIL followed by its fix line" 0 fixfollows
 xrfail2 xrlegacy
 printf 'refusing --apply:\n    - not in sync with origin/main (ahead 0, behind 5)\n    - on '"'"'feat/x'"'"', not main\n' > "$STUB_PO/.out.apply"
 run 'y\nn\n' --apply --live
-t_has "an older child's report: its first reason, in deploy's FAIL" "$(out)" "  FAIL: stopped at: projects-orchestrator: just install --apply (rc=1) — not in sync with origin/main (ahead 0, behind 5) (later steps did not run)"
-t_has "...its second as a FAIL of its own" "$(out)" "  FAIL: projects-orchestrator: on 'feat/x', not main"
-t_has "...a fix that says the child gave none, and where its dry run is" "$(out)" "  fix: none automatic — see the output above, where projects-orchestrator gave no fix; \`just install\` in $STUB_PO is its dry run"
+t_has "an older child's report: its first reason, in deploy's FAIL" "$(out)" "  FAIL: stopped at: fleet: just install --apply (rc=1) — not in sync with origin/main (ahead 0, behind 5) (later steps did not run)"
+t_has "...its second as a FAIL of its own" "$(out)" "  FAIL: fleet: on 'feat/x', not main"
+t_has "...a fix that says the child gave none, and where its dry run is" "$(out)" "  fix: none automatic — see the output above, where fleet gave no fix; \`just install\` in $STUB_PO is its dry run"
 t_exit "...every FAIL followed by its fix line" 0 fixfollows
 xrfail2 xrsilent
 run 'y\nn\n' --apply --live
-t_has "a child that printed neither says so, not 'see its lines above'" "$(out)" "  FAIL: stopped at: projects-orchestrator: just install --apply (rc=1) — later steps did not run, and it printed no FAIL or fix line"
+t_has "a child that printed neither says so, not 'see its lines above'" "$(out)" "  FAIL: stopped at: fleet: just install --apply (rc=1) — later steps did not run, and it printed no FAIL or fix line"
 t_hasnt "...and does not point at lines that are not there" "$(out)" "see its FAIL and fix lines above"
 t_exit "...every FAIL followed by its fix line" 0 fixfollows
 unset STUB_PI STUB_PO

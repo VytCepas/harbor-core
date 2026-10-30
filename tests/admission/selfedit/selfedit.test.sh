@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# guard-selfedit.sh (harbor#3, B2): its rule table, on an installed floor, and the shared benign corpus.
+# admission-self-edit.sh (harbor#3, B2): its rule table, on an installed floor, and the shared benign corpus.
 set -u
 . "$(dirname "$0")/../../lib/core.sh"
 . "$(dirname "$0")/../../lib/table.sh"
@@ -7,7 +7,7 @@ t_init
 . "$T_ROOT/tests/admission/bash/fixture.sh"
 cd "$T_ROOT"  # rows with no CLAUDE_PROJECT_DIR run inside this repo, as tests/floor/'s parts do
 
-G="$CLAUDE_CONFIG_DIR/bin/guard-selfedit.sh"
+G="$CLAUDE_CONFIG_DIR/bin/admission-self-edit.sh"
 t_table  "$G" "$T_ROOT/tests/guards/selfedit.jsonl"
 t_shared "$G" selfedit
 

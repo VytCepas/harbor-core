@@ -84,7 +84,7 @@ exit 1. It is a working guard that is switched off.
 | `.github/workflows/governance.yml` | linter + the floor suite (`tests/admission/baseline/`) + `tests/deploy/restore/recover.test.sh` | every push and PR |
 | `tests/admission/baseline/baseline.test.sh` and its `floor.<part>-test.sh` parts | the security floor's behaviour — a mutation pass, a SessionStart perf bound, and assertions on the INSTALLED hook matchers (assertion count: `docs/generated/status.md`) | CI + on demand |
 | `tests/scope/marker/marker.test.sh` | the detect-and-defer spec, against `fixtures/marker/cases.json`. **Harbor is the only repo that READS that file** — the two consumers cite it and reuse its case ids in their own Python assertions, which is a shared vocabulary and not a shared fixture suite (measured 2026-08-13; this row claimed they "read too") | CI + on demand |
-| `bin/guard-integrity.sh` (B6) | runtime drift: deny/lock hashes, guard content pins, hook wiring | every SessionStart, once installed |
+| `bin/admission-integrity.sh` (B6) | runtime drift: deny/lock hashes, guard content pins, hook wiring | every SessionStart, once installed |
 | `worklog/pre-push` | fail-closed gitleaks gate on the work-log | every push to `helm-log` |
 
 **A convention that nothing checks is a suggestion.** Adding a rule to

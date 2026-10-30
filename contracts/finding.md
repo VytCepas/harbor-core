@@ -16,7 +16,7 @@ it is re-derived on every read.
 
 A finding needs four things: an **id**, a **digest** of what it is about, an
 **age**, and a **disposition** that only a person gives. The floor's ledger has the
-first three for one layer (`bin/guard-lib.sh`, `floor_log_decision`). Nothing has
+first three for one layer (`bin/library-admission.sh`, `floor_log_decision`). Nothing has
 the fourth.
 
 ## Decisions this contract rests on (operator, 2026-09-22)
@@ -239,7 +239,7 @@ budget. Assuming one budget for all of them would be wrong.
 
 | tier | fires | what it may do | store |
 |---|---|---|---|
-| `floor` | per tool call | **one local append, no fork on the allow path, no network.** Unchanged from `guard-lib.sh` today | the local guard-decision JSONL (salted digest) |
+| `floor` | per tool call | **one local append, no fork on the allow path, no network.** Unchanged from `library-admission.sh` today | the local guard-decision JSONL (salted digest) |
 | `floor`, promoted | daily, inside the `audit.triage` run | aggregates by the salted `h` and promotes only candidates above a threshold. The subject set is the salted digests, which are comparable **within one install only**, and the contract says so rather than pretending otherwise | issues |
 | `lint` | per push, in the census | nothing new: the census still prints in full at push time | — |
 | `lint`, reconciled | daily at most, against the published default branch — `sh bin/lint-findings.sh reconcile --apply`, daily from launchd `com.harbor.lint.findings` (operator yes 2026-10-02) | one `gh` read of the finding issues, plus at most one write per finding per day | issues |

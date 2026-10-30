@@ -4,7 +4,7 @@
 # read-only git list, and the floor rule ids it cites. And it refuses any derived allow rule that matches a gated
 # shape with no ask, deny or floor block over it. Every disagreement kind is driven red below on a mutated copy.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-REG="$T_ROOT/contracts/git-verbs.md"; GB="$T_ROOT/bin/guard-bash.sh"; GD="$T_ROOT/bin/guard-destroy.sh"
+REG="$T_ROOT/contracts/git-verbs.md"; GB="$T_ROOT/bin/admission-bash.sh"; GD="$T_ROOT/bin/admission-destroy.sh"
 TAB="$(printf '\t')"
 
 gv_rows() { # <register> -> spelling, class, perm, floor, calls, refused (tab-separated, one row per line)

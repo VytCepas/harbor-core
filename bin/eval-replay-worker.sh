@@ -46,12 +46,12 @@ pay="$(printf '%s' "$rec" | jq -r .payload 2>/dev/null)"
   log_warn "a record has no extractable id: it is not valid JSON"; log_fix "sh bin/eval-replay-corpus.sh --to \"\${TMPDIR:-/tmp}/corpus.jsonl\""; finish; }
 case "$kind" in
   file_path) hook="$(printf '%s' "$pay" | jq -Rs '{tool_name:"Write",tool_input:{file_path:.}}' 2>/dev/null)"
-             guards="guard-selfedit.sh" ;;
+             guards="admission-self-edit.sh" ;;
   *)         case "$tool" in
                Bash) hook="$(printf '%s' "$pay" | jq -Rs '{tool_name:"Bash",tool_input:{command:.}}' 2>/dev/null)"
-                     guards="guard-bash.sh guard-egress.sh" ;;
+                     guards="admission-bash.sh admission-egress.sh" ;;
                *)    hook="$(printf '%s' "$pay" | jq -Rs '{tool_name:"Write",tool_input:{content:.}}' 2>/dev/null)"
-                     guards="guard-egress.sh" ;;
+                     guards="admission-egress.sh" ;;
              esac ;;
 esac
 [ -n "$hook" ] || { printf '%s\tERROR\t-\n' "$id"
@@ -59,7 +59,7 @@ esac
 # rc is THREE-valued, not two (#47 finding 5). Anything outside {0,2} is a guard
 # that did not reach a verdict — a syntax error, a missing interpreter, a kill —
 # and the first cut fell through to ALLOW. A broken guard then reported "0
-# blocked", which reads exactly like a clean floor. floor-hook.sh maps the same
+# blocked", which reads exactly like a clean floor. admission-hook.sh maps the same
 # class to a DENY for precisely this reason; the replay must not be more
 # forgiving than production.
 for g in $guards; do

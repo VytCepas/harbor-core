@@ -263,7 +263,7 @@ t_section "the ledger (harbor#320)"
 # floor_log_decision resolves its sink from $0, so the shim runs from a copy with a sink.
 # 0500 is the contract: the writer refuses a WRITABLE host dir, and L-0 catches a silent sink.
 LT="$T/ledger"; mkdir -p "$LT/bin" "$LT/MEMORY/OBSERVABILITY/probehost"
-cp "$SHIM" "$T_ROOT/bin/guard-lib.sh" "$LT/bin/"
+cp "$SHIM" "$T_ROOT/bin/library-admission.sh" "$LT/bin/"
 printf 'probehost\n' > "$LT/.helm-obs-host"
 LSINK="$LT/MEMORY/OBSERVABILITY/probehost/guard-decisions.jsonl"
 : > "$LSINK"; chmod 0500 "$LT/MEMORY/OBSERVABILITY/probehost"

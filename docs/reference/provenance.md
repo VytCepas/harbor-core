@@ -81,7 +81,7 @@ Upstream context-file byte budget), `Upgrade` (upstream upgrade recommendations)
 (VitePress → Cloudflare Pages). Harbor's monitoring answer is Pulse, which is
 kept — workstream E. Worth harvesting even so: Daemon's `SecurityFilter` is a
 **deterministic, code-level, non-LLM** sanitizer with structurally-excluded
-source dirs, which is the same posture as `bin/guard-egress.sh` and a better
+source dirs, which is the same posture as `bin/admission-egress.sh` and a better
 articulation of it.
 
 **Declined on an unavailable dependency** (2): `Interceptor` — built from source

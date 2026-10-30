@@ -6,7 +6,7 @@
 T="$T_TMP"; CFG="$T/cfg"; REPO="$T/repo"
 mkdir -p "$CFG/inject.d" "$CFG/bin" "$REPO"
 cp "$T_ROOT/context-rules/user/agent-brief.md" "$T_ROOT/context-rules/user/agent-brief.sh" "$T_ROOT/context-rules/user/agent-model.sh" "$CFG/inject.d/"
-cp "$T_ROOT/hooks/injection-rule/injection-rule.sh" "$T_ROOT/bin/guard-lib.sh" "$CFG/bin/"
+cp "$T_ROOT/hooks/injection-rule/injection-rule.sh" "$T_ROOT/bin/library-admission.sh" "$CFG/bin/"
 # A decision log the floor writer will accept: a host token, a sink file, and a host dir that is not writable.
 OBS="$CFG/MEMORY/OBSERVABILITY/testhost"; mkdir -p "$OBS"; printf 'testhost\n' > "$CFG/.helm-obs-host"
 : > "$OBS/guard-decisions.jsonl"; chmod 500 "$OBS"

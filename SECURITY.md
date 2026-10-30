@@ -8,7 +8,7 @@ pull request for a security finding. No email address is monitored for reports.
 
 ## Scope
 
-In scope: the floor guards (`bin/guard-*.sh`) and the installers, meaning any way
+In scope: the floor guards (`bin/admission-*.sh` and `bin/library-admission.sh`; `bin/guard-*.sh` until 2026-11-15 are links to them) and the installers, meaning any way
 to make a guard allow what it should refuse, to disable or bypass one silently,
 or to make an installer write outside its stated targets.
 

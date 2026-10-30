@@ -7,12 +7,12 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$(dirname "$0")/fixture.sh"
 PERM='{"permissions":{"allow":[],"deny":[],"disableBypassPermissionsMode":"disable","disableAutoMode":"disable"}}'
-SCANNERS='guard-bash.sh guard-egress.sh guard-selfedit.sh annotate-web.sh pin-instructions.sh guard-lib.sh floor-normalize.awk guard-integrity.sh'
+SCANNERS='admission-bash.sh admission-egress.sh admission-self-edit.sh annotate-web.sh pin-instructions.sh library-admission.sh floor-normalize.awk admission-integrity.sh'
 mkcfg() { # <dir> <settings-json> [script…] — a config dir holding its settings and a copy of each script
   _md="$1"; mkdir -p "$_md/bin"; printf '%s\n' "$2" > "$_md/settings.json"; shift 2
   for _mg in "$@"; do cp "$SRC/$_mg" "$_md/bin/" 2>/dev/null; done
 }
-gate() { CLAUDE_CONFIG_DIR="$1" sh "$1/bin/guard-integrity.sh" </dev/null 2>/dev/null || true; }  # <dir> → B6's stdout
+gate() { CLAUDE_CONFIG_DIR="$1" sh "$1/bin/admission-integrity.sh" </dev/null 2>/dev/null || true; }  # <dir> → B6's stdout
 live_gate() { # <output> → "refused-live" only when the refusal is a live-dir gate's own message
   case "$1" in (*refusing*"the live "*"dir"*"without an explicit --live"*) echo refused-live ;; (*) echo other ;; esac
 }
@@ -67,17 +67,17 @@ for _h in $_h779; do
   t_exit "H779 the applied deny set covers $_h" 0 jq -e --arg a "Edit(~/.claude/$_h)" --arg b "Edit(~/.claude/$_h/**)" \
     '.permissions.deny | (index($a) != null) or (index($b) != null)' "$IW/settings.json"
 done
-B6FILES='guard-lib.sh floor-normalize.awk guard-selfedit.sh guard-bash.sh guard-egress.sh annotate-web.sh guard-integrity.sh floor-deny.sh deploy-restore.sh deploy-harden.sh'
+B6FILES='library-admission.sh floor-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh annotate-web.sh admission-integrity.sh floor-deny.sh deploy-restore.sh deploy-harden.sh'
 B8="$TMP/b6install"; mkcfg "$B8" "$PERM" $B6FILES
 _x8out="$(fi_run floor-install.sh "$B8" --apply --with-b6 2>&1)"
-t_eq "X8 --with-b6 wired the SessionStart integrity gate" yes "$([ "$(jq -r '[.hooks.SessionStart[]?.hooks[]?.command] | map(select(test("guard-integrity"))) | length' "$B8/settings.json" 2>/dev/null || echo 0)" -gt 0 ] && echo yes || echo no)"
-t_eq "X8 --with-b6 pinned guard-integrity content" yes "$([ -f "$B8/.helm-pins/guard-integrity.sh.sha256" ] && echo yes || echo no)"
+t_eq "X8 --with-b6 wired the SessionStart integrity gate" yes "$([ "$(jq -r '[.hooks.SessionStart[]?.hooks[]?.command] | map(select(test("admission-integrity"))) | length' "$B8/settings.json" 2>/dev/null || echo 0)" -gt 0 ] && echo yes || echo no)"
+t_eq "X8 --with-b6 pinned guard-integrity content" yes "$([ -f "$B8/.helm-pins/admission-integrity.sh.sha256" ] && echo yes || echo no)"
 # harbor#1313 L6: Read deny binds only the directory a Grep searches, so guard-egress judges the filter.
 t_eq "X8 Grep is wired to guard-egress under its own matcher" 1 \
-  "$(jq '[.hooks.PreToolUse[]? | select(.matcher == "Grep") | .hooks[].command | select(test("guard-egress"))] | length' "$B8/settings.json")"
+  "$(jq '[.hooks.PreToolUse[]? | select(.matcher == "Grep") | .hooks[].command | select(test("admission-egress"))] | length' "$B8/settings.json")"
 # X8b: the closing NEXT must not be the work just done, and must stay when B6 was not asked for.
 t_hasnt "X8b --with-b6 does not print the NEXT telling the operator to run --with-b6" "$_x8out" 'B6 installs LAST'
-t_has "X8b --with-b6 reports what it installed" "$_x8out" 'guard-integrity.sh installed'
+t_has "X8b --with-b6 reports what it installed" "$_x8out" 'admission-integrity.sh installed'
 _x8c="$TMP/b6nag"; mkcfg "$_x8c" "$PERM" $B6FILES
 t_has "X8b a plain --apply still prints the B6 NEXT" "$(fi_run floor-install.sh "$_x8c" --apply 2>&1)" 'B6 installs LAST'
 # harbor#285: deploy prints its own B6 advice, so under it the installer's --with-b6 step is not repeated.
@@ -94,15 +94,15 @@ t_eq "X8b ...and no old-style backups/settings.json.floor-install-* file" 0 "$(f
 
 t_section "X10: the installer says which pins it just invalidated"
 X10="$TMP/x10"; mkcfg "$X10" '{"permissions":{"deny":[]}}'; mkdir -p "$X10/.helm-pins"
-printf 'a-stale-pin-that-matches-nothing\n' > "$X10/.helm-pins/guard-lib.sh.sha256"
+printf 'a-stale-pin-that-matches-nothing\n' > "$X10/.helm-pins/library-admission.sh.sha256"
 printf 'a-stale-pin-that-matches-nothing\n' > "$X10/.helm-pins/alert-probe.sh.sha256"
 X10_OUT="$(fi_run deploy-runtime-install.sh "$X10" --apply 2>&1 || true)"
-# harbor#285: only a pin floor-install does not re-pin (alert-probe.sh) earns the banner; guard-lib.sh is a note.
+# harbor#285: only a pin floor-install does not re-pin (alert-probe.sh) earns the banner; library-admission.sh is a note.
 t_has "X10 runtime-install warns that it replaced a content-pinned file" "$X10_OUT" 'B6 CONTENT PINS ARE NOW STALE — the next SessionStart will be BLOCKED: this install replaced content-pinned file(s): alert-probe.sh ('
-t_has "X10 a pin floor-install re-pins is a note naming it" "$X10_OUT" 'content pins behind for: guard-lib.sh — floor-install re-pins them'
+t_has "X10 a pin floor-install re-pins is a note naming it" "$X10_OUT" 'content pins behind for: library-admission.sh — floor-install re-pins them'
 t_has "X10 the warning prints a working re-pin command" "$X10_OUT" '.helm-pins/$g.sha256'
 t_has "X10 the undo hint names deploy-restore.sh in a form its gate takes (harbor#765)" "$X10_OUT" "deploy-restore.sh --dir '$(phys "$X10")'"
-_x9sha < "$X10/bin/guard-lib.sh" > "$X10/.helm-pins/guard-lib.sh.sha256"
+_x9sha < "$X10/bin/library-admission.sh" > "$X10/.helm-pins/library-admission.sh.sha256"
 _x9sha < "$X10/bin/context-resolve.sh" > "$X10/.helm-pins/context-resolve.sh.sha256"
 _x9sha < "$X10/bin/alert-probe.sh" > "$X10/.helm-pins/alert-probe.sh.sha256"
 t_hasnt "X10 runtime-install is silent when the pins are current" \
@@ -150,14 +150,14 @@ t_eq "X10c CONTROL: with the floor stamped last the copy overwrites" "$(_x9sha <
 t_section "MANIFEST (install standard §3): both installers record every file they wrote, and only those"
 _mfrow() { grep " $2 " "$1/.harbor-manifest" 2>/dev/null | awk '{print $1, $2, $4, $5}'; }  # <dir> <relpath>
 _head="$(git -C "$T_ROOT" rev-parse HEAD)"
-for g in guard-bash.sh floor-normalize.awk guard-deliverables.sh; do
+for g in admission-bash.sh floor-normalize.awk admission-deliverables.sh; do
   t_eq "MANIFEST floor-install recorded bin/$g: its blob, mode, installer and this checkout's commit" \
     "$(git hash-object "$X10B/bin/$g") $([ -x "$X10B/bin/$g" ] && echo 100755 || echo 100644) floor-install $_head" "$(_mfrow "$X10B" "bin/$g")"
 done
 t_eq "MANIFEST a file both install is the last writer's row (runtime-install ran second)" \
   "$(git hash-object "$X10B/bin/deploy-restore.sh") 100755 runtime-install $_head" "$(_mfrow "$X10B" bin/deploy-restore.sh)"
 t_eq "MANIFEST ...and so is B6, which runtime-install refreshes because it is installed (REFRESH_ONLY)" \
-  "$(git hash-object "$X10B/bin/guard-integrity.sh") 100755 runtime-install $_head" "$(_mfrow "$X10B" bin/guard-integrity.sh)"
+  "$(git hash-object "$X10B/bin/admission-integrity.sh") 100755 runtime-install $_head" "$(_mfrow "$X10B" bin/admission-integrity.sh)"
 t_eq "MANIFEST runtime-install recorded lib/core.sh, which lives outside bin/" \
   "$(git hash-object "$X10B/lib/core.sh") 100644 runtime-install $_head" "$(_mfrow "$X10B" lib/core.sh)"
 t_eq "MANIFEST no row for a file neither installer wrote (the retired baseline-pin.sh)" "" "$(_mfrow "$X10B" bin/baseline-pin.sh)"
@@ -171,31 +171,31 @@ X10M="$TMP/x10m"; mkcfg "$X10M" "$PERM" $SCANNERS
 fi_run floor-install.sh "$X10M" >/dev/null 2>&1 || true
 t_eq "MANIFEST a dry run writes no manifest" no "$([ -e "$X10M/.harbor-manifest" ] && echo yes || echo no)"
 fi_run floor-install.sh "$X10M" --apply --with-stop-gate >/dev/null 2>&1 || true
-t_eq "MANIFEST the Stop gate, when asked for, is a row" floor-install "$(_mfrow "$X10M" bin/guard-stop.sh | awk '{print $3}')"
-t_eq "MANIFEST ...and B6, not asked for, is not" "" "$(_mfrow "$X10M" bin/guard-integrity.sh)"
+t_eq "MANIFEST the Stop gate, when asked for, is a row" floor-install "$(_mfrow "$X10M" bin/admission-stop.sh | awk '{print $3}')"
+t_eq "MANIFEST ...and B6, not asked for, is not" "" "$(_mfrow "$X10M" bin/admission-integrity.sh)"
 
 t_section "X11: B6 has an update path, and it is refresh-only"
 X11="$TMP/x11"; mkcfg "$X11" '{"permissions":{"deny":[]}}'
 fi_run deploy-runtime-install.sh "$X11" --apply >/dev/null 2>&1 || true
-t_eq "X11 runtime-install does not INSTALL guard-integrity.sh on a box without the scanners" no \
-  "$([ -e "$X11/bin/guard-integrity.sh" ] && echo yes || echo no)"
-printf '#!/usr/bin/env sh\n[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0\n# stale B6\nexit 0\n' > "$X11/bin/guard-integrity.sh"
+t_eq "X11 runtime-install does not INSTALL admission-integrity.sh on a box without the scanners" no \
+  "$([ -e "$X11/bin/admission-integrity.sh" ] && echo yes || echo no)"
+printf '#!/usr/bin/env sh\n[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0\n# stale B6\nexit 0\n' > "$X11/bin/admission-integrity.sh"
 fi_run deploy-runtime-install.sh "$X11" --apply >/dev/null 2>&1 || true
-t_eq "X11 runtime-install refreshes an installed guard-integrity.sh" "$(_x9sha < "$SRC/guard-integrity.sh")" "$(_x9sha < "$X11/bin/guard-integrity.sh")"
+t_eq "X11 runtime-install refreshes an installed admission-integrity.sh" "$(_x9sha < "$SRC/admission-integrity.sh")" "$(_x9sha < "$X11/bin/admission-integrity.sh")"
 mkdir -p "$X11/.helm-pins"
-printf 'a-stale-pin-that-matches-nothing\n' > "$X11/.helm-pins/guard-integrity.sh.sha256"
-printf '#!/usr/bin/env sh\n[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0\nexit 0\n' > "$X11/bin/guard-integrity.sh"
+printf 'a-stale-pin-that-matches-nothing\n' > "$X11/.helm-pins/admission-integrity.sh.sha256"
+printf '#!/usr/bin/env sh\n[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0\nexit 0\n' > "$X11/bin/admission-integrity.sh"
 X11_OUT="$(fi_run deploy-runtime-install.sh "$X11" --apply 2>&1 || true)"
 t_eq "X11 a refreshed B6 is reported quietly, never under the session-blocked banner" quiet-note \
-  "$(case "$X11_OUT" in (*"B6 CONTENT PINS ARE NOW STALE"*) echo blocked-banner ;; (*"guard-integrity.sh was refreshed, so its pin"*) echo quiet-note ;; (*) echo silent ;; esac)"
+  "$(case "$X11_OUT" in (*"B6 CONTENT PINS ARE NOW STALE"*) echo blocked-banner ;; (*"admission-integrity.sh was refreshed, so its pin"*) echo quiet-note ;; (*) echo silent ;; esac)"
 # The premise of the quiet note, behaviourally: B6 must not content-check its own pin.
 X11S="$TMP/x11self"; mkcfg "$X11S" '{"permissions":{"deny":[]}}' $SCANNERS; mkdir -p "$X11S/.helm-pins"
 for g in $SCANNERS; do _x9sha < "$X11S/bin/$g" > "$X11S/.helm-pins/$g.sha256"; done
 env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$X11S" --repin >/dev/null 2>&1
-printf 'deliberately-stale-b6-pin\n' > "$X11S/.helm-pins/guard-integrity.sh.sha256"
-t_hasnt "X11 B6 does not content-check ITSELF" "[$(gate "$X11S" | jq -r '.systemMessage // ""' 2>/dev/null)]" 'guard-integrity.sh'
-printf '\n# drift\n' >> "$X11S/bin/guard-bash.sh"
-t_has "X11 control: B6 names a drifted guard-bash.sh in the same dir" "$(gate "$X11S" | jq -r '.systemMessage // ""')" 'guard-bash.sh'
+printf 'deliberately-stale-b6-pin\n' > "$X11S/.helm-pins/admission-integrity.sh.sha256"
+t_hasnt "X11 B6 does not content-check ITSELF" "[$(gate "$X11S" | jq -r '.systemMessage // ""' 2>/dev/null)]" 'admission-integrity.sh'
+printf '\n# drift\n' >> "$X11S/bin/admission-bash.sh"
+t_has "X11 control: B6 names a drifted admission-bash.sh in the same dir" "$(gate "$X11S" | jq -r '.systemMessage // ""')" 'admission-bash.sh'
 
 t_section "harbor#313: an unrunnable regression check is not a regression verdict"
 X313="$TMP/x313/.claude"; mkdir -p "$X313/bin" "$X313/.helm-pins"
@@ -256,7 +256,7 @@ t_eq "P11: sandbox-make still builds an ordinary sandbox" "rc=0 settings" "rc=$c
 # SOURCE dir in CLAUDE_CONFIG_DIR; the floor must land and verify, or the sandbox is not this checkout's.
 _smf="$(env HOME="$SM" CLAUDE_CONFIG_DIR="$SM/.claude" sh "$SRC/test-sandbox-make.sh" "$SM/boxf" --fresh --with-floor 2>&1)"; c=$?
 t_eq "P11: sandbox-make --with-floor installs this checkout's floor" "rc=0 same" \
-  "rc=$c $(cmp -s "$SRC/guard-bash.sh" "$SM/boxf/bin/guard-bash.sh" && echo same || echo differs)"
+  "rc=$c $(cmp -s "$SRC/admission-bash.sh" "$SM/boxf/bin/admission-bash.sh" && echo same || echo differs)"
 t_has "P11: ...and says the floor verifies there" "$_smf" '  ok: the floor verifies in the new sandbox'
 
 t_section "harbor#58: a withdrawal is DATA, and it cannot be resurrected"
@@ -329,20 +329,20 @@ t_section "WIRE-3 (harbor#291): the Stop gate is wired ONLY when it is asked for
 stops() { jq -r --arg p "$2" '[.hooks.Stop[]?.hooks[]?.command // empty] | map(select(test($p))) | length' "$1/settings.json" 2>/dev/null; }
 _sd_off="$TMP/wire3-off"; mkcfg "$_sd_off" '{}'
 fi_run floor-install.sh "$_sd_off" --apply >/dev/null 2>&1 || true
-t_eq "WIRE-3 a default install wires no Stop gate" 0 "$(stops "$_sd_off" guard-stop)"
-t_eq "WIRE-3 a default install does not copy guard-stop.sh" no "$([ -f "$_sd_off/bin/guard-stop.sh" ] && echo yes || echo no)"
+t_eq "WIRE-3 a default install wires no Stop gate" 0 "$(stops "$_sd_off" admission-stop)"
+t_eq "WIRE-3 a default install does not copy admission-stop.sh" no "$([ -f "$_sd_off/bin/admission-stop.sh" ] && echo yes || echo no)"
 _sd_on="$TMP/wire3-on"; mkcfg "$_sd_on" '{}'
 fi_run floor-install.sh "$_sd_on" --apply --with-stop-gate >/dev/null 2>&1 || true
-t_eq "WIRE-3 --with-stop-gate wires exactly one Stop hook" 1 "$(stops "$_sd_on" guard-stop)"
-t_eq "WIRE-3 --with-stop-gate copies guard-stop.sh" yes "$([ -f "$_sd_on/bin/guard-stop.sh" ] && echo yes || echo no)"
-t_eq "WIRE-3 guard-stop.sh is installed executable" yes "$([ -x "$_sd_on/bin/guard-stop.sh" ] && echo yes || echo no)"
-t_eq "WIRE-3 guard-stop.sh is content-pinned" yes "$([ -f "$_sd_on/.helm-pins/guard-stop.sh.sha256" ] && echo yes || echo no)"
-_p3a="$(_x9sha < "$_sd_on/bin/guard-stop.sh" 2>/dev/null)"
-t_eq "WIRE-3 the pin matches the installed bytes" "$(cat "$_sd_on/.helm-pins/guard-stop.sh.sha256" 2>/dev/null)" "${_p3a:-<no installed bytes>}"
+t_eq "WIRE-3 --with-stop-gate wires exactly one Stop hook" 1 "$(stops "$_sd_on" admission-stop)"
+t_eq "WIRE-3 --with-stop-gate copies admission-stop.sh" yes "$([ -f "$_sd_on/bin/admission-stop.sh" ] && echo yes || echo no)"
+t_eq "WIRE-3 admission-stop.sh is installed executable" yes "$([ -x "$_sd_on/bin/admission-stop.sh" ] && echo yes || echo no)"
+t_eq "WIRE-3 admission-stop.sh is content-pinned" yes "$([ -f "$_sd_on/.helm-pins/admission-stop.sh.sha256" ] && echo yes || echo no)"
+_p3a="$(_x9sha < "$_sd_on/bin/admission-stop.sh" 2>/dev/null)"
+t_eq "WIRE-3 the pin matches the installed bytes" "$(cat "$_sd_on/.helm-pins/admission-stop.sh.sha256" 2>/dev/null)" "${_p3a:-<no installed bytes>}"
 fi_run floor-install.sh "$_sd_on" --apply --with-stop-gate >/dev/null 2>&1 || true
-t_eq "WIRE-3 a re-apply keeps one Stop hook" 1 "$(stops "$_sd_on" guard-stop)"
+t_eq "WIRE-3 a re-apply keeps one Stop hook" 1 "$(stops "$_sd_on" admission-stop)"
 fi_run deploy-runtime-install.sh "$_sd_on" --apply >/dev/null 2>&1 || true
-t_eq "WIRE-3 runtime-install leaves the Stop gate wiring alone" 1 "$(stops "$_sd_on" guard-stop)"
+t_eq "WIRE-3 runtime-install leaves the Stop gate wiring alone" 1 "$(stops "$_sd_on" admission-stop)"
 t_eq "WIRE-3 the gate does not displace runtime-install's own Stop hook" 1 "$(stops "$_sd_on" memory-harvest)"
 chmod -R u+w "$_sd_off" "$_sd_on" 2>/dev/null || true
 
@@ -408,8 +408,8 @@ t_section "one decider per command class (harbor#954 item 8, from #1004)"
 # the registered engine is the only PreToolUse(Bash) decider floor-install wires that answers it.
 _cc_reg="$HROOT/standards/naming/controls.tsv"; _cc_dir="$TMP/cc-proj"; mkdir -p "$_cc_dir"
 _cc_bash="$(sed -n "/^floor_hooks() { cat <<'ROWS'/,/^ROWS\$/p" "$SRC/floor-install.sh" \
-  | awk -F';' '$1 == "PreToolUse" && ("|" $2 "|") ~ /[|]Bash[|]/ { sub(/^floor-hook[.]sh /, "", $3); print $3 }' | sort -u)"
-t_has "the wired Bash deciders were parsed from floor-install.sh (else the parser broke, not the rule)" "$_cc_bash" guard-cloud.sh
+  | awk -F';' '$1 == "PreToolUse" && ("|" $2 "|") ~ /[|]Bash[|]/ { sub(/^admission-hook[.]sh /, "", $3); print $3 }' | sort -u)"
+t_has "the wired Bash deciders were parsed from floor-install.sh (else the parser broke, not the rule)" "$_cc_bash" admission-cloud.sh
 _cc_answers() { # <json> -> each wired Bash decider that asks, denies or blocks on it, space-separated
   printf '%s\n' "$_cc_bash" | while IFS= read -r _g; do
     _s="${_g%% *}"; _a=''; [ "$_s" = "$_g" ] || _a="${_g#* }"

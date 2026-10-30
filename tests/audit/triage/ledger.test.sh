@@ -50,7 +50,7 @@ t_eq "it names both partitions" both "$_s"
 t_section "FC-9 separates an ongoing fork from orphaned history (harbor#119)"
 # The canonical name comes from floor_host_token, which owns it; what is asserted is which partition
 # holds the newest record.
-CANON="$(sh -c '. "$1/guard-lib.sh" 2>/dev/null; floor_host_token 2>/dev/null' _ "$SRC")"
+CANON="$(sh -c '. "$1/library-admission.sh" 2>/dev/null; floor_host_token 2>/dev/null' _ "$SRC")"
 t_eq "the canonical host token is derived" yes "$([ -n "$CANON" ] && echo yes || echo no)"
 mkforked() { # <name> <newest-in> → a two-partition fixture
   _d="$(mkfixture "$1")"
@@ -72,7 +72,7 @@ FK_HIST="$(mkforked forked-historical "$CANON")"
 t_eq "orphaned history" warn "$(sev_of "$FK_HIST" FC-9)"
 
 t_section "FC-9 degrades honestly when the canonical key cannot be read"
-mkdir -p "$TMP/bare-copy"; cp "$FC" "$TMP/bare-copy/audit-triage.sh"  # no sibling guard-lib.sh
+mkdir -p "$TMP/bare-copy"; cp "$FC" "$TMP/bare-copy/audit-triage.sh"  # no sibling library-admission.sh
 FCT="$TMP/bare-copy/audit-triage.sh"
 t_has "it admits the canonical key is unknown" "$(subj_of "$MH" FC-9)" "UNKNOWN"
 FCT="$FC"

@@ -1190,3 +1190,16 @@ rename-1307	env:HARBOR_WORKFLOW	env:HARBOR_STATUS_WORKFLOW	env	W5	2026-11-15	wor
 rename-1308	env:HARBOR_WORKLOG_MAX_AGE	env:HARBOR_ALERT_PROBE_WORKLOG_MAX_AGE	env	W5	2026-11-15	worklog is not a registered family; the reader is alert's (D-15); operator 2026-10-29: both names read until 2026-11-15
 rename-1309	env:HARBOR_X	env:HARBOR_TEST_X	env	W5	-	a suite's own placeholder, read by nothing outside it: a plain rename to the test family (D-15)
 rename-1310	env:HARBOR_Z	env:HARBOR_TEST_Z	env	W5	-	a suite's own placeholder, read by nothing outside it: a plain rename to the test family (D-15)
+rename-1311	check:event.pulse	check:event.alerting	check-id	W6c	2026-11-15	pulse is a legacy alias of alerting; an event preset is event.<object> (operator decision 2026-10-29); installed rules under the old id keep firing until remove_by (event-dispatch.sh ID_ALIASES), and lint-findings reads the old id as this one
+rename-1312	env:HARBOR_RUNNER	env:HARBOR_CI_RUNNER	env	W6e	2026-11-15	runner is not a registered family; the writer is ci-runner-switch.sh and the readers are governance.yml jobs (D-15); operator 2026-10-29: the switch reads the new name, then the old, and sets both until remove_by; the workflow patch is the operator's (~/Deliverables/2026-10-29-w6/)
+rename-1313	bin/guard-apiroute.sh	bin/admission-api-route.sh	bin	W6a	2026-11-15	guard is a legacy alias of admission-hook (D-2); the admission family; apiroute is no registered word, so api-route, the name its control admission.api-route-repair already has
+rename-1314	bin/guard-bash.sh	bin/admission-bash.sh	bin	W6a	2026-11-15	guard is a legacy alias of admission-hook (D-2); the admission family; the registered example name for the bash guard
+rename-1315	bin/guard-cloud.sh	bin/admission-cloud.sh	bin	W6a	2026-11-15	guard is a legacy alias of admission-hook (D-2); the admission family
+rename-1316	bin/guard-deliverables.sh	bin/admission-deliverables.sh	bin	W6a	2026-11-15	guard is a legacy alias of admission-hook (D-2); the admission family
+rename-1317	bin/guard-destroy.sh	bin/admission-destroy.sh	bin	W6a	2026-11-15	guard is a legacy alias of admission-hook (D-2); the admission family
+rename-1318	bin/guard-egress.sh	bin/admission-egress.sh	bin	W6a	2026-11-15	guard is a legacy alias of admission-hook (D-2); the admission family
+rename-1319	bin/guard-lib.sh	bin/library-admission.sh	bin	W6a	2026-11-15	the guards' shared helpers join the registered library family, as gate-lib.sh did (sitting B Q2); floor_ helpers become admission_ in a later pass (D-2)
+rename-1320	bin/guard-selfedit.sh	bin/admission-self-edit.sh	bin	W6a	2026-11-15	guard is a legacy alias of admission-hook (D-2); the admission family; selfedit is no registered word, so self-edit (its rule ids selfedit:* are frozen and stay)
+rename-1321	bin/guard-stop.sh	bin/admission-stop.sh	bin	W6a	2026-11-15	guard is a legacy alias of admission-hook (D-2); the admission family
+rename-1322	bin/floor-hook.sh	bin/admission-hook.sh	bin	W6b	2026-11-15	floor is a legacy alias of baseline and the wrapper is the admission hook itself (D-2); the fail-closed wrapper moves behind a shim (W6b)
+rename-1323	bin/guard-integrity.sh	bin/admission-integrity.sh	bin	W6b	2026-11-15	the B6 integrity gate, renamed behind a shim (W6b); deploy-runtime-install refreshes it under the new name where the old one is installed

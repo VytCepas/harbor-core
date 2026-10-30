@@ -13,7 +13,7 @@
 # NOTHING answered "is the installed thing the thing we built" — and the gap is
 # not hypothetical. Measured 2026-08-13: `.helm-install-stamp` pins the floor at
 # 4f997de (2026-08-09) with **11 later commits touching bin/ and hooks/**, which
-# is precisely why guard-cloud.sh and guard-destroy.sh — written, tested, merged
+# is precisely why admission-cloud.sh and admission-destroy.sh — written, tested, merged
 # — gate nothing on this machine. And `launchd/com.harbor.status.usage.plist` has a
 # counterpart in no LaunchAgents directory, so the durable usage ledger M9 built
 # has never been written by a schedule.
@@ -24,7 +24,7 @@
 # in the CHECKOUT against the same artifact's footprint on the BOX.
 #
 # IT INSTALLS NOTHING, and that is not timidity. Each remedy it names is a write
-# to a surface guard-selfedit.sh protects, or a `launchctl` call the floor
+# to a surface admission-self-edit.sh protects, or a `launchctl` call the floor
 # refuses — both deliberately out of a session's reach. It prints the command;
 # the operator runs it in their own terminal.
 #
@@ -87,7 +87,7 @@ note() { # <token> <detail> <fix command | none:<where>>
 #
 # §2.11 — a false positive is a defect, not safety. A renewal token that fires on
 # every statusline commit is one the operator learns to skip, and it is the same
-# token that has to be believed the day guard-cloud.sh really is not installed.
+# token that has to be believed the day admission-cloud.sh really is not installed.
 STAMP="$TGT/.helm-install-stamp"
 
 # THE PAYLOAD IS READ FROM THE INSTALLER, NEVER RESTATED HERE. floor-install.sh
@@ -102,11 +102,11 @@ STAMP="$TGT/.helm-install-stamp"
 # behind what installing today would produce.
 #
 # WHAT THIS DELIBERATELY DOES NOT COUNT, so the next reader does not mistake the
-# gap for an oversight: floor-install's CONDITIONAL payload (guard-integrity.sh
-# under --with-b6, guard-stop.sh under --with-stop) and floor-deny.sh, which it
+# gap for an oversight: floor-install's CONDITIONAL payload (admission-integrity.sh
+# under --with-b6, admission-stop.sh under --with-stop) and floor-deny.sh, which it
 # RUNS rather than lists. All three are named in the installer's prose, not in a
 # payload variable, and grepping prose is a heuristic this file will not carry.
-# floor-deny.sh and guard-integrity.sh are both in runtime-install's $FILES, so a
+# floor-deny.sh and admission-integrity.sh are both in runtime-install's $FILES, so a
 # commit to either still raises a `runtime` token; only the settings.json deny
 # entries floor-install regenerates are uncovered. Closing that properly means
 # floor-install declaring those three the way it declares $GUARDS, which is a
@@ -315,7 +315,7 @@ elif [ -n "$(find "$JV" -mtime +2 -print 2>/dev/null)" ]; then
 fi
 
 # ── 4 · the instruction pin ──────────────────────────────────────────────────
-# Not recomputed here. guard-integrity.sh already hashes the manifest at
+# Not recomputed here. admission-integrity.sh already hashes the manifest at
 # SessionStart and session-verdicts.sh already speaks on teeth drift; a second
 # implementation of the same hash is a copy that can disagree with the gate.
 # What this reads is the gate's OWN artifact: a pin file that does not exist.

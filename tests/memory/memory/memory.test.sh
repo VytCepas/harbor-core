@@ -274,7 +274,7 @@ else
   gl_stage() { ( cd "$GLR" && git reset -q
     for g in 'WORK/sessions/*/*.md' 'KNOWLEDGE/*.md' 'LEARNING/*.md' 'WISDOM/*.md' IDEAS.md README.md .gitignore; do
       git add -- "$g" >/dev/null 2>&1 || true; done ) >/dev/null 2>&1; }  # worklog-push.sh's allowlist
-  gl_verdict() { if ( . "$T_ROOT/bin/guard-lib.sh" >/dev/null 2>&1; floor_gitleaks_staged "$GLR" >/dev/null 2>&1 ); then
+  gl_verdict() { if ( . "$T_ROOT/bin/library-admission.sh" >/dev/null 2>&1; floor_gitleaks_staged "$GLR" >/dev/null 2>&1 ); then
     echo allow; else echo refuse; fi; }  # the shipped decision function, in a subshell
   printf '# session\n\nRan the suite.\n' > "$REC"; gl_stage
   t_eq "a clean work-log record" allow "$(gl_verdict)"

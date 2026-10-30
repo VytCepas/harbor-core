@@ -31,7 +31,7 @@ Testable, in this order:
 **`~/Deliverables/<YYYY-MM-DD>-<slug>/`, then `open` it and hand over the
 `file://` link.** The config, the descriptions and the page live in that one
 folder, so the deliverable and its source travel together. This is
-`CLAUDE.md`'s deliverable rule and `guard-deliverables.sh` enforces it.
+`CLAUDE.md`'s deliverable rule and `admission-deliverables.sh` enforces it.
 
 **Do not publish it.** Not to an artifact host, not anywhere with a URL. Two
 things go wrong and both were paid for: a publish is keyed on the FILE PATH, so

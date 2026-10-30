@@ -2,8 +2,8 @@
 # INSTALL (harbor#3) — wrapped, additive install of the Helm POSIX floor into a config dir (harbor#765).
 #   sh floor-install.sh (--live | --dir PATH)           DRY RUN (the default): the plan, nothing written
 #   sh floor-install.sh --apply (--live | --dir PATH)   write, backing up first beside the run's log
-#   --with-b6         also install B6 (guard-integrity.sh), LAST, once a session with the floor on is verified
-#   --with-stop-gate  also install the Stop gate (guard-stop.sh), which CAN refuse to let a turn end
+#   --with-b6         also install B6 (admission-integrity.sh), LAST, once a session with the floor on is verified
+#   --with-stop-gate  also install the Stop gate (admission-stop.sh), which CAN refuse to let a turn end
 #   --accept-loss     install even though this source lacks floor commits already installed (install-stamp)
 #
 # Copies the guard scripts into <dir>/bin, applies the B1 deny extension
@@ -56,13 +56,13 @@ if [ ! -f "$S" ]; then
   log_end; exit 1
 fi
 
-GUARDS='floor-hook.sh guard-lib.sh floor-normalize.awk guard-selfedit.sh guard-bash.sh guard-egress.sh annotate-web.sh pin-instructions.sh context-resolve.sh floor-observe.sh guard-cloud.sh guard-destroy.sh guard-deliverables.sh guard-apiroute.sh govern-hook.sh'
+GUARDS='admission-hook.sh library-admission.sh floor-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh annotate-web.sh pin-instructions.sh context-resolve.sh floor-observe.sh admission-cloud.sh admission-destroy.sh admission-deliverables.sh admission-api-route.sh govern-hook.sh'
 # THE RECOVERY PATH, SEPARATE FROM THE GUARDS AND INSTALLED WITH THEM (harbor#275).
 # These are not guards — nothing wires them to a hook — but B6's own block message
 # is `sh $CFG/bin/deploy-restore.sh …`, so a floor whose gate can fire without them
 # present hands a locked-out operator a command that is not there. Held apart from
 # $GUARDS because that variable is read by floor-test.sh's X13 payload derivation,
-# guard-integrity.sh's floor MINIMUM and floor-uninstall.sh's removal list, and
+# admission-integrity.sh's floor MINIMUM and floor-uninstall.sh's removal list, and
 # widening it would change all three by accident.
 # baseline-pin.sh left this list when deploy's snapshots replaced it (harbor#765).
 # library-log.sh and deploy-install-lib.sh are what deploy-restore.sh, deploy-harden.sh and pin-instructions.sh source
@@ -94,8 +94,8 @@ ONFAIL="$(il_onfailure)"
 # <also wired by>. A bare name in the argv is a file in <dir>/bin. The dry run and the apply both
 # wire from it, and floor-uninstall.sh reads it to decide what to strip, so the three cannot drift.
 floor_hooks() { cat <<'ROWS'
-PreToolUse;Bash;floor-hook.sh guard-bash.sh
-PreToolUse;Bash|Write|Edit|MultiEdit;floor-hook.sh guard-egress.sh
+PreToolUse;Bash;admission-hook.sh admission-bash.sh
+PreToolUse;Bash|Write|Edit|MultiEdit;admission-hook.sh admission-egress.sh
 # THE OTHER HALF OF guard-egress. It carries dedicated payload branches for
 # mcp__* (FO-10), Task/Agent (FO-11), WebFetch/WebSearch (CRED-09/FO-17) and
 # NotebookEdit (FO-09) — and NONE of them could ever run, because the installer
@@ -103,30 +103,30 @@ PreToolUse;Bash|Write|Edit|MultiEdit;floor-hook.sh guard-egress.sh
 # code in the deployed configuration; the suite never noticed because its wiring
 # assertions only checked the pairs the installer already wired (pass 11,
 # P11-W1, critical). The matcher is a regex, so `mcp__.*` covers every server.
-PreToolUse;mcp__.*|Task|Agent|WebFetch|WebSearch|NotebookEdit;floor-hook.sh guard-egress.sh
-PreToolUse;Write|Edit|MultiEdit;floor-hook.sh guard-selfedit.sh
+PreToolUse;mcp__.*|Task|Agent|WebFetch|WebSearch|NotebookEdit;admission-hook.sh admission-egress.sh
+PreToolUse;Write|Edit|MultiEdit;admission-hook.sh admission-self-edit.sh
 # guard-cloud (harbor#194) and guard-destroy (harbor#201) — ASK/DENY gates for
-# destructive cloud ops and local work destruction. Wired WITHOUT floor-hook.sh,
+# destructive cloud ops and local work destruction. Wired WITHOUT admission-hook.sh,
 # like context-resolve/floor-observe: they are the WARNING layer, fail-OPEN by
 # design, and emit a PreToolUse JSON decision on stdout (exit 0). Routing them
 # through the fail-CLOSED wrapper would deny ALL Bash if one ever crashed — the
 # §2.11 disaster for a guard whose whole point is to be tolerable. Deliberately
 # NOT added to guard-integrity's required set, so a missing copy cannot brick a
 # session; they stay write-protected by guard-selfedit either way.
-PreToolUse;Bash;guard-cloud.sh
-PreToolUse;Bash;guard-destroy.sh
+PreToolUse;Bash;admission-cloud.sh
+PreToolUse;Bash;admission-destroy.sh
 # guard-deliverables — the FILING gate. Same standalone, fail-OPEN wiring and
 # the same reason: it denies a NEW loose .html/.md/.pdf in $HOME, Desktop,
 # Documents or Downloads and names ~/Deliverables/<date>-<slug>/ instead. A
 # tidiness rule must never be able to fail CLOSED and stop a session writing
-# code, so it stays out of floor-hook.sh and out of B6's minimum set.
+# code, so it stays out of admission-hook.sh and out of B6's minimum set.
 # ONE matcher covering BOTH ways a document gets written — the file tools, which
 # carry a path, and Bash, where the path is inside a redirect. Wiring it as two
 # entries under two matchers is what a first cut did and WIRE-1 rejected it: the
 # same command twice under PreToolUse is a duplicate, tolerated only for
 # guard-egress, which genuinely needs disjoint matcher sets. One entry, one
 # alternation, no exception to maintain.
-PreToolUse;Bash|Write|Edit|MultiEdit;guard-deliverables.sh
+PreToolUse;Bash|Write|Edit|MultiEdit;admission-deliverables.sh
 # govern-hook --box (harbor#516) — the merge backstop, box-level. Standalone and
 # fail-OPEN like guard-cloud: a refusal is a JSON deny on stdout and every fault
 # exits 0 in silence. Box-level because the repo pack reaches only sessions
@@ -138,24 +138,24 @@ PreToolUse;Bash;govern-hook.sh --box
 # is invisible in the command text (on 2026-09-17 the command was a Python probe and
 # the writer was a router its setup script installed); SessionStart because a daemon
 # or an earlier session can write the route between calls.
-PostToolUse;Bash|Write|Edit|MultiEdit;guard-apiroute.sh
-SessionStart;;guard-apiroute.sh
+PostToolUse;Bash|Write|Edit|MultiEdit;admission-api-route.sh
+SessionStart;;admission-api-route.sh
 # Pass 14 E-4: Monitor runs tool_input.command in the Bash shell and no guard saw it. Its own
 # matcher rather than `Bash|Monitor`, so a box already wired under `Bash` does not run each guard twice.
-PreToolUse;Monitor;floor-hook.sh guard-bash.sh
-PreToolUse;Monitor;floor-hook.sh guard-egress.sh
-PreToolUse;Monitor;guard-cloud.sh
-PreToolUse;Monitor;guard-destroy.sh
-PreToolUse;Monitor;guard-deliverables.sh
+PreToolUse;Monitor;admission-hook.sh admission-bash.sh
+PreToolUse;Monitor;admission-hook.sh admission-egress.sh
+PreToolUse;Monitor;admission-cloud.sh
+PreToolUse;Monitor;admission-destroy.sh
+PreToolUse;Monitor;admission-deliverables.sh
 PreToolUse;Monitor;govern-hook.sh --box
 # harbor#1313 L6: Grep returns file contents, and Read deny binds only the directory it searches. Its own
 # matcher, as Monitor's, so a box already wired keeps one entry per selector.
-PreToolUse;Grep;floor-hook.sh guard-egress.sh
-PostToolUse;WebFetch|WebSearch|ToolSearch|mcp__.*;floor-hook.sh --advisory annotate-web.sh
+PreToolUse;Grep;admission-hook.sh admission-egress.sh
+PostToolUse;WebFetch|WebSearch|ToolSearch|mcp__.*;admission-hook.sh --advisory annotate-web.sh
 # H2 (harbor#4) — record this session's detect-and-defer context so a later
 # PostToolUse/Stop hook can read it. Claude Code spawns each hook fresh, so a
 # SessionStart hook cannot export it; a per-session file is the only channel.
-# Wired WITHOUT floor-hook.sh: it is a recorder, never a veto, and every path
+# Wired WITHOUT admission-hook.sh: it is a recorder, never a veto, and every path
 # in it already exits 0. deploy-runtime-install.sh wires this same hook (RESOLVER_HOOK),
 # so floor-uninstall.sh leaves it wired while that installer is on the box.
 SessionStart;;context-resolve.sh;;runtime-install
@@ -167,8 +167,8 @@ SessionStart;;context-resolve.sh;;runtime-install
 # a frozen-contract row, an F1 rule and wiring assertions in thirteen files to
 # carry forty lines this already-installed recorder can hold.
 PostToolUse;Write|Edit|MultiEdit|NotebookEdit;context-resolve.sh
-# OBSERVE-1 (harbor#41). Also wired WITHOUT floor-hook.sh, and for a second
-# reason on top of context-resolve's: floor-hook.sh exits at its own line-2
+# OBSERVE-1 (harbor#41). Also wired WITHOUT admission-hook.sh, and for a second
+# reason on top of context-resolve's: admission-hook.sh exits at its own line-2
 # kill-switch, so routing this through the wrapper would make an overridden
 # session — the one thing it exists to record — invisible again.
 SessionStart;;floor-observe.sh
@@ -187,10 +187,10 @@ PostToolUse;Monitor|ScheduleWakeup|CronCreate|Workflow|Bash|Skill|Read;event-hoo
 # The two opt-ins, last so a default install wires exactly what it did before.
 # B6 (--with-b6) is fail-CLOSED and lands after the floor is verified (docs/explanation/admission-baseline.md
 # order). SG (harbor#291, --with-stop-gate) can refuse to let a TURN end, so it
-# is a deliberate act per box; STANDALONE because floor-hook.sh speaks the
+# is a deliberate act per box; STANDALONE because admission-hook.sh speaks the
 # PreToolUse protocol and this verdict is `decision:"block"`.
-SessionStart;;guard-integrity.sh;b6
-Stop;;guard-stop.sh;stop
+SessionStart;;admission-integrity.sh;b6
+Stop;;admission-stop.sh;stop
 ROWS
 }
 _hook_cmd() { # <argv> → the command string wired for it
@@ -221,7 +221,15 @@ wire_floor() {
 $(floor_hooks)
 EOF
 }
+# The opt-ins this run installs, by their names: a rename's hook commands, old copies and pins follow them too.
+_OPTN=""; [ "$WITH_B6" -eq 0 ] || _OPTN="admission-integrity.sh"; [ "$WITH_STOP" -eq 0 ] || _OPTN="$_OPTN admission-stop.sh"
+# A box wired before a rename names the old files: rewire those commands first, so the merge finds them (harbor#961 W6).
+_rewire() {
+  NEW="$(printf '%s' "$NEW" | il_renamed_rewire /dev/stdin "$SRC/.." "$DIR" $GUARDS $_OPTN)" \
+    || { log_fail "the hook commands of renamed files could not be rewired in $S"; log_nofix "the jq error above"; log_end; exit 1; }
+}
 NEW="$(cat "$S")"
+_rewire
 wire_floor
 
 if [ "$IL_APPLY" -eq 1 ]; then log_head "apply to $DIR"; else log_head "plan for $DIR (dry run: nothing is written)"; fi
@@ -254,7 +262,7 @@ fi
 for g in $GUARDS; do log_note "guard to copy into $DIR/bin: $g"; done
 for g in $EVENTS; do log_note "event producer to copy into $DIR/bin: $g (not a guard: no content pin)"; done
 for g in $GATES; do log_note "approval gate tool to copy into $DIR/bin: $g (not a guard: no content pin)"; done
-if [ "$WITH_STOP" -eq 1 ]; then log_note "guard to copy into $DIR/bin: guard-stop.sh (opt-in Stop gate — CAN refuse to let a TURN end)"; fi
+if [ "$WITH_STOP" -eq 1 ]; then log_note "guard to copy into $DIR/bin: admission-stop.sh (opt-in Stop gate — CAN refuse to let a TURN end)"; fi
 # LISTED IN THE DRY RUN TOO, because these are content-pinned and a pin the dry
 # run never mentioned is a file the operator did not know this installer owns (harbor#275).
 for g in $RECOVERY; do log_note "recovery tooling to copy and pin alongside them: $g"; done
@@ -305,11 +313,11 @@ if [ "$IL_APPLY" -eq 0 ]; then
   # The Stop gate, in the DRY RUN as well as after the apply: a gate that can hold a
   # session open must not be discoverable only in hindsight.
   if [ "$WITH_STOP" -eq 1 ]; then
-    log_note "stop gate: WOULD install guard-stop.sh and wire it at Stop. It CAN refuse a turn end — once per defect, not once per turn. Fails open."
+    log_note "stop gate: WOULD install admission-stop.sh and wire it at Stop. It CAN refuse a turn end — once per defect, not once per turn. Fails open."
   else
     log_skip "stop gate: not included; to install it: $(il_apply_cmd floor) --with-stop-gate"
   fi
-  il_renamed_retire "$SRC/.." 1 $GUARDS $RECOVERY $EVENTS $GATES
+  il_renamed_retire "$SRC/.." 1 $GUARDS $RECOVERY $EVENTS $GATES $_OPTN
   [ "$IL_REFUSED" -eq 1 ] || il_apply_next floor
   log_end; exit $?
 fi
@@ -318,7 +326,7 @@ mkdir -p "$DIR/bin"
 il_backup "$S" || { log_end; exit 1; }
 il_backup "$DIR/.helm-pins" || { log_end; exit 1; }
 # The pre-run bytes of every script this run REPLACES with different content.
-for g in $GUARDS $RECOVERY $EVENTS $GATES guard-integrity.sh guard-stop.sh; do
+for g in $GUARDS $RECOVERY $EVENTS $GATES admission-integrity.sh admission-stop.sh; do
   if [ -f "$DIR/bin/$g" ] && [ -f "$SRC/$g" ] && ! cmp -s "$SRC/$g" "$DIR/bin/$g"; then
     il_backup "$DIR/bin/$g" || { log_end; exit 1; }
   fi
@@ -413,8 +421,8 @@ else
   log_end; exit 1
 fi
 if [ "$WITH_B6" -eq 1 ]; then
-  il_install_exec "$SRC/guard-integrity.sh" "$DIR/bin/guard-integrity.sh"; il_manifest bin/guard-integrity.sh
-  _sha < "$DIR/bin/guard-integrity.sh" > "$DIR/.helm-pins/guard-integrity.sh.sha256"
+  il_install_exec "$SRC/admission-integrity.sh" "$DIR/bin/admission-integrity.sh"; il_manifest bin/admission-integrity.sh
+  _sha < "$DIR/bin/admission-integrity.sh" > "$DIR/.helm-pins/admission-integrity.sh.sha256"
 fi
 # SG (harbor#291) — the Stop gate, wired from its table row. CONTENT-PINNED in the
 # same breath as the copy: a guard this installer wrote and did not pin is invisible
@@ -422,13 +430,16 @@ fi
 # also the presence list and a box that never opted in must not fail a check for a
 # file it deliberately does not have.
 if [ "$WITH_STOP" -eq 1 ]; then
-  il_install_exec "$SRC/guard-stop.sh" "$DIR/bin/guard-stop.sh"; il_manifest bin/guard-stop.sh
-  _sha < "$DIR/bin/guard-stop.sh" > "$DIR/.helm-pins/guard-stop.sh.sha256"
+  il_install_exec "$SRC/admission-stop.sh" "$DIR/bin/admission-stop.sh"; il_manifest bin/admission-stop.sh
+  _sha < "$DIR/bin/admission-stop.sh" > "$DIR/.helm-pins/admission-stop.sh.sha256"
 fi
 # Re-read settings (floor-deny just rewrote deny) and wire the SAME table the dry
 # run showed onto THAT (harbor#766: this was a second, hand-kept copy of it).
 NEW="$(cat "$S")"
+_rewire
 wire_floor
+# The opt-ins are in bin/ now, so their old names can go the way the guards' did (harbor#961 W6).
+[ -z "$_OPTN" ] || il_renamed_retire "$SRC/.." 1 $_OPTN || { log_end; exit 1; }
 il_write_json "$NEW" "$S" || { log_end; exit 1; }
 log_ok "hooks merged into $S; its pre-run bytes are in $IL_BK"
 
@@ -472,12 +483,12 @@ if [ "$WITH_B6" -eq 0 ]; then
   log_note "B6 installs LAST, after you have verified a session with the floor on"
   il_next --deploy-does "$(il_apply_cmd floor) --with-b6"
 else
-  log_ok "b6: guard-integrity.sh installed, wired at SessionStart, content pinned"
+  log_ok "b6: admission-integrity.sh installed, wired at SessionStart, content pinned"
 fi
 # Named in BOTH directions, saying what it can do rather than what it is called.
 if [ "$WITH_STOP" -eq 0 ]; then
   log_skip "stop gate: NOT installed. It can REFUSE TO LET A TURN END when the transcript shows a floor edit with no suite run, or a suite left red. Opt in deliberately, per box: $(il_apply_cmd floor) --with-stop-gate"
 else
-  log_ok "stop gate: guard-stop.sh installed, wired at Stop, content pinned; it CAN refuse to let a TURN end — once per defect, not once per turn (Stop fires every turn). Fails open on any error."
+  log_ok "stop gate: admission-stop.sh installed, wired at Stop, content pinned; it CAN refuse to let a TURN end — once per defect, not once per turn (Stop fires every turn). Fails open on any error."
 fi
 log_end; exit $?

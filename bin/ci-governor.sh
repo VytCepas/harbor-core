@@ -28,8 +28,8 @@
 # capped at the Colima VM's CPUs. The containers are linux_runners if listed, else DISCOVERED each tick by one
 # `docker ps`: every running one named *-linux or *-linux-<N> whose image is the actions runner's (harbor#1060; harbor-linux-2 is the second
 # governance runner). A gate runner (harbor-gate, harbor#1286) is not *-linux: never discovered, never moved; it keeps the cpus it was made with.
-# PRIORITY CLASSES (harbor#1060). low_priority (harbor-linux, projects-orchestrator-linux, project-init-linux:
-# harbor, Fleet, Yard; a listed name's numbered twin, harbor-linux-2, is low too, so a second runner is never unmanaged) yields to every other container. Per tick: each busy normal container gets an even share
+# PRIORITY CLASSES (harbor#1060). low_priority (harbor-linux and the fleet's and yard's <repo>-linux, their ids from the
+# registry: harbor, Fleet, Yard; a listed name's numbered twin, harbor-linux-2, is low too, so a second runner is never unmanaged) yields to every other container. Per tick: each busy normal container gets an even share
 # of the budget less linux_min (1) for each busy low one; busy low ones split what is left, never under
 # linux_min; an idle one sits at linux_min. NORMAL_MIN (normal_min, 2): a busy normal container never gets fewer
 # than normal_min cpus however many are busy (measured: with several busy at budget 4 the even share was ~1 and
@@ -151,7 +151,13 @@ RUN_DEADLINE="$(int "$(cfg run_deadline 1800)")"
 STALE_AFTER="$(int "$(cfg stale_after 180)")"
 MAC_RUNNERS="$(cfgs mac_runners '' | tr ',' ' ')"
 LINUX_LIST="$(cfgs linux_runners '' | tr ',' ' ')"
-LOW_PRIORITY="$(cfgs low_priority harbor-linux,projects-orchestrator-linux,project-init-linux | tr ',' ' ')"
+# The platform's own runners by default, <repo>-linux each: the fleet controller's and the scaffolder's ids come from
+# the registry by kind (scope-roots.sh --id), so a renamed repo's runner keeps its class (harbor#966).
+_LP_DEF=harbor-linux
+for _lv in HARBOR_SCOPE_FLEET_CONTROLLER HARBOR_SCOPE_SCAFFOLDER; do
+  _li="$(sh "$HERE/scope-roots.sh" --id "$_lv" 2>/dev/null || :)"; [ -z "$_li" ] || _LP_DEF="$_LP_DEF,$_li-linux"
+done
+LOW_PRIORITY="$(cfgs low_priority "$_LP_DEF" | tr ',' ' ')"
 REPO="$(cfgs repo '')"; [ -n "$REPO" ] || REPO="$(repo_slug "$HERE")"   # the config's `repo`, else harbor's own (harbor#1149)
 MAC_LABELS="$(cfgs mac_labels self-hosted,macOS,ARM64)"
 SAMPLE_INTERVAL="$(cfg sample_interval 2)"

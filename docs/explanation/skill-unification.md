@@ -197,7 +197,7 @@ instead of paying for it in every session's prefix. **The instinct holds and the
 stated reason does not** — a hook that fires N times costs N injections landing
 after the cached prefix, so on tokens it loses to `CLAUDE.md`, which is paid once
 inside it. What it buys, measured here on 2026-08-07: the SessionStart pin-drift
-banner was read straight past while a `guard-bash.sh` denial arriving mid-turn
+banner was read straight past while a `admission-bash.sh` denial arriving mid-turn
 redirected the work immediately. Constraints bind in the turn, not in the prefix
 — and `CLAUDE.md` cannot stop a commit.
 

@@ -27,9 +27,10 @@ docs/explanation/modularity.md	doctrine	the constitution's expanded rules, cited
 docs/explanation/no-authored-plugins.md	doctrine	the constitution's expanded rules, cited from it (moved from DOCTRINE/ in W1)
 docs/explanation/verification-expanded.md	doctrine	the constitution's expanded rules, cited from it (moved from DOCTRINE/ in W1)
 docs/explanation/wiring-new-capability.md	doctrine	the constitution's expanded rules, cited from it (moved from DOCTRINE/ in W1)
-bin/guard-*	guard	the floor's guards: PreToolUse vetoes, the Stop gate and B6
+bin/admission-*	guard	the floor's guards: PreToolUse vetoes, the Stop gate and B6
+bin/guard-*	guard	the guards' old names: rename shims to bin/admission-* until 2026-11-15 (harbor#961 W6)
 bin/floor-*	floor	the floor's installer, deny list, hook wrapper, observer, verifier and normalizer
-bin/guard-lib.sh	floor	the library every guard sources
+bin/library-admission.sh	floor	the library every guard sources
 floor-normalize.awk	floor	the tokenizer guard-bash reads commands through, should it move to the root
 bin/admission-mutation-tier.sh	floor	the config-dir write classifier the floor's surfaces are tiered by
 bin/library-log.sh	floor	sourced by every installed gate tool, installer and recovery tool
@@ -96,7 +97,17 @@ standards/naming/controls.tsv	ci-gate	the control register: each control's mode,
 bin/access-browser.sh	ship	derived: called by bin/deploy-live-verify.sh
 bin/access-github-app-install.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/access.sh	operator-run	derived: called by bin/secret
+bin/admission-api-route.sh	installed	derived: shipped by floor-install.sh
+bin/admission-bash.sh	installed	derived: shipped by floor-install.sh
+bin/admission-cloud.sh	installed	derived: shipped by floor-install.sh
+bin/admission-deliverables.sh	installed	derived: shipped by floor-install.sh
+bin/admission-destroy.sh	installed	derived: shipped by floor-install.sh
+bin/admission-egress.sh	installed	derived: shipped by floor-install.sh
+bin/admission-hook.sh	installed	derived: shipped by floor-install.sh
+bin/admission-integrity.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/admission-observe-report.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/admission-self-edit.sh	installed	derived: shipped by floor-install.sh
+bin/admission-stop.sh	installed	derived: wired by floor-install.sh
 bin/alert-notify.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/alert-probe.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/annotate-web.sh	installed	derived: shipped by floor-install.sh
@@ -163,7 +174,6 @@ bin/event-bus.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/event-dispatch.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/event-hook.sh	installed	derived: shipped by floor-install.sh
 bin/floor-deny.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/floor-hook.sh	installed	derived: shipped by floor-install.sh
 bin/floor-install.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/floor-normalize.awk	installed	derived: shipped by floor-install.sh
 bin/floor-observe.sh	installed	derived: shipped by floor-install.sh
@@ -186,19 +196,10 @@ bin/gcloud	operator-run	derived: linked into ~/.local/bin as gcloud by contracts
 bin/gcloud-credentials	operator-run	derived: linked into ~/.local/bin as gcloud-creds by contracts/shims.tsv
 bin/govern-hook.sh	installed	derived: shipped by floor-install.sh
 bin/govern-token.sh	installed	derived: wired by context-injection-install.sh
-bin/guard-apiroute.sh	installed	derived: shipped by floor-install.sh
-bin/guard-bash.sh	installed	derived: shipped by floor-install.sh
-bin/guard-cloud.sh	installed	derived: shipped by floor-install.sh
-bin/guard-deliverables.sh	installed	derived: shipped by floor-install.sh
-bin/guard-destroy.sh	installed	derived: shipped by floor-install.sh
-bin/guard-egress.sh	installed	derived: shipped by floor-install.sh
-bin/guard-integrity.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/guard-lib.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/guard-selfedit.sh	installed	derived: shipped by floor-install.sh
-bin/guard-stop.sh	installed	derived: wired by floor-install.sh
 bin/harbor	operator-run	derived: linked into ~/.local/bin as harbor by contracts/shims.tsv
 bin/housekeeping-clean.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/idea	operator-run	derived: linked into ~/.local/bin as idea by contracts/shims.tsv
+bin/library-admission.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/library-alert.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/library-fs.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/library-gate.sh	installed	derived: shipped by floor-install.sh
@@ -212,7 +213,7 @@ bin/lint-core-writes.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-dev-paths.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-domain.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-findings-run.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/lint-findings.sh	installed	derived: called by bin/guard-bash.sh
+bin/lint-findings.sh	installed	derived: called by bin/admission-bash.sh
 bin/lint-layout-map.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-leaks.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-locale-ranges.awk	ci-gate	derived: called by bin/lint-conventions.sh
@@ -295,6 +296,7 @@ hooks/session-verdicts/session-verdicts.sh	installed	derived: shipped by deploy-
 hooks/ticket-note/ticket-note.sh	installed	derived: shipped by deploy-runtime-install.sh
 hooks/worklog-push/worklog-push.sh	installed	derived: shipped by deploy-runtime-install.sh
 runners/**	ci-gate	derived: decides what a required check runs
+standards/naming/repo-kinds.tsv	installed	derived: shipped by deploy-runtime-install.sh
 tests/access/gcloud-credentials/gcloud-credentials.test.sh	operator-run	derived: linked into ~/.local/bin as gcloud-creds-test.sh by contracts/shims.tsv
 tests/access/secret/secret.test.sh	operator-run	derived: linked into ~/.local/bin as secret-test.sh by contracts/shims.tsv
 tests/deploy/restore/recover.test.sh	installed	derived: shipped by deploy-runtime-install.sh

@@ -151,13 +151,13 @@ command -v jq >/dev/null 2>&1 || die "jq is required" "$(pkg_hint jq)"
 # the literal `Mac` while scutil answers the configured LocalHostName, and the
 # flip silently FORKED every host-sharded ledger in ~/.claude (harbor#119). One
 # canonical answer, from guard-lib, or the fork happens again here.
-LIB="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/guard-lib.sh"
+LIB="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-admission.sh"
 if [ -r "$LIB" ]; then
   # shellcheck source=/dev/null
   . "$LIB"
   HOST="$(floor_host_token)"
 else
-  die "guard-lib.sh is not readable at $LIB" "git checkout -- bin/guard-lib.sh"
+  die "library-admission.sh is not readable at $LIB" "git checkout -- bin/library-admission.sh"
 fi
 
 LEDGER_DIR="$CFG/MEMORY/USAGE/$HOST"

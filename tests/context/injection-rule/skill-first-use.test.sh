@@ -6,7 +6,7 @@
 T="$T_TMP"; CFG="$T/cfg"; REPO="$T/repo"; SK="$CFG/skills"; N=0
 mkdir -p "$CFG/inject.d" "$CFG/bin" "$REPO" "$SK/alpha" "$SK/beta" "$SK/agent-routing"
 cp "$T_ROOT/context-rules/user/skill-on-first-use.md" "$T_ROOT/context-rules/user/skill-first-use.sh" "$CFG/inject.d/"
-cp "$T_ROOT/hooks/injection-rule/injection-rule.sh" "$T_ROOT/bin/guard-lib.sh" "$T_ROOT/bin/floor-normalize.awk" "$CFG/bin/"
+cp "$T_ROOT/hooks/injection-rule/injection-rule.sh" "$T_ROOT/bin/library-admission.sh" "$T_ROOT/bin/floor-normalize.awk" "$CFG/bin/"
 cp "$T_ROOT/skills/agent-routing/SKILL.md" "$SK/agent-routing/SKILL.md"
 printf -- '---\nname: alpha\ndescription: "Alpha things. USE WHEN alpha work, the alpha tool. NOT FOR beta."\nowns-commands: alphacli alphatool\n---\n# alpha\n' > "$SK/alpha/SKILL.md"
 printf -- '---\nname: beta\ndescription: "Beta things. USE WHEN beta work."\nowns-commands: betacli\n---\n# beta\n' > "$SK/beta/SKILL.md"

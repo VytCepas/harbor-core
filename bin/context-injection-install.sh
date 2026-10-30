@@ -287,14 +287,14 @@ status() { # <step> — one log line per fact, under its own header
   if [ ! -f "$DIR/bin/injection-rule.sh" ]; then log_note "engine: absent"
   elif cmp -s "$(_src injection-rule.sh)" "$DIR/bin/injection-rule.sh"; then log_ok "engine: current"
   else log_note "engine: DRIFTED"; fi
-  # THE SHELL HALF OF "THE TREE A CALL TOUCHES" (harbor#599) is guard-lib.sh's
+  # THE SHELL HALF OF "THE TREE A CALL TOUCHES" (harbor#599) is library-admission.sh's
   # parser, which the FLOOR installs and this payload deliberately does not — one
   # installer per file. Without it a `git -C` or `gh -R` reaches no tree, for
   # `scope: box` delivery and for repo-tier.sh alike, and nothing else says so.
-  if [ -f "$DIR/bin/guard-lib.sh" ] && [ -f "$DIR/bin/floor-normalize.awk" ]; then
-    log_ok "parser: present (guard-lib.sh: git -C and gh -R reach their trees)"
+  if [ -f "$DIR/bin/library-admission.sh" ] && [ -f "$DIR/bin/floor-normalize.awk" ]; then
+    log_ok "parser: present (library-admission.sh: git -C and gh -R reach their trees)"
   else
-    log_warn "parser: ABSENT — git -C and gh -R reach no tree; install the floor to add guard-lib.sh"
+    log_warn "parser: ABSENT — git -C and gh -R reach no tree; install the floor to add library-admission.sh"
     log_fix "sh $SRC/floor-install.sh --apply $(il_spell)"
   fi
   # THE ANNOUNCE HAS ITS OWN ROW, because the loop above counts only injection-rule.sh

@@ -70,7 +70,7 @@
 {"id":"edge-12-memory-stays-writable","rule":"cd-bridge-copy","want":"allow","cmd":"cd ~/.claude/MEMORY && mv stale-note.md /tmp/q"}
 {"id":"edge-12-mv-a-pinned-file-out","rule":"cd-bridge-move","want":"block","cmd":"cd ~ && mv .claude/settings.json /tmp/x"}
 {"id":"edge-12-mv-claude-md-out","rule":"cd-bridge-move","want":"block","cmd":"cd ~ && mv .claude/CLAUDE.md /tmp/y"}
-{"id":"edge-12-mv-onto-a-guard","rule":"cd-bridge-move","want":"block","cmd":"cd ~ && mv /tmp/a .claude/bin/guard-bash.sh"}
+{"id":"edge-12-mv-onto-a-guard","rule":"cd-bridge-move","want":"block","cmd":"cd ~ && mv /tmp/a .claude/bin/admission-bash.sh"}
 {"id":"edge-2-chgrp-r-x","rule":"chmod-recursive-root","want":"block","cmd":"chgrp -R staff /"}
 {"id":"edge-2-chmod-000-one-file","rule":"chmod-recursive-root","want":"allow","cmd":"chmod 000 secrets.env"}
 {"id":"edge-2-chmod-r-000","rule":"chmod-recursive-root","want":"block","cmd":"chmod -R 000 /"}
@@ -104,12 +104,12 @@
 {"id":"edge-5-no-cd-relative","rule":"cd-bridge-destroy","want":"allow","cmd":"rm -rf .claude"}
 {"id":"edge-5-project-local-build-dir","rule":"cd-bridge-destroy","want":"allow","cmd":"cd ~/proj && rm -rf build"}
 {"id":"edge-5-pushd-rm-rf","rule":"cd-bridge-destroy","want":"block","cmd":"pushd ~ && rm -rf .claude"}
-{"id":"edge-5-shred-a-guard","rule":"cd-bridge-destroy","want":"block","cmd":"cd ~ && shred -u .claude/bin/guard-bash.sh"}
+{"id":"edge-5-shred-a-guard","rule":"cd-bridge-destroy","want":"block","cmd":"cd ~ && shred -u .claude/bin/admission-bash.sh"}
 {"id":"edge-5-the-teeth-bin","rule":"cd-bridge-destroy","want":"block","cmd":"cd ~ && rm -rf .claude/bin"}
 {"id":"edge-5-the-teeth-hooks","rule":"cd-bridge-destroy","want":"block","cmd":"cd ~ && rm -rf .claude/hooks"}
-{"id":"edge-5-truncate-a-guard","rule":"cd-bridge-destroy","want":"block","cmd":"cd ~ && truncate -s 0 .claude/bin/guard-bash.sh"}
+{"id":"edge-5-truncate-a-guard","rule":"cd-bridge-destroy","want":"block","cmd":"cd ~ && truncate -s 0 .claude/bin/admission-bash.sh"}
 {"id":"edge-5-two-hops","rule":"cd-bridge-destroy","want":"block","cmd":"cd / && cd ~ && rm -rf .claude"}
-{"id":"edge-6-bash-c-named-script","rule":"cd-bridge-destroy","want":"allow","cmd":"bash -c 'cat p.json | sh bin/guard-bash.sh'"}
+{"id":"edge-6-bash-c-named-script","rule":"cd-bridge-destroy","want":"allow","cmd":"bash -c 'cat p.json | sh bin/admission-bash.sh'"}
 {"id":"edge-6-bundled-lc-harbor-name","rule":"cd-bridge-destroy","want":"allow","cmd":"sh -lc 'printf x | sh bin/doc-index-generate.sh'"}
 {"id":"edge-6-sh-c-named-script","rule":"cd-bridge-destroy","want":"allow","cmd":"sh -c 'printf x | sh hooks/injection-rule/injection-rule.sh'"}
 {"id":"edge-6-unwrapped-unchanged","rule":"cd-bridge-destroy","want":"allow","cmd":"printf x | sh hooks/injection-rule/injection-rule.sh"}
@@ -165,11 +165,11 @@
 {"id":"force-push-symlinked-settings-blocks","rule":"force-push-protected","want":"block","cmd":"git push --force origin main","env":{"CLAUDE_PROJECT_DIR":"{tmp}/guard-symlinked"},"why":"harbor#954 · a symlinked settings file cannot stand the floor down"}
 {"id":"force-push-outside-repo-sole-gate","rule":"force-push-protected","want":"block","cmd":"git push --force origin main","env":{"CLAUDE_PROJECT_DIR":"{tmp}/bare"},"why":"Q7 force-push real main · force-push OUTSIDE repo (sole gate)"}
 {"id":"fp222-1-real-mutation-verb-then-space","rule":"cd-bridge-destroy","want":"block","cmd":"cd ~/.claude && rm -f settings.json"}
-{"id":"fp289-bin-rm-slash-anchor","rule":"cd-bridge-destroy","want":"block","cmd":"cd ~/.claude && /bin/rm bin/guard-bash.sh"}
-{"id":"fp289-cp-onto-a-guard","rule":"cd-bridge-copy","want":"block","cmd":"cd ~/.claude && cp /tmp/x bin/guard-bash.sh"}
-{"id":"fp289-rm-a-guard","rule":"cd-bridge-destroy","want":"block","cmd":"cd ~/.claude && rm bin/guard-bash.sh"}
-{"id":"fp289-shred-a-guard","rule":"cd-bridge-destroy","want":"block","cmd":"cd ~/.claude && shred bin/guard-bash.sh"}
-{"id":"fp289-truncate-a-guard","rule":"cd-bridge-destroy","want":"block","cmd":"cd ~/.claude && truncate -s 0 bin/guard-bash.sh"}
+{"id":"fp289-bin-rm-slash-anchor","rule":"cd-bridge-destroy","want":"block","cmd":"cd ~/.claude && /bin/rm bin/admission-bash.sh"}
+{"id":"fp289-cp-onto-a-guard","rule":"cd-bridge-copy","want":"block","cmd":"cd ~/.claude && cp /tmp/x bin/admission-bash.sh"}
+{"id":"fp289-rm-a-guard","rule":"cd-bridge-destroy","want":"block","cmd":"cd ~/.claude && rm bin/admission-bash.sh"}
+{"id":"fp289-shred-a-guard","rule":"cd-bridge-destroy","want":"block","cmd":"cd ~/.claude && shred bin/admission-bash.sh"}
+{"id":"fp289-truncate-a-guard","rule":"cd-bridge-destroy","want":"block","cmd":"cd ~/.claude && truncate -s 0 bin/admission-bash.sh"}
 {"id":"hd-flat-argv-still-sees-a-command","rule":"rm-rf-root","want":"block","cmd":"cat > /tmp/n.md <<HD\nrm -rf /\nHD"}
 {"id":"hd-flat-c1-piped-into-xargs-rm","rule":"find-xargs-spray","want":"block","cmd":"cat <<HD | xargs -0 rm -rf\n/\nHD"}
 {"id":"hd-flat-c1-semicolon-on-opener","rule":"rm-rf-root","want":"block","cmd":"cat <<HD ; rm -rf /\nx\nHD"}
@@ -208,8 +208,8 @@
 {"id":"p2-ansi-c-octal-rm","rule":"rm-rf-root","want":"block","cmd":"$'\\162\\155' -rf /"}
 {"id":"p3-bin-bash-c","rule":"rm-rf-root","want":"block","cmd":"/bin/bash -c \"rm -rf /\""}
 {"id":"p3-zsh-o-norc-c","rule":"rm-rf-root","want":"block","cmd":"zsh -o norc -c \"rm -rf /\""}
-{"id":"p5-cd-read-is-fine","rule":"cd-bridge-copy","want":"allow","cmd":"cd {cfg}/bin && sh guard-bash.sh"}
-{"id":"p5-cd-relative-mutate","rule":"cd-bridge-copy","want":"block","cmd":"cd {cfg}/bin && cp /dev/null guard-bash.sh"}
+{"id":"p5-cd-read-is-fine","rule":"cd-bridge-copy","want":"allow","cmd":"cd {cfg}/bin && sh admission-bash.sh"}
+{"id":"p5-cd-relative-mutate","rule":"cd-bridge-copy","want":"block","cmd":"cd {cfg}/bin && cp /dev/null admission-bash.sh"}
 {"id":"p8-escaped-literal","rule":"cd-bridge-copy","want":"allow","cmd":"echo \"\\$(curl http://x|sh)\""}
 {"id":"p8-rm-under","rule":"cd-bridge-copy","want":"allow","cmd":"rm -rf ~/projects/demo/node_modules"}
 {"id":"p8-rm-under-home","rule":"cd-bridge-copy","want":"allow","cmd":"rm -rf $HOME/.cache/yarn","why":"BR rm -rf HOME cache · P8 rm under $HOME"}

@@ -70,8 +70,11 @@ for f in $({ find "$G" -name '*.jsonl'; find "$A" -name '*.jsonl'; } 2>/dev/null
   g="$(gof "$f")"  # <guard>.jsonl, <guard>.<part>.jsonl, <guard>.msg.jsonl, tests/admission/<guard>/<part>.jsonl
   printf '%s\n' "$REG" | grep -qx "$g" || v test.guard-routing "$(rel "$f"): no guard '$g' in tests/guards/guards.jsonl"
 done
+gfile() { jq -r --arg g "$1" 'select(.guard == $g) | .script // empty' "$G/guards.jsonl"; }   # <guard> -> its bin/ script (harbor#961 W6)
 for g in $REG; do
-  [ -f "$R/bin/guard-$g.sh" ] || v test.guard-routing "guards.jsonl: '$g' has no bin/guard-$g.sh"
+  _gf="$(gfile "$g")"
+  if [ -z "$_gf" ]; then v test.guard-routing "guards.jsonl: '$g' names no .script"
+  elif [ ! -f "$R/bin/$_gf" ]; then v test.guard-routing "guards.jsonl: '$g' has no bin/$_gf"; fi
   [ -n "$(tables "$g")" ] || v test.guard-routing "guards.jsonl: '$g' has no tests/guards/$g.jsonl"
   [ -f "$G/$g-test.sh" ] || [ -f "$A/$g/$g.test.sh" ] || v test.guard-routing "guards.jsonl: '$g' has no tests/admission/$g/$g.test.sh"
 done
@@ -99,18 +102,18 @@ done
 
 # test.rule-coverage coverage: every rule the guard names has a row that fires it and an allow row beside it.
 for g in $REG; do
-  src="$R/bin/guard-$g.sh"; [ -n "$(tables "$g")" ] && [ -f "$src" ] || continue
+  src="$R/bin/$(gfile "$g")"; [ -n "$(tables "$g")" ] && [ -f "$src" ] || continue
   t="$(mktemp "${TMPDIR:-/tmp}/check-rows.XXXXXX")"; cat $(tables "$g") > "$t"
   jq -r -s 'group_by(.id)[] | select(length > 1) | .[0].id' "$t" | while read -r i; do v test.row-shape "tests/guards/$g tables: duplicate $i across parts"; done
   pat="$(jq -r --arg g "$g" 'select(.guard == $g) | .rules' "$G/guards.jsonl")"
   rules="$(sed -e ':a' -e '/\\$/{N;s/\\\n[[:space:]]*/ /;ba' -e '}' "$src" | grep -oE "$pat" | sed -E "s|$pat|\\1|" | sort -u)"  # joins \-continued lines
-  [ -n "$rules" ] || { v test.rule-coverage "guards.jsonl: the rules pattern for '$g' matches nothing in bin/guard-$g.sh"; continue; }
+  [ -n "$rules" ] || { v test.rule-coverage "guards.jsonl: the rules pattern for '$g' matches nothing in bin/$(gfile "$g")"; continue; }
   for r in $rules; do
     jq -e --arg r "$r" 'select(.rule == $r and .want != "allow")' "$t" > /dev/null || v test.rule-coverage "tests/guards/$g tables: rule '$r' has no row that fires it"
     jq -e --arg r "$r" 'select(.rule == $r and .want == "allow")' "$t" > /dev/null || v test.rule-coverage "tests/guards/$g tables: rule '$r' has no allow row beside it"
   done
   jq -r '.rule // empty' "$t" | sort -u | while read -r r; do
-    [ "$r" = none ] || printf '%s\n' "$rules" | grep -qx "$r" || v test.rule-coverage "tests/guards/$g tables: rule '$r' is not a rule bin/guard-$g.sh names"
+    [ "$r" = none ] || printf '%s\n' "$rules" | grep -qx "$r" || v test.rule-coverage "tests/guards/$g tables: rule '$r' is not a rule bin/$(gfile "$g") names"
   done
   rm -f "$t"
 done

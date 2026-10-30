@@ -9,9 +9,9 @@
 # EXTERNAL_WARNING + INJECTION_SHAPES + isAttackerWritableSource @ a4e8e74.
 # Pure POSIX. FAIL-OPEN (no jq / bad JSON → exit 0, no annotation).
 set -eu
-# harbor#813: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./guard-lib.sh from it.
+# harbor#813: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./library-admission.sh from it.
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
-. "$DIR/guard-lib.sh"
+. "$DIR/library-admission.sh"
 
 floor_read_stdin
 TOOL="$(floor_field '.tool_name')"

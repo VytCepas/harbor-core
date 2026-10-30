@@ -141,7 +141,7 @@ fi
 
 # ── the CI runner: GitHub-hosted until the month's Actions minutes run short ───
 # harbor#865. Inside this run and not on a schedule of its own, for main-tip-verdict's reason. One bounded read of the
-# month's bill a tick; sets the repo variable HARBOR_RUNNER only when the value would change, and logs
+# month's bill a tick; sets the repo variable HARBOR_CI_RUNNER only when the value would change, and logs
 # one checks.log line per change. A read that fails flips nothing (bin/ci-runner-switch.sh).
 if [ -f "$SRC_DIR/ci-runner-switch.sh" ]; then
   HARBOR_SCOPE_CACHE_DIR="$CACHE_DIR" sh "$SRC_DIR/ci-runner-switch.sh" >/dev/null 2>&1 || true

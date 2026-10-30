@@ -450,6 +450,99 @@
       "roles_why": "only the shell resolver reads `scope:` so far"
     },
     {
+      "id": "M41-scope-user-spaced-colon",
+      "why": "harbor#963: every top-level spelling `context:` honours, `scope:` honours too. `scope : user` is valid YAML and a genuine opt-out; missing it stands the floor down.",
+      "files": {".agents/config.yaml": "scope : user\n"},
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+    },
+    {
+      "id": "M42-scope-user-quoted-key",
+      "why": "harbor#963: the quoted-key spelling, M26's twin for the new key.",
+      "files": {".agents/config.yaml": "\"scope\": user\n"},
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+    },
+    {
+      "id": "M43-scope-user-commented-out",
+      "why": "harbor#963: `# scope: user` is a note, not a declaration, as M22 holds for `context:`.",
+      "files": {".agents/config.yaml": "# scope: user\nscope: project\n"},
+      "cwd": ".",
+      "expect": "repo",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+    },
+    {
+      "id": "M44-nested-scope-key-is-not-the-marker",
+      "why": "harbor#963: an indented `scope:` belongs to its parent block, as M23 holds for `context:`.",
+      "files": {".agents/config.yaml": "scope: project\ntooling:\n  scope: user\n"},
+      "cwd": ".",
+      "expect": "repo",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+    },
+    {
+      "id": "M45-scope-hash-without-whitespace-is-the-value",
+      "why": "harbor#963: `scope: user#typo` is the value `user#typo`, not `user` (M31's rule for the new key).",
+      "files": {".agents/config.yaml": "scope: user#typo\n"},
+      "cwd": ".",
+      "expect": "repo",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+    },
+    {
+      "id": "M46-scope-user-trailing-comment",
+      "why": "harbor#963: a comment after whitespace is a comment, so the value is `user` (M32's rule for the new key).",
+      "files": {".agents/config.yaml": "scope: user  # opted out deliberately\n"},
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+    },
+    {
+      "id": "M47-legacy-file-beside-scope-user",
+      "why": "harbor#963: a repo mid-migration carries the legacy `project-init.md` beside a `config.yaml` that opts out. The value in `config.yaml` decides; the legacy file must not turn the opt-out back into `repo`.",
+      "tree": [".agents/project-init.md"],
+      "files": {".agents/config.yaml": "scope: user\n"},
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+    },
+    {
+      "id": "M48-scope-user-inner-beats-legacy-outer",
+      "why": "harbor#963: the innermost marker wins across spellings. An outer repo on the legacy file does not overrule an inner repo's `scope: user`.",
+      "tree": [".agents/project-init.md", "sub/keep"],
+      "files": {"sub/.agents/config.yaml": "scope: user\n"},
+      "cwd": "sub",
+      "expect": "ambient",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+    },
+    {
+      "id": "M49-legacy-inner-beats-scope-user-outer",
+      "why": "harbor#963: the other direction. An inner repo with only the legacy `project-init.md` is still a marker and still the innermost one, so an outer `scope: user` does not reach it. A reader that dropped the legacy file would walk on to the outer opt-out and answer `ambient`.",
+      "tree": ["sub/.agents/project-init.md", "sub/src/keep"],
+      "files": {".agents/config.yaml": "scope: user\n"},
+      "cwd": "sub/src",
+      "expect": "repo",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+    },
+    {
       "id": "M33-marker-at-port-root",
       "why": "harbor#619. The walk STOPS BEFORE PORT_ROOT, the workspace root the governed repos live under, so a marker written there is never examined and every repo beneath it resolves on its own merits. This is M14's hazard one level down and a likelier one: ~/port is a directory the operator is told to create, harbor#620 exists to put root instruction files IN it, and one .agents/config.yaml there would resolve every repo under the workspace to repo - the session hooks stand down and the force-push guard defers to a repo guard that does not exist.",
       "tree": [

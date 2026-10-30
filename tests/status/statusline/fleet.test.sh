@@ -155,26 +155,31 @@ printf '%s\n' '{"blocks":4719,"overrides":0}' > "$CFG/cache/guard-decisions.json
 t_hasnt "zero overrides render nothing" "$(fleet)" 'ovr'
 
 t_section "the statusline NEVER invokes the orchestrator (REVIEW F6)"
-# Code lines only: a comment naming drift.py as the schema's source is not an invocation.
-t_has "the source names the orchestrator in a comment (the needle's control)" "$(cat "$SRC/status-fleet-glyph.sh")" 'projects-orchestrator'
-_code="$(sed 's/^[[:space:]]*#.*$//' "$SRC/status-fleet-glyph.sh")"
-t_hasnt "no code line names projects-orchestrator" "$_code" 'projects-orchestrator'
+# Code lines only: a comment naming drift.py as the schema's source is not an invocation. The needle is the fleet
+# CLI's name from its roots row (contracts/roots.tsv), so a renamed fleet is still the thing looked for (harbor#999).
+_cli="$(sh "$T_ROOT/bin/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER_BIN)"; _cli="${_cli##*/}"
+_strip() { sed 's/^[[:space:]]*#.*$//'; }
+t_has "the needle's control: a code line invoking the fleet CLI survives the strip" "$(printf '"%s" snapshot --json\n' "$_cli" | _strip)" "$_cli"
+t_eq "...and a comment naming it does not" "" "$(printf '  # %s states it\n' "$_cli" | _strip | tr -d '[:space:]')"
+_code="$(_strip < "$SRC/status-fleet-glyph.sh")"
+t_hasnt "no code line names the fleet CLI" "$_code" "$_cli"
 t_hasnt "no code line names ORCH" "$_code" 'ORCH'
+t_hasnt "no code line asks for the fleet CLI's path" "$_code" 'FLEET_CONTROLLER_BIN'
 
 t_section "session-verdicts: silent when clean, and never blocking"
 V="$TMP/vcfg"; mkdir -p "$V/bin"
-printf '%s\n' '{"permissions":{"deny":[]},"hooks":{"PreToolUse":[{"hooks":[{"type":"command","command":"/bin/sh x/guard-bash.sh"}]}]}}' > "$V/settings.json"
+printf '%s\n' '{"permissions":{"deny":[]},"hooks":{"PreToolUse":[{"hooks":[{"type":"command","command":"/bin/sh x/admission-bash.sh"}]}]}}' > "$V/settings.json"
 pin "$V"
 O="$(CLAUDE_CONFIG_DIR="$V" "$SH" "$T_ROOT/hooks/session-verdicts/session-verdicts.sh" </dev/null 2>/dev/null)"; rc=$?
 t_eq "a clean box prints NOTHING" "" "$O"
 t_eq "the verdicts hook exits 0 when clean" 0 "$rc"
 verdict() { CLAUDE_CONFIG_DIR="$V" "$SH" "$T_ROOT/hooks/session-verdicts/session-verdicts.sh" </dev/null 2>/dev/null | jq -r '.systemMessage' 2>/dev/null; }
 # A guard named in a DENY ENTRY is text, not a wired guard (floor pass-4).
-printf '%s\n' '{"permissions":{"deny":["Edit(~/.claude/bin/guard-bash.sh)"]},"hooks":{}}' > "$V/settings.json"
+printf '%s\n' '{"permissions":{"deny":["Edit(~/.claude/bin/admission-bash.sh)"]},"hooks":{}}' > "$V/settings.json"
 pin "$V"
 t_has "a guard named in deny does not count as wired" "$(verdict)" "no guard is wired"
 cp "$T_ROOT/hooks/worklog-push/worklog-push.sh" "$V/bin/worklog-push.sh"
-t_has "a missing guard-lib.sh is a dead worklog" "$(verdict)" "work-log DEAD"
+t_has "a missing library-admission.sh is a dead worklog" "$(verdict)" "work-log DEAD"
 # The reinstall it names is aimed at the dir it measured (harbor#800): a sandbox's installer by --dir,
 # the live box through deploy, the one live entry (the install standard §4).
 t_has "...its fix re-runs the runtime installer at THIS sandbox, --dir spelled" "$(verdict)" "deploy-runtime-install.sh --apply --dir '$V'"
@@ -183,8 +188,8 @@ LV="$TMP/lvhome"; mkdir -p "$LV/.claude/bin"; cp "$V/settings.json" "$LV/.claude
 t_has "the live box's fix is deploy's runtime component" \
   "$(HOME="$LV" CLAUDE_CONFIG_DIR="$LV/.claude" "$SH" "$T_ROOT/hooks/session-verdicts/session-verdicts.sh" </dev/null 2>/dev/null | jq -r '.systemMessage' 2>/dev/null)" \
   "deploy.sh --only runtime --apply --live"
-cp "$SRC/guard-lib.sh" "$V/bin/guard-lib.sh"
-t_hasnt "installing guard-lib.sh clears the verdict" "$(verdict)" 'work-log DEAD'
+cp "$SRC/library-admission.sh" "$V/bin/library-admission.sh"
+t_hasnt "installing library-admission.sh clears the verdict" "$(verdict)" 'work-log DEAD'
 # systemMessage (operator-facing), never additionalContext (context spend). Comments stripped first.
 t_has "the source names additionalContext in a comment (the needle's control)" "$(cat "$T_ROOT/hooks/session-verdicts/session-verdicts.sh")" 'additionalContext'
 t_hasnt "no code line spends context tokens" "$(sed 's/#.*//' "$T_ROOT/hooks/session-verdicts/session-verdicts.sh")" 'additionalContext'

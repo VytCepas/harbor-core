@@ -22,6 +22,11 @@ case "$*" in
   "api /user/repos?visibility=private"*)
     [ -f "$FX/repos.fail" ] && { echo "gh: HTTP 500" >&2; exit 1; }
     cat "$FX/repos.txt" ;;
+  "variable get HARBOR_CI_RUNNER -R o/r")
+    [ -f "$FX/var.fail" ] && { echo "gh: HTTP 500" >&2; exit 1; }
+    if [ -f "$FX/var.new" ]; then cat "$FX/var.new"; else echo "variable HARBOR_CI_RUNNER was not found" >&2; exit 1; fi ;;
+  "variable set HARBOR_CI_RUNNER --body "*" -R o/r")
+    echo "$5" >> "$FX/writes.new.log"; printf '%s\n' "$5" > "$FX/var.new" ;;
   "variable get HARBOR_RUNNER -R o/r")
     [ -f "$FX/var.fail" ] && { echo "gh: HTTP 500" >&2; exit 1; }
     if [ -f "$FX/var" ]; then cat "$FX/var"; else echo "variable HARBOR_RUNNER was not found" >&2; exit 1; fi ;;
@@ -50,7 +55,7 @@ usage() {
 }
 run() { FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_CI_SWITCH_REPO="o/r" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_TEST_NOW="${AT:-$NOW}" \
           sh "$T_ROOT/bin/ci-runner-switch.sh" "$@" 2>&1; }
-reset() { rm -f "$FX/var" "$WRITES" "$CALLS" "$FX/billing.fail" "$FX/repos.fail" "$FX/var.fail" "$FX/plan.fail" "$FX/unexpected.log" \
+reset() { rm -f "$FX/var" "$FX/var.new" "$FX/writes.new.log" "$WRITES" "$CALLS" "$FX/billing.fail" "$FX/repos.fail" "$FX/var.fail" "$FX/plan.fail" "$FX/unexpected.log" \
             "$CACHE/runner-switch.json" "$CACHE/checks.log" "$CLAUDE_CONFIG_DIR/.harbor-ci-budget"
           AT=$NOW; printf 'priv\n' > "$FX/repos.txt"; printf 'pro\n' > "$FX/plan"; }
 nwrites() { if [ -f "$WRITES" ]; then wc -l < "$WRITES" | tr -d ' '; else echo 0; fi; }
@@ -244,6 +249,22 @@ t_has "the billing read goes to the repository's owner" "$(cat "$CALLS")" "/user
 reset; usage priv:100; echo github-hosted > "$FX/var"
 FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_CI_SWITCH_REPO="o/r" HARBOR_CI_BILLING_USER=someone HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_TEST_NOW="$NOW" sh "$T_ROOT/bin/ci-runner-switch.sh" >/dev/null 2>&1
 t_has "HARBOR_CI_BILLING_USER still names the billed account" "$(cat "$CALLS")" "/users/someone/settings/billing"
+
+t_section "the variable is HARBOR_CI_RUNNER; HARBOR_RUNNER is read and kept equal until 2026-11-15 (harbor#961 W6)"
+varnew() { cat "$FX/var.new" 2>/dev/null || echo unset; }
+reset; usage priv:2700; echo github-hosted > "$FX/var"; run >/dev/null
+t_eq "a flip writes the new name" self-hosted "$(varnew)"
+t_eq "...and, in the window, the old name the unpatched workflow reads" self-hosted "$(varnow)"
+t_eq "...one checks.log line for one change" 1 "$(nlog)"
+reset; usage priv:2700; echo github-hosted > "$FX/var"; echo self-hosted > "$FX/var.new"; run >/dev/null
+t_eq "the new name wins the read: it already says self-hosted, so it is not written" unset "$(cat "$FX/writes.new.log" 2>/dev/null || echo unset)"
+t_eq "...and the old one is brought level with it" self-hosted "$(varnow)"
+reset; usage priv:100; echo github-hosted > "$FX/var"; run >/dev/null
+t_eq "the new name unset falls back to the old, as the patched workflow does: nothing to change, nothing written" "0 unset" "$(nwrites) $(varnew)"
+reset; usage priv:100; echo self-hosted > "$FX/var"; AT=1794830400; run >/dev/null
+t_eq "past 2026-11-15 only the new name is read and written" "github-hosted self-hosted" "$(varnew) $(varnow)"
+t_eq "...and the old one is not read" 0 "$(grep -c 'variable get HARBOR_RUNNER ' "$CALLS")"
+t_eq "no other script in bin/ reads or sets the old name" "" "$(find "$T_ROOT/bin" -maxdepth 1 -type f -name '*.sh' ! -name ci-runner-switch.sh -exec grep -lw HARBOR_RUNNER {} +)"
 
 t_section "the stub is the only gh, and it was told every call"
 t_eq "no unexpected gh call across the whole suite" "none" "$(cat "$FX/unexpected.log" 2>/dev/null || echo none)"

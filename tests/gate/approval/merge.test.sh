@@ -15,12 +15,12 @@ t_eq "the ledger row: action, args, outcome" "merge-auto	$AG_R 7 $SHA_A	merged" 
 t_eq "the ledger row carries the args hash" "$(printf '%s' "$AG_R 7 $SHA_A" | shasum -a 256 | cut -c1-64)" "$(cut -f4 "$CFG/.helm-approvals/ledger.tsv")"
 
 t_section "a protected PR: refused by gate-merge.sh, queued, and the approve command printed"
-ag_world; ag_files "$SHA_A" docs/a.md bin/guard-bash.sh
+ag_world; ag_files "$SHA_A" docs/a.md bin/admission-bash.sh
 ag_run gate-merge.sh "$AG_R" 7
 t_eq "exit 1" 1 "$RC"
 t_eq "nothing merged" "" "$(ag_merged)"
 t_has "the refusal prints the exact approve command" "$OUT" "$GB/gate-approve.sh merge $AG_R 7 $SHA_A"
-t_has "...and names the protected path" "$OUT" "protected: bin/guard-bash.sh (guard)"
+t_has "...and names the protected path" "$OUT" "protected: bin/admission-bash.sh (guard)"
 t_eq "the FAIL's next line is its fix (contracts/logging.md)" "  fix: $GB/gate-approve.sh merge $AG_R 7 $SHA_A" \
   "$(printf '%s\n' "$OUT" | awk '/^  FAIL:/ { f = 1; next } f { print; exit }')"
 t_hasnt "...so the log never flags itself" "$OUT" "no fix line followed the FAIL"
@@ -32,10 +32,10 @@ ag_run gate-merge.sh "$AG_R" 7
 t_eq "a second refusal does not queue twice" 1 "$(grep -c . "$HOME/.local/state/harbor/approvals/queue.jsonl")"
 
 t_section "renames and deletions: both paths are judged"
-ag_world; ag_files "$SHA_A" "docs/x.sh=>bin/guard-x.sh"
+ag_world; ag_files "$SHA_A" "docs/x.sh=>bin/admission-x.sh"
 ag_run gate-merge.sh "$AG_R" 7
 t_eq "a rename INTO a protected path is refused" 1 "$RC"
-ag_world; ag_files "$SHA_A" "bin/guard-x.sh=>docs/x.sh"
+ag_world; ag_files "$SHA_A" "bin/admission-x.sh=>docs/x.sh"
 ag_run gate-merge.sh "$AG_R" 7
 t_eq "a rename OUT of a protected path is refused" 1 "$RC"
 ag_world; ag_files "$SHA_A" -CONSTITUTION.md
@@ -48,7 +48,7 @@ ag_world; ag_files "$SHA_A" .github/workflows/ci.yml
 ag_run gate-merge.sh "$AG_R" 7
 t_eq ".github/ is protected whatever the register says" 1 "$RC"
 ag_mutant "M1 the rename's old path is not judged" library-gate.sh 's/jq -r .\.files\[\] | \.filename, (\.previous_filename \/\/ empty)./jq -r ".files[] | .filename"/'
-ag_files "$SHA_A" "bin/guard-x.sh=>docs/x.sh"; ag_run gate-merge.sh "$AG_R" 7
+ag_files "$SHA_A" "bin/admission-x.sh=>docs/x.sh"; ag_run gate-merge.sh "$AG_R" 7
 t_eq "M1: the mutant merges a rename out of the floor" 0 "$RC"
 
 t_section "red is refused on both routes, approved or not"
@@ -103,7 +103,7 @@ ag_run gate-approve.sh merge "$AG_R" 9 "$SHA_A"
 t_eq "a PR that does not exist: exit 1, nothing merged" "1:" "$RC:$(ag_merged)"
 
 t_section "each answer appends exactly one ledger row (action, target, sha, result)"
-ag_world; ag_files "$SHA_A" bin/guard-bash.sh
+ag_world; ag_files "$SHA_A" bin/admission-bash.sh
 ag_run gate-merge.sh "$AG_R" 7
 _n0="$(grep -c . "$CFG/.helm-approvals/ledger.tsv")"
 ag_run gate-approve.sh merge "$AG_R" 7 "$SHA_A"
@@ -121,7 +121,7 @@ t_eq "M6: the mutant leaves no row" 0 "$(grep -c . "$CFG/.helm-approvals/ledger.
 ag_restore gate-approve.sh
 
 t_section "an approved protected PR merges, and its queue row closes"
-ag_world; ag_files "$SHA_A" bin/guard-bash.sh
+ag_world; ag_files "$SHA_A" bin/admission-bash.sh
 ag_run gate-merge.sh "$AG_R" 7
 ag_run gate-approve.sh merge "$AG_R" 7 "$SHA_A"
 t_eq "exit 0" 0 "$RC"

@@ -11,7 +11,7 @@ mini() { # <dir>
   cp -R "$T_ROOT/fixtures/naming" "$1/fixtures/"
   # the sources the census reads, real, so a copy is a tree whose every control id is carried (an empty census is red)
   mkdir -p "$1/contracts" "$1/context-rules" "$1/docs/reference"
-  cp "$T_ROOT"/bin/guard-*.sh "$T_ROOT/bin/lint-conventions.sh" "$1/bin/"; cp "$T_ROOT/docs/reference/checks.md" "$1/docs/reference/"
+  cp "$T_ROOT"/bin/admission-*.sh "$T_ROOT"/bin/library-admission.sh "$T_ROOT/bin/lint-conventions.sh" "$1/bin/"; cp "$T_ROOT/docs/reference/checks.md" "$1/docs/reference/"
   cp "$T_ROOT/contracts/required-checks.tsv" "$1/contracts/"; cp -R "$T_ROOT"/context-rules/. "$1/context-rules/"
   # a stub for every file a control names as its engine or its proof, so the copy is a tree controls.tsv can be judged in
   awk -F'\t' '/^#/ || $1 == "id" { next } { print $4; print $11 }' "$REG/controls.tsv" | sort -u | awk '$0 != "-"' | while IFS= read -r _p; do

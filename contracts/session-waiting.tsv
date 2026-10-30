@@ -14,4 +14,4 @@
 # when a pattern blocks nothing but flags "you" on a plain statement, tighten it here and add the negative.
 W-question	\?[]*_"')` \t\n]*$	Which of the two do you want?	What does it do? It parses the args.
 W-handback	(let me know|your call|your decision|tell me (which|how|whether|if)|awaiting your|waiting (for|on) you|say the word|shall i|should i proceed)[^\n]*[.!:*_ \t\n]*$	Built the fix. Let me know if you want the second pass.	Built the fix. All 12 tests pass.
-W-commands	(you run|run (this|these|it|the following)|paste (this|these)|operator|your terminal|when you are ready|your go)[^`]*```[a-zA-Z]*\n[^`]+```[ \t\n]*$	Run this in your terminal:\n```sh\nharbor event on --preset event.pulse\n```	Result of the suite:\n```\n12 passed, 0 failed\n```
+W-commands	(you run|run (this|these|it|the following)|paste (this|these)|operator|your terminal|when you are ready|your go)[^`]*```[a-zA-Z]*\n[^`]+```[ \t\n]*$	Run this in your terminal:\n```sh\nharbor event on --preset event.alerting\n```	Result of the suite:\n```\n12 passed, 0 failed\n```

@@ -4,7 +4,7 @@
 #     --live is the only way to target ~/.claude. PROJECT_INIT_SRC names the yard checkout.
 #
 # WHY. yard's prod_guard.py owns the cloud/data destruction corpus by
-# contract (bin/guard-bash.sh:6-8 — the floor's Bash guard omits that class on
+# contract (bin/admission-bash.sh:6-8 — the floor's Bash guard omits that class on
 # the understanding that this guard covers it). Measured machine-wide
 # (harbor#56): the number of settings files that wire prod_guard is ZERO. The
 # template wires it (templates/base/dot_agents/settings.json.tmpl:61); no
@@ -55,7 +55,12 @@ command -v jq >/dev/null 2>&1 || { log_fail "jq is required"; log_fix "$(pkg_hin
 # only ordering that cannot install a known-vulnerable guard.
 PI_SRC="${PROJECT_INIT_SRC:-$(sh "$SRC/scope-roots.sh" --get HARBOR_SCOPE_SCAFFOLDER)}/templates/base/dot_agents/hooks/prod_guard.py"
 # The mirror is the TARGET's own marketplace clone, never one CLAUDE_CONFIG_DIR points at.
-PLUGIN_MIRROR="$DIR/plugins/marketplaces/project-init/plugins/project-init-workflow/hooks/prod_guard.py"
+# yard's marketplace and plugin names are its interface, read from contracts/scaffolder-plugins.tsv (harbor#999).
+_spl() { awk -F'\t' -v k="$1" '$1 == k { print $2; exit }' "$SRC/../contracts/scaffolder-plugins.tsv" 2>/dev/null; }
+PI_MKT="$(_spl marketplace)"; PI_WF="$(_spl workflow)"
+[ -n "$PI_MKT" ] && [ -n "$PI_WF" ] || { log_fail "no yard plugin names at $SRC/../contracts/scaffolder-plugins.tsv"
+  log_nofix "harbor#999: the marketplace and workflow rows name yard's plugin"; log_end; exit 1; }
+PLUGIN_MIRROR="$DIR/plugins/marketplaces/$PI_MKT/plugins/$PI_WF/hooks/prod_guard.py"
 if [ -f "$PI_SRC" ]; then PLUGIN="$PI_SRC"; SRC_KIND="upstream source repo"
 else PLUGIN="$PLUGIN_MIRROR"; SRC_KIND="marketplace mirror (source repo absent)"; fi
 S="$DIR/settings.json"
@@ -115,8 +120,8 @@ INSTALLED="$DIR/plugins/installed_plugins.json"
 if [ -f "$PI_SRC" ] && [ -f "$INSTALLED" ]; then
   # Fields split on \037, never a tab: IFS merges empty tab fields, and @tsv escapes a tab in a path
   # (review #932). Every field is non-empty, and an entry with no installPath names nothing to compare.
-  _ins="$(jq -r 'def f: if . == null or . == "" then "?" else tostring end;
-      [.plugins["project-init-workflow@project-init"][]? | select((.installPath // "") != "")]
+  _ins="$(jq -r --arg id "$PI_WF@$PI_MKT" 'def f: if . == null or . == "" then "?" else tostring end;
+      [.plugins[$id][]? | select((.installPath // "") != "")]
       | group_by(.installPath)[]
       | [(.[0].installPath | tostring), (.[0].version | f), ([.[] | "\(.scope | f):\(.projectPath // "-")"] | join(", "))]
       | join("\u001f")' "$INSTALLED" 2>/dev/null)" \
@@ -125,11 +130,11 @@ if [ -f "$PI_SRC" ] && [ -f "$INSTALLED" ]; then
   while IFS="$_us" read -r _ip _iv _iw; do
     [ -n "$_ip" ] || continue
     if [ -f "$_ip/hooks/prod_guard.py" ] && cmp -s "$PI_SRC" "$_ip/hooks/prod_guard.py"; then
-      log_ok "installed project-init-workflow $_iv matches the source repo ($_iw)"; continue
+      log_ok "installed $PI_WF $_iv matches the source repo ($_iw)"; continue
     fi
     if [ -f "$_ip/hooks/prod_guard.py" ]; then _how="differs from the source repo"; else _how="has no hooks/prod_guard.py at $_ip"; fi
-    log_warn "the INSTALLED project-init-workflow $_iv $_how, and it is the copy Claude Code loads ($_iw)"
-    log_fix "claude plugin update project-init-workflow@project-init --scope <scope>, run in each project named; a project path that no longer exists is harbor#709"
+    log_warn "the INSTALLED $PI_WF $_iv $_how, and it is the copy Claude Code loads ($_iw)"
+    log_fix "claude plugin update $PI_WF@$PI_MKT --scope <scope>, run in each project named; a project path that no longer exists is harbor#709"
   done <<EOF
 $_ins
 EOF

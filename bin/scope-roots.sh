@@ -7,9 +7,10 @@
 #   sh scope-roots.sh --aliases      old TAB new, the renamed rows --get answers by their old names until 2026-11-15 (harbor#961 W5)
 #   sh scope-roots.sh --repos        each governed repo once: <name> TAB <resolved checkout> (harbor#829)
 #   sh scope-roots.sh --check        every ${VAR:-...} default matches, honours PORT_ROOT, is registered; a shared path has a reason
+#   sh scope-roots.sh --id <VAR>     the repo a REPOS row names: a role row's (scaffolder, fleet controller) registry id by kind, else the table's (harbor#966)
 #   sh scope-roots.sh --repo <id>    one repo's checkout from the registry (PORT_ROOT/<id> with no registry; exit 1, empty, when a registry lacks it) (harbor#966)
 #   sh scope-roots.sh --remote <id>  one repo's clone URL from the registry's remote column; exit 1, empty, with no registry, no such row, or remote '-' (harbor#966)
-#   sh scope-roots.sh --get <VAR>    (above) follows repos.tsv for a REPOS row: the registry's path replaces the row's first segment (harbor#966)
+#   sh scope-roots.sh --get <VAR>    (above) follows repos.tsv for a REPOS row: the registry's path replaces the row's first segment; a role row finds its repo by kind (harbor#966)
 #   sh scope-roots.sh --registry-check   every repos.tsv row valid: id, path and symlinks inside PORT_ROOT, kind, topology and interaction known; an optional 7th column is a free note (`proposed`: a guessed value awaiting a yes)
 #   sh scope-roots.sh --topology <id>    one repo's topology TAB interaction mode from the registry ('-' TAB '-' on a four-column row); exit 1, empty, with no registry or no such row (harbor#966)
 #   sh scope-roots.sh --platform-ids     the platform's own repos, one id per line: registry rows of a platform kind (control-plane, scaffolder,
@@ -37,7 +38,7 @@
 # repos_prefix() below; without it, it is an edit at each site plus a hunt for
 # the ones that never used a variable at all.
 #
-# DELIBERATELY NOT READ BY THE FLOOR. bin/guard-lib.sh keeps its own literal
+# DELIBERATELY NOT READ BY THE FLOOR. bin/library-admission.sh keeps its own literal
 # default for PORT_ROOT, and ROOT1 checks the two agree. The floor is POSIX,
 # hash-pinned per file (B6) and must answer with no I/O it does not control; a
 # guard that resolves its stop by reading a TSV gains a file that can be absent,
@@ -125,7 +126,9 @@ default_for() { # <var> → the default as a path on this box, or empty if not a
     # A REPOS row follows the private registry when it holds the repo (harbor#966), so a renamed or moved
     # checkout is one edit there; with no registry, or no such row, the table's own path stands.
     if [ "$__b" = REPOS ]; then
-      __id="${__r%%/*}"; __hit="$(repo_path "$__id")" || __hit=""
+      __id="${__r%%/*}"
+      # A role repo by its kind first, so a renamed scaffolder or fleet controller is found under its new id.
+      if __rr="$(role_row "$__id")"; then __hit="${__rr#*	}"; else __hit="$(repo_path "$__id")" || __hit=""; fi
       if [ -n "$__hit" ]; then
         case "$__r" in */*) printf '%s/%s' "$__hit" "${__r#*/}" ;; *) printf '%s' "$__hit" ;; esac
         return 0
@@ -287,6 +290,25 @@ repo_path() { # <id> → the registry's checkout for that id; exit 1, empty, wit
   repos_list | I="$1" awk -F'\t' '$1 == ENVIRON["I"] { print $2; f = 1; exit } END { exit f ? 0 : 1 }'
 }
 
+# A ROLE REPO FOLLOWS THE REGISTRY BY KIND (harbor#966). The table names the scaffolder and the fleet controller
+# by their checkout's id, and a rename changes a registry row's id and path but never its kind, so looking the
+# table's id up would answer the old name. Exactly one row of the kind is the answer; none or two (a rename
+# window that briefly lists both) fall back to the id, today's lookup.
+role_kind() { # <id, a REPOS row's first segment> → the kind its role row names, or nothing
+  rows | I="$1" awk -F'\t' '$2 == "REPOS" { n = $3; sub(/\/.*/, "", n); if (n != ENVIRON["I"]) next
+    if ($1 == "HARBOR_SCOPE_SCAFFOLDER") { print "scaffolder"; exit }
+    if ($1 == "HARBOR_SCOPE_FLEET_CONTROLLER") { print "fleet-controller"; exit } }'
+}
+role_row() { # <id> → id TAB checkout of the one registry row of its role's kind; exit 1 otherwise, 2 on a refused registry
+  __k="$(role_kind "$1")"; [ -n "$__k" ] || return 1
+  __rf="$(private_dir)/repos.tsv" || return 2
+  [ -f "$__rf" ] || return 1
+  __all="$(registry_load "$__rf")" || return 2
+  __root="$(port_root)" || return 2
+  printf '%s\n' "$__all" | K="$__k" R="$__root" awk -F'\t' '$3 == ENVIRON["K"] { n++; o = $1 "\t" ENVIRON["R"] "/" $2 }
+    END { if (n == 1) print o; exit n == 1 ? 0 : 1 }'
+}
+
 # harbor.toml, the flat subset: key = "value" or key = ["a", "b"] on one line, # comments, no tables.
 # Unknown keys, tables, duplicate keys, a backslash or an empty string inside a value and any other
 # shape are refused (exit 2): a typo read as "unset" would silently install the default. Values print
@@ -388,6 +410,16 @@ case "${1:-}" in
       printf '%s\n' "$__d"
     fi
     ;;
+  --id)
+    # The repo a REPOS row names, by id: the registry's row for a role (by kind), else the table's first segment.
+    # An override names a checkout, not a repo, so it is not read here.
+    [ -n "${2:-}" ] || { echo "roots: --id needs a variable name" >&2; exit 2; }
+    __gv="$(w5_new "$2")"
+    __rel="$(rows | V="$__gv" awk -F'\t' '$1 == ENVIRON["V"] && $2 == "REPOS" { print $3; exit }')"
+    [ -n "$__rel" ] || { echo "roots: $2 is not a REPOS row of $TABLE" >&2; exit 2; }
+    __id="${__rel%%/*}"
+    if __rr="$(role_row "$__id")"; then printf '%s\n' "${__rr%%	*}"; else printf '%s\n' "$__id"; fi
+    ;;
   --repos)
     __out="$(repos_list)" || exit $?
     [ -z "$__out" ] || printf '%s\n' "$__out"
@@ -457,7 +489,11 @@ case "${1:-}" in
     [ "$__reg" = - ] && __reg=/dev/stdin
     [ -f "$__reg" ] || [ "$__reg" = /dev/stdin ] || { echo "roots: no registry at $__reg (nothing to check)" >&2; exit 1; }
     __clean="$(clean_lines "$__reg")" || exit 2
-    __rows="$(printf '%s\n' "$__clean" | RF="$__reg" registry_rows /dev/stdin "$ROOT/standards/naming/repo-kinds.tsv")" || exit 2
+    # The kinds register: the checkout's, or (installed, no standards/ above bin/) the copy runtime-install ships beside this file.
+    __kinds="$ROOT/standards/naming/repo-kinds.tsv"
+    [ -f "$__kinds" ] || __kinds="$SRC/repo-kinds.tsv"
+    [ -f "$__kinds" ] || { echo "roots: no kinds register at $ROOT/standards/naming/repo-kinds.tsv or $SRC/repo-kinds.tsv: no kind can be judged (redeploy: deploy-runtime-install.sh ships it)" >&2; exit 2; }
+    __rows="$(printf '%s\n' "$__clean" | RF="$__reg" registry_rows /dev/stdin "$__kinds")" || exit 2
     [ "$__reg" = /dev/stdin ] || confine "$(port_root)" "$__rows" || exit 2
     printf 'roots --registry-check: green - every row of %s is valid\n' "$__reg"
     ;;

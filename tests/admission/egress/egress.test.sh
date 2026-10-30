@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# guard-egress.sh (harbor#3, B4): its rule table, on an installed floor, and the shared shapes.
+# admission-egress.sh (harbor#3, B4): its rule table, on an installed floor, and the shared shapes.
 set -u
 . "$(dirname "$0")/../../lib/core.sh"
 . "$(dirname "$0")/../../lib/table.sh"
@@ -7,7 +7,7 @@ t_init
 . "$T_ROOT/tests/admission/bash/fixture.sh"
 cd "$T_ROOT"  # rows with no CLAUDE_PROJECT_DIR run inside this repo, as tests/floor/'s parts do
 
-G="$CLAUDE_CONFIG_DIR/bin/guard-egress.sh"
+G="$CLAUDE_CONFIG_DIR/bin/admission-egress.sh"
 # harbor#783: gh body files the rows name as {tmp}/gh-body-*. The live token is
 # assembled here so this file carries no token shape of its own.
 printf 'notes\nkey ghp_%s\n' 'AbCdEfGhIjKlMnOpQrStUv' > "$T_TMP/gh-body-live.md"

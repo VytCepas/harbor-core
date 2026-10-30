@@ -82,7 +82,7 @@ t_section "FC-5 suite exclusion, installed shape: manifest present, suite absent
 # The floor suite does not ship (X7), so an installed judge reads $SELF/.helm-suite-payloads. Before
 # this arm the fix was green here and inert once installed.
 F5M="$TMP/selfdir"; mkdir -p "$F5M"
-cp "$SRC/audit-triage.sh" "$SRC/guard-lib.sh" "$SRC/floor-verify.sh" "$F5M/"
+cp "$SRC/audit-triage.sh" "$SRC/library-admission.sh" "$SRC/floor-verify.sh" "$F5M/"
 [ -f "$SRC/floor-normalize.awk" ] && cp "$SRC/floor-normalize.awk" "$F5M/"
 t_eq "the installed copy has no floor suite beside it" no "$([ -f "$F5M/../tests/admission/baseline/baseline.test.sh" ] && echo yes || echo no)"
 printf 'C%s\n' "$SUITE_SUBJ" > "$F5M/.helm-suite-payloads"

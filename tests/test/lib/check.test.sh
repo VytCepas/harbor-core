@@ -16,7 +16,7 @@ mk() { # a clean fixture tree at $F
   ln -s "$T_ROOT/tests/lib" "$F/tests/lib"
   echo 'tests/guards/x-test.sh' > "$F/contracts/suites.txt"
   echo 'RULE="a"' > "$F/bin/guard-x.sh"
-  printf '%s\n' '{"guard":"x","posture":null,"rules":"RULE=\"([a-z]+)\"","reps":{"deny":"zap it","allow":"ls"}}' > "$F/tests/guards/guards.jsonl"
+  printf '%s\n' '{"guard":"x","script":"guard-x.sh","posture":null,"rules":"RULE=\"([a-z]+)\"","reps":{"deny":"zap it","allow":"ls"}}' > "$F/tests/guards/guards.jsonl"
   printf '%s\n' '{"id":"a1","rule":"a","want":"deny","cmd":"zap it"}' '{"id":"a2","rule":"a","want":"allow","cmd":"zap --dry"}' > "$F/tests/guards/x.jsonl"
   printf '%s\n' '#!/usr/bin/env sh' '. "$(dirname "$0")/../../lib/core.sh"' 't_init' 't_done' > "$F/tests/guards/x-test.sh"
   echo '{"shape":"bare","reps":["deny","allow"],"expect":"same"}' > "$F/tests/guards/shapes.jsonl"
@@ -64,7 +64,7 @@ mk; echo '{"id":"a3","rule":"zzz","want":"deny","cmd":"x"}' >> "$F/tests/guards/
 mk; sed -i.bak 's/RULE=/NOPE=/' "$F/tests/guards/guards.jsonl";           red test.rule-coverage 'matches nothing'
 # harbor#957: a guard whose rules are ledger ids set per tier arm (guard-cloud's shape). Its default arm is no rule.
 idmk() { printf '  A) _crule=x-a ;;\n  *) _crule=x-unclassified ;;\n' > "$F/bin/guard-x.sh"
-  printf '%s\n' '{"guard":"x","posture":null,"rules":"^ +[A-Z]+\\) .*_crule=(x-[a-z-]+)","reps":{"deny":"zap it","allow":"ls"}}' > "$F/tests/guards/guards.jsonl"
+  printf '%s\n' '{"guard":"x","script":"guard-x.sh","posture":null,"rules":"^ +[A-Z]+\\) .*_crule=(x-[a-z-]+)","reps":{"deny":"zap it","allow":"ls"}}' > "$F/tests/guards/guards.jsonl"
   printf '%s\n' '{"id":"a1","rule":"x-a","want":"deny","cmd":"zap it"}' '{"id":"a2","rule":"x-a","want":"allow","cmd":"zap --dry"}' > "$F/tests/guards/x.jsonl"; }
 mk; idmk; t_has 'ledger-id rows cover a ledger-id guard; its default arm needs none' "$(sh "$C" "$F")" "check: 6 rules, 0 violations"
 mk; idmk; echo '{"id":"a3","rule":"A","want":"deny","cmd":"x"}' >> "$F/tests/guards/x.jsonl";          red test.rule-coverage "rule 'A' is not a rule"

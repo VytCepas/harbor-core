@@ -24,7 +24,7 @@
 # daily off the session path and writes a cache; the session only READS it.
 #
 # IT REPAIRS NOTHING, for audit-triage.sh's own reason: every surface that
-# tool names is one guard-selfedit.sh protects, so a version that could fix them
+# tool names is one admission-self-edit.sh protects, so a version that could fix them
 # would be a version that can disable the floor. The cache carries the repair
 # TEXT for a human; nothing here executes it.
 #

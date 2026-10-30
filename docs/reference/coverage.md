@@ -14,7 +14,7 @@ which is where the unnoticed capabilities concentrated — Harbor ships a handfu
 guards against upstream's 43 hooks, and most of that gap had never been looked at.
 The guard count is in `docs/generated/status.md` and is stated nowhere else — not
 even here, which is the repair: this line used to carry the number, and carried
-it wrong. `guard-lib.sh` matches `guard-*.sh` and is a library that vetoes
+it wrong. `library-admission.sh` matches `guard-*.sh` and is a library that vetoes
 nothing, so a glob counted it and every document quoting the total promised a
 guard that does not exist. T2 did not catch it because the rule keys on the
 two-word phrase "floor guards" and this sentence used the bare noun — a copy of a
@@ -44,7 +44,7 @@ Pulled out because each closes a gap Harbor has already named as a problem.
 Stop event when the transcript shows no matching evidence. Harbor stated the same
 rule constitutionally and enforced it nowhere.
 
-**Half of it is now built** — `bin/guard-stop.sh` (harbor#291), opt-in per box.
+**Half of it is now built** — `bin/admission-stop.sh` (harbor#291), opt-in per box.
 The half that is built is the half a shell script can decide without judgement:
 where the *repo* defines what evidence means, the gate refuses the turn until the
 evidence exists. A floor surface edited with no `floor-test.sh` run after it; a
@@ -95,10 +95,10 @@ about does not exist upstream either.
 | Hook | Purpose | Disposition |
 |---|---|---|
 | `PreToolGuard` | the ONE PreToolUse blocking-guard dispatcher | **covered** — B2–B5, deliberately as separate guards; one dispatcher is a single point of failure for the whole floor |
-| `SystemFileGuard` | blocks writes of user-identifying patterns | **covered** — `guard-selfedit.sh` (B2) |
-| `EgressClassGuard` | PreToolUse Bash gate for the data-class model | **covered** — `guard-egress.sh` (B4) |
-| `Safety` | the DANGEROUS_PATTERNS scanner | **covered** — `guard-bash.sh` (B3), converted from de-auto-approve to hard veto |
-| `IntegrityCheck` | integrity check (SessionEnd) | **covered** — `guard-integrity.sh` (B6), moved to SessionStart and fail-CLOSED |
+| `SystemFileGuard` | blocks writes of user-identifying patterns | **covered** — `admission-self-edit.sh` (B2) |
+| `EgressClassGuard` | PreToolUse Bash gate for the data-class model | **covered** — `admission-egress.sh` (B4) |
+| `Safety` | the DANGEROUS_PATTERNS scanner | **covered** — `admission-bash.sh` (B3), converted from de-auto-approve to hard veto |
+| `IntegrityCheck` | integrity check (SessionEnd) | **covered** — `admission-integrity.sh` (B6), moved to SessionStart and fail-CLOSED |
 | `EventLogger` | unified observability event logger | **BUILT** — L1 / harbor#41 |
 | `VerificationGate` | task-aware verification gate (Stop) | **NARROWED, still OPEN** — harbor#291 gives №2 teeth for the classes where the repo already DEFINES the evidence (a floor edit ⇒ its suite; a red suite ⇒ a green one). The general done-claim grader is still missing and cannot be built in `sh`: grading a claim needs a `prompt`/`agent` hook and `contracts/hooks.md` records those as restricted to the three tool events. Do not flip this row to BUILT on the strength of the Stop gate |
 | `WorkCompletionLearning` | extract learnings from completed work | **OPEN** — the work-log's missing payload |
@@ -108,7 +108,7 @@ about does not exist upstream either.
 | `LoadContext` | inject dynamic context (SessionStart) | **covered** — `context-resolve.sh` (H2), narrowed to the boundary notice |
 | `LoadMemory` | inject hot-layer memory (UserPromptSubmit) | **ticketed** — workstream D |
 | `MemoryTurnStart` / `MemoryDeltaSurface` / `MemoryHealthGate` / `MemoryReviewFire` | the memory cadence | **ticketed** — workstream D. Note `policy/constitution.md` dropped upstream's memory-delta *fields* because no hook emits them; these are the hooks that would |
-| `StopGates` | the ONE Stop-event gate | **BUILT 2026-08-23** — `bin/guard-stop.sh` + `tests/admission/stop/stop.test.sh` (harbor#291), opt-in via `floor-install.sh --with-stop-gate`. Two rules, both read from the transcript: a floor surface edited with no `floor-test.sh` run **after** it, and a suite this session ran that was left red. Fails OPEN, which is the inverse of every other guard and argued at the head of the file rather than assumed |
+| `StopGates` | the ONE Stop-event gate | **BUILT 2026-08-23** — `bin/admission-stop.sh` + `tests/admission/stop/stop.test.sh` (harbor#291), opt-in via `floor-install.sh --with-stop-gate`. Two rules, both read from the transcript: a floor surface edited with no `floor-test.sh` run **after** it, and a suite this session ran that was left red. Fails OPEN, which is the inverse of every other guard and argued at the head of the file rather than assumed |
 | `FormatGate` / `WritingGate` / `CommunicationSkillGuard` | output-format teeth, writing audit, outbound-email catch | **declined** — №1 is a response *shape* principle in Harbor, not a template, so there is nothing deterministic to gate |
 | `AlgorithmNudge` / `ISASync` / `ISARenderOnStop` / `CheckpointPerISC` | the Algorithm/ISA runtime | **declined** — `docs/reference/provenance.md` F1: the ISA *skill* is vendored, the *runtime* is not |
 | `TaskGovernance` | subagent task-creation governance | **OPEN** |
@@ -229,7 +229,7 @@ already written down as open.
 | Tool | What it is | The Harbor gap it closes |
 |---|---|---|
 | **`DoctrineReplay`** | *"the regression corpus the Algorithm never had: 80+ doctrine versions shipped with no way to check a rewrite against real past work"* — stratified sample of archived work, replayed against a rule change | **The install decision.** Twelve passes rewrote the floor's rules against 573 *synthetic* assertions and zero real traffic. That is why every pass "fixed" things and the next found ~24 regressions. With L1 recording real commands, a replay corpus turns "did this rule change help?" from an argument into a measurement. **This is the missing half of the criterion.** |
-| **`DeriveDenyHashes`** | *"turn the principal's PRIVATE corpus into a SALTED-HASH leak filter, so the guard can block private data appearing in shipping code WITHOUT the filter ever containing that data in the clear"* | `guard-egress.sh` knows generic secret *shapes* — `sk-`, `ghp_`, PEM headers. It cannot know **your** secrets, so it cannot catch your API key with an unusual prefix or your client's name. This solves that without the guard becoming the leak. Also the exact primitive L1 needs for its truncated hashes. |
+| **`DeriveDenyHashes`** | *"turn the principal's PRIVATE corpus into a SALTED-HASH leak filter, so the guard can block private data appearing in shipping code WITHOUT the filter ever containing that data in the clear"* | `admission-egress.sh` knows generic secret *shapes* — `sk-`, `ghp_`, PEM headers. It cannot know **your** secrets, so it cannot catch your API key with an unusual prefix or your client's name. This solves that without the guard becoming the leak. Also the exact primitive L1 needs for its truncated hashes. |
 | **`BudgetCheck`** | *"backpressure against always-on context re-accretion. Without a ceiling those files regrow: proposals auto-append, ISAs accrete, rules stack"* | **A risk Harbor is actively walking into.** L2 adds `CLAUDE.md` + `TELOS` + `IDENTITY` to every session and nothing bounds them. Upstream hit this and built a ceiling; we have not noticed it yet. |
 | **`SessionHarvester`** | extracts learnings from `~/.claude/projects/` transcripts into `LEARNING/` | **VOID by owner decision 2026-08-05** (M4). Its value is transcript CONTENT, refused twice — DE-16 for the durable corpus and the standing "never persist a distilled copy" rule for the digest. The safe residue is the transcript INDEX, and `hooks/memory-harvest/memory-harvest.sh` (D1) already reads it. Aggravating fact: `LEARNING/*.md` is inside `worklog-push.sh`'s allowlist, so its output would have been published. |
 | **`LearningPatternSynthesis`** | *"aggregate ratings into actionable patterns… recurring patterns… synthesis reports for continuous improvement"* | **VOID by owner decision 2026-08-05** (M6). Every input is accounted for: `SatisfactionCapture` has no ticket and no rating surface exists, `SessionHarvester` is void, and the one real signal — ledger recurrence — is already ranked by M5's FC-5, which also excludes the verifier's own probe traffic. A synthesis step over a signal nobody captures. |
@@ -243,7 +243,7 @@ already written down as open.
 | `ReferenceCheck` | full-surface reference validator over `~/.claude`. Lint K1/T3 do this for the **repo**; nothing validates the **installed** surface, which is the one that runs. |
 | `CheckFileBoundary` | runs the guard's own `evaluateWrite()` in CI / pre-commit rather than only at runtime. **Half of this was already closed** — the floor suite (`tests/floor/`) fires every guard in CI. **SCOPED 2026-08-05** (M11) to the residue: a `--smoke` mode on that same suite, wired into pre-commit, where a guard regression currently reaches a push behind style checks only. One implementation, so the predicates cannot drift. |
 | `UsageAggregator` + `CostTracker` | durable per-day usage. `CostTracker`'s stated origin is an invoice *"dominated by upstream-local processes that billed API instead of subscription"* — a failure mode Harbor's future skill-tools share. |
-| `MutationTier` | four-tier classifier for paths under `~/.claude`. `guard-selfedit.sh` is binary (protected / not); tiers are what let a rule be strict about `settings.json` and relaxed about a cache. **SCOPED 2026-08-05** (M10): the table ships as a fixture with a suite assertion that the REAL guard agrees with it on tier ≤ 1, so it is load-bearing without moving a hash-pinned control surface. Consuming the tiers inside the guard stays a separate operator decision. |
+| `MutationTier` | four-tier classifier for paths under `~/.claude`. `admission-self-edit.sh` is binary (protected / not); tiers are what let a rule be strict about `settings.json` and relaxed about a cache. **SCOPED 2026-08-05** (M10): the table ships as a fixture with a suite assertion that the REAL guard agrees with it on tier ≤ 1, so it is load-bearing without moving a hash-pinned control surface. Consuming the tiers inside the guard stays a separate operator decision. |
 | `ProposalGC` | GC for auto-appended memory proposals. **VOID as a take 2026-08-05** — the memory engine (D1/D2/D3/D7) shipped with no proposal concept, so the GC never had a subject. The surviving concern, the store growing until it costs context, is registered as **CX1** under its own letter, and deliberately as a REPORT rather than a GC: automatic deletion of the operator's memory is a data-loss path with no undo. |
 
 #### Skip

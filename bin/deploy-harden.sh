@@ -128,7 +128,7 @@ _sc="$(gh auth status 2>&1 | grep -i 'Token scopes' | sed 's/^[[:space:]]*//' ||
 if [ -n "$_sc" ]; then log_note "$_sc"; else log_note "gh reports no token scopes (not authenticated?)"; fi
 log_note "keep the interactive daily-driver login as it is: it must stay able to author CI (.github/workflows pushes)"
 log_note "never 'gh auth login --with-token' with a narrow token: it REPLACES the keyring credential for every repo"
-log_note "for the work-log sync (G1/G2), mint a separate fine-grained token (Contents: read/write on helm-log only) and feed it via GH_TOKEN or its own git credential"
+log_note "for the work-log sync (G1/G2), mint a separate fine-grained token (Contents: read/write on the memory store's work-log repo only) and feed it via GH_TOKEN or its own git credential"
 log_note "split web-fetching (deep-research) into a subagent with no git/gh/write tools"
 
 [ "$IL_APPLY" -eq 1 ] || il_apply_next sec0

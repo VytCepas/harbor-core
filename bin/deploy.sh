@@ -3,7 +3,7 @@
 #   sh bin/deploy.sh --live                  DRY RUN: preflight, then every installer's own dry run
 #   sh bin/deploy.sh --apply --live          preflight, one [y/N], snapshot, install, verify, re-pin [y/N]
 #   --only C[,C…]   just these components: constitution shim sec0 runtime floor prod-guard skills inject packs
-#                   project-init projects-orchestrator (the harbor verbs route here; one snapshot, same gates).
+#                   yard fleet (each repo's own just install; the harbor verbs route here; one snapshot, same gates).
 #                   A component this run cannot install FAILS preflight; its fix is --only without it
 #   no --only      core (constitution shim sec0 runtime floor skills inject packs) plus the optional components harbor.toml
 #                   `components` names: yard fleet prod-guard collector; key unset = every component (harbor#1149)
@@ -42,7 +42,7 @@ case "$(uname -s 2>/dev/null || :)" in MINGW*|MSYS*|CYGWIN*)
   log_fix "install WSL2 (wsl --install), clone Harbor inside the WSL filesystem (~/port/harbor), and run deploy there"
   log_end || :; exit 1 ;;
 esac
-COMPONENTS='constitution shim sec0 runtime floor prod-guard skills inject packs project-init projects-orchestrator'
+COMPONENTS='constitution shim sec0 runtime floor prod-guard skills inject packs yard fleet'
 ONLY=''; PRUNE=0; WITH_B6=0; WITH_STOP=0; UNINSTALL=0; UNATTENDED=0
 il_opt() {
   case "$1" in
@@ -75,8 +75,8 @@ if [ -z "$ONLY" ] && [ "$PRUNE" -eq 0 ]; then
         case "$_c" in
           core) ;;
           collector) _ccoll=1 ;;  # installed by root, never by deploy
-          yard) DEFSET="$DEFSET project-init" ;;
-          fleet) DEFSET="$DEFSET projects-orchestrator" ;;
+          yard) DEFSET="$DEFSET yard" ;;
+          fleet) DEFSET="$DEFSET fleet" ;;
           prod-guard) DEFSET="$DEFSET prod-guard" ;;
           *) il_usage_error "harbor.toml components: '$_c' is not a component (core, yard, fleet, prod-guard, collector)" ;;
         esac
@@ -199,8 +199,8 @@ _ask() {
 
 # B6 as the next SessionStart would see it: prints clean | advisory:<msg> | BLOCKED:<msg>.
 _b6_verdict() {
-  _g="$CFG/bin/guard-integrity.sh"
-  [ -f "$_g" ] || _g="$ROOT/bin/guard-integrity.sh"
+  _g="$CFG/bin/admission-integrity.sh"
+  [ -f "$_g" ] || _g="$ROOT/bin/admission-integrity.sh"
   _g_out="$(env -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW -u HELM_DISABLE_FLOOR -u HELM_FLOOR_SHADOW CLAUDE_CONFIG_DIR="$CFG" sh "$_g" </dev/null 2>/dev/null || true)"
   if [ -z "$_g_out" ]; then printf 'clean'; return; fi
   # `.continue == false`, never `//`: jq's alternative operator treats false as missing.
@@ -464,10 +464,13 @@ _preflight() {
 # A flag the operator passed once is not a record: a box whose settings.json wires the Stop gate, or
 # that runs B6, is refreshed by every deploy, or VERIFY calls the unrefreshed copy stale (2026-09-27).
 FLOOR_OPTS=''
-_stop_wired() { jq -e '[.hooks.Stop[]?.hooks[]?.command // empty | select(test("(^|/)guard-stop\\.sh( |$)"))] | length > 0' "$CFG/settings.json" >/dev/null 2>&1; }
+# A box deployed before W6 wired these under their old names (guard-stop.sh, guard-integrity.sh): both spellings
+# count, or the deploy that ships the rename would stop refreshing B6 and the Stop gate (harbor#961 W6).
+_stop_wired() { jq -e '[.hooks.Stop[]?.hooks[]?.command // empty | select(test("(^|/)(guard|admission)-stop\\.sh( |$)"))] | length > 0' "$CFG/settings.json" >/dev/null 2>&1; }
 _b6_installed() {
-  [ -f "$CFG/bin/guard-integrity.sh" ] \
-    && jq -e '[.hooks.SessionStart[]?.hooks[]?.command // empty | select(test("guard-integrity"))] | length > 0' "$CFG/settings.json" >/dev/null 2>&1
+  _b6old=guard-integrity   # its name before W6, read until the shim goes (2026-11-15)
+  { [ -f "$CFG/bin/admission-integrity.sh" ] || [ -f "$CFG/bin/$_b6old.sh" ]; } \
+    && jq -e '[.hooks.SessionStart[]?.hooks[]?.command // empty | select(test("(guard|admission)-integrity"))] | length > 0' "$CFG/settings.json" >/dev/null 2>&1
 }
 _optins() {
   _want floor || return 0
@@ -559,9 +562,9 @@ _packs_uninstall() {
 # The documented interface (yard#1047, fleet#318): a dry run by default that
 # exits 1 when --apply would refuse, and --check non-zero on drift. A repo it cannot run fails preflight (UNREACHABLE).
 XR_PI=''; XR_PO=''
-_xr_dir() { case "$1" in project-init) sh "$ROOT/bin/scope-roots.sh" --get HARBOR_SCOPE_SCAFFOLDER 2>/dev/null ;; *) sh "$ROOT/bin/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER 2>/dev/null ;; esac; }
-_xr_set() { if [ "$1" = project-init ]; then XR_PI="$2"; else XR_PO="$2"; fi; }
-_xr_get() { if [ "$1" = project-init ]; then printf '%s' "$XR_PI"; else printf '%s' "$XR_PO"; fi; }
+_xr_dir() { case "$1" in yard) sh "$ROOT/bin/scope-roots.sh" --get HARBOR_SCOPE_SCAFFOLDER 2>/dev/null ;; *) sh "$ROOT/bin/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER 2>/dev/null ;; esac; }
+_xr_set() { if [ "$1" = yard ]; then XR_PI="$2"; else XR_PO="$2"; fi; }
+_xr_get() { if [ "$1" = yard ]; then printf '%s' "$XR_PI"; else printf '%s' "$XR_PO"; fi; }
 _just() { _jd="$1"; shift; just --justfile "$_jd/justfile" --working-directory "$_jd" "$@"; }
 # Is the clone at <dir> current with a FRESHLY fetched origin/main? A child's dry run judges sync by the last
 # fetch (yard and fleet both did, until their dry runs learned to fetch), so a clone
@@ -691,7 +694,7 @@ _plan() {
     _relay --brief "$WORK/out"
   done
   _want_any packs inject && _packs_plan
-  for _x in project-init projects-orchestrator; do _want "$_x" && _xr_plan "$_x"; done
+  for _x in yard fleet; do _want "$_x" && _xr_plan "$_x"; done
   [ -z "$UNREACH" ] || _unreachable
   return 0
 }
@@ -763,7 +766,7 @@ _install() {
             'packs:PACKS' \
             'packs:deploy-shim-install.sh --live --apply' \
             'skills:skill-catalog.sh install --apply --live' \
-            'project-init:XREPO' 'projects-orchestrator:XREPO'; do
+            'yard:XREPO' 'fleet:XREPO'; do
     _c="${_p%%:*}"; _p="${_p#*:}"
     if [ "$_c" = packs ]; then _want_any packs inject || continue; else _want "$_c" || continue; fi
     if [ "$_p" = PACKS ]; then _packs_install || return 1; _register_rerecord || return 1; continue; fi
@@ -920,7 +923,7 @@ _verify() {
   _refcheck
 
   # The other repos' installed builds against their trees (harbor#736): their --check exits non-zero on drift.
-  for _x in project-init projects-orchestrator; do
+  for _x in yard fleet; do
     _want "$_x" || continue
     _xd="$(_xr_get "$_x")"
     case "$_xd" in ''|skip) continue ;; esac
@@ -1104,7 +1107,7 @@ _pr_find() {
     _pr_add "$_r" "beyond retention: the newest $PRUNE_KEEP of its installer and anything younger than $PRUNE_DAYS days stay"
   done
   # 5 · a stale yard bootstrap clone: install.sh's second copy, which nothing on PATH runs.
-  _pic="$HOME/.local/share/project-init"
+  _pic="${HARBOR_SCOPE_SCAFFOLDER_CLONE:-$(sh "$ROOT/bin/scope-roots.sh" --get HARBOR_SCOPE_SCAFFOLDER_CLONE 2>/dev/null || :)}"   # contracts/roots.tsv
   if [ -d "$_pic/.git" ]; then
     _used=''
     for _l in "$LOCAL_BIN"/*; do

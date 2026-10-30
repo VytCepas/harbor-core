@@ -50,7 +50,7 @@
 #      first scanner -> only UNIQUELY-owned symbols count.
 #   2. a symbol shorter than 3 characters is an ordinary shell word, not evidence
 #      of a call. admission-observe-report.sh defines `n`; every bare "n" in 85 files scored
-#      as an edge into it, 2761 of them, outranking guard-lib.sh.
+#      as an edge into it, 2761 of them, outranking library-admission.sh.
 #   3. a mention anywhere is not a call -> command position only.
 set -eu
 

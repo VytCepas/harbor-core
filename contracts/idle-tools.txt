@@ -127,3 +127,14 @@ pulse-notify.sh        IDLE  forwarding shim (harbor#996 rename-0970): a symlink
 pulse.sh               IDLE  forwarding shim (harbor#996 rename-0971): a symlink to bin/alert-probe.sh until 2026-11-15, the old path of rename-0971; nothing in the repo calls it
 redteam-corpus-run.sh  IDLE  forwarding shim (harbor#996 rename-0972): a symlink to bin/eval-redteam-corpus-run.sh until 2026-11-15, the old path of rename-0972; nothing in the repo calls it
 usage-aggregate.sh     IDLE  forwarding shim (harbor#996 rename-0973): a symlink to bin/status-usage-aggregate.sh until 2026-11-15, the old path of rename-0973; nothing in the repo calls it
+guard-apiroute.sh      IDLE  forwarding shim (harbor#996 rename-1313): a symlink to bin/admission-api-route.sh until 2026-11-15, the old path of rename-1313; nothing in the repo calls it
+guard-bash.sh          IDLE  forwarding shim (harbor#996 rename-1314): a symlink to bin/admission-bash.sh until 2026-11-15, the old path of rename-1314; nothing in the repo calls it
+guard-cloud.sh         IDLE  forwarding shim (harbor#996 rename-1315): a symlink to bin/admission-cloud.sh until 2026-11-15, the old path of rename-1315; nothing in the repo calls it
+guard-deliverables.sh  IDLE  forwarding shim (harbor#996 rename-1316): a symlink to bin/admission-deliverables.sh until 2026-11-15, the old path of rename-1316; nothing in the repo calls it
+guard-destroy.sh       IDLE  forwarding shim (harbor#996 rename-1317): a symlink to bin/admission-destroy.sh until 2026-11-15, the old path of rename-1317; nothing in the repo calls it
+guard-egress.sh        IDLE  forwarding shim (harbor#996 rename-1318): a symlink to bin/admission-egress.sh until 2026-11-15, the old path of rename-1318; nothing in the repo calls it
+guard-lib.sh           IDLE  forwarding shim (harbor#996 rename-1319): a symlink to bin/library-admission.sh until 2026-11-15, the old path of rename-1319; nothing in the repo calls it
+guard-selfedit.sh      IDLE  forwarding shim (harbor#996 rename-1320): a symlink to bin/admission-self-edit.sh until 2026-11-15, the old path of rename-1320; nothing in the repo calls it
+guard-stop.sh          IDLE  forwarding shim (harbor#996 rename-1321): a symlink to bin/admission-stop.sh until 2026-11-15, the old path of rename-1321; nothing in the repo calls it
+floor-hook.sh          IDLE  forwarding shim (harbor#996 rename-1322): a symlink to bin/admission-hook.sh until 2026-11-15, the old path of rename-1322; nothing in the repo calls it
+guard-integrity.sh     IDLE  forwarding shim (harbor#996 rename-1323): a symlink to bin/admission-integrity.sh until 2026-11-15, the old path of rename-1323; nothing in the repo calls it

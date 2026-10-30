@@ -23,14 +23,14 @@
 # at a guessable path was the hole that made the weaker wording matter.
 #
 # IT EXECUTES NO CODE FROM THE DIRECTORY UNDER INSPECTION. This is the sharpest
-# thing review found: the first draft sourced `<dir>/bin/guard-lib.sh` to reuse
+# thing review found: the first draft sourced `<dir>/bin/library-admission.sh` to reuse
 # the digest function, and a hostile copy in an inspected tree could redefine
 # `finding()` and wipe three accumulated crit findings, so the tool reported
 # "nothing in the ledger says the floor is failing" and exited 0. It now sources
-# the guard-lib.sh SITTING NEXT TO ITSELF: same trust domain as this script (write
+# the library-admission.sh SITTING NEXT TO ITSELF: same trust domain as this script (write
 # there and you can rewrite this file anyway), version-controlled, and hash-pinned
 # by B6 on a live box. The header used to justify the old form by citing
-# guard-lib.sh's "no side effects at source time" contract — which is a property of
+# library-admission.sh's "no side effects at source time" contract — which is a property of
 # the REPO's copy, not of whatever copy the argument points at, and citing it was a
 # source that existed without supporting the claim (№2.5).
 #
@@ -55,12 +55,12 @@
 #
 #   1. THE TWO SESSION CENSUSES DISAGREE — AND THE FIRST EXPLANATION WAS WRONG,
 #      which is the most instructive thing in this file. floor-observe.sh writes
-#      one `session armed` record per SessionStart and guard-integrity.sh writes
-#      one record per run (guard-integrity.sh:221-226, :287), so the counts looked
+#      one `session armed` record per SessionStart and admission-integrity.sh writes
+#      one record per run (admission-integrity.sh:221-226, :287), so the counts looked
 #      like they had to match. They did not — 30 against 49 — and an earlier draft
 #      of this file reported that as a crit defect in floor-observe.sh.
 #
-#      IT WAS `harbor verify`. floor-verify.sh:196-197 invokes guard-integrity.sh
+#      IT WAS `harbor verify`. floor-verify.sh:196-197 invokes admission-integrity.sh
 #      directly as its B6 status check, and that path records, so every verify run
 #      adds one integrity record with no session record. Reconciled per day against
 #      the verify-run count: 27 runs against a gap of 19 — fully consistent with
@@ -103,7 +103,7 @@
 # over: the literal is a token shape going to disk in cleartext, and a copy of a
 # list that lives in another file is the drift class this repo keeps paying for.
 # So the payloads are read out of the sibling floor-verify.sh at runtime, the way
-# floor-hook.sh resolves guard-lib.sh from its own directory. A seventh probe, if
+# admission-hook.sh resolves library-admission.sh from its own directory. A seventh probe, if
 # one is ever added, is picked up for free — there are six today — no mirror can
 # rot, and nothing here needs a lint seam to stay honest.
 #
@@ -119,7 +119,7 @@
 # one line rather than a translation layer.
 #
 # IT NEVER REPAIRS ANYTHING, and that is not caution. Every finding points at a
-# surface guard-selfedit.sh protects — the config dir, bin/, the pins, the sink —
+# surface admission-self-edit.sh protects — the config dir, bin/, the pins, the sink —
 # so a version of this tool that could fix its own findings would be a version
 # that can disable the floor. CONSTITUTION § "Fix the system, not your notes"
 # states the general rule: the system may observe continuously and propose in
@@ -128,7 +128,7 @@
 # exec bit, a stale cache) is not what any rule below finds. Each finding carries
 # its repair as TEXT, for a human at their own terminal.
 #
-# CITATIONS INTO floor-observe.sh AND guard-lib.sh NAME THE FUNCTION OR SECTION,
+# CITATIONS INTO floor-observe.sh AND library-admission.sh NAME THE FUNCTION OR SECTION,
 # not a line range, and that is deliberate rather than inconsistent: harbor#119 is
 # open and rewrites both files to derive the host key from a stable name, which
 # moves every line number below its edits. A citation that rots the moment a
@@ -201,7 +201,7 @@ if [ ! -d "$DIR" ]; then
   exit 0
 fi
 
-# B9: a missing jq must never read as a clean run. guard-bash.sh exited 0 on
+# B9: a missing jq must never read as a clean run. admission-bash.sh exited 0 on
 # 'rm -rf /' for exactly this reason. Exit 1, not 2 — a caller filters 2 out as
 # "I typed it wrong", and would filter away the one result it must not ignore.
 if ! command -v jq >/dev/null 2>&1; then
@@ -322,7 +322,7 @@ fi
 #
 # THE SIBLING, NEVER THE INSPECTED DIRECTORY — see the header. Same trust domain as
 # this script; a copy under the argument's tree is data, not code.
-GL="$SELF/guard-lib.sh"
+GL="$SELF/library-admission.sh"
 GL_OK=0
 if [ -n "$SELF" ] && [ -f "$GL" ] && [ ! -L "$GL" ]; then
   # shellcheck source=/dev/null
@@ -359,13 +359,13 @@ finding() { # <rule> <severity> <subject> <what-breaks> <repair>
 num() { case "${1:-}" in ''|*[!0-9]*) printf 0 ;; *) printf '%s' "$1" ;; esac; }
 
 # ── is the floor wired at all? ───────────────────────────────────────────────
-# The predicate for FC-0. A whole-path-segment match on floor-hook.sh, the one
+# The predicate for FC-0. A whole-path-segment match on admission-hook.sh, the one
 # string this layer cannot be installed without — never a bare `guard-` substring,
 # which the ambient prod_guard shim satisfies on a box carrying none of B2-B6
 # (status-generate.sh:122-131, DEAD-ENDS DE-22).
 FLOOR_WIRED=no
 if [ -f "$SETTINGS" ] && jq -e '[.hooks.PreToolUse[]?.hooks[]?.command]
-      | map(select(test("(^|/)floor-hook[.]sh([[:space:]]|$)"))) | length > 0' \
+      | map(select(test("(^|/)admission-hook[.]sh([[:space:]]|$)"))) | length > 0' \
       "$SETTINGS" >/dev/null 2>&1; then FLOOR_WIRED=yes; fi
 
 # ── read the ledger ──────────────────────────────────────────────────────────
@@ -384,7 +384,7 @@ if [ -f "$SETTINGS" ] && jq -e '[.hooks.PreToolUse[]?.hooks[]?.command]
 # the exact shape this tool exists to catch, so it must not commit it.
 #
 # `_host` is added in flight and never written anywhere: the tool writes nothing,
-# and the on-disk record shape is guard-lib.sh's ten keys, which admission-observe-report.sh
+# and the on-disk record shape is library-admission.sh's ten keys, which admission-observe-report.sh
 # also reads.
 #
 # THREE THINGS IN THIS BLOCK WERE DEFECTS FOUND BY REVIEW, all of the same family
@@ -533,7 +533,7 @@ if [ "$NREC" -gt 0 ]; then
   # ── FC-8 · the ledger speaks a schema this tool does not know ──────────────
   # `v` is the record's schema VERSION and it is the field a reader most easily
   # forgets, because today every record carries v:1 and ignoring it costs nothing
-  # (guard-lib.sh, floor_log_decision's single printf — ten keys, of which `v` is the literal). The day the
+  # (library-admission.sh, floor_log_decision's single printf — ten keys, of which `v` is the literal). The day the
   # writer emits v:2, every count below is computed against fields that may mean
   # something else, and the report would be confidently wrong. Severity `unknown`
   # rather than warn: this is "I could not read it", which №2.7 says to defer on
@@ -569,16 +569,16 @@ if [ "$NREC" -gt 0 ]; then
   # probes as findings.
   #
   # SOURCED FROM THE SIBLING, NEVER FROM THE INSPECTED DIRECTORY, and the first
-  # draft had this backwards. It sourced `<dir>/bin/guard-lib.sh`, which EXECUTES a
+  # draft had this backwards. It sourced `<dir>/bin/library-admission.sh`, which EXECUTES a
   # file out of the tree under inspection: review replaced it with a stub
   # containing `finding() { :; }; FINDINGS=""; WORST=ok` and a box carrying three
   # crit conditions reported "nothing in the ledger says the floor is failing" and
-  # exited 0. `$SELF/guard-lib.sh` is the same trust domain as this script — anyone
+  # exited 0. `$SELF/library-admission.sh` is the same trust domain as this script — anyone
   # who can write there can rewrite this file anyway — and it is version-controlled
   # and B6-pinned on a live box. The SALT still comes from the inspected dir, which
   # is data, not code (floor_obs_digest takes the config dir as its argument).
   #
-  # One consequence, recorded rather than hidden: if the live guard-lib.sh ever lags
+  # One consequence, recorded rather than hidden: if the live library-admission.sh ever lags
   # the repo copy in the digest algorithm itself, the derived digests stop matching
   # and probe traffic is REPORTED rather than excluded. That is the safe direction —
   # over-reporting, with the count visible — and lint X2 is what notices the lag.
@@ -599,9 +599,9 @@ if [ "$NREC" -gt 0 ]; then
       # Each `probe` line carries one hook payload as JSON. Take the text between
       # the first `{` and the last `}`, unescape the shell quoting, and let jq name
       # the field each guard actually digests: `.tool_input.command` for guard-bash
-      # and guard-egress (guard-bash.sh:34, guard-egress.sh:21), `.tool_input.file_path`
+      # and guard-egress (admission-bash.sh:34, admission-egress.sh:21), `.tool_input.file_path`
       # for guard-selfedit — which digests the RESOLVED path, so it is normalised
-      # here with the same function the guard uses (guard-selfedit.sh:36-39).
+      # here with the same function the guard uses (admission-self-edit.sh:36-39).
       # NEVER MATERIALISED TO DISK, and this is the same lesson a third time. The
       # payloads were written to a temp file, and one of them carries the
       # provider-token shape whose literal guard-egress blocked out of this file's
@@ -722,7 +722,7 @@ if [ "$NREC" -gt 0 ]; then
   # wrong salt makes every exclusion MISS — it fails toward over-reporting. This
   # file fails the other way: anyone who can append to it can name the preimage of
   # their own blocked command and delete it from the judge. $SELF is the same trust
-  # domain as this script (the header's argument for sourcing guard-lib.sh from
+  # domain as this script (the header's argument for sourcing library-admission.sh from
   # here), and on a live box it is $CFG/bin, which guard-selfedit and the
   # floor-surface rules already defend.
   FM="$SELF/.helm-suite-payloads"
@@ -859,7 +859,7 @@ if [ "$NREC" -gt 0 ]; then
     _caveat=" (--with-probes: the verifier's own shapes are INCLUDED in this count)"
     PROBE_OK=0
   elif [ "$PROBE_OK" = 0 ]; then
-    _caveat=" (WARNING: the verifier's own shapes could NOT be separated — floor-verify.sh, the sibling guard-lib.sh or the salt was unreadable — so the top rows may be this box's own probe traffic)"
+    _caveat=" (WARNING: the verifier's own shapes could NOT be separated — floor-verify.sh, the sibling library-admission.sh or the salt was unreadable — so the top rows may be this box's own probe traffic)"
   elif [ "$_pmatch" -eq 0 ]; then
     _caveat=" (NOTE: the verifier's probe digests were computed and NONE of them appears in this ledger, so nothing was excluded — either \`harbor verify\` has never run against it, or the salt was replaced after these records were written, in which case a probe shape can still be sitting in the rows below)"
     PROBE_OK=0
@@ -943,7 +943,7 @@ if [ "$NREC" -gt 0 ]; then
     #   7-day window  164 session vs 194 integrity   → fires, warn
     #
     # The in-window gap is concentrated on 2026-08-13 (29 vs 47) and 2026-08-16
-    # (5 vs 12), and both are `harbor verify` and hand runs of guard-integrity.sh
+    # (5 vs 12), and both are `harbor verify` and hand runs of admission-integrity.sh
     # — exactly the confound this rule's own message already names and the reason
     # it corrects by _vruns at all. Windowing shrinks the correction faster than it
     # shrinks the gap, so the rule starts firing on ordinary operator tooling: a
@@ -963,7 +963,7 @@ if [ "$NREC" -gt 0 ]; then
     # SessionStart and each writes exactly one record, so the counts must agree. A
     # gap means records are being dropped, and floor_log_decision drops them
     # SILENTLY on purpose — property 1: a logging failure must never change a
-    # verdict, so every path returns 0 (guard-lib.sh, floor_log_decision property 1).
+    # verdict, so every path returns 0 (library-admission.sh, floor_log_decision property 1).
     #
     # ONLY FIRES WHEN INTEGRITY EXCEEDS SESSION, and the asymmetry is not laziness.
     # The reverse gap is the ordinary state of a box where B6 was installed later
@@ -972,8 +972,8 @@ if [ "$NREC" -gt 0 ]; then
     # machine that has not run the separate `--with-b6` step at all.
     # VERIFY RUNS ARE SUBTRACTED FIRST, and without that this rule is a false-
     # positive generator on the documented workflow. `harbor verify` invokes
-    # guard-integrity.sh directly as its B6 status check (floor-verify.sh:196-197),
-    # and that path records (guard-integrity.sh:221-226) — so EVERY verify run adds
+    # admission-integrity.sh directly as its B6 status check (floor-verify.sh:196-197),
+    # and that path records (admission-integrity.sh:221-226) — so EVERY verify run adds
     # one integrity record with no session record. docs/how-to/handover.md tells every fresh
     # session to run it. Measured on this box: 30 session against 49 integrity, a
     # gap of 19, with 27 verify runs in the same window — the gap this rule was
@@ -988,7 +988,7 @@ if [ "$NREC" -gt 0 ]; then
     # means — so when they do not, this rule DOES NOT FIRE AT ALL rather than firing
     # on an uncorrectable denominator (№2.7: defer, never substitute).
     #
-    # WARN, NEVER CRIT, for what survives. guard-integrity.sh is also invoked
+    # WARN, NEVER CRIT, for what survives. admission-integrity.sh is also invoked
     # directly by floor-install.sh --with-b6 and by a command deploy-runtime-install.sh:402
     # prints for the operator to paste, and NOTHING in the record distinguishes any
     # of those from a SessionStart. So a residual gap is "these two counts do not
@@ -1020,18 +1020,18 @@ if [ "$NREC" -gt 0 ]; then
     elif [ "$((_adj - N_SESSION))" -ge 3 ]; then
       _gap=$((_adj - N_SESSION))
       finding FC-1 warn "${_tag}session census does not reconcile" \
-        "$N_SESSION session records against $N_INTEGRITY from the integrity gate, of which $_vruns are accounted for by \`harbor verify\` runs — leaving $_gap SessionStart(s) recorded by one hook and not the other. Either floor-observe.sh is dropping records silently (it exits 0 on every failure path by design), or guard-integrity.sh was invoked by hand — floor-install.sh --with-b6 and deploy-runtime-install.sh both do that, and no field in the record tells them apart" \
+        "$N_SESSION session records against $N_INTEGRITY from the integrity gate, of which $_vruns are accounted for by \`harbor verify\` runs — leaving $_gap SessionStart(s) recorded by one hook and not the other. Either floor-observe.sh is dropping records silently (it exits 0 on every failure path by design), or admission-integrity.sh was invoked by hand — floor-install.sh --with-b6 and deploy-runtime-install.sh both do that, and no field in the record tells them apart" \
         "reconcile per day (jq over .g and .ts[0:10], counting a probe digest per verify run) before suspecting the hook; floor-observe.sh holds the host dir at 0700 between its own chmods, so a record landing inside a CONCURRENT session's window is refused by the [ ! -w ] gate"
     fi
 
     # ── FC-3 · the integrity gate blocked a session ────────────────────────────
     # The only control in the floor that can stop a WHOLE SESSION, and it does so
     # while exiting 0 — it denies via {"continue":false} on stdout, never via exit 2
-    # (guard-integrity.sh:215-220). Recurrence is the judgment observe-report's flat
+    # (admission-integrity.sh:215-220). Recurrence is the judgment observe-report's flat
     # count cannot make: one episode is the control working, and a return on a later
     # day means the recovery command the gate handed the operator is not clearing the
     # drift. That has already happened on this box — the message named floor-deny.sh for guard
-    # CONTENT drift, which it cannot clear (guard-integrity.sh:229-235). Follow that
+    # CONTENT drift, which it cannot clear (admission-integrity.sh:229-235). Follow that
     # citation as HISTORY: the block at :250-258 also says no installer ships
     # floor-deny.sh, and that half has stopped being true — deploy-runtime-install.sh lists it
     # in FILES and it is on the live surface. The repair line below avoids naming it
@@ -1077,7 +1077,7 @@ if [ "$NREC" -gt 0 ]; then
       # is still happening" from "this happened twice and is over".
       #
       # `advise` AND `allow` BOTH COUNT AS CLEARED, and that is measured from the
-      # producer rather than assumed: guard-integrity.sh reaches its advise/allow
+      # producer rather than assumed: admission-integrity.sh reaches its advise/allow
       # branch inside `if [ -z "$DRIFT" ]`, so ANY non-gate integrity record is
       # positive evidence that B6 found no blocking drift on that run. Reading
       # only `allow` as clean would leave a box whose every session raises the
@@ -1147,16 +1147,16 @@ PARTITION_LIST
   # ── FC-2 · the floor could not reach a verdict ─────────────────────────────
   # The wrapper's own denies: "the floor is broken", as distinct from "a rule
   # fired". Without them a jq outage reads as a quiet drop in block counts and
-  # looks like the rules getting better (floor-hook.sh:34-39). On the --advisory
+  # looks like the rules getting better (admission-hook.sh:34-39). On the --advisory
   # path it does not even deny, so an annotate-web wrapper failure is invisible by
-  # construction unless it is written down (floor-hook.sh:62-64).
+  # construction unless it is written down (admission-hook.sh:62-64).
   #
   # THE WORDING BELOW MUST NOT SAY "N CALLS WERE BLOCKED", and the first draft did.
   # The record is identical in both modes: fail-closed wiring denies and exits 2,
   # advisory wiring records the same `d:"deny"` and exits 0, and no field tells them
   # apart. The record also carries `t:"none"` always — the wrapper never parses the
   # payload, so `FLOOR_TOOL` is unset and the ledger cannot say which tool call the
-  # floor failed to judge — and floor-hook.sh:92-95 collapses every rc outside {0,2}
+  # floor failed to judge — and admission-hook.sh:92-95 collapses every rc outside {0,2}
   # into one token, so 126, 127, 1 and 137 are indistinguishable here. Enough to
   # alarm, not enough to diagnose, and the repair lines say so.
   #
@@ -1269,7 +1269,7 @@ PARTITION_LIST
   # ── FC-6 · the recurrence counter is dead ──────────────────────────────────
   # Ordered before FC-5 because it decides whether FC-5 can be believed. A block
   # record carries `h="-"` when the salt is absent or malformed, or no hasher
-  # resolved (guard-lib.sh, floor_obs_digest). Blocks are still counted; they are no longer
+  # resolved (library-admission.sh, floor_obs_digest). Blocks are still counted; they are no longer
   # CORRELATED, which is the one question the digest exists to answer — so the
   # false-positive detector goes blind while every total still looks right.
   if [ "$N_BLOCK" -gt 0 ] && [ "$N_DEADDG" -gt 0 ]; then
@@ -1411,7 +1411,7 @@ if [ -d "$OBS" ]; then
     else
       # floor_host_token unavailable: the count is still true, the attribution is not.
       finding FC-9 warn "$_nhost host partitions (canonical key UNKNOWN):$_hlist" \
-        "one config dir is one install, so the host key moved and the history is in fragments — and the sibling guard-lib.sh could not be read, so this cannot say which partition is the canonical one" \
+        "one config dir is one install, so the host key moved and the history is in fragments — and the sibling library-admission.sh could not be read, so this cannot say which partition is the canonical one" \
         "run this from the repo so floor_host_token is reachable; the fix for the key itself is harbor#119, and a ledger copied in from another machine looks identical from here — the sink is machine-local by design"
     fi
   fi
@@ -1603,7 +1603,7 @@ else
         *)    log_warn "$r [$s] $j — $w"; log_fix "$p" ;;
       esac
     done < "$TMPD/report"
-    log_note "$NFIND finding(s). NOTHING here is repaired by this tool: every surface it names is one guard-selfedit.sh protects, so a version that could fix them would be a version that can disable the floor. Each fix line is for a human at their own terminal."
+    log_note "$NFIND finding(s). NOTHING here is repaired by this tool: every surface it names is one admission-self-edit.sh protects, so a version that could fix them would be a version that can disable the floor. Each fix line is for a human at their own terminal."
   fi
   log_end || :
 fi

@@ -26,8 +26,8 @@ The register's tail is **derived, not kept by hand** (`bin/gate-register-derive.
 `classify.test.sh` fails when the block is stale. It over-reaches on purpose: a script that only names another one
 in a code line counts as calling it.
 
-The classifier ignores case, so `Bin/guard-bash.sh` is protected. On a case-insensitive disk it *is*
-`bin/guard-bash.sh`.
+The classifier ignores case, so `Bin/admission-bash.sh` is protected. On a case-insensitive disk it *is*
+`bin/admission-bash.sh`.
 
 ## What actually holds, and what does not
 

@@ -246,7 +246,7 @@ if kill -0 "$FP" 2>/dev/null; then kill "$FP"; wait "$FP" 2>/dev/null; rc=124; e
 t_eq "...so is the follower" 4 "$rc"
 t_eq "...and nothing ran" no "$([ -e "$T_TMP/handler.ship" ] && echo yes || echo no)"
 t_exit "on <pattern> inside a session is refused (4)" 4 env CLAUDECODE=1 sh "$ED" on '"kind":"test\.cmd"' --id event.test-cmd -- sh "$HND"
-t_exit "on --preset inside a session is refused (4)" 4 env CLAUDECODE=1 sh "$ED" on --preset event.pulse
+t_exit "on --preset inside a session is refused (4)" 4 env CLAUDECODE=1 sh "$ED" on --preset event.alerting
 t_exit "on --off inside a session is refused (4)" 4 env CLAUDECODE=1 sh "$ED" on --off event.test-cmd
 t_exit "on --list inside a session is a read, and runs" 0 env CLAUDECODE=1 sh "$ED" on --list
 t_exit "a checkout's copy (not installed) does not follow (4)" 4 sh "$T_ROOT/bin/event-dispatch.sh" dispatch --once

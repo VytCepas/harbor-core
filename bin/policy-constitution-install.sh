@@ -99,7 +99,7 @@ fi
 #
 # NOTHING DETECTED THIS. Lint X2 compares bin/*.sh and not this document.
 # drift-reference-check.sh states in its own header that it does not compare live
-# against repo. guard-selfedit.sh stops a SESSION writing there, which is a
+# against repo. admission-self-edit.sh stops a SESSION writing there, which is a
 # different question from whether the operator's own edits ever come back. The
 # one-way installer was the whole mechanism, and a one-way installer facing a
 # two-way surface loses the direction it does not carry.

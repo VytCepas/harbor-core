@@ -1,4 +1,4 @@
-# w6b-admission-floor-hook-and-integrity.tsv (harbor#961, lane E): the mapping for floor-hook.sh and guard-integrity.sh behind a forwarder
+# w6b-admission-floor-hook-and-integrity.tsv (harbor#961, lane E): the mapping for admission-hook.sh and admission-integrity.sh behind a forwarder
 #
 # WHY THIS FILE EXISTS. The six-wave rename needs one reviewed table per wave before any file moves; the operator approves it wholesale at sitting B
 # (SITTING-B.md lists only the rows that need a decision). Names come from registered terms only (standards/naming/terms.tsv).
@@ -14,5 +14,5 @@
 #
 # standard_version: 2.0.0
 old_path	new_path	wave	recommendation	confidence	reason	remove_by	frozen	surface	reader
-bin/floor-hook.sh	bin/admission-hook.sh	W6b	rename	high	guard is a legacy alias of admission-hook (D-2); the fail-closed wrapper	2027-03-14			deployed copy ~/.claude/bin/; memory notes; ~/.claude/settings.json hook command
-bin/guard-integrity.sh	bin/admission-integrity.sh	W6b	rename	high	B6 integrity gate, renamed behind a forwarder (W6b)	2027-03-14			deployed copy ~/.claude/bin/; memory notes; ~/.claude/settings.json hook command
+bin/admission-hook.sh	bin/admission-hook.sh	W6b	rename	high	guard is a legacy alias of admission-hook (D-2); the fail-closed wrapper	2027-03-14			deployed copy ~/.claude/bin/; memory notes; ~/.claude/settings.json hook command
+bin/admission-integrity.sh	bin/admission-integrity.sh	W6b	rename	high	B6 integrity gate, renamed behind a forwarder (W6b)	2027-03-14			deployed copy ~/.claude/bin/; memory notes; ~/.claude/settings.json hook command

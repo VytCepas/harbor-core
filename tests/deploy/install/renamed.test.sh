@@ -10,7 +10,7 @@
 EMPTY='{"permissions":{"allow":[],"deny":[],"disableBypassPermissionsMode":"disable","disableAutoMode":"disable"}}'
 SB="$T_ROOT/bin"
 _sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
-b6msg() { CLAUDE_CONFIG_DIR="$1" sh "$1/bin/guard-integrity.sh" </dev/null 2>/dev/null | jq -r '.systemMessage // ""' 2>/dev/null; }
+b6msg() { CLAUDE_CONFIG_DIR="$1" sh "$1/bin/admission-integrity.sh" </dev/null 2>/dev/null | jq -r '.systemMessage // ""' 2>/dev/null; }
 inst() { # <box> — runtime then floor, as deploy orders them; the output of both
   env -u CLAUDE_CONFIG_DIR sh "$SB/deploy-runtime-install.sh" --dir "$1" --apply 2>&1
   env -u CLAUDE_CONFIG_DIR sh "$SB/floor-install.sh" --dir "$1" --apply --with-b6 2>&1

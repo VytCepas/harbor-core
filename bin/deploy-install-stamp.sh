@@ -13,7 +13,7 @@
 # wired, and blocking. They were simply the previous versions.
 #
 # Nothing compared the SOURCE against what was already installed. The dry run
-# printed `~ guard-lib.sh (replace)` in both directions, so the one moment an
+# printed `~ library-admission.sh (replace)` in both directions, so the one moment an
 # operator could have caught it told them nothing.
 #
 # THE QUESTION IS NOT "IS THE SOURCE OLDER", IT IS "WOULD THIS REMOVE WORK".

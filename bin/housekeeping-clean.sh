@@ -160,7 +160,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-# THE PHYSICAL COMPARE IS P11-01's, and guard-integrity.sh makes the same one
+# THE PHYSICAL COMPARE IS P11-01's, and admission-integrity.sh makes the same one
 # for the same reason: a trailing slash, a symlink or a relative spelling must
 # not decide which box gets rewritten.
 # LIVE_DIR, not a bare path, and lint D1 draws exactly this line: naming the live

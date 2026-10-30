@@ -14,7 +14,7 @@
 #                     values; "running" is the one their example shows; "pending" counts too: it is in flight)
 #   waiting-operator  the last message matches a row of session-waiting.tsv, or the turn ended on an
 #                     AskUserQuestion that has no result
-#   blocked           guard-stop.sh's SG-2 holds: a suite this session ran is red and no later run of it
+#   blocked           admission-stop.sh's SG-2 holds: a suite this session ran is red and no later run of it
 #                     was green (the same awk, kept equal by tests/session/state/stop.test.sh)
 #   done              rules 1-3 do not hold, this session committed, pushed or opened a PR, no Write/Edit
 #                     came after the last such command, the tree is clean, and the branch is pushed (an
@@ -48,7 +48,7 @@
 # [cleanup-ok] starts bin/session-cleanup.sh detached, which applies the sweep's RECLAIM rows only. The line
 # [cleanup-ok] [compact-ok] does both. Off: $STATE/cleanup-auto.off.
 #
-# The floor never depends on this file; guard-stop.sh is not touched and not called.
+# The floor never depends on this file; admission-stop.sh is not touched and not called.
 
 set -u
 trap 'exit 0' EXIT
@@ -77,7 +77,7 @@ NOW="$(date +%s)"
 
 # ── the transcript, one jq pass ────────────────────────────────────────────────────────────────
 # Records: CMD id command ts · BGT id task · RES id <suite verdict line> · PRU id <pull url>.
-# RES and BGT are guard-stop.sh's own filters, so SG-2 below reads what that gate reads.
+# RES and BGT are admission-stop.sh's own filters, so SG-2 below reads what that gate reads.
 RED=""; MS=0; MUT=0; PRURL=""; ASKPEND=0; T0=0
 if [ -n "$TX" ] && [ -r "$TX" ]; then
   T0="$(head -n 30 "$TX" 2>/dev/null | jq -r '(.timestamp? // empty) | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601? // empty' 2>/dev/null | head -n 1)"
@@ -109,7 +109,7 @@ if [ -n "$TX" ] && [ -r "$TX" ]; then
            (select(test("^https://github\\.com/[^/ ]+/[^/ ]+/pull/[0-9]+$")) | "PRU\t" + $id + "\t" + .)))
     else empty end' 2>/dev/null)" || STREAM=""
   if [ -n "$STREAM" ]; then
-    # SG-2, verbatim from bin/guard-stop.sh (suite_key, and SG_PAIR byte-equal, held by stop.test.sh):
+    # SG-2, verbatim from bin/admission-stop.sh (suite_key, and SG_PAIR byte-equal, held by stop.test.sh):
     # the last verdict per suite name wins.
     SG_PAIR='
   $1 == "CMD" { if ($3 ~ /([-.]test|lint-conventions|floor-equiv|pass-score)[a-z-]*\.sh/) ran[$2] = 1

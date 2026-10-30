@@ -131,7 +131,7 @@ two:
 
 - `permissions.disableBypassPermissionsMode: "disable"` (SEC-0), which no scope or
   CLI flag can override, so the box cannot enter bypass mode at all.
-- `floor_no_human` (`bin/guard-lib.sh`), which escalates an ask-tier cloud verdict
+- `floor_no_human` (`bin/library-admission.sh`), which escalates an ask-tier cloud verdict
   to a hard **deny** whenever no human can answer the prompt — an autonomous
   `permission_mode`, a transcript under `/subagents/`, or an `agent_type` naming a
   subagent or workflow agent. That closes the gap the policy could not: an `ask`

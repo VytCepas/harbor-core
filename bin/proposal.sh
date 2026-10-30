@@ -93,7 +93,7 @@ touches_machinery() { # <patch-file>
 touches_floor() { # <patch-file>
   _files_in "$1" | while IFS= read -r f; do
     case "$f" in
-      bin/guard-*|bin/floor-*|bin/sec0-*|hooks/*|*settings.json|bin/lint-conventions.sh) printf '%s\n' "$f" ;;
+      bin/admission-*|bin/library-admission.sh|bin/guard-*|bin/floor-*|bin/sec0-*|hooks/*|*settings.json|bin/lint-conventions.sh) printf '%s\n' "$f" ;;
     esac
   done
 }

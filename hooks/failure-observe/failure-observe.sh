@@ -44,7 +44,7 @@
 # 3. THE RECURRENCE KEY IS THE TOOL AND ITS INPUT, NEVER THE WHOLE PAYLOAD. The
 #    payload carries session_id and cwd, so hashing it would give the same failing
 #    call a different digest in every session — and recurrence counting, the one
-#    thing the digest exists for, would be dead on arrival. guard-lib.sh already
+#    thing the digest exists for, would be dead on arrival. library-admission.sh already
 #    learned this; the comment above floor_obs_digest says so in those words.
 #
 # 4. SALTED, NOT TRUNCATED. Same argument as the guard ledger's: an unsalted
@@ -87,11 +87,11 @@ CFG="${0%/*}"; CFG="${CFG%/*}"
 while [ "${CFG%/}" != "$CFG" ] && [ "$CFG" != "/" ]; do CFG="${CFG%/}"; done
 case "$CFG" in /*) ;; *) exit 0 ;; esac
 
-# guard-lib.sh is sourced for floor_obs_digest and the tool enum — ONE digest
+# library-admission.sh is sourced for floor_obs_digest and the tool enum — ONE digest
 # implementation and ONE tool vocabulary on this box, not a second spelling that
 # drifts. Absent library means exit 0: nothing here has value without it.
-[ -f "$CFG/bin/guard-lib.sh" ] || exit 0
-. "$CFG/bin/guard-lib.sh" 2>/dev/null || exit 0
+[ -f "$CFG/bin/library-admission.sh" ] || exit 0
+. "$CFG/bin/library-admission.sh" 2>/dev/null || exit 0
 
 # ── the host partition, read exactly as the hot path reads it ───────────────
 # Type-checked before `read`, because a FIFO at this path blocks the builtin the

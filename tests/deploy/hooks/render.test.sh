@@ -77,12 +77,12 @@ t_section "only harbor's own entries move; everything else is left exactly"
 fresh
 jq -n --arg a "$A" '{model: "x", hooks: {
   Stop: [{matcher: "", hooks: [{type: "command", command: "/bin/sh /opt/my-alpha.sh"}]},
-         {matcher: "", hooks: [{type: "command", command: "/bin/sh /home/someone/.claude/bin/floor-hook.sh /home/someone/.claude/bin/alpha.sh.bak"}]}],
+         {matcher: "", hooks: [{type: "command", command: "/bin/sh /home/someone/.claude/bin/admission-hook.sh /home/someone/.claude/bin/alpha.sh.bak"}]}],
   PreToolUse: [{matcher: "Bash", hooks: [{type: "command", command: "/bin/sh /home/someone/guard.sh"}]}]}}' > "$CFG/settings.json"
 settings; t_eq "exit 0" 0 "$RC"
 t_eq "the operator's other keys survive" '"x"' "$(jq -c .model "$CFG/settings.json")"
 t_has "a script whose name only CONTAINS the engine's is not the engine's" "$(cmds)" "Stop||-|/bin/sh /opt/my-alpha.sh"
-t_has "a wrapper running another script is not the engine's" "$(cmds)" "floor-hook.sh"
+t_has "a wrapper running another script is not the engine's" "$(cmds)" "admission-hook.sh"
 t_has "a foreign PreToolUse hook stays" "$(cmds)" "PreToolUse|Bash|-|/bin/sh /home/someone/guard.sh"
 t_eq "and the engine's own bindings are added beside them" 3 "$(cmds | grep -c "$CFG/bin/")"
 

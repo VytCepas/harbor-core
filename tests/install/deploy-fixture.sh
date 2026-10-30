@@ -28,8 +28,9 @@ fixture() { # <case> → T (case dir) with origin.git, repo (a clone on main), h
   # runtime-install's payload line, in the real one's shape: deploy reads it to know which B6-pinned
   # files a runtime-only run would replace (harbor#916). Both files exist in this fixture's bin.
   printf 'FILES="library-log.sh deploy-install-lib.sh"\n' >> "$T/src/bin/deploy-runtime-install.sh"
-  # Per variable: the other repos (harbor#736) resolve to STUB_PI / STUB_PO, unset = no repo there.
-  printf '#!/bin/sh\ncase "$1" in --private|--conf) exec sh "%s/bin/scope-roots.sh" "$@" ;; esac\n[ "$1" = --get ] || exit 0\ncase "$2" in HARBOR_PROJECT_INIT|HARBOR_SCOPE_SCAFFOLDER) printf "%%s" "${STUB_PI:-}" ;; HARBOR_ORCHESTRATOR|HARBOR_SCOPE_FLEET_CONTROLLER) printf "%%s" "${STUB_PO:-}" ;; *) printf "%%s" "$STUB_REPO" ;; esac\n' "$T_ROOT" > "$T/src/bin/scope-roots.sh"
+  # Per variable: the other repos (harbor#736) resolve to STUB_PI / STUB_PO, unset = no repo there; yard's bootstrap
+  # clone (a BOX row, under the sandboxed HOME) is the real reader's answer.
+  printf '#!/bin/sh\ncase "$1" in --private|--conf) exec sh "%s/bin/scope-roots.sh" "$@" ;; esac\n[ "$1" = --get ] || exit 0\ncase "$2" in HARBOR_PROJECT_INIT|HARBOR_SCOPE_SCAFFOLDER) printf "%%s" "${STUB_PI:-}" ;; HARBOR_ORCHESTRATOR|HARBOR_SCOPE_FLEET_CONTROLLER) printf "%%s" "${STUB_PO:-}" ;; HARBOR_SCOPE_SCAFFOLDER_CLONE) exec sh "%s/bin/scope-roots.sh" "$@" ;; *) printf "%%s" "$STUB_REPO" ;; esac\n' "$T_ROOT" "$T_ROOT" > "$T/src/bin/scope-roots.sh"
   cat > "$T/src/bin/deploy-install-stamp.sh" <<'EOS'
 #!/bin/sh
 case "$1" in
@@ -39,7 +40,7 @@ case "$1" in
   --show) echo "stamp shown" ;;
 esac
 EOS
-  printf '#!/bin/sh\ncat "$STUB_GI" 2>/dev/null; exit 0\n' > "$T/src/bin/guard-integrity.sh"
+  printf '#!/bin/sh\ncat "$STUB_GI" 2>/dev/null; exit 0\n' > "$T/src/bin/admission-integrity.sh"
   printf '#!/bin/sh\ncat "$STUB_SKILLS" 2>/dev/null; exit 0\n' > "$T/src/bin/skills-list.stub"
   printf '#!/bin/sh\nexit "${STUB_COLLIDE_RC:-0}"\n' > "$T/src/bin/skill-collision-verify.sh"
   # pin-instructions on the install standard takes --live, never a positional dir (exit 2, as the real one).
@@ -53,7 +54,7 @@ EOS
   # floor-verify: STUB_FV=b8 fails only B8, STUB_FV=bash fails a guard probe too.
   cat > "$T/src/bin/floor-verify.sh" <<'EOS'
 #!/bin/sh
-echo "── floor-verify · x"; echo "  ok: present: guard-bash.sh"
+echo "── floor-verify · x"; echo "  ok: present: admission-bash.sh"
 case "${STUB_FV:-}" in
   b8)   echo "  FAIL: B8: instruction surfaces changed since pinning"; echo "  fix: none automatic — see B8"
         echo "  note: FLOOR IS NOT FULLY ON — 1 check(s) failed"; echo "floor-verify: 1 ok, 1 failed, 0 warnings"; exit 1 ;;

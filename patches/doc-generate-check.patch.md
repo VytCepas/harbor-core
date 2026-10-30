@@ -32,7 +32,7 @@ cosmetic — it is the inventory the page exists to state:
 
 | Section | Missing from the committed page |
 |---|---|
-| The guards | `guard-cloud.sh`, `guard-destroy.sh` — both live `PreToolUse(Bash)` hooks |
+| The guards | `admission-cloud.sh`, `admission-destroy.sh` — both live `PreToolUse(Bash)` hooks |
 | Manifest suites | `destroy-guard-test.sh`, `cloud-guard-test.sh`, `judge-run-test.sh`, `renew-check-test.sh`, `proposal-test.sh` |
 | Lint rules | X8's description, still the pre-vendored wording |
 | Skills | `reporting-apis` description, one revision behind |

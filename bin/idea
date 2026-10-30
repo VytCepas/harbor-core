@@ -33,7 +33,7 @@ esac
 # and it is what keeps the scanner-dialect probe to ONE implementation instead of
 # the three call sites it was about to become.
 # shellcheck source=/dev/null
-. "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/guard-lib.sh"
+. "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-admission.sh"
 # Status lines are log-lib's, on stderr: stdout is `idea -l`'s pool and nothing else (contracts/logging.md).
 # shellcheck source=/dev/null
 . "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-log.sh"

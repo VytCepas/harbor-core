@@ -109,7 +109,7 @@ inserting lines, loses nothing and needs no converter in either direction (harbo
 
 ## The floor does not read any of it
 
-`guard-*`, `guard-lib.sh` and `floor-*` never open `repos.tsv` or `harbor.toml`: they are POSIX, pinned
+`guard-*`, `library-admission.sh` and `floor-*` never open `repos.tsv` or `harbor.toml`: they are POSIX, pinned
 per file (B6) and must answer with no I/O they do not control. Anything the floor needs from here is
 copied in as a literal and checked equal by a rule, as `ROOT1` does for `PORT_ROOT`.
 

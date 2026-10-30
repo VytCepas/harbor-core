@@ -33,13 +33,13 @@ _rp_red D4 "deny entry for a tool whose path rules are never consulted" "a Write
 
 t_section "F10: the .sec0-baseline projection is ONE shape (harbor#588)"
 _rp_fresh
-for _f10f in deploy-harden floor-deny guard-integrity; do
+for _f10f in deploy-harden floor-deny admission-integrity; do
   _rp_sh "$RP/bin/$_f10f.sh"; printf "jq -S '{perms:.permissions}' s\n" >> "$RP/bin/$_f10f.sh"
 done
 _rp_green F10 "three copies of one projection"
 printf "jq -S '{perms:.permissions, extra:1}' s\n" >> "$RP/bin/floor-deny.sh"
 _rp_red F10 "baseline projection differs from the first copy: bin/floor-deny.sh" "a writer pinning a second projection"
-rm "$RP/bin/guard-integrity.sh"; _rp_sh "$RP/bin/floor-deny.sh"; printf "jq -S %s s\n" "'{perms:.permissions}'" >> "$RP/bin/floor-deny.sh"
+rm "$RP/bin/admission-integrity.sh"; _rp_sh "$RP/bin/floor-deny.sh"; printf "jq -S %s s\n" "'{perms:.permissions}'" >> "$RP/bin/floor-deny.sh"
 _rp_red F10 "found 2 copy/copies" "a copy gone missing: the floor of three is not met"
 
 t_section "M1: a private marker walk (harbor#588)"
@@ -60,14 +60,14 @@ _rp_red N2 'bespoke frontmatter key "zzbespoke" in skills/x/SKILL.md' "an invent
 t_section "P1 / V2: a ported guard cites the pinned upstream SHA (harbor#588)"
 _rp_fresh; mkdir -p "$RP/vendor/skills"
 printf '# provenance\n\nupstream pin a4e8e74\n' > "$RP/vendor/skills/PROVENANCE.md"
-for _p1f in guard-bash guard-egress guard-selfedit annotate-web; do
+for _p1f in admission-bash admission-egress admission-self-edit annotate-web; do
   _rp_sh "$RP/bin/$_p1f.sh"; printf '# ported from upstream a4e8e74\n' >> "$RP/bin/$_p1f.sh"
 done
 _rp_green P1 "four ported guards citing the pin"
 _rp_green V2 "a provenance pin the guards cite"
-_rp_sh "$RP/bin/guard-egress.sh"; printf '# ported from upstream\n' >> "$RP/bin/guard-egress.sh"
-_rp_red P1 "no upstream SHA cited: bin/guard-egress.sh" "a ported guard with no SHA"
-_rp_red V2 "guard cites a different upstream SHA than vendor/skills/PROVENANCE.md (a4e8e74): bin/guard-egress.sh" "a guard that dropped the pin"
+_rp_sh "$RP/bin/admission-egress.sh"; printf '# ported from upstream\n' >> "$RP/bin/admission-egress.sh"
+_rp_red P1 "no upstream SHA cited: bin/admission-egress.sh" "a ported guard with no SHA"
+_rp_red V2 "guard cites a different upstream SHA than vendor/skills/PROVENANCE.md (a4e8e74): bin/admission-egress.sh" "a guard that dropped the pin"
 printf '# provenance\n\nno pin here\n' > "$RP/vendor/skills/PROVENANCE.md"
 _rp_red V2 "vendor/skills/PROVENANCE.md declares no upstream SHA" "a vendor/skills/PROVENANCE.md with no SHA at all"
 

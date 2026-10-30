@@ -68,7 +68,7 @@ if [ -z "$STORE" ]; then
   if [ -n "$_hk" ] && [ -d "$CFG/projects/$_hk/memory" ]; then STORE="$CFG/projects/$_hk/memory"; else STORE="$CFG/MEMORY"; fi
 fi
 
-# PIN grep, for the same reason bin/guard-lib.sh pins $FLOOR_GREP. On this
+# PIN grep, for the same reason bin/library-admission.sh pins $FLOOR_GREP. On this
 # machine the `grep` first in PATH is a ugrep wrapper carrying `-I
 # --ignore-files`, so it silently skips binary AND gitignored files. The grep
 # rung's entire job is to find every note that mentions a word; a wrapper that

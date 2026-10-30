@@ -18,9 +18,9 @@ yn() { if "$@"; then echo yes; else echo no; fi; }
 rs() { env -u CLAUDE_CONFIG_DIR sh "$B/deploy-restore.sh" "$@" >"$OUT" 2>&1; echo "exit $?"; }  # → "exit N"
 out() { cat "$OUT"; }
 tree() { (cd "$1" && find . -print | LC_ALL=C sort | while IFS= read -r f; do if [ -f "$f" ]; then cksum "$f"; else echo "$f"; fi; done) | cksum; }
-wired() { printf '{"hooks":{"%s":[{"matcher":"Bash","hooks":[{"type":"command","command":"sh %s/bin/guard-bash.sh"}]}]}}\n' "$1" "$2"; }
+wired() { printf '{"hooks":{"%s":[{"matcher":"Bash","hooks":[{"type":"command","command":"sh %s/bin/admission-bash.sh"}]}]}}\n' "$1" "$2"; }
 guard() { printf '#!/bin/sh\n[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0\nexit 0\n' > "$1"; }
-b6stub() { printf '#!/bin/sh\n%s\n' "$2" > "$1/bin/guard-integrity.sh"; }  # <cfg> <body>
+b6stub() { printf '#!/bin/sh\n%s\n' "$2" > "$1/bin/admission-integrity.sh"; }  # <cfg> <body>
 snap() { # <cfg> <name> <set entry…> — deploy's format: config.tgz of the entries present, set.txt of all
   _c="$1"; _d="$1/backups/$2"; shift 2; mkdir -p "$_d"; printf '%s\n' "$@" > "$_d/set.txt"; _have=''
   for _e in "$@"; do for _p in "$_c"/$_e; do [ -e "$_p" ] && _have="$_have ${_p##*/}"; done; done
@@ -46,7 +46,7 @@ SET='settings.json bin lib hooks skills .helm-pins .sec0-baseline.sha256 setting
 mkdir -p "$L/skills/demo" "$L/bin" "$L/plugins" "$L/MEMORY/.git" "$L/backups"
 wired PreToolUse "$L" > "$L/settings.json"
 printf 'fixture-sec0\n' > "$L/.sec0-baseline.sha256"; printf '# demo\n' > "$L/skills/demo/SKILL.md"
-guard "$L/bin/guard-bash.sh"; guard "$L/bin/deploy-restore.sh"; printf 'plugin\n' > "$L/plugins/p.txt"
+guard "$L/bin/admission-bash.sh"; guard "$L/bin/deploy-restore.sh"; printf 'plugin\n' > "$L/plugins/p.txt"
 printf 'identity\n' > "$L/MEMORY/IDENTITY.md"; printf '[remote "origin"]\n\turl = fixture\n' > "$L/MEMORY/.git/config"
 printf 'fixture-token-not-a-secret\n' > "$L/.helm-log-token"
 snap "$L" deploy-20260101-000000-1 $SET
@@ -103,7 +103,7 @@ t_eq "2 no refusal above wrote anything" "$LIVE_BEFORE" "$(tree "$L")"
 
 t_section "3 a deploy snapshot comes back exactly; the current copies move aside"
 R="$HOME/cfg-r"; mkdir -p "$R/bin" "$R/lib" "$R/skills/demo" "$R/MEMORY/.git" "$R/MEMORY/OBSERVABILITY" "$R/projects"
-printf '{"v":1}\n' > "$R/settings.json"; guard "$R/bin/guard-bash.sh"; b6stub "$R" 'exit 0'
+printf '{"v":1}\n' > "$R/settings.json"; guard "$R/bin/admission-bash.sh"; b6stub "$R" 'exit 0'
 printf 'core v1\n' > "$R/lib/core.sh"; printf '# demo\n' > "$R/skills/demo/SKILL.md"; printf 'sec0 v1\n' > "$R/.sec0-baseline.sha256"
 printf 'identity\n' > "$R/MEMORY/IDENTITY.md"; printf 'fixture remote\n' > "$R/MEMORY/.git/config"
 printf 'ledger\n' > "$R/MEMORY/OBSERVABILITY/l.jsonl"; printf 'h1\n' > "$R/history.jsonl"; printf 'p\n' > "$R/projects/p.jsonl"
@@ -205,34 +205,34 @@ else echo "  SKIP 5: this tar cannot write a ../ member"; fi
 t_section "6 a snapshot that predates the floor is refused (harbor#110)"
 F="$HOME/cfg-f"; mkdir -p "$F/bin"; printf '{"hooks":{}}\n' > "$F/settings.json"
 snap "$F" deploy-20260101-000000-1 $SET; FS="$F/backups/deploy-20260101-000000-1"
-guard "$F/bin/guard-bash.sh"
+guard "$F/bin/admission-bash.sh"
 t_eq "6 a snapshot that would remove a guard is refused" "exit 1" "$(rs --apply --dir "$F")"
-t_has "6 the refusal names the guard" "$(out)" "bin/guard-bash.sh"
-t_eq "6 the refusal was clean: the guard is still there" yes "$(yn [ -f "$F/bin/guard-bash.sh" ])"
+t_has "6 the refusal names the guard" "$(out)" "bin/admission-bash.sh"
+t_eq "6 the refusal was clean: the guard is still there" yes "$(yn [ -f "$F/bin/admission-bash.sh" ])"
 t_eq "6 ...and nothing was moved aside: the run dir holds only its log" "" "$(held)"
 t_exit "6 ...and the FAIL is followed by its fix line" 0 fixfollows
 t_has "6 ...which is the --accept-loss command, spelled for this dir" "$(out)" "  fix: sh $B/deploy-restore.sh --apply --from '$FS' --dir '$F' --accept-loss"
 t_eq "6 its dry run refuses too" "exit 1" "$(rs --dir "$F")"
 t_has "6 ...saying what --apply would refuse" "$(out)" "  FAIL: --apply would refuse: this snapshot does not hold floor surfaces"
 t_eq "6 --accept-loss proceeds" "exit 0" "$(rs --apply --dir "$F" --accept-loss)"
-t_has "6 ...with a WARN naming exactly what is lost" "$(out)" "  WARN: --accept-loss: this snapshot does not hold floor surfaces the target has, so restoring it removes them: bin/guard-bash.sh"
-t_eq "6 --accept-loss really removes the guard" no "$(yn [ -f "$F/bin/guard-bash.sh" ])"
-t_eq "6 ...into the aside dir" yes "$(yn [ -f "$(aside)/bin/guard-bash.sh" ])"
-rm -rf "$FS"; snap "$F" deploy-20260101-000000-1 settings.json; guard "$F/bin/guard-bash.sh"
+t_has "6 ...with a WARN naming exactly what is lost" "$(out)" "  WARN: --accept-loss: this snapshot does not hold floor surfaces the target has, so restoring it removes them: bin/admission-bash.sh"
+t_eq "6 --accept-loss really removes the guard" no "$(yn [ -f "$F/bin/admission-bash.sh" ])"
+t_eq "6 ...into the aside dir" yes "$(yn [ -f "$(aside)/bin/admission-bash.sh" ])"
+rm -rf "$FS"; snap "$F" deploy-20260101-000000-1 settings.json; guard "$F/bin/admission-bash.sh"
 t_eq "6 a snapshot that does not cover bin/ leaves the guard alone, so no refusal" "exit 0" "$(rs --apply --dir "$F")"
-t_eq "6 ...and the guard is still there" yes "$(yn [ -f "$F/bin/guard-bash.sh" ])"
+t_eq "6 ...and the guard is still there" yes "$(yn [ -f "$F/bin/admission-bash.sh" ])"
 rm -rf "$F/backups"; wired PreToolUse "$F" > "$F/settings.json"; snap "$F" deploy-20260101-000000-1 $SET
 t_eq "6 a snapshot that agrees with the target restores (no false positive)" "exit 0" "$(rs --apply --dir "$F")"
 rm -rf "$F/backups"; printf '{"hooks":{}}\n' > "$F/settings.json"; snap "$F" deploy-20260101-000000-1 $SET
 wired PreToolUse "$F" > "$F/settings.json"
 t_eq "6 guard present but its wiring absent from the snapshot is refused" "exit 1" "$(rs --apply --dir "$F")"
-t_has "6 ...named as wiring" "$(out)" "wiring:guard-bash.sh"
+t_has "6 ...named as wiring" "$(out)" "wiring:admission-bash.sh"
 if command -v jq >/dev/null 2>&1; then
   rm -rf "$F/backups"; wired PostToolUse "$F" > "$F/settings.json"; snap "$F" deploy-20260101-000000-1 $SET
   wired PreToolUse "$F" > "$F/settings.json"
   t_eq "6 the guard wired under the wrong event is still a loss" "exit 1" "$(rs --apply --dir "$F")"
 else echo "  SKIP 6: no jq, and the coarse fallback cannot see the wrong-event case by construction"; fi
-rm -rf "$F/backups"; mkdir -p "$F/.helm-pins"; printf 'aaa\n' > "$F/.helm-pins/guard-bash.sh.sha256"
+rm -rf "$F/backups"; mkdir -p "$F/.helm-pins"; printf 'aaa\n' > "$F/.helm-pins/admission-bash.sh.sha256"
 snap "$F" deploy-20260101-000000-1 $SET; printf 'bbb\n' > "$F/.helm-pins/annotate-web.sh.sha256"
 t_eq "6 a snapshot missing one pin the target holds is refused" "exit 1" "$(rs --apply --dir "$F")"
 t_has "6 ...named per pin" "$(out)" ".helm-pins/annotate-web.sh.sha256"

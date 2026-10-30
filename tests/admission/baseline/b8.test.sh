@@ -12,14 +12,14 @@ B8="$TMP/b8"; mkdir -p "$B8/bin" "$B8/skills/demo"
 printf '{"permissions":{"allow":[],"deny":[],"disableBypassPermissionsMode":"disable","disableAutoMode":"disable"}}\n' > "$B8/settings.json"
 printf 'be helpful\n' > "$B8/CLAUDE.md"
 printf 'name: demo\n' > "$B8/skills/demo/SKILL.md"
-for g in guard-lib.sh floor-normalize.awk guard-selfedit.sh guard-bash.sh guard-egress.sh \
-         annotate-web.sh floor-hook.sh pin-instructions.sh floor-deny.sh guard-integrity.sh; do
+for g in library-admission.sh floor-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh \
+         annotate-web.sh admission-hook.sh pin-instructions.sh floor-deny.sh admission-integrity.sh; do
   cp "$SRC/$g" "$B8/bin/$g"
 done
 chmod +x "$B8"/bin/*.sh
 env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-install.sh" --dir "$B8" --apply >/dev/null 2>&1
 b8run() { printf '{"hook_event_name":"SessionStart","source":"startup"}' \
-  | CLAUDE_CONFIG_DIR="$B8" sh "$B8/bin/guard-integrity.sh" 2>/dev/null; }
+  | CLAUDE_CONFIG_DIR="$B8" sh "$B8/bin/admission-integrity.sh" 2>/dev/null; }
 pi() { env -u CLAUDE_CONFIG_DIR sh "$B8/bin/pin-instructions.sh" "$1" --dir "$2" >/dev/null 2>&1; }  # <mode> <dir>: exit code only
 pin8() { pi --apply "$B8"; }
 cont8() { b8run | jq -r '.continue // "unset"' 2>/dev/null; }
@@ -85,7 +85,7 @@ t_hasnt "B8 ...so it cannot bless the live dir instead" "$(b8run)" 'pin-instruct
 # The control: on the LIVE dir (a sandbox HOME's ~/.claude, installed with --live), B6 names --live.
 B8LH="$TMP/b8livehome"; mkdir -p "$B8LH/.claude"; printf '%s\n' '{"permissions":{"allow":[],"deny":[]}}' > "$B8LH/.claude/settings.json"
 env -u CLAUDE_CONFIG_DIR HOME="$B8LH" sh "$SRC/floor-install.sh" --apply --live --with-b6 >/dev/null 2>&1
-b8live() { printf '{"hook_event_name":"SessionStart"}' | env HOME="$B8LH" CLAUDE_CONFIG_DIR="$B8LH/.claude" sh "$B8LH/.claude/bin/guard-integrity.sh" 2>/dev/null; }
+b8live() { printf '{"hook_event_name":"SessionStart"}' | env HOME="$B8LH" CLAUDE_CONFIG_DIR="$B8LH/.claude" sh "$B8LH/.claude/bin/admission-integrity.sh" 2>/dev/null; }
 t_has "B8 ...while on the live dir it names the --live spelling pin-instructions takes there" "$(b8live)" \
   'pin-instructions.sh --apply --live'
 t_exit "B8 a dry run (no --apply, no mode) of an unpinned dir exits 0" 0 env -u CLAUDE_CONFIG_DIR sh "$B8/bin/pin-instructions.sh" --dir "$B8"
@@ -180,14 +180,14 @@ t_section "REGRESSION: B8 manifest — symlinks, overrides, path reporting"
 B8R="$TMP/b8r"; mkdir -p "$B8R/bin" "$B8R/skills"
 printf '{"permissions":{"allow":[],"deny":[]}}\n' > "$B8R/settings.json"
 printf 'be helpful\n' > "$B8R/CLAUDE.md"
-for g in guard-lib.sh floor-normalize.awk guard-selfedit.sh guard-bash.sh guard-egress.sh \
-         annotate-web.sh floor-hook.sh pin-instructions.sh floor-deny.sh guard-integrity.sh; do
+for g in library-admission.sh floor-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh \
+         annotate-web.sh admission-hook.sh pin-instructions.sh floor-deny.sh admission-integrity.sh; do
   cp "$SRC/$g" "$B8R/bin/$g"
 done
 chmod +x "$B8R"/bin/*.sh
 env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-install.sh" --dir "$B8R" --apply >/dev/null 2>&1
 b8r() { printf '{"hook_event_name":"SessionStart","source":"startup"}' \
-  | CLAUDE_CONFIG_DIR="$B8R" sh "$B8R/bin/guard-integrity.sh" 2>/dev/null; }
+  | CLAUDE_CONFIG_DIR="$B8R" sh "$B8R/bin/admission-integrity.sh" 2>/dev/null; }
 pin8r() { env -u CLAUDE_CONFIG_DIR sh "$B8R/bin/pin-instructions.sh" --apply --dir "$B8R" >/dev/null 2>&1; }
 printf 'EVIL\n' > "$TMP/evil-skill.md"
 ln -s "$TMP/evil-skill.md" "$B8R/skills/evil.md"
@@ -205,7 +205,7 @@ t_has "B8-03 editing a symlinked CLAUDE.md's target is seen" "$(b8r)" 'CLAUDE.md
 pin8r
 printf 'z\n' > "$B8R/skills/z.md"
 t_has "B8-04 FLOOR_INSTR_SURFACES=' ' does not silence the check" "$(printf '{"hook_event_name":"SessionStart"}' \
-  | FLOOR_INSTR_SURFACES=' ' CLAUDE_CONFIG_DIR="$B8R" sh "$B8R/bin/guard-integrity.sh" 2>/dev/null)" 'skills/z.md'
+  | FLOOR_INSTR_SURFACES=' ' CLAUDE_CONFIG_DIR="$B8R" sh "$B8R/bin/admission-integrity.sh" 2>/dev/null)" 'skills/z.md'
 pin8r
 printf 'EVIL\n' > "$B8R/skills/my evil skill.md"
 t_has "B8-06 a path with spaces is reported whole" "$(b8r)" 'skills/my evil skill.md'
@@ -233,7 +233,7 @@ t_exit "P10-04 .helm-instructions.sha256 is in the B1 deny set" 0 \
   ere 'helm-instructions\.sha256' "$(grep -v '^[[:space:]]*#' "$SRC/floor-deny.sh")"
 t_exit "RT10-04 deploy's snapshot set carries the B8 pin (the restore source since harbor#765)" 0 \
   ere 'helm-instructions\.sha256' "$(grep '^SNAP_SET=' "$SRC/deploy.sh")"
-t_exit "RT10-03 B6 content-pins pin-instructions.sh" 0 grep -qE '^GUARDS=.*pin-instructions\.sh' "$SRC/guard-integrity.sh"
+t_exit "RT10-03 B6 content-pins pin-instructions.sh" 0 grep -qE '^GUARDS=.*pin-instructions\.sh' "$SRC/admission-integrity.sh"
 # B8R2-06: `find -L` followed a directory link to an ancestor and the manifest never settled.
 CYC="$TMP/cyc"; mkdir -p "$CYC/skills/a"; printf 'x\n' > "$CYC/skills/a/S.md"
 ln -sfn .. "$CYC/skills/up"
@@ -300,12 +300,12 @@ mkdir -p "$CHURN/plugins/cache/mp/thing/1.0.0/.in_use" "$CHURN/plugins/cache/mp/
 printf '{"pid":4242,"procStart":"x"}' > "$CHURN/plugins/cache/mp/thing/1.0.0/.in_use/4242"
 printf '2026-08-02T08:41:36.947Z\n'   > "$CHURN/plugins/.last_inuse_sweep"
 printf 'ordinary skill content\n'     > "$CHURN/plugins/cache/mp/thing/1.0.0/skills/SKILL.md"
-_m8="$(sh -c '. "$1"/guard-lib.sh; floor_instr_manifest "$2"' _ "$SRC" "$CHURN" 2>/dev/null)"
+_m8="$(sh -c '. "$1"/library-admission.sh; floor_instr_manifest "$2"' _ "$SRC" "$CHURN" 2>/dev/null)"
 t_hasnt "B8-CHURN an .in_use marker is not in the manifest" "$_m8" '.in_use'
 t_hasnt "B8-CHURN .last_inuse_sweep is not in the manifest" "$_m8" 'last_inuse_sweep'
 t_has "B8-CHURN the prune does not blind a real plugin skill file" "$_m8" 'skills/SKILL.md'
 printf 'injected\n' > "$CHURN/plugins/cache/mp/thing/1.0.0/skills/evil.md"
-_m8b="$(sh -c '. "$1"/guard-lib.sh; floor_instr_manifest "$2"' _ "$SRC" "$CHURN" 2>/dev/null)"
+_m8b="$(sh -c '. "$1"/library-admission.sh; floor_instr_manifest "$2"' _ "$SRC" "$CHURN" 2>/dev/null)"
 t_eq "B8-CHURN a planted plugin file changes the manifest" changed "$([ "$_m8" != "$_m8b" ] && echo changed || echo same)"
 
 t_section "B8-SYNC (harbor#764): the plugin sync's own bookkeeping is not instruction drift"
@@ -316,8 +316,8 @@ printf 'name: x\n'    > "$SY/plugins/synced/id-1/skills/x/SKILL.md"
 printf '1759000000\n' > "$SY/plugins/cache/mp/p/1.0.0/.orphaned_at"
 printf 'cached\n'     > "$SY/plugins/cache/mp/p/1.0.0/skills/SKILL.md"
 printf 'name: demo\n' > "$SY/skills/demo/SKILL.md"; printf 't\n' > "$SY/skills/demo/.last-complete-round"
-cp "$SRC/pin-instructions.sh" "$SRC/guard-lib.sh" "$SRC/floor-normalize.awk" "$SRC/library-log.sh" "$SRC/deploy-install-lib.sh" "$SY/bin/"
-_msy="$(sh -c '. "$1"/guard-lib.sh; floor_instr_manifest "$2"' _ "$SRC" "$SY" 2>/dev/null)"
+cp "$SRC/pin-instructions.sh" "$SRC/library-admission.sh" "$SRC/floor-normalize.awk" "$SRC/library-log.sh" "$SRC/deploy-install-lib.sh" "$SY/bin/"
+_msy="$(sh -c '. "$1"/library-admission.sh; floor_instr_manifest "$2"' _ "$SRC" "$SY" 2>/dev/null)"
 t_hasnt "B8-SYNC plugins/synced/*/.last-complete-round is not in the manifest" "$_msy" 'synced/id-1/.last-complete-round'
 t_hasnt "B8-SYNC plugins/cache/*/.orphaned_at is not in the manifest" "$_msy" '.orphaned_at'
 t_has "B8-SYNC a synced plugin's SKILL.md still is" "$_msy" 'plugins/synced/id-1/skills/x/SKILL.md'
@@ -330,13 +330,13 @@ printf 'name: x\ninjected: yes\n' > "$SY/plugins/synced/id-1/skills/x/SKILL.md"
 t_eq "B8-SYNC an instruction file under plugins/synced still turns B8 amber" 1 "$(pi --check "$SY"; echo $?)"
 smj() { printf '{"etag":"W/\\"%s\\"","rows":[{"name":"%s","source":{"source":"claudeai"},"id":"m1","updated_at":"%s"}],"parserVersion":1002}\n' "$1" "$2" "$3" > "$SY/plugins/synced/id-1/.marketplaces.json"; }
 smj e1 dir 2026-10-09T08:09:35Z; printf 'name: x\n' > "$SY/plugins/synced/id-1/skills/x/SKILL.md"; pi --apply "$SY"
-t_has "B8-SYNC .marketplaces.json is pinned (clock-free)" "$(sh -c '. "$1"/guard-lib.sh; floor_instr_manifest "$2"' _ "$SRC" "$SY" 2>/dev/null)" 'plugins/synced/id-1/.marketplaces.json'
+t_has "B8-SYNC .marketplaces.json is pinned (clock-free)" "$(sh -c '. "$1"/library-admission.sh; floor_instr_manifest "$2"' _ "$SRC" "$SY" 2>/dev/null)" 'plugins/synced/id-1/.marketplaces.json'
 smj e2 dir 2026-10-09T09:07:33Z
 t_eq "B8-SYNC a resync that rewrites only etag and updated_at leaves B8 clean" 0 "$(pi --check "$SY"; echo $?)"
 smj e2 evil 2026-10-09T09:07:33Z
 t_eq "B8-SYNC ...a changed marketplace in that list still turns B8 amber" 1 "$(pi --check "$SY"; echo $?)"
 printf 'x\n' > "$SY/skills/demo/.marketplaces.json"
-t_has "B8-SYNC the name is excluded on the plugins surface only" "$(sh -c '. "$1"/guard-lib.sh; floor_instr_manifest "$2"' _ "$SRC" "$SY" 2>/dev/null)" 'skills/demo/.marketplaces.json'
+t_has "B8-SYNC the name is excluded on the plugins surface only" "$(sh -c '. "$1"/library-admission.sh; floor_instr_manifest "$2"' _ "$SRC" "$SY" 2>/dev/null)" 'skills/demo/.marketplaces.json'
 
 t_section "B8-LOADED (harbor#478): cache/ is pinned through the entry that loads it, by content"
 RX="$TMP/rx"; RXC="$RX/plugins/cache/mp/p"; mkdir -p "$RX/bin" "$RXC/aaa111/skills/x" "$RX/skills/demo"
@@ -345,8 +345,8 @@ printf 'name: x\n' > "$RXC/aaa111/skills/x/SKILL.md"
 rxi() { # <ver> [extra entry json] — installed_plugins.json loading <ver>, as the harness writes it
   printf '{"version":2,"plugins":{"p@mp":[{"scope":"user","installPath":"%s/%s","version":"%s","gitCommitSha":"%s","installedAt":"2026-10-03T07:18:00Z","lastUpdated":"2026-10-03T07:18:00Z"}]%s}}\n' \
     "$RXC" "$1" "$1" "$1" "${2:-}" > "$RX/plugins/installed_plugins.json"; }
-rxm() { sh -c '. "$1"/guard-lib.sh; floor_instr_manifest "$2"' _ "$SRC" "$RX" 2>/dev/null; }
-cp "$SRC/pin-instructions.sh" "$SRC/guard-lib.sh" "$SRC/floor-normalize.awk" "$SRC/library-log.sh" "$SRC/deploy-install-lib.sh" "$RX/bin/"
+rxm() { sh -c '. "$1"/library-admission.sh; floor_instr_manifest "$2"' _ "$SRC" "$RX" 2>/dev/null; }
+cp "$SRC/pin-instructions.sh" "$SRC/library-admission.sh" "$SRC/floor-normalize.awk" "$SRC/library-log.sh" "$SRC/deploy-install-lib.sh" "$RX/bin/"
 rxi aaa111; pi --apply "$RX"
 _mrx="$(rxm)"
 t_has "B8-LOADED a loaded file is pinned under its entry's label" "$_mrx" '  plugins//loaded/p@mp/user/skills/x/SKILL.md'

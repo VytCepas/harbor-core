@@ -19,8 +19,8 @@ t_eq "the wired set is not empty (control)" yes "$([ "$(sh "$D/bin/decider-set.s
 t_eq "no advisory" "" "$(advs "$W" "$D")"
 
 t_section "a wired script with no row is named"
-D="$(mk planted)"; drop "$D" bin/guard-destroy.sh
-t_has "guard-destroy, whose rows are gone" "$(advs "$W" "$D")" "bin/guard-destroy.sh is wired as a hook and no standards/naming/controls.tsv row names it"
+D="$(mk planted)"; drop "$D" bin/admission-destroy.sh
+t_has "guard-destroy, whose rows are gone" "$(advs "$W" "$D")" "bin/admission-destroy.sh is wired as a hook and no standards/naming/controls.tsv row names it"
 t_eq "...and only it" 1 "$(advs "$W" "$D" | grep -c 'ADVISORY')"
 drop "$D" bin/event-hook.sh
 t_has "a recorder counts too" "$(advs "$W" "$D")" "bin/event-hook.sh"

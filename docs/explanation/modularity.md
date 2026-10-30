@@ -5,7 +5,7 @@ can change anything is before the code exists. Loading it in every session would
 cost context in exactly the sessions where it is least actionable.
 
 **Load when:** designing a new component, choosing where a seam goes, or
-wondering why `bin/guard-bash.sh` is several times the length of everything else
+wondering why `bin/admission-bash.sh` is several times the length of everything else
 here. `sh bin/lint-conventions.sh` names the file and its current length; this
 line used to carry the number and was wrong by the time anyone read it.
 
@@ -40,7 +40,7 @@ An agent has no working-memory limit, so the human argument for a monolith
 - **Compute is all-or-nothing at the module boundary.** You re-run what you
   cannot isolate.
 
-The last one is measured here, not asserted. One `guard-bash.sh` invocation
+The last one is measured here, not asserted. One `admission-bash.sh` invocation
 **forks 99 external commands** (232 ms; 97% of it inside the rule body, not
 startup). A full replay of real traffic is **~36 minutes serial**. There is no
 way to re-run *one rule* — the smallest executable unit is the whole guard. That
@@ -81,7 +81,7 @@ Three mechanisms require it:
 1. **Lint F1** requires the `HARBOR_ADMISSION_DISABLE` kill-switch to be the *first
    live line* of every guard. A guard split across files has more than one first
    line, and the escape hatch must be unmissable in the file you are reading.
-2. **B6** hash-pins *each guard file* into `.helm-pins/`. Splitting `guard-bash.sh`
+2. **B6** hash-pins *each guard file* into `.helm-pins/`. Splitting `admission-bash.sh`
    into a file per rule multiplies the pin surface by the rule count — and every one of those
    pins is a thing that can drift, be forgotten, or be tampered with individually.
 3. **Fork cost.** Rules already cost 99 forks per invocation. Per-rule *files*
@@ -182,7 +182,7 @@ concentrate in one place instead of spreading across callers.
   of independent assertions has perfectly real boundaries that nothing crosses.
   Measured 2026-08-30 across the **52** files over three hundred lines here, 36
   have real internal boundaries, two have two or more external callers, and **not
-  one meets both**. `guard-lib.sh` is the instructive case: 13 of its symbols are
+  one meets both**. `library-admission.sh` is the instructive case: 13 of its symbols are
   called from two or more other files, and its own function boundaries score
   `gain=+0.031` — below the threshold. It is correctly ONE deep shared library
   rather than a set of them, and no arrangement of its internals would follow the
@@ -223,7 +223,7 @@ Recorded because each is a plausible next proposal, and
 - **Splitting to satisfy the 300-line advisory.** The line flags outliers for
   *examination*; satisfying it is not the goal, and doing so by widening an
   interface is a regression the linter would score as an improvement.
-- **A shared library as the first move.** `bin/guard-lib.sh` earns it, and the
+- **A shared library as the first move.** `bin/library-admission.sh` earns it, and the
   number matters: **16 of 134** scripts actually `.`-source it, and **13** of its
   symbols have two or more external callers. An earlier revision of this line said
   *53 of 131*, which counted every file that mentions the string — a 3.3x

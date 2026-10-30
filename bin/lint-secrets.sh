@@ -14,7 +14,7 @@
 #   appid    an app's identity written into code (code files, not comments): a GitHub App id, installation id or client id,
 #            or a Google OAuth client id. An identity is a register entry in the private layer, never a literal in core
 # A line carrying `secret-seam:` is declared, whichever class. Scope: every tracked file plus untracked ones git does
-# not ignore, minus tests, fixtures, evals, docs, worklog, vendor, the floor (guard-*, floor-*, docs/explanation/admission-baseline.md), bin/secret
+# not ignore, minus tests, fixtures, evals, docs, worklog, vendor, the floor (admission-*, library-admission.sh, guard-*, floor-*, docs/explanation/admission-baseline.md), bin/secret
 # (the seam), this file and the pattern table. The baseline only goes down: a new read goes through `secret run`.
 set -eu
 
@@ -38,7 +38,7 @@ APPRE="(((app|client|installation)[_-]?(id|Id|ID)|APP_ID|CLIENT_ID|INSTALLATION_
 gg() { # <ERE> [-f file]
   git -C "$ROOT" grep -I --untracked -n -E "$@" -- . \
     ':!tests/**' ':!fixtures/**' ':!evals/**' ':!**/tests/**' ':!**/fixtures/**' ':!docs/**' ':!worklog/**' ':!vendor/**' \
-    ':!skills/test-strength/targets/**' ':!skills/*/EVALS/**' ':!bin/guard-*' ':!bin/floor-*' ':!docs/explanation/admission-baseline.md' ':!bin/secret' ':!bin/lint-secrets.sh' \
+    ':!skills/test-strength/targets/**' ':!skills/*/EVALS/**' ':!bin/admission-*' ':!bin/library-admission.sh' ':!bin/guard-*' ':!bin/floor-*' ':!docs/explanation/admission-baseline.md' ':!bin/secret' ':!bin/lint-secrets.sh' \
     ':!contracts/credential-patterns.tsv' ':!contracts/lint-secrets-baseline.txt' 2>/dev/null || :
 }
 declared() { # <file> - a `# secret-seam:` header in the first 40 lines
@@ -52,7 +52,7 @@ hits() { # file:line TAB class
     if [ -s "$__pf" ]; then
       git -C "$ROOT" grep -I --untracked -n -E -f "$__pf" -- . \
         ':!tests/**' ':!fixtures/**' ':!evals/**' ':!**/tests/**' ':!**/fixtures/**' ':!docs/**' ':!worklog/**' ':!vendor/**' \
-        ':!skills/test-strength/targets/**' ':!skills/*/EVALS/**' ':!bin/guard-*' ':!bin/floor-*' ':!docs/explanation/admission-baseline.md' ':!bin/secret' ':!bin/lint-secrets.sh' \
+        ':!skills/test-strength/targets/**' ':!skills/*/EVALS/**' ':!bin/admission-*' ':!bin/library-admission.sh' ':!bin/guard-*' ':!bin/floor-*' ':!docs/explanation/admission-baseline.md' ':!bin/secret' ':!bin/lint-secrets.sh' \
         ':!contracts/credential-patterns.tsv' ':!contracts/lint-secrets-baseline.txt' 2>/dev/null |
         awk -F: '$0 !~ /secret-seam:/ { printf "%s:%s\tliteral\n", $1, $2 }' || :
     fi

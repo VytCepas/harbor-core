@@ -35,7 +35,7 @@ runs() { sel "$1" --list | grep -c '^RUN'; }  # 5 = every fixture suite runs
 
 t_section "the decision"
 t_eq "an 'always' suite runs for any change" RUN "$(verdict 'skills/example-skill/SKILL.md' always-test.sh)"
-t_eq "a path matching a declared glob selects its suite" RUN "$(verdict 'bin/guard-bash.sh' alpha-test.sh)"
+t_eq "a path matching a declared glob selects its suite" RUN "$(verdict 'bin/admission-bash.sh' alpha-test.sh)"
 t_eq "a suite no changed path matches stands down (the saving itself)" SKIP "$(verdict 'skills/example-skill/SKILL.md' alpha-test.sh)"
 t_eq "'*' crosses '/': bin/* selects a nested path" RUN "$(verdict 'bin/nested/deep/thing.sh' alpha-test.sh)"
 t_eq "a suite with no declaration runs: silence means run" RUN "$(verdict 'skills/example-skill/SKILL.md' undeclared-test.sh)"
@@ -257,7 +257,7 @@ t_eq "the real manifest lists suites" yes "$([ "$N_MAN" -gt 0 ] && echo yes || e
 t_eq "every real manifest suite reaches a verdict" "$N_MAN" "$(real 'skills/example-skill/SKILL.md' | grep -cE '^(RUN|SKIP)')"
 t_eq "a skills-only change does not select the floor (harbor#150)" SKIP \
   "$(real 'skills/example-skill/SKILL.md' | awk '$2 == "tests/admission/baseline/baseline.test.sh" { print $1 }')"
-t_eq "a guard change selects the floor" RUN "$(real 'bin/guard-bash.sh' | awk '$2 == "tests/admission/baseline/baseline.test.sh" { print $1 }')"
+t_eq "a guard change selects the floor" RUN "$(real 'bin/admission-bash.sh' | awk '$2 == "tests/admission/baseline/baseline.test.sh" { print $1 }')"
 # harbor#150: each declaration added to stop a known owner's path running everything.
 rv() { real "$1" | awk -v s="$2" '$2 == s { print $1; exit }'; }  # <path> <suite>
 t_eq "the naming registry is classified, not run-everything" SKIP "$(rv standards/naming/exemptions.tsv tests/admission/baseline/baseline.test.sh)"

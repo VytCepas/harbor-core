@@ -11,8 +11,8 @@ command -v jq >/dev/null 2>&1 || exit 0
 if [ "${1:-}" = --keys ]; then SID="${2:-}"; else SID="$(cat | jq -r '.session_id // empty' 2>/dev/null)" || exit 0; fi
 case "$SID" in ''|*[!A-Za-z0-9_-]*) exit 0 ;; esac
 [ "${#SID}" -le 64 ] || exit 0
-[ -f "$CFG/bin/guard-lib.sh" ] || exit 0
-. "$CFG/bin/guard-lib.sh" >/dev/null 2>&1 || exit 0
+[ -f "$CFG/bin/library-admission.sh" ] || exit 0
+. "$CFG/bin/library-admission.sh" >/dev/null 2>&1 || exit 0
 HOST=unknown-host
 if [ -f "$CFG/.helm-obs-host" ] && [ ! -L "$CFG/.helm-obs-host" ]; then
   _h=""; { IFS= read -r _h < "$CFG/.helm-obs-host"; } 2>/dev/null || :

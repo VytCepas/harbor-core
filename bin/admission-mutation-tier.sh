@@ -6,7 +6,7 @@
 #   sh admission-mutation-tier.sh --json <path>...
 #   sh admission-mutation-tier.sh --report [--live | <config-dir>]
 #
-# WHY A TIER AND NOT A BOOLEAN. `guard-selfedit.sh` answers protected / not
+# WHY A TIER AND NOT A BOOLEAN. `admission-self-edit.sh` answers protected / not
 # protected, which is the right shape for a veto and the wrong shape for a
 # question like "may a rule be strict about settings.json and relaxed about a
 # cache". Tiers are that second question, and they are what a later rule would
@@ -15,7 +15,7 @@
 # IT CHANGES NO GUARD BEHAVIOUR, AND IT IS NOT INERT EITHER. A tier table nothing
 # reads is a wish (policy/constitution.md). What makes this one load-bearing without
 # moving a B6 hash-pinned surface is `tests/admission/mutation-tier/mutation-tier.test.sh`: it fires the REAL
-# guard-selfedit.sh at every fixture path and re-reads the whole permissions.deny
+# admission-self-edit.sh at every fixture path and re-reads the whole permissions.deny
 # array, so the table and the surface cannot drift apart. A divergence fails CI.
 #
 # DELIBERATELY ONE FILE (docs/explanation/modularity.md): one predicate plus two
@@ -64,7 +64,7 @@ while [ "$CFG" != "/" ] && [ "${CFG%/}" != "$CFG" ]; do CFG="${CFG%/}"; done
 # Matched against the path RELATIVE to the config dir, lowercased, because APFS is
 # case-insensitive by default: `Settings.json` reaches the same inode, and a
 # case-sensitive POSIX glob would call it tier 3. That exact one-character bypass
-# was found against guard-selfedit.sh in red-team pass 2, so this reader must not
+# was found against admission-self-edit.sh in red-team pass 2, so this reader must not
 # reintroduce it.
 #
 # ORDER IS THE RULE. `bin/*` is tier 1 while `bin/` under a pins directory is not a
@@ -95,7 +95,7 @@ _lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
 # rel_of <path> — the path relative to $CFG, or the path itself when outside it.
 # Physical resolution is NOT attempted here: this is a classifier over a NAME, and
 # a name is all a caller may have (a path that does not exist yet still has a
-# tier). guard-selfedit.sh resolves physically before deciding, which is correct
+# tier). admission-self-edit.sh resolves physically before deciding, which is correct
 # for a veto and is a different job.
 # A PATH OUTSIDE THE CONFIG DIR IS NOT TIER 3, IT IS UNJUDGED — and conflating the
 # two was a real defect in the first draft. Everything unmatched fell through to
@@ -112,7 +112,7 @@ _lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
 # fixing one spelling had broken another.
 #
 # Leading separators are therefore dropped after prefix removal. Interior doubles
-# need no handling: `bin//guard-bash.sh` still matches the `bin/*` glob.
+# need no handling: `bin//admission-bash.sh` still matches the `bin/*` glob.
 rel_of() {
   case "$1" in
     "$CFG"/*)
@@ -131,7 +131,7 @@ guard_blocks() { # <abs-path> <sandbox-cfg> -> yes|no|unknown
   # matters and the repo copies are 0644. Testing for the exec bit reported
   # `unknown` for every path — a whole column of "could not tell" that read as if
   # the probe had run.
-  [ -r "$2/bin/guard-selfedit.sh" ] || { printf 'unknown'; return 0; }
+  [ -r "$2/bin/admission-self-edit.sh" ] || { printf 'unknown'; return 0; }
   # THE PARENT DIRECTORY MUST EXIST, and leaving it out was a false-positive
   # factory. guard-selfedit resolves the target PHYSICALLY (floor_norm_path) before
   # matching, and an unresolvable path keeps a spelling the protected globs miss —
@@ -142,7 +142,7 @@ guard_blocks() { # <abs-path> <sandbox-cfg> -> yes|no|unknown
   mkdir -p "$(dirname -- "$1")" 2>/dev/null || :
   _rc=0
   printf '{"tool_name":"Edit","tool_input":{"file_path":"%s"}}' "$1" \
-    | CLAUDE_CONFIG_DIR="$2" sh "$2/bin/guard-selfedit.sh" >/dev/null 2>&1 || _rc=$?
+    | CLAUDE_CONFIG_DIR="$2" sh "$2/bin/admission-self-edit.sh" >/dev/null 2>&1 || _rc=$?
   [ "$_rc" = "2" ] && printf 'yes' || printf 'no'
 }
 
@@ -226,7 +226,7 @@ fi
 
 SB="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -rf "$SB"' EXIT INT TERM
 mkdir -p "$SB/cfg/bin"
-for _g in guard-lib.sh guard-selfedit.sh; do
+for _g in library-admission.sh admission-self-edit.sh; do
   [ -f "$ROOT/bin/$_g" ] && cp "$ROOT/bin/$_g" "$SB/cfg/bin/$_g"
 done
 printf '{"permissions":{"allow":[],"deny":[]}}\n' > "$SB/cfg/settings.json"
@@ -264,10 +264,10 @@ EOF
 while IFS= read -r _gl; do
   [ -n "$_gl" ] || continue
   log_warn "$_gl"
-  log_nofix "harbor#44 (deny entries: bin/floor-deny.sh; guard globs: bin/guard-selfedit.sh) — this report never repairs"
+  log_nofix "harbor#44 (deny entries: bin/floor-deny.sh; guard globs: bin/admission-self-edit.sh) — this report never repairs"
 done <<EOF
 $_gapl
 EOF
 log_note "single-layer or unprotected tier-0/1 paths: $_gaps"
-log_note "it reports and never repairs: every path above is one guard-selfedit.sh protects, so a version that could close these could also open them"
+log_note "it reports and never repairs: every path above is one admission-self-edit.sh protects, so a version that could close these could also open them"
 log_end; exit $?

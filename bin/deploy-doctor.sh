@@ -51,7 +51,7 @@ probe() { # <bin> <severity: fatal|degraded|optional> <what breaks>
 }
 
 # ── fatal: the floor fails OPEN or the recovery path cannot run ─────────────
-probe jq       fatal    "every guard parses its hook payload with jq; without it floor-hook.sh is the only thing between a missing parse and a silent allow (B9)"
+probe jq       fatal    "every guard parses its hook payload with jq; without it admission-hook.sh is the only thing between a missing parse and a silent allow (B9)"
 probe grep     fatal    "the rule interpreter itself. FLOOR_GREP pins /usr/bin/grep precisely so PATH cannot change a security verdict"
 probe awk      fatal    "floor-normalize.awk builds the segment table every Bash rule reads"
 probe sed      fatal    "used throughout the guards and the installer"
@@ -140,7 +140,7 @@ _log_probes
 # Which grep actually answers matters more than whether one exists.
 #
 # ASK THE LIBRARY, DO NOT SCRAPE IT (harbor#371). This line used to
-# sed the FLOOR_GREP assignment out of guard-lib.sh and print what was left. That
+# sed the FLOOR_GREP assignment out of library-admission.sh and print what was left. That
 # assignment is `FLOOR_GREP="${_fg:-$( [ -x /usr/bin/grep ] && echo … )}"`, so the
 # scrape returned the SUBSTITUTION EXPRESSION and the report printed
 #     FLOOR_GREP pin : $( [ -x /usr/bin/grep ] && echo /usr/bin/grep || echo grep )
@@ -153,9 +153,9 @@ _log_probes
 # and with a visible fallback: if the library cannot be read the line says so
 # rather than printing an empty pin, which would read as "unset" and is a
 # different and much more alarming claim.
-_fg_pin="$(sh -c '. "$1/bin/guard-lib.sh" >/dev/null 2>&1 && printf %s "${FLOOR_GREP:-}"' _ "$ROOT" 2>/dev/null)"
+_fg_pin="$(sh -c '. "$1/bin/library-admission.sh" >/dev/null 2>&1 && printf %s "${FLOOR_GREP:-}"' _ "$ROOT" 2>/dev/null)"
 log_head "the interpreter that decides verdicts"
-log_note "FLOOR_GREP pin : ${_fg_pin:-<could not resolve — bin/guard-lib.sh unreadable>}"
+log_note "FLOOR_GREP pin : ${_fg_pin:-<could not resolve — bin/library-admission.sh unreadable>}"
 log_note "first in PATH  : $(command -v grep)"
 
 # THE CAVEAT IS UNCONDITIONAL, AND IT WAS NOT. It sat on the all-present branch

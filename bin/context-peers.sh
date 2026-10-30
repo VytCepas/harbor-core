@@ -20,7 +20,7 @@ set -eu
 
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 SESS="${HARBOR_SESSION_REGISTRY_DIR:-${HARBOR_SESSIONS_DIR:-$CFG/sessions}}"
-# harbor#813: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./guard-lib.sh from it.
+# harbor#813: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./library-admission.sh from it.
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
 # stdout is the table or JSON a caller parses, so the log goes to stderr (contracts/logging.md).
 LOG_FD=2; . "$DIR/library-log.sh"
@@ -182,7 +182,7 @@ tree_of() { # <cwd> -> working-tree root, or the cwd itself
 }
 branch_of() { git -C "$1" rev-parse --abbrev-ref HEAD 2>/dev/null || printf ''; }
 governed_of() { # <cwd> -> repo | ambient
-  ( CLAUDE_PROJECT_DIR="$1"; . "$DIR/guard-lib.sh" 2>/dev/null || exit 1
+  ( CLAUDE_PROJECT_DIR="$1"; . "$DIR/library-admission.sh" 2>/dev/null || exit 1
     if floor_in_repo; then printf 'repo'; else printf 'ambient'; fi ) 2>/dev/null || printf '?'
 }
 

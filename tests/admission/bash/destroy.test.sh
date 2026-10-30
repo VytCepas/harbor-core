@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# guard-bash.sh (harbor#3, B3): the destroy part of its rule table, on an installed floor.
+# admission-bash.sh (harbor#3, B3): the destroy part of its rule table, on an installed floor.
 set -u
 . "$(dirname "$0")/../../lib/core.sh"
 . "$(dirname "$0")/../../lib/table.sh"
@@ -30,5 +30,5 @@ mkdir -p "$CLAUDE_CONFIG_DIR/plugins"
 printf '%s\n' '{"version":2,"plugins":{"project-init-lifecycle@project-init":[{"scope":"user","installPath":"/nowhere","version":"1"}]}}' \
   > "$CLAUDE_CONFIG_DIR/plugins/installed_plugins.json"
 
-t_table "$CLAUDE_CONFIG_DIR/bin/guard-bash.sh" "$T_ROOT/tests/admission/bash/destroy.jsonl"
+t_table "$CLAUDE_CONFIG_DIR/bin/admission-bash.sh" "$T_ROOT/tests/admission/bash/destroy.jsonl"
 t_done

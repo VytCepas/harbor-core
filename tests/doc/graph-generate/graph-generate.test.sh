@@ -143,7 +143,7 @@ t_eq "harbor refs is the same answer" same "$([ -s "$T_TMP/a" ] && cmp -s "$T_TM
 
 t_section "the real tree: refs --sites equals git grep for its most-wired paths"
 REAL="$T_TMP/real"; mkdir -p "$REAL"
-for p in bin/guard-bash.sh bin/guard-lib.sh bin/harbor README.md contracts/suites.txt bin/library-log.sh; do
+for p in bin/admission-bash.sh bin/library-admission.sh bin/harbor README.md contracts/suites.txt bin/library-log.sh; do
   sh "$TOOL" --out "$REAL/graph.tsv" --refs --sites "$p" 2>/dev/null > "$REAL/a"; git -C "$T_ROOT" grep -n -F -e "$p" | cut -d: -f1,2 > "$REAL/b"
   t_eq "$p ($(wc -l < "$REAL/b" | tr -d ' ') sites)" same "$([ -s "$REAL/b" ] && cmp -s "$REAL/a" "$REAL/b" && echo same || echo differ)"
 done

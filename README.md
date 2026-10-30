@@ -40,7 +40,7 @@ which is which is itself rule №2.
 |---|---|
 | **Governed by mechanism, not by prose** | **Real.** Rules that cannot fail the build are documentation. Lint rules, frozen contracts, mutation-checked suites, a POSIX floor under everything. |
 | **Scales by skills** | **Real, with a price.** 28 vendored. But an *ambient* skill costs context in every session forever — the invoked-only tier (`disable-model-invocation: true`) is what makes scaling free, and `bin/context-budget.sh` is what keeps it honest. |
-| **Observes itself** | **Real, and now producing.** `floor_log_decision()` in `bin/guard-lib.sh` is called by every floor guard — harbor#41 — and the guards are installed, so the ledger is being written. This row said "producing nothing" until 2026-08-03 and was wrong on the machine it described; ask `harbor observe` for what is in it rather than believing any prose about it, including this. Built and running stay different facts — the row states which it means. |
+| **Observes itself** | **Real, and now producing.** `floor_log_decision()` in `bin/library-admission.sh` is called by every floor guard — harbor#41 — and the guards are installed, so the ledger is being written. This row said "producing nothing" until 2026-08-03 and was wrong on the machine it described; ask `harbor observe` for what is in it rather than believing any prose about it, including this. Built and running stay different facts — the row states which it means. |
 | **Improves from what it observed** | **Not yet, and deliberately gated.** See below. harbor#744 is the workstream that builds it: capture, propose, build to standard, approve, retire. |
 
 ### Self-improvement is a proposal loop, not an autonomous one

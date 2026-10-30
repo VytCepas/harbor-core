@@ -25,11 +25,11 @@ subject-kind  posix-shell
 lane          deep
 cost          20
 sites         3
-seed          repo:bin/guard-bash.sh
+seed          repo:bin/admission-bash.sh
 stage         copy-tree repo:bin $WORK/base
 stage         copy-tree repo:bin $WORK/cand
 stage         mkdir $WORK/cfg
-place         $WORK/cand/guard-bash.sh
+place         $WORK/cand/admission-bash.sh
 checker-cmd   sh bin/floor-equiv.sh --baseline $WORK/base --candidate $WORK/cand --corpus fixtures/admission-corpus.jsonl --limit 30 --config $WORK/cfg
 green         0
 red           1
@@ -59,4 +59,4 @@ control LEGIT-FIND  cmd CLAUDE_CONFIG_DIR=$WORK/cfg sh $SUBJECT < $TDIR/floor/le
 # DECLARED AND ABSENT ON THIS BOX. cc-audit covers a different axis entirely —
 # malicious payloads in a skill — and naming it here is how a reader learns that
 # axis was not measured, rather than assuming this run covered it.
-scanner cc-audit cc-audit scan $WORK/cand/guard-bash.sh
+scanner cc-audit cc-audit scan $WORK/cand/admission-bash.sh

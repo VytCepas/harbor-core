@@ -13,7 +13,7 @@
 #
 # THE EDGE TYPES, each derived from a source a person already maintains, never typed by hand:
 #   references   a file's line holds another node's path as a literal substring. In its own tree a path
-#                is unqualified (`bin/guard-bash.sh`); from another tree it is qualified, `<repo-dir>/<path>`
+#                is unqualified (`bin/admission-bash.sh`); from another tree it is qualified, `<repo-dir>/<path>`
 #                or `<system>:<path>`. Substring, not word, semantics, ON PURPOSE: it is the set
 #                `git grep -n -F` finds, so `--refs --sites P` and `git grep -n -F P | cut -d: -f1,2` diff to
 #                nothing, and a rename that rewrites the set leaves nothing behind (`bin/harbor` inside
@@ -81,10 +81,10 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 if [ "$MODE" = refs ] && [ -z "$ARG" ]; then
-  log_fail "--refs needs a path or an id"; log_fix "harbor refs bin/guard-bash.sh"; log_end || :; exit 2
+  log_fail "--refs needs a path or an id"; log_fix "harbor refs bin/admission-bash.sh"; log_end || :; exit 2
 fi
 if [ "$SITES" = 1 ] && [ "$MODE" != refs ]; then
-  log_fail "--sites only qualifies --refs"; log_fix "harbor refs --sites bin/guard-bash.sh"; log_end || :; exit 2
+  log_fail "--sites only qualifies --refs"; log_fix "harbor refs --sites bin/admission-bash.sh"; log_end || :; exit 2
 fi
 [ -n "$ROOT" ] || ROOT="$SRC/.."
 ROOT="$(CDPATH= cd -- "$ROOT" 2>/dev/null && pwd -P)" || { log_fail "--root is not a directory"; log_fix "pass a checkout: --root <dir>"; log_end || :; exit 2; }

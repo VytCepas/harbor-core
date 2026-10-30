@@ -1,11 +1,11 @@
 #!/usr/bin/env sh
-# guard-destroy.sh (harbor#1290): a discarding git command first snapshots the worktree it acts on to
+# admission-destroy.sh (harbor#1290): a discarding git command first snapshots the worktree it acts on to
 # refs/snapshots/, then runs exactly as before; a branch switch takes none; a failure never refuses.
 set -u
 . "$(dirname "$0")/../../lib/core.sh"
 t_init
 
-G="$T_ROOT/bin/guard-destroy.sh"
+G="$T_ROOT/bin/admission-destroy.sh"
 GI="-c user.name=t -c user.email=t@example.invalid -c commit.gpgsign=false -c init.defaultBranch=main"
 
 # _guard <cwd|-> <command> — runs the guard on a Bash payload; sets OUT, ERR, RC. `-` sends no .cwd.

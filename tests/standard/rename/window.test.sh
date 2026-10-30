@@ -197,6 +197,11 @@ t_has "the report names the window" "$REP" "env	rename-0001	HELM_FLOOR_SHADOW	HA
 cc applied
 t_exit "a second --apply is a no-op" 0 crun --apply --wave W5
 t_eq "...and changes nothing" "" "$(git -C "$CR" status --porcelain -- . ':!build')"
+printf 'HELM_FLOOR_SHADOW=1 sh bin/probe.sh   # the OLD spelling on purpose: it keeps the window proved\n' > "$CR/tests/window-test.sh"; cc "a suite sets the old name"
+t_exit "a re-run once the new name is in the tree" 0 crun --apply --wave W5
+t_has "...leaves a suite that sets the old name on purpose (harbor#961)" "$(cat "$CR/tests/window-test.sh")" "HELM_FLOOR_SHADOW=1 sh bin/probe.sh"
+t_eq "...and the tree clean" "" "$(git -C "$CR" status --porcelain -- . ':!build')"
+git -C "$CR" rm -q tests/window-test.sh; cc "drop it"
 printf 'echo "$HELM_FLOOR_SHADOW"\n' >> "$CR/bin/probe.sh"
 t_exit "a reader added after the apply is not applied yet: the window would wrap it" 1 crun --residual --wave W5
 git -C "$CR" checkout -q -- bin/probe.sh

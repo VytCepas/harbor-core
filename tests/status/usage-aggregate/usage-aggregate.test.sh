@@ -62,7 +62,7 @@ ux "U-8 an unknown option" 2 "$PROJ" --nonsuch "$CFG"
 ux "U-8 an absent transcript store" 2 "$TMP/absent" "$CFG"
 
 t_section "U-9: the host key is guard-lib's canonical token, never hostname (harbor#119)"
-t_eq "U-9 host key is floor_host_token" "$(. "$T_ROOT/bin/guard-lib.sh"; floor_host_token)" "$HOST"
+t_eq "U-9 host key is floor_host_token" "$(. "$T_ROOT/bin/library-admission.sh"; floor_host_token)" "$HOST"
 t_eq "U-9 host key is a safe path segment" safe "$(case "$HOST" in (''|*[!A-Za-z0-9_-]*) echo unsafe ;; (*) echo safe ;; esac)"
 
 t_section "U-10: the ledger carries integers and labels, never payload text"

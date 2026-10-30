@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # admission-mutation-tier.sh, the four-tier path classifier (M10, harbor#44, PR #126/#128). It fires the REAL
-# guard-selfedit.sh at every fixture path and rebuilds the deny array from the repo's own writers
+# admission-self-edit.sh at every fixture path and rebuilds the deny array from the repo's own writers
 # (sec0-harden + floor-deny) into a sandbox config dir, so the table and the enforced surface agree.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 TOOL="$T_ROOT/bin/admission-mutation-tier.sh"; FIX="$T_ROOT/fixtures/mutation-tier/cases.json"; B="$T_TMP"
@@ -10,7 +10,7 @@ jtrue() { CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" --json "$1" 2>/dev/null | jq -e "$
 manifest() { find "$1" -type f -exec ls -ld -- {} + 2>/dev/null | awk '{print $5, $NF}' | sort; }  # <dir>
 
 CFG="$B/mt"; mkdir -p "$CFG/bin"
-for g in guard-lib.sh guard-selfedit.sh guard-integrity.sh; do [ -f "$T_ROOT/bin/$g" ] && cp "$T_ROOT/bin/$g" "$CFG/bin/$g"; done
+for g in library-admission.sh admission-self-edit.sh admission-integrity.sh; do [ -f "$T_ROOT/bin/$g" ] && cp "$T_ROOT/bin/$g" "$CFG/bin/$g"; done
 printf '{"permissions":{"allow":[],"deny":[]}}\n' > "$CFG/settings.json"
 CLAUDE_CONFIG_DIR="$CFG" sh "$T_ROOT/bin/deploy-harden.sh" --apply --dir "$CFG" >/dev/null 2>&1
 CLAUDE_CONFIG_DIR="$CFG" sh "$T_ROOT/bin/floor-deny.sh" --apply --dir "$CFG" >/dev/null 2>&1
@@ -30,7 +30,7 @@ while IFS='	' read -r p want; do
   [ -n "$p" ] || continue
   mkdir -p "$(dirname -- "$CFG/$p")"
   printf '{"tool_name":"Edit","tool_input":{"file_path":"%s"}}' "$CFG/$p" \
-    | CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/guard-selfedit.sh" >/dev/null 2>&1
+    | CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/admission-self-edit.sh" >/dev/null 2>&1
   rc=$?; got=no; [ "$rc" = 2 ] && got=yes
   t_eq "MT-2 guard-selfedit blocks $p" "$want" "$got"
 done <<CASES
@@ -58,8 +58,8 @@ t_has "MT-5a the report flags a guard-only tier-1 path" "$rep" 'NO DENY BACKSTOP
 # MT-5b's subject was .helm-obs-salt, deny-only until harbor#779. The guard now covers it, so the
 # report is asked about a copy of the guard with that arm cut: the same gap, planted.
 MR="$B/mroot"; mkdir -p "$MR/bin" "$MR/fixtures/mutation-tier"
-cp "$FIX" "$MR/fixtures/mutation-tier/"; cp "$T_ROOT/bin/guard-lib.sh" "$MR/bin/"
-sed '/"\$root\/\.helm-obs-salt"/d' "$T_ROOT/bin/guard-selfedit.sh" > "$MR/bin/guard-selfedit.sh"
+cp "$FIX" "$MR/fixtures/mutation-tier/"; cp "$T_ROOT/bin/library-admission.sh" "$MR/bin/"
+sed '/"\$root\/\.helm-obs-salt"/d' "$T_ROOT/bin/admission-self-edit.sh" > "$MR/bin/admission-self-edit.sh"
 _mt5() { printf '%s\n' "$1" | awk '$1 == ".helm-obs-salt"'; }  # <report> → the salt's row
 t_has "MT-5b the report flags a deny-only tier-0 path (the salt's guard arm cut)" \
   "$(_mt5 "$(HARBOR_SCOPE_ROOT="$MR" sh "$TOOL" --report "$CFG" 2>/dev/null)")" 'guard does not cover it'
@@ -95,7 +95,7 @@ t_eq "MT-12n ...and the summary last" 'mutation-tier: 0 ok, 1 failed, 0 warnings
 
 t_section "MT-6: case-folding, because APFS is case-insensitive"
 t_eq "MT-6a Settings.json is tier 0" 0 "$(tier "$CFG/Settings.json")"
-t_eq "MT-6b BIN/guard-bash.sh is tier 1" 1 "$(tier "$CFG/BIN/guard-bash.sh")"
+t_eq "MT-6b BIN/admission-bash.sh is tier 1" 1 "$(tier "$CFG/BIN/admission-bash.sh")"
 
 t_section "MT-7: a path that does not exist still has a tier"
 t_eq "MT-7a an absent path classifies" 3 "$(tier "$CFG/settings.json.new")"
@@ -125,10 +125,10 @@ t_section "MT-11: every config-dir spelling a caller can produce (PR #126/#128)"
 sp="$B/spell"; mkdir -p "$sp/bin"
 for c in "$sp" "$sp/" "$sp///"; do
   t_eq "MT-11 settings.json under '$c'" 0 "$(tier "$c/settings.json" "$c")"
-  t_eq "MT-11 bin/guard-bash.sh under '$c'" 1 "$(tier "$c/bin/guard-bash.sh" "$c")"
+  t_eq "MT-11 bin/admission-bash.sh under '$c'" 1 "$(tier "$c/bin/admission-bash.sh" "$c")"
   t_eq "MT-11 cache/x under '$c' stays tier 3" 3 "$(tier "$c/cache/x" "$c")"
   t_eq "MT-11 /etc/passwd under '$c' stays outside" outside "$(scope /etc/passwd "$c")"
   t_eq "MT-11 a CLEAN settings.json under '$c'" 0 "$(tier "$sp/settings.json" "$c")"
-  t_eq "MT-11 a CLEAN bin/guard-bash.sh under '$c'" 1 "$(tier "$sp/bin/guard-bash.sh" "$c")"
+  t_eq "MT-11 a CLEAN bin/admission-bash.sh under '$c'" 1 "$(tier "$sp/bin/admission-bash.sh" "$c")"
 done
 t_done

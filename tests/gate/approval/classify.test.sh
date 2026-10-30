@@ -60,7 +60,7 @@ RC=0; sh "$C" >/dev/null 2>&1 || RC=$?
 t_eq "no repo root: usage, exit 2" 2 "$RC"
 
 t_section "harbor's register: the policy's paths are protected"
-for p in policy/constitution.md docs/explanation/verification-expanded.md bin/guard-bash.sh bin/floor-install.sh bin/guard-lib.sh \
+for p in policy/constitution.md docs/explanation/verification-expanded.md bin/admission-bash.sh bin/floor-install.sh bin/library-admission.sh \
          bin/floor-normalize.awk hooks/pre-commit context-rules/user/x.md context-rules/harbor/merge-note.sh skills/x/SKILL.md \
          bin/deploy-runtime-install.sh bin/deploy.sh bin/deploy-restore.sh bin/deploy-harden.sh bin/pin-instructions.sh \
          contracts/required-checks.tsv contracts/hooks.md .github/workflows/governance.yml bin/gate-approve.sh \

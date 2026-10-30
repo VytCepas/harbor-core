@@ -53,6 +53,9 @@
 #                                in the manifest, or were committed at a repo path: not a box-only edit
 #   il_renamed_retire <repo> <pins 0|1> <name>…   the old names of these just-installed bin/ names (renames.tsv):
 #                                each old copy becomes the checkout's shim (or goes), its pin goes when <pins> is 1
+#   il_renamed_rewire <json> <repo> <cfg> <name>…   settings JSON with every hook command word <cfg>/bin/<old> of these
+#                                names (renames.tsv) rewritten to <cfg>/bin/<new>, a duplicate it makes dropped
+#   il_renamed_old <repo> <name>   the old names renames.tsv records for one bin/ name, one per line
 #
 # Set before il_target when the default is wrong: IL_LIVE_DIR (the live target, default $HOME/.claude),
 # IL_ENV (the variable that must agree with the target, default CLAUDE_CONFIG_DIR, empty for none),
@@ -465,6 +468,37 @@ IREOF
     log_fix "compare it with the file it was renamed to (standards/naming/renames.tsv), keep what you need, then delete it and its .helm-pins entry"
   fi
   return 0
+}
+
+# THE HOOK COMMANDS OF A RENAMED FILE (harbor#961 W6). A box wired before a rename runs its guards under the old
+# names; the installer that ships the new ones merges its table additively, so both would be wired and every call
+# would run each guard twice, the old through its shim. So before the merge, a hook command word that is exactly
+# <cfg>/bin/<old> of a file this installer installs becomes <cfg>/bin/<new>, and an entry that is now the same
+# command as one before it in its matcher group is dropped (the first keeps its onFailure). A command naming
+# anything else, an operator's own hook among them, is untouched.
+il_renamed_pairs() { # <repo root> <installed name>… -> old TAB new, one per renames.tsv bin/ row whose new name is listed
+  _rp_r="$1"; shift
+  [ -f "$_rp_r/standards/naming/renames.tsv" ] || return 0
+  printf '%s\n' "$@" | awk -F'\t' 'NR == FNR { w[$0] = 1; next }
+      /^#/ || NF < 3 { next }
+      $2 ~ /^bin\/[^\/]+$/ && $3 ~ /^bin\/[^\/]+$/ {
+        o = substr($2, 5); n = substr($3, 5); if ((n in w) && o != n) print o "\t" n }' - "$_rp_r/standards/naming/renames.tsv"
+}
+il_renamed_old() { il_renamed_pairs "$1" "$2" | cut -f1; }
+il_renamed_rewire() { # <settings-json> <repo root> <cfg dir> <installed name>… -> new json on stdout
+  _rw_j="$1"; _rw_r="$2"; _rw_d="$3"; shift 3
+  _rw_m="$(il_renamed_pairs "$_rw_r" "$@" | jq -R -s 'split("\n") | map(select(length > 0) | split("\t") | {o: .[0], n: .[1]})')" || _rw_m='[]'
+  jq --arg d "$_rw_d/bin/" --argjson m "${_rw_m:-[]}" '
+    def rw: split(" ") | map(. as $t | ([$m[] | select($d + .o == $t) | $d + .n][0] // $t)) | join(" ");
+    def dedupe: reduce .[] as $h ([]; if ($h | type) == "object" and ($h.command | type) == "string"
+                                          and (map(select(type == "object") | .command) | index($h.command)) != null
+                                       then . else . + [$h] end);
+    if ($m | length) == 0 or (.hooks | type) != "object" then . else
+      .hooks |= with_entries(.value |= (if type != "array" then . else map(
+        if type == "object" and (.hooks | type) == "array"
+        then .hooks |= (map(if type == "object" and (.command | type) == "string" then .command |= rw else . end) | dedupe)
+        else . end) end))
+    end' "$_rw_j"
 }
 
 # THE GIT VERBS REGISTER (harbor#1291). floor-deny adds the allow and ask rules contracts/git-verbs.md's rows imply

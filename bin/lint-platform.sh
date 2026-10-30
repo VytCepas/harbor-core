@@ -20,7 +20,7 @@ CLIP='wl-paste|wl-copy|xclip|xsel|powershell\.exe|clip\.exe'
 
 # Files that hold a call as DATA the floor refuses or matches, with no call to port: the guards' rule patterns,
 # the lint's own rules, this file, and the wrapper-name list the command normalizer reads. A new name is a decision.
-exempt() { case "$1" in guard-*.sh|lint-conventions.sh|lint-platform.sh|floor-normalize.awk) return 0 ;; esac; return 1; }
+exempt() { case "$1" in admission-*.sh|library-admission.sh|guard-*.sh|lint-conventions.sh|lint-platform.sh|floor-normalize.awk) return 0 ;; esac; return 1; }
 # The helpers: the one place each call is allowed to live (harbor#618).
 helper() { case "$1" in library-alert.sh) return 0 ;; esac; return 1; }
 # deploy-doctor.sh is macOS-only for its optional `launchctl` probe, declared here and not in its header: lint LOG1's

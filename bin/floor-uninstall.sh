@@ -12,7 +12,7 @@
 # WHAT IT REMOVES IS READ FROM floor-install.sh, never listed here (harbor#766):
 # its GUARDS payload, the scripts in its wiring table (floor_hooks), and every
 # hook that names one of them or matches a table row. This file kept its own
-# copies and they drifted: four hooks stayed wired to a deleted guard-lib.sh.
+# copies and they drifted: four hooks stayed wired to a deleted library-admission.sh.
 #
 # Kept: what runtime-install also ships and wires, while it is on this box; the
 # recovery tooling; the SEC-0 read-deny set and the B1 deny entries; mode locks,
@@ -63,7 +63,11 @@ for _f in $GUARDS $EVENTS $GATES $(printf '%s\n' "$ROWS" | cut -d';' -f3); do
   case "$_f" in -*) continue ;; esac
   case " $PAYLOAD " in *" $_f "*) ;; *) PAYLOAD="${PAYLOAD:+$PAYLOAD }$_f" ;; esac
 done
-# SHARED OWNERSHIP. runtime-install ships guard-lib.sh and context-resolve.sh too,
+# A box not redeployed since a rename still wires and holds the old names (harbor#961 W6): those are the floor's too.
+for _f in $PAYLOAD; do
+  for _o in $(il_renamed_old "$SRC/.." "$_f"); do case " $PAYLOAD " in *" $_o "*) ;; *) PAYLOAD="$PAYLOAD $_o" ;; esac; done
+done
+# SHARED OWNERSHIP. runtime-install ships library-admission.sh and context-resolve.sh too,
 # and its own hooks (memory-harvest, context-resolve at SessionStart) load them, so
 # removing them wherever the runtime is installed breaks hooks this tool never
 # wired. Present = its stamp, or a file only it ships.

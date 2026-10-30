@@ -12,7 +12,7 @@
 # so the exit 2 is a verdict a human acts on, not a gate.) But three things the operator needs were sitting behind that
 # block for no reason:
 #
-#   1. guard-lib.sh is a LIBRARY. worklog-push.sh (and the retired pull hook, #311) sourced it,
+#   1. library-admission.sh is a LIBRARY. worklog-push.sh (and the retired pull hook, #311) sourced it,
 #      it ships with the floor, and so both hooks have been exiting 1 with zero
 #      output at every SessionStart and Stop — the git-backed work-log has not
 #      synced at all. Copying a library wires nothing and vetoes nothing.
@@ -57,13 +57,13 @@ if [ ! -f "$S" ]; then
   log_end; exit 1
 fi
 
-# guard-lib.sh first and by name: it is the dependency that was missing, and the
+# library-admission.sh first and by name: it is the dependency that was missing, and the
 # reason the work-log died. The rest are the L0-5 surfaces themselves.
 #
 # context-resolve.sh is the SECOND HALF OF THE SAME COUPLING DEFECT, found
 # 2026-07-30 after this installer had already run: it ships in floor-install.sh's
 # GUARDS list, so it was trapped behind the same blocked install, and both engine
-# hooks read the per-session verdict IT WRITES. Copying guard-lib.sh restored the
+# hooks read the per-session verdict IT WRITES. Copying library-admission.sh restored the
 # dependency and not the function — `floor_engine_stand_down` then treated an absent
 # `.helm-context/<session_id>` as "stand down" (it no longer reads it, harbor#954), so worklog-push
 # kept exiting 0 having written nothing, which is indistinguishable from success.
@@ -194,7 +194,7 @@ fi
 # ci-queue.sh COMES WITH IT TOO (harbor#657): the same job runs it every tick for the
 # statusline's ⏳ tile. Read-only against GitHub; it writes only its own cache.
 # ci-main-tip-verdict.sh (harbor#586) likewise: the same job runs it for the statusline's MAIN RED.
-# ci-runner-switch.sh (harbor#865) likewise: the same job runs it, and it sets the repo variable HARBOR_RUNNER.
+# ci-runner-switch.sh (harbor#865) likewise: the same job runs it, and it sets the repo variable HARBOR_CI_RUNNER.
 # ci-runners.sh (harbor#1060) likewise: its `tick` sets each fleet repo's CI_RUNS_ON and re-runs billing-refused runs.
 # ci-runners-{fleet,provision,github,watch}-lib.sh COME WITH IT (harbor#1060 split): it sources all four from its own dir,
 # so a copy without one dies on the first verb. ci-lost-job.sh COMES WITH IT TOO: ci-runners reads the billing phrase from it (harbor#1091), so a copy without it re-runs nothing.
@@ -216,7 +216,7 @@ fi
 # event-dispatch.sh (harbor#1044) is what launchd/com.harbor.event.dispatch.plist runs from here; shipped inert: no
 # installer loads that plist or writes a rule. event-bus.sh ships with it (floor-install copies it too): the loop
 # guard needs the bus that passes HARBOR_EVENT_CAUSE on, and a dispatcher beside an older bus refuses to follow.
-FILES="scope-roots.sh guard-lib.sh access-confinement.sh memory-log-token-save.sh lint-findings-run.sh eval-redteam-corpus-run.sh standard-fleet-names-run.sh ticket-note.sh reply-shape.sh session-subagent-check.sh session-autocompact.sh session-cleanup.sh context-resolve.sh floor-deny.sh floor-install.sh deploy-install-stamp.sh gate-merged-check.sh status-fleet-glyph.sh status-subagent-glyph.sh context-peers.sh status-fleet-snapshot-refresh.sh housekeeping-clean.sh ci-queue.sh ci-main-tip-verdict.sh ci-github-plan.sh ci-runner-switch.sh ci-runners.sh ci-lost-job.sh ci-governor.sh ci-governor-hook.sh session-verdicts.sh admission-observe-report.sh deploy-restore.sh test-sandbox-make.sh worklog-push.sh memory-harvest.sh alert-probe.sh alert-notify.sh status-usage-aggregate.sh audit-triage-run.sh audit-triage.sh floor-verify.sh decider-set.sh drift-renew-check.sh memory-store-check.sh context-budget.sh drift-reference-check.sh doc-cited-paths.awk failure-observe.sh library-log.sh deploy-install-lib.sh library-fs.sh library-alert.sh status-obligations.sh ci-runners-fleet-lib.sh ci-runners-provision-lib.sh ci-runners-github-lib.sh ci-runners-watch-lib.sh gate-merge-stack.sh gate-merge-stack-resolve.py gate-merge-check.sh event-dispatch.sh event-bus.sh audit-stream-lib.sh audit-collector-check.sh session-state.sh session-react-lib.sh session-notify.sh session-save-now.sh session-ci-watch.sh ci-wait.sh session-cleanup-report.sh session-check.sh session-title.sh"
+FILES="scope-roots.sh library-admission.sh access-confinement.sh memory-log-token-save.sh lint-findings-run.sh eval-redteam-corpus-run.sh standard-fleet-names-run.sh ticket-note.sh reply-shape.sh session-subagent-check.sh session-autocompact.sh session-cleanup.sh context-resolve.sh floor-deny.sh floor-install.sh deploy-install-stamp.sh gate-merged-check.sh status-fleet-glyph.sh status-subagent-glyph.sh context-peers.sh status-fleet-snapshot-refresh.sh housekeeping-clean.sh ci-queue.sh ci-main-tip-verdict.sh ci-github-plan.sh ci-runner-switch.sh ci-runners.sh ci-lost-job.sh ci-governor.sh ci-governor-hook.sh session-verdicts.sh admission-observe-report.sh deploy-restore.sh test-sandbox-make.sh worklog-push.sh memory-harvest.sh alert-probe.sh alert-notify.sh status-usage-aggregate.sh audit-triage-run.sh audit-triage.sh floor-verify.sh decider-set.sh drift-renew-check.sh memory-store-check.sh context-budget.sh drift-reference-check.sh doc-cited-paths.awk failure-observe.sh library-log.sh deploy-install-lib.sh library-fs.sh library-alert.sh status-obligations.sh ci-runners-fleet-lib.sh ci-runners-provision-lib.sh ci-runners-github-lib.sh ci-runners-watch-lib.sh gate-merge-stack.sh gate-merge-stack-resolve.py gate-merge-check.sh event-dispatch.sh event-bus.sh audit-stream-lib.sh audit-collector-check.sh session-state.sh session-react-lib.sh session-notify.sh session-save-now.sh session-ci-watch.sh ci-wait.sh session-cleanup-report.sh session-check.sh session-title.sh"
 # The restore-path suite and the harness it sources, as <checkout path>:<config-dir path> (harbor#727).
 # Same relative layout as the repo, so bin/recover-test.sh finds ../lib/core.sh with no checkout.
 SUITE="tests/deploy/restore/recover.test.sh:bin/recover-test.sh tests/lib/core.sh:lib/core.sh"
@@ -227,13 +227,14 @@ SUITE="tests/deploy/restore/recover.test.sh:bin/recover-test.sh tests/lib/core.s
 # manifest blob, never a working tree whose branch would decide which presets are valid (harbor#1044 review r3 #5).
 # repo-slug.txt: harbor's own owner/name, which log-lib's repo_slug reads beside an installed tool (main-tip-verdict, runner-switch,
 # gh-plan, ci-governor and findings-run), where no checkout's origin can name it; nothing a session can write may (harbor#1149).
-DATA="contracts/obligation-kinds.tsv:bin/obligation-kinds.tsv contracts/merge-stack-union.txt:bin/merge-stack-union.txt contracts/required-checks.tsv:bin/required-checks.tsv docs/reference/checks.md:bin/docs/reference/checks.md contracts/event-rules.tsv:bin/event-rules.tsv contracts/session-waiting.tsv:bin/session-waiting.tsv contracts/repo-slug.txt:bin/repo-slug.txt contracts/roots.tsv:bin/roots.tsv"
+DATA="contracts/obligation-kinds.tsv:bin/obligation-kinds.tsv contracts/merge-stack-union.txt:bin/merge-stack-union.txt contracts/required-checks.tsv:bin/required-checks.tsv docs/reference/checks.md:bin/docs/reference/checks.md contracts/event-rules.tsv:bin/event-rules.tsv contracts/session-waiting.tsv:bin/session-waiting.tsv contracts/repo-slug.txt:bin/repo-slug.txt contracts/roots.tsv:bin/roots.tsv standards/naming/repo-kinds.tsv:bin/repo-kinds.tsv"
 
 # scope-roots.sh (harbor#966) with its table bin/roots.tsv: ci-runners, fleet-snapshot-refresh and deploy-fleet find a sibling checkout
 # through the repo registry from here; scope-roots.sh reads roots.tsv beside itself when it has no contracts/ above it.
+# repo-kinds.tsv likewise: the installed scope-roots.sh --registry-check judges the kind column against it (harbor#961).
 
 # ── REFRESH-ONLY: files this installer UPDATES but will never INSTALL ────────
-# guard-integrity.sh (B6) is the one file in the floor with no reachable update
+# admission-integrity.sh (B6) is the one file in the floor with no reachable update
 # path. floor-install.sh copies it, but only under --with-b6, and the documented
 # install order holds that back until the floor is verified — so in practice the
 # live B6 is frozen at whatever version was installed.
@@ -269,7 +270,18 @@ DATA="contracts/obligation-kinds.tsv:bin/obligation-kinds.tsv contracts/merge-st
 # --with-b6 deliberately, on a box that passed the scanner install first. Absent
 # means B6 was never opted into, and this installer leaves it that way. It still
 # installs no guard and wires no hook — the header's invariant holds.
-REFRESH_ONLY="guard-integrity.sh"
+REFRESH_ONLY="admission-integrity.sh"
+# INSTALLED UNDER AN OLD NAME COUNTS AS INSTALLED (harbor#961 W6). A box that opted into B6 before the rename holds
+# guard-integrity.sh, and a presence test on the new name alone would never refresh it again: the old gate would go
+# on judging a floor wired under the new names. So the refresh is owed when the file, or a regular file at one of
+# the old names standards/naming/renames.tsv records for it, is in bin/; the copy goes under the new name, and
+# floor-install (which owns the pins) retires the old one.
+_refresh_old() { # <name> -> the first old name of it installed here, or 1
+  for _rf_o in $(il_renamed_old "$SRC/.." "$1"); do
+    [ -f "$DIR/bin/$_rf_o" ] && [ ! -L "$DIR/bin/$_rf_o" ] && { printf '%s\n' "$_rf_o"; return 0; }
+  done
+  return 1
+}
 
 
 # ── ONE-WORD COMMANDS ARE NOT THIS INSTALLER'S (harbor#708) ─────────────────
@@ -417,6 +429,7 @@ fi
 # never asked for one. Silence would read as "not considered".
 for f in $REFRESH_ONLY; do
   if [ -f "$DIR/bin/$f" ]; then log_note "bin/$f (refresh — already installed)"
+  elif _ro="$(_refresh_old "$f")"; then log_note "bin/$f (refresh — installed here under its old name $_ro, harbor#961)"
   else log_skip "bin/$f — not installed here; B6 installs only via floor-install.sh --with-b6"; fi
 done
 log_note "statusLine → command + refreshInterval ${REFRESH}s"
@@ -536,12 +549,12 @@ fi
 # it cannot go stale the way a flag can.
 _b6_refreshed=""
 for f in $REFRESH_ONLY; do
-  [ -f "$DIR/bin/$f" ] || continue
+  [ -f "$DIR/bin/$f" ] || _refresh_old "$f" >/dev/null || continue
   il_install_exec "$(_src "$f")" "$DIR/bin/$f"; il_manifest "bin/$f"
   _b6_refreshed="${_b6_refreshed}${_b6_refreshed:+ }$f"
 done
 if [ -n "$_b6_refreshed" ]; then log_ok "b6: $_b6_refreshed refreshed (already installed here)"
-else log_skip "b6: not installed here — guard-integrity.sh left alone"; fi
+else log_skip "b6: not installed here — admission-integrity.sh left alone"; fi
 # The engines' entries, rendered now that their files are in $DIR/bin: the renderer refuses to wire a script not there.
 printf '%s' "$NEW" > "$CK_TMP.in"
 NEW="$(sh "$HOOKS" --settings "$DIR" --in "$CK_TMP.in" --root "$SRC/.." --installer runtime-install 2>"$CK_TMP.hooks")" \
@@ -551,7 +564,7 @@ sh "$HOOKS" --record "$DIR" --root "$SRC/.." --installer runtime-install >/dev/n
   || log_warn "settings.json is written, but what is wired was not recorded, so a binding removed by hand may come back on the next run: $(sed -n 's/^.*FAIL[: ]*//p' "$CK_TMP.hooks" | head -1)"
 log_ok "settings.json: statusLine, subagentStatusLine and the hooks merged; the old bytes are in $IL_BK"
 
-# THE PINS THIS INSTALLER JUST INVALIDATED. Two files in FILES — guard-lib.sh
+# THE PINS THIS INSTALLER JUST INVALIDATED. Two files in FILES — library-admission.sh
 # and context-resolve.sh — are CONTENT-PINNED in .helm-pins/ and checked by B6 at
 # every SessionStart. Replacing them without saying so left the box in exactly
 # the state this installer's header claims to avoid: "an installer that leaves
@@ -566,7 +579,7 @@ log_ok "settings.json: statusLine, subagentStatusLine and the hooks merged; the 
 # change — the one shape it is most worth catching.
 #
 # ONLY THE FILES B6 ACTUALLY CHECKS, asked rather than restated: B6 checks every pin it finds except
-# its own (guard-integrity.sh, 2026-08-14), so a pin that exists and disagrees is one it will block on.
+# its own (admission-integrity.sh, 2026-08-14), so a pin that exists and disagrees is one it will block on.
 _pin_drift=""
 if [ -d "$DIR/.helm-pins" ]; then
   for f in $FILES; do
@@ -620,7 +633,7 @@ if [ -n "$_pin_cov" ]; then
 fi
 if [ -n "$_pin_hard" ]; then
   log_warn "B6 CONTENT PINS ARE NOW STALE — the next SessionStart will be BLOCKED: this install replaced content-pinned file(s): $_pin_hard (both copies came from this checkout, so only the pin is behind; re-pinning is YOURS to do, not an installer's)"
-  log_fix "for g in $_pin_hard; do $( command -v sha256sum >/dev/null 2>&1 && echo sha256sum || echo 'shasum -a 256' ) < $DIR/bin/\$g | awk '{print \$1}' > $DIR/.helm-pins/\$g.sha256; done; /bin/sh $DIR/bin/guard-integrity.sh < /dev/null"
+  log_fix "for g in $_pin_hard; do $( command -v sha256sum >/dev/null 2>&1 && echo sha256sum || echo 'shasum -a 256' ) < $DIR/bin/\$g | awk '{print \$1}' > $DIR/.helm-pins/\$g.sha256; done; /bin/sh $DIR/bin/admission-integrity.sh < /dev/null"
   log_note "or go back to before the last deploy: sh $DIR/bin/deploy-restore.sh $(il_spell)   (the plan; add --apply)"
 fi
 

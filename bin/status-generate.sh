@@ -136,12 +136,14 @@ n_skills="$(find "$ROOT/vendor/skills" -maxdepth 1 -mindepth 1 -type d 2>/dev/nu
 # key the README does not carry, which is a format change to a tracked contract
 # read by three repos — filed, not guessed at here.
 n_contracts="$(find "$ROOT/contracts" -maxdepth 1 -name '*.md' ! -name 'README.md' 2>/dev/null | wc -l | tr -d ' ')"
-# guard-lib.sh matches `guard-*.sh` and is a 45 KB LIBRARY, not a guard: it
+# The guards are the admission family's (harbor#961 W6), never the wrapper admission-hook.sh, the three tools
+# that share the family, or a rename shim. library-admission.sh is a 45 KB LIBRARY, not a guard: it
 # vetoes nothing, is wired to no hook, and is sourced by the others (and by the
 # worklog hooks). Counting it reported one floor guard more than exists, so any
 # document quoting that number promised a guard that is not there and any
 # "guards N/M" indicator carried an unreachable target. A glob is not a census.
-n_guards="$(find "$ROOT/bin" -name 'guard-*.sh' ! -name 'guard-lib.sh' 2>/dev/null | wc -l | tr -d ' ')"
+n_guards="$(find "$ROOT/bin" -maxdepth 1 -type f -name 'admission-*.sh' 2>/dev/null \
+  | grep -cvE '/admission-(hook|deny-hash|mutation-tier|observe-report)[.]sh$' || :)"
 n_cases="$( (jq '.cases | length' "$ROOT/fixtures/marker/cases.json" 2>/dev/null || echo 0) )"
 # harbor#594: properties whose failure is on record and that nothing watches. The
 # list is contracts/unwatched.txt; the number is here so git history is its trend,
@@ -436,7 +438,7 @@ EOF
 compute_observed() {
 #
 # MATCH THE ENTRYPOINT AS A WHOLE PATH SEGMENT, never a bare substring. Every
-# B2–B6 guard is wired THROUGH floor-hook.sh (floor-install.sh:89-100 and
+# B2–B6 guard is wired THROUGH admission-hook.sh (floor-install.sh:89-100 and
 # :153-157), so that basename is the one string this layer cannot be installed
 # without. The predicate here used to be test("guard-"), and on 2026-08-01 the
 # ambient prod_guard shim — `prod-guard-ambient.sh`, which is NOT part of the
@@ -449,7 +451,7 @@ compute_observed() {
 # disk is exactly the silent shape this table exists to expose, so the row only
 # reads "yes" when the scripts are also present — the same pairing floor-verify
 # checks in its sections 1 and 2.
-_hook_re='(^|/)floor-hook[.]sh([[:space:]]|$)'
+_hook_re='(^|/)admission-hook[.]sh([[:space:]]|$)'
 floor_installed="no"
 if [ -f "$LIVE/settings.json" ] && command -v jq >/dev/null 2>&1; then
   if jq -e --arg re "$_hook_re" \
@@ -461,8 +463,8 @@ if [ -f "$LIVE/settings.json" ] && command -v jq >/dev/null 2>&1; then
     # row as satisfied — the same partial-install-reads-as-complete shape this
     # predicate exists to prevent, one level in. Raised by review on #80.
     _missing=0
-    for _g in floor-hook.sh guard-lib.sh guard-bash.sh guard-egress.sh \
-              guard-selfedit.sh annotate-web.sh floor-normalize.awk; do
+    for _g in admission-hook.sh library-admission.sh admission-bash.sh admission-egress.sh \
+              admission-self-edit.sh annotate-web.sh floor-normalize.awk; do
       [ -s "$LIVE/bin/$_g" ] || _missing=$((_missing + 1))
     done
     if [ "$_missing" -eq 0 ]; then
@@ -480,18 +482,18 @@ fi
 # of the same defect. The row above is narrowed to B2–B5 for the same reason:
 # a row must claim exactly what it checks.
 b6_installed="no"
-if [ -s "$LIVE/bin/guard-integrity.sh" ]; then
+if [ -s "$LIVE/bin/admission-integrity.sh" ]; then
   b6_installed="present, not wired"
   if [ -f "$LIVE/settings.json" ] && command -v jq >/dev/null 2>&1 \
      && jq -e '[.hooks.SessionStart[]?.hooks[]?.command]
-               | map(select(test("guard-integrity[.]sh"))) | length > 0' \
+               | map(select(test("admission-integrity[.]sh"))) | length > 0' \
           "$LIVE/settings.json" >/dev/null 2>&1; then
     b6_installed="yes"
   fi
 fi
 
 # prod_guard is NOT part of the floor at all. The floor deliberately omits the
-# cloud/data corpus (guard-bash.sh:6-8) because yard's guard owns it, so
+# cloud/data corpus (admission-bash.sh:6-8) because yard's guard owns it, so
 # this is a separate control with a separate install path and it gets its own
 # row. Giving it one is also what stops the floor's row from borrowing its
 # evidence, which is precisely how the substring defect above stayed invisible.

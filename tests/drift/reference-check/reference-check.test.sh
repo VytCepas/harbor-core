@@ -29,7 +29,7 @@ resettings "$F2" --arg c "/bin/sh $F2/bin/hook-a.sh" '.hooks.SessionStart += [{h
 t_eq "REF-2 fires on absent matcher vs \"\"" yes "$(fired "$(rules_of "$F2")" REF-2)"
 
 t_section "REF-2 STAYS GREEN: same command, two DIFFERENT matchers"
-# guard-egress.sh is wired twice at PreToolUse on purpose, so the predicate keys on the matcher.
+# admission-egress.sh is wired twice at PreToolUse on purpose, so the predicate keys on the matcher.
 F2G="$(mkfixture ref2green)"
 resettings "$F2G" --arg c "/bin/sh $F2G/bin/hook-b.sh" '
   .hooks.PreToolUse = [{matcher: "Bash|Write", hooks: [{type: "command", command: $c}]},
@@ -313,7 +313,7 @@ t_eq "it wrote nothing outside cache/ (the surface it checks is read-only)" "" "
 t_eq "...and the one thing it writes is the first-seen state" "drift.reference-check.tsv" "$(ls "$FRO/cache/reconcile")"
 
 # One script wired under two matchers is two wirings of one item. REF-1 reports each wiring, so the same subject comes twice,
-# and a key is unique within a report: --status lists the item once. This box wires guard-egress.sh twice on purpose.
+# and a key is unique within a report: --status lists the item once. This box wires admission-egress.sh twice on purpose.
 FDUP="$(mkfixture status-dup)"
 resettings "$FDUP" --arg g "/bin/sh $FDUP/bin/GONE.sh" --arg h "/bin/sh $FDUP/bin/hook-a.sh" --arg o "/bin/sh $FDUP/bin/GONE2.sh" '
   .hooks.PreToolUse = [{matcher: "Write|Edit", hooks: [{type: "command", command: $g}]},

@@ -39,7 +39,7 @@ decision* below; it is exact, opt-in, `run:`-only and PreToolUse-only. A contrac
 that denies the existence of the blocking path is worse than one that omits it,
 because a reader deciding whether a pack CAN block gets a confident wrong answer.
 Vetoing otherwise belongs to the floor
-(`guard-bash.sh`, `guard-egress.sh`), where the question is whether something may
+(`admission-bash.sh`, `admission-egress.sh`), where the question is whether something may
 happen at all. A second, softer copy of the floor in a file any repo can edit is
 not a feature.
 
@@ -112,8 +112,8 @@ shell parsing harbor#539 records as the floor's longest chains of fixes to
 fixes. The harness carries the new working folder in the next call's `.cwd`, so
 a `cd` is reported one call late rather than parsed. Quoted arguments and
 heredoc bodies are data: the shell half goes through the floor's own
-`floor_seg_load` (`guard-lib.sh`, beside the engine), never a second parser.
-Without `guard-lib.sh` there are no shell targets, and the engine stays silent.
+`floor_seg_load` (`library-admission.sh`, beside the engine), never a second parser.
+Without `library-admission.sh` there are no shell targets, and the engine stays silent.
 
 **Computed once, by the engine, on the three tool events.** `hooks/injection-rule/injection-rule.sh`
 works the answer out before any pack is read, and hands it to every `run:` pack

@@ -148,16 +148,16 @@ _rp_green F2 "an awk /(^|…/ literal and a comment quoting (^|"
 
 t_section "F3: a bare grep in a guard-lib consumer"
 _rp_fresh; _rp_sh "$RP/bin/consumer.sh"
-printf '. "$DIR/guard-lib.sh"\n"$FLOOR_GREP" -q x "$f"\n' >> "$RP/bin/consumer.sh"
+printf '. "$DIR/library-admission.sh"\n"$FLOOR_GREP" -q x "$f"\n' >> "$RP/bin/consumer.sh"
 _rp_green F3 "a consumer matching through \$FLOOR_GREP"
 printf 'grep -q x "$f"\n' >> "$RP/bin/consumer.sh"
 _rp_red F3 "bare grep in a guard-lib consumer (use \$FLOOR_GREP): bin/consumer.sh" "a bare grep after sourcing guard-lib"
 
 t_section "F5: a floor_block with no rule id"
-_rp_fresh; _rp_sh "$RP/bin/guard-egress.sh"
-printf 'floor_block egress "a probe shape" zz-probe.argv\n' >> "$RP/bin/guard-egress.sh"
+_rp_fresh; _rp_sh "$RP/bin/admission-egress.sh"
+printf 'floor_block egress "a probe shape" zz-probe.argv\n' >> "$RP/bin/admission-egress.sh"
 _rp_green F5 "every call site carries a rule id"
-printf 'floor_block egress "a probe shape with no id"\n' >> "$RP/bin/guard-egress.sh"
+printf 'floor_block egress "a probe shape with no id"\n' >> "$RP/bin/admission-egress.sh"
 _rp_red F5 "1 of 2 floor_block call site(s) carry no rule id" "a floor_block call with no <rule>.<shape>"
 _rp_fresh; _rp_sh "$RP/bin/guard-zz.sh"
 printf '# payload text that never enters floor_block cannot leak\n' >> "$RP/bin/guard-zz.sh"
@@ -167,9 +167,9 @@ _rp_red F5 "1 of 1 floor_block call site(s) carry no rule id" "a call with no id
 
 t_section "F16: a floor guard printing the kill-switch as its remedy (harbor#482)"
 _rp_fresh
-printf "#!/usr/bin/env sh\nGUARDS='guard-zz.sh floor-hook.sh pin-zz.sh'\n" > "$RP/bin/floor-install.sh"
+printf "#!/usr/bin/env sh\nGUARDS='guard-zz.sh admission-hook.sh pin-zz.sh'\n" > "$RP/bin/floor-install.sh"
 _rp_sh "$RP/bin/guard-zz.sh"; printf "printf 'run it once as a ! command\\\\n' >&2\n# the old hatch was HARBOR_ADMISSION_DISABLE=1 claude\n" >> "$RP/bin/guard-zz.sh"
-_rp_sh "$RP/bin/floor-hook.sh"; printf "printf 'Fix the guard, or open an unguarded session: HELM_DISABLE_FLOOR=1 claude\\\\n' >&2\n" >> "$RP/bin/floor-hook.sh"
+_rp_sh "$RP/bin/admission-hook.sh"; printf "printf 'Fix the guard, or open an unguarded session: HELM_DISABLE_FLOOR=1 claude\\\\n' >&2\n" >> "$RP/bin/admission-hook.sh"
 _rp_sh "$RP/bin/pin-zz.sh"
 _rp_green F16 "a narrow remedy, the hatch in a comment, and the wrapper where it is the true one"
 printf "printf '(operator escape hatch: HELM_DISABLE_FLOOR=1 claude)\\\\n' >&2\n" >> "$RP/bin/pin-zz.sh"
@@ -190,10 +190,10 @@ _f14_fx() { # [extra-row] [FILES-line] [selfedit-arm] [deny-entry] — clean unl
     '| `.helm-zz-tmp` | `$TMPDIR/.helm-zz-tmp.<pid>` | scratch | r | w | y |' "${1:-}" '' '## After' \
     > "$RP/contracts/control-plane-state.md"
   _rp_sh "$RP/bin/reader.sh"; printf 'a="$CFG/.helm-zz-cache"; t="$TMPDIR/.helm-zz-tmp.$$"\n' >> "$RP/bin/reader.sh"
-  _rp_sh "$RP/bin/guard-bash.sh"; printf '%s\n' "${2-$_F14_FILES}" >> "$RP/bin/guard-bash.sh"
-  _rp_sh "$RP/bin/guard-selfedit.sh"
+  _rp_sh "$RP/bin/admission-bash.sh"; printf '%s\n' "${2-$_F14_FILES}" >> "$RP/bin/admission-bash.sh"
+  _rp_sh "$RP/bin/admission-self-edit.sh"
   printf '%s\n' 'is_protected() {' '  case "$1" in' '    # the trust dir is .helm-zz-trust' "${3-$_F14_SELF}" \
-    '    "$root/.helm-zz-pin.sha256") return 0 ;;   # the pin' '  esac' '}' >> "$RP/bin/guard-selfedit.sh"
+    '    "$root/.helm-zz-pin.sha256") return 0 ;;   # the pin' '  esac' '}' >> "$RP/bin/admission-self-edit.sh"
   _rp_sh "$RP/bin/floor-deny.sh"
   printf '%s\n' "ADD='[" "${4-$_F14_DENY}" '  "Edit(~/.claude/.helm-zz-pin.sha256)"' "]'" >> "$RP/bin/floor-deny.sh"
 }
@@ -330,16 +330,16 @@ _rp_red G1 "ADVISORY [lint.long-file-reason] bin/big.sh is 311 lines of code" "a
 
 t_section "C7: a guard token and the ledger's enum disagree"
 _rp_fresh
-printf "FLOOR_OBS_GUARDS=' bash egress '\n" > "$RP/bin/guard-lib.sh"
+printf "FLOOR_OBS_GUARDS=' bash egress '\n" > "$RP/bin/library-admission.sh"
 _rp_sh "$RP/bin/guard-zz.sh"
 printf 'floor_log_decision bash allow a.meta\nfloor_log_decision egress allow b.meta\n' >> "$RP/bin/guard-zz.sh"
 _rp_green C7 "every logged token in the enum and every enum token logged"
 printf 'floor_log_decision zzprobe allow c.meta\n' >> "$RP/bin/guard-zz.sh"
 _rp_red C7 "guard token 'zzprobe' is passed to floor_log_decision but is NOT in FLOOR_OBS_GUARDS" "a token missing from the enum"
-printf "FLOOR_OBS_GUARDS=' bash egress zzprobe ghost '\n" > "$RP/bin/guard-lib.sh"
+printf "FLOOR_OBS_GUARDS=' bash egress zzprobe ghost '\n" > "$RP/bin/library-admission.sh"
 _rp_red C7 "FLOOR_OBS_GUARDS lists 'ghost' but no guard passes it" "an enum token no guard logs"
-printf '# no enum line at all\n' > "$RP/bin/guard-lib.sh"
-_rp_red C7 "has no readable FLOOR_OBS_GUARDS line" "a guard-lib.sh with no enum"
+printf '# no enum line at all\n' > "$RP/bin/library-admission.sh"
+_rp_red C7 "has no readable FLOOR_OBS_GUARDS line" "a library-admission.sh with no enum"
 
 t_section "IJ1: a pack with no predicate, or where nothing reads it"
 _rp_fresh; mkdir -p "$RP/context-rules/demo"

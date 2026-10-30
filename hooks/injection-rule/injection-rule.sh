@@ -30,7 +30,7 @@
 # INFORM BY DEFAULT, AND THAT IS MEASURED. E6 ran a veto arm and an inform arm
 # against the same trap: inform 4/4, veto 3/4, and the veto's one miss was a
 # session that stopped to ask instead of acting. Vetoing belongs to the floor
-# (guard-bash.sh, guard-egress.sh) where the question is "may this happen at
+# (admission-bash.sh, admission-egress.sh) where the question is "may this happen at
 # all", and a pack that merely wants attention must never reach for it.
 #
 # THERE IS ONE OPT-IN DENY, AND THIS PARAGRAPH USED TO SAY THERE WAS NONE. It
@@ -716,7 +716,7 @@ explain() { [ "$MODE" = explain ] && printf '%s\n' "$*" >&2 || true; }
 # a cd chain is the shell parsing #539 records as the floor's longest run of
 # fixes to fixes. The harness carries the new folder in the next call's `.cwd`.
 #
-# THE SHELL HALF REUSES THE FLOOR'S PARSER, guard-lib.sh beside this file,
+# THE SHELL HALF REUSES THE FLOOR'S PARSER, library-admission.sh beside this file,
 # rather than growing a second one: floor_seg_load keeps a quoted argument as one
 # token, so a commit message that MENTIONS `git -C x` is never a flag. It does not
 # know heredoc bodies, so those segments are skipped up to their delimiter. No
@@ -737,21 +737,21 @@ _top() {
 # THE DECISION LOG (harbor#953). A rule that spoke leaves one record in guard-decisions.jsonl, through the
 # floor's own writer: g=inject, d=advise or deny, r=<pack id>. floor_log_decision works out the sink from
 # $0 (this script, <config>/bin), refuses anything but the known enums, and fails silent, so a box with no
-# ledger stays blind rather than wrong. guard-lib.sh is read only on a fire (once a session for most
+# ledger stays blind rather than wrong. library-admission.sh is read only on a fire (once a session for most
 # packs), never on the silent hot path. Only fires are written: a silent arm has no decision to record.
 log_rule() { # <advise|deny> <pack id>
-  [ -f "$SELF_DIR/guard-lib.sh" ] || return 0
-  ( DIR="$SELF_DIR"; . "$SELF_DIR/guard-lib.sh" >/dev/null 2>&1
+  [ -f "$SELF_DIR/library-admission.sh" ] || return 0
+  ( DIR="$SELF_DIR"; . "$SELF_DIR/library-admission.sh" >/dev/null 2>&1
     FLOOR_TOOL="$TOOL"; floor_log_decision inject "$1" "$2.meta" ) >/dev/null 2>&1 || :
 }
 
 shell_targets() {
   # A case before the fork: most commands carry no -C, -R or --repo at all.
   case "$CMD" in *-C*|*-R*|*--repo*) ;; *) return 0 ;; esac
-  [ -f "$SELF_DIR/guard-lib.sh" ] || return 0
+  [ -f "$SELF_DIR/library-admission.sh" ] || return 0
   (
     DIR="$SELF_DIR"
-    . "$SELF_DIR/guard-lib.sh" >/dev/null 2>&1
+    . "$SELF_DIR/library-admission.sh" >/dev/null 2>&1
     floor_seg_load "$CMD"
     [ -n "$FLOOR_SEGS" ] || exit 0
     _port="$(floor_port_root)"
@@ -952,7 +952,7 @@ while IFS="$(printf '\t')" read -r _file RT _reach; do
       # working. An unparseable pattern makes grep fail, which reads as no match —
       # silence, which is this engine's posture everywhere else.
       #
-      # THE GREP IS PINNED, as guard-lib.sh pins $FLOOR_GREP and lint F3 requires
+      # THE GREP IS PINNED, as library-admission.sh pins $FLOOR_GREP and lint F3 requires
       # of every file that sources it (this one does, for the shell half of "the
       # tree a call touches"). On this box `grep` in a PATH can be a ugrep wrapper,
       # and which grep answers must not decide whether a rule matches.
@@ -1162,7 +1162,7 @@ fi
 # A DECISION SHORT-CIRCUITS THE NOTE, because they are answers to different
 # questions and only one of them stops the call. The reason reaches the model as
 # `permissionDecisionReason`, which is the channel a deny already travels on
-# (contracts/hooks.md: confirmed live — guard-bash.sh's denial landed mid-turn
+# (contracts/hooks.md: confirmed live — admission-bash.sh's denial landed mid-turn
 # and redirected the work), so it does not also need to be an additionalContext.
 if [ "${DECISION:-}" = deny ]; then
   jq -cn --arg e "$EVENT" --arg r "$STAMP $DREASON" \

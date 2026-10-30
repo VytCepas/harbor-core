@@ -11,8 +11,8 @@ out() { cat "$T_TMP/out"; }
 line() { grep "\[check:deploy.live-verify\] $1 " "$T_TMP/out"; }  # <check id>
 
 mkdir -p "$C/bin" "$LB"
-for f in floor-hook.sh guard-lib.sh guard-selfedit.sh guard-bash.sh guard-egress.sh annotate-web.sh floor-deny.sh \
-         floor-normalize.awk floor-observe.sh floor-install.sh guard-integrity.sh library-log.sh pin-instructions.sh; do
+for f in admission-hook.sh library-admission.sh admission-self-edit.sh admission-bash.sh admission-egress.sh annotate-web.sh floor-deny.sh \
+         floor-normalize.awk floor-observe.sh floor-install.sh admission-integrity.sh library-log.sh pin-instructions.sh; do
   cp "$SRC/$f" "$C/bin/$f"
 done
 printf '{"permissions":{"allow":[],"deny":[],"disableBypassPermissionsMode":"disable","disableAutoMode":"disable"}}\n' > "$C/settings.json"
@@ -25,7 +25,7 @@ sh "$SRC/deploy-shim-install.sh" --apply --live >> "$T_TMP/setup" 2>&1
 LEDGER="$(find "$C/MEMORY/OBSERVABILITY" -name guard-decisions.jsonl 2>/dev/null | head -1)"
 
 t_section "the sandbox box is armed like a real one"
-t_eq "the floor installed" yes "$([ -s "$C/bin/guard-bash.sh" ] && [ -f "$C/.helm-instructions.sha256" ] && echo yes)"
+t_eq "the floor installed" yes "$([ -s "$C/bin/admission-bash.sh" ] && [ -f "$C/.helm-instructions.sha256" ] && echo yes)"
 t_eq "the ledger is armed, so a probe that files in it would show" yes "$([ -f "$LEDGER" ] && echo yes)"
 t_eq "the shims are linked in the scratch bin" yes "$([ -L "$LB/harbor" ] && echo yes)"
 
@@ -61,11 +61,11 @@ t_eq "a missing shim is red too" "exit 1" "$(rc sh "$LV" --live)"
 sh "$SRC/deploy-shim-install.sh" --apply --live > /dev/null 2>&1
 
 t_section "a broken floor turns it red"
-cp "$C/bin/guard-bash.sh" "$T_TMP/guard-bash.sh.keep"; chmod u+w "$C/bin" "$C/bin/guard-bash.sh" 2>/dev/null
-printf 'exit 0\n' > "$C/bin/guard-bash.sh"
+cp "$C/bin/admission-bash.sh" "$T_TMP/admission-bash.sh.keep"; chmod u+w "$C/bin" "$C/bin/admission-bash.sh" 2>/dev/null
+printf 'exit 0\n' > "$C/bin/admission-bash.sh"
 t_eq "a gutted guard exits 1" "exit 1" "$(rc sh "$LV" --live)"
 t_has "the floor line is the FAIL" "$(line floor)" "FAIL: [check:deploy.live-verify] floor "
-cp "$T_TMP/guard-bash.sh.keep" "$C/bin/guard-bash.sh"
+cp "$T_TMP/admission-bash.sh.keep" "$C/bin/admission-bash.sh"
 t_eq "restored, it is green again" "exit 0" "$(rc sh "$LV" --live)"
 
 t_section "a missing harbor#816 env key turns sec0-env red, and the fix is deploy's sec0 apply"

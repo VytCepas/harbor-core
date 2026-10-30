@@ -152,7 +152,7 @@ sh1 plain.sh 'echo plain'; sh1 echoed.sh 'echo x'; sh1 observer.sh ':'; sh1 drop
 sh1 table-install.sh "floor_hooks() { cat <<'ROWS'
 # SessionStart;;dropped.sh  is a comment row, never a wiring
 SessionStart;;observer.sh
-PreToolUse;Bash;floor-hook.sh guard-x.sh;b6
+PreToolUse;Bash;admission-hook.sh guard-x.sh;b6
 ROWS
 }"
 printf 'path\tkind\twhy\n' > "$P/contracts/log-exempt.tsv"

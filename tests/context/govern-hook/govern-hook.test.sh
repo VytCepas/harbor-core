@@ -116,9 +116,9 @@ t_has "a -R slug from outside the repo is denied on a refusal" "$out" '"permissi
 t_eq "the box deny is valid JSON" 0 "$(printf '%s' "$out" | jq -e . >/dev/null 2>&1; echo $?)"
 t_has "the deny names the repo the route runs in" "$out" "(in $GOVP)"
 # the decision log (harbor#957 item 4): the box deny is recorded under g=govern; the --note route is inject's
-mkledger() { # <dir> <script>… → a config dir whose bin/ holds the scripts and guard-lib.sh, with a sink; prints the sink
+mkledger() { # <dir> <script>… → a config dir whose bin/ holds the scripts and library-admission.sh, with a sink; prints the sink
   mkdir -p "$1/bin" "$1/MEMORY/OBSERVABILITY/probehost"; _lt="$1"; shift
-  cp "$@" "$T_ROOT/bin/guard-lib.sh" "$_lt/bin/"; printf 'probehost\n' > "$_lt/.helm-obs-host"
+  cp "$@" "$T_ROOT/bin/library-admission.sh" "$_lt/bin/"; printf 'probehost\n' > "$_lt/.helm-obs-host"
   : > "$_lt/MEMORY/OBSERVABILITY/probehost/guard-decisions.jsonl"; chmod 0500 "$_lt/MEMORY/OBSERVABILITY/probehost"
   printf '%s' "$_lt/MEMORY/OBSERVABILITY/probehost/guard-decisions.jsonl"
 }

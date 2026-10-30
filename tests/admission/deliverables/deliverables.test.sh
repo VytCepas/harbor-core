@@ -1,12 +1,12 @@
 #!/usr/bin/env sh
-# guard-deliverables.sh (harbor#402): its rule table, its messages, and the shared shapes.
+# admission-deliverables.sh (harbor#402): its rule table, its messages, and the shared shapes.
 # The rule is "which directory is this", so the sandbox HOME is the fixture.
 set -u
 . "$(dirname "$0")/../../lib/core.sh"
 . "$(dirname "$0")/../../lib/table.sh"
 t_init
 
-G="$T_ROOT/bin/guard-deliverables.sh"
+G="$T_ROOT/bin/admission-deliverables.sh"
 mkdir -p "$HOME/Desktop" "$HOME/Documents/repo" "$HOME/Downloads" \
          "$HOME/Deliverables/2026-09-02-thing" "$HOME/proj"
 : > "$HOME/Documents/repo/.git"          # a repo parked in a dropzone

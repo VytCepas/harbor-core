@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # ci-runner-switch.sh (harbor#865) — GitHub-hosted is the primary CI runner; the Mac is the fallback when the month's Actions minutes run short.
 #
-#   sh ci-runner-switch.sh            read the month's private-repo Actions minutes, set the repo variable HARBOR_RUNNER
+#   sh ci-runner-switch.sh            read the month's private-repo Actions minutes, set the repo variable HARBOR_CI_RUNNER
 #                                  (governance.yml's selector) when it should change, write cache/runner-switch.json
 #   sh ci-runner-switch.sh --print    the same read, writes nothing: the usage, the allowance, what it would set
 #   sh ci-runner-switch.sh --org ORG [--print]   an organisation's own verdict, its minutes against its cap (the --org block below)
@@ -21,6 +21,10 @@
 # it is read that way. A change is ONE line in cache/checks.log (`[check:ci.runner-switch]`), never one per tick, and the
 # cache feeds fleet-glyph's `CI→local` token (the Mac and the Linux container both run self-hosted). A read that fails
 # (the bill, the repo list or the variable) flips NOTHING: it warns, marks the cache `unread`, and logs once on the way in, not on every tick of a standing outage.
+#
+# THE NAME (harbor#961 W6). The variable is HARBOR_CI_RUNNER, the ci family's; it was HARBOR_RUNNER. Until 2026-11-15 the
+# current value is the new name's, else the old one's (what the patched governance.yml reads), and a change sets BOTH, so
+# a workflow that still reads only the old name follows too. From 2026-11-16 the old name is neither read nor written.
 #
 # Run by status-fleet-snapshot-refresh.sh every 300s: no schedule of its own. POSIX sh, jq, gh (HARBOR_TEST_GH swaps in a fake).
 set -eu
@@ -45,7 +49,8 @@ done
 
 REPO="${HARBOR_CI_SWITCH_REPO:-${HARBOR_SWITCH_REPO:-$(repo_slug)}}"   # harbor's own OWNER/NAME (harbor#1149); --org never reads it, the rest refuses an empty one
 BUSER="${HARBOR_CI_BILLING_USER:-${HARBOR_BILLING_USER:-${REPO%%/*}}}"  # the account billed for the minutes is the repo's owner unless named
-VARNAME=HARBOR_RUNNER
+VARNAME=HARBOR_CI_RUNNER
+OLDVAR=HARBOR_RUNNER; OLD_UNTIL=20261115   # read and kept equal to the new name through this UTC day (harbor#961 W6)
 PCT=90
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
@@ -59,6 +64,7 @@ case "$NOW" in ''|*[!0-9]*) NOW="$(date +%s)" ;; esac
 # The UTC date of an epoch: BSD `date -r <epoch>`, else GNU `date -d @<epoch>`.
 fmt() { date -u -r "$NOW" "+$1" 2>/dev/null || date -u -d "@$NOW" "+$1"; }
 YEAR="$(fmt %Y)"; MONTH="$(fmt %m)"; DAY="$(fmt %d)"
+DUAL=0; [ "$(fmt %Y%m%d)" -gt "$OLD_UNTIL" ] || DUAL=1
 MONTH_N="${MONTH#0}"
 
 # ── the budget, in minutes ─────────────────────────────────────────────────────
@@ -151,7 +157,7 @@ unread() { # <what>
     printf '{"at":%s,"repo":"%s","unread":true,"fallback":false}\n' "$NOW" "$REPO" > "$OUT.tmp.$$"
   fi
   mv -f "$OUT.tmp.$$" "$OUT"
-  [ "$PREV_UNREAD" = true ] || logline "$REPO: $1 did not answer; HARBOR_RUNNER left as it is (the next good read clears this)"
+  [ "$PREV_UNREAD" = true ] || logline "$REPO: $1 did not answer; $VARNAME left as it is (the next good read clears this)"
   exit 0
 }
 
@@ -159,10 +165,19 @@ unread() { # <what>
 [ -n "$REPO" ] || { REPO='?'; unread "the repository name (no origin in this checkout, no repo-slug.txt beside this install; set HARBOR_CI_SWITCH_REPO=<owner/name>)"; }
 
 # ── the current value: unset reads as self-hosted, which is what the workflow does with it ──
-CUR="$("$GH" variable get "$VARNAME" -R "$REPO" 2>"$T/vget.err" || true)"
-CUR="$(printf '%s' "$CUR" | tr -d ' \r\n')"
-if [ -z "$CUR" ]; then
-  if grep -qi 'not found' "$T/vget.err" 2>/dev/null; then CUR=self-hosted; else unread "the $VARNAME read"; fi
+getvar() { # <name> -> GV, its value (self-hosted when unset) and GSET (1 when set); returns 1 when the read fails
+  GV="$("$GH" variable get "$1" -R "$REPO" 2>"$T/vget.err" || true)"
+  GV="$(printf '%s' "$GV" | tr -d ' \r\n')"; GSET=1
+  [ -z "$GV" ] || return 0
+  GSET=0; GV=self-hosted
+  grep -qi 'not found' "$T/vget.err" 2>/dev/null
+}
+getvar "$VARNAME" || unread "the $VARNAME read"
+CUR="$GV"; CUR_OLD=""
+if [ "$DUAL" = 1 ]; then
+  _newset="$GSET"
+  getvar "$OLDVAR" || unread "the $OLDVAR read"
+  CUR_OLD="$GV"; [ "$_newset" = 1 ] || CUR="$GV"   # the new name wins; unset, the workflow falls back to the old
 fi
 
 # ── the allowance follows the account's plan (harbor#1060: Pro -> Free on 2026-10-05 took 1,000 minutes away) ──
@@ -213,8 +228,16 @@ if [ "$WANT" != "$CUR" ]; then
     unread "the $VARNAME write"
   fi
 fi
+# In the window the old name follows, so a workflow that reads only it lands on the same runner.
+if [ "$DUAL" = 1 ] && [ "$WANT" != "$CUR_OLD" ]; then
+  if "$GH" variable set "$OLDVAR" --body "$WANT" -R "$REPO" >/dev/null 2>&1; then
+    [ "$WANT" != "$CUR" ] || logline "$REPO $OLDVAR $CUR_OLD -> $WANT (kept equal to $VARNAME until 2026-11-15)"
+  else
+    unread "the $OLDVAR write"
+  fi
+fi
 
-[ "$PREV_UNREAD" != true ] || logline "$REPO: the HARBOR_RUNNER read answers again"
+[ "$PREV_UNREAD" != true ] || logline "$REPO: the $VARNAME read answers again"
 FALLBACK=false; [ "$WANT" = self-hosted ] && FALLBACK=true
 jq -cn --argjson now "$NOW" --arg repo "$REPO" --arg runner "$WANT" --argjson used "$USED" --argjson allow "$ALLOW" \
   --argjson fb "$FALLBACK" --argjson nm "$NEWMONTH" --arg plan "${PLAN:-}" \

@@ -18,7 +18,7 @@
 #             them (registry.test.sh), each runtime-install ships, and a rule runs one only while its bytes
 #             are the blob {cfg}/.harbor-manifest records. No free-form command (harbor#1044 review r2 #1).
 event.fleet-snapshot	"kind":"(session\.start|session\.stop|pr\.opened|pr\.merged|git\.merge|ci\.job\.done)"	60	12	3600	sh {cfg}/bin/status-fleet-snapshot-refresh.sh
-event.pulse	"kind":"(ci\.job\.done|obligation\.open|obligation\.close|git\.merge)"	300	4	3600	sh {cfg}/bin/alert-notify.sh
+event.alerting	"kind":"(ci\.job\.done|obligation\.open|obligation\.close|git\.merge)"	300	4	3600	sh {cfg}/bin/alert-notify.sh
 event.session-notify	"kind":"session\.state"	10	30	0	sh {cfg}/bin/session-notify.sh
 event.session-save-now	"kind":"session\.save-now"	300	6	0	sh {cfg}/bin/session-save-now.sh
 event.session-ci-watch	"kind":"pr\.opened"	30	12	0	sh {cfg}/bin/session-ci-watch.sh

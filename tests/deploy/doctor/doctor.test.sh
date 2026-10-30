@@ -3,7 +3,7 @@
 # and an unreadable guard-lib reads blank rather than as a value (harbor#371).
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 OUT="$(sh "$T_ROOT/bin/deploy-doctor.sh" 2>&1)"; RC=$?
-resolve() { sh -c '. "$1/bin/guard-lib.sh" >/dev/null 2>&1 && printf %s "${FLOOR_GREP:-}"' _ "$1" 2>/dev/null; }
+resolve() { sh -c '. "$1/bin/library-admission.sh" >/dev/null 2>&1 && printf %s "${FLOOR_GREP:-}"' _ "$1" 2>/dev/null; }
 
 t_section "doctor exits 0 and produces a report"
 t_eq "deploy-doctor.sh exit" 0 "$RC"
@@ -21,7 +21,7 @@ t_eq "pin matches guard-lib's FLOOR_GREP" "$REAL" "$PIN"
 
 t_section "an unreadable guard-lib resolves blank, not to a value"
 mkdir -p "$T_TMP/nolib/bin"
-t_eq "resolver on a tree with no guard-lib.sh" "" "$(resolve "$T_TMP/nolib")"
+t_eq "resolver on a tree with no library-admission.sh" "" "$(resolve "$T_TMP/nolib")"
 
 t_section "every fatal dependency is named with a status"
 for t in jq grep awk sed git; do

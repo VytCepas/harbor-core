@@ -22,10 +22,10 @@ TOKEN_FILE="${HARBOR_MEMORY_LOG_TOKEN_FILE:-${HARBOR_LOG_TOKEN_FILE:-$CFG/.helm-
 # session cwd the payload carries.
 #
 # Stdin is read FIRST now, because the shared resolver reads .cwd from it.
-# harbor#813: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./guard-lib.sh from it.
+# harbor#813: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./library-admission.sh from it.
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
 [ ! -f "$DIR/manifest.tsv" ] || DIR="$DIR/../../bin"  # D-88: in the repo an engine sits beside its manifest in hooks/<engine>/; deployed, flat beside its libraries
-. "$DIR/guard-lib.sh"
+. "$DIR/library-admission.sh"
 # A Stop hook's stdout is the harness's, so its log goes to stderr (contracts/logging.md). Every
 # path still exits 0: a blocked commit is a WARN with its fix, never a blocked session.
 LOG_FD=2; . "$DIR/library-log.sh"
@@ -42,7 +42,7 @@ CWD="$(floor_field '.cwd')"
 HOST="$(floor_host_token)"
 DATE="$(date +%Y-%m-%d)"
 [ -n "$SID" ] || SID="unknown-$(date +%H%M%S)"
-# The format lives in floor_worklog_record (guard-lib.sh), not here. It used to
+# The format lives in floor_worklog_record (library-admission.sh), not here. It used to
 # be open-coded, and harbor#6 added a SECOND writer — memory-harvest.sh, which
 # backfills a record for a session that never reached this hook. Two open-coded
 # writers of one format drift silently: both keep producing files, they just stop
@@ -70,7 +70,7 @@ fi
 # floor_gitleaks_staged, not a literal subcommand: 8.18.4 has no `gitleaks git`
 # and exits 1 on it, which `--exit-code 1` makes indistinguishable from a finding
 # — so this gate refused every commit on a box carrying the version CI itself
-# pins, while reporting a secret. See guard-lib.sh for the probe and the measured
+# pins, while reporting a secret. See library-admission.sh for the probe and the measured
 # equivalence. The fail-closed posture below is unchanged: non-zero still blocks.
 if ! floor_gitleaks_staged "$WORKLOG_DIR" >/dev/null 2>&1; then
   git reset -q

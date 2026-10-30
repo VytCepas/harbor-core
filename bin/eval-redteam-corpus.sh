@@ -35,7 +35,7 @@ SELF="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)/$(basename -- "$0")"
 ROOT="$(dirname -- "$(dirname -- "$SELF")")"
 
 # ── --judge: the ccg adapter's callback, before any logging (its stdout is the verdict) ──
-# guard: the last *.sh word of the hook command, so `floor-hook.sh guard-bash.sh` names guard-bash.
+# guard: the last *.sh word of the hook command, so `admission-hook.sh admission-bash.sh` names guard-bash.
 rt_judge() { # <sandbox> ; stdin: one hook event
   _ev="$(cat)"; _cfg="$1/cfg"
   _tool="$(printf '%s' "$_ev" | jq -r '.tool_name // ""' 2>/dev/null)" || _tool=''

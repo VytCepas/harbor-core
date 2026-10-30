@@ -20,7 +20,7 @@ t_has "...and says so" "$_rpo" "  ok: re-pinned: teeth + sec0 baseline now match
 t_section "harbor#708: contracts/shims.tsv alone owns idea, memory, gcx and gcloud"
 H="$T/home"; mkdir -p "$H/.claude"; printf '{}' > "$H/.claude/settings.json"
 env -u CLAUDE_CONFIG_DIR HOME="$H" sh "$TOOL" --live --apply >/dev/null 2>&1
-t_eq "a LIVE runtime-install --apply (sandbox HOME) ran" yes "$([ -f "$H/.claude/bin/guard-lib.sh" ] && echo yes || echo no)"
+t_eq "a LIVE runtime-install --apply (sandbox HOME) ran" yes "$([ -f "$H/.claude/bin/library-admission.sh" ] && echo yes || echo no)"
 t_eq "...and created no ~/.local/bin" no "$([ -e "$H/.local/bin" ] && echo yes || echo no)"
 env -u CLAUDE_CONFIG_DIR HOME="$H" HARBOR_SCOPE_LOCAL_BIN="$H/lbin" sh "$TOOL" --live --apply >/dev/null 2>&1
 t_eq "...not even with HARBOR_SCOPE_LOCAL_BIN pointing somewhere" no "$([ -e "$H/lbin" ] && echo yes || echo no)"
@@ -98,11 +98,11 @@ copy_data() {
 # The hook engines' folders (D-88): their bytes and manifests are payload too, so a copied checkout carries them.
 copy_hooks() { cp -R "$T_ROOT/hooks" "$1/"; }
 P2="$T/p285"; mkdir -p "$P2/.helm-pins"; printf '{}\n' > "$P2/settings.json"
-printf 'stale\n' > "$P2/.helm-pins/guard-lib.sh.sha256"
+printf 'stale\n' > "$P2/.helm-pins/library-admission.sh.sha256"
 _o285="$(ri --apply --dir "$P2" 2>&1)"
 t_hasnt "a pin in floor-install's payload claims no lockout" "$_o285" 'will be BLOCKED'
 t_has "...and names floor-install as the remedy" "$_o285" "floor-install re-pins them: sh $SRCB/floor-install.sh"
-printf 'stale\n' > "$P2/.helm-pins/guard-lib.sh.sha256"
+printf 'stale\n' > "$P2/.helm-pins/library-admission.sh.sha256"
 _o285d="$(env -u CLAUDE_CONFIG_DIR HARBOR_DEPLOY_ACTIVE=1 sh "$TOOL" --apply --dir "$P2" 2>&1)"
 t_hasnt "under deploy it does not: floor-install re-pins a step later" "$_o285d" 'B6 CONTENT PINS ARE NOW STALE'
 t_has "...and it says what happens instead" "$_o285d" 'floor-install re-pins them next in this deploy'
@@ -111,14 +111,14 @@ printf 'stale\n' > "$P3/.helm-pins/alert-probe.sh.sha256"
 t_has "a pin floor-install does NOT carry keeps the banner" "$(ri --apply --dir "$P3" 2>&1)" 'B6 CONTENT PINS ARE NOW STALE — the next SessionStart will be BLOCKED'
 printf 'stale\n' > "$P3/.helm-pins/alert-probe.sh.sha256"
 t_has "...under deploy too: nothing later re-pins it" "$(env -u CLAUDE_CONFIG_DIR HARBOR_DEPLOY_ACTIVE=1 sh "$TOOL" --apply --dir "$P3" 2>&1)" 'will be BLOCKED: this install replaced content-pinned file(s): alert-probe.sh'
-# The covered set is read from floor-install.sh: empty its GUARDS and guard-lib.sh is banner-worthy again.
+# The covered set is read from floor-install.sh: empty its GUARDS and library-admission.sh is banner-worthy again.
 CG="$T/cg"; mkdir -p "$CG/bin" "$CG/tests/deploy/restore" "$CG/tests/lib" "$CG/contracts"
 # the whole payload (merge-stack's .py too, harbor#1060; DATA via copy_data), or the copy is a refused half install
 cp "$T_ROOT"/bin/*.sh "$T_ROOT"/bin/*.awk "$T_ROOT"/bin/*.py "$CG/bin/"; cp "$T_ROOT/tests/deploy/restore/recover.test.sh" "$CG/tests/deploy/restore/"
 cp "$T_ROOT/tests/lib/core.sh" "$CG/tests/lib/"; copy_data "$CG"; copy_hooks "$CG"
 sed "s/^GUARDS='.*'\$/GUARDS=''/" "$T_ROOT/bin/floor-install.sh" > "$CG/bin/floor-install.sh"
-P4="$T/p285c"; mkdir -p "$P4/.helm-pins"; printf '{}\n' > "$P4/settings.json"; printf 'stale\n' > "$P4/.helm-pins/guard-lib.sh.sha256"
-t_has "mutation: floor-install with no GUARDS brings the banner back" "$(env -u CLAUDE_CONFIG_DIR sh "$CG/bin/deploy-runtime-install.sh" --apply --dir "$P4" 2>&1)" 'will be BLOCKED: this install replaced content-pinned file(s): guard-lib.sh'
+P4="$T/p285c"; mkdir -p "$P4/.helm-pins"; printf '{}\n' > "$P4/settings.json"; printf 'stale\n' > "$P4/.helm-pins/library-admission.sh.sha256"
+t_has "mutation: floor-install with no GUARDS brings the banner back" "$(env -u CLAUDE_CONFIG_DIR sh "$CG/bin/deploy-runtime-install.sh" --apply --dir "$P4" 2>&1)" 'will be BLOCKED: this install replaced content-pinned file(s): library-admission.sh'
 
 t_section "the dry-run exit rule over a regression: runtime-install and floor-install refuse in both modes"
 # A copied bin/ whose deploy-install-stamp.sh reports a regression, so the installers' own handling is what runs.
@@ -173,7 +173,7 @@ t_section "the install manifest (install standard §3): a row per file it wrote,
 MI="$T/mf"; mkdir -p "$MI/bin"; printf '{}\n' > "$MI/settings.json"
 ri --dir "$MI" >/dev/null 2>&1
 t_eq "a dry run writes no manifest" no "$([ -e "$MI/.harbor-manifest" ] && echo yes || echo no)"
-printf '#!/bin/sh\n# an opted-in B6\n' > "$MI/bin/guard-integrity.sh"
+printf '#!/bin/sh\n# an opted-in B6\n' > "$MI/bin/admission-integrity.sh"
 ri --apply --dir "$MI" >/dev/null 2>&1
 _h="$(git -C "$T_ROOT" rev-parse HEAD)"
 mrow() { grep " $1 " "$MI/.harbor-manifest" 2>/dev/null | awk '{print $1, $2, $4, $5}'; }
@@ -181,10 +181,10 @@ t_eq "every FILES entry is a row" "$(sed -n 's/^FILES="\(.*\)"/\1/p' "$TOOL" | w
   "$(for f in $(sed -n 's/^FILES="\(.*\)"/\1/p' "$TOOL"); do grep -c " bin/$f runtime-install " "$MI/.harbor-manifest"; done | awk '{ s += $1 } END { print s }')"
 t_eq "the suite is recorded where it was installed, bin/recover-test.sh" "$(git hash-object "$MI/bin/recover-test.sh") 100755 runtime-install $_h" "$(mrow bin/recover-test.sh)"
 t_eq "...and its harness at lib/core.sh, 100644" "$(git hash-object "$MI/lib/core.sh") 100644 runtime-install $_h" "$(mrow lib/core.sh)"
-t_eq "an installed B6 it refreshed is a row" runtime-install "$(mrow bin/guard-integrity.sh | awk '{print $3}')"
+t_eq "an installed B6 it refreshed is a row" runtime-install "$(mrow bin/admission-integrity.sh | awk '{print $3}')"
 t_eq "the generated suite payload file is not a row: no repo file is its source" "" "$(mrow bin/.helm-suite-payloads)"
 MN="$T/mf-nob6"; mkdir -p "$MN"; printf '{}\n' > "$MN/settings.json"; ri --apply --dir "$MN" >/dev/null 2>&1
-t_eq "a B6 it did not install has no row" 0 "$(grep -c ' bin/guard-integrity.sh ' "$MN/.harbor-manifest")"
+t_eq "a B6 it did not install has no row" 0 "$(grep -c ' bin/admission-integrity.sh ' "$MN/.harbor-manifest")"
 
 t_section "the installed dispatcher follows with the installed bus: the loop guard's cause reaches it (harbor#1044 r2 #3)"
 # runtime-install alone must ship a bus that passes HARBOR_EVENT_CAUSE on; the dispatcher refuses (4) beside one that does not.
@@ -197,7 +197,7 @@ t_section "the installed dispatcher judges its presets by the register and prese
 for _f in docs/reference/checks.md event-rules.tsv; do
   t_eq "bin/$_f is installed with a manifest row" 1 "$(grep -c " bin/$_f runtime-install " "$MI/.harbor-manifest")"
 done
-for _p in event.pulse event.fleet-snapshot; do
+for _p in event.alerting event.fleet-snapshot; do
   _rc=0; env -u CLAUDECODE HARBOR_EVENT_DIR="$T/mf-bus" HARBOR_SCOPE_CACHE_DIR="$T/mf-cache" CLAUDE_CONFIG_DIR="$MI" HOME="$T/mf-home" \
     sh "$MI/bin/event-dispatch.sh" on --preset "$_p" >/dev/null 2>&1 || _rc=$?
   t_eq "$_p: on --preset exits 0 with no checkout in reach (HOME has no ~/port/harbor)" 0 "$_rc"

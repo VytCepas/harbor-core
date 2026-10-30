@@ -98,7 +98,7 @@ umask 077
 # config dir from CLAUDE_CONFIG_DIR, and three floor-test invocations were
 # silently pointing guards at the live ~/.claude until lint F4 caught them.
 RCFG="$TMP/cfg"; mkdir -p "$RCFG/bin"
-for g in guard-lib.sh guard-bash.sh guard-egress.sh guard-selfedit.sh floor-normalize.awk; do
+for g in library-admission.sh admission-bash.sh admission-egress.sh admission-self-edit.sh floor-normalize.awk; do
   cp "$DIR/$g" "$RCFG/bin/$g"
 done
 printf '{"permissions":{"allow":[],"deny":[]}}\n' > "$RCFG/settings.json"

@@ -40,6 +40,23 @@ t_has "the write" "$(OUT)" "  ok: fresh: wrote context: repo"
 t_eq "the key is on disk" "context: repo" "$(head -1 "$F/fresh/.agents/config.yaml")"
 t_eq "the summary" "marker-backfill: 2 ok, 0 failed, 1 warnings" "$(OUT | tail -1)"
 
+t_section "the standard's scope: key is already a declaration (harbor#963)"
+mkdir -p "$F/scoped/.agents" "$F/nested/.agents" "$H/.local/bin"
+printf 'scope: project\nproject:\n  name: scoped\n' > "$F/scoped/.agents/config.yaml"
+printf 'project:\n  scope: user\n' > "$F/nested/.agents/config.yaml"
+# The CLI from the roots table's row (contracts/roots.tsv), with nothing of that name on PATH.
+cat > "$H/.local/bin/projects-orchestrator" <<EOT
+#!/bin/sh
+printf '[{"descriptor":{"name":"scoped","path":"$F/scoped","config_root":".agents"}},{"descriptor":{"name":"nested","path":"$F/nested","config_root":".agents"}}]\n'
+EOT
+chmod +x "$H/.local/bin/projects-orchestrator"; mv "$B/projects-orchestrator" "$B/off"
+t_eq "exit 0" "exit 0" "$(run --apply)"
+t_has "the fleet CLI came from the roots row" "$(OUT | head -1)" "fleet: 2 governed repos"
+t_has "scope: project is declared" "$(OUT)" "  ok: scoped: already declares scope: project"
+t_eq "...and no context: line was added" "scope: project" "$(head -1 "$F/scoped/.agents/config.yaml")"
+t_has "an indented scope: is left for a person" "$(OUT)" "  WARN: nested: has an INDENTED context: or scope: key; resolve by hand"
+rm -f "$H/.local/bin/projects-orchestrator"; mv "$B/off" "$B/projects-orchestrator"
+
 t_section "an empty fleet: FAIL, its fix, exit 1"
 printf '#!/bin/sh\nprintf "[]\\n"\n' > "$B/projects-orchestrator"
 t_eq "exit 1" "exit 1" "$(run)"

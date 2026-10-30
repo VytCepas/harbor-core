@@ -71,7 +71,7 @@ t_eq "--projects prints context-rules/user/projects.tsv" "$PN/context-rules/user
 t_eq "a control character in PORT_ROOT is refused by both: exit 2" "2 2" "$(HARBOR_SCOPE_PRIVATE= PORT_ROOT="$(printf 'a\tb')" ric) $(HARBOR_SCOPE_PRIVATE= PORT_ROOT="$(printf 'a\tb')" rjc)"
 
 t_section "the floor never reads the private layer"
-for _f in "$T_ROOT"/bin/guard-*.sh "$T_ROOT"/bin/floor-*.sh "$T_ROOT"/bin/floor-normalize.awk; do
+for _f in "$T_ROOT"/bin/admission-*.sh "$T_ROOT"/bin/library-admission.sh "$T_ROOT"/bin/floor-*.sh "$T_ROOT"/bin/floor-normalize.awk; do
   t_eq "$(basename "$_f") does not name the register or the layer" "" \
     "$(/usr/bin/grep -nE -e '--access|harbor-private|HARBOR_SCOPE_PRIVATE|ACCESS_DIR|repos\.tsv' "$_f")"
 done

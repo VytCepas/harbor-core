@@ -45,7 +45,7 @@
 # the one you want to believe.
 #
 # THE WIRED-GUARD PREDICATE IS A COPY, AND THE SUITE KNOWS IT. status-generate.sh
-# owns the correct one: a whole-path-segment match on floor-hook.sh plus a
+# owns the correct one: a whole-path-segment match on admission-hook.sh plus a
 # presence-and-nonempty check over the guard files. The tempting one-liner —
 # `test("guard-")` over the hook table — produced a false green on 2026-08-01,
 # because prod-guard-ambient.sh satisfies the substring on a box with none of
@@ -115,7 +115,7 @@ check_floor() {
   # THE MATRIX, NOT THE BASENAME. floor-install.sh wires five distinct
   # (event, matcher, guard) triples, and a check that flattens them into "does
   # this guard appear anywhere" cannot see the failure the installer's own
-  # comment records as pass 11's critical: guard-egress.sh carries dedicated
+  # comment records as pass 11's critical: admission-egress.sh carries dedicated
   # branches for mcp__*, Task/Agent, WebFetch/WebSearch and NotebookEdit, and
   # for months NONE of them could run because only the Bash|Write|Edit matcher
   # was ever wired. The suite missed it "because its wiring assertions only
@@ -135,18 +135,18 @@ check_floor() {
       _ntot=$((_ntot + 1))
       jq -e --arg e "$_ev" --arg m "$_mt" --arg g "$_g" '
             [.hooks[$e][]? | select(.matcher == $m) | .hooks[]?.command // empty]
-            | map(select(test("(^|/)floor-hook[.]sh([[:space:]]|$)")) | select(contains($g)))
+            | map(select(test("(^|/)admission-hook[.]sh([[:space:]]|$)")) | select(contains($g)))
             | length > 0' "$_s" >/dev/null 2>&1 \
         || _unwired="$_unwired ${_g%.sh}/${_mt%%|*}"
     done <<'MATRIX'
-PreToolUse	Bash	guard-bash.sh
-PreToolUse	Bash|Write|Edit|MultiEdit	guard-egress.sh
-PreToolUse	mcp__.*|Task|Agent|WebFetch|WebSearch|NotebookEdit	guard-egress.sh
-PreToolUse	Write|Edit|MultiEdit	guard-selfedit.sh
+PreToolUse	Bash	admission-bash.sh
+PreToolUse	Bash|Write|Edit|MultiEdit	admission-egress.sh
+PreToolUse	mcp__.*|Task|Agent|WebFetch|WebSearch|NotebookEdit	admission-egress.sh
+PreToolUse	Write|Edit|MultiEdit	admission-self-edit.sh
 PostToolUse	WebFetch|WebSearch|ToolSearch|mcp__.*	annotate-web.sh
-PreToolUse	Monitor	guard-bash.sh
-PreToolUse	Monitor	guard-egress.sh
-PreToolUse	Grep	guard-egress.sh
+PreToolUse	Monitor	admission-bash.sh
+PreToolUse	Monitor	admission-egress.sh
+PreToolUse	Grep	admission-egress.sh
 MATRIX
   fi
   # An EMPTY file parses as neither valid nor invalid to a naive check: jq over
@@ -164,8 +164,8 @@ MATRIX
   # list started as five, and the suite's agreement assertion against
   # status-generate.sh failed on its first run and named the two.
   _missing=0
-  for _f in floor-hook.sh guard-lib.sh guard-bash.sh guard-egress.sh \
-            guard-selfedit.sh annotate-web.sh floor-normalize.awk; do
+  for _f in admission-hook.sh library-admission.sh admission-bash.sh admission-egress.sh \
+            admission-self-edit.sh annotate-web.sh floor-normalize.awk; do
     [ -s "$CFG/bin/$_f" ] || _missing=$((_missing + 1))
   done
   _nun=0

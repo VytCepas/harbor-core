@@ -74,9 +74,9 @@ while IFS= read -r _p; do
     # deploy-harden.sh IS a floor surface for this purpose (PR #124 review): the
     # smoke set installs it and asserts the B1 deny and path-anchoring guarantees
     # before the boundary, so a bad SEC-0 deny edit was reaching a push with only
-    # the style linter behind it. guard-lib.sh and floor-*.sh are already covered
+    # the style linter behind it. library-admission.sh and floor-*.sh are already covered
     # by the two globs above it.
-    bin/guard-*.sh|bin/floor-*.sh|bin/floor-*.awk|bin/deploy-harden.sh|hooks/*)
+    bin/admission-*.sh|bin/library-admission.sh|bin/guard-*.sh|bin/floor-*.sh|bin/floor-*.awk|bin/deploy-harden.sh|hooks/*)
       _floor_staged="$_floor_staged$_p
 " ;;
   esac
@@ -124,8 +124,9 @@ if [ -n "$_floor_staged" ]; then
   _gs=""
   for _p in $_floor_staged; do
     case "$_p" in
-      bin/guard-lib.sh|bin/floor-*|bin/deploy-harden.sh|hooks/*) _gs=" all"; break ;;
-      bin/guard-*.sh) _g="${_p#bin/guard-}"; _gs="$_gs ${_g%.sh}" ;;
+      bin/library-admission.sh|bin/floor-*|bin/deploy-harden.sh|hooks/*) _gs=" all"; break ;;
+      bin/admission-*.sh|bin/guard-*.sh) _g="${_p#bin/*-}"; _g="${_g%.sh}"   # the guard is its tests/admission/ directory (harbor#961 W6)
+        case "$_g" in self-edit) _g=selfedit ;; api-route) _g=apiroute ;; esac; _gs="$_gs $_g" ;;
     esac
   done
   # harbor#961 W2: a guard's suites are tests/admission/<guard>/*.test.sh; the directory names the guard

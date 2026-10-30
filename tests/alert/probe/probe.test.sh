@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # alert-probe.sh, the probe (harbor#9, E1). Every case builds a fixture config dir that looks like
 # the live box: floor-install wires each guard as its own entry with the guard passed to
-# floor-hook.sh, so a one-line fixture could not tell a complete floor from a partial one.
+# admission-hook.sh, so a one-line fixture could not tell a complete floor from a partial one.
 # The wiring matrix and the floor predicate are copies (of floor-install.sh, status-generate.sh);
 # the drift and agreement cases fail when a copy drifts. The notifier is pulse-notify-test.sh.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
@@ -9,7 +9,7 @@ unset HARBOR_TEST_IN_SUITE HARBOR_IN_SUITE  # t_init keeps status-gen's re-entry
 P="$T_ROOT/bin/alert-probe.sh"; TMP="$T_TMP/pulse"; mkdir -p "$TMP"
 mkcfg() { # <name> <deny: sentinel|unrelated|empty> <hooks: full|no-mcp|no-advis|bash-only|shim|odd|none> <missing-guard|->
   _d="$TMP/$1"; mkdir -p "$_d/bin" "$_d/cache"
-  for _g in floor-hook.sh guard-lib.sh guard-bash.sh guard-egress.sh guard-selfedit.sh annotate-web.sh floor-normalize.awk; do
+  for _g in admission-hook.sh library-admission.sh admission-bash.sh admission-egress.sh admission-self-edit.sh annotate-web.sh floor-normalize.awk; do
     [ "$_g" = "$4" ] || echo '# guard' > "$_d/bin/$_g"
   done
   case "$2" in
@@ -17,26 +17,26 @@ mkcfg() { # <name> <deny: sentinel|unrelated|empty> <hooks: full|no-mcp|no-advis
     unrelated) _deny='["Bash(rm -rf /*)","Read(./.env)"]' ;;
     *)         _deny='[]' ;;
   esac
-  # The eight (event, matcher, guard) triples floor-install.sh wires through floor-hook.sh (Monitor: pass 14 E-4;
+  # The eight (event, matcher, guard) triples floor-install.sh wires through admission-hook.sh (Monitor: pass 14 E-4;
   # Grep: harbor#1313 L6).
-  _mk_full='[{"e":"PreToolUse","m":"Bash","g":"guard-bash.sh"},
-             {"e":"PreToolUse","m":"Monitor","g":"guard-bash.sh"},
-             {"e":"PreToolUse","m":"Monitor","g":"guard-egress.sh"},
-             {"e":"PreToolUse","m":"Grep","g":"guard-egress.sh"},
-             {"e":"PreToolUse","m":"Bash|Write|Edit|MultiEdit","g":"guard-egress.sh"},
-             {"e":"PreToolUse","m":"mcp__.*|Task|Agent|WebFetch|WebSearch|NotebookEdit","g":"guard-egress.sh"},
-             {"e":"PreToolUse","m":"Write|Edit|MultiEdit","g":"guard-selfedit.sh"},
+  _mk_full='[{"e":"PreToolUse","m":"Bash","g":"admission-bash.sh"},
+             {"e":"PreToolUse","m":"Monitor","g":"admission-bash.sh"},
+             {"e":"PreToolUse","m":"Monitor","g":"admission-egress.sh"},
+             {"e":"PreToolUse","m":"Grep","g":"admission-egress.sh"},
+             {"e":"PreToolUse","m":"Bash|Write|Edit|MultiEdit","g":"admission-egress.sh"},
+             {"e":"PreToolUse","m":"mcp__.*|Task|Agent|WebFetch|WebSearch|NotebookEdit","g":"admission-egress.sh"},
+             {"e":"PreToolUse","m":"Write|Edit|MultiEdit","g":"admission-self-edit.sh"},
              {"e":"PostToolUse","m":"WebFetch|WebSearch|ToolSearch|mcp__.*","g":"annotate-web.sh"}]'
   case "$3" in
     full|odd)  _trip="$_mk_full" ;;
     no-mcp)    _trip="$(jq -n --argjson t "$_mk_full" '$t | map(select(.m != "mcp__.*|Task|Agent|WebFetch|WebSearch|NotebookEdit"))')" ;;
     no-advis)  _trip="$(jq -n --argjson t "$_mk_full" '$t | map(select(.e != "PostToolUse"))')" ;;
-    bash-only) _trip="$(jq -n --argjson t "$_mk_full" '$t | map(select(.g == "guard-bash.sh"))')" ;;
+    bash-only) _trip="$(jq -n --argjson t "$_mk_full" '$t | map(select(.g == "admission-bash.sh"))')" ;;
     *)         _trip='[]' ;;
   esac
   _pre="  "; [ "$3" = odd ] || _pre=""
   _cmds="$(jq -n --arg d "$_d" --arg pre "$_pre" --argjson t "$_trip" \
-    '$t | map({event:.e, matcher:.m, command:($pre + "/bin/sh " + $pre + $d + "/bin/floor-hook.sh "
+    '$t | map({event:.e, matcher:.m, command:($pre + "/bin/sh " + $pre + $d + "/bin/admission-hook.sh "
       + (if .e == "PostToolUse" then "--advisory " else "" end) + $d + "/bin/" + .g)})')"
   [ "$3" = shim ] && _cmds="$(jq -n --arg d "$_d" '[{event:"PreToolUse", matcher:"Bash", command:("/bin/sh " + $d + "/bin/prod-guard-ambient.sh")}]')"
   jq -n --argjson deny "$_deny" --argjson cmds "$_cmds" \
@@ -53,13 +53,13 @@ sg() { FAST=1 HARBOR_DEPLOY_LIVE_DIR="$1" sh "$T_ROOT/bin/status-generate.sh" --
 t_section "floor: the predicate"
 WIRED="$(mkcfg wired sentinel full -)"
 t_eq "a fully wired floor is ok" ok "$(verdict "$(run "$WIRED")" floor)"
-O="$(run "$(mkcfg gone sentinel full guard-egress.sh)")"
+O="$(run "$(mkcfg gone sentinel full admission-egress.sh)")"
 t_eq "a hook at a missing guard file is crit" crit "$(verdict "$O" floor)"
 t_has "the detail says what is missing" "$(detail "$O" floor)" "missing"
 t_eq "deny live, nothing wired is warn" warn "$(verdict "$(run "$(mkcfg denyonly sentinel none -)")" floor)"
 NAKED="$(mkcfg naked empty none -)"
 t_eq "nothing wired and no deny is crit" crit "$(verdict "$(run "$NAKED")" floor)"
-# The 2026-08-01 false green: prod-guard-ambient.sh matches test("guard-") but is not floor-hook.sh.
+# The 2026-08-01 false green: prod-guard-ambient.sh matches test("guard-") but is not admission-hook.sh.
 O="$(run "$(mkcfg shim sentinel shim -)")"
 t_eq "a prod_guard shim is not a wired floor" warn "$(verdict "$O" floor)"
 
@@ -69,17 +69,17 @@ t_eq "an unrelated deny rule is not the B1 layer" warn "$(verdict "$O" floor)"
 t_has "the detail names the missing sentinel" "$(detail "$O" floor)" "sentinel"
 O="$(run "$(mkcfg bashonly sentinel bash-only -)")"
 t_eq "one wired guard out of three is crit" crit "$(verdict "$O" floor)"
-t_has "the detail names what is unwired" "$(detail "$O" floor)" "guard-egress"
+t_has "the detail names what is unwired" "$(detail "$O" floor)" "admission-egress"
 O="$(run "$(mkcfg nomcp sentinel no-mcp -)")"
 t_eq "the second egress matcher missing is crit" crit "$(verdict "$O" floor)"
 t_has "the detail names the unwired guard" "$(detail "$O" floor)" "egress"
 t_eq "the PostToolUse advisory counts as wiring" crit "$(verdict "$(run "$(mkcfg noadv sentinel no-advis -)")" floor)"
 # floor-install's rows are its floor_hooks table (harbor#766): <event>;<matcher>;<argv>;…
 _inst="$(awk -F';' '/^floor_hooks\(\)/ { f = 1; next } f && /^ROWS$/ { exit }
-    f && ($1 == "PreToolUse" || $1 == "PostToolUse") && $3 ~ /^floor-hook\.sh / {
+    f && ($1 == "PreToolUse" || $1 == "PostToolUse") && $3 ~ /^admission-hook\.sh / {
       n = split($3, a, " "); printf "%s\t%s\t%s\n", $1, $2, a[n] }' "$T_ROOT/bin/floor-install.sh" | sort)"
 _mine="$(awk -F'\t' 'NF == 3 && ($1 == "PreToolUse" || $1 == "PostToolUse") { print }' "$P" | sort)"
-t_has "the extractor finds floor-install's wiring rows" "$_inst" "guard-bash.sh"
+t_has "the extractor finds floor-install's wiring rows" "$_inst" "admission-bash.sh"
 t_eq "alert-probe.sh's wiring matrix matches floor-install.sh" "$_inst" "$_mine"
 
 t_section "floor: unknown and the valid-but-unusual control"

@@ -12,7 +12,7 @@ NONCE="$(od -An -N6 -tx1 /dev/urandom 2>/dev/null | tr -d ' \n')"; NONCE="${NONC
 LIVE_LEDGER="$(find "$REAL_CFG/MEMORY/OBSERVABILITY" -maxdepth 2 -name guard-decisions.jsonl 2>/dev/null | head -1)"
 TMP="$T_TMP/od"; H=fixturehost; CFG="$TMP/tree"
 mkdir -p "$CFG/bin" "$CFG/MEMORY/OBSERVABILITY/$H"
-for _f in guard-lib.sh floor-normalize.awk guard-destroy.sh guard-cloud.sh; do cp "$T_ROOT/bin/$_f" "$CFG/bin/$_f"; done
+for _f in library-admission.sh floor-normalize.awk admission-destroy.sh admission-cloud.sh; do cp "$T_ROOT/bin/$_f" "$CFG/bin/$_f"; done
 SINK="$CFG/MEMORY/OBSERVABILITY/$H/guard-decisions.jsonl"
 printf '%s\n' "$H" > "$CFG/.helm-obs-host"
 printf '%s\n' '0123456789abcdef0123456789abcdef' > "$CFG/.helm-obs-salt"  # fixture-only salt
@@ -40,7 +40,7 @@ hex16() { printf '%s' "$1" | grep -qxE '[0-9a-f]{16}' && echo yes || echo "no ($
 
 t_section "the fixture works at all, or nothing below discriminates"
 pay "diskutil eraseDisk JHFS+ Fixture$NONCE /dev/disk99"
-fire guard-destroy
+fire admission-destroy
 t_eq "the fixture sink received the first record" yes "$([ -s "$SINK" ] && echo yes || echo no)"
 [ -s "$SINK" ] || { echo "obs-digest-test: fixture sink empty — isolation broken, refusing to report" >&2; t_done; }
 t_eq "the fixture payload is a deny" deny "$(dd)"
@@ -48,36 +48,36 @@ t_eq "the fixture payload is a deny" deny "$(dd)"
 t_section "a deny carries a stable, discriminating digest"
 D1="$(hh)"
 t_eq "a deny carries a 16-hex digest" yes "$(hex16 "$D1")"
-fire guard-destroy
+fire admission-destroy
 t_eq "the same command gives the same digest" "$D1" "$(hh)"
 pay "diskutil eraseDisk JHFS+ Other$NONCE /dev/disk98"
-fire guard-destroy; D3="$(hh)"
+fire admission-destroy; D3="$(hh)"
 t_eq "a different command gives a different 16-hex digest" yes "$([ "$D3" != "$D1" ] && [ "$(hex16 "$D3")" = yes ] && echo yes || echo "no ($D3 vs $D1)")"
 
 t_section "guard-cloud too"
 pay "gcloud projects delete fixture-$NONCE --quiet"
-fire guard-cloud
+fire admission-cloud
 t_eq "the cloud fixture is a decision" yes "$(case "$(dd)" in (deny|ask) echo yes ;; (*) echo "no ($(dd))" ;; esac)"
 t_eq "the cloud decision carries a digest" yes "$(hex16 "$(hh)")"
 
 t_section "negative controls: each half of the fix, reverted, sends the digest to -"
-cp "$CFG/bin/guard-destroy.sh" "$TMP/gd.bak"
-grep -v '^FLOOR_OBS_SUBJECT="\$CMD"$' "$TMP/gd.bak" > "$CFG/bin/guard-destroy.sh"
+cp "$CFG/bin/admission-destroy.sh" "$TMP/gd.bak"
+grep -v '^FLOOR_OBS_SUBJECT="\$CMD"$' "$TMP/gd.bak" > "$CFG/bin/admission-destroy.sh"
 pay "diskutil eraseDisk JHFS+ Fixture$NONCE /dev/disk99"
-fire guard-destroy
+fire admission-destroy
 t_eq "no published subject, no digest" - "$(hh)"
-cp "$TMP/gd.bak" "$CFG/bin/guard-destroy.sh"
-cp "$CFG/bin/guard-lib.sh" "$TMP/gl.bak"
-sed 's/^  case "\$_ov" in block|deny|ask|shadow|covered)$/  case "$_ov" in block)/' "$TMP/gl.bak" > "$CFG/bin/guard-lib.sh"
-fire guard-destroy
+cp "$TMP/gd.bak" "$CFG/bin/admission-destroy.sh"
+cp "$CFG/bin/library-admission.sh" "$TMP/gl.bak"
+sed 's/^  case "\$_ov" in block|deny|ask|shadow|covered)$/  case "$_ov" in block)/' "$TMP/gl.bak" > "$CFG/bin/library-admission.sh"
+fire admission-destroy
 t_eq "a block-only verdict gate, no digest" - "$(hh)"
-cp "$TMP/gl.bak" "$CFG/bin/guard-lib.sh"
-fire guard-destroy
+cp "$TMP/gl.bak" "$CFG/bin/library-admission.sh"
+fire admission-destroy
 t_eq "the sources are restored after the controls" yes "$(hex16 "$(hh)")"
 
 t_section "an allow never gains a digest (the hot-path cost rationale)"
 pay 'echo fixture allow path'
-fire guard-destroy
+fire admission-destroy
 ALLOW_FIRE="$FIRE_N"  # the one fire allowed to leave the sink empty: allow is not a logged verdict
 t_eq "an allow carries no digest" - "$(if [ -s "$SINK" ]; then hh; else echo -; fi)"
 

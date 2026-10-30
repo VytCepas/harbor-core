@@ -741,8 +741,28 @@ kinds_of() { printf '%s\n' "$1" | awk '{ s = $0; gsub(/\\/, "", s)
 # and fired on every event), so the kinds the row names are all it can match.
 _K='[a-z0-9-]+(\\[.][a-z0-9-]+)+'
 KIND_RE='"kind":"([(]'"$_K"'([|]'"$_K"')*[)]|'"$_K"')"'
+# A renamed rule id (harbor#961 W6; standards/naming/renames.tsv, its check-id row): old, new and remove_by, one per line.
+# Until remove_by (UTC, inclusive) a rule installed under the old id keeps firing, judged by the new id's register row;
+# `on --preset <old>` installs the new id, and installing or removing the new id removes the old file, so one rule never
+# fires twice. Past the date the old id is refused like any unregistered rule, with the two commands that move it.
+ID_ALIASES='event.pulse event.alerting 2026-11-15'
+id_alias() { # <id> -> RID: the id its register row is under; ALIAS_GONE: the date an old id's window closed, else empty
+  RID="$1"; ALIAS_GONE=""
+  _ia="$(printf '%s\n' "$ID_ALIASES" | awk -v id="$1" '$1 == id { print $2 " " $3; exit }')"
+  [ -n "$_ia" ] || return 0
+  now; _ia_d="$(iso | cut -c1-10)"
+  RID="${_ia%% *}"
+  awk -v a="$_ia_d" -v b="${_ia#* }" 'BEGIN { exit !(a <= b) }' || ALIAS_GONE="${_ia#* }"
+}
+old_ids() { printf '%s\n' "$ID_ALIASES" | awk -v id="$1" '$2 == id { print $1 }'; }   # <new id>: its old ids
 reg_check() {
   WHY=""; FIX=""
+  id_alias "$1"
+  if [ -n "$ALIAS_GONE" ]; then
+    WHY="$1 was renamed $RID, and the old id stopped working after $ALIAS_GONE"
+    FIX="harbor event on --off $1, then harbor event on --preset $RID"; return 1
+  fi
+  set -- "$RID" "$2"
   if ! printf '%s\n' "$2" | grep -E -x -q -e "$KIND_RE"; then
     WHY="the pattern is not exactly \"kind\":\"<kind>\" or \"kind\":\"(<kind>|<kind>…)\" with dotted lower-case kinds — a rule fires on named events and nothing else"
     FIX="name the kinds: '\"kind\":\"(git\\.merge|pr\\.opened)\"'"; return 1
@@ -773,6 +793,12 @@ on_preset() {
   if _stub="$(awk -F'\t' -v id="$1" '$1 == "#stub" && $2 == id { print $3; f = 1; exit } END { exit !f }' "$FOUND")"; then
     log_fail "[check:$1] on: refused — $_stub"; log_nofix "docs/design/events.md"; log_end || :; exit 4
   fi
+  id_alias "$1"
+  if [ "$RID" != "$1" ]; then
+    [ -z "$ALIAS_GONE" ] || fail "on: $1 was renamed $RID, and the old id stopped working after $ALIAS_GONE" "harbor event on --preset $RID"
+    log_note "$1 is the old id of $RID (it keeps working until $(printf '%s\n' "$ID_ALIASES" | awk -v id="$1" '$1 == id { print $3 }')): installing $RID"
+    set -- "$RID"
+  fi
   _row="$(awk -F'\t' -v id="$1" '$1 == id { print; f = 1; exit } END { exit !f }' "$FOUND")" || fail "on: no preset $1 in $FOUND" "harbor event on --list; grep -v '^#' '$FOUND'"
   IFS="$(printf '\t')" read -r _pid _ppat _pdeb _prate _pback _phand <<EOF
 $_row
@@ -782,6 +808,10 @@ EOF
   case "$_pn" in ''|*[!A-Za-z0-9._-]*) fail "on: preset $1's handler is not sh {cfg}/bin/<script>: $_phand" "fix its row in $FOUND" ;; esac
   set -- sh "$CFG/bin/$_pn"
   on_add "$_ppat" --id "$_pid" --debounce "$_pdeb" --rate "$_prate" --backstop "$_pback" -- "$@"
+  for _o in $(old_ids "$_pid"); do
+    [ -f "$RULES/$_o.rule" ] || continue
+    rm -f "$RULES/$_o.rule" "$RULES/$_o.prompt"; log_ok "[check:$_pid] removed the rule under its old id $_o: one rule, one fire"
+  done
 }
 
 on_add() {
@@ -847,9 +877,13 @@ cmd_on() {
     --list) on_list ;;
     --off)
       [ $# -eq 2 ] || usage_fail "on --off <id>"
-      [ -f "$RULES/$2.rule" ] || fail "on --off: no rule $2 in $RULES" "harbor event on --list"
-      rm -f "$RULES/$2.rule" "$RULES/$2.prompt"
-      log_ok "[check:$2] removed; its ledger lines stay in $LEDGER" ;;
+      _offn=0
+      for _o in "$2" $(old_ids "$2"); do
+        [ -f "$RULES/$_o.rule" ] || continue
+        rm -f "$RULES/$_o.rule" "$RULES/$_o.prompt"; _offn=$((_offn + 1))
+        log_ok "[check:$_o] removed; its ledger lines stay in $LEDGER"
+      done
+      [ "$_offn" -gt 0 ] || fail "on --off: no rule $2 in $RULES" "harbor event on --list" ;;
     --preset) [ $# -eq 2 ] || usage_fail "on --preset <id>"; on_preset "$2" ;;
     -*) usage_fail "on: unknown option $1" ;;
     *) on_add "$@" ;;

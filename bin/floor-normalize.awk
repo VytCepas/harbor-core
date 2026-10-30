@@ -11,7 +11,7 @@
 # QUOTING MODEL (rewritten 2026-07-24 after red-team pass 3).
 # The previous model treated a standalone quoted word as inert data and dropped
 # it. That premise is FALSE and was a critical hole: for `rm -rf '/'`,
-# `tee "/etc/passwd"`, `cp /dev/null "$CFG/bin/guard-bash.sh"` — and for the
+# `tee "/etc/passwd"`, `cp /dev/null "$CFG/bin/admission-bash.sh"` — and for the
 # command word itself, `"bash" -c '…'` — the quoted word IS the payload.
 # Quoting a path is also the natural way to write it, so the bypass was one
 # keystroke and the safety default pointed the wrong way.
@@ -30,7 +30,7 @@
 #
 # NEUTRALIZED TO `_`, NOT TO A SPACE (edge pass 2026-08-29). A space does not
 # just remove the operator, it MANUFACTURES A WORD BOUNDARY that was never in
-# the command, and every flat rule in guard-bash.sh is built out of word
+# the command, and every flat rule in admission-bash.sh is built out of word
 # boundaries. Measured: `sed -i '' 's|rm -rf /|X|' notes.md` — one ordinary edit
 # to a file documenting the guard — became the DATA text `sed s rm -rf / X` and
 # fired rm-rf-root.flat, because the two delimiters became the space before `rm`

@@ -26,7 +26,7 @@
 
      IT POINTS AT THE INSTALLED COPY, NOT THE REPO, and that is a security
      property rather than a convention. A session can write to ~/port/harbor/bin; it
-     cannot write under ~/.claude/bin (guard-selfedit.sh). A scheduled job aimed
+     cannot write under ~/.claude/bin (admission-self-edit.sh). A scheduled job aimed
      at the repo would let any session schedule arbitrary code on this machine.
      PREREQUISITE: audit-triage-run.sh, audit-triage.sh and floor-verify.sh must all
      be installed — the judge is resolved from its own directory, and it needs

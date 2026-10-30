@@ -29,7 +29,7 @@ u_dangling() { # <dir> → each wired path, or a file one of them sources, that 
     done
   done < "$TMP/u.paths"
 }
-U_PAYLOAD="$(sed -n "s/^GUARDS='\(.*\)'/\1/p" "$SRC/floor-install.sh") guard-integrity.sh guard-stop.sh"
+U_PAYLOAD="$(sed -n "s/^GUARDS='\(.*\)'/\1/p" "$SRC/floor-install.sh") admission-integrity.sh admission-stop.sh"
 for _uv in plain b6 stop both runtime; do
   _ud="$TMP/uninstall-$_uv"; mkdir -p "$_ud/bin" "$_ud/skills/s" "$_ud/MEMORY" "$_ud/plugins"
   printf '%s\n' "$U_PRE" | jq . > "$_ud/settings.json"
@@ -63,7 +63,7 @@ for _uv in plain b6 stop both runtime; do
     "$(cat "$_ud/skills/s/SKILL.md" "$_ud/MEMORY/m.md" "$_ud/plugins/p.json" | tr '\n' ' ' | sed 's/ $//')"
   _ul=""; for _g in $U_PAYLOAD; do [ -e "$_ud/bin/$_g" ] && _ul="$_ul $_g"; done
   # runtime-install ships these two and its own hooks load them (memory-harvest, context-resolve).
-  if [ "$_uv" = runtime ]; then _uw=" guard-lib.sh context-resolve.sh"; else _uw=""; fi
+  if [ "$_uv" = runtime ]; then _uw=" library-admission.sh context-resolve.sh"; else _uw=""; fi
   t_eq "UNINSTALL-1 $_uv: the floor files left in bin/ are only the runtime's shared ones" "$_uw" "$_ul"
   t_eq "UNINSTALL-1 $_uv: every file it removed is in the run's backup, backups/floor-uninstall/<TS>/" "" \
     "$(for _f in $(comm -13 "$TMP/u.after.bin" "$TMP/u-$_uv.bin0" 2>/dev/null); do ls "$_ud"/backups/floor-uninstall/*/bin/"$_f" >/dev/null 2>&1 || printf ' %s' "$_f"; done)"
@@ -92,13 +92,13 @@ done
 # A hook no table row describes (an older install's wiring, another event) still goes when it names
 # a file the uninstall deletes: the invariant is the deleted files, not the current table.
 _uo="$TMP/uninstall-older"; mkcfg "$_uo" "$PERM"; fi_run floor-install.sh "$_uo" --apply >/dev/null 2>&1
-jq --arg c "/bin/sh $_uo/bin/floor-hook.sh $_uo/bin/guard-cloud.sh" --arg n "/bin/sh $_uo/bin/guard-lib.sh" \
+jq --arg c "/bin/sh $_uo/bin/admission-hook.sh $_uo/bin/admission-cloud.sh" --arg n "/bin/sh $_uo/bin/library-admission.sh" \
   '.hooks.PreToolUse += [{matcher: "Bash", hooks: [{type: "command", command: $c}]}]
    | .hooks.Notification = [{matcher: "", hooks: [{type: "command", command: $n}]}]' \
   "$_uo/settings.json" > "$_uo/s.tmp" && mv "$_uo/s.tmp" "$_uo/settings.json"
 _uod="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-uninstall.sh" --dir "$_uo" 2>&1)"
-t_has "UNINSTALL-1 an older floor-hook wiring of guard-cloud is listed" "$_uod" "PreToolUse: /bin/sh $_uo/bin/floor-hook.sh $_uo/bin/guard-cloud.sh"
-t_has "UNINSTALL-1 a hook at an event the floor never wires is listed when it names a floor file" "$_uod" "Notification: /bin/sh $_uo/bin/guard-lib.sh"
+t_has "UNINSTALL-1 an older floor-hook wiring of guard-cloud is listed" "$_uod" "PreToolUse: /bin/sh $_uo/bin/admission-hook.sh $_uo/bin/admission-cloud.sh"
+t_has "UNINSTALL-1 a hook at an event the floor never wires is listed when it names a floor file" "$_uod" "Notification: /bin/sh $_uo/bin/library-admission.sh"
 env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-uninstall.sh" --dir "$_uo" --apply >/dev/null 2>&1
 t_eq "UNINSTALL-1 …and after the apply nothing wired points at a deleted file" "" "$(u_dangling "$_uo")"
 
@@ -143,22 +143,22 @@ _up="$TMP/uninstall-partial"; mkcfg "$_up" "$PERM"; fi_run floor-install.sh "$_u
 cp "$_up/.harbor-manifest" "$TMP/up.mf0"; ls -A "$_up/bin" | sort > "$TMP/up.bin0"
 # An mv that refuses one floor file, so the run moves the rest and then fails.
 mkdir -p "$TMP/mvstub"
-printf '#!/bin/sh\ncase "$1" in */bin/guard-cloud.sh) echo "mv: stub refusal" >&2; exit 1 ;; esac\nexec %s "$@"\n' \
+printf '#!/bin/sh\ncase "$1" in */bin/admission-cloud.sh) echo "mv: stub refusal" >&2; exit 1 ;; esac\nexec %s "$@"\n' \
   "$(command -v mv)" > "$TMP/mvstub/mv"; chmod +x "$TMP/mvstub/mv"
 _upo="$(env -u CLAUDE_CONFIG_DIR PATH="$TMP/mvstub:$PATH" sh "$SRC/floor-uninstall.sh" --dir "$_up" --apply 2>&1)"; _uprc=$?
 t_eq "UNINSTALL-4 a file that cannot move fails the run" 1 "$_uprc"
-t_has "UNINSTALL-4 ...naming it" "$_upo" "could not move: bin/guard-cloud.sh"
-t_eq "UNINSTALL-4 CONTROL: that file is still in bin/" yes "$([ -f "$_up/bin/guard-cloud.sh" ] && echo yes || echo no)"
+t_has "UNINSTALL-4 ...naming it" "$_upo" "could not move: bin/admission-cloud.sh"
+t_eq "UNINSTALL-4 CONTROL: that file is still in bin/" yes "$([ -f "$_up/bin/admission-cloud.sh" ] && echo yes || echo no)"
 ls -A "$_up/bin" | sort | comm -13 - "$TMP/up.bin0" | sed 's#^#bin/#' > "$TMP/up.moved"
 t_eq "UNINSTALL-4 CONTROL: the other floor files moved" yes "$([ -s "$TMP/up.moved" ] && echo yes || echo no)"
 t_eq "UNINSTALL-4 the rows of what moved are dropped, and every other row is unchanged" \
   "$(grep -v '^#' "$TMP/up.mf0" | awk 'NR == FNR { m[$1] = 1; next } !($3 in m)' "$TMP/up.moved" - | sort)" \
   "$(grep -v '^#' "$_up/.harbor-manifest" | sort)"
 t_eq "UNINSTALL-4 ...so the file that stayed keeps its floor-install row" \
-  "$(grep ' bin/guard-cloud.sh floor-install ' "$TMP/up.mf0")" "$(grep ' bin/guard-cloud.sh ' "$_up/.harbor-manifest")"
+  "$(grep ' bin/admission-cloud.sh floor-install ' "$TMP/up.mf0")" "$(grep ' bin/admission-cloud.sh ' "$_up/.harbor-manifest")"
 t_exit "UNINSTALL-4 the re-run its fix line names finishes the job" 0 \
   env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-uninstall.sh" --dir "$_up" --apply
-t_eq "UNINSTALL-4 ...and drops that last row" "" "$(grep ' bin/guard-cloud.sh ' "$_up/.harbor-manifest")"
+t_eq "UNINSTALL-4 ...and drops that last row" "" "$(grep ' bin/admission-cloud.sh ' "$_up/.harbor-manifest")"
 fi_run floor-install.sh "$_up" --apply >/dev/null 2>&1
 t_eq "UNINSTALL-4 the next floor install writes a floor-install row back for every guard it copied" "" \
   "$(for _g in $(sed -n "s/^GUARDS='\(.*\)'/\1/p" "$SRC/floor-install.sh"); do

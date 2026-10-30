@@ -411,3 +411,4 @@ tests/standard/fleet-names/job.test.sh
 tests/memory/memory-names-test.sh
 tests/standard/rename/sandbox-home.test.sh
 tests/deploy/install/renamed.test.sh
+tests/deploy/install/renamed-wiring.test.sh

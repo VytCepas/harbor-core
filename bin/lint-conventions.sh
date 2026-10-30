@@ -194,6 +194,16 @@ _x8_repo_time() { # <file in $ROOT> -> epoch seconds, or empty
   fi
   _x8_mtime "$1"
 }
+# The admission guards (harbor#961 W6): what bin/guard-*.sh was, the guards and their library, under the family
+# names. Every bin/admission-*.sh but the fail-closed wrapper and the three tools that share the family, plus
+# bin/library-admission.sh and any bin/guard-*.sh that is a file; never a rename shim (a symlink at an old name),
+# which is the same file again.
+_admission_guards() {
+  for _ag in "$ROOT"/bin/admission-*.sh "$ROOT"/bin/library-admission.sh "$ROOT"/bin/guard-*.sh; do   # a guard-*.sh that is a file, not a shim, is still a guard
+    case "${_ag##*/}" in admission-hook.sh|admission-deny-hash.sh|admission-mutation-tier.sh|admission-observe-report.sh) continue ;; esac
+    [ -f "$_ag" ] && [ ! -L "$_ag" ] && printf '%s\n' "$_ag"
+  done
+}
 # The installers: bin/*-install.sh, not a rename shim (an old name of one, harbor#961) and not the two scripts
 # W3 named -install that install nothing (the collector's setup, the drift check of installs).
 _installers() {
@@ -666,7 +676,7 @@ rm -f "$_lco"
 rule_S1() {
 rule "posix.shebang-strict bin/*.sh use #!/usr/bin/env sh + strict mode (documented exceptions only)"
 # EXEMPT, with reasons — encoded so the rule does not flag correct design:
-#   guard-lib.sh   — SOURCED, so `set -eu` would leak into every caller
+#   library-admission.sh   — SOURCED, so `set -eu` would leak into every caller
 #   library-log.sh     — SOURCED, the same reason (harbor#771)
 #   deploy-install-lib.sh — SOURCED, the same reason (the install standard, harbor#765)
 #   library-fs.sh      — SOURCED, the same reason (harbor#618)
@@ -680,7 +690,7 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -L "$f" ] && continue   # a rename shim (renames.tsv remove_by) is an old name of a file judged under its own (harbor#961)
   b="$(basename "$f")"
   head -1 "$f" | grep -q '^#!/usr/bin/env sh$' || bad posix.shebang-strict "wrong shebang: ${f#$ROOT/}"
-  case "$b" in guard-lib.sh|library-log.sh|deploy-install-lib.sh|library-fs.sh|library-gate.sh|audit-stream-lib.sh|library-alert.sh|worklog-push.sh|ci-runners-fleet-lib.sh|ci-runners-provision-lib.sh|ci-runners-github-lib.sh|ci-runners-watch-lib.sh) continue ;; esac
+  case "$b" in library-admission.sh|library-log.sh|deploy-install-lib.sh|library-fs.sh|library-gate.sh|audit-stream-lib.sh|library-alert.sh|worklog-push.sh|ci-runners-fleet-lib.sh|ci-runners-provision-lib.sh|ci-runners-github-lib.sh|ci-runners-watch-lib.sh) continue ;; esac
   grep -qE '^set -(eu|u|euo)' "$f" || bad posix.shebang-strict "no strict mode: ${f#$ROOT/}"
 done
 # EXTENSIONLESS EXECUTABLES ARE SCRIPTS TOO (2026-07-30). Every rule in this file
@@ -767,7 +777,7 @@ done
 #                  a person. A --help case on one is dead code at best; on a
 #                  guard it is a branch in the security floor's hot path, which
 #                  is ~790 invocations per suite run.
-#   guard-lib.sh   sourced, not executed. It has no argv at all. library-log.sh too
+#   library-admission.sh   sourced, not executed. It has no argv at all. library-log.sh too
 #                  (harbor#771): a --help arm there would answer the CALLER's $1.
 #   replay-worker  spawned by eval-replay.sh as a background pipeline, same argument.
 #
@@ -776,11 +786,11 @@ done
 # are the ones where guessing at an invocation is expensive.
 rule_S4() {
 rule "lint.help-flag every hand-invocable bin/*.sh answers --help (harbor#140)"
-_S4_HOOKS="floor-hook floor-observe context-resolve annotate-web prod-guard-ambient
-worklog-push memory-harvest injection-rule eval-replay-worker guard-bash
-guard-egress guard-selfedit guard-integrity guard-cloud guard-destroy guard-lib
-guard-deliverables guard-apiroute
-guard-stop session-verdicts audit-triage failure-observe statusline ticket-note reply-shape library-log deploy-install-lib library-fs library-alert ci-runners-fleet-lib ci-runners-provision-lib ci-runners-github-lib ci-runners-watch-lib library-gate audit-stream-lib session-react-lib"
+_S4_HOOKS="admission-hook floor-observe context-resolve annotate-web prod-guard-ambient
+worklog-push memory-harvest injection-rule eval-replay-worker admission-bash
+admission-egress admission-self-edit admission-integrity admission-cloud admission-destroy library-admission
+admission-deliverables admission-api-route
+admission-stop session-verdicts audit-triage failure-observe statusline ticket-note reply-shape library-log deploy-install-lib library-fs library-alert ci-runners-fleet-lib ci-runners-provision-lib ci-runners-github-lib ci-runners-watch-lib library-gate audit-stream-lib session-react-lib"
 for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   [ -L "$f" ] && continue   # a rename shim (harbor#961) answers under its new name
@@ -955,16 +965,16 @@ _f5bad=0; _f5tot=0
 # THE SCOPE IS EVERY GUARD, NOT THREE NAMED ONES (harbor#588). The title says
 # "every floor_block", and a hand list of three files is a copy of a fact the
 # tree already holds: a fourth guard that called floor_block with no id would
-# have passed. The set is now bin/guard-*.sh — guard-lib.sh defines the
-# function and guard-cloud.sh / guard-destroy.sh decide through
+# have passed. The set is now the admission guards (_admission_guards) — library-admission.sh defines the
+# function and admission-cloud.sh / admission-destroy.sh decide through
 # permissionDecision, so today they contribute zero call sites, not a gap.
 #
 # WHOLE-LINE COMMENTS ARE DROPPED FIRST, because widening the scope brought in
-# prose: guard-cloud.sh:66, guard-destroy.sh:48 and three lines of guard-lib.sh
+# prose: admission-cloud.sh:66, admission-destroy.sh:48 and three lines of library-admission.sh
 # say "floor_block" in a comment, and #588 first counted those five as
 # unchecked CALL SITES. They are sentences. Counted as calls they would have
 # made this rule fire on documentation — the false positive §2.11 names.
-for f in "$ROOT"/bin/guard-*.sh; do
+for f in $(_admission_guards); do
   [ -f "$f" ] || continue
   # JOIN backslash continuations first, then test. Counting quotes line-by-line
   # was the first cut and it undercounted by exactly the 3 calls whose message
@@ -985,21 +995,21 @@ done
 # rules: turn all of them off to get past one (harbor#482). The narrow remedy
 # for one refused call is a `!` command, which is not a tool call. The blanket
 # hatch is the TRUE remedy in exactly two places, named here with why:
-#   guard-integrity.sh  the SessionStart gate refuses the SESSION; relaunching is the only door in
-#   floor-hook.sh       fail-closed: no guard can evaluate ANY call, so a per-call remedy is none
-# THE SCOPE IS DERIVED: every bin/guard-*.sh plus every file floor-install.sh's
+#   admission-integrity.sh  the SessionStart gate refuses the SESSION; relaunching is the only door in
+#   admission-hook.sh       fail-closed: no guard can evaluate ANY call, so a per-call remedy is none
+# THE SCOPE IS DERIVED: every admission guard plus every file floor-install.sh's
 # GUARDS line installs, so a new floor file is in scope the day it is pinned.
 rule_F16() {
 rule "admission.kill-switch-remedy no floor guard prints the kill-switch as its remedy, except where it is the true one (harbor#482)"
 _f16g="$(sed -n "s/^GUARDS='\(.*\)'\$/\1/p" "$ROOT/bin/floor-install.sh" 2>/dev/null | head -1)"
 [ -n "$_f16g" ] || { bad admission.kill-switch-remedy "bin/floor-install.sh has no GUARDS='…' line, so the floor's file set could not be derived"; return 0; }
 _f16seen=" "
-for f in "$ROOT"/bin/guard-*.sh $(for _f16b in $_f16g; do printf '%s ' "$ROOT/bin/$_f16b"; done); do
+for f in $(_admission_guards) $(for _f16b in $_f16g; do printf '%s ' "$ROOT/bin/$_f16b"; done); do
   [ -f "$f" ] || continue
   _f16b="${f##*/}"
   case "$_f16seen" in *" $_f16b "*) continue ;; esac
   _f16seen="$_f16seen$_f16b "
-  case "$_f16b" in guard-integrity.sh|floor-hook.sh) continue ;; esac
+  case "$_f16b" in admission-integrity.sh|admission-hook.sh) continue ;; esac
   _f16n="$(grep -vE '^[[:space:]]*#' "$f" 2>/dev/null | grep -cE '(HARBOR_ADMISSION_DISABLE|HELM_DISABLE_FLOOR)=1' || true)"
   [ "${_f16n:-0}" -eq 0 ] || bad admission.kill-switch-remedy "bin/$_f16b prints the kill-switch as a remedy on $_f16n code line(s); print the narrowest true one (a \`!\` command for one call)"
 done
@@ -1045,9 +1055,9 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   # reason written after the first line of code still does not count.
   #
   # ONE LINE OF CODE BELONGS TO THE PREAMBLE, AND ANOTHER RULE PUT IT THERE. F1
-  # requires a guard's kill switch to be its FIRST live line, so bin/guard-bash.sh
+  # requires a guard's kill switch to be its FIRST live line, so bin/admission-bash.sh
   # opens with it at line 2 and argues its size at line 16. The first cut of this
-  # window stopped at line 2 and advised on guard-bash.sh — a rule obeying F1 was
+  # window stopped at line 2 and advised on admission-bash.sh — a rule obeying F1 was
   # penalised by G1. So the kill-switch line is skipped when it sits in the first
   # three lines, which is exactly where F1 puts it, and nowhere else.
   if awk 'NR <= 3 && /HARBOR_ADMISSION_DISABLE|HELM_DISABLE_FLOOR/ { next }
@@ -1099,7 +1109,7 @@ rule "test.config-dir-isolated no test spawns a guard without CLAUDE_CONFIG_DIR 
 #       spawn guards through tests/admission/helper/lib.sh, whose t_init exports a sandbox config dir.
 #
 #   2 · STAGE 2 REQUIRED THE GUARD FILENAME ON THE SPAWN LINE, and every suite
-#       assigns the path once (`GUARD="$DIR/guard-destroy.sh"`) then spawns through
+#       assigns the path once (`GUARD="$DIR/admission-destroy.sh"`) then spawns through
 #       the variable. The filename line has no `sh "$`, the spawn line has no
 #       filename, so the two conditions never co-occurred. Measured: with the
 #       original matcher, a PLANTED literal-path escape fires and a planted
@@ -1122,14 +1132,14 @@ rule "test.config-dir-isolated no test spawns a guard without CLAUDE_CONFIG_DIR 
 # NO NAMED EXEMPTION LEFT. lint-test.sh held F4's own planted escapes as strings and
 # was exempt by name; it moved to tests/checks/ (harbor#667), outside this scan.
 _f4_names=""
-for _g in "$ROOT"/bin/guard-*.sh; do
+for _g in $(_admission_guards) "$ROOT"/bin/guard-*.sh; do   # the guards, and their old names while the shims live (harbor#961 W6)
   [ -f "$_g" ] || continue
   _f4_names="$_f4_names $(basename "$_g")"
 done
-for _g in floor-hook.sh floor-observe.sh annotate-web.sh context-resolve.sh; do
+for _g in admission-hook.sh floor-observe.sh annotate-web.sh context-resolve.sh; do
   [ -f "$ROOT/bin/$_g" ] && _f4_names="$_f4_names $_g"
 done
-# One alternation, built from the names above. Dots escaped so `guard-bash.sh`
+# One alternation, built from the names above. Dots escaped so `admission-bash.sh`
 # cannot match `guard-bashXsh`.
 _f4_alt=""
 for _n in $_f4_names; do
@@ -1175,13 +1185,13 @@ rule "posix.grep-alternation no mid-pattern (^| alternation — BSD grep never m
 # `\.\*\(\^\|`, so `[a-z]+(^|foo)` — the same caret in the same place — passed.
 # The group is mid-pattern whenever the character before its `(` is part of the
 # pattern: anything but a quote or blank (the pattern's own start), `/` (an awk
-# regex literal's start — guard-stop.sh:187 opens `/(^|\/)bin\/…/`), `|` (the
+# regex literal's start — admission-stop.sh:187 opens `/(^|\/)bin\/…/`), `|` (the
 # start of an alternative) or `(` (the start of an enclosing group). A RUN of
 # opening parens is skipped to the character before it (Codex on #693), so
 # `a((^|b))` is still mid-pattern. NOT HANDLED: `a(b|(^|c))`, where the `|` is
 # inside a group a token already consumed — telling that apart needs a parser,
 # not a character class. Comment
-# lines are dropped first: guard-bash.sh:2225 quotes `(^|` in prose, and the
+# lines are dropped first: admission-bash.sh:2225 quotes `(^|` in prose, and the
 # first run of the widened pattern flagged both of those — neither is a defect.
 #
 # THE BSD HALF DID NOT REPRODUCE ON 2026-09-24. /usr/bin/grep here is
@@ -1189,7 +1199,7 @@ rule "posix.grep-alternation no mid-pattern (^| alternation — BSD grep never m
 # and without -i. The rule still earns its line: after a token that CONSUMES
 # a character, as in `[a-z]+(^|`, the caret can never match in any grep, so the
 # branch is dead code wherever it runs, whichever grep runs it.
-for f in "$ROOT"/bin/guard-*.sh "$ROOT"/bin/floor-*.sh; do
+for f in $(_admission_guards) "$ROOT"/bin/admission-hook.sh "$ROOT"/bin/floor-*.sh; do
   [ -f "$f" ] || continue
   sed '/^[[:space:]]*#/d' "$f" 2>/dev/null | grep -qE "[^'\"[:space:]/|(]\\(+\\^\\|" \
     && bad posix.grep-alternation "mid-pattern caret: ${f#$ROOT/}"
@@ -1408,7 +1418,7 @@ rule_F10() {
 rule "deploy.baseline-projection every writer and reader of .sec0-baseline uses the SAME jq projection (harbor#221)"
 # THE MECHANISM BEHIND harbor#221's FIX. The projection that decides what B6
 # watches in settings.json is written out by deploy-harden.sh and floor-deny.sh
-# and read back by guard-integrity.sh — seven literal copies of one jq program
+# and read back by admission-integrity.sh — seven literal copies of one jq program
 # across three files. A fact copied seven times drifts silently, and here the
 # drift is not cosmetic: if a WRITER pins one shape and the GUARD computes
 # another, the hashes never match, B6 reports drift at every SessionStart
@@ -1417,7 +1427,7 @@ rule "deploy.baseline-projection every writer and reader of .sec0-baseline uses 
 # it. A rule with no mechanism is a wish (docs/explanation/doc-truth.md), so this is the
 # mechanism: they are compared as strings, and any disagreement is a violation.
 _f10n=0; _f10ref=""
-for f in "$ROOT"/bin/deploy-harden.sh "$ROOT"/bin/floor-deny.sh "$ROOT"/bin/guard-integrity.sh; do
+for f in "$ROOT"/bin/deploy-harden.sh "$ROOT"/bin/floor-deny.sh "$ROOT"/bin/admission-integrity.sh; do
   [ -f "$f" ] || continue
   # Only the FULL baseline projection, which is the one keyed on `perms:`. The
   # narrower `{deny, locks}` teeth projection is a different question with a
@@ -1432,7 +1442,7 @@ for f in "$ROOT"/bin/deploy-harden.sh "$ROOT"/bin/floor-deny.sh "$ROOT"/bin/guar
 $(sed -n "s/.*\(-S '{perms:[^']*}'\).*/\1/p" "$f")
 EOF
 done
-[ "$_f10n" -ge 3 ] || bad deploy.baseline-projection "expected the baseline projection in all three of deploy-harden.sh, floor-deny.sh and guard-integrity.sh; found $_f10n copy/copies"
+[ "$_f10n" -ge 3 ] || bad deploy.baseline-projection "expected the baseline projection in all three of deploy-harden.sh, floor-deny.sh and admission-integrity.sh; found $_f10n copy/copies"
 }
 
 # ── F3 · guards pin the interpreter they match with ────────────────────────
@@ -1440,7 +1450,7 @@ rule_F3() {
 rule "admission.grep-wrapper guards use \$FLOOR_GREP, never a bare grep, for rule matching"
 # Any file that SOURCES guard-lib has $FLOOR_GREP in scope and must use it —
 # a bare grep there resolves to whatever is first in PATH. The audit found
-# guard-integrity.sh doing this inside the kill-switch presence check, where a
+# admission-integrity.sh doing this inside the kill-switch presence check, where a
 # grep-resolution difference decides whether the gate blocks the session.
 for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
@@ -1451,10 +1461,10 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   # construction instead of being caught. The rule protects RULE MATCHING inside
   # guards, where grep resolution decides a security verdict.
   case "$(basename "$f")" in lint-conventions.sh|*-test.sh) continue ;; esac
-  # SOURCES it, not merely mentions it. deploy-doctor.sh READS guard-lib.sh to report
+  # SOURCES it, not merely mentions it. deploy-doctor.sh READS library-admission.sh to report
   # which grep the floor pins; floor-install.sh names it in a copy list. Neither
   # has $FLOOR_GREP in scope, so flagging them was the rule mis-scoping itself.
-  grep -qE '^[[:space:]]*\.[[:space:]]+"[^"]*guard-lib\.sh"' "$f" 2>/dev/null || continue
+  grep -qE '^[[:space:]]*\.[[:space:]]+"[^"]*library-admission\.sh"' "$f" 2>/dev/null || continue
   grep -nE '(^|[|(;&[:space:]])grep[[:space:]]' "$f" 2>/dev/null | grep -vE '^[0-9]+: *#' | grep -q . \
     && bad admission.grep-wrapper "bare grep in a guard-lib consumer (use \$FLOOR_GREP): ${f#$ROOT/}"
 done
@@ -1470,7 +1480,7 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   # guard-selfedit deliberately protects the LIVE dir as well as the active one.
   # The suites that compare the sandbox against live left bin/ for tests/ (harbor#727).
-  case "$(basename "$f")" in guard-selfedit.sh|lint-conventions.sh) continue ;; esac
+  case "$(basename "$f")" in admission-self-edit.sh|lint-conventions.sh) continue ;; esac
   # A word boundary after .claude — otherwise .claude-sandbox and
   # .claude-recover-test match. And `LIVE=`/`LIVE_DIR=` is the legitimate idiom
   # for NAMING the live dir in order to refuse it; what is forbidden is READING
@@ -1534,7 +1544,7 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   # asked for a gate protecting a dir it never writes. Keying on the class instead
   # of the name means the next suite that tests an --apply arm does not have to be
   # added here. A suite's control is its own assertions, and its config dir is a
-  # sandbox by construction (guard-lib.sh: a writer that cannot mkdir cannot
+  # sandbox by construction (library-admission.sh: a writer that cannot mkdir cannot
   # pollute what it cannot find).
   #
   # standard-issue-label.sh (harbor#512) is the SIXTH named exemption of one shape, and
@@ -1958,15 +1968,15 @@ rule "admission.exit-codes exit 2 appears only in floor_block(); every hook ends
 # both loops. A hook whose FILENAME escapes this glob is a fail-open contract
 # nothing checks: it may exit non-zero on a bad day and the harness treats that
 # as a blocked event, in a script whose entire job is to be invisible.
-for f in "$ROOT"/bin/guard-*.sh "$ROOT"/bin/annotate-web.sh "$ROOT"/hooks/memory-harvest/memory-harvest.sh; do
+for f in $(_admission_guards) "$ROOT"/bin/annotate-web.sh "$ROOT"/hooks/memory-harvest/memory-harvest.sh; do
   [ -f "$f" ] || continue
-  case "$(basename "$f")" in guard-lib.sh) continue ;; esac
+  case "$(basename "$f")" in library-admission.sh) continue ;; esac
   grep -nE '(^|[[:space:];&|])exit 2([[:space:]]|$)' "$f" 2>/dev/null | grep -vE '^[0-9]+: *#' | grep -q . \
     && bad admission.exit-codes "hook open-codes 'exit 2' instead of floor_block(): ${f#$ROOT/}"
 done
-for f in "$ROOT"/bin/guard-*.sh "$ROOT"/bin/annotate-web.sh "$ROOT"/hooks/worklog-push/worklog-push.sh "$ROOT"/hooks/memory-harvest/memory-harvest.sh; do
+for f in $(_admission_guards) "$ROOT"/bin/annotate-web.sh "$ROOT"/hooks/worklog-push/worklog-push.sh "$ROOT"/hooks/memory-harvest/memory-harvest.sh; do
   [ -f "$f" ] || continue
-  case "$(basename "$f")" in guard-lib.sh) continue ;; esac
+  case "$(basename "$f")" in library-admission.sh) continue ;; esac
   [ "$(tail -1 "$f")" = "exit 0" ] || bad admission.exit-codes "hook does not end with 'exit 0': ${f#$ROOT/}"
 done
 }
@@ -1974,7 +1984,7 @@ done
 # ── P1 · ported corpora carry provenance ───────────────────────────────────
 rule_P1() {
 rule "admission.upstream-sha-cited guards that port upstream corpora cite the pinned SHA (A2 provenance)"
-for f in "$ROOT"/bin/guard-bash.sh "$ROOT"/bin/guard-egress.sh "$ROOT"/bin/guard-selfedit.sh "$ROOT"/bin/annotate-web.sh; do
+for f in "$ROOT"/bin/admission-bash.sh "$ROOT"/bin/admission-egress.sh "$ROOT"/bin/admission-self-edit.sh "$ROOT"/bin/annotate-web.sh; do
   [ -f "$f" ] || continue
   grep -q 'a4e8e74' "$f" || bad admission.upstream-sha-cited "no upstream SHA cited: ${f#$ROOT/}"
 done
@@ -2049,7 +2059,7 @@ if [ -f "$PROV" ]; then
   [ -n "$psha" ] || bad admission.upstream-sha-pinned "vendor/skills/PROVENANCE.md declares no upstream SHA"
   if [ -n "$psha" ]; then
     short="$(printf '%s' "$psha" | cut -c1-7)"
-    for f in "$ROOT"/bin/guard-bash.sh "$ROOT"/bin/guard-egress.sh; do
+    for f in "$ROOT"/bin/admission-bash.sh "$ROOT"/bin/admission-egress.sh; do
       [ -f "$f" ] || continue
       grep -q "$short" "$f" || bad admission.upstream-sha-pinned "guard cites a different upstream SHA than vendor/skills/PROVENANCE.md ($short): ${f#$ROOT/}"
     done
@@ -2081,9 +2091,10 @@ rule_M1() {
 rule "scope.marker-walk-once the marker walk lives ONLY in floor_in_repo (contracts/marker.md)"
 for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
+  [ -L "$f" ] && continue   # a rename shim (harbor#961) is the file it links to, judged under that name
   b="$(basename "$f")"
   # guard-lib DEFINES it; the linter names it to forbid it. marker-test left bin/ (harbor#727).
-  case "$b" in guard-lib.sh|lint-conventions.sh) continue ;; esac
+  case "$b" in library-admission.sh|lint-conventions.sh) continue ;; esac
   # COMMENT LINES ARE NOT CODE. First run of this rule flagged both files it had
   # just fixed, because their comments quote the old predicate verbatim to
   # explain what was wrong with it. A rule that fires on its own documentation
@@ -2116,9 +2127,9 @@ done
 # entrypoints (bin/harbor, bin/gcx) and so do hooks/ and worklog/; a scan keyed on
 # the suffix read past all of them. Both scans below use _m2_shells.
 #
-# WHY bin/ AND NOTHING WIDER. All three live in bin/guard-lib.sh, and a
+# WHY bin/ AND NOTHING WIDER. All three live in bin/library-admission.sh, and a
 # script can only call them by sourcing it. That premise is checked below rather
-# than assumed: a shell script outside bin/ that sources guard-lib.sh fails this
+# than assumed: a shell script outside bin/ that sources library-admission.sh fails this
 # rule until the scan is widened.
 #
 # WHAT IT CANNOT DO. Whether a row's tier is TRUE is judgement — a №3 guard
@@ -2161,7 +2172,7 @@ while IFS= read -r f; do
   [ -L "$f" ] && continue   # a rename shim (renames.tsv remove_by) is an old name of a file judged under its own (harbor#961)
   b="$(basename "$f")"
   # guard-lib DEFINES them; the linter names them to check them; a suite drives them.
-  case "$b" in guard-lib.sh|lint-conventions.sh|*-test.sh) continue ;; esac
+  case "$b" in library-admission.sh|lint-conventions.sh|*-test.sh) continue ;; esac
   for _m2_fn in floor_in_repo floor_repo_wires floor_engine_stand_down; do
     _m2_n="$(grep -E "(^|[^A-Za-z0-9_])${_m2_fn}([^A-Za-z0-9_]|\$)" "$f" 2>/dev/null \
       | grep -cvE '^[[:space:]]*#' || :)"
@@ -2196,8 +2207,8 @@ while IFS= read -r f; do
   # The suite that drives floor_in_repo, exempt here as it was in bin/ (harbor#727).
   case "${f#$ROOT/}" in tests/scope/marker/marker.test.sh) continue ;; esac
   case "$_m2_nl$_m2_eng$_m2_nl" in *"$_m2_nl$f$_m2_nl"*) continue ;; esac  # an engine, scanned above
-  grep -qE '^[[:space:]]*(\.|source)[[:space:]].*guard-lib\.sh' "$f" 2>/dev/null \
-    && bad scope.stand-down-declared "${f#$ROOT/} sources guard-lib.sh from outside bin/ and the hook engines — M2 scans only those, so widen it"
+  grep -qE '^[[:space:]]*(\.|source)[[:space:]].*library-admission\.sh' "$f" 2>/dev/null \
+    && bad scope.stand-down-declared "${f#$ROOT/} sources library-admission.sh from outside bin/ and the hook engines — M2 scans only those, so widen it"
 done < "$_m2_list"
 say "  $(wc -l < "$_m2_rows" | tr -d ' ') stand-down site(s) declared, $(grep -c '|constitutional|' "$_m2_rows" || :) of them a constitutional exception."
 rm -f "$_m2_rows" "$_m2_code" "$_m2_list"
@@ -2270,8 +2281,8 @@ _f14_layer() { # <layer> <file> <awk program printing the protecting lines>
   awk "$3" "$2" | _f14_names | LC_ALL=C sort -u | while IFS= read -r _f14_n; do
     printf '%s\t%s\n' "$1" "$_f14_n"; done >> "$_f14_lay"
 }
-_f14_layer guard-bash "$ROOT/bin/guard-bash.sh" '/^FILES="/ { print }'
-_f14_layer guard-selfedit "$ROOT/bin/guard-selfedit.sh" '/^is_protected\(\) *\{/ { s = 1; next } s && /^\}/ { s = 0 } s && !/^[ \t]*#/ { sub(/[ \t]#.*$/, ""); print }'
+_f14_layer guard-bash "$ROOT/bin/admission-bash.sh" '/^FILES="/ { print }'
+_f14_layer guard-selfedit "$ROOT/bin/admission-self-edit.sh" '/^is_protected\(\) *\{/ { s = 1; next } s && /^\}/ { s = 0 } s && !/^[ \t]*#/ { sub(/[ \t]#.*$/, ""); print }'
 _f14_layer floor-deny "$ROOT/bin/floor-deny.sh" "/^ADD='\\[/ { s = 1; next } s && /^\\]'/ { s = 0 } s { print }"
 while IFS='	' read -r _f14_n _f14_w _f14_c; do
   [ "$_f14_c" = integrity ] || continue
@@ -2293,7 +2304,7 @@ rm -f "$_f14_rows" "$_f14_code" "$_f14_lay"
 # ── F15 · no script a hook runs resolves its own directory through $(dirname) ─
 # harbor#813: `DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"` is the SESSION's cwd when the
 # inner $(dirname) yields nothing (a failed fork under process pressure, or dirname off PATH), and
-# the script then sources ./guard-lib.sh from whatever repo the session stands in. harbor#810 moved
+# the script then sources ./library-admission.sh from whatever repo the session stands in. harbor#810 moved
 # the guards to `${0%/*}`, which forks nothing; this holds every script a hook runs to the same.
 #
 # THE SET IS DERIVED, NEVER LISTED, from what the installers wire:
@@ -2728,7 +2739,7 @@ fi
 # ── C7 · the ledger's guard enum equals the guards that write to it ────────
 rule_C7() {
 rule "audit.decision-token-listed every guard token logged is in FLOOR_OBS_GUARDS, and vice versa (harbor#320)"
-# THE RULE ALREADY EXISTED IN PROSE AND FAILED TWICE ANYWAY. guard-lib.sh's own
+# THE RULE ALREADY EXISTED IN PROSE AND FAILED TWICE ANYWAY. library-admission.sh's own
 # comment says "EVERY GUARD THAT LOGS MUST BE NAMED HERE" and records guard-cloud
 # and guard-destroy filing 745 decisions as g=other before anyone noticed. It then
 # happened again to guard-deliverables, whose 1,805 records were the ENTIRE `other`
@@ -2749,11 +2760,11 @@ rule "audit.decision-token-listed every guard token logged is in FLOOR_OBS_GUARD
 # a guard that blocks correct work gets switched off (§2.11). A `$VAR` token is
 # skipped for the same reason in the other direction: it is not knowable here,
 # and guessing would be a finding the author cannot act on.
-_GL="$ROOT/bin/guard-lib.sh"
+_GL="$ROOT/bin/library-admission.sh"
 if [ -f "$_GL" ]; then
   _enum="$(sed -n "s/^FLOOR_OBS_GUARDS='\(.*\)'.*/\1/p" "$_GL" | head -1)"
   if [ -z "$_enum" ]; then
-    bad audit.decision-token-listed "bin/guard-lib.sh has no readable FLOOR_OBS_GUARDS line — the ledger's guard enum is the source of truth and could not be parsed"
+    bad audit.decision-token-listed "bin/library-admission.sh has no readable FLOOR_OBS_GUARDS line — the ledger's guard enum is the source of truth and could not be parsed"
   else
     # COMMAND POSITION, NOT MERE PRESENCE, and the first draft of this rule proves
     # why. Matching the bare name anywhere on a non-comment line reported three
@@ -3607,9 +3618,7 @@ _t4_cited="$(grep -E '^\| `https://github\.com/VytCepas/[^`]+` \| *[23][0-9][0-9
 # The residual: repos that exist and that no document cites by URL, so there is
 # nothing for docs/reference/citations.md to hold. Adding a row for one of these would be
 # inventing a citation to satisfy a lint rule, which is the failure the file
-# exists to prevent. Each name here should disappear the day a document cites it.
-#   helm-log              the private work-log remote; named in prose, never linked
-#   projects-orchestrator Fleet; named constantly, its URL cited nowhere yet
+# exists to prevent. They are contracts/repos-uncited.txt (harbor#999), so a repo rename edits data, not this rule.
 #
 # A workload repo id WAS ON THIS LIST FOR ONE HOUR on 2026-09-15 and is deliberately not any
 # more. The tree was renamed ~/oldname -> ~/<newname> and the GitHub repo was not, so for
@@ -3618,8 +3627,8 @@ _t4_cited="$(grep -E '^\| `https://github\.com/VytCepas/[^`]+` \| *[23][0-9][0-9
 # and every live pointer repointed, so the entry would now be certifying a name
 # nothing uses — which is the second failure mode this rule's own header describes:
 # a deleted or renamed repo that stays on the list forever.
-_t4_uncited='helm-log|projects-orchestrator'  # two workload ids left when no core doc named them (harbor#1273)
-KNOWN_REPOS="${_t4_cited:+$_t4_cited|}$_t4_uncited"
+_t4_uncited="$(grep -vE '^[[:space:]]*(#|$)' "$ROOT/contracts/repos-uncited.txt" 2>/dev/null | tr -d ' \t' | grep -E '^[A-Za-z0-9_.-]+$' | tr '\n' '|' | sed 's/|$//')"
+KNOWN_REPOS="$_t4_cited${_t4_cited:+${_t4_uncited:+|}}$_t4_uncited"
 for f in "$ROOT"/*.md "$ROOT"/contracts/*.md "$ROOT"/docs/explanation/*.md; do
   [ -f "$f" ] || continue
   # Trailing sentence punctuation is stripped: `.` is in the name character
@@ -3632,8 +3641,8 @@ for f in "$ROOT"/*.md "$ROOT"/contracts/*.md "$ROOT"/docs/explanation/*.md; do
     printf '%s' "$r" | grep -qE "^($KNOWN_REPOS)$" && continue
     # A line that NEGATES the repo ("there is no VytCepas/helm") is the fix, not
     # the defect — so only flag when no negation is present on that line.
-    # A TRAILING BOUNDARY, or `<owner>/helm` matches `<owner>/helm-log` and the
-    # Log's perfectly good lines trip a rule aimed at a repo that does not exist.
+    # A TRAILING BOUNDARY, or `<owner>/helm` matches `<owner>/helm-<suffix>` and the
+    # memory store's perfectly good lines trip a rule aimed at a repo that does not exist.
     # Same substring-matching class this linter exists to catch elsewhere, and it
     # took ten minutes to reintroduce here.
     # `\.?` before the boundary: the SECOND half of the end-of-sentence bug. The
@@ -3831,7 +3840,7 @@ if [ -f "$ROOT/docs/reference/citations.md" ]; then
   # switched off, and a disabled rule protects nothing.
   #
   # Deliberately narrow TLD list. It omits every extension this repo uses as a
-  # FILE suffix even where that is a real TLD — `.sh` (guard-lib.sh) and `.md`
+  # FILE suffix even where that is a real TLD — `.sh` (library-admission.sh) and `.md`
   # (README.md) are both country TLDs and both would fire on half the tree.
   # A ROUTE IS AN ADDRESS, NOT A CITATION, AND IT ALREADY HAS ITS OWN VERIFIER.
   # Consolidating the ACCESS cards into this repo put 65 findings into a rule that
@@ -4771,7 +4780,7 @@ fi
 #     installer shipped context-peers.sh, so that guard was permanently false
 #     and the report had NEVER FIRED, on a box that routinely runs four
 #     concurrent sessions across two worktrees of one repo.
-#   · guard-integrity.sh had no update path at all outside floor-install
+#   · admission-integrity.sh had no update path at all outside floor-install
 #     --with-b6, which the install order holds back (eval-pass-score.sh reports on
 #     the floor; it does not gate the installer — floor-install.sh never calls it).
 # Neither was invisible for want of a test. Both were invisible because nothing
@@ -4853,7 +4862,7 @@ else
   # rules further down and by anything reading `git status`.
   _X7F="${TMPDIR:-/tmp}/.helm-x7-payload.$$"
   _x7_payload | tr ' ' '\n' | grep . | sort -u > "$_X7F"
-  # sort -u on the SCAN list too. guard-integrity.sh reaches the payload twice —
+  # sort -u on the SCAN list too. admission-integrity.sh reaches the payload twice —
   # once via REFRESH_ONLY, once via floor-install's by-name cp — and an undeduped
   # loop reported its one finding twice, which reads as two defects.
   for _t in $(_x7_payload | tr ' ' '\n' | grep . | sort -u); do
@@ -4946,7 +4955,8 @@ rule "drift.prod-policy-copy every deployed prod_guard.py matches the AUTHORITAT
 # not the artifact doing the work. Here the artifact was the BASELINE.
 _CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 _SRC="${PROJECT_INIT_SRC:-$(env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_SCAFFOLDER 2>/dev/null || :)}/templates/base/dot_agents/hooks/prod_guard.py"  # harbor#966
-_MIRROR="$_CFG/plugins/marketplaces/project-init/plugins/project-init-workflow/hooks/prod_guard.py"
+_spl() { awk -F'\t' -v k="$1" '$1 == k { print $2; exit }' "$(dirname -- "$0")/../contracts/scaffolder-plugins.tsv" 2>/dev/null; }   # yard's plugin names, harbor's own contract beside this linter (harbor#999)
+_MIRROR="$_CFG/plugins/marketplaces/$(_spl marketplace)/plugins/$(_spl workflow)/hooks/prod_guard.py"
 if [ -f "$_SRC" ]; then _BASE="$_SRC"; _BKIND="source repo"
 else _BASE="$_MIRROR"; _BKIND="marketplace mirror"; fi
 if [ -f "$_BASE" ]; then
@@ -5439,7 +5449,7 @@ fi
 #
 # SO THE RULE IS NARROW, AND SO IS ITS EXIT. This fails on a Harbor-AUTHORED
 # plugin tier only. The security floor watching the BOX's third-party plugin
-# surface (guard-lib.sh, deploy-harden.sh, guard-integrity.sh, and the
+# surface (library-admission.sh, deploy-harden.sh, admission-integrity.sh, and the
 # `plugins/marketplaces/...` paths elsewhere in this file) is a defence against
 # somebody else's plugin and is untouched — weakening it to satisfy this rule
 # would be the exact move the constitution forbids while degraded.
@@ -5796,11 +5806,11 @@ SBX="${HARBOR_TEST_SANDBOX_DIR:-${HELM_SANDBOX_DIR:-$HOME/.claude-sandbox}}"
 # named because no glob selects exactly those four — but they are named ONCE now,
 # and the presence check and the byte check read the same list instead of two.
 _X1_WANT="$(
-  find "$ROOT/bin" -maxdepth 1 -name 'guard-*.sh' 2>/dev/null | sed 's|.*/||' | sort
-  printf '%s\n' annotate-web.sh floor-normalize.awk floor-hook.sh pin-instructions.sh
+  _admission_guards | sed 's|.*/||' | sort
+  printf '%s\n' annotate-web.sh floor-normalize.awk admission-hook.sh pin-instructions.sh
 )"
 # KEYED ON THE DIRECTORY ALONE, NOT ON "does it contain any guard". The first cut
-# of this fix wrote `[ -d "$SBX/bin" ] && ls "$SBX"/bin/guard-*.sh`, which conflates
+# of this fix wrote `[ -d "$SBX/bin" ] && ls "$SBX"/bin/<the guards>`, which conflates
 # two different states: a box with NO sandbox (legitimate) and a sandbox that exists
 # but carries NO guards (broken — it tests no floor at all, which is R8's failure
 # exactly). Under that condition the second state printed "no dev sandbox at <path>"
@@ -5825,9 +5835,9 @@ $_X1_WANT
 X1EOF
   # …and wired THROUGH the fail-closed wrapper, not called directly (B9).
   if command -v jq >/dev/null 2>&1 && [ -f "$SBX/settings.json" ]; then
-    jq -e '[.hooks.PreToolUse[]?.hooks[]?.command] | map(select(test("guard-(bash|egress|selfedit)\\.sh")))
-           | map(select(test("floor-hook\\.sh") | not)) | length == 0' "$SBX/settings.json" >/dev/null 2>&1 \
-      || bad drift.sandbox-copy "sandbox wires a guard directly instead of through floor-hook.sh (rebuild the sandbox)"
+    jq -e '[.hooks.PreToolUse[]?.hooks[]?.command] | map(select(test("(guard-(bash|egress|selfedit)|admission-(bash|egress|self-edit))\\.sh")))
+           | map(select(test("(floor|admission)-hook\\.sh") | not)) | length == 0' "$SBX/settings.json" >/dev/null 2>&1 \
+      || bad drift.sandbox-copy "sandbox wires a guard directly instead of through admission-hook.sh (rebuild the sandbox)"
   fi
 else
   _adv drift.sandbox-copy no-dev-sandbox; printf '  ADVISORY [drift.sandbox-copy] no dev sandbox at %s — this rule verified NOTHING.\n' "$SBX" >&2
@@ -6793,8 +6803,8 @@ _l1_tsv="$ROOT/contracts/log-exempt.tsv"
 _l1_named='bin/library-log.sh bin/lint-conventions.sh bin/library-fs.sh bin/library-alert.sh'
 _l1_code() { sed -e 's/^[[:space:]]*#.*$//' -e 's/[[:space:]]#.*$//' "$1"; }  # comments blanked, lines kept
 _l1_uses() { _l1_code "$1" | grep -qE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*library-log\.sh'; }
-_l1_floor() { # channel 2: guard-lib.sh, or F1's mark of an installed floor file
-  [ "${1##*/}" = guard-lib.sh ] && return 0
+_l1_floor() { # channel 2: library-admission.sh, or F1's mark of an installed floor file
+  [ "${1##*/}" = library-admission.sh ] && return 0
   grep -vE '^[[:space:]]*(#|$)' "$1" 2>/dev/null | head -1 | grep -qE 'HARBOR_ADMISSION_DISABLE|HELM_DISABLE_FLOOR'
 }
 # Channel 3 evidence that the harness reads a file's stdout (harbor#771): an installer composes it as a
@@ -7249,7 +7259,7 @@ fi
 # ── lint.comment-commands · no destructive command in backticks in a shell comment ─
 # sh reads a script as it runs. A script rewritten in place under a running shell resumes mid-line, and from
 # anywhere before a backtick span the span is a command substitution: on 2026-10-15 two quoted examples in
-# guard-bash.sh comments ran that way (a recursive chmod 000 from the root). Quote examples with ' instead —
+# admission-bash.sh comments ran that way (a recursive chmod 000 from the root). Quote examples with ' instead —
 # a resume must then land exactly on the verb. Installs rename (il_install_exec); this covers the dev tree.
 rule_lint_comment_commands() {
 rule "lint.comment-commands no shell comment quotes a destructive command in backticks"

@@ -146,7 +146,7 @@ printf 'The behaviour is documented at `https://docs.example-source.io/tags`.\n'
 t_has "a real URL in inline backticks is still reported" "$(viol T7 "$DOCFIX")" 'docs.example-source.io/tags'
 cat > "$DOCFIX/DOC.md" <<'MD'
 The `permissions.deny` block covers `compute.instances.delete` and
-`storage.objects.delete`. See `guard-lib.sh`, `config.yaml`, `README.md`,
+`storage.objects.delete`. See `library-admission.sh`, `config.yaml`, `README.md`,
 `settings.json` and `floor-normalize.awk` — e.g. version 3.0.18, i.e. the pin.
 Mail goes to someone@mail.example-source.io, and the bare host in the fence below is skipped.
 

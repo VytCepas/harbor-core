@@ -6,16 +6,16 @@
 # not observe (VERIFY-1). Stateful: K1b's $B6 is SEAM-1's fixture.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$(dirname "$0")/fixture.sh"
-SCANNERS='guard-bash.sh guard-egress.sh guard-selfedit.sh annotate-web.sh pin-instructions.sh guard-lib.sh floor-normalize.awk'
+SCANNERS='admission-bash.sh admission-egress.sh admission-self-edit.sh annotate-web.sh pin-instructions.sh library-admission.sh floor-normalize.awk'
 EMPTY_SETTINGS='{"permissions":{"allow":[],"deny":[],"disableBypassPermissionsMode":"disable","disableAutoMode":"disable"}}'
 pinned_dir() { # <dir> — the scanners and B6 copied in, every scanner content-pinned, a bare deny
   mkdir -p "$1/bin" "$1/.helm-pins"
-  for _g in $SCANNERS guard-integrity.sh; do cp "$SRC/$_g" "$1/bin/" 2>/dev/null; done
+  for _g in $SCANNERS admission-integrity.sh; do cp "$SRC/$_g" "$1/bin/" 2>/dev/null; done
   printf '{"permissions":{"deny":[]}}' > "$1/settings.json"
   for _g in $SCANNERS; do _x9sha < "$1/bin/$_g" > "$1/.helm-pins/$_g.sha256"; done
 }
 b6msg() { # <cfg> — the systemMessage B6 emits for that config dir
-  CLAUDE_CONFIG_DIR="$1" sh "$1/bin/guard-integrity.sh" </dev/null 2>/dev/null | jq -r '.systemMessage // ""' 2>/dev/null
+  CLAUDE_CONFIG_DIR="$1" sh "$1/bin/admission-integrity.sh" </dev/null 2>/dev/null | jq -r '.systemMessage // ""' 2>/dev/null
 }
 installed_b6() { # <dir> — a clean floor-install --with-b6 into an empty config dir
   mkdir -p "$1/bin"; printf '%s\n' "$EMPTY_SETTINGS" > "$1/settings.json"
@@ -27,13 +27,13 @@ no_live() { # <text> — "live" if a recovery in it is aimed at --live, bare or 
 
 t_section "X9 · a blocked session must be handed a recovery that RECOVERS"
 X9="$TMP/x9"; pinned_dir "$X9"
-printf '\n# content drift\n' >> "$X9/bin/guard-lib.sh"
+printf '\n# content drift\n' >> "$X9/bin/library-admission.sh"
 X9_CONTENT="$(b6msg "$X9")"
 t_has "X9 content drift: the recovery names the content pin" "$X9_CONTENT" '.helm-pins'
 t_hasnt "X9 content drift must not recommend floor-deny.sh, which never writes .helm-pins" "$X9_CONTENT" 'floor-deny.sh'
-t_has "X9 content drift names WHICH file drifted" "$X9_CONTENT" 'guard-lib.sh'
+t_has "X9 content drift names WHICH file drifted" "$X9_CONTENT" 'library-admission.sh'
 # Settings drift is the class floor-deny.sh does fix (harbor#103).
-_x9sha < "$X9/bin/guard-lib.sh" > "$X9/.helm-pins/guard-lib.sh.sha256"
+_x9sha < "$X9/bin/library-admission.sh" > "$X9/.helm-pins/library-admission.sh.sha256"
 printf 'deliberately-not-a-hash\n' > "$X9/.sec0-baseline.sha256"
 X9_SETTINGS="$(b6msg "$X9")"
 t_has "X9 settings drift keeps the floor-deny recovery" "$X9_SETTINGS" 'floor-deny.sh'
@@ -45,7 +45,7 @@ t_has "X9b ...as --dir, the only target form floor-deny takes (harbor#800)" "$X9
 # The discrimination half: when the config dir IS live, --live is the only spelling the tools take.
 H110="$TMP/h110"; pinned_dir "$H110/.claude"
 printf 'deliberately-not-a-hash\n' > "$H110/.claude/.sec0-baseline.sha256"
-X9_LIVE="$(env HOME="$H110" CLAUDE_CONFIG_DIR="$H110/.claude" sh "$H110/.claude/bin/guard-integrity.sh" \
+X9_LIVE="$(env HOME="$H110" CLAUDE_CONFIG_DIR="$H110/.claude" sh "$H110/.claude/bin/admission-integrity.sh" \
              </dev/null 2>/dev/null | jq -r '.systemMessage // ""' 2>/dev/null)"
 t_has "X9b a LIVE verdict keeps the --live spelling those tools require" "$X9_LIVE" "floor-deny.sh '--live' --repin"
 t_has "X9b a LIVE verdict names deploy-restore.sh --live" "$X9_LIVE" "deploy-restore.sh '--live'"
@@ -61,7 +61,7 @@ t_has "X9b ...its sandbox re-pin is --dir spelled, the only target form floor-de
 t_section "X15 (2026-08-14): what B6 verifies is DERIVED from the pins on disk"
 X15="$TMP/x15"; installed_b6 "$X15"
 t_eq "X15 a CLEAN --with-b6 install is silent" "" "$(b6msg "$X15")"
-for _g in guard-cloud.sh guard-destroy.sh guard-deliverables.sh; do
+for _g in admission-cloud.sh admission-destroy.sh admission-deliverables.sh; do
   cp "$X15/bin/$_g" "$X15/bin/$_g.keep"
   printf '#!/usr/bin/env sh\n[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0\nexit 0\n' > "$X15/bin/$_g"
   t_has "X15 gutting $_g to 'exit 0' reaches B6 through its pin" "$(b6msg "$X15")" "$_g"
@@ -69,21 +69,21 @@ for _g in guard-cloud.sh guard-destroy.sh guard-deliverables.sh; do
 done
 t_eq "X15 restoring the guards clears the verdict" "" "$(b6msg "$X15")"
 # Unwiring is cheaper than editing; gated on the pin so an older box is not false-alarmed.
-jq 'del(.hooks.PreToolUse[]?.hooks[]? | select(.command | test("guard-cloud")))' \
+jq 'del(.hooks.PreToolUse[]?.hooks[]? | select(.command | test("admission-cloud")))' \
    "$X15/settings.json" > "$X15/s.tmp" && mv "$X15/s.tmp" "$X15/settings.json"
 env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$X15" --repin >/dev/null 2>&1
-t_has "X15 guard-cloud.sh unwired from PreToolUse(Bash) is reported" "$(b6msg "$X15")" 'guard-cloud.sh'
-rm -f "$X15/.helm-pins/guard-cloud.sh.sha256" "$X15/bin/guard-cloud.sh"
+t_has "X15 admission-cloud.sh unwired from PreToolUse(Bash) is reported" "$(b6msg "$X15")" 'admission-cloud.sh'
+rm -f "$X15/.helm-pins/admission-cloud.sh.sha256" "$X15/bin/admission-cloud.sh"
 t_eq "X15 an install with no guard-cloud pin is not blocked for a guard it never had" absent \
-  "$(case "$(b6msg "$X15")" in (*guard-cloud.sh*) echo present ;; (*) echo absent ;; esac)"
+  "$(case "$(b6msg "$X15")" in (*admission-cloud.sh*) echo present ;; (*) echo absent ;; esac)"
 # Every pinned file carries the kill-switch or is in B6's NO-KILLSWITCH case, read from the source.
-_x15_exempt="$(grep -A1 'NO-KILLSWITCH' "$SRC/guard-integrity.sh" | tail -1 \
+_x15_exempt="$(grep -A1 'NO-KILLSWITCH' "$SRC/admission-integrity.sh" | tail -1 \
                  | tr '|)' '\n\n' | sed 's/^[[:space:]]*//' | grep -E '\.(sh|awk)$' | sort -u)"
 _x15_naked=""
 for _pf in "$X15"/.helm-pins/*.sha256; do
   [ -f "$_pf" ] || continue
   _g="${_pf##*/}"; _g="${_g%.sha256}"
-  [ "$_g" = "guard-integrity.sh" ] && continue
+  [ "$_g" = "admission-integrity.sh" ] && continue
   case " $(echo $_x15_exempt) " in *" $_g "*) continue ;; esac
   [ -f "$SRC/$_g" ] || continue
   _l="$(grep -vE '^[[:space:]]*(#|$)' "$SRC/$_g" 2>/dev/null | grep -vE '^#!' | head -1)"
@@ -95,7 +95,7 @@ t_eq "X15 B6's kill-switch exemption case is readable (>= 6 entries), or the loo
   "$([ "$_x15_en" -ge 6 ] && echo yes || echo "no ($_x15_en)")"
 # harbor#110's second half: a content drift on a SANDBOX must not say deploy-restore.sh --live.
 X15S="$TMP/x15sbx"; installed_b6 "$X15S"
-printf '\n# drift\n' >> "$X15S/bin/guard-bash.sh"
+printf '\n# drift\n' >> "$X15S/bin/admission-bash.sh"
 X15S_MSG="$(b6msg "$X15S")"
 t_eq "X15 a sandbox content drift names deploy-restore.sh, never deploy-restore.sh --live (harbor#110)" sandbox \
   "$(case "$X15S_MSG" in (*"deploy-restore.sh '--live'"*|*"deploy-restore.sh --live"*) echo live ;; (*deploy-restore.sh*) echo sandbox ;; (*) echo none ;; esac)"
@@ -112,11 +112,11 @@ t_has "X15 B6 actually blocks on the deploy-restore.sh the installer warned abou
 # floor-verify fires guard-cloud and guard-destroy (cli.md: firing every guard is its job), red-green.
 X15V="$(cd -P "$TMP" && pwd -P)/x15v"; installed_b6 "$X15V"  # physical: floor-verify reports the dir it resolved
 X15V_OUT="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-verify.sh" --dir "$X15V" 2>&1 || true)"
-t_eq "X15 floor-verify fires guard-cloud.sh" yes \
+t_eq "X15 floor-verify fires admission-cloud.sh" yes \
   "$(case "$X15V_OUT" in (*decides*"BigQuery table delete"*) echo yes ;; (*) echo no ;; esac)"
-t_eq "X15 floor-verify fires guard-destroy.sh" yes \
+t_eq "X15 floor-verify fires admission-destroy.sh" yes \
   "$(case "$X15V_OUT" in (*decides*"diskutil wipe"*) echo yes ;; (*) echo no ;; esac)"
-for _g in guard-cloud.sh guard-destroy.sh; do
+for _g in admission-cloud.sh admission-destroy.sh; do
   printf '#!/usr/bin/env sh\n[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0\nexit 0\n' > "$X15V/bin/$_g"
 done
 X15V_GUT="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-verify.sh" --dir "$X15V" 2>&1 || true)"
@@ -127,17 +127,17 @@ t_section "X13 (2026-08-03): a blocked gate may only name commands that exist"
 _x13_payload=" $(echo $(ff_payload)) "
 # $CFGQ? — the quoted spelling counts too (harbor#110's second half).
 _x13_bad=""
-for _r in $(grep -oE '\$CFGQ?/bin/[a-z0-9-]+\.sh' "$SRC/guard-integrity.sh" | sed 's#.*/##' | sort -u); do
+for _r in $(grep -oE '\$CFGQ?/bin/[a-z0-9-]+\.sh' "$SRC/admission-integrity.sh" | sed 's#.*/##' | sort -u); do
   case "$_x13_payload" in *" $_r "*) ;; *) _x13_bad="$_x13_bad $_r" ;; esac
 done
-t_eq "X13 every \$CFG/bin script guard-integrity.sh names is in an installer payload" "" "$_x13_bad"
-_x13_n="$(grep -oE '\$CFGQ?/bin/[a-z0-9-]+\.sh' "$SRC/guard-integrity.sh" | sed 's#.*/##' | sort -u | grep -c .)"
+t_eq "X13 every \$CFG/bin script admission-integrity.sh names is in an installer payload" "" "$_x13_bad"
+_x13_n="$(grep -oE '\$CFGQ?/bin/[a-z0-9-]+\.sh' "$SRC/admission-integrity.sh" | sed 's#.*/##' | sort -u | grep -c .)"
 t_eq "X13 the recovery-path scan still reaches >= 3 scripts, or the check above is vacuous" yes \
   "$([ "${_x13_n:-0}" -ge 3 ] && echo yes || echo "no (${_x13_n:-0})")"
 # --apply re-adds the whole B1 set and resurrects withdrawn entries; re-pinning is --repin. Code only.
-t_exit "X13 guard-integrity.sh must not tell the operator to re-pin with --apply" 1 \
-  sh -c 'grep -v "^[[:space:]]*#" "$1" | grep -q "floor-deny\.sh --live --apply"' _ "$SRC/guard-integrity.sh"
-for _x13p in bin/guard-integrity.sh hooks/session-verdicts/session-verdicts.sh; do _x13="${_x13p##*/}"
+t_exit "X13 admission-integrity.sh must not tell the operator to re-pin with --apply" 1 \
+  sh -c 'grep -v "^[[:space:]]*#" "$1" | grep -q "floor-deny\.sh --live --apply"' _ "$SRC/admission-integrity.sh"
+for _x13p in bin/admission-integrity.sh hooks/session-verdicts/session-verdicts.sh; do _x13="${_x13p##*/}"
   t_exit "X13 $_x13 names the re-pin command its twin prints" 0 grep -q 'bin/floor-deny\.sh \$TGTQ --repin' "$T_ROOT/$_x13p"
   t_exit "X13 $_x13 resolves the recovery target against the live dir" 0 grep -q 'TGT="--live"' "$T_ROOT/$_x13p"
   t_exit "X13 $_x13 shell-quotes the path it prints (PR #113)" 0 grep -q '_shq()' "$T_ROOT/$_x13p"
@@ -148,7 +148,7 @@ t_has "X13 a config dir containing a space is pasted quoted" "$(b6msg "$X13SP")"
 # A pasted recovery must name a file the session cannot edit; an installer line — deploy.sh, the one
 # live entry since harbor#800, counts as one — may name the checkout only beside
 # `git -C ~/port/harbor diff --quiet` ON THAT LINE (git status --short always exits 0).
-for _sv in guard-integrity.sh session-verdicts.sh; do
+for _sv in admission-integrity.sh session-verdicts.sh; do
   _x13_ck="$(grep -v '^[[:space:]]*#' "$(t_src "$_sv")" | grep -E '(~|\$HOME)/(port/)?harbor/bin/[a-z0-9-]+\.sh' || true)"
   _x13_n="$(printf '%s\n' "$_x13_ck" | grep -c . || true)"
   if [ -z "$_x13_ck" ]; then _x13_v=clean
@@ -159,8 +159,8 @@ done
 
 t_section "QA PLAN Q-R6: the restore path is not a lockout"
 QW="$TMP/qa-recover"; mkdir -p "$QW/bin"; printf '%s' "$EMPTY_SETTINGS" > "$QW/settings.json"
-for _g in guard-lib.sh floor-normalize.awk guard-selfedit.sh guard-bash.sh guard-egress.sh annotate-web.sh \
-          guard-integrity.sh floor-deny.sh floor-install.sh deploy-restore.sh deploy-harden.sh; do
+for _g in library-admission.sh floor-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh annotate-web.sh \
+          admission-integrity.sh floor-deny.sh floor-install.sh deploy-restore.sh deploy-harden.sh; do
   cp "$SRC/$_g" "$QW/bin/" 2>/dev/null
 done
 env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-install.sh" --dir "$QW" --apply --with-b6 >/dev/null 2>&1
@@ -178,19 +178,19 @@ t_has "Q-R6 deploy's snapshot holds .helm-floor-teeth" "$_arcls" '.helm-floor-te
 rm -rf "$QW/.helm-pins" "$QW/.helm-floor-teeth"; printf 'garbage' > "$QW/settings.json"
 env -u CLAUDE_CONFIG_DIR sh "$SRC/deploy-restore.sh" --apply --dir "$QW" >/dev/null 2>&1
 t_eq "Q-R6 after restore the integrity gate does not block (recovery is not a lockout)" "" \
-  "$(printf '{"hook_event_name":"SessionStart"}' | CLAUDE_CONFIG_DIR="$QW" sh "$QW/bin/guard-integrity.sh" 2>/dev/null)"
+  "$(printf '{"hook_event_name":"SessionStart"}' | CLAUDE_CONFIG_DIR="$QW" sh "$QW/bin/admission-integrity.sh" 2>/dev/null)"
 
 t_section "K1b: B6 integrity gate (fail-CLOSED SessionStart)"
 # exit 2 does not block at SessionStart; {"continue": false} on stdout is the only hard stop.
 B6="$TMP/b6"; mkdir -p "$B6/bin"; printf '%s\n' "$EMPTY_SETTINGS" > "$B6/settings.json"
-for _g in guard-lib.sh floor-normalize.awk guard-selfedit.sh guard-bash.sh guard-egress.sh annotate-web.sh \
-          floor-deny.sh floor-install.sh guard-integrity.sh; do
+for _g in library-admission.sh floor-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh annotate-web.sh \
+          floor-deny.sh floor-install.sh admission-integrity.sh; do
   cp "$SRC/$_g" "$B6/bin/$_g"
 done
 chmod +x "$B6"/bin/*.sh
 env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-install.sh" --dir "$B6" --apply >/dev/null 2>&1
 b6run() { printf '{"hook_event_name":"SessionStart","source":"startup"}' \
-  | CLAUDE_CONFIG_DIR="$B6" sh "$B6/bin/guard-integrity.sh" 2>/dev/null; }
+  | CLAUDE_CONFIG_DIR="$B6" sh "$B6/bin/admission-integrity.sh" 2>/dev/null; }
 b6cont() { b6run | jq -r '.continue' 2>/dev/null; }
 b6edit() { jq "$1" "$B6/settings.json" > "$B6/s.tmp" && mv "$B6/s.tmp" "$B6/settings.json"; }  # <jq filter>
 not_false() { case "$1" in (false) echo false ;; (*) echo 'not false' ;; esac; }
@@ -199,13 +199,13 @@ b6edit '.permissions.deny = []'
 t_eq "K1b B6 blocks after the deny array is tampered" false "$(b6cont)"
 env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$B6" --apply >/dev/null 2>&1
 t_eq "K1b B6 is silent once the baseline is re-pinned" "" "$(b6run)"
-printf '#!/bin/sh\nexit 0\n' > "$B6/bin/guard-bash.sh"
+printf '#!/bin/sh\nexit 0\n' > "$B6/bin/admission-bash.sh"
 t_eq "K1b B6 blocks after a guard is neutered" false "$(b6cont)"
-cp "$SRC/guard-bash.sh" "$B6/bin/guard-bash.sh"
+cp "$SRC/admission-bash.sh" "$B6/bin/admission-bash.sh"
 b6edit 'del(.hooks.PreToolUse)'
 t_eq "K1b B6 blocks after the floor hooks are unwired" false "$(b6cont)"
 t_eq "K1b HARBOR_ADMISSION_DISABLE=1 opens the gate even with drift present" "" \
-  "$(printf '{}' | HARBOR_ADMISSION_DISABLE=1 CLAUDE_CONFIG_DIR="$B6" sh "$B6/bin/guard-integrity.sh" 2>/dev/null)"
+  "$(printf '{}' | HARBOR_ADMISSION_DISABLE=1 CLAUDE_CONFIG_DIR="$B6" sh "$B6/bin/admission-integrity.sh" 2>/dev/null)"
 
 t_section "SEAM-1 (harbor#221): B6 owns settings.json as a FILE, not four fields"
 # Rebuilt, not inherited: K1b ends with PreToolUse deleted.
@@ -272,7 +272,7 @@ t_exit "VERIFY-1 an absent config dir is floor-not-on (exit 1), not a usage erro
   env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-verify.sh" --dir "$TMP/no-such-config-dir"
 # sh exits 2 on a syntax error too, so a broken guard used to read as a block.
 mkdir -p "$FV/broken/bin"; printf '{}\n' > "$FV/broken/settings.json"
-for _g in guard-bash.sh guard-egress.sh guard-selfedit.sh; do printf '#!/bin/sh\nif [ broken\n' > "$FV/broken/bin/$_g"; done
+for _g in admission-bash.sh admission-egress.sh admission-self-edit.sh; do printf '#!/bin/sh\nif [ broken\n' > "$FV/broken/bin/$_g"; done
 _fvb="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-verify.sh" --dir "$FV/broken" 2>&1 || true)"
 t_hasnt "VERIFY-1 a syntactically broken guard is not reported as blocking" "$_fvb" '  ok: blocks:'
 t_has "VERIFY-1 a broken guard's exit 2 is told apart from a verdict" "$_fvb" '  FAIL: EXITED 2 WITHOUT BLOCKING'
@@ -287,7 +287,7 @@ t_has "VERIFY-1 a fully installed fixture still reports a real block (№2.11)" 
 
 t_section "VERIFY-2 (harbor#767): a B6 block fails the verify; a B6 advisory does not"
 V2="$(cd -P "$TMP" && pwd -P)/verify2"; installed_b6 "$V2"; cp "$V2/settings.json" "$TMP/v2.clean"
-b6out() { CLAUDE_CONFIG_DIR="$1" sh "$1/bin/guard-integrity.sh" </dev/null 2>/dev/null; }
+b6out() { CLAUDE_CONFIG_DIR="$1" sh "$1/bin/admission-integrity.sh" </dev/null 2>/dev/null; }
 # The verdict is the line before the summary (contracts/logging.md: the summary ends every run).
 fv2() { _v2="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-verify.sh" --dir "$V2" 2>&1)"; _v2rc=$?; _v2last="$(printf '%s\n' "$_v2" | tail -2 | head -1)"; _v2sum="$(printf '%s\n' "$_v2" | tail -1)"; }
 fv2
@@ -314,18 +314,18 @@ fv2
 t_eq "VERIFY-2 advisory drift: floor-verify exits 0" 0 "$_v2rc"
 t_has "VERIFY-2 advisory drift: reported as an advisory" "$_v2" '  WARN: B6 reports drift'
 t_has "VERIFY-2 advisory drift: the verdict is FLOOR IS ON, with the advisory counted" "$_v2last" 'FLOOR IS ON'
-cp "$TMP/v2.clean" "$V2/settings.json"; cp "$V2/bin/guard-integrity.sh" "$TMP/v2.gi"
-printf '#!/bin/sh\necho "not a verdict"\n' > "$V2/bin/guard-integrity.sh"
+cp "$TMP/v2.clean" "$V2/settings.json"; cp "$V2/bin/admission-integrity.sh" "$TMP/v2.gi"
+printf '#!/bin/sh\necho "not a verdict"\n' > "$V2/bin/admission-integrity.sh"
 fv2
 t_eq "VERIFY-2 output that is no verdict fails: it cannot be ruled out as a block" "1 yes" \
   "$_v2rc $(case "$_v2" in (*'  FAIL: B6 printed output that is not a verdict'*) echo yes ;; (*) echo no ;; esac)"
-cp "$TMP/v2.gi" "$V2/bin/guard-integrity.sh"
+cp "$TMP/v2.gi" "$V2/bin/admission-integrity.sh"
 
 t_section "VERIFY-3 (harbor#767): a B6 that cannot run is never read as clean"
 # guard-integrity's contract: exit 0 always, and silence IS the clean verdict. Silence from a gate
 # that crashed, exited non-zero or was killed is not that verdict.
 v3() { # <label> <stub-body> <needle> — the stub replaces B6; floor-verify must fail and say why
-  printf '#!/bin/sh\n%s\n' "$2" > "$V2/bin/guard-integrity.sh"; fv2
+  printf '#!/bin/sh\n%s\n' "$2" > "$V2/bin/admission-integrity.sh"; fv2
   t_eq "VERIFY-3 $1: floor-verify exits 1" 1 "$_v2rc"
   t_has "VERIFY-3 $1: a failing B6 line names what happened" "$_v2" "$3"
   t_hasnt "VERIFY-3 $1: it is not reported clean" "$_v2" 'B6: installed, reports clean'
@@ -338,27 +338,27 @@ t_has "VERIFY-3 a crash: the failing line carries the shell's own error" "$(prin
 v3 "killed by a signal" 'kill -KILL $$' '  FAIL: B6 was killed by signal 9'
 v3 "garbage on stdout, exit 0" 'echo "{not json"' '  FAIL: B6 printed output that is not a verdict'
 v3 "a clean-looking stdout with a non-zero exit" 'exit 1' '  FAIL: B6 exited 1'
-cp "$TMP/v2.gi" "$V2/bin/guard-integrity.sh"; fv2
+cp "$TMP/v2.gi" "$V2/bin/admission-integrity.sh"; fv2
 t_eq "VERIFY-3 CONTROL: the real B6 on the clean install still verifies" 0 "$_v2rc"
 t_has "VERIFY-3 CONTROL: …and is the one reported clean (F9's positive control)" "$_v2" 'B6: installed, reports clean'
 
 t_section "B6-SEP (install standard §3): B6 never reads .harbor-manifest, the record the installers write"
 _code() { sed -e '/^[[:space:]]*#/d' -e 's/[[:space:]]#.*$//' "$1"; }
-t_eq "B6-SEP guard-integrity.sh names no .harbor-manifest in its code" 0 "$(_code "$SRC/guard-integrity.sh" | grep -c 'harbor-manifest')"
-t_eq "B6-SEP ...nor does the guard-lib it sources" 0 "$(_code "$SRC/guard-lib.sh" | grep -c 'harbor-manifest')"
+t_eq "B6-SEP admission-integrity.sh names no .harbor-manifest in its code" 0 "$(_code "$SRC/admission-integrity.sh" | grep -c 'harbor-manifest')"
+t_eq "B6-SEP ...nor does the guard-lib it sources" 0 "$(_code "$SRC/library-admission.sh" | grep -c 'harbor-manifest')"
 t_eq "B6-SEP ...and it does not source deploy-install-lib.sh, where the manifest's readers live" 0 \
-  "$(_code "$SRC/guard-integrity.sh" | grep -cE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*deploy-install-lib\.sh')"
+  "$(_code "$SRC/admission-integrity.sh" | grep -cE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*deploy-install-lib\.sh')"
 SEP="$TMP/b6sep"; installed_b6 "$SEP"
-sepv() { printf '{"hook_event_name":"SessionStart","source":"startup"}' | CLAUDE_CONFIG_DIR="$SEP" sh "$SEP/bin/guard-integrity.sh" 2>/dev/null; }
+sepv() { printf '{"hook_event_name":"SessionStart","source":"startup"}' | CLAUDE_CONFIG_DIR="$SEP" sh "$SEP/bin/admission-integrity.sh" 2>/dev/null; }
 t_eq "B6-SEP the fixture's install wrote a manifest (so its absence below is a real change)" yes "$([ -s "$SEP/.harbor-manifest" ] && echo yes || echo no)"
 V0="$(sepv)"
 t_eq "B6-SEP a clean floor is silent" "" "$V0"
 mv "$SEP/.harbor-manifest" "$SEP/manifest.saved"
 t_eq "B6-SEP the same verdict with the manifest gone" "$V0" "$(sepv)"
-printf 'garbage\n%s 100755 bin/guard-bash.sh floor-install deadbeef\n' "$(printf x | git hash-object --stdin)" > "$SEP/.harbor-manifest"
+printf 'garbage\n%s 100755 bin/admission-bash.sh floor-install deadbeef\n' "$(printf x | git hash-object --stdin)" > "$SEP/.harbor-manifest"
 t_eq "B6-SEP ...and with a forged one" "$V0" "$(sepv)"
-printf '#!/bin/sh\nexit 0\n' > "$SEP/bin/guard-bash.sh"
-printf '%s 100755 bin/guard-bash.sh floor-install -\n' "$(git hash-object "$SEP/bin/guard-bash.sh")" > "$SEP/.harbor-manifest"
+printf '#!/bin/sh\nexit 0\n' > "$SEP/bin/admission-bash.sh"
+printf '%s 100755 bin/admission-bash.sh floor-install -\n' "$(git hash-object "$SEP/bin/admission-bash.sh")" > "$SEP/.harbor-manifest"
 t_eq "B6-SEP a neutered guard still blocks when a forged row records its bytes as installed" false \
   "$(sepv | jq -r '.continue' 2>/dev/null)"
 
@@ -366,35 +366,35 @@ t_section "WIRE-960 (harbor#960): every hook command wired into the bin dir must
 # A wired file that is gone never runs. bash-as-sh (macOS) exits 127, which Claude Code reads as
 # non-blocking: the hook is silently off. dash (Debian/Ubuntu) exits 2, a blocking error: every call refused.
 WH="$TMP/w960"; W9="$WH/.claude"; installed_b6 "$W9"; cp "$W9/settings.json" "$TMP/w960.clean"
-w9() { env HOME="$WH" CLAUDE_CONFIG_DIR="$W9" sh "${1:-$W9/bin/guard-integrity.sh}" </dev/null 2>/dev/null; }
+w9() { env HOME="$WH" CLAUDE_CONFIG_DIR="$W9" sh "${1:-$W9/bin/admission-integrity.sh}" </dev/null 2>/dev/null; }
 w9c() { w9 "$@" | jq -r 'if has("continue") then (.continue|tostring) else "advisory" end' 2>/dev/null | grep . || echo silent; }
 w9wire() { jq --arg c "$1" '.hooks.SessionStart += [{matcher:"", hooks:[{type:"command", command:$c}]}]' \
   "$TMP/w960.clean" > "$W9/settings.json"; }  # <command> — one extra SessionStart hook over the clean wiring
 t_eq "WIRE-960 CONTROL: a clean --with-b6 install is silent" silent "$(w9c)"
 # Probe 3 (research/07 T2): script and pin renamed together, settings.json still wires the old path.
-mv "$W9/bin/guard-deliverables.sh" "$W9/bin/guard-filing.sh"
-mv "$W9/.helm-pins/guard-deliverables.sh.sha256" "$W9/.helm-pins/guard-filing.sh.sha256"
+mv "$W9/bin/admission-deliverables.sh" "$W9/bin/guard-filing.sh"
+mv "$W9/.helm-pins/admission-deliverables.sh.sha256" "$W9/.helm-pins/guard-filing.sh.sha256"
 t_eq "WIRE-960 the premise: the old wired command cannot run (127 under bash, 2 under dash)" dead \
-  "$(printf '{}' | /bin/sh "$W9/bin/guard-deliverables.sh" >/dev/null 2>&1; rc=$?
+  "$(printf '{}' | /bin/sh "$W9/bin/admission-deliverables.sh" >/dev/null 2>&1; rc=$?
      if [ "$rc" = 127 ] || [ "$rc" = 2 ]; then echo dead; else echo "ran: exit $rc"; fi)"
 t_eq "WIRE-960 probe 3: script and pin renamed, old wiring left — the session is refused" false "$(w9c)"
 W9MSG="$(w9 | jq -r .systemMessage)"
-t_has "WIRE-960 probe 3: the refusal names the dangling path" "$W9MSG" "$W9/bin/guard-deliverables.sh"
+t_has "WIRE-960 probe 3: the refusal names the dangling path" "$W9MSG" "$W9/bin/admission-deliverables.sh"
 t_has "WIRE-960 probe 3: the recovery names the wiring as a way out" "$W9MSG" "settings.json at its new path"
 t_hasnt "WIRE-960 probe 3: ...and not floor-deny, which re-pins neither file nor wiring" "$W9MSG" 'floor-deny.sh'
-sed "s#/bin/guard-deliverables.sh#/bin/guard-filing.sh#g" "$TMP/w960.clean" > "$W9/settings.json"
+sed "s#/bin/admission-deliverables.sh#/bin/guard-filing.sh#g" "$TMP/w960.clean" > "$W9/settings.json"
 t_eq "WIRE-960 probe 3 CONTROL: rewired to the new name, it passes (the rename is not the fault)" silent "$(w9c)"
-mv "$W9/bin/guard-filing.sh" "$W9/bin/guard-deliverables.sh"
-mv "$W9/.helm-pins/guard-filing.sh.sha256" "$W9/.helm-pins/guard-deliverables.sh.sha256"
+mv "$W9/bin/guard-filing.sh" "$W9/bin/admission-deliverables.sh"
+mv "$W9/.helm-pins/guard-filing.sh.sha256" "$W9/.helm-pins/admission-deliverables.sh.sha256"
 # The wrapper behind three guards (probe 1 case C), renamed with its pin.
 cp "$TMP/w960.clean" "$W9/settings.json"
-mv "$W9/bin/floor-hook.sh" "$W9/bin/floor-wrap.sh"; mv "$W9/.helm-pins/floor-hook.sh.sha256" "$W9/.helm-pins/floor-wrap.sh.sha256"
-t_eq "WIRE-960 floor-hook.sh renamed with its pin, old wiring left — refused" false "$(w9c)"
-mv "$W9/bin/floor-wrap.sh" "$W9/bin/floor-hook.sh"; mv "$W9/.helm-pins/floor-wrap.sh.sha256" "$W9/.helm-pins/floor-hook.sh.sha256"
+mv "$W9/bin/admission-hook.sh" "$W9/bin/floor-wrap.sh"; mv "$W9/.helm-pins/admission-hook.sh.sha256" "$W9/.helm-pins/floor-wrap.sh.sha256"
+t_eq "WIRE-960 admission-hook.sh renamed with its pin, old wiring left — refused" false "$(w9c)"
+mv "$W9/bin/floor-wrap.sh" "$W9/bin/admission-hook.sh"; mv "$W9/.helm-pins/floor-wrap.sh.sha256" "$W9/.helm-pins/admission-hook.sh.sha256"
 # B6 itself, as far as it can see: run from a new name while settings.json wires the old one.
-mv "$W9/bin/guard-integrity.sh" "$W9/bin/guard-integrity2.sh"
-t_eq "WIRE-960 guard-integrity.sh wired but gone (B6 run from another name) — refused" false "$(w9c "$W9/bin/guard-integrity2.sh")"
-mv "$W9/bin/guard-integrity2.sh" "$W9/bin/guard-integrity.sh"
+mv "$W9/bin/admission-integrity.sh" "$W9/bin/guard-integrity2.sh"
+t_eq "WIRE-960 admission-integrity.sh wired but gone (B6 run from another name) — refused" false "$(w9c "$W9/bin/guard-integrity2.sh")"
+mv "$W9/bin/guard-integrity2.sh" "$W9/bin/admission-integrity.sh"
 t_eq "WIRE-960 CONTROL: restored, silent again" silent "$(w9c)"
 # Unpinned hooks have no other net. Every spelling the boxes use: bare, quoted, $HOME, ~, a symlinked dir.
 ln -s "$W9" "$TMP/w960link"

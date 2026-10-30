@@ -87,7 +87,7 @@ t_eq "the mutant wired no announce" 0 "$(jq -r '.hooks.SessionStart[]?.hooks[]?.
 t_section "the closing NEXT describes what happened (live branch, fake HOME)"
 FH="$T/fh"; mkdir -p "$FH/.claude/bin"
 printf '{"permissions":{"deny":[]}}\n' > "$FH/.claude/settings.json"; printf 'be helpful\n' > "$FH/.claude/CLAUDE.md"
-for f in pin-instructions.sh guard-lib.sh floor-normalize.awk library-log.sh deploy-install-lib.sh; do cp "$T_ROOT/bin/$f" "$FH/.claude/bin/"; done
+for f in pin-instructions.sh library-admission.sh floor-normalize.awk library-log.sh deploy-install-lib.sh; do cp "$T_ROOT/bin/$f" "$FH/.claude/bin/"; done
 NAG='  note: next: sh '"$FH"'/.claude/bin/pin-instructions.sh --apply --live'  # named once (lint F9): the negative below keys on it
 pin() { HOME="$FH" sh "$FH/.claude/bin/pin-instructions.sh" --apply --live >/dev/null 2>&1; }
 inst() { HOME="$FH" sh "${1:-$TOOL}" --live --apply 2>&1; }
@@ -215,7 +215,7 @@ t_eq "every private file is a manifest row" 2 "$(grep -cE ' context-rules/user/(
 t_section "--projects seeds a project from the private layer's folder, backs up what it overwrites, skips a folder the registry does not name"
 mkph() { rm -rf "$T/ph"; PH="$T/ph"; mkdir -p "$PH/.claude/bin" "$PH/port/demo/context-rules/demo" "$PH/port/other"
   printf '{"permissions":{"deny":[]}}\n' > "$PH/.claude/settings.json"; printf 'be helpful\n' > "$PH/.claude/CLAUDE.md"
-  for f in pin-instructions.sh guard-lib.sh floor-normalize.awk library-log.sh deploy-install-lib.sh; do cp "$T_ROOT/bin/$f" "$PH/.claude/bin/"; done
+  for f in pin-instructions.sh library-admission.sh floor-normalize.awk library-log.sh deploy-install-lib.sh; do cp "$T_ROOT/bin/$f" "$PH/.claude/bin/"; done
   printf 'old\n' > "$PH/port/demo/context-rules/demo/10-demo-zz.md"; }   # demo has the pack, edited in place; other is on disk, in no registry row
 mkph
 PJ="$(HOME="$PH" HARBOR_SCOPE_PRIVATE="$PL" sh "$TOOL" --live --apply --projects 2>&1)"

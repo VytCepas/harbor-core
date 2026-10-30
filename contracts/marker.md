@@ -3,8 +3,10 @@
 The marker tells every layer *"this is a project-init-governed repo → the repo wins on workflow, conventions and tooling, and the global (Helm) engine stands down for those."* **The stand-down is scoped, not total** (harbor#581, decided 2026-09-22): the constitution's five rules never yield, and every place Harbor stands down is listed in [What stands down inside a governed repo](#what-stands-down-inside-a-governed-repo), which lint **M2** checks against the code. It must be **one defined signal** all three layers read identically.
 
 ## The key
-- Use **`context: repo`** in `.agents/config.yaml`.
-- **Two spellings, read as one (harbor#966, D-12).** The standard's key is **`scope: project|user`**; the legacy key is `context: repo|ambient`. They map `project` = `repo` and `user` = `ambient`, and a reader accepts both. **Either key opting out decides `ambient`**, so a config carrying `context: repo` beside `scope: user` is `ambient`: for a guard the opt-out is the safe direction. Harbor's own marker says `scope: project`. The writer (yard, today project-init) moves to `scope:` in its own repo, and the legacy key and the `project-init.md` marker stay readable until fleet reports no repo still on them. Only the shell resolver reads `scope:` so far, so fixtures M38-M40 are scoped to the `resolver` role until yard and fleet adopt it.
+- The key is **`scope: project|user`** in `.agents/config.yaml` (D-12); **`context: repo|ambient`** is the legacy spelling and is still read.
+- **Two spellings, read as one (harbor#966, #963).** They map `project` = `repo` and `user` = `ambient`, and a reader accepts both. **Either key opting out decides `ambient`**, so a config carrying `context: repo` beside `scope: user` is `ambient`: for a guard the opt-out is the safe direction. Every spelling rule below holds for both keys alike: top level at column 0, a spaced colon, a quoted key or value, a comment only after whitespace.
+- **Two marker files, read as one.** `.agents/config.yaml` is the marker; the legacy `.agents/project-init.md` is still a marker for the verdict. When both are present, `config.yaml`'s value decides, and the innermost marker wins whichever file it is.
+- **The window closes in order.** The writer (yard) moves to `scope:` in its own repo. The `context:` key and the `project-init.md` reader are removed only after fleet reports no repo still on them. Only the shell resolver reads `scope:` so far, so fixtures M38-M49 are scoped to the `resolver` role until yard and fleet adopt it: M41-M46 are the spelling rules for `scope:`, M47-M49 the two files together.
 - ~~emitted by **augmenting the existing** `templates/base/dot_agents/project-init.md.tmpl`~~ — **CORRECTED 2026-07-25 (PI-901).** That file is Markdown. `.agents/config.yaml` — the file `prod_guard._find_config` actually reads — renders from **`templates/base/dot_agents/config.yaml.tmpl`**, which is where every other config key already flows. **Landed:** project-init [#902](https://github.com/VytCepas/project-init/pull/902).
 - Do **NOT** use `governance:` — project-init already defines `governance` as a **boolean** (the SYSTEM_CARD gate toggle, `variables.py`). Overloading it is a wizard/schema collision. **Landed:** a contract test now asserts no top-level `governance` key appears in a `governance=True` render, so the collision cannot come back by accident.
 - **Add `context` to `descriptor.schema.json`** (additive, v2) so the contract test protects it — otherwise project-init could drop/rename it and no test fails, silently breaking Helm's deferral in every scaffolded repo. **Landed, with two refinements:**
@@ -131,7 +133,7 @@ Added 2026-09-24 for harbor#581. Decision (A): the repo wins on workflow, conven
 
 | site | stands down via | tier | what stops | ticket |
 |---|---|---|---|---|
-| `bin/guard-bash.sh` | `floor_repo_wires` | project | the protected-branch force-push rules, only where the repo wires `github_command_guard` (a PreToolUse hook, or the `project-init-lifecycle` plugin enabled and installed), which then owns them; a marker alone keeps them armed | harbor#954 |
+| `bin/admission-bash.sh` | `floor_repo_wires` | project | the protected-branch force-push rules, only where the repo wires `github_command_guard` (a PreToolUse hook, or the `project-init-lifecycle` plugin enabled and installed), which then owns them; a marker alone keeps them armed | harbor#954 |
 | `hooks/worklog-push/worklog-push.sh` | `floor_engine_stand_down` | engine | appending this session to the machine-wide work log, only where the repo's `.agents/config.yaml` says `worklog: off` | harbor#954 |
 | `hooks/memory-harvest/memory-harvest.sh` | `floor_engine_stand_down` | engine | reconciling the work log into memory, only on `worklog: off` | harbor#954 |
 | `bin/context-resolve.sh` | `floor_in_repo` | report | nothing: it records the session's verdict | — |
@@ -141,7 +143,7 @@ Added 2026-09-24 for harbor#581. Decision (A): the repo wins on workflow, conven
 - `project`: a workflow, convention or tooling rule, which (A) lets the repo own.
 - `engine`: Harbor acting on the operator's behalf across repos. Standing down means not acting; no rule is withdrawn.
 - `report`: reads the verdict and stands nothing down.
-- `constitutional`: enforces one of the five. Under (A) it may not stand down at all, so a row with this tier is a declared exception, and M2 fails it unless it names the ticket that owns the decision. **No row carries it today.** The one exception, the Stop gate (`bin/guard-stop.sh`, SG-1 and SG-2 of №2), was armed everywhere by harbor#676.
+- `constitutional`: enforces one of the five. Under (A) it may not stand down at all, so a row with this tier is a declared exception, and M2 fails it unless it names the ticket that owns the decision. **No row carries it today.** The one exception, the Stop gate (`bin/admission-stop.sh`, SG-1 and SG-2 of №2), was armed everywhere by harbor#676.
 
 **What M2 cannot check.**
 - Whether a tier is *true* is judgment: a №3 guard declared `project` passes. The table makes the claim explicit and reviewable, not correct.

@@ -106,13 +106,13 @@ _wire "$SG/decoy" "/bin/sh $SG/decoy/bin/prod-guard-ambient.sh $SG/decoy/hooks/p
 : > "$SG/decoy/bin/prod-guard-ambient.sh"
 t_eq "STATUS-1 a prod-guard-ambient-only settings.json does not report the floor" no "$(_obs "$SG/decoy" guard_hooks)"
 t_eq "STATUS-1 the same fixture still credits prod_guard" yes "$(_obs "$SG/decoy" prod_guard)"
-_wire "$SG/full" "/bin/sh $SG/full/bin/floor-hook.sh $SG/full/bin/guard-bash.sh"
-for _g in floor-hook.sh guard-lib.sh guard-bash.sh guard-egress.sh \
-          guard-selfedit.sh annotate-web.sh floor-normalize.awk; do
+_wire "$SG/full" "/bin/sh $SG/full/bin/admission-hook.sh $SG/full/bin/admission-bash.sh"
+for _g in admission-hook.sh library-admission.sh admission-bash.sh admission-egress.sh \
+          admission-self-edit.sh annotate-web.sh floor-normalize.awk; do
   printf '#\n' > "$SG/full/bin/$_g"
 done
 t_eq "STATUS-1 a correctly wired floor with every guard present reports installed" yes "$(_obs "$SG/full" guard_hooks)"
-_wire "$SG/hollow" "/bin/sh $SG/hollow/bin/floor-hook.sh $SG/hollow/bin/guard-bash.sh"
+_wire "$SG/hollow" "/bin/sh $SG/hollow/bin/admission-hook.sh $SG/hollow/bin/admission-bash.sh"
 t_eq "STATUS-1 wiring alone, no guard files on disk, is not reported installed" not-yes \
   "$(case "$(_obs "$SG/hollow" guard_hooks)" in (yes) echo yes ;; ('') echo empty ;; (*) echo not-yes ;; esac)"
 # harbor#91: docs/generated/status.md is host-invariant. A root of symlinks (tests/ too: the suites live there now)

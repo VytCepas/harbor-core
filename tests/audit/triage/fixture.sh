@@ -2,18 +2,18 @@
 # t_init. mkfixture builds a config dir that is clean by construction; each red case adds one defect.
 # Today is pinned (harbor#211) one day after the fixtures, so they sit inside the default 7d window.
 SRC="$T_ROOT/bin"; FC="$SRC/audit-triage.sh"; FCT="$FC"; TMP="$T_TMP/fc"; mkdir -p "$TMP"
-cp "$SRC/floor-verify.sh" "$SRC/guard-lib.sh" "$TMP/"  # a mutant in $TMP derives the probes from these
+cp "$SRC/floor-verify.sh" "$SRC/library-admission.sh" "$TMP/"  # a mutant in $TMP derives the probes from these
 HOST=testhost
 SALT=0123456789abcdef0123456789abcdef  # 32 hex, the length floor_obs_digest requires
 HARBOR_AUDIT_TRIAGE_NOW=2026-08-03; export HARBOR_AUDIT_TRIAGE_NOW
 mkfixture() { # <name> → the dir: floor wired, guard-lib present, sealed host dir, empty sink
   _d="$TMP/$1"; mkdir -p "$_d/bin" "$_d/MEMORY/OBSERVABILITY/$HOST"
-  cp "$SRC/guard-lib.sh" "$_d/bin/guard-lib.sh"
-  printf '#!/usr/bin/env sh\nexit 0\n' > "$_d/bin/floor-hook.sh"
-  printf '#!/usr/bin/env sh\nexit 0\n' > "$_d/bin/guard-bash.sh"
+  cp "$SRC/library-admission.sh" "$_d/bin/library-admission.sh"
+  printf '#!/usr/bin/env sh\nexit 0\n' > "$_d/bin/admission-hook.sh"
+  printf '#!/usr/bin/env sh\nexit 0\n' > "$_d/bin/admission-bash.sh"
   printf '%s\n' "$SALT" > "$_d/.helm-obs-salt"
   chmod 0600 "$_d/.helm-obs-salt"
-  jq -n --arg c "/bin/sh $_d/bin/floor-hook.sh $_d/bin/guard-bash.sh" '
+  jq -n --arg c "/bin/sh $_d/bin/admission-hook.sh $_d/bin/admission-bash.sh" '
     {hooks: {PreToolUse: [{matcher: "Bash", hooks: [{type: "command", command: $c}]}]}}' \
     > "$_d/settings.json"
   : > "$_d/MEMORY/OBSERVABILITY/$HOST/guard-decisions.jsonl"

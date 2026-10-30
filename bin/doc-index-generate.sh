@@ -130,8 +130,8 @@ d_lint() {
 
 d_guards() {
   printf '<table class="grid"><thead><tr><th>Guard</th><th>Role</th></tr></thead><tbody>\n'
-  for f in "$ROOT"/bin/guard-*.sh "$ROOT"/bin/floor-hook.sh; do
-    [ -f "$f" ] || continue
+  for f in "$ROOT"/bin/admission-*.sh "$ROOT"/bin/library-admission.sh; do   # the guards, the wrapper and the family (harbor#961 W6)
+    [ -f "$f" ] && [ ! -L "$f" ] || continue
     _n="$(basename "$f")"
     _d="$(sed -n '2,4p' "$f" | sed -n 's/^# //p' | head -1)"
     row "<code>$(printf '%s' "$_n" | esc)</code>" "$(printf '%s' "$_d" | unesc | esc | tick)"

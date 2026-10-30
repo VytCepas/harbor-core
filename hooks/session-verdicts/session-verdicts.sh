@@ -21,7 +21,7 @@
 #   session teaches you to dismiss it unread, which is the same failure as the
 #   wallpaper row one paragraph up.
 #
-# NEVER routed through floor-hook.sh: that wrapper exits at its own line-2
+# NEVER routed through admission-hook.sh: that wrapper exits at its own line-2
 # kill-switch, so an overridden session — the one where you most need to know the
 # floor is standing down — would print nothing.
 set -u
@@ -45,7 +45,7 @@ CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 # literally $HOME/.claude — it does not follow CLAUDE_CONFIG_DIR (that flag is
 # the accident gate protecting the real box). $CFG here does follow it, so a
 # verdict measured against a sandbox printed a command aimed at live: harbor#110,
-# fixed in the same change in guard-integrity.sh, which prints the same idiom.
+# fixed in the same change in admission-integrity.sh, which prints the same idiom.
 # LIVE_DIR is lint D1's sanctioned idiom for naming the live dir to COMPARE it;
 # nothing here reads or writes through it — $CFG is the only dir touched.
 _phys() { CDPATH= cd -P -- "$1" 2>/dev/null && pwd -P || printf '%s' "$1"; }
@@ -54,7 +54,7 @@ if [ "$(_phys "$CFG")" = "$(_phys "$LIVE_DIR")" ]; then TGT="--live"; else TGT="
 # Shell-quoted because the hint is PASTED (PR #113, Codex P2) — a config dir with
 # a space otherwise word-splits into two arguments and the pasted command targets
 # a different directory than the one the verdict was measured against. Same fix,
-# same reason, as guard-integrity.sh, which prints the twin of this idiom.
+# same reason, as admission-integrity.sh, which prints the twin of this idiom.
 _shq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 CFGQ="$(_shq "$CFG")"
 # The floor-deny re-pin takes install-lib's spelling (harbor#800): '--live', or --dir '<cfg>' — never a
@@ -71,7 +71,7 @@ sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 
 
 # ── 1 · the work-log hooks ───────────────────────────────────────────────────
 # The failure that ran silently for days: worklog-push.sh and its pull sibling (retired, #311)
-# both `. "$DIR/guard-lib.sh"`, guard-lib.sh ships with the floor, the floor is
+# both `. "$DIR/library-admission.sh"`, library-admission.sh ships with the floor, the floor is
 # not installed, so both exit 1 at SessionStart and Stop with zero output. Every
 # session believed it was syncing a git-backed work-log and none of them were.
 # Checked by SOURCE-ABILITY, not by mention: the file either exists or it does
@@ -135,7 +135,7 @@ fi
 # deny entry naming a guard is text, and pass-4 of the floor review caught that
 # exact test reporting an uninstalled floor as installed.
 if [ -f "$S" ] && command -v jq >/dev/null 2>&1; then
-  _g="$(jq '[.hooks.PreToolUse[]?.hooks[]?.command // empty] | map(select(test("guard-"))) | length' "$S" 2>/dev/null || echo 0)"
+  _g="$(jq '[.hooks.PreToolUse[]?.hooks[]?.command // empty] | map(select(test("(guard|admission)-"))) | length' "$S" 2>/dev/null || echo 0)"
   [ "${_g:-0}" -eq 0 ] && \
     add "no guard is wired: B1 deny is live, B2-B6 are not. bin/eval-pass-score.sh exits 2 — the latest adversarial pass still reports criticals, so this is the CURRENT CORRECT STATE, not a todo."
 fi

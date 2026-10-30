@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
 # hooks/session-state/session-state.sh, the Stop hook (harbor#1043, #1044): the five states in rule order, one test per waiting
-# pattern in contracts/session-waiting.tsv, SG-2 parity with guard-stop.sh, an event only on a change, the record's
+# pattern in contracts/session-waiting.tsv, SG-2 parity with admission-stop.sh, an event only on a change, the record's
 # fields, the save-now continuation (once, off without its rule, off under stop_hook_active), and a speed bound.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-TOOL="$T_ROOT/hooks/session-state/session-state.sh"; GSTOP="$T_ROOT/bin/guard-stop.sh"; TABLE="$T_ROOT/contracts/session-waiting.tsv"
+TOOL="$T_ROOT/hooks/session-state/session-state.sh"; GSTOP="$T_ROOT/bin/admission-stop.sh"; TABLE="$T_ROOT/contracts/session-waiting.tsv"
 T="$T_TMP"; ST="$T/state"; REPO="$T/repo"; CFG="$T/cfg"
 export HARBOR_STATUS_DIR="$ST" HARBOR_EVENT_DIR="$T/bus"
 # Auto-compact off for every section but its own, and never a real osascript: a test must not type into a terminal.
@@ -59,7 +59,7 @@ run s-ask asked 'Pick one.'; t_eq "a turn ending on an AskUserQuestion is waitin
 tx answered "$(ask)" "$(tr_ q1 yes)"
 run s-ans answered 'Thanks.'; t_eq "an answered AskUserQuestion is not" idle "$(rec s-ans state)"
 
-t_section "blocked: SG-2, and it agrees with guard-stop.sh on the same transcript"
+t_section "blocked: SG-2, and it agrees with admission-stop.sh on the same transcript"
 tx red "$(tu c2 2020-01-01T00:00:01.000Z 'sh tests/x-test.sh')" "$(tr_ c2 'x-test: 3 passed, 1 failed')"
 tx healed "$(tu c2 2020-01-01T00:00:01.000Z 'sh tests/x-test.sh')" "$(tr_ c2 'x-test: 3 passed, 1 failed')" "$(tu c3 2020-01-01T00:00:02.000Z 'sh tests/x-test.sh')" "$(tr_ c3 'x-test: 4 passed, 0 failed')"
 tx readonly "$(tu c4 2020-01-01T00:00:01.000Z 'cat build.log')" "$(tr_ c4 'x-test: 3 passed, 1 failed')"
@@ -85,7 +85,7 @@ t_eq "a background green, read from its task file, clears the red" idle "$(rec s
 t_eq "...and so does the same file read with the Read tool" idle "$(rec s-bgread state)"
 t_eq "a cat of a task file no suite of this session wrote is not a run" idle "$(rec s-bgcat state)"
 pair_of() { awk '/SG_PAIR=.$/ { on = 1; next } on { print } on && /}.$/ { exit }' "$1"; }
-t_eq "SG_PAIR is byte-equal to guard-stop.sh's" "$(pair_of "$GSTOP")" "$(pair_of "$TOOL")"
+t_eq "SG_PAIR is byte-equal to admission-stop.sh's" "$(pair_of "$GSTOP")" "$(pair_of "$TOOL")"
 t_has "...and the extraction found it" "$(pair_of "$TOOL")" 'BGT'
 run s-redq red 'Which one?'; t_eq "a question outranks blocked" waiting-operator "$(rec s-redq state)"
 

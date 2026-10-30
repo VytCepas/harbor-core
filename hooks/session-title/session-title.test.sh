@@ -61,7 +61,7 @@ run '';                         t_eq "empty payload: nothing" "" "$OUT"; t_eq ".
 title s9 'a "quoted" title \ here'; run "$(ups s9)"; t_eq "quotes and backslashes survive as valid JSON" 'a "quoted" title \ here' "$(printf '%s' "$OUT" | jq -r '.hookSpecificOutput.sessionTitle')"
 
 t_section "the path is one the floor lets the model Write"
-GS="$T_ROOT/bin/guard-selfedit.sh"
+GS="$T_ROOT/bin/admission-self-edit.sh"
 gp="$(jq -nc --arg p "$CFG/session-titles/s1.txt" '{tool_name:"Write",tool_input:{file_path:$p,content:"x"}}')"
 t_exit "guard-selfedit allows a Write to the title file" 0 sh -c "printf '%s' '$gp' | CLAUDE_CONFIG_DIR='$CFG' sh '$GS' >/dev/null 2>&1"
 gb="$(jq -nc --arg p "$CFG/settings.json" '{tool_name:"Write",tool_input:{file_path:$p,content:"x"}}')"

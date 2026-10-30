@@ -7,7 +7,7 @@
 # WHY A SIBLING FILE AND NOT A controls.tsv COLUMN (the ticket asked for a column). A column changes the controls.tsv
 # header, which every pack's controls fragment must equal byte for byte (bin/pack.sh), so the private layer's pack would
 # refuse to install until it moved in lockstep. This file names every admission id instead, and the suite fails when
-# the two id sets differ, or when the covered rows differ from floor_confinement_covers in bin/guard-lib.sh.
+# the two id sets differ, or when the covered rows differ from floor_confinement_covers in bin/library-admission.sh.
 #
 # NEVER COVERED: a rule whose target can sit in the write zone ($PORT_ROOT, deliverables_dir, the temp trees) or above
 # the config dir, a remote action, a file tool (the sandbox wraps Bash alone), or anything that is not a file write.

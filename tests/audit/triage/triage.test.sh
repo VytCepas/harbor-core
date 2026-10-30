@@ -76,7 +76,7 @@ F2="$(mkfixture fc2)"; unseal "$F2"; census "$F2" 2
 rec "$F2" wrapper deny wrapper-no-jq "2026-08-02T11:00:00Z"; seal "$F2"
 t_eq "FC-2 fires" yes "$(has_rule "$F2" FC-2)"
 t_eq "a wrapper deny is" crit "$(sev_of "$F2" FC-2)"
-# The token routes the repair by substring: it grew a guard name and an exit code (floor-hook.sh).
+# The token routes the repair by substring: it grew a guard name and an exit code (admission-hook.sh).
 t_has "the wrapper-no-jq repair mentions jq" "$(repair_of "$F2" FC-2)" "jq"
 F2B="$(mkfixture fc2b)"; unseal "$F2B"; census "$F2B" 2
 rec "$F2B" wrapper deny wrapper-guard-missing "2026-08-02T11:00:00Z"; seal "$F2B"
@@ -179,7 +179,7 @@ _h5s="$(subj_of "$G5CLEAN" FC-3)"  # dated on both ends, or the reader cannot fa
 t_has "it names when it last fired" "$_h5s" "last fired 2026-08-01"
 t_has "it names when B6 last read clean" "$_h5s" "clear since 2026-08-02T13:00:00Z"
 t_hasnt "its repair does not send anyone to deploy-restore.sh" "$(repair_of "$G5CLEAN" FC-3)" "deploy-restore.sh"
-# guard-integrity.sh reaches its advise branch only when B6 found no blocking drift.
+# admission-integrity.sh reaches its advise branch only when B6 found no blocking drift.
 G6ADV="$(mkfixture h6advise)"; unseal "$G6ADV"; census "$G6ADV" 2; sessions "$G6ADV" 3
 rec "$G6ADV" integrity gate   integrity-drift    "2026-07-30T10:00:00Z"
 rec "$G6ADV" integrity gate   integrity-drift    "2026-08-01T09:00:00Z"

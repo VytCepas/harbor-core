@@ -690,7 +690,7 @@ esac
 #
 # THE DRIFT PREDICATE COUNTS THE VERDICT, NOT THE MANIFEST. It was
 # `(.drift.total // 0) > 0`, and drift.total is the number of files the manifest
-# COVERS: projects-orchestrator states it in the docstring (drift.py:36) and sets
+# COVERS: fleet states it in the docstring (drift.py:36) and sets
 # it from `len(manifest)` (drift.py:113). So the alarm counted every repo that
 # carried a manifest AT ALL — the live box showed 8 with only 7 drifted, because
 # `zarija` reports status "clean", modified [] and missing [] against a 126-file
@@ -703,7 +703,7 @@ esac
 #
 # `no-manifest` deliberately does NOT count, and that is the weaker half: an
 # UNMEASURED repo reads exactly like a clean one. Widening it would put
-# project-init permanently in the alarm; the tradeoff is asserted in
+# yard permanently in the alarm; the tradeoff is asserted in
 # tests/status/statusline/fleet.test.sh so it stays a decision.
 BERTHS=""; DRIFTN=0; AGETOK=""
 if [ -f "$CACHE" ] && command -v jq >/dev/null 2>&1; then
@@ -985,7 +985,7 @@ if [ -f "$CACHE_DIR/main-tip-verdict.json" ] && command -v jq >/dev/null 2>&1; t
 fi
 
 # ── CI→local · the month's Actions minutes ran short and CI fell back to the self-hosted runners (harbor#865) ─────
-# ci-runner-switch.sh writes the cache inside fleet-snapshot's run and sets HARBOR_RUNNER; this only shows it. The runners
+# ci-runner-switch.sh writes the cache inside fleet-snapshot's run and sets HARBOR_CI_RUNNER; this only shows it. The runners
 # are this Mac and a Linux container, hence `local`, not `mac` (2026-10-05). The FALLBACK is the news, so github-hosted (the normal state) renders nothing, like every idle token on this row.
 # A cache over 900s old, or one whose last read failed, says `CI?`: the runner may be one this token does not know.
 if [ -f "$CACHE_DIR/runner-switch.json" ] && command -v jq >/dev/null 2>&1; then
@@ -1054,8 +1054,8 @@ done
 #
 # RED, AND LOUDER THAN ANY COUNT. A renewal not done is a merged, tested,
 # contract-documented guard that gates nothing on this machine — measured
-# 2026-08-13 as 11 bin/hooks commits behind, which is why guard-cloud.sh and
-# guard-destroy.sh were not live.
+# 2026-08-13 as 11 bin/hooks commits behind, which is why admission-cloud.sh and
+# admission-destroy.sh were not live.
 #
 # THE COUNT IS DROPPED AND THE TOKENS ARE KEPT VERBATIM. drift-renew-check.sh owns this
 # vocabulary; `renew 2 runtime3·floor4` states the same quantity twice, and

@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# guard-destroy.sh (harbor#1313, release decision 23, lane L7): git's abbreviations of the hard-reset flag
+# admission-destroy.sh (harbor#1313, release decision 23, lane L7): git's abbreviations of the hard-reset flag
 # keep the ask, and they and the merge flag's still take the harbor#1290 snapshot. Rows generated from the
 # review corpora by line number.
 set -u
@@ -7,7 +7,7 @@ set -u
 . "$(dirname "$0")/../../lib/table.sh"
 t_init
 
-G="$T_ROOT/bin/guard-destroy.sh"
+G="$T_ROOT/bin/admission-destroy.sh"
 TB="$T_ROOT/tests/admission/destroy/c1-misc.jsonl"
 t_table "$G" "$TB"
 

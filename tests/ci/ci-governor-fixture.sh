@@ -83,11 +83,13 @@ case "$1" in
   -w) k=" "; while [ "${1:-}" = -w ]; do k="$k$2 "; shift 2; done   # only the keys registered, as notifyd does
       # From the stream's size NOW, marked: a post after the marker is never missed (a fixed sleep raced under CI load).
       o=$(( $(wc -c < "$FX/notify.stream") + 1 )); : > "$FX/notify.waiting"
-      # The real notifyutil is one process; this fake is a pipeline, so a kill of it must reach its children
-      # or every listen test leaves a tail and a filter running forever. A read loop, not awk: mawk block-buffers
-      # a pipe, so no post reached the listener (harbor#1149).
-      tail -c +"$o" -f "$FX/notify.stream" | while IFS= read -r l; do case "$k" in *" $l "*) printf '%s\n' "$l" ;; esac; done &
-      trap 'pkill -P $$ 2>/dev/null; exit 0' TERM INT HUP
+      # The real notifyutil is one process; this fake is two, killed by pid on the way out or every listen test
+      # leaves a tail and a filter running forever. Not pkill -P: it cannot list processes in the sandbox (harbor#1060).
+      # A read loop, not awk: mawk block-buffers a pipe, so no post reached the listener (harbor#1149).
+      f="$FX/notify.$$.fifo"; rm -f "$f"; mkfifo "$f"
+      tail -c +"$o" -f "$FX/notify.stream" > "$f" & tp=$!
+      while IFS= read -r l; do case "$k" in *" $l "*) printf '%s\n' "$l" ;; esac; done < "$f" & wp=$!
+      trap 'kill $tp $wp 2>/dev/null; rm -f "$f"; exit 0' TERM INT HUP
       wait ;;
   *) exit 1 ;;
 esac

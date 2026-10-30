@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# guard-bash.sh (harbor#1018): the approval gate's rules. A gate tool runs only as the exact text its ask or allow
+# admission-bash.sh (harbor#1018): the approval gate's rules. A gate tool runs only as the exact text its ask or allow
 # rule names, never wrapped, copied or linked; the raw merge and live-deploy routes are refused. Then floor-install's
 # side: the tools installed and pinned, and the rules written into settings.json naming those installed copies.
 set -u
@@ -11,7 +11,7 @@ cd "$T_ROOT"
 # The rules name the config dir PHYSICALLY (install-lib resolves it), so {cfg} is spelled that way too.
 CLAUDE_CONFIG_DIR="$(CDPATH='' cd -P -- "$CLAUDE_CONFIG_DIR" && pwd -P)"; export CLAUDE_CONFIG_DIR
 
-t_table "$CLAUDE_CONFIG_DIR/bin/guard-bash.sh" "$T_ROOT/tests/admission/bash/gate.jsonl"
+t_table "$CLAUDE_CONFIG_DIR/bin/admission-bash.sh" "$T_ROOT/tests/admission/bash/gate.jsonl"
 
 t_section "floor-install: the gate's tools installed beside the floor and named by the rules"
 for _g in library-gate.sh gate-classify.sh gate-merge.sh gate-approve.sh gate-queue.sh gate-merge-check.sh deploy-fleet.sh; do
@@ -19,7 +19,7 @@ for _g in library-gate.sh gate-classify.sh gate-merge.sh gate-approve.sh gate-qu
   # B6 blocks every session over a pinned file with no kill-switch line, so a pin here would lock the box out
   t_eq "$_g NOT content-pinned" no "$([ -e "$CLAUDE_CONFIG_DIR/.helm-pins/$_g.sha256" ] && echo yes || echo no)"
 done
-_b6="$(printf '{"hook_event_name":"SessionStart"}' | sh "$CLAUDE_CONFIG_DIR/bin/guard-integrity.sh" 2>/dev/null)"
+_b6="$(printf '{"hook_event_name":"SessionStart"}' | sh "$CLAUDE_CONFIG_DIR/bin/admission-integrity.sh" 2>/dev/null)"
 t_eq "B6 names no gate file" 0 "$(printf '%s' "$_b6" | grep -c 'gate-')"
 _s="$CLAUDE_CONFIG_DIR/settings.json"
 t_eq "the ask rule names the installed gate-approve.sh" true \

@@ -102,6 +102,22 @@ mkpriv k2 "$H"'harbor	harbor	nonsense	-
 t_exit "an unknown kind is refused" 2 roots --registry-check
 t_exit "...though the lookup still answers" 0 roots --repo harbor
 
+t_section "the INSTALLED copy judges kinds by the register shipped beside it (no standards/ above bin/)"
+IC="$T_TMP/icfg"; mkdir -p "$IC"; printf '{"permissions":{"deny":[]}}\n' > "$IC/settings.json"
+env -u CLAUDE_CONFIG_DIR -u CLAUDECODE -u HARBOR_DEPLOY_ACTIVE -u HARBOR_DEPLOY sh "$T_ROOT/bin/deploy-runtime-install.sh" --apply --dir "$IC" >/dev/null 2>&1
+t_eq "the runtime installer ships the kinds register beside scope-roots.sh" present "$([ -f "$IC/bin/repo-kinds.tsv" ] && echo present || echo absent)"
+mkpriv kw "$H"'svc	svc	workload	-
+'
+iroots() { R env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$IC/bin/scope-roots.sh" "$@"; }
+t_exit "a workload row is green from the installed copy" 0 iroots --registry-check
+mkpriv kw2 "$H"'svc	svc	nonsense	-
+'
+t_exit "...and an unknown kind is still refused there" 2 iroots --registry-check
+mv "$IC/bin/repo-kinds.tsv" "$IC/bin/repo-kinds.off"
+t_exit "with no kinds register anywhere it refuses, saying so" 2 iroots --registry-check
+t_has "...naming the missing register, not the row" "$(iroots --registry-check 2>&1)" "no kinds register"
+mv "$IC/bin/repo-kinds.off" "$IC/bin/repo-kinds.tsv"
+
 t_section "the topology and interaction columns (harbor#966)"
 mkpriv tp 'id	path	kind	remote	topology	interaction
 harbor	harbor	control-plane	-	platform	-
@@ -395,6 +411,28 @@ t_eq "a repo the registry lacks keeps the table path" "$PW/project-init" "$(root
 t_eq "an exported override still wins" "/elsewhere" "$(HARBOR_SCOPE_FLEET_CONTROLLER=/elsewhere roots --get HARBOR_ORCHESTRATOR)"
 PW="$T_TMP/g-none"; mkdir -p "$PW"
 t_eq "no registry is today's literal" "$PW/projects-orchestrator" "$(roots --get HARBOR_ORCHESTRATOR)"
+
+t_section "a role row finds a renamed repo by its kind, not the table's id (harbor#966, #999)"
+mkpriv rn "$H"'yard	yard	scaffolder	-
+fleet	tools/fleet	fleet-controller	-
+harbor	harbor	control-plane	-
+'
+t_eq "the scaffolder is the one scaffolder row" "$PW/yard" "$(roots --get HARBOR_SCOPE_SCAFFOLDER)"
+t_eq "...and so is the prod-guard source, the same repo" "$PW/yard" "$(roots --get PROJECT_INIT_SRC)"
+t_eq "the fleet controller is the one fleet-controller row" "$PW/tools/fleet" "$(roots --get HARBOR_SCOPE_FLEET_CONTROLLER)"
+t_eq "...and the rest of a row's path is kept" "$PW/tools/fleet/fleet.yaml" "$(roots --get HARBOR_SCOPE_FLEET_FILE)"
+t_eq "a W5 old name asks the same row" "$PW/yard" "$(roots --get HARBOR_PROJECT_INIT)"
+t_eq "--id names the renamed scaffolder" "yard" "$(roots --id HARBOR_SCOPE_SCAFFOLDER)"
+t_eq "--id names the renamed fleet controller" "fleet" "$(roots --id HARBOR_SCOPE_FLEET_CONTROLLER)"
+t_eq "--id of a non-role row is the table's id" "harbor" "$(roots --id HARBOR_SCOPE_REPO)"
+t_exit "--id of a BOX row is a usage error" 2 roots --id HARBOR_SCOPE_LOCAL_BIN
+mkpriv rn2 "$H"'project-init	pi	scaffolder	-
+yard	yard	scaffolder	-
+'
+t_eq "two rows of the kind (a rename window) fall back to the id" "$PW/pi" "$(roots --get HARBOR_SCOPE_SCAFFOLDER)"
+t_eq "...and --id to the table's" "project-init" "$(roots --id HARBOR_SCOPE_SCAFFOLDER)"
+PW="$T_TMP/rn-none"; mkdir -p "$PW"
+t_eq "no registry: --id is today's table id" "projects-orchestrator" "$(roots --id HARBOR_SCOPE_FLEET_CONTROLLER)"
 
 t_section "a skill's notes/ pointer finds its file through scope-roots.sh --private (harbor#1149)"
 # dev-tracking, the skill that carried one, left core for the private layer's pack (harbor#1273), whose suite checks it;

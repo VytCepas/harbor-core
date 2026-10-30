@@ -418,7 +418,7 @@ builds it: a delivered event becomes user-turn text in a live session, so it mus
 
 `contracts/event-rules.tsv` ships two presets, **neither on**: `event.fleet-snapshot` runs
 `status-fleet-snapshot-refresh.sh` on `session.start`, `session.stop`, `pr.opened`, `pr.merged`, `git.merge` or
-`ci.job.done`, and `event.pulse` runs `alert-notify.sh` on `ci.job.done`, `obligation.open`,
+`ci.job.done`, and `event.alerting` (the old id `event.pulse` until 2026-11-15) runs `alert-notify.sh` on `ci.job.done`, `obligation.open`,
 `obligation.close` or `git.merge`, each with an hourly backstop. Their 300 s and 900 s launchd timers are
 untouched; moving one is the operator's: install the preset, then boot out its timer.
 

@@ -43,7 +43,7 @@ gate_classify() { # <root>; paths on stdin
     NR == FNR { if ($0 ~ /^#/ || NF < 2 || $1 == "glob") next; n++; pat[n] = re(tolower($1)); cls[n] = $2; next }
     { p = $0; sub(/^\.\//, "", p); if (p == "") next
       c = ""; if (p ~ /^\// || ("/" p "/") ~ /\/\.\.?\//) c = "unsafe"
-      lp = tolower(p)   # case-insensitive: on macOS Bin/guard-bash.sh IS bin/guard-bash.sh (review finding 4)
+      lp = tolower(p)   # case-insensitive: on macOS Bin/admission-bash.sh IS bin/admission-bash.sh (review finding 4)
       for (i = 1; c == "" && i <= n; i++) if (lp ~ pat[i]) c = cls[i]
       if (c != "") { printf "PROTECTED\t%s\t%s\n", p, c; hit = 1 } }
     END { exit hit ? 1 : 0 }' "$GATE_TMP/rows" -

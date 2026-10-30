@@ -5,7 +5,7 @@
 # <root> is $HARBOR_SINK, else <cfg>/MEMORY/OBSERVABILITY/<host>/streams. A failed write never exits the caller:
 # it spills to <root>/.spill/<stream>.jsonl and counts the drop. HARBOR_EMIT_STRICT=1 (approval and deploy streams,
 # contracts/streams.tsv target_on_fail=block) also returns 1, so the caller can refuse the action it was recording.
-# Not for the guard path: a guard forks nothing on the hot path, so it keeps floor_log_decision (guard-lib.sh).
+# Not for the guard path: a guard forks nothing on the hot path, so it keeps floor_log_decision (library-admission.sh).
 # Set HARBOR_EMIT_STRICT in a subshell or export it: `VAR=x harbor_emit` leaks VAR past the call in POSIX sh.
 
 # shasum is perl and missing on minimal Linux; sha256sum is coreutils and missing on macOS: whichever exists

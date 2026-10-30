@@ -19,16 +19,16 @@
 {"id":"edit-user-file","rule":"floor-surface","want":"allow","tool":"Edit","path":"{tmp}/proj/app.py"}
 {"id":"p6-case-folded-name","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/Settings.json"}
 {"id":"p6-upper-case-path","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/BIN/Guard-bash.sh"}
-{"id":"r7-before-a-guard","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/./bin/guard-bash.sh"}
+{"id":"r7-before-a-guard","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/./bin/admission-bash.sh"}
 {"id":"r7-double-slash","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}//settings.json"}
 {"id":"r7-mid-path","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/./settings.json"}
 {"id":"r7-traversal","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/bin/../settings.json"}
-{"id":"v6-content-pin","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-pins/guard-bash.sh.sha256"}
+{"id":"v6-content-pin","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-pins/admission-bash.sh.sha256"}
 {"id":"v6-restore-sh-harbor-name","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/bin/deploy-restore.sh"}
 {"id":"v6-teeth-pin","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-floor-teeth"}
 {"id":"h769-write-snapshot-ledger","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-snapshots"}
 {"id":"h769-edit-snapshot-ledger","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-snapshots"}
-{"id":"write-a-guard","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/bin/guard-bash.sh"}
+{"id":"write-a-guard","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/bin/admission-bash.sh"}
 {"id":"hs779-apiroute-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-apiroute/x","why":"harbor#779: an integrity row of contracts/control-plane-state.md"}
 {"id":"hs779-apiroute-edit","rule":"floor-surface","want":"block","tool":"Edit","path":"{cfg}/.helm-apiroute/x"}
 {"id":"hs779-apiroute-allow-write","rule":"floor-surface","want":"block","tool":"Write","path":"{cfg}/.helm-apiroute-allow","why":"harbor#779: an integrity row of contracts/control-plane-state.md"}

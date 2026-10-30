@@ -46,7 +46,9 @@ for arg in "$@"; do
 done
 
 PO_DIR="$(sh "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER)" || exit 2   # harbor#966
-CLI="$(command -v projects-orchestrator 2>/dev/null || true)"
+# The fleet CLI is the roots table's row (contracts/roots.tsv), else the same name on PATH: a rename is one row there.
+_ob="$(sh "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER_BIN 2>/dev/null || :)"
+if [ -n "$_ob" ] && [ -x "$_ob" ]; then CLI="$_ob"; else CLI="$(command -v "${_ob##*/}" 2>/dev/null || true)"; fi
 [ -n "$CLI" ] || { log_fail "the fleet CLI is not installed (not on PATH)"
   log_nofix "contracts/marker.md (install fleet from its checkout, then rerun)"; log_end || :; exit 1; }
 [ -d "$PO_DIR" ] || { log_fail "no orchestrator checkout at $PO_DIR"
@@ -65,8 +67,10 @@ fi
 # `"context": repo`, `context: "repo"`. Anchored at column 0 — a `context:`
 # indented under another block is a different key that shares a name. Matching
 # the KEY, not a value, because any declared value means "already declared".
-KEY_RE='^[[:space:]]*["'"'"']?context["'"'"']?[[:space:]]*:'
-KEY_RE_TOP='^["'"'"']?context["'"'"']?[[:space:]]*:'
+# Either key declares it (harbor#963): `scope:` is the standard's spelling, `context:` the legacy one, and a
+# repo already on `scope: project` must not gain a `context: repo` beside it.
+KEY_RE='^[[:space:]]*["'"'"']?(context|scope)["'"'"']?[[:space:]]*:'
+KEY_RE_TOP='^["'"'"']?(context|scope)["'"'"']?[[:space:]]*:'
 
 log_head "fleet: $COUNT governed repos (read from $PO_DIR)"
 [ "$APPLY" -eq 1 ] || log_note "DRY RUN — nothing is written; to write: sh $0 --apply"
@@ -82,14 +86,15 @@ while IFS="$(printf '\t')" read -r name path root; do
     continue
   fi
   if /usr/bin/grep -Eq "$KEY_RE_TOP" "$cfg"; then
-    log_ok "$name: already declares context: $(/usr/bin/grep -Em1 "$KEY_RE_TOP" "$cfg" | sed 's/.*:[[:space:]]*//' | tr -d '"'"'")"
+    _kl="$(/usr/bin/grep -Em1 "$KEY_RE_TOP" "$cfg")"
+    log_ok "$name: already declares $(printf '%s' "$_kl" | sed -E 's/^["'"'"']?([a-z]+).*/\1/'): $(printf '%s' "$_kl" | sed 's/.*:[[:space:]]*//' | tr -d '"'"'")"
     continue
   fi
   # An indented `context:` is a DIFFERENT key, but writing a top-level one
   # beside it produces a file with two keys a reader could confuse. Report and
   # leave it: this tool does not resolve ambiguity it did not create.
   if /usr/bin/grep -Eq "$KEY_RE" "$cfg"; then
-    log_warn "$name: has an INDENTED context: key; resolve by hand"
+    log_warn "$name: has an INDENTED context: or scope: key; resolve by hand"
     log_fix "vi $cfg  # make the key top-level, or remove it"
     continue
   fi

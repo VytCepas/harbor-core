@@ -139,7 +139,7 @@ appearing beside the canonical one means the pin has been bypassed.
 
 | class | detector | fix |
 |---|---|---|
-| loose document in `$HOME`, `~/Desktop`, `~/Documents`, `~/Downloads` | `find . -maxdepth 1 -type f -not -name '.*'` | move into `~/Deliverables/<YYYY-MM-DD>-<slug>/`, append a row to `MANIFEST.md`. `guard-deliverables.sh` denies NEW ones; these predate it |
+| loose document in `$HOME`, `~/Desktop`, `~/Documents`, `~/Downloads` | `find . -maxdepth 1 -type f -not -name '.*'` | move into `~/Deliverables/<YYYY-MM-DD>-<slug>/`, append a row to `MANIFEST.md`. `admission-deliverables.sh` denies NEW ones; these predate it |
 | an ad-hoc output directory (`~/reports/`) | a dir holding one dated document | same — the guard covers four locations, not every name someone invents |
 | dead session scratchpads under `/private/tmp/claude-501/` | dir whose session is not live | `ListAgents` first; another session's scratchpad may hold its worktree |
 

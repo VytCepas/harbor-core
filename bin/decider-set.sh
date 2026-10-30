@@ -33,19 +33,19 @@ prod-guard-install.sh prod-guard-ambient.sh
 deploy-runtime-install.sh context-resolve.sh'
 
 # script|disable|shadow|reason
-DISPOSITIONS="floor-hook.sh|first|enforces|fail-closed wrapper: its deny means a guard could not evaluate
-guard-bash.sh|first|records|
-guard-egress.sh|first|records|
-guard-selfedit.sh|first|records|
-guard-deliverables.sh|first|records|
+DISPOSITIONS="admission-hook.sh|first|enforces|fail-closed wrapper: its deny means a guard could not evaluate
+admission-bash.sh|first|records|
+admission-egress.sh|first|records|
+admission-self-edit.sh|first|records|
+admission-deliverables.sh|first|records|
 annotate-web.sh|first|none|
-guard-cloud.sh|first|enforces|irreversible deletes of shared client infrastructure: nothing to measure, everything to lose
-guard-destroy.sh|first|enforces|irreversible local work destruction
+admission-cloud.sh|first|enforces|irreversible deletes of shared client infrastructure: nothing to measure, everything to lose
+admission-destroy.sh|first|enforces|irreversible local work destruction
 govern-hook.sh|first|enforces|its verdict is the repo's own merge-check, not a floor rule
-guard-apiroute.sh|first|none|a repair, not a deny
+admission-api-route.sh|first|none|a repair, not a deny
 context-resolve.sh|first|none|
-guard-integrity.sh|first|enforces|floor drift
-guard-stop.sh|first|enforces|refuses once per state and blocks no tool call
+admission-integrity.sh|first|enforces|floor drift
+admission-stop.sh|first|enforces|refuses once per state and blocks no tool call
 floor-observe.sh|exempt|none|records the override itself, so it has to run when the switch is set; cannot refuse
 event-hook.sh|exempt|none|a recorder, exit 0 on every path, cannot refuse
 govern-token.sh|exempt|none|announces the provenance token, cannot refuse

@@ -7,7 +7,7 @@
 #   sh admission-deny-hash.sh --scan    [--live | <cfg>] [file...]   stdin or files; exit 1 on a hit
 #   ... --json
 #
-# THE GAP IT CLOSES. `guard-egress.sh` knows generic secret SHAPES — `sk-`, `ghp_`,
+# THE GAP IT CLOSES. `admission-egress.sh` knows generic secret SHAPES — `sk-`, `ghp_`,
 # PEM headers. It cannot know *your* secrets, so it cannot catch an API key with an
 # unusual prefix, or a client's name. This closes that without the filter becoming
 # the leak: only salted, truncated digests are stored.
@@ -28,7 +28,7 @@
 #
 # ── WHAT IT DELIBERATELY IS NOT ──────────────────────────────────────────────
 #
-# NOT WIRED INTO A GUARD. `guard-egress.sh` is a B6 hash-pinned control surface, so
+# NOT WIRED INTO A GUARD. `admission-egress.sh` is a B6 hash-pinned control surface, so
 # making it consult this filter needs a re-pin and is the operator's act (owner
 # decision 2026-08-05). This ships the filter and an offline scanner, so the
 # detection exists and is measurable before anything blocks a tool call on it.
@@ -87,13 +87,13 @@ CFG="${DIR:-${CLAUDE_CONFIG_DIR:-$LIVE_DIR}}"
 # silently and stop matching, which for a leak filter fails toward MISSING a hit.
 #
 # SOURCED FROM THE SIBLING, NEVER FROM THE INSPECTED DIRECTORY. Sourcing
-# `<cfg>/bin/guard-lib.sh` executes a file out of the tree under inspection; a
+# `<cfg>/bin/library-admission.sh` executes a file out of the tree under inspection; a
 # hostile copy could redefine the digest to a constant and every scan would come
-# back clean. `$SELF/guard-lib.sh` is the same trust domain as this script. The
+# back clean. `$SELF/library-admission.sh` is the same trust domain as this script. The
 # SALT still comes from the inspected dir, which is data, not code.
-[ -r "$SELF/guard-lib.sh" ] || die "guard-lib.sh is not readable beside this script: $SELF" "git checkout -- bin/guard-lib.sh"
+[ -r "$SELF/library-admission.sh" ] || die "library-admission.sh is not readable beside this script: $SELF" "git checkout -- bin/library-admission.sh"
 # shellcheck source=/dev/null
-. "$SELF/guard-lib.sh"
+. "$SELF/library-admission.sh"
 
 TERMS="$CFG/.helm-deny-terms"
 FILTER="$CFG/.helm-deny-hashes"

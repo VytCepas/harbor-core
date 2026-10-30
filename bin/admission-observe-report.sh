@@ -101,7 +101,7 @@ case "$TOTAL" in ''|*[!0-9]*) TOTAL=0 ;; esac
 NBLOCK=$(n '.d=="block"'); NALLOW=$(n '.d=="allow"'); NDENY=$(n '.d=="deny"')
 NGATE=$(n '.d=="gate"');   NOVR=$(n '.d=="override"'); NARM=$(n '.d=="armed"')
 
-# `deny` USED to mean exactly one thing — floor-hook.sh could not reach a verdict,
+# `deny` USED to mean exactly one thing — admission-hook.sh could not reach a verdict,
 # i.e. the floor is broken — and this file's header still promises that reading
 # ("without it a jq outage reads as the rules getting better"). guard-cloud and
 # guard-destroy then shipped with `deny` as their NORMAL verdict, so the alarm
@@ -172,7 +172,7 @@ show_gdeny() {
     | sort | uniq -c | sort -rn \
     | awk '{ printf "  %5d  %-5s %-9s %s\n", $1, $2, $3, $4 }'
   if [ "$NASK" != 0 ]; then
-    log_warn "$NASK ask verdicts. An ask is a stop ONLY where a human answers it; in an unattended or subagent session it auto-approves (guard-cloud.sh:104). Nothing in the ledger records whether a human was present, so read this as EXPOSURE, not as a block."
+    log_warn "$NASK ask verdicts. An ask is a stop ONLY where a human answers it; in an unattended or subagent session it auto-approves (admission-cloud.sh:104). Nothing in the ledger records whether a human was present, so read this as EXPOSURE, not as a block."
     log_fix "CLOUD_POSTURE=deny / HARBOR_ADMISSION_DESTROY_POSTURE=deny in the settings.json env block escalate the soft tier to a real refusal"
   fi
 }
@@ -212,7 +212,7 @@ show_fp() {
         echo "  (dropped ${_xn% *} block record(s) under ${_xn#* } digest(s): harbor's own probe and suite traffic — --with-probes shows them)"
       fi ;;
     failed)
-      log_warn "harbor's own probe and suite traffic could NOT be separated (audit-triage.sh, floor-verify.sh, guard-lib.sh or the salt was unreadable), so the rows above may be this box's own verifier"
+      log_warn "harbor's own probe and suite traffic could NOT be separated (audit-triage.sh, floor-verify.sh, library-admission.sh or the salt was unreadable), so the rows above may be this box's own verifier"
       log_fix "sh $HERE/audit-triage.sh --exclusion-set $CFG   # names what it could not read" ;;
   esac
 }

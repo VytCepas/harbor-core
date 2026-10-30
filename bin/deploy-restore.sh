@@ -186,8 +186,8 @@ _moves() { case "$_NL$MOVE" in *"$_NL$1$_NL"*) return 0 ;; esac; return 1; }
 # Target-relative: only what the target holds AND this restore replaces, so a floorless box restores freely.
 _LOST=''
 if _moves bin; then
-  for _s in guard-bash.sh guard-selfedit.sh guard-integrity.sh guard-egress.sh guard-lib.sh \
-            annotate-web.sh context-resolve.sh floor-hook.sh floor-deny.sh floor-observe.sh \
+  for _s in admission-bash.sh admission-self-edit.sh admission-integrity.sh admission-egress.sh library-admission.sh \
+            annotate-web.sh context-resolve.sh admission-hook.sh floor-deny.sh floor-observe.sh \
             floor-normalize.awk pin-instructions.sh deploy-restore.sh; do
     [ -f "$TARGET/bin/$_s" ] && ! _archive_has "bin/$_s" && _LOST="$_LOST bin/$_s"
   done
@@ -209,7 +209,7 @@ if [ -f "$TARGET/settings.json" ] && _moves settings.json; then
   if [ -n "$_TGT_S" ] && [ -z "$_ARC_S" ]; then
     _LOST="$_LOST settings.json(absent-or-unreadable-in-snapshot)"
   elif command -v jq >/dev/null 2>&1; then
-    # Same predicate as guard-integrity.sh: event, matcher AND command.
+    # Same predicate as admission-integrity.sh: event, matcher AND command.
     _wired_in() { # <settings-text> <event> <tool> <guard>
       printf '%s' "$1" | jq -e --arg ev "$2" --arg t "$3" --arg g "$4" '
         (.hooks[$ev] // [])
@@ -218,18 +218,18 @@ if [ -f "$TARGET/settings.json" ] && _moves settings.json; then
         | length > 0' >/dev/null 2>&1
     }
     _chk() { _wired_in "$_TGT_S" "$1" "$2" "$3" || return 0; _wired_in "$_ARC_S" "$1" "$2" "$3" || _LOST="$_LOST wiring:$3($1/$2)"; }
-    _chk PreToolUse  Bash      guard-bash.sh
-    _chk PreToolUse  Bash      guard-egress.sh
-    _chk PreToolUse  Write     guard-egress.sh
-    _chk PreToolUse  Edit      guard-egress.sh
-    _chk PreToolUse  Write     guard-selfedit.sh
-    _chk PreToolUse  Edit      guard-selfedit.sh
-    _chk PreToolUse  WebFetch  guard-egress.sh
-    _chk PreToolUse  Task      guard-egress.sh
+    _chk PreToolUse  Bash      admission-bash.sh
+    _chk PreToolUse  Bash      admission-egress.sh
+    _chk PreToolUse  Write     admission-egress.sh
+    _chk PreToolUse  Edit      admission-egress.sh
+    _chk PreToolUse  Write     admission-self-edit.sh
+    _chk PreToolUse  Edit      admission-self-edit.sh
+    _chk PreToolUse  WebFetch  admission-egress.sh
+    _chk PreToolUse  Task      admission-egress.sh
     _chk PostToolUse WebFetch  annotate-web.sh
   else
-    for _s in guard-bash.sh guard-selfedit.sh guard-egress.sh guard-integrity.sh \
-              floor-hook.sh annotate-web.sh context-resolve.sh; do
+    for _s in admission-bash.sh admission-self-edit.sh admission-egress.sh admission-integrity.sh \
+              admission-hook.sh annotate-web.sh context-resolve.sh; do
       case "$_TGT_S" in *"$_s"*) ;; *) continue ;; esac
       case "$_ARC_S" in *"$_s"*) ;; *) _LOST="$_LOST wiring:$_s" ;; esac
     done
@@ -336,9 +336,9 @@ $LB_ACT
 EOF
 
 # B6 as the next SessionStart will see it, from the restored guard (harbor#765).
-_g="$TARGET/bin/guard-integrity.sh"
+_g="$TARGET/bin/admission-integrity.sh"
 _v=''; _vk=note
-if [ ! -f "$_g" ]; then _v='not installed (no bin/guard-integrity.sh)'; _vk=skip
+if [ ! -f "$_g" ]; then _v='not installed (no bin/admission-integrity.sh)'; _vk=skip
 else
   _o="$(env -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW -u HELM_DISABLE_FLOOR -u HELM_FLOOR_SHADOW CLAUDE_CONFIG_DIR="$TARGET" sh "$_g" </dev/null 2>/dev/null || true)"
   if [ -z "$_o" ]; then _v='clean'; _vk=ok

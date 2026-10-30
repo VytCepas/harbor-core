@@ -28,7 +28,7 @@ WHY IT CLEARS THE BAR IN "Writing a good rule":
   · moment      — the Bash call that arms the loop, not a general principle.
   · cost        — measured 2026-08-24: 39 minutes of a session spent in a loop
                   whose predicate could never match, killed by hand.
-  · nothing else fires — guard-bash.sh is block-only (exit 2, no advisory
+  · nothing else fires — admission-bash.sh is block-only (exit 2, no advisory
                   channel) and carries no loop rule; no lint rule and no CI job
                   can see a runtime shell loop.
   · falsifier   — a session that writes `until … sleep` with no deadline and

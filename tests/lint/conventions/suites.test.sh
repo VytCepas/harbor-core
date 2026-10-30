@@ -8,20 +8,20 @@
 t_section "F4: a guard spawned with no CLAUDE_CONFIG_DIR (harbor#348)"
 F4R="$TMP/f4root"; mkdir -p "$F4R/bin"
 # Spawn targets are derived from bin/guard-*.sh; the content does not matter, only the name.
-printf '#!/usr/bin/env sh\n' > "$F4R/bin/guard-bash.sh"; printf '#!/usr/bin/env sh\n' > "$F4R/bin/floor-hook.sh"
+printf '#!/usr/bin/env sh\n' > "$F4R/bin/admission-bash.sh"; printf '#!/usr/bin/env sh\n' > "$F4R/bin/admission-hook.sh"
 f4() { rm -f "$F4R"/bin/*-test.sh; printf '#!/usr/bin/env sh\n# fixture (harbor#348)\nset -u\nDIR=/x\n%s\n' "$2" > "$F4R/bin/$1"
   viol F4 "$F4R" | grep -c . ; }
-t_eq "the LITERAL form is seen (the control on the harness)" 1 "$(f4 a-test.sh 'sh "$DIR/guard-bash.sh" --advisory')"
-t_eq "the VARIABLE form is seen (the shape that occurs)" 1 "$(f4 b-test.sh 'G="$DIR/guard-bash.sh"
+t_eq "the LITERAL form is seen (the control on the harness)" 1 "$(f4 a-test.sh 'sh "$DIR/admission-bash.sh" --advisory')"
+t_eq "the VARIABLE form is seen (the shape that occurs)" 1 "$(f4 b-test.sh 'G="$DIR/admission-bash.sh"
 sh "$G" --advisory')"
-t_eq "CLAUDE_CONFIG_DIR on the line exempts the literal form" 0 "$(f4 c-test.sh 'CLAUDE_CONFIG_DIR="$T" sh "$DIR/guard-bash.sh"')"
-t_eq "CLAUDE_CONFIG_DIR on the line exempts the variable form" 0 "$(f4 d-test.sh 'G="$DIR/guard-bash.sh"
+t_eq "CLAUDE_CONFIG_DIR on the line exempts the literal form" 0 "$(f4 c-test.sh 'CLAUDE_CONFIG_DIR="$T" sh "$DIR/admission-bash.sh"')"
+t_eq "CLAUDE_CONFIG_DIR on the line exempts the variable form" 0 "$(f4 d-test.sh 'G="$DIR/admission-bash.sh"
 CLAUDE_CONFIG_DIR="$T" sh "$G"')"
-t_eq "a COMMENT quoting the shape does not fire" 0 "$(f4 e-test.sh '# sh "$DIR/guard-bash.sh" is the shape this rule catches
+t_eq "a COMMENT quoting the shape does not fire" 0 "$(f4 e-test.sh '# sh "$DIR/admission-bash.sh" is the shape this rule catches
 : no spawn here')"
 t_eq "a heredoc stub named guard-*.sh is not one of the repo's guards" 0 "$(f4 f-test.sh 'STUB="$SB/guard-stub.sh"
 sh "$STUB"')"
-t_eq "a suite outside the old hand-written list is checked" 1 "$(f4 zzz-unlisted-test.sh 'G="$DIR/guard-bash.sh"
+t_eq "a suite outside the old hand-written list is checked" 1 "$(f4 zzz-unlisted-test.sh 'G="$DIR/admission-bash.sh"
 sh "$G"')"
 
 t_section "C5: suite path declarations (harbor#150)"

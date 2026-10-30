@@ -32,8 +32,10 @@ names() {
   sed -n 's/^pack\.toml[[:space:]][[:space:]]*\([a-z_, ]*\) - .*/\1/p' "$ROOT/contracts/pack.md" | tr ',' '\n' | tr -d ' ' | grep -v '^$' | sed 's/^/pack-toml	/'
   grep -vE '^[[:space:]]*(#|$)' "$ROOT/contracts/roots.tsv" | sed 1d | cut -f1 | sed 's/^/env	/'
   for _d in "$ROOT"/skills/*/; do [ -f "$_d/SKILL.md" ] && { _s="${_d%/}"; printf 'skill\t%s\n' "${_s##*/}"; }; done
-  for _g in "$ROOT"/bin/guard-*.sh; do
-    _n="${_g##*/guard-}"; _n="${_n%.sh}"; [ "$_n" != lib ] || continue
+  for _g in "$ROOT"/bin/admission-*.sh; do   # a guard's rule prefix is its frozen id, the name it had before W6 (harbor#961)
+    [ ! -L "$_g" ] || continue
+    _n="${_g##*/admission-}"; _n="${_n%.sh}"
+    case "$_n" in hook|deny-hash|mutation-tier|observe-report) continue ;; api-route) _n=apiroute ;; self-edit) _n=selfedit ;; esac
     # a field path (.tool_input.content, .message.content) is not a rule: the id starts the word
     grep -vE '^[[:space:]]*#|floor_log_decision' "$_g" | grep -oE '(^|[^._A-Za-z0-9])[a-z0-9-]+\.(flat|argv|meta|content|path|channel)([^a-z]|$)' |
       sed -E 's/^[^a-z0-9]//; s/\.(flat|argv|meta|content|path|channel)([^a-z]|$).*//' | sed "s/^/rule	$_n:/"

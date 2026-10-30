@@ -217,9 +217,9 @@ t_has "a row whose call is gone is reported as stale" "$_m2o" \
 t_eq "…and fails the run" "exit 1" "exit $_m2rc"
 m2_doc "$M2_OK"
 mkdir -p "$M2R/inject.d/box"
-printf '#!/usr/bin/env sh\n. "$(dirname "$0")/../../bin/guard-lib.sh"\nfloor_in_repo || exit 0\n' > "$M2R/inject.d/box/pack.sh"
+printf '#!/usr/bin/env sh\n. "$(dirname "$0")/../../bin/library-admission.sh"\nfloor_in_repo || exit 0\n' > "$M2R/inject.d/box/pack.sh"
 _m2o="$(lint1 M2 "$M2R")"; _m2rc=$?
-t_has "a script outside bin/ that sources guard-lib is reported" "$_m2o" 'inject.d/box/pack.sh sources guard-lib.sh from outside bin/'
+t_has "a script outside bin/ that sources guard-lib is reported" "$_m2o" 'inject.d/box/pack.sh sources library-admission.sh from outside bin/'
 t_eq "…and fails the run (no subshell count loss)" "exit 1" "exit $_m2rc"
 rm -rf "$M2R/inject.d"
 
@@ -240,9 +240,9 @@ printf 'notes: floor_in_repo && exit 0 is how the guards stand down\n' > "$M2R/b
 t_hasnt "a file with no shell shebang is not a script" "$(lint1 M2 "$M2R")" 'bin/NOTES'
 rm -f "$M2R/bin/NOTES"
 mkdir -p "$M2R/hooks"
-printf '#!/usr/bin/env sh\n. "$(dirname "$0")/../bin/guard-lib.sh"\nfloor_in_repo || exit 0\n' > "$M2R/hooks/pre-commit"
+printf '#!/usr/bin/env sh\n. "$(dirname "$0")/../bin/library-admission.sh"\nfloor_in_repo || exit 0\n' > "$M2R/hooks/pre-commit"
 _m2o="$(lint1 M2 "$M2R")"; _m2rc=$?
-t_has "an EXTENSIONLESS hook outside bin/ that sources guard-lib is reported" "$_m2o" 'hooks/pre-commit sources guard-lib.sh from outside bin/'
+t_has "an EXTENSIONLESS hook outside bin/ that sources guard-lib is reported" "$_m2o" 'hooks/pre-commit sources library-admission.sh from outside bin/'
 t_eq "…and fails the run" "exit 1" "exit $_m2rc"
 
 t_done

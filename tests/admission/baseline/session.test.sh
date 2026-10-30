@@ -11,13 +11,13 @@ ere() { printf '%s\n' "$2" | grep -qE -- "$1"; }  # <ERE> <text>: exit 0 when a 
 t_section "H2 (harbor#4): the per-session context FILE, and the ENGINE default"
 H2="$TMP/h2"; mkdir -p "$H2/cfg/bin" "$H2/gov/.agents" "$H2/plain"
 printf 'context: repo\n' > "$H2/gov/.agents/config.yaml"
-for _f in guard-lib.sh floor-normalize.awk context-resolve.sh; do cp "$SRC/$_f" "$H2/cfg/bin/"; done
+for _f in library-admission.sh floor-normalize.awk context-resolve.sh; do cp "$SRC/$_f" "$H2/cfg/bin/"; done
 _h2res() { printf '{"hook_event_name":"SessionStart","session_id":"%s","cwd":"%s"}' "$1" "$2" \
   | CLAUDE_CONFIG_DIR="$H2/cfg" sh "$H2/cfg/bin/context-resolve.sh" >/dev/null 2>&1; }
 _h2ctx() { printf '{"session_id":"%s"}' "$1" \
-  | ( CLAUDE_CONFIG_DIR="$H2/cfg"; . "$H2/cfg/bin/guard-lib.sh"; FLOOR_IN="$(cat)"; floor_session_context ); }
+  | ( CLAUDE_CONFIG_DIR="$H2/cfg"; . "$H2/cfg/bin/library-admission.sh"; FLOOR_IN="$(cat)"; floor_session_context ); }
 _h2sd()  { printf '{"session_id":"%s","cwd":"%s"}' "$1" "$2" \
-  | ( CLAUDE_CONFIG_DIR="$H2/cfg"; . "$H2/cfg/bin/guard-lib.sh"; FLOOR_IN="$(cat)"
+  | ( CLAUDE_CONFIG_DIR="$H2/cfg"; . "$H2/cfg/bin/library-admission.sh"; FLOOR_IN="$(cat)"
       unset CLAUDE_PROJECT_DIR; cd / 2>/dev/null || true
       floor_engine_stand_down && echo down || echo act ); }
 _h2res S-amb "$H2/plain"; _h2res S-gov "$H2/gov"
@@ -244,7 +244,7 @@ CLAUDE_CONFIG_DIR="$B9CC" PROJECT_INIT_SRC="$B9C/pi" sh "$SRC/prod-guard-install
   grep -vE '^[[:space:]]*(#|$)' "$HROOT/contracts/hooks-external.tsv" | while IFS='	' read -r _b9s _b9e _b9y; do
     printf '%s\t/bin/sh %s\n' "$_b9e" "$B9CC/$_b9s"; done; } | awk '!s[$0]++' > "$B9C/wired"
 t_eq "B9c the sandbox install wires every installer's hooks (floor, runtime, inject, prod-guard, box packs)" 5 \
-  "$(for _b9w in floor-hook.sh session-verdicts.sh injection-rule.sh prod-guard-ambient.sh project-pointer.sh; do
+  "$(for _b9w in admission-hook.sh session-verdicts.sh injection-rule.sh prod-guard-ambient.sh project-pointer.sh; do
        grep -F "/$_b9w" "$B9C/wired" | head -n 1; done | grep -c .)"
 t_eq "B9c worklog-push is installed and wired here (from its manifest since harbor#1272; it was wired by hand)" 1 \
   "$(for _b9w in worklog-push.sh; do grep -F "/bin/$_b9w" "$B9C/wired" | head -n 1 | cut -f2 \
@@ -258,7 +258,7 @@ for _b9f in "$B9CC"/bin/* "$B9CC"/context-rules/user/*; do
   esac
 done
 printf 'b9cplanted\t%s\tthe planted registry row\n' "$B9C" > "$B9CP/projects.tsv"
-# A live peer, so context-resolve reaches context-peers.sh, which sources guard-lib.sh per session.
+# A live peer, so context-resolve reaches context-peers.sh, which sources library-admission.sh per session.
 _b9l="$(ps -o lstart= -p $$ | sed 's/^ *//;s/ *$//')"
 _b9e="$(date -j -f '%a %b %d %T %Y' "$_b9l" +%s 2>/dev/null || date -d "$_b9l" +%s)"
 _b9u="$(date -u -r "$_b9e" '+%a %b %e %T %Y' 2>/dev/null || date -u -d "@$_b9e" '+%a %b %e %T %Y')"
@@ -286,8 +286,8 @@ b9c_run() { # <event> <command> -> "clean", or "ran:<planted names>"
   if [ -s "$B9C/ran" ]; then printf 'ran:%s' "$(sort -u "$B9C/ran" | paste -sd, -)"; else echo clean; fi
 }
 # The positive control: the pre-harbor#813 line, run the same way, does load the plant.
-printf '%s\n' 'DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"' '. "$DIR/guard-lib.sh"' > "$B9C/probe.sh"
-t_eq "B9c control: the old resolution loads the planted guard-lib.sh" ran:guard-lib.sh "$(b9c_run Probe "/bin/sh $B9C/probe.sh")"
+printf '%s\n' 'DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"' '. "$DIR/library-admission.sh"' > "$B9C/probe.sh"
+t_eq "B9c control: the old resolution loads the planted library-admission.sh" ran:library-admission.sh "$(b9c_run Probe "/bin/sh $B9C/probe.sh")"
 # ONE assertion, not one per wired line (harbor#851): the wired list is built from the install and the
 # box's hook declarations, so its length differs by runner and a per-line assert made floor-test's count
 # (pinned in docs/generated/status.md) runner-dependent. Every line is still run; each offender is named in the result.
@@ -306,7 +306,7 @@ t_section "SW (harbor#954 PR B, #977): a settings env block that sets either swi
 # check reads the FILE at SessionStart, so each shape is built the way its name says and only the end state is
 # read: one fixture per shape, for both switches. floor-observe.sh carries it because it runs when the switch is set.
 SW="$TMP/sw"; SWC="$SW/cfg"; mkdir -p "$SWC/bin" "$SW/real"
-for _f in guard-lib.sh floor-normalize.awk floor-observe.sh; do cp "$SRC/$_f" "$SWC/bin/$_f"; done
+for _f in library-admission.sh floor-normalize.awk floor-observe.sh; do cp "$SRC/$_f" "$SWC/bin/$_f"; done
 printf '{"permissions":{"allow":[],"deny":[]}}\n' > "$SWC/settings.json"
 sw_run() { # <project dir> [<observe script>] -> what the SessionStart hook printed
   printf '{"hook_event_name":"SessionStart","session_id":"S-sw","cwd":"%s"}' "$1" \

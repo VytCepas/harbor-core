@@ -14,10 +14,10 @@ fixes it, in the same bytes on the screen, in CI and in the log file.
 | Channel | Reader | Shape | Written by | Enforced by |
 |---|---|---|---|---|
 | **1 · the run log** | a person or CI reading a run, and an agent reading its output | the lines below | [`bin/library-log.sh`](../bin/library-log.sh) | lint **LOG1**, [`log-lib-test.sh`](../tests/standard/log-lib/log-lib.test.sh) |
-| **2 · the guard channel** | the agent the harness hands a refusal to | `HELM FLOOR [<guard>:<rule>]: BLOCKED — <reason>` on stderr, exit 2 | `floor_block` in `bin/guard-lib.sh` | lint **F5** and **D3**, `tests/guards/` |
+| **2 · the guard channel** | the agent the harness hands a refusal to | `HELM FLOOR [<guard>:<rule>]: BLOCKED — <reason>` on stderr, exit 2 | `floor_block` in `bin/library-admission.sh` | lint **F5** and **D3**, `tests/guards/` |
 | **3 · harness protocol output** | Claude Code itself: a status line, SessionStart context, hook JSON | whatever that surface defines, on stdout | the hook or status-line script | lint **LOG1 (d)**, `protocol` rows |
 
-**Channel 2 is a protocol and does not change here.** A floor file — `bin/guard-lib.sh`, or a file
+**Channel 2 is a protocol and does not change here.** A floor file — `bin/library-admission.sh`, or a file
 whose first live line is the `HARBOR_ADMISSION_DISABLE` kill switch, lint F1's mark of an installed floor
 file — is in the standard through channel 2. LOG1 refuses one that sources `library-log.sh`: its stdout
 and stderr belong to the harness.

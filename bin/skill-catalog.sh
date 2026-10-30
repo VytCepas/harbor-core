@@ -278,10 +278,12 @@ contract_for() {
     if [ "$__crepo" = - ]; then printf '%s' "$__cnote"; else sib_cell "$__crepo" "$__cfile" "${__cnote:+ $__cnote}"; fi
     return 0
   fi
+  # The fleet CLI's name is its roots row (contracts/roots.tsv), so a renamed fleet keeps its contract (harbor#999).
+  [ -n "${FLEET_CLI+x}" ] || { FLEET_CLI="$(sh "$ROOT/bin/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER_BIN 2>/dev/null || :)"; FLEET_CLI="${FLEET_CLI##*/}"; }
+  if [ -n "$FLEET_CLI" ] && [ "$1" = "$FLEET_CLI" ]; then printf '`~/port/harbor/contracts/fleet-controller-json.md`'; return 0; fi
   case "$1" in
     harbor)                 printf '`~/port/harbor/contracts/cli.md`' ;;
     memory)                 printf '`~/port/harbor/contracts/memory-format.md`' ;;
-    projects-orchestrator)  printf '`~/port/harbor/contracts/fleet-controller-json.md`' ;;
     claude)                 printf '— the harness itself' ;;
     *)                      printf '**none yet**' ;;
   esac

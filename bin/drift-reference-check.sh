@@ -38,7 +38,7 @@
 # the repo. This tool checks the installed surface against itself.
 #
 # WHAT IT DOES NOT DO. It never repairs anything. Every surface it reads is one
-# `guard-selfedit.sh` protects (settings.json, bin/, the pins) — a tool that
+# `admission-self-edit.sh` protects (settings.json, bin/, the pins) — a tool that
 # could fix these findings would be a tool that can disable the floor, so this
 # one reports and hands the operator a command. It also does not compare live
 # against repo: that is lint X2's job, and two rules answering one question is
@@ -143,7 +143,7 @@ if [ ! -d "$DIR" ]; then
   log_end; exit $?
 fi
 
-# B9: a missing jq must never read as a clean run. `guard-bash.sh` exited 0 on
+# B9: a missing jq must never read as a clean run. `admission-bash.sh` exited 0 on
 # 'rm -rf /' for exactly this reason. Loud, and exit 1 — not 0, and not 2, which
 # a caller would filter out as "I typed it wrong".
 if ! command -v jq >/dev/null 2>&1; then
@@ -285,7 +285,7 @@ _looks_cited() { # <file> -> 0 if the file contains anything citation-shaped
 }
 
 # Every absolute path inside a hook command string. A command is not one path:
-# `/bin/sh …/floor-hook.sh …/guard-bash.sh` names the wrapper AND the scanner,
+# `/bin/sh …/admission-hook.sh …/admission-bash.sh` names the wrapper AND the scanner,
 # and the wrapper existing tells you nothing about the scanner. Splitting on
 # whitespace is correct here and would not be for arbitrary input — these are
 # strings the installers wrote, and a config dir containing a space is already
@@ -346,7 +346,7 @@ if [ "$SETTINGS_OK" = 1 ]; then
 fi
 
 # ── REF-2 · no command wired twice under the SAME selector ───────────────────
-# THE PREDICATE IS THE WHOLE RULE, and the obvious one is wrong. `guard-egress.sh`
+# THE PREDICATE IS THE WHOLE RULE, and the obvious one is wrong. `admission-egress.sh`
 # is wired twice at PreToolUse ON PURPOSE — once for the write tools, once for
 # the web/MCP channel — so "the same command appears twice in one event" reports
 # the fix as a defect. floor-test.sh's WIRE-1 works around that by `grep -v`-ing
@@ -375,7 +375,7 @@ fi
 #
 # DIRECTION MATTERS AND THE OPPOSITE FILTER DISARMS THE FLOOR. It drops the
 # bucket with NO `matcher` key and keeps the `matcher: ""` one — because that is
-# the bucket also carrying floor-observe.sh and guard-integrity.sh. Selecting the
+# the bucket also carrying floor-observe.sh and admission-integrity.sh. Selecting the
 # other way removes two hooks and reports success. Verified on a copy of the live
 # settings.json 2026-08-03: REF-2 cleared, all five SessionStart commands intact.
 #
@@ -938,5 +938,5 @@ while IFS='	' read -r r n w; do
 done <<EOF
 $EXAMINED
 EOF
-[ "$FAIL" -eq 0 ] || log_note "$FAIL finding(s). Nothing here is repaired by this tool — every surface it reads is one guard-selfedit.sh protects, deliberately."
+[ "$FAIL" -eq 0 ] || log_note "$FAIL finding(s). Nothing here is repaired by this tool — every surface it reads is one admission-self-edit.sh protects, deliberately."
 log_end; exit $?

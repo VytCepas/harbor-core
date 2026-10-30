@@ -70,7 +70,7 @@ exactly the machine it was built for.
 
 | repo | role | owes |
 |---|---|---|
-| harbor | the floor | `floor_port_root` in `bin/guard-lib.sh` resolves it; `floor_in_repo` stops before it |
+| harbor | the floor | `floor_port_root` in `bin/library-admission.sh` resolves it; `floor_in_repo` stops before it |
 | project-init | the scaffolder | stop `prod_guard._find_config`'s walk before it |
 | projects-orchestrator | the fleet | default `PO_FLEET_ROOT` and `fleet.yaml`'s scan root from it |
 

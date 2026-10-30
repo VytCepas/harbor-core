@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
-# guard-stop.sh (harbor#291, #676): red, green and false-positive cases for the one Stop-event gate.
+# admission-stop.sh (harbor#291, #676): red, green and false-positive cases for the one Stop-event gate.
 # Classification only: every transcript is synthesised here with jq, so none carries anything from
 # the box and a quote in a path cannot turn a fixture into invalid JSON that reads as allow.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-GUARD="$T_ROOT/bin/guard-stop.sh"; WORK="$T_TMP/sg"
+GUARD="$T_ROOT/bin/admission-stop.sh"; WORK="$T_TMP/sg"
 # Each session's recorded context lives here; floor_log_decision's sink does not, so it stays blind.
 CFG="$WORK/cfg"; mkdir -p "$CFG/.helm-context"
 # SG-1 counts a bin/guard-* edit only in a tree holding tests/admission/baseline/baseline.test.sh, or in the config
@@ -47,7 +47,7 @@ want_cwd() { # <verdict> <label> <tx> <cwd> — the session ran from <cwd>
 }
 stop_run() { printf '%s' "$1" | CLAUDE_CONFIG_DIR="${2:-$CFG}" sh "$GUARD" 2>/dev/null; }  # <payload> [cfg]
 payload() { jq -cn --arg tx "$1" --arg s "$2" '{session_id:$s,transcript_path:$tx,stop_hook_active:false}'; }
-FT='sh tests/admission/baseline/baseline.test.sh'; GB="$R/bin/guard-bash.sh"
+FT='sh tests/admission/baseline/baseline.test.sh'; GB="$R/bin/admission-bash.sh"
 FA='sh tests/admission/baseline/a.test.sh'; FULL="$(printf 'baseline.test: 10 passed, 0 failed\na.test: 5 passed, 0 failed')"
 
 t_section "the loop guard: stop_hook_active is checked before anything else"
@@ -71,7 +71,7 @@ want block "a prefixed RED floor-test line still blocks (#1176 control)" "$T"
 T="$(tx)"; { tu_bash c1 "for f in tests/admission/baseline/*.test.sh; do sh \$f; done"; tr_res c1 "$FULL"; tu_edit "$GB"; } >> "$T"
 want block "the suite BEFORE the edit is not evidence" "$T"
 T="$(tx)"; { tu_edit "$GB"; tu_bash c1 "for f in tests/admission/baseline/*.test.sh; do sh \$f; done"; tr_res c1 "$FULL"; \
-             tu_edit "$R/bin/guard-lib.sh"; } >> "$T"
+             tu_edit "$R/bin/library-admission.sh"; } >> "$T"
 want block "a later edit owes a later run" "$T"
 T="$(tx)"; { tu_edit "$GB"; tu_bash c1 "$FT"; tr_res c1 "baseline.test: 10 passed, 0 failed"; } >> "$T"
 want block "one part is not the suite, as one shard was not (harbor#679, #727)" "$T"
@@ -92,15 +92,15 @@ want allow "a config-dir edit with no checkout in view owes the main part" "$T"
 want_cwd block "a config-dir edit from a checkout owes that checkout's parts" "$T" "$R"
 
 t_section "SG-1 which paths are floor surfaces, and which only look like one"
-T="$(tx)"; tu_edit "$R/bin/guard-lib.sh" >> "$T";         want block "bin/guard-lib.sh" "$T"
+T="$(tx)"; tu_edit "$R/bin/library-admission.sh" >> "$T";         want block "bin/library-admission.sh" "$T"
 T="$(tx)"; tu_edit "$R/bin/floor-normalize.awk" >> "$T";  want block "bin/floor-normalize.awk" "$T"
-T="$(tx)"; tu_edit "$R/bin/floor-hook.sh" >> "$T";        want block "bin/floor-hook.sh" "$T"
-T="$(tx)"; tu_edit "$R/bin/guard-stop.sh" Write >> "$T";  want block "Write counts, not only Edit" "$T"
-T="$(tx)"; tu_edit "$R/bin/guard-stop.sh" NotebookEdit >> "$T"; want block "NotebookEdit counts too" "$T"
+T="$(tx)"; tu_edit "$R/bin/admission-hook.sh" >> "$T";        want block "bin/admission-hook.sh" "$T"
+T="$(tx)"; tu_edit "$R/bin/admission-stop.sh" Write >> "$T";  want block "Write counts, not only Edit" "$T"
+T="$(tx)"; tu_edit "$R/bin/admission-stop.sh" NotebookEdit >> "$T"; want block "NotebookEdit counts too" "$T"
 T="$(tx)"; tu_edit "$R/README.md" >> "$T";                want allow "a doc edit is not a floor edit" "$T"
 T="$(tx)"; tu_edit "$R/docs/guard-notes.sh" >> "$T";      want allow "guard-notes.sh outside bin/ is not a surface" "$T"
 T="$(tx)"; tu_edit "$R/bin/status-generate.sh" >> "$T";        want allow "an ordinary bin/ script is not a surface" "$T"
-T="$(tx)"; tu_edit "$R/bin/guard-bash.sh.bak" >> "$T";    want allow "a .bak copy is not the surface" "$T"
+T="$(tx)"; tu_edit "$R/bin/admission-bash.sh.bak" >> "$T";    want allow "a .bak copy is not the surface" "$T"
 T="$(tx)"; tu_edit "$SCR/bin/guard-x.sh" >> "$T";         want block "a Harbor checkout anywhere still counts" "$T"
 T="$(tx)"; tu_edit "$CFG/bin/guard-x.sh" >> "$T";         want block "the installed floor in the config dir counts" "$T"
 T="$(tx)"; tu_edit "$PROJ/bin/guard-auth.sh" >> "$T"      # review of #684: a project's own guard script
@@ -108,8 +108,8 @@ want allow "a governed project's own bin/guard-auth.sh is not a Harbor floor sur
 T="$(tx)"; tu_edit "$PROJ/bin/floor-plan.sh" >> "$T";     want allow "a project's bin/floor-plan.sh is not one either" "$T"
 
 t_section "SG-1 the gap, pinned so it cannot change unnoticed"
-T="$(tx)"; tu_bash c1 "sed -i '' s/a/b/ bin/guard-bash.sh" >> "$T"; want allow "KNOWN GAP: sed -i on a surface via Bash" "$T"
-T="$(tx)"; tu_bash c1 "cp /tmp/x bin/guard-bash.sh" >> "$T";        want allow "KNOWN GAP: cp onto a surface via Bash" "$T"
+T="$(tx)"; tu_bash c1 "sed -i '' s/a/b/ bin/admission-bash.sh" >> "$T"; want allow "KNOWN GAP: sed -i on a surface via Bash" "$T"
+T="$(tx)"; tu_bash c1 "cp /tmp/x bin/admission-bash.sh" >> "$T";        want allow "KNOWN GAP: cp onto a surface via Bash" "$T"
 
 t_section "SG-2 a suite this session ran, and whether it ended green"
 T="$(tx)"; { tu_bash c1 "$FT"; tr_res c1 "baseline.test: 1500 passed, 25 failed"; } >> "$T"
@@ -206,14 +206,14 @@ T="$(tx)"; tu_edit "$GB" >> "$T"
 t_eq "the first turn is refused" block "$(verdict_at "$_s1" "$T")"
 t_eq "the second turn is not held" allow "$(verdict_at "$_s1" "$T")"
 t_eq "nor the third" allow "$(verdict_at "$_s1" "$T")"
-T2="$(tx)"; tu_edit "$R/bin/guard-egress.sh" >> "$T2"
+T2="$(tx)"; tu_edit "$R/bin/admission-egress.sh" >> "$T2"
 t_eq "a different surface is refused again" block "$(verdict_at "$_s1" "$T2")"
 t_eq "a new session is refused again" block "$(verdict_at "$(new_sid)" "$T")"
 _sf="$CFG/.helm-stop-gate/$_s1"  # digests only: the config dir is private (§3)
 t_eq "a state file is written" yes "$([ -f "$_sf" ] && echo yes || echo no)"
-t_has "the defect it records names a path" "$(cat "$T")" "repo/bin/guard-"
+t_has "the defect it records names a path" "$(cat "$T")" "repo/bin/admission-"
 t_hasnt "the state file carries no repo path" "$(cat "$_sf" 2>/dev/null)" "repo"
-t_hasnt "the state file carries no guard name" "$(cat "$_sf" 2>/dev/null)" "guard-"
+t_hasnt "the state file carries no guard name" "$(cat "$_sf" 2>/dev/null)" "admission-"
 t_eq "lines that are not a 64-hex digest" 0 "$(awk 'length($0)!=64 || $0 ~ /[^0-9a-f]/ {n++} END{print n+0}' "$_sf")"
 # With no session_id there is nowhere to record the one-shot, so the gate fails open (#676).
 t_eq "no session_id: the gate allows" "" "$(stop_run "$(jq -cn --arg tx "$T" '{transcript_path:$tx,stop_hook_active:false}')")"
@@ -328,5 +328,5 @@ done
 
 t_section "D3: the hook never exits non-zero"
 t_eq "invocations that exited non-zero" 0 "$(wc -l < "$RCF" | tr -d ' ')"
-t_eq "guard-stop.sh ends with" "exit 0" "$(tail -1 "$GUARD")"
+t_eq "admission-stop.sh ends with" "exit 0" "$(tail -1 "$GUARD")"
 t_done

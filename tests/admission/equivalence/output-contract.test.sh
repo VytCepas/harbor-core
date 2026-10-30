@@ -8,7 +8,7 @@ guard() { # <dir> <blocks yes|no>
   mkdir -p "$1"
   { printf '#!/bin/sh\n# floor_block bash "stub" rule-a.flat\n'
     if [ "$2" = yes ]; then printf 'grep -q bad && { echo "HELM FLOOR [bash:rule-a]: BLOCKED" >&2; exit 2; }\n'; fi
-    printf 'exit 0\n'; } > "$1/guard-bash.sh"
+    printf 'exit 0\n'; } > "$1/admission-bash.sh"
 }
 mkdir -p "$B/eqcfg"; guard "$B/base" yes; guard "$B/same" yes; guard "$B/mut" no
 printf '%s\n' '{"tool_name":"Bash","tool_input":{"command":"bad thing"}}' '{"tool_name":"Bash","tool_input":{"command":"fine"}}' > "$B/c.jsonl"
@@ -20,7 +20,7 @@ shaped() { OUT | grep -vcE '^(── |  (ok|FAIL|WARN|note|skip|fix): |floor-equ
 
 t_section "identical trees: a log, the ok line, the summary, exit 0"
 t_eq "it exits 0" "exit 0" "$(fe --baseline "$B/base" --candidate "$B/same" --corpus "$B/c.jsonl")"
-t_eq "the header names the payloads and the guard" "── floor-equiv · 2 payload(s), guard guard-bash.sh" "$(OUT | head -1)"
+t_eq "the header names the payloads and the guard" "── floor-equiv · 2 payload(s), guard admission-bash.sh" "$(OUT | head -1)"
 t_has "the counts are a note" "$(OUT)" "  note: 2 identical, 0 DIFFERENT"
 t_has "the verdict is an ok line" "$(OUT)" "  ok: every verdict identical, exit code and rule id alike"
 t_eq "the summary ends it" "floor-equiv: 1 ok, 0 failed, 0 warnings" "$(OUT | tail -1)"
@@ -31,7 +31,7 @@ t_section "a deleted rule: DIFFER notes, the FAIL, its fix, the summary, exit 1"
 t_eq "it exits 1" "exit 1" "$(fe --baseline "$B/base" --candidate "$B/mut" --corpus "$B/c.jsonl")"
 t_has "a difference is a note" "$(OUT)" "  note: DIFFER  baseline=2|bash:rule-a  candidate=0|"
 t_has "the FAIL says not equivalent" "$(OUT)" "  FAIL: the candidate is NOT equivalent to the baseline: 1 DIFFERENT"
-t_has "its fix reruns with every difference" "$(after_fail)" "  fix: sh $TOOL --baseline $B/base --candidate $B/mut --guard guard-bash.sh --verbose"
+t_has "its fix reruns with every difference" "$(after_fail)" "  fix: sh $TOOL --baseline $B/base --candidate $B/mut --guard admission-bash.sh --verbose"
 t_eq "the summary counts the failure" "floor-equiv: 0 ok, 1 failed, 0 warnings" "$(OUT | tail -1)"
 t_eq "every line is the log's shape" 0 "$(shaped)"
 

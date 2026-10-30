@@ -15,7 +15,7 @@ MID="merge-acme_widgets-7-aaaaaaaaaaaa"; DID="deploy-acme_widgets-cccccccccccc"
 
 t_section "add: one row in the contract's shape and id, the exact approve command, an approval.open"
 ag_world
-ag_run gate-queue.sh add merge "$AG_R" "$SHA_A" 7 --reason "protected: bin/guard-bash.sh (guard)"
+ag_run gate-queue.sh add merge "$AG_R" "$SHA_A" 7 --reason "protected: bin/admission-bash.sh (guard)"
 t_eq "exit 0" 0 "$RC"
 t_eq "stdout is the id" "$MID" "$(grep -v '^  note:' "$T_TMP/out")"
 t_eq "the row carries the exact approve command" "$GB/gate-approve.sh merge $AG_R 7 $SHA_A" "$(Q | jq -r .command)"

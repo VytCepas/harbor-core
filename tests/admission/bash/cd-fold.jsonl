@@ -98,7 +98,7 @@
 {"id":"fold-cfg-dir-relative","rule":"redirect-floor-surface","want":"block","cmd":"cd {tmp} && echo {} > ./cfg/settings.json"}
 {"id":"fold-cfg-root-relative","rule":"redirect-floor-surface","want":"block","cmd":"cd / && echo {} > .{cfg}/settings.json"}
 {"id":"fold-non-surface-in-cfg","rule":"redirect-into-cfg","want":"block","cmd":"cd ~ && echo x > .claude/notes.txt","why":"the absolute spelling blocks as redirect-into-cfg, so the relative one does too"}
-{"id":"fold-guard-script","rule":"mutate-onto-surface","want":"block","cmd":"cd ~ && cp /tmp/evil .claude/bin/guard-bash.sh"}
+{"id":"fold-guard-script","rule":"mutate-onto-surface","want":"block","cmd":"cd ~ && cp /tmp/evil .claude/bin/admission-bash.sh"}
 {"id":"fold-rm-cfg-dir","rule":"destructive-at-cfg","want":"block","cmd":"cd / && rm -rf Users/fold-test/.claude","env":{"HOME":"/Users/fold-test"}}
 {"id":"fold-pushd","rule":"redirect-floor-surface","want":"block","cmd":"pushd ~ && echo {} > .claude/settings.json"}
 {"id":"fold-bare-cd-is-home","rule":"redirect-floor-surface","want":"block","cmd":"cd && echo {} > .claude/settings.json"}
@@ -140,7 +140,7 @@
 {"id":"fold-allow-message-mentions-path","rule":"redirect-floor-surface","want":"allow","cmd":"cd ~ && git commit -m '.claude/settings.json > x; rm -rf /'","why":"quoted text never becomes a command in the folded line"}
 {"id":"fold-allow-no-cd","rule":"redirect-floor-surface","want":"allow","cmd":"echo {} > .claude/settings.local.json"}
 {"id":"fold-allow-sink-word-in-a-read","rule":"mutate-aimed-surface","want":"allow","cmd":"cd ~ && grep -rn tee .claude/bin/","why":"a cd writes nothing, so it does not withdraw the reader veto"}
-{"id":"fold-allow-cd-is-not-a-writer","rule":"mutate-aimed-surface","want":"allow","cmd":"cd /tmp && grep -c sponge {cfg}/bin/guard-bash.sh","why":"blocked on the #759 head: the cd alone withdrew the harbor#107 veto"}
+{"id":"fold-allow-cd-is-not-a-writer","rule":"mutate-aimed-surface","want":"allow","cmd":"cd /tmp && grep -c sponge {cfg}/bin/admission-bash.sh","why":"blocked on the #759 head: the cd alone withdrew the harbor#107 veto"}
 {"id":"fold-inside-cfg-stays-cd-cfg","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && ls -ln bin","why":"standing inside the config dir is the cd-cfg rules' (harbor#289), not the fold's"}
 {"id":"fold-inside-cfg-still-blocks","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && echo {} > settings.json"}
 {"id":"fold-case-folded-target","rule":"redirect-floor-surface","want":"block","cmd":"cd ~ && echo {} > .CLAUDE/settings.json","why":"APFS folds case, and so do the flat rules"}

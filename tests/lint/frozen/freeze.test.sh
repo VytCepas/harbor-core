@@ -5,7 +5,7 @@
 . "$T_ROOT/tests/checks/lint-fixture.sh"
 mk() { # <name> → a root with the sources frozen-gen reads, and a frozen.tsv written by --apply
   _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/contracts" "$_d/standards/naming" "$_d/tests/guards"
-  cp "$T_ROOT/bin/standard-frozen-generate.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/scope-roots.sh" "$T_ROOT"/bin/guard-*.sh "$_d/bin/"
+  cp "$T_ROOT/bin/standard-frozen-generate.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/scope-roots.sh" "$T_ROOT"/bin/admission-*.sh "$_d/bin/"
   cp "$T_ROOT/contracts/cli.md" "$T_ROOT/contracts/pack.md" "$T_ROOT/contracts/roots.tsv" "$_d/contracts/"
   cp "$T_ROOT"/tests/guards/*.jsonl "$_d/tests/guards/"
   for _g in "$T_ROOT"/tests/admission/*/; do _g="${_g%/}"; _g="${_g##*/}"   # harbor#961 W2: moved tables

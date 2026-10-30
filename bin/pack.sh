@@ -123,7 +123,7 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
     _rl="$(printf '%s' "$_r" | tr 'A-Z' 'a-z')"   # APFS folds case: Guard-x resolves as guard-x (harbor#1149)
     case "/$_rl" in
       */hooks/*) refuse "carries a hooks/ directory ($_r): a pack may not install a hook" || return 1 ;;
-      */guard-*) refuse "carries a guard-* file ($_r): a pack may not install a guard" || return 1 ;;
+      */guard-*|*/admission-*|*/library-admission*) refuse "carries a guard file ($_r): a pack may not install a guard (guard-*, admission-*, library-admission*)" || return 1 ;;
     esac
     case "$_r" in
       pack.toml|tests/*|README*) ;;

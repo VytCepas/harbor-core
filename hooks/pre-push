@@ -190,7 +190,7 @@ else
   _floor=0; _floor_ran=0
   for _p in ${HARBOR_TEST_CHANGED:-${HARBOR_CHANGED:-}}; do
     case "$_p" in
-      bin/guard-*.sh|bin/floor-*.sh|bin/floor-*.awk|bin/deploy-harden.sh|hooks/*) _floor=1 ;;
+      bin/admission-*.sh|bin/library-admission.sh|bin/guard-*.sh|bin/floor-*.sh|bin/floor-*.awk|bin/deploy-harden.sh|hooks/*) _floor=1 ;;
     esac
   done
   if [ "$_floor" = 1 ] && [ -f "$ROOT/tests/admission/baseline/baseline.test.sh" ]; then

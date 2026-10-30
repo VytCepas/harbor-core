@@ -44,6 +44,6 @@ also stays deleted; add it back by hand to wire it again, and the next deploy ke
 
 ## Libraries
 
-An engine sources its libraries (`guard-lib.sh`, `library-log.sh`, …) from its own directory, as every installed script
+An engine sources its libraries (`library-admission.sh`, `library-log.sh`, …) from its own directory, as every installed script
 does. Deployed, that is `~/.claude/bin/`, beside them. Run from the repo, the engine finds its `manifest.tsv` beside it
 and looks in `../../bin` instead: one line, at the place it resolves its directory.

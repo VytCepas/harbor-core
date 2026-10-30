@@ -9,7 +9,7 @@
 # WHY THIS IS NOT ALREADY COVERED. Three things on this box compare an install
 # against something, and none of them asks this question:
 #
-#   guard-integrity.sh (B6)  pins the box to ITSELF — settings, plugins and
+#   admission-integrity.sh (B6)  pins the box to ITSELF — settings, plugins and
 #                            marketplaces against `.sec0-baseline.sha256`, plus
 #                            "every guard is present, non-empty, has the
 #                            kill-switch". A guard that is present, non-empty

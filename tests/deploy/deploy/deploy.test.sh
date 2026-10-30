@@ -54,21 +54,21 @@ fixture comp; : > "$PV/harbor.toml"; run '' --live
 t_eq "no components key: dry run exits 0" 0 "$RC"
 t_has "...says it installs the legacy default" "$(out)" "components unset, so it installs the legacy default"
 t_has "...and still runs prod-guard" "$(out)" "prod-guard"
-t_has "...and project-init" "$(out)" "project-init"
+t_has "...and yard" "$(out)" "yard: "
 rm -f "$PV/harbor.toml"; run '' --live
 t_has "no private layer file at all: the same legacy note" "$(out)" "components unset, so it installs the legacy default"
 printf 'components = ["core"]\n' > "$PV/harbor.toml"; run '' --live
 t_eq "components = [core]: exit 0" 0 "$RC"
 t_hasnt "...no legacy note" "$(out)" "legacy default"
 t_hasnt "...prod-guard is not planned" "$(out)" "prod-guard"
-t_hasnt "...nor project-init" "$(out)" "project-init"
+t_hasnt "...nor yard" "$(out)" "yard: "
 t_has "...core still is" "$(out)" "floor"
 printf 'components = ["yard", "prod-guard"]\n' > "$PV/harbor.toml"; run '' --live
 t_eq "components = [yard, prod-guard]: exit 0" 0 "$RC"
 t_has "...names them" "$(out)" "components: core + yard prod-guard"
 t_has "...prod-guard is planned" "$(out)" "prod-guard"
-t_has "...project-init is planned" "$(out)" "project-init"
-t_hasnt "...projects-orchestrator is not" "$(out)" "projects-orchestrator"
+t_has "...yard is planned" "$(out)" "yard: "
+t_hasnt "...fleet is not" "$(out)" "fleet: "
 printf 'components = ["collector"]\n' > "$PV/harbor.toml"; run '' --live
 t_eq "components = [collector]: exit 0" 0 "$RC"
 t_has "...names the root installer instead of skipping silently" "$(out)" "audit-collector-install.sh"
@@ -206,7 +206,7 @@ t_has "...naming prod-guard and why" "$(out)" "  note: prod-guard: no prod_guard
 t_eq "...and nothing is applied" "" "$(applied)"
 PGFIX="$(grep -A1 '^  FAIL: cannot install ' "$T/out.txt" | sed -n 2p)"
 t_eq "...its fix: the apply with --only every other component" \
-  "  fix: sh '$REPO/bin/deploy.sh' --apply --only constitution,shim,sec0,runtime,floor,skills,inject,packs,project-init,projects-orchestrator --live" "$PGFIX"
+  "  fix: sh '$REPO/bin/deploy.sh' --apply --only constitution,shim,sec0,runtime,floor,skills,inject,packs,yard,fleet --live" "$PGFIX"
 : > "$LOGF"
 # shellcheck disable=SC2046
 run 'y\nn\n' $(printf '%s' "$PGFIX" | sed "s|^  fix: sh '$REPO/bin/deploy.sh' ||")
@@ -411,23 +411,23 @@ t_eq "no usage error ran anything (log bytes)" 0 "$(wc -c < "$LOGF" | tr -d ' ')
 unfloor() {
   cp "$T_ROOT/bin/floor-uninstall.sh" "$T_ROOT/bin/floor-install.sh" "$T_ROOT/bin/deploy-runtime-install.sh" "$REPO/bin/"
   git -C "$REPO" add bin/floor-uninstall.sh; commit_push realfloor
-  mkdir -p "$C/bin"; printf '#!/bin/sh\nexit 0\n' > "$C/bin/floor-hook.sh"; cp "$C/bin/floor-hook.sh" "$C/bin/guard-bash.sh"
-  printf 'x  bin/guard-bash.sh\n' > "$C/.helm-pins/guard-bash.sh.sha256"; printf 'teeth\n' > "$C/.helm-floor-teeth"
-  jq -n --arg g "/bin/sh $C/bin/floor-hook.sh $C/bin/guard-bash.sh" --arg m "/bin/sh $H/mine.sh" \
+  mkdir -p "$C/bin"; printf '#!/bin/sh\nexit 0\n' > "$C/bin/admission-hook.sh"; cp "$C/bin/admission-hook.sh" "$C/bin/admission-bash.sh"
+  printf 'x  bin/admission-bash.sh\n' > "$C/.helm-pins/admission-bash.sh.sha256"; printf 'teeth\n' > "$C/.helm-floor-teeth"
+  jq -n --arg g "/bin/sh $C/bin/admission-hook.sh $C/bin/admission-bash.sh" --arg m "/bin/sh $H/mine.sh" \
     '{hooks: {PreToolUse: [{matcher: "Bash", hooks: [{type: "command", command: $g}, {type: "command", command: $m}]}]}}' > "$C/settings.json"
   cp "$C/settings.json" "$T/settings.before"
 }
 unmanifest() { # the two floor files' rows, and one row for a file the uninstall keeps (harbor#815)
   { printf '# .harbor-manifest (install standard §3, bin/deploy-install-lib.sh): <git-blob> <mode> <relpath> <installer> <commit>\n'
-    for _f in floor-hook.sh guard-bash.sh; do printf '%s 100755 bin/%s floor-install -\n' "$(git hash-object "$C/bin/$_f")" "$_f"; done
-    printf '%s 100644 lib/core.sh runtime-install -\n' "$(git hash-object "$C/bin/floor-hook.sh")"
+    for _f in admission-hook.sh admission-bash.sh; do printf '%s 100755 bin/%s floor-install -\n' "$(git hash-object "$C/bin/$_f")" "$_f"; done
+    printf '%s 100644 lib/core.sh runtime-install -\n' "$(git hash-object "$C/bin/admission-hook.sh")"
   } > "$C/.harbor-manifest"
   cp "$C/.harbor-manifest" "$T/manifest.before"
 }
 t_section "harbor uninstall: a dry run plans through floor-uninstall's own dry run and removes nothing"
 fixture undry; unfloor; run '' --only floor --uninstall --live
 t_eq "the uninstall dry run" 0 "$RC"
-t_has "it relays what floor-uninstall would remove" "$(out)" "  note: floor file to remove: bin/guard-bash.sh"
+t_has "it relays what floor-uninstall would remove" "$(out)" "  note: floor file to remove: bin/admission-bash.sh"
 t_eq "...and removes nothing" "$(cat "$T/settings.before")" "$(cat "$C/settings.json")"
 t_has "its next step is the apply, which its own gate takes" "$(out)" "  note: next: sh '$REPO/bin/deploy.sh' --apply --only floor --uninstall --live"
 t_eq "no installer ran" "" "$(applied)"
@@ -440,10 +440,10 @@ t_section "harbor uninstall --apply: snapshot first, remove, verify the floor is
 fixture unapply; unfloor; unmanifest; run 'y\n' --only floor --uninstall --apply --live
 SNAPD="$(ls -d "$C"/backups/deploy-* 2>/dev/null | head -1)"
 t_eq "the uninstall" 0 "$RC"
-t_has "a snapshot was taken before the removal" "$(tar -tzf "$SNAPD/config.tgz" 2>/dev/null)" "bin/guard-bash.sh"
+t_has "a snapshot was taken before the removal" "$(tar -tzf "$SNAPD/config.tgz" 2>/dev/null)" "bin/admission-bash.sh"
 t_eq "...recorded in the ledger deploy-restore.sh demands" 1 "$(grep -c "backups/${SNAPD##*/}/config.tgz" "$C/.helm-snapshots" 2>/dev/null || echo 0)"
 t_eq "the floor's hook is unwired and the foreign one kept" "/bin/sh $H/mine.sh" "$(jq -r '[.hooks.PreToolUse[]?.hooks[]?.command] | join(",")' "$C/settings.json")"
-t_eq "the floor's files are gone from bin/" no "$([ -e "$C/bin/guard-bash.sh" ] && echo yes || echo no)"
+t_eq "the floor's files are gone from bin/" no "$([ -e "$C/bin/admission-bash.sh" ] && echo yes || echo no)"
 t_has "the snapshot holds .harbor-manifest as it was" "$(tar -tzf "$SNAPD/config.tgz" 2>/dev/null)" ".harbor-manifest"
 t_eq ".harbor-manifest drops the moved files' rows and keeps the rest (harbor#815)" \
   "$(grep ' lib/core.sh ' "$T/manifest.before")" "$(grep -v '^#' "$C/.harbor-manifest")"
@@ -457,16 +457,16 @@ t_has "the restore command was printed, to run as printed" "$_rcmd" "/bin/deploy
 env -u CLAUDE_CONFIG_DIR HOME="$H" sh -c "$_rcmd" </dev/null >"$T/restore.out" 2>&1; _rrc=$?
 t_eq "the printed restore command runs as printed" 0 "$_rrc"
 t_eq "...and puts the floor's wiring back, byte for byte" "$(cat "$T/settings.before")" "$(cat "$C/settings.json")"
-t_eq "...and the floor's files" yes "$([ -f "$C/bin/guard-bash.sh" ] && [ -f "$C/.helm-pins/guard-bash.sh.sha256" ] && echo yes || echo no)"
+t_eq "...and the floor's files" yes "$([ -f "$C/bin/admission-bash.sh" ] && [ -f "$C/.helm-pins/admission-bash.sh.sha256" ] && echo yes || echo no)"
 t_eq "...and their .harbor-manifest rows, byte for byte (harbor#815)" "$(cat "$T/manifest.before")" "$(cat "$C/.harbor-manifest")"
 
 t_section "harbor uninstall: a floor still present after the removal fails verify and offers the snapshot back"
 fixture unfail; unfloor
-printf '#!/bin/sh\ncase " $* " in *" --apply "*) printf MODIFIED > "$HOME/.claude/settings.json"; echo "  ok: stub removed nothing"; exit 0 ;; esac\necho "  note: hook to remove: PreToolUse: /bin/sh x/guard-bash.sh"\n' > "$REPO/bin/floor-uninstall.sh"
+printf '#!/bin/sh\ncase " $* " in *" --apply "*) printf MODIFIED > "$HOME/.claude/settings.json"; echo "  ok: stub removed nothing"; exit 0 ;; esac\necho "  note: hook to remove: PreToolUse: /bin/sh x/admission-bash.sh"\n' > "$REPO/bin/floor-uninstall.sh"
 commit_push stubun; run 'y\ny\n' --only floor --uninstall --apply --live
 t_eq "an uninstall that left the floor" 1 "$RC"
 t_has "verify names it" "$(out)" "  FAIL: the floor is still present after floor-uninstall"
-t_has "...relaying what is left" "$(out)" "  note: hook to remove: PreToolUse: /bin/sh x/guard-bash.sh"
+t_has "...relaying what is left" "$(out)" "  note: hook to remove: PreToolUse: /bin/sh x/admission-bash.sh"
 t_has "the restore plan is deploy-restore.sh's, on this run's snapshot" "$(out)" "── restore · plan for $C (dry run: nothing is written)"
 t_eq "accepting the restore puts settings.json back" "$(cat "$T/settings.before")" "$(cat "$C/settings.json")"
 t_has "...and every check runs again on the restored box" "$(out)" "── deploy · re-check · every check again, on the restored box"

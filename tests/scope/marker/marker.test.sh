@@ -5,8 +5,11 @@
 # answers are reported on their own line, so docs/generated/status.md's count reads the same on every box (2026-09-06).
 # A sibling that disagrees, or an adapter that answers short, still fails. A missing clone SKIPS.
 #   sh marker-test.sh --unsettled   the cases the spec does not decide;  HARBOR_TEST_SKIP_CROSS=1  resolver only
-PI_DIR="${HARBOR_SCOPE_SCAFFOLDER:-${HARBOR_PROJECT_INIT:-${PORT_ROOT:-$HOME/port}/project-init}}"          # located before t_init sandboxes HOME;
-PO_DIR="${HARBOR_SCOPE_FLEET_CONTROLLER:-${HARBOR_ORCHESTRATOR:-${PORT_ROOT:-$HOME/port}/projects-orchestrator}}"  # the suite never writes there
+# The two sibling clones through the one reader, located before t_init sandboxes HOME: an exported override wins,
+# else the registry's row for the role (by kind, so a renamed yard or fleet is found), else the table (harbor#966).
+_MR="$(dirname "$0")/../../../bin/scope-roots.sh"
+PI_DIR="${HARBOR_SCOPE_SCAFFOLDER:-$(sh "$_MR" --get HARBOR_SCOPE_SCAFFOLDER 2>/dev/null || :)}"          # the suite never writes there
+PO_DIR="${HARBOR_SCOPE_FLEET_CONTROLLER:-$(sh "$_MR" --get HARBOR_SCOPE_FLEET_CONTROLLER 2>/dev/null || :)}"
 SKIP_CROSS="${HARBOR_TEST_SKIP_CROSS:-${HARBOR_SKIP_CROSS:-0}}"  # and before t_init clears the caller's HARBOR_* (harbor#773)
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 CASES="$T_ROOT/fixtures/marker/cases.json"; M="$T_TMP/m"; mkdir -p "$M"; TAB="$(printf '\t')"
@@ -15,7 +18,7 @@ command -v jq >/dev/null 2>&1 || { echo "marker-test: jq is required" >&2; exit 
 if [ "${1:-}" = "--unsettled" ]; then
   jq -r '.cases[] | select(.settled == false) | "── \(.id)\n   \(.question)\n   why: \(.why)"' "$CASES"; exit 0
 fi
-. "$T_ROOT/bin/guard-lib.sh"
+. "$T_ROOT/bin/library-admission.sh"
 UNSETTLED=0; XPASS=0; XRAN=0
 
 # The resolver through its real entry point, the hook payload's cwd. HOME and PORT_ROOT are inputs

@@ -9,7 +9,7 @@
 #   --from-transcripts   ALSO derive payloads from this box's session transcripts
 #   --coverage           which rules the corpus can even reach (baseline only)
 #   --limit <n>          cap the corpus at n payloads (default: no cap)
-#   --guard <name>       which guard to fire (default: guard-bash.sh)
+#   --guard <name>       which guard to fire (default: admission-bash.sh)
 #   --config <dir>       CLAUDE_CONFIG_DIR the guards resolve against.
 #                        DEFAULT: a disposable sandbox under build/, because the
 #                        live dir makes every replayed payload write a row to the
@@ -45,7 +45,7 @@
 #
 # KNOWN LIMIT: THE VERDICT IS SHAPE-BLIND, and it is blind because the guard is.
 # Rule ids follow `<rule>.<shape>` (lint F5), and a single rule name can carry more
-# than one shape — `crontab-install` exists twice in guard-bash.sh, as
+# than one shape — `crontab-install` exists twice in admission-bash.sh, as
 # `crontab-install.flat` at line 208 and `crontab-install.argv` at line 248 — but
 # the block MESSAGE prints only `bash:crontab-install`. So a refactor that moved a
 # decision from one shape to the other would be reported equivalent here.
@@ -90,7 +90,7 @@ log_init floor-equiv
 # die <what failed> <fix> — a refusal or a usage error: FAIL, its fix, the summary, exit 2.
 die() { log_fail "$1"; log_fix "$2"; log_end || :; exit 2; }
 LIVE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-BASE=""; CAND=""; CORPUS=""; LIMIT=0; GUARD="guard-bash.sh"
+BASE=""; CAND=""; CORPUS=""; LIMIT=0; GUARD="admission-bash.sh"
 # IT DEFAULTS TO A SANDBOX, AND THE LIVE DIR IS THE DANGEROUS CHOICE (PR #281
 # review, P1). Every guard fire calls floor_log_decision, which appends to
 # $CLAUDE_CONFIG_DIR/MEMORY/OBSERVABILITY/<host>/guard-decisions.jsonl. A
@@ -292,19 +292,19 @@ done < "$WORK/corpus.final"
 # The first cut matched only single-line `floor_block <g> "<msg>" <id>.<shape>`,
 # which is guard-bash's spelling and not everyone's. Measured across the payload:
 #
-#   guard-bash.sh      61 ids, all single-line   -> derivable
-#   guard-egress.sh    15 floor_block, 13 match  -> derivable but INCOMPLETE
-#   guard-selfedit.sh   1 floor_block,  0 match  -> not derivable
-#   guard-destroy.sh    0 floor_block            -> decides via permissionDecision
-#   guard-cloud.sh      0 floor_block            -> same
+#   admission-bash.sh      61 ids, all single-line   -> derivable
+#   admission-egress.sh    15 floor_block, 13 match  -> derivable but INCOMPLETE
+#   admission-self-edit.sh   1 floor_block,  0 match  -> not derivable
+#   admission-destroy.sh    0 floor_block            -> decides via permissionDecision
+#   admission-cloud.sh      0 floor_block            -> same
 #
-# So `--guard guard-destroy.sh` reported `rules exercised: 1 of 0` and exited 0 —
+# So `--guard admission-destroy.sh` reported `rules exercised: 1 of 0` and exited 0 —
 # a ratio that reads as coverage while hiding every untested rule. Two changes:
 # the ids are scraped by SHAPE SUFFIX anywhere in the file, which catches
 # multi-line calls; and a universe that cannot be derived, or that is smaller than
 # what was observed, is a REFUSAL rather than a number.
 # AND floor_log_decision LINES ARE EXCLUDED, or the denominator is wrong. The
-# widened scrape picked up `bash-clean.meta` — guard-bash.sh:1747, the ALLOW
+# widened scrape picked up `bash-clean.meta` — admission-bash.sh:1747, the ALLOW
 # observation written when no rule fired at all. It is shaped exactly like a rule
 # id and is not one, so coverage read `57 of 62` when the truth was 57 of 61. Wrong
 # in the safe direction, and still wrong: a denominator nobody can reproduce from
@@ -326,9 +326,9 @@ SEEN="$(wc -l < "$WORK/seen.txt" | tr -d ' ')"
 log_note "$SAME identical, $DIFF DIFFERENT"
 log_note "rules exercised: $SEEN of $M"
 if [ "$M" -eq 0 ]; then
-  # It may decide via permissionDecision rather than floor_block (guard-cloud.sh, guard-destroy.sh), in which
+  # It may decide via permissionDecision rather than floor_block (admission-cloud.sh, admission-destroy.sh), in which
   # case this harness cannot yet say what a corpus leaves untested for it.
-  die "REFUSING TO REPORT COVERAGE — no rule ids could be derived from $GUARD; a ratio against zero reads as coverage and is not" "sh $0 --baseline $BASE --candidate $CAND --guard guard-bash.sh"
+  die "REFUSING TO REPORT COVERAGE — no rule ids could be derived from $GUARD; a ratio against zero reads as coverage and is not" "sh $0 --baseline $BASE --candidate $CAND --guard admission-bash.sh"
 fi
 if [ "$SEEN" -eq 0 ]; then
   die "REFUSING TO CALL THIS EQUIVALENT — the corpus triggered NO rule at all, so it could not have detected a deleted one" "sh $0 --baseline $BASE --candidate $CAND --corpus fixtures/admission-corpus.jsonl"

@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# guard-bash.sh (harbor#779): the .helm-* state files of contracts/control-plane-state.md, one row per file and verb.
+# admission-bash.sh (harbor#779): the .helm-* state files of contracts/control-plane-state.md, one row per file and verb.
 set -u
 . "$(dirname "$0")/../../lib/core.sh"
 . "$(dirname "$0")/../../lib/table.sh"
@@ -7,7 +7,7 @@ t_init
 . "$T_ROOT/tests/admission/bash/fixture.sh"
 cd "$T_ROOT"  # rows with no CLAUDE_PROJECT_DIR run inside this repo, as tests/floor/'s parts do
 
-t_table "$CLAUDE_CONFIG_DIR/bin/guard-bash.sh" "$T_ROOT/tests/admission/bash/state.jsonl"
+t_table "$CLAUDE_CONFIG_DIR/bin/admission-bash.sh" "$T_ROOT/tests/admission/bash/state.jsonl"
 
 # The rows are only as complete as the table they cover. A row of contracts/control-plane-state.md with no
 # guard rows here or in selfedit.jsonl would read as tested, so each class is held to its rows.

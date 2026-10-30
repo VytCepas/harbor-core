@@ -14,7 +14,7 @@ case "${1:-}:${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" in --box:1) 
 # measured: a constraint in the ambient surface is read past, and the same
 # constraint delivered in-turn changes behaviour. This box produced both halves
 # on 2026-08-07 — the `HELM FLOOR: instruction surfaces changed since pinning`
-# banner fired at SessionStart and was ignored, while a guard-bash.sh denial
+# banner fired at SessionStart and was ignored, while a admission-bash.sh denial
 # arriving mid-turn redirected the work immediately. Plus the part no prefix can
 # do at all: CLAUDE.md cannot stop a commit and a hook can.
 #
@@ -32,7 +32,7 @@ case "${1:-}:${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" in --box:1) 
 # `Mac` intermittently, which has already forked host-sharded ledgers in this
 # estate. Any hook that accumulated shared state would inherit that fork.
 #
-# NO guard-lib.sh, DELIBERATELY. This is plugin payload for a repo, not floor
+# NO library-admission.sh, DELIBERATELY. This is plugin payload for a repo, not floor
 # payload for the box: contracts/host-profile.md's D7 says a governed repo must
 # work with no upstream platform installed, and sourcing the floor's library would make
 # this hook require the floor. It reimplements the two lines it needs.
@@ -328,7 +328,7 @@ emit() { # <event> <model-text> [user-line] — or nothing at all
 # deny <reason> — the ONE blocking output in this file, PreToolUse only
 # (contracts/hooks.md: "the only one that can block"; `permissionDecision` is
 # accepted on no other event). Exit status stays 0 — a decision travels on
-# stdout, exactly as guard-cloud.sh and guard-destroy.sh emit theirs; exit 2
+# stdout, exactly as admission-cloud.sh and admission-destroy.sh emit theirs; exit 2
 # would be the floor's channel, and this file is repo payload, not floor payload.
 #
 # WHY `deny` AND NOT `ask`. An `ask` prompts the operator, and an operator who
@@ -363,8 +363,8 @@ deny() {
 # in a subshell, so the library cannot touch the verdict, and silent when there is no ledger.
 _log() { # <deny|advise> <rule>
   [ "$NOTE_ONLY" = 1 ] && return 0
-  [ -f "$SELF_DIR/guard-lib.sh" ] || return 0
-  ( set +eu; FLOOR_TOOL="${TOOL:-}"; FLOOR_IN="$PAYLOAD"; . "$SELF_DIR/guard-lib.sh"
+  [ -f "$SELF_DIR/library-admission.sh" ] || return 0
+  ( set +eu; FLOOR_TOOL="${TOOL:-}"; FLOOR_IN="$PAYLOAD"; . "$SELF_DIR/library-admission.sh"
     floor_log_decision govern "$1" "$2.meta" ) >/dev/null 2>&1 || :
 }
 

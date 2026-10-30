@@ -23,7 +23,7 @@ ag_world() {
   printf '%s\tCI gate\n' "$AG_R" > "$GF/contents/.agents/required-checks.tsv"
   jq -n --arg a "Bash($GB/gate-approve.sh *)" '{permissions: {ask: [$a], allow: [], deny: [], disableBypassPermissionsMode: "disable"}}' > "$CFG/settings.json"
   printf 'repo %s\nworkflow ci.yml\n' "$AG_R" > "$GF/contents/.agents/ship.conf"
-  printf 'glob\tclass\treason\nbin/guard-*\tguard\tthe floor\nCONSTITUTION.md\tconstitution\tthe constitution\n' > "$GF/contents/.agents/protected-paths.tsv"
+  printf 'glob\tclass\treason\nbin/admission-*\tguard\tthe floor\nCONSTITUTION.md\tconstitution\tthe constitution\n' > "$GF/contents/.agents/protected-paths.tsv"
   echo OPEN > "$GF/pr/7.state"; echo "$SHA_A" > "$GF/pr/7.head"
   ag_files "$SHA_A" docs/a.md
   printf 'CI gate\tpass\t1m\thttps://example.invalid/run/1\n' > "$GF/checks/7"

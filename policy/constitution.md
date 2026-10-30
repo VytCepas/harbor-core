@@ -436,7 +436,7 @@ Test for any procedural line: *would a smarter model make this unnecessary?* Yes
   deliverable, so its source, charts and screenshots sit beside it. Never loose
   in `$HOME`, `~/Desktop`, `~/Documents` or `~/Downloads`. Then open it and hand
   over the `file://` link — the folder is where it LIVES, clickable is how it is
-  DELIVERED. Enforced by `guard-deliverables.sh`, which denies a new loose
+  DELIVERED. Enforced by `admission-deliverables.sh`, which denies a new loose
   document and names the path it should have used.
 - **Ask before irreversible or outward-facing actions**: deleting files or
   branches, pushing, deploying, merging, modifying `.env`, changing the operator's

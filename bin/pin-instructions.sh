@@ -42,7 +42,7 @@ set -eu
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 . "$HERE/library-log.sh"
 . "$HERE/deploy-install-lib.sh"
-. "$HERE/guard-lib.sh"
+. "$HERE/library-admission.sh"
 log_init pin-instructions
 
 MODE=''

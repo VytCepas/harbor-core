@@ -47,7 +47,7 @@ t_eq "a missing taxonomy exits 2, not read as empty" 2 "$(HARBOR_STANDARD_TAXONO
 
 t_section "every theme glob matches a tracked path (the arm that earns column 3)"
 t_eq "no theme glob is dead" "" "$(dead "$TAX_REAL")"
-t_has "control: a known-live glob resolves" "$(git -C "$T_ROOT" ls-files -- 'bin/guard-*.sh')" bin/guard-bash.sh
+t_has "control: a known-live glob resolves" "$(git -C "$T_ROOT" ls-files -- 'bin/admission-*.sh')" bin/admission-bash.sh
 cp "$TAX_REAL" "$T_TMP/tax-mutant.tsv"
 printf 'theme\ttheme:planted\tbin/there-is-no-such-file-*.sh\tplanted by the suite\n' >> "$T_TMP/tax-mutant.tsv"
 t_eq "mutation: a planted dead glob IS reported" " theme:planted:bin/there-is-no-such-file-*.sh" "$(dead "$T_TMP/tax-mutant.tsv")"
@@ -78,7 +78,7 @@ t_eq "and still nothing was written" "" "$(cat "$TMP_EDITLOG")"
 t_eq "--apply with no labels is refused" "exit 2" "$(edits)"
 
 t_section "--suggest derives from paths, and declines rather than guessing"
-printf 'the defect is in bin/guard-bash.sh and nowhere else\n' > "$STUB_BODY"
+printf 'the defect is in bin/admission-bash.sh and nowhere else\n' > "$STUB_BODY"
 t_eq "a body naming a floor path suggests theme:floor" theme:floor "$(sh "$SUT" --suggest 1 2>/dev/null)"
 printf 'contracts/browser-routing.md is the only copy\n' > "$STUB_BODY"
 t_eq "a body naming the router suggests theme:browser" theme:browser "$(sh "$SUT" --suggest 1 2>/dev/null)"
@@ -108,7 +108,7 @@ cat > "$AUD_TAX" <<'TAXEOF'
 type	bug	-	measurably wrong behaviour
 type	feature	-	new capability
 type	epic:provenance	-	origin record of an audit pass
-theme	theme:floor	bin/guard-*.sh	guard and floor correctness
+theme	theme:floor	bin/admission-*.sh	guard and floor correctness
 theme	theme:ci	.github/workflows/*	CI and drift
 status	blocked:review	-	waiting on a PR review
 TAXEOF

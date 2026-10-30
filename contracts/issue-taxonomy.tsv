@@ -102,7 +102,7 @@ type	chore	-	routine maintenance
 type	epic:workstream	-	a capability being built; closes when its children do
 type	epic:provenance	-	origin record of an audit or research pass; closes when its children are triaged
 type	epic:framing	-	a problem statement awaiting a design decision
-theme	theme:floor	bin/guard-*.sh bin/floor-*.sh bin/deploy-restore.sh bin/lint-conventions.sh docs/explanation/admission-baseline.md	guard and floor correctness — what the gates see and refuse
+theme	theme:floor	bin/admission-*.sh bin/library-admission.sh bin/floor-*.sh bin/deploy-restore.sh bin/lint-conventions.sh docs/explanation/admission-baseline.md	guard and floor correctness — what the gates see and refuse
 theme	theme:memory	bin/memory*.sh hooks/memory-harvest/* hooks/worklog-push/* worklog/* contracts/memory-format.md	capture, recall, index, staleness
 theme	theme:context	bin/context-budget.sh bin/memory-store-check.sh context-rules/* registries/context-baseline.tsv policy/constitution.md	always-on surface and per-call context economy
 theme	theme:doc-truth	docs/explanation/doc-truth.md contracts/README.md docs/reports/qa-plan.md docs/reports/evals.md docs/generated/status.md docs/reference/coverage.md	records that contradict the system they describe

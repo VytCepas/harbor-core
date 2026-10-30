@@ -78,7 +78,7 @@ EOF
   [ "$_any" = 1 ] || exit 0
   case "$0" in */*) _H="${0%/*}" ;; *) _H=. ;; esac
   _L=''
-  for _c in "$_H/../bin/guard-lib.sh" "$_H/../../bin/guard-lib.sh"; do
+  for _c in "$_H/../bin/library-admission.sh" "$_H/../../bin/library-admission.sh"; do
     if [ -f "$_c" ]; then _L="$_c"; break; fi
   done
   [ -n "$_L" ] || exit 0

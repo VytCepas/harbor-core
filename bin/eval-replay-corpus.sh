@@ -203,11 +203,11 @@ for t in Bash Write Edit Path; do
 done
 
 # ── 2 · scrub, shape-preserving ─────────────────────────────────────────────
-# The SECRET corpus is lifted verbatim from guard-egress.sh rather than copied,
+# The SECRET corpus is lifted verbatim from admission-egress.sh rather than copied,
 # so the scrubber and the guard can never disagree about what a secret looks
 # like. A second copy of that regex is a second thing to keep in step, and
 # docs/reference/provenance.md's whole enumerated-list-drift problem is exactly this shape.
-HARBOR_ADMISSION_EGRESS="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/guard-egress.sh"
+HARBOR_ADMISSION_EGRESS="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/admission-egress.sh"
 SECRET="$(sed -n "s/^SECRET='\(.*\)'$/\1/p" "$HARBOR_ADMISSION_EGRESS" 2>/dev/null || true)"
 [ -n "$SECRET" ] || die "could not lift SECRET from $HARBOR_ADMISSION_EGRESS" "sh bin/floor-verify.sh --live"
 # mawk 1.3.4 (ubuntu's awk) matches an open interval `{n,}` as exactly n, so RLENGTH stops short and the

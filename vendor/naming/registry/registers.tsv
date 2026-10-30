@@ -36,7 +36,7 @@ frozen	frozen.tsv	-	-	a name a stranger types or reads, frozen with the date it 
 repo-kind	repo-kinds.tsv	-	-	the top-level entries each kind of repo carries (§8)
 dialect	dialects.tsv	-	-	a naming dialect a repo may register for objects the standard does not name (D-33, D-53)
 lint	controls.tsv	type=lint	lint-rules:bin/lint-conventions.sh	a static rule; bin/lint-conventions.sh's ids are the census, bin/lint-name.sh's are read from this registry
-admission	controls.tsv	type=admission	guard-rules:bin/guard-*.sh	a refusal one of the admission guards prints as [<guard>:<rule>]
+admission	controls.tsv	type=admission	guard-rules:bin/admission-*.sh	a refusal one of the admission guards prints as [<guard>:<rule>]
 check	controls.tsv	type=check	checks-table:docs/reference/checks.md	a scheduled check; its output is stamped [check:<id>]
 injection	controls.tsv	type=injection	inject-ids:context-rules	a rule pack the injection engine adds to a session
 ci	controls.tsv	type=ci	required-checks:contracts/required-checks.tsv=VytCepas/harbor	a required CI check on harbor's main

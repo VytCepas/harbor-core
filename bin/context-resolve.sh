@@ -16,9 +16,9 @@
 # is done by the readers.
 [ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
 set -u
-# harbor#813: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./guard-lib.sh from it.
+# harbor#813: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./library-admission.sh from it.
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
-. "$DIR/guard-lib.sh"
+. "$DIR/library-admission.sh"
 floor_read_stdin
 
 CFG="$(floor_config_dir)"

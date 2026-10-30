@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
-# guard-apiroute.sh (harbor#545, #547): Claude Code's own API route is not a setting a session may
+# admission-api-route.sh (harbor#545, #547): Claude Code's own API route is not a setting a session may
 # change. Every case runs on a fixture config dir and project dir, since the guard REWRITES what it
 # judges. INCIDENT is claude-code-router 3.1.0's 2026-09-17 edit, key for key, values made harmless.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-DIR="$T_ROOT/bin"; GUARD="$DIR/guard-apiroute.sh"; TMP="$T_TMP/ar"; mkdir -p "$TMP"
+DIR="$T_ROOT/bin"; GUARD="$DIR/admission-api-route.sh"; TMP="$T_TMP/ar"; mkdir -p "$TMP"
 CLEAN='{
   "model": "opus",
   "hooks": {}
@@ -211,7 +211,7 @@ mutate() { # <sed expression> <label> <scenario>
   t_eq "$2: $3 on the real guard / on the mutant" "pass/fail" \
     "$("$3" "$GUARD" && echo pass || echo fail)/$("$3" "$_m" && echo pass || echo fail)"
 }
-# The mutant sits in $TMP, so its sourcing of guard-lib.sh is pointed back at bin/.
+# The mutant sits in $TMP, so its sourcing of library-admission.sh is pointed back at bin/.
 sed_lib="s#^DIR=.*#DIR=\"$DIR\"#"
 # The whole list: the incident sets five route keys, so dropping one leaves the others to catch it.
 mutate "$sed_lib; s#^ROUTE_KEYS=.*#ROUTE_KEYS='NO_SUCH_KEY'#" 'M1 route-key list' sc_incident
@@ -229,13 +229,13 @@ mutate "$sed_lib; s#! in_step \"\$1\" \"\$2\"#false#" 'M10 newer is copied' sc_n
 mutate "$sed_lib; s#find -L #find #" 'M11 a symlink is followed' sc_symlink
 
 t_section "the decision log (harbor#957): a repair is one advise record, a clean read none"
-mkledger() { # <dir> <script>… → a config dir whose bin/ holds the scripts and guard-lib.sh, with a sink; prints the sink
+mkledger() { # <dir> <script>… → a config dir whose bin/ holds the scripts and library-admission.sh, with a sink; prints the sink
   mkdir -p "$1/bin" "$1/MEMORY/OBSERVABILITY/probehost"; _lt="$1"; shift
-  cp "$@" "$T_ROOT/bin/guard-lib.sh" "$_lt/bin/"; printf 'probehost\n' > "$_lt/.helm-obs-host"
+  cp "$@" "$T_ROOT/bin/library-admission.sh" "$_lt/bin/"; printf 'probehost\n' > "$_lt/.helm-obs-host"
   : > "$_lt/MEMORY/OBSERVABILITY/probehost/guard-decisions.jsonl"; chmod 0500 "$_lt/MEMORY/OBSERVABILITY/probehost"
   printf '%s' "$_lt/MEMORY/OBSERVABILITY/probehost/guard-decisions.jsonl"
 }
-LS="$(mkledger "$TMP/ledger" "$GUARD")"; LG="$TMP/ledger/bin/guard-apiroute.sh"
+LS="$(mkledger "$TMP/ledger" "$GUARD")"; LG="$TMP/ledger/bin/admission-api-route.sh"
 D="$(fresh ledgerfx)"; put "$D/cfg/settings.json" "$CLEAN"; fire "$D" PostToolUse "$LG"
 t_eq "a clean file writes no record" 0 "$(grep -c . "$LS")"
 put "$D/cfg/settings.json" "$INCIDENT"; fire "$D" PostToolUse "$LG"

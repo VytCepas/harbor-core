@@ -47,7 +47,7 @@ whole doc-truth mechanism exists to prevent, relocated one level up.
 **It exists now, and this paragraph was wrong about that for a week** — corrected
 2026-08-04, when M5 was built as the ledger's second consumer and read its own
 contract. L1 shipped 2026-07-28 (`docs/reports/platform-build-tickets.md` § L1), the writer is
-`floor_log_decision` in `bin/guard-lib.sh`, and the reader is
+`floor_log_decision` in `bin/library-admission.sh`, and the reader is
 `bin/admission-observe-report.sh` — ask it for the count rather than trusting a number here.
 The row's `Home` column was wrong in the same direction and more quietly: it read
 `MEMORY/OBSERVABILITY/*.jsonl`, a glob that matches **zero files**, because the

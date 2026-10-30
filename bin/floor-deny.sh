@@ -30,7 +30,7 @@
 #   Legit CI edits: lift the entry in an unguarded session, or edit outside.
 #   MEASURED 2026-07-30 (harbor#61): this entry binds the FILE TOOLS only. `Edit`
 #   on a workflow file is refused and `git apply` on the same file succeeds, and
-#   guard-bash.sh — which would close the shell path — is not installed. Keep the
+#   admission-bash.sh — which would close the shell path — is not installed. Keep the
 #   entry; stop calling it sufficient.
 # • deny is NOT bypassed by HARBOR_ADMISSION_DISABLE — that env only stands down the
 #   B2-B6 hook layer. Deny entries change only by editing settings.json.
@@ -288,7 +288,7 @@ WITHDRAWN='[
 # BASH DENIES AT THE HARNESS LAYER (coverage sweep, 2026-07-26). Until now
 # permissions.deny held Read/Edit/Write entries ONLY — verified: zero `Bash(`
 # entries live or in this list — so the floor's entire answer to 'rm -rf /' was
-# guard-bash.sh, which is a text scanner with acknowledged residuals AND is not
+# admission-bash.sh, which is a text scanner with acknowledged residuals AND is not
 # installed. These cost nothing, are evaluated by the harness BEFORE any hook
 # runs, cannot be swallowed by a broken guard, and are independent of the install
 # decision that twelve adversarial passes have not settled.
@@ -315,12 +315,12 @@ WITHDRAWN='[
 # the same irreversible physical wipe, one spelling missing, and QA-PLAN's R9 row
 # signed the guards' jq fail-open off as acceptable *because B1 is the backstop*.
 # For this tier B1 was empty, so the documented backstop did not exist — the whole
-# of harbor#306. guard-destroy.sh's own header already noted the gap one layer up
+# of harbor#306. admission-destroy.sh's own header already noted the gap one layer up
 # ("guard-bash blocks mkfs and dd but not diskutil — same class, one spelling
 # missing") and closing it there left this layer still open.
 #
 # THIS IS THE LAYER THAT MATTERS FOR THE MODES A GUARD CANNOT COVER. The
-# floor_seg_degraded backstop added to guard-destroy.sh/guard-cloud.sh handles an
+# floor_seg_degraded backstop added to admission-destroy.sh/admission-cloud.sh handles an
 # unparseable call, but two failure modes never reach a guard at all: with jq
 # absent the guard exits before any rule (CMD reads empty), and a DELETED guard
 # file exits 127, which is not a deny. Both were measured as allows. permissions
@@ -330,7 +330,7 @@ WITHDRAWN='[
 # GLOBS, NOT A PARSER, and deliberately so — 'sudo diskutil eraseDisk' walks past
 # these just as 'rm -rf $(echo /)' walks past the entries above. That is the stated
 # division of labour for this layer: the un-swallowable floor under the scanner,
-# catching the literal spellings, with guard-destroy.sh covering the clever ones.
+# catching the literal spellings, with admission-destroy.sh covering the clever ones.
 #
 # Also added: raw disk writes via REDIRECT (`* > /dev/disk*`) — the dd form was
 # covered and the redirect form was not; 'rm -rf ~/.claude' and `~/.claude/*`,
@@ -357,7 +357,7 @@ WITHDRAWN='[
 # WHAT IT CANNOT, said plainly rather than papered over: this layer cannot deny
 # 'rm -rf ~someoneelse', because it cannot enumerate accounts it has never seen,
 # and it cannot express "a tilde, then a name, then the end of the word" at all.
-# Both are covered one layer up, in guard-bash.sh, where TILDE_USER is a regex
+# Both are covered one layer up, in admission-bash.sh, where TILDE_USER is a regex
 # that can require exactly that — and only there.
 #
 # So B1 carries the names it can RESOLVE, computed at apply time. A hardcoded
