@@ -124,13 +124,15 @@ skill and a test may be the bare family (`bin/worktree.sh`), the family's defaul
 
 - **The CLI is `harbor`, never `helm`.** `helm` is the Kubernetes package manager, and project-init's
   `prod_guard` denies `helm uninstall` in every repo it scaffolds, so a `helm` command would be blocked by our own
-  guard. Lint T5 holds it; DEAD-ENDS.md records the rejected guard exception.
+  guard. Lint T5 holds it; docs/reports/rejected-approaches.md records the rejected guard exception.
 - **Domains of work take the world's word.** A thing that exists without Harbor (a tag manager, a data estate, a reporting
   API) keeps its own name, so someone who has never heard of Harbor can find it. The system's own parts take
   technical terms (§0, principle 4); the nautical words survive as `aliases.tsv` rows, `harbor` and `yard` as
   codenames and `helm`, `ship` and `pilot` as legacy aliases, each confined to the surfaces its row lists.
 - **Frontmatter keys** are the harness's, used verbatim (`name`, `description`, `allowed-tools` and so on); no
   bespoke key is added.
+
+**Config order (harbor#1001).** A setting is read from, in order, the flag, the environment, the repo config, the user config, then the default; the first source that holds a value wins. `bin/policy-resolve.sh` is the reference and `tests/policy/resolve/order.test.sh` its fixture.
 
 ## 7. Case and uppercase
 
@@ -149,7 +151,7 @@ the tool that forces it.**
    SemVer where adding is minor and removing an alias or changing the grammar is major (D-28), and its id column
    comes first. The six registers of D-61 are `terms.tsv` (with every closed set as a class), `kinds.tsv`,
    `surfaces.tsv`, `registers.tsv`, `controls.tsv`, and `aliases.tsv` with `exemptions.tsv`. `renames.tsv`,
-   `repo-kinds.tsv` and `dialects.tsv` stay beside them and are not copied into the six. `registers.tsv` names every
+   `repo-kinds.tsv`, `dialects.tsv` and `label-axes.tsv` stay beside them and are not copied into the six. `registers.tsv` names every
    file in the directory, those three included, and the lint reads exactly the files it names: a `*.tsv` with no
    row there is red (`name.registry-shape`).
 2. **Lint:** `bin/lint-name.sh`, one POSIX `sh` + `awk` file, so yard can vendor it into any repo with no
@@ -177,10 +179,11 @@ the tool that forces it.**
    - Legacy names go into exemptions generated from the rules' first scan (`--gen exemptions`). That list only
      shrinks (`name.exemption-stale`, `name.exemption-grow`), and each row expires on the date of the rename wave
      that retires it (harbor#961), a week apart, so the list never expires on one day.
-   - Promotion to block is a person's PR, after the rule has gone red and run 4 weeks with no finding accepted
-     as false.
+   - Promotion to block is a person's PR. A `lint-name.sh` rule is promoted on evidence (D-92): it has gone red and
+     reports 0 findings in every governed repo (`sh bin/rule-health.sh --promotion`). Any other rule keeps D-64: red,
+     then 4 weeks with no finding accepted as false.
    - There are no inline ignores.
-   - An expiring alias becomes a finding 14 days before its date (`name.alias-expired`).
+   - An expiring alias warns from 14 days before its date and blocks from it (`name.alias-expired`).
 4. **Self-reference:**
    - The registry and the lint are lint subjects like any other file.
    - `exemptions.tsv` refuses any row about the registry, the lint or its fixtures, and the lint never applies one.
@@ -192,6 +195,15 @@ the tool that forces it.**
      self-test fails unless every rule goes red on every surface its `controls.tsv` row declares.
 6. **Generated from the registry** into untracked `build/` (D-40): glossary, naming guide, CLI tree (D-13), label
    set (D-30), Vale config and rule titles.
+   - `--gen issue-taxonomy` renders `label-axes.tsv` (every label as `<axis>:<value>`, the legacy label it replaces,
+     each axis's cardinality) into the connector's taxonomy format and a legacy-to-new map. Nothing is renamed on
+     GitHub by it: label writes are an operator's, and the connector reads `contracts/issue-taxonomy.tsv` until then.
+   - `sh bin/doc-vale.sh <file.md>` generates the Vale config and runs it. Without Vale it prints "verified NOTHING"
+     and exits 3, never 0.
+7. **Header and comment rules on added lines** (harbor#978): `bin/lint-comment.sh` judges only what a branch adds. A
+   new script opens `# <name> (<repo>#N) — <purpose>` on line 1, or line 2 under a shebang (`lint.file-header`), and
+   more than 3 added comment lines in a row are flagged outside a new file's header (`lint.comment-added`). Both
+   are `warn` rows of `controls.tsv`. It is not yet called from `bin/lint-conventions.sh` (harbor#957 holds that file).
 
 ## 12. Decisions
 
@@ -269,10 +281,15 @@ from D-57 on are listed where this file, the registry or the lint cite them.
 | D-81 | The config format | `harbor.toml`, not `harbor.conf` (this revises the wording of DESIGN.md, which said `harbor.conf`); `pack.toml` and `harbor.toml` share one flat TOML subset that POSIX awk reads. §13; decided by the orchestrator under operator delegation, 2026-10-10 |
 | D-82 | repos.tsv | columns `id`, `path` (relative to `$PORT_ROOT`), `kind` (from `repo-kinds.tsv`), `remote` (a URL or `-`). §13; decided by the orchestrator under operator delegation, 2026-10-10 |
 | D-83 | The share axis | closed values `core` (everyone who installs Harbor), `hub` (the members of one company layer), `workload` (whoever uses that workload repo or its pack), `personal` (the owner only); the terms are class `share`, and `workload` is the D-6 term. `kinds.tsv` column `share` is the SET of values a kind may take, comma-separated. An instance's share is derived from where it lives: under the harbor checkout `core`, under a workload repo (its `harbor-pack/` included) `workload`, under `harbor-private` `personal` (its `hub/` part `hub`); it must be in its kind's set. The lint requires the column; `bin/lint-share.sh` derives the share from the location and checks it against the set, in warn mode (harbor#1274). Amended by harbor#1149: `private` split into `hub` and `personal`. Revises the first draft, which gave each kind one value. §13; decided by the orchestrator under operator delegation, 2026-10-10 |
-| D-84 | Command names | D-13 holds: `harbor <family> [<object>] [<verb>]`, registered words only. `pack` is a new family (`terms.tsv`), the 25th after D-77's `event`. `harbor pack install <id>` and `harbor pack remove <id>`; `harbor scope install` creates the workspace skeleton and an empty `harbor-private` (replaces the draft's `harbor init`); `harbor deploy push` will publish the core snapshot to `harbor-core` (replaces `export-core.sh` and the draft's `harbor export`); it is not `harbor scope push`, because `scope` is the private configuration placement while publishing core is shipping Harbor, which is the `deploy` family. `scope` is the family for where configuration applies, which is what the share axis is; `deploy` is an existing family, and `install`, `remove` and `push` are registered verbs, so `pack` is the only family added and no verb or exception to D-13 is. `harbor scope install` is built (`bin/scope.sh`, with an amendment row in `CONTRACTS/cli.md` that CLI1 holds to existing scripts); `harbor pack install|remove` and `harbor deploy push` are reserved names, unbuilt. §13; decided by the orchestrator under operator delegation, 2026-10-10 |
+| D-84 | Command names | D-13 holds: `harbor <family> [<object>] [<verb>]`, registered words only. `pack` is a new family (`terms.tsv`), the 25th after D-77's `event`. `harbor pack install <id>` and `harbor pack remove <id>`; `harbor scope install` creates the workspace skeleton and an empty `harbor-private` (replaces the draft's `harbor init`); `harbor deploy push` will publish the core snapshot to `harbor-core` (replaces `export-core.sh` and the draft's `harbor export`); it is not `harbor scope push`, because `scope` is the private configuration placement while publishing core is shipping Harbor, which is the `deploy` family. `scope` is the family for where configuration applies, which is what the share axis is; `deploy` is an existing family, and `install`, `remove` and `push` are registered verbs, so `pack` is the only family added and no verb or exception to D-13 is. `harbor scope install` is built (`bin/scope.sh`, with an amendment row in `contracts/cli.md` that CLI1 holds to existing scripts); `harbor pack install|remove` and `harbor deploy push` are reserved names, unbuilt. §13; decided by the orchestrator under operator delegation, 2026-10-10 |
 | D-85 | Client terms leave core | core `terms.tsv` carries no `client` row. The lint also reads `harbor-private/terms.tsv` as an overlay of lowercase `client` and `system` TERMS only, same columns. Absent: no error. Malformed (header, column count), a class other than `client` or `system`, a repeated id, or an id that is a core term or a core alias: a block finding, shown by `--check` too. CRLF and a BOM are stripped with a warning. Leak-gate patterns (domains, email domains, account ids, regexes) are not terms: they go in `harbor-private/leaks.tsv`, which the future leak gate reads (#1149 lane 5). `--self-test` ignores the overlay. §13; decided by the orchestrator under operator delegation, 2026-10-10 |
 | D-86 | The session family | `session` becomes a family: the session lifecycle hooks (state, reactions, subagent stop check). It is the 26th family, after D-84's `pack`; `session` stays a concept too, and no verb shares it |
 | D-87 | The public export repo | the public core export is `harbor-core` (the codename `harbor` plus the share term `core`, D-83); the private development repo keeps `harbor`. Known collision with the CNCF Harbor registry and its `harbor` CLI (goharbor/harbor-cli): accepted for a quiet repo, to revisit before any announcement. harbor#1149; decided by the operator, 2026-10-15 |
+| D-88 | Hook engine folders | a non-floor hook engine is `hooks/<engine>/` holding `<engine>.sh`, its tests and its manifest, the file named after its folder (revises D-58 and D-11 for this kind; `bin/` stays flat otherwise; the floor's hooks stay pinned where they are). A component folder carries a tracked `README.md`, seven sections generated from the manifest and one hand-written why, and a check fails on a folder without one (revises D-40's location for this kind). harbor#1272; decided by the operator, 2026-10-23 |
+| D-89 | Event and manual moments | the `moment` class gains `event` (started by an event it receives, not a timer or a harness hook; also the D-77 family) and `manual` (a person or a session runs it on demand); each `check` row in `controls.tsv` carries the moment its own trigger matches |
+| D-90 | Human doc kinds follow Diátaxis | a human-read doc is a `tutorial`, `how-to`, `reference` or `explanation`, the names of D-4's `docs/<kind>/` folders; records keep their own kinds |
+| D-91 | The object slot stays open | the allowlist validators (`build/validators.txt`, `name-check`) check shape and family only; the object slot is free and no validator claims object-slot coverage. Closing it through `terms.tsv` rows is deferred. Operator decision 2026-10-27, harbor#1259 (D-38 stands) |
+| D-92 | Name rules promote on evidence | a `warn` rule run by `lint-name.sh` may go to `block` with a red proof and 0 findings in every governed repo (`bin/roots.sh --repos`), replacing D-64's 28 days for these rules; a rule with 0 findings can still false-positive on new code, and the fix then is to demote. Alias `remove_by` dates compress to 2026-11-15. Operator decision 2026-10-28, harbor#968 |
 
 ## 13. Workspace, private layer, packs and share (D-78 to D-85)
 
@@ -282,7 +299,7 @@ The target design is `DESIGN.md` of the core-packs deliverable; this section is 
   the repos named in `harbor-private/repos.tsv` (`id`, `path`, `kind`, `remote`; D-82).
 - **Private layer (D-79):** `$PORT_ROOT/harbor-private`, data only: `harbor.toml`, `repos.tsv`, `terms.tsv`,
   `leaks.tsv`, `access/`, `checks.md`, `controls.tsv`, `jobs/`, `CLAUDE.personal.md`.
-- **Pack (D-80):** `<workload repo>/harbor-pack/` with `pack.toml`, `skills/`, `bin/`, `inject.d/`, `checks.tsv`,
+- **Pack (D-80):** `<workload repo>/harbor-pack/` with `pack.toml`, `skills/`, `bin/`, `context-rules/user/` (`inject.d/` until harbor#1010's date), `checks.tsv`,
   `tests/`. No `hooks/`, no `guard-*`.
 - **Config grammar (D-81):** `harbor.toml` and `pack.toml` are one flat TOML subset: one `key = value` per line,
   `#` comments, values a double-quoted string or a one-line array of them, no tables.

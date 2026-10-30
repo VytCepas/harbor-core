@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
-# harbor merge-stack for a repo that is not harbor (harbor#1060, ship contract 5a.6): merge-check.sh comes from the tool's
-# own install dir, with HARBOR_REPO and the required-checks list as origin/<default branch> holds it, empty when it has none
+# harbor merge-stack for a repo that is not harbor (harbor#1060, ship contract 5a.6): gate-merge-check.sh comes from the tool's
+# own install dir, with HARBOR_SCOPE_REPO and the required-checks list as origin/<default branch> holds it, empty when it has none
 # (5b.11: never the working tree). A repo with NO bin/ merges.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/ci/merge-stack/fixture.sh"
@@ -30,21 +30,21 @@ plain; mkdir -p "$H/.agents"; printf 'acme/widgets\tsuite\n' > "$H/.agents/requi
 t_eq "a file only in the working tree: exit 0" 0 "$(run)"
 t_eq "...is not read: merge-check's list is empty" "" "$(cat "$MS_FIX/rc.log")"
 
-t_section "a repo's own bin/merge-check.sh is never the one that runs"
+t_section "a repo's own bin/gate-merge-check.sh is never the one that runs"
 ms_world; ms_branch feat; ms_add a.txt one; ms_push feat; ms_pr 11 feat; ms_plan "$PL" 11
-mkdir -p "$H/bin"; printf '#!/bin/sh\necho decoy > "$MS_FIX/decoy"\nexit 1\n' > "$H/bin/merge-check.sh"
+mkdir -p "$H/bin"; printf '#!/bin/sh\necho decoy > "$MS_FIX/decoy"\nexit 1\n' > "$H/bin/gate-merge-check.sh"
 t_eq "exit 0" 0 "$(run)"
 t_eq "the decoy never ran" no "$([ -e "$MS_FIX/decoy" ] && echo yes || echo no)"
 
 t_section "red-proof: merge-check resolved from the repo checkout (the bug) cannot merge a repo with no bin/"
-ms_mutant "M16 resolve merge-check from the checkout" 's#^MC="\$HERE/merge-check.sh"#MC="$H/bin/merge-check.sh"#'
+ms_mutant "M16 resolve merge-check from the checkout" 's#^MC="\$HERE/gate-merge-check.sh"#MC="$H/bin/gate-merge-check.sh"#'
 plain
 t_eq "the mutant is refused at the preflight" 1 "$(run "$M/bin/gate-merge-stack.sh")"
-t_has "...for the missing script in the repo" "$(cat "$T_TMP/out")" "no $H/bin/merge-check.sh"
+t_has "...for the missing script in the repo" "$(cat "$T_TMP/out")" "no $H/bin/gate-merge-check.sh"
 t_eq "...and merges nothing" "" "$(cat "$MS_FIX/merge.log" 2>/dev/null)"
-ms_mutant "M17 the repo is not passed to merge-check" 's/HARBOR_REPO="\$R"; export HARBOR_REPO; //'
+ms_mutant "M17 the repo is not passed to merge-check" 's/HARBOR_SCOPE_REPO="\$R"; export HARBOR_SCOPE_REPO; //'
 plain; run "$M/bin/gate-merge-stack.sh" >/dev/null
-t_eq "the mutant's merge-check got no HARBOR_REPO" "repo= rc=/ br=main" "$(sed 's#rc=/[^ ]*#rc=/#' "$MS_FIX/env.log")"
+t_eq "the mutant's merge-check got no HARBOR_SCOPE_REPO" "repo= rc=/ br=main" "$(sed 's#rc=/[^ ]*#rc=/#' "$MS_FIX/env.log")"
 
 t_section "another repo's own docs/index.html is never taken from the base, nor regenerated (red-proof)"
 site() { ms_world; mkdir -p "$W/docs"; echo "theirs v0" > "$W/docs/index.html"; wg add -A; wg commit -q -m site; wg push -q origin "HEAD:$MS_DEF" 2>/dev/null
@@ -59,12 +59,12 @@ site; t_eq "the mutant takes the base's copy and merges" 0 "$(run "$M/bin/gate-m
 
 t_section "the default branch is the remote's, not main (red-proof)"
 unset MS_DEF; MS_DEF=trunk
-trunk() { ms_world harbor; ms_branch feat; ms_add CONTRACTS/suites.txt tests/p/pr.test.sh; ms_push feat; ms_pr 11 feat; OLD="$(ms_tip feat)"
-  ms_main CONTRACTS/suites.txt tests/m/main.test.sh; ms_plan "$PL" 11; }
+trunk() { ms_world harbor; ms_branch feat; ms_add contracts/suites.txt tests/p/pr.test.sh; ms_push feat; ms_pr 11 feat; OLD="$(ms_tip feat)"
+  ms_main contracts/suites.txt tests/m/main.test.sh; ms_plan "$PL" 11; }
 trunk
 t_eq "the remote's default branch is trunk" trunk "$(git --git-dir="$MS_BARE" symbolic-ref --short HEAD)"
 t_eq "a conflicting PR is rebased onto trunk and merged: exit 0" 0 "$(run)"
-t_eq "trunk holds both suites" "1 1" "$(git --git-dir="$MS_BARE" show trunk:CONTRACTS/suites.txt | grep -cxF tests/p/pr.test.sh) $(git --git-dir="$MS_BARE" show trunk:CONTRACTS/suites.txt | grep -cxF tests/m/main.test.sh)"
+t_eq "trunk holds both suites" "1 1" "$(git --git-dir="$MS_BARE" show trunk:contracts/suites.txt | grep -cxF tests/p/pr.test.sh) $(git --git-dir="$MS_BARE" show trunk:contracts/suites.txt | grep -cxF tests/m/main.test.sh)"
 t_has "merge-check is told the branch" "$(cat "$MS_FIX/env.log")" "br=trunk"
 trunk; sh "$GMS" rehearse "$PL" --push >"$T_TMP/out" 2>&1; t_eq "rehearse --push builds on trunk: exit 0" 0 "$?"
 t_has "...and opens the PR against trunk" "$(grep '^pr create' "$MS_FIX/calls.log")" "--base trunk"

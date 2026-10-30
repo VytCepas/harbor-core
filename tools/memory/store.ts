@@ -1,6 +1,6 @@
 // memory · the corpus reader of record (harbor#6 — workstream D, D1 + D3).
 //
-// CONTRACTS/memory-format.md fixes the canonical form: markdown + YAML
+// contracts/memory-format.md fixes the canonical form: markdown + YAML
 // frontmatter + [[wikilinks]], at every scope, git-diffable and greppable. This
 // module is the ONE place that turns a directory of those files into an
 // in-memory corpus. Every other module in tools/memory takes a Corpus and

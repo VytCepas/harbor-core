@@ -1,11 +1,11 @@
 # Telemetry: one stream system (harbor#1181)
 
 **Status:** decided by the operator 2026-10-09; built lane by lane (#1181). Lane 0 is #1182, lane 1 is this
-document plus `CONTRACTS/streams.tsv`. Research behind it: `~/Deliverables/2026-10-09-research-collection-scan/`.
+document plus `contracts/streams.tsv`. Research behind it: `~/Deliverables/2026-10-09-research-collection-scan/`.
 
 ## Why
 
-Harbor has no logging system. It has ~18 independent logs, ledgers and state files (`CONTRACTS/streams.tsv`) under
+Harbor has no logging system. It has ~18 independent logs, ledgers and state files (`contracts/streams.tsv`) under
 two roots, with eight-plus schemas and six retention habits. Three defects follow from that:
 
 - **Loss.** One-generation rotation destroyed 2026-08-06..10-04 of the guard ledger (fixed by #1182). The bus prunes
@@ -23,8 +23,8 @@ two roots, with eight-plus schemas and six retention habits. Three defects follo
    `seq` and `prev` (hash of the previous line in the file) make gaps and edits visible. OTel GenAI names go inside
    `attrs` where they fit. The guard path keeps its single bounded `printf` to a pre-created file: a guard that forks
    or blocks on logging can hang, and a hung guard is a bypass.
-3. **One registry**, `CONTRACTS/streams.tsv` (protected). Lane 1 records today's estate and is held to the code by
-   `tests/checks/streams-registry-test.sh`; lane 3 adds the lint that fails an unregistered writer.
+3. **One registry**, `contracts/streams.tsv` (protected). Lane 1 records today's estate and is held to the code by
+   `tests/audit/stream/registry.test.sh`; lane 3 adds the lint that fails an unregistered writer.
 4. **One store, at the collector.** Writers keep their files where they are (moving the bus, obligations, usage,
    `checks.log` and approvals would ripple through every reader); the second-uid collector copies every source into
    ONE store it alone can write, `/Library/Application Support/Harbor/collector`, so history outlives the writers'
@@ -45,7 +45,7 @@ two roots, with eight-plus schemas and six retention habits. Three defects follo
      On Linux the same jobs are systemd system units under `harborlog`; the ingest unit reads through
      `CAP_DAC_READ_SEARCH` instead of an ACL, because a POSIX ACL's mask is reset by the floor's own `chmod 0600/0500`
      and the collector would go blind at every SessionStart (macOS keeps ACLs: chmod leaves them alone there).
-   - *Anchor and cross-check:* `collector-check.sh` copies every signed checkpoint, once and never overwritten, into
+   - *Anchor and cross-check:* `audit-collector-check.sh` copies every signed checkpoint, once and never overwritten, into
      `MEMORY/CHECKPOINTS/<host>/`, which `worklog-push.sh` pushes to the private MEMORY remote (off-host); a published
      checkpoint that later differs from its anchored copy is `checkpoint-changed`. It also compares the day's count of
      the client's own `tool_decision` events (pinned in managed settings, out of a session's reach) with the guard
@@ -57,4 +57,4 @@ two roots, with eight-plus schemas and six retention habits. Three defects follo
 
 ## Lanes
 
-The lane table and its order live in #1181; `CONTRACTS/streams.tsv` names the lane that moves each stream.
+The lane table and its order live in #1181; `contracts/streams.tsv` names the lane that moves each stream.

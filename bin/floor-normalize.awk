@@ -11,7 +11,7 @@
 # QUOTING MODEL (rewritten 2026-07-24 after red-team pass 3).
 # The previous model treated a standalone quoted word as inert data and dropped
 # it. That premise is FALSE and was a critical hole: for `rm -rf '/'`,
-# `tee "/etc/passwd"`, `cp /dev/null "$CFG/bin/guard-bash.sh"` — and for the
+# `tee "/etc/passwd"`, `cp /dev/null "$CFG/bin/admission-bash.sh"` — and for the
 # command word itself, `"bash" -c '…'` — the quoted word IS the payload.
 # Quoting a path is also the natural way to write it, so the bypass was one
 # keystroke and the safety default pointed the wrong way.
@@ -30,7 +30,7 @@
 #
 # NEUTRALIZED TO `_`, NOT TO A SPACE (edge pass 2026-08-29). A space does not
 # just remove the operator, it MANUFACTURES A WORD BOUNDARY that was never in
-# the command, and every flat rule in guard-bash.sh is built out of word
+# the command, and every flat rule in admission-bash.sh is built out of word
 # boundaries. Measured: `sed -i '' 's|rm -rf /|X|' notes.md` — one ordinary edit
 # to a file documenting the guard — became the DATA text `sed s rm -rf / X` and
 # fired rm-rf-root.flat, because the two delimiters became the space before `rm`
@@ -300,7 +300,7 @@ function isredirop(w) { return (w ~ /^(&?[0-9]*>>?[&|!]?[0-9]*|<|<<|<<<|[0-9]*>&
 # saw a plutil segment. Every flat rule is wrapper-agnostic by construction and
 # every migrated argv rule inherits this list, which means a name missing here
 # silently weakens the argv half of the file relative to the flat half. That is
-# FLOOR.md pass-13 refusal reason #1 at its root, one level below where it was
+# docs/explanation/admission-baseline.md pass-13 refusal reason #1 at its root, one level below where it was
 # diagnosed.
 #
 # `arch` is macOS's own architecture selector and takes only flags. `script`
@@ -592,7 +592,7 @@ function seg_flush_tok(id, t, pend) {
 # named `import`, `os.system` and `rm -rf /`. None of those match a rule, so it
 # was noise rather than a false positive, but noise in a security table is how
 # a future rule acquires one. Non-shell one-liners stay covered by the flat CODE
-# variant, and their full reach is already an accepted residual in FLOOR.md.
+# variant, and their full reach is already an accepted residual in docs/explanation/admission-baseline.md.
 function isinterp(w) { return (w ~ /^([a-zA-Z0-9_.\/-]*\/)?(sh|bash|zsh|ksh|dash|ash|busybox|fish|csh|tcsh)$/) }
 # BUNDLED code flags count (pass 12, P12-argv-02, critical). Accepting only the
 # exact `-c` meant `bash -lc "tar xzf … -C ~/.claude"` left the payload as one
@@ -652,7 +652,7 @@ function isenv(w)      { return (w ~ /^([a-zA-Z0-9_.~\/-]*\/)?g?env$/) }
 # rather than leaving it to be re-discovered as a bug.
 #
 # ONE LEVEL, NO CROSS PRODUCTS, NO `{1..9}` RANGES. Those are real shell
-# behaviour and are NOT covered; FLOOR.md's residual set is where that belongs,
+# behaviour and are NOT covered; docs/explanation/admission-baseline.md's residual set is where that belongs,
 # because a tokenizer that recursed here would be re-implementing the shell,
 # which passes 9-13 measured as the thing that does not converge.
 # SPELLED OUT AS CHARACTER TESTS RATHER THAN ONE REGEX. The first cut read

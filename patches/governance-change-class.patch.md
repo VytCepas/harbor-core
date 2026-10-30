@@ -22,9 +22,9 @@ generate.
 
 ## What is already landed, and works without this patch
 
-- `CONTRACTS/suite-paths.txt` — every suite declares which changed paths select
+- `contracts/suite-paths.txt` — every suite declares which changed paths select
   it, plus `@no-suite` for paths that legitimately select nothing.
-- `bin/suite-select.sh` — the decision procedure. `--list`, `--changed`, a bare
+- `bin/test-suite-select.sh` — the decision procedure. `--list`, `--changed`, a bare
   suite name for the exit status, and `--run` for CI.
 - `bin/suite-select-test.sh` — its suite, in the manifest, so it already runs in
   CI through the `suite-manifest` job.
@@ -35,7 +35,7 @@ Until this patch is applied the table is **inert**: correct, tested, and consult
 by nothing. The linter says so on every run:
 
 ```
-ADVISORY [C5] governance.yml does not call bin/suite-select.sh yet — the
+ADVISORY [C5] governance.yml does not call bin/test-suite-select.sh yet — the
 declarations are inert until patches/governance-change-class.patch.md is applied
 ```
 
@@ -47,7 +47,7 @@ that existed on one machine and nowhere else.
 ## The shape, and the one decision inside it
 
 Jobs are **not** gated with `if:`. Every job still runs, still checks out, and
-still reports a real verdict; `suite-select.sh --run` stands the *suite* down
+still reports a real verdict; `test-suite-select.sh --run` stands the *suite* down
 from inside the job and the job exits 0 with a log saying why.
 
 The alternative — `if: needs.classify.outputs.floor == 'true'` — is shorter and
@@ -105,7 +105,7 @@ a worse failure than a slow run.
         env:
           HARBOR_CHANGED: ${{ steps.diff.outputs.changed }}
         run: |
-          sh bin/suite-select.sh --list > "$RUNNER_TEMP/verdicts.txt"
+          sh bin/test-suite-select.sh --list > "$RUNNER_TEMP/verdicts.txt"
           cat "$RUNNER_TEMP/verdicts.txt"
           {
             echo '### change class'
@@ -139,14 +139,14 @@ Replace the job's `needs:` and `outputs:` and add `env:`:
 
 Replace the two suite steps. The redirect-never-pipe reasoning, the
 `RUNNER_TEMP` artefact and the refuse-an-empty-count check all moved into
-`suite-select.sh --run`, where there is one copy of them instead of three:
+`test-suite-select.sh --run`, where there is one copy of them instead of three:
 
 ```yaml
       - name: Run the floor suite (guards + mutation pass + wiring assertions)
         id: suite
-        run: sh bin/suite-select.sh --run floor-test.sh
+        run: sh bin/test-suite-select.sh --run floor-test.sh
       - name: Run the replay suite (corpus builder + runner + labels)
-        run: sh bin/suite-select.sh --run replay-test.sh
+        run: sh bin/test-suite-select.sh --run replay-test.sh
 ```
 
 ## 4 · `normalize` and `marker`
@@ -166,7 +166,7 @@ Same three changes each — `needs`, a `ran` output, `env` — and one step body
 ```yaml
       - name: Prove the segment table is built correctly
         id: suite
-        run: sh bin/suite-select.sh --run normalize-test.sh
+        run: sh bin/test-suite-select.sh --run normalize-test.sh
 ```
 ```yaml
   marker:
@@ -181,7 +181,7 @@ Same three changes each — `needs`, a `ran` output, `env` — and one step body
 ```yaml
       - name: Run the marker fixtures against the POSIX resolver
         id: suite
-        run: sh bin/suite-select.sh --run marker-test.sh
+        run: sh bin/test-suite-select.sh --run marker-test.sh
 ```
 
 ## 5 · `statusline`, `cu`, `cli`, `recover`
@@ -190,30 +190,30 @@ Same three changes each — `needs`, a `ran` output, `env` — and one step body
 
 ```yaml
       - name: Statusline golden output
-        run: sh bin/suite-select.sh --run statusline-test.sh
+        run: sh bin/test-suite-select.sh --run statusline-test.sh
       # A suite invoked WITH ARGUMENTS cannot go through --run, which takes a
       # bare suite name. Gate it on the exit status instead — the same decision,
       # asked directly.
       - name: Statusline golden output (dash)
         run: |
-          sh bin/suite-select.sh statusline-test.sh > /dev/null || exit 0
+          sh bin/test-suite-select.sh statusline-test.sh > /dev/null || exit 0
           sh bin/statusline-test.sh --dash
 ```
 ```yaml
       - name: Pin the cu write-allowlist and its shipped bugs
-        run: sh bin/suite-select.sh --run cu-test.sh
+        run: sh bin/test-suite-select.sh --run cu-test.sh
       - name: Pin the gcx identity disclosure and account pin
-        run: sh bin/suite-select.sh --run gcx-test.sh
+        run: sh bin/test-suite-select.sh --run gcx-test.sh
 ```
 ```yaml
       - name: harbor dispatcher suite
-        run: sh bin/suite-select.sh --run harbor-test.sh
+        run: sh bin/test-suite-select.sh --run harbor-test.sh
       - name: ambient prod_guard shim suite
-        run: sh bin/suite-select.sh --run prod-guard-test.sh
+        run: sh bin/test-suite-select.sh --run prod-guard-test.sh
 ```
 ```yaml
       - name: Prove the restore path still works
-        run: sh bin/suite-select.sh --run recover-test.sh
+        run: sh bin/test-suite-select.sh --run recover-test.sh
 ```
 
 ## 6 · `status` — the one job whose behaviour genuinely changes
@@ -222,10 +222,10 @@ Same three changes each — `needs`, a `ran` output, `env` — and one step body
 becomes:
 
 ```yaml
-      - name: STATUS.md must be regenerated, not hand-edited
+      - name: docs/generated/status.md must be regenerated, not hand-edited
         run: |
           # WHY --check-fast IS SOUND WHEN THE THREE STAND DOWN. The assertion
-          # counts in STATUS.md can only move if a suite's behaviour moved, which
+          # counts in docs/generated/status.md can only move if a suite's behaviour moved, which
           # needs a bin/ or fixtures/ change, which selects those suites. So when
           # they stand down, those three rows cannot have changed — and the
           # repo-counted rows (lint rules, skills, contracts, guards, fixtures)
@@ -233,16 +233,16 @@ becomes:
           #
           # WHAT WOULD FALSIFY IT: a change that moves an assertion count while
           # touching no path any of the three declares. If that is ever found,
-          # the bug is in CONTRACTS/suite-paths.txt, not here.
+          # the bug is in contracts/suite-paths.txt, not here.
           if [ "${{ needs.floor.outputs.ran }}" = "true" ] \
              && [ "${{ needs.normalize.outputs.ran }}" = "true" ] \
              && [ "${{ needs.marker.outputs.ran }}" = "true" ]; then
             HARBOR_SUITE_COUNTS="floor-test=${{ needs.floor.outputs.count }},normalize-test=${{ needs.normalize.outputs.count }},marker-test=${{ needs.marker.outputs.count }}" \
-              sh bin/status-gen.sh --check
+              sh bin/status-generate.sh --check
           else
             echo "count-bearing suites stood down for this change class —"
             echo "checking the repo-counted fields only (see the comment above)."
-            sh bin/status-gen.sh --check-fast
+            sh bin/status-generate.sh --check-fast
           fi
 ```
 
@@ -276,9 +276,9 @@ time.
               continue
             fi
             printf '== %s\n' "$s"
-            sh bin/suite-select.sh --run "$s"
+            sh bin/test-suite-select.sh --run "$s"
             ran=$((ran + 1))
-          done < CONTRACTS/suites.txt
+          done < contracts/suites.txt
           printf '\nmanifest suites considered: %d\n' "$ran"
 ```
 

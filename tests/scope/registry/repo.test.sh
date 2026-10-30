@@ -1,10 +1,10 @@
 #!/usr/bin/env sh
-# The repo registry and harbor.toml readers in roots.sh, `harbor scope install` (harbor#966, #1149), and
-# the notes/ pointer a core skill prints through `roots.sh --private`.
+# The repo registry and harbor.toml readers in scope-roots.sh, `harbor scope install` (harbor#966, #1149), and
+# the notes/ pointer a core skill prints through `scope-roots.sh --private`.
 # Every case runs on a throwaway PORT_ROOT; HARBOR_SCOPE_PRIVATE is unset unless a case sets it.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 R() { env -u HARBOR_SCOPE_PRIVATE PORT_ROOT="$PW" "$@"; }   # a command with PW as the workspace
-roots() { R sh "$T_ROOT/bin/roots.sh" "$@"; }
+roots() { R sh "$T_ROOT/bin/scope-roots.sh" "$@"; }
 mkpriv() { PW="$T_TMP/$1"; mkdir -p "$PW/harbor-private"; printf '%s' "$2" > "$PW/harbor-private/repos.tsv"; }
 H='id	path	kind	remote
 '
@@ -74,14 +74,14 @@ t_eq "--repo harbor falls back to PORT_ROOT/harbor, not the home default (harbor
 t_eq "...and any id is PORT_ROOT/<id> with no registry, whether or not it exists (the old literal)" "$PW/nope" "$(roots --repo nope)"
 t_exit "...but an id that is not a repo name is a usage error" 2 roots --repo 'a/b'
 mkdir -p "$T_TMP/emptypriv"
-t_eq "an empty private dir is no registry: PORT_ROOT/<id>" "$PW/quuxmail" "$(env PORT_ROOT="$PW" HARBOR_SCOPE_PRIVATE="$T_TMP/emptypriv" sh "$T_ROOT/bin/roots.sh" --repo quuxmail)"
+t_eq "an empty private dir is no registry: PORT_ROOT/<id>" "$PW/quuxmail" "$(env PORT_ROOT="$PW" HARBOR_SCOPE_PRIVATE="$T_TMP/emptypriv" sh "$T_ROOT/bin/scope-roots.sh" --repo quuxmail)"
 mkdir -p "$T_TMP/regpriv"; printf 'harbor\tharbor\tcontrol-plane\t-\n' > "$T_TMP/regpriv/repos.tsv"
-t_exit "a registry that lacks the row says not registered" 1 env PORT_ROOT="$PW" HARBOR_SCOPE_PRIVATE="$T_TMP/regpriv" sh "$T_ROOT/bin/roots.sh" --repo quuxmail
+t_exit "a registry that lacks the row says not registered" 1 env PORT_ROOT="$PW" HARBOR_SCOPE_PRIVATE="$T_TMP/regpriv" sh "$T_ROOT/bin/scope-roots.sh" --repo quuxmail
 
 t_section "a PORT_ROOT with a control character is refused"
 TABROOT="$T_TMP/ta	b"
-t_exit "--repo with a TAB in PORT_ROOT is refused" 2 env PORT_ROOT="$TABROOT" sh "$T_ROOT/bin/roots.sh" --repo zorbcorp
-t_exit "--port-root with a TAB in PORT_ROOT is refused" 2 env PORT_ROOT="$TABROOT" sh "$T_ROOT/bin/roots.sh" --port-root
+t_exit "--repo with a TAB in PORT_ROOT is refused" 2 env PORT_ROOT="$TABROOT" sh "$T_ROOT/bin/scope-roots.sh" --repo zorbcorp
+t_exit "--port-root with a TAB in PORT_ROOT is refused" 2 env PORT_ROOT="$TABROOT" sh "$T_ROOT/bin/scope-roots.sh" --port-root
 
 t_section "a bare harbor scope is a usage error that writes nothing"
 BP="$T_TMP/bare"
@@ -91,7 +91,7 @@ t_eq "and created nothing" no "$([ -e "$BP" ] && echo yes || echo no)"
 t_section "HARBOR_SCOPE_PRIVATE moves the private layer"
 mkdir -p "$T_TMP/elsewhere"; printf '%s' "${H}z	z	workload	-
 " > "$T_TMP/elsewhere/repos.tsv"
-t_eq "the registry is read from HARBOR_SCOPE_PRIVATE" "$PW/z" "$(env PORT_ROOT="$PW" HARBOR_SCOPE_PRIVATE="$T_TMP/elsewhere" sh "$T_ROOT/bin/roots.sh" --repo z)"
+t_eq "the registry is read from HARBOR_SCOPE_PRIVATE" "$PW/z" "$(env PORT_ROOT="$PW" HARBOR_SCOPE_PRIVATE="$T_TMP/elsewhere" sh "$T_ROOT/bin/scope-roots.sh" --repo z)"
 
 t_section "--registry-check judges the kind column"
 mkpriv k "$H"'harbor	harbor	control-plane	-
@@ -101,6 +101,83 @@ mkpriv k2 "$H"'harbor	harbor	nonsense	-
 '
 t_exit "an unknown kind is refused" 2 roots --registry-check
 t_exit "...though the lookup still answers" 0 roots --repo harbor
+
+t_section "the INSTALLED copy judges kinds by the register shipped beside it (no standards/ above bin/)"
+IC="$T_TMP/icfg"; mkdir -p "$IC"; printf '{"permissions":{"deny":[]}}\n' > "$IC/settings.json"
+env -u CLAUDE_CONFIG_DIR -u CLAUDECODE -u HARBOR_DEPLOY_ACTIVE -u HARBOR_DEPLOY sh "$T_ROOT/bin/deploy-runtime-install.sh" --apply --dir "$IC" >/dev/null 2>&1
+t_eq "the runtime installer ships the kinds register beside scope-roots.sh" present "$([ -f "$IC/bin/repo-kinds.tsv" ] && echo present || echo absent)"
+mkpriv kw "$H"'svc	svc	workload	-
+'
+iroots() { R env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$IC/bin/scope-roots.sh" "$@"; }
+t_exit "a workload row is green from the installed copy" 0 iroots --registry-check
+mkpriv kw2 "$H"'svc	svc	nonsense	-
+'
+t_exit "...and an unknown kind is still refused there" 2 iroots --registry-check
+mv "$IC/bin/repo-kinds.tsv" "$IC/bin/repo-kinds.off"
+t_exit "with no kinds register anywhere it refuses, saying so" 2 iroots --registry-check
+t_has "...naming the missing register, not the row" "$(iroots --registry-check 2>&1)" "no kinds register"
+mv "$IC/bin/repo-kinds.off" "$IC/bin/repo-kinds.tsv"
+
+t_section "the topology and interaction columns (harbor#966)"
+mkpriv tp 'id	path	kind	remote	topology	interaction
+harbor	harbor	control-plane	-	platform	-
+zorbcorp	zorbcorp	workload	-	stream-aligned	x-as-a-service
+legacy	legacy	workload	-
+'
+t_exit "six columns, and a four-column row beside them, are valid" 0 roots --registry-check
+t_eq "--topology prints topology TAB interaction" "stream-aligned	x-as-a-service" "$(roots --topology zorbcorp)"
+t_eq "...and '-' TAB '-' for a four-column row" "-	-" "$(roots --topology legacy)"
+t_eq "--repos is unchanged by the new columns" "harbor	$PW/harbor
+zorbcorp	$PW/zorbcorp
+legacy	$PW/legacy" "$(roots --repos)"
+t_exit "an unknown id exits 1" 1 roots --topology nope
+mkpriv tp2 "$H"'z	z	workload	-	platfrom	-
+'
+t_exit "an unknown topology is refused by --registry-check" 2 roots --registry-check
+t_has "...naming it" "$(roots --registry-check 2>&1)" 'topology "platfrom"'
+t_exit "...though the lookup still answers" 0 roots --repo z
+mkpriv tp3 "$H"'z	z	workload	-	enabling	x-as-a-servis
+'
+t_exit "an unknown interaction mode is refused by --registry-check" 2 roots --registry-check
+mkpriv tp4 "$H"'z	z	workload	-	enabling
+'
+t_exit "five fields are refused" 2 roots --repo z
+
+t_section "a seventh note column marks a guessed value as proposed (operator decision 2026-10-29, harbor#966)"
+mkpriv nt 'id	path	kind	remote	topology	interaction	note
+harbor	harbor	control-plane	-	platform	-
+zorbcorp	zorbcorp	workload	-	stream-aligned	x-as-a-service	proposed
+legacy	legacy	workload	-
+'
+t_exit "seven columns beside six and four are valid" 0 roots --registry-check
+t_eq "--topology ignores the note" "stream-aligned	x-as-a-service" "$(roots --topology zorbcorp)"
+t_eq "--repos is unchanged by the note column" "harbor	$PW/harbor
+zorbcorp	$PW/zorbcorp
+legacy	$PW/legacy" "$(roots --repos)"
+mkpriv nt2 "$H"'z	z	workload	-	enabling	collaboration	proposed	extra
+'
+t_exit "eight fields are refused" 2 roots --repo z
+mkpriv nt3 "$H"'z	z	workload	-	enabling	collaboration	proposed
+'
+t_exit "a proposed note does not excuse a bad topology: a good one is green" 0 roots --registry-check
+mkpriv nt4 "$H"'z	z	workload	-	enablng	collaboration	proposed
+'
+t_exit "...and a bad one is still refused" 2 roots --registry-check
+
+t_section "--platform-ids: the platform's own repos, by kind (harbor#966)"
+mkpriv pl "$H"'cp	cp	control-plane	-
+yd	tools/yd	scaffolder	-
+fl	fl	fleet-controller	-
+wl	wl	workload	-
+'
+t_eq "control-plane, scaffolder and fleet-controller rows, no workload" "cp
+yd
+fl" "$(roots --platform-ids)"
+PW="$T_TMP/plnone"; mkdir -p "$PW"
+t_eq "no registry: the roots table's three role rows" "$(printf '%s\n' harbor projects-orchestrator project-init | sort)" "$(roots --platform-ids | sort)"
+mkpriv plbad "$H"'evil	../x	workload	-
+'
+t_exit "a refused registry is refused here too" 2 roots --platform-ids
 
 t_section "--conf reads harbor.toml"
 mkpriv c "$H"
@@ -295,6 +372,14 @@ printf 'repo-kind: nonsense\n' > "$PW/oddkind/.agents/config.yaml"
 env PORT_ROOT="$PW" HARBOR_SCOPE_PROJECTS_TSV="$T_TMP/pk.tsv" sh "$T_ROOT/bin/scope.sh" install --seed-from-projects >/dev/null 2>&1
 t_eq "a declared kind is seeded" "data" "$(awk -F'\t' '$1 == "models" { print $3 }' "$PW/harbor-private/repos.tsv")"
 t_eq "a kind the vocabulary lacks falls back to workload" "workload" "$(awk -F'\t' '$1 == "oddkind" { print $3 }' "$PW/harbor-private/repos.tsv")"
+# An undeclared platform repo takes its kind from its role row in contracts/roots.tsv (harbor#966), the table's own names.
+_rl() { awk -F'\t' -v v="$1" '$1 == v { n = $3; sub(/\/.*/, "", n); print n }' "$T_ROOT/contracts/roots.tsv"; }
+PW="$T_TMP/seedp"; for _r in "$(_rl HARBOR_SCOPE_SCAFFOLDER)" "$(_rl HARBOR_SCOPE_FLEET_CONTROLLER)" plainwl; do
+  mkdir -p "$PW/$_r"; git -C "$PW/$_r" init -q; git -C "$PW/$_r" remote add origin "https://example.test/o/$_r.git"; done
+env PORT_ROOT="$PW" HARBOR_SCOPE_PROJECTS_TSV="$T_TMP/pk.tsv" sh "$T_ROOT/bin/scope.sh" install --seed-from-projects >/dev/null 2>&1
+t_eq "the scaffolder role row's repo is seeded as scaffolder" "scaffolder" "$(awk -F'\t' -v i="$(_rl HARBOR_SCOPE_SCAFFOLDER)" '$1 == i { print $3 }' "$PW/harbor-private/repos.tsv")"
+t_eq "the fleet controller role row's repo is seeded as fleet-controller" "fleet-controller" "$(awk -F'\t' -v i="$(_rl HARBOR_SCOPE_FLEET_CONTROLLER)" '$1 == i { print $3 }' "$PW/harbor-private/repos.tsv")"
+t_eq "...and any other undeclared repo as workload" "workload" "$(awk -F'\t' '$1 == "plainwl" { print $3 }' "$PW/harbor-private/repos.tsv")"
 
 t_section "seeding refuses rows the reader would refuse (M1) and fixes a missing newline (M2)"
 PW="$T_TMP/seed2"; mkdir -p "$PW/slashy" "$PW/my repo" "$PW/zorbcorp"
@@ -317,18 +402,50 @@ t_eq "...and the new row is whole" "plumb	flowy	workload	-" "$(grep '^plumb	' "$
 printf 'id\tpath\tkind\tremote\nbad\t../x\tworkload\t-\n' > "$PW/harbor-private/repos.tsv"
 t_exit "a registry already invalid is not appended to" 1 env PORT_ROOT="$PW" HARBOR_SCOPE_PROJECTS_TSV="$T_TMP/p3.tsv" sh "$T_ROOT/bin/scope.sh" install --seed-from-projects
 
-t_section "a skill's notes/ pointer finds its file through roots.sh --private (harbor#1149)"
+t_section "--get follows the registry for a REPOS role, and keeps the table path with none (harbor#966)"
+mkpriv g "$H"'projects-orchestrator	moved/fleet	fleet-controller	-
+'
+t_eq "a role row resolves through the registry's path" "$PW/moved/fleet" "$(roots --get HARBOR_ORCHESTRATOR)"
+t_eq "...and keeps the rest of the row's path" "$PW/moved/fleet/fleet.yaml" "$(roots --get HARBOR_SCOPE_FLEET_FILE)"
+t_eq "a repo the registry lacks keeps the table path" "$PW/project-init" "$(roots --get HARBOR_PROJECT_INIT)"
+t_eq "an exported override still wins" "/elsewhere" "$(HARBOR_SCOPE_FLEET_CONTROLLER=/elsewhere roots --get HARBOR_ORCHESTRATOR)"
+PW="$T_TMP/g-none"; mkdir -p "$PW"
+t_eq "no registry is today's literal" "$PW/projects-orchestrator" "$(roots --get HARBOR_ORCHESTRATOR)"
+
+t_section "a role row finds a renamed repo by its kind, not the table's id (harbor#966, #999)"
+mkpriv rn "$H"'yard	yard	scaffolder	-
+fleet	tools/fleet	fleet-controller	-
+harbor	harbor	control-plane	-
+'
+t_eq "the scaffolder is the one scaffolder row" "$PW/yard" "$(roots --get HARBOR_SCOPE_SCAFFOLDER)"
+t_eq "...and so is the prod-guard source, the same repo" "$PW/yard" "$(roots --get PROJECT_INIT_SRC)"
+t_eq "the fleet controller is the one fleet-controller row" "$PW/tools/fleet" "$(roots --get HARBOR_SCOPE_FLEET_CONTROLLER)"
+t_eq "...and the rest of a row's path is kept" "$PW/tools/fleet/fleet.yaml" "$(roots --get HARBOR_SCOPE_FLEET_FILE)"
+t_eq "a W5 old name asks the same row" "$PW/yard" "$(roots --get HARBOR_PROJECT_INIT)"
+t_eq "--id names the renamed scaffolder" "yard" "$(roots --id HARBOR_SCOPE_SCAFFOLDER)"
+t_eq "--id names the renamed fleet controller" "fleet" "$(roots --id HARBOR_SCOPE_FLEET_CONTROLLER)"
+t_eq "--id of a non-role row is the table's id" "harbor" "$(roots --id HARBOR_SCOPE_REPO)"
+t_exit "--id of a BOX row is a usage error" 2 roots --id HARBOR_SCOPE_LOCAL_BIN
+mkpriv rn2 "$H"'project-init	pi	scaffolder	-
+yard	yard	scaffolder	-
+'
+t_eq "two rows of the kind (a rename window) fall back to the id" "$PW/pi" "$(roots --get HARBOR_SCOPE_SCAFFOLDER)"
+t_eq "...and --id to the table's" "project-init" "$(roots --id HARBOR_SCOPE_SCAFFOLDER)"
+PW="$T_TMP/rn-none"; mkdir -p "$PW"
+t_eq "no registry: --id is today's table id" "projects-orchestrator" "$(roots --id HARBOR_SCOPE_FLEET_CONTROLLER)"
+
+t_section "a skill's notes/ pointer finds its file through scope-roots.sh --private (harbor#1149)"
 # dev-tracking, the skill that carried one, left core for the private layer's pack (harbor#1273), whose suite checks it;
 # a fixture skill keeps the shape and the resolver tested here, beside any core skill that still prints one.
 NP="$T_TMP/notes-priv"; mkdir -p "$NP/notes" "$T_TMP/fx-skills/fx"
-NOTE_ROW="$(grep '^| `notes/`' "$T_ROOT/CONTRACTS/private-layer.md")"
-printf -- '---\nname: fx\n---\ncat "$(sh ~/port/harbor/bin/roots.sh --private)/notes/fixture-note.md"\n' > "$T_TMP/fx-skills/fx/SKILL.md"
-find "$T_ROOT/skills" "$T_TMP/fx-skills" -name SKILL.md -exec sed -n '/^cat "\$(sh ~\/port\/harbor\/bin\/roots\.sh --private)\/notes\/[a-z0-9-]*\.md"$/p' {} + > "$T_TMP/pointers"
+NOTE_ROW="$(grep '^| `notes/`' "$T_ROOT/contracts/private-layer.md")"
+printf -- '---\nname: fx\n---\ncat "$(sh ~/port/harbor/bin/scope-roots.sh --private)/notes/fixture-note.md"\n' > "$T_TMP/fx-skills/fx/SKILL.md"
+find "$T_ROOT/skills" "$T_TMP/fx-skills" -name SKILL.md -exec sed -n '/^cat "\$(sh ~\/port\/harbor\/bin\/scope-roots\.sh --private)\/notes\/[a-z0-9-]*\.md"$/p' {} + > "$T_TMP/pointers"
 t_has "a pointer of the exact shape is found" "$(cat "$T_TMP/pointers")" "notes/fixture-note.md"
 t_has "private-layer.md documents notes/" "$NOTE_ROW" "notes/"
 while IFS= read -r ptr; do
   n="${ptr##*/}"; n="${n%\"}"
   printf 'marker-%s\n' "$n" > "$NP/notes/$n"
-  t_eq "the pointer for $n prints the file in the private layer" "marker-$n" "$(env HARBOR_SCOPE_PRIVATE="$NP" sh -c "$(printf '%s' "$ptr" | sed "s|~/port/harbor/bin/roots.sh|$T_ROOT/bin/roots.sh|")")"
+  t_eq "the pointer for $n prints the file in the private layer" "marker-$n" "$(env HARBOR_SCOPE_PRIVATE="$NP" sh -c "$(printf '%s' "$ptr" | sed "s|~/port/harbor/bin/scope-roots.sh|$T_ROOT/bin/scope-roots.sh|")")"
 done < "$T_TMP/pointers"
 t_done
