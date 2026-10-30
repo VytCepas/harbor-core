@@ -1,10 +1,10 @@
 #!/usr/bin/env sh
-# admission-equivalence.sh, the gate that licenses a guard refactor (harbor#264, #602). This suite proves
+# floor-equiv.sh, the gate that licenses a guard refactor (harbor#264, #602). This suite proves
 # the gate can go RED: a slice that provably blocks, a mutant that deletes the rule it fires, one
 # that renames it, and corpora the gate must refuse. A slice, not the corpus, keeps it fast (#279).
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 B="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"
-TOOL="$T_ROOT/bin/admission-equivalence.sh"; BASE="$T_ROOT/bin"; CORPUS="$T_ROOT/fixtures/admission-corpus.jsonl"
+TOOL="$T_ROOT/bin/floor-equiv.sh"; BASE="$T_ROOT/bin"; CORPUS="$T_ROOT/fixtures/admission-corpus.jsonl"
 mkdir -p "$HOME/.claude"  # the @HOME@ row names it, as the real HOME's did (harbor#602)
 fire() { CLAUDE_CONFIG_DIR="$T_ROOT" sh "$BASE/admission-bash.sh" < "$1" > "$B/o.txt" 2>&1; }  # <payload file>
 equiv() { sh "$TOOL" --config "$T_ROOT" --baseline "$BASE" "$@" 2>&1; }  # <--candidate …> <--corpus …>

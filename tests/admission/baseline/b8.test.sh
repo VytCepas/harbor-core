@@ -12,12 +12,12 @@ B8="$TMP/b8"; mkdir -p "$B8/bin" "$B8/skills/demo"
 printf '{"permissions":{"allow":[],"deny":[],"disableBypassPermissionsMode":"disable","disableAutoMode":"disable"}}\n' > "$B8/settings.json"
 printf 'be helpful\n' > "$B8/CLAUDE.md"
 printf 'name: demo\n' > "$B8/skills/demo/SKILL.md"
-for g in library-admission.sh admission-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh \
-         annotate-web.sh admission-hook.sh pin-instructions.sh admission-deny.sh admission-integrity.sh; do
+for g in library-admission.sh floor-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh \
+         annotate-web.sh admission-hook.sh pin-instructions.sh floor-deny.sh admission-integrity.sh; do
   cp "$SRC/$g" "$B8/bin/$g"
 done
 chmod +x "$B8"/bin/*.sh
-env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-install.sh" --dir "$B8" --apply >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-install.sh" --dir "$B8" --apply >/dev/null 2>&1
 b8run() { printf '{"hook_event_name":"SessionStart","source":"startup"}' \
   | CLAUDE_CONFIG_DIR="$B8" sh "$B8/bin/admission-integrity.sh" 2>/dev/null; }
 pi() { env -u CLAUDE_CONFIG_DIR sh "$B8/bin/pin-instructions.sh" "$1" --dir "$2" >/dev/null 2>&1; }  # <mode> <dir>: exit code only
@@ -84,7 +84,7 @@ t_has "B8 ...with a re-pin command spelled --dir for this sandbox, never --live"
 t_hasnt "B8 ...so it cannot bless the live dir instead" "$(b8run)" 'pin-instructions.sh --apply --live'
 # The control: on the LIVE dir (a sandbox HOME's ~/.claude, installed with --live), B6 names --live.
 B8LH="$TMP/b8livehome"; mkdir -p "$B8LH/.claude"; printf '%s\n' '{"permissions":{"allow":[],"deny":[]}}' > "$B8LH/.claude/settings.json"
-env -u CLAUDE_CONFIG_DIR HOME="$B8LH" sh "$SRC/admission-install.sh" --apply --live --with-b6 >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR HOME="$B8LH" sh "$SRC/floor-install.sh" --apply --live --with-b6 >/dev/null 2>&1
 b8live() { printf '{"hook_event_name":"SessionStart"}' | env HOME="$B8LH" CLAUDE_CONFIG_DIR="$B8LH/.claude" sh "$B8LH/.claude/bin/admission-integrity.sh" 2>/dev/null; }
 t_has "B8 ...while on the live dir it names the --live spelling pin-instructions takes there" "$(b8live)" \
   'pin-instructions.sh --apply --live'
@@ -180,12 +180,12 @@ t_section "REGRESSION: B8 manifest — symlinks, overrides, path reporting"
 B8R="$TMP/b8r"; mkdir -p "$B8R/bin" "$B8R/skills"
 printf '{"permissions":{"allow":[],"deny":[]}}\n' > "$B8R/settings.json"
 printf 'be helpful\n' > "$B8R/CLAUDE.md"
-for g in library-admission.sh admission-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh \
-         annotate-web.sh admission-hook.sh pin-instructions.sh admission-deny.sh admission-integrity.sh; do
+for g in library-admission.sh floor-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh \
+         annotate-web.sh admission-hook.sh pin-instructions.sh floor-deny.sh admission-integrity.sh; do
   cp "$SRC/$g" "$B8R/bin/$g"
 done
 chmod +x "$B8R"/bin/*.sh
-env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-install.sh" --dir "$B8R" --apply >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-install.sh" --dir "$B8R" --apply >/dev/null 2>&1
 b8r() { printf '{"hook_event_name":"SessionStart","source":"startup"}' \
   | CLAUDE_CONFIG_DIR="$B8R" sh "$B8R/bin/admission-integrity.sh" 2>/dev/null; }
 pin8r() { env -u CLAUDE_CONFIG_DIR sh "$B8R/bin/pin-instructions.sh" --apply --dir "$B8R" >/dev/null 2>&1; }
@@ -230,7 +230,7 @@ t_has "B8-DEF-07 a config dir containing | keeps its surfaces" \
 t_section "REGRESSION: pass 10 · B8 manifest, pins and recovery"
 # Code lines only: a comment naming the pin would outlive the list it describes.
 t_exit "P10-04 .helm-instructions.sha256 is in the B1 deny set" 0 \
-  ere 'helm-instructions\.sha256' "$(grep -v '^[[:space:]]*#' "$SRC/admission-deny.sh")"
+  ere 'helm-instructions\.sha256' "$(grep -v '^[[:space:]]*#' "$SRC/floor-deny.sh")"
 t_exit "RT10-04 deploy's snapshot set carries the B8 pin (the restore source since harbor#765)" 0 \
   ere 'helm-instructions\.sha256' "$(grep '^SNAP_SET=' "$SRC/deploy.sh")"
 t_exit "RT10-03 B6 content-pins pin-instructions.sh" 0 grep -qE '^GUARDS=.*pin-instructions\.sh' "$SRC/admission-integrity.sh"
@@ -255,7 +255,7 @@ t_section "B-REWRITE: P11-B8-02 truncation and B8-ABSENT"
 TRUNC="$TMP/trunc"; mkdir -p "$TRUNC/bin" "$TRUNC/agents" "$TRUNC/skills" "$TRUNC/commands"
 printf '{"permissions":{"allow":[],"deny":[]}}\n' > "$TRUNC/settings.json"
 printf 'x\n' > "$TRUNC/CLAUDE.md"; printf 'a\n' > "$TRUNC/skills/s.md"; printf 'c\n' > "$TRUNC/commands/c.md"
-env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-install.sh" --dir "$TRUNC" --apply >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-install.sh" --dir "$TRUNC" --apply >/dev/null 2>&1
 _before="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/pin-instructions.sh" --print --dir "$TRUNC" | wc -l | tr -d ' ')"
 ln -sfn /nonexistent "$TRUNC/agents/x"
 _after="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/pin-instructions.sh" --print --dir "$TRUNC" | wc -l | tr -d ' ')"
@@ -266,23 +266,23 @@ printf 'EVIL\n' > "$TRUNC/skills/evil.md"
 t_exit "P11-B8-02 an injection after a planted symlink is drift" 1 env -u CLAUDE_CONFIG_DIR sh "$SRC/pin-instructions.sh" --check --dir "$TRUNC"
 head -3 "$TRUNC/.helm-instructions.sha256" > "$TRUNC/.pin.tmp" && mv "$TRUNC/.pin.tmp" "$TRUNC/.helm-instructions.sha256"
 t_has "P11-B8-02 floor-verify refuses a pin that lost whole surfaces" \
-  "$(env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-verify.sh" --dir "$TRUNC" 2>&1)" 'the pin has NO entry for'
+  "$(env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-verify.sh" --dir "$TRUNC" 2>&1)" 'the pin has NO entry for'
 # B8-ABSENT: pinned-as-absent is not pinned. The phrase is named once (harbor#145).
 _B8_ABSENT='CLAUDE.md is pinned as ABSENT'
 NOCON="$TMP/nocon"; mkdir -p "$NOCON/bin"
 printf '{"permissions":{"allow":[],"deny":[]}}\n' > "$NOCON/settings.json"
-env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-install.sh" --dir "$NOCON" --apply >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-install.sh" --dir "$NOCON" --apply >/dev/null 2>&1
 env -u CLAUDE_CONFIG_DIR sh "$SRC/pin-instructions.sh" --apply --dir "$NOCON" >/dev/null 2>&1
-_nocon="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-verify.sh" --dir "$NOCON" 2>&1)"
+_nocon="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-verify.sh" --dir "$NOCON" 2>&1)"
 t_has "B8-ABSENT a config dir with NO constitution says so" "$_nocon" "$_B8_ABSENT"
 # WARN is adv(), FAIL is no(): a failure would abort every sandbox-make --with-floor (№2.11).
 t_has "B8-ABSENT it is advisory, not a failure" "$_nocon" "  WARN: B8: $_B8_ABSENT"
 HASCON="$TMP/hascon"; mkdir -p "$HASCON/bin"
 printf '{"permissions":{"allow":[],"deny":[]}}\n' > "$HASCON/settings.json"
 printf '# doctrine\n' > "$HASCON/CLAUDE.md"
-env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-install.sh" --dir "$HASCON" --apply >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-install.sh" --dir "$HASCON" --apply >/dev/null 2>&1
 env -u CLAUDE_CONFIG_DIR sh "$SRC/pin-instructions.sh" --apply --dir "$HASCON" >/dev/null 2>&1
-t_hasnt "B8-ABSENT silent on a box that HAS a constitution" "$(env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-verify.sh" --dir "$HASCON" 2>&1)" "$_B8_ABSENT"
+t_hasnt "B8-ABSENT silent on a box that HAS a constitution" "$(env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-verify.sh" --dir "$HASCON" 2>&1)" "$_B8_ABSENT"
 
 t_section "PERF: the B8 manifest runs at SessionStart, so it has to be cheap"
 PERFDIR="$TMP/perf"; mkdir -p "$PERFDIR/skills/many"
@@ -316,7 +316,7 @@ printf 'name: x\n'    > "$SY/plugins/synced/id-1/skills/x/SKILL.md"
 printf '1759000000\n' > "$SY/plugins/cache/mp/p/1.0.0/.orphaned_at"
 printf 'cached\n'     > "$SY/plugins/cache/mp/p/1.0.0/skills/SKILL.md"
 printf 'name: demo\n' > "$SY/skills/demo/SKILL.md"; printf 't\n' > "$SY/skills/demo/.last-complete-round"
-cp "$SRC/pin-instructions.sh" "$SRC/library-admission.sh" "$SRC/admission-normalize.awk" "$SRC/library-log.sh" "$SRC/deploy-install-lib.sh" "$SY/bin/"
+cp "$SRC/pin-instructions.sh" "$SRC/library-admission.sh" "$SRC/floor-normalize.awk" "$SRC/library-log.sh" "$SRC/deploy-install-lib.sh" "$SY/bin/"
 _msy="$(sh -c '. "$1"/library-admission.sh; floor_instr_manifest "$2"' _ "$SRC" "$SY" 2>/dev/null)"
 t_hasnt "B8-SYNC plugins/synced/*/.last-complete-round is not in the manifest" "$_msy" 'synced/id-1/.last-complete-round'
 t_hasnt "B8-SYNC plugins/cache/*/.orphaned_at is not in the manifest" "$_msy" '.orphaned_at'
@@ -346,7 +346,7 @@ rxi() { # <ver> [extra entry json] — installed_plugins.json loading <ver>, as 
   printf '{"version":2,"plugins":{"p@mp":[{"scope":"user","installPath":"%s/%s","version":"%s","gitCommitSha":"%s","installedAt":"2026-10-03T07:18:00Z","lastUpdated":"2026-10-03T07:18:00Z"}]%s}}\n' \
     "$RXC" "$1" "$1" "$1" "${2:-}" > "$RX/plugins/installed_plugins.json"; }
 rxm() { sh -c '. "$1"/library-admission.sh; floor_instr_manifest "$2"' _ "$SRC" "$RX" 2>/dev/null; }
-cp "$SRC/pin-instructions.sh" "$SRC/library-admission.sh" "$SRC/admission-normalize.awk" "$SRC/library-log.sh" "$SRC/deploy-install-lib.sh" "$RX/bin/"
+cp "$SRC/pin-instructions.sh" "$SRC/library-admission.sh" "$SRC/floor-normalize.awk" "$SRC/library-log.sh" "$SRC/deploy-install-lib.sh" "$RX/bin/"
 rxi aaa111; pi --apply "$RX"
 _mrx="$(rxm)"
 t_has "B8-LOADED a loaded file is pinned under its entry's label" "$_mrx" '  plugins//loaded/p@mp/user/skills/x/SKILL.md'

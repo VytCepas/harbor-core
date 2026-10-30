@@ -88,7 +88,7 @@ step 07c-confinement root 'su stranger -c "sh /home/stranger/port/harbor/bin/dep
   ! SUDO_USER=stranger sh /home/stranger/port/harbor/bin/deploy-confinement.sh > /tmp/confine.log 2>&1 &&
   grep -qE "missing: bwrap|bubblewrap cannot start" /tmp/confine.log &&
   jq -e "(has(\"sandbox\") | not) and .disableSideloadFlags == true" /etc/claude-code/managed-settings.json >/dev/null'
-# B8 pin is the owner's own act by design (admission-install.sh:458); it is part of a first install. Run from the checkout, as
+# B8 pin is the owner's own act by design (floor-install.sh:458); it is part of a first install. Run from the checkout, as
 # deploy spells it: it needs only the config dir, and a missing one is then named, not "cannot open".
 step 07b-pin-instructions stranger 'sh ~/port/harbor/bin/pin-instructions.sh --apply --live'
 step 08-check stranger 'sh ~/port/harbor/bin/harbor check --live'

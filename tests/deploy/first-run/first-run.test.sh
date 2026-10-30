@@ -32,30 +32,30 @@ t_eq "with none given, a bin/harbor beside the script is the checkout, wherever 
 t_eq "...and that beats HARBOR_SCOPE_REPO" "sh '$T_TMP/clone/bin/harbor' scope install" "$(env -u PORT_ROOT HARBOR_SCOPE_REPO=/from/env sh "$T_TMP/clone/bin/spell.sh" "")"
 
 t_section "floor-verify --live on a box with no config dir"
-t_eq "it answers, it does not misuse: exit 1" "exit 1" "$(run sh "$B/admission-verify.sh" --live)"
+t_eq "it answers, it does not misuse: exit 1" "exit 1" "$(run sh "$B/floor-verify.sh" --live)"
 t_eq "one FAIL" 1 "$(fails)"
 t_has "the FAIL names the missing config dir" "$(first)" "no config dir at $C"
 t_eq "the fix is the first-run command, not 'see docs/explanation/admission-baseline.md'" "  fix: $FIX" "$(fixof)"
 t_eq "a --dir that names no directory has no automatic fix, and says why" "  fix: none automatic — see the path given to --dir" \
-  "$(run sh "$B/admission-verify.sh" --dir "$T_TMP/nowhere" >/dev/null; fixof | sed 's/, which names no directory.*//')"
+  "$(run sh "$B/floor-verify.sh" --dir "$T_TMP/nowhere" >/dev/null; fixof | sed 's/, which names no directory.*//')"
 
 t_section "floor-verify --live on a config dir with no settings.json"
 mkdir -p "$C"
-run sh "$B/admission-verify.sh" --live >/dev/null
+run sh "$B/floor-verify.sh" --live >/dev/null
 t_has "the wiring check names the missing file" "$(out)" "  FAIL: no settings.json in $CP — the floor has nothing to be wired into"
 t_has "...and with nothing installed, says the first-run step was not taken" "$(grep 'no settings.json in' "$T_TMP/out")" "the first-run step has not been taken"
 t_has "...fixed by the first-run command" "$(grep -A1 'no settings.json in' "$T_TMP/out")" "  fix: $FIX"
 mkdir -p "$C/bin"
-run sh "$B/admission-verify.sh" --live >/dev/null
+run sh "$B/floor-verify.sh" --live >/dev/null
 t_has "a box with a bin/ lost the file after the first run, and says so" "$(grep 'no settings.json in' "$T_TMP/out")" "this box has an install (bin/ or .harbor-manifest), so the file was lost after the first run"
 t_eq "...without claiming the first-run step was not taken" 0 "$(grep -c 'first-run step has not been taken' "$T_TMP/out")"
 t_has "...and with no snapshot the fix is still the first-run command" "$(grep -A1 'no settings.json in' "$T_TMP/out")" "  fix: $FIX"
 mkdir -p "$C/backups/deploy-20260101-000000"
-run sh "$B/admission-verify.sh" --live >/dev/null
+run sh "$B/floor-verify.sh" --live >/dev/null
 t_has "...with a deploy snapshot it is restore's dry run, which holds the operator's own settings" "$(grep -A1 'no settings.json in' "$T_TMP/out")" "  fix: sh '$B/deploy-restore.sh' --live"
 rm -rf "$C"
 mkdir -p "$C"; : > "$C/.harbor-manifest"
-run sh "$B/admission-verify.sh" --live >/dev/null
+run sh "$B/floor-verify.sh" --live >/dev/null
 t_has "a manifest with no bin/ is an install too" "$(grep 'no settings.json in' "$T_TMP/out")" "so the file was lost after the first run"
 rm -rf "$C"
 
@@ -109,5 +109,5 @@ t_has "...and the checkout copy of the script runs before any deploy, which is t
 t_section "a checkout cloned anywhere names itself, with HARBOR_SCOPE_REPO unset"
 cp -R "$B" "$T_TMP/clone/binall"; CFIX="sh '$T_TMP/clone/binall/harbor' scope install"
 t_eq "pin-instructions --live" "  fix: $CFIX" "$(run env -u HARBOR_SCOPE_REPO -u HARBOR_REPO sh "$T_TMP/clone/binall/pin-instructions.sh" --live >/dev/null; fixof)"
-t_eq "floor-verify --live" "  fix: $CFIX" "$(run env -u HARBOR_SCOPE_REPO -u HARBOR_REPO sh "$T_TMP/clone/binall/admission-verify.sh" --live >/dev/null; fixof)"
+t_eq "floor-verify --live" "  fix: $CFIX" "$(run env -u HARBOR_SCOPE_REPO -u HARBOR_REPO sh "$T_TMP/clone/binall/floor-verify.sh" --live >/dev/null; fixof)"
 t_done

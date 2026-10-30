@@ -1,6 +1,0 @@
-# fixtures/naming/overlay/pass (harbor#967) — repo overlays that MUST stay green. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
-# Each name is a directory, relative to the repo root, whose naming-words.tsv and naming-families.tsv `--check overlay` judges.
-# COLUMNS  name <TAB> -
-name	rule
-fixtures/naming/overlay/pass/words-and-families	-
-fixtures/naming/overlay/pass/comments	-

@@ -92,7 +92,7 @@ floor_port_root() {
 floor_ere_quote() { printf '%s' "$1" | sed 's/[][\\^$.*+?(){}|]/\\&/g'; }
 
 # floor_host_token — the per-machine partition key for every ledger that shards
-# by host: the guard-decision ledger (admission-observe.sh), the work-log's session
+# by host: the guard-decision ledger (floor-observe.sh), the work-log's session
 # records (memory-harvest.sh) and its commit subjects (worklog-push.sh).
 #
 # ONE definition, called by all three. They previously carried the same
@@ -110,7 +110,7 @@ floor_ere_quote() { printf '%s' "$1" | sed 's/[][\\^$.*+?(){}|]/\\&/g'; }
 # 38. Nothing errored. A reader of either directory silently under-reports, which
 # is the failure mode an audit trail exists to not have.
 #
-# The comment at admission-observe.sh's old call site asserted this value "changes
+# The comment at floor-observe.sh's old call site asserted this value "changes
 # once per boot". It changes when the network does.
 #
 # `scutil --get LocalHostName` is the Bonjour name: set in Settings > Sharing,
@@ -279,9 +279,9 @@ floor_no_human() {
 # does not exist. Two stops, not one replacing the other: PORT_ROOT defaults
 # UNDER $HOME, so the M14 stop still has work to do for every path outside it.
 floor_in_repo() {
-  # HARBOR_ADMISSION_MARKER_DIR: the directory holding the marker the walk found, even when its value says
+  # FLOOR_MARKER_DIR: the directory holding the marker the walk found, even when its value says
   # `ambient`, so a caller asking about THAT repo's wiring or opt-outs reads the same one (harbor#954).
-  HARBOR_ADMISSION_MARKER_DIR=""
+  FLOOR_MARKER_DIR=""
   # Prefer the SESSION cwd the harness sends in the payload (verified present in
   # a live capture, 2026-07-25) over the hook process's own $PWD, which is only
   # incidentally the same. The B5 seam's verdict depends on this path.
@@ -330,7 +330,7 @@ floor_in_repo() {
       _mk="$d/.claude/config.yaml"
     fi
     if [ -n "$_mk" ]; then
-      HARBOR_ADMISSION_MARKER_DIR="$d"
+      FLOOR_MARKER_DIR="$d"
       # `context: ambient` is the owner opting THIS repo back in to the global
       # layer (project-init PI-901 emits `context: repo` and defines `ambient`
       # as the opt-out). Read at the marker the walk just found, because the
@@ -391,7 +391,7 @@ floor_in_repo() {
 floor_repo_wires() {
   _rwh="$1"; _rwp="$2"
   floor_in_repo || return 1
-  _rw="$HARBOR_ADMISSION_MARKER_DIR/.claude"
+  _rw="$FLOOR_MARKER_DIR/.claude"
   { [ -d "$_rw" ] && [ ! -L "$_rw" ]; } || return 1
   set --
   for _rws in "$_rw/settings.json" "$_rw/settings.local.json"; do
@@ -602,7 +602,7 @@ floor_expand_home() {
 #    all. `[ -f ] && [ ! -L ]` bounds only a STATIC plant, not the race — the
 #    design pass measured a type-check-only writer hang 17 times in 1200 calls
 #    against a spinner that unlinks-and-mkfifos the sink. Planting a FIFO needs
-#    WRITE on the directory, so holding it at 0500 (admission-observe.sh) closes it:
+#    WRITE on the directory, so holding it at 0500 (floor-observe.sh) closes it:
 #    the attacker must fit chmod+unlink+mkfifo between our stat and our open.
 #    CAVEAT, deliberately recorded: access(2) short-circuits for uid 0, so this
 #    gate does NOT hold for a session running as root. The floor is not designed
@@ -629,7 +629,7 @@ floor_expand_home() {
 #    payload's resolved file_path (CONSTITUTION №3).
 #
 # 5. ONE RECORD = ONE printf = ONE write(). Two guards append to one file for a
-#    single Bash call (admission-install.sh:88-89) and tool calls run in parallel, so
+#    single Bash call (floor-install.sh:88-89) and tool calls run in parallel, so
 #    interleaving is the normal case, not the edge case. Measured on this box:
 #    concurrent `printf >> file` under /bin/sh is atomic up to EXACTLY 1024 bytes
 #    including the newline and tears reliably above it (8 writers x 300 records:
@@ -1219,7 +1219,7 @@ floor_is_executor() {
 }
 
 # floor_bash_targets <cmd> — the newline-joined set of strings that would
-# ACTUALLY run. Delegates the shell-aware parse to admission-normalize.awk (see
+# ACTUALLY run. Delegates the shell-aware parse to floor-normalize.awk (see
 # that file for the quoting model) and picks the variant by role:
 #   • DATA  — quoted ARGUMENTS dropped (inert), word-adjacent quotes kept
 #             (c'url' → curl, rm -rf ''/ → rm -rf /)
@@ -1235,14 +1235,10 @@ floor_is_executor() {
 # normalizer inside the guard directory is honoured.
 _fa="${FLOOR_AWK:-}"
 [ -n "$_fa" ] && [ ! -s "$_fa" ] && _fa=""
-case "$_fa" in */admission-normalize.awk) ;; *) _fa="" ;; esac
+case "$_fa" in */floor-normalize.awk) ;; *) _fa="" ;; esac
 # harbor#813: no dirname fork for a caller that set no DIR.
 case "${0:-.}" in */*) _fad="${0%/*}" ;; *) _fad=. ;; esac
-# W7 (harbor#949): a deploy ships this library (runtime-install) before the normaliser's new name (admission-install),
-# so between the two only the old name is in bin/. Read it there, named through a variable, until the shim goes (2026-12-01).
-_fan=floor-normalize
-[ -n "$_fa" ] || [ -s "${DIR:-$_fad}/admission-normalize.awk" ] || [ ! -s "${DIR:-$_fad}/$_fan.awk" ] || _fa="${DIR:-$_fad}/$_fan.awk"
-FLOOR_AWK="${_fa:-${DIR:-$_fad}/admission-normalize.awk}"
+FLOOR_AWK="${_fa:-${DIR:-$_fad}/floor-normalize.awk}"
 
 # floor_expand_vars <text> — substitute simple `NAME=value` assignments made
 # earlier in the SAME command. Every rule requires the dangerous token to sit
@@ -1314,7 +1310,7 @@ esac
 # the rule itself — every one of them defeated by writing identical bytes to a file
 # instead, which is the tell the ticket names.
 #
-# THE OPENER LINE IS EVERYTHING BEFORE THE FIRST " ; ", because admission-normalize.awk
+# THE OPENER LINE IS EVERYTHING BEFORE THE FIRST " ; ", because floor-normalize.awk
 # joins logical lines with that separator. That is what makes this decidable here
 # and NOT from FLOOR_SEGS: `cat <<HD | sh` puts the shell at segment 2, between the
 # opener and the body, with the delimiter still last, so an index walk cannot see
@@ -1472,7 +1468,7 @@ floor_bash_targets() {
   # adjacency-based rule broke at once (red-team pass 8, critical).
   printf '%s\n' "$_norm" | sed -n 's/^VALU://p'
   # FEXEC — find's `-exec`/`-ok` children with `{}` substituted back to the
-  # search root (admission-normalize.awk, seg_expand_find). The child is a command
+  # search root (floor-normalize.awk, seg_expand_find). The child is a command
   # find RUNS, so the flat half of the file has to see it too: `find <cfg>/bin
   # -name 'guard-*.sh' -exec cp /tmp/evil {} \;` has no surface next to a
   # mutating verb until the placeholder is resolved, and mutate-onto-surface —
@@ -1524,8 +1520,8 @@ floor_session_context() {
 
 floor_engine_stand_down() {
   floor_in_repo || :
-  [ -n "$HARBOR_ADMISSION_MARKER_DIR" ] || return 1
-  _wo="$HARBOR_ADMISSION_MARKER_DIR/.agents/config.yaml"
+  [ -n "$FLOOR_MARKER_DIR" ] || return 1
+  _wo="$FLOOR_MARKER_DIR/.agents/config.yaml"
   { [ -f "$_wo" ] && [ ! -L "$_wo" ]; } || return 1
   # The `context:` reader's spelling rules: column 0, quotes and a spaced colon allowed, and a
   # comment needs whitespace before it. YAML 1.1 reads Off and OFF as the same boolean.
@@ -1587,7 +1583,7 @@ floor_seg_load() { # <cmd>
 #
 #   a command over FLOOR_MAX_NORM  -> SILENT ALLOW on diskutil eraseDisk
 #   awk absent from PATH           -> SILENT ALLOW
-#   admission-normalize.awk missing    -> SILENT ALLOW
+#   floor-normalize.awk missing    -> SILENT ALLOW
 #
 # with `admission-bash.sh` DENYING the padded 'rm -rf /' alongside it as the control.
 # The first cause needs no missing binary, no missing file and no environment
@@ -1644,20 +1640,20 @@ _floor_seg_ids() { # <cmd-ERE> [ci]
   _fsci=""; [ "${2:-}" = ci ] && _fsci="-i"
   # The anchors come off by parameter expansion, not $(printf | sed): two fewer processes per call (harbor#264).
   _fsre="${1#^}"; _fsre="${_fsre%\$}"
-  "$FLOOR_GREP" $_fsci -E "^SEGC:[0-9]+:$_fsre\$" 2>/dev/null <<HARBOR_ADMISSION_SEG_EOF \
+  "$FLOOR_GREP" $_fsci -E "^SEGC:[0-9]+:$_fsre\$" 2>/dev/null <<FLOOR_SEG_EOF \
     | sed -n 's/^SEGC:\([0-9][0-9]*\):.*/\1/p' | sort -un | tr '\n' ' '
 ${FLOOR_SEGS:-}
-HARBOR_ADMISSION_SEG_EOF
+FLOOR_SEG_EOF
 }
 
 # _floor_seg_argtab — every segment's arguments and redirect targets, one per line, raw then in
-# floor_expand_paths' spelling, in HARBOR_ADMISSION_SEG_TAB_ARGUMENTS, and the owning segment id of each line in
-# HARBOR_ADMISSION_SEG_TAB_IDS (HARBOR_ADMISSION_SEG_TAB_N lines). Built once per FLOOR_SEGS (guard-bash appends fold rows,
+# floor_expand_paths' spelling, in FLOOR_SEG_TAB_ARGS, and the owning segment id of each line in
+# FLOOR_SEG_TAB_IDS (FLOOR_SEG_TAB_N lines). Built once per FLOOR_SEGS (guard-bash appends fold rows,
 # so the table is keyed on the whole string). Returns 1 when the expansion does not keep one line per
 # argument, and floor_seg_has then takes its per-segment loop instead.
 _floor_seg_argtab() {
-  [ "${HARBOR_ADMISSION_SEG_TAB_KEY-x}" = "$FLOOR_SEGS" ] && return "${HARBOR_ADMISSION_SEG_TAB_RC:-1}"
-  HARBOR_ADMISSION_SEG_TAB_KEY="$FLOOR_SEGS"; HARBOR_ADMISSION_SEG_TAB_RC=1
+  [ "${FLOOR_SEG_TAB_KEY-x}" = "$FLOOR_SEGS" ] && return "${FLOOR_SEG_TAB_RC:-1}"
+  FLOOR_SEG_TAB_KEY="$FLOOR_SEGS"; FLOOR_SEG_TAB_RC=1
   _fta="$(printf '%s\n' "$FLOOR_SEGS" | awk '
     /^SEGA:/ { s = substr($0, 6); p = index(s, ":"); print substr(s, 1, p - 1); print "A" substr(s, p + 1); next }
     /^SEGR:/ { s = substr($0, 6); p = index(s, ":"); r = substr(s, p + 1); q = index(r, ":")
@@ -1670,12 +1666,12 @@ _floor_seg_argtab() {
   [ "$_ftn" = "$(printf '%s\n' "$_fte" | awk 'END { print NR }')" ] || return 1
   case "$_ftr" in *'@END@') ;; *) return 1 ;; esac
   case "$_fte" in *'@END@') ;; *) return 1 ;; esac
-  HARBOR_ADMISSION_SEG_TAB_IDS="$_fti
+  FLOOR_SEG_TAB_IDS="$_fti
 $_fti"
-  HARBOR_ADMISSION_SEG_TAB_ARGUMENTS="$_ftr
+  FLOOR_SEG_TAB_ARGS="$_ftr
 $_fte"
-  HARBOR_ADMISSION_SEG_TAB_N=$((_ftn * 2))
-  HARBOR_ADMISSION_SEG_TAB_RC=0
+  FLOOR_SEG_TAB_N=$((_ftn * 2))
+  FLOOR_SEG_TAB_RC=0
   return 0
 }
 
@@ -1695,9 +1691,9 @@ floor_seg_has() {
     _sids="$(_floor_seg_ids "$_scre" ci)"
     [ -n "$_sids" ] || return 1
     for _sre in "$@"; do
-      _sids="$( { printf '%s\n' "$_sids"; printf '%s\n' "$HARBOR_ADMISSION_SEG_TAB_IDS"
-                  printf '%s\n' "$HARBOR_ADMISSION_SEG_TAB_ARGUMENTS" | "$FLOOR_GREP" -nE -- "$_sre" 2>/dev/null | cut -d: -f1; } \
-                | awk -v n="$HARBOR_ADMISSION_SEG_TAB_N" 'NR == 1 { k = split($0, c, " "); for (i = 1; i <= k; i++) C[c[i]] = 1; next }
+      _sids="$( { printf '%s\n' "$_sids"; printf '%s\n' "$FLOOR_SEG_TAB_IDS"
+                  printf '%s\n' "$FLOOR_SEG_TAB_ARGS" | "$FLOOR_GREP" -nE -- "$_sre" 2>/dev/null | cut -d: -f1; } \
+                | awk -v n="$FLOOR_SEG_TAB_N" 'NR == 1 { k = split($0, c, " "); for (i = 1; i <= k; i++) C[c[i]] = 1; next }
                     NR <= n + 1 { ID[NR - 1] = $0; next }
                     { i = ID[$0 + 0]; if (i in C && !(i in O)) { O[i] = 1; printf "%s ", i } }')"
       [ -n "$_sids" ] || return 1
@@ -1867,7 +1863,7 @@ floor_heredoc_inert_only() {
   printf '%s\n' "$FLOOR_SEGS" | awk -v PUB="$_hipub" '
     BEGIN { split("echo printf git jq yq true false :", IV, " ") }
     # A SYNTHESIZED SEGMENT IS NOT A POSITION IN THE COMMAND (P13-fs-06). The
-    # find -exec children admission-normalize.awk appends get ids ABOVE every parsed
+    # find -exec children floor-normalize.awk appends get ids ABOVE every parsed
     # segment, so "the delimiter must be the LAST segment" started comparing the
     # delimiter against a child that the heredoc body merely DESCRIBES. Measured:
     # a git commit -F - heredoc whose BODY spells the find -exec shape went from
@@ -1908,7 +1904,7 @@ floor_heredoc_inert_only() {
     # equals the target. Every clause was satisfied by an ORDINARY read, and the
     # veto then exited guard-bash 0 with a "rm -rf /" sitting in the middle of the
     # command. Measured at rc=0 — a total bypass of the guard, reached with no
-    # heredoc at all. admission-normalize.awk now distinguishes the two operators.
+    # heredoc at all. floor-normalize.awk now distinguishes the two operators.
     /^SEGR:1:<<:/ { D = $0; sub(/^SEGR:1:<<:/, "", D) }
     /^SEGR:1:/ { R1++ }
     /^SEGW:1:/ { W1 = $0; sub(/^SEGW:1:/, "", W1) }

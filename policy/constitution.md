@@ -122,7 +122,7 @@ of subdirectory.
 **What enforces this is machine state, so never read it from here — ask the box:**
 
 ```
-sh bin/admission-verify.sh --live      # or: harbor verify
+sh bin/floor-verify.sh --live      # or: harbor verify
 ```
 
 An installed scanner is a net, not a wall: `./docs/explanation/admission-baseline.md` records measured

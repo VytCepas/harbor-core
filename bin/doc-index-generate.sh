@@ -334,7 +334,7 @@ d_vendor() {
 # expensive one: a document claiming a guard is wired, on a box where it is not,
 # reads as coverage and is its opposite.
 #
-# admission-install.sh declares its wiring as rows of its floor_hooks table.
+# floor-install.sh declares its wiring as rows of its floor_hooks table.
 # deploy-runtime-install.sh routes its hooks through variables, so the variable is
 # resolved here — parsing the merge_* calls alone would print `$VERDICT_HOOK`,
 # which is a row nobody can act on.
@@ -346,7 +346,7 @@ d_cadence() {
   # two adjacent tabs collapse into one and the command lands in the matcher
   # column. Every SessionStart hook rendered one cell to the left, which is a
   # table that reads fine and is wrong. Filled here, before the field can vanish.
-  # admission-install.sh's rows are its floor_hooks table (harbor#766); an opt-in row
+  # floor-install.sh's rows are its floor_hooks table (harbor#766); an opt-in row
   # (--with-b6, --with-stop-gate) is not armed by a default install, so it is left out.
   awk -F';' '
     /^floor_hooks\(\)/ { f = 1; next }
@@ -356,7 +356,7 @@ d_cadence() {
       if (m == "") m = (ev ~ /^(SessionStart|Stop|SessionEnd)$/) ? "(every session)" : "(every tool)"
       print ev "\t" m "\t" c
     }
-  ' "$ROOT/bin/admission-install.sh" \
+  ' "$ROOT/bin/floor-install.sh" \
     | while IFS="$(printf '\t')" read -r ev m cmd; do
         [ -n "${ev:-}" ] || continue
         row "<code>$(printf '%s' "$ev" | esc)</code>" \

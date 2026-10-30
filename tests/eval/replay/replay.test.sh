@@ -141,7 +141,7 @@ t_eq "R13 the real live .helm-replay is unchanged by this run" "$REAL_RP_BEFORE"
 # run is partial (0 < GOT < IN) and deterministic. A short run must refuse to report.
 _R14_REFUSE='REFUSING TO REPORT'
 _SHORT="$TMP/shortbin"; mkdir -p "$_SHORT"
-for _f in eval-replay.sh eval-replay-corpus.sh library-log.sh library-admission.sh admission-bash.sh admission-egress.sh admission-self-edit.sh admission-normalize.awk; do
+for _f in eval-replay.sh eval-replay-corpus.sh library-log.sh library-admission.sh admission-bash.sh admission-egress.sh admission-self-edit.sh floor-normalize.awk; do
   cp "$SRC/$_f" "$_SHORT/$_f"
 done
 cp "$SRC/eval-replay-worker.sh" "$_SHORT/replay-worker-real.sh"

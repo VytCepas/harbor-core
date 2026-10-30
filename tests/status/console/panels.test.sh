@@ -15,7 +15,7 @@ if [ -z "$UI_BUN" ]; then
 fi
 ui_require_listen "the panels"
 cmd_of() { case "$1" in # the source command each panel must name
-  floor) echo 'bin/admission-verify.sh --live' ;; findings) echo 'bin/lint-findings.sh report' ;; register) echo 'docs/reference/checks.md' ;;
+  floor) echo 'bin/floor-verify.sh --live' ;; findings) echo 'bin/lint-findings.sh report' ;; register) echo 'docs/reference/checks.md' ;;
   checks) echo 'cache/checks.log' ;; guards) echo 'bin/admission-observe-report.sh --fp' ;; context) echo 'bin/context-budget.sh --check' ;;
   memory) echo 'bin/memory-route.sh --live' ;; backlog) echo 'bin/standard-issue-label.sh --audit' ;;
   fleet) echo 'projects-orchestrator snapshot --json' ;; sessions) echo 'bin/context-peers.sh --json' ;;
@@ -57,13 +57,13 @@ t_has "pull requests are a table" "$(ui_panel "$PAGE" prs)" "<td>fixture pr</td>
 t_has "text sources show their output" "$(ui_panel "$PAGE" backlog)" "fixture standard-issue-label output"
 
 t_section "a page load shows stored results: it runs a source only when none is stored, or it is older than --min-age"
-t_eq "the first load ran floor once" 1 "$(ui_calls admission-verify)"
+t_eq "the first load ran floor once" 1 "$(ui_calls floor-verify)"
 t_eq "and gh once" 1 "$(ui_calls gh)"
 ui_get / > /dev/null; ui_get / > /dev/null; ui_get / > /dev/null
-t_eq "three more loads started no floor run" 1 "$(ui_calls admission-verify)"
+t_eq "three more loads started no floor run" 1 "$(ui_calls floor-verify)"
 t_eq "nor a gh run" 1 "$(ui_calls gh)"
 ui_post '{"id":"floor"}' > /dev/null
-t_eq "a POST /run re-runs that one panel" 2 "$(ui_calls admission-verify)"
+t_eq "a POST /run re-runs that one panel" 2 "$(ui_calls floor-verify)"
 t_eq "and only that one" 1 "$(ui_calls gh)"
 t_eq "POST /refresh is refused without the session" 403 "$(ui_code -X POST "$UI_URL/refresh")"
 ui_code -X POST -H "Cookie: $UI_COOKIE" "$UI_URL/refresh" > /dev/null
@@ -84,23 +84,23 @@ ui_stop
 ui_tree 0
 ui_start aged --idle 120 --min-age 1
 ui_get / > /dev/null; sleep 2; ui_get / > /dev/null
-t_eq "the second load, 2s later, ran floor again" 2 "$(ui_calls admission-verify)"
+t_eq "the second load, 2s later, ran floor again" 2 "$(ui_calls floor-verify)"
 ui_stop
 ui_mutant minage 's/num("--min-age", 300)/num("--min-age", 0)/'
 t_eq "the min-age mutant differs" changed "$UI_MUT"
 rm -f "$T_TMP"/calls.*
 ui_start mminage --idle 120
 ui_get / > /dev/null; ui_get / > /dev/null; ui_get / > /dev/null
-t_eq "with no minimum age every load starts a run, which is what a repeated GET must not do" 3 "$(ui_calls admission-verify)"
+t_eq "with no minimum age every load starts a run, which is what a repeated GET must not do" 3 "$(ui_calls floor-verify)"
 ui_stop; UI_SCRIPT=""
 
 t_section "one run per panel: two overlapping requests start one process"
-ui_tree 0; UI_STUB_SLEEP=2; ui_stub admission-verify 0 "slow"; UI_STUB_SLEEP=""
+ui_tree 0; UI_STUB_SLEEP=2; ui_stub floor-verify 0 "slow"; UI_STUB_SLEEP=""
 ui_start slow --idle 120
 ui_post '{"id":"floor"}' > /dev/null & Q1=$!
 ui_post '{"id":"floor"}' > /dev/null & Q2=$!
 wait "$Q1" "$Q2"
-t_eq "one admission-verify ran" 1 "$(ui_calls admission-verify)"
+t_eq "one floor-verify ran" 1 "$(ui_calls floor-verify)"
 ui_stop
 ui_mutant inflight '/guard:inflight/d'
 t_eq "the in-flight mutant differs" changed "$UI_MUT"
@@ -109,11 +109,11 @@ ui_start minflight --idle 120
 ui_post '{"id":"floor"}' > /dev/null & Q1=$!
 ui_post '{"id":"floor"}' > /dev/null & Q2=$!
 wait "$Q1" "$Q2"
-t_eq "without the lock the same two requests start two" 2 "$(ui_calls admission-verify)"
+t_eq "without the lock the same two requests start two" 2 "$(ui_calls floor-verify)"
 ui_stop; UI_SCRIPT=""
 
 t_section "a source that hangs is cut off at --timeout, and so is everything it forked"
-hang_tree() { ui_tree 0; printf '#!/bin/sh\nsleep 12 &\necho $! > "%s/hang.pid"\nwait\n' "$T_TMP" > "$UI_ROOT/bin/admission-verify.sh"; chmod +x "$UI_ROOT/bin/admission-verify.sh"; rm -f "$T_TMP/hang.pid"; }
+hang_tree() { ui_tree 0; printf '#!/bin/sh\nsleep 12 &\necho $! > "%s/hang.pid"\nwait\n' "$T_TMP" > "$UI_ROOT/bin/floor-verify.sh"; chmod +x "$UI_ROOT/bin/floor-verify.sh"; rm -f "$T_TMP/hang.pid"; }
 orphan_gone() { _g=0; while [ $_g -lt 30 ] && [ "$(alive "$(cat "$T_TMP/hang.pid")")" = yes ]; do sleep 0.1; _g=$((_g + 1)); done; alive "$(cat "$T_TMP/hang.pid")"; }
 alive() { case "$(ps -o stat= -p "$1" 2>/dev/null)" in ''|Z*) echo no ;; *) echo yes ;; esac; }
 hang_tree
@@ -164,8 +164,8 @@ t_eq "the page still answers" 200 "$(ui_code -H "Cookie: $UI_COOKIE" "$UI_URL/")
 for id in $PANEL_IDS; do t_has "$id says unavailable" "$(ui_panel "$FP" "$id")" "unavailable:"; done
 t_eq "every tile says unavailable" "$want_n" "$(tiles_unavailable "$FP")"
 t_hasnt "no tile reads 0" "$FP" 'class="value">0<'
-t_has "the reason is the source's own words" "$(ui_panel "$FP" floor)" "unavailable: exit 3: stub admission-verify: boom"
-t_has "a panel still names its source when it failed" "$(ui_panel "$FP" floor)" "bin/admission-verify.sh --live"
+t_has "the reason is the source's own words" "$(ui_panel "$FP" floor)" "unavailable: exit 3: stub floor-verify: boom"
+t_has "a panel still names its source when it failed" "$(ui_panel "$FP" floor)" "bin/floor-verify.sh --live"
 ui_stop
 ui_mutant exit 's/if (!p.okExits.includes(code))/if (false)/' sources.ts
 t_eq "the exit-code mutant differs" changed "$UI_MUT"
@@ -187,7 +187,7 @@ linux_path "$T_TMP/nogh" gh projects-orchestrator harbor
 OLDPATH="$PATH"; PATH="$T_TMP/nogh"; ui_start missing --idle 120; PATH="$OLDPATH"
 MP="$(ui_get /)"
 t_eq "the page is a 200" 200 "$(ui_code -H "Cookie: $UI_COOKIE" "$UI_URL/")"
-t_has "a missing script is named" "$(ui_panel "$MP" floor)" "unavailable: bin/admission-verify.sh is not on this box"
+t_has "a missing script is named" "$(ui_panel "$MP" floor)" "unavailable: bin/floor-verify.sh is not on this box"
 t_has "a missing command is named" "$(ui_panel "$MP" fleet)" "unavailable: projects-orchestrator is not installed on this box"
 t_has "gh too" "$(ui_panel "$MP" prs)" "unavailable: gh is not installed on this box"
 t_has "and the obligations script, for the Obligations tab: unavailable, never 0" "$(ob_panel "$MP")" "unavailable: bin/status-obligations.sh is not on this box"

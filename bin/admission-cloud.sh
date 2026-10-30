@@ -101,7 +101,7 @@ floor_seg_load "$CMD"
 # The reason is structural, not a missing list entry: FLOOR_SEGS carries NO
 # pipeline boundary. `gh --body $(cat <<HD)` and a heredoc piped into a command are
 # identical segment streams apart from whether segment 2 holds prose or a command
-# name. Separating them needs admission-normalize.awk to mark where the heredoc LINE
+# name. Separating them needs floor-normalize.awk to mark where the heredoc LINE
 # ends, which changes an output contract every guard consumes. Left for a decision
 # rather than guessed at — this veto exits the guard for the WHOLE call, so a guess
 # here is a silent hole, and harbor#302 says in as many words not to widen the rule
@@ -415,7 +415,7 @@ if [ -z "$TIER" ] && floor_seg_degraded; then
   fi
   if [ -n "$_cblind" ]; then
     TIER=CATASTROPHIC; BLIND=1; SHAPE="flat"
-    REASON="the argv tokenizer could not parse this call (over the ${FLOOR_MAX_NORM}-byte normalizer cap, nested past what the normalizer expands, or awk/admission-normalize.awk unavailable) and the command names $_cblind, whose dataset/bucket/project deletes and IAM writes are deny-always — so the guard cannot tell a read from an irreversible delete on shared client infrastructure. Re-run it under the cap, or the operator runs it themselves as a \`!\` command, which is not a tool call"
+    REASON="the argv tokenizer could not parse this call (over the ${FLOOR_MAX_NORM}-byte normalizer cap, nested past what the normalizer expands, or awk/floor-normalize.awk unavailable) and the command names $_cblind, whose dataset/bucket/project deletes and IAM writes are deny-always — so the guard cannot tell a read from an irreversible delete on shared client infrastructure. Re-run it under the cap, or the operator runs it themselves as a \`!\` command, which is not a tool call"
   fi
 fi
 

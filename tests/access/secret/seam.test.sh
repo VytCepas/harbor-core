@@ -106,7 +106,7 @@ CALL='(^|[;&|(`{!]|\$\(|(^|[[:space:]])(then|else|do|if))[[:space:]]*(security[[
 derive() { # <dir> — prints file:line for every undeclared bare call
   for _f in "$1"/*; do
     [ -f "$_f" ] || continue
-    case "${_f##*/}" in admission-deny.sh|admission-equivalence.sh|admission-install.sh|admission-observe.sh|admission-remove.sh|admission-verify.sh) ;; secret|guard-*.sh|admission-*.sh|library-admission.sh) continue ;; esac   # W7's renamed tools stay in scope
+    case "${_f##*/}" in secret|guard-*.sh|admission-*.sh|library-admission.sh) continue ;; esac
     head -40 "$_f" | grep -q '^# *secret-seam:' && continue
     grep -nE "$CALL" "$_f" | grep -v '^[0-9]*:[[:space:]]*#' | sed "s|^|${_f##*/}:|"
   done

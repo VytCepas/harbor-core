@@ -209,7 +209,7 @@ done
 # docs/reference/provenance.md's whole enumerated-list-drift problem is exactly this shape.
 HARBOR_ADMISSION_EGRESS="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/admission-egress.sh"
 SECRET="$(sed -n "s/^SECRET='\(.*\)'$/\1/p" "$HARBOR_ADMISSION_EGRESS" 2>/dev/null || true)"
-[ -n "$SECRET" ] || die "could not lift SECRET from $HARBOR_ADMISSION_EGRESS" "sh bin/admission-verify.sh --live"
+[ -n "$SECRET" ] || die "could not lift SECRET from $HARBOR_ADMISSION_EGRESS" "sh bin/floor-verify.sh --live"
 # mawk 1.3.4 (ubuntu's awk) matches an open interval `{n,}` as exactly n, so RLENGTH stops short and the
 # secret's tail survives unmasked (harbor#1149). `[c]{n}[c]*` means the same in every awk; any `{n,}` left refuses.
 SCRUB_SHAPES="$(printf '%s' "$SECRET" | sed -E 's/(\[[^]]*\])\{([0-9]+),\}/\1{\2}\1*/g')"
@@ -391,7 +391,7 @@ if command -v jq >/dev/null 2>&1; then
     # Excluding them would shrink the corpus, which balances eval-replay.sh's verdict-count self-check and hides
     # exactly the class of bug that check exists to find.
     while IFS= read -r _ml; do log_note "$_ml"; done < "$TMP/malformed.lines"
-    die "REFUSING TO BUILD — $MALFORMED assembled line(s) are not valid JSON; a defect in this script's scrubber, not in the traffic" "sh bin/admission-verify.sh --live; then file it on harbor#44"
+    die "REFUSING TO BUILD — $MALFORMED assembled line(s) are not valid JSON; a defect in this script's scrubber, not in the traffic" "sh bin/floor-verify.sh --live; then file it on harbor#44"
   fi
 fi
 

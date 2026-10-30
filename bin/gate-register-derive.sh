@@ -52,8 +52,8 @@ done > "$T/seed"
 for _i in "$ROOT"/bin/*-install.sh; do
   grep -ohE '\$DIR/bin/[A-Za-z0-9_.-]+' "$_i" | sed "s|^\\\$DIR/|| ; s|\$|	wired by ${_i##*/}	installed|"
 done >> "$T/seed"
-awk '/^floor_hooks\(\)/ { f = 1; next } f && /^ROWS$/ { exit } f && !/^#/ && /;/' "$ROOT/bin/admission-install.sh" | cut -d';' -f3 \
-  | tr ' ' '\n' | awk 'NF && !/^-/ { print "bin/" $0 "\twired by admission-install.sh\tinstalled" }' >> "$T/seed"
+awk '/^floor_hooks\(\)/ { f = 1; next } f && /^ROWS$/ { exit } f && !/^#/ && /;/' "$ROOT/bin/floor-install.sh" | cut -d';' -f3 \
+  | tr ' ' '\n' | awk 'NF && !/^-/ { print "bin/" $0 "\twired by floor-install.sh\tinstalled" }' >> "$T/seed"
 # the gate tools themselves: what their calls reach must be protected too
 for _g in "$ROOT"/bin/gate-*.sh; do printf 'bin/%s\tthe approval gate\tinstalled\n' "${_g##*/}"; done >> "$T/seed"
 # a hook engine's manifest is its wiring: bin/deploy-hooks.sh renders a command for each wire row (D-88)

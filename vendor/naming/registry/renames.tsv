@@ -1203,20 +1203,3 @@ rename-1320	bin/guard-selfedit.sh	bin/admission-self-edit.sh	bin	W6a	2026-11-15	
 rename-1321	bin/guard-stop.sh	bin/admission-stop.sh	bin	W6a	2026-11-15	guard is a legacy alias of admission-hook (D-2); the admission family
 rename-1322	bin/floor-hook.sh	bin/admission-hook.sh	bin	W6b	2026-11-15	floor is a legacy alias of baseline and the wrapper is the admission hook itself (D-2); the fail-closed wrapper moves behind a shim (W6b)
 rename-1323	bin/guard-integrity.sh	bin/admission-integrity.sh	bin	W6b	2026-11-15	the B6 integrity gate, renamed behind a shim (W6b); deploy-runtime-install refreshes it under the new name where the old one is installed
-rename-1324	bin/floor-deny.sh	bin/admission-deny.sh	bin	W7	2026-12-01	floor is a legacy alias of baseline (D-2); the deny installer joins the admission family (w6a map)
-rename-1325	bin/floor-equiv.sh	bin/admission-equivalence.sh	bin	W7	2026-12-01	floor is a legacy alias of baseline and equiv a banned abbreviation; proves two guard trees give identical verdicts (w6a map)
-rename-1326	bin/floor-install.sh	bin/admission-install.sh	bin	W7	2026-12-01	floor is a legacy alias of baseline (D-2); installs the admission set (w6a map); its install-stamp key floor-install stays, a box record
-rename-1327	bin/floor-normalize.awk	bin/admission-normalize.awk	bin	W7	2026-12-01	floor is a legacy alias of baseline (D-2); the command normaliser every admission guard reads (w6a map); the library falls back to the old name while a deploy is between its two installers
-rename-1328	bin/floor-observe.sh	bin/admission-observe.sh	bin	W7	2026-12-01	floor is a legacy alias of baseline (D-2); the SessionStart half of the decision ledger (w6a map)
-rename-1329	bin/floor-uninstall.sh	bin/admission-remove.sh	bin	W7	2026-12-01	floor is a legacy alias of baseline (D-2); remove is the registered verb (w6a map)
-rename-1330	bin/floor-verify.sh	bin/admission-verify.sh	bin	W7	2026-12-01	floor is a legacy alias of baseline (D-2); is the admission set on (w6a map)
-rename-1331	env:FLOOR_ONFAILURE	env:HARBOR_ADMISSION_ONFAILURE	env	W7	2026-12-01	FLOOR_ is a legacy alias of baseline (D-2); the operator's onFailure override for the installer, so both names are read until remove_by
-rename-1332	env:FLOOR_HIT_EOF	env:HARBOR_ADMISSION_HIT_EOF	env	W7	-	FLOOR_ is a legacy alias of baseline (D-2); a heredoc delimiter inside admission-bash.sh, so a plain rename (w6a map)
-rename-1333	env:FLOOR_MARKER_DIR	env:HARBOR_ADMISSION_MARKER_DIR	env	W7	-	FLOOR_ is a legacy alias of baseline (D-2); set and read only inside library-admission.sh, so a plain rename: a dual read would let an inherited value name the governed root (w6a map)
-rename-1334	env:FLOOR_SEG_EOF	env:HARBOR_ADMISSION_SEG_EOF	env	W7	-	FLOOR_ is a legacy alias of baseline (D-2); a heredoc delimiter inside library-admission.sh, so a plain rename (w6a map)
-rename-1335	env:FLOOR_SEG_TAB_ARGS	env:HARBOR_ADMISSION_SEG_TAB_ARGUMENTS	env	W7	-	FLOOR_ is a legacy alias of baseline (D-2) and args an unregistered abbreviation; library-internal segment-table cache, so a plain rename (w6a map)
-rename-1336	env:FLOOR_SEG_TAB_IDS	env:HARBOR_ADMISSION_SEG_TAB_IDS	env	W7	-	FLOOR_ is a legacy alias of baseline (D-2); library-internal segment-table cache, so a plain rename (w6a map)
-rename-1337	env:FLOOR_SEG_TAB_KEY	env:HARBOR_ADMISSION_SEG_TAB_KEY	env	W7	-	FLOOR_ is a legacy alias of baseline (D-2); library-internal segment-table cache, so a plain rename (w6a map)
-rename-1338	env:FLOOR_SEG_TAB_N	env:HARBOR_ADMISSION_SEG_TAB_N	env	W7	-	FLOOR_ is a legacy alias of baseline (D-2); library-internal segment-table cache, so a plain rename (w6a map)
-rename-1339	env:FLOOR_SEG_TAB_RC	env:HARBOR_ADMISSION_SEG_TAB_RC	env	W7	-	FLOOR_ is a legacy alias of baseline (D-2); library-internal segment-table cache, so a plain rename (w6a map)
-rename-1340	standards/rename-maps/w6b-admission-floor-hook-and-integrity.tsv	standards/rename-maps/w6b-admission-hook-and-integrity.tsv	path	W7	-	floor is a legacy alias of baseline (D-2); the W6b mapping record, named for the two files it moved; no outside reader, so no shim

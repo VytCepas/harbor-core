@@ -1,7 +1,7 @@
 # Descriptor seam (L3 → L2 + L0) — ALREADY FIRST-CLASS: EXTEND, do not reinvent
 
 **Source of truth:** `project-init` `schemas/descriptor.schema.json` — **contract version 2**, additive-only.
-**Existing tests/CI (do not duplicate):** project-init `tests/policy/contracts/test_descriptor_schema.py`; orchestrator vendored copy + `tests/test_contract.py` + golden `config.v2.yaml` + `check_contract_freshness.py` + `.github/workflows/contract-freshness.yml`.
+**Existing tests/CI (do not duplicate):** project-init `tests/contracts/test_descriptor_schema.py`; orchestrator vendored copy + `tests/test_contract.py` + golden `config.v2.yaml` + `check_contract_freshness.py` + `.github/workflows/contract-freshness.yml`.
 
 ## The memory tier field (the one Harbor must not break)
 `memory.tier` is an integer on the **REAL** ladder — verified against `_MEMORY_TIERS`:

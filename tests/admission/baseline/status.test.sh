@@ -108,7 +108,7 @@ t_eq "STATUS-1 a prod-guard-ambient-only settings.json does not report the floor
 t_eq "STATUS-1 the same fixture still credits prod_guard" yes "$(_obs "$SG/decoy" prod_guard)"
 _wire "$SG/full" "/bin/sh $SG/full/bin/admission-hook.sh $SG/full/bin/admission-bash.sh"
 for _g in admission-hook.sh library-admission.sh admission-bash.sh admission-egress.sh \
-          admission-self-edit.sh annotate-web.sh admission-normalize.awk; do
+          admission-self-edit.sh annotate-web.sh floor-normalize.awk; do
   printf '#\n' > "$SG/full/bin/$_g"
 done
 t_eq "STATUS-1 a correctly wired floor with every guard present reports installed" yes "$(_obs "$SG/full" guard_hooks)"

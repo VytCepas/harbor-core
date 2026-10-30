@@ -54,13 +54,13 @@
 # RULE HERE. None was predicted; all three came from asking the box.
 #
 #   1. THE TWO SESSION CENSUSES DISAGREE — AND THE FIRST EXPLANATION WAS WRONG,
-#      which is the most instructive thing in this file. admission-observe.sh writes
+#      which is the most instructive thing in this file. floor-observe.sh writes
 #      one `session armed` record per SessionStart and admission-integrity.sh writes
 #      one record per run (admission-integrity.sh:221-226, :287), so the counts looked
 #      like they had to match. They did not — 30 against 49 — and an earlier draft
-#      of this file reported that as a crit defect in admission-observe.sh.
+#      of this file reported that as a crit defect in floor-observe.sh.
 #
-#      IT WAS `harbor verify`. admission-verify.sh:196-197 invokes admission-integrity.sh
+#      IT WAS `harbor verify`. floor-verify.sh:196-197 invokes admission-integrity.sh
 #      directly as its B6 status check, and that path records, so every verify run
 #      adds one integrity record with no session record. Reconciled per day against
 #      the verify-run count: 27 runs against a gap of 19 — fully consistent with
@@ -84,7 +84,7 @@
 #      runs. That is FC-4.
 #
 #   3. observe-report --fp's TOP ROWS ARE ITS OWN VERIFIER. `harbor verify` fires
-#      known-blocked shapes through the real guards (admission-verify.sh `probe` lines),
+#      known-blocked shapes through the real guards (floor-verify.sh `probe` lines),
 #      and each firing appends a real block record. The live ledger's six
 #      highest-recurrence digests were exactly those six shapes, at 27-28
 #      occurrences each, ranked above every genuine operator block — and nothing
@@ -96,13 +96,13 @@
 #      because an exclusion the operator cannot audit is one they must take on
 #      faith.
 #
-# THE PROBE LIST IS DERIVED FROM admission-verify.sh, NEVER COPIED, and the first cut
+# THE PROBE LIST IS DERIVED FROM floor-verify.sh, NEVER COPIED, and the first cut
 # of this file got that wrong in a way worth recording. It embedded the six probe
 # payloads as literals — and guard-egress BLOCKED THE WRITE on `secret-to-disk`,
 # because one of them carries a provider-token shape. The guard was right twice
 # over: the literal is a token shape going to disk in cleartext, and a copy of a
 # list that lives in another file is the drift class this repo keeps paying for.
-# So the payloads are read out of the sibling admission-verify.sh at runtime, the way
+# So the payloads are read out of the sibling floor-verify.sh at runtime, the way
 # admission-hook.sh resolves library-admission.sh from its own directory. A seventh probe, if
 # one is ever added, is picked up for free — there are six today — no mirror can
 # rot, and nothing here needs a lint seam to stay honest.
@@ -128,7 +128,7 @@
 # exec bit, a stale cache) is not what any rule below finds. Each finding carries
 # its repair as TEXT, for a human at their own terminal.
 #
-# CITATIONS INTO admission-observe.sh AND library-admission.sh NAME THE FUNCTION OR SECTION,
+# CITATIONS INTO floor-observe.sh AND library-admission.sh NAME THE FUNCTION OR SECTION,
 # not a line range, and that is deliberate rather than inconsistent: harbor#119 is
 # open and rewrites both files to derive the host key from a stable name, which
 # moves every line number below its edits. A citation that rots the moment a
@@ -177,7 +177,7 @@ for a in "$@"; do
       printf '  Judges the guard-decision ledger L1 writes. Exit 1 = a finding.\n'
       printf '  --with-probes  keep the verifier own probe shapes in the recurrence count\n'
       printf '  --exclusion-set  print the probe and suite digests FC-5 drops, one "<source> <digest>" per line;\n'
-      printf '                   exit 1 when they cannot be derived (no ledger, no salt, no admission-verify.sh)\n'
+      printf '                   exit 1 when they cannot be derived (no ledger, no salt, no floor-verify.sh)\n'
       exit 0 ;;
     -*) printf 'failure-capture: unknown option: %s\n' "$a" >&2
         printf 'usage: audit-triage.sh [--live | <config-dir>] [--json] [--with-probes]\n' >&2
@@ -194,7 +194,7 @@ fi
 while [ "${DIR%/}" != "$DIR" ] && [ "$DIR" != "/" ]; do DIR="${DIR%/}"; done
 
 # An absent config dir is an ANSWER, not a misuse — drift-reference-check.sh:57-63 and
-# admission-verify.sh:44 make the same call. Nothing is installed, so nothing failed.
+# floor-verify.sh:44 make the same call. Nothing is installed, so nothing failed.
 if [ ! -d "$DIR" ]; then
   if [ "$JSON" = 1 ]; then printf '{"dir":"%s","installed":false,"worst":"ok","findings":[]}\n' "$DIR"
   else printf 'failure-capture: no config dir at %s — nothing is installed here.\n' "$DIR" >&2; fi
@@ -371,11 +371,11 @@ if [ -f "$SETTINGS" ] && jq -e '[.hooks.PreToolUse[]?.hooks[]?.command]
 # ── read the ledger ──────────────────────────────────────────────────────────
 # Rotated generations first so the series reads oldest → newest; file order is
 # authoritative because the sink is bounded by SIZE, not by date
-# (admission-observe.sh § "rotation, one generation").
+# (floor-observe.sh § "rotation, one generation").
 #
 # READ PER HOST PARTITION, and carry the partition in an added `_host` field. The
 # ledger is host-partitioned because two devices write disjoint subtrees
-# (admission-observe.sh § "the host partition"), and THREE of the rules below are meaningless across
+# (floor-observe.sh § "the host partition"), and THREE of the rules below are meaningless across
 # that boundary: a census is a per-machine fact, and so is "the drift came back
 # the next day". Measured on a two-host fixture before this was fixed: host A had
 # 3 session records against 9 integrity — a 67% drop, crit — and host B, a healthy
@@ -396,7 +396,7 @@ if [ -f "$SETTINGS" ] && jq -e '[.hooks.PreToolUse[]?.hooks[]?.command]
 #   operator to open the sink from their own terminal, which is exactly when such a
 #   file appears. Measured: one `cp` beside the sink doubled every count, and a
 #   command blocked twice crossed FC-5's threshold of three and produced a finding
-#   for a wall the operator hit twice. Only the two names admission-observe.sh can
+#   for a wall the operator hit twice. Only the two names floor-observe.sh can
 #   create are read: the sink, and one numeric rotated generation.
 #
 #   `awk 1 -- "$file"` PER FILE, never `cat $list`. Two bugs at once. (1) The
@@ -405,7 +405,7 @@ if [ -f "$SETTINGS" ] && jq -e '[.hooks.PreToolUse[]?.hooks[]?.command]
 #   swallowed; reproduced twice, and in one shape a textbook FC-1 crit rendered as
 #   `clean: true`, exit 0. The comment 30 lines below rejects `for _h in
 #   $PARTITIONS` for this exact reason and the reader did it anyway. (2) `cat a b`
-#   fuses a's newline-LESS last line onto b's first line. admission-observe.sh rotates
+#   fuses a's newline-LESS last line onto b's first line. floor-observe.sh rotates
 #   with `mv -f`, so it will rotate a file killed mid-append — the torn tail this
 #   reader promises to survive — and the fused line is then dropped by `fromjson?`,
 #   silently costing ONE GOOD RECORD from the live sink. Measured: a matched census
@@ -451,7 +451,7 @@ if [ -n "$LEDGERS" ]; then
     read_ledgers "$(basename "$_hd")" "$TMPD/hostfiles" "$REC"
   done
   # A ledger file sitting DIRECTLY under OBSERVABILITY belongs to no partition.
-  # admission-observe.sh never creates one, so it is either hand-placed or a partition
+  # floor-observe.sh never creates one, so it is either hand-placed or a partition
   # that lost its directory — and dropping it silently would be the same quiet loss
   # the per-host split exists to stop. It is read, and labelled unattributed so the
   # census rules skip it rather than mixing two machines together.
@@ -471,7 +471,7 @@ fi
 #
 # Read INDEPENDENTLY of the guard ledger, never gated on it. A box can carry one
 # and not the other — failure-observe.sh needs no floor, only the sink that
-# admission-observe.sh prepares — and gating would make a present ledger read empty
+# floor-observe.sh prepares — and gating would make a present ledger read empty
 # because a different one was absent.
 NTF=0
 TFREC="$TMPD/tf.jsonl"
@@ -512,7 +512,7 @@ if [ "$FLOOR_WIRED" = yes ] && [ "$NREC" -eq 0 ]; then
   if [ -z "$LEDGERS" ]; then
     finding FC-0 crit "$OBS" \
       "the floor is wired and no ledger exists — every guard decision on this box is unrecorded, and every other rule here reports clean" \
-      "admission-observe.sh is the only component allowed to create the sink, at SessionStart: confirm it is wired, start a session, re-run"
+      "floor-observe.sh is the only component allowed to create the sink, at SessionStart: confirm it is wired, start a session, re-run"
   else
     finding FC-0 crit "$OBS" \
       "the floor is wired, ledger files exist, and not one record parses — the recorder is running and producing nothing readable" \
@@ -561,7 +561,7 @@ if [ "$NREC" -gt 0 ]; then
   # The false-positive class with the verifier's own traffic taken out. The digest
   # is a SALTED hash of the payload, so the probe digests are computable here and
   # only here: the salt is on this box, and the payloads are read out of
-  # admission-verify.sh rather than copied into this file (see the header).
+  # floor-verify.sh rather than copied into this file (see the header).
   #
   # THE HASHER IS DERIVED, NEVER RE-IMPLEMENTED. floor_obs_digest owns the
   # algorithm — salt, separator, truncation length — and a second spelling of it
@@ -584,7 +584,7 @@ if [ "$NREC" -gt 0 ]; then
   # over-reporting, with the count visible — and lint X2 is what notices the lag.
   # HOISTED ABOVE BOTH DERIVATIONS, and under `set -u` that is correctness rather
   # than tidiness: these were defined inside the probe block, so a box whose
-  # admission-verify.sh is absent or symlinked left them unbound and the suite
+  # floor-verify.sh is absent or symlinked left them unbound and the suite
   # derivation below aborted the whole run. Same class as the note at the top of
   # this block about FC-1 and the hoisted digests.
   # `&`, `|` and `\` are escaped because the value lands on a sed REPLACEMENT side,
@@ -593,7 +593,7 @@ if [ "$NREC" -gt 0 ]; then
   _homesafe="$(printf '%s' "${HOME:-}" | sed 's/[&|\\]/\\&/g')"
   PROBE_DIGESTS=""
   PROBE_OK=0
-  FV="$SELF/admission-verify.sh"
+  FV="$SELF/floor-verify.sh"
   if [ "$PROBES" = 0 ] && [ "$GL_OK" = 1 ] && [ -f "$FV" ] && [ ! -L "$FV" ]; then
     if true; then
       # Each `probe` line carries one hook payload as JSON. Take the text between
@@ -672,7 +672,7 @@ if [ "$NREC" -gt 0 ]; then
   # `_vruns`, over-subtract from the integrity census, and silence a real FC-1.
   # FC-5 gets the union; FC-1 keeps the probes alone.
   #
-  # SOURCED FROM THE SIBLING, exactly as admission-verify.sh is, and for the reason
+  # SOURCED FROM THE SIBLING, exactly as floor-verify.sh is, and for the reason
   # spelled out above: reading a file out of the INSPECTED tree would execute or
   # trust attacker-controlled content. $SELF is this script's own directory.
   #
@@ -799,7 +799,7 @@ if [ "$NREC" -gt 0 ]; then
   # claim about now, and a command last walled a month ago is history.
   #
   # THE RETAINED WINDOW IS BOUNDED BY BYTES, NOT BY DAYS, which is why the rotation
-  # does not already do this job. admission-observe.sh rotates at ROTATE_BYTES with ONE
+  # does not already do this job. floor-observe.sh rotates at ROTATE_BYTES with ONE
   # generation, so what the ledger holds is a fixed number of RECORDS (~47k at the
   # measured ~110 bytes each) and the time they span is whatever the traffic makes
   # it. Measured on this box 2026-09-04: generation .1 spanned 5.4 days at ~9k
@@ -829,7 +829,7 @@ if [ "$NREC" -gt 0 ]; then
   # working. So computing six digests successfully proves only that the salt file
   # parses NOW, never that it is the salt these records were written under. Two
   # measured paths where it is not: test-sandbox-make.sh copies MEMORY (ledger included)
-  # and does NOT copy the salt, and admission-observe.sh then mints a FRESH random one
+  # and does NOT copy the salt, and floor-observe.sh then mints a FRESH random one
   # at the sandbox's first SessionStart — after which the old code reported
   # `probe_traffic_excluded: true` while every one of the six probe shapes came
   # through as an FC-5 finding. Asserting an exclusion that did not happen is worse
@@ -844,7 +844,7 @@ if [ "$NREC" -gt 0 ]; then
   _pmatch=0
   if [ -s "$TMPD/probes" ]; then
     # BLOCK-ONLY ON PURPOSE, unlike the recurrence count above (harbor#319): every probe
-    # admission-verify.sh fires is a block, so a deny or an ask could never match one here.
+    # floor-verify.sh fires is a block, so a deny or an ask could never match one here.
     jq -r 'select(.d=="block" and .h!="-")|.h' "$REC" 2>/dev/null | sort -u > "$TMPD/blockdg"
     _pmatch="$(num "$(awk -v pf="$TMPD/probes" \
       'FILENAME==pf{p[$1]=1;next} ($1 in p){n++} END{print n+0}' "$TMPD/probes" "$TMPD/blockdg")")"
@@ -859,7 +859,7 @@ if [ "$NREC" -gt 0 ]; then
     _caveat=" (--with-probes: the verifier's own shapes are INCLUDED in this count)"
     PROBE_OK=0
   elif [ "$PROBE_OK" = 0 ]; then
-    _caveat=" (WARNING: the verifier's own shapes could NOT be separated — admission-verify.sh, the sibling library-admission.sh or the salt was unreadable — so the top rows may be this box's own probe traffic)"
+    _caveat=" (WARNING: the verifier's own shapes could NOT be separated — floor-verify.sh, the sibling library-admission.sh or the salt was unreadable — so the top rows may be this box's own probe traffic)"
   elif [ "$_pmatch" -eq 0 ]; then
     _caveat=" (NOTE: the verifier's probe digests were computed and NONE of them appears in this ledger, so nothing was excluded — either \`harbor verify\` has never run against it, or the salt was replaced after these records were written, in which case a probe shape can still be sitting in the rows below)"
     PROBE_OK=0
@@ -934,7 +934,7 @@ if [ "$NREC" -gt 0 ]; then
     _tag=""; [ "$NPART" -gt 1 ] && _tag="$_h · "
     # FC-1 IS DELIBERATELY NOT HORIZONED, and this is the audit harbor#211 asked
     # for rather than an oversight. It carries the same never-clears SHAPE — these
-    # are cumulative counts, so a week when admission-observe.sh dropped records leaves
+    # are cumulative counts, so a week when floor-observe.sh dropped records leaves
     # a deficit nothing ever subtracts — but windowing it was MEASURED against the
     # live ledger and made the rule WORSE, not better:
     #
@@ -972,15 +972,15 @@ if [ "$NREC" -gt 0 ]; then
     # machine that has not run the separate `--with-b6` step at all.
     # VERIFY RUNS ARE SUBTRACTED FIRST, and without that this rule is a false-
     # positive generator on the documented workflow. `harbor verify` invokes
-    # admission-integrity.sh directly as its B6 status check (admission-verify.sh:196-197),
+    # admission-integrity.sh directly as its B6 status check (floor-verify.sh:196-197),
     # and that path records (admission-integrity.sh:221-226) — so EVERY verify run adds
     # one integrity record with no session record. docs/how-to/handover.md tells every fresh
     # session to run it. Measured on this box: 30 session against 49 integrity, a
     # gap of 19, with 27 verify runs in the same window — the gap this rule was
     # built on was fully consistent with the operator's own tooling, and an earlier
-    # draft reported it as a crit defect in admission-observe.sh. That is FC-5's probe
+    # draft reported it as a crit defect in floor-observe.sh. That is FC-5's probe
     # contamination one rule over, and it got past a grep for `guard-integrity` in
-    # admission-verify.sh that was run from the wrong directory with stderr discarded.
+    # floor-verify.sh that was run from the wrong directory with stderr discarded.
     #
     # A verify run is countable: it fires every probe once, so the highest
     # occurrence count among the derived probe digests is the number of runs. It is
@@ -989,7 +989,7 @@ if [ "$NREC" -gt 0 ]; then
     # on an uncorrectable denominator (№2.7: defer, never substitute).
     #
     # WARN, NEVER CRIT, for what survives. admission-integrity.sh is also invoked
-    # directly by admission-install.sh --with-b6 and by a command deploy-runtime-install.sh:402
+    # directly by floor-install.sh --with-b6 and by a command deploy-runtime-install.sh:402
     # prints for the operator to paste, and NOTHING in the record distinguishes any
     # of those from a SessionStart. So a residual gap is "these two counts do not
     # reconcile", which is worth a look, and not "the floor is blind", which would be
@@ -1012,16 +1012,16 @@ if [ "$NREC" -gt 0 ]; then
     elif [ "$_adj" -ge 3 ] && [ "$N_SESSION" -eq 0 ]; then
       # Distinct from the reconcile case and genuinely attributable: after taking
       # the verify runs out, guard-integrity has recorded a SessionStart several
-      # times and admission-observe.sh has recorded none, ever. There is no denominator
+      # times and floor-observe.sh has recorded none, ever. There is no denominator
       # at all, so observe-report cannot compute an override rate.
       finding FC-1 crit "${_tag}no session census exists" \
-        "$_adj session-start records from the integrity gate that verify runs do not explain, and NOT ONE from admission-observe.sh — so there is no denominator, and observe-report refuses the override rate rather than printing one" \
-        "check that admission-observe.sh is wired at SessionStart and reaches its last line; it exits 0 on every failure path by design, so a broken run looks exactly like a quiet one"
+        "$_adj session-start records from the integrity gate that verify runs do not explain, and NOT ONE from floor-observe.sh — so there is no denominator, and observe-report refuses the override rate rather than printing one" \
+        "check that floor-observe.sh is wired at SessionStart and reaches its last line; it exits 0 on every failure path by design, so a broken run looks exactly like a quiet one"
     elif [ "$((_adj - N_SESSION))" -ge 3 ]; then
       _gap=$((_adj - N_SESSION))
       finding FC-1 warn "${_tag}session census does not reconcile" \
-        "$N_SESSION session records against $N_INTEGRITY from the integrity gate, of which $_vruns are accounted for by \`harbor verify\` runs — leaving $_gap SessionStart(s) recorded by one hook and not the other. Either admission-observe.sh is dropping records silently (it exits 0 on every failure path by design), or admission-integrity.sh was invoked by hand — admission-install.sh --with-b6 and deploy-runtime-install.sh both do that, and no field in the record tells them apart" \
-        "reconcile per day (jq over .g and .ts[0:10], counting a probe digest per verify run) before suspecting the hook; admission-observe.sh holds the host dir at 0700 between its own chmods, so a record landing inside a CONCURRENT session's window is refused by the [ ! -w ] gate"
+        "$N_SESSION session records against $N_INTEGRITY from the integrity gate, of which $_vruns are accounted for by \`harbor verify\` runs — leaving $_gap SessionStart(s) recorded by one hook and not the other. Either floor-observe.sh is dropping records silently (it exits 0 on every failure path by design), or admission-integrity.sh was invoked by hand — floor-install.sh --with-b6 and deploy-runtime-install.sh both do that, and no field in the record tells them apart" \
+        "reconcile per day (jq over .g and .ts[0:10], counting a probe digest per verify run) before suspecting the hook; floor-observe.sh holds the host dir at 0700 between its own chmods, so a record landing inside a CONCURRENT session's window is refused by the [ ! -w ] gate"
     fi
 
     # ── FC-3 · the integrity gate blocked a session ────────────────────────────
@@ -1030,10 +1030,10 @@ if [ "$NREC" -gt 0 ]; then
     # (admission-integrity.sh:215-220). Recurrence is the judgment observe-report's flat
     # count cannot make: one episode is the control working, and a return on a later
     # day means the recovery command the gate handed the operator is not clearing the
-    # drift. That has already happened on this box — the message named admission-deny.sh for guard
+    # drift. That has already happened on this box — the message named floor-deny.sh for guard
     # CONTENT drift, which it cannot clear (admission-integrity.sh:229-235). Follow that
     # citation as HISTORY: the block at :250-258 also says no installer ships
-    # admission-deny.sh, and that half has stopped being true — deploy-runtime-install.sh lists it
+    # floor-deny.sh, and that half has stopped being true — deploy-runtime-install.sh lists it
     # in FILES and it is on the live surface. The repair line below avoids naming it
     # because re-pinning is the operator's act, not because the script is absent.
     #
@@ -1163,7 +1163,7 @@ PARTITION_LIST
   # HORIZONED (harbor#211), and this rule is why the ticket calls FC-3's defect a
   # class rather than a bug: one wrapper deny on 2026-08-06 was still being
   # reported as current state, at crit, ten days later, under a repair line
-  # ("re-run admission-install.sh") that could not change it because every wired guard
+  # ("re-run floor-install.sh") that could not change it because every wired guard
   # was already present. A single record can be reported forever by a rule that
   # never asks when it happened.
   #
@@ -1177,7 +1177,7 @@ PARTITION_LIST
   # The horizon fixed how LONG a spent record shouts; it did not fix what the row
   # tells you to do about it. Measured on the live box 2026-08-23: the single
   # 2026-08-20 wrapper deny printed "a wired guard is absent or empty: re-run
-  # admission-install.sh" while floor-verify --live reported all sixteen guards
+  # floor-install.sh" while floor-verify --live reported all sixteen guards
   # present, wired and blocking — an instruction that could not change the verdict,
   # on the one channel session-verdicts.sh speaks on. A crit whose remedy is inert
   # teaches the reader that crits are advisory, which is the wallpaper failure
@@ -1198,7 +1198,7 @@ PARTITION_LIST
         | awk -v sev="$2" -v sfx="$3" -v rsfx="$4" -v when="${5:-}" -v clears="${6:-}" '{ n=$1; r=$2
                  repair = "run `harbor verify` and read which guard fails to reach a verdict"
                  if (r ~ /no-jq/)         repair = "install jq — without it every floor_field returns empty and a guard sees an empty command"
-                 if (r ~ /guard-missing/) repair = "run `harbor verify` first — admission-install.sh only helps if that reports a guard absent or unwired, and a green floor means this record is spent"
+                 if (r ~ /guard-missing/) repair = "run `harbor verify` first — floor-install.sh only helps if that reports a guard absent or unwired, and a green floor means this record is spent"
                  if (r ~ /no-grep/)       repair = "grep is unresolvable from the hook environment: check PATH and /usr/bin/grep"
                  if (r ~ /no-verdict/)    repair = "the guard exited outside {0,2}: run it by hand against a payload and read stderr"
                  if (when != "") {
@@ -1431,25 +1431,25 @@ if [ -d "$OBS" ]; then
     if [ -w "$_hd" ]; then
       finding FC-7 crit "$_host/ is writable" \
         "floor_log_decision refuses to write while the host directory is writable, so every guard decision from now on is dropped and no reader can tell that from a quiet day" \
-        "restore the mode from your own terminal (0500 on the host directory); admission-observe.sh re-applies it at the next SessionStart"
+        "restore the mode from your own terminal (0500 on the host directory); floor-observe.sh re-applies it at the next SessionStart"
     fi
     _sink="$_hd/guard-decisions.jsonl"
     if [ -e "$_sink" ] && { [ ! -f "$_sink" ] || [ -L "$_sink" ]; }; then
       finding FC-7 crit "$_host/guard-decisions.jsonl is not a regular file" \
-        "the hot path type-checks the sink and refuses a symlink or a FIFO, so the ledger is permanently empty — and admission-observe.sh refuses to reuse it rather than overwrite whatever it points at" \
+        "the hot path type-checks the sink and refuses a symlink or a FIFO, so the ledger is permanently empty — and floor-observe.sh refuses to reuse it rather than overwrite whatever it points at" \
         "inspect what the path IS before removing anything: a FIFO or symlink here was planted, and its target may be a file you care about"
     fi
     if [ -f "$_sink" ] && [ ! -L "$_sink" ]; then
       _sz="$(num "$(wc -c < "$_sink" 2>/dev/null | tr -d ' ')")"
-      # admission-observe.sh, ROTATE_BYTES rotates above 5 MiB and is the ONLY rotator. A sink
+      # floor-observe.sh, ROTATE_BYTES rotates above 5 MiB and is the ONLY rotator. A sink
       # meaningfully past that has not been rotated, which means the SessionStart
       # hook that rotates it is not reaching that line — the same silence FC-1
       # counts, seen a second way. The headroom keeps a sink that merely grew past
       # the mark mid-session out of the report.
       if [ "$_sz" -gt 6291456 ]; then
         finding FC-7 warn "$_host/guard-decisions.jsonl is $((_sz / 1048576)) MiB" \
-          "it is past the rotation threshold, and admission-observe.sh is the only thing that rotates it, so that hook is not reaching its rotation line" \
-          "confirm admission-observe.sh runs to completion at SessionStart; do not rotate by hand from a session — the sink is a surface guard-selfedit protects"
+          "it is past the rotation threshold, and floor-observe.sh is the only thing that rotates it, so that hook is not reaching its rotation line" \
+          "confirm floor-observe.sh runs to completion at SessionStart; do not rotate by hand from a session — the sink is a surface guard-selfedit protects"
       fi
     fi
   done
@@ -1526,7 +1526,7 @@ fi
 # FC-0's shape, aimed at the second ledger. The predicate is NOT "the ledger is
 # empty": a box with no failed tool calls is a healthy box, and firing on that
 # would be the false positive that gets this muted. It is "the hook is wired and
-# the SINK DOES NOT EXIST" — which means admission-observe.sh never prepared it, and
+# the SINK DOES NOT EXIST" — which means floor-observe.sh never prepared it, and
 # every failure since is being dropped by the two gates in failure-observe.sh
 # rather than recorded.
 #
@@ -1539,7 +1539,7 @@ if [ "$TF_WIRED" = yes ] && [ -d "$OBS" ]; then
   if [ "$_tf_hosts" -gt 0 ] && [ "$_tf_sinks" -eq 0 ]; then
     finding FC-11 warn "$OBS/tool-failures.jsonl" \
       "failure-observe.sh is wired at PostToolUseFailure and no sink exists in any host partition, so every failed tool call is being dropped — and this ledger's other rules would report clean, because a ledger that was never written looks exactly like a box that never failed" \
-      "admission-observe.sh is the only component allowed to create it, at SessionStart: confirm it is wired, start a session, re-run. If it was only just installed, one restart is the whole fix — and if the floor was UNINSTALLED here on purpose, admission-observe.sh went with it, so unwire failure-observe.sh from PostToolUseFailure rather than leaving a recorder that can never record"
+      "floor-observe.sh is the only component allowed to create it, at SessionStart: confirm it is wired, start a session, re-run. If it was only just installed, one restart is the whole fix — and if the floor was UNINSTALLED here on purpose, floor-observe.sh went with it, so unwire failure-observe.sh from PostToolUseFailure rather than leaving a recorder that can never record"
   fi
 fi
 

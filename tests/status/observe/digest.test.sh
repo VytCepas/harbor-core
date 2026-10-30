@@ -12,7 +12,7 @@ NONCE="$(od -An -N6 -tx1 /dev/urandom 2>/dev/null | tr -d ' \n')"; NONCE="${NONC
 LIVE_LEDGER="$(find "$REAL_CFG/MEMORY/OBSERVABILITY" -maxdepth 2 -name guard-decisions.jsonl 2>/dev/null | head -1)"
 TMP="$T_TMP/od"; H=fixturehost; CFG="$TMP/tree"
 mkdir -p "$CFG/bin" "$CFG/MEMORY/OBSERVABILITY/$H"
-for _f in library-admission.sh admission-normalize.awk admission-destroy.sh admission-cloud.sh; do cp "$T_ROOT/bin/$_f" "$CFG/bin/$_f"; done
+for _f in library-admission.sh floor-normalize.awk admission-destroy.sh admission-cloud.sh; do cp "$T_ROOT/bin/$_f" "$CFG/bin/$_f"; done
 SINK="$CFG/MEMORY/OBSERVABILITY/$H/guard-decisions.jsonl"
 printf '%s\n' "$H" > "$CFG/.helm-obs-host"
 printf '%s\n' '0123456789abcdef0123456789abcdef' > "$CFG/.helm-obs-salt"  # fixture-only salt

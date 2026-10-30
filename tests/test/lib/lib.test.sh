@@ -84,7 +84,7 @@ t_eq 't_pad is exact'      33000    "$(t_pad 33000 | wc -c | tr -d ' ')"
 
 t_section "table runner"
 ln -s "$LIB" "$R/tests/lib"
-FG="$T_TMP/fg"; mkdir -p "$FG"; : > "$FG/admission-normalize.awk"
+FG="$T_TMP/fg"; mkdir -p "$FG"; : > "$FG/floor-normalize.awk"
 cat > "$FG/guard-fake.sh" <<'EOF'
 p="$(cat)"; c="$(printf '%s' "$p" | jq -r '.tool_input.command // .tool_input.file_path // .tool_input.url')"
 case "$c" in
@@ -94,7 +94,7 @@ case "$c" in
   crash*) exit 3 ;;
   long*) [ "${#c}" -gt 30000 ] && exit 2; exit 0 ;;
   ctx*) [ "$(printf '%s' "$p" | jq -r '.agent_type // ""')" = sub ] && exit 2; exit 0 ;;
-  fx*) [ -f "$(dirname "$0")/admission-normalize.awk" ] || exit 2; exit 0 ;;
+  fx*) [ -f "$(dirname "$0")/floor-normalize.awk" ] || exit 2; exit 0 ;;
   home:*) [ "$c" = "home:$HOME/x" ] && exit 0; exit 2 ;;
   loop*) sh -c 'while :; do :; done # loopmark' ;;
   pid:*) sleep 7769 & printf '%s\n' "$!" >> "${c#pid:}"; wait ;;
