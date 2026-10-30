@@ -5,13 +5,13 @@
 // exercised directly by the test without going through a process boundary.
 //
 // NOT THE FRONT DOOR. `bin/memory.sh` is what an operator runs and what
-// CONTRACTS/cli.md classifies; it decides whether this engine is reachable at
+// contracts/cli.md classifies; it decides whether this engine is reachable at
 // all and falls back to grep when Bun is absent (D7's third degradation). This
 // file may therefore assume Bun exists — nothing else in Harbor may.
 //
 // Every invocation rebuilds the corpus, the postings and the graph from the
 // markdown and then exits. That is not a performance oversight: it is
-// CONTRACTS/memory-format.md's "rebuilt in-memory at query time. No DB is the
+// contracts/memory-format.md's "rebuilt in-memory at query time. No DB is the
 // source of truth", and D3's done-when — delete every index and retrieval is
 // unchanged — is true here by construction, because there is no index to delete.
 import { parseArgs } from "node:util";

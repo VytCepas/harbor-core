@@ -20,7 +20,7 @@
 #
 # THE REFUSALS ARE THE FEATURE. A garbage collector that deletes working
 # directories is the most dangerous shape in this repo, so the discipline is
-# taken wholesale from bin/sandbox-make.sh (harbor#143), which deleted a live
+# taken wholesale from bin/test-sandbox-make.sh (harbor#143), which deleted a live
 # config dir and exited 0 because its gate ran three lines AFTER the delete and
 # compared STRINGS: `~/x`, `~/x/`, `~/x/.` and `~/x/../x` are one directory and
 # no two are one string. So here every decision is made and printed BEFORE
@@ -31,7 +31,7 @@
 #   dirty     uncommitted or untracked content. The orphans this tool collects
 #             come from sessions that DIED, and a session that died mid-edit is
 #             exactly the one whose worktree still holds the only copy.
-#   held      a live session is working in it. Sourced from fleet-sessions.sh,
+#   held      a live session is working in it. Sourced from context-peers.sh,
 #             which already answers "which sessions are alive and which tree
 #             does each WRITE to" — reimplementing that here would be a second
 #             copy of a fact that lives somewhere else.
@@ -43,7 +43,7 @@
 #             (CONSTITUTION §2.10), and it is harbor#163.
 set -eu
 
-ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}}"
 DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 # THE REPO'S NAME COMES FROM ITS MAIN WORKTREE (harbor#1149), never from $ROOT: run from inside a worktree,
 # $ROOT is that worktree and its basename would nest the new tree under .worktrees/<repo>-wt-<x>/.
@@ -51,10 +51,10 @@ DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 MAIN="$(git -C "$ROOT" worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p')"
 [ -n "$MAIN" ] || MAIN="$ROOT"
 REPO_NAME="$(basename -- "$MAIN")"
-BASE="${HARBOR_BASE:-origin/main}"
+BASE="${HARBOR_CI_BASE:-${HARBOR_BASE:-origin/main}}"
 APPLY=0; FORCE=0
 LOG_FD=2   # stdout is the verdict table and the gc plan; the log goes to stderr
-. "$DIR/log-lib.sh"
+. "$DIR/library-log.sh"
 US="$(printf '\037')"
 
 # RESOLVED, NEVER COMPARED AS STRINGS (harbor#143). A path that does not exist
@@ -82,7 +82,7 @@ case "$CMD" in
 esac
 
 # ── which trees are LIVE SESSIONS working in ────────────────────────────────
-# Delegated, not reimplemented: fleet-sessions.sh already filters to live
+# Delegated, not reimplemented: context-peers.sh already filters to live
 # sessions (`is_live` compares a pid AND its start time, because a pid alone is
 # a recycled-pid false positive) and already reports the tree each session
 # WRITES to rather than the directory it was launched from. Both of those were
@@ -93,15 +93,15 @@ esac
 # one of them is safe to act on.
 HELD_TREES=""
 HELD_KNOWN=0
-if [ -x "$DIR/fleet-sessions.sh" ] || [ -f "$DIR/fleet-sessions.sh" ]; then
-  if _fs="$(sh "$DIR/fleet-sessions.sh" --json 2>/dev/null)" && [ -n "$_fs" ]; then
+if [ -x "$DIR/context-peers.sh" ] || [ -f "$DIR/context-peers.sh" ]; then
+  if _fs="$(sh "$DIR/context-peers.sh" --json 2>/dev/null)" && [ -n "$_fs" ]; then
     # HELD_KNOWN is set ONLY when the extraction itself succeeded. The first cut
     # set it unconditionally with a `|| printf ''` fallback, so a jq that failed
     # — missing, stubbed, or fed malformed JSON — produced an empty tree list
     # that read as "no session holds anything" and made every worktree
     # collectable. An unanswerable question must not resolve to the permissive
     # answer, which is the same rule the empty-changeset case follows in
-    # bin/suite-select.sh.
+    # bin/test-suite-select.sh.
     if HELD_TREES="$(printf '%s' "$_fs" \
         | jq -r '(if type=="array" then . else (.sessions // []) end)[]? | .tree // empty' 2>/dev/null)"; then
       HELD_KNOWN=1
@@ -136,14 +136,14 @@ is_merged() { # <sha>
   # branch", for a branch that was merged. A gate whose documented bypass is the
   # normal path is a gate that has stopped meaning anything (§2.11).
   #
-  # merged-check.sh is a sibling script rather than an inlined predicate because
-  # govern-hook.sh and install-stamp.sh ask the same question, and three copies of
+  # gate-merged-check.sh is a sibling script rather than an inlined predicate because
+  # govern-hook.sh and deploy-install-stamp.sh ask the same question, and three copies of
   # it is the defect harbor#213 describes one level up. It fails toward `absent`,
   # which keeps the conservative direction: refusing to retire costs a `--force`,
   # retiring wrongly destroys uncommitted work.
   git -C "$ROOT" rev-parse --verify -q "$BASE" >/dev/null 2>&1 || return 1
-  [ -f "$DIR/merged-check.sh" ] || return 1
-  [ "$(sh "$DIR/merged-check.sh" --repo "$ROOT" "$BASE" "$1" 2>/dev/null | awk '{print $1; exit}')" = "merged" ]
+  [ -f "$DIR/gate-merged-check.sh" ] || return 1
+  [ "$(sh "$DIR/gate-merged-check.sh" --repo "$ROOT" "$BASE" "$1" 2>/dev/null | awk '{print $1; exit}')" = "merged" ]
 }
 
 # ── the worktree table ──────────────────────────────────────────────────────
@@ -185,7 +185,7 @@ verdict() { # <path> <sha> <branch> -> sets V and WHY
   # fundamental reason to keep it than "someone is using it right now".
   #
   # ${BASE#*/} strips ONLY the remote segment: origin/main -> main, and
-  # origin/release/2 -> release/2. When HARBOR_BASE names a local branch carrying
+  # origin/release/2 -> release/2. When HARBOR_CI_BASE names a local branch carrying
   # no slash the expansion is a no-op, which is what the second pattern is for.
   case "$3" in "${BASE#*/}"|"$BASE")
     WHY="$3 is the base branch — never session work"; return ;;
@@ -227,7 +227,7 @@ ROWS
       && { printf 'worktree: branch already exists: %s\n' "$ARG" >&2; exit 1; }
     _slug="$(printf '%s' "$ARG" | tr '/' '-')"
     # harbor#1149: worktrees live under $PORT_ROOT/.worktrees/<repo>/; the sibling `<repo>-wt-*` layout is legacy.
-    _pw="$(HARBOR_ROOT= sh "$DIR/roots.sh" --port-root)" || { echo "worktree: cannot resolve PORT_ROOT" >&2; exit 1; }
+    _pw="$(HARBOR_SCOPE_ROOT= HARBOR_ROOT= sh "$DIR/scope-roots.sh" --port-root)" || { echo "worktree: cannot resolve PORT_ROOT" >&2; exit 1; }
     _dest="${_pw%/}/.worktrees/$REPO_NAME/$_slug"
     mkdir -p -- "$(dirname -- "$_dest")"
     [ -e "$_dest" ] && { printf 'worktree: already exists: %s\n' "$_dest" >&2; exit 1; }
@@ -260,7 +260,7 @@ ROWS
     # A bare name is tried in both layouts (harbor#1149): the new one first, then the legacy sibling.
     case "$_want" in
       */*) ;;
-      *) _pw="$(HARBOR_ROOT= sh "$DIR/roots.sh" --port-root 2>/dev/null || :)"
+      *) _pw="$(HARBOR_SCOPE_ROOT= HARBOR_ROOT= sh "$DIR/scope-roots.sh" --port-root 2>/dev/null || :)"
          _want="${_pw%/}/.worktrees/$REPO_NAME/$ARG"
          [ -d "$_want" ] || _want="$(dirname -- "$MAIN")/$REPO_NAME-wt-$ARG" ;;
     esac

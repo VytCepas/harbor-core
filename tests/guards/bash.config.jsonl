@@ -58,7 +58,7 @@
 {"id":"cfg280-fp-a-repo-s-own-claude","rule":"cd-cfg-then-redirect","want":"allow","cmd":"printf 'x' > {home}/oldproj/.claude/CLAUDE.md","why":"CFG280 FP a repo's own .claude · CONST-1 another repo's CLAUDE.md"}
 {"id":"cfg280-fp-cd-then-absolute-target","rule":"cd-cfg-then-redirect","want":"allow","cmd":"cd {cfg} && echo x > /tmp/out"}
 {"id":"cfg280-fp-cd-then-leaves-the-dir","rule":"cd-cfg-then-redirect","want":"allow","cmd":"cd {cfg} && echo x > ../outside.txt"}
-{"id":"cfg280-fp-dev-null-2-1","rule":"cd-cfg-then-redirect","want":"allow","cmd":"cd {cfg} && sh bin/guard-bash.sh > /dev/null 2>&1"}
+{"id":"cfg280-fp-dev-null-2-1","rule":"cd-cfg-then-redirect","want":"allow","cmd":"cd {cfg} && sh bin/admission-bash.sh > /dev/null 2>&1"}
 {"id":"cfg280-fp-grep-the-store","rule":"cd-cfg-then-redirect","want":"allow","cmd":"grep -r foo {cfg}/MEMORY"}
 {"id":"cfg280-fp-read-settings","rule":"cd-cfg-then-redirect","want":"allow","cmd":"cat {cfg}/settings.json"}
 {"id":"cfg280-fp-write-outside-the-dir","rule":"cd-cfg-then-redirect","want":"allow","cmd":"echo hi > /tmp/notes.txt"}
@@ -72,10 +72,10 @@
 {"id":"cfg280-the-observability-ledger","rule":"redirect-floor-surface","want":"block","cmd":"date >> {cfg}/MEMORY/OBSERVABILITY/x.jsonl","why":"harbor#1181: an append forges the record of what the floor decided"}
 {"id":"cwd-build-in-home","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~ && make && echo done"}
 {"id":"cwd-cd-is-blind","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd - && echo {} > settings.json"}
-{"id":"cwd-chained-cat","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~ && cd .claude && cat bin/guard-lib.sh"}
-{"id":"cwd-chained-grep","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~ && cd .claude && grep -n floor bin/guard-lib.sh"}
-{"id":"cwd-chained-head","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~ && cd .claude && head -5 bin/guard-lib.sh"}
-{"id":"cwd-chained-sed-n-harbor-116-was-a-pinned-fp","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~ && cd .claude && sed -n '1,5p' bin/guard-lib.sh"}
+{"id":"cwd-chained-cat","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~ && cd .claude && cat bin/library-admission.sh"}
+{"id":"cwd-chained-grep","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~ && cd .claude && grep -n floor bin/library-admission.sh"}
+{"id":"cwd-chained-head","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~ && cd .claude && head -5 bin/library-admission.sh"}
+{"id":"cwd-chained-sed-n-harbor-116-was-a-pinned-fp","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~ && cd .claude && sed -n '1,5p' bin/library-admission.sh"}
 {"id":"cwd-chained-then-extract","rule":"cd-cfg-then-extract","want":"block","cmd":"cd ~ && cd .claude && tar xzf /tmp/evil.tgz"}
 {"id":"cwd-dot-slash-hop","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~ && cd ./.claude && echo {} > settings.json"}
 {"id":"cwd-hop-through","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~ && cd Library/../.claude && echo {} > settings.json"}
@@ -84,7 +84,7 @@
 {"id":"cwd-sibling-claude-notes","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~ && cd .claude-notes && echo hello > notes.txt"}
 {"id":"cwd-sticky-through-cd","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~ && cd .claude && cd .. && echo {} > settings.json"}
 {"id":"cwd-substitution-is-blind","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd \"$(git rev-parse --show-toplevel)\" && echo {} > settings.json"}
-{"id":"cwd-three-hops-into-bin","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~ && cd .claude && cd bin && printf x > guard-bash.sh"}
+{"id":"cwd-three-hops-into-bin","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~ && cd .claude && cd bin && printf x > admission-bash.sh"}
 {"id":"cwd-two-hop","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~ && cd .claude && echo {} > settings.json"}
 {"id":"cwd-two-hop-2","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~; cd .claude; echo {} > settings.json"}
 {"id":"cwd-two-hops-elsewhere","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~ && cd Library && ls -la"}
@@ -114,7 +114,7 @@
 {"id":"fp116-dir-branch-flag-last","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && sed s/a/b/ bin/anything.txt -i"}
 {"id":"fp116-i-is-not-i","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && sed -I 4 settings.json"}
 {"id":"fp116-in-place-chained-cd","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~ && cd .claude && sed -i '' s/a/b/ settings.json"}
-{"id":"fp116-in-place-on-a-guard","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && sed -i '' s/a/b/ bin/guard-lib.sh"}
+{"id":"fp116-in-place-on-a-guard","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && sed -i '' s/a/b/ bin/library-admission.sh"}
 {"id":"fp116-in-place-on-claude-md","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && sed -i '' s/a/b/ CLAUDE.md"}
 {"id":"fp116-sed-e-is-not-in-place","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && sed -e 's/a/b/' settings.json"}
 {"id":"fp116-sed-ei-bundle","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && sed -Ei s/a/b/ settings.json"}
@@ -123,12 +123,12 @@
 {"id":"fp116-sed-i","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && sed -i '' s/a/b/ settings.json"}
 {"id":"fp116-sed-i-bak","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && sed -i.bak s/a/b/ settings.json"}
 {"id":"fp116-sed-in-place","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && sed --in-place s/a/b/ settings.json"}
-{"id":"fp116-sed-n-on-a-guard","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && sed -n '1,5p' bin/guard-lib.sh"}
+{"id":"fp116-sed-n-on-a-guard","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && sed -n '1,5p' bin/library-admission.sh"}
 {"id":"fp116-sed-n-on-settings","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && sed -n '1,5p' settings.json"}
 {"id":"fp116-sed-ni-bundle","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && sed -ni s/a/b/ settings.json"}
 {"id":"fp116-todo-i-reads-as-a-flag-known-residual-blocks-at-head-too","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && sed -n p todo-i settings.json"}
 {"id":"fp116-trailing-i","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && sed s/a/b/ settings.json -i"}
-{"id":"fp116-trailing-i-on-a-guard","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && sed s/a/b/ bin/guard-lib.sh -i"}
+{"id":"fp116-trailing-i-on-a-guard","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && sed s/a/b/ bin/library-admission.sh -i"}
 {"id":"fp116-trailing-in-place","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && sed s/a/b/ CLAUDE.md --in-place"}
 {"id":"fp222-1-diff-two-surfaces","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && diff .helm-floor-teeth settings.json"}
 {"id":"fp222-1-git-log-over-a-surface","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && git log --oneline -- .helm-floor-teeth settings.json"}
@@ -138,30 +138,30 @@
 {"id":"fp222-1-rm-inside-an-operand","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && ls notes.rm.bak settings.json"}
 {"id":"fp222-1-tee-is-still-a-verb","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && tee settings.json"}
 {"id":"fp222-1-wc-two-surfaces","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && wc -c .helm-floor-teeth .helm-instructions.sha256"}
-{"id":"fp289-2-1-is-not-a-redirect-to-a-file","rule":"cd-cfg-then-redirect","want":"allow","cmd":"cd ~/.claude && grep -n foo bin/guard-lib.sh 2>&1"}
+{"id":"fp289-2-1-is-not-a-redirect-to-a-file","rule":"cd-cfg-then-redirect","want":"allow","cmd":"cd ~/.claude && grep -n foo bin/library-admission.sh 2>&1"}
 {"id":"fp289-a-file-named-git-rm-known-residual","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && ls git-rm settings.json"}
 {"id":"fp289-a-ln-is-a-filename","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && ls a-ln settings.json"}
 {"id":"fp289-chmod-on-bin","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && chmod 700 bin"}
 {"id":"fp289-chown-on-bin","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && chown root bin"}
-{"id":"fp289-dashed-alias-by-full-path","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && /Library/Developer/CommandLineTools/usr/libexec/git-core/git-rm bin/guard-bash.sh"}
-{"id":"fp289-dd-of-a-guard","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && dd if=/dev/zero of=bin/guard-bash.sh"}
+{"id":"fp289-dashed-alias-by-full-path","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && /Library/Developer/CommandLineTools/usr/libexec/git-core/git-rm bin/admission-bash.sh"}
+{"id":"fp289-dd-of-a-guard","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && dd if=/dev/zero of=bin/admission-bash.sh"}
 {"id":"fp289-git-mv-dashed-alias","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && git-mv hooks hooks.off"}
-{"id":"fp289-git-rm-dashed-alias","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && git-rm bin/guard-bash.sh"}
-{"id":"fp289-git-rm-ordinary-spelling","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && git rm bin/guard-bash.sh"}
+{"id":"fp289-git-rm-dashed-alias","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && git-rm bin/admission-bash.sh"}
+{"id":"fp289-git-rm-ordinary-spelling","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && git rm bin/admission-bash.sh"}
 {"id":"fp289-grep-ln-over-bin","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && grep -ln helm-pins bin/*.sh"}
 {"id":"fp289-install-onto-bin","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && install -m 755 /tmp/x bin/"}
 {"id":"fp289-java-cp-over-bin","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && java -cp bin/x.jar Main"}
 {"id":"fp289-l-n-allowed-at-head-too","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && grep -l -n helm-pins bin/*.sh"}
 {"id":"fp289-ln-elsewhere","rule":"cd-cfg-then-redirect","want":"allow","cmd":"cd /tmp/proj && ls -ln bin"}
-{"id":"fp289-ln-s-onto-a-guard","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && ln -s /tmp/evil bin/guard-bash.sh"}
+{"id":"fp289-ln-s-onto-a-guard","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && ln -s /tmp/evil bin/admission-bash.sh"}
 {"id":"fp289-ls-ln-bin","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && ls -ln bin"}
 {"id":"fp289-mutation-elsewhere","rule":"cd-cfg-then-redirect","want":"allow","cmd":"cd /tmp && rm -f notes.txt"}
 {"id":"fp289-nl-allowed-at-head-too","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && grep -nl helm-pins bin/*.sh"}
 {"id":"fp289-notes-rm-is-a-filename","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && ls notes-rm settings.json"}
 {"id":"fp289-redirect-fd-numbered","rule":"cd-cfg-then-redirect","want":"block","cmd":"cd ~/.claude && echo x 1>settings.json"}
 {"id":"fp289-redirect-no-space","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && echo {} >settings.json","why":"FP222 §1 redirect keeps no right anchor · FP289 redirect, no space"}
-{"id":"fp289-sort-ln-a-guard","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && sort -ln bin/guard-lib.sh"}
-{"id":"fp289-tee-onto-a-guard","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && cat /tmp/x | tee bin/guard-bash.sh"}
+{"id":"fp289-sort-ln-a-guard","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && sort -ln bin/library-admission.sh"}
+{"id":"fp289-tee-onto-a-guard","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && cat /tmp/x | tee bin/admission-bash.sh"}
 {"id":"fp289-x-tee-is-a-filename","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude && ls x-tee settings.json"}
 {"id":"p10-ordinary-extract","rule":"extractor-writes-cfg","want":"allow","cmd":"tar -xzf node.tar.gz -C /tmp/build"}
 {"id":"p10-ordinary-unzip","rule":"extractor-writes-cfg","want":"allow","cmd":"unzip dist.zip -d ./build"}
@@ -223,10 +223,10 @@
 {"id":"p13-unzip-v-a-backup","rule":"extract-into-cfg","want":"allow","cmd":"unzip -v ~/.claude/backups/b.zip"}
 {"id":"plu-a-project-s-claude","rule":"plutil-writes-cfg","want":"allow","cmd":"plutil -remove hooks {home}/proj/.claude/settings.json"}
 {"id":"plu-absolute-binary-path","rule":"plutil-writes-cfg","want":"block","cmd":"/usr/bin/plutil -remove permissions.deny {home}/.claude/settings.json"}
-{"id":"plu-caffeinate-wrapper","rule":"plutil-writes-cfg","want":"block","cmd":"caffeinate plutil -create json {home}/.claude/bin/guard-bash.sh"}
+{"id":"plu-caffeinate-wrapper","rule":"plutil-writes-cfg","want":"block","cmd":"caffeinate plutil -create json {home}/.claude/bin/admission-bash.sh"}
 {"id":"plu-cd-cfg-bare-name","rule":"cd-cfg-then-plutil","want":"block","cmd":"cd {home}/.claude && plutil -replace permissions.deny -json '[]' settings.json"}
-{"id":"plu-cd-cfg-bin-bare-guard","rule":"cd-cfg-then-plutil","want":"block","cmd":"cd {home}/.claude/bin && plutil -create json guard-bash.sh"}
-{"id":"plu-cd-cfg-bin-path","rule":"cd-cfg-then-plutil","want":"block","cmd":"cd {home}/.claude && plutil -create json bin/guard-bash.sh"}
+{"id":"plu-cd-cfg-bin-bare-guard","rule":"cd-cfg-then-plutil","want":"block","cmd":"cd {home}/.claude/bin && plutil -create json admission-bash.sh"}
+{"id":"plu-cd-cfg-bin-path","rule":"cd-cfg-then-plutil","want":"block","cmd":"cd {home}/.claude && plutil -create json bin/admission-bash.sh"}
 {"id":"plu-cd-cfg-convert-o","rule":"plutil-writes-cfg","want":"allow","cmd":"cd {home}/.claude && plutil -convert json -o - settings.json"}
 {"id":"plu-cd-cfg-dot-slash","rule":"cd-cfg-then-plutil","want":"block","cmd":"cd {home}/.claude && plutil -remove permissions.deny ./settings.json"}
 {"id":"plu-cd-cfg-then-p","rule":"plutil-writes-cfg","want":"allow","cmd":"cd {home}/.claude && plutil -p settings.json"}
@@ -237,7 +237,7 @@
 {"id":"plu-convert-o-view","rule":"plutil-writes-cfg","want":"allow","cmd":"plutil -convert json -o - {home}/.claude/settings.json"}
 {"id":"plu-create-in-tmp","rule":"plutil-writes-cfg","want":"allow","cmd":"plutil -create json /tmp/new.json"}
 {"id":"plu-create-truncates","rule":"plutil-writes-cfg","want":"block","cmd":"plutil -create json {home}/.claude/settings.json"}
-{"id":"plu-create-wipes-a-guard","rule":"plutil-writes-cfg","want":"block","cmd":"plutil -create json {home}/.claude/bin/guard-bash.sh"}
+{"id":"plu-create-wipes-a-guard","rule":"plutil-writes-cfg","want":"block","cmd":"plutil -create json {home}/.claude/bin/admission-bash.sh"}
 {"id":"plu-doas-wrapper","rule":"plutil-writes-cfg","want":"block","cmd":"doas plutil -remove permissions.deny {home}/.claude/settings.json"}
 {"id":"plu-e-cancels-exemption","rule":"plutil-writes-cfg","want":"block","cmd":"plutil -convert xml1 -e plist -o /tmp/a.plist {home}/.claude/settings.json"}
 {"id":"plu-env-wrapper","rule":"plutil-writes-cfg","want":"block","cmd":"env FOO=1 plutil -remove permissions.deny {home}/.claude/settings.json"}
@@ -259,7 +259,7 @@
 {"id":"plu-remove","rule":"plutil-writes-cfg","want":"block","cmd":"plutil -remove permissions.deny {home}/.claude/settings.json"}
 {"id":"plu-second-segment","rule":"plutil-writes-cfg","want":"block","cmd":"echo hi; plutil -remove permissions.deny {home}/.claude/settings.json"}
 {"id":"plu-sudo-wrapper","rule":"plutil-writes-cfg","want":"block","cmd":"sudo plutil -remove permissions.deny {home}/.claude/settings.json"}
-{"id":"plu-the-content-pin","rule":"plutil-writes-cfg","want":"block","cmd":"plutil -create json {home}/.claude/.helm-pins/guard-bash.sh.sha256"}
+{"id":"plu-the-content-pin","rule":"plutil-writes-cfg","want":"block","cmd":"plutil -create json {home}/.claude/.helm-pins/admission-bash.sh.sha256"}
 {"id":"plu-the-repo-checkout","rule":"plutil-writes-cfg","want":"allow","cmd":"plutil -remove permissions.deny {home}/port/harbor/settings.json"}
 {"id":"plu-two-hop-cd-fold","rule":"cd-cfg-then-plutil","want":"block","cmd":"cd ~ && cd .claude && plutil -remove permissions.deny settings.json"}
 {"id":"plu-type","rule":"plutil-writes-cfg","want":"allow","cmd":"plutil -type permissions.deny {home}/.claude/settings.json"}
@@ -268,14 +268,14 @@
 {"id":"r138-f3-real-write-control","rule":"plutil-writes-cfg","want":"block","cmd":"plutil -replace permissions.deny -json '[]' {home}/.claude/settings.json","why":"PLU -replace deny · R138-F3 real write control"}
 {"id":"r138-f3-value-and-operand","rule":"plutil-writes-cfg","want":"block","cmd":"plutil -replace k -string {home}/.claude/settings.json {home}/.claude/settings.json"}
 {"id":"r138-f3-var-operand-still-blocks","rule":"plutil-writes-cfg","want":"block","cmd":"S={home}/.claude/settings.json; plutil -remove permissions.deny \"$S\"","why":"PLU operand in a variable · R138-F3 $VAR operand still blocks"}
-{"id":"ro-sink-cat-grep-sponge","rule":"extract-into-cfg","want":"allow","cmd":"cat {cfg}/bin/guard-bash.sh | grep sponge"}
-{"id":"ro-sink-echo-the-word-path","rule":"extract-into-cfg","want":"allow","cmd":"echo sponge is named in {cfg}/bin/guard-bash.sh"}
-{"id":"ro-sink-grep-c-chmod-a-guard","rule":"extract-into-cfg","want":"allow","cmd":"/usr/bin/grep -c chmod {cfg}/bin/guard-bash.sh"}
-{"id":"ro-sink-grep-c-rm-a-guard","rule":"extract-into-cfg","want":"allow","cmd":"/usr/bin/grep -c rm {cfg}/bin/guard-bash.sh"}
-{"id":"ro-sink-grep-c-sponge-a-guard","rule":"extract-into-cfg","want":"allow","cmd":"/usr/bin/grep -c sponge {cfg}/bin/guard-bash.sh"}
-{"id":"ro-sink-grep-sponge-tmp","rule":"extract-into-cfg","want":"allow","cmd":"/usr/bin/grep -c sponge {cfg}/bin/guard-bash.sh > /tmp/out.txt"}
-{"id":"ro-sink-rg-tee-a-guard","rule":"extract-into-cfg","want":"allow","cmd":"rg tee {cfg}/bin/guard-bash.sh"}
-{"id":"ro-sink-wc-cmp-diff-a-guard","rule":"extract-into-cfg","want":"allow","cmd":"diff {cfg}/bin/guard-bash.sh /tmp/x","why":"CFG280 FP diff a guard · RO-SINK wc/cmp/diff a guard"}
+{"id":"ro-sink-cat-grep-sponge","rule":"extract-into-cfg","want":"allow","cmd":"cat {cfg}/bin/admission-bash.sh | grep sponge"}
+{"id":"ro-sink-echo-the-word-path","rule":"extract-into-cfg","want":"allow","cmd":"echo sponge is named in {cfg}/bin/admission-bash.sh"}
+{"id":"ro-sink-grep-c-chmod-a-guard","rule":"extract-into-cfg","want":"allow","cmd":"/usr/bin/grep -c chmod {cfg}/bin/admission-bash.sh"}
+{"id":"ro-sink-grep-c-rm-a-guard","rule":"extract-into-cfg","want":"allow","cmd":"/usr/bin/grep -c rm {cfg}/bin/admission-bash.sh"}
+{"id":"ro-sink-grep-c-sponge-a-guard","rule":"extract-into-cfg","want":"allow","cmd":"/usr/bin/grep -c sponge {cfg}/bin/admission-bash.sh"}
+{"id":"ro-sink-grep-sponge-tmp","rule":"extract-into-cfg","want":"allow","cmd":"/usr/bin/grep -c sponge {cfg}/bin/admission-bash.sh > /tmp/out.txt"}
+{"id":"ro-sink-rg-tee-a-guard","rule":"extract-into-cfg","want":"allow","cmd":"rg tee {cfg}/bin/admission-bash.sh"}
+{"id":"ro-sink-wc-cmp-diff-a-guard","rule":"extract-into-cfg","want":"allow","cmd":"diff {cfg}/bin/admission-bash.sh /tmp/x","why":"CFG280 FP diff a guard · RO-SINK wc/cmp/diff a guard"}
 {"id":"t1-cd-ls-redirect","rule":"cd-cfg-then-mutate","want":"block","cmd":"cd ~/.claude && ls && echo {} > settings.json"}
 {"id":"t2-cp-into-the-config-dir","rule":"mutate-into-cfg","want":"block","cmd":"cp /tmp/settings.json {home}/.claude/","why":"T2 cp into the config dir · U3 copy INTO the config dir"}
 {"id":"t2-mv-the-bin-dir-away","rule":"destructive-at-cfg","want":"block","cmd":"mv {home}/.claude/bin {home}/.claude/bin.off"}
@@ -302,7 +302,7 @@
 {"id":"find-cfg-read-only","rule":"mutate-into-cfg","want":"allow","cmd":"find {home}/.claude -type f -name '*.md'"}
 {"id":"fp788-ls-a-ln-then-a-surface","rule":"mutate-aimed-surface","want":"allow","cmd":"ls ~/.claude/a-ln ~/.claude/settings.json","why":"harbor#788: the absolute-path rules kept the pre-#289 verb anchor, so a dash made `ln` a verb"}
 {"id":"fp788-ls-ln-the-config-bin","rule":"destructive-at-cfg","want":"allow","cmd":"ls -ln ~/.claude/bin","why":"harbor#788"}
-{"id":"fp788-sort-ln-a-guard","rule":"mutate-aimed-surface","want":"allow","cmd":"sort -ln ~/.claude/bin/guard-lib.sh","why":"harbor#788"}
+{"id":"fp788-sort-ln-a-guard","rule":"mutate-aimed-surface","want":"allow","cmd":"sort -ln ~/.claude/bin/library-admission.sh","why":"harbor#788"}
 {"id":"fp788-ls-ln-the-snapshots","rule":"destructive-at-cfg","want":"allow","cmd":"ls -ln ~/.claude/backups","why":"harbor#788: backups is a surface since harbor#772"}
 {"id":"fp788-ls-ln-the-config-dir","rule":"destructive-at-cfg","want":"allow","cmd":"ls -ln {cfg}"}
 {"id":"fp788-ls-notes-rm-then-a-surface","rule":"mutate-aimed-surface","want":"allow","cmd":"ls {cfg}/notes-rm {cfg}/settings.json"}
@@ -319,9 +319,9 @@
 {"id":"fp788-mv-cfg-still-blocks","rule":"destructive-at-cfg","want":"block","cmd":"mv {cfg} /tmp/cfg.off"}
 {"id":"fp788-cp-into-cfg-still-blocks","rule":"mutate-into-cfg","want":"block","cmd":"cp /tmp/x {cfg}/"}
 {"id":"fp788-git-rm-still-blocks","rule":"mutate-aimed-surface","want":"block","cmd":"git-rm ~/.claude/settings.json","why":"harbor#788: git's dashed alias is a real program, as harbor#289 records"}
-{"id":"fp788-git-core-rm-still-blocks","rule":"mutate-aimed-surface","want":"block","cmd":"/usr/libexec/git-core/git-rm -f {cfg}/bin/guard-bash.sh"}
+{"id":"fp788-git-core-rm-still-blocks","rule":"mutate-aimed-surface","want":"block","cmd":"/usr/libexec/git-core/git-rm -f {cfg}/bin/admission-bash.sh"}
 {"id":"fp788-git-mv-into-cfg-still-blocks","rule":"destructive-at-cfg","want":"block","cmd":"git-mv /tmp/x {cfg}"}
-{"id":"fp788-slash-rm-still-blocks","rule":"mutate-aimed-surface","want":"block","cmd":"/bin/rm {cfg}/bin/guard-bash.sh"}
+{"id":"fp788-slash-rm-still-blocks","rule":"mutate-aimed-surface","want":"block","cmd":"/bin/rm {cfg}/bin/admission-bash.sh"}
 {"id":"fp788-docker-rm-bind-still-blocks","rule":"mutate-aimed-surface","want":"block","cmd":"docker run --rm -v ~/.claude/settings.json:/x alpine sh","why":"harbor#788 keeps `--` a boundary: this block is an accident of --rm, and the bind-mount gap is harbor#797"}
 {"id":"fp788-ls-lo-then-rm-still-blocks","rule":"mutate-aimed-surface","want":"block","cmd":"ls -lo ~/.claude/settings.json && rm ~/.claude/settings.json","why":"harbor#788: ls is a reader, and a writer beside it withdraws the veto"}
 {"id":"fp788-ls-redirect-still-blocks","rule":"redirect-floor-surface","want":"block","cmd":"ls > ~/.claude/settings.json"}

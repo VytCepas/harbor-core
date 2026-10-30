@@ -1,6 +1,6 @@
 {
-  "_about": "H2 (harbor#4) — the SHARED marker-resolution fixture suite required by CONTRACTS/marker.md. Three implementations must agree: project-init's prod_guard._find_config (Python), projects-orchestrator's resolve_config (Python), and Helm's pure-POSIX floor_in_repo (shell). The POSIX one must NOT import the Python one across a language boundary; it re-implements the spec and these fixtures are what pin the two together.",
-  "_format": "Each case builds `tree` under a scratch root, then resolves from `cwd` (relative to that root). `expect` is the spec verdict. `settled` marks whether CONTRACTS/marker.md actually decides the case — an unsettled case is a question for the three owners, not a bug in any one implementation. A case may carry `files` — a {path: content} map — instead of (or as well as) `tree`, for the cases where the verdict depends on what a marker SAYS rather than only that it exists. A case may carry `home` — a path relative to the scratch root — which the runner sets as $HOME for that case only; M14's stop condition is the one rule whose verdict depends on where $HOME is, and a runner that leaves the real $HOME in place would be testing the developer's machine layout instead of the spec. When `home` is absent the runner MUST still point $HOME somewhere that cannot be an ancestor of `cwd`, so the stop's ABSENCE is pinned too. A case may carry `port_root` — a path relative to the scratch root, exported as $PORT_ROOT for that case only — or `port_root_unset: true`, which leaves PORT_ROOT unset so the `$HOME/port` DEFAULT is what the case exercises. M33-M37 are the PORT_ROOT stop and are the reason both spellings exist: a stop that only applied to an exported value would be off on the box it was built for, where the audit for harbor#619 measured PORT_ROOT unset. When neither key is present the runner MUST still point PORT_ROOT somewhere that cannot be an ancestor of `cwd`, so the stop's ABSENCE is pinned for the other cases exactly as `home` pins M14's.",
+  "_about": "H2 (harbor#4) — the SHARED marker-resolution fixture suite required by contracts/marker.md. Three implementations must agree: project-init's prod_guard._find_config (Python), projects-orchestrator's resolve_config (Python), and Helm's pure-POSIX floor_in_repo (shell). The POSIX one must NOT import the Python one across a language boundary; it re-implements the spec and these fixtures are what pin the two together.",
+  "_format": "Each case builds `tree` under a scratch root, then resolves from `cwd` (relative to that root). `expect` is the spec verdict. `settled` marks whether contracts/marker.md actually decides the case — an unsettled case is a question for the three owners, not a bug in any one implementation. A case may carry `files` — a {path: content} map — instead of (or as well as) `tree`, for the cases where the verdict depends on what a marker SAYS rather than only that it exists. A case may carry `home` — a path relative to the scratch root — which the runner sets as $HOME for that case only; M14's stop condition is the one rule whose verdict depends on where $HOME is, and a runner that leaves the real $HOME in place would be testing the developer's machine layout instead of the spec. When `home` is absent the runner MUST still point $HOME somewhere that cannot be an ancestor of `cwd`, so the stop's ABSENCE is pinned too. A case may carry `port_root` — a path relative to the scratch root, exported as $PORT_ROOT for that case only — or `port_root_unset: true`, which leaves PORT_ROOT unset so the `$HOME/port` DEFAULT is what the case exercises. M33-M37 are the PORT_ROOT stop and are the reason both spellings exist: a stop that only applied to an exported value would be off on the box it was built for, where the audit for harbor#619 measured PORT_ROOT unset. When neither key is present the runner MUST still point PORT_ROOT somewhere that cannot be an ancestor of `cwd`, so the stop's ABSENCE is pinned for the other cases exactly as `home` pins M14's.",
   "_verdicts": [
     "repo",
     "ambient"
@@ -412,6 +412,135 @@
       "cwd": ".",
       "expect": "ambient",
       "settled": true
+    },
+    {
+      "id": "M38-scope-user-opt-out",
+      "why": "harbor#966, D-12. The standard spells the marker's value `scope: project|user`; `scope: user` is the owner opting back in to the global layer, the same decision `context: ambient` records. A reader that knew only the legacy key would resolve it `repo` and stand the floor down.",
+      "files": {
+        ".agents/config.yaml": "scope: user\nproject:\n  name: \"opted-out\"\n"
+      },
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos"
+    },
+    {
+      "id": "M39-scope-project-is-governed",
+      "why": "harbor#966. The other half of the new spelling and harbor's own marker: `scope: project` is a governed repo, not an opt-out. Without it, the fix above could be 'any scope key means ambient' and still pass M38.",
+      "files": {
+        ".agents/config.yaml": "scope: project\nstandard_version: 1.0.0\n"
+      },
+      "cwd": ".",
+      "expect": "repo",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far"
+    },
+    {
+      "id": "M40-either-key-opts-out",
+      "why": "harbor#966. A config in transition carries both keys (harbor's own did). When either one opts out the floor stays armed: ambient is the safe direction for a guard, so `context: repo` beside `scope: user` is ambient.",
+      "files": {
+        ".agents/config.yaml": "context: repo\nscope: \"user\"\n"
+      },
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far"
+    },
+    {
+      "id": "M41-scope-user-spaced-colon",
+      "why": "harbor#963: every top-level spelling `context:` honours, `scope:` honours too. `scope : user` is valid YAML and a genuine opt-out; missing it stands the floor down.",
+      "files": {".agents/config.yaml": "scope : user\n"},
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+    },
+    {
+      "id": "M42-scope-user-quoted-key",
+      "why": "harbor#963: the quoted-key spelling, M26's twin for the new key.",
+      "files": {".agents/config.yaml": "\"scope\": user\n"},
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+    },
+    {
+      "id": "M43-scope-user-commented-out",
+      "why": "harbor#963: `# scope: user` is a note, not a declaration, as M22 holds for `context:`.",
+      "files": {".agents/config.yaml": "# scope: user\nscope: project\n"},
+      "cwd": ".",
+      "expect": "repo",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+    },
+    {
+      "id": "M44-nested-scope-key-is-not-the-marker",
+      "why": "harbor#963: an indented `scope:` belongs to its parent block, as M23 holds for `context:`.",
+      "files": {".agents/config.yaml": "scope: project\ntooling:\n  scope: user\n"},
+      "cwd": ".",
+      "expect": "repo",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+    },
+    {
+      "id": "M45-scope-hash-without-whitespace-is-the-value",
+      "why": "harbor#963: `scope: user#typo` is the value `user#typo`, not `user` (M31's rule for the new key).",
+      "files": {".agents/config.yaml": "scope: user#typo\n"},
+      "cwd": ".",
+      "expect": "repo",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+    },
+    {
+      "id": "M46-scope-user-trailing-comment",
+      "why": "harbor#963: a comment after whitespace is a comment, so the value is `user` (M32's rule for the new key).",
+      "files": {".agents/config.yaml": "scope: user  # opted out deliberately\n"},
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+    },
+    {
+      "id": "M47-legacy-file-beside-scope-user",
+      "why": "harbor#963: a repo mid-migration carries the legacy `project-init.md` beside a `config.yaml` that opts out. The value in `config.yaml` decides; the legacy file must not turn the opt-out back into `repo`.",
+      "tree": [".agents/project-init.md"],
+      "files": {".agents/config.yaml": "scope: user\n"},
+      "cwd": ".",
+      "expect": "ambient",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+    },
+    {
+      "id": "M48-scope-user-inner-beats-legacy-outer",
+      "why": "harbor#963: the innermost marker wins across spellings. An outer repo on the legacy file does not overrule an inner repo's `scope: user`.",
+      "tree": [".agents/project-init.md", "sub/keep"],
+      "files": {"sub/.agents/config.yaml": "scope: user\n"},
+      "cwd": "sub",
+      "expect": "ambient",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+    },
+    {
+      "id": "M49-legacy-inner-beats-scope-user-outer",
+      "why": "harbor#963: the other direction. An inner repo with only the legacy `project-init.md` is still a marker and still the innermost one, so an outer `scope: user` does not reach it. A reader that dropped the legacy file would walk on to the outer opt-out and answer `ambient`.",
+      "tree": ["sub/.agents/project-init.md", "sub/src/keep"],
+      "files": {".agents/config.yaml": "scope: user\n"},
+      "cwd": "sub/src",
+      "expect": "repo",
+      "settled": true,
+      "roles": ["resolver"],
+      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
     },
     {
       "id": "M33-marker-at-port-root",

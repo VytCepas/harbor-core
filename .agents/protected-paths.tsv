@@ -11,263 +11,295 @@
 # tests/gate/approval/classify.test.sh holds every hook-wired script and every installer to a row here.
 #
 # RECORDED TRADE-OFF. The suites the required checks run take their verdict from the PR's own tree. What decides
-# which suites run and how they tally (CONTRACTS/suites*.txt, suite-paths.txt, ci-verified.sh, runners/**,
+# which suites run and how they tally (contracts/suites*.txt, suite-paths.txt, ci-verified.sh, runners/**,
 # tests/lib/**) is protected; the individual test files are NOT, because protecting tests/** would put nearly every
 # PR behind the click. A PR can still weaken one test without asking: review a test diff, it is not gated here.
 glob	class	reason
-CONSTITUTION.md	constitution	the L0 constitution, deployed to every session as ~/.claude/CLAUDE.md
+policy/constitution.md	constitution	the L0 constitution, deployed to every session as ~/.claude/CLAUDE.md
 DOCTRINE/**	doctrine	the constitution's expanded rules, cited from it
-bin/guard-*	guard	the floor's guards: PreToolUse vetoes, the Stop gate and B6
+docs/explanation/absent-by-decision.md	doctrine	the constitution's expanded rules, cited from it (moved from DOCTRINE/ in W1)
+docs/explanation/case-law.md	doctrine	the constitution's expanded rules, cited from it (moved from DOCTRINE/ in W1)
+docs/explanation/credential-boundary.md	doctrine	the constitution's expanded rules, cited from it (moved from DOCTRINE/ in W1)
+docs/explanation/critique-expanded.md	doctrine	the constitution's expanded rules, cited from it (moved from DOCTRINE/ in W1)
+docs/explanation/doc-truth.md	doctrine	the constitution's expanded rules, cited from it (moved from DOCTRINE/ in W1)
+docs/explanation/grilling.md	doctrine	the constitution's expanded rules, cited from it (moved from DOCTRINE/ in W1)
+docs/explanation/modularity.md	doctrine	the constitution's expanded rules, cited from it (moved from DOCTRINE/ in W1)
+docs/explanation/no-authored-plugins.md	doctrine	the constitution's expanded rules, cited from it (moved from DOCTRINE/ in W1)
+docs/explanation/verification-expanded.md	doctrine	the constitution's expanded rules, cited from it (moved from DOCTRINE/ in W1)
+docs/explanation/wiring-new-capability.md	doctrine	the constitution's expanded rules, cited from it (moved from DOCTRINE/ in W1)
+bin/admission-*	guard	the floor's guards: PreToolUse vetoes, the Stop gate and B6
+bin/guard-*	guard	the guards' old names: rename shims to bin/admission-* until 2026-11-15 (harbor#961 W6)
 bin/floor-*	floor	the floor's installer, deny list, hook wrapper, observer, verifier and normalizer
-bin/guard-lib.sh	floor	the library every guard sources
+bin/library-admission.sh	floor	the library every guard sources
 floor-normalize.awk	floor	the tokenizer guard-bash reads commands through, should it move to the root
-bin/mutation-tier.sh	floor	the config-dir write classifier the floor's surfaces are tiered by
-bin/log-lib.sh	floor	sourced by every installed gate tool, installer and recovery tool
-bin/sec0-harden.sh	settings	writes the SEC-0 read-deny base into settings.json and pins it
+bin/admission-mutation-tier.sh	floor	the config-dir write classifier the floor's surfaces are tiered by
+bin/library-log.sh	floor	sourced by every installed gate tool, installer and recovery tool
+bin/deploy-harden.sh	settings	writes the SEC-0 read-deny base into settings.json and pins it
 bin/pin-instructions.sh	instructions	pins the instruction surfaces B8 reports drift against
-bin/install-lib.sh	installer	the library every installer writes settings and files through
-bin/install-stamp.sh	installer	records what was deployed; deploy's regression gate reads it
+bin/deploy-install-lib.sh	installer	the library every installer writes settings and files through
+bin/deploy-install-stamp.sh	installer	records what was deployed; deploy's regression gate reads it
 bin/*-install.sh	installer	every installer: copies payloads into the config dir, wires hooks and settings, and installs or loads persistent jobs
 bin/deploy.sh	deploy	the one live install entry, and its --unattended exception
-bin/restore.sh	deploy	puts the config dir back from a deploy snapshot
+bin/deploy-restore.sh	deploy	puts the config dir back from a deploy snapshot
 bin/harbor	deploy	the CLI dispatcher: routes deploy, install, restore and the merge verbs
 bin/*-hook.sh	hook	scripts wired as harness hooks: the floor wrapper, govern, inject, event, ci-governor
 bin/annotate-web.sh	hook	PostToolUse hook: frames fetched content as external
 bin/context-resolve.sh	hook	SessionStart and PostToolUse hook: records each session's context
 bin/govern-token.sh	hook	SessionStart hook: the token that stamps every governance note
-bin/session-verdicts.sh	hook	SessionStart hook: puts verdicts into every session's context
-bin/failure-observe.sh	hook	PostToolUseFailure hook
-bin/memory-harvest.sh	hook	Stop hook
-bin/ticket-note.sh	hook	Stop hook
-bin/reply-shape.sh	hook	Stop hook
-bin/session-subagent-check.sh	hook	SubagentStop hook
-bin/session-state.sh	hook	Stop hook: records what the session waits on
-bin/session-title.sh	hook	UserPromptSubmit and SessionStart hook: applies the model-written session title
-bin/worklog-push.sh	hook	Stop hook
+hooks/session-verdicts/session-verdicts.sh	hook	SessionStart hook: puts verdicts into every session's context
+hooks/failure-observe/failure-observe.sh	hook	PostToolUseFailure hook
+hooks/memory-harvest/memory-harvest.sh	hook	Stop hook
+hooks/ticket-note/ticket-note.sh	hook	Stop hook
+hooks/reply-shape/reply-shape.sh	hook	Stop hook
+hooks/session-subagent-check/session-subagent-check.sh	hook	SubagentStop hook
+hooks/session-state/session-state.sh	hook	Stop hook: records what the session waits on
+hooks/session-title/session-title.sh	hook	UserPromptSubmit and SessionStart hook: applies the model-written session title
+hooks/worklog-push/worklog-push.sh	hook	Stop hook
 bin/prod-guard-ambient.sh	hook	PreToolUse hook: the shim that runs project-init's prod_guard
-bin/fleet-glyph.sh	hook	the settings statusLine command: runs at every render
-bin/subagent-glyph.sh	hook	the settings statusLine command for subagents
-hooks/**	hook	the repo's git hooks: pre-commit and pre-push run the floor's smoke and the lint
-inject.d/**	instructions	just-in-time instruction packs injected into sessions
+bin/status-fleet-glyph.sh	hook	the settings statusLine command: runs at every render
+bin/status-subagent-glyph.sh	hook	the settings statusLine command for subagents
+hooks/**	hook	the repo's git hooks (pre-commit and pre-push run the floor's smoke and the lint) and the hook engines: script, tests and manifest per folder (D-88)
+context-rules/**	instructions	just-in-time instruction packs injected into sessions (inject.d/ before harbor#1010)
 .claude/**	instructions	this repo's own Claude Code config and instruction packs
 skills/**	instructions	every tracked skill, installed into the config dir
 vendor/skills/**	instructions	vendored skills, installed beside skills/
 commands/**	instructions	slash commands, installed into the config dir
-CONTRACTS/skill-book-router.tsv	instructions	the Start-here text deploy writes into the installed skill book, an instruction surface (harbor#1149)
+contracts/skill-book-router.tsv	instructions	the Start-here text deploy writes into the installed skill catalog, an instruction surface (harbor#1149)
 launchd/**	persistent-job	launchd plist sources: a recurring job needs the operator's explicit yes, so its deploy always queues
 systemd/**	persistent-job	systemd units: a recurring job needs the operator's explicit yes, so its deploy always queues
 **.plist	persistent-job	a launchd job definition anywhere in the tree, the E2 dispatcher's com.harbor.event.dispatch included
 **.service	persistent-job	a systemd service unit anywhere in the tree
 **.timer	persistent-job	a systemd timer anywhere in the tree
-CONTRACTS/required-checks.tsv	ci-gate	the checks merge-check requires when GitHub protection cannot
+contracts/required-checks.tsv	ci-gate	the checks merge-check requires when GitHub protection cannot
 .agents/required-checks.tsv	ci-gate	a repo's own required checks (ship contract 5a.6), should harbor declare its own here
-CONTRACTS/hooks.md	ci-gate	the hook contract: which moment, which mechanism
-CONTRACTS/streams.tsv	ci-gate	the stream registry: target_on_fail decides which logged actions are refused when their record cannot be written (harbor#1181)
-CONTRACTS/leak-patterns.tsv	ci-gate	the generic patterns of the leak gate: a row removed or allow-listed forgives every copy of what it names (harbor#1149)
-CONTRACTS/redteam-baseline.tsv	ci-gate	the accepted external-corpus misses: a row added forgives a known bypass in the release gate (harbor#1313)
-CONTRACTS/redteam-sources.tsv	ci-gate	the pins of the external corpora: a new pin runs code from outside in a scheduled job (harbor#1313)
-bin/merge-check.sh	ci-gate	the merge backstop the gate re-checks green with
+contracts/hooks.md	ci-gate	the hook contract: which moment, which mechanism
+contracts/streams.tsv	ci-gate	the stream registry: target_on_fail decides which logged actions are refused when their record cannot be written (harbor#1181)
+contracts/leak-patterns.tsv	ci-gate	the generic patterns of the leak gate: a row removed or allow-listed forgives every copy of what it names (harbor#1149)
+contracts/redteam-baseline.tsv	ci-gate	the accepted external-corpus misses: a row added forgives a known bypass in the release gate (harbor#1313)
+contracts/redteam-sources.tsv	ci-gate	the pins of the external corpora: a new pin runs code from outside in a scheduled job (harbor#1313)
+bin/gate-merge-check.sh	ci-gate	the merge backstop the gate re-checks green with
 bin/gate-*	approval	the approval tooling and merge-stack: library, classifier, merge, approve, queue
 bin/deploy-fleet.sh	approval	the unattended merge-and-deploy runner (ship contract §5); its --approved is the click's alone
-bin/collector.sh	persistent-job	runs as _harborlog under launchd: the second-uid copy of the observability streams (harbor#1181)
-bin/collector-setup.sh	persistent-job	creates the _harborlog user, the read ACL and two launchd system daemons (harbor#1181)
-bin/otlp-receiver.py	persistent-job	kept alive by launchd as _harborlog: what Claude Code's own telemetry is reduced to before storage (harbor#1181)
-bin/managed-telemetry.sh	settings	writes the telemetry env into the root-owned managed-settings.json (harbor#1181)
-bin/managed-retention.sh	settings	writes cleanupPeriodDays into the root-owned managed-settings.json (harbor#1181)
+bin/audit-collector.sh	persistent-job	runs as _harborlog under launchd: the second-uid copy of the observability streams (harbor#1181)
+bin/audit-collector-install.sh	persistent-job	creates the _harborlog user, the read ACL and two launchd system daemons (harbor#1181)
+bin/audit-otlp-receiver.py	persistent-job	kept alive by launchd as _harborlog: what Claude Code's own telemetry is reduced to before storage (harbor#1181)
+bin/scope-managed-telemetry.sh	settings	writes the telemetry env into the root-owned managed-settings.json (harbor#1181)
+bin/scope-managed-retention.sh	settings	writes cleanupPeriodDays into the root-owned managed-settings.json (harbor#1181)
 bin/deploy-confinement.sh	settings	writes the sandbox block into the root-owned managed-settings.json (harbor#1298)
-CONTRACTS/confinement-hosts.txt	settings	the hosts deploy-confinement.sh writes into managed settings (harbor#1298)
-CONTRACTS/confinement-paths.txt	settings	the write zone and read allows deploy-confinement.sh writes into managed settings (harbor#1298)
+contracts/confinement-hosts.txt	settings	the hosts deploy-confinement.sh writes into managed settings (harbor#1298)
+contracts/confinement-paths.txt	settings	the write zone and read allows deploy-confinement.sh writes into managed settings (harbor#1298)
+standards/naming/controls.tsv	ci-gate	the control register: each control's mode, owner and red proof, which the lint and the naming census read; a renderer will read it too (harbor#1272)
 # Everything an installer ships into the config dir or wires as a hook or statusline (review finding 3); every shim
-# target CONTRACTS/shims.tsv links into ~/.local/bin and both registers (operator-run: it runs as the operator outside
+# target contracts/shims.tsv links into ~/.local/bin and both registers (operator-run: it runs as the operator outside
 # a session); every file a ship.conf command runs (ship); what decides the required checks' content (ci-gate); and
 # everything those and the gate tools source or call. Not kept by hand: the rows between BEGIN and END are generated.
 # BEGIN derived: bin/gate-register-derive.sh --write writes the rows to END; classify.test.sh fails when they are stale
-CONTRACTS/event-rules.tsv	installed	derived: shipped by runtime-install.sh
-CONTRACTS/merge-stack-union.txt	installed	derived: shipped by runtime-install.sh
-CONTRACTS/obligation-kinds.tsv	installed	derived: shipped by runtime-install.sh
-CONTRACTS/repo-slug.txt	installed	derived: shipped by runtime-install.sh
-CONTRACTS/required-checks.tsv	installed	derived: shipped by runtime-install.sh
-CONTRACTS/roots.tsv	operator-run	derived: decides what ~/.local/bin points at
-CONTRACTS/session-waiting.tsv	installed	derived: shipped by runtime-install.sh
-CONTRACTS/shims.tsv	operator-run	derived: decides what ~/.local/bin points at
-CONTRACTS/suite-paths.txt	ci-gate	derived: decides what a required check runs
-CONTRACTS/suites-dash.txt	ci-gate	derived: decides what a required check runs
-CONTRACTS/suites-quick.txt	ci-gate	derived: decides what a required check runs
-CONTRACTS/suites-tally.txt	ci-gate	derived: decides what a required check runs
-CONTRACTS/suites.txt	ci-gate	derived: decides what a required check runs
-bin/access-confinement.sh	installed	derived: shipped by runtime-install.sh
+bin/access-browser.sh	ship	derived: called by bin/deploy-live-verify.sh
+bin/access-github-app-install.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/access.sh	operator-run	derived: called by bin/secret
-bin/adoption-check.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/admission-api-route.sh	installed	derived: shipped by floor-install.sh
+bin/admission-bash.sh	installed	derived: shipped by floor-install.sh
+bin/admission-cloud.sh	installed	derived: shipped by floor-install.sh
+bin/admission-deliverables.sh	installed	derived: shipped by floor-install.sh
+bin/admission-destroy.sh	installed	derived: shipped by floor-install.sh
+bin/admission-egress.sh	installed	derived: shipped by floor-install.sh
+bin/admission-hook.sh	installed	derived: shipped by floor-install.sh
+bin/admission-integrity.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/admission-observe-report.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/admission-self-edit.sh	installed	derived: shipped by floor-install.sh
+bin/admission-stop.sh	installed	derived: wired by floor-install.sh
+bin/alert-notify.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/alert-probe.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/annotate-web.sh	installed	derived: shipped by floor-install.sh
-bin/browser.sh	ship	derived: called by bin/live-verify.sh
+bin/audit-collector-check.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/audit-collector-install.sh	ship	derived: called by bin/deploy.sh
+bin/audit-collector.sh	ship	derived: called by bin/audit-collector-install.sh
+bin/audit-otlp-receiver.py	ship	derived: called by bin/audit-collector-install.sh
+bin/audit-stream-lib.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/audit-triage-run.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/audit-triage.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/check-registry-generate.sh	ci-gate	derived: called by bin/lint-conventions.sh
-bin/ci-governor-hook.sh	installed	derived: shipped by runtime-install.sh
-bin/ci-governor.sh	installed	derived: shipped by runtime-install.sh
-bin/ci-lost-job.sh	installed	derived: shipped by runtime-install.sh
-bin/ci-queue.sh	installed	derived: shipped by runtime-install.sh
-bin/ci-runners-fleet-lib.sh	installed	derived: shipped by runtime-install.sh
-bin/ci-runners-github-lib.sh	installed	derived: shipped by runtime-install.sh
-bin/ci-runners-provision-lib.sh	installed	derived: shipped by runtime-install.sh
-bin/ci-runners-watch-lib.sh	installed	derived: shipped by runtime-install.sh
-bin/ci-runners.sh	installed	derived: shipped by runtime-install.sh
+bin/ci-github-plan.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/ci-governor-hook.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/ci-governor.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/ci-lost-job.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/ci-main-tip-verdict.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/ci-mirror.sh	ci-gate	derived: called by .github/workflows/public-ci.yml
+bin/ci-queue.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/ci-release-names.sh	installed	derived: called by bin/standard-fleet-names.sh
+bin/ci-runner-switch.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/ci-runners-fleet-lib.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/ci-runners-github-lib.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/ci-runners-provision-lib.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/ci-runners-watch-lib.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/ci-runners.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/ci-verified.sh	ci-gate	derived: decides what a required check runs
-bin/cite-verify.sh	ci-gate	derived: called by bin/lint-conventions.sh
-bin/cited-paths.awk	installed	derived: shipped by runtime-install.sh
-bin/collector-check.sh	installed	derived: shipped by runtime-install.sh
-bin/collector-setup.sh	ship	derived: called by bin/deploy.sh
-bin/collector.sh	ship	derived: called by bin/collector-setup.sh
-bin/constitution-install.sh	installed	derived: called by bin/floor-verify.sh
-bin/context-budget.sh	installed	derived: shipped by runtime-install.sh
-bin/context-resolve.sh	installed	derived: shipped by floor-install.sh
-bin/decider-set.sh	installed	derived: shipped by runtime-install.sh
+bin/ci-wait.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/context-budget.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/context-injection-install.sh	installed	derived: called by bin/decider-set.sh
+bin/context-peers.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/context-resolve.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/decider-set.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/deploy-confinement.sh	installed	derived: called by bin/floor-verify.sh
+bin/deploy-doctor.sh	ci-gate	derived: called by .github/workflows/governance.yml
 bin/deploy-fleet.sh	installed	derived: shipped by floor-install.sh
+bin/deploy-harden.sh	installed	derived: shipped by floor-install.sh
+bin/deploy-hooks.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/deploy-install-lib.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/deploy-install-stamp.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/deploy-launchd-render.sh	installed	derived: called by bin/drift-renew-check.sh
+bin/deploy-live-verify.sh	ship	derived: runs as ship.conf verify
+bin/deploy-push.sh	ci-gate	derived: called by bin/ci-mirror.sh
+bin/deploy-restore.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/deploy-runtime-install.sh	installed	derived: called by bin/audit-triage-run.sh
+bin/deploy-shim-install.sh	ship	derived: called by bin/deploy-live-verify.sh
 bin/deploy.sh	ship	derived: runs as ship.conf plan
+bin/doc-cite-verify.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/doc-cited-paths.awk	installed	derived: shipped by deploy-runtime-install.sh
+bin/doc-fresh-verify.sh	ci-gate	derived: called by .github/workflows/governance.yml
+bin/doc-graph-generate.sh	installed	derived: called by bin/drift-reference-check.sh
+bin/doc-index-generate.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/doc-refs.sh	ci-gate	derived: called by .github/workflows/governance.yml
-bin/docs-gen.sh	ci-gate	derived: called by bin/lint-conventions.sh
-bin/doctor.sh	ci-gate	derived: called by .github/workflows/governance.yml
 bin/drift-confinement.sh	installed	derived: called by bin/floor-verify.sh
-bin/event-bus.sh	installed	derived: shipped by floor-install.sh
-bin/event-dispatch.sh	installed	derived: shipped by runtime-install.sh
+bin/drift-install.sh	ship	derived: called by bin/deploy-live-verify.sh
+bin/drift-reference-check.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/drift-renew-check.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/eval-pass-score.sh	installed	derived: called by bin/floor-install.sh
+bin/eval-redteam-corpus-run.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/eval-redteam-corpus.sh	ci-gate	derived: called by .github/workflows/public-ci.yml
+bin/eval-replay-corpus.sh	ci-gate	derived: called by bin/deploy-doctor.sh
+bin/eval-replay-worker.sh	installed	derived: called by bin/eval-replay.sh
+bin/eval-replay.sh	installed	derived: called by bin/eval-pass-score.sh
+bin/event-bus.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/event-dispatch.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/event-hook.sh	installed	derived: shipped by floor-install.sh
-bin/failure-capture.sh	installed	derived: shipped by runtime-install.sh
-bin/failure-observe.sh	installed	derived: shipped by runtime-install.sh
-bin/findings-run.sh	installed	derived: shipped by runtime-install.sh
-bin/findings.sh	installed	derived: called by bin/findings-run.sh
-bin/fleet-glyph.sh	installed	derived: shipped by runtime-install.sh
-bin/fleet-sessions.sh	installed	derived: shipped by runtime-install.sh
-bin/fleet-snapshot-refresh.sh	installed	derived: shipped by runtime-install.sh
-bin/floor-deny.sh	installed	derived: shipped by runtime-install.sh
-bin/floor-hook.sh	installed	derived: shipped by floor-install.sh
-bin/floor-install.sh	installed	derived: shipped by runtime-install.sh
+bin/floor-deny.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/floor-install.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/floor-normalize.awk	installed	derived: shipped by floor-install.sh
 bin/floor-observe.sh	installed	derived: shipped by floor-install.sh
 bin/floor-uninstall.sh	ship	derived: called by bin/deploy.sh
-bin/floor-verify.sh	installed	derived: shipped by runtime-install.sh
-bin/fresh-check.sh	ci-gate	derived: called by .github/workflows/governance.yml
-bin/frozen-gen.sh	ci-gate	derived: called by bin/lint-conventions.sh
-bin/fs-lib.sh	installed	derived: shipped by floor-install.sh
+bin/floor-verify.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/gate-approve.sh	installed	derived: shipped by floor-install.sh
 bin/gate-classify.sh	installed	derived: shipped by floor-install.sh
 bin/gate-codeowners.sh	installed	derived: the approval gate
-bin/gate-lib.sh	installed	derived: shipped by floor-install.sh
-bin/gate-merge-stack-resolve.py	installed	derived: shipped by floor-install.sh
-bin/gate-merge-stack.sh	installed	derived: shipped by floor-install.sh
+bin/gate-lib.sh	installed	derived: the approval gate
+bin/gate-merge-check.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/gate-merge-stack-resolve.py	installed	derived: shipped by deploy-runtime-install.sh
+bin/gate-merge-stack.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/gate-merge.sh	installed	derived: shipped by floor-install.sh
+bin/gate-merged-check.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/gate-pr-wait.sh	installed	derived: the approval gate
 bin/gate-queue.sh	installed	derived: shipped by floor-install.sh
 bin/gate-register-derive.sh	installed	derived: the approval gate
 bin/gate-required-generate.sh	installed	derived: the approval gate
-bin/gcloud-creds	operator-run	derived: linked into ~/.local/bin as gcloud-creds by CONTRACTS/shims.tsv
-bin/gcloud-wrapper.sh	operator-run	derived: linked into ~/.local/bin as gcloud by CONTRACTS/shims.tsv
-bin/gh-plan.sh	installed	derived: shipped by runtime-install.sh
+bin/gcloud	operator-run	derived: linked into ~/.local/bin as gcloud by contracts/shims.tsv
+bin/gcloud-credentials	operator-run	derived: linked into ~/.local/bin as gcloud-creds by contracts/shims.tsv
 bin/govern-hook.sh	installed	derived: shipped by floor-install.sh
-bin/govern-token.sh	installed	derived: wired by inject-install.sh
-bin/graph-gen.sh	ci-gate	derived: called by bin/lint-conventions.sh
-bin/guard-apiroute.sh	installed	derived: shipped by floor-install.sh
-bin/guard-bash.sh	installed	derived: shipped by floor-install.sh
-bin/guard-cloud.sh	installed	derived: shipped by floor-install.sh
-bin/guard-deliverables.sh	installed	derived: shipped by floor-install.sh
-bin/guard-destroy.sh	installed	derived: shipped by floor-install.sh
-bin/guard-egress.sh	installed	derived: shipped by floor-install.sh
-bin/guard-integrity.sh	installed	derived: shipped by runtime-install.sh
-bin/guard-lib.sh	installed	derived: shipped by floor-install.sh
-bin/guard-selfedit.sh	installed	derived: shipped by floor-install.sh
-bin/guard-stop.sh	installed	derived: wired by floor-install.sh
-bin/harbor	operator-run	derived: linked into ~/.local/bin as harbor by CONTRACTS/shims.tsv
-bin/harbor-clean.sh	installed	derived: shipped by runtime-install.sh
-bin/idea.sh	operator-run	derived: linked into ~/.local/bin as idea by CONTRACTS/shims.tsv
-bin/inject-hook.sh	installed	derived: wired by inject-install.sh
-bin/inject-install.sh	installed	derived: called by bin/decider-set.sh
-bin/install-drift.sh	ship	derived: called by bin/deploy.sh
-bin/install-lib.sh	installed	derived: shipped by floor-install.sh
-bin/install-stamp.sh	installed	derived: shipped by runtime-install.sh
-bin/judge-run.sh	installed	derived: shipped by runtime-install.sh
-bin/launchd-render.sh	ci-gate	derived: called by bin/lint-conventions.sh
-bin/layers.sh	ci-gate	derived: called by bin/lint-core-writes.sh
+bin/govern-token.sh	installed	derived: wired by context-injection-install.sh
+bin/harbor	operator-run	derived: linked into ~/.local/bin as harbor by contracts/shims.tsv
+bin/housekeeping-clean.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/idea	operator-run	derived: linked into ~/.local/bin as idea by contracts/shims.tsv
+bin/library-admission.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/library-alert.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/library-fs.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/library-gate.sh	installed	derived: shipped by floor-install.sh
+bin/library-log.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/lint-adoption.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-comment-commands.awk	ci-gate	derived: called by bin/lint-conventions.sh
+bin/lint-comment.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-constitution.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-conventions.sh	ci-gate	derived: called by .github/workflows/governance.yml
 bin/lint-core-writes.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-dev-paths.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-domain.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/lint-findings-run.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/lint-findings.sh	installed	derived: called by bin/admission-bash.sh
 bin/lint-layout-map.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-leaks.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-locale-ranges.awk	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-module.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-name.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/lint-platform.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/lint-renderer.sh	installed	derived: called by bin/standard-vendor.sh
 bin/lint-secrets.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-share.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-siblings.sh	ci-gate	derived: called by bin/lint-conventions.sh
-bin/live-verify.sh	ship	derived: runs as ship.conf verify
-bin/log-lib.sh	installed	derived: shipped by floor-install.sh
-bin/main-tip-verdict.sh	installed	derived: shipped by runtime-install.sh
-bin/managed-mods.sh	installed	derived: called by bin/floor-verify.sh
-bin/memory-harvest.sh	installed	derived: shipped by runtime-install.sh
-bin/memory-lint.sh	installed	derived: called by bin/store-check.sh
+bin/memory-lint.sh	installed	derived: called by bin/memory-store-check.sh
+bin/memory-log-token-save.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/memory-route.sh	ci-gate	derived: called by bin/lint-conventions.sh
-bin/memory.sh	operator-run	derived: linked into ~/.local/bin as memory by CONTRACTS/shims.tsv
-bin/merge-check.sh	installed	derived: shipped by floor-install.sh
-bin/merged-check.sh	installed	derived: shipped by runtime-install.sh
-bin/observe-report.sh	installed	derived: shipped by runtime-install.sh
-bin/otlp-receiver.py	ship	derived: called by bin/collector-setup.sh
+bin/memory-store-check.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/memory.sh	operator-run	derived: linked into ~/.local/bin as memory by contracts/shims.tsv
+bin/name-check	operator-run	derived: linked into ~/.local/bin as name-check by contracts/shims.tsv
 bin/pack.sh	ship	derived: called by bin/deploy.sh
-bin/pass-score.sh	installed	derived: called by bin/floor-install.sh
 bin/pin-instructions.sh	installed	derived: shipped by floor-install.sh
-bin/plan-status.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/policy-constitution-install.sh	installed	derived: called by bin/drift-renew-check.sh
 bin/prod-guard-ambient.sh	installed	derived: wired by prod-guard-install.sh
 bin/prod-guard-install.sh	installed	derived: called by bin/prod-guard-ambient.sh
-bin/proposal.sh	installed	derived: called by bin/renew-check.sh
-bin/pulse-notify.sh	installed	derived: shipped by runtime-install.sh
-bin/pulse.sh	installed	derived: shipped by runtime-install.sh
-bin/redteam-corpus-run.sh	installed	derived: shipped by runtime-install.sh
-bin/redteam-corpus.sh	installed	derived: called by bin/redteam-corpus-run.sh
-bin/reference-check.sh	installed	derived: shipped by runtime-install.sh
-bin/renew-check.sh	installed	derived: shipped by runtime-install.sh
-bin/replay-corpus.sh	ci-gate	derived: called by bin/doctor.sh
-bin/replay-worker.sh	installed	derived: called by bin/replay.sh
-bin/replay.sh	installed	derived: called by bin/pass-score.sh
-bin/reply-shape.sh	installed	derived: shipped by runtime-install.sh
-bin/restore.sh	installed	derived: shipped by floor-install.sh
-bin/roots.sh	ship	derived: called by bin/deploy.sh
-bin/runner-switch.sh	installed	derived: shipped by runtime-install.sh
-bin/runtime-install.sh	ship	derived: called by bin/deploy.sh
-bin/sandbox-make.sh	installed	derived: shipped by runtime-install.sh
-bin/save-log-token.sh	installed	derived: shipped by runtime-install.sh
-bin/sec0-harden.sh	installed	derived: shipped by floor-install.sh
-bin/secret	operator-run	derived: linked into ~/.local/bin as secret by CONTRACTS/shims.tsv
-bin/session-check.sh	installed	derived: shipped by runtime-install.sh
-bin/session-ci-watch.sh	installed	derived: shipped by runtime-install.sh
-bin/session-cleanup-report.sh	installed	derived: shipped by runtime-install.sh
-bin/session-notify.sh	installed	derived: shipped by runtime-install.sh
-bin/session-react-lib.sh	installed	derived: shipped by runtime-install.sh
-bin/session-save-now.sh	installed	derived: shipped by runtime-install.sh
-bin/session-state.sh	installed	derived: shipped by runtime-install.sh
-bin/session-subagent-check.sh	installed	derived: shipped by runtime-install.sh
-bin/session-title.sh	installed	derived: shipped by runtime-install.sh
-bin/session-verdicts.sh	installed	derived: shipped by runtime-install.sh
-bin/shim-install.sh	ship	derived: called by bin/deploy.sh
-bin/skill-book.sh	ship	derived: called by bin/deploy.sh
-bin/skills-collide.sh	ship	derived: called by bin/skills-install.sh
-bin/skills-install.sh	ship	derived: called by bin/deploy.sh
-bin/standard-catalog.sh	ci-gate	derived: called by bin/standard-shape.sh
+bin/proposal.sh	installed	derived: called by bin/drift-renew-check.sh
+bin/scope-layers.sh	ci-gate	derived: called by bin/deploy-push.sh
+bin/scope-managed-mods.sh	installed	derived: called by bin/floor-verify.sh
+bin/scope-roots.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/secret	operator-run	derived: linked into ~/.local/bin as secret by contracts/shims.tsv
+bin/session-autocompact.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/session-check.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/session-ci-watch.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/session-cleanup-report.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/session-cleanup.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/session-notify.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/session-react-lib.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/session-save-now.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/skill-catalog.sh	ship	derived: called by bin/deploy.sh
+bin/skill-collision-verify.sh	ship	derived: called by bin/skill-install.sh
+bin/skill-install.sh	ship	derived: called by bin/deploy-live-verify.sh
+bin/standard-catalog.sh	ci-gate	derived: called by bin/deploy-push.sh
+bin/standard-fleet-names-run.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/standard-fleet-names.sh	installed	derived: called by bin/standard-fleet-names-run.sh
+bin/standard-frozen-generate.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/standard-shape.sh	ci-gate	derived: called by bin/lint-conventions.sh
-bin/status-gen.sh	ci-gate	derived: called by .github/workflows/governance.yml
-bin/status-obligations.sh	installed	derived: shipped by runtime-install.sh
-bin/store-check.sh	installed	derived: shipped by runtime-install.sh
-bin/stream-lib.sh	installed	derived: shipped by runtime-install.sh
-bin/subagent-glyph.sh	installed	derived: shipped by runtime-install.sh
-bin/suite-cache.sh	ci-gate	derived: called by bin/suite-run.sh
-bin/suite-run.sh	ci-gate	derived: called by .github/workflows/governance.yml
-bin/suite-select.sh	ci-gate	derived: called by .github/workflows/governance.yml
-bin/ticket-note.sh	installed	derived: shipped by runtime-install.sh
-bin/usage-aggregate.sh	installed	derived: shipped by runtime-install.sh
-bin/wait-for	operator-run	derived: linked into ~/.local/bin as wait-for by CONTRACTS/shims.tsv
-bin/worklog-push.sh	installed	derived: shipped by runtime-install.sh
+bin/standard-vendor.sh	installed	derived: called by bin/standard-fleet-names.sh
+bin/status-fleet-glyph.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/status-fleet-snapshot-refresh.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/status-generate.sh	ci-gate	derived: called by .github/workflows/governance.yml
+bin/status-obligations.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/status-plan-generate.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/status-subagent-glyph.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/status-usage-aggregate.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/test-sandbox-make.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/test-suite-cache.sh	ci-gate	derived: called by bin/test-suite-run.sh
+bin/test-suite-run.sh	ci-gate	derived: called by .github/workflows/governance.yml
+bin/test-suite-select.sh	ci-gate	derived: called by .github/workflows/governance.yml
+bin/wait-for	operator-run	derived: linked into ~/.local/bin as wait-for by contracts/shims.tsv
 bin/worktree.sh	installed	derived: called by bin/govern-hook.sh
+contracts/event-rules.tsv	installed	derived: shipped by deploy-runtime-install.sh
+contracts/merge-stack-union.txt	installed	derived: shipped by deploy-runtime-install.sh
+contracts/obligation-kinds.tsv	installed	derived: shipped by deploy-runtime-install.sh
+contracts/repo-slug.txt	installed	derived: shipped by deploy-runtime-install.sh
+contracts/required-checks.tsv	installed	derived: shipped by deploy-runtime-install.sh
+contracts/roots.tsv	installed	derived: shipped by deploy-runtime-install.sh
+contracts/session-waiting.tsv	installed	derived: shipped by deploy-runtime-install.sh
+contracts/shims.tsv	operator-run	derived: decides what ~/.local/bin points at
+contracts/suite-paths.txt	ci-gate	derived: decides what a required check runs
+contracts/suites-dash.txt	ci-gate	derived: decides what a required check runs
+contracts/suites-quick.txt	ci-gate	derived: decides what a required check runs
+contracts/suites-tally.txt	ci-gate	derived: decides what a required check runs
+contracts/suites.txt	ci-gate	derived: decides what a required check runs
+docs/reference/checks.md	installed	derived: shipped by deploy-runtime-install.sh
+hooks/access-confinement/access-confinement.sh	installed	derived: shipped by deploy-runtime-install.sh
+hooks/failure-observe/failure-observe.sh	installed	derived: shipped by deploy-runtime-install.sh
+hooks/injection-rule/injection-rule.sh	installed	derived: wired by context-injection-install.sh
+hooks/memory-harvest/memory-harvest.sh	installed	derived: shipped by deploy-runtime-install.sh
+hooks/reply-shape/reply-shape.sh	installed	derived: shipped by deploy-runtime-install.sh
+hooks/session-state/session-state.sh	installed	derived: shipped by deploy-runtime-install.sh
+hooks/session-subagent-check/session-subagent-check.sh	installed	derived: shipped by deploy-runtime-install.sh
+hooks/session-title/session-title.sh	installed	derived: shipped by deploy-runtime-install.sh
+hooks/session-verdicts/session-verdicts.sh	installed	derived: shipped by deploy-runtime-install.sh
+hooks/ticket-note/ticket-note.sh	installed	derived: shipped by deploy-runtime-install.sh
+hooks/worklog-push/worklog-push.sh	installed	derived: shipped by deploy-runtime-install.sh
 runners/**	ci-gate	derived: decides what a required check runs
-tests/cli/gcloud-creds-test.sh	operator-run	derived: linked into ~/.local/bin as gcloud-creds-test.sh by CONTRACTS/shims.tsv
-tests/cli/secret-test.sh	operator-run	derived: linked into ~/.local/bin as secret-test.sh by CONTRACTS/shims.tsv
-tests/floor/recover-test.sh	installed	derived: shipped by runtime-install.sh
+standards/naming/repo-kinds.tsv	installed	derived: shipped by deploy-runtime-install.sh
+tests/access/gcloud-credentials/gcloud-credentials.test.sh	operator-run	derived: linked into ~/.local/bin as gcloud-creds-test.sh by contracts/shims.tsv
+tests/access/secret/secret.test.sh	operator-run	derived: linked into ~/.local/bin as secret-test.sh by contracts/shims.tsv
+tests/deploy/restore/recover.test.sh	installed	derived: shipped by deploy-runtime-install.sh
 tests/lib/**	ci-gate	derived: decides what a required check runs
-tests/lib/core.sh	installed	derived: shipped by runtime-install.sh
+tests/lib/core.sh	installed	derived: shipped by deploy-runtime-install.sh
 # END derived

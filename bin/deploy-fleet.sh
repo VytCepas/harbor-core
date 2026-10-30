@@ -14,7 +14,7 @@
 
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH= cd -- "$HERE" && pwd)"
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 set -eu
 log_init deploy-fleet
 umask 077
@@ -44,10 +44,12 @@ GQUEUE="$CFG/bin/gate-queue.sh"                       # the ONLY queue writer
 # config dir's .helm-ship, an integrity surface the floor guards (#1127). Logs and the lock are not trusted, so stay out.
 STATE="$CFG/.helm-ship"                               # <owner>_<name>.json per repo (§3), and last-rollback
 WORK="$HOME/.local/state/harbor/ship"                 # the lock and the run logs
-CACHE_DIR="${HARBOR_CACHE_DIR:-$HOME/.claude/cache}"
+CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
 SNAP="${HARBOR_FLEET_SNAPSHOT:-$CACHE_DIR/fleet-snapshot.json}"
-FLEET="${HARBOR_FLEET_FILE:-${PORT_ROOT:-$HOME/port}/projects-orchestrator/fleet.yaml}"
-ORCH="${HARBOR_ORCH_BIN:-$HOME/.local/bin/projects-orchestrator}"
+# the fleet file through the registry-aware reader beside this script (harbor#966)
+FLEET="${HARBOR_SCOPE_FLEET_FILE:-${HARBOR_FLEET_FILE:-$(sh "$HERE/scope-roots.sh" --get HARBOR_SCOPE_FLEET_FILE 2>/dev/null || :)}}"
+# the fleet CLI, a roots.tsv row read through the same reader (harbor#966)
+ORCH="${HARBOR_SCOPE_FLEET_CONTROLLER_BIN:-${HARBOR_ORCH_BIN:-$(sh "$HERE/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER_BIN 2>/dev/null || :)}}"
 GMS="$HERE/gate-merge-stack.sh"
 NOW="${HARBOR_DEPLOY_FLEET_NOW:-$(date +%s)}"; case "$NOW" in ''|*[!0-9]*) NOW="$(date +%s)" ;; esac
 NIGHT=57600                                           # a rollback stops every unattended run for 16 hours
@@ -452,11 +454,11 @@ finish() {
   SUBJECTS="$(printf '%s\n' $SUBJECTS | sort -u | tr '\n' ' ')"; SUBJECTS="${SUBJECTS% }"
   _st=green; [ "$KILLED" = 0 ] || _st=stood-down; [ -z "$SUBJECTS" ] || _st=red
   mkdir -p "$CACHE_DIR"
-  printf '[check:ship] %s %s %s: merged %s, deployed %s, rolled back %s, skipped red %s, queued %s, problems %s%s; report %s\n' \
+  printf '[check:deploy.fleet] %s %s %s: merged %s, deployed %s, rolled back %s, skipped red %s, queued %s, problems %s%s; report %s\n' \
     "$(iso "$NOW")" "$_st" "$SUB" "$(_c merged)" "$(_c deployed)" "$(_c rolledback)" "$(_c red)" "$(_c queued)" "$(_c problems)" \
     "${STOPPED:+; stopped: $STOPPED}" "$REPORT" >> "$CACHE_DIR/checks.log" 2>/dev/null || :
   # shellcheck disable=SC2086
-  log_receipt "$(receipt_dir)" ship "$_st" $([ "$_st" != stood-down ] || echo stood-down) $SUBJECTS || log_warn "could not write the ship receipt"
+  log_receipt "$(receipt_dir)" deploy.fleet "$_st" $([ "$_st" != stood-down ] || echo stood-down) $SUBJECTS || log_warn "could not write the ship receipt"
   log_note "report: $REPORT"
   log_end
 }

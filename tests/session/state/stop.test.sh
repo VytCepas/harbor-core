@@ -1,18 +1,20 @@
 #!/usr/bin/env sh
-# bin/session-state.sh, the Stop hook (harbor#1043, #1044): the five states in rule order, one test per waiting
-# pattern in CONTRACTS/session-waiting.tsv, SG-2 parity with guard-stop.sh, an event only on a change, the record's
+# hooks/session-state/session-state.sh, the Stop hook (harbor#1043, #1044): the five states in rule order, one test per waiting
+# pattern in contracts/session-waiting.tsv, SG-2 parity with admission-stop.sh, an event only on a change, the record's
 # fields, the save-now continuation (once, off without its rule, off under stop_hook_active), and a speed bound.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-TOOL="$T_ROOT/bin/session-state.sh"; GSTOP="$T_ROOT/bin/guard-stop.sh"; TABLE="$T_ROOT/CONTRACTS/session-waiting.tsv"
+TOOL="$T_ROOT/hooks/session-state/session-state.sh"; GSTOP="$T_ROOT/bin/admission-stop.sh"; TABLE="$T_ROOT/contracts/session-waiting.tsv"
 T="$T_TMP"; ST="$T/state"; REPO="$T/repo"; CFG="$T/cfg"
 export HARBOR_STATUS_DIR="$ST" HARBOR_EVENT_DIR="$T/bus"
-mkdir -p "$REPO" "$CFG"
+# Auto-compact off for every section but its own, and never a real osascript: a test must not type into a terminal.
+export HARBOR_AUTOCOMPACT_PCT=101 HARBOR_AUTOCOMPACT_OSA=false
+mkdir -p "$REPO/docs/how-to" "$CFG"
 git -C "$REPO" init -q && git -C "$REPO" config user.email t@t && git -C "$REPO" config user.name t
-git -C "$REPO" checkout -q -b work; printf 'a\n' > "$REPO/f"; printf 'h\n' > "$REPO/HANDOFF.md"
+git -C "$REPO" checkout -q -b work; printf 'a\n' > "$REPO/f"; printf 'h\n' > "$REPO/docs/how-to/handover.md"
 git -C "$REPO" add . && git -C "$REPO" commit -q -m init
-touch -t 201901010000 "$REPO/HANDOFF.md"  # older than every fixture transcript: the handoff is not this session's
+touch -t 201901010000 "$REPO/docs/how-to/handover.md"  # older than every fixture transcript: the handoff is not this session's
 git init -q --bare "$T/origin.git" && git -C "$REPO" remote add origin "$T/origin.git" && git -C "$REPO" push -q -u origin work 2>/dev/null
-REPO2="$T/repo2"; git init -q "$REPO2" && git -C "$REPO2" config user.email t@t && git -C "$REPO2" config user.name t   # no HANDOFF.md at all
+REPO2="$T/repo2"; git init -q "$REPO2" && git -C "$REPO2" config user.email t@t && git -C "$REPO2" config user.name t   # no docs/how-to/handover.md at all
 git -C "$REPO2" checkout -q -b work; printf 'a\n' > "$REPO2/f"; git -C "$REPO2" add . && git -C "$REPO2" commit -q -m init
 git init -q --bare "$T/origin2.git" && git -C "$REPO2" remote add origin "$T/origin2.git" && git -C "$REPO2" push -q -u origin work 2>/dev/null
 REPO2="$(CDPATH= cd -P -- "$REPO2" && pwd -P)"
@@ -57,12 +59,18 @@ run s-ask asked 'Pick one.'; t_eq "a turn ending on an AskUserQuestion is waitin
 tx answered "$(ask)" "$(tr_ q1 yes)"
 run s-ans answered 'Thanks.'; t_eq "an answered AskUserQuestion is not" idle "$(rec s-ans state)"
 
-t_section "blocked: SG-2, and it agrees with guard-stop.sh on the same transcript"
+t_section "blocked: SG-2, and it agrees with admission-stop.sh on the same transcript"
 tx red "$(tu c2 2020-01-01T00:00:01.000Z 'sh tests/x-test.sh')" "$(tr_ c2 'x-test: 3 passed, 1 failed')"
 tx healed "$(tu c2 2020-01-01T00:00:01.000Z 'sh tests/x-test.sh')" "$(tr_ c2 'x-test: 3 passed, 1 failed')" "$(tu c3 2020-01-01T00:00:02.000Z 'sh tests/x-test.sh')" "$(tr_ c3 'x-test: 4 passed, 0 failed')"
 tx readonly "$(tu c4 2020-01-01T00:00:01.000Z 'cat build.log')" "$(tr_ c4 'x-test: 3 passed, 1 failed')"
+tx dotted "$(tu c5 2020-01-01T00:00:01.000Z 'sh tests/x.test.sh')" "$(tr_ c5 'x.test: 3 passed, 1 failed')"
+BG='Command running in background with ID: bq1. Output is being written to: /t/tasks/bq1.output. Notified.'
+rd() { jq -nc --arg id "$1" --arg p "$2" '{type:"assistant",message:{content:[{type:"tool_use",id:$id,name:"Read",input:{file_path:$p}}]}}'; }
+tx bgheal "$(tu c2 2020-01-01T00:00:01.000Z 'sh tests/x-test.sh')" "$(tr_ c2 'x-test: 3 passed, 1 failed')" "$(tu b3 2020-01-01T00:00:02.000Z 'sh tests/x-test.sh')" "$(tr_ b3 "$BG")" "$(tu c4 2020-01-01T00:00:03.000Z 'tail -1 /t/tasks/bq1.output')" "$(tr_ c4 'x-test: 4 passed, 0 failed')"
+tx bgread "$(tu c2 2020-01-01T00:00:01.000Z 'sh tests/x-test.sh')" "$(tr_ c2 'x-test: 3 passed, 1 failed')" "$(tu b3 2020-01-01T00:00:02.000Z 'sh tests/x-test.sh')" "$(tr_ b3 "$BG")" "$(rd r4 /t/tasks/bq1.output)" "$(tr_ r4 "$(printf '1\tx-test: 4 passed, 0 failed')")"
+tx bgcat "$(tu c6 2020-01-01T00:00:01.000Z 'cat /t/tasks/bq1.output')" "$(tr_ c6 'x-test: 3 passed, 1 failed')"
 gs() { printf '{"session_id":"g-%s","transcript_path":"%s/%s.jsonl","cwd":"%s"}' "$1" "$T" "$1" "$REPO" | CLAUDE_CONFIG_DIR="$CFG" sh "$GSTOP" 2>/dev/null; }
-for c in red healed readonly; do
+for c in red healed readonly dotted bgheal bgread bgcat; do
   run "s-$c" "$c" 'ok'
   g="$(gs "$c")"; gb=no; case "$g" in *'"decision":"block"'*) gb=yes ;; esac
   sb=no; [ "$(rec "s-$c" state)" = blocked ] && sb=yes
@@ -72,10 +80,17 @@ t_eq "a red suite run in the session is blocked" blocked "$(rec s-red state)"
 t_has "...and the reason is the verdict line" "$(rec s-red reason)" "3 passed, 1 failed"
 t_eq "a later green run of it clears the block" idle "$(rec s-healed state)"
 t_eq "a verdict only READ (cat) is not a run" idle "$(rec s-readonly state)"
+t_eq "a dotted suite name (x.test.sh) pairs" blocked "$(rec s-dotted state)"
+t_eq "a background green, read from its task file, clears the red" idle "$(rec s-bgheal state)"
+t_eq "...and so does the same file read with the Read tool" idle "$(rec s-bgread state)"
+t_eq "a cat of a task file no suite of this session wrote is not a run" idle "$(rec s-bgcat state)"
+pair_of() { awk '/SG_PAIR=.$/ { on = 1; next } on { print } on && /}.$/ { exit }' "$1"; }
+t_eq "SG_PAIR is byte-equal to admission-stop.sh's" "$(pair_of "$GSTOP")" "$(pair_of "$TOOL")"
+t_has "...and the extraction found it" "$(pair_of "$TOOL")" 'BGT'
 run s-redq red 'Which one?'; t_eq "a question outranks blocked" waiting-operator "$(rec s-redq state)"
 
 t_section "done: committed or pushed this session, nothing edited since, clean tree, branch pushed; the handoff is no gate"
-wr() { jq -nc --arg ts "$1" '{type:"assistant",timestamp:$ts,message:{content:[{type:"tool_use",id:"w1",name:"Write",input:{file_path:"/x/HANDOFF.md"}}]}}'; }
+wr() { jq -nc --arg ts "$1" '{type:"assistant",timestamp:$ts,message:{content:[{type:"tool_use",id:"w1",name:"Write",input:{file_path:"/x/docs/how-to/handover.md"}}]}}'; }
 tx ms "$(tu c5 2020-01-01T00:00:00.000Z 'git commit -m x')" "$(tr_ c5 ok)" "$(tu c5b 2020-01-01T00:00:01.000Z 'git push')" "$(tr_ c5b ok)"
 run s-done ms 'All set.'; t_eq "pushed, clean, nothing edited since, stale handoff: done" done "$(rec s-done state)"
 t_eq "the record carries the branch" work "$(rec s-done branch)"
@@ -83,12 +98,16 @@ t_eq "...the change count" 0 "$(rec s-done dirty)"
 t_eq "...a stale handoff as a field, not a gate" "yes" "$(rec s-done handover_stale)"
 tx wc "$(tu c0 2020-01-01T00:00:00.000Z 'ls')" "$(wr 2020-01-01T00:00:01.000Z)" "$(tu c5 2020-01-01T00:00:02.000Z 'git commit -am handoff')" "$(tr_ c5 ok)" "$(tu c5b 2020-01-01T00:00:03.000Z 'git push')" "$(tr_ c5b ok)"
 run s-wc wc 'Handoff committed.'; t_eq "write the handoff, THEN commit and push it: done" done "$(rec s-wc state)"
-touch "$REPO/HANDOFF.md"
+touch "$REPO/docs/how-to/handover.md"
 run s-fresh2 ms 'All set.'; t_eq "...and a handoff newer than the milestone reads fresh" no "$(rec s-fresh2 handover_stale)"
 run s-touch plain 'All set.'; t_eq "touch on the handoff alone never fires done" idle "$(rec s-touch state)"
-touch -t 201901010000 "$REPO/HANDOFF.md"
-run s-nohand ms 'All set.' '[]' false "$REPO2"; t_eq "a repo with no HANDOFF.md reaches done" done "$(rec s-nohand state)"
+touch -t 201901010000 "$REPO/docs/how-to/handover.md"
+run s-nohand ms 'All set.' '[]' false "$REPO2"; t_eq "a repo with no docs/how-to/handover.md reaches done" done "$(rec s-nohand state)"
 t_eq "...handover_at 0 and stale" "0 yes" "$(rec s-nohand handover_at) $(rec s-nohand handover_stale)"
+# Any other repo keeps its handoff at the root as HANDOFF.md, and it still counts (harbor#949).
+touch "$REPO2/HANDOFF.md"
+run s-roothand ms 'All set.' '[]' false "$REPO2"; t_eq "...a root HANDOFF.md newer than the milestone reads fresh" no "$(rec s-roothand handover_stale)"
+rm -f "$REPO2/HANDOFF.md"
 tx late "$(tu c0 2020-01-01T00:00:00.000Z 'ls')" "$(tu c6 2020-01-01T00:00:01.000Z 'git push')" "$(tr_ c6 ok)" "$(wr 2020-01-01T00:00:05.000Z)"
 run s-late late 'All set.'; t_eq "an edit AFTER the push: idle" idle "$(rec s-late state)"
 printf 'x\n' > "$REPO/untracked"
@@ -121,7 +140,7 @@ since1="$(rec s-ev since)"; run s-ev plain 'Which one again?'
 t_eq "an unchanged state keeps its since" "$since1" "$(rec s-ev since)"
 
 t_section "save-now: one continuation, only with its rule, never inside a stop-hook continuation"
-mkdir -p "$ST/ctx"; printf '95\n' > "$ST/ctx/s-save"; touch -t 201901010000 "$REPO/HANDOFF.md"  # a year before the transcript, in any TZ
+mkdir -p "$ST/ctx"; printf '95\n' > "$ST/ctx/s-save"; touch -t 201901010000 "$REPO/docs/how-to/handover.md"  # a year before the transcript, in any TZ
 run s-save plain 'Done.'
 t_eq "no rule installed: no continuation" "" "$(cat "$T/out")"
 mkdir -p "$CFG/.helm-dispatch/rules"; : > "$CFG/.helm-dispatch/rules/event.session-save-now.rule"
@@ -136,8 +155,99 @@ t_eq "the same trigger does not repeat" "" "$(cat "$T/out")"
 settle; t_eq "the nudge is on the bus once" 1 "$(events session.save-now s-save | tr -d ' ')"
 printf '80\n' > "$ST/ctx/s-80"; run s-80 plain 'Done.'
 t_eq "80% with no new milestone: no continuation" "" "$(cat "$T/out")"
-printf '95\n' > "$ST/ctx/s-fresh"; touch "$REPO/HANDOFF.md"; run s-fresh plain 'Done.'
+printf '95\n' > "$ST/ctx/s-fresh"; touch "$REPO/docs/how-to/handover.md"; run s-fresh plain 'Done.'
 t_eq "95% but the handoff is newer than the last milestone: no continuation" "" "$(cat "$T/out")"
+
+t_section "compact: a finished turn asks the agent once; the agent's [compact-ok] as the last line types /compact"
+rm -f "$CFG/.helm-dispatch/rules/event.session-save-now.rule"
+printf '#!/bin/sh\ncat > /dev/null; printf "%%s\\n" "$*" >> "%s/osa.calls"; echo sent\n' "$T" > "$T/osa"; chmod +x "$T/osa"
+export HARBOR_AUTOCOMPACT_PCT=35 HARBOR_AUTOCOMPACT_TTY=ttys999 HARBOR_AUTOCOMPACT_OSA="$T/osa" HARBOR_AUTOCOMPACT_DELAY=0
+typed() { _n=0; until grep -q "$(printf %.8s "$1") typed" "$ST"/backups/session-autocompact/*/log 2>/dev/null || [ "$_n" -ge 20 ]; do sleep 0.25; _n=$((_n + 1)); done; sleep 0.2; }
+: > "$T/osa.calls"
+printf '20\n' > "$ST/ctx/ac-small"; run ac-small plain 'All set.'
+t_eq "ctx under 35%: no question" "" "$(cat "$T/out")"
+printf '50\n' > "$ST/ctx/ac-1"; run ac-1 plain 'All set.'
+t_has "ctx 50% on an idle turn: one continuation asks the agent" "$(cat "$T/out")" '"additionalContext"'
+t_has "...naming the line to answer with" "$(cat "$T/out")" '[compact-ok]'
+t_eq "...and nothing is typed on a question" "" "$(cat "$T/osa.calls")"
+run ac-1 plain 'not yet' '[]' true
+t_eq "'not yet' inside the continuation: no second question, nothing typed" ":" "$(cat "$T/out"):$(cat "$T/osa.calls")"
+run ac-1 plain 'All set.'
+t_eq "the same growth step does not ask again" "" "$(cat "$T/out")"
+printf '61\n' > "$ST/ctx/ac-1"; run ac-1 plain 'All set.'
+t_has "ten points more asks again" "$(cat "$T/out")" '"additionalContext"'
+run ac-1 plain 'Everything is merged and saved.
+[compact-ok]' '[]' true
+t_eq "[compact-ok] as the last line: nothing printed to the operator" "" "$(cat "$T/out")"
+typed ac-1; t_has "...and /compact is typed into the tab of the session's tty" "$(cat "$T/osa.calls")" '/dev/ttys999'
+t_has "...and logged" "$(cat "$ST"/backups/session-autocompact/*/log)" 'typed /compact on ttys999: sent'
+: > "$T/osa.calls"
+printf '10\n' > "$ST/ctx/ac-2"; run ac-2 plain 'Done.
+[compact-ok]'
+typed ac-2; t_has "the agent may say it unasked, at any context size" "$(cat "$T/osa.calls")" '/dev/ttys999'
+: > "$T/osa.calls"
+run ac-q plain 'When the task is done I end with [compact-ok] on its own line.'
+run ac-q2 plain '[compact-ok]
+and then more text'
+sleep 0.5; t_eq "a marker quoted mid-message, or not on the last line: nothing typed" "" "$(cat "$T/osa.calls")"
+run ac-run plain '[compact-ok]' "$RUN"
+sleep 0.5; t_eq "a running background task: nothing typed" "" "$(cat "$T/osa.calls")"
+printf '50\n' > "$ST/ctx/ac-r2"; run ac-r2 plain 'x' "$RUN"
+t_eq "...and no question while one runs" "" "$(cat "$T/out")"
+: > "$ST/compact-auto.off"; printf '50\n' > "$ST/ctx/ac-off"; run ac-off plain 'All set.'
+t_eq "compact-auto.off: no question" "" "$(cat "$T/out")"
+run ac-off plain '[compact-ok]'; sleep 0.5
+t_eq "...and nothing typed" "" "$(cat "$T/osa.calls")"; rm -f "$ST/compact-auto.off"
+sh "$T_ROOT/bin/session-autocompact.sh" '../x' ttys999
+sh "$T_ROOT/bin/session-autocompact.sh" ac-bad 'ttys1;touch x'
+t_eq "the helper: an unsafe session id or tty runs nothing" "" "$(cat "$T/osa.calls")"
+unset HARBOR_AUTOCOMPACT_TTY HARBOR_AUTOCOMPACT_DELAY; export HARBOR_AUTOCOMPACT_PCT=101 HARBOR_AUTOCOMPACT_OSA=false
+
+t_section "cleanup: a merged PR of this session asks once; [cleanup-ok] as the last line runs the sweep's RECLAIM rows"
+printf '#!/bin/sh\nprintf "%%s\\n" "$*" >> "%s/clean.calls"\ncase "$*" in *--apply*) echo "  RECLAIM  finished-worktrees  0B  wt-x" ;; esac\n' "$T" > "$T/clean"; chmod +x "$T/clean"
+export HARBOR_CLEANUP_TOOL="$T/clean"
+cleaned() { _n=0; until grep -q -- '--record' "$T/clean.calls" 2>/dev/null || [ "$_n" -ge 20 ]; do sleep 0.25; _n=$((_n + 1)); done; sleep 0.2; }
+ev() { jq -nc --arg k "$1" --arg s "$2" --arg ts "$3" --arg sid "$4" '{id:"e",ts:$ts,kind:$k,subject:$s,src:"t",data:{session_id:$sid}}' >> "$T/bus/2020-01-01.jsonl"; }  # <kind> <subject> <ts> <sid>
+mkdir -p "$T/bus"; : > "$T/clean.calls"
+run cl-1 plain 'All set.'
+t_eq "no PR of this session merged: no question" "" "$(cat "$T/out")"
+ev pr.opened o/r#1 2020-01-01T00:00:01Z cl-1; ev pr.opened o/r#2 2020-01-01T00:00:01Z cl-other
+ev pr.merged o/r#2 2020-01-01T00:00:02Z ""
+run cl-1 plain 'All set.'
+t_eq "another session's PR merged: no question" "" "$(cat "$T/out")"
+ev pr.merged o/r#1 2020-01-01T00:00:05Z ""
+run cl-1 plain 'All set.'
+t_has "this session's PR merged: one continuation asks" "$(cat "$T/out")" '"additionalContext"'
+t_has "...naming the PR and the line to answer with" "$(cat "$T/out")" 'o/r#1 merged'
+t_has "...and the marker" "$(cat "$T/out")" '[cleanup-ok]'
+run cl-1 plain 'All set.'
+t_eq "the same merge does not ask again" "" "$(cat "$T/out")"
+ev pr.opened o/r#3 2020-01-01T00:00:06Z cl-1; ev pr.merged o/r#3 2020-01-01T00:00:09Z ""
+run cl-1 plain 'All set.'
+t_has "a later merge of another of its PRs asks again" "$(cat "$T/out")" 'o/r#3 merged'
+t_eq "...and nothing ran on a question" "" "$(cat "$T/clean.calls")"
+run cl-q plain 'When it is merged I end with [cleanup-ok] on its own line.'
+sleep 0.5; t_eq "a marker quoted mid-message: nothing runs" "" "$(cat "$T/clean.calls")"
+run cl-run plain '[cleanup-ok]' "$RUN"
+sleep 0.5; t_eq "a running background task: nothing runs" "" "$(cat "$T/clean.calls")"
+: > "$ST/cleanup-auto.off"; run cl-off plain '[cleanup-ok]'; sleep 0.5
+t_eq "cleanup-auto.off: nothing runs" "" "$(cat "$T/clean.calls")"; rm -f "$ST/cleanup-auto.off"
+run cl-1 plain 'Merged, deployed, verified.
+[cleanup-ok]'
+t_eq "[cleanup-ok] as the last line: nothing printed to the operator" "" "$(cat "$T/out")"
+cleaned; t_has "...the sweep applies on the live box" "$(cat "$T/clean.calls")" '--apply --live'
+t_has "...then re-records the count" "$(cat "$T/clean.calls")" '--record --live'
+t_has "...and logs what it reclaimed" "$(cat "$ST"/backups/session-cleanup/*/log)" 'reclaimed: finished-worktrees'
+: > "$T/clean.calls"; : > "$T/osa.calls"
+export HARBOR_AUTOCOMPACT_TTY=ttys999 HARBOR_AUTOCOMPACT_OSA="$T/osa" HARBOR_AUTOCOMPACT_DELAY=0
+run cl-2 plain 'All done.
+[cleanup-ok] [compact-ok]'
+t_eq "both markers: nothing printed" "" "$(cat "$T/out")"
+cleaned; t_has "...the sweep ran" "$(cat "$T/clean.calls")" '--apply --live'
+typed cl-2; t_has "...and /compact was typed" "$(cat "$T/osa.calls")" '/dev/ttys999'
+sleep 0.5; : > "$T/clean.calls"; sh "$T_ROOT/bin/session-cleanup.sh" '../x'
+t_eq "the helper: an unsafe session id runs nothing" "" "$(cat "$T/clean.calls")"
+unset HARBOR_AUTOCOMPACT_TTY HARBOR_AUTOCOMPACT_DELAY HARBOR_CLEANUP_TOOL; export HARBOR_AUTOCOMPACT_OSA=false
 
 t_section "fail-open, off switch, and speed"
 printf 'not json' | CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" > "$T/out" 2>&1; t_eq "garbage on stdin: exit 0, silent" "0:" "$?:$(cat "$T/out")"
