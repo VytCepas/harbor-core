@@ -25,79 +25,84 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 
 | Kind | Folder | Level | Layer | Lifecycle | Files |
 |---|---|---|---|---|---|
-| policy | policy/ | system | source | living | 11 |
-| standard | standards/ | system | source | versioned | 13 |
-| contract | contracts/ | system | source | versioned | 30 |
-| decision-record | docs/decisions/ | element | source | dated | 88 |
-| injection-rule | context-rules/<scope>/ | component | source | living | 35 |
-| hook | bin/ | component | source | living | 12 |
-| skill | skills/ | component | source | living | 41 |
-| fixture | fixtures/ | element | source | living | 252 |
-| registry | registries/ | component | source | versioned | 49 |
-| test | tests/ | component | source | living | 425 |
-| report | docs/reports/ | element | report | dated | 1 |
-| design | docs/design/ | component | source | living | 6 |
+| policy | policy/ | system | source | living | 6 |
+| standard | standards/ | system | source | versioned | 26 |
+| contract | contracts/ | system | source | versioned | 33 |
+| decision-record | docs/decisions/ | element | source | dated | 93 |
+| hook | hooks/ | component | source | living | 47 |
+| skill | skills/ | component | source | living | 47 |
+| fixture | fixtures/ | element | source | living | 261 |
+| registry | registries/ | component | source | versioned | 52 |
+| test | tests/ | component | source | living | 448 |
+| report | docs/reports/ | element | report | dated | 2 |
+| design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| script | bin/ | component | source | living | 206 |
-| (no kind) | - | - | - | - | 171 |
+| script | bin/ | component | source | living | 275 |
+| how-to | docs/how-to/ | component | source | living | 1 |
+| reference | docs/reference/ | component | generated | generated | 5 |
+| explanation | docs/explanation/ | component | source | living | 14 |
+| (no kind) | - | - | - | - | 239 |
 
 ## Folders
 
 | Folder | Files | Families | Kinds |
 |---|---|---|---|
-| (repo root) | 21 | 3 | 2 |
+| (repo root) | 19 | 3 | 2 |
 | `.agents/` | 4 | 1 | 1 |
-| `.claude/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
-| `CONTRACTS/` | 79 | 9 | 2 |
-| `DOCTRINE/` | 10 | 1 | 1 |
-| `bin/` | 211 | 21 | 2 |
-| `commands/` | 5 | 1 | 1 |
-| `docs/` | 109 | 6 | 5 |
-| `fixtures/` | 252 | 9 | 1 |
-| `hooks/` | 7 | 1 | 1 |
-| `inject.d/` | 31 | 1 | 1 |
-| `launchd/` | 12 | 3 | 1 |
-| `patches/` | 12 | 1 | 1 |
+| `DOCTRINE/` | 4 | 1 | 1 |
+| `bin/` | 279 | 28 | 2 |
+| `commands/` | 8 | 4 | 1 |
+| `context-rules/` | 46 | 6 | 1 |
+| `contracts/` | 84 | 9 | 2 |
+| `docs/` | 137 | 11 | 8 |
+| `fixtures/` | 261 | 10 | 1 |
+| `hooks/` | 43 | 6 | 1 |
+| `launchd/` | 13 | 8 | 1 |
+| `patches/` | 12 | 3 | 1 |
+| `policy/` | 1 | 1 | 1 |
+| `registries/` | 1 | 1 | 1 |
 | `runners/` | 2 | 1 | 1 |
-| `skills/` | 41 | 5 | 1 |
-| `standards/` | 13 | 1 | 1 |
+| `skills/` | 47 | 8 | 1 |
+| `standards/` | 26 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 425 | 20 | 1 |
+| `tests/` | 448 | 27 | 1 |
 | `tools/` | 10 | 2 | 1 |
-| `vendor/` | 73 | 1 | 1 |
+| `vendor/` | 92 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
 
 ## Families
 
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
-| access | control-plane | 4 | 6 | 2 | 2 | 0 | 0 |
-| admission | control-plane | 5 | 1 | 0 | 0 | 0 | 146 |
-| alert | observability | 0 | 0 | 0 | 0 | 0 | 0 |
-| audit | control-plane | 0 | 0 | 0 | 0 | 0 | 2 |
-| check | observability | 1 | 4 | 0 | 1 | 50 | 0 |
-| ci | coordination | 12 | 58 | 1 | 3 | 0 | 5 |
-| context | control-plane | 3 | 0 | 1 | 36 | 0 | 29 |
-| deploy | control-plane | 4 | 6 | 1 | 1 | 0 | 7 |
-| doc | control-plane | 1 | 1 | 0 | 8 | 0 | 16 |
-| drift | control-plane | 1 | 1 | 0 | 4 | 2 | 12 |
-| eval | control-plane | 0 | 1 | 0 | 0 | 0 | 0 |
-| event | observability | 3 | 16 | 0 | 2 | 0 | 0 |
-| gate | control-plane | 10 | 7 | 0 | 0 | 0 | 0 |
-| housekeeping | control-plane | 0 | 0 | 0 | 2 | 0 | 0 |
-| lint | control-plane | 14 | 38 | 0 | 8 | 0 | 31 |
-| memory | memory-store | 4 | 11 | 1 | 23 | 0 | 1 |
+| access | control-plane | 12 | 20 | 2 | 6 | 0 | 0 |
+| admission | control-plane | 19 | 82 | 0 | 4 | 0 | 167 |
+| agent | control-plane | 0 | 1 | 0 | 5 | 0 | 0 |
+| alert | observability | 5 | 3 | 0 | 2 | 0 | 0 |
+| audit | control-plane | 13 | 14 | 0 | 5 | 0 | 2 |
+| check | observability | 1 | 4 | 0 | 1 | 51 | 0 |
+| ci | coordination | 20 | 50 | 2 | 5 | 1 | 5 |
+| context | control-plane | 8 | 11 | 1 | 4 | 0 | 36 |
+| deploy | control-plane | 22 | 26 | 1 | 1 | 0 | 7 |
+| doc | control-plane | 21 | 12 | 0 | 33 | 0 | 17 |
+| drift | control-plane | 7 | 6 | 0 | 4 | 2 | 13 |
+| eval | control-plane | 11 | 7 | 0 | 1 | 0 | 0 |
+| event | observability | 3 | 18 | 0 | 3 | 0 | 2 |
+| gate | control-plane | 15 | 10 | 0 | 2 | 0 | 0 |
+| housekeeping | control-plane | 2 | 1 | 0 | 2 | 0 | 0 |
+| library | policy-function | 6 | 0 | 0 | 0 | 0 | 0 |
+| lint | control-plane | 27 | 54 | 0 | 9 | 3 | 34 |
+| memory | memory-store | 8 | 10 | 1 | 23 | 0 | 1 |
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
-| policy | policy-function | 0 | 0 | 11 | 0 | 0 | 3 |
+| policy | policy-function | 3 | 2 | 6 | 0 | 0 | 3 |
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
-| scope | coordination | 1 | 10 | 0 | 0 | 0 | 4 |
-| session | data-plane | 10 | 5 | 0 | 1 | 0 | 0 |
-| skill | catalog | 3 | 5 | 0 | 4 | 0 | 11 |
-| standard | policy-function | 3 | 8 | 101 | 0 | 0 | 43 |
-| status | observability | 3 | 7 | 0 | 1 | 0 | 0 |
-| test | control-plane | 0 | 1 | 2 | 7 | 0 | 7 |
-| worktree | coordination | 1 | 0 | 0 | 0 | 0 | 0 |
+| scope | coordination | 9 | 15 | 0 | 0 | 0 | 4 |
+| session | data-plane | 14 | 4 | 0 | 3 | 0 | 0 |
+| skill | catalog | 7 | 18 | 0 | 10 | 0 | 13 |
+| standard | policy-function | 8 | 14 | 119 | 1 | 2 | 48 |
+| status | observability | 15 | 20 | 0 | 4 | 0 | 0 |
+| test | control-plane | 7 | 5 | 2 | 7 | 0 | 14 |
+| worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
 
 ## Per family
 
@@ -105,36 +110,107 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 
 ### access
 
-- `CONTRACTS/access-card.md`
-- `CONTRACTS/access-register.md`
+- `bin/access-browser-agent.sh`
+- `bin/access-browser-cdp.mjs`
+- `bin/access-browser-hosts-add.sh`
+- `bin/access-browser.sh`
 - `bin/access-chrome-mcp.py`
-- `bin/access-confinement.sh`
 - `bin/access-environment.sh`
+- `bin/access-github-app-install.sh`
 - `bin/access.sh`
+- `bin/browser-agent.sh`
+- `bin/browser.sh`
+- `context-rules/user/access-route-pointer.md`
+- `context-rules/user/access-route.sh`
+- `contracts/access-card.md`
+- `contracts/access-register.md`
+- `hooks/access-confinement/access-confinement.sh`
+- `hooks/access-confinement/access-confinement.test.sh`
+- `skills/access-browser/SKILL.md`
 - `skills/access-ledger/SKILL.md`
 
 ### admission
 
+- `FLOOR.md`
+- `bin/admission-deny-hash.sh`
+- `bin/admission-mutation-tier.sh`
+- `bin/admission-observe-report.sh`
+- `bin/annotate-web.sh`
+- `bin/floor-hook.sh`
+- `bin/floor-observe.sh`
+- `bin/govern-hook.sh`
+- `bin/govern-token.sh`
+- `bin/guard-apiroute.sh`
 - `bin/guard-bash.sh`
 - `bin/guard-cloud.sh`
+- `bin/guard-deliverables.sh`
+- `bin/guard-destroy.sh`
 - `bin/guard-egress.sh`
+- `bin/guard-integrity.sh`
 - `bin/guard-selfedit.sh`
 - `bin/guard-stop.sh`
+- `bin/observe-report.sh`
+- `bin/prod-guard-ambient.sh`
+- `docs/explanation/admission-baseline.md`
+- `patches/admission-shard.patch.md`
+
+### agent
+
+- `context-rules/user/agent-brief.md`
+- `context-rules/user/agent-brief.sh`
+- `context-rules/user/agent-model-required.md`
+- `context-rules/user/agent-model.sh`
+- `skills/agent-routing/SKILL.md`
+
+### alert
+
+- `bin/alert-lib.sh`
+- `bin/alert-notify.sh`
+- `bin/alert-probe.sh`
+- `bin/pulse-notify.sh`
+- `bin/pulse.sh`
+- `docs/src/alert.html`
+- `launchd/com.harbor.alert.probe.plist`
+
+### audit
+
+- `bin/audit-collector-check.sh`
+- `bin/audit-collector-install.sh`
+- `bin/audit-collector.sh`
+- `bin/audit-otlp-receiver.py`
+- `bin/audit-stream-export.py`
+- `bin/audit-stream-lib.sh`
+- `bin/audit-triage-run.sh`
+- `bin/audit-triage.sh`
+- `bin/collector-check.sh`
+- `bin/collector-setup.sh`
+- `bin/failure-capture.sh`
+- `bin/judge-run.sh`
+- `bin/stream-lib.sh`
+- `launchd/com.harbor.audit.collector-checkpoint.plist`
+- `launchd/com.harbor.audit.collector.plist`
+- `launchd/com.harbor.audit.otlp-receiver.plist`
+- `launchd/com.harbor.audit.triage.plist`
+- `skills/audit-review-fanout/SKILL.md`
 
 ### check
 
-- `CHECKS.md`
 - `bin/check-registry-generate.sh`
+- `docs/reference/checks.md`
 
 ### ci
 
 - `.github/workflows/governance.yml`
 - `.github/workflows/public-ci.yml`
+- `bin/ci-github-plan.sh`
 - `bin/ci-governor-hook.sh`
 - `bin/ci-governor.sh`
 - `bin/ci-lost-job.sh`
+- `bin/ci-main-tip-verdict.sh`
 - `bin/ci-mirror.sh`
 - `bin/ci-queue.sh`
+- `bin/ci-release-names.sh`
+- `bin/ci-runner-switch.sh`
 - `bin/ci-runners-fleet-lib.sh`
 - `bin/ci-runners-github-lib.sh`
 - `bin/ci-runners-provision-lib.sh`
@@ -142,73 +218,118 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/ci-runners.sh`
 - `bin/ci-runs-on.sh`
 - `bin/ci-verified.sh`
+- `bin/ci-wait.sh`
+- `bin/gh-plan.sh`
+- `bin/main-tip-verdict.sh`
+- `bin/runner-switch.sh`
+- `context-rules/user/ci-wait-on-the-bus.md`
+- `context-rules/user/ci-wait-on-the-bus.sh`
 - `docs/design/ci-local-heal.md`
-- `launchd/com.harbor.ci-governor.plist`
+- `docs/design/ci-tests-on-this-host.md`
+- `launchd/com.harbor.ci.governor.plist`
 
 ### context
 
-- `.claude/inject.d/10-constitution-edit-is-undeployed.md`
-- `.claude/inject.d/20-merge-governance.md`
-- `.claude/inject.d/21-post-merge-state.md`
-- `.claude/inject.d/merge-note.sh`
 - `bin/context-budget.sh`
+- `bin/context-compaction-digest.sh`
+- `bin/context-injection-install.sh`
+- `bin/context-peers.sh`
 - `bin/context-resolve.sh`
-- `bin/inject-hook.sh`
+- `bin/fleet-sessions.sh`
+- `commands/context-budget.md`
+- `commands/harbor-context.md`
 - `docs/context-map.md`
-- `inject.d/box/10-subagent-contract.md`
-- `inject.d/box/20-post-compaction-carry.md`
-- `inject.d/box/30-external-content-is-data.md`
-- `inject.d/box/40-repo-skills-pointer.md`
-- `inject.d/box/45-access-route-pointer.md`
-- `inject.d/box/50-project-pointer.md`
-- `inject.d/box/60-variable-is-one-argument.md`
-- `inject.d/box/65-browser-route-harbor-chrome.md`
-- `inject.d/box/66-browser-route-reminder.md`
-- `inject.d/box/70-confinement-refused.md`
-- `inject.d/box/80-large-tool-result.md`
-- `inject.d/box/85-tool-failure-is-not-a-result.md`
-- `inject.d/box/90-unbounded-wait-loop.md`
-- `inject.d/box/95-repo-tier-not-loaded.md`
-- `inject.d/box/96-agent-brief.md`
-- `inject.d/box/97-agent-model-required.md`
-- `inject.d/box/98-name-note.md`
-- `inject.d/box/access-route.sh`
-- `inject.d/box/agent-brief.sh`
-- `inject.d/box/agent-model.sh`
-- `inject.d/box/browser-route.sh`
-- `inject.d/box/confinement-refused.sh`
-- `inject.d/box/large-tool-result.sh`
-- `inject.d/box/name-note.sh`
-- `inject.d/box/post-compaction-carry.sh`
-- `inject.d/box/project-pointer.sh`
-- `inject.d/box/repo-skills.sh`
-- `inject.d/box/repo-tier.sh`
-- `inject.d/box/tool-failure.sh`
-- `inject.d/box/unbounded-wait-loop.sh`
-- `inject.d/box/variable-is-one-argument.sh`
+- `hooks/injection-rule/context-rules.test.sh`
+- `hooks/injection-rule/injection-rule.sh`
+- `registries/context-ratchet.tsv`
 
 ### deploy
 
+- `bin/deploy-bootstrap.sh`
 - `bin/deploy-confinement.sh`
+- `bin/deploy-doctor.sh`
 - `bin/deploy-fleet.sh`
+- `bin/deploy-harden.sh`
+- `bin/deploy-hooks.sh`
+- `bin/deploy-install-lib.sh`
+- `bin/deploy-install-stamp.sh`
+- `bin/deploy-launchd-render.sh`
+- `bin/deploy-live-verify.sh`
 - `bin/deploy-push.sh`
+- `bin/deploy-restore.sh`
+- `bin/deploy-runtime-install.sh`
+- `bin/deploy-shim-install.sh`
 - `bin/deploy.sh`
+- `bin/install-lib.sh`
+- `bin/install-stamp.sh`
+- `bin/launchd-render.sh`
+- `bin/restore.sh`
+- `bin/runtime-install.sh`
+- `bin/sec0-harden.sh`
+- `bin/shim-install.sh`
 - `docs/design/deploy-fleet.md`
 
 ### doc
 
+- `bin/cite-verify.sh`
+- `bin/cited-paths.awk`
+- `bin/deliver-drive.sh`
+- `bin/doc-cite-verify.sh`
+- `bin/doc-cited-paths.awk`
+- `bin/doc-drive-push.sh`
+- `bin/doc-fresh-verify.sh`
+- `bin/doc-freshness.sh`
+- `bin/doc-graph-generate.sh`
+- `bin/doc-index-generate.sh`
+- `bin/doc-isa-index.sh`
 - `bin/doc-refs.sh`
+- `bin/doc-report-verify.sh`
+- `bin/doc-vale.sh`
+- `bin/doc-visual-check.mjs`
+- `bin/doc-visual-check.sh`
+- `bin/docs-gen.sh`
+- `bin/freshness.sh`
+- `bin/report-contract.sh`
+- `bin/visual-check.mjs`
+- `bin/visual-check.sh`
+- `docs/explanation/doc-truth.md`
+- `patches/doc-generate-check.patch.md`
+- `skills/doc-atlas/SKILL.md`
+- `skills/doc-deliverable-contract/SKILL.md`
+- `skills/doc-learning-artifact/SKILL.md`
 
 ### drift
 
 - `bin/drift-confinement.sh`
+- `bin/drift-install.sh`
+- `bin/drift-reference-check.sh`
+- `bin/drift-renew-check.sh`
+- `bin/install-drift.sh`
+- `bin/reference-check.sh`
+- `bin/renew-check.sh`
+
+### eval
+
+- `bin/eval-hook-replay.sh`
+- `bin/eval-pass-score.sh`
+- `bin/eval-redteam-corpus-run.sh`
+- `bin/eval-redteam-corpus.sh`
+- `bin/eval-replay-corpus.sh`
+- `bin/eval-replay-worker.sh`
+- `bin/eval-replay.sh`
+- `bin/eval-tally.sh`
+- `bin/pass-score.sh`
+- `bin/redteam-corpus-run.sh`
+- `bin/redteam-corpus.sh`
+- `launchd/com.harbor.eval.redteam-corpus.plist`
 
 ### event
 
-- `CONTRACTS/event-rules.tsv`
 - `bin/event-bus.sh`
 - `bin/event-dispatch.sh`
 - `bin/event-hook.sh`
+- `contracts/event-kinds.tsv`
+- `contracts/event-rules.tsv`
 - `launchd/com.harbor.event.dispatch.plist`
 
 ### gate
@@ -217,70 +338,104 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/gate-classify.sh`
 - `bin/gate-codeowners.sh`
 - `bin/gate-lib.sh`
+- `bin/gate-merge-check.sh`
 - `bin/gate-merge-stack-resolve.py`
 - `bin/gate-merge-stack.sh`
 - `bin/gate-merge.sh`
+- `bin/gate-merged-check.sh`
+- `bin/gate-pr-wait.sh`
 - `bin/gate-queue.sh`
 - `bin/gate-register-derive.sh`
 - `bin/gate-required-generate.sh`
+- `bin/merge-check.sh`
+- `bin/merged-check.sh`
+- `commands/gate-merge.md`
+- `commands/harbor-merge.md`
 
 ### housekeeping
 
+- `bin/harbor-clean.sh`
+- `bin/housekeeping-clean.sh`
 - `skills/housekeeping/SKILL.md`
+
+### library
+
+- `bin/fs-lib.sh`
+- `bin/library-alert.sh`
+- `bin/library-fs.sh`
+- `bin/library-gate.sh`
+- `bin/library-log.sh`
+- `bin/log-lib.sh`
 
 ### lint
 
-- `CONTRACTS/lint-core-writes-baseline.txt`
-- `CONTRACTS/lint-dev-paths-baseline.txt`
-- `CONTRACTS/lint-domain-baseline.txt`
-- `CONTRACTS/lint-domain-repos-baseline.txt`
-- `CONTRACTS/lint-leaks-baseline.txt`
-- `CONTRACTS/lint-secrets-baseline.txt`
-- `CONTRACTS/lint-siblings-baseline.txt`
+- `bin/findings-run.sh`
+- `bin/findings.sh`
+- `bin/lint-adoption.sh`
 - `bin/lint-comment-commands.awk`
+- `bin/lint-comment.sh`
 - `bin/lint-constitution.sh`
 - `bin/lint-conventions.sh`
 - `bin/lint-core-writes.sh`
 - `bin/lint-dev-paths.sh`
 - `bin/lint-domain.sh`
+- `bin/lint-findings-run.sh`
+- `bin/lint-findings.sh`
 - `bin/lint-layout-map.sh`
 - `bin/lint-leaks.sh`
 - `bin/lint-locale-ranges.awk`
+- `bin/lint-module-shape.sh`
 - `bin/lint-module.sh`
 - `bin/lint-name.sh`
+- `bin/lint-platform.sh`
+- `bin/lint-port-paths.sh`
+- `bin/lint-pr.sh`
+- `bin/lint-renderer.sh`
+- `bin/lint-rule-health.sh`
 - `bin/lint-secrets.sh`
 - `bin/lint-share.sh`
 - `bin/lint-siblings.sh`
+- `bin/port-paths.sh`
+- `contracts/lint-core-writes-baseline.txt`
+- `contracts/lint-dev-paths-baseline.txt`
+- `contracts/lint-domain-baseline.txt`
+- `contracts/lint-domain-repos-baseline.txt`
+- `contracts/lint-leaks-baseline.txt`
+- `contracts/lint-secrets-baseline.txt`
+- `contracts/lint-siblings-baseline.txt`
+- `launchd/com.harbor.lint.findings.plist`
 
 ### memory
 
-- `CONTRACTS/memory-format.md`
-- `bin/memory-harvest.sh`
 - `bin/memory-lint.sh`
+- `bin/memory-log-token-save.sh`
 - `bin/memory-route.sh`
+- `bin/memory-store-check.sh`
 - `bin/memory.sh`
+- `bin/save-log-token.sh`
+- `bin/store-check.sh`
+- `contracts/memory-format.md`
+- `hooks/memory-harvest/memory-harvest.sh`
 - `tools/memory/memory-engine.test.ts`
 - `tools/memory/memory-engine.ts`
 
 ### pack
 
-- `CONTRACTS/pack-frontmatter-keys.txt`
-- `CONTRACTS/pack.md`
 - `bin/pack.sh`
+- `contracts/pack-frontmatter-keys.txt`
+- `contracts/pack.md`
 
 ### policy
 
 - `CONSTITUTION.md`
-- `DOCTRINE/absent-by-decision.md`
-- `DOCTRINE/case-law.md`
 - `DOCTRINE/credential-boundary.md`
-- `DOCTRINE/critique-expanded.md`
 - `DOCTRINE/doc-truth.md`
-- `DOCTRINE/grilling.md`
 - `DOCTRINE/modularity.md`
-- `DOCTRINE/no-authored-plugins.md`
 - `DOCTRINE/verification-expanded.md`
-- `DOCTRINE/wiring-new-capability.md`
+- `bin/constitution-install.sh`
+- `bin/policy-constitution-install.sh`
+- `bin/policy-resolve.sh`
+- `policy/constitution.md`
 
 ### proposal
 
@@ -288,36 +443,65 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 
 ### scope
 
+- `bin/roots.sh`
+- `bin/scope-layers.sh`
+- `bin/scope-managed-mods.sh`
+- `bin/scope-managed-retention.sh`
+- `bin/scope-managed-telemetry.sh`
+- `bin/scope-marker-backfill.sh`
+- `bin/scope-roots.sh`
 - `bin/scope.sh`
+- `hooks/injection-rule/scope.test.sh`
 
 ### session
 
-- `CONTRACTS/session-waiting.tsv`
+- `bin/session-autocompact.sh`
 - `bin/session-check.sh`
 - `bin/session-ci-watch.sh`
 - `bin/session-cleanup-report.sh`
+- `bin/session-cleanup.sh`
 - `bin/session-notify.sh`
 - `bin/session-react-lib.sh`
 - `bin/session-save-now.sh`
-- `bin/session-state.sh`
-- `bin/session-subagent-check.sh`
-- `bin/session-title.sh`
-- `bin/session-verdicts.sh`
+- `bin/session-workflow-progress.sh`
+- `context-rules/user/session-title-missing.md`
+- `context-rules/user/session-title-missing.sh`
+- `contracts/session-waiting.tsv`
+- `hooks/session-state/session-state.sh`
+- `hooks/session-subagent-check/session-subagent-check.sh`
+- `hooks/session-title/session-title.sh`
+- `hooks/session-title/session-title.test.sh`
+- `hooks/session-verdicts/session-verdicts.sh`
 
 ### skill
 
-- `CONTRACTS/skill-book-router.tsv`
-- `CONTRACTS/skill-pack-frontmatter-keys.txt`
 - `bin/skill-book.sh`
+- `bin/skill-catalog.sh`
+- `bin/skill-collision-verify.sh`
 - `bin/skill-fire.sh`
+- `bin/skill-install.sh`
 - `bin/skill-usage.sh`
+- `bin/skills-install.sh`
+- `commands/harbor-skills.md`
+- `commands/skill-catalog.md`
+- `context-rules/user/skill-first-use.sh`
+- `context-rules/user/skill-on-first-use.md`
+- `contracts/skill-book-router.tsv`
+- `contracts/skill-pack-frontmatter-keys.txt`
+- `docs/explanation/skill-unification.md`
 - `skills/skill-book/SKILL.md`
+- `skills/skill-catalog/SKILL.md`
 
 ### standard
 
 - `bin/standard-catalog.sh`
+- `bin/standard-fleet-names-run.sh`
+- `bin/standard-fleet-names.sh`
+- `bin/standard-frozen-generate.sh`
+- `bin/standard-issue-label.sh`
 - `bin/standard-rename.sh`
 - `bin/standard-shape.sh`
+- `bin/standard-vendor.sh`
 - `docs/decisions/0001-uppercase-policy.md`
 - `docs/decisions/0002-term-for-tool-call-enforcement.md`
 - `docs/decisions/0003-term-for-control-plane.md`
@@ -405,7 +589,13 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `docs/decisions/0085-client-terms-leave-core.md`
 - `docs/decisions/0086-the-session-family.md`
 - `docs/decisions/0087-the-public-export-repo.md`
+- `docs/decisions/0088-hook-engine-folders.md`
+- `docs/decisions/0089-event-and-manual-moments.md`
+- `docs/decisions/0090-doc-kinds-follow-diataxis.md`
+- `docs/decisions/0091-object-slot-open.md`
+- `docs/decisions/0092-promote-name-rules-on-evidence.md`
 - `docs/decisions/README.md`
+- `launchd/com.harbor.standard.fleet-names.plist`
 - `standards/modularity.md`
 - `standards/naming.md`
 - `standards/naming/aliases.tsv`
@@ -414,21 +604,56 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `standards/naming/exemptions.tsv`
 - `standards/naming/frozen.tsv`
 - `standards/naming/kinds.tsv`
+- `standards/naming/label-axes.tsv`
 - `standards/naming/registers.tsv`
 - `standards/naming/renames.tsv`
 - `standards/naming/repo-kinds.tsv`
 - `standards/naming/surfaces.tsv`
 - `standards/naming/terms.tsv`
+- `standards/naming/words.tsv`
+- `standards/naming/writers.tsv`
+- `standards/rename-maps/fleet-modules-in-projects-orchestrator.tsv`
+- `standards/rename-maps/sitting-b.md`
+- `standards/rename-maps/t4-letter-ids.tsv`
+- `standards/rename-maps/w1-docs.tsv`
+- `standards/rename-maps/w2-tests.tsv`
+- `standards/rename-maps/w3-bin.tsv`
+- `standards/rename-maps/w4-path-shims.tsv`
+- `standards/rename-maps/w5-state-env-launchd.tsv`
+- `standards/rename-maps/w6a-admission-hooks.tsv`
+- `standards/rename-maps/w6b-admission-floor-hook-and-integrity.tsv`
 
 ### status
 
+- `bin/fleet-glyph.sh`
+- `bin/fleet-snapshot-refresh.sh`
 - `bin/status-console.sh`
+- `bin/status-dashboard-generate.sh`
+- `bin/status-fleet-glyph.sh`
+- `bin/status-fleet-snapshot-refresh.sh`
 - `bin/status-gen.sh`
+- `bin/status-generate.sh`
 - `bin/status-obligations.sh`
+- `bin/status-plan-generate.sh`
+- `bin/status-subagent-glyph.sh`
+- `bin/status-telemetry-report.sh`
+- `bin/status-usage-aggregate.sh`
+- `bin/subagent-glyph.sh`
+- `bin/usage-aggregate.sh`
+- `launchd/com.harbor.status.fleet-snapshot.plist`
+- `launchd/com.harbor.status.usage-sessions.plist`
+- `launchd/com.harbor.status.usage.plist`
 
 ### test
 
-- `CONTRACTS/test-contract.md`
+- `bin/sandbox-make.sh`
+- `bin/suite-run.sh`
+- `bin/suite-select.sh`
+- `bin/test-sandbox-make.sh`
+- `bin/test-suite-cache.sh`
+- `bin/test-suite-run.sh`
+- `bin/test-suite-select.sh`
+- `contracts/test-contract.md`
 - `docs/audits/test-audit.md`
 - `skills/test-strength/SKILL.md`
 
@@ -442,45 +667,45 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 
 | Folder | Files without a family |
 |---|---|
-| (repo root) | 19 |
+| (repo root) | 17 |
 | `.agents/` | 4 |
 | `.github/` | 2 |
-| `CONTRACTS/` | 62 |
-| `bin/` | 126 |
-| `commands/` | 5 |
-| `docs/` | 17 |
-| `fixtures/` | 214 |
-| `hooks/` | 7 |
-| `launchd/` | 10 |
-| `patches/` | 12 |
+| `bin/` | 24 |
+| `commands/` | 2 |
+| `context-rules/` | 34 |
+| `contracts/` | 66 |
+| `docs/` | 34 |
+| `fixtures/` | 222 |
+| `hooks/` | 32 |
+| `patches/` | 10 |
 | `runners/` | 2 |
-| `skills/` | 29 |
+| `skills/` | 7 |
 | `systemd/` | 15 |
-| `tests/` | 237 |
+| `tests/` | 37 |
 | `tools/` | 8 |
-| `vendor/` | 73 |
+| `vendor/` | 92 |
 | `worklog/` | 1 |
 
 ## Top-level layout
 
-Every tracked top-level entry, its kind and layer from `CONTRACTS/layout-map.tsv`; Ships is read from `CONTRACTS/layers.tsv` (core ships in harbor-core, dev is box or dev data). `bin/lint-layout-map.sh` is red on an entry with no row.
+Every tracked top-level entry, its kind and layer from `contracts/layout-map.tsv`; Ships is read from `contracts/layers.tsv` (core ships in harbor-core, dev is box or dev data). `bin/lint-layout-map.sh` is red on an entry with no row.
 
 | Entry | Kind | Layer | Ships |
 |---|---|---|---|
 | `.agents/` | config | source | core |
-| `.claude/` | config | source | core |
 | `.github/` | config | source | core |
-| `CONTRACTS/` | contract | source | core |
-| `DOCTRINE/` | explanation | source | core |
-| `EVALS-DATA/` | eval | source | dev |
+| `contracts/` | contract | source | core |
+| `evals/` | eval | source | dev |
 | `bin/` | script | source | core |
 | `commands/` | command | source | core |
-| `docs/` | explanation | source | core |
+| `context-rules/` | injection-rule | source | core |
+| `docs/` | explanation | source | dev |
 | `fixtures/` | fixture | source | core |
 | `hooks/` | hook | source | core |
-| `inject.d/` | injection-rule | source | core |
 | `launchd/` | deploy-unit | source | core |
 | `patches/` | vendored | source | core |
+| `policy/` | policy | source | dev |
+| `registries/` | record | record | dev |
 | `runners/` | deploy-unit | source | core |
 | `skills/` | skill | source | core |
 | `standards/` | standard | source | core |
@@ -494,31 +719,9 @@ Every tracked top-level entry, its kind and layer from `CONTRACTS/layout-map.tsv
 | `justfile` | config | source | core |
 | `AGENTS.md` | policy | source | core |
 | `CLAUDE.md` | policy | source | core |
-| `CONSTITUTION.md` | policy | source | core |
 | `LICENSE` | policy | source | core |
 | `NOTICE` | policy | source | core |
 | `SECURITY.md` | policy | source | core |
 | `CONTRIBUTING.md` | policy | source | core |
 | `README.md` | explanation | source | core |
-| `APPROACH.md` | explanation | source | core |
-| `BOUNDARY.md` | explanation | source | core |
-| `PROVENANCE.md` | explanation | source | core |
-| `RUNTIME.md` | explanation | source | core |
-| `CITATIONS.md` | registry | source | core |
-| `CHECKS.md` | registry | source | core |
-| `COVERAGE.md` | registry | source | core |
-| `EVALS.md` | report | source | core |
-| `FLOOR.md` | explanation | source | core |
-| `STATUS.md` | generated-doc | generated | dev |
-| `PLAN.md` | generated-doc | generated | dev |
-| `CONTEXT-BASELINE.tsv` | record | record | dev |
-| `COVERAGE-INCIDENTS.tsv` | record | record | dev |
-| `DEAD-ENDS.md` | record | record | dev |
-| `HANDOFF.md` | handover | source | dev |
-| `HANDOFF-ARCHIVE.md` | record | record | dev |
-| `harbor-build-tickets.md` | record | record | dev |
-| `harbor-epic.md` | record | record | dev |
 | `trio-decoupling-epic.md` | record | record | dev |
-| `REVIEW-2026-07-23.md` | record | record | dev |
-| `SEC-0.md` | record | record | core |
-| `QA-PLAN.md` | record | record | dev |

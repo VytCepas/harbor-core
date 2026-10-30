@@ -37,7 +37,7 @@ t_eq "this run's snapshot was restored" "restore snap-1" "$(grep '^restore' "$SF
 t_has "the report names the signal" "$(fx_report)" "failing: the run was interrupted by a signal during apply or verify"
 t_has "...and the restore" "$(fx_report)" "snapshot: snap-1 — restore: ok"
 t_eq "the baseline did not move" "$(git --git-dir="$T_TMP/remotes/api.git" rev-parse trunk~1)" "$(fx_state api .sha)"
-t_eq "the receipt is red" red "$(jq -r .status "$CLAUDE_CONFIG_DIR/cache/checks/ship.json")"
+t_eq "the receipt is red" red "$(jq -r .status "$CLAUDE_CONFIG_DIR/cache/checks/deploy.fleet.json")"
 t_eq "the lock is released" no "$([ -d "$HOME/.local/state/harbor/ship/lock.d" ] && echo yes || echo no)"
 reap
 fx_mutant "MS no signal trap" 's/^trap on_signal INT TERM HUP$/:/'

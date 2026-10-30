@@ -6,7 +6,7 @@ ARG NODE_VERSION=24.21.0
 ARG GITLEAKS_VERSION=8.24.3
 ARG GH_VERSION=2.102.0
 ARG BUN_VERSION=1.4.2
-# node (below): bin/browser-*.mjs and tests/cli/browser-test.sh. bun: tests/cli/console-guards-test.sh and console-panels-test.sh (harbor#738), and the memory engine. gh: scaffolded validate-pr jobs and project-init's
+# node (below): bin/browser-*.mjs and tests/access/browser/browser.test.sh. bun: tests/status/console/guards.test.sh and console-panels-test.sh (harbor#738), and the memory engine. gh: scaffolded validate-pr jobs and project-init's
 # tests (hosted runners ship it). gitleaks >= 8.19 has `gitleaks git`, which the scaffold's pre-commit hook calls. xz-utils, zstd, unzip: unpacking toolchains and caches.
 RUN apt-get update -qq \
  && apt-get install -y -qq --no-install-recommends jq dash shellcheck git perl gawk curl ca-certificates python3 procps util-linux file xz-utils unzip zstd \

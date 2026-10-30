@@ -32,8 +32,8 @@ set -eu
 # broken on 2026-09-10 only because sessions were told to stop — held by an
 # instruction, with a green mechanism that would not notice it change back.
 #
-# HARBOR_ATTRIBUTION_ERE — the single definition. Do not duplicate; see above.
-HARBOR_ATTRIBUTION_ERE='^[[:space:]]*(Co-Authored-By:.*(Claude|Anthropic)|(Generated|Created) with.*Claude|🤖 Generated|Claude-Session:)'
+# HARBOR_LINT_ATTRIBUTION_ERE — the single definition. Do not duplicate; see above.
+HARBOR_LINT_ATTRIBUTION_ERE='^[[:space:]]*(Co-Authored-By:.*(Claude|Anthropic)|(Generated|Created) with.*Claude|🤖 Generated|Claude-Session:)'
 
 MSG="${1:?commit-msg: no message file}"
 [ -f "$MSG" ] || exit 0
@@ -41,12 +41,12 @@ MSG="${1:?commit-msg: no message file}"
 # Comment lines are stripped by git before the message is stored, so judging
 # them would fail a commit for text that never reaches the history — the false
 # positive CONSTITUTION §2.11 names.
-if grep -vE '^[[:space:]]*#' "$MSG" | grep -qiE "$HARBOR_ATTRIBUTION_ERE"; then
+if grep -vE '^[[:space:]]*#' "$MSG" | grep -qiE "${HARBOR_LINT_ATTRIBUTION_ERE:-${HARBOR_ATTRIBUTION_ERE:-}}"; then
   echo "" >&2
   echo "commit-msg: AI attribution in the commit message." >&2
-  grep -nvE '^[[:space:]]*#' "$MSG" | grep -iE "$HARBOR_ATTRIBUTION_ERE" | sed 's/^/            /' >&2
+  grep -nvE '^[[:space:]]*#' "$MSG" | grep -iE "${HARBOR_LINT_ATTRIBUTION_ERE:-${HARBOR_ATTRIBUTION_ERE:-}}" | sed 's/^/            /' >&2
   echo "" >&2
-  echo "            CONSTITUTION.md: no AI-attribution trailers in commits or PRs." >&2
+  echo "            policy/constitution.md: no AI-attribution trailers in commits or PRs." >&2
   echo "            Remove the trailer. Bypass deliberately with: git commit --no-verify" >&2
   exit 1
 fi

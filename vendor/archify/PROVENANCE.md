@@ -39,16 +39,16 @@ Three consumers, in the order the data moves:
 | `skills/topology/bin/topology-to-archify.mjs` | the **dataflow schema** — a `TOPOLOGY.md` Flow table becomes a spec |
 | `skills/topology/bin/topology-diagram.sh` | `validate` and `render` |
 | `skills/topology/bin/archify-embed.mjs` | the **rendered page**, taken apart: 16.7 KB of SVG and a scoped subset of the 186 KB stylesheet, so `report-gen.sh` carries the diagram instead of linking 710 KB beside it |
-| `bin/visual-check.sh` | `visual-check`, as a SECOND verifier — it reads geometry and greps zero times for contrast, ours reads contrast and nothing about geometry |
+| `bin/doc-visual-check.sh` | `visual-check`, as a SECOND verifier — it reads geometry and greps zero times for contrast, ours reads contrast and nothing about geometry |
 
-`HARBOR_ARCHIFY` overrides the path everywhere. Harbor uses **only the CLI, the
+`HARBOR_DOC_ARCHIFY_DIR` overrides the path everywhere. Harbor uses **only the CLI, the
 schema and the rendered output**; it does not load archify's prompts, and no
 archify code was copied into Harbor's own tree.
 
 **What upstream's own gate cannot pass, and what that costs us.**
 `viewer/viewport-overflow` fires 6/6 on `examples/event-stream.dataflow.json`
 rendered by this copy — upstream's own example, upstream's own checker. It is
-therefore exempted in `bin/visual-check.sh`, and the exemption is held honest by
+therefore exempted in `bin/doc-visual-check.sh`, and the exemption is held honest by
 a `--self-test` arm that renders that example and goes **red** the moment a
 re-pin makes it pass. Everything else archify reports is taken, and it earns its
 keep: `viewer/projected-text-readability` found 7px node text projecting to
@@ -116,8 +116,8 @@ that drift.
 report at exactly 65,536 bytes, so `validate` died on `JSON.parse` for any drawing
 whose report is larger: measured on an 18-part, 27-edge atlas drawing with 144
 composition warnings. One line now sets `process.exitCode` instead, letting stdout
-drain. `tests/skills/archify-report-pipe-test.sh` renders
-`fixtures/archify/fanout.architecture.json`, asserts its report is over 64 KB, and
+drain. `tests/skill/archify/report-pipe.test.sh` renders
+`fixtures/archify/fanout-architecture.json`, asserts its report is over 64 KB, and
 asserts `validate` passes; on the unpatched line it reads 65536 bytes and goes red.
 **On the next re-vendor**, re-apply that line unless upstream has fixed it.
 

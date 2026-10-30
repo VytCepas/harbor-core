@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0
+[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
 # guard-deliverables (harbor#402) — PreToolUse(Write|Edit|MultiEdit|Bash) FILING gate.
 #
 # THE RULE IT ENFORCES. A NEW document written for a human to read — .html, .md,
@@ -96,7 +96,7 @@ ROOT="$HOMEP/Deliverables"
 # ── THE CLASSIFIER — ONE definition, both arms ───────────────────────────────
 # The Write arm and the Bash arm ask the same question about a path, so they ask
 # it in the same function. Two spellings of one rule is the drift
-# DOCTRINE/modularity.md is about, and here it would be invisible: the arms would
+# docs/explanation/modularity.md is about, and here it would be invisible: the arms would
 # answer differently only for the paths nobody tested.
 #
 # Returns 0 iff <path> is a NEW loose document, and sets LOOSE_KIND to the rule
@@ -177,7 +177,7 @@ suggest() { # <abs>
 
 deny() { # <rule> <shape> <what>
   # Shadow (harbor#482): recorded, not refused — floor_block's contract, for a JSON-verdict guard.
-  if [ "${HELM_FLOOR_SHADOW:-0}" = 1 ]; then
+  if [ "${HARBOR_ADMISSION_SHADOW:-${HELM_FLOOR_SHADOW:-0}}" = 1 ]; then
     { floor_log_decision deliverables shadow "$1.$2" 2>/dev/null || :; } 2>/dev/null || :
     exit 0
   fi
