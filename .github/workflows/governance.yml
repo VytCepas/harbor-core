@@ -23,7 +23,7 @@
 #
 #   github-hosted          ubuntu-latest. Disposable, no access to anything of
 #                          yours. Needs working billing and silently refuses to
-#                          start without it; runner-switch flips HARBOR_CI_RUNNER off
+#                          start without it; runner-switch flips HARBOR_RUNNER off
 #                          it when the minutes run low.
 #
 # `actions/checkout` is the only external action used, and that is a deliberate
@@ -31,11 +31,9 @@
 #
 # HOW TO SELECT
 #   per run   — Actions → governance → "Run workflow" → Runner
-#   repo-wide — `gh variable set HARBOR_CI_RUNNER --body github-hosted` (or
+#   repo-wide — `gh variable set HARBOR_RUNNER --body github-hosted` (or
 #               `self-hosted`); unset falls back to self-hosted on a private repo,
-#               and every public repo is github-hosted whatever it says.
-#               The old name HARBOR_RUNNER is read after HARBOR_CI_RUNNER until
-#               2026-11-15 (harbor#961 W6); then drop `|| vars.HARBOR_RUNNER`.
+#               and every public repo is github-hosted whatever it says
 #
 # The suites were deliberately made host-independent (floor-test reports the same
 # assertion count under a bare $HOME as under the operator's) so that flipping
@@ -137,7 +135,7 @@ jobs:
     outputs:
       verified: ${{ steps.v.outputs.verified }}
       base: ${{ steps.v.outputs.base }}
-    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -195,10 +193,10 @@ jobs:
       green_3: ${{ steps.out.outputs.green_3 }}
       green_4: ${{ steps.out.outputs.green_4 }}
     env:
-      HARBOR_CI_BASE: ${{ (github.event_name == 'push' && needs.verified.outputs.base) || format('origin/{0}', github.base_ref || 'main') }}
-      HARBOR_CI_LEVEL: ${{ (inputs.level || vars.HARBOR_CI_LEVEL) }}
+      HARBOR_BASE: ${{ (github.event_name == 'push' && needs.verified.outputs.base) || format('origin/{0}', github.base_ref || 'main') }}
+      HARBOR_LEVEL: ${{ (inputs.level || vars.HARBOR_CI_LEVEL) }}
       HARBOR_SUITE_CACHE: ${{ github.event_name != 'push' && vars.HARBOR_SUITE_CACHE || '' }}
-    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-pool"]') }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-pool"]') }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -262,7 +260,7 @@ jobs:
           fi
       - name: The changeset this run is judging
         run: |
-          echo "base=$HARBOR_CI_BASE level=${HARBOR_CI_LEVEL:-full}"
+          echo "base=$HARBOR_BASE level=${HARBOR_LEVEL:-full}"
           sh bin/test-suite-select.sh --changed
           sh bin/test-suite-select.sh --list > "$RUNNER_TEMP/verdicts.txt"
           cat "$RUNNER_TEMP/verdicts.txt"
@@ -297,7 +295,7 @@ jobs:
         continue-on-error: true
         run: |
           set -- --select --list contracts/suites.txt --results "$RUNNER_TEMP/suites.tsv" --shard "${{ matrix.shard }}/${{ strategy.job-total }}"
-          [ "$HARBOR_CI_LEVEL" != quick ] || set -- "$@" --include contracts/suites-quick.txt
+          [ "$HARBOR_LEVEL" != quick ] || set -- "$@" --include contracts/suites-quick.txt
           sh bin/test-suite-run.sh "$@"
       # Under dash as well as sh: macOS /bin/sh forgives bashisms dash will not.
       # A suite run WITH ARGUMENTS cannot go through the pool, so it is asked directly.
@@ -366,8 +364,8 @@ jobs:
       marker_ran: ${{ steps.tally.outputs.marker_ran }}
       marker_count: ${{ steps.tally.outputs.marker_count }}
     env:
-      HARBOR_CI_LEVEL: ${{ (inputs.level || vars.HARBOR_CI_LEVEL) }}
-    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
+      HARBOR_LEVEL: ${{ (inputs.level || vars.HARBOR_CI_LEVEL) }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -400,7 +398,7 @@ jobs:
           done
           [ $# -gt 0 ] || { echo "HARBOR_SUITE_SHARDS names no shard" >&2; exit 1; }
           set -- --combine "$RUNNER_TEMP/suites.tsv" "$@"
-          [ "$HARBOR_CI_LEVEL" != quick ] || set -- --include contracts/suites-quick.txt "$@"
+          [ "$HARBOR_LEVEL" != quick ] || set -- --include contracts/suites-quick.txt "$@"
           sh bin/test-suite-run.sh "$@" || bad=1
           exit "$bad"
       # One verdict per required group, from the combined results. Each group's suites
@@ -429,7 +427,7 @@ jobs:
     timeout-minutes: 5
     needs: [verified, suites]
     if: ${{ always() }}
-    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
     steps:
       - name: bin/lint-conventions.sh passed in the suites job
         run: |
@@ -441,7 +439,7 @@ jobs:
     timeout-minutes: 5
     needs: [verified, suites]
     if: ${{ always() }}
-    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
     steps:
       - name: The suites that judge the linter passed in the pool
         run: |
@@ -458,7 +456,7 @@ jobs:
     outputs:
       count: ${{ needs.suites.outputs.floor_count }}
       ran: ${{ needs.suites.outputs.floor_ran }}
-    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
     steps:
       - name: Every floor part passed in the pool — anything else FAILS this check
         run: |
@@ -472,7 +470,7 @@ jobs:
     # !cancelled(), not always(): not required, so a superseded run may stay quiet.
     # Level quick skips this (it was 39 of 46 standard-level reds).
     if: ${{ !cancelled() && needs.verified.outputs.verified != 'true' && (inputs.level || vars.HARBOR_CI_LEVEL) != 'quick' }}
-    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
     steps:
       - name: A dependency that did not succeed must FAIL this check, never skip it
         if: needs.suites.result != 'success' || needs.floor.result != 'success'
@@ -502,7 +500,7 @@ jobs:
           if [ "${{ needs.floor.outputs.ran }}" = "true" ] \
              && [ "${{ needs.suites.outputs.normalize_ran }}" = "true" ] \
              && [ "${{ needs.suites.outputs.marker_ran }}" = "true" ]; then
-            HARBOR_STATUS_SUITE_COUNTS="floor-test=${{ needs.floor.outputs.count }},normalize-test=${{ needs.suites.outputs.normalize_count }},marker-test=${{ needs.suites.outputs.marker_count }}" \
+            HARBOR_SUITE_COUNTS="floor-test=${{ needs.floor.outputs.count }},normalize-test=${{ needs.suites.outputs.normalize_count }},marker-test=${{ needs.suites.outputs.marker_count }}" \
               sh bin/status-generate.sh --check
           else
             echo "count-bearing suites stood down for this change class —"
