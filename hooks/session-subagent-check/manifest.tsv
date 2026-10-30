@@ -1,0 +1,11 @@
+# Why it is wired this way (moved from bin/deploy-runtime-install.sh, harbor#1272):
+# session-subagent-check.sh (harbor#445 item E) — advisory SubagentStop hook, systemMessage only. Same off
+# contract as reply-shape: the sentinel $DIR/subagent-stop.off is read by the hook itself.
+key	value
+engine	session-subagent-check
+installer	runtime-install
+wire	SubagentStop	-	-
+senses	a subagent's stop: its final report and background tasks
+acts-on	the operator's view, via systemMessage
+findings	a repeated report, or a stop with work still running
+closer	the operator

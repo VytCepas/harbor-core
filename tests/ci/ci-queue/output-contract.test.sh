@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# ci-queue.sh's output follows CONTRACTS/logging.md (harbor#771): each repo is a log-lib line, an unread repo or
+# ci-queue.sh's output follows contracts/logging.md (harbor#771): each repo is a log-lib line, an unread repo or
 # a stall is a WARN with its fix, the cache write is an ok line, and the run ends with the summary, in both modes.
 # A fake gh serves fixtures; nothing reaches GitHub.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
@@ -18,7 +18,7 @@ fx 'repos/o/r/actions/runs?status=in_progress&per_page=50' '{"workflow_runs":[]}
 fx 'repos/o/r/actions/runs?status=queued&per_page=50' '{"workflow_runs":[]}'
 fx 'repos/o/r/actions/runners?per_page=100' '{"runners":[]}'
 NOW=1790000000
-q() { FX="$FX" HARBOR_GH="$GH" HARBOR_RUNNERS_DIR="$RUN" HARBOR_CACHE_DIR="$CACHE" HARBOR_NOW="$NOW" \
+q() { FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_CI_RUNNERS_DIR="$RUN" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_TEST_NOW="$NOW" \
         sh "$T_ROOT/bin/ci-queue.sh" "$@" >"$T_TMP/out" 2>"$T_TMP/err"; echo "exit $?"; }
 OUT() { cat "$T_TMP/out"; }; ERR() { cat "$T_TMP/err"; }
 after_warn() { awk '/^  WARN: .*UNREAD/ { f = 1; next } f { print; exit }' "$T_TMP/out"; }
@@ -42,7 +42,7 @@ t_eq "the summary" "ci-queue: 2 ok, 0 failed, 1 warnings" "$(OUT | tail -1)"
 
 t_section "a cache that cannot be written: FAIL, its fix, exit 1"
 printf 'a file\n' > "$T_TMP/notadir"
-t_eq "exit 1" "exit 1" "$(FX="$FX" HARBOR_GH="$GH" HARBOR_RUNNERS_DIR="$RUN" HARBOR_CACHE_DIR="$T_TMP/notadir/x" HARBOR_NOW="$NOW" sh "$T_ROOT/bin/ci-queue.sh" >"$T_TMP/out" 2>"$T_TMP/err"; echo "exit $?")"
+t_eq "exit 1" "exit 1" "$(FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_CI_RUNNERS_DIR="$RUN" HARBOR_SCOPE_CACHE_DIR="$T_TMP/notadir/x" HARBOR_TEST_NOW="$NOW" sh "$T_ROOT/bin/ci-queue.sh" >"$T_TMP/out" 2>"$T_TMP/err"; echo "exit $?")"
 t_has "the FAIL" "$(OUT)" "  FAIL: could not write $T_TMP/notadir/x/ci-queue.json"
 t_eq "the summary" "ci-queue: 1 ok, 1 failed, 1 warnings" "$(OUT | tail -1)"
 

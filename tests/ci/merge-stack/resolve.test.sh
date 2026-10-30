@@ -20,7 +20,7 @@ PY
   t_eq "$1: the mutation applies" 0 "$?"
 }
 F_B='FILES="a b"'; F_O='FILES="a b c"'; F_T='FILES="a b d"'
-CS_B='  case "$b" in guard-lib.sh) continue ;; esac'; CS_O='  case "$b" in guard-lib.sh|log-lib.sh) continue ;; esac'; CS_T='  case "$b" in guard-lib.sh|fs-lib.sh) continue ;; esac'
+CS_B='  case "$b" in library-admission.sh) continue ;; esac'; CS_O='  case "$b" in library-admission.sh|library-log.sh) continue ;; esac'; CS_T='  case "$b" in library-admission.sh|library-fs.sh) continue ;; esac'
 CL_B='c"'; CL_O='c d"'; CL_T='c e f"'
 shapes() { # <resolver> <expected-exit>
   mk files.sh "$F_B" "$F_O" "$F_T"; t_eq "FILES word list: exit" "$2" "$(res files.sh x "$1")"
@@ -31,7 +31,7 @@ shapes() { # <resolver> <expected-exit>
 t_section "every shape, with both sides only adding to the base, keeps both"
 shapes "$RS" 0
 t_eq "FILES: the union, ours first, with the lines around it kept" "$(want 'FILES="a b c d"')" "$(cat "$D/files.sh")"
-t_eq "case: the alternatives unioned" "$(want '  case "$b" in guard-lib.sh|log-lib.sh|fs-lib.sh) continue ;; esac')" "$(cat "$D/cs.sh")"
+t_eq "case: the alternatives unioned" "$(want '  case "$b" in library-admission.sh|library-log.sh|library-fs.sh) continue ;; esac')" "$(cat "$D/cs.sh")"
 t_eq "closing list: the new words join the last line" "$(want 'c d e f"')" "$(cat "$D/cl.sh")"
 mk same.sh "$F_B" "$F_O" "$F_O"; res same.sh x >/dev/null; t_eq "identical sides resolve to one" "$(want "$F_O")" "$(cat "$D/same.sh")"
 mk sub.sh "$CL_B" 'c d"' 'c"'; res sub.sh x >/dev/null; t_eq "a closing list whose other side adds nothing keeps ours" "$(want 'c d"')" "$(cat "$D/sub.sh")"

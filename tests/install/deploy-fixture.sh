@@ -1,17 +1,17 @@
 # tests/install/deploy-fixture.sh — the throwaway repo, stub installers and helpers the deploy suites
 # share (deploy-test, deploy.standard-test, deploy.prune-test). Sourced after core.sh's t_init; the
-# REAL deploy.sh, restore.sh, log-lib.sh and install-lib.sh run in it (harbor#457, #765).
+# REAL deploy.sh, deploy-restore.sh, library-log.sh and deploy-install-lib.sh run in it (harbor#457, #765).
 # STUB_HOOK_* values are shell source run by the stub's `sh -c`, so their quotes are literal.
 # shellcheck disable=SC2089,SC2090
-INSTALLERS='constitution-install.sh shim-install.sh sec0-harden.sh runtime-install.sh floor-install.sh prod-guard-install.sh skills-install.sh skill-book.sh inject-install.sh pack.sh'
+INSTALLERS='policy-constitution-install.sh deploy-shim-install.sh deploy-harden.sh deploy-runtime-install.sh floor-install.sh prod-guard-install.sh skill-install.sh skill-catalog.sh context-injection-install.sh pack.sh'
 # A stub logs argv, fails when STUB_FAIL names "<script>:dry|apply", runs STUB_HOOK_<name> on apply.
-# It records a child run WITHOUT HARBOR_DEPLOY=1 (#285) or WITH a CLAUDE_CONFIG_DIR, both of which deploy
+# It records a child run WITHOUT HARBOR_DEPLOY_ACTIVE=1 (#285) or WITH a CLAUDE_CONFIG_DIR, both of which deploy
 # must never hand a child, and prints one line in the log shape, for the relay into deploy's log.
 _stub_body='#!/bin/sh
 n=$(basename "$0")
 L="$STUB_LOG"; [ -z "${CLAUDE_CONFIG_DIR:-}" ] || L="$STUB_LOG.rehearse"
 printf "%s %s\n" "$n" "$*" >> "$L"
-[ "${HARBOR_DEPLOY:-}" = 1 ] || printf "%s\n" "$n" >> "$STUB_LOG.nodeploy"
+[ "${HARBOR_DEPLOY_ACTIVE:-${HARBOR_DEPLOY:-}}" = 1 ] || printf "%s\n" "$n" >> "$STUB_LOG.nodeploy"
 case " $* " in *" --apply "*) m=apply ;; *) m=dry ;; esac
 v=$(printf %s "$n" | tr -d ".-"); eval "h=\${STUB_HOOK_$v:-}"
 [ "$m" = apply ] && [ -n "$h" ] && sh -c "$h"
@@ -21,16 +21,17 @@ exit 0'
 
 fixture() { # <case> → T (case dir) with origin.git, repo (a clone on main), home H, config C
   T="$T_TMP/$1"; H="$T/home"; C="$H/.claude"; REPO="$T/repo"; LOGF="$T/calls"
-  mkdir -p "$T/src/bin" "$T/src/inject.d/box" "$T/src/skills/skill-book" "$C/inject.d" "$C/.helm-pins" "$H/.local/bin"
-  cp "$T_ROOT/bin/deploy.sh" "$T/src/bin/deploy.sh"; cp "$T_ROOT/bin/restore.sh" "$T/src/bin/restore.sh"
-  cp "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/install-lib.sh" "$T/src/bin/"
+  mkdir -p "$T/src/bin" "$T/src/inject.d/box" "$T/src/skills/skill-catalog" "$C/inject.d" "$C/.helm-pins" "$H/.local/bin"
+  cp "$T_ROOT/bin/deploy.sh" "$T/src/bin/deploy.sh"; cp "$T_ROOT/bin/deploy-restore.sh" "$T/src/bin/deploy-restore.sh"
+  cp "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/deploy-install-lib.sh" "$T/src/bin/"
   for s in $INSTALLERS; do printf '%s\n' "$_stub_body" > "$T/src/bin/$s"; done
   # runtime-install's payload line, in the real one's shape: deploy reads it to know which B6-pinned
   # files a runtime-only run would replace (harbor#916). Both files exist in this fixture's bin.
-  printf 'FILES="log-lib.sh install-lib.sh"\n' >> "$T/src/bin/runtime-install.sh"
-  # Per variable: the other repos (harbor#736) resolve to STUB_PI / STUB_PO, unset = no repo there.
-  printf '#!/bin/sh\ncase "$1" in --private|--conf) exec sh "%s/bin/roots.sh" "$@" ;; esac\n[ "$1" = --get ] || exit 0\ncase "$2" in HARBOR_PROJECT_INIT) printf "%%s" "${STUB_PI:-}" ;; HARBOR_ORCHESTRATOR) printf "%%s" "${STUB_PO:-}" ;; *) printf "%%s" "$STUB_REPO" ;; esac\n' "$T_ROOT" > "$T/src/bin/roots.sh"
-  cat > "$T/src/bin/install-stamp.sh" <<'EOS'
+  printf 'FILES="library-log.sh deploy-install-lib.sh"\n' >> "$T/src/bin/deploy-runtime-install.sh"
+  # Per variable: the other repos (harbor#736) resolve to STUB_PI / STUB_PO, unset = no repo there; yard's bootstrap
+  # clone (a BOX row, under the sandboxed HOME) is the real reader's answer.
+  printf '#!/bin/sh\ncase "$1" in --private|--conf) exec sh "%s/bin/scope-roots.sh" "$@" ;; esac\n[ "$1" = --get ] || exit 0\ncase "$2" in HARBOR_PROJECT_INIT|HARBOR_SCOPE_SCAFFOLDER) printf "%%s" "${STUB_PI:-}" ;; HARBOR_ORCHESTRATOR|HARBOR_SCOPE_FLEET_CONTROLLER) printf "%%s" "${STUB_PO:-}" ;; HARBOR_SCOPE_SCAFFOLDER_CLONE) exec sh "%s/bin/scope-roots.sh" "$@" ;; *) printf "%%s" "$STUB_REPO" ;; esac\n' "$T_ROOT" "$T_ROOT" > "$T/src/bin/scope-roots.sh"
+  cat > "$T/src/bin/deploy-install-stamp.sh" <<'EOS'
 #!/bin/sh
 case "$1" in
   --check) [ "${STUB_STAMP_RC:-0}" = 0 ] && exit 0
@@ -39,12 +40,12 @@ case "$1" in
   --show) echo "stamp shown" ;;
 esac
 EOS
-  printf '#!/bin/sh\ncat "$STUB_GI" 2>/dev/null; exit 0\n' > "$T/src/bin/guard-integrity.sh"
+  printf '#!/bin/sh\ncat "$STUB_GI" 2>/dev/null; exit 0\n' > "$T/src/bin/admission-integrity.sh"
   printf '#!/bin/sh\ncat "$STUB_SKILLS" 2>/dev/null; exit 0\n' > "$T/src/bin/skills-list.stub"
-  printf '#!/bin/sh\nexit "${STUB_COLLIDE_RC:-0}"\n' > "$T/src/bin/skills-collide.sh"
+  printf '#!/bin/sh\nexit "${STUB_COLLIDE_RC:-0}"\n' > "$T/src/bin/skill-collision-verify.sh"
   # pin-instructions on the install standard takes --live, never a positional dir (exit 2, as the real one).
   printf '#!/bin/sh\ncase "$*" in\n "--print --live") cat "$STUB_B8" ;;\n "--apply --live") printf "pin-instructions %%s\\n" "$*" >> "$STUB_LOG"; cp "$STUB_B8" "$HOME/.claude/.helm-instructions.sha256" ;;\n *) echo "pin-instructions: usage" >&2; exit 2 ;;\nesac\n' > "$T/src/bin/pin-instructions.sh"
-  cat > "$T/src/bin/install-drift.sh" <<'EOS'
+  cat > "$T/src/bin/drift-install.sh" <<'EOS'
 #!/bin/sh
 echo "── install-drift · [check:install-drift] x/bin vs HEAD"
 [ "${STUB_STALE:-0}" = 0 ] || { echo "  FAIL: stale guard-x.sh (installed copy is 1 commit(s) behind HEAD)"; echo "  fix: none automatic — see the stub"; }
@@ -53,7 +54,7 @@ EOS
   # floor-verify: STUB_FV=b8 fails only B8, STUB_FV=bash fails a guard probe too.
   cat > "$T/src/bin/floor-verify.sh" <<'EOS'
 #!/bin/sh
-echo "── floor-verify · x"; echo "  ok: present: guard-bash.sh"
+echo "── floor-verify · x"; echo "  ok: present: admission-bash.sh"
 case "${STUB_FV:-}" in
   b8)   echo "  FAIL: B8: instruction surfaces changed since pinning"; echo "  fix: none automatic — see B8"
         echo "  note: FLOOR IS NOT FULLY ON — 1 check(s) failed"; echo "floor-verify: 1 ok, 1 failed, 0 warnings"; exit 1 ;;
@@ -64,20 +65,20 @@ case "${STUB_FV:-}" in
 esac
 echo "  note: FLOOR IS ON — guards present, wired, and blocking."; echo "floor-verify: 1 ok, 0 failed, 0 warnings"
 EOS
-  printf '#!/bin/sh\nexit 0\n' > "$T/src/bin/reference-check.sh"
+  printf '#!/bin/sh\nexit 0\n' > "$T/src/bin/drift-reference-check.sh"
   printf '#!/bin/sh\nexit 0\n' > "$T/src/bin/harbor"
   # skills-install's dry runs (skills and commands) answer from STUB_SKILLS / STUB_CMDS, in its line shape.
-  cat > "$T/src/bin/skills-install.sh" <<'EOS'
+  cat > "$T/src/bin/skill-install.sh" <<'EOS'
 #!/bin/sh
 case " $* " in *" --apply "*) ;;
   *" commands "*) cat "$STUB_CMDS" 2>/dev/null; exit 0 ;;
-  *" --all "*) printf 'skills-install.sh %s\n' "$*" >> "$STUB_LOG.dry"; cat "$STUB_SKILLS" 2>/dev/null; exit "${STUB_SKILLS_RC:-0}" ;;
+  *" --all "*) printf 'skill-install.sh %s\n' "$*" >> "$STUB_LOG.dry"; cat "$STUB_SKILLS" 2>/dev/null; exit "${STUB_SKILLS_RC:-0}" ;;
 esac
 exec sh "$(dirname "$0")/skills-install.real" "$@"
 EOS
-  printf '%s\n' "$_stub_body" | sed 's/\$(basename "\$0")/skills-install.sh/' > "$T/src/bin/skills-install.real"
+  printf '%s\n' "$_stub_body" | sed 's/\$(basename "\$0")/skill-install.sh/' > "$T/src/bin/skills-install.real"
   printf 'pack\n' > "$T/src/inject.d/box/10-a.md"; printf 'old pack\n' > "$T/src/inject.d/box/20-old.md"
-  mkdir -p "$T/src/commands"; printf 'v1\n' > "$T/src/commands/x.md"; printf 'book\n' > "$T/src/skills/skill-book/SKILL.md"
+  mkdir -p "$T/src/commands"; printf 'v1\n' > "$T/src/commands/x.md"; printf 'book\n' > "$T/src/skills/skill-catalog/SKILL.md"
   chmod +x "$T/src/bin/"*
   git -C "$T/src" init -q -b main && git -C "$T/src" add -A && git -C "$T/src" -c user.name=t -c user.email=t@t commit -q -m init
   # history then holds a withdrawn pack (20-old) and an older command (x v1)
@@ -115,11 +116,11 @@ run() { # [answers] -- deploy args. With answers, under a pty; without, stdin is
   if [ -n "$_ans" ]; then
     rm -f "$T/done"
     { sleep 1; printf "$_ans"; _i=0; while [ ! -f "$T/done" ] && [ "$_i" -lt 90 ]; do sleep 1; _i=$((_i + 1)); done; } \
-      | { cd "$_cwd" && pty env -u CLAUDE_CONFIG_DIR -u HARBOR_LOCAL_BIN CLAUDECODE="${CC:-}" $_env sh "$@" >"$T/out" 2>&1; echo $? >"$T/rc"; touch "$T/done"; }
+      | { cd "$_cwd" && pty env -u CLAUDE_CONFIG_DIR -u HARBOR_SCOPE_LOCAL_BIN -u HARBOR_LOCAL_BIN CLAUDECODE="${CC:-}" $_env sh "$@" >"$T/out" 2>&1; echo $? >"$T/rc"; touch "$T/done"; }
     RC="$(cat "$T/rc")"
   else
     RC=0
-    ( cd "$_cwd" && env -u CLAUDE_CONFIG_DIR -u HARBOR_LOCAL_BIN CLAUDECODE="${CC:-}" $_env sh "$@" ) >"$T/out" 2>&1 </dev/null || RC=$?
+    ( cd "$_cwd" && env -u CLAUDE_CONFIG_DIR -u HARBOR_SCOPE_LOCAL_BIN -u HARBOR_LOCAL_BIN CLAUDECODE="${CC:-}" $_env sh "$@" ) >"$T/out" 2>&1 </dev/null || RC=$?
   fi
   tr -d '\r' <"$T/out" >"$T/out.txt"
 }

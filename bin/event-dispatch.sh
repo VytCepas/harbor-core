@@ -30,10 +30,10 @@ fi
 HERE="$(CDPATH='' cd -- "$HERE" 2>/dev/null && pwd)" || exit 0
 SELF="$HERE/event-dispatch.sh"
 BUS="$HERE/event-bus.sh"
-if [ -f "$HERE/log-lib.sh" ]; then
-  . "$HERE/log-lib.sh"
+if [ -f "$HERE/library-log.sh" ]; then
+  . "$HERE/library-log.sh"
 else
-  printf 'event-dispatch: %s/log-lib.sh is missing — nothing was done\n' "$HERE" >&2
+  printf 'event-dispatch: %s/library-log.sh is missing — nothing was done\n' "$HERE" >&2
   exit 1
 fi
 set -eu
@@ -57,14 +57,14 @@ SPAWN_TOOLS='Read Grep Glob'   # a spawned agent reads and proposes; it never wr
 # and at load (harbor#1044 review r3 #5).
 lexcanon() { _lc="$(printf '%s' "$1" | tr -s /)"; case "$_lc" in ?*/) _lc="${_lc%/}" ;; esac; printf '%s' "$_lc"; }
 CFG="$(lexcanon "${CLAUDE_CONFIG_DIR:-$HOME/.claude}")"
-# The operator's gates live in {cfg}/.helm-dispatch, an integrity row of CONTRACTS/helm-state.md that guard-bash,
+# The operator's gates live in {cfg}/.helm-dispatch, an integrity row of contracts/control-plane-state.md that guard-bash,
 # guard-selfedit and the B1 deny list refuse to a session (review r3 #1): rules, the ledger, the day's spend and
 # spawn.on. set_gates re-derives them once pin_cfg has fixed CFG.
 LIVE="$HOME/.claude"
 set_gates() {
   GATE="$CFG/.helm-dispatch"; RULES="$GATE/rules"; LEDGER="$GATE/ledger"; SPEND="$GATE/spend"; SPAWN_ON="$GATE/spawn.on"
   KILL="$CFG/.harbor-autoship.off"; KILL_LIVE="$(lexcanon "$LIVE")/.harbor-autoship.off"
-  RECEIPT="${HARBOR_CACHE_DIR:-$CFG/cache}/event-dispatch-state.json"
+  RECEIPT="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$CFG/cache}}/event-dispatch-state.json"
 }
 set_gates
 # The ship contract's kill switch (SHIP-CONTRACT §4), read in the config dir AND the live ~/.claude: a dispatcher
@@ -72,13 +72,13 @@ set_gates
 killswitch_on() { [ -e "$KILL" ] || [ -e "$KILL_LIVE" ]; }
 # A cmd rule runs `sh {cfg}/bin/<name>` for a name here, and nothing else (harbor#1044 review r2 #1): a free-form
 # command can reach an agent by any path, copy, PATH edit, npx or node, so no denylist holds. Each must be the
-# bytes its installer recorded in {cfg}/.harbor-manifest. Kept equal to CONTRACTS/event-rules.tsv's handlers
+# bytes its installer recorded in {cfg}/.harbor-manifest. Kept equal to contracts/event-rules.tsv's handlers
 # by registry.test.sh; adding one is a reviewed change here and there, never a rule file.
-HANDLERS='fleet-snapshot-refresh.sh pulse-notify.sh session-notify.sh session-save-now.sh session-ci-watch.sh session-cleanup-report.sh session-check.sh'
+HANDLERS='status-fleet-snapshot-refresh.sh alert-notify.sh session-notify.sh session-save-now.sh session-ci-watch.sh session-cleanup-report.sh session-check.sh'
 # A handler or agent starts from env -i and gets only these (harbor#1044 review #5): no key or token reaches it.
 # OAuth still works: macOS reads the login keychain as $USER, keyed to CLAUDE_CONFIG_DIR when set; Linux reads
 # $HOME/.claude/.credentials.json (code.claude.com/docs/en/authentication, "Credential management").
-KEEP_ENV='HOME USER LOGNAME SHELL TMPDIR LANG CLAUDE_CONFIG_DIR HARBOR_EVENT_DIR HARBOR_CACHE_DIR HARBOR_EVENT_BUS_SKEW'
+KEEP_ENV='HOME USER LOGNAME SHELL TMPDIR LANG CLAUDE_CONFIG_DIR HARBOR_EVENT_DIR HARBOR_SCOPE_CACHE_DIR HARBOR_CACHE_DIR HARBOR_EVENT_BUS_SKEW'   # HARBOR_CACHE_DIR: the old name, until 2026-11-15 (harbor#961 W5)
 US="$(printf '\037')"
 NL='
 '
@@ -97,7 +97,7 @@ fail() { log_fail "$1"; log_fix "$2"; log_end || :; exit 1; }
 # KeepAlive SuccessfulExit=false restarts any non-zero exit every 10 s, and a missing tool does not come back on
 # its own (harbor#1044 review r2 #6). The alarm is what says it is down; --once (a person, a suite) gets 4.
 # A line in checks.log is read by nobody unattended (review r3 #4), so the follower also leaves a receipt that
-# pulse.sh's `dispatch` row reads: NOT FOLLOWING is a crit there, and pulse-notify speaks on the change.
+# alert-probe.sh's `dispatch` row reads: NOT FOLLOWING is a crit there, and pulse-notify speaks on the change.
 DEP_ONCE=0
 dep_fail() {
   alarm event.dispatch "NOT FOLLOWING: $1 — the dispatcher stays down until it is fixed and restarted"
@@ -119,7 +119,7 @@ receipt() {
 no_session() {
   [ -n "${CLAUDECODE:-}" ] || return 0
   log_fail "[check:event.dispatch] refused: $1 is the operator's, and this is a Claude session (CLAUDECODE is set)"
-  log_nofix "run it from your own terminal; the follower runs under launchd (CHECKS.md event.dispatch)"
+  log_nofix "run it from your own terminal; the follower runs under launchd (docs/reference/checks.md event.dispatch)"
   log_end || :; exit 4
 }
 # manifest_blob <relpath>: the blob runtime-install recorded for {cfg}/<relpath>, or nothing.
@@ -157,11 +157,11 @@ pin_cfg() {
 id_ok() { case "$1" in ''|*[!A-Za-z0-9._:-]*) return 1 ;; esac; [ "${#1}" -le 128 ]; }
 need_jq() { command -v jq >/dev/null 2>&1 || fail "[check:event.dispatch] jq is not on PATH — the dispatcher reads events with it" "$(pkg_hint jq)"; }
 
-# alarm <check-id> <message>: stderr, and one checks.log line, so an alert resolves to its CHECKS.md row.
+# alarm <check-id> <message>: stderr, and one checks.log line, so an alert resolves to its docs/reference/checks.md row.
 alarm() {
   log_warn "[check:$1] $2"
   now
-  _cl="${HARBOR_CACHE_DIR:-$CFG/cache}"
+  _cl="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$CFG/cache}}"
   { mkdir -p "$_cl" && printf '[check:%s] %s %s\n' "$1" "$(iso)" "$2" >> "$_cl/checks.log"; } 2>/dev/null || :
 }
 
@@ -664,7 +664,7 @@ bus_fresh() { [ "$(bus_sig)" = "$BUS_SIG" ] || bus_check; }
 # redeployed. 2 (the probe could not write) is transient: exit 1, so launchd tries again.
 bus_down() {
   [ "$BUS_RC" = 2 ] && fail "[check:event.dispatch] $BUS_WHY" "df -h '$ST'; ls -ld '$ST'"
-  dep_fail "$BUS_WHY" "deploy the bus with the dispatcher: sh bin/runtime-install.sh --live --apply (it ships event-bus.sh too)"
+  dep_fail "$BUS_WHY" "deploy the bus with the dispatcher: sh bin/deploy-runtime-install.sh --live --apply (it ships event-bus.sh too)"
 }
 cmd_dispatch() {
   _once=0
@@ -673,13 +673,13 @@ cmd_dispatch() {
   no_session "starting the dispatcher"
   # Only the installed copy follows, with the config dir it was installed into (review r3 #1).
   pin_cfg || dep_fail "$PIN_WHY" "start it with that config dir's CLAUDE_CONFIG_DIR, or without one (launchd sets none)"
-  [ "$INSTALLED" = 1 ] || dep_fail "$SELF is not an installed copy ({cfg}/bin/event-dispatch.sh with its runtime-install row), so it has no config dir of its own" "sh bin/runtime-install.sh --live --apply, then run ~/.claude/bin/event-dispatch.sh"
+  [ "$INSTALLED" = 1 ] || dep_fail "$SELF is not an installed copy ({cfg}/bin/event-dispatch.sh with its runtime-install row), so it has no config dir of its own" "sh bin/deploy-runtime-install.sh --live --apply, then run ~/.claude/bin/event-dispatch.sh"
   command -v jq >/dev/null 2>&1 || dep_fail "jq is not on PATH; the dispatcher reads events with it" "$(pkg_hint jq)"
   [ -n "$_perl" ] || dep_fail "perl is not on PATH, so there is no kernel lock (flock) to make this the one follower" "put /usr/bin on the dispatcher's PATH (the plist's EnvironmentVariables), or install perl"
   mkdir -p "$RULES" "$SPEND" "$ST/results" || fail "[check:event.dispatch] cannot create $GATE or $ST" "mkdir -p '$RULES' '$SPEND' '$ST/results'"
   if [ -e "$ST/dispatch.off" ]; then log_note "[check:event.dispatch] $ST/dispatch.off is present — not following"; receipt off; exit 0; fi
   bus_check || bus_down
-  run_lock || fail "[check:event.dispatch] another dispatcher (pid $HOLDER) follows $DIR" "kill $HOLDER, or boot out com.harbor.event.dispatch (CHECKS.md event.dispatch, Disable)"
+  run_lock || fail "[check:event.dispatch] another dispatcher (pid $HOLDER) follows $DIR" "kill $HOLDER, or boot out com.harbor.event.dispatch (docs/reference/checks.md event.dispatch, Disable)"
   trap 'rm -f "$ST/dispatch.pid" "$ST/offsets.next" "$ST/batch" "$ST/fields" "$ST/line"' EXIT
   trap 'kill_current; receipt stopped TERM; exit 143' TERM; trap 'kill_current; receipt stopped INT; exit 130' INT
   trap 'kill_current; receipt stopped HUP; exit 129' HUP
@@ -725,7 +725,7 @@ cmd_dispatch() {
   done
 }
 
-# ── on: add, list and remove rules. A rule exists only with its CHECKS.md row ──────────────────────────
+# ── on: add, list and remove rules. A rule exists only with its docs/reference/checks.md row ──────────────────────────
 # data_file <name> → FOUND: {cfg}/bin/<name>, which runtime-install ships (DATA) and records, read only while its
 # bytes are that blob. Never a working tree: whatever branch ~/port/harbor had checked out decided whether a preset
 # was valid (review r3 #5). Sets WHY when it is not.
@@ -735,26 +735,46 @@ data_file() {
 }
 kinds_of() { printf '%s\n' "$1" | awk '{ s = $0; gsub(/\\/, "", s)
   while (match(s, /[a-z0-9-]+(\.[a-z0-9-]+)+/)) { print substr(s, RSTART, RLENGTH); s = substr(s, RSTART + RLENGTH) } }'; }
-# reg_check <id> <pattern>: the id's CHECKS.md register row names every kind the pattern names, and its disable.
+# reg_check <id> <pattern>: the id's docs/reference/checks.md register row names every kind the pattern names, and its disable.
 # Sets WHY and FIX and returns 1 when not; `on` stops on that, and the dispatcher refuses the rule on every load.
 # The pattern is exactly "kind":"<kind>" or "kind":"(<kind>|<kind>…)" (review r3 #10: `"kind":"probe\.go"|.` passed
 # and fired on every event), so the kinds the row names are all it can match.
 _K='[a-z0-9-]+(\\[.][a-z0-9-]+)+'
 KIND_RE='"kind":"([(]'"$_K"'([|]'"$_K"')*[)]|'"$_K"')"'
+# A renamed rule id (harbor#961 W6; standards/naming/renames.tsv, its check-id row): old, new and remove_by, one per line.
+# Until remove_by (UTC, inclusive) a rule installed under the old id keeps firing, judged by the new id's register row;
+# `on --preset <old>` installs the new id, and installing or removing the new id removes the old file, so one rule never
+# fires twice. Past the date the old id is refused like any unregistered rule, with the two commands that move it.
+ID_ALIASES='event.pulse event.alerting 2026-11-15'
+id_alias() { # <id> -> RID: the id its register row is under; ALIAS_GONE: the date an old id's window closed, else empty
+  RID="$1"; ALIAS_GONE=""
+  _ia="$(printf '%s\n' "$ID_ALIASES" | awk -v id="$1" '$1 == id { print $2 " " $3; exit }')"
+  [ -n "$_ia" ] || return 0
+  now; _ia_d="$(iso | cut -c1-10)"
+  RID="${_ia%% *}"
+  awk -v a="$_ia_d" -v b="${_ia#* }" 'BEGIN { exit !(a <= b) }' || ALIAS_GONE="${_ia#* }"
+}
+old_ids() { printf '%s\n' "$ID_ALIASES" | awk -v id="$1" '$2 == id { print $1 }'; }   # <new id>: its old ids
 reg_check() {
   WHY=""; FIX=""
+  id_alias "$1"
+  if [ -n "$ALIAS_GONE" ]; then
+    WHY="$1 was renamed $RID, and the old id stopped working after $ALIAS_GONE"
+    FIX="harbor event on --off $1, then harbor event on --preset $RID"; return 1
+  fi
+  set -- "$RID" "$2"
   if ! printf '%s\n' "$2" | grep -E -x -q -e "$KIND_RE"; then
     WHY="the pattern is not exactly \"kind\":\"<kind>\" or \"kind\":\"(<kind>|<kind>…)\" with dotted lower-case kinds — a rule fires on named events and nothing else"
     FIX="name the kinds: '\"kind\":\"(git\\.merge|pr\\.opened)\"'"; return 1
   fi
-  data_file CHECKS.md || { FIX="install the register: sh bin/runtime-install.sh --live --apply (it ships CHECKS.md into {cfg}/bin)"; return 1; }
+  data_file docs/reference/checks.md || { FIX="install the register: sh bin/deploy-runtime-install.sh --live --apply (it ships docs/reference/checks.md into {cfg}/bin)"; return 1; }
   _sched="$(awk -F'|' -v id="$1" '/^## / { p = ($0 ~ /^## Register/) } p && $2 == " `" id "` " { print $4; f = 1; exit } END { exit !f }' "$FOUND")" \
-    || { WHY="$1 has no row in $FOUND's register — a rule that is not registered is not built"; FIX="add the row (CHECKS.md, \"Adding a check\"), then run on again"; return 1; }
+    || { WHY="$1 has no row in $FOUND's register — a rule that is not registered is not built"; FIX="add the row (docs/reference/checks.md, \"Adding a check\"), then run on again"; return 1; }
   _ks="$(kinds_of "$2")"
   for _k in $_ks; do
-    case "$_sched" in *"\`$_k\`"*) ;; *) WHY="$1's CHECKS.md schedule does not name its trigger \`$_k\`"; FIX="name it, in backticks, in the schedule cell"; return 1 ;; esac
+    case "$_sched" in *"\`$_k\`"*) ;; *) WHY="$1's docs/reference/checks.md schedule does not name its trigger \`$_k\`"; FIX="name it, in backticks, in the schedule cell"; return 1 ;; esac
   done
-  case "$_sched" in *"\`harbor event on --off $1\`"*) ;; *) WHY="$1's CHECKS.md schedule does not carry its disable command"; FIX="add \`harbor event on --off $1\` to the schedule cell"; return 1 ;; esac
+  case "$_sched" in *"\`harbor event on --off $1\`"*) ;; *) WHY="$1's docs/reference/checks.md schedule does not carry its disable command"; FIX="add \`harbor event on --off $1\` to the schedule cell"; return 1 ;; esac
 }
 registered() { reg_check "$1" "$2" || fail "on: $WHY" "$FIX"; }
 
@@ -768,10 +788,16 @@ on_list() { # a refused rule is listed as REFUSED with its reason, never hidden
 }
 
 on_preset() {
-  data_file event-rules.tsv || fail "on: $WHY" "sh bin/runtime-install.sh --live --apply (it ships CONTRACTS/event-rules.tsv into {cfg}/bin)"
+  data_file event-rules.tsv || fail "on: $WHY" "sh bin/deploy-runtime-install.sh --live --apply (it ships contracts/event-rules.tsv into {cfg}/bin)"
   # A designed-and-not-built preset is a `#stub<TAB>id<TAB>reason` line: refused here with its reason, never installed.
   if _stub="$(awk -F'\t' -v id="$1" '$1 == "#stub" && $2 == id { print $3; f = 1; exit } END { exit !f }' "$FOUND")"; then
     log_fail "[check:$1] on: refused — $_stub"; log_nofix "docs/design/events.md"; log_end || :; exit 4
+  fi
+  id_alias "$1"
+  if [ "$RID" != "$1" ]; then
+    [ -z "$ALIAS_GONE" ] || fail "on: $1 was renamed $RID, and the old id stopped working after $ALIAS_GONE" "harbor event on --preset $RID"
+    log_note "$1 is the old id of $RID (it keeps working until $(printf '%s\n' "$ID_ALIASES" | awk -v id="$1" '$1 == id { print $3 }')): installing $RID"
+    set -- "$RID"
   fi
   _row="$(awk -F'\t' -v id="$1" '$1 == id { print; f = 1; exit } END { exit !f }' "$FOUND")" || fail "on: no preset $1 in $FOUND" "harbor event on --list; grep -v '^#' '$FOUND'"
   IFS="$(printf '\t')" read -r _pid _ppat _pdeb _prate _pback _phand <<EOF
@@ -782,6 +808,10 @@ EOF
   case "$_pn" in ''|*[!A-Za-z0-9._-]*) fail "on: preset $1's handler is not sh {cfg}/bin/<script>: $_phand" "fix its row in $FOUND" ;; esac
   set -- sh "$CFG/bin/$_pn"
   on_add "$_ppat" --id "$_pid" --debounce "$_pdeb" --rate "$_prate" --backstop "$_pback" -- "$@"
+  for _o in $(old_ids "$_pid"); do
+    [ -f "$RULES/$_o.rule" ] || continue
+    rm -f "$RULES/$_o.rule" "$RULES/$_o.prompt"; log_ok "[check:$_pid] removed the rule under its old id $_o: one rule, one fire"
+  done
 }
 
 on_add() {
@@ -800,7 +830,7 @@ on_add() {
   done
   case "$_id" in event.dispatch) usage_fail "on: event.dispatch is the dispatcher's own id, not a rule's" ;;
     event.[abcdefghijklmnopqrstuvwxyz0-9]*) case "${_id#event.}" in *[!abcdefghijklmnopqrstuvwxyz0-9-]*) usage_fail "on: --id must be event.<object> (lower case, digits, -)" ;; esac ;;
-    *) usage_fail "on: --id event.<object> is required (CHECKS.md id convention, D-10)" ;; esac
+    *) usage_fail "on: --id event.<object> is required (docs/reference/checks.md id convention, D-10)" ;; esac
   _gr=0; printf '' | grep -E -e "$_pat" >/dev/null 2>&1 || _gr=$?
   [ "$_gr" -le 1 ] || usage_fail "on: '$_pat' is not a grep -E pattern"
   for _n in "$_deb" "$_rate" "$_back"; do case "$_n" in ''|*[!0-9]*) usage_fail "on: --debounce, --rate and --backstop take whole numbers" ;; esac; done
@@ -847,9 +877,13 @@ cmd_on() {
     --list) on_list ;;
     --off)
       [ $# -eq 2 ] || usage_fail "on --off <id>"
-      [ -f "$RULES/$2.rule" ] || fail "on --off: no rule $2 in $RULES" "harbor event on --list"
-      rm -f "$RULES/$2.rule" "$RULES/$2.prompt"
-      log_ok "[check:$2] removed; its ledger lines stay in $LEDGER" ;;
+      _offn=0
+      for _o in "$2" $(old_ids "$2"); do
+        [ -f "$RULES/$_o.rule" ] || continue
+        rm -f "$RULES/$_o.rule" "$RULES/$_o.prompt"; _offn=$((_offn + 1))
+        log_ok "[check:$_o] removed; its ledger lines stay in $LEDGER"
+      done
+      [ "$_offn" -gt 0 ] || fail "on --off: no rule $2 in $RULES" "harbor event on --list" ;;
     --preset) [ $# -eq 2 ] || usage_fail "on --preset <id>"; on_preset "$2" ;;
     -*) usage_fail "on: unknown option $1" ;;
     *) on_add "$@" ;;

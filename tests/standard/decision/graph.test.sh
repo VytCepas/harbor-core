@@ -3,7 +3,7 @@
 # tree, vendor and the records excluded) and `revised-by` (a record's revised_by line). A citation whose id
 # has no record is still an edge, so `refs D-n` shows where it dangles. Hermetic: a fixture harbor tree.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-TOOL="$T_ROOT/bin/graph-gen.sh"
+TOOL="$T_ROOT/bin/doc-graph-generate.sh"
 command -v python3 >/dev/null 2>&1 || { t_section "python3 is absent"; t_exit "graph-gen is unchecked without python3" 3 sh "$TOOL"; t_done; }
 HB="$T_TMP/hb"; mkdir -p "$HB/docs/decisions" "$HB/standards" "$HB/bin" "$HB/vendor"
 DANG="D-$((900 + 1))"   # no record carries it; built here so this file cites nothing

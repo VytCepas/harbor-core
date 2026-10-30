@@ -14,15 +14,15 @@
 #               — age is not a defect. A note written once and correct forever
 #               is the GOAL, and a gate that fails on it would teach the
 #               operator to touch files to silence a linter, which is how a
-#               store fills with meaningless commits. CONSTITUTION.md §2.11: a
+#               store fills with meaningless commits. policy/constitution.md §2.11: a
 #               false positive is a defect, not safety.
 #
 # WHY THIS IS SH AND NOT PART OF THE ENGINE. It has to run where the engine
 # cannot: CI preflights a fixed binary list that does not include bun, and D2 is
 # a gate. That means the dangling-reference definition now exists in two
-# languages, which is a drift risk and is handled the way CONSTITUTION.md's
+# languages, which is a drift risk and is handled the way policy/constitution.md's
 # cross-repo-seam row says to handle it — a shared fixture both sides run.
-# fixtures/memory/expected.json pins the answer; tests/memory/memory-test.sh asserts THIS
+# fixtures/memory/expected.json pins the answer; tests/memory/memory/memory.test.sh asserts THIS
 # script and tools/memory/graph.ts each reproduce it, so the two cannot drift
 # apart without a test going red.
 set -u
@@ -36,14 +36,21 @@ set -u
 set -f
 
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-STORE="${HARBOR_MEMORY_ROOT:-$CFG/MEMORY}"
+# The default is the notes store, as bin/memory.sh resolves it (harbor#1010): projects/<home-key>/memory, else the old MEMORY tree.
+STORE="${HARBOR_MEMORY_ROOT:-}"
+if [ -z "$STORE" ]; then
+  _hk="$(CDPATH='' cd -- "$HOME" 2>/dev/null && pwd -P | sed 's|/|-|g')"
+  if [ -n "$_hk" ] && [ -d "$CFG/projects/$_hk/memory" ]; then STORE="$CFG/projects/$_hk/memory"; else STORE="$CFG/MEMORY"; fi
+fi
 STRICT=0
+STRICT_NAMES=0
+NAMES=0
 JSON=0
 STALE_DAYS=365
 
-# Status lines are log-lib's, on stderr: stdout is the findings (or the JSON) and only that (CONTRACTS/logging.md).
+# Status lines are log-lib's, on stderr: stdout is the findings (or the JSON) and only that (contracts/logging.md).
 _here="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
-. "$_here/log-lib.sh"
+. "$_here/library-log.sh"
 log_init memory-lint; LOG_FD=2
 
 # die <what failed> <fix command>: FAIL, its fix, the summary, exit 2 (a usage error is not a run).
@@ -59,6 +66,14 @@ memory-lint (harbor#6) — deterministic anti-rot over a memory store
                  is found. Staleness never fails, in any mode.
   --json         machine-readable report
   --stale-days N staleness threshold in days (default 365, report-only)
+  --names        also judge note and folder names (below), report-only
+  --strict-names implies --names, and also exit 1 on a name finding. Names are report-only without it, because the live store predates
+                 D-24 and a gate that is red on day one gets switched off (CONSTITUTION No.2.11)
+
+  NAME checks (harbor#1010, D-24, D-34): NAME-CLAIM a note whose file name is not lowercase kebab `<subject>-<claim>`
+  (two words at least; MEMORY.md, INDEX-FULL.md and README.md are the store's own); NAME-STEM a note whose front
+  matter `name:` differs from its file stem; NAME-DIR a subfolder that is not lowercase kebab; NAME-HOST a path
+  segment that is a raw machine name (hostname -s, or HARBOR_HOST_NAMES, space separated) and not the lowercase alias.
 USAGE
 }
 
@@ -76,6 +91,8 @@ while [ "$#" -gt 0 ]; do
                   case "$2" in ''|*[!0-9]*) die "--stale-days expects a non-negative integer, got $2" "sh bin/memory-lint.sh --stale-days 365" ;; esac
                   STALE_DAYS="$2"; shift 2 ;;
     --strict)     STRICT=1; shift ;;
+    --names)      NAMES=1; shift ;;
+    --strict-names) STRICT_NAMES=1; NAMES=1; shift ;;
     --json)       JSON=1; shift ;;
     -h|--help)    usage; exit 0 ;;
     *)            usage >&2; die "unknown argument $1" "sh bin/memory-lint.sh --help" ;;
@@ -93,7 +110,7 @@ trap 'rm -rf "$TMP"' EXIT INT TERM HUP
 # indexes/ is the derived tier. -print0 is not portable, so the file list is
 # newline-delimited and every consumer sets IFS accordingly; a note filename
 # containing a space is in the fixture corpus precisely to keep that honest.
-# -L, AND IT IS NOT COSMETIC (harbor#608). CHECKS.md's `memory-route` row
+# -L, AND IT IS NOT COSMETIC (harbor#608). docs/reference/checks.md's `memory.route` row
 # routes a governed repo's silo to the one $HOME store BY SYMLINK, so $STORE is
 # a LINK and not a directory for 25 of this box's 200 silos — harbor's own and
 # all three trio repos among them. `find` does not follow a symlinked START
@@ -226,6 +243,45 @@ IFS="$OLDIFS"
 # ── collisions ──────────────────────────────────────────────────────────────
 cut -f1 "$TMP/slugs" | LC_ALL=C sort | uniq -d > "$TMP/dupslugs"
 
+count() { [ -s "$1" ] && wc -l < "$1" | tr -d ' ' || echo 0; }
+
+# ── names (harbor#1010 PR 4; D-24 claim-style, D-34 host alias) ─────────────
+# Pure functions of the path and the front matter: nothing here reads a clock or git. A finding is
+# `kind<TAB>path<TAB>why`. Report-only unless --strict-names (see usage).
+: > "$TMP/names"
+HOSTS="${HARBOR_HOST_NAMES:-$(hostname -s 2>/dev/null || true)}"
+is_kebab() { case "$1" in ''|*[!abcdefghijklmnopqrstuvwxyz0123456789-]*|-*|*-|*--*) return 1 ;; *) return 0 ;; esac; }
+OLDIFS="$IFS"
+IFS='
+'
+for f in $( [ "$NAMES" -eq 1 ] && cat "$TMP/files" ); do
+  rel="${f#"$STORE"/}"; stem="${rel##*/}"; stem="${stem%.md}"
+  # NAME-DIR and NAME-HOST read every directory segment of the path.
+  _d="${rel%/*}"; [ "$_d" = "$rel" ] && _d=""
+  IFS=/
+  for seg in $_d; do
+    is_kebab "$seg" || printf 'NAME-DIR\t%s\tsubfolder "%s" is not lowercase kebab\n' "$rel" "$seg" >> "$TMP/names"
+  done
+  IFS='
+'
+  for seg in $_d "$stem"; do
+    for h in $HOSTS; do
+      [ "$(printf '%s' "$seg" | tr '[:upper:]' '[:lower:]')" = "$(printf '%s' "$h" | tr '[:upper:]' '[:lower:]')" ] || continue
+      [ "$seg" != "$h" ] || printf 'NAME-HOST\t%s\t"%s" is a raw machine name; use the lowercase host alias\n' "$rel" "$seg" >> "$TMP/names"
+    done
+  done
+  case "$stem" in MEMORY|INDEX-FULL|README) continue ;; esac
+  if ! is_kebab "$stem"; then
+    printf 'NAME-CLAIM\t%s\tfile name is not lowercase kebab <subject>-<claim>\n' "$rel" >> "$TMP/names"
+  else
+    case "$stem" in *-*) ;; *) printf 'NAME-CLAIM\t%s\tone word is a subject with no claim\n' "$rel" >> "$TMP/names" ;; esac
+  fi
+  _nm="$(awk 'NR==1 && $0=="---" {f=1; next} f && $0=="---" {exit} f && /^name:/ {sub(/^name:[ \t]*/, ""); gsub(/["'"'"']/, ""); print; exit}' "$f")"
+  [ -z "$_nm" ] || [ "$_nm" = "$stem" ] || printf 'NAME-STEM\t%s\tfront matter name "%s" differs from the file stem\n' "$rel" "$_nm" >> "$TMP/names"
+done
+IFS="$OLDIFS"
+N_NAMES="$(count "$TMP/names")"
+
 # ── staleness (report-only, git-derived) ────────────────────────────────────
 # git log, not mtime: a fresh clone rewrites every mtime, so an mtime-based age
 # would call an entire store stale the day it is checked out. A store that is
@@ -240,7 +296,7 @@ if git -C "$STORE" rev-parse --git-dir >/dev/null 2>&1; then
   # `--name-only` pass at 113 ms and the replacement was WRONG IN FOUR WAYS, all
   # reproduced, all silent, all reporting success. Reverted; the speed is not
   # worth a gate that lies. Every one of the four is now an assertion in
-  # tests/memory/memory-test.sh, so a future fast path has to earn its way past them:
+  # tests/memory/memory/memory.test.sh, so a future fast path has to earn its way past them:
   #
   #  1 NESTED STORE. `git log --name-only` emits paths relative to the REPO ROOT,
   #    not to the store. On this repo`s own fixtures/memory/corpus the join
@@ -313,7 +369,14 @@ if [ "$JSON" -eq 1 ]; then
     _f=0
     printf '"%s"' "$s"
   done < "$TMP/dupslugs"
-  printf '],"stale":%s}\n' "$N_STALE"
+  printf '],"stale":%s,"name_findings":[' "$N_STALE"
+  _f=1
+  while IFS='	' read -r k rel why; do
+    [ "$_f" -eq 1 ] || printf ','
+    _f=0
+    printf '{"kind":"%s","path":"%s","why":"%s"}' "$k" "$rel" "$(printf '%s' "$why" | sed 's/"/\\"/g')"
+  done < "$TMP/names"
+  printf ']}\n'
 else
   while IFS='	' read -r rel ln dialect target; do
     printf 'DANGLING  %s:%s (%s) -> %s\n' "$rel" "$ln" "$dialect" "$target"
@@ -326,6 +389,9 @@ else
     printf 'COLLISION slug "%s" is carried by:\n' "$s"
     LC_ALL=C grep -E "^$s	" "$TMP/slugs" | cut -f2 | sed 's/^/            /'
   done < "$TMP/dupslugs"
+  while IFS='	' read -r k rel why; do
+    printf '%-10s %s: %s\n' "$k" "$rel" "$why"
+  done < "$TMP/names"
   while IFS='	' read -r rel days; do
     printf 'STALE     %s (%s days since its last commit, report-only)\n' "$rel" "$days"
   done < "$TMP/stale"
@@ -340,6 +406,10 @@ log_head "$N_NOTES note(s) in $STORE"
 _gate "$N_DANGLING" "dangling reference(s)" "write the note each DANGLING line names, or drop the link"
 _gate "$N_DEADPATH" "dead path citation(s)" "correct the path each DEAD-PATH line cites"
 _gate "$N_DUP" "slug collision(s)" "rename or merge the notes each COLLISION line lists"
+if [ "$N_NAMES" -gt 0 ]; then
+  _nfix="rename the note or folder each NAME-* line names (D-24 <subject>-<claim>, lowercase kebab); links follow the slug"
+  if [ "$STRICT_NAMES" -eq 1 ]; then log_fail "$N_NAMES name finding(s)"; log_fix "$_nfix"; else log_warn "$N_NAMES name finding(s), report-only without --strict-names"; log_fix "$_nfix"; fi
+fi
 [ $((N_DANGLING + N_DEADPATH + N_DUP)) -gt 0 ] || log_ok "no dangling reference, dead path or slug collision"
 [ "$N_STALE" -eq 0 ] || log_note "$N_STALE stale note(s), report-only: age is not a defect"
 [ "$GIT_BACKED" = true ] || log_note "store is not a git repo — staleness not measured"

@@ -3,7 +3,7 @@
 # is at after the merge (a merge commit, or the new tip of a fast-forward or `git pull`).
 # Install: the same one command as the other hooks, `git config core.hooksPath hooks`.
 # `git merge --squash` runs this with $1 = 1 and moves nothing, so it emits nothing. A PR merged on
-# GitHub runs no local hook at all (CONTRACTS/hooks.md); that is the pr.merged producer's moment.
+# GitHub runs no local hook at all (contracts/hooks.md); that is the pr.merged producer's moment.
 # It can never fail or print: it exits 0 regardless.
 _hk_self="$0"
 while [ -L "$_hk_self" ]; do

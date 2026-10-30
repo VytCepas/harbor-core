@@ -83,11 +83,13 @@ case "$1" in
   -w) k=" "; while [ "${1:-}" = -w ]; do k="$k$2 "; shift 2; done   # only the keys registered, as notifyd does
       # From the stream's size NOW, marked: a post after the marker is never missed (a fixed sleep raced under CI load).
       o=$(( $(wc -c < "$FX/notify.stream") + 1 )); : > "$FX/notify.waiting"
-      # The real notifyutil is one process; this fake is a pipeline, so a kill of it must reach its children
-      # or every listen test leaves a tail and a filter running forever. A read loop, not awk: mawk block-buffers
-      # a pipe, so no post reached the listener (harbor#1149).
-      tail -c +"$o" -f "$FX/notify.stream" | while IFS= read -r l; do case "$k" in *" $l "*) printf '%s\n' "$l" ;; esac; done &
-      trap 'pkill -P $$ 2>/dev/null; exit 0' TERM INT HUP
+      # The real notifyutil is one process; this fake is two, killed by pid on the way out or every listen test
+      # leaves a tail and a filter running forever. Not pkill -P: it cannot list processes in the sandbox (harbor#1060).
+      # A read loop, not awk: mawk block-buffers a pipe, so no post reached the listener (harbor#1149).
+      f="$FX/notify.$$.fifo"; rm -f "$f"; mkfifo "$f"
+      tail -c +"$o" -f "$FX/notify.stream" > "$f" & tp=$!
+      while IFS= read -r l; do case "$k" in *" $l "*) printf '%s\n' "$l" ;; esac; done < "$f" & wp=$!
+      trap 'kill $tp $wp 2>/dev/null; rm -f "$f"; exit 0' TERM INT HUP
       wait ;;
   *) exit 1 ;;
 esac
@@ -147,11 +149,11 @@ ghjob() {
   [ -f "$FX/jobs.$1" ] || echo '{"jobs":[]}' > "$FX/jobs.$1"
   jq --arg s "$3" --arg l "$4" '.jobs += [{id: (.jobs | length + 1), status: $s, labels: ($l | split(","))}]' "$FX/jobs.$1" > "$FX/x" && mv "$FX/x" "$FX/jobs.$1"
 }
-gov() { HARBOR_NOW="$AT" HARBOR_CACHE_DIR="$CACHE" HARBOR_RUNNERS_DIR="$RUNNERS" sh "$GOV" "$@" 2>&1; }
+gov() { HARBOR_TEST_NOW="$AT" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CI_RUNNERS_DIR="$RUNNERS" sh "$GOV" "$@" 2>&1; }
 tick() { AT=$((AT + ${1:-30})); gov tick >/dev/null; }
 st() { awk -F= -v k="$1" '$1 == k { sub(/^[^=]*=/, ""); print }' "$CACHE/ci-governor/state"; }
 cpus() { echo $(( $(cat "$FX/nano") / 1000000000 )); }
-nlog() { if [ -f "$CACHE/checks.log" ]; then grep -c 'check:ci-governor' "$CACHE/checks.log"; else echo 0; fi; }
+nlog() { if [ -f "$CACHE/checks.log" ]; then grep -c 'check:ci.governor' "$CACHE/checks.log"; else echo 0; fi; }
 nsvc() { if [ -f "$FX/svc.log" ]; then grep -c "$1" "$FX/svc.log"; else echo 0; fi; }
 ngh() { if [ -f "$FX/gh.calls" ]; then grep -c "$1" "$FX/gh.calls"; else echo 0; fi; }
 nupd() { if [ -f "$FX/updates" ]; then wc -l < "$FX/updates" | tr -d ' '; else echo 0; fi; }
