@@ -48,6 +48,12 @@ t_exit "B6 installed under guard-integrity.sh is seen" 0 sh -c "CFG='$D'; $DET
 _b6_installed"
 t_exit "the Stop gate wired under guard-stop.sh is seen" 0 sh -c "CFG='$D'; $(sed -n '/^_stop_wired()/p' "$SB/deploy.sh")
 _stop_wired"
+# The preflight's B6 verdict judges the box by the check it runs, under its old name: this tree's copy expects the
+# admission-* wiring that only the deploy installs, so it read an intact pre-W6 box as drifted (harbor#949).
+V="$(sh -c "CFG='$D'; ROOT='$T_ROOT'; $(sed -n '/^_b6_verdict()/,/^}/p' "$SB/deploy.sh")
+_b6_verdict")"
+_blk=no; case "$V" in BLOCKED:*) _blk=yes ;; esac
+t_eq "the preflight does not read an intact pre-W6 box as drifted ($V)" no "$_blk"
 
 t_section "this tree's installers onto it, with the opt-ins deploy passes"
 OUT="$(inst "$D" "--with-b6 --with-stop-gate")"

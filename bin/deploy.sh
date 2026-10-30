@@ -200,6 +200,9 @@ _ask() {
 # B6 as the next SessionStart would see it: prints clean | advisory:<msg> | BLOCKED:<msg>.
 _b6_verdict() {
   _g="$CFG/bin/admission-integrity.sh"
+  # A pre-W6 box runs B6 as guard-integrity.sh: judge it by that, never by this tree's copy, which expects the
+  # admission-* wiring only this deploy installs (refused the W6 deploy, harbor#949). Until the shim goes, 2026-11-15.
+  [ -f "$_g" ] || _g="$CFG/bin/guard-integrity.sh"
   [ -f "$_g" ] || _g="$ROOT/bin/admission-integrity.sh"
   _g_out="$(env -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW -u HELM_DISABLE_FLOOR -u HELM_FLOOR_SHADOW CLAUDE_CONFIG_DIR="$CFG" sh "$_g" </dev/null 2>/dev/null || true)"
   if [ -z "$_g_out" ]; then printf 'clean'; return; fi
