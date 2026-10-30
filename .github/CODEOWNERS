@@ -162,7 +162,6 @@
 /bin/gcloud @VytCepas
 /bin/gcloud-credentials @VytCepas
 /bin/govern-hook.sh @VytCepas
-/bin/guard-integrity.sh @VytCepas
 /bin/housekeeping-clean.sh @VytCepas
 /bin/idea @VytCepas
 /bin/library-alert.sh @VytCepas

@@ -196,7 +196,6 @@ bin/gcloud	operator-run	derived: linked into ~/.local/bin as gcloud by contracts
 bin/gcloud-credentials	operator-run	derived: linked into ~/.local/bin as gcloud-creds by contracts/shims.tsv
 bin/govern-hook.sh	installed	derived: shipped by floor-install.sh
 bin/govern-token.sh	installed	derived: wired by context-injection-install.sh
-bin/guard-integrity.sh	ship	derived: called by bin/deploy.sh
 bin/harbor	operator-run	derived: linked into ~/.local/bin as harbor by contracts/shims.tsv
 bin/housekeeping-clean.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/idea	operator-run	derived: linked into ~/.local/bin as idea by contracts/shims.tsv

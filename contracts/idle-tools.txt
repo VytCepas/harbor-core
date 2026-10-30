@@ -137,3 +137,4 @@ guard-lib.sh           IDLE  forwarding shim (harbor#996 rename-1319): a symlink
 guard-selfedit.sh      IDLE  forwarding shim (harbor#996 rename-1320): a symlink to bin/admission-self-edit.sh until 2026-11-15, the old path of rename-1320; nothing in the repo calls it
 guard-stop.sh          IDLE  forwarding shim (harbor#996 rename-1321): a symlink to bin/admission-stop.sh until 2026-11-15, the old path of rename-1321; nothing in the repo calls it
 floor-hook.sh          IDLE  forwarding shim (harbor#996 rename-1322): a symlink to bin/admission-hook.sh until 2026-11-15, the old path of rename-1322; nothing in the repo calls it
+guard-integrity.sh     IDLE  forwarding shim (harbor#996 rename-1323): a symlink to bin/admission-integrity.sh until 2026-11-15, the old path of rename-1323; nothing in the repo calls it

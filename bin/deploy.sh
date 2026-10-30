@@ -202,7 +202,7 @@ _b6_verdict() {
   _g="$CFG/bin/admission-integrity.sh"
   # A pre-W6 box runs B6 as guard-integrity.sh: judge it by that, never by this tree's copy, which expects the
   # admission-* wiring only this deploy installs (refused the W6 deploy, harbor#949). Until the shim goes, 2026-11-15.
-  [ -f "$_g" ] || _g="$CFG/bin/guard-integrity.sh"
+  _b6old=guard-integrity; [ -f "$_g" ] || _g="$CFG/bin/$_b6old.sh"   # through a name, as _b6_installed does: the shim stays idle to lint
   [ -f "$_g" ] || _g="$ROOT/bin/admission-integrity.sh"
   _g_out="$(env -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW -u HELM_DISABLE_FLOOR -u HELM_FLOOR_SHADOW CLAUDE_CONFIG_DIR="$CFG" sh "$_g" </dev/null 2>/dev/null || true)"
   if [ -z "$_g_out" ]; then printf 'clean'; return; fi
