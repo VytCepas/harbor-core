@@ -20,7 +20,7 @@
 # is the only thing that touches the state file. That split is what makes the
 # suite able to test every verdict without a sink or a cache.
 #
-# IT NEVER FIRES A GUARD. floor-verify.sh answers "is the floor ON?" by firing
+# IT NEVER FIRES A GUARD. admission-verify.sh answers "is the floor ON?" by firing
 # six known-blocked shapes, and every one of those appends a real block record
 # to the guard-decision ledger — the only real-traffic dataset Harbor has, and
 # the one observe-report --fp adjudicates false positives from. On a 300s
@@ -105,14 +105,14 @@ mtime() { fs_mtime "$1"; } # <file> -> epoch seconds, or empty (bin/library-fs.s
 check_floor() {
   _s="$CFG/settings.json"
   if [ ! -f "$_s" ]; then emit floor unknown "no settings.json in the config dir"; return 0; fi
-  # ASK FOR THE ENTRY ONLY floor-deny.sh WRITES, not for a non-empty list. A
+  # ASK FOR THE ENTRY ONLY admission-deny.sh WRITES, not for a non-empty list. A
   # deny array is a list anyone may add to, so a single unrelated rule made this
   # read "B1 is live" on a box where every Harbor pattern had been removed.
   # status-generate.sh asks for the sentinel by name; so does this.
   _sentinel='(.permissions.deny // []) | index("Edit(~/.claude/.helm-floor-teeth)")'
   _deny=no
   jq -e "$_sentinel" "$_s" >/dev/null 2>&1 && _deny=yes
-  # THE MATRIX, NOT THE BASENAME. floor-install.sh wires five distinct
+  # THE MATRIX, NOT THE BASENAME. admission-install.sh wires five distinct
   # (event, matcher, guard) triples, and a check that flattens them into "does
   # this guard appear anywhere" cannot see the failure the installer's own
   # comment records as pass 11's critical: admission-egress.sh carries dedicated
@@ -122,7 +122,7 @@ check_floor() {
   # checked the pairs the installer already wired". Same trap, one level up:
   # asking an easier question than the one the row claims to answer.
   #
-  # This list is a MIRROR of floor-install.sh and cannot read it — the probe
+  # This list is a MIRROR of admission-install.sh and cannot read it — the probe
   # runs from the live config dir with no repo. pulse-test.sh extracts the
   # installer's own `add` lines and fails when the two disagree, which is what
   # keeps a mirror from becoming a fossil.
@@ -159,13 +159,13 @@ MATRIX
     emit floor unknown "the live settings file is empty or could not be parsed"; return 0
   fi
   # ALL SEVEN FILES, not the five that are obviously guards. annotate-web.sh is
-  # the B4 PostToolUse guard and floor-normalize.awk is the shared normaliser; a
+  # the B4 PostToolUse guard and admission-normalize.awk is the shared normaliser; a
   # live dir missing either is a partial install that reads as complete. This
   # list started as five, and the suite's agreement assertion against
   # status-generate.sh failed on its first run and named the two.
   _missing=0
   for _f in admission-hook.sh library-admission.sh admission-bash.sh admission-egress.sh \
-            admission-self-edit.sh annotate-web.sh floor-normalize.awk; do
+            admission-self-edit.sh annotate-web.sh admission-normalize.awk; do
     [ -s "$CFG/bin/$_f" ] || _missing=$((_missing + 1))
   done
   _nun=0

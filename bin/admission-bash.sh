@@ -68,9 +68,9 @@ $_TIF" ;;
 esac
 # A heredoc, not `printf | grep`: one process per rule instead of two (harbor#264). Empty TARGETS
 # returns 1 first, because grep on no input never matches but on one empty line it could.
-hit() { [ -n "$TARGETS" ] || return 1; "$FLOOR_GREP" -iEq -- "$1" <<FLOOR_HIT_EOF
+hit() { [ -n "$TARGETS" ] || return 1; "$FLOOR_GREP" -iEq -- "$1" <<HARBOR_ADMISSION_HIT_EOF
 $TARGETS
-FLOOR_HIT_EOF
+HARBOR_ADMISSION_HIT_EOF
 }
 # The STRUCTURED table the migrated rules read (B-rewrite, docs/explanation/admission-baseline.md). Loaded
 # once; fail-open exactly like every other scanner here — an empty table makes
@@ -459,7 +459,7 @@ sched_fires '^([a-zA-Z0-9_./-]*/)?systemd-run$' '^--on-(active|boot|startup|unit
 # to end at a `<rule>.<shape>` id. A prose mention would read as a call site with
 # no id — the exact defect F5 exists to catch, manufactured by describing it.
 # The dead id is spelled in PROSE, not as `<id>.<shape>`, and that is deliberate:
-# floor-equiv.sh derives its coverage universe by scraping this file's TEXT for
+# admission-equivalence.sh derives its coverage universe by scraping this file's TEXT for
 # that exact token pattern, comments included. Writing a deleted rule's id in the
 # canonical spelling would re-add it to the denominator as a rule nothing can ever
 # reach, so coverage would read "N of M+1" forever — the "denominator nobody can
@@ -591,11 +591,11 @@ hit ':[[:space:]]*\([[:space:]]*\)[[:space:]]*\{[[:space:]]*:[[:space:]]*\|[[:sp
 # and a back-reference over a padded 32KB line took 282 s: so ERE cuts the candidates out first.
 _FBW='[^[:space:]|&;(){}<>]+'
 if hit "${_FBW}[[:space:]]*(\\([[:space:]]*\\))?[[:space:]]*[{(][[:space:]]*${_FBW}[[:space:]]*[|&][[:space:]]*${_FBW}" \
-   && "$FLOOR_GREP" -oE "(function[[:space:]]+)?${_FBW}[[:space:]]*(\\([[:space:]]*\\))?[[:space:]]*[{(][[:space:]]*${_FBW}[[:space:]]*[|&][[:space:]]*${_FBW}" <<FLOOR_HIT_EOF \
+   && "$FLOOR_GREP" -oE "(function[[:space:]]+)?${_FBW}[[:space:]]*(\\([[:space:]]*\\))?[[:space:]]*[{(][[:space:]]*${_FBW}[[:space:]]*[|&][[:space:]]*${_FBW}" <<HARBOR_ADMISSION_HIT_EOF \
       | "$FLOOR_GREP" -q -e '^\([^[:space:]|&;(){}<>]\{1,\}\)[[:space:]]*([[:space:]]*)[[:space:]]*[{(][[:space:]]*\1[[:space:]]*[|&][[:space:]]*\1$' \
           -e '^function[[:space:]]\{1,\}\([^[:space:]|&;(){}<>]\{1,\}\)[[:space:]]*\(([[:space:]]*)\)\{0,1\}[[:space:]]*[{(][[:space:]]*\1[[:space:]]*[|&][[:space:]]*\1$'
 $TARGETS
-FLOOR_HIT_EOF
+HARBOR_ADMISSION_HIT_EOF
 then
   floor_block bash "fork bomb" fork-bomb.flat
 fi
@@ -1112,7 +1112,7 @@ _sh_payload_ro() {
 _XW='(([a-zA-Z0-9_./-]*/)?(sudo|doas|env|command|builtin|exec|nohup|stdbuf|nice|ionice|setsid|timeout|time|caffeinate)[[:space:]]+((-[^[:space:]]+|[0-9]+[smhd]?|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|--)[[:space:]]+([^-][^[:space:]]*[[:space:]]+)?)*)*'
 _XOPT='([[:space:]]+(-[IJEad][[:space:]]+[^[:space:]]+|-[LnPsSR][[:space:]]+[0-9]+|--(max-args|max-procs|max-chars|delimiter|arg-file|process-slot-var)[[:space:]]+[^[:space:]]+|-[^[:space:]]+))*'
 XARGS_DESTROY="\|&?[[:space:]]*([{(][[:space:]]*)*${_XW}([a-zA-Z0-9_./-]*/)?g?xargs${_XOPT}[[:space:]]+${_XW}([a-zA-Z0-9_./-]*/)?(rm|unlink|chmod|chown|mv|dd)([[:space:]]|\$)"
-# -ok/-okdir run their command as -exec does (floor-normalize.awk, find_destroys_cfg); only a y on stdin differs.
+# -ok/-okdir run their command as -exec does (admission-normalize.awk, find_destroys_cfg); only a y on stdin differs.
 _shro=0
 if hit "(^|[^[:alnum:]_])find([^|]*)-(exec|ok)(dir)?[[:space:]]+(sh|bash|zsh)[[:space:]]+-c" \
    && ! hit "(^|[^[:alnum:]_])find([^|]*)(-(exec|ok)(dir)?[[:space:]]+$FINDVERB_NOSH|[[:space:]]-delete([[:space:]]|\$))" \
@@ -1241,7 +1241,7 @@ function judge(s,   n, w, i, j, p, k, prog, nx, redir, put) {
   if (prog ~ /^deploy(\.sh)?$/ || (prog == "harbor" && nx ~ /^(deploy|install|uninstall|skills|inject|constitution|restore)$/))
     for (j = i + 1; j <= n; j++) if (w[j] ~ /^--apply(=|$)/) { print "DEPLOY"; return }
   # an installer run straight at the live box skips the deploy preflight and snapshot: --live with a write (p30)
-  if (prog ~ /(-install|^sec0-harden|^deploy-harden|^floor-deny|^floor-uninstall|^restore|^deploy-restore|^pin-instructions)(\.sh)?$/) {
+  if (prog ~ /(-install|^sec0-harden|^deploy-harden|^floor-deny|^floor-uninstall|^admission-deny|^admission-remove|^restore|^deploy-restore|^pin-instructions)(\.sh)?$/) {
     lv = 0; wr = 0
     for (j = i + 1; j <= n; j++) { if (w[j] == "--live") lv = 1; if (w[j] ~ /^--(apply|repin)(=|$)/) wr = 1 }
     if (lv && wr) { print "DEPLOY"; return } }
@@ -3072,8 +3072,8 @@ cfg_redirect_outside_allowlist \
 #     ARGUMENT, a bare invocation (which DEFAULTS to the live dir), a `cd <cfg>
 #     &&` bridge, and a copy of the script made somewhere else. Inject-then-
 #     bless was demonstrated end-to-end through the allowed spelling.
-#   • and it blocked ordinary text: `sed -n '/floor-install.sh --live/p'
-#     docs/explanation/admission-baseline.md` and `git commit -am "…floor-deny.sh --live…"` were refused as
+#   • and it blocked ordinary text: `sed -n '/admission-install.sh --live/p'
+#     docs/explanation/admission-baseline.md` and `git commit -am "…admission-deny.sh --live…"` were refused as
 #     "a --live floor operation", because reading a document that quotes a
 #     command is indistinguishable from running it to a substring match.
 #
@@ -3467,9 +3467,9 @@ if ! floor_repo_wires github_command_guard project-init-lifecycle; then
   _TPO="$TARGETS"
   case "$CMD" in *push*) case "$CMD" in *' -o '*|*' --push-option '*)
     _TPO="$(printf '%s\n' "$TARGETS" | sed -E 's/[[:space:]](-o|--push-option)[[:space:]]+[^[:space:]]+/ /g')" ;; esac ;; esac
-  hit_po() { [ -n "$_TPO" ] && "$FLOOR_GREP" -iEq -- "$1" <<FLOOR_HIT_EOF
+  hit_po() { [ -n "$_TPO" ] && "$FLOOR_GREP" -iEq -- "$1" <<HARBOR_ADMISSION_HIT_EOF
 $_TPO
-FLOOR_HIT_EOF
+HARBOR_ADMISSION_HIT_EOF
   }
   hit_po '(^|[^[:alnum:]_])git([[:space:]]+-[CcP][[:space:]]*[^[:space:]]*)*[[:space:]]+push([^|;&]*)[[:space:]]["'"'"']?\+([^[:space:]]*[:/])?(main|master|production|prod)["'"'"']?([[:space:]]|$)' \
     && floor_block bash "git push of a +refspec to a protected branch (no wired repo guard — floor is sole gate)" force-push-protected.flat

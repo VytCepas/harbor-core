@@ -112,7 +112,7 @@ if [ -n "$TX" ] && [ -r "$TX" ]; then
     # SG-2, verbatim from bin/admission-stop.sh (suite_key, and SG_PAIR byte-equal, held by stop.test.sh):
     # the last verdict per suite name wins.
     SG_PAIR='
-  $1 == "CMD" { if ($3 ~ /([-.]test|lint-conventions|floor-equiv|pass-score)[a-z-]*\.sh/) ran[$2] = 1
+  $1 == "CMD" { if ($3 ~ /([-.]test|lint-conventions|floor-equiv|admission-equivalence|pass-score)[a-z-]*\.sh/) ran[$2] = 1
                 else for (t in bg) if (index($3, "tasks/" t ".output")) ran[$2] = 1 }
   $1 == "BGT" && ($2 in ran) { bg[$3] = 1 }'
     OUT="$(printf '%s\n' "$STREAM" | awk -F '\t' "$SG_PAIR"'

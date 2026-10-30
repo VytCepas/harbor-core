@@ -27,7 +27,7 @@ t_has "reported stale, as a FAIL naming the file" "$out" "  FAIL: stale guard-a.
 t_has "names the distance" "$out" "2 commit(s) behind ref-main"
 t_eq "a stale install" 1 "$(rc)"
 t_eq "...the fix under it re-runs the installers at this dir, spelled for their gate" \
-  "  fix: sh $R/bin/deploy-runtime-install.sh --apply --dir '$CFG' && sh $R/bin/floor-install.sh --apply --dir '$CFG'" \
+  "  fix: sh $R/bin/deploy-runtime-install.sh --apply --dir '$CFG' && sh $R/bin/admission-install.sh --apply --dir '$CFG'" \
   "$(printf '%s\n' "$out" | grep -A1 '^  FAIL: stale' | sed -n 2p)"
 t_eq "...and the run ends on the summary, one ok and one failure" "install-drift: 1 ok, 1 failed, 0 warnings" "$(printf '%s\n' "$out" | tail -1)"
 

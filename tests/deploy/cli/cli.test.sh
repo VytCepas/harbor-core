@@ -32,10 +32,10 @@ t_eq "harbor constitution --apply --live is deploy's constitution component" \
   "STUB deploy.sh argv=--only constitution --apply --live" "$(hb constitution --apply --live)"
 t_eq "harbor deploy is deploy.sh whole: every argument through, none added (2026-09-30)" \
   "STUB deploy.sh argv=--apply --only floor,skills --with-b6 --live" "$(hb deploy --apply --only floor,skills --with-b6 --live)"
-t_eq "harbor verify names the live box with --live, never through CLAUDE_CONFIG_DIR" "STUB floor-verify.sh argv=--live" "$(hb verify)"
+t_eq "harbor verify names the live box with --live, never through CLAUDE_CONFIG_DIR" "STUB admission-verify.sh argv=--live" "$(hb verify)"
 # verify re-judges afterwards (no new schedule); the verdict and exit status stay floor-verify's own.
 printf '#!/bin/sh\necho "$@" > "%s/judge.argv"\n' "$T_TMP" > "$SB/audit-triage-run.sh"; chmod +x "$SB/audit-triage-run.sh"; rm -f "$T_TMP/judge.argv"
-t_eq "harbor verify still prints only floor-verify's output" "STUB floor-verify.sh argv=--live" "$(hb verify)"
+t_eq "harbor verify still prints only floor-verify's output" "STUB admission-verify.sh argv=--live" "$(hb verify)"
 t_eq "and then runs audit-triage-run.sh --live --apply" "--live --apply" "$(cat "$T_TMP/judge.argv" 2>/dev/null)"
 rm -f "$T_TMP/judge.argv"; hb status >/dev/null
 t_eq "another verb does not re-judge" absent "$([ -f "$T_TMP/judge.argv" ] && echo present || echo absent)"

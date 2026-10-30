@@ -4,11 +4,11 @@
 #   sh deploy-runtime-install.sh --apply (--live | --dir PATH)   write, backing up first beside the run's log
 #   --accept-loss   install even though this source lacks commits already installed (install-stamp)
 #
-# WHY A SECOND INSTALLER EXISTS. floor-install.sh installs the floor: it copies
+# WHY A SECOND INSTALLER EXISTS. admission-install.sh installs the floor: it copies
 # every guard AND wires them as PreToolUse hooks. bin/eval-pass-score.sh exits 2 —
 # the latest adversarial pass still reports criticals — so that install is
 # correctly WITHHELD BY THE OPERATOR. (Withheld, not blocked: nothing enforces
-# it. floor-install.sh never consults eval-pass-score.sh — verified, zero matches —
+# it. admission-install.sh never consults eval-pass-score.sh — verified, zero matches —
 # so the exit 2 is a verdict a human acts on, not a gate.) But three things the operator needs were sitting behind that
 # block for no reason:
 #
@@ -22,7 +22,7 @@
 #
 # INSTALLS NO GUARD AND WIRES NO PreToolUse HOOK. That is the whole point: it is
 # the part of the runtime whose blast radius is a wrong string on a status row.
-# If you want the floor, that is floor-install.sh; eval-pass-score.sh reports on it
+# If you want the floor, that is admission-install.sh; eval-pass-score.sh reports on it
 # but does not gate it.
 #
 # Append-only on hooks, backup-first, and it RE-PINS at the end — because writing
@@ -61,14 +61,14 @@ fi
 # reason the work-log died. The rest are the L0-5 surfaces themselves.
 #
 # context-resolve.sh is the SECOND HALF OF THE SAME COUPLING DEFECT, found
-# 2026-07-30 after this installer had already run: it ships in floor-install.sh's
+# 2026-07-30 after this installer had already run: it ships in admission-install.sh's
 # GUARDS list, so it was trapped behind the same blocked install, and both engine
 # hooks read the per-session verdict IT WRITES. Copying library-admission.sh restored the
 # dependency and not the function — `floor_engine_stand_down` then treated an absent
 # `.helm-context/<session_id>` as "stand down" (it no longer reads it, harbor#954), so worklog-push
 # kept exiting 0 having written nothing, which is indistinguishable from success.
 # Measured on the live box: newest session record 2026-07-29, zero for 07-30.
-# It belongs here and not behind the floor gate for the reason floor-install.sh
+# It belongs here and not behind the floor gate for the reason admission-install.sh
 # already states at its own wiring line — it is a RECORDER, never a veto: it
 # wires no PreToolUse hook, cannot block a tool call, and every path in it
 # exits 0.
@@ -77,7 +77,7 @@ fi
 # drifts, and X2 proved it: baseline-pin.sh and recover-test.sh were both behind
 # the repo on 2026-08-01 while the four files an installer owns were current.
 #
-# They belong to this installer rather than floor-install.sh by this file's own
+# They belong to this installer rather than admission-install.sh by this file's own
 # criterion — they install no guard and wire no PreToolUse hook. And they must be
 # in the LIVE dir at all, not only in the repo, because that is the whole premise
 # of RECOVER: deploy-restore.sh reads deploy's snapshots from the config dir's backups/
@@ -100,10 +100,10 @@ fi
 # A feature that is built, wired, tested and unreachable is worse than one that
 # was never written: the repo reads as though the operator is being warned.
 #
-# floor-deny.sh JOINS FOR THE OPPOSITE REASON — not to make a call resolve, but
+# admission-deny.sh JOINS FOR THE OPPOSITE REASON — not to make a call resolve, but
 # to make a PASTED COMMAND UNPLANTABLE. B6 and session-verdicts.sh both hand the
 # operator a re-pin command to run in their OWN terminal, unguarded, with their
-# full privileges. Named at the checkout (`~/port/harbor/bin/floor-deny.sh`) that
+# full privileges. Named at the checkout (`~/port/harbor/bin/admission-deny.sh`) that
 # instruction is a delivery mechanism: a session can append a line to the file
 # and then wait for the gate to tell the operator to run it. Measured 2026-08-03,
 # five write shapes each: at the checkout `>>`, `cp`, `sed -i`, `>` and the Edit
@@ -111,11 +111,11 @@ fi
 # guard-selfedit. Same script, same operator, opposite integrity.
 #
 # It adds NO capability a session does not already have — `sh ~/port/harbor/bin/
-# floor-deny.sh --live --repin` runs at rc=0 today, so the amnesty is reachable
+# admission-deny.sh --live --repin` runs at rc=0 today, so the amnesty is reachable
 # either way. What shipping it buys is that the copy the OPERATOR is told to run
 # is one the session cannot have edited.
 #
-# audit-triage-run.sh, audit-triage.sh AND floor-verify.sh JOIN AS A SET, and the
+# audit-triage-run.sh, audit-triage.sh AND admission-verify.sh JOIN AS A SET, and the
 # reason is the same unplantability argument one paragraph up. launchd/
 # com.harbor.audit.triage.plist runs the judge daily as the operator; a job aimed at
 # ~/port/harbor/bin would let ANY session schedule arbitrary code on this machine,
@@ -125,9 +125,9 @@ fi
 # All three, not one: audit-triage-run.sh resolves the judge from its OWN directory
 # (never from the tree under inspection — audit-triage.sh's header records why
 # a hostile copy in an inspected tree could make a run report nothing and exit
-# 0), and audit-triage.sh in turn reads floor-verify.sh's probe payloads to
+# 0), and audit-triage.sh in turn reads admission-verify.sh's probe payloads to
 # EXCLUDE the verifier's own traffic from its recurrence counts. Installed
-# without floor-verify.sh the judge still runs and says loudly that it could not
+# without admission-verify.sh the judge still runs and says loudly that it could not
 # separate probe traffic — a degraded verdict, not a silent one.
 #
 # THIS REVERSES A RECORDED DECISION. contracts/cli.md states audit-triage.sh
@@ -136,31 +136,31 @@ fi
 # crit finding unread for eleven days. The contract row is updated in the same
 # change; if this is reverted, revert the plist with it or the job is aimed at a
 # file that is not there.
-# floor-install.sh IS IN THE PAYLOAD BECAUSE test-sandbox-make.sh CALLS IT (harbor#313).
-# `test-sandbox-make.sh <dir> --with-floor` runs `sh "$SRC/floor-install.sh"`, and
-# test-sandbox-make.sh is installed while floor-install.sh was not — so the flag worked
+# admission-install.sh IS IN THE PAYLOAD BECAUSE test-sandbox-make.sh CALLS IT (harbor#313).
+# `test-sandbox-make.sh <dir> --with-floor` runs `sh "$SRC/admission-install.sh"`, and
+# test-sandbox-make.sh is installed while admission-install.sh was not — so the flag worked
 # from a repo checkout and failed on a missing file from $CFG/bin, which is the copy
 # a session reaches. It was not a cosmetic break: --with-floor exists BECAUSE the
 # sandbox went stale once and "try it in the sandbox" then validated a build nobody
 # was shipping (QA-PLAN R8), so guard testing fell back to a config dir with no
 # floor at exactly the surface where that matters.
 #
-# floor-verify.sh — the other script sandbox-make invokes through $SRC — was
+# admission-verify.sh — the other script sandbox-make invokes through $SRC — was
 # already here, which is why only half the flag was broken and why the failure read
 # as a missing file rather than a missing decision.
 #
 # deploy-install-stamp.sh COMES WITH IT, AND THE FLAG IS STILL BROKEN WITHOUT IT.
-# floor-install.sh reaches three more scripts through its own $SRC. Two degrade by
+# admission-install.sh reaches three more scripts through its own $SRC. Two degrade by
 # design and say so — eval-pass-score.sh is existence-tested and advisory,
 # deploy-runtime-install.sh is read with `|| true` and its comment records that an empty
 # read fails safe toward copying. deploy-install-stamp.sh is the third and is NOT guarded on
 # the --apply path: absent, `sh` exits 127, floor-install reads that as a FAILED
 # regression check and refuses.
 #
-# MEASURED with floor-install.sh in the payload and deploy-install-stamp.sh not:
+# MEASURED with admission-install.sh in the payload and deploy-install-stamp.sh not:
 #   sandbox-make <dir> --fresh --with-floor  ->  rc=1, "REFUSING — this source is
 #   missing work that is already installed", and NO floor installed.
-# So shipping floor-install.sh alone would have closed the ticket on a flag that
+# So shipping admission-install.sh alone would have closed the ticket on a flag that
 # still did not work, one layer down.
 #
 # WORSE, AND THE REASON THIS IS NOT COSMETIC: the sandbox was left looking ARMED.
@@ -170,9 +170,9 @@ fi
 # the sandbox" validating a build nobody is shipping, which is the failure
 # --with-floor was added to prevent.
 #
-# ITS OWN $SRC RESOLVES CORRECTLY ONCE INSTALLED. floor-install.sh copies $GUARDS
+# ITS OWN $SRC RESOLVES CORRECTLY ONCE INSTALLED. admission-install.sh copies $GUARDS
 # out of its own directory, and on a floored box those guards are in $CFG/bin
-# because floor-install.sh put them there — so an installed copy creating a sandbox
+# because admission-install.sh put them there — so an installed copy creating a sandbox
 # copies the LIVE floor into it, which is what R8 asks for. lint X7 now checks this
 # class instead of exempting it.
 # gate-merged-check.sh COMES WITH deploy-install-stamp.sh, and leaving it out would re-open the
@@ -216,7 +216,7 @@ fi
 # event-dispatch.sh (harbor#1044) is what launchd/com.harbor.event.dispatch.plist runs from here; shipped inert: no
 # installer loads that plist or writes a rule. event-bus.sh ships with it (floor-install copies it too): the loop
 # guard needs the bus that passes HARBOR_EVENT_CAUSE on, and a dispatcher beside an older bus refuses to follow.
-FILES="scope-roots.sh library-admission.sh access-confinement.sh memory-log-token-save.sh lint-findings-run.sh eval-redteam-corpus-run.sh standard-fleet-names-run.sh ticket-note.sh reply-shape.sh session-subagent-check.sh session-autocompact.sh session-cleanup.sh context-resolve.sh floor-deny.sh floor-install.sh deploy-install-stamp.sh gate-merged-check.sh status-fleet-glyph.sh status-subagent-glyph.sh context-peers.sh status-fleet-snapshot-refresh.sh housekeeping-clean.sh ci-queue.sh ci-main-tip-verdict.sh ci-github-plan.sh ci-runner-switch.sh ci-runners.sh ci-lost-job.sh ci-governor.sh ci-governor-hook.sh session-verdicts.sh admission-observe-report.sh deploy-restore.sh test-sandbox-make.sh worklog-push.sh memory-harvest.sh alert-probe.sh alert-notify.sh status-usage-aggregate.sh audit-triage-run.sh audit-triage.sh floor-verify.sh decider-set.sh drift-renew-check.sh memory-store-check.sh context-budget.sh drift-reference-check.sh doc-cited-paths.awk failure-observe.sh library-log.sh deploy-install-lib.sh library-fs.sh library-alert.sh status-obligations.sh ci-runners-fleet-lib.sh ci-runners-provision-lib.sh ci-runners-github-lib.sh ci-runners-watch-lib.sh gate-merge-stack.sh gate-merge-stack-resolve.py gate-merge-check.sh event-dispatch.sh event-bus.sh audit-stream-lib.sh audit-collector-check.sh session-state.sh session-react-lib.sh session-notify.sh session-save-now.sh session-ci-watch.sh ci-wait.sh session-cleanup-report.sh session-check.sh session-title.sh"
+FILES="scope-roots.sh library-admission.sh access-confinement.sh memory-log-token-save.sh lint-findings-run.sh eval-redteam-corpus-run.sh standard-fleet-names-run.sh ticket-note.sh reply-shape.sh session-subagent-check.sh session-autocompact.sh session-cleanup.sh context-resolve.sh admission-deny.sh admission-install.sh deploy-install-stamp.sh gate-merged-check.sh status-fleet-glyph.sh status-subagent-glyph.sh context-peers.sh status-fleet-snapshot-refresh.sh housekeeping-clean.sh ci-queue.sh ci-main-tip-verdict.sh ci-github-plan.sh ci-runner-switch.sh ci-runners.sh ci-lost-job.sh ci-governor.sh ci-governor-hook.sh session-verdicts.sh admission-observe-report.sh deploy-restore.sh test-sandbox-make.sh worklog-push.sh memory-harvest.sh alert-probe.sh alert-notify.sh status-usage-aggregate.sh audit-triage-run.sh audit-triage.sh admission-verify.sh decider-set.sh drift-renew-check.sh memory-store-check.sh context-budget.sh drift-reference-check.sh doc-cited-paths.awk failure-observe.sh library-log.sh deploy-install-lib.sh library-fs.sh library-alert.sh status-obligations.sh ci-runners-fleet-lib.sh ci-runners-provision-lib.sh ci-runners-github-lib.sh ci-runners-watch-lib.sh gate-merge-stack.sh gate-merge-stack-resolve.py gate-merge-check.sh event-dispatch.sh event-bus.sh audit-stream-lib.sh audit-collector-check.sh session-state.sh session-react-lib.sh session-notify.sh session-save-now.sh session-ci-watch.sh ci-wait.sh session-cleanup-report.sh session-check.sh session-title.sh"
 # The restore-path suite and the harness it sources, as <checkout path>:<config-dir path> (harbor#727).
 # Same relative layout as the repo, so bin/recover-test.sh finds ../lib/core.sh with no checkout.
 SUITE="tests/deploy/restore/recover.test.sh:bin/recover-test.sh tests/lib/core.sh:lib/core.sh"
@@ -235,12 +235,12 @@ DATA="contracts/obligation-kinds.tsv:bin/obligation-kinds.tsv contracts/merge-st
 
 # ── REFRESH-ONLY: files this installer UPDATES but will never INSTALL ────────
 # admission-integrity.sh (B6) is the one file in the floor with no reachable update
-# path. floor-install.sh copies it, but only under --with-b6, and the documented
+# path. admission-install.sh copies it, but only under --with-b6, and the documented
 # install order holds that back until the floor is verified — so in practice the
 # live B6 is frozen at whatever version was installed.
 #
 # NOT because "pass-score gates floor-install": THAT GATE DOES NOT EXIST.
-# `grep -n pass-score bin/floor-install.sh` returns nothing, no CI job wraps the
+# `grep -n pass-score bin/admission-install.sh` returns nothing, no CI job wraps the
 # installer, and bin/harbor:35 only DESCRIBES the install as "gated by
 # eval-pass-score.sh" in its help table. eval-pass-score.sh exits 2, and the operator
 # treats that as a stop; nothing makes them. This file said otherwise in three
@@ -250,7 +250,7 @@ DATA="contracts/obligation-kinds.tsv:bin/obligation-kinds.tsv contracts/merge-st
 #
 # The freeze is real either way, and that is what REFRESH_ONLY answers:
 # harbor#103 fixed the
-# gate's recovery message (it named floor-deny.sh --live --apply for a guard
+# gate's recovery message (it named admission-deny.sh --live --apply for a guard
 # CONTENT drift, which floor-deny cannot clear — the gate blocked the session and
 # named a command that could not unblock it). The fix is on main, tested, and
 # CANNOT REACH THE BOX. A guard whose own bug-fix is undeliverable is worse than
@@ -263,7 +263,7 @@ DATA="contracts/obligation-kinds.tsv:bin/obligation-kinds.tsv contracts/merge-st
 # hard-requires the four scanners present, pinned AND wired, so on a box without
 # them all 14 checks fail and every SessionStart emits {"continue":false}. The
 # operator's only escape is HARBOR_ADMISSION_DISABLE=1 — a bricked session or no floor
-# at all. floor-install.sh's --with-b6 gate and its "B6 installs LAST" order are
+# at all. admission-install.sh's --with-b6 gate and its "B6 installs LAST" order are
 # load-bearing, and this installer does not get to route around them.
 #
 # So: copied if and only if it is ALREADY THERE. Present means the operator ran
@@ -302,7 +302,7 @@ _src() { printf '%s/../%s' "$SRC" "$(il_src "$SRC/.." "$1")"; }  # FILES are ins
 # the same event is never touched.
 merge_session_hook() { # <settings-json-text> <command>
   # THE BUCKET SHAPE IS THE CONTRACT (harbor#95). This used to append
-  # `{hooks: [...]}` with no `matcher` key, while floor-install.sh's merge_hook
+  # `{hooks: [...]}` with no `matcher` key, while admission-install.sh's merge_hook
   # writes `{matcher: "", hooks: [...]}` and dedupes by scanning the bucket whose
   # matcher EQUALS the one it was given. Two shapes, two dedupes, neither able to
   # see the other's entry — so running both installers, which the documented
@@ -430,7 +430,7 @@ fi
 for f in $REFRESH_ONLY; do
   if [ -f "$DIR/bin/$f" ]; then log_note "bin/$f (refresh — already installed)"
   elif _ro="$(_refresh_old "$f")"; then log_note "bin/$f (refresh — installed here under its old name $_ro, harbor#961)"
-  else log_skip "bin/$f — not installed here; B6 installs only via floor-install.sh --with-b6"; fi
+  else log_skip "bin/$f — not installed here; B6 installs only via admission-install.sh --with-b6"; fi
 done
 log_note "statusLine → command + refreshInterval ${REFRESH}s"
 # ANNOUNCED FOR THE SAME REASON THE PINS ARE (harbor#275): a settings.json key the
@@ -605,12 +605,12 @@ done
 # the tool that told them to run it — and would make B6, once installed, block
 # every session. --repin adds no deny entry, so a withdrawn entry stays withdrawn.
 if [ -f "$DIR/.helm-floor-teeth" ] || [ -f "$DIR/.sec0-baseline.sha256" ]; then
-  _fd_rc=0; _fd="$(il_run sh "$SRC/floor-deny.sh" --repin 2>&1)" || _fd_rc=$?
+  _fd_rc=0; _fd="$(il_run sh "$SRC/admission-deny.sh" --repin 2>&1)" || _fd_rc=$?
   if [ "$_fd_rc" -eq 0 ]; then
     log_ok "re-pinned: teeth + sec0 baseline now match the settings.json just written"
   else
     log_fail "floor-deny --repin exited $_fd_rc, so the teeth pin is behind settings.json: $(printf '%s\n' "$_fd" | tail -1)"
-    log_fix "sh $SRC/floor-deny.sh --repin $(il_spell)"
+    log_fix "sh $SRC/admission-deny.sh --repin $(il_spell)"
   fi
 fi
 
@@ -618,8 +618,8 @@ log_note "verify the work-log is alive, asserting the record and not the exit co
 
 # NOT A FALSE ALARM (harbor#285): floor-install copies then re-pins its own payload, so a stale pin on
 # a file it carries is a note naming it; only a pin it does not carry keeps the banner. Read from
-# floor-install.sh, never copied here: an unreadable list makes every file banner-worthy.
-_fi_pay=" $(sed -n -e "s/^GUARDS='\(.*\)'\$/\1/p" -e "s/^RECOVERY='\(.*\)'\$/\1/p" "$SRC/floor-install.sh" 2>/dev/null | tr '\n' ' ') "
+# admission-install.sh, never copied here: an unreadable list makes every file banner-worthy.
+_fi_pay=" $(sed -n -e "s/^GUARDS='\(.*\)'\$/\1/p" -e "s/^RECOVERY='\(.*\)'\$/\1/p" "$SRC/admission-install.sh" 2>/dev/null | tr '\n' ' ') "
 _pin_cov=""; _pin_hard=""
 for f in $_pin_drift; do
   case "$_fi_pay" in *" $f "*) _pin_cov="${_pin_cov}${_pin_cov:+ }$f" ;; *) _pin_hard="${_pin_hard}${_pin_hard:+ }$f" ;; esac
@@ -628,7 +628,7 @@ if [ -n "$_pin_cov" ]; then
   if [ "${HARBOR_DEPLOY_ACTIVE:-${HARBOR_DEPLOY:-0}}" = 1 ]; then
     log_note "content pins behind for: $_pin_cov — floor-install re-pins them next in this deploy"
   else
-    log_note "content pins behind for: $_pin_cov — floor-install re-pins them: sh $SRC/floor-install.sh $(il_spell) --apply, next in the documented order (B6 blocks a new session until it runs)"
+    log_note "content pins behind for: $_pin_cov — floor-install re-pins them: sh $SRC/admission-install.sh $(il_spell) --apply, next in the documented order (B6 blocks a new session until it runs)"
   fi
 fi
 if [ -n "$_pin_hard" ]; then
@@ -651,6 +651,6 @@ fi
 # What this run installed, one row per file (install standard §3); B6 never reads it.
 il_manifest_write || { log_end; exit 1; }
 if [ -n "$_b6_pin_stale" ]; then
-  log_note "$_b6_pin_stale was refreshed, so its pin in .helm-pins/ is behind; nothing reads that pin back (B6 does not check itself), so the next session is unaffected, and floor-install.sh --with-b6 rewrites it"
+  log_note "$_b6_pin_stale was refreshed, so its pin in .helm-pins/ is behind; nothing reads that pin back (B6 does not check itself), so the next session is unaffected, and admission-install.sh --with-b6 rewrites it"
 fi
 log_end; exit $?

@@ -58,7 +58,8 @@ TGT="$IL_TARGET"; APPLY="$IL_APPLY"
 # standard §4); a sandbox is fixed by its installer, --dir spelled. The pin is the operator's act.
 _fix() { # <component> <installer>
   if [ "$IL_LIVE" -eq 1 ]; then printf "sh '%s/bin/deploy.sh' --only %s --apply --live" "$REPO" "$1"
-  else printf 'sh %s/bin/%s.sh --apply %s' "$REPO" "$2" "$(il_spell)"; fi
+  else case "$2" in runtime-install) _fi=deploy-runtime-install ;; floor-install) _fi=admission-install ;; *) _fi="$2" ;; esac
+       printf 'sh %s/bin/%s.sh --apply %s' "$REPO" "$_fi" "$(il_spell)"; fi
 }
 
 N=0; TOKENS=""; FOUND=""
@@ -90,23 +91,23 @@ note() { # <token> <detail> <fix command | none:<where>>
 # token that has to be believed the day admission-cloud.sh really is not installed.
 STAMP="$TGT/.helm-install-stamp"
 
-# THE PAYLOAD IS READ FROM THE INSTALLER, NEVER RESTATED HERE. floor-install.sh
+# THE PAYLOAD IS READ FROM THE INSTALLER, NEVER RESTATED HERE. admission-install.sh
 # already does exactly this to read deploy-runtime-install.sh's $FILES (:301), and its
 # own comment names the reason: "a second copy of runtime-install's payload is
 # the T2 defect harbor#275 was made of". Same sed, same trust boundary — the
 # declaration inside the installer is the one source of truth for what it owns.
 #
 # THE INSTALLER'S OWN FILE IS PART OF ITS PATHSPEC. A commit that changes only
-# floor-install.sh — new hook wiring, a different deny extension, a changed
+# admission-install.sh — new hook wiring, a different deny extension, a changed
 # install order — leaves every payload file identical and still means the box is
 # behind what installing today would produce.
 #
 # WHAT THIS DELIBERATELY DOES NOT COUNT, so the next reader does not mistake the
 # gap for an oversight: floor-install's CONDITIONAL payload (admission-integrity.sh
-# under --with-b6, admission-stop.sh under --with-stop) and floor-deny.sh, which it
+# under --with-b6, admission-stop.sh under --with-stop) and admission-deny.sh, which it
 # RUNS rather than lists. All three are named in the installer's prose, not in a
 # payload variable, and grepping prose is a heuristic this file will not carry.
-# floor-deny.sh and admission-integrity.sh are both in runtime-install's $FILES, so a
+# admission-deny.sh and admission-integrity.sh are both in runtime-install's $FILES, so a
 # commit to either still raises a `runtime` token; only the settings.json deny
 # entries floor-install regenerates are uncovered. Closing that properly means
 # floor-install declaring those three the way it declares $GUARDS, which is a
@@ -117,8 +118,8 @@ STAMP="$TGT/.helm-install-stamp"
 # not be made — the rule the absent-checkout arm below already follows, and the
 # distinction renew-check-test.sh case 4 exists to hold.
 _payload_pathspec() { # <installer-basename> — prints one `bin/<file>` per line
-  # the stamp key is the installer's pre-#961 name; W3 moved runtime-install.sh (harbor#961)
-  case "$1" in runtime-install) _pi="$REPO/bin/deploy-runtime-install.sh" ;; *) _pi="$REPO/bin/$1.sh" ;; esac
+  # the stamp key is the installer's pre-#961 name; W3 moved runtime-install.sh (harbor#961), W7 floor-install.sh (harbor#949)
+  case "$1" in runtime-install) _pi="$REPO/bin/deploy-runtime-install.sh" ;; floor-install) _pi="$REPO/bin/admission-install.sh" ;; *) _pi="$REPO/bin/$1.sh" ;; esac
   [ -f "$_pi" ] || return 1
   _pl="$(sed -n -e 's/^GUARDS=.\(.*\).$/\1/p' \
                 -e 's/^RECOVERY=.\(.*\).$/\1/p' \
@@ -144,7 +145,7 @@ _payload_pathspec() { # <installer-basename> — prints one `bin/<file>` per lin
 _repo_ok=0
 command -v git >/dev/null 2>&1 && git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1 && _repo_ok=1
 if [ "$_repo_ok" = 1 ]; then
-  # RUNTIME FIRST, AND THE ORDER IS THE FIX, NOT A PREFERENCE. floor-install.sh is
+  # RUNTIME FIRST, AND THE ORDER IS THE FIX, NOT A PREFERENCE. admission-install.sh is
   # the PIN WRITER (:223, over its payload plus deploy-restore.sh/baseline-pin.sh/
   # deploy-harden.sh), and deploy-runtime-install.sh REPLACES four of the files it pins. So
   # whichever runs last decides whether the pins match the bytes on disk.

@@ -101,7 +101,7 @@ P2="$T/p285"; mkdir -p "$P2/.helm-pins"; printf '{}\n' > "$P2/settings.json"
 printf 'stale\n' > "$P2/.helm-pins/library-admission.sh.sha256"
 _o285="$(ri --apply --dir "$P2" 2>&1)"
 t_hasnt "a pin in floor-install's payload claims no lockout" "$_o285" 'will be BLOCKED'
-t_has "...and names floor-install as the remedy" "$_o285" "floor-install re-pins them: sh $SRCB/floor-install.sh"
+t_has "...and names floor-install as the remedy" "$_o285" "floor-install re-pins them: sh $SRCB/admission-install.sh"
 printf 'stale\n' > "$P2/.helm-pins/library-admission.sh.sha256"
 _o285d="$(env -u CLAUDE_CONFIG_DIR HARBOR_DEPLOY_ACTIVE=1 sh "$TOOL" --apply --dir "$P2" 2>&1)"
 t_hasnt "under deploy it does not: floor-install re-pins a step later" "$_o285d" 'B6 CONTENT PINS ARE NOW STALE'
@@ -111,12 +111,12 @@ printf 'stale\n' > "$P3/.helm-pins/alert-probe.sh.sha256"
 t_has "a pin floor-install does NOT carry keeps the banner" "$(ri --apply --dir "$P3" 2>&1)" 'B6 CONTENT PINS ARE NOW STALE — the next SessionStart will be BLOCKED'
 printf 'stale\n' > "$P3/.helm-pins/alert-probe.sh.sha256"
 t_has "...under deploy too: nothing later re-pins it" "$(env -u CLAUDE_CONFIG_DIR HARBOR_DEPLOY_ACTIVE=1 sh "$TOOL" --apply --dir "$P3" 2>&1)" 'will be BLOCKED: this install replaced content-pinned file(s): alert-probe.sh'
-# The covered set is read from floor-install.sh: empty its GUARDS and library-admission.sh is banner-worthy again.
+# The covered set is read from admission-install.sh: empty its GUARDS and library-admission.sh is banner-worthy again.
 CG="$T/cg"; mkdir -p "$CG/bin" "$CG/tests/deploy/restore" "$CG/tests/lib" "$CG/contracts"
 # the whole payload (merge-stack's .py too, harbor#1060; DATA via copy_data), or the copy is a refused half install
 cp "$T_ROOT"/bin/*.sh "$T_ROOT"/bin/*.awk "$T_ROOT"/bin/*.py "$CG/bin/"; cp "$T_ROOT/tests/deploy/restore/recover.test.sh" "$CG/tests/deploy/restore/"
 cp "$T_ROOT/tests/lib/core.sh" "$CG/tests/lib/"; copy_data "$CG"; copy_hooks "$CG"
-sed "s/^GUARDS='.*'\$/GUARDS=''/" "$T_ROOT/bin/floor-install.sh" > "$CG/bin/floor-install.sh"
+sed "s/^GUARDS='.*'\$/GUARDS=''/" "$T_ROOT/bin/admission-install.sh" > "$CG/bin/admission-install.sh"
 P4="$T/p285c"; mkdir -p "$P4/.helm-pins"; printf '{}\n' > "$P4/settings.json"; printf 'stale\n' > "$P4/.helm-pins/library-admission.sh.sha256"
 t_has "mutation: floor-install with no GUARDS brings the banner back" "$(env -u CLAUDE_CONFIG_DIR sh "$CG/bin/deploy-runtime-install.sh" --apply --dir "$P4" 2>&1)" 'will be BLOCKED: this install replaced content-pinned file(s): library-admission.sh'
 

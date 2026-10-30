@@ -1078,7 +1078,7 @@ fi
 #
 # THE AGE IS NOT OPTIONAL. The crit that prompted this rested on ONE
 # wrapper-guard-missing record from 2026-08-20, and the remedy it prints
-# (re-run floor-install.sh) had already run on 2026-08-23 — so the verdict was
+# (re-run admission-install.sh) had already run on 2026-08-23 — so the verdict was
 # almost certainly true-but-spent, and nothing on the row could say so. An
 # undated verdict cannot be falsified, and CONSTITUTION §2.4 says a claim with no
 # falsifier is not a claim. Age comes from the file mtime, the same idiom the
