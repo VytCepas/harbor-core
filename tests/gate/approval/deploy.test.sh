@@ -16,7 +16,7 @@ EOF
 world() { ag_world; printf 'repo %s\napply sh bin/deploy.sh --apply --live --unattended\n' "$AG_R" > "$GF/contents/.agents/ship.conf"; runner; }
 
 t_section "main still at the clicked sha: the runner deploys it under a one-shot token; ledger and queue record it"
-world; ag_run gate-queue.sh add deploy "$AG_R" "$SHA_M" --reason "protected: bin/guard-bash.sh"
+world; ag_run gate-queue.sh add deploy "$AG_R" "$SHA_M" --reason "protected: bin/admission-bash.sh"
 ag_run gate-approve.sh deploy "$AG_R" "$SHA_M"
 t_eq "exit 0" 0 "$RC"
 t_eq "the runner, with the contract's exact argv, saw the token" "runner deploy $AG_R --sha $SHA_M --approved token=yes" "$(cat "$GF/runner.log")"

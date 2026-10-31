@@ -8,7 +8,7 @@
 #   sh bin/standard-rename.sh --import <mapping.tsv> [--wave W] [--old PATH]...   add a mapping's rename rows to renames.tsv
 #   sh bin/standard-rename.sh --pr-body [--report F] [--before R] [--after R] [--refs harbor#N]   the six-line PR body
 #   <rows>: --id <id> and --wave <W>, each repeatable · --root <dir> (default this checkout)
-#   --report <file> (default <root>/build/rename-report.tsv) · --before/--after: bin/suite-run.sh --results files
+#   --report <file> (default <root>/build/rename-report.tsv) · --before/--after: bin/test-suite-run.sh --results files
 #   exit 0 residual 0 · 1 residual left, or a row or the box half refused · 2 usage · 3 unchecked
 # platform: macOS-only — --live reads a ~/Library/LaunchAgents twin and its reload hint names `launchctl bootout/bootstrap`; Linux has no LaunchAgents, so no twin is found there (harbor#618).
 #
@@ -17,22 +17,22 @@
 # paths (research 12e §3), and the research/03 rename TSV is never read (12a §1).
 #
 # A TRUE REFERENCE, NOT A SUBSTRING. The token is the old basename when the file stays in its directory
-# and its name has an extension (`guard-bash.sh`), else the whole old path (`bin/harbor`). It counts only
+# and its name has an extension (`admission-bash.sh`), else the whole old path (`bin/harbor`). It counts only
 # when neither neighbour is [A-Za-z0-9_-], the rule harbor#961's mapping counted inbound_refs with. So
-# `bin/harbor` inside `bin/harbor-clean.sh` is left alone, though the graph (bin/graph-gen.sh) lists that
+# `bin/harbor` inside `bin/housekeeping-clean.sh` is left alone, though the graph (bin/doc-graph-generate.sh) lists that
 # line, because the graph keeps git grep -F's substring semantics; the report names every such site. A
 # basename another tracked path also carries falls back to the whole path. A whole path is never the
 # tail of another tracked path's name: right after that path's directory (`vendor/archify/` for
 # `bin/x.mjs`) it names the other file, so it is no reference and no ambiguity; after a bare `/`, `./` or
 # `$ROOT/` it still counts, which is how CODEOWNERS and shell code spell a root path. A whole path another
 # tracked path carries any other way (as its start, or after a non-slash) is still ambiguous and refuses
-# the row. A bare mention of such a path inside the other file's own directory (`PLAN.md` in skills/topology/EVALS, beside
-# EVALS/PLAN.md), or on a line that also names the other file by its longer path, means that file: it is left as written,
+# the row. A bare mention of such a path inside the other file's own directory (`docs/generated/plan.md` in skills/topology/EVALS, beside
+# EVALS/docs/generated/plan.md), or on a line that also names the other file by its longer path, means that file: it is left as written,
 # listed in the report as `relative` and warned, and is no residual. The graph indexes full paths only, so bare-name references
-# (floor-install.sh's `floor-hook.sh guard-bash.sh`) are found by this scan; the report counts them.
+# (floor-install.sh's `admission-hook.sh admission-bash.sh`) are found by this scan; the report counts them.
 #
 # A CASE-ONLY MOVE goes in two steps. A case-insensitive disk finds `contracts/README.md` where
-# `CONTRACTS/README.md` is, so "already exists" is judged by what the disk holds under that exact spelling
+# `contracts/README.md` is, so "already exists" is judged by what the disk holds under that exact spelling
 # and by whether it is the file moving; the move itself goes through a temporary name, and the disk's
 # directory is renamed to the index's spelling once nothing tracked is left under the old one.
 # A directory tracked in both spellings after a move is reported: it is one directory on such a disk.
@@ -41,7 +41,7 @@
 # relative symlink to the new file, tracked and named in the report. A link serves whatever reaches the old path (an exec, a
 # `source`, an interpreter, a read), which a forwarder that `exec`s would not. Every reference in the repo is still rewritten to
 # the new name; the shim is for what the repo cannot reach (a deployed hook, a PATH link, another checkout). Its exemptions.tsv
-# row stays while it lives. For a bin/*.sh, lint wants the old name in a CONTRACTS/cli.md table and in CONTRACTS/idle-tools.txt, so
+# row stays while it lives. For a bin/*.sh, lint wants the old name in a contracts/cli.md table and in contracts/idle-tools.txt, so
 # the shim carries one marked line in each (written and removed with it; a register the tree lacks is not invented).
 # Past the date, --plan and --residual list it and --apply deletes it; a date already past when the row first runs writes none.
 # A case-only move has no shim: it would be the file itself.
@@ -67,13 +67,13 @@
 # command, a deployed copy older than the rename. renames.tsv itself is the one place an old name stays.
 # The work log (memory-store) is a dated record: counted, never rewritten.
 #
-# PYTHON CORE, like graph-gen.sh, and for the same fit reason: overlapping byte-level regex with
+# PYTHON CORE, like doc-graph-generate.sh, and for the same fit reason: overlapping byte-level regex with
 # lookbehind over every tracked file, and JSON hook rewriting; POSIX tools have neither.
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 SRC="$(CDPATH= cd -- "$SRC" && pwd -P)"
-. "$SRC/log-lib.sh"
+. "$SRC/library-log.sh"
 LOG_FD=2; log_init standard-rename
 
 usage() { sed -n '2,13p' "$SRC/standard-rename.sh" | sed 's/^# \{0,1\}//'; }
@@ -126,7 +126,7 @@ fi
 BOX=""; IL_BK=""
 if [ -n "$BOXARGS" ]; then
   case "$MODE" in plan|apply|residual) ;; *) _usage_error "a target goes with --plan, --apply or --residual" ;; esac
-  . "$SRC/install-lib.sh"
+  . "$SRC/deploy-install-lib.sh"
   eval "il_parse $BOXARGS $([ "$APPLY" = 1 ] && printf -- --apply)"
   il_target
   BOX="$IL_TARGET"
@@ -152,7 +152,7 @@ FILE_SURFACES = ('bin', 'path')
 RX_ENV = re.compile(r'^[A-Z][A-Z0-9_]*$')
 RX_ID = re.compile(r'^rename-[0-9]{4}$')
 RX_DATE = re.compile(r'^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
-BOX_DIRS = ('bin', 'hooks', '.helm-pins', 'skills', 'commands', 'agents', 'inject.d', 'output-styles')
+BOX_DIRS = ('bin', 'hooks', '.helm-pins', 'skills', 'commands', 'agents', 'context-rules', 'inject.d', 'output-styles')
 REG = 'standards/naming/renames.tsv'
 EXEMPT = 'standards/naming/exemptions.tsv'
 RX_BLOCK = re.compile(rb'\b(BEGIN|END) (derived|generated)\b(?:[: ]+(?:by )?([A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+))?')
@@ -280,8 +280,8 @@ def case_collisions(paths, news):
 
 # ── shims: with remove_by set, the old path is a relative symlink to the new one until that date
 SHIM_MARK = 'forwarding shim (harbor#996 %s)'
-IDLE_REG = 'CONTRACTS/idle-tools.txt'
-CLI_REG = 'CONTRACTS/cli.md'
+IDLE_REG = 'contracts/idle-tools.txt'
+CLI_REG = 'contracts/cli.md'
 RX_BIN_TOOL = re.compile(r'^bin/[^/]+\.sh$')
 CLI_HEAD = '| Script | Why it is not a verb |'
 
@@ -311,7 +311,7 @@ def write_shim(root, r):
     return 'symlink'
 
 # What lint asks of a bin/*.sh that is a shim. Its content, shebang and --help are the new file's (it is a link to it), but
-# lint.cli-contract wants the NAME in a CONTRACTS/cli.md table and lint.tool-has-caller wants a caller or an idle line, and
+# lint.cli-contract wants the NAME in a contracts/cli.md table and lint.tool-has-caller wants a caller or an idle line, and
 # the codemod has just rewritten every caller. So a live shim carries one line in each, marked with its row id; both go
 # with the shim. A register the tree lacks is not invented.
 def lint_rows(r):
@@ -619,8 +619,8 @@ def lint_findings(a, surface, name):
     return [l for l in dec(r.stdout).splitlines() if l[:2] in ('A\t', 'V\t')]
 
 def graph(a):
-    """(edges, inputs) from bin/graph-gen.sh, built now over this root."""
-    r = subprocess.run(['sh', os.path.join(a['src'], 'graph-gen.sh'), '--root', a['root'], '--stdout'], capture_output=True)
+    """(edges, inputs) from bin/doc-graph-generate.sh, built now over this root."""
+    r = subprocess.run(['sh', os.path.join(a['src'], 'doc-graph-generate.sh'), '--root', a['root'], '--stdout'], capture_output=True)
     if r.returncode != 0:
         return None, {}
     edges, inputs = [], {}
@@ -739,14 +739,17 @@ def scan(a, ctx):
     rx, rep, root, files = ctx['rx'], ctx['rep'], a['root'], ctx['files']
     pend_old = {r['old'] for r in ctx['pending']}
     pend_ex, keep_ex, shims, tline = ctx['retire'], ctx['keep_ex'], ctx['shim_paths'], ctx['tline']
-    line_hit = ctx['line_hit']
-    out, ctx['claimed_sites'], ctx['shared_plan'] = [], [], []
+    line_hit, kept_line = ctx['line_hit'], ctx['kept_line']
+    out, ctx['claimed_sites'], ctx['shared_plan'], ctx['kept'] = [], [], [], []
     for p in sorted(files):
         mode = files[p]
         if p == REG or p in shims:
             continue
         if p not in pend_old and rx.search(enc(p)):
-            out.append(('repo', p, 'a tracked path carries an old name', False))
+            if kept_line(enc(p), p):
+                ctx['kept'].append((p, 0, enc(p)))
+            else:
+                out.append(('repo', p, 'a tracked path carries an old name', False))
         if mode == '160000':
             continue
         full = os.path.join(root, p)
@@ -755,7 +758,9 @@ def scan(a, ctx):
                 t = enc(os.readlink(full))
             except OSError:
                 continue
-            if rx.search(t):
+            if rx.search(t) and kept_line(t, p):
+                ctx['kept'].append((p, 0, t))
+            elif rx.search(t):
                 out.append(('repo', p, 'a symlink target names it: ' + short(t), False))
             continue
         data = readb(full)
@@ -775,7 +780,11 @@ def scan(a, ctx):
             out.append(('repo', p, 'a binary file holds it', False))
         else:
             for n, l in hits:
-                fix = not line_hit(tline(l, p, {}, [0]), p)
+                if kept_line(l, p):
+                    ctx['kept'].append((p, n, l))
+                    continue
+                after = tline(l, p, {}, [0])
+                fix = not line_hit(after, p) or (after != l and kept_line(after, p))
                 if fix:
                     ctx['shared_plan'] += [(p, n, t, l) for t in ctx['shared_toks'](l, p)]
                 out.append(('repo', '%s:%d' % (p, n), short(l) if fix else 'no rewrite decides this form: ' + short(l), fix))
@@ -940,7 +949,20 @@ def run(a):
             for l in data.split(b'\n'):
                 if erx.search(l):
                     tl0(l, p, cnt0, [0])
-        envpend = [r for r in erows if cnt0.get(enc(r['tok']), 0) > 0]
+        # APPLIED IS DERIVED, as for a file (old absent, new tracked): an env row whose new name a code file already
+        # carries was applied (a register or prose may name a new name before it exists, so they do not count), and an
+        # old-name mention left beside it is a deliberate input (a suite proving the window) or a stale one that
+        # --residual lists. A re-run rewrites none of them. A closed window still collapses.
+        newin = set()
+        nrx = bound([r['rep'] for r in erows])
+        for p in sorted(files):
+            if p in (REG, EXEMPT) or files[p] in ('120000', '160000') or p.lower().endswith(PROSE_EXT):
+                continue
+            data = readb(os.path.join(root, p))
+            if data is not None and not binary(data):
+                newin |= {dec(m.group(1)) for m in nrx.finditer(data)}
+        envpend = [r for r in erows if cnt0.get(enc(r['tok']), 0) > 0
+                   and (r['rep'] not in newin or (r['remove_by'] != '-' and not window(r)))]
     if mode == 'residual' and (pending or envpend):
         first = (pending + envpend)[0]
         log('FAIL', 'not applied yet: ' + ' '.join(r['id'] for r in pending + envpend), 'sh bin/standard-rename.sh --apply --id ' + first['id']); return 1
@@ -966,7 +988,7 @@ def run(a):
                 refused = True
     if refused:
         return 1
-    # The same name inside a regex (`guard-bash[.]sh`, `guard-bash\.sh`) is still that name: rewritten too.
+    # The same name inside a regex (`admission-bash[.]sh`, `admission-bash\.sh`) is still that name: rewritten too.
     spelled = []
     claimd = {r['tok']: r['claim'] for r in frows if r['claim']}
     owner = {r['tok']: r['id'] for r in frows}
@@ -982,14 +1004,25 @@ def run(a):
                     claimd[t.replace('.', esc)] = claimd[t]
     # Two regexes. `rxw` writes: the file tokens, plain. `rx` scans: those and the env names, with a window's own fallback
     # (`${NEW:-$OLD}`) shielded, since it is meant to stay.
-    rxw = bound([t for t, _ in spelled], shield) if spelled else None
-    repw = {enc(t): enc(x) for t, x in spelled}
+    # A RE-RUN ON AN APPLIED ROW WRITES NOTHING IN THE REPO. The repo half ran when the row moved its file; what still names
+    # the old path is a deliberate input (a test that feeds the old name) or a stale mention --residual lists. Rewriting it
+    # again turned 21 files of deliberate W3 inputs into new names when the box half was run on main (harbor#961). So the
+    # write takes only the tokens of rows this run applies; the scan and the box still read every selected row's.
+    pend_ids = {r['id'] for r in pending}
+    envact = {enc(r['tok']) for r in envpend}
+    active = {enc(t) for t, _x in spelled if owner.get(t) in pend_ids} | envact
+    wsp = [(t, x) for t, x in spelled if enc(t) in active]
+    rxw = bound([t for t, _ in wsp], {t: v for t, v in shield.items() if enc(t) in active}) if wsp else None
+    repw = {enc(t): enc(x) for t, x in wsp}
+    ER_W = {o: v for o, v in ER.items() if o in envact}
+    erx_w = bound([dec(o) for o in ER_W]) if ER_W else None
+    CO_W = {o: n for o, n in CO.items() if o in envact}
     sh_all = dict(shield)
     for o, (n, how) in ER.items():
         if how == 'window':
             sh_all[dec(o)] = ['${%s:-${' % dec(n), '${%s:-$' % dec(n), 'unset %s ' % dec(n), 'unset -v %s ' % dec(n), '%s= ' % dec(n)]
     rx = bound([t for t, _ in spelled] + [dec(o) for o in ER], sh_all)
-    rep = dict(repw)
+    rep = {enc(t): enc(x) for t, x in spelled}
     rep.update({o: n for o, (n, _how) in ER.items()})
     # A bare mention of a path inside a directory that holds a file of that path, or on a line that also names such a file by
     # its longer path, means that file: left as written and listed, since only a person can tell. The codemod's own register
@@ -1022,7 +1055,13 @@ def run(a):
     def shared_toks(l, p):
         """The tokens on a line that the rewrite takes and another tracked file also ends with."""
         return [m.group(1) for m in rx.finditer(l) if m.group(1) in cdirs and not claimed(m.group(1), p, l)]
-    tline = make_tline(rxw, repw, ER, erx, CO, claimed, marks)
+    tline = make_tline(rxw, repw, ER_W, erx_w, CO_W, claimed, marks)
+    def kept_line(l, p):
+        """Does every unclaimed reference on the line belong to a row already applied? Then no run but --residual judges it."""
+        if mode == 'residual':
+            return False
+        ts = [m.group(1) for m in rx.finditer(l) if not claimed(m.group(1), p, l)]
+        return bool(ts) and not any(t in active for t in ts)
     # What keeps the old name's exemption row: a shim still due, a window still open. What retires it: the subject is gone.
     shims_now = {r['old'] for r in shimmed}
     keep_ex = shims_now | {r['old'] for r in pending if window(r)} | {r['old'] for r in erows if ER[enc(r['tok'])][1] == 'window'}
@@ -1030,7 +1069,7 @@ def run(a):
               | {r['old'] for r in envpend if ER[enc(r['tok'])][1] != 'window'})
     edges, inputs = graph(a)
     ctx = dict(rx=rx, rep=rep, files=files, pending=pending, siblings=[], records=None, retire=retire, keep_ex=keep_ex, shim_paths=set(shims_now), tline=tline,
-               line_hit=line_hit, shared_toks=shared_toks, shared_done=[], shim_rows=shim_rows, shim_new={r['old']: r['new'] for r in shim_rows}, shim_until={r['old']: r['remove_by'] for r in shim_rows})
+               line_hit=line_hit, kept_line=kept_line, kept=[], shared_toks=shared_toks, shared_done=[], shim_rows=shim_rows, shim_new={r['old']: r['new'] for r in shim_rows}, shim_until={r['old']: r['remove_by'] for r in shim_rows})
     for label in ('fleet', 'yard'):
         w, st = inputs.get(label, ('-', 'absent'))
         if st != 'absent':
@@ -1044,7 +1083,7 @@ def run(a):
         rpt.append(('row', r['id'], r['old'], r['new'], r['surface'], r['wave'], r['tok'], r['rep'], state))
     # The graph's view of each pending path, before it moves: every site is a reference or a substring.
     if edges is None:
-        log('WARN', 'bin/graph-gen.sh did not build, so the graph cross-check was skipped', 'sh bin/graph-gen.sh --stdout, and read the error')
+        log('WARN', 'bin/doc-graph-generate.sh did not build, so the graph cross-check was skipped', 'sh bin/doc-graph-generate.sh --stdout, and read the error')
     else:
         for r in pending:
             node = 'harbor:' + r['old']
@@ -1138,7 +1177,7 @@ def run(a):
                 new = b'\n'.join(now)
                 if new != data:
                     ctx['shared_done'] += [(p, k, t, a_) for k, (a_, b_) in enumerate(zip(was, now), 1) if a_ != b_ for t in shared_toks(a_, p)]
-                ctx.setdefault('hit_lines', {})[p] = (data, {ln for ln, l_ in enumerate(data.split(b'\n'), 1) if line_hit(l_, p)})
+                ctx.setdefault('hit_lines', {})[p] = (data, {ln for ln, (a_, b_) in enumerate(zip(was, now), 1) if a_ != b_ or (line_hit(a_, p) and not kept_line(a_, p))})
                 if new == data:
                     continue
                 write_keep_mode(full, new)
@@ -1228,7 +1267,7 @@ def run(a):
                         rpt.append(('box', 'removed', rel, '1'))
                         log('ok', 'removed the old deployed copy %s (backed up)' % rel)
         res = scan(a, ctx) + (late if mode == 'residual' else [])
-    # A NAME NO TEXT REACHES. Measured on the sandbox rename of bin/guard-bash.sh (residual 0, floor-verify
+    # A NAME NO TEXT REACHES. Measured on the sandbox rename of bin/admission-bash.sh (residual 0, floor-verify
     # green): seven suites went red, every one on a site that names the file through its family rather
     # than its name: `bin/guard-$g.sh` built at run time, the glob `bin/guard-*.sh`, the guard's own
     # self-protection regex `(guard|floor)-[a-z-]*\.(sh|awk)`. No rewrite can decide those, and no residual
@@ -1303,7 +1342,7 @@ def run(a):
                 log('WARN', '%s is generated by %s and was rewritten as text' % (t[2], g), 'sh %s --apply' % g)
     # A generated BLOCK inside a kept file (`# BEGIN derived: bin/x.sh --write` … `# END derived`) is invisible to
     # the graph, which reads a file's first 10 lines: a rewrite inside one left it stale with no word (harbor#996,
-    # the sandbox rename of bin/guard-destroy.sh: .agents/protected-paths.tsv, classify.test.sh red, residual 0).
+    # the sandbox rename of bin/admission-destroy.sh: .agents/protected-paths.tsv, classify.test.sh red, residual 0).
     if mode == 'apply':
         said = {(t[1], t[2]) for t in rpt if t[0] == 'regenerate'}
         for p, (data, hit) in sorted(ctx.get('hit_lines', {}).items()):
@@ -1320,6 +1359,12 @@ def run(a):
                         log('WARN', '%s holds a block generated by %s (line %d) and a rewrite landed inside it' % (p, gen, start),
                             'sh %s --write, or the generator\'s own write flag' % gen)
                     gen = None
+    if ctx.get('kept'):
+        ks = ctx['kept']
+        for p, n, l in ks:
+            rpt.append(('applied-kept', '%s:%d' % (p, n) if n else p, short(l)))
+        log('note', '%d line(s) in %d file(s) name an old path of a row applied before this run (first %s): the repo half ran then, so this run leaves them; --residual judges them'
+            % (len(ks), len({p for p, _n, _l in ks}), '%s:%d' % (ks[0][0], ks[0][1]) if ks[0][1] else ks[0][0]))
     kept = kept_records(a, ctx)
     if kept:
         rpt.append(('kept', 'records', str(kept)))
@@ -1461,7 +1506,7 @@ def prbody(a):
     if b is not None and f is not None:
         newly = sorted(s for s, v in f.items() if v == 'fail' and b.get(s) != 'fail')
         cnt = lambda t: '%d/%d' % (sum(1 for v in t.values() if v == 'pass'), len(t))
-        tested = 'suite ledger before %s pass, after %s pass (`bin/suite-run.sh --results`); residual %d.' % (cnt(b), cnt(f), len(res))
+        tested = 'suite ledger before %s pass, after %s pass (`bin/test-suite-run.sh --results`); residual %d.' % (cnt(b), cnt(f), len(res))
     else:
         newly = None
         tested = 'no suite ledger was given, so the suites are UNTESTED here; residual %d.' % len(res)

@@ -1,19 +1,19 @@
 #!/usr/bin/env sh
 # lint-constitution.sh (harbor#1273) - the constitution states rules, never their cases: no ISO date, ticket, absolute
-# home path or workload repo name outside a code fence. The cases are law, in DOCTRINE/case-law.md or a workload's pack.
+# home path or workload repo name outside a code fence. The cases are law, in docs/explanation/case-law.md or a workload's pack.
 #
-#   sh lint-constitution.sh [--check]   red on any specific in CONSTITUTION.md, one FAIL per hit with its line
+#   sh lint-constitution.sh [--check]   red on any specific in policy/constitution.md, one FAIL per hit with its line
 #   sh lint-constitution.sh --help
 #
-# Workload names come from the private layer's project registry ($HARBOR_SCOPE_PRIVATE/inject.d/box/projects.tsv), so
+# Workload names come from the private layer's project registry ($HARBOR_SCOPE_PRIVATE/context-rules/user/projects.tsv, or the old inject.d/box/), so
 # core never lists them; Harbor's own repos (OWN) are not workloads. With no registry, as in public CI, names are not
-# judged and the run says so. The `**Path root:**` line is exempt: bin/reference-check.sh reads the root from it.
-# Env: HARBOR_ROOT, HARBOR_SCOPE_PRIVATE, CONSTITUTION_FILE (default CONSTITUTION.md). Exit 0 clean, 1 a hit, 2 usage.
+# judged and the run says so. The `**Path root:**` line is exempt: bin/drift-reference-check.sh reads the root from it.
+# Env: HARBOR_SCOPE_ROOT, HARBOR_SCOPE_PRIVATE, CONSTITUTION_FILE (default policy/constitution.md). Exit 0 clean, 1 a hit, 2 usage.
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
-. "$SRC/log-lib.sh"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
+. "$SRC/library-log.sh"
 log_init lint-constitution
 LOG_FD=2
 
@@ -23,12 +23,13 @@ case "${1:---check}" in
   *) echo "lint-constitution: unknown argument '$1'" >&2; exit 2 ;;
 esac
 
-DOC="${CONSTITUTION_FILE:-$ROOT/CONSTITUTION.md}"
+DOC="${CONSTITUTION_FILE:-$ROOT/policy/constitution.md}"
 PRIV="${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}"
-REG="$PRIV/inject.d/box/projects.tsv"
-# Harbor's own repos: the control plane, Yard and Fleet (README's layer table). Never workloads.
-OWN=' harbor project-init projects-orchestrator '
-FIX="move the case to DOCTRINE/case-law.md (a workload's case to its pack) and point to it by section"
+REG="$PRIV/context-rules/user/projects.tsv"; [ -f "$REG" ] || REG="$PRIV/inject.d/box/projects.tsv"  # harbor#1010
+# The platform's own repos (control plane, yard, fleet): never workloads. Their ids come from the registry (harbor#966).
+_pids="$(env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$SRC/scope-roots.sh" --platform-ids)" || { log_fail "scope-roots.sh --platform-ids failed"; log_nofix "bin/scope-roots.sh"; log_end || :; exit 2; }
+OWN=" $(printf '%s' "$_pids" | tr '\n' ' ') "
+FIX="move the case to docs/explanation/case-law.md (a workload's case to its pack) and point to it by section"
 
 [ -f "$DOC" ] || { log_fail "no ${DOC#$ROOT/}"; log_fix "run from a harbor checkout, or set CONSTITUTION_FILE"; log_end || :; exit 1; }
 T="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -rf "$T"' EXIT

@@ -14,7 +14,7 @@
 #   `harbor find` and `harbor tree` are --find and --tree.
 #
 # COLUMNS of catalog.tsv, no header so `wc -l` is the row count: id path system domain subsystem family kind layer lifecycle owner purpose
-#   id         <system>:<path>, the graph's node name (graph-gen.sh)
+#   id         <system>:<path>, the graph's node name (doc-graph-generate.sh)
 #   system     --system; domain is the term the system's codename is an alias of (aliases.tsv)
 #   subsystem  the first non-family ancestor of the family in terms.tsv (the `broader` chain)
 #   family     a kind that has one owner (standard, policy, eval, injection rule), the directory (tests/<family>, skills/<name>),
@@ -26,7 +26,7 @@
 # A level column the registry cannot fill is `-`, and build/catalog-findings.tsv has a row naming the path, the columns and why.
 # The census is a file census: rows equal `git ls-files`. Controls (lint rules, checks) are read from controls.tsv by --find and --tree.
 #
-# DELIBERATELY ONE FILE (DOCTRINE/modularity.md): the census, the three views and the map share one reading of the registry
+# DELIBERATELY ONE FILE (docs/explanation/modularity.md): the census, the three views and the map share one reading of the registry
 # (families, the subsystem walk, kinds); split, each would carry a copy of it, and a copy is what drifts. POSIX sh and awk, so it
 # runs where the lint runs (no python3).
 set -eu
@@ -34,7 +34,7 @@ LC_ALL=C; export LC_ALL
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 SRC="$(CDPATH= cd -- "$SRC" && pwd -P)"
-. "$SRC/log-lib.sh"
+. "$SRC/library-log.sh"
 LOG_FD=2; log_init standard-catalog
 
 usage() { sed -n '2,13p' "$SRC/standard-catalog.sh" | sed 's/^# \{0,1\}//'; }
@@ -274,7 +274,7 @@ _files() {
 _census() {
   _files
   : > "$2"
-  _sp="$ROOT/CONTRACTS/suite-paths.txt"; [ -f "$_sp" ] || _sp="$ROOT/contracts/suite-paths.txt"
+  _sp="$ROOT/contracts/suite-paths.txt"; [ -f "$_sp" ] || _sp="$ROOT/contracts/suite-paths.txt"
   awk -f "$TMP/lib.awk" -f "$TMP/census.awk" -v ROOT="$ROOT" -v SYSTEM="$SYSTEM" -v FINDINGS="$2" \
     F=terms "$REG/terms.tsv" F=kinds "$REG/kinds.tsv" F=controls "$REG/controls.tsv" \
     F=renames "$(_opt "$REG/renames.tsv")" F=aliases "$REG/aliases.tsv" \
@@ -586,12 +586,12 @@ _view() { # <mode> -> stdout; needs $TMP/catalog.tsv
     F=findings "$TMP/findings.tsv" F=cat "$TMP/catalog.tsv"
 }
 
-# The top-level layout map (harbor#1272): CONTRACTS/layout-map.tsv joined with layers.tsv, so ship is read, never stored.
+# The top-level layout map (harbor#1272): contracts/layout-map.tsv joined with layers.tsv, so ship is read, never stored.
 _layout() {
-  [ -f "$ROOT/CONTRACTS/layout-map.tsv" ] || return 0
-  printf '\n## Top-level layout\n\nEvery tracked top-level entry, its kind and layer from `CONTRACTS/layout-map.tsv`; Ships is read from `CONTRACTS/layers.tsv` (core ships in harbor-core, dev is box or dev data). `bin/lint-layout-map.sh` is red on an entry with no row.\n\n'
+  [ -f "$ROOT/contracts/layout-map.tsv" ] || return 0
+  printf '\n## Top-level layout\n\nEvery tracked top-level entry, its kind and layer from `contracts/layout-map.tsv`; Ships is read from `contracts/layers.tsv` (core ships in harbor-core, dev is box or dev data). `bin/lint-layout-map.sh` is red on an entry with no row.\n\n'
   printf '| Entry | Kind | Layer | Ships |\n|---|---|---|---|\n'
-  HARBOR_ROOT="$ROOT" sh "$ROOT/bin/lint-layout-map.sh" --list | awk -F'\t' '{ printf "| `%s` | %s | %s | %s |\n", $1, $2, $3, ($4 == "core" ? "core" : "dev") }'
+  HARBOR_SCOPE_ROOT="$ROOT" sh "$ROOT/bin/lint-layout-map.sh" --list | awk -F'\t' '{ printf "| `%s` | %s | %s | %s |\n", $1, $2, $3, ($4 == "core" ? "core" : "dev") }'
 }
 
 _build() { _census "$TMP/catalog.tsv" "$TMP/findings.tsv"; }

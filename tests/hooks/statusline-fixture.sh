@@ -13,8 +13,8 @@ ESC="$(printf '\033')"
 plain() { sed "s/${ESC}\\[[0-9]*m//g"; }
 WS='"workspace":{"current_dir":"'"$TMP"'/notrepo"}'
 NOW=1785600000
-run() { printf '%s' "$1" | CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$CFG/cache" "$SH" "$SRC/fleet-glyph.sh" 2>/dev/null; }
-runat() { printf '%s' "$1" | CLAUDE_CONFIG_DIR="$CFG" HARBOR_CACHE_DIR="$CFG/cache" HARBOR_NOW="$NOW" "$SH" "$SRC/fleet-glyph.sh" 2>/dev/null; }
+run() { printf '%s' "$1" | CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null; }
+runat() { printf '%s' "$1" | CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" HARBOR_TEST_NOW="$NOW" "$SH" "$SRC/status-fleet-glyph.sh" 2>/dev/null; }
 row1() { run "$1" | plain | head -1; }
 row2() { run "{$WS}" | plain | sed -n 2p; }
 sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }

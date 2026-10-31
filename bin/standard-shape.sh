@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # standard-shape.sh (harbor#996 G2) — the shape validator: every instance of a kind carries the relations kinds.tsv requires.
 #
-#   sh bin/standard-shape.sh                     judge build/graph.tsv (it must be current: graph-gen.sh --check)
+#   sh bin/standard-shape.sh                     judge build/graph.tsv (it must be current: doc-graph-generate.sh --check)
 #   sh bin/standard-shape.sh --graph <file>      judge that graph; the caller vouches it is current
 #   sh bin/standard-shape.sh --self-test         every fixture yields exactly its expected findings, and every relation went red
 #   sh bin/standard-shape.sh --list              the rule's id, mode and title, read from standards/naming/controls.tsv
@@ -23,17 +23,17 @@
 # instance of the kind, the number of DISTINCT nodes it reaches over graph edges of that relation must fall in
 # [min, max]. The instances are the catalog's (each tracked file by its kind, each controls.tsv row by its type), so
 # no shape states its own scope. One rule, standard.shape; a finding names the instance and the relation.
-# A RELATION THE GRAPH DOES NOT DERIVE IS UNCHECKED, NEVER RED: graph-gen.sh writes a `# relation` row for each relation
+# A RELATION THE GRAPH DOES NOT DERIVE IS UNCHECKED, NEVER RED: doc-graph-generate.sh writes a `# relation` row for each relation
 # it derives, and a shape over any other relation is one note, not a finding per instance: "could not look" is not "absent".
 #
-# DELIBERATELY ONE FILE (DOCTRINE/modularity.md): one POSIX sh + awk program, as bin/lint-module.sh is. awk joins three
+# DELIBERATELY ONE FILE (docs/explanation/modularity.md): one POSIX sh + awk program, as bin/lint-module.sh is. awk joins three
 # tables and counts; no python3 is needed to judge, only to build the graph.
 set -eu
 
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 SELF="$HERE/$(basename -- "$0")"
 LOG_FD=2   # stdout carries --format findings and --list; the log goes to stderr
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 log_init standard-shape
 
 usage() { awk 'NR < 2 { next } /^# DELIBERATELY/ || !/^#/ { exit } { sub(/^# ?/, ""); print }' "$SELF"; }
@@ -216,18 +216,18 @@ fi
 [ -f "$KINDS" ] || unchecked "no kinds.tsv at $KINDS, so no shape is known" "ls $REG"
 if [ "$EXPLICIT" = 0 ]; then
   GRAPH="$ROOT/build/graph.tsv"
-  [ -f "$GRAPH" ] || unchecked "build/graph.tsv is missing, so nothing was judged" "sh bin/graph-gen.sh"
-  # Stale is unchecked, not green: graph-gen.sh --check rebuilds in memory and compares (exit 3 without python3).
-  _grc=0; sh "$HERE/graph-gen.sh" --check --root "$ROOT" --out "$GRAPH" > /dev/null 2>&1 || _grc=$?
+  [ -f "$GRAPH" ] || unchecked "build/graph.tsv is missing, so nothing was judged" "sh bin/doc-graph-generate.sh"
+  # Stale is unchecked, not green: doc-graph-generate.sh --check rebuilds in memory and compares (exit 3 without python3).
+  _grc=0; sh "$HERE/doc-graph-generate.sh" --check --root "$ROOT" --out "$GRAPH" > /dev/null 2>&1 || _grc=$?
   case "$_grc" in
     0) ;;
-    3) unchecked "python3 is absent, so the graph cannot be shown current" "$(pkg_hint python3), then sh bin/graph-gen.sh" ;;
-    *) unchecked "build/graph.tsv is stale (graph-gen.sh --check exited $_grc), so nothing was judged" "sh bin/graph-gen.sh" ;;
+    3) unchecked "python3 is absent, so the graph cannot be shown current" "$(pkg_hint python3), then sh bin/doc-graph-generate.sh" ;;
+    *) unchecked "build/graph.tsv is stale (doc-graph-generate.sh --check exited $_grc), so nothing was judged" "sh bin/doc-graph-generate.sh" ;;
   esac
 fi
-[ -f "$GRAPH" ] || unchecked "the graph $GRAPH does not exist, so nothing was judged" "sh bin/graph-gen.sh"
-head -1 "$GRAPH" | grep -q '^# graph\.tsv ' || unchecked "$GRAPH is not a graph.tsv, so nothing was judged" "sh bin/graph-gen.sh"
-grep -q '^edge	from	to	site$' "$GRAPH" || unchecked "$GRAPH has no edge header, so nothing was judged" "sh bin/graph-gen.sh"
+[ -f "$GRAPH" ] || unchecked "the graph $GRAPH does not exist, so nothing was judged" "sh bin/doc-graph-generate.sh"
+head -1 "$GRAPH" | grep -q '^# graph\.tsv ' || unchecked "$GRAPH is not a graph.tsv, so nothing was judged" "sh bin/doc-graph-generate.sh"
+grep -q '^edge	from	to	site$' "$GRAPH" || unchecked "$GRAPH has no edge header, so nothing was judged" "sh bin/doc-graph-generate.sh"
 if [ -z "$TARGETS" ]; then
   TARGETS="$T/targets.tsv"
   sh "$HERE/standard-catalog.sh" --targets --root "$ROOT" > "$TARGETS" 2> "$T/cat.err" \

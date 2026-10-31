@@ -15,11 +15,11 @@
 #                                        `governance 2` in the config, harbor-linux-2, made as harbor-linux is (image, events mount,
 #                                        hooks, restart policy, memory, --cpus linux_min), registered on the governance repo
 #   sh ci-runners.sh switch [--apply]    set CI_RUNS_ON=self-hosted on every repo (or org) with a local runner when its
-#                                        owner's runner-switch.sh verdict says the minutes are short, unset it when not
+#                                        owner's ci-runner-switch.sh verdict says the minutes are short, unset it when not
 #   sh ci-runners.sh rerun-refused [--apply]   re-run, once, each run of the last 48h GitHub refused for billing
 #   sh ci-runners.sh rerun-lost [--apply]      re-run, once, a job of the last 48h that no runner took (harbor#675) or whose runner dropped
 #                                        mid-job: a step with no conclusion, or the runner's own lost-connection text (harbor#1060)
-#   sh ci-runners.sh tick                switch + rerun-refused + rerun-lost applied, and the drift report; run by fleet-snapshot-refresh.sh
+#   sh ci-runners.sh tick                switch + rerun-refused + rerun-lost applied, and the drift report; run by status-fleet-snapshot-refresh.sh
 #   sh ci-runners.sh unwedge <container> [--apply]   a container the alarm confirmed WEDGED (busy on a dead job): prints the job's
 #                                        step processes (every descendant of Runner.Worker); --apply sends them TERM, then KILL to any
 #                                        left after 10s (HARBOR_CI_UNWEDGE_GRACE), so the runner fails the job and takes the next. Never
@@ -27,7 +27,7 @@
 #                                        confirms it wedged and the job running now is that job; one checks.log line
 #   (up --apply and tick also install bin/ci-governor-hook.sh into the events mount every container runs it from)
 #
-# THE FLEET is the projects-orchestrator snapshot (fleet.yaml's roots and projects, read through cache/fleet-snapshot.json).
+# THE FLEET is the fleet snapshot (fleet.yaml's roots and projects, read through cache/fleet-snapshot.json).
 # A repo wants a runner when its workflows read vars.CI_RUNS_ON, unless its .agents/config.yaml says `ci_runner: hosted`
 # or its origin names no GitHub repo (never pushed: nothing to register a runner to); a repo under another owner is listed as `foreign` and left alone (personal-account runners are per repo).
 # CONFIG is $CLAUDE_CONFIG_DIR/.harbor-ci-runners: `image NAME` (else HARBOR_CI_IMAGE, else port-linux-runner:local),
@@ -60,20 +60,20 @@
 # (no mode field); `~` in the container path is the runner's HOME. A host path outside /Users/ or that does not exist is
 # refused (Colima shares only /Users into its VM: it would mount empty). list reports an adopted container's drift.
 # PER OWNER: the personal repos follow cache/runner-switch.json, an org follows cache/runner-switch.<ORG>.json
-# (runner-switch.sh --org ORG, the org's minutes cap); each verdict is read, and trusted or not, on its own.
+# (ci-runner-switch.sh --org ORG, the org's minutes cap); each verdict is read, and trusted or not, on its own.
 # A container that exists is ADOPTED: up never recreates, stops or removes one, and never touches one running a job
 # beyond raising its memory live (the LIMITS rule above).
 # THE TOKEN goes GitHub -> a 0600 file -> docker --env-file -> deleted: never an argv, a URL, a log line or the screen.
-# NOTHING HERE READS OR WRITES BILLING: the minutes rule is runner-switch.sh's, read from its cache.
-# `lost-rerun off` in CONF turns rerun-lost off (tick then skips it). Its lines are `[check:ci-lost-rerun]`, each naming the reason.
-# Findings: one `[check:ci-runners]` line in cache/checks.log per CHANGE (and per change of drift), cache/ci-runners.json.
-# POSIX sh, jq, gh, docker (HARBOR_GH and HARBOR_DOCKER swap in fakes).
-# SPLIT (harbor#1060, DOCTRINE/modularity; `module-shape.sh --seam` called it earned): this file is the entry point, the
+# NOTHING HERE READS OR WRITES BILLING: the minutes rule is ci-runner-switch.sh's, read from its cache.
+# `lost-rerun off` in CONF turns rerun-lost off (tick then skips it). Its lines are `[check:ci.lost-rerun]`, each naming the reason.
+# Findings: one `[check:ci.runners]` line in cache/checks.log per CHANGE (and per change of drift), cache/ci-runners.json.
+# POSIX sh, jq, gh, docker (HARBOR_TEST_GH and HARBOR_DOCKER swap in fakes).
+# SPLIT (harbor#1060, docs/explanation/modularity; `lint-module-shape.sh --seam` called it earned): this file is the entry point, the
 # flags and the config; each verb group is a sourced lib beside it: ci-runners-fleet-lib.sh (the desired and actual
 # sets, `list`, mounts), -provision-lib.sh (`up`, `refresh`, `down`, the governance runners, the hook sync),
 # -github-lib.sh (`switch`, `rerun-refused`, `rerun-lost`), -watch-lib.sh (the alarm, the drift cache, `tick`).
 set -eu
-. "$(dirname -- "$0")/log-lib.sh"
+. "$(dirname -- "$0")/library-log.sh"
 LOG_FD=2; log_init ci-runners
 
 case "${1:-}" in
@@ -103,19 +103,21 @@ esac
 [ "$INCGOV" = 0 ] || [ "$CMD" = refresh ] || [ "$CMD" = up ] || { log_fail "--include-governance belongs to refresh and up only"; log_fix "sh $0 refresh --apply --include-governance"; exit 2; }
 
 OWNER="${HARBOR_CI_OWNER:-VytCepas}"
-GH="${HARBOR_GH:-gh}"
+GH="${HARBOR_TEST_GH:-${HARBOR_GH:-gh}}"
 DOCKER="${HARBOR_DOCKER:-docker}"
-GOV_REPO="${HARBOR_SWITCH_REPO:-$OWNER/harbor}"   # the repo harbor's own checks run on (the governance runners)
+GOV_REPO="${HARBOR_CI_SWITCH_REPO:-${HARBOR_SWITCH_REPO:-$OWNER/harbor}}"   # the repo harbor's own checks run on (the governance runners)
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 CONF="$CFG/.harbor-ci-runners"
-CACHE_DIR="${HARBOR_CACHE_DIR:-$HOME/.claude/cache}"
+CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
 LOG="$CACHE_DIR/checks.log"
 SNAP="${HARBOR_FLEET_SNAPSHOT:-$CACHE_DIR/fleet-snapshot.json}"
-FLEET="${HARBOR_FLEET_FILE:-${PORT_ROOT:-$HOME/port}/projects-orchestrator/fleet.yaml}"
-ORCH="${HARBOR_ORCH_BIN:-$HOME/.local/bin/projects-orchestrator}"
+# the fleet file through the registry-aware reader beside this script (harbor#966)
+FLEET="${HARBOR_SCOPE_FLEET_FILE:-${HARBOR_FLEET_FILE:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_FLEET_FILE 2>/dev/null || :)}}"
+# the fleet CLI, a roots.tsv row read through the same reader (harbor#966)
+ORCH="${HARBOR_SCOPE_FLEET_CONTROLLER_BIN:-${HARBOR_ORCH_BIN:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER_BIN 2>/dev/null || :)}}"
 EVENTS="${HARBOR_CI_EVENTS_DIR:-$HOME/runners/harbor-linux/events}"
 LABELS="${HARBOR_CI_LABELS:-self-hosted,Linux,ARM64}"
-NOW="${HARBOR_NOW:-$(date +%s)}"
+NOW="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
 case "$NOW" in ''|*[!0-9]*) NOW="$(date +%s)" ;; esac
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required"; log_fix "$(pkg_hint jq)"; exit 2; }
 
@@ -146,7 +148,7 @@ T="$(mktemp -d "${TMPDIR:-/tmp}/ci-runners.XXXXXX")"
 trap 'rm -rf "$T"' EXIT INT TERM
 mkdir -p "$CACHE_DIR"
 logline() { # <message> — one checks.log line, only ever called on a write path
-  printf '[check:ci-runners] %s %s\n' "$(iso "$NOW")" "$1" >> "$LOG" 2>/dev/null || :
+  printf '[check:ci.runners] %s %s\n' "$(iso "$NOW")" "$1" >> "$LOG" 2>/dev/null || :
 }
 TAB="$(printf '\t')"
 # the verbs, one lib each (harbor#1060 split; each is sourced, never run): fleet view, container lifecycle, GitHub side, watching

@@ -34,15 +34,15 @@
 #
 # ORDER (harbor#457): pin AFTER the install. The pin records what is on the instruction surfaces now, so one taken
 # before deploy would read everything deploy then installs as drift. It stays a path and not a `harbor` verb
-# (CONTRACTS/cli.md: the settings.json mutators are never hidden behind a friendly verb). Before deploy it is still
+# (contracts/cli.md: the settings.json mutators are never hidden behind a friendly verb). Before deploy it is still
 # reachable from the checkout, `sh <checkout>/bin/pin-instructions.sh --apply --live`, which is how deploy spells it;
 # the copy under <config dir>/bin, which the floor installer spells, exists only once a deploy has put it there.
 # NO .harbor-manifest ROWS (install standard §3): the pin is B8's own state, never an installed file.
 set -eu
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
-. "$HERE/log-lib.sh"
-. "$HERE/install-lib.sh"
-. "$HERE/guard-lib.sh"
+. "$HERE/library-log.sh"
+. "$HERE/deploy-install-lib.sh"
+. "$HERE/library-admission.sh"
 log_init pin-instructions
 
 MODE=''

@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # lint-module.sh (harbor#996 C1) — the modularity lint: judges the reference graph against standards/modularity.md.
 #
-#   sh bin/lint-module.sh                    judge build/graph.tsv (it must be current: graph-gen.sh --check)
+#   sh bin/lint-module.sh                    judge build/graph.tsv (it must be current: doc-graph-generate.sh --check)
 #   sh bin/lint-module.sh --graph <file>     judge that graph; the caller vouches it is current
 #   sh bin/lint-module.sh --self-test        every fixture yields exactly its expected ids, and every rule went red
 #   sh bin/lint-module.sh --list             each rule's id, mode and title, read from standards/naming/controls.tsv
@@ -27,15 +27,15 @@
 # module.family-shape (M4) stays shadow and unevaluated: it needs the catalog (harbor#996 D1).
 #
 # WHAT AN EDGE IS HERE. Only `references` edges are judged: a line holds another node's path as a literal
-# substring (graph-gen.sh). That is a mention, not proof of a call, so the rules read only files that DO
+# substring (doc-graph-generate.sh). That is a mention, not proof of a call, so the rules read only files that DO
 # things and every finding names its site for a person to confirm. A system is a node prefix that is also an
 # `# input` row of the graph. Two cuts keep a mention that cannot read from being judged as one (harbor#996 C1):
-#   files that record or exercise are not judged: prose (*.md, docs/, EVALS-DATA/), the contract and register
-#     areas (CONTRACTS/, contracts/, schemas/, standards/, .agents/config.yaml), and tests/ and fixtures/, which
+#   files that record or exercise are not judged: prose (*.md, docs/, evals/), the contract and register
+#     areas (contracts/, contracts/, schemas/, standards/, .agents/config.yaml), and tests/ and fixtures/, which
 #     name a path to build or assert on it. A test's family is its directory name, which is a suite group and
 #     not who owns the thing under test (tests/ci/ exercises gate-merge-stack.sh), so it cannot make a cycle.
 #   a mention is inert when the cited line cannot read the path: a comment (first non-blank character `#` or
-#     `//`), or the path occurs only as the tail of a longer name (QA-PLAN.md holds PLAN.md). The line is read
+#     `//`), or the path occurs only as the tail of a longer name (docs/reports/qa-plan.md holds docs/generated/plan.md). The line is read
 #     from the tree, and a line that cannot be read keeps its finding: "I could not look" is never "inert".
 #   --format inert lists every pair a cut set aside, so each cut is auditable: why `comment` or `longer-name` for
 #     a pair whose every site cannot read, whether it would have been a finding or only an edge of the system or
@@ -47,7 +47,7 @@
 # most of them a test naming the file it tests or a registry row mentioning one, which read nothing.
 # A family is read from a path alone: bin/<family>-*, tests/<family>/, fixtures/<family>/, src/<pkg>/<family>/.
 #
-# DELIBERATELY ONE FILE (DOCTRINE/modularity.md): one POSIX sh + awk program. The awk judges; the sh around it
+# DELIBERATELY ONE FILE (docs/explanation/modularity.md): one POSIX sh + awk program. The awk judges; the sh around it
 # resolves the graph, reads the modes and formats. awk because the graph is ~25,000 rows and the judging is a
 # strongly-connected-components pass, not a pipeline; no python3 is needed to JUDGE, only to build or check it.
 set -eu
@@ -55,7 +55,7 @@ set -eu
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 SELF="$HERE/$(basename -- "$0")"
 LOG_FD=2   # stdout carries --format findings and --list; the log goes to stderr
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 log_init lint-module
 
 usage() { awk 'NR < 2 { next } /^# DELIBERATELY/ || !/^#/ { exit } { sub(/^# ?/, ""); print }' "$SELF"; }
@@ -110,9 +110,9 @@ judge() {
   awk -F'\t' -v TERMS="$2" -v GRAPH="$1" -v ROOT="$ROOT" -v SITES="$SITES" -v HOMEDIR="${HOME:-}" '
   function sysof(n,   p, s) { p = index(n, ":"); if (p == 0) return ""; s = substr(n, 1, p - 1); return (s in SYS) ? s : "" }
   function pathof(n) { return substr(n, index(n, ":") + 1) }
-  # a file that records or exercises is not judged: prose (markdown, docs/, EVALS-DATA/), the contract and register
+  # a file that records or exercises is not judged: prose (markdown, docs/, evals/), the contract and register
   # areas (a register row names a path to define the seam), and tests/ and fixtures/ (they name a path to build or assert on it)
-  function judged(n,   r) { r = pathof(n); return !(r ~ /\.md$/ || r ~ /^(docs|EVALS-DATA|tests|fixtures)\// || contract(n)) }
+  function judged(n,   r) { r = pathof(n); return !(r ~ /\.md$/ || r ~ /^(docs|evals|tests|fixtures)\// || contract(n)) }
   function base(r,   a, k) { k = split(r, a, "/"); return a[k] }
   function fam(n,   r, a, k, b) {
     if (sysof(n) == "") return ""
@@ -129,7 +129,7 @@ judge() {
     for (i = 1; i < k; i++) if (a[i] == "lib" || a[i] ~ /^_/) return 1
     return 0
   }
-  # a contract is the one thing a system may name in another: CONTRACTS/, contracts/, schemas/, the scope marker,
+  # a contract is the one thing a system may name in another: contracts/, contracts/, schemas/, the scope marker,
   # and the standard (a registry harbor defines for every other system)
   function contract(n,   r) {
     r = pathof(n)
@@ -169,7 +169,7 @@ judge() {
   }
   # inert(site, path) → "comment" or "longer-name" when the cited line holds the path but cannot read it, else "".
   # A comment is a line whose first non-blank character is # or //. A longer name is every occurrence of the path
-  # standing right after a name character (QA-PLAN.md holds PLAN.md). A line that cannot be read, or that does not
+  # standing right after a name character (docs/reports/qa-plan.md holds docs/generated/plan.md). A line that cannot be read, or that does not
   # hold the path at all (the graph is not current), is never inert.
   function inert(site, tpath,   t, from, pos, abs, n, whole, c) {
     if (tpath == "") return ""
@@ -365,18 +365,18 @@ fi
 [ -f "$TERMS" ] || unchecked "no terms.tsv at $TERMS, so no family is known" "ls $REG"
 if [ "$EXPLICIT" = 0 ]; then
   GRAPH="$ROOT/build/graph.tsv"
-  [ -f "$GRAPH" ] || unchecked "build/graph.tsv is missing, so nothing was judged" "sh bin/graph-gen.sh"
-  # Stale is unchecked, not green: graph-gen.sh --check rebuilds in memory and compares (exit 3 without python3).
-  _grc=0; sh "$HERE/graph-gen.sh" --check --root "$ROOT" --out "$GRAPH" > /dev/null 2>&1 || _grc=$?
+  [ -f "$GRAPH" ] || unchecked "build/graph.tsv is missing, so nothing was judged" "sh bin/doc-graph-generate.sh"
+  # Stale is unchecked, not green: doc-graph-generate.sh --check rebuilds in memory and compares (exit 3 without python3).
+  _grc=0; sh "$HERE/doc-graph-generate.sh" --check --root "$ROOT" --out "$GRAPH" > /dev/null 2>&1 || _grc=$?
   case "$_grc" in
     0) ;;
-    3) unchecked "python3 is absent, so the graph cannot be shown current" "$(pkg_hint python3), then sh bin/graph-gen.sh" ;;
-    *) unchecked "build/graph.tsv is stale (graph-gen.sh --check exited $_grc), so nothing was judged" "sh bin/graph-gen.sh" ;;
+    3) unchecked "python3 is absent, so the graph cannot be shown current" "$(pkg_hint python3), then sh bin/doc-graph-generate.sh" ;;
+    *) unchecked "build/graph.tsv is stale (doc-graph-generate.sh --check exited $_grc), so nothing was judged" "sh bin/doc-graph-generate.sh" ;;
   esac
 fi
-[ -f "$GRAPH" ] || unchecked "the graph $GRAPH does not exist, so nothing was judged" "sh bin/graph-gen.sh"
-head -1 "$GRAPH" | grep -q '^# graph\.tsv ' || unchecked "$GRAPH is not a graph.tsv, so nothing was judged" "sh bin/graph-gen.sh"
-grep -q '^edge	from	to	site$' "$GRAPH" || unchecked "$GRAPH has no edge header, so nothing was judged" "sh bin/graph-gen.sh"
+[ -f "$GRAPH" ] || unchecked "the graph $GRAPH does not exist, so nothing was judged" "sh bin/doc-graph-generate.sh"
+head -1 "$GRAPH" | grep -q '^# graph\.tsv ' || unchecked "$GRAPH is not a graph.tsv, so nothing was judged" "sh bin/doc-graph-generate.sh"
+grep -q '^edge	from	to	site$' "$GRAPH" || unchecked "$GRAPH has no edge header, so nothing was judged" "sh bin/doc-graph-generate.sh"
 run "$GRAPH" "$TERMS" "${GRAPH#"$ROOT"/}" || { log_end || :; exit 1; }
 log_end || :
 exit 0

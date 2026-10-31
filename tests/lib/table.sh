@@ -11,7 +11,7 @@ _t_run_rows() { # <guard-path> <rows.jsonl> — fills $_tw/in and $_tw/out
   _tw="$T_TMP/rows.$(basename "$2" .jsonl).$$"; rm -rf "$_tw"; mkdir -p "$_tw/in" "$_tw/out"
   _gd="$(dirname "$1")"
   for _fx in nonorm copy; do
-    mkdir -p "$T_TMP/fx-$_fx"; cp "$1" "$_gd/guard-lib.sh" "$T_TMP/fx-$_fx/" 2>/dev/null
+    mkdir -p "$T_TMP/fx-$_fx"; cp "$1" "$_gd/library-admission.sh" "$T_TMP/fx-$_fx/" 2>/dev/null
   done
   cp "$_gd/floor-normalize.awk" "$T_TMP/fx-copy/" 2>/dev/null
   jq -c -s 'if env.T_SMOKE == "1" then reduce .[] as $r ({seen: {}, out: []};  # smoke: first row per rule and verdict

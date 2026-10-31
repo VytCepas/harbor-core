@@ -4,22 +4,22 @@
 #
 #   sh lint-dev-paths.sh --count    the number of hits: (file, dev path) pairs, not occurrences
 #   sh lint-dev-paths.sh --list     each hit as file TAB dev path
-#   sh lint-dev-paths.sh --check    red if the count is above CONTRACTS/lint-dev-paths-baseline.txt;
+#   sh lint-dev-paths.sh --check    red if the count is above contracts/lint-dev-paths-baseline.txt;
 #                                      green but says to lower the baseline when it is below
 #
-# Dev paths: the `dev` rows of CONTRACTS/layers.tsv, never a copy. Scope: core code, i.e. tracked and untracked-not-ignored
-# files whose layer is core (bin/layers.sh --core), minus documentation and data registers (.md .html .tsv .txt .json
+# Dev paths: the `dev` rows of contracts/layers.tsv, never a copy. Scope: core code, i.e. tracked and untracked-not-ignored
+# files whose layer is core (bin/scope-layers.sh --core), minus documentation and data registers (.md .html .tsv .txt .json
 # .jsonl .csv: a core document may NAME a dev path in code font, layers.tsv says so), on lines that are not comments
-# (# or //). A path counts where no name character borders it, so PLAN.md is neither QA-PLAN.md nor PLAN.mdx. Allowed:
-# CONTRACTS/dev-paths-allow.tsv (path TAB dev path or * TAB reason), the reason required.
+# (# or //). A path counts where no name character borders it, so docs/generated/plan.md is neither docs/reports/qa-plan.md nor PLAN.mdx. Allowed:
+# contracts/dev-paths-allow.tsv (path TAB dev path or * TAB reason), the reason required.
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
-LAYERS="${LAYERS_FILE:-$ROOT/CONTRACTS/layers.tsv}"
-ALLOW="${DEV_PATHS_ALLOW:-$ROOT/CONTRACTS/dev-paths-allow.tsv}"
-BASE="${DEV_PATHS_BASELINE:-$ROOT/CONTRACTS/lint-dev-paths-baseline.txt}"
-. "$SRC/log-lib.sh"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
+LAYERS="${LAYERS_FILE:-$ROOT/contracts/layers.tsv}"
+ALLOW="${DEV_PATHS_ALLOW:-$ROOT/contracts/dev-paths-allow.tsv}"
+BASE="${DEV_PATHS_BASELINE:-$ROOT/contracts/lint-dev-paths-baseline.txt}"
+. "$SRC/library-log.sh"
 log_init lint-dev-paths
 LOG_FD=2
 TAB="$(printf '\t')"
@@ -55,7 +55,7 @@ hits() { # file TAB dev path, one line per pair, sorted
                        if (f ~ /\.(md|html|tsv|txt|json|jsonl|csv)$/) next
                        print f "\t" d }' || :
   done < "$T/devs" | sort -u > "$T/pairs"
-  cut -f1 "$T/pairs" | sort -u | HARBOR_ROOT="$ROOT" LAYERS_FILE="$LAYERS" sh "$SRC/layers.sh" --core > "$T/core"
+  cut -f1 "$T/pairs" | sort -u | HARBOR_SCOPE_ROOT="$ROOT" LAYERS_FILE="$LAYERS" sh "$SRC/scope-layers.sh" --core > "$T/core"
   rows "$ALLOW" > "$T/allow"
   awk -F'\t' -v core="$T/core" -v allow="$T/allow" '
     BEGIN { while ((getline l < core) > 0) C[l] = 1

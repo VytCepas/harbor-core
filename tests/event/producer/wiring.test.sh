@@ -36,7 +36,7 @@ fi_run floor-install.sh "$D" --apply >/dev/null 2>&1
 for e in SessionStart SessionEnd SubagentStart SubagentStop PostToolUse; do t_eq "$e: a re-apply keeps one entry" 1 "$(cmds "$D" "$e")"; done
 
 t_section "the files land executable, with the library the bus needs, and are not pinned as guards"
-for f in event-hook.sh event-bus.sh log-lib.sh; do t_eq "$f is installed executable" yes "$([ -x "$D/bin/$f" ] && echo yes || echo no)"; done
+for f in event-hook.sh event-bus.sh library-log.sh; do t_eq "$f is installed executable" yes "$([ -x "$D/bin/$f" ] && echo yes || echo no)"; done
 t_eq "event-hook.sh is the repo's bytes" yes "$(cmp -s "$SRC/event-hook.sh" "$D/bin/event-hook.sh" && echo yes || echo no)"
 t_eq "no content pin: the floor never depends on the bus" 0 "$(ls "$D/.helm-pins" | grep -c '^event-')"
 t_eq "both files are in the install manifest" 2 "$(grep -c 'bin/event-' "$D/.harbor-manifest")"

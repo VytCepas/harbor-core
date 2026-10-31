@@ -1,0 +1,44 @@
+# QUICK LEVEL — the suites CI runs when the level is `quick` (dispatch input `level`, else repo
+# variable HARBOR_CI_LEVEL). Read by bin/test-suite-run.sh --include. These are the suites that had a job
+# of their own before governance ran everything through one bin/test-suite-run.sh pool: the floor and its
+# replay, the linter's own suites, and the short count-bearing and CLI-pinning suites. `full` runs
+# every line of contracts/suites.txt. A name here that is not in the manifest fails the run (exit 2).
+tests/admission/baseline/baseline.test.sh
+tests/admission/baseline/ledger.test.sh
+tests/admission/baseline/status.test.sh
+tests/admission/baseline/b8.test.sh
+tests/admission/baseline/install.test.sh
+tests/admission/baseline/session.test.sh
+tests/admission/baseline/managed.test.sh
+tests/admission/baseline/confinement.test.sh
+tests/admission/baseline/b6.test.sh
+tests/admission/baseline/shards.test.sh
+tests/admission/baseline/worklog.test.sh
+tests/admission/baseline/paths.test.sh
+tests/admission/baseline/annotate.test.sh
+tests/eval/replay/replay.test.sh
+tests/lint/conventions/conventions.test.sh
+tests/lint/conventions/c9.test.sh
+tests/lint/conventions/cli.test.sh
+tests/lint/conventions/docs.test.sh
+tests/lint/conventions/git.test.sh
+tests/lint/conventions/injection-rule.test.sh
+tests/lint/conventions/install.test.sh
+tests/lint/conventions/redproof.test.sh
+tests/lint/conventions/skills.test.sh
+tests/lint/conventions/suites.test.sh
+tests/lint/name/name.test.sh
+tests/lint/name/modes.test.sh
+tests/doc/graph-generate/graph-generate.test.sh
+tests/standard/rename/rename.test.sh
+tests/standard/rename/window.test.sh
+tests/admission/normalize/normalize.test.sh
+tests/scope/marker/marker.test.sh
+tests/status/statusline/statusline.test.sh
+tests/status/statusline/fleet.test.sh
+tests/status/statusline/row2.test.sh
+tests/status/statusline/subagent.test.sh
+tests/access/gcloud/gcloud.test.sh
+tests/deploy/cli/cli.test.sh
+tests/admission/prod/prod.test.sh
+tests/deploy/restore/recover.test.sh

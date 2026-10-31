@@ -65,11 +65,11 @@ if [ "${STRANGER_CLAUDE_FIRST_RUN:-0}" = 1 ]; then step 03b-claude-first-run str
 else echo "stranger-ubuntu: no Claude Code first run (STRANGER_CLAUDE_FIRST_RUN=1 adds it): scope install makes settings.json" >&2; fi
 step 04-scope-install stranger 'sh ~/port/harbor/bin/harbor scope install && test -f ~/port/harbor-private/harbor.toml'
 step 04c-settings-json stranger 'test "$(cat ~/.claude/settings.json)" = "{}" && sh ~/port/harbor/bin/harbor scope install | grep -q "kept .*settings.json"'
-step 04b-seeded-core stranger 'test "$(sh ~/port/harbor/bin/roots.sh --conf components)" = core'
+step 04b-seeded-core stranger 'test "$(sh ~/port/harbor/bin/scope-roots.sh --conf components)" = core'
 # scope install seeds components = ["core"], so a bare deploy plans core only, no private repos (harbor#1149).
 # bootstrap (harbor#966) reads that layer: core names nothing to clone, so it ends on deploy's dry run having cloned no
 # repository, installed no uv or just and used no gh. The image has no gh and no curl, so a bootstrap that wanted either fails here.
-step 04c-bootstrap stranger 'sh ~/port/harbor/bin/bootstrap.sh >/tmp/boot.txt 2>&1; rc=$?; cat /tmp/boot.txt
+step 04c-bootstrap stranger 'sh ~/port/harbor/bin/deploy-bootstrap.sh >/tmp/boot.txt 2>&1; rc=$?; cat /tmp/boot.txt
   [ "$rc" -eq 0 ] && grep -q "nothing is cloned" /tmp/boot.txt && grep -q "^deploy: [0-9]* ok, 0 failed" /tmp/boot.txt &&
   ! command -v gh >/dev/null && ! command -v curl >/dev/null && [ ! -e ~/.local/bin/uv ] && [ ! -e ~/.local/bin/just ] &&
   [ "$(find ~/port -maxdepth 2 -name .git | wc -l | tr -d " ")" = 1 ]'
@@ -77,7 +77,7 @@ step 05-deploy-plan stranger 'sh ~/port/harbor/bin/deploy.sh --live >/tmp/plan.t
 step 06-deploy-apply stranger "sh ~/port/harbor/bin/deploy.sh --apply --live" 'y
 '
 # Exit 0 proves nothing: the lockdown file and its marketplace must exist with the keys it claims (a vacuous green otherwise).
-step 07-managed-mods root 'sh /home/stranger/port/harbor/bin/managed-mods.sh &&
+step 07-managed-mods root 'sh /home/stranger/port/harbor/bin/scope-managed-mods.sh &&
   jq -e ".pluginConfigs[\"cc-plugin-sec-default@builtin\"].options.allowManagedModsOnly == true and .disableSideloadFlags == true" /etc/claude-code/managed-settings.json >/dev/null &&
   test -f /etc/claude-code/harbor-mods/.claude-plugin/marketplace.json'
 # Confinement (harbor#1298): composed as the stranger, no Darwin-only key on Linux. In an unprivileged container

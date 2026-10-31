@@ -11,8 +11,8 @@ set -eu
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH='' cd -- "$HERE" && pwd)"
 LOG_FD=2   # stdout is the verdict
-. "$HERE/log-lib.sh"
-. "$HERE/gate-lib.sh"
+. "$HERE/library-log.sh"
+. "$HERE/library-gate.sh"
 log_init gate-classify
 case "${1:-}" in
   -h|--help) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;

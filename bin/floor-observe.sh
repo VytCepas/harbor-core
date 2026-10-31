@@ -2,9 +2,9 @@
 # OBSERVE-1 (harbor#41) — the SessionStart half of the guard-decision ledger.
 #
 # THIS SCRIPT HAS NO KILL-SWITCH LINE, AND THAT IS THE ENTIRE POINT.
-# Every guard and floor-hook.sh open with `[ "${HELM_DISABLE_FLOOR:-0}" = "1" ]
+# Every guard and admission-hook.sh open with `[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ]
 # && exit 0` on line 2, and floor-install.sh wires every PreToolUse guard THROUGH
-# floor-hook.sh. So under an override the wrapper returns at line 2 and the guard
+# admission-hook.sh. So under an override the wrapper returns at line 2 and the guard
 # is never spawned: zero processes, zero rule evaluations, nothing anywhere in
 # the floor that could record that the operator walked past it. An override is
 # the operator saying "this rule is wrong" with their hands instead of their
@@ -16,7 +16,7 @@
 # reads the list. It is SessionStart-only and never reaches a verdict: it cannot block anything.
 #
 # It is also the ONLY component permitted to create anything. floor_log_decision
-# on the hot path creates nothing — see guard-lib.sh property 3 — so every
+# on the hot path creates nothing — see library-admission.sh property 3 — so every
 # directory, the sink, the host token and the salt are made here, once, at
 # SessionStart, where a fork costs nothing and no verdict is pending.
 set -u
@@ -25,22 +25,22 @@ CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 while [ "${CFG%/}" != "$CFG" ] && [ "$CFG" != "/" ]; do CFG="${CFG%/}"; done
 case "$CFG" in /*) ;; *) exit 0 ;; esac
 
-# harbor#813: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./guard-lib.sh from it.
+# harbor#813: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./library-admission.sh from it.
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
 
 # Sourced HERE, not at the recording block below, because the host partition needs
-# floor_host_token before it can name a directory. guard-lib.sh creates nothing at
+# floor_host_token before it can name a directory. library-admission.sh creates nothing at
 # source time (its property 3), so moving this up adds no side effect and no fork.
 #
 # Absent library means exit 0, not a degraded token. Nothing this script creates
 # has any value without the library that records into it: the sink, the salt and
 # the host token exist only to be written by floor_log_decision. B6 hash-pins
-# guard-lib.sh, so its absence is already a floor failure that guard-integrity
+# library-admission.sh, so its absence is already a floor failure that guard-integrity
 # reports under its own name — inventing a second, quieter spelling of that
 # failure here would create a ledger directory for a floor that cannot record,
 # which reads as "observed and clean" instead of "not observed".
-[ -f "$DIR/guard-lib.sh" ] || exit 0
-. "$DIR/guard-lib.sh" 2>/dev/null || exit 0
+[ -f "$DIR/library-admission.sh" ] || exit 0
+. "$DIR/library-admission.sh" 2>/dev/null || exit 0
 
 # A SessionStart hook must never be the thing that breaks a session. Everything
 # below is best-effort; the script exits 0 on every path, including this one.
@@ -60,7 +60,7 @@ ROTATE_BYTES=5242880          # ~45k records at the measured ~110 bytes each
 #   SYMLINK `ln -s ~/anything ~/.claude/.helm-obs-host` made `>` truncate and
 #          overwrite the TARGET at every SessionStart.
 #
-# guard-lib.sh's hot-path READER type-checks these same two files for exactly
+# library-admission.sh's hot-path READER type-checks these same two files for exactly
 # this reason. The writer did not. Write via a temp file inside a directory we
 # control, then `mv` — so the final name is never opened through a link or a FIFO.
 obs_safe_write() { # <path> <content>
@@ -83,11 +83,11 @@ obs_safe_write() { # <path> <content>
 }
 
 # ── the host partition ──────────────────────────────────────────────────────
-# THE SAME FUNCTION as bin/worklog-push.sh and bin/memory-harvest.sh call, so the
+# THE SAME FUNCTION as hooks/worklog-push/worklog-push.sh and hooks/memory-harvest/memory-harvest.sh call, so the
 # ledgers partition identically and a cross-device merge lines up. This used to be
 # three copies of one `hostname -s` expression, which stayed byte-identical right
 # up until the value itself moved and forked all three ledgers at once — see
-# floor_host_token in guard-lib.sh for the measurement.
+# floor_host_token in library-admission.sh for the measurement.
 HOST="$(floor_host_token)"
 
 OBS="$CFG/MEMORY/OBSERVABILITY"
@@ -184,7 +184,7 @@ fi
 obs_prepare_sink "$ODIR/tool-failures.jsonl" || :
 
 # ── the stream root (harbor#1181) ───────────────────────────────────────────
-# harbor_emit (stream-lib.sh) writes <host>/streams/<stream>/<day>/, and the host dir is 0500 for the rest of the
+# harbor_emit (audit-stream-lib.sh) writes <host>/streams/<stream>/<day>/, and the host dir is 0500 for the rest of the
 # session, so the root is made here. A writable subdir cannot swap the guard sinks: those are entries of the host
 # dir itself. A non-directory or a symlink at the path is left alone and every emit spills, which says so.
 if [ ! -e "$ODIR/streams" ] && [ ! -L "$ODIR/streams" ]; then mkdir -m 0700 "$ODIR/streams" 2>/dev/null || :; fi
@@ -232,7 +232,7 @@ fi
 # ── close the directory, THEN record ────────────────────────────────────────
 # This ordering is load-bearing. floor_log_decision refuses to write unless the
 # directory is non-writable, because that gate — not the file type check — is
-# what makes a FIFO plant unwinnable (guard-lib.sh property 2). Recording before
+# what makes a FIFO plant unwinnable (library-admission.sh property 2). Recording before
 # the chmod would work here and teach the wrong invariant; recording after also
 # proves the gate is satisfiable, which is the failure mode a mode-drift bug
 # would otherwise hide until the ledger was needed.
@@ -244,7 +244,7 @@ chmod 0500 "$ODIR" 2>/dev/null || :
 # attempted here — see the reader, which reports "the last blocks preceding an
 # override" from file order and labels it exactly that. Claiming to know which
 # rule the operator walked past would be an inference dressed as a record.
-# guard-lib.sh is already sourced at the top — the host partition needed it — and
+# library-admission.sh is already sourced at the top — the host partition needed it — and
 # its absence exited 0 there, so reaching this point means floor_log_decision is
 # defined.
 # harbor#309: the SessionStart payload names the session, so these records carry its key `sk`.
@@ -252,7 +252,7 @@ chmod 0500 "$ODIR" 2>/dev/null || :
 [ -t 0 ] || floor_read_stdin || :
 # ── a settings `env` block that sets either switch (harbor#954 PR B, from #977) ──
 # The write-time guards (killswitch-assign, switch-in-settings) catch the plain spellings of putting a switch in
-# a settings file and miss five shapes (FLOOR.md residuals). This reads the files instead, so how the switch got
+# a settings file and miss five shapes (docs/explanation/admission-baseline.md residuals). This reads the files instead, so how the switch got
 # there no longer matters. It lives HERE because this script runs when the switch is set, which is exactly when
 # every guard has stood down. A report, never a refusal: a SessionStart hook cannot block, and the operator may
 # have set it on purpose. Keys only, never values.
@@ -278,9 +278,9 @@ fi
 # almost nothing blocks. It is its own record, never `armed`, so a shadow session
 # cannot inflate the denominator of a rate it does not enforce. The kill-switch
 # wins when both are set, because then no guard runs at all.
-if [ "${HELM_DISABLE_FLOOR:-0}" = "1" ]; then
+if [ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ]; then
   floor_log_decision session override floor-disabled.meta || :
-elif [ "${HELM_FLOOR_SHADOW:-0}" = "1" ]; then
+elif [ "${HARBOR_ADMISSION_SHADOW:-${HELM_FLOOR_SHADOW:-0}}" = "1" ]; then
   floor_log_decision session shadow floor-shadow.meta || :
 else
   floor_log_decision session armed floor-armed.meta || :

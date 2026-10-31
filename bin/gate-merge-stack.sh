@@ -11,21 +11,21 @@
 # Exit: 0 clean, 1 a problem was reported, 2 usage or a bad plan, 3 a pinned PR (`pr N head <sha>`) needs a rebase.
 # Rerunnable: a merged PR is skipped. Every merge is pinned to the head whose CI was judged (--match-head-commit).
 # HARBOR_GATE_REHEARSE_DIR moves the rehearsal's scratch clone (default ~/.cache/merge-stack, not a session scratchpad).
-# merge-check.sh is resolved from THIS tool's own dir, never from the target repo (harbor#1060, ship contract 5a.6), so a
+# gate-merge-check.sh is resolved from THIS tool's own dir, never from the target repo (harbor#1060, ship contract 5a.6), so a
 # repo needs none of harbor's scripts. It is always handed the required checks read from origin once, at preflight (5b.11, r5 #3-4).
 # merge-stack never runs code from a PR branch: no generator, lint or suite, and no git hook, in sync or rehearse (r5 #2).
 # Deliberately one file: the four sub-verbs share the plan reader, the rebase-with-union step and the log shape.
 
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH= cd -- "$HERE" && pwd)"
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 set -eu
 log_init gate-merge-stack
 # the line lists whose pure additions the resolver keeps from both sides: beside the tool once installed, else the checkout's
-UNION="$HERE/merge-stack-union.txt"; [ -f "$UNION" ] || UNION="$HERE/../CONTRACTS/merge-stack-union.txt"
+UNION="$HERE/merge-stack-union.txt"; [ -f "$UNION" ] || UNION="$HERE/../contracts/merge-stack-union.txt"
 RESOLVER="$HERE/gate-merge-stack-resolve.py"
-# harbor's own required-checks rows (r5 #3): installed beside the tool, else the checkout's CONTRACTS/ (read from its origin)
-HROWS="$HERE/required-checks.tsv"; [ -f "$HROWS" ] || HROWS="$HERE/../CONTRACTS/required-checks.tsv"
+# harbor's own required-checks rows (r5 #3): installed beside the tool, else the checkout's contracts/ (read from its origin)
+HROWS="$HERE/required-checks.tsv"; [ -f "$HROWS" ] || HROWS="$HERE/../contracts/required-checks.tsv"
 
 usage() {
   cat <<'EOF'
@@ -78,9 +78,9 @@ needs_rebase() { # <pr> <pin>
   log_fix "re-classify #$1 and pin its new head, or rebase it yourself, then re-run: harbor merge-stack merge $PLAN"
 }
 [ -d "$H" ] || usage_err "plan checkout is not a directory: $H"
-MC="$HERE/merge-check.sh"   # the tool's own install, not "$H/bin": a repo that is not harbor has no bin/
+MC="$HERE/gate-merge-check.sh"   # the tool's own install, not "$H/bin": a repo that is not harbor has no bin/
 # the repo's own required-checks declarations on origin/<default>; ALL of them count, with harbor's rows (r5 #3)
-RC_PATHS='.agents/required-checks.tsv CONTRACTS/required-checks.tsv'
+RC_PATHS='.agents/required-checks.tsv contracts/required-checks.tsv'
 RCTMP=''
 
 die() { log_fail "$1"; log_fix "$2"; log_end || :; exit 1; }
@@ -132,17 +132,17 @@ resolve_file() { # <worktree> <repo-relative path>
     python3 "$RESOLVER" --lines "$1/$2"
   else python3 "$RESOLVER" "$1/$2"; fi
 }
-# STATUS.md, where the repo owns its generator (bin/status-gen.sh): verify leaves it out of its tested-tree diff, and a
+# docs/generated/status.md, where the repo owns its generator (bin/status-generate.sh): verify leaves it out of its tested-tree diff, and a
 # conflict in it stops for a person, because rebuilding it means running the PR's code. docs/index.html is not here any
 # more (harbor#1197): harbor builds it on demand and does not commit it, so no PR carries it and no conflict can.
 generated_by() { # <worktree> <path> → 0 when the repo has the generator for that path
-  case "$2" in STATUS.md) [ -f "$1/bin/status-gen.sh" ] ;; *) return 1 ;; esac
+  case "$2" in docs/generated/status.md) [ -f "$1/bin/status-generate.sh" ] ;; *) return 1 ;; esac
 }
 # A line both sides added is kept once (a suite listed twice is run twice and its result LOST). Nothing is regenerated (r5 #2):
-# the generators run the tree they read (docs-gen.sh runs its lint, status-gen.sh its suites), so no copy of them, installed or
+# the generators run the tree they read (doc-index-generate.sh runs its lint, status-generate.sh its suites), so no copy of them, installed or
 # origin's, can rebuild a PR's generated files without running the PR's code. A stale one fails the PR's own CI, which stops the run.
 dedupe() { # <worktree> <commit message>
-  for _m in CONTRACTS/suites.txt CONTRACTS/suite-paths.txt; do [ -f "$1/$_m" ] || continue
+  for _m in contracts/suites.txt contracts/suite-paths.txt; do [ -f "$1/$_m" ] || continue
     awk '/^[[:space:]]*(#|$)/ { print; next } !seen[$0]++' "$1/$_m" > "$1/$_m.tmp" && mv "$1/$_m.tmp" "$1/$_m"; done
   [ -z "$(git -C "$1" status --porcelain --untracked-files=no)" ] || git -C "$1" commit -qam "$2"
 }
@@ -171,7 +171,7 @@ default_branch() {
   printf '%s' "$_d"
 }
 rebasing() { [ -d "$(git -C "$1" rev-parse --path-format=absolute --git-path rebase-merge)" ]; }
-# harbor's own CONTRACTS/required-checks.tsv, never a PR's working tree (r4 #1): the copy installed beside the tool (deployed from
+# harbor's own contracts/required-checks.tsv, never a PR's working tree (r4 #1): the copy installed beside the tool (deployed from
 # harbor's main, already composed with the private layer's rows by runtime-install), or, from a harbor checkout, the file as that
 # checkout's origin/<default branch> holds it followed by the private layer's required-checks.tsv (harbor#1149): no branch of any
 # repo being merged, but no protected path either, so it holds only the rows core cannot carry. A private file that does not
@@ -179,11 +179,11 @@ rebasing() { [ -d "$(git -C "$1" rev-parse --path-format=absolute --git-path reb
 harbor_rows() {
   [ "$HROWS" != "$HERE/required-checks.tsv" ] || { cat "$HROWS"; return; }
   _hc="$(CDPATH= cd -- "$HERE/.." && pwd -P)"
-  if [ "$(git -C "$_hc" rev-parse --show-toplevel 2>/dev/null)" = "$_hc" ] && git -C "$_hc" ls-files --error-unmatch CONTRACTS/required-checks.tsv >/dev/null 2>&1; then
+  if [ "$(git -C "$_hc" rev-parse --show-toplevel 2>/dev/null)" = "$_hc" ] && git -C "$_hc" ls-files --error-unmatch contracts/required-checks.tsv >/dev/null 2>&1; then
     _hd="$(git -C "$_hc" ls-remote --symref origin HEAD | awk '$1 == "ref:" { sub("^refs/heads/", "", $2); print $2; exit }')"
     [ -n "$_hd" ] && git -C "$_hc" fetch -q origin "+refs/heads/$_hd:refs/remotes/origin/$_hd" || return 1
-    git -C "$_hc" cat-file -e "refs/remotes/origin/$_hd:CONTRACTS/required-checks.tsv" 2>/dev/null || return 0
-    git -C "$_hc" show "refs/remotes/origin/$_hd:CONTRACTS/required-checks.tsv" > "$RCTMP.core" || return 1
+    git -C "$_hc" cat-file -e "refs/remotes/origin/$_hd:contracts/required-checks.tsv" 2>/dev/null || return 0
+    git -C "$_hc" show "refs/remotes/origin/$_hd:contracts/required-checks.tsv" > "$RCTMP.core" || return 1
     _hrc=0; harbor_compose "$RCTMP.core" || _hrc=$?; rm -f "$RCTMP.core"; return "$_hrc"
   else harbor_compose "$HROWS"; fi
 }
@@ -192,7 +192,7 @@ harbor_compose() { # <core file> -> core's rows, then the private layer's; the p
 }
 # The required checks merge-check is ALWAYS handed (5b.11), into $RCTMP: read from origin ONCE, at preflight, and held for the
 # whole run, so an earlier PR in the plan cannot lower the gate a later one is judged by (r5 #4). The UNION of every
-# declaration (r5 #3, #1139): origin/<default>'s .agents/required-checks.tsv and CONTRACTS/required-checks.tsv, and harbor's
+# declaration (r5 #3, #1139): origin/<default>'s .agents/required-checks.tsv and contracts/required-checks.tsv, and harbor's
 # rows for this repo. A repo's own file can add a check and never drop one harbor requires. Empty: branch protection alone gates.
 checks_snapshot() {
   git -C "$H" fetch -q origin "+refs/heads/$DEF:refs/remotes/origin/$DEF" || die "cannot fetch $DEF to read the required checks from it" "git -C $H fetch origin $DEF"
@@ -235,7 +235,7 @@ report() {
 
 # ── merge · the run's own CI gate: the PR's current head has a green, non-cancelled run.
 # NOT `gh pr checks --required`: with no branch protection (a Free private repo) it reports none forever and hangs;
-# merge-check.sh gates on the required-checks list itself (checks_snapshot).
+# gate-merge-check.sh gates on the required-checks list itself (checks_snapshot).
 GREEN_N=0; JUDGED=''
 green() {
   # after a sync push GitHub can report the OLD head for a moment; judging that head's run passed a stale run (#1115)
@@ -313,10 +313,10 @@ cmd_merge() {
     if [ -n "$_pin" ] && [ "$JUDGED" != "$_pin" ]; then needs_rebase "$p" "$_pin"; continue; fi
     # --match-head-commit: gh refuses if the head moved after the run was judged, so a push in between cannot land.
     # merge-check's gate logic is unchanged; it is told the repo, the branch and the required checks read at preflight
-    ( HARBOR_REPO="$R"; export HARBOR_REPO; HARBOR_BRANCH="$DEF"; export HARBOR_BRANCH
+    ( HARBOR_SCOPE_REPO="$R"; export HARBOR_SCOPE_REPO; HARBOR_GATE_BRANCH="$DEF"; export HARBOR_GATE_BRANCH
       HARBOR_REQUIRED_CHECKS="$RCTMP"; export HARBOR_REQUIRED_CHECKS
       sh "$MC" "--$METHOD" --merge "$p" --match-head-commit "$JUDGED" )
-    merged "$p" || die "#$p did not merge — stopping" "HARBOR_REPO=$R sh $MC --$METHOD --merge $p --match-head-commit $JUDGED"
+    merged "$p" || die "#$p did not merge — stopping" "HARBOR_SCOPE_REPO=$R sh $MC --$METHOD --merge $p --match-head-commit $JUDGED"
     key after | awk -v p="$p" '$1 == p { $1 = ""; sub(/^ +/, ""); print $0 }' | while IFS= read -r _c; do log_note "run once now: $_c"; done
   done
   log_note "done — next: harbor merge-stack verify $PLAN"
@@ -387,7 +387,7 @@ cmd_verify() {
   if [ "$(git -C "$H" rev-parse HEAD)" = "$(git -C "$H" rev-parse origin/$DEF)" ]; then log_ok "at $(git -C "$H" rev-parse --short HEAD)"; fi
   log_head "3. $DEF's code is the tested tree (generated files aside)"
   if [ -n "$T" ] && git -C "$H" rev-parse -q --verify "origin/$T" >/dev/null; then
-    set -- .; generated_by "$H" STATUS.md && set -- "$@" ':!STATUS.md'
+    set -- .; generated_by "$H" docs/generated/status.md && set -- "$@" ':!docs/generated/status.md'
     d="$(git -C "$H" diff --name-only "origin/$T" origin/$DEF -- "$@")"
     pat="$(for p in $PRS; do printf '#%s\\)|' "$p"; done | sed 's/|$//')"
     others="$(git -C "$H" log --format='%h %s' "$(git -C "$H" merge-base "origin/$T" origin/$DEF)"..origin/$DEF | grep -vE "($pat)")"

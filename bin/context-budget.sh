@@ -1,10 +1,12 @@
 #!/usr/bin/env sh
 # context-budget.sh — measure what Harbor costs EVERY session.
-# harbor#5 / M3, method from upstream `BudgetCheck` @ a4e8e74 (PROVENANCE.md).
+# harbor#5 / M3, method from upstream `BudgetCheck` @ a4e8e74 (docs/reference/provenance.md).
 #   sh bin/context-budget.sh            the full report, every always-on row
 #   sh bin/context-budget.sh --check    fail if the DELIBERATE surface has moved
-#                                       off the last row of CONTEXT-BASELINE.tsv
+#                                       off the last row of registries/context-baseline.tsv
 #   sh bin/context-budget.sh --record   append today's figure + instrument id; you write the why
+#   sh bin/context-budget.sh --ratchet  deploy gate: fail when the CORE surface (policy/constitution.md + tracked ambient
+#                                       skill descriptions, read from this checkout only) exceeds registries/context-ratchet.tsv
 #   sh bin/context-budget.sh --check --kind   also print kind=<match|grew|shrank|instrument-changed|
 #                                       no-baseline|unreadable|malformed> last on stdout: X3's subject (harbor#585)
 # (the --help extractor stops at the first blank comment line, so the usage block
@@ -21,7 +23,7 @@
 # a ceiling those files regrow: memory proposals auto-append, ISAs accrete, rules
 # stack."
 #
-# Harbor is about to do exactly that. C1 puts CONSTITUTION.md into
+# Harbor is about to do exactly that. C1 puts policy/constitution.md into
 # ~/.claude/CLAUDE.md, L2 (harbor#43) adds TELOS + IDENTITY, D adds memory
 # injection — all always-on, none of them bounded by anything. Upstream hit this
 # wall and built a ceiling; Harbor had not noticed the wall existed.
@@ -51,13 +53,14 @@ case "${1:-}" in
               *)      printf 'context-budget: unknown flag %s after --check (try --help)\n' "$2" >&2; exit 2 ;;
             esac ;;
   --record) MODE=record ;;
+  --ratchet) MODE=ratchet ;;
   '')       ;;
   *)        printf 'context-budget: unknown flag %s (try --help)\n' "$1" >&2; exit 2 ;;
 esac
 
 ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
-# The --check failures speak in the house line shape (CONTRACTS/logging.md, LOG1). stderr, as before.
-LOG_FD=2; . "$(dirname -- "$0")/log-lib.sh"
+# The --check failures speak in the house line shape (contracts/logging.md, LOG1). stderr, as before.
+LOG_FD=2; . "$(dirname -- "$0")/library-log.sh"
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 
 # THE BASELINE, AND WHY IT IS A FILE AND NOT A NUMBER IN THIS SCRIPT (harbor#183).
@@ -67,18 +70,18 @@ CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 # constant in a variable can never give.
 #
 # WHERE IT LIVES (harbor#1275, harbor#1149): the user's state directory, never the checkout. A harbor-core clone has no
-# CONTEXT-BASELINE.tsv, and a file written at its root is one `git add -A` away from a PR. An in-tree file is only a SEED:
+# registries/context-baseline.tsv, and a file written at its root is one `git add -A` away from a PR. An in-tree file is only a SEED:
 # read while the state file is absent, and copied there before the first --record, so nothing is ever written into the tree.
 _STATE="${HARBOR_STATUS_DIR:-${HOME:-/nonexistent}/.local/state/harbor}"
 _STATE_BL="$_STATE/context-baseline.tsv"
 _BL_SEED=0
 if [ -n "${HARBOR_CONTEXT_BASELINE:-}" ]; then BASELINE="$HARBOR_CONTEXT_BASELINE"
-elif [ -e "$_STATE_BL" ] || [ -L "$_STATE_BL" ] || [ ! -f "$ROOT/CONTEXT-BASELINE.tsv" ]; then BASELINE="$_STATE_BL"
-else BASELINE="$ROOT/CONTEXT-BASELINE.tsv"; _BL_SEED=1; fi
+elif [ -e "$_STATE_BL" ] || [ -L "$_STATE_BL" ] || [ ! -f "$ROOT/registries/context-baseline.tsv" ]; then BASELINE="$_STATE_BL"
+else BASELINE="$ROOT/registries/context-baseline.tsv"; _BL_SEED=1; fi
 
 # Ceiling in bytes. NO LONGER THE VERDICT (harbor#183), AND SINCE 2026-09-20 NO
 # LONGER ANOTHER TOOL'S BASIS EITHER (harbor#316). It used to govern exactly one
-# thing — store-check.sh's index allowance, `ceiling - (spent - index)` — and that
+# thing — memory-store-check.sh's index allowance, `ceiling - (spent - index)` — and that
 # coupling is now cut: store-check derives its bound from the index's own pointer
 # count. What this number still does is set the percentage and the OVER/headroom
 # line THIS tool prints, and nothing else in the repo reads it.
@@ -87,14 +90,14 @@ else BASELINE="$ROOT/CONTEXT-BASELINE.tsv"; _BL_SEED=1; fi
 # and that is worth stating rather than leaving a 40,000 that reads like a bound
 # somebody chose. Its own first comment admitted the problem: "deliberately a
 # round, arguable number rather than a derived one". The backpressure that
-# actually works is `--check` against CONTEXT-BASELINE.tsv, which is a diff with a
+# actually works is `--check` against registries/context-baseline.tsv, which is a diff with a
 # reason in a commit; this constant is the legacy headline beside it.
 #
 # THE ARITHMETIC BEHIND 40,000, KEPT BECAUSE IT IS WHERE 150 CAME FROM. On
 # 2026-08-28 the non-index always-on surface measured 19,381 B (constitution plus
 # ambient descriptions) and the index was a routing table of one pointer per note,
 # 133 notes at a 139 B mean. Allowing 150 B a pointer gives 19,950 B plus ~600 B
-# of section structure: 19,381 + 20,550 = 39,931, taken to 40,000. store-check.sh
+# of section structure: 19,381 + 20,550 = 39,931, taken to 40,000. memory-store-check.sh
 # now applies that 150-and-600 directly to the file it was always about, which is
 # why this paragraph stays here as the provenance of those two numbers.
 #
@@ -127,6 +130,51 @@ desc_bytes() { # <file> -> bytes of the whole description: value
        END                        { print t+0 }' "$1"
 }
 
+# ── THE DEPLOY RATCHET (--ratchet) ──────────────────────────────────────────
+# A ratchet, not a cliff: refuses only GROWTH past the number in registries/context-ratchet.tsv, which is checked in, so a deliberate
+# raise is a one-line edit whose commit says why. WHAT IT COVERS IS WHAT THIS CHECKOUT CONTROLS AND NOTHING ELSE:
+# policy/constitution.md (what deploy installs as CLAUDE.md, so the NEW text is measured, not last deploy's) plus the descriptions of
+# the ambient skills in skills/ and vendor/skills/. It reads nothing from ~/.claude, so the answer is a pure function of the
+# tree: the same on CI and on the box, and a deploy cannot go red because of something it did not write.
+# LEFT OUT ON PURPOSE (CONSTITUTION §2.11, a false positive gets the guard switched off): the per-project memory index is
+# model-authored and changes between sessions, so a deploy-time gate on it would fire on ordinary work (memory-store-check.sh
+# bounds it); plugin and slash-command descriptions are installed by the operator, not by deploy; the SessionStart
+# injection moves by ~10 KB with the caller's directory and with the live packs. All three stay in the report above.
+if [ "$MODE" = ratchet ]; then
+  RB="${HARBOR_RATCHET_BASELINE:-$ROOT/registries/context-ratchet.tsv}"; RBN="${RB#$ROOT/}"
+  rl="$(printf '%s\t%s\n' "$(bytes "$ROOT/policy/constitution.md")" policy/constitution.md)"
+  for d in "$ROOT"/skills/*/ "$ROOT"/vendor/skills/*/; do
+    f="$d/SKILL.md"; [ -f "$f" ] || continue
+    grep -q '^disable-model-invocation:[[:space:]]*true' "$f" 2>/dev/null && continue
+    rl="$rl
+$(desc_bytes "$f")	skill description: $(basename "$d")"
+  done
+  now="$(printf '%s\n' "$rl" | awk -F'\t' '{ t += $1 } END { print t+0 }')"
+  if [ ! -f "$RB" ]; then
+    log_fail "context ratchet: no baseline file $RBN, so nothing was compared"
+    log_fix "printf '%s\\t%s\\t%s\\n' $now \"\$(date +%Y-%m-%d)\" 'why' >> $RBN"
+    log_end || :; exit 1
+  fi
+  base="$(grep -v '^#' "$RB" | grep -v '^[[:space:]]*$' | tail -1 | cut -f1)"
+  case "$base" in ''|*[!0-9]*)
+    log_fail "context ratchet: the last row of $RBN has no byte count in column 1 ('$base')"
+    log_fix "edit $RBN: one row, <bytes><TAB><date><TAB><why>"; log_end || :; exit 1 ;; esac
+  if [ "$now" -gt "$base" ]; then
+    log_fail "context ratchet: the core always-on surface is $now B, over the $base B recorded in $RBN (+$(( now - base )) B); every session pays it"
+    log_fix "cut the largest contributor, or raise deliberately: set the number in $RBN to $now and say why in the commit"
+    printf '%s\n' "$rl" | sort -t"$(printf '\t')" -k1,1 -rn | head -5 | while IFS="$(printf '\t')" read -r _b _l; do
+      log_note "top contributor: $_b B  $_l"; done
+    log_end || :; exit 1
+  fi
+  if [ "$now" -lt "$base" ]; then
+    log_ok "context ratchet: $now B, under the $base B recorded in $RBN (-$(( base - now )) B)"
+    log_note "record the lower number so the saving cannot grow back: set $RBN to $now"
+  else
+    log_ok "context ratchet: $now B, at the $base B recorded in $RBN"
+  fi
+  log_end || :; exit 0
+fi
+
 # A CHECK THAT PRINTS A TABLE IS A CHECK NOBODY READS IN CI. The rows are emitted
 # as the measurement runs, so --check and --record keep fd 3 for their one line
 # and send the report to /dev/null rather than buffering it.
@@ -146,7 +194,7 @@ row() { # <label> <bytes> <state>
 if [ -f "$CFG/CLAUDE.md" ]; then
   row "~/.claude/CLAUDE.md" "$(bytes "$CFG/CLAUDE.md")" live
 else
-  row "CONSTITUTION.md (would become ~/.claude/CLAUDE.md)" "$(bytes "$ROOT/CONSTITUTION.md")" "NOT INSTALLED — projected"
+  row "policy/constitution.md (would become ~/.claude/CLAUDE.md)" "$(bytes "$ROOT/policy/constitution.md")" "NOT INSTALLED — projected"
 fi
 
 # ── ambient skill descriptions ──────────────────────────────────────────────
@@ -277,7 +325,7 @@ fi
 # owns it, because that is a session someone actually starts. The local row stays
 # because it is the true answer to "what does THIS session cost". `SPENT EVERY
 # SESSION` keeps its exact shape, and its last reader went away in harbor#316 —
-# store-check.sh no longer parses it — so the shape is now held by this tool's own
+# memory-store-check.sh no longer parses it — so the shape is now held by this tool's own
 # suite rather than by a consumer. Kept deliberately: it is a stable line other
 # things have been built on before and the suite is where that promise now lives.
 #
@@ -314,19 +362,26 @@ fi
 # loads unconditionally. Documentation refutes documentation; only measurement
 # refutes behaviour, and the flag is documentation about behaviour.
 #
-# Repo `CLAUDE.md` is in the same position: injected in that session, never
-# counted here. AGENTS.md is deliberately NOT counted — whether the harness
-# reads it is unmeasured, and a budget that guesses is the defect this whole
-# section exists to repair.
-repo_amb=0; repo_n=0
+# Repo `CLAUDE.md` is in the same position: injected in that session.
+# AN `@path` IMPORT IS COUNTED (harbor#1010 PR 2, #1013, D-72). It was left out while "whether the harness
+# reads it" was unmeasured. Measured 2026-10-28, ONE billed headless session (`claude -p`, no tools, a fixture
+# dir whose CLAUDE.md holds a bare `@AGENTS.md` and whose AGENTS.md holds one unguessable token): asked with no
+# file read whether AGENTS.md was in its context, it quoted the token verbatim. The import loads, so it is charged.
+# Only a bare line `@<relative path>` of the repo's own CLAUDE.md is followed, one level, a file once.
+repo_amb=0; repo_n=0; imp_n=0
 if [ -f "$PWD/CLAUDE.md" ]; then
   repo_amb=$(( repo_amb + $(bytes "$PWD/CLAUDE.md") )); repo_n=$(( repo_n + 1 ))
+  for _imp in $(sed -n 's/^@\([A-Za-z0-9._-][A-Za-z0-9._\/-]*\)[[:space:]]*$/\1/p' "$PWD/CLAUDE.md" | sort -u); do
+    case "$_imp" in */../*|../*) continue ;; esac
+    [ -f "$PWD/$_imp" ] || continue
+    repo_amb=$(( repo_amb + $(bytes "$PWD/$_imp") )); repo_n=$(( repo_n + 1 )); imp_n=$(( imp_n + 1 ))
+  done
 fi
 for _r in "$PWD"/.claude/rules/*.md; do
   [ -f "$_r" ] || continue
   repo_amb=$(( repo_amb + $(bytes "$_r") )); repo_n=$(( repo_n + 1 ))
 done
-[ "$repo_n" -gt 0 ] && row "repo-scoped (CLAUDE.md + .claude/rules, $repo_n file(s))" "$repo_amb" "${PWD#$HOME/}"
+[ "$repo_n" -gt 0 ] && row "repo-scoped (CLAUDE.md + @imports + .claude/rules, $repo_n file(s))" "$repo_amb" "${PWD#$HOME/}"
 
 # ── the SessionStart injection (harbor#316) ─────────────────────────────────
 # THE TOOL'S OWN HEADLINE IS "what this session costs before the first word", and
@@ -337,7 +392,7 @@ done
 # ASK THE INJECTOR, DO NOT RE-IMPLEMENT ITS DISPATCH. Which packs fire for
 # SessionStart is decided by frontmatter predicates in inject-hook.sh, and a
 # second copy of that logic here would be a copy that drifts while reading
-# correctly — the thing DOCTRINE/doc-truth.md is about. So this feeds the engine a
+# correctly — the thing docs/explanation/doc-truth.md is about. So this feeds the engine a
 # real SessionStart payload and measures what comes back: same path the session
 # takes, which is CONSTITUTION §2.6. The probe writes nothing on a box whose
 # governance salt already exists, and creates only that salt on one that has not
@@ -348,7 +403,7 @@ done
 #     $HOME                      11,804 B      ~/harbor      1,660 B
 #     ~/Deliverables/<a folder>   2,172 B      ~/<repo>      1,666 B
 #
-# `inject.d/repo-skills.sh` emits 9,682 B at home and ZERO inside a governed repo.
+# `context-rules/user/repo-skills.sh` emits 9,682 B at home and ZERO inside a governed repo.
 # So the largest single injected item on the box — the index to the 38 skills the
 # model cannot see — reaches only sessions started outside a repo, which is the
 # opposite of where the memory index lands, and both are invisible to a reader of
@@ -356,7 +411,7 @@ done
 # worst case, for the reason harbor#243 gives about the memory index: lint X3 runs
 # from inside this checkout, which is the cheapest directory on the box.
 inj_local=0; inj_max=0; inj_max_where=""
-_injector="$ROOT/bin/inject-hook.sh"
+_injector="$ROOT/hooks/injection-rule/injection-rule.sh"
 _inject_bytes() { # <cwd> -> bytes the SessionStart injection would deliver there
   [ -d "$1" ] || { echo 0; return; }
   # `CLAUDE_CONFIG_DIR="$CFG"` IS LOAD-BEARING, NOT TIDINESS. inject-hook.sh reads
@@ -372,7 +427,7 @@ _inject_bytes() { # <cwd> -> bytes the SessionStart injection would deliver ther
 }
 # ONLY FOR THE LIVE CONFIG DIR, AND THE REASON IS A PROPERTY OF THE INJECTOR.
 # `CLAUDE_CONFIG_DIR` does NOT isolate this surface: inject-hook.sh loads packs
-# from two tiers, and when the second — `$REPO/.claude/inject.d`, where REPO
+# from two tiers, and when the second — `$REPO/context-rules/<repo>` (or `.claude/inject.d`), where REPO
 # falls back to the probed directory — resolves under $HOME, the LIVE packs load
 # whatever $CFG says. Measured 2026-09-20: an empty config dir still returned
 # 11,791 B at $HOME. So a shadow-dir run would charge the fixture the real box's
@@ -391,9 +446,9 @@ _cfg_is_live=0
 [ "$(cd -P -- "$CFG" 2>/dev/null && pwd -P)" = "$(cd -P -- "$LIVE_DIR" 2>/dev/null && pwd -P)" ] && _cfg_is_live=1
 if [ "$_cfg_is_live" -eq 0 ]; then
   printf '%-46s %8s  %s\n' "SessionStart injection" 0 "NOT MEASURABLE — \$CLAUDE_CONFIG_DIR is not the live dir"
-elif [ -f "$_injector" ] && [ "${HARBOR_BUDGET_NO_PROBE:-0}" != 1 ]; then
+elif [ -f "$_injector" ] && [ "${HARBOR_CONTEXT_BUDGET_NO_PROBE:-${HARBOR_BUDGET_NO_PROBE:-0}}" != 1 ]; then
   inj_local="$(_inject_bytes "$PWD")"; : "${inj_local:=0}"
-  row "SessionStart injection (this cwd)" "$inj_local" "probed via bin/inject-hook.sh"
+  row "SessionStart injection (this cwd)" "$inj_local" "probed via hooks/injection-rule/injection-rule.sh"
   # The worst case is a session started where no repo governs — the case that
   # carries the full hidden-skill listing. Probed rather than asserted, and named
   # in the report so the claim is falsifiable at a glance.
@@ -403,7 +458,7 @@ elif [ -f "$_injector" ] && [ "${HARBOR_BUDGET_NO_PROBE:-0}" != 1 ]; then
   [ "$inj_max" -gt "$inj_local" ] && \
     printf '%-46s %8s  %s\n' "  ↳ largest injection on this box (not this cwd)" "$inj_max" "$inj_max_where"
 else
-  printf '%-46s %8s  %s\n' "SessionStart injection" 0 "NOT PROBED — no injector, or HARBOR_BUDGET_NO_PROBE=1"
+  printf '%-46s %8s  %s\n' "SessionStart injection" 0 "NOT PROBED — no injector, or HARBOR_CONTEXT_BUDGET_NO_PROBE=1"
 fi
 
 # ── what L2 and D WILL add — projected, and counted separately ──────────────
@@ -415,7 +470,7 @@ fi
 # loads its corpus on invocation, which is the invoked-only cost this tool already
 # treats as free.
 #
-# That is the built-vs-running conflation STATUS.md exists to stop, reproduced in a
+# That is the built-vs-running conflation docs/generated/status.md exists to stop, reproduced in a
 # different tool — and a ceiling that reports bytes nobody is spending gets raised
 # or ignored, which is CONSTITUTION §2.11's false positive.
 #
@@ -456,7 +511,7 @@ done
 # those change only when somebody deploys something. The memory index is excluded
 # and deliberately so: it changes every time a memory is written, so baselining it
 # would fire on ordinary work within a day, and §2.11 makes that the defect rather
-# than the safety. store-check.sh already owns the index, with its own bound.
+# than the safety. memory-store-check.sh already owns the index, with its own bound.
 #
 # THE INJECTION IS EXCLUDED FROM THE BASELINE FOR THE SAME REASON, AND IT IS A
 # DIFFERENT ONE FROM "it changes often": it changes with the CALLER'S DIRECTORY,
@@ -511,6 +566,7 @@ _surf="$( [ -f "$CFG/CLAUDE.md" ] && printf claude-md || printf constitution-pro
 [ "$plugn" -gt 0 ] && _surf="$_surf+plugins"
 [ "$cmdn" -gt 0 ] && _surf="$_surf+commands"
 [ "$repo_n" -gt 0 ] && _surf="$_surf+repo"
+[ "$imp_n" -gt 0 ] && _surf="$_surf+imports"
 _digest="$( { grep '^bytes()' "$0"; sed -n '/^desc_bytes()/,/^}/p' "$0"; } | cksum | cut -d' ' -f1 )"
 INSTRUMENT="$_surf@$_digest"
 case "$MODE" in
@@ -529,13 +585,13 @@ case "$MODE" in
       "$deliberate" "${BASELINE#$ROOT/}" >&3
     exit 0 ;;
   check)
-    # THE KIND IS THE FINDING'S SUBJECT, NOT ITS MESSAGE (harbor#585, CONTRACTS/finding.md). One
+    # THE KIND IS THE FINDING'S SUBJECT, NOT ITS MESSAGE (harbor#585, contracts/finding.md). One
     # subject for every failure filed an instrument change and regrowth as the same finding, so
     # accepting one silenced the other. Printed only under --kind, last, on its own line.
     kind() { [ "$KIND" = 0 ] || printf 'kind=%s\n' "$1" >&3; }
     if [ -n "$_bl_bad" ]; then
       log_fail "context-budget: the baseline ${BASELINE#$ROOT/} $_bl_bad, so nothing was compared"
-      log_fix "ls -l ${BASELINE#$ROOT/}   # restore it from the in-tree seed: cp CONTEXT-BASELINE.tsv ${_STATE_BL}"
+      log_fix "ls -l ${BASELINE#$ROOT/}   # restore it from the in-tree seed: cp registries/context-baseline.tsv ${_STATE_BL}"
       log_end || :
       kind unreadable; exit 1
     fi
@@ -575,7 +631,7 @@ esac
 printf '%s\n' "$_rule"
 printf '%-46s %8s  %s\n' "DELIBERATE SURFACE (baselined)" "$deliberate" \
   "$( [ -n "$_bl_last" ] && printf 'recorded %s' "$_bl_last" || printf 'no baseline recorded' )"
-# THE `ceiling <n>` TOKEN IS AN INTERFACE, NOT A VERDICT. store-check.sh seds this
+# THE `ceiling <n>` TOKEN IS AN INTERFACE, NOT A VERDICT. memory-store-check.sh seds this
 # exact line to derive the memory index's allowance, and a first cut of harbor#183
 # replaced the token with prose — which made store-check print "No verdict on
 # size: the allowance is derived … and it did not yield one". It degraded honestly,
@@ -590,7 +646,7 @@ printf '%-46s %8s  %s\n' "WORST CASE (largest store, any cwd)" "$worst" "$worst_
 # the plugin, command and injection surfaces dropped `ceiling - (spent - index)`
 # from 9,477 B to 799 B and would have made store-check demand a five-pointer
 # index — §2.11's false positive, arrived at by measuring something ELSE more
-# honestly. store-check.sh no longer uses that arithmetic (harbor#316, second
+# honestly. memory-store-check.sh no longer uses that arithmetic (harbor#316, second
 # half): its allowance is `always-on pointers x 150 + 600`, derived from the index
 # it is measuring. So this tool has nothing to warn about, and a row describing
 # another tool's formula would now be a copy of something that is no longer true.

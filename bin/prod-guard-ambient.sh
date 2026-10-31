@@ -1,15 +1,15 @@
 #!/usr/bin/env sh
 set -eu
-# B10 (harbor#56) — the ambient shim for project-init's `prod_guard.py`.
+# B10 (harbor#56) — the ambient shim for yard's `prod_guard.py`.
 #
-# WHY A SHIM AND NOT A FORK. `prod_guard.py` is project-init's file and owns the
-# cloud/data destruction corpus by contract (bin/guard-bash.sh:6-8, which is why
+# WHY A SHIM AND NOT A FORK. `prod_guard.py` is yard's file and owns the
+# cloud/data destruction corpus by contract (bin/admission-bash.sh:6-8, which is why
 # the floor's Bash guard deliberately omits that class). Editing an installed
 # copy to add deferral would fork it, and a scaffolded copy silently diverging
-# from its plugin is the exact defect projects-orchestrator#199 exists to fix.
+# from its plugin is the exact defect fleet#199 exists to fix.
 # So the copy stays byte-identical to the marketplace version — assertable, and
 # asserted by prod-guard-test.sh — and the deferral lives here, in Helm, where
-# the detect-and-defer doctrine (CONTRACTS/marker.md) already lives.
+# the detect-and-defer doctrine (contracts/marker.md) already lives.
 #
 # WHY IT DEFERS AT ALL. Measured on Claude Code 2.1.220 (harbor#56, the run
 # table): two PreToolUse hooks that both return `ask` produce ONE prompt, and
@@ -24,7 +24,7 @@ set -eu
 # a project `ask` produced no tool_result at all, num_turns 1, subtype success.
 # What an operator sees there is UNVERIFIED — headless cannot observe a prompt.
 # Standing down silently at exit 0 with no output is the floor's own idiom
-# (floor_engine_stand_down, bin/guard-lib.sh:614) and its behaviour is known.
+# (floor_engine_stand_down, bin/library-admission.sh:614) and its behaviour is known.
 #
 # THE PREDICATE IS WIRING, NOT MARKER PRESENCE. floor_in_repo() defers on marker
 # presence, which is right for the floor. It is WRONG here: every governed repo
@@ -52,7 +52,7 @@ PAYLOAD="$(cat)"
 #
 # LAZY, SUBSHELLED AND REDIRECTED, and each of the three is load-bearing:
 #
-#   LAZY   guard-lib.sh is 2k lines and this runs on EVERY Bash call. Sourcing it
+#   LAZY   library-admission.sh is 2k lines and this runs on EVERY Bash call. Sourcing it
 #          costs ~8.7ms measured here, against ~39ms for the python3 fork the
 #          delegate path already pays -- affordable, but only paid at the moment
 #          a decision is actually recorded, never on the way to making one. That
@@ -71,8 +71,8 @@ PAYLOAD="$(cat)"
 # ALSO ABSENT: a `prod` token in FLOOR_OBS_GUARDS, which would have coerced every
 # record here to g=other and reproduced harbor#320 in a shape that LOOKS logged.
 # Added in the same change, and lint C7 now holds the two ends together.
-# harbor#813: no dirname fork (a failed one read /guard-lib.sh).
-case "$0" in */*) _LIB="${0%/*}/guard-lib.sh" ;; *) _LIB=./guard-lib.sh ;; esac
+# harbor#813: no dirname fork (a failed one read /library-admission.sh).
+case "$0" in */*) _LIB="${0%/*}/library-admission.sh" ;; *) _LIB=./library-admission.sh ;; esac
 _log() { # <verdict> <rule.shape>; FLOOR_IN gives the record its session key (harbor#309)
   [ -f "$_LIB" ] || return 0
   ( set +eu; FLOOR_TOOL=Bash; FLOOR_IN="$PAYLOAD"; . "$_LIB"; floor_log_decision prod "$1" "$2" ) \
@@ -80,7 +80,7 @@ _log() { # <verdict> <rule.shape>; FLOOR_IN gives the record its session key (ha
 }
 
 # The session cwd the harness sends, preferred over this process's $PWD, which
-# is only incidentally the same (same reasoning as guard-lib.sh:59-64).
+# is only incidentally the same (same reasoning as library-admission.sh:59-64).
 d=""
 if command -v jq >/dev/null 2>&1; then
   d="$(printf '%s' "$PAYLOAD" | jq -r '.cwd // empty' 2>/dev/null || true)"
@@ -88,7 +88,7 @@ fi
 [ -n "$d" ] || d="${CLAUDE_PROJECT_DIR:-$PWD}"
 
 # Up-walk for a rendered settings file that wires a prod_guard. Symlink
-# discipline follows guard-lib.sh:45-48 (marker-forgery, 2026-07-24): a
+# discipline follows library-admission.sh:45-48 (marker-forgery, 2026-07-24): a
 # symlinked settings file is writable from outside the repo's own review, so it
 # must not be able to talk this guard into standing down.
 # MODE `other` EXCLUDES THIS SHIM'S OWN COMMAND, NOT THE WHOLE DIRECTORY. Raised by
@@ -188,7 +188,7 @@ wires_prod_guard() { # <settings-file> [other]
 # `stat -f '%d:%i'` also works and is what a reviewer will suggest; it is rejected
 # because `-f` is BSD-only and the floor is pure POSIX that must also run on GNU.
 # `CDPATH=''` not the bare `CDPATH=` used elsewhere in bin/: identical in sh, but
-# the linter reads the bare form as a typo'd assignment (SC1007) — pass-score.sh:17
+# the linter reads the bare form as a typo'd assignment (SC1007) — eval-pass-score.sh:17
 # already uses this spelling. (A comment line may not START with the linter's own
 # name: it is then parsed as a directive, and SC1072 silently stops the analysis of
 # the whole file — which is how this very block hid itself for one round.)
@@ -257,13 +257,13 @@ done
 # No project copy owns it — this one does.
 #
 # DEPENDENCY FAILURE IS NOT `exit 2` HERE, and this is a deliberate departure
-# from floor-hook.sh. That wrapper converts a broken dependency into a loud deny
+# from admission-hook.sh. That wrapper converts a broken dependency into a loud deny
 # because the guards it wraps are vetoes: exit 2 blocks the class they already
 # block. This guard's posture is `ask` on ~0.4% of Bash traffic (harbor#56: 46
 # matching calls in 11,505), so exit 2 on a missing python3 would deny 100% of
 # Bash instead — a guard that blocks ordinary work gets switched off, and a
 # disabled guard protects nothing (§2.11). Silent exit 0 is the other trap: that
-# is precisely the silent-allow class floor-hook.sh was built to kill.
+# is precisely the silent-allow class admission-hook.sh was built to kill.
 #
 # So: announce it as an `ask` ONCE per session, then stand down for the rest of
 # that session. The operator sees the diagnosis and cannot mistake it for a
@@ -290,13 +290,9 @@ _broken() { # <reason>
   fi
   : > "$_stamp" 2>/dev/null || true
   _log ask prod-broken.meta
-  # THE MESSAGE BELOW UNDERSTATES THE CORPUS (harbor#954 item 8). Its bq/gsutil
-  # caveat went stale with project-init ff2749d (PI-916, 2026-08-01), which added
-  # `bq rm`, `bq truncate`, `gsutil rm -r` and `gcloud storage rm -r` to DENY_RULES;
-  # probed 2026-10-11 at project-init e81f144, `bq rm` and `gsutil rm -r` both ask.
-  # guard-cloud.sh answers the same verbs: controls.tsv admission.class-cloud-destroy
-  # names the floor's one owner. Rewording the message is the operator's call.
-  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"prod-guard-ambient is INSTALLED BUT NOT FUNCTIONING: %s. Nothing is evaluating terraform/tofu destroy, kubectl/helm delete, aws/gcloud/az delete, SQL DROP/TRUNCATE or rm -rf. (bq and gsutil are NOT in the corpus even when it works.) Reported once per session; it will stand down silently for the rest of this session."}}\n' "$1"
+  # The corpus as prod_guard.py's DENY_RULES hold it, bq and gsutil included since yard ff2749d (PI-916);
+  # checked 2026-10-23 at yard 22852b9: each bq, gsutil and gcloud storage removal verb asks (harbor#954 item 8).
+  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"prod-guard-ambient is INSTALLED BUT NOT FUNCTIONING: %s. Nothing is evaluating terraform/tofu destroy, kubectl/helm delete, aws/gcloud/az delete, warehouse table and dataset removal, recursive bucket removal, SQL DROP/TRUNCATE or rm -rf. Reported once per session; it will stand down silently for the rest of this session."}}\n' "$1"
   exit 0
 }
 [ -f "$GUARD" ] || _broken "no guard file at $GUARD"
@@ -306,7 +302,7 @@ command -v python3 >/dev/null 2>&1 || _broken "python3 not on PATH"
 # path, so it is written to be byte-transparent and is asserted that way.
 #
 # prod_guard.py's contract, read from the authoritative copy
-# (project-init plugins/project-init-workflow/hooks/prod_guard.py:1028-1040):
+# (yard's workflow plugin, hooks/prod_guard.py:1028-1040; its name is contracts/scaffolder-plugins.tsv):
 # it writes ONE json.dumps object with NO trailing newline on a verdict, writes
 # NOTHING at all on an allow, and returns 0 on every path including its own
 # internal exception handler. Diagnostics go to stderr, which `$(...)` does not

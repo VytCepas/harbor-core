@@ -1,6 +1,6 @@
 # gitleaks config (harbor#1149): the defaults, plus one reasoned exception.
 # Guard test inputs carry no scannable token: they split each token-shaped literal with a `{j}`
-# joiner that tests/lib/row.sh (and bin/floor-equiv.sh for fixtures/guard-corpus.jsonl) deletes
+# joiner that tests/lib/row.sh (and bin/floor-equiv.sh for fixtures/admission-corpus.jsonl) deletes
 # before the guard sees the row. Nothing under tests/ or fixtures/ is allow-listed.
 title = "harbor"
 
@@ -10,4 +10,4 @@ useDefault = true
 [[allowlists]]
 description = "Vendored third-party doc: the Nuclei helper-function table in the Fabric write_nuclei_template_rule pattern shows a sample JWT (a documentation example, not a credential). Vendored content is never edited, so the file is allow-listed for the jwt rule only."
 targetRules = ["jwt"]
-paths = ['''(^|/)vendor/skills/fabric/Patterns/write_nuclei_template_rule/system\.md$''']
+paths = ['''(^|/)vendor/skills-archive/fabric/Patterns/write_nuclei_template_rule/system\.md$''']

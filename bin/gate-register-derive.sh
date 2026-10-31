@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # gate-register-derive.sh (harbor#1018, review finding 3) — the rows of harbor's protected-paths register that are
 # DERIVED, never kept by hand: every file an installer ships into the config dir, every script an installer wires
-# as a hook or statusline, every shim target CONTRACTS/shims.tsv links into ~/.local/bin, every file a ship.conf
+# as a hook or statusline, every shim target contracts/shims.tsv links into ~/.local/bin, every file a ship.conf
 # command runs, what decides the required checks' content, and everything those and the gate tools source or call,
 # followed to a fixpoint.
 #
@@ -17,7 +17,7 @@ LC_ALL=C; export LC_ALL
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH='' cd -- "$HERE" && pwd)"; ROOT="$(CDPATH='' cd -- "$HERE/.." && pwd)"
 LOG_FD=2
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 log_init gate-register-derive
 REG="${2:-$ROOT/.agents/protected-paths.tsv}"
 CONF="$ROOT/.agents/ship.conf"
@@ -31,9 +31,14 @@ esac
 T="$(mktemp -d "${TMPDIR:-/tmp}/derive.XXXXXX")"; trap 'rm -rf "$T"' EXIT
 TAB="$(printf '\t')"
 ls "$ROOT/bin" > "$T/names"
-calls() { # <file> → the bin/ files its code lines name after a `/`
+# A hook engine ships from its folder under its bare name (D-88): name TAB hooks/<engine>/<engine>.sh.
+for _ed in "$ROOT"/hooks/*/; do _en="${_ed%/}"; _en="${_en##*/}"; [ ! -f "$_ed$_en.sh" ] || printf '%s.sh\thooks/%s/%s.sh\n' "$_en" "$_en" "$_en"; done > "$T/engines"
+calls() { # <file> → the bin/ files and hook engines its code lines name after a `/`
   sed -e 's/^[[:space:]]*#.*$//' -e 's/[[:space:]]#.*$//' "$1" | grep -oE '/[A-Za-z0-9_][A-Za-z0-9_.-]*\.(sh|awk|py|tsv|jq|mjs)' \
-    | sed 's|^/||' | sort -u | while IFS= read -r _n; do grep -qxF "$_n" "$T/names" || continue; printf 'bin/%s\n' "$_n"; done
+    | sed 's|^/||' | sort -u | while IFS= read -r _n; do
+      if grep -qxF "$_n" "$T/names"; then printf 'bin/%s\n' "$_n"
+      else awk -F'\t' -v n="$_n" '$1 == n { print $2 }' "$T/engines"; fi
+    done
 }
 conf() { awk -v k="$1" '{ sub(/(^|[ \t])#.*/, "") } $1 == k { $1 = ""; sub(/^[ \t]+/, ""); print }' "$CONF" 2>/dev/null || :; }
 
@@ -51,28 +56,37 @@ awk '/^floor_hooks\(\)/ { f = 1; next } f && /^ROWS$/ { exit } f && !/^#/ && /;/
   | tr ' ' '\n' | awk 'NF && !/^-/ { print "bin/" $0 "\twired by floor-install.sh\tinstalled" }' >> "$T/seed"
 # the gate tools themselves: what their calls reach must be protected too
 for _g in "$ROOT"/bin/gate-*.sh; do printf 'bin/%s\tthe approval gate\tinstalled\n' "${_g##*/}"; done >> "$T/seed"
+# a hook engine's manifest is its wiring: bin/deploy-hooks.sh renders a command for each wire row (D-88)
+for _m in "$ROOT"/hooks/*/manifest.tsv; do
+  [ -f "$_m" ] && grep -q '^wire	' "$_m" || continue
+  _e="${_m%/manifest.tsv}"; _e="${_e##*/}"; printf 'hooks/%s/%s.sh\twired by hooks/%s/manifest.tsv\tinstalled\n' "$_e" "$_e" "$_e"
+done >> "$T/seed"
+# a bare name that left bin/ for its engine folder is shipped from there
+awk -F'\t' -v OFS='\t' 'NR == FNR { e["bin/" $1] = $2; next } ($1 in e) { $1 = e[$1] } { print }' "$T/engines" "$T/seed" > "$T/seed2" && mv "$T/seed2" "$T/seed"
 # 3 · what the box runs from this repo OUTSIDE a session, as the operator (review finding 1): every shim whose root
-#     (CONTRACTS/roots.tsv) is this repo or under it, and both registers, which decide what ~/.local/bin points at
+#     (contracts/roots.tsv) is this repo or under it, and both registers, which decide what ~/.local/bin points at
 _me="$(conf repo | head -1)"; _me="${_me##*/}"
 awk -F'\t' -v me="${_me:-harbor}" 'NR == FNR { if ($1 !~ /^#/ && NF >= 3) rel[$1] = $3; next }
   $1 ~ /^#/ || $1 == "name" || NF < 3 { next }
   { r = rel[$2]; if (r == me) p = $3; else if (index(r, me "/") == 1) p = substr(r, length(me) + 2) "/" $3; else next
-    print p "\tlinked into ~/.local/bin as " $1 " by CONTRACTS/shims.tsv\toperator-run" }' \
-  "$ROOT/CONTRACTS/roots.tsv" "$ROOT/CONTRACTS/shims.tsv" >> "$T/seed"
-printf 'CONTRACTS/%s\tdecides what ~/.local/bin points at\toperator-run\n' shims.tsv roots.tsv >> "$T/seed"
+    print p "\tlinked into ~/.local/bin as " $1 " by contracts/shims.tsv\toperator-run" }' \
+  "$ROOT/contracts/roots.tsv" "$ROOT/contracts/shims.tsv" >> "$T/seed"
+printf 'contracts/%s\tdecides what ~/.local/bin points at\toperator-run\n' shims.tsv roots.tsv >> "$T/seed"
 # 4 · every file a ship.conf command runs: plan, apply, verify, restore, deployed run unattended (review finding 2)
 for _k in plan apply verify restore deployed; do
   conf "$_k" | tr ' \t' '\n\n' | tr -d "\"'" | awk -v k="$_k" '/\// && !/^[\/$-]/ && !/\.\./ { print $0 "\truns as ship.conf " k "\tship" }'
 done >> "$T/seed"
 # 5 · what decides the required checks' content (review finding 4): the suite manifests, the stand-down map, the local
-#     required list, the push-run skip, the runner images and the test library, and what the workflow ship.conf names
-#     calls. Individual test files stay open: protecting tests/** would put nearly every PR behind the click.
-for _f in "$ROOT"/CONTRACTS/suites*.txt CONTRACTS/suite-paths.txt CONTRACTS/required-checks.tsv bin/ci-verified.sh; do
+#     required list, the push-run skip, the runner images and the test library, and what every workflow calls, not only
+#     the one ship.conf judges: the public mirror runs governance.yml inside public-ci (harbor#1149). Individual test
+#     files stay open: protecting tests/** would put nearly every PR behind the click.
+for _f in "$ROOT"/contracts/suites*.txt contracts/suite-paths.txt contracts/required-checks.tsv bin/ci-verified.sh; do
   printf '%s\tdecides what a required check runs\tci-gate\n' "${_f#"$ROOT"/}"
 done >> "$T/seed"
-_wf="$(conf workflow | head -1)"
-[ -z "$_wf" ] || [ ! -f "$ROOT/.github/workflows/$_wf" ] \
-  || calls "$ROOT/.github/workflows/$_wf" | sed "s|\$|	called by .github/workflows/$_wf	ci-gate|" >> "$T/seed"
+for _wp in "$ROOT"/.github/workflows/*.yml; do
+  [ -f "$_wp" ] || continue; _wf="${_wp##*/}"
+  calls "$_wp" | sed "s|\$|	called by .github/workflows/$_wf	ci-gate|" >> "$T/seed"
+done
 awk -F'\t' -v r="$ROOT" '{ f = r "/" $1; if ((getline _ < f) >= 0) { close(f); print } }' "$T/seed" | sort -t "$TAB" -k1,1 -u > "$T/set"
 for _d in runners tests/lib; do
   [ ! -d "$ROOT/$_d" ] || printf '%s/**\tdecides what a required check runs\tci-gate\n' "$_d" >> "$T/set"

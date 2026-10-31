@@ -1,0 +1,87 @@
+# layers.tsv (harbor#1149, DESIGN.md v2.1) - which tracked paths are core (shared by `harbor deploy push`) and which stay in the dev repo.
+# Columns, tab-separated, one header row:  path  layer  note
+#   path   a directory prefix ending in "/", or one exact file path. Rows must not overlap.
+#   layer  core | dev
+#   note   why
+# Every tracked path matches exactly one row. bin/scope-layers.sh --check is red on a path that matches none or two: there is no default layer.
+# Classified by what the files ARE. A core path that still names a client or account is a leak to fix, never a reason to move the row.
+# Known gap: a core test that reads a dev path (evals/) fails in the exported repo; harbor#1149.
+# A core document NAMES a dev path in code font and never links it: a link dangles in the export (tests/deploy/push/selfcontained.test.sh).
+# Each top-level entry's kind and #949 layer are in contracts/layout-map.tsv (harbor#1272); whether it ships is only ever read from here.
+# Known gap: untracked files are in neither the export nor the --check; commit a file to classify it.
+path	layer	note
+.agents/	core	agent governance
+.claude/	core	repo-local harness config
+.github/	core	CI and ownership
+ACCESS/	core	account routing; red at zero until the private data moves out
+contracts/	core	interface contracts
+bin/	core	the tools
+commands/	core	slash commands
+context-rules/	core	session injectors (inject.d/ before harbor#1010)
+docs/audits/	core	documentation
+docs/design/	core	documentation
+docs/explanation/	core	documentation
+docs/reference/	core	documentation
+docs/src/	core	documentation
+docs/README.md	core	documentation
+docs/context-map.md	core	documentation
+docs/index.html	core	documentation
+docs/decisions/	core	decision records
+fixtures/	core	test fixtures
+hooks/	core	git hooks
+launchd/	core	macOS schedules
+patches/	core	vendor patches
+runners/	core	CI runner setup
+skills/	core	skills
+standards/	core	naming and conventions
+systemd/	core	linux schedules
+tests/	core	the suites
+tools/	core	helper programs
+vendor/archify/	core	vendored upstream code
+vendor/complexity-atlas/	core	vendored upstream code
+vendor/naming/	core	the naming package vendored from this repo (bin/standard-vendor.sh)
+vendor/skills/	dev	skills derived from an upstream project; installed from the dev checkout
+vendor/skills-archive/	dev	archived upstream skills: in git, not installed, not indexed (vendor/skills-archive/PROVENANCE.md)
+worklog/	core	push hook
+evals/	dev	eval corpora, bulk data
+.gitignore	core	
+.gitleaks.toml	core	secret-scan config: the default rules plus a reasoned allow-list
+AGENTS.md	core	
+CLAUDE.md	core	
+policy/constitution.md	core	
+registries/context-ratchet.tsv	core	the deploy ratchet baseline read by bin/context-budget.sh --ratchet
+CONTRIBUTING.md	core	how to contribute to the export
+docs/reports/evals.md	core	
+LICENSE	core	Apache-2.0 text, verbatim
+NOTICE	core	third-party notices (Apache convention)
+README.md	core	
+docs/how-to/harden-the-host.md	core	
+SECURITY.md	core	vulnerability reporting policy
+justfile	core	
+registries/context-baseline.tsv	dev	session cost log
+registries/coverage-incidents.tsv	dev	incident log
+docs/reports/handover-archive.md	dev	working notes
+docs/reports/rejected-approaches.md	dev	working notes
+docs/how-to/handover.md	dev	working notes
+docs/generated/plan.md	dev	working plan
+docs/reports/qa-plan.md	dev	working plan
+docs/reports/2026-07-23-review.md	dev	dated review notes
+docs/generated/status.md	dev	generated status
+docs/reports/platform-build-tickets.md	dev	ticket drafts
+docs/reports/platform-epic.md	dev	epic notes
+trio-decoupling-epic.md	dev	epic notes
+DOCTRINE/	core	rule reasoning (shims until 2026-11-15)
+EVALS-DATA/	dev	shim for evals/ (until 2026-11-15)
+APPROACH.md	core	old-name shim
+BOUNDARY.md	core	old-name shim
+CHECKS.md	core	old-name shim
+CITATIONS.md	core	old-name shim
+CONSTITUTION.md	core	old-name shim
+EVALS.md	core	old-name shim
+FLOOR.md	core	old-name shim
+PROVENANCE.md	core	old-name shim
+SEC-0.md	core	old-name shim
+DEAD-ENDS.md	dev	old-name shim
+HANDOFF.md	dev	old-name shim
+PLAN.md	dev	old-name shim
+STATUS.md	dev	old-name shim

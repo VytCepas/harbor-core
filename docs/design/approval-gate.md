@@ -2,7 +2,7 @@
 
 **Status:** harbor#1018, PR A of the ship contract (`~/Deliverables/2026-10-06-night-stack/SHIP-CONTRACT.md` v1.2).
 It is stacked on #1126 (`harbor merge-stack`), whose CI wait it shares. PR B (#1128), the runner `bin/deploy-fleet.sh`,
-calls the CLI below. Suites: `tests/gate/approval/` and `tests/guards/bash.gate-test.sh`.
+calls the CLI below. Suites: `tests/gate/approval/` and `tests/admission/bash/gate.test.sh`.
 
 ## The policy (the operator, 2026-10-06)
 
@@ -26,8 +26,8 @@ The register's tail is **derived, not kept by hand** (`bin/gate-register-derive.
 `classify.test.sh` fails when the block is stale. It over-reaches on purpose: a script that only names another one
 in a code line counts as calling it.
 
-The classifier ignores case, so `Bin/guard-bash.sh` is protected. On a case-insensitive disk it *is*
-`bin/guard-bash.sh`.
+The classifier ignores case, so `Bin/admission-bash.sh` is protected. On a case-insensitive disk it *is*
+`bin/admission-bash.sh`.
 
 ## What actually holds, and what does not
 
@@ -49,9 +49,9 @@ runs is invisible to every guard. The adversarial review of 7c23e59 (DO NOT MERG
   an owner listed in `~/.config/harbor-app/orgs.tsv` (`owner<TAB>account`; the target is `-R`,
   `gh repo <verb> OWNER/REPO`, a URL, an `api` path, else the cwd's origin). Every other owner, and a box with
   no table, keeps the default installation. The table names real organisations, so core ships none: it lives in
-  the private layer as `harbor-app/orgs.tsv` and `harbor-app-install.sh` copies it. Gap: an HTTPS `git clone`
+  the private layer as `harbor-app/orgs.tsv` and `access-github-app-install.sh` copies it. Gap: an HTTPS `git clone`
   outside a repo sends no owner; `gh repo clone` does. The three scripts live in `bin/harbor-app/`, tested by
-  `tests/cli/harbor-app-routing-test.sh`, and are installed by `bin/harbor-app-install.sh` from the operator's
+  `tests/access/github-app/routing.test.sh`, and are installed by `bin/access-github-app-install.sh` from the operator's
   terminal. It **copies, never links**: a session can edit the checkout, and a shim that drops `GH_TOKEN` falls
   through to the operator's own login.
 - **`.github/CODEOWNERS` is derived from the register** (`bin/gate-codeowners.sh`) and code-owner review is required,
@@ -140,7 +140,7 @@ direct `gh` call lacks, so it is not checked there.
   - `gh repo edit --default-branch`.
   - `git push` to `main`/`master` or `--all`/`--mirror`. A repo that wires its own branch guard adjudicates its branches
     (B5).
-  - `merge-check.sh --merge` (and so its `--force`) and `merge-stack merge`.
+  - `gate-merge-check.sh --merge` (and so its `--force`) and `merge-stack merge`.
   - `deploy.sh --apply[=…]`, `harbor deploy|install|uninstall|skills|inject|constitution|restore --apply`, and any
     installer, `sec0-harden`, `floor-deny`, `floor-uninstall`, `restore` or `pin-instructions` run with `--live` and a
     write. A sandbox `--dir` install stays open.
@@ -178,15 +178,15 @@ direct `gh` call lacks, so it is not checked there.
     `deploy-VytCepas_harbor-cd8bd19a1b2c` (§5a.2).
   - Each open emits `approval.open` with subject = id, a 24h `deadline_ts` and a title. A completed approval, or
     `close`, emits `approval.close` (§5a.3).
-  - `CONTRACTS/obligation-kinds.tsv` folds them as kind `approval`, so they count in `⧗N`. Its reconcile source,
+  - `contracts/obligation-kinds.tsv` folds them as kind `approval`, so they count in `⧗N`. Its reconcile source,
     `approval-queue`, also closes an id the queue file closed.
 - **Ledger:** `<cfg>/.helm-approvals/ledger.tsv`, one row per decision: `time, action, args, sha256(args), outcome`.
   The click's one-shot tokens live beside it in `approved/`.
 - **Required checks:** each repo's own `.agents/required-checks.tsv`, read from GitHub (§5a.6). Without one,
   merge-check falls back to branch protection, and refuses when nothing gates. Harbor ships its own, a copy of its
-  rows in `CONTRACTS/required-checks.tsv` that must be kept in step.
+  rows in `contracts/required-checks.tsv` that must be kept in step.
   - The actions are `merge-auto`, `approve-merge` and `approve-deploy`.
-  - It is an integrity file (CONTRACTS/helm-state.md), so a session cannot write it.
+  - It is an integrity file (contracts/control-plane-state.md), so a session cannot write it.
 - **Kill switch:** `touch ~/.claude/.harbor-autoship.off`. While it exists, `gate-merge.sh` refuses, and so must
   every unattended deploy (the runner checks it). An operator's approval is not unattended, so it still runs.
 
@@ -259,7 +259,7 @@ What the probe cannot prove:
 ## Gates this changes
 
 - **guard-bash:** the four new rules above. Before this, a session's `gh pr merge` on a green PR reached the
-  classifier. Now the floor refuses it, and `merge-check.sh --merge --force` cannot be reached from a session.
+  classifier. Now the floor refuses it, and `gate-merge-check.sh --merge --force` cannot be reached from a session.
 - **floor-deny:** adds `permissions.ask`, two `permissions.allow` entries and one deny. The sec0 baseline pin covers
   `permissions` whole, and floor-deny re-pins after it writes.
 - **floor-install / floor-uninstall:** install and remove the gate's files. Uninstall also removes the gate's ask and
@@ -279,7 +279,7 @@ What the probe cannot prove:
   question: the restore stays the runner's (`restore`), and the B8 re-pin stays the operator's. B8 drift is an
   advisory in `floor-verify`, so a declined re-pin does not roll a deploy back. The terminal path is unchanged.
   The flag is kept out of every printed fix, so no fix line hands a person a flag they cannot use. The cases and
-  their mutants: `tests/install/deploy-test.sh`, section `--unattended`.
+  their mutants: `tests/deploy/deploy/deploy.test.sh`, section `--unattended`.
 
 ## Recorded on #1018
 

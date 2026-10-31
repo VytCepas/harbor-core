@@ -1,4 +1,4 @@
-# Harbor's scope marker (harbor#954 PR C; CONTRACTS/marker.md, standards/naming.md D-12, D-37).
+# Harbor's scope marker (harbor#954 PR C; contracts/marker.md, standards/naming.md D-12, D-37).
 # context: repo is the key the floor reads (floor_in_repo) and project-init renders. It stands the
 # ambient layer down for PROJECT rules only, and only where a guard is wired. The constitutional
 # five never yield. A marker alone hands nothing off: force push stays armed and the work log
