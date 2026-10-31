@@ -31,21 +31,23 @@ commits() {
   printf '[%s]\n' "${_out%,}" > "$(fxname "repos/$R/commits?sha=main&per_page=100")"
 }
 # runs <sha:conclusion|sha:-status|sha:conclusion@s ...> — main's runs; `sha:-queued` has no conclusion yet,
-# `@s` makes it a scheduled run (a later one in the list is a later one in time). PAD=1 fills the page to 100
+# `@s` makes it a scheduled run (a later one in the list is a later one in time), `@d` a manual run of the push
+# workflow and `@D` a manual run of another workflow. PAD=1 fills the page to 100
 # runs, the oldest newer than the tip, so a commit missing from it is genuinely outside the page.
 runs() {
   _j="[]"; _k=0
   for _p in "$@"; do
-    _s="${_p%%:*}"; _c="${_p#*:}"; _ev=push; _nm=CI; _at=1; _k=$((_k + 1)); _t="$(jq -rn --argjson t "$((NOW - 1800 + _k))" '$t | todate')"
+    _s="${_p%%:*}"; _c="${_p#*:}"; _ev=push; _nm=CI; _at=1; _wf=7; _k=$((_k + 1)); _t="$(jq -rn --argjson t "$((NOW - 1800 + _k))" '$t | todate')"
     case "$_c" in *#*) _at="${_c##*#}"; _c="${_c%#*}" ;; esac    # `#2` is a second attempt of the run
-    case "$_c" in *@s) _ev=schedule; _nm="${SCHEDNAME:-Nightly}"; _c="${_c%@s}" ;; esac
+    case "$_c" in *@s) _ev=schedule; _wf=8; _nm="${SCHEDNAME:-Nightly}"; _c="${_c%@s}" ;; esac
+    case "$_c" in *@d) _ev=workflow_dispatch; _c="${_c%@d}" ;; *@D) _ev=workflow_dispatch; _wf=9; _nm=Other; _c="${_c%@D}" ;; esac
     _u="$_t"; [ -z "${UPD:-}" ] || _u="$(jq -rn --argjson t "$UPD" '$t | todate')"   # UPD: when a finished run completed
     case "$_c" in
       -*) _co=null; _st="${_c#-}" ;;
       *)  _co="\"$_c\""; _st=completed ;;
     esac
-    _j="$(printf '%s' "$_j" | jq -c --arg s "$_s" --argjson c "$_co" --arg st "$_st" --arg e "$_ev" --arg t "$_t" --arg u "$_u" --arg nm "$_nm" --argjson at "$_at" \
-      '. + [{head_sha: $s, conclusion: $c, status: $st, event: $e, workflow_id: (if $e == "push" then 7 else 8 end), name: $nm, created_at: $t, updated_at: $u, run_attempt: $at}]')"
+    _j="$(printf '%s' "$_j" | jq -c --arg s "$_s" --argjson c "$_co" --arg st "$_st" --arg e "$_ev" --arg t "$_t" --arg u "$_u" --arg nm "$_nm" --argjson at "$_at" --argjson wf "$_wf" \
+      '. + [{head_sha: $s, conclusion: $c, status: $st, event: $e, workflow_id: $wf, name: $nm, created_at: $t, updated_at: $u, run_attempt: $at}]')"
   done
   [ -z "${PAD:-}" ] || _j="$(printf '%s' "$_j" | jq -c --arg t "$(jq -rn --argjson t "$((NOW - 3600))" '$t | todate')" '. + [range(100) | {head_sha: "zz", conclusion: "success", status: "completed", event: "push", workflow_id: 7, created_at: $t}]')"
   printf '{"workflow_runs":%s}\n' "$_j" > "$(fxname "repos/$R/actions/runs?branch=main&per_page=100")"
@@ -106,6 +108,12 @@ reset; runs a1:cancelled a1:failure a2:success a3:success a4:success; run
 t_eq "a failure beside a cancellation is failed, not cancelled" failed "$(get .tip.verdict)"
 reset; runs a1:cancelled a1:success a2:success a3:success a4:success; run
 t_eq "a later green run supersedes a cancelled one" green "$(get .tip.verdict)"
+reset; runs a1:cancelled a1:success@d a2:success a3:success a4:success; run
+t_eq "a cancelled push run re-run by hand and green is green" green "$(get .tip.verdict)"
+reset; runs a1:cancelled a1:failure@d a2:success a3:success a4:success; run
+t_eq "…and re-run by hand and failed is failed" failed "$(get .tip.verdict)"
+reset; runs a1:cancelled a1:success@D a2:success a3:success a4:success; run
+t_eq "a green manual run of another workflow does not speak for the push one" cancelled-only "$(get .tip.verdict)"
 reset; PAD=1 runs a2:success a3:success a4:success; byrun a1 none; run
 t_eq "a tip with no run at all is no-run" no-run "$(get .tip.verdict)"
 t_eq "…and red" true "$(get .tip.red)"
