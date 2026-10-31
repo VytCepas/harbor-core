@@ -12,7 +12,7 @@
 # in the EXEMPT block of the suite with a written reason, never a silent absence.
 #
 # CORE'S PACKS ONLY. The packs that name a repo or a client live in the private layer (harbor#1149) with their own
-# probe rows in <private>/inject.d/notes.tsv, and the suite reads those too when HARBOR_CONTEXT_NOTES_PRIVATE names that
+# probe rows in <private>/inject.d/notes.tsv, and the suite reads those too when HARBOR_NOTES_PRIVATE names that
 # layer. A layer that carries a pack with no row there fails the same way.
 #
 # FIXTURE PACKS. A pack in fixtures/injection-rule/packs/<name>/ is never installed and names no real repo; it exists so the
@@ -92,9 +92,6 @@ self	plain	constitution-edit-is-undeployed	silent	editing a neighbouring doc	{"h
 box	plain	tool-failure-is-not-a-result	fire	a tool that refused	{"hook_event_name":"PostToolUseFailure","tool_name":"Read","tool_input":{"file_path":"/nope.txt"},"error":"File does not exist.","is_interrupt":false}
 box	plain	tool-failure-is-not-a-result	silent	the OPERATOR interrupted it, not the tool	{"hook_event_name":"PostToolUseFailure","tool_name":"Bash","tool_input":{"command":"sleep 60"},"error":"The user doesn't want to take this action","is_interrupt":true}
 box	plain	tool-failure-is-not-a-result	silent	a tool that SUCCEEDED is a different event	{"hook_event_name":"PostToolUse","tool_name":"Read","tool_input":{"file_path":"/ok.txt"},"tool_response":"contents"}
-box	plain	tool-failure-is-not-a-result	fire	a guard refusal is a decision (harbor#1390)	{"hook_event_name":"PostToolUseFailure","tool_name":"Bash","tool_input":{"command":"echo x"},"error":"PreToolUse:Bash hook error: [/bin/sh /c/bin/admission-hook.sh /c/bin/admission-bash.sh]: HELM FLOOR [bash:fixture-rule]: BLOCKED — a fixture refusal","is_interrupt":false}
-box	plain	tool-failure-is-not-a-result	fire	a timeout is a decision (harbor#1390)	{"hook_event_name":"PostToolUseFailure","tool_name":"Bash","tool_input":{"command":"sleep 900"},"error":"Command timed out after 2m 0s","is_interrupt":false}
-box	plain	tool-failure-is-not-a-result	silent	a plain non-zero exit from a read is not a decision (harbor#1390)	{"hook_event_name":"PostToolUseFailure","tool_name":"Bash","tool_input":{"command":"jq -r .mcpServers /x/.mcp.json"},"error":"Exit code 2\njq: error: Could not open file /x/.mcp.json: No such file or directory","is_interrupt":false}
 box	plain	confinement-refused	fire	a host the sandbox refused	{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"curl -sS https://example.com"},"tool_response":{"stdout":"","stderr":"curl: (56) CONNECT tunnel failed, response 403\n<sandbox_violations>\ndeny network-outbound example.com:443 (host is not on the allow list)\n</sandbox_violations>"}}
 box	plain	confinement-refused	silent	Operation not permitted with no confinement installed (a macOS privacy refusal)	{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"ls ~/Library/Mail"},"tool_response":{"stdout":"","stderr":"ls: Mail: Operation not permitted"}}
 box	plain	confinement-refused	silent	the block named in the command, not in the result	{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"grep -c \"<sandbox_violations>\" notes.txt"},"tool_response":{"stdout":"0","stderr":""}}
@@ -138,6 +135,3 @@ box	plain	skill-on-first-use	silent	a commit message that only mentions the tool
 box	plain	session-title-missing	fire	the first tool call of a session with no title file	{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"stm-fire","tool_input":{"command":"ls"}}
 box	plain	session-title-missing	silent	the same call inside a subagent	{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"stm-agent","agent_id":"a1","tool_input":{"command":"ls"}}
 box	plain	session-title-missing	silent	a payload with no session id	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"ls"}}
-box	plain	default-way-route	fire	a skill copied straight into the config dir	{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"dwr-fire","tool_input":{"command":"cp -R skills/demo \"$CLAUDE_CONFIG_DIR/skills/\""}}
-box	plain	default-way-route	silent	listing the installed skills reads, it writes nothing	{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"dwr-ls","tool_input":{"command":"ls \"$CLAUDE_CONFIG_DIR/skills\""}}
-box	plain	default-way-route	silent	the same skill written to its harbor home	{"hook_event_name":"PreToolUse","tool_name":"Write","session_id":"dwr-home","tool_input":{"file_path":"@REPO@/skills/demo/SKILL.md","content":"body"}}

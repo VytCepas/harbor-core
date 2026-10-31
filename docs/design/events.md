@@ -96,9 +96,9 @@ without guessing. `emit` checks only the shape of a kind (dotted lower case), no
 - **The hook reads ids and nothing else.** It takes `hook_event_name`, `session_id`, `agent_id` and
   `source` from the payload, each checked against `[A-Za-z0-9._:-]` and 128 bytes; a prompt, a command, a
   transcript path or `last_assistant_message` never reaches an event, and `data` carries only §3a keys.
-- **Wiring.** `bin/admission-install.sh` copies `event-hook.sh` and `event-bus.sh` into the config dir (not
+- **Wiring.** `bin/floor-install.sh` copies `event-hook.sh` and `event-bus.sh` into the config dir (not
   content-pinned: nothing depends on them) and wires the hook once per event, standalone and fail-open.
-  `admission-remove.sh` removes both. The git hooks run where `git config core.hooksPath hooks` is set, as
+  `floor-uninstall.sh` removes both. The git hooks run where `git config core.hooksPath hooks` is set, as
   for the other hooks (contracts/README.md); a merge commit fires `post-merge` only, not `post-commit`.
 - **Off:** `touch <bus dir>/producers.off`; remove it to turn the producers back on.
 - **Never a cost to the caller.** Every path exits 0 and prints nothing, with the bus dir unwritable, a
@@ -140,7 +140,7 @@ without guessing. `emit` checks only the shape of a kind (dotted lower case), no
   `stop_hook_active` only says a stop hook is already continuing the turn. So the producer emits all of them and
   the fold dedupes: the first done closes the row, later ones are no-ops, and a new `agent.spawn` opens it again.
 - **Not here:** a `claude agents` dispatch (it is an ordinary Bash call; not told apart from one). A new Claude Code
-  producer is one `case` arm in `event-hook.sh` plus one row in `admission-install.sh`'s wiring table.
+  producer is one `case` arm in `event-hook.sh` plus one row in `floor-install.sh`'s wiring table.
 - **Elsewhere (harbor#1367):** `ci.job.*` from the runner job hook through `ci-governor listen` (or the hook itself on a
   host runner), and `pr.merged` / `pr.closed` from the obligations reconcile, which is what sees GitHub merge a PR.
 

@@ -26,7 +26,7 @@
 # So the extractor is ONE FILE that both rules run, because the defect was never
 # the parsing. It was that a document dialect could change under a checker
 # without the checker changing with it, and two copies is what made that
-# possible. admission-normalize.awk is the precedent for a shared awk program here.
+# possible. floor-normalize.awk is the precedent for a shared awk program here.
 #
 # WHAT IT EMITS, AND WHY THE TWO FORMS ARE NOT TREATED ALIKE:
 #

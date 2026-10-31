@@ -9,6 +9,7 @@ unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY  # a run inside a session or
 T_TMP="$(cd "$T_TMP" && pwd -P)"  # deploy reports the config dir physically (install-lib's il_target)
 . "$(dirname "$0")/../../install/deploy-fixture.sh"
 need_pty
+
 t_section "flags: [--apply] --live [--accept-loss], parsed by install-lib"
 fixture flags
 run '' --help; t_eq "--help" 0 "$RC"; t_has "--help prints the header" "$(out)" "DRY RUN"
@@ -22,6 +23,7 @@ run '' --dir "$T_TMP"; t_eq "--dir is a usage error: deploy is live only" 2 "$RC
 t_has "...saying so" "$(out)" "deploy targets the live box only"
 run '' --apply --live --dir "$C"; t_eq "--live with --dir is a usage error" 2 "$RC"
 t_eq "no usage error ran anything (log bytes)" 0 "$(wc -c < "$LOGF" | tr -d ' ')"
+
 t_section "dry run"
 fixture dry; run '' --live
 t_eq "a clean dry run" 0 "$RC"
@@ -86,7 +88,7 @@ t_eq "--only wins over a bad components key" 0 "$RC"
 printf 'components = ["core"]\n' > "$PV/harbor.toml"; run '' --only prod-guard --live
 t_eq "--only prod-guard overrides components = [core]" 0 "$RC"
 t_has "...and plans prod-guard" "$(out)" "prod-guard"
-t_hasnt "...and nothing else: floor is not planned" "$(out)" "admission-install"
+t_hasnt "...and nothing else: floor is not planned" "$(out)" "floor-install"
 rm -f "$PV/harbor.toml"; unset HARBOR_SCOPE_PRIVATE
 
 t_section "preflight: the checkout"
@@ -109,17 +111,13 @@ t_eq "...and no child saw it" no "$([ -s "$LOGF.rehearse" ] && echo yes || echo 
 t_section "preflight: the box"
 fixture nosettings; rm -f "$C/settings.json"; refuse "no settings.json (Claude Code never ran here)" "no settings.json in $C"
 t_has "...its fix is the exact first-run command, from this checkout" "$(out)" "  fix: sh '$REPO/bin/harbor' scope install"
-# 99173f58ae dropped this negative for lack of a control; deploy-harden's own no-settings line is the control (harbor#667).
-t_hasnt "...not a note to start Claude Code once, with no command" "$(out)" "start Claude Code"
-mkdir -p "$T_TMP/nocfg"
-t_has "control: deploy-harden with no settings.json does say it" "$(env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/deploy-harden.sh" --dir "$T_TMP/nocfg" 2>&1)" "start Claude Code"
 fixture stamp; STUB_STAMP_RC=1; export STUB_STAMP_RC; refuse "an install-stamp regression" "REMOVE installed work"
 t_has "...relaying install-stamp's own lines" "$(out)" "  note: abc1234 the stubbed lost fix"
 t_has "...with the --accept-loss deploy as its fix" "$(out)" "  fix: sh '$REPO/bin/deploy.sh' --apply --live --accept-loss"
 run '' --live --accept-loss
 t_eq "with --accept-loss the regression does not refuse the dry run" 0 "$RC"
 t_has "...it is a WARN naming the loss" "$(out)" "  WARN: --accept-loss: runtime-install would REMOVE installed work"
-t_eq "...and --accept-loss reaches the installers that take it" "admission-install.sh deploy-runtime-install.sh policy-constitution-install.sh" \
+t_eq "...and --accept-loss reaches the installers that take it" "deploy-runtime-install.sh floor-install.sh policy-constitution-install.sh" \
   "$(grep -- ' --accept-loss' "$LOGF" | awk '{print $1}' | sort -u | tr '\n' ' ' | sed 's/ $//')"
 t_eq "...and not the ones that do not" "" "$(grep -- ' --accept-loss' "$LOGF" | grep -E '^(prod-guard|inject|shim)-install' || true)"
 unset STUB_STAMP_RC
@@ -196,7 +194,7 @@ fixture extra; skills_refuse "a skill with box-only files" "the installed copy h
 fixture cache; mkdir -p "$C/skills"; printf '  note: topo: would update (drifted)\n' > "$T/skills"; run '' --live
 t_eq "a passing skills dry run is not refused" 0 "$RC"; t_has "...and its counts are reported" "$(out)" "skills: 1 to update, 0 new, none blocked"
 t_eq "the skills dry run is --all --live" "skill-install.sh --all --live" "$(cat "$LOGF.dry" 2>/dev/null)"
-fixture dryfail; STUB_FAIL=admission-install.sh:dry; export STUB_FAIL; refuse "a failing installer dry run" "its own dry run FAILED"; unset STUB_FAIL
+fixture dryfail; STUB_FAIL=floor-install.sh:dry; export STUB_FAIL; refuse "a failing installer dry run" "its own dry run FAILED"; unset STUB_FAIL
 
 t_section "prod-guard fails preflight when project-init is absent, unless --only excludes it"
 fixture pg
@@ -214,7 +212,7 @@ t_eq "...its fix: the apply with --only every other component" \
 run 'y\nn\n' $(printf '%s' "$PGFIX" | sed "s|^  fix: sh '$REPO/bin/deploy.sh' ||")
 t_eq "that fix, run as printed, installs" 0 "$RC"
 t_hasnt "...and prod-guard is never applied" "$(applied)" "prod-guard"
-t_has "...while the floor is" "$(applied)" "admission-install.sh --live"
+t_has "...while the floor is" "$(applied)" "floor-install.sh --live"
 run '' --only floor,prod-guard --live
 t_eq "--only floor,prod-guard on that box fails too" 1 "$RC"
 t_eq "...its fix keeps the rest of that selection" "  fix: sh '$REPO/bin/deploy.sh' --only floor --live" "$(grep -A1 '^  FAIL: cannot install ' "$T/out.txt" | sed -n 2p)"
@@ -253,7 +251,7 @@ fixture unatt; SHIP_SNAPSHOT="$T/snap"; : > "$SHIP_SNAPSHOT"
 printf 'bbb  CLAUDE.md\n' > "$T/b8"  # B8 drift, so the re-pin is reached
 CC=1 run '' --apply --live --unattended; CC=''
 t_eq "inside a session, with no terminal, it installs" 0 "$RC"
-t_eq "...in the one order that works" "policy-constitution-install.sh --apply,deploy-shim-install.sh --live,deploy-harden.sh --apply,deploy-runtime-install.sh --live,admission-install.sh --live,prod-guard-install.sh --live,skill-install.sh --all,skill-install.sh commands,context-injection-install.sh --live,deploy-shim-install.sh --live,skill-catalog.sh install,just $T/pi,just $T/po," \
+t_eq "...in the one order that works" "policy-constitution-install.sh --apply,deploy-shim-install.sh --live,deploy-harden.sh --apply,deploy-runtime-install.sh --live,floor-install.sh --live,prod-guard-install.sh --live,skill-install.sh --all,skill-install.sh commands,context-injection-install.sh --live,deploy-shim-install.sh --live,skill-catalog.sh install,just $T/pi,just $T/po," \
   "$(grep -e '--apply' -e '^skill-catalog' "$LOGF" | awk '{print $1, $2}' | tr '\n' ',')"
 t_eq "the snapshot id the runner reads is this run's snapshot" "$(ls -d "$C"/backups/deploy-*)" "$(cat "$SHIP_SNAPSHOT")"
 t_has "the install question is answered yes, saying why" "$(out)" "yes: --unattended"
@@ -270,7 +268,7 @@ t_eq "from a linked worktree, unattended is refused up front too" 1 "$RC"; t_eq 
 t_eq "...its fix the terminal apply from the main checkout, without the runner's flag" \
   "  fix: sh '$MAIN/bin/deploy.sh' --apply --live   # from a terminal window" "$(grep -A1 'linked worktree' "$T/out.txt" | sed -n 2p)"
 fixture unattfail; SHIP_SNAPSHOT="$T/snap"; : > "$SHIP_SNAPSHOT"
-STUB_FAIL=admission-install.sh:apply; STUB_HOOK_deployruntimeinstallsh="printf MODIFIED > '$C/settings.json'"; export STUB_FAIL STUB_HOOK_deployruntimeinstallsh
+STUB_FAIL=floor-install.sh:apply; STUB_HOOK_deployruntimeinstallsh="printf MODIFIED > '$C/settings.json'"; export STUB_FAIL STUB_HOOK_deployruntimeinstallsh
 CC=1 run '' --apply --live --unattended; CC=''
 t_eq "a failed unattended install" 1 "$RC"
 t_eq "...is not restored by deploy: the restore is the runner's" MODIFIED "$(cat "$C/settings.json")"
@@ -293,7 +291,7 @@ t_eq "...and no snapshot was taken" no "$(ls -d "$C"/backups/deploy-* >/dev/null
 
 t_section "the happy path: order, snapshot, the installed skill catalog written after the packs"
 fixture happy; mkdir -p "$C/lib"; echo core > "$C/lib/core.sh"; run 'y\n' --apply --live
-WANT='policy-constitution-install.sh --apply,deploy-shim-install.sh --live,deploy-harden.sh --apply,deploy-runtime-install.sh --live,admission-install.sh --live,prod-guard-install.sh --live,skill-install.sh --all,skill-install.sh commands,context-injection-install.sh --live,deploy-shim-install.sh --live,skill-catalog.sh install,'"just $T/pi,just $T/po,"
+WANT='policy-constitution-install.sh --apply,deploy-shim-install.sh --live,deploy-harden.sh --apply,deploy-runtime-install.sh --live,floor-install.sh --live,prod-guard-install.sh --live,skill-install.sh --all,skill-install.sh commands,context-injection-install.sh --live,deploy-shim-install.sh --live,skill-catalog.sh install,'"just $T/pi,just $T/po,"
 t_eq "the happy path" 0 "$RC"
 t_eq "installs run in the one order that works" "$WANT" "$(grep -e '--apply' -e '^skill-catalog' "$LOGF" | awk '{print $1, $2}' | tr '\n' ',')"
 t_has "a snapshot of the config dir is taken first" "$(tar -tzf "$C"/backups/deploy-*/config.tgz 2>/dev/null)" "settings.json"
@@ -318,16 +316,16 @@ t_eq "no check-mark, cross or bar glyph in an apply's output" 0 "$(grep -cE '✓
 fixture happyloss; run 'y\n' --apply --live --accept-loss
 t_eq "an apply with --accept-loss" 0 "$RC"
 t_eq "--accept-loss reaches constitution, runtime, floor and the two skills-install runs" \
-  "policy-constitution-install.sh --apply,deploy-runtime-install.sh --live,admission-install.sh --live,skill-install.sh --all,skill-install.sh commands," \
+  "policy-constitution-install.sh --apply,deploy-runtime-install.sh --live,floor-install.sh --live,skill-install.sh --all,skill-install.sh commands," \
   "$(grep -- '--apply' "$LOGF" | grep -- ' --accept-loss' | awk '{print $1, $2}' | tr '\n' ',')"
 t_eq "...and no other installer" "" "$(grep -- '--apply' "$LOGF" | grep -- ' --accept-loss' | grep -E '^(shim|prod-guard|inject)-install' || true)"
 
 t_section "a failure midway stops the run and offers the snapshot"
-fixture midfail; STUB_FAIL=admission-install.sh:apply; export STUB_FAIL
+fixture midfail; STUB_FAIL=floor-install.sh:apply; export STUB_FAIL
 STUB_HOOK_deployruntimeinstallsh="printf MODIFIED > '$C/settings.json'"; export STUB_HOOK_deployruntimeinstallsh
 run 'y\nn\n' --apply --live
-t_eq "a failed install" 1 "$RC"; t_has "names where it stopped" "$(out)" "stopped at: admission-install.sh"
-t_eq "later steps do not run" "policy-constitution-install.sh --apply,deploy-shim-install.sh --live,deploy-harden.sh --apply,deploy-runtime-install.sh --live,admission-install.sh --live," "$(applied)"
+t_eq "a failed install" 1 "$RC"; t_has "names where it stopped" "$(out)" "stopped at: floor-install.sh"
+t_eq "later steps do not run" "policy-constitution-install.sh --apply,deploy-shim-install.sh --live,deploy-harden.sh --apply,deploy-runtime-install.sh --live,floor-install.sh --live," "$(applied)"
 t_eq "declining the restore leaves the partial install" MODIFIED "$(cat "$C/settings.json")"
 fixture restore; STUB_HOOK_deployruntimeinstallsh="printf MODIFIED > '$C/settings.json'; mkdir -p '$C/skills/added'; : > '$C/settings.json.bak.1'"
 run 'y\ny\n' --apply --live
@@ -343,7 +341,7 @@ t_has "...and restore's own lines, relayed" "$(dlog)" "  ok: restored $C from "
 unset STUB_FAIL STUB_HOOK_deployruntimeinstallsh
 
 t_section "the restore offer has one code path: deploy-restore.sh (harbor#765)"
-fixture viarestore; STUB_FAIL=admission-install.sh:apply; export STUB_FAIL
+fixture viarestore; STUB_FAIL=floor-install.sh:apply; export STUB_FAIL
 STUB_HOOK_deployruntimeinstallsh="printf MODIFIED > '$C/settings.json'"; export STUB_HOOK_deployruntimeinstallsh
 printf '#!/bin/sh\nprintf "deploy-restore.sh %%s\\n" "$*" >> "$STUB_LOG"\n' > "$REPO/bin/deploy-restore.sh"; commit_push stubrestore
 run 'y\ny\n' --apply --live
@@ -360,8 +358,8 @@ t_eq "...or applied" 0 "$(grep -c '^deploy-restore.sh --apply' "$LOGF")"
 unset STUB_FAIL STUB_HOOK_deployruntimeinstallsh
 
 t_section "verify: the next session would be blocked"
-fixture vblock; STUB_HOOK_admissioninstallsh="printf '{\"continue\":false,\"stopReason\":\"x\"}' > '$T/gi'"; export STUB_HOOK_admissioninstallsh
-printf 'zzz  CLAUDE.md\n' > "$T/b8"; run 'y\nn\n' --apply --live; unset STUB_HOOK_admissioninstallsh
+fixture vblock; STUB_HOOK_floorinstallsh="printf '{\"continue\":false,\"stopReason\":\"x\"}' > '$T/gi'"; export STUB_HOOK_floorinstallsh
+printf 'zzz  CLAUDE.md\n' > "$T/b8"; run 'y\nn\n' --apply --live; unset STUB_HOOK_floorinstallsh
 t_eq "a B6 block after install" 1 "$RC"; t_has "fails the deploy" "$(out)" "next session would be BLOCKED"
 t_has "the re-pin is not offered" "$(out)" "not offered: verification failed"
 t_hasnt "no re-pin prompt" "$(out)" "Re-pin the instruction"; t_eq "no pin-instructions call" 0 "$(pins)"
@@ -411,8 +409,8 @@ t_eq "no usage error ran anything (log bytes)" 0 "$(wc -c < "$LOGF" | tr -d ' ')
 # The REAL floor-uninstall, reading the real floor-install and runtime-install beside it, on a floor it
 # recognises: floor-hook + guard-bash wired and present, a pin, the teeth; and a foreign hook it keeps.
 unfloor() {
-  cp "$T_ROOT/bin/admission-remove.sh" "$T_ROOT/bin/admission-install.sh" "$T_ROOT/bin/deploy-runtime-install.sh" "$REPO/bin/"
-  git -C "$REPO" add bin/admission-remove.sh; commit_push realfloor
+  cp "$T_ROOT/bin/floor-uninstall.sh" "$T_ROOT/bin/floor-install.sh" "$T_ROOT/bin/deploy-runtime-install.sh" "$REPO/bin/"
+  git -C "$REPO" add bin/floor-uninstall.sh; commit_push realfloor
   mkdir -p "$C/bin"; printf '#!/bin/sh\nexit 0\n' > "$C/bin/admission-hook.sh"; cp "$C/bin/admission-hook.sh" "$C/bin/admission-bash.sh"
   printf 'x  bin/admission-bash.sh\n' > "$C/.helm-pins/admission-bash.sh.sha256"; printf 'teeth\n' > "$C/.helm-floor-teeth"
   jq -n --arg g "/bin/sh $C/bin/admission-hook.sh $C/bin/admission-bash.sh" --arg m "/bin/sh $H/mine.sh" \
@@ -464,7 +462,7 @@ t_eq "...and their .harbor-manifest rows, byte for byte (harbor#815)" "$(cat "$T
 
 t_section "harbor uninstall: a floor still present after the removal fails verify and offers the snapshot back"
 fixture unfail; unfloor
-printf '#!/bin/sh\ncase " $* " in *" --apply "*) printf MODIFIED > "$HOME/.claude/settings.json"; echo "  ok: stub removed nothing"; exit 0 ;; esac\necho "  note: hook to remove: PreToolUse: /bin/sh x/admission-bash.sh"\n' > "$REPO/bin/admission-remove.sh"
+printf '#!/bin/sh\ncase " $* " in *" --apply "*) printf MODIFIED > "$HOME/.claude/settings.json"; echo "  ok: stub removed nothing"; exit 0 ;; esac\necho "  note: hook to remove: PreToolUse: /bin/sh x/admission-bash.sh"\n' > "$REPO/bin/floor-uninstall.sh"
 commit_push stubun; run 'y\ny\n' --only floor --uninstall --apply --live
 t_eq "an uninstall that left the floor" 1 "$RC"
 t_has "verify names it" "$(out)" "  FAIL: the floor is still present after floor-uninstall"
@@ -492,7 +490,7 @@ run '' --only runtime --live
 t_has "a runtime-install with no FILES line is a FAIL, never a pass" "$(out)" "cannot read runtime-install's FILES"
 
 fixture unpre; unfloor
-printf '#!/bin/sh\necho "  FAIL: stub: cannot read the floor payload"; echo "  fix: none automatic — see the stub"; exit 1\n' > "$REPO/bin/admission-remove.sh"
+printf '#!/bin/sh\necho "  FAIL: stub: cannot read the floor payload"; echo "  fix: none automatic — see the stub"; exit 1\n' > "$REPO/bin/floor-uninstall.sh"
 commit_push stubpre; run '' --only floor --uninstall --live
 t_eq "a floor-uninstall dry run that refuses fails the preflight" 1 "$RC"
 t_has "...saying so" "$(out)" "PREFLIGHT FAILED"

@@ -72,7 +72,6 @@ U
 }
 
 # stdout is the measurement (a line, or --json), so the run log is on stderr.
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 . "$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)/library-log.sh"
 log_init module-shape
@@ -173,16 +172,13 @@ seam() {
   # VALUE — only symbols the whole corpus defines exactly once, called from >=2
   # other files at command position. Without the uniqueness filter this scores
   # every suite SPLIT HAS VALUE on `bad`, `run` and `verdict`.
-  # A symlinked .sh (a rename alias) is the same file, so it is neither a second definition nor a
-  # caller: counting it zeroed every symbol on a tree carrying aliases (harbor#1392).
-  _cf=$(find "$_corp" -maxdepth 1 -name '*.sh' -type f | sort)
-  _uniq=$(grep -hoE '^[a-zA-Z_][a-zA-Z0-9_]*\(\)' $_cf 2>/dev/null \
+  _uniq=$(grep -hoE '^[a-zA-Z_][a-zA-Z0-9_]*\(\)' "$_corp"/*.sh 2>/dev/null \
           | tr -d '()' | sort | uniq -c | awk '$1 == 1 { print $2 }')
-  _b=$(basename "$_f"); [ ! -L "$_f" ] || { _b=$(readlink "$_f"); _b=${_b##*/}; }; _tot=0; _val=0
+  _b=$(basename "$_f"); _tot=0; _val=0
   for _s in $(grep -oE '^[a-zA-Z_][a-zA-Z0-9_]*\(\)' "$_f" | tr -d '()' | awk 'length($0) >= 3'); do
     printf '%s\n' "$_uniq" | grep -qx "$_s" || continue
     _tot=$((_tot + 1))
-    _n=$(grep -lE "(^|[;&|(\`]|\\\$\()[[:space:]]*$_s([[:space:]]|\$|\))" $_cf 2>/dev/null \
+    _n=$(grep -lE "(^|[;&|(\`]|\\\$\()[[:space:]]*$_s([[:space:]]|\$|\))" "$_corp"/*.sh 2>/dev/null \
          | grep -vc "/$_b\$" || true)
     [ "${_n:-0}" -ge 2 ] && _val=$((_val + 1))
   done

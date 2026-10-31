@@ -90,9 +90,9 @@ t_exit "an unknown argument is a usage error" 2 sh "$DC" --nope
 
 t_section "permissions.deny covers Edit on every floor file (harbor#1299)"
 # The floor's files: everything deploy-runtime-install.sh puts in <cfg>/bin, and every <cfg> row of contracts/control-plane-state.md.
-# The rules: what admission-deny.sh would add to an empty settings.json, so a WITHDRAWN entry does not count.
+# The rules: what floor-deny.sh would add to an empty settings.json, so a WITHDRAWN entry does not count.
 FD="$T_TMP/fdcfg"; mkdir -p "$FD"; printf '{}\n' > "$FD/settings.json"
-RULES="$(CLAUDE_CONFIG_DIR="$FD" sh "$T_ROOT/bin/admission-deny.sh" --dir "$FD" 2>&1 | sed -n 's/.*+ Edit(\(.*\))$/\1/p')"
+RULES="$(CLAUDE_CONFIG_DIR="$FD" sh "$T_ROOT/bin/floor-deny.sh" --dir "$FD" 2>&1 | sed -n 's/.*+ Edit(\(.*\))$/\1/p')"
 t_eq "CONTROL: floor-deny names Edit rules" yes "$([ "$(printf '%s\n' "$RULES" | grep -c .)" -ge 20 ] && echo yes || echo no)"
 FILES="$(sed -n 's/^FILES="\(.*\)"/\1/p' "$T_ROOT/bin/deploy-runtime-install.sh" | tr ' ' '\n' | sed '/^$/d; s|^|~/.claude/bin/|')"
 STATE_ROWS="$(awk '/^## The table/ { s = 1; next } s && /^## / { s = 0 }

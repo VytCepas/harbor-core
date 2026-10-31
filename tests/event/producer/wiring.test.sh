@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
-# How the producers reach a box (harbor#1043 PR 2, harbor#1051 PR 1): admission-install.sh wires event-hook.sh at
+# How the producers reach a box (harbor#1043 PR 2, harbor#1051 PR 1): floor-install.sh wires event-hook.sh at
 # SessionStart, SessionEnd, SubagentStart, SubagentStop and PostToolUse (matcher limited to the tools
-# that can open background work or a PR), copies it with the bus it calls, and admission-remove.sh
+# that can open background work or a PR), copies it with the bus it calls, and floor-uninstall.sh
 # takes both away again. The wired COMMAND, as written into the installed settings.json, is what
 # the last section runs — the path the harness takes — against a payload on stdin.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
@@ -13,7 +13,7 @@ FOREIGN='/bin/sh /somewhere/else/session-note.sh'
 jq -n --arg c "$FOREIGN" '{hooks:{SessionStart:[{matcher:"",hooks:[{type:"command",command:$c}]}]}}' > "$D/settings.json"
 
 t_section "the dry run names the producers and writes nothing"
-out="$(fi_run admission-install.sh "$D" 2>&1)"
+out="$(fi_run floor-install.sh "$D" 2>&1)"
 t_has "the plan wires SessionEnd" "$out" "hook to wire: SessionEnd (any): /bin/sh "
 t_has "the plan names the producer files" "$out" "event producer to copy into"
 t_has "the plan wires SubagentStart" "$out" "hook to wire: SubagentStart (any): /bin/sh "
@@ -21,7 +21,7 @@ t_has "the plan wires PostToolUse for the listed tools only" "$out" "hook to wir
 t_eq "...and nothing was written" "0 0 0 0 0" "$(cmds "$D" SessionStart) $(cmds "$D" SessionEnd) $(cmds "$D" SubagentStop) $(cmds "$D" SubagentStart) $(cmds "$D" PostToolUse)"
 
 t_section "an apply wires each event exactly once, beside the foreign hook"
-fi_run admission-install.sh "$D" --apply >/dev/null 2>&1; rc=$?
+fi_run floor-install.sh "$D" --apply >/dev/null 2>&1; rc=$?
 t_eq "the apply exits 0" 0 "$rc"
 for e in SessionStart SessionEnd SubagentStart SubagentStop PostToolUse; do t_eq "$e: one event-hook.sh entry" 1 "$(cmds "$D" "$e")"; done
 t_eq "PostToolUse: the matcher is exactly the seven tools (Skill and Read since harbor#1181), so the hook does not run on every call" "Bash CronCreate Monitor Read ScheduleWakeup Skill Workflow" \
@@ -32,7 +32,7 @@ t_eq "the foreign SessionStart hook is still there" 1 "$(jq -r --arg c "$FOREIGN
 t_eq "no Stop hook was added (Stop is the end of a TURN)" 0 "$(jq -r '[.hooks.Stop[]?.hooks[]?.command // empty | select(test("event-hook"))] | length' "$D/settings.json")"
 t_eq "the command is the installed copy, run by /bin/sh" "/bin/sh $(CDPATH= cd -P -- "$D" && pwd -P)/bin/event-hook.sh" \
   "$(jq -r '.hooks.SessionEnd[0].hooks[0].command' "$D/settings.json")"
-fi_run admission-install.sh "$D" --apply >/dev/null 2>&1
+fi_run floor-install.sh "$D" --apply >/dev/null 2>&1
 for e in SessionStart SessionEnd SubagentStart SubagentStop PostToolUse; do t_eq "$e: a re-apply keeps one entry" 1 "$(cmds "$D" "$e")"; done
 
 t_section "the files land executable, with the library the bus needs, and are not pinned as guards"
@@ -56,7 +56,7 @@ t_eq "the five events, in order, from the installed copy" "session.start w-1;age
   "$(cat "$BUS"/*.jsonl | jq -r '"\(.kind) \(.subject)"' | tr '\n' ';')"
 
 t_section "an uninstall takes the hooks and both files away, and keeps the foreign hook"
-fi_run admission-remove.sh "$D" --apply >/dev/null 2>&1; rc=$?
+fi_run floor-uninstall.sh "$D" --apply >/dev/null 2>&1; rc=$?
 t_eq "the uninstall exits 0" 0 "$rc"
 for e in SessionStart SessionEnd SubagentStart SubagentStop PostToolUse; do t_eq "$e: no event-hook.sh entry left" 0 "$(cmds "$D" "$e")"; done
 t_eq "the foreign SessionStart hook survived" 1 "$(jq -r --arg c "$FOREIGN" '[.hooks.SessionStart[]?.hooks[]?.command | select(. == $c)] | length' "$D/settings.json")"

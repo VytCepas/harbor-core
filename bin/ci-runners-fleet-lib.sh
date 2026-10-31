@@ -46,7 +46,6 @@ collect() {
   if ! "$DOCKER" ps -a --format '{{.Names}} {{.Image}} {{.State}}' > "$T/ps.txt" 2> "$T/ps.err"; then
     # a tick still lets a repo fall back to hosted (its runner is on GitHub's list); it reports no drift from a dead docker
     [ "$CMD" = tick ] || { log_fail "docker did not answer: $(head -n 1 "$T/ps.err")"; log_fix "docker ps; colima status"; exit 2; }
-    # shellcheck disable=SC2034 # DOCKER_OK: read by ci-runners-watch-lib.sh
     DOCKER_OK=0; : > "$T/ps.txt"
   fi
   : > "$T/rows.tsv"; mount_rows

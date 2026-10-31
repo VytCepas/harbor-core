@@ -16,7 +16,7 @@ owner_verdict() {
 # and self-hosted needs only one of its runners running and online.
 do_switch() {
   CHANGED=0; _sd=" "
-  while IFS="$TAB" read -r _repo slug w _c cstate _i runner _b _id cur verdict; do
+  while IFS="$TAB" read -r repo slug w c cstate _i runner _b _id cur verdict; do
     [ "$w" = 1 ] && [ "$verdict" != hold ] || continue
     case "$_sd" in *" $slug "*) continue ;; esac
     [ "$cstate" != absent ] || [ "$runner" = online ] || [ "$runner" = offline ] || continue
@@ -44,7 +44,7 @@ do_switch() {
 # the repos a self-hosted, online runner serves: its own repo, or every listed repo of its org
 serve_targets() {
   : > "$T/targets"
-  while IFS="$TAB" read -r _repo slug w _c cstate _i runner _b _id cur verdict; do
+  while IFS="$TAB" read -r repo slug w _c cstate _i runner _b _id cur verdict; do
     [ "$w" = 1 ] && [ "$cur" = self-hosted ] && [ "$cstate" = running ] && [ "$runner" = online ] || continue
     case "$slug" in */*) printf '%s\n' "$slug" >> "$T/targets" ;;
       *) awk -F'\t' -v o="$slug/" '$11 == "org" && index($2, o) == 1 { print $2 }' "$T/rows.tsv" >> "$T/targets" ;; esac

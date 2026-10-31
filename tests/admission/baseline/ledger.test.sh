@@ -29,7 +29,7 @@ t_eq "HOST-1 4 nothing answers: unknown-host" "unknown-host" "$(_ht '' '')"
 t_eq "HOST-1 5 dots and spaces are sanitized to hyphens" "my-box-two" "$(_ht - 'my.box two')"
 # 6 · one definition: no consumer derives the token itself (code lines only, not prose about it)
 _htdup=""
-for _f in admission-observe.sh worklog-push.sh memory-harvest.sh; do
+for _f in floor-observe.sh worklog-push.sh memory-harvest.sh; do
   grep -v '^[[:space:]]*#' "$(t_src "$_f")" 2>/dev/null | grep -q 'hostname -s' && _htdup="$_htdup $_f"
 done
 t_eq "HOST-1 6 no consumer derives the host token instead of calling floor_host_token" "" "$_htdup"
@@ -54,7 +54,7 @@ oclose() { chmod 0500 "$ODIR" 2>/dev/null || :; }
 otrunc() { oopen; : > "$OSINK" 2>/dev/null || :; oclose; }
 
 t_exit "O-01 floor-install bootstrapped the ledger" 0 test -d "$CFG/MEMORY/OBSERVABILITY"
-CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/admission-observe.sh" </dev/null >/dev/null 2>&1
+CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/floor-observe.sh" </dev/null >/dev/null 2>&1
 t_exit "O-01 the SessionStart writer created the sink at $OSINK" 0 test -f "$OSINK"
 t_exit "O-01 the salt was created" 0 test -f "$CFG/.helm-obs-salt"
 t_exit "O-01 the host token was created" 0 test -f "$CFG/.helm-obs-host"
@@ -153,13 +153,13 @@ oclose
 fire_block "O-27 control: the same block with the dir closed" admission-bash.sh "$(bash_j 'rm -rf /')"
 t_eq "O-27 control: the closed dir takes the record, so the zero above is the gate" 1 "$(orec)"
 
-# O-17: under an override zero guards run, so admission-observe.sh (kill-switch-free) is the only witness.
+# O-17: under an override zero guards run, so floor-observe.sh (kill-switch-free) is the only witness.
 otrunc
-HARBOR_ADMISSION_DISABLE=1 CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/admission-observe.sh" </dev/null >/dev/null 2>&1
+HARBOR_ADMISSION_DISABLE=1 CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/floor-observe.sh" </dev/null >/dev/null 2>&1
 t_has "O-17 an overridden session is recorded" "$(olast)" '"d":"override","r":"floor-disabled"'
 _o17='HELM_DISABLE_FLOOR:-0.*exit 0'  # the control: the same pattern does find a real guard's kill-switch
-t_eq "O-17 admission-observe.sh carries no kill-switch of its own" "guard-bash:switch floor-observe:none" \
-  "guard-bash:$(grep -q "$_o17" "$CFG/bin/admission-bash.sh" && echo switch || echo none) floor-observe:$(grep -q "$_o17" "$CFG/bin/admission-observe.sh" && echo switch || echo none)"
+t_eq "O-17 floor-observe.sh carries no kill-switch of its own" "guard-bash:switch floor-observe:none" \
+  "guard-bash:$(grep -q "$_o17" "$CFG/bin/admission-bash.sh" && echo switch || echo none) floor-observe:$(grep -q "$_o17" "$CFG/bin/floor-observe.sh" && echo switch || echo none)"
 otrunc
 printf '%s' "$(bash_j 'echo hi')" | CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/admission-hook.sh" "$CFG/bin/nonexistent-guard.sh" >/dev/null 2>&1
 t_has "O-18 a wrapper fail-closed deny is recorded WITH ITS GUARD" "$(olast)" '"g":"wrapper","d":"deny","r":"wrapper-guard-missing-nonexistent-guard"'
@@ -261,20 +261,20 @@ fire_pass "SK-14 an inert heredoc Bash call" admission-egress.sh "$(bash_sj "$SI
 t_has "SK-14 the inert-heredoc allow is recorded, keyed" "$(olast)" "\"r\":\"egress-inert\",\"s\":\"meta\",\"t\":\"Bash\",\"h\":\"-\",\"sk\":\"$SK_A\""
 otrunc
 printf '{"session_id":"%s","hook_event_name":"SessionStart","source":"startup"}' "$SID_A" \
-  | CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/admission-observe.sh" >/dev/null 2>&1
+  | CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/floor-observe.sh" >/dev/null 2>&1
 t_has "SK-11 the SessionStart armed record" "$(olast)" '"d":"armed"'
 t_eq "SK-11 carries the same session's key" "$SK_A" "$(osk)"
-CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/admission-observe.sh" </dev/null >/dev/null 2>&1
+CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/floor-observe.sh" </dev/null >/dev/null 2>&1
 t_eq "SK-11 and with no payload, -" "-" "$(osk)"
 
 t_section "OBSERVE-1 HARDENING: the reproductions from harbor#47 (passes 1 and 2)"
 # The arming copy lives inside the dir it arms, as in production: the sink follows the WRITER (SINK-W).
 OB="$TMP/obs"; mkdir -p "$OB/bin"
-cp "$SRC/library-admission.sh" "$SRC/admission-observe.sh" "$OB/bin/"
+cp "$SRC/library-admission.sh" "$SRC/floor-observe.sh" "$OB/bin/"
 obs_reset() { chmod -R u+w "$OB/cfg" 2>/dev/null; rm -rf "$OB/cfg"; mkdir -p "$OB/cfg/bin"
-              cp "$SRC/library-admission.sh" "$SRC/admission-observe.sh" "$OB/cfg/bin/"; }
+              cp "$SRC/library-admission.sh" "$SRC/floor-observe.sh" "$OB/cfg/bin/"; }
 obs_run() { ff_bound "${OBS_SECS:-8}" env CLAUDE_CONFIG_DIR="$OB/cfg" \
-              sh "$OB/cfg/bin/admission-observe.sh" </dev/null >/dev/null 2>&1; echo $?; }  # no timeout(1) on macOS
+              sh "$OB/cfg/bin/floor-observe.sh" </dev/null >/dev/null 2>&1; echo $?; }  # no timeout(1) on macOS
 OBH="$(. "$SRC/library-admission.sh" 2>/dev/null; floor_host_token)"
 obs_reset
 t_eq "O-21 a clean SessionStart completes" 0 "$(obs_run)"
@@ -320,7 +320,7 @@ for _f in .helm-obs-host .helm-obs-salt; do  # O-23: the writer must not write T
 done
 # O-27 (harbor#768): at the bound the writer's whole process group dies, not the writer alone.
 obs_reset; : > "$OB/kid.pid"
-printf '#!/bin/sh\nsleep 7768 & printf "%%s\\n" "$!" > "%s"\nwait\n' "$OB/kid.pid" > "$OB/cfg/bin/admission-observe.sh"
+printf '#!/bin/sh\nsleep 7768 & printf "%%s\\n" "$!" > "%s"\nwait\n' "$OB/kid.pid" > "$OB/cfg/bin/floor-observe.sh"
 _o27="$(OBS_SECS=1; obs_run)"
 t_eq "O-27 the hung SessionStart recorded its child, or the next row is vacuous" 1 "$(grep -c . "$OB/kid.pid")"
 _o27a=x; _o27i=0  # a killed child can answer kill -0 until it is reaped: up to 2s to settle
@@ -331,7 +331,7 @@ done
 t_eq "O-27 the bound kills what the hung SessionStart forked (bound exit $_o27)" '' "$_o27a"
 for _p in $(cat "$OB/kid.pid"); do kill -9 "$_p" 2>/dev/null; done  # a red run leaks nothing
 # O-24 is absent on purpose: the temp name embeds the writer's pid, so no fixture can plant it.
-t_exit "O-25 the INT/TERM/HUP traps exit rather than swallow the signal" 0 grep -q 'exit 143' "$SRC/admission-observe.sh"
+t_exit "O-25 the INT/TERM/HUP traps exit rather than swallow the signal" 0 grep -q 'exit 143' "$SRC/floor-observe.sh"
 # O-26: worklog-push stages through an allowlist, and the ledger is not on it. Code lines only.
 _o26="$(grep -v '^[[:space:]]*#' "$T_ROOT/hooks/worklog-push/worklog-push.sh" 2>/dev/null)"
 t_eq "O-26 worklog-push stages by allowlist, never git add -A" "stages:yes add-all:no" \
@@ -346,12 +346,12 @@ SW="$TMP/sinkw"
 SW_HOME="$SW/home"; SW_CFG="$SW_HOME/.claude"; SW_REPO="$SW/repo"
 mkdir -p "$SW_CFG/bin" "$SW_REPO/bin"
 printf '{"permissions":{"allow":[],"deny":[]}}\n' > "$SW_CFG/settings.json"
-for _f in library-admission.sh admission-observe.sh admission-hook.sh admission-bash.sh admission-deny.sh admission-normalize.awk; do
+for _f in library-admission.sh floor-observe.sh admission-hook.sh admission-bash.sh floor-deny.sh floor-normalize.awk; do
   cp "$SRC/$_f" "$SW_CFG/bin/$_f" 2>/dev/null
   cp "$SRC/$_f" "$SW_REPO/bin/$_f" 2>/dev/null
 done
 ff_bound 8 env CLAUDE_CONFIG_DIR="$SW_CFG" \
-  sh "$SW_CFG/bin/admission-observe.sh" </dev/null >/dev/null 2>&1   # armed by floor-observe, never by hand
+  sh "$SW_CFG/bin/floor-observe.sh" </dev/null >/dev/null 2>&1   # armed by floor-observe, never by hand
 SW_SINK="$SW_CFG/MEMORY/OBSERVABILITY/$OBH/guard-decisions.jsonl"
 swrec() { [ -f "$SW_SINK" ] && wc -l < "$SW_SINK" | tr -d ' ' || echo 0; }
 t_exit "SINK-W0 floor-observe armed a sink (else the rest is vacuous)" 0 test -f "$SW_SINK"
@@ -406,7 +406,7 @@ otrunc
 fire_block "VERIFY-W0 control: a real block still reaches this sink" admission-bash.sh "$(bash_j 'rm -rf /')"
 t_eq "VERIFY-W0 the control landed, so W1 below can fail" 1 "$(_vw_blocks)"
 otrunc
-_vw_out="$(CLAUDE_CONFIG_DIR="$CFG" sh "$SRC/admission-verify.sh" --dir "$CFG" 2>&1)"
+_vw_out="$(CLAUDE_CONFIG_DIR="$CFG" sh "$SRC/floor-verify.sh" --dir "$CFG" 2>&1)"
 t_has "VERIFY-W1 the probes fired and were blocked" "$_vw_out" "blocks: rm -rf /"
 t_eq "VERIFY-W1 not one probe block reached the ledger" 0 "$(_vw_blocks)"
 
@@ -416,10 +416,10 @@ _sh() { # <guard> <json> [shadow value] -> exit code; stderr kept in $TMP/sh.err
 }
 _shn() { grep -c "$1" "$OSINK" 2>/dev/null | tr -d ' '; }  # <fixed text> -> records carrying it
 otrunc
-HARBOR_ADMISSION_SHADOW=1 CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/admission-observe.sh" </dev/null >/dev/null 2>&1
+HARBOR_ADMISSION_SHADOW=1 CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/floor-observe.sh" </dev/null >/dev/null 2>&1
 t_has "SH-01 a shadow session is its own boundary record, not armed" "$(olast)" '"g":"session","d":"shadow","r":"floor-shadow"'
 otrunc
-HARBOR_ADMISSION_DISABLE=1 HARBOR_ADMISSION_SHADOW=1 CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/admission-observe.sh" </dev/null >/dev/null 2>&1
+HARBOR_ADMISSION_DISABLE=1 HARBOR_ADMISSION_SHADOW=1 CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/floor-observe.sh" </dev/null >/dev/null 2>&1
 t_has "SH-02 with both switches set the kill-switch wins: no guard runs at all" "$(olast)" '"d":"override","r":"floor-disabled"'
 otrunc
 t_eq "SH-03 a measured rule does not block in shadow" 0 "$(_sh admission-bash.sh "$(bash_j 'echo aaa | base64 -d | bash')")"
@@ -445,7 +445,7 @@ t_eq "SH-07 only the literal 1 opens shadow, as only 1 opens the kill-switch" 2 
   "$(_sh admission-bash.sh "$(bash_j 'echo aaa | base64 -d | bash')" true)"
 otrunc
 _sh admission-bash.sh "$(bash_j 'echo aaa | base64 -d | bash')" >/dev/null
-HARBOR_ADMISSION_SHADOW=1 CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/admission-observe.sh" </dev/null >/dev/null 2>&1
+HARBOR_ADMISSION_SHADOW=1 CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/floor-observe.sh" </dev/null >/dev/null 2>&1
 _sh_rep="$(CLAUDE_CONFIG_DIR="$CFG" sh "$SRC/admission-observe-report.sh" --shadow 2>&1)"
 t_has "SH-08 observe-report --shadow names the rule that would have blocked" "$_sh_rep" 'bash/pipe-to-shell'
 t_has "SH-08 and counts the shadow session" "$_sh_rep" '1 shadow session(s), 1 would-block record(s)'
@@ -475,7 +475,7 @@ t_eq "SH-11 control: a measured rule is not in the family" measured \
   "$(. "$SRC/library-admission.sh"; floor_shadow_enforces bash pipe-to-shell && echo enforcing || echo measured)"
 
 # SH-12 (review of #970): floor-verify started from a shadow environment verifies the installed floor.
-_sh_fv="$(HARBOR_ADMISSION_SHADOW=1 CLAUDE_CONFIG_DIR="$CFG" sh "$SRC/admission-verify.sh" --dir "$CFG" 2>&1)"; _sh_fvrc=$?
+_sh_fv="$(HARBOR_ADMISSION_SHADOW=1 CLAUDE_CONFIG_DIR="$CFG" sh "$SRC/floor-verify.sh" --dir "$CFG" 2>&1)"; _sh_fvrc=$?
 t_eq "SH-12 floor-verify from a shadow environment reports the floor on" 0 "$_sh_fvrc"
 t_has "SH-12 and says the environment is in shadow" "$_sh_fv" 'shadow mode is ON in this environment'
 t_has "SH-12 with no false FAIL from the probes" "$(printf '%s\n' "$_sh_fv" | tail -1)" ' 0 failed'

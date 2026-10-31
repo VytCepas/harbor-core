@@ -37,13 +37,13 @@ t_section "decider set (harbor#954, #1003): F1, floor-test, B6 and floor-verify 
 _ds_all="$(sh "$DS" --switch)"
 # F1 and floor-verify call the helper for the same list, and neither keeps a hand list beside it
 t_has "F1 reads the set from decider-set.sh --switch" "$(cat "$SRC/lint-conventions.sh")" 'sh "$_f1set" --switch'
-t_has "floor-verify reads the set from decider-set.sh --switch" "$(cat "$SRC/admission-verify.sh")" 'decider-set.sh" --switch'
+t_has "floor-verify reads the set from decider-set.sh --switch" "$(cat "$SRC/floor-verify.sh")" 'decider-set.sh" --switch'
 t_has "floor-test (this arm) reads the set from decider-set.sh --switch" "$(cat "$HROOT/tests/admission/baseline/baseline.test.sh")" 'sh "$DS" --switch'
 # B6: its NO-KILLSWITCH list, narrowed to deciders, is exactly the exempt deciders floor-install pins
 sh "$DS" --table | cut -f1 | sort > "$TMP/ds-all.txt"
 sh "$DS" --exempt | sort > "$TMP/ds-exempt.txt"
 sed -n 's/^    \(library-admission.sh|[a-z0-9.|-]*\)) ;;$/\1/p' "$SRC/admission-integrity.sh" | tr '|' '\n' | sort > "$TMP/ds-b6.txt"
-sed -n "s/^GUARDS='\(.*\)'/\1/p" "$SRC/admission-install.sh" | tr ' ' '\n' | sort > "$TMP/ds-pinned.txt"
+sed -n "s/^GUARDS='\(.*\)'/\1/p" "$SRC/floor-install.sh" | tr ' ' '\n' | sort > "$TMP/ds-pinned.txt"
 _ds_b6_dec="$(comm -12 "$TMP/ds-b6.txt" "$TMP/ds-all.txt")"
 _ds_ex_pin="$(comm -12 "$TMP/ds-exempt.txt" "$TMP/ds-pinned.txt")"
 t_eq "B6 NO-KILLSWITCH list, narrowed to deciders, equals the exempt deciders floor-install pins" "$_ds_ex_pin" "$_ds_b6_dec"
@@ -60,10 +60,10 @@ for pat in 'Read(~/.ssh/**)' 'Edit(//**/.github/workflows/**)' 'Edit(~/.claude/s
 done
 
 t_section "B1 every path-scoped deny is //- or ~/-anchored (derived from the writers)"
-# harbor#53/#54: only // and ~/ reach every project. TWO writers: admission-deny.sh's dry run, and
+# harbor#53/#54: only // and ~/ reach every project. TWO writers: floor-deny.sh's dry run, and
 # deploy-harden.sh's DENY literal (its dry run prints only a delta). grep -oE: BSD sed has no \|.
 {
-  env -u CLAUDE_CONFIG_DIR sh "$CFG/bin/admission-deny.sh" --dir "$CFG" 2>/dev/null | sed -n 's/^  note: + //p'
+  env -u CLAUDE_CONFIG_DIR sh "$CFG/bin/floor-deny.sh" --dir "$CFG" 2>/dev/null | sed -n 's/^  note: + //p'
   sed -n "/^DENY='\[/,/^\]'/p" "$SRC/deploy-harden.sh" 2>/dev/null \
     | grep -oE '"(Read|Edit|Write)\([^"]*\)"' | tr -d '"'
 } | sort -u | while read -r e; do
@@ -326,7 +326,7 @@ t_eq "B9b ...and the same call with a valid escape still runs" 0 \
 t_eq "B9b floor-hook runs without set -e, which its EXIT trap depends on" none \
   "$(grep -Eq '^[[:space:]]*set -[a-z]*e' "$SRC/admission-hook.sh" && echo found || echo none)"
 t_eq "B9b no set -e guard carries an EXIT trap" none \
-  "$(_tx="$(for _g in "$SRC"/admission-*.sh "$SRC"/library-admission.sh; do case "${_g##*/}" in (admission-hook.sh|admission-deny-hash.sh|admission-mutation-tier.sh|admission-observe-report.sh|admission-deny.sh|admission-equivalence.sh|admission-install.sh|admission-observe.sh|admission-remove.sh|admission-verify.sh) continue ;; esac; [ ! -L "$_g" ] || continue; grep -Eq '^[[:space:]]*set -[a-z]*e' "$_g" && grep -Eq "^[[:space:]]*trap .* EXIT" "$_g" && printf '%s ' "${_g##*/}"; done)"; echo "${_tx:-none}")"
+  "$(_tx="$(for _g in "$SRC"/admission-*.sh "$SRC"/library-admission.sh; do case "${_g##*/}" in (admission-hook.sh|admission-deny-hash.sh|admission-mutation-tier.sh|admission-observe-report.sh) continue ;; esac; [ ! -L "$_g" ] || continue; grep -Eq '^[[:space:]]*set -[a-z]*e' "$_g" && grep -Eq "^[[:space:]]*trap .* EXIT" "$_g" && printf '%s ' "${_g##*/}"; done)"; echo "${_tx:-none}")"
 # A fork that fails inside a rule's subshell reads as "no match", so the guard can exit 0 having
 # judged nothing. The wrapper holds its stderr and refuses that allow.
 printf '#!/bin/sh\necho "g.sh: fork: Resource temporarily unavailable" >&2\nexit 0\n' > "$BW/forkfail.sh"
@@ -386,34 +386,34 @@ t_eq "OUTFLAG-1 guard-bash re-arms after the mutant is restored" 2 \
 
 t_section "PASS 13: ~<user> is \$HOME under a third spelling"
 # B1 is a glob matcher: it carries the resolvable names, DERIVED (id -un / basename $HOME).
-_b1_tilde="$(env -u CLAUDE_CONFIG_DIR sh "$CFG/bin/admission-deny.sh" --dir "$CFG" 2>/dev/null | sed -n 's/^  note: + //p' | grep -c '^Bash(rm -rf ~[A-Za-z]' || true)"
+_b1_tilde="$(env -u CLAUDE_CONFIG_DIR sh "$CFG/bin/floor-deny.sh" --dir "$CFG" 2>/dev/null | sed -n 's/^  note: + //p' | grep -c '^Bash(rm -rf ~[A-Za-z]' || true)"
 t_eq "B1 carries a Bash(rm -rf ~<user>) entry" yes "$([ "${_b1_tilde:-0}" -gt 0 ] && echo yes || echo no)"
-_b1_other="$(env HOME="$TMP/b1home" env -u CLAUDE_CONFIG_DIR sh "$CFG/bin/admission-deny.sh" --dir "$CFG" 2>/dev/null \
+_b1_other="$(env HOME="$TMP/b1home" env -u CLAUDE_CONFIG_DIR sh "$CFG/bin/floor-deny.sh" --dir "$CFG" 2>/dev/null \
   | sed -n 's/^  note: + //p' | grep -c '^Bash(rm -rf ~b1home)$' || true)"
 t_eq "B1 the ~<user> entry is derived from the environment, not hardcoded" yes \
   "$([ "${_b1_other:-0}" -gt 0 ] && echo yes || echo no)"
-_b1_wild="$(env -u CLAUDE_CONFIG_DIR sh "$CFG/bin/admission-deny.sh" --dir "$CFG" 2>/dev/null | sed -n 's/^  note: + //p' | grep -c '^Bash(rm -rf ~\*' || true)"
+_b1_wild="$(env -u CLAUDE_CONFIG_DIR sh "$CFG/bin/floor-deny.sh" --dir "$CFG" 2>/dev/null | sed -n 's/^  note: + //p' | grep -c '^Bash(rm -rf ~\*' || true)"
 t_eq "B1 no Bash(rm -rf ~*) glob (it would deny every project's rm -rf ~/... cleanup)" 0 "${_b1_wild:-0}"
-t_eq "B1 denies gh auth token (harbor#1149)" 1 "$(env -u CLAUDE_CONFIG_DIR sh "$CFG/bin/admission-deny.sh" --dir "$CFG" 2>/dev/null | grep -cF 'Bash(gh auth token*)' || true)"
+t_eq "B1 denies gh auth token (harbor#1149)" 1 "$(env -u CLAUDE_CONFIG_DIR sh "$CFG/bin/floor-deny.sh" --dir "$CFG" 2>/dev/null | grep -cF 'Bash(gh auth token*)' || true)"
 
 t_section "B1 floor-deny speaks the one log format (contracts/logging.md, harbor#771)"
-_fd="$(env -u CLAUDE_CONFIG_DIR sh "$CFG/bin/admission-deny.sh" --dir "$CFG" 2>&1)"; _fdrc=$?
+_fd="$(env -u CLAUDE_CONFIG_DIR sh "$CFG/bin/floor-deny.sh" --dir "$CFG" 2>&1)"; _fdrc=$?
 t_eq "the dry run ends on the summary, and exits 0 as it says" "0 yes" \
   "$_fdrc $(printf '%s\n' "$_fd" | tail -1 | grep -qE '^floor-deny: [0-9]+ ok, 0 failed, 0 warnings$' && echo yes || echo no)"
 t_eq "...every line a header, a TAG line or the summary" "" \
   "$(printf '%s\n' "$_fd" | grep -vE '^(── floor-deny · |  (ok|FAIL|WARN|note|skip|fix): |floor-deny: [0-9]+ ok, [0-9]+ failed, [0-9]+ warnings$)')"
-t_eq "...and its next step is the apply, spelled for this gate" "  note: next: sh $CFG/bin/admission-deny.sh --apply --dir '$(cd -P "$CFG" && pwd -P)'" \
+t_eq "...and its next step is the apply, spelled for this gate" "  note: next: sh $CFG/bin/floor-deny.sh --apply --dir '$(cd -P "$CFG" && pwd -P)'" \
   "$(printf '%s\n' "$_fd" | grep '^  note: next: ')"
 FDH="$TMP/fdlive"; mkdir -p "$FDH/.claude"; printf '{"permissions":{"deny":[]}}\n' > "$FDH/.claude/settings.json"
-_fd="$(env HOME="$FDH" env -u CLAUDE_CONFIG_DIR sh "$CFG/bin/admission-deny.sh" --dir "$FDH/.claude/" --repin 2>&1)"; _fdrc=$?
+_fd="$(env HOME="$FDH" env -u CLAUDE_CONFIG_DIR sh "$CFG/bin/floor-deny.sh" --dir "$FDH/.claude/" --repin 2>&1)"; _fdrc=$?
 t_eq "a live target without --live is a FAIL, exit 1" "1 yes" "$_fdrc $(printf '%s\n' "$_fd" | grep -q '^  FAIL: refusing the live dir without an explicit --live' && echo yes || echo no)"
-t_eq "...whose fix is the same act with --live" "  fix: sh $CFG/bin/admission-deny.sh --repin --live" "$(printf '%s\n' "$_fd" | grep -A1 '^  FAIL: ' | sed -n 2p)"
+t_eq "...whose fix is the same act with --live" "  fix: sh $CFG/bin/floor-deny.sh --repin --live" "$(printf '%s\n' "$_fd" | grep -A1 '^  FAIL: ' | sed -n 2p)"
 t_eq "...and nothing was pinned" no "$([ -f "$FDH/.claude/.helm-floor-teeth" ] && echo yes || echo no)"
 # On install-lib (harbor#800): no positional target, and CLAUDE_CONFIG_DIR never picks one.
-t_exit "a positional config dir is a usage error, exit 2 (harbor#800)" 2 env -u CLAUDE_CONFIG_DIR sh "$CFG/bin/admission-deny.sh" "$CFG" --repin
-t_exit "a CLAUDE_CONFIG_DIR naming another dir is a usage error, exit 2" 2 env CLAUDE_CONFIG_DIR="$FDH" sh "$CFG/bin/admission-deny.sh" --dir "$CFG" --repin
+t_exit "a positional config dir is a usage error, exit 2 (harbor#800)" 2 env -u CLAUDE_CONFIG_DIR sh "$CFG/bin/floor-deny.sh" "$CFG" --repin
+t_exit "a CLAUDE_CONFIG_DIR naming another dir is a usage error, exit 2" 2 env CLAUDE_CONFIG_DIR="$FDH" sh "$CFG/bin/floor-deny.sh" --dir "$CFG" --repin
 t_eq "...and neither wrote a pin" no "$([ -f "$FDH/.helm-floor-teeth" ] && echo yes || echo no)"
-_fd="$(env -u CLAUDE_CONFIG_DIR sh "$CFG/bin/admission-deny.sh" --dir "$CFG" --repin --withdraw 2>&1)"; _fdrc=$?
+_fd="$(env -u CLAUDE_CONFIG_DIR sh "$CFG/bin/floor-deny.sh" --dir "$CFG" --repin --withdraw 2>&1)"; _fdrc=$?
 t_eq "two acts at once: a FAIL with its fix line, exit 1" "1 yes" \
   "$_fdrc $(printf '%s\n' "$_fd" | grep -A1 '^  FAIL: .*are different acts' | grep -q '^  fix: ' && echo yes || echo no)"
 

@@ -1,5 +1,0 @@
-# naming-families.tsv — a repo overlay fixture (harbor#967): this repo's own families.
-id	class	pref	broader	vsm	stability	successor	src	alt	depends_on	definition
-corpus	family	corpus	-	-	experimental	-	fixture	-	-	A harbor word promoted to a family of this repo
-capture	family	capture	-	-	stable	-	fixture	-	-	A harbor concept term taken as a family of this repo
-wibblex	family	wibblex	-	-	experimental	-	fixture	-	-	A word no harbor registry holds

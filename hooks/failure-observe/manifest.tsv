@@ -1,7 +1,7 @@
 # Why it is wired this way (moved from bin/deploy-runtime-install.sh, harbor#1272):
 # FO-1 (harbor#465) — the PostToolUseFailure recorder.
 #
-# INSTALLED HERE AND NOT BY admission-install.sh, deliberately. It lives beside the
+# INSTALLED HERE AND NOT BY floor-install.sh, deliberately. It lives beside the
 # guard ledger, sources library-admission.sh and writes into MEMORY/OBSERVABILITY, so
 # floor-install's $GUARDS looks like its home — and putting it there would make it
 # part of admission-integrity.sh's floor MINIMUM, after which a MISSING RECORDER

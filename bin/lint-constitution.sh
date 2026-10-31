@@ -15,7 +15,6 @@ case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
 . "$SRC/library-log.sh"
 log_init lint-constitution
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 
 case "${1:---check}" in

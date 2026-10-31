@@ -28,7 +28,7 @@ case "${1:-}" in
 esac
 ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 # The report is the run's log (contracts/logging.md, harbor#771). Its exit code is its verdict (0 / 2 do not
-# install / 3 the gate did not run), which admission-install.sh reads, so a verdict FAIL ends the run with that code.
+# install / 3 the gate did not run), which floor-install.sh reads, so a verdict FAIL ends the run with that code.
 . "$ROOT/bin/library-log.sh"
 log_init pass-score
 # die <what failed> <fix> <exit> — FAIL, its fix, the summary, the exit code the tool always had.

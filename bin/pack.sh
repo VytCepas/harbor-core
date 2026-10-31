@@ -17,14 +17,11 @@ ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
 . "$SRC/library-log.sh"
 . "$SRC/deploy-install-lib.sh"
 log_init pack
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
-# shellcheck disable=SC2034 # IL_LOG: read by deploy-install-lib.sh
 IL_LOG=0   # a pack run keeps no backups dir: install -> remove must leave the target byte-identical
 
 VERB=''; IDS=''
 il_opt() { # positional words only: the verb, then repo ids
-  # shellcheck disable=SC2034 # IL_TAKE: read by deploy-install-lib.sh
   case "$1" in
     -*) IL_TAKE=0 ;;
     *) if [ -z "$VERB" ]; then VERB="$1"; else IDS="${IDS:+$IDS }$1"; fi; IL_TAKE=-1 ;;

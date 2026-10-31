@@ -23,7 +23,6 @@ DIR="$(CDPATH= cd -- "${DIR:-/}" && pwd)"
 
 floor_read_stdin
 TOOL="$(floor_field '.tool_name')"
-# shellcheck disable=SC2034 # FLOOR_TOOL: read by library-admission.sh
 FLOOR_TOOL="$TOOL"
 case "$TOOL" in Write|Edit|MultiEdit) ;; *) exit 0 ;; esac
 
@@ -40,7 +39,6 @@ ABS="$(floor_norm_path "$P")"
 # The digest subject is the RESOLVED path, not the raw one: ./x, //x and
 # bin/../x are the same target, and a recurrence count that treats them as three
 # different things cannot answer "is this the same block again?".
-# shellcheck disable=SC2034 # FLOOR_OBS_SUBJECT: read by library-admission.sh
 FLOOR_OBS_SUBJECT="$ABS"
 
 # Protected surfaces, relative to the config dir. Match on the un-resolved ABS

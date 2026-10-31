@@ -41,7 +41,7 @@ fi
 case "$_in" in *'"source"'*) [ "$(printf '%s' "$_in" | jq -r '.source // empty' 2>/dev/null)" != compact ] || exit 0 ;; esac
 
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-# The re-pin hints below name a TARGET, and `--live` in admission-deny.sh means
+# The re-pin hints below name a TARGET, and `--live` in floor-deny.sh means
 # literally $HOME/.claude — it does not follow CLAUDE_CONFIG_DIR (that flag is
 # the accident gate protecting the real box). $CFG here does follow it, so a
 # verdict measured against a sandbox printed a command aimed at live: harbor#110,
@@ -81,7 +81,7 @@ for h in worklog-push.sh; do
     dep="$(sed -n 's/^\. "\$DIR\/\([a-z-]*\.sh\)".*/\1/p' "$CFG/bin/$h" 2>/dev/null | head -1)"
     if [ -n "$dep" ] && [ ! -f "$CFG/bin/$dep" ]; then
       # VERIFY THE CHECKOUT FIRST, and that clause is not politeness. Unlike
-      # admission-deny.sh, an installer cannot be moved into the config dir — it
+      # floor-deny.sh, an installer cannot be moved into the config dir — it
       # resolves its source from its own directory, so a copy in $CFG/bin would
       # install $CFG/bin onto itself. It therefore stays at a path a session CAN
       # write to (measured: >>, cp, sed -i, > and the Edit tool are all allowed
@@ -124,9 +124,9 @@ if [ -f "$S" ] && command -v jq >/dev/null 2>&1; then
     _pin="$(cat "$CFG/.helm-floor-teeth" 2>/dev/null)"
     _live="$(jq -S '{deny:.permissions.deny, locks:{bypass:.permissions.disableBypassPermissionsMode, auto:.permissions.disableAutoMode}}' "$S" 2>/dev/null | sha)"
     [ "$_pin" = "$_live" ] || \
-      add "floor teeth DRIFT: settings.json no longer matches the pin. If you changed deny deliberately: sh $CFGQ/bin/admission-deny.sh $TGTQ --repin (adds nothing). If you did not, investigate before re-pinning."
+      add "floor teeth DRIFT: settings.json no longer matches the pin. If you changed deny deliberately: sh $CFGQ/bin/floor-deny.sh $TGTQ --repin (adds nothing). If you did not, investigate before re-pinning."
   else
-    add "floor teeth UNPINNED: nothing detects a change to permissions.deny. Fix: sh $CFGQ/bin/admission-deny.sh $TGTQ --repin"
+    add "floor teeth UNPINNED: nothing detects a change to permissions.deny. Fix: sh $CFGQ/bin/floor-deny.sh $TGTQ --repin"
   fi
 fi
 

@@ -78,7 +78,6 @@ obs() { # <rule>
   # CLEARED, NOT VALIDATED. A charset gate would still let a chosen value through
   # as long as it looked like a command; only refusing to carry one is sound, and
   # an empty subject already returns `-` (library-admission.sh:626).
-  # shellcheck disable=SC2034 # FLOOR_OBS_SUBJECT: read by library-admission.sh
   FLOOR_OBS_SUBJECT=''
   floor_log_decision wrapper deny "$1" 2>/dev/null || :
   return 0

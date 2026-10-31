@@ -7,7 +7,7 @@
 #   sh decider-set.sh --records  the deciders whose refusals record under HARBOR_ADMISSION_SHADOW
 #   sh decider-set.sh --check    exit 1, one FAIL line per drift between the wiring and the table below
 #
-# WHERE THE SET COMES FROM. The scripts in admission-install.sh's wiring table (floor_hooks) are the floor's
+# WHERE THE SET COMES FROM. The scripts in floor-install.sh's wiring table (floor_hooks) are the floor's
 # hooks, read from that file and not copied. Three other installers wire a hook into the same settings.json
 # (SIBLINGS below); they carry no table of their own, so they are named here and --check proves, in a
 # checkout, that each installer still names its script and that no other *-install.sh has started wiring
@@ -24,7 +24,7 @@
 set -u
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH= cd -- "${HERE:-/}" && pwd)"
-FI="$HERE/admission-install.sh"
+FI="$HERE/floor-install.sh"
 
 # <installer> <script it wires into settings.json>
 SIBLINGS='context-injection-install.sh injection-rule.sh
@@ -46,13 +46,13 @@ admission-api-route.sh|first|none|a repair, not a deny
 context-resolve.sh|first|none|
 admission-integrity.sh|first|enforces|floor drift
 admission-stop.sh|first|enforces|refuses once per state and blocks no tool call
-admission-observe.sh|exempt|none|records the override itself, so it has to run when the switch is set; cannot refuse
+floor-observe.sh|exempt|none|records the override itself, so it has to run when the switch is set; cannot refuse
 event-hook.sh|exempt|none|a recorder, exit 0 on every path, cannot refuse
 govern-token.sh|exempt|none|announces the provenance token, cannot refuse
 injection-rule.sh|exempt|enforces|rule packs are each repo's own governance and its run: deny is the repo's, not the floor's
-prod-guard-ambient.sh|exempt|enforces|defers to prod_guard.py, the cloud and data destruction deny that the switch does not lift (admission-deny.sh:34-35)"
+prod-guard-ambient.sh|exempt|enforces|defers to prod_guard.py, the cloud and data destruction deny that the switch does not lift (floor-deny.sh:34-35)"
 
-wired() { # the scripts admission-install.sh's table wires, then the siblings'
+wired() { # the scripts floor-install.sh's table wires, then the siblings'
   if [ -f "$FI" ]; then
     sed -n "/^floor_hooks() { cat <<'ROWS'/,/^ROWS\$/p" "$FI" | grep -vE '^(#|floor_hooks|ROWS|[[:space:]]*$)' \
       | cut -d';' -f3 | tr ' ' '\n' | grep -E '\.sh$'
@@ -93,7 +93,7 @@ case "${1:-}" in
 $SIBLINGS
 SIB
       for i in "$HERE"/*-install.sh; do
-        b="${i##*/}"; [ "$b" = admission-install.sh ] && continue
+        b="${i##*/}"; [ "$b" = floor-install.sh ] && continue
         [ -L "$i" ] && continue   # a rename shim (harbor#961) is an old name of an installer judged under its own
         grep -q '\.hooks' "$i" || continue
         printf '%s\n' "$SIBLINGS" | awk '{print $1}' | grep -qx "$b" \
@@ -104,7 +104,7 @@ SIB
     . "$HERE/library-log.sh"; log_init decider-set
     while IFS= read -r l; do
       [ -n "$l" ] || continue
-      log_fail "$l"; log_nofix "bin/decider-set.sh (the wiring is admission-install.sh's table; the rows are DISPOSITIONS)"
+      log_fail "$l"; log_nofix "bin/decider-set.sh (the wiring is floor-install.sh's table; the rows are DISPOSITIONS)"
     done <<FEOF
 $F
 FEOF

@@ -136,7 +136,7 @@ case "$MODE" in
       # `$_cur..$_old` counts commits reachable from the installed stamp and not from
       # the source, which for a squash-merging repo is every commit of whatever branch
       # the last install ran from — merged or not. Measured live 2026-08-13, this
-      # refused `admission-install.sh --live --apply` with "would REMOVE 25 commit(s)"
+      # refused `floor-install.sh --live --apply` with "would REMOVE 25 commit(s)"
       # while `git diff --stat origin/main <installed> -- bin/ hooks/` showed 24
       # insertions against 2653 deletions: main was the SUPERSET, and all 24 "unique"
       # lines were superseded earlier forms. The consequence was not cosmetic —
@@ -158,10 +158,8 @@ case "$MODE" in
         return 0
       fi
       # The FAIL text is a contract: deploy and the installers read "<who> would remove N installed commit(s)".
-      # the stamp keys keep the installers' first names; the scripts moved (W3, W7 harbor#949)
-      case "$WHO" in floor-install) _whof=admission-install ;; runtime-install) _whof=deploy-runtime-install ;; *) _whof="$WHO" ;; esac
       log_fail "$WHO would remove $_lost installed commit(s) from $DIR — a regression: installed $(_short "$_jo")$_jw, source $(_short "$_cur")"
-      log_fix "sh $(_qn "$SRC/$_whof.sh") --apply $(_target_spelling) --accept-loss"
+      log_fix "sh $(_qn "$SRC/$WHO.sh") --apply $(_target_spelling) --accept-loss"
       log_note "or deploy from a checkout that contains them: git -C $(_q "$REPO") pull"
       _git log --oneline --no-decorate "$_cur..$_jo" | while IFS= read -r _l; do log_note "installed, not in the source: $_l"; done
       # THE CONTENT CHECK RAN AND DISAGREED, so say which question was answered. A

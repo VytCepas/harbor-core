@@ -93,7 +93,7 @@ want_cwd block "a config-dir edit from a checkout owes that checkout's parts" "$
 
 t_section "SG-1 which paths are floor surfaces, and which only look like one"
 T="$(tx)"; tu_edit "$R/bin/library-admission.sh" >> "$T";         want block "bin/library-admission.sh" "$T"
-T="$(tx)"; tu_edit "$R/bin/admission-normalize.awk" >> "$T";  want block "bin/admission-normalize.awk" "$T"
+T="$(tx)"; tu_edit "$R/bin/floor-normalize.awk" >> "$T";  want block "bin/floor-normalize.awk" "$T"
 T="$(tx)"; tu_edit "$R/bin/admission-hook.sh" >> "$T";        want block "bin/admission-hook.sh" "$T"
 T="$(tx)"; tu_edit "$R/bin/admission-stop.sh" Write >> "$T";  want block "Write counts, not only Edit" "$T"
 T="$(tx)"; tu_edit "$R/bin/admission-stop.sh" NotebookEdit >> "$T"; want block "NotebookEdit counts too" "$T"
@@ -180,25 +180,6 @@ T="$(tx)"; { tu_bash c1 "sh tests/admission/baseline/b8.test.sh"; tr_res c1 "b8.
              tu_bash b2 "sh tests/admission/baseline/b8.test.sh"; tr_bg b2 bq3; tu_bash c3 "tail -1 /t/tasks/bq3.output"; \
              tr_res c3 "b8.test: 115 passed, 0 failed"; } >> "$T"
 want allow "SG-2: a later background green clears an earlier mutation red" "$T"
-
-t_section "SG-1 reads the runner's --results file (harbor#1392)"
-SR='sh bin/test-suite-run.sh --select --results'; RG="$WORK/res-green.tsv"; RR="$WORK/res-red.tsv"; R1="$WORK/res-one.tsv"
-printf 'pass\t9\t0\t10\ttests/admission/baseline/baseline.test.sh\t\npass\t3\t0\t5\ttests/admission/baseline/a.test.sh\t\n' > "$RG"
-printf 'pass\t9\t0\t10\ttests/admission/baseline/baseline.test.sh\t\nfail\t3\t1\t5\ttests/admission/baseline/a.test.sh\texited 1\n' > "$RR"
-printf 'pass\t9\t0\t10\ttests/admission/baseline/baseline.test.sh\t\n' > "$R1"
-note() { printf '  note: %s passed, 0 failed, 0 stood down, wall 12s at P=3 — results: %s' "$1" "$2"; }
-T="$(tx)"; { tu_edit "$GB"; tu_bash c1 "$SR $RG"; tr_res c1 "$(note 2 "$RG")"; } >> "$T"
-want allow "a green runner run of every part, after the edit, clears SG-1" "$T"
-T="$(tx)"; { tu_edit "$GB"; tu_bash c1 "$SR $RR"; tr_res c1 "$(note 1 "$RR")"; } >> "$T"
-want block "a red part in the runner's results still blocks" "$T"
-T="$(tx)"; { tu_edit "$GB"; tu_bash c1 "$SR $R1"; tr_res c1 "$(note 1 "$R1")"; } >> "$T"
-want block "a runner run that left a part out still blocks" "$T"
-T="$(tx)"; { tu_bash c1 "$SR $RG"; tr_res c1 "$(note 2 "$RG")"; tu_edit "$GB"; } >> "$T"
-want block "a runner run BEFORE the edit is not evidence" "$T"
-T="$(tx)"; { tu_edit "$GB"; tu_bash c1 "cat $WORK/old.log"; tr_res c1 "$(note 2 "$RG")"; } >> "$T"
-want block "a results line a command only READ is not a run" "$T"
-T="$(tx)"; { tu_edit "$GB"; tu_bash b1 "$SR $RG"; tr_bg b1 bq5; tu_bash c2 "tail -2 /t/tasks/bq5.output"; tr_res c2 "$(note 2 "$RG")"; } >> "$T"
-want allow "a background runner run pairs through its task file" "$T"
 
 t_section "once per state: a red suite whose counts move is the same state"
 _s4="$(new_sid)"; T="$(tx)"; { tu_bash c1 "$FT"; tr_res c1 "baseline.test: 10 passed, 3 failed"; } >> "$T"

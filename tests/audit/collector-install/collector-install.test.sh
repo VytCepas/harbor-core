@@ -5,7 +5,7 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 R="$(cd "$(dirname "$0")/../../.." && pwd)"; X="$R/bin/audit-collector-install.sh"
 t_eq "an unknown argument is a usage error" 2 "$(sh "$X" --bogus >/dev/null 2>&1; echo $?)"
-t_eq "a platform that is neither is refused" 1 "$(HARBOR_AUDIT_COLLECTOR_OS=Plan9 sh "$X" --dry-run >/dev/null 2>&1; echo $?)"
+t_eq "a platform that is neither is refused" 1 "$(HARBOR_COLLECTOR_OS=Plan9 sh "$X" --dry-run >/dev/null 2>&1; echo $?)"
 
 t_section "the templates"
 for p in com.harbor.audit.collector com.harbor.audit.collector-checkpoint com.harbor.audit.otlp-receiver; do
@@ -21,7 +21,7 @@ t_eq "no template names a real home or user" 0 "$(cat "$R"/launchd/com.harbor.au
 
 H="$T_TMP/home"; mkdir -p "$H/.claude/MEMORY/OBSERVABILITY/h" "$H/.local/state/harbor/events" "$H/.claude/cache"; : > "$H/.claude/cache/checks.log"
 SRCS="$H/.claude/MEMORY/OBSERVABILITY:$H/.local/state/harbor/events:$H/.claude/cache/checks.log:$H/absent"
-plan() { HARBOR_AUDIT_COLLECTOR_OS="$1" HARBOR_AUDIT_COLLECTOR_HOME="$H" HARBOR_AUDIT_COLLECTOR_SOURCES="$SRCS" sh "$X" --dry-run 2>&1; }
+plan() { HARBOR_COLLECTOR_OS="$1" HARBOR_COLLECTOR_HOME="$H" HARBOR_COLLECTOR_SRC="$SRCS" sh "$X" --dry-run 2>&1; }
 
 t_section "the Linux plan (any host)"
 O="$(plan Linux)"; rc=$?
@@ -36,7 +36,7 @@ t_has "and nothing changes" "$O" 'dry run: nothing changed'
 if [ "$(uname -s)" = Darwin ]; then
   t_section "the macOS plan"
   # the user is a knob: the real directory decides whether a user exists, so _harborlog made the plan differ per box
-  O="$(HARBOR_AUDIT_COLLECTOR_USER=_harbor-test-absent plan Darwin)"; rc=$?
+  O="$(HARBOR_COLLECTOR_USER=_harbor-test-absent plan Darwin)"; rc=$?
   t_eq "a macOS dry run exits 0" 0 "$rc"
   t_has "the code goes to a root-owned dir" "$O" 'chown -R root:wheel /Library/Application Support/Harbor/collector-bin'
   t_has "...and the store changes owner only where the collector does not own it (a sealed file refuses chown)" "$O" 'find /Library/Application Support/Harbor/collector ! -user'
@@ -50,7 +50,7 @@ if [ "$(uname -s)" = Darwin ]; then
   t_has "the user has no shell" "$O" 'UserShell /usr/bin/false'
   t_has "three daemons are planned" "$O" 'would write /Library/LaunchDaemons/com.harbor.audit.otlp-receiver.plist'
   t_has "and nothing changes" "$O" 'dry run: nothing changed'
-  O="$(HARBOR_AUDIT_COLLECTOR_USER=root plan Darwin)"
+  O="$(HARBOR_COLLECTOR_USER=root plan Darwin)"
   t_has "a collector user that already exists is kept" "$O" "user root exists"
   t_eq "and is not created again" 0 "$(printf '%s\n' "$O" | grep -c 'dscl . -create')"
 fi

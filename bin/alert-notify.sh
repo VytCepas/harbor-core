@@ -80,7 +80,6 @@ esac
 SRC="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 # Its status lines are log-lib's, on stderr (contracts/logging.md): stdout keeps the one receipt line.
 . "$SRC/library-log.sh"
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; log_init pulse-notify
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$CFG/cache}}"
@@ -93,7 +92,6 @@ DRY=0
 
 # The sink is bin/library-alert.sh's chain (harbor#618): macOS, notify-send, a WSL2 toast, else a logged line.
 # Only a desktop channel counts as said: a logged line leaves the edge unrecorded, to be said on a later run.
-# shellcheck disable=SC2034 # ALERT_LIB_DIR: read by library-alert.sh
 ALERT_LIB_DIR="$SRC"; . "$SRC/library-alert.sh"
 SINK="$(notify_sink)"
 

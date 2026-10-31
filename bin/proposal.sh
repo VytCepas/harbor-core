@@ -65,11 +65,10 @@ DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
 ROOT="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-$(CDPATH= cd -- "$DIR/.." && pwd -P)}}"
 STORE="$ROOT/proposals"
 
+_sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
 # Status lines are log-lib's, on stderr: stdout is the verb's data (list, count, show, a dry run's files).
-. "$DIR/library-log.sh"; . "$DIR/library-fs.sh"
-log_init proposal
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
-LOG_FD=2
+. "$DIR/library-log.sh"
+log_init proposal; LOG_FD=2
 # die <what failed> [exit code, default 2] [fix command]: FAIL, its fix, the summary, exit.
 die() {
   log_fail "$1"
@@ -199,7 +198,7 @@ list)
   for p in "$STORE"/*/; do
     [ -f "$p/meta" ] || continue
     _s="$(basename "$p")"; _n=$((_n+1))
-    _sh="$(fs_sha256 < "$p/patch.diff" 2>/dev/null)"
+    _sh="$(_sha < "$p/patch.diff" 2>/dev/null)"
     _ref=0; _ok=0
     for r in "$p/reviews"/*.json; do
       [ -f "$r" ] || continue
@@ -230,7 +229,7 @@ show)
   [ $# -ge 1 ] || usage
   P="$STORE/$1"; [ -f "$P/meta" ] || die "no such packet: $1" 1 "sh bin/proposal.sh list"
   printf '== %s ==\n' "$1"; cat "$P/meta"
-  printf 'patch_sha=%s\n' "$(fs_sha256 < "$P/patch.diff")"
+  printf 'patch_sha=%s\n' "$(_sha < "$P/patch.diff")"
   printf '\n== files ==\n'; _files_in "$P/patch.diff"
   printf '\n== evidence ==\n'; cat "$P/evidence.md"
   printf '\n== reviews ==\n'
@@ -259,7 +258,7 @@ review)
   [ -n "$AS" ] || die "--as <name> is required: an anonymous verdict cannot be argued with" 2 "sh bin/proposal.sh review $SLUG --as <name>"
   [ "$REF" = true ] && [ -z "$REASON" ] && die "a refusal needs --reason: a veto with no reason cannot be answered" 2 "sh bin/proposal.sh review $SLUG --as $AS --refuted --reason <text>"
   case "$AS" in *[!a-zA-Z0-9_-]*) die "reviewer name must be [a-zA-Z0-9_-]: $AS" 2 "sh bin/proposal.sh review $SLUG --as <name>" ;; esac
-  _sh="$(fs_sha256 < "$P/patch.diff")"
+  _sh="$(_sha < "$P/patch.diff")"
   printf '{"reviewer": "%s", "refuted": %s, "reason": "%s", "patch_sha": "%s", "at": "%s"}\n' \
     "$AS" "$REF" "$(printf '%s' "$REASON" | sed 's/"/\\"/g')" "$_sh" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     > "$P/reviews/$AS.json"
@@ -287,7 +286,7 @@ apply)
   # metadata is not consulted for any of this: it was written by the proposer.
   [ -n "$(touches_machinery "$P/patch.diff")" ] && \
     die "the patch touches the packet machinery itself — refused with no override" 1
-  _sh="$(fs_sha256 < "$P/patch.diff")"
+  _sh="$(_sha < "$P/patch.diff")"
   _ref=0; _ok=0
   for r in "$P/reviews"/*.json; do
     [ -f "$r" ] || continue

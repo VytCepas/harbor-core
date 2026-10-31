@@ -43,9 +43,7 @@ _logload() {
   case "$_me" in */*) _here="${_me%/*}" ;; *) _here=. ;; esac
   [ -f "$_here/library-log.sh" ] || { printf '%s: library-log.sh is missing beside %s\n' gcloud "$_me" >&2; exit 77; }
   . "$_here/library-log.sh"
-  log_init gcloud
-  # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
-  LOG_FD=2
+  log_init gcloud; LOG_FD=2
 }
 # _open <step>: load the library and head the run. Each refusal then logs its own FAIL and fix lines inline,
 # because lint LOG1 reads a FAIL's fix on its own straight-line path.

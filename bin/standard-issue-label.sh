@@ -219,7 +219,6 @@ case "$mode" in
     ;;
 
   --audit)
-    # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
     LOG_FD=1
     R="$(repo)"
     STRICT=no; [ "${1:-}" = "--strict" ] && STRICT=yes
@@ -340,7 +339,7 @@ case "$mode" in
       [ -n "$closedpar" ] && { printf '  open issue under a CLOSED parent:%s\n' "$closedpar"; FAIL=1; }
       # `epic:*` says what KIND of parent; the EDGE says whether it is one.
       epicnokid=''; kidnoepic=''
-      while IFS='	' read -r num _par kids; do
+      while IFS='	' read -r num par kids; do
         labs="$(awk -F'\t' -v k="$num" '$1==k{print $2}' "$A")"
         case ",$labs," in *",epic:"*) is_epic=yes ;; *) is_epic=no ;; esac
         [ "$is_epic" = yes ] && [ "$kids" -eq 0 ] && epicnokid="$epicnokid #$num"

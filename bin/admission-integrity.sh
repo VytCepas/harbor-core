@@ -25,11 +25,6 @@ set -u
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
 DIR="$(CDPATH= cd -- "${DIR:-/}" && pwd)"
 . "$DIR/library-admission.sh"
-# harbor#1390: a hook run carries a session id, and only a session records what B8 named (see B8 below). A terminal
-# stdin is a hand run with no payload, never something to wait on.
-FLOOR_IN=''; [ -t 0 ] || floor_read_stdin || FLOOR_IN=''
-SELF_SID="$(floor_field '.session_id')"
-case "$SELF_SID" in *[!A-Za-z0-9_-]*) SELF_SID='' ;; esac
 
 CFG="$(floor_config_dir)"
 S="$CFG/settings.json"
@@ -40,9 +35,10 @@ PIN="$CFG/.sec0-baseline.sha256"
 GUARDS="admission-bash.sh admission-egress.sh admission-self-edit.sh annotate-web.sh pin-instructions.sh"
 PINDIR="$CFG/.helm-pins"
 
+sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
 
 # WHICH DIR THE RECOVERY COMMAND NAMES (harbor#110). Every hint below used to
-# hardcode `--live`, and `--live` in admission-deny.sh/deploy-restore.sh means literally
+# hardcode `--live`, and `--live` in floor-deny.sh/deploy-restore.sh means literally
 # $HOME/.claude — it does NOT follow CLAUDE_CONFIG_DIR, deliberately, because
 # those tools use it as the accident gate that stops a caller who meant a
 # sandbox from rewriting the real box. But $CFG here comes from
@@ -67,7 +63,7 @@ if [ "$(_phys "$CFG")" = "$(_phys "$LIVE_DIR")" ]; then TGT="--live"; else TGT="
 # THE HINT IS A COMMAND THE OPERATOR PASTES, so every path in it has to survive
 # the shell a second time (PR #113, Codex P2). A config dir carrying a space —
 # `/tmp/harbor test` — split into two arguments: deploy-restore.sh would restore
-# `/tmp/harbor` while admission-deny.sh took `test` as its target. That is harbor#110
+# `/tmp/harbor` while floor-deny.sh took `test` as its target. That is harbor#110
 # one level in: the hint naming a directory other than the one the verdict was
 # measured against, this time by word-splitting rather than by flag semantics.
 # Quoting `--live` too is harmless — the shell strips it back to the flag — and
@@ -86,7 +82,7 @@ else REPIN_B8="sh $CFGQ/bin/pin-instructions.sh --apply --dir $CFGQ"; fi
 
 DRIFT=""
 # Tracked apart from $DRIFT because the RECOVERY differs by class: a settings or
-# teeth drift is re-pinned with admission-deny.sh, and a guard CONTENT drift is not
+# teeth drift is re-pinned with floor-deny.sh, and a guard CONTENT drift is not
 # — floor-deny never writes .helm-pins. See the $RECOVER block at the end.
 PINDRIFT=""
 WIREDRIFT=""  # a wired hook file that cannot run: its recovery is the file or the wiring (harbor#960)
@@ -102,7 +98,7 @@ elif [ ! -f "$S" ];   then note "settings.json missing at $S"
 elif [ ! -f "$PIN" ]; then note "baseline pin missing at $PIN"
 else
   WANT="$(cat "$PIN" 2>/dev/null)"
-  HAVE="$(jq -S '{perms:.permissions, plugins:(.enabledPlugins // {}), marketplaces:(.extraKnownMarketplaces // {}), keys:((keys) - ["hooks"])}' "$S" 2>/dev/null | floor_sha)"
+  HAVE="$(jq -S '{perms:.permissions, plugins:(.enabledPlugins // {}), marketplaces:(.extraKnownMarketplaces // {}), keys:((keys) - ["hooks"])}' "$S" 2>/dev/null | sha)"
   [ -n "$HAVE" ] || note "settings.json unreadable or invalid JSON"
   if [ -n "$HAVE" ] && [ "$HAVE" != "$WANT" ]; then
     # Distinguish the floor's TEETH from ordinary user state. enabledPlugins and
@@ -129,7 +125,7 @@ else
     # hashing volatile user state that no rule reads.
     #
     # `hooks` IS EXCLUDED FROM THE KEY SET, measured rather than aesthetic:
-    # admission-install.sh writes the hook wiring AFTER it pins the baseline, so a
+    # floor-install.sh writes the hook wiring AFTER it pins the baseline, so a
     # freshly installed floor reported drift against its own install. Six
     # assertions went red on it, including "a freshly pinned state is not
     # silent" — a gate that cries wolf the moment it is installed is §2.11 in
@@ -145,19 +141,19 @@ else
     # /plugin lockout with a commoner trigger, and §2.11 makes that a defect
     # rather than safety. deny and the two locks stay fail-closed; everything
     # else in the file is reported and re-pinnable.
-    TEETH="$(jq -S '{deny:.permissions.deny, locks:{bypass:.permissions.disableBypassPermissionsMode, auto:.permissions.disableAutoMode}}' "$S" 2>/dev/null | floor_sha)"
+    TEETH="$(jq -S '{deny:.permissions.deny, locks:{bypass:.permissions.disableBypassPermissionsMode, auto:.permissions.disableAutoMode}}' "$S" 2>/dev/null | sha)"
     TEETH_WANT="$(cat "$CFG/.helm-floor-teeth" 2>/dev/null || true)"
     if [ -n "$TEETH_WANT" ] && [ "$TEETH" = "$TEETH_WANT" ]; then
       # `--repin`, NOT `--apply`. This branch is reached with deny and the locks
       # already INTACT — only the plugin/marketplace hashes moved — so there is
       # nothing to add and `--apply` is the wrong verb twice over: it re-adds the
       # full B1 entry set, which RESURRECTS any entry the operator withdrew
-      # deliberately (admission-deny.sh's WITHDRAWN list), and it is the flag whose
+      # deliberately (floor-deny.sh's WITHDRAWN list), and it is the flag whose
       # blast radius made deploy-runtime-install.sh choose `--repin` for exactly this
       # situation ("--repin adds no deny entry, so a withdrawn entry stays
       # withdrawn", deploy-runtime-install.sh). The checkout path matches the idiom
       # session-verdicts.sh already prints for the same recovery.
-      ADVISORY="settings.json changed outside the floor's teeth since the baseline was pinned — plugins, marketplaces, a permissions field other than deny/the locks, or a new top-level key (deny + locks intact) — re-pin with: sh $CFGQ/bin/admission-deny.sh $TGTQ --repin (adds nothing)"
+      ADVISORY="settings.json changed outside the floor's teeth since the baseline was pinned — plugins, marketplaces, a permissions field other than deny/the locks, or a new top-level key (deny + locks intact) — re-pin with: sh $CFGQ/bin/floor-deny.sh $TGTQ --repin (adds nothing)"
     else
       note "permissions.deny or the mode locks changed since the baseline was pinned"
     fi
@@ -183,7 +179,7 @@ else
   check_wired PreToolUse  Task      admission-egress.sh
   check_wired PostToolUse WebFetch  annotate-web.sh
   # GATED ON THE PIN, so this cannot false-alarm a box installed before these two
-  # guards existed. admission-install.sh both pins (:82) and wires (:122-123) them in
+  # guards existed. floor-install.sh both pins (:82) and wires (:122-123) them in
   # the same run, so on any box where the pin is present the wiring was present
   # too — which makes a missing hook here real drift and not an old install.
   # Unwiring is the cheaper attack than editing: the content pin above catches an
@@ -260,25 +256,25 @@ EOF
 fi
 
 # ── WHAT GETS CHECKED IS DERIVED FROM THE PINS ON DISK, NOT LISTED HERE ──────
-# This line used to read `for g in $GUARDS library-admission.sh admission-normalize.awk`,
+# This line used to read `for g in $GUARDS library-admission.sh floor-normalize.awk`,
 # which made it the third of FOUR hand-maintained copies of one set:
-# admission-install.sh:82 (the payload it writes pins for), $GUARDS above,
-# deploy-runtime-install.sh's drift report, and admission-verify.sh's presence loop. Copies
+# floor-install.sh:82 (the payload it writes pins for), $GUARDS above,
+# deploy-runtime-install.sh's drift report, and floor-verify.sh's presence loop. Copies
 # drift silently while reading correctly, and these had already drifted.
 #
-# MEASURED 2026-08-14 on a clean `admission-install.sh --with-b6` install:
+# MEASURED 2026-08-14 on a clean `floor-install.sh --with-b6` install:
 # admission-cloud.sh and admission-destroy.sh (harbor#194/#201) ship in the payload, are
 # WIRED by the installer, and are PINNED in .helm-pins/ beside the others — and
 # no verifier ever read those pins back. Gut both to `exit 0` and this gate exits
 # 0 SILENTLY with the disagreeing pin sitting in the same directory;
-# admission-verify.sh said nothing either. context-resolve.sh and admission-hook.sh had
+# floor-verify.sh said nothing either. context-resolve.sh and admission-hook.sh had
 # the same hole for longer. The pin existed the whole time. Nothing read it.
 #
 # $GUARDS STAYS as the floor MINIMUM rather than being replaced by the pin dir,
 # because deriving only from the pins means DELETING a pin removes its guard from
 # the check — and the `no content pin for` branch below is the thing that makes a
 # deleted pin visible. Union, so neither direction can hide a file.
-CHECK="$GUARDS library-admission.sh admission-normalize.awk"
+CHECK="$GUARDS library-admission.sh floor-normalize.awk"
 for _pf in "$PINDIR"/*.sha256; do
   # POSIX sh has no nullglob: an unmatched pattern arrives as the literal string,
   # so this is a real guard and not a formality on a box with no pins yet.
@@ -301,7 +297,7 @@ for g in $CHECK; do
   # plus `exit 0` passed every earlier check (red-team pass 6).
   if [ -f "$PINDIR/$g.sha256" ]; then
     _want="$(cat "$PINDIR/$g.sha256" 2>/dev/null)"
-    _have="$(floor_sha < "$f")"
+    _have="$(sha < "$f")"
     if [ "$_want" != "$_have" ]; then
       note "guard modified since it was pinned: $g"
       # Tracked separately from the message, because the RECOVERY for this drift
@@ -309,7 +305,7 @@ for g in $CHECK; do
       PINDRIFT="${PINDRIFT}${PINDRIFT:+ }$g"
     fi
   else
-    note "no content pin for $g (run admission-install.sh to pin)"
+    note "no content pin for $g (run floor-install.sh to pin)"
   fi
   case "$g" in
     # Not hooks: sourced library, data, and the operator's pinning tool. They are
@@ -319,13 +315,13 @@ for g in $CHECK; do
     # first live lines on 2026-08-14 are `set -u` / `set -eu`, so requiring the
     # kill-switch of them would have raised a session-BLOCKING alarm the moment the
     # pin dir became the source of truth — the §2.11 defect, shipped by the fix for
-    # a §2.11 defect. deploy-harden.sh is the one that proved it: admission-install.sh:223
+    # a §2.11 defect. deploy-harden.sh is the one that proved it: floor-install.sh:223
     # pins it whenever it happens to be in bin/, which the recovery fixture does, so
     # the widened loop turned the RESTORE path into a lockout (floor-test Q-R6 went
     # red — the assertion that exists because that lockout already happened once).
     #
-    # admission-observe.sh is the sharp one: it IS a wired hook (SessionStart,
-    # admission-install.sh:143), so its exemption is a finding rather than a category —
+    # floor-observe.sh is the sharp one: it IS a wired hook (SessionStart,
+    # floor-install.sh:143), so its exemption is a finding rather than a category —
     # a wired hook that does not honour HARBOR_ADMISSION_DISABLE. Left as it is on purpose
     # (an observer writing a ledger under a disabled floor is not a gate acting),
     # and floor-test X15 asserts this line stays the EXHAUSTIVE set, so the next
@@ -334,7 +330,7 @@ for g in $CHECK; do
     # baseline-pin.sh is retired (harbor#765) but stays exempt while boxes still carry its pin.
     # library-log.sh and deploy-install-lib.sh are sourced libraries of the recovery path (harbor#771, #765).
     # NO-KILLSWITCH (read by floor-test X15 — keep it one line, `|`-separated):
-    library-admission.sh|admission-normalize.awk|pin-instructions.sh|admission-observe.sh|deploy-restore.sh|baseline-pin.sh|deploy-harden.sh|library-log.sh|deploy-install-lib.sh) ;;
+    library-admission.sh|floor-normalize.awk|pin-instructions.sh|floor-observe.sh|deploy-restore.sh|baseline-pin.sh|deploy-harden.sh|library-log.sh|deploy-install-lib.sh) ;;
     *)
       # $FLOOR_GREP, not bare grep: this file sources guard-lib and therefore has
       # the pinned interpreter in scope, and this IS the kill-switch presence
@@ -369,10 +365,7 @@ if [ -f "$CFG/.helm-instructions.sha256" ]; then
   elif [ -z "$_now" ]; then
     # An empty manifest is "could not build", never "nothing to see".
     ADVISORY="${ADVISORY:+$ADVISORY; }the instruction manifest came back empty — the instruction surfaces could NOT be checked"
-  elif _d="$(printf '%s\n' "$_now" | floor_instr_diff "$CFG/.helm-instructions.sha256")"; [ -z "$_d" ]; then
-    # Clean: nothing is standing, so the next change is named whatever was named before the re-pin (harbor#1390).
-    [ -z "$SELF_SID" ] || rm -f "$CFG/.helm-context/instructions.seen" 2>/dev/null || :
-  else
+  elif _d="$(printf '%s\n' "$_now" | floor_instr_diff "$CFG/.helm-instructions.sha256")"; [ -n "$_d" ]; then
     # Count PATHS, not diff lines: an edited file produces both a `<` and a `>`
     # line, so counting lines reported "2 changed" for one changed file.
     # The path is everything after the two-space separator — `awk '{print $NF}'`
@@ -409,39 +402,6 @@ if [ -f "$CFG/.helm-instructions.sha256" ]; then
     # memory`, a path that does not exist. Caught by B8-05, which asserts the
     # real path is named — the same shape as B8-06, where `awk '{print $NF}'`
     # reported "skill.md" for "my evil skill.md".
-    # ── A STANDING ADVISORY NAMES WHAT IS NEW (harbor#1390). The same 26 paths, reprinted at every SessionStart
-    # until a re-pin, is an alarm the reader learns to skip, and then the 27th scrolls past with it. So every changed
-    # path is still COUNTED, but a path is NAMED only in the first session that sees its current content, and the rest
-    # are summed with the age of the oldest. The record is <cfg>/.helm-context/instructions.seen, `<epoch> TAB <key>`
-    # per changed path, the key being its manifest line now (`gone  <path>` once removed), so a path edited again is
-    # new again. .helm-context is an integrity row: a session cannot write the record to keep its own edit unnamed.
-    # Only a run with a session id writes it, so `harbor verify` names what is new and consumes nothing. A record
-    # that is lost or unreadable names everything, the old behaviour; a clean manifest deletes it (the re-pin).
-    _seen="$CFG/.helm-context/instructions.seen"
-    _now_s="$(date +%s 2>/dev/null || echo 0)"
-    _seenw=''
-    if [ -n "$SELF_SID" ] && mkdir -p "$CFG/.helm-context" 2>/dev/null; then _seenw="$_seen.$$"; fi
-    # Out: `S TAB <path>` per standing path, then `A TAB <epoch>`, the oldest of them.
-    _stand="$(printf '%s\n' "$_d" | _B8_SEEN="$_seen" _B8_SEENW="$_seenw" awk -v now="$_now_s" '
-      BEGIN { f = ENVIRON["_B8_SEEN"]; o = ENVIRON["_B8_SEENW"]
-              while ((getline l < f) > 0) { t = index(l, "\t"); if (t) seen[substr(l, t + 1)] = substr(l, 1, t - 1) } }
-      { s = substr($0, 3); i = index(s, "  "); if (!i) next; p = substr(s, i + 2)
-        if (substr($0, 1, 1) == ">") { key[s] = p; has[p] = 1 } else gone[p] = 1 }
-      END {
-        for (p in gone) if (!(p in has)) key["gone  " p] = p
-        for (k in key) { p = key[k]
-          if (k in seen) { e = seen[k]; if (!(p in age) || e + 0 < age[p] + 0) age[p] = e } else { fresh[p] = 1; e = now }
-          if (o != "") print e "\t" k > o }
-        m = ""; for (p in age) if (!(p in fresh)) { print "S\t" p; if (m == "" || age[p] + 0 < m + 0) m = age[p] }
-        if (m != "") print "A\t" m }' 2>/dev/null || true)"
-    if [ -n "$_seenw" ]; then
-      if [ -f "$_seenw" ]; then mv -f "$_seenw" "$_seen" 2>/dev/null || rm -f "$_seenw"; else rm -f "$_seen" 2>/dev/null || :; fi
-    fi
-    _old_s="$(printf '%s\n' "$_stand" | awk -F'\t' '$1 == "A" { print $2 }')"
-    _agep=''; [ -z "$_old_s" ] || _agep=", the oldest named $(( (_now_s - _old_s) / 86400 ))d ago"
-    # A path is standing only when the record says so: any doubt names it.
-    _newof() { printf '%s\n' "$1" | _B8_ST="$_stand" awk 'BEGIN { n = split(ENVIRON["_B8_ST"], a, "\n"); for (i = 1; i <= n; i++) if (substr(a[i], 1, 2) == "S\t") st[substr(a[i], 3)] = 1 }
-      NF && !($0 in st)'; }
     _mem="$(printf '%s\n' "$_paths" | "$FLOOR_GREP" -E '^projects/[^/]*/memory(/|$)' || true)"
     _oth="$(printf '%s\n' "$_paths" | "$FLOOR_GREP" -Ev '^projects/[^/]*/memory(/|$)' || true)"
     _nmem="$(printf '%s\n' "$_mem" | "$FLOOR_GREP" -c . || true)"
@@ -450,11 +410,8 @@ if [ -f "$CFG/.helm-instructions.sha256" ]; then
     if [ "${_noth:-0}" -gt 0 ]; then
       # The named paths are the NON-memory ones, always — a real instruction
       # surface must never be the entry `head -6` truncated away.
-      _onew="$(_newof "$_oth")"; _nonew="$(printf '%s\n' "$_onew" | "$FLOOR_GREP" -c . || true)"
-      _chg="$(printf '%s\n' "$_onew" | head -6 | tr '\n' ' ' | sed 's/ $//')"
-      [ "${_nonew:-0}" -gt 6 ] && _chg="$_chg …"
-      if [ "${_nonew:-0}" -eq 0 ]; then _chg="0 new since the last session; all ${_noth} already named${_agep}"
-      elif [ "${_nonew:-0}" -lt "${_noth:-0}" ]; then _chg="$_chg; $((_noth - _nonew)) more already named${_agep}"; fi
+      _chg="$(printf '%s\n' "$_oth" | head -6 | tr '\n' ' ' | sed 's/ $//')"
+      [ "${_noth:-0}" -gt 6 ] && _chg="$_chg …"
       _also=""
       [ "${_nmem:-0}" -gt 0 ] && _also=" (and ${_nmem} auto-memory file(s), which the model writes as ordinary work)"
       ADVISORY="${ADVISORY:+$ADVISORY; }INSTRUCTION SURFACES changed since pinning (${_noth} path(s): ${_chg})${_also} — these load into EVERY session; $_repin"
@@ -466,11 +423,8 @@ if [ -f "$CFG/.helm-instructions.sha256" ]; then
       # Nothing is being crowded out in this branch, so naming them costs
       # nothing; the crowding problem was the MIXED case, and that is handled
       # above by putting the non-memory paths first.
-      _mnew="$(_newof "$_mem")"; _nmnew="$(printf '%s\n' "$_mnew" | "$FLOOR_GREP" -c . || true)"
-      _mchg="$(printf '%s\n' "$_mnew" | head -6 | tr '\n' ' ' | sed 's/ $//')"
-      [ "${_nmnew:-0}" -gt 6 ] && _mchg="$_mchg …"
-      if [ "${_nmnew:-0}" -eq 0 ]; then _mchg="0 new since the last session; all ${_nmem:-?} already named${_agep}"
-      elif [ "${_nmnew:-0}" -lt "${_nmem:-0}" ]; then _mchg="$_mchg; $((_nmem - _nmnew)) more already named${_agep}"; fi
+      _mchg="$(printf '%s\n' "$_mem" | head -6 | tr '\n' ' ' | sed 's/ $//')"
+      [ "${_nmem:-0}" -gt 6 ] && _mchg="$_mchg …"
       ADVISORY="${ADVISORY:+$ADVISORY; }auto-memory changed since pinning (${_nmem:-?} file(s): ${_mchg}) and no other instruction surface did — model-authored content that loads into every session, so it is reported rather than blessed; $_repin"
     fi
   fi
@@ -528,7 +482,7 @@ if [ -z "$DRIFT" ]; then
 fi
 
 # THE RECOVERY DEPENDS ON WHAT DRIFTED, and until 2026-08-02 it did not. This
-# message named `admission-deny.sh --live --apply` for every drift class, including
+# message named `floor-deny.sh --live --apply` for every drift class, including
 # guard CONTENT drift — for which it does nothing whatever: floor-deny mentions
 # .helm-pins only inside the deny LIST it writes, and never refreshes a content
 # pin. So the gate blocked the session and handed the operator an instruction
@@ -566,13 +520,13 @@ else
   # locked-out operator has to act on, and harbor#103 fixed only the CONTENT-drift
   # half of the same sentence.
   #
-  # The path: NO INSTALLER SHIPS admission-deny.sh. admission-install.sh copies its GUARDS
+  # The path: NO INSTALLER SHIPS floor-deny.sh. floor-install.sh copies its GUARDS
   # list plus admission-integrity.sh; deploy-runtime-install.sh copies FILES plus
-  # REFRESH_ONLY. admission-deny.sh is in none of them, and was confirmed ABSENT from
+  # REFRESH_ONLY. floor-deny.sh is in none of them, and was confirmed ABSENT from
   # the live ~/.claude/bin on 2026-08-02 — so this line named a file that is not
   # there. Lint X7 reports it. deploy-restore.sh above is fine: it IS in FILES.
   #
-  # It is NOT fixed by adding admission-deny.sh to a payload. floor-deny --repin
+  # It is NOT fixed by adding floor-deny.sh to a payload. floor-deny --repin
   # re-pins .sec0-baseline and .helm-floor-teeth — the two hashes THIS gate checks
   # — so putting it inside the config dir installs a one-command amnesty for the
   # gate, next to the gate, and nothing would stop a session running it:
@@ -587,7 +541,7 @@ else
   # operator withdrew. Re-pinning a baseline is `--repin`, which adds nothing.
   # Both corrections match what session-verdicts.sh already prints for this exact
   # drift, so the operator sees one idiom rather than two.
-  RECOVER="$RESTORE (restores the newest deploy snapshot; without --apply it shows the plan), or — if you changed deny deliberately — re-pin it deliberately: sh $CFGQ/bin/admission-deny.sh $TGTQ --repin (adds nothing)"
+  RECOVER="$RESTORE (restores the newest deploy snapshot; without --apply it shows the plan), or — if you changed deny deliberately — re-pin it deliberately: sh $CFGQ/bin/floor-deny.sh $TGTQ --repin (adds nothing)"
 fi
 # A dangling hook is fixed by the file or by the wiring; floor-deny re-pins neither,
 # so a wiring-only verdict does not name it.

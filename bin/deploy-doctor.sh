@@ -23,10 +23,10 @@ case "${1:-}" in
              exit 0 ;;
 esac
 ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
+CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 JSON=0
 case "${1:-}" in --json) JSON=1 ;; esac
 # The probe table and --json are the report (deploy-live-verify.sh reads the rows), so the run log is on stderr.
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 . "$ROOT/bin/library-log.sh"
 log_init doctor
@@ -53,7 +53,7 @@ probe() { # <bin> <severity: fatal|degraded|optional> <what breaks>
 # ── fatal: the floor fails OPEN or the recovery path cannot run ─────────────
 probe jq       fatal    "every guard parses its hook payload with jq; without it admission-hook.sh is the only thing between a missing parse and a silent allow (B9)"
 probe grep     fatal    "the rule interpreter itself. FLOOR_GREP pins /usr/bin/grep precisely so PATH cannot change a security verdict"
-probe awk      fatal    "admission-normalize.awk builds the segment table every Bash rule reads"
+probe awk      fatal    "floor-normalize.awk builds the segment table every Bash rule reads"
 probe sed      fatal    "used throughout the guards and the installer"
 probe git      fatal    "deploy-restore.sh, baseline pinning, doc-freshness.sh and the work-log all assume it"
 
@@ -171,5 +171,5 @@ if [ "$miss" -gt 0 ]; then
 elif [ "$degraded" -gt 0 ]; then
   log_note "$degraded degraded — a control is present but cannot do its job; read the WARN lines"
 fi
-log_note "This is availability, not correctness — admission-verify.sh is what answers whether the floor actually blocks anything."
+log_note "This is availability, not correctness — floor-verify.sh is what answers whether the floor actually blocks anything."
 log_end; exit $?

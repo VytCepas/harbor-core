@@ -63,7 +63,6 @@ ARCHIFY="${HARBOR_DOC_ARCHIFY_DIR:-${HARBOR_ARCHIFY:-$ROOT/vendor/archify}}"
 # A flag this script does not know is a usage error (2, D-29), judged before anything that can be unavailable, so a
 # typo is never read as a missing verifier. A page whose name starts with `-` is written `./-name.html`.
 for _a in "$@"; do
-  # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
   case "$_a" in
     --self-test|--generated) ;;
     -*) LOG_FD=2; log_fail "unknown option: $_a"; log_fix "sh $0 --help"; exit 2 ;;   # not a run: stderr, no summary (logging.md)
@@ -234,7 +233,7 @@ for _g in "$ROOT"/bin/*-generate.sh; do   # harbor#961 W3: the generators are <f
   fi
 done
 
-# DISCOVERY IS RECURSIVE, because build/<client>/*.html is a surface too and a
+# DISCOVERY IS RECURSIVE, because build/pandora/*.html is a surface too and a
 # top-level glob never saw it. Three exclusions: a page just rendered fresh above
 # (checking the stale twin as well would report a defect already fixed), and
 # archify's own `<name>.visual-check.html` contact sheets — a checker that grades

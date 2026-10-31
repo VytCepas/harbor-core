@@ -103,12 +103,12 @@
 {"id":"ag1018-rv-curl-get","rule":"merge-raw","want":"allow","cmd":"curl https://api.github.com/repos/o/r"}
 {"id":"ag1018-rv-alias-list","rule":"merge-raw","want":"allow","cmd":"gh alias list"}
 {"id":"ag1018-p29-apply-eq","rule":"deploy-raw","want":"block","cmd":"sh bin/deploy.sh --apply=1 --live","why":"review p29"}
-{"id":"ag1018-p30-floor-install-live","rule":"deploy-raw","want":"block","cmd":"sh bin/admission-install.sh --apply --live","why":"review p30: an installer at the live box skips deploy"}
+{"id":"ag1018-p30-floor-install-live","rule":"deploy-raw","want":"block","cmd":"sh bin/floor-install.sh --apply --live","why":"review p30: an installer at the live box skips deploy"}
 {"id":"ag1018-p30-runtime-install-live-harbor-name","rule":"deploy-raw","want":"block","cmd":"sh bin/deploy-runtime-install.sh --live --apply"}
-{"id":"ag1018-p30-floor-deny-repin","rule":"deploy-raw","want":"block","cmd":"sh bin/admission-deny.sh --repin --live"}
+{"id":"ag1018-p30-floor-deny-repin","rule":"deploy-raw","want":"block","cmd":"sh bin/floor-deny.sh --repin --live"}
 {"id":"ag1018-p30-restore-live-harbor-name","rule":"deploy-raw","want":"block","cmd":"sh bin/deploy-restore.sh --apply --live --from x"}
-{"id":"ag1018-p30-sandbox","rule":"deploy-raw","want":"allow","cmd":"sh bin/admission-install.sh --apply --dir /tmp/sandbox","why":"a sandbox install is ordinary work"}
-{"id":"ag1018-p30-dry","rule":"deploy-raw","want":"allow","cmd":"sh bin/admission-install.sh --live"}
+{"id":"ag1018-p30-sandbox","rule":"deploy-raw","want":"allow","cmd":"sh bin/floor-install.sh --apply --dir /tmp/sandbox","why":"a sandbox install is ordinary work"}
+{"id":"ag1018-p30-dry","rule":"deploy-raw","want":"allow","cmd":"sh bin/floor-install.sh --live"}
 {"id":"ag1018-approvals-redirect","rule":"redirect-floor-surface","want":"block","cmd":"printf x > {cfg}/.helm-approvals/ledger.tsv","why":"harbor#1018: the approval ledger, an integrity row of contracts/control-plane-state.md"}
 {"id":"ag1018-approvals-append","rule":"redirect-floor-surface","want":"block","cmd":"printf x >> {cfg}/.helm-approvals/ledger.tsv"}
 {"id":"ag1018-approvals-tee-a","rule":"mutate-aimed-surface","want":"block","cmd":"echo x | tee -a {cfg}/.helm-approvals/ledger.tsv"}

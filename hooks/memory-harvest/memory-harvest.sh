@@ -16,13 +16,19 @@
 # class unreachable rather than mitigated. There is no scrubber here because
 # there is nothing to scrub.
 #
-# WIRED AT SessionStart (harbor#1390). It was at Stop because its stand-down once read
-# the context a SessionStart hook writes; since harbor#954 it reads only the repo's
-# `worklog: off`, so the reason is gone and Stop only made it run every turn. The
-# starting session is skipped: its transcript exists and its record is Stop's to write.
-# hooks/memory-harvest/manifest.tsv carries the history.
+# WIRED AT STOP, NOT SessionStart, and the ticket says SessionStart. Every hook
+# here reads the session's resolved context, and the thing that WRITES it is
+# context-resolve.sh — itself a SessionStart hook. Nothing orders the two, so on
+# a fresh session the context may not exist yet when this runs, and the
+# fail-toward-repo default then correctly makes it a no-op. At Stop the context
+# is reliably present (observed: the live store carries records written by
+# worklog-push.sh, which reads it there). A crashed session is still reconciled
+# with no operator action — at the end of the next session rather than the start.
+# Buying the ticket's literal wording by weakening the stand-down default would
+# trade a safety property for a schedule. contracts/cli.md records this.
+# (Since harbor#954 the stand-down reads only the repo's `worklog: off`.)
 #
-# BOUNDED, because a SessionStart hook is on a path the operator waits for.
+# BOUNDED, because a Stop hook is still on a path the operator waits for.
 # DEAD-ENDS DE-09: a hook that exceeds its timeout is SKIPPED, so a slow
 # reconciler does not fail loudly — it silently stops running, and a fail-open
 # bypass wearing a performance regression's clothes is the worst shape
@@ -43,8 +49,7 @@ CAP="${HARBOR_MEMORY_HARVEST_CAP:-${HARBOR_HARVEST_CAP:-25}}"
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
 [ ! -f "$DIR/manifest.tsv" ] || DIR="$DIR/../../bin"  # D-88: in the repo an engine sits beside its manifest in hooks/<engine>/; deployed, flat beside its libraries
 . "$DIR/library-admission.sh"
-# Its one line goes to stderr: a hook's stdout is the harness's (contracts/logging.md).
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
+# Its one line goes to stderr: a Stop hook's stdout is the harness's (contracts/logging.md).
 LOG_FD=2; . "$DIR/library-log.sh"
 
 # Stdin FIRST: the shared resolver reads .cwd from the payload, and the
@@ -52,8 +57,6 @@ LOG_FD=2; . "$DIR/library-log.sh"
 floor_read_stdin
 # Stands down only on the repo's `worklog: off` — identical to worklog-push.sh (harbor#954).
 floor_engine_stand_down && exit 0
-# The session that is starting: its record is worklog-push's to write at Stop (harbor#1390).
-SELF="$(floor_field '.session_id')"
 
 [ -d "$WORKLOG_DIR/.git" ] || exit 0
 [ -d "$PROJECTS" ] || exit 0
@@ -97,7 +100,6 @@ for f in $(find "$PROJECTS" -maxdepth 2 -type f -name '*.jsonl' -mtime "-$DAYS" 
   [ -f "$f" ] || continue
   SID="$(basename "$f" .jsonl)"
   [ -n "$SID" ] || continue
-  [ "$SID" != "$SELF" ] || continue
 
   # Already recorded — by id, whatever date the record carries.
   printf '%s\n' "$SEEN" | LC_ALL=C "$FLOOR_GREP" -qxF -- "$SID" && continue
@@ -130,10 +132,10 @@ $SID"
 done
 
 # NO SILENT CAPS. If the backlog is bigger than one run may write, say so — the
-# next session start takes the next batch, and the operator can see it happening instead
+# next Stop takes the next batch, and the operator can see it happening instead
 # of wondering why the log is still short.
 if [ "$SKIPPED_CAP" -gt 0 ]; then
-  log_note "wrote $WROTE record(s); $SKIPPED_CAP more still unrecorded (cap $CAP, the next session start continues)"
+  log_note "wrote $WROTE record(s); $SKIPPED_CAP more still unrecorded (cap $CAP, next Stop continues)"
   log_end || :
 fi
 

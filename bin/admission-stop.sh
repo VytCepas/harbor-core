@@ -158,7 +158,6 @@ STREAM="$(jq -r '
       | split("\n")[] | sub("^ *[0-9]+\t"; "")
       | if test("^Command .*Output is being written to: [^ ]*/tasks/[A-Za-z0-9]+\\.output") then "BGT\t" + $id + "\t" + (capture("/tasks/(?<t>[A-Za-z0-9]+)\\.output") | .t)
         elif test("^[a-z][a-z0-9 .-]*: [0-9]+ (passed|rules), [0-9]+ (failed|violations)") then "RES\t" + $id + "\t" + .
-        elif test("^ *note: [0-9]+ passed.* results: /") then "RSF\t" + $id + "\t" + (capture(" results: (?<p>/[^ ]+)") | .p)
         elif test("github\\.com/[^ ]+/pull/[0-9]+") then "PRU\t" + $id + "\t" + (capture("github\\.com/(?<r>[^/ ]+/[^/ ]+)/pull/(?<n>[0-9]+)") | .r + "#" + .n)
         elif test("[Mm]erged pull request [^ ]*#[0-9]+") then "PRM\t-\t" + (capture("[Mm]erged pull request (?<r>[^ ]*)#(?<n>[0-9]+)") | .r + "#" + .n)
         else empty end)
@@ -269,13 +268,13 @@ SG_SUITE_FN='function suite_key(s) { sub(/^.* [0-9]+ /, "", s); return s }'
 # suite command this session launched: a `cat` of any other log pairs with nothing.
 # `[-.]test`: hooks/injection-rule/packs.test.sh is a suite too.
 SG_PAIR='
-  $1 == "CMD" { if ($3 ~ /([-.]test|suite-run|lint-conventions|floor-equiv|admission-equivalence|pass-score)[a-z-]*\.sh/) ran[$2] = 1
+  $1 == "CMD" { if ($3 ~ /([-.]test|lint-conventions|floor-equiv|pass-score)[a-z-]*\.sh/) ran[$2] = 1
                 else for (t in bg) if (index($3, "tasks/" t ".output")) ran[$2] = 1 }
   $1 == "BGT" && ($2 in ran) { bg[$3] = 1 }'
 
 # ── SG-1 · a floor surface was edited and the suite did not run after it ────
 # PATH-SCOPED, and the pattern is the floor's own file set: bin/admission-*.sh, bin/library-admission.sh,
-# bin/floor-*.sh, bin/admission-normalize.awk, and the old guard-*.sh names (harbor#961 W6). `bin/` is required, so a note called
+# bin/floor-*.sh, bin/floor-normalize.awk, and the old guard-*.sh names (harbor#961 W6). `bin/` is required, so a note called
 # guard-notes.sh in a docs dir is not a floor surface.
 #
 # ONLY THE FULL SUITE COUNTS AS EVIDENCE. Since harbor#727 the floor suite is
@@ -338,25 +337,10 @@ export SG1_OK SG1_PARTS
 SG1="$(printf '%s\n' "$STREAM" | awk -F '\t' "$SG_SUITE_FN$SG_PAIR"'
   BEGIN { n = split(ENVIRON["SG1_OK"], a, "\n"); for (i = 1; i <= n; i++) if (a[i] != "") ok[a[i]] = 1
           n = split(ENVIRON["SG1_PARTS"], a, " "); for (i = 1; i <= n; i++) if (a[i] != "") need[a[i]] = 1 }
-  $1 == "MUT" && ($3 in ok) { mut = NR; path = $3; split("", seen); split("", bg); split("", rsf) }
+  $1 == "MUT" && ($3 in ok) { mut = NR; path = $3; split("", seen); split("", bg) }
   $1 == "RES" && mut > 0 && ($2 in ran) { c = index($3, ":"); if (c > 1) { k = suite_key(substr($3, 1, c - 1)); if (k in need) seen[k] = 1 } }
-  $1 == "RSF" && mut > 0 && ($2 in ran) { rsf[$3] = 1 }
-  END { if (mut > 0) { for (k in need) if (!(k in seen)) miss = miss " " k
-          if (miss != "") { print "P\t" path; print "M\t" miss; for (f in rsf) print "F\t" f } } }
+  END { if (mut > 0) for (k in need) if (!(k in seen)) { print path; exit } }
 ')"
-# harbor#1392: test-suite-run.sh prints no per-suite verdict line, so a part it ran is read from the
-# --results file its own summary named after the edit: a `pass` row clears that part, any other row does not.
-if [ -n "$SG1" ]; then
-  _sg1_miss="$(printf '%s\n' "$SG1" | awk -F '\t' '$1 == "M" { print $2 }')"
-  _sg1_pass="$(printf '%s\n' "$SG1" | awk -F '\t' '$1 == "F" { print $2 }' | while IFS= read -r _f; do
-    [ -f "$_f" ] && awk -F '\t' '$1 == "pass" && $5 ~ /(^|\/)tests\/admission\/baseline\/[^\/]+\.sh$/ {
-      s = $5; sub(/^.*\//, "", s); sub(/\.sh$/, "", s); print s }' "$_f" 2>/dev/null
-  done)"
-  export _sg1_pass
-  _sg1_left="$(printf '%s\n' "$_sg1_miss" | awk 'BEGIN { n = split(ENVIRON["_sg1_pass"], a, "\n"); for (i = 1; i <= n; i++) p[a[i]] = 1 }
-    { for (i = 1; i <= NF; i++) if (!($i in p)) print $i }')"
-  if [ -n "$_sg1_left" ]; then SG1="$(printf '%s\n' "$SG1" | awk -F '\t' '$1 == "P" { print $2 }')"; else SG1=""; fi
-fi
 
 # ── SG-2 · a suite THIS SESSION RAN went red and no later run of it went green ─
 # Keyed on the suite NAME, so a green normalize-test cannot vouch for a red

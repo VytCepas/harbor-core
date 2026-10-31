@@ -60,7 +60,6 @@ DIR="$(CDPATH= cd -- "${DIR:-/}" && pwd)"
 
 floor_read_stdin
 TOOL="$(floor_field '.tool_name')"
-# shellcheck disable=SC2034 # FLOOR_TOOL: read by library-admission.sh
 FLOOR_TOOL="$TOOL"
 
 # The document classes. Extensions only — the whole rule is about where a file
@@ -205,7 +204,6 @@ case "$TOOL" in
   Bash|Monitor)
     CMD="$(floor_field '.tool_input.command')"
     [ -n "$CMD" ] || exit 0
-    # shellcheck disable=SC2034 # FLOOR_OBS_SUBJECT: read by library-admission.sh
     FLOOR_OBS_SUBJECT="$CMD"
     # NO floor_heredoc_inert_only VETO HERE, DELIBERATELY, AND IT IS THE ONE
     # CHOICE THAT DECIDES WHETHER THIS ARM SEES ANYTHING AT ALL. That veto exits

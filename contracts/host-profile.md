@@ -21,7 +21,7 @@ Additive-only within a major version — same rules as every seam (see `README.m
 **Absent ⇒ fully functional.** With no box profile present (missing file, unreadable, malformed TOML, wrong/unknown `schema_version`, wrong field types), the wizard runs on baked-in defaults with **zero degradation and zero warnings** — byte-identical behavior to the pre-seam wizard (pinned by project-init's Enter-only equivalence test). When a profile IS present and consulted, the wizard prints exactly **one advisory line** naming the file and the defaults it seeded. The read is *advisory input to defaults*, never a dependency: project-init MUST pass its full suite with no profile on disk, and the loader returns the empty mapping on every failure path (never raises to the wizard).
 
 ## Fixtures (the shared suite, like the marker seam)
-Golden fixtures live with the consumer (project-init `tests/deploy/fixtures/host-profile/` + `tests/deploy/unit/test_host_profile.py`); Helm vendors the same fixtures when it becomes the producer:
+Golden fixtures live with the consumer (project-init `tests/fixtures/box_profile/` + `tests/unit/test_box_profile.py`); Helm vendors the same fixtures when it becomes the producer:
 - `present.toml` — full profile; wizard defaults reflect every field.
 - `partial.toml` — some fields; unspecified ones fall back to baked-in defaults.
 - *absent* — no file; wizard fully functional, zero output (guards D7).

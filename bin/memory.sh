@@ -53,9 +53,7 @@ ENGINE="$REPO/tools/memory/memory-engine.ts"
 # nothing; a refusal ends with the summary after its fix line. Found beside the file the link resolves to.
 [ -f "$DIR/library-log.sh" ] || { printf 'memory: library-log.sh is missing beside %s\n' "$_self" >&2; exit 2; }
 . "$DIR/library-log.sh"
-log_init memory
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
-LOG_FD=2
+log_init memory; LOG_FD=2
 # die <exit> <what failed> <fix command>: FAIL, its fix, the summary, exit.
 die() { _x="$1"; log_fail "$2"; log_fix "$3"; log_end || :; exit "$_x"; }
 

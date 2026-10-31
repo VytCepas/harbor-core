@@ -15,8 +15,8 @@ corpus() { # <file> <decision:command>… — one JSONL line each
   for _l in "$@"; do jq -nc --arg d "${_l%%:*}" --arg c "${_l#*:}" '{command: $c, decision: $d}' >> "$_cf"; done
 }
 BUS="$HOME/.local/state/harbor/events"  # the sandbox HOME's bus, handed over: the cache here is not the live one
-run() { HARBOR_EVENT_DIR="${BUSX-$BUS}" HARBOR_EVAL_REDTEAM_DIR="$C" HARBOR_SCOPE_CACHE_DIR="${CACHEX:-$CACHE}" HARBOR_EVAL_REDTEAM_BASELINE="$BL" HARBOR_EVAL_REDTEAM_SOURCES="$SRC" \
-          HARBOR_EVAL_NODE="${NODEBIN:-/nonexistent/node}" HARBOR_TEST_NOW="${AT:-1790000000}" sh "$TOOL" "$@" > "$T_TMP/out" 2>&1
+run() { HARBOR_EVENT_DIR="${BUSX-$BUS}" HARBOR_REDTEAM_DIR="$C" HARBOR_SCOPE_CACHE_DIR="${CACHEX:-$CACHE}" HARBOR_REDTEAM_BASELINE="$BL" HARBOR_REDTEAM_SOURCES="$SRC" \
+          HARBOR_NODE="${NODEBIN:-/nonexistent/node}" HARBOR_TEST_NOW="${AT:-1790000000}" sh "$TOOL" "$@" > "$T_TMP/out" 2>&1
         _rr=$?; cat "$T_TMP/out" >> "$T_TMP/all.out"; echo "exit $_rr"; }
 OUT() { cat "$T_TMP/out"; }
 st() { cut -f1 "$CACHE/redteam/shguard.guardfall.misses" | tr '\n' ' '; }
@@ -36,7 +36,7 @@ t_section "the obligation a new finding opens is due in a week, the check's cade
 _ev="$(find "$HOME/.local/state/harbor/events" -type f 2>/dev/null | xargs cat 2>/dev/null | grep '"obligation.open"' | grep '"redteam-corpus"' | tail -1)"
 t_eq "the open event's deadline is the run plus 7 days, in the ISO form the ledger reads" "$(jq -nr '(1790000000 + 604800) | todate')" "$(printf '%s' "$_ev" | jq -r '.data.deadline_ts')"
 t_has "a fix line names the command a person can run, not a temp clone" \
-  "$(HARBOR_EVAL_REDTEAM_SELF='sh bin/eval-redteam-corpus.sh' run --print >/dev/null; OUT)" "  fix: sh bin/eval-redteam-corpus.sh"
+  "$(HARBOR_REDTEAM_SELF='sh bin/eval-redteam-corpus.sh' run --print >/dev/null; OUT)" "  fix: sh bin/eval-redteam-corpus.sh"
 
 t_section "second run a day later: the miss clears, a new one appears, the standing one keeps its age"
 corpus guardfall "Allow:echo $MARK" "Allow:git status" "Allow:git reset --hard" "Block:pwd"

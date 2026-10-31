@@ -13,12 +13,10 @@
 set -u
 [ -n "${_LOG_LIB:-}" ] || . "${HERE:?session-react-lib.sh: set HERE to the caller bin/ before sourcing}/library-log.sh"
 RSTATE_DIR="${HARBOR_STATUS_DIR:-${HOME:-/nonexistent}/.local/state/harbor}"
-# shellcheck disable=SC2034 # ALERT_LIB_DIR: read by library-alert.sh
 ALERT_LIB_DIR="$HERE"; . "$HERE/library-alert.sh"
 
 react_event() {
-  # shellcheck disable=SC2034 # RLINK, RSTATE: read by the session-*.sh that source this
-  RKIND="" RSID="" RSTATE="" RLINK="" RDSID=""
+  RKIND=""; RSID=""; RSTATE=""; RLINK=""; RDSID=""
   command -v jq >/dev/null 2>&1 || return 1
   eval "$(printf '%s' "${HARBOR_EVENT:-}" | jq -r '@sh "RKIND=\(.kind // "") RSID=\(.subject // "") RSTATE=\(.data.title // "") RLINK=\(.data.link // "") RDSID=\(.data.session_id // "")"' 2>/dev/null)" || return 1
   # pr.opened carries the owning session in data.session_id; session.* events use the subject.

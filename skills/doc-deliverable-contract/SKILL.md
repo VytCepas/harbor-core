@@ -22,7 +22,7 @@ volume and not accuracy. **Being right is the cheap half.**
 This was `topology`'s §"Deliverable contract" and §"Register" until 2026-08-29.
 It moved because it is not topology and never was: a client-communication
 standard living inside a mapping skill is advertised by that skill's description,
-which promises a map. `evals/ds1-why-answers-diverge.md` measured six of six
+which promises a map. `EVALS/DS-1-why-answers-diverge.md` measured six of six
 agents declining to load `topology` on a task it named — and all six then failed
 this axis, which lived in the file they did not open.
 
@@ -79,7 +79,7 @@ language, short enough that a project manager forwards it without editing.
 
 ### The five moves, which cost nothing and are the whole difference
 
-**Measured in `evals/ds1-why-answers-diverge.md` in the data-estate repo (resolved through the repo registry), and this is the sharpest result the evals have
+**Measured in `EVALS/DS-1-why-answers-diverge.md` in the data-estate repo (resolved through the repo registry), and this is the sharpest result the evals have
 produced.** The technical department answered the same object twice, 95 minutes
 apart. The first reply scored 2/7 on the axes below; the second scored 7/7. **No
 new measurement was required for any of the five it gained.** They are a format,

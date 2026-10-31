@@ -1,4 +1,0 @@
-# harbor#1392. Silenced here, at the root, because it is wrong everywhere it fires:
-# SC1007 reads `CDPATH= cd` (an empty assignment for one command) as a typo for `CDPATH = cd`.
-# Not external-sources: following library-admission.sh costs ~7x the CPU per file in lint-conventions.
-disable=SC1007

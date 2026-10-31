@@ -2,7 +2,7 @@
 # t_init. mkfixture builds a config dir that is clean by construction; each red case adds one defect.
 # Today is pinned (harbor#211) one day after the fixtures, so they sit inside the default 7d window.
 SRC="$T_ROOT/bin"; FC="$SRC/audit-triage.sh"; FCT="$FC"; TMP="$T_TMP/fc"; mkdir -p "$TMP"
-cp "$SRC/admission-verify.sh" "$SRC/library-admission.sh" "$TMP/"  # a mutant in $TMP derives the probes from these
+cp "$SRC/floor-verify.sh" "$SRC/library-admission.sh" "$TMP/"  # a mutant in $TMP derives the probes from these
 HOST=testhost
 SALT=0123456789abcdef0123456789abcdef  # 32 hex, the length floor_obs_digest requires
 HARBOR_AUDIT_TRIAGE_NOW=2026-08-03; export HARBOR_AUDIT_TRIAGE_NOW
@@ -20,7 +20,7 @@ mkfixture() { # <name> → the dir: floor wired, guard-lib present, sealed host 
   printf '%s' "$_d"
 }
 SINK_OF() { printf '%s' "$1/MEMORY/OBSERVABILITY/$HOST/guard-decisions.jsonl"; }
-# admission-observe.sh holds the host dir at 0500 and FC-7 checks it: seal to be clean, unseal to append.
+# floor-observe.sh holds the host dir at 0500 and FC-7 checks it: seal to be clean, unseal to append.
 unseal() { chmod 0700 "$1/MEMORY/OBSERVABILITY/$HOST" 2>/dev/null || :; }
 seal()   { chmod 0500 "$1/MEMORY/OBSERVABILITY/$HOST" 2>/dev/null || :; }
 rec() { # <dir> <g> <d> <r> <ts> [digest] [file-suffix]
@@ -61,14 +61,14 @@ digest_of() {
   if command -v sha256sum >/dev/null 2>&1; then printf '%s:%s' "$SALT" "$1" | sha256sum | cut -c1-16
   else printf '%s:%s' "$SALT" "$1" | shasum -a 256 | cut -c1-16; fi
 }
-# One probe subject, read out of admission-verify.sh as the tool reads it and never copied here: one of
+# One probe subject, read out of floor-verify.sh as the tool reads it and never copied here: one of
 # the six carries a provider-token shape, which guard-egress refuses to write to disk.
 PROBE_SUBJ="$(awk '/^probe[[:space:]]/ {
       s = $0; i = index(s, "{"); if (i == 0) next
       s = substr(s, i)
       j = 0; for (k = length(s); k > 0; k--) if (substr(s, k, 1) == "}") { j = k; break }
       if (j == 0) next
-      print substr(s, 1, j) }' "$SRC/admission-verify.sh" 2>/dev/null \
+      print substr(s, 1, j) }' "$SRC/floor-verify.sh" 2>/dev/null \
   | sed 's/\\"/"/g' | jq -r '.tool_input.command // empty' 2>/dev/null | head -1)"
 D_PROBE_T="$(digest_of "${PROBE_SUBJ:-fallback-subject}")"  # stands in for one `harbor verify` run
 D_REAL="$(digest_of 'some operator command that is not a probe')"

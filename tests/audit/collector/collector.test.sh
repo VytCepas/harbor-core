@@ -4,7 +4,7 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 C="$(cd "$(dirname "$0")/../../.." && pwd)/bin/audit-collector.sh"
 S="$T_TMP/src"; ST="$T_TMP/store"; mkdir -p "$S/h" "$ST/key"
-run() { HARBOR_AUDIT_COLLECTOR_SOURCES="$S" HARBOR_AUDIT_COLLECTOR_STORE="$ST" sh "$C" "$@" >/dev/null 2>&1; echo $?; }
+run() { HARBOR_COLLECTOR_SRC="$S" HARBOR_COLLECTOR_STORE="$ST" sh "$C" "$@" >/dev/null 2>&1; echo $?; }
 ev() { grep -c "\"kind\":\"$1\"" "$ST/events.jsonl" 2>/dev/null | tr -d ' '; }
 copied() { cat "$ST"/data/*.jsonl 2>/dev/null; }
 L="$S/h/guard-decisions.jsonl"
@@ -50,7 +50,7 @@ chmod 600 "$S/h/locked.jsonl"
 
 t_section "many sources, wherever the writer keeps them (lane 4)"
 mkdir -p "$T_TMP/bus"; printf "e1\n" > "$T_TMP/bus/2026-10-09.jsonl"; printf "[check:x] t m\n" > "$T_TMP/checks.log"
-multi() { HARBOR_AUDIT_COLLECTOR_SOURCES="$S:$T_TMP/bus:$T_TMP/checks.log:$T_TMP/never" HARBOR_AUDIT_COLLECTOR_STORE="$ST" sh "$C" >/dev/null 2>&1; }
+multi() { HARBOR_COLLECTOR_SRC="$S:$T_TMP/bus:$T_TMP/checks.log:$T_TMP/never" HARBOR_COLLECTOR_STORE="$ST" sh "$C" >/dev/null 2>&1; }
 multi
 t_eq "a second source dir is copied" yes "$(copied | grep -qx e1 && echo yes || echo no)"
 t_eq "a single-file source is copied" yes "$(copied | grep -qxF "[check:x] t m" && echo yes || echo no)"
@@ -63,13 +63,8 @@ _e0="$(ev edited)"
 touch -r "$S/h/quiet.jsonl" "$T_TMP/ref"; printf 'Q1\nq2\n' > "$T_TMP/q" && cat "$T_TMP/q" > "$S/h/quiet.jsonl"; touch -r "$T_TMP/ref" "$S/h/quiet.jsonl"
 run >/dev/null
 t_eq "a size- and mtime-preserving edit passes the quick pass" "$_e0" "$(ev edited)"
-HARBOR_AUDIT_COLLECTOR_SOURCES="$S" HARBOR_AUDIT_COLLECTOR_STORE="$ST" HARBOR_AUDIT_COLLECTOR_FULL=1 sh "$C" >/dev/null 2>&1
+HARBOR_COLLECTOR_SRC="$S" HARBOR_COLLECTOR_STORE="$ST" HARBOR_COLLECTOR_FULL=1 sh "$C" >/dev/null 2>&1
 t_eq "and is caught by the full pass the daily checkpoint runs" "$((_e0 + 1))" "$(ev edited)"
-
-t_section "the old names a pre-W9 LaunchDaemon sets are read until 2026-12-01 (harbor#967 W9)"
-printf 'old1\n' > "$S/h/old-names.jsonl"
-HARBOR_COLLECTOR_SRC="$S" HARBOR_COLLECTOR_STORE="$ST" sh "$C" >/dev/null 2>&1; t_eq "a run with only the old names exits 0" 0 "$?"
-t_eq "...and copies from the old-name source into the old-name store" yes "$(copied | grep -qx old1 && echo yes || echo no)"
 
 t_section "signed checkpoints"
 ssh-keygen -q -t ed25519 -N '' -C collector -f "$ST/key/collector" >/dev/null 2>&1

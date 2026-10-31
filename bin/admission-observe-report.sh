@@ -71,7 +71,6 @@ while [ $# -gt 0 ]; do
   shift
 done
 # --json prints data on stdout, so its log (an error, if any) goes to stderr.
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 [ "$MODE" != json ] || LOG_FD=2
 # stop <what failed, and where> <fix> — the report cannot be built.
 stop() { log_fail "$1"; log_fix "$2"; log_end || :; exit 1; }
@@ -99,7 +98,7 @@ n()   { _c="$(printf '%s\n' "$REC" | jq -r "select($1)|1" 2>/dev/null | grep -c 
 
 TOTAL=$(printf '%s\n' "$REC" | grep -c . 2>/dev/null | tr -d ' \n')
 case "$TOTAL" in ''|*[!0-9]*) TOTAL=0 ;; esac
-NBLOCK=$(n '.d=="block"'); NALLOW=$(n '.d=="allow"')
+NBLOCK=$(n '.d=="block"'); NALLOW=$(n '.d=="allow"'); NDENY=$(n '.d=="deny"')
 NGATE=$(n '.d=="gate"');   NOVR=$(n '.d=="override"'); NARM=$(n '.d=="armed"')
 
 # `deny` USED to mean exactly one thing — admission-hook.sh could not reach a verdict,
@@ -165,32 +164,13 @@ show_advise() {
   case "$_adv_rows" in *" integrity/"*) echo "  integrity/* is B6 reporting instruction-surface drift: read it with \`harbor verify\`." ;; esac
 }
 
-# EVERY ROW CARRIES ITS AGE (harbor#591): a gate firing since August and one that started today
-# rendered alike, so the block was a census. first/last are the ledger's own ts days (UTC); the age
-# is days since first, against HARBOR_TEST_NOW / HARBOR_NOW (epoch) or the clock. No dated ts: `?`.
 show_gdeny() {
   log_head "gates that fired (cloud / destroy)"
   if [ "$NGDENY" = 0 ] && [ "$NASK" = 0 ]; then echo "  (no gate decisions recorded)"; return; fi
-  _gnow="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
-  case "$_gnow" in ''|*[!0-9]*) _gnow="$(date +%s)" ;; esac
   printf '%s\n' "$REC" \
-    | jq -r 'select((.d=="deny" and .g!="wrapper") or .d=="ask")|"\(.d)\t\(.g)\t\(.r)\t\(.ts|tostring|.[0:10])"' 2>/dev/null \
-    | awk -F'\t' -v now="$_gnow" '
-        function days(s,   y, m, d, era, yoe, doy) {   # civil date to days since 1970-01-01
-          y = substr(s, 1, 4) + 0; m = substr(s, 6, 2) + 0; d = substr(s, 9, 2) + 0
-          if (m <= 2) y--
-          era = int(y / 400); yoe = y - era * 400
-          doy = int((153 * (m > 2 ? m - 3 : m + 9) + 2) / 5) + d - 1
-          return era * 146097 + yoe * 365 + int(yoe / 4) - int(yoe / 100) + doy - 719468
-        }
-        { k = $1 "\t" $2 "\t" $3; n[k]++
-          if ($4 !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/) next
-          if (!(k in lo) || $4 < lo[k]) lo[k] = $4
-          if ($4 > hi[k]) hi[k] = $4 }
-        END { for (k in n) { split(k, f, "\t")
-                if (k in lo) printf "%d\t  %5d  %-5s %-9s %-28s first %s  last %s  age %dd\n", n[k], n[k], f[1], f[2], f[3], lo[k], hi[k], int(now / 86400) - days(lo[k])
-                else         printf "%d\t  %5d  %-5s %-9s %-28s first ?  last ?  age ?\n", n[k], n[k], f[1], f[2], f[3] } }' \
-    | sort -t "$(printf '\t')" -k1,1rn | cut -f2-
+    | jq -r 'select((.d=="deny" and .g!="wrapper") or .d=="ask")|"\(.d)\t\(.g)\t\(.r)"' \
+    | sort | uniq -c | sort -rn \
+    | awk '{ printf "  %5d  %-5s %-9s %s\n", $1, $2, $3, $4 }'
   if [ "$NASK" != 0 ]; then
     log_warn "$NASK ask verdicts. An ask is a stop ONLY where a human answers it; in an unattended or subagent session it auto-approves (admission-cloud.sh:104). Nothing in the ledger records whether a human was present, so read this as EXPOSURE, not as a block."
     log_fix "CLOUD_POSTURE=deny / HARBOR_ADMISSION_DESTROY_POSTURE=deny in the settings.json env block escalate the soft tier to a real refusal"
@@ -232,7 +212,7 @@ show_fp() {
         echo "  (dropped ${_xn% *} block record(s) under ${_xn#* } digest(s): harbor's own probe and suite traffic — --with-probes shows them)"
       fi ;;
     failed)
-      log_warn "harbor's own probe and suite traffic could NOT be separated (audit-triage.sh, admission-verify.sh, library-admission.sh or the salt was unreadable), so the rows above may be this box's own verifier"
+      log_warn "harbor's own probe and suite traffic could NOT be separated (audit-triage.sh, floor-verify.sh, library-admission.sh or the salt was unreadable), so the rows above may be this box's own verifier"
       log_fix "sh $HERE/audit-triage.sh --exclusion-set $CFG   # names what it could not read" ;;
   esac
 }
@@ -382,7 +362,7 @@ show_overrides() {
   log_head "overrides"
   _den=$((NOVR + NARM))
   if [ "$_den" = 0 ]; then
-    echo "  no session boundary records yet (admission-observe.sh runs at SessionStart)"
+    echo "  no session boundary records yet (floor-observe.sh runs at SessionStart)"
   else
     # awk -v, never string interpolation into the program text: an empty counter
     # produced the program `BEGIN{printf "%.1f", 100*/1}` and a syntax error.

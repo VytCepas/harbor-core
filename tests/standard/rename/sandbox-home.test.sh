@@ -13,10 +13,10 @@ git clone -q -n "$T_ROOT" "$CL" && git -C "$CL" sparse-checkout set --no-cone '/
 # The clone is HEAD; carry the working tree's codemod, so an uncommitted run tests itself.
 cp "$T_ROOT/bin/standard-rename.sh" "$CL/bin/standard-rename.sh"
 R() { ( cd "$CL" && sh bin/standard-rename.sh "$@" ); }
-FV() { sh "$CL/bin/admission-verify.sh" --dir "$CFG" 2>&1; }
+FV() { sh "$CL/bin/floor-verify.sh" --dir "$CFG" 2>&1; }
 
 t_section "the floor is installed in the sandbox box and blocks before the rename"
-sh "$CL/bin/admission-install.sh" --apply --dir "$CFG" --with-b6 >/dev/null 2>&1; sh "$CL/bin/pin-instructions.sh" --apply --dir "$CFG" >/dev/null 2>&1
+sh "$CL/bin/floor-install.sh" --apply --dir "$CFG" --with-b6 >/dev/null 2>&1; sh "$CL/bin/pin-instructions.sh" --apply --dir "$CFG" >/dev/null 2>&1
 out="$(FV)"; rc=$?
 t_eq "floor-verify before: exit 0" 0 "$rc"; t_has "...the floor is on" "$out" "FLOOR IS ON"
 t_eq "the floor file is deployed under its old name" present "$([ -f "$CFG/bin/annotate-web.sh" ] && echo present || echo absent)"
@@ -33,7 +33,7 @@ git -C "$CL" add -A; git -C "$CL" commit -qm applied
 
 t_section "the box half waits for the deploy, then rewires settings and pins"
 R --apply --id rename-9001 --dir "$CFG" >/dev/null 2>&1; t_eq "before the deploy it refuses" 1 "$?"
-sh "$CL/bin/admission-install.sh" --apply --dir "$CFG" --with-b6 >/dev/null 2>&1
+sh "$CL/bin/floor-install.sh" --apply --dir "$CFG" --with-b6 >/dev/null 2>&1
 R --apply --id rename-9001 --dir "$CFG" > "$T_TMP/box.out" 2>"$T_TMP/box.err"; t_eq "after it, exit 0" 0 "$?"
 t_eq "box residual 0" "residual 0" "$(head -1 "$T_TMP/box.out")"
 sh "$CL/bin/pin-instructions.sh" --apply --dir "$CFG" >/dev/null 2>&1

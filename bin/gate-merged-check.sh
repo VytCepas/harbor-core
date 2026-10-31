@@ -108,7 +108,6 @@ USAGE
 
 # The verdict lines are DATA that worktree.sh, govern-hook.sh and deploy-install-stamp.sh parse, so the run log
 # is on stderr and never mixes with them.
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 # ${0%/*}, not $(dirname): a hook runs this, and it must not fall back to the session's cwd (harbor#810).
 case "$0" in */*) _mc_here="${0%/*}" ;; *) _mc_here=. ;; esac

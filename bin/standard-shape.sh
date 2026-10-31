@@ -32,7 +32,6 @@ set -eu
 
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 SELF="$HERE/$(basename -- "$0")"
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2   # stdout carries --format findings and --list; the log goes to stderr
 . "$HERE/library-log.sh"
 log_init standard-shape

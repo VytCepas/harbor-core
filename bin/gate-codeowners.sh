@@ -12,7 +12,6 @@
 set -eu
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH='' cd -- "$HERE" && pwd)"; ROOT="$(CDPATH='' cd -- "$HERE/.." && pwd)"
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 . "$HERE/library-log.sh"
 log_init gate-codeowners

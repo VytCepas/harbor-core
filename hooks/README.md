@@ -27,8 +27,7 @@ closer	nobody
 - `engine` is the folder's name. `installer` is the one installer that ships and wires it: each renders only its own
   engines (`deploy-hooks.sh --installer`), so another installer's entries and derived matchers are never its business.
   `wire` is `event`, `matcher` (`-` for every tool or source, `@derived` when the
-  payload's installer computes it), `timeout` in seconds (`-` for the harness default) and, optionally, `async`: the
-  harness runs it in the background and does not wait, so it can neither block nor answer the turn. One row per binding.
+  payload's installer computes it) and `timeout` in seconds (`-` for the harness default), one row per binding.
 - `senses`, `acts-on`, `findings` and `closer` are the engine's place in its control loop (`closer nobody` marks an
   open loop).
 - `#` lines are comments: the why of a binding (its event, its timeout) sits above the rows it explains.

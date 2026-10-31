@@ -120,7 +120,7 @@ LIVE="$HOME/.claude"
 _target_spelling() { if [ "$(_phys "$DIR")" = "$(_phys "$LIVE")" ]; then printf '%s' --live; else printf '%s %s' --dir "$(_q "$(_phys "$DIR")")"; fi; }
 _redeploy() { # the command that puts this repo's bytes back: deploy for the live box, the installers elsewhere
   if [ "$(_phys "$DIR")" = "$(_phys "$LIVE")" ]; then printf 'sh %s/bin/deploy.sh --apply --live' "$(_qn "$REPO")"
-  else printf 'sh %s/bin/deploy-runtime-install.sh --apply %s && sh %s/bin/admission-install.sh --apply %s' \
+  else printf 'sh %s/bin/deploy-runtime-install.sh --apply %s && sh %s/bin/floor-install.sh --apply %s' \
          "$(_qn "$REPO")" "$(_target_spelling)" "$(_qn "$REPO")" "$(_target_spelling)"; fi
 }
 

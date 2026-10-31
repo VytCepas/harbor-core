@@ -53,7 +53,6 @@ MAIN="$(git -C "$ROOT" worktree list --porcelain 2>/dev/null | sed -n '1s/^workt
 REPO_NAME="$(basename -- "$MAIN")"
 BASE="${HARBOR_CI_BASE:-${HARBOR_BASE:-origin/main}}"
 APPLY=0; FORCE=0
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2   # stdout is the verdict table and the gc plan; the log goes to stderr
 . "$DIR/library-log.sh"
 US="$(printf '\037')"

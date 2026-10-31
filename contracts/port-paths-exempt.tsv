@@ -28,7 +28,7 @@ harbor/bin/context-budget.sh	`-Users-someone-harbor-ci` is `~/harbor-ci` or `~/h
 harbor/bin/context-budget.sh	11,804 B      ~/harbor      1,660 B	history: table under Measured 2026-09-20
 harbor/bin/context-resolve.sh	The sessions were never in ~/harbor in	history: the harbor#75 measurement of launch cwd vs write tree
 harbor/bin/context-resolve.sh	EVERY edit under ~/harbor matched	history: pass-13 finding (P13-peer-01/02), past tense
-harbor/bin/admission-normalize.awk	peeled and `~/harbor/bin/gcx` did	illustration of the tilde vs absolute spelling the matcher handles; not a pointer
+harbor/bin/floor-normalize.awk	peeled and `~/harbor/bin/gcx` did	illustration of the tilde vs absolute spelling the matcher handles; not a pointer
 harbor/bin/harbor	then ~/harbor/bin, and took	history: what the first cut of the resolver tried
 harbor/bin/lint-conventions.sh	~/harbor   copy      2026-08-21 20:21	history: table under Measured 2026-08-24
 harbor/bin/lint-conventions.sh	Run from ~/harbor the rule said	history: same 2026-08-24 measurement

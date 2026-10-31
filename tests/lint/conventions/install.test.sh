@@ -21,10 +21,10 @@ t_has "no readable payload at all is said out loud" "$(sh "$X7E/bin/lint-convent
   'drift.payload-closure] could not read the installer payloads'
 
 t_section "X7: \$SRC is followed where it means the config dir (harbor#313)"
-t_hasnt "\$SRC/admission-install.sh is silent while deploy-runtime-install.sh ships it" "$_X7_PRISTINE" 'invokes $SRC/admission-install.sh'
-sed -i.bak '/^FILES=/s/ admission-install\.sh//' "$X7R/bin/deploy-runtime-install.sh"
-t_eq "the fixture really dropped admission-install.sh" no "$(hasre "$(grep '^FILES=' "$X7R/bin/deploy-runtime-install.sh")" '[^-]admission-install\.sh')"
-t_has "…and then test-sandbox-make.sh's \$SRC/admission-install.sh call is reported" "$(_x7lines)" 'invokes $SRC/admission-install.sh'
+t_hasnt "\$SRC/floor-install.sh is silent while deploy-runtime-install.sh ships it" "$_X7_PRISTINE" 'invokes $SRC/floor-install.sh'
+sed -i.bak '/^FILES=/s/ floor-install\.sh//' "$X7R/bin/deploy-runtime-install.sh"
+t_eq "the fixture really dropped floor-install.sh" no "$(hasre "$(grep '^FILES=' "$X7R/bin/deploy-runtime-install.sh")" '[^-]floor-install\.sh')"
+t_has "…and then test-sandbox-make.sh's \$SRC/floor-install.sh call is reported" "$(_x7lines)" 'invokes $SRC/floor-install.sh'
 mv "$X7R/bin/deploy-runtime-install.sh.bak" "$X7R/bin/deploy-runtime-install.sh"
 
 t_section "X7: \$SRC_DIR is followed too, which is how status-obligations.sh stayed unshipped (harbor#1115)"
@@ -44,15 +44,15 @@ mv "$X7R/bin/lint-conventions.sh.new" "$X7R/bin/lint-conventions.sh"
 cp "$ROOT/bin/status-fleet-snapshot-refresh.sh" "$X7R/bin/status-fleet-snapshot-refresh.sh"
 
 t_section "X7: the exemption is being a READ, never being guarded"
-t_hasnt "admission-install.sh only READS deploy-runtime-install.sh with sed" "$_X7_PRISTINE" 'invokes $SRC/deploy-runtime-install.sh'
+t_hasnt "floor-install.sh only READS deploy-runtime-install.sh with sed" "$_X7_PRISTINE" 'invokes $SRC/deploy-runtime-install.sh'
 t_has "an EXECUTED call to an unshipped script is reported though existence-tested" "$_X7_PRISTINE" 'invokes $SRC/eval-pass-score.sh'
-sed -i.bak2 's|^_stamp_tool="$SRC/deploy-install-stamp.sh"$|_stamp_tool="$SRC/deploy-install-stamp.sh"\nsh "$SRC/x7-planted-executed.sh" --check "$DIR" x7 \|\| _stamp_rc=$?|' "$X7R/bin/admission-install.sh"
-t_has "the planted executed call applied" "$(cat "$X7R/bin/admission-install.sh")" 'x7-planted-executed.sh'
+sed -i.bak2 's|^_stamp_tool="$SRC/deploy-install-stamp.sh"$|_stamp_tool="$SRC/deploy-install-stamp.sh"\nsh "$SRC/x7-planted-executed.sh" --check "$DIR" x7 \|\| _stamp_rc=$?|' "$X7R/bin/floor-install.sh"
+t_has "the planted executed call applied" "$(cat "$X7R/bin/floor-install.sh")" 'x7-planted-executed.sh'
 t_has "the read exemption is keyed on the reference, not the file" "$(_x7lines)" 'invokes $SRC/x7-planted-executed.sh'
-mv "$X7R/bin/admission-install.sh.bak2" "$X7R/bin/admission-install.sh"
-sed -i.bak3 's|^_stamp_tool="$SRC/deploy-install-stamp.sh"$|_stamp_tool="$SRC/deploy-install-stamp.sh"\nsh "$DIR/core.sh" x7 \|\| _stamp_rc=$?|' "$X7R/bin/admission-install.sh"
+mv "$X7R/bin/floor-install.sh.bak2" "$X7R/bin/floor-install.sh"
+sed -i.bak3 's|^_stamp_tool="$SRC/deploy-install-stamp.sh"$|_stamp_tool="$SRC/deploy-install-stamp.sh"\nsh "$DIR/core.sh" x7 \|\| _stamp_rc=$?|' "$X7R/bin/floor-install.sh"
 t_has "\$DIR/core.sh is still reported: SUITE ships core.sh to lib/, never bin/ (harbor#753)" "$(_x7lines)" 'invokes $DIR/core.sh'
-mv "$X7R/bin/admission-install.sh.bak3" "$X7R/bin/admission-install.sh"
+mv "$X7R/bin/floor-install.sh.bak3" "$X7R/bin/floor-install.sh"
 
 t_section "X7: an installed SUITE's \$B/ calls are read too (harbor#756)"
 mkdir -p "$X7R/tests/floor" "$X7R/tests/deploy/restore" "$X7R/tests/lib"
@@ -81,8 +81,8 @@ for _x1b in guard-alpha.sh guard-beta.sh annotate-web.sh admission-hook.sh pin-i
   printf '#!/usr/bin/env sh\n# x1 fixture (harbor#517)\nprintf "%%s\\n" %s\n' "$_x1b" > "$X1R/bin/$_x1b"
   cp "$X1R/bin/$_x1b" "$X1S/bin/$_x1b"
 done
-printf '# x1 fixture (harbor#517)\n{ print }\n' > "$X1R/bin/admission-normalize.awk"
-cp "$X1R/bin/admission-normalize.awk" "$X1S/bin/admission-normalize.awk"
+printf '# x1 fixture (harbor#517)\n{ print }\n' > "$X1R/bin/floor-normalize.awk"
+cp "$X1R/bin/floor-normalize.awk" "$X1S/bin/floor-normalize.awk"
 x1() { HARBOR_TEST_SANDBOX_DIR="${1:-$X1S}" lint1 X1 "$X1R" | grep -E '\[drift.sandbox-copy\]'; }
 t_eq "a complete sandbox is silent (the control first)" "" "$(x1)"
 rm -f "$X1S/bin/guard-beta.sh"
@@ -111,7 +111,7 @@ printf 'repo\n' > "$X24R/bin/unowned.sh"; printf 'live\n' > "$X24L/bin/unowned.s
 printf '#!/bin/sh\necho one\n' > "$X24R/bin/one.sh"
 printf 'FILES="shipped.sh"\n' > "$X24R/bin/deploy-runtime-install.sh"
 mkdir -p "$X24R/contracts"; printf 'name\troot\trel\none\tHARBOR_REPO\tbin/one.sh\n' > "$X24R/contracts/shims.tsv"  # harbor#708: the links' owner
-printf 'FILES=""\n' > "$X24R/bin/admission-install.sh"
+printf 'FILES=""\n' > "$X24R/bin/floor-install.sh"
 printf 'STAMP_NAME=".helm-install-stamp"\n' > "$X24R/bin/deploy-install-stamp.sh"
 x24() { HARBOR_DEPLOY_LIVE_DIR="$X24L" HARBOR_SCOPE_LOCAL_BIN="$X24B" CLAUDE_CONFIG_DIR="$X24C" advs "$1" "$X24R" || true; }
 X2_RUN='run the installer'

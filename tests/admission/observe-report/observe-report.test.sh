@@ -15,7 +15,7 @@ recn  3 "$F" bash block mutate-onto-surface "2026-08-02T12:00:00Z" "$D_OP"
 seal "$F"
 
 t_section "failure-capture --exclusion-set names the probe digest"
-t_eq "a probe subject is derived from admission-verify.sh" yes "$([ -n "$PROBE_SUBJ" ] && echo yes || echo no)"
+t_eq "a probe subject is derived from floor-verify.sh" yes "$([ -n "$PROBE_SUBJ" ] && echo yes || echo no)"
 t_has "the probe digest is in the set" "$(sh "$FC" "$F" --exclusion-set 2>/dev/null)" "probe $D_PROBE_T"
 t_hasnt "the operator digest is not" "$(sh "$FC" "$F" --exclusion-set 2>/dev/null)" "$D_OP"
 t_exit "it refuses --json beside it" 2 sh "$FC" "$F" --exclusion-set --json
@@ -65,18 +65,6 @@ FW="$(mkfixture advweb)"; unseal "$FW"; census "$FW" 2
 recn 2 "$FW" web advise web-annotated "2026-08-02T12:00:00Z" -; seal "$FW"
 t_hasnt "web advisories alone carry no integrity hint" "$(CLAUDE_CONFIG_DIR="$FW" sh "$OR" --advise 2>&1)" "read it with \`harbor verify\`"
 t_has "an empty ledger of advisories says so" "$(fp "$F" >/dev/null; CLAUDE_CONFIG_DIR="$F" sh "$OR" --advise 2>&1)" "(no advisories recorded)"
-
-t_section "--gates: every row carries its first day, last day and age (harbor#591)"
-FG="$(mkfixture gates)"; unseal "$FG"; census "$FG" 2
-recn 3 "$FG" destroy ask git-reset-hard "2026-08-02T12:00:00Z" -
-recn 1 "$FG" destroy ask git-reset-hard "2026-08-04T09:00:00Z" -
-recn 2 "$FG" cloud deny cloud-catastrophic "2026-08-05T08:00:00Z" -
-rec "$FG" cloud ask cloud-soft "not-a-date" -; seal "$FG"
-OUTG="$(HARBOR_TEST_NOW=1785931200 CLAUDE_CONFIG_DIR="$FG" sh "$OR" --gates 2>&1)"   # 2026-08-05T12:00Z
-t_has "a standing gate: first, last, age in days" "$OUTG" "4  ask   destroy   git-reset-hard               first 2026-08-02  last 2026-08-04  age 3d"
-t_has "today's gate is age 0" "$OUTG" "2  deny  cloud     cloud-catastrophic           first 2026-08-05  last 2026-08-05  age 0d"
-t_has "a record with no dated ts is unknown, never age 0" "$OUTG" "1  ask   cloud     cloud-soft                   first ?  last ?  age ?"
-t_eq "rows stay ranked by count" "git-reset-hard" "$(printf '%s\n' "$OUTG" | grep ' age ' | head -1 | awk '{print $4}')"
 
 t_section "--reroute joins a refusal to the same session's next call (harbor#309)"
 rr() { # <dir> <ts> <g> <d> <tool> <session key> [rule]

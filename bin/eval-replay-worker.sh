@@ -28,9 +28,7 @@ set -u
 # contracts/logging.md, harbor#771); eval-replay.sh discards it. A record with no verdict is a WARN, not a failure of
 # the worker: the ERROR verdict is the worker succeeding at saying so, and the exit code stays 0 as it always was.
 . "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-log.sh"
-log_init replay-worker
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
-LOG_FD=2
+log_init replay-worker; LOG_FD=2
 finish() { log_end || :; exit 0; }
 RCFG="${1:-}"; IFS= read -r rec
 id="$(printf '%s' "$rec" | jq -r .id 2>/dev/null)"
@@ -73,7 +71,7 @@ for g in $guards; do
        printf '%s\tBLOCK\t%s\n' "$id" "${rid:-unattributed}"
        log_ok "record $id: BLOCK ${rid:-unattributed}"; finish ;;
     *) printf '%s\tERROR\t%s-rc%s\n' "$id" "${g%.sh}" "$rc"
-       log_warn "record $id: $g exited $rc, not 0 or 2: it reached no verdict"; log_fix "sh bin/admission-verify.sh --live"; finish ;;
+       log_warn "record $id: $g exited $rc, not 0 or 2: it reached no verdict"; log_fix "sh bin/floor-verify.sh --live"; finish ;;
   esac
 done
 printf '%s\tALLOW\t-\n' "$id"

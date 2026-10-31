@@ -12,7 +12,7 @@ SB="$T_ROOT/bin"
 b6msg() { CLAUDE_CONFIG_DIR="$1" sh "$1/bin/admission-integrity.sh" </dev/null 2>/dev/null | jq -r '.systemMessage // ""' 2>/dev/null; }
 inst() { # <box> <floor opt-ins> — runtime then floor, as deploy orders them
   env -u CLAUDE_CONFIG_DIR sh "$SB/deploy-runtime-install.sh" --dir "$1" --apply 2>&1
-  env -u CLAUDE_CONFIG_DIR sh "$SB/admission-install.sh" --dir "$1" --apply $2 2>&1
+  env -u CLAUDE_CONFIG_DIR sh "$SB/floor-install.sh" --dir "$1" --apply $2 2>&1
 }
 cmds() { jq -r '[.hooks[]?[]?.hooks[]?.command // empty] | .[]' "$1/settings.json"; }
 # The W6 rows: the bin/ renames of the waves W6a and W6b whose old path the checkout keeps as a shim.
@@ -58,7 +58,7 @@ t_eq "the preflight does not read an intact pre-W6 box as drifted ($V)" no "$_bl
 t_section "this tree's installers onto it, with the opt-ins deploy passes"
 OUT="$(inst "$D" "--with-b6 --with-stop-gate")"
 t_eq "B6 does not block the next session" "" "$(b6msg "$D")"
-FV="$(env -u CLAUDE_CONFIG_DIR sh "$SB/admission-verify.sh" --dir "$D" 2>&1 || true)"
+FV="$(env -u CLAUDE_CONFIG_DIR sh "$SB/floor-verify.sh" --dir "$D" 2>&1 || true)"
 t_has "floor-verify passes" "$(printf '%s\n' "$FV" | grep '^floor-verify: ' | tail -1)" ' 0 failed'
 t_has "...and says the floor is on" "$FV" "FLOOR IS ON"
 _old=''; _new=''

@@ -198,14 +198,6 @@ NOW=2026-10-26; OUT="$(rec "$TMP/c0" --apply)"
 t_has "filed again over stood-down" "$OUT" "check/memory.route → filed"
 t_has "with stood-down as its subject" "$(jq -r '[.issues[] | select(.body | contains("key=check/memory.route "))] | max_by(.number) | .body' "$GH_STATE")" '- `stood-down`'
 
-t_section "check tier · the floor tier lands as check/audit.triage, PROPOSE, never healed (harbor#591)"
-rcpt audit.triage red 2026-10-26 crit:FC-2 warn:FC-5
-: > "$GH_LOG"; OUT="$(NOW=2026-10-26 rec "$TMP/c0" --apply)"
-t_has "filed over its two subjects" "$OUT" "check/audit.triage (2 subject(s)) · PROPOSE · filed"
-t_has "digested over severity:rule" "$(jq -r '[.issues[] | select(.body | contains("key=check/audit.triage "))][0].body' "$GH_STATE")" "digest=$(sh "$F" digest crit:FC-2 warn:FC-5)"
-rm -f "$RCD/audit.triage.json"   # and its issue, so later sections do not report it as not seen
-jq 'del(.issues[] | select(.body | contains("key=check/audit.triage ")))' "$GH_STATE" > "$GH_STATE.n" && mv "$GH_STATE.n" "$GH_STATE"
-
 t_section "check tier · a receipt whose id is not a docs/reference/checks.md row is refused, not filed"
 rcpt not-a-check red 2026-10-26 x
 : > "$GH_LOG"; OUT="$(NOW=2026-10-26 rec "$TMP/c0" --apply)"

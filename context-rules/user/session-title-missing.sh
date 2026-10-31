@@ -14,5 +14,5 @@ CFG="${CLAUDE_CONFIG_DIR:-${HOME:-/nonexistent}/.claude}"
 [ ! -e "$CFG/session-title.off" ] || exit 0
 F="$CFG/session-titles/$SID.txt"
 [ ! -s "$F" ] || exit 0
-printf 'This session has no title. Once the topic is clear, use the Write tool to write one line `<area>: <what>` (at most 50 characters, concrete nouns, no ticket numbers) to %s (a shell redirect into the config dir is refused); the session-title hook applies it on the next prompt. Rewrite the file when the work moves to another topic.\n' "$F"
+printf 'This session has no title. Once the topic is clear, Write one line `<area>: <what>` (at most 50 characters, concrete nouns, no ticket numbers) to %s; the session-title hook applies it on the next prompt. Rewrite the file when the work moves to another topic.\n' "$F"
 exit 0

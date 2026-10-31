@@ -14,15 +14,13 @@ set -eu
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 . "$HERE/library-log.sh"
 log_init lint-platform
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 CALLS='launchctl|plutil|ditto|caffeinate|pbcopy|pbpaste|osascript|notifyutil|pmset|scutil|dscl|xattr|brew'
 CLIP='wl-paste|wl-copy|xclip|xsel|powershell\.exe|clip\.exe'
 
 # Files that hold a call as DATA the floor refuses or matches, with no call to port: the guards' rule patterns,
 # the lint's own rules, this file, and the wrapper-name list the command normalizer reads. A new name is a decision.
-exempt() { case "$1" in admission-deny.sh|admission-equivalence.sh|admission-install.sh|admission-observe.sh|admission-remove.sh|admission-verify.sh) return 1 ;; esac   # the floor-* tools W7 renamed into the family are no guards
-  case "$1" in admission-*.sh|library-admission.sh|guard-*.sh|lint-conventions.sh|lint-platform.sh|admission-normalize.awk) return 0 ;; esac; return 1; }
+exempt() { case "$1" in admission-*.sh|library-admission.sh|guard-*.sh|lint-conventions.sh|lint-platform.sh|floor-normalize.awk) return 0 ;; esac; return 1; }
 # The helpers: the one place each call is allowed to live (harbor#618).
 helper() { case "$1" in library-alert.sh) return 0 ;; esac; return 1; }
 # deploy-doctor.sh is macOS-only for its optional `launchctl` probe, declared here and not in its header: lint LOG1's
