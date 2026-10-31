@@ -50,6 +50,7 @@ HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 log_init rule-health
 # It takes no argument but --promotion: one it does not know is a usage error (exit 2, D-29), never a three-minute run of the wrong question.
 # Not a run (contracts/logging.md): the words go to stderr and there is no summary line.
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 [ $# -eq 0 ] || { LOG_FD=2; log_fail "unknown argument: $1"; log_fix "sh $0 --help"; exit 2; }
 ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH='' cd -- "$HERE/.." && pwd)}}"
 LINT="${HARBOR_LINT_RULE_HEALTH_LINT:-${HARBOR_RH_LINT:-$ROOT/bin/lint-conventions.sh}}"

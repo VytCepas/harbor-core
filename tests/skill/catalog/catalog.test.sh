@@ -3,20 +3,19 @@
 # bytes on every machine; the INSTALLED book lists everything the config dir holds, its CLI table and the private layer's
 # router rows included. The generator runs from a copy of the tree, so the real tracked book is never touched.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-R="$T_TMP/root"; mkdir -p "$R/bin" "$R/skills/skill-catalog" "$R/skills/alpha" "$R/skills/beta" "$R/vendor/skills/vend" "$R/vendor/skills/beta" "$R/contracts" "$T_TMP/neutral"
+R="$T_TMP/root"; mkdir -p "$R/bin" "$R/skills/skill-catalog" "$R/skills/alpha" "$R/skills/beta" "$R/vendor/skills/vend" "$R/contracts" "$T_TMP/neutral"
 cp "$T_ROOT/bin/skill-catalog.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/scope-roots.sh" "$T_ROOT/bin/deploy-install-lib.sh" "$R/bin/"
 cp "$T_ROOT/bin/skill-install.sh" "$T_ROOT/bin/skill-collision-verify.sh" "$T_ROOT/bin/library-fs.sh" "$R/bin/"
 cp "$T_ROOT/contracts/roots.tsv" "$T_ROOT/contracts/catalog-non-tools.tsv" "$R/contracts/"
 printf 'skill\tsituation\nalpha\tAlpha work\nbeta\tBeta work\nmissing\tA skill nobody ships\n' > "$R/contracts/skill-book-router.tsv"
 printf -- '---\nname: alpha\ndescription: "Alpha. USE WHEN alpha work."\ndisable-model-invocation: true\n---\n' > "$R/skills/alpha/SKILL.md"
 printf -- '---\nname: beta\ndescription: "Beta from skills. USE WHEN beta work."\n---\n' > "$R/skills/beta/SKILL.md"
-printf -- '---\nname: beta\ndescription: "Beta from vendor. USE WHEN vendor beta work."\n---\n' > "$R/vendor/skills/beta/SKILL.md"
 printf -- '---\nname: vend\ndescription: "Vendored. USE WHEN vend work."\n---\n' > "$R/vendor/skills/vend/SKILL.md"
 # The box: a skill nothing tracks, a tool, a directory in the tool dir, and a checkout that carries its own .claude/skills.
 SK="$HOME/.claude/skills"; mkdir -p "$SK/boxonly" "$SK/skill-catalog" "$HOME/.local/bin/__pycache__"
 printf -- '---\nname: boxonly\ndescription: "Box only. USE WHEN boxonly work."\n---\n' > "$SK/boxonly/SKILL.md"
-# What skill-install.sh --all leaves in the config dir: the installed skills, ahead of the book (skills/ wins over vendor/skills/).
-cp -R "$R/vendor/skills/vend" "$R/vendor/skills/beta" "$SK/"; cp -R "$R/skills/alpha" "$R/skills/beta" "$SK/"
+# What skill-install.sh --all leaves in the config dir: the installed skills, ahead of the book (a name in both trees is a collision now, see the DEFECTS section below).
+cp -R "$R/vendor/skills/vend" "$SK/"; cp -R "$R/skills/alpha" "$R/skills/beta" "$SK/"
 printf '#!/bin/sh\n' > "$HOME/.local/bin/tool"; chmod +x "$HOME/.local/bin/tool"
 GOV="$T_TMP/gov"; mkdir -p "$GOV/.claude/skills/gamma"
 printf -- '---\nname: gamma\ndescription: "Gamma. USE WHEN gamma work."\n---\n' > "$GOV/.claude/skills/gamma/SKILL.md"
@@ -284,4 +283,48 @@ MFO="$(mfi)"
 t_eq "each finding carries its own fix line (the contract warning never prints)" 0 "$(printf '%s\n' "$MFO" | grep -c 'no fix line followed')"
 t_has "a stale row for a skill the checkout no longer ships is fixed by the prune" "$MFO" "fix: sh bin/deploy.sh --prune --apply --dir"
 t_has "a row for a skill the checkout still ships is fixed by reinstalling it" "$(printf '%s\n' "$MFO" | grep -- '--only skills --dir')" "mfcfg' alpha"
+
+t_section "a malformed skill is a visible defect, never a blank cell (harbor#158 b)"
+book "$R" >/dev/null; CLEAN="$(cat "$TRACKED")"
+t_hasnt "a clean checkout prints no DEFECTS section" "$CLEAN" '## DEFECTS'
+mkdir -p "$R/skills/nodesc" "$R/skills/nofm" "$R/skills/wrongname"
+printf -- '---\nname: nodesc\n---\nbody\n' > "$R/skills/nodesc/SKILL.md"
+printf 'no frontmatter at all\n' > "$R/skills/nofm/SKILL.md"
+printf -- '---\nname: other\ndescription: "Wrong name. USE WHEN wrong."\n---\n' > "$R/skills/wrongname/SKILL.md"
+t_exit "writing the book over malformed skills exits 1" 1 book "$R"
+t_exit "--check over them is 3: the generator cannot say, which is not STALE" 3 book "$R" --check
+MAL="$(cat "$TRACKED")"
+t_has "the book names a skill with no description in a DEFECTS section" "$MAL" '**malformed** — skills/nodesc has no single-line description'
+t_has "...one with no frontmatter" "$MAL" 'skills/nofm/SKILL.md has no YAML frontmatter'
+t_has "...and one whose name is not its directory" "$MAL" 'skills/wrongname declares name: other'
+t_eq "the DEFECTS section sits above the first table" 1 "$(awk '/^## DEFECTS/ { d = NR } /^## Start here/ { s = NR } END { print (d > 0 && d < s) }' "$TRACKED")"
+t_has "the FAIL line carries a fix line (the logging contract)" "$(book "$R" --check)" 'fix: fix the skill it names'
+rm -rf "$R/skills/nodesc" "$R/skills/nofm" "$R/skills/wrongname"; book "$R" >/dev/null
+t_eq "...and removing them restores the clean book" "$CLEAN" "$(cat "$TRACKED")"
+
+t_section "two skills with one directory name collide loudly (harbor#158 c)"
+mkdir -p "$R/vendor/skills/beta"; printf -- '---\nname: beta\ndescription: "Beta from vendor. USE WHEN vendor beta work."\n---\n' > "$R/vendor/skills/beta/SKILL.md"
+t_exit "a name in skills/ and vendor/skills/ fails the check" 3 book "$R" --check
+t_has "...and says which two" "$(book "$R" --check)" 'the directory name beta is taken more than once: skills/beta, vendor/skills/beta'
+t_has "...and that both declare the same name" "$(book "$R" --check)" 'two directories declare name: beta: skills/beta, vendor/skills/beta'
+rm -rf "$R/vendor/skills/beta"; book "$R" >/dev/null
+t_exit "...and removing the copy clears it" 0 book "$R" --check
+# Case collisions exist only on a case-sensitive disk; on a case-insensitive one ALPHA would BE alpha, so the probe skips.
+if [ ! -d "$R/skills/ALPHA" ]; then
+  mkdir -p "$R/skills/ALPHA"; printf -- '---\nname: ALPHA\ndescription: "Cased. USE WHEN cased."\n---\n' > "$R/skills/ALPHA/SKILL.md"
+  t_has "two names that differ only by case collide too" "$(book "$R" --check)" 'the directory name alpha is taken more than once'
+  rm -rf "$R/skills/ALPHA"; book "$R" >/dev/null
+fi
+
+t_section "the tracked book is a pure function of the checkout: T9 reads no mutable host state (harbor#158 e)"
+# Poison every host input the installed book reads: a broken skill and a collision in the live config dir, a tool dir with a tool, a private layer.
+POI="$T_TMP/poison"; mkdir -p "$POI/.claude/skills/hostbad" "$POI/.claude/skills/Alpha" "$POI/.local/bin" "$POI/priv"
+printf 'not a skill\n' > "$POI/.claude/skills/hostbad/SKILL.md"; printf '#!/bin/sh\n' > "$POI/.local/bin/hosttool"; chmod +x "$POI/.local/bin/hosttool"
+printf 'skill\tsituation\nhostbad\tpoisoned\n' > "$POI/priv/skill-book-router.tsv"
+t_eq "the clean tracked book is current" "$CLEAN" "$(cat "$TRACKED")"
+t_exit "--check ignores a poisoned HOME, config dir, tool dir and private layer" 0 sh -c "cd '$R' && HOME='$POI' CLAUDE_CONFIG_DIR='$POI/.claude' HARBOR_SCOPE_LOCAL_BIN='$POI/.local/bin' HARBOR_SCOPE_PRIVATE='$POI/priv' sh '$R/bin/skill-catalog.sh' --check >/dev/null 2>&1"
+# The control: the same poison is real, because the INSTALLED book does read it.
+(cd "$R" && HOME="$POI" CLAUDE_CONFIG_DIR="$POI/.claude" HARBOR_SCOPE_LOCAL_BIN="$POI/.local/bin" HARBOR_SCOPE_PRIVATE="$NOPRIV" sh "$R/bin/skill-catalog.sh" install --apply --live >/dev/null 2>&1)
+t_has "control: the installed book lists the host's tool, so the poison above reaches a generator that reads the host" "$(cat "$POI/.claude/skills/skill-catalog/SKILL.md" 2>/dev/null)" 'hosttool'
+t_hasnt "the tracked book names neither the host's broken skill nor its tool" "$(cat "$TRACKED")" 'hostbad'
 t_done

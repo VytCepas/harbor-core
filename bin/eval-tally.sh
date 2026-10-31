@@ -68,7 +68,9 @@ set -eu
 # stdout is data here (the report table, --json, the open list), so the log is on stderr (LOG_FD=2,
 # contracts/logging.md, harbor#771).
 . "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-log.sh"
-log_init ab-tally; LOG_FD=2
+log_init ab-tally
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
+LOG_FD=2
 # die <what failed> <fix> [exit] — FAIL, its fix, the summary, then the exit code the tool always had (2).
 die() { log_fail "$1"; log_fix "$2"; log_end || :; exit "${3:-2}"; }
 

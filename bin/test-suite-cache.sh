@@ -11,7 +11,7 @@
 #   HARBOR_TEST_SUITE_CACHE_DAYS  an entry no run has used for this many days is pruned (default 30)
 #   HARBOR_TEST_SUITE_CACHE_SALT  any text, hashed into every key: changing it is a cold cache
 #
-# bin/test-suite-run.sh calls this only under HARBOR_SUITE_CACHE=1, so with the variable unset nothing here runs.
+# bin/test-suite-run.sh calls this only under HARBOR_TEST_SUITE_CACHE=1, so with the variable unset nothing here runs.
 # The key, the store, what is trusted and what the key cannot see: contracts/suite-cache.md.
 #
 # A FALSE PASS IS THE DEFECT TO DESIGN AGAINST. A suite is served from the cache when every input the key

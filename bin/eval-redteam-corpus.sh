@@ -68,7 +68,7 @@ fi
 . "$ROOT/bin/library-log.sh"
 log_init redteam-corpus
 # the command a fix line names: a scheduled run executes a temp clone that is gone by the time anyone reads it
-SELFCMD="${HARBOR_REDTEAM_SELF:-sh $0}"
+SELFCMD="${HARBOR_EVAL_REDTEAM_SELF:-${HARBOR_REDTEAM_SELF:-sh $0}}"
 MODE=run; REFRESH=1; FUZZ=0
 for _a in "$@"; do
   case "$_a" in
@@ -80,11 +80,11 @@ for _a in "$@"; do
 done
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required"; log_fix "$(pkg_hint jq)"; log_end || :; exit 2; }
 
-CORPDIR="${HARBOR_REDTEAM_DIR:-$(sh "$ROOT/bin/scope-roots.sh" --get HARBOR_REDTEAM_DIR)}"
+CORPDIR="${HARBOR_EVAL_REDTEAM_DIR:-${HARBOR_REDTEAM_DIR:-$(sh "$ROOT/bin/scope-roots.sh" --get HARBOR_EVAL_REDTEAM_DIR)}}"
 CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
 STATE="$CACHE_DIR/redteam"; LOG="$CACHE_DIR/checks.log"
-SOURCES="${HARBOR_REDTEAM_SOURCES:-$ROOT/contracts/redteam-sources.tsv}"
-BASELINE="${HARBOR_REDTEAM_BASELINE:-$ROOT/contracts/redteam-baseline.tsv}"
+SOURCES="${HARBOR_EVAL_REDTEAM_SOURCES:-${HARBOR_REDTEAM_SOURCES:-$ROOT/contracts/redteam-sources.tsv}}"
+BASELINE="${HARBOR_EVAL_REDTEAM_BASELINE:-${HARBOR_REDTEAM_BASELINE:-$ROOT/contracts/redteam-baseline.tsv}}"
 NOW="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"; case "$NOW" in ''|*[!0-9]*) NOW="$(date +%s)" ;; esac
 NODE="${HARBOR_EVAL_NODE:-${HARBOR_NODE:-node}}"
 iso() { date -u -r "$NOW" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d "@$NOW" +%Y-%m-%dT%H:%M:%SZ; }

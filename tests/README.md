@@ -51,6 +51,7 @@ Rows run on `$T_JOBS` workers (default 3), and assertions then run in row order.
 | test.admission-hook-routing | Every table belongs to a registered guard, and every part table has its part suite. Every registered guard has its guard script, a table and a suite. Every suite is listed in `contracts/suites.txt`. | `check.sh` |
 | test.rule-coverage | Every rule the guard's source names has a row that fires it and an `allow` row beside it. Names come from the `rules` pattern in `guards.jsonl`, read with `\`-continued lines joined. | `check.sh` |
 | test.exemption-effect | Every exemption matches a shared row, and either changes its verdict or records a `todo`. | `check.sh` |
+| test.red-proof-derived | An admission rule a table fires has, as its `red_proof` in `standards/naming/controls.tsv`, the suite that runs that table: the guard's own table first, then its parts in path order. `sh tests/lib/red-proof.sh --write` sets it; never type it. | `check.sh` |
 | test.table-can-fail | Every table can fail. Against a guard that always allows, and one that always denies, exactly the rows expecting otherwise fail. | `check-test.sh` |
 
 **The harness** (`tests/lib/core.sh`, checked by `lib-test.sh`):

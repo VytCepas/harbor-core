@@ -38,11 +38,11 @@ set -eu
 . "$(dirname -- "$0")/library-log.sh"
 . "$(dirname -- "$0")/deploy-install-lib.sh"
 log_init floor-deny
-sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
 
 # Three modes that all write, each a different act, as words il_cmd replays in every hint.
 REPIN=0; PRUNE=0; WITHDRAW=0
 il_opt() {
+  # shellcheck disable=SC2034 # IL_TAKE: read by deploy-install-lib.sh
   case "$1" in
     --repin) REPIN=1; IL_TAKE=1 ;;
     --withdraw) WITHDRAW=1; IL_TAKE=1 ;;
@@ -454,8 +454,8 @@ if [ "$REPIN" -eq 1 ]; then
   done
   # SAME recipe as the --apply arm and as deploy-harden.sh:82. If these two ever
   # diverge, B6 blocks every session on a hash that was never wrong.
-  jq -S '{perms:.permissions, plugins:(.enabledPlugins // {}), marketplaces:(.extraKnownMarketplaces // {}), keys:((keys) - ["hooks"])}' "$S" | sha >"$DIR/.sec0-baseline.sha256"
-  jq -S '{deny:.permissions.deny, locks:{bypass:.permissions.disableBypassPermissionsMode, auto:.permissions.disableAutoMode}}' "$S" | sha >"$DIR/.helm-floor-teeth"
+  jq -S '{perms:.permissions, plugins:(.enabledPlugins // {}), marketplaces:(.extraKnownMarketplaces // {}), keys:((keys) - ["hooks"])}' "$S" | il_sha >"$DIR/.sec0-baseline.sha256"
+  jq -S '{deny:.permissions.deny, locks:{bypass:.permissions.disableBypassPermissionsMode, auto:.permissions.disableAutoMode}}' "$S" | il_sha >"$DIR/.helm-floor-teeth"
   log_ok "re-pinned teeth: $(cat "$DIR/.helm-floor-teeth")"
   log_ok "re-pinned baseline: $(cat "$DIR/.sec0-baseline.sha256")"
   log_note "no deny entry was added or removed"
@@ -494,8 +494,8 @@ if [ "$WITHDRAW" -eq 1 ]; then
   write_settings "$WD" "$S"
   # Re-pin, same recipe as every other write arm. A withdrawal that leaves the pin
   # stale hands the operator the exact lockout harbor#58 was filed about.
-  jq -S '{perms:.permissions, plugins:(.enabledPlugins // {}), marketplaces:(.extraKnownMarketplaces // {}), keys:((keys) - ["hooks"])}' "$S" | sha >"$DIR/.sec0-baseline.sha256"
-  jq -S '{deny:.permissions.deny, locks:{bypass:.permissions.disableBypassPermissionsMode, auto:.permissions.disableAutoMode}}' "$S" | sha >"$DIR/.helm-floor-teeth"
+  jq -S '{perms:.permissions, plugins:(.enabledPlugins // {}), marketplaces:(.extraKnownMarketplaces // {}), keys:((keys) - ["hooks"])}' "$S" | il_sha >"$DIR/.sec0-baseline.sha256"
+  jq -S '{deny:.permissions.deny, locks:{bypass:.permissions.disableBypassPermissionsMode, auto:.permissions.disableAutoMode}}' "$S" | il_sha >"$DIR/.helm-floor-teeth"
   log_ok "withdrawn; deny entries now: $(jq '.permissions.deny | length' "$S")"
   log_ok "re-pinned: teeth + sec0 baseline"
   log_note "backup: $BK/settings.json"
@@ -564,8 +564,8 @@ if [ "$PRUNE" -eq 1 ]; then
   # A prune changes the deny list, so both pins are stale by our own hand — same
   # recipe as the --apply and --repin arms, or B6 blocks every session on a hash
   # that was never wrong.
-  jq -S '{perms:.permissions, plugins:(.enabledPlugins // {}), marketplaces:(.extraKnownMarketplaces // {}), keys:((keys) - ["hooks"])}' "$S" | sha >"$DIR/.sec0-baseline.sha256"
-  jq -S '{deny:.permissions.deny, locks:{bypass:.permissions.disableBypassPermissionsMode, auto:.permissions.disableAutoMode}}' "$S" | sha >"$DIR/.helm-floor-teeth"
+  jq -S '{perms:.permissions, plugins:(.enabledPlugins // {}), marketplaces:(.extraKnownMarketplaces // {}), keys:((keys) - ["hooks"])}' "$S" | il_sha >"$DIR/.sec0-baseline.sha256"
+  jq -S '{deny:.permissions.deny, locks:{bypass:.permissions.disableBypassPermissionsMode, auto:.permissions.disableAutoMode}}' "$S" | il_sha >"$DIR/.helm-floor-teeth"
   log_ok "pruned; deny entries now: $(jq '.permissions.deny | length' "$S")"
   log_ok "re-pinned: teeth + sec0 baseline"
   log_note "backup: $BK/settings.json"
@@ -598,12 +598,12 @@ else
   cp "$S" "$BK/settings.json"
   write_settings "$NEW" "$S"
   # Same recipe as deploy-harden.sh:82 — B6 asserts against this pin.
-  jq -S '{perms:.permissions, plugins:(.enabledPlugins // {}), marketplaces:(.extraKnownMarketplaces // {}), keys:((keys) - ["hooks"])}' "$S" | sha >"$DIR/.sec0-baseline.sha256"
+  jq -S '{perms:.permissions, plugins:(.enabledPlugins // {}), marketplaces:(.extraKnownMarketplaces // {}), keys:((keys) - ["hooks"])}' "$S" | il_sha >"$DIR/.sec0-baseline.sha256"
   # The floor's TEETH alone (deny + mode locks). B6 blocks a session only on
   # this; plugin/marketplace drift is reported, never blocking, because those
   # are ordinary user state and a fail-closed gate over them locks the operator
   # out with no in-session escape (red-team pass 3).
-  jq -S '{deny:.permissions.deny, locks:{bypass:.permissions.disableBypassPermissionsMode, auto:.permissions.disableAutoMode}}' "$S" | sha >"$DIR/.helm-floor-teeth"
+  jq -S '{deny:.permissions.deny, locks:{bypass:.permissions.disableBypassPermissionsMode, auto:.permissions.disableAutoMode}}' "$S" | il_sha >"$DIR/.helm-floor-teeth"
   log_ok "applied; deny entries now: $(jq '.permissions.deny | length' "$S")"
   log_ok "re-pinned: teeth + sec0 baseline ($DIR/.sec0-baseline.sha256)"
   log_note "backup: $BK/settings.json"

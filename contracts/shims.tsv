@@ -26,6 +26,7 @@
 #
 # COLUMNS  name <TAB> root-var <TAB> path relative to that root
 name	root	rel
+gate-push	HARBOR_SCOPE_REPO	bin/gate-push.sh
 gcloud	HARBOR_SCOPE_REPO	bin/gcloud
 gcloud-creds	HARBOR_SCOPE_REPO	bin/gcloud-credentials
 gcloud-creds-test.sh	HARBOR_SCOPE_REPO	tests/access/gcloud-credentials/gcloud-credentials.test.sh

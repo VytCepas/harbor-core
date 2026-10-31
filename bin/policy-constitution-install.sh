@@ -33,6 +33,7 @@ log_init constitution-install
 ROOT="$(CDPATH='' cd -- "$HERE/.." && pwd)"
 SRC="$ROOT/policy/constitution.md"
 FROM_BRANCH=0
+# shellcheck disable=SC2034 # IL_TAKE: read by deploy-install-lib.sh
 il_opt() { case "$1" in --from-branch) FROM_BRANCH=1; IL_TAKE=1 ;; *) IL_TAKE=0 ;; esac; }
 il_parse "$@"
 il_target

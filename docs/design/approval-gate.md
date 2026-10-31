@@ -49,7 +49,7 @@ runs is invisible to every guard. The adversarial review of 7c23e59 (DO NOT MERG
   an owner listed in `~/.config/harbor-app/orgs.tsv` (`owner<TAB>account`; the target is `-R`,
   `gh repo <verb> OWNER/REPO`, a URL, an `api` path, else the cwd's origin). Every other owner, and a box with
   no table, keeps the default installation. The table names real organisations, so core ships none: it lives in
-  the private layer as `harbor-app/orgs.tsv` and `access-github-app-install.sh` copies it. Gap: an HTTPS `git clone`
+  the private layer as `github-app/orgs.tsv` (`harbor-app/orgs.tsv` until 2026-12-01) and `access-github-app-install.sh` copies it. Gap: an HTTPS `git clone`
   outside a repo sends no owner; `gh repo clone` does. The three scripts live in `bin/harbor-app/`, tested by
   `tests/access/github-app/routing.test.sh`, and are installed by `bin/access-github-app-install.sh` from the operator's
   terminal. It **copies, never links**: a session can edit the checkout, and a shim that drops `GH_TOKEN` falls

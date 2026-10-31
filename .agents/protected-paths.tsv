@@ -48,7 +48,7 @@ bin/context-resolve.sh	hook	SessionStart and PostToolUse hook: records each sess
 bin/govern-token.sh	hook	SessionStart hook: the token that stamps every governance note
 hooks/session-verdicts/session-verdicts.sh	hook	SessionStart hook: puts verdicts into every session's context
 hooks/failure-observe/failure-observe.sh	hook	PostToolUseFailure hook
-hooks/memory-harvest/memory-harvest.sh	hook	Stop hook
+hooks/memory-harvest/memory-harvest.sh	hook	SessionStart hook
 hooks/ticket-note/ticket-note.sh	hook	Stop hook
 hooks/reply-shape/reply-shape.sh	hook	Stop hook
 hooks/session-subagent-check/session-subagent-check.sh	hook	SubagentStop hook
@@ -189,6 +189,7 @@ bin/gate-merge-stack.sh	installed	derived: shipped by admission-install.sh
 bin/gate-merge.sh	installed	derived: shipped by admission-install.sh
 bin/gate-merged-check.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/gate-pr-wait.sh	installed	derived: the approval gate
+bin/gate-push.sh	installed	derived: the approval gate
 bin/gate-queue.sh	installed	derived: shipped by admission-install.sh
 bin/gate-register-derive.sh	installed	derived: the approval gate
 bin/gate-required-generate.sh	installed	derived: the approval gate

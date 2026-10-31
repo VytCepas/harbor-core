@@ -49,6 +49,7 @@ ROOT="$(CDPATH='' cd -- "$SELF/.." && pwd)"
 # Its stdout is the page (or the token table), so its own lines go to stderr in every mode
 # (contracts/logging.md, harbor#771) — never into a docs/index.html being built.
 . "$SELF/library-log.sh"
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; log_init docs-gen
 . "$SELF/deploy-install-lib.sh"  # il_src: a hook engine ships from its folder (D-88)
 SRC="$ROOT/docs/src"

@@ -74,6 +74,7 @@
 # -github-lib.sh (`switch`, `rerun-refused`, `rerun-lost`), -watch-lib.sh (the alarm, the drift cache, `tick`).
 set -eu
 . "$(dirname -- "$0")/library-log.sh"
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; log_init ci-runners
 
 case "${1:-}" in
@@ -84,6 +85,7 @@ esac
 CMD="${1:-}"; [ "$#" -gt 0 ] && shift
 APPLY=0; JSON=0; INCGOV=0; TARGET=""
 for _a in "$@"; do
+  # shellcheck disable=SC2034 # APPLY: read by the ci-runners-*-lib.sh this sources
   case "$_a" in
     --apply) APPLY=1 ;;
     --json) JSON=1 ;;
@@ -104,18 +106,25 @@ esac
 
 OWNER="${HARBOR_CI_OWNER:-VytCepas}"
 GH="${HARBOR_TEST_GH:-${HARBOR_GH:-gh}}"
+# shellcheck disable=SC2034 # DOCKER: read by the ci-runners-*-lib.sh this sources
 DOCKER="${HARBOR_CI_DOCKER:-${HARBOR_DOCKER:-docker}}"
+# shellcheck disable=SC2034 # GOV_REPO: read by the ci-runners-*-lib.sh this sources
 GOV_REPO="${HARBOR_CI_SWITCH_REPO:-${HARBOR_SWITCH_REPO:-$OWNER/harbor}}"   # the repo harbor's own checks run on (the governance runners)
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 CONF="$CFG/.harbor-ci-runners"
 CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
 LOG="$CACHE_DIR/checks.log"
+# shellcheck disable=SC2034 # SNAP: read by the ci-runners-*-lib.sh this sources
 SNAP="${HARBOR_STATUS_FLEET_SNAPSHOT:-${HARBOR_FLEET_SNAPSHOT:-$CACHE_DIR/fleet-snapshot.json}}"
 # the fleet file through the registry-aware reader beside this script (harbor#966)
+# shellcheck disable=SC2034 # FLEET: read by the ci-runners-*-lib.sh this sources
 FLEET="${HARBOR_SCOPE_FLEET_FILE:-${HARBOR_FLEET_FILE:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_FLEET_FILE 2>/dev/null || :)}}"
 # the fleet CLI, a roots.tsv row read through the same reader (harbor#966)
+# shellcheck disable=SC2034 # ORCH: read by the ci-runners-*-lib.sh this sources
 ORCH="${HARBOR_SCOPE_FLEET_CONTROLLER_BIN:-${HARBOR_ORCH_BIN:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER_BIN 2>/dev/null || :)}}"
+# shellcheck disable=SC2034 # EVENTS: read by the ci-runners-*-lib.sh this sources
 EVENTS="${HARBOR_CI_EVENTS_DIR:-$HOME/runners/harbor-linux/events}"
+# shellcheck disable=SC2034 # LABELS: read by the ci-runners-*-lib.sh this sources
 LABELS="${HARBOR_CI_LABELS:-self-hosted,Linux,ARM64}"
 NOW="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
 case "$NOW" in ''|*[!0-9]*) NOW="$(date +%s)" ;; esac
@@ -150,6 +159,7 @@ mkdir -p "$CACHE_DIR"
 logline() { # <message> — one checks.log line, only ever called on a write path
   printf '[check:ci.runners] %s %s\n' "$(iso "$NOW")" "$1" >> "$LOG" 2>/dev/null || :
 }
+# shellcheck disable=SC2034 # TAB: read by the ci-runners-*-lib.sh this sources
 TAB="$(printf '\t')"
 # the verbs, one lib each (harbor#1060 split; each is sourced, never run): fleet view, container lifecycle, GitHub side, watching
 _here="$(dirname -- "$0")"

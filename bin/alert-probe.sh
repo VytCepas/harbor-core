@@ -83,7 +83,9 @@ esac
 case "$0" in */*) _pd="${0%/*}" ;; *) _pd=. ;; esac
 . "$_pd/library-log.sh"
 . "$_pd/library-fs.sh"
+# shellcheck disable=SC2034 # ALERT_LIB_DIR: read by library-alert.sh
 ALERT_LIB_DIR="$_pd"; . "$_pd/library-alert.sh"
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; log_init pulse
 
 # jq missing is not a reason to print nothing — it is the single dependency

@@ -58,6 +58,19 @@ fixture_garbage
 t_exit "a garbage judge" 1 sh "$T/bin/audit-triage-run.sh" "$T/cfg" --apply
 t_has "the previous crit cache survives" "$(cat "$JV")" "crit FC-2"
 
+t_section "5b · the floor tier reaches the findings store: one check receipt per judged run (harbor#591)"
+RC="$T/cfg/cache/checks/audit.triage.json"
+rcrun() { env -u HARBOR_CHECK_RECEIPTS -u HARBOR_RECEIPTS sh "$T/bin/audit-triage-run.sh" "$@" >/dev/null 2>&1; }
+fixture_crit; rm -f "$RC"; rcrun "$T/cfg" --apply
+t_eq "a judged crit and warn: red, one subject per severity:rule" 'red crit:FC-2,warn:FC-5' "$(jq -r '"\(.status) \(.subjects | join(","))"' "$RC" 2>&1)"
+t_hasnt "the judge's subject text, which carries counts, is not a subject" "$(cat "$RC")" "(x1)"
+fixture_clean; rcrun "$T/cfg" --apply
+t_eq "a clean judge is a green receipt with no subjects" 'green 0' "$(jq -r '"\(.status) \(.subjects | length)"' "$RC" 2>&1)"
+rm -f "$RC"; fixture_crit; rcrun "$T/cfg"
+t_eq "a dry run leaves no receipt" no "$(has_cache "$RC")"
+fixture_crit; rcrun "$T/cfg" --apply; fixture_garbage; rcrun "$T/cfg" --apply
+t_eq "a judge that could not run writes no receipt: the last one ages out as not seen" red "$(jq -r .status "$RC" 2>&1)"
+
 t_section "6 · --apply on the live dir requires having named it --live"
 # The sandbox HOME's .claude must exist, or the not-a-directory refusal answers instead.
 mkdir -p "$HOME/.claude"

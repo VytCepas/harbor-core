@@ -33,7 +33,7 @@ case "${1:-}" in
 esac
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH='' cd -- "$HERE/.." && pwd)}}"
-. "$HERE/library-log.sh"
+. "$HERE/library-log.sh"; . "$HERE/library-fs.sh"
 log_init findings
 LINT="$HERE/lint-conventions.sh"
 CONTRACT="$ROOT/contracts/finding.md"
@@ -53,9 +53,8 @@ trap 'cleanup; trap - EXIT; exit 130' INT TERM HUP
 usage() { log_fail "$1"; log_fix "sh $HERE/lint-findings.sh --help"; log_end || :; exit 2; }
 stop()  { log_fail "$1"; log_fix "$2"; log_end || :; exit 1; }
 
-_sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }
 # The contract's digest: the subjects one per line, LC_ALL=C sort -u, newline-terminated, 16 hex.
-digest_of_file() { LC_ALL=C sort -u "$1" | _sha | cut -c1-16; }
+digest_of_file() { LC_ALL=C sort -u "$1" | fs_sha256 | cut -c1-16; }
 
 repo() {
   [ -z "${HARBOR_LINT_FINDINGS_REPO:-${HARBOR_FINDINGS_REPO:-}}" ] || { printf '%s' "${HARBOR_LINT_FINDINGS_REPO:-${HARBOR_FINDINGS_REPO:-}}"; return 0; }

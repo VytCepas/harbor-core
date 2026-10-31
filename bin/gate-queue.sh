@@ -12,6 +12,7 @@
 set -eu
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH='' cd -P -- "$HERE" && pwd -P)"
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2   # stdout is the list, or the queued id
 . "$HERE/library-log.sh"
 . "$HERE/library-gate.sh"

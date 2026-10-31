@@ -158,4 +158,15 @@ t_eq "...its path in double quotes" "/bin/sh \"$SP/bin/alpha.sh\"" "$_spc"
 t_eq "...and the command runs through a shell, as the harness runs it" ran-alpha "$(sh -c "$_spc")"
 QD="$T/q\"d"; mkdir -p "$QD/bin"; for _e in alpha beta; do printf '#!/bin/sh\n' > "$QD/bin/$_e.sh"; done
 run --settings "$QD"; t_eq "a config dir with a double quote is refused" 1 "$RC"; t_eq "...and prints nothing" "" "$OUT"
+
+t_section "harbor#559: an optional fifth column, async, renders async: true and nothing else changes"
+fresh; engine gamma "Stop	-	-	async"; printf '#!/bin/sh\n' > "$CFG/bin/gamma.sh"
+settings; t_eq "exit 0" 0 "$RC"
+t_eq "gamma's Stop binding is async" true "$(jq '[.hooks.Stop[].hooks[] | select(.command | endswith("gamma.sh")) | .async] | .[0]' "$CFG/settings.json")"
+t_eq "...and a four-column row carries no async key at all" 0 "$(jq '[.hooks[][].hooks[] | select(.command | endswith("gamma.sh") | not) | select(has("async"))] | length' "$CFG/settings.json")"
+run --plan "$CFG"; t_has "a second plan keeps the async binding" "$OUT" "keep	gamma	Stop	-	-	async"
+engine gamma "Stop	-	-"; run --plan "$CFG"; t_has "dropping async re-renders the engine" "$OUT" "wire	gamma	Stop	-	-	-"
+t_has "...pruning the async entry" "$OUT" "prune	gamma	Stop	-	-	async"
+settings; t_eq "...and the rendered binding no longer says async" null "$(jq '[.hooks.Stop[].hooks[] | select(.command | endswith("gamma.sh")) | .async] | .[0]' "$CFG/settings.json")"
+fresh; engine gamma "Stop	-	-	later"; printf '#!/bin/sh\n' > "$CFG/bin/gamma.sh"; refused "a mode other than async" "mode \`later\` is not - or async"
 t_done

@@ -118,6 +118,7 @@ fi
 . "$SELF/library-fs.sh"
 log_init reference-check
 # --json's stdout is data, byte-identical to before; its log lines, if any, go to stderr. So is --status's.
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 [ "$JSON$STATUS" = 00 ] || LOG_FD=2
 [ "$STATUS" = 0 ] || status_init drift.reference-check "$DIR" || exit 3
 # Every report loop below reads a here-document, and a shell that cannot create one's temp file runs them on

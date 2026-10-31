@@ -24,6 +24,7 @@ ALLOW="${CORE_WRITES_ALLOW:-$ROOT/contracts/core-writes-allow.tsv}"
 BASE="${CORE_WRITES_BASELINE:-$ROOT/contracts/lint-core-writes-baseline.txt}"
 . "$SRC/library-log.sh"
 log_init lint-core-writes
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 T="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -rf "$T"' EXIT
 

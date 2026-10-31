@@ -8,8 +8,8 @@ Description=Harbor collector: copy every observability stream into the second-ui
 Type=oneshot
 User=harborlog
 Group=harborlog
-Environment=HARBOR_COLLECTOR_SRC=@SOURCES@
-Environment=HARBOR_COLLECTOR_STORE=@STORE@
+Environment=HARBOR_AUDIT_COLLECTOR_SOURCES=@SOURCES@
+Environment=HARBOR_AUDIT_COLLECTOR_STORE=@STORE@
 # read every source whatever its mode (a POSIX ACL would not survive the floor's chmod), and mark its own store
 # files append-only (chattr +a)
 AmbientCapabilities=CAP_DAC_READ_SEARCH CAP_LINUX_IMMUTABLE

@@ -421,3 +421,5 @@ tests/standard/rename/sandbox-home.test.sh bin/standard-rename.sh bin/admission-
 tests/deploy/install/renamed.test.sh bin/* hooks/* standards/naming/renames.tsv tests/deploy/install/renamed.test.sh tests/lib/core.sh
 tests/deploy/install/renamed-wiring.test.sh bin/* hooks/* standards/naming/renames.tsv tests/deploy/install/renamed-wiring.test.sh tests/lib/core.sh
 tests/deploy/install/renamed-wiring-w7.test.sh bin/* hooks/* standards/naming/renames.tsv tests/deploy/install/renamed-wiring-w7.test.sh tests/lib/core.sh
+tests/deploy/install/renamed-wiring-w9.test.sh bin/* launchd/* standards/naming/renames.tsv tests/deploy/install/renamed-wiring-w9.test.sh tests/lib/core.sh
+tests/gate/push/push.test.sh bin/gate-push.sh bin/library-log.sh hooks/pre-push hooks/lib.sh bin/library-fs.sh tests/gate/push/* tests/lib/core.sh

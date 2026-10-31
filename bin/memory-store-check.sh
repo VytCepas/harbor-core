@@ -85,6 +85,7 @@ set -f
 # harbor#813: its own dir by ${0%/*}, never a dirname fork. stdout is the report or its JSON, so a
 # log goes to stderr; usage errors stay plain exits 2 (contracts/logging.md).
 case "$0" in */*) _sc_dir="${0%/*}" ;; *) _sc_dir=. ;; esac
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; . "$_sc_dir/library-log.sh"
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 STORE=""
@@ -238,12 +239,23 @@ FULL_INDEX_REL="${FULL_INDEX#"$STORE"/}"
 OLDIFS="$IFS"
 IFS='
 '
-for f in $(cat "$TMP/files"); do
-  rel="${f#"$STORE"/}"
-  [ "$rel" = "$INDEX_REL" ] && continue
-  [ -n "${FULL_INDEX_REL:-}" ] && [ "$rel" = "$FULL_INDEX_REL" ] && continue
-  printf '%s\t%s\n' "$(bytes "$f")" "$rel" >> "$TMP/notes"
-done
+# Every size from ONE wc, not two forks per note (harbor#559: ~1,000 at session start). A file wc cannot read
+# is 0, as bytes() answers. If wc itself cannot run (an argument list too long), each note is sized alone.
+set -- $(cat "$TMP/files")   # noglob is on for the whole script (above)
+if [ $# -gt 0 ] && wc -c -- "$@" > "$TMP/sizes" 2>/dev/null || [ -s "$TMP/sizes" ]; then
+  awk -v store="$STORE/" -v idx="$INDEX_REL" -v full="${FULL_INDEX_REL:-}" '
+    NR == FNR { n = $1; sub(/^ *[0-9]+ /, ""); sz[$0] = n; next }
+    { rel = $0; if (index(rel, store) == 1) rel = substr(rel, length(store) + 1)
+      if (rel == idx || (full != "" && rel == full)) next
+      printf "%s\t%s\n", (($0 in sz) ? sz[$0] : 0), rel }' "$TMP/sizes" "$TMP/files" > "$TMP/notes"
+else
+  for f in "$@"; do
+    rel="${f#"$STORE"/}"
+    [ "$rel" = "$INDEX_REL" ] && continue
+    [ -n "${FULL_INDEX_REL:-}" ] && [ "$rel" = "$FULL_INDEX_REL" ] && continue
+    printf '%s\t%s\n' "$(bytes "$f")" "$rel" >> "$TMP/notes"
+  done
+fi
 IFS="$OLDIFS"
 
 N_NOTES="$(wc -l < "$TMP/notes" | tr -d ' ')"
@@ -282,6 +294,8 @@ INDEX_PRESENT=true
 # Bytes stay measured on $INDEX alone; that asymmetry IS the design.
 harvest_pointers() {
   [ -f "$1" ] || return 0
+  # Once, not two forks per pointer (harbor#559: ~1,000 basename forks at session start).
+  _hp_idx="$(basename "$INDEX")"; _hp_full="$(basename "${FULL_INDEX:-/nonexistent}")"
   sed -n 's/.*](\([^)]*\)).*/\1/p' "$1" | LC_ALL=C sort -u > "$TMP/ptr_raw"
   while IFS= read -r t; do
     case "$t" in
@@ -293,7 +307,7 @@ harvest_pointers() {
     # dangling on every tiered store, which is the same cry-wolf as counting the
     # overflow index as an orphan. Basenames, because a pointer is relative.
     case "${t%%#*}" in
-      "$(basename "$INDEX")"|"$(basename "${FULL_INDEX:-/nonexistent}")") continue ;;
+      "$_hp_idx"|"$_hp_full") continue ;;
     esac
     printf '%s\n' "${t%%#*}" >> "$2"
   done < "$TMP/ptr_raw"

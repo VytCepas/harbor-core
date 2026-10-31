@@ -14,6 +14,7 @@ set -eu
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 . "$HERE/library-log.sh"
 log_init lint-platform
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 CALLS='launchctl|plutil|ditto|caffeinate|pbcopy|pbpaste|osascript|notifyutil|pmset|scutil|dscl|xattr|brew'
 CLIP='wl-paste|wl-copy|xclip|xsel|powershell\.exe|clip\.exe'

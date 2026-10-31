@@ -182,6 +182,7 @@ if [ "$RECORD" -eq 1 ] && [ "$APPLY" -eq 1 ]; then
   exit 2
 fi
 if [ "$RECORD" -eq 1 ] && [ "$CFG_IS_LIVE" -eq 1 ] && [ "$LIVE" -eq 0 ]; then
+  # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
   LOG_FD=2
   log_fail "refusing to record into the live config dir without an explicit --live ($CFG)"
   log_fix "sh bin/housekeeping-clean.sh --record --live"

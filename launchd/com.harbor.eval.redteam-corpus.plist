@@ -12,7 +12,7 @@
 
      It runs the INSTALLED eval-redteam-corpus-run.sh, never the checkout (see its header); that copy clones
      main fresh and runs the clone's eval-redteam-corpus.sh. Nothing it does writes outside the cache and
-     HARBOR_REDTEAM_DIR (default vendor-src under the workspace root, `scope-roots.sh --port-root`).
+     HARBOR_EVAL_REDTEAM_DIR (default vendor-src under the workspace root, `scope-roots.sh --port-root`).
 
      An agent cannot install this, by design. Operator steps, in order:
 

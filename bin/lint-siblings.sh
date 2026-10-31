@@ -18,6 +18,7 @@ ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
 BASE="${SIBLING_BASELINE:-$ROOT/contracts/lint-siblings-baseline.txt}"
 . "$SRC/library-log.sh"
 log_init lint-siblings
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 
 # git grep, not grep: grep here is ugrep and skips gitignored files. --untracked adds a new unstaged

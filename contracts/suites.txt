@@ -416,3 +416,5 @@ tests/standard/rename/sandbox-home.test.sh
 tests/deploy/install/renamed.test.sh
 tests/deploy/install/renamed-wiring.test.sh
 tests/deploy/install/renamed-wiring-w7.test.sh
+tests/deploy/install/renamed-wiring-w9.test.sh
+tests/gate/push/push.test.sh

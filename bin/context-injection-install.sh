@@ -29,6 +29,7 @@ ROOT="$(CDPATH='' cd -- "$SRC/.." && pwd)"
 . "$SRC/deploy-install-lib.sh"
 log_init inject-install
 PROJECTS=0; REMOVE=0
+# shellcheck disable=SC2034 # IL_TAKE: read by deploy-install-lib.sh
 il_opt() { case "$1" in --projects) PROJECTS=1; IL_TAKE=1 ;; --remove) REMOVE=1; IL_TAKE=1 ;; *) IL_TAKE=0 ;; esac; }
 il_parse "$@"
 il_target

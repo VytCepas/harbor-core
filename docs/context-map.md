@@ -33,25 +33,25 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | skill | skills/ | component | source | living | 47 |
 | fixture | fixtures/ | element | source | living | 283 |
 | registry | registries/ | component | source | versioned | 55 |
-| test | tests/ | component | source | living | 453 |
+| test | tests/ | component | source | living | 456 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| script | bin/ | component | source | living | 294 |
+| script | bin/ | component | source | living | 295 |
 | how-to | docs/how-to/ | component | source | living | 1 |
 | reference | docs/reference/ | component | generated | generated | 5 |
 | explanation | docs/explanation/ | component | source | living | 14 |
-| (no kind) | - | - | - | - | 242 |
+| (no kind) | - | - | - | - | 243 |
 
 ## Folders
 
 | Folder | Files | Families | Kinds |
 |---|---|---|---|
-| (repo root) | 19 | 3 | 2 |
+| (repo root) | 20 | 3 | 2 |
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
 | `DOCTRINE/` | 4 | 1 | 1 |
-| `bin/` | 299 | 28 | 2 |
+| `bin/` | 300 | 28 | 2 |
 | `commands/` | 8 | 4 | 1 |
 | `context-rules/` | 49 | 6 | 1 |
 | `contracts/` | 87 | 9 | 2 |
@@ -66,7 +66,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `skills/` | 47 | 8 | 1 |
 | `standards/` | 26 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 453 | 28 | 1 |
+| `tests/` | 456 | 28 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 92 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -83,12 +83,12 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | check | observability | 1 | 4 | 0 | 1 | 52 | 0 |
 | ci | coordination | 20 | 46 | 2 | 5 | 1 | 5 |
 | context | control-plane | 8 | 13 | 1 | 4 | 0 | 37 |
-| deploy | control-plane | 22 | 28 | 1 | 1 | 0 | 7 |
+| deploy | control-plane | 22 | 29 | 1 | 1 | 0 | 7 |
 | doc | control-plane | 21 | 12 | 0 | 33 | 0 | 17 |
 | drift | control-plane | 9 | 7 | 0 | 4 | 2 | 13 |
 | eval | control-plane | 11 | 7 | 0 | 1 | 0 | 0 |
 | event | observability | 3 | 18 | 0 | 3 | 0 | 2 |
-| gate | control-plane | 15 | 10 | 0 | 2 | 0 | 0 |
+| gate | control-plane | 16 | 11 | 0 | 2 | 0 | 0 |
 | housekeeping | control-plane | 2 | 1 | 0 | 2 | 0 | 0 |
 | library | policy-function | 8 | 1 | 0 | 0 | 0 | 0 |
 | lint | control-plane | 28 | 57 | 0 | 10 | 3 | 35 |
@@ -101,7 +101,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | skill | catalog | 7 | 18 | 0 | 10 | 0 | 13 |
 | standard | policy-function | 8 | 14 | 119 | 1 | 2 | 50 |
 | status | observability | 15 | 21 | 0 | 4 | 0 | 0 |
-| test | control-plane | 7 | 5 | 2 | 7 | 0 | 14 |
+| test | control-plane | 7 | 5 | 2 | 7 | 0 | 15 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
 
 ## Per family
@@ -369,6 +369,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/gate-merge.sh`
 - `bin/gate-merged-check.sh`
 - `bin/gate-pr-wait.sh`
+- `bin/gate-push.sh`
 - `bin/gate-queue.sh`
 - `bin/gate-register-derive.sh`
 - `bin/gate-required-generate.sh`
@@ -696,7 +697,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 
 | Folder | Files without a family |
 |---|---|
-| (repo root) | 17 |
+| (repo root) | 18 |
 | `.agents/` | 4 |
 | `.github/` | 2 |
 | `bin/` | 16 |
@@ -710,7 +711,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `runners/` | 2 |
 | `skills/` | 7 |
 | `systemd/` | 15 |
-| `tests/` | 35 |
+| `tests/` | 36 |
 | `tools/` | 8 |
 | `vendor/` | 92 |
 | `worklog/` | 1 |
@@ -745,6 +746,7 @@ Every tracked top-level entry, its kind and layer from `contracts/layout-map.tsv
 | `worklog/` | hook | source | core |
 | `.gitignore` | config | source | core |
 | `.gitleaks.toml` | config | source | core |
+| `.shellcheckrc` | config | source | core |
 | `justfile` | config | source | core |
 | `AGENTS.md` | policy | source | core |
 | `CLAUDE.md` | policy | source | core |

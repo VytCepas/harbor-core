@@ -19,6 +19,7 @@ DELAY="${HARBOR_SESSION_AUTOCOMPACT_DELAY:-${HARBOR_AUTOCOMPACT_DELAY:-2}}"; cas
 OSA="${HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT:-${HARBOR_AUTOCOMPACT_OSA:-osascript}}"
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 . "$HERE/library-log.sh"
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; log_init session-autocompact
 log() { log_note "$(printf '%.8s' "$SID") $1"; }
 

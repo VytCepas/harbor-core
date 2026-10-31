@@ -78,6 +78,7 @@ case "${1:-}" in
   "") ;;
   *) LOG_FD=2; log_fail "unknown option $1"; log_fix "sh $0 --help"; exit 2 ;;   # not a run: stderr, no summary (logging.md)
 esac
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 [ $# -le 1 ] || { LOG_FD=2; log_fail "unexpected argument $2 after $1"; log_fix "sh $0 --help"; exit 2; }
 
 BRANCH="${HARBOR_CI_TIP_BRANCH:-${HARBOR_TIP_BRANCH:-main}}"

@@ -343,7 +343,11 @@ fi_run admission-install.sh "$_sd_on" --apply --with-stop-gate >/dev/null 2>&1 |
 t_eq "WIRE-3 a re-apply keeps one Stop hook" 1 "$(stops "$_sd_on" admission-stop)"
 fi_run deploy-runtime-install.sh "$_sd_on" --apply >/dev/null 2>&1 || true
 t_eq "WIRE-3 runtime-install leaves the Stop gate wiring alone" 1 "$(stops "$_sd_on" admission-stop)"
-t_eq "WIRE-3 the gate does not displace runtime-install's own Stop hook" 1 "$(stops "$_sd_on" memory-harvest)"
+t_eq "WIRE-3 the gate does not displace runtime-install's own Stop hook" 1 "$(stops "$_sd_on" worklog-push)"
+# harbor#1390: the reconciler asks a once-per-session question, so it is wired at SessionStart and never per turn.
+starts() { jq -r --arg p "$2" '[.hooks.SessionStart[]?.hooks[]?.command // empty] | map(select(test($p))) | length' "$1/settings.json" 2>/dev/null; }
+t_eq "WIRE-3 runtime-install wires memory-harvest at SessionStart" 1 "$(starts "$_sd_on" memory-harvest)"
+t_eq "WIRE-3 ...and not at Stop, where it ran every turn" 0 "$(stops "$_sd_on" memory-harvest)"
 chmod -R u+w "$_sd_off" "$_sd_on" 2>/dev/null || true
 
 t_section "WIRE-2 (harbor#95): every command these tools PRINT is one their own gate accepts"

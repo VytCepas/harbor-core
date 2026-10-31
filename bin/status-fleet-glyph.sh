@@ -705,7 +705,7 @@ esac
 # UNMEASURED repo reads exactly like a clean one. Widening it would put
 # yard permanently in the alarm; the tradeoff is asserted in
 # tests/status/statusline/fleet.test.sh so it stays a decision.
-BERTHS=""; DRIFTN=0; AGETOK=""
+BERTHS=""; DRIFTN=0
 if [ -f "$CACHE" ] && command -v jq >/dev/null 2>&1; then
   now="$(date +%s)"
   if mt="$(stat -f %m "$CACHE" 2>/dev/null)" || mt="$(stat -c %Y "$CACHE" 2>/dev/null)"; then

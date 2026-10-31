@@ -26,6 +26,7 @@ JUDGE="${LINT_NAME_BIN:-$ROOT/bin/lint-name.sh}"
 BASE="${LINT_NAME_BASELINE:-$ROOT/contracts/lint-name-baseline.txt}"
 . "$SRC/library-log.sh"
 log_init lint-name-ratchet
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/lint-name-ratchet.XXXXXX")" || exit 2

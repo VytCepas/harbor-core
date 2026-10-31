@@ -1,7 +1,9 @@
 key	value
 engine	worklog-push
 installer	runtime-install
-wire	Stop	-	-
+# async (harbor#559): the push cost every turn end ~3-14 s; in the background the turn ends at once, and the script's lock
+# keeps two Stops from racing on the remote ref.
+wire	Stop	-	-	async
 senses	the session that is stopping
 acts-on	the work-log repository: a record, gitleaks-gated, committed and pushed
 findings	a blocked commit or a failed push, as a WARN

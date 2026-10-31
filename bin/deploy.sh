@@ -343,7 +343,7 @@ _preflight() {
     else
       for _f in $_rf; do
         [ -f "$CFG/.helm-pins/$_f.sha256" ] && [ -f "$ROOT/$(il_src "$ROOT" "$_f")" ] || continue
-        [ "$(cat "$CFG/.helm-pins/$_f.sha256" 2>/dev/null)" = "$(_sha256 < "$ROOT/$(il_src "$ROOT" "$_f")")" ] || _pd="$_pd${_pd:+ }$_f"
+        [ "$(cat "$CFG/.helm-pins/$_f.sha256" 2>/dev/null)" = "$(il_sha < "$ROOT/$(il_src "$ROOT" "$_f")")" ] || _pd="$_pd${_pd:+ }$_f"
       done
       if [ -n "$_pd" ]; then
         _bad "runtime without floor would replace B6-pinned $_pd, and only floor-install re-pins it: the next session would be BLOCKED" \
@@ -792,11 +792,10 @@ _install() {
   done
 }
 
-_sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
 # The row deploy-restore.sh demands (harbor#769): the snapshot's hash, its path, when, and the hashes of its set
 # and of its ~/.local/bin record (harbor#770), which deploy-restore.sh reads only through this row.
 _ledger_row() {
-  _lh="$(_sha256 <"$SNAP/config.tgz")" && _ls="$(_sha256 <"$SNAP/set.txt")" && _lb="$(_sha256 <"$SNAP/local-bin.tsv")" || return 1
+  _lh="$(il_sha <"$SNAP/config.tgz")" && _ls="$(il_sha <"$SNAP/set.txt")" && _lb="$(il_sha <"$SNAP/local-bin.tsv")" || return 1
   [ "${#_lh}" -eq 64 ] && [ "${#_ls}" -eq 64 ] && [ "${#_lb}" -eq 64 ] || return 1
   printf '%s %s %s set=%s bin=%s\n' "$_lh" "${SNAP#"$CFG"/}/config.tgz" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$_ls" "$_lb"
 }

@@ -47,6 +47,7 @@ log_init pin-instructions
 
 MODE=''
 il_opt() {
+  # shellcheck disable=SC2034 # IL_TAKE: read by deploy-install-lib.sh
   case "$1" in
     --print|--check) [ -z "$MODE" ] || il_usage_error "$MODE and $1 are two modes; give one"
                      MODE="$1"; IL_TAKE=-1 ;;

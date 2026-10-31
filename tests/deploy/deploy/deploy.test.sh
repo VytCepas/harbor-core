@@ -9,7 +9,6 @@ unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY  # a run inside a session or
 T_TMP="$(cd "$T_TMP" && pwd -P)"  # deploy reports the config dir physically (install-lib's il_target)
 . "$(dirname "$0")/../../install/deploy-fixture.sh"
 need_pty
-
 t_section "flags: [--apply] --live [--accept-loss], parsed by install-lib"
 fixture flags
 run '' --help; t_eq "--help" 0 "$RC"; t_has "--help prints the header" "$(out)" "DRY RUN"
@@ -23,7 +22,6 @@ run '' --dir "$T_TMP"; t_eq "--dir is a usage error: deploy is live only" 2 "$RC
 t_has "...saying so" "$(out)" "deploy targets the live box only"
 run '' --apply --live --dir "$C"; t_eq "--live with --dir is a usage error" 2 "$RC"
 t_eq "no usage error ran anything (log bytes)" 0 "$(wc -c < "$LOGF" | tr -d ' ')"
-
 t_section "dry run"
 fixture dry; run '' --live
 t_eq "a clean dry run" 0 "$RC"
@@ -111,6 +109,10 @@ t_eq "...and no child saw it" no "$([ -s "$LOGF.rehearse" ] && echo yes || echo 
 t_section "preflight: the box"
 fixture nosettings; rm -f "$C/settings.json"; refuse "no settings.json (Claude Code never ran here)" "no settings.json in $C"
 t_has "...its fix is the exact first-run command, from this checkout" "$(out)" "  fix: sh '$REPO/bin/harbor' scope install"
+# 99173f58ae dropped this negative for lack of a control; deploy-harden's own no-settings line is the control (harbor#667).
+t_hasnt "...not a note to start Claude Code once, with no command" "$(out)" "start Claude Code"
+mkdir -p "$T_TMP/nocfg"
+t_has "control: deploy-harden with no settings.json does say it" "$(env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/deploy-harden.sh" --dir "$T_TMP/nocfg" 2>&1)" "start Claude Code"
 fixture stamp; STUB_STAMP_RC=1; export STUB_STAMP_RC; refuse "an install-stamp regression" "REMOVE installed work"
 t_has "...relaying install-stamp's own lines" "$(out)" "  note: abc1234 the stubbed lost fix"
 t_has "...with the --accept-loss deploy as its fix" "$(out)" "  fix: sh '$REPO/bin/deploy.sh' --apply --live --accept-loss"

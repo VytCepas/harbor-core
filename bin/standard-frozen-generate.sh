@@ -19,6 +19,7 @@ FROZEN="${FROZEN_FILE:-$ROOT/standards/naming/frozen.tsv}"
 RENAMES="${RENAMES_FILE:-$ROOT/standards/naming/renames.tsv}"
 . "$SRC/library-log.sh"
 log_init frozen-gen
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 T="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -rf "$T"' EXIT INT TERM
 

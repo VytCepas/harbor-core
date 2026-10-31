@@ -49,7 +49,6 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 # Same idiom as guard-lib's floor_sha: sha256sum where it exists, shasum elsewhere. Used to detect the
 # content pins this install invalidates, never to write one.
-_sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
 S="$DIR/settings.json"
 if [ ! -f "$S" ]; then
   log_fail "no settings.json at $S"
@@ -586,7 +585,7 @@ if [ -d "$DIR/.helm-pins" ]; then
     _p="$DIR/.helm-pins/$f.sha256"
     [ -f "$_p" ] || continue
     _want="$(cat "$_p" 2>/dev/null)"
-    _have="$(_sha < "$DIR/bin/$f" 2>/dev/null || true)"
+    _have="$(il_sha < "$DIR/bin/$f" 2>/dev/null || true)"
     [ "$_want" = "$_have" ] || _pin_drift="${_pin_drift}${_pin_drift:+ }$f"
   done
 fi
@@ -596,7 +595,7 @@ _b6_pin_stale=""
 for f in $_b6_refreshed; do
   _p="$DIR/.helm-pins/$f.sha256"
   [ -f "$_p" ] || continue
-  [ "$(cat "$_p" 2>/dev/null)" = "$(_sha < "$DIR/bin/$f" 2>/dev/null || true)" ] \
+  [ "$(cat "$_p" 2>/dev/null)" = "$(il_sha < "$DIR/bin/$f" 2>/dev/null || true)" ] \
     || _b6_pin_stale="${_b6_pin_stale}${_b6_pin_stale:+ }$f"
 done
 

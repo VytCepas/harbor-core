@@ -39,4 +39,4 @@ PROJECT_INIT_SRC	REPOS	project-init	prod-guard-install ships nothing and lint dr
 HARBOR_SCOPE_LOCAL_BIN	BOX	.local/bin	deploy writes the operator's shims somewhere nothing is on PATH
 HARBOR_SCOPE_FLEET_CONTROLLER_BIN	BOX	.local/bin/projects-orchestrator	the fleet CLI is not found: the fleet snapshot, the ship report and the runner table read fleet as absent
 HARBOR_SCOPE_SCAFFOLDER_CLONE	BOX	.local/share/project-init	deploy --prune never sees yard's own bootstrap clone (yard's install.sh INSTALL_DIR), so a stale copy stays
-HARBOR_REDTEAM_DIR	REPOS	vendor-src	redteam-corpus finds no corpus, skips every one and stays red with nothing scored
+HARBOR_EVAL_REDTEAM_DIR	REPOS	vendor-src	redteam-corpus finds no corpus, skips every one and stays red with nothing scored

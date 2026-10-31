@@ -49,6 +49,7 @@ esac
 # --live, and a CLAUDE_CONFIG_DIR naming another dir exits 2. Its --apply refreshes a statusline cache
 # every tick of fleet-snapshot-refresh, so it keeps no run log: one per tick would be the leftover.
 il_parse "$@"
+# shellcheck disable=SC2034 # IL_LOG: read by deploy-install-lib.sh
 IL_LOG=0
 il_target
 TGT="$IL_TARGET"; APPLY="$IL_APPLY"

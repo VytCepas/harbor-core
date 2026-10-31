@@ -156,6 +156,7 @@
 /bin/gate-merge.sh @VytCepas
 /bin/gate-merged-check.sh @VytCepas
 /bin/gate-pr-wait.sh @VytCepas
+/bin/gate-push.sh @VytCepas
 /bin/gate-queue.sh @VytCepas
 /bin/gate-register-derive.sh @VytCepas
 /bin/gate-required-generate.sh @VytCepas

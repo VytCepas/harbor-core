@@ -35,6 +35,7 @@ LC_ALL=C; export LC_ALL
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 SRC="$(CDPATH= cd -- "$SRC" && pwd -P)"
 . "$SRC/library-log.sh"
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; log_init standard-catalog
 
 usage() { sed -n '2,13p' "$SRC/standard-catalog.sh" | sed 's/^# \{0,1\}//'; }

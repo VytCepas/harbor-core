@@ -40,6 +40,7 @@ CMD="$(floor_field '.tool_input.command')"
 # The digest subject (harbor#41). NOT passed through floor_block: payload text
 # that never enters the blocking function cannot be one careless edit away from
 # the stderr printf.
+# shellcheck disable=SC2034 # FLOOR_OBS_SUBJECT: read by library-admission.sh (floor_obs_digest)
 FLOOR_OBS_SUBJECT="$CMD"
 
 # harbor#302: a document heredoc behind a pipe or a $( ) is judged by its consumer, not its body.
@@ -1328,7 +1329,6 @@ hit '(^|[^[:alnum:]_])docker[^|]*(--privileged|(-v|--volume)([[:space:]]+|=)/:|(
 # guard-selfedit correctly ALLOWED the same file (red-team pass 5, the two
 # guards contradicted each other). Anchor on the ACTUAL config dirs instead.
 CFG_ABS="$(floor_canon_dir "$(floor_config_dir)")"   # the spelling floor_seg_* compare in (harbor#754)
-CFG_BASE="$(basename "$CFG_ABS")"
 # THE SAME DIR, ESCAPED FOR USE INSIDE A RULE (P12-configdir-ere-injection-03).
 # CFG_ABS is a PATH and is compared as one by floor_seg_cwd_under /
 # floor_seg_operand_under; these two are the REGEX spellings, and the only
@@ -1978,9 +1978,6 @@ _OUTDIR_V="^${CFGDIR_RE}/*\$"
 # $CMDPOS is defined ONCE, with the scheduler rules above — harbor#92 needed the
 # same anchor for the same reason, and two assignments of one anchor is two
 # places for it to drift apart.
-# Same correction as TAR_XTOK below: one dash for a letter bundle, two only for
-# the long options. `-{0,2}` matched the COMPRESSION selector `--xz`.
-TAR_X='([[:space:]]+(-?[a-zA-Z]{0,4}x[a-zA-Z]{0,4}|--(extract|get))([[:space:]]|=|$))'
 # ── harbor#111 · -O IS NOT AN EXTRACTION, AND THE FLAT FORM HAS TO KNOW IT ───
 # `tar xzOf <archive> <member>` writes the member to STDOUT and creates no file.
 # The segment path already lets it through; the FLAT path could not, and the flat
@@ -1993,7 +1990,7 @@ TAR_X='([[:space:]]+(-?[a-zA-Z]{0,4}x[a-zA-Z]{0,4}|--(extract|get))([[:space:]]|
 # `-?[a-zA-Z]*O[a-zA-Z]*` anywhere in the segment — is a HOLE: it matches any
 # all-letters operand carrying an O, so `tar xf evil.tgz -C <cfg> NOTES` would
 # read as outbound on the strength of a MEMBER NAME. This variant is only ever
-# used where TAR_X already is: immediately after the tar verb, where the token
+# used immediately after the tar verb, where the token
 # is tar's mode bundle and an operand cannot appear. A member name is never
 # first, so the cloak has nowhere to stand.
 #
@@ -2406,7 +2403,7 @@ floor_seg_has "$EXTRACTOR" "$CFG_TOK" \
 # so this segment writes nothing. `[^;&|]*` already bounds the match to ONE
 # segment, so judging each on its own bundle is correct — a compound that reads
 # with -O in one segment and extracts for real in the next still blocks on the
-# second. The argv pair above keeps TAR_X: it has the segment table and answers
+# second. The argv pair above keeps the plain extract mode: it has the segment table and answers
 # the question precisely, and weakening it would trade accuracy for nothing.
 hit "${CMDPOS}(tar|bsdtar|gtar)${TAR_XNOO}[^;&|]*(${CFG_RE}|${CFGDIR_RE}([[:space:]/]|\$))" \
   && floor_block bash "an archive is being extracted into the Helm config directory" extract-into-cfg.flat

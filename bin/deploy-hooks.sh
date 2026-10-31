@@ -26,6 +26,7 @@
 set -eu
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH='' cd -- "$HERE" && pwd)"; ROOT="$(CDPATH='' cd -- "$HERE/.." && pwd)"
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 . "$HERE/library-log.sh"
 log_init deploy-hooks
@@ -59,7 +60,8 @@ command -v jq >/dev/null 2>&1 || { log_fail "jq is not installed"; log_fix "$(pk
 T="$(mktemp -d "${TMPDIR:-/tmp}/deploy-hooks.XXXXXX")"; trap 'rm -rf "$T"' EXIT
 REC="$CFG/.harbor-hooks-wired"  # top level, so deploy's snapshot restores it with the settings.json it describes
 
-# ── read and judge every manifest: $T/wires holds engine TAB event TAB matcher TAB timeout ────────────────────────────
+# ── read and judge every manifest: $T/wires holds engine TAB event TAB matcher TAB timeout TAB mode ──────────────────
+# mode is `-` (the harness waits) or `async` (it runs in the background, harbor#559): an optional fifth column.
 # The events the harness accepts a command hook on (contracts/hooks.md); a misspelt event would be wired and never fire.
 EVENTS=' PreToolUse PostToolUse PostToolUseFailure PostToolBatch PermissionRequest SessionStart SessionEnd Stop SubagentStart SubagentStop UserPromptSubmit UserPromptExpansion Notification PreCompact PostCompact InstructionsLoaded PostModelSwitch '
 : > "$T/wires"; : > "$T/errors"; : > "$T/engines"; : > "$T/installers"
@@ -74,12 +76,14 @@ for _m in "$ROOT"/hooks/*/manifest.tsv; do
     !hdr { hdr = 1; if ($1 != "key" || $2 != "value") bad("the first row is the header `key<TAB>value`"); next }
     $1 == "engine"   { n["engine"]++; if ($2 != dir) bad("engine `" $2 "` is not its folder `" dir "`"); next }
     $1 == "wire"     {
-      if (NF != 4) { bad("a wire row is wire<TAB>event<TAB>matcher<TAB>timeout, not " NF " fields"); next }
+      if (NF != 4 && NF != 5) { bad("a wire row is wire<TAB>event<TAB>matcher<TAB>timeout[<TAB>async], not " NF " fields"); next }
+      if (NF == 4) $5 = "-"
+      if ($5 != "-" && $5 != "async") bad("mode `" $5 "` is not - or async")
       if (index(ev, " " $2 " ") == 0) bad("`" $2 "` is not a hook event the harness accepts")
       if ($3 == "") bad("an empty matcher is written `-`")
       if ($4 != "-" && ($4 !~ /^[0-9]+$/ || $4 + 0 < 1 || $4 + 0 > 600)) bad("timeout `" $4 "` is not - or 1..600 seconds")
       if (seen[$2 "\t" $3]++) bad("`" $2 "` `" $3 "` is bound twice")
-      print dir, $2, $3, $4 >> W; w++; next }
+      print dir, $2, $3, $4, $5 >> W; w++; next }
     $1 == "installer" { n["installer"]++
       if ($2 !~ /^[a-z][a-z0-9-]*-install$/) bad("installer `" $2 "` is not an installer name (<what>-install)")
       print dir, $2 >> I; next }
@@ -116,13 +120,13 @@ fi
 # A `@derived` matcher is a value the payload's installer computes (inject-install derives the injection rule's from its
 # packs). Substituted here, or refused: an empty matcher would be wired as "every tool", which nobody asked for.
 : > "$T/w2"
-while IFS="$(printf '\t')" read -r _e _ev _mt _to; do
+while IFS="$(printf '\t')" read -r _e _ev _mt _to _md; do
   if [ "$_mt" = '@derived' ]; then
     _v="$(printf '%s' "$MATCHERS" | awk -v k="$_e:$_ev" 'index($0, k "=") == 1 { print substr($0, length(k) + 2); exit }')"
     if [ -z "$_v" ]; then printf '%s %s: the matcher is @derived and no --matcher %s:%s=… was given\n' "$_e" "$_ev" "$_e" "$_ev" >> "$T/errors"; continue; fi
     _mt="$_v"
   fi
-  printf '%s\t%s\t%s\t%s\n' "$_e" "$_ev" "$_mt" "$_to" >> "$T/w2"
+  printf '%s\t%s\t%s\t%s\t%s\n' "$_e" "$_ev" "$_mt" "$_to" "$_md" >> "$T/w2"
 done < "$T/wires"
 mv "$T/w2" "$T/wires"
 [ ! -s "$T/errors" ] || _errs "run the engine's installer, which derives the matcher, or pass --matcher ENGINE:EVENT=M"
@@ -139,13 +143,15 @@ if [ -f "$IN" ]; then
   jq -e 'type == "object"' "$IN" >/dev/null 2>&1 || { log_fail "$IN is not a JSON object"; log_nofix "$IN"; log_end || :; exit 1; }
   cp "$IN" "$T/in.json"
 else printf '{}' > "$T/in.json"; fi
-# Every binding of an engine that is wired now, by the script it runs: engine TAB event TAB matcher TAB timeout TAB command.
+# Every binding of an engine that is wired now, by the script it runs: engine TAB event TAB matcher TAB timeout TAB mode
+# TAB command.
 jq -r --rawfile names "$T/names" '
   ($names | split("\n") | map(select(length > 0) | split("\t") | {key: .[1], value: .[0]}) | from_entries) as $own
   | (.hooks // {}) | to_entries[] | .key as $ev | .value[]? | (.matcher // "") as $m | .hooks[]?
   | ((.command // "") | gsub("\""; "") | split(" ") | map(select(test("\\.(sh|py)$"))) | .[0] // "" | sub(".*/"; "")) as $s
   | select($own[$s] != null)
-  | [$own[$s], $ev, (if $m == "" then "-" else $m end), ((.timeout // "-") | tostring), .command] | @tsv' "$T/in.json" > "$T/now"
+  | [$own[$s], $ev, (if $m == "" then "-" else $m end), ((.timeout // "-") | tostring), (if .async == true then "async" else "-" end),
+     .command] | @tsv' "$T/in.json" > "$T/now"
 if [ -f "$REC" ]; then cp "$REC" "$T/rec"
 elif { [ -n "$INSTALLER" ] && grep -q "^$INSTALLER " "$CFG/.helm-install-stamp" 2>/dev/null; } \
   || { [ -z "$INSTALLER" ] && [ -s "$CFG/.helm-install-stamp" ]; }; then
@@ -163,7 +169,7 @@ case "$CFG" in *[\\\"\$\`]*) log_fail "$CFG holds a backslash, double quote, dol
 while IFS= read -r _e; do printf '%s\t%s\n' "$_e" "$(_cmd "$_e")"; done < "$T/engines" > "$T/cmds"
 
 # ── decide each binding ─────────────────────────────────────────────────────────────────────────────────────────────
-# One line per binding: verdict TAB engine TAB event TAB matcher TAB timeout. An engine is left alone (`keep`) only when
+# One line per binding: verdict TAB engine TAB event TAB matcher TAB timeout TAB mode. An engine is left alone (`keep`) only when
 # the set it has wired equals the set it wants, as sets; any difference re-renders the whole engine (`wire` + `prune`).
 : > "$T/off"
 while IFS= read -r _e; do [ ! -e "$CFG/$_e.off" ] || printf '%s\n' "$_e" >> "$T/off"; done < "$T/engines"
@@ -180,7 +186,7 @@ awk -F'\t' -v OFS='\t' '
 : > "$T/plan"
 while IFS= read -r _e; do
   # Equal means the same command too: an entry under an old name or path is re-rendered, never kept.
-  awk -F'\t' -v OFS='\t' -v e="$_e" -v c="$(_cmd "$_e")" '$1 == "want" && $2 == e { print $2, $3, $4, $5, c }' "$T/verdicts" | sort > "$T/want.e"
+  awk -F'\t' -v OFS='\t' -v e="$_e" -v c="$(_cmd "$_e")" '$1 == "want" && $2 == e { print $2, $3, $4, $5, $6, c }' "$T/verdicts" | sort > "$T/want.e"
   awk -F'\t' -v e="$_e" '$1 == e' "$T/now" | sort > "$T/now.e"
   if cmp -s "$T/want.e" "$T/now.e"; then _v=keep; else _v=wire; awk '{ print "prune\t" $0 }' "$T/now.e" >> "$T/plan"; fi
   awk -F'\t' -v OFS='\t' -v e="$_e" -v v="$_v" '$2 == e { if ($1 == "want") $1 = v; print }' "$T/verdicts" >> "$T/plan"
@@ -215,7 +221,7 @@ fi
 
 # ── settings: drop every entry of a re-rendered or unwired engine, then append its wanted bindings ─────────────────────
 awk -F'\t' '$1 == "wire" || $1 == "prune" { print $2 }' "$T/plan" | sort -u > "$T/redo"
-awk -F'\t' -v OFS='\t' 'NR == FNR { c[$1] = $2; next } $1 == "wire" { print $2, $3, $4, $5, c[$2] }' "$T/cmds" "$T/plan" > "$T/add"
+awk -F'\t' -v OFS='\t' 'NR == FNR { c[$1] = $2; next } $1 == "wire" { print $2, $3, $4, $5, $6, c[$2] }' "$T/cmds" "$T/plan" > "$T/add"
 jq --rawfile names "$T/names" --rawfile redo "$T/redo" --rawfile add "$T/add" --arg cfg "$CFG" '
   def script: (.command // "") | gsub("\""; "") | split(" ") | map(select(test("\\.(sh|py)$"))) | .[0] // "" | sub(".*/"; "");
   ($names | split("\n") | map(select(length > 0) | split("\t") | {key: .[1], value: .[0]}) | from_entries) as $own
@@ -225,7 +231,8 @@ jq --rawfile names "$T/names" --rawfile redo "$T/redo" --rawfile add "$T/add" --
                                      | map(select((.hooks | length) > 0))))
   | reduce ($add | split("\n")[] | select(length > 0) | split("\t")) as $b (.;
       .hooks[$b[1]] = ((.hooks[$b[1]] // []) + [{matcher: (if $b[2] == "-" then "" else $b[2] end),
-        hooks: [{type: "command", command: $b[4]}
-                + (if $b[3] == "-" then {} else {timeout: ($b[3] | tonumber)} end)]}]))
+        hooks: [{type: "command", command: $b[5]}
+                + (if $b[3] == "-" then {} else {timeout: ($b[3] | tonumber)} end)
+                + (if $b[4] == "async" then {async: true} else {} end)]}]))
   | .hooks |= with_entries(select((.value | length) > 0))' "$T/in.json"
 log_end

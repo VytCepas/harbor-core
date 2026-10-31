@@ -19,6 +19,7 @@ HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 . "$HERE/deploy-install-lib.sh"
 log_init live-verify
 PROBES=0
+# shellcheck disable=SC2034 # IL_TAKE: read by deploy-install-lib.sh
 il_opt() { case "$1" in --probes) PROBES=1; IL_TAKE=1 ;; esac; }
 il_parse "$@"
 [ "$IL_APPLY" -eq 0 ] || il_usage_error '--apply: the live tier is read-only and writes nothing'
