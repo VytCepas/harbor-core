@@ -15,7 +15,6 @@ case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 . "$HERE/library-log.sh"
 log_init drift-confinement
 STATE=0
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 case "${1:-}" in
   --state) STATE=1; LOG_FD=2 ;;
   '') ;;

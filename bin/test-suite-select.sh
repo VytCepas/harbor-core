@@ -84,7 +84,6 @@ if [ "${1:-}" = "--sum" ]; then
     _ran="$_r"
     [ "$_r" = true ] || continue
     case "$_c" in ''|*[!0-9]*)
-      # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
       LOG_FD=2; log_fail "--sum: a suite that ran published no count: $_pc"
       log_nofix "harbor#727 — a suite that ran ends with its '<name>: N passed, M failed' line"; log_end; exit 1 ;;
     esac

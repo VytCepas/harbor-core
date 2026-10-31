@@ -77,18 +77,6 @@ if [ -f "$_hk_here/lib.sh" ]; then . "$_hk_here/lib.sh"
 else hook_scrub_run() { env "$@"; }  # same calling convention as the real one (VAR=val leading args), just no -u
 fi
 
-# A PASS ALREADY PAID FOR BEFORE THE CONNECTION (harbor#1411). git holds the App token from connect to pack send, so
-# a long hook ends in HTTP 401. `sh bin/gate-push.sh` runs this hook under `git push --dry-run`, records the pass, then
-# pushes; gate-push.sh check answers 0 only for that exact sha, push and check set (the lines below). Else: full run.
-# gate-push: file lib.sh ../bin/gate-push.sh
-# gate-push: env HARBOR_GATE_PREPUSH_FULL HARBOR_PREPUSH_FULL HARBOR_CI_BASE_BRANCH HARBOR_BASE_BRANCH HARBOR_TEST_CHANGED HARBOR_CHANGED
-if [ -f "$_hk_here/../bin/gate-push.sh" ]; then
-  _gp_in="$(mktemp "${TMPDIR:-/tmp}/pre-push.XXXXXX")"
-  cat > "$_gp_in"
-  if sh "$_hk_here/../bin/gate-push.sh" check "$@" < "$_gp_in"; then rm -f "$_gp_in"; exit 0; fi
-  exec < "$_gp_in"; rm -f "$_gp_in"
-fi
-
 # ONE CPU SLOT PER CHECK, through bin/ci-governor.sh, which shares this Mac's cores between CI and local runs.
 # Output is discarded either way; the governor's own "waiting for a slot" line stays on stderr. A checkout
 # without the governor, or a box whose governor never ran (no state dir), runs the check directly.

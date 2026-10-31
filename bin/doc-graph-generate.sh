@@ -59,7 +59,6 @@ set -eu
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 SRC="$(CDPATH= cd -- "$SRC" && pwd -P)"
 . "$SRC/library-log.sh"
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; log_init graph-gen
 
 usage() { sed -n '2,10p' "$SRC/doc-graph-generate.sh" | sed 's/^# \{0,1\}//'; }

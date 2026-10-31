@@ -17,7 +17,7 @@
 #   --lint SECS        with --record/--record-from: the seconds shard 1 spends in bin/lint-conventions.sh (kept if omitted)
 #   HARBOR_TEST_SUITE_TIMEOUT  seconds a suite may print nothing before it is cut off (default 900, 0 = none)
 #   HARBOR_TEST_SUITE_HARD_TIMEOUT  seconds in all, however much it prints (default 4 x the above, 0 = none)
-#   HARBOR_TEST_SUITE_CACHE=1  a queued suite whose inputs already passed is a `cached` row, not a run (bin/test-suite-cache.sh)
+#   HARBOR_SUITE_CACHE=1  a queued suite whose inputs already passed is a `cached` row, not a run (bin/test-suite-cache.sh)
 #
 # WHY LONGEST FIRST. The wall time of a parallel run is set by its tail: a 40 s suite started last
 # finishes 40 s after everything else. Measured 2026-10-04 on the Linux runner image (30 suites,
@@ -359,7 +359,7 @@ if [ "$PLAN" = 1 ]; then [ -z "$SHNOTE" ] || printf "%s\n" "$SHNOTE" >&2; cat "$
 # A queued suite whose key holds a recorded pass leaves the queue as a `cached` row carrying that pass's
 # time and count, so --tally, --combine and the counts read it as they read a run. Unset: nothing here runs.
 CNOTE=""
-if [ "${HARBOR_TEST_SUITE_CACHE:-${HARBOR_SUITE_CACHE:-}}" = 1 ]; then
+if [ "${HARBOR_SUITE_CACHE:-}" = 1 ]; then
   if CNOTE="$(HARBOR_SCOPE_ROOT="$ROOT" sh "$DIR/test-suite-cache.sh" lookup "$WORK/queue" "$WORK/keys" "$WORK/hits" 2>&1)"; then
     cat "$WORK/hits" >> "$RES"
     awk -F '\t' -v hf="$WORK/hits" 'FILENAME == hf { h[$5] = 1; next } !($1 in h)' "$WORK/hits" "$WORK/queue" > "$WORK/next"

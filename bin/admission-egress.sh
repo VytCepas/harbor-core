@@ -52,9 +52,7 @@ esac
 # records is a WIRING-LIVENESS CENSUS — it is how a dead dispatch arm (the
 # mcp/Task/WebFetch branches above were dead for months) becomes visible as a
 # tool that never appears rather than as a silence nobody reads.
-# shellcheck disable=SC2034 # FLOOR_TOOL: read by library-admission.sh
 FLOOR_TOOL="$TOOL_SEEN"
-# shellcheck disable=SC2034 # FLOOR_OBS_SUBJECT: read by library-admission.sh
 FLOOR_OBS_SUBJECT="$PAYLOAD"
 
 # Provider-prefixed secret shapes. These are HIGH PRECISION: a match is a live
@@ -337,6 +335,8 @@ CRED_HARD="(\\.credentials\\.json|\\.git-credentials|\\.pgpass|\\.my\\.cnf|\\.ne
 # Project env files: real credentials, but routinely created, copied from an
 # example, and excluded from deploys — so these DO carry the exemptions.
 CRED_SOFT="(\\.npmrc|\\.pypirc|\\.env(\\.(local|production|prod|staging))?${CRED_END})"
+CREDPATH="(${CRED_HARD}|${CRED_SOFT})"
+CREDPATH_DOC='\.env\.(example|sample|template|dist)|--exclude'
 # harbor#1092: the longest blank-free token cred_all_excused will try to excuse.
 # Fixed, not read from the environment: raising it re-opens the quadratic scan.
 CRED_TOKEN_MAX=4096
@@ -952,6 +952,7 @@ $TARGETS_ALL"
     # was whitelisted by the very exemption meant for `ssh -F config` (red-team
     # pass 5). The short spellings now count only for the tools that own them.
     AUTHFLAG_HEAD='(((^|[^[:alnum:]_])(ssh|scp|sftp|rsync|git|kubectl|helm)[^;&|]*[[:space:]](-i|-F))|--identity(_file)?|--key(file)?|--netrc-file|--kubeconfig|--userconfig|-e[[:space:]]+["'"'"']?ssh)'
+    AUTHFLAG="${AUTHFLAG_HEAD}[[:space:]=]+[^[:space:]]*"
     # PER-MATCH SCOPING. Pass 6's comment claimed the exemptions were "anchored
     # to the credential reference it excuses" — but only the SHAPE of the
     # patterns changed; the TEST stayed a whole-payload boolean

@@ -36,10 +36,6 @@ t_eq "it answers, it does not misuse: exit 1" "exit 1" "$(run sh "$B/admission-v
 t_eq "one FAIL" 1 "$(fails)"
 t_has "the FAIL names the missing config dir" "$(first)" "no config dir at $C"
 t_eq "the fix is the first-run command, not 'see docs/explanation/admission-baseline.md'" "  fix: $FIX" "$(fixof)"
-# 99173f58ae dropped this negative for lack of a control; deploy-harden's own no-settings line is the control (harbor#667).
-t_hasnt "...and nothing says to start Claude Code once" "$(out)" "start Claude Code"
-mkdir -p "$T_TMP/nocfg"
-t_has "control: deploy-harden with no settings.json does say it" "$(env -u CLAUDE_CONFIG_DIR sh "$B/deploy-harden.sh" --dir "$T_TMP/nocfg" 2>&1)" "start Claude Code"
 t_eq "a --dir that names no directory has no automatic fix, and says why" "  fix: none automatic — see the path given to --dir" \
   "$(run sh "$B/admission-verify.sh" --dir "$T_TMP/nowhere" >/dev/null; fixof | sed 's/, which names no directory.*//')"
 

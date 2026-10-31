@@ -63,7 +63,6 @@ ARCHIFY="${HARBOR_DOC_ARCHIFY_DIR:-${HARBOR_ARCHIFY:-$ROOT/vendor/archify}}"
 # A flag this script does not know is a usage error (2, D-29), judged before anything that can be unavailable, so a
 # typo is never read as a missing verifier. A page whose name starts with `-` is written `./-name.html`.
 for _a in "$@"; do
-  # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
   case "$_a" in
     --self-test|--generated) ;;
     -*) LOG_FD=2; log_fail "unknown option: $_a"; log_fix "sh $0 --help"; exit 2 ;;   # not a run: stderr, no summary (logging.md)

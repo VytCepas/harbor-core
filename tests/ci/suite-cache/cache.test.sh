@@ -35,7 +35,7 @@ echo dy > "$R/data/dy.txt"; echo m > "$R/src/m.txt"; echo d > "$R/docs/d.md"
 g init -q -b work; g add -A; g commit -qm seed
 CH='src/a/x.txt'   # a real selection: a b-only change would stand a down
 # run [suite...] — the cache on, the store in T_TMP; prints suite-run's output
-run() { : > "$ORD"; HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_CHANGED="${CHG-$CH}" HARBOR_TEST_SUITE_CACHE="${CACHE-1}" HARBOR_TEST_SUITE_CACHE_DIR="${SCD:-$ST}" \
+run() { : > "$ORD"; HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_CHANGED="${CHG-$CH}" HARBOR_SUITE_CACHE="${CACHE-1}" HARBOR_TEST_SUITE_CACHE_DIR="${SCD:-$ST}" \
   sh "$SR" -j 2 --results "$T_TMP/res" "$@" 2>&1; }
 ran() { sort "$ORD" | tr '\n' ' ' | sed 's/ $//'; }
 row() { awk -F '\t' -v s="tests/x/$1.sh" '$5 == s { print $1; exit }' "$T_TMP/res"; }
@@ -100,11 +100,8 @@ G="$T_TMP/gbin"; mkdir -p "$G"; cp "$T_ROOT/bin/test-suite-run.sh" "$T_ROOT/bin/
 printf '#!/bin/sh\necho called >> "%s"\nexit 1\n' "$T_TMP/stub-called" > "$G/test-suite-cache.sh"
 HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_CHANGED="$CH" sh "$G/test-suite-run.sh" tests/x/a.sh > /dev/null 2>&1
 t_eq "unset: bin/test-suite-cache.sh is never run" no "$([ -f "$T_TMP/stub-called" ] && echo yes || echo no)"
-HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_CHANGED="$CH" HARBOR_TEST_SUITE_CACHE=1 sh "$G/test-suite-run.sh" tests/x/a.sh > /dev/null 2>&1
-t_eq "control: set, it is" yes "$([ -f "$T_TMP/stub-called" ] && echo yes || echo no)"
-rm -f "$T_TMP/stub-called"   # harbor#967 W9: governance.yml sets the old name until its patch lands; both are read until 2026-12-01
 HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_CHANGED="$CH" HARBOR_SUITE_CACHE=1 sh "$G/test-suite-run.sh" tests/x/a.sh > /dev/null 2>&1
-t_eq "the old name alone turns it on too" yes "$([ -f "$T_TMP/stub-called" ] && echo yes || echo no)"
+t_eq "control: set, it is" yes "$([ -f "$T_TMP/stub-called" ] && echo yes || echo no)"
 
 t_section "never on main, never when everything runs"
 run tests/x/a.sh > /dev/null; run tests/x/a.sh > /dev/null

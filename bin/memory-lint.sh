@@ -51,9 +51,7 @@ STALE_DAYS=365
 # Status lines are log-lib's, on stderr: stdout is the findings (or the JSON) and only that (contracts/logging.md).
 _here="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 . "$_here/library-log.sh"
-log_init memory-lint
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
-LOG_FD=2
+log_init memory-lint; LOG_FD=2
 
 # die <what failed> <fix command>: FAIL, its fix, the summary, exit 2 (a usage error is not a run).
 die() { log_fail "$1"; log_fix "$2"; log_end || :; exit 2; }

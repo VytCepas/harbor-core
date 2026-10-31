@@ -13,7 +13,6 @@ set -eu
 case "${1:-}" in -h|--help|'') awk 'NR<2{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$0"; exit 0 ;; esac
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 . "$HERE/library-log.sh"
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2   # stdout is the report
 log_init telemetry-report
 CMD="$1"; shift

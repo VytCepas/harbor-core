@@ -5253,7 +5253,6 @@ done
 rule_T9() {
 rule "skill.book-current the tracked skill catalog is current against the skills this checkout tracks (advisory)"
 # The tracked book reads nothing outside the checkout (harbor#1149), so this needs no config dir and gives one verdict on every machine.
-# That is asserted, not assumed: tests/skill/catalog/catalog.test.sh poisons HOME, the config dir, the tool dir and the private layer and requires the same verdict (harbor#158).
 if [ -f "$ROOT/bin/skill-catalog.sh" ]; then
   # Distinguish "stale" (exit 1, the diff branch) from "the generator broke"
   # (anything else). Collapsing both into STALE printed a remedy — `run:

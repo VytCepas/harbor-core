@@ -25,11 +25,6 @@ set -u
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
 DIR="$(CDPATH= cd -- "${DIR:-/}" && pwd)"
 . "$DIR/library-admission.sh"
-# harbor#1390: a hook run carries a session id, and only a session records what B8 named (see B8 below). A terminal
-# stdin is a hand run with no payload, never something to wait on.
-FLOOR_IN=''; [ -t 0 ] || floor_read_stdin || FLOOR_IN=''
-SELF_SID="$(floor_field '.session_id')"
-case "$SELF_SID" in *[!A-Za-z0-9_-]*) SELF_SID='' ;; esac
 
 CFG="$(floor_config_dir)"
 S="$CFG/settings.json"
@@ -40,6 +35,7 @@ PIN="$CFG/.sec0-baseline.sha256"
 GUARDS="admission-bash.sh admission-egress.sh admission-self-edit.sh annotate-web.sh pin-instructions.sh"
 PINDIR="$CFG/.helm-pins"
 
+sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
 
 # WHICH DIR THE RECOVERY COMMAND NAMES (harbor#110). Every hint below used to
 # hardcode `--live`, and `--live` in admission-deny.sh/deploy-restore.sh means literally
@@ -102,7 +98,7 @@ elif [ ! -f "$S" ];   then note "settings.json missing at $S"
 elif [ ! -f "$PIN" ]; then note "baseline pin missing at $PIN"
 else
   WANT="$(cat "$PIN" 2>/dev/null)"
-  HAVE="$(jq -S '{perms:.permissions, plugins:(.enabledPlugins // {}), marketplaces:(.extraKnownMarketplaces // {}), keys:((keys) - ["hooks"])}' "$S" 2>/dev/null | floor_sha)"
+  HAVE="$(jq -S '{perms:.permissions, plugins:(.enabledPlugins // {}), marketplaces:(.extraKnownMarketplaces // {}), keys:((keys) - ["hooks"])}' "$S" 2>/dev/null | sha)"
   [ -n "$HAVE" ] || note "settings.json unreadable or invalid JSON"
   if [ -n "$HAVE" ] && [ "$HAVE" != "$WANT" ]; then
     # Distinguish the floor's TEETH from ordinary user state. enabledPlugins and
@@ -145,7 +141,7 @@ else
     # /plugin lockout with a commoner trigger, and §2.11 makes that a defect
     # rather than safety. deny and the two locks stay fail-closed; everything
     # else in the file is reported and re-pinnable.
-    TEETH="$(jq -S '{deny:.permissions.deny, locks:{bypass:.permissions.disableBypassPermissionsMode, auto:.permissions.disableAutoMode}}' "$S" 2>/dev/null | floor_sha)"
+    TEETH="$(jq -S '{deny:.permissions.deny, locks:{bypass:.permissions.disableBypassPermissionsMode, auto:.permissions.disableAutoMode}}' "$S" 2>/dev/null | sha)"
     TEETH_WANT="$(cat "$CFG/.helm-floor-teeth" 2>/dev/null || true)"
     if [ -n "$TEETH_WANT" ] && [ "$TEETH" = "$TEETH_WANT" ]; then
       # `--repin`, NOT `--apply`. This branch is reached with deny and the locks
@@ -301,7 +297,7 @@ for g in $CHECK; do
   # plus `exit 0` passed every earlier check (red-team pass 6).
   if [ -f "$PINDIR/$g.sha256" ]; then
     _want="$(cat "$PINDIR/$g.sha256" 2>/dev/null)"
-    _have="$(floor_sha < "$f")"
+    _have="$(sha < "$f")"
     if [ "$_want" != "$_have" ]; then
       note "guard modified since it was pinned: $g"
       # Tracked separately from the message, because the RECOVERY for this drift
@@ -369,10 +365,7 @@ if [ -f "$CFG/.helm-instructions.sha256" ]; then
   elif [ -z "$_now" ]; then
     # An empty manifest is "could not build", never "nothing to see".
     ADVISORY="${ADVISORY:+$ADVISORY; }the instruction manifest came back empty — the instruction surfaces could NOT be checked"
-  elif _d="$(printf '%s\n' "$_now" | floor_instr_diff "$CFG/.helm-instructions.sha256")"; [ -z "$_d" ]; then
-    # Clean: nothing is standing, so the next change is named whatever was named before the re-pin (harbor#1390).
-    [ -z "$SELF_SID" ] || rm -f "$CFG/.helm-context/instructions.seen" 2>/dev/null || :
-  else
+  elif _d="$(printf '%s\n' "$_now" | floor_instr_diff "$CFG/.helm-instructions.sha256")"; [ -n "$_d" ]; then
     # Count PATHS, not diff lines: an edited file produces both a `<` and a `>`
     # line, so counting lines reported "2 changed" for one changed file.
     # The path is everything after the two-space separator — `awk '{print $NF}'`
@@ -409,39 +402,6 @@ if [ -f "$CFG/.helm-instructions.sha256" ]; then
     # memory`, a path that does not exist. Caught by B8-05, which asserts the
     # real path is named — the same shape as B8-06, where `awk '{print $NF}'`
     # reported "skill.md" for "my evil skill.md".
-    # ── A STANDING ADVISORY NAMES WHAT IS NEW (harbor#1390). The same 26 paths, reprinted at every SessionStart
-    # until a re-pin, is an alarm the reader learns to skip, and then the 27th scrolls past with it. So every changed
-    # path is still COUNTED, but a path is NAMED only in the first session that sees its current content, and the rest
-    # are summed with the age of the oldest. The record is <cfg>/.helm-context/instructions.seen, `<epoch> TAB <key>`
-    # per changed path, the key being its manifest line now (`gone  <path>` once removed), so a path edited again is
-    # new again. .helm-context is an integrity row: a session cannot write the record to keep its own edit unnamed.
-    # Only a run with a session id writes it, so `harbor verify` names what is new and consumes nothing. A record
-    # that is lost or unreadable names everything, the old behaviour; a clean manifest deletes it (the re-pin).
-    _seen="$CFG/.helm-context/instructions.seen"
-    _now_s="$(date +%s 2>/dev/null || echo 0)"
-    _seenw=''
-    if [ -n "$SELF_SID" ] && mkdir -p "$CFG/.helm-context" 2>/dev/null; then _seenw="$_seen.$$"; fi
-    # Out: `S TAB <path>` per standing path, then `A TAB <epoch>`, the oldest of them.
-    _stand="$(printf '%s\n' "$_d" | _B8_SEEN="$_seen" _B8_SEENW="$_seenw" awk -v now="$_now_s" '
-      BEGIN { f = ENVIRON["_B8_SEEN"]; o = ENVIRON["_B8_SEENW"]
-              while ((getline l < f) > 0) { t = index(l, "\t"); if (t) seen[substr(l, t + 1)] = substr(l, 1, t - 1) } }
-      { s = substr($0, 3); i = index(s, "  "); if (!i) next; p = substr(s, i + 2)
-        if (substr($0, 1, 1) == ">") { key[s] = p; has[p] = 1 } else gone[p] = 1 }
-      END {
-        for (p in gone) if (!(p in has)) key["gone  " p] = p
-        for (k in key) { p = key[k]
-          if (k in seen) { e = seen[k]; if (!(p in age) || e + 0 < age[p] + 0) age[p] = e } else { fresh[p] = 1; e = now }
-          if (o != "") print e "\t" k > o }
-        m = ""; for (p in age) if (!(p in fresh)) { print "S\t" p; if (m == "" || age[p] + 0 < m + 0) m = age[p] }
-        if (m != "") print "A\t" m }' 2>/dev/null || true)"
-    if [ -n "$_seenw" ]; then
-      if [ -f "$_seenw" ]; then mv -f "$_seenw" "$_seen" 2>/dev/null || rm -f "$_seenw"; else rm -f "$_seen" 2>/dev/null || :; fi
-    fi
-    _old_s="$(printf '%s\n' "$_stand" | awk -F'\t' '$1 == "A" { print $2 }')"
-    _agep=''; [ -z "$_old_s" ] || _agep=", the oldest named $(( (_now_s - _old_s) / 86400 ))d ago"
-    # A path is standing only when the record says so: any doubt names it.
-    _newof() { printf '%s\n' "$1" | _B8_ST="$_stand" awk 'BEGIN { n = split(ENVIRON["_B8_ST"], a, "\n"); for (i = 1; i <= n; i++) if (substr(a[i], 1, 2) == "S\t") st[substr(a[i], 3)] = 1 }
-      NF && !($0 in st)'; }
     _mem="$(printf '%s\n' "$_paths" | "$FLOOR_GREP" -E '^projects/[^/]*/memory(/|$)' || true)"
     _oth="$(printf '%s\n' "$_paths" | "$FLOOR_GREP" -Ev '^projects/[^/]*/memory(/|$)' || true)"
     _nmem="$(printf '%s\n' "$_mem" | "$FLOOR_GREP" -c . || true)"
@@ -450,11 +410,8 @@ if [ -f "$CFG/.helm-instructions.sha256" ]; then
     if [ "${_noth:-0}" -gt 0 ]; then
       # The named paths are the NON-memory ones, always — a real instruction
       # surface must never be the entry `head -6` truncated away.
-      _onew="$(_newof "$_oth")"; _nonew="$(printf '%s\n' "$_onew" | "$FLOOR_GREP" -c . || true)"
-      _chg="$(printf '%s\n' "$_onew" | head -6 | tr '\n' ' ' | sed 's/ $//')"
-      [ "${_nonew:-0}" -gt 6 ] && _chg="$_chg …"
-      if [ "${_nonew:-0}" -eq 0 ]; then _chg="0 new since the last session; all ${_noth} already named${_agep}"
-      elif [ "${_nonew:-0}" -lt "${_noth:-0}" ]; then _chg="$_chg; $((_noth - _nonew)) more already named${_agep}"; fi
+      _chg="$(printf '%s\n' "$_oth" | head -6 | tr '\n' ' ' | sed 's/ $//')"
+      [ "${_noth:-0}" -gt 6 ] && _chg="$_chg …"
       _also=""
       [ "${_nmem:-0}" -gt 0 ] && _also=" (and ${_nmem} auto-memory file(s), which the model writes as ordinary work)"
       ADVISORY="${ADVISORY:+$ADVISORY; }INSTRUCTION SURFACES changed since pinning (${_noth} path(s): ${_chg})${_also} — these load into EVERY session; $_repin"
@@ -466,11 +423,8 @@ if [ -f "$CFG/.helm-instructions.sha256" ]; then
       # Nothing is being crowded out in this branch, so naming them costs
       # nothing; the crowding problem was the MIXED case, and that is handled
       # above by putting the non-memory paths first.
-      _mnew="$(_newof "$_mem")"; _nmnew="$(printf '%s\n' "$_mnew" | "$FLOOR_GREP" -c . || true)"
-      _mchg="$(printf '%s\n' "$_mnew" | head -6 | tr '\n' ' ' | sed 's/ $//')"
-      [ "${_nmnew:-0}" -gt 6 ] && _mchg="$_mchg …"
-      if [ "${_nmnew:-0}" -eq 0 ]; then _mchg="0 new since the last session; all ${_nmem:-?} already named${_agep}"
-      elif [ "${_nmnew:-0}" -lt "${_nmem:-0}" ]; then _mchg="$_mchg; $((_nmem - _nmnew)) more already named${_agep}"; fi
+      _mchg="$(printf '%s\n' "$_mem" | head -6 | tr '\n' ' ' | sed 's/ $//')"
+      [ "${_nmem:-0}" -gt 6 ] && _mchg="$_mchg …"
       ADVISORY="${ADVISORY:+$ADVISORY; }auto-memory changed since pinning (${_nmem:-?} file(s): ${_mchg}) and no other instruction surface did — model-authored content that loads into every session, so it is reported rather than blessed; $_repin"
     fi
   fi

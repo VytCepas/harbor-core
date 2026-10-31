@@ -71,7 +71,6 @@ CMD="$(floor_field '.tool_input.command')"
 # "-" on an unset FLOOR_OBS_SUBJECT, so populating the digest on deny/ask would
 # have emitted "-" for exactly the two guard classes #350 is about — 7,873
 # records, every one still subjectless, and the ticket would have read as fixed.
-# shellcheck disable=SC2034 # FLOOR_OBS_SUBJECT: read by library-admission.sh
 FLOOR_OBS_SUBJECT="$CMD"
 
 floor_seg_load "$CMD"

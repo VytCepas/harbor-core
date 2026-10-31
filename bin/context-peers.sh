@@ -23,7 +23,6 @@ SESS="${HARBOR_SESSION_REGISTRY_DIR:-${HARBOR_SESSIONS_DIR:-$CFG/sessions}}"
 # harbor#813: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./library-admission.sh from it.
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
 # stdout is the table or JSON a caller parses, so the log goes to stderr (contracts/logging.md).
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; . "$DIR/library-log.sh"
 FORMAT=table
 ONLY_REPO=""
@@ -183,7 +182,6 @@ tree_of() { # <cwd> -> working-tree root, or the cwd itself
 }
 branch_of() { git -C "$1" rev-parse --abbrev-ref HEAD 2>/dev/null || printf ''; }
 governed_of() { # <cwd> -> repo | ambient
-  # shellcheck disable=SC2034 # CLAUDE_PROJECT_DIR: read by library-admission.sh
   ( CLAUDE_PROJECT_DIR="$1"; . "$DIR/library-admission.sh" 2>/dev/null || exit 1
     if floor_in_repo; then printf 'repo'; else printf 'ambient'; fi ) 2>/dev/null || printf '?'
 }
@@ -252,7 +250,7 @@ if [ "$FORMAT" = peers ]; then
   [ -n "$ROWS" ] || exit 0
   _line=""
   _n=0
-  printf '%s' "$ROWS" | while IFS="$SEP" read -r p _s t b st n _k g src; do
+  printf '%s' "$ROWS" | while IFS="$SEP" read -r p s t b st n k g src; do
     [ -n "$p" ] || continue
     _w="$(peer_display "$t")"
     [ "$src" = "write" ] || _w="$_w (launched there; nothing written yet)"
@@ -278,7 +276,7 @@ if [ "${_n:-0}" -eq 0 ]; then
   exit 0
 fi
 printf '%-7s %-10s %-9s %-8s %-22s %-6s %s\n' PID NAME STATUS CONTEXT BRANCH TREE-SRC TREE
-printf '%s' "$ROWS" | while IFS="$SEP" read -r p _s t b st n _k g src; do
+printf '%s' "$ROWS" | while IFS="$SEP" read -r p s t b st n k g src; do
   [ -n "$p" ] || continue
   printf '%-7s %-10s %-9s %-8s %-22s %-6s %s\n' \
     "$p" "${n:-–}" "${st:-–}" "$g" "${b:-–}" "$src" "$t"

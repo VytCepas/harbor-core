@@ -54,9 +54,7 @@ set -eu
 # The per-case table and the score line on stdout are the report the suite and --json readers consume, so they
 # stay byte-identical; the log is on stderr (LOG_FD=2, contracts/logging.md, harbor#771).
 . "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-log.sh"
-log_init skill-fire
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
-LOG_FD=2
+log_init skill-fire; LOG_FD=2
 # die <what failed> <fix> <exit> — FAIL, its fix, the summary, the exit code the tool always had.
 die() { log_fail "$1"; log_fix "$2"; log_end || :; exit "$3"; }
 

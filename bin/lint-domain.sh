@@ -24,7 +24,6 @@ ALLOW="${DOMAIN_ALLOW:-$ROOT/contracts/domain-allow.tsv}"
 BASE="${DOMAIN_BASELINE:-$ROOT/contracts/lint-domain-baseline.txt}"
 . "$SRC/library-log.sh"
 log_init lint-domain
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 TAB="$(printf '\t')"
 T="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -rf "$T"' EXIT

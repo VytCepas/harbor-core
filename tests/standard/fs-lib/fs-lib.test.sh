@@ -86,13 +86,4 @@ both "GNU stub"
 PATH="${PATH#"$GN":}"
 both "native"
 
-t_section "fs_sha256: bare hex on both legs (harbor#1392, the one copy outside the floor and installer libs)"
-h='5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03'   # sha256 of "hello\n"
-NS="$T_TMP/noss"; mkdir -p "$NS"; for c in shasum awk; do ln -s "$(command -v "$c")" "$NS/$c"; done
-t_eq "sha256sum or shasum, whichever this PATH has" "$h" "$(printf 'hello\n' | fs_sha256)"
-t_eq "shasum only: the same bare hex" "$h" "$(printf 'hello\n' | PATH="$NS" fs_sha256)"
-# red-proof: without the awk cut the digest carries shasum's "  -" suffix, so the cases above can fail.
-sed 's/ | awk .{print \$1}.; }$/; }/' "$T_ROOT/bin/library-fs.sh" > "$T_TMP/fs-lib-nocut.sh"
-t_eq "red-proof: without the cut, the digest is not bare hex" "$h  -" "$(. "$T_TMP/fs-lib-nocut.sh"; printf 'hello\n' | PATH="$NS" fs_sha256)"
-
 t_done

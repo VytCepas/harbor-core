@@ -178,7 +178,7 @@ about the repo*, never as orders.
 
 ## The estate IS unified, and harbor is the one that is not
 
-*The workload repos are labelled A to D here; the private layer's `evals/workload-labels.md` decodes them (`evals/harbor-evals.md` until 2026-12-01; harbor#1273).*
+*The workload repos are labelled A to D here; the private layer's `evals/harbor-evals.md` decodes them (harbor#1273).*
 
 The architecture question was posed conditionally: *per-project index skills
 matter **unless** memory, docs and standards are already unified.* Measured

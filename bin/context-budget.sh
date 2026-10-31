@@ -60,7 +60,6 @@ esac
 
 ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 # The --check failures speak in the house line shape (contracts/logging.md, LOG1). stderr, as before.
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; . "$(dirname -- "$0")/library-log.sh"
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 

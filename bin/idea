@@ -37,9 +37,7 @@ esac
 # Status lines are log-lib's, on stderr: stdout is `idea -l`'s pool and nothing else (contracts/logging.md).
 # shellcheck source=/dev/null
 . "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-log.sh"
-log_init idea
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
-LOG_FD=2
+log_init idea; LOG_FD=2
 
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 POOL_DIR="${HARBOR_MEMORY_LOG_DIR:-${HARBOR_LOG_DIR:-$CFG/MEMORY}}"

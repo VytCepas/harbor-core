@@ -364,7 +364,6 @@ deny() {
 _log() { # <deny|advise> <rule>
   [ "$NOTE_ONLY" = 1 ] && return 0
   [ -f "$SELF_DIR/library-admission.sh" ] || return 0
-  # shellcheck disable=SC2034 # FLOOR_IN, FLOOR_TOOL: read by library-admission.sh
   ( set +eu; FLOOR_TOOL="${TOOL:-}"; FLOOR_IN="$PAYLOAD"; . "$SELF_DIR/library-admission.sh"
     floor_log_decision govern "$1" "$2.meta" ) >/dev/null 2>&1 || :
 }

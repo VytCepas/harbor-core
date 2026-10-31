@@ -1,6 +1,6 @@
 ---
 order: 55
-description: The first tool call of a session with no title asks for one, written with the Write tool where the title hook reads it
+description: The first tool call of a session with no title asks for one, written where the title hook reads it
 event: PreToolUse
 when: always
 once: session

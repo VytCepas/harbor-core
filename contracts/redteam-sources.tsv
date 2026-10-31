@@ -4,7 +4,7 @@
 # Neither corpus ships in the export (decision 26 on harbor#1149); the check fetches them at run time.
 #
 # COLUMNS (tab-separated; the first non-comment row is the header)
-#   name    the directory under HARBOR_EVAL_REDTEAM_DIR
+#   name    the directory under HARBOR_REDTEAM_DIR
 #   url     the upstream git URL
 #   commit  the full commit the corpus is pinned to
 name	url	commit

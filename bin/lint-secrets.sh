@@ -24,7 +24,6 @@ BASE="${SECRETS_BASELINE:-$ROOT/contracts/lint-secrets-baseline.txt}"
 PATTERNS="${SECRETS_PATTERNS:-$ROOT/contracts/credential-patterns.tsv}"
 . "$SRC/library-log.sh"
 log_init lint-secrets
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 
 # Command position for a keychain CLI, as tests/access/secret/seam.test.sh derives it.

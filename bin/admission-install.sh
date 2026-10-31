@@ -32,7 +32,6 @@ WITH_B6=0
 # invariant — "installs no guard and wires no hook" — is why the wiring lives here.
 WITH_STOP=0
 il_opt() {
-  # shellcheck disable=SC2034 # IL_TAKE: read by deploy-install-lib.sh
   case "$1" in
     --with-b6) WITH_B6=1; IL_TAKE=1 ;;
     --with-stop-gate) WITH_STOP=1; IL_TAKE=1 ;;
@@ -384,9 +383,10 @@ log_ok "recovery tooling copied into $DIR/bin: $(echo $RECOVERY | tr ' ' ',')$([
 # then blocked EVERY session (measured on this box 2026-08-22). Copying first makes
 # the pin describe bytes this installer wrote, and makes the install order stop
 # mattering: both installers write identical bytes, so the hash cannot move.
+_sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
 mkdir -p "$DIR/.helm-pins"
 for g in $GUARDS $RECOVERY; do
-  [ -f "$DIR/bin/$g" ] && il_sha < "$DIR/bin/$g" > "$DIR/.helm-pins/$g.sha256"
+  [ -f "$DIR/bin/$g" ] && _sha < "$DIR/bin/$g" > "$DIR/.helm-pins/$g.sha256"
 done
 log_ok "content-pinned in $DIR/.helm-pins: every guard and the recovery tooling (harbor#275)"
 # A rename leaves the old name's copy and pin behind; B6 would check it for a kill-switch (harbor#949).
@@ -422,7 +422,7 @@ else
 fi
 if [ "$WITH_B6" -eq 1 ]; then
   il_install_exec "$SRC/admission-integrity.sh" "$DIR/bin/admission-integrity.sh"; il_manifest bin/admission-integrity.sh
-  il_sha < "$DIR/bin/admission-integrity.sh" > "$DIR/.helm-pins/admission-integrity.sh.sha256"
+  _sha < "$DIR/bin/admission-integrity.sh" > "$DIR/.helm-pins/admission-integrity.sh.sha256"
 fi
 # SG (harbor#291) — the Stop gate, wired from its table row. CONTENT-PINNED in the
 # same breath as the copy: a guard this installer wrote and did not pin is invisible
@@ -431,7 +431,7 @@ fi
 # file it deliberately does not have.
 if [ "$WITH_STOP" -eq 1 ]; then
   il_install_exec "$SRC/admission-stop.sh" "$DIR/bin/admission-stop.sh"; il_manifest bin/admission-stop.sh
-  il_sha < "$DIR/bin/admission-stop.sh" > "$DIR/.helm-pins/admission-stop.sh.sha256"
+  _sha < "$DIR/bin/admission-stop.sh" > "$DIR/.helm-pins/admission-stop.sh.sha256"
 fi
 # Re-read settings (floor-deny just rewrote deny) and wire the SAME table the dry
 # run showed onto THAT (harbor#766: this was a second, hand-kept copy of it).

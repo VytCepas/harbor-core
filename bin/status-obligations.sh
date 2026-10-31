@@ -88,7 +88,6 @@ HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 case "${1:-}" in
   -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); print; next } {exit}' "$0"; exit 0 ;;
 esac
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 . "$HERE/library-log.sh"
 . "$HERE/library-fs.sh"

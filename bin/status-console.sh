@@ -13,7 +13,6 @@
 # dependencies, bound to 127.0.0.1, and it runs only the commands in tools/ui/sources.ts. Needs bun.
 set -eu
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 . "$HERE/library-log.sh"
 log_init status-console

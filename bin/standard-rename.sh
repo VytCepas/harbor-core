@@ -4,7 +4,7 @@
 #   sh bin/standard-rename.sh [--plan] <rows>        DRY RUN (the default): what moves, what is rewritten, what would be left
 #   sh bin/standard-rename.sh --apply <rows>         git mv, rewrite every true reference, retire exemption rows, print the residual
 #   sh bin/standard-rename.sh --residual <rows>      the residual list alone, for rows already applied
-#   ... (--live | --dir PATH)                        add the box: hook commands, memory notes, LaunchAgents and LaunchDaemons, old deployed copies
+#   ... (--live | --dir PATH)                        add the box: hook commands, memory notes, LaunchAgents, old deployed copies
 #   sh bin/standard-rename.sh --import <mapping.tsv> [--wave W] [--old PATH]...   add a mapping's rename rows to renames.tsv
 #   sh bin/standard-rename.sh --pr-body [--report F] [--before R] [--after R] [--refs harbor#N]   the six-line PR body
 #   <rows>: --id <id> and --wave <W>, each repeatable · --root <dir> (default this checkout)
@@ -58,11 +58,8 @@
 # THE BOX IS A SECOND RUN, AFTER THE DEPLOY. Hook commands may name the new file only once it is
 # installed, or the fail-closed wrapper denies every call. So: --apply rewrites the repo; deploy the
 # renamed tree; then --apply with the target rewrites the hook commands, the memory notes and the
-# LaunchAgent and LaunchDaemon twins, and removes the old deployed copies and pins (backed up first). Until the new names
+# LaunchAgent twins, and removes the old deployed copies and pins (backed up first). Until the new names
 # are deployed, the box half refuses and says so. Outside the repo nothing is written without a target.
-# A twin that SETS an old env name is rewritten only once the program it runs reads the new one, judged per job:
-# a LaunchDaemon's code is a root-owned copy no deploy refreshes (the collector's), and one only root can write is
-# residual with its installer's sudo command, which renders it afresh (harbor#967 W9).
 #
 # THE RESIDUAL is every true reference to an old name left in a scanned scope, plus anything that names
 # it in a way no rewrite reaches: a binary file, a symlink, an exemption row that is not the row being
@@ -77,7 +74,6 @@ set -eu
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 SRC="$(CDPATH= cd -- "$SRC" && pwd -P)"
 . "$SRC/library-log.sh"
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; log_init standard-rename
 
 usage() { sed -n '2,13p' "$SRC/standard-rename.sh" | sed 's/^# \{0,1\}//'; }
@@ -148,7 +144,7 @@ mkdir -p "$TMP"; trap 'rm -rf "$TMP"' EXIT INT TERM
 
 _py() { # <subcommand> <key=value...> — the core; log lines go to $TMP/log as tag TAB message TAB fix
 python3 - "$@" <<'PY'
-import os, re, sys, json, glob, shutil, subprocess, datetime, plistlib
+import os, re, sys, json, glob, shutil, subprocess, datetime
 
 WB = rb'A-Za-z0-9_\-'
 COLS = ['id', 'old', 'new', 'surface', 'wave', 'remove_by', 'reason']
@@ -684,57 +680,6 @@ def launch_twins(cfg, files):
     twins = {p[len('launchd/'):] for p in files if p.startswith('launchd/') and p.count('/') == 1}
     return [os.path.join(la, b) for b in sorted(os.listdir(la)) if b in twins] if os.path.isdir(la) else []
 
-def launch_daemons(a, cfg, files):
-    """The system twins (harbor#967 W9): /Library/LaunchDaemons on the live box. Under --dir the config dir's parent stands in
-    for /, as it stands in for HOME above, so a suite proves this half on a fixture box without root."""
-    if os.path.basename(cfg.rstrip('/')) != '.claude':
-        return []
-    ld = '/Library/LaunchDaemons' if a.get('live') == '1' else os.path.join(os.path.dirname(cfg.rstrip('/')), 'Library', 'LaunchDaemons')
-    twins = {p[len('launchd/'):] for p in files if p.startswith('launchd/') and p.count('/') == 1}
-    return [os.path.join(ld, b) for b in sorted(os.listdir(ld)) if b in twins] if os.path.isdir(ld) else []
-
-def daemon_installer(a, files, label):
-    """The tracked installer that writes this LaunchDaemon (it names the label and /Library/LaunchDaemons), or None."""
-    for p in sorted(files):
-        if p.startswith('bin/') and p.endswith('.sh') and p.count('/') == 1:
-            d = readb(os.path.join(a['root'], p))
-            if d and enc(label) in d and b'/Library/LaunchDaemons' in d:
-                return p
-    return None
-
-def twin_state(a, ctx, path, data, daemon):
-    """('ok', '', reload hint) when the twin may be rewritten now, else ('held', why, fix). A job that SETS an old env name may
-    take the new one only once the program it runs reads it: rewritten earlier, the job runs with a name its code ignores.
-    A daemon's code is often a root-owned copy no deploy refreshes (the collector's), so this is judged per job, not per box."""
-    label = os.path.basename(path)[:-len('.plist')] if path.endswith('.plist') else os.path.basename(path)
-    if daemon:
-        inst = daemon_installer(a, ctx['files'], label)
-        fix = 'sudo sh %s/%s   # from a terminal: it copies the code and renders the job afresh' % (a['root'], inst) if inst \
-            else 'reinstall the job as root from the renamed tree'
-        hint = 'sudo launchctl bootout system/%s, then sudo launchctl bootstrap system %s' % (label, path)
-    else:
-        fix, hint = 'deploy the renamed tree first, then re-run this command', 'launchctl bootout/bootstrap to reload'
-    # launchd reads a comment holding `--` (`--uninstall`), which strict XML refuses, so comments go before the parse; what
-    # still does not parse is read by pattern, every <key> a possible env name and every <string> a possible program.
-    body = re.sub(rb'<!--.*?-->', b'', data, flags=re.S)
-    try:
-        job = plistlib.loads(body)
-    except Exception:
-        job = {'EnvironmentVariables': {dec(k): '' for k in re.findall(rb'<key>([A-Z][A-Z0-9_]*)</key>', body)},
-               'ProgramArguments': [dec(x) for x in re.findall(rb'<string>([^<]*)</string>', body)]}
-    sets = set((job.get('EnvironmentVariables') or {}).keys()) if isinstance(job, dict) and isinstance(job.get('EnvironmentVariables'), dict) else set()
-    args = (job.get('ProgramArguments') or []) + [job.get('Program')] if isinstance(job, dict) else []
-    progs = [x for x in args if isinstance(x, str) and os.path.isfile(x)]
-    texts = [d for d in (readb(x) for x in progs) if d is not None and not binary(d)]
-    for old in sorted(sets):
-        new = ctx['envmap'].get(old)
-        if new and not any(bound([new]).search(d) for d in texts):
-            return 'held', 'sets %s, and the program it runs (%s) does not read %s yet: %s' % (
-                old, ', '.join(progs) or 'none found', new, fix), fix
-    if daemon and not (os.access(path, os.W_OK) and os.access(os.path.dirname(path), os.W_OK)):
-        return 'held', 'a LaunchDaemon only root can rewrite: %s' % fix, fix
-    return 'ok', '', hint
-
 def hook_commands(j):
     """Every (container, key) whose value is a hook or status-line command."""
     out = []
@@ -892,8 +837,6 @@ def scan(a, ctx):
                 continue
             data = readb(os.path.join(cfg, rel))
             if data is not None and not binary(data) and rx.search(data):
-                if readb(os.path.join(root, rel)) == data:
-                    continue    # the checkout's own bytes (a dual read's fallback, an alias table): current, and the repo half judges them
                 out.append(('box', rel, 'a deployed copy older than the rename: redeploy', False))
         for s in ('settings.json', 'settings.local.json'):
             p = os.path.join(cfg, s)
@@ -916,17 +859,11 @@ def scan(a, ctx):
                 continue
             for n, l in lines_hit(data, rx):
                 out.append(('notes', '%s:%d' % (tilde(p, a), n), short(l), True))
-        for p, dmn in [(x, False) for x in launch_twins(cfg, files)] + [(x, True) for x in launch_daemons(a, cfg, files)]:
+        for p in launch_twins(cfg, files):
             data = readb(p)
-            hits = lines_hit(data, rx) if data is not None else []
-            if not hits:
-                continue
-            st, why, hint = twin_state(a, ctx, p, data, dmn)
-            if st != 'ok':
-                out.append(('box', tilde(p, a), why, False))
-                continue
-            for n, l in hits:
-                out.append(('box', '%s:%d' % (tilde(p, a), n), short(l) + ' (%s)' % hint, True))
+            if data is not None:
+                for n, l in lines_hit(data, rx):
+                    out.append(('box', '%s:%d' % (tilde(p, a), n), short(l) + ' (launchctl bootout/bootstrap to reload)', True))
     return out
 
 def tilde(p, a):
@@ -1131,7 +1068,7 @@ def run(a):
     retire = ({r['old'] for r in pending if not window(r)} | {r['old'] for r in expired}
               | {r['old'] for r in envpend if ER[enc(r['tok'])][1] != 'window'})
     edges, inputs = graph(a)
-    ctx = dict(envmap={dec(o): dec(n) for o, (n, _h) in ER.items()}, rx=rx, rep=rep, files=files, pending=pending, siblings=[], records=None, retire=retire, keep_ex=keep_ex, shim_paths=set(shims_now), tline=tline,
+    ctx = dict(rx=rx, rep=rep, files=files, pending=pending, siblings=[], records=None, retire=retire, keep_ex=keep_ex, shim_paths=set(shims_now), tline=tline,
                line_hit=line_hit, kept_line=kept_line, kept=[], shared_toks=shared_toks, shared_done=[], shim_rows=shim_rows, shim_new={r['old']: r['new'] for r in shim_rows}, shim_until={r['old']: r['remove_by'] for r in shim_rows})
     for label in ('fleet', 'yard'):
         w, st = inputs.get(label, ('-', 'absent'))
@@ -1309,8 +1246,7 @@ def run(a):
                         write_keep_mode(p, enc(json.dumps(j, indent=2, ensure_ascii=False) + '\n'))
                         rpt.append(('box', 'rewired', s, str(n)))
                         log('ok', '%s: %d hook command reference(s) rewired%s' % (s, n, ', %d duplicate hook(s) dropped' % d if d else ''))
-                twins = [(x, False) for x in launch_twins(cfg, files)] + [(x, True) for x in launch_daemons(a, cfg, files)]
-                for p in notes_files(cfg) + [x for x, d in twins if readb(x) is not None and twin_state(a, ctx, x, readb(x), d)[0] == 'ok']:
+                for p in notes_files(cfg) + launch_twins(cfg, files):
                     data = readb(p)
                     if data is None or binary(data) or not rx.search(data):
                         continue
@@ -1642,7 +1578,7 @@ esac
 _rc=0
 case "$MODE" in
   plan|apply|residual)
-    _py run "mode=$MODE" "root=$ROOT" "src=$SRC" "home=$HOME" "live=${IL_LIVE:-0}" "ids=$IDS" "waves=$WAVES" "report=$REPORT" \
+    _py run "mode=$MODE" "root=$ROOT" "src=$SRC" "home=$HOME" "ids=$IDS" "waves=$WAVES" "report=$REPORT" \
       "box=$BOX" "bk=$IL_BK" "drop=$TMP/drop" "log=$TMP/log" || _rc=$? ;;
   import) _py import "root=$ROOT" "mapping=$MAPPING" "waves=$WAVES" "olds=$OLDS" "log=$TMP/log" || _rc=$? ;;
   pr-body) _py pr-body "report=$REPORT" "before=$BEFORE" "after=$AFTER" "refs=$REFS" "log=$TMP/log" || _rc=$? ;;

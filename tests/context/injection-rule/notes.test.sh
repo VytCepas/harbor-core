@@ -117,13 +117,6 @@ _cr="$(printf '%s' '{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_in
 t_has "confinement-refused fires on a refused write while the marker is present" "$_cr" "FIRE confinement-refused"
 rm -f "$T/managed/harbor-confinement"
 
-t_section "session-title-missing (harbor#1390): the note names the one tool that can write the title"
-# A shell redirect into the config dir is refused by admission-bash (bash:redirect-into-cfg); only the Write tool lands it.
-REPO="$T/repo"; make_repo "$REPO" box plain
-_st="$(printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"stm-write","tool_input":{"command":"ls"}}' \
-  | CLAUDE_CONFIG_DIR="$T/cfg" CLAUDE_PROJECT_DIR="$REPO" /bin/sh "$ENGINE" 2>&1)"
-t_has "session-title-missing tells the model to use the Write tool" "$_st" 'Write tool'
-
 t_section "the exempt packs: the engine reaches the script, nothing more"
 REPO="$T/repo"; make_repo "$REPO" self plain; mkdir -p "$REPO/bin"
 printf '#!/usr/bin/env sh\nprintf "REACHED-%%s\\n" "$(cat | tr -d "\\n" | cut -c1-0)x"\n' > "$REPO/bin/govern-hook.sh"

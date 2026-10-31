@@ -75,7 +75,6 @@ _notify_log() {
 
 harbor_notify() { # <subtitle> <body>
   NOTIFY_SINK=log
-  # shellcheck disable=SC2034 # NOTIFY_SINK: read by its callers, alert-notify.sh and session-react-lib.sh
   if _notify_osascript "$1" "$2"; then NOTIFY_SINK=osascript
   elif _notify_send "$1" "$2"; then NOTIFY_SINK=notify-send
   elif _notify_wsl_toast "$1" "$2"; then NOTIFY_SINK=wsl-toast

@@ -70,20 +70,7 @@ rm -f "$B8/projects/-Users-y/memory"; ln -s "../-Users-x/memory" "$B8/projects/-
 t_has "B8 a relative memory link is still drift" "$(b8run)" 'projects/-Users-y/memory'
 rm -f "$B8/projects/-Users-y/memory"; ln -s "$B8/projects/-Users-x-wt/memory" "$B8/projects/-Users-y/memory"
 t_has "B8 a link to a link is still drift" "$(b8run)" 'projects/-Users-y/memory'
-# harbor#559: one readlink, one snapshot; the stores share one walk. No pin while an exempt link exists (the pinner spells /tmp physically).
-_ml() { sh -c '. "$1/library-admission.sh"; floor_instr_memlinks "$2"' sh "$SRC" "$B8"; }; _z="$B8/projects/-Users-z/memory"
-rm -rf "$B8/projects/-Users-y" "$B8/projects/-Users-x-wt"; mkdir -p "$_z"; printf 'z\n' > "$_z/z.md"; pin8
-t_eq "559 two stores, re-pinned: silent" "" "$(b8run)"; printf 'planted\n' >> "$_z/z.md"
-t_has "559 a write to the second store is drift (the stores share one walk)" "$(b8run)" 'projects/-Users-z/memory/z.md'
-pin8; ln -s "$TMP/b8-elsewhere/p.md" "$_z/linked.md"; t_has "559 a file link inside a store is still drift" "$(b8run)" 'projects/-Users-z/memory/linked.md'; rm -f "$_z/linked.md"
-mkdir -p "$B8/projects/-Users-x-wt" "$B8/projects/-Users-y"; ln -s "$B8/projects/-Users-x/memory" "$B8/projects/-Users-x-wt/memory"; ln -s "$TMP/b8-elsewhere" "$B8/projects/-Users-y/memory"
-t_eq "559 one snapshot: ok, then only the link that is not exempt" "ok
-$B8/projects/-Users-y/memory" "$(_ml)"
-t_has "559 ...and that link is drift, beside an exempt one" "$(b8run)" 'projects/-Users-y/memory'; rm -f "$B8/projects/-Users-y/memory"; t_eq "559 ...which alone is silent" "" "$(b8run)"
-ln -s "$B8/projects/-Users-x/memory
-x" "$B8/projects/-Users-y/memory"
-t_eq "559 a target with a newline: more lines than links, so no snapshot, every link decided alone" "" "$(_ml)"; t_has "559 ...and it is drift" "$(b8run)" "changed"
-rm -rf "$B8/projects/-Users-y" "$B8/projects/-Users-x-wt" "$B8/projects/-Users-z"; pin8
+rm -rf "$B8/projects/-Users-y" "$B8/projects/-Users-x-wt"; pin8
 t_eq "B8 silent again once the links are gone and re-pinned" "" "$(b8run)"
 printf 'more\n' >> "$B8/CLAUDE.md"
 t_exit "B8 --check fails on drift" 1 pi --check "$B8"
@@ -406,95 +393,6 @@ ln -s "$RXC/c2" "$RX/linked"
 printf '{"plugins":{"p@mp":[{"scope":"user","installPath":"%s/linked"}]}}\n' "$RX" > "$RX/plugins/installed_plugins.json"
 pi --apply "$RX"; printf 'changed behind the link\n' > "$RXC/c2/s/f"
 t_eq "B8-LOADED a symlinked installPath is walked through: a change behind it turns B8 amber" 1 "$(pi --check "$RX"; echo $?)"
-
-
-t_section "B8-UNLOADED (harbor#1390): marketplace files of plugins that are not enabled never load"
-UL="$TMP/ul"; mkdir -p "$UL/bin" "$UL/skills/demo"
-printf '{"permissions":{"allow":[],"deny":[],"disableBypassPermissionsMode":"disable","disableAutoMode":"disable"},"enabledPlugins":{"on@mp":true,"gone@mp":false}}\n' > "$UL/settings.json"
-printf 'be helpful\n' > "$UL/CLAUDE.md"; printf 'name: demo\n' > "$UL/skills/demo/SKILL.md"
-for g in library-admission.sh admission-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh \
-         annotate-web.sh admission-hook.sh pin-instructions.sh admission-deny.sh admission-integrity.sh; do
-  cp "$SRC/$g" "$UL/bin/$g"
-done
-chmod +x "$UL"/bin/*.sh
-ULM="$UL/plugins/marketplaces/mp"
-mkdir -p "$ULM/.claude-plugin" "$ULM/plugins/on/skills/s" "$ULM/plugins/off/skills/s" "$ULM/plugins/inst/skills/s" \
-         "$ULM/plugins/gone/skills/s" "$ULM/external_plugins/ext-off" "$ULM/plugins/renamed-dir/skills/s" "$UL/plugins/cache/mp/on/1.0/skills/s"
-printf '{"name":"mp","plugins":[{"name":"on","source":"./plugins/on"},{"name":"off","source":"./plugins/off"},{"name":"inst","source":"./plugins/inst"},{"name":"gone","source":"./plugins/gone"},{"name":"ext-off","source":"./external_plugins/ext-off"},{"name":"aliased","source":"./plugins/renamed-dir"}]}\n' > "$ULM/.claude-plugin/marketplace.json"
-for _d in plugins/on plugins/off plugins/inst plugins/gone external_plugins/ext-off plugins/renamed-dir; do printf 'name: x\n' > "$ULM/$_d/SKILL.md"; done
-printf 'name: s\n' > "$UL/plugins/cache/mp/on/1.0/skills/s/SKILL.md"
-# `inst` is installed (a project scope) but not in this settings.json: it can load, so it stays watched.
-printf '{"version":2,"plugins":{"on@mp":[{"scope":"user","installPath":"%s/plugins/cache/mp/on/1.0"}],"inst@mp":[{"scope":"project","projectPath":"/w/p","installPath":"%s/plugins/cache/mp/on/1.0"}],"aliased@mp":[{"scope":"project","projectPath":"/w/q","installPath":"%s/plugins/cache/mp/on/1.0"}]}}\n' "$UL" "$UL" "$UL" > "$UL/plugins/installed_plugins.json"
-uldc() { # <fetchedAt> <off listing commit> <on listing commit> — the plugin directory cache, as the harness writes it
-  printf '{"schemaVersion":2,"fetchedAt":"%s","listings":[{"id":"p_on","name":"on","source":{"repository":{"url":"https://github.com/v/on","reviewed_commit":"%s"}}},{"id":"p_off","name":"Off Plugin","source":{"repository":{"url":"https://github.com/v/off","reviewed_commit":"%s"}}}],"entryNames":{"p_on":"on","p_off":"off"},"entryNameClaims":{"p_on":{"repositoryKey":"github.com/v/on#","lastSeen":"%s"},"p_off":{"repositoryKey":"github.com/v/off#","lastSeen":"%s"}}}\n' \
-    "$1" "$3" "$2" "$1" "$1" > "$UL/plugins/plugin-directory-cache-v2.json"; }
-uldc 2026-10-30T16:09:56Z aaa111 bbb222
-env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-install.sh" --dir "$UL" --apply >/dev/null 2>&1
-pi --apply "$UL"
-ulrun() { printf '{"hook_event_name":"SessionStart","source":"startup","session_id":"%s"}' "${1:-ul-probe}" \
-  | CLAUDE_CONFIG_DIR="$UL" sh "$UL/bin/admission-integrity.sh" 2>/dev/null; }
-ulsurf() { ulrun "$@" | grep -c 'INSTRUCTION SURFACES' | tr -d ' '; }
-t_eq "B8-UL a freshly pinned config with marketplaces is silent" 0 "$(ulsurf)"
-printf 'name: x\nedited upstream\n' > "$ULM/plugins/off/SKILL.md"
-printf 'name: new\n' > "$ULM/external_plugins/ext-off/NEW.md"
-printf 'name: x\nedited upstream\n' > "$ULM/plugins/gone/SKILL.md"
-uldc 2026-10-31T06:00:00Z ccc333 bbb222
-t_eq "B8-UL only disabled plugins' marketplace files and directory listings changed: no INSTRUCTION SURFACES advisory" 0 "$(ulsurf)"
-t_exit "B8-UL ...and pin-instructions --check agrees" 0 pi --check "$UL"
-printf 'name: x\ninjected\n' > "$ULM/plugins/on/SKILL.md"
-_ulon="$(ulrun ul-on)"
-t_eq "B8-UL an enabled plugin's marketplace file still prints the advisory (red once)" 1 "$(printf '%s\n' "$_ulon" | grep -c 'INSTRUCTION SURFACES' | tr -d ' ')"
-t_has "B8-UL ...naming it" "$_ulon" 'plugins/marketplaces/mp/plugins/on/SKILL.md'
-pi --apply "$UL"
-printf 'name: x\ninjected\n' > "$ULM/plugins/inst/SKILL.md"
-t_exit "B8-UL an installed (project-scope) plugin's marketplace file is drift though settings.json does not enable it" 1 pi --check "$UL"
-pi --apply "$UL"
-printf 'name: x\ninjected\n' > "$ULM/plugins/renamed-dir/SKILL.md"
-t_exit "B8-UL a plugin whose catalog source names another dir is watched by that dir" 1 pi --check "$UL"
-pi --apply "$UL"
-printf 'name: s\ninjected\n' > "$UL/plugins/cache/mp/on/1.0/skills/s/SKILL.md"
-t_eq "B8-UL the loaded plugin's own files still print the advisory" 1 "$(ulsurf ul-cache)"
-pi --apply "$UL"
-uldc 2026-10-31T07:00:00Z ccc333 evil999
-t_exit "B8-UL an enabled plugin's directory listing changing is still drift" 1 pi --check "$UL"
-pi --apply "$UL"
-printf 'name: x\n' > "$ULM/plugins/README.md"; printf 'top\n' > "$ULM/README.md"
-t_exit "B8-UL a file outside any plugin's dir in the marketplace is still drift" 1 pi --check "$UL"
-pi --apply "$UL"
-cp "$ULM/.claude-plugin/marketplace.json" "$TMP/ul-mk.json"; printf 'not json {{{\n' > "$ULM/.claude-plugin/marketplace.json"; pi --apply "$UL"
-printf 'name: x\nedited again\n' > "$ULM/plugins/off/SKILL.md"
-t_exit "B8-UL an unreadable catalog prunes nothing in its marketplace (fail toward coverage)" 1 pi --check "$UL"
-cp "$TMP/ul-mk.json" "$ULM/.claude-plugin/marketplace.json"; pi --apply "$UL"
-jq '.enabledPlugins["off@mp"] = true' "$UL/settings.json" > "$UL/s.t" && mv "$UL/s.t" "$UL/settings.json"
-t_exit "B8-UL enabling a plugin brings its marketplace files into the manifest" 1 pi --check "$UL"
-
-t_section "B8-DELTA (harbor#1390): a standing advisory names only what is new since the last session"
-jq 'del(.enabledPlugins["off@mp"])' "$UL/settings.json" > "$UL/s.t" && mv "$UL/s.t" "$UL/settings.json"
-env -u CLAUDE_CONFIG_DIR sh "$UL/bin/admission-deny.sh" --dir "$UL" --repin >/dev/null 2>&1
-pi --apply "$UL"
-t_eq "B8-DELTA clean after a re-pin" 0 "$(ulsurf d0)"
-printf 'and a new instruction\n' >> "$UL/CLAUDE.md"
-_d1="$(ulrun d1)"
-t_has "B8-DELTA the first session after a change names it" "$_d1" 'CLAUDE.md'
-_d2="$(ulrun d2)"
-t_has "B8-DELTA the next session still reports the drift" "$_d2" 'INSTRUCTION SURFACES changed since pinning (1 path(s)'
-t_has "B8-DELTA ...naming 0 new paths" "$_d2" '0 new since the last session'
-t_hasnt "B8-DELTA ...and not reprinting the standing one" "$_d2" 'CLAUDE.md'
-printf 'name: demo\nedited\n' > "$UL/skills/demo/SKILL.md"
-_d3="$(ulrun d3)"
-t_has "B8-DELTA a later change is named" "$_d3" 'skills/demo/SKILL.md'
-t_hasnt "B8-DELTA ...beside a count of the standing one, not its name" "$_d3" 'CLAUDE.md'
-t_has "B8-DELTA ...whose count stays in the total" "$_d3" '(2 path(s)'
-printf 'edited again\n' >> "$UL/CLAUDE.md"
-t_has "B8-DELTA a standing path edited again is new again" "$(ulrun d4)" 'CLAUDE.md'
-printf 'once more\n' >> "$UL/CLAUDE.md"
-t_has "B8-DELTA a run with no session id (harbor verify) names what is new" "$(printf '{"hook_event_name":"SessionStart"}' | CLAUDE_CONFIG_DIR="$UL" sh "$UL/bin/admission-integrity.sh" 2>/dev/null)" 'CLAUDE.md'
-t_has "B8-DELTA ...and does not consume it: the next session still names it" "$(ulrun d5)" 'CLAUDE.md'
-pi --apply "$UL"
-t_eq "B8-DELTA silent after a re-pin" 0 "$(ulsurf d6)"
-printf 'after the re-pin\n' >> "$UL/CLAUDE.md"
-t_has "B8-DELTA a re-pin forgets what was named: the next change is named" "$(ulrun d7)" 'CLAUDE.md'
-pi --apply "$UL"
 
 ff_sealed
 t_done

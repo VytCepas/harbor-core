@@ -20,9 +20,7 @@ case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 usage() { awk 'NR < 2 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"; }
 case "${1:-}" in -h|--help) usage; exit 0 ;; '') usage >&2; exit 2 ;; esac
 # The verdict is the one line on stdout; every refusal goes through the house log on stderr.
-. "$HERE/library-log.sh"
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
-LOG_FD=2; log_init ci-wait
+. "$HERE/library-log.sh"; LOG_FD=2; log_init ci-wait
 die() { log_fail "$2"; log_nofix "sh $0 --help"; log_end >/dev/null 2>&1 || :; exit "$1"; }  # <exit code> <why>
 
 NOT_CI="${HARBOR_CI_NOT_CHECKS-review/decision}"

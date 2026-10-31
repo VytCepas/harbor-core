@@ -10,8 +10,8 @@
   <key>GroupName</key><string>_harborlog</string>
   <key>ProgramArguments</key><array><string>/bin/sh</string><string>@BIN@/audit-collector.sh</string></array>
   <key>EnvironmentVariables</key><dict>
-    <key>HARBOR_AUDIT_COLLECTOR_SOURCES</key><string>@SOURCES@</string>
-    <key>HARBOR_AUDIT_COLLECTOR_STORE</key><string>@STORE@</string>
+    <key>HARBOR_COLLECTOR_SRC</key><string>@SOURCES@</string>
+    <key>HARBOR_COLLECTOR_STORE</key><string>@STORE@</string>
   </dict>
   <key>StartInterval</key><integer>300</integer>
   <key>RunAtLoad</key><true/>

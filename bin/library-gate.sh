@@ -10,9 +10,9 @@
 # Every caller sets HERE to its own bin/ and has sourced library-log.sh already; a second source keeps its counts.
 [ -n "${_LOG_LIB:-}" ] || . "$HERE/library-log.sh"
 . "$HERE/library-fs.sh"   # fs_mtime, one spelling on BSD and GNU stat
-# shellcheck disable=SC2034 # GATE_TAB: read by gate-merge.sh
 GATE_TAB="$(printf '\t')"
 GATE_MANIFEST=.agents/ship.conf   # the ship contract §1: a repo opts in with this one file
+gate_sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{ print $1 }'; }
 
 # ── the manifest and the register (the ship contract §1, §2) ──────────────────
 gate_conf() { # <root> <key> → its values, one per line (a missing manifest prints nothing)
@@ -169,7 +169,7 @@ gate_fetch_conf() { # <repo>
 # time TAB action TAB args TAB sha256(args) TAB outcome. A session cannot write it (guard-bash, guard-selfedit, B1).
 gate_ledger() { # <action> <args> <outcome>
   mkdir -p "$GATE_STATE" 2>/dev/null && chmod 700 "$GATE_STATE" 2>/dev/null
-  printf '%s\t%s\t%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" "$(printf '%s' "$2" | fs_sha256)" "$3" \
+  printf '%s\t%s\t%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" "$(printf '%s' "$2" | gate_sha256)" "$3" \
     >>"$GATE_STATE/ledger.tsv" || log_warn "could not append to $GATE_STATE/ledger.tsv"
 }
 
@@ -189,8 +189,7 @@ gate_bus() { [ ! -f "$GATE_BIN/event-bus.sh" ] || sh "$GATE_BIN/event-bus.sh" em
 gate_queue_add() { # <kind> <repo> <pr|-> <sha> <reason> → sets GATE_QID and GATE_QCMD (the exact approve command)
   if [ "$1" = merge ]; then _gqi="$(gate_qid merge "$2" "$3" "$4")"; _gqc="$GATE_BIN/gate-approve.sh merge $2 $3 $4"
   else _gqi="$(gate_qid deploy "$2" "$4")"; _gqc="$GATE_BIN/gate-approve.sh deploy $2 $4"; fi
-  # shellcheck disable=SC2034 # GATE_QID, GATE_QCMD: read by gate-queue.sh and gate-merge.sh
-  GATE_QID="$_gqi" GATE_QCMD="$_gqc"
+  GATE_QID="$_gqi"; GATE_QCMD="$_gqc"
   mkdir -p "$GATE_QDIR" && chmod 700 "$GATE_QDIR" 2>/dev/null
   if [ "$(gate_queue_state "$_gqi")" = open ]; then log_note "already queued: $_gqi"; return 0; fi
   _gnow="$(date -u +%s)"

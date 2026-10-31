@@ -64,7 +64,6 @@
 set -eu
 MC_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 # The log goes to stderr, where the refusals always went (contracts/logging.md, LOG1).
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 . "$MC_DIR/library-log.sh"
 

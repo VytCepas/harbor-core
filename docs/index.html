@@ -1762,8 +1762,6 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/deploy/install/renamed.test.sh</code></td><td><code>bin/* hooks/* standards/naming/renames.tsv tests/deploy/install/renamed.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/deploy/install/renamed-wiring.test.sh</code></td><td><code>bin/* hooks/* standards/naming/renames.tsv tests/deploy/install/renamed-wiring.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/deploy/install/renamed-wiring-w7.test.sh</code></td><td><code>bin/* hooks/* standards/naming/renames.tsv tests/deploy/install/renamed-wiring-w7.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/deploy/install/renamed-wiring-w9.test.sh</code></td><td><code>bin/* launchd/* standards/naming/renames.tsv tests/deploy/install/renamed-wiring-w9.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/gate/push/push.test.sh</code></td><td><code>bin/gate-push.sh bin/library-log.sh hooks/pre-push hooks/lib.sh bin/library-fs.sh tests/gate/push/* tests/lib/core.sh</code></td></tr>
 </tbody></table>
 </div>
 
@@ -2561,7 +2559,6 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/gate-merge.sh</code></td><td>gate-merge.sh (harbor#1018) — the unattended merge: a PR whose change touches no protected path, green on its</td></tr>
 <tr><td><code>bin/gate-merged-check.sh</code></td><td>merged-check (harbor#213) — answer "is this branch's work already in BASE?" by</td></tr>
 <tr><td><code>bin/gate-pr-wait.sh</code></td><td>gate-pr-wait.sh (harbor#552) — wait on a pull request until the FIRST thing that</td></tr>
-<tr><td><code>bin/gate-push.sh</code></td><td>gate-push.sh (harbor#1411) — run a repo's pre-push checks BEFORE git connects, then push in seconds.</td></tr>
 <tr><td><code>bin/gate-queue.sh</code></td><td>gate-queue.sh (harbor#1018) — the approvals that wait for the operator: the ONLY queue writer (ship contract §5b.9).</td></tr>
 <tr><td><code>bin/gate-register-derive.sh</code></td><td>gate-register-derive.sh (harbor#1018, review finding 3) — the rows of harbor's protected-paths register that are</td></tr>
 <tr><td><code>bin/gate-required-generate.sh</code></td><td>gate-required-generate.sh (harbor#1149, D-79) - the rows a local merge gate reads: core's contracts/required-checks.tsv</td></tr>

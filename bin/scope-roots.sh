@@ -4,7 +4,7 @@
 #
 #   sh scope-roots.sh --list         every row, resolved against this box
 #   sh scope-roots.sh --get <VAR>    one resolved path, for a script to consume
-#   sh scope-roots.sh --aliases      old TAB new, the renamed rows --get answers by their old names until 2026-11-15 (harbor#961 W5; W9's until 2026-12-01)
+#   sh scope-roots.sh --aliases      old TAB new, the renamed rows --get answers by their old names until 2026-11-15 (harbor#961 W5)
 #   sh scope-roots.sh --repos        each governed repo once: <name> TAB <resolved checkout> (harbor#829)
 #   sh scope-roots.sh --check        every ${VAR:-...} default matches, honours PORT_ROOT, is registered; a shared path has a reason
 #   sh scope-roots.sh --id <VAR>     the repo a REPOS row names: a role row's (scaffolder, fleet controller) registry id by kind, else the table's (harbor#966)
@@ -57,7 +57,6 @@ TABLE="${HARBOR_SCOPE_ROOTS_TABLE:-${HARBOR_ROOTS_TABLE:-$ROOT/contracts/roots.t
 # contracts/logging.md channel 1. LOG_FD=2: --get and --list print DATA on stdout (a value, a
 # table), and --check's success line is that same protocol — every log-lib line stays on stderr.
 . "$SRC/library-log.sh"
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 
 [ -f "$TABLE" ] || { echo "roots: no table at $TABLE" >&2; exit 2; }
@@ -71,12 +70,8 @@ HARBOR_REPO	HARBOR_SCOPE_REPO
 HARBOR_FLEET_FILE	HARBOR_SCOPE_FLEET_FILE
 HARBOR_LOCAL_BIN	HARBOR_SCOPE_LOCAL_BIN
 HARBOR_ORCH_BIN	HARBOR_SCOPE_FLEET_CONTROLLER_BIN'
-# harbor#967 W9: the red-team corpus root took the eval family's name; the same window, until 2026-12-01.
-W9_ALIASES='HARBOR_REDTEAM_DIR	HARBOR_EVAL_REDTEAM_DIR'
-ROOT_ALIASES="$W5_ALIASES
-$W9_ALIASES"
-w5_new() { printf '%s\n' "$ROOT_ALIASES" | awk -F'\t' -v n="$1" '$1 == n { print $2; f = 1 } END { if (!f) print n }'; }
-w5_old() { printf '%s\n' "$ROOT_ALIASES" | awk -F'\t' -v n="$1" '$2 == n { print $1 }'; }
+w5_new() { printf '%s\n' "$W5_ALIASES" | awk -F'\t' -v n="$1" '$1 == n { print $2; f = 1 } END { if (!f) print n }'; }
+w5_old() { printf '%s\n' "$W5_ALIASES" | awk -F'\t' -v n="$1" '$2 == n { print $1 }'; }
 
 # The one line the ~/port move edits. Returns the LITERAL TEXT a default is
 # expected to spell, not a resolved path — ROOT1 compares source text, and
@@ -394,7 +389,7 @@ case "${1:-}" in
       printf '%-24s %-6s %s\n' "$__v" "$__b" "$__p/$__r"
     done
     ;;
-  --aliases) printf '%s\n' "$ROOT_ALIASES" ;;   # old TAB new: names --get still answers until 2026-11-15 (W5) or 2026-12-01 (W9)
+  --aliases) printf '%s\n' "$W5_ALIASES" ;;   # old TAB new: names --get still answers until 2026-11-15 (harbor#961 W5)
   --get)
     [ -n "${2:-}" ] || { echo "roots: --get needs a variable name" >&2; exit 2; }
     # harbor#961 W5: two repo roots took registered names. Until 2026-11-15 the old name is still asked for (a
@@ -508,7 +503,7 @@ case "${1:-}" in
     conf_get "$2" || exit $?
     ;;
   --check)
-    CHECKED=0
+    FAIL=0; CHECKED=0
     git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1 || {
       echo "roots: $ROOT is not a git checkout — NO file was inspected, and this is not a pass" >&2
       exit 2; }
@@ -582,7 +577,7 @@ case "${1:-}" in
     REPOS_RE="$(printf '%s\n' "$__ids" | awk -F'\t' 'NF { gsub(/\./, "\\.", $1); printf "%s%s", (n++ ? "|" : ""), $1 }')"
     [ -f "$(private_dir)/repos.tsv" ] || log_note "no repo registry: arm 2 checks the roots table's repos only ($REPOS_RE)"
     KNOWN="$(rows | awk -F'\t' '{printf "%s|", $1}')KNOWN_NONE"
-    KNOWN="$KNOWN|$(printf '%s\n' "$ROOT_ALIASES" | cut -f1 | paste -sd'|' -)"   # harbor#961 W5: old names, read inside their new rows' readers until 2026-11-15
+    KNOWN="$KNOWN|$(printf '%s\n' "$W5_ALIASES" | cut -f1 | paste -sd'|' -)"   # harbor#961 W5: old names, read inside their new rows' readers until 2026-11-15
     #     Anchored on a default that STARTS with the home prefix: `${BIN:-$_self_dir,
     #     $HOME/port/harbor/bin}` in bin/harbor is a help STRING listing where it
     #     looked, not a root, and flagging it would be the false positive above

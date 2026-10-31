@@ -14,7 +14,6 @@ set -eu
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 . "$SRC/library-log.sh"
 log_init drift-port-root
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 
 NAMES=0

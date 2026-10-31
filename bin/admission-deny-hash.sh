@@ -48,9 +48,7 @@ set -eu
 # contracts/logging.md, harbor#771).
 SELF="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 . "$SELF/library-log.sh"
-log_init deny-hash
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
-LOG_FD=2
+log_init deny-hash; LOG_FD=2
 # die <what failed> <fix> [exit] — FAIL, its fix, the summary, then the exit code the tool always had (2).
 die() { log_fail "$1"; log_fix "$2"; log_end || :; exit "${3:-2}"; }
 

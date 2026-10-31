@@ -4,8 +4,7 @@
 implemented (`bin/lint-findings.sh`, lint FL1 and FL2) and scheduled daily** (launchd
 `com.harbor.lint.findings`, operator yes 2026-10-02) — its `docs/reference/checks.md` row is `lint.findings`. The check tier
 is implemented too: a registered check's receipt under `~/.claude/cache/checks/` is filed as
-`check/<id>` (harbor#896). The floor tier reaches it the same way: the daily judge leaves an `audit.triage`
-receipt, filed as `check/audit.triage` (harbor#591). The CI and review tiers below are still the intent, and this line says so.
+`check/<id>` (harbor#896). The CI, review and floor tiers below are still the intent, and this line says so.
 
 ## Why this exists
 
@@ -241,10 +240,10 @@ budget. Assuming one budget for all of them would be wrong.
 | tier | fires | what it may do | store |
 |---|---|---|---|
 | `floor` | per tool call | **one local append, no fork on the allow path, no network.** Unchanged from `library-admission.sh` today | the local guard-decision JSONL (salted digest) |
-| `floor`, promoted | daily, inside the `audit.triage` run | the judge has already aggregated the ledger and applied each rule's threshold, so `audit-triage-run.sh --apply` writes one check receipt: red over `<severity>:<rule>` (`crit:FC-2`), green when it judged nothing. Never the judge's subject text, which carries counts, and never a salted digest, so the key is the same on every install (harbor#591) | issues |
+| `floor`, promoted | daily, inside the `audit.triage` run | aggregates by the salted `h` and promotes only candidates above a threshold. The subject set is the salted digests, which are comparable **within one install only**, and the contract says so rather than pretending otherwise | issues |
 | `lint` | per push, in the census | nothing new: the census still prints in full at push time | — |
 | `lint`, reconciled | daily at most, against the published default branch — `sh bin/lint-findings.sh reconcile --apply`, daily from launchd `com.harbor.lint.findings` (operator yes 2026-10-02) | one `gh` read of the finding issues, plus at most one write per finding per day | issues |
-| `check` | on each check's own `docs/reference/checks.md` schedule | the check writes one receipt per run, `~/.claude/cache/checks/<id>.json` = `{id, ran_at, status: green\|red\|stood-down, subjects}`, through log-lib's `log_receipt` (harbor#896). The reconcile reads it and never re-runs the check: red fires over the subjects, stood-down fires over `stood-down`, a receipt at most two days old is a run (so green closes as fixed), an older or missing one is not seen, and an id with no `docs/reference/checks.md` row is refused. Adopted by `memory.route`, `ci.main-tip-verdict` and `audit.triage` | issues |
+| `check` | on each check's own `docs/reference/checks.md` schedule | the check writes one receipt per run, `~/.claude/cache/checks/<id>.json` = `{id, ran_at, status: green\|red\|stood-down, subjects}`, through log-lib's `log_receipt` (harbor#896). The reconcile reads it and never re-runs the check: red fires over the subjects, stood-down fires over `stood-down`, a receipt at most two days old is a run (so green closes as fixed), an older or missing one is not seen, and an id with no `docs/reference/checks.md` row is refused. Adopted by `memory.route` and `ci.main-tip-verdict` | issues |
 | `ci` | per merge | a red verdict on a commit already on `main` (#586) | issues |
 | `review` | per push to a PR | the reviewer (projects-orchestrator#312) writes the same marker in its PR review. The finding lives and dies with the PR, so it never files an issue | the PR's review thread |
 
@@ -254,11 +253,10 @@ or unpushed commits describes the operator's own work. Filing on it would publis
 a failure `main` may not have, and closing on it would close a finding while
 `main` is still red.
 
-**The floor tier waited on #560**, because `observe --fp`'s top rows were
-floor-verify's own self-test shapes (2026-09-20: about 1,000 rows above the first
-real candidate), and promoting from that ledger would have filed the harness as a
-finding. FC-5 now drops them (`audit-triage.sh --exclusion-set`), so the judge's
-findings are what reach the store.
+**The floor tier is blocked on #560.** Today `observe --fp`'s top rows are
+floor-verify's own self-test shapes, about 1,000 rows above the first real
+candidate. Promoting from that ledger before the self-test is excluded would
+file the harness as a finding.
 
 ## The report is the delta and the ages, never the census
 

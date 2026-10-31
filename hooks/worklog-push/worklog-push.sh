@@ -28,9 +28,9 @@ case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
 . "$DIR/library-admission.sh"
 # A Stop hook's stdout is the harness's, so its log goes to stderr (contracts/logging.md). Every
 # path still exits 0: a blocked commit is a WARN with its fix, never a blocked session.
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; . "$DIR/library-log.sh"
 floor_read_stdin
+IN="${FLOOR_IN:-}"
 # Stands down only where the repo's .agents/config.yaml says `worklog: off` (harbor#954).
 floor_engine_stand_down && exit 0
 
@@ -50,14 +50,6 @@ DATE="$(date +%Y-%m-%d)"
 floor_worklog_record "$WORKLOG_DIR" "$HOST" "$SID" "$DATE" "$(date +%H:%M)" "${CWD:-unknown}" || true
 
 cd "$WORKLOG_DIR" || exit 0
-
-# One session at a time stages, commits and pushes: concurrent Stops raced on the remote ref (harbor#559: 50 of 54
-# push failures were `cannot lock ref`). A skipped session loses nothing: its record is on disk and the next push
-# carries every local commit. A lock left by a killed hook is reclaimed after 10 minutes.
-_wl_lock="$WORKLOG_DIR/.git/harbor-worklog.lock"
-[ -z "$(find "$WORKLOG_DIR/.git" -maxdepth 1 -name harbor-worklog.lock -mmin +10 2>/dev/null)" ] || rmdir "$_wl_lock" 2>/dev/null
-mkdir "$_wl_lock" 2>/dev/null || exit 0
-trap 'rmdir "$_wl_lock" 2>/dev/null' EXIT
 
 # Tracked-glob allowlist (deny-by-default; never git add -A). One add per
 # glob: git aborts a multi-pathspec add wholesale if ANY pathspec is empty.

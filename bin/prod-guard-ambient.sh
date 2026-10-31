@@ -75,7 +75,6 @@ PAYLOAD="$(cat)"
 case "$0" in */*) _LIB="${0%/*}/library-admission.sh" ;; *) _LIB=./library-admission.sh ;; esac
 _log() { # <verdict> <rule.shape>; FLOOR_IN gives the record its session key (harbor#309)
   [ -f "$_LIB" ] || return 0
-  # shellcheck disable=SC2034 # FLOOR_IN, FLOOR_TOOL: read by library-admission.sh
   ( set +eu; FLOOR_TOOL=Bash; FLOOR_IN="$PAYLOAD"; . "$_LIB"; floor_log_decision prod "$1" "$2" ) \
     >/dev/null 2>&1 || :
 }

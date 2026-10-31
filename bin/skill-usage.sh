@@ -41,7 +41,6 @@ set -eu
 # harbor#521: touched, so converted (LOG1 ratchet). Stdout is the report; the log goes to stderr.
 HERE="$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)" || HERE=""
 [ -n "$HERE" ] && [ -f "$HERE/library-log.sh" ] || { echo "skill-usage: library-log.sh is missing beside $0" >&2; exit 1; }
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 . "$HERE/library-log.sh"
 log_init skill-usage

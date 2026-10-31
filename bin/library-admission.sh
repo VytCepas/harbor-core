@@ -3357,85 +3357,6 @@ floor_installed_sha() {
                      else . end)' "$1" 2>/dev/null || true)"
   if [ -n "$_isn" ]; then printf '%s' "$_isn" | floor_sha; else floor_pluginmeta_sha "$1"; fi
 }
-# ── what a marketplace holds that nothing can load (harbor#1390) ────────────
-# A marketplace checkout carries every plugin it lists, and the harness loads only the ones a settings file enables
-# or installed_plugins.json installs, from their installPath (walked above by content). An upstream edit to a plugin
-# nobody enabled turned B8 amber at every SessionStart, and so did the plugin directory's own catalog cache, whose
-# listings are plugins that are not installed. Neither can carry an instruction into a session, so:
-#   D <prefix>      plugins/marketplaces/<mp>/<plugins|external_plugins>/<dir>/ of a plugin no name below can load
-#   R <path> <sha>  plugins/plugin-directory-cache-v2.json hashed over the listings of loadable plugins only, clock-free
-# The names: every installed_plugins.json key (any scope) and every enabledPlugins key not set to false, in this
-# config dir's settings.json and settings.local.json, compared without the @<marketplace>. A dir is kept when its
-# name is one of them or a kept catalog entry's string source points in or under it. FAIL TOWARD COVERAGE: no jq,
-# an installed_plugins.json the loaded walk cannot read exactly, a settings file or a catalog that does not parse,
-# or a name with a tab, newline or backslash, and nothing is dropped.
-floor_plugins_unloaded() { # <config-dir>
-  _pu="$1/plugins"
-  command -v jq >/dev/null 2>&1 || return 0
-  [ -f "$_pu/installed_plugins.json" ] || return 0
-  case "$_pu" in *[][*?]*) return 0 ;; esac
-  _pul="$(floor_plugins_loaded "$_pu/installed_plugins.json")"
-  [ -n "$_pul" ] || return 0
-  if printf '%s\n' "$_pul" | awk -F'\t' '$4 == "-" || seen[$1 FS $2 FS $3]++ { f = 1 } END { exit !f }'; then return 0; fi
-  _pun="$(printf '%s\n' "$_pul" | awk -F'\t' '{ print $1 }')"
-  for _ps in "$1/settings.json" "$1/settings.local.json"; do
-    [ -e "$_ps" ] || continue
-    _pse="$(jq -r '(.enabledPlugins // {}) | if type == "object" then (to_entries[] | select(.value != false) | .key)
-                   else error("shape") end' "$_ps" 2>/dev/null)" || return 0
-    _pun="$_pun
-$_pse"
-  done
-  _punj="$(printf '%s\n' "$_pun" | jq -R -s -c 'split("\n") | map(select(length > 0) | sub("@[^@]*$"; "") | ascii_downcase) | unique' 2>/dev/null)" || return 0
-  [ -n "$_punj" ] || return 0
-  for _pm in "$_pu"/marketplaces/*; do
-    { [ -d "$_pm" ] && [ ! -L "$_pm" ] && [ -f "$_pm/.claude-plugin/marketplace.json" ]; } || continue
-    _pmn="${_pm##*/}"
-    case "$_pmn" in *'	'*|*\\*) continue ;; esac
-    _pk="$(jq -r --argjson n "$_punj" '
-      ($n | map("plugins/" + ., "external_plugins/" + .))
-      + [ (.plugins // []) | arrays | .[] | objects | select(((.name // "") | tostring | ascii_downcase) as $x | any($n[]; . == $x))
-          | .source | strings | sub("^(\\./)+"; "") | sub("/+$"; "") ]
-      | .[]' "$_pm/.claude-plugin/marketplace.json" 2>/dev/null)" || continue
-    for _pt in plugins external_plugins; do
-      { [ -d "$_pm/$_pt" ] && [ ! -L "$_pm/$_pt" ]; } || continue
-      find "$_pm/$_pt" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | while IFS= read -r _pdd; do
-        _pdn="${_pdd##*/}"
-        case "$_pdn" in *'	'*|*\\*) continue ;; esac
-        printf '%s/%s\n' "$_pt" "$_pdn"
-      done
-    done | _PU_KEPT="$_pk" _PU_MP="$_pmn" awk '
-      BEGIN { n = split(ENVIRON["_PU_KEPT"], k, "\n") }
-      { r = $0; keep = 0
-        for (i = 1; i <= n; i++) if (k[i] != "" && (k[i] == r || index(k[i], r "/") == 1 || index(r, k[i] "/") == 1)) { keep = 1; break }
-        if (!keep) printf "D\tplugins/marketplaces/%s/%s/\n", ENVIRON["_PU_MP"], r }'
-  done
-  _pdc="$_pu/plugin-directory-cache-v2.json"
-  if [ -f "$_pdc" ] && [ ! -L "$_pdc" ]; then
-    _pdp="$(jq -S -c --argjson n "$_punj" '
-      (.entryNames // {}) as $en
-      | (.listings | arrays) |= map(select(type != "object"
-          or ((($en[(.id // "") | tostring] // "") | tostring | ascii_downcase) as $a
-              | ((.name // "") | tostring | ascii_downcase) as $b | any($n[]; . == $a or . == $b))))
-      | ([.listings[]? | objects | (.id // "") | tostring]) as $ids
-      | del(.fetchedAt)
-      | (.entryNames | objects) |= with_entries(select(.key as $i | any($ids[]; . == $i)))
-      | (.entryNameClaims | objects) |= (with_entries(select(.key as $i | any($ids[]; . == $i)))
-                                         | map_values(if type == "object" then del(.lastSeen) else . end))' "$_pdc" 2>/dev/null || true)"
-    [ -z "$_pdp" ] || printf 'R\tplugins/plugin-directory-cache-v2.json\t%s\n' "$(printf '%s' "$_pdp" | floor_sha)"
-  fi
-  return 0
-}
-# floor_instr_unloaded_filter — the manifest on stdin minus what floor_plugins_unloaded drops, with its
-# replacements applied. Literal compares only: the config dir and the names are data.
-floor_instr_unloaded_filter() { # <floor_plugins_unloaded output>
-  _IM_UNL="${1:-}" awk 'BEGIN { n = split(ENVIRON["_IM_UNL"], u, "\n")
-               for (i = 1; i <= n; i++) { split(u[i], f, "\t"); if (f[1] == "D") d[f[2]] = 1; else if (f[1] == "R") r[f[2]] = f[3] } }
-    { s = index($0, "  "); p = s ? substr($0, s + 2) : ""
-      if (p ~ /^plugins\/marketplaces\//) { m = split(p, a, "/"); if (m >= 6 && ((a[1] "/" a[2] "/" a[3] "/" a[4] "/" a[5] "/") in d)) next }
-      if ((p in r) && substr($0, 1, s - 1) ~ /^[0-9a-f]+$/) { print r[p] "  " p; next }
-      print }'
-}
-
 # floor_instr_tree <dir> <label> — "<sha>  <label>/<rel>" per file under <dir>, and every
 # symlink's target, with the harness's own bookkeeping pruned as in the walk below.
 floor_instr_tree() {
@@ -3489,194 +3410,19 @@ floor_instr_shared_memory() { # <config-dir> <surface glob> <link target>
   case "$_ism" in ''|*/*) return 1 ;; esac
   [ -d "$3" ] && [ ! -L "$3" ]
 }
-# floor_instr_memlinks <config-dir> — the projects/*/memory links that are NOT exempt (floor_instr_shared_memory),
-# decided from ONE readlink over one snapshot of the links, not a fork per link (1,298 links cost ~10 s at load 24,
-# harbor#559). Prints `ok` and then those links. Any doubt — a failed readlink, or a target with a newline in it —
-# prints nothing, and every link is then decided one by one as before.
-floor_instr_memlinks() { # <config-dir>
-  # Numbered variables, then one `set --`: appending with `set -- "$@" x` per link is quadratic (6.7 s user).
-  _iml_c="$1"; _iml_n=0; _iml_r=''
-  for _iml_p in "$_iml_c"/projects/*/memory; do
-    [ -L "$_iml_p" ] || continue
-    _iml_n=$((_iml_n + 1)); eval "_iml_p$_iml_n=\$_iml_p"; _iml_r="$_iml_r \"\$_iml_p$_iml_n\""
-  done
-  eval "set -- $_iml_r"
-  [ $# -gt 0 ] || { printf 'ok\n'; return 0; }
-  # The `.` keeps a target's trailing newline from being stripped: it must make the count wrong, not vanish.
-  _iml_t="$(readlink -- "$@" 2>/dev/null || exit 1; printf .)" || return 0
-  _iml_t="${_iml_t%.}"
-  [ "$(printf '%s' "$_iml_t" | wc -l)" -eq $# ] || return 0
-  printf 'ok\n'
-  printf '%s' "$_iml_t" | while IFS= read -r _iml_l; do
-    floor_instr_shared_memory "$_iml_c" 'projects/*/memory' "$_iml_l" || printf '%s\n' "$1"
-    shift
-  done
-}
-# floor_instr_dirs <dir>... — the directory branch of floor_instr_manifest, for one surface ($_g) under $_cfg.
-# Several dirs share one walk (the projects/*/memory stores, harbor#559); plugins is always one dir, $1.
-floor_instr_dirs() {
-  _p="$1"
-  # DO NOT follow directory symlinks. `find -L` did, and a link pointing at
-  # its own ancestor (`ln -s .. skills/up`) made the walk self-referential:
-  # the manifest never settled, so the advisory became permanent and
-  # --apply could never clear it (pass 10, B8R2-06). Enumerating without
-  # -L terminates; a symlinked FILE is still hashed through the link below,
-  # and every link's TARGET is recorded, so re-pointing one is still drift
-  # even though its contents are not walked.
-  # .git is excluded: a plugin checkout rewrites objects on every fetch,
-  # and an advisory that fires on every fetch is one nobody reads.
-  #
-  # `.in_use/` AND `.last_inuse_sweep` ARE THE SAME CLASS, and they were
-  # making the advisory permanent. Claude Code reference-counts each cached
-  # plugin by dropping `plugins/cache/<mp>/<plugin>/<ver>/.in_use/<pid>` at
-  # session start and sweeping them into `plugins/.last_inuse_sweep`. So
-  # EVERY session changed the manifest, and this machine's SessionStart had
-  # been reporting the identical five paths as instruction-surface drift —
-  # four `.in_use/<pid>` files and the sweep timestamp. Verified 2026-08-02:
-  # the two pids present were exactly the two live sessions, and one marker
-  # read {"pid":89490,"procStart":"Sun Aug  2 08:41:36 2026"} — a lockfile,
-  # not content.
-  #
-  # THIS NARROWS WHAT B8 WATCHES, so the justification has to be that the
-  # pruned paths cannot carry injected instructions, not merely that they
-  # are noisy. They cannot: a plugin is loaded from its manifest — skills/,
-  # commands/, hooks/, agents/ — and nothing reads `.in_use/`. Pruning is
-  # scoped to that one directory name and that one filename rather than to
-  # a pattern, so a file planted anywhere else under plugins/ is still
-  # hashed. The alternative was worse in the way №2.11 names: an advisory
-  # that cries wolf at every single SessionStart is one the operator learns
-  # to scroll past, and then the real drift scrolls past with it.
-  # .gcs-sha is a git-fetch marker (one sha), pruned like .git. The two
-  # plugin manifests are excluded here and re-emitted below in a
-  # timestamp-normalized form (harbor#198); their raw bytes churn every
-  # session on a lastUpdated field that carries no instruction.
-  # marketplace.json is excluded and re-emitted the same way, on the same
-  # reasoning applied to a different field — see floor_marketplace_sha for the
-  # measured churn rate and why stripping `source.sha` does not narrow what a
-  # session can be instructed by. EXCLUDED-THEN-RE-EMITTED, never dropped.
-  # harbor#764: the plugin sync's `synced/<id>/.last-complete-round` and the cache's
-  # `<ver>/.orphaned_at` are timestamps the harness rewrites on its own, so B8 went amber
-  # seconds after every re-pin. Pruned by NAME and on the plugins surface only; on any other
-  # surface the two names below are the already-pruned sweep file, a no-op.
-  if [ "$_g" = plugins ]; then _bk1=.last-complete-round; _bk2=.orphaned_at; _bk3=.marketplaces.json
-  else _bk1=.last_inuse_sweep; _bk2=.last_inuse_sweep; _bk3=.last_inuse_sweep; fi
-  # harbor#478: the harness re-extracts a plugin into a new cache/<ver>/ about daily,
-  # byte-identical. So cache/ is read only through installed_plugins.json, by the entry
-  # that LOADS it, below; jq missing, the file unreadable or an odd config dir → full walk.
-  _ld=''; _pc="$_p/.no-prune/."
-  if [ "$_g" = plugins ] && [ -f "$_p/installed_plugins.json" ] && command -v jq >/dev/null 2>&1; then
-    _ld="$(floor_plugins_loaded "$_p/installed_plugins.json")"
-    case "$_p" in *[][*?]*) _ld='' ;; esac
-    # No installPath, or two entries one label: what loads is unclear, so walk all of cache/.
-    if printf '%s\n' "$_ld" | awk -F'\t' '$4 == "-" || seen[$1 FS $2 FS $3]++ { f = 1 } END { exit !f }'; then _ld=''; fi
-    [ -z "$_ld" ] || _pc="$_p/cache"
-  fi
-  if command -v sha256sum >/dev/null 2>&1; then
-    find "$@" \( -name .git -o -name .in_use -o -path "$_pc" \) -prune -o \
-         ! -name .last_inuse_sweep ! -name .gcs-sha \
-         ! -name installed_plugins.json ! -name known_marketplaces.json \
-         ! -name marketplace.json ! -name "$_bk1" ! -name "$_bk2" ! -name "$_bk3" \
-         -type f -exec sha256sum {} + 2>/dev/null
-  else
-    find "$@" \( -name .git -o -name .in_use -o -path "$_pc" \) -prune -o \
-         ! -name .last_inuse_sweep ! -name .gcs-sha \
-         ! -name installed_plugins.json ! -name known_marketplaces.json \
-         ! -name marketplace.json ! -name "$_bk1" ! -name "$_bk2" ! -name "$_bk3" \
-         -type f -exec shasum -a 256 {} + 2>/dev/null
-  # Prefix-stripped with awk's index(), NOT sed: the config dir is data,
-  # and putting it in a sed PATTERN made its metacharacters active — a `|`
-  # in the path threw "bad flag in substitute command" and silently
-  # dropped the whole surface from the manifest, which then reads as
-  # "clean" (red-team B8, B8-DEF-07). index() is a literal search.
-  fi | awk -v p="  $_cfg/" '{ i=index($0,p); if (i) print substr($0,1,i+1) substr($0,i+length(p)); else print }'
-  # Re-emit the two excluded manifests in timestamp-normalized form. Guarded
-  # on -f, so this is a no-op for every surface that does not hold them.
-  for _p in "$@"; do for _pm in installed_plugins.json known_marketplaces.json; do
-    [ -f "$_p/$_pm" ] || continue
-    _pmrel="${_p#"$_cfg"/}/$_pm"
-    if [ "$_pm" = installed_plugins.json ] && [ -n "$_ld" ]; then
-      printf '%s  %s\n' "$(floor_installed_sha "$_p/$_pm")" "$_pmrel"
-    else
-      printf '%s  %s\n' "$(floor_pluginmeta_sha "$_p/$_pm")" "$_pmrel"
-    fi
-  done; done
-  # harbor#478: each loaded plugin's files, under a label naming the entry that loads
-  # it (key, scope, project), never the version dir. An entry whose dir is gone is `absent`.
-  if [ -n "$_ld" ]; then
-    printf '%s\n' "$_ld" | while IFS="$(printf '\t')" read -r _lk _ls _lp _li; do
-      [ -n "$_lk" ] || continue
-      # `//`: no walked path has one, so a real plugins/loaded/ file never wears a label.
-      # The project is %-escaped, never folded, so /a-b and /a/b stay two labels.
-      _ll="plugins//loaded/$_lk/$_ls"
-      [ "$_lp" = - ] || _ll="$_ll/$(printf '%s' "$_lp" | sed 's/%/%25/g; s#/#%2F#g')"
-      if [ "$_li" != - ] && [ -d "$_li" ]; then floor_instr_tree "$_li" "$_ll"
-      else printf 'absent  %s\n' "$_ll"; fi
-    done
-  fi
-  # Re-emit every marketplace CATALOG in sha-normalized form. A find rather
-  # than the fixed path the loop above uses: catalogs live one per marketplace
-  # at plugins/marketplaces/<mp>/.claude-plugin/marketplace.json, so there are
-  # N of them and none sits at the surface root. printf is the last command in
-  # the body deliberately — a false test in that position kills the pipeline
-  # under `set -eu` and SILENTLY TRUNCATES the manifest, which is the B8-02
-  # mechanism the symlink loop below documents at length.
-  find "$@" \( -name .git -o -name .in_use -o -path "$_pc" \) -prune -o \
-       -name marketplace.json -type f -print 2>/dev/null | while IFS= read -r _mk; do
-    _mkrel="${_mk#"$_cfg"/}"
-    printf '%s  %s\n' "$(floor_marketplace_sha "$_mk")" "$_mkrel"
-  done
-  # The plugins surface's .marketplaces.json, excluded above and re-emitted clock-free (floor_syncmeta_sha).
-  [ "$_bk3" != .marketplaces.json ] || find "$@" \( -name .git -o -name .in_use -o -path "$_pc" \) -prune -o \
-       -name .marketplaces.json -type f -print 2>/dev/null | while IFS= read -r _sm; do
-    _smrel="${_sm#"$_cfg"/}"
-    printf '%s  %s\n' "$(floor_syncmeta_sha "$_sm")" "$_smrel"
-  done
-  find "$@" \( -name .git -o -name .in_use -o -path "$_pc" \) -prune -o \
-       ! -name .last_inuse_sweep -type l -print 2>/dev/null | while IFS= read -r _l; do
-    _rel="${_l#"$_cfg"/}"
-    printf 'link:%s  %s\n' "$(readlink "$_l" 2>/dev/null || echo '?')" "$_rel"
-    # A symlink to a regular FILE is hashed through the link, so swapping
-    # its target content is drift (that was B8-02). A symlink to a
-    # DIRECTORY is recorded by target only — see the note above.
-    #
-    # `if`, NOT `[ … ] && …`. As the LAST command of this while body, a
-    # false test made the loop exit 1, which killed the enclosing pipeline
-    # under `set -eu` and SILENTLY TRUNCATED the manifest at the first
-    # surface containing a broken or directory symlink. Weaponised in pass
-    # 11 (B8-02, critical): one `ln -s /nonexistent <cfg>/agents/x` — a
-    # write into a surface that is writable by design — dropped skills,
-    # commands, hooks, plugins and memory from BOTH the pin and the live
-    # manifest, so the diff was empty forever and floor-verify reported
-    # "✓ instruction surfaces pinned and unchanged" over live injections.
-    if [ -f "$_l" ]; then printf '%s  %s\n' "$(floor_sha < "$_l")" "$_rel"; fi
-  done
-}
 floor_instr_manifest() { # <config-dir>
   _cfg="${1%/}"
-  _imunl=''
-  case " $FLOOR_INSTR_SURFACES " in *" plugins "*) _imunl="$(floor_plugins_unloaded "$_cfg")" ;; esac
-  _nl='
-'
-  _mlx="$(floor_instr_memlinks "$_cfg")"
-  _mdn=0; _mdr=''
   for _g in $FLOOR_INSTR_SURFACES; do
     # A surface may be a glob (projects/*/memory). Unmatched globs come back
     # literally, which the -f/-d tests below then record as absent.
     for _p in "$_cfg"/$_g; do
-      # Quoted, the strip is literal: an unquoted ${_p#$_cfg/} glob-matched [ ? * (P10-05).
-      # No fork per path: 1,300+ memory links made this loop the session-start cost (harbor#559).
-      _s="${_p#"$_cfg"/}"
-      if [ "$_g" = 'projects/*/memory' ] && [ -d "$_p" ] && [ ! -L "$_p" ]; then
-        # The memory stores share one walk below, 256 at a time (argument length), not ~5 forks each.
-        _mdn=$((_mdn + 1)); eval "_md$_mdn=\$_p"; _mdr="$_mdr \"\$_md$_mdn\""
-        [ "$_mdn" -lt 256 ] || { eval "floor_instr_dirs $_mdr"; _mdn=0; _mdr=''; }
-        continue
-      fi
+      # ${_p#$_cfg/} is a GLOB strip, so a config dir containing [ ? or *
+      # silently failed to match and the surface came out as an ABSOLUTE path
+      # while the directory branch (awk index) stripped it correctly — the same
+      # path spelled two ways in one manifest (pass 10, P10-05). Literal length
+      # arithmetic instead.
+      _s="$(printf '%s' "$_p" | awk -v n="${#_cfg}" '{print substr($0, n+2)}')"
       if [ -L "$_p" ]; then
-        # floor_instr_memlinks already decided this link exempt: no readlink.
-        if [ "$_g" = 'projects/*/memory' ]; then
-          case "$_mlx" in ok|ok"$_nl"*) case "$_mlx$_nl" in *"$_nl$_p$_nl"*) ;; *) continue ;; esac ;; esac
-        fi
         _lt="$(readlink "$_p" 2>/dev/null || echo '?')"
         # A worktree's memory link to a store this same walk already pins adds no instruction: every
         # new worktree turned B6 amber (71 advisories, 2026-10-23..25). Only that exact shape is exempt.
@@ -3686,13 +3432,145 @@ floor_instr_manifest() { # <config-dir>
       if [ -f "$_p" ]; then
         printf '%s  %s\n' "$(floor_sha < "$_p")" "$_s"
       elif [ -d "$_p" ]; then
-        floor_instr_dirs "$_p"
+        # DO NOT follow directory symlinks. `find -L` did, and a link pointing at
+        # its own ancestor (`ln -s .. skills/up`) made the walk self-referential:
+        # the manifest never settled, so the advisory became permanent and
+        # --apply could never clear it (pass 10, B8R2-06). Enumerating without
+        # -L terminates; a symlinked FILE is still hashed through the link below,
+        # and every link's TARGET is recorded, so re-pointing one is still drift
+        # even though its contents are not walked.
+        # .git is excluded: a plugin checkout rewrites objects on every fetch,
+        # and an advisory that fires on every fetch is one nobody reads.
+        #
+        # `.in_use/` AND `.last_inuse_sweep` ARE THE SAME CLASS, and they were
+        # making the advisory permanent. Claude Code reference-counts each cached
+        # plugin by dropping `plugins/cache/<mp>/<plugin>/<ver>/.in_use/<pid>` at
+        # session start and sweeping them into `plugins/.last_inuse_sweep`. So
+        # EVERY session changed the manifest, and this machine's SessionStart had
+        # been reporting the identical five paths as instruction-surface drift —
+        # four `.in_use/<pid>` files and the sweep timestamp. Verified 2026-08-02:
+        # the two pids present were exactly the two live sessions, and one marker
+        # read {"pid":89490,"procStart":"Sun Aug  2 08:41:36 2026"} — a lockfile,
+        # not content.
+        #
+        # THIS NARROWS WHAT B8 WATCHES, so the justification has to be that the
+        # pruned paths cannot carry injected instructions, not merely that they
+        # are noisy. They cannot: a plugin is loaded from its manifest — skills/,
+        # commands/, hooks/, agents/ — and nothing reads `.in_use/`. Pruning is
+        # scoped to that one directory name and that one filename rather than to
+        # a pattern, so a file planted anywhere else under plugins/ is still
+        # hashed. The alternative was worse in the way №2.11 names: an advisory
+        # that cries wolf at every single SessionStart is one the operator learns
+        # to scroll past, and then the real drift scrolls past with it.
+        # .gcs-sha is a git-fetch marker (one sha), pruned like .git. The two
+        # plugin manifests are excluded here and re-emitted below in a
+        # timestamp-normalized form (harbor#198); their raw bytes churn every
+        # session on a lastUpdated field that carries no instruction.
+        # marketplace.json is excluded and re-emitted the same way, on the same
+        # reasoning applied to a different field — see floor_marketplace_sha for the
+        # measured churn rate and why stripping `source.sha` does not narrow what a
+        # session can be instructed by. EXCLUDED-THEN-RE-EMITTED, never dropped.
+        # harbor#764: the plugin sync's `synced/<id>/.last-complete-round` and the cache's
+        # `<ver>/.orphaned_at` are timestamps the harness rewrites on its own, so B8 went amber
+        # seconds after every re-pin. Pruned by NAME and on the plugins surface only; on any other
+        # surface the two names below are the already-pruned sweep file, a no-op.
+        if [ "$_g" = plugins ]; then _bk1=.last-complete-round; _bk2=.orphaned_at; _bk3=.marketplaces.json
+        else _bk1=.last_inuse_sweep; _bk2=.last_inuse_sweep; _bk3=.last_inuse_sweep; fi
+        # harbor#478: the harness re-extracts a plugin into a new cache/<ver>/ about daily,
+        # byte-identical. So cache/ is read only through installed_plugins.json, by the entry
+        # that LOADS it, below; jq missing, the file unreadable or an odd config dir → full walk.
+        _ld=''; _pc="$_p/.no-prune/."
+        if [ "$_g" = plugins ] && [ -f "$_p/installed_plugins.json" ] && command -v jq >/dev/null 2>&1; then
+          _ld="$(floor_plugins_loaded "$_p/installed_plugins.json")"
+          case "$_p" in *[][*?]*) _ld='' ;; esac
+          # No installPath, or two entries one label: what loads is unclear, so walk all of cache/.
+          if printf '%s\n' "$_ld" | awk -F'\t' '$4 == "-" || seen[$1 FS $2 FS $3]++ { f = 1 } END { exit !f }'; then _ld=''; fi
+          [ -z "$_ld" ] || _pc="$_p/cache"
+        fi
+        if command -v sha256sum >/dev/null 2>&1; then
+          find "$_p" \( -name .git -o -name .in_use -o -path "$_pc" \) -prune -o \
+               ! -name .last_inuse_sweep ! -name .gcs-sha \
+               ! -name installed_plugins.json ! -name known_marketplaces.json \
+               ! -name marketplace.json ! -name "$_bk1" ! -name "$_bk2" ! -name "$_bk3" \
+               -type f -exec sha256sum {} + 2>/dev/null
+        else
+          find "$_p" \( -name .git -o -name .in_use -o -path "$_pc" \) -prune -o \
+               ! -name .last_inuse_sweep ! -name .gcs-sha \
+               ! -name installed_plugins.json ! -name known_marketplaces.json \
+               ! -name marketplace.json ! -name "$_bk1" ! -name "$_bk2" ! -name "$_bk3" \
+               -type f -exec shasum -a 256 {} + 2>/dev/null
+        # Prefix-stripped with awk's index(), NOT sed: the config dir is data,
+        # and putting it in a sed PATTERN made its metacharacters active — a `|`
+        # in the path threw "bad flag in substitute command" and silently
+        # dropped the whole surface from the manifest, which then reads as
+        # "clean" (red-team B8, B8-DEF-07). index() is a literal search.
+        fi | awk -v p="  $_cfg/" '{ i=index($0,p); if (i) print substr($0,1,i+1) substr($0,i+length(p)); else print }'
+        # Re-emit the two excluded manifests in timestamp-normalized form. Guarded
+        # on -f, so this is a no-op for every surface that does not hold them.
+        for _pm in installed_plugins.json known_marketplaces.json; do
+          [ -f "$_p/$_pm" ] || continue
+          _pmrel="$(printf '%s' "$_p/$_pm" | awk -v n="${#_cfg}" '{print substr($0, n+2)}')"
+          if [ "$_pm" = installed_plugins.json ] && [ -n "$_ld" ]; then
+            printf '%s  %s\n' "$(floor_installed_sha "$_p/$_pm")" "$_pmrel"
+          else
+            printf '%s  %s\n' "$(floor_pluginmeta_sha "$_p/$_pm")" "$_pmrel"
+          fi
+        done
+        # harbor#478: each loaded plugin's files, under a label naming the entry that loads
+        # it (key, scope, project), never the version dir. An entry whose dir is gone is `absent`.
+        if [ -n "$_ld" ]; then
+          printf '%s\n' "$_ld" | while IFS="$(printf '\t')" read -r _lk _ls _lp _li; do
+            [ -n "$_lk" ] || continue
+            # `//`: no walked path has one, so a real plugins/loaded/ file never wears a label.
+            # The project is %-escaped, never folded, so /a-b and /a/b stay two labels.
+            _ll="plugins//loaded/$_lk/$_ls"
+            [ "$_lp" = - ] || _ll="$_ll/$(printf '%s' "$_lp" | sed 's/%/%25/g; s#/#%2F#g')"
+            if [ "$_li" != - ] && [ -d "$_li" ]; then floor_instr_tree "$_li" "$_ll"
+            else printf 'absent  %s\n' "$_ll"; fi
+          done
+        fi
+        # Re-emit every marketplace CATALOG in sha-normalized form. A find rather
+        # than the fixed path the loop above uses: catalogs live one per marketplace
+        # at plugins/marketplaces/<mp>/.claude-plugin/marketplace.json, so there are
+        # N of them and none sits at the surface root. printf is the last command in
+        # the body deliberately — a false test in that position kills the pipeline
+        # under `set -eu` and SILENTLY TRUNCATES the manifest, which is the B8-02
+        # mechanism the symlink loop below documents at length.
+        find "$_p" \( -name .git -o -name .in_use -o -path "$_pc" \) -prune -o \
+             -name marketplace.json -type f -print 2>/dev/null | while IFS= read -r _mk; do
+          _mkrel="$(printf '%s' "$_mk" | awk -v n="${#_cfg}" '{print substr($0, n+2)}')"
+          printf '%s  %s\n' "$(floor_marketplace_sha "$_mk")" "$_mkrel"
+        done
+        # The plugins surface's .marketplaces.json, excluded above and re-emitted clock-free (floor_syncmeta_sha).
+        [ "$_bk3" != .marketplaces.json ] || find "$_p" \( -name .git -o -name .in_use -o -path "$_pc" \) -prune -o \
+             -name .marketplaces.json -type f -print 2>/dev/null | while IFS= read -r _sm; do
+          _smrel="$(printf '%s' "$_sm" | awk -v n="${#_cfg}" '{print substr($0, n+2)}')"
+          printf '%s  %s\n' "$(floor_syncmeta_sha "$_sm")" "$_smrel"
+        done
+        find "$_p" \( -name .git -o -name .in_use -o -path "$_pc" \) -prune -o \
+             ! -name .last_inuse_sweep -type l -print 2>/dev/null | while IFS= read -r _l; do
+          _rel="$(printf '%s' "$_l" | awk -v n="${#_cfg}" '{print substr($0, n+2)}')"
+          printf 'link:%s  %s\n' "$(readlink "$_l" 2>/dev/null || echo '?')" "$_rel"
+          # A symlink to a regular FILE is hashed through the link, so swapping
+          # its target content is drift (that was B8-02). A symlink to a
+          # DIRECTORY is recorded by target only — see the note above.
+          #
+          # `if`, NOT `[ … ] && …`. As the LAST command of this while body, a
+          # false test made the loop exit 1, which killed the enclosing pipeline
+          # under `set -eu` and SILENTLY TRUNCATED the manifest at the first
+          # surface containing a broken or directory symlink. Weaponised in pass
+          # 11 (B8-02, critical): one `ln -s /nonexistent <cfg>/agents/x` — a
+          # write into a surface that is writable by design — dropped skills,
+          # commands, hooks, plugins and memory from BOTH the pin and the live
+          # manifest, so the diff was empty forever and floor-verify reported
+          # "✓ instruction surfaces pinned and unchanged" over live injections.
+          if [ -f "$_l" ]; then printf '%s  %s\n' "$(floor_sha < "$_l")" "$_rel"; fi
+        done
       else
         printf '%s  %s\n' "absent" "$_s"
       fi
     done
-    [ "$_mdn" -eq 0 ] || { eval "floor_instr_dirs $_mdr"; _mdn=0; _mdr=''; }
-  done | floor_instr_unloaded_filter "$_imunl" | LC_ALL=C sort -k2
+  done | LC_ALL=C sort -k2
 }
 
 # ── the work-log record writer (G2 + harbor#6) ──────────────────────────────

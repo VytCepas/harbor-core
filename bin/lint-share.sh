@@ -18,7 +18,6 @@ ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
 KINDS="${SHARE_KINDS:-$ROOT/standards/naming/kinds.tsv}"
 . "$SRC/library-log.sh"
 log_init lint-share
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 T="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -rf "$T"' EXIT
 MODE="${1:-}"; [ "$#" -eq 0 ] || shift

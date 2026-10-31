@@ -99,7 +99,6 @@ if [ -f "$ROOT/contracts/layers.tsv" ] && [ ! -f "$ROOT/docs/generated/status.md
 fi
 # stdout is the generated document or JSON, so the run log is on stderr (contracts/logging.md). The library is
 # read from this script's own directory, because HARBOR_SCOPE_ROOT may name a tree that has none.
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 . "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-log.sh"
 log_init status-gen

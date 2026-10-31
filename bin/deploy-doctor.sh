@@ -23,10 +23,10 @@ case "${1:-}" in
              exit 0 ;;
 esac
 ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
+CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 JSON=0
 case "${1:-}" in --json) JSON=1 ;; esac
 # The probe table and --json are the report (deploy-live-verify.sh reads the rows), so the run log is on stderr.
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 . "$ROOT/bin/library-log.sh"
 log_init doctor

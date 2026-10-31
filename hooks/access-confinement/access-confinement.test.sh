@@ -2,7 +2,7 @@
 # access-confinement.sh (harbor#1298, #555 decisions 7 and 8): the hook mints a confined command's credentials outside
 # the confinement, into a cache it can read. Against stubs only: a mint that logs each call, a gcx that prints a token.
 . "$(dirname "$0")/../../tests/lib/core.sh"; t_init
-mkdir -p "$T_TMP/managed"
+M="$T_TMP/managed/managed-settings.json"; mkdir -p "$T_TMP/managed"
 APPD="$T_TMP/app"; C="$T_TMP/cache"; IDS="$T_TMP/ids"; LOG="$T_TMP/calls.log"; mkdir -p "$APPD" "$IDS"; : > "$LOG"
 # The hook reads no seam from the environment, so the suite drives a copy with its pinned paths rewritten.
 HOOK="$T_TMP/access-confinement.sh"

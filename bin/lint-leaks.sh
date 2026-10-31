@@ -35,7 +35,6 @@ PRIV="${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}"
 PRIV="${PRIV%/}"
 . "$SRC/library-log.sh"
 log_init lint-leaks
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/lint-leaks.XXXXXX")" || exit 2

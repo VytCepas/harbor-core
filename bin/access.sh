@@ -28,7 +28,6 @@ case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
 . "$SRC/library-log.sh"
 log_init access
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 GREP=/usr/bin/grep   # grep here is ugrep on the operator's box; BSD semantics are the contract
 LEGACY="${ACCESS_LEGACY_REFS:-$ROOT/contracts/secret-legacy-refs.txt}"

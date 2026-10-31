@@ -14,7 +14,6 @@ set -eu
 
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 ROOT="${HERE%/bin}"
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 . "$HERE/library-log.sh"
 log_init browser-hosts-add

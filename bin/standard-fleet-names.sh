@@ -3,8 +3,7 @@
 #
 #   sh bin/standard-fleet-names.sh [--registry FILE] [--gh PATH] [--config-dir DIR] [--today YYYY-MM-DD]
 #
-# For every repo `scope-roots.sh --repos` lists, plus the private layer (or FILE: name TAB checkout path), it runs, read
-# only; a row whose path is a directory of checkouts (no .git of its own) is one repo per child checkout, <row>/<child>:
+# For every repo `scope-roots.sh --repos` lists (or FILE: name TAB checkout path) it runs, read only:
 #   names    bin/lint-name.sh over the repo's tracked names, against this checkout's registry (rules name.*)
 #   vendor   bin/standard-vendor.sh --check <repo>, for a repo that vendors the package (one that does not is not judged)
 #   release  bin/ci-release-names.sh once over the same repos: the release tag, the release title, the Keep a Changelog heading
@@ -59,26 +58,8 @@ if [ -n "$REG" ]; then
   cp "$REG" "$T/reg"
 else
   sh "$ROOT/bin/scope-roots.sh" --repos > "$T/reg" 2>/dev/null || : > "$T/reg"
-  # The private layer carries names too and is no row of its own registry (harbor#967).
-  _pv="$(sh "$ROOT/bin/scope-roots.sh" --private 2>/dev/null)" || _pv=""
-  if [ -n "$_pv" ] && [ -d "$_pv/.git" ] && ! awk -F'\t' -v p="$_pv" '$2 == p { f = 1 } END { exit !f }' "$T/reg"; then
-    printf '%s\t%s\n' "${_pv##*/}" "$_pv" >> "$T/reg"
-  fi
 fi
-# A row whose path holds checkouts rather than being one is judged per checkout, as <row>/<child> (harbor#967).
-# A checkout is a child with a .git DIRECTORY: a linked worktree beside it (.git is a file) is not another repo.
-: > "$T/repos"
-grep -v '^#' "$T/reg" | awk -F'\t' 'NF >= 2 && $1 != "" { print $1 "\t" $2 }' | while IFS="$TAB" read -r _n _p; do
-  case "$_p" in "~/"*) _p="$HOME/${_p#\~/}" ;; esac
-  _k=0
-  if [ -d "$_p" ] && [ ! -e "$_p/.git" ]; then
-    for _c in "$_p"/*/; do
-      _c="${_c%/}"; [ -d "$_c/.git" ] || continue
-      printf '%s/%s\t%s\n' "$_n" "${_c##*/}" "$_c"; _k=1
-    done
-  fi
-  [ "$_k" = 1 ] || printf '%s\t%s\n' "$_n" "$_p"
-done > "$T/repos"
+grep -v '^#' "$T/reg" | awk -F'\t' 'NF >= 2 && $1 != ""' > "$T/repos"
 if [ ! -s "$T/repos" ]; then
   log_fail "[check:$ID] no repo registry: nothing was read, so nothing is judged"; log_fix "sh bin/scope-roots.sh --repos"
   log_end || :; exit 3
@@ -122,7 +103,7 @@ while IFS="$TAB" read -r _name _path; do
 done < "$T/repos"
 
 # release: one call over the whole fleet
-set -- --registry "$T/repos"; [ -z "$GH" ] || set -- "$@" --gh "$GH"
+set -- --registry "$T/reg"; [ -z "$GH" ] || set -- "$@" --gh "$GH"
 sh "$ROOT/bin/ci-release-names.sh" "$@" > "$T/rn.out" 2>&1 < /dev/null
 _rc=$?
 if [ "$_rc" -eq 3 ] || [ "$_rc" -eq 2 ]; then

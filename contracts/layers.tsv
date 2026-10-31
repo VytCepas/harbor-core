@@ -46,7 +46,6 @@ worklog/	core	push hook
 evals/	dev	eval corpora, bulk data
 .gitignore	core	
 .gitleaks.toml	core	secret-scan config: the default rules plus a reasoned allow-list
-.shellcheckrc	core	shellcheck config: SC1007 (`CDPATH= cd`) off at the root
 AGENTS.md	core	
 CLAUDE.md	core	
 policy/constitution.md	core	

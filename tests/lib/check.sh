@@ -132,15 +132,7 @@ for g in $REG; do
   done
 done
 
-# test.red-proof-derived an admission rule a table fires carries that table's suite as red_proof (harbor#1392).
-CTL="$R/standards/naming/controls.tsv"
-if [ -f "$CTL" ]; then
-  sh "$R/tests/lib/red-proof.sh" "$R" | awk -F'\t' 'NR == FNR { p[$1] = $2; next }
-    !/^#/ && $3 == "admission" && ($12 in p) && $11 != p[$12] {
-      printf "test.red-proof-derived standards/naming/controls.tsv: %s red_proof is %s, the tables say %s (sh tests/lib/red-proof.sh --write)\n", $1, $11, p[$12] }' - "$CTL" >> "$V"
-fi
-
 n=$(wc -l < "$V" | tr -d ' ')
 cat "$V"
-echo "check: 7 rules, $n violations"
+echo "check: 6 rules, $n violations"
 [ "$n" -eq 0 ]
