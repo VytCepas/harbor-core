@@ -19,6 +19,7 @@ HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 . "$HERE/deploy-install-lib.sh"
 log_init live-verify
 PROBES=0
+# shellcheck disable=SC2034 # IL_TAKE: read by deploy-install-lib.sh
 il_opt() { case "$1" in --probes) PROBES=1; IL_TAKE=1 ;; esac; }
 il_parse "$@"
 [ "$IL_APPLY" -eq 0 ] || il_usage_error '--apply: the live tier is read-only and writes nothing'
@@ -84,7 +85,7 @@ logged() { # <id> <what to re-run for the full report> <cmd> [args…]
 
 # 1. The floor: fired at the installed guards. floor-verify fires them through a temp link, so the
 #    guard-decision ledger never files a probe (harbor#735).
-skipped floor settings || logged floor "sh $HERE/floor-verify.sh --live" env -u CLAUDE_CONFIG_DIR sh "$HERE/floor-verify.sh" --live
+skipped floor settings || logged floor "sh $HERE/admission-verify.sh --live" env -u CLAUDE_CONFIG_DIR sh "$HERE/admission-verify.sh" --live
 
 # 2. The external tools the floor and the recovery path need.
 sh "$HERE/deploy-doctor.sh" < /dev/null > "$W/doctor" 2>&1; _r=$?

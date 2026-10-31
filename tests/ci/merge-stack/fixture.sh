@@ -22,8 +22,8 @@ ms_world() { # [harbor] — a bare repo; `harbor` adds harbor's own files, other
 #!/bin/sh
 # stub merge-check: squash-merge PR N into the bare remote's default branch, as GitHub does, and mark it merged
 echo "merge-check $1 $2 $3" >> "$MS_FIX/merge.log"
-echo "repo=${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-}} rc=${HARBOR_REQUIRED_CHECKS:-} br=${HARBOR_GATE_BRANCH:-${HARBOR_BRANCH:-}}" >> "$MS_FIX/env.log"
-[ -z "${HARBOR_REQUIRED_CHECKS:-}" ] || cat "$HARBOR_REQUIRED_CHECKS" >> "$MS_FIX/rc.log"   # what the file said when merge-check read it
+echo "repo=${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-}} rc=${HARBOR_GATE_REQUIRED_CHECKS:-${HARBOR_REQUIRED_CHECKS:-}} br=${HARBOR_GATE_BRANCH:-${HARBOR_BRANCH:-}}" >> "$MS_FIX/env.log"
+[ -z "${HARBOR_GATE_REQUIRED_CHECKS:-${HARBOR_REQUIRED_CHECKS:-}}" ] || cat "${HARBOR_GATE_REQUIRED_CHECKS:-$HARBOR_REQUIRED_CHECKS}" >> "$MS_FIX/rc.log"   # what the file said when merge-check read it
 echo "$*" >> "$MS_FIX/args.log"
 MS_PR="$3" sh "$MS_FIX/../merge-into.sh" "$@"
 EOF

@@ -258,7 +258,7 @@ SUITE
   ROW name.bothbad warn lint tests/checks/nm-test.sh "red, a finding in rb" bin/lint-name.sh; } > "$N/standards/naming/controls.tsv"
 git -C "$N" add -A; git -C "$N" -c user.email=t@t -c user.name=t -c commit.gpgsign=false commit -qm seed
 printf '#!/bin/sh\ncase "$1" in --list) printf "  name.clean a\n  name.dirty b\n  name.multi c\n  name.unred d\n  name.bothbad e\n" ;; --ids) printf "id\tdeprecated\n" ;; esac\n' > "$F/nl-conv.sh"
-NPRO() { env HARBOR_SCOPE_ROOT="$N" HARBOR_LINT_RULE_HEALTH_LINT="$F/nl-conv.sh" HARBOR_RH_NAMELINT="$F/nlint.sh" HARBOR_RH_REPOS="$F/repos.tsv" HARBOR_LINT_FINDINGS_REPO=o/r HARBOR_LINT_RULE_HEALTH_NOW=2026-10-28 GH_ACCEPTED="[]" "$@" sh "$RH" --promotion 2>&1; }
+NPRO() { env HARBOR_SCOPE_ROOT="$N" HARBOR_LINT_RULE_HEALTH_LINT="$F/nl-conv.sh" HARBOR_LINT_RULE_HEALTH_NAME_LINT="$F/nlint.sh" HARBOR_LINT_RULE_HEALTH_REPOS="$F/repos.tsv" HARBOR_LINT_FINDINGS_REPO=o/r HARBOR_LINT_RULE_HEALTH_NOW=2026-10-28 GH_ACCEPTED="[]" "$@" sh "$RH" --promotion 2>&1; }
 OUT="$(NPRO NL_FIND="name.dirty@ra:3 name.multi@ra:1 name.multi@rb:2 name.bothbad@rb:1")"; RC=$?
 t_eq "exit 0: still a report" 0 "$RC"
 t_eq "red and 0 findings everywhere: eligible, on the day its row landed" "eligible" "$(line_of name.clean | sed 's/.*  //')"
@@ -272,10 +272,10 @@ t_has "the footer counts the eligible rules" "$OUT" "1 name rule(s) eligible for
 t_eq "it writes nothing into the tree it judges" "" "$(git -C "$N" status --porcelain)"
 # the arm that fails the other way: a repo that could not be linted blocks every name rule
 printf 'ra\t%s\nrc\t%s\n' "$F/rp/ra" "$F/rp/rc" > "$F/repos2.tsv"
-OUT="$(NPRO HARBOR_RH_REPOS="$F/repos2.tsv" NL_FIND="")"
+OUT="$(NPRO HARBOR_LINT_RULE_HEALTH_REPOS="$F/repos2.tsv" NL_FIND="")"
 t_has "a repo the lint could not judge makes no rule eligible" "$(line_of name.clean)" "not eligible: could not lint rc"
 t_eq "and the footer counts none eligible" "yes" "$(printf '%s\n' "$OUT" | grep -q '^0 name rule(s) eligible' && echo yes || echo no)"
-OUT="$(NPRO HARBOR_RH_REPOS="$F/absent.tsv" NL_FIND="")"; RC=$?
+OUT="$(NPRO HARBOR_LINT_RULE_HEALTH_REPOS="$F/absent.tsv" NL_FIND="")"; RC=$?
 t_eq "an unreadable repo list stands the report down (3)" 3 "$RC"
 
 t_section "the relay table covers every engine of a real warn lint rule, and each key is a registered rule"

@@ -235,7 +235,7 @@ t_eq "...wiring the shim" 1 "$(jq '[.hooks.PreToolUse[]?.hooks[]?.command | sele
 t_eq "a second apply is idempotent" '0 1' "$(pgi --apply --dir "$PG") $(jq '[.hooks.PreToolUse[]?.hooks[]?.command | select(contains("prod-guard-ambient.sh"))] | length' "$PG/settings.json")"
 t_has "...and says it was already wired" "$(cat "$T/pg.out")" "already wired"
 # harbor#1277: prod_guard is a veto, and a hook that times out without onFailure lets the call through.
-pgo() { _o="$1"; shift; env -u CLAUDE_CONFIG_DIR FLOOR_ONFAILURE="$_o" HOME="$T/pgh" PROJECT_INIT_SRC="$T/pgpi" sh "$INST" "$@" >"$T/pg.out" 2>"$T/pg.err"; echo $?; }
+pgo() { _o="$1"; shift; env -u CLAUDE_CONFIG_DIR HARBOR_ADMISSION_ONFAILURE="$_o" HOME="$T/pgh" PROJECT_INIT_SRC="$T/pgpi" sh "$INST" "$@" >"$T/pg.out" 2>"$T/pg.err"; echo $?; }
 _pgof() { jq -r '[.hooks.PreToolUse[]?.hooks[]? | select(.command | contains("prod-guard-ambient.sh")) | (.onFailure // "none")] | join(",")' "$1/settings.json"; }
 PO="$T/pgof"; mkdir -p "$PO"; printf '{"env":{}}\n' > "$PO/settings.json"
 pgo 0 --apply --dir "$PO" >/dev/null

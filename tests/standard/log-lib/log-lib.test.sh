@@ -313,9 +313,9 @@ t_eq "a pin that is only comments: nothing" "" "$(rslug "$RS/inst2/bin")"
 t_eq "a directory that does not exist: nothing" "" "$(rslug "$RS/nowhere/bin")"
 mktree "$RS/registered" evil/pin https://github.com/evil/harbor.git
 t_eq "an install never reads the registered checkout, PORT_ROOT, the environment or the private layer" "acme/installed" \
-  "$(HARBOR_SCOPE_REPO="$RS/registered" PORT_ROOT="$RS" HARBOR_SCOPE_PRIVATE="$RS/registered" GITHUB_REPOSITORY=evil/env HARBOR_SLUG=evil/slug rslug "$RS/inst/bin")"
+  "$(HARBOR_SCOPE_REPO="$RS/registered" PORT_ROOT="$RS" HARBOR_SCOPE_PRIVATE="$RS/registered" GITHUB_REPOSITORY=evil/env HARBOR_CI_SLUG=evil/slug rslug "$RS/inst/bin")"
 t_eq "...nor does a checkout read the environment" "other/fork" \
-  "$(GITHUB_REPOSITORY=evil/env HARBOR_SLUG=evil/slug rslug "$RS/fork/bin")"
+  "$(GITHUB_REPOSITORY=evil/env HARBOR_CI_SLUG=evil/slug rslug "$RS/fork/bin")"
 printf '#!/bin/sh\n. "%s"\nrepo_slug\n' "$LIB" > "$RS/fork/bin/ask.sh"
 t_eq "with no argument it asks about the script that sourced it" "other/fork" "$(sh "$RS/fork/bin/ask.sh")"
 t_eq "...also when the script is run by a bare name" "other/fork" "$(cd "$RS/fork/bin" && sh ask.sh)"

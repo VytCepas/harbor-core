@@ -8,7 +8,7 @@ SRC="$T_ROOT/bin"; TMP="$T_TMP"; CFG="$T_TMP/cfg"
 mkdir -p "$CFG/bin" "$CFG/cache" "$TMP/notrepo"
 # A LITERAL escape byte: `sed 's/\033\[…'` strips nothing on BSD sed, silently.
 # The machine row (row 3) is off here: rows 1-2 are asserted by position, and live ioreg is not a fixture.
-export HARBOR_GLYPH_MACHINE=0
+export HARBOR_STATUS_GLYPH_MACHINE=0
 ESC="$(printf '\033')"
 plain() { sed "s/${ESC}\\[[0-9]*m//g"; }
 WS='"workspace":{"current_dir":"'"$TMP"'/notrepo"}'

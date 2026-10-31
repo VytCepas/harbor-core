@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
-# memory-log-token-save.sh (harbor#431) — put the memory-store token on disk without ever
-# showing it, and without leaving it on the clipboard.
+# memory-log-token-save.sh (harbor#431, #1205) — put the work-log token in the store as worklog-token
+# without ever showing it, and without leaving it on the clipboard.
 #
-#   sh memory-log-token-save.sh          # reads the clipboard, writes the token file
+#   sh memory-log-token-save.sh          # reads the clipboard, stores worklog-token, removes the old plaintext file
 #   sh memory-log-token-save.sh --help
 #
 # CAPTURED FROM THE BOX, NOT WRITTEN HERE. This existed only as an installed file
@@ -23,10 +23,9 @@
 # already has the value — echoing it back buys nothing and costs a copy in the
 # session transcript, which is exactly what CONSTITUTION §3 is about.
 #
-# WHY `umask 177` AND NOT `chmod` AFTER. chmod leaves a window in which the file
-# exists at the default mode with the token already in it. The umask closes that
-# window by construction: the file is created 0600 or not at all. It is set before
-# the redirect for the same reason, not after.
+# WHY THE STORE AND NOT A FILE (harbor#1205, decided 2026-10-23). The value goes in on stdin to `secret put`, so it
+# is never on disk or in argv. A plaintext file from before is never read by anything any more; `secret adopt <file>
+# worklog-token` moves one that is still there without a new token.
 set -eu
 
 case "${1:-}" in

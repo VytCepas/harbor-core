@@ -58,7 +58,7 @@ ev() { # <ts> <kind> <subject> [data-json]
   printf '{"id":"e%s","ts":"%s","src":"cli","kind":"%s","subject":"%s","repo":"harbor","cause":"","data":%s}\n' "$N" "$1" "$2" "$3" "${4:-$EMPTY}" >> "$EV/$D"
 }
 run() { # <script> <mode> — combined output
-  env HARBOR_EVENT_DIR="$EV" HARBOR_OBLIGATION_DIR="$OB" HARBOR_STATUS_OBLIGATION_NOW="$NOW" HARBOR_STATUS_OBLIGATION_KINDS="$KINDS" \
+  env HARBOR_EVENT_DIR="$EV" HARBOR_STATUS_OBLIGATION_DIR="$OB" HARBOR_STATUS_OBLIGATION_NOW="$NOW" HARBOR_STATUS_OBLIGATION_KINDS="$KINDS" \
     HARBOR_STATUS_OBLIGATION_GH="$STUBS/gh" HARBOR_STATUS_OBLIGATION_CLAUDE="$STUBS/claude" HARBOR_STATUS_OBLIGATION_SESSIONS="$STUBS/sessions" \
     HARBOR_STATUS_OBLIGATION_HOUSEKEEPING="$FIX/sweep/.helm-sweep.jsonl" HARBOR_STATUS_OBLIGATION_TRANSCRIPTS="$FIX/tr" \
     ${READ_TO:+HARBOR_STATUS_OBLIGATION_READ_TIMEOUT="$READ_TO"} ${BUDGET:+HARBOR_STATUS_OBLIGATION_BUDGET="$BUDGET"} \
@@ -419,7 +419,7 @@ case_reconcile_fails() { X="$1"; fresh
   chk "...and that the other entries are old" 1 "$(src reconcile reason | grep -c 'earlier run')"
   chk "the entries it keeps are the previous run's" true "$(src gh-pr ok)"
   chk "the statusline cache says a source is unread (⧗?)" true "$(jq '.unread' "$HOME/.claude/cache/status-obligations.json")"
-  chk "--json lists it as a source that did not answer" false "$(env HARBOR_OBLIGATION_DIR="$OB" HARBOR_STATUS_OBLIGATION_NOW="$NOW" sh "$X" show --json 2>/dev/null | jq '.sources.reconcile.ok')"
+  chk "--json lists it as a source that did not answer" false "$(env HARBOR_STATUS_OBLIGATION_DIR="$OB" HARBOR_STATUS_OBLIGATION_NOW="$NOW" sh "$X" show --json 2>/dev/null | jq '.sources.reconcile.ok')"
   rmdir "$OB/.sources.tmp"; rc=0; rec >/dev/null || rc=$?
   chk "the next clean run exits 0" 0 "$rc"
   chk "...and the stale mark is gone" false "$(jq 'has("reconcile")' "$OB/sources.json")"
@@ -437,7 +437,7 @@ ev 2026-10-06T01:00:00Z pr.opened VytCepas/harbor#9; printf MERGED > "$FIX/pr-9"
 fsn() { # <obligation dir> — the real refresher against a fake producer, every other job pinned to nothing
   env CLAUDE_CONFIG_DIR="$FSN" HARBOR_SCOPE_CACHE_DIR="$FSN/cache" HARBOR_SCOPE_FLEET_CONTROLLER_BIN="$FSN/orch" HARBOR_SCOPE_FLEET_FILE="$FSN/fleet.yaml" \
     HARBOR_HOUSEKEEPING_CLEAN_HOME="$FSN/home" HARBOR_HOUSEKEEPING_CLEAN_SCRATCH="$FSN/scratch" HARBOR_HOUSEKEEPING_CLEAN_GH=none \
-    HARBOR_EVENT_DIR="$EV" HARBOR_OBLIGATION_DIR="$1" HARBOR_STATUS_OBLIGATION_NOW="$NOW" HARBOR_STATUS_OBLIGATION_KINDS="$KINDS" \
+    HARBOR_EVENT_DIR="$EV" HARBOR_STATUS_OBLIGATION_DIR="$1" HARBOR_STATUS_OBLIGATION_NOW="$NOW" HARBOR_STATUS_OBLIGATION_KINDS="$KINDS" \
     HARBOR_STATUS_OBLIGATION_GH="$STUBS/gh" HARBOR_STATUS_OBLIGATION_CLAUDE="$STUBS/claude" HARBOR_STATUS_OBLIGATION_SESSIONS="$STUBS/sessions" \
     HARBOR_STATUS_OBLIGATION_HOUSEKEEPING="$FSN/none.jsonl" PATH="$FSN/other:$PATH" \
     ${FSN_TO:+HARBOR_STATUS_OBLIGATION_READ_TIMEOUT="$FSN_TO"} ${FSN_BUDGET:+HARBOR_STATUS_OBLIGATION_BUDGET="$FSN_BUDGET"} \
@@ -473,14 +473,14 @@ rm -f "$FIX/gh.hang"; printf MERGED > "$FIX/pr-22"   # the bus still holds the P
 inst_run() { # <config dir> — the installed refresher, every source a stub, no register knob
   env CLAUDE_CONFIG_DIR="$1" HARBOR_SCOPE_CACHE_DIR="$ICACHE" HARBOR_SCOPE_FLEET_CONTROLLER_BIN="$FSN/orch" HARBOR_SCOPE_FLEET_FILE="$FSN/fleet.yaml" \
     HARBOR_HOUSEKEEPING_CLEAN_HOME="$FSN/home" HARBOR_HOUSEKEEPING_CLEAN_SCRATCH="$FSN/scratch" HARBOR_HOUSEKEEPING_CLEAN_GH=none \
-    HARBOR_EVENT_DIR="$EV" HARBOR_OBLIGATION_DIR="$IOB" HARBOR_STATUS_OBLIGATION_NOW="$NOW" \
+    HARBOR_EVENT_DIR="$EV" HARBOR_STATUS_OBLIGATION_DIR="$IOB" HARBOR_STATUS_OBLIGATION_NOW="$NOW" \
     HARBOR_STATUS_OBLIGATION_GH="$STUBS/gh" HARBOR_STATUS_OBLIGATION_CLAUDE="$STUBS/claude" HARBOR_STATUS_OBLIGATION_SESSIONS="$STUBS/sessions" \
     HARBOR_STATUS_OBLIGATION_HOUSEKEEPING="$FSN/none.jsonl" PATH="$FSN/other:$PATH" \
     sh "$1/bin/status-fleet-snapshot-refresh.sh" >/dev/null 2>&1
 }
 rm -rf "$IOB" "$ICACHE"; inst_run "$INST"; rc=$?
 t_eq "the installed refresher exits 0" 0 "$rc"
-t_eq "the ledger appears under HARBOR_OBLIGATION_DIR" yes "$([ -s "$IOB/ledger.jsonl" ] && echo yes || echo no)"
+t_eq "the ledger appears under HARBOR_STATUS_OBLIGATION_DIR" yes "$([ -s "$IOB/ledger.jsonl" ] && echo yes || echo no)"
 t_eq "the open PR was folded and then reconciled closed" closed "$(jq -r '.obligations[] | select(.id == "pr:VytCepas/harbor#22") | .state' "$IOB/current.json" 2>/dev/null)"
 t_eq "the statusline cache appears" yes "$([ -s "$ICACHE/status-obligations.json" ] && echo yes || echo no)"
 t_eq "the receipt appears" yes "$([ -s "$ICACHE/checks/status.obligations.json" ] && echo yes || echo no)"

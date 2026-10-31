@@ -13,7 +13,7 @@ mkdir -p "$T_TMP/pv"; { printf '%s\n' "$HDR"; printf 'k1\tword\tZorblax\tn\n'; }
 HARBOR_SCOPE_PRIVATE="$T_TMP/pv"; export HARBOR_SCOPE_PRIVATE
 mkdir -p "$T_TMP/pv/inject.d/box"; printf '# name\tpath\twhat\nzorbcorp\t~/zorbcorp\ta made-up workload repo\n' > "$T_TMP/pv/inject.d/box/projects.tsv"
 TOKEN="mirrortok-Qm4xV7nB2c"; TOKB64="$(printf 'x-access-token:%s' "$TOKEN" | base64 | tr -d '\n')"
-HARBOR_CORE_SLUG=test/harbor-core; HARBOR_SLUG=test/harbor; export HARBOR_CORE_SLUG HARBOR_SLUG
+HARBOR_CI_CORE_SLUG=test/harbor-core; HARBOR_CI_SLUG=test/harbor; export HARBOR_CI_CORE_SLUG HARBOR_CI_SLUG
 STUB="$T_TMP/stub"; mkdir -p "$STUB"; export STUB
 
 # git wrapper: records the argv and the auth header of every fetch and push, then runs the real git.
@@ -83,8 +83,8 @@ core() { # <name> → sets BARE and MIR: a bare harbor-core with a seeded main, 
 }
 run() { # <src> args... → OUT, RC; the token is set unless NOTOKEN=1
   _s="$1"; shift
-  if [ "${NOTOKEN:-0}" = 1 ]; then OUT="$(HARBOR_CORE_MIRROR_DIR="$MIR" sh "$_s/bin/ci-mirror.sh" "$@" 2>&1)"; RC=$?
-  else OUT="$(HARBOR_CORE_MIRROR_TOKEN="$TOKEN" HARBOR_CORE_MIRROR_DIR="$MIR" sh "$_s/bin/ci-mirror.sh" "$@" 2>&1)"; RC=$?; fi
+  if [ "${NOTOKEN:-0}" = 1 ]; then OUT="$(HARBOR_CI_CORE_MIRROR_DIR="$MIR" sh "$_s/bin/ci-mirror.sh" "$@" 2>&1)"; RC=$?
+  else OUT="$(HARBOR_CI_CORE_MIRROR_TOKEN="$TOKEN" HARBOR_CI_CORE_MIRROR_DIR="$MIR" sh "$_s/bin/ci-mirror.sh" "$@" 2>&1)"; RC=$?; fi
   [ -z "${CMDBG:-}" ] || printf '== rc=%s %s\n%s\n' "$RC" "$*" "$OUT" >> "$CMDBG"
   NOTOKEN=0
 }
@@ -194,13 +194,18 @@ t_section "a missing token, a dry run, and a bad mirror checkout"
 S="$(mk misc)"; core misc; pr "$S" docs/ok.md 'fine' >/dev/null
 NOTOKEN=1; run "$S" 7
 t_eq "no token: refused" "1" "$RC"
-t_has "...and says which variable" "$OUT" "HARBOR_CORE_MIRROR_TOKEN"
+t_has "...and says which variable" "$OUT" "HARBOR_CI_CORE_MIRROR_TOKEN"
 t_eq "...nothing pushed" "0" "$(nbranches)"
 NOTOKEN=1; run "$S" --dry-run 7
 t_eq "a dry run needs no token and is green" "0" "$RC"
 t_eq "...pushes nothing" "0" "$(nbranches)"
 t_eq "...calls no gh create or edit" "0" "$(( $(ghcalls 'pr create') + $(ghcalls 'pr edit') ))"
 t_eq "...and runs no git fetch or push" "0" "$(gitcalls ARGV)"
+# harbor#967 W9: public-ci.yml sets the old names until its patch lands, so both are read until 2026-12-01.
+HARBOR_CORE_MIRROR_DIR="$MIR" sh "$S/bin/ci-mirror.sh" --dry-run 7 >/dev/null 2>&1; t_eq "the old mirror-dir name alone still reaches the checkout (dry run green)" "0" "$?"
+: > "$STUB/gh.log"; OUT="$(HARBOR_CORE_MIRROR_TOKEN="$TOKEN" sh "$S/bin/ci-mirror.sh" --close 7 2>&1)"
+t_hasnt "the old token name alone passes the token check" "$OUT" "is not set"
+t_has "...and is the token gh runs with" "$(cat "$STUB/gh.log")" "GH_TOKEN=$TOKEN"
 S2="$(mk dryleak)"; pr "$S2" docs/leak.md 'owned by Zorblax' >/dev/null
 NOTOKEN=1; run "$S2" --dry-run 7
 t_eq "a dry run of a leaking PR is red" "1" "$RC"
@@ -213,8 +218,8 @@ git -C "$MIR" remote set-url origin https://github.com/someone/else.git
 run "$S" 7
 t_eq "a mirror checkout whose origin is not harbor-core is refused" "1" "$RC"
 t_eq "...nothing pushed" "0" "$(nbranches)"
-HARBOR_CORE_MIRROR_DIR="$T_TMP/none" sh "$S/bin/ci-mirror.sh" 7 >/dev/null 2>&1; t_eq "no mirror checkout is refused" "1" "$?"
-HARBOR_CORE_MIRROR_TOKEN="$TOKEN" sh "$S/bin/ci-mirror.sh" 7 >/dev/null 2>&1; t_eq "an unset HARBOR_CORE_MIRROR_DIR is refused" "1" "$?"
+HARBOR_CI_CORE_MIRROR_DIR="$T_TMP/none" sh "$S/bin/ci-mirror.sh" 7 >/dev/null 2>&1; t_eq "no mirror checkout is refused" "1" "$?"
+HARBOR_CI_CORE_MIRROR_TOKEN="$TOKEN" sh "$S/bin/ci-mirror.sh" 7 >/dev/null 2>&1; t_eq "with neither mirror-dir name set it is refused" "1" "$?"
 sh "$S/bin/ci-mirror.sh" >/dev/null 2>&1; t_eq "no PR number is a usage error" "2" "$?"
 sh "$S/bin/ci-mirror.sh" abc >/dev/null 2>&1; t_eq "a non-numeric PR is a usage error" "2" "$?"
 sh "$S/bin/ci-mirror.sh" --bogus 7 >/dev/null 2>&1; t_eq "an unknown option is a usage error" "2" "$?"

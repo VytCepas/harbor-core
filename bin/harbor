@@ -30,7 +30,7 @@ CONTRACT_VERSION=1
 VERBS="
 status	status-generate.sh	yes	the generated counts (docs/generated/status.md)
 doctor	deploy-doctor.sh	yes	external dependencies, each row naming what breaks
-verify	floor-verify.sh --live	no	is the floor ON here? fires known-blocked shapes at ~/.claude
+verify	admission-verify.sh --live	no	is the floor ON here? fires known-blocked shapes at ~/.claude
 check	deploy-live-verify.sh	no	the live tier: does the installed box work? every live check, read-only (--live [--probes])
 lint	lint-conventions.sh	no	the conventions gate
 fresh	doc-freshness.sh	no	document + working-context staleness (--open for markers)

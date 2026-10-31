@@ -91,7 +91,7 @@ it removes. `harbor` on the box is a copy: a new verb reaches it with `harbor de
 
 `merge` calls `gate-merge-check.sh` from the same directory as `gate-merge-stack.sh`, never from the target repo, so a repo
 needs none of harbor's scripts. It passes `HARBOR_SCOPE_REPO=<owner/name>` from the plan and, always,
-`HARBOR_REQUIRED_CHECKS=<a temp file>` holding the **union** of every declaration for that repo (r5 #3, #1139):
+`HARBOR_GATE_REQUIRED_CHECKS=<a temp file>` holding the **union** of every declaration for that repo (r5 #3, #1139):
 `.agents/required-checks.tsv` and `contracts/required-checks.tsv` as the repo's `origin/<default branch>` holds them, and
 harbor's own `contracts/required-checks.tsv` rows for the repo, from the copy installed beside the tool (`bin/required-checks.tsv`,
 deployed from harbor's main) or, run from a harbor checkout, as that checkout's `origin/<default branch>` holds it. Those rows are
@@ -110,7 +110,7 @@ required check; rows for another repo are ignored. With no row at all, branch pr
 unavailable: merge-check reads the file when GitHub answers 403 (a private repo on a plan with no rules), answers its exact
 404 "Branch not protected" (an org repo with no rule, #1139), or protects the branch with no required checks. **Any other
 404 does not fall back to the file: merge-check refuses.** With neither opt-in, merge-check has
-no gate to judge by and refuses the merge, which is its own rule and not this tool's. `tests/ci/merge-stack/realcheck.test.sh`
+no gate to judge by and refuses the merge, which is its own rule and not this tool's. `tests/ci/merge-stack/real-check.test.sh`
 runs the real merge-check against a stub gh for the 403, 404 and 200 answers, so this paragraph is pinned to its behaviour.
 The other sub-verbs read the
 checkout only when a script is there: `verify` runs `bin/lint-conventions.sh`, `tests/lib/check.sh` and `bin/deploy.sh`

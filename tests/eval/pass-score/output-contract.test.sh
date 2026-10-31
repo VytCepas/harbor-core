@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # eval-pass-score.sh's output follows contracts/logging.md (harbor#771): every line is the log's shape, each verdict
 # that blocks an install is a FAIL followed by its fix, the run ends with the summary, and the exit codes it
-# reports to floor-install.sh (0 no worsening, 1 no register, 2 do not install, 3 the gate did not run) stay.
+# reports to admission-install.sh (0 no worsening, 1 no register, 2 do not install, 3 the gate did not run) stay.
 # The register is a fixture, copied beside a copy of the tool.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 B="$T_TMP"; R="$B/repo"; mkdir -p "$R/bin" "$R/docs/explanation"

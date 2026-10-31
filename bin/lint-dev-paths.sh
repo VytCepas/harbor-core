@@ -21,8 +21,8 @@ ALLOW="${DEV_PATHS_ALLOW:-$ROOT/contracts/dev-paths-allow.tsv}"
 BASE="${DEV_PATHS_BASELINE:-$ROOT/contracts/lint-dev-paths-baseline.txt}"
 . "$SRC/library-log.sh"
 log_init lint-dev-paths
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
-TAB="$(printf '\t')"
 T="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -rf "$T"' EXIT
 
 rows() { # <file> → its data rows: CR stripped, comments and blanks dropped, header dropped

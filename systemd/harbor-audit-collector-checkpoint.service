@@ -8,6 +8,6 @@ Description=Harbor collector: sign yesterday's store manifest
 Type=oneshot
 User=harborlog
 Group=harborlog
-Environment=HARBOR_COLLECTOR_SRC=@SOURCES@
-Environment=HARBOR_COLLECTOR_STORE=@STORE@
+Environment=HARBOR_AUDIT_COLLECTOR_SOURCES=@SOURCES@
+Environment=HARBOR_AUDIT_COLLECTOR_STORE=@STORE@
 ExecStart=/bin/sh @BIN@/audit-collector.sh --checkpoint

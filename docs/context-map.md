@@ -31,32 +31,32 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | decision-record | docs/decisions/ | element | source | dated | 93 |
 | hook | hooks/ | component | source | living | 48 |
 | skill | skills/ | component | source | living | 47 |
-| fixture | fixtures/ | element | source | living | 261 |
-| registry | registries/ | component | source | versioned | 54 |
-| test | tests/ | component | source | living | 449 |
+| fixture | fixtures/ | element | source | living | 283 |
+| registry | registries/ | component | source | versioned | 55 |
+| test | tests/ | component | source | living | 456 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| script | bin/ | component | source | living | 285 |
+| script | bin/ | component | source | living | 295 |
 | how-to | docs/how-to/ | component | source | living | 1 |
 | reference | docs/reference/ | component | generated | generated | 5 |
 | explanation | docs/explanation/ | component | source | living | 14 |
-| (no kind) | - | - | - | - | 239 |
+| (no kind) | - | - | - | - | 243 |
 
 ## Folders
 
 | Folder | Files | Families | Kinds |
 |---|---|---|---|
-| (repo root) | 19 | 3 | 2 |
+| (repo root) | 20 | 3 | 2 |
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
 | `DOCTRINE/` | 4 | 1 | 1 |
-| `bin/` | 290 | 28 | 2 |
+| `bin/` | 300 | 28 | 2 |
 | `commands/` | 8 | 4 | 1 |
-| `context-rules/` | 46 | 6 | 1 |
-| `contracts/` | 86 | 9 | 2 |
+| `context-rules/` | 49 | 6 | 1 |
+| `contracts/` | 87 | 9 | 2 |
 | `docs/` | 137 | 11 | 8 |
-| `fixtures/` | 261 | 10 | 1 |
+| `fixtures/` | 283 | 10 | 1 |
 | `hooks/` | 43 | 6 | 1 |
 | `launchd/` | 13 | 8 | 1 |
 | `patches/` | 12 | 3 | 1 |
@@ -66,7 +66,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `skills/` | 47 | 8 | 1 |
 | `standards/` | 26 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 449 | 28 | 1 |
+| `tests/` | 456 | 28 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 92 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -76,32 +76,32 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
 | access | control-plane | 12 | 20 | 2 | 6 | 0 | 0 |
-| admission | control-plane | 29 | 82 | 0 | 4 | 0 | 167 |
+| admission | control-plane | 42 | 82 | 0 | 4 | 0 | 167 |
 | agent | control-plane | 0 | 1 | 0 | 5 | 0 | 0 |
 | alert | observability | 5 | 3 | 0 | 2 | 0 | 0 |
 | audit | control-plane | 13 | 14 | 0 | 5 | 0 | 2 |
-| check | observability | 1 | 4 | 0 | 1 | 51 | 0 |
-| ci | coordination | 20 | 50 | 2 | 5 | 1 | 5 |
-| context | control-plane | 8 | 11 | 1 | 4 | 0 | 36 |
-| deploy | control-plane | 22 | 27 | 1 | 1 | 0 | 7 |
+| check | observability | 1 | 4 | 0 | 1 | 52 | 0 |
+| ci | coordination | 20 | 46 | 2 | 5 | 1 | 5 |
+| context | control-plane | 8 | 13 | 1 | 4 | 0 | 37 |
+| deploy | control-plane | 22 | 29 | 1 | 1 | 0 | 7 |
 | doc | control-plane | 21 | 12 | 0 | 33 | 0 | 17 |
-| drift | control-plane | 7 | 6 | 0 | 4 | 2 | 13 |
+| drift | control-plane | 9 | 7 | 0 | 4 | 2 | 13 |
 | eval | control-plane | 11 | 7 | 0 | 1 | 0 | 0 |
 | event | observability | 3 | 18 | 0 | 3 | 0 | 2 |
-| gate | control-plane | 15 | 10 | 0 | 2 | 0 | 0 |
+| gate | control-plane | 16 | 11 | 0 | 2 | 0 | 0 |
 | housekeeping | control-plane | 2 | 1 | 0 | 2 | 0 | 0 |
-| library | policy-function | 8 | 2 | 0 | 0 | 0 | 0 |
-| lint | control-plane | 27 | 53 | 0 | 9 | 3 | 34 |
+| library | policy-function | 8 | 1 | 0 | 0 | 0 | 0 |
+| lint | control-plane | 28 | 57 | 0 | 10 | 3 | 35 |
 | memory | memory-store | 8 | 10 | 1 | 23 | 0 | 1 |
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
 | policy | policy-function | 3 | 2 | 6 | 0 | 0 | 3 |
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
 | scope | coordination | 9 | 15 | 0 | 0 | 0 | 4 |
-| session | data-plane | 14 | 4 | 0 | 3 | 0 | 0 |
+| session | data-plane | 14 | 5 | 0 | 3 | 0 | 0 |
 | skill | catalog | 7 | 18 | 0 | 10 | 0 | 13 |
-| standard | policy-function | 8 | 14 | 119 | 1 | 2 | 48 |
-| status | observability | 15 | 20 | 0 | 4 | 0 | 0 |
-| test | control-plane | 7 | 5 | 2 | 7 | 0 | 14 |
+| standard | policy-function | 8 | 14 | 119 | 1 | 2 | 50 |
+| status | observability | 15 | 21 | 0 | 4 | 0 | 0 |
+| test | control-plane | 7 | 5 | 2 | 7 | 0 | 15 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
 
 ## Per family
@@ -137,17 +137,30 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/admission-cloud.sh`
 - `bin/admission-deliverables.sh`
 - `bin/admission-deny-hash.sh`
+- `bin/admission-deny.sh`
 - `bin/admission-destroy.sh`
 - `bin/admission-egress.sh`
+- `bin/admission-equivalence.sh`
 - `bin/admission-hook.sh`
+- `bin/admission-install.sh`
 - `bin/admission-integrity.sh`
 - `bin/admission-mutation-tier.sh`
+- `bin/admission-normalize.awk`
 - `bin/admission-observe-report.sh`
+- `bin/admission-observe.sh`
+- `bin/admission-remove.sh`
 - `bin/admission-self-edit.sh`
 - `bin/admission-stop.sh`
+- `bin/admission-verify.sh`
 - `bin/annotate-web.sh`
+- `bin/floor-deny.sh`
+- `bin/floor-equiv.sh`
 - `bin/floor-hook.sh`
+- `bin/floor-install.sh`
+- `bin/floor-normalize.awk`
 - `bin/floor-observe.sh`
+- `bin/floor-uninstall.sh`
+- `bin/floor-verify.sh`
 - `bin/govern-hook.sh`
 - `bin/govern-token.sh`
 - `bin/guard-apiroute.sh`
@@ -312,9 +325,11 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 
 - `bin/drift-confinement.sh`
 - `bin/drift-install.sh`
+- `bin/drift-port-root.sh`
 - `bin/drift-reference-check.sh`
 - `bin/drift-renew-check.sh`
 - `bin/install-drift.sh`
+- `bin/port-drift.sh`
 - `bin/reference-check.sh`
 - `bin/renew-check.sh`
 
@@ -354,6 +369,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/gate-merge.sh`
 - `bin/gate-merged-check.sh`
 - `bin/gate-pr-wait.sh`
+- `bin/gate-push.sh`
 - `bin/gate-queue.sh`
 - `bin/gate-register-derive.sh`
 - `bin/gate-required-generate.sh`
@@ -398,6 +414,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/lint-locale-ranges.awk`
 - `bin/lint-module-shape.sh`
 - `bin/lint-module.sh`
+- `bin/lint-name-ratchet.sh`
 - `bin/lint-name.sh`
 - `bin/lint-platform.sh`
 - `bin/lint-port-paths.sh`
@@ -413,6 +430,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `contracts/lint-domain-baseline.txt`
 - `contracts/lint-domain-repos-baseline.txt`
 - `contracts/lint-leaks-baseline.txt`
+- `contracts/lint-name-baseline.txt`
 - `contracts/lint-secrets-baseline.txt`
 - `contracts/lint-siblings-baseline.txt`
 - `launchd/com.harbor.lint.findings.plist`
@@ -633,7 +651,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `standards/rename-maps/w4-path-shims.tsv`
 - `standards/rename-maps/w5-state-env-launchd.tsv`
 - `standards/rename-maps/w6a-admission-hooks.tsv`
-- `standards/rename-maps/w6b-admission-floor-hook-and-integrity.tsv`
+- `standards/rename-maps/w6b-admission-hook-and-integrity.tsv`
 
 ### status
 
@@ -679,15 +697,15 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 
 | Folder | Files without a family |
 |---|---|
-| (repo root) | 17 |
+| (repo root) | 18 |
 | `.agents/` | 4 |
 | `.github/` | 2 |
-| `bin/` | 23 |
+| `bin/` | 16 |
 | `commands/` | 2 |
-| `context-rules/` | 34 |
+| `context-rules/` | 37 |
 | `contracts/` | 68 |
 | `docs/` | 34 |
-| `fixtures/` | 222 |
+| `fixtures/` | 244 |
 | `hooks/` | 32 |
 | `patches/` | 10 |
 | `runners/` | 2 |
@@ -728,6 +746,7 @@ Every tracked top-level entry, its kind and layer from `contracts/layout-map.tsv
 | `worklog/` | hook | source | core |
 | `.gitignore` | config | source | core |
 | `.gitleaks.toml` | config | source | core |
+| `.shellcheckrc` | config | source | core |
 | `justfile` | config | source | core |
 | `AGENTS.md` | policy | source | core |
 | `CLAUDE.md` | policy | source | core |

@@ -4,7 +4,7 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 K="$(cd "$(dirname "$0")/../../.." && pwd)/bin/audit-collector-check.sh"
 CF="$T_TMP/cfg"; ST="$T_TMP/store"; mkdir -p "$CF/cache"
-run() { CLAUDE_CONFIG_DIR="$CF" HARBOR_COLLECTOR_STORE="$ST" HARBOR_CHECK_RECEIPTS="$CF/cache/checks" sh "$K" >/dev/null 2>&1; echo $?; }
+run() { CLAUDE_CONFIG_DIR="$CF" HARBOR_AUDIT_COLLECTOR_STORE="$ST" HARBOR_CHECK_RECEIPTS="$CF/cache/checks" sh "$K" >/dev/null 2>&1; echo $?; }
 rec() { jq -r .status "$CF/cache/checks/audit.collector-health.json" 2>/dev/null; }
 stat_json() { mkdir -p "$ST"; printf '{"ts":"x","files":3,"bytes_this_pass":0,"unreadable":%s,"events_total":%s}\n' "$1" "$2" > "$ST/status.json"; }
 

@@ -20,7 +20,7 @@ set -u
 HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 [ ! -f "$HERE/library-log.sh" ] || . "$HERE/library-log.sh"
 case "${1:-}" in -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
-EV="${HARBOR_GOV_EVENTS:-/gov-events}"
+EV="${HARBOR_CI_GOVERNOR_EVENTS:-${HARBOR_GOV_EVENTS:-/gov-events}}"
 # One word each: the line is split on spaces by `listen`, and an odd character never reaches the bus.
 word() { printf '%s' "${1:-}" | tr -c 'A-Za-z0-9._/-' '_' | cut -c1-120; }
 RUN="$(word "${GITHUB_RUN_ID:-run}")"; JOB="$(word "${GITHUB_JOB:-job}")"; REPO="$(word "${GITHUB_REPOSITORY:--}")"
@@ -40,11 +40,11 @@ elif [ -f "$HERE/event-bus.sh" ] && [ "$REPO" != - ]; then
   sh "$HERE/event-bus.sh" emit "$_kind" "$REPO:$RUN:$JOB" --src ci-governor-hook --repo "${REPO##*/}" \
     --data "{\"run_id\":\"$RUN\",\"job\":\"$JOB\",\"repo\":\"$REPO\"}" >/dev/null 2>&1 </dev/null || :
 fi
-# Only as the runner wires it: in a container with HARBOR_GOV_EVENTS unset. A suite calling this hook inside harbor's
+# Only as the runner wires it: in a container with HARBOR_CI_GOVERNOR_EVENTS unset. A suite calling this hook inside harbor's
 # own CI container sets it, and an unguarded run there emptied the /tmp 24 parallel suites were using (harbor#1072).
-# Files, dirs and links only: the runner's own live pipes and sockets sit there too. HARBOR_HOOK_* are the tests' seams.
-TMPROOT="${HARBOR_HOOK_TMP:-/tmp}"
-if [ -z "${HARBOR_GOV_EVENTS:-}" ] && [ -f "${HARBOR_HOOK_DOCKERENV:-/.dockerenv}" ] && [ -d "$TMPROOT" ]; then
+# Files, dirs and links only: the runner's own live pipes and sockets sit there too. HARBOR_CI_GOVERNOR_DOCKERENV and HARBOR_CI_GOVERNOR_TEMPORARY_ROOT are the tests' seams.
+TMPROOT="${HARBOR_CI_GOVERNOR_TEMPORARY_ROOT:-${HARBOR_HOOK_TMP:-/tmp}}"
+if [ -z "${HARBOR_CI_GOVERNOR_EVENTS:-${HARBOR_GOV_EVENTS:-}}" ] && [ -f "${HARBOR_CI_GOVERNOR_DOCKERENV:-${HARBOR_HOOK_DOCKERENV:-/.dockerenv}}" ] && [ -d "$TMPROOT" ]; then
   find "$TMPROOT" -mindepth 1 -maxdepth 1 \( -type f -o -type d -o -type l \) -exec rm -rf {} + 2>/dev/null || :
 fi
 if command -v notifyutil >/dev/null 2>&1; then notifyutil -p com.harbor.ci-governor.event >/dev/null 2>&1 || :; fi

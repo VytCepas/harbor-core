@@ -18,7 +18,7 @@ lint       tests/lint/conventions/docs.test.sh
 lint       tests/lint/conventions/git.test.sh
 lint       tests/lint/conventions/injection-rule.test.sh
 lint       tests/lint/conventions/install.test.sh
-lint       tests/lint/conventions/redproof.test.sh
+lint       tests/lint/conventions/red-proof.test.sh
 lint       tests/lint/conventions/skills.test.sh
 lint       tests/lint/conventions/suites.test.sh
 normalize  tests/admission/normalize/normalize.test.sh

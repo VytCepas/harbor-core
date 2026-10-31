@@ -6,13 +6,13 @@
 # state this suite owns: every fire must land in the fixture sink (harbor#373, #430), and
 # no fixture record may reach a sandbox ledger, or the LIVE one, ruled by content: a per-run nonce (harbor#696).
 # Read before t_init, which sandboxes HOME and the config dir; the live ledger is read, never written.
-REAL_CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"; REQ_LIVE="${HARBOR_REQUIRE_LIVE_LEDGER:-0}"
+REAL_CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"; REQ_LIVE="${HARBOR_TEST_REQUIRE_LIVE_LEDGER:-${HARBOR_REQUIRE_LIVE_LEDGER:-0}}"
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 NONCE="$(od -An -N6 -tx1 /dev/urandom 2>/dev/null | tr -d ' \n')"; NONCE="${NONCE:-$$$(date +%s)}"
 LIVE_LEDGER="$(find "$REAL_CFG/MEMORY/OBSERVABILITY" -maxdepth 2 -name guard-decisions.jsonl 2>/dev/null | head -1)"
 TMP="$T_TMP/od"; H=fixturehost; CFG="$TMP/tree"
 mkdir -p "$CFG/bin" "$CFG/MEMORY/OBSERVABILITY/$H"
-for _f in library-admission.sh floor-normalize.awk admission-destroy.sh admission-cloud.sh; do cp "$T_ROOT/bin/$_f" "$CFG/bin/$_f"; done
+for _f in library-admission.sh admission-normalize.awk admission-destroy.sh admission-cloud.sh; do cp "$T_ROOT/bin/$_f" "$CFG/bin/$_f"; done
 SINK="$CFG/MEMORY/OBSERVABILITY/$H/guard-decisions.jsonl"
 printf '%s\n' "$H" > "$CFG/.helm-obs-host"
 printf '%s\n' '0123456789abcdef0123456789abcdef' > "$CFG/.helm-obs-salt"  # fixture-only salt
@@ -122,7 +122,7 @@ t_eq "positive control: a planted fixture session key is found by content" "$(he
 if [ -n "$LIVE_LEDGER" ]; then
   t_eq "the test's records reached the LIVE ledger zero times (by content, unique per-run marker)" none "$(marker_in "$LIVE_LEDGER")"
 else
-  t_eq "no live ledger under $REAL_CFG on this host, so HARBOR_REQUIRE_LIVE_LEDGER must be off" 0 "$REQ_LIVE"
+  t_eq "no live ledger under $REAL_CFG on this host, so HARBOR_TEST_REQUIRE_LIVE_LEDGER must be off" 0 "$REQ_LIVE"
   echo "obs-digest-test: SKIPPED the live-ledger content check (no guard-decisions.jsonl under $REAL_CFG/MEMORY/OBSERVABILITY)"
 fi
 t_done

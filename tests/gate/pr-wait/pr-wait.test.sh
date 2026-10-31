@@ -67,13 +67,13 @@ t_section "protection unreadable: the tracked declaration is the required set (h
 printf 'o/r\tsuite\n' > "$T/rc.tsv"
 scene "$NONE; REQUIRED=''
 CHECKS_LAST='pass\tlint\n'"
-t_eq "403 + a listed check never seen is never green" 4 "$(HARBOR_REQUIRED_CHECKS="$T/rc.tsv" wait_on)"
+t_eq "403 + a listed check never seen is never green" 4 "$(HARBOR_GATE_REQUIRED_CHECKS="$T/rc.tsv" wait_on)"
 scene "$NONE; REQUIRED=''
 CHECKS_LAST='pass\tlint\npass\tsuite\n'"
-t_eq "403 + the listed check present and passing is green" 0 "$(HARBOR_REQUIRED_CHECKS="$T/rc.tsv" wait_on)"
+t_eq "403 + the listed check present and passing is green" 0 "$(HARBOR_GATE_REQUIRED_CHECKS="$T/rc.tsv" wait_on)"
 scene "$NONE; REQUIRED=''
 CHECKS_LAST='pass\tlint\n'"
-t_eq "no declaration for this repo keeps today's behaviour" 0 "$(HARBOR_REQUIRED_CHECKS="$T/none.tsv" wait_on)"
+t_eq "no declaration for this repo keeps today's behaviour" 0 "$(HARBOR_GATE_REQUIRED_CHECKS="$T/none.tsv" wait_on)"
 
 t_section "protection unreadable: the private layer's rows join core's, run from a checkout (harbor#1149)"
 PWC="$T/ck"; PV="$T/pv"; mkdir -p "$PWC/bin" "$PWC/contracts" "$PV"

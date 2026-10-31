@@ -1,6 +1,6 @@
 # Why it is wired this way (moved from bin/deploy-runtime-install.sh, harbor#1272):
 # TICKET-NOTE, THE THIRD Stop HOOK. It is wired here rather than in
-# floor-install.sh because it is not a guard: it blocks nothing, refuses nothing,
+# admission-install.sh because it is not a guard: it blocks nothing, refuses nothing,
 # and speaks only to the operator through `systemMessage`. The floor's teeth and
 # an operator reminder are different layers and the installers should not blur
 # them.

@@ -46,7 +46,9 @@ _phys() { CDPATH= cd -P -- "$1" 2>/dev/null && pwd -P || printf '%s' "$1"; }
 DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
 # stdout is the cache body, which is data, so the log is on stderr (LOG_FD=2, contracts/logging.md, harbor#771).
 . "$DIR/library-log.sh"
-log_init judge-run; LOG_FD=2
+log_init judge-run
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
+LOG_FD=2
 # die <what failed> <fix> [exit] — FAIL, its fix, the summary, then the exit code the tool always had (2).
 die() { log_fail "$1"; log_fix "$2"; log_end || :; exit "${3:-2}"; }
 FC="$DIR/audit-triage.sh"
@@ -122,6 +124,16 @@ if [ "$APPLY" = 1 ]; then
     die "cannot write $OUT.tmp" "ls -ld $TGT" 1; }
   mv -f "$OUT.tmp" "$OUT" || die "cannot install $OUT" "ls -ld $TGT" 1
   log_ok "wrote $OUT"
+  # THE FLOOR TIER REACHES THE FINDINGS STORE as check/audit.triage (contracts/finding.md, harbor#591).
+  # One subject per <severity>:<rule>, never the judge's subject text: that carries counts, and a
+  # digest over a count re-opens on every run. ok and info are not findings.
+  _subj="$(printf '%s' "$J" | jq -r '.findings[] | select(.severity != "ok" and .severity != "info") | "\(.severity):\(.rule)"' | LC_ALL=C sort -u)"
+  if [ -n "$_subj" ]; then _rst=red; else _rst=green; fi
+  _oifs=$IFS; IFS='
+'; set -f
+  # shellcheck disable=SC2086 # one subject per line, split on newline only
+  log_receipt "$(receipt_dir "$TGT")" audit.triage "$_rst" $_subj || log_warn "no receipt written to $(receipt_dir "$TGT")"
+  set +f; IFS=$_oifs
 else
   log_note "DRY RUN — would write $OUT (pass --apply)"
 fi

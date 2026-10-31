@@ -542,10 +542,10 @@ for __r in $TARGETS; do
     printf 'CODE\trepo:%s\t%s\t-\tNO READABLE CHECKOUT — nothing was scanned\n' "$__r" "$__d"
     continue
   fi
-  #    estate's AUDITS/<date>-data/ is excluded for the EVALS reason: a dated
+  #    estate's dated audits (docs/reports/, AUDITS/ before its October 2026 rename) are excluded for the EVALS reason: a dated
   #    audit's findings.json quotes the paths it measured on that day.
   # shellcheck disable=SC2086
-  git -C "$__d" grep -nE "$PAT" -- . ':!*/EVALS/*' ':!AUDITS/*' $INSTRUMENT_SPEC 2>/dev/null |
+  git -C "$__d" grep -nE "$PAT" -- . ':!*/EVALS/*' ':!docs/reports/*' $INSTRUMENT_SPEC 2>/dev/null |
     while IFS=: read -r __f __ln __txt; do
       raw "repo:$__r" "$__d/$__f" "$__ln" "$__txt"
     done

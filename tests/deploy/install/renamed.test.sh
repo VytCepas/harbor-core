@@ -13,7 +13,7 @@ _sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a
 b6msg() { CLAUDE_CONFIG_DIR="$1" sh "$1/bin/admission-integrity.sh" </dev/null 2>/dev/null | jq -r '.systemMessage // ""' 2>/dev/null; }
 inst() { # <box> — runtime then floor, as deploy orders them; the output of both
   env -u CLAUDE_CONFIG_DIR sh "$SB/deploy-runtime-install.sh" --dir "$1" --apply 2>&1
-  env -u CLAUDE_CONFIG_DIR sh "$SB/floor-install.sh" --dir "$1" --apply --with-b6 2>&1
+  env -u CLAUDE_CONFIG_DIR sh "$SB/admission-install.sh" --dir "$1" --apply --with-b6 2>&1
 }
 drift() { sh "$SB/drift-install.sh" --dir "$1" --ref HEAD 2>&1 | sed -n 's/.*\(stale=[0-9]* modified=[0-9]*\).*/\1/p' | tail -1; }
 # The old names: renames.tsv bin rows whose old path the checkout keeps as a shim.
@@ -42,7 +42,7 @@ t_has "control: B6 blocks on it, as the W3 deploy measured" "$(b6msg "$D")" 'kil
 t_section "this tree's installers onto it"
 OUT="$(inst "$D")"
 t_eq "B6 does not block the next session" "" "$(b6msg "$D")"
-FV="$(env -u CLAUDE_CONFIG_DIR sh "$SB/floor-verify.sh" --dir "$D" 2>&1 || true)"
+FV="$(env -u CLAUDE_CONFIG_DIR sh "$SB/admission-verify.sh" --dir "$D" 2>&1 || true)"
 t_has "floor-verify passes" "$(printf '%s\n' "$FV" | grep '^floor-verify: ' | tail -1)" ' 0 failed'
 t_eq "install-drift reads no stale or modified copy (deploy's verify)" 'stale=0 modified=0' "$(drift "$D")"
 _bad=''; _nopin=''; _nobk=''

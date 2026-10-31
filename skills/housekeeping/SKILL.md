@@ -76,7 +76,7 @@ that put it in the table.
 is not enough to find it.** Concurrent sessions revert uncommitted work while
 `git status` reads clean (memory `concurrent-sessions-revert-uncommitted-work`).
 Measured 2026-09-06: a workload repo held **69 uncommitted lines** of `docs/reports/rejected-approaches.md`
-— two dead ends from a Citadele session, the kind of knowledge nothing
+— two dead ends from a client session, the kind of knowledge nothing
 regenerates. A sweep that started with `rm` would have destroyed it. So the
 FIRST action of any cleanup is to find and commit unsaved work, before a single
 byte is reclaimed.

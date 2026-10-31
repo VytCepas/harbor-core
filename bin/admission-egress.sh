@@ -52,7 +52,9 @@ esac
 # records is a WIRING-LIVENESS CENSUS — it is how a dead dispatch arm (the
 # mcp/Task/WebFetch branches above were dead for months) becomes visible as a
 # tool that never appears rather than as a silence nobody reads.
+# shellcheck disable=SC2034 # FLOOR_TOOL: read by library-admission.sh
 FLOOR_TOOL="$TOOL_SEEN"
+# shellcheck disable=SC2034 # FLOOR_OBS_SUBJECT: read by library-admission.sh
 FLOOR_OBS_SUBJECT="$PAYLOAD"
 
 # Provider-prefixed secret shapes. These are HIGH PRECISION: a match is a live
@@ -100,7 +102,7 @@ SECRET_DOC='(AKIAIOSFODNN7EXAMPLE|EXAMPLEKEY|EXAMPLE$|^0+$|^x+$|^X+$)'
 # SO THE TEST IS A MONOTONIC RUN, which is not a threshold at all. A provider
 # token body is provider-generated randomness: an attacker cannot obtain one that
 # is a consecutive run of the alphabet, so the exemption cannot be spelled INTO a
-# live secret. floor-verify.sh's shipped vector is exactly this shape — 22 of 22
+# live secret. admission-verify.sh's shipped vector is exactly this shape — 22 of 22
 # consecutive — which is why the floor could not document its own test vector.
 #
 # NO FORKS, NO LOOP, NO ARITHMETIC: a consecutive run is a contiguous SUBSTRING of
@@ -335,8 +337,6 @@ CRED_HARD="(\\.credentials\\.json|\\.git-credentials|\\.pgpass|\\.my\\.cnf|\\.ne
 # Project env files: real credentials, but routinely created, copied from an
 # example, and excluded from deploys — so these DO carry the exemptions.
 CRED_SOFT="(\\.npmrc|\\.pypirc|\\.env(\\.(local|production|prod|staging))?${CRED_END})"
-CREDPATH="(${CRED_HARD}|${CRED_SOFT})"
-CREDPATH_DOC='\.env\.(example|sample|template|dist)|--exclude'
 # harbor#1092: the longest blank-free token cred_all_excused will try to excuse.
 # Fixed, not read from the environment: raising it re-opens the quadratic scan.
 CRED_TOKEN_MAX=4096
@@ -435,7 +435,7 @@ if [ "$_CMDLIKE" = "1" ]; then
   # ── P13-cred-01 (harbor#94) · ONE FILENAME, UNBOUNDEDLY MANY SPELLINGS ─────
   # `cat ~/.ssh/id_"rsa"` blocked and `scp ~/.ssh/id_"rsa" host:` did not, for
   # exactly one reason: the CRED-01 READ rules ask $TARGETS — the copy
-  # floor-normalize.awk has already un-quoted — and the CREDPATH rules at the
+  # admission-normalize.awk has already un-quoted — and the CREDPATH rules at the
   # bottom of this branch ask the RAW command, where `id_` is followed by a
   # quote and `\.ssh/id_[a-z0-9]+` cannot match. The ticket says this defeats
   # every channel; measured, it defeats scp/rsync/curl -T and NOT cat/base64,
@@ -952,7 +952,6 @@ $TARGETS_ALL"
     # was whitelisted by the very exemption meant for `ssh -F config` (red-team
     # pass 5). The short spellings now count only for the tools that own them.
     AUTHFLAG_HEAD='(((^|[^[:alnum:]_])(ssh|scp|sftp|rsync|git|kubectl|helm)[^;&|]*[[:space:]](-i|-F))|--identity(_file)?|--key(file)?|--netrc-file|--kubeconfig|--userconfig|-e[[:space:]]+["'"'"']?ssh)'
-    AUTHFLAG="${AUTHFLAG_HEAD}[[:space:]=]+[^[:space:]]*"
     # PER-MATCH SCOPING. Pass 6's comment claimed the exemptions were "anchored
     # to the credential reference it excuses" — but only the SHAPE of the
     # patterns changed; the TEST stayed a whole-payload boolean

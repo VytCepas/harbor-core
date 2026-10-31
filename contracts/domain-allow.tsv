@@ -6,10 +6,10 @@
 # Read by bin/lint-domain.sh; a row without a reason, or naming no such term, refuses the run. harbor#1273 classifies the
 # census: each hit becomes a move or a row here, never a quiet baseline.
 path	term	reason
-bin/floor-normalize.awk	bq	normalizer comment naming the cloud CLI whose invocations it must see through
-bin/floor-normalize.awk	gtm	normalizer comment naming the cloud CLI whose invocations it must see through
-bin/floor-verify.sh	bigquery	security floor: the guard must know this cloud command to refuse it
-bin/floor-verify.sh	bq	security floor: the guard must know this cloud command to refuse it
+bin/admission-normalize.awk	bq	normalizer comment naming the cloud CLI whose invocations it must see through
+bin/admission-normalize.awk	gtm	normalizer comment naming the cloud CLI whose invocations it must see through
+bin/admission-verify.sh	bigquery	security floor: the guard must know this cloud command to refuse it
+bin/admission-verify.sh	bq	security floor: the guard must know this cloud command to refuse it
 bin/admission-cloud.sh	bigquery	security floor: the guard must know this cloud command to refuse it
 bin/admission-cloud.sh	bq	security floor: the guard must know this cloud command to refuse it
 bin/admission-cloud.sh	dbt	security floor: the guard must know this cloud command to refuse it

@@ -51,7 +51,7 @@ git clone --quiet --single-branch --branch main "$URL" "$T/main" 2>"$T/fetch.err
 [ "$(git -C "$T/main" rev-parse refs/remotes/origin/main)" = "$(git -C "$T/main" rev-parse HEAD)" ] \
   || refuse "the clone of $URL is not at its own origin/main" "git clone $URL"
 log_note "main at $(git -C "$T/main" rev-parse --short HEAD)"
-_rc=0; HARBOR_SCOPE_CACHE_DIR="$CFG_DIR/cache" HARBOR_REDTEAM_SELF='sh bin/eval-redteam-corpus.sh (in the harbor checkout)' \
+_rc=0; HARBOR_SCOPE_CACHE_DIR="$CFG_DIR/cache" HARBOR_EVAL_REDTEAM_SELF='sh bin/eval-redteam-corpus.sh (in the harbor checkout)' \
   sh "$T/main/bin/eval-redteam-corpus.sh" || _rc=$?
 log_end || :
 exit "$_rc"

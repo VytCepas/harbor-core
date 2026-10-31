@@ -125,6 +125,17 @@ printf '#!/usr/bin/env sh\nuser_run() { render_table; }\n' > "$FX/d3b/user.sh"
 t_eq "MS-8/D3 a symbol named inside a string is not a call" 0.000 "$(field "$FX/d3" density)"
 t_eq "MS-8/D3 the same symbol at command position is seen" yes "$(holds "$(field "$FX/d3b" density) > 0")"
 
+t_section "MS-10 · a rename alias (symlink) is the same file, not a second definition (harbor#1392)"
+# lib.sh owns two symbols called from two other files: an earned value. A symlink alias beside it
+# made every symbol look defined twice, so the seam read 0 owned symbols and "no seam".
+mkdir -p "$FX/al"
+printf '#!/usr/bin/env sh\nlib_one() { :; }\nlib_two() { :; }\n' > "$FX/al/lib.sh"
+for f in u1 u2; do printf '#!/usr/bin/env sh\nrun_%s() {\n  lib_one\n  lib_two\n}\n' "$f" > "$FX/al/$f.sh"; done
+t_eq "MS-10a control: no alias, two symbols with external callers" 2 "$(sfield "$FX/al/lib.sh" "$FX/al" external_callers)"
+ln -s lib.sh "$FX/al/old-lib.sh"
+t_eq "MS-10b an alias beside the file changes nothing" 2 "$(sfield "$FX/al/lib.sh" "$FX/al" external_callers)"
+t_eq "MS-10c measured through the alias, the same answer" 2 "$(sfield "$FX/al/old-lib.sh" "$FX/al" external_callers)"
+
 t_section "MS-9 · usage contract"
 t_exit "MS-9a --help" 0 sh "$TOOL" --help
 t_exit "MS-9b no arguments" 2 sh "$TOOL"

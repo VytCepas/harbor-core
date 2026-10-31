@@ -196,6 +196,16 @@ mv "$HVH" "$HV/MEMORY/WORK/sessions/A-Previous-Host-Token" 2>/dev/null
 HVN="$(records)"; harvest
 t_eq "records under a previous host token are not re-harvested" "$HVN" "$(records)"
 
+t_section "at SessionStart the session that is starting is not reconciled (harbor#1390)"
+# Its transcript exists and has no record yet; a `reconciled` record now would mislabel the live one worklog-push writes at Stop.
+printf '{"type":"x"}\n' > "$HV/projects/-Users-someone/live-9999.jsonl"
+printf '{"session_id":"live-9999","cwd":"/tmp","hook_event_name":"SessionStart","source":"startup"}' \
+  | CLAUDE_CONFIG_DIR="$HV" sh "$T_ROOT/hooks/memory-harvest/memory-harvest.sh" 2>/dev/null
+t_eq "the starting session's own transcript gets no reconciled record" 0 "$(records '*live-9999*')"
+harvest
+t_eq "...while any other session still reconciles it" 1 "$(records '*live-9999*')"
+rm -f "$HV/projects/-Users-someone/live-9999.jsonl"
+
 t_section "harness scratch sessions are not work"
 t_eq "a /private/tmp scratch transcript is skipped" 0 "$(records '*cccc-3333*')"
 

@@ -6,8 +6,8 @@
 #   audit-collector.sh --verify DAY          verify that day's checkpoint signature and that the store still matches it
 # Runs every 300 s as the _harborlog user from a root-owned copy (collector-install.sh, launchd). It reads the
 # sources through an ACL the operator's uid could remove: that, an edit, a truncation or a gap is REPORTED in
-# status.json, never prevented (docs/design/telemetry.md, tier 2). Sources: HARBOR_COLLECTOR_SRC, a :-separated list of dirs and files (the
-# OBSERVABILITY dir); store: HARBOR_COLLECTOR_STORE.
+# status.json, never prevented (docs/design/telemetry.md, tier 2). Sources: HARBOR_AUDIT_COLLECTOR_SOURCES, a :-separated list of dirs and files (the
+# OBSERVABILITY dir); store: HARBOR_AUDIT_COLLECTOR_STORE.
 set -eu
 PATH=/usr/bin:/bin:/usr/sbin:/sbin; export PATH
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
@@ -15,10 +15,10 @@ case "${1:-}" in -h|--help) awk 'NR<2{next} /^#/{sub(/^# ?/,""); print; next} {e
 . "$HERE/library-log.sh"
 . "$HERE/library-fs.sh"
 log_init collector
-SRC="${HARBOR_COLLECTOR_SRC:-}"
-STORE="${HARBOR_COLLECTOR_STORE:-/Library/Application Support/Harbor/collector}"
+SRC="${HARBOR_AUDIT_COLLECTOR_SOURCES:-${HARBOR_COLLECTOR_SRC:-}}"
+STORE="${HARBOR_AUDIT_COLLECTOR_STORE:-${HARBOR_COLLECTOR_STORE:-/Library/Application Support/Harbor/collector}}"
 NS=harbor-collector   # ssh-keygen -Y namespace: a signature made for anything else does not verify here
-[ -n "$SRC" ] || { log_fail "HARBOR_COLLECTOR_SRC is not set"; log_fix "set it to <cfg>/MEMORY/OBSERVABILITY in the launchd job"; exit 2; }
+[ -n "$SRC" ] || { log_fail "HARBOR_AUDIT_COLLECTOR_SOURCES is not set"; log_fix "set it to <cfg>/MEMORY/OBSERVABILITY in the launchd job"; exit 2; }
 umask 077
 mkdir -p "$STORE/data" "$STORE/state" "$STORE/checkpoints"
 chmod 0755 "$STORE/checkpoints"   # signed checkpoints are public, for the off-host anchor; data/ and state/ are not
@@ -64,7 +64,7 @@ ingest() {
     # The fast path: a CLOSED file (idle over an hour: archives, rotated generations) with unchanged size and mtime skips
     # the re-hash (5 s per 200 MB measured); anything recent is always re-hashed, so mtime's one-second grain hides
     # nothing. An edit to a closed file that restores size and mtime is caught by the daily --checkpoint full pass.
-    if [ "${HARBOR_COLLECTOR_FULL:-0}" != 1 ] && [ "$size" = "$done_b" ] && [ -n "$done_m" ] && [ "$mt" = "$done_m" ] \
+    if [ "${HARBOR_AUDIT_COLLECTOR_FULL:-${HARBOR_COLLECTOR_FULL:-0}}" != 1 ] && [ "$size" = "$done_b" ] && [ -n "$done_m" ] && [ "$mt" = "$done_m" ] \
        && [ "$((_now - mt))" -gt 3600 ]; then
       printf '%s\t%s\t%s\t%s\t%s\n' "$ino" "$done_b" "$done_h" "$rel" "$done_m" >> "$_new"; _files=$((_files + 1)); continue
     fi
@@ -102,7 +102,7 @@ manifest() { # the store's data files, sorted, with size and sha256: what a chec
 }
 
 checkpoint() { # <day>
-  HARBOR_COLLECTOR_FULL=1 ingest   # every kept byte re-hashed before a day is signed: the fast path's backstop
+  HARBOR_AUDIT_COLLECTOR_FULL=1 ingest   # every kept byte re-hashed before a day is signed: the fast path's backstop
   _cp="$STORE/checkpoints/$1.tsv"
   [ ! -e "$_cp" ] || { log_fail "a checkpoint for $1 already exists: one per day, never rewritten"; log_nofix "verify it: $0 --verify $1"; return 1; }
   [ -f "$STORE/key/collector" ] || { log_fail "no signing key at $STORE/key/collector"; log_fix "sudo sh bin/collector-install.sh"; return 1; }

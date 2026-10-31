@@ -49,7 +49,7 @@ export function makePanels(root: string, cfg: string, home: string): readonly Pa
   const sh = (script: string, ...args: string[]) => ["sh", `${root}/bin/${script}`, ...args];
   const short = (p: unknown) => (typeof p === "string" && p.startsWith(home) ? "~" + p.slice(home.length) : p);
   return Object.freeze([
-    { id: "floor", title: "Floor", tab: "state", argv: sh("floor-verify.sh", "--live"), okExits: [0, 1], timeoutMs: 120_000,
+    { id: "floor", title: "Floor", tab: "state", argv: sh("admission-verify.sh", "--live"), okExits: [0, 1], timeoutMs: 120_000,
       view: { kind: "text", quiet: /^\s*ok:/ }, headline: logSummary },
     { id: "findings", title: "Findings", tab: "state", argv: sh("lint-findings.sh", "report"), okExits: [0, 1], timeoutMs: 60_000,
       note: "the findings store (harbor#590); no accept button until #741",

@@ -34,6 +34,7 @@
 # failure first; calling it lost would send someone to re-run a real red. Zero
 # annotations is not lost either — that is the ordinary shape of a failed step.
 set -eu
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2   # stdout is this tool's answer (the re-run command), so the log goes to stderr
 . "$(dirname -- "$0")/library-log.sh"
 die() { log_fail "$1"; log_fix "$2"; log_end || :; exit 2; }

@@ -30,7 +30,7 @@ shared is these rules, one entry point — `just test` — and one summary line 
      `XDG_STATE_HOME`, `CLAUDE_CONFIG_DIR` and TMPDIR at the test's `tmp_path`. Toolchain caches
      (uv, cargo, rustup, go, bun) keep their real locations: they are content, not configuration,
      and a cold cache turns every `uv run` into a download. Checked by project-init's
-     `tests/contracts/test_test_contract.py`, which scaffolds a repo, plants a test asserting
+     `tests/policy/contracts/test_test_contract.py`, which scaffolds a repo, plants a test asserting
      `Path.home()` is not the real home, and runs it.
    - *Known class — an inherited knob:* a suite that reads a `HARBOR_*` variable its caller
      exported. CI's `HARBOR_STATUS_SUITE_COUNTS` changed what `floor.status-test` counted, so the
@@ -60,7 +60,7 @@ shared is these rules, one entry point — `just test` — and one summary line 
      has no "non-zero" assertion to reach for.
    - *Python:* `just test` exits with pytest's own code, unchanged: 0 all passed, 1 a test
      failed, 2 interrupted, 5 nothing collected. Checked by project-init's
-     `tests/contracts/test_test_contract.py`. **An assertion of `returncode != 0` in a Python test
+     `tests/policy/contracts/test_test_contract.py`. **An assertion of `returncode != 0` in a Python test
      is not mechanised:** project-init#1052.
 
 3. **One summary line per suite, `<suite>: N passed, M failed`**, so a fleet runner can add the
@@ -76,7 +76,7 @@ shared is these rules, one entry point — `just test` — and one summary line 
      [test-contract-test.sh](../tests/test/contract/contract.test.sh).
    - *Python:* the scaffolded root `conftest.py` prints `<project>: N passed, M failed` at the
      end of every pytest run, `just test` and `just test-cov` alike. An error counts as failed; a
-     skip counts in neither. Checked by project-init's `tests/contracts/test_test_contract.py`.
+     skip counts in neither. Checked by project-init's `tests/policy/contracts/test_test_contract.py`.
    - *The reader:* `projects-orchestrator test-fleet` (projects-orchestrator#316) runs `just
      test` in every repo `fleet.yaml` names and prints one row per repo: repo, passed, failed,
      exit.

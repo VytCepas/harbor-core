@@ -742,6 +742,7 @@ _top() {
 log_rule() { # <advise|deny> <pack id>
   [ -f "$SELF_DIR/library-admission.sh" ] || return 0
   ( DIR="$SELF_DIR"; . "$SELF_DIR/library-admission.sh" >/dev/null 2>&1
+    # shellcheck disable=SC2034 # FLOOR_TOOL: read by library-admission.sh
     FLOOR_TOOL="$TOOL"; floor_log_decision inject "$1" "$2.meta" ) >/dev/null 2>&1 || :
 }
 
@@ -750,6 +751,7 @@ shell_targets() {
   case "$CMD" in *-C*|*-R*|*--repo*) ;; *) return 0 ;; esac
   [ -f "$SELF_DIR/library-admission.sh" ] || return 0
   (
+    # shellcheck disable=SC2034 # DIR: read by library-admission.sh
     DIR="$SELF_DIR"
     . "$SELF_DIR/library-admission.sh" >/dev/null 2>&1
     floor_seg_load "$CMD"

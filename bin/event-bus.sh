@@ -26,6 +26,7 @@ fi
 set -eu
 umask 077
 LC_ALL=C; export LC_ALL   # bytes, not characters: the cap, ${#v} and the case patterns count bytes
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2   # stdout is data: an id, event lines
 log_init event-bus
 

@@ -243,19 +243,19 @@ sampler_down; slot_down
 
 t_section "the job hook: a line through the mount, a post on the host, and never a failed job"
 reset; mkdir -p "$FX/events"
-HARBOR_GOV_EVENTS="$FX/events" GITHUB_JOB=build sh "$T_ROOT/bin/ci-governor-hook.sh"; RC=$?
+HARBOR_CI_GOVERNOR_EVENTS="$FX/events" GITHUB_JOB=build sh "$T_ROOT/bin/ci-governor-hook.sh"; RC=$?
 t_has "inside the container it appends to the mounted trigger" "$(cat "$FX/events/trigger")" " build"
 t_has "on the host it posts the governor's event" "$(cat "$FX/posts")" "com.harbor.ci-governor.event"
 t_eq "it exits 0" 0 "$RC"
-hk() { HARBOR_GOV_EVENTS="$FX/events" GITHUB_RUN_ID=41 GITHUB_JOB=test GITHUB_REPOSITORY=acme/widgets RUNNER_NAME="$1" sh "$T_ROOT/bin/ci-governor-hook.sh"; tail -n1 "$FX/events/trigger" | cut -d' ' -f2-; }
+hk() { HARBOR_CI_GOVERNOR_EVENTS="$FX/events" GITHUB_RUN_ID=41 GITHUB_JOB=test GITHUB_REPOSITORY=acme/widgets RUNNER_NAME="$1" sh "$T_ROOT/bin/ci-governor-hook.sh"; tail -n1 "$FX/events/trigger" | cut -d' ' -f2-; }
 t_eq "a job's first call is its start, with run, job and repo (harbor#1367)" "41 test start acme/widgets" "$(hk r1)"
 t_eq "...a matrix leg on another runner starts on its own" "41 test start acme/widgets" "$(hk r2)"
 t_eq "...the same runner's second call is its done" "41 test done acme/widgets" "$(hk r1)"
 t_eq "...and the marker is gone, so its next job starts again" "41 test start acme/widgets" "$(hk r1)"
 mkdir -p "$FX/hostbus" "$FX/hoststate"
-HARBOR_GOV_EVENTS="$FX/nomount" HARBOR_EVENT_DIR="$FX/hostbus" XDG_STATE_HOME="$FX/hoststate" GITHUB_RUN_ID=42 GITHUB_JOB=build GITHUB_REPOSITORY=acme/widgets RUNNER_NAME=mac sh "$T_ROOT/bin/ci-governor-hook.sh"
+HARBOR_CI_GOVERNOR_EVENTS="$FX/nomount" HARBOR_EVENT_DIR="$FX/hostbus" XDG_STATE_HOME="$FX/hoststate" GITHUB_RUN_ID=42 GITHUB_JOB=build GITHUB_REPOSITORY=acme/widgets RUNNER_NAME=mac sh "$T_ROOT/bin/ci-governor-hook.sh"
 t_has "on a host runner (no mount) it emits ci.job.start to the bus itself" "$(cat "$FX/hostbus"/*.jsonl)" '"kind":"ci.job.start","subject":"acme/widgets:42:build"'
-chmod 0500 "$FX/events"; HARBOR_GOV_EVENTS="$FX/events" PATH="/bin" /bin/sh "$T_ROOT/bin/ci-governor-hook.sh"; RC=$?
+chmod 0500 "$FX/events"; HARBOR_CI_GOVERNOR_EVENTS="$FX/events" PATH="/bin" /bin/sh "$T_ROOT/bin/ci-governor-hook.sh"; RC=$?
 chmod 0700 "$FX/events"
 t_eq "an unwritable mount and no notifyutil still exit 0: the job is never failed for it" 0 "$RC"
 
@@ -263,12 +263,12 @@ t_eq "an unwritable mount and no notifyutil still exit 0: the job is never faile
 # Every call here aims the clear at a fixture: in harbor's own CI container an unaimed one emptied the pool's /tmp.
 : > "$FX/dockerenv"
 tmpfix() { rm -rf "$TR"; TR="$FX/tmproot"; mkdir -p "$TR/smoke-venv/bin"; : > "$TR/gitleaks.tmp"; ln -s /nonexistent "$TR/link"; mkfifo "$TR/clr-debug-pipe"; }
-tmpfix; env -u HARBOR_GOV_EVENTS HARBOR_HOOK_DOCKERENV="$FX/dockerenv" HARBOR_HOOK_TMP="$TR" sh "$T_ROOT/bin/ci-governor-hook.sh"; RC=$?
+tmpfix; env -u HARBOR_CI_GOVERNOR_EVENTS -u HARBOR_GOV_EVENTS HARBOR_CI_GOVERNOR_DOCKERENV="$FX/dockerenv" HARBOR_CI_GOVERNOR_TEMPORARY_ROOT="$TR" sh "$T_ROOT/bin/ci-governor-hook.sh"; RC=$?
 t_eq "as the runner wires it in a container, it empties /tmp of the last job's files, dirs and links" "clr-debug-pipe" "$(ls "$TR")"
 t_eq "...keeps the runner's live pipe, and still exits 0" 0 "$RC"
-tmpfix; HARBOR_GOV_EVENTS="$FX/events" HARBOR_HOOK_DOCKERENV="$FX/dockerenv" HARBOR_HOOK_TMP="$TR" sh "$T_ROOT/bin/ci-governor-hook.sh"
-t_eq "a suite calling it in a container (HARBOR_GOV_EVENTS set) clears nothing (harbor#1072)" 4 "$(ls "$TR" | wc -l | tr -d ' ')"
-tmpfix; env -u HARBOR_GOV_EVENTS HARBOR_HOOK_DOCKERENV="$FX/no-dockerenv" HARBOR_HOOK_TMP="$TR" sh "$T_ROOT/bin/ci-governor-hook.sh"
+tmpfix; HARBOR_CI_GOVERNOR_EVENTS="$FX/events" HARBOR_CI_GOVERNOR_DOCKERENV="$FX/dockerenv" HARBOR_CI_GOVERNOR_TEMPORARY_ROOT="$TR" sh "$T_ROOT/bin/ci-governor-hook.sh"
+t_eq "a suite calling it in a container (HARBOR_CI_GOVERNOR_EVENTS set) clears nothing (harbor#1072)" 4 "$(ls "$TR" | wc -l | tr -d ' ')"
+tmpfix; env -u HARBOR_CI_GOVERNOR_EVENTS -u HARBOR_GOV_EVENTS HARBOR_CI_GOVERNOR_DOCKERENV="$FX/no-dockerenv" HARBOR_CI_GOVERNOR_TEMPORARY_ROOT="$TR" sh "$T_ROOT/bin/ci-governor-hook.sh"
 t_eq "on the host (no /.dockerenv) it clears nothing" 4 "$(ls "$TR" | wc -l | tr -d ' ')"
 
 # ── wiring: the two local suite entries wait for a slot, visibly ────────────────────────────────
@@ -293,7 +293,7 @@ git init -q -b main "$FR" >/dev/null 2>&1
 
 t_section "wiring: hooks/pre-push takes a slot per check"
 full_box
-O="$(cd "$FR" && printf '' | HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_GOV_POLL=0.2 sh hooks/pre-push 2>&1)"; RC=$?
+O="$(cd "$FR" && printf '' | HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CI_GOVERNOR_POLL=0.2 sh hooks/pre-push 2>&1)"; RC=$?
 t_has "the linter waited for the only slot, and said so" "$O" "waiting for a CPU slot: 1 of 1 in use"
 t_has "...on its own line, not inside the hook's run line" "$O" "run   lint-conventions.sh
 ci-governor: waiting"
@@ -302,7 +302,7 @@ kill "$HOLDER" 2>/dev/null; wait "$HOLDER" 2>/dev/null
 
 t_section "wiring: bin/test-suite-run.sh takes a slot per suite"
 full_box
-O="$(HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_GOV_POLL=0.2 sh "$FR/bin/test-suite-run.sh" -j 1 tests/x/x-test.sh 2>&1)"; RC=$?
+O="$(HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CI_GOVERNOR_POLL=0.2 sh "$FR/bin/test-suite-run.sh" -j 1 tests/x/x-test.sh 2>&1)"; RC=$?
 t_has "the suite waited for the only slot, and said so" "$O" "waiting for a CPU slot: 1 of 1 in use"
 t_eq "...then passed" 0 "$RC"
 t_hasnt "...and the wait is not in the suite's verdict" "$O" "FAIL"
@@ -310,7 +310,7 @@ kill "$HOLDER" 2>/dev/null; wait "$HOLDER" 2>/dev/null
 
 t_section "wiring: just test (tests/lib/run.sh) takes a slot per suite"
 full_box
-O="$(HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_GOV_POLL=0.2 sh "$FR/tests/lib/run.sh" 2>&1)"; RC=$?
+O="$(HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CI_GOVERNOR_POLL=0.2 sh "$FR/tests/lib/run.sh" 2>&1)"; RC=$?
 t_has "the suite waited for the only slot, and said so" "$O" "waiting for a CPU slot: 1 of 1 in use"
 t_has "...then ran, its summary read from the log --out wrote" "$O" "harbor: 1 passed, 0 failed"
 t_eq "...and run.sh exits 0" 0 "$RC"

@@ -36,7 +36,9 @@ set -eu
 # The link is this tool's stdout, so the log is log-lib's on stderr (contracts/logging.md).
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 . "$HERE/library-log.sh"
-log_init deliver-drive; LOG_FD=2
+log_init deliver-drive
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
+LOG_FD=2
 
 # THE MOUNT IS FOUND, NOT ASSUMED. Drive for Desktop owns the real path under
 # ~/Library/CloudStorage and may make its own ~/Google Drive alias; a second alias added

@@ -40,6 +40,7 @@ CMD="$(floor_field '.tool_input.command')"
 # The digest subject (harbor#41). NOT passed through floor_block: payload text
 # that never enters the blocking function cannot be one careless edit away from
 # the stderr printf.
+# shellcheck disable=SC2034 # FLOOR_OBS_SUBJECT: read by library-admission.sh (floor_obs_digest)
 FLOOR_OBS_SUBJECT="$CMD"
 
 # harbor#302: a document heredoc behind a pipe or a $( ) is judged by its consumer, not its body.
@@ -68,9 +69,9 @@ $_TIF" ;;
 esac
 # A heredoc, not `printf | grep`: one process per rule instead of two (harbor#264). Empty TARGETS
 # returns 1 first, because grep on no input never matches but on one empty line it could.
-hit() { [ -n "$TARGETS" ] || return 1; "$FLOOR_GREP" -iEq -- "$1" <<FLOOR_HIT_EOF
+hit() { [ -n "$TARGETS" ] || return 1; "$FLOOR_GREP" -iEq -- "$1" <<HARBOR_ADMISSION_HIT_EOF
 $TARGETS
-FLOOR_HIT_EOF
+HARBOR_ADMISSION_HIT_EOF
 }
 # The STRUCTURED table the migrated rules read (B-rewrite, docs/explanation/admission-baseline.md). Loaded
 # once; fail-open exactly like every other scanner here — an empty table makes
@@ -459,7 +460,7 @@ sched_fires '^([a-zA-Z0-9_./-]*/)?systemd-run$' '^--on-(active|boot|startup|unit
 # to end at a `<rule>.<shape>` id. A prose mention would read as a call site with
 # no id — the exact defect F5 exists to catch, manufactured by describing it.
 # The dead id is spelled in PROSE, not as `<id>.<shape>`, and that is deliberate:
-# floor-equiv.sh derives its coverage universe by scraping this file's TEXT for
+# admission-equivalence.sh derives its coverage universe by scraping this file's TEXT for
 # that exact token pattern, comments included. Writing a deleted rule's id in the
 # canonical spelling would re-add it to the denominator as a rule nothing can ever
 # reach, so coverage would read "N of M+1" forever — the "denominator nobody can
@@ -591,11 +592,11 @@ hit ':[[:space:]]*\([[:space:]]*\)[[:space:]]*\{[[:space:]]*:[[:space:]]*\|[[:sp
 # and a back-reference over a padded 32KB line took 282 s: so ERE cuts the candidates out first.
 _FBW='[^[:space:]|&;(){}<>]+'
 if hit "${_FBW}[[:space:]]*(\\([[:space:]]*\\))?[[:space:]]*[{(][[:space:]]*${_FBW}[[:space:]]*[|&][[:space:]]*${_FBW}" \
-   && "$FLOOR_GREP" -oE "(function[[:space:]]+)?${_FBW}[[:space:]]*(\\([[:space:]]*\\))?[[:space:]]*[{(][[:space:]]*${_FBW}[[:space:]]*[|&][[:space:]]*${_FBW}" <<FLOOR_HIT_EOF \
+   && "$FLOOR_GREP" -oE "(function[[:space:]]+)?${_FBW}[[:space:]]*(\\([[:space:]]*\\))?[[:space:]]*[{(][[:space:]]*${_FBW}[[:space:]]*[|&][[:space:]]*${_FBW}" <<HARBOR_ADMISSION_HIT_EOF \
       | "$FLOOR_GREP" -q -e '^\([^[:space:]|&;(){}<>]\{1,\}\)[[:space:]]*([[:space:]]*)[[:space:]]*[{(][[:space:]]*\1[[:space:]]*[|&][[:space:]]*\1$' \
           -e '^function[[:space:]]\{1,\}\([^[:space:]|&;(){}<>]\{1,\}\)[[:space:]]*\(([[:space:]]*)\)\{0,1\}[[:space:]]*[{(][[:space:]]*\1[[:space:]]*[|&][[:space:]]*\1$'
 $TARGETS
-FLOOR_HIT_EOF
+HARBOR_ADMISSION_HIT_EOF
 then
   floor_block bash "fork bomb" fork-bomb.flat
 fi
@@ -1112,7 +1113,7 @@ _sh_payload_ro() {
 _XW='(([a-zA-Z0-9_./-]*/)?(sudo|doas|env|command|builtin|exec|nohup|stdbuf|nice|ionice|setsid|timeout|time|caffeinate)[[:space:]]+((-[^[:space:]]+|[0-9]+[smhd]?|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|--)[[:space:]]+([^-][^[:space:]]*[[:space:]]+)?)*)*'
 _XOPT='([[:space:]]+(-[IJEad][[:space:]]+[^[:space:]]+|-[LnPsSR][[:space:]]+[0-9]+|--(max-args|max-procs|max-chars|delimiter|arg-file|process-slot-var)[[:space:]]+[^[:space:]]+|-[^[:space:]]+))*'
 XARGS_DESTROY="\|&?[[:space:]]*([{(][[:space:]]*)*${_XW}([a-zA-Z0-9_./-]*/)?g?xargs${_XOPT}[[:space:]]+${_XW}([a-zA-Z0-9_./-]*/)?(rm|unlink|chmod|chown|mv|dd)([[:space:]]|\$)"
-# -ok/-okdir run their command as -exec does (floor-normalize.awk, find_destroys_cfg); only a y on stdin differs.
+# -ok/-okdir run their command as -exec does (admission-normalize.awk, find_destroys_cfg); only a y on stdin differs.
 _shro=0
 if hit "(^|[^[:alnum:]_])find([^|]*)-(exec|ok)(dir)?[[:space:]]+(sh|bash|zsh)[[:space:]]+-c" \
    && ! hit "(^|[^[:alnum:]_])find([^|]*)(-(exec|ok)(dir)?[[:space:]]+$FINDVERB_NOSH|[[:space:]]-delete([[:space:]]|\$))" \
@@ -1241,7 +1242,7 @@ function judge(s,   n, w, i, j, p, k, prog, nx, redir, put) {
   if (prog ~ /^deploy(\.sh)?$/ || (prog == "harbor" && nx ~ /^(deploy|install|uninstall|skills|inject|constitution|restore)$/))
     for (j = i + 1; j <= n; j++) if (w[j] ~ /^--apply(=|$)/) { print "DEPLOY"; return }
   # an installer run straight at the live box skips the deploy preflight and snapshot: --live with a write (p30)
-  if (prog ~ /(-install|^sec0-harden|^deploy-harden|^floor-deny|^floor-uninstall|^restore|^deploy-restore|^pin-instructions)(\.sh)?$/) {
+  if (prog ~ /(-install|^sec0-harden|^deploy-harden|^floor-deny|^floor-uninstall|^admission-deny|^admission-remove|^restore|^deploy-restore|^pin-instructions)(\.sh)?$/) {
     lv = 0; wr = 0
     for (j = i + 1; j <= n; j++) { if (w[j] == "--live") lv = 1; if (w[j] ~ /^--(apply|repin)(=|$)/) wr = 1 }
     if (lv && wr) { print "DEPLOY"; return } }
@@ -1328,7 +1329,6 @@ hit '(^|[^[:alnum:]_])docker[^|]*(--privileged|(-v|--volume)([[:space:]]+|=)/:|(
 # guard-selfedit correctly ALLOWED the same file (red-team pass 5, the two
 # guards contradicted each other). Anchor on the ACTUAL config dirs instead.
 CFG_ABS="$(floor_canon_dir "$(floor_config_dir)")"   # the spelling floor_seg_* compare in (harbor#754)
-CFG_BASE="$(basename "$CFG_ABS")"
 # THE SAME DIR, ESCAPED FOR USE INSIDE A RULE (P12-configdir-ere-injection-03).
 # CFG_ABS is a PATH and is compared as one by floor_seg_cwd_under /
 # floor_seg_operand_under; these two are the REGEX spellings, and the only
@@ -1978,9 +1978,6 @@ _OUTDIR_V="^${CFGDIR_RE}/*\$"
 # $CMDPOS is defined ONCE, with the scheduler rules above — harbor#92 needed the
 # same anchor for the same reason, and two assignments of one anchor is two
 # places for it to drift apart.
-# Same correction as TAR_XTOK below: one dash for a letter bundle, two only for
-# the long options. `-{0,2}` matched the COMPRESSION selector `--xz`.
-TAR_X='([[:space:]]+(-?[a-zA-Z]{0,4}x[a-zA-Z]{0,4}|--(extract|get))([[:space:]]|=|$))'
 # ── harbor#111 · -O IS NOT AN EXTRACTION, AND THE FLAT FORM HAS TO KNOW IT ───
 # `tar xzOf <archive> <member>` writes the member to STDOUT and creates no file.
 # The segment path already lets it through; the FLAT path could not, and the flat
@@ -1993,7 +1990,7 @@ TAR_X='([[:space:]]+(-?[a-zA-Z]{0,4}x[a-zA-Z]{0,4}|--(extract|get))([[:space:]]|
 # `-?[a-zA-Z]*O[a-zA-Z]*` anywhere in the segment — is a HOLE: it matches any
 # all-letters operand carrying an O, so `tar xf evil.tgz -C <cfg> NOTES` would
 # read as outbound on the strength of a MEMBER NAME. This variant is only ever
-# used where TAR_X already is: immediately after the tar verb, where the token
+# used immediately after the tar verb, where the token
 # is tar's mode bundle and an operand cannot appear. A member name is never
 # first, so the cloak has nowhere to stand.
 #
@@ -2406,7 +2403,7 @@ floor_seg_has "$EXTRACTOR" "$CFG_TOK" \
 # so this segment writes nothing. `[^;&|]*` already bounds the match to ONE
 # segment, so judging each on its own bundle is correct — a compound that reads
 # with -O in one segment and extracts for real in the next still blocks on the
-# second. The argv pair above keeps TAR_X: it has the segment table and answers
+# second. The argv pair above keeps the plain extract mode: it has the segment table and answers
 # the question precisely, and weakening it would trade accuracy for nothing.
 hit "${CMDPOS}(tar|bsdtar|gtar)${TAR_XNOO}[^;&|]*(${CFG_RE}|${CFGDIR_RE}([[:space:]/]|\$))" \
   && floor_block bash "an archive is being extracted into the Helm config directory" extract-into-cfg.flat
@@ -3072,8 +3069,8 @@ cfg_redirect_outside_allowlist \
 #     ARGUMENT, a bare invocation (which DEFAULTS to the live dir), a `cd <cfg>
 #     &&` bridge, and a copy of the script made somewhere else. Inject-then-
 #     bless was demonstrated end-to-end through the allowed spelling.
-#   • and it blocked ordinary text: `sed -n '/floor-install.sh --live/p'
-#     docs/explanation/admission-baseline.md` and `git commit -am "…floor-deny.sh --live…"` were refused as
+#   • and it blocked ordinary text: `sed -n '/admission-install.sh --live/p'
+#     docs/explanation/admission-baseline.md` and `git commit -am "…admission-deny.sh --live…"` were refused as
 #     "a --live floor operation", because reading a document that quotes a
 #     command is indistinguishable from running it to a substring match.
 #
@@ -3467,9 +3464,9 @@ if ! floor_repo_wires github_command_guard project-init-lifecycle; then
   _TPO="$TARGETS"
   case "$CMD" in *push*) case "$CMD" in *' -o '*|*' --push-option '*)
     _TPO="$(printf '%s\n' "$TARGETS" | sed -E 's/[[:space:]](-o|--push-option)[[:space:]]+[^[:space:]]+/ /g')" ;; esac ;; esac
-  hit_po() { [ -n "$_TPO" ] && "$FLOOR_GREP" -iEq -- "$1" <<FLOOR_HIT_EOF
+  hit_po() { [ -n "$_TPO" ] && "$FLOOR_GREP" -iEq -- "$1" <<HARBOR_ADMISSION_HIT_EOF
 $_TPO
-FLOOR_HIT_EOF
+HARBOR_ADMISSION_HIT_EOF
   }
   hit_po '(^|[^[:alnum:]_])git([[:space:]]+-[CcP][[:space:]]*[^[:space:]]*)*[[:space:]]+push([^|;&]*)[[:space:]]["'"'"']?\+([^[:space:]]*[:/])?(main|master|production|prod)["'"'"']?([[:space:]]|$)' \
     && floor_block bash "git push of a +refspec to a protected branch (no wired repo guard — floor is sole gate)" force-push-protected.flat

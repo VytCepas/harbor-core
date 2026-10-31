@@ -40,6 +40,7 @@ vendor/	vendored	source	vendored upstream code
 worklog/	hook	source	push hook
 .gitignore	config	source	untracked-file patterns
 .gitleaks.toml	config	source	secret-scan config
+.shellcheckrc	config	source	shellcheck config
 justfile	config	source	task runner entry points
 AGENTS.md	policy	source	agent instructions
 CLAUDE.md	policy	source	the constitution as deployed

@@ -29,7 +29,7 @@ Cards stay per system; the entry is the identity a card's `account:` line points
 | `## <id>` | kebab-case, `[a-z0-9][a-z0-9._-]*`, unique |
 | `kind` | `account`, `role`, `app`, `mailbox` or `token` |
 | `what`, `use-when`, `reaches`, `cannot`, `grant` | one non-empty line each, no tab; the card's own words for the same ideas |
-| `secret` | the **reference** the value is stored under (`[A-Za-z0-9._-]+`), or `none` when no `bin/secret` item holds it: a browser sign-in, a role, or a credential a tool still reads from outside the seam, whose `what` says where (a migration debt, not a second store). A ref is named by one entry |
+| `secret` | the **reference** the value is stored under (`[A-Za-z0-9._-]+`), or `none` when no `bin/secret` item holds it: a browser sign-in, a role, or a credential held outside the seam. A token or app with `none` and no `held` is a migration debt, not a second store. A ref is named by one entry |
 | `verified` | one ISO date; `harbor access add` writes today |
 
 Optional, and checked when present (the lifecycle, below):
@@ -42,6 +42,7 @@ Optional, and checked when present (the lifecycle, below):
 | `revoke` | one line: where the old value is retired at its source |
 | `rotated` | the day a value was last stored by `add` or `rotate`; written by them |
 | `revoked` | the day the entry was retired; written by `revoke`. Its presence, whatever its value, refuses the ref |
+| `held` | with `secret: none` only: where the value lives outside the seam, and why that is by design rather than a debt (a CI secret, a per-job or per-runner token, a key the confinement denies to every session). `status` reads it as `held`, not `unmanaged` |
 
 Prose between entries is free. An indented `name:` line must sit inside an entry and name a known field; a typo
 (`use_when:`) is red, never read as absent.
@@ -82,7 +83,7 @@ harbor access rotate <id> [--value-stdin] [--locked]  # a new value, kept only i
 harbor access revoke <id>                  # refuse the ref from now on, then remove the stored value
 ```
 
-`add` also takes `--check CMD --expect T`, `--expires DATE`, `--renew T` and `--revoke T`, each one line and scanned
+`add` also takes `--check CMD --expect T`, `--expires DATE`, `--renew T`, `--revoke T` and `--held T` (with `--no-secret`), each one line and scanned
 for a credential shape like every other field.
 
 ## Lifecycle: one controller for store, renew and retire
@@ -94,7 +95,7 @@ hand-edited:
   cases: a ref missing from the store, a `check` that fails or times out (30s, `PROBE_TIMEOUT`) or is refused as a
   write, an `expires` in the past, and a revoked ref still stored. A warning is an `expires` within 14 days. A gap,
   which does not exit 1, covers three cases: a stored ref with no `check` (`unprobed`), a token or app the seam does
-  not hold (`unmanaged`), and a stored ref with no `renew`/`revoke` recipe. By default it prints the reds and
+  not hold and no `held:` explains (`unmanaged`, the migration debt; with `held:` it is `held`), and a stored ref with no `renew`/`revoke` recipe. By default it prints the reds and
   warnings, each with the day it was first seen, then one tally line that counts every state. `-v` prints every
   entry. The first-seen days live in a state file outside git (`$XDG_STATE_HOME/harbor/access-status.tsv`), so a
   standing red reads as old rather than new. The probe's output is never printed, because a failing CLI can echo the

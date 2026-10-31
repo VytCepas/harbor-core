@@ -30,11 +30,11 @@ red() { # <rule> <expected line fragment> — check.sh on the (now broken) fixtu
 }
 
 t_section "a clean fixture passes"
-mk; t_has 'no violations' "$(sh "$C" "$F")" "check: 6 rules, 0 violations"
+mk; t_has 'no violations' "$(sh "$C" "$F")" "check: 7 rules, 0 violations"
 
 part() { mv "$F/tests/guards/x.jsonl" "$F/tests/guards/x.a.jsonl"; cp "$F/tests/guards/x-test.sh" "$F/tests/guards/x.a-test.sh"
   echo 'tests/guards/x.a-test.sh' >> "$F/contracts/suites.txt"; }
-mk; part; t_has 'a guard split into parts passes' "$(sh "$C" "$F")" "check: 6 rules, 0 violations"
+mk; part; t_has 'a guard split into parts passes' "$(sh "$C" "$F")" "check: 7 rules, 0 violations"
 
 t_section "each rule goes red"
 mk; printf 'ok() { :; }\n' >> "$F/tests/guards/x-test.sh";                red test.harness-only 'defines its own assertion helper'
@@ -51,12 +51,12 @@ mk; echo '{"id":"a1","rule":"a","want":"deny","cmd":"x"}' > "$F/tests/guards/x.m
 mk; echo '{"id":"a3","rule":"a","want":"deny","cmd":"x","colour":"red"}' >> "$F/tests/guards/x.jsonl"   red test.row-shape 'unknown keys colour'
 mk; echo '{"id":"a3","rule":"a","want":"deny","todo":"deny","cmd":"x"}' >> "$F/tests/guards/x.jsonl"   red test.row-shape 'todo must be a verdict other than want'
 mk; echo '{"id":"m1","cmd":"x","has":"a","hasnt":"b"}' > "$F/tests/guards/x.msg.jsonl";               red test.row-shape 'needs exactly one of has or hasnt'
-mk; echo '{"id":"y1","rule":"a","want":"deny","cmd":"x"}' > "$F/tests/guards/y.jsonl";                 red test.guard-routing "no guard 'y'"
-mk; rm "$F/bin/guard-x.sh";                                                red test.guard-routing 'has no bin/guard-x.sh'
-mk; echo '{"id":"y1","rule":"a","want":"deny","cmd":"x"}' > "$F/tests/guards/y.part.jsonl";            red test.guard-routing "no guard 'y'"
-mk; part; rm "$F/tests/guards/x.a-test.sh"; sed -i.bak '/x.a-test/d' "$F/contracts/suites.txt";        red test.guard-routing 'no suite tests/guards/x.a-test.sh runs it'
-mk; part; mv "$F/tests/guards/x.a.jsonl" "$F/tests/guards/x.jsonl";                                     red test.guard-routing 'has no table tests/guards/x.a.jsonl'
-mk; : > "$F/contracts/suites.txt";                                         red test.guard-routing 'not listed in contracts/suites.txt'
+mk; echo '{"id":"y1","rule":"a","want":"deny","cmd":"x"}' > "$F/tests/guards/y.jsonl";                 red test.admission-hook-routing "no guard 'y'"
+mk; rm "$F/bin/guard-x.sh";                                                red test.admission-hook-routing 'has no bin/guard-x.sh'
+mk; echo '{"id":"y1","rule":"a","want":"deny","cmd":"x"}' > "$F/tests/guards/y.part.jsonl";            red test.admission-hook-routing "no guard 'y'"
+mk; part; rm "$F/tests/guards/x.a-test.sh"; sed -i.bak '/x.a-test/d' "$F/contracts/suites.txt";        red test.admission-hook-routing 'no suite tests/guards/x.a-test.sh runs it'
+mk; part; mv "$F/tests/guards/x.a.jsonl" "$F/tests/guards/x.jsonl";                                     red test.admission-hook-routing 'has no table tests/guards/x.a.jsonl'
+mk; : > "$F/contracts/suites.txt";                                         red test.admission-hook-routing 'not listed in contracts/suites.txt'
 mk; echo 'RULE="b"' >> "$F/bin/guard-x.sh";                                red test.rule-coverage "rule 'b' has no row that fires it"
 mk; sed -i.bak 's/RULE=/RULE=[[:space:]]*/' "$F/tests/guards/guards.jsonl"; printf 'RULE= \\\n  "c"\n' >> "$F/bin/guard-x.sh"
                                                                            red test.rule-coverage "rule 'c' has no row that fires it"
@@ -66,13 +66,18 @@ mk; sed -i.bak 's/RULE=/NOPE=/' "$F/tests/guards/guards.jsonl";           red te
 idmk() { printf '  A) _crule=x-a ;;\n  *) _crule=x-unclassified ;;\n' > "$F/bin/guard-x.sh"
   printf '%s\n' '{"guard":"x","script":"guard-x.sh","posture":null,"rules":"^ +[A-Z]+\\) .*_crule=(x-[a-z-]+)","reps":{"deny":"zap it","allow":"ls"}}' > "$F/tests/guards/guards.jsonl"
   printf '%s\n' '{"id":"a1","rule":"x-a","want":"deny","cmd":"zap it"}' '{"id":"a2","rule":"x-a","want":"allow","cmd":"zap --dry"}' > "$F/tests/guards/x.jsonl"; }
-mk; idmk; t_has 'ledger-id rows cover a ledger-id guard; its default arm needs none' "$(sh "$C" "$F")" "check: 6 rules, 0 violations"
+mk; idmk; t_has 'ledger-id rows cover a ledger-id guard; its default arm needs none' "$(sh "$C" "$F")" "check: 7 rules, 0 violations"
 mk; idmk; echo '{"id":"a3","rule":"A","want":"deny","cmd":"x"}' >> "$F/tests/guards/x.jsonl";          red test.rule-coverage "rule 'A' is not a rule"
 mk; idmk; printf '  B) _crule=x-b ;;\n' >> "$F/bin/guard-x.sh";                                         red test.rule-coverage "rule 'x-b' has no row that fires it"
 mk; echo '{"guard":"x","id":"shape:gone/deny","want":"allow","why":"w"}' > "$F/tests/guards/exemptions.jsonl"
                                                                            red test.exemption-effect 'matches no shared row'
 mk; echo '{"guard":"x","id":"shape:bare/deny","want":"deny","why":"w"}' > "$F/tests/guards/exemptions.jsonl"
                                                                            red test.exemption-effect 'changes nothing'
+ctl() { mkdir -p "$F/standards/naming"; printf 'id\tmode\ttype\tengine\tsurfaces\tmoment\tfunction\tstability\tsuccessor\towner\tred_proof\temitted\ttitle\nadmission.x-a\tblock\tadmission\tbin/guard-x.sh\t-\truntime\tpreventive\texperimental\t-\tadmission\t%s\tx:a\tt\n' "$1" > "$F/standards/naming/controls.tsv"; }
+mk; ctl tests/guards/x-test.sh; t_has 'a red_proof the tables derive passes' "$(sh "$C" "$F")" "check: 7 rules, 0 violations"
+mk; ctl -;                                                                  red test.red-proof-derived 'admission.x-a red_proof is -, the tables say tests/guards/x-test.sh'
+mk; ctl tests/elsewhere.test.sh; sh "$T_ROOT/tests/lib/red-proof.sh" --write "$F"
+t_eq 'red-proof.sh --write sets the derived suite' tests/guards/x-test.sh "$(awk -F'\t' '$1 == "admission.x-a" { print $11 }' "$F/standards/naming/controls.tsv")"
 
 # Canary root: the real lib and guard tables, run against stub guards.
 K="$T_TMP/canary"; mkdir -p "$K/contracts" "$K/tests/x"; : > "$K/contracts/suites.txt"

@@ -39,6 +39,7 @@ fi
 set -eu
 umask 077
 LC_ALL=C; export LC_ALL
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2   # stdout is data
 log_init event-dispatch
 
@@ -297,7 +298,6 @@ rule_load() {
       argv=*) R_ARGV="$R_ARGV${_l#argv=}$NL"; R_ARGC=$((R_ARGC + 1)) ;;
     esac
   done < "$1"
-  R_FILE="$1"
   [ -n "$R_ID" ] && [ -n "$R_PAT" ] || return 1
   _rb="${1##*/}"
   if [ "$_rb" != "$R_ID.rule" ] || ! rule_id_ok "$R_ID"; then

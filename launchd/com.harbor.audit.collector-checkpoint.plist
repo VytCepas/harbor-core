@@ -10,8 +10,8 @@
   <key>GroupName</key><string>_harborlog</string>
   <key>ProgramArguments</key><array><string>/bin/sh</string><string>@BIN@/audit-collector.sh</string><string>--checkpoint</string></array>
   <key>EnvironmentVariables</key><dict>
-    <key>HARBOR_COLLECTOR_SRC</key><string>@SOURCES@</string>
-    <key>HARBOR_COLLECTOR_STORE</key><string>@STORE@</string>
+    <key>HARBOR_AUDIT_COLLECTOR_SOURCES</key><string>@SOURCES@</string>
+    <key>HARBOR_AUDIT_COLLECTOR_STORE</key><string>@STORE@</string>
   </dict>
   <key>StartCalendarInterval</key><dict><key>Hour</key><integer>4</integer><key>Minute</key><integer>0</integer></dict>
   <key>StandardOutPath</key><string>@STORE@/com.harbor.audit.collector-checkpoint.log</string>

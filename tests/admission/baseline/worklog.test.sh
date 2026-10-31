@@ -37,7 +37,7 @@ t_eq "#311 the reference scan reads a git checkout, so an empty result means non
 # Everything else that WIRES or DOCUMENTS the hook is in scope: putting the wiring back turns this red.
 _wpull_refs="$(git -C "$HROOT" grep -l -e 'worklog-pull' -- . ':!evals' ':!skills/topology/EVALS' \
   ':!registries/coverage-incidents.tsv' ':!contracts/port-paths-exempt.tsv' ':!docs/generated/plan.md' ':!docs/reports/platform-build-tickets.md' \
-  ':!tests/admission/baseline/worklog.test.sh' ':!bin/idea' 2>/dev/null)"
+  ':!tests/admission/baseline/worklog.test.sh' ':!bin/idea' ':!docs/audits/test-audit.md' 2>/dev/null)"
 t_eq "#311 no live surface names worklog-pull (installer, lint, contract, doc, test)" "" "$_wpull_refs"
 
 t_section "harbor#324 worklog-push: a failed push names the git error, not the pre-push scan banner"
@@ -49,9 +49,18 @@ git -C "$WL/plog" config user.name t; git -C "$WL/plog" config user.email t@t   
 printf '#!/bin/sh\necho "5:39PM INF 1532 commits scanned." >&2\necho "5:39PM INF scanned ~135644 bytes (135.64 KB) in 705ms" >&2\n' > "$WL/plog/.git/hooks/pre-push"
 chmod +x "$WL/plog/.git/hooks/pre-push"
 printf '#!/bin/sh\nexit 0\n' > "$T_BIN/gitleaks"; chmod +x "$T_BIN/gitleaks"
+# The store stub logs each call; `run` serves FAKE_STORE as the named variable.
+cat > "$WL/secret" <<'STUB'
+#!/bin/sh
+echo "$*" >> "$FAKE_STORE.calls"
+case "$1" in
+  run) [ -f "$FAKE_STORE" ] || { echo "no secret named '$2'" >&2; exit 1; }; v="$(cat "$FAKE_STORE")"; export "$3=$v"; shift 4; exec "$@" ;;
+  *) exit 2 ;;
+esac
+STUB
 printf 'x-test-token\n' > "$WL/token"
 _wpf() { printf '{"session_id":"%s","cwd":"%s"}' "$1" "$REPO_BARE" | CLAUDE_CONFIG_DIR="$CFG" HARBOR_MEMORY_LOG_DIR="$WL/plog" \
-  HARBOR_MEMORY_LOG_TOKEN_FILE="$WL/token" sh "$T_ROOT/hooks/worklog-push/worklog-push.sh" 2>&1 >/dev/null; }
+  HARBOR_SECRET_BIN="$WL/secret" FAKE_STORE="$WL/token" sh "$T_ROOT/hooks/worklog-push/worklog-push.sh" 2>&1 >/dev/null; }
 _o="$(_wpf WL-324)"
 t_has "324 the failure is reported" "$_o" "push FAILED"
 t_has "324 …with git's own reason" "$_o" "remote rejected"
@@ -110,30 +119,38 @@ t_has "1191 …naming the hook" "$(cat "$WL/nh.err")" "hook-rejected-1191-nid"
 t_eq "1191 …and no commit lands" "" "$(git -C "$_nh" rev-parse --verify -q HEAD 2>/dev/null)"
 t_eq "1191 …and the session is not blocked (exit 0)" 0 "$_nh_rc"
 
-t_section "harbor#1205 worklog-push: the token is the store's worklog-token; the plaintext file warns once"
-# The store stub logs each call; `run` serves FAKE_STORE as the named variable.
-cat > "$WL/secret" <<'STUB'
-#!/bin/sh
-echo "$*" >> "$FAKE_STORE.calls"
-case "$1" in
-  run) [ -f "$FAKE_STORE" ] || { echo "no secret named '$2'" >&2; exit 1; }; v="$(cat "$FAKE_STORE")"; export "$3=$v"; shift 4; exec "$@" ;;
-  *) exit 2 ;;
-esac
-STUB
+t_section "harbor#1205 worklog-push: the token is the store's worklog-token; a plaintext file is never read, and warns once"
 _sc="$WL/scfg"; mkdir -p "$_sc"
 _wps() { printf '{"session_id":"%s","cwd":"%s"}' "$1" "$REPO_BARE" | CLAUDE_CONFIG_DIR="$_sc" HARBOR_MEMORY_LOG_DIR="$WL/plog" \
   HARBOR_SECRET_BIN="$WL/secret" FAKE_STORE="$WL/store" HARBOR_MEMORY_LOG_TOKEN_FILE="$WL/legacy" sh "$T_ROOT/hooks/worklog-push/worklog-push.sh" 2>&1 >/dev/null; }
 rm -f "$WL/store" "$WL/legacy"
 t_has "1205 no token anywhere: it says the log is never pushed" "$(_wps WL-1205-a)" "never pushed"
 t_eq "1205 …once: the next Stop is silent" "" "$(_wps WL-1205-b)"
-printf 'x-test-token\n' > "$WL/legacy"
-t_has "1205 a plaintext file only: it warns that the token is not in the store" "$(_wps WL-1205-c)" "still the plaintext"
+printf 'x-test-token\n' > "$WL/legacy"; : > "$WL/store.calls"
+_o="$(_wps WL-1205-c)"
+t_has "1205 a plaintext file only: it warns that the token is not in the store" "$_o" "still the plaintext"
+t_has "1205 …that the file is not read, so nothing is pushed" "$_o" "no longer read"
+t_has "1205 …and names the command that moves it" "$_o" "adopt $WL/legacy worklog-token"
+t_eq "1205 …and no push ran: the remote is behind the new commit" behind \
+  "$([ "$(git -C "$WL/rej.git" rev-parse -q --verify main 2>/dev/null)" = "$(git -C "$WL/plog" rev-parse HEAD 2>/dev/null)" ] && echo pushed || echo behind)"
 t_eq "1205 …once" "" "$(_wps WL-1205-d)"
 printf 'x-test-token\n' > "$WL/store"; : > "$WL/store.calls"
 t_eq "1205 with the token in the store: a push that succeeds prints nothing" "" "$(_wps WL-1205-e)"
 t_has "1205 …and the push ran under secret run" "$(cat "$WL/store.calls")" "run worklog-token WORKLOG_TOKEN -- git"
 t_eq "1205 …and the warn-once stamps are cleared, so a regression warns again" no \
   "$([ -e "$_sc/.worklog-token-warned.legacy" ] || [ -e "$_sc/.worklog-token-warned.missing" ] && echo yes || echo no)"
+
+t_section "harbor#559 worklog-push: one session at a time commits and pushes (concurrent Stops raced on the remote ref)"
+_lk="$WL/plog/.git/harbor-worklog.lock"; _nc() { git -C "$WL/plog" rev-list --count HEAD 2>/dev/null; }
+mkdir "$_lk"; _c0="$(_nc)"; _wps WL-lock-a >/dev/null
+t_eq "559 lock held: no commit" "$_c0" "$(_nc)"
+t_eq "559 …but the session record is still written" 1 "$(find "$WL/plog/WORK" -type f -name '*WL-lock-a*' | grep -c . | tr -d ' ')"
+t_eq "559 …and the holder's lock is left alone" yes "$([ -d "$_lk" ] && echo yes || echo no)"
+rmdir "$_lk"; _wps WL-lock-b >/dev/null
+t_eq "559 lock free: the waiting record and its own are committed" "$((_c0 + 1))" "$(_nc)"
+t_eq "559 …and the lock is released" no "$([ -d "$_lk" ] && echo yes || echo no)"
+mkdir "$_lk"; touch -t 202001010000 "$_lk"; _wps WL-lock-c >/dev/null
+t_eq "559 a lock older than 10 minutes is reclaimed" "$((_c0 + 2))" "$(_nc)"
 
 ff_sealed
 t_done

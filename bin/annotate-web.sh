@@ -15,6 +15,7 @@ case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
 
 floor_read_stdin
 TOOL="$(floor_field '.tool_name')"
+# shellcheck disable=SC2034 # FLOOR_TOOL: read by library-admission.sh
 FLOOR_TOOL="$TOOL"
 case "$TOOL" in
   WebFetch|WebSearch) ;;

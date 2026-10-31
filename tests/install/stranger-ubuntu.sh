@@ -66,6 +66,10 @@ else echo "stranger-ubuntu: no Claude Code first run (STRANGER_CLAUDE_FIRST_RUN=
 step 04-scope-install stranger 'sh ~/port/harbor/bin/harbor scope install && test -f ~/port/harbor-private/harbor.toml'
 step 04c-settings-json stranger 'test "$(cat ~/.claude/settings.json)" = "{}" && sh ~/port/harbor/bin/harbor scope install | grep -q "kept .*settings.json"'
 step 04b-seeded-core stranger 'test "$(sh ~/port/harbor/bin/scope-roots.sh --conf components)" = core'
+# The access register is empty on a fresh box, so every ref is refused until the stranger adds one (harbor#1205).
+step 04e-empty-register stranger 'test -f ~/port/harbor-private/access/register.md &&
+  sh ~/port/harbor/bin/harbor access check 2>&1 | grep -q "0 entries" && test -z "$(sh ~/port/harbor/bin/harbor access list 2>/dev/null)" &&
+  { sh ~/port/harbor/bin/harbor access has any-ref >/dev/null 2>&1; test $? -eq 1; }'
 # scope install seeds components = ["core"], so a bare deploy plans core only, no private repos (harbor#1149).
 # bootstrap (harbor#966) reads that layer: core names nothing to clone, so it ends on deploy's dry run having cloned no
 # repository, installed no uv or just and used no gh. The image has no gh and no curl, so a bootstrap that wanted either fails here.
@@ -88,7 +92,7 @@ step 07c-confinement root 'su stranger -c "sh /home/stranger/port/harbor/bin/dep
   ! SUDO_USER=stranger sh /home/stranger/port/harbor/bin/deploy-confinement.sh > /tmp/confine.log 2>&1 &&
   grep -qE "missing: bwrap|bubblewrap cannot start" /tmp/confine.log &&
   jq -e "(has(\"sandbox\") | not) and .disableSideloadFlags == true" /etc/claude-code/managed-settings.json >/dev/null'
-# B8 pin is the owner's own act by design (floor-install.sh:458); it is part of a first install. Run from the checkout, as
+# B8 pin is the owner's own act by design (admission-install.sh:458); it is part of a first install. Run from the checkout, as
 # deploy spells it: it needs only the config dir, and a missing one is then named, not "cannot open".
 step 07b-pin-instructions stranger 'sh ~/port/harbor/bin/pin-instructions.sh --apply --live'
 step 08-check stranger 'sh ~/port/harbor/bin/harbor check --live'

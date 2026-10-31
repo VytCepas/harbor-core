@@ -5,7 +5,7 @@
 . "$(dirname "$0")/../../tests/lib/core.sh"; t_init
 SRC="$T_ROOT/bin"; TMP="$T_TMP/fo"; mkdir -p "$TMP"
 SALT=0123456789abcdef0123456789abcdef
-# The state floor-observe.sh leaves at SessionStart: guard-lib beside the tool, host token, salt,
+# The state admission-observe.sh leaves at SessionStart: guard-lib beside the tool, host token, salt,
 # and a sealed host dir holding a 0600 sink.
 mkfix() { # <name> → prints the dir
   _d="$TMP/$1"; mkdir -p "$_d/bin" "$_d/MEMORY/OBSERVABILITY/h1"
@@ -104,7 +104,7 @@ t_eq "...the same text from another server is not" other "$(_mclass '  FAIL: han
 t_eq "...nor a harbor_chrome failure without the tag" other "$(_mclass '  FAIL: ref e1 is not in the current snapshot' mcp__harbor_chrome__click 3)"
 
 t_section "every refusal writes nothing and creates nothing"
-F="$(mkfix nosink)"  # only floor-observe.sh may create a sink
+F="$(mkfix nosink)"  # only admission-observe.sh may create a sink
 chmod 0700 "$F/MEMORY/OBSERVABILITY/h1"; rm -f "$(sink_of "$F")"; chmod 0500 "$F/MEMORY/OBSERVABILITY/h1"
 fire "$F" "$(payload s1 Read '{"file_path":"/x"}' 'gone' false)"
 t_eq "no sink: none is created" no "$([ -e "$(sink_of "$F")" ] && echo yes || echo no)"
