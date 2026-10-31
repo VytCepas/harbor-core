@@ -20,7 +20,7 @@ the obvious home was `vendor/skills/systems-thinking/references/`.
 **It is 840 KB, and that is the reason it is not there.** Nothing under
 `vendor/skills/` exceeds 200 KB today and the largest whole skill is 128 KB, so
 placing it inside one would make that skill roughly seven times the size of the
-biggest, and `bin/skills-install.sh` copies skill directories into
+biggest, and `bin/skill-install.sh` copies skill directories into
 `~/.claude/skills` on every install — the weight would land in the live tree for
 every session, to serve a file read on demand by a few.
 
