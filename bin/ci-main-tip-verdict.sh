@@ -127,7 +127,7 @@ fleet() {
 }
 
 # jq: the workflow runs that speak for main, one record each, from a runs page
-RECS='def recs: [.workflow_runs[] | select(.event == "push" or .event == "schedule")
+RECS='def recs: [.workflow_runs[] | select(.event == "push" or .event == "schedule" or .event == "workflow_dispatch")
        | {sha: .head_sha, c: (.conclusion // .status // "unknown"), ev: .event, wf: (.workflow_id // 0), t: (.created_at // ""),
           nm: (.name // ""), u: (.updated_at // .created_at // ""), n: (.run_attempt // 1)}];'
 
@@ -203,17 +203,20 @@ judge() {
   # conclusions per sha: push runs, and the latest scheduled run of each workflow (an old nightly is superseded)
   # s: latest scheduled run per workflow that is declared main-health; x: the others (judged only when no push run exists).
   # f: the first failing push or health run's completion time and n its attempts, for "red since" and the one-run mark.
+  # A manual run counts as a push run only for a workflow that ran on push at that sha: a cancelled push deploy
+  # re-run by hand is that commit's verdict, a one-off manual job is not.
   _mh="$(awk -v r="$_r" '$1 == "main-health" && $2 == r { sub(/^[^ \t]+[ \t]+[^ \t]+[ \t]+/, ""); print }' "$CFG/.harbor-ci-runners" 2>/dev/null | jq -R . | jq -sc . 2>/dev/null)" || _mh='[]'
   [ -n "$_mh" ] || _mh='[]'
   jq -c --argjson mh "$_mh" 'def bad: . == "failure" or . == "timed_out" or . == "startup_failure";
          def latest: group_by(.wf) | map(sort_by(.t) | last);
-         group_by(.sha) | map(. as $g | {key: .[0].sha, value: {
-           p: [.[] | select(.ev == "push") | .c],
+         def pushlike($pw): .ev == "push" or (.ev == "workflow_dispatch" and (.wf as $w | any($pw[]; . == $w)));
+         group_by(.sha) | map(. as $g | ([.[] | select(.ev == "push") | .wf] | unique) as $pw | {key: .[0].sha, value: {
+           p: [.[] | select(pushlike($pw)) | .c],
            s: ([.[] | select(.ev == "schedule" and (.nm as $n | $mh | index($n)))] | latest | map(.c)),
            x: ([.[] | select(.ev == "schedule" and (.nm as $n | $mh | index($n) | not))] | latest | map(.c)),
            xn: ([.[] | select(.ev == "schedule" and (.nm as $n | $mh | index($n) | not))] | latest | map(select(.c | bad) | .nm)),
-           f: ([.[] | select((.ev == "push" or (.nm as $n | $mh | index($n))) and (.c | bad)) | .u] | min),
-           n: ([.[] | select((.ev == "push" or (.nm as $n | $mh | index($n))) and (.c | bad)) | .n] | add)}}) | from_entries' \
+           f: ([.[] | select((pushlike($pw) or (.nm as $n | $mh | index($n))) and (.c | bad)) | .u] | min),
+           n: ([.[] | select((pushlike($pw) or (.nm as $n | $mh | index($n))) and (.c | bad)) | .n] | add)}}) | from_entries' \
     "$_d/all.json" > "$_d/conc.json"
 
   jq -c --argjson now "$NOW" --argjson pend "$PEND_SEC" --argjson grace "$GRACE_SEC" --arg repo "$_r" --arg st0 "$_state" --argjson strict "$_strict" \
