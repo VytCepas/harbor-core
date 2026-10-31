@@ -41,7 +41,7 @@ t_eq "an unresolvable clock reports the stale recurrence" yes "$(has_rule "$F5OL
 HARBOR_AUDIT_TRIAGE_NOW=2026-08-03
 
 t_section "FC-5 stays green on the verifier's own probe traffic"
-t_eq "a probe subject is derived from admission-verify.sh" yes "$([ -n "$PROBE_SUBJ" ] && echo yes || echo no)"
+t_eq "a probe subject is derived from floor-verify.sh" yes "$([ -n "$PROBE_SUBJ" ] && echo yes || echo no)"
 F5P="$(mkfixture fc5probe)"; unseal "$F5P"; census "$F5P" 2
 recn 30 "$F5P" bash block pipe-to-shell "2026-08-02T12:00:00Z" "$(digest_of "$PROBE_SUBJ")"; seal "$F5P"
 t_eq "30 probe blocks: no findings" "" "$(rules_of "$F5P")"
@@ -49,22 +49,22 @@ t_eq "probe_traffic_excluded" true "$(q '.probe_traffic_excluded' "$F5P")"
 t_eq "--with-probes shows them again" yes "$(has_rule "$F5P" FC-5 --with-probes)"
 
 t_section "FC-5 stays green on the floor suite's own payloads (tests/floor/, harbor#727)"
-# Chosen ABSENT from admission-verify.sh: the first bash_j payload is also a probe, and against it this
+# Chosen ABSENT from floor-verify.sh: the first bash_j payload is also a probe, and against it this
 # section stayed green with the suite derivation stubbed out (№2.10). awk, since grep is ugrep here.
 SUITE_SUBJ=""
 while IFS= read -r _cand; do
   [ -n "$_cand" ] || continue
   case "$_cand" in (*'$'*) continue ;; esac
   awk -v needle="$_cand" 'index($0, needle) { found = 1 } END { exit(found ? 0 : 1) }' \
-     "$SRC/admission-verify.sh" 2>/dev/null && continue
+     "$SRC/floor-verify.sh" 2>/dev/null && continue
   SUITE_SUBJ="$_cand"; break
 done <<SUITE_CANDIDATES
 $(for _ff in "$T_ROOT"/tests/admission/baseline/fixture.sh "$T_ROOT"/tests/admission/baseline/*.test.sh; do
   sed -n "s/.*bash_j '\\([^']*\\)'.*/\\1/p" "$_ff" 2>/dev/null; done)
 SUITE_CANDIDATES
 t_eq "a bash_j payload is derived from the floor suite" yes "$([ -n "$SUITE_SUBJ" ] && echo yes || echo no)"
-t_eq "and admission-verify.sh does not carry it" absent "$(awk -v needle="$SUITE_SUBJ" \
-  'index($0, needle) { found = 1 } END { print (found ? "present" : "absent") }' "$SRC/admission-verify.sh")"
+t_eq "and floor-verify.sh does not carry it" absent "$(awk -v needle="$SUITE_SUBJ" \
+  'index($0, needle) { found = 1 } END { print (found ? "present" : "absent") }' "$SRC/floor-verify.sh")"
 F5S="$(mkfixture fc5suite)"; unseal "$F5S"; census "$F5S" 2
 recn 30 "$F5S" bash block pipe-to-shell "2026-08-02T12:00:00Z" "$(digest_of "$SUITE_SUBJ")"; seal "$F5S"
 t_eq "30 suite-payload blocks: no findings" "" "$(rules_of "$F5S")"
@@ -82,8 +82,8 @@ t_section "FC-5 suite exclusion, installed shape: manifest present, suite absent
 # The floor suite does not ship (X7), so an installed judge reads $SELF/.helm-suite-payloads. Before
 # this arm the fix was green here and inert once installed.
 F5M="$TMP/selfdir"; mkdir -p "$F5M"
-cp "$SRC/audit-triage.sh" "$SRC/library-admission.sh" "$SRC/admission-verify.sh" "$F5M/"
-[ -f "$SRC/admission-normalize.awk" ] && cp "$SRC/admission-normalize.awk" "$F5M/"
+cp "$SRC/audit-triage.sh" "$SRC/library-admission.sh" "$SRC/floor-verify.sh" "$F5M/"
+[ -f "$SRC/floor-normalize.awk" ] && cp "$SRC/floor-normalize.awk" "$F5M/"
 t_eq "the installed copy has no floor suite beside it" no "$([ -f "$F5M/../tests/admission/baseline/baseline.test.sh" ] && echo yes || echo no)"
 printf 'C%s\n' "$SUITE_SUBJ" > "$F5M/.helm-suite-payloads"
 FCT="$F5M/audit-triage.sh"

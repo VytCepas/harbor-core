@@ -143,7 +143,7 @@ n_contracts="$(find "$ROOT/contracts" -maxdepth 1 -name '*.md' ! -name 'README.m
 # document quoting that number promised a guard that is not there and any
 # "guards N/M" indicator carried an unreachable target. A glob is not a census.
 n_guards="$(find "$ROOT/bin" -maxdepth 1 -type f -name 'admission-*.sh' 2>/dev/null \
-  | grep -cvE '/admission-(hook|deny-hash|mutation-tier|observe-report|deny|equivalence|install|observe|remove|verify)[.]sh$' || :)"
+  | grep -cvE '/admission-(hook|deny-hash|mutation-tier|observe-report)[.]sh$' || :)"
 n_cases="$( (jq '.cases | length' "$ROOT/fixtures/marker/cases.json" 2>/dev/null || echo 0) )"
 # harbor#594: properties whose failure is on record and that nothing watches. The
 # list is contracts/unwatched.txt; the number is here so git history is its trend,
@@ -153,7 +153,7 @@ n_unwatched="$(awk '!/^#/ && $2=="UNWATCHED"' "$ROOT/contracts/unwatched.txt" 2>
 
 # Suite sizes come from RUNNING the suites, not from parsing them. A suite that
 # no longer runs reports 0 here rather than a stale number that looks healthy —
-# which is the same "prove it by firing it" discipline admission-verify.sh uses.
+# which is the same "prove it by firing it" discipline floor-verify.sh uses.
 FAST="${FAST:-0}"
 
 # ── A COUNT SOMEBODY ALREADY PAID FOR (harbor#120) ───────────────────────────
@@ -438,7 +438,7 @@ EOF
 compute_observed() {
 #
 # MATCH THE ENTRYPOINT AS A WHOLE PATH SEGMENT, never a bare substring. Every
-# B2–B6 guard is wired THROUGH admission-hook.sh (admission-install.sh:89-100 and
+# B2–B6 guard is wired THROUGH admission-hook.sh (floor-install.sh:89-100 and
 # :153-157), so that basename is the one string this layer cannot be installed
 # without. The predicate here used to be test("guard-"), and on 2026-08-01 the
 # ambient prod_guard shim — `prod-guard-ambient.sh`, which is NOT part of the
@@ -458,13 +458,13 @@ if [ -f "$LIVE/settings.json" ] && command -v jq >/dev/null 2>&1; then
        '[.hooks.PreToolUse[]?.hooks[]?.command] | map(select(test($re))) | length > 0' \
        "$LIVE/settings.json" >/dev/null 2>&1; then
     # EVERY CONTROL THE ROW NAMES, not a subset. annotate-web.sh is the B4
-    # PostToolUse guard and admission-install.sh wires it alongside the others; it
+    # PostToolUse guard and floor-install.sh wires it alongside the others; it
     # was absent from this list, so a live dir missing it still reported the
     # row as satisfied — the same partial-install-reads-as-complete shape this
     # predicate exists to prevent, one level in. Raised by review on #80.
     _missing=0
     for _g in admission-hook.sh library-admission.sh admission-bash.sh admission-egress.sh \
-              admission-self-edit.sh annotate-web.sh admission-normalize.awk; do
+              admission-self-edit.sh annotate-web.sh floor-normalize.awk; do
       [ -s "$LIVE/bin/$_g" ] || _missing=$((_missing + 1))
     done
     if [ "$_missing" -eq 0 ]; then
@@ -475,7 +475,7 @@ if [ -f "$LIVE/settings.json" ] && command -v jq >/dev/null 2>&1; then
   fi
 fi
 
-# B6 IS A SEPARATE INSTALL AND GETS A SEPARATE ROW. admission-install.sh ships it
+# B6 IS A SEPARATE INSTALL AND GETS A SEPARATE ROW. floor-install.sh ships it
 # only under --with-b6, and floor-verify prints "B6 not installed (expected
 # until the floor is verified)" — so folding it into the row above would make a
 # correct, complete B2–B5 install report "no", which is the false-negative half
@@ -504,9 +504,9 @@ if [ -f "$LIVE/settings.json" ] && command -v jq >/dev/null 2>&1; then
        "$LIVE/settings.json" >/dev/null 2>&1; then prod_guard_live="yes"; fi
 fi
 # B1 has NO hooks, so the check above reports "no" for a host where the deny layer
-# is fully live. Ask the deny list directly, via an entry only admission-deny.sh
+# is fully live. Ask the deny list directly, via an entry only floor-deny.sh
 # writes. Also report whether the live list still carries the harbor#53
-# mis-anchored spellings: admission-deny.sh is append-only, so re-running the fixed
+# mis-anchored spellings: floor-deny.sh is append-only, so re-running the fixed
 # tool ADDS the working patterns and leaves the dead ones behind, and a reader
 # who greps for "workflows" would find a hit either way.
 deny_installed="no"
@@ -516,7 +516,7 @@ if [ -f "$LIVE/settings.json" ] && command -v jq >/dev/null 2>&1; then
     if jq -e "$_dl | index(\"Edit(//**/.github/workflows/**)\")" "$LIVE/settings.json" >/dev/null 2>&1; then
       deny_installed="yes"
     else
-      deny_installed="yes, but pre-harbor#53 spellings (re-run \`admission-deny.sh --live --apply\`)"
+      deny_installed="yes, but pre-harbor#53 spellings (re-run \`floor-deny.sh --live --apply\`)"
     fi
   fi
 fi
@@ -650,7 +650,7 @@ case "$MODE" in
   # existing docs/generated/status.md, so a truncated file makes every subsequent `--check-fast`
   # (the pre-commit hook) report 0 assertions per suite and agree with itself.
   # A generator that destroys its own source of truth on failure, then reports
-  # success, is the exact shape admission-deny.sh's write_settings() exists for.
+  # success, is the exact shape floor-deny.sh's write_settings() exists for.
   --apply)
     # `gen > "$_o"` BARE, not `if ! gen`, and not `gen || {...}`. Both of those
     # put gen inside an AND-OR/condition context, where POSIX suspends `set -e`

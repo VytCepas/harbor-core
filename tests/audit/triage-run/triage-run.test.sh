@@ -8,7 +8,7 @@ cp "$T_ROOT/bin/audit-triage-run.sh" "$T_ROOT/bin/library-log.sh" "$T/bin/"
 printf '#!/bin/sh\ncat "$(dirname "$0")/fc.json"\n' > "$T/bin/audit-triage.sh"; chmod +x "$T/bin/audit-triage.sh"
 fixture_crit() { cat > "$T/bin/fc.json" <<'J'
 {"dir":"/x","installed":true,"records":70702,"worst":"crit","findings":[
- {"rule":"FC-2","severity":"crit","subject":"wrapper-guard-missing (x1)","breaks":"the floor could not EVALUATE a tool call","repair":"re-run admission-install.sh from your own terminal"},
+ {"rule":"FC-2","severity":"crit","subject":"wrapper-guard-missing (x1)","breaks":"the floor could not EVALUATE a tool call","repair":"re-run floor-install.sh from your own terminal"},
  {"rule":"FC-5","severity":"warn","subject":"cd-cfg-then-find-exec (x20)","breaks":"same command walled again","repair":"fix the rule or the command"}]}
 J
 }
@@ -25,7 +25,7 @@ fixture_crit; rm -f "$JV"
 t_exit "--apply" 0 sh "$T/bin/audit-triage-run.sh" "$T/cfg" --apply
 t_eq "the cache is written" yes "$(has_cache "$JV")"
 t_has "the header carries the counts" "$(head -1 "$JV")" "worst=crit crit=1 warn=1 records=70702"
-t_has "the crit line, rule|subject|repair" "$(grep '^crit ' "$JV")" "crit FC-2|wrapper-guard-missing (x1)|re-run admission-install.sh"
+t_has "the crit line, rule|subject|repair" "$(grep '^crit ' "$JV")" "crit FC-2|wrapper-guard-missing (x1)|re-run floor-install.sh"
 t_eq "the warn did not leak into the crit lines" 1 "$(lines crit)"
 # Warns are itemised, not merely counted: a bare warn=17 could not be resolved on 2026-09-04.
 t_has "the warn line, rule|subject|repair" "$(grep '^warn ' "$JV")" "warn FC-5|cd-cfg-then-find-exec (x20)|fix the rule or the command"
@@ -70,7 +70,7 @@ t_section "7 · session-verdicts speaks on crit, is silent on clean"
 fixture_crit; run "$T/cfg" --apply >/dev/null
 _v="$(sv)"
 t_has "the crit reaches session-verdicts" "$_v" "ledger judge CRIT"
-t_has "the repair text survives" "$_v" "admission-install.sh"
+t_has "the repair text survives" "$_v" "floor-install.sh"
 # The cache holds a warn line for this fixture (section 1); the session channel stays blind to it.
 t_hasnt "an itemised warn never reaches the session channel" "$_v" "cd-cfg-then-find-exec"
 t_eq "...but not again after /compact: the same session already saw it" "" "$(printf '{"hook_event_name":"SessionStart","source":"compact"}\n' | sv)"

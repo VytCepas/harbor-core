@@ -42,7 +42,7 @@ mkdir -p "$HOME/$_hr/contracts"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" 
 
 # skill-on-first-use reads the installed skills, the floor's parser beside the pack, and a transcript.
 mkdir -p "$T/cfg/skills/agent-routing" "$T/cfg/bin"; cp "$T_ROOT/skills/agent-routing/SKILL.md" "$T/cfg/skills/agent-routing/"
-cp "$T_ROOT/bin/library-admission.sh" "$T_ROOT/bin/admission-normalize.awk" "$T/cfg/bin/"; printf '{}\n' > "$T/transcript.jsonl"
+cp "$T_ROOT/bin/library-admission.sh" "$T_ROOT/bin/floor-normalize.awk" "$T/cfg/bin/"; printf '{}\n' > "$T/transcript.jsonl"
 # name-note-create ships the mechanism, never a command: a workload pack writes the rows. This neutral one stands in (tests/hooks/name-note-create-test.sh).
 mkdir -p "$T/cfg/name-create.d"; printf 'fixturectl[[:space:]]+create[[:space:]]+\tskill\tUse the form the grammar names.\n' > "$T/cfg/name-create.d/fixture.tsv"
 

@@ -1,9 +1,7 @@
 #!/usr/bin/env sh
 # bin/lint-leaks.sh and lint.leaks: the leak gate and its ratchets (harbor#1149).
 # Each case is a throwaway git checkout and a throwaway private layer; HARBOR_SCOPE_PRIVATE always points at a temp dir.
-# The "secret" below is a made-up word, never a real entity. The last case alone reads the real private layer's
-# patterns (copied into a temp dir) and scans this checkout; it needs that layer and says so when it is absent.
-LIVE_PRIV="${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}"  # before t_init unsets HARBOR_* and moves HOME
+# The "secret" below is a made-up word, never a real entity.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/checks/lint-fixture.sh"
 : # nopriv is deliberately never created
@@ -218,25 +216,4 @@ unset PV; D="$(mk lintok 2)"
 t_eq "at the baseline the rule is silent" "0" "$(vcount "$(lint1 lint.leaks "$D")")"
 D="$(mk lintbad 1)"
 t_has "above the baseline the rule reports" "$(lint1 lint.leaks "$D")" "VIOLATION [lint.leaks]"
-
-# A core skill named a client and reached the public mirror: the ratchet counts private hits over dev and core alike,
-# and only deploy push asks for zero in core. This asks it here, in export mode as deploy push does. Prints ids only.
-# Public CI has no private layer, so the section opens only where one is.
-if [ -f "$LIVE_PRIV/leaks.tsv" ] || [ -f "$LIVE_PRIV/terms.tsv" ]; then
-  t_section "the live tree: no core-layer file matches a private pattern (harbor#967)"
-  unset PV; LP="$T_TMP/pv-live"; mkdir -p "$LP"
-  for f in leaks.tsv terms.tsv; do [ ! -f "$LIVE_PRIV/$f" ] || cp "$LIVE_PRIV/$f" "$LP/"; done
-  IDS="|$(awk -F'\t' '!/^[ \t]*#/ && NF == 4 && $1 != "id" { printf "%s|", $1 }' "$LP/leaks.tsv" 2>/dev/null)"
-  LEAKS_EXPORT=1 LEAKS_OWN_USER='' HARBOR_SCOPE_ROOT="$T_ROOT" HARBOR_SCOPE_PRIVATE="$LP" \
-    sh "$T_ROOT/bin/lint-leaks.sh" --list 2>/dev/null > "$T_TMP/live.list"; LRC=$?
-  t_eq "the gate read the live tree and the private patterns cleanly" "0" "$LRC"
-  awk -v ids="$IDS" '{ id = $0; sub(/^[^:]*:[^:]*:/, "", id)
-    if (index(ids, "|" id "|") || id ~ /^terms\.tsv:L[0-9]+$/) print }' "$T_TMP/live.list" > "$T_TMP/live.priv"
-  cut -d: -f1 "$T_TMP/live.priv" | sort -u |
-    HARBOR_SCOPE_ROOT="$T_ROOT" sh "$T_ROOT/bin/scope-layers.sh" --core > "$T_TMP/live.core" 2>/dev/null
-  CORE_HITS="$(awk 'NR == FNR { c[$0] = 1; next } { split($0, F, ":") } F[1] in c' "$T_TMP/live.core" "$T_TMP/live.priv" | tr '\n' ' ')"
-  t_eq "no core-layer file holds a private-layer match (fix: reword it; sh bin/lint-leaks.sh --list)" "" "$CORE_HITS"
-else
-  printf '  note: no private layer at %s: the live-tree case did not run\n' "$LIVE_PRIV" >&2
-fi
 t_done

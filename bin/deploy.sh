@@ -361,7 +361,7 @@ _preflight() {
       clean)      log_ok 'B6: the box is intact right now' ;;
       advisory:*"settings.json changed outside the floor"*)
                   _bad "B6: settings.json drifted since its baseline; runtime- and prod-guard-install would re-pin it unseen" \
-                    "sh '$ROOT/bin/admission-deny.sh' --live --repin   # after you have reviewed the drift" ;;
+                    "sh '$ROOT/bin/floor-deny.sh' --live --repin   # after you have reviewed the drift" ;;
       advisory:*) log_note "B6 advisory (does not block): ${_v#advisory:}" ;;
       *)          _bad "B6: the box is ALREADY drifted; installing would re-pin over it. ${_v#BLOCKED:}" \
                     'none: the B6 reason above, which names its own recovery' ;;
@@ -661,7 +661,7 @@ _plan() {
       awk '$1=="FAIL:" && $2=="modified" { sub(/^  FAIL: /, ""); print }' "$WORK/drift.pre" | _notes
     fi
   fi
-  for _p in "runtime:deploy-runtime-install.sh --live$AL" "floor:admission-install.sh --live$AL$FLOOR_OPTS" 'prod-guard:prod-guard-install.sh --live' \
+  for _p in "runtime:deploy-runtime-install.sh --live$AL" "floor:floor-install.sh --live$AL$FLOOR_OPTS" 'prod-guard:prod-guard-install.sh --live' \
             "constitution:policy-constitution-install.sh --live$AL" 'inject:context-injection-install.sh --live' 'sec0:deploy-harden.sh --live'; do
     _want "${_p%%:*}" || continue
     _p="${_p#*:}"
@@ -761,7 +761,7 @@ _install() {
             'shim:deploy-shim-install.sh --live --apply' \
             'sec0:deploy-harden.sh --apply --live' \
             "runtime:deploy-runtime-install.sh --live --apply$AL" \
-            "floor:admission-install.sh --live --apply$AL$FLOOR_OPTS" \
+            "floor:floor-install.sh --live --apply$AL$FLOOR_OPTS" \
             'prod-guard:prod-guard-install.sh --live --apply' \
             "skills:skill-install.sh --all --apply --live$AL" \
             "skills:skill-install.sh commands --all --apply --live$AL" \
@@ -951,7 +951,7 @@ _floor_verify() {
   _want_any runtime floor sec0 prod-guard || return 0
   log_head 'floor-verify · fires known-blocked shapes at the installed floor'
   _fv_rc=0
-  env -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW -u HELM_DISABLE_FLOOR -u HELM_FLOOR_SHADOW CLAUDE_CONFIG_DIR="$CFG" sh "$ROOT/bin/admission-verify.sh" --live >"$WORK/fv" 2>&1 || _fv_rc=$?
+  env -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW -u HELM_DISABLE_FLOOR -u HELM_FLOOR_SHADOW CLAUDE_CONFIG_DIR="$CFG" sh "$ROOT/bin/floor-verify.sh" --live >"$WORK/fv" 2>&1 || _fv_rc=$?
   _fvv="$(sed -n 's/^  note: \(FLOOR IS .*\)$/\1/p' "$WORK/fv" | tail -1)"; [ -n "$_fvv" ] || _fvv="$(tail -1 "$WORK/fv")"
   if [ "$_fv_rc" -eq 0 ]; then
     log_ok "floor-verify: $_fvv"
@@ -1208,10 +1208,10 @@ _uninstall() {
   else _bad "no settings.json in $CFG, so there is no floor wiring to remove" 'none: harbor#808 — there is nothing to uninstall'; fi
   if [ "$FAILS" -eq 0 ]; then
     log_head "plan · floor-uninstall's own dry run"
-    _r_rc=0; sh "$ROOT/bin/admission-remove.sh" --live >"$WORK/out" 2>&1 </dev/null || _r_rc=$?
+    _r_rc=0; sh "$ROOT/bin/floor-uninstall.sh" --live >"$WORK/out" 2>&1 </dev/null || _r_rc=$?
     cp "$WORK/out" "$PLAN"
     _relay "$WORK/out"
-    [ "$_r_rc" -eq 0 ] || _bad "admission-remove.sh: its own dry run FAILED (rc=$_r_rc), so its removal would too" 'none: its FAIL and fix lines above'
+    [ "$_r_rc" -eq 0 ] || _bad "floor-uninstall.sh: its own dry run FAILED (rc=$_r_rc), so its removal would too" 'none: its FAIL and fix lines above'
     _packs_uninstall_plan
   fi
   if [ "$FAILS" -gt 0 ]; then log_note "PREFLIGHT FAILED ($FAILS) — nothing was removed"; log_end || :; exit 1; fi
@@ -1227,14 +1227,14 @@ _uninstall() {
   fi
   _snapshot || { log_end || :; exit 1; }
   log_head 'uninstall'
-  log_note 'running: admission-remove.sh --apply --live'
-  if ! _run sh "$ROOT/bin/admission-remove.sh" --apply --live; then
-    _bad 'stopped at: admission-remove.sh --apply --live' 'none: its FAIL and fix lines above'
+  log_note 'running: floor-uninstall.sh --apply --live'
+  if ! _run sh "$ROOT/bin/floor-uninstall.sh" --apply --live; then
+    _bad 'stopped at: floor-uninstall.sh --apply --live' 'none: its FAIL and fix lines above'
     _restore_offer; log_end || :; exit 1
   fi
   if ! _packs_uninstall; then _restore_offer; log_end || :; exit 1; fi
   log_head 'verify · the floor is gone'
-  _r_rc=0; sh "$ROOT/bin/admission-remove.sh" --live >"$WORK/unv" 2>&1 </dev/null || _r_rc=$?
+  _r_rc=0; sh "$ROOT/bin/floor-uninstall.sh" --live >"$WORK/unv" 2>&1 </dev/null || _r_rc=$?
   [ -z "$LOG_PATH" ] || _relay "$WORK/unv" >/dev/null
   if [ "$_r_rc" -ne 0 ]; then
     _bad "floor-uninstall's dry run FAILED after the removal (rc=$_r_rc), so the floor cannot be confirmed gone" 'none: its FAIL and fix lines below'

@@ -9,7 +9,7 @@ g() { git -C "$REPO" "$@"; }
 g init -q; g config user.email t@t; g config user.name t; g config commit.gpgsign false
 printf 'v1\n' > "$REPO/bin/thing.sh"
 # The live payload shapes: single quotes in floor-install, double in runtime-install, shared.sh in both.
-printf "GUARDS='thing.sh'\nRECOVERY='shared.sh'\n" > "$REPO/bin/admission-install.sh"
+printf "GUARDS='thing.sh'\nRECOVERY='shared.sh'\n" > "$REPO/bin/floor-install.sh"
 printf 'FILES="rt.sh shared.sh"\nREFRESH_ONLY="ro.sh"\nSUITE="tests/x/s-test.sh:bin/s-test.sh tests/lib/core.sh:lib/core.sh"\n' > "$REPO/bin/deploy-runtime-install.sh"
 for _f in shared.sh rt.sh ro.sh unowned.sh; do printf 'v1\n' > "$REPO/bin/$_f"; done
 mkdir -p "$REPO/policy" "$REPO/tests/x" "$REPO/tests/lib" "$REPO/lib"
@@ -95,12 +95,12 @@ t_eq "a commit to no installer's payload" "renew 0" "$(head1)"
 
 t_section "3c · an installer whose payload cannot be read stands down"
 provision
-cp "$REPO/bin/admission-install.sh" "$T/admission-install.sh.bak"
-printf '# no payload declared here\n' > "$REPO/bin/admission-install.sh"
+cp "$REPO/bin/floor-install.sh" "$T/floor-install.sh.bak"
+printf '# no payload declared here\n' > "$REPO/bin/floor-install.sh"
 _l="$(head1)"
 t_has "an unreadable payload stands down" "$_l" "floor?"
 t_hasnt "and is not a clean box" "$_l" "renew 0"
-cp "$T/admission-install.sh.bak" "$REPO/bin/admission-install.sh"
+cp "$T/floor-install.sh.bak" "$REPO/bin/floor-install.sh"
 
 t_section "3d · the running constitution: behind, redeployed, hand-edited, unreadable (harbor#557)"
 provision
@@ -248,7 +248,7 @@ t_hasnt "...and no fix line names the live box" "$(printf '%s\n' "$_o" | grep '^
 mirror
 t_has "the live box's re-pin fix is --live" "$(live)" "  fix: sh $REPO/bin/pin-instructions.sh --apply --live"
 provision; printf 'v9\n' > "$REPO/bin/thing.sh"; g commit -qam eleven >/dev/null; publish; mirror
-t_has "a sandbox behind is fixed by its installer at that dir" "$(run)" "  fix: sh $REPO/bin/admission-install.sh --apply --dir '$CFGP'"
+t_has "a sandbox behind is fixed by its installer at that dir" "$(run)" "  fix: sh $REPO/bin/floor-install.sh --apply --dir '$CFGP'"
 t_has "the live box behind is fixed by deploy, the one live entry (the install standard §4)" "$(live)" \
   "  fix: sh '$REPO/bin/deploy.sh' --only floor --apply --live"
 _o="$(run)"

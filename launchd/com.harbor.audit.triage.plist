@@ -28,10 +28,10 @@
      property rather than a convention. A session can write to ~/port/harbor/bin; it
      cannot write under ~/.claude/bin (admission-self-edit.sh). A scheduled job aimed
      at the repo would let any session schedule arbitrary code on this machine.
-     PREREQUISITE: audit-triage-run.sh, audit-triage.sh and admission-verify.sh must all
+     PREREQUISITE: audit-triage-run.sh, audit-triage.sh and floor-verify.sh must all
      be installed — the judge is resolved from its own directory, and it needs
-     admission-verify.sh beside it to exclude the verifier's own probe traffic from
-     the recurrence counts. Installed without admission-verify.sh it still runs and
+     floor-verify.sh beside it to exclude the verifier's own probe traffic from
+     the recurrence counts. Installed without floor-verify.sh it still runs and
      says loudly that it could not separate probe traffic.
 
      TEMPLATE — launchd does not expand $HOME: replace @HOME@ with your

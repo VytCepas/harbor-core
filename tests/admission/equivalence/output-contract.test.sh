@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
-# admission-equivalence.sh's output follows contracts/logging.md (harbor#771): every line is the log's shape, each refusal
+# floor-equiv.sh's output follows contracts/logging.md (harbor#771): every line is the log's shape, each refusal
 # is a FAIL followed by its fix, the run ends with the summary, and the exit codes (0 identical, 1 not
 # equivalent, 2 refused) are the ones the tool always had. The guards are stubs, so this is fast and hermetic.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-TOOL="$T_ROOT/bin/admission-equivalence.sh"; B="$T_TMP"
+TOOL="$T_ROOT/bin/floor-equiv.sh"; B="$T_TMP"
 guard() { # <dir> <blocks yes|no>
   mkdir -p "$1"
   { printf '#!/bin/sh\n# floor_block bash "stub" rule-a.flat\n'

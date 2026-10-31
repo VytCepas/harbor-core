@@ -122,7 +122,7 @@ if [ "$WITH_FLOOR" -eq 1 ]; then
   # about the live floor arriving here one layer over.
   # The install standard's interface (harbor#765): --dir, with CLAUDE_CONFIG_DIR agreeing with it,
   # since here it names the SOURCE config dir and floor-install would refuse the disagreement.
-  if ! _fi="$(CLAUDE_CONFIG_DIR="$DIR" sh "$SRC/admission-install.sh" --apply --dir "$DIR" --with-b6 2>&1)"; then
+  if ! _fi="$(CLAUDE_CONFIG_DIR="$DIR" sh "$SRC/floor-install.sh" --apply --dir "$DIR" --with-b6 2>&1)"; then
     printf '%s\n' "$_fi" | grep -E '^  (FAIL|fix):' || :
     log_fail "floor-install FAILED, so this sandbox does NOT carry this checkout's floor: $DIR holds whatever $LIVE had when it was seeded, so it may look armed and still be the installed build (QA-PLAN R8); do not trust a guard result from it"
     log_fix "rm -rf '$DIR'; sh $SRC/test-sandbox-make.sh '$DIR' --fresh --with-floor"
@@ -130,10 +130,10 @@ if [ "$WITH_FLOOR" -eq 1 ]; then
   fi
   log_ok "floor installed from $SRC (B6 included)"
   # floor-verify takes --dir (harbor#800), and the environment must name the same dir or nothing.
-  if CLAUDE_CONFIG_DIR="$DIR" sh "$SRC/admission-verify.sh" --dir "$DIR"; then log_ok "the floor verifies in the new sandbox"
+  if CLAUDE_CONFIG_DIR="$DIR" sh "$SRC/floor-verify.sh" --dir "$DIR"; then log_ok "the floor verifies in the new sandbox"
   else
     log_fail "the floor did not verify in the new sandbox $DIR (floor-verify's lines above)"
-    log_fix "sh $SRC/admission-verify.sh --dir '$DIR'"
+    log_fix "sh $SRC/floor-verify.sh --dir '$DIR'"
     log_end; exit 1
   fi
 fi

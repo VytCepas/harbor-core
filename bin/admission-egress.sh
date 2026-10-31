@@ -100,7 +100,7 @@ SECRET_DOC='(AKIAIOSFODNN7EXAMPLE|EXAMPLEKEY|EXAMPLE$|^0+$|^x+$|^X+$)'
 # SO THE TEST IS A MONOTONIC RUN, which is not a threshold at all. A provider
 # token body is provider-generated randomness: an attacker cannot obtain one that
 # is a consecutive run of the alphabet, so the exemption cannot be spelled INTO a
-# live secret. admission-verify.sh's shipped vector is exactly this shape — 22 of 22
+# live secret. floor-verify.sh's shipped vector is exactly this shape — 22 of 22
 # consecutive — which is why the floor could not document its own test vector.
 #
 # NO FORKS, NO LOOP, NO ARITHMETIC: a consecutive run is a contiguous SUBSTRING of
@@ -435,7 +435,7 @@ if [ "$_CMDLIKE" = "1" ]; then
   # ── P13-cred-01 (harbor#94) · ONE FILENAME, UNBOUNDEDLY MANY SPELLINGS ─────
   # `cat ~/.ssh/id_"rsa"` blocked and `scp ~/.ssh/id_"rsa" host:` did not, for
   # exactly one reason: the CRED-01 READ rules ask $TARGETS — the copy
-  # admission-normalize.awk has already un-quoted — and the CREDPATH rules at the
+  # floor-normalize.awk has already un-quoted — and the CREDPATH rules at the
   # bottom of this branch ask the RAW command, where `id_` is followed by a
   # quote and `\.ssh/id_[a-z0-9]+` cannot match. The ticket says this defeats
   # every channel; measured, it defeats scp/rsync/curl -T and NOT cat/base64,

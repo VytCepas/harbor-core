@@ -2,14 +2,14 @@
 # alert-probe.sh, the probe (harbor#9, E1). Every case builds a fixture config dir that looks like
 # the live box: floor-install wires each guard as its own entry with the guard passed to
 # admission-hook.sh, so a one-line fixture could not tell a complete floor from a partial one.
-# The wiring matrix and the floor predicate are copies (of admission-install.sh, status-generate.sh);
+# The wiring matrix and the floor predicate are copies (of floor-install.sh, status-generate.sh);
 # the drift and agreement cases fail when a copy drifts. The notifier is pulse-notify-test.sh.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 unset HARBOR_TEST_IN_SUITE HARBOR_IN_SUITE  # t_init keeps status-gen's re-entry marker; this suite runs status-gen at top level (harbor#773)
 P="$T_ROOT/bin/alert-probe.sh"; TMP="$T_TMP/pulse"; mkdir -p "$TMP"
 mkcfg() { # <name> <deny: sentinel|unrelated|empty> <hooks: full|no-mcp|no-advis|bash-only|shim|odd|none> <missing-guard|->
   _d="$TMP/$1"; mkdir -p "$_d/bin" "$_d/cache"
-  for _g in admission-hook.sh library-admission.sh admission-bash.sh admission-egress.sh admission-self-edit.sh annotate-web.sh admission-normalize.awk; do
+  for _g in admission-hook.sh library-admission.sh admission-bash.sh admission-egress.sh admission-self-edit.sh annotate-web.sh floor-normalize.awk; do
     [ "$_g" = "$4" ] || echo '# guard' > "$_d/bin/$_g"
   done
   case "$2" in
@@ -17,7 +17,7 @@ mkcfg() { # <name> <deny: sentinel|unrelated|empty> <hooks: full|no-mcp|no-advis
     unrelated) _deny='["Bash(rm -rf /*)","Read(./.env)"]' ;;
     *)         _deny='[]' ;;
   esac
-  # The eight (event, matcher, guard) triples admission-install.sh wires through admission-hook.sh (Monitor: pass 14 E-4;
+  # The eight (event, matcher, guard) triples floor-install.sh wires through admission-hook.sh (Monitor: pass 14 E-4;
   # Grep: harbor#1313 L6).
   _mk_full='[{"e":"PreToolUse","m":"Bash","g":"admission-bash.sh"},
              {"e":"PreToolUse","m":"Monitor","g":"admission-bash.sh"},
@@ -77,10 +77,10 @@ t_eq "the PostToolUse advisory counts as wiring" crit "$(verdict "$(run "$(mkcfg
 # floor-install's rows are its floor_hooks table (harbor#766): <event>;<matcher>;<argv>;…
 _inst="$(awk -F';' '/^floor_hooks\(\)/ { f = 1; next } f && /^ROWS$/ { exit }
     f && ($1 == "PreToolUse" || $1 == "PostToolUse") && $3 ~ /^admission-hook\.sh / {
-      n = split($3, a, " "); printf "%s\t%s\t%s\n", $1, $2, a[n] }' "$T_ROOT/bin/admission-install.sh" | sort)"
+      n = split($3, a, " "); printf "%s\t%s\t%s\n", $1, $2, a[n] }' "$T_ROOT/bin/floor-install.sh" | sort)"
 _mine="$(awk -F'\t' 'NF == 3 && ($1 == "PreToolUse" || $1 == "PostToolUse") { print }' "$P" | sort)"
 t_has "the extractor finds floor-install's wiring rows" "$_inst" "admission-bash.sh"
-t_eq "alert-probe.sh's wiring matrix matches admission-install.sh" "$_inst" "$_mine"
+t_eq "alert-probe.sh's wiring matrix matches floor-install.sh" "$_inst" "$_mine"
 
 t_section "floor: unknown and the valid-but-unusual control"
 BARE="$TMP/bare"; mkdir -p "$BARE/cache"

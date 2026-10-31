@@ -26,7 +26,7 @@ tests/admission/mutation-tier/mutation-tier.test.sh bin/* fixtures/* tests/admis
 tests/admission/deny-hash/deny-hash.test.sh bin/* hooks/* tests/admission/deny-hash/deny-hash.test.sh tests/lib/core.sh
 tests/drift/reference-check/reference-check.test.sh bin/* hooks/* launchd/* tests/checks/reference-check* tests/drift/reference-check/* tests/lib/core.sh
 tests/drift/reference-check/skills.test.sh bin/* hooks/* launchd/* tests/checks/reference-check* tests/drift/reference-check/* tests/lib/core.sh
-tests/admission/equivalence/equivalence.test.sh bin/admission-equivalence.sh tests/admission/equivalence/equivalence.test.sh bin/admission-bash.sh bin/library-admission.sh bin/admission-normalize.awk fixtures/admission-corpus.jsonl tests/lib/core.sh bin/library-log.sh
+tests/admission/equivalence/equivalence.test.sh bin/floor-equiv.sh tests/admission/equivalence/equivalence.test.sh bin/admission-bash.sh bin/library-admission.sh bin/floor-normalize.awk fixtures/admission-corpus.jsonl tests/lib/core.sh bin/library-log.sh
 tests/lint/module-shape/module-shape.test.sh bin/lint-module-shape.sh bin/library-log.sh tests/lint/module-shape/module-shape.test.sh tests/lib/core.sh
 tests/doc/graph-generate/graph-generate.test.sh always
 tests/standard/rename/rename.test.sh always
@@ -59,8 +59,8 @@ tests/lint/rule-health/rule-health.test.sh bin/lint-rule-health.sh bin/library-l
 tests/test/suite-select/suite-select.test.sh always
 tests/ci/verified/verified.test.sh bin/ci-verified.sh tests/ci/verified/verified.test.sh tests/lib/core.sh
 tests/ci/runner/image.test.sh runners/* contracts/suites.txt tests/ci/runner/image.test.sh tests/access/browser/browser.test.sh bin/browser* bin/access-browser* tests/lib/core.sh tests/lib/linux-sim.sh
-tests/status/observe/digest.test.sh bin/library-admission.sh bin/admission-cloud.sh bin/admission-destroy.sh bin/admission-normalize.awk tests/status/observe/digest.test.sh tests/lib/core.sh
-tests/admission/observe-report/observe-report.test.sh bin/admission-observe-report.sh bin/audit-triage.sh bin/admission-verify.sh bin/library-admission.sh bin/library-log.sh bin/admission-normalize.awk tests/admission/observe-report/observe-report.test.sh tests/audit/triage/fixture.sh tests/admission/baseline/fixture.sh tests/admission/baseline/baseline.test.sh tests/admission/baseline/* tests/lib/core.sh
+tests/status/observe/digest.test.sh bin/library-admission.sh bin/admission-cloud.sh bin/admission-destroy.sh bin/floor-normalize.awk tests/status/observe/digest.test.sh tests/lib/core.sh
+tests/admission/observe-report/observe-report.test.sh bin/admission-observe-report.sh bin/audit-triage.sh bin/floor-verify.sh bin/library-admission.sh bin/library-log.sh bin/floor-normalize.awk tests/admission/observe-report/observe-report.test.sh tests/audit/triage/fixture.sh tests/admission/baseline/fixture.sh tests/admission/baseline/baseline.test.sh tests/admission/baseline/* tests/lib/core.sh
 tests/lint/findings/findings.test.sh bin/lint-findings.sh bin/library-log.sh bin/lint-conventions.sh contracts/finding.md docs/reference/checks.md tests/lint/findings/findings.test.sh tests/obs/findings-fixture.sh tests/lib/core.sh
 tests/lint/findings/heal.test.sh bin/lint-findings.sh bin/library-log.sh contracts/finding.md docs/reference/checks.md tests/lint/findings/heal.test.sh tests/obs/findings-fixture.sh tests/lib/core.sh
 tests/lint/findings-run/findings-run.test.sh bin/lint-findings-run.sh bin/library-log.sh bin/deploy-runtime-install.sh bin/deploy-launchd-render.sh bin/scope-roots.sh contracts/roots.tsv launchd/com.harbor.lint.findings.plist tests/lint/findings-run/findings-run.test.sh tests/lib/core.sh
@@ -129,10 +129,10 @@ hooks/injection-rule/packs.test.sh bin/* context-rules/* contracts/* tests/conte
 hooks/injection-rule/scope.test.sh bin/* context-rules/* contracts/* tests/context/injection-rule/fixture.sh tests/lib/core.sh hooks/injection-rule/scope.test.sh
 hooks/injection-rule/compaction-digest.test.sh bin/context-compaction-digest.sh bin/library-admission.sh context-rules/* tests/context/injection-rule/fixture.sh tests/lib/core.sh hooks/injection-rule/compaction-digest.test.sh
 hooks/injection-rule/context-rules.test.sh hooks/injection-rule/injection-rule.sh tests/context/injection-rule/fixture.sh tests/lib/core.sh hooks/injection-rule/context-rules.test.sh
-tests/context/injection-rule/notes.test.sh hooks/injection-rule/injection-rule.sh tests/context/injection-rule/notes.test.sh context-rules/* fixtures/inject/* fixtures/injection-rule/notes.tsv* fixtures/injection-rule/packs/example-store/wipe-destroys-history.md* bin/scope-roots.sh bin/library-admission.sh bin/admission-normalize.awk tests/lib/core.sh bin/lint-name.sh bin/library-log.sh standards/naming/*
+tests/context/injection-rule/notes.test.sh hooks/injection-rule/injection-rule.sh tests/context/injection-rule/notes.test.sh context-rules/* fixtures/inject/* fixtures/injection-rule/notes.tsv* fixtures/injection-rule/packs/example-store/wipe-destroys-history.md* bin/scope-roots.sh bin/library-admission.sh bin/floor-normalize.awk tests/lib/core.sh bin/lint-name.sh bin/library-log.sh standards/naming/*
 tests/context/injection-rule/agent-brief.test.sh hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/* tests/context/injection-rule/agent-brief.test.sh tests/lib/core.sh
 tests/context/injection-rule/decision-question.test.sh hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/user/decision-* tests/context/injection-rule/decision-question.test.sh tests/lib/core.sh docs/explanation/grilling.md commands/grillme.md
-tests/context/injection-rule/skill-first-use.test.sh hooks/injection-rule/injection-rule.sh bin/library-admission.sh bin/admission-normalize.awk context-rules/* skills/agent-routing/SKILL.md tests/context/injection-rule/skill-first-use.test.sh tests/lib/core.sh
+tests/context/injection-rule/skill-first-use.test.sh hooks/injection-rule/injection-rule.sh bin/library-admission.sh bin/floor-normalize.awk context-rules/* skills/agent-routing/SKILL.md tests/context/injection-rule/skill-first-use.test.sh tests/lib/core.sh
 tests/context/injection-rule/name-note.test.sh hooks/injection-rule/injection-rule.sh bin/library-admission.sh bin/lint-name.sh bin/library-log.sh standards/naming/* context-rules/* tests/context/injection-rule/name-note.test.sh tests/lib/core.sh
 hooks/ticket-note/ticket-note.test.sh hooks/ticket-note/ticket-note.sh hooks/ticket-note/ticket-note.test.sh tests/lib/core.sh
 hooks/reply-shape/reply-shape.test.sh hooks/reply-shape/reply-shape.sh hooks/reply-shape/reply-shape.test.sh tests/lib/core.sh
@@ -187,14 +187,14 @@ tests/skill/usage/usage.test.sh bin/skill-usage.sh tests/skill/usage/usage.test.
 tests/skill/fire/fire.test.sh bin/skill-fire.sh tests/skill/fire/fire.test.sh tests/lib/core.sh bin/library-log.sh
 tests/status/plan-generate/plan-generate.test.sh bin/status-plan-generate.sh bin/library-log.sh tests/status/plan-generate/plan-generate.test.sh docs/reports/platform-build-tickets.md tests/lib/core.sh
 tests/skill/gates/gates.test.sh tests/skills/skill-gates* tests/skill/gates/gates.test.sh* tests/lib/core.sh skills/access-ledger/bin/* bin/doc-report-verify.sh bin/library-log.sh vendor/archify/*
-tests/skill/prove/prove.test.sh tests/skills/prove* tests/skill/prove/* tests/lib/core.sh skills/test-strength/* bin/admission-equivalence.sh bin/admission-bash.sh
-tests/skill/prove/engine.test.sh tests/skills/prove* tests/skill/prove/* tests/lib/core.sh skills/test-strength/* bin/admission-equivalence.sh bin/admission-bash.sh
-tests/skill/prove/report.test.sh tests/skills/prove* tests/skill/prove/* tests/lib/core.sh skills/test-strength/* bin/admission-equivalence.sh bin/admission-bash.sh
-tests/skill/prove/cli.test.sh tests/skills/prove* tests/skill/prove/* tests/lib/core.sh skills/test-strength/* bin/admission-equivalence.sh bin/admission-bash.sh
+tests/skill/prove/prove.test.sh tests/skills/prove* tests/skill/prove/* tests/lib/core.sh skills/test-strength/* bin/floor-equiv.sh bin/admission-bash.sh
+tests/skill/prove/engine.test.sh tests/skills/prove* tests/skill/prove/* tests/lib/core.sh skills/test-strength/* bin/floor-equiv.sh bin/admission-bash.sh
+tests/skill/prove/report.test.sh tests/skills/prove* tests/skill/prove/* tests/lib/core.sh skills/test-strength/* bin/floor-equiv.sh bin/admission-bash.sh
+tests/skill/prove/cli.test.sh tests/skills/prove* tests/skill/prove/* tests/lib/core.sh skills/test-strength/* bin/floor-equiv.sh bin/admission-bash.sh
 tests/skill/prove/watchdog.test.sh tests/skills/prove* tests/skill/prove/* tests/lib/core.sh skills/test-strength/*
 tests/eval/tally/tally.test.sh bin/eval-tally.sh tests/eval/tally/tally.test.sh tests/lib/core.sh bin/library-log.sh
 
-tests/drift/install/install.test.sh bin/drift-install.sh tests/drift/install/install.test.sh bin/admission-verify.sh tests/lib/core.sh bin/check-registry-generate.sh
+tests/drift/install/install.test.sh bin/drift-install.sh tests/drift/install/install.test.sh bin/floor-verify.sh tests/lib/core.sh bin/check-registry-generate.sh
 tests/memory/route/route.test.sh bin/memory-route.sh bin/library-log.sh tests/memory/route/route.test.sh bin/scope-roots.sh tests/lib/core.sh
 tests/lint/port-paths/port-paths.test.sh bin/lint-port-paths.sh bin/library-log.sh bin/scope-roots.sh tests/lint/port-paths/port-paths.test.sh contracts/port-paths-exempt.tsv tests/lib/core.sh
 tests/install/port-drift-test.sh bin/port-drift.sh bin/scope-roots.sh bin/library-log.sh contracts/roots.tsv contracts/private-layer.md tests/install/port-drift-test.sh tests/lib/core.sh
@@ -229,7 +229,7 @@ tests/skill/atlas/zones.test.sh skills/doc-atlas/build/build.py tests/skill/atla
 tests/skill/atlas/inside.test.sh skills/doc-atlas/build/build.py tests/skill/atlas/inside.test.sh tests/lib/core.sh
 tests/skill/archify/report-pipe.test.sh vendor/archify/scripts/check-render-output.mjs vendor/archify/bin/archify.mjs fixtures/archify/fanout-architecture.json tests/skill/archify/report-pipe.test.sh tests/lib/core.sh
 tests/test/contract/contract.test.sh skills/*/bin/*-test.sh contracts/test-contract.md contracts/README.md contracts/suites.txt tests/README.md tests/lib/run.sh justfile tests/test/contract/contract.test.sh tests/lib/core.sh
-tests/deploy/live-verify/live-verify.test.sh bin/deploy-live-verify.sh bin/admission-verify.sh bin/deploy-doctor.sh bin/drift-install.sh bin/deploy-shim-install.sh bin/scope-roots.sh bin/secret bin/skill-install.sh bin/access-browser.sh bin/harbor bin/deploy-install-lib.sh bin/library-log.sh bin/admission-* bin/library-admission.sh bin/floor-* bin/pin-instructions.sh bin/deploy-harden.sh contracts/shims.tsv contracts/roots.tsv docs/reference/checks.md tests/cli/keychain-stub.sh tests/deploy/live-verify/live-verify.test.sh tests/lib/core.sh
+tests/deploy/live-verify/live-verify.test.sh bin/deploy-live-verify.sh bin/floor-verify.sh bin/deploy-doctor.sh bin/drift-install.sh bin/deploy-shim-install.sh bin/scope-roots.sh bin/secret bin/skill-install.sh bin/access-browser.sh bin/harbor bin/deploy-install-lib.sh bin/library-log.sh bin/admission-* bin/library-admission.sh bin/floor-* bin/pin-instructions.sh bin/deploy-harden.sh contracts/shims.tsv contracts/roots.tsv docs/reference/checks.md tests/cli/keychain-stub.sh tests/deploy/live-verify/live-verify.test.sh tests/lib/core.sh
 tests/event/bus/emit.test.sh bin/event-bus.sh bin/library-log.sh bin/harbor tests/event/bus/* tests/lib/core.sh
 tests/event/bus/concurrency.test.sh bin/event-bus.sh bin/library-log.sh bin/harbor tests/event/bus/* tests/lib/core.sh
 tests/event/bus/wait.test.sh bin/event-bus.sh bin/library-log.sh bin/harbor tests/event/bus/* tests/lib/core.sh
@@ -240,11 +240,11 @@ tests/ci/runs-on/runs-on.test.sh bin/ci-runs-on.sh bin/library-log.sh tests/ci/r
 tests/lint/platform/calls.test.sh bin/* tests/lint/platform/calls.test.sh tests/lib/core.sh
 tests/lint/conventions/mktemp-template.test.sh bin/* hooks/* skills/*/bin/* tests/lint/conventions/mktemp-template.test.sh tests/lib/core.sh
 tests/status/fleet-snapshot/watch.test.sh bin/status-fleet-snapshot-refresh.sh bin/library-log.sh bin/scope-roots.sh contracts/roots.tsv tests/status/fleet-snapshot/watch.test.sh tests/lib/core.sh tests/lib/linux-sim.sh
-tests/event/producer/hook.test.sh bin/event-hook.sh bin/event-bus.sh bin/library-log.sh bin/admission-install.sh bin/admission-remove.sh bin/deploy-install-lib.sh hooks/* tests/event/producer/* tests/lib/core.sh
-tests/event/producer/git.test.sh bin/event-hook.sh bin/event-bus.sh bin/library-log.sh bin/admission-install.sh bin/admission-remove.sh bin/deploy-install-lib.sh hooks/* tests/event/producer/* tests/lib/core.sh
-tests/event/producer/failsafe.test.sh bin/event-hook.sh bin/event-bus.sh bin/library-log.sh bin/admission-install.sh bin/admission-remove.sh bin/deploy-install-lib.sh hooks/* tests/event/producer/* tests/lib/core.sh
-tests/event/producer/wiring.test.sh bin/event-hook.sh bin/event-bus.sh bin/library-log.sh bin/admission-install.sh bin/admission-remove.sh bin/deploy-install-lib.sh hooks/* tests/event/producer/* tests/lib/core.sh
-tests/event/producer/tools.test.sh bin/event-hook.sh bin/event-bus.sh bin/library-log.sh bin/admission-install.sh bin/admission-remove.sh bin/deploy-install-lib.sh hooks/* tests/event/producer/* tests/lib/core.sh
+tests/event/producer/hook.test.sh bin/event-hook.sh bin/event-bus.sh bin/library-log.sh bin/floor-install.sh bin/floor-uninstall.sh bin/deploy-install-lib.sh hooks/* tests/event/producer/* tests/lib/core.sh
+tests/event/producer/git.test.sh bin/event-hook.sh bin/event-bus.sh bin/library-log.sh bin/floor-install.sh bin/floor-uninstall.sh bin/deploy-install-lib.sh hooks/* tests/event/producer/* tests/lib/core.sh
+tests/event/producer/failsafe.test.sh bin/event-hook.sh bin/event-bus.sh bin/library-log.sh bin/floor-install.sh bin/floor-uninstall.sh bin/deploy-install-lib.sh hooks/* tests/event/producer/* tests/lib/core.sh
+tests/event/producer/wiring.test.sh bin/event-hook.sh bin/event-bus.sh bin/library-log.sh bin/floor-install.sh bin/floor-uninstall.sh bin/deploy-install-lib.sh hooks/* tests/event/producer/* tests/lib/core.sh
+tests/event/producer/tools.test.sh bin/event-hook.sh bin/event-bus.sh bin/library-log.sh bin/floor-install.sh bin/floor-uninstall.sh bin/deploy-install-lib.sh hooks/* tests/event/producer/* tests/lib/core.sh
 tests/status/obligations/fold.test.sh bin/status-obligations.sh bin/library-log.sh contracts/obligation-kinds.tsv tests/status/obligations/fold.test.sh tests/lib/core.sh
 tests/status/obligations/reconcile.test.sh bin/status-obligations.sh bin/status-fleet-snapshot-refresh.sh bin/context-peers.sh bin/library-log.sh contracts/obligation-kinds.tsv tests/status/obligations/reconcile.test.sh tests/lib/core.sh
 tests/status/obligations/surface.test.sh bin/status-obligations.sh bin/harbor bin/status-fleet-glyph.sh bin/lint-findings.sh bin/library-log.sh bin/lint-conventions.sh docs/reference/checks.md contracts/finding.md contracts/obligation-kinds.tsv tests/obs/findings-fixture.sh tests/status/obligations/surface.test.sh tests/lib/core.sh
@@ -302,8 +302,7 @@ tests/lint/siblings/ratchet.test.sh bin/lint-siblings.sh bin/lint-conventions.sh
 tests/session/state/stop.test.sh hooks/session-state/session-state.sh bin/admission-stop.sh bin/library-admission.sh bin/event-bus.sh bin/library-log.sh bin/library-fs.sh contracts/session-waiting.tsv tests/session/state/stop.test.sh tests/lib/core.sh
 tests/session/react/presets.test.sh bin/session-*.sh bin/library-alert.sh bin/library-log.sh tests/session/react/presets.test.sh tests/lib/core.sh
 tests/status/statusline/session.test.sh bin/status-fleet-glyph.sh tests/hooks/statusline* tests/status/statusline/* tests/lib/core.sh
-tests/lint/leaks/ratchet.test.sh bin/lint-leaks.sh bin/lint-conventions.sh bin/library-log.sh contracts/leak-patterns.tsv contracts/lint-leaks-baseline.txt bin/scope-layers.sh contracts/layers.tsv tests/lint/leaks/ratchet.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh
-tests/lint/name/ratchet.test.sh bin/lint-name-ratchet.sh bin/lint-name.sh bin/lint-conventions.sh bin/library-log.sh contracts/lint-name-baseline.txt bin/scope-layers.sh contracts/layers.tsv tests/lint/name/ratchet.test.sh tests/lib/core.sh
+tests/lint/leaks/ratchet.test.sh bin/lint-leaks.sh bin/lint-conventions.sh bin/library-log.sh contracts/leak-patterns.tsv contracts/lint-leaks-baseline.txt tests/lint/leaks/ratchet.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh
 tests/lint/decision/citation.test.sh bin/lint-conventions.sh docs/decisions/* contracts/decision-orphans.tsv tests/checks/lint-fixture.sh tests/lib/core.sh tests/lint/decision/citation.test.sh
 tests/lint/decision/orphan.test.sh bin/lint-conventions.sh docs/decisions/* contracts/decision-orphans.tsv tests/checks/lint-fixture.sh tests/lib/core.sh tests/lint/decision/orphan.test.sh
 tests/doc/decision/table.test.sh bin/doc-index-generate.sh docs/src/* docs/decisions/* tests/lib/core.sh tests/doc/decision/table.test.sh
@@ -354,8 +353,8 @@ tests/lint/module-shape/output-contract.test.sh bin/lint-module-shape.sh bin/lib
 tests/doc/cite-verify/output-contract.test.sh bin/doc-cite-verify.sh bin/library-log.sh bin/lint-conventions.sh tests/doc/cite-verify/output-contract.test.sh tests/lib/core.sh
 tests/scope/marker-backfill/output-contract.test.sh bin/scope-marker-backfill.sh bin/library-log.sh tests/scope/marker-backfill/output-contract.test.sh tests/lib/core.sh
 tests/ci/status-gen/output-contract.test.sh bin/status-generate.sh bin/library-log.sh tests/ci/status-gen/output-contract.test.sh tests/lib/core.sh
-tests/eval/replay/output-contract.test.sh bin/eval-replay.sh bin/eval-replay-corpus.sh bin/eval-replay-worker.sh bin/library-log.sh bin/library-admission.sh bin/admission-bash.sh bin/admission-egress.sh bin/admission-self-edit.sh bin/admission-normalize.awk tests/eval/replay/output-contract.test.sh tests/lib/core.sh
-tests/admission/equivalence/output-contract.test.sh bin/admission-equivalence.sh bin/library-log.sh tests/admission/equivalence/output-contract.test.sh tests/lib/core.sh
+tests/eval/replay/output-contract.test.sh bin/eval-replay.sh bin/eval-replay-corpus.sh bin/eval-replay-worker.sh bin/library-log.sh bin/library-admission.sh bin/admission-bash.sh bin/admission-egress.sh bin/admission-self-edit.sh bin/floor-normalize.awk tests/eval/replay/output-contract.test.sh tests/lib/core.sh
+tests/admission/equivalence/output-contract.test.sh bin/floor-equiv.sh bin/library-log.sh tests/admission/equivalence/output-contract.test.sh tests/lib/core.sh
 tests/admission/deny-hash/output-contract.test.sh bin/admission-deny-hash.sh bin/library-log.sh bin/library-admission.sh tests/admission/deny-hash/output-contract.test.sh tests/lib/core.sh
 tests/eval/pass-score/output-contract.test.sh bin/eval-pass-score.sh bin/library-log.sh tests/eval/pass-score/output-contract.test.sh tests/lib/core.sh
 tests/eval/hook-replay/output-contract.test.sh bin/eval-hook-replay.sh bin/library-log.sh tests/eval/hook-replay/output-contract.test.sh tests/lib/core.sh
@@ -383,7 +382,7 @@ tests/lint/module/unchecked.test.sh bin/lint-module.sh bin/doc-graph-generate.sh
 tests/lint/doc-refs/doc-refs.test.sh bin/doc-refs.sh bin/lint-conventions.sh bin/library-log.sh bin/scope-roots.sh contracts/roots.tsv standards/naming/* fixtures/doc-refs/* tests/lint/doc-refs/doc-refs.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh
 tests/standard/catalog/census.test.sh always
 tests/standard/catalog/map.test.sh always
-tests/deploy/first-run/first-run.test.sh bin/admission-verify.sh bin/drift-install.sh bin/pin-instructions.sh bin/deploy-install-lib.sh bin/library-log.sh bin/scope-roots.sh bin/harbor tests/deploy/first-run/first-run.test.sh tests/lib/core.sh
+tests/deploy/first-run/first-run.test.sh bin/floor-verify.sh bin/drift-install.sh bin/pin-instructions.sh bin/deploy-install-lib.sh bin/library-log.sh bin/scope-roots.sh bin/harbor tests/deploy/first-run/first-run.test.sh tests/lib/core.sh
 tests/ci/runner/wedge.test.sh bin/ci-runners.sh bin/ci-runners-*-lib.sh bin/library-log.sh tests/ci/runner/wedge.test.sh tests/ci/ci-runners-fixture.sh tests/lib/core.sh
 tests/drift/reconcile/contract.test.sh bin/library-log.sh bin/memory-route.sh bin/drift-reference-check.sh bin/doc-cited-paths.awk bin/library-fs.sh contracts/reconcile.md standards/naming/controls.tsv tests/drift/reconcile/contract.test.sh tests/checks/reference-check-fixture.sh tests/lib/core.sh
 tests/ci/runners/scale.test.sh bin/ci-runners.sh bin/ci-runners-*-lib.sh bin/library-log.sh tests/ci/runners/scale.test.sh tests/ci/ci-runners-fixture.sh tests/lib/core.sh
@@ -393,21 +392,20 @@ tests/access/github-app/routing.test.sh bin/access-github-app/* bin/access-githu
 hooks/session-title/session-title.test.sh hooks/session-title/session-title.sh bin/admission-self-edit.sh bin/library-admission.sh hooks/session-title/session-title.test.sh tests/lib/core.sh
 tests/deploy/hooks/render.test.sh bin/deploy-hooks.sh bin/library-log.sh tests/deploy/hooks/render.test.sh tests/lib/core.sh
 hooks/access-confinement/access-confinement.test.sh hooks/access-confinement/access-confinement.sh bin/deploy-confinement.sh hooks/access-confinement/access-confinement.test.sh tests/lib/core.sh
-tests/drift/confinement/compare.test.sh bin/drift-confinement.sh bin/deploy-confinement.sh bin/scope-roots.sh bin/library-log.sh bin/admission-deny.sh bin/deploy-install-lib.sh bin/deploy-runtime-install.sh contracts/confinement-hosts.txt contracts/confinement-paths.txt contracts/control-plane-state.md tests/drift/confinement/compare.test.sh tests/lib/core.sh
+tests/drift/confinement/compare.test.sh bin/drift-confinement.sh bin/deploy-confinement.sh bin/scope-roots.sh bin/library-log.sh bin/floor-deny.sh bin/deploy-install-lib.sh bin/deploy-runtime-install.sh contracts/confinement-hosts.txt contracts/confinement-paths.txt contracts/control-plane-state.md tests/drift/confinement/compare.test.sh tests/lib/core.sh
 tests/admission/confinement/covered.test.sh bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/admission/baseline/fixture.sh tests/admission/bash/fixture.sh contracts/confinement-coverage.tsv standards/naming/controls.tsv tests/admission/confinement/covered.test.sh
 tests/access/chrome/mcp.test.sh bin/* standards/naming/* contracts/browser-agent-hosts.txt tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/access/chrome/mcp.test.sh
 tests/deploy/push/license.test.sh LICENSE NOTICE SECURITY.md README.md vendor/* tests/deploy/push/license.test.sh tests/lib/core.sh
 tests/lint/share/check.test.sh bin/lint-share.sh bin/scope-layers.sh bin/scope-roots.sh bin/lint-conventions.sh bin/library-log.sh contracts/layers.tsv contracts/roots.tsv standards/naming/kinds.tsv tests/lint/share/check.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh
-tests/lint/wired/registered.test.sh bin/decider-set.sh bin/admission-install.sh bin/*-install.sh bin/lint-conventions.sh bin/library-log.sh standards/naming/controls.tsv
+tests/lint/wired/registered.test.sh bin/decider-set.sh bin/floor-install.sh bin/*-install.sh bin/lint-conventions.sh bin/library-log.sh standards/naming/controls.tsv
 tests/doc/fresh-verify/fresh-verify.test.sh bin/* hooks/* contracts/* docs/generated/status.md docs/generated/plan.md docs/* skills/* .agents/* .github/CODEOWNERS standards/* tests/doc/fresh-verify/fresh-verify.test.sh tests/lib/core.sh
-tests/admission/git/verbs.test.sh bin/admission-deny.sh bin/library-log.sh bin/deploy-install-lib.sh bin/admission-bash.sh bin/admission-destroy.sh contracts/git-verbs.md tests/admission/git/verbs.test.sh tests/lib/core.sh
-tests/admission/destroy/snapshot.test.sh bin/admission-destroy.sh bin/library-admission.sh bin/admission-normalize.awk tests/admission/destroy/snapshot.test.sh tests/lib/core.sh
+tests/admission/git/verbs.test.sh bin/floor-deny.sh bin/library-log.sh bin/deploy-install-lib.sh bin/admission-bash.sh bin/admission-destroy.sh contracts/git-verbs.md tests/admission/git/verbs.test.sh tests/lib/core.sh
+tests/admission/destroy/snapshot.test.sh bin/admission-destroy.sh bin/library-admission.sh bin/floor-normalize.awk tests/admission/destroy/snapshot.test.sh tests/lib/core.sh
 tests/ci/suite-cache/cache.test.sh bin/test-suite-cache.sh bin/test-suite-run.sh bin/test-suite-select.sh bin/library-log.sh bin/ci-governor.sh tests/ci/suite-cache/* tests/lib/core.sh
 tests/alert/lib/chain.test.sh bin/library-alert.sh bin/event-bus.sh bin/library-log.sh tests/alert/lib/* tests/lib/core.sh tests/lib/linux-sim.sh
 tests/lint/comment/added.test.sh bin/lint-comment.sh standards/naming/controls.tsv tests/lint/comment/* tests/lib/core.sh
 tests/lint/name/issue-taxonomy.test.sh bin/lint-name.sh standards/naming/* contracts/issue-taxonomy.tsv tests/lint/name/issue-taxonomy.test.sh tests/lib/core.sh
 tests/lint/name/validators.test.sh bin/lint-name.sh bin/name-check standards/naming/* fixtures/naming/* tests/checks/lint-fixture.sh tests/lint/name/fixture.sh tests/lint/name/validators.test.sh tests/lib/core.sh
-tests/lint/name/overlay.test.sh bin/lint-name.sh bin/standard-vendor.sh bin/library-log.sh standards/naming/* fixtures/naming/* tests/checks/lint-fixture.sh tests/lint/name/fixture.sh tests/lint/name/overlay.test.sh tests/lib/core.sh
 tests/doc/vale/vale.test.sh bin/doc-vale.sh bin/lint-name.sh bin/library-log.sh standards/naming/* tests/doc/vale/* tests/lib/core.sh
 tests/ci/lint-pr-test.sh bin/lint-pr.sh bin/lint-name.sh bin/library-log.sh hooks/commit-msg standards/naming/* fixtures/naming/* tests/ci/lint-pr-test.sh tests/lib/core.sh
 tests/hooks/name-note-create-test.sh hooks/injection-rule/injection-rule.sh bin/library-admission.sh bin/lint-name.sh bin/library-log.sh standards/naming/* context-rules/* tests/hooks/name-note-create-test.sh tests/lib/core.sh
@@ -416,7 +414,6 @@ tests/policy/resolve/order.test.sh bin/policy-resolve.sh tests/lib/core.sh
 tests/standard/vendor/vendor.test.sh bin/standard-vendor.sh bin/lint-name.sh bin/lint-renderer.sh bin/library-log.sh standards/naming/* tests/standard/vendor/vendor.test.sh tests/lib/core.sh
 tests/standard/fleet-names/job.test.sh bin/standard-fleet-names.sh bin/standard-fleet-names-run.sh bin/lint-name.sh bin/standard-vendor.sh bin/ci-release-names.sh bin/scope-roots.sh bin/library-log.sh standards/naming/* contracts/roots.tsv tests/standard/fleet-names/job.test.sh tests/lib/core.sh
 tests/memory/memory-names-test.sh bin/memory-lint.sh bin/memory.sh bin/library-log.sh tests/memory/memory-names-test.sh tests/lib/core.sh
-tests/standard/rename/sandbox-home.test.sh bin/standard-rename.sh bin/admission-install.sh bin/admission-verify.sh bin/pin-instructions.sh bin/lint-name.sh bin/library-log.sh bin/deploy-install-lib.sh bin/admission-* bin/library-admission.sh bin/floor-* tests/admission/baseline/b6.test.sh tests/floor/* tests/guards/* standards/naming/* tests/standard/rename/sandbox-home.test.sh tests/lib/core.sh
+tests/standard/rename/sandbox-home.test.sh bin/standard-rename.sh bin/floor-install.sh bin/floor-verify.sh bin/pin-instructions.sh bin/lint-name.sh bin/library-log.sh bin/deploy-install-lib.sh bin/admission-* bin/library-admission.sh bin/floor-* tests/admission/baseline/b6.test.sh tests/floor/* tests/guards/* standards/naming/* tests/standard/rename/sandbox-home.test.sh tests/lib/core.sh
 tests/deploy/install/renamed.test.sh bin/* hooks/* standards/naming/renames.tsv tests/deploy/install/renamed.test.sh tests/lib/core.sh
 tests/deploy/install/renamed-wiring.test.sh bin/* hooks/* standards/naming/renames.tsv tests/deploy/install/renamed-wiring.test.sh tests/lib/core.sh
-tests/deploy/install/renamed-wiring-w7.test.sh bin/* hooks/* standards/naming/renames.tsv tests/deploy/install/renamed-wiring-w7.test.sh tests/lib/core.sh

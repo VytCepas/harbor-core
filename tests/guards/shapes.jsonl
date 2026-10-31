@@ -16,7 +16,7 @@
 {"shape":"heredoc-quoted-subst","form":"git commit -F - <<'HD'\n$({cmd})\nHD","reps":["deny"],"expect":"allow","why":"harbor#798 control: a quoted delimiter keeps the body literal"}
 {"shape":"over-cap","pad":33000,"reps":["deny","ask","allow"],"expect":"same","why":"harbor#306: past the normalizer cap the argv layer is blind"}
 {"shape":"under-cap","pad":30000,"reps":["allow"],"expect":"same","why":"harbor#306 control: just under the cap"}
-{"shape":"no-normalizer","fixture":"nonorm","reps":["deny","ask","allow"],"expect":"same","why":"harbor#306: admission-normalize.awk is missing"}
+{"shape":"no-normalizer","fixture":"nonorm","reps":["deny","ask","allow"],"expect":"same","why":"harbor#306: floor-normalize.awk is missing"}
 {"shape":"fixture-copy","fixture":"copy","reps":["deny","allow"],"expect":"same","why":"control: a copied guard behaves like the real one"}
 {"shape":"subagent","ctx":{"agent_type":"workflow-subagent"},"reps":["deny","ask","allow"],"expect":"no-human","why":"harbor#194: nobody is there to answer an ask"}
 {"shape":"subagent-transcript","ctx":{"transcript_path":"/Users/x/.claude/projects/p/subagents/agent-1.jsonl"},"reps":["ask"],"expect":"no-human","why":"harbor#194"}

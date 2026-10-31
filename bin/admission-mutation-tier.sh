@@ -264,7 +264,7 @@ EOF
 while IFS= read -r _gl; do
   [ -n "$_gl" ] || continue
   log_warn "$_gl"
-  log_nofix "harbor#44 (deny entries: bin/admission-deny.sh; guard globs: bin/admission-self-edit.sh) — this report never repairs"
+  log_nofix "harbor#44 (deny entries: bin/floor-deny.sh; guard globs: bin/admission-self-edit.sh) — this report never repairs"
 done <<EOF
 $_gapl
 EOF

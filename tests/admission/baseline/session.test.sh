@@ -11,7 +11,7 @@ ere() { printf '%s\n' "$2" | grep -qE -- "$1"; }  # <ERE> <text>: exit 0 when a 
 t_section "H2 (harbor#4): the per-session context FILE, and the ENGINE default"
 H2="$TMP/h2"; mkdir -p "$H2/cfg/bin" "$H2/gov/.agents" "$H2/plain"
 printf 'context: repo\n' > "$H2/gov/.agents/config.yaml"
-for _f in library-admission.sh admission-normalize.awk context-resolve.sh; do cp "$SRC/$_f" "$H2/cfg/bin/"; done
+for _f in library-admission.sh floor-normalize.awk context-resolve.sh; do cp "$SRC/$_f" "$H2/cfg/bin/"; done
 _h2res() { printf '{"hook_event_name":"SessionStart","session_id":"%s","cwd":"%s"}' "$1" "$2" \
   | CLAUDE_CONFIG_DIR="$H2/cfg" sh "$H2/cfg/bin/context-resolve.sh" >/dev/null 2>&1; }
 _h2ctx() { printf '{"session_id":"%s"}' "$1" \
@@ -228,7 +228,7 @@ printf '# b9c\n\nRead `bin/deploy-restore.sh` first.\n' > "$B9CC/CLAUDE.md"
 printf '%s\n' '# is_symlink (harbor#813 stub)' 'import json' \
   'print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask"}}))' \
   > "$B9C/pi/templates/base/dot_agents/hooks/prod_guard.py"
-CLAUDE_CONFIG_DIR="$B9CC" sh "$SRC/admission-install.sh" --apply --dir "$B9CC" --with-b6 --with-stop-gate > "$B9C/install.log" 2>&1
+CLAUDE_CONFIG_DIR="$B9CC" sh "$SRC/floor-install.sh" --apply --dir "$B9CC" --with-b6 --with-stop-gate > "$B9C/install.log" 2>&1
 CLAUDE_CONFIG_DIR="$B9CC" sh "$SRC/deploy-runtime-install.sh" --apply --dir "$B9CC" >> "$B9C/install.log" 2>&1
 CLAUDE_CONFIG_DIR="$B9CC" sh "$SRC/context-injection-install.sh" --apply --dir "$B9CC" >> "$B9C/install.log" 2>&1
 CLAUDE_CONFIG_DIR="$B9CC" PROJECT_INIT_SRC="$B9C/pi" sh "$SRC/prod-guard-install.sh" --apply --dir "$B9CC" >> "$B9C/install.log" 2>&1
@@ -304,13 +304,13 @@ t_eq "B9c the loop ran the wired list (not vacuous)" y "$([ "$_b9ran" -ge 7 ] &&
 t_section "SW (harbor#954 PR B, #977): a settings env block that sets either switch is reported at SessionStart"
 # The write-time guards miss five ways of putting a switch in a project's settings (docs/explanation/admission-baseline.md residuals). The
 # check reads the FILE at SessionStart, so each shape is built the way its name says and only the end state is
-# read: one fixture per shape, for both switches. admission-observe.sh carries it because it runs when the switch is set.
+# read: one fixture per shape, for both switches. floor-observe.sh carries it because it runs when the switch is set.
 SW="$TMP/sw"; SWC="$SW/cfg"; mkdir -p "$SWC/bin" "$SW/real"
-for _f in library-admission.sh admission-normalize.awk admission-observe.sh; do cp "$SRC/$_f" "$SWC/bin/$_f"; done
+for _f in library-admission.sh floor-normalize.awk floor-observe.sh; do cp "$SRC/$_f" "$SWC/bin/$_f"; done
 printf '{"permissions":{"allow":[],"deny":[]}}\n' > "$SWC/settings.json"
 sw_run() { # <project dir> [<observe script>] -> what the SessionStart hook printed
   printf '{"hook_event_name":"SessionStart","session_id":"S-sw","cwd":"%s"}' "$1" \
-    | env -u CLAUDE_PROJECT_DIR -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW -u HELM_DISABLE_FLOOR -u HELM_FLOOR_SHADOW CLAUDE_CONFIG_DIR="$SWC" sh "${2:-$SWC/bin/admission-observe.sh}" 2>/dev/null
+    | env -u CLAUDE_PROJECT_DIR -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW -u HELM_DISABLE_FLOOR -u HELM_FLOOR_SHADOW CLAUDE_CONFIG_DIR="$SWC" sh "${2:-$SWC/bin/floor-observe.sh}" 2>/dev/null
 }
 sw_proj() { rm -rf "$SW/$1"; mkdir -p "$SW/$1/.claude"; printf '%s' "$SW/$1"; }
 # the control: the same hook, no switch in any settings file, says nothing
@@ -348,9 +348,9 @@ for _n in HARBOR_ADMISSION_DISABLE HARBOR_ADMISSION_SHADOW HELM_DISABLE_FLOOR HE
 done
 # the check can fail: the same fixtures against a floor-observe with the check cut out report nothing
 awk '/^# ── a settings `env` block that sets either switch/ {skip=1} /^# A SHADOW session \(harbor#482\)/ {skip=0} !skip' \
-  "$SRC/admission-observe.sh" > "$SWC/bin/observe-nocheck.sh"
-t_eq "SW the cut-out copy differs from admission-observe.sh (the cut found the check)" yes \
-  "$(cmp -s "$SWC/bin/observe-nocheck.sh" "$SRC/admission-observe.sh" && echo no || echo yes)"
+  "$SRC/floor-observe.sh" > "$SWC/bin/observe-nocheck.sh"
+t_eq "SW the cut-out copy differs from floor-observe.sh (the cut found the check)" yes \
+  "$(cmp -s "$SWC/bin/observe-nocheck.sh" "$SRC/floor-observe.sh" && echo no || echo yes)"
 _p="$(sw_proj mut)"; printf '{"env":{"HELM_DISABLE_FLOOR":"1"}}\n' > "$_p/.claude/settings.json"
 t_has "SW the real hook reports the switch (mutation control)" "$(sw_run "$_p")" "HELM_DISABLE_FLOOR"
 t_eq "SW with the check removed the report is empty (the fixtures above go red)" "" "$(sw_run "$_p" "$SWC/bin/observe-nocheck.sh")"

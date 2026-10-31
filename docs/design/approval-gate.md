@@ -206,7 +206,7 @@ direct `gh` call lacks, so it is not checked there.
 
 ## The settings lines
 
-`admission-deny.sh` adds these, append-only, on the floor component's deploy. It writes `$HOME` expanded, because a
+`floor-deny.sh` adds these, append-only, on the floor component's deploy. It writes `$HOME` expanded, because a
 Bash rule matches text and the guard admits only the physical path:
 
 ```

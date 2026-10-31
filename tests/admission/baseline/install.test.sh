@@ -7,7 +7,7 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$(dirname "$0")/fixture.sh"
 PERM='{"permissions":{"allow":[],"deny":[],"disableBypassPermissionsMode":"disable","disableAutoMode":"disable"}}'
-SCANNERS='admission-bash.sh admission-egress.sh admission-self-edit.sh annotate-web.sh pin-instructions.sh library-admission.sh admission-normalize.awk admission-integrity.sh'
+SCANNERS='admission-bash.sh admission-egress.sh admission-self-edit.sh annotate-web.sh pin-instructions.sh library-admission.sh floor-normalize.awk admission-integrity.sh'
 mkcfg() { # <dir> <settings-json> [script…] — a config dir holding its settings and a copy of each script
   _md="$1"; mkdir -p "$_md/bin"; printf '%s\n' "$2" > "$_md/settings.json"; shift 2
   for _mg in "$@"; do cp "$SRC/$_mg" "$_md/bin/" 2>/dev/null; done
@@ -48,7 +48,7 @@ t_eq "H3: the back-fill kept the YAML document header ($_bf_lines)" yes \
 t_section "REGRESSION: red-team pass 8 (installers: X7, X8)"
 # X7: a failed `jq >tmp && mv` short-circuits under set -eu and the installer still printed APPLIED.
 IW="$TMP/instwrite"; mkcfg "$IW" '{"permissions":{"deny":[]}}'
-env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-deny.sh" --dir "$IW" --apply >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$IW" --apply >/dev/null 2>&1
 t_eq "X7 floor-deny wrote the deny array it reported" yes \
   "$([ "$(jq '.permissions.deny | length' "$IW/settings.json" 2>/dev/null || echo 0)" -gt 0 ] && echo yes || echo no)"
 t_eq "X7 floor-deny kept the pre-run settings.json in backups/floor-deny/<TS>/, beside its log (one scheme, harbor#765)" \
@@ -67,9 +67,9 @@ for _h in $_h779; do
   t_exit "H779 the applied deny set covers $_h" 0 jq -e --arg a "Edit(~/.claude/$_h)" --arg b "Edit(~/.claude/$_h/**)" \
     '.permissions.deny | (index($a) != null) or (index($b) != null)' "$IW/settings.json"
 done
-B6FILES='library-admission.sh admission-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh annotate-web.sh admission-integrity.sh admission-deny.sh deploy-restore.sh deploy-harden.sh'
+B6FILES='library-admission.sh floor-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh annotate-web.sh admission-integrity.sh floor-deny.sh deploy-restore.sh deploy-harden.sh'
 B8="$TMP/b6install"; mkcfg "$B8" "$PERM" $B6FILES
-_x8out="$(fi_run admission-install.sh "$B8" --apply --with-b6 2>&1)"
+_x8out="$(fi_run floor-install.sh "$B8" --apply --with-b6 2>&1)"
 t_eq "X8 --with-b6 wired the SessionStart integrity gate" yes "$([ "$(jq -r '[.hooks.SessionStart[]?.hooks[]?.command] | map(select(test("admission-integrity"))) | length' "$B8/settings.json" 2>/dev/null || echo 0)" -gt 0 ] && echo yes || echo no)"
 t_eq "X8 --with-b6 pinned guard-integrity content" yes "$([ -f "$B8/.helm-pins/admission-integrity.sh.sha256" ] && echo yes || echo no)"
 # harbor#1313 L6: Read deny binds only the directory a Grep searches, so guard-egress judges the filter.
@@ -79,13 +79,13 @@ t_eq "X8 Grep is wired to guard-egress under its own matcher" 1 \
 t_hasnt "X8b --with-b6 does not print the NEXT telling the operator to run --with-b6" "$_x8out" 'B6 installs LAST'
 t_has "X8b --with-b6 reports what it installed" "$_x8out" 'admission-integrity.sh installed'
 _x8c="$TMP/b6nag"; mkcfg "$_x8c" "$PERM" $B6FILES
-t_has "X8b a plain --apply still prints the B6 NEXT" "$(fi_run admission-install.sh "$_x8c" --apply 2>&1)" 'B6 installs LAST'
+t_has "X8b a plain --apply still prints the B6 NEXT" "$(fi_run floor-install.sh "$_x8c" --apply 2>&1)" 'B6 installs LAST'
 # harbor#285: deploy prints its own B6 advice, so under it the installer's --with-b6 step is not repeated.
 _x8d="$TMP/b6deploy"; mkcfg "$_x8d" "$PERM" $B6FILES
-_x8do="$(env -u CLAUDE_CONFIG_DIR HARBOR_DEPLOY_ACTIVE=1 sh "$SRC/admission-install.sh" --apply --dir "$_x8d" 2>&1)"
+_x8do="$(env -u CLAUDE_CONFIG_DIR HARBOR_DEPLOY_ACTIVE=1 sh "$SRC/floor-install.sh" --apply --dir "$_x8d" 2>&1)"
 t_hasnt "X8b under deploy (HARBOR_DEPLOY_ACTIVE=1) no --with-b6 next step is printed" "$_x8do" '--with-b6'
-t_has "X8b ...while outside deploy it is, as a command its own gate takes" "$(fi_run admission-install.sh "$_x8c" --apply 2>&1)" \
-  "  note: next: sh $SRC/admission-install.sh --apply --dir '$(phys "$_x8c")' --with-b6"
+t_has "X8b ...while outside deploy it is, as a command its own gate takes" "$(fi_run floor-install.sh "$_x8c" --apply 2>&1)" \
+  "  note: next: sh $SRC/floor-install.sh --apply --dir '$(phys "$_x8c")' --with-b6"
 t_eq "X8b an apply keeps its pre-run settings.json beside its log, in backups/floor-install/<TS>/" "$(printf '%s\n' "$PERM" | jq -c .)" \
   "$(jq -c . "$_x8d"/backups/floor-install/*/settings.json 2>/dev/null)"
 t_eq "X8b ...and that dir holds the log the run named" yes \
@@ -112,7 +112,7 @@ t_section "X10b (harbor#275): both installers, in the documented order"
 # The broken order on purpose; the fixture seeds only a STALE recovery file, or it hides the defect.
 X10B="$TMP/x10b"; mkcfg "$X10B" "$PERM" $SCANNERS
 printf '#!/usr/bin/env sh\n# a previous deploy of deploy-restore.sh\nexit 0\n' > "$X10B/bin/deploy-restore.sh"
-fi_run admission-install.sh   "$X10B" --apply --with-b6 >/dev/null 2>&1 || true
+fi_run floor-install.sh   "$X10B" --apply --with-b6 >/dev/null 2>&1 || true
 fi_run deploy-runtime-install.sh "$X10B" --apply           >/dev/null 2>&1 || true
 t_eq "X10b the two installers in their documented order leave the gate quiet" "" "$(gate "$X10B")"
 t_eq "X10b the gate is quiet with deploy-restore.sh still PINNED" yes "$([ -f "$X10B/.helm-pins/deploy-restore.sh.sha256" ] && echo yes || echo no)"
@@ -137,20 +137,20 @@ x10c() { # <name> <runtime-ts> <floor-ts> → a dir whose deploy-restore.sh came
   printf '%s' "$_d"
 }
 X10C="$(x10c x10c-keep 2026-08-22T20:35:07+03:00 2026-08-22T18:25:07+03:00)"
-X10C_OUT="$(fi_run admission-install.sh "$X10C" --apply 2>&1 || true)"
+X10C_OUT="$(fi_run floor-install.sh "$X10C" --apply 2>&1 || true)"
 t_has "X10c floor-install kept deploy-restore.sh from the newer runtime deploy" "$(cat "$X10C/bin/deploy-restore.sh")" 'X10C-NEWER-RUNTIME'
 t_eq "X10c the declined rollback is reported" yes \
   "$(case "$X10C_OUT" in (*"KEPT the installed copy of"*deploy-restore.sh*) echo yes ;; (*) echo no ;; esac)"
 t_eq "X10c the kept file is pinned to the bytes on disk" "$(_x9sha < "$X10C/bin/deploy-restore.sh")" "$(cat "$X10C/.helm-pins/deploy-restore.sh.sha256" 2>/dev/null)"
 t_eq "X10c the gate is quiet after a KEPT file" "" "$(gate "$X10C")"
 X10D="$(x10c x10c-copy 2026-08-22T18:25:07+03:00 2026-08-22T20:35:07+03:00)"
-fi_run admission-install.sh "$X10D" --apply >/dev/null 2>&1 || true
+fi_run floor-install.sh "$X10D" --apply >/dev/null 2>&1 || true
 t_eq "X10c CONTROL: with the floor stamped last the copy overwrites" "$(_x9sha < "$SRC/deploy-restore.sh")" "$(_x9sha < "$X10D/bin/deploy-restore.sh")"
 
 t_section "MANIFEST (install standard §3): both installers record every file they wrote, and only those"
 _mfrow() { grep " $2 " "$1/.harbor-manifest" 2>/dev/null | awk '{print $1, $2, $4, $5}'; }  # <dir> <relpath>
 _head="$(git -C "$T_ROOT" rev-parse HEAD)"
-for g in admission-bash.sh admission-normalize.awk admission-deliverables.sh; do
+for g in admission-bash.sh floor-normalize.awk admission-deliverables.sh; do
   t_eq "MANIFEST floor-install recorded bin/$g: its blob, mode, installer and this checkout's commit" \
     "$(git hash-object "$X10B/bin/$g") $([ -x "$X10B/bin/$g" ] && echo 100755 || echo 100644) floor-install $_head" "$(_mfrow "$X10B" "bin/$g")"
 done
@@ -164,13 +164,13 @@ t_eq "MANIFEST no row for a file neither installer wrote (the retired baseline-p
 t_eq "MANIFEST every row's blob is the bytes on disk" 0 "$(grep -v '^#' "$X10B/.harbor-manifest" | while read -r _b _m _r _i _c; do [ "$(git hash-object "$X10B/$_r")" = "$_b" ] || echo "$_r"; done | grep -c .)"
 t_eq "MANIFEST B6's pin dir stays its own store: no .helm-pins path is a manifest row" 0 "$(grep -c ' \.helm-pins/' "$X10B/.harbor-manifest")"
 X10K="$(x10c x10c-mf 2026-08-22T20:35:07+03:00 2026-08-22T18:25:07+03:00)"
-fi_run admission-install.sh "$X10K" --apply >/dev/null 2>&1 || true
+fi_run floor-install.sh "$X10K" --apply >/dev/null 2>&1 || true
 t_eq "MANIFEST a KEPT file gets no floor-install row: it did not write it" "" "$(_mfrow "$X10K" bin/deploy-restore.sh)"
 t_eq "MANIFEST ...while the files it did copy have theirs" floor-install "$(_mfrow "$X10K" bin/deploy-harden.sh | awk '{print $3}')"
 X10M="$TMP/x10m"; mkcfg "$X10M" "$PERM" $SCANNERS
-fi_run admission-install.sh "$X10M" >/dev/null 2>&1 || true
+fi_run floor-install.sh "$X10M" >/dev/null 2>&1 || true
 t_eq "MANIFEST a dry run writes no manifest" no "$([ -e "$X10M/.harbor-manifest" ] && echo yes || echo no)"
-fi_run admission-install.sh "$X10M" --apply --with-stop-gate >/dev/null 2>&1 || true
+fi_run floor-install.sh "$X10M" --apply --with-stop-gate >/dev/null 2>&1 || true
 t_eq "MANIFEST the Stop gate, when asked for, is a row" floor-install "$(_mfrow "$X10M" bin/admission-stop.sh | awk '{print $3}')"
 t_eq "MANIFEST ...and B6, not asked for, is not" "" "$(_mfrow "$X10M" bin/admission-integrity.sh)"
 
@@ -191,7 +191,7 @@ t_eq "X11 a refreshed B6 is reported quietly, never under the session-blocked ba
 # The premise of the quiet note, behaviourally: B6 must not content-check its own pin.
 X11S="$TMP/x11self"; mkcfg "$X11S" '{"permissions":{"deny":[]}}' $SCANNERS; mkdir -p "$X11S/.helm-pins"
 for g in $SCANNERS; do _x9sha < "$X11S/bin/$g" > "$X11S/.helm-pins/$g.sha256"; done
-env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-deny.sh" --dir "$X11S" --repin >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$X11S" --repin >/dev/null 2>&1
 printf 'deliberately-stale-b6-pin\n' > "$X11S/.helm-pins/admission-integrity.sh.sha256"
 t_hasnt "X11 B6 does not content-check ITSELF" "[$(gate "$X11S" | jq -r '.systemMessage // ""' 2>/dev/null)]" 'admission-integrity.sh'
 printf '\n# drift\n' >> "$X11S/bin/admission-bash.sh"
@@ -200,25 +200,25 @@ t_has "X11 control: B6 names a drifted admission-bash.sh in the same dir" "$(gat
 t_section "harbor#313: an unrunnable regression check is not a regression verdict"
 X313="$TMP/x313/.claude"; mkdir -p "$X313/bin" "$X313/.helm-pins"
 # An installed copy carries the libraries every installer sources (runtime-install ships them, harbor#771).
-for _g in $(sed -n "s/^GUARDS='\(.*\)'/\1/p" "$SRC/admission-install.sh") admission-install.sh admission-deny.sh admission-verify.sh library-log.sh deploy-install-lib.sh; do
+for _g in $(sed -n "s/^GUARDS='\(.*\)'/\1/p" "$SRC/floor-install.sh") floor-install.sh floor-deny.sh floor-verify.sh library-log.sh deploy-install-lib.sh; do
   cp "$SRC/$_g" "$X313/bin/" 2>/dev/null || :
 done
 printf '{"permissions":{"deny":[]},"hooks":{}}\n' > "$X313/settings.json"
-X313OUT="$(cd "$X313/bin" && env -u CLAUDE_CONFIG_DIR sh ./admission-install.sh --dir "$X313" --apply 2>&1)"; X313RC=$?  # no deploy-install-stamp.sh here
+X313OUT="$(cd "$X313/bin" && env -u CLAUDE_CONFIG_DIR sh ./floor-install.sh --dir "$X313" --apply 2>&1)"; X313RC=$?  # no deploy-install-stamp.sh here
 t_eq "harbor#313 floor-install refuses with deploy-install-stamp.sh absent" 1 "$X313RC"
 t_has "harbor#313 floor-install says the check could not RUN" "$X313OUT" 'regression check could not run'
-t_has "harbor#313 the regression verdict is still a message floor-install can print" "$(cat "$SRC/admission-install.sh")" 'missing work that is already installed'
+t_has "harbor#313 the regression verdict is still a message floor-install can print" "$(cat "$SRC/floor-install.sh")" 'missing work that is already installed'
 t_hasnt "harbor#313 a MISSING deploy-install-stamp.sh is not reported as a regression" "$X313OUT" 'missing work that is already installed'
 cp "$SRC/deploy-install-stamp.sh" "$SRC/gate-merged-check.sh" "$X313/bin/" 2>/dev/null || :
 t_hasnt "harbor#313 with deploy-install-stamp.sh present the check is not called unrunnable" \
-  "$(cd "$X313/bin" && env -u CLAUDE_CONFIG_DIR sh ./admission-install.sh --dir "$X313" --apply 2>&1 || true)" 'regression check could not run'
+  "$(cd "$X313/bin" && env -u CLAUDE_CONFIG_DIR sh ./floor-install.sh --dir "$X313" --apply 2>&1 || true)" 'regression check could not run'
 # Every script sandbox-make EXECUTES is in an installer payload, and the scan must find some.
 PL=" $(echo $(ff_payload)) "
 _x313_all="$(grep -v '^[[:space:]]*#' "$SRC/test-sandbox-make.sh" | grep -oE 'sh "\$SRC/[a-z0-9-]+\.sh"' | sed 's#.*/##; s/"$//' | sort -u)"
 _x313_sm=""; [ -n "$_x313_all" ] || _x313_sm=" (the scan matched no sh \"\$SRC/…\" call)"
 for _r in $_x313_all; do case "$PL" in *" $_r "*) ;; *) _x313_sm="$_x313_sm $_r" ;; esac; done
 t_eq "harbor#313 test-sandbox-make.sh executes only \$SRC scripts an installer ships" "" "$_x313_sm"
-for _x313_need in admission-install.sh deploy-install-stamp.sh gate-merged-check.sh; do
+for _x313_need in floor-install.sh deploy-install-stamp.sh gate-merged-check.sh; do
   t_has "harbor#313 $_x313_need is in an installer payload" "$PL" " $_x313_need "
 done
 
@@ -226,7 +226,7 @@ t_section "REGRESSION: pass 11 · the live-dir gate is a PHYSICAL path compare"
 # One trailing character defeated a string compare (P11-01); each refusal must be the live gate's own.
 FH="$TMP/fakehome"; mkcfg "$FH/.claude" '{"permissions":{"deny":[]}}'
 for spelling in "/.claude/" "/.claude/." "/.claude//" "/.claude/../.claude"; do
-  for tool in admission-deny.sh admission-install.sh admission-remove.sh; do
+  for tool in floor-deny.sh floor-install.sh floor-uninstall.sh; do
     # The install-standard interface for all three now: --dir, no positional (harbor#766, #765, #800).
     _o="$(env -u CLAUDE_CONFIG_DIR HOME="$FH" sh "$SRC/$tool" --dir "$FH$spelling" --apply 2>&1)"; c=$?
     t_eq "P11: $tool refuses live via the spelling '$spelling' with no --live" "rc=1 refused-live" "rc=$c $(live_gate "$_o")"
@@ -249,7 +249,7 @@ for spelling in "" "/" "/." "//" "/../.claude"; do
     "$([ -f "$SM/.claude/CLAUDE.md" ] && [ -d "$SM/.claude/bin" ] && echo yes || echo no)"
 done
 GC="$TMP/gatecheck"; mkcfg "$GC" '{"permissions":{"deny":[]}}'
-t_exit "P11: the physical-path gate still applies to an ordinary sandbox target" 0 env HOME="$FH" env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-deny.sh" --dir "$GC/" --apply
+t_exit "P11: the physical-path gate still applies to an ordinary sandbox target" 0 env HOME="$FH" env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$GC/" --apply
 env HOME="$SM" CLAUDE_CONFIG_DIR="$SM/.claude" sh "$SRC/test-sandbox-make.sh" "$SM/box" --fresh >/dev/null 2>&1; c=$?
 t_eq "P11: sandbox-make still builds an ordinary sandbox" "rc=0 settings" "rc=$c $([ -f "$SM/box/settings.json" ] && echo settings || echo none)"
 # --with-floor runs floor-install through the install standard's --dir interface (harbor#765), with the
@@ -261,9 +261,9 @@ t_has "P11: ...and says the floor verifies there" "$_smf" '  ok: the floor verif
 
 t_section "harbor#58: a withdrawal is DATA, and it cannot be resurrected"
 WD="$TMP/withdraw"; mkdir -p "$WD"
-_wd_list="$(sed -n "/^WITHDRAWN='\[/,/^\]'/p" "$SRC/admission-deny.sh" | grep -oE '"[^"]+"' | tr -d '"')"
+_wd_list="$(sed -n "/^WITHDRAWN='\[/,/^\]'/p" "$SRC/floor-deny.sh" | grep -oE '"[^"]+"' | tr -d '"')"
 t_eq "harbor#58: WITHDRAWN parses non-empty" parsed "$([ -n "$_wd_list" ] && echo parsed || echo empty)"
-_add_list="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-deny.sh" --dir "$CFG" 2>/dev/null | sed -n 's/^  note: + //p')"
+_add_list="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$CFG" 2>/dev/null | sed -n 's/^  note: + //p')"
 _both=""; [ -n "$_add_list" ] || _both=" (the ADD list parsed empty — nothing was compared)"
 for _e in $(printf '%s\n' "$_wd_list" | tr ' ' '\001'); do
   _e="$(printf '%s' "$_e" | tr '\001' ' ')"
@@ -271,7 +271,7 @@ for _e in $(printf '%s\n' "$_wd_list" | tr ' ' '\001'); do
 done
 t_eq "harbor#58: no entry is in both ADD and WITHDRAWN" "" "$_both"
 jq -n '{permissions:{deny:[]}}' > "$WD/settings.json"
-env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-deny.sh" --dir "$WD" --apply >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$WD" --apply >/dev/null 2>&1
 _res=0
 for _e in $(printf '%s\n' "$_wd_list" | tr ' ' '\001'); do
   _e="$(printf '%s' "$_e" | tr '\001' ' ')"
@@ -280,13 +280,13 @@ done
 t_eq "harbor#58: --apply resurrects no withdrawn entry" 0 "$_res"
 jq -n --argjson w "$(printf '%s\n' "$_wd_list" | jq -R . | jq -s .)" \
   '{permissions:{deny:($w + ["Edit(~/.ssh/**)","Read(//**/.env)"])}}' > "$WD/settings.json"
-env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-deny.sh" --dir "$WD" --withdraw --apply >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$WD" --withdraw --apply >/dev/null 2>&1
 t_eq "harbor#58: --withdraw removes the recorded entries and nothing else" "Edit(~/.ssh/**) Read(//**/.env) " \
   "$(jq -r '.permissions.deny[]' "$WD/settings.json" 2>/dev/null | sort | tr '\n' ' ')"
 t_eq "harbor#58: --withdraw re-pins" yes "$([ -f "$WD/.helm-floor-teeth" ] && [ -f "$WD/.sec0-baseline.sha256" ] && echo yes || echo no)"
-t_exit "harbor#58: --withdraw with nothing present exits 0" 0 env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-deny.sh" --dir "$WD" --withdraw
+t_exit "harbor#58: --withdraw with nothing present exits 0" 0 env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$WD" --withdraw
 for _pair in '--withdraw --prune-inert' '--withdraw --repin' '--prune-inert --repin'; do
-  _o="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-deny.sh" --dir "$WD" $_pair 2>&1)"; c=$?
+  _o="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/floor-deny.sh" --dir "$WD" $_pair 2>&1)"; c=$?
   t_eq "harbor#58: '$_pair' is refused — two acts, one write" "rc=1 refused" \
     "rc=$c $(case "$_o" in (*"are different acts"*) echo refused ;; (*) echo other ;; esac)"
 done
@@ -322,24 +322,24 @@ dup_after() { # <first> <second> → commands wired twice under one event AND on
   printf '%s\n' "$_wl" | sort | uniq -c | awk '$1 > 1 { $1=""; print }' || true
   chmod -R u+w "$_wd" 2>/dev/null || true
 }
-t_eq "WIRE-1: runtime-then-floor duplicates no hook" "" "$(dup_after deploy-runtime admission)"
-t_eq "WIRE-1: floor-then-runtime duplicates no hook" "" "$(dup_after admission deploy-runtime)"
+t_eq "WIRE-1: runtime-then-floor duplicates no hook" "" "$(dup_after runtime floor)"
+t_eq "WIRE-1: floor-then-runtime duplicates no hook" "" "$(dup_after floor runtime)"
 
 t_section "WIRE-3 (harbor#291): the Stop gate is wired ONLY when it is asked for"
 stops() { jq -r --arg p "$2" '[.hooks.Stop[]?.hooks[]?.command // empty] | map(select(test($p))) | length' "$1/settings.json" 2>/dev/null; }
 _sd_off="$TMP/wire3-off"; mkcfg "$_sd_off" '{}'
-fi_run admission-install.sh "$_sd_off" --apply >/dev/null 2>&1 || true
+fi_run floor-install.sh "$_sd_off" --apply >/dev/null 2>&1 || true
 t_eq "WIRE-3 a default install wires no Stop gate" 0 "$(stops "$_sd_off" admission-stop)"
 t_eq "WIRE-3 a default install does not copy admission-stop.sh" no "$([ -f "$_sd_off/bin/admission-stop.sh" ] && echo yes || echo no)"
 _sd_on="$TMP/wire3-on"; mkcfg "$_sd_on" '{}'
-fi_run admission-install.sh "$_sd_on" --apply --with-stop-gate >/dev/null 2>&1 || true
+fi_run floor-install.sh "$_sd_on" --apply --with-stop-gate >/dev/null 2>&1 || true
 t_eq "WIRE-3 --with-stop-gate wires exactly one Stop hook" 1 "$(stops "$_sd_on" admission-stop)"
 t_eq "WIRE-3 --with-stop-gate copies admission-stop.sh" yes "$([ -f "$_sd_on/bin/admission-stop.sh" ] && echo yes || echo no)"
 t_eq "WIRE-3 admission-stop.sh is installed executable" yes "$([ -x "$_sd_on/bin/admission-stop.sh" ] && echo yes || echo no)"
 t_eq "WIRE-3 admission-stop.sh is content-pinned" yes "$([ -f "$_sd_on/.helm-pins/admission-stop.sh.sha256" ] && echo yes || echo no)"
 _p3a="$(_x9sha < "$_sd_on/bin/admission-stop.sh" 2>/dev/null)"
 t_eq "WIRE-3 the pin matches the installed bytes" "$(cat "$_sd_on/.helm-pins/admission-stop.sh.sha256" 2>/dev/null)" "${_p3a:-<no installed bytes>}"
-fi_run admission-install.sh "$_sd_on" --apply --with-stop-gate >/dev/null 2>&1 || true
+fi_run floor-install.sh "$_sd_on" --apply --with-stop-gate >/dev/null 2>&1 || true
 t_eq "WIRE-3 a re-apply keeps one Stop hook" 1 "$(stops "$_sd_on" admission-stop)"
 fi_run deploy-runtime-install.sh "$_sd_on" --apply >/dev/null 2>&1 || true
 t_eq "WIRE-3 runtime-install leaves the Stop gate wiring alone" 1 "$(stops "$_sd_on" admission-stop)"
@@ -349,7 +349,7 @@ chmod -R u+w "$_sd_off" "$_sd_on" 2>/dev/null || true
 t_section "WIRE-2 (harbor#95): every command these tools PRINT is one their own gate accepts"
 # No printed self-invocation, in any phase, names the live dir positionally or omits --live.
 w2_offenders() { # <output> <live-dir> → offending lines; empty means clean
-  printf '%s\n' "$1" | grep -Ee 'sh [^ ]*(admission-install|admission-remove|admission-deny|floor-install|floor-uninstall|floor-deny|sec0-harden|deploy)\.sh' | grep -v 'usage:' \
+  printf '%s\n' "$1" | grep -Ee 'sh [^ ]*(floor-install|floor-uninstall|floor-deny|sec0-harden|deploy)\.sh' | grep -v 'usage:' \
     | while IFS= read -r _l; do
         case "$_l" in
           *"$2"*)   printf '    names the live dir positionally: %s\n' "$_l" ;;
@@ -359,7 +359,7 @@ w2_offenders() { # <output> <live-dir> → offending lines; empty means clean
       done
 }
 _wn=0
-for _m in admission-install.sh admission-remove.sh deploy-harden.sh admission-deny.sh; do
+for _m in floor-install.sh floor-uninstall.sh deploy-harden.sh floor-deny.sh; do
   for _phase in dry apply; do
     _wn=$((_wn+1)); _wh="$TMP/wire2/h$_wn.$_phase"  # never named after the tool: its hook paths would match
     chmod -R u+w "$_wh" 2>/dev/null || true; rm -rf "$_wh"
@@ -368,7 +368,7 @@ for _m in admission-install.sh admission-remove.sh deploy-harden.sh admission-de
     _out="$(env HOME="$_wh" CLAUDE_CONFIG_DIR="$_wh/.claude" sh "$SRC/$_m" --live $_wa 2>&1 || true)"
     t_eq "WIRE-2: $_m ($_phase) prints only commands its own gate accepts" "" "$(w2_offenders "$_out" "$_wh/.claude")"
     # A live apply goes through deploy (install standard §4), an uninstall too (#808); the rest keep their own.
-    case "$_m" in admission-install.sh) _w2c=floor ;; admission-remove.sh) _w2c='floor --uninstall' ;; deploy-harden.sh) _w2c=sec0 ;; *) _w2c='' ;; esac
+    case "$_m" in floor-install.sh) _w2c=floor ;; floor-uninstall.sh) _w2c='floor --uninstall' ;; deploy-harden.sh) _w2c=sec0 ;; *) _w2c='' ;; esac
     if [ "$_phase" = dry ] && [ -n "$_w2c" ]; then
       t_has "WIRE-2: $_m's live dry-run hint is deploy --only $_w2c, with --live" "$_out" "deploy.sh' --apply --only $_w2c --live"
     elif [ "$_phase" = dry ]; then
@@ -380,7 +380,7 @@ done
 # The converse: an ordinary sandbox target gets a hint naming that target. The install-lib tools,
 # floor-deny among them since harbor#800, print it as `next: … --dir '<physical path>'`.
 _w2s="$TMP/wire2/sandbox"; rm -rf "$_w2s"; mkcfg "$_w2s" '{"permissions":{"deny":[]}}'
-for _m in admission-install.sh admission-remove.sh deploy-harden.sh admission-deny.sh; do
+for _m in floor-install.sh floor-uninstall.sh deploy-harden.sh floor-deny.sh; do
   _w2o="$(fi_run "$_m" "$_w2s" 2>/dev/null)"
   # The hint is the first printed self-invocation with --apply; install-lib tools name the PHYSICAL target.
   _w2h="$(printf '%s\n' "$_w2o" | grep -m1 -E "sh [^ ]*${_m%.sh}\.sh .*--apply" || true)"
@@ -392,7 +392,7 @@ t_section "G516 (harbor#516): the installed backstop denies a refused merge from
 # Runs the command floor-install wired, not the script: absent wiring leaves nothing to run.
 G5="$TMP/g516"; G5P="$G5/port"; G5G="$G5P/gov"; G5H="$G5/home"; mkdir -p "$G5G/bin" "$G5H"
 mkcfg "$G5/cfg" "$PERM" $SCANNERS
-fi_run admission-install.sh "$G5/cfg" --apply >/dev/null 2>&1 || true
+fi_run floor-install.sh "$G5/cfg" --apply >/dev/null 2>&1 || true
 git -C "$G5G" init -q; git -C "$G5G" remote add origin https://github.com/Own/Gov.git
 mkdir -p "$G5/cfg/inject.d"; printf 'gov\t%s\tfixture\n' "$G5G" > "$G5/cfg/inject.d/projects.tsv"
 printf '#!/usr/bin/env sh\necho "REFUSED  a check is not passing on #7"\nexit 1\n' > "$G5G/bin/gate-merge-check.sh"
@@ -407,9 +407,9 @@ t_section "one decider per command class (harbor#954 item 8, from #1004)"
 # (admission.class-<class>.<x>) or a second engine in the cell is a second decider. The probe proves
 # the registered engine is the only PreToolUse(Bash) decider floor-install wires that answers it.
 _cc_reg="$HROOT/standards/naming/controls.tsv"; _cc_dir="$TMP/cc-proj"; mkdir -p "$_cc_dir"
-_cc_bash="$(sed -n "/^floor_hooks() { cat <<'ROWS'/,/^ROWS\$/p" "$SRC/admission-install.sh" \
+_cc_bash="$(sed -n "/^floor_hooks() { cat <<'ROWS'/,/^ROWS\$/p" "$SRC/floor-install.sh" \
   | awk -F';' '$1 == "PreToolUse" && ("|" $2 "|") ~ /[|]Bash[|]/ { sub(/^admission-hook[.]sh /, "", $3); print $3 }' | sort -u)"
-t_has "the wired Bash deciders were parsed from admission-install.sh (else the parser broke, not the rule)" "$_cc_bash" admission-cloud.sh
+t_has "the wired Bash deciders were parsed from floor-install.sh (else the parser broke, not the rule)" "$_cc_bash" admission-cloud.sh
 _cc_answers() { # <json> -> each wired Bash decider that asks, denies or blocks on it, space-separated
   printf '%s\n' "$_cc_bash" | while IFS= read -r _g; do
     _s="${_g%% *}"; _a=''; [ "$_s" = "$_g" ] || _a="${_g#* }"
@@ -438,27 +438,16 @@ t_section "P13E-2: a veto that times out or crashes blocks the call (onFailure, 
 _of_pre() { jq -r '[.hooks.PreToolUse[]?.hooks[]? | (.onFailure // "none")] | unique | join(",")' "$1/settings.json"; }
 _of_rest() { jq -r '[.hooks | to_entries[] | select(.key != "PreToolUse") | .value[]?.hooks[]? | (.onFailure // "none")] | unique | join(",")' "$1/settings.json"; }
 OF1="$TMP/onfail-on"; mkcfg "$OF1" "$PERM"
-HARBOR_ADMISSION_ONFAILURE=1 fi_run admission-install.sh "$OF1" --apply >/dev/null 2>&1 || true
+FLOOR_ONFAILURE=1 fi_run floor-install.sh "$OF1" --apply >/dev/null 2>&1 || true
 t_eq "OF1 every PreToolUse veto carries onFailure block" block "$(_of_pre "$OF1")"
 t_eq "OF1 ...and no other event does" none "$(_of_rest "$OF1")"
 OF2="$TMP/onfail-off"; mkcfg "$OF2" "$PERM"
-HARBOR_ADMISSION_ONFAILURE=0 fi_run admission-install.sh "$OF2" --apply >/dev/null 2>&1 || true
+FLOOR_ONFAILURE=0 fi_run floor-install.sh "$OF2" --apply >/dev/null 2>&1 || true
 t_eq "OF2 a client too old for the key gets none" none "$(_of_pre "$OF2")"
 _of2n="$(jq '[.hooks.PreToolUse[]?.hooks[]?] | length' "$OF2/settings.json")"
-HARBOR_ADMISSION_ONFAILURE=1 fi_run admission-install.sh "$OF2" --apply >/dev/null 2>&1 || true
+FLOOR_ONFAILURE=1 fi_run floor-install.sh "$OF2" --apply >/dev/null 2>&1 || true
 t_eq "OF3 a re-install sets it on hooks already wired" block "$(_of_pre "$OF2")"
 t_eq "OF3 ...without wiring any of them twice" "$_of2n" "$(jq '[.hooks.PreToolUse[]?.hooks[]?] | length' "$OF2/settings.json")"
-# rename-1331 (W7): the old name is read after the new one until 2026-12-01, and the new one wins. Subshells, because
-# macOS /bin/sh keeps a prefix assignment to a function after it returns, so OF3's new name would decide these.
-OF4="$TMP/onfail-old"; mkcfg "$OF4" "$PERM"
-( unset HARBOR_ADMISSION_ONFAILURE; FLOOR_ONFAILURE=1; export FLOOR_ONFAILURE; fi_run admission-install.sh "$OF4" --apply ) >/dev/null 2>&1 || true
-t_eq "OF4 the old name FLOOR_ONFAILURE still sets onFailure until 2026-12-01" block "$(_of_pre "$OF4")"
-OF6="$TMP/onfail-old-off"; mkcfg "$OF6" "$PERM"   # 1 and 0 both, so a box with or without claude on PATH discriminates
-( unset HARBOR_ADMISSION_ONFAILURE; FLOOR_ONFAILURE=0; export FLOOR_ONFAILURE; fi_run admission-install.sh "$OF6" --apply ) >/dev/null 2>&1 || true
-t_eq "OF6 ...and clears it" none "$(_of_pre "$OF6")"
-OF5="$TMP/onfail-both"; mkcfg "$OF5" "$PERM"
-( HARBOR_ADMISSION_ONFAILURE=0 FLOOR_ONFAILURE=1; export HARBOR_ADMISSION_ONFAILURE FLOOR_ONFAILURE; fi_run admission-install.sh "$OF5" --apply ) >/dev/null 2>&1 || true
-t_eq "OF5 ...and the new name wins over it" none "$(_of_pre "$OF5")"
 
 ff_sealed
 t_done
