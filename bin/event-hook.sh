@@ -15,7 +15,7 @@
 #                 → memory.read  subject = the memory note's BASENAME, for a Read of */memory/*.md, MEMORY.md or
 #                     INDEX-FULL.md, never its path or content; data = {session_id}.  Every other Read exits at once.
 #
-# Hook-invoked, the payload on stdin; nothing to run by hand. Wired by floor-install.sh, standalone
+# Hook-invoked, the payload on stdin; nothing to run by hand. Wired by admission-install.sh, standalone
 # and fail-OPEN like guard-apiroute: it exits 0 on EVERY path, prints nothing, and takes only ids
 # from the payload, each checked against a short charset. A prompt, a command, a transcript path or
 # tool output never reaches an event (docs/design/events.md, the record). Claude Code has no hook
@@ -24,7 +24,7 @@
 # 2, 1..60); a hung bus or a stdin that never closes costs the session at most twice that, then exit 0.
 # Off: `touch <bus dir>/producers.off`. The security floor never depends on this file.
 #
-# A new producer is one `case` arm below plus one row in floor-install.sh's wiring table; the
+# A new producer is one `case` arm below plus one row in admission-install.sh's wiring table; the
 # payload fields it needs go in the KEYS list (or the awk's derived flags).
 
 # Not $(dirname): a hook runs this (F15, harbor#813). No `set -e`: this exits 0 on every path.

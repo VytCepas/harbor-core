@@ -10,7 +10,7 @@
 # the floor already pinned one). Token rescope and the POSIX shell-injection guard
 # are separate (see docs/how-to/harden-the-host.md and workstream B).
 #
-# Writes the way floor-deny.sh does: temp file, jq-validated, then moved into place
+# Writes the way admission-deny.sh does: temp file, jq-validated, then moved into place
 # (this used to be `jq . > settings.json`, a truncate in place), then the teeth and
 # baseline re-pinned from the file just written, so B6 is not left drifted. Adding
 # `.env` for the first time (harbor#816) adds a top-level key, which the baseline's

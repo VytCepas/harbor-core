@@ -7,9 +7,9 @@
 #   sh test-suite-cache.sh manifest <suite>               the text that key hashes: a header, then `<oid> <path>` per input
 #   sh test-suite-cache.sh undeclared [suite...]          paths a suite names (directly or through code it names) that its declaration misses
 #
-#   HARBOR_SUITE_CACHE_DIR   the store (default ${XDG_CACHE_HOME:-$HOME/.cache}/harbor/suite-cache)
-#   HARBOR_SUITE_CACHE_DAYS  an entry no run has used for this many days is pruned (default 30)
-#   HARBOR_SUITE_CACHE_SALT  any text, hashed into every key: changing it is a cold cache
+#   HARBOR_TEST_SUITE_CACHE_DIR   the store (default ${XDG_CACHE_HOME:-$HOME/.cache}/harbor/suite-cache)
+#   HARBOR_TEST_SUITE_CACHE_DAYS  an entry no run has used for this many days is pruned (default 30)
+#   HARBOR_TEST_SUITE_CACHE_SALT  any text, hashed into every key: changing it is a cold cache
 #
 # bin/test-suite-run.sh calls this only under HARBOR_SUITE_CACHE=1, so with the variable unset nothing here runs.
 # The key, the store, what is trusted and what the key cannot see: contracts/suite-cache.md.
@@ -89,7 +89,7 @@ _keys() { # <suites-file> <out>
     printf 'cache %s\n' "$(git hash-object "$DIR/test-suite-cache.sh")"
     printf 'trust %s\n' "$_dom"
     printf 'host %s\n' "$(uname -srm)"
-    printf 'salt %s\n' "${HARBOR_SUITE_CACHE_SALT:-}"
+    printf 'salt %s\n' "${HARBOR_TEST_SUITE_CACHE_SALT:-${HARBOR_SUITE_CACHE_SALT:-}}"
   } > "$W/head"
   # The references: every code file the suites name, followed, memoised across suites in one awk.
   awk -F '\t' -v root="$ROOT" -v inv="$W/inv" -v OFS='\t' '
@@ -214,7 +214,7 @@ _prep() { # <suites-file>
 
 # ── the store: <dir>/<domain>/<key>, a regular file this user wrote in a dir this user owns ──
 _store() {
-  _base="${HARBOR_SUITE_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/harbor/suite-cache}"
+  _base="${HARBOR_TEST_SUITE_CACHE_DIR:-${HARBOR_SUITE_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/harbor/suite-cache}}"
   _dom="$(_domain)" || return 1
   STORE="$_base/$(printf '%s' "$_dom" | tr -c 'A-Za-z0-9._-' '_')"
   mkdir -p "$STORE" 2>/dev/null || return 1
@@ -234,7 +234,7 @@ _gate() {
     1) ;;
     *) echo "bin/test-suite-select.sh --why-all exited $_rc: the selection could not be judged"; return ;;
   esac
-  _store || { echo "no store this user owns and can write at ${HARBOR_SUITE_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/harbor/suite-cache}"; return; }
+  _store || { echo "no store this user owns and can write at ${HARBOR_TEST_SUITE_CACHE_DIR:-${HARBOR_SUITE_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/harbor/suite-cache}}"; return; }
 }
 
 case "$CMD" in
@@ -282,7 +282,7 @@ case "$CMD" in
       printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$FORMAT" "$_secs" "$_cnt" "$_when" "$_s" "$_c" > "$STORE/.$_key.$$"
       mv -f "$STORE/.$_key.$$" "$STORE/$_key"; _n=$((_n + 1))
     done < "$W/plan"
-    find "$STORE" -type f -mtime +"${HARBOR_SUITE_CACHE_DAYS:-30}" -exec rm -f {} + 2>/dev/null || :
+    find "$STORE" -type f -mtime +"${HARBOR_TEST_SUITE_CACHE_DAYS:-${HARBOR_SUITE_CACHE_DAYS:-30}}" -exec rm -f {} + 2>/dev/null || :
     printf 'recorded %s pass(es)%s\n' "$_n" "$([ "$_moved" = 0 ] || printf '; %s not, an input changed during the run' "$_moved")"
     ;;
 

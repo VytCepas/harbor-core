@@ -212,7 +212,7 @@ show_fp() {
         echo "  (dropped ${_xn% *} block record(s) under ${_xn#* } digest(s): harbor's own probe and suite traffic — --with-probes shows them)"
       fi ;;
     failed)
-      log_warn "harbor's own probe and suite traffic could NOT be separated (audit-triage.sh, floor-verify.sh, library-admission.sh or the salt was unreadable), so the rows above may be this box's own verifier"
+      log_warn "harbor's own probe and suite traffic could NOT be separated (audit-triage.sh, admission-verify.sh, library-admission.sh or the salt was unreadable), so the rows above may be this box's own verifier"
       log_fix "sh $HERE/audit-triage.sh --exclusion-set $CFG   # names what it could not read" ;;
   esac
 }
@@ -362,7 +362,7 @@ show_overrides() {
   log_head "overrides"
   _den=$((NOVR + NARM))
   if [ "$_den" = 0 ]; then
-    echo "  no session boundary records yet (floor-observe.sh runs at SessionStart)"
+    echo "  no session boundary records yet (admission-observe.sh runs at SessionStart)"
   else
     # awk -v, never string interpolation into the program text: an empty counter
     # produced the program `BEGIN{printf "%.1f", 100*/1}` and a syntax error.

@@ -36,7 +36,7 @@
 # same trigger. Anything heavier than this runs detached from the dispatcher, never here.
 #
 # COMPACT  no hook can start a compaction, so it runs on the agent's word. ASK: on a done or idle turn with
-# ctx_pct >= HARBOR_AUTOCOMPACT_PCT (35), no save-now this turn and not already a continuation, ONE Stop
+# ctx_pct >= HARBOR_SESSION_AUTOCOMPACT_PERCENT (35), no save-now this turn and not already a continuation, ONE Stop
 # continuation asks the agent whether the task is finished; once per 10-point growth step (compact_ask in the
 # record; a fall in ctx re-arms it). RUN: when the agent's message ENDS with the line [compact-ok], this hook
 # starts bin/session-autocompact.sh detached, which types /compact into the session's Terminal tab. Off for
@@ -112,7 +112,7 @@ if [ -n "$TX" ] && [ -r "$TX" ]; then
     # SG-2, verbatim from bin/admission-stop.sh (suite_key, and SG_PAIR byte-equal, held by stop.test.sh):
     # the last verdict per suite name wins.
     SG_PAIR='
-  $1 == "CMD" { if ($3 ~ /([-.]test|lint-conventions|floor-equiv|pass-score)[a-z-]*\.sh/) ran[$2] = 1
+  $1 == "CMD" { if ($3 ~ /([-.]test|lint-conventions|floor-equiv|admission-equivalence|pass-score)[a-z-]*\.sh/) ran[$2] = 1
                 else for (t in bg) if (index($3, "tasks/" t ".output")) ran[$2] = 1 }
   $1 == "BGT" && ($2 in ran) { bg[$3] = 1 }'
     OUT="$(printf '%s\n' "$STREAM" | awk -F '\t' "$SG_PAIR"'
@@ -223,7 +223,7 @@ fi
 
 # compact: ask the agent at a finished turn; run on its [compact-ok].
 ASKED="${PASK:-}"; ASKMSG=""; RUNC=""
-ASKPCT="${HARBOR_AUTOCOMPACT_PCT:-35}"; case "$ASKPCT" in ''|*[!0-9]*) ASKPCT=35 ;; esac
+ASKPCT="${HARBOR_SESSION_AUTOCOMPACT_PERCENT:-${HARBOR_AUTOCOMPACT_PCT:-35}}"; case "$ASKPCT" in ''|*[!0-9]*) ASKPCT=35 ;; esac
 if [ ! -e "$STATE/compact-auto.off" ] && [ -f "$HERE/session-autocompact.sh" ] && [ "$NRUN" -eq 0 ]; then
   # Only as the message's last non-blank line: a quoted or explained marker is not the agent's word.
   _lastl="$(printf '%s\n' "$MSG" | awk 'NF { l = $0 } END { sub(/^[ \t]+/, "", l); sub(/[ \t]+$/, "", l); print l }')"
@@ -305,7 +305,7 @@ if [ -n "$RUNCL" ]; then
 fi
 if [ -n "$RUNC" ]; then
   # The tty of the claude process above this hook; the helper finds the Terminal tab by it.
-  _tty="${HARBOR_AUTOCOMPACT_TTY:-}"; _p="$PPID"; _i=0
+  _tty="${HARBOR_SESSION_AUTOCOMPACT_TTY:-${HARBOR_AUTOCOMPACT_TTY:-}}"; _p="$PPID"; _i=0
   while [ -z "$_tty" ] && [ "$_i" -lt 4 ] && [ -n "$_p" ] && [ "$_p" -gt 1 ] 2>/dev/null; do
     _l="$(ps -o tty= -o ppid= -p "$_p" 2>/dev/null)" || break
     set -- $_l; case "${1:-}" in ''|'??'|'?') ;; *) _tty="$1"; break ;; esac

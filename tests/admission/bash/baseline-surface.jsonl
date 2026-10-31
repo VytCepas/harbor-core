@@ -20,9 +20,9 @@
 {"id":"ar-rm-the-router-s-dir","rule":"mutate-aimed-surface","want":"allow","cmd":"rm -rf ~/.codex/.claude-code-router"}
 {"id":"ar-shellcheck-installer","rule":"mutate-aimed-surface","want":"allow","cmd":"shellcheck templates/multi_model/dot_agents/scripts/setup_models.sh"}
 {"id":"ar-uninstall-stays-open","rule":"redirect-floor-surface","want":"allow","cmd":"npm uninstall -g @musistudio/claude-code-router"}
-{"id":"b8-commit-msg-naming-live","rule":"mutate-aimed-surface","want":"allow","cmd":"git commit -am \"docs: floor-deny.sh --live notes\""}
+{"id":"b8-commit-msg-naming-live","rule":"mutate-aimed-surface","want":"allow","cmd":"git commit -am \"docs: admission-deny.sh --live notes\""}
 {"id":"b8-read-a-pin","rule":"mutate-aimed-surface","want":"allow","cmd":"cat ~/.claude/.helm-pins/admission-bash.sh.sha256"}
-{"id":"b8-read-docs-quoting-live","rule":"mutate-aimed-surface","want":"allow","cmd":"sed -n '/floor-install.sh --live/p' docs/explanation/admission-baseline.md"}
+{"id":"b8-read-docs-quoting-live","rule":"mutate-aimed-surface","want":"allow","cmd":"sed -n '/admission-install.sh --live/p' docs/explanation/admission-baseline.md"}
 {"id":"b8-redirect-onto-instr-pin","rule":"redirect-floor-surface","want":"block","cmd":"echo forged > {cfg}/.helm-instructions.sha256"}
 {"id":"h769-tee-onto-snapshot-ledger","rule":"mutate-onto-surface","want":"block","cmd":"tee -a {cfg}/.helm-snapshots < /tmp/row"}
 {"id":"h769-cp-onto-snapshot-ledger","rule":"mutate-onto-surface","want":"block","cmd":"cp /tmp/forged {cfg}/.helm-snapshots"}
@@ -31,7 +31,7 @@
 {"id":"h769-read-snapshot-ledger","rule":"mutate-onto-surface","want":"allow","cmd":"cat {cfg}/.helm-snapshots"}
 {"id":"b8-rm-rf-helm-pins","rule":"mutate-aimed-surface","want":"block","cmd":"rm -rf {cfg}/.helm-pins"}
 {"id":"b8-run-the-suite","rule":"mutate-aimed-surface","want":"allow","cmd":"sh tests/admission/baseline/baseline.test.sh"}
-{"id":"b8-sandbox-install-ok","rule":"mutate-aimed-surface","want":"allow","cmd":"sh bin/floor-install.sh /tmp/sandbox --apply"}
+{"id":"b8-sandbox-install-ok","rule":"mutate-aimed-surface","want":"allow","cmd":"sh bin/admission-install.sh /tmp/sandbox --apply"}
 {"id":"cfg280-helm-pins-is-not-allowlisted","rule":"redirect-floor-surface","want":"block","cmd":"echo x > {cfg}/.helm-pins/admission-bash.sh.sha256","why":"B8 redirect onto .helm-pins · CFG280 .helm-pins is NOT allowlisted"}
 {"id":"const-1-a-project-root-claude-md","rule":"redirect-floor-surface","want":"allow","cmd":"printf 'x' > /tmp/proj/CLAUDE.md"}
 {"id":"const-1-append-onto-it","rule":"redirect-floor-surface","want":"block","cmd":"printf 'x' >> {home}/.claude/CLAUDE.md"}

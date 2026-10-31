@@ -6,7 +6,7 @@
 # Every tracked path matches exactly one row. bin/scope-layers.sh --check is red on a path that matches none or two: there is no default layer.
 # Classified by what the files ARE. A core path that still names a client or account is a leak to fix, never a reason to move the row.
 # Known gap: a core test that reads a dev path (evals/) fails in the exported repo; harbor#1149.
-# A core document NAMES a dev path in code font and never links it: a link dangles in the export (tests/deploy/push/selfcontained.test.sh).
+# A core document NAMES a dev path in code font and never links it: a link dangles in the export (tests/deploy/push/self-contained.test.sh).
 # Each top-level entry's kind and #949 layer are in contracts/layout-map.tsv (harbor#1272); whether it ships is only ever read from here.
 # Known gap: untracked files are in neither the export nor the --check; commit a file to classify it.
 path	layer	note

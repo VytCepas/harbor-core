@@ -20,7 +20,7 @@
 #                 NOT a path — bin/drift-renew-check.sh reads the same name as a path;
 #                 a value that is not owner/name is REFUSED here, see repo().
 #   HARBOR_GATE_BRANCH the protected branch (default: main)
-#   HARBOR_REQUIRED_CHECKS
+#   HARBOR_GATE_REQUIRED_CHECKS
 #                 the local gate's declaration (default: contracts/required-checks.tsv
 #                 beside this script, followed by the private layer's required-checks.tsv
 #                 when gate-required-generate.sh is beside it): repo<TAB>check name, one
@@ -245,13 +245,13 @@ else
     *"Branch not protected"*) GATE_WHY="branch is not protected, HTTP 404" ;;
   esac
 fi
-RCFILE="${HARBOR_REQUIRED_CHECKS:-$MC_DIR/../contracts/required-checks.tsv}"
+RCFILE="${HARBOR_GATE_REQUIRED_CHECKS:-${HARBOR_REQUIRED_CHECKS:-$MC_DIR/../contracts/required-checks.tsv}}"
 LISTED=""
 if [ -r "$RCFILE" ]; then
   # Run from a checkout with no list handed in, the rows are core's then the private layer's (gate-required-generate.sh, harbor#1149).
   # An overlay that does not compose leaves core's rows alone, and says so: a repo with no row has no local gate, which refuses.
   _rcrows=""
-  if [ -z "${HARBOR_REQUIRED_CHECKS:-}" ] && [ -f "$MC_DIR/gate-required-generate.sh" ]; then
+  if [ -z "${HARBOR_GATE_REQUIRED_CHECKS:-${HARBOR_REQUIRED_CHECKS:-}}" ] && [ -f "$MC_DIR/gate-required-generate.sh" ]; then
     _rcrows="$(sh "$MC_DIR/gate-required-generate.sh" --core "$RCFILE" 2>/dev/null)" \
       || { _rcrows=""; log_warn "the private layer's required-checks.tsv does not compose with core's (or cannot be read), so only core's rows are read"; log_fix "sh $MC_DIR/gate-required-generate.sh   # names the line"; }
   fi

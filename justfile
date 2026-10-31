@@ -45,7 +45,7 @@ lint:
 
 [doc("is the floor actually ON? fires known-blocked shapes at the live config")]
 verify:
-    sh bin/floor-verify.sh --live
+    sh bin/admission-verify.sh --live
 
 [doc("the generated counts; --apply to rewrite docs/generated/status.md after a change")]
 status *ARGS:

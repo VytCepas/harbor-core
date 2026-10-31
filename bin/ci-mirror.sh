@@ -17,7 +17,7 @@
 # and domain gates too (deploy-push --ci-base), because it is pushed to the public repo.
 # The push credential is HARBOR_CORE_MIRROR_TOKEN, sent as a request header from the environment: never in a URL or argv.
 # --dry-run runs the gates against the checkout as it is and touches no network.
-# Env: HARBOR_CORE_SLUG (default VytCepas/harbor-core), HARBOR_SLUG (the harbor repo, else derived from origin).
+# Env: HARBOR_CI_CORE_SLUG (default VytCepas/harbor-core), HARBOR_CI_SLUG (the harbor repo, else derived from origin).
 # Exit 0 done, 1 refused or red, 2 usage.
 set -eu
 
@@ -44,11 +44,11 @@ case "$PR" in ''|*[!0-9]*) echo "usage: ci-mirror.sh [--dry-run] <pr> | --status
 refuse() { log_fail "$1"; [ -z "${2:-}" ] || log_fix "$2"; log_end || :; exit 1; }
 
 BRANCH="ci/harbor-$PR"; BASEBR="ci/base-$PR"
-CORE="${HARBOR_CORE_SLUG:-VytCepas/harbor-core}"
-slug_valid "$CORE" || refuse "HARBOR_CORE_SLUG '$CORE' is not owner/name" "export HARBOR_CORE_SLUG=<owner>/<harbor-core repo>"
+CORE="${HARBOR_CI_CORE_SLUG:-${HARBOR_CORE_SLUG:-VytCepas/harbor-core}}"
+slug_valid "$CORE" || refuse "HARBOR_CI_CORE_SLUG '$CORE' is not owner/name" "export HARBOR_CI_CORE_SLUG=<owner>/<harbor-core repo>"
 NODIFF="no core file differs from the PR's base"
-HSLUG="${HARBOR_SLUG:-$(slug_of_url "$(git -C "$ROOT" config --get remote.origin.url 2>/dev/null || :)")}"
-slug_valid "$HSLUG" || refuse "the harbor repo slug is unknown" "export HARBOR_SLUG=<owner>/harbor"
+HSLUG="${HARBOR_CI_SLUG:-${HARBOR_SLUG:-$(slug_of_url "$(git -C "$ROOT" config --get remote.origin.url 2>/dev/null || :)")}}"
+slug_valid "$HSLUG" || refuse "the harbor repo slug is unknown" "export HARBOR_CI_SLUG=<owner>/harbor"
 
 need_token() {
   [ -n "${HARBOR_CORE_MIRROR_TOKEN:-}" ] || refuse "HARBOR_CORE_MIRROR_TOKEN is not set, so nothing can reach $CORE" "store the fine-grained harbor-core token as that harbor secret"  # secret-seam: Actions secret (entry harbor-core-mirror-token)

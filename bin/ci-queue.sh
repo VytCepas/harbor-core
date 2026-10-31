@@ -70,7 +70,7 @@ CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
 OUT="$CACHE_DIR/ci-queue.json"
 NOW="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
 GH="${HARBOR_TEST_GH:-${HARBOR_GH:-gh}}"
-DOCKER="${HARBOR_DOCKER:-docker}"
+DOCKER="${HARBOR_CI_DOCKER:-${HARBOR_DOCKER:-docker}}"
 STALL_SEC="${HARBOR_CI_STALL_SEC:-600}"
 STALL_CONFIRM=240   # a second refresh, less jitter: 300s apart, never one sample
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required and is not on PATH"; log_fix "$(pkg_hint jq)"; log_end || :; exit 2; }

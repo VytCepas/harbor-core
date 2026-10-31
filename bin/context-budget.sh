@@ -141,7 +141,7 @@ desc_bytes() { # <file> -> bytes of the whole description: value
 # bounds it); plugin and slash-command descriptions are installed by the operator, not by deploy; the SessionStart
 # injection moves by ~10 KB with the caller's directory and with the live packs. All three stay in the report above.
 if [ "$MODE" = ratchet ]; then
-  RB="${HARBOR_RATCHET_BASELINE:-$ROOT/registries/context-ratchet.tsv}"; RBN="${RB#$ROOT/}"
+  RB="${HARBOR_CONTEXT_RATCHET_BASELINE:-${HARBOR_RATCHET_BASELINE:-$ROOT/registries/context-ratchet.tsv}}"; RBN="${RB#$ROOT/}"
   rl="$(printf '%s\t%s\n' "$(bytes "$ROOT/policy/constitution.md")" policy/constitution.md)"
   for d in "$ROOT"/skills/*/ "$ROOT"/vendor/skills/*/; do
     f="$d/SKILL.md"; [ -f "$f" ] || continue

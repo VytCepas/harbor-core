@@ -108,16 +108,16 @@ ui_stop
 
 t_section "a command outside the allowlist cannot be run through the server"
 ui_start allow --idle 300
-before="$(ui_calls floor-verify)"
+before="$(ui_calls admission-verify)"
 t_has "a listed panel id runs" "$(ui_post '{"id":"floor"}')" " 200"
-t_eq "and that ran its one source" $((before + 1)) "$(ui_calls floor-verify)"
-before="$(ui_calls floor-verify)"
-for body in '{"id":"rm -rf /"}' '{"id":"sh"}' '{"id":"__proto__"}' '{"id":"constructor"}' '{"id":"*"}' '{"id":7}' '{"cmd":["touch","'"$T_TMP"'/pwned"]}' '{"argv":["touch","'"$T_TMP"'/pwned"],"id":"floor-verify"}' '{}'; do
+t_eq "and that ran its one source" $((before + 1)) "$(ui_calls admission-verify)"
+before="$(ui_calls admission-verify)"
+for body in '{"id":"rm -rf /"}' '{"id":"sh"}' '{"id":"__proto__"}' '{"id":"constructor"}' '{"id":"*"}' '{"id":7}' '{"cmd":["touch","'"$T_TMP"'/pwned"]}' '{"argv":["touch","'"$T_TMP"'/pwned"],"id":"admission-verify"}' '{}'; do
   R="$(ui_post "$body")"
   t_has "refused with 403: $body" "$R" " 403"
   t_has "and says why: $body" "$R" "not in the allowlist"
 done
-t_eq "no source ran for any of them" "$before" "$(ui_calls floor-verify)"
+t_eq "no source ran for any of them" "$before" "$(ui_calls admission-verify)"
 t_eq "and nothing the request named was run" no "$([ -e "$T_TMP/pwned" ] && echo yes || echo no)"
 # The Obligations tab (harbor#1053) is one allowlisted argv array: the id picks it, and nothing in the request can add to it.
 # It is the console's own script, run from its own ROOT (harbor#1113); a PATH-resolved `harbor` is never started.
@@ -201,9 +201,9 @@ t_has "with the original order and Bun's dev page, a malformed Host leaks the fi
 ui_mutant allow 's/^      const panel = .*guard:allowlist.*$/      const panel = BY_ID.get(String(id)) ?? PANELS[0];/'
 t_eq "the allowlist mutant differs" changed "$UI_MUT"
 ui_start mallow --idle 60
-before="$(ui_calls floor-verify)"; R="$(ui_post '{"id":"rm -rf /"}')"
+before="$(ui_calls admission-verify)"; R="$(ui_post '{"id":"rm -rf /"}')"
 t_has "without the allowlist check an unlisted id is not refused" "$R" " 200"
-t_eq "and a source ran for it" $((before + 1)) "$(ui_calls floor-verify)"; ui_stop
+t_eq "and a source ran for it" $((before + 1)) "$(ui_calls admission-verify)"; ui_stop
 ui_mutant idle 's/if (Date.now() - lastActive < IDLE_MS) return;/if (true) return;/'
 t_eq "the idle mutant differs" changed "$UI_MUT"
 ui_start midle --idle 1

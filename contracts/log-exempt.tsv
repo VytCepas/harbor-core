@@ -18,7 +18,7 @@ path	kind	why
 bin/context-compaction-digest.sh	protocol	Claude Code SessionStart hook, via the post-compaction-carry inject pack: its stdout is the digest the session receives as context
 bin/event-hook.sh	protocol	Claude Code SessionStart hook (also SessionEnd, SubagentStart, SubagentStop and PostToolUse): it prints nothing by design, and its stdout would be session context
 bin/status-fleet-glyph.sh	protocol	Claude Code statusLine: the status line it prints is the harness's
-bin/floor-observe.sh	protocol	Claude Code SessionStart hook: its stdout would be session context (it prints none today)
+bin/admission-observe.sh	protocol	Claude Code SessionStart hook: its stdout would be session context (it prints none today)
 bin/govern-token.sh	protocol	Claude Code SessionStart hook: the additionalContext announce
 hooks/injection-rule/injection-rule.sh	protocol	Claude Code PreToolUse hook, and PostToolUse, PostToolUseFailure, SessionStart, PreCompact: hookSpecificOutput JSON
 bin/prod-guard-ambient.sh	protocol	Claude Code PreToolUse hook: permissionDecision JSON

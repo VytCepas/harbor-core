@@ -82,7 +82,7 @@ SHIP=''
 
 t_section "universal: the runner names no repo, tool or register of its own (red-proof)"
 names() { sed '/^[[:space:]]*#/d' "$1" | sed -E 's/HARBOR_[A-Z_]+//g; s#\.local/state/harbor#STATE#g; s#\.harbor-autoship\.off#KILL#g; s/harbor ship/VERB/g' \
-  | grep -inE 'harbor|vytcepas|deploy\.sh|deploy-restore\.sh|floor-verify|live-verify|reference-check|contracts/' || true; }
+  | grep -inE 'harbor|vytcepas|deploy\.sh|deploy-restore\.sh|floor-verify|admission-verify|live-verify|reference-check|contracts/' || true; }
 t_eq "no harbor-specific name in a code line" "" "$(names "$T_ROOT/bin/deploy-fleet.sh")"
 sed 's|^usage() {|usage() { : sh bin/deploy.sh --apply --live|' "$T_ROOT/bin/deploy-fleet.sh" > "$T_TMP/named"
 t_has "the grep sees a harbor deploy line slipped in" "$(names "$T_TMP/named")" "deploy.sh"

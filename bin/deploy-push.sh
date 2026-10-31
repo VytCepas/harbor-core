@@ -144,6 +144,18 @@ hist_scan() {
   git -C "$1" rev-parse -q --verify HEAD >/dev/null || return 0  # no commit yet: nothing is published
   [ "$(git -C "$1" rev-parse --is-shallow-repository)" = false ] ||
     { log_fail "history: the target is a shallow clone, so its published history cannot all be read"; log_fix "git -C $1 fetch --unshallow"; return 1; }
+  # GitHub keeps every pull request's head and merge commits public under refs/pull/*, closed or not, and a clone never
+  # fetches them: harbor-core's mirror PRs held 199 of its 208 published commits (harbor#1149). A push fetches them; a
+  # dry run touches no network (ci-mirror --dry-run's contract), so it reads only the ones already fetched and says so.
+  if git -C "$1" remote get-url origin >/dev/null 2>&1; then
+    if [ "$DRY" = 0 ]; then
+      git -C "$1" fetch -q origin '+refs/pull/*:refs/remotes/origin/pull/*' 2>/dev/null ||
+        { log_fail "history: the target's pull request refs could not be fetched, so its published history cannot all be read"
+          log_fix "git -C $1 fetch origin '+refs/pull/*:refs/remotes/origin/pull/*'"; return 1; }
+    else
+      log_note "history: a dry run fetches nothing; it reads the $(git -C "$1" for-each-ref refs/remotes/origin/pull | wc -l | tr -d ' ') pull request ref(s) already fetched (git -C $1 fetch origin '+refs/pull/*:refs/remotes/origin/pull/*')"
+    fi
+  fi
   # Every commit HEAD, the tags and the remote branches reach: what a push publishes and what is already published.
   set -- "$1" HEAD --tags --remotes
   HISTN="$(git -C "$1" rev-list --count "$2" "$3" "$4")" || { hist_err "listing the commits"; return 1; }
@@ -170,7 +182,10 @@ hist_scan() {
   LEAKS_EXPORT=1 HARBOR_SCOPE_ROOT="$_h" LEAKS_CORE_PATTERNS="$ROOT/contracts/leak-patterns.tsv" sh "$SRC/lint-leaks.sh" --list \
     > "$TMP/hist.hits" 2> "$TMP/hist.err" || { _r=1; log_fail "history: the leak scan did not complete: $(grep -E 'FAIL' "$TMP/hist.err" | head -1 | sed 's/^ *//')"; log_fix "$FIXL"; }
   if [ -s "$TMP/hist.hits" ]; then
-    _r=1; sed -e 's/^\([0-9a-f]\{12\}\)-[0-9a-f]\{12\}\/\(.*\):\([^:]*\)$/commit \1 \2 pattern \3/' \
+    # A terms.tsv row's id holds a colon (terms.tsv:L<n>), so it is matched whole before the plain id.
+    _r=1; sed -e 's/^\([0-9a-f]\{12\}\)-[0-9a-f]\{12\}\/\(.*\):\(terms\.tsv:L[0-9]*\)$/commit \1 \2 pattern \3/' \
+      -e 's/^\([0-9a-f]\{12\}\)\.\(msg:.*\):\(terms\.tsv:L[0-9]*\)$/commit \1 \2 pattern \3/' \
+      -e 's/^\([0-9a-f]\{12\}\)-[0-9a-f]\{12\}\/\(.*\):\([^:]*\)$/commit \1 \2 pattern \3/' \
       -e 's/^\([0-9a-f]\{12\}\)\.\(msg:.*\):\([^:]*\)$/commit \1 \2 pattern \3/' "$TMP/hist.hits" > "$TMP/hist.named"
     hist_note "$TMP/hist.named" "history leak"
     log_fail "history: $(wc -l < "$TMP/hist.hits" | tr -d ' ') leak occurrence(s) in the target's published commits"; log_fix "$FIXH"

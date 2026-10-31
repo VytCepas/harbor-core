@@ -29,7 +29,7 @@
 # the row. A bare mention of such a path inside the other file's own directory (`docs/generated/plan.md` in skills/topology/EVALS, beside
 # EVALS/docs/generated/plan.md), or on a line that also names the other file by its longer path, means that file: it is left as written,
 # listed in the report as `relative` and warned, and is no residual. The graph indexes full paths only, so bare-name references
-# (floor-install.sh's `admission-hook.sh admission-bash.sh`) are found by this scan; the report counts them.
+# (admission-install.sh's `admission-hook.sh admission-bash.sh`) are found by this scan; the report counts them.
 #
 # A CASE-ONLY MOVE goes in two steps. A case-insensitive disk finds `contracts/README.md` where
 # `contracts/README.md` is, so "already exists" is judged by what the disk holds under that exact spelling
@@ -852,7 +852,7 @@ def scan(a, ctx):
             if nh:
                 out.append(('box', s, '%d hook command reference(s)' % nh, True))
             if nt > nh:
-                out.append(('box', s, '%d reference(s) outside the hook commands (a permissions rule? edit it, then floor-deny.sh --repin)' % (nt - nh), False))
+                out.append(('box', s, '%d reference(s) outside the hook commands (a permissions rule? edit it, then admission-deny.sh --repin)' % (nt - nh), False))
         for p in notes_files(cfg):
             data = readb(p)
             if data is None or binary(data):

@@ -13,7 +13,7 @@
 #   exit 0 = done, or another run holds the lock · exit 1 = a step failed · exit 2 = usage or a bad register
 #   A source that did not answer is not a failure: it is recorded and flips nothing.
 #
-# STATE: $HARBOR_OBLIGATION_DIR (default ~/.local/state/harbor/obligations)
+# STATE: $HARBOR_STATUS_OBLIGATION_DIR (default ~/.local/state/harbor/obligations)
 #   ledger.jsonl   append-only transitions: ts, obligation, to, event, then the fields of that transition
 #   current.json   {"generated_ts", "obligations": [row …]}: every live row and every row closed within the retention
 #                  window (HARBOR_STATUS_OBLIGATION_RETAIN, 15 days), derived from the ledger on every run
@@ -94,7 +94,7 @@ LOG_FD=2
 log_init status-obligations
 
 EVDIR="${HARBOR_EVENT_DIR:-$HOME/.local/state/harbor/events}"
-DIR="${HARBOR_OBLIGATION_DIR:-$HOME/.local/state/harbor/obligations}"
+DIR="${HARBOR_STATUS_OBLIGATION_DIR:-${HARBOR_OBLIGATION_DIR:-$HOME/.local/state/harbor/obligations}}"
 # The register: the checkout's contracts/ when it is beside bin/, else the copy runtime-install ships next to this script
 # (an installed config dir has no contracts/ entry of its own: deploy's snapshot set would not cover one, harbor#1115).
 KINDS="${HARBOR_STATUS_OBLIGATION_KINDS:-}"

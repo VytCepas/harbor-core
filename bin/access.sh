@@ -4,7 +4,7 @@
 #
 #   harbor access add <id> --kind K --what T --use-when T --reaches T --cannot T --grant T
 #                          (--secret REF | --no-secret) [--value-stdin] [--probe CMD]
-#                          [--check CMD --expect T] [--expires YYYY-MM-DD] [--renew T] [--revoke T]
+#                          [--check CMD --expect T] [--expires YYYY-MM-DD] [--renew T] [--revoke T] [--held T]
 #   harbor access list                    the entries: id, kind, secret ref, what
 #   harbor access has <ref>               exit 0 registered, 3 grandfathered (contracts/secret-legacy-refs.txt), 4 revoked, 1 neither
 #   harbor access refs                    the registered secret refs, one per line
@@ -33,7 +33,7 @@ GREP=/usr/bin/grep   # grep here is ugrep on the operator's box; BSD semantics a
 LEGACY="${ACCESS_LEGACY_REFS:-$ROOT/contracts/secret-legacy-refs.txt}"
 PATTERNS="${ACCESS_CREDENTIAL_PATTERNS:-$ROOT/contracts/credential-patterns.tsv}"
 KINDS='account role app mailbox token'
-FIELDS='kind what use-when reaches cannot grant secret verified check expect expires renew revoke rotated revoked'
+FIELDS='kind what use-when reaches cannot grant secret verified check expect expires renew revoke rotated revoked held'
 DATE_FIELDS='expires rotated revoked'
 PROBE_RUNNER="$ROOT/skills/access-ledger/bin/check-routes.sh"
 STATE="${ACCESS_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/harbor/access-status.tsv}"
@@ -161,6 +161,8 @@ cmd_check() {
         if (h[id, "verified"] && v[id, "verified"] !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/) printf "%s: verified %s is not an ISO date\n", id, v[id, "verified"]
         for (j = 1; j <= nd; j++) if (h[id, DF[j]] && !okdate(v[id, DF[j]])) printf "%s: %s %s is not a calendar date YYYY-MM-DD\n", id, DF[j], v[id, DF[j]]
         if (h[id, "check"] != h[id, "expect"]) printf "%s: check and expect go together; one is missing\n", id
+        if (h[id, "held"] && v[id, "held"] == "") printf "%s: held is empty\n", id
+        else if (h[id, "held"] && v[id, "secret"] != "none") printf "%s: held says the value lives outside the seam, so it goes with secret: none, not %s\n", id, v[id, "secret"]
         if (h[id, "expect"] && v[id, "expect"] !~ /`[^`]+`/) printf "%s: expect carries no backticked literal, so no check can pass on it\n", id
       }
     }' "$__tmp/rows" > "$__tmp/problems"
@@ -230,16 +232,16 @@ cmd_add() {
   [ $# -ge 1 ] || usage
   ID="$1"; shift
   KIND=''; WHAT=''; USEWHEN=''; REACHES=''; CANNOT=''; GRANT=''; REFNAME=''; NOREF=0; VALSTDIN=0; PROBE=''
-  CHECK=''; EXPECT=''; EXPIRES=''; RENEW=''; REVOKE=''
+  CHECK=''; EXPECT=''; EXPIRES=''; RENEW=''; REVOKE=''; HELD=''
   while [ $# -gt 0 ]; do
     case "$1" in
-      --kind|--what|--use-when|--reaches|--cannot|--grant|--secret|--probe|--check|--expect|--expires|--renew|--revoke)
+      --kind|--what|--use-when|--reaches|--cannot|--grant|--secret|--probe|--check|--expect|--expires|--renew|--revoke|--held)
         [ $# -ge 2 ] || { log_fail "$1 needs a value"; log_fix "harbor access add --help"; log_end || :; exit 2; }
         case "$1" in
           --kind) KIND="$2" ;; --what) WHAT="$2" ;; --use-when) USEWHEN="$2" ;; --reaches) REACHES="$2" ;;
           --cannot) CANNOT="$2" ;; --grant) GRANT="$2" ;; --secret) REFNAME="$2" ;; --probe) PROBE="$2" ;;
           --check) CHECK="$2" ;; --expect) EXPECT="$2" ;; --expires) EXPIRES="$2" ;; --renew) RENEW="$2" ;;
-          --revoke) REVOKE="$2" ;;
+          --revoke) REVOKE="$2" ;; --held) HELD="$2" ;;
         esac
         shift 2 ;;
       --no-secret) NOREF=1; shift ;;
@@ -273,10 +275,11 @@ cmd_add() {
   [ -z "$REFNAME" ] || [ "$NOREF" = 0 ] || fail "--secret and --no-secret together" "give one" 2
   [ "$VALSTDIN" = 0 ] || [ -n "$REFNAME" ] || fail "--value-stdin needs --secret <ref>" "name the ref the value is stored under" 2
   [ -n "$REFNAME" ] || REFNAME=none
+  [ -z "$HELD" ] || [ "$REFNAME" = none ] || fail "--held says the value lives outside the seam, so it goes with --no-secret" "give one of --secret and --held" 2
   for __f in "$KIND" "$WHAT" "$USEWHEN" "$REACHES" "$CANNOT" "$GRANT" "$ID"; do
     one_line "$__f" || fail "a field must be one non-empty line with no tab" "shorten it to a single line" 2
   done
-  for __f in "$CHECK" "$EXPECT" "$EXPIRES" "$RENEW" "$REVOKE" "$PROBE"; do
+  for __f in "$CHECK" "$EXPECT" "$EXPIRES" "$RENEW" "$REVOKE" "$PROBE" "$HELD"; do
     [ -z "$__f" ] || one_line "$__f" || fail "a field must be one non-empty line with no tab" "shorten it to a single line" 2
   done
   [ -z "$CHECK" ] && [ -z "$EXPECT" ] || { [ -n "$CHECK" ] && [ -n "$EXPECT" ]; } || fail "--check and --expect go together" "give both" 2
@@ -290,7 +293,7 @@ cmd_add() {
   # A value pasted into a field is the mistake this refuses: no field may be shaped like a credential.
   if [ -f "$PATTERNS" ]; then
     awk -F'\t' '/^[[:space:]]*(#|$)/ { next } $1 == "id" { next } NF >= 2 { print $2 }' "$PATTERNS" > "${TMPDIR:-/tmp}/access-pats.$$"
-    if printf '%s\n' "$WHAT" "$USEWHEN" "$REACHES" "$CANNOT" "$GRANT" "$REFNAME" "$CHECK" "$EXPECT" "$RENEW" "$REVOKE" "$PROBE" \
+    if printf '%s\n' "$WHAT" "$USEWHEN" "$REACHES" "$CANNOT" "$GRANT" "$REFNAME" "$CHECK" "$EXPECT" "$RENEW" "$REVOKE" "$PROBE" "$HELD" \
         | "$GREP" -qE -f "${TMPDIR:-/tmp}/access-pats.$$"; then
       rm -f "${TMPDIR:-/tmp}/access-pats.$$"
       fail "a field is shaped like a credential value; a register holds references, never values" "pipe the value with --value-stdin instead" 2
@@ -317,6 +320,7 @@ cmd_add() {
     [ -z "$EXPIRES" ] || printf '    expires: %s\n' "$EXPIRES"
     [ -z "$RENEW" ] || printf '    renew: %s\n' "$RENEW"
     [ -z "$REVOKE" ] || printf '    revoke: %s\n' "$REVOKE"
+    [ -z "$HELD" ] || printf '    held: %s\n' "$HELD"
     if [ "$REFNAME" != none ] && { [ "$VALSTDIN" = 1 ] || [ -t 0 ]; }; then printf '    rotated: %s\n' "$(today)"; fi
   } > "$__new"
   mv -f "$__new" "$REG"
@@ -447,7 +451,13 @@ cmd_status() {
       fi
       if [ -z "$__st" ]; then
         if [ "$__ref" != none ]; then __st=unprobed; __why="stored, but no check: says it still works"
-        else case "$__kind" in token|app) __st=unmanaged; __why="a credential the seam does not hold, with no check" ;; *) __st=n/a; __why="a sign-in or role with no check" ;; esac
+        else
+          __held="$(entry_field "$__tmp/rows" "$__id" held)"
+          case "$__kind" in
+            token|app) if [ -n "$__held" ]; then __st=held; __why="outside the seam by design: $__held"
+                       else __st=unmanaged; __why="a credential the seam does not hold, and no held: says why: a migration debt"; fi ;;
+            *) __st=n/a; __why="a sign-in or role with no check" ;;
+          esac
         fi
       fi
       # A stored credential that cannot be renewed or retired by recipe is a gap even when it works today.
@@ -473,7 +483,7 @@ cmd_status() {
       n[st]++; total++; if (red) nred++ }
     END {
       printf "%d entries:", total
-      split("ok expiring unprobed undecided unmanaged n/a revoked", O, " ")
+      split("ok expiring unprobed undecided held unmanaged n/a revoked", O, " ")
       for (i = 1; i in O; i++) if (n[O[i]]) printf " %d %s,", n[O[i]], O[i]
       printf " %d red\n", nred + 0
     }' "$__tmp/dated"

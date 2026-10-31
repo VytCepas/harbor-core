@@ -314,7 +314,7 @@ cmd_merge() {
     # --match-head-commit: gh refuses if the head moved after the run was judged, so a push in between cannot land.
     # merge-check's gate logic is unchanged; it is told the repo, the branch and the required checks read at preflight
     ( HARBOR_SCOPE_REPO="$R"; export HARBOR_SCOPE_REPO; HARBOR_GATE_BRANCH="$DEF"; export HARBOR_GATE_BRANCH
-      HARBOR_REQUIRED_CHECKS="$RCTMP"; export HARBOR_REQUIRED_CHECKS
+      HARBOR_GATE_REQUIRED_CHECKS="$RCTMP"; export HARBOR_GATE_REQUIRED_CHECKS
       sh "$MC" "--$METHOD" --merge "$p" --match-head-commit "$JUDGED" )
     merged "$p" || die "#$p did not merge — stopping" "HARBOR_SCOPE_REPO=$R sh $MC --$METHOD --merge $p --match-head-commit $JUDGED"
     key after | awk -v p="$p" '$1 == p { $1 = ""; sub(/^ +/, ""); print $0 }' | while IFS= read -r _c; do log_note "run once now: $_c"; done

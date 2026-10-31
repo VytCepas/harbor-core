@@ -12,7 +12,7 @@
 # in the EXEMPT block of the suite with a written reason, never a silent absence.
 #
 # CORE'S PACKS ONLY. The packs that name a repo or a client live in the private layer (harbor#1149) with their own
-# probe rows in <private>/inject.d/notes.tsv, and the suite reads those too when HARBOR_NOTES_PRIVATE names that
+# probe rows in <private>/inject.d/notes.tsv, and the suite reads those too when HARBOR_CONTEXT_NOTES_PRIVATE names that
 # layer. A layer that carries a pack with no row there fails the same way.
 #
 # FIXTURE PACKS. A pack in fixtures/injection-rule/packs/<name>/ is never installed and names no real repo; it exists so the
@@ -135,3 +135,6 @@ box	plain	skill-on-first-use	silent	a commit message that only mentions the tool
 box	plain	session-title-missing	fire	the first tool call of a session with no title file	{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"stm-fire","tool_input":{"command":"ls"}}
 box	plain	session-title-missing	silent	the same call inside a subagent	{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"stm-agent","agent_id":"a1","tool_input":{"command":"ls"}}
 box	plain	session-title-missing	silent	a payload with no session id	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"ls"}}
+box	plain	default-way-route	fire	a skill copied straight into the config dir	{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"dwr-fire","tool_input":{"command":"cp -R skills/demo \"$CLAUDE_CONFIG_DIR/skills/\""}}
+box	plain	default-way-route	silent	listing the installed skills reads, it writes nothing	{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"dwr-ls","tool_input":{"command":"ls \"$CLAUDE_CONFIG_DIR/skills\""}}
+box	plain	default-way-route	silent	the same skill written to its harbor home	{"hook_event_name":"PreToolUse","tool_name":"Write","session_id":"dwr-home","tool_input":{"file_path":"@REPO@/skills/demo/SKILL.md","content":"body"}}

@@ -16,7 +16,7 @@ corpus() { # <file> <decision:command>… — one JSONL line each
 }
 BUS="$HOME/.local/state/harbor/events"  # the sandbox HOME's bus, handed over: the cache here is not the live one
 run() { HARBOR_EVENT_DIR="${BUSX-$BUS}" HARBOR_REDTEAM_DIR="$C" HARBOR_SCOPE_CACHE_DIR="${CACHEX:-$CACHE}" HARBOR_REDTEAM_BASELINE="$BL" HARBOR_REDTEAM_SOURCES="$SRC" \
-          HARBOR_NODE="${NODEBIN:-/nonexistent/node}" HARBOR_TEST_NOW="${AT:-1790000000}" sh "$TOOL" "$@" > "$T_TMP/out" 2>&1
+          HARBOR_EVAL_NODE="${NODEBIN:-/nonexistent/node}" HARBOR_TEST_NOW="${AT:-1790000000}" sh "$TOOL" "$@" > "$T_TMP/out" 2>&1
         _rr=$?; cat "$T_TMP/out" >> "$T_TMP/all.out"; echo "exit $_rr"; }
 OUT() { cat "$T_TMP/out"; }
 st() { cut -f1 "$CACHE/redteam/shguard.guardfall.misses" | tr '\n' ' '; }

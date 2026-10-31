@@ -57,7 +57,7 @@ byrun() {
 }
 # wfstate <state> — the repo's workflows list: one workflow, id 7, in that state (an unrelated active one beside it).
 wfstate() { printf '{"workflows":[{"id":7,"state":"%s"},{"id":9,"state":"active"}]}\n' "$1" > "$(fxname "repos/$R/actions/workflows?per_page=100")"; }
-run() { FX="$FX" CLAUDE_CONFIG_DIR="$CFGD" HARBOR_TEST_GH="$GH" HARBOR_CI_TIP_REPO="$R" HARBOR_TIP_STRICT="$R" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CHECK_RECEIPTS="$CACHE/checks" HARBOR_TEST_NOW="${AT:-$NOW}" \
+run() { FX="$FX" CLAUDE_CONFIG_DIR="$CFGD" HARBOR_TEST_GH="$GH" HARBOR_CI_TIP_REPO="$R" HARBOR_CI_TIP_STRICT="$R" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CHECK_RECEIPTS="$CACHE/checks" HARBOR_TEST_NOW="${AT:-$NOW}" \
           sh "$T_ROOT/bin/ci-main-tip-verdict.sh" "$@"; }
 get() { jq -r ".repos[0] | $1" "$CACHE/main-tip-verdict.json"; }
 getr() { jq -r ".repos[] | select(.repo == \"$1\") | $2" "$CACHE/main-tip-verdict.json"; }   # one repo's field in the fleet cache
@@ -67,7 +67,7 @@ CFGD="$T_TMP/cfg"; mkdir -p "$CFGD"; printf '[]\n' > "$T_TMP/snap.json"
 # Harbor's own slug is named by log-lib's repo_slug (harbor#1149): the fleet cases run a copy laid out as runtime-install lays it, with
 # the pin beside it, so the slug is o/harbor whatever remote this checkout has.
 MTI="$T_TMP/inst/bin"; mkdir -p "$MTI"; cp "$T_ROOT/bin/ci-main-tip-verdict.sh" "$T_ROOT/bin/library-log.sh" "$MTI/"; printf '# pin\no/harbor\n' > "$MTI/repo-slug.txt"
-fleet() { FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CHECK_RECEIPTS="$CACHE/checks" HARBOR_TEST_NOW="${AT:-$NOW}" CLAUDE_CONFIG_DIR="$CFGD" HARBOR_FLEET_SNAPSHOT="$T_TMP/snap.json" \
+fleet() { FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CHECK_RECEIPTS="$CACHE/checks" HARBOR_TEST_NOW="${AT:-$NOW}" CLAUDE_CONFIG_DIR="$CFGD" HARBOR_STATUS_FLEET_SNAPSHOT="$T_TMP/snap.json" \
           sh "$MTI/ci-main-tip-verdict.sh" "$@"; }
 TIP_AGE=$((3 * 3600))
 
@@ -298,13 +298,13 @@ R=other/fork; commits f1 f2; wfstate active; runs f1:success f2:success
 TREE="$T_TMP/tree"; mkdir -p "$TREE/bin" "$TREE/contracts"; cp "$T_ROOT/bin/ci-main-tip-verdict.sh" "$T_ROOT/bin/library-log.sh" "$TREE/bin/"
 printf 'o/pinned\n' > "$TREE/contracts/repo-slug.txt"; git -C "$TREE" init -q; git -C "$TREE" remote add origin https://github.com/other/fork.git
 GH_LOG="$T_TMP/calls2.log"; export GH_LOG; : > "$GH_LOG"
-FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CHECK_RECEIPTS="$CACHE/checks" HARBOR_TEST_NOW="$NOW" CLAUDE_CONFIG_DIR="$CFGD" HARBOR_FLEET_SNAPSHOT="$T_TMP/snap.json" \
+FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CHECK_RECEIPTS="$CACHE/checks" HARBOR_TEST_NOW="$NOW" CLAUDE_CONFIG_DIR="$CFGD" HARBOR_STATUS_FLEET_SNAPSHOT="$T_TMP/snap.json" \
   sh "$TREE/bin/ci-main-tip-verdict.sh" >/dev/null 2>&1 || :
 t_eq "a copy in a checkout judges that checkout's origin as harbor, not the pin" "other/fork" "$(jq -r '[.repos[].repo] | join(" ")' "$CACHE/main-tip-verdict.json")"
 t_eq "...and asks GitHub about nothing else" 0 "$(grep -c 'o/pinned\|o/harbor' "$GH_LOG" | tr -d ' ')"
 unset GH_LOG
 NOPIN="$T_TMP/nopin/bin"; mkdir -p "$NOPIN"; cp "$T_ROOT/bin/ci-main-tip-verdict.sh" "$T_ROOT/bin/library-log.sh" "$NOPIN/"; rm -f "$CACHE/main-tip-verdict.json"
-_np="$(FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_SCOPE_CACHE_DIR="$CACHE" CLAUDE_CONFIG_DIR="$CFGD" HARBOR_FLEET_SNAPSHOT="$T_TMP/snap.json" sh "$NOPIN/ci-main-tip-verdict.sh" 2>&1; echo "rc=$?")"
+_np="$(FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_SCOPE_CACHE_DIR="$CACHE" CLAUDE_CONFIG_DIR="$CFGD" HARBOR_STATUS_FLEET_SNAPSHOT="$T_TMP/snap.json" sh "$NOPIN/ci-main-tip-verdict.sh" 2>&1; echo "rc=$?")"
 t_has "an install with no pin cannot name harbor: it judges nothing and exits 3 (unchecked)" "$_np" 'rc=3'
 t_has "...and says why" "$_np" 'harbor'"'"'s own repository is not derivable'
 t_eq "...and writes no verdict that would leave harbor out" no "$([ -f "$CACHE/main-tip-verdict.json" ] && echo yes || echo no)"

@@ -33,7 +33,7 @@ chmod +x "$T_TMP/sessions" "$T_TMP/claude" "$T_TMP/gh"
 
 fresh() { rm -rf "$W"; mkdir -p "$EV" "$OB" "$FIX/sweep" "$P/S6/subagents"; N=0; }
 ev() { N=$((N + 1)); printf '{"id":"e%s","ts":"%s","src":"cli","kind":"%s","subject":"%s","repo":"harbor","cause":"","data":%s}\n' "$N" "$1" "$2" "$3" "${4:-$EMPTY}" >> "$EV/$D"; }
-rec() { env HARBOR_EVENT_DIR="$EV" HARBOR_OBLIGATION_DIR="$OB" HARBOR_STATUS_OBLIGATION_NOW="$NOW" HARBOR_STATUS_OBLIGATION_KINDS="$KINDS" \
+rec() { env HARBOR_EVENT_DIR="$EV" HARBOR_STATUS_OBLIGATION_DIR="$OB" HARBOR_STATUS_OBLIGATION_NOW="$NOW" HARBOR_STATUS_OBLIGATION_KINDS="$KINDS" \
     HARBOR_STATUS_OBLIGATION_GH="$T_TMP/gh" HARBOR_STATUS_OBLIGATION_CLAUDE="$T_TMP/claude" HARBOR_STATUS_OBLIGATION_SESSIONS="$T_TMP/sessions" \
     HARBOR_STATUS_OBLIGATION_HOUSEKEEPING="$FIX/sweep/.helm-sweep.jsonl" HARBOR_STATUS_OBLIGATION_TRANSCRIPTS="$FIX/tr" sh "$1" reconcile >/dev/null 2>&1; }
 cur() { jq -r --arg id "$1" '.obligations[] | select(.id == $id) | .state' "$OB/current.json"; }

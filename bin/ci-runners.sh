@@ -67,7 +67,7 @@
 # NOTHING HERE READS OR WRITES BILLING: the minutes rule is ci-runner-switch.sh's, read from its cache.
 # `lost-rerun off` in CONF turns rerun-lost off (tick then skips it). Its lines are `[check:ci.lost-rerun]`, each naming the reason.
 # Findings: one `[check:ci.runners]` line in cache/checks.log per CHANGE (and per change of drift), cache/ci-runners.json.
-# POSIX sh, jq, gh, docker (HARBOR_TEST_GH and HARBOR_DOCKER swap in fakes).
+# POSIX sh, jq, gh, docker (HARBOR_TEST_GH and HARBOR_CI_DOCKER swap in fakes).
 # SPLIT (harbor#1060, docs/explanation/modularity; `lint-module-shape.sh --seam` called it earned): this file is the entry point, the
 # flags and the config; each verb group is a sourced lib beside it: ci-runners-fleet-lib.sh (the desired and actual
 # sets, `list`, mounts), -provision-lib.sh (`up`, `refresh`, `down`, the governance runners, the hook sync),
@@ -104,13 +104,13 @@ esac
 
 OWNER="${HARBOR_CI_OWNER:-VytCepas}"
 GH="${HARBOR_TEST_GH:-${HARBOR_GH:-gh}}"
-DOCKER="${HARBOR_DOCKER:-docker}"
+DOCKER="${HARBOR_CI_DOCKER:-${HARBOR_DOCKER:-docker}}"
 GOV_REPO="${HARBOR_CI_SWITCH_REPO:-${HARBOR_SWITCH_REPO:-$OWNER/harbor}}"   # the repo harbor's own checks run on (the governance runners)
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 CONF="$CFG/.harbor-ci-runners"
 CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
 LOG="$CACHE_DIR/checks.log"
-SNAP="${HARBOR_FLEET_SNAPSHOT:-$CACHE_DIR/fleet-snapshot.json}"
+SNAP="${HARBOR_STATUS_FLEET_SNAPSHOT:-${HARBOR_FLEET_SNAPSHOT:-$CACHE_DIR/fleet-snapshot.json}}"
 # the fleet file through the registry-aware reader beside this script (harbor#966)
 FLEET="${HARBOR_SCOPE_FLEET_FILE:-${HARBOR_FLEET_FILE:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_FLEET_FILE 2>/dev/null || :)}}"
 # the fleet CLI, a roots.tsv row read through the same reader (harbor#966)

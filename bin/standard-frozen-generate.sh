@@ -8,7 +8,7 @@
 #
 # The sources: CLI families (contracts/cli.md), core harbor.toml keys (scope-roots.sh --conf-keys), pack.toml keys
 # (contracts/pack.md), env roots (contracts/roots.tsv), core skills (skills/*/SKILL.md), guard rule ids
-# (<id>.<shape> in bin/guard-*.sh, as floor-equiv.sh reads them, plus the ids tests/guards/*.jsonl pins). The hub seams are reserved, names only (decision 21).
+# (<id>.<shape> in bin/guard-*.sh, as admission-equivalence.sh reads them, plus the ids tests/guards/*.jsonl pins). The hub seams are reserved, names only (decision 21).
 # Append-only on purpose: a regenerated file that dropped a vanished name would make every rename look clean.
 set -eu
 case "${1:-}" in -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
@@ -35,7 +35,7 @@ names() {
   for _g in "$ROOT"/bin/admission-*.sh; do   # a guard's rule prefix is its frozen id, the name it had before W6 (harbor#961)
     [ ! -L "$_g" ] || continue
     _n="${_g##*/admission-}"; _n="${_n%.sh}"
-    case "$_n" in hook|deny-hash|mutation-tier|observe-report) continue ;; api-route) _n=apiroute ;; self-edit) _n=selfedit ;; esac
+    case "$_n" in hook|deny-hash|mutation-tier|observe-report|deny|equivalence|install|observe|remove|verify) continue ;; api-route) _n=apiroute ;; self-edit) _n=selfedit ;; esac
     # a field path (.tool_input.content, .message.content) is not a rule: the id starts the word
     grep -vE '^[[:space:]]*#|floor_log_decision' "$_g" | grep -oE '(^|[^._A-Za-z0-9])[a-z0-9-]+\.(flat|argv|meta|content|path|channel)([^a-z]|$)' |
       sed -E 's/^[^a-z0-9]//; s/\.(flat|argv|meta|content|path|channel)([^a-z]|$).*//' | sed "s/^/rule	$_n:/"

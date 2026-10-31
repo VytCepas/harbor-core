@@ -81,7 +81,7 @@ t_has "the wrapper-no-jq repair mentions jq" "$(repair_of "$F2" FC-2)" "jq"
 F2B="$(mkfixture fc2b)"; unseal "$F2B"; census "$F2B" 2
 rec "$F2B" wrapper deny wrapper-guard-missing "2026-08-02T11:00:00Z"; seal "$F2B"
 _r2b="$(repair_of "$F2B" FC-2)"
-t_has "a missing guard's repair names the installer" "$_r2b" "floor-install"
+t_has "a missing guard's repair names the installer" "$_r2b" "admission-install"
 # 2026-08-23: it said re-run floor-install while --live showed every guard present; three pins.
 t_has "it routes to the check that owns guard presence" "$_r2b" "harbor verify"
 t_has "it states the installer conditionally" "$_r2b" "only helps if"
@@ -200,7 +200,7 @@ t_hasnt "and promises no future demotion" "$(repair_of "$FH4" FC-2)" "demotes"
 FH5="$(mkfixture h5)"; unseal "$FH5"; census "$FH5" 2; sessions "$FH5" 2
 rec "$FH5" wrapper deny wrapper-guard-missing "2026-08-03T09:36:07Z"; seal "$FH5"
 t_eq "a same-day wrapper deny" crit "$(sev_of "$FH5" FC-2)"
-t_has "keeps its installer repair" "$(repair_of "$FH5" FC-2)" "floor-install"
+t_has "keeps its installer repair" "$(repair_of "$FH5" FC-2)" "admission-install"
 t_eq "one FC-2 row per reason, not two halves" 1 "$(count_of "$FH5" FC-2)"
 FH6="$(mkfixture h6)"; unseal "$FH6"; census "$FH6" 2; sessions "$FH6" 2
 rec "$FH6" integrity advise integrity-advisory "2026-07-20T10:00:00Z"

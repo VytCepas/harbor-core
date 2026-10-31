@@ -6,7 +6,7 @@
 P="$T_TMP/path"; linux_path "$P" osascript notify-send powershell.exe
 LOGF="$T_TMP/sent.log"; : > "$LOGF"
 stub() { # <name> <exit>: records its argv and the two text variables, then exits as told
-  printf '#!/bin/sh\ncat >/dev/null 2>&1 &\nprintf "%%s|%%s|T=%%s|B=%%s|W=%%s\\n" "%s" "$*" "${HARBOR_NOTIFY_T:-}" "${HARBOR_NOTIFY_B:-}" "${WSLENV:-}" >> "%s"\nexit %s\n' "$1" "$LOGF" "$2" > "$P/$1"
+  printf '#!/bin/sh\ncat >/dev/null 2>&1 &\nprintf "%%s|%%s|T=%%s|B=%%s|W=%%s\\n" "%s" "$*" "${HARBOR_ALERT_NOTIFY_TITLE:-}" "${HARBOR_ALERT_NOTIFY_BODY:-}" "${WSLENV:-}" >> "%s"\nexit %s\n' "$1" "$LOGF" "$2" > "$P/$1"
   chmod +x "$P/$1"
 }
 unstub() { rm -f "$P/$1"; }
@@ -28,7 +28,7 @@ t_eq "powershell.exe outside WSL is not a channel" "rc=0 sink=log" "$(say 'sub' 
 WSLD=Ubuntu
 t_eq "WSL2: a Windows toast" "rc=0 sink=wsl-toast" "$(say 'sub' 'body')"
 _l="$(tail -1 "$LOGF")"
-t_has "...the text travels in the environment" "$_l" "|T=sub|B=body|W=HARBOR_NOTIFY_T:HARBOR_NOTIFY_B"
+t_has "...the text travels in the environment" "$_l" "|T=sub|B=body|W=HARBOR_ALERT_NOTIFY_TITLE:HARBOR_ALERT_NOTIFY_BODY"
 stub powershell.exe 1
 t_eq "WSL2 with no toast: logged" "rc=0 sink=log" "$(say 'sub' 'body')"
 WSLD=; unstub powershell.exe

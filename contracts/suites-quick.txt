@@ -24,7 +24,7 @@ tests/lint/conventions/docs.test.sh
 tests/lint/conventions/git.test.sh
 tests/lint/conventions/injection-rule.test.sh
 tests/lint/conventions/install.test.sh
-tests/lint/conventions/redproof.test.sh
+tests/lint/conventions/red-proof.test.sh
 tests/lint/conventions/skills.test.sh
 tests/lint/conventions/suites.test.sh
 tests/lint/name/name.test.sh

@@ -2,12 +2,12 @@
 # The notes harbor SHIPS, through the real engine: every row of fixtures/injection-rule/notes.tsv, and every tracked note id must have a FIRE row
 # and a SILENT row, or be a named exemption (harbor#173). A throwaway config dir takes the box packs, a throwaway repo the pack under test.
 # CORE'S PACKS, AND A PRIVATE LAYER'S WHEN ASKED (harbor#1149). The packs that name a repo or a client live in the private layer's inject.d/,
-# with their probe rows in its inject.d/notes.tsv. This suite is hermetic and never looks for that layer by itself; HARBOR_NOTES_PRIVATE=<layer>
+# with their probe rows in its inject.d/notes.tsv. This suite is hermetic and never looks for that layer by itself; HARBOR_CONTEXT_NOTES_PRIVATE=<layer>
 # adds its packs, its box files and its rows to the run, with the same rule: a pack with no FIRE row and no SILENT row fails.
 # FIXTURE PACKS (fixtures/injection-rule/packs/<name>/) are never installed and name nothing real. They keep an engine predicate that only the private
 # layer's packs use (`cmd-contains`) under a default run, which no CI or pre-push sets a layer for: without one, an edit that broke the
 # predicate left every default suite green while five live packs went silent.
-PRIV="${HARBOR_NOTES_PRIVATE:-}"   # a knob from the caller, read before t_init clears it (harbor#773)
+PRIV="${HARBOR_CONTEXT_NOTES_PRIVATE:-${HARBOR_NOTES_PRIVATE:-}}"   # a knob from the caller, read before t_init clears it (harbor#773)
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 ENGINE="$T_ROOT/hooks/injection-rule/injection-rule.sh"; FIX="$T_ROOT/fixtures/injection-rule/notes.tsv"; T="$T_TMP"
 # merge-governance and post-merge-state call `gh` against a live PR; their content is
@@ -42,8 +42,8 @@ mkdir -p "$HOME/$_hr/contracts"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" 
 
 # skill-on-first-use reads the installed skills, the floor's parser beside the pack, and a transcript.
 mkdir -p "$T/cfg/skills/agent-routing" "$T/cfg/bin"; cp "$T_ROOT/skills/agent-routing/SKILL.md" "$T/cfg/skills/agent-routing/"
-cp "$T_ROOT/bin/library-admission.sh" "$T_ROOT/bin/floor-normalize.awk" "$T/cfg/bin/"; printf '{}\n' > "$T/transcript.jsonl"
-# name-note-create ships the mechanism, never a command: a workload pack writes the rows. This neutral one stands in (tests/hooks/name-note-create-test.sh).
+cp "$T_ROOT/bin/library-admission.sh" "$T_ROOT/bin/admission-normalize.awk" "$T/cfg/bin/"; printf '{}\n' > "$T/transcript.jsonl"
+# name-note-create ships the mechanism, never a command: a workload pack writes the rows. This neutral one stands in (tests/context/injection-rule/name-note-create.test.sh).
 mkdir -p "$T/cfg/name-create.d"; printf 'fixturectl[[:space:]]+create[[:space:]]+\tskill\tUse the form the grammar names.\n' > "$T/cfg/name-create.d/fixture.tsv"
 
 make_repo() { # <dir> <pack> <shape>: skills = a HIDDEN skill, visible = one the model already lists
@@ -81,7 +81,7 @@ t_section "every row of fixtures/injection-rule/notes.tsv${PRIV:+ and of the pri
 seen_fire=''; seen_silent=''; rows=0
 cat "$FIX" > "$T/rows.tsv"
 if [ -n "$PRIV" ]; then
-  [ -f "$PRR/notes.tsv" ] && cat "$PRR/notes.tsv" >> "$T/rows.tsv" || t_fail "HARBOR_NOTES_PRIVATE is set but $PRR/notes.tsv is not a file"
+  [ -f "$PRR/notes.tsv" ] && cat "$PRR/notes.tsv" >> "$T/rows.tsv" || t_fail "HARBOR_CONTEXT_NOTES_PRIVATE is set but $PRR/notes.tsv is not a file"
 fi
 while IFS="$(printf '\t')" read -r pack shape id arm label payload; do
   case "$pack" in ''|'#'*) continue ;; esac

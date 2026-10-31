@@ -50,13 +50,13 @@ _notify_send() {
 # A balloon from the Windows host. The sleep keeps the icon alive long enough to be seen.
 _notify_wsl_toast() {
   _notify_wsl || return 1
-  HARBOR_NOTIFY_T="$1" HARBOR_NOTIFY_B="$2" WSLENV="HARBOR_NOTIFY_T:HARBOR_NOTIFY_B${WSLENV:+:$WSLENV}" \
+  HARBOR_ALERT_NOTIFY_TITLE="$1" HARBOR_ALERT_NOTIFY_BODY="$2" WSLENV="HARBOR_ALERT_NOTIFY_TITLE:HARBOR_ALERT_NOTIFY_BODY${WSLENV:+:$WSLENV}" \
     powershell.exe -NoProfile -NonInteractive -Command '
       Add-Type -AssemblyName System.Windows.Forms
       $n = New-Object System.Windows.Forms.NotifyIcon
       $n.Icon = [System.Drawing.SystemIcons]::Information
-      $n.BalloonTipTitle = "Harbor - " + $env:HARBOR_NOTIFY_T
-      $n.BalloonTipText = $env:HARBOR_NOTIFY_B
+      $n.BalloonTipTitle = "Harbor - " + $env:HARBOR_ALERT_NOTIFY_TITLE
+      $n.BalloonTipText = $env:HARBOR_ALERT_NOTIFY_BODY
       $n.Visible = $true
       $n.ShowBalloonTip(5000)
       Start-Sleep -Seconds 6

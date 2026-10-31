@@ -35,14 +35,14 @@ t_eq "no rule names a checkout or ~/.local/bin" 0 \
   "$(jq -r '[.permissions.ask[], .permissions.allow[]] | .[] | select(test("gate-"))' "$_s" | grep -vc "^Bash($CLAUDE_CONFIG_DIR/bin/")"
 t_eq "the B1 deny covers the ledger" true "$(jq '.permissions.deny | index("Edit(~/.claude/.helm-approvals/**)") != null' "$_s")"
 t_eq "the B1 deny covers the ship runner's state" true "$(jq '.permissions.deny | index("Edit(~/.claude/.helm-ship/**)") != null' "$_s")"
-_fv="$(sh "$T_ROOT/bin/floor-verify.sh" --dir "$CLAUDE_CONFIG_DIR" 2>&1)"
+_fv="$(sh "$T_ROOT/bin/admission-verify.sh" --dir "$CLAUDE_CONFIG_DIR" 2>&1)"
 t_has "floor-verify reports the ask rule" "$_fv" "approval gate: the ask rule"
 jq --arg c "/bin/sh /tmp/yes.sh" '.hooks.PermissionRequest = [{matcher: "", hooks: [{type: "command", command: $c}]}]' "$_s" > "$T_TMP/s"
 cp "$_s" "$T_TMP/s.orig"; cp "$T_TMP/s" "$_s"
-t_has "RED-PROOF: floor-verify fails a foreign PermissionRequest hook" "$(sh "$T_ROOT/bin/floor-verify.sh" --dir "$CLAUDE_CONFIG_DIR" 2>&1)" \
+t_has "RED-PROOF: floor-verify fails a foreign PermissionRequest hook" "$(sh "$T_ROOT/bin/admission-verify.sh" --dir "$CLAUDE_CONFIG_DIR" 2>&1)" \
   "FAIL: approval gate: a PermissionRequest hook Harbor does not own"
 jq '.permissions.ask = []' "$T_TMP/s.orig" > "$_s"
-t_has "RED-PROOF: floor-verify fails a missing ask rule" "$(sh "$T_ROOT/bin/floor-verify.sh" --dir "$CLAUDE_CONFIG_DIR" 2>&1)" \
+t_has "RED-PROOF: floor-verify fails a missing ask rule" "$(sh "$T_ROOT/bin/admission-verify.sh" --dir "$CLAUDE_CONFIG_DIR" 2>&1)" \
   "FAIL: approval gate: no ask rule"
 cp "$T_TMP/s.orig" "$_s"
 t_done

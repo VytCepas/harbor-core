@@ -37,7 +37,7 @@ while IFS="$TAB" read -r f chk fix needs; do
   if [ ! -e "$needs" ] && ! git ls-files --error-unmatch -- "$needs" >/dev/null 2>&1; then
     echo skip > "$OUT/$n.rc"; continue
   fi
-  ( rc=0; HARBOR_IN_FRESH_CHECK=1 sh -c "$chk" > "$OUT/$n.out" 2>&1 || rc=$?; echo "$rc" > "$OUT/$n.rc" ) &
+  ( rc=0; HARBOR_DOC_IN_FRESH_CHECK=1 sh -c "$chk" > "$OUT/$n.out" 2>&1 || rc=$?; echo "$rc" > "$OUT/$n.rc" ) &
 done < "$TABLE"
 wait
 

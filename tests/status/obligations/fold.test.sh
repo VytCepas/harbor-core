@@ -17,7 +17,7 @@ scenario() { # the bus the kill cases share: a session, its Monitor, a PR, then 
   ev 2026-10-06T01:02:00Z pr.opened VytCepas/harbor#9; ev 2026-10-06T01:03:00Z session.stop S1
 }
 fold() { # the real script, on this bus and this state; combined output
-  env HARBOR_EVENT_DIR="$EV" HARBOR_OBLIGATION_DIR="$OB" HARBOR_STATUS_OBLIGATION_NOW="$NOW" HARBOR_STATUS_OBLIGATION_ON_OVERDUE=off \
+  env HARBOR_EVENT_DIR="$EV" HARBOR_STATUS_OBLIGATION_DIR="$OB" HARBOR_STATUS_OBLIGATION_NOW="$NOW" HARBOR_STATUS_OBLIGATION_ON_OVERDUE=off \
     ${KINDS:+HARBOR_STATUS_OBLIGATION_KINDS="$KINDS"} ${FAULT:+HARBOR_STATUS_OBLIGATION_FAULT="$FAULT"} sh "$BIN" fold 2>&1
 }
 cur() { jq -r --arg id "$1" ".obligations[] | select(.id == \$id) | .$2" "$OB/current.json"; }
@@ -54,7 +54,7 @@ t_eq "or add a line" 5 "$(lines)"
 
 t_section "resume after kill: nothing lost, nothing doubled"
 scenario; mkdir -p "$T_TMP/ref/ev" "$T_TMP/ref/ob"; cp "$EV/$D" "$T_TMP/ref/ev/$D"
-HARBOR_EVENT_DIR="$T_TMP/ref/ev" HARBOR_OBLIGATION_DIR="$T_TMP/ref/ob" HARBOR_STATUS_OBLIGATION_NOW="$NOW" sh "$BIN" fold >/dev/null 2>&1
+HARBOR_EVENT_DIR="$T_TMP/ref/ev" HARBOR_STATUS_OBLIGATION_DIR="$T_TMP/ref/ob" HARBOR_STATUS_OBLIGATION_NOW="$NOW" sh "$BIN" fold >/dev/null 2>&1
 t_eq "the unkilled reference holds five transitions" 5 "$(wc -l < "$T_TMP/ref/ob/ledger.jsonl" | tr -d ' ')"
 FAULT=before-offset; ( fold ) >/dev/null 2>&1; rc=$?; unset FAULT
 t_eq "killed after the ledger, before the offset" 137 "$rc"

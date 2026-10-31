@@ -35,11 +35,11 @@ echo dy > "$R/data/dy.txt"; echo m > "$R/src/m.txt"; echo d > "$R/docs/d.md"
 g init -q -b work; g add -A; g commit -qm seed
 CH='src/a/x.txt'   # a real selection: a b-only change would stand a down
 # run [suite...] — the cache on, the store in T_TMP; prints suite-run's output
-run() { : > "$ORD"; HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_CHANGED="${CHG-$CH}" HARBOR_SUITE_CACHE="${CACHE-1}" HARBOR_SUITE_CACHE_DIR="${SCD:-$ST}" \
+run() { : > "$ORD"; HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_CHANGED="${CHG-$CH}" HARBOR_SUITE_CACHE="${CACHE-1}" HARBOR_TEST_SUITE_CACHE_DIR="${SCD:-$ST}" \
   sh "$SR" -j 2 --results "$T_TMP/res" "$@" 2>&1; }
 ran() { sort "$ORD" | tr '\n' ' ' | sed 's/ $//'; }
 row() { awk -F '\t' -v s="tests/x/$1.sh" '$5 == s { print $1; exit }' "$T_TMP/res"; }
-key() { HARBOR_SCOPE_ROOT="$R" HARBOR_SUITE_CACHE_DIR="$ST" sh "$SC" key "tests/x/$1.sh" | cut -f2; }
+key() { HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_SUITE_CACHE_DIR="$ST" sh "$SC" key "tests/x/$1.sh" | cut -f2; }
 
 t_section "the same key is reported cached and does not run"
 O="$(run tests/x/a.sh)"
@@ -74,7 +74,7 @@ echo b > "$R/src/b/x.txt"
 printf 'echo extra\n' >> "$R/tests/x/a.sh"; run tests/x/a.sh > /dev/null
 t_eq "a byte in the suite itself: a runs" a "$(ran)"
 g commit -qam suite
-HARBOR_SUITE_CACHE_SALT=s2 run tests/x/a.sh > /dev/null
+HARBOR_TEST_SUITE_CACHE_SALT=s2 run tests/x/a.sh > /dev/null
 t_eq "a new salt is a cold cache: a runs" a "$(ran)"
 
 t_section "a failure is never cached"

@@ -30,7 +30,7 @@ A new kind of check gets its own table and runner, never a flag that makes the r
 - `want`: what the guard answers today. One of `allow`, `ask`, `deny`, `block`.
 - The payload is exactly one of: `cmd` (Bash); `tool` + `path` (file tools); `tool` + `input` (any other `tool_input`).
 - Placeholders in any string: `{home}` the sandbox HOME, `{cfg}` the config dir, `{tmp}` the suite's temp dir, `{root}` the repo checkout.
-- `{j}` expands to nothing. Write a token-shaped literal split by it (`sk_{j}live_...`) so no secret scanner matches the tracked row while the guard still receives the joined string (harbor#1149). `fixtures/admission-corpus.jsonl` takes the same `{j}`, deleted by `bin/floor-equiv.sh`.
+- `{j}` expands to nothing. Write a token-shaped literal split by it (`sk_{j}live_...`) so no secret scanner matches the tracked row while the guard still receives the joined string (harbor#1149). `fixtures/admission-corpus.jsonl` takes the same `{j}`, deleted by `bin/admission-equivalence.sh`.
 - **Optional fields:**
   - `why`: the incident or reason.
   - `todo`: the verdict once a known gap is fixed. It is reported every run and never fails.
@@ -48,7 +48,7 @@ Rows run on `$T_JOBS` workers (default 3), and assertions then run in row order.
 | test.harness-only | A suite sources `tests/lib/core.sh`, calls `t_init` and `t_done`, and defines no assertion helpers of its own. | `check.sh` |
 | test.file-budget | Files are at most 500 lines. A file header is at most 8 comment lines; after it, comment runs are at most 3. The story goes in the commit or the issue. | `check.sh` |
 | test.row-shape | Every row has the keys its runner reads, a real verdict, one payload, and an id unique across the guard's tables. | `check.sh` |
-| test.guard-routing | Every table belongs to a registered guard, and every part table has its part suite. Every registered guard has its guard script, a table and a suite. Every suite is listed in `contracts/suites.txt`. | `check.sh` |
+| test.admission-hook-routing | Every table belongs to a registered guard, and every part table has its part suite. Every registered guard has its guard script, a table and a suite. Every suite is listed in `contracts/suites.txt`. | `check.sh` |
 | test.rule-coverage | Every rule the guard's source names has a row that fires it and an `allow` row beside it. Names come from the `rules` pattern in `guards.jsonl`, read with `\`-continued lines joined. | `check.sh` |
 | test.exemption-effect | Every exemption matches a shared row, and either changes its verdict or records a `todo`. | `check.sh` |
 | test.table-can-fail | Every table can fail. Against a guard that always allows, and one that always denies, exactly the rows expecting otherwise fail. | `check-test.sh` |

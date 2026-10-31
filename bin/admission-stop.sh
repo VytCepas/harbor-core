@@ -268,13 +268,13 @@ SG_SUITE_FN='function suite_key(s) { sub(/^.* [0-9]+ /, "", s); return s }'
 # suite command this session launched: a `cat` of any other log pairs with nothing.
 # `[-.]test`: hooks/injection-rule/packs.test.sh is a suite too.
 SG_PAIR='
-  $1 == "CMD" { if ($3 ~ /([-.]test|lint-conventions|floor-equiv|pass-score)[a-z-]*\.sh/) ran[$2] = 1
+  $1 == "CMD" { if ($3 ~ /([-.]test|lint-conventions|floor-equiv|admission-equivalence|pass-score)[a-z-]*\.sh/) ran[$2] = 1
                 else for (t in bg) if (index($3, "tasks/" t ".output")) ran[$2] = 1 }
   $1 == "BGT" && ($2 in ran) { bg[$3] = 1 }'
 
 # ── SG-1 · a floor surface was edited and the suite did not run after it ────
 # PATH-SCOPED, and the pattern is the floor's own file set: bin/admission-*.sh, bin/library-admission.sh,
-# bin/floor-*.sh, bin/floor-normalize.awk, and the old guard-*.sh names (harbor#961 W6). `bin/` is required, so a note called
+# bin/floor-*.sh, bin/admission-normalize.awk, and the old guard-*.sh names (harbor#961 W6). `bin/` is required, so a note called
 # guard-notes.sh in a docs dir is not a floor surface.
 #
 # ONLY THE FULL SUITE COUNTS AS EVIDENCE. Since harbor#727 the floor suite is
