@@ -60,8 +60,8 @@ RC=0; sh "$C" >/dev/null 2>&1 || RC=$?
 t_eq "no repo root: usage, exit 2" 2 "$RC"
 
 t_section "harbor's register: the policy's paths are protected"
-for p in policy/constitution.md docs/explanation/verification-expanded.md bin/admission-bash.sh bin/floor-install.sh bin/library-admission.sh \
-         bin/floor-normalize.awk hooks/pre-commit context-rules/user/x.md context-rules/harbor/merge-note.sh skills/x/SKILL.md \
+for p in policy/constitution.md docs/explanation/verification-expanded.md bin/admission-bash.sh bin/admission-install.sh bin/library-admission.sh \
+         bin/admission-normalize.awk hooks/pre-commit context-rules/user/x.md context-rules/harbor/merge-note.sh skills/x/SKILL.md \
          bin/deploy-runtime-install.sh bin/deploy.sh bin/deploy-restore.sh bin/deploy-harden.sh bin/pin-instructions.sh \
          contracts/required-checks.tsv contracts/hooks.md .github/workflows/governance.yml bin/gate-approve.sh \
          bin/library-gate.sh bin/gate-merge-check.sh .agents/protected-paths.tsv .agents/ship.conf; do
@@ -165,7 +165,7 @@ wired() { # what an installer wires, each as the repo file it ships from (an eng
 }
 _wired_raw() { # the bin/ files an installer names as <dir>/bin/<file> (hooks, statusline), and floor-install's wiring table
   grep -ohE '\$DIR/bin/[a-z0-9_-]+\.(sh|awk|py)' "$1"/bin/*-install.sh | sed 's|\$DIR/||'
-  awk '/^floor_hooks\(\)/ { f = 1; next } f && /^ROWS$/ { exit } f && !/^#/ && /;/' "$1/bin/floor-install.sh" | cut -d';' -f3 \
+  awk '/^floor_hooks\(\)/ { f = 1; next } f && /^ROWS$/ { exit } f && !/^#/ && /;/' "$1/bin/admission-install.sh" | cut -d';' -f3 \
     | tr ' ' '\n' | grep -v '^-' | sed 's|^|bin/|'
   git -C "$1" ls-files 'bin/*-install.sh'
   # a hook engine is wired by its manifest (D-88)

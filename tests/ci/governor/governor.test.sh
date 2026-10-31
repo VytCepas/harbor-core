@@ -150,7 +150,7 @@ t_eq "the cache carries the budget" 4 "$(jq -r .budget "$CACHE/ci-governor.json"
 t_eq "...and says it is held under the target" true "$(jq -r .held "$CACHE/ci-governor.json")"
 
 # ── run ─────────────────────────────────────────────────────────────────────────────────────────
-runc() { HARBOR_TEST_NOW="$AT" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_GOV_POLL=0.2 sh "$GOV" run "$@"; }
+runc() { HARBOR_TEST_NOW="$AT" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CI_GOVERNOR_POLL=0.2 sh "$GOV" run "$@"; }
 nslots() { find "$SD/slots" -type f 2>/dev/null | wc -l | tr -d ' '; }
 
 t_section "run: no state dir, so it just runs (a CI container)"

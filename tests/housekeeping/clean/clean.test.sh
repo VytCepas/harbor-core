@@ -307,7 +307,7 @@ t_has "--record carries unread=1" "$(with HARBOR_HOUSEKEEPING_CLEAN_GH="$T_BIN/g
 t_has "a PR list at its limit is unread too" "$(with HARBOR_HOUSEKEEPING_CLEAN_GH="$T_BIN/gh" HARBOR_HOUSEKEEPING_CLEAN_PR_LIMIT=7 sh "$TOOL" --json)" '"class":"unread"'
 
 t_section "24b a transient 5xx is retried, a 4xx is not (the sweep undercounted)"
-rc() { : > "$STUB/prs.calls"; _o="$(with HARBOR_HOUSEKEEPING_CLEAN_GH="$T_BIN/gh" HARBOR_CLEAN_RETRY_WAIT=0 STUB_FAIL="$1" sh "$TOOL" --record | tail -n 1)"; printf '%s %s' "$(wc -l < "$STUB/prs.calls" | tr -d ' ')" "$(printf '%s' "$_o" | grep -o 'unread=[0-9]*')"; }
+rc() { : > "$STUB/prs.calls"; _o="$(with HARBOR_HOUSEKEEPING_CLEAN_GH="$T_BIN/gh" HARBOR_HOUSEKEEPING_CLEAN_RETRY_WAIT=0 STUB_FAIL="$1" sh "$TOOL" --record | tail -n 1)"; printf '%s %s' "$(wc -l < "$STUB/prs.calls" | tr -d ' ')" "$(printf '%s' "$_o" | grep -o 'unread=[0-9]*')"; }
 t_eq "one 504 then success reads the repo whole" "2 unread=0" "$(rc prs504once)"
 t_eq "a permanent 502 gives up after 3 tries, unread" "3 unread=1" "$(rc prs502)"
 t_eq "a 404 is not retried, unread" "1 unread=1" "$(rc prs404)"

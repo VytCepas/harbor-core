@@ -51,7 +51,9 @@ STALE_DAYS=365
 # Status lines are log-lib's, on stderr: stdout is the findings (or the JSON) and only that (contracts/logging.md).
 _here="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 . "$_here/library-log.sh"
-log_init memory-lint; LOG_FD=2
+log_init memory-lint
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
+LOG_FD=2
 
 # die <what failed> <fix command>: FAIL, its fix, the summary, exit 2 (a usage error is not a run).
 die() { log_fail "$1"; log_fix "$2"; log_end || :; exit 2; }
@@ -73,7 +75,7 @@ memory-lint (harbor#6) — deterministic anti-rot over a memory store
   NAME checks (harbor#1010, D-24, D-34): NAME-CLAIM a note whose file name is not lowercase kebab `<subject>-<claim>`
   (two words at least; MEMORY.md, INDEX-FULL.md and README.md are the store's own); NAME-STEM a note whose front
   matter `name:` differs from its file stem; NAME-DIR a subfolder that is not lowercase kebab; NAME-HOST a path
-  segment that is a raw machine name (hostname -s, or HARBOR_HOST_NAMES, space separated) and not the lowercase alias.
+  segment that is a raw machine name (hostname -s, or HARBOR_MEMORY_HOST_NAMES, space separated) and not the lowercase alias.
 USAGE
 }
 
@@ -249,7 +251,7 @@ count() { [ -s "$1" ] && wc -l < "$1" | tr -d ' ' || echo 0; }
 # Pure functions of the path and the front matter: nothing here reads a clock or git. A finding is
 # `kind<TAB>path<TAB>why`. Report-only unless --strict-names (see usage).
 : > "$TMP/names"
-HOSTS="${HARBOR_HOST_NAMES:-$(hostname -s 2>/dev/null || true)}"
+HOSTS="${HARBOR_MEMORY_HOST_NAMES:-${HARBOR_HOST_NAMES:-$(hostname -s 2>/dev/null || true)}}"
 is_kebab() { case "$1" in ''|*[!abcdefghijklmnopqrstuvwxyz0123456789-]*|-*|*-|*--*) return 1 ;; *) return 0 ;; esac; }
 OLDIFS="$IFS"
 IFS='

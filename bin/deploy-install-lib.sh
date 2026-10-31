@@ -36,7 +36,7 @@
 #                                else the first-run command (which seeds an empty {})
 #   il_merge_hook <settings-json> <event> <matcher> <cmd> [<onfail>]   wire one hook, additively; new json on stdout
 #   il_onfailure                 `block` when the client takes a hook's onFailure key (Claude Code >= 2.1.295),
-#                                else nothing; FLOOR_ONFAILURE=1|0 decides where `claude` is not on PATH
+#                                else nothing; HARBOR_ADMISSION_ONFAILURE=1|0 decides where `claude` is not on PATH
 #
 # The install manifest (install standard §3): <target>/.harbor-manifest, one row per installed file,
 # `<git-blob> <mode> <relpath> <installer> <commit>`, newest row per path. B6 never reads it: a tamper
@@ -47,6 +47,7 @@
 #   il_manifest_drop <relpath>…  on --apply, queue the removal of those rows (a dir: every row under it)
 #   il_manifest_write            on --apply, merge the queue into the manifest: backup, temp, mv
 #   il_blob <file>               a file's git blob id (a symlink: its target's, as git stores a link)
+#   il_sha < <file>              stdin's sha256 as bare hex: the one copy for installers and recovery tools (#1392)
 #   il_mf_rows <cfg>             the rows as <relpath> TAB <blob> TAB <installer> TAB <commit>
 #   il_mf_blob <cfg> <relpath>   the blob recorded for one path, or nothing
 #   il_known <cfg> <relpath> <file> <repo> <repo-path>…   0 when the file's bytes are recorded for relpath
@@ -302,7 +303,7 @@ il_merge_hook() { # <settings-json> <event> <matcher> <cmd> [<onfail>]  → new 
 # A PreToolUse veto that times out or crashes lets the call through unless onFailure is set
 # (code.claude.com/docs/en/hooks). An unknown version gets no field: an older client may reject the key.
 il_onfailure() {
-  case "${FLOOR_ONFAILURE:-}" in 1) echo block; return 0 ;; 0) return 0 ;; esac
+  case "${HARBOR_ADMISSION_ONFAILURE:-${FLOOR_ONFAILURE:-}}" in 1) echo block; return 0 ;; 0) return 0 ;; esac
   _ofv="$(claude --version 2>/dev/null | sed -n 's/^\([0-9][0-9]*\)\.\([0-9][0-9]*\)\.\([0-9][0-9]*\).*/\1 \2 \3/p' | head -n 1)"
   [ -n "$_ofv" ] || return 0
   set -- $_ofv
@@ -320,6 +321,7 @@ il_engine_path() { printf 'hooks/%s/%s' "${1%.*}" "$1"; }
 il_src() { # <repo root> <installed name> -> the repo-relative path it is installed from
   if [ ! -f "$1/bin/$2" ] && [ -f "$1/$(il_engine_path "$2")" ]; then il_engine_path "$2"; else printf 'bin/%s' "$2"; fi
 }
+il_sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
 il_blob() { # <file>
   if [ -L "$1" ]; then printf '%s' "$(readlink "$1")" | git hash-object --no-filters --stdin 2>/dev/null
   else git hash-object --no-filters -- "$1" 2>/dev/null; fi

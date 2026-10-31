@@ -33,7 +33,7 @@ All maps are in `standards/rename-maps/`. Columns: `old_path new_path wave recom
 | W4 PATH | `w4-path-shims.tsv` | 4 | 4 / 0 | 4 ok, 0 failed, 3 flagged | 0 |
 | W5 state/env/launchd | `w5-state-env-launchd.tsv` | 25 files + 16 env | 20 / 21 | 25 ok, 0 failed, 6 flagged | 99: 98 env uses no rewrite decides (the kill-switch names in `admission-bash.sh` regexes, prose, tests) plus the same binary file |
 | W6a admission | `w6a-admission-hooks.tsv` | 23 files + 28 env | 21 / 30 (28 internal constants) | 23 ok, 0 failed, 18 flagged | 1: the same binary file |
-| W6b | `w6b-admission-floor-hook-and-integrity.tsv` | 2 | 2 / 0 | 2 ok, 0 failed, 2 flagged | 0 |
+| W6b | `w6b-admission-hook-and-integrity.tsv` | 2 | 2 / 0 | 2 ok, 0 failed, 2 flagged | 0 |
 | T4 letter ids | `t4-letter-ids.tsv` | 93 | n/a | not a path rename; all 93 new ids pass `lint-name.sh --check rule-id` | n/a |
 | Fleet modules | `fleet-modules-in-projects-orchestrator.tsv` | 56 | n/a | draft, not approved, not planned, that repo untouched | n/a |
 
@@ -78,9 +78,9 @@ contracts/domain-terms.tsv  1 lines in 1 files reach it by family `domain` (glob
 contracts/event-kinds.tsv  2 lines in 1 files reach it by family `event` (glob, regex or built name), first bin/admission-bash.sh:343
 contracts/event-rules.tsv  2 lines in 1 files reach it by family `event` (glob, regex or built name), first bin/admission-bash.sh:343
 contracts/fresh-checks.tsv  1 lines in 1 files reach it by family `fresh` (glob, regex or built name), first tests/doc/fresh-verify/fresh-verify.test.sh:42
-contracts/git-verbs.md  5 lines in 4 files reach it by family `git` (glob, regex or built name), first bin/floor-normalize.awk:70
+contracts/git-verbs.md  5 lines in 4 files reach it by family `git` (glob, regex or built name), first bin/admission-normalize.awk:70
 contracts/control-plane-state.md  26 lines in 13 files reach it by family `helm` (glob, regex or built name), first contracts/README.md:30
-contracts/hooks-external.tsv  8 lines in 5 files reach it by family `hooks` (glob, regex or built name), first evals/context/2026-09-07-ecc/subagent-reports/characterise-ecc-test-suite-method.md:43
+contracts/hooks-external.tsv  8 lines in 5 files reach it by family `hooks` (glob, regex or built name), first evals/context/2026-09-07-ecc/subagent-reports/characterize-ecc-test-suite-method.md:43
 contracts/issue-taxonomy.tsv  16 lines in 4 files reach it by family `issue` (glob, regex or built name), first docs/explanation/admission-baseline.md:2092
 contracts/lint-core-writes-baseline.txt  3 lines in 2 files reach it by family `lint` (glob, regex or built name), first bin/lint-findings.sh:384
 contracts/lint-dev-paths-baseline.txt  3 lines in 2 files reach it by family `lint` (glob, regex or built name), first bin/lint-findings.sh:384
@@ -143,8 +143,8 @@ tests/ci/runners/runners.test.sh  3 lines in 2 files reach it by family `ci` (gl
 tests/ci/runs-on/runs-on.test.sh  3 lines in 2 files reach it by family `ci` (glob, regex or built name), first bin/deploy-harden.sh:64
 tests/ci/verified/verified.test.sh  3 lines in 2 files reach it by family `ci` (glob, regex or built name), first bin/deploy-harden.sh:64
 tests/doc/fresh-verify/fresh-verify.test.sh  1 lines in 1 files reach it by family `fresh` (glob, regex or built name), first tests/doc/fresh-verify/fresh-verify.test.sh:42
-tests/ci/github-plan/github-plan.test.sh  7 lines in 5 files reach it by family `gh` (glob, regex or built name), first bin/floor-normalize.awk:70
-tests/deploy/hooks/env.test.sh  8 lines in 5 files reach it by family `hooks` (glob, regex or built name), first evals/context/2026-09-07-ecc/subagent-reports/characterise-ecc-test-suite-method.md:43
+tests/ci/github-plan/github-plan.test.sh  7 lines in 5 files reach it by family `gh` (glob, regex or built name), first bin/admission-normalize.awk:70
+tests/deploy/hooks/env.test.sh  8 lines in 5 files reach it by family `hooks` (glob, regex or built name), first evals/context/2026-09-07-ecc/subagent-reports/characterize-ecc-test-suite-method.md:43
 tests/ci/main-tip-verdict/main-tip-verdict.test.sh  5 lines in 3 files reach it by family `main` (glob, regex or built name), first bin/gate-merge-stack.sh:329
 tests/gate/merge-check/merge-check.test.sh  17 lines in 14 files reach it by family `merge` (glob, regex or built name), first contracts/event-rules.tsv:20
 tests/ci/merge-stack/backdoor-generate.sh  1 lines in 1 files reach it by family `backdoor` (glob, regex or built name), first tests/ci/merge-stack/rehearse.test.sh:43
@@ -185,7 +185,7 @@ tests/admission/equivalence/equivalence.test.sh  32 lines in 23 files reach it b
 tests/admission/equivalence/output-contract.test.sh  1 lines in 1 files reach it by family `output` (glob, regex or built name), first inject.d/box/agent-brief.sh:36
 tests/admission/baseline/fixture.sh  32 lines in 23 files reach it by family `floor` (glob, regex or built name), first .agents/protected-paths.tsv:21
 tests/admission/baseline/baseline.test.sh  36 lines in 26 files reach it by family `floor` (glob, regex or built name), first .agents/protected-paths.tsv:21
-tests/admission/git/verbs.test.sh  5 lines in 4 files reach it by family `git` (glob, regex or built name), first bin/floor-normalize.awk:70
+tests/admission/git/verbs.test.sh  5 lines in 4 files reach it by family `git` (glob, regex or built name), first bin/admission-normalize.awk:70
 tests/scope/marker-backfill/output-contract.test.sh  1 lines in 1 files reach it by family `output` (glob, regex or built name), first inject.d/box/agent-brief.sh:36
 tests/scope/marker/marker.test.sh  6 lines in 4 files reach it by family `marker` (glob, regex or built name), first tests/lint/conventions/suites.test.sh:31
 tests/admission/normalize/normalize.test.sh  4 lines in 3 files reach it by family `normalize` (glob, regex or built name), first tests/lint/conventions/suites.test.sh:31
@@ -201,7 +201,7 @@ tests/admission/egress/egress.test.sh  5 lines in 4 files reach it by family `eg
 tests/admission/bash/fixture.sh  32 lines in 23 files reach it by family `floor` (glob, regex or built name), first .agents/protected-paths.tsv:21
 tests/admission/selfedit/selfedit.test.sh  4 lines in 3 files reach it by family `selfedit` (glob, regex or built name), first tests/lint/conventions/suites.test.sh:31
 tests/context/injection-rule/agent-brief.test.sh  7 lines in 6 files reach it by family `agent` (glob, regex or built name), first bin/status-obligations.sh:644
-tests/admission/apiroute/apiroute.test.sh  3 lines in 2 files reach it by family `apiroute` (glob, regex or built name), first bin/admission-api-route.sh:246
+tests/admission/api-route/api-route.test.sh  3 lines in 2 files reach it by family `apiroute` (glob, regex or built name), first bin/admission-api-route.sh:246
 tests/eval/hook-replay/output-contract.test.sh  1 lines in 1 files reach it by family `output` (glob, regex or built name), first inject.d/box/agent-brief.sh:36
 tests/context/injection-rule/fixture.sh  5 lines in 4 files reach it by family `inject` (glob, regex or built name), first bin/admission-bash.sh:1241
 tests/context/injection-rule/notes.test.sh  5 lines in 4 files reach it by family `inject` (glob, regex or built name), first bin/admission-bash.sh:1241
@@ -263,7 +263,7 @@ bin/admission-deny-hash.sh  6 lines in 5 files reach it by family `deny` (glob, 
 bin/doc-index-generate.sh  4 lines in 4 files reach it by family `docs` (glob, regex or built name), first bin/lint-conventions.sh:3639
 bin/doc-fresh-verify.sh  1 lines in 1 files reach it by family `fresh` (glob, regex or built name), first tests/doc/fresh-verify/fresh-verify.test.sh:42
 bin/standard-frozen-generate.sh  1 lines in 1 files reach it by family `frozen` (glob, regex or built name), first tests/ci/merge-stack/rehearse.test.sh:43
-bin/ci-github-plan.sh  7 lines in 5 files reach it by family `gh` (glob, regex or built name), first bin/floor-normalize.awk:70
+bin/ci-github-plan.sh  7 lines in 5 files reach it by family `gh` (glob, regex or built name), first bin/admission-normalize.awk:70
 bin/doc-graph-generate.sh  3 lines in 3 files reach it by family `graph` (glob, regex or built name), first bin/memory.sh:145
 bin/access-github-app-install.sh  19 lines in 11 files reach it by family `harbor` (glob, regex or built name), first bin/access-browser-agent.sh:657
 bin/housekeeping-clean.sh  19 lines in 11 files reach it by family `harbor` (glob, regex or built name), first bin/access-browser-agent.sh:657
@@ -292,7 +292,7 @@ bin/skill-collision-verify.sh  7 lines in 7 files reach it by family `skills` (g
 bin/skill-install.sh  8 lines in 8 files reach it by family `skills` (glob, regex or built name), first contracts/issue-taxonomy.tsv:113
 bin/status-generate.sh  7 lines in 6 files reach it by family `status` (glob, regex or built name), first evals/skill/e5trap/opsctl:93
 bin/memory-store-check.sh  4 lines in 2 files reach it by family `store` (glob, regex or built name), first bin/lint-secrets.sh:11
-bin/access-github-app/git-credential.sh  5 lines in 4 files reach it by family `git` (glob, regex or built name), first bin/floor-normalize.awk:70
+bin/access-github-app/git-credential.sh  5 lines in 4 files reach it by family `git` (glob, regex or built name), first bin/admission-normalize.awk:70
 bin/library-gate.sh  7 lines in 6 files reach it by family `gate` (glob, regex or built name), first .agents/protected-paths.tsv:70
 commands/context-budget.md  19 lines in 11 files reach it by family `harbor` (glob, regex or built name), first bin/access-browser-agent.sh:657
 commands/gate-merge.md  19 lines in 11 files reach it by family `harbor` (glob, regex or built name), first bin/access-browser-agent.sh:657
@@ -314,13 +314,13 @@ systemd/harbor-pulse.service  19 lines in 11 files reach it by family `harbor` (
 systemd/harbor-pulse.timer  19 lines in 11 files reach it by family `harbor` (glob, regex or built name), first bin/access-browser-agent.sh:657
 
 ### W6a (18 flagged)
-bin/floor-deny.sh  32 lines in 23 files reach it by family `floor` (glob, regex or built name), first .agents/protected-paths.tsv:21
-bin/floor-equiv.sh  32 lines in 23 files reach it by family `floor` (glob, regex or built name), first .agents/protected-paths.tsv:21
-bin/floor-install.sh  33 lines in 24 files reach it by family `floor` (glob, regex or built name), first .agents/protected-paths.tsv:21
-bin/floor-normalize.awk  32 lines in 23 files reach it by family `floor` (glob, regex or built name), first .agents/protected-paths.tsv:21
-bin/floor-observe.sh  32 lines in 23 files reach it by family `floor` (glob, regex or built name), first .agents/protected-paths.tsv:21
-bin/floor-uninstall.sh  32 lines in 23 files reach it by family `floor` (glob, regex or built name), first .agents/protected-paths.tsv:21
-bin/floor-verify.sh  32 lines in 23 files reach it by family `floor` (glob, regex or built name), first .agents/protected-paths.tsv:21
+bin/admission-deny.sh  32 lines in 23 files reach it by family `floor` (glob, regex or built name), first .agents/protected-paths.tsv:21
+bin/admission-equivalence.sh  32 lines in 23 files reach it by family `floor` (glob, regex or built name), first .agents/protected-paths.tsv:21
+bin/admission-install.sh  33 lines in 24 files reach it by family `floor` (glob, regex or built name), first .agents/protected-paths.tsv:21
+bin/admission-normalize.awk  32 lines in 23 files reach it by family `floor` (glob, regex or built name), first .agents/protected-paths.tsv:21
+bin/admission-observe.sh  32 lines in 23 files reach it by family `floor` (glob, regex or built name), first .agents/protected-paths.tsv:21
+bin/admission-remove.sh  32 lines in 23 files reach it by family `floor` (glob, regex or built name), first .agents/protected-paths.tsv:21
+bin/admission-verify.sh  32 lines in 23 files reach it by family `floor` (glob, regex or built name), first .agents/protected-paths.tsv:21
 bin/admission-api-route.sh  108 lines in 55 files reach it by family `guard` (glob, regex or built name), first .agents/protected-paths.tsv:20
 bin/admission-bash.sh  108 lines in 55 files reach it by family `guard` (glob, regex or built name), first .agents/protected-paths.tsv:20
 bin/admission-cloud.sh  108 lines in 55 files reach it by family `guard` (glob, regex or built name), first .agents/protected-paths.tsv:20

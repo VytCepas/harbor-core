@@ -11,6 +11,7 @@ ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
 LAYERS="${LAYERS_FILE:-$ROOT/contracts/layers.tsv}"
 . "$SRC/library-log.sh"
 log_init layers
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 
 # classify: stdin paths → path TAB core|dev|none|multi on stdout; a malformed row is named on stderr and exits 1.

@@ -44,6 +44,7 @@ esac
 ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}}"
 # One log format (contracts/logging.md), on stderr: stdout is the page itself under --stdout.
 . "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-log.sh"
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; log_init dashboard-gen
 OUT="$ROOT/build/dashboard.html"
 MODE="${1:-}"

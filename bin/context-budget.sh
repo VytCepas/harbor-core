@@ -60,6 +60,7 @@ esac
 
 ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 # The --check failures speak in the house line shape (contracts/logging.md, LOG1). stderr, as before.
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; . "$(dirname -- "$0")/library-log.sh"
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 
@@ -141,7 +142,7 @@ desc_bytes() { # <file> -> bytes of the whole description: value
 # bounds it); plugin and slash-command descriptions are installed by the operator, not by deploy; the SessionStart
 # injection moves by ~10 KB with the caller's directory and with the live packs. All three stay in the report above.
 if [ "$MODE" = ratchet ]; then
-  RB="${HARBOR_RATCHET_BASELINE:-$ROOT/registries/context-ratchet.tsv}"; RBN="${RB#$ROOT/}"
+  RB="${HARBOR_CONTEXT_RATCHET_BASELINE:-${HARBOR_RATCHET_BASELINE:-$ROOT/registries/context-ratchet.tsv}}"; RBN="${RB#$ROOT/}"
   rl="$(printf '%s\t%s\n' "$(bytes "$ROOT/policy/constitution.md")" policy/constitution.md)"
   for d in "$ROOT"/skills/*/ "$ROOT"/vendor/skills/*/; do
     f="$d/SKILL.md"; [ -f "$f" ] || continue

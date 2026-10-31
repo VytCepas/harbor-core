@@ -7,7 +7,7 @@ TOOL="$T_ROOT/hooks/session-state/session-state.sh"; GSTOP="$T_ROOT/bin/admissio
 T="$T_TMP"; ST="$T/state"; REPO="$T/repo"; CFG="$T/cfg"
 export HARBOR_STATUS_DIR="$ST" HARBOR_EVENT_DIR="$T/bus"
 # Auto-compact off for every section but its own, and never a real osascript: a test must not type into a terminal.
-export HARBOR_AUTOCOMPACT_PCT=101 HARBOR_AUTOCOMPACT_OSA=false
+export HARBOR_SESSION_AUTOCOMPACT_PERCENT=101 HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT=false
 mkdir -p "$REPO/docs/how-to" "$CFG"
 git -C "$REPO" init -q && git -C "$REPO" config user.email t@t && git -C "$REPO" config user.name t
 git -C "$REPO" checkout -q -b work; printf 'a\n' > "$REPO/f"; printf 'h\n' > "$REPO/docs/how-to/handover.md"
@@ -161,7 +161,7 @@ t_eq "95% but the handoff is newer than the last milestone: no continuation" "" 
 t_section "compact: a finished turn asks the agent once; the agent's [compact-ok] as the last line types /compact"
 rm -f "$CFG/.helm-dispatch/rules/event.session-save-now.rule"
 printf '#!/bin/sh\ncat > /dev/null; printf "%%s\\n" "$*" >> "%s/osa.calls"; echo sent\n' "$T" > "$T/osa"; chmod +x "$T/osa"
-export HARBOR_AUTOCOMPACT_PCT=35 HARBOR_AUTOCOMPACT_TTY=ttys999 HARBOR_AUTOCOMPACT_OSA="$T/osa" HARBOR_AUTOCOMPACT_DELAY=0
+export HARBOR_SESSION_AUTOCOMPACT_PERCENT=35 HARBOR_SESSION_AUTOCOMPACT_TTY=ttys999 HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT="$T/osa" HARBOR_SESSION_AUTOCOMPACT_DELAY=0
 typed() { _n=0; until grep -q "$(printf %.8s "$1") typed" "$ST"/backups/session-autocompact/*/log 2>/dev/null || [ "$_n" -ge 20 ]; do sleep 0.25; _n=$((_n + 1)); done; sleep 0.2; }
 : > "$T/osa.calls"
 printf '20\n' > "$ST/ctx/ac-small"; run ac-small plain 'All set.'
@@ -201,11 +201,11 @@ t_eq "...and nothing typed" "" "$(cat "$T/osa.calls")"; rm -f "$ST/compact-auto.
 sh "$T_ROOT/bin/session-autocompact.sh" '../x' ttys999
 sh "$T_ROOT/bin/session-autocompact.sh" ac-bad 'ttys1;touch x'
 t_eq "the helper: an unsafe session id or tty runs nothing" "" "$(cat "$T/osa.calls")"
-unset HARBOR_AUTOCOMPACT_TTY HARBOR_AUTOCOMPACT_DELAY; export HARBOR_AUTOCOMPACT_PCT=101 HARBOR_AUTOCOMPACT_OSA=false
+unset HARBOR_SESSION_AUTOCOMPACT_TTY HARBOR_AUTOCOMPACT_TTY HARBOR_SESSION_AUTOCOMPACT_DELAY HARBOR_AUTOCOMPACT_DELAY; export HARBOR_SESSION_AUTOCOMPACT_PERCENT=101 HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT=false
 
 t_section "cleanup: a merged PR of this session asks once; [cleanup-ok] as the last line runs the sweep's RECLAIM rows"
 printf '#!/bin/sh\nprintf "%%s\\n" "$*" >> "%s/clean.calls"\ncase "$*" in *--apply*) echo "  RECLAIM  finished-worktrees  0B  wt-x" ;; esac\n' "$T" > "$T/clean"; chmod +x "$T/clean"
-export HARBOR_CLEANUP_TOOL="$T/clean"
+export HARBOR_SESSION_CLEANUP_TOOL="$T/clean"
 cleaned() { _n=0; until grep -q -- '--record' "$T/clean.calls" 2>/dev/null || [ "$_n" -ge 20 ]; do sleep 0.25; _n=$((_n + 1)); done; sleep 0.2; }
 ev() { jq -nc --arg k "$1" --arg s "$2" --arg ts "$3" --arg sid "$4" '{id:"e",ts:$ts,kind:$k,subject:$s,src:"t",data:{session_id:$sid}}' >> "$T/bus/2020-01-01.jsonl"; }  # <kind> <subject> <ts> <sid>
 mkdir -p "$T/bus"; : > "$T/clean.calls"
@@ -239,7 +239,7 @@ cleaned; t_has "...the sweep applies on the live box" "$(cat "$T/clean.calls")" 
 t_has "...then re-records the count" "$(cat "$T/clean.calls")" '--record --live'
 t_has "...and logs what it reclaimed" "$(cat "$ST"/backups/session-cleanup/*/log)" 'reclaimed: finished-worktrees'
 : > "$T/clean.calls"; : > "$T/osa.calls"
-export HARBOR_AUTOCOMPACT_TTY=ttys999 HARBOR_AUTOCOMPACT_OSA="$T/osa" HARBOR_AUTOCOMPACT_DELAY=0
+export HARBOR_SESSION_AUTOCOMPACT_TTY=ttys999 HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT="$T/osa" HARBOR_SESSION_AUTOCOMPACT_DELAY=0
 run cl-2 plain 'All done.
 [cleanup-ok] [compact-ok]'
 t_eq "both markers: nothing printed" "" "$(cat "$T/out")"
@@ -247,7 +247,7 @@ cleaned; t_has "...the sweep ran" "$(cat "$T/clean.calls")" '--apply --live'
 typed cl-2; t_has "...and /compact was typed" "$(cat "$T/osa.calls")" '/dev/ttys999'
 sleep 0.5; : > "$T/clean.calls"; sh "$T_ROOT/bin/session-cleanup.sh" '../x'
 t_eq "the helper: an unsafe session id runs nothing" "" "$(cat "$T/clean.calls")"
-unset HARBOR_AUTOCOMPACT_TTY HARBOR_AUTOCOMPACT_DELAY HARBOR_CLEANUP_TOOL; export HARBOR_AUTOCOMPACT_OSA=false
+unset HARBOR_SESSION_AUTOCOMPACT_TTY HARBOR_AUTOCOMPACT_TTY HARBOR_SESSION_AUTOCOMPACT_DELAY HARBOR_AUTOCOMPACT_DELAY HARBOR_SESSION_CLEANUP_TOOL HARBOR_CLEANUP_TOOL; export HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT=false
 
 t_section "fail-open, off switch, and speed"
 printf 'not json' | CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" > "$T/out" 2>&1; t_eq "garbage on stdin: exit 0, silent" "0:" "$?:$(cat "$T/out")"

@@ -1,25 +1,14 @@
 # Why it is wired this way (moved from bin/deploy-runtime-install.sh, harbor#1272):
-# harbor#6 — the work-log reconciler, wired at STOP rather than SessionStart.
-#
-# D1's ticket says SessionStart, and that is where it does NOT work. Every hook
-# here reads the session's resolved context, and the thing that WRITES that
-# context is context-resolve.sh — another SessionStart hook. Hooks in one event
-# are not ordered by this installer and the harness gives no ordering guarantee,
-# so on a fresh session the context file may not exist when the reconciler runs,
-# and floor_engine_stand_down's fail-toward-repo default then made it a no-op.
-# Measured (before the pull hook was retired, #311): it was wired FIRST at SessionStart, ahead of the
-# resolver, and that ordering is the reason this hook is at Stop. (Since harbor#954 the
-# stand-down reads only the repo's `worklog: off`, not the context file.)
-#
-# At Stop the context is reliably present — the live store carries records
-# written by worklog-push.sh, which reads it at Stop, so this is observed rather
-# than assumed. A session that crashed still gets reconciled without operator
-# action; it happens at the end of the NEXT session instead of the start of it.
-# Stop stays the schedule: moving it would be a change of its own, not this one.
+# harbor#6 wired the work-log reconciler at STOP, because its stand-down then read the session context that
+# context-resolve.sh (another SessionStart hook, unordered) writes, and on a fresh session that file could be absent.
+# harbor#954 removed that dependency: the stand-down reads only the repo's `worklog: off`. So harbor#1390 moves it to
+# SessionStart, where it runs once a session instead of every turn: "which sessions never reached Stop" is a
+# once-per-session question. It skips the session that is starting, which has a transcript and no record yet.
+# A crashed session is now reconciled at the start of the next session rather than at its first Stop.
 key	value
 engine	memory-harvest
 installer	runtime-install
-wire	Stop	-	-
+wire	SessionStart	-	-
 senses	transcripts of the last days that have no work-log record
 acts-on	the work-log: a record for each session that never reached Stop
 findings	a session record it wrote late

@@ -32,6 +32,7 @@ log_init restore
 _die() { log_fail "$1"; log_nofix "${2:-harbor#765 — bin/deploy-restore.sh}"; log_end || :; exit 1; }
 DRY=0; FROM=''
 il_opt() {
+  # shellcheck disable=SC2034 # IL_TAKE: read by deploy-install-lib.sh
   case "$1" in
     --dry-run) DRY=1; IL_TAKE=-1 ;;  # a mode word: il_cmd never replays it
     --from) il_value --from "${2-}"; [ -z "$FROM" ] || il_usage_error '--from given twice'; FROM="$2"; IL_TAKE=2 ;;
@@ -70,19 +71,19 @@ else
   ARCHIVE="$SNAP/config.tgz"
 fi
 # Every hint names the snapshot this run evaluated, so il_cmd respells it (and drops --dry-run).
+# shellcheck disable=SC2034 # IL_ARGV: read by deploy-install-lib.sh
 IL_ARGV="--from $(_il_sq "$SNAP")"
 # ── THE HASH LEDGER (harbor#769): only bytes deploy recorded are restored ──
 # backups/ is writable by a session and .helm-snapshots is not, so a snapshot is trusted only
 # through its row there. No row, no restore: a missing ledger refuses everything, and the way
 # back is the operator appending the row by hand. Nothing here writes the ledger.
 LEDGER="$TARGET/.helm-snapshots"
-_sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
-SHA="$(_sha <"$ARCHIVE" 2>/dev/null || true)"
+SHA="$(il_sha <"$ARCHIVE" 2>/dev/null || true)"
 case "$SHA" in *[!0-9abcdef]*|'') _die "cannot hash $ARCHIVE" ;; esac
 [ "${#SHA}" -eq 64 ] || _die "cannot hash $ARCHIVE"
 case "$ARCHIVE" in "$TARGET"/*) REL="${ARCHIVE#"$TARGET"/}" ;; *) REL="$ARCHIVE" ;; esac
 SETSHA=''
-if [ "$ARCHIVE" = "$SNAP/config.tgz" ] && [ -f "$SNAP/set.txt" ]; then SETSHA="$(_sha <"$SNAP/set.txt")"; fi
+if [ "$ARCHIVE" = "$SNAP/config.tgz" ] && [ -f "$SNAP/set.txt" ]; then SETSHA="$(il_sha <"$SNAP/set.txt")"; fi
 _recorded() { [ -f "$LEDGER" ] && awk -v h="$SHA" '$1 == h { f = 1 } END { exit !f }' "$LEDGER"; }
 if ! _recorded; then
   if [ -f "$LEDGER" ] && awk -v p="$REL" '$2 == p { f = 1 } END { exit !f }' "$LEDGER"; then
@@ -109,7 +110,7 @@ fi
 LBREC=''
 if [ "$ARCHIVE" = "$SNAP/config.tgz" ] && [ -f "$SNAP/local-bin.tsv" ]; then
   LBREC="$SNAP/local-bin.tsv"
-  _lbsha="$(_sha <"$LBREC")"
+  _lbsha="$(il_sha <"$LBREC")"
   if ! awk -v h="$SHA" -v s="bin=$_lbsha" '$1 == h { for (i = 4; i <= NF; i++) if ($i == s) f = 1 } END { exit !f }' "$LEDGER"; then
     _die "$LBREC is not the ~/.local/bin record deploy made for this snapshot (its sha256 differs): refusing it; nothing was touched" \
       "harbor#770 — pick another snapshot with --from"
@@ -187,8 +188,8 @@ _moves() { case "$_NL$MOVE" in *"$_NL$1$_NL"*) return 0 ;; esac; return 1; }
 _LOST=''
 if _moves bin; then
   for _s in admission-bash.sh admission-self-edit.sh admission-integrity.sh admission-egress.sh library-admission.sh \
-            annotate-web.sh context-resolve.sh admission-hook.sh floor-deny.sh floor-observe.sh \
-            floor-normalize.awk pin-instructions.sh deploy-restore.sh; do
+            annotate-web.sh context-resolve.sh admission-hook.sh admission-deny.sh admission-observe.sh \
+            admission-normalize.awk pin-instructions.sh deploy-restore.sh; do
     [ -f "$TARGET/bin/$_s" ] && ! _archive_has "bin/$_s" && _LOST="$_LOST bin/$_s"
   done
 fi

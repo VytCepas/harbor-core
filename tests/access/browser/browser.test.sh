@@ -3,7 +3,7 @@
 # Playwright is a stub probe dir, so the offline arms run the same on every host. The live
 # consent arms run only when HARBOR_ACCESS_PROBE_DIR is exported at a real Playwright install.
 LIVE_PROBE="${HARBOR_ACCESS_PROBE_DIR:-${HARBOR_PROBE_DIR:-}}"; LIVE_URL="${HARBOR_ACCESS_BROWSER_LIVE_URL:-${HARBOR_BROWSER_LIVE_URL:-}}"  # before t_init clears them
-REQUIRE_NODE="${HARBOR_REQUIRE_NODE:-}"  # set by the runner image that carries node (harbor#1060)
+REQUIRE_NODE="${HARBOR_TEST_REQUIRE_NODE:-${HARBOR_REQUIRE_NODE:-}}"  # set by the runner image that carries node (harbor#1060)
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 BROWSER="$T_ROOT/bin/access-browser.sh"; AGENT="$T_ROOT/bin/access-browser-agent.sh"; ROUTING="$T_ROOT/contracts/browser-routing.md"
 unset HARBOR_ACCESS_CHROME HARBOR_CHROME
@@ -19,7 +19,7 @@ HARBOR_ACCESS_PROBE_DIR="$P"; export HARBOR_ACCESS_PROBE_DIR
 HAVE_NODE=0; ! command -v node >/dev/null 2>&1 || HAVE_NODE=1
 [ "$HAVE_NODE" = 1 ] || echo "  SKIP the node arms: no node on PATH (the runner image carries it)"
 # A skip is only for a box that never promised node: the runner image does, so there it is a failure.
-[ "$REQUIRE_NODE" != 1 ] || t_eq "node is on PATH where the image promises it (HARBOR_REQUIRE_NODE)" 1 "$HAVE_NODE"
+[ "$REQUIRE_NODE" != 1 ] || t_eq "node is on PATH where the image promises it (HARBOR_TEST_REQUIRE_NODE)" 1 "$HAVE_NODE"
 
 if [ "$HAVE_NODE" = 1 ]; then
 t_section "the offline gate suite, delegated"

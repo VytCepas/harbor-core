@@ -8,16 +8,16 @@
 #   ci-mirror.sh --close <pr>       close the mirror PR and delete its branch
 #
 # Staging and every gate are bin/deploy-push.sh's, run from THIS checkout against the PR head (HARBOR_SCOPE_ROOT), so a PR cannot
-# weaken the gate that judges it. Any red gate and nothing is pushed. The mirror checkout (HARBOR_CORE_MIRROR_DIR, required;
+# weaken the gate that judges it. Any red gate and nothing is pushed. The mirror checkout (HARBOR_CI_CORE_MIRROR_DIR, required;
 # its origin is harbor-core) must be clean and on a branch; the branch starts from origin/main
 # and each mirror is two more snapshot commits on it, the base then the head, so a push is a fast-forward and never forced.
 # THE BASE. The mirror PR targets ci/base-<pr>, the core set of the PR's merge-base with this checkout's HEAD (the PR's
 # base, as public-ci checks it out), so hosted CI diffs only what the PR changes. Against harbor-core main, the last
 # publish, every PR carried everything merged since and selected every suite. The base passes the leak, secrets, history
 # and domain gates too (deploy-push --ci-base), because it is pushed to the public repo.
-# The push credential is HARBOR_CORE_MIRROR_TOKEN, sent as a request header from the environment: never in a URL or argv.
+# The push credential is HARBOR_CI_CORE_MIRROR_TOKEN, sent as a request header from the environment: never in a URL or argv.
 # --dry-run runs the gates against the checkout as it is and touches no network.
-# Env: HARBOR_CORE_SLUG (default VytCepas/harbor-core), HARBOR_SLUG (the harbor repo, else derived from origin).
+# Env: HARBOR_CI_CORE_SLUG (default VytCepas/harbor-core), HARBOR_CI_SLUG (the harbor repo, else derived from origin).
 # Exit 0 done, 1 refused or red, 2 usage.
 set -eu
 
@@ -25,6 +25,7 @@ case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
 . "$SRC/library-log.sh"
 log_init ci-mirror
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 
 DRY=0; MODE=mirror; PR=''
@@ -44,17 +45,17 @@ case "$PR" in ''|*[!0-9]*) echo "usage: ci-mirror.sh [--dry-run] <pr> | --status
 refuse() { log_fail "$1"; [ -z "${2:-}" ] || log_fix "$2"; log_end || :; exit 1; }
 
 BRANCH="ci/harbor-$PR"; BASEBR="ci/base-$PR"
-CORE="${HARBOR_CORE_SLUG:-VytCepas/harbor-core}"
-slug_valid "$CORE" || refuse "HARBOR_CORE_SLUG '$CORE' is not owner/name" "export HARBOR_CORE_SLUG=<owner>/<harbor-core repo>"
+CORE="${HARBOR_CI_CORE_SLUG:-${HARBOR_CORE_SLUG:-VytCepas/harbor-core}}"
+slug_valid "$CORE" || refuse "HARBOR_CI_CORE_SLUG '$CORE' is not owner/name" "export HARBOR_CI_CORE_SLUG=<owner>/<harbor-core repo>"
 NODIFF="no core file differs from the PR's base"
-HSLUG="${HARBOR_SLUG:-$(slug_of_url "$(git -C "$ROOT" config --get remote.origin.url 2>/dev/null || :)")}"
-slug_valid "$HSLUG" || refuse "the harbor repo slug is unknown" "export HARBOR_SLUG=<owner>/harbor"
+HSLUG="${HARBOR_CI_SLUG:-${HARBOR_SLUG:-$(slug_of_url "$(git -C "$ROOT" config --get remote.origin.url 2>/dev/null || :)")}}"
+slug_valid "$HSLUG" || refuse "the harbor repo slug is unknown" "export HARBOR_CI_SLUG=<owner>/harbor"
 
 need_token() {
-  [ -n "${HARBOR_CORE_MIRROR_TOKEN:-}" ] || refuse "HARBOR_CORE_MIRROR_TOKEN is not set, so nothing can reach $CORE" "store the fine-grained harbor-core token as that harbor secret"  # secret-seam: Actions secret (entry harbor-core-mirror-token)
+  [ -n "${HARBOR_CI_CORE_MIRROR_TOKEN:-${HARBOR_CORE_MIRROR_TOKEN:-}}" ] || refuse "HARBOR_CI_CORE_MIRROR_TOKEN is not set, so nothing can reach $CORE" "store the fine-grained harbor-core token as that harbor secret"  # secret-seam: Actions secret (entry harbor-core-mirror-token)
 }
 # gh calls against harbor-core carry the mirror token (gh sends GH_TOKEN as a header); harbor's own calls do not.
-core_gh() { GH_TOKEN="$HARBOR_CORE_MIRROR_TOKEN" gh "$@"; }  # secret-seam: entry harbor-core-mirror-token
+core_gh() { GH_TOKEN="${HARBOR_CI_CORE_MIRROR_TOKEN:-$HARBOR_CORE_MIRROR_TOKEN}" gh "$@"; }  # secret-seam: entry harbor-core-mirror-token
 
 # public-ci on the harbor PR head: STATE, DESC and URL as the caller set them.
 set_status() {
@@ -107,8 +108,8 @@ close)
 esac
 
 # ── mirror ──
-MIRDIR="${HARBOR_CORE_MIRROR_DIR:-}"
-[ -n "$MIRDIR" ] || refuse "HARBOR_CORE_MIRROR_DIR is not set" "git clone https://github.com/$CORE.git <dir>, then export HARBOR_CORE_MIRROR_DIR=<dir>"
+MIRDIR="${HARBOR_CI_CORE_MIRROR_DIR:-${HARBOR_CORE_MIRROR_DIR:-}}"
+[ -n "$MIRDIR" ] || refuse "HARBOR_CI_CORE_MIRROR_DIR is not set" "git clone https://github.com/$CORE.git <dir>, then export HARBOR_CI_CORE_MIRROR_DIR=<dir>"
 [ -d "$MIRDIR" ] || refuse "no mirror checkout at $MIRDIR" "git clone https://github.com/$CORE.git $MIRDIR"
 TDIR="$(CDPATH= cd -- "$MIRDIR" && pwd -P)"
 [ "$(git -C "$TDIR" rev-parse --show-toplevel 2>/dev/null || :)" = "$TDIR" ] || refuse "$MIRDIR is not the top level of a git checkout" ""
@@ -141,10 +142,10 @@ if [ "$DRY" = 1 ]; then
 fi
 
 # The auth rides in git's environment as a header: not in the remote's URL, not in argv, not in .git/config.
-AUTH="$(printf 'x-access-token:%s' "$HARBOR_CORE_MIRROR_TOKEN" | base64 | tr -d '\n')"  # secret-seam: entry harbor-core-mirror-token
+AUTH="$(printf 'x-access-token:%s' "${HARBOR_CI_CORE_MIRROR_TOKEN:-$HARBOR_CORE_MIRROR_TOKEN}" | base64 | tr -d '\n')"  # secret-seam: entry harbor-core-mirror-token
 core_git() { GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader GIT_CONFIG_VALUE_0="Authorization: Basic $AUTH" git -C "$TDIR" "$@"; }
 
-core_git fetch -q origin || refuse "cannot fetch $CORE" "check HARBOR_CORE_MIRROR_TOKEN (Contents: write)"
+core_git fetch -q origin || refuse "cannot fetch $CORE" "check HARBOR_CI_CORE_MIRROR_TOKEN (Contents: write)"
 git -C "$TDIR" rev-parse -q --verify refs/remotes/origin/main >/dev/null || refuse "$CORE has no main to start from" ""
 START=refs/remotes/origin/main
 if git -C "$TDIR" rev-parse -q --verify "refs/remotes/origin/$BRANCH" >/dev/null; then START="refs/remotes/origin/$BRANCH"; fi

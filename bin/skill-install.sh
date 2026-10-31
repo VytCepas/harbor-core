@@ -46,6 +46,7 @@ log_init skills-install
 # of it, drifting in the direction nobody notices until it matters.
 KIND=skills; ALL=0; NAME=''; FROM_OLD=''
 il_opt() {
+  # shellcheck disable=SC2034 # IL_TAKE: read by deploy-install-lib.sh
   case "$1" in
     commands|skills) KIND="$1"; IL_TAKE=1 ;;
     --all) ALL=1; IL_TAKE=1 ;;

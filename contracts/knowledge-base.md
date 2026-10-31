@@ -16,18 +16,18 @@ the deliverable contract out into its own skill.
 
 > **Would this still be true if the company's data assets were replaced tomorrow?**
 
-Measured 2026-08-29:
+Measured 2026-08-29. The paths are as they stand after the data repo lowercased them in October 2026; the counts are that day's:
 
 | directory | files | size | still true? | verdict |
 |---|---|---|---|---|
-| `EVALS/` | 6 | 84K | yes — a rubric, a design, a contamination rule | **practice** |
-| `PLAYBOOK/` | 3 | 24K | yes — job shapes, not this repo's jobs | **practice** |
+| `evals/` | 6 | 84K | yes — a rubric, a design, a contamination rule | **practice** |
+| `docs/explanation/playbooks/` | 3 | 24K | yes — job shapes, not this repo's jobs | **practice** |
 | `bin/` | 9 | 168K | mixed — `eval-quarantine.sh` is practice; `check-volumes.sh` and `check-connections.sh` are wholly about this warehouse | **split** |
-| `ACCESS/` | 11 | 136K | no — these are the company's accounts | stays |
-| `SEAMS/` | 7 | 252K | no | stays |
-| `LINEAGE/` | 4 | 1.6M | no | stays |
-| `AUDITS/` | 26 | 632K | no | stays |
-| `RUNBOOKS/` | 11 | 192K | no | stays |
+| `harbor-private/access/` | 11 | 136K | no — these are the company's accounts | stays |
+| `docs/explanation/seams/` | 7 | 252K | no | stays |
+| `docs/generated/lineage.md` | 4 | 1.6M | no | stays |
+| `docs/reports/` | 26 | 632K | no | stays |
+| `docs/runbooks/` | 11 | 192K | no | stays |
 | `probes/` | 26 | 148K | no — every query names this project's datasets | stays |
 
 **The practice layer is small: roughly 108K across nine files, plus one script.**
@@ -68,7 +68,7 @@ acknowledging it.
 
 ## What is NOT proposed
 
-- **`ACCESS/`, `SEAMS/`, `LINEAGE/`, `AUDITS/`, `RUNBOOKS/`, `probes/` stay.**
+- **`docs/explanation/seams/`, `docs/generated/lineage.md`, `docs/reports/`, `docs/runbooks/`, `probes/` stay**, and the account cards went to the private layer (`harbor-private/access/`).
   They are the data repo's own, they fail the test above, and R7's own ticket says so.
 - **No prose is rewritten in the move.** Same rule as R3: every eval's text
   encodes which fixture retired which failure, and a rewrite destroys that trail.

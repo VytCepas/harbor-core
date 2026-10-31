@@ -8,7 +8,7 @@
 # WHAT IT INSTALLS (harbor#1018): the gh shim at <bin>/gh, and git-credential.sh and mint-token.sh in
 # <home>/.config/harbor-app/. Nothing else in that directory is touched: app.pem, app-id and the token
 # caches are the operator's and never live in this repo. The owner->account table (orgs.tsv) names real
-# organisations, so core carries none: it is copied from the private layer's harbor-app/orgs.tsv when that exists.
+# organisations, so core carries none: it is copied from the private layer's github-app/orgs.tsv (or the old harbor-app/) when that exists.
 #
 # COPIES, NEVER LINKS. A session can edit this checkout, and a shim that drops GH_TOKEN falls through to
 # the operator's own gh login — the escalation the denied directories exist to stop. A symlink at a
@@ -19,7 +19,9 @@ SRC="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 . "$SRC/library-log.sh"
 . "$SRC/deploy-install-lib.sh"
 log_init harbor-app-install
+# shellcheck disable=SC2034 # IL_LIVE_DIR: read by deploy-install-lib.sh
 IL_LIVE_DIR="${HOME:-}"
+# shellcheck disable=SC2034 # IL_ENV: read by deploy-install-lib.sh
 IL_ENV=''
 il_parse "$@"
 if [ "$IL_LIVE" -eq 1 ] && [ -d "${HOME:-}/.claude" ]; then IL_STATE="$HOME/.claude"; fi
@@ -70,7 +72,9 @@ if git config --file "$GC" --get-all "$GK" 2>/dev/null | grep -qE "$GOLD"; then
   else log_fail "gitconfig: could not repoint the github.com helper in $GC"; log_fix "git config --global --replace-all $GK harbor '$GOLD'"; fi
 fi
 PRIV="$(sh "$SRC/scope-roots.sh" --private 2>/dev/null)" || PRIV=
-if [ -n "$PRIV" ] && [ -f "$PRIV/harbor-app/orgs.tsv" ]; then putf "$PRIV/harbor-app/orgs.tsv" "$CFG/orgs.tsv" 600; fi
+# The layer's table is github-app/orgs.tsv; the old harbor-app/orgs.tsv is read until 2026-12-01 (renames.tsv rename-1448).
+_po=; for _pt in github-app harbor-app; do [ -n "$_po" ] || [ -z "$PRIV" ] || [ ! -f "$PRIV/$_pt/orgs.tsv" ] || _po="$PRIV/$_pt/orgs.tsv"; done
+[ -z "$_po" ] || putf "$_po" "$CFG/orgs.tsv" 600
 
 [ "$IL_APPLY" -eq 1 ] || [ "$CHANGE" -eq 0 ] || il_next "$(il_cmd --apply)"
 log_end; exit $?

@@ -13,7 +13,7 @@ CFG="$B/mt"; mkdir -p "$CFG/bin"
 for g in library-admission.sh admission-self-edit.sh admission-integrity.sh; do [ -f "$T_ROOT/bin/$g" ] && cp "$T_ROOT/bin/$g" "$CFG/bin/$g"; done
 printf '{"permissions":{"allow":[],"deny":[]}}\n' > "$CFG/settings.json"
 CLAUDE_CONFIG_DIR="$CFG" sh "$T_ROOT/bin/deploy-harden.sh" --apply --dir "$CFG" >/dev/null 2>&1
-CLAUDE_CONFIG_DIR="$CFG" sh "$T_ROOT/bin/floor-deny.sh" --apply --dir "$CFG" >/dev/null 2>&1
+CLAUDE_CONFIG_DIR="$CFG" sh "$T_ROOT/bin/admission-deny.sh" --apply --dir "$CFG" >/dev/null 2>&1
 
 t_section "MT-1: every fixture path classifies as the table says"
 while IFS='	' read -r p want; do

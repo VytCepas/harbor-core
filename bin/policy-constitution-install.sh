@@ -23,7 +23,7 @@
 # the specific thing those two gates exist to make impossible by accident.
 #
 # IT NEVER RE-PINS. B8 is the operator's act from their own terminal, for the
-# reason floor-install.sh records at length: an installer run from a session that
+# reason admission-install.sh records at length: an installer run from a session that
 # blesses its own instruction surfaces is a self-approval loop.
 set -eu
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
@@ -33,6 +33,7 @@ log_init constitution-install
 ROOT="$(CDPATH='' cd -- "$HERE/.." && pwd)"
 SRC="$ROOT/policy/constitution.md"
 FROM_BRANCH=0
+# shellcheck disable=SC2034 # IL_TAKE: read by deploy-install-lib.sh
 il_opt() { case "$1" in --from-branch) FROM_BRANCH=1; IL_TAKE=1 ;; *) IL_TAKE=0 ;; esac; }
 il_parse "$@"
 il_target

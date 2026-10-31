@@ -87,16 +87,16 @@ for s in c1 c2 c3 c4; do mk "$s" 'mkdir -p "$T_CON/run"; : > "$T_CON/run/$$"; n=
 man c1 c2 c3 c4; rm -f "$R/tests/suite-durations.tsv"
 peak() { sort -n "$CON/seen" | tail -1 | tr -d ' '; }
 rm -rf "$CON"; mkdir -p "$CON"; echo '50000 100000' > "$CM"
-T_CON="$CON" HARBOR_CPU_MAX="$CM" HARBOR_SCOPE_ROOT="$R" sh "$SR" -j 4 >/dev/null 2>&1
+T_CON="$CON" HARBOR_TEST_CPU_MAX="$CM" HARBOR_SCOPE_ROOT="$R" sh "$SR" -j 4 >/dev/null 2>&1
 t_eq "half a CPU: never more than one suite at once, though --jobs is 4" 1 "$(peak)"
 rm -rf "$CON"; mkdir -p "$CON"; echo '200000 100000' > "$CM"
-T_CON="$CON" HARBOR_CPU_MAX="$CM" HARBOR_SCOPE_ROOT="$R" sh "$SR" -j 4 >/dev/null 2>&1
+T_CON="$CON" HARBOR_TEST_CPU_MAX="$CM" HARBOR_SCOPE_ROOT="$R" sh "$SR" -j 4 >/dev/null 2>&1
 t_eq "control: two CPUs allow all four" 4 "$(peak)"
 # xargs starts the workers together, so which suite takes the one slot first is not fixed: every suite raises the
 # quota and holds until a second one has started, so the pool must widen whoever goes first (harbor#1032).
 for s in c1 c2 c3 c4; do mk "$s" 'mkdir -p "$T_CON/run"; : > "$T_CON/run/$$"; n=$(ls "$T_CON/run" | wc -l); echo $n >> "$T_CON/seen"; echo "200000 100000" > "$T_CM"; i=0; while [ "$(wc -l < "$T_CON/seen" | tr -d " ")" -lt 2 ] && [ $i -lt 100 ]; do sleep 0.1; i=$((i+1)); done; rm -f "$T_CON/run/$$"'; done
 rm -rf "$CON"; mkdir -p "$CON"; echo '50000 100000' > "$CM"
-T_CM="$CM" T_CON="$CON" HARBOR_CPU_MAX="$CM" HARBOR_SCOPE_ROOT="$R" sh "$SR" -j 4 >/dev/null 2>&1
+T_CM="$CM" T_CON="$CON" HARBOR_TEST_CPU_MAX="$CM" HARBOR_SCOPE_ROOT="$R" sh "$SR" -j 4 >/dev/null 2>&1
 t_eq "a quota raised mid-run (by whichever suite starts first) widens the pool for the rest" yes "$([ "$(peak)" -ge 2 ] && echo yes || echo no)"
 rm -f "$R/tests/suite-durations.tsv"
 
@@ -224,21 +224,21 @@ t_section "the limit is for a hang, not a slow run (no timeout(1) needed)"
 # A silent suite is cut off after TMO seconds without output, with its children; a suite that keeps printing is not,
 # however long it takes, until the hard cap; both say "timed out" so a red is never a bare exit 124.
 mk hang 'sleep 30 & echo $! > "'"$T_TMP"'/hang.pid"; wait'; man hang
-S0="$(date +%s)"; O="$(TMO=2 HARBOR_SUITE_HARD_TIMEOUT=0 run -j 1)"; S1="$(date +%s)"
+S0="$(date +%s)"; O="$(TMO=2 HARBOR_TEST_SUITE_HARD_TIMEOUT=0 run -j 1)"; S1="$(date +%s)"
 t_has "a silent suite fails as timed out" "$O" "timed out: no output for 2s"
 t_eq "...within seconds, not the suite's own 30" yes "$([ $((S1 - S0)) -lt 15 ] && echo yes || echo no)"
 t_eq "...and its child is killed too" no "$(kill -0 "$(cat "$T_TMP/hang.pid")" 2>/dev/null && echo yes || echo no)"
 mk slow 'for i in 1 2 3 4 5 6; do echo tick; sleep 1; done'; man slow
-O="$(TMO=3 HARBOR_SUITE_HARD_TIMEOUT=0 run -j 1)"
+O="$(TMO=3 HARBOR_TEST_SUITE_HARD_TIMEOUT=0 run -j 1)"
 t_has "a suite printing every second outlives a 3s idle limit" "$O" "ok: "
 t_hasnt "...and is not called timed out" "$O" "timed out"
 mk chatty 'while :; do echo tick; sleep 1; done'; man chatty
-O="$(TMO=3 HARBOR_SUITE_HARD_TIMEOUT=5 run -j 1)"
+O="$(TMO=3 HARBOR_TEST_SUITE_HARD_TIMEOUT=5 run -j 1)"
 t_has "a suite that never stops printing hits the hard cap" "$O" "timed out: no output for 3s, or 5s in all"
 # A governor waiting for a CPU slot has written no log yet: that wait is bounded by its deadline, not a hang.
 G="$T_TMP/gbin"; mkdir -p "$G"; cp "$T_ROOT/bin/test-suite-run.sh" "$T_ROOT/bin/library-log.sh" "$G/"; mk gw; man gw
 printf '#!/bin/sh\nshift 2; o="$1"; shift 2; sleep 4; exec "$@" > "$o" 2>&1\n' > "$G/ci-governor.sh"
-O="$(HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_SUITE_TIMEOUT=2 HARBOR_SUITE_HARD_TIMEOUT=20 sh "$G/test-suite-run.sh" -j 1 2>&1)"
+O="$(HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_SUITE_TIMEOUT=2 HARBOR_TEST_SUITE_HARD_TIMEOUT=20 sh "$G/test-suite-run.sh" -j 1 2>&1)"
 t_has "a 4s wait for a slot outlives a 2s idle limit" "$O" "ok: "
 t_hasnt "...and is not called timed out" "$O" "timed out"
 
@@ -253,7 +253,7 @@ t_eq "test-suite-run.sh opens no /dev/stderr or /dev/fd/N by name" "" "$(devopen
 # ps answers nothing: a hung suite's child still dies, through the suite's own process group.
 P="$T_TMP/nops"; mkdir -p "$P"; printf '#!/bin/sh\nexit 1\n' > "$P/ps"; chmod +x "$P/ps"
 mk hang 'sleep 30 & echo $! > "'"$T_TMP"'/hang.pid"; wait'; man hang
-O="$(PATH="$P:$PATH" TMO=2 HARBOR_SUITE_HARD_TIMEOUT=0 run -j 1)"
+O="$(PATH="$P:$PATH" TMO=2 HARBOR_TEST_SUITE_HARD_TIMEOUT=0 run -j 1)"
 t_has "with ps refused, a silent suite still times out" "$O" "timed out: no output for 2s"
 # Does this shell give a monitor-mode job its own group? dash with no tty declines, and then only ps walks the tree.
 OWNPG="$( (set -m 2>/dev/null; sleep 5 & g=$!; set +m 2>/dev/null; kill -0 "-$g" 2>/dev/null && echo yes || echo no; kill "$g" 2>/dev/null) </dev/null)"

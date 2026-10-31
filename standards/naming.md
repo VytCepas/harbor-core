@@ -25,6 +25,7 @@ table below.
 | 8 | Filesystem schema | `repo-kinds.tsv` |
 | 10 | Controls, `register:` namespaces | `controls.tsv`, `registers.tsv` |
 | 13 | Workspace, private layer, packs, share (D-78 to D-85) | `terms.tsv` class `share`; `kinds.tsv` column `share` |
+| 14 | A repo's own words and families (harbor#967) | `naming-words.tsv`, `naming-families.tsv` at a repo's root |
 | 9, 11 | Conventions beyond names; migration | the draft behind harbor#949, until their registers land |
 
 ## 0. Principles
@@ -165,8 +166,8 @@ the tool that forces it.**
      while the rename waves wait. It judges paths, not the env tokens inside them and not the registry, so a branch
      is held to the names it brings in. Promoting it to block is a person's PR (§10.3).
    - It reads `standards/naming/` and, when present, the private overlay `harbor-private/terms.tsv`: client and system
-     terms only (§13, D-85). Core carries no client term. A repo-local register for a workload's own domains is
-     not built: it is part of the six registers.
+     terms only (§13, D-85). Core carries no client term. A repo outside harbor adds its own words and families
+     from its root, the repo overlay (§14); core never carries them.
 3. **Mode, shadow → warn → block (D-29, D-64):**
    - Each control's mode is a cell of `controls.tsv`. **shadow** records a finding and prints nothing, **warn**
      prints it, **block** fails the run. `advisory` and `inform` are legacy spellings of warn, listed as the `alt`
@@ -313,3 +314,33 @@ The target design is `DESIGN.md` of the core-packs deliverable; this section is 
 - **Client terms and leak patterns (D-85):** `bin/lint-name.sh` reads
   `${HARBOR_SCOPE_PRIVATE:-$PORT_ROOT/harbor-private}/terms.tsv` when present. Patterns for the leak gate live in
   `leaks.tsv`, never in `terms.tsv`. `--self-test` ignores the overlay, so the suite is the same on every box.
+
+## 14. A repo's own words and families (harbor#967)
+
+For a repo owner whose domain names are exempted today. A workload tool or a repo's domain is never a core row
+(`contracts/domain-terms.tsv`), and core families drive the CLI tree (D-13), so the repo registers them itself, at its
+root. Every run judged from that root reads them, the vendored judge included.
+
+1. **Words** go in `naming-words.tsv`, with the header row and columns of `words.tsv` (`id`, `note`). Each row is one
+   lowercase word.
+2. **Families** go in `naming-families.tsv`, with the header row and columns of `terms.tsv`. Each row is class
+   `family`, one lowercase word, with a `stability` and a `definition`. Start the file from the registry's own header:
+   `grep -v '^#' vendor/naming/registry/terms.tsv | head -n 1 > naming-families.tsv`.
+3. **Run the gate:** `sh gates/naming-check.sh`. `sh vendor/naming/lint-name.sh --check overlay .` judges the overlay
+   alone. Then delete the exemption rows the overlay made unnecessary.
+
+Two rules judge the overlay. Both block, and no exemption row hides either:
+
+- `name.overlay-shape`: a header or column count that is not the registry file's, a row that is not one lowercase
+  word, a word listed twice across the two files, a family row that is not class `family` or has no stability or
+  definition, CRLF line endings, or an overlay at a root holding `standards/naming/`. Harbor registers its own words
+  in its registry, so an overlay in harbor is refused and never read.
+- `name.overlay-shadow`: a word harbor already registers, as a term, a word of a term or a `words.tsv` row (delete
+  the row: a harbor upgrade that adds your word turns it red); any harbor alias; or a family that is a harbor family,
+  verb, domain or system, because the grammar would parse that word two ways (§3). A harbor word or a term of another
+  class, such as a `concept`, may become a repo family.
+
+A repo family reaches only the repo's own runs: `name.family`, `name.test-path`, `name.word-unregistered`, the env
+family slot and the commit scope. It never reaches harbor's tree, `--gen cli-tree`, `--gen labels` or the validators.
+The overlay adds no verbs. A verb is optional in the `bin` grammar, so an unregistered one is read as part of the
+object and is not a finding.

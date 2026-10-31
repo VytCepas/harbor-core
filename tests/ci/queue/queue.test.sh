@@ -41,7 +41,7 @@ hist() { # <run id> <A secs> — B is always 60s and C 300s
 }
 hist 10 580; hist 11 600; hist 12 900    # A's median is 600, not the 693 mean; o/s has no fixtures
 
-qat() { _t="$1"; shift; FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_CI_RUNNERS_DIR="$RUN" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_DOCKER="${QDOCKER:-false}" \
+qat() { _t="$1"; shift; FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_CI_RUNNERS_DIR="$RUN" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CI_DOCKER="${QDOCKER:-false}" \
           HARBOR_TEST_NOW="$_t" sh "$T_ROOT/bin/ci-queue.sh" "$@"; }
 q() { qat "$NOW" "$@"; }
 get() { jq -r --arg r "$1" ".repos[] | select(.repo == \$r) | $2" "$CACHE/ci-queue.json"; }
@@ -91,7 +91,7 @@ fx 'repos/o/r/actions/runs?status=in_progress&per_page=50' '{"workflow_runs":[]}
 q
 t_eq "an idle repo has no jobs left" 0 "$(get o/r .left)"
 t_eq "an idle repo has no eta" null "$(get o/r .eta)"
-t_exit "no runner folders still exits 0" 0 env HARBOR_CI_RUNNERS_DIR="$T_TMP/none" HARBOR_DOCKER=false FX="$FX" HARBOR_TEST_GH="$GH" \
+t_exit "no runner folders still exits 0" 0 env HARBOR_CI_RUNNERS_DIR="$T_TMP/none" HARBOR_CI_DOCKER=false FX="$FX" HARBOR_TEST_GH="$GH" \
   HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_TEST_NOW="$NOW" sh "$T_ROOT/bin/ci-queue.sh"
 t_eq "no runner folders write an empty repo list" '[]' "$(jq -c .repos "$CACHE/ci-queue.json")"
 

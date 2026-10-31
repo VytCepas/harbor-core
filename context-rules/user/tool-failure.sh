@@ -15,12 +15,12 @@
 # `tool_input`, `tool_use_id`, `error`, `is_interrupt`, `duration_ms`. There is NO
 # `tool_response` on this event.
 #
-# AND A NON-ZERO BASH EXIT IS NOT A TOOL FAILURE. The same probe ran a command
-# that exited 1 and the harness fired PostToolUse, not this event: the tool did
-# its job, and the shell's verdict is part of a successful result. What lands here
-# is the tool itself refusing — a missing file, an Edit whose anchor did not
-# match, a denied permission. That is a narrower and better-behaved trigger than
-# "something went wrong", and it is why `once: session` is enough.
+# AND A NON-ZERO BASH EXIT IS NOT A TOOL FAILURE. The 2026-09-02 probe saw it
+# fire PostToolUse; by 2026-10-28 the harness sent it here as `Exit code N`, and
+# the note fired a paragraph on `jq` exiting 2 over an absent optional file
+# (harbor#1390). So the script now says it: a plain `Exit code N` is silent, a
+# guard or permission refusal and a timeout still fire, and so does a tool that
+# refused outright — a missing file, an Edit whose anchor did not match.
 #
 # FAIL-OPEN, like every other path in this engine: no jq, unreadable stdin, an
 # unexpected shape — print nothing, exit 0. A hook whose failure mode is noise is
@@ -30,6 +30,13 @@ command -v jq >/dev/null 2>&1 || exit 0
 P="$(cat)"
 [ -n "$P" ] || exit 0
 [ "$(printf '%s' "$P" | jq -r '.is_interrupt // false' 2>/dev/null || echo true)" = false ] || exit 0
+# harbor#1390: a Bash call that ran and exited non-zero now lands here as `Exit code N`. The command DID run and
+# its output is the result, so that is silent. A guard or permission refusal and a timeout are decisions: they fire.
+E="$(printf '%s' "$P" | jq -r '.error // "" | tostring' 2>/dev/null)" || exit 0
+case "$E" in
+  *"HELM FLOOR"*|*"hook error"*|*BLOCKED*|*"Permission to use"*|*"requested permissions"*|*"timed out"*) ;;
+  "Exit code "[0-9]*) exit 0 ;;
+esac
 cat <<'NOTE'
 That tool call did not run, so it produced no evidence — and the cheapest moment
 to decide what that costs is now, before the next call papers over it. If the

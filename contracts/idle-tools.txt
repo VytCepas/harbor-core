@@ -41,7 +41,7 @@ access-environment.sh IDLE  renders the repo-visibility lines of the auto-mode e
 deploy-bootstrap.sh           VERB  the operator types it once, on a fresh machine (harbor#829); nothing can schedule the first install
 doc-drive-push.sh       VERB  copies a filed deliverable into Drive and prints the share link
 admission-deny-hash.sh           IDLE  M7 leak filter over the operator's own private values — asserts, unrun
-floor-equiv.sh         IDLE  replays a payload corpus through TWO guard trees and compares them
+admission-equivalence.sh         IDLE  replays a payload corpus through TWO guard trees and compares them
 scope-managed-telemetry.sh   VERB  the operator runs it once under sudo, after audit-collector-install.sh
 scope-managed-retention.sh   VERB  the operator runs it once under sudo: a root-owned managed setting is never written on a schedule
 skill-book.sh        VERB  the old name of skill-catalog.sh (harbor#1010): kept one release for a habit or a document that still types it; goes with its renames.tsv row
@@ -57,7 +57,7 @@ memory.sh              VERB  the L0 memory front door; `harbor memory` and hand 
 lint-module-shape.sh        IDLE  answers the two questions CONSTITUTION "Module shape" asks — and its own header stated a count that went stale for exactly this reason
 admission-mutation-tier.sh       IDLE  classifies a path by what writing there costs; asserts, unrun
 lint-port-paths.sh          IDLE  the harbor#619 move gate (docs/reference/checks.md `lint.port-paths`): typed by hand, and run as its gate by remove-bridges.sh, which lives in the Deliverables folder outside every surface C8 scans; nothing schedules it, so a new pre-move literal shows only when someone runs it
-port-drift.sh          IDLE  the harbor#966 workspace drift check (docs/reference/checks.md `drift.port-root`): typed by hand, because the tree under PORT_ROOT is box state and a lint rule on it would be red in CI for a reason no commit can fix; nothing schedules it
+drift-port-root.sh          IDLE  the harbor#966 workspace drift check (docs/reference/checks.md `drift.port-root`): typed by hand, because the tree under PORT_ROOT is box state and a lint rule on it would be red in CI for a reason no commit can fix; nothing schedules it
 gate-pr-wait.sh             VERB  run by hand or by an agent after a push: returns on the first review thread, failed check or green (harbor#552)
 doc-report-verify.sh     IDLE  does a generated artefact meet contracts/reports.md — no caller and no test
 lint-rule-health.sh         IDLE  which lint rules are not earning their keep (harbor#577); weekly is intended and needs the operator's yes, until then it runs by hand
@@ -138,3 +138,10 @@ guard-selfedit.sh      IDLE  forwarding shim (harbor#996 rename-1320): a symlink
 guard-stop.sh          IDLE  forwarding shim (harbor#996 rename-1321): a symlink to bin/admission-stop.sh until 2026-11-15, the old path of rename-1321; nothing in the repo calls it
 floor-hook.sh          IDLE  forwarding shim (harbor#996 rename-1322): a symlink to bin/admission-hook.sh until 2026-11-15, the old path of rename-1322; nothing in the repo calls it
 guard-integrity.sh     IDLE  forwarding shim (harbor#996 rename-1323): a symlink to bin/admission-integrity.sh until 2026-11-15, the old path of rename-1323; nothing in the repo calls it
+floor-deny.sh          IDLE  forwarding shim (harbor#996 rename-1324): a symlink to bin/admission-deny.sh until 2026-12-01, the old path of rename-1324; nothing in the repo calls it
+floor-equiv.sh         IDLE  forwarding shim (harbor#996 rename-1325): a symlink to bin/admission-equivalence.sh until 2026-12-01, the old path of rename-1325; nothing in the repo calls it
+floor-install.sh       IDLE  forwarding shim (harbor#996 rename-1326): a symlink to bin/admission-install.sh until 2026-12-01, the old path of rename-1326; nothing in the repo calls it
+floor-observe.sh       IDLE  forwarding shim (harbor#996 rename-1328): a symlink to bin/admission-observe.sh until 2026-12-01, the old path of rename-1328; nothing in the repo calls it
+floor-uninstall.sh     IDLE  forwarding shim (harbor#996 rename-1329): a symlink to bin/admission-remove.sh until 2026-12-01, the old path of rename-1329; nothing in the repo calls it
+floor-verify.sh        IDLE  forwarding shim (harbor#996 rename-1330): a symlink to bin/admission-verify.sh until 2026-12-01, the old path of rename-1330; nothing in the repo calls it
+port-drift.sh          IDLE  forwarding shim (harbor#996 rename-1426): a symlink to bin/drift-port-root.sh until 2026-12-01, the old path of rename-1426; nothing in the repo calls it

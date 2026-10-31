@@ -4,7 +4,7 @@
 # svc.sh only records, then reset() and the gov/tick helpers. Nothing real is touched.
 FX="$T_TMP/fx"; CACHE="$T_TMP/cache"; RUNNERS="$T_TMP/runners"; GOV="$T_ROOT/bin/ci-governor.sh"
 export FX
-HARBOR_GOV_TRIGGER="$FX/trigger"; export HARBOR_GOV_TRIGGER
+HARBOR_CI_GOVERNOR_TRIGGER="$FX/trigger"; export HARBOR_CI_GOVERNOR_TRIGGER
 unset GITHUB_ACTIONS   # CI sets it, and run would then (rightly) take no slot
 mkdir -p "$FX" "$CACHE" "$RUNNERS/harbor-mac"
 

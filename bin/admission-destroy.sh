@@ -35,7 +35,7 @@
 # line used to say "like every guard"). Every rule below reads the argv table, so
 # all of them used to vanish — exit 0, no output, which the harness reads as a
 # clean allow — whenever floor_seg_load produced nothing: a command over
-# FLOOR_MAX_NORM, awk off PATH, or floor-normalize.awk missing. The first needs no
+# FLOOR_MAX_NORM, awk off PATH, or admission-normalize.awk missing. The first needs no
 # missing binary at all. The floor_seg_degraded block below is the backstop, and
 # it carries the measurement.
 set -eu
@@ -56,6 +56,7 @@ CMD="$(floor_field '.tool_input.command')"
 # "-" on an unset FLOOR_OBS_SUBJECT, so populating the digest on deny/ask would
 # have emitted "-" for exactly the two guard classes #350 is about — 7,873
 # records, every one still subjectless, and the ticket would have read as fixed.
+# shellcheck disable=SC2034 # FLOOR_OBS_SUBJECT: read by library-admission.sh
 FLOOR_OBS_SUBJECT="$CMD"
 
 floor_seg_load "$CMD"
@@ -86,7 +87,7 @@ floor_seg_load "$CMD"
 # The reason is structural, not a missing list entry: FLOOR_SEGS carries NO
 # pipeline boundary. `gh --body $(cat <<HD)` and a heredoc piped into a command are
 # identical segment streams apart from whether segment 2 holds prose or a command
-# name. Separating them needs floor-normalize.awk to mark where the heredoc LINE
+# name. Separating them needs admission-normalize.awk to mark where the heredoc LINE
 # ends, which changes an output contract every guard consumes. Left for a decision
 # rather than guessed at — this veto exits the guard for the WHOLE call, so a guess
 # here is a silent hole, and harbor#302 says in as many words not to widen the rule
@@ -162,7 +163,7 @@ fi
 # reads as a clean allow. MEASURED: 'diskutil eraseDisk' padded with a 33,000-byte
 # trailing comment was a SILENT ALLOW, while admission-bash.sh denied the identically
 # padded 'rm -rf /' because its rules also run through the flat layer. Same silent
-# allow with awk off PATH, and with floor-normalize.awk deleted.
+# allow with awk off PATH, and with admission-normalize.awk deleted.
 #
 # THE BACKSTOP IS THE TOOL NAME, NOT A SECOND COPY OF THE RULES. Mirroring each
 # catastrophic rule as a flat ERE is the obvious repair and it is the wrong one:
@@ -198,7 +199,7 @@ if [ -z "$DECISION" ] && floor_seg_degraded; then
   _DT="$(floor_bash_targets "$CMD")"
   if printf '%s' "$_DT" | "$FLOOR_GREP" -iEq -- '(^|[^[:alnum:]_./-])([a-zA-Z0-9_./-]*/)?diskutil([[:space:]]|$)'; then
     DECISION="deny"; RULE="argv-blind-diskutil"; SHAPE="flat"
-    REASON="the argv tokenizer could not parse this call (over the ${FLOOR_MAX_NORM}-byte normalizer cap, nested past what the normalizer expands, or awk/floor-normalize.awk unavailable) and the command names diskutil, whose erase/reformat/zero verbs are deny-always — so the guard cannot tell an IRREVERSIBLE device wipe from a diskutil list. Re-run it under the cap, or the operator runs it themselves as a \`!\` command, which is not a tool call"
+    REASON="the argv tokenizer could not parse this call (over the ${FLOOR_MAX_NORM}-byte normalizer cap, nested past what the normalizer expands, or awk/admission-normalize.awk unavailable) and the command names diskutil, whose erase/reformat/zero verbs are deny-always — so the guard cannot tell an IRREVERSIBLE device wipe from a diskutil list. Re-run it under the cap, or the operator runs it themselves as a \`!\` command, which is not a tool call"
   fi
 fi
 

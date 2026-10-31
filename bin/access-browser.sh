@@ -357,6 +357,7 @@ case "${1:-}" in
     ;;
 
   --self-test-live)
+    # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
     LOG_FD=1
     _self_test_live
     exit $?

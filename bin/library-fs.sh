@@ -5,6 +5,8 @@
 #   . "$HERE/library-fs.sh"
 #   fs_mtime <file>   epoch seconds        fs_size <file>   bytes
 #   fs_mode <file>    permission bits, octal (644)           fs_uid <file>    numeric owner
+#   fs_sha256 < <file>   stdin's sha256 as bare hex, sha256sum else shasum (harbor#1392: one copy outside
+#                        the floor library and the installers' deploy-install-lib.sh)
 #
 # fs_mode keeps the low three octal digits: GNU `%a` prints 4755 for a setuid file where BSD `%Lp` prints 755.
 #
@@ -26,3 +28,4 @@ fs_mtime() { _fs_q %Y %m "$1" 9; }
 fs_size()  { _fs_q %s %z "$1" 9; }
 fs_mode()  { _fs_q %a %Lp "$1" 7; }
 fs_uid()   { _fs_q %u %u "$1" 9; }
+fs_sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }

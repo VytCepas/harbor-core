@@ -5,8 +5,8 @@
 TOOL="$T_ROOT/hooks/session-title/session-title.sh"
 T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"; CFG="$T/cfg"; mkdir -p "$CFG/session-titles"
 title() { printf '%s\n' "$2" > "$CFG/session-titles/$1.txt"; }
-# run <payload-json> — the hook the way the harness runs it; stdout in $OUT, stderr in $ERR, exit in $RC.
-run() { printf '%s' "$1" | CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" > "$T/out" 2> "$T/err"; RC=$?; OUT="$(cat "$T/out")"; ERR="$(cat "$T/err")"; }
+# run <payload-json> — the hook the way the harness runs it; stdout in $OUT, exit in $RC.
+run() { printf '%s' "$1" | CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" > "$T/out" 2> "$T/err"; RC=$?; OUT="$(cat "$T/out")"; }
 ups() { printf '{"session_id":"%s","hook_event_name":"UserPromptSubmit","session_title":"%s"}' "$1" "${2-}"; }
 ss()  { printf '{"session_id":"%s","hook_event_name":"SessionStart","source":"%s","session_title":"%s"}' "$1" "$2" "${3-}"; }
 want() { jq -nc --arg e "$1" --arg t "$2" '{hookSpecificOutput: {hookEventName: $e, sessionTitle: $t}}'; }

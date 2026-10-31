@@ -10,7 +10,7 @@
 # the floor already pinned one). Token rescope and the POSIX shell-injection guard
 # are separate (see docs/how-to/harden-the-host.md and workstream B).
 #
-# Writes the way floor-deny.sh does: temp file, jq-validated, then moved into place
+# Writes the way admission-deny.sh does: temp file, jq-validated, then moved into place
 # (this used to be `jq . > settings.json`, a truncate in place), then the teeth and
 # baseline re-pinned from the file just written, so B6 is not left drifted. Adding
 # `.env` for the first time (harbor#816) adds a top-level key, which the baseline's
@@ -27,7 +27,6 @@ il_target
 DIR="$IL_TARGET"
 S="$DIR/settings.json"
 
-sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
 if ! command -v jq >/dev/null 2>&1; then
   log_fail "jq is required, and is not on PATH"
   log_fix "$(pkg_hint jq)"
@@ -110,13 +109,13 @@ else log_note "settings.json would change as listed above"; fi
 if [ "$IL_APPLY" -eq 1 ]; then
   il_backup "$S" || { log_end; exit 1; }
   il_write_json "$NEW" "$S" || { log_end; exit 1; }
-  jq -S '{perms:.permissions, plugins:(.enabledPlugins // {}), marketplaces:(.extraKnownMarketplaces // {}), keys:((keys) - ["hooks"])}' "$S" | sha >"$DIR/.sec0-baseline.sha256"
+  jq -S '{perms:.permissions, plugins:(.enabledPlugins // {}), marketplaces:(.extraKnownMarketplaces // {}), keys:((keys) - ["hooks"])}' "$S" | il_sha >"$DIR/.sec0-baseline.sha256"
   log_ok "wrote $S; backup in $IL_BK"
   log_ok "re-pinned the baseline: $DIR/.sec0-baseline.sha256 (deny + mode locks + plugins + marketplaces)"
   # The teeth pin covers deny and the locks this run just changed; left stale, B6 blocks the next session.
   if [ -f "$DIR/.helm-floor-teeth" ]; then
     il_backup "$DIR/.helm-floor-teeth" || { log_end; exit 1; }
-    jq -S '{deny:.permissions.deny, locks:{bypass:.permissions.disableBypassPermissionsMode, auto:.permissions.disableAutoMode}}' "$S" | sha >"$DIR/.helm-floor-teeth"
+    jq -S '{deny:.permissions.deny, locks:{bypass:.permissions.disableBypassPermissionsMode, auto:.permissions.disableAutoMode}}' "$S" | il_sha >"$DIR/.helm-floor-teeth"
     log_ok "re-pinned the floor teeth: $DIR/.helm-floor-teeth"
   else
     log_skip "no .helm-floor-teeth here (the floor is not installed), so there are no teeth to re-pin"

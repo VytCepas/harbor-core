@@ -18,6 +18,7 @@ vendor/naming/MANIFEST.tsv	sh bin/standard-vendor.sh --check .	sh bin/standard-v
 -	doc-graph-generate.sh	build/graph.tsv is an untracked build product, absent on a fresh checkout
 -	deploy-install-stamp.sh	judges an installed config dir
 -	lint-module.sh	a lint over the graph
+-	lint-name-ratchet.sh	a ratchet over naming findings (its STALE is a baseline line, not a generated file)
 -	standard-shape.sh	a lint over the graph
 -	doc-fresh-verify.sh	this runner
 -	standard-fleet-names.sh	the weekly fleet naming check: it runs other repos' --check modes and writes a receipt, it generates nothing

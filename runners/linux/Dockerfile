@@ -34,6 +34,6 @@ RUN set -eu; arch="$(dpkg --print-architecture)"; \
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod 755 /entrypoint.sh
 # The image promises node: browser-test fails here, instead of skipping, if it goes missing (harbor#1060).
-ENV HARBOR_REQUIRE_NODE=1
+ENV HARBOR_TEST_REQUIRE_NODE=1
 USER runner
 ENTRYPOINT ["/entrypoint.sh"]

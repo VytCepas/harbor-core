@@ -19,11 +19,30 @@
 # and the operator's address on the box landed in git and in the public export. deploy.sh runs `install --apply --live`
 # after the packs, so the installed book lists every installed skill; the tracked file is no longer rewritten by a deploy.
 #
+# WHEN EACH BOOK IS REGENERATED, AND WHY NOT AT SessionStart (harbor#158, decided 2026-10-31). Two triggers, one per book, and
+# neither is a session event:
+#   tracked book    by hand, `sh bin/skill-catalog.sh`, after a skill under skills/ is added, renamed or re-described. Lint T9
+#                   is the detector (advisory, and a pure function of the checkout), and its FAIL line names the command; a
+#                   DEFECTS section or exit 1/3 (below) is the detector for a skill that cannot be indexed at all.
+#   installed book  by `deploy.sh`, which runs `install --apply --live` after the packs; lint X8 asks `install --check` whether
+#                   the installed copy still matches the skills installed beside it. Every route that puts a skill on the box
+#                   (skills-install, a pack) goes through deploy, so the write happens when the set changes, not when it is read.
+# A SessionStart hook was weighed and rejected: it would write the operator's instruction surface (which the B8 pin watches) on
+# every session to fix a staleness that only changes on a deploy; it would race concurrent sessions over one file; and a hook that
+# fails is silent to the operator, so it detects LATER than X8 does. The cost accepted: a skill hand-copied into the config dir
+# between deploys is missing from the installed book until X8 reports it (X4 reports the same skill as untracked).
+#
 # WHY THIS IS GENERATED AND NOT WRITTEN. An index of this many skills maintained
 # by hand drifts the moment one is added, renamed or hidden, and an index that
 # lies is worse than no index because it is trusted. Same reasoning that makes
 # docs/generated/status.md generated and lint rules T1/T2 forbid a hand-typed count — including
 # in this comment, which said "33 skills" while the box had 36.
+#
+# DEFECTS ARE LOUD, NOT BLANK (harbor#158). A skill with no frontmatter, no single-line description, no name or a name that is not
+# its directory's, and two skills that share a directory name (skills/ and vendor/skills/), differ only by case, or declare one
+# `name:`, are listed in a DEFECTS section above every table. In the tracked book they also fail: the write exits 1 after writing,
+# `--check` exits 3, so T9 reports "the generator FAILED" with the reason and never offers a regenerate. In the installed book
+# they warn only: a box with one broken skill must still deploy.
 #
 # `--check` diffs instead of writing, so a lint rule can flag a stale book. T9 is advisory, so nothing fails
 # CI on a stale book yet (this header once claimed the opposite, until an adversarial pass pointed out that
@@ -279,8 +298,8 @@ contract_for() {
     return 0
   fi
   # The fleet CLI's name is its roots row (contracts/roots.tsv), so a renamed fleet keeps its contract (harbor#999).
-  [ -n "${FLEET_CLI+x}" ] || { FLEET_CLI="$(sh "$ROOT/bin/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER_BIN 2>/dev/null || :)"; FLEET_CLI="${FLEET_CLI##*/}"; }
-  if [ -n "$FLEET_CLI" ] && [ "$1" = "$FLEET_CLI" ]; then printf '`~/port/harbor/contracts/fleet-controller-json.md`'; return 0; fi
+  [ -n "${HARBOR_SKILL_FLEET_CLI+x}" ] || { HARBOR_SKILL_FLEET_CLI="$(sh "$ROOT/bin/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER_BIN 2>/dev/null || :)"; HARBOR_SKILL_FLEET_CLI="${HARBOR_SKILL_FLEET_CLI##*/}"; }
+  if [ -n "$HARBOR_SKILL_FLEET_CLI" ] && [ "$1" = "$HARBOR_SKILL_FLEET_CLI" ]; then printf '`~/port/harbor/contracts/fleet-controller-json.md`'; return 0; fi
   case "$1" in
     harbor)                 printf '`~/port/harbor/contracts/cli.md`' ;;
     memory)                 printf '`~/port/harbor/contracts/memory-format.md`' ;;
@@ -385,9 +404,14 @@ pack's manifest lists it), `box` (installed, tracked nowhere in this checkout),
 
 **Archived skills exist** in `vendor/skills-archive/` (not installed, not listed here; `vendor/skills-archive/PROVENANCE.md` names them and how to restore one).
 
-## Start here — which skill for which situation
-
 HEAD
+  # A defect is printed ABOVE every table: a broken skill that only shows as a row's ⚠ cell is found by reading all of them.
+  if [ -s "$WORK/defects" ]; then
+    printf '## DEFECTS — %s skill(s) are broken or collide; fix these first\n\n' "$(wc -l < "$WORK/defects" | tr -d ' ')"
+    while IFS="$TAB" read -r _dk _dm; do printf -- '- **%s** — %s\n' "$_dk" "$(cell "$_dm")"; done < "$WORK/defects"
+    printf '\n'
+  fi
+  printf '## Start here — which skill for which situation\n\n'
   # The worked example names two siblings, so it is printed only when both are in this book.
   printf 'Situation first, because a keyword match is what sends a reader to the wrong\nsibling.'
   if have measurement-debug && have reporting-apis; then
@@ -513,6 +537,41 @@ if [ "$MODE" = install ] && [ -n "$PRIV" ] && [ -f "$PRIV/cli-contracts.tsv" ]; 
     log_end || :; exit "$RC_BROKEN"
   fi
 fi
+
+# THE SILENT FAILURES, MADE LOUD (harbor#158). A skill with no usable frontmatter used to render a blank or
+# misleading cell ("this skill does nothing") and two skills with one directory name collapsed into one row (`awk !seen`
+# in list_skills, and the installer takes skills/ before vendor/skills/ without saying so). Now each is a line of
+# "$WORK/defects": printed in a DEFECTS section above the tables, and in the tracked book a failure (see below).
+#   malformed  no frontmatter, no single-scalar description, no name, or a name that is not the directory's
+#   collision  one directory name in skills/ AND vendor/skills/, two names differing only by case (one directory
+#              on a case-insensitive disk), or two directories declaring the same `name:`
+: > "$WORK/defects"
+defect() { printf '%s\t%s\n' "$1" "$2" >> "$WORK/defects"; }
+: > "$WORK/dirs"
+scan_dir() { # <dir> <label>
+  for _d in "$1"/*/; do
+    [ -f "$_d/SKILL.md" ] || continue
+    printf '%s\t%s\t%s\t%s\n' "$2" "$(basename "$_d")" "$(field "$_d/SKILL.md" name)" "$_d/SKILL.md" >> "$WORK/dirs"
+  done
+}
+if [ "$MODE" = install ]; then scan_dir "$SKILL_DIR" "$SHOWN"; else scan_dir "$ROOT/skills" skills; scan_dir "$ROOT/vendor/skills" vendor/skills; fi
+while IFS="$TAB" read -r _n _f; do
+  _w="skills/$_n"
+  [ "$(head -n 1 "$_f")" = '---' ] || { defect malformed "$_w/SKILL.md has no YAML frontmatter, so it has no description, name or flags"; continue; }
+  case "$(field "$_f" description)" in
+    '') defect malformed "$_w has no single-line description in its frontmatter (missing, or a folded or literal block)" ;;
+  esac
+  _fn="$(field "$_f" name)"
+  if [ -z "$_fn" ]; then defect malformed "$_w has no name: in its frontmatter"
+  elif [ "$_fn" != "$_n" ]; then defect malformed "$_w declares name: $_fn, which is not its directory's name"; fi
+done < "$WORK/list"
+awk -F'\t' '
+  { low = tolower($2); key[NR] = low; where[low] = where[low] (where[low] == "" ? "" : ", ") $1 "/" $2
+    cnt[low]++
+    if ($3 != "") { nc[$3]++; nw[$3] = nw[$3] (nw[$3] == "" ? "" : ", ") $1 "/" $2 } }
+  END { for (k in cnt) if (cnt[k] > 1) printf "collision\tthe directory name %s is taken more than once: %s\n", k, where[k]
+        for (k in nc) if (nc[k] > 1) printf "collision\ttwo directories declare name: %s: %s\n", k, nw[k] }' "$WORK/dirs" | sort >> "$WORK/defects"
+
 router_rows > "$WORK/router"
 if grep -q '^E' "$WORK/router"; then
   awk -F'\t' '$1 == "E" { print $2 }' "$WORK/router" > "$WORK/router.err"
@@ -521,9 +580,23 @@ if grep -q '^E' "$WORK/router"; then
   log_end || :; exit "$RC_BROKEN"
 fi
 emit > "$WORK/book"
+_ndef=$(wc -l < "$WORK/defects" | tr -d ' ')
+# The installed book is written with its DEFECTS section and only warns: a box with a broken skill must still deploy. The
+# tracked book is a pure function of the repo, so a defect there fails (3 under --check, where 1 already means STALE).
+defects_fail() {
+  while IFS="$TAB" read -r _dk _dm; do
+    log_fail "$_dk: $_dm"
+    log_fix "fix the skill it names (its frontmatter, or the duplicate directory); the DEFECTS section of the book lists every one"
+  done < "$WORK/defects"
+}
+defects_warn() { while IFS="$TAB" read -r _dk _dm; do log_warn "$_dk: $_dm"; done < "$WORK/defects"; }
 
 # ── THE TRACKED BOOK ────────────────────────────────────────────────────────
 if [ "$MODE" = tracked ]; then
+  if [ "$_ndef" -gt 0 ] && [ "$CHECK" = "1" ]; then
+    defects_fail
+    log_end || :; exit "$RC_BROKEN"
+  fi
   if [ "$CHECK" = "1" ]; then
     if cmp -s "$WORK/book" "$OUT"; then
       log_ok "current — ${OUT#"$ROOT/"} matches the skills this checkout tracks"; log_end; exit $?
@@ -555,11 +628,16 @@ if [ "$MODE" = tracked ]; then
     mkdir -p "$(dirname "$OUT")"
     cp "$WORK/book" "$OUT"
     log_ok "wrote ${OUT#"$ROOT"/}"
+    if [ "$_ndef" -gt 0 ]; then
+      defects_fail
+      log_end || :; exit 1
+    fi
     log_end; exit $?
   fi
 fi
 
 # ── THE INSTALLED BOOK ──────────────────────────────────────────────────────
+[ "$_ndef" -eq 0 ] || defects_warn
 DEST="$SKILL_DIR/skill-catalog/SKILL.md"
 if [ -f "$DEST" ] && cmp -s "$WORK/book" "$DEST"; then _cur=1; else _cur=0; fi
 if [ "$CHECK" = "1" ]; then

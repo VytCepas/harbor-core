@@ -182,6 +182,7 @@ if [ "$RECORD" -eq 1 ] && [ "$APPLY" -eq 1 ]; then
   exit 2
 fi
 if [ "$RECORD" -eq 1 ] && [ "$CFG_IS_LIVE" -eq 1 ] && [ "$LIVE" -eq 0 ]; then
+  # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
   LOG_FD=2
   log_fail "refusing to record into the live config dir without an explicit --live ($CFG)"
   log_fix "sh bin/housekeeping-clean.sh --record --live"
@@ -678,7 +679,7 @@ PR_LIMIT="${HARBOR_HOUSEKEEPING_CLEAN_PR_LIMIT:-${HARBOR_CLEAN_PR_LIMIT:-2000}}"
 GHQ='query($owner:String!,$name:String!,$endCursor:String){repository(owner:$owner,name:$name){issues(states:OPEN,first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{number updatedAt body subIssuesSummary{total completed} closedByPullRequestsReferences(first:10,includeClosedPrs:true){nodes{state}}}}}}'
 
 # gh_try <out> <cmd…> — bounded, retried up to 3 times on a 5xx or gateway timeout, never on a 4xx.
-# gh's stderr is kept only to classify the failure. HARBOR_CLEAN_RETRY_WAIT is the backoff seed (suite sets 0).
+# gh's stderr is kept only to classify the failure. HARBOR_HOUSEKEEPING_CLEAN_RETRY_WAIT is the backoff seed (suite sets 0).
 gh_try() {
   _go="$1"; shift; _gn=0
   while :; do
@@ -686,7 +687,7 @@ gh_try() {
     _gn=$((_gn + 1))
     grep -Eqi 'HTTP 5[0-9][0-9]|Gateway Time-?out|Bad Gateway|Service Unavailable' "$_go.err" 2>/dev/null || return 1
     [ "$_gn" -lt 3 ] || return 1
-    sleep $((_gn * ${HARBOR_CLEAN_RETRY_WAIT:-2}))
+    sleep $((_gn * ${HARBOR_HOUSEKEEPING_CLEAN_RETRY_WAIT:-${HARBOR_CLEAN_RETRY_WAIT:-2}}))
   done
 }
 

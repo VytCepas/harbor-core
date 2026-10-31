@@ -98,7 +98,7 @@ umask 077
 # config dir from CLAUDE_CONFIG_DIR, and three floor-test invocations were
 # silently pointing guards at the live ~/.claude until lint F4 caught them.
 RCFG="$TMP/cfg"; mkdir -p "$RCFG/bin"
-for g in library-admission.sh admission-bash.sh admission-egress.sh admission-self-edit.sh floor-normalize.awk; do
+for g in library-admission.sh admission-bash.sh admission-egress.sh admission-self-edit.sh admission-normalize.awk; do
   cp "$DIR/$g" "$RCFG/bin/$g"
 done
 printf '{"permissions":{"allow":[],"deny":[]}}\n' > "$RCFG/settings.json"
@@ -200,7 +200,7 @@ summary() {
   if [ "$ERRS" -gt 0 ]; then
     # Neither allows nor blocks: a run with many of them measures nothing.
     log_warn "$ERRS record(s) produced NO VERDICT — a guard failed to run"
-    log_fix "sh bin/floor-verify.sh --live"
+    log_fix "sh bin/admission-verify.sh --live"
   fi
   [ "$BLOCKS" -gt 0 ] || return 0
   log_note "of those: $FP adjudicated FALSE POSITIVE · $OK adjudicated CORRECT · $UR UNREVIEWED"

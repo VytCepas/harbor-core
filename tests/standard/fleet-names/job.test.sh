@@ -70,4 +70,25 @@ t_has "the unread repo is named" "$_o" "not judged this run"
 printf 'ghost\t%s/nowhere\n' "$T_TMP" > "$T_TMP/only-ghost.tsv"
 t_eq "nothing judged is exit 3" "exit 3" "$(FX="$FX" sh "$T_ROOT/bin/standard-fleet-names.sh" --registry "$T_TMP/only-ghost.tsv" --gh "$GH" --config-dir "$T_TMP/c2" >/dev/null 2>&1; echo "exit $?")"
 t_eq "an unknown argument is exit 2" "exit 2" "$(sh "$T_ROOT/bin/standard-fleet-names.sh" --nope >/dev/null 2>&1; echo "exit $?")"
+
+t_section "a row that is a directory of checkouts is judged per checkout; a linked worktree is not a repo"
+mkdir -p "$T_TMP/r/group"
+mkrepo group/one o/one Bad_One.txt
+git -C "$T_TMP/r/group/one" worktree add -q "$T_TMP/r/group/one-wt" -b side 2>/dev/null
+printf '[]\n' > "$FX/o_one.rel"
+printf 'group\t%s/r/group\n' "$T_TMP" > "$T_TMP/group.tsv"
+_o="$(FX="$FX" sh "$T_ROOT/bin/standard-fleet-names.sh" --registry "$T_TMP/group.tsv" --gh "$GH" --config-dir "$T_TMP/c3" --today 2026-10-26 2>&1)"
+t_has "the child checkout is judged under <row>/<child>" "$_o" "name.case group/one: Bad_One.txt"
+t_hasnt "the row itself is not 'not a git checkout'" "$_o" "group: not a git checkout"
+t_hasnt "the linked worktree is not judged as a repo" "$_o" "group/one-wt"
+
+t_section "the private layer is judged with the registry's repos"
+_port="$T_TMP/r/port"; mkdir -p "$_port"
+mkrepo port/harbor-private o/priv Bad_Private.txt
+mkrepo port/solo o/solo README.md
+printf 'id\tpath\tkind\tremote\ttopology\tinteraction\nsolo\tsolo\tworkload\t-\tstream-aligned\tx-as-a-service\n' > "$_port/harbor-private/repos.tsv"
+printf '[]\n' > "$FX/o_priv.rel"; printf '[]\n' > "$FX/o_solo.rel"
+_o="$(FX="$FX" PORT_ROOT="$_port" HARBOR_SCOPE_PRIVATE="$_port/harbor-private" sh "$T_ROOT/bin/standard-fleet-names.sh" --gh "$GH" --config-dir "$T_TMP/c4" --today 2026-10-26 2>&1)"
+t_has "the private layer's bad name is a finding" "$_o" "name.case harbor-private: Bad_Private.txt"
+t_has "…beside the registry's own repo, read once each" "$_o" "2 repo(s) read"
 t_done

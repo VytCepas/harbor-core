@@ -24,7 +24,7 @@ ev() { # <ts> <kind> <subject> [data-json]
 }
 ob() { # <script> <mode…> — the real or broken script on this bus and this state, stdout and stderr together
   _s="$1"; shift
-  env HARBOR_EVENT_DIR="$EV" HARBOR_OBLIGATION_DIR="$OB" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_STATUS_OBLIGATION_NOW="$AT" \
+  env HARBOR_EVENT_DIR="$EV" HARBOR_STATUS_OBLIGATION_DIR="$OB" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_STATUS_OBLIGATION_NOW="$AT" \
     HARBOR_STATUS_OBLIGATION_KINDS="$KINDS" HARBOR_STATUS_OBLIGATION_ON_OVERDUE=off sh "$_s" "$@" 2>&1
 }
 obq() { _s="$1"; shift; ob "$_s" "$@" 2>/dev/null; }   # stdout only: what a parser sees
@@ -116,7 +116,7 @@ GC="$T_TMP/gcache"; GCFG="$T_TMP/gcfg"; mkdir -p "$GC" "$GCFG/bin" "$GCFG/cache"
 ESC="$(printf '\033')"
 glyph() { # <script> — the whole statusline, colour stripped
   printf '%s' '{"workspace":{"current_dir":"'"$T_TMP"'/notrepo"}}' \
-    | env CLAUDE_CONFIG_DIR="$GCFG" HARBOR_SCOPE_CACHE_DIR="$GC" HARBOR_TEST_NOW="$GNOW" HARBOR_GLYPH_MACHINE=0 HARBOR_STATUS_GLYPH_COLS=200 sh "$1" 2>/dev/null \
+    | env CLAUDE_CONFIG_DIR="$GCFG" HARBOR_SCOPE_CACHE_DIR="$GC" HARBOR_TEST_NOW="$GNOW" HARBOR_STATUS_GLYPH_MACHINE=0 HARBOR_STATUS_GLYPH_COLS=200 sh "$1" 2>/dev/null \
     | sed "s/${ESC}\\[[0-9]*m//g"
 }
 gset() { printf '%s\n' "$1" > "$GC/status-obligations.json"; }   # <cache json>
@@ -147,7 +147,7 @@ case_glyph() { _x="$1"; rm -f "$GC/status-obligations.json"
   chk "the queue is the YOU row: the handoff" yes "$(has "$_o" 'run cleanup')"
   chk "and never a PR (several agents, several PRs)" no "$(has "$_o" 'o/r#9')"
   gset "{\"at\":$((GNOW - 60)),\"live\":2,\"overdue\":1,\"overdue_since\":$((GNOW - 7200)),\"unread\":false,\"you\":[{\"k\":\"intent\",\"o\":true,\"t\":\"run cleanup\"}]}"
-  _raw="$(printf '%s' '{"workspace":{"current_dir":"'"$T_TMP"'/notrepo"}}' | env CLAUDE_CONFIG_DIR="$GCFG" HARBOR_SCOPE_CACHE_DIR="$GC" HARBOR_TEST_NOW="$GNOW" HARBOR_GLYPH_MACHINE=0 HARBOR_STATUS_GLYPH_COLS=200 sh "$_x" 2>/dev/null)"
+  _raw="$(printf '%s' '{"workspace":{"current_dir":"'"$T_TMP"'/notrepo"}}' | env CLAUDE_CONFIG_DIR="$GCFG" HARBOR_SCOPE_CACHE_DIR="$GC" HARBOR_TEST_NOW="$GNOW" HARBOR_STATUS_GLYPH_MACHINE=0 HARBOR_STATUS_GLYPH_COLS=200 sh "$_x" 2>/dev/null)"
   chk "the overdue alarm is yellow" yes "$(has "$_raw" "${ESC}[33mOVERDUE 1")"
   chk "an overdue handoff is red" yes "$(has "$_raw" "${ESC}[31mrun cleanup")"
   rm -f "$GC/status-obligations.json"
@@ -156,7 +156,7 @@ case_glyph() { _x="$1"; rm -f "$GC/status-obligations.json"
 
 # `harbor status obligations` is routed by bin/harbor, so the front door is what is asked, not the script behind it.
 case_route() { _d="$1"; scenario; ob "$BIN" fold >/dev/null
-  _h() { env HARBOR_SCOPE_BIN="$_d" HARBOR_OBLIGATION_DIR="$OB" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_STATUS_OBLIGATION_NOW="$AT" sh "$_d/harbor" "$@" 2>/dev/null; }
+  _h() { env HARBOR_SCOPE_BIN="$_d" HARBOR_STATUS_OBLIGATION_DIR="$OB" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_STATUS_OBLIGATION_NOW="$AT" sh "$_d/harbor" "$@" 2>/dev/null; }
   chk "harbor status obligations --json is the ledger's shape" yes "$(_h status obligations --json | shape)"
   chk "and equals the script's own --json" "$(obq "$BIN" show --json)" "$(_h status obligations --json)"
   chk "--print goes the same way" "$(obq "$BIN" show --print)" "$(_h status obligations --print)"
@@ -230,7 +230,7 @@ case_long_session() { _x="$1"; fresh
   ev 2026-10-05T01:00:00Z session.start S1 '{"title":"harbor night"}'   # 26h old at $AT
   printf '#!/bin/sh\nprintf '"'"'[{"sessionId":"S1","pid":1}]'"'"'\n' > "$W/sessions.sh"; chmod +x "$W/sessions.sh"
   _go() { # <register> <mode>
-    env HARBOR_EVENT_DIR="$EV" HARBOR_OBLIGATION_DIR="$OB" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_STATUS_OBLIGATION_NOW="$AT" HARBOR_STATUS_OBLIGATION_KINDS="$1" \
+    env HARBOR_EVENT_DIR="$EV" HARBOR_STATUS_OBLIGATION_DIR="$OB" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_STATUS_OBLIGATION_NOW="$AT" HARBOR_STATUS_OBLIGATION_KINDS="$1" \
       HARBOR_STATUS_OBLIGATION_SESSIONS="$W/sessions.sh" HARBOR_STATUS_OBLIGATION_GH="$W/none" HARBOR_STATUS_OBLIGATION_CLAUDE="$W/none" \
       HARBOR_STATUS_OBLIGATION_HOUSEKEEPING="$W/none.jsonl" sh "$_x" "$2" >/dev/null 2>&1
   }
@@ -260,9 +260,9 @@ t_eq "30m: only what changed in it (the fold stamped S1 overdue at 03:00)" "sess
 t_eq "2h: adds the agent opened at 01:00 and the tool" "agent:A1,session:S1,tool.background:S2:T1" "$(_ids "$(obq "$BIN" show --json --since 2h)")"
 t_eq "10d: everything" "agent:A1,pr:VytCepas/harbor#9,session:S1,tool.background:S2:T1" "$(_ids "$(obq "$BIN" show --json --since 10d)")"
 t_eq "the filtered output keeps the shape" yes "$(obq "$BIN" show --json --since 30m | shape)"
-t_exit "a malformed window is exit 2" 2 env HARBOR_OBLIGATION_DIR="$OB" sh "$BIN" show --since 3x
-t_exit "a missing window is exit 2" 2 env HARBOR_OBLIGATION_DIR="$OB" sh "$BIN" show --since
-t_exit "an unknown flag is exit 2" 2 env HARBOR_OBLIGATION_DIR="$OB" sh "$BIN" show --census
+t_exit "a malformed window is exit 2" 2 env HARBOR_STATUS_OBLIGATION_DIR="$OB" sh "$BIN" show --since 3x
+t_exit "a missing window is exit 2" 2 env HARBOR_STATUS_OBLIGATION_DIR="$OB" sh "$BIN" show --since
+t_exit "an unknown flag is exit 2" 2 env HARBOR_STATUS_OBLIGATION_DIR="$OB" sh "$BIN" show --census
 
 t_section "--print: overdue, then new, then oldest; a short view, never every row"
 _p="$(obq "$BIN" show --print)"
@@ -282,7 +282,7 @@ printf '{"gh-pr":{"ok":false,"reason":"exited 1","ts":"t"},"sweep":{"ok":true,"r
 t_has "a source that did not answer is named, with its reason" "$(obq "$BIN" show --print)" "NO ANSWER FROM: gh-pr (exited 1)"
 rm -f "$OB/current.json" "$OB/sources.json"
 t_has "an absent ledger says so and exits 0" "$(obq "$BIN" show --print)" "no obligations ledger"
-t_exit "and exits 0" 0 env HARBOR_OBLIGATION_DIR="$OB" sh "$BIN" show --print
+t_exit "and exits 0" 0 env HARBOR_STATUS_OBLIGATION_DIR="$OB" sh "$BIN" show --print
 printf '{"generated_ts":"x","obligations":[]}\n' > "$OB/current.json"
 t_has "an empty ledger says nothing is live" "$(obq "$BIN" show --print)" "nothing live, nothing new"
 printf '{"generated_ts":"x","obligations":[{"id":"pr:o/r#1","kind":"pr","subject":"o/r#1","state":"open","opened_ts":"2026-10-07T02:00:00Z","title":"a\\u001b[31mred\\u0007"}]}\n' > "$OB/current.json"
@@ -294,7 +294,7 @@ redproof "receipt: the 24h line moved to ten days" case_receipt "$BIN" 'RED_AFTE
 redproof "receipt: red names no row" case_receipt "$BIN" 'status.obligations red "$@"' 'status.obligations green'
 redproof "cache: the overdue epoch dropped" case_receipt "$BIN" 'overdue_since: ([$od[] | ts(.opened_ts)] | min // 0)' 'overdue_since: 0'
 scenario; : > "$W/notdir"; _rc=0
-_o="$(env HARBOR_EVENT_DIR="$EV" HARBOR_OBLIGATION_DIR="$OB" HARBOR_SCOPE_CACHE_DIR="$W/notdir/c" HARBOR_STATUS_OBLIGATION_NOW="$AT" HARBOR_STATUS_OBLIGATION_KINDS="$KINDS" HARBOR_STATUS_OBLIGATION_ON_OVERDUE=off sh "$BIN" fold 2>&1)" || _rc=$?
+_o="$(env HARBOR_EVENT_DIR="$EV" HARBOR_STATUS_OBLIGATION_DIR="$OB" HARBOR_SCOPE_CACHE_DIR="$W/notdir/c" HARBOR_STATUS_OBLIGATION_NOW="$AT" HARBOR_STATUS_OBLIGATION_KINDS="$KINDS" HARBOR_STATUS_OBLIGATION_ON_OVERDUE=off sh "$BIN" fold 2>&1)" || _rc=$?
 t_eq "a fold that cannot write its cache still exits 0" 0 "$_rc"
 t_has "and says so" "$_o" "no statusline cache or receipt written"
 

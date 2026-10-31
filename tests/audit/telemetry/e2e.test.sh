@@ -5,14 +5,14 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 R="$(cd "$(dirname "$0")/../../.." && pwd)"; B="$R/bin"
 CF="$T_TMP/cfg"; mkdir -p "$CF/bin"
-cp "$B/library-admission.sh" "$B/floor-observe.sh" "$B/library-log.sh" "$B/audit-stream-lib.sh" "$B/library-fs.sh" "$CF/bin/"
+cp "$B/library-admission.sh" "$B/admission-observe.sh" "$B/library-log.sh" "$B/audit-stream-lib.sh" "$B/library-fs.sh" "$CF/bin/"
 printf '#!/bin/sh\n. "${0%%/*}/library-admission.sh"; FLOOR_OBS_SUBJECT="$2" FLOOR_TOOL=Bash floor_log_decision bash "$1" pipe-to-shell.flat\n' > "$CF/bin/guard-stub.sh"
 ST="$T_TMP/collector"; BUS="$T_TMP/bus"; mkdir -p "$BUS"; KEY="$T_TMP/keys/release.key"
-session() { CLAUDE_CONFIG_DIR="$CF" sh "$CF/bin/floor-observe.sh" </dev/null >/dev/null 2>&1; }
+session() { CLAUDE_CONFIG_DIR="$CF" sh "$CF/bin/admission-observe.sh" </dev/null >/dev/null 2>&1; }
 guard() { _gn=$((${_gn:-0} + 1)); CLAUDE_CONFIG_DIR="$CF" sh "$CF/bin/guard-stub.sh" "$1" "echo e2e-command-$_gn" >/dev/null 2>&1; }
 H="$(. "$B/library-admission.sh" 2>/dev/null; floor_host_token)"; O="$CF/MEMORY/OBSERVABILITY"; OH="$O/$H"; L="$OH/guard-decisions.jsonl"
-collect() { HARBOR_COLLECTOR_SRC="$O:$BUS" HARBOR_COLLECTOR_STORE="$ST" sh "$B/audit-collector.sh" "$@" >/dev/null 2>&1; echo $?; }
-health() { CLAUDE_CONFIG_DIR="$CF" HARBOR_COLLECTOR_STORE="$ST" HARBOR_CHECK_RECEIPTS="$CF/cache/checks" sh "$B/audit-collector-check.sh" >/dev/null 2>&1; echo $?; }
+collect() { HARBOR_AUDIT_COLLECTOR_SOURCES="$O:$BUS" HARBOR_AUDIT_COLLECTOR_STORE="$ST" sh "$B/audit-collector.sh" "$@" >/dev/null 2>&1; echo $?; }
+health() { CLAUDE_CONFIG_DIR="$CF" HARBOR_AUDIT_COLLECTOR_STORE="$ST" HARBOR_CHECK_RECEIPTS="$CF/cache/checks" sh "$B/audit-collector-check.sh" >/dev/null 2>&1; echo $?; }
 events() { grep -c "\"kind\":\"$1\"" "$ST/events.jsonl" 2>/dev/null | tr -d ' '; }
 
 t_section "1. a session starts and the floor records"

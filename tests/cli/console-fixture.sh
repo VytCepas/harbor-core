@@ -37,10 +37,10 @@ ob_json() {
 ui_tree() { # <exit> — every source present and exiting <exit>; a good tree passes 0
   UI_ROOT="$T_TMP/root"; rm -rf "$UI_ROOT" "$T_TMP"/calls.* "$T_BIN/gh" "$T_BIN/projects-orchestrator" "$T_BIN/harbor"
   mkdir -p "$UI_ROOT/bin" "$T_BIN" "$CLAUDE_CONFIG_DIR/cache"; rm -f "$CLAUDE_CONFIG_DIR/cache/checks.log"
-  for s in floor-verify lint-findings context-budget memory-route admission-observe-report standard-issue-label context-peers worktree status-obligations; do
+  for s in admission-verify lint-findings context-budget memory-route admission-observe-report standard-issue-label context-peers worktree status-obligations; do
     ui_stub "$s" "$1" "fixture $s output"; done
   if [ "$1" = 0 ]; then
-    ui_stub floor-verify 0 '  ok: a
+    ui_stub admission-verify 0 '  ok: a
   ok: b
   WARN: c
 floor-verify: 2 ok, 0 failed, 1 warnings'

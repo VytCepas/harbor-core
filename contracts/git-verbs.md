@@ -5,9 +5,9 @@ through, and the spelling to use when the shape you were about to type does not
 pass. The register has three parts: **reads** (always free), **everyday writes**,
 and **forms refused or gated by design**, each of those with the safe alternative.
 
-**Nothing restates these rows.** `bin/floor-deny.sh` builds the `permissions.allow`
+**Nothing restates these rows.** `bin/admission-deny.sh` builds the `permissions.allow`
 and `permissions.ask` rules from the rows marked `allow` and `ask`, so they deploy
-with the floor (`sh bin/floor-deny.sh --apply --live`), and `bin/floor-uninstall.sh`
+with the floor (`sh bin/admission-deny.sh --apply --live`), and `bin/admission-remove.sh`
 takes the same rules back out; both read the rows through `il_git_verbs` in
 `bin/deploy-install-lib.sh`. `tests/admission/git/verbs.test.sh`
 fails when this table, the rules floor-deny writes, its deny entries and
