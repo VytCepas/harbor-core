@@ -588,7 +588,7 @@ m_trigger() { # mode seed want kind(phrase|usewhen|notfor)
 # is the same shape as probe-to-ask: nothing a reader can see is missing, a
 # perfectly well-formed bullet, and the only thing changed is whether the line
 # records something somebody looked at or something somebody believed. This is
-# the Pandora failure as a mutation — `absent` written because checking felt
+# the catalogue-feed failure as a mutation — `absent` written because checking felt
 # like more work than concluding.
 #
 # `drop` deletes a whole verdict. Only the declared edge library can catch it,
@@ -650,7 +650,7 @@ m_probe() { # mode seed want
   awk -v mode="$1" -v want="$3" '
     function trim(s) { sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); return s }
     # AN ESCAPED PIPE IS CONTENT, NOT A SEPARATOR, and hop names really carry
-    # them: a live catalogue is named `ORG \| PANDORA SHOPIFY \| LT`. Splitting
+    # them: a live catalogue is named `ORG \| BRAND SHOPIFY \| LT`. Splitting
     # on those read a 6-column row as 8 columns, so the row was not a hop row,
     # so it was not a site — and the target reported 3 sites where the seed had
     # 4, scoring the gate on a surface a real map would not have. Measured here

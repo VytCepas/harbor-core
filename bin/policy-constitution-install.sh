@@ -23,7 +23,7 @@
 # the specific thing those two gates exist to make impossible by accident.
 #
 # IT NEVER RE-PINS. B8 is the operator's act from their own terminal, for the
-# reason floor-install.sh records at length: an installer run from a session that
+# reason admission-install.sh records at length: an installer run from a session that
 # blesses its own instruction surfaces is a self-approval loop.
 set -eu
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"

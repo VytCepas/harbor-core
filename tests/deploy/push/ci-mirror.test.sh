@@ -13,7 +13,7 @@ mkdir -p "$T_TMP/pv"; { printf '%s\n' "$HDR"; printf 'k1\tword\tZorblax\tn\n'; }
 HARBOR_SCOPE_PRIVATE="$T_TMP/pv"; export HARBOR_SCOPE_PRIVATE
 mkdir -p "$T_TMP/pv/inject.d/box"; printf '# name\tpath\twhat\nzorbcorp\t~/zorbcorp\ta made-up workload repo\n' > "$T_TMP/pv/inject.d/box/projects.tsv"
 TOKEN="mirrortok-Qm4xV7nB2c"; TOKB64="$(printf 'x-access-token:%s' "$TOKEN" | base64 | tr -d '\n')"
-HARBOR_CORE_SLUG=test/harbor-core; HARBOR_SLUG=test/harbor; export HARBOR_CORE_SLUG HARBOR_SLUG
+HARBOR_CI_CORE_SLUG=test/harbor-core; HARBOR_CI_SLUG=test/harbor; export HARBOR_CI_CORE_SLUG HARBOR_CI_SLUG
 STUB="$T_TMP/stub"; mkdir -p "$STUB"; export STUB
 
 # git wrapper: records the argv and the auth header of every fetch and push, then runs the real git.

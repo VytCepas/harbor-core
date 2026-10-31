@@ -51,12 +51,12 @@ mk; echo '{"id":"a1","rule":"a","want":"deny","cmd":"x"}' > "$F/tests/guards/x.m
 mk; echo '{"id":"a3","rule":"a","want":"deny","cmd":"x","colour":"red"}' >> "$F/tests/guards/x.jsonl"   red test.row-shape 'unknown keys colour'
 mk; echo '{"id":"a3","rule":"a","want":"deny","todo":"deny","cmd":"x"}' >> "$F/tests/guards/x.jsonl"   red test.row-shape 'todo must be a verdict other than want'
 mk; echo '{"id":"m1","cmd":"x","has":"a","hasnt":"b"}' > "$F/tests/guards/x.msg.jsonl";               red test.row-shape 'needs exactly one of has or hasnt'
-mk; echo '{"id":"y1","rule":"a","want":"deny","cmd":"x"}' > "$F/tests/guards/y.jsonl";                 red test.guard-routing "no guard 'y'"
-mk; rm "$F/bin/guard-x.sh";                                                red test.guard-routing 'has no bin/guard-x.sh'
-mk; echo '{"id":"y1","rule":"a","want":"deny","cmd":"x"}' > "$F/tests/guards/y.part.jsonl";            red test.guard-routing "no guard 'y'"
-mk; part; rm "$F/tests/guards/x.a-test.sh"; sed -i.bak '/x.a-test/d' "$F/contracts/suites.txt";        red test.guard-routing 'no suite tests/guards/x.a-test.sh runs it'
-mk; part; mv "$F/tests/guards/x.a.jsonl" "$F/tests/guards/x.jsonl";                                     red test.guard-routing 'has no table tests/guards/x.a.jsonl'
-mk; : > "$F/contracts/suites.txt";                                         red test.guard-routing 'not listed in contracts/suites.txt'
+mk; echo '{"id":"y1","rule":"a","want":"deny","cmd":"x"}' > "$F/tests/guards/y.jsonl";                 red test.admission-hook-routing "no guard 'y'"
+mk; rm "$F/bin/guard-x.sh";                                                red test.admission-hook-routing 'has no bin/guard-x.sh'
+mk; echo '{"id":"y1","rule":"a","want":"deny","cmd":"x"}' > "$F/tests/guards/y.part.jsonl";            red test.admission-hook-routing "no guard 'y'"
+mk; part; rm "$F/tests/guards/x.a-test.sh"; sed -i.bak '/x.a-test/d' "$F/contracts/suites.txt";        red test.admission-hook-routing 'no suite tests/guards/x.a-test.sh runs it'
+mk; part; mv "$F/tests/guards/x.a.jsonl" "$F/tests/guards/x.jsonl";                                     red test.admission-hook-routing 'has no table tests/guards/x.a.jsonl'
+mk; : > "$F/contracts/suites.txt";                                         red test.admission-hook-routing 'not listed in contracts/suites.txt'
 mk; echo 'RULE="b"' >> "$F/bin/guard-x.sh";                                red test.rule-coverage "rule 'b' has no row that fires it"
 mk; sed -i.bak 's/RULE=/RULE=[[:space:]]*/' "$F/tests/guards/guards.jsonl"; printf 'RULE= \\\n  "c"\n' >> "$F/bin/guard-x.sh"
                                                                            red test.rule-coverage "rule 'c' has no row that fires it"

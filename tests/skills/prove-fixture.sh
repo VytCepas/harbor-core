@@ -59,7 +59,7 @@ cat > "$T/targets/demo/control-odd.md" <<'CTL'
 
 ## Alpha
 Ordinary prose, no table at all — a lawful shape.
-A hop cell literally named `ORG \| PANDORA SHOPIFY \| LT`, and a Lithuanian ž.
+A hop cell literally named `ORG \| BRAND SHOPIFY \| LT`, and a Lithuanian ž.
 
 ## Beta
 Body text.
@@ -167,7 +167,7 @@ cat > "$T/targets/odd/seed.md" <<'SEED'
 # ODD
 
 ## Alpha
-Teisėta bet neįprasta forma — a hop cell named `ORG \| PANDORA` and no table.
+Teisėta bet neįprasta forma — a hop cell named `ORG \| BRAND` and no table.
 
 ## Beta
 Body text.

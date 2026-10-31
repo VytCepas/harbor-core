@@ -13,7 +13,7 @@ skill "$F/skills/amb" amb "an ambient core skill" ''
 skill "$F/skills/hid" hid "a hidden skill that must cost nothing" 'disable-model-invocation: true
 '
 skill "$F/vendor/skills/vend" vend "a vendored ambient skill" ''
-rt() { ( cd "$F" && HARBOR_RATCHET_BASELINE="${RB:-$F/registries/context-ratchet.tsv}" sh bin/context-budget.sh --ratchet ) > "$T_TMP/out" 2>&1; }
+rt() { ( cd "$F" && HARBOR_CONTEXT_RATCHET_BASELINE="${RB:-$F/registries/context-ratchet.tsv}" sh bin/context-budget.sh --ratchet ) > "$T_TMP/out" 2>&1; }
 want=$(( 1000 + $(printf 'description: an ambient core skill' | wc -c) + $(printf 'description: a vendored ambient skill' | wc -c) ))
 base() { printf '# header\n%s\t2026-10-26\twhy\n' "$1" > "$F/registries/context-ratchet.tsv"; }  # <bytes>
 

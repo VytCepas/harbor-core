@@ -187,8 +187,8 @@ _moves() { case "$_NL$MOVE" in *"$_NL$1$_NL"*) return 0 ;; esac; return 1; }
 _LOST=''
 if _moves bin; then
   for _s in admission-bash.sh admission-self-edit.sh admission-integrity.sh admission-egress.sh library-admission.sh \
-            annotate-web.sh context-resolve.sh admission-hook.sh floor-deny.sh floor-observe.sh \
-            floor-normalize.awk pin-instructions.sh deploy-restore.sh; do
+            annotate-web.sh context-resolve.sh admission-hook.sh admission-deny.sh admission-observe.sh \
+            admission-normalize.awk pin-instructions.sh deploy-restore.sh; do
     [ -f "$TARGET/bin/$_s" ] && ! _archive_has "bin/$_s" && _LOST="$_LOST bin/$_s"
   done
 fi

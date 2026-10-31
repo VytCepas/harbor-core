@@ -195,12 +195,13 @@ _x8_repo_time() { # <file in $ROOT> -> epoch seconds, or empty
   _x8_mtime "$1"
 }
 # The admission guards (harbor#961 W6): what bin/guard-*.sh was, the guards and their library, under the family
-# names. Every bin/admission-*.sh but the fail-closed wrapper and the three tools that share the family, plus
+# names. Every bin/admission-*.sh but the fail-closed wrapper and the tools that share the family (W7 brought six), plus
 # bin/library-admission.sh and any bin/guard-*.sh that is a file; never a rename shim (a symlink at an old name),
 # which is the same file again.
 _admission_guards() {
   for _ag in "$ROOT"/bin/admission-*.sh "$ROOT"/bin/library-admission.sh "$ROOT"/bin/guard-*.sh; do   # a guard-*.sh that is a file, not a shim, is still a guard
     case "${_ag##*/}" in admission-hook.sh|admission-deny-hash.sh|admission-mutation-tier.sh|admission-observe-report.sh) continue ;; esac
+    case "${_ag##*/}" in admission-deny.sh|admission-equivalence.sh|admission-install.sh|admission-observe.sh|admission-remove.sh|admission-verify.sh) continue ;; esac   # the floor-* tools W7 renamed
     [ -f "$_ag" ] && [ ! -L "$_ag" ] && printf '%s\n' "$_ag"
   done
 }
@@ -786,7 +787,7 @@ done
 # are the ones where guessing at an invocation is expensive.
 rule_S4() {
 rule "lint.help-flag every hand-invocable bin/*.sh answers --help (harbor#140)"
-_S4_HOOKS="admission-hook floor-observe context-resolve annotate-web prod-guard-ambient
+_S4_HOOKS="admission-hook admission-observe context-resolve annotate-web prod-guard-ambient
 worklog-push memory-harvest injection-rule eval-replay-worker admission-bash
 admission-egress admission-self-edit admission-integrity admission-cloud admission-destroy library-admission
 admission-deliverables admission-api-route
@@ -997,12 +998,12 @@ done
 # hatch is the TRUE remedy in exactly two places, named here with why:
 #   admission-integrity.sh  the SessionStart gate refuses the SESSION; relaunching is the only door in
 #   admission-hook.sh       fail-closed: no guard can evaluate ANY call, so a per-call remedy is none
-# THE SCOPE IS DERIVED: every admission guard plus every file floor-install.sh's
+# THE SCOPE IS DERIVED: every admission guard plus every file admission-install.sh's
 # GUARDS line installs, so a new floor file is in scope the day it is pinned.
 rule_F16() {
 rule "admission.kill-switch-remedy no floor guard prints the kill-switch as its remedy, except where it is the true one (harbor#482)"
-_f16g="$(sed -n "s/^GUARDS='\(.*\)'\$/\1/p" "$ROOT/bin/floor-install.sh" 2>/dev/null | head -1)"
-[ -n "$_f16g" ] || { bad admission.kill-switch-remedy "bin/floor-install.sh has no GUARDS='…' line, so the floor's file set could not be derived"; return 0; }
+_f16g="$(sed -n "s/^GUARDS='\(.*\)'\$/\1/p" "$ROOT/bin/admission-install.sh" 2>/dev/null | head -1)"
+[ -n "$_f16g" ] || { bad admission.kill-switch-remedy "bin/admission-install.sh has no GUARDS='…' line, so the floor's file set could not be derived"; return 0; }
 _f16seen=" "
 for f in $(_admission_guards) $(for _f16b in $_f16g; do printf '%s ' "$ROOT/bin/$_f16b"; done); do
   [ -f "$f" ] || continue
@@ -1136,7 +1137,7 @@ for _g in $(_admission_guards) "$ROOT"/bin/guard-*.sh; do   # the guards, and th
   [ -f "$_g" ] || continue
   _f4_names="$_f4_names $(basename "$_g")"
 done
-for _g in admission-hook.sh floor-observe.sh annotate-web.sh context-resolve.sh; do
+for _g in admission-hook.sh admission-observe.sh annotate-web.sh context-resolve.sh; do
   [ -f "$ROOT/bin/$_g" ] && _f4_names="$_f4_names $_g"
 done
 # One alternation, built from the names above. Dots escaped so `admission-bash.sh`
@@ -1281,7 +1282,7 @@ rule "posix.shellcheck every script is POSIX under sh — no shellcheck SC3xxx (
 # SC3xxx IS THE SUBSET THAT PAYS. It is exactly "this construct is not in POSIX
 # sh", which is the class the GNU/BSD runner split exists to catch and the class
 # a `#!/bin/zsh` tool is grandfathered out of by being honestly `#!/bin/zsh`. Measured on
-# the same 166 files: SC3xxx findings = ONE (`test '>'` in floor-install.sh,
+# the same 166 files: SC3xxx findings = ONE (`test '>'` in admission-install.sh,
 # removed in the same pass), so this rule starts from a baseline of ZERO. A
 # ratchet at zero is enforceable; one at "1, with an exemption" is the shape that
 # grows.
@@ -1417,7 +1418,7 @@ fi
 rule_F10() {
 rule "deploy.baseline-projection every writer and reader of .sec0-baseline uses the SAME jq projection (harbor#221)"
 # THE MECHANISM BEHIND harbor#221's FIX. The projection that decides what B6
-# watches in settings.json is written out by deploy-harden.sh and floor-deny.sh
+# watches in settings.json is written out by deploy-harden.sh and admission-deny.sh
 # and read back by admission-integrity.sh — seven literal copies of one jq program
 # across three files. A fact copied seven times drifts silently, and here the
 # drift is not cosmetic: if a WRITER pins one shape and the GUARD computes
@@ -1427,7 +1428,7 @@ rule "deploy.baseline-projection every writer and reader of .sec0-baseline uses 
 # it. A rule with no mechanism is a wish (docs/explanation/doc-truth.md), so this is the
 # mechanism: they are compared as strings, and any disagreement is a violation.
 _f10n=0; _f10ref=""
-for f in "$ROOT"/bin/deploy-harden.sh "$ROOT"/bin/floor-deny.sh "$ROOT"/bin/admission-integrity.sh; do
+for f in "$ROOT"/bin/deploy-harden.sh "$ROOT"/bin/admission-deny.sh "$ROOT"/bin/admission-integrity.sh; do
   [ -f "$f" ] || continue
   # Only the FULL baseline projection, which is the one keyed on `perms:`. The
   # narrower `{deny, locks}` teeth projection is a different question with a
@@ -1442,7 +1443,7 @@ for f in "$ROOT"/bin/deploy-harden.sh "$ROOT"/bin/floor-deny.sh "$ROOT"/bin/admi
 $(sed -n "s/.*\(-S '{perms:[^']*}'\).*/\1/p" "$f")
 EOF
 done
-[ "$_f10n" -ge 3 ] || bad deploy.baseline-projection "expected the baseline projection in all three of deploy-harden.sh, floor-deny.sh and admission-integrity.sh; found $_f10n copy/copies"
+[ "$_f10n" -ge 3 ] || bad deploy.baseline-projection "expected the baseline projection in all three of deploy-harden.sh, admission-deny.sh and admission-integrity.sh; found $_f10n copy/copies"
 }
 
 # ── F3 · guards pin the interpreter they match with ────────────────────────
@@ -1462,7 +1463,7 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   # guards, where grep resolution decides a security verdict.
   case "$(basename "$f")" in lint-conventions.sh|*-test.sh) continue ;; esac
   # SOURCES it, not merely mentions it. deploy-doctor.sh READS library-admission.sh to report
-  # which grep the floor pins; floor-install.sh names it in a copy list. Neither
+  # which grep the floor pins; admission-install.sh names it in a copy list. Neither
   # has $FLOOR_GREP in scope, so flagging them was the rule mis-scoping itself.
   grep -qE '^[[:space:]]*\.[[:space:]]+"[^"]*library-admission\.sh"' "$f" 2>/dev/null || continue
   grep -nE '(^|[|(;&[:space:]])grep[[:space:]]' "$f" 2>/dev/null | grep -vE '^[0-9]+: *#' | grep -q . \
@@ -1635,9 +1636,9 @@ done
 # three refused commands were live in the deployed tooling, each found by hand
 # while doing something else:
 #
-#   floor-install.sh:220  post-apply hint printed `<live path> --apply --with-b6`
-#   floor-install.sh:197  invoked  pin-instructions.sh --apply "$DIR"  on live
-#   floor-verify.sh:164   printed  pin-instructions.sh --apply         (defaults live)
+#   admission-install.sh:220  post-apply hint printed `<live path> --apply --with-b6`
+#   admission-install.sh:197  invoked  pin-instructions.sh --apply "$DIR"  on live
+#   admission-verify.sh:164   printed  pin-instructions.sh --apply         (defaults live)
 #
 # harbor#51 → harbor#95 → these. Every time it was fixed at the one site somebody
 # noticed, and harbor#95's own Done-when asked for this rule and never got it.
@@ -1648,7 +1649,7 @@ done
 # WHAT COUNTS AS A VIOLATION. A FULL INVOCATION of a live-gated mutator with
 # --apply — printed to the operator OR executed by the script — whose target is
 # neither an explicit --live nor a computed spelling (`_target_spelling`, `$_hint`,
-# `$_vt`, …). Both halves, because floor-install.sh:197 was the executed kind and
+# `$_vt`, …). Both halves, because admission-install.sh:197 was the executed kind and
 # it failed silently on every live install, which is worse than a wrong hint.
 # `Re-run with --apply.` is deliberately NOT a violation — it respells no target,
 # so it cannot teach a wrong one (prod-guard-install.sh:137 is correct for exactly
@@ -1661,7 +1662,7 @@ done
 # `$DIR`-target line is accepted when, within TWO lines, there is either a sibling
 # --live form or a `_phys`-against-$LIVE_DIR comparison that licenses it.
 #
-# TWO LINES, AND THE NUMBER IS LOAD-BEARING. The defect at floor-install.sh:197
+# TWO LINES, AND THE NUMBER IS LOAD-BEARING. The defect at admission-install.sh:197
 # had a `_phys "$DIR" = _phys "$LIVE_DIR"` comparison three lines below it — for a
 # different decision entirely (which floor-deny spelling to run). A ±3 window
 # accepted the defect it was written to catch. So the window is tight and the
@@ -1669,7 +1670,7 @@ done
 # badly, spell --live and the window stops mattering.
 rule_D6() {
 rule "deploy.printed-command-valid every command a mutator PRINTS is one its own gate would accept"
-_D6_MUT='floor-install|floor-uninstall|floor-deny|sec0-harden|pin-instructions|runtime-install|prod-guard-install|restore'
+_D6_MUT='admission-install|admission-remove|admission-deny|floor-install|floor-uninstall|floor-deny|sec0-harden|pin-instructions|runtime-install|prod-guard-install|restore'
 for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   # The suites EXECUTE these tools and quote them in assertion labels; neither is
@@ -1678,7 +1679,7 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   case "$(basename "$f")" in *-test.sh) continue ;; esac
   # A SCRIPT WHOSE TARGET CAN NEVER BE LIVE needs no --live spelling. test-sandbox-make.sh
   # refuses the live dir unconditionally — there is no `--live)` in its arg loop to
-  # open it — so `floor-install.sh "$DIR" --apply` is the ONLY correct form there,
+  # open it — so `admission-install.sh "$DIR" --apply` is the ONLY correct form there,
   # and demanding --live would be a §2.11 false positive on a script forbidden to
   # reach live at all. Keyed on the shape (a _phys compare against $LIVE plus no
   # --live escape), not on a message string.
@@ -1721,9 +1722,9 @@ done
 rule_D7() {
 rule "deploy.target-from-lib every installer takes its target from deploy-install-lib.sh: il_parse, il_target, no second parser, no env target"
 # floor-deny, floor-verify and renew-check name a config dir too (harbor#800): the same one parser.
-for f in "$ROOT"/bin/*-install.sh "$ROOT"/bin/floor-uninstall.sh "$ROOT"/bin/deploy-restore.sh \
+for f in "$ROOT"/bin/*-install.sh "$ROOT"/bin/admission-remove.sh "$ROOT"/bin/deploy-restore.sh \
          "$ROOT"/bin/pin-instructions.sh "$ROOT"/bin/deploy-harden.sh \
-         "$ROOT"/bin/floor-deny.sh "$ROOT"/bin/floor-verify.sh "$ROOT"/bin/drift-renew-check.sh; do
+         "$ROOT"/bin/admission-deny.sh "$ROOT"/bin/admission-verify.sh "$ROOT"/bin/drift-renew-check.sh; do
   [ -f "$f" ] || continue
   [ -L "$f" ] && continue   # a rename shim (renames.tsv remove_by) is an old name of a file judged under its own (harbor#961)
   # harbor#961 W3 gave two non-installers an -install name: the collector's setup and the drift check of installs
@@ -1769,7 +1770,7 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   # The mode that REMOVES these has to name them to match them. Skip comments;
   # scan code only. floor-test, which builds fixtures from them, left bin/ (harbor#727).
-  case "$(basename "$f")" in floor-deny.sh|floor-uninstall.sh) continue ;; esac
+  case "$(basename "$f")" in admission-deny.sh|admission-remove.sh) continue ;; esac
   grep -v '^[[:space:]]*#' "$f" 2>/dev/null \
     | grep -qE '"(Write|NotebookEdit|MultiEdit|Glob)\([^"]+\)"' \
     && bad deploy.deny-consulted "deny entry for a tool whose path rules are never consulted — use Edit(path)/Read(path): ${f#$ROOT/}" \
@@ -1796,11 +1797,11 @@ done
 #
 # ONE DIRECTION ONLY, deliberately. Edit-without-Read is a posture, not a defect:
 # settings.json, ~/.claude/bin/** and the pins are meant to be readable and not
-# writable, and floor-verify.sh reads them by design. Requiring the reverse twin
+# writable, and admission-verify.sh reads them by design. Requiring the reverse twin
 # would make this rule demand that Harbor blind itself to its own controls.
 rule_D5() {
 rule "deploy.deny-read-edit-pair every path a writer denies for Read also has an Edit twin (Read does not cover Write/NotebookEdit)"
-_d5src="$ROOT/bin/floor-deny.sh $ROOT/bin/deploy-harden.sh"
+_d5src="$ROOT/bin/admission-deny.sh $ROOT/bin/deploy-harden.sh"
 # Comments are stripped first: both files QUOTE deny entries while explaining
 # them, and a rule that reads its own documentation as data is the substring
 # defect DE-22 records.
@@ -1817,7 +1818,7 @@ _d5miss="$(printf '%s\n' "$_d5reads" | while IFS= read -r _p; do
 if [ -n "$_d5miss" ]; then
   printf '%s\n' "$_d5miss" | while IFS= read -r _p; do
     [ -n "$_p" ] || continue
-    printf '  VIOLATION [deploy.deny-read-edit-pair] Read-denied but WRITABLE by Write/NotebookEdit — add "Edit(%s)": bin/floor-deny.sh\n' "$_p" >&2
+    printf '  VIOLATION [deploy.deny-read-edit-pair] Read-denied but WRITABLE by Write/NotebookEdit — add "Edit(%s)": bin/admission-deny.sh\n' "$_p" >&2
   done
   FAIL=$((FAIL + $(printf '%s\n' "$_d5miss" | grep -c . || true)))
 fi
@@ -2283,7 +2284,7 @@ _f14_layer() { # <layer> <file> <awk program printing the protecting lines>
 }
 _f14_layer guard-bash "$ROOT/bin/admission-bash.sh" '/^FILES="/ { print }'
 _f14_layer guard-selfedit "$ROOT/bin/admission-self-edit.sh" '/^is_protected\(\) *\{/ { s = 1; next } s && /^\}/ { s = 0 } s && !/^[ \t]*#/ { sub(/[ \t]#.*$/, ""); print }'
-_f14_layer floor-deny "$ROOT/bin/floor-deny.sh" "/^ADD='\\[/ { s = 1; next } s && /^\\]'/ { s = 0 } s { print }"
+_f14_layer floor-deny "$ROOT/bin/admission-deny.sh" "/^ADD='\\[/ { s = 1; next } s && /^\\]'/ { s = 0 } s { print }"
 while IFS='	' read -r _f14_n _f14_w _f14_c; do
   [ "$_f14_c" = integrity ] || continue
   case "$_f14_w" in "<cfg>/bin/"*) continue ;; esac
@@ -3729,7 +3730,7 @@ done
 # it must be closed — an OPEN row passes, a missing row does not.
 rule_T8() {
 rule "doc.coverage-row-per-hook every upstream hook has a row in docs/reference/coverage.md (gaps must be visible)"
-_mir="${HARBOR_UPSTREAM_MIRROR:-$HOME/.harbor-upstream}"
+_mir="${HARBOR_LINT_UPSTREAM_MIRROR:-${HARBOR_UPSTREAM_MIRROR:-$HOME/.harbor-upstream}}"
 _up="$_mir"
 for _d in "$_mir"/*/install/hooks; do [ -d "$_d" ] && { _up="$_d"; break; }; done
 if [ -d "$_up" ] && [ -f "$ROOT/docs/reference/coverage.md" ]; then
@@ -3991,7 +3992,7 @@ rule "doc.paths-resolve every ./path cited by a tracked doc resolves (generalise
 # globs, and the list was the defect twice: docs/README.md linked ../docs/generated/status.md, a dev-layer file the export does not
 # carry, and docs/ was not on it; then the glob list still left ~500 exported files unread (vendor/skills, skills/,
 # commands/, inject.d/, patches/), so a dev link planted in a skill or an injected session note stayed green. The link
-# resolves in the dev checkout and dangles in the export, which is why tests/deploy/push/selfcontained.test.sh runs this rule
+# resolves in the dev checkout and dangles in the export, which is why tests/deploy/push/self-contained.test.sh runs this rule
 # over the staged export and a core document NAMES a dev-layer file (contracts/layers.tsv) in code font, never links it.
 # The set comes from git when ROOT is a checkout, so untracked output (build/, a scratch note) is not judged; a root with
 # no git (a throwaway fixture) falls back to every *.md under it. _t3_deliberate is the one file that cites a dead path ON
@@ -4185,7 +4186,7 @@ fi
 
 # ── THE INSTALLER PAYLOADS, ENUMERATED ONCE ────────────────────────────────
 # TWO RULES ASKED "does an installer ship this?" AND BOTH ANSWERED FROM THEIR OWN
-# LIST OF INSTALLERS. Both lists said deploy-runtime-install.sh and floor-install.sh, and
+# LIST OF INSTALLERS. Both lists said deploy-runtime-install.sh and admission-install.sh, and
 # this box has a THIRD — bin/context-injection-install.sh, whose `PAYLOAD=` ships
 # inject-hook.sh and govern-token.sh into the live bin. So X2 reported the live
 # engine as UNOWNED ("no installer ships it there, so no install can refresh it")
@@ -4782,7 +4783,7 @@ fi
 #     concurrent sessions across two worktrees of one repo.
 #   · admission-integrity.sh had no update path at all outside floor-install
 #     --with-b6, which the install order holds back (eval-pass-score.sh reports on
-#     the floor; it does not gate the installer — floor-install.sh never calls it).
+#     the floor; it does not gate the installer — admission-install.sh never calls it).
 # Neither was invisible for want of a test. Both were invisible because nothing
 # asked the one question that spans the two lists: does the payload contain
 # everything the payload calls?
@@ -4790,7 +4791,7 @@ fi
 # ADVISORY, in the X2/X4/X5 family — same class, fourth surface: the artifact
 # under governance is not the artifact doing the work. Hard-failing would turn
 # the build red on a condition whose repair is a judgement call about blast
-# radius (floor-deny.sh is a settings MUTATOR; putting it in a config dir is a
+# radius (admission-deny.sh is a settings MUTATOR; putting it in a config dir is a
 # decision about what a session can reach, and CONSTITUTION § "Encoding a fix is
 # a human-gated act" makes that the operator's, not this linter's).
 #
@@ -4803,7 +4804,7 @@ fi
 # correctly invisible here". That is true only of a script which is never installed.
 # `test-sandbox-make.sh` sets SRC to `dirname "$0"` — its OWN directory — and is itself in
 # runtime-install's FILES, so on a real box its $SRC is $CFG/bin. Its
-# `sh "$SRC/floor-install.sh"` therefore resolved to nothing, `--with-floor` worked
+# `sh "$SRC/admission-install.sh"` therefore resolved to nothing, `--with-floor` worked
 # from a checkout and failed from the install, and this rule — the one rule whose
 # entire job is "does the payload contain everything the payload calls" — read the
 # call and exempted it. A blind spot in the check for blind spots.
@@ -4828,7 +4829,7 @@ fi
 # guarded calls would have retired the rule's reason for existing while leaving it
 # in the file, which is worse than deleting it.
 #
-# So the axis is EXECUTED vs READ. floor-install.sh reads runtime-install's FILES
+# So the axis is EXECUTED vs READ. admission-install.sh reads runtime-install's FILES
 # line with `sed -n … "$SRC/deploy-runtime-install.sh"`, and the comment above it records
 # that an empty read fails SAFE, toward copying — an absent file there degrades a
 # derivation, it does not call into nothing. Every other reference in this tree is
@@ -5771,7 +5772,7 @@ fi
 
 # ── X1 · the dev sandbox must not drift from the repo ──────────────────────
 # QA-PLAN R8: the sandbox was built once and never rebuilt, so "try it in the
-# sandbox" validated a nine-passes-old floor — it was missing floor-normalize.awk
+# sandbox" validated a nine-passes-old floor — it was missing admission-normalize.awk
 # entirely, which means the whole quoting model was absent from the thing being
 # tested. Staleness has to be a VIOLATION, not a surprise.
 # Skipped entirely when no sandbox exists (CI, a fresh clone) — this checks a
@@ -5807,7 +5808,7 @@ SBX="${HARBOR_TEST_SANDBOX_DIR:-${HELM_SANDBOX_DIR:-$HOME/.claude-sandbox}}"
 # and the presence check and the byte check read the same list instead of two.
 _X1_WANT="$(
   _admission_guards | sed 's|.*/||' | sort
-  printf '%s\n' annotate-web.sh floor-normalize.awk admission-hook.sh pin-instructions.sh
+  printf '%s\n' annotate-web.sh admission-normalize.awk admission-hook.sh pin-instructions.sh
 )"
 # KEYED ON THE DIRECTORY ALONE, NOT ON "does it contain any guard". The first cut
 # of this fix wrote `[ -d "$SBX/bin" ] && ls "$SBX"/bin/<the guards>`, which conflates
@@ -6684,7 +6685,7 @@ rule "lint.no-home-path no tracked file names the running user's home directory 
 #   git grep -n -E '/Users/[A-Za-z0-9_]' -- bin fixtures
 # The defect is an author's OWN home leaking in, and the one place that string
 # is known is the author's $HOME when they lint before pushing. Write `$HOME` or
-# `~`; in a corpus fixture write `@HOME@`, which bin/floor-equiv.sh renders.
+# `~`; in a corpus fixture write `@HOME@`, which bin/admission-equivalence.sh renders.
 #
 # EXCLUDED, EACH FOR A STATED REASON:
 #   evals/                 captured run data: it records what actually happened,
@@ -7212,6 +7213,18 @@ rule "lint.leaks occurrences of a leak-gate core pattern in the tree only go dow
 if [ -f "$ROOT/bin/lint-leaks.sh" ] && [ -f "$ROOT/contracts/lint-leaks-baseline.txt" ]; then
   _lk_out="$(HARBOR_SCOPE_ROOT="$ROOT" HARBOR_SCOPE_PRIVATE="${TMPDIR:-/tmp}/lint-leaks-no-private" sh "$ROOT/bin/lint-leaks.sh" --check 2>&1)" \
     || bad lint.leaks "$(printf '%s' "$_lk_out" | grep -E 'FAIL:|fix:|changed and' | sed 's/^ *//' | tr '\n' ' ')"
+fi
+}
+
+# ── lint.name-ratchet · the naming findings only shrink (harbor#967) ─
+# bin/lint-name-ratchet.sh runs bin/lint-name.sh and compares its findings to contracts/lint-name-baseline.txt: a finding
+# the baseline lacks is red, and so is a baselined one that no longer occurs (delete its line). standard.names-conform
+# above still prints every finding as advisory; this rule is what makes a NEW bad name block.
+rule_lint_name_ratchet() {
+rule "lint.name-ratchet a naming finding the baseline lacks is red, and a baselined one that no longer occurs is red until its line is deleted (contracts/lint-name-baseline.txt, harbor#967)"
+if [ -f "$ROOT/bin/lint-name-ratchet.sh" ] && [ -f "$ROOT/contracts/lint-name-baseline.txt" ] && [ -f "$ROOT/bin/lint-name.sh" ]; then
+  _nr_out="$(HARBOR_SCOPE_ROOT="$ROOT" sh "$ROOT/bin/lint-name-ratchet.sh" --check 2>&1)" \
+    || bad lint.name-ratchet "$(printf '%s' "$_nr_out" | grep -E 'FAIL:|fix:' | sed 's/^ *//' | tr '\n' ' ')"
 fi
 }
 

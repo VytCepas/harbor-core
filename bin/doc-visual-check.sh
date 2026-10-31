@@ -233,7 +233,7 @@ for _g in "$ROOT"/bin/*-generate.sh; do   # harbor#961 W3: the generators are <f
   fi
 done
 
-# DISCOVERY IS RECURSIVE, because build/pandora/*.html is a surface too and a
+# DISCOVERY IS RECURSIVE, because build/<client>/*.html is a surface too and a
 # top-level glob never saw it. Three exclusions: a page just rendered fresh above
 # (checking the stale twin as well would report a defect already fixed), and
 # archify's own `<name>.visual-check.html` contact sheets — a checker that grades

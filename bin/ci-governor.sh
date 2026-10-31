@@ -84,8 +84,8 @@
 # notifyutil, taskpolicy from PATH.
 set -eu
 # `run` with nothing to govern is a plain exec, before any config is read: every CI suite passes through here.
-if [ "${1:-}" = run ] && { [ -n "${GITHUB_ACTIONS:-}" ] || [ -n "${HARBOR_GOV_SLOT:-}" ] \
-     || [ ! -d "${HARBOR_GOVERNOR_DIR:-${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}/ci-governor}" ]; }; then
+if [ "${1:-}" = run ] && { [ -n "${GITHUB_ACTIONS:-}" ] || [ -n "${HARBOR_CI_GOVERNOR_SLOT:-${HARBOR_GOV_SLOT:-}}" ] \
+     || [ ! -d "${HARBOR_CI_GOVERNOR_DIR:-${HARBOR_GOVERNOR_DIR:-${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}/ci-governor}}" ]; }; then
   shift; _o=""
   [ "${1:-}" != --out ] || { _o="${2:-}"; shift 2; }
   [ "${1:-}" != -- ] || shift
@@ -103,7 +103,7 @@ usage() { awk 'NR<2{next} /^#/{ sub(/^# ?/,""); if ($0=="") exit; print; next } 
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 CONF="$CFG/.harbor-ci-governor"
 CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
-STATE_DIR="${HARBOR_GOVERNOR_DIR:-$CACHE_DIR/ci-governor}"
+STATE_DIR="${HARBOR_CI_GOVERNOR_DIR:-${HARBOR_GOVERNOR_DIR:-$CACHE_DIR/ci-governor}}"
 STATE="$STATE_DIR/state"
 OUT="$CACHE_DIR/ci-governor.json"
 LOG="$CACHE_DIR/checks.log"
@@ -169,7 +169,7 @@ THERMAL_SPEED_MIN="$(cfg thermal_speed_min 90)"
 CLEAR_SECS="$(int "$(cfg clear_secs 60)")"
 LINUX_EMERG_CPUS="$(awk -v x="$(cfg linux_emergency_cpus 0.5)" 'BEGIN { printf "%g", x }')"
 STOP_MAX="$(int "$(cfg stop_max 300)")"
-TRIGGER="${HARBOR_GOV_TRIGGER:-$HOME/runners/harbor-linux/events/trigger}"
+TRIGGER="${HARBOR_CI_GOVERNOR_TRIGGER:-${HARBOR_GOV_TRIGGER:-$HOME/runners/harbor-linux/events/trigger}}"
 [ "$MIN_BUDGET" -ge 1 ] || MIN_BUDGET=1
 [ "$LINUX_MIN" -ge 1 ] || LINUX_MIN=1
 [ "$NORMAL_MIN" -ge "$LINUX_MIN" ] || NORMAL_MIN=$LINUX_MIN
@@ -743,7 +743,7 @@ cmd_run() {
     esac
   done
   [ $# -gt 0 ] || { log_fail "run needs a command"; log_fix "sh $0 run -- <cmd…>"; log_end || :; exit 2; }
-  if [ -n "${GITHUB_ACTIONS:-}" ] || [ -n "${HARBOR_GOV_SLOT:-}" ] || [ ! -d "$STATE_DIR" ]; then
+  if [ -n "${GITHUB_ACTIONS:-}" ] || [ -n "${HARBOR_CI_GOVERNOR_SLOT:-${HARBOR_GOV_SLOT:-}}" ] || [ ! -d "$STATE_DIR" ]; then
     if [ -n "$_out" ]; then exec "$@" > "$_out" 2>&1; else exec "$@"; fi
   fi
   mkdir -p "$STATE_DIR/slots" 2>/dev/null || :
@@ -776,12 +776,12 @@ cmd_run() {
       fi
       unlock
     fi
-    sleep "${HARBOR_GOV_POLL:-3}"
+    sleep "${HARBOR_CI_GOVERNOR_POLL:-${HARBOR_GOV_POLL:-3}}"
   done
   post   # a slot is held: the governor decides, and samples while it is
   trap 'rm -f "$STATE_DIR/slots/$$"; post' EXIT
   trap 'rm -f "$STATE_DIR/slots/$$"; post; exit 130' INT TERM HUP
-  HARBOR_GOV_SLOT=$$; export HARBOR_GOV_SLOT
+  HARBOR_CI_GOVERNOR_SLOT=$$; export HARBOR_CI_GOVERNOR_SLOT
   if [ -n "$_out" ]; then
     if "$@" > "$_out" 2>&1; then _rc=0; else _rc=$?; fi
   else

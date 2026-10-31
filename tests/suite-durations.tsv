@@ -15,7 +15,7 @@
 99	tests/eval/replay/replay.test.sh
 87	tests/deploy/deploy/standard.test.sh
 84	tests/admission/baseline/install.test.sh
-81	tests/deploy/push/selfcontained.test.sh
+81	tests/deploy/push/self-contained.test.sh
 80	tests/deploy/live-verify/live-verify.test.sh
 76	tests/status/obligations/harden.test.sh
 75	tests/admission/egress/egress.test.sh
@@ -30,7 +30,7 @@
 58	tests/doc/graph-generate/graph-generate.test.sh
 58	tests/ci/governor/ladder.test.sh
 56	tests/skill/prove/cli.test.sh
-54	tests/lint/conventions/redproof.test.sh
+54	tests/lint/conventions/red-proof.test.sh
 54	tests/admission/bash/cd-fold.test.sh
 54	tests/admission/bash/gate.test.sh
 53	tests/ci/merge-stack/sync.test.sh
@@ -48,7 +48,7 @@
 37	tests/admission/equivalence/equivalence.test.sh
 37	tests/alert/probe/probe.test.sh
 34	tests/ci/deploy-fleet/merge.test.sh
-34	tests/ci/merge-stack/realcheck.test.sh
+34	tests/ci/merge-stack/real-check.test.sh
 32	tests/ci/runners/runners.test.sh
 32	tests/status/obligations/surface.test.sh
 31	tests/standard/rename/rename.test.sh
@@ -160,7 +160,7 @@
 4	tests/access/cli/secret-gate.test.sh
 4	tests/event/wait-for/output-contract.test.sh
 4	tests/event/producer/wiring.test.sh
-4	tests/admission/apiroute/apiroute.test.sh
+4	tests/admission/api-route/api-route.test.sh
 4	hooks/injection-rule/scope.test.sh
 4	tests/proposal/proposal/proposal.test.sh
 4	tests/scope/pack/skill-packs.test.sh
@@ -188,7 +188,7 @@
 2	tests/lint/conventions/findings.test.sh
 2	tests/lint/conventions/git.test.sh
 2	tests/lint/conventions/injection-rule.test.sh
-2	tests/lint/conventions/redproof-rest.test.sh
+2	tests/lint/conventions/red-proof-rest.test.sh
 2	tests/lint/module-shape/module-shape.test.sh
 2	tests/drift/reference-check/skills.test.sh
 2	tests/audit/stream-lib/stream-lib.test.sh
@@ -224,7 +224,7 @@
 1	tests/ci/ci-queue/output-contract.test.sh
 1	tests/ci/verified/verified.test.sh
 1	tests/ci/github-plan/github-plan.test.sh
-1	tests/ci/status-gen/output-contract.test.sh
+1	tests/status/generate/output-contract.test.sh
 1	tests/ci/worktree/layout.test.sh
 1	tests/access/cli/stored.test.sh
 1	tests/access/browser/output-contract.test.sh
@@ -291,7 +291,7 @@
 0	tests/ci/merged-check/output-contract.test.sh
 0	tests/status/plan-generate/plan-generate.test.sh
 0	tests/ci/plan-status/output-contract.test.sh
-0	tests/ci/wf-progress/output-contract.test.sh
+0	tests/session/workflow-progress/output-contract.test.sh
 0	tests/access/browser-hosts-add/browser-hosts-add.test.sh
 0	tests/audit/collector-install/collector-install.test.sh
 0	tests/access/gcloud-credentials/output-contract.test.sh

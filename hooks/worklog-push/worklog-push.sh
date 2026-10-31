@@ -102,8 +102,9 @@ if [ -n "$_wl_fb" ]; then
 fi
 
 # Push — network failures are the ONLY fail-open leg (commit stays local).
-# The token is the store's `worklog-token` (harbor#1205); the plaintext file is read only until it moves.
-# Each state warns once (a stamp per state), so a token that is gone is said, never silently unpushed.
+# The token is the store's `worklog-token` and nothing else (harbor#1205, decided 2026-10-23). A plaintext file
+# left from before is never read: it is named, with the command that moves it. Each state warns once (a stamp per
+# state), so a token that is gone is said, never silently unpushed.
 wl_warn_once() {
   _wl_st="$CFG/.worklog-token-warned.$1"
   [ -e "$_wl_st" ] && return 0
@@ -111,15 +112,12 @@ wl_warn_once() {
   log_warn "$2"; log_fix "$3"; log_end || :
 }
 _wl_secret="${HARBOR_SECRET_BIN:-$(command -v secret 2>/dev/null || true)}"; [ -n "$_wl_secret" ] || _wl_secret="$HOME/.local/bin/secret"
-_wl_via=""
 if [ -f "$_wl_secret" ] && sh "$_wl_secret" run worklog-token WORKLOG_TOKEN -- true >/dev/null 2>&1; then
-  _wl_via=store; rm -f "$CFG/.worklog-token-warned.legacy" "$CFG/.worklog-token-warned.missing" 2>/dev/null || :
+  rm -f "$CFG/.worklog-token-warned.legacy" "$CFG/.worklog-token-warned.missing" 2>/dev/null || :
 elif [ -f "$TOKEN_FILE" ]; then
-  wl_warn_once legacy "the work-log token is still the plaintext $TOKEN_FILE, not the store (harbor#1205)" \
-    "copy the token on GitHub, then: sh $DIR/memory-log-token-save.sh   # stores it and removes the file"
-  WORKLOG_TOKEN="$(cat "$TOKEN_FILE" 2>/dev/null)" || exit 0
-  [ -n "$WORKLOG_TOKEN" ] || exit 0
-  export WORKLOG_TOKEN
+  wl_warn_once legacy "the work-log token is still the plaintext $TOKEN_FILE, which is no longer read, so the work log is committed here and never pushed (harbor#1205)" \
+    "sh $_wl_secret adopt $TOKEN_FILE worklog-token   # stores it, proves the copy by sha256, removes the file"
+  exit 0
 else
   wl_warn_once missing "no worklog-token in the store, so the work log is committed here and never pushed (harbor#1205)" \
     "copy the token on GitHub, then: sh $DIR/memory-log-token-save.sh"
@@ -143,13 +141,8 @@ fi
 # one nobody reads, and this one hid the only question worth asking of a
 # sync hook: is the log actually leaving this machine?
 _wl_helper='!f(){ test "$1" = get && printf "username=x-access-token\npassword=%s\n" "$WORKLOG_TOKEN"; }; f'  # secret-seam: entry worklog-token, injected by secret run
-if [ "$_wl_via" = store ]; then
-  _wl_err="$(sh "$_wl_secret" run worklog-token WORKLOG_TOKEN -- git -c credential.helper="$_wl_helper" push --quiet origin main 2>&1)"
-else
-  _wl_err="$(git -c credential.helper="$_wl_helper" push --quiet origin main 2>&1)"
-fi
+_wl_err="$(sh "$_wl_secret" run worklog-token WORKLOG_TOKEN -- git -c credential.helper="$_wl_helper" push --quiet origin main 2>&1)"
 _wl_rc=$?
-unset WORKLOG_TOKEN
 
 # FAIL OPEN ON NETWORK ONLY, which is what the header has always claimed. The
 # old `>/dev/null 2>&1 || true` made a rejected credential, a non-fast-forward,

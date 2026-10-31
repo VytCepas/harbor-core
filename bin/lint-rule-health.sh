@@ -130,10 +130,10 @@ engine_findings() { # <engine> — its own findings, one rule id per finding, ap
   awk -F'\t' '$1 == "A" || $1 == "V" { print $2 }' "$T/p.eng" >> "$T/p.cnt"
 }
 # D-92: the repos a name rule must be clean in, "<name> TAB <checkout>". harbor is judged at this tree, not at the
-# registry's checkout, so a branch is held to its own state. HARBOR_RH_REPOS names a file of that shape (tests).
+# registry's checkout, so a branch is held to its own state. HARBOR_LINT_RULE_HEALTH_REPOS names a file of that shape (tests).
 name_scan() { # <engine> — appends "<rule> TAB <repo> TAB <count>" to $T/p.rep, bad repos to $T/p.repbad, every repo to $T/p.repall
-  _nl="${HARBOR_RH_NAMELINT:-$ROOT/bin/lint-name.sh}"
-  if [ -n "${HARBOR_RH_REPOS:-}" ]; then cat "$HARBOR_RH_REPOS" > "$T/p.repos" 2> /dev/null || stand_down "the repo list $HARBOR_RH_REPOS could not be read" "ls $HARBOR_RH_REPOS"
+  _nl="${HARBOR_LINT_RULE_HEALTH_NAME_LINT:-${HARBOR_RH_NAMELINT:-$ROOT/bin/lint-name.sh}}"
+  if [ -n "${HARBOR_LINT_RULE_HEALTH_REPOS:-${HARBOR_RH_REPOS:-}}" ]; then cat "${HARBOR_LINT_RULE_HEALTH_REPOS:-$HARBOR_RH_REPOS}" > "$T/p.repos" 2> /dev/null || stand_down "the repo list ${HARBOR_LINT_RULE_HEALTH_REPOS:-$HARBOR_RH_REPOS} could not be read" "ls ${HARBOR_LINT_RULE_HEALTH_REPOS:-$HARBOR_RH_REPOS}"
   else sh "$ROOT/bin/scope-roots.sh" --repos > "$T/p.repos" 2> /dev/null || stand_down "the repo registry could not be read, so no repo was linted" "sh $ROOT/bin/scope-roots.sh --repos"; fi
   [ -s "$T/p.repos" ] || stand_down "the repo registry lists no repo" "sh $ROOT/bin/scope-roots.sh --repos"
   while IFS="$(printf '\t')" read -r _rn _rp; do

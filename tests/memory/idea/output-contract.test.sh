@@ -75,4 +75,13 @@ t_eq "exit 0" "exit 0" "$(PATH="$SBIN:$PATH" HARBOR_SECRET_BIN="$T_TMP/secret" F
 t_has "pushed" "$(ERR)" "  ok: pushed"
 t_has "the push carried the store's token as the header" "$(grep ' push ' "$GLOG")" "$_ok_hdr"
 t_hasnt "...and the URL carries no credential" "$(grep ' push ' "$GLOG")" "store-token@"
+
+t_section "a plaintext token file is never read: nothing is pushed, and the fix moves it into the store (harbor#1205)"
+printf 'file-token\n' > "$T_TMP/legacy"; : > "$GLOG"
+_lrun() { env PATH="$SBIN:$PATH" HARBOR_SECRET_BIN="$T_TMP/secret" FAKE_STORE="$T_TMP/no-store" HARBOR_MEMORY_LOG_DIR="$L" \
+  HARBOR_MEMORY_LOG_TOKEN_FILE="$T_TMP/legacy" IDEA_NO_SCAN=1 sh "$TOOL" "$@" >"$T_TMP/out" 2>"$T_TMP/err"; echo "exit $?"; }
+t_eq "exit 0" "exit 0" "$(_lrun 'from a file')"
+t_has "the missing token is a WARN" "$(ERR)" "  WARN: no token — committed locally"
+t_has "...whose fix adopts the file into the store" "$(ERR)" "adopt $T_TMP/legacy worklog-token"
+t_eq "...and no push or pull carried a credential" 0 "$(grep -c Authorization "$GLOG")"
 t_done

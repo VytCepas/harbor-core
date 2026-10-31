@@ -94,6 +94,27 @@ prc "$S" "$T" >/dev/null
 bump "$S" next
 t_eq "a leak on a remote-tracking branch refuses the push" "1" "$(prc "$S" "$T")"
 
+t_section "a pull request's refs are published too, and a clone never fetches them"
+S="$(mk pr)"; T="$(tgt pr)"; R="$(tgt pr-origin)"
+prc "$S" "$T" >/dev/null
+( cd "$R" && git commit -q --allow-empty -m base && git checkout -q -b gone && printf 'Zorblax\n' > p.md && git add -A &&
+  git commit -qm p && git update-ref refs/pull/7/head HEAD && git checkout -q - && git branch -q -D gone ) >/dev/null 2>&1
+( cd "$T" && git remote add origin "$R" && git fetch -q origin ) >/dev/null 2>&1
+t_eq "positive control: the origin holds the ref" "1" "$(git -C "$R" for-each-ref refs/pull | wc -l | tr -d ' ')"
+t_eq "positive control: nothing the clone fetched reaches the leak" "" "$(git -C "$T" log --all --format=%H -- p.md)"
+bump "$S" next
+t_has "a dry run fetches nothing, and says what it read" "$(push "$S" --dry-run "$T")" "a dry run fetches nothing; it reads the 0 pull request ref(s)"
+t_eq "...so the target still holds no pull request ref" "0" "$(git -C "$T" for-each-ref refs/remotes/origin/pull | wc -l | tr -d ' ')"
+t_eq "a leak only a pull request ref reaches refuses the push" "1" "$(prc "$S" "$T")"
+t_has "...named by the pattern id" "$(push "$S" "$T")" "pattern k1"
+
+t_section "a terms.tsv row is named whole, line and all, in a history note"
+PVT="$T_TMP/pvt"; mkdir -p "$PVT"; printf 'id\tkind\tpattern\tnote\n' > "$PVT/leaks.tsv"; printf 'id\tclass\nzorblax\tclient\n' > "$PVT/terms.tsv"
+S="$(mk terms)"; T="$(tgt terms)"
+prc "$S" "$T" >/dev/null; plant "$T" docs/old.md "owned by Zorblax"; C="$(git -C "$T" rev-parse --short=12 HEAD~1)"; bump "$S" next
+OUT="$(HARBOR_SCOPE_ROOT="$S" HARBOR_SCOPE_PRIVATE="$PVT" sh "$S/bin/deploy-push.sh" "$T" 2>&1)"
+t_has "...as commit, path:line and the terms row" "$OUT" "commit $C docs/old.md:1 pattern terms.tsv:L2"
+
 S="$(mk remsec)"; T="$(tgt remsec)"; R="$(tgt remsec-origin)"
 prc "$S" "$T" >/dev/null
 ( cd "$R" && printf 'pat %s\n' "$SEC" > r.md && git add -A && git commit -qm r ) >/dev/null 2>&1

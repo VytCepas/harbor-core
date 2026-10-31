@@ -36,7 +36,7 @@
 #                                else the first-run command (which seeds an empty {})
 #   il_merge_hook <settings-json> <event> <matcher> <cmd> [<onfail>]   wire one hook, additively; new json on stdout
 #   il_onfailure                 `block` when the client takes a hook's onFailure key (Claude Code >= 2.1.295),
-#                                else nothing; FLOOR_ONFAILURE=1|0 decides where `claude` is not on PATH
+#                                else nothing; HARBOR_ADMISSION_ONFAILURE=1|0 decides where `claude` is not on PATH
 #
 # The install manifest (install standard §3): <target>/.harbor-manifest, one row per installed file,
 # `<git-blob> <mode> <relpath> <installer> <commit>`, newest row per path. B6 never reads it: a tamper
@@ -302,7 +302,7 @@ il_merge_hook() { # <settings-json> <event> <matcher> <cmd> [<onfail>]  → new 
 # A PreToolUse veto that times out or crashes lets the call through unless onFailure is set
 # (code.claude.com/docs/en/hooks). An unknown version gets no field: an older client may reject the key.
 il_onfailure() {
-  case "${FLOOR_ONFAILURE:-}" in 1) echo block; return 0 ;; 0) return 0 ;; esac
+  case "${HARBOR_ADMISSION_ONFAILURE:-${FLOOR_ONFAILURE:-}}" in 1) echo block; return 0 ;; 0) return 0 ;; esac
   _ofv="$(claude --version 2>/dev/null | sed -n 's/^\([0-9][0-9]*\)\.\([0-9][0-9]*\)\.\([0-9][0-9]*\).*/\1 \2 \3/p' | head -n 1)"
   [ -n "$_ofv" ] || return 0
   set -- $_ofv

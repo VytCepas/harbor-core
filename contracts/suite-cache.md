@@ -45,7 +45,7 @@ runner <oid of the running bin/test-suite-run.sh>
 cache  <oid of the running bin/test-suite-cache.sh>
 trust  <domain>                             ci:<RUNNER_NAME> under Actions, else local:<hostname>
 host   <uname -srm>
-salt   <HARBOR_SUITE_CACHE_SALT>            any text; changing it is a cold cache
+salt   <HARBOR_TEST_SUITE_CACHE_SALT>            any text; changing it is a cold cache
 declared <the suite's globs>
 suite <suite>
 <oid> <path>                                one per input, sorted
@@ -76,7 +76,7 @@ what a changeset selects, listed rather than guessed.
 
 ## The store
 
-`${HARBOR_SUITE_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/harbor/suite-cache}/<domain>/<key>`, one file per
+`${HARBOR_TEST_SUITE_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/harbor/suite-cache}/<domain>/<key>`, one file per
 pass: `v1 TAB secs TAB count TAB when TAB suite TAB commit`. A hit replays the pass as a results row
 `cached TAB secs TAB 0 TAB count TAB suite TAB passed <when> (commit <c>), key <k>`, so the readers of a row
 get what a run gives them:
@@ -89,8 +89,8 @@ get what a run gives them:
 | `--record` / `--record-from` | col 2 | **ignored**: the table keeps measured times, never replayed ones |
 | `standard-rename.sh --pr-body` ledgers | `pass`/`fail` only | not counted — run a rename's before/after ledgers without the cache |
 
-Entries no run has used for `HARBOR_SUITE_CACHE_DAYS` (default 30) are pruned at record time; a hit touches
-its entry. `rm -rf ~/.cache/harbor/suite-cache` empties it; so does a new `HARBOR_SUITE_CACHE_SALT`.
+Entries no run has used for `HARBOR_TEST_SUITE_CACHE_DAYS` (default 30) are pruned at record time; a hit touches
+its entry. `rm -rf ~/.cache/harbor/suite-cache` empties it; so does a new `HARBOR_TEST_SUITE_CACHE_SALT`.
 
 **In CI the store is per runner.** The governance runners (`harbor-linux`, `harbor-linux-2`,
 `bin/ci-runners.sh`) are persistent containers, so `$HOME/.cache` survives between jobs and goes with the

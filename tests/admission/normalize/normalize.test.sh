@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
-# floor-normalize.awk, the tokenizer the B rules read (harbor#3). floor-test asks "is this blocked?";
+# admission-normalize.awk, the tokenizer the B rules read (harbor#3). floor-test asks "is this blocked?";
 # this asks "is this PARSED correctly?" — a rule can pass for the wrong reason on a wrong table.
 # POSIX only: one `$'…'` once made this suite unparseable under dash (lint F12 guards tests/).
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-AWK="$T_ROOT/bin/floor-normalize.awk"
+AWK="$T_ROOT/bin/admission-normalize.awk"
 NL='
 '
 tab() { printf '%s' "$1" | awk -f "$AWK"; }  # <command> — the whole table

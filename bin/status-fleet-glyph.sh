@@ -117,9 +117,9 @@
 #   HARBOR_STATUS_GLYPH_COLS=<n>  override the terminal width (the suite pins this).
 #   HARBOR_STATUS_GLYPH_STALE_S   fleet-cache staleness ceiling, default 900.
 #   HARBOR_TEST_NOW=<epoch>     freeze the clock (the suite pins this).
-#   HARBOR_GLYPH_MACHINE=0 drop the machine segments of row 3 (the other suites set this);
+#   HARBOR_STATUS_GLYPH_MACHINE=0 drop the machine segments of row 3 (the other suites set this);
 #                          the CI tokens still show there, so row 3 is gone only when both are empty.
-#   HARBOR_GLYPH_MACHINE_REFRESH=0  never spawn the CPU sampler; read its cache only.
+#   HARBOR_STATUS_GLYPH_MACHINE_REFRESH=0  never spawn the CPU sampler; read its cache only.
 set -eu
 
 case "${1:-}" in
@@ -1078,7 +1078,7 @@ fi
 #
 # THE AGE IS NOT OPTIONAL. The crit that prompted this rested on ONE
 # wrapper-guard-missing record from 2026-08-20, and the remedy it prints
-# (re-run floor-install.sh) had already run on 2026-08-23 — so the verdict was
+# (re-run admission-install.sh) had already run on 2026-08-23 — so the verdict was
 # almost certainly true-but-spent, and nothing on the row could say so. An
 # undated verdict cannot be falsified, and CONSTITUTION §2.4 says a claim with no
 # falsifier is not a claim. Age comes from the file mtime, the same idiom the
@@ -1150,7 +1150,7 @@ seg3() { # <level> <text>
   case "$1" in 2) _k="$RED" ;; 1) _k="$YEL" ;; *) _k="" ;; esac
   ROW3="$ROW3${ROW3:+ $SEP }${_k}$2${_k:+$RST}"
 }
-if [ "${HARBOR_GLYPH_MACHINE:-1}" != 0 ]; then
+if [ "${HARBOR_STATUS_GLYPH_MACHINE:-${HARBOR_GLYPH_MACHINE:-1}}" != 0 ]; then
   # CPU BUSY IS READ FROM A CACHE, NEVER SAMPLED INLINE. A real busy figure needs two
   # counter reads a second apart (iostat -c 2 -w 1); `ps %cpu` is a decayed average and
   # `top -l 1` costs 250 ms. A detached sampler refreshes `epoch busy` and a render
@@ -1161,7 +1161,7 @@ if [ "${HARBOR_GLYPH_MACHINE:-1}" != 0 ]; then
   case "$_cp" in ''|*[!0-9]*) _cp="" ;; esac
   _age=$(( NOW_EPOCH - _ce ))
   if [ "$_age" -lt 0 ] || [ "$_age" -gt 120 ]; then _cp=""; fi
-  if [ "${HARBOR_GLYPH_MACHINE_REFRESH:-1}" != 0 ] && { [ -z "$_cp" ] || [ "$_age" -ge 8 ]; } \
+  if [ "${HARBOR_STATUS_GLYPH_MACHINE_REFRESH:-${HARBOR_GLYPH_MACHINE_REFRESH:-1}}" != 0 ] && { [ -z "$_cp" ] || [ "$_age" -ge 8 ]; } \
      && command -v iostat >/dev/null 2>&1; then
     # `.try` rate-limits the spawn: a burst of ticks inside one second must not fan out.
     _tr=0
@@ -1237,8 +1237,8 @@ if [ "${HARBOR_GLYPH_MACHINE:-1}" != 0 ]; then
   # DISK, used/total like RAM (operator, 2026-10-16), on the volume that holds $HOME: on macOS the
   # Data volume, since `/` is the sealed system snapshot. Used is total minus available, because APFS
   # volumes share a container and the Used column undercounts. One `df` fork; yellow under 15% free,
-  # red under 7%. HARBOR_GLYPH_DF stands in for df in the suite.
-  _df="$("${HARBOR_GLYPH_DF:-df}" -k "${HOME:-/}" 2>/dev/null | awk 'NR == 2 && $2 ~ /^[0-9]+$/ && $4 ~ /^[0-9]+$/ && $2 > 0 {
+  # red under 7%. HARBOR_STATUS_GLYPH_DF stands in for df in the suite.
+  _df="$("${HARBOR_STATUS_GLYPH_DF:-${HARBOR_GLYPH_DF:-df}}" -k "${HOME:-/}" 2>/dev/null | awk 'NR == 2 && $2 ~ /^[0-9]+$/ && $4 ~ /^[0-9]+$/ && $2 > 0 {
           printf "%d %d %d", ($2 - $4) / 1048576, $2 / 1048576, ($4 * 100) / $2 }')" || true
   case "$_df" in
     *[!0-9\ ]*|'') ;;
@@ -1255,8 +1255,8 @@ fi
 # Emoji by operator request, an exception to decision 3: 🏠 trusted gateway, 🔒 VPN route,
 # 🔓 neither or firewall off; 📱/📵 Remote Control. An unreadable source renders nothing.
 NET3=""
-if [ "${HARBOR_GLYPH_MACHINE:-1}" != 0 ]; then
-  _fw="$("${HARBOR_GLYPH_FW:-/usr/libexec/ApplicationFirewall/socketfilterfw}" --getglobalstate 2>/dev/null \
+if [ "${HARBOR_STATUS_GLYPH_MACHINE:-${HARBOR_GLYPH_MACHINE:-1}}" != 0 ]; then
+  _fw="$("${HARBOR_STATUS_GLYPH_FIREWALL:-${HARBOR_GLYPH_FW:-/usr/libexec/ApplicationFirewall/socketfilterfw}}" --getglobalstate 2>/dev/null \
     | awk '/State = 0/ { print "off"; exit } /State = [0-9]/ { print "on"; exit }')" || true
   _rt="$(route -n get 1.1.1.1 2>/dev/null \
     | awk '$1 == "interface:" { i = $2 } $1 == "gateway:" { g = $2 } END { if (i != "") print i, g }')" || true

@@ -29,9 +29,9 @@ fx_world() {
   SF="$T_TMP/sf"; LIVE="$T_TMP/live"; P="$T_TMP/port"
   rm -rf "$SF" "$LIVE" "$P" "$T_TMP/wt" "$T_TMP/remotes" "$T_TMP/seed" "$HOME" "$CLAUDE_CONFIG_DIR" "$T_TMP/report" "$T_TMP/cache" "$T_TMP/events"
   mkdir -p "$SF/gh" "$LIVE" "$P" "$T_TMP/remotes" "$T_TMP/seed" "$HOME" "$CLAUDE_CONFIG_DIR/bin"
-  HARBOR_FLEET_SNAPSHOT="$T_TMP/snap.json"; HARBOR_SCOPE_CACHE_DIR="$T_TMP/cache"; HARBOR_DEPLOY_FLEET_REPORT_DIR="$T_TMP/report"
+  HARBOR_STATUS_FLEET_SNAPSHOT="$T_TMP/snap.json"; HARBOR_SCOPE_CACHE_DIR="$T_TMP/cache"; HARBOR_DEPLOY_FLEET_REPORT_DIR="$T_TMP/report"
   HARBOR_EVENT_DIR="$T_TMP/events"; HARBOR_DEPLOY_FLEET_NOW=1791327600   # 2026-10-07 02:00 +03
-  export T_TMP SF LIVE HARBOR_FLEET_SNAPSHOT HARBOR_SCOPE_CACHE_DIR HARBOR_DEPLOY_FLEET_REPORT_DIR HARBOR_EVENT_DIR HARBOR_DEPLOY_FLEET_NOW
+  export T_TMP SF LIVE HARBOR_STATUS_FLEET_SNAPSHOT HARBOR_SCOPE_CACHE_DIR HARBOR_DEPLOY_FLEET_REPORT_DIR HARBOR_EVENT_DIR HARBOR_DEPLOY_FLEET_NOW
   git config --global user.name tester; git config --global user.email tester@example.invalid
   git config --global init.defaultBranch main; git config --global advice.detachedHead false
   printf 'ok\n' > "$LIVE/health.txt"; printf 'none\n' > "$LIVE/sha"
@@ -52,7 +52,7 @@ timeout.verify 3'
   fx_snap "$P/api" "$P/web" "$P/.wt-api" "$P/.pi-upgrade-api" "$P/other"
   fx_stubs
 }
-fx_snap() { for _x in "$@"; do printf '%s\n' "$_x"; done | jq -R '{descriptor: {name: (split("/") | last), path: .}}' | jq -s . > "$HARBOR_FLEET_SNAPSHOT"; }
+fx_snap() { for _x in "$@"; do printf '%s\n' "$_x"; done | jq -R '{descriptor: {name: (split("/") | last), path: .}}' | jq -s . > "$HARBOR_STATUS_FLEET_SNAPSHOT"; }
 fx_repo() { # <name> <manifest>
   _b="$T_TMP/remotes/$1.git"; _w="$T_TMP/seed/$1"; _db="$(fx_db "$1")"
   git config --global url."$_b".insteadOf "https://github.com/acme/$1.git"

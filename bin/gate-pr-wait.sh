@@ -90,12 +90,12 @@ REQUIRED="$(gh api "repos/$REPO/branches/$BASE/protection" --jq '.required_statu
 # Protection unreadable or requiring nothing (free-plan 403): the tracked declaration
 # merge-check gates on is the required set, or green would pass a partial set (harbor#1073).
 if [ -z "$REQUIRED" ]; then
-  RCFILE="${HARBOR_REQUIRED_CHECKS:-$DIR/../contracts/required-checks.tsv}"
+  RCFILE="${HARBOR_GATE_REQUIRED_CHECKS:-${HARBOR_REQUIRED_CHECKS:-$DIR/../contracts/required-checks.tsv}}"
   if [ -r "$RCFILE" ]; then
     # Run from a checkout with no list handed in, the rows are core's then the private layer's (gate-required-generate.sh, harbor#1149).
     # One that does not compose is a stop, not a smaller list: green on a partial set is what this declaration exists to prevent.
     _rcrows=""
-    if [ -z "${HARBOR_REQUIRED_CHECKS:-}" ] && [ -f "$DIR/gate-required-generate.sh" ]; then
+    if [ -z "${HARBOR_GATE_REQUIRED_CHECKS:-${HARBOR_REQUIRED_CHECKS:-}}" ] && [ -f "$DIR/gate-required-generate.sh" ]; then
       _rcrows="$(sh "$DIR/gate-required-generate.sh" --core "$RCFILE" 2>/dev/null)" || {
         log_fail "the private layer's required-checks.tsv does not compose with core's (or cannot be read), so the required set of $REPO is unknown"
         log_fix "sh $DIR/gate-required-generate.sh   # names the line"; log_end || :; exit 2; }

@@ -45,7 +45,7 @@ GQUEUE="$CFG/bin/gate-queue.sh"                       # the ONLY queue writer
 STATE="$CFG/.helm-ship"                               # <owner>_<name>.json per repo (§3), and last-rollback
 WORK="$HOME/.local/state/harbor/ship"                 # the lock and the run logs
 CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
-SNAP="${HARBOR_FLEET_SNAPSHOT:-$CACHE_DIR/fleet-snapshot.json}"
+SNAP="${HARBOR_STATUS_FLEET_SNAPSHOT:-${HARBOR_FLEET_SNAPSHOT:-$CACHE_DIR/fleet-snapshot.json}}"
 # the fleet file through the registry-aware reader beside this script (harbor#966)
 FLEET="${HARBOR_SCOPE_FLEET_FILE:-${HARBOR_FLEET_FILE:-$(sh "$HERE/scope-roots.sh" --get HARBOR_SCOPE_FLEET_FILE 2>/dev/null || :)}}"
 # the fleet CLI, a roots.tsv row read through the same reader (harbor#966)

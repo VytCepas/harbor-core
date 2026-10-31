@@ -22,7 +22,7 @@
 # would make the global guard depend on which branch happens to be out. Both
 # copies land in the config dir, the same reasoning deploy-runtime-install.sh uses.
 #
-# IT WIRES ONE PreToolUse HOOK, which floor-install.sh's gate does not cover and
+# IT WIRES ONE PreToolUse HOOK, which admission-install.sh's gate does not cover and
 # should not: eval-pass-score.sh blocks the FLOOR (six guards, exit-2 vetoes). This is
 # one `ask`-posture guard whose corpus the floor deliberately excludes, and
 # harbor#56 argues at length why it is not a floor guard. Its blast radius is a
@@ -184,11 +184,11 @@ log_note "backup: $IL_BK"
 # --repin adds no deny entry, so a withdrawn entry stays withdrawn.
 if [ -f "$DIR/.helm-floor-teeth" ] || [ -f "$DIR/.sec0-baseline.sha256" ]; then
   # floor-deny takes this run's own target, --live or --dir (the install standard, harbor#800).
-  if il_run sh "$SRC/floor-deny.sh" --repin >/dev/null 2>&1; then
+  if il_run sh "$SRC/admission-deny.sh" --repin >/dev/null 2>&1; then
     log_ok "re-pinned: teeth + sec0 baseline now match the settings.json just written"
   else
-    log_fail "floor-deny.sh could not re-pin the teeth and sec0 baseline for $DIR"
-    log_fix "sh $SRC/floor-deny.sh --repin $(il_spell)"
+    log_fail "admission-deny.sh could not re-pin the teeth and sec0 baseline for $DIR"
+    log_fix "sh $SRC/admission-deny.sh --repin $(il_spell)"
   fi
 fi
 

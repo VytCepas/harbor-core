@@ -176,7 +176,7 @@ t_has "a resolved-path idiom only in a COMMENT is reported" "$OUT_D2" 'compares 
 t_hasnt "quoting the harbor#52 bad shape in prose is not a violation" "$OUT_D2" 'quotes-the-bad-shape.sh'
 
 t_section "D5: a Read deny needs its Edit twin (harbor#88)"
-d5() { mkdir -p "$1/bin"; printf '#!/usr/bin/env sh\n%s\n' "$2" > "$1/bin/floor-deny.sh"
+d5() { mkdir -p "$1/bin"; printf '#!/usr/bin/env sh\n%s\n' "$2" > "$1/bin/admission-deny.sh"
   printf '#!/usr/bin/env sh\nDENY=%s[]%s\n' "'" "'" > "$1/bin/deploy-harden.sh"; viol D5 "$1"; }
 _q="'"
 t_has "a Read-denied path with no Edit twin is reported" \

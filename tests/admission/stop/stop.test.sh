@@ -93,7 +93,7 @@ want_cwd block "a config-dir edit from a checkout owes that checkout's parts" "$
 
 t_section "SG-1 which paths are floor surfaces, and which only look like one"
 T="$(tx)"; tu_edit "$R/bin/library-admission.sh" >> "$T";         want block "bin/library-admission.sh" "$T"
-T="$(tx)"; tu_edit "$R/bin/floor-normalize.awk" >> "$T";  want block "bin/floor-normalize.awk" "$T"
+T="$(tx)"; tu_edit "$R/bin/admission-normalize.awk" >> "$T";  want block "bin/admission-normalize.awk" "$T"
 T="$(tx)"; tu_edit "$R/bin/admission-hook.sh" >> "$T";        want block "bin/admission-hook.sh" "$T"
 T="$(tx)"; tu_edit "$R/bin/admission-stop.sh" Write >> "$T";  want block "Write counts, not only Edit" "$T"
 T="$(tx)"; tu_edit "$R/bin/admission-stop.sh" NotebookEdit >> "$T"; want block "NotebookEdit counts too" "$T"

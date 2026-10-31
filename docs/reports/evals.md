@@ -1198,7 +1198,7 @@ because that lives under `/private/tmp` and does not survive a cleanup:
 |---|---|
 | `context/e1real/` | placement, both rounds — `run.sh`, `run2.sh` |
 | `context/e2add/` | state injection — `run.sh` |
-| `skill/e3scale/` | the book at N=12 and N=120, plus the no-skill cell — `run.sh`, `nokill.sh` |
+| `skill/e3scale/` | the book at N=12 and N=120, plus the no-skill cell — `run.sh`, `no-kill.sh` |
 | `skill/sliced/` | E4 — `generate_corpus.py` builds the 120-skill corpus, `assemble2.py` builds all six arms, **`results2-rows.json` holds all 54 raw rows** |
 | `skill/e5trap/` | E5 — `opsctl` is the fixture, `assemble.py` builds every stage, `grade.py` scores the store, `trace.py` recovers the route, **the arm folders (`<arm>/r<N>.json`) hold all 73 runs** |
 

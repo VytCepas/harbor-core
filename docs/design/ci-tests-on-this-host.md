@@ -23,7 +23,7 @@ Local suites and CI jobs share one Mac. `bin/ci-governor.sh` budgets cores for b
 ## Where CI runs
 
 A harbor PR is mirrored by `.github/workflows/public-ci.yml` (`bin/ci-mirror.sh`) to the public `VytCepas/harbor-core`, where
-governance CI runs on the self-hosted `harbor-linux` runners. The result returns as the `public-ci` status on the PR head,
+governance CI runs on GitHub-hosted `ubuntu-latest` runners (`governance.yml` takes them on any public repo). The result returns as the `public-ci` status on the PR head,
 which is harbor's required check (`grep harbor contracts/required-checks.tsv`). Other repos' required checks are in the same file.
 
 ## Identity

@@ -101,7 +101,7 @@ P2="$T/p285"; mkdir -p "$P2/.helm-pins"; printf '{}\n' > "$P2/settings.json"
 printf 'stale\n' > "$P2/.helm-pins/library-admission.sh.sha256"
 _o285="$(ri --apply --dir "$P2" 2>&1)"
 t_hasnt "a pin in floor-install's payload claims no lockout" "$_o285" 'will be BLOCKED'
-t_has "...and names floor-install as the remedy" "$_o285" "floor-install re-pins them: sh $SRCB/floor-install.sh"
+t_has "...and names floor-install as the remedy" "$_o285" "floor-install re-pins them: sh $SRCB/admission-install.sh"
 printf 'stale\n' > "$P2/.helm-pins/library-admission.sh.sha256"
 _o285d="$(env -u CLAUDE_CONFIG_DIR HARBOR_DEPLOY_ACTIVE=1 sh "$TOOL" --apply --dir "$P2" 2>&1)"
 t_hasnt "under deploy it does not: floor-install re-pins a step later" "$_o285d" 'B6 CONTENT PINS ARE NOW STALE'
@@ -111,12 +111,12 @@ printf 'stale\n' > "$P3/.helm-pins/alert-probe.sh.sha256"
 t_has "a pin floor-install does NOT carry keeps the banner" "$(ri --apply --dir "$P3" 2>&1)" 'B6 CONTENT PINS ARE NOW STALE — the next SessionStart will be BLOCKED'
 printf 'stale\n' > "$P3/.helm-pins/alert-probe.sh.sha256"
 t_has "...under deploy too: nothing later re-pins it" "$(env -u CLAUDE_CONFIG_DIR HARBOR_DEPLOY_ACTIVE=1 sh "$TOOL" --apply --dir "$P3" 2>&1)" 'will be BLOCKED: this install replaced content-pinned file(s): alert-probe.sh'
-# The covered set is read from floor-install.sh: empty its GUARDS and library-admission.sh is banner-worthy again.
+# The covered set is read from admission-install.sh: empty its GUARDS and library-admission.sh is banner-worthy again.
 CG="$T/cg"; mkdir -p "$CG/bin" "$CG/tests/deploy/restore" "$CG/tests/lib" "$CG/contracts"
 # the whole payload (merge-stack's .py too, harbor#1060; DATA via copy_data), or the copy is a refused half install
 cp "$T_ROOT"/bin/*.sh "$T_ROOT"/bin/*.awk "$T_ROOT"/bin/*.py "$CG/bin/"; cp "$T_ROOT/tests/deploy/restore/recover.test.sh" "$CG/tests/deploy/restore/"
 cp "$T_ROOT/tests/lib/core.sh" "$CG/tests/lib/"; copy_data "$CG"; copy_hooks "$CG"
-sed "s/^GUARDS='.*'\$/GUARDS=''/" "$T_ROOT/bin/floor-install.sh" > "$CG/bin/floor-install.sh"
+sed "s/^GUARDS='.*'\$/GUARDS=''/" "$T_ROOT/bin/admission-install.sh" > "$CG/bin/admission-install.sh"
 P4="$T/p285c"; mkdir -p "$P4/.helm-pins"; printf '{}\n' > "$P4/settings.json"; printf 'stale\n' > "$P4/.helm-pins/library-admission.sh.sha256"
 t_has "mutation: floor-install with no GUARDS brings the banner back" "$(env -u CLAUDE_CONFIG_DIR sh "$CG/bin/deploy-runtime-install.sh" --apply --dir "$P4" 2>&1)" 'will be BLOCKED: this install replaced content-pinned file(s): library-admission.sh'
 
@@ -212,7 +212,7 @@ t_section "the installed ci-runners.sh runs from its installed dir: it sources i
 # a sibling left out of FILES is the #1091 bug again: sourcing fails and every verb dies. list reads the fleet lib, tick the other three.
 RX="$T/rx"; mkdir -p "$RX/cache" "$RX/cfg"; printf '[]\n' > "$RX/cache/fleet-snapshot.json"
 printf '#!/bin/sh\nexit 1\n' > "$RX/gh"; printf '#!/bin/sh\nexit 0\n' > "$RX/docker"; chmod +x "$RX/gh" "$RX/docker"   # gh answers nothing, docker an empty list
-rxrun() { HARBOR_TEST_GH="$RX/gh" HARBOR_DOCKER="$RX/docker" HARBOR_SCOPE_CACHE_DIR="$RX/cache" CLAUDE_CONFIG_DIR="$RX/cfg" HARBOR_CI_EVENTS_DIR="$RX/ev" \
+rxrun() { HARBOR_TEST_GH="$RX/gh" HARBOR_CI_DOCKER="$RX/docker" HARBOR_SCOPE_CACHE_DIR="$RX/cache" CLAUDE_CONFIG_DIR="$RX/cfg" HARBOR_CI_EVENTS_DIR="$RX/ev" \
             sh "$MI/bin/ci-runners.sh" "$@" 2>&1; }
 t_eq "installed ci-runners list --json answers (fleet lib)" harbor "$(rxrun list --json | jq -r '.[0].repo')"
 t_eq "installed ci-runners tick runs to the end (provision, github and watch libs)" 0 "$(rxrun tick >/dev/null; echo $?)"

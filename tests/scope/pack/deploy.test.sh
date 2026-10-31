@@ -92,8 +92,8 @@ run '' --live
 t_has "...and passes with the pack's manifest" "$(out)" "context-rules/user: every installed pack is one the repo holds or once held"
 
 t_section "uninstall: every installed pack goes with the floor, and the skill catalog is regenerated without them"
-packcase unin; printf '#!/bin/sh\necho "  ok: stub floor-uninstall"\n' > "$REPO/bin/floor-uninstall.sh"; chmod +x "$REPO/bin/floor-uninstall.sh"
-git -C "$REPO" add bin/floor-uninstall.sh; commit_push stubun
+packcase unin; printf '#!/bin/sh\necho "  ok: stub floor-uninstall"\n' > "$REPO/bin/admission-remove.sh"; chmod +x "$REPO/bin/admission-remove.sh"
+git -C "$REPO" add bin/admission-remove.sh; commit_push stubun
 mkdir -p "$C/.harbor-packs" "$C/checks.d" "$C/skill-packs/topology"; printf '# repo\tdemo\nF\tchecks.d/demo.md\nF\tskill-packs/topology/demo.md\n' > "$C/.harbor-packs/demo.tsv"; printf 'rows\n' > "$C/checks.d/demo.md"
 printf -- '---\npack: demo\n---\n' > "$C/skill-packs/topology/demo.md"
 run '' --only floor --uninstall --live
@@ -114,8 +114,8 @@ t_eq "...and never reinstalled from the tracked file" 0 "$(grep -c 'skill-instal
 t_has "verify finds no pack left" "$(out)" "  ok: no pack is left: no manifest in .harbor-packs and no fragment in checks.d"
 t_eq "no manifest remains" no "$([ -e "$C/.harbor-packs/demo.tsv" ] && echo yes || echo no)"
 t_eq "no fragment remains" no "$([ -e "$C/checks.d/demo.md" ] && echo yes || echo no)"
-packcase unin2; printf '#!/bin/sh\necho "  ok: stub floor-uninstall"\n' > "$REPO/bin/floor-uninstall.sh"; chmod +x "$REPO/bin/floor-uninstall.sh"
-git -C "$REPO" add bin/floor-uninstall.sh; commit_push stubun2
+packcase unin2; printf '#!/bin/sh\necho "  ok: stub floor-uninstall"\n' > "$REPO/bin/admission-remove.sh"; chmod +x "$REPO/bin/admission-remove.sh"
+git -C "$REPO" add bin/admission-remove.sh; commit_push stubun2
 mkdir -p "$C/.harbor-packs" "$C/checks.d"; printf '# repo\tdemo\nF\tchecks.d/demo.md\n' > "$C/.harbor-packs/demo.tsv"
 PACK_STUB_REFUSE=apply; export PACK_STUB_REFUSE; run 'y\nn\n' --only floor --uninstall --apply --live
 t_eq "a pack that will not come out fails the uninstall" 1 "$RC"
@@ -127,8 +127,8 @@ t_eq "the dry run exits 1" 1 "$RC"
 t_has "...saying scope-roots.sh could not read it" "$(out)" "  FAIL: harbor.toml packs: scope-roots.sh could not read it (exit 2)"
 t_eq "...and pack.sh did not run" "" "$(grep pack.sh "$LOGF")"
 unset PACK_STUB_REFUSE
-packcase unin3; printf '#!/bin/sh\necho "  ok: stub floor-uninstall"\n' > "$REPO/bin/floor-uninstall.sh"; chmod +x "$REPO/bin/floor-uninstall.sh"
-git -C "$REPO" add bin/floor-uninstall.sh; commit_push stubun3
+packcase unin3; printf '#!/bin/sh\necho "  ok: stub floor-uninstall"\n' > "$REPO/bin/admission-remove.sh"; chmod +x "$REPO/bin/admission-remove.sh"
+git -C "$REPO" add bin/admission-remove.sh; commit_push stubun3
 mkdir -p "$C/.harbor-packs" "$C/checks.d"; printf '# repo\tdemo\nF\tchecks.d/demo.md\n' > "$C/.harbor-packs/demo.tsv"; printf 'rows\n' > "$C/checks.d/demo.md"
 PACK_STUB_KEEP=1; export PACK_STUB_KEEP; run 'y\nn\n' --only floor --uninstall --apply --live
 t_eq "a removal that leaves a pack behind fails verify" 1 "$RC"

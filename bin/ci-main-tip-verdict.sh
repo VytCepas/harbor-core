@@ -11,7 +11,7 @@
 # nothing alerting, because the fleet view read `gh run list --limit 1` (any branch, any workflow).
 #
 # THE FLEET is where ci-runners.sh reads it: the fleet snapshot (cache/fleet-snapshot.json,
-# HARBOR_FLEET_SNAPSHOT) members that carry .github/workflows and a github.com origin, plus the `repo
+# HARBOR_STATUS_FLEET_SNAPSHOT) members that carry .github/workflows and a github.com origin, plus the `repo
 # OWNER/NAME` lines of $CLAUDE_CONFIG_DIR/.harbor-ci-runners, plus harbor itself (named by log-lib's repo_slug: this
 # checkout's origin, or the bin/repo-slug.txt beside an install; harbor#1149). HARBOR_CI_TIP_REPO=o/r
 # judges that one repo only.
@@ -34,7 +34,7 @@
 # A failed commit carries `runs` (attempts of its failing push runs): 1 is shown `·1 run`, a flake until a second says
 # otherwise, and still red at once; no debounce, because a delay hides a real red. Red since is the first failing
 # run's completion (tip.red_at), not the commit's age.
-# STRICT is harbor only (HARBOR_TIP_STRICT): its governance runs on every push, so no run IS red. In every other
+# STRICT is harbor only (HARBOR_CI_TIP_STRICT): its governance runs on every push, so no run IS red. In every other
 # repo a commit with no run is "unjudged" and the verdict is the NEWEST commit in the window that has one (a
 # path-filtered deploy workflow skips a .github-only commit; a pipeline repo, seen 2026-09). Harbor-only is chosen over
 # parsing each repo's `on:` filters: no extra calls, and it can only miss a real red when CI stops triggering at all.
@@ -82,7 +82,7 @@ esac
 
 BRANCH="${HARBOR_CI_TIP_BRANCH:-${HARBOR_TIP_BRANCH:-main}}"
 SELF="$(repo_slug)"                          # harbor's own OWNER/NAME (harbor#1149); empty when nothing names it
-STRICT="${HARBOR_TIP_STRICT:-$SELF}"         # repos whose every push runs CI: a commit with no run there IS red
+STRICT="${HARBOR_CI_TIP_STRICT:-${HARBOR_TIP_STRICT:-$SELF}}"         # repos whose every push runs CI: a commit with no run there IS red
 WINDOW="${HARBOR_CI_TIP_WINDOW:-${HARBOR_TIP_WINDOW:-30}}"            # first-parent commits judged per run
 PEND_SEC="${HARBOR_CI_TIP_PENDING_SEC:-${HARBOR_TIP_PENDING_SEC:-7200}}"   # a run pending longer than this is stuck
 GRACE_SEC=600                                # a fresh commit has no run for a moment
@@ -111,7 +111,7 @@ api() { "$GH" api "$1" 2>/dev/null; }
 # The fleet, one OWNER/NAME a line: harbor, the snapshot's repos with workflows, the config's `repo` lines.
 fleet() {
   if [ -n "${HARBOR_CI_TIP_REPO:-${HARBOR_TIP_REPO:-}}" ]; then printf '%s\n' "${HARBOR_CI_TIP_REPO:-${HARBOR_TIP_REPO:-}}"; return 0; fi
-  SNAP="${HARBOR_FLEET_SNAPSHOT:-$CACHE_DIR/fleet-snapshot.json}"
+  SNAP="${HARBOR_STATUS_FLEET_SNAPSHOT:-${HARBOR_FLEET_SNAPSHOT:-$CACHE_DIR/fleet-snapshot.json}}"
   {
     printf '%s\n' "$SELF"
     if [ -s "$SNAP" ]; then

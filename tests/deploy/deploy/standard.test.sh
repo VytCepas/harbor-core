@@ -10,7 +10,7 @@ T_TMP="$(cd "$T_TMP" && pwd -P)"  # deploy reports the config dir physically (in
 . "$(dirname "$0")/../../install/deploy-fixture.sh"
 need_pty
 yn() { if "$@"; then echo yes; else echo no; fi; }
-floorline() { grep '^floor-install.sh' "$LOGF" | grep -- "$1" | head -1; }  # <--apply|--live$> the first such line
+floorline() { grep '^admission-install.sh' "$LOGF" | grep -- "$1" | head -1; }  # <--apply|--live$> the first such line
 stopwire() { printf '{"hooks":{"Stop":[{"matcher":"","hooks":[{"type":"command","command":"/bin/sh %s/bin/admission-stop.sh"}]}]}}\n' "$C" > "$C/settings.json"; }
 b6wire() {
   printf '#!/bin/sh\nexit 0\n' > "$C/bin/admission-integrity.sh" 2>/dev/null || { mkdir -p "$C/bin"; printf '#!/bin/sh\nexit 0\n' > "$C/bin/admission-integrity.sh"; }
@@ -88,7 +88,7 @@ t_section "opt-ins are read from the box: a wired Stop gate and an installed B6 
 fixture stopwired; stopwire; run 'y\nn\n' --apply --live
 t_eq "a deploy onto a box that wires admission-stop.sh" 0 "$RC"
 t_has "...refreshes the Stop gate in floor-install's apply" "$(floorline --apply)" "--with-stop-gate"
-t_has "...and plans it in floor-install's own dry run" "$(grep '^floor-install.sh --live' "$LOGF" | grep -v -- --apply)" "--with-stop-gate"
+t_has "...and plans it in floor-install's own dry run" "$(grep '^admission-install.sh --live' "$LOGF" | grep -v -- --apply)" "--with-stop-gate"
 t_has "...saying why" "$(out)" "Stop gate: wired on this box, so floor-install refreshes it"
 fixture stopnone; run 'y\nn\n' --apply --live
 t_eq "the control: a box without the Stop gate" 0 "$RC"
@@ -121,7 +121,7 @@ t_eq "...after shim-install and before runtime-install" "deploy-shim-install.sh,
 t_section "--only: one component, the same gates and the same snapshot"
 fixture onlyfloor; echo mine > "$C/inject.d/99-mine.md"; run 'y\nn\n' --apply --only floor --live
 t_eq "--only floor" 0 "$RC"
-t_eq "...installs the floor and nothing else" "floor-install.sh --live," "$(applied)"
+t_eq "...installs the floor and nothing else" "admission-install.sh --live," "$(applied)"
 t_hasnt "...and does not judge an inject.d pack it will not touch" "$(out)" "99-mine.md"
 t_has "...after the same snapshot" "$(tar -tzf "$C"/backups/deploy-*/config.tgz 2>/dev/null)" "settings.json"
 t_has "...and says what it leaves alone" "$(out)" "  note: only:       floor — every other component is left as it is"
@@ -138,7 +138,7 @@ run '' --only --live; t_eq "--only with no value is a usage error" 2 "$RC"
 run '' --prune --only floor --live; t_eq "--prune with --only is a usage error" 2 "$RC"
 
 t_section "after a restore, every check runs again on the restored box, and the log keeps it (§4)"
-fixture recheck; STUB_FAIL=floor-install.sh:apply; export STUB_FAIL
+fixture recheck; STUB_FAIL=admission-install.sh:apply; export STUB_FAIL
 STUB_HOOK_deployruntimeinstallsh="printf MODIFIED > '$C/settings.json'"; export STUB_HOOK_deployruntimeinstallsh
 run 'y\ny\n' --apply --live; unset STUB_FAIL STUB_HOOK_deployruntimeinstallsh
 t_eq "the failed install that was restored" 1 "$RC"
@@ -149,7 +149,7 @@ t_has "...ending on its verdict" "$(out)" "  ok: re-check: the restored box pass
 t_has "the log holds the restore" "$(dlog)" "  ok: restored $C from "
 t_has "...and the re-check after it" "$(dlog)" "re-check: the restored box passes every check"
 t_eq "...one log for the whole run" 1 "$(ls "$C"/backups/deploy/*/log 2>/dev/null | grep -c .)"
-fixture norestore; STUB_FAIL=floor-install.sh:apply; export STUB_FAIL; run 'y\nn\n' --apply --live; unset STUB_FAIL
+fixture norestore; STUB_FAIL=admission-install.sh:apply; export STUB_FAIL; run 'y\nn\n' --apply --live; unset STUB_FAIL
 t_hasnt "the control: no re-check when the restore is declined" "$(out)" "re-check ·"
 
 t_section "the snapshot: the manifest, and a ~/.local/bin record deploy-restore.sh can use (harbor#770)"
@@ -180,7 +180,7 @@ SNAPSET="$(sed -n "s/^SNAP_SET='\(.*\)'$/\1/p" "$T_ROOT/bin/deploy.sh")"
 t_has "deploy.sh's SNAP_SET is read" "$SNAPSET" "settings.json"
 ri() { printf "=== %s\n" "$*" >>"$T_TMP/snapset/out"; env -u CLAUDE_CONFIG_DIR HARBOR_DEPLOY_ACTIVE=1 PROJECT_INIT_SRC="$PI_FAKE" sh "$T_ROOT/bin/$@" >>"$T_TMP/snapset/out" 2>&1; echo $?; }
 for _i in "deploy-harden.sh --apply --dir $SB" "deploy-runtime-install.sh --apply --dir $SB" \
-          "floor-install.sh --apply --dir $SB --with-b6 --with-stop-gate" "policy-constitution-install.sh --apply --dir $SB --from-branch" \
+          "admission-install.sh --apply --dir $SB --with-b6 --with-stop-gate" "policy-constitution-install.sh --apply --dir $SB --from-branch" \
           "prod-guard-install.sh --apply --dir $SB" "skill-install.sh --all --apply --dir $SB" \
           "skill-install.sh commands --all --apply --dir $SB" "context-injection-install.sh --apply --dir $SB" "pin-instructions.sh --apply --dir $SB"; do
   # shellcheck disable=SC2086
@@ -298,7 +298,7 @@ t_has "a clone that is not a git checkout is said so, not passed silently" "$(ou
 
 t_section "a child's apply-time refusal becomes deploy's own FAIL and fix lines (harbor#736)"
 xrfail2() { fixture "$1"; STUB_PI="$T/pi"; STUB_PO="$T/po"; export STUB_PI STUB_PO; xrepo "$STUB_PI" install; xrepo "$STUB_PO" install; echo 1 > "$STUB_PO/.rc.apply"; }
-fixture xrctl; STUB_FAIL=floor-install.sh:apply; export STUB_FAIL; run 'y\nn\n' --apply --live; unset STUB_FAIL
+fixture xrctl; STUB_FAIL=admission-install.sh:apply; export STUB_FAIL; run 'y\nn\n' --apply --live; unset STUB_FAIL
 t_has "the control: a Harbor installer that failed DID print FAIL and fix lines, so deploy still points at them" "$(out)" "see its FAIL and fix lines above"
 xrfail2 xrline
 printf '  FAIL: not in sync with origin/main (ahead 0, behind 5)\n  fix: git -C /x/po pull --ff-only origin main\n' > "$STUB_PO/.out.apply"

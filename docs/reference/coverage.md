@@ -35,7 +35,7 @@ Pulled out because each closes a gap Harbor has already named as a problem.
 
 | Upstream | Harbor's gap it answers | Status |
 |---|---|---|
-| `EventLogger` — "unified observability event logger" | `bin/floor-observe.sh` + `floor_log_decision` | **BUILT** — L1 / harbor#41. Redacted by construction, not by scanner: rule id, verdict, shape class, tool class, keyed truncated digest — never the command text. |
+| `EventLogger` — "unified observability event logger" | `bin/admission-observe.sh` + `floor_log_decision` | **BUILT** — L1 / harbor#41. Redacted by construction, not by scanner: rule id, verdict, shape class, tool class, keyed truncated digest — never the command text. |
 | `VerificationGate` — "task-aware verification gate (Stop)" | №2 Verification is Harbor's longest constitutional rule and had **no mechanism**, in a file that says *"a rule with no mechanism is a wish"* | **NARROWED 2026-08-23** — harbor#291 |
 | `WorkCompletionLearning` — "extract learnings from completed work" | the work-log payload is one line per session | **OPEN**, depends on L1 |
 | `SatisfactionCapture` — implicit + explicit satisfaction rating | no feedback signal of any kind | **OPEN**, depends on L1 — and **has no ticket anywhere**, which is why its consumer M6 was voided 2026-08-05 rather than left waiting on it. Still a genuine gap; it needs its own ticket before anything can synthesise over it |
@@ -84,7 +84,7 @@ details are worth stealing regardless: it is registered as `bun <path>` so it is
 **immune to losing its own exec bit**, and it is non-blocking on every path
 including internal error.
 
-Harbor's equivalent exposure is real — `bin/floor-install.sh` writes guards that
+Harbor's equivalent exposure is real — `bin/admission-install.sh` writes guards that
 must be executable — but Harbor's shape differs (guards are invoked as
 `/bin/sh <path>`, so the exec bit is not load-bearing). **Disposition: declined
 as written, class re-checked.** The general self-heal the question was really
@@ -108,7 +108,7 @@ about does not exist upstream either.
 | `LoadContext` | inject dynamic context (SessionStart) | **covered** — `context-resolve.sh` (H2), narrowed to the boundary notice |
 | `LoadMemory` | inject hot-layer memory (UserPromptSubmit) | **ticketed** — workstream D |
 | `MemoryTurnStart` / `MemoryDeltaSurface` / `MemoryHealthGate` / `MemoryReviewFire` | the memory cadence | **ticketed** — workstream D. Note `policy/constitution.md` dropped upstream's memory-delta *fields* because no hook emits them; these are the hooks that would |
-| `StopGates` | the ONE Stop-event gate | **BUILT 2026-08-23** — `bin/admission-stop.sh` + `tests/admission/stop/stop.test.sh` (harbor#291), opt-in via `floor-install.sh --with-stop-gate`. Two rules, both read from the transcript: a floor surface edited with no `floor-test.sh` run **after** it, and a suite this session ran that was left red. Fails OPEN, which is the inverse of every other guard and argued at the head of the file rather than assumed |
+| `StopGates` | the ONE Stop-event gate | **BUILT 2026-08-23** — `bin/admission-stop.sh` + `tests/admission/stop/stop.test.sh` (harbor#291), opt-in via `admission-install.sh --with-stop-gate`. Two rules, both read from the transcript: a floor surface edited with no `floor-test.sh` run **after** it, and a suite this session ran that was left red. Fails OPEN, which is the inverse of every other guard and argued at the head of the file rather than assumed |
 | `FormatGate` / `WritingGate` / `CommunicationSkillGuard` | output-format teeth, writing audit, outbound-email catch | **declined** — №1 is a response *shape* principle in Harbor, not a template, so there is nothing deterministic to gate |
 | `AlgorithmNudge` / `ISASync` / `ISARenderOnStop` / `CheckpointPerISC` | the Algorithm/ISA runtime | **declined** — `docs/reference/provenance.md` F1: the ISA *skill* is vendored, the *runtime* is not |
 | `TaskGovernance` | subagent task-creation governance | **OPEN** |
@@ -319,7 +319,7 @@ Eight classes were missing outright. One badly:
 | `chmod -R 777 ~` · `$HOME` | Only `/` and `/*` were covered. |
 | `git push --force*master*` | Only the `main` spelling was covered. |
 
-All added to `bin/floor-deny.sh`, applied to the sandbox. Glob matches, not a
+All added to `bin/admission-deny.sh`, applied to the sandbox. Glob matches, not a
 parser — `curl $U | bash` still walks past, and that is the layer's stated
 nature, not a defect in it.
 

@@ -16,7 +16,7 @@
 #   --record-from FILE the same from a results file another run kept (a CI shard's), running nothing
 #   --lint SECS        with --record/--record-from: the seconds shard 1 spends in bin/lint-conventions.sh (kept if omitted)
 #   HARBOR_TEST_SUITE_TIMEOUT  seconds a suite may print nothing before it is cut off (default 900, 0 = none)
-#   HARBOR_SUITE_HARD_TIMEOUT  seconds in all, however much it prints (default 4 x the above, 0 = none)
+#   HARBOR_TEST_SUITE_HARD_TIMEOUT  seconds in all, however much it prints (default 4 x the above, 0 = none)
 #   HARBOR_SUITE_CACHE=1  a queued suite whose inputs already passed is a `cached` row, not a run (bin/test-suite-cache.sh)
 #
 # WHY LONGEST FIRST. The wall time of a parallel run is set by its tail: a 40 s suite started last
@@ -58,7 +58,7 @@ if [ "${1:-}" = "--_one" ]; then
   # here, outside the timeout, until fewer than 3 x the current quota are running. No quota (the Mac):
   # the pool as started, and the governor's own slots do the throttling.
   _allow() {
-    _q="$(cat "${HARBOR_CPU_MAX:-/sys/fs/cgroup/cpu.max}" 2>/dev/null || :)"
+    _q="$(cat "${HARBOR_TEST_CPU_MAX:-${HARBOR_CPU_MAX:-/sys/fs/cgroup/cpu.max}}" 2>/dev/null || :)"
     case "$_q" in
       [0-9]*' '[0-9]*) printf '%s\n' "$_q" | awk -v j="$_SR_JOBS" '{ a = int(3 * $1 / $2); if (a < 1) a = 1; if (a > j) a = j; print a }' ;;
       *) printf '%s\n' "$_SR_JOBS" ;;
@@ -382,8 +382,8 @@ _skips="$(awk -F '\t' '$1 == "skip"' "$RES")"
 _SR_LOGS="$WORK/logs"; _SR_RES="$RES"; _SR_TMO="${HARBOR_TEST_SUITE_TIMEOUT:-${HARBOR_SUITE_TIMEOUT:-900}}"; _SR_JOBS="$JOBS"
 export _SR_LOGS _SR_RES _SR_TMO _SR_JOBS
 case "$_SR_TMO" in *[!0-9]*) printf 'suite-run: HARBOR_TEST_SUITE_TIMEOUT wants seconds, got %s\n' "$_SR_TMO" >&2; exit 2 ;; esac
-_SR_HARD="${HARBOR_SUITE_HARD_TIMEOUT:-$(( _SR_TMO * 4 ))}"; export _SR_HARD
-case "$_SR_HARD" in *[!0-9]*) printf 'suite-run: HARBOR_SUITE_HARD_TIMEOUT wants seconds, got %s\n' "$_SR_HARD" >&2; exit 2 ;; esac
+_SR_HARD="${HARBOR_TEST_SUITE_HARD_TIMEOUT:-${HARBOR_SUITE_HARD_TIMEOUT:-$(( _SR_TMO * 4 ))}}"; export _SR_HARD
+case "$_SR_HARD" in *[!0-9]*) printf 'suite-run: HARBOR_TEST_SUITE_HARD_TIMEOUT wants seconds, got %s\n' "$_SR_HARD" >&2; exit 2 ;; esac
 T0="$(date +%s)"
 # A queue the cache emptied starts no pool: GNU xargs would run one worker with no suite.
 if [ -s "$WORK/queue" ] || [ ! -f "$WORK/keys" ]; then

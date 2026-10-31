@@ -5,7 +5,7 @@
 #
 # Started DETACHED by hooks/session-state/session-state.sh when the agent ends a turn with the line [compact-ok]:
 # no hook and no tool can start a compaction, but the session's own terminal can. It waits
-# HARBOR_AUTOCOMPACT_DELAY seconds (2) for the prompt to return, then types /compact into the macOS Terminal tab
+# HARBOR_SESSION_AUTOCOMPACT_DELAY seconds (2) for the prompt to return, then types /compact into the macOS Terminal tab
 # whose tty is <tty>. Nothing else is judged here: the Stop hook already did. $STATE/compact-auto.off stops it.
 # One run per session at a time (a pid file). Every outcome is one line in
 # $STATE/backups/session-autocompact/<run>/log (library-log.sh). Exit 0 on every path.
@@ -15,8 +15,8 @@ SID="${1:-}"; TTY="${2:-}"
 case "$SID" in ''|*[!A-Za-z0-9_-]*) exit 0 ;; esac
 case "${TTY#ttys}" in ''|"$TTY"|*[!0123456789]*) exit 0 ;; esac
 STATE="${HARBOR_STATUS_DIR:-${HOME:-/nonexistent}/.local/state/harbor}"
-DELAY="${HARBOR_AUTOCOMPACT_DELAY:-2}"; case "$DELAY" in ''|*[!0-9.]*) DELAY=2 ;; esac
-OSA="${HARBOR_AUTOCOMPACT_OSA:-osascript}"
+DELAY="${HARBOR_SESSION_AUTOCOMPACT_DELAY:-${HARBOR_AUTOCOMPACT_DELAY:-2}}"; case "$DELAY" in ''|*[!0-9.]*) DELAY=2 ;; esac
+OSA="${HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT:-${HARBOR_AUTOCOMPACT_OSA:-osascript}}"
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 . "$HERE/library-log.sh"
 LOG_FD=2; log_init session-autocompact

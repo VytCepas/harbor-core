@@ -76,7 +76,7 @@ while IFS= read -r _p; do
     # before the boundary, so a bad SEC-0 deny edit was reaching a push with only
     # the style linter behind it. library-admission.sh and floor-*.sh are already covered
     # by the two globs above it.
-    bin/admission-*.sh|bin/library-admission.sh|bin/guard-*.sh|bin/floor-*.sh|bin/floor-*.awk|bin/deploy-harden.sh|hooks/*)
+    bin/admission-*.sh|bin/library-admission.sh|bin/guard-*.sh|bin/floor-*.sh|bin/floor-*.awk|bin/admission-*.awk|bin/deploy-harden.sh|hooks/*)
       _floor_staged="$_floor_staged$_p
 " ;;
   esac
@@ -124,7 +124,8 @@ if [ -n "$_floor_staged" ]; then
   _gs=""
   for _p in $_floor_staged; do
     case "$_p" in
-      bin/library-admission.sh|bin/floor-*|bin/deploy-harden.sh|hooks/*) _gs=" all"; break ;;
+      bin/library-admission.sh|bin/floor-*|bin/admission-normalize.awk|bin/deploy-harden.sh|hooks/*) _gs=" all"; break ;;
+      bin/admission-deny.sh|bin/admission-equivalence.sh|bin/admission-install.sh|bin/admission-observe.sh|bin/admission-remove.sh|bin/admission-verify.sh) _gs=" all"; break ;;   # the floor-* tools W7 renamed: no guard of their own
       bin/admission-*.sh|bin/guard-*.sh) _g="${_p#bin/*-}"; _g="${_g%.sh}"   # the guard is its tests/admission/ directory (harbor#961 W6)
         case "$_g" in self-edit) _g=selfedit ;; api-route) _g=apiroute ;; esac; _gs="$_gs $_g" ;;
     esac

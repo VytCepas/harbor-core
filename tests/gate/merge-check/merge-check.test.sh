@@ -38,7 +38,7 @@ exit 0
 STUB
 chmod +x "$STUB/gh"
 
-mc() { : > "$LOG"; PATH="$STUB:$PATH" HARBOR_SCOPE_REPO=VytCepas/harbor HARBOR_REQUIRED_CHECKS="$RCF" sh "$MC" "$@" 2>&1; }
+mc() { : > "$LOG"; PATH="$STUB:$PATH" HARBOR_SCOPE_REPO=VytCepas/harbor HARBOR_GATE_REQUIRED_CHECKS="$RCF" sh "$MC" "$@" 2>&1; }
 rc() { mc "$@" >/dev/null; echo $?; }
 merges() { grep -c '^pr merge' "$LOG"; }  # 1 when the last call ran gh pr merge
 glog() { cat "$LOG"; }

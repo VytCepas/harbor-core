@@ -11,16 +11,16 @@ out() { cat "$T_TMP/out"; }
 line() { grep "\[check:deploy.live-verify\] $1 " "$T_TMP/out"; }  # <check id>
 
 mkdir -p "$C/bin" "$LB"
-for f in admission-hook.sh library-admission.sh admission-self-edit.sh admission-bash.sh admission-egress.sh annotate-web.sh floor-deny.sh \
-         floor-normalize.awk floor-observe.sh floor-install.sh admission-integrity.sh library-log.sh pin-instructions.sh; do
+for f in admission-hook.sh library-admission.sh admission-self-edit.sh admission-bash.sh admission-egress.sh annotate-web.sh admission-deny.sh \
+         admission-normalize.awk admission-observe.sh admission-install.sh admission-integrity.sh library-log.sh pin-instructions.sh; do
   cp "$SRC/$f" "$C/bin/$f"
 done
 printf '{"permissions":{"allow":[],"deny":[],"disableBypassPermissionsMode":"disable","disableAutoMode":"disable"}}\n' > "$C/settings.json"
 printf '# the sandbox constitution\n' > "$C/CLAUDE.md"
 sh "$SRC/deploy-harden.sh" --apply --live > "$T_TMP/setup" 2>&1
-sh "$SRC/floor-install.sh" --apply --live >> "$T_TMP/setup" 2>&1
+sh "$SRC/admission-install.sh" --apply --live >> "$T_TMP/setup" 2>&1
 sh "$SRC/pin-instructions.sh" --apply --live >> "$T_TMP/setup" 2>&1
-CLAUDE_CONFIG_DIR="$C" sh "$C/bin/floor-observe.sh" < /dev/null >> "$T_TMP/setup" 2>&1
+CLAUDE_CONFIG_DIR="$C" sh "$C/bin/admission-observe.sh" < /dev/null >> "$T_TMP/setup" 2>&1
 sh "$SRC/deploy-shim-install.sh" --apply --live >> "$T_TMP/setup" 2>&1
 LEDGER="$(find "$C/MEMORY/OBSERVABILITY" -name guard-decisions.jsonl 2>/dev/null | head -1)"
 

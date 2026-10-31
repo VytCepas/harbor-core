@@ -20,7 +20,7 @@ live() { kill -0 "$1" 2>/dev/null || return 1; case "$(ps -o stat= -p "$1" 2>/de
 mkdir -p "$T_TMP/R/results_a" "$T_TMP/R/results" "$T_TMP/R/results2" "$T_TMP/R/results3" "$T_TMP/R/results4" "$T_TMP/R/nolog" "$T_TMP/R/out"
 mkdir -p "$E/context/e10inject" "$E/context/e11live" "$E/skill/e5trap" "$E/context/e7scale" "$E/context/e8dilute" "$E/policy/e9ablate" "$E/skill/sliced"
 for _h in zorbcorp frobapp estate harbor-unify; do mkdir -p "$T_TMP/home/$_h"; done
-printf 'print("p")\n' > "$T_TMP/R/getprompt.py"
+printf 'print("p")\n' > "$T_TMP/R/get_prompt.py"
 # A run dir that satisfies every foreground runner: SPEC.json, PROMPT.txt and a work/ to cd into.
 mkdir -p "$T_TMP/rd/work"; printf '{"prompt":"p","settings":"","cwd":"%s"}' "$T_TMP/rd/work" > "$T_TMP/rd/SPEC.json"; printf p > "$T_TMP/rd/PROMPT.txt"
 mkdir -p "$E/context/e1real" "$E/context/e2add" "$E/skill/e3scale/runs/MANY-N120-1/.claude" "$E/skill/e3scale/runs/BOOK-N120-1/.claude" "$E/policy/e12rule9"
@@ -77,10 +77,10 @@ for _r in $_fg; do
   done
 done
 }
-over_runners "fixtures" "$FX" "batch/run.sh" "fg/run-one.sh"
+over_runners "fixtures" "$FX" "batch/run.sh" "foreground/run-one.sh"
 if [ "$RR" != "$FX" ]; then
   t_exit "fixtures/eval-runners/reap.sh is the corpus's reap.sh, byte for byte" 0 cmp -s "$FX/reap.sh" "$REAP"
-  over_runners "corpus" "$RR" "context/e1real/run.sh context/e1real/run2.sh context/e2add/run.sh skill/e3scale/run.sh skill/e3scale/nokill.sh \
+  over_runners "corpus" "$RR" "context/e1real/run.sh context/e1real/run2.sh context/e2add/run.sh skill/e3scale/run.sh skill/e3scale/no-kill.sh \
           policy/e12rule9/run.sh policy/e12rule9/run-inturn.sh policy/e12rule9/run-mid.sh policy/e12rule9/run-disclose.sh" "context/e10inject/run-one.sh context/e11live/probe.sh skill/e5trap/run-one.sh context/e7scale/run-one.sh context/e8dilute/run-one.sh \
           policy/e9ablate/run-one.sh skill/sliced/run-one.sh skill/sliced/run-two.sh skill/sliced/run-four.sh"
 fi

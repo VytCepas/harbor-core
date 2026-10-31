@@ -46,18 +46,15 @@ FILE="$POOL_DIR/IDEAS.md"
 SECRET="${HARBOR_SECRET_BIN:-$(command -v secret 2>/dev/null || true)}"; [ -n "$SECRET" ] || SECRET="$HOME/.local/bin/secret"
 
 # idea_git <git args>: git with the work-log token as a header, never in the URL (CONSTITUTION No.4).
-# The token is the store's `worklog-token` (harbor#1205), the plaintext file only until it moves.
-# Returns 3 when there is no token at all.
+# The token is the store's `worklog-token` and nothing else (harbor#1205, decided 2026-10-23): a plaintext file left
+# from before is never read, only named with the command that moves it. Returns 3 when the store has no token.
 idea_git() {
   if [ -f "$SECRET" ] && sh "$SECRET" run worklog-token IDEA_TOKEN -- true >/dev/null 2>&1; then
     sh "$SECRET" run worklog-token IDEA_TOKEN -- sh -c \
       'git -c http.extraHeader="Authorization: Basic $(printf "x-access-token:%s" "$IDEA_TOKEN" | base64 | tr -d "\n")" "$@"' idea-git "$@"  # secret-seam: entry worklog-token, injected by secret run
     return
   fi
-  [ -f "$TOKEN_FILE" ] || return 3
-  _it="$(cat "$TOKEN_FILE" 2>/dev/null || true)"
-  [ -n "$_it" ] || return 3
-  git -c http.extraHeader="Authorization: Basic $(printf 'x-access-token:%s' "$_it" | base64 | tr -d '\n')" "$@"
+  return 3
 }
 
 # die <what failed> [fix command]: FAIL, its fix, the summary, exit 1.
@@ -161,7 +158,8 @@ _ir=0; idea_git push --quiet "https://github.com/${REPO}.git" main >/dev/null 2>
 case "$_ir" in
   0) log_ok "pushed" ;;
   3) log_warn "no token — committed locally"
-     log_fix "copy the work-log token on GitHub, then: sh $(dirname -- "$0")/memory-log-token-save.sh   # stores worklog-token" ;;
+     if [ -f "$TOKEN_FILE" ]; then log_fix "sh $SECRET adopt $TOKEN_FILE worklog-token   # the plaintext file is no longer read; this moves it into the store"
+     else log_fix "copy the work-log token on GitHub, then: sh $(dirname -- "$0")/memory-log-token-save.sh   # stores worklog-token"; fi ;;
   # Network is the only fail-open leg — the commit is already safe locally and
   # the Stop hook retries it, exactly as worklog-push.sh does.
   *) log_warn "push failed (offline?) — commit is local, Stop hook will retry" ;;
