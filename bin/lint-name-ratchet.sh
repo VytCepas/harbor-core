@@ -41,9 +41,7 @@ current() {
     log_fix "sh bin/lint-name.sh --root $ROOT (read its first FAIL line)"
     return 1
   fi
-  # An alias warns until its remove_by date and blocks from it (harbor#968): the advisory record is the calendar's, not a
-  # new name, so it is not a ratchet key. The blocking one (V) is, and turns red the day the date passes.
-  awk -F'\t' 'NF >= 3 && $1 ~ /^[A-Z]$/ && !($1 == "A" && $2 == "name.alias-expired") { print $2 "\t" $3 }' "$TMP/raw" | LC_ALL=C sort -u > "$1"
+  awk -F'\t' 'NF >= 3 && $1 ~ /^[A-Z]$/ { print $2 "\t" $3 }' "$TMP/raw" | LC_ALL=C sort -u > "$1"
 }
 
 # export: true in harbor-core, where no dev row of layers.tsv exists. A dev file's finding and an exemption row for a

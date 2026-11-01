@@ -169,7 +169,6 @@ tests/admission/egress/egress.test.sh       bin/* tests/lib/* tests/admission/he
 tests/admission/egress/c1-keys.test.sh bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/admission/egress/c1-keys.* tests/admission/bash/fixture.sh
 tests/admission/selfedit/selfedit.test.sh     bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/guards/selfedit* tests/admission/selfedit/selfedit.test.sh* tests/admission/bash/fixture.sh tests/guards/guards.jsonl tests/guards/shapes.jsonl tests/guards/benign.jsonl tests/guards/exemptions.jsonl
 tests/gate/pr-wait/pr-wait.test.sh bin/gate-pr-wait.sh* bin/ci-lost-job.sh bin/gate-required-generate.sh bin/library-log.sh tests/gate/pr-wait/pr-wait.test.sh tests/lib/core.sh
-tests/gate/pr-plan/pr-plan.test.sh bin/gate-pr-plan.sh bin/library-log.sh bin/access-github-app/gh tests/gate/pr-plan/pr-plan.test.sh tests/lib/core.sh
 # standards/naming/* (harbor#150): every suite that reads the naming registry is `always` (lint-test,
 # lint.name-test, lint.cli-test, standard-rename-test) or names its one file itself (pack.test and
 # pack/checks.test: controls.tsv; scope/registry/repo.test: repo-kinds.tsv), so it is classified

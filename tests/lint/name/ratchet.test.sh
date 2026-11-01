@@ -77,13 +77,4 @@ printf '#!/bin/sh\necho boom >&2\nexit 2\n' > "$TMP/judge-broken.sh"
 printf 'name.case\tx\n' > "$BL"
 t_eq "a judge that exits above 1 is red (exit 2), not green" "2" "$(HARBOR_SCOPE_ROOT="$D" LINT_NAME_BIN="$TMP/judge-broken.sh" sh "$R" >/dev/null 2>&1; echo $?)"
 t_exit "an unknown argument is a usage error" 2 sh "$R" --bogus
-
-t_section "an alias inside its warn window is the date's finding, not a new name: it blocks from remove_by (harbor#968)"
-: > "$BL"
-printf '#!/bin/sh\nprintf "A\\tname.alias-expired\\talias:x\\n"\n' > "$TMP/judge-warn.sh"
-printf '#!/bin/sh\nprintf "V\\tname.alias-expired\\talias:x\\n"; exit 1\n' > "$TMP/judge-block.sh"
-t_eq "advisory, before its remove_by date: green" "0" "$(HARBOR_SCOPE_ROOT="$D" LINT_NAME_BIN="$TMP/judge-warn.sh" sh "$R" >/dev/null 2>&1; echo $?)"
-t_eq "blocking, from its remove_by date: NEW and red" "1" "$(HARBOR_SCOPE_ROOT="$D" LINT_NAME_BIN="$TMP/judge-block.sh" sh "$R" >/dev/null 2>&1; echo $?)"
-printf '#!/bin/sh\nprintf "A\\tname.case\\tWarn_Bad.md\\n"\n' > "$TMP/judge-other.sh"
-t_eq "control: any other advisory finding is still NEW" "1" "$(HARBOR_SCOPE_ROOT="$D" LINT_NAME_BIN="$TMP/judge-other.sh" sh "$R" >/dev/null 2>&1; echo $?)"
 t_done

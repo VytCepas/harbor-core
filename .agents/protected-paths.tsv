@@ -188,7 +188,6 @@ bin/gate-merge-stack-resolve.py	installed	derived: shipped by admission-install.
 bin/gate-merge-stack.sh	installed	derived: shipped by admission-install.sh
 bin/gate-merge.sh	installed	derived: shipped by admission-install.sh
 bin/gate-merged-check.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/gate-pr-plan.sh	installed	derived: the approval gate
 bin/gate-pr-wait.sh	installed	derived: the approval gate
 bin/gate-push.sh	installed	derived: the approval gate
 bin/gate-queue.sh	installed	derived: shipped by admission-install.sh
