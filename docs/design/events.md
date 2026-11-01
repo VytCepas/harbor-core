@@ -492,7 +492,7 @@ Off again, in reverse: remove the hook, `rm ~/.claude/.helm-dispatch/spawn.on`, 
 - **The hash reaches one hop (r3 #6).** *Exposure:* the `event.fleet-snapshot` preset's handler is hash-checked,
   but the ~10 sibling scripts it runs are not, nor `~/.local/bin/projects-orchestrator`, which no manifest
   records and a session can rewrite (guard-bash refuses neither a Write to it nor `uv tool install --force`).
-  The preset also makes credentialed `gh` calls, including runner-switch's `HARBOR_RUNNER` variable path, with
+  The preset also makes credentialed `gh` calls, including runner-switch's `HARBOR_CI_RUNNER` variable path, with
   `SHIP_UNATTENDED=1`, and a planted absolute-path `claude` there passes the noclaude shim. The same reach
   already exists through `com.harbor.status.fleet-snapshot` every 300 s; the dispatcher adds event-timed runs, not
   reach. *Proposed fix:* before each fire, verify every runtime-install manifest row in one

@@ -1,1 +1,0 @@
-status-fleet-glyph.sh

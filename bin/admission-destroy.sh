@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
+[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0
 # guard-destroy (harbor#201) — PreToolUse(Bash) ASK/DENY gate for LOCAL work
 # destruction, the deletion class an UNATTENDED agent is most likely to cause.
 #
@@ -465,7 +465,7 @@ fi
 # interactive main-loop ask is untouched (see guard-lib floor_no_human).
 _NHNOTE=""
 if [ "$DECISION" = "ask" ]; then
-  if [ "${HARBOR_ADMISSION_DESTROY_POSTURE:-${HELM_DESTROY_POSTURE:-ask}}" = "deny" ]; then DECISION="deny"
+  if [ "${HARBOR_ADMISSION_DESTROY_POSTURE:-ask}" = "deny" ]; then DECISION="deny"
   elif floor_no_human; then DECISION="deny"; _NHNOTE=" [no-human context — an ask would auto-approve here, so escalated to deny]"
   fi
 fi

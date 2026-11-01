@@ -1,1 +1,0 @@
-memory-store-check.sh

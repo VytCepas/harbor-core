@@ -201,7 +201,7 @@ not a memory that does not exist. Two files, one store: `MEMORY.md` is charged t
 every session, so it is kept small on purpose and says so at the top;
 `INDEX-FULL.md` is never loaded, always searchable, sitting beside it in the same
 directory. The notes are plain markdown in one directory, so one `grep -ril`
-settles the question. Same move as `skill-book`: the thing you cannot see is
+settles the question. Same move as `skill-catalog`: the thing you cannot see is
 still readable, and the index carries the path.
 
 **Asking.** Batch what is independent, serialise only what genuinely depends on

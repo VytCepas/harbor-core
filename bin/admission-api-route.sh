@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
+[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0
 # guard-apiroute (harbor#545) — PostToolUse(Bash|Write|Edit|MultiEdit) and
 # SessionStart. Claude Code's own API route is not a setting anything a session
 # runs may change.

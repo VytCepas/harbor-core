@@ -1,1 +1,0 @@
-lint-port-paths.sh

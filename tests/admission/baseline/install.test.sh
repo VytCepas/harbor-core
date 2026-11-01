@@ -179,12 +179,12 @@ X11="$TMP/x11"; mkcfg "$X11" '{"permissions":{"deny":[]}}'
 fi_run deploy-runtime-install.sh "$X11" --apply >/dev/null 2>&1 || true
 t_eq "X11 runtime-install does not INSTALL admission-integrity.sh on a box without the scanners" no \
   "$([ -e "$X11/bin/admission-integrity.sh" ] && echo yes || echo no)"
-printf '#!/usr/bin/env sh\n[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0\n# stale B6\nexit 0\n' > "$X11/bin/admission-integrity.sh"
+printf '#!/usr/bin/env sh\n[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0\n# stale B6\nexit 0\n' > "$X11/bin/admission-integrity.sh"
 fi_run deploy-runtime-install.sh "$X11" --apply >/dev/null 2>&1 || true
 t_eq "X11 runtime-install refreshes an installed admission-integrity.sh" "$(_x9sha < "$SRC/admission-integrity.sh")" "$(_x9sha < "$X11/bin/admission-integrity.sh")"
 mkdir -p "$X11/.helm-pins"
 printf 'a-stale-pin-that-matches-nothing\n' > "$X11/.helm-pins/admission-integrity.sh.sha256"
-printf '#!/usr/bin/env sh\n[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0\nexit 0\n' > "$X11/bin/admission-integrity.sh"
+printf '#!/usr/bin/env sh\n[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0\nexit 0\n' > "$X11/bin/admission-integrity.sh"
 X11_OUT="$(fi_run deploy-runtime-install.sh "$X11" --apply 2>&1 || true)"
 t_eq "X11 a refreshed B6 is reported quietly, never under the session-blocked banner" quiet-note \
   "$(case "$X11_OUT" in (*"B6 CONTENT PINS ARE NOW STALE"*) echo blocked-banner ;; (*"admission-integrity.sh was refreshed, so its pin"*) echo quiet-note ;; (*) echo silent ;; esac)"
@@ -452,17 +452,17 @@ _of2n="$(jq '[.hooks.PreToolUse[]?.hooks[]?] | length' "$OF2/settings.json")"
 HARBOR_ADMISSION_ONFAILURE=1 fi_run admission-install.sh "$OF2" --apply >/dev/null 2>&1 || true
 t_eq "OF3 a re-install sets it on hooks already wired" block "$(_of_pre "$OF2")"
 t_eq "OF3 ...without wiring any of them twice" "$_of2n" "$(jq '[.hooks.PreToolUse[]?.hooks[]?] | length' "$OF2/settings.json")"
-# rename-1331 (W7): the old name is read after the new one until 2026-12-01, and the new one wins. Subshells, because
-# macOS /bin/sh keeps a prefix assignment to a function after it returns, so OF3's new name would decide these.
-OF4="$TMP/onfail-old"; mkcfg "$OF4" "$PERM"
-( unset HARBOR_ADMISSION_ONFAILURE; FLOOR_ONFAILURE=1; export FLOOR_ONFAILURE; fi_run admission-install.sh "$OF4" --apply ) >/dev/null 2>&1 || true
-t_eq "OF4 the old name FLOOR_ONFAILURE still sets onFailure until 2026-12-01" block "$(_of_pre "$OF4")"
-OF6="$TMP/onfail-old-off"; mkcfg "$OF6" "$PERM"   # 1 and 0 both, so a box with or without claude on PATH discriminates
-( unset HARBOR_ADMISSION_ONFAILURE; FLOOR_ONFAILURE=0; export FLOOR_ONFAILURE; fi_run admission-install.sh "$OF6" --apply ) >/dev/null 2>&1 || true
-t_eq "OF6 ...and clears it" none "$(_of_pre "$OF6")"
-OF5="$TMP/onfail-both"; mkcfg "$OF5" "$PERM"
-( HARBOR_ADMISSION_ONFAILURE=0 FLOOR_ONFAILURE=1; export HARBOR_ADMISSION_ONFAILURE FLOOR_ONFAILURE; fi_run admission-install.sh "$OF5" --apply ) >/dev/null 2>&1 || true
-t_eq "OF5 ...and the new name wins over it" none "$(_of_pre "$OF5")"
+# rename-1331 (W7): the retired name (built from parts: the name lint reads tokens) is no longer read. Subshells, because
+# macOS /bin/sh keeps a prefix assignment to a function after it returns. 1 and 0 both, so a box with or without claude on PATH discriminates.
+_oldof="FLOOR_$(printf ONFAILURE)"
+OF4="$TMP/onfail-none"; mkcfg "$OF4" "$PERM"
+( unset HARBOR_ADMISSION_ONFAILURE "$_oldof"; fi_run admission-install.sh "$OF4" --apply ) >/dev/null 2>&1 || true
+OF5="$TMP/onfail-old-on"; mkcfg "$OF5" "$PERM"
+( unset HARBOR_ADMISSION_ONFAILURE; export "$_oldof=1"; fi_run admission-install.sh "$OF5" --apply ) >/dev/null 2>&1 || true
+OF6="$TMP/onfail-old-off"; mkcfg "$OF6" "$PERM"
+( unset HARBOR_ADMISSION_ONFAILURE; export "$_oldof=0"; fi_run admission-install.sh "$OF6" --apply ) >/dev/null 2>&1 || true
+t_eq "OF4 the retired name set to 1 changes nothing" "$(_of_pre "$OF4")" "$(_of_pre "$OF5")"
+t_eq "OF6 ...and set to 0 changes nothing either" "$(_of_pre "$OF4")" "$(_of_pre "$OF6")"
 
 ff_sealed
 t_done

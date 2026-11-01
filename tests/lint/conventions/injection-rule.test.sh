@@ -17,15 +17,15 @@ t_hasnt "scope: box on PreToolUse is valid" "$(_ij1s box PreToolUse)" 'VIOLATION
 t_has "scope: box on SessionStart can never reach a tree" "$(_ij1s box SessionStart)" \
   'scope: box on SessionStart, which carries no tool call'
 t_has "a near-miss scope value is refused" "$(_ij1s ambient PreToolUse)" 'declares scope: ambient'
-_ij1p() { # <relpath under the private inject.d> <event> → IJ1's output for a fixture layer holding that one pack
-  rm -rf "$TMP/ij1p" "$TMP/ij1p-root"; mkdir -p "$TMP/ij1p-root" "$TMP/ij1p/inject.d/$(dirname "$1")"
-  printf -- '---\nid: demo\nevent: %s\nwhen: always\n---\nbody\n' "$2" > "$TMP/ij1p/inject.d/$1"
+_ij1p() { # <relpath under the private context-rules> <event> → IJ1's output for a fixture layer holding that one pack
+  rm -rf "$TMP/ij1p" "$TMP/ij1p-root"; mkdir -p "$TMP/ij1p-root" "$TMP/ij1p/context-rules/$(dirname "$1")"
+  printf -- '---\nid: demo-x\nevent: %s\nwhen: always\n---\nbody\n' "$2" > "$TMP/ij1p/context-rules/$1"
   HARBOR_SCOPE_PRIVATE="$TMP/ij1p" lint1 IJ1 "$TMP/ij1p-root" || true
 }
-t_hasnt "a well-formed private repo pack is valid" "$(_ij1p demo/10-demo.md PreToolUse)" 'VIOLATION [context.pack-shape]'
-t_has "a private pack on an event the engine never sees is refused, named as private" "$(_ij1p demo/10-demo.md Bogus)" \
-  'declares an event the engine never sees (Bogus): private:inject.d/demo/10-demo.md'
-t_has "a private pack one level off is a pack nothing reads" "$(_ij1p box/sub/10-demo.md PreToolUse)" \
+t_hasnt "a well-formed private repo pack is valid" "$(_ij1p demo/demo.md PreToolUse)" 'VIOLATION [context.pack-shape]'
+t_has "a private pack on an event the engine never sees is refused, named as private" "$(_ij1p demo/demo.md Bogus)" \
+  'declares an event the engine never sees (Bogus): private:context-rules/demo/demo.md'
+t_has "a private pack one level off is a pack nothing reads" "$(_ij1p demo/sub/demo.md PreToolUse)" \
   'nothing installs or reads it'
 
 t_section "IJ1: a tracked pack has a description (harbor#957)"
@@ -39,8 +39,8 @@ t_has "an empty description is refused too" "$(_ij1d 'description:
 ')" 'pack has no description: context-rules/demo/demo.md'
 t_hasnt "a described pack is valid" "$(_ij1d 'description: what it is for
 ')" 'VIOLATION [context.pack-shape]'
-t_has "a private pack with none is a warning, not a violation" "$(_ij1p demo/10-demo.md PreToolUse)" \
-  'ADVISORY [context.pack-shape] pack has no description: private:inject.d/demo/10-demo.md'
+t_has "a private pack with none is a warning, not a violation" "$(_ij1p demo/demo.md PreToolUse)" \
+  'ADVISORY [context.pack-shape] pack has no description: private:context-rules/demo/demo.md'
 
 t_section "IJ1: the id is the file name and order is a key (D-43, harbor#1010)"
 _ijv() { printf '%s\n' "$1" | grep 'VIOLATION \[context.pack-shape\]' || true; }
@@ -61,16 +61,15 @@ order: soon
 ')" 'order: is not a whole number (soon)'
 mkdir -p "$TMP/ij1d/inject.d/box"; printf -- '---\ndescription: d\nevent: PreToolUse\nwhen: always\n---\nb\n' > "$TMP/ij1d/inject.d/box/old.md"
 t_has "a tracked rule in the retired inject.d/ is refused" "$(lint1 IJ1 "$TMP/ij1d" || true)" 'retired inject.d/ layout'
-t_hasnt "...and the private layer's old layout is not judged by name" "$(_ij1p demo/10-demo.md PreToolUse)" 'carries an NN- prefix'
 
 t_section "IJ2: the registry's second direction (harbor#177)"
 IJR="$TMP/ij-root"; IJP="$TMP/ij-priv"; IJH="$TMP/ij-home"
-mkdir -p "$IJR/inject.d/box" "$IJP/inject.d/box" "$IJP/inject.d/seeded" "$IJH/selfseeded/.claude/inject.d" "$IJH/barren" "$IJH/seeded" "$IJH/selfnew/context-rules/selfnew"
+mkdir -p "$IJR/context-rules/user" "$IJP/context-rules/user" "$IJP/context-rules/seeded" "$IJH/selfseeded/context-rules/selfseeded" "$IJH/barren" "$IJH/seeded" "$IJH/selfnew/context-rules/selfnew"
 printf -- '---\nevent: SessionStart\nwhen: always\n---\n\nbody\n' > "$IJH/selfnew/context-rules/selfnew/self.md"
-printf -- '---\nid: seeded-pack\nevent: SessionStart\nwhen: always\n---\n\nbody\n' > "$IJP/inject.d/seeded/10-seeded.md"
-printf -- '---\nid: self-pack\nevent: SessionStart\nwhen: always\n---\n\nbody\n' > "$IJH/selfseeded/.claude/inject.d/10-self.md"
+printf -- '---\nid: seeded-pack\nevent: SessionStart\nwhen: always\n---\n\nbody\n' > "$IJP/context-rules/seeded/10-seeded.md"
+printf -- '---\nid: self-pack\nevent: SessionStart\nwhen: always\n---\n\nbody\n' > "$IJH/selfseeded/context-rules/selfseeded/10-self.md"
 printf '# name\tpath\tcovers\nseeded\t~/seeded\tpacks seeded from this repo\nselfseeded\t~/selfseeded\tpacks live in the project own tree\nbarren\t~/barren\tno packs anywhere\nselfnew\t~/selfnew\tits rules in context-rules/ (harbor#1010)\nabsent\t~/absent\tthe repo is not on this box\n' \
-  > "$IJP/inject.d/box/projects.tsv"
+  > "$IJP/context-rules/user/projects.tsv"
 OUT_IJ2="$(HOME="$IJH" HARBOR_SCOPE_PRIVATE="$IJP" lint1 IJ2 "$IJR" | grep -E '(VIOLATION|ADVISORY) \[context.registry-dirs\]')"
 IJ2_ROW='projects.tsv row'
 t_has "a row with no packs in EITHER home is reported" "$OUT_IJ2" "$IJ2_ROW 'barren' has no packs"
@@ -84,46 +83,46 @@ printf '# name\tpath\tcovers\n' > "$IJPN/context-rules/user/projects.tsv"
 printf -- '---\nevent: SessionStart\nwhen: always\n---\n\nbody\n' > "$IJPN/context-rules/orphan2/orphan2.md"
 t_has "a new-layout private layer's registry and folders are compared (harbor#1010)" \
   "$(HOME="$IJH" HARBOR_SCOPE_PRIVATE="$IJPN" lint1 IJ2 "$IJR")" 'context-rules/orphan2/ has no row in projects.tsv'
-mkdir -p "$IJP/inject.d/orphan"; printf -- '---\nid: orphan-pack\nevent: SessionStart\nwhen: always\n---\n\nbody\n' > "$IJP/inject.d/orphan/10-orphan.md"
+mkdir -p "$IJP/context-rules/orphan"; printf -- '---\nid: orphan-pack\nevent: SessionStart\nwhen: always\n---\n\nbody\n' > "$IJP/context-rules/orphan/10-orphan.md"
 t_has "a private pack folder with no registry row is never seeded, and is reported" \
-  "$(HOME="$IJH" HARBOR_SCOPE_PRIVATE="$IJP" lint1 IJ2 "$IJR")" 'inject.d/orphan/ has no row in projects.tsv'
-rm -r "$IJP/inject.d/orphan"
-IJN="$TMP/ij-noreg"; mkdir -p "$IJN/inject.d/box"
+  "$(HOME="$IJH" HARBOR_SCOPE_PRIVATE="$IJP" lint1 IJ2 "$IJR")" 'context-rules/orphan/ has no row in projects.tsv'
+rm -r "$IJP/context-rules/orphan"
+IJN="$TMP/ij-noreg"; mkdir -p "$IJN/context-rules/user"
 _ij2n="$(HOME="$IJH" HARBOR_SCOPE_PRIVATE="$IJN" lint1 IJ2 "$IJR")"
-t_has "a private layer with no registry is a finding" "$_ij2n" "VIOLATION [context.registry-dirs] the private layer's inject.d/box/projects.tsv is missing"
+t_has "a private layer with no registry is a finding" "$_ij2n" "VIOLATION [context.registry-dirs] the private layer's context-rules/user/projects.tsv is missing"
 _ij2x="$(HOME="$IJH" HARBOR_SCOPE_PRIVATE="$TMP/ij-no-layer-at-all" lint1 IJ2 "$IJR")"
 t_hasnt "no private layer at all is not a violation" "$_ij2x" 'VIOLATION [context.registry-dirs]'
 t_has "...and says it did not look, so the silence is not read as a pass" "$_ij2x" 'there is no registry to compare against the pack folders — not checked'
 
 t_section "IJ4: a tracked pack is installed where the engine reads it (harbor#173)"
 IJ4R="$TMP/ij4-root"; IJ4H="$TMP/ij4-home"; IJ4P="$TMP/ij4-priv"
-mkdir -p "$IJ4R/context-rules/user" "$IJ4P/inject.d/box" "$IJ4P/inject.d/never" "$IJ4P/inject.d/good" "$IJ4P/inject.d/drifted" \
-         "$IJ4P/inject.d/oldseed" "$IJ4H/never" "$IJ4H/good/context-rules/good" "$IJ4H/drifted/context-rules/drifted" \
+mkdir -p "$IJ4R/context-rules/user" "$IJ4P/context-rules/user" "$IJ4P/context-rules/never" "$IJ4P/context-rules/good" "$IJ4P/context-rules/drifted" \
+         "$IJ4P/context-rules/oldseed" "$IJ4H/never" "$IJ4H/good/context-rules/good" "$IJ4H/drifted/context-rules/drifted" \
          "$IJ4H/oldseed/.claude/inject.d" "$IJ4H/cfg" "$IJ4H/cfg2/context-rules/user"
 for _n in never good drifted oldseed; do
-  printf -- '---\nid: %s-pack\nevent: SessionStart\nwhen: always\n---\n\nbody\n' "$_n" > "$IJ4P/inject.d/$_n/10-$_n.md"
+  printf -- '---\nid: %s-pack\nevent: SessionStart\nwhen: always\n---\n\nbody\n' "$_n" > "$IJ4P/context-rules/$_n/10-$_n.md"
 done
 # seeded into the repo's own context-rules/<name>/ (harbor#1010); oldseed only into the old .claude/inject.d
-cp "$IJ4P/inject.d/good/10-good.md" "$IJ4H/good/context-rules/good/"
-cp "$IJ4P/inject.d/drifted/10-drifted.md" "$IJ4H/drifted/context-rules/drifted/"
-cp "$IJ4P/inject.d/oldseed/10-oldseed.md" "$IJ4H/oldseed/.claude/inject.d/"
+cp "$IJ4P/context-rules/good/10-good.md" "$IJ4H/good/context-rules/good/"
+cp "$IJ4P/context-rules/drifted/10-drifted.md" "$IJ4H/drifted/context-rules/drifted/"
+cp "$IJ4P/context-rules/oldseed/10-oldseed.md" "$IJ4H/oldseed/.claude/inject.d/"
 printf 'tampered\n' >> "$IJ4H/drifted/context-rules/drifted/10-drifted.md"
 printf '# name\tpath\tcovers\nnever\t~/never\ttracked but never seeded\ngood\t~/good\tseeded and current\ndrifted\t~/drifted\tseeded then edited in place\noldseed\t~/oldseed\tseeded before the move\nabsent\t~/absent\tthe repo is not on this box\n' \
-  > "$IJ4P/inject.d/box/projects.tsv"
+  > "$IJ4P/context-rules/user/projects.tsv"
 ij4() { HOME="$IJ4H" HARBOR_LINT_ESTATE_ROOT="$IJ4H" HARBOR_SCOPE_PRIVATE="$IJ4P" CLAUDE_CONFIG_DIR="$IJ4H/$1" lint1 IJ4 "$IJ4R"; }
 RAW_IJ4="$(ij4 cfg)"
 OUT_IJ4="$(printf '%s\n' "$RAW_IJ4" | grep 'ADVISORY \[drift.pack-installed\]' || true)"
 t_has "a tracked pack that was NEVER SEEDED is reported" "$OUT_IJ4" 'never pack is tracked but NEVER SEEDED'
 t_has "a pack edited in place after seeding is DRIFT" "$OUT_IJ4" 'drifted pack has drifted'
 t_hasnt "a correctly seeded pack stays silent" "$OUT_IJ4" 'good'
-t_has "a pack seeded only in the old .claude/inject.d asks for a re-seed (harbor#1010)" "$OUT_IJ4" 'oldseed pack is seeded only in the old oldseed/.claude/inject.d: re-seed into context-rules/oldseed'
+t_has "a pack seeded only in the retired .claude/inject.d is NEVER SEEDED: nothing reads the old place (harbor#1010)" "$OUT_IJ4" 'oldseed pack is tracked but NEVER SEEDED'
 t_hasnt "a project absent from this box stays silent (IJ2 owns that)" "$OUT_IJ4" 'absent'
 t_has "BOX packs tracked but never installed are reported" "$OUT_IJ4" 'BOX packs are tracked but NEVER INSTALLED'
 printf -- '---\nevent: SessionStart\nwhen: always\n---\n\nbody\n' > "$IJ4R/context-rules/user/core-box.md"
-printf -- '---\nid: private-box\nevent: SessionStart\nwhen: always\n---\n\nbody\n' > "$IJ4P/inject.d/box/20-private-box.md"
+printf -- '---\nid: private-box\nevent: SessionStart\nwhen: always\n---\n\nbody\n' > "$IJ4P/context-rules/user/20-private-box.md"
 cp -R "$IJ4R/context-rules/user/." "$IJ4H/cfg2/context-rules/user/"
 t_has "a private box file missing from the install is DRIFT in the box tier" "$(ij4 cfg2 | grep 'ADVISORY \[drift.pack-installed\]')" 'the BOX packs have drifted'
-cp "$IJ4P/inject.d/box/projects.tsv" "$IJ4P/inject.d/box/20-private-box.md" "$IJ4H/cfg2/context-rules/user/"
+cp "$IJ4P/context-rules/user/projects.tsv" "$IJ4P/context-rules/user/20-private-box.md" "$IJ4H/cfg2/context-rules/user/"
 t_eq "BOX packs installed and current (core's and the private layer's) stay silent" "" "$(ij4 cfg2 | grep 'ADVISORY \[drift.pack-installed\].*BOX')"
 printf 'edited\n' >> "$IJ4H/cfg2/context-rules/user/20-private-box.md"
 t_has "a private box pack edited in place after install is DRIFT" "$(ij4 cfg2 | grep 'ADVISORY \[drift.pack-installed\]')" 'the BOX packs have drifted'
@@ -131,10 +130,10 @@ t_hasnt "IJ4 is advisory: it never emits a VIOLATION" "$RAW_IJ4" 'VIOLATION [dri
 
 t_section "IJ3: every governed repo on this box has a registry row (harbor#181)"
 IJ3H="$TMP/ij3-home"; IJ3R="$TMP/ij3-root"; IJ3P="$TMP/ij3-priv"
-mkdir -p "$IJ3P/inject.d/box" "$IJ3R" "$IJ3H/registered/.git" "$IJ3H/registered/.claude" \
+mkdir -p "$IJ3P/context-rules/user" "$IJ3R" "$IJ3H/registered/.git" "$IJ3H/registered/.claude" \
          "$IJ3H/unregistered/.git" "$IJ3H/unregistered/.agents" "$IJ3H/with-skills/.git" \
          "$IJ3H/with-skills/.claude/skills" "$IJ3H/plain-checkout/.git" "$IJ3H/not-a-repo/.claude"
-printf '# name\tpath\tcovers\nregistered\t~/registered\ta project somebody registered\n' > "$IJ3P/inject.d/box/projects.tsv"
+printf '# name\tpath\tcovers\nregistered\t~/registered\ta project somebody registered\n' > "$IJ3P/context-rules/user/projects.tsv"
 OUT_IJ3="$(HARBOR_LINT_ESTATE_ROOT="$IJ3H" HARBOR_SCOPE_PRIVATE="$IJ3P" lint1 IJ3 "$IJ3R" \
           | grep -E 'ADVISORY \[context.repo-registered\]|governed repo\(s\)')"
 IJ3_UN='governed but unregistered:'
@@ -148,8 +147,8 @@ t_hasnt "…and only there" "$(printf '%s\n' "$OUT_IJ3" | grep "$IJ3_UN unregist
 t_has "the count names how many of how many" "$OUT_IJ3" '2 of 3 governed repo(s) are unregistered'
 
 t_section "IJ5: every registry row still resolves to a directory"
-IJ5H="$TMP/ij5-home"; IJ5R="$TMP/ij5-root"; IJ5P="$TMP/ij5-priv"; mkdir -p "$IJ5R" "$IJ5P/inject.d/box" "$IJ5H/alive"
-ij5_reg() { printf '# name\tpath\tcovers\n%s' "$1" > "$IJ5P/inject.d/box/projects.tsv"; }
+IJ5H="$TMP/ij5-home"; IJ5R="$TMP/ij5-root"; IJ5P="$TMP/ij5-priv"; mkdir -p "$IJ5R" "$IJ5P/context-rules/user" "$IJ5H/alive"
+ij5_reg() { printf '# name\tpath\tcovers\n%s' "$1" > "$IJ5P/context-rules/user/projects.tsv"; }
 ij5() { HARBOR_LINT_ESTATE_ROOT="$IJ5H" HARBOR_SCOPE_PRIVATE="$IJ5P" lint1 IJ5 "$IJ5R" \
           | grep -E 'ADVISORY \[context.registry-resolves\]|registry row'; }
 IJ5_DEAD='registry row points at nothing:'
@@ -216,12 +215,12 @@ t_has "a row whose call is gone is reported as stale" "$_m2o" \
   'declares bin/gone.sh standing down via floor_in_repo, and no such call exists'
 t_eq "…and fails the run" "exit 1" "exit $_m2rc"
 m2_doc "$M2_OK"
-mkdir -p "$M2R/inject.d/box"
-printf '#!/usr/bin/env sh\n. "$(dirname "$0")/../../bin/library-admission.sh"\nfloor_in_repo || exit 0\n' > "$M2R/inject.d/box/pack.sh"
+mkdir -p "$M2R/context-rules/user"
+printf '#!/usr/bin/env sh\n. "$(dirname "$0")/../../bin/library-admission.sh"\nfloor_in_repo || exit 0\n' > "$M2R/context-rules/user/pack.sh"
 _m2o="$(lint1 M2 "$M2R")"; _m2rc=$?
-t_has "a script outside bin/ that sources guard-lib is reported" "$_m2o" 'inject.d/box/pack.sh sources library-admission.sh from outside bin/'
+t_has "a script outside bin/ that sources guard-lib is reported" "$_m2o" 'context-rules/user/pack.sh sources library-admission.sh from outside bin/'
 t_eq "…and fails the run (no subshell count loss)" "exit 1" "exit $_m2rc"
-rm -rf "$M2R/inject.d"
+rm -rf "$M2R/context-rules"
 
 t_section "M2: a row covers a file and a function, and a script need not end in .sh (PR #678)"
 m2_bin guard-x.sh 'if ! floor_in_repo; then echo armed; fi

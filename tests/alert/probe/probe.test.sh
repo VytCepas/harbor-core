@@ -5,7 +5,7 @@
 # The wiring matrix and the floor predicate are copies (of admission-install.sh, status-generate.sh);
 # the drift and agreement cases fail when a copy drifts. The notifier is pulse-notify-test.sh.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset HARBOR_TEST_IN_SUITE HARBOR_IN_SUITE  # t_init keeps status-gen's re-entry marker; this suite runs status-gen at top level (harbor#773)
+unset HARBOR_TEST_IN_SUITE  # t_init keeps status-gen's re-entry marker; this suite runs status-gen at top level (harbor#773)
 P="$T_ROOT/bin/alert-probe.sh"; TMP="$T_TMP/pulse"; mkdir -p "$TMP"
 mkcfg() { # <name> <deny: sentinel|unrelated|empty> <hooks: full|no-mcp|no-advis|bash-only|shim|odd|none> <missing-guard|->
   _d="$TMP/$1"; mkdir -p "$_d/bin" "$_d/cache"

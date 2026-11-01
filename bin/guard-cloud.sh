@@ -1,1 +1,0 @@
-admission-cloud.sh

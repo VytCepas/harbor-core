@@ -6,7 +6,7 @@ tests/admission/bash-test.sh	name.test-path
 tests/widget/thing/x.test.sh	name.test-path
 tests/lib/core.sh	name.test-path
 tests/admission/bash/destroy.test.v2.sh	name.test-path,name.extension
-tests/floor/floor.b7-test.sh	name.test-path,name.alias
+tests/golden/golden.b7-test.sh	name.test-path,name.alias
 tests/audit/cfg/load.test.sh	name.abbreviation
 tests/audit/Triage/load.test.sh	name.case,name.test-path
 tests/audit/triage/run-2026-10-04.test.sh	name.date,name.test-path

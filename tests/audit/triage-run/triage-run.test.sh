@@ -60,7 +60,7 @@ t_has "the previous crit cache survives" "$(cat "$JV")" "crit FC-2"
 
 t_section "5b · the floor tier reaches the findings store: one check receipt per judged run (harbor#591)"
 RC="$T/cfg/cache/checks/audit.triage.json"
-rcrun() { env -u HARBOR_CHECK_RECEIPTS -u HARBOR_RECEIPTS sh "$T/bin/audit-triage-run.sh" "$@" >/dev/null 2>&1; }
+rcrun() { env -u HARBOR_CHECK_RECEIPTS sh "$T/bin/audit-triage-run.sh" "$@" >/dev/null 2>&1; }
 fixture_crit; rm -f "$RC"; rcrun "$T/cfg" --apply
 t_eq "a judged crit and warn: red, one subject per severity:rule" 'red crit:FC-2,warn:FC-5' "$(jq -r '"\(.status) \(.subjects | join(","))"' "$RC" 2>&1)"
 t_hasnt "the judge's subject text, which carries counts, is not a subject" "$(cat "$RC")" "(x1)"

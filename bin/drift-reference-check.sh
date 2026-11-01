@@ -231,7 +231,7 @@ finding() { # <rule> <subject> <what-breaks> [<fix command>] — the fix is the 
 _phys() { CDPATH= cd -P -- "$1" 2>/dev/null && pwd -P || printf '%s' "$1"; }
 _sq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 _install_fix() { # <component> <installer>
-  _if_r="$(sh "$SELF/scope-roots.sh" --get HARBOR_SCOPE_REPO 2>/dev/null || :)"; [ -n "$_if_r" ] || _if_r="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}"
+  _if_r="$(sh "$SELF/scope-roots.sh" --get HARBOR_SCOPE_REPO 2>/dev/null || :)"; [ -n "$_if_r" ] || _if_r="${HARBOR_SCOPE_REPO:-${PORT_ROOT:-$HOME/port}/harbor}"
   LIVE="$HOME/.claude"  # deploy's live target, whatever CLAUDE_CONFIG_DIR says: deploy refuses a differing one
   if [ "$(_phys "$DIR")" = "$(_phys "$LIVE")" ]; then
     printf 'sh %s --apply --only %s --live' "$(_sq "$_if_r/bin/deploy.sh")" "$1"
@@ -658,7 +658,7 @@ fi
 # neither the count says 0 examined, which is not a pass.
 _gg="$SELF/doc-graph-generate.sh"
 if [ ! -f "$_gg" ]; then
-  _gg="$(sh "$SELF/scope-roots.sh" --get HARBOR_SCOPE_REPO 2>/dev/null || :)"; _gg="${_gg:-${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}}/bin/doc-graph-generate.sh"
+  _gg="$(sh "$SELF/scope-roots.sh" --get HARBOR_SCOPE_REPO 2>/dev/null || :)"; _gg="${_gg:-${HARBOR_SCOPE_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}/bin/doc-graph-generate.sh"
 fi
 if [ -f "$DIR/.harbor-manifest" ] && [ -f "$_gg" ] && command -v python3 >/dev/null 2>&1; then
   # Held in a variable, not a temp file: an unwritable TMPDIR made the file's 473 rows read as none (2026-10-27).

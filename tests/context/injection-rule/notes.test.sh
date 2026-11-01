@@ -1,21 +1,21 @@
 #!/usr/bin/env sh
 # The notes harbor SHIPS, through the real engine: every row of fixtures/injection-rule/notes.tsv, and every tracked note id must have a FIRE row
 # and a SILENT row, or be a named exemption (harbor#173). A throwaway config dir takes the box packs, a throwaway repo the pack under test.
-# CORE'S PACKS, AND A PRIVATE LAYER'S WHEN ASKED (harbor#1149). The packs that name a repo or a client live in the private layer's inject.d/,
-# with their probe rows in its inject.d/notes.tsv. This suite is hermetic and never looks for that layer by itself; HARBOR_CONTEXT_NOTES_PRIVATE=<layer>
+# CORE'S PACKS, AND A PRIVATE LAYER'S WHEN ASKED (harbor#1149). The packs that name a repo or a client live in the private layer's context-rules/,
+# with their probe rows in its context-rules/notes.tsv. This suite is hermetic and never looks for that layer by itself; HARBOR_CONTEXT_NOTES_PRIVATE=<layer>
 # adds its packs, its box files and its rows to the run, with the same rule: a pack with no FIRE row and no SILENT row fails.
 # FIXTURE PACKS (fixtures/injection-rule/packs/<name>/) are never installed and name nothing real. They keep an engine predicate that only the private
 # layer's packs use (`cmd-contains`) under a default run, which no CI or pre-push sets a layer for: without one, an edit that broke the
 # predicate left every default suite green while five live packs went silent.
-PRIV="${HARBOR_CONTEXT_NOTES_PRIVATE:-${HARBOR_NOTES_PRIVATE:-}}"   # a knob from the caller, read before t_init clears it (harbor#773)
+PRIV="${HARBOR_CONTEXT_NOTES_PRIVATE:-}"   # a knob from the caller, read before t_init clears it (harbor#773)
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 ENGINE="$T_ROOT/hooks/injection-rule/injection-rule.sh"; FIX="$T_ROOT/fixtures/injection-rule/notes.tsv"; T="$T_TMP"
 # merge-governance and post-merge-state call `gh` against a live PR; their content is
 # tests/context/govern-hook/govern-hook.test.sh's, and only their wiring is asserted at the end here.
 EXEMPT='merge-governance post-merge-state'
-# The private layer in either layout for one release (harbor#1010): context-rules/{user,<repo>}/, or inject.d/{box,<repo>}/.
+# The private layer: context-rules/{user,<repo>}/ (harbor#1010).
 PRR=''; PRB=''
-if [ -n "$PRIV" ]; then PRR="$PRIV/context-rules"; PRB=user; [ -d "$PRR" ] || { PRR="$PRIV/inject.d"; PRB=box; }; fi
+if [ -n "$PRIV" ]; then PRR="$PRIV/context-rules"; PRB=user; fi
 tracked_ids() { # the id: key, else the file name (D-43)
   for _f in "$T_ROOT"/context-rules/*/*.md "$T_ROOT"/fixtures/injection-rule/packs/*/*.md ${PRR:+"$PRR"/*/*.md}; do
     [ -f "$_f" ] || continue
@@ -36,7 +36,7 @@ while IFS="$(printf '\t')" read -r _rn _rp _rest; do
   case "$_rn" in ''|'#'*) continue ;; esac
   case "$_rp" in '~/'*) mkdir -p "$HOME/${_rp#'~/'}" ;; esac
 done < "$BOXD/projects.tsv"
-# browser-route-harbor-chrome reads the host allowlist from the registered harbor checkout.
+# browser-route-platform-chrome reads the host allowlist from the registered harbor checkout.
 _hr="$(awk -F'\t' '$1 == "harbor" { sub(/^~\//, "", $2); print $2; exit }' "$BOXD/projects.tsv")"
 mkdir -p "$HOME/$_hr/contracts"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" "$HOME/$_hr/contracts/"
 
@@ -47,7 +47,7 @@ cp "$T_ROOT/bin/library-admission.sh" "$T_ROOT/bin/admission-normalize.awk" "$T/
 mkdir -p "$T/cfg/name-create.d"; printf 'fixturectl[[:space:]]+create[[:space:]]+\tskill\tUse the form the grammar names.\n' > "$T/cfg/name-create.d/fixture.tsv"
 
 make_repo() { # <dir> <pack> <shape>: skills = a HIDDEN skill, visible = one the model already lists
-  rm -rf "$1"; mkdir -p "$1/.claude/inject.d" "$1/vault" "$1/docs"
+  rm -rf "$1"; mkdir -p "$1/context-rules/repo" "$1/vault" "$1/docs"
   ( cd "$1" && git init -q . && git config user.email t@t && git config user.name t ) >/dev/null 2>&1
   printf 'x\n' > "$1/README.md"; printf 'x\n' > "$1/INDEX.md"; printf 'x\n' > "$1/policy/constitution.md"
   case "$3" in
@@ -61,14 +61,14 @@ make_repo() { # <dir> <pack> <shape>: skills = a HIDDEN skill, visible = one the
   case "$2" in
     box)  : ;;
     self) mkdir -p "$1/context-rules/harbor"; cp -R "$T_ROOT"/context-rules/harbor/. "$1/context-rules/harbor/" ;;
-    *)    if [ -d "$T_ROOT/fixtures/injection-rule/packs/$2" ]; then cp -R "$T_ROOT/fixtures/injection-rule/packs/$2/." "$1/.claude/inject.d/"
-          else cp -R "$PRR/$2/." "$1/.claude/inject.d/"; fi ;;
+    *)    if [ -d "$T_ROOT/fixtures/injection-rule/packs/$2" ]; then cp -R "$T_ROOT/fixtures/injection-rule/packs/$2/." "$1/context-rules/repo/"
+          else cp -R "$PRR/$2/." "$1/context-rules/repo/"; fi ;;
   esac
-  chmod +x "$1"/.claude/inject.d/*.sh "$1"/context-rules/*/*.sh 2>/dev/null || true
+  chmod +x "$1"/context-rules/repo/*.sh "$1"/context-rules/*/*.sh 2>/dev/null || true
 }
 BIG="$(awk 'BEGIN{ while (i++ < 40000) printf "x" }')"
 # repo-tier-not-loaded's subject is a SECOND tree: @OTHER@ carries packs, @BARE@ has an empty
-# .claude/inject.d (a directory check alone would fire on it). gh -R Fixture/Other finds OTHER by origin.
+# context-rules/repo (a directory check alone would fire on it). gh -R Fixture/Other finds OTHER by origin.
 OTHER="$T/other"; make_repo "$OTHER" self plain
 BARE="$T/bare";   make_repo "$BARE" box plain
 git -C "$OTHER" remote add origin https://github.com/fixture/other.git
@@ -77,7 +77,7 @@ mkdir -p "$T/access"
 printf '# example — fixture\n\n    account:  owner@example.com | primary | fixture | gcx me\n' > "$T/access/example.md"
 printf 'example-project\texample\n' > "$T/access/routes.tsv"
 
-t_section "every row of fixtures/injection-rule/notes.tsv${PRIV:+ and of the private layer inject.d/notes.tsv}"
+t_section "every row of fixtures/injection-rule/notes.tsv${PRIV:+ and of the private layer context-rules/notes.tsv}"
 seen_fire=''; seen_silent=''; rows=0
 cat "$FIX" > "$T/rows.tsv"
 if [ -n "$PRIV" ]; then

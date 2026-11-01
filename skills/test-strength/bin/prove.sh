@@ -64,7 +64,7 @@
 #     sprintf("%c", 39).
 set -u
 
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd)}}"
+ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd)}"
 PROVE_TARGETS="${PROVE_TARGETS:-$ROOT/skills/test-strength/targets}"
 PROVE_WORK="${PROVE_WORK:-${TMPDIR:-/tmp}}"
 while :; do case "$PROVE_WORK" in */) PROVE_WORK="${PROVE_WORK%/}" ;; *) break ;; esac; done

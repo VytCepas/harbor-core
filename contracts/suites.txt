@@ -393,6 +393,7 @@ tests/ci/runner/wedge.test.sh
 tests/drift/reconcile/contract.test.sh
 tests/ci/runners/scale.test.sh
 tests/standard/rename/window.test.sh
+tests/standard/rename/collapse.test.sh
 tests/lint/name/modes.test.sh
 tests/deploy/push/license.test.sh
 tests/lint/share/check.test.sh
@@ -419,5 +420,4 @@ tests/standard/rename/sandbox-home.test.sh
 tests/deploy/install/renamed.test.sh
 tests/deploy/install/renamed-wiring.test.sh
 tests/deploy/install/renamed-wiring-w7.test.sh
-tests/deploy/install/renamed-wiring-w9.test.sh
 tests/gate/push/push.test.sh

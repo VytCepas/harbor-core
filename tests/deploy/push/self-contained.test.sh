@@ -5,7 +5,7 @@
 # itself, so the classifier under test is the one that exports. The leak gate it also runs is another suite's subject
 # (a red gate does not stop the list being printed), so the exit code of that dry run is not read here.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset HARBOR_TEST_IN_SUITE HARBOR_IN_SUITE
+unset HARBOR_TEST_IN_SUITE
 
 PV="$T_TMP/pv"; mkdir -p "$PV"; printf 'id\tkind\tpattern\tnote\n' > "$PV/leaks.tsv"
 LIST="$T_TMP/core.files"; RAW="$T_TMP/raw"; S="$T_TMP/export"; mkdir -p "$RAW" "$S"

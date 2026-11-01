@@ -1,1 +1,0 @@
-policy-constitution-install.sh

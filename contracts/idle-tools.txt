@@ -44,7 +44,6 @@ admission-deny-hash.sh           IDLE  M7 leak filter over the operator's own pr
 admission-equivalence.sh         IDLE  replays a payload corpus through TWO guard trees and compares them
 scope-managed-telemetry.sh   VERB  the operator runs it once under sudo, after audit-collector-install.sh
 scope-managed-retention.sh   VERB  the operator runs it once under sudo: a root-owned managed setting is never written on a schedule
-skill-book.sh        VERB  the old name of skill-catalog.sh (harbor#1010): kept one release for a habit or a document that still types it; goes with its renames.tsv row
 standard-rename.sh     VERB  the rename codemod (harbor#996 B2): a rename wave (harbor#961) runs it once per mapping, by hand; nothing schedules a rename
 gate-codeowners.sh VERB  a person runs --write after changing the protected-paths register (harbor#1018); classify.test.sh runs --check
 gate-register-derive.sh VERB  a person runs --write after changing an installer (harbor#1018); classify.test.sh runs --check
@@ -69,81 +68,5 @@ session-workflow-progress.sh         IDLE  is that workflow actually running —
 doc-vale.sh            IDLE  Vale over prose with the registry's config (harbor#978); nothing calls it yet because Vale is not in the CI images, an operator-applied patch
 lint-pr.sh      IDLE  validates a PR title, body and branch (harbor#978); nothing calls it yet because the workflow job is an operator-applied patch
 policy-resolve.sh  IDLE  the one config order (harbor#1001); its fixture runs it, no CLI calls it yet because the CLIs that read config are other repos or later waves
-constitution-install.sh IDLE  forwarding shim (harbor#996 rename-0032): a symlink to bin/policy-constitution-install.sh until 2027-01-31, the old path of rename-0032; nothing in the repo calls it
-browser-agent.sh       IDLE  forwarding shim (harbor#996 rename-0873): a symlink to bin/access-browser-agent.sh until 2026-11-15, the old path of rename-0873; nothing in the repo calls it
-browser.sh             IDLE  forwarding shim (harbor#996 rename-0876): a symlink to bin/access-browser.sh until 2026-11-15, the old path of rename-0876; nothing in the repo calls it
-cite-verify.sh         IDLE  forwarding shim (harbor#996 rename-0877): a symlink to bin/doc-cite-verify.sh until 2026-11-15, the old path of rename-0877; nothing in the repo calls it
-collector-check.sh     IDLE  forwarding shim (harbor#996 rename-0879): a symlink to bin/audit-collector-check.sh until 2026-11-15, the old path of rename-0879; nothing in the repo calls it
-collector-setup.sh     IDLE  forwarding shim (harbor#996 rename-0880): a symlink to bin/audit-collector-install.sh until 2026-11-15, the old path of rename-0880; nothing in the repo calls it
-deliver-drive.sh       IDLE  forwarding shim (harbor#996 rename-0883): a symlink to bin/doc-drive-push.sh until 2026-11-15, the old path of rename-0883; nothing in the repo calls it
-docs-gen.sh            IDLE  forwarding shim (harbor#996 rename-0885): a symlink to bin/doc-index-generate.sh until 2026-11-15, the old path of rename-0885; nothing in the repo calls it
-failure-capture.sh     IDLE  forwarding shim (harbor#996 rename-0887): a symlink to bin/audit-triage.sh until 2026-11-15, the old path of rename-0887; nothing in the repo calls it
-findings.sh            IDLE  forwarding shim (harbor#996 rename-0888): a symlink to bin/lint-findings.sh until 2026-11-15, the old path of rename-0888; nothing in the repo calls it
-fleet-glyph.sh         IDLE  forwarding shim (harbor#996 rename-0889): a symlink to bin/status-fleet-glyph.sh until 2026-11-15, the old path of rename-0889; nothing in the repo calls it
-fleet-sessions.sh      IDLE  forwarding shim (harbor#996 rename-0890): a symlink to bin/context-peers.sh until 2026-11-15, the old path of rename-0890; nothing in the repo calls it
-freshness.sh           IDLE  forwarding shim (harbor#996 rename-0892): a symlink to bin/doc-freshness.sh until 2026-11-15, the old path of rename-0892; nothing in the repo calls it
-fs-lib.sh              IDLE  forwarding shim (harbor#996 rename-0894): a symlink to bin/library-fs.sh until 2026-11-15, the old path of rename-0894; nothing in the repo calls it
-gh-plan.sh             IDLE  forwarding shim (harbor#996 rename-0895): a symlink to bin/ci-github-plan.sh until 2026-11-15, the old path of rename-0895; nothing in the repo calls it
-harbor-clean.sh        IDLE  forwarding shim (harbor#996 rename-0898): a symlink to bin/housekeeping-clean.sh until 2026-11-15, the old path of rename-0898; nothing in the repo calls it
-install-drift.sh       IDLE  forwarding shim (harbor#996 rename-0901): a symlink to bin/drift-install.sh until 2026-11-15, the old path of rename-0901; nothing in the repo calls it
-install-lib.sh         IDLE  forwarding shim (harbor#996 rename-0902): a symlink to bin/deploy-install-lib.sh until 2026-11-15, the old path of rename-0902; nothing in the repo calls it
-install-stamp.sh       IDLE  forwarding shim (harbor#996 rename-0903): a symlink to bin/deploy-install-stamp.sh until 2026-11-15, the old path of rename-0903; nothing in the repo calls it
-log-lib.sh             IDLE  forwarding shim (harbor#996 rename-0907): a symlink to bin/library-log.sh until 2026-11-15, the old path of rename-0907; nothing in the repo calls it
-main-tip-verdict.sh    IDLE  forwarding shim (harbor#996 rename-0908): a symlink to bin/ci-main-tip-verdict.sh until 2026-11-15, the old path of rename-0908; nothing in the repo calls it
-merge-check.sh         IDLE  forwarding shim (harbor#996 rename-0913): a symlink to bin/gate-merge-check.sh until 2026-11-15, the old path of rename-0913; nothing in the repo calls it
-merged-check.sh        IDLE  forwarding shim (harbor#996 rename-0914): a symlink to bin/gate-merged-check.sh until 2026-11-15, the old path of rename-0914; nothing in the repo calls it
-observe-report.sh      IDLE  forwarding shim (harbor#996 rename-0917): a symlink to bin/admission-observe-report.sh until 2026-11-15, the old path of rename-0917; nothing in the repo calls it
-pass-score.sh          IDLE  forwarding shim (harbor#996 rename-0918): a symlink to bin/eval-pass-score.sh until 2026-11-15, the old path of rename-0918; nothing in the repo calls it
-port-paths.sh          IDLE  forwarding shim (harbor#996 rename-0920): a symlink to bin/lint-port-paths.sh until 2026-11-15, the old path of rename-0920; nothing in the repo calls it
-redteam-corpus.sh      IDLE  forwarding shim (harbor#996 rename-0922): a symlink to bin/eval-redteam-corpus.sh until 2026-11-15, the old path of rename-0922; nothing in the repo calls it
-reference-check.sh     IDLE  forwarding shim (harbor#996 rename-0923): a symlink to bin/drift-reference-check.sh until 2026-11-15, the old path of rename-0923; nothing in the repo calls it
-renew-check.sh         IDLE  forwarding shim (harbor#996 rename-0924): a symlink to bin/drift-renew-check.sh until 2026-11-15, the old path of rename-0924; nothing in the repo calls it
-report-contract.sh     IDLE  forwarding shim (harbor#996 rename-0928): a symlink to bin/doc-report-verify.sh until 2026-11-15, the old path of rename-0928; nothing in the repo calls it
-restore.sh             IDLE  forwarding shim (harbor#996 rename-0929): a symlink to bin/deploy-restore.sh until 2026-11-15, the old path of rename-0929; nothing in the repo calls it
-roots.sh               IDLE  forwarding shim (harbor#996 rename-0930): a symlink to bin/scope-roots.sh until 2026-11-15, the old path of rename-0930; nothing in the repo calls it
-runner-switch.sh       IDLE  forwarding shim (harbor#996 rename-0932): a symlink to bin/ci-runner-switch.sh until 2026-11-15, the old path of rename-0932; nothing in the repo calls it
-runtime-install.sh     IDLE  forwarding shim (harbor#996 rename-0933): a symlink to bin/deploy-runtime-install.sh until 2026-11-15, the old path of rename-0933; nothing in the repo calls it
-sandbox-make.sh        IDLE  forwarding shim (harbor#996 rename-0934): a symlink to bin/test-sandbox-make.sh until 2026-11-15, the old path of rename-0934; nothing in the repo calls it
-save-log-token.sh      IDLE  forwarding shim (harbor#996 rename-0935): a symlink to bin/memory-log-token-save.sh until 2026-11-15, the old path of rename-0935; nothing in the repo calls it
-sec0-harden.sh         IDLE  forwarding shim (harbor#996 rename-0936): a symlink to bin/deploy-harden.sh until 2026-11-15, the old path of rename-0936; nothing in the repo calls it
-skills-install.sh      IDLE  forwarding shim (harbor#996 rename-0938): a symlink to bin/skill-install.sh until 2026-11-15, the old path of rename-0938; nothing in the repo calls it
-status-gen.sh          IDLE  forwarding shim (harbor#996 rename-0939): a symlink to bin/status-generate.sh until 2026-11-15, the old path of rename-0939; nothing in the repo calls it
-store-check.sh         IDLE  forwarding shim (harbor#996 rename-0940): a symlink to bin/memory-store-check.sh until 2026-11-15, the old path of rename-0940; nothing in the repo calls it
-stream-lib.sh          IDLE  forwarding shim (harbor#996 rename-0942): a symlink to bin/audit-stream-lib.sh until 2026-11-15, the old path of rename-0942; nothing in the repo calls it
-subagent-glyph.sh      IDLE  forwarding shim (harbor#996 rename-0943): a symlink to bin/status-subagent-glyph.sh until 2026-11-15, the old path of rename-0943; nothing in the repo calls it
-suite-run.sh           IDLE  forwarding shim (harbor#996 rename-0945): a symlink to bin/test-suite-run.sh until 2026-11-15, the old path of rename-0945; nothing in the repo calls it
-suite-select.sh        IDLE  forwarding shim (harbor#996 rename-0946): a symlink to bin/test-suite-select.sh until 2026-11-15, the old path of rename-0946; nothing in the repo calls it
-visual-check.sh        IDLE  forwarding shim (harbor#996 rename-0949): a symlink to bin/doc-visual-check.sh until 2026-11-15, the old path of rename-0949; nothing in the repo calls it
-alert-lib.sh           IDLE  forwarding shim (harbor#996 rename-0955): a symlink to bin/library-alert.sh until 2026-11-15, the old path of rename-0955; nothing in the repo calls it
-gate-lib.sh            IDLE  forwarding shim (harbor#996 rename-0956): a symlink to bin/library-gate.sh until 2026-11-15, the old path of rename-0956; nothing in the repo calls it
-gcloud-wrapper.sh      IDLE  forwarding shim (harbor#996 rename-0961): a symlink to bin/gcloud until 2026-11-15, the old path of rename-0961; nothing in the repo calls it
-idea.sh                IDLE  forwarding shim (harbor#996 rename-0962): a symlink to bin/idea until 2026-11-15, the old path of rename-0962; nothing in the repo calls it
-shim-install.sh        IDLE  forwarding shim (harbor#996 rename-0963): a symlink to bin/deploy-shim-install.sh until 2026-11-15, the old path of rename-0963; nothing in the repo calls it
-findings-run.sh        IDLE  forwarding shim (harbor#996 rename-0965): a symlink to bin/lint-findings-run.sh until 2026-11-15, the old path of rename-0965; nothing in the repo calls it
-fleet-snapshot-refresh.sh IDLE  forwarding shim (harbor#996 rename-0966): a symlink to bin/status-fleet-snapshot-refresh.sh until 2026-11-15, the old path of rename-0966; nothing in the repo calls it
-judge-run.sh           IDLE  forwarding shim (harbor#996 rename-0967): a symlink to bin/audit-triage-run.sh until 2026-11-15, the old path of rename-0967; nothing in the repo calls it
-launchd-render.sh      IDLE  forwarding shim (harbor#996 rename-0968): a symlink to bin/deploy-launchd-render.sh until 2026-11-15, the old path of rename-0968; nothing in the repo calls it
-pulse-notify.sh        IDLE  forwarding shim (harbor#996 rename-0970): a symlink to bin/alert-notify.sh until 2026-11-15, the old path of rename-0970; nothing in the repo calls it
-pulse.sh               IDLE  forwarding shim (harbor#996 rename-0971): a symlink to bin/alert-probe.sh until 2026-11-15, the old path of rename-0971; nothing in the repo calls it
-redteam-corpus-run.sh  IDLE  forwarding shim (harbor#996 rename-0972): a symlink to bin/eval-redteam-corpus-run.sh until 2026-11-15, the old path of rename-0972; nothing in the repo calls it
-usage-aggregate.sh     IDLE  forwarding shim (harbor#996 rename-0973): a symlink to bin/status-usage-aggregate.sh until 2026-11-15, the old path of rename-0973; nothing in the repo calls it
-guard-apiroute.sh      IDLE  forwarding shim (harbor#996 rename-1313): a symlink to bin/admission-api-route.sh until 2026-11-15, the old path of rename-1313; nothing in the repo calls it
-guard-bash.sh          IDLE  forwarding shim (harbor#996 rename-1314): a symlink to bin/admission-bash.sh until 2026-11-15, the old path of rename-1314; nothing in the repo calls it
-guard-cloud.sh         IDLE  forwarding shim (harbor#996 rename-1315): a symlink to bin/admission-cloud.sh until 2026-11-15, the old path of rename-1315; nothing in the repo calls it
-guard-deliverables.sh  IDLE  forwarding shim (harbor#996 rename-1316): a symlink to bin/admission-deliverables.sh until 2026-11-15, the old path of rename-1316; nothing in the repo calls it
-guard-destroy.sh       IDLE  forwarding shim (harbor#996 rename-1317): a symlink to bin/admission-destroy.sh until 2026-11-15, the old path of rename-1317; nothing in the repo calls it
-guard-egress.sh        IDLE  forwarding shim (harbor#996 rename-1318): a symlink to bin/admission-egress.sh until 2026-11-15, the old path of rename-1318; nothing in the repo calls it
-guard-lib.sh           IDLE  forwarding shim (harbor#996 rename-1319): a symlink to bin/library-admission.sh until 2026-11-15, the old path of rename-1319; nothing in the repo calls it
-guard-selfedit.sh      IDLE  forwarding shim (harbor#996 rename-1320): a symlink to bin/admission-self-edit.sh until 2026-11-15, the old path of rename-1320; nothing in the repo calls it
-guard-stop.sh          IDLE  forwarding shim (harbor#996 rename-1321): a symlink to bin/admission-stop.sh until 2026-11-15, the old path of rename-1321; nothing in the repo calls it
-floor-hook.sh          IDLE  forwarding shim (harbor#996 rename-1322): a symlink to bin/admission-hook.sh until 2026-11-15, the old path of rename-1322; nothing in the repo calls it
-guard-integrity.sh     IDLE  forwarding shim (harbor#996 rename-1323): a symlink to bin/admission-integrity.sh until 2026-11-15, the old path of rename-1323; nothing in the repo calls it
-floor-deny.sh          IDLE  forwarding shim (harbor#996 rename-1324): a symlink to bin/admission-deny.sh until 2026-12-01, the old path of rename-1324; nothing in the repo calls it
-floor-equiv.sh         IDLE  forwarding shim (harbor#996 rename-1325): a symlink to bin/admission-equivalence.sh until 2026-12-01, the old path of rename-1325; nothing in the repo calls it
-floor-install.sh       IDLE  forwarding shim (harbor#996 rename-1326): a symlink to bin/admission-install.sh until 2026-12-01, the old path of rename-1326; nothing in the repo calls it
-floor-observe.sh       IDLE  forwarding shim (harbor#996 rename-1328): a symlink to bin/admission-observe.sh until 2026-12-01, the old path of rename-1328; nothing in the repo calls it
-floor-uninstall.sh     IDLE  forwarding shim (harbor#996 rename-1329): a symlink to bin/admission-remove.sh until 2026-12-01, the old path of rename-1329; nothing in the repo calls it
-floor-verify.sh        IDLE  forwarding shim (harbor#996 rename-1330): a symlink to bin/admission-verify.sh until 2026-12-01, the old path of rename-1330; nothing in the repo calls it
-port-drift.sh          IDLE  forwarding shim (harbor#996 rename-1426): a symlink to bin/drift-port-root.sh until 2026-12-01, the old path of rename-1426; nothing in the repo calls it
 gate-pr-plan.sh         VERB  the hand-over step: an agent runs it to derive the operator's merge, approve and re-run commands (harbor#1413); the Stop gate wiring is harbor#1284
 gate-repo-drift.sh       VERB  the operator runs it: each governed repo's GitHub rules, declared in ship.conf, against live, with the commands that close each drift (harbor#1418); not scheduled until the operator says yes

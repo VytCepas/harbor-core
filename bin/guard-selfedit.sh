@@ -1,1 +1,0 @@
-admission-self-edit.sh

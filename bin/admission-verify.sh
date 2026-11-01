@@ -53,9 +53,9 @@ S="$DIR/settings.json"
 # guards record instead of blocking, so every `blocks:` probe below read as a broken floor (7 false
 # FAILs, review of #970). The probes ask whether the INSTALLED floor blocks, so they run with the
 # switch cleared, and the run says that the environment it was started from is in shadow.
-if [ "${HARBOR_ADMISSION_SHADOW:-${HELM_FLOOR_SHADOW:-0}}" = 1 ]; then
-  log_note "shadow mode is ON in this environment (HARBOR_ADMISSION_SHADOW, or HELM_FLOOR_SHADOW until 2026-11-15): its guards record instead of blocking; the probes below run with it cleared"
-  unset HARBOR_ADMISSION_SHADOW HELM_FLOOR_SHADOW
+if [ "${HARBOR_ADMISSION_SHADOW:-0}" = 1 ]; then
+  log_note "shadow mode is ON in this environment (HARBOR_ADMISSION_SHADOW): its guards record instead of blocking; the probes below run with it cleared"
+  unset HARBOR_ADMISSION_SHADOW
 fi
 FAIL=0
 ADV=0
@@ -70,7 +70,7 @@ trap '[ -z "$_fvv" ] || { rm -f "$_fvv/bin"; rmdir "$_fvv"; } 2>/dev/null' EXIT
 _q() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 _deploy() { # <component> [opt-in]
   _dr="$(sh "$HERE/scope-roots.sh" --get HARBOR_SCOPE_REPO 2>/dev/null || :)"
-  [ -n "$_dr" ] || _dr="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}"
+  [ -n "$_dr" ] || _dr="${HARBOR_SCOPE_REPO:-${PORT_ROOT:-$HOME/port}/harbor}"
   printf "sh '%s/bin/deploy.sh' --only %s --apply --live%s" "$_dr" "$1" "${2:+ $2}"
 }
 _install_fix() { # <component> <installer> [opt-in]
@@ -300,7 +300,7 @@ if [ -f "$HERE/decider-set.sh" ]; then
     [ -f "$DIR/bin/$_ds" ] || continue
     _dl="$(grep -vE '^[[:space:]]*(#|$)' "$DIR/bin/$_ds" | grep -vE '^#!' | head -1)"
     case "$_dl" in
-      *HARBOR_ADMISSION_DISABLE*|*HELM_DISABLE_FLOOR*) ok "kill-switch is the first live line of $_ds" ;;
+      *HARBOR_ADMISSION_DISABLE*) ok "kill-switch is the first live line of $_ds" ;;
       *) no "kill-switch missing from $_ds (first live line: ${_dl:-<empty>})" "$FLOOR_FIX" ;;
     esac
   done
@@ -410,7 +410,7 @@ fi
 # pass.
 _idrift="$(dirname -- "$0")/drift-install.sh"
 if [ -f "$_idrift" ] && git -C "$(dirname -- "$_idrift")/.." rev-parse --git-dir >/dev/null 2>&1; then
-  _iref="${HARBOR_DRIFT_REF:-${HELM_DRIFT_REF:-origin/main}}"
+  _iref="${HARBOR_DRIFT_REF:-origin/main}"
   if _iout="$(sh "$_idrift" --dir "$DIR" --ref "$_iref" --quiet 2>&1)"; then
     ok "install-drift: every installed bin/ file matches $_iref"
   else

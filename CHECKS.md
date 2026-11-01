@@ -1,1 +1,0 @@
-docs/reference/checks.md

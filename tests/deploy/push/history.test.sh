@@ -3,12 +3,12 @@
 # Each case is a throwaway source checkout and a throwaway export target; nothing is pushed anywhere.
 # The "secret" below is a made-up word, never a real entity.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset HARBOR_TEST_IN_SUITE HARBOR_IN_SUITE
+unset HARBOR_TEST_IN_SUITE
 GIT_AUTHOR_NAME=t; GIT_AUTHOR_EMAIL=t@t.test; GIT_COMMITTER_NAME=t; GIT_COMMITTER_EMAIL=t@t.test
 export GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
 mkdir -p "$T_TMP/pv"; printf 'id\tkind\tpattern\tnote\nk1\tword\tZorblax\tn\n' > "$T_TMP/pv/leaks.tsv"
 PV="$T_TMP/pv"
-mkdir -p "$T_TMP/pv/inject.d/box"; printf '# name\tpath\twhat\nzorbcorp\t~/zorbcorp\ta made-up workload repo\n' > "$T_TMP/pv/inject.d/box/projects.tsv"
+mkdir -p "$T_TMP/pv/context-rules/user"; printf '# name\tpath\twhat\nzorbcorp\t~/zorbcorp\ta made-up workload repo\n' > "$T_TMP/pv/context-rules/user/projects.tsv"
 
 mk() { # <name> → a source checkout whose release gate rows are green
   _d="$T_TMP/$1"; mkdir -p "$_d/bin" "$_d/contracts" "$_d/docs/explanation" "$_d/docs"

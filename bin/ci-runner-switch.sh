@@ -22,9 +22,7 @@
 # cache feeds fleet-glyph's `CI→local` token (the Mac and the Linux container both run self-hosted). A read that fails
 # (the bill, the repo list or the variable) flips NOTHING: it warns, marks the cache `unread`, and logs once on the way in, not on every tick of a standing outage.
 #
-# THE NAME (harbor#961 W6). The variable is HARBOR_CI_RUNNER, the ci family's; it was HARBOR_RUNNER. Until 2026-11-15 the
-# current value is the new name's, else the old one's (what the patched governance.yml reads), and a change sets BOTH, so
-# a workflow that still reads only the old name follows too. From 2026-11-16 the old name is neither read nor written.
+# THE NAME (harbor#961 W6). The variable is HARBOR_CI_RUNNER, the ci family's. The old name is neither read nor written.
 #
 # Run by status-fleet-snapshot-refresh.sh every 300s: no schedule of its own. POSIX sh, jq, gh (HARBOR_TEST_GH swaps in a fake).
 set -eu
@@ -47,24 +45,22 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-REPO="${HARBOR_CI_SWITCH_REPO:-${HARBOR_SWITCH_REPO:-$(repo_slug)}}"   # harbor's own OWNER/NAME (harbor#1149); --org never reads it, the rest refuses an empty one
-BUSER="${HARBOR_CI_BILLING_USER:-${HARBOR_BILLING_USER:-${REPO%%/*}}}"  # the account billed for the minutes is the repo's owner unless named
+REPO="${HARBOR_CI_SWITCH_REPO:-$(repo_slug)}"   # harbor's own OWNER/NAME (harbor#1149); --org never reads it, the rest refuses an empty one
+BUSER="${HARBOR_CI_BILLING_USER:-${REPO%%/*}}"  # the account billed for the minutes is the repo's owner unless named
 VARNAME=HARBOR_CI_RUNNER
-OLDVAR=HARBOR_RUNNER; OLD_UNTIL=20261115   # read and kept equal to the new name through this UTC day (harbor#961 W6)
 PCT=90
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
+CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-$HOME/.claude/cache}"
 OUT="$CACHE_DIR/runner-switch.json"
 LOG="$CACHE_DIR/checks.log"
-NOW="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
-GH="${HARBOR_TEST_GH:-${HARBOR_GH:-gh}}"
+NOW="${HARBOR_TEST_NOW:-$(date +%s)}"
+GH="${HARBOR_TEST_GH:-gh}"
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required"; log_fix "$(pkg_hint jq)"; exit 2; }
 case "$NOW" in ''|*[!0-9]*) NOW="$(date +%s)" ;; esac
 
 # The UTC date of an epoch: BSD `date -r <epoch>`, else GNU `date -d @<epoch>`.
 fmt() { date -u -r "$NOW" "+$1" 2>/dev/null || date -u -d "@$NOW" "+$1"; }
 YEAR="$(fmt %Y)"; MONTH="$(fmt %m)"; DAY="$(fmt %d)"
-DUAL=0; [ "$(fmt %Y%m%d)" -gt "$OLD_UNTIL" ] || DUAL=1
 MONTH_N="${MONTH#0}"
 
 # ── the budget, in minutes ─────────────────────────────────────────────────────
@@ -149,7 +145,7 @@ logline() { # <message> — one checks.log line, never from --print
 }
 # A failed read: no flip, a warning, the cache marked unread (the last good fields kept), one log line on entry.
 unread() { # <what>
-  log_warn "$REPO: $1 did not answer; HARBOR_RUNNER left as it is"; log_fix "gh auth status"
+  log_warn "$REPO: $1 did not answer; HARBOR_CI_RUNNER left as it is"; log_fix "gh auth status"
   [ "$PRINT" = 1 ] && exit 2
   if [ -f "$OUT" ] && jq -e . "$OUT" >/dev/null 2>&1; then
     jq -c --argjson now "$NOW" '. + {unread: true, at: $now}' "$OUT" > "$OUT.tmp.$$" || { rm -f "$OUT.tmp.$$"; exit 1; }
@@ -173,12 +169,7 @@ getvar() { # <name> -> GV, its value (self-hosted when unset) and GSET (1 when s
   grep -qi 'not found' "$T/vget.err" 2>/dev/null
 }
 getvar "$VARNAME" || unread "the $VARNAME read"
-CUR="$GV"; CUR_OLD=""
-if [ "$DUAL" = 1 ]; then
-  _newset="$GSET"
-  getvar "$OLDVAR" || unread "the $OLDVAR read"
-  CUR_OLD="$GV"; [ "$_newset" = 1 ] || CUR="$GV"   # the new name wins; unset, the workflow falls back to the old
-fi
+CUR="$GV"
 
 # ── the allowance follows the account's plan (harbor#1060: Pro -> Free on 2026-10-05 took 1,000 minutes away) ──
 # Included private-repo Actions minutes a month. The 1st reads no bill, so a plan that will not answer there costs nothing.
@@ -226,14 +217,6 @@ if [ "$WANT" != "$CUR" ]; then
     logline "$REPO $VARNAME $CUR -> $WANT ($WHY)"
   else
     unread "the $VARNAME write"
-  fi
-fi
-# In the window the old name follows, so a workflow that reads only it lands on the same runner.
-if [ "$DUAL" = 1 ] && [ "$WANT" != "$CUR_OLD" ]; then
-  if "$GH" variable set "$OLDVAR" --body "$WANT" -R "$REPO" >/dev/null 2>&1; then
-    [ "$WANT" != "$CUR" ] || logline "$REPO $OLDVAR $CUR_OLD -> $WANT (kept equal to $VARNAME until 2026-11-15)"
-  else
-    unread "the $OLDVAR write"
   fi
 fi
 

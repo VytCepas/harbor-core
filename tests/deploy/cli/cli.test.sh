@@ -4,7 +4,7 @@
 # fails instead of falling back. Stub verbs in $T_TMP/sbin, so no real suite or installer runs;
 # the unknown-flag section alone runs real scripts, only ones that refuse before any write.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset HARBOR_SCOPE_BIN HARBOR_BIN
+unset HARBOR_SCOPE_BIN
 H="$T_ROOT/bin/harbor"; SB="$T_TMP/sbin"; mkdir -p "$SB"
 hb() { HARBOR_SCOPE_BIN="$SB" sh "$H" "$@" 2>&1; }  # the dispatcher against the stub tree
 # `harbor <verb>` <TAB> script <TAB> the fixed words the verb passes first (harbor#800: `deploy.sh --only floor`).
@@ -106,8 +106,8 @@ t_eq "a bad HARBOR_SCOPE_BIN exits 127" 127 "$(hbe env HARBOR_SCOPE_BIN="$T_TMP/
 t_eq "...with nothing on stdout" "" "$(cat "$T_TMP/hb.out")"
 t_eq "...and FAIL, its fix, then the summary on stderr" \
   "$(printf '%s\n' "  FAIL: HARBOR_SCOPE_BIN=$T_TMP/nonexistent has no status-generate.sh — refusing to fall back" \
-     '  fix: unset HARBOR_SCOPE_BIN HARBOR_BIN' 'harbor: 0 ok, 1 failed, 0 warnings')" "$(cat "$T_TMP/hb.err")"
-t_eq "the fix resolves it: unset, the dispatcher runs" 0 "$(hbe env -u HARBOR_SCOPE_BIN -u HARBOR_BIN sh "$H" version)"
+     '  fix: unset HARBOR_SCOPE_BIN' 'harbor: 0 ok, 1 failed, 0 warnings')" "$(cat "$T_TMP/hb.err")"
+t_eq "the fix resolves it: unset, the dispatcher runs" 0 "$(hbe env -u HARBOR_SCOPE_BIN sh "$H" version)"
 rm -f "$SB/deploy-restore.sh"  # the argv section above put one back
 t_eq "a missing script exits 127" 127 "$(hbe env HARBOR_SCOPE_BIN="$SB" sh "$H" restore)"
 t_has "...its FAIL names the script and where it looked" "$(cat "$T_TMP/hb.err")" \

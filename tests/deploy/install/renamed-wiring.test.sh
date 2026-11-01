@@ -6,7 +6,7 @@
 # has no history): this tree's install with B6 and the Stop gate, then every W6 file moved back to its old name, its pin
 # and manifest row with it, and the hook commands spelled as a pre-W6 floor-install wrote them.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE
 EMPTY='{"permissions":{"allow":[],"deny":[],"disableBypassPermissionsMode":"disable","disableAutoMode":"disable"}}'
 SB="$T_ROOT/bin"
 b6msg() { CLAUDE_CONFIG_DIR="$1" sh "$1/bin/admission-integrity.sh" </dev/null 2>/dev/null | jq -r '.systemMessage // ""' 2>/dev/null; }

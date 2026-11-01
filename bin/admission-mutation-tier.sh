@@ -46,7 +46,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}}"
+ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
 FIX="$ROOT/fixtures/mutation-tier/cases.json"
 [ -n "$DIR" ] || { [ "$LIVE_OK" -eq 1 ] && DIR="$LIVE_DIR"; }
 CFG="${DIR:-${CLAUDE_CONFIG_DIR:-$LIVE_DIR}}"

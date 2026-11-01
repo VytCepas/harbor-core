@@ -251,7 +251,7 @@ count() { [ -s "$1" ] && wc -l < "$1" | tr -d ' ' || echo 0; }
 # Pure functions of the path and the front matter: nothing here reads a clock or git. A finding is
 # `kind<TAB>path<TAB>why`. Report-only unless --strict-names (see usage).
 : > "$TMP/names"
-HOSTS="${HARBOR_MEMORY_HOST_NAMES:-${HARBOR_HOST_NAMES:-$(hostname -s 2>/dev/null || true)}}"
+HOSTS="${HARBOR_MEMORY_HOST_NAMES:-$(hostname -s 2>/dev/null || true)}"
 is_kebab() { case "$1" in ''|*[!abcdefghijklmnopqrstuvwxyz0123456789-]*|-*|*-|*--*) return 1 ;; *) return 0 ;; esac; }
 OLDIFS="$IFS"
 IFS='

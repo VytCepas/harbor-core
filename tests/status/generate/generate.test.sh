@@ -2,7 +2,7 @@
 # status-generate.sh's suite-count cache (harbor#117). docs/generated/status.md is the one place a count may be stated,
 # so the arms that matter are the invalidation ones, not the hit. Suites are three-line fakes.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset HARBOR_TEST_IN_SUITE HARBOR_IN_SUITE  # t_init keeps the re-entry marker; these cold runs must reach the run branch (harbor#773)
+unset HARBOR_TEST_IN_SUITE  # t_init keeps the re-entry marker; these cold runs must reach the run branch (harbor#773)
 P="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"; R="$P/repo"
 mkdir -p "$R/bin" "$R/build" "$R/docs/generated"; cp "$T_ROOT/bin/status-generate.sh" "$T_ROOT/bin/library-log.sh" "$R/bin/"
 mk_suite() { # <name> <label> <count> — the runs.<name> file tells a cache hit from a re-run

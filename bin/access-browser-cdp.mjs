@@ -47,7 +47,6 @@ if (!url) {
 // than passing vacuously. A hardcoded list makes that assertion unwritable.
 const CHROME_CANDIDATES = [
   process.env.HARBOR_ACCESS_CHROME,
-  process.env.HARBOR_CHROME,   // the old name, read until 2026-11-15 (harbor#961 W5)
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   '/usr/bin/google-chrome',
   '/usr/bin/google-chrome-stable',
