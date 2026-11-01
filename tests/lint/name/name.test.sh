@@ -5,6 +5,8 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 # the suite never reads the box's private overlay (D-85)
 HARBOR_SCOPE_PRIVATE="$TMP/no-private"; export HARBOR_SCOPE_PRIVATE; unset PORT_ROOT
+# the calendar is pinned before any alias window opens: a clean tree stays clean on every date; expiry passes --today
+HARBOR_LINT_TODAY=2026-10-20; export HARBOR_LINT_TODAY
 . "$T_ROOT/tests/checks/lint-fixture.sh"
 LN="$T_ROOT/bin/lint-name.sh"
 REG="$T_ROOT/standards/naming"

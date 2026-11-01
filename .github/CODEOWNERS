@@ -155,6 +155,7 @@
 /bin/gate-merge-stack.sh @VytCepas
 /bin/gate-merge.sh @VytCepas
 /bin/gate-merged-check.sh @VytCepas
+/bin/gate-pr-plan.sh @VytCepas
 /bin/gate-pr-wait.sh @VytCepas
 /bin/gate-push.sh @VytCepas
 /bin/gate-queue.sh @VytCepas

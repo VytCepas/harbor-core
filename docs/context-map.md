@@ -33,11 +33,11 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | skill | skills/ | component | source | living | 47 |
 | fixture | fixtures/ | element | source | living | 283 |
 | registry | registries/ | component | source | versioned | 55 |
-| test | tests/ | component | source | living | 456 |
+| test | tests/ | component | source | living | 457 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| script | bin/ | component | source | living | 295 |
+| script | bin/ | component | source | living | 296 |
 | how-to | docs/how-to/ | component | source | living | 1 |
 | reference | docs/reference/ | component | generated | generated | 5 |
 | explanation | docs/explanation/ | component | source | living | 14 |
@@ -51,7 +51,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
 | `DOCTRINE/` | 4 | 1 | 1 |
-| `bin/` | 300 | 28 | 2 |
+| `bin/` | 301 | 28 | 2 |
 | `commands/` | 8 | 4 | 1 |
 | `context-rules/` | 49 | 6 | 1 |
 | `contracts/` | 87 | 9 | 2 |
@@ -66,7 +66,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `skills/` | 47 | 8 | 1 |
 | `standards/` | 26 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 456 | 28 | 1 |
+| `tests/` | 457 | 28 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 92 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -88,7 +88,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | drift | control-plane | 9 | 7 | 0 | 4 | 2 | 13 |
 | eval | control-plane | 11 | 7 | 0 | 1 | 0 | 0 |
 | event | observability | 3 | 18 | 0 | 3 | 0 | 2 |
-| gate | control-plane | 16 | 11 | 0 | 2 | 0 | 0 |
+| gate | control-plane | 17 | 12 | 0 | 2 | 0 | 0 |
 | housekeeping | control-plane | 2 | 1 | 0 | 2 | 0 | 0 |
 | library | policy-function | 8 | 1 | 0 | 0 | 0 | 0 |
 | lint | control-plane | 28 | 57 | 0 | 10 | 3 | 35 |
@@ -368,6 +368,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/gate-merge-stack.sh`
 - `bin/gate-merge.sh`
 - `bin/gate-merged-check.sh`
+- `bin/gate-pr-plan.sh`
 - `bin/gate-pr-wait.sh`
 - `bin/gate-push.sh`
 - `bin/gate-queue.sh`

@@ -145,3 +145,4 @@ floor-observe.sh       IDLE  forwarding shim (harbor#996 rename-1328): a symlink
 floor-uninstall.sh     IDLE  forwarding shim (harbor#996 rename-1329): a symlink to bin/admission-remove.sh until 2026-12-01, the old path of rename-1329; nothing in the repo calls it
 floor-verify.sh        IDLE  forwarding shim (harbor#996 rename-1330): a symlink to bin/admission-verify.sh until 2026-12-01, the old path of rename-1330; nothing in the repo calls it
 port-drift.sh          IDLE  forwarding shim (harbor#996 rename-1426): a symlink to bin/drift-port-root.sh until 2026-12-01, the old path of rename-1426; nothing in the repo calls it
+gate-pr-plan.sh         VERB  the hand-over step: an agent runs it to derive the operator's merge, approve and re-run commands (harbor#1413); the Stop gate wiring is harbor#1284
