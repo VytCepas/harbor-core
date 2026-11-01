@@ -1220,6 +1220,7 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <tr><td><code>contracts/finding.md</code></td><td>CONTRACT — a finding: its key, its digest, its age, and a person's disposition</td></tr>
 <tr><td><code>contracts/fleet-controller-json.md</code></td><td><code>--json</code> output seam (L2 Fleet → L0 Helm) — FREEZE before Helm consumes it</td></tr>
 <tr><td><code>contracts/gates.md</code></td><td>Gates — where a checker lives, and who runs it</td></tr>
+<tr><td><code>contracts/git-verbs.md</code></td><td>git verbs — the git command shapes that pass on this box, and the ones refused on purpose</td></tr>
 <tr><td><code>contracts/helm-state.md</code></td><td>The <code>.helm-*</code> state files — which ones a session may write</td></tr>
 <tr><td><code>contracts/hooks.md</code></td><td>Hooks — which moment, which mechanism, and which channel is actually proven</td></tr>
 <tr><td><code>contracts/host-profile.md</code></td><td>Box-profile seam (L0 Helm → L3 Yard) — FROZEN v1 (the plan's ONLY up-pointing read)</td></tr>
@@ -1258,7 +1259,6 @@ rule, the failure modes of each clause, and what is deliberately absent.</p>
 <tr><td><code>docs/explanation/critique-expanded.md</code></td><td>Recommendation and critique — the reasoning</td></tr>
 <tr><td><code>docs/explanation/doc-truth.md</code></td><td>Doc-truth — the incidents behind "derive, don't state"</td></tr>
 <tr><td><code>docs/explanation/grilling.md</code></td><td>Grilling — resolving a design tree before building against it</td></tr>
-<tr><td><code>docs/explanation/ideal-state-prompting.md</code></td><td>Ideal-state prompting — the reasoning</td></tr>
 <tr><td><code>docs/explanation/modularity.md</code></td><td>Modularity — a planning-time decision with coding-time consequences</td></tr>
 <tr><td><code>docs/explanation/no-authored-plugins.md</code></td><td>No Harbor-authored plugins — the measurements that retired the tier</td></tr>
 <tr><td><code>docs/explanation/skill-unification.md</code></td><td>Skills unification — separating from upstream, on Harbor's own rules</td></tr>
@@ -1518,8 +1518,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/drift/install/install.test.sh</code></td><td><code>bin/drift-install.sh tests/drift/install/install.test.sh bin/admission-verify.sh tests/lib/core.sh bin/check-registry-generate.sh</code></td></tr>
 <tr><td><code>tests/memory/route/route.test.sh</code></td><td><code>bin/memory-route.sh bin/library-log.sh tests/memory/route/route.test.sh bin/scope-roots.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/gate/pr-wait/pr-wait.test.sh</code></td><td><code>bin/gate-pr-wait.sh* bin/ci-lost-job.sh bin/gate-required-generate.sh bin/library-log.sh tests/gate/pr-wait/pr-wait.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/gate/pr-plan/pr-plan.test.sh</code></td><td><code>bin/gate-pr-plan.sh bin/library-log.sh bin/library-repo-rules.sh bin/access-github-app/gh tests/gate/pr-plan/pr-plan.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/gate/repo-drift/repo-drift.test.sh</code></td><td><code>bin/gate-repo-drift.sh bin/library-log.sh bin/library-repo-rules.sh bin/scope-roots.sh tests/gate/repo-drift/repo-drift.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/gate/pr-plan/pr-plan.test.sh</code></td><td><code>bin/gate-pr-plan.sh bin/library-log.sh bin/access-github-app/gh tests/gate/pr-plan/pr-plan.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/port-paths/port-paths.test.sh</code></td><td><code>bin/lint-port-paths.sh bin/library-log.sh bin/scope-roots.sh tests/lint/port-paths/port-paths.test.sh contracts/port-paths-exempt.tsv tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/drift/port-root/port-root.test.sh</code></td><td><code>bin/drift-port-root.sh bin/scope-roots.sh bin/library-log.sh contracts/roots.tsv contracts/private-layer.md tests/drift/port-root/port-root.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/ci/queue/queue.test.sh</code></td><td><code>bin/ci-queue.sh bin/library-log.sh tests/ci/queue/queue.test.sh tests/lib/core.sh</code></td></tr>
@@ -1744,8 +1743,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/lint/share/check.test.sh</code></td><td><code>bin/lint-share.sh bin/scope-layers.sh bin/scope-roots.sh bin/lint-conventions.sh bin/library-log.sh contracts/layers.tsv contracts/roots.tsv standards/naming/kinds.tsv tests/lint/share/check.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/wired/registered.test.sh</code></td><td><code>bin/decider-set.sh bin/admission-install.sh bin/*-install.sh bin/lint-conventions.sh bin/library-log.sh standards/naming/controls.tsv</code></td></tr>
 <tr><td><code>tests/doc/fresh-verify/fresh-verify.test.sh</code></td><td><code>bin/* hooks/* contracts/* docs/generated/status.md docs/generated/plan.md docs/* skills/* .agents/* .github/CODEOWNERS standards/* tests/doc/fresh-verify/fresh-verify.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/admission/git/verbs.test.sh</code></td><td><code>bin/admission-deny.sh bin/library-log.sh bin/deploy-install-lib.sh bin/gate-verbs.sh bin/admission-bash.sh bin/admission-destroy.sh contracts/verbs/git.md tests/admission/git/verbs.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/admission/verbs/registers.test.sh</code></td><td><code>bin/gate-verbs.sh bin/admission-deny.sh bin/admission-remove.sh bin/library-log.sh bin/deploy-install-lib.sh bin/admission-install.sh bin/deploy-runtime-install.sh contracts/verbs/cu.md contracts/verbs/gh.md contracts/verbs/git.md contracts/verbs/mail.md tests/admission/verbs/registers.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/admission/git/verbs.test.sh</code></td><td><code>bin/admission-deny.sh bin/library-log.sh bin/deploy-install-lib.sh bin/admission-bash.sh bin/admission-destroy.sh contracts/git-verbs.md tests/admission/git/verbs.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/destroy/snapshot.test.sh</code></td><td><code>bin/admission-destroy.sh bin/library-admission.sh bin/admission-normalize.awk tests/admission/destroy/snapshot.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/ci/suite-cache/cache.test.sh</code></td><td><code>bin/test-suite-cache.sh bin/test-suite-run.sh bin/test-suite-select.sh bin/library-log.sh bin/ci-governor.sh tests/ci/suite-cache/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/alert/lib/chain.test.sh</code></td><td><code>bin/library-alert.sh bin/event-bus.sh bin/library-log.sh tests/alert/lib/* tests/lib/core.sh tests/lib/linux-sim.sh</code></td></tr>
@@ -2568,9 +2566,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/gate-push.sh</code></td><td>gate-push.sh (harbor#1411) — run a repo's pre-push checks BEFORE git connects, then push in seconds.</td></tr>
 <tr><td><code>bin/gate-queue.sh</code></td><td>gate-queue.sh (harbor#1018) — the approvals that wait for the operator: the ONLY queue writer (ship contract §5b.9).</td></tr>
 <tr><td><code>bin/gate-register-derive.sh</code></td><td>gate-register-derive.sh (harbor#1018, review finding 3) — the rows of harbor's protected-paths register that are</td></tr>
-<tr><td><code>bin/gate-repo-drift.sh</code></td><td>gate-repo-drift.sh (harbor#1418) — each governed repo's GitHub rules, declared in .agents/ship.conf, against live.</td></tr>
 <tr><td><code>bin/gate-required-generate.sh</code></td><td>gate-required-generate.sh (harbor#1149, D-79) - the rows a local merge gate reads: core's contracts/required-checks.tsv</td></tr>
-<tr><td><code>bin/gate-verbs.sh</code></td><td>gate-verbs.sh (harbor#1419) — the one reader of the verb registers in contracts/verbs/, one file per CLI.</td></tr>
 <tr><td><code>bin/gcloud-wrapper.sh</code></td><td>gcloud (harbor#546) — installed as ~/.local/bin/gcloud, ahead of the</td></tr>
 <tr><td><code>bin/gh-plan.sh</code></td><td>ci-github-plan.sh (harbor#1060) — has the GitHub account's plan changed, or has branch protection become unreadable?</td></tr>
 <tr><td><code>bin/govern-hook.sh</code></td><td>govern-hook.sh (harbor#7) — just-in-time governance. Inject the rule at the</td></tr>
@@ -2598,7 +2594,6 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/library-fs.sh</code></td><td>library-fs.sh (harbor#618) — a file's mtime, size, mode and owner on BSD and GNU stat, one spelling.</td></tr>
 <tr><td><code>bin/library-gate.sh</code></td><td>library-gate.sh (harbor#1018) — the approval gate's shared library.</td></tr>
 <tr><td><code>bin/library-log.sh</code></td><td>library-log.sh (harbor#771) — the one log format (contracts/logging.md), sourced by every tool that logs.</td></tr>
-<tr><td><code>bin/library-repo-rules.sh</code></td><td>library-repo-rules.sh (harbor#1418) — how a repo's GitHub rules are declared in ship.conf and read from GitHub, one</td></tr>
 <tr><td><code>bin/lint-adoption.sh</code></td><td>lint-adoption.sh (harbor#117 · A4) — every vendored asset has an intake row.</td></tr>
 <tr><td><code>bin/lint-comment.sh</code></td><td>lint-comment.sh (harbor#978) — file header line 2 and the comment rule, judged on the lines a branch adds.</td></tr>
 <tr><td><code>bin/lint-constitution.sh</code></td><td>lint-constitution.sh (harbor#1273) - the constitution states rules, never their cases: no ISO date, ticket, absolute</td></tr>

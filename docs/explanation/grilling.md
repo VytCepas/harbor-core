@@ -181,35 +181,3 @@ operator noticing arrives one turn too late to be one — the same gap
 supply beyond the labels is a **placement**: the method arrives inside the turn,
 where the 2026-08-06 measurement says a constraint binds. The judgement it rests on
 afterwards is still judgement, and saying so is the honest form.
-
-## Context sufficiency — what the constitution no longer carries
-
-Moved out of `policy/constitution.md` § *Context sufficiency* on 2026-11-01
-(harbor#1392), when the resident file was cut to 15 KB. The bolded rules stayed.
-
-**Hidden skills.** Most skills carry `disable-model-invocation: true`, which
-removes them from your listing entirely — you cannot be reminded they exist,
-because nothing lists them. The share is derived because a magnitude in prose
-drifts while reading perfectly. A hidden skill cannot be invoked, but its
-`SKILL.md` can always be read. "There is no skill for this" is a claim about the
-listing, not about the box.
-
-**The memory index.** The same shape as the skills, and the same failure: what
-loads into every session is an *index*, it is bounded by a byte allowance, and it
-therefore cannot list everything the box remembers. A pointer you cannot see is
-not a memory that does not exist. Two files, one store: `MEMORY.md` is charged to
-every session, so it is kept small on purpose and says so at the top;
-`INDEX-FULL.md` is never loaded, always searchable, sitting beside it in the same
-directory. The notes are plain markdown in one directory, so one `grep -ril`
-settles the question. Same move as `skill-book`: the thing you cannot see is
-still readable, and the index carries the path.
-
-**Asking.** Batch what is independent, serialise only what genuinely depends on
-something. An option's consequence is what changes, what must follow, the cost,
-whether it can be undone, and who else it touches.
-
-**Forks.** Flag the fork and keep going rather than stopping. The trigger is
-*"could I be wrong about what done means"*, never *"is the prompt long"*.
-
-**Effort.** Difficulty is discovered from the work and its evidence gates, never
-predicted from a rubric.

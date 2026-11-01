@@ -247,30 +247,3 @@ independent implementation, a source read for the claim it is cited for.
 
 `bin/eval-tally.sh` is Harbor's first exogenous instrument. Its input is the
 operator's verdict, which no part of Harbor produces.
-
-## The reasons the constitution no longer carries
-
-Moved out of `policy/constitution.md` on 2026-11-01 (harbor#1392), when the resident
-file was cut to 15 KB. The rules stayed; these are the sentences that said why.
-
-**№1 · Response Shape.**
-
-- *The response carries what changed and the evidence it works:* this is №2
-  rendered as layout: evidence that arrives separately from the claim arrives too
-  late to be believed.
-- *Every element is computable from this turn:* a response shape with a field that
-  can never be filled teaches the reader that parts of this document are inert,
-  and then they stop trusting the parts that are not.
-- *Length is the answer, not a ceiling:* expanding is one message away,
-  un-reading a wall is not.
-
-**№2 · Verification.** Twelve rules. Each one exists because it was broken.
-
-- *Rule 3:* this is the cheapest step in the task, not overhead.
-- *Rule 5:* existence is checkable by machine; support is not.
-- *Rule 10:* that is the only evidence the test tests anything.
-- *Rule 11:* a guard that blocks ordinary work gets switched off, and a disabled
-  guard protects nothing.
-- *Rule 12:* in-house provenance makes a document *plausible*, not true, and the
-  drift has a direction: nobody edits a note to say the thing got worse, so a
-  stale doc reads flattering.

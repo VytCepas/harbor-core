@@ -193,9 +193,7 @@ bin/gate-pr-wait.sh	installed	derived: the approval gate
 bin/gate-push.sh	installed	derived: the approval gate
 bin/gate-queue.sh	installed	derived: shipped by admission-install.sh
 bin/gate-register-derive.sh	installed	derived: the approval gate
-bin/gate-repo-drift.sh	installed	derived: the approval gate
 bin/gate-required-generate.sh	installed	derived: the approval gate
-bin/gate-verbs.sh	installed	derived: the approval gate
 bin/gcloud	operator-run	derived: linked into ~/.local/bin as gcloud by contracts/shims.tsv
 bin/gcloud-credentials	operator-run	derived: linked into ~/.local/bin as gcloud-creds by contracts/shims.tsv
 bin/govern-hook.sh	installed	derived: shipped by admission-install.sh
@@ -208,7 +206,6 @@ bin/library-alert.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/library-fs.sh	installed	derived: shipped by admission-install.sh
 bin/library-gate.sh	installed	derived: shipped by admission-install.sh
 bin/library-log.sh	installed	derived: shipped by admission-install.sh
-bin/library-repo-rules.sh	installed	derived: called by bin/gate-pr-plan.sh
 bin/lint-adoption.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-comment-commands.awk	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-comment.sh	ci-gate	derived: called by bin/lint-conventions.sh

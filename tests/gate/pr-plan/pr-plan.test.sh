@@ -7,7 +7,6 @@ cat > "$GH" <<'STUB'
 #!/bin/sh
 case "$*" in
   "pr view "*) [ -f "$FX/pr.fail" ] && { echo "gh: HTTP 502" >&2; exit 1; }; cat "$FX/pr.json" ;;
-  "api repos/"*"/compare/main...feat/x --jq .behind_by") cat "$FX/behind" 2>/dev/null || echo 0 ;;
   "api repos/o/r") cat "$FX/repo.json" ;;
   "api repos/o/r/rules/branches/main") cat "$FX/rules.json" ;;
   "api repos/o/r/contents/.agents/ship.conf?ref=main -H Accept: application/vnd.github.raw")
@@ -34,7 +33,7 @@ repo() {
 }
 rules() { printf '%s\n' "${1:-[]}" > "$FX/rules.json"; }
 ship() { if [ -n "${1:-}" ]; then printf 'repo o/r\nmethod %s\n' "$1" > "$FX/ship"; else rm -f "$FX/ship"; fi; }
-reset() { rm -f "$FX/pr.fail" "$FX/kids" "$FX/behind"; pr CLEAN ""; repo S-- true; rules; ship; }
+reset() { rm -f "$FX/pr.fail" "$FX/kids"; pr CLEAN ""; repo S-- true; rules; ship; }
 GREEN='[{"name":"ci","status":"COMPLETED","conclusion":"SUCCESS"}]'
 CO='[{"type":"pull_request","parameters":{"require_code_owner_review":true,"required_approving_review_count":0,"allowed_merge_methods":["merge","squash","rebase"]}}]'
 
@@ -90,45 +89,6 @@ OUT="$(run o/r#7)"
 t_has "update-branch, then re-plan" "$OUT" "re-plan"
 t_hasnt "no merge pinned to the old head" "$OUT" "pr merge"
 t_hasnt "no approval that the update would dismiss" "$OUT" "--approve"
-
-t_section "harbor#1418: red AND behind its base: the red may already be fixed on the base, so update the branch, not re-run"
-RED1='[{"name":"ci","status":"COMPLETED","conclusion":"FAILURE","detailsUrl":"https://github.com/o/r/actions/runs/123/job/9"}]'
-reset; pr BLOCKED "" "$RED1"; printf '10\n' > "$FX/behind"
-OUT="$(run o/r#7)"
-t_has "another org's repo: update-branch is the operator's" "$OUT" "OG pr update-branch 7 -R o/r"
-t_has "...then a re-plan on the new head" "$OUT" "re-plan"
-t_hasnt "no re-run of a run that may already be fixed on the base" "$OUT" "run rerun"
-t_has "the verdict says why" "$OUT" "behind main"
-t_eq "still not landing: exit 1" 1 "$(rc o/r#7)"
-OUT="$(run VytCepas/other#7)"
-t_has "harbor's own owner: update-branch is the App's" "$OUT" "gh pr update-branch 7 -R VytCepas/other"
-t_hasnt "...not spelled with the operator's gh" "$OUT" "OG pr update-branch"
-t_hasnt "and no re-run there either" "$OUT" "run rerun"
-reset; pr BLOCKED "" "$RED1"; printf '0\n' > "$FX/behind"
-OUT="$(run o/r#7)"
-t_has "control: up to date with its base, the re-run stays the step" "$OUT" "OG run rerun 123 -R o/r --failed"
-t_hasnt "...and no update-branch" "$OUT" "update-branch"
-reset; pr BLOCKED "" "$RED1"; printf 'x\n' > "$FX/behind"
-t_eq "a compare that cannot be read is exit 3, never a re-run guess" 3 "$(rc o/r#7)"
-
-t_section "harbor#1418: ship.conf review and delete-branch are checked against the live facts, which win"
-reset; pr BLOCKED "" "$GREEN"; repo SM- true; rules "$CO"
-printf 'repo o/r\nmethod merge-commit\nreview 0 code-owner\ndelete-branch yes\n' > "$FX/ship"
-OUT="$(run o/r#7)"
-t_hasnt "control: a declaration that matches the live rules is no drift" "$OUT" "drift"
-printf 'repo o/r\nmethod merge-commit\nreview 1\ndelete-branch yes\n' > "$FX/ship"
-OUT="$(run o/r#7)"
-t_has "a review the rules do not require is named as drift" "$OUT" "drift: ship.conf says review 1, the live rules require 0 code-owner"
-t_has "...and the plan still lands: live wins" "$OUT" "OG pr merge 7 -R o/r --merge"
-printf 'repo o/r\nmethod merge-commit\nreview 0 code-owner\ndelete-branch no\n' > "$FX/ship"
-OUT="$(run o/r#7)"
-t_has "delete-branch declared no, live deletes the head" "$OUT" "drift: ship.conf says delete-branch no, the live repo's delete_branch_on_merge is true"
-t_hasnt "...and live wins: no --delete-branch" "$OUT" "--delete-branch"
-rules
-printf 'repo o/r\nmethod merge-commit\nreview 0 code-owner\ndelete-branch yes\n' > "$FX/ship"
-t_has "no readable review rule is said, not read as none" "$(run o/r#7)" "cannot read a review rule"
-printf 'repo o/r\nmethod merge-commit\nreview wat\n' > "$FX/ship"
-t_has "an unparseable review line is named" "$(run o/r#7)" "review wat is not"
 
 t_section "a PR stacked on the head is retargeted before the merge deletes it"
 reset; repo S-- false; printf '9\n' > "$FX/kids"

@@ -503,12 +503,15 @@ il_renamed_rewire() { # <settings-json> <repo root> <cfg dir> <installed name>â€
     end' "$_rw_j"
 }
 
-# THE VERB REGISTERS (harbor#1291, #1419). floor-deny adds the allow and ask rules that the rows of every
-# contracts/verbs/*.md imply, and floor-uninstall takes the same rules out, so both read them here, through the one
-# reader in gate-verbs.sh. A spelling that does not start `<cli> <subcommand>`, or names an <argument> or a
-# shell metacharacter, comes back BAD and is never a rule.
-IL_VERBS_DIR="${IL_SELF%/*}/../contracts/verbs"
-il_verbs() { # <allow|ask> -> "OK<TAB><spelling><TAB><register>" or "BAD<TAB>..." per register row with that perm
-  [ -d "$IL_VERBS_DIR" ] && [ -f "${IL_SELF%/*}/gate-verbs.sh" ] || return 0
-  HARBOR_GATE_VERBS_DIR="$IL_VERBS_DIR" sh "${IL_SELF%/*}/gate-verbs.sh" rules "$1"
+# THE GIT VERBS REGISTER (harbor#1291). floor-deny adds the allow and ask rules contracts/git-verbs.md's rows imply
+# and floor-uninstall takes the same rules out, so both read them here. A spelling that does not start
+# `git <subcommand>`, or names an <argument> or a shell metacharacter, comes back BAD and is never a rule.
+IL_GIT_VERBS="${IL_SELF%/*}/../contracts/git-verbs.md"
+il_git_verbs() { # <allow|ask> -> "OK<TAB><spelling>" or "BAD<TAB><spelling>" per register row with that perm
+  [ -f "$IL_GIT_VERBS" ] || return 0
+  awk -F'|' -v want="$1" '/^\| `/ {
+      s = $2; p = $4; gsub(/^[ \t`]+|[ \t`]+$/, "", s); gsub(/^[ \t]+|[ \t]+$/, "", p)
+      if (p != want) next
+      if (s !~ /^git [a-z][a-z-]*( |$)/ || s ~ /[<>`|;&$]/) { print "BAD\t" s; next }
+      print "OK\t" s }' "$IL_GIT_VERBS"
 }

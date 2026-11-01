@@ -27,20 +27,20 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 |---|---|---|---|---|---|
 | policy | policy/ | system | source | living | 6 |
 | standard | standards/ | system | source | versioned | 26 |
-| contract | contracts/ | system | source | versioned | 36 |
+| contract | contracts/ | system | source | versioned | 33 |
 | decision-record | docs/decisions/ | element | source | dated | 93 |
 | hook | hooks/ | component | source | living | 48 |
 | skill | skills/ | component | source | living | 47 |
 | fixture | fixtures/ | element | source | living | 283 |
 | registry | registries/ | component | source | versioned | 55 |
-| test | tests/ | component | source | living | 459 |
+| test | tests/ | component | source | living | 457 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| script | bin/ | component | source | living | 299 |
+| script | bin/ | component | source | living | 296 |
 | how-to | docs/how-to/ | component | source | living | 1 |
 | reference | docs/reference/ | component | generated | generated | 5 |
-| explanation | docs/explanation/ | component | source | living | 15 |
+| explanation | docs/explanation/ | component | source | living | 14 |
 | (no kind) | - | - | - | - | 243 |
 
 ## Folders
@@ -51,11 +51,11 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
 | `DOCTRINE/` | 4 | 1 | 1 |
-| `bin/` | 304 | 28 | 2 |
+| `bin/` | 301 | 28 | 2 |
 | `commands/` | 8 | 4 | 1 |
 | `context-rules/` | 49 | 6 | 1 |
-| `contracts/` | 90 | 9 | 2 |
-| `docs/` | 138 | 11 | 8 |
+| `contracts/` | 87 | 9 | 2 |
+| `docs/` | 137 | 11 | 8 |
 | `fixtures/` | 283 | 10 | 1 |
 | `hooks/` | 43 | 6 | 1 |
 | `launchd/` | 13 | 8 | 1 |
@@ -66,7 +66,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `skills/` | 47 | 8 | 1 |
 | `standards/` | 26 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 459 | 28 | 1 |
+| `tests/` | 457 | 28 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 92 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -76,11 +76,11 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
 | access | control-plane | 12 | 20 | 2 | 6 | 0 | 0 |
-| admission | control-plane | 42 | 83 | 0 | 4 | 0 | 167 |
+| admission | control-plane | 42 | 82 | 0 | 4 | 0 | 167 |
 | agent | control-plane | 0 | 1 | 0 | 5 | 0 | 0 |
 | alert | observability | 5 | 3 | 0 | 2 | 0 | 0 |
 | audit | control-plane | 13 | 14 | 0 | 5 | 0 | 2 |
-| check | observability | 1 | 4 | 0 | 1 | 53 | 0 |
+| check | observability | 1 | 4 | 0 | 1 | 52 | 0 |
 | ci | coordination | 20 | 46 | 2 | 5 | 1 | 5 |
 | context | control-plane | 8 | 13 | 1 | 4 | 0 | 37 |
 | deploy | control-plane | 22 | 29 | 1 | 1 | 0 | 7 |
@@ -88,9 +88,9 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | drift | control-plane | 9 | 7 | 0 | 4 | 2 | 13 |
 | eval | control-plane | 11 | 7 | 0 | 1 | 0 | 0 |
 | event | observability | 3 | 18 | 0 | 3 | 0 | 2 |
-| gate | control-plane | 19 | 13 | 0 | 2 | 0 | 0 |
+| gate | control-plane | 17 | 12 | 0 | 2 | 0 | 0 |
 | housekeeping | control-plane | 2 | 1 | 0 | 2 | 0 | 0 |
-| library | policy-function | 9 | 1 | 0 | 0 | 0 | 0 |
+| library | policy-function | 8 | 1 | 0 | 0 | 0 | 0 |
 | lint | control-plane | 28 | 57 | 0 | 10 | 3 | 35 |
 | memory | memory-store | 8 | 10 | 1 | 23 | 0 | 1 |
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
@@ -373,9 +373,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/gate-push.sh`
 - `bin/gate-queue.sh`
 - `bin/gate-register-derive.sh`
-- `bin/gate-repo-drift.sh`
 - `bin/gate-required-generate.sh`
-- `bin/gate-verbs.sh`
 - `bin/merge-check.sh`
 - `bin/merged-check.sh`
 - `commands/gate-merge.md`
@@ -396,7 +394,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/library-fs.sh`
 - `bin/library-gate.sh`
 - `bin/library-log.sh`
-- `bin/library-repo-rules.sh`
 - `bin/log-lib.sh`
 
 ### lint
@@ -707,8 +704,8 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `bin/` | 16 |
 | `commands/` | 2 |
 | `context-rules/` | 37 |
-| `contracts/` | 71 |
-| `docs/` | 35 |
+| `contracts/` | 68 |
+| `docs/` | 34 |
 | `fixtures/` | 244 |
 | `hooks/` | 32 |
 | `patches/` | 10 |

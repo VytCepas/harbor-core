@@ -169,8 +169,7 @@ tests/admission/egress/egress.test.sh       bin/* tests/lib/* tests/admission/he
 tests/admission/egress/c1-keys.test.sh bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/admission/egress/c1-keys.* tests/admission/bash/fixture.sh
 tests/admission/selfedit/selfedit.test.sh     bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/guards/selfedit* tests/admission/selfedit/selfedit.test.sh* tests/admission/bash/fixture.sh tests/guards/guards.jsonl tests/guards/shapes.jsonl tests/guards/benign.jsonl tests/guards/exemptions.jsonl
 tests/gate/pr-wait/pr-wait.test.sh bin/gate-pr-wait.sh* bin/ci-lost-job.sh bin/gate-required-generate.sh bin/library-log.sh tests/gate/pr-wait/pr-wait.test.sh tests/lib/core.sh
-tests/gate/pr-plan/pr-plan.test.sh bin/gate-pr-plan.sh bin/library-log.sh bin/library-repo-rules.sh bin/access-github-app/gh tests/gate/pr-plan/pr-plan.test.sh tests/lib/core.sh
-tests/gate/repo-drift/repo-drift.test.sh bin/gate-repo-drift.sh bin/library-log.sh bin/library-repo-rules.sh bin/scope-roots.sh tests/gate/repo-drift/repo-drift.test.sh tests/lib/core.sh
+tests/gate/pr-plan/pr-plan.test.sh bin/gate-pr-plan.sh bin/library-log.sh bin/access-github-app/gh tests/gate/pr-plan/pr-plan.test.sh tests/lib/core.sh
 # standards/naming/* (harbor#150): every suite that reads the naming registry is `always` (lint-test,
 # lint.name-test, lint.cli-test, standard-rename-test) or names its one file itself (pack.test and
 # pack/checks.test: controls.tsv; scope/registry/repo.test: repo-kinds.tsv), so it is classified
@@ -403,8 +402,7 @@ tests/deploy/push/license.test.sh LICENSE NOTICE SECURITY.md README.md vendor/* 
 tests/lint/share/check.test.sh bin/lint-share.sh bin/scope-layers.sh bin/scope-roots.sh bin/lint-conventions.sh bin/library-log.sh contracts/layers.tsv contracts/roots.tsv standards/naming/kinds.tsv tests/lint/share/check.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh
 tests/lint/wired/registered.test.sh bin/decider-set.sh bin/admission-install.sh bin/*-install.sh bin/lint-conventions.sh bin/library-log.sh standards/naming/controls.tsv
 tests/doc/fresh-verify/fresh-verify.test.sh bin/* hooks/* contracts/* docs/generated/status.md docs/generated/plan.md docs/* skills/* .agents/* .github/CODEOWNERS standards/* tests/doc/fresh-verify/fresh-verify.test.sh tests/lib/core.sh
-tests/admission/git/verbs.test.sh bin/admission-deny.sh bin/library-log.sh bin/deploy-install-lib.sh bin/gate-verbs.sh bin/admission-bash.sh bin/admission-destroy.sh contracts/verbs/git.md tests/admission/git/verbs.test.sh tests/lib/core.sh
-tests/admission/verbs/registers.test.sh bin/gate-verbs.sh bin/admission-deny.sh bin/admission-remove.sh bin/library-log.sh bin/deploy-install-lib.sh bin/admission-install.sh bin/deploy-runtime-install.sh contracts/verbs/cu.md contracts/verbs/gh.md contracts/verbs/git.md contracts/verbs/mail.md tests/admission/verbs/registers.test.sh tests/lib/core.sh
+tests/admission/git/verbs.test.sh bin/admission-deny.sh bin/library-log.sh bin/deploy-install-lib.sh bin/admission-bash.sh bin/admission-destroy.sh contracts/git-verbs.md tests/admission/git/verbs.test.sh tests/lib/core.sh
 tests/admission/destroy/snapshot.test.sh bin/admission-destroy.sh bin/library-admission.sh bin/admission-normalize.awk tests/admission/destroy/snapshot.test.sh tests/lib/core.sh
 tests/ci/suite-cache/cache.test.sh bin/test-suite-cache.sh bin/test-suite-run.sh bin/test-suite-select.sh bin/library-log.sh bin/ci-governor.sh tests/ci/suite-cache/* tests/lib/core.sh
 tests/alert/lib/chain.test.sh bin/library-alert.sh bin/event-bus.sh bin/library-log.sh tests/alert/lib/* tests/lib/core.sh tests/lib/linux-sim.sh

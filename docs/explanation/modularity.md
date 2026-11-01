@@ -244,32 +244,3 @@ and each is already load-bearing in code. Say **mutation testing** in full
 wherever rule 10 is meant; a bare "mutation" in a path or permissions context
 means the tier.
 
-
-## What the constitution no longer carries
-
-Moved out of `policy/constitution.md` § *Module shape* on 2026-11-01 (harbor#1392),
-when the resident file was cut to 15 KB. The bolded rules stayed.
-
-- A module earns its seam by hiding complexity, never by existing. Imagine it
-  gone: if complexity vanishes it was a pass-through, if it reappears across
-  callers it was earning its keep. What makes many parts navigable is *uniform
-  interface*, not restraint about how many there are. The split is a planning
-  decision.
-- Reality and value are two separate questions, answered by two separate
-  observations. **Reality:** cut the file at its own seams, cut a copy at
-  arbitrary offsets into the same number of pieces, and compare what each costs
-  to describe; real structure survives the first cut and not the second.
-  **Value:** does anything *outside* cross the boundaries? That is the
-  two-adapter rule restated as something countable. One caller is the file
-  talking to itself through a longer path.
-- Real-but-private is the commonest good state — a suite of independent
-  assertions, a flat list of rules — and reporting it as a defect is how a metric
-  talks a codebase into fragmenting.
-- Every count the constitution held was wrong by the time the tree moved. A count
-  of a growing codebase, written into a document, is wrong by the next commit.
-  Hand measurements going wrong is №2.12 catching the constitution, which is why
-  the number left and the command stayed.
-- The suite of `bin/lint-module-shape.sh` is the load-bearing half: the
-  instrument mis-measured four times before it settled, every one caught by a
-  control rather than by review, and every one wrong in the direction that made a
-  split look earned.

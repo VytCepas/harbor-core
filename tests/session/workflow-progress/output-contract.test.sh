@@ -6,13 +6,10 @@
 TOOL="$T_ROOT/bin/session-workflow-progress.sh"
 H="$T_TMP/home"; W="$H/.claude/projects/p/wf_fixture"; mkdir -p "$W"
 printf '%s\n' '{"type":"started","agentId":"aaa"}' '{"type":"started","agentId":"bbb"}' '{"type":"started","agentId":"ccc"}' \
-  '{"type":"result","agentId":"aaa","output":{"type":"started"}}' > "$W/journal.jsonl"   # the nested started is output, not a start (harbor#1420)
-tu() { printf '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"%s"}]}}\n' "$1"; }
-tu Bash > "$W/agent-aaa.jsonl"
-tu Read > "$W/agent-bbb.jsonl"
-# a tool's OUTPUT on a later line that quotes a tool_use: not a call and not the last tool (harbor#1420)
-printf '{"type":"user","toolUseResult":{"type":"tool_use","name":"Edit"}}\n' >> "$W/agent-bbb.jsonl"
-tu Bash > "$W/agent-ccc.jsonl"
+  '{"type":"result","agentId":"aaa"}' > "$W/journal.jsonl"
+printf '{"type":"tool_use","name":"Bash"}\n' > "$W/agent-aaa.jsonl"
+printf '{"type":"tool_use","name":"Read"}\n' > "$W/agent-bbb.jsonl"
+printf '{"type":"tool_use","name":"Bash"}\n' > "$W/agent-ccc.jsonl"
 touch -t 202001010000 "$W/agent-aaa.jsonl" "$W/agent-ccc.jsonl"   # aaa is finished; ccc has not written since 2020
 run() { HOME="$H" sh "$TOOL" "$@" >"$T_TMP/out" 2>"$T_TMP/err"; echo "exit $?"; }
 OUT() { cat "$T_TMP/out"; }; ERR() { cat "$T_TMP/err"; }
@@ -24,7 +21,6 @@ t_eq "the header names the run" "── wf-progress · wf_fixture" "$(OUT | head
 t_has "the counts are a note" "$(OUT)" "  note: started 3 · finished 1 · outstanding 2"
 t_has "a finished agent is an ok line" "$(OUT)" "  ok: DONE aaa  1 calls"
 t_has "a live agent is an ok line" "$(OUT)" "  ok: ACTIVE bbb  1 calls"
-t_has "the last tool is the real tool_use, not quoted output" "$(OUT)" "last tool Read"
 t_has "a stalled agent is a WARN" "$(OUT)" "  WARN: STALLED ccc  1 calls"
 t_has "with its fix" "$(after '^  WARN: STALLED ccc')" "  fix: tail -c 2000 $W/agent-ccc.jsonl  # then TaskStop ccc"
 t_eq "the summary counts 0 failed" "wf-progress: 2 ok, 0 failed, 1 warnings" "$(OUT | tail -1)"

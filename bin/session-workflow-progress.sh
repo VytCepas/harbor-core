@@ -110,9 +110,8 @@ for D in $(pick); do
   J="$D/journal.jsonl"
   [ -f "$J" ] || continue
 
-  # jq on the parsed type, not grep on the text (harbor#1420): a result's output can quote the same string.
-  STARTED="$(jq -Rn '[inputs | fromjson? | objects | select(.type=="started")] | length' "$J" 2>/dev/null | head -1 | tr -d ' \n')"
-  DONE="$(jq -Rn '[inputs | fromjson? | objects | select(.type=="result")] | length' "$J" 2>/dev/null | head -1 | tr -d ' \n')"
+  STARTED="$(grep -c '"type":"started"' "$J" 2>/dev/null | head -1 | tr -d ' \n')"
+  DONE="$(grep -c '"type":"result"' "$J" 2>/dev/null | head -1 | tr -d ' \n')"
   case "$STARTED" in ''|*[!0-9]*) STARTED=0 ;; esac
   case "$DONE"    in ''|*[!0-9]*) DONE=0 ;; esac
 
@@ -126,7 +125,7 @@ for D in $(pick); do
     [ -f "$A" ] || continue
     id="${A##*/agent-}"; id="${id%.jsonl}"
     age="$(age_of "$A")"
-    calls="$(jq -Rn '[inputs | fromjson? | objects | select(any(.message? | objects | .content? | arrays | .[] | objects; .type=="tool_use"))] | length' "$A" 2>/dev/null | head -1 | tr -d ' \n')"
+    calls="$(grep -c '"type":"tool_use"' "$A" 2>/dev/null | head -1 | tr -d ' \n')"
     case "$calls" in ''|*[!0-9]*) calls=0 ;; esac
     sz="$(wc -c < "$A" 2>/dev/null | tr -d ' ')"
 
@@ -141,7 +140,7 @@ for D in $(pick); do
     # The last tool it reached for is the single most useful progress signal:
     # "still on Bash" after twenty minutes means a command is hanging, not that
     # the model is thinking.
-    last="$(jq -Rr 'fromjson? | objects | .message? | objects | .content? | arrays | .[] | objects | select(.type=="tool_use") | .name' "$A" 2>/dev/null | tail -1)"
+    last="$(grep -o '"name":"[A-Za-z_]*"' "$A" 2>/dev/null | tail -1 | cut -d'"' -f4)"
     _msg="$state $id  $calls calls · $(( sz / 1024 ))KB · last write $(human "$age") · last tool ${last:-—}"
     case "$state" in
       DONE|ACTIVE) log_ok "$_msg" ;;
