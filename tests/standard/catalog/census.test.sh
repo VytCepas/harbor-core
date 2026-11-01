@@ -53,8 +53,8 @@ t_exit "--files without --tree is a usage error" 2 sh "$CAT_TOOL" --census --fil
 t_section "harbor find and harbor tree are the same answers"
 t_eq "harbor find drift" "$(cat "$EXP/find-drift.txt")" "$(sh "$T_ROOT/bin/harbor" find drift --root "$R" 2>/dev/null)"
 t_eq "harbor tree" "$(cat "$EXP/tree.txt")" "$(sh "$T_ROOT/bin/harbor" tree --root "$R" 2>/dev/null)"
-t_has "CONTRACTS/cli.md lists find" "$(cat "$T_ROOT/CONTRACTS/cli.md")" '| `harbor find` | `standard-catalog.sh --find` |'
-t_has "CONTRACTS/cli.md lists tree" "$(cat "$T_ROOT/CONTRACTS/cli.md")" '| `harbor tree` | `standard-catalog.sh --tree` |'
+t_has "contracts/cli.md lists find" "$(cat "$T_ROOT/contracts/cli.md")" '| `harbor find` | `standard-catalog.sh --find` |'
+t_has "contracts/cli.md lists tree" "$(cat "$T_ROOT/contracts/cli.md")" '| `harbor tree` | `standard-catalog.sh --tree` |'
 
 t_section "census on this checkout: the registry fills what it can, and a finding names the rest"
 sh "$CAT_TOOL" --census --root "$T_ROOT" --out "$T_TMP/real/catalog.tsv" >/dev/null 2>&1

@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
 # ci-runners-github-lib.sh (harbor#1060) — what the runners do on GitHub: `switch` (CI_RUNS_ON), `rerun-refused`, `rerun-lost`.
 # Sourced by ci-runners.sh, never run: it sets no shell option and reads the entry point's variables ($T, $CONF, $GH, $DOCKER, ...).
-. "$(dirname -- "$0")/log-lib.sh"   # a second source keeps the run's counts (log-lib.sh)
+. "$(dirname -- "$0")/library-log.sh"   # a second source keeps the run's counts (library-log.sh)
 
-# ── switch: CI_RUNS_ON follows the minutes rule runner-switch.sh decided ───────────────────────
+# ── switch: CI_RUNS_ON follows the minutes rule ci-runner-switch.sh decided ───────────────────────
 CHANGED=0
 # owner_verdict <slug> — each owner's own minutes verdict: sets want and why, or fails when there is none fresh to trust
 owner_verdict() {
@@ -16,11 +16,11 @@ owner_verdict() {
 # and self-hosted needs only one of its runners running and online.
 do_switch() {
   CHANGED=0; _sd=" "
-  while IFS="$TAB" read -r repo slug w c cstate _i runner _b _id cur verdict; do
+  while IFS="$TAB" read -r _repo slug w _c cstate _i runner _b _id cur verdict; do
     [ "$w" = 1 ] && [ "$verdict" != hold ] || continue
     case "$_sd" in *" $slug "*) continue ;; esac
     [ "$cstate" != absent ] || [ "$runner" = online ] || [ "$runner" = offline ] || continue
-    _src="runner-switch.sh"; case "$slug" in */*) ;; *) _src="runner-switch.sh --org $slug" ;; esac
+    _src="ci-runner-switch.sh"; case "$slug" in */*) ;; *) _src="ci-runner-switch.sh --org $slug" ;; esac
     owner_verdict "$slug" || { _sd="$_sd$slug "; log_skip "$slug: no fresh verdict from $_src; CI_RUNS_ON left as it is"; continue; }
     if [ "$want" = self-hosted ]; then
       [ "$cstate" = running ] && [ "$runner" = online ] && [ "$cur" != self-hosted ] && [ "$cur" != '?' ] || continue
@@ -44,7 +44,7 @@ do_switch() {
 # the repos a self-hosted, online runner serves: its own repo, or every listed repo of its org
 serve_targets() {
   : > "$T/targets"
-  while IFS="$TAB" read -r repo slug w _c cstate _i runner _b _id cur verdict; do
+  while IFS="$TAB" read -r _repo slug w _c cstate _i runner _b _id cur verdict; do
     [ "$w" = 1 ] && [ "$cur" = self-hosted ] && [ "$cstate" = running ] && [ "$runner" = online ] || continue
     case "$slug" in */*) printf '%s\n' "$slug" >> "$T/targets" ;;
       *) awk -F'\t' -v o="$slug/" '$11 == "org" && index($2, o) == 1 { print $2 }' "$T/rows.tsv" >> "$T/targets" ;; esac
@@ -95,7 +95,7 @@ do_rerun() {
 # 1 jobs read, plus 1 annotation read per failed/cancelled job that has no failed step; a run that held
 # no such job is remembered in ci-lost-seen.tsv and never read again. An idle fleet costs one call a repo (plus one for
 # the governance runner).
-lostline() { printf '[check:ci-lost-rerun] %s %s\n' "$(iso "$NOW")" "$1" >> "$LOG" 2>/dev/null || :; }
+lostline() { printf '[check:ci.lost-rerun] %s %s\n' "$(iso "$NOW")" "$1" >> "$LOG" 2>/dev/null || :; }
 do_rerun_lost() {
   [ "$(conf lost-rerun)" != off ] || return 0
   LOSTS="$CACHE_DIR/ci-lost-reruns.tsv"; SEEN="$CACHE_DIR/ci-lost-seen.tsv"; touch "$LOSTS" "$SEEN"
