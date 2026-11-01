@@ -1,0 +1,15 @@
+# Why it is wired this way (moved from bin/deploy-runtime-install.sh, harbor#1272):
+# harbor#6 wired the work-log reconciler at STOP, because its stand-down then read the session context that
+# context-resolve.sh (another SessionStart hook, unordered) writes, and on a fresh session that file could be absent.
+# harbor#954 removed that dependency: the stand-down reads only the repo's `worklog: off`. So harbor#1390 moves it to
+# SessionStart, where it runs once a session instead of every turn: "which sessions never reached Stop" is a
+# once-per-session question. It skips the session that is starting, which has a transcript and no record yet.
+# A crashed session is now reconciled at the start of the next session rather than at its first Stop.
+key	value
+engine	memory-harvest
+installer	runtime-install
+wire	SessionStart	-	-
+senses	transcripts of the last days that have no work-log record
+acts-on	the work-log: a record for each session that never reached Stop
+findings	a session record it wrote late
+closer	the engine itself: the record it writes closes the gap

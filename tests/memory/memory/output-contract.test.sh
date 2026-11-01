@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# memory.sh's output follows CONTRACTS/logging.md (harbor#771): stdout is the answer and only that; every status line
+# memory.sh's output follows contracts/logging.md (harbor#771): stdout is the answer and only that; every status line
 # is log-lib's, on stderr; a clean search logs nothing; a refusal is FAIL, its fix, the summary. The store is a
 # fixture and the engine is never reached (HARBOR_MEMORY_BUN names a runtime that is not there).
 . "$(dirname "$0")/../../lib/core.sh"; t_init

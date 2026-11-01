@@ -1,0 +1,122 @@
+<section>
+<h2 id="extend">Working on this</h2>
+
+<p>Four things this system is extended with, and what each actually costs — and one
+thing that happens before any of them.</p>
+
+<h3>Before building: resolve the frontier, in rounds</h3>
+
+<p>A design is a tree, and every decision branches into the decisions hanging off
+it. The <strong>frontier</strong> is every decision whose prerequisites are already
+settled — the questions answerable <em>now</em>, without guessing at answers not yet
+heard. Ask the whole frontier at once, numbered, each carrying a recommended
+answer. Each round the operator's answers push the frontier outward and unblock what
+depended on them. The session is done when the frontier is empty.</p>
+
+<p>The earlier rule here was "up to three specific questions, <em>one at a
+time</em>". The cap was sound and the serialisation was not: independent questions
+do not need ordering, and paying a round-trip for each buys nothing while forcing
+the operator — who is holding the whole design in their head at that moment — to
+reload it once per question. Serialise only what genuinely depends on something.
+The cap that matters is on the frontier, not on the count.</p>
+
+<div class="note why">
+<span class="tag">Facts are yours; decisions are the operator's</span>
+<p>When a frontier question needs a fact from the environment, go and find it —
+read the file, run the probe, dispatch a subagent. Never ask for anything you could
+look up. Do not block on it either: a running exploration is an unsettled
+prerequisite, so only the questions downstream of it wait. A question with no
+recommended answer is work handed back, and where one option deserves an argument
+against it, saying so carries more than four neutral descriptions.</p>
+</div>
+
+<div class="note hazard">
+<span class="tag">The failure this replaces is premature completion</span>
+<p>A vague bound — "understanding reached" — lets attention slip toward
+<em>being done</em> while branches sit unvisited, and everything built afterwards
+rests on assumptions nobody chose. An empty frontier is a checkable bound; a shared
+understanding is not. The reverse failure is real and cheaper to spot: a round that
+asks about branches the operator already settled reads as not listening. And a
+resolved frontier is not itself a licence to write — grilling is the read-only
+half.</p>
+</div>
+
+<h3>Add a rule</h3>
+
+<p>Write a markdown file with frontmatter into a pack directory — the machine tier
+for something true everywhere, the repository's own tier for something true in one
+tree. Nothing else. No code changes, no re-wiring, no installer run for a repository
+pack.</p>
+
+<p>Assert it in both directions in the suite: the shape that must fire, and the
+near-miss that must not. A rule with only the positive half passes for reasons
+unrelated to whether it discriminates.</p>
+
+<h3>Add a project</h3>
+
+<pre><code># 1 · create the pack directory, in the private layer (harbor#1149)
+P="$(sh bin/scope-roots.sh --private)/context-rules"; mkdir -p "$P/user" "$P/&lt;project&gt;"
+
+# 2 · register it (name, path, what it covers)
+$EDITOR "$P/user/projects.tsv"
+
+# 3 · seed it into the project's own tree
+sh bin/context-injection-install.sh --live --apply --projects</code></pre>
+
+<p>Lint fails a pack directory with no registry row, so packs that nothing would
+ever seed cannot accumulate. <strong>The reverse is a known gap</strong>: a
+registry row with no packs anywhere is not caught, because one legitimate row —
+this repository's own — is backed by its tree rather than by a seeding directory,
+and a naive check would flag correct configuration. Closing it needs a way for a
+row to declare that, which is a change to a tracked format read by three
+different things, so it is filed rather than guessed at. The seeded packs are
+that repository's to edit from then on; re-running reports drift rather than
+silently healing it.</p>
+
+<h3>Add a section to this page</h3>
+
+<pre><code># 1 · write the prose — the rail builds itself from the &lt;h2 id&gt;
+$EDITOR docs/src/NN-name.html
+
+# 2 · regenerate
+sh bin/doc-index-generate.sh --apply</code></pre>
+
+<p>To add a derived table, write a <code>d_NAME</code> function in
+<code>bin/doc-index-generate.sh</code> and put <code>&lt;!--gen:NAME--&gt;</code> in the prose.
+<code>sh bin/doc-index-generate.sh --tokens</code> lists every hole and whether it is filled;
+an unknown hole fails the build rather than rendering as nothing.</p>
+
+<h3>Deploy a change</h3>
+
+<p>Installers are <strong>dry-run by default</strong> and require an explicit flag
+to touch the live configuration directory — a lint rule fails any mutator that does
+not have that gate, and a second one checks that every command a mutator
+<em>prints</em> is a command its own gate would accept. Seeding other repositories
+needs the flag a second time, because writing into trees outside the target is a
+different act from writing into the target.</p>
+
+<p>Re-pinning the instruction surfaces is deliberately not automated and is run by
+the operator from their own terminal. An installer that blesses its own instruction
+surfaces is a self-approval loop.</p>
+
+<div class="note hazard">
+<span class="tag">Platform traps that have cost real time here</span>
+<ul>
+<li><code>/tmp</code> is a symlink, so two paths that are the same directory
+compare unequal as strings. Compare resolved paths. This has shipped twice.</li>
+<li>The default <code>grep</code> on this machine silently skips binary and
+ignored files. Never rest a <em>negative</em> conclusion on it.</li>
+<li>The shell that runs the floor is not the interactive shell. It does not
+word-split the same way, and an exit trap can turn an aborted script into exit
+zero — so check the return code of a deliberately broken call before trusting a
+green run.</li>
+<li>Agents running in parallel share one scratch directory. Two agents writing the
+same filename is not a hypothetical.</li>
+</ul>
+</div>
+
+<h4>Every script, and the line that says what it is for</h4>
+<div class="scroll">
+<!--gen:scripts-->
+</div>
+</section>
