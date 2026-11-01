@@ -12,8 +12,8 @@ REPO="$P/port/repo"; mkdir -p "$REPO"; git init -q "$REPO"; git -C "$REPO" symbo
 SEED="$(git -C "$REPO" rev-parse HEAD)"; git -C "$REPO" update-ref refs/remotes/origin/main "$SEED"
 # $1 is the checkout worktree.sh runs from: the main one, or a linked tree of it.
 wtf() { _r="$1"; shift
-  HOME="$P" PORT_ROOT="$P/port" HARBOR_ROOT="$_r" HARBOR_BASE=origin/main CLAUDE_CONFIG_DIR="$P/cfg" \
-    HARBOR_SESSIONS_DIR="$P/sessions" HARBOR_PEERS_DIR="$P/peers" sh "$WT" "$@" 2>&1; }
+  HOME="$P" PORT_ROOT="$P/port" HARBOR_SCOPE_ROOT="$_r" HARBOR_CI_BASE=origin/main CLAUDE_CONFIG_DIR="$P/cfg" \
+    HARBOR_SESSION_REGISTRY_DIR="$P/sessions" HARBOR_CONTEXT_PEERS_DIR="$P/peers" sh "$WT" "$@" 2>&1; }
 verdict() { wtf "$REPO" list | awk -v p="$1" '$2 == p { print $1; exit }'; }  # <path> → verdict
 
 t_section "new, run from inside a linked worktree, names the repo and not the worktree"

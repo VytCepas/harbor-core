@@ -1,12 +1,12 @@
 # tests/checks/reference-check-fixture.sh — what the reference-check suites share (M8, harbor#44).
 # Source after t_init. mkfixture builds a config dir that is clean by construction; each red case
 # adds exactly one defect, so a finding can only come from the thing the case is named after.
-SRC="$T_ROOT/bin"; RC="$SRC/reference-check.sh"; TMP="$T_TMP/rc"; mkdir -p "$TMP"
-# A mutant needs the extractor, log-lib.sh and fs-lib.sh beside it: the checker resolves both from its OWN dir,
+SRC="$T_ROOT/bin"; RC="$SRC/drift-reference-check.sh"; TMP="$T_TMP/rc"; mkdir -p "$TMP"
+# A mutant needs the extractor, library-log.sh and library-fs.sh beside it: the checker resolves both from its OWN dir,
 # and without the extractor REF-5 fires and every mutant assertion tests the copy (#462, #809).
 mkmut() { # <name> → the path the mutant script goes to, extractor and log-lib in place
-  _m="$TMP/$1"; mkdir -p "$_m"; cp "$SRC/cited-paths.awk" "$SRC/log-lib.sh" "$SRC/fs-lib.sh" "$_m/"
-  printf '%s' "$_m/reference-check.sh"
+  _m="$TMP/$1"; mkdir -p "$_m"; cp "$SRC/doc-cited-paths.awk" "$SRC/library-log.sh" "$SRC/library-fs.sh" "$_m/"
+  printf '%s' "$_m/drift-reference-check.sh"
 }
 mkfixture() { # <name> → the dir: one wired hook, a statusline, a pin, and citations that resolve
   _d="$TMP/$1"; mkdir -p "$_d/bin" "$_d/.helm-pins"
