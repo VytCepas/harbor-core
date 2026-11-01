@@ -2701,13 +2701,70 @@ XARGS_EOF
         continue ;;
     esac
     [ -n "$_ssarg" ] || return 1
-    case "$_ssarg" in
-      -*|/dev/stdin|/dev/fd/*) return 1 ;;
+    # harbor#1420: options before the script (`sh -x s.sh`, `sh -e s.sh`) do not move the program
+    # to stdin. Walk to the first OPERAND; a code/stdin flag (c, s) or a bare `-` still refuses.
+    _ssop="$(_floor_sh_first_operand "$_ssid")" || return 1
+    case "$_ssop" in
+      ''|-|-*|/dev/stdin|/dev/fd/*) return 1 ;;
     esac
     _ssany=1
   done
   [ "$_ssany" = 1 ] || return 1
   return 0
+}
+
+# _floor_sh_first_operand <seg-id> — print the first operand of a shell segment, skipping options
+# and the values of the ones that take one (-o X, -O X, --rcfile F, --init-file F). Exit 1 when an
+# option makes stdin the program (-s, -c, bundled too) or no operand exists.
+_floor_sh_first_operand() {
+  _sfskip=0; _sfdd=0
+  for _sfa in $(printf '%s\n' "$FLOOR_SEGS" | sed -n "s/^SEGA:${1}://p" | tr ' \t' '\n\n'); do
+    if [ "$_sfskip" = 1 ]; then _sfskip=0; continue; fi
+    if [ "$_sfdd" = 1 ]; then printf '%s\n' "$_sfa"; return 0; fi
+    case "$_sfa" in
+      --) _sfdd=1 ;;
+      --rcfile|--init-file) _sfskip=1 ;;
+      --*) ;;
+      -) printf '%s\n' -; return 0 ;;
+      -*c*|-*s*|+*c*|+*s*) return 1 ;;
+      -*o*|-*O*|+*o*|+*O*) _sfskip=1 ;;
+      -*|+*) ;;
+      *) printf '%s\n' "$_sfa"; return 0 ;;
+    esac
+  done
+  return 1
+}
+
+# floor_seg_all_inert [<own-cmd-ERE>] — exit 0 iff the table is loaded and EVERY segment's command is
+# an inert text consumer (its arguments are data, never a program) or matches <own-cmd-ERE>.
+# harbor#1420: a flat rule's hit is acquitted only on this proof, so a regex alternation in a grep
+# pattern (`'(sed|python3|perl)'`) is not read as a pipe into an interpreter. Fails closed: no table, an
+# unknown command, an executor or a path outside the system bin dirs all answer 1. The inert set is
+# deliberately small; a segment outside it keeps the flat verdict.
+floor_seg_all_inert() {
+  [ -n "${FLOOR_SEGS:-}" ] || return 1
+  printf '%s\n' "$FLOOR_SEGS" | awk -v own="${1:-}" '
+    /^SEGC:/ { c = $0; sub(/^SEGC:[0-9]+:/, "", c); n++
+      if (c !~ /^((\/usr)?(\/local)?\/bin\/|\/opt\/homebrew\/bin\/)?(echo|printf|grep|egrep|fgrep|rg|ag|ack|sort|uniq|wc|head|tail|cut|tr|cat|comm|basename|dirname)$/ \
+          && (own == "" || c !~ own)) bad = 1 }
+    END { exit (n > 0 && !bad) ? 0 : 1 }'
+}
+
+# floor_seg_flat_clear <cmd-ERE> <danger-ERE> — exit 0 iff the table proves a flat hit is text beside the
+# command rather than inside it: some segment runs <cmd-ERE>, none of those segments' own arguments
+# match <danger-ERE> or carry a substitution, and every other segment is an inert text consumer.
+# harbor#1420 §6: the flat regex of python-c-exec read `eval(` in an echo as the python code.
+floor_seg_flat_clear() {
+  [ -n "${FLOOR_SEGS:-}" ] || return 1
+  _fcany=0
+  for _fcid in $(_floor_seg_ids "$1"); do
+    _fcany=1
+    _fcargs="$(printf '%s\n' "$FLOOR_SEGS" | sed -n "s/^SEGA:${_fcid}://p" | tr '\n' ' ')"
+    case "$_fcargs" in *@SUB@*|*'`'*) return 1 ;; esac
+    printf ' %s\n' "$_fcargs" | "$FLOOR_GREP" -iEq -- "$2" && return 1
+  done
+  [ "$_fcany" = 1 ] || return 1
+  floor_seg_all_inert "^($1)\$"
 }
 
 # floor_seg_interps_all_programmed — exit 0 iff the table is loaded AND every

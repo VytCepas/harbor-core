@@ -3401,8 +3401,8 @@ Citations are at the tree each round judged: round 1 at `98dcde4b`, round 2 at `
 | out-of-scope | `database-client` | 4 | `contracts/marker.md:69` |
 | out-of-scope | `database-client-destructive-sql` | 6 | `docs/explanation/credential-boundary.md:35` |
 | out-of-scope | `foreign-guard-self-protect` | 8 | reviewer note on harbor#1313 |
-| out-of-scope | `git-config-exec-injection` | 6 | `contracts/git-verbs.md:153` |
-| out-of-scope | `git-push-hook-skip` | 3 | `contracts/git-verbs.md:133` |
+| out-of-scope | `git-config-exec-injection` | 6 | `contracts/verbs/git.md:153` |
+| out-of-scope | `git-push-hook-skip` | 3 | `contracts/verbs/git.md:133` |
 | out-of-scope | `inline-interpreter-code` | 14 | `admission-normalize.awk:579-585` |
 | out-of-scope | `linux-persistence-path` | 1 | `admission-bash.sh:439` |
 | out-of-scope | `rc-file-delete` | 2 | reviewer note on harbor#1313 |
@@ -3429,18 +3429,18 @@ Citations are at the tree each round judged: round 1 at `98dcde4b`, round 2 at `
 | policy-difference | `find-filtered-cleanup` | 4 | `admission-bash.sh:739-741` |
 | policy-difference | `foreign-guard-self-protect` | 39 | `bin/admission-bash.sh:1142` |
 | policy-difference | `gh-api-read-piped-to-inline-interpreter` | 1 | `admission-bash.sh:88-105` |
-| policy-difference | `git-branch-force-delete` | 9 | `git-verbs.md:105` |
-| policy-difference | `git-clean-dry-run` | 1 | `contracts/git-verbs.md:136` |
-| policy-difference | `git-commit-hook-skip` | 8 | `contracts/git-verbs.md:89` |
-| policy-difference | `git-config-injection-exec` | 31 | `contracts/git-verbs.md:118` |
-| policy-difference | `git-force-with-lease-unprotected-branch` | 1 | `contracts/git-verbs.md:96` |
-| policy-difference | `git-local-history-rewrite` | 10 | `git-verbs.md:89` |
+| policy-difference | `git-branch-force-delete` | 9 | `contracts/verbs/git.md:105` |
+| policy-difference | `git-clean-dry-run` | 1 | `contracts/verbs/git.md:136` |
+| policy-difference | `git-commit-hook-skip` | 8 | `contracts/verbs/git.md:89` |
+| policy-difference | `git-config-injection-exec` | 31 | `contracts/verbs/git.md:118` |
+| policy-difference | `git-force-with-lease-unprotected-branch` | 1 | `contracts/verbs/git.md:96` |
+| policy-difference | `git-local-history-rewrite` | 10 | `contracts/verbs/git.md:89` |
 | policy-difference | `git-local-ref-delete` | 5 | `admission-destroy.sh:3-4` |
 | policy-difference | `git-local-ref-overwrite` | 1 | reviewer note on harbor#1313 |
 | policy-difference | `git-pathspec-discard` | 9 | `admission-destroy.sh:28-31` |
 | policy-difference | `git-unstage` | 1 | `docs/explanation/admission-baseline.md:2867` |
 | policy-difference | `heredoc-body-expansion` | 1 | `docs/explanation/admission-baseline.md:2046` |
-| policy-difference | `indirect-operand-residual` | 7 | `git-verbs.md:95` |
+| policy-difference | `indirect-operand-residual` | 7 | `contracts/verbs/git.md:95` |
 | policy-difference | `inline-interpreter-code` | 5 | `docs/explanation/admission-baseline.md:3107` |
 | policy-difference | `inline-interpreter-opaque` | 23 | `docs/explanation/admission-baseline.md:522-525` |
 | policy-difference | `interpreter-inline-code` | 2 | `bin/library-admission.sh:1182` |

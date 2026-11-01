@@ -13,6 +13,34 @@ CLAUDE_CONFIG_DIR="$(CDPATH='' cd -P -- "$CLAUDE_CONFIG_DIR" && pwd -P)"; export
 
 t_table "$CLAUDE_CONFIG_DIR/bin/admission-bash.sh" "$T_ROOT/tests/admission/bash/gate.jsonl"
 
+# harbor#1420: a refusal's own text must be a command that runs as given. The first stderr line is the reason;
+# the second is floor_block's generic `! <command>` footnote and is not the refusal's.
+t_section "refusal text: the printed command is runnable (harbor#1420)"
+_reason() { jq -cn --arg c "$1" '{tool_name:"Bash",tool_input:{command:$c}}' \
+  | sh "$CLAUDE_CONFIG_DIR/bin/admission-bash.sh" 2>&1 >/dev/null | sed -n 1p; }
+_m="$(_reason 'gh pr merge 12 --repo o/r')"
+t_has "merge-raw: absolute gate-merge.sh with the repo and PR from argv" "$_m" "run exactly: $CLAUDE_CONFIG_DIR/bin/gate-merge.sh o/r 12"
+t_hasnt "merge-raw: no placeholder" "$_m" "<"
+_m="$(_reason 'gh pr merge --squash -R o/r 12')"
+t_has "merge-raw: flags before the number do not hide it" "$_m" "$CLAUDE_CONFIG_DIR/bin/gate-merge.sh o/r 12"
+_m="$(_reason 'gh pr merge https://github.com/o/r/pull/12')"
+t_has "merge-raw: a PR URL gives repo and number" "$_m" "$CLAUDE_CONFIG_DIR/bin/gate-merge.sh o/r 12"
+_m="$(_reason 'gh pr merge')"
+t_hasnt "merge-raw: nothing in argv, still no placeholder" "$_m" "<"
+_m="$(_reason 'git push origin main')"
+t_hasnt "merge-raw (push to main): no placeholder" "$_m" "<"
+_m="$(_reason "sh /tmp/gate-merge.sh o/r 12")"
+t_has "gate-noncanonical: the bare command with the argv's arguments" "$_m" "run exactly, alone: $CLAUDE_CONFIG_DIR/bin/gate-merge.sh o/r 12"
+t_hasnt "gate-noncanonical: no placeholder" "$_m" "<"
+_m="$(_reason "env A=1 $CLAUDE_CONFIG_DIR/bin/gate-approve.sh merge o/r 12 0123456789abcdef0123456789abcdef01234567")"
+t_has "gate-noncanonical: gate-approve keeps its kind, PR and sha" "$_m" "$CLAUDE_CONFIG_DIR/bin/gate-approve.sh merge o/r 12 0123456789abcdef0123456789abcdef01234567"
+_m="$(_reason 'sh /tmp/gate-merge.sh')"
+t_hasnt "gate-noncanonical: argv without arguments, still no placeholder" "$_m" "<"
+_m="$(_reason "echo x > $CLAUDE_CONFIG_DIR/session-titles/abc.txt")"
+t_has "redirect-into-cfg on session-titles/: names the file-write tool" "$_m" "file-write tool"
+_m="$(_reason "echo x > $CLAUDE_CONFIG_DIR/notes.txt")"
+t_hasnt "redirect-into-cfg elsewhere: message unchanged" "$_m" "file-write tool"
+
 t_section "floor-install: the gate's tools installed beside the floor and named by the rules"
 for _g in library-gate.sh gate-classify.sh gate-merge.sh gate-approve.sh gate-queue.sh gate-merge-check.sh deploy-fleet.sh; do
   t_eq "$_g installed" yes "$([ -s "$CLAUDE_CONFIG_DIR/bin/$_g" ] && echo yes || echo no)"

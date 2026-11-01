@@ -88,8 +88,9 @@ if [ -n "$TX" ] && [ -r "$TX" ]; then
   # grep keeps only the few lines a rule can use, so jq parses a fraction of the window.
   WIN="${HARBOR_STATUS_WINDOW:-3000000}"
   case "$WIN" in ''|*[!0-9]*) WIN=3000000 ;; esac
-  # An AskUserQuestion is pending when it is the last thing the transcript says.
-  if tail -n 1 "$TX" 2>/dev/null | grep -q '"name":"AskUserQuestion"'; then ASKPEND=1; fi
+  # An AskUserQuestion is pending when the last line is an assistant tool_use of it. jq, not grep (harbor#1420):
+  # grep also matched the same text inside a tool's OUTPUT on that line.
+  if tail -n 1 "$TX" 2>/dev/null | jq -e '[.message.content[]? | select(type=="object" and .type=="tool_use" and .name=="AskUserQuestion")] | length > 0' >/dev/null 2>&1; then ASKPEND=1; fi
   # `jq -R` + `fromjson?`: the window's first line is cut mid-record and must not stop the parse.
   STREAM="$(tail -c "$WIN" "$TX" 2>/dev/null | grep -E '"name":"(Bash|Write|Edit|NotebookEdit)"|(passed|rules), [0-9]+ (failed|violations)|/pull/[0-9]|tasks/[A-Za-z0-9]+\.output' 2>/dev/null | jq -R -r 'fromjson? |
     if .type=="assistant" then

@@ -192,4 +192,33 @@ t_eq "R16 the worker produced one verdict per record" 2 "$_n_out"
 t_has "R16 an unparseable record gets an attributable ERROR verdict" \
   "$(printf 'this line is not json at all\n' | sh "$SRC/eval-replay-worker.sh" "$_bad/cfg" 2>/dev/null)" "$(printf '\tERROR\tno-id')"
 
+t_section "R17: --since windows the transcripts, and a TERM mid-build leaves nothing behind (harbor#1420)"
+_w="$TMP/win"; mkdir -p "$_w/projects/p"
+rec Bash '{"command":"window-old-cmd"}' > "$_w/projects/p/old.jsonl"
+rec Bash '{"command":"window-new-cmd"}' > "$_w/projects/p/new.jsonl"
+touch -t 202001010000 "$_w/projects/p/old.jsonl"
+HARBOR_SESSION_TRANSCRIPTS="$_w/projects" CLAUDE_CONFIG_DIR="$CFG" sh "$SRC/eval-replay-corpus.sh" --to "$_w/all.jsonl" >/dev/null 2>&1
+HARBOR_SESSION_TRANSCRIPTS="$_w/projects" CLAUDE_CONFIG_DIR="$CFG" sh "$SRC/eval-replay-corpus.sh" --to "$_w/win.jsonl" --since 7 >/dev/null 2>&1
+t_has "R17 without --since the old transcript is read" "$(cat "$_w/all.jsonl")" 'window-old-cmd'
+t_hasnt "R17 --since 7 drops a transcript modified in 2020" "$(cat "$_w/win.jsonl")" 'window-old-cmd'
+t_has "R17 --since 7 keeps the fresh transcript" "$(cat "$_w/win.jsonl")" 'window-new-cmd'
+t_exit "R17 --since refuses a non-number" 1 replay --since soon --report
+# A gitleaks stand-in that records its pid and hangs, so the build is mid-flight when TERM lands.
+_kb="$TMP/killbin"; mkdir -p "$_kb" "$TMP/killtmp"
+printf '#!/bin/sh\necho $$ > "%s/gl.pid"\nsleep 60\n' "$TMP/killtmp" > "$_kb/gitleaks"; chmod +x "$_kb/gitleaks"
+HARBOR_SESSION_TRANSCRIPTS="$_w/projects" CLAUDE_CONFIG_DIR="$CFG" TMPDIR="$TMP/killtmp" PATH="$_kb:$PATH" \
+  sh "$SRC/eval-replay.sh" --report >/dev/null 2>&1 &
+_kp=$!
+_i=0; while [ ! -s "$TMP/killtmp/gl.pid" ] && [ "$_i" -lt 40 ]; do sleep 1; _i=$((_i+1)); done
+t_eq "R17 the build is mid-flight before the TERM" yes "$(yn [ -n "$(find "$TMP/killtmp" -name 'helm-replay-build.*')" ])"
+kill -TERM "$_kp"
+_i=0; while kill -0 "$_kp" 2>/dev/null && [ "$_i" -lt 10 ]; do sleep 1; _i=$((_i+1)); done
+_alive=no; kill -0 "$_kp" 2>/dev/null && { _alive=yes; kill -KILL "$_kp" 2>/dev/null; }
+wait "$_kp" 2>/dev/null
+t_eq "R17 a TERM stops the run within 10s" no "$_alive"
+t_eq "R17 a TERM leaves no helm-replay* directory" "" "$(find "$TMP/killtmp" -name 'helm-replay*')"
+_glp="$(cat "$TMP/killtmp/gl.pid" 2>/dev/null)"
+t_eq "R17 a TERM stops the builder's own children" no "$(kill -0 "${_glp:-999999}" 2>/dev/null && echo yes || echo no)"
+[ -z "$_glp" ] || kill "$_glp" 2>/dev/null
+
 t_done

@@ -785,12 +785,12 @@ fi
 # NOTHING RENDERS WHEN THE PIN HOLDS. That is this file's rule everywhere else and
 # the pin is no longer the exception: a token whose steady state is "fine" is
 # wallpaper by the third session, and wallpaper is how a real alarm gets missed.
-sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
+# No helper: the statusline is one file by design (a `.` per tick costs a fork), so its one hash is spelled inline (harbor#1392).
 if [ -f "$CFG/settings.json" ] && command -v jq >/dev/null 2>&1; then
   if [ -f "$CFG/.helm-floor-teeth" ]; then
     pinned="$(cat "$CFG/.helm-floor-teeth" 2>/dev/null || true)"
     live="$(jq -S '{deny:.permissions.deny, locks:{bypass:.permissions.disableBypassPermissionsMode, auto:.permissions.disableAutoMode}}' \
-              "$CFG/settings.json" 2>/dev/null | sha || true)"
+              "$CFG/settings.json" 2>/dev/null | { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; } | awk '{print $1}' || true)"
     # The hash is still computed on the holding path even though nothing renders:
     # it is what decides that nothing should render, and skipping it would turn a
     # verified all-clear into an assumed one.

@@ -58,6 +58,11 @@ tx asked "$(tu c1 2020-01-01T00:00:00.000Z 'ls')" "$(tr_ c1 ok)" "$(ask)"
 run s-ask asked 'Pick one.'; t_eq "a turn ending on an AskUserQuestion is waiting-operator" "waiting-operator W-ask" "$(rec s-ask state) $(rec s-ask reason)"
 tx answered "$(ask)" "$(tr_ q1 yes)"
 run s-ans answered 'Thanks.'; t_eq "an answered AskUserQuestion is not" idle "$(rec s-ans state)"
+# harbor#1420: the same name inside a tool's OUTPUT on the last line is not a pending question.
+echoed() { jq -nc '{type:"user",message:{content:[{type:"tool_result",tool_use_id:"q9",content:"ok"}]},toolUseResult:{name:"AskUserQuestion"}}'; }
+tx echoed "$(tu c2 2020-01-01T00:00:00.000Z 'ls')" "$(echoed)"
+t_has "the fixture line carries the literal name in its output" "$(echoed)" '"name":"AskUserQuestion"'
+run s-echo echoed 'Done.'; t_eq "AskUserQuestion text inside a tool output is not waiting-operator" idle "$(rec s-echo state)"
 
 t_section "blocked: SG-2, and it agrees with admission-stop.sh on the same transcript"
 tx red "$(tu c2 2020-01-01T00:00:01.000Z 'sh tests/x-test.sh')" "$(tr_ c2 'x-test: 3 passed, 1 failed')"

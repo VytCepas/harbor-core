@@ -36,19 +36,19 @@ t_has "B8 the report names the changed path" "$(b8run)" 'CLAUDE.md'
 t_eq "B8 instruction drift is ADVISORY, never blocking" unset "$(cont8)"
 mkdir -p "$B8/skills/evil"; printf 'name: evil\n' > "$B8/skills/evil/SKILL.md"
 t_has "B8 an added skill is reported" "$(b8run)" 'skills/evil/SKILL.md'
-pin8
-t_eq "B8 silent after an explicit re-pin" "" "$(b8run)"
+pin8; t_eq "B8 silent after an explicit re-pin" "" "$(b8run)"
 # harbor#135: the auto-memory is watched, but reported in its own sentence.
 mkdir -p "$B8/projects/-Users-x/memory"
 printf 'name: a\n' > "$B8/projects/-Users-x/memory/a.md"
-pin8
-t_eq "B8-135 silent after pinning a config that has a memory dir" "" "$(b8run)"
+pin8; t_eq "B8-135 silent after pinning a config that has a memory dir" "" "$(b8run)"
 printf 'name: a, edited by the model\n' > "$B8/projects/-Users-x/memory/a.md"
 t_has "B8-135 a memory-only write is reported as auto-memory" "$(b8run)" 'auto-memory changed'
 t_hasnt "B8-135 a memory-only write does not say INSTRUCTION SURFACES" "$(b8run)" 'INSTRUCTION SURFACES changed'
 t_eq "B8-135 memory drift is advisory" unset "$(cont8)"
-pin8
-t_eq "B8-135 memory drift clears on an explicit re-pin" "" "$(b8run)"
+# harbor#1420: the over-budget advisory reads index.bytes, not the last "bytes" in the document.
+printf '#!/bin/sh\necho %s\n' "'{\"index\":{\"bytes\":14000,\"allowance\":13050,\"over\":true},\"full_index\":{\"tiered\":true},\"other\":{\"bytes\":7}}'" > "$B8/bin/memory-store-check.sh"; chmod +x "$B8/bin/memory-store-check.sh"
+t_has "B8-1420 the over-budget advisory names index.bytes and the allowance" "$(b8run)" '14000 B against 13050 B'; t_hasnt "B8-1420 a later bytes field does not replace index.bytes" "$(b8run)" '7 B against'; t_has "B8-1420 a tiered index is told to move more pointers" "$(b8run)" 'move more pointers to INDEX-FULL.md'; rm -f "$B8/bin/memory-store-check.sh"
+pin8; t_eq "B8-135 memory drift clears on an explicit re-pin" "" "$(b8run)"
 _i135=1
 while [ "$_i135" -le 8 ]; do printf 'm%s\n' "$_i135" > "$B8/projects/-Users-x/memory/m$_i135.md"; _i135=$((_i135 + 1)); done
 printf 'and one more instruction\n' >> "$B8/CLAUDE.md"

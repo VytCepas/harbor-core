@@ -401,28 +401,28 @@ NEW="$(printf '%s' "$NEW" | jq --argjson a "$GATE_ASK" --argjson l "$GATE_ALLOW"
   .permissions.ask = (((.permissions.ask // []) + $a) | unique)
   | .permissions.allow = (((.permissions.allow // []) + $l) | unique)')"
 
-# THE GIT VERBS (harbor#1291). contracts/git-verbs.md is the one list of git shapes, and these rules are
-# DERIVED from its `allow` and `ask` rows rather than copied here, so the register cannot say one thing while
-# settings.json does another; tests/admission/git/verbs.test.sh holds the register, these rules and guard-bash's
-# read-only git list to one another. Append-only like everything above. A row whose spelling does not start
-# `git <subcommand>` is skipped, never trusted: a leading flag or wildcard (`git -C * log *`) lets the `*`
-# absorb `-c core.pager=<cmd>`, which is how a read becomes arbitrary execution. Run from an installed copy
-# with no contracts/ beside it, nothing is derived and nothing is removed. The reader is install-lib's
-# il_git_verbs, because floor-uninstall takes the same rules back out.
-GIT_ALLOW='[]'; GIT_ASK='[]'
-if [ -f "$IL_GIT_VERBS" ]; then
+# THE VERB REGISTERS (harbor#1291, #1419). contracts/verbs/*.md hold one list of command shapes per CLI, and these
+# rules are DERIVED from their `allow` and `ask` rows rather than copied here, so a register cannot say one thing
+# while settings.json does another; tests/admission/git/verbs.test.sh and tests/admission/verbs/registers.test.sh hold
+# each register and these rules to one another. Append-only like everything above. A row whose spelling does not
+# start `<cli> <subcommand>` is skipped, never trusted: a leading flag or wildcard (`git -C * log *`) lets the `*`
+# absorb `-c core.pager=<cmd>`, which is how a read becomes arbitrary execution. Run from an installed copy with no
+# contracts/ beside it, nothing is derived and nothing is removed. The reader is install-lib's il_verbs, because
+# floor-uninstall takes the same rules back out.
+VERB_ALLOW='[]'; VERB_ASK='[]'
+if [ -d "$IL_VERBS_DIR" ]; then
   for _gvp in allow ask; do
-    _gvr="$(il_git_verbs "$_gvp")"
-    printf '%s\n' "$_gvr" | sed -n 's/^BAD	//p' | while IFS= read -r _e; do
-      log_warn "git-verbs: an $_gvp row must start 'git <subcommand>' and carry no <>|;&\$, so it is skipped: $_e"
+    _gvr="$(il_verbs "$_gvp")"
+    printf '%s\n' "$_gvr" | awk -F'\t' '$1 == "BAD" { print $3 "\t" $2 }' | while IFS='	' read -r _f _e; do
+      log_warn "verbs/$_f: an $_gvp row must start '<cli> <subcommand>' and carry no <>|;&\$, so it is skipped: $_e"
     done
-    _gvj="$(printf '%s\n' "$_gvr" | sed -n 's/^OK	//p' | jq -Rsc 'split("\n") | map(select(length > 0) | "Bash(\(.))")')"
-    if [ "$_gvp" = allow ]; then GIT_ALLOW="$_gvj"; else GIT_ASK="$_gvj"; fi
+    _gvj="$(printf '%s\n' "$_gvr" | awk -F'\t' '$1 == "OK" { print $2 }' | jq -Rsc 'split("\n") | map(select(length > 0) | "Bash(\(.))")')"
+    if [ "$_gvp" = allow ]; then VERB_ALLOW="$_gvj"; else VERB_ASK="$_gvj"; fi
   done
 else
-  log_note "git-verbs: no register at $IL_GIT_VERBS (an installed copy), so no git allow or ask rule is derived"
+  log_note "verbs: no registers at $IL_VERBS_DIR (an installed copy), so no allow or ask rule is derived from them"
 fi
-NEW="$(printf '%s' "$NEW" | jq --argjson a "$GIT_ASK" --argjson l "$GIT_ALLOW" '
+NEW="$(printf '%s' "$NEW" | jq --argjson a "$VERB_ASK" --argjson l "$VERB_ALLOW" '
   .permissions.ask = (((.permissions.ask // []) + $a) | unique)
   | .permissions.allow = (((.permissions.allow // []) + $l) | unique)')"
 
@@ -577,8 +577,8 @@ log_head "B1 · proposed deny hard stops for $S"
 printf '%s' "$ADD" | jq -r '.[]' | while IFS= read -r _e; do log_note "+ $_e"; done
 printf '%s' "$GATE_ASK" | jq -r '.[]' | while IFS= read -r _e; do log_note "ask rule (approval gate): $_e"; done
 printf '%s' "$GATE_ALLOW" | jq -r '.[]' | while IFS= read -r _e; do log_note "allow rule (approval gate): $_e"; done
-printf '%s' "$GIT_ASK" | jq -r '.[]' | while IFS= read -r _e; do log_note "ask rule (git-verbs): $_e"; done
-printf '%s' "$GIT_ALLOW" | jq -r '.[]' | while IFS= read -r _e; do log_note "allow rule (git-verbs): $_e"; done
+printf '%s' "$VERB_ASK" | jq -r '.[]' | while IFS= read -r _e; do log_note "ask rule (verbs): $_e"; done
+printf '%s' "$VERB_ALLOW" | jq -r '.[]' | while IFS= read -r _e; do log_note "allow rule (verbs): $_e"; done
 _new_e="$(jq -n --argjson old "$(jq '.permissions.deny // []' "$S")" --argjson add "$ADD" '$add - $old | .[]' -r)"
 if [ -n "$_new_e" ]; then
   printf '%s\n' "$_new_e" | while IFS= read -r _e; do log_note "new here (not already present): → $_e"; done

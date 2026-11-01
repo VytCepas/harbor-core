@@ -264,17 +264,17 @@ redproof "notifications are never read" case_finished 'finished: $f' 'finished: 
 # A Workflow's subagents, a Monitor one started, and a killed or resumed Workflow call leave no notification; the run's state file does.
 case_runs() { X="$1"; fresh; _w="$FIX/tr/p/S6"; mkdir -p "$_w/workflows" "$_w/subagents/workflows/wf_r1-a" "$_w/subagents/workflows/wf_r2-b"; : > "$_w/subagents/workflows/wf_r2-b/agent-AG2.jsonl"
   printf '{"runId":"wf_r1-a","status":"killed"}' > "$_w/workflows/wf_r1-a.json"; printf '{"runId":"wf_r2-b","status":"running"}' > "$_w/workflows/wf_r2-b.json"
-  for _a in AG1 AG2; do ev 2026-10-05T00:00:00Z agent.spawn "$_a" '{"session_id":"S6"}'; done
-  for _t in TM TW TX; do ev 2026-10-05T00:00:00Z tool.background.start "S6:$_t" '{"tool":"Workflow"}'; done
+  for _a in AG1 AG2; do ev 2026-10-05T00:00:00Z agent.spawn "$_a" '{"session_id":"S6"}'; done; for _t in TM TW TX; do ev 2026-10-05T00:00:00Z tool.background.start "S6:$_t" '{"tool":"Workflow"}'; done
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"TM","name":"Monitor"}]}}' > "$_w/subagents/workflows/wf_r1-a/agent-AG1.jsonl"
+  printf '%s\n' '{"type":"user","toolUseResult":{"tool_use_id":"TW","text":"see wf_r2-b"}}' > "$_w.jsonl"  # decoy: TW quoted in a tool OUTPUT beside the running run (harbor#1420)
   printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"TW","content":"Task ID: x1. Run wf_r1-a"}]}}' \
-    '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"TX","content":"Task ID: x2. Run wf_r2-b"}]}}' > "$_w.jsonl"
+    '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"TX","content":"Task ID: x2. Run wf_r2-b"}]}}' >> "$_w.jsonl"
   printf '[{"sessionId":"S6","pid":1}]' > "$FIX/sessions.json"; printf '[]' > "$FIX/agents.json"; rec >/dev/null; chk "a subagent of a finished run closes" closed "$(cur agent:AG1 state)"
   chk "the ledger names the workflow" workflow "$(jq -r 'select(.obligation == "agent:AG1" and .to == "closed") | .source' "$OB/ledger.jsonl")"; chk "a Monitor a finished run's subagent started closes" closed "$(cur tool.background:S6:TM state)"
   chk "a Workflow call whose run was killed closes" closed "$(cur tool.background:S6:TW state)"; chk "a subagent of a run still going stays" overdue "$(cur agent:AG2 state)"; chk "a Workflow call whose run is still going stays" overdue "$(cur tool.background:S6:TX state)"; verdict; }
 t_section "owner-session and claude-agents: a Workflow run's own state file says it ended"; t_eq "the real script" ok "$(case_runs "$BIN")"
 redproof "run state files are never read" case_runs 'IN("completed", "failed", "killed", "cancelled")) | .runId' 'IN("never")) | .runId'; redproof "a subagent is never mapped to its run" case_runs '-name "agent-$_id.jsonl"' '-name "never-$_id.jsonl"'
-redproof "a Workflow call is never mapped to its run" case_runs 'grep -o '"'"'wf_[a-z0-9]*-[a-z0-9]*'"'"'' 'grep -o '"'"'never_[a-z]*'"'"''
+redproof "a Workflow call is never mapped to its run" case_runs 'capture("(?<r>wf_[a-z0-9]+-[a-z0-9]+)")' 'capture("(?<r>never_[a-z]+)")'
 
 t_section "approval: a merged or closed PR closes the approval waiting on it"
 t_eq "the real script" ok "$(case_approval_pr "$BIN")"

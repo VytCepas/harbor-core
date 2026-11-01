@@ -146,3 +146,4 @@ floor-uninstall.sh     IDLE  forwarding shim (harbor#996 rename-1329): a symlink
 floor-verify.sh        IDLE  forwarding shim (harbor#996 rename-1330): a symlink to bin/admission-verify.sh until 2026-12-01, the old path of rename-1330; nothing in the repo calls it
 port-drift.sh          IDLE  forwarding shim (harbor#996 rename-1426): a symlink to bin/drift-port-root.sh until 2026-12-01, the old path of rename-1426; nothing in the repo calls it
 gate-pr-plan.sh         VERB  the hand-over step: an agent runs it to derive the operator's merge, approve and re-run commands (harbor#1413); the Stop gate wiring is harbor#1284
+gate-repo-drift.sh       VERB  the operator runs it: each governed repo's GitHub rules, declared in ship.conf, against live, with the commands that close each drift (harbor#1418); not scheduled until the operator says yes
