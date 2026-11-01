@@ -9,15 +9,15 @@
 
 # The caller variables t_init keeps (lint C10 reads this line): status-gen's re-entry marker must
 # reach a suite it runs and that suite's children, or the suite runs status-gen back (harbor#288).
-T_PASS_ENV='HARBOR_IN_SUITE'
+T_PASS_ENV='HARBOR_TEST_IN_SUITE'
 
 t_init() { # [name] — defaults to the file name without .sh
   T_NAME="${1:-$(basename "$0" .sh)}"
   T_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-  while [ "$T_ROOT" != / ] && [ ! -f "$T_ROOT/CONTRACTS/suites.txt" ]; do
+  while [ "$T_ROOT" != / ] && [ ! -f "$T_ROOT/contracts/suites.txt" ]; do
     T_ROOT="$(dirname "$T_ROOT")"
   done
-  if [ ! -f "$T_ROOT/CONTRACTS/suites.txt" ]; then
+  if [ ! -f "$T_ROOT/contracts/suites.txt" ]; then
     # A suite the box carries sets T_STANDALONE=1 (harbor#727): with no checkout, its root is the dir above its own.
     [ "${T_STANDALONE:-0}" = 1 ] || { echo "$T_NAME: repo root not found" >&2; exit 2; }
     T_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
@@ -33,7 +33,7 @@ t_init() { # [name] — defaults to the file name without .sh
   PATH="$T_BIN:$PATH"
   export HOME CLAUDE_CONFIG_DIR TMPDIR PATH
   # Knobs from the caller's shell must not decide a verdict here: every HELM_*, HARBOR_* (CI's
-  # HARBOR_SUITE_COUNTS cost floor.status-test 4 passes, harbor#773) and GIT_* (a suite's own
+  # HARBOR_STATUS_SUITE_COUNTS cost floor.status-test 4 passes, harbor#773) and GIT_* (a suite's own
   # `git -C "$T_TMP/…"` inherits GIT_DIR, harbor#824) and XDG_* (a runner's outranks HOME, harbor#865).
   for _v in $(env | sed -n -e 's/^\(HELM_[A-Za-z0-9_]*\)=.*/\1/p' -e 's/^\(HARBOR_[A-Za-z0-9_]*\)=.*/\1/p') \
             CLOUD_POSTURE CLOUDSDK_CONFIG FAST XDG_CONFIG_HOME XDG_CACHE_HOME XDG_DATA_HOME XDG_STATE_HOME \
@@ -43,6 +43,8 @@ t_init() { # [name] — defaults to the file name without .sh
   done
   # No suite drives the real Chrome: `harbor chrome attach` opens a window through AppleScript.
   HARBOR_OSASCRIPT=false; export HARBOR_OSASCRIPT
+  # No suite reads the real credential store: a store-reading tool's case brings its own stub (harbor#1205).
+  HARBOR_SECRET_BIN="$T_TMP/no-secret-store"; export HARBOR_SECRET_BIN
   T_PASS=0; T_FAIL=0; T_SEC=""; T_SEC_N=0
   _t_cfg > "$T_TMP/.cfg.before"  # the repo's shared config, before the suite touches anything (harbor#1152)
 }
@@ -69,6 +71,8 @@ t_section() { # <title>
 }
 _t_close() { [ -z "$T_SEC" ] || [ "$T_SEC_N" -gt 0 ] || t_fail "section ran no assertions"; }
 
+# The repo file an installed name ships from: bin/<name>, else its hook engine folder (D-88; il_src in bin/deploy-install-lib.sh).
+t_src() { if [ -f "$T_ROOT/bin/$1" ] || [ ! -f "$T_ROOT/hooks/${1%.*}/$1" ]; then printf '%s' "$T_ROOT/bin/$1"; else printf '%s' "$T_ROOT/hooks/${1%.*}/$1"; fi; }
 t_eq()    { [ "$3" = "$2" ] && t_pass || t_fail "$1 (want '$2', got '$3')"; }        # <label> <want> <got>
 t_has()   { case "$2" in *"$3"*) t_pass ;; *) t_fail "$1 (missing: $3)" ;; esac; }  # <label> <text> <needle>
 t_hasnt() { # a negative on empty output proves nothing, so empty fails (lint F9's point)
@@ -85,7 +89,7 @@ t_done() {
   _tk="$(_t_cfg_leak | sed 's/=.*//' | tr '\n' ' ')"
   [ -z "$_tk" ] || t_fail "wrote the shared git config of $T_ROOT (added: ${_tk% }) — a suite must touch only its temp repo (harbor#1152)"
   [ $((T_PASS + T_FAIL)) -gt 0 ] || t_fail "the suite ran no assertions"
-  # A failed suite's FAIL lines end in one fix line naming its file (CONTRACTS/logging.md, harbor#771).
+  # A failed suite's FAIL lines end in one fix line naming its file (contracts/logging.md, harbor#771).
   [ "$T_FAIL" -eq 0 ] || printf '  fix: none automatic — see %s\n' "$T_SELF" >&2
   if [ "${T_SMOKE:-0}" = 1 ]; then printf '%s smoke: %d passed, %d failed (NOT a full run)\n' "$T_NAME" "$T_PASS" "$T_FAIL"
   else printf '%s: %d passed, %d failed\n' "$T_NAME" "$T_PASS" "$T_FAIL"; fi
