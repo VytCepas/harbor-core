@@ -1518,6 +1518,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/drift/install/install.test.sh</code></td><td><code>bin/drift-install.sh tests/drift/install/install.test.sh bin/admission-verify.sh tests/lib/core.sh bin/check-registry-generate.sh</code></td></tr>
 <tr><td><code>tests/memory/route/route.test.sh</code></td><td><code>bin/memory-route.sh bin/library-log.sh tests/memory/route/route.test.sh bin/scope-roots.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/gate/pr-wait/pr-wait.test.sh</code></td><td><code>bin/gate-pr-wait.sh* bin/ci-lost-job.sh bin/gate-required-generate.sh bin/library-log.sh tests/gate/pr-wait/pr-wait.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/gate/pr-plan/pr-plan.test.sh</code></td><td><code>bin/gate-pr-plan.sh bin/library-log.sh bin/access-github-app/gh tests/gate/pr-plan/pr-plan.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/port-paths/port-paths.test.sh</code></td><td><code>bin/lint-port-paths.sh bin/library-log.sh bin/scope-roots.sh tests/lint/port-paths/port-paths.test.sh contracts/port-paths-exempt.tsv tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/drift/port-root/port-root.test.sh</code></td><td><code>bin/drift-port-root.sh bin/scope-roots.sh bin/library-log.sh contracts/roots.tsv contracts/private-layer.md tests/drift/port-root/port-root.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/ci/queue/queue.test.sh</code></td><td><code>bin/ci-queue.sh bin/library-log.sh tests/ci/queue/queue.test.sh tests/lib/core.sh</code></td></tr>
@@ -2560,6 +2561,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/gate-merge-stack.sh</code></td><td>gate-merge-stack.sh (harbor#1060) — merge a plan's PRs in order, squash only, each on its own green CI.</td></tr>
 <tr><td><code>bin/gate-merge.sh</code></td><td>gate-merge.sh (harbor#1018) — the unattended merge: a PR whose change touches no protected path, green on its</td></tr>
 <tr><td><code>bin/gate-merged-check.sh</code></td><td>merged-check (harbor#213) — answer "is this branch's work already in BASE?" by</td></tr>
+<tr><td><code>bin/gate-pr-plan.sh</code></td><td>gate-pr-plan.sh (harbor#1413) — how a pull request lands, derived from the live repo, never typed from memory.</td></tr>
 <tr><td><code>bin/gate-pr-wait.sh</code></td><td>gate-pr-wait.sh (harbor#552) — wait on a pull request until the FIRST thing that</td></tr>
 <tr><td><code>bin/gate-push.sh</code></td><td>gate-push.sh (harbor#1411) — run a repo's pre-push checks BEFORE git connects, then push in seconds.</td></tr>
 <tr><td><code>bin/gate-queue.sh</code></td><td>gate-queue.sh (harbor#1018) — the approvals that wait for the operator: the ONLY queue writer (ship contract §5b.9).</td></tr>

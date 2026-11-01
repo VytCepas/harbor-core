@@ -166,6 +166,7 @@ tests/admission/deliverables/deliverables.test.sh
 tests/drift/install/install.test.sh
 tests/memory/route/route.test.sh
 tests/gate/pr-wait/pr-wait.test.sh
+tests/gate/pr-plan/pr-plan.test.sh
 tests/lint/port-paths/port-paths.test.sh
 tests/drift/port-root/port-root.test.sh
 tests/ci/queue/queue.test.sh
