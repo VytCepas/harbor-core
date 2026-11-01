@@ -160,7 +160,9 @@
 /bin/gate-push.sh @VytCepas
 /bin/gate-queue.sh @VytCepas
 /bin/gate-register-derive.sh @VytCepas
+/bin/gate-repo-drift.sh @VytCepas
 /bin/gate-required-generate.sh @VytCepas
+/bin/gate-verbs.sh @VytCepas
 /bin/gcloud @VytCepas
 /bin/gcloud-credentials @VytCepas
 /bin/govern-hook.sh @VytCepas
@@ -169,6 +171,7 @@
 /bin/library-alert.sh @VytCepas
 /bin/library-fs.sh @VytCepas
 /bin/library-gate.sh @VytCepas
+/bin/library-repo-rules.sh @VytCepas
 /bin/lint-adoption.sh @VytCepas
 /bin/lint-comment-commands.awk @VytCepas
 /bin/lint-comment.sh @VytCepas

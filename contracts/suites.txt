@@ -167,6 +167,7 @@ tests/drift/install/install.test.sh
 tests/memory/route/route.test.sh
 tests/gate/pr-wait/pr-wait.test.sh
 tests/gate/pr-plan/pr-plan.test.sh
+tests/gate/repo-drift/repo-drift.test.sh
 tests/lint/port-paths/port-paths.test.sh
 tests/drift/port-root/port-root.test.sh
 tests/ci/queue/queue.test.sh
@@ -398,6 +399,7 @@ tests/lint/share/check.test.sh
 tests/lint/wired/registered.test.sh
 tests/doc/fresh-verify/fresh-verify.test.sh
 tests/admission/git/verbs.test.sh
+tests/admission/verbs/registers.test.sh
 tests/admission/destroy/snapshot.test.sh
 tests/ci/suite-cache/cache.test.sh
 tests/alert/lib/chain.test.sh

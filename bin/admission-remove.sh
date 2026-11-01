@@ -108,12 +108,12 @@ JQ_DEFS='
     | any($n[]; IN($del[])) or any($rows[]; .ev == $ev and .argv == $n);
   def arr: if type == "array" then . else [] end;
   def gate_rule: type == "string" and ((startswith("Bash(" + $gdir + "/bin/gate-") or startswith("Bash(" + $gdir + "/bin/deploy-fleet.sh ")) or IN($gv[]));'
-# The git-verbs rules floor-deny derived (harbor#1291), read from the same register by the same reader. An identical
+# The verb-register rules floor-deny derived (harbor#1291, #1419), read from the same registers by the same reader. An identical
 # rule the operator added by hand cannot be told apart, so it goes too; the dry run lists every one first.
-GV_JSON="$( { il_git_verbs allow; il_git_verbs ask; } | sed -n 's/^OK	//p' | jq -Rsc 'split("\n") | map(select(length > 0) | "Bash(\(.))")')"
+GV_JSON="$( { il_verbs allow; il_verbs ask; } | awk -F'\t' '$1 == "OK" { print $2 }' | jq -Rsc 'split("\n") | map(select(length > 0) | "Bash(\(.))")')"
 _floor_jq() { jq -r --argjson del "$DEL_JSON" --argjson rows "$ROWS_JSON" --argjson gv "$GV_JSON" --arg gdir "$DIR" "$JQ_DEFS $1" "$2"; }
 # The approval gate's ask and allow rules (harbor#1018) name files this removes, so they go with them, and so do the
-# git-verbs rules floor-deny added; an ask list left empty goes too, because the install created it.
+# verb-register rules floor-deny added; an ask list left empty goes too, because the install created it.
 GATE_RULES_JQ='[(.permissions.ask // [] | arr | .[]), (.permissions.allow // [] | arr | .[]) | select(gate_rule)] | .[]'
 GATE_STRIP_JQ='if (.permissions | type) == "object" then
     (if (.permissions.ask | type) == "array" then .permissions.ask |= map(select(gate_rule | not)) else . end)
@@ -143,7 +143,7 @@ if [ -n "$REMOVE" ]; then
 $REMOVE
 EOF
 else log_ok "no floor hook is wired"; fi
-_floor_jq "$GATE_RULES_JQ" "$S" 2>/dev/null | while IFS= read -r _l; do log_note "approval-gate or git-verbs rule to remove: $_l"; done
+_floor_jq "$GATE_RULES_JQ" "$S" 2>/dev/null | while IFS= read -r _l; do log_note "approval-gate or verb-register rule to remove: $_l"; done
 _n=0
 for _f in $DEL; do if [ -e "$DIR/bin/$_f" ]; then log_note "floor file to remove: bin/$_f"; _n=$((_n+1)); fi; done
 for _f in $STATE; do if [ -e "$DIR/$_f" ]; then log_note "floor file to remove: $_f"; _n=$((_n+1)); fi; done

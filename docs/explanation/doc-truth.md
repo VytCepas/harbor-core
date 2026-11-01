@@ -67,3 +67,75 @@ without being paid for in every session's prefix.
 `docs/generated/status.md` is **generated** and is the only place Harbor states a number about
 itself; a document that wants to quote a count links to it. Lint rules
 **T1/T2/T3** enforce that.
+
+## The reasoning the constitution no longer carries
+
+Moved out of `policy/constitution.md` § *Fix the system, not your notes* on
+2026-11-01 (harbor#1392), when the resident file was cut to 15 KB. Every bolded
+rule stayed there; these are the sentences that explained them.
+
+**When something fails** — a rule missed, a behaviour recurring — the fix goes
+where it structurally lives.
+
+**Derive, don't state.** A count, a status, or a path written into prose is a
+*copy*, and copies drift silently while reading correctly.
+
+**A magnitude carries its command.** A number in prose that a reader would act
+on — a count, a share, a rate — is that copy with consequences attached, and the
+constitution has been caught carrying three of them. Either the command sits
+beside the number so a reader can re-run it, or the number goes and the command
+stays. A magnitude with neither is a claim with no falsifier, which №2.4 already
+forbids everywhere else. Lint MAG1 checks it.
+
+**A rule with no mechanism.** If you write a rule and cannot name what fails when
+it is broken, you have written documentation, not a rule.
+
+**Scope is derived.** The quantifier in *every* or *no* is a claim about a set, so
+the set has to be enumerated by the mechanism rather than assumed by the author.
+Four rules were found narrower than their own titles by four unrelated methods —
+a header read to a line limit, a rule matching its own comment, a pattern that
+missed the live case, and three globs covering less than the rule claimed. Each
+read as a passing rule. A rule whose declared scope and mechanical scope can
+differ has a silent failure mode that no green run will ever show.
+
+**The moment of use.** Every gate can be green and every rule correct while the
+thing they protect never reaches the session that needs it. The honest state is
+whatever the check says now, not what a paragraph remembers. The wiring
+checklist names what a repo, a skill, a client, a check or a pack must reach.
+
+**The registry.** A monitor only its author knows about is a liability the moment
+that author moves on: it fires into a channel nobody owns, it goes stale
+silently, and the one person who could switch it off does not know it exists. The
+entry names what is watched, on what schedule, where it notifies, what a red
+actually means, and the exact command to disable it. Every notification quotes
+the id, so the path from an alert back to the thing that raised it, and forward
+to turning that thing off, is two lookups rather than a search. If the only way
+to work out whether an alert still matters is to open the code, the registry has
+failed and the check is the liability it was built to prevent.
+
+**A finding's destination.** A detector whose output goes nowhere is the same
+wish with more machinery, one level down: it runs, it is correct, and it changes
+nothing. So a new check declares where its findings land and who is expected to
+read them — a person, a ticket, a repair. A detector that reprints its whole
+finding set every run has no way to distinguish a new problem from a standing
+one, and trains its reader to skip the block. Growth is what this defends: the
+tenth check is where an unregistered set of checks stops being manageable, and by
+then nobody remembers what the first three watch. One registry per box, never one
+per client or per repo, or the registry becomes the thing that needs a registry.
+
+**A harness memo last.** A preference that belongs in a config file, a lint rule,
+or a hook is a missed system patch when it goes into an assistant's scratch
+memory instead.
+
+**Human-gated encoding.** The system may observe continuously and propose in
+batch. Unreviewed signal applied at machine speed is noise becoming doctrine, in
+the layer meant to be the last line of defence — and Harbor has the receipt: one
+pass's fixes were applied confidently and the next pass found defects **caused by
+them**, with a green suite throughout. The exempt self-repair is the narrow,
+deterministic kind: a lost exec bit, a stale cache.
+
+**The exemption list.** Which repairs are narrow and deterministic enough to run
+unattended is written down once, by a person. An un-enumerated exemption is one
+of two things and you cannot tell which from here: dead, because nothing ever
+claims it, or unbounded, because anything can. A system that decides at runtime
+whether its own fix is safe to apply has promoted an observation into policy.

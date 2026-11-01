@@ -27,7 +27,9 @@ DIR="$(CDPATH= cd -- "${DIR:-/}" && pwd)"
 . "$DIR/library-admission.sh"
 # harbor#1390: a hook run carries a session id, and only a session records what B8 named (see B8 below). A terminal
 # stdin is a hand run with no payload, never something to wait on.
-FLOOR_IN=''; [ -t 0 ] || floor_read_stdin || FLOOR_IN=''
+FLOOR_IN=''
+# shellcheck disable=SC2034 # FLOOR_IN is read by floor_field in library-admission.sh, not here.
+[ -t 0 ] || floor_read_stdin || FLOOR_IN=''
 SELF_SID="$(floor_field '.session_id')"
 case "$SELF_SID" in *[!A-Za-z0-9_-]*) SELF_SID='' ;; esac
 
@@ -491,12 +493,13 @@ if [ -f "$CFG/.helm-instructions.sha256" ]; then
   # silently disagrees.
   if [ "${_nmem:-0}" -gt 0 ] && [ -x "$CFG/bin/memory-store-check.sh" ]; then
     _sc="$(sh "$CFG/bin/memory-store-check.sh" --json 2>/dev/null || true)"
-    case "$_sc" in
-      *'"over":true'*)
-        _ib="$(printf '%s' "$_sc" | sed -n 's/.*"bytes":\([0-9]*\).*/\1/p' | head -1)"
-        _ia="$(printf '%s' "$_sc" | sed -n 's/.*"allowance":\([0-9]*\).*/\1/p' | head -1)"
-        case "$_sc" in
-          *'"tiered":true'*) _ihow="move more pointers to INDEX-FULL.md" ;;
+    # jq, not a greedy regex (harbor#1420): that read the last byte-count in the document, not index.bytes.
+    case "$(printf '%s' "$_sc" | jq -r '.index.over // false' 2>/dev/null)" in
+      true)
+        _ib="$(printf '%s' "$_sc" | jq -r '.index.bytes // empty' 2>/dev/null | head -1)"
+        _ia="$(printf '%s' "$_sc" | jq -r '.index.allowance // empty' 2>/dev/null | head -1)"
+        case "$(printf '%s' "$_sc" | jq -r '.full_index.tiered // false' 2>/dev/null)" in
+          true) _ihow="move more pointers to INDEX-FULL.md" ;;
           *)                 _ihow="tier it — keep the always-on pointers in MEMORY.md and move the rest to INDEX-FULL.md, which is searched and never loaded" ;;
         esac
         ADVISORY="${ADVISORY:+$ADVISORY; }the memory INDEX is OVER its allowance (${_ib:-?} B against ${_ia:-?} B) — that overage is spent before your first word in EVERY session; $_ihow, or raise HARBOR_CONTEXT_CEILING deliberately. What to move: sh $CFG/bin/memory-store-check.sh"

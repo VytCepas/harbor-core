@@ -729,7 +729,11 @@ read_finished() {
       _hit="$(find "$_sd/subagents/workflows" -name "agent-$_id.jsonl" -type f 2>/dev/null | head -n 1)"
       [ -n "$_hit" ] || _hit="$(find "$_sd/subagents/workflows" -name '*.jsonl' -type f -exec grep -lF "$_id" {} + 2>/dev/null | head -n 1)"
       if [ -n "$_hit" ]; then _run="${_hit%/*}"; _run="${_run##*/}"
-      else _run="$(grep -F "\"tool_use_id\":\"$_id\"" "$_tf" 2>/dev/null | grep -o 'wf_[a-z0-9]*-[a-z0-9]*' | head -n 1)"; fi
+      # grep only narrows the transcript; jq reads the tool_result's own text (harbor#1420), so the same id quoted
+      # in another field cannot name a different run.
+      else _run="$(grep -F "\"tool_use_id\":\"$_id\"" "$_tf" 2>/dev/null | jq -R -r --arg id "$_id" 'fromjson? | objects | .message? | objects | .content? | arrays | .[] | objects
+        | select(.type == "tool_result" and .tool_use_id == $id) | (.content | if type == "array" then map(.text? // "") | join("\n") else tostring end)
+        | capture("(?<r>wf_[a-z0-9]+-[a-z0-9]+)")? | .r' 2>/dev/null | head -n 1)"; fi
       [ -n "$_run" ] && grep -qxF "$_run" "$T/fin.runs" && printf '%s\tworkflow\n' "$_subj"
     done >> "$T/fin.ids"
   done

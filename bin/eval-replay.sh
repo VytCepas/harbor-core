@@ -4,6 +4,7 @@
 #   sh bin/eval-replay.sh --baseline    # record today's verdicts as the reference
 #   sh bin/eval-replay.sh               # re-run and report the DELTA vs the baseline
 #   sh bin/eval-replay.sh --report      # per-rule counts for the current run only
+#   sh bin/eval-replay.sh --since 14 --report   # only transcripts modified in the last 14 days
 #
 # THE DELIVERABLE IS THE DELTA, NOT THE RATE. An absolute "the floor blocks 7.6%
 # of real traffic" is interesting once; what decides whether a rule change is an
@@ -59,6 +60,7 @@ BASELINE="$RP/baseline.tsv"
 LABELS="$RP/labels.tsv"
 MODE=diff
 LIMIT=0
+SINCE=0
 JOBS=6
 EXCL_LIST=""
 
@@ -68,6 +70,8 @@ while [ $# -gt 0 ]; do
     --report)   MODE=report ;;
     --labels)   MODE=labels ;;
     --limit)    shift; LIMIT="${1:-0}" ;;
+    # A time window on the transcripts read (harbor#1420): --limit cannot pick recent records.
+    --since)    shift; SINCE="${1:-0}" ;;
     # Collected into a file, not a string (pass-2 review): the string was expanded
     # unquoted on the way to the builder, so a pattern was pathname-expanded
     # against the caller's cwd and the exclusion silently vanished, and a pattern
@@ -76,9 +80,10 @@ while [ $# -gt 0 ]; do
 " ;;
     --jobs)     shift; JOBS="${1:-6}" ;;
     -h|--help)
-      echo "usage: eval-replay.sh [--baseline|--report|--labels] [--limit N] [--jobs N] [--exclude <glob>]..."
+      echo "usage: eval-replay.sh [--baseline|--report|--labels] [--limit N] [--since DAYS] [--jobs N] [--exclude <glob>]..."
       echo "  --exclude drops a project dir from the corpus. The per-project census is"
       echo "  printed on every run, so a corpus dominated by one project is visible."
+      echo "  --since limits the corpus to transcripts modified in the last DAYS days."
       echo "  The corpus is rebuilt from the transcripts on every run and deleted"
       echo "  on exit. Only $BASELINE persists, and it holds hashes, not commands."
       exit 0 ;;
@@ -87,11 +92,39 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+case "$SINCE" in ''|*[!0-9]*) die "--since takes a whole number of days: $SINCE" "sh $0 --since 14 --report" ;; esac
 command -v jq >/dev/null 2>&1 || die "jq is required" "$(pkg_hint jq)"
 
 TMP="${TMPDIR:-/tmp}/helm-replay.$$"
 mkdir -p "$TMP"
-trap 'chmod -R u+w "$TMP" 2>/dev/null; rm -rf "$TMP"' EXIT INT TERM
+# Kill-safe (harbor#1420): a signal kills every descendant of this shell, found by walking `ps` (no job
+# control: dash ignores `set -m` process groups), then removes both scratch dirs, so a stopped run leaves no
+# helm-replay* behind. The old bare INT/TERM trap ran while the builder was still writing.
+BPID=""
+cleanup() {
+  [ -z "$BPID" ] || rm -rf "${TMPDIR:-/tmp}/helm-replay-build.$BPID" 2>/dev/null
+  chmod -R u+w "$TMP" 2>/dev/null; rm -rf "$TMP"
+}
+descendants() { # <pid> -> every descendant pid, one per line
+  ps -A -o pid= -o ppid= 2>/dev/null | awk -v root="$1" '{ par[$1] = $2 }
+    END { for (p in par) { q = p; while (q in par) { if (par[q] == root) { print p; break }; q = par[q] } } }'
+}
+on_signal() {
+  trap '' INT TERM HUP
+  # A pass can miss a child the builder spawns between the snapshot and the kill, so repeat until none is left.
+  _n=0
+  while [ "$_n" -lt 10 ]; do
+    # The snapshot's own ps/awk/subshell are listed too; kill -0 keeps only what is still running.
+    _kids=""; for _k in $(descendants "$$"); do kill -0 "$_k" 2>/dev/null && _kids="$_kids $_k"; done
+    [ -n "$_kids" ] || break
+    # shellcheck disable=SC2086
+    kill -s TERM $_kids 2>/dev/null || :
+    _n=$((_n + 1)); sleep 0.1
+  done
+  exit 143
+}
+trap cleanup EXIT
+trap on_signal INT TERM HUP
 umask 077
 
 # A THROWAWAY config dir, never the operator's. The guards resolve their own
@@ -114,7 +147,11 @@ printf '%s' "$EXCL_LIST" > "$TMP/excl"
 set -- --to "$TMP/in.jsonl"
 [ "$LIMIT" -gt 0 ] && set -- "$@" --limit "$LIMIT"
 [ -s "$TMP/excl" ] && set -- "$@" --exclude-file "$TMP/excl"
-sh "$DIR/eval-replay-corpus.sh" "$@" > "$TMP/build.log" 2>&1 || {
+[ "$SINCE" -gt 0 ] && set -- "$@" --since "$SINCE"
+# Background + wait, so the trap fires at once instead of after the builder.
+sh "$DIR/eval-replay-corpus.sh" "$@" > "$TMP/build.log" 2>&1 &
+BPID=$!
+wait "$BPID" 2>/dev/null || {
   cat "$TMP/build.log"; die "corpus build failed" "sh $DIR/eval-replay-corpus.sh --to \"\${TMPDIR:-/tmp}/corpus.jsonl\""; }
 # The builder's report, less its own summary: this run ends with the one summary.
 grep -v '^replay-corpus: [0-9]* ok, ' "$TMP/build.log"

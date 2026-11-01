@@ -58,6 +58,7 @@ case "$CFG" in /*) ;; *) die "config dir must be absolute: $CFG" "CLAUDE_CONFIG_
 SRC_DIR="${HARBOR_SESSION_TRANSCRIPTS:-${HARBOR_TRANSCRIPTS:-$HOME/.claude/projects}}"
 OUT=""            # required: where to write. There is no default on purpose.
 LIMIT=0
+SINCE=0           # --since: only transcripts modified in the last N days (harbor#1420)
 EXCL_FILE=""      # --exclude-file: a caller-supplied file, one glob per line
 EXCL_LIST=""      # --exclude: collected IN MEMORY, materialised inside $TMP only
 
@@ -65,6 +66,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --to)      shift; OUT="${1:-}" ;;
     --limit)   shift; LIMIT="${1:-0}" ;;
+    --since)   shift; SINCE="${1:-0}" ;;
     # IN MEMORY, never a file at a predictable path (pass-3 review). The first
     # cut appended to `${TMPDIR:-/tmp}/helm-excl.$$` during ARGUMENT PARSING —
     # above `umask 077`, above the cleanup trap, and above the two ordinary
@@ -77,9 +79,10 @@ while [ $# -gt 0 ]; do
 " ;;
     --exclude-file) shift; EXCL_FILE="${1:-}" ;;
     -h|--help)
-      echo "usage: eval-replay-corpus.sh --to <path> [--limit N] [--exclude <glob>]... [--exclude-file <f>]"
+      echo "usage: eval-replay-corpus.sh --to <path> [--limit N] [--since DAYS] [--exclude <glob>]... [--exclude-file <f>]"
       echo "  Builds an EPHEMERAL corpus from $SRC_DIR at <path>."
       echo "  There is no durable output mode: the caller owns the path and its deletion."
+      echo "  --since limits the corpus to transcripts modified in the last DAYS days."
       echo "  --exclude drops project dirs matching a GLOB (exact name, or '*example*')."
       echo "  Every run"
       echo "  prints the per-project census, so contamination is visible in the output"
@@ -91,6 +94,9 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+case "$SINCE" in ''|*[!0-9]*) die "--since takes a whole number of days: $SINCE" "sh $0 --since 14 --help" ;; esac
+# find(1) age filter: every transcript walk below goes through $AGE (unquoted on purpose).
+AGE=""; [ "$SINCE" -gt 0 ] && AGE="-mtime -$SINCE"
 [ -d "$SRC_DIR" ] || die "no transcripts at $SRC_DIR" "HARBOR_SESSION_TRANSCRIPTS=<projects dir> sh $0 --help"
 command -v jq >/dev/null 2>&1 || die "jq is required" "$(pkg_hint jq)"
 
@@ -184,7 +190,7 @@ while IFS= read -r _d; do
 done < "$TMP/alldirs"
 
 extract() { # <tool-filter> <payload-expr>
-  { while IFS= read -r _d; do find "$_d" -name '*.jsonl' -type f -print0 2>/dev/null; done < "$TMP/dirs"; } \
+  { while IFS= read -r _d; do find "$_d" -name '*.jsonl' -type f $AGE -print0 2>/dev/null; done < "$TMP/dirs"; } \
     | xargs -0 -n1 awk 1 2>/dev/null \
     | jq -rcR "fromjson? // empty | select(.message.content?) | .message.content[]?
               | select(type==\"object\" and .type==\"tool_use\" and ($1))
@@ -417,7 +423,7 @@ fi
 # output instead of being discovered later by hand.
 log_note "census (Bash tool calls per project, unique payloads):"
 while IFS= read -r _d; do
-  _c="$(find "$_d" -name '*.jsonl' -type f -print0 2>/dev/null | xargs -0 -n1 awk 1 2>/dev/null \
+  _c="$(find "$_d" -name '*.jsonl' -type f $AGE -print0 2>/dev/null | xargs -0 -n1 awk 1 2>/dev/null \
         | jq -rcR "fromjson? // empty | select(.message.content?) | .message.content[]?
                    | select(type==\"object\" and .type==\"tool_use\" and .name==\"Bash\")
                    | .input.command | select(. != null) | @json" 2>/dev/null | sort -u | wc -l | tr -d ' ')"

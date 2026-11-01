@@ -112,8 +112,11 @@ rawhit() { printf '%s' "$CMD" | "$FLOOR_GREP" -iEq -- "$1"; }
 # floor_seg_shells_all_named_scripts refuses the exemption for `-s`, `-`,
 # /dev/stdin, an option-only invocation, and for a table it could not build —
 # so an oversized payload still blocks (QA plan R4).
-if hit '\|&?[[:space:]]*(((/[a-zA-Z0-9_/.-]*/)?(sudo|env|command|builtin|exec|nohup|stdbuf|nice|ionice|setsid|xargs|timeout))[[:space:]]+((-[^[:space:]]+|[0-9]+[smhd]?|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|--)[[:space:]]+([^-][^[:space:]]*[[:space:]]+)?)*)*(/[a-zA-Z0-9_/.-]*/)?(sh|bash|zsh|dash|ksh|fish|ash|csh|tcsh|\$SHELL|\$\{SHELL\})([[:space:];&|)<>]|$)' \
-   && ! floor_seg_shells_all_named_scripts; then
+# harbor#1420: the sink may follow a brace group, a subshell paren, `!`, assignments, or a `time`/`doas`-style wrapper.
+_PIPE_PRE='\|&?[[:space:]]*(\{[[:space:]]+|\(+[[:space:]]*|![[:space:]]+)*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(((/[a-zA-Z0-9_/.-]*/)?(sudo|env|command|builtin|exec|nohup|stdbuf|nice|ionice|setsid|xargs|timeout|time|doas|caffeinate|unshare|busybox))[[:space:]]+((-[^[:space:]]+|[0-9]+[smhd]?|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|--)[[:space:]]+([^-][^[:space:]]*[[:space:]]+)?)*)*(((/[a-zA-Z0-9_/.-]*/)?(flock|chroot))[[:space:]]+(-[^[:space:]]+[[:space:]]+)*[^-[:space:]][^[:space:]]*[[:space:]]+)?(/[a-zA-Z0-9_/.-]*/)?'
+if hit "${_PIPE_PRE}"'(sh|bash|zsh|dash|ksh|fish|ash|csh|tcsh|\$SHELL|\$\{SHELL\})([[:space:];&|)<>]|$)' \
+   && ! floor_seg_shells_all_named_scripts \
+   && ! floor_seg_all_inert; then  # harbor#1420: a quoted regex alternation is text, not a sink
   floor_block bash "pipe-to-shell (a pipeline's output executed as a shell script)" pipe-to-shell.flat
 fi
 # …and the shells are not the only sinks (harbor#1313). The builtins `source` and
@@ -125,10 +128,9 @@ fi
 # `-`, it executes the pipe; given code (-c/-e/-m) or a script it reads DATA there
 # (harbor#607), which floor_seg_interps_all_programmed separates by argv, as for
 # shells above.
-_PIPE_PRE='\|&?[[:space:]]*(((/[a-zA-Z0-9_/.-]*/)?(sudo|env|command|builtin|exec|nohup|stdbuf|nice|ionice|setsid|xargs|timeout))[[:space:]]+((-[^[:space:]]+|[0-9]+[smhd]?|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|--)[[:space:]]+([^-][^[:space:]]*[[:space:]]+)?)*)*(/[a-zA-Z0-9_/.-]*/)?'
 if hit "${_PIPE_PRE}(source|\\.)[[:space:]]+(--[[:space:]]+)?(/+dev/+(stdin|fd/+[0-9]+)|/+proc/+(self|[0-9]+)/+fd/+[0-9]+)([[:space:];&|)<>]|\$)" \
    || { hit "${_PIPE_PRE}(python[0-9.]*|pypy[0-9.]*|perl|ruby|node|nodejs|php|lua|luajit|osascript)([[:space:];&|)<>]|\$)" \
-        && ! floor_seg_interps_all_programmed; }; then
+        && ! floor_seg_interps_all_programmed && ! floor_seg_all_inert; }; then
   floor_block bash "pipe-to-shell (a pipeline's output executed as a program by a builtin or an interpreter reading stdin)" pipe-to-shell.flat
 fi
 # Fetch-then-execute, decoupled across the pipeline: curl -o p && sh p.
@@ -1160,7 +1162,9 @@ find_destroys_cfg \
 # The Playwright CLI or MCP run straight from a shell reaches the operator's
 # attached Chrome with none of `harbor chrome`'s verb, option and host
 # allowlists (harbor#835). The verb is the only way in; `node <path>` counts too.
-hit '(^|[;&|(`])[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(env[[:space:]]+([^[:space:]]+[[:space:]]+)*)?((bunx|npx|bun[[:space:]]+x|pnpm[[:space:]]+dlx|yarn[[:space:]]+dlx|npm[[:space:]]+exec)([[:space:]]+-[^[:space:]]+)*[[:space:]]+@playwright/(cli|mcp)|([^[:space:]]*/)?playwright-(cli|mcp)|node[[:space:]]+([^[:space:]]+[[:space:]]+)*[^[:space:]]*(@playwright/(cli|mcp)|playwright-(cli|mcp)|clidaemon\.js))([@/[:space:]]|$)' \
+# harbor#1420: a `-c` payload (`bash -c 'bunx @playwright/cli@$P …'`) and `--package=@playwright/cli@$P`
+# spell the same run, so the anchor accepts a -c flag and the package may follow --package.
+hit '(^|[;&|(`]|[[:space:]]-[A-Za-z]*c[[:space:]]+)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(env[[:space:]]+([^[:space:]]+[[:space:]]+)*)?((bunx|npx|bun[[:space:]]+x|pnpm[[:space:]]+dlx|yarn[[:space:]]+dlx|npm[[:space:]]+exec)([[:space:]]+-[^[:space:]]+)*[[:space:]]+((--package=|(-p|--package)[[:space:]]+))?@playwright/(cli|mcp)|([^[:space:]]*/)?playwright-(cli|mcp)|node[[:space:]]+([^[:space:]]+[[:space:]]+)*[^[:space:]]*(@playwright/(cli|mcp)|playwright-(cli|mcp)|clidaemon\.js))([@/[:space:]]|$)' \
   && floor_block bash "the Playwright CLI/MCP run directly skips harbor chrome's guardrails — use harbor chrome <verb>" playwright-direct.argv
 # ── THE APPROVAL GATE (harbor#1018, docs/design/approval-gate.md) ───────────
 # An `ask` rule on <cfg>/bin/gate-approve.sh is the operator's click, and an allow rule names gate-merge.sh. Rules
@@ -1248,6 +1252,71 @@ function judge(s,   n, w, i, j, p, k, prog, nx, redir, put) {
     if (lv && wr) { print "DEPLOY"; return } }
 }
 { line = $0; gsub(/\$\(|`|&&|\|\||[;|&()]/, "\n", line); m = split(line, seg, "\n"); for (z = 1; z <= m; z++) judge(seg[z]) }'
+# harbor#1420: a refusal that names a command the agent must guess re-blocks it (17 of 28 merge-raw blocks were
+# followed by another block). The hint is built from the refused argv, so it runs as printed; a field the argv
+# does not carry makes the whole hint fall back to words, never to a placeholder an agent would paste.
+GATE_HINT_AWK='function base(t) { sub(/.*\//, "", t); return t }
+function seg(s,   n, w, i, j, a, tool, kind, repo, pr, sha, np, pos, sel, m, u) {
+  gsub(/["\047\\]/, "", s); n = split(s, w, /[ \t]+/)
+  if (mode == "gate") {
+    for (i = 1; i <= n; i++) if (base(w[i]) == "gate-merge.sh" || base(w[i]) == "gate-approve.sh") break
+    if (i > n) return
+    tool = base(w[i]); repo = ""; pr = ""; sha = ""; kind = ""
+    for (j = i + 1; j <= n; j++) { a = w[j]
+      if (tool == "gate-approve.sh" && kind == "" && (a == "merge" || a == "deploy")) { kind = a; continue }
+      if (repo == "" && a ~ /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/) { repo = a; continue }
+      if (sha == "" && length(a) == 40 && a ~ /^[0-9a-f]+$/) { sha = a; continue }
+      if (pr == "" && a ~ /^[0-9]+$/) { pr = a; continue } }
+    if (tool == "gate-merge.sh" && repo != "" && pr != "") print tool " " repo " " pr
+    else if (kind == "merge" && repo != "" && pr != "" && sha != "") print tool " merge " repo " " pr " " sha
+    else if (kind == "deploy" && repo != "" && sha != "") print tool " deploy " repo " " sha
+    return }
+  for (i = 1; i <= n; i++) if (base(w[i]) == "gh") break
+  if (i > n) return
+  np = 0; repo = ""; pr = ""
+  for (j = i + 1; j <= n; j++) { a = w[j]
+    if (a == "-R" || a == "--repo") { repo = w[j + 1]; j++; continue }
+    if (a ~ /^--repo=/) { repo = substr(a, 8); continue }
+    if (a ~ /^-R./) { repo = substr(a, 3); continue }
+    if (a ~ /^(-b|--body|-t|--subject|-F|--body-file|--match-head-commit|-A|--author-email|--hostname)$/) { j++; continue }
+    if (a ~ /^-/) continue
+    pos[++np] = a }
+  if (pos[1] != "pr" || pos[2] != "merge") return
+  sel = pos[3]
+  if (sel ~ /^https?:\/\/[^\/]+\/[^\/]+\/[^\/]+\/pull\/[0-9]+/) {
+    m = sel; sub(/^https?:\/\/[^\/]+\//, "", m); split(m, u, "/"); repo = u[1] "/" u[2]; pr = u[4]; sub(/[^0-9].*/, "", pr) }
+  else if (sel ~ /^[0-9]+$/) pr = sel
+  if (pr == "") return
+  if (repo !~ /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/) repo = "-"
+  print repo " " pr }
+{ line = $0; gsub(/\$\(|`|&&|\|\||[;|&()]/, "\n", line); m = split(line, sg, "\n"); for (z = 1; z <= m; z++) seg(sg[z]) }'
+gate_cfg_phys() { _hc="$(floor_config_dir)"; CDPATH= cd -P -- "$_hc" 2>/dev/null && pwd -P || printf '%s\n' "$_hc"; }
+# gate_gh_merge_args — `owner/repo pr` from the refused merge argv, the repo from origin when argv has none; else nothing.
+gate_gh_merge_args() {
+  _hrp="$(printf '%s\n' "$TARGETS" | awk -v mode=gh "$GATE_HINT_AWK" 2>/dev/null | head -1)"
+  case "$_hrp" in
+    '- '*)
+      _horig="$(git remote get-url origin 2>/dev/null | sed -E 's#^.*github\.com[:/]##; s#/+$##; s#\.git$##')"
+      case "$_horig" in
+        */*/*|*[!A-Za-z0-9._/-]*|''|/*|*/) _hrp="" ;;
+        */*) _hrp="$_horig ${_hrp#- }" ;;
+        *) _hrp="" ;;
+      esac ;;
+  esac
+  printf '%s\n' "$_hrp"
+}
+# gate_merge_hint — what a refused agent should run instead of a raw merge, resolved from its own argv.
+gate_merge_hint() {
+  _hcfg="$(gate_cfg_phys)"; _hargs="$(gate_gh_merge_args)"
+  if [ -n "$_hargs" ]; then printf 'run exactly: %s/bin/gate-merge.sh %s' "$_hcfg" "$_hargs"
+  else printf 'run %s/bin/gate-merge.sh with the repo as OWNER/REPO and the PR number as two arguments' "$_hcfg"; fi
+}
+# gate_canon_hint — the canonical spelling of a refused gate-tool command, or words when argv lacks a field.
+gate_canon_hint() { # <cfg>
+  _hg="$(printf '%s\n' "$TARGETS" | awk -v mode=gate "$GATE_HINT_AWK" 2>/dev/null | head -1)"
+  if [ -n "$_hg" ]; then printf 'run exactly, alone: %s/bin/%s' "$1" "$_hg"
+  else printf 'run %s/bin/gate-merge.sh OWNER/REPO PR_NUMBER, or %s/bin/gate-approve.sh merge OWNER/REPO PR_NUMBER SHA, or %s/bin/gate-approve.sh deploy OWNER/REPO SHA, alone' "$1" "$1" "$1"; fi
+}
 case "$TARGETS" in
   *gate-approve*|*gate-merge*|*merge*|*--apply*|*--approved*|*--repin*|*api*|*push*|*alias*|*default-branch*|*graphql*)
     _gv="$(printf '%s\n' "$TARGETS" | awk -v q="'" "$GATE_ROUTE_AWK" 2>/dev/null | sort -u)"
@@ -1259,8 +1328,9 @@ case "$TARGETS" in
         case "$_gv" in *COPY*) _gok=0 ;; *) _gok=1 ;; esac
         case "$CMD" in *"
 "*) _gok=0 ;; esac
+        _ghint="$(gate_canon_hint "$_gcfg")"  # the message holds no inner quote, which the rule-coverage scan reads
         [ "$_gok" = 1 ] && printf '%s' "$CMD" | "$FLOOR_GREP" -Eq -- "$_gcanon" \
-          || floor_block bash "a gate tool runs only as the exact command its permission rule names: $_gcfg/bin/gate-approve.sh merge <owner/repo> <pr> <sha> | deploy <owner/repo> <sha>, or $_gcfg/bin/gate-merge.sh <owner/repo> <pr>, alone: never wrapped, copied or linked" gate-noncanonical.argv
+          || floor_block bash "a gate tool runs only as the exact command its permission rule names, never wrapped, copied or linked: $_ghint" gate-noncanonical.argv
         # an ask is auto-approved where no human can answer it (floor_no_human): the click is the whole gate (harbor#1018)
         case "$CMD" in "$_gcfg"/bin/gate-approve.sh\ *) if floor_no_human; then
           floor_block bash "gate-approve.sh needs a person to click its permission prompt, and nobody can answer one in a subagent, a workflow or an autonomous mode: hand the approve command to the operator" gate-nohuman.argv
@@ -1268,7 +1338,7 @@ case "$TARGETS" in
         ;;
     esac
     case "$_gv" in *MERGE*)
-      floor_block bash "a merge in a session goes through the approval gate, never gh pr merge, merge-check --merge or merge-stack merge: <cfg>/bin/gate-merge.sh <owner/repo> <pr>, which queues a protected PR for the operator" merge-raw.argv
+      floor_block bash "a merge in a session goes through the approval gate, never gh pr merge, merge-check --merge or merge-stack merge, which queues a protected PR for the operator: $(gate_merge_hint)" merge-raw.argv
         ;;
     esac
     case "$_gv" in *APPROVED*)
@@ -1285,7 +1355,11 @@ esac
 # Interpreter escape hatches with a dangerous token. The flag test accepts
 # BUNDLED forms (python3 -Ec, node --experimental -pe): requiring the flag as
 # its own token missed `python3 -Ec '…'` (red-team 2026-07-24).
-hit '(^|[^[:alnum:]_])python[0-9.]*([[:space:]]+-[A-Za-z]*)*[[:space:]]+-[A-Za-z]*c([[:space:]]).*([^A-Za-z0-9_.](exec|eval|compile)[[:space:]]*\(|__import__|import[[:space:],]+[^;)]*(socket|subprocess|pty|ctypes)|subprocess\.|os\.system|os\.popen|socket\.|pty\.spawn|shutil\.rmtree|open\([^)]*,[^)]*w)' \
+# harbor#1420: the flat regex spans `&&` and `;`, so text naming `eval(` beside a harmless -c fired it.
+# The table acquits only when python's own argv is clean and every other segment is an inert text consumer.
+_PYC_DANGER='([^A-Za-z0-9_.](exec|eval|compile)[[:space:]]*\(|__import__|import[[:space:],]+[^;)]*(socket|subprocess|pty|ctypes)|subprocess\.|os\.system|os\.popen|socket\.|pty\.spawn|shutil\.rmtree|open\([^)]*,[^)]*w)'
+hit '(^|[^[:alnum:]_])python[0-9.]*([[:space:]]+-[A-Za-z]*)*[[:space:]]+-[A-Za-z]*c([[:space:]]).*'"$_PYC_DANGER" \
+  && ! floor_seg_flat_clear '(/[a-zA-Z0-9_/.-]*/)?python[0-9.]*' "$_PYC_DANGER" \
   && floor_block bash "python -c invoking exec/subprocess/socket, or opening a file for write" python-c-exec.flat
 hit '(^|[^[:alnum:]_])(node|nodejs)([[:space:]]+-[A-Za-z-]*)*[[:space:]]+-[A-Za-z]*e([[:space:]]).*(child_process|require\(.?child|[^A-Za-z0-9_.](exec|eval)[[:space:]]*\(|net\.|writeFileSync|unlinkSync|rmSync)' \
   && floor_block bash "node -e invoking child_process/net/eval" node-e-exec.flat
@@ -3056,8 +3130,13 @@ cfg_redirect_outside_allowlist() {
     | "$FLOOR_GREP" -E -- "^${CFG_RE}" 2>/dev/null \
     | "$FLOOR_GREP" -Evq -- "^${CFG_RE}${CFG_SESSION_WRITABLE}" 2>/dev/null
 }
-cfg_redirect_outside_allowlist \
-  && floor_block bash "shell redirect writing inside the Helm config directory — §3 private state; only MEMORY/ and projects/ are session-writable" redirect-into-cfg.path
+# harbor#1420: 28 of 33 blocks were a redirect into session-titles/, the file the SessionStart note asks for.
+# Message only: the block stays, and the file-write tool is what the note meant.
+if cfg_redirect_outside_allowlist; then
+  _rtail="only MEMORY/ and projects/ are session-writable"
+  case "$CMD" in *session-titles/*) _rtail="a session title is written with the file-write tool (Write) on its session-titles/ path, not a shell redirect" ;; esac
+  floor_block bash "shell redirect writing inside the Helm config directory — §3 private state; $_rtail" redirect-into-cfg.path
+fi
 
 # RE-PINNING IS THE OPERATOR'S ACT, NOT THE SESSION'S — but this is NOT the
 # place to enforce it, and the attempt to do so here was withdrawn in pass 10.
@@ -3473,7 +3552,7 @@ HARBOR_ADMISSION_HIT_EOF
   hit_po '(^|[^[:alnum:]_])git([[:space:]]+-[CcP][[:space:]]*[^[:space:]]*)*[[:space:]]+push([^|;&]*)[[:space:]]["'"'"']?\+[^[:space:]]' \
     && floor_block bash "git push of a +refspec, which forces it (no wired repo guard — floor is sole gate)" force-push.flat
   [ "${_GATE_PUSHMAIN:-0}" != 1 ] \
-    || floor_block bash "a push straight to main or master skips the PR and its CI: push a branch, then <cfg>/bin/gate-merge.sh <owner/repo> <pr>" merge-raw.argv
+    || floor_block bash "a push straight to main or master skips the PR and its CI: push a branch, open its PR, then $(gate_merge_hint)" merge-raw.argv
 fi
 
 # Pass 14 E-1: over FLOOR_MAX_NORM (or past the normalizer) the segment table is empty and every
