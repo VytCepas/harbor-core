@@ -1,1 +1,0 @@
-name.fixture-stable-unproven	warn	lint	bin/lint-name.sh	-	ci	detective	stable	-	standard	-	-	a control marked stable that names no suite that watched it red

@@ -145,7 +145,6 @@ _ran=0; _stood=0; _rc=0
 # A STALE GENERATED FILE FAILS HERE, IN SECONDS (harbor#1287). 7 of 12 failed PR runs 2026-10-14..17 were one, found only
 # after the 15-20 min CI pool. bin/doc-fresh-verify.sh runs every generator --check that answers in seconds (contracts/fresh-checks.tsv)
 # and names the fix; it goes BEFORE the linter and the suites because a stale file makes the rest of the run moot.
-# control: git.pre-push-fresh-verify
 if [ -f "$ROOT/bin/doc-fresh-verify.sh" ]; then
   _ran=$(( _ran + 1 ))
   if _fc="$(hook_scrub_run sh "$ROOT/bin/doc-fresh-verify.sh" 2>&1)"; then
@@ -159,7 +158,6 @@ if [ -f "$ROOT/bin/doc-fresh-verify.sh" ]; then
   fi
 fi
 
-# control: git.pre-push-suites
 if [ "${HARBOR_GATE_PREPUSH_FULL:-0}" = 1 ]; then
   echo "pre-push: FULL mode — every suite bin/test-suite-select.sh picks for this push."
   [ -n "${HARBOR_TEST_CHANGED:-}" ] && printf '%s\n' "${HARBOR_TEST_CHANGED:-}" | sed 's/^/          /'
@@ -190,7 +188,6 @@ else
   # rejecting a perfectly good push because a tool is absent, which is a gate
   # failing OPEN into a block. Found by the repaired ref-deletion case on its
   # first run, in a scratch repo that had a selector stub and no linter.
-  # control: git.pre-push-lint
   if [ -f "$ROOT/bin/lint-conventions.sh" ]; then
     _ran=$(( _ran + 1 ))
     printf '          run   lint-conventions.sh'
@@ -208,7 +205,6 @@ else
       bin/admission-*.sh|bin/library-admission.sh|bin/guard-*.sh|bin/floor-*.sh|bin/floor-*.awk|bin/admission-*.awk|bin/deploy-harden.sh|hooks/*) _floor=1 ;;
     esac
   done
-  # control: git.pre-push-admission-smoke
   if [ "$_floor" = 1 ] && [ -f "$ROOT/tests/admission/baseline/baseline.test.sh" ]; then
     _ran=$(( _ran + 1 ))
     _floor_ran=1

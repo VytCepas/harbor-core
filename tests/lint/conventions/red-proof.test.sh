@@ -490,5 +490,4 @@ _rp_inst hint-only.sh 'x="$(il_cmd --apply)"'
 _rp_red D2 "mutator without a --live gate: bin/hint-only.sh" "the same hint in a file with no il_target and no gate"
 rm "$RP/bin/hint-only.sh"
 
-t_red ci.conventions-linter-suite   # the falsifier this suite names for them (harbor#1422)
 t_done

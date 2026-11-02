@@ -91,5 +91,4 @@ printf '[]\n' > "$FX/o_priv.rel"; printf '[]\n' > "$FX/o_solo.rel"
 _o="$(FX="$FX" PORT_ROOT="$_port" HARBOR_SCOPE_PRIVATE="$_port/harbor-private" sh "$T_ROOT/bin/standard-fleet-names.sh" --gh "$GH" --config-dir "$T_TMP/c4" --today 2026-10-26 2>&1)"
 t_has "the private layer's bad name is a finding" "$_o" "name.case harbor-private: Bad_Private.txt"
 t_has "…beside the registry's own repo, read once each" "$_o" "2 repo(s) read"
-t_red check.standard.fleet-names   # the falsifier this suite names for them (harbor#1422)
 t_done

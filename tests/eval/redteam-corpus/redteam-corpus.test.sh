@@ -136,5 +136,4 @@ t_section "no case text anywhere: stdout, checks.log, the state files"
 t_has "every run's output was kept" "$(grep -c 'redteam-corpus: ' "$T_TMP/all.out")" "1"
 t_eq "the marker is in no output or state" "" "$(grep -rl "$MARK" "$T_TMP/all.out" "$CACHE" 2>/dev/null)"
 t_has "...while the corpus file does carry it, so the grep can match" "$(cat "$G/guardfall.jsonl")" "$MARK"
-t_red check.redteam-corpus   # the falsifier this suite names for them (harbor#1422)
 t_done

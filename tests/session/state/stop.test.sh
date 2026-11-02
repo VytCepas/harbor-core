@@ -267,5 +267,4 @@ awk 'BEGIN { s = sprintf("%1000s", "x"); for (i = 0; i < 20000; i++) printf "{\"
 a="$(date +%s)"; run s-big big 'ok'; b="$(date +%s)"
 t_eq "a 20 MB transcript is read through a window: still done within 2 s" yes "$([ $((b - a)) -le 2 ] && [ "$(rec s-big state)" = idle ] && echo yes || echo no)"
 settle  # let the last detached bus append finish before the sandbox is removed
-t_red check.session-state check.event.session-save-now   # the falsifier this suite names for them (harbor#1422)
 t_done

@@ -46,7 +46,6 @@ t_init() { # [name] — defaults to the file name without .sh
   # No suite reads the real credential store: a store-reading tool's case brings its own stub (harbor#1205).
   HARBOR_SECRET_BIN="$T_TMP/no-secret-store"; export HARBOR_SECRET_BIN
   T_PASS=0; T_FAIL=0; T_SEC=""; T_SEC_N=0
-  T_REDLOG="${LINT_REDLOG:-}"   # the caller's red log, kept before a suite's own `LINT_REDLOG=x fn` leaks into the shell (harbor#1422)
   _t_cfg > "$T_TMP/.cfg.before"  # the repo's shared config, before the suite touches anything (harbor#1152)
 }
 
@@ -85,11 +84,6 @@ t_exit() { # <label> <want-exit> <cmd> [args…] — the exact code, never "non-
   t_eq "$_tl" "exit $_tw" "exit $_tr"
 }
 
-# t_red <control id>... — this suite watched these controls go red: a planted defect made the control refuse, and the assertion
-# after it passed. The ids reach LINT_REDLOG only if the whole suite passes and is not a smoke run, so bin/lint-rule-health.sh reads a proof, never a claim
-# (harbor#1422). Unset LINT_REDLOG costs nothing; a failed append is swallowed, as the linter's is.
-t_red() { printf '%s\n' "$@" >> "$T_TMP/.red" 2>/dev/null || :; }
-
 t_done() {
   _t_close
   _tk="$(_t_cfg_leak | sed 's/=.*//' | tr '\n' ' ')"
@@ -99,9 +93,6 @@ t_done() {
   [ "$T_FAIL" -eq 0 ] || printf '  fix: none automatic — see %s\n' "$T_SELF" >&2
   if [ "${T_SMOKE:-0}" = 1 ]; then printf '%s smoke: %d passed, %d failed (NOT a full run)\n' "$T_NAME" "$T_PASS" "$T_FAIL"
   else printf '%s: %d passed, %d failed\n' "$T_NAME" "$T_PASS" "$T_FAIL"; fi
-  if [ "$T_FAIL" -eq 0 ]; then
-    [ -z "$T_REDLOG" ] || [ "${T_SMOKE:-0}" = 1 ] || [ ! -f "$T_TMP/.red" ] || cat "$T_TMP/.red" >> "$T_REDLOG" 2>/dev/null || :
-    exit 0
-  fi
+  [ "$T_FAIL" -eq 0 ] && exit 0
   exit 1
 }

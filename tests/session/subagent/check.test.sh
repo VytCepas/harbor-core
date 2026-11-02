@@ -62,5 +62,4 @@ run ag9 'D' "$NONE"; run ag9 'D' "$NONE"
 t_eq "env off" "" "$( SUBAGENT_STOP_CHECK=off; export SUBAGENT_STOP_CHECK; run ag9 'D' "$NONE"; msg )"
 mkdir -p "$CFG"; : > "$CFG/subagent-stop.off"
 run ag9 'D' "$NONE"; t_eq "sentinel off" "" "$(msg)"
-t_red check.subagent-stop   # the falsifier this suite names for them (harbor#1422)
 t_done

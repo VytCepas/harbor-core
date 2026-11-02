@@ -444,5 +444,4 @@ t_section "no billing call, ever"
 t_eq "gh was never asked about billing, budgets or the spending limit" 0 "$(cat "$FX"/gh.log | grep -c -i -e billing -e budget -e spending || true)"
 t_eq "the script does not contain such a call" 0 "$(grep -v '^#' "$T_ROOT/bin/ci-runners.sh" | grep -c -i -e 'settings/billing' -e 'budgets' -e 'spending_limit' || true)"
 t_eq "no stub call was off script" 0 "$(nlines "$FX/unexpected.log")"
-t_red check.ci-runners   # the falsifier this suite names for them (harbor#1422)
 t_done

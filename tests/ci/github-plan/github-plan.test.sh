@@ -102,5 +102,4 @@ t_eq "...and no line" 0 "$(nlog)"
 t_section "the stub is the only gh"
 t_eq "no unexpected gh call across the suite" none "$(cat "$FX/unexpected.log" 2>/dev/null || echo none)"
 t_eq "no billing, budget or spending-limit call" 0 "$(cat "$FX"/calls.log 2>/dev/null | grep -c -i -e billing -e budget -e spending || true)"
-t_red check.gh-plan   # the falsifier this suite names for them (harbor#1422)
 t_done

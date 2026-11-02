@@ -167,5 +167,4 @@ fleet; plantall; run rerun-lost --apply >/dev/null; : > "$FX/gh.log"; run rerun-
 t_eq "the second pass over the same runs reads no jobs and no annotations" 0 "$(grep -c -e '/jobs' -e '/annotations' "$FX/gh.log" || true)"
 t_eq "...and asks GitHub only for each repo's run list (alpha, harbor)" "2" "$(grep -c '^run list' "$FX/gh.log")"
 t_eq "...and the stubs saw nothing off script" 0 "$(nlines "$FX/unexpected.log")"
-t_red check.ci-lost-rerun   # the falsifier this suite names for them (harbor#1422)
 t_done
