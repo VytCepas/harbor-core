@@ -37,11 +37,11 @@ esac
 
 REPO="${HARBOR_PLAN_REPO:-$(repo_slug)}"   # harbor's own OWNER/NAME (harbor#1149); empty is an unread below
 BRANCH=main
-CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
+CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-$HOME/.claude/cache}"
 OUT="$CACHE_DIR/gh-plan.json"
 LOG="$CACHE_DIR/checks.log"
-NOW="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
-GH="${HARBOR_TEST_GH:-${HARBOR_GH:-gh}}"
+NOW="${HARBOR_TEST_NOW:-$(date +%s)}"
+GH="${HARBOR_TEST_GH:-gh}"
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required"; log_fix "$(pkg_hint jq)"; exit 2; }
 case "$NOW" in ''|*[!0-9]*) NOW="$(date +%s)" ;; esac
 iso() { date -u -r "$NOW" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d "@$NOW" +%Y-%m-%dT%H:%M:%SZ; }

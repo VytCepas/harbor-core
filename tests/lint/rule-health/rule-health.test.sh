@@ -186,9 +186,9 @@ cat > "$F/plint.sh" <<'PLINT'
 case "$1" in
   --list) printf '  fix.old a\n  fix.edge b\n  fix.young c\n  fix.accepted d\n  fix.open e\n  fix.unproven f\n  fix.blocked g\n  fix.check h\n  fix.late i\n  fix.renamed j\n  fix.oldacc k\n  fix.norun l\n  doc.refs-conform m\n' ;;
   --ids)  printf 'id\tdeprecated\nfix.old\t-\nfix.renamed\tZ9\n' ;;
-  *) [ -z "${HARBOR_LINT_FINDINGS_OUT:-${HARBOR_FINDINGS_OUT:-}}" ] || {
-       for _r in fix.old fix.edge fix.young fix.accepted fix.open fix.unproven fix.blocked fix.late fix.renamed fix.oldacc doc.refs-conform; do printf 'R\t%s\n' "$_r" >> "${HARBOR_LINT_FINDINGS_OUT:-${HARBOR_FINDINGS_OUT:-}}"; done
-       printf 'A\tfix.open\tthe one open subject\n' >> "${HARBOR_LINT_FINDINGS_OUT:-${HARBOR_FINDINGS_OUT:-}}"; } ;;
+  *) [ -z "${HARBOR_LINT_FINDINGS_OUT:-}" ] || {
+       for _r in fix.old fix.edge fix.young fix.accepted fix.open fix.unproven fix.blocked fix.late fix.renamed fix.oldacc doc.refs-conform; do printf 'R\t%s\n' "$_r" >> "${HARBOR_LINT_FINDINGS_OUT:-}"; done
+       printf 'A\tfix.open\tthe one open subject\n' >> "${HARBOR_LINT_FINDINGS_OUT:-}"; } ;;
 esac
 PLINT
 acc() { # <key> <closed> — one accepted-as-false finding in the store

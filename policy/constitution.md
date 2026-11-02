@@ -187,7 +187,7 @@ find $S -maxdepth 2 -name SKILL.md -exec grep -l \
   'disable-model-invocation: *true' {} + | wc -l                 # hidden
 ```
 
-The index is the **`skill-book`** skill, and it carries **paths**: read the book
+The index is the **`skill-catalog`** skill, and it carries **paths**: read the book
 before concluding nothing here covers a problem.
 
 **The memory index is PARTIAL, and the store is searchable.** `MEMORY.md` is the

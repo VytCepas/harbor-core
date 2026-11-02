@@ -1,1 +1,0 @@
-docs/how-to/harden-the-host.md

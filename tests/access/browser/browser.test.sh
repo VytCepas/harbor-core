@@ -2,11 +2,11 @@
 # access-browser.sh: the offline gates, a router derived from its contract, honest skips (harbor#446, #457, #458, #724).
 # Playwright is a stub probe dir, so the offline arms run the same on every host. The live
 # consent arms run only when HARBOR_ACCESS_PROBE_DIR is exported at a real Playwright install.
-LIVE_PROBE="${HARBOR_ACCESS_PROBE_DIR:-${HARBOR_PROBE_DIR:-}}"; LIVE_URL="${HARBOR_ACCESS_BROWSER_LIVE_URL:-${HARBOR_BROWSER_LIVE_URL:-}}"  # before t_init clears them
-REQUIRE_NODE="${HARBOR_TEST_REQUIRE_NODE:-${HARBOR_REQUIRE_NODE:-}}"  # set by the runner image that carries node (harbor#1060)
+LIVE_PROBE="${HARBOR_ACCESS_PROBE_DIR:-}"; LIVE_URL="${HARBOR_ACCESS_BROWSER_LIVE_URL:-}"  # before t_init clears them
+REQUIRE_NODE="${HARBOR_TEST_REQUIRE_NODE:-}"  # set by the runner image that carries node (harbor#1060)
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 BROWSER="$T_ROOT/bin/access-browser.sh"; AGENT="$T_ROOT/bin/access-browser-agent.sh"; ROUTING="$T_ROOT/contracts/browser-routing.md"
-unset HARBOR_ACCESS_CHROME HARBOR_CHROME
+unset HARBOR_ACCESS_CHROME
 # No settle after input verbs, except in the one test that measures the race.
 HARBOR_CHROME_SETTLE=0; export HARBOR_CHROME_SETTLE
 P="$T_TMP/probe"; mkdir -p "$P/node_modules/playwright" "$T_TMP/empty"
@@ -150,7 +150,7 @@ t_has "as this session's own name plus the lane" "$(out)" "args=-s=claude-abc123
 t_eq "a lane with other characters is refused" "exit 1" "$(HARBOR_BROWSER_LANE='x/../y'; export HARBOR_BROWSER_LANE; ag tab-list)"
 t_eq "a lane in capitals is refused, whatever the locale" "exit 1" "$(LANG=en_NZ.UTF-8 LC_ALL=en_NZ.UTF-8 HARBOR_BROWSER_LANE=ADS; export HARBOR_BROWSER_LANE; ag tab-list)"
 t_eq "a lane over 12 characters is refused" "exit 1" "$(HARBOR_BROWSER_LANE=abcdefghijklm; export HARBOR_BROWSER_LANE; ag tab-list)"
-t_eq "no session id is refused" "exit 1" "$(rc env -u CLAUDE_CODE_SESSION_ID -u HARBOR_ACCESS_BROWSER_SESSION -u HARBOR_BROWSER_SESSION -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" sh "$AGENT" tab-list)"
+t_eq "no session id is refused" "exit 1" "$(rc env -u CLAUDE_CODE_SESSION_ID -u HARBOR_ACCESS_BROWSER_SESSION -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" sh "$AGENT" tab-list)"
 t_eq "a non-numeric idle timeout is refused" "exit 1" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_BROWSER_IDLE_MS=soon HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc sh "$AGENT" attach)"
 
 t_section "agent: the bypasses the 2026-09-30 adversarial review found"
@@ -291,7 +291,7 @@ LXU="$T_TMP/lxu"; mkdir -p "$LXU/linux" "$LXU/darwin"
 printf '#!/bin/sh\necho Linux\n' > "$LXU/linux/uname"; printf '#!/bin/sh\necho Darwin\n' > "$LXU/darwin/uname"; chmod +x "$LXU/linux/uname" "$LXU/darwin/uname"
 printf '{}\n' > "$T_TMP/claude-os.json"
 dd_os() { # <uname dir> [XDG_CONFIG_HOME] -> doctor with no HARBOR_ACCESS_CHROME_DATA override
-  rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN -u HARBOR_ACCESS_CHROME_DATA -u HARBOR_CHROME_DATA -u XDG_CONFIG_HOME ${2:+XDG_CONFIG_HOME="$2"} PATH="$LXU/$1:$PATH" HARBOR_ACCESS_CLAUDE_JSON="$T_TMP/claude-os.json" sh "$AGENT" doctor
+  rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN -u HARBOR_ACCESS_CHROME_DATA -u XDG_CONFIG_HOME ${2:+XDG_CONFIG_HOME="$2"} PATH="$LXU/$1:$PATH" HARBOR_ACCESS_CLAUDE_JSON="$T_TMP/claude-os.json" sh "$AGENT" doctor
 }
 dd_os linux >/dev/null; t_has "Linux: ~/.config/google-chrome" "$(out)" "under $HOME/.config/google-chrome"
 dd_os linux "$T_TMP/xdg" >/dev/null; t_has "Linux: XDG_CONFIG_HOME is honoured" "$(out)" "under $T_TMP/xdg/google-chrome"

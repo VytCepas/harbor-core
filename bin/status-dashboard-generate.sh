@@ -41,7 +41,7 @@ case "${1:-}" in
              printf '\n(flags, if any, are in the header above and the source below.)\n'
              exit 0 ;;
 esac
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}}"
+ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
 # One log format (contracts/logging.md), on stderr: stdout is the page itself under --stdout.
 . "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-log.sh"
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
@@ -110,7 +110,7 @@ PCFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 # specific override — the fleet tile would honour the custom dir while the Pulse
 # tile reported that no probe had ever run. Same shape as the resolution bug the
 # seam survey found in status-fleet-snapshot-refresh.sh.
-PCACHE="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$PCFG/cache}}"
+PCACHE="${HARBOR_SCOPE_CACHE_DIR:-$PCFG/cache}"
 PSTATE="${HARBOR_ALERT_PROBE_STATE:-$PCACHE/pulse-state.json}"
 FSNAP="$PCACHE/fleet-snapshot.json"
 PJ='{}'

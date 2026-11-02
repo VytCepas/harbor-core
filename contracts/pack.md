@@ -24,7 +24,7 @@ The target is chosen as every installer chooses it (`bin/deploy-install-lib.sh`)
 
 ```
 pack.toml   name, version, harbor_version, description - all four, each a quoted string (flat TOML, D-81)
-skills/<name>/...   bin/<file>   shims.tsv   conf-keys.txt   terms.tsv   context-rules/user/<file>.md (or inject.d/<file>.md until harbor#1010's date)   checks.md   controls.tsv   skill-packs/<core skill>/<name>.md   tests/ (never installed)   README* (ignored)
+skills/<name>/...   bin/<file>   shims.tsv   conf-keys.txt   terms.tsv   context-rules/user/<file>.md   checks.md   controls.tsv   skill-packs/<core skill>/<name>.md   tests/ (never installed)   README* (ignored)
 ```
 
 `checks.md` is a check-register fragment in exactly the shape of the private layer's [`checks.md`](./private-layer.md#checksmd):
@@ -64,7 +64,7 @@ install, and the run exits 1 so the skip is seen. Dry runs refuse the same way.
    outside `[A-Za-z0-9._/-]`), and any installed `.md` whose front matter is not canonical: a BOM or an opener other than exactly `---`, no closing `---`, or a
    top-level line that is not `key: value` with a key in [pack-frontmatter-keys.txt](./pack-frontmatter-keys.txt) (never `hooks`);
    the leak gate also reads tracked files a `.gitignore` matches;
-2. an inject pack with `run:` (it could deny, [inject.md](./injection-rule.md)), a nested one, or a non-`.md` file in `context-rules/user/` (or `inject.d/`), or any other `context-rules/<scope>/`;
+2. an inject pack with `run:` (it could deny, [inject.md](./injection-rule.md)), a nested one, or a non-`.md` file in `context-rules/user/`, or any other `context-rules/<scope>/`;
 3. a `bin/` name equal to a core `bin/` file (with or without `.sh`, any case) or a `harbor` verb; a skill named like a core skill;
    a `skill-packs/` entry that is not [a pack for a core skill](#adding-packs-to-a-core-skill);
 4. a dirty checkout (any change or untracked file under `harbor-pack/`) or an unpinned one (no git, or no commit);
@@ -85,7 +85,7 @@ The one exception is the move below: a core skill core no longer ships, unchange
 |---|---|
 | `skills/<s>/...` | `skills/<s>/...` |
 | `bin/<f>` | `bin/<f>` (mode kept: executable or not) |
-| `context-rules/user/<f>.md`, or `inject.d/<f>.md` | `context-rules/user/pack-<name>--<f>.md` |
+| `context-rules/user/<f>.md` | `context-rules/user/pack-<name>--<f>.md` |
 | `skill-packs/<s>/<f>.md` | `skill-packs/<s>/<f>.md`, beside `skills/`, never inside it |
 | `shims.tsv` | `shims.d/<repo-id>.tsv`, one file per pack; `deploy-shim-install.sh` reads them (`--live`: `~/.claude/shims.d`; `--dir`: `HARBOR_PACK_SHIMS_DIR`) |
 | `checks.md` | `checks.d/<repo-id>.md`, one file per pack |

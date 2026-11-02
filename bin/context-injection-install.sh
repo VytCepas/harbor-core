@@ -2,7 +2,7 @@
 # context-injection-install.sh (harbor#173 · A1) — wire the injector, box-wide.
 #   sh bin/context-injection-install.sh [--apply] (--live | --dir PATH) [--projects] [--remove]
 #     no --apply   status: what is wired, what drifted, and what --apply would do
-#     --projects   also seed the private layer's repo packs (<private>/context-rules/<name>/, or the old inject.d/<name>/)
+#     --projects   also seed the private layer's repo packs (<private>/context-rules/<name>/)
 #                  into the projects its user/projects.tsv names (--live only); they land in <repo>/context-rules/<name>/ (harbor#1010)
 #     --remove     unwire, and move the packs and the engine into the backup
 #
@@ -35,16 +35,16 @@ il_parse "$@"
 il_target
 DIR="$IL_TARGET"
 # THE PRIVATE RULE PACKS (harbor#1149). Core ships the packs every box needs and none that names a client or a repo of
-# one. Those live in <private>/context-rules (or the old inject.d), in the shape of core's (user/ for the packs every session carries and
+# one. Those live in <private>/context-rules, in the shape of core's (user/ for the packs every session carries and
 # the project registry, one folder per repo for `--projects`), and are read through the one resolver. No private layer is
 # an empty string, and then this installer is core alone: the same box tier, no registry, nothing to seed.
-PRIVINJ="$(env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$SRC/scope-roots.sh" --inject 2>/dev/null)" && _prc=0 || _prc=$?
+PRIVINJ="$(env -u HARBOR_SCOPE_ROOT sh "$SRC/scope-roots.sh" --inject 2>/dev/null)" && _prc=0 || _prc=$?
 # exit 1 is "no private layer" (core alone); 2 is a layer that could not be located at all, which is not a silent core-alone.
 [ "$_prc" -le 1 ] || { PRIVINJ=''; il_refuse "the private layer could not be located (scope-roots.sh --inject exited $_prc)" "sh $SRC/scope-roots.sh --inject"; }
-# harbor#1010: the box tier is context-rules/user, in core, in the private layer (box/ in its old inject.d) and installed;
-# the old $DIR/inject.d is moved into the backup by --apply, and the engine reads it until then.
+# harbor#1010: the box tier is context-rules/user, in core, in the private layer and installed;
+# an old $DIR/inject.d is moved into the backup by --apply; the engine no longer reads it.
 COREBOX="$ROOT/context-rules/user"; BOXREL=context-rules/user
-PRIVBOX=''; [ -z "$PRIVINJ" ] || { PRIVBOX="$PRIVINJ/user"; [ -d "$PRIVBOX" ] || PRIVBOX="$PRIVINJ/box"; }
+PRIVBOX=''; [ -z "$PRIVINJ" ] || PRIVBOX="$PRIVINJ/user"
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required"; log_fix "$(pkg_hint jq)"; log_end; exit 1; }
 
 # `--projects` IS A LIVE WRITE WHATEVER THE CONFIG DIR IS, and the first cut of
@@ -224,7 +224,7 @@ if [ -n "$PRIVBOX" ] && [ -d "$PRIVBOX" ]; then
 fi
 REGISTRY="${PRIVBOX:+$PRIVBOX/projects.tsv}"
 
-# THE REPO FOLDERS ARE DATA TOO, and there it matters more. `--projects` seeds <private>/inject.d/<name>/ into a registered
+# THE REPO FOLDERS ARE DATA TOO, and there it matters more. `--projects` seeds <private>/context-rules/<name>/ into a registered
 # repository's own context-rules/<name>/, where the engine runs a pack's `run:` script on every tool call in that repo, so a script
 # or a link in a private folder would be private-layer code executing in someone else's tree. Only flat .md packs cross; a
 # script, a link, a subfolder or any other file refuses the run before it writes (a dry run predicts it). A plain install,
@@ -318,22 +318,20 @@ status() { # <step> — one log line per fact, under its own header
   if [ -d "$DIR/$BOXREL" ]; then
     for _f in "$DIR/$BOXREL"/*; do [ -f "$_f" ] && _pk=$(( _pk + 1 )); done
   fi
-  [ ! -d "$DIR/inject.d" ] || log_note "the old box tier $DIR/inject.d is still installed; the engine reads it until --apply moves it into the backup (harbor#1010)"
+  [ ! -d "$DIR/inject.d" ] || log_note "the old box tier $DIR/inject.d is still installed and no longer read; --apply moves it into the backup (harbor#1010)"
   log_note "box packs: $_pk installed, $(_n=0; for _f in "$COREBOX"/*; do [ -f "$_f" ] && _n=$(( _n + 1 )); done; [ -z "$PRIVFILES" ] || _n=$(( _n + $(printf '%s\n' "$PRIVFILES" | grep -c .) )); printf '%s' "$_n") tracked"
   if [ -z "$PRIVINJ" ]; then
-    log_note "private packs: none (no private layer with a context-rules/ or inject.d/), so this is core's box tier alone"
+    log_note "private packs: none (no private layer with a context-rules/), so this is core's box tier alone"
   else
     log_note "private packs: $(printf '%s\n' "$PRIVFILES" | grep -c . || true) box file(s) from $PRIVINJ"
     for _d in "$PRIVINJ"/*/; do
       [ -d "$_d" ] || continue
-      _n="$(basename "$_d")"; case "$_n" in box|user) continue ;; esac
+      _n="$(basename "$_d")"; case "$_n" in user) continue ;; esac
       _t="$(awk -F'\t' -v k="$_n" '$1 == k { print $2; exit }' "$REGISTRY" 2>/dev/null || true)"
       case "$_t" in '~/'*) _t="$HOME/${_t#'~/'}" ;; esac
       _st='no such project'
       if [ -n "$_t" ] && [ -d "$_t" ]; then
         if diff -r -x .DS_Store "$_d" "$_t/context-rules/$_n" >/dev/null 2>&1; then _st=current
-        # Seeded before harbor#1010: the engine reads it until the renames.tsv date (rename-0031), a re-seed moves it.
-        elif diff -r -x .DS_Store "$_d" "$_t/.claude/inject.d" >/dev/null 2>&1; then _st='current in the old .claude/inject.d only: re-seed'
         else _st='absent or drifted'; fi
       fi
       log_note "repo pack $_n: ${_t#"$HOME"/} $_st"
@@ -475,21 +473,20 @@ hooks_run --record >/dev/null 2>"$IL_HK_ERR" \
 # status line above reports drift instead of silently healing it. What it overwrote
 # is copied into the run's backup first.
 if [ "$PROJECTS" -eq 1 ] && [ -z "$PRIVINJ" ]; then
-  log_skip "no private layer with a context-rules/ or inject.d/: core ships no repo packs, so there is nothing to seed"
+  log_skip "no private layer with a context-rules/: core ships no repo packs, so there is nothing to seed"
 elif [ "$PROJECTS" -eq 1 ]; then
   REG="$REGISTRY"
   for _d in "$PRIVINJ"/*/; do
     [ -d "$_d" ] || continue
-    _n="$(basename "$_d")"; case "$_n" in box|user) continue ;; esac
+    _n="$(basename "$_d")"; case "$_n" in user) continue ;; esac
     _t="$(awk -F'\t' -v k="$_n" '$1 == k { print $2; exit }' "$REG" 2>/dev/null || true)"
     case "$_t" in '~/'*) _t="$HOME/${_t#'~/'}" ;; esac
     if [ -z "$_t" ] || [ ! -d "$_t" ]; then
       log_skip "$_n: no such project in the private projects.tsv"; continue
     fi
-    # The repo's own scope folder (harbor#1010, D-65): context-rules/<name>/, which the engine reads in that repo. An old
-    # .claude/inject.d stays where it is: it may hold the repo's own rules, and an id the new folder carries wins.
+    # The repo's own scope folder (harbor#1010, D-65): context-rules/<name>/, which the engine reads in that repo.
     _tg="$_t/context-rules/$_n"
-    for _old in "$_tg" "$_t/.claude/inject.d"; do
+    for _old in "$_tg"; do
       [ -d "$_old" ] || continue
       mkdir -p "$IL_BK/projects/$_n" && cp -RPp "$_old" "$IL_BK/projects/$_n/${_old##*/}"
     done
@@ -500,7 +497,7 @@ elif [ "$PROJECTS" -eq 1 ]; then
     done
     if diff -r -x .DS_Store "$_d" "$_tg" >/dev/null 2>&1; then
       log_ok "$_n: seeded ${_tg#"$HOME"/}"
-      [ ! -d "$_t/.claude/inject.d" ] || log_note "$_n: ${_t#"$HOME"/}/.claude/inject.d is still there and still read until rename-0031's date; the repo removes it"
+      [ ! -d "$_t/.claude/inject.d" ] || log_note "$_n: ${_t#"$HOME"/}/.claude/inject.d is still there and no longer read; the repo removes it"
     else
       log_fail "$_n: the packs in $_tg differ from the private layer's $_n/ after the copy"
       log_nofix "diff -r '$_d' '$_tg'; the previous packs are in $IL_BK/projects/$_n"

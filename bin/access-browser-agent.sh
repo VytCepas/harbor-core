@@ -49,16 +49,16 @@ TOKEN_REF='playwright-extension-token'
 PW_CLI_PIN='0.1.22'   # exact pin (vendoring D1); 0.1.22 is the first that reads the profile name
 STATE_EXPR='JSON.stringify({visibility: document.visibilityState, focus: document.hasFocus(), ready: document.readyState, host: location.host, blank: location.href === "about:blank", online: navigator.onLine})'
 PW_EXTENSION_ID='mmlmfjhmonkocbjadbfplnigmagldckm'
-PROFILE="${HARBOR_ACCESS_BROWSER_PROFILE:-${HARBOR_BROWSER_PROFILE:-Default}}"
-IDLE_MS="${HARBOR_ACCESS_BROWSER_IDLE_MS:-${HARBOR_BROWSER_IDLE_MS:-14400000}}"   # 4 h, the ceiling below: one Connect click covers a working block
+PROFILE="${HARBOR_ACCESS_BROWSER_PROFILE:-Default}"
+IDLE_MS="${HARBOR_ACCESS_BROWSER_IDLE_MS:-14400000}"   # 4 h, the ceiling below: one Connect click covers a working block
 # Where Chrome keeps its profiles: ~/Library on macOS, the XDG config dir on Linux (harbor#618).
 case "$(uname -s 2>/dev/null)" in
   Darwin) _chrome_data_default="$HOME/Library/Application Support/Google/Chrome" ;;
   *)      _chrome_data_default="${XDG_CONFIG_HOME:-$HOME/.config}/google-chrome" ;;
 esac
-CHROME_DATA="${HARBOR_ACCESS_CHROME_DATA:-${HARBOR_CHROME_DATA:-$_chrome_data_default}}"
-CLAUDE_JSON="${HARBOR_ACCESS_CLAUDE_JSON:-${HARBOR_CLAUDE_JSON:-$HOME/.claude.json}}"
-CONFIRM="${HARBOR_ACCESS_BROWSER_CONFIRM:-${HARBOR_BROWSER_CONFIRM:-}}"
+CHROME_DATA="${HARBOR_ACCESS_CHROME_DATA:-$_chrome_data_default}"
+CLAUDE_JSON="${HARBOR_ACCESS_CLAUDE_JSON:-$HOME/.claude.json}"
+CONFIRM="${HARBOR_ACCESS_BROWSER_CONFIRM:-}"
 # Whole words a click/dblclick target's label may not carry without the operator's
 # per-call HARBOR_ACCESS_BROWSER_CONFIRM=<ref>. Whole words, so status text (Paused,
 # Removed, Payments) passes; the label comes from a fresh snapshot (_guard).
@@ -166,8 +166,8 @@ _doctor() {
 _session() {
   if [ -n "${CLAUDE_CODE_SESSION_ID:-}" ]; then
     _s="claude-$(printf '%s' "$CLAUDE_CODE_SESSION_ID" | tr -cd 'A-Za-z0-9' | cut -c1-12)"
-  elif [ -n "${HARBOR_ACCESS_BROWSER_SESSION:-${HARBOR_BROWSER_SESSION:-}}" ]; then
-    _s="${HARBOR_ACCESS_BROWSER_SESSION:-${HARBOR_BROWSER_SESSION:-}}"
+  elif [ -n "${HARBOR_ACCESS_BROWSER_SESSION:-}" ]; then
+    _s="${HARBOR_ACCESS_BROWSER_SESSION:-}"
   else
     _s=''
   fi
@@ -220,8 +220,8 @@ _host_ok() {
 # also takes config from any .playwright dir up that tree. HARBOR_ACCESS_PLAYWRIGHT_CLI is the
 # test seam (a stub), as HARBOR_ACCESS_PROBE_DIR is for access-browser.sh.
 _cli() {
-  if [ -n "${HARBOR_ACCESS_PLAYWRIGHT_CLI:-${HARBOR_PW_CLI:-}}" ]; then
-    set -- "${HARBOR_ACCESS_PLAYWRIGHT_CLI:-${HARBOR_PW_CLI:-}}" "$@"
+  if [ -n "${HARBOR_ACCESS_PLAYWRIGHT_CLI:-}" ]; then
+    set -- "${HARBOR_ACCESS_PLAYWRIGHT_CLI:-}" "$@"
   elif command -v bunx >/dev/null 2>&1; then
     set -- bunx "@playwright/cli@$PW_CLI_PIN" "$@"
   else
@@ -510,18 +510,18 @@ _pe="$(_pw_env)"
 # Per call, never exported: set on any other verb, it is set session-wide.
 case "$VERB" in
   click|dblclick) ;;
-  *) [ -z "$CONFIRM" ] || _refuse "HARBOR_ACCESS_BROWSER_CONFIRM is set for '$VERB'; it confirms one click and is set on that call only, never exported" 'unset HARBOR_ACCESS_BROWSER_CONFIRM HARBOR_BROWSER_CONFIRM' ;;
+  *) [ -z "$CONFIRM" ] || _refuse "HARBOR_ACCESS_BROWSER_CONFIRM is set for '$VERB'; it confirms one click and is set on that call only, never exported" 'unset HARBOR_ACCESS_BROWSER_CONFIRM' ;;
 esac
 
 # 0 disables the CLI's idle timer (armed only when truthy), so it is bounded.
 case "$IDLE_MS" in
-  ''|*[!0-9]*) _refuse "HARBOR_ACCESS_BROWSER_IDLE_MS is not milliseconds: $IDLE_MS" 'unset HARBOR_ACCESS_BROWSER_IDLE_MS HARBOR_BROWSER_IDLE_MS' ;;
+  ''|*[!0-9]*) _refuse "HARBOR_ACCESS_BROWSER_IDLE_MS is not milliseconds: $IDLE_MS" 'unset HARBOR_ACCESS_BROWSER_IDLE_MS' ;;
 esac
 if [ "$IDLE_MS" -lt 60000 ] || [ "$IDLE_MS" -gt 14400000 ]; then
-  _refuse "HARBOR_ACCESS_BROWSER_IDLE_MS must be 60000..14400000 (1 min to 4 h): $IDLE_MS" 'unset HARBOR_ACCESS_BROWSER_IDLE_MS HARBOR_BROWSER_IDLE_MS'
+  _refuse "HARBOR_ACCESS_BROWSER_IDLE_MS must be 60000..14400000 (1 min to 4 h): $IDLE_MS" 'unset HARBOR_ACCESS_BROWSER_IDLE_MS'
 fi
 case "$PROFILE" in
-  ''|*[!A-Za-z0-9\ ]*) _refuse "HARBOR_ACCESS_BROWSER_PROFILE is not a Chrome profile dir name: $PROFILE" 'unset HARBOR_ACCESS_BROWSER_PROFILE HARBOR_BROWSER_PROFILE' ;;
+  ''|*[!A-Za-z0-9\ ]*) _refuse "HARBOR_ACCESS_BROWSER_PROFILE is not a Chrome profile dir name: $PROFILE" 'unset HARBOR_ACCESS_BROWSER_PROFILE' ;;
 esac
 
 S="$(_session)" || _refuse 'no session: run inside Claude Code (CLAUDE_CODE_SESSION_ID), or set HARBOR_ACCESS_BROWSER_SESSION outside it; a HARBOR_BROWSER_LANE is 1-12 of a-z0-9' 'export HARBOR_ACCESS_BROWSER_SESSION=manual'

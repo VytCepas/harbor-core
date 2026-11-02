@@ -1,1 +1,0 @@
-status-usage-aggregate.sh

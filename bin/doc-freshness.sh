@@ -49,7 +49,7 @@ log_init freshness
 # overrides the whole corpus root so the suite can score a fixture instead of
 # reading the operator's real goals — a test that needs live personal files to
 # pass is a test nobody can run.
-TELOS_ROOT="${HARBOR_DOC_TELOS_DIR:-${HARBOR_TELOS_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/MEMORY}}"
+TELOS_ROOT="${HARBOR_DOC_TELOS_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/MEMORY}"
 
 # Thresholds in days, by what the document is FOR. A contract that froze a seam
 # should outlive a handoff brief by a wide margin; PROVENANCE tracks an upstream

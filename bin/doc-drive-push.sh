@@ -45,7 +45,7 @@ LOG_FD=2
 # by hand is a duplicate that drifts the day one of them is renamed. So look for the
 # real thing first and treat any alias as a convenience, never as the contract.
 find_mount() {
-  [ -n "${HARBOR_DOC_DRIVE_MOUNT:-${HARBOR_DRIVE_MOUNT:-}}" ] && { printf '%s' "${HARBOR_DOC_DRIVE_MOUNT:-${HARBOR_DRIVE_MOUNT:-}}"; return 0; }
+  [ -n "${HARBOR_DOC_DRIVE_MOUNT:-}" ] && { printf '%s' "${HARBOR_DOC_DRIVE_MOUNT:-}"; return 0; }
   for _m in "$HOME"/Library/CloudStorage/GoogleDrive-*; do
     [ -d "$_m/My Drive" ] && { printf '%s' "$_m"; return 0; }
   done
@@ -57,7 +57,7 @@ find_mount() {
 MOUNT="$(find_mount || true)"
 ROOT="$MOUNT/My Drive/Artefacts"
 IDATTR='com.google.drivefs.item-id#S'
-WAIT="${HARBOR_DOC_DRIVE_WAIT:-${HARBOR_DRIVE_WAIT:-30}}"
+WAIT="${HARBOR_DOC_DRIVE_WAIT:-30}"
 
 usage() {
   cat <<'USAGE'

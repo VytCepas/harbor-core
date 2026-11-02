@@ -391,6 +391,7 @@ tests/ci/runner/wedge.test.sh bin/ci-runners.sh bin/ci-runners-*-lib.sh bin/libr
 tests/drift/reconcile/contract.test.sh bin/library-log.sh bin/memory-route.sh bin/drift-reference-check.sh bin/doc-cited-paths.awk bin/library-fs.sh contracts/reconcile.md standards/naming/controls.tsv tests/drift/reconcile/contract.test.sh tests/checks/reference-check-fixture.sh tests/lib/core.sh
 tests/ci/runners/scale.test.sh bin/ci-runners.sh bin/ci-runners-*-lib.sh bin/library-log.sh tests/ci/runners/scale.test.sh tests/ci/ci-runners-fixture.sh tests/lib/core.sh
 tests/standard/rename/window.test.sh always
+tests/standard/rename/collapse.test.sh always
 tests/lint/name/modes.test.sh always
 tests/access/github-app/routing.test.sh bin/access-github-app/* bin/access-github-app-install.sh bin/deploy-install-lib.sh bin/library-log.sh bin/scope-roots.sh tests/access/github-app/routing.test.sh tests/lib/core.sh
 hooks/session-title/session-title.test.sh hooks/session-title/session-title.sh bin/admission-self-edit.sh bin/library-admission.sh hooks/session-title/session-title.test.sh tests/lib/core.sh
@@ -424,5 +425,4 @@ tests/standard/rename/sandbox-home.test.sh bin/standard-rename.sh bin/admission-
 tests/deploy/install/renamed.test.sh bin/* hooks/* standards/naming/renames.tsv tests/deploy/install/renamed.test.sh tests/lib/core.sh
 tests/deploy/install/renamed-wiring.test.sh bin/* hooks/* standards/naming/renames.tsv tests/deploy/install/renamed-wiring.test.sh tests/lib/core.sh
 tests/deploy/install/renamed-wiring-w7.test.sh bin/* hooks/* standards/naming/renames.tsv tests/deploy/install/renamed-wiring-w7.test.sh tests/lib/core.sh
-tests/deploy/install/renamed-wiring-w9.test.sh bin/* launchd/* standards/naming/renames.tsv tests/deploy/install/renamed-wiring-w9.test.sh tests/lib/core.sh
 tests/gate/push/push.test.sh bin/gate-push.sh bin/library-log.sh hooks/pre-push hooks/lib.sh bin/library-fs.sh tests/gate/push/* tests/lib/core.sh

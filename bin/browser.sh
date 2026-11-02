@@ -1,1 +1,0 @@
-access-browser.sh

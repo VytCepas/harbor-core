@@ -170,7 +170,7 @@ t_eq "--out sends the command's output to the file" to-file "$(cat "$T_TMP/out.t
 t_eq "...keeping its exit code" 4 "$RC"
 O="$(GITHUB_ACTIONS=true runc -- sh -c 'ls "$1" | wc -l | tr -d " "' _ "$SD/slots")"
 t_eq "under GitHub Actions it takes no slot (the runner is governed by tick)" 0 "$O"
-O="$(runc -- sh -c 'HARBOR_NOW="$2" HARBOR_CACHE_DIR="$3" sh "$4" run -- sh -c "ls \"\$1\" | wc -l | tr -d \" \"" _ "$1"' _ "$SD/slots" "$AT" "$CACHE" "$GOV")"
+O="$(runc -- sh -c 'HARBOR_TEST_NOW="$2" HARBOR_SCOPE_CACHE_DIR="$3" sh "$4" run -- sh -c "ls \"\$1\" | wc -l | tr -d \" \"" _ "$1"' _ "$SD/slots" "$AT" "$CACHE" "$GOV")"
 t_eq "a run nested in a run takes no second slot (no self-deadlock)" 1 "$O"
 
 t_section "run: a state dir it cannot write runs at once, never waits forever (harbor#555)"

@@ -14,7 +14,7 @@ set -eu
 case "${1:-}" in -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
+ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
 FROZEN="${FROZEN_FILE:-$ROOT/standards/naming/frozen.tsv}"
 RENAMES="${RENAMES_FILE:-$ROOT/standards/naming/renames.tsv}"
 . "$SRC/library-log.sh"

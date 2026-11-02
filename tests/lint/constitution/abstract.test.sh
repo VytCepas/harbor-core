@@ -2,7 +2,7 @@
 # bin/lint-constitution.sh and doc.constitution-abstract: the constitution carries no date, ticket, absolute home path or
 # workload repo name (harbor#1273). The registry and its repo names are made up, so this file names no real workload.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-REGD="$T_TMP/priv/inject.d/box"; mkdir -p "$REGD"
+REGD="$T_TMP/priv/context-rules/user"; mkdir -p "$REGD"
 printf '# name\tpath\twhat\nzorbcorp\t~/x\tmade up\nharbor\t~/h\tthe control plane\nproject-init\t~/y\tyard\n' > "$REGD/projects.tsv"
 LC() { CONSTITUTION_FILE="$1" HARBOR_SCOPE_PRIVATE="${2:-$T_TMP/priv}" sh "$T_ROOT/bin/lint-constitution.sh" 2>&1; }
 rc() { CONSTITUTION_FILE="$1" HARBOR_SCOPE_PRIVATE="${2:-$T_TMP/priv}" sh "$T_ROOT/bin/lint-constitution.sh" >/dev/null 2>&1; echo $?; }

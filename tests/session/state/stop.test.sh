@@ -206,7 +206,7 @@ t_eq "...and nothing typed" "" "$(cat "$T/osa.calls")"; rm -f "$ST/compact-auto.
 sh "$T_ROOT/bin/session-autocompact.sh" '../x' ttys999
 sh "$T_ROOT/bin/session-autocompact.sh" ac-bad 'ttys1;touch x'
 t_eq "the helper: an unsafe session id or tty runs nothing" "" "$(cat "$T/osa.calls")"
-unset HARBOR_SESSION_AUTOCOMPACT_TTY HARBOR_AUTOCOMPACT_TTY HARBOR_SESSION_AUTOCOMPACT_DELAY HARBOR_AUTOCOMPACT_DELAY; export HARBOR_SESSION_AUTOCOMPACT_PERCENT=101 HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT=false
+unset HARBOR_SESSION_AUTOCOMPACT_TTY HARBOR_SESSION_AUTOCOMPACT_DELAY; export HARBOR_SESSION_AUTOCOMPACT_PERCENT=101 HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT=false
 
 t_section "cleanup: a merged PR of this session asks once; [cleanup-ok] as the last line runs the sweep's RECLAIM rows"
 printf '#!/bin/sh\nprintf "%%s\\n" "$*" >> "%s/clean.calls"\ncase "$*" in *--apply*) echo "  RECLAIM  finished-worktrees  0B  wt-x" ;; esac\n' "$T" > "$T/clean"; chmod +x "$T/clean"
@@ -252,7 +252,7 @@ cleaned; t_has "...the sweep ran" "$(cat "$T/clean.calls")" '--apply --live'
 typed cl-2; t_has "...and /compact was typed" "$(cat "$T/osa.calls")" '/dev/ttys999'
 sleep 0.5; : > "$T/clean.calls"; sh "$T_ROOT/bin/session-cleanup.sh" '../x'
 t_eq "the helper: an unsafe session id runs nothing" "" "$(cat "$T/clean.calls")"
-unset HARBOR_SESSION_AUTOCOMPACT_TTY HARBOR_AUTOCOMPACT_TTY HARBOR_SESSION_AUTOCOMPACT_DELAY HARBOR_AUTOCOMPACT_DELAY HARBOR_SESSION_CLEANUP_TOOL HARBOR_CLEANUP_TOOL; export HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT=false
+unset HARBOR_SESSION_AUTOCOMPACT_TTY HARBOR_SESSION_AUTOCOMPACT_DELAY HARBOR_SESSION_CLEANUP_TOOL; export HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT=false
 
 t_section "fail-open, off switch, and speed"
 printf 'not json' | CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" > "$T/out" 2>&1; t_eq "garbage on stdin: exit 0, silent" "0:" "$?:$(cat "$T/out")"

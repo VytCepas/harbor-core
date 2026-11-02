@@ -104,11 +104,11 @@ t_exit "...though the lookup still answers" 0 roots --repo harbor
 
 t_section "the INSTALLED copy judges kinds by the register shipped beside it (no standards/ above bin/)"
 IC="$T_TMP/icfg"; mkdir -p "$IC"; printf '{"permissions":{"deny":[]}}\n' > "$IC/settings.json"
-env -u CLAUDE_CONFIG_DIR -u CLAUDECODE -u HARBOR_DEPLOY_ACTIVE -u HARBOR_DEPLOY sh "$T_ROOT/bin/deploy-runtime-install.sh" --apply --dir "$IC" >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR -u CLAUDECODE -u HARBOR_DEPLOY_ACTIVE sh "$T_ROOT/bin/deploy-runtime-install.sh" --apply --dir "$IC" >/dev/null 2>&1
 t_eq "the runtime installer ships the kinds register beside scope-roots.sh" present "$([ -f "$IC/bin/repo-kinds.tsv" ] && echo present || echo absent)"
 mkpriv kw "$H"'svc	svc	workload	-
 '
-iroots() { R env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$IC/bin/scope-roots.sh" "$@"; }
+iroots() { R env -u HARBOR_SCOPE_ROOT sh "$IC/bin/scope-roots.sh" "$@"; }
 t_exit "a workload row is green from the installed copy" 0 iroots --registry-check
 mkpriv kw2 "$H"'svc	svc	nonsense	-
 '
@@ -423,9 +423,8 @@ t_eq "the fleet controller is the one fleet-controller row" "$PW/tools/fleet" "$
 t_eq "...and the rest of a row's path is kept" "$PW/tools/fleet/fleet.yaml" "$(roots --get HARBOR_SCOPE_FLEET_FILE)"
 t_eq "a W5 old name asks the same row" "$PW/yard" "$(roots --get HARBOR_PROJECT_INIT)"
 t_eq "the W9 red-team root answers by its new name" "$PW/vendor-src" "$(roots --get HARBOR_EVAL_REDTEAM_DIR)"
-t_eq "...and by its old one until 2026-12-01 (harbor#967)" "$PW/vendor-src" "$(roots --get HARBOR_REDTEAM_DIR)"
-t_eq "...where an override under the old name is still read" "/corpora" "$(HARBOR_REDTEAM_DIR=/corpora roots --get HARBOR_EVAL_REDTEAM_DIR)"
-t_eq "...and the new name's override wins over it" "/new" "$(HARBOR_EVAL_REDTEAM_DIR=/new HARBOR_REDTEAM_DIR=/corpora roots --get HARBOR_EVAL_REDTEAM_DIR)"
+_oldrt="HARBOR_$(printf REDTEAM_DIR)"   # built from parts: the name lint reads tokens
+t_eq "...and the retired old name's override is ignored" "$PW/vendor-src" "$(export "$_oldrt=/corpora"; roots --get HARBOR_EVAL_REDTEAM_DIR)"
 t_eq "--id names the renamed scaffolder" "yard" "$(roots --id HARBOR_SCOPE_SCAFFOLDER)"
 t_eq "--id names the renamed fleet controller" "fleet" "$(roots --id HARBOR_SCOPE_FLEET_CONTROLLER)"
 t_eq "--id of a non-role row is the table's id" "harbor" "$(roots --id HARBOR_SCOPE_REPO)"

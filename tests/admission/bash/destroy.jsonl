@@ -343,7 +343,7 @@
 {"id":"hd803-opener-redirect-surface","rule":"redirect-floor-surface","want":"block","cmd":"jq -n '{}' > {cfg}/settings.json <<EOF\nx\nEOF","why":"harbor#803: the opener writes a floor surface"}
 {"id":"hd803-opener-redirect-after-heredoc","rule":"redirect-floor-surface","want":"block","cmd":"echo {} <<EOF > ~/.claude/settings.json\nx\nEOF","why":"harbor#803"}
 {"id":"hd803-opener-git-config-alias","rule":"rm-rf-home","want":"block","cmd":"git -c alias.x='!rm -rf ~' x <<EOF\nhi\nEOF","why":"harbor#803: git -c can define what runs; the consumer is not inert"}
-{"id":"hd803-opener-assignment-prefix","rule":"killswitch-assign","want":"block","cmd":"HELM_DISABLE_FLOOR=1 git commit -F - <<EOF\nx\nEOF","why":"harbor#803: an assignment prefix is judged as it is without the heredoc"}
+{"id":"hd803-opener-assignment-prefix","rule":"killswitch-assign","want":"block","cmd":"HARBOR_ADMISSION_DISABLE=1 git commit -F - <<EOF\nx\nEOF","why":"harbor#803: an assignment prefix is judged as it is without the heredoc"}
 {"id":"hd803-opener-git-checkout-surface","rule":"git-write-at-surface","want":"block","cmd":"git checkout HEAD -- {cfg}/settings.json <<EOF\nx\nEOF","why":"harbor#803: git counts only for commit, tag and notes"}
 {"id":"hd803-opener-yq-inplace-surface","rule":"inplace-floor-surface","want":"block","cmd":"yq -i '.permissions.deny = []' {cfg}/settings.json <<EOF\nx\nEOF","why":"harbor#803: yq -i writes its operand"}
 {"id":"hd803-after-terminator-redirect-only","rule":"redirect-floor-surface","want":"block","cmd":"git commit -F - <<EOF\nx\nEOF\n> {cfg}/settings.json","why":"harbor#803: a bare redirect after the terminator truncates its target"}

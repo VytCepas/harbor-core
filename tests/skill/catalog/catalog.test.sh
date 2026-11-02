@@ -246,8 +246,8 @@ t_exit "with no private layer the book is still written" 0 reg0
 t_has "no private layer: a sibling's tool has no contract, and says so" "$(cat "$LIVEBOOK")" "| \`cal-read\` | cli | **none yet** |"
 t_hasnt "no private layer: nothing is called unregistered" "$(cat "$LIVEBOOK")" "not registered on this box"
 
-t_section "tier is derived from where a skill lives; a non-tool leaves the CLI table; skill-book.sh is an alias (harbor#1010)"
-cp "$T_ROOT/bin/skill-book.sh" "$R/bin/"; printf '#!/bin/sh\n' > "$HOME/.local/bin/helper.sh"; printf '#!/bin/sh\n' > "$HOME/.local/bin/python3.12"; chmod +x "$HOME/.local/bin/helper.sh" "$HOME/.local/bin/python3.12"
+t_section "tier is derived from where a skill lives; a non-tool leaves the CLI table (harbor#1010)"
+printf '#!/bin/sh\n' > "$HOME/.local/bin/helper.sh"; printf '#!/bin/sh\n' > "$HOME/.local/bin/python3.12"; chmod +x "$HOME/.local/bin/helper.sh" "$HOME/.local/bin/python3.12"
 t_exit "the book is written with a script and an interpreter on the tool dir" 0 reg0
 TB="$(cat "$LIVEBOOK")"
 t_has "a skills/ skill is tier core" "$TB" '| `alpha` | core |'
@@ -257,10 +257,7 @@ t_has "a real tool is a cli row" "$TB" '| `tool` | cli |'
 t_hasnt "a script is not a tool row" "$TB" '| `helper.sh` |'
 t_hasnt "an interpreter is not a tool row" "$TB" '| `python3.12` |'
 t_has "...and both are named once under the table, so nothing is silently dropped" "$TB" 'Not tools, so not rows (contracts/catalog-non-tools.tsv): `helper.sh`, `python3.12`'
-AL="$(cd "$R" && HARBOR_SCOPE_PRIVATE="$NOPRIV" sh "$R/bin/skill-book.sh" --check 2>&1)"
-t_has "the old script name says it was renamed" "$AL" 'renamed to skill-catalog.sh'
-t_has "...and really runs the new one (its own summary line)" "$AL" 'skill-catalog: ' 
-t_eq "...with the same exit code as the new name" "$(cd "$R" && HARBOR_SCOPE_PRIVATE="$NOPRIV" sh "$R/bin/skill-catalog.sh" --check >/dev/null 2>&1; echo $?)" "$(cd "$R" && HARBOR_SCOPE_PRIVATE="$NOPRIV" sh "$R/bin/skill-book.sh" --check >/dev/null 2>&1; echo $?)"
+t_eq "the retired alias bin/skill-book.sh and its skill stub are gone" "" "$(find "$T_ROOT/bin/skill-book.sh" "$T_ROOT/skills/skill-book" 2>/dev/null)"
 
 t_section "manifest drift: every installed skill has a manifest row, and every skill row an installed skill (harbor#1010)"
 MFD="$T_TMP/mfcfg"; mkdir -p "$MFD/skills/one" "$MFD/skills/two" "$MFD/.harbor-packs"

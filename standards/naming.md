@@ -300,7 +300,7 @@ The target design is `DESIGN.md` of the core-packs deliverable; this section is 
   the repos named in `harbor-private/repos.tsv` (`id`, `path`, `kind`, `remote`; D-82).
 - **Private layer (D-79):** `$PORT_ROOT/harbor-private`, data only: `harbor.toml`, `repos.tsv`, `terms.tsv`,
   `leaks.tsv`, `access/`, `checks.md`, `controls.tsv`, `jobs/`, `CLAUDE.personal.md`.
-- **Pack (D-80):** `<workload repo>/harbor-pack/` with `pack.toml`, `skills/`, `bin/`, `context-rules/user/` (`inject.d/` until harbor#1010's date), `checks.tsv`,
+- **Pack (D-80):** `<workload repo>/harbor-pack/` with `pack.toml`, `skills/`, `bin/`, `context-rules/user/`, `checks.tsv`,
   `tests/`. No `hooks/`, no `guard-*`.
 - **Config grammar (D-81):** `harbor.toml` and `pack.toml` are one flat TOML subset: one `key = value` per line,
   `#` comments, values a double-quoted string or a one-line array of them, no tables.

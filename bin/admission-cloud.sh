@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
+[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0
 # guard-cloud (harbor#194 item 3, harbor#193 warning-layer) — PreToolUse(Bash)
 # ASK-gate for destructive cloud operations.
 #

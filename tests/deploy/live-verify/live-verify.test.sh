@@ -4,7 +4,7 @@
 # with the floor installed and its ledger armed, and a scratch HARBOR_SCOPE_LOCAL_BIN holding the shims.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 LV="$T_ROOT/bin/deploy-live-verify.sh"; SRC="$T_ROOT/bin"; C="$HOME/.claude"; LB="$T_TMP/localbin"
-unset CLAUDE_CONFIG_DIR CI GITHUB_ACTIONS HARBOR_ACCESS_BROWSER_LIVE_URL HARBOR_BROWSER_LIVE_URL
+unset CLAUDE_CONFIG_DIR CI GITHUB_ACTIONS HARBOR_ACCESS_BROWSER_LIVE_URL
 HARBOR_DRIFT_REF=HEAD; HARBOR_SCOPE_LOCAL_BIN="$LB"; export HARBOR_DRIFT_REF HARBOR_SCOPE_LOCAL_BIN
 rc() { "$@" > "$T_TMP/out" 2>&1; echo "exit $?"; }  # the exit; output in $T_TMP/out
 out() { cat "$T_TMP/out"; }

@@ -4,8 +4,8 @@
 # is never judged, the pack never denies, and a fired note reaches the decision log.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 T="$T_TMP"; CFG="$T/cfg"; REPO="$T/repo"; BARE="$T/bare"
-mkdir -p "$CFG/inject.d" "$CFG/bin" "$REPO/bin" "$REPO/standards" "$REPO/contracts" "$BARE/bin"
-cp "$T_ROOT/context-rules/user/name-note.md" "$T_ROOT/context-rules/user/name-note.sh" "$CFG/inject.d/"
+mkdir -p "$CFG/context-rules/user" "$CFG/bin" "$REPO/bin" "$REPO/standards" "$REPO/contracts" "$BARE/bin"
+cp "$T_ROOT/context-rules/user/name-note.md" "$T_ROOT/context-rules/user/name-note.sh" "$CFG/context-rules/user/"
 cp "$T_ROOT/hooks/injection-rule/injection-rule.sh" "$T_ROOT/bin/library-admission.sh" "$CFG/bin/"
 # REPO carries the standard (its own lint and registry); BARE is a git repo that does not.
 cp "$T_ROOT/bin/lint-name.sh" "$T_ROOT/bin/library-log.sh" "$REPO/bin/"; cp -R "$T_ROOT/standards/naming" "$REPO/standards/"

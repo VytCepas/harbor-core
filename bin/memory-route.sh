@@ -60,7 +60,7 @@ LOG_FD=2; . "$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)/library-log.sh"; 
 
 _phys() { CDPATH= cd -P -- "$1" 2>/dev/null && pwd -P || printf '%s' "$1"; }
 
-REPO="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)}}"
+REPO="${HARBOR_SCOPE_REPO:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)}"
 LIVE_DIR="$HOME/.claude"
 CFG="${CLAUDE_CONFIG_DIR:-$LIVE_DIR}"
 APPLY=0
@@ -140,10 +140,10 @@ key_for() { printf '%s' "$1" | sed 's|/|-|g'; }
 # THE REGISTRY IS THE PRIVATE LAYER'S (harbor#1149): <private>/context-rules/user/projects.tsv (harbor#1010), through the one resolver beside this
 # script. None is the stand-down below, which names where it looked.
 _SELF="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)"
-REGISTRY="$(env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$_SELF/scope-roots.sh" --projects 2>/dev/null || :)"
+REGISTRY="$(env -u HARBOR_SCOPE_ROOT sh "$_SELF/scope-roots.sh" --projects 2>/dev/null || :)"
 if [ -z "$REGISTRY" ]; then  # named where the layer's own layout would hold it (harbor#1010)
-  _pv="$(env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$_SELF/scope-roots.sh" --private 2>/dev/null || :)"
-  if [ -d "$_pv/context-rules" ]; then REGISTRY="$_pv/context-rules/user/projects.tsv"; else REGISTRY="$_pv/inject.d/box/projects.tsv"; fi
+  _pv="$(env -u HARBOR_SCOPE_ROOT sh "$_SELF/scope-roots.sh" --private 2>/dev/null || :)"
+  REGISTRY="$_pv/context-rules/user/projects.tsv"
 fi
 STORE_ROOT="$CFG/projects"
 # PHYSICAL, on both sides of the comparison. Claude Code keys the directory off

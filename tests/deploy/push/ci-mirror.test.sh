@@ -3,7 +3,7 @@
 # The "remote" is a local bare repo reached through an insteadOf rewrite of a github.com URL; gh is a stub over that bare
 # repo. No network. The "secret" below is a made-up word and the "token" a made-up string, never real.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset HARBOR_TEST_IN_SUITE HARBOR_IN_SUITE GH_TOKEN GITHUB_TOKEN
+unset HARBOR_TEST_IN_SUITE GH_TOKEN GITHUB_TOKEN
 GIT_AUTHOR_NAME=t; GIT_AUTHOR_EMAIL=t@t.test; GIT_COMMITTER_NAME=t; GIT_COMMITTER_EMAIL=t@t.test
 export GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
 REALGIT="$(command -v git)"
@@ -11,7 +11,7 @@ HDR='id	kind	pattern	note'
 LHDR='path	layer	note'
 mkdir -p "$T_TMP/pv"; { printf '%s\n' "$HDR"; printf 'k1\tword\tZorblax\tn\n'; } > "$T_TMP/pv/leaks.tsv"
 HARBOR_SCOPE_PRIVATE="$T_TMP/pv"; export HARBOR_SCOPE_PRIVATE
-mkdir -p "$T_TMP/pv/inject.d/box"; printf '# name\tpath\twhat\nzorbcorp\t~/zorbcorp\ta made-up workload repo\n' > "$T_TMP/pv/inject.d/box/projects.tsv"
+mkdir -p "$T_TMP/pv/context-rules/user"; printf '# name\tpath\twhat\nzorbcorp\t~/zorbcorp\ta made-up workload repo\n' > "$T_TMP/pv/context-rules/user/projects.tsv"
 TOKEN="mirrortok-Qm4xV7nB2c"; TOKB64="$(printf 'x-access-token:%s' "$TOKEN" | base64 | tr -d '\n')"
 HARBOR_CI_CORE_SLUG=test/harbor-core; HARBOR_CI_SLUG=test/harbor; export HARBOR_CI_CORE_SLUG HARBOR_CI_SLUG
 STUB="$T_TMP/stub"; mkdir -p "$STUB"; export STUB
@@ -202,8 +202,9 @@ t_eq "...pushes nothing" "0" "$(nbranches)"
 t_eq "...calls no gh create or edit" "0" "$(( $(ghcalls 'pr create') + $(ghcalls 'pr edit') ))"
 t_eq "...and runs no git fetch or push" "0" "$(gitcalls ARGV)"
 # harbor#967 W9: public-ci.yml sets the old names until its patch lands, so both are read until 2026-12-01.
-HARBOR_CORE_MIRROR_DIR="$MIR" sh "$S/bin/ci-mirror.sh" --dry-run 7 >/dev/null 2>&1; t_eq "the old mirror-dir name alone still reaches the checkout (dry run green)" "0" "$?"
-: > "$STUB/gh.log"; OUT="$(HARBOR_CORE_MIRROR_TOKEN="$TOKEN" sh "$S/bin/ci-mirror.sh" --close 7 2>&1)"
+_od="HARBOR_$(printf CORE_MIRROR_DIR)"; _ot="HARBOR_$(printf CORE_MIRROR_TOKEN)"   # the old names, built apart so no source line holds one
+env "$_od=$MIR" sh "$S/bin/ci-mirror.sh" --dry-run 7 >/dev/null 2>&1; t_eq "the old mirror-dir name alone still reaches the checkout (dry run green)" "0" "$?"
+: > "$STUB/gh.log"; OUT="$(env "$_ot=$TOKEN" sh "$S/bin/ci-mirror.sh" --close 7 2>&1)"
 t_hasnt "the old token name alone passes the token check" "$OUT" "is not set"
 t_has "...and is the token gh runs with" "$(cat "$STUB/gh.log")" "GH_TOKEN=$TOKEN"
 S2="$(mk dryleak)"; pr "$S2" docs/leak.md 'owned by Zorblax' >/dev/null

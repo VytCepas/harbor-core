@@ -278,9 +278,9 @@ fi
 # almost nothing blocks. It is its own record, never `armed`, so a shadow session
 # cannot inflate the denominator of a rate it does not enforce. The kill-switch
 # wins when both are set, because then no guard runs at all.
-if [ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ]; then
+if [ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ]; then
   floor_log_decision session override floor-disabled.meta || :
-elif [ "${HARBOR_ADMISSION_SHADOW:-${HELM_FLOOR_SHADOW:-0}}" = "1" ]; then
+elif [ "${HARBOR_ADMISSION_SHADOW:-0}" = "1" ]; then
   floor_log_decision session shadow floor-shadow.meta || :
 else
   floor_log_decision session armed floor-armed.meta || :
