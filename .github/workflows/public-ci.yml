@@ -37,18 +37,18 @@ jobs:
     env:
       PR: ${{ github.event.pull_request.number }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-      HARBOR_CORE_MIRROR_TOKEN: ${{ secrets.HARBOR_CORE_MIRROR_TOKEN }}
+      HARBOR_CI_CORE_MIRROR_TOKEN: ${{ secrets.HARBOR_CORE_MIRROR_TOKEN }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: harbor at the base, so the gate that judges the PR is main's
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           path: harbor
           fetch-depth: 0
           persist-credentials: false
       - name: harbor-private, for the leak gate's private terms
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           repository: VytCepas/harbor-private
           token: ${{ secrets.HARBOR_PRIVATE_READ_TOKEN }}
@@ -74,7 +74,7 @@ jobs:
         working-directory: harbor
         env:
           HARBOR_SCOPE_PRIVATE: ${{ github.workspace }}/harbor-private
-          HARBOR_CORE_MIRROR_DIR: ${{ runner.temp }}/harbor-core
+          HARBOR_CI_CORE_MIRROR_DIR: ${{ runner.temp }}/harbor-core
         run: sh bin/ci-mirror.sh "$PR"
       - name: Wait for the hosted run, then set public-ci
         working-directory: harbor
@@ -94,10 +94,10 @@ jobs:
     timeout-minutes: 5
     runs-on: [self-hosted, Linux, ARM64, harbor-pool]
     env:
-      HARBOR_CORE_MIRROR_TOKEN: ${{ secrets.HARBOR_CORE_MIRROR_TOKEN }}
+      HARBOR_CI_CORE_MIRROR_TOKEN: ${{ secrets.HARBOR_CORE_MIRROR_TOKEN }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
