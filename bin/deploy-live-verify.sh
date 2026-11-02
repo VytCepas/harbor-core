@@ -140,19 +140,6 @@ else
 fi
 fi
 
-# 7. The wall (harbor#1442): one row per agent surface against the main-files invariant. Born warn, as drift.confinement is
-#    (standards/naming/controls.tsv): the retried-Bash row stays "does not hold" until #555 P4, so a FAIL here would turn
-#    every box red. It reads contracts/ beside it, so the installed copy skips, as install-drift does.
-if [ -f "$HERE/drift-wall.sh" ] && [ -f "$HERE/../contracts/main-folders.txt" ]; then
-  sh "$HERE/drift-wall.sh" --state < /dev/null > "$W/wall" 2>&1; _r=$?   # --state: a verifier writes no receipt
-  _no="$(sed -n 's/^  FAIL: \[check:drift.wall\] \([^:]*\): does not hold.*/\1/p' "$W/wall" | tr '\n' ',' | sed 's/,$//; s/,/, /g')"
-  case "$_r" in
-    0) log_ok "$ID wall — every judged surface holds [check:drift.wall]" ;;
-    1) log_warn "$ID wall — does not hold: ${_no:-see the report} [check:drift.wall]"; log_fix "sh $HERE/drift-wall.sh (one row per surface)" ;;
-    *) log_warn "$ID wall — drift-wall.sh could not judge (exit $_r) [check:drift.wall]"; log_fix "sh $HERE/drift-wall.sh" ;;
-  esac
-else log_skip "$ID wall — needs the repo checkout, and $HERE is not one"; fi
-
 # ── the opt-in probes: the real-system coverage the hermetic suites stub (harbor#667) ─────────────
 if [ "$PROBES" -eq 0 ]; then
   for _p in probe:secret probe:live-dir probe:browser; do

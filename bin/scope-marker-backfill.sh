@@ -5,8 +5,8 @@
 #   sh bin/scope-marker-backfill.sh --apply    # writes
 #   sh bin/scope-marker-backfill.sh --apply --include-dirty
 #
-# WHAT IT WRITES, AND WHAT IT DOES NOT. One line — `context: repo` at the top of
-# a governed repo's `.agents/config.yaml` — and only where no `context:` key
+# WHAT IT WRITES, AND WHAT IT DOES NOT. One line — `scope: project` (the standard's key, harbor#966; it was `context: repo`) at the top of
+# a governed repo's `.agents/config.yaml` — and only where no `scope:` or `context:` key
 # exists in ANY spelling the contract allows. It never rewrites an existing
 # value: `context: ambient` is the owner's opt-out, and a back-fill that
 # overwrote it would silently re-govern a repo whose owner opted out.
@@ -121,13 +121,13 @@ while IFS="$(printf '\t')" read -r name path root; do
       continue ;;
   esac
   if [ "$APPLY" -eq 0 ]; then
-    log_note "$name: would prepend \"context: repo\" to ${cfg#"$HOME"/}"
+    log_note "$name: would prepend \"scope: project\" to ${cfg#"$HOME"/}"
     continue
   fi
   # PREPENDING IS NOT ALWAYS THE TOP (PR #96 review). A descriptor may open with
   # `%YAML`/`%TAG` directives and/or a `---` document-start marker. Writing above
-  # those makes `context: repo` a SEPARATE first document — a single-document
-  # loader then reads `{context: repo}` and loses the whole descriptor — or puts
+  # those makes `scope: project` a SEPARATE first document — a single-document
+  # loader then reads `{scope: project}` and loses the whole descriptor — or puts
   # a key illegally before a directive. So find the document start and insert
   # after it. Comments and blank lines may precede the marker and are skipped;
   # the first line that is real content ends the search, because a `---` after
@@ -143,12 +143,12 @@ while IFS="$(printf '\t')" read -r name path root; do
   done < "$cfg"
   tmp="$cfg.helm-backfill.$$"
   if [ "$_ins" -gt 0 ]; then
-    { head -n "$_ins" "$cfg"; printf 'context: repo\n'; tail -n "+$((_ins + 1))" "$cfg"; } > "$tmp"
+    { head -n "$_ins" "$cfg"; printf 'scope: project\n'; tail -n "+$((_ins + 1))" "$cfg"; } > "$tmp"
   else
-    { printf 'context: repo\n'; cat "$cfg"; } > "$tmp"
+    { printf 'scope: project\n'; cat "$cfg"; } > "$tmp"
   fi
   mv "$tmp" "$cfg"
-  log_ok "$name: wrote context: repo"
+  log_ok "$name: wrote scope: project"
 done < "$ROWS"
 
 log_note "yard specifically: its .claude/config.yaml is a byte-hashed committed mirror, so a splice there needs 'just sync-claude' in the same change or tests/contracts/test_claude_dir_sync.py goes red"

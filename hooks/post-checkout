@@ -48,6 +48,9 @@ if [ "$(_phys "$_cfg")" = "$(_phys "$HOME/.claude")" ]; then set -- --live; else
 if env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE -u GIT_COMMON_DIR -u GIT_PREFIX \
      sh "$_hk_root/bin/memory-route.sh" "$@" --apply --quiet >/dev/null 2>&1; then :
 else
-  printf 'post-checkout: memory route incomplete, a session in this worktree may start with no memory: sh %s/bin/memory-route.sh %s --apply\n' "$_hk_root" "$*" >&2
+  # A command inside the agent sandbox cannot write <config>/projects, so a worktree made there is
+  # born blind and nothing else says why (harbor#966): name the cause and the one unsandboxed fix.
+  _why=""; [ -w "$_cfg/projects" ] || _why=" (the config dir's projects/ is not writable here: a sandboxed command cannot route, re-run with the sandbox off)"
+  printf 'post-checkout: memory route incomplete%s, a session in this worktree may start with no memory: sh %s/bin/memory-route.sh %s --apply\n' "$_why" "$_hk_root" "$*" >&2
 fi
 exit 0
