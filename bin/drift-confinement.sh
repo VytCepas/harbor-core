@@ -7,14 +7,15 @@
 #   sh drift-confinement.sh --state    the same, plus one word on stdout: match | drift | not-installed | unchecked,
 #                                      and no receipt (floor-verify's read; a verifier writes nothing)
 # Read-only: it never writes managed settings; the fix is the operator's `sudo sh deploy-confinement.sh`.
-# Every finding line carries [check:drift.confinement]; the receipt goes to log_receipt's dir (CHECKS.md).
+# Every finding line carries [check:drift.confinement]; the receipt goes to log_receipt's dir (docs/reference/checks.md).
 # HARBOR_MANAGED_SETTINGS moves the target, as in deploy-confinement.sh (tests, no root).
 set -u
 case "${1:-}" in -h|--help) awk 'NR<2{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$0"; exit 0 ;; esac
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 log_init drift-confinement
 STATE=0
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 case "${1:-}" in
   --state) STATE=1; LOG_FD=2 ;;
   '') ;;
@@ -44,9 +45,20 @@ if [ -f "$MF" ]; then
   ! jq -e 'has("sandbox")' "$MF" >/dev/null 2>&1 || SB=1
 fi
 MKP=0; [ ! -f "$MK" ] || MKP=1
+# allowAppleEvents is never policy (DE-40, #1442): at any depth, with any value but false, in the managed file.
+AE=''
+[ ! -f "$MF" ] || AE="$(jq -r '[paths as $p | select($p[-1] == "allowAppleEvents") | select(getpath($p) != false) | $p | map(tostring) | join(".")][]' "$MF" 2>/dev/null || :)"
 if [ "$SB" = 0 ] && [ "$MKP" = 0 ]; then
-  log_skip "$P not installed: no sandbox block in $MF and no marker beside it"
-  finish stood-down not-installed 0
+  if [ -z "$AE" ]; then
+    log_skip "$P not installed: no sandbox block in $MF and no marker beside it"
+    finish stood-down not-installed 0
+  fi
+  # No confinement installed, yet the key is planted: that alone is the finding (nothing to compare the rest against).
+  for _l in $AE; do log_note "$P $MF sets $_l: allowAppleEvents removes the sandbox's code-execution isolation and is never policy (DE-40)"; done
+  log_fail "$P the managed file sets allowAppleEvents, which is never policy"
+  log_fix "remove the key from $MF as root; no installer in this repo writes it"
+  # shellcheck disable=SC2086
+  finish red drift 1 apple-events:$AE
 fi
 
 ERR="$(mktemp "${TMPDIR:-/tmp}/drift-confinement.XXXXXX")" || unchecked "mktemp under ${TMPDIR:-/tmp} failed" "set TMPDIR to a writable dir"
@@ -81,6 +93,7 @@ if [ "$MKP" = 1 ]; then
 fi
 _ifs=$IFS; IFS='
 '
+for _l in $AE; do log_note "$P $MF sets $_l: allowAppleEvents removes the sandbox's code-execution isolation and is never policy (DE-40)"; add "apple-events:$_l"; done
 for _l in $LACKS; do log_note "$P the installed block lacks: $_l"; add "lacks:$_l"; done
 for _l in $EXTRA; do log_note "$P the installed block has what the compose does not: $_l"; add "extra:$_l"; done
 IFS=$_ifs

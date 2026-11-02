@@ -3,7 +3,10 @@ kind: decision-record
 status: accepted
 alias: D-62
 date: 2026-10-04
+supersedes: -
+superseded_by: -
 source: research/12a-reviewer.md
+owner: @VytCepas
 ---
 
 # Controls
@@ -19,7 +22,7 @@ Naming-standard decision D-62. The decision text is imported unchanged from stan
 
 ## Decision
 
-**One `controls.tsv`** for rules, checks, admission rules, injection rules, CI gates and Vale rules; `CHECKS.md` is generated from it
+**One `controls.tsv`** for rules, checks, admission rules, injection rules, CI gates and Vale rules; `docs/reference/checks.md` is generated from it
 
 ## Consequences
 

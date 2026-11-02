@@ -3,7 +3,10 @@ kind: decision-record
 status: accepted
 alias: D-55
 date: 2026-10-04
+supersedes: -
+superseded_by: -
 source: research/12a-reviewer.md
+owner: @VytCepas
 ---
 
 # flow repos
@@ -14,7 +17,7 @@ Naming-standard decision D-55, from standard-draft.md §12. Its whole subject is
 
 - Operator decision, 2026-10-04 (standard draft 4, §12 header).
 - Source: research/12a-reviewer.md
-- Moved (harbor#1273): the text is in the private layer's `notes/repo-names.md` (`sh bin/roots.sh --private`), byte for
+- Moved (harbor#1273): the text is in the private layer's `notes/repo-names.md` (`sh bin/scope-roots.sh --private`), byte for
   byte. This stub keeps D-55 citable from the registers.
 
 ## Decision
