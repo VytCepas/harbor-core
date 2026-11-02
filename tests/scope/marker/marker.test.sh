@@ -85,34 +85,6 @@ done
 # PORT_ROOT is unset, so nothing but the harbor marker decides it.
 t_eq "H01-harbor-root-resolves-repo" "repo" "$(resolve "$T_ROOT" "$M/.no-home" "-")"
 
-# ── harbor#966/#999: the floor never asks the repo registry, so renaming the scaffolder in it changes no verdict.
-# The same fixtures, resolved with a registry whose scaffolder row is the old name, the new name, and no registry at all.
-RN="$M/.rename"; mkdir -p "$RN/old" "$RN/new" "$RN/none" "$RN/port/repoA/.agents" "$RN/port/repoA/.claude" "$RN/port/legacy/.agents" "$RN/port/optout/.agents" "$RN/port/repoB/.agents" "$RN/port/repoB/.claude" "$RN/home/.claude/plugins"
-printf 'id\tpath\tkind\tremote\nproject-init\tproject-init\tscaffolder\t-\n' > "$RN/old/repos.tsv"
-printf 'id\tpath\tkind\tremote\nyard\tyard\tscaffolder\t-\n' > "$RN/new/repos.tsv"
-printf 'scope: project\n' > "$RN/port/repoA/.agents/config.yaml"; printf 'scope: project\n' > "$RN/port/repoB/.agents/config.yaml"
-# repoB wires the guard as the scaffolder's lifecycle plugin: enabled in the repo AND installed on the box (the name is the constant's)
-printf '{"enabledPlugins":{"%s@market":true}}\n' "$FLOOR_SCAFFOLDER_LIFECYCLE_PLUGIN" > "$RN/port/repoB/.claude/settings.json"
-printf '{"plugins":{"%s@market":[{"scope":"user"}]}}\n' "$FLOOR_SCAFFOLDER_LIFECYCLE_PLUGIN" > "$RN/home/.claude/plugins/installed_plugins.json"
-printf '{"hooks":{"PreToolUse":[{"hooks":[{"command":"sh github_command_guard.py"}]}]}}\n' > "$RN/port/repoA/.claude/settings.json"
-: > "$RN/port/legacy/.agents/project-init.md"; printf 'scope: user\n' > "$RN/port/optout/.agents/config.yaml"
-verdicts() { # <registry dir> — one line per fixture: the boundary verdict and whether the repo wires its own force-push guard
-  ( HOME="$RN/home"; PORT_ROOT="$RN/port"; HARBOR_SCOPE_PRIVATE="$1"; CLAUDE_CONFIG_DIR="$RN/home/.claude"; export HOME PORT_ROOT HARBOR_SCOPE_PRIVATE CLAUDE_CONFIG_DIR
-    for _fx in repoA repoB legacy optout; do
-      FLOOR_IN="$(jq -cn --arg d "$RN/port/$_fx" '{tool_name:"Bash",cwd:$d,tool_input:{command:"true"}}')"; unset CLAUDE_PROJECT_DIR
-      if floor_in_repo; then _r=repo; else _r=ambient; fi
-      if floor_repo_wires github_command_guard "$FLOOR_SCAFFOLDER_LIFECYCLE_PLUGIN"; then _w=wired; else _w=unwired; fi
-      printf '%s %s %s\n' "$_fx" "$_r" "$_w"
-    done )
-}
-OLDV="$(verdicts "$RN/old")"
-t_eq "R1-fixtures-resolve-as-designed" "repoA repo wired
-repoB repo wired
-legacy repo unwired
-optout ambient unwired" "$OLDV"
-t_eq "R2-scaffolder-renamed-in-the-registry-same-verdicts" "$OLDV" "$(verdicts "$RN/new")"
-t_eq "R3-no-registry-same-verdicts" "$OLDV" "$(verdicts "$RN/none")"
-
 # ── the sibling roles: a disagreement fails, agreement is reported and never counted (see the header)
 x_complete() { # <role> <workfile> <outfile> <rc> — a dead or short adapter is a failure, not a pass
   _want="$(wc -l < "$2" | tr -d ' ')"; _have="$(wc -l < "$3" 2>/dev/null | tr -d ' ')"; _have="${_have:-0}"

@@ -421,8 +421,3 @@ tests/deploy/install/renamed.test.sh
 tests/deploy/install/renamed-wiring.test.sh
 tests/deploy/install/renamed-wiring-w7.test.sh
 tests/gate/push/push.test.sh
-tests/scope/generate/generate.test.sh
-tests/scope/siblings/siblings.test.sh
-tests/admission/destroy/latency.test.sh
-tests/admission/git/probe.test.sh
-tests/access/browser-flow/browser-flow.test.sh

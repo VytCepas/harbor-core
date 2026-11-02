@@ -57,7 +57,6 @@ lint-module-shape.sh        IDLE  answers the two questions CONSTITUTION "Module
 admission-mutation-tier.sh       IDLE  classifies a path by what writing there costs; asserts, unrun
 lint-port-paths.sh          IDLE  the harbor#619 move gate (docs/reference/checks.md `lint.port-paths`): typed by hand, and run as its gate by remove-bridges.sh, which lives in the Deliverables folder outside every surface C8 scans; nothing schedules it, so a new pre-move literal shows only when someone runs it
 drift-port-root.sh          IDLE  the harbor#966 workspace drift check (docs/reference/checks.md `drift.port-root`): typed by hand, because the tree under PORT_ROOT is box state and a lint rule on it would be red in CI for a reason no commit can fix; nothing schedules it
-scope-repos-generate.sh     IDLE  the harbor#966 generator and drift check for the repo lists (docs/reference/checks.md `scope.repos-generated`): typed by hand, because the files it compares are box state in another repo and a lint rule on them would be red in CI for a reason no commit here can fix; nothing schedules it
 gate-pr-wait.sh             VERB  run by hand or by an agent after a push: returns on the first review thread, failed check or green (harbor#552)
 doc-report-verify.sh     IDLE  does a generated artefact meet contracts/reports.md — no caller and no test
 lint-rule-health.sh         IDLE  which lint rules are not earning their keep (harbor#577); weekly is intended and needs the operator's yes, until then it runs by hand
@@ -69,8 +68,5 @@ session-workflow-progress.sh         IDLE  is that workflow actually running —
 doc-vale.sh            IDLE  Vale over prose with the registry's config (harbor#978); nothing calls it yet because Vale is not in the CI images, an operator-applied patch
 lint-pr.sh      IDLE  validates a PR title, body and branch (harbor#978); nothing calls it yet because the workflow job is an operator-applied patch
 policy-resolve.sh  IDLE  the one config order (harbor#1001); its fixture runs it, no CLI calls it yet because the CLIs that read config are other repos or later waves
-access-browser-flow.sh VERB  an agent or the operator runs it: record a flow once and replay it from a file on a signed-out disposable browser (harbor#1445); no schedule, no caller
 gate-pr-plan.sh         VERB  the hand-over step: an agent runs it to derive the operator's merge, approve and re-run commands (harbor#1413); the Stop gate wiring is harbor#1284
 gate-repo-drift.sh       VERB  the operator runs it: each governed repo's GitHub rules, declared in ship.conf, against live, with the commands that close each drift (harbor#1418); not scheduled until the operator says yes
-eval-hook-latency.sh     VERB  the operator (or the lane that changes the snapshot step) types it: `run` measures what the snapshot adds to a discarding git command in admission-destroy.sh against the 50 ms p50 budget of harbor#1290; the suite proves the arithmetic, never a wall-clock figure
-eval-git-verbs-probe.sh   VERB  the operator types it after a deploy or a register edit: every row of contracts/verbs/git.md decided free, asked, denied or blocked from the deployed rules and the wired hooks (harbor#1291); `--live` reads the box's own settings

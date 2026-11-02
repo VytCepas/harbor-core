@@ -7,7 +7,7 @@
 # ADC identity can DELETE a BigQuery table (falsifier fired, 404 not 403), and
 # nothing in the session path stopped it — the auto-mode classifier blocked one
 # attempt and permitted the identical retry. admission-bash.sh's header assigns
-# cloud/data-destruction to yard's prod_guard "deliberately", but
+# cloud/data-destruction to project-init's prod_guard "deliberately", but
 # prod_guard runs PER-REPO (`.agents/hooks/`); the ambient $HOME session where the
 # delete actually ran has no prod_guard at all. This guard fills that ambient seam.
 #

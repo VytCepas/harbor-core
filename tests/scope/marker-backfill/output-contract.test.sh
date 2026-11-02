@@ -24,7 +24,7 @@ t_section "a dry run: notes and WARNs, nothing written, exit 0"
 t_eq "exit 0" "exit 0" "$(run)"
 t_eq "the header names the fleet" "── marker-backfill · fleet: 3 governed repos (read from $PO)" "$(OUT | head -1)"
 t_has "the dry run is a note carrying the command" "$(OUT)" "  note: DRY RUN — nothing is written; to write: sh $TOOL --apply"
-t_has "a repo it would write is a note" "$(OUT)" '  note: fresh: would prepend "scope: project"'
+t_has "a repo it would write is a note" "$(OUT)" '  note: fresh: would prepend "context: repo"'
 t_has "an already-declared repo is an ok line" "$(OUT)" "  ok: declared: already declares context: ambient"
 t_has "a dirty tree is a WARN" "$(OUT)" "  WARN: dirty: WOULD WRITE, but the tree is dirty"
 t_has "with its fix" "$(after '^  WARN: dirty')" "  fix: git -C $F/dirty status --short"
@@ -36,8 +36,8 @@ t_eq "no legacy glyph is left" 0 "$(OUT | grep -cF -e '⊘' -e '✓' -e '→')"
 
 t_section "--apply: the write is an ok line"
 t_eq "exit 0" "exit 0" "$(run --apply)"
-t_has "the write" "$(OUT)" "  ok: fresh: wrote scope: project"
-t_eq "the key is on disk" "scope: project" "$(head -1 "$F/fresh/.agents/config.yaml")"
+t_has "the write" "$(OUT)" "  ok: fresh: wrote context: repo"
+t_eq "the key is on disk" "context: repo" "$(head -1 "$F/fresh/.agents/config.yaml")"
 t_eq "the summary" "marker-backfill: 2 ok, 0 failed, 1 warnings" "$(OUT | tail -1)"
 
 t_section "the standard's scope: key is already a declaration (harbor#963)"

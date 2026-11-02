@@ -22,11 +22,6 @@ deny-write @PORT_ROOT@/**/.mcp.json
 deny-write @PORT_ROOT@/**/.github/workflows
 # uv's cache: every `uv run --script` tool writes it
 write ~/.cache/uv
-# The local event bus (harbor#1441, escape class event-bus): `event-bus.sh emit` appends one JSON line here, and the gate,
-# the CI governor and an obligation open all emit from a Bash call. Without the row every confined emit dies on mkdir. It is
-# an append-only log the dispatcher reads; its handlers are the manifest-checked allowlist in contracts/event-rules.tsv, so a
-# line a confined command writes can start only those. Operator review: this lets a confined command forge bus events.
-write ~/.local/state/harbor/events
 # CA bundles a Read deny rule closes (`Read(//**/*.pem)`): the system bundle, and certifi inside uv's cache
 read /etc/ssl/cert.pem
 read /private/etc/ssl/cert.pem
