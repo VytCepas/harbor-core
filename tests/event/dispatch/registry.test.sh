@@ -80,15 +80,16 @@ t_hasnt "...and it loads under the plist's environment" "$(env -u CLAUDE_CONFIG_
 t_exit "the installed copy refuses a CLAUDE_CONFIG_DIR that is not its own (4)" 4 env CLAUDE_CONFIG_DIR="$T_TMP/elsewhere" sh "$ED" on --list
 rm -rf "$HOME/port"
 
-t_section "the launchd job is the KeepAlive follower, shipped and not installed"
+t_section "the launchd job is the KeepAlive follower, installed by a deploy (harbor#1437)"
 PL="$T_ROOT/launchd/com.harbor.event.dispatch.plist"
 flat="$(tr -d ' \n\t' < "$PL")"
 t_has "it runs the installed dispatcher's dispatch verb" "$flat" "/.claude/bin/event-dispatch.sh</string><string>dispatch</string></array>"
 t_has "...under /bin/sh" "$flat" "<key>ProgramArguments</key><array><string>/bin/sh</string>"
 t_has "restarted on a crash, left down after exit 0" "$flat" "<key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>"
 t_has "in the operator's GUI session, for the keychain" "$flat" "<key>LimitLoadToSessionType</key><string>Aqua</string>"
-t_has "docs/reference/checks.md registers it as not installed" "$(grep '^| `event.dispatch` |' "$T_ROOT/docs/reference/checks.md")" "NOT installed"
-t_eq "no installer copies or loads it" "" "$(grep -h 'LaunchAgents\|launchctl' "$T_ROOT"/bin/*install*.sh "$T_ROOT"/bin/deploy.sh 2>/dev/null | grep 'event\.dispatch')"
+t_has "docs/reference/checks.md registers it as installed by deploy" "$(grep '^| `event.dispatch` |' "$T_ROOT/docs/reference/checks.md")" "KeepAlive: installed by"
+t_has "the plist carries the marker deploy-launchd-sync.sh installs by" "$flat" "harbor:deploy-installs"
+t_eq "only the deploy-run sync tool loads it: no bin/*install*.sh names it" "" "$(grep -h 'LaunchAgents\|launchctl' "$T_ROOT"/bin/*install*.sh 2>/dev/null | grep 'event\.dispatch')"
 
 t_section "subscribe is refused until the messaging socket is verified"
 sh "$ED" subscribe '"kind":"git\.merge"' 2>"$T_TMP/sub.err"; rc=$?

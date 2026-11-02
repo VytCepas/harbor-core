@@ -161,11 +161,11 @@ unread() { # <what>
 [ -n "$REPO" ] || { REPO='?'; unread "the repository name (no origin in this checkout, no repo-slug.txt beside this install; set HARBOR_CI_SWITCH_REPO=<owner/name>)"; }
 
 # ── the current value: unset reads as self-hosted, which is what the workflow does with it ──
-getvar() { # <name> -> GV, its value (self-hosted when unset) and GSET (1 when set); returns 1 when the read fails
+getvar() { # <name> -> GV, its value (self-hosted when unset); returns 1 when the read fails
   GV="$("$GH" variable get "$1" -R "$REPO" 2>"$T/vget.err" || true)"
-  GV="$(printf '%s' "$GV" | tr -d ' \r\n')"; GSET=1
+  GV="$(printf '%s' "$GV" | tr -d ' \r\n')"
   [ -z "$GV" ] || return 0
-  GSET=0; GV=self-hosted
+  GV=self-hosted
   grep -qi 'not found' "$T/vget.err" 2>/dev/null
 }
 getvar "$VARNAME" || unread "the $VARNAME read"

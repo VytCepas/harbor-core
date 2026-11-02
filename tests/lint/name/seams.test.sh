@@ -5,7 +5,7 @@
 SV="$T_ROOT/bin/standard-vendor.sh"
 H="$T_TMP/harbor"; R="$T_TMP/repo"
 mkdir -p "$H/bin" "$H/standards/naming"
-cp "$T_ROOT/bin/lint-name.sh" "$T_ROOT/bin/lint-renderer.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/standard-vendor.sh" "$T_ROOT/bin/standard-register.sh" "$T_ROOT/bin/doc-shape.sh" "$T_ROOT/bin/doc-fresh-verify.sh" "$H/bin/"
+cp "$T_ROOT/bin/lint-name.sh" "$T_ROOT/bin/lint-renderer.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/standard-vendor.sh" "$T_ROOT/bin/standard-register.sh" "$T_ROOT/bin/doc-shape.sh" "$T_ROOT/bin/doc-fresh-verify.sh" "$T_ROOT/bin/standard-kit.sh" "$H/bin/"
 cp "$T_ROOT"/standards/naming/*.tsv "$H/standards/naming/"
 mkdir -p "$R/contracts"; sh "$SV" --source "$H" "$R" >/dev/null 2>&1
 tree() { (cd "$R" && sh vendor/naming/lint-name.sh --root . --registry vendor/naming/registry 2>&1); }

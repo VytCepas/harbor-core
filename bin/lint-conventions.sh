@@ -234,7 +234,7 @@ _x8_repo_time() { # <file in $ROOT> -> epoch seconds, or empty
 # which is the same file again.
 _admission_guards() {
   for _ag in "$ROOT"/bin/admission-*.sh "$ROOT"/bin/library-admission.sh "$ROOT"/bin/guard-*.sh; do   # a guard-*.sh that is a file, not a shim, is still a guard
-    case "${_ag##*/}" in admission-hook.sh|admission-deny-hash.sh|admission-mutation-tier.sh|admission-observe-report.sh) continue ;; esac
+    case "${_ag##*/}" in admission-hook.sh|admission-deny-hash.sh|admission-mutation-tier.sh|admission-observe-report.sh|admission-decide.sh|admission-replay.sh) continue ;; esac   # the last two are called, not wired: a decision function and a replay tool (harbor#1030)
     case "${_ag##*/}" in admission-deny.sh|admission-equivalence.sh|admission-install.sh|admission-observe.sh|admission-remove.sh|admission-verify.sh) continue ;; esac   # the floor-* tools W7 renamed
     [ -f "$_ag" ] && [ ! -L "$_ag" ] && printf '%s\n' "$_ag"
   done
@@ -5130,7 +5130,7 @@ _plist_of() { # <id> -> the plist path, or nothing
   return 0
 }
 rule_X9() {
-rule "drift.launchd-plist every launchd-scheduled docs/reference/checks.md check has a tracked plist, and the installed copy matches"
+rule "drift.launchd-plist every launchd-scheduled docs/reference/checks.md check has a tracked plist, the installed copy matches, and every tracked com.harbor.* plist is a row of the composed register (advisory; the reverse direction is harbor#1433)"
 # THE SCHEDULE COLUMN IS PART OF THE REGISTER, AND THIS RULE USED TO IGNORE IT.
 # X9 demanded `launchd/com.harbor.<id>.plist` for EVERY row, while the register's
 # own third column says of eight of the fifteen that they are not launchd jobs at
@@ -5231,6 +5231,13 @@ else
     _x9_drift=$(( _x9_drift + 1 ))
   done
   rm -f "$_x9_tmp"
+  # The reverse direction (harbor#1433): a tracked plist whose id is no row of the composed register is a job nobody registered.
+  for _x9_p in "$ROOT"/launchd/com.harbor.*.plist; do
+    [ -f "$_x9_p" ] || continue
+    _x9_b="${_x9_p##*/com.harbor.}"; _x9_b="${_x9_b%.plist}"
+    printf '%s\n' "$_x9_reg" | grep -qF "| \`$_x9_b\` |" && continue
+    _adv drift.launchd-plist "unregistered:com.harbor.$_x9_b.plist"; printf '  ADVISORY [drift.launchd-plist] tracked but in no register row: %s — a scheduled job with no row has no owner and no disable command\n' "com.harbor.$_x9_b.plist"
+  done
   printf '  %s registered check(s): %s not launchd-scheduled, %s untracked, %s drifted from the installed copy, %s unreadable.\n' \
     "$_x9_n" "$_x9_other" "$_x9_untracked" "$_x9_drift" "$_x9_unread"; }
 fi
@@ -7204,6 +7211,48 @@ if [ -f "$ROOT/bin/lint-constitution.sh" ] && [ -f "$ROOT/policy/constitution.md
 fi
 }
 
+# ── policy.clause-anchored · policy/clauses.tsv and the constitution's clauses are one list (harbor#1026) ──────────────────
+# Every bold-led clause of policy/constitution.md has a row and every row a clause; policy-check.sh --census judges it and
+# prints each finding. A missing tool or register is a note, never a pass.
+rule_policy_clause_anchored() {
+rule "policy.clause-anchored every bold-led clause of policy/constitution.md has a row in policy/clauses.tsv and every row a clause (harbor#1026)"
+if [ -f "$ROOT/bin/policy-check.sh" ] && [ -f "$ROOT/policy/clauses.tsv" ]; then
+  _pc_out="$(sh "$ROOT/bin/policy-check.sh" --root "$ROOT" --census 2>&1)" \
+    || bad policy.clause-anchored "$(printf '%s' "$_pc_out" | grep -E 'WARN:|unchecked|missing' | sed 's/^ *//' | tr '\n' ' ')" policy/clauses.tsv
+fi
+}
+
+# ── policy.clause-traced · each clause is enforced by a control or declares judgment (harbor#1026) ────────────────────────
+rule_policy_clause_traced() {
+rule "policy.clause-traced every clause row holds known values, and names an existing control or judgment (harbor#1026)"
+if [ -f "$ROOT/bin/policy-check.sh" ] && [ -f "$ROOT/policy/clauses.tsv" ]; then
+  _pt_out="$(sh "$ROOT/bin/policy-check.sh" --root "$ROOT" --shape 2>&1; sh "$ROOT/bin/policy-check.sh" --root "$ROOT" --trace 2>&1)" || :
+  if printf '%s' "$_pt_out" | grep -q 'WARN:'; then
+    bad policy.clause-traced "$(printf '%s' "$_pt_out" | grep 'WARN:' | sed 's/^ *//' | tr '\n' ' ')" policy/clauses.tsv
+  fi
+fi
+}
+
+# ── policy.enforcement-covered · every clause binds at a named moment in a named mode (harbor#1028) ──────────────────────
+rule_policy_enforcement_covered() {
+rule "policy.enforcement-covered every clause has an enforcement pair, moments and modes are known, a pair binds at its earliest checkable moment, and a block pair earned it (harbor#1028)"
+if [ -f "$ROOT/bin/policy-check.sh" ] && [ -f "$ROOT/policy/enforcement.tsv" ]; then
+  _pe_out="$(sh "$ROOT/bin/policy-check.sh" --root "$ROOT" --enforcement 2>&1)" || :
+  if printf '%s' "$_pe_out" | grep -q 'WARN:'; then
+    bad policy.enforcement-covered "$(printf '%s' "$_pe_out" | grep 'WARN:' | sed 's/^ *//' | head -5 | tr '\n' ' ')" policy/enforcement.tsv
+  fi
+fi
+}
+
+# ── policy.enforcement-current · the matrix is generated, never hand-edited (harbor#1028) ─────────────────────────────────
+rule_policy_enforcement_current() {
+rule "policy.enforcement-current docs/policy/enforcement.md is the matrix policy/enforcement.tsv generates (harbor#1028)"
+if [ -f "$ROOT/bin/policy-check.sh" ] && [ -f "$ROOT/policy/enforcement.tsv" ]; then
+  _pg_out="$(sh "$ROOT/bin/policy-check.sh" --root "$ROOT" --gen enforcement --check 2>&1)" \
+    || bad policy.enforcement-current "$(printf '%s' "$_pg_out" | sed 's/^ *//' | tr '\n' ' ')" docs/policy/enforcement.md
+fi
+}
+
 # ── lint.dev-paths · core code names no more dev-layer paths than the baseline (harbor#1275) ─
 # harbor-core has no dev layer, so a core script or test that reads or writes one fails or litters the export.
 # bin/lint-dev-paths.sh counts (core code file, dev path) pairs from contracts/layers.tsv; the count may only fall.
@@ -7824,6 +7873,76 @@ while IFS="$(printf '\t')" read -r _cri _crm; do
   [ -n "$_cri" ] && bad drift.check-register "$_cri: $_crm" "$_cri"
 done < "$_cr_o"
 rm -f "$_cr_o"
+}
+
+# ── skill.catalog-covers-tools · every agent-facing verb and tool is in the catalog (harbor#1010, warn) ──
+# Agents hand-rolled a CI poll because no listing named `harbor event ci` or bin/ci-wait.sh. The catalog (bin/skill-catalog.sh)
+# lists every `harbor` verb and every script contracts/cli.md marks Agent-facing, from contracts/agent-tools.tsv; `--coverage`
+# is red for a verb or mark with no row, and for a row with no verb or script behind it. Silent where it cannot judge (exit 3).
+rule_skill_catalog_covers_tools() {
+rule "skill.catalog-covers-tools every harbor verb and every bin tool contracts/cli.md marks Agent-facing has a row in contracts/agent-tools.tsv, and every row a verb or script (advisory, harbor#1010)"
+if [ -f "$ROOT/bin/skill-catalog.sh" ] && [ -f "$ROOT/contracts/agent-tools.tsv" ]; then
+  _ct_out="$(sh "$ROOT/bin/skill-catalog.sh" --coverage 2>&1)"; _ct_rc=$?
+  if [ "$_ct_rc" -eq 1 ]; then
+    printf '%s\n' "$_ct_out" | sed -n 's/^ *FAIL: //p' | while IFS= read -r _ct_l; do
+      _adv skill.catalog-covers-tools "$_ct_l"; printf '  ADVISORY [skill.catalog-covers-tools] %s\n' "$_ct_l" >&2
+    done
+  fi
+fi
+}
+
+# ── context.repo-sources-agree · the four places a repo is known name the same repos (harbor#1430) ──
+# repos.tsv, projects.tsv, yard markers and fleet discovery were four lists that disagreed (one had a row and no marker, another a
+# marker and no row). scope-repo-sources.sh holds them against each other; with no registry or no governed row it stands down (exit 3)
+# and this rule says nothing, which is never a pass for the repo it did not read. Warn: a person promotes it.
+rule_context_repo_sources_agree() {
+rule "context.repo-sources-agree repos.tsv, projects.tsv, yard markers and fleet discovery name the same repos (advisory, harbor#1430)"
+_rs_tool="$ROOT/bin/scope-repo-sources.sh"
+if [ -f "$_rs_tool" ] && [ -f "$ROOT/bin/scope-roots.sh" ]; then
+  _rs_out="$(env -u HARBOR_SCOPE_ROOT sh "$_rs_tool" 2>/dev/null)"; _rs_rc=$?
+  case "$_rs_rc" in
+    1) printf '%s\n' "$_rs_out" | while IFS="$(printf '\t')" read -r _rs_r _rs_p _rs_m; do
+         [ -n "$_rs_r" ] || continue
+         _adv context.repo-sources-agree "$_rs_r"; printf '  ADVISORY [context.repo-sources-agree] %s %s, %s\n' "$_rs_r" "$_rs_p" "$_rs_m" >&2
+       done ;;
+    *) : ;;
+  esac
+fi
+}
+
+# ── standard.kit-complete · every register and control family has a kit row, and every kit row resolves (harbor#1436) ──
+rule_standard_kit_complete() {
+rule "standard.kit-complete every register and control family has a row in standards/naming/kit.tsv and every row names something that exists (harbor#1436)"
+if [ -f "$ROOT/bin/standard-kit.sh" ] && [ -f "$ROOT/standards/naming/kit.tsv" ]; then
+  _kc_out="$(sh "$ROOT/bin/standard-kit.sh" --check --root "$ROOT" 2>&1)"; _kc_rc=$?
+  if [ "$_kc_rc" -eq 1 ]; then
+    printf '%s\n' "$_kc_out" | sed -n 's/^  kit: //p' | while IFS= read -r _kc_l; do
+      case "$(_decision_mode standard.kit-complete)" in
+        block) bad standard.kit-complete "$_kc_l" standards/naming/kit.tsv ;;
+        shadow) _adv standard.kit-complete standards/naming/kit.tsv ;;
+        *) _adv standard.kit-complete standards/naming/kit.tsv; printf '  ADVISORY [standard.kit-complete] %s\n' "$_kc_l" >&2 ;;
+      esac
+    done
+  fi
+fi
+}
+
+# ── scope.system-register · the systems `harbor <system> <verb>` dispatches resolve and shadow no frozen verb (harbor#1436) ──
+rule_scope_system_register() {
+rule "scope.system-register every row of contracts/systems.tsv names a script or a root that exists, is unique, and shadows no harbor verb (harbor#1436)"
+if [ -f "$ROOT/bin/scope-system.sh" ] && [ -f "$ROOT/contracts/systems.tsv" ]; then
+  _sy_out="$(HARBOR_SCOPE_SYSTEMS_TABLE="$ROOT/contracts/systems.tsv" sh "$ROOT/bin/scope-system.sh" --check 2>&1)"; _sy_rc=$?
+  if [ "$_sy_rc" -eq 1 ]; then
+    printf '%s\n' "$_sy_out" | grep -v -e 'FAIL:' -e 'fix:' -e 'scope-system:' | sed 's/^  //' | while IFS= read -r _sy_l; do
+      [ -n "$_sy_l" ] || continue
+      case "$(_decision_mode scope.system-register)" in
+        block) bad scope.system-register "$_sy_l" contracts/systems.tsv ;;
+        shadow) _adv scope.system-register contracts/systems.tsv ;;
+        *) _adv scope.system-register contracts/systems.tsv; printf '  ADVISORY [scope.system-register] %s\n' "$_sy_l" >&2 ;;
+      esac
+    done
+  fi
+fi
 }
 
 # ── the dispatcher ───────────────────────────────────────────────────────────

@@ -27,29 +27,15 @@
 # THE REGISTRY (contracts/private-layer.md). <private>/repos.tsv is id/path/kind/remote and the one
 # reader of it is this file; --repos and --repo answer from it, and from the table below when it is
 # absent (--repo then prints PORT_ROOT/<id>, the old literal), so a box with no private layer behaves as before.
-#
-# WHY. Measured 2026-09-23: 91 non-comment, non-markdown lines here name a repo
-# root and 13 go through an override variable. Those 13 were written one at a
-# time, and two of them (PROJECT_INIT_SRC, HARBOR_SCOPE_SCAFFOLDER) are different
-# names for one repo. A default written at its use site reads correctly forever
-# while drifting from every sibling, because nothing ever compares them.
-#
-# THE MOVE IS WHY THE BASE IS SYMBOLIC. harbor#619 moves every governed repo
-# under PORT_ROOT. With the base named rather than spelled, that is ONE edit in
-# repos_prefix() below; without it, it is an edit at each site plus a hunt for
-# the ones that never used a variable at all.
-#
-# DELIBERATELY NOT READ BY THE FLOOR. bin/library-admission.sh keeps its own literal
-# default for PORT_ROOT, and ROOT1 checks the two agree. The floor is POSIX,
-# hash-pinned per file (B6) and must answer with no I/O it does not control; a
-# guard that resolves its stop by reading a TSV gains a file that can be absent,
-# truncated or edited between the pin and the call. One source of TRUTH does not
-# require one source of BYTES — it requires a check, and that is ROOT1.
+# Why (harbor#630, measured 2026-09-23): 91 lines name a repo root and 13 go through an override variable, written one at a
+# time (PROJECT_INIT_SRC and HARBOR_SCOPE_SCAFFOLDER name one repo twice); a default at its use site drifts from its siblings
+# because nothing compares them. The base is symbolic so harbor#619's move under PORT_ROOT is one edit in repos_prefix().
+# Deliberately not read by the floor: bin/library-admission.sh keeps its own literal PORT_ROOT default (POSIX, hash-pinned per
+# file by B6, no I/O it does not control) and ROOT1 checks the two agree. One source of truth needs a check, not one source of bytes.
+# Removed notes: docs/explanation/code-cases/bin-scope-roots.md
 set -eu
 
-# ${0%/*}, not $(dirname -- "$0"): a failed fork or dirname off PATH makes the
-# dirname call empty, `cd -- ""` silently stays put, and SRC becomes whatever
-# the SESSION's cwd happened to be (harbor#810, #813).
+# ${0%/*}, not $(dirname -- "$0"): a failed dirname makes `cd -- ""` stay put and SRC become the session cwd (harbor#810, #813).
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
 TABLE="${HARBOR_SCOPE_ROOTS_TABLE:-$ROOT/contracts/roots.tsv}"
@@ -63,9 +49,8 @@ LOG_FD=2
 
 [ -f "$TABLE" ] || { echo "roots: no table at $TABLE" >&2; exit 2; }
 
-# harbor#961 W5: the roots that took registered names (standards/naming/renames.tsv), old TAB new. Until 2026-11-15 an
-# old name is still asked for (a sibling repo, a pack's shims.tsv, a private plist's @NAME@) and still read as an
-# override when the new one is unset: the dual-read window. Past it, delete the line and the old name is refused.
+# harbor#961 W5: the roots that took registered names (standards/naming/renames.tsv), old TAB new. Until 2026-11-15 the old name
+# is still asked for and read as an override when the new one is unset (the dual-read window); past it, delete the line.
 W5_ALIASES='HARBOR_ORCHESTRATOR	HARBOR_SCOPE_FLEET_CONTROLLER
 HARBOR_PROJECT_INIT	HARBOR_SCOPE_SCAFFOLDER
 HARBOR_ORCH_BIN	HARBOR_SCOPE_FLEET_CONTROLLER_BIN'
@@ -76,17 +61,10 @@ $W9_ALIASES"
 w5_new() { printf '%s\n' "$ROOT_ALIASES" | awk -F'\t' -v n="$1" '$1 == n { print $2; f = 1 } END { if (!f) print n }'; }
 w5_old() { printf '%s\n' "$ROOT_ALIASES" | awk -F'\t' -v n="$1" '$2 == n { print $1 }'; }
 
-# The one line the ~/port move edits. Returns the LITERAL TEXT a default is
-# expected to spell, not a resolved path — ROOT1 compares source text, and
-# `$HOME` in a script is four characters, not a directory.
-#
-# harbor#619 moved every governed repo to $HOME/port on 2026-09-23, so this is
-# that edit. It is the DEFAULT's spelling, and a site may spell it two ways, both
-# read by --check: flat (the home-relative text, which IGNORES an exported PORT_ROOT and
-# is refused for a REPOS row, harbor#630) or nested
-# (PORT_ROOT with that text as its own default, which honours it). --check reads a default with a
-# pattern that steps over ONE nested ${...}, and normalises the nested spelling
-# back to this text before comparing, so the table still holds one spelling.
+# The one line the ~/port move edits (harbor#619, 2026-09-23). Returns the LITERAL TEXT a default is expected to spell, since
+# ROOT1 compares source text and `$HOME` in a script is four characters. A site may spell it flat (which IGNORES an exported
+# PORT_ROOT and is refused for a REPOS row, harbor#630) or nested (PORT_ROOT with that text as default, which honours it);
+# --check steps over one nested ${...} and normalises it back to this text.
 repos_prefix() { printf '%s' '$HOME/port'; }
 box_prefix()   { printf '%s' '$HOME'; }
 
@@ -98,9 +76,7 @@ prefix_for() { # <base> → the TEXT a default spells (what --check compares)
   esac
 }
 
-# The same base as a PATH on this box. REPOS is the workspace root, so it honours an exported
-# PORT_ROOT; the text above is for comparing source, this is for resolving it (harbor#630: a
-# fresh machine with another root used to get the home-relative default from --get, --list and --repos).
+# The same base as a PATH: REPOS is the workspace root and honours an exported PORT_ROOT (harbor#630).
 resolved_prefix() { # <base>
   case "$1" in
     REPOS) port_root ;;
@@ -162,10 +138,8 @@ private_dir() {
   printf '%s' "${__pv%/}"
 }
 
-# The access register: account, role and route cards (contracts/access-card.md). They name accounts,
-# so they are private data and core ships none. $ACCESS_DIR, when set, wins as every override here
-# does. A register that is not there is exit 1 with nothing on stdout and the reason on stderr, so a
-# reader says "no register" and never cd's, reads or passes against an empty path (harbor#1149).
+# The access register (contracts/access-card.md) names accounts, so it is private and core ships none; $ACCESS_DIR wins.
+# Absent is exit 1 with nothing on stdout, so a reader never cds into or passes against an empty path (harbor#1149).
 access_dir() {
   __ad="${ACCESS_DIR:-}"
   if [ -n "$__ad" ]; then
@@ -179,11 +153,9 @@ access_dir() {
   printf '%s' "${__ad%/}"
 }
 
-# The private rules (contracts/private-layer.md, harbor#1149): <private>/context-rules, the shape of core's context-rules/ -
-# user/ for the rules every session on the box carries (and the project registry), one folder per repo for the rules
-# `context-injection-install.sh --projects` seeds. They name clients and repos, so core ships none. Nothing in it is code: the
-# installer takes .md packs and projects.tsv only. Absent is exit 1 with nothing on stdout and the reason on stderr,
-# so a reader says "no private packs" and never reads or seeds an empty path.
+# The private rules (contracts/private-layer.md, harbor#1149): <private>/context-rules, shaped like core's context-rules/ (user/
+# plus one folder per repo, seeded by `context-injection-install.sh --projects`). They name clients, so core ships none;
+# the installer takes .md packs and projects.tsv only. Absent is exit 1 with nothing on stdout.
 inject_dir() {
   __pv="$(private_dir)" || return 2
   [ -d "$__pv" ] || { echo "roots: no private layer at $__pv, so there are no private rule packs (contracts/private-layer.md)" >&2; return 1; }
@@ -208,13 +180,11 @@ clean_lines() { # <file>
     END { if (bom || cr) printf "roots: note: %s had %s%s%s; read as plain text\n", f, bom ? "a BOM" : "", (bom && cr) ? " and " : "", cr ? "CRLF line endings" : "" > "/dev/stderr" }' "$1"
 }
 
-# Rows validated and printed as id TAB path TAB kind TAB remote TAB topology TAB interaction TAB note TAB domain TAB governed
-# TAB owner TAB covers (a shorter row prints '-' for what it lacks, harbor#966). A row that would resolve outside
-# PORT_ROOT, repeat an id or a path (case-insensitively) or has other than four, six, seven or eleven fields refuses the
-# whole read (exit 2): a lookup that skips a bad row answers "unknown" for a repo that is only
-# mistyped. One trailing / on a path is dropped. This pass is lexical; confine() follows symlinks.
-# Kinds, topologies and interaction modes are judged only when a kinds file is given (--registry-check), so a
-# lookup never fails over a vocabulary edit. The two Team Topologies vocabularies are contracts/private-layer.md's.
+# Rows validated and printed as id TAB path TAB kind TAB remote TAB topology TAB interaction TAB note TAB domain TAB governed TAB
+# owner TAB covers (a shorter row prints '-' for what it lacks, harbor#966). A row resolving outside PORT_ROOT, repeating an id or
+# path (case-insensitively), or with other than four, six, seven or eleven fields refuses the whole read (exit 2): skipping a bad
+# row answers "unknown" for a mistyped repo. One trailing / is dropped; this pass is lexical, confine() follows symlinks. Kinds,
+# topologies and modes are judged only when a kinds file is given (--registry-check).
 registry_rows() { # <repos.tsv, or /dev/stdin> [<repo-kinds.tsv>] — the file name in messages is $RF
   RF="${RF:-$1}" KF="${2:-}" awk -F'\t' '
     function bad(m) { printf "roots: %s:%d: %s\n", ENVIRON["RF"], NR, m > "/dev/stderr"; err = 1 }
@@ -301,10 +271,8 @@ repo_path() { # <id> → the registry's checkout for that id; exit 1, empty, wit
   repos_list | I="$1" awk -F'\t' '$1 == ENVIRON["I"] { print $2; f = 1; exit } END { exit f ? 0 : 1 }'
 }
 
-# A ROLE REPO FOLLOWS THE REGISTRY BY KIND (harbor#966). The table names the scaffolder and the fleet controller
-# by their checkout's id, and a rename changes a registry row's id and path but never its kind, so looking the
-# table's id up would answer the old name. Exactly one row of the kind is the answer; none or two (a rename
-# window that briefly lists both) fall back to the id, today's lookup.
+# A ROLE REPO FOLLOWS THE REGISTRY BY KIND (harbor#966): a rename changes a registry row's id and path but not its kind, so
+# the table's id would answer the old name. Exactly one row of the kind is the answer; none or two fall back to the id.
 role_kind() { # <id, a REPOS row's first segment> → the kind its role row names, or nothing
   rows | I="$1" awk -F'\t' '$2 == "REPOS" { n = $3; sub(/\/.*/, "", n); if (n != ENVIRON["I"]) next
     if ($1 == "HARBOR_SCOPE_SCAFFOLDER") { print "scaffolder"; exit }
@@ -320,10 +288,8 @@ role_row() { # <id> → id TAB checkout of the one registry row of its role's ki
     END { if (n == 1) print o; exit n == 1 ? 0 : 1 }'
 }
 
-# harbor.toml, the flat subset: key = "value" or key = ["a", "b"] on one line, # comments, no tables.
-# Unknown keys, tables, duplicate keys, a backslash or an empty string inside a value and any other
-# shape are refused (exit 2): a typo read as "unset" would silently install the default. Values print
-# raw; an array prints one per line.
+# harbor.toml, the flat subset: key = "value" or key = ["a", "b"] on one line, no tables. Anything else (unknown or duplicate
+# keys, a backslash or empty string in a value) is refused (exit 2): a typo read as "unset" would silently install the default.
 toml_get() { # <file> <key>
   clean_lines "$1" | WANT="$2" RF="$1" KNOWN="$(conf_keys)" awk '
     function bad(m) { printf "roots: %s:%d: %s\n", ENVIRON["RF"], NR, m > "/dev/stderr"; err = 1; exit 2 }
@@ -362,9 +328,7 @@ toml_get() { # <file> <key>
     END { if (!err && cnt != "") print val }'
 }
 
-# The harbor.toml keys: core's own, then every key an installed pack declares in its conf-keys.txt
-# (installed at <config dir>/conf-keys.d/<repo-id>.txt by bin/pack.sh), so core names no pack's key
-# (#949, contracts/pack.md). Three former core keys left after one release, once their pack declared them (#1273).
+# Core's own keys, then every key an installed pack declares in <config dir>/conf-keys.d/<repo-id>.txt (bin/pack.sh; #949, contracts/pack.md).
 CONF_KEYS_CORE='packs components channel deliverables_dir worklog_repo mail_account github_owners browser_live_url live_walk_repo confinement_strict confinement_credentials confinement_skip'
 conf_keys() {
   __ck="$CONF_KEYS_CORE"
@@ -403,14 +367,11 @@ case "${1:-}" in
   --aliases) printf '%s\n' "$ROOT_ALIASES" ;;   # old TAB new: names --get still answers until 2026-11-15 (W5) or 2026-12-01 (W9)
   --get)
     [ -n "${2:-}" ] || { echo "roots: --get needs a variable name" >&2; exit 2; }
-    # harbor#961 W5: two repo roots took registered names. Until 2026-11-15 the old name is still asked for (a
-    # sibling repo's call) and still read as an override when the new one is unset (renames.tsv dual-read window).
+    # harbor#961 W5: the old names of two repo roots are still read as overrides until 2026-11-15 (renames.tsv dual-read window).
     __gv="$2"; __go=""
     __gv="$(w5_new "$__gv")"; __go="$(w5_old "$__gv")"
     [ -n "$(expected_for "$__gv")" ] || { echo "roots: $2 is not in $TABLE" >&2; exit 2; }
-    # The caller's own override still wins — the table supplies the DEFAULT,
-    # never the answer. A resolver that ignored an exported value would make
-    # every override in the tree a lie. The name is a table row (matched
+    # The caller's own override wins: the table supplies the DEFAULT, never the answer. The name is a table row (matched
     # exactly above), so the indirection below cannot be handed a command.
     eval "__ov=\"\${$__gv:-}\""
     [ -n "$__ov" ] || [ -z "$__go" ] || eval "__ov=\"\${$__go:-}\""
@@ -526,10 +487,7 @@ case "${1:-}" in
       echo "roots: $ROOT is not a git checkout — NO file was inspected, and this is not a pass" >&2
       exit 2; }
 
-    # 1 · every site's default equals the table.
-    #     Reading the INDEX via git grep, not the working tree: grep here is
-    #     ugrep and skips gitignored files, which would report a clean tree by
-    #     not looking at it.
+    # 1 · every site's default equals the table, read via git grep on the INDEX: grep here is ugrep and skips gitignored files.
     TMPF="${TMPDIR:-/tmp}/harbor-roots.$$"
     trap 'rm -f "$TMPF"' EXIT INT TERM
     rows | while IFS="$(printf '\t')" read -r __v __b __r __x; do
@@ -538,9 +496,7 @@ case "${1:-}" in
 
     while IFS="$(printf '\t')" read -r VAR WANT; do
       [ -n "$VAR" ] || continue
-      # Every occurrence of ${VAR:-...}, whatever surrounds it.
-      # One nested ${...} is stepped over (the PORT_ROOT spelling); [^}$] and \$[^{}] keep the
-      # alternation unambiguous, so a flat default and a nested one both read to their own end.
+      # Every occurrence of the VAR default form; one nested ${...} is stepped over (the PORT_ROOT spelling).
       git -C "$ROOT" grep -hoE '\$\{'"$VAR"':-(\$\{[^}]*\}|[^}$]|\$[^{}])*\}' -- . \
           ':!evals' ':!*/EVALS/*' 2>/dev/null |
         sort -u |
@@ -554,17 +510,10 @@ case "${1:-}" in
           fi
           RAW="$GOT"
           GOT="$(printf '%s' "$GOT" | sed 's|\${PORT_ROOT:-\$HOME/port}|$HOME/port|')"
-          # THREE SHAPES ARE NOT A DISAGREEMENT, and each was measured on this
-          # tree before the list existed. A rule that flagged them would fire on
-          # correct code, and a rule that fires on correct code gets switched
-          # off (CONSTITUTION No.2.11) — taking the real disagreements with it.
+          # Three shapes are not a disagreement: a rule flagging correct code gets switched off (No.2.11).
           case "$GOT" in
             '')     continue ;;   # ${VAR:-} — a presence test, not a path
             *'$('*) continue ;;   # a SELF-LOCATING default, e.g. memory-route.sh
-                                  # deriving the repo from $0. Strictly better
-                                  # than a literal: it survives the move with no
-                                  # edit at all, which is the outcome this table
-                                  # is trying to buy.
             */*)    ;;            # path-shaped — the only shape to compare
             *)      continue ;;   # ${HARBOR_SCOPE_REPO:-none}, a printf placeholder
           esac
@@ -586,29 +535,16 @@ case "${1:-}" in
         done
     done < "$TMPF"
 
-    # 2 · a ${VAR:-...} naming a governed repo whose VAR is NOT in the table.
-    #     This is the arm that catches the NEXT one, and the reason the table is
-    #     a gate rather than a list: a list only records what someone remembered.
-    #     The repo ids are the registry's (repos_list), never a list here (harbor#1273): no registry is the
-    #     roots table's repos alone, so this arm sees fewer repos and says so. Ids are [A-Za-z0-9._-]; dots escaped.
+    # 2 · a default naming a governed repo whose VAR is NOT in the table: the arm that catches the NEXT one. The repo ids are
+    # the registry's (repos_list), never a list here (harbor#1273); no registry means the roots table's repos alone.
     __ids="$(repos_list)" || exit 2
     REPOS_RE="$(printf '%s\n' "$__ids" | awk -F'\t' 'NF { gsub(/\./, "\\.", $1); printf "%s%s", (n++ ? "|" : ""), $1 }')"
     [ -f "$(private_dir)/repos.tsv" ] || log_note "no repo registry: arm 2 checks the roots table's repos only ($REPOS_RE)"
     KNOWN="$(rows | awk -F'\t' '{printf "%s|", $1}')KNOWN_NONE"
     KNOWN="$KNOWN|$(printf '%s\n' "$ROOT_ALIASES" | cut -f1 | paste -sd'|' -)"   # harbor#961 W5: old names, read inside their new rows' readers until 2026-11-15
-    #     Anchored on a default that STARTS with the home prefix: `${BIN:-$_self_dir,
-    #     $HOME/port/harbor/bin}` in bin/harbor is a help STRING listing where it
-    #     looked, not a root, and flagging it would be the false positive above
-    #     wearing a different hat.
-    #     `(port/)?` BECAUSE THE BASE MOVED (harbor#619). Anchored on `$HOME/<repo>`
-    #     alone, this arm went blind the day every default became
-    #     `$HOME/port/<repo>`: an unregistered root spelled the NEW way matched
-    #     nothing and the check stayed green. Optional rather than required, so a
-    #     new variable still spelling the pre-move address is caught too.
-    #     And the nested spelling, for the same reason: a root written
-    #     `${PORT_ROOT:-$HOME/port}/<repo>` must not hide from the arm that finds new ones.
-    #     The repo name ends at / or the closing brace: `.../harbor-private` is the private
-    #     layer (scope-roots.sh --private), a different root, not a spelling of harbor.
+    # Anchored on a default that STARTS with the home prefix: a help STRING listing where bin/harbor looked is not a root.
+    # `(port/)?` because the base moved (harbor#619): anchored on `$HOME/<repo>` alone this arm went blind. The nested spelling
+    # is matched too. The repo name ends at / or the closing brace: `.../harbor-private` is the private layer, a different root.
     git -C "$ROOT" grep -hoE '\$\{[A-Z_]+:-(\$HOME/(port/)?|\$\{PORT_ROOT:-\$HOME/port\}/)('"$REPOS_RE"')(/[^}]*)?\}' -- . \
         ':!evals' ':!*/EVALS/*' 2>/dev/null |
       sed -E 's/^\$\{([A-Z_]+):-.*/\1/' | sort -u |
@@ -620,9 +556,7 @@ case "${1:-}" in
         echo x >> "$TMPF.fail"
       done
 
-    # 3 · a table row nothing uses. A dead row is not harmless: it is a rule
-    #     that can never fire, and a suite of rules that can never fire is how a
-    #     green run stops meaning anything.
+    # 3 · a table row nothing uses is a rule that can never fire.
     rows | while IFS="$(printf '\t')" read -r __v __b __r __x; do
       git -C "$ROOT" grep -qE "\\\$\\{$__v:-" -- . ':!evals' ':!*/EVALS/*' 2>/dev/null && continue
       log_fail "$__v is in the table and used nowhere"
@@ -630,12 +564,8 @@ case "${1:-}" in
       echo x >> "$TMPF.fail"
     done
 
-    # 4 · two variables for one path need a stated reason. The table showed
-    #     PROJECT_INIT_SRC and HARBOR_SCOPE_SCAFFOLDER as one repo under two names, and
-    #     nothing recorded whether that was a decision (harbor#630). Merging them
-    #     changes an env contract suites and operators set by hand, so the pair
-    #     stays; what is refused is a pair nobody explained. The reason is the fifth
-    #     column of EVERY row sharing the path (no # in it: a # starts a comment).
+    # 4 · two variables for one path need a stated reason (harbor#630: PROJECT_INIT_SRC and HARBOR_SCOPE_SCAFFOLDER); merging them
+    # changes an env contract, so the pair stays. The reason is the fifth column of EVERY row sharing the path (no # in it).
     rows | awk -F'\t' '{ k = $2 SUBSEP $3; n[k]++; if ($5 == "") miss[k] = miss[k] " " $1; who[k] = who[k] " " $1 }
         END { for (k in n) if (n[k] > 1 && miss[k] != "") { gsub(/^ /, "", who[k]); gsub(/^ /, "", miss[k]); print who[k] "\t" miss[k] } }' |
       while IFS="$(printf '\t')" read -r __who __miss; do
@@ -646,9 +576,7 @@ case "${1:-}" in
 
     if [ -f "$TMPF.fail" ]; then
       N="$(wc -l < "$TMPF.fail" | tr -d ' ')"; rm -f "$TMPF.fail"
-      # The per-hit FAILs above are printed live, from inside a piped subshell (harbor#630's own
-      # fix for the same problem this file's loops have): their counts do not survive back to this
-      # shell. This FAIL, called here in the parent, is what log_end actually tallies and exits on.
+      # Per-hit FAILs print from a piped subshell (harbor#630) and do not count; this FAIL in the parent is what log_end tallies.
       log_fail "$N disagreement(s) against ${TABLE#$ROOT/} — see the FAIL lines above"
       log_nofix "${TABLE#$ROOT/} — edit the drifted defaults, sites or rows named above"
       log_end; exit $?

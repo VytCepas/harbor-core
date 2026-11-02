@@ -2,6 +2,7 @@
 #   t_table  <guard-path> <rows.jsonl>   asserts each row's verdict (`want`)
 #   t_msgs   <guard-path> <rows.jsonl>   asserts each row's reason text (`has` / `hasnt`)
 #   t_shared <guard-path> <name>         the shared shapes + benign corpus for one guard
+#   T_VERDICT_LOG=<file> makes t_table append `suite TAB row TAB verdict` per row: the before/after replay of harbor#1030
 # Rows run on $T_JOBS workers (default 3); assertions then run in row order. T_SMOKE=1 runs the
 # first row per rule and verdict only, for pre-commit; its summary says it is not a full run.
 T_JOBS="${T_JOBS:-3}"
@@ -28,6 +29,8 @@ t_table() { # <guard-path> <rows.jsonl> [section title]
     eval "$_tl"; _tg=""; _to="${_tf%/in/*}/out/${_tf##*/}"
     [ ! -f "$_to" ] || IFS= read -r _tg < "$_to"
     t_eq "$_id" "$_want" "$_tg"
+    # T_VERDICT_LOG=<file>: every row's got-verdict as `suite TAB row TAB verdict`, so a before/after run of the corpus can be diffed (harbor#1030)
+    [ -z "${T_VERDICT_LOG:-}" ] || printf '%s\t%s\t%s\n' "$T_SELF" "$_id" "$_tg" >> "$T_VERDICT_LOG"
     [ -z "$_todo" ] || { T_TODO=$((T_TODO + 1)); printf '  todo: %s — today %s, should be %s\n' "$_id" "$_want" "$_todo"; }
   done < "$_tw/rows.sh"
 }

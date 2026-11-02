@@ -3,6 +3,7 @@
 #
 #   sh drift-port-root.sh            list each unregistered directory (one per line, with its age), exit 1 if any
 #   sh drift-port-root.sh --names    just the names, for a script
+#   sh drift-port-root.sh --status   the reconcile records (contracts/reconcile.md): a row per directory, its age; exit 3 when it cannot look
 #
 # Registered: a repo of `scope-roots.sh --repos` (the private registry, else the roots table), a directory a REPOS row of
 # `scope-roots.sh --list` names, and the first path segment of either (a container such as data-flow/). Exempt kinds:
@@ -17,15 +18,20 @@ log_init drift-port-root
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 
-NAMES=0
-case "${1:-}" in
-  '') ;;
-  --names) NAMES=1 ;;
-  -h|--help) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-  *) echo "drift-port-root: unknown argument '$1'" >&2; exit 2 ;;
-esac
+NAMES=0; STATUS=0
+for _a in "$@"; do
+  case "$_a" in
+    --names) NAMES=1 ;;
+    --status) STATUS=1 ;;
+    -h|--help) sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "drift-port-root: unknown argument '$_a'" >&2; exit 2 ;;
+  esac
+done
+[ "$STATUS" = 0 ] || [ "$NAMES" = 0 ] || { echo "drift-port-root: --status takes no --names" >&2; exit 2; }
+[ "$STATUS" = 0 ] || status_init drift.port-root "${CLAUDE_CONFIG_DIR:-$HOME/.claude}" || exit 3
 
-die() { log_fail "$1"; log_fix "$2"; log_end || :; exit 2; }
+# A lookup that fails is exit 2 in the plain run and exit 3, unchecked, in --status (harbor#1031).
+die() { log_fail "$1"; log_fix "$2"; log_end || :; [ "$STATUS" = 0 ] || { status_unjudged "$1" || :; exit 3; }; exit 2; }
 
 PR="$(sh "$SRC/scope-roots.sh" --port-root)" || die "scope-roots.sh could not resolve the workspace root" "sh bin/scope-roots.sh --port-root"
 [ -d "$PR" ] || die "no workspace at $PR, so nothing was inspected" "set PORT_ROOT to the workspace root"
@@ -43,18 +49,20 @@ DRIFT=""
 for d in "$PR"/* ; do
   [ -d "$d" ] || continue                       # an unmatched glob stays literal and is not a directory
   n="${d##*/}"
-  case "$n" in harbor-private|history) continue ;; esac
+  case "$n" in harbor-private|history) [ "$STATUS" = 0 ] || status_ok; continue ;; esac
   case "
 $KNOWN
 " in *"
 $n
-"*) continue ;; esac
+"*) [ "$STATUS" = 0 ] || status_ok; continue ;; esac
   wt=0
   for id in $IDS; do case "$n" in "$id"-wt-?*) wt=1 ;; esac; done
-  [ "$wt" = 0 ] || continue
+  [ "$wt" = 0 ] || { [ "$STATUS" = 0 ] || status_ok; continue; }
   DRIFT="$DRIFT$n
 "
+  [ "$STATUS" = 0 ] || status_drift "$n" "a registered repo or an exempt kind" "an unregistered directory, modified $(date -r "$d" +%Y-%m-%d 2>/dev/null || echo unknown)" "register it in the private repos.tsv, move it under history/ or .worktrees/, or delete it"
 done
+if [ "$STATUS" = 1 ]; then _rc=0; status_end || _rc=$?; exit "$_rc"; fi
 
 if [ -z "$DRIFT" ]; then
   [ "$NAMES" = 1 ] || { log_ok "every directory under $PR is a registered repo or an exempt kind"; log_end; }

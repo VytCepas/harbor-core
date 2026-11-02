@@ -2,32 +2,13 @@
 # doc-report-verify.sh — does a generated artefact meet contracts/reports.md?
 # Ticket: harbor#411 (the first production run that shipped green and unreadable).
 #
-# WHY THIS EXISTS. A topology audit shipped on 2026-09-03 green on every gate it
-# had. The defects a reader actually hit were not in its findings, they were in
-# its LEGIBILITY — a bare `123456789` that could have been three different
-# objects, a `40 of 40` that bounded three of nine classes and said so nowhere, a
-# first diagram containing no pipeline at all. Cheap to fix, and invisible to the
-# author, who holds the context and therefore cannot feel its absence.
-#
-# WHAT IT CHECKS, and the line is drawn deliberately. Properties 4, 5 and 6 of
-# contracts/reports.md are mechanical: does the artefact bound its own scope, name
-# its source and date, and — if it is a picture — have the text companion beside
-# it. Properties 1 to 3 (reads cold, typed identifiers, numbers with comparisons)
-# are judgement, and every heuristic for them fires on ordinary work: "a bare id"
-# matches version numbers, row counts, dates and currency. A guard that fires on
-# ordinary work gets switched off and then protects nothing (gates.md property 5),
-# so typing is enforced where ids are PRODUCED — reconcile-estate.sh asserts its
-# own — never by scanning finished prose for digits.
-#
-# EXIT CODES follow gates.md property 7, which this file also has to obey:
-#   0  checked, conforms
-#   1  checked, does not conform — every failure is named
-#   2  COULD NOT CHECK (unreadable, or a kind it has no rules for)
-# A checker that cannot read its subject and reports "does not conform" has
-# manufactured a finding, which is the defect harbor#407 closed one artefact over.
-#
-# BSD userland: grep is ugrep and skips gitignored files, so every grep is
-# /usr/bin/grep.
+# Why (harbor#411): a topology audit shipped green and unreadable. This checks only the mechanical
+# properties 4-6 of contracts/reports.md (7 conditionally); 1-3 are judgement, and heuristics for
+# them fire on ordinary work, which gets a guard switched off (gates.md property 5).
+# Exit codes (gates.md property 7): 0 conforms; 1 does not, every failure named; 2 COULD NOT CHECK
+# (unreadable, unknown kind). A checker that cannot read its subject must not report a finding.
+# BSD userland: every grep is /usr/bin/grep (the PATH grep is ugrep and skips gitignored files).
+# Removed notes: docs/explanation/code-cases/bin-doc-report-verify.md
 set -eu
 
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
@@ -45,46 +26,19 @@ usage() {
   exit 2
 }
 
-# ---------------------------------------------------------------- the checks
-# Each returns 0 (met), 1 (not met) and prints why. None of them guesses: a
-# property this file cannot settle is reported as unsettled, never as met.
+# Each check returns 0 (met) or 1 (not met) and prints why; an unsettled property is never reported met.
 
-# 4 · SCOPE. The artefact says what it did NOT cover. Alternatives are listed
-# because three generators arrived at three honest spellings independently, and
-# forcing one on them would be the checker deciding a contract it exists to
-# serve. What is NOT accepted is silence.
-#
-# MATCHED CASE-INSENSITIVELY, and that is not cosmetic. The first version was
-# case-sensitive and rejected a companion whose heading reads "What this view does
-# NOT cover" — the emphasis capital made a conforming artefact fail. A checker
-# that fails correct work is a checker somebody switches off (gates.md property
-# 5), and the contract is about the artefact SAYING its limits, never about how it
-# capitalises them. Caught by running this against real client output.
-#
-# Widened again 2026-09-04, same reason and the same evidence: a client atlas states its
-# limits under "What this page cannot tell you", "What this atlas does not draw" and
-# "What nobody could measure", and failed on all three while conforming better than
-# anything that passed. Three more honest spellings, not three more loopholes — each one
-# still names a limit, which is the whole property.
+# 4 · SCOPE: the artefact says what it did NOT cover. Several spellings are accepted (the checker
+# must not dictate wording); silence is not. Case-insensitive: a capitalised heading once failed
+# a conforming artefact. Widened 2026-09-04 for "cannot tell you", "does not draw", "could not measure".
 SCOPE_ERE='NOT ENUMERATED|not enumerated|does not cover|does not draw|not covered|out of scope|bounds only|no reader checks them|UNCHECKED|declares no|cannot tell you|could not measure|could not be answered|cannot see'
 
-# 5 · PROVENANCE. A source AND a date. Either alone is half a claim: a report
-# naming its source but not when it was taken reads as current forever, and one
-# with a date and no source cannot be re-derived.
+# 5 · PROVENANCE: a source AND a date; either alone is half a claim.
 SOURCE_ERE='[Gg]enerated (by|from)|derived (only )?from|[Ss]ource:|reconciling |[Ff]rom `'
 DATE_ERE='20[0-9][0-9]-[01][0-9]-[0-3][0-9]'
 
-# 7 · CONFIDENCE. An artefact that grades how badly something hurts must also grade how
-# well it is known, or the two collapse into one and the reader cannot tell a lead from a
-# re-measured fact. Measured on a client atlas 2026-09-03: five findings its own source
-# marks "one lane only — treat as a lead, not a fact" rendered identically to the fifteen
-# a critic had re-measured, and nothing on the page could get the distinction back.
-#
-# ASKED ONLY OF AN ARTEFACT THAT ALREADY GRADES SEVERITY, and that narrowness is the
-# point. Every broader trigger — "does it list findings", "does it have a table" — fires
-# on ordinary documents, and a guard that fires on ordinary work is switched off
-# (gates.md property 5). A report grading impact has already declared itself the kind of
-# document this property is about; one that does not is left alone.
+# 7 · CONFIDENCE: asked only of an artefact that already grades severity; any broader trigger fires
+# on ordinary documents (gates.md property 5).
 SEVERITY_ERE='severity|CRITICAL|critical.*high.*medium|>critical<|"critical"'
 CONFIDENCE_ERE='[Cc]onfirmed|OVERSTATED|[Oo]verstated|UNDERSTATED|[Uu]nderstated|REFUTED|[Rr]efuted|[Rr]eframed|one lane|ONE LANE|uncritiqued|not re-measured|re-measured|unverified|provisional|treat as a lead|could not verify|rests on'
 
@@ -121,10 +75,7 @@ check_one() {
     _bad=1
   fi
 
-  # 6 · A PICTURE HAS A COMPANION. Only asked of an artefact that actually draws
-  # one — an inline <svg>, or an archify figure. A report with no picture is not
-  # failed for lacking a companion to it, which would be the guard firing on
-  # ordinary work.
+  # 6 · a picture needs a text companion; asked only of an artefact that draws one.
   if /usr/bin/grep -qE '<svg|figure class="af"' "$_f" 2>/dev/null; then
     _stem=${_f%.*}
     if [ ! -s "$_stem.md" ] && ! /usr/bin/grep -qE 'as the map wrote them|the same rows|<table' "$_f"; then
@@ -138,7 +89,6 @@ check_one() {
   return "$_bad"
 }
 
-# ---------------------------------------------------------------- self-test
 self_test() {
   _d=$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")
   # check_one runs in a subshell: its own log lines and counts are the case's, not the self-test's.
@@ -154,11 +104,8 @@ self_test() {
   }
 
   log_head 'a conforming report is GREEN'
-  # THE SOURCE AND THE DATE SIT ON SEPARATE LINES DELIBERATELY. Written as one
-  # line, the mutation that strips the source also strips the date, so the
-  # no-source arm failed on the DATE rule and passed while the source rule was
-  # mutated away — a test that cannot fail for the reason it names. Measured
-  # 2026-09-03 by mutation, which is the only thing that could have found it.
+  # Source and date sit on separate lines: on one line the mutation that strips the source also
+  # strips the date, and the no-source arm passes for the wrong reason.
   cat > "$_d/good.md" <<'EOF'
 # ACME — reconciliation
 Generated by reconcile-estate.sh from ACME/TOPOLOGY.md.
@@ -182,17 +129,14 @@ EOF
   _run 1 'no ISO date, so it reads as current forever' "$_d/nodate.md"
 
   log_head 'grading impact obliges grading confidence'
-  # The severity line and the confidence line are separate lines for the same reason the
-  # source and the date are: written as one, the mutation that removes the grade removes
-  # the trigger with it, and the arm passes while the rule it names is switched off.
+  # Severity and confidence sit on separate lines for the same reason.
   printf '%s\nEach finding carries a severity: critical, high, medium, low.\n' \
     "$(cat "$_d/good.md")" > "$_d/nograde.md"
   _run 1 'severities but no confidence anywhere' "$_d/nograde.md"
   printf '%s\nF3 is CONFIRMED; F8 rests on one lane and is a lead, not a fact.\n' \
     "$(cat "$_d/nograde.md")" > "$_d/graded.md"
   _run 0 'the same document once the findings carry their grade' "$_d/graded.md"
-  # The control that keeps property 7 from firing on ordinary work: a document that never
-  # grades impact is never asked to grade confidence.
+  # Control: a document that never grades impact is never asked to grade confidence.
   _run 0 'a report that grades nothing is not asked to grade confidence' "$_d/good.md"
 
   log_head 'a picture must have text beside it'
@@ -201,17 +145,14 @@ EOF
   printf '%s\n' "conforms" > "$_d/pic.md"
   _run 0 'and the same drawing passes once the companion exists' "$_d/pic.html"
 
-  # THE CONTROLS. Both directions, because a checker that fails everything is as
-  # useless as one that passes everything — and the second arm is the one that
-  # keeps this from becoming a guard people switch off.
+  # Controls in both directions: a checker that fails everything is as useless as one that passes everything.
   log_head 'it must NOT fire on ordinary work'
   _run 0 'a report with no picture is not failed for lacking a companion' "$_d/good.md"
   printf '%s\n<table><tr><td>every row, in text</td></tr></table>\n<svg></svg>\n' \
     "$(cat "$_d/good.md")" > "$_d/inline.html"
   _run 0 'a picture whose rows are in a table beside it needs no separate file' "$_d/inline.html"
 
-  # AND IT MUST SAY "COULD NOT CHECK" RATHER THAN "FAILS" — gates.md property 7,
-  # which this checker is not exempt from just because it enforces it.
+  # Unreadable is exit 2, never 1 (gates.md property 7).
   log_head 'unreadable is not the same as non-conforming'
   _run 2 'a file that does not exist exits 2, never 1' "$_d/nonexistent.md"
   : > "$_d/empty.md"
@@ -230,9 +171,7 @@ esac
 
 log_head "contracts/reports.md properties 4 to 7"
 for f in "$@"; do
-  # A "could not check" does not become a pass: it is a FAIL and it makes the run
-  # non-zero, because a caller that treats unchecked as checked is the failure this
-  # whole contract exists to prevent.
+  # A "could not check" is a FAIL and non-zero: unchecked must not read as checked.
   check_one "$f" || :
 done
 log_end

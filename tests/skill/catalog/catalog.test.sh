@@ -324,4 +324,52 @@ t_exit "--check ignores a poisoned HOME, config dir, tool dir and private layer"
 (cd "$R" && HOME="$POI" CLAUDE_CONFIG_DIR="$POI/.claude" HARBOR_SCOPE_LOCAL_BIN="$POI/.local/bin" HARBOR_SCOPE_PRIVATE="$NOPRIV" sh "$R/bin/skill-catalog.sh" install --apply --live >/dev/null 2>&1)
 t_has "control: the installed book lists the host's tool, so the poison above reaches a generator that reads the host" "$(cat "$POI/.claude/skills/skill-catalog/SKILL.md" 2>/dev/null)" 'hosttool'
 t_hasnt "the tracked book names neither the host's broken skill nor its tool" "$(cat "$TRACKED")" 'hostbad'
+
+t_section "commands and tools: every verb and Agent-facing tool has a row, and every row has something behind it (harbor#1010)"
+R2="$T_TMP/root2"; rm -rf "$R2"; cp -R "$R" "$R2"
+cp "$T_ROOT/bin/skill-catalog.sh" "$R2/bin/"
+printf '#!/bin/sh\nVERBS="\nalpha\talpha.sh\tno\tthe alpha thing\nbeta\tbeta.sh\tno\tthe beta thing\n"\n' > "$R2/bin/harbor"
+printf '#!/bin/sh\n' > "$R2/bin/waiter.sh"; printf '#!/bin/sh\n' > "$R2/bin/quiet.sh"; printf '#!/bin/sh\n' > "$R2/bin/late.sh"
+CLI0='| Script | Why |\n|---|---|\n| `waiter.sh` | **Agent-facing.** waits |\n| `quiet.sh` | internal, nobody calls it |\n'
+LATE_MARK='| `late.sh` | **Agent-facing.** registered |\n'
+LATE_ROW='tool\tlate.sh\tyou are late\tsh bin/late.sh\n'
+# mk <extra rows>: the agent-tools.tsv with full coverage of the fixture (alpha, beta, beta sub, waiter.sh) plus the extra rows.
+mk() { printf 'kind\tname\tuse_when\tinvocation\nverb\talpha\tyou need alpha\tharbor alpha --now\nverb\tbeta\tyou need beta\tharbor beta\nverb\tbeta sub\tyou need beta sub\tharbor beta sub X\ntool\twaiter.sh\tyou wait on a thing\tsh bin/waiter.sh <id> --timeout N\n' > "$R2/contracts/agent-tools.tsv"; printf "$1" >> "$R2/contracts/agent-tools.tsv"; }
+cli() { printf "$CLI0$1" > "$R2/contracts/cli.md"; }
+cov() { (cd "$R2" && HARBOR_SCOPE_PRIVATE="$NOPRIV" sh "$R2/bin/skill-catalog.sh" --coverage 2>&1); }
+bk() { (cd "$R2" && HARBOR_SCOPE_PRIVATE="$NOPRIV" sh "$R2/bin/skill-catalog.sh" "$@" 2>&1); }
+mk ''; cli ''
+t_exit "complete coverage is green" 0 cov
+bk >/dev/null; C2="$(cat "$R2/skills/skill-catalog/SKILL.md")"
+t_has "a verb is a row with its use-when and exact invocation" "$C2" '| `harbor alpha` | you need alpha | `harbor alpha --now` |'
+t_has "a sub-verb row is listed under its verb" "$C2" '| `harbor beta sub` | you need beta sub | `harbor beta sub X` |'
+t_has "an Agent-facing tool is a row" "$C2" '| `waiter.sh` | you wait on a thing | `sh bin/waiter.sh <id> --timeout N` |'
+t_hasnt "a script cli.md does not mark is not a row" "$C2" 'quiet.sh'
+t_has "the trigger index carries the invocation on the verb's own line" "$C2" '- `harbor alpha` — you need alpha — `harbor alpha --now`'
+# RED: a tool registered Agent-facing in cli.md with no row.
+cli "$LATE_MARK"
+t_exit "a script marked Agent-facing with no row is red" 1 cov
+t_has "...and says which one and where to fix it" "$(cov)" '`late.sh` is marked Agent-facing in contracts/cli.md and has no row in contracts/agent-tools.tsv'
+t_exit "...and the generated book refuses it (--check exits 3, never offers a regenerate)" 3 bk --check
+mk "$LATE_ROW"
+t_exit "...and adding its row turns it green" 0 cov
+# RED: a verb in bin/harbor with no row.
+cp "$R2/bin/harbor" "$T_TMP/harbor.keep"
+printf '#!/bin/sh\nVERBS="\nalpha\talpha.sh\tno\tthe alpha thing\nbeta\tbeta.sh\tno\tthe beta thing\ngamma\tgamma.sh\tno\ta new verb\n"\n' > "$R2/bin/harbor"
+t_has "a verb of bin/harbor with no row is red" "$(cov)" 'the harbor verb `gamma` has no row'
+cp "$T_TMP/harbor.keep" "$R2/bin/harbor"
+# RED: a row whose script or verb does not exist, or that lies about itself.
+mk "$LATE_ROW"'tool\tgone.sh\tit is gone\tsh bin/gone.sh\n'
+t_has "a row naming a script that does not exist is red" "$(cov)" 'bin/gone.sh does not exist'
+mk "$LATE_ROW"'verb\tnosuch\tyou want nothing\tharbor nosuch\n'
+t_has "a row naming a verb bin/harbor lacks is red" "$(cov)" 'nosuch is not a verb of bin/harbor'
+mk "$LATE_ROW"'tool\tquiet.sh\tnot marked\tsh bin/quiet.sh\n'
+t_has "a row for a script cli.md does not mark Agent-facing is red" "$(cov)" 'contracts/cli.md does not mark it Agent-facing'
+mk 'tool\tlate.sh\tyou are late\tsh bin/other.sh\n'
+t_has "an invocation that does not run its own tool is red" "$(cov)" 'its invocation does not run late'
+mk "$LATE_ROW"'verb\talpha\tdup\tharbor alpha\n'
+t_has "a repeated row is red" "$(cov)" 'verb alpha repeats line'
+rm -f "$R2/contracts/agent-tools.tsv"
+t_exit "with no agent-tools.tsv there is nothing to judge (exit 3)" 3 cov
+bk >/dev/null; t_hasnt "...and the tracked book carries no commands section" "$(cat "$R2/skills/skill-catalog/SKILL.md")" '## Commands and tools —'
 t_done

@@ -1,6 +1,6 @@
 ---
 name: skill-catalog
-description: "The index of every skill and credentialed CLI on this box, with the path to read each one — most are hidden from your listing and this is the only route to them. USE WHEN you are about to do reasoning work by hand: design an eval or a pass^k study, run a red-team or adversarial pass, chase a root cause, reason from first principles, get independent perspectives on a decision, write or optimise a prompt, extract the substance of a paper or a long document, generate options. ALSO WHEN what skills do I have, list skills, find a tool, which tool reads email/calendar/tickets/tags, I forgot the name of that skill, skill-book (its name before harbor#1010). NOT FOR invoking a skill already in your listing — this is for the ones you cannot see."
+description: "The index of every skill, `harbor` verb, agent-facing bin tool and credentialed CLI on this box, each with the path or the exact command — most are hidden from your listing and this is the only route to them. USE WHEN you are about to wait on CI or a PR, run a test suite, push, merge or do any scripted chore by hand, or about to do reasoning work by hand: design an eval or a pass^k study, run a red-team or adversarial pass, chase a root cause, reason from first principles, get independent perspectives on a decision, write or optimise a prompt, extract the substance of a paper or a long document, generate options. ALSO WHEN what skills do I have, list skills, find a tool, is there a harbor command for this, how do I wait on CI, which tool reads email/calendar/tickets/tags, I forgot the name of that skill, skill-book (its name before harbor#1010). NOT FOR invoking a skill already in your listing — this is for the ones you cannot see."
 ---
 
 <!-- generated-by: sh bin/skill-catalog.sh -->
@@ -53,11 +53,13 @@ without loading the whole thing; `B=~/.claude/skills/skill-catalog/SKILL.md`.
 grep -i 'consent' "$B"                        # which skill owns a subject
 sed -n '/^## Find by trigger/,$p' "$B"        # the trigger index alone
 sed -n '/^## Start here/,/^## Skills/p' "$B"  # the situation table alone
-awk -F'`' '/^- `/ { print $2 }' "$B"          # every skill name, one per line
+awk -F'`' '/^- `/ { print $2 }' "$B"          # every skill, verb and tool name, one per line
+sed -n '/^## Commands and tools/,/^## Credentialed/p' "$B"  # the harbor verbs and bin tools alone
 ```
 
 The first is the one that matters: search with the vocabulary the task arrives
-with, not with a skill's name, because you do not know the name yet.
+with, not with a skill's name, because you do not know the name yet. The same
+goes for a chore: `grep -i 'wait' "$B"` finds `harbor event ci` and `ci-wait.sh` before you write a poll loop.
 
 ## Skills you CANNOT see — read them by path
 
@@ -82,7 +84,75 @@ Listed for the operator, who does not get the model's skill listing.
 | `audit-review-fanout` | core | Review a code change with several cheap reviewers, each given a different lens, then verify every finding…<br>_NOT FOR a one-line or docs-only change (one reviewer is enough), proving a test can fail…_ |
 | `doc-atlas` | core | The single owner of human-readable HTML artefacts on this box: an atlas whose subject is a DRAWING, not…<br>_NOT FOR a projection of a TOPOLOGY.md, which is `topology`'s own report-gen.sh._ |
 | `doc-deliverable-contract` | core | Before writing anything a person outside this session will read — a client thread reply, a ticket…<br>_NOT FOR the investigation itself (casefile), or the durable map (topology)._ |
-| `skill-catalog` | core | The index of every skill and credentialed CLI on this box, with the path to read each one — most are…<br>_NOT FOR invoking a skill already in your listing — this is for the ones you cannot see._ |
+| `skill-catalog` | core | The index of every skill, `harbor` verb, agent-facing bin tool and credentialed CLI on this box, each…<br>_NOT FOR invoking a skill already in your listing — this is for the ones you cannot see._ |
+
+## Commands and tools — `harbor <verb>` and the `bin/` scripts agents call directly
+
+Not skills and in no listing, so a session hand-rolls what already exists (it polled CI by hand while `harbor event ci` waits on
+the event bus). Rows are generated from `contracts/agent-tools.tsv`; the verbs are bin/harbor's table, the tools are the scripts
+`contracts/cli.md` marks Agent-facing, and a verb or marked tool with no row is a DEFECT above. `bin/` paths are the harbor
+checkout (`~/port/harbor`) or your worktree of it.
+
+### `harbor` verbs
+
+| Verb | Use when | Run |
+|---|---|---|
+| `harbor status` | you need the generated counts, or the obligations ledger (open PRs, approvals, overdue items) | `harbor status [--json]; harbor status obligations --json` |
+| `harbor doctor` | a dependency may be missing and you need to know what breaks without it | `harbor doctor [--json]` |
+| `harbor verify` | you must know whether the security floor is on for this box | `harbor verify` |
+| `harbor check` | you must know whether the installed box works (floor, doctor, shims, roots), read-only | `harbor check --live` |
+| `harbor lint` | you changed anything in this repo and want the conventions gate before you push | `harbor lint` |
+| `harbor fresh` | a document or working-context file may be stale | `harbor fresh [--open]` |
+| `harbor cite` | a citation in docs/reference/citations.md may have drifted (needs network) | `harbor cite` |
+| `harbor observe` | you want to see what the guards decided, and why a command was blocked | `harbor observe` |
+| `harbor dash` | you want the state of the box as a page to open | `harbor dash [--open]` |
+| `harbor deploy` | you changed something that ships to the config dir and need it installed; plan first | `harbor deploy --live (plan); harbor deploy --apply --live (install)` |
+| `harbor install` | you need the security floor installed or reinstalled through deploy | `harbor install --live; harbor install --apply --live` |
+| `harbor uninstall` | you need the floor removed through deploy | `harbor uninstall --live; harbor uninstall --apply --live` |
+| `harbor restore` | an install broke the config dir and you need the last snapshot back | `harbor restore --live (dry run); harbor restore --apply --live` |
+| `harbor skills` | you added or changed a skill or command and need it installed on the box | `harbor skills --live; harbor skills --apply --live` |
+| `harbor inject` | you added or changed an injection rule (context-rules/) and need it live | `harbor inject --live; harbor inject --apply --live` |
+| `harbor constitution` | policy/constitution.md changed and the box CLAUDE.md must follow | `harbor constitution --live; harbor constitution --apply --live` |
+| `harbor browser` | you need a browser and do not know which backend to use | `harbor browser route` |
+| `harbor chrome` | you must act in the operator's logged-in Chrome (a console, a dashboard behind a sign-in) | `harbor chrome attach; harbor chrome detach` |
+| `harbor refs` | you are about to rename or delete a path or an id and need every place that cites it | `harbor refs <path-or-id>` |
+| `harbor find` | you need the scripts, tests, checks and docs a family or system owns | `harbor find <term>` |
+| `harbor tree` | you need the layered map of systems, families and components | `harbor tree` |
+| `harbor event` | you need the event bus: emit, wait for, or read events | `harbor event tail 20; harbor event emit <kind> <subject>` |
+| `harbor event ci` | you are waiting on a PR's CI: use this instead of polling gh pr checks | `harbor event ci <owner/repo>#<n> --timeout 1800 (run in the background)` |
+| `harbor event wait` | you wait for any other event on the bus (a PR opened, a job done) | `harbor event wait '<grep -E pattern>' --timeout N` |
+| `harbor ui` | you want the live state as a localhost console | `harbor ui` |
+| `harbor scope` | you are setting up a fresh machine's PORT_ROOT and private layer | `harbor scope install --dry-run` |
+| `harbor access` | you need to know which identity may reach a system, or register one | `harbor access list; harbor access has <id>` |
+| `harbor pack` | a workload repo ships a harbor-pack/ that must be installed box-wide or removed | `harbor pack list; harbor pack install <repo-id> --live` |
+| `harbor merge-stack` | several PRs must merge in order, each on its own green CI | `harbor merge-stack check <plan>` |
+| `harbor ship` | opted-in fleet repos must be merged and deployed unattended | `harbor ship night [--plan <file>]` |
+| `harbor repo` | you create a new governed repo or adopt a checkout into the registry (scaffold, register, route memory, plan labels) | `harbor repo new <name> --kind <repo-kind> --dry-run; harbor repo list; harbor repo audit <name>` |
+
+### `bin/` tools
+
+| Tool | Use when | Run |
+|---|---|---|
+| `ci-wait.sh` | you wait on a PR's CI verdict (never poll gh pr checks, gh run watch or gh pr view in a loop) | `sh ~/port/harbor/bin/ci-wait.sh <owner/repo>#<n> --timeout 1800 (run in the background; exit 0 green, 1 red, 3 still running)` |
+| `wait-for` | you wait on an EXTERNAL condition (a port, a cloud build, a data sync) and need a deadline and a diagnosis | `wait-for -t 900 -i 30 -n <label> -- <predicate command>` |
+| `gate-pr-wait.sh` | you wait on a PR for the first thing that needs you: a review thread, a failed check or green | `sh ~/port/harbor/bin/gate-pr-wait.sh <owner/repo> <pr> --timeout 1800` |
+| `gate-pr-plan.sh` | you must hand a PR over and need the steps to land it, derived from the live repo | `sh ~/port/harbor/bin/gate-pr-plan.sh --handover <owner/repo>#<n>` |
+| `gate-merge-check.sh` | you are about to merge a PR and want to know whether it may be merged | `sh ~/port/harbor/bin/gate-merge-check.sh <pr>` |
+| `gate-push.sh` | you push a branch: verify first, then push in seconds (a plain git push dies with HTTP 401 under load) | `sh ~/port/harbor/bin/gate-push.sh -u origin <branch>` |
+| `test-suite-run.sh` | you run suites: this carries the idle and hard timeouts and the CPU governor, a suite run by hand has neither | `sh ~/port/harbor/bin/test-suite-run.sh --select [<suite-or-path>...]` |
+| `test-suite-select.sh` | you want to know which suites your changeset must run, and why | `sh ~/port/harbor/bin/test-suite-select.sh --list` |
+| `doc-fresh-verify.sh` | you want to know in seconds whether every generated file is current, and the fix for a stale one | `sh ~/port/harbor/bin/doc-fresh-verify.sh` |
+| `gate-register-derive.sh` | pre-push says the protected-paths register is stale | `sh ~/port/harbor/bin/gate-register-derive.sh --write` |
+| `gate-codeowners.sh` | pre-push says .github/CODEOWNERS is stale | `sh ~/port/harbor/bin/gate-codeowners.sh --write` |
+| `standard-vendor.sh` | pre-push says the vendored naming package differs from the registers | `sh ~/port/harbor/bin/standard-vendor.sh .` |
+| `skill-catalog.sh` | you added or re-described a skill, or registered an agent-facing tool, and the catalog must be regenerated | `sh ~/port/harbor/bin/skill-catalog.sh` |
+| `lint-name.sh` | you name a file, script, env var, rule id or skill and want it judged before you commit | `sh ~/port/harbor/bin/lint-name.sh --check <surface> <name>` |
+| `lint-name-ratchet.sh` | you added a path or an env name and want to know whether it is a new naming finding | `sh ~/port/harbor/bin/lint-name-ratchet.sh` |
+| `lint-pr.sh` | you wrote a PR title, body or branch name and want it judged against the git convention | `sh ~/port/harbor/bin/lint-pr.sh --title <t> --body-file <f> --branch <b>` |
+| `worktree.sh` | you start a task and need a worktree of your own, or you finish one | `sh ~/port/harbor/bin/worktree.sh new <branch>; sh ~/port/harbor/bin/worktree.sh list` |
+| `context-peers.sh` | you need to know which other sessions are live in this working tree | `sh ~/port/harbor/bin/context-peers.sh --repo <dir>` |
+| `scope-roots.sh` | you need a governed repo's checkout path, or a named root, without guessing it | `sh ~/port/harbor/bin/scope-roots.sh --repo <id>; sh ~/port/harbor/bin/scope-roots.sh --get <VAR>` |
+| `memory.sh` | you need what the notes store already knows about a subject before you start | `memory <query>` |
 
 ## Credentialed CLIs — not skills, and in no listing at all
 
@@ -110,8 +180,59 @@ does not carry the path sends you back to the top.
 - `doc-deliverable-contract` — `~/.claude/skills/doc-deliverable-contract/SKILL.md` — replying to a client or account team, answering a thread, writing a recommendation or proposal, drafting a ticket comment, sending findings to anyone, or when a correct analysis needs to become a usable answer.
 - `doc-learning-artifact` — `~/.claude/skills/doc-learning-artifact/SKILL.md` — building or updating a study guide, exam guide, course notes page, revision page or learning artifact; when somebody wants to learn a course, a lecture series or a topic from one page.
 - `housekeeping` — `~/.claude/skills/housekeeping/SKILL.md` — the statusline shows 🧹 or SWEEP, clean up, sweep, free disk space, the box feels cluttered, tidy the fleet, obsolete worktrees or branches, stale sessions, what is safe to delete, disk is full, prune caches, retire a PR nobody will merge, merge what is waiting, garbage collect.
-- `skill-catalog` — `~/.claude/skills/skill-catalog/SKILL.md` — you are about to do reasoning work by hand: design an eval or a pass^k study, run a red-team or adversarial pass, chase a root cause, reason from first principles, get independent perspectives on a decision, write or optimise a prompt, extract the substance of a paper or a long document, generate options. ALSO WHEN what skills do I have, list skills, find a tool, which tool reads email/calendar/tickets/tags, I forgot the name of that skill, skill-book (its name before harbor#1010).
+- `skill-catalog` — `~/.claude/skills/skill-catalog/SKILL.md` — you are about to wait on CI or a PR, run a test suite, push, merge or do any scripted chore by hand, or about to do reasoning work by hand: design an eval or a pass^k study, run a red-team or adversarial pass, chase a root cause, reason from first principles, get independent perspectives on a decision, write or optimise a prompt, extract the substance of a paper or a long document, generate options. ALSO WHEN what skills do I have, list skills, find a tool, is there a harbor command for this, how do I wait on CI, which tool reads email/calendar/tickets/tags, I forgot the name of that skill, skill-book (its name before harbor#1010).
 - `test-strength` — `~/.claude/skills/test-strength/SKILL.md` — a suite is written or changed, a guard is trusted, a gate reports zero, or a green result is about to be cited as evidence.
+- `harbor status` — you need the generated counts, or the obligations ledger (open PRs, approvals, overdue items) — `harbor status [--json]; harbor status obligations --json`
+- `harbor doctor` — a dependency may be missing and you need to know what breaks without it — `harbor doctor [--json]`
+- `harbor verify` — you must know whether the security floor is on for this box — `harbor verify`
+- `harbor check` — you must know whether the installed box works (floor, doctor, shims, roots), read-only — `harbor check --live`
+- `harbor lint` — you changed anything in this repo and want the conventions gate before you push — `harbor lint`
+- `harbor fresh` — a document or working-context file may be stale — `harbor fresh [--open]`
+- `harbor cite` — a citation in docs/reference/citations.md may have drifted (needs network) — `harbor cite`
+- `harbor observe` — you want to see what the guards decided, and why a command was blocked — `harbor observe`
+- `harbor dash` — you want the state of the box as a page to open — `harbor dash [--open]`
+- `harbor deploy` — you changed something that ships to the config dir and need it installed; plan first — `harbor deploy --live (plan); harbor deploy --apply --live (install)`
+- `harbor install` — you need the security floor installed or reinstalled through deploy — `harbor install --live; harbor install --apply --live`
+- `harbor uninstall` — you need the floor removed through deploy — `harbor uninstall --live; harbor uninstall --apply --live`
+- `harbor restore` — an install broke the config dir and you need the last snapshot back — `harbor restore --live (dry run); harbor restore --apply --live`
+- `harbor skills` — you added or changed a skill or command and need it installed on the box — `harbor skills --live; harbor skills --apply --live`
+- `harbor inject` — you added or changed an injection rule (context-rules/) and need it live — `harbor inject --live; harbor inject --apply --live`
+- `harbor constitution` — policy/constitution.md changed and the box CLAUDE.md must follow — `harbor constitution --live; harbor constitution --apply --live`
+- `harbor browser` — you need a browser and do not know which backend to use — `harbor browser route`
+- `harbor chrome` — you must act in the operator's logged-in Chrome (a console, a dashboard behind a sign-in) — `harbor chrome attach; harbor chrome detach`
+- `harbor refs` — you are about to rename or delete a path or an id and need every place that cites it — `harbor refs <path-or-id>`
+- `harbor find` — you need the scripts, tests, checks and docs a family or system owns — `harbor find <term>`
+- `harbor tree` — you need the layered map of systems, families and components — `harbor tree`
+- `harbor event` — you need the event bus: emit, wait for, or read events — `harbor event tail 20; harbor event emit <kind> <subject>`
+- `harbor event ci` — you are waiting on a PR's CI: use this instead of polling gh pr checks — `harbor event ci <owner/repo>#<n> --timeout 1800 (run in the background)`
+- `harbor event wait` — you wait for any other event on the bus (a PR opened, a job done) — `harbor event wait '<grep -E pattern>' --timeout N`
+- `harbor ui` — you want the live state as a localhost console — `harbor ui`
+- `harbor scope` — you are setting up a fresh machine's PORT_ROOT and private layer — `harbor scope install --dry-run`
+- `harbor access` — you need to know which identity may reach a system, or register one — `harbor access list; harbor access has <id>`
+- `harbor pack` — a workload repo ships a harbor-pack/ that must be installed box-wide or removed — `harbor pack list; harbor pack install <repo-id> --live`
+- `harbor merge-stack` — several PRs must merge in order, each on its own green CI — `harbor merge-stack check <plan>`
+- `harbor ship` — opted-in fleet repos must be merged and deployed unattended — `harbor ship night [--plan <file>]`
+- `harbor repo` — you create a new governed repo or adopt a checkout into the registry (scaffold, register, route memory, plan labels) — `harbor repo new <name> --kind <repo-kind> --dry-run; harbor repo list; harbor repo audit <name>`
+- `ci-wait.sh` — you wait on a PR's CI verdict (never poll gh pr checks, gh run watch or gh pr view in a loop) — `sh ~/port/harbor/bin/ci-wait.sh <owner/repo>#<n> --timeout 1800 (run in the background; exit 0 green, 1 red, 3 still running)`
+- `wait-for` — you wait on an EXTERNAL condition (a port, a cloud build, a data sync) and need a deadline and a diagnosis — `wait-for -t 900 -i 30 -n <label> -- <predicate command>`
+- `gate-pr-wait.sh` — you wait on a PR for the first thing that needs you: a review thread, a failed check or green — `sh ~/port/harbor/bin/gate-pr-wait.sh <owner/repo> <pr> --timeout 1800`
+- `gate-pr-plan.sh` — you must hand a PR over and need the steps to land it, derived from the live repo — `sh ~/port/harbor/bin/gate-pr-plan.sh --handover <owner/repo>#<n>`
+- `gate-merge-check.sh` — you are about to merge a PR and want to know whether it may be merged — `sh ~/port/harbor/bin/gate-merge-check.sh <pr>`
+- `gate-push.sh` — you push a branch: verify first, then push in seconds (a plain git push dies with HTTP 401 under load) — `sh ~/port/harbor/bin/gate-push.sh -u origin <branch>`
+- `test-suite-run.sh` — you run suites: this carries the idle and hard timeouts and the CPU governor, a suite run by hand has neither — `sh ~/port/harbor/bin/test-suite-run.sh --select [<suite-or-path>...]`
+- `test-suite-select.sh` — you want to know which suites your changeset must run, and why — `sh ~/port/harbor/bin/test-suite-select.sh --list`
+- `doc-fresh-verify.sh` — you want to know in seconds whether every generated file is current, and the fix for a stale one — `sh ~/port/harbor/bin/doc-fresh-verify.sh`
+- `gate-register-derive.sh` — pre-push says the protected-paths register is stale — `sh ~/port/harbor/bin/gate-register-derive.sh --write`
+- `gate-codeowners.sh` — pre-push says .github/CODEOWNERS is stale — `sh ~/port/harbor/bin/gate-codeowners.sh --write`
+- `standard-vendor.sh` — pre-push says the vendored naming package differs from the registers — `sh ~/port/harbor/bin/standard-vendor.sh .`
+- `skill-catalog.sh` — you added or re-described a skill, or registered an agent-facing tool, and the catalog must be regenerated — `sh ~/port/harbor/bin/skill-catalog.sh`
+- `lint-name.sh` — you name a file, script, env var, rule id or skill and want it judged before you commit — `sh ~/port/harbor/bin/lint-name.sh --check <surface> <name>`
+- `lint-name-ratchet.sh` — you added a path or an env name and want to know whether it is a new naming finding — `sh ~/port/harbor/bin/lint-name-ratchet.sh`
+- `lint-pr.sh` — you wrote a PR title, body or branch name and want it judged against the git convention — `sh ~/port/harbor/bin/lint-pr.sh --title <t> --body-file <f> --branch <b>`
+- `worktree.sh` — you start a task and need a worktree of your own, or you finish one — `sh ~/port/harbor/bin/worktree.sh new <branch>; sh ~/port/harbor/bin/worktree.sh list`
+- `context-peers.sh` — you need to know which other sessions are live in this working tree — `sh ~/port/harbor/bin/context-peers.sh --repo <dir>`
+- `scope-roots.sh` — you need a governed repo's checkout path, or a named root, without guessing it — `sh ~/port/harbor/bin/scope-roots.sh --repo <id>; sh ~/port/harbor/bin/scope-roots.sh --get <VAR>`
+- `memory.sh` — you need what the notes store already knows about a subject before you start — `memory <query>`
 
 **None of them has a delete verb, and that is a decision** — nothing they touch
 is recoverable from a session.
