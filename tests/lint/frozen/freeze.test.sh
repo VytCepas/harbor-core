@@ -71,7 +71,7 @@ t_eq "...and --apply writes nothing" "2" "$(rc "$R" --apply)"
 
 t_section "lint.frozen-names runs the same check"
 R="$(mk lintok)"; t_eq "a fresh freeze: silent" "0" "$(vcount "$(lint1 lint.frozen-names "$R")")"
-sed '/^skill:atlas	/d' "$R/standards/naming/frozen.tsv" > "$R/f" && mv "$R/f" "$R/standards/naming/frozen.tsv"
+sed '/^skill:test-strength	/d' "$R/standards/naming/frozen.tsv" > "$R/f" && mv "$R/f" "$R/standards/naming/frozen.tsv"
 t_has "an unfrozen name: the rule reports" "$(lint1 lint.frozen-names "$R")" "VIOLATION [lint.frozen-names]"
 
 t_section "the repo's own freeze"

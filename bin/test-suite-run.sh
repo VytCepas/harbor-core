@@ -40,7 +40,7 @@
 set -eu
 
 DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$DIR/.." && pwd)}}"
+ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$DIR/.." && pwd)}"
 DUR="$ROOT/tests/suite-durations.tsv"
 TAB="$(printf '\t')"
 
@@ -58,7 +58,7 @@ if [ "${1:-}" = "--_one" ]; then
   # here, outside the timeout, until fewer than 3 x the current quota are running. No quota (the Mac):
   # the pool as started, and the governor's own slots do the throttling.
   _allow() {
-    _q="$(cat "${HARBOR_TEST_CPU_MAX:-${HARBOR_CPU_MAX:-/sys/fs/cgroup/cpu.max}}" 2>/dev/null || :)"
+    _q="$(cat "${HARBOR_TEST_CPU_MAX:-/sys/fs/cgroup/cpu.max}" 2>/dev/null || :)"
     case "$_q" in
       [0-9]*' '[0-9]*) printf '%s\n' "$_q" | awk -v j="$_SR_JOBS" '{ a = int(3 * $1 / $2); if (a < 1) a = 1; if (a > j) a = j; print a }' ;;
       *) printf '%s\n' "$_SR_JOBS" ;;
@@ -183,7 +183,7 @@ if [ "${1:-}" = "--tally" ]; then
 fi
 
 # ── options ───────────────────────────────────────────────────────────────────
-JOBS="${HARBOR_TEST_SUITE_JOBS:-${HARBOR_SUITE_JOBS:-}}"; LIST="$ROOT/contracts/suites.txt"; INC=""; SEL=0; RES=""; REC=0; PLAN=0
+JOBS="${HARBOR_TEST_SUITE_JOBS:-}"; LIST="$ROOT/contracts/suites.txt"; INC=""; SEL=0; RES=""; REC=0; PLAN=0
 SHARD=""; COMB=""; RECFROM=""; LINT=""; LINTKEY="bin/lint-conventions.sh"
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -359,7 +359,7 @@ if [ "$PLAN" = 1 ]; then [ -z "$SHNOTE" ] || printf "%s\n" "$SHNOTE" >&2; cat "$
 # A queued suite whose key holds a recorded pass leaves the queue as a `cached` row carrying that pass's
 # time and count, so --tally, --combine and the counts read it as they read a run. Unset: nothing here runs.
 CNOTE=""
-if [ "${HARBOR_TEST_SUITE_CACHE:-${HARBOR_SUITE_CACHE:-}}" = 1 ]; then
+if [ "${HARBOR_TEST_SUITE_CACHE:-}" = 1 ]; then
   if CNOTE="$(HARBOR_SCOPE_ROOT="$ROOT" sh "$DIR/test-suite-cache.sh" lookup "$WORK/queue" "$WORK/keys" "$WORK/hits" 2>&1)"; then
     cat "$WORK/hits" >> "$RES"
     awk -F '\t' -v hf="$WORK/hits" 'FILENAME == hf { h[$5] = 1; next } !($1 in h)' "$WORK/hits" "$WORK/queue" > "$WORK/next"
@@ -379,10 +379,10 @@ _skips="$(awk -F '\t' '$1 == "skip"' "$RES")"
 [ -z "$_skips" ] || printf '%s\n' "$_skips" | while IFS="$TAB" read -r _v _x _y _z _s _why; do log_skip "$_s stood down — $_why"; done
 
 # ── run: xargs keeps JOBS workers busy in queue order; this loop reports as they finish ──
-_SR_LOGS="$WORK/logs"; _SR_RES="$RES"; _SR_TMO="${HARBOR_TEST_SUITE_TIMEOUT:-${HARBOR_SUITE_TIMEOUT:-900}}"; _SR_JOBS="$JOBS"
+_SR_LOGS="$WORK/logs"; _SR_RES="$RES"; _SR_TMO="${HARBOR_TEST_SUITE_TIMEOUT:-900}"; _SR_JOBS="$JOBS"
 export _SR_LOGS _SR_RES _SR_TMO _SR_JOBS
 case "$_SR_TMO" in *[!0-9]*) printf 'suite-run: HARBOR_TEST_SUITE_TIMEOUT wants seconds, got %s\n' "$_SR_TMO" >&2; exit 2 ;; esac
-_SR_HARD="${HARBOR_TEST_SUITE_HARD_TIMEOUT:-${HARBOR_SUITE_HARD_TIMEOUT:-$(( _SR_TMO * 4 ))}}"; export _SR_HARD
+_SR_HARD="${HARBOR_TEST_SUITE_HARD_TIMEOUT:-$(( _SR_TMO * 4 ))}"; export _SR_HARD
 case "$_SR_HARD" in *[!0-9]*) printf 'suite-run: HARBOR_TEST_SUITE_HARD_TIMEOUT wants seconds, got %s\n' "$_SR_HARD" >&2; exit 2 ;; esac
 T0="$(date +%s)"
 # A queue the cache emptied starts no pool: GNU xargs would run one worker with no suite.
@@ -433,7 +433,7 @@ log_note "$_np passed$_nc, $_nf failed, $_ns stood down, wall ${WALL}s at P=$JOB
 # The tail of each failed suite's log, after the list, so the cause is on the page.
 awk -F '\t' '$1 == "fail" { print $5 }' "$RES" | while IFS= read -r _s; do
   log_head "tail of $_s"
-  tail -n "${HARBOR_TEST_SUITE_TAIL:-${HARBOR_SUITE_TAIL:-40}}" "$WORK/logs/$(printf '%s' "$_s" | tr '/' '_').log" | sed 's/^/    /'
+  tail -n "${HARBOR_TEST_SUITE_TAIL:-40}" "$WORK/logs/$(printf '%s' "$_s" | tr '/' '_').log" | sed 's/^/    /'
 done
 
 [ "$REC" != 1 ] || _record "$RES"

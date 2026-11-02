@@ -50,8 +50,8 @@ log_init hook-replay
 # die <what failed> <fix> <exit> — FAIL, its fix, the summary, the exit code the tool always had.
 die() { log_fail "$1"; log_fix "$2"; log_end || :; exit "$3"; }
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-SRC_DIR="${HARBOR_SESSION_TRANSCRIPTS:-${HARBOR_TRANSCRIPTS:-$CFG/projects}}"
-BASE="${HARBOR_CI_BASE_BRANCH:-${HARBOR_BASE_BRANCH:-origin/main}}"
+SRC_DIR="${HARBOR_SESSION_TRANSCRIPTS:-$CFG/projects}"
+BASE="${HARBOR_CI_BASE_BRANCH:-origin/main}"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -rf "$TMP"' EXIT INT TERM
 
 MODE=all

@@ -11,7 +11,7 @@ _stub_body='#!/bin/sh
 n=$(basename "$0")
 L="$STUB_LOG"; [ -z "${CLAUDE_CONFIG_DIR:-}" ] || L="$STUB_LOG.rehearse"
 printf "%s %s\n" "$n" "$*" >> "$L"
-[ "${HARBOR_DEPLOY_ACTIVE:-${HARBOR_DEPLOY:-}}" = 1 ] || printf "%s\n" "$n" >> "$STUB_LOG.nodeploy"
+[ "${HARBOR_DEPLOY_ACTIVE:-}" = 1 ] || printf "%s\n" "$n" >> "$STUB_LOG.nodeploy"
 case " $* " in *" --apply "*) m=apply ;; *) m=dry ;; esac
 v=$(printf %s "$n" | tr -d ".-"); eval "h=\${STUB_HOOK_$v:-}"
 [ "$m" = apply ] && [ -n "$h" ] && sh -c "$h"
@@ -21,7 +21,7 @@ exit 0'
 
 fixture() { # <case> → T (case dir) with origin.git, repo (a clone on main), home H, config C
   T="$T_TMP/$1"; H="$T/home"; C="$H/.claude"; REPO="$T/repo"; LOGF="$T/calls"
-  mkdir -p "$T/src/bin" "$T/src/inject.d/box" "$T/src/skills/skill-catalog" "$C/inject.d" "$C/.helm-pins" "$H/.local/bin"
+  mkdir -p "$T/src/bin" "$T/src/context-rules/user" "$T/src/skills/skill-catalog" "$C/context-rules/user" "$C/inject.d" "$C/.helm-pins" "$H/.local/bin"
   cp "$T_ROOT/bin/deploy.sh" "$T/src/bin/deploy.sh"; cp "$T_ROOT/bin/deploy-restore.sh" "$T/src/bin/deploy-restore.sh"
   cp "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/deploy-install-lib.sh" "$T/src/bin/"
   for s in $INSTALLERS; do printf '%s\n' "$_stub_body" > "$T/src/bin/$s"; done
@@ -77,15 +77,15 @@ esac
 exec sh "$(dirname "$0")/skills-install.real" "$@"
 EOS
   printf '%s\n' "$_stub_body" | sed 's/\$(basename "\$0")/skill-install.sh/' > "$T/src/bin/skills-install.real"
-  printf 'pack\n' > "$T/src/inject.d/box/10-a.md"; printf 'old pack\n' > "$T/src/inject.d/box/20-old.md"
+  printf 'pack\n' > "$T/src/context-rules/user/10-a.md"; printf 'old pack\n' > "$T/src/context-rules/user/20-old.md"
   mkdir -p "$T/src/commands"; printf 'v1\n' > "$T/src/commands/x.md"; printf 'book\n' > "$T/src/skills/skill-catalog/SKILL.md"
   chmod +x "$T/src/bin/"*
   git -C "$T/src" init -q -b main && git -C "$T/src" add -A && git -C "$T/src" -c user.name=t -c user.email=t@t commit -q -m init
   # history then holds a withdrawn pack (20-old) and an older command (x v1)
-  git -C "$T/src" rm -q inject.d/box/20-old.md && printf 'v2\n' > "$T/src/commands/x.md"
+  git -C "$T/src" rm -q context-rules/user/20-old.md && printf 'v2\n' > "$T/src/commands/x.md"
   git -C "$T/src" -c user.name=t -c user.email=t@t commit -qam two
   git clone -q --bare "$T/src" "$T/origin.git" && git clone -q "$T/origin.git" "$REPO"
-  cp "$REPO/inject.d/box/10-a.md" "$C/inject.d/10-a.md"; printf '{}\n' > "$C/settings.json"
+  cp "$REPO/context-rules/user/10-a.md" "$C/context-rules/user/10-a.md"; printf '{}\n' > "$C/settings.json"
   printf 'aaa  CLAUDE.md\n' > "$C/.helm-instructions.sha256"; cp "$C/.helm-instructions.sha256" "$T/b8"
   ln -s "$REPO/bin/harbor" "$H/.local/bin/harbor"; : > "$LOGF"
   # Both other repos reachable, as on a set-up box: deploy fails an unreachable one it was asked to
@@ -116,11 +116,11 @@ run() { # [answers] -- deploy args. With answers, under a pty; without, stdin is
   if [ -n "$_ans" ]; then
     rm -f "$T/done"
     { sleep 1; printf "$_ans"; _i=0; while [ ! -f "$T/done" ] && [ "$_i" -lt 90 ]; do sleep 1; _i=$((_i + 1)); done; } \
-      | { cd "$_cwd" && pty env -u CLAUDE_CONFIG_DIR -u HARBOR_SCOPE_LOCAL_BIN -u HARBOR_LOCAL_BIN CLAUDECODE="${CC:-}" $_env sh "$@" >"$T/out" 2>&1; echo $? >"$T/rc"; touch "$T/done"; }
+      | { cd "$_cwd" && pty env -u CLAUDE_CONFIG_DIR -u HARBOR_SCOPE_LOCAL_BIN CLAUDECODE="${CC:-}" $_env sh "$@" >"$T/out" 2>&1; echo $? >"$T/rc"; touch "$T/done"; }
     RC="$(cat "$T/rc")"
   else
     RC=0
-    ( cd "$_cwd" && env -u CLAUDE_CONFIG_DIR -u HARBOR_SCOPE_LOCAL_BIN -u HARBOR_LOCAL_BIN CLAUDECODE="${CC:-}" $_env sh "$@" ) >"$T/out" 2>&1 </dev/null || RC=$?
+    ( cd "$_cwd" && env -u CLAUDE_CONFIG_DIR -u HARBOR_SCOPE_LOCAL_BIN CLAUDECODE="${CC:-}" $_env sh "$@" ) >"$T/out" 2>&1 </dev/null || RC=$?
   fi
   tr -d '\r' <"$T/out" >"$T/out.txt"
 }

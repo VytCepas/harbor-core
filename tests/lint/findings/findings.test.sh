@@ -259,10 +259,10 @@ rm -f "$RCD/memory.rou.e.json"
 
 t_section "check tier · harbor#904: a writer and the reconcile resolve one receipt dir, CLAUDE_CONFIG_DIR set elsewhere"
 _cfg="$TMP/cfg904"; rm -rf "$_cfg"; mkdir -p "$_cfg"
-( unset HARBOR_CHECK_RECEIPTS HARBOR_RECEIPTS HARBOR_SCOPE_CACHE_DIR HARBOR_CACHE_DIR; CLAUDE_CONFIG_DIR="$_cfg" HOME="$TMP/home904" HARBOR_TEST_GH=false \
+( unset HARBOR_CHECK_RECEIPTS HARBOR_SCOPE_CACHE_DIR; CLAUDE_CONFIG_DIR="$_cfg" HOME="$TMP/home904" HARBOR_TEST_GH=false \
     sh "$T_ROOT/bin/ci-main-tip-verdict.sh" >/dev/null 2>&1 || : )
 t_eq "main-tip-verdict wrote its receipt under CLAUDE_CONFIG_DIR" stood-down "$(jq -r .status "$_cfg/cache/checks/ci.main-tip-verdict.json" 2>/dev/null)"
-OUT="$( unset HARBOR_CHECK_RECEIPTS HARBOR_RECEIPTS; CLAUDE_CONFIG_DIR="$_cfg" NOW="$(date -u +%Y-%m-%d)" rec "$TMP/c0" )"
+OUT="$( unset HARBOR_CHECK_RECEIPTS; CLAUDE_CONFIG_DIR="$_cfg" NOW="$(date -u +%Y-%m-%d)" rec "$TMP/c0" )"
 t_has "the reconcile read it" "$OUT" "check/ci.main-tip-verdict"
 
 t_section "check tier · harbor#904: the report counts rules and checks apart"
@@ -292,13 +292,8 @@ jq -n '{id: "memory.route", ran_at: "2026-10-21T09:00:00Z", status: "red", subje
 OUT="$(NOW=2026-10-26 rec "$TMP/c0")"
 t_has "without it, five days old is not seen" "$OUT" "the rule did not run"
 
-t_section "check tier · harbor#961 W5: an old check id is its family id's until remove_by (receipts, finding keys)"
-# The rows are the real renames.tsv's: the alias reader is the registry, never a list in the test.
-mkdir -p "$PUB/standards/naming"; cp "$T_ROOT/standards/naming/renames.tsv" "$PUB/standards/naming/"
-git -C "$PUB" -c user.email=t@t -c user.name=t add -A; git -C "$PUB" -c user.email=t@t -c user.name=t commit -qm renames
-git -C "$PUB" update-ref refs/remotes/origin/main HEAD
-t_eq "the registry carries the ship row" "check:ship	check:deploy.fleet	2026-11-15" \
-  "$(awk -F'\t' '$4 == "check-id" && $2 == "check:ship" { print $2 "\t" $3 "\t" $6 }' "$PUB/standards/naming/renames.tsv")"
+t_section "check tier · harbor#961 W5: an old check id is retired (receipts, finding keys)"
+# check:ship became check:deploy.fleet; the old id is no check, as any unregistered id is, and nothing reads it as the new one.
 GH_STATE="$TMP/gh-alias.json"; export GH_STATE
 _ad="$(sh "$F" digest acme/api:plan)"
 jq -n --arg b "<!-- harbor:finding key=check/ship digest=$_ad seen=2026-10-28 schema=1 -->" \
@@ -307,20 +302,10 @@ jq -n --arg b "<!-- harbor:finding key=check/ship digest=$_ad seen=2026-10-28 sc
 records "$TMP/al0" lint.long-file-reason
 rm -f "$RCD"/*.json; rcpt ship red 2026-10-29 acme/api:plan
 : > "$GH_LOG"; OUT="$(NOW=2026-10-29 rec "$TMP/al0")"
-t_hasnt "an old-id receipt is not refused" "$OUT" "check/ship (receipt"
-t_has "the old-keyed issue is the new id's, on the same issue" "$OUT" "check/ship → check/deploy.fleet (#1)"
-t_hasnt "and nothing is filed new" "$OUT" "would file"
-t_has "nothing is orphaned" "$OUT" "could not classify 0"
-: > "$GH_LOG"; OUT="$(NOW=2026-10-29 rec "$TMP/al0" --apply)"
-t_has "--apply rewrites the marker to the new id" "$(jq -r '.issues[0].body' "$GH_STATE")" "key=check/deploy.fleet digest=$_ad "
-t_eq "...and files nothing new" 1 "$(jq '.issues | length' "$GH_STATE")"
-t_section "check tier · harbor#961 W5: the new id's own receipt wins over the old one, and the window closes on its date"
-rcpt deploy.fleet green 2026-10-29
+t_has "an old-id receipt is refused as an unregistered id" "$OUT" "check/ship (receipt with no docs/reference/checks.md row)"
+rm -f "$RCD"/*.json; rcpt deploy.fleet green 2026-10-29
 OUT="$(NOW=2026-10-29 rec "$TMP/al0")"
-t_has "the new receipt is the one read: green fixes the finding" "$OUT" "check/deploy.fleet #1"
-rm -f "$RCD/deploy.fleet.json"
-OUT="$(NOW=2026-11-16 rec "$TMP/al0")"
-t_has "past remove_by the old receipt is an unregistered id again" "$OUT" "check/ship (receipt with no docs/reference/checks.md row)"
+t_hasnt "control: the new id's own receipt is read, not refused" "$OUT" "check/deploy.fleet (receipt"
 rm -f "$RCD"/*.json
 
 t_section "context.budget-ceiling end to end (harbor#585, No.2.10): a planted regrowth reaches the store, its restore closes it"

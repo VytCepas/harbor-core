@@ -3,7 +3,7 @@
 name	rule
 atlas	name.skill-dir
 notes-helper	name.skill-dir
-pilot-book	name.skill-dir,name.alias
+golden-book	name.skill-dir,name.alias
 TrackingStandards	name.case,name.skill-dir
 mail_cal	name.separator,name.skill-dir
 audit-cfg	name.abbreviation

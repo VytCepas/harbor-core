@@ -1,1 +1,0 @@
-../../skill/access-ledger/register.test.sh

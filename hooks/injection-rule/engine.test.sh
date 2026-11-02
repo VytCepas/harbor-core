@@ -7,7 +7,7 @@
 . "$T_ROOT/tests/context/injection-rule/fixture.sh"
 
 t_section "1 · event and tool routing"
-pack "$CFG/inject.d" 10-sub.md <<'PACK'
+pack "$CFG/context-rules/user" 10-sub.md <<'PACK'
 ---
 id: sub
 event: SubagentStart
@@ -20,7 +20,7 @@ t_has "the matching event fires" "$(fire '{"hook_event_name":"SubagentStart","se
 t_eq "a different event says nothing" "" "$(fire '{"hook_event_name":"PreCompact","session_id":"a"}')"
 t_eq "a payload with no event says nothing" "" "$(fire '{"session_id":"a"}')"
 t_eq "malformed JSON fails open, silently" "" "$(fire 'not json at all')"
-pack "$REPO/.claude/inject.d" 10-merge.md <<'PACK'
+pack "$REPO/context-rules/repo" 10-merge.md <<'PACK'
 ---
 id: merge
 event: PreToolUse
@@ -35,7 +35,7 @@ t_has "the envelope names the event it answered" "$(fire "$(bash_ev PreToolUse '
 t_eq "a tool the rule does not name says nothing" "" "$(fire "$(tool_ev PreToolUse Write file_path /tmp/x)")"
 
 t_section "1 · a tier that is the same directory twice is loaded once"
-pack "$T/same/.claude/inject.d" 10-once.md <<'PACK'
+pack "$T/same/context-rules/repo" 10-once.md <<'PACK'
 ---
 id: once
 event: SubagentStart
@@ -53,7 +53,7 @@ ln -s "$T/same" "$T/samelink"
 t_eq "the same directory reached through a symlink is still one" 1 "$(_fires "$T/samelink/.claude" "$T/same")"
 
 t_section "1 · source-is: SessionStart says why it started"
-pack "$CFG/inject.d" 11-src.md <<'PACK'
+pack "$CFG/context-rules/user" 11-src.md <<'PACK'
 ---
 id: src
 event: SessionStart
@@ -66,7 +66,7 @@ t_has "source-is matches the declared source" "$(fire '{"hook_event_name":"Sessi
 t_eq "silent on a different source" "" "$(fire '{"hook_event_name":"SessionStart","source":"startup","session_id":"s2"}')"
 t_eq "silent when the payload carries no source" "" "$(fire '{"hook_event_name":"SessionStart","session_id":"s3"}')"
 t_eq "source-is compact does not match \"compacted\"" "" "$(fire '{"hook_event_name":"SessionStart","source":"compacted","session_id":"s4"}')"
-rm -f "$CFG/inject.d/11-src.md"
+rm -f "$CFG/context-rules/user/11-src.md"
 
 t_section "2 · the predicates, and the substring traps they exist to avoid"
 for c in 'gh pr list --search "pr merge"' 'echo "run gh pr merge 173 later"' 'git commit -m "gh pr merge"' 'gh pr merge --help'; do
@@ -79,7 +79,7 @@ t_has "a real command after a heredoc still fires" "$(fire "$(bash_ev PreToolUse
 context
 NOTE
 gh pr merge 173')")" MERGE-NOTE
-pack "$REPO/.claude/inject.d" 20-path.md <<'PACK'
+pack "$REPO/context-rules/repo" 20-path.md <<'PACK'
 ---
 id: pathrule
 event: PreToolUse
@@ -92,18 +92,18 @@ PACK
 t_has "path-contains fires, and the alternation accepts Edit" "$(fire "$(tool_ev PreToolUse Edit file_path /x/vault/report.md)")" PATH-NOTE
 t_has "the alternation accepts Write too" "$(fire "$(tool_ev PreToolUse Write file_path /x/vault/a.md)")" PATH-NOTE
 t_eq "path-contains says nothing off the path" "" "$(fire "$(tool_ev PreToolUse Edit file_path /x/src/report.md)")"
-pack "$REPO/.claude/inject.d" 30-multi.md <<'PACK'
+pack "$REPO/context-rules/repo" 30-multi.md <<'PACK'
 ---
 id: multipred
 event: PreToolUse
 tool: Bash
 when: cmd-prefix just corpus
-when: repo-has .claude/inject.d
+when: repo-has context-rules/repo
 once: never
 ---
 MULTI-NOTE
 PACK
-pack "$REPO/.claude/inject.d" 31-multi-fail.md <<'PACK'
+pack "$REPO/context-rules/repo" 31-multi-fail.md <<'PACK'
 ---
 id: multifail
 event: PreToolUse
@@ -117,7 +117,7 @@ PACK
 _jc="$(fire "$(bash_ev PreToolUse 'just corpus')")"
 t_has "two predicates both satisfied fire" "$_jc" MULTI-NOTE
 t_hasnt "predicates are ANDed: one false is silent" "$_jc" MULTIFAIL-NOTE
-pack "$REPO/.claude/inject.d" 32-neg.md <<'PACK'
+pack "$REPO/context-rules/repo" 32-neg.md <<'PACK'
 ---
 id: negated
 event: PreToolUse
@@ -128,10 +128,10 @@ once: never
 NEG-NOTE
 PACK
 t_has "not <predicate> inverts" "$(fire "$(bash_ev PreToolUse 'ls')")" NEG-NOTE
-rm -f "$REPO/.claude/inject.d/32-neg.md" "$REPO/.claude/inject.d/31-multi-fail.md"
+rm -f "$REPO/context-rules/repo/32-neg.md" "$REPO/context-rules/repo/31-multi-fail.md"
 
 t_section "3 · a malformed pack is silent (skill-catalog's --chekc shape)"
-pack "$REPO/.claude/inject.d" 40-typo.md <<'PACK'
+pack "$REPO/context-rules/repo" 40-typo.md <<'PACK'
 ---
 id: typo
 event: PreToolUse
@@ -141,7 +141,7 @@ once: never
 ---
 TYPO-NOTE
 PACK
-pack "$REPO/.claude/inject.d" 41-nowhen.md <<'PACK'
+pack "$REPO/context-rules/repo" 41-nowhen.md <<'PACK'
 ---
 id: nowhen
 event: PreToolUse
@@ -152,10 +152,10 @@ NOWHEN-NOTE
 PACK
 gone "a misspelled predicate never fires" "$(fire "$(bash_ev PreToolUse 'gh pr merge 1')")" TYPO-NOTE
 gone "a pack with no when: refuses to fire" "$(fire "$(bash_ev PreToolUse 'ls')")" NOWHEN-NOTE
-rm -f "$REPO/.claude/inject.d/40-typo.md" "$REPO/.claude/inject.d/41-nowhen.md"
+rm -f "$REPO/context-rules/repo/40-typo.md" "$REPO/context-rules/repo/41-nowhen.md"
 
 t_section "3b · the five adversarial-pass defects, each pinned"
-pack "$REPO/.claude/inject.d" 42-negtypo.md <<'PACK'
+pack "$REPO/context-rules/repo" 42-negtypo.md <<'PACK'
 ---
 id: negtypo
 event: PreToolUse
@@ -166,7 +166,7 @@ once: never
 NEGTYPO-NOTE
 PACK
 gone "(1) not <unknown predicate> stays silent" "$(fire "$(bash_ev PreToolUse 'ls -la')")" NEGTYPO-NOTE
-rm -f "$REPO/.claude/inject.d/42-negtypo.md"
+rm -f "$REPO/context-rules/repo/42-negtypo.md"
 gone "(1b) a parenthesised aside in a commit message" \
   "$(fire "$(bash_ev PreToolUse 'git commit -m "docs: record the gate (gh pr merge needs the backstop first)"')")" MERGE-NOTE
 gone "(1b) a multi-line quoted commit body" "$(fire "$(bash_ev PreToolUse 'git commit -m "line one
@@ -180,7 +180,7 @@ t_has "(1b) an unquoted second command still fires" "$(fire "$(bash_ev PreToolUs
 t_has "(2) -h inside a quoted argument does not silence a real merge" \
   "$(fire "$(bash_ev PreToolUse "gh pr merge 12 --body 'pass -h to see the flags'")")" MERGE-NOTE
 gone "(2) --help still silences" "$(fire "$(bash_ev PreToolUse 'gh pr merge --help')")" MERGE-NOTE
-pack "$REPO/.claude/inject.d" 43-null.md <<'PACK'
+pack "$REPO/context-rules/repo" 43-null.md <<'PACK'
 ---
 id: nullprobe
 event: PreToolUse
@@ -191,7 +191,7 @@ once: never
 NULL-NOTE
 PACK
 gone "(3) an absent tool_response is empty content, not \"null\"" "$(fire "$(bash_ev PreToolUse 'ls')")" NULL-NOTE
-rm -f "$REPO/.claude/inject.d/43-null.md"
+rm -f "$REPO/context-rules/repo/43-null.md"
 # (4) one fork per segment blew the 10 s hook timeout. harbor#789: bound the hook's CPU (every child it
 # reaped), never the host's wall clock, as #755 did. Measured 2026-09-28: 0.5-0.8 s of CPU, 0.8 s beside
 # 80 busy loops that took the wall to 6 s, 17.6 s with a tr per segment. A hang is killed at 60 s.
@@ -225,7 +225,7 @@ t_eq "(4b) and is not blocked: wall less host load = ${_est:-unmeasured} s, boun
   "$(awk -v e="$_est" -v c="$_cap" -v t="${_to:-}" 'BEGIN { if (e != "" && t != "" && e + 0 <= c + 0) print "yes" }')"
 
 t_section "4 · the once-ledger"
-pack "$REPO/.claude/inject.d" 50-once.md <<'PACK'
+pack "$REPO/context-rules/repo" 50-once.md <<'PACK'
 ---
 id: oncerule
 event: PreToolUse
@@ -240,7 +240,7 @@ gone "once: session stays quiet the second time" "$(fire "$(bash_ev PreToolUse '
 t_has "a different session gets its own first delivery" "$(fire "$(bash_ev PreToolUse 'make deploy' sess-other)")" ONCE-NOTE
 t_has "once: never repeats without limit" "$(fire "$(bash_ev PreToolUse 'gh pr merge 1' sess-once)")" MERGE-NOTE
 # harbor#180: a Bash rule at PreToolUse has no path or content, so `match` fell back to `session`.
-pack "$REPO/.claude/inject.d" 51-match.md <<'PACK'
+pack "$REPO/context-rules/repo" 51-match.md <<'PACK'
 ---
 id: matchrule
 event: PreToolUse
@@ -258,12 +258,12 @@ t_eq "a traversing session id is refused, not used as a path" no \
   "$([ -e "$CFG/state/inject/../../escape.seen" ] && echo yes || echo no)"
 
 t_section "5 · run: — a dynamic body"
-pack "$REPO/.claude/inject.d" dyn.sh <<'PACK'
+pack "$REPO/context-rules/repo" dyn.sh <<'PACK'
 #!/bin/sh
 [ -f MARKER ] && printf 'DYNAMIC-NOTE %s\n' "$(cat MARKER)"
 exit 0
 PACK
-pack "$REPO/.claude/inject.d" 60-run.md <<'PACK'
+pack "$REPO/context-rules/repo" 60-run.md <<'PACK'
 ---
 id: dynrule
 event: PreToolUse
@@ -277,13 +277,13 @@ gone "run: producing no output produces no note" "$(fire "$(bash_ev PreToolUse '
 printf 'from-the-repo\n' > "$REPO/MARKER"
 t_has "run: stdout becomes the note, with cwd = the session repo" "$(fire "$(bash_ev PreToolUse 'make ship')")" 'DYNAMIC-NOTE from-the-repo'
 # A real script outside the pack dir: the legacy `../../../../bin/sh` target did not exist, so it proved nothing.
-printf '#!/bin/sh\necho ESCAPE-RAN\n' > "$REPO/escape.sh"; cp "$REPO/escape.sh" "$REPO/.claude/inject.d/inside.sh"
+printf '#!/bin/sh\necho ESCAPE-RAN\n' > "$REPO/escape.sh"; cp "$REPO/escape.sh" "$REPO/context-rules/repo/inside.sh"
 printf -- '---\nid: escaper\nevent: PreToolUse\ntool: Bash\nwhen: cmd-prefix make ship\nonce: never\nrun: %s\n---\n' ../../escape.sh \
-  > "$REPO/.claude/inject.d/61-escape.md"
+  > "$REPO/context-rules/repo/61-escape.md"
 gone "run: with .. is refused" "$(fire "$(bash_ev PreToolUse 'make ship')")" ESCAPE-RAN
-sed 's|^run: ../../escape.sh$|run: inside.sh|' "$REPO/.claude/inject.d/61-escape.md" > "$T/e.md" && mv "$T/e.md" "$REPO/.claude/inject.d/61-escape.md"
+sed 's|^run: ../../escape.sh$|run: inside.sh|' "$REPO/context-rules/repo/61-escape.md" > "$T/e.md" && mv "$T/e.md" "$REPO/context-rules/repo/61-escape.md"
 t_has "the same script beside its pack does run (the needle can appear)" "$(fire "$(bash_ev PreToolUse 'make ship')")" ESCAPE-RAN
-rm -f "$REPO/.claude/inject.d/61-escape.md" "$REPO/.claude/inject.d/inside.sh" "$REPO/escape.sh" "$REPO/.claude/inject.d/60-run.md" "$REPO/.claude/inject.d/dyn.sh" "$REPO/MARKER"
+rm -f "$REPO/context-rules/repo/61-escape.md" "$REPO/context-rules/repo/inside.sh" "$REPO/escape.sh" "$REPO/context-rules/repo/60-run.md" "$REPO/context-rules/repo/dyn.sh" "$REPO/MARKER"
 
 t_section "7 · provenance"
 t_has "with no salt the note is unstamped and still fires" "$(fire '{"hook_event_name":"SubagentStart","session_id":"p1"}')" '[HARBOR GOVERNANCE]'
@@ -294,7 +294,7 @@ t_eq "two sessions get different stamps" yes "$([ "$_a" != "$_b" ] && echo yes)"
 rm -f "$CFG/.helm-govern-salt"
 
 t_section "7 · every note starts [context:<id>] (harbor#957)"
-pack "$CFG/inject.d" 12-ctx-a.md <<'PACK'
+pack "$CFG/context-rules/user" 12-ctx-a.md <<'PACK'
 ---
 id: ctx-static
 event: SessionStart
@@ -303,7 +303,7 @@ once: never
 ---
 STATIC-BODY
 PACK
-pack "$CFG/inject.d" 13-ctx-b.md <<'PACK'
+pack "$CFG/context-rules/user" 13-ctx-b.md <<'PACK'
 ---
 id: ctx-dynamic
 event: SessionStart
@@ -312,19 +312,19 @@ once: never
 run: ctx-b.sh
 ---
 PACK
-printf '#!/bin/sh\necho DYNAMIC-BODY\n' > "$CFG/inject.d/ctx-b.sh"
+printf '#!/bin/sh\necho DYNAMIC-BODY\n' > "$CFG/context-rules/user/ctx-b.sh"
 _c="$(fire '{"hook_event_name":"SessionStart","session_id":"c1"}')"
 t_has "a static note leads with its own id" "$_c" '[context:ctx-static] STATIC-BODY'
 t_has "a run: note leads with its own id" "$_c" '[context:ctx-dynamic] DYNAMIC-BODY'
-rm -f "$CFG/inject.d/12-ctx-a.md" "$CFG/inject.d/13-ctx-b.md" "$CFG/inject.d/ctx-b.sh"
+rm -f "$CFG/context-rules/user/12-ctx-a.md" "$CFG/context-rules/user/13-ctx-b.md" "$CFG/context-rules/user/ctx-b.sh"
 
 t_section "a run: pack can decide, and only where the harness can hear it (harbor#254)"
-DEC="$T/dec"; mkdir -p "$DEC/inject.d"
-pack "$DEC/inject.d" decider.sh <<'PACK'
+DEC="$T/dec"; mkdir -p "$DEC/context-rules/user"
+pack "$DEC/context-rules/user" decider.sh <<'PACK'
 #!/usr/bin/env sh
 printf 'HARBOR-DECISION deny: the backstop refused, route via merge-check --merge\n'
 PACK
-pack "$DEC/inject.d" 90-decide.md <<'PACK'
+pack "$DEC/context-rules/user" 90-decide.md <<'PACK'
 ---
 id: decide-test
 event: PreToolUse
@@ -338,13 +338,13 @@ _d="$(fire_cfg "$DEC" "$(bash_ev PreToolUse 'perilous thing' "d-$$")")"
 t_has "a run: pack sentinel becomes a real PreToolUse deny" "$_d" '"permissionDecision":"deny"'
 t_has "the reason travels with the decision" "$_d" 'route via merge-check --merge'
 t_hasnt "a decision does not double as a note" "$_d" 'additionalContext'
-sed 's/^event: PreToolUse$/event: PostToolUse/' "$DEC/inject.d/90-decide.md" > "$T/d.md" && mv "$T/d.md" "$DEC/inject.d/90-decide.md"
+sed 's/^event: PreToolUse$/event: PostToolUse/' "$DEC/context-rules/user/90-decide.md" > "$T/d.md" && mv "$T/d.md" "$DEC/context-rules/user/90-decide.md"
 _d2="$(fire_cfg "$DEC" "$(bash_ev PostToolUse 'perilous thing' "d-$$")")"
 t_hasnt "a deny on an event that cannot carry one is downgraded" "$_d2" 'permissionDecision'
 t_has "and the text still arrives, as a note" "$_d2" 'route via merge-check --merge'
 t_has "the downgraded note rides additionalContext" "$_d2" 'additionalContext'
-sed 's/^event: PostToolUse$/event: PreToolUse/' "$DEC/inject.d/90-decide.md" > "$T/d.md" && mv "$T/d.md" "$DEC/inject.d/90-decide.md"
-pack "$DEC/inject.d" 91-static.md <<'PACK'
+sed 's/^event: PostToolUse$/event: PreToolUse/' "$DEC/context-rules/user/90-decide.md" > "$T/d.md" && mv "$T/d.md" "$DEC/context-rules/user/90-decide.md"
+pack "$DEC/context-rules/user" 91-static.md <<'PACK'
 ---
 id: static-test
 event: PreToolUse
@@ -359,7 +359,7 @@ t_has "a static body quoting the sentinel is delivered" "$_d3" 'prose about the 
 t_hasnt "only run: output can decide; the static body is prose" "$_d3" 'permissionDecision'
 
 t_section "2 · cmd-word: the command word, however it is spelled in front, and never an argument"
-pack "$CFG/inject.d" 12-word.md <<'PACK'
+pack "$CFG/context-rules/user" 12-word.md <<'PACK'
 ---
 id: word
 event: PreToolUse

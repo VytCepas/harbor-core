@@ -25,15 +25,15 @@
 # Every rule states a CHECKABLE assertion and prints the offending path. Adding
 # a rule here is how a convention becomes binding.
 set -u
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}}"
+ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
 FAIL=0
 RULES=0
 say()  { printf '%s\n' "$1"; }
 bad()  { FAIL=$((FAIL+1)); printf '  VIOLATION [%s] %s\n' "$1" "$2" >&2  # <ID> <message> [subject…]
          [ -z "${LINT_REDLOG:-}" ] || printf '%s\n' "$1" >> "$LINT_REDLOG" 2>/dev/null || :
-         [ -z "${HARBOR_LINT_FINDINGS_OUT:-${HARBOR_FINDINGS_OUT:-}}" ] || { _fid="$1"; shift 2; _fsub V "$_fid" "$@"; }; }
+         [ -z "${HARBOR_LINT_FINDINGS_OUT:-}" ] || { _fid="$1"; shift 2; _fsub V "$_fid" "$@"; }; }
 rule() { RULES=$((RULES+1)); printf '── %s\n' "$1"
-         [ -z "${HARBOR_LINT_FINDINGS_OUT:-${HARBOR_FINDINGS_OUT:-}}" ] || printf 'R\t%s\n' "${1%% *}" >> "${HARBOR_LINT_FINDINGS_OUT:-${HARBOR_FINDINGS_OUT:-}}"; }
+         [ -z "${HARBOR_LINT_FINDINGS_OUT:-}" ] || printf 'R\t%s\n' "${1%% *}" >> "${HARBOR_LINT_FINDINGS_OUT:-}"; }
 
 # ── the finding record (harbor#590, contracts/finding.md) ────────────────────
 # Every ADVISORY line is printed beside `_adv <ID> <subject>…`, and lint FL2 fails a line that is
@@ -50,7 +50,7 @@ rule() { RULES=$((RULES+1)); printf '── %s\n' "$1"
 # NOT A HARBOR_* KNOB, deliberately: it can never change a verdict (a failed append is swallowed),
 # so it must reach every suite's linter, and t_init clears inherited HARBOR_* to keep knobs out (C10).
 _adv() { [ -z "${LINT_REDLOG:-}" ] || printf '%s\n' "$1" >> "$LINT_REDLOG" 2>/dev/null || :
-         [ -z "${HARBOR_LINT_FINDINGS_OUT:-${HARBOR_FINDINGS_OUT:-}}" ] || _fsub A "$@"; return 0; }  # <ID> <subject>…
+         [ -z "${HARBOR_LINT_FINDINGS_OUT:-}" ] || _fsub A "$@"; return 0; }  # <ID> <subject>…
 _fsub() { # <A|V> <ID> <subject>… — one `<kind> TAB <ID> TAB <subject>` line per subject
   _fk="$1"; _fr="$2"; shift 2
   [ "$#" -gt 0 ] || set -- "$_fr"   # a violation that names no subject is about its rule
@@ -58,7 +58,7 @@ _fsub() { # <A|V> <ID> <subject>… — one `<kind> TAB <ID> TAB <subject>` line
     [ -n "$_fs" ] && [ "$_fs" != - ] || continue
     case "$_fs" in "$ROOT"/*) _fs="${_fs#"$ROOT"/}" ;; esac
     case "$_fs" in *"$HOME"/*) _fs="${_fs%%"$HOME"/*}~/${_fs#*"$HOME"/}" ;; esac
-    printf '%s\t%s\t%s\n' "$_fk" "$_fr" "$_fs" >> "${HARBOR_LINT_FINDINGS_OUT:-${HARBOR_FINDINGS_OUT:-}}"
+    printf '%s\t%s\t%s\n' "$_fk" "$_fr" "$_fs" >> "${HARBOR_LINT_FINDINGS_OUT:-}"
   done
   return 0
 }
@@ -223,7 +223,7 @@ _installer_payload() {
   grep -ohE 'cp "\$SRC/[a-z0-9-]+\.sh"'   $(_installers) 2>/dev/null \
     | sed -E 's#.*/##; s/"$//'
 }
-LIVEBIN="${HARBOR_DEPLOY_LIVE_DIR:-${HELM_LIVE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}}/bin"
+LIVEBIN="${HARBOR_DEPLOY_LIVE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}/bin"
 # The repo file an installed name ships from: bin/<name>, else its hook engine folder (D-88; il_src in bin/deploy-install-lib.sh).
 _payload_src() { if [ -f "$ROOT/bin/$1" ] || [ ! -f "$ROOT/hooks/${1%.*}/$1" ]; then printf '%s' "$ROOT/bin/$1"; else printf '%s' "$ROOT/hooks/${1%.*}/$1"; fi; }
 _x7_src_is_own_dir() { # <bin-relative script> [variable, default SRC]
@@ -929,13 +929,13 @@ for _s in $(sh "$_f1set" --switch); do
   [ -f "$f" ] || { bad admission.kill-switch-first "wired decider is not in bin/: $_s"; continue; }
   line="$(grep -vE '^[[:space:]]*(#|$)' "$f" 2>/dev/null | grep -vE '^#!' | head -1)"
   case "$line" in
-    *HARBOR_ADMISSION_DISABLE*|*HELM_DISABLE_FLOOR*) ;;   # either spelling until 2026-11-15 (harbor#961 W5)
+    *HARBOR_ADMISSION_DISABLE*) ;;
     *) bad admission.kill-switch-first "kill-switch is not the first live line: bin/$_s" ;;
   esac
 done
 # the second switch: a decider declared to record under shadow must reach floor_block or read the switch
 for _s in $(sh "$_f1set" --records); do
-  grep -qE 'floor_block|HARBOR_ADMISSION_SHADOW|HELM_FLOOR_SHADOW' "$ROOT/bin/$_s" 2>/dev/null \
+  grep -qE 'floor_block|HARBOR_ADMISSION_SHADOW' "$ROOT/bin/$_s" 2>/dev/null \
     || bad admission.kill-switch-first "bin/$_s is declared to record under HARBOR_ADMISSION_SHADOW and reaches neither floor_block nor the switch"
 done
 }
@@ -1011,7 +1011,7 @@ for f in $(_admission_guards) $(for _f16b in $_f16g; do printf '%s ' "$ROOT/bin/
   case "$_f16seen" in *" $_f16b "*) continue ;; esac
   _f16seen="$_f16seen$_f16b "
   case "$_f16b" in admission-integrity.sh|admission-hook.sh) continue ;; esac
-  _f16n="$(grep -vE '^[[:space:]]*#' "$f" 2>/dev/null | grep -cE '(HARBOR_ADMISSION_DISABLE|HELM_DISABLE_FLOOR)=1' || true)"
+  _f16n="$(grep -vE '^[[:space:]]*#' "$f" 2>/dev/null | grep -cE '(HARBOR_ADMISSION_DISABLE)=1' || true)"
   [ "${_f16n:-0}" -eq 0 ] || bad admission.kill-switch-remedy "bin/$_f16b prints the kill-switch as a remedy on $_f16n code line(s); print the narrowest true one (a \`!\` command for one call)"
 done
 }
@@ -1061,7 +1061,7 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   # window stopped at line 2 and advised on admission-bash.sh — a rule obeying F1 was
   # penalised by G1. So the kill-switch line is skipped when it sits in the first
   # three lines, which is exactly where F1 puts it, and nowhere else.
-  if awk 'NR <= 3 && /HARBOR_ADMISSION_DISABLE|HELM_DISABLE_FLOOR/ { next }
+  if awk 'NR <= 3 && /HARBOR_ADMISSION_DISABLE/ { next }
           /^[[:space:]]*(#|$)/ { print; next } { exit }' "$f" \
        | grep -qiE 'deliberately (one file|monolithic)|single file by design|docs/explanation/modularity'; then
     :
@@ -2316,7 +2316,7 @@ rm -f "$_f14_rows" "$_f14_code" "$_f14_lay"
 #           beside them or in bin/, outside a quoted string: a hint that only NAMES a command runs nothing.
 #   declared a hook the box runs that no installer wires (worklog-push) is a row in
 #           contracts/hooks-external.tsv, read here as one more wiring.
-# A repo pack's scripts (context-rules/<repo>, or the old .claude/inject.d) are out: they run the session repo's own code, so a file
+# A repo pack's scripts (context-rules/<repo>) are out: they run the session repo's own code, so a file
 # planted beside them has the same author. The behaviour is pinned by floor-test B9c.
 rule_F15() {
 rule "admission.no-dirname no script a hook runs resolves its own directory through \$(dirname) (harbor#813)"
@@ -3730,7 +3730,7 @@ done
 # it must be closed — an OPEN row passes, a missing row does not.
 rule_T8() {
 rule "doc.coverage-row-per-hook every upstream hook has a row in docs/reference/coverage.md (gaps must be visible)"
-_mir="${HARBOR_LINT_UPSTREAM_MIRROR:-${HARBOR_UPSTREAM_MIRROR:-$HOME/.harbor-upstream}}"
+_mir="${HARBOR_LINT_UPSTREAM_MIRROR:-$HOME/.harbor-upstream}"
 _up="$_mir"
 for _d in "$_mir"/*/install/hooks; do [ -d "$_d" ] && { _up="$_d"; break; }; done
 if [ -d "$_up" ] && [ -f "$ROOT/docs/reference/coverage.md" ]; then
@@ -3813,13 +3813,13 @@ _t7_files() {
 _t7_acc=''
 # The resolver beside this script, not $ROOT/bin: a HARBOR_SCOPE_ROOT fixture holds no scope-roots.sh, and the
 # resolver would then read the fixture's table instead of its own.
-_t7_acc="$(env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$(dirname -- "$0")/scope-roots.sh" --access 2>/dev/null || :)"
+_t7_acc="$(env -u HARBOR_SCOPE_ROOT sh "$(dirname -- "$0")/scope-roots.sh" --access 2>/dev/null || :)"
 [ -n "$_t7_acc" ] || printf '  (skipped: no private layer, so the access cards were not scanned)\n'
 # An empty register would make the case patterns below read /*.md, which is every file.
 _t7_accp="${_t7_acc:-/no-access-register}"
 # The ledger is docs/reference/citations.md plus the private layer's citations.md: the rows for hosts core does not name (harbor#1149).
 # Read beside the core file, never instead of it; absent is the core ledger alone.
-_t7_pcit="$(env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$(dirname -- "$0")/scope-roots.sh" --private 2>/dev/null || :)"
+_t7_pcit="$(env -u HARBOR_SCOPE_ROOT sh "$(dirname -- "$0")/scope-roots.sh" --private 2>/dev/null || :)"
 [ -z "$_t7_pcit" ] || _t7_pcit="$_t7_pcit/citations.md"
 if [ -f "$ROOT/docs/reference/citations.md" ]; then
   cat "$ROOT/docs/reference/citations.md" > "$_t7_tmp.cit"
@@ -3957,7 +3957,7 @@ done
 # about, in the file that enforces T2.
 #
 # SCOPED TO A ROOT THAT ACTUALLY VENDORS. lint-test points the linter at fixture
-# HARBOR_ROOTs that have no vendor/skills at all, and an unguarded call reported
+# repo roots that have no vendor/skills at all, and an unguarded call reported
 # "no vendor/skills" as a violation on every one of them — a false positive on
 # ~39 invocations, which §2.11 counts as a defect rather than as safety. The
 # guard is the subject's existence, not a fixture opt-out: this repo has the
@@ -4303,7 +4303,7 @@ rule "drift.local-bin the ~/.local/bin installs do not differ from the repo (adv
 # installer can be pointed at one fixture together. Without it this rule could
 # only ever be tested against the operator's real ~/.local/bin — which is to say
 # not tested, which is how its never-deployed arm stayed missing (harbor#384).
-_localbin="${HARBOR_SCOPE_LOCAL_BIN:-${HARBOR_LOCAL_BIN:-$HOME/.local/bin}}"
+_localbin="${HARBOR_SCOPE_LOCAL_BIN:-$HOME/.local/bin}"
 if [ -d "$_localbin" ]; then
   # THE LIST IS READ OUT OF THE INSTALLER, NOT TYPED HERE. Whichever commands
   # deploy-runtime-install.sh ships are the ones this rule must watch, and a second copy
@@ -4330,7 +4330,7 @@ if [ -d "$_localbin" ]; then
   # gone), so the pairs are read from there: every bin/ row, as <file>:<name>.
   _x2b_owned="$(sed 's/#.*//' "$ROOT/contracts/shims.tsv" 2>/dev/null \
     | awk -F'\t' 'NF >= 3 && $1 != "name" && $3 ~ /^bin\// { sub(/^bin\//, "", $3); printf "%s:%s ", $3, $1 }')"
-  _x2b_stamp="${HARBOR_DEPLOY_LIVE_DIR:-${HELM_LIVE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}}/$(awk -F\" '/^STAMP_NAME=/{print $2; exit}' "$ROOT/bin/deploy-install-stamp.sh" 2>/dev/null || printf '.helm-install-stamp')"
+  _x2b_stamp="${HARBOR_DEPLOY_LIVE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}/$(awk -F\" '/^STAMP_NAME=/{print $2; exit}' "$ROOT/bin/deploy-install-stamp.sh" 2>/dev/null || printf '.helm-install-stamp')"
   # access-github-app-install.sh's copies into ~/.local/bin (`put <bin/access-github-app file> "$BIN/<name>"`), read from its own put
   # lines: the gh shim lagged its #1381 fix for nine days and the sweep could not read 7 repos (2026-10-27). Compared
   # only (DIFFERS or DANGLING): their absence is the operator's choice not to install the App, never NEVER DEPLOYED.
@@ -4543,7 +4543,7 @@ _x8_ref_match() { # <live-dir> <repo-rel> -> first ref whose tree equals the liv
 # A leftover squash-merged branch still holds the old bytes, so a ref match alone called a lagging
 # box BRANCH SKEW (harbor#647). 0 when the live copy is an origin/main version older than its tip.
 _x8_main_superseded() { # <live-dir> <repo-rel>
-  _x8s_base="${HARBOR_CI_BASE:-${HARBOR_BASE:-origin/main}}"
+  _x8s_base="${HARBOR_CI_BASE:-origin/main}"
   git -C "$ROOT" rev-parse --verify -q "$_x8s_base^{commit}" >/dev/null 2>&1 || return 1
   _x8s_want="$(mktemp "${TMPDIR:-/tmp}/harbor.XXXXXX")"
   _x8_live_manifest "$1" "$_x8s_want" || { rm -f "$_x8s_want"; return 1; }
@@ -4688,7 +4688,7 @@ if [ -d "$_x8_live" ]; then
       _x8_lm="${_x8_times#* }"
       if _x8_main_superseded "$_x8_dst" "skills/$n"; then
         _adv drift.skill-bytes "repo-newer:$n"; echo "  ADVISORY [drift.skill-bytes] repo is newer — the box lags; reinstalling is the right direction: $n -> ${_x8_dst##*/}" >&2
-        echo "             the live bytes are an older ${HARBOR_CI_BASE:-${HARBOR_BASE:-origin/main}} version of this skill, whatever branch also holds them" >&2
+        echo "             the live bytes are an older ${HARBOR_CI_BASE:-origin/main} version of this skill, whatever branch also holds them" >&2
       elif [ -n "$_x8_rm" ] && [ -n "$_x8_lm" ] && [ "$_x8_lm" -gt "$_x8_rm" ] \
          && [ "$_x8_tier" = vendored ]; then
         _adv drift.skill-bytes "vendored-live-newer:$n"; echo "  ADVISORY [drift.skill-bytes] VENDORED and live is newer — INSPECT, do not capture blind: $n -> ${_x8_dst##*/}" >&2
@@ -4955,7 +4955,7 @@ rule "drift.prod-policy-copy every deployed prod_guard.py matches the AUTHORITAT
 # Fourth instance of one class in this ticket: the artifact under governance is
 # not the artifact doing the work. Here the artifact was the BASELINE.
 _CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-_SRC="${PROJECT_INIT_SRC:-$(env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_SCAFFOLDER 2>/dev/null || :)}/templates/base/dot_agents/hooks/prod_guard.py"  # harbor#966
+_SRC="${PROJECT_INIT_SRC:-$(env -u HARBOR_SCOPE_ROOT sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_SCAFFOLDER 2>/dev/null || :)}/templates/base/dot_agents/hooks/prod_guard.py"  # harbor#966
 _spl() { awk -F'\t' -v k="$1" '$1 == k { print $2; exit }' "$(dirname -- "$0")/../contracts/scaffolder-plugins.tsv" 2>/dev/null; }   # yard's plugin names, harbor's own contract beside this linter (harbor#999)
 _MIRROR="$_CFG/plugins/marketplaces/$(_spl marketplace)/plugins/$(_spl workflow)/hooks/prod_guard.py"
 if [ -f "$_SRC" ]; then _BASE="$_SRC"; _BKIND="source repo"
@@ -5525,7 +5525,7 @@ rule "scope.repo-discoverable every governed repo is reachable by fleet.yaml's o
 # It also never parsed `projects:`, so a repo registered there explicitly — the
 # supported way to include something outside every root — was reported as
 # unreachable while the fleet was reading it fine.
-_FLEET="$(env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_FLEET_FILE 2>/dev/null || :)"  # harbor#966
+_FLEET="$(env -u HARBOR_SCOPE_ROOT sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_FLEET_FILE 2>/dev/null || :)"  # harbor#966
 if [ -f "$_FLEET" ]; then
   # One awk pass, TAB-tagged by key, so the shell can tell the three lists apart
   # without word-splitting a path. awk and not a YAML library: this layer is
@@ -5803,7 +5803,7 @@ rule "drift.sandbox-copy the dev sandbox's guards are byte-identical to bin/ (QA
 # this rule names does `cp -R "$LIVE/bin"` — the whole directory — and on
 # 2026-09-16 the live config dir carried all 9 guards and all 4 non-guard floor
 # files. So a correctly built sandbox cannot fail the wider check (§2.11).
-SBX="${HARBOR_TEST_SANDBOX_DIR:-${HELM_SANDBOX_DIR:-$HOME/.claude-sandbox}}"
+SBX="${HARBOR_TEST_SANDBOX_DIR:-$HOME/.claude-sandbox}"
 # DERIVED, NOT LISTED, for the guards. The four non-guard floor components are
 # named because no glob selects exactly those four — but they are named ONCE now,
 # and the presence check and the byte check read the same list instead of two.
@@ -5864,14 +5864,14 @@ fi
 # here, but they are installed and seeded from there, so a malformed one is the same silent
 # never-fired defect and IJ1..IJ5 read that tree too. `_inj_load` asks the one resolver beside this
 # script (a HARBOR_SCOPE_ROOT fixture holds no scope-roots.sh): _INJ_DIR is the private rules root, empty when
-# there is none, _INJ_BOX its box tier (user/, or box/ in the old layout), and _INJ_REG the registry inside it, empty when there is none.
+# there is none, _INJ_BOX its box tier (user/), and _INJ_REG the registry inside it, empty when there is none.
 _inj_load() {
   [ -z "${_INJ_LOADED:-}" ] || return 0
   _INJ_LOADED=1
-  _INJ_DIR="$(env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$(dirname -- "$0")/scope-roots.sh" --inject 2>/dev/null || :)"
+  _INJ_DIR="$(env -u HARBOR_SCOPE_ROOT sh "$(dirname -- "$0")/scope-roots.sh" --inject 2>/dev/null || :)"
   _INJ_REG=''; _INJ_BOX=''
   if [ -n "$_INJ_DIR" ]; then
-    case "$_INJ_DIR" in */context-rules) _INJ_BOX="$_INJ_DIR/user" ;; *) _INJ_BOX="$_INJ_DIR/box" ;; esac
+    _INJ_BOX="$_INJ_DIR/user"
     [ ! -f "$_INJ_BOX/projects.tsv" ] || _INJ_REG="$_INJ_BOX/projects.tsv"
   fi
 }
@@ -6009,7 +6009,7 @@ fi
 rule_IJ2() {
 rule "context.registry-dirs context-rules/<project>/ and the box tier's projects.tsv name the same projects"
 # The registry and the project pack folders are the private layer's (harbor#1149): <private>/context-rules/user/projects.tsv
-# and <private>/context-rules/<project>/ (box/ and <project>/ under the old inject.d, harbor#1010). Core ships neither, so with no private layer there is nothing to compare, and
+# and <private>/context-rules/<project>/ (harbor#1010). Core ships neither, so with no private layer there is nothing to compare, and
 # the rule says it did not look rather than passing.
 _inj_load
 _reg="$_INJ_REG"
@@ -6052,16 +6052,16 @@ if [ -n "$_reg" ]; then
       :   # seeded from the private layer
     elif [ ! -d "$_abs" ]; then
       _adv context.registry-dirs "$_p"; printf '  ADVISORY [context.registry-dirs] %s is not on this box — cannot tell whether anything governs %s\n' "$_p" "$_n"
-    elif [ -n "$(find "$_abs/context-rules" "$_abs/.claude/inject.d" -path "$_abs/context-rules/user" -prune -o -name '*.md' -print 2>/dev/null | head -1)" ]; then
-      :   # self-seeded: the packs live in the project's own tree, in either layout (harbor#1010)
+    elif [ -n "$(find "$_abs/context-rules" -path "$_abs/context-rules/user" -prune -o -name '*.md' -print 2>/dev/null | head -1)" ]; then
+      :   # self-seeded: the packs live in the project's own tree (harbor#1010)
     else
-      bad context.registry-dirs "projects.tsv row '$_n' has no packs — none in the private ${_INJ_DIR##*/}/$_n/ and none in $_p/context-rules/ or $_p/.claude/inject.d/ — so the pointer advertises it in every session and no rule of its own can fire"
+      bad context.registry-dirs "projects.tsv row '$_n' has no packs — none in the private ${_INJ_DIR##*/}/$_n/ and none in $_p/context-rules/ — so the pointer advertises it in every session and no rule of its own can fire"
     fi
   done < "$_reg"
 elif [ -n "$_INJ_DIR" ]; then
   bad context.registry-dirs "the private layer's ${_INJ_BOX#"${_INJ_DIR%/*}"/}/projects.tsv is missing — the pointer has no registry"
 else
-  printf '  no private layer with a context-rules/ or inject.d/ on this box, so there is no registry to compare against the pack folders — not checked.\n'
+  printf '  no private layer with a context-rules/ on this box, so there is no registry to compare against the pack folders — not checked.\n'
 fi
 }
 
@@ -6118,7 +6118,7 @@ rule_IJ3() {
 rule "context.repo-registered every governed repo on this box has a registry row (advisory)"
 _inj_load
 _ij3_reg="$_INJ_REG"
-_ij3_home="${HARBOR_LINT_ESTATE_ROOT:-${HARBOR_ESTATE_ROOT:-$HOME}}"
+_ij3_home="${HARBOR_LINT_ESTATE_ROOT:-$HOME}"
 if [ -f "$_ij3_reg" ] && [ -d "$_ij3_home" ]; then
   _ij3_missing=0; _ij3_total=0
   for _r in "$_ij3_home"/*/; do
@@ -6163,7 +6163,7 @@ rule_IJ4() {
 rule "drift.pack-installed every tracked pack is installed where the engine reads it — box and project (advisory)"
 _inj_load
 _ij4_reg="$_INJ_REG"
-_ij4_home="${HARBOR_LINT_ESTATE_ROOT:-${HARBOR_ESTATE_ROOT:-$HOME}}"
+_ij4_home="${HARBOR_LINT_ESTATE_ROOT:-$HOME}"
 _ij4_bad=0; _ij4_seen=0
 # THE PROJECT PACKS ARE THE PRIVATE LAYER'S (harbor#1149): <private>/context-rules/<name>/ (or inject.d/<name>/) seeded by `context-injection-install.sh
 # --projects`. With no registry there is nothing to seed them by, and the box tier below is still judged.
@@ -6176,14 +6176,9 @@ if [ -n "$_ij4_reg" ]; then
     # No row, or no such directory on this box, is IJ2's business and IJ3's.
     { [ -n "$_t" ] && [ -d "$_t" ]; } || continue
     _ij4_seen=$(( _ij4_seen + 1 ))
-    # Seeded into the repo's own context-rules/<name>/ since harbor#1010; a copy only in the old .claude/inject.d still
-    # fires (rename-0031) and is named as a re-seed, not as never seeded.
+    # Seeded into the repo's own context-rules/<name>/ since harbor#1010.
     _ij4_sd="context-rules/$_n"
-    if [ ! -d "$_t/$_ij4_sd" ] && diff -r "$_d" "$_t/.claude/inject.d" >/dev/null 2>&1; then
-      _adv drift.pack-installed "old-layout:$_n"; printf '  ADVISORY [drift.pack-installed] %s pack is seeded only in the old %s/.claude/inject.d: re-seed into %s\n' \
-        "$_n" "${_t#"$_ij4_home"/}" "$_ij4_sd"
-      _ij4_bad=$(( _ij4_bad + 1 ))
-    elif [ ! -d "$_t/$_ij4_sd" ]; then
+    if [ ! -d "$_t/$_ij4_sd" ]; then
       _adv drift.pack-installed "never-seeded:$_n"; printf '  ADVISORY [drift.pack-installed] %s pack is tracked but NEVER SEEDED: %s/%s does not exist\n' \
         "$_n" "${_t#"$_ij4_home"/}" "$_ij4_sd"
       _ij4_bad=$(( _ij4_bad + 1 ))
@@ -6270,7 +6265,7 @@ rule_IJ5() {
 rule "context.registry-resolves every registry row still resolves to a directory (advisory)"
 _inj_load
 _ij5_reg="$_INJ_REG"
-_ij5_home="${HARBOR_LINT_ESTATE_ROOT:-${HARBOR_ESTATE_ROOT:-$HOME}}"
+_ij5_home="${HARBOR_LINT_ESTATE_ROOT:-$HOME}"
 if [ -f "$_ij5_reg" ]; then
   _ij5_live=0; _ij5_dead=0; _ij5_names=''
   while IFS='	' read -r _n _p _rest; do
@@ -6505,7 +6500,7 @@ done
 # existed only on the box.
 rule_CM3() {
 rule "drift.slash-commands the installed slash commands do not drift from the repo (advisory)"
-_cm3_live="${HARBOR_DEPLOY_LIVE_DIR:-${HELM_LIVE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}}/commands"
+_cm3_live="${HARBOR_DEPLOY_LIVE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}/commands"
 _cm3_n=0
 for f in "$ROOT"/commands/*.md; do
   [ -f "$f" ] || continue
@@ -6807,7 +6802,7 @@ _l1_code() { sed -e 's/^[[:space:]]*#.*$//' -e 's/[[:space:]]#.*$//' "$1"; }  # 
 _l1_uses() { _l1_code "$1" | grep -qE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*library-log\.sh'; }
 _l1_floor() { # channel 2: library-admission.sh, or F1's mark of an installed floor file
   [ "${1##*/}" = library-admission.sh ] && return 0
-  grep -vE '^[[:space:]]*(#|$)' "$1" 2>/dev/null | head -1 | grep -qE 'HARBOR_ADMISSION_DISABLE|HELM_DISABLE_FLOOR'
+  grep -vE '^[[:space:]]*(#|$)' "$1" 2>/dev/null | head -1 | grep -qE 'HARBOR_ADMISSION_DISABLE'
 }
 # Channel 3 evidence that the harness reads a file's stdout (harbor#771): an installer composes it as a
 # harness command (not in an echoed instruction), a rule pack runs it, or it builds Claude Code hook JSON.
@@ -6957,14 +6952,14 @@ if [ ! -f "$_l1_tsv" ]; then
 else
   _l1_mb=""
   if git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
-    _l1_base="${HARBOR_CI_BASE:-${HARBOR_BASE:-origin/main}}"
+    _l1_base="${HARBOR_CI_BASE:-origin/main}"
     git -C "$ROOT" rev-parse --verify -q "$_l1_base^{commit}" >/dev/null 2>&1 \
       && _l1_mb="$(git -C "$ROOT" merge-base "$_l1_base" HEAD 2>/dev/null || true)"
   fi
   if [ -n "$_l1_mb" ]; then
     git -C "$ROOT" ls-tree -r "$_l1_mb" -- bin/ 2>/dev/null | awk -F'\t' '{ split($1, a, " "); print $2 "\t" a[3] }' > "$_l1t/base"
   else
-    _adv lint.log-contract no-base; printf '  ADVISORY [lint.log-contract] no base (%s) to compare against — NO exempt file was checked for change\n' "${HARBOR_CI_BASE:-${HARBOR_BASE:-origin/main}}" >&2
+    _adv lint.log-contract no-base; printf '  ADVISORY [lint.log-contract] no base (%s) to compare against — NO exempt file was checked for change\n' "${HARBOR_CI_BASE:-origin/main}" >&2
   fi
   cut -f1 "$_l1t/rows" | sort | uniq -d | sed 's#^#contracts/log-exempt.tsv lists it twice: #' >> "$_l1t/msgs"
   while IFS='	' read -r _l1p _l1k _l1w; do

@@ -290,7 +290,7 @@
 {"id":"v7-unrelated-claude-notes","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claude-notes && mv settings.json settings.json.bak"}
 {"id":"v7-unrelated-claudex","rule":"cd-cfg-then-mutate","want":"allow","cmd":"cd ~/.claudex/app && rm -f settings.json"}
 {"id":"w4-back-up-an-rc-file","rule":"api-route-router","want":"allow","cmd":"cp ~/.zshrc ~/.zshrc.bak"}
-{"id":"w4-grep-the-floor-source","rule":"api-route-router","want":"allow","cmd":"grep -rn HELM_DISABLE_FLOOR {home}/port/harbor/bin"}
+{"id":"w4-grep-the-floor-source","rule":"api-route-router","want":"allow","cmd":"grep -rn HARBOR_ADMISSION_DISABLE {home}/port/harbor/bin"}
 {"id":"w4-move-an-rc-backup","rule":"api-route-router","want":"allow","cmd":"mv ~/.zshrc.old ~/archive/"}
 {"id":"w4-read-an-rc-with-sed","rule":"api-route-router","want":"allow","cmd":"sed -n '1,5p' ~/.zshrc"}
 {"id":"ccr-named-as-grep-operand","rule":"api-route-ccr","want":"allow","cmd":"grep -rn ccr docs/"}

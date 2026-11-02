@@ -29,7 +29,7 @@ esac
 SHA="$1"; BEFORE="$2"
 REPO="${GITHUB_REPOSITORY:-$(repo_slug)}"   # Actions always sets it; a hand run names this checkout's origin (harbor#1149)
 API="${GITHUB_API_URL:-https://api.github.com}/repos/$REPO"
-CURL="${HARBOR_TEST_CURL:-${HARBOR_CURL:-curl}}"
+CURL="${HARBOR_TEST_CURL:-curl}"
 
 BASE=""   # set once the merged PR is identified and the API names a merge-base; every verdict prints it, empty or not
 verdict() { # <true|false> <why>

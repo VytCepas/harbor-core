@@ -16,7 +16,7 @@ NOPRIV="$T_TMP/nopriv"; mkdir -p "$NOPRIV"
 book() { (cd "$R" && unset CLAUDE_CONFIG_DIR && HARBOR_SCOPE_PRIVATE="$NOPRIV" sh "$R/bin/skill-catalog.sh" install "$@" 2>&1); }
 BOOK="$SK/skill-catalog/SKILL.md"
 # A pack with one hidden skill and one visible one; both descriptions are single scalars, as the book requires.
-mkpack bk; rm -rf "$PW/bk/harbor-pack/bin" "$PW/bk/harbor-pack/shims.tsv" "$PW/bk/harbor-pack/inject.d"; mkdir -p "$PW/bk/harbor-pack/skills/packhid"
+mkpack bk; rm -rf "$PW/bk/harbor-pack/bin" "$PW/bk/harbor-pack/shims.tsv" "$PW/bk/harbor-pack/context-rules"; mkdir -p "$PW/bk/harbor-pack/skills/packhid"
 printf -- '---\nname: demo\ndescription: "Demo pack skill. USE WHEN packvisible work."\n---\nBody.\n' > "$PW/bk/harbor-pack/skills/demo/SKILL.md"
 printf -- '---\nname: packhid\ndescription: "Hidden pack skill. USE WHEN packhidden work."\ndisable-model-invocation: true\n---\nBody.\n' > "$PW/bk/harbor-pack/skills/packhid/SKILL.md"
 G "$PW/bk" add -A; G "$PW/bk" commit -q -m skills; listed '"bk"'

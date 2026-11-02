@@ -19,7 +19,7 @@ rs() { env -u CLAUDE_CONFIG_DIR sh "$B/deploy-restore.sh" "$@" >"$OUT" 2>&1; ech
 out() { cat "$OUT"; }
 tree() { (cd "$1" && find . -print | LC_ALL=C sort | while IFS= read -r f; do if [ -f "$f" ]; then cksum "$f"; else echo "$f"; fi; done) | cksum; }
 wired() { printf '{"hooks":{"%s":[{"matcher":"Bash","hooks":[{"type":"command","command":"sh %s/bin/admission-bash.sh"}]}]}}\n' "$1" "$2"; }
-guard() { printf '#!/bin/sh\n[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0\nexit 0\n' > "$1"; }
+guard() { printf '#!/bin/sh\n[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0\nexit 0\n' > "$1"; }
 b6stub() { printf '#!/bin/sh\n%s\n' "$2" > "$1/bin/admission-integrity.sh"; }  # <cfg> <body>
 snap() { # <cfg> <name> <set entry…> — deploy's format: config.tgz of the entries present, set.txt of all
   _c="$1"; _d="$1/backups/$2"; shift 2; mkdir -p "$_d"; printf '%s\n' "$@" > "$_d/set.txt"; _have=''

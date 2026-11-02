@@ -62,8 +62,8 @@ Replace this block, the whole `floor:` job, from `  floor:` down to the line bef
       count: ${{ steps.suite.outputs.count }}
       ran: ${{ steps.suite.outputs.ran }}
     env:
-      HARBOR_CHANGED: ${{ needs.classify.outputs.changed }}
-    runs-on: ${{ fromJSON((inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted' && '["ubuntu-latest"]' || '["self-hosted","macOS","ARM64"]') }}
+      HARBOR_TEST_CHANGED: ${{ needs.classify.outputs.changed }}
+    runs-on: ${{ fromJSON((inputs.runner || vars.HARBOR_CI_RUNNER) == 'github-hosted' && '["ubuntu-latest"]' || '["self-hosted","macOS","ARM64"]') }}
     steps:
       - uses: actions/checkout@v5
       - name: Install dependencies (hosted runners only)
@@ -79,7 +79,7 @@ Replace this block, the whole `floor:` job, from `  floor:` down to the line bef
         id: suite
         run: sh bin/test-suite-select.sh --run floor-test.sh
       # M2 (harbor#44). Hermetic: it builds a SYNTHETIC transcript tree and points
-      # the corpus builder at it via HARBOR_TRANSCRIPTS, so this never reads a real
+      # the corpus builder at it via HARBOR_SESSION_TRANSCRIPTS, so this never reads a real
       # transcript store — the property R13 asserts rather than assumes. That
       # guarantee carries more weight on a self-hosted runner, where the real
       # store IS on the machine.
@@ -104,8 +104,8 @@ with:
       count: ${{ steps.suite.outputs.count }}
       ran: ${{ steps.suite.outputs.ran }}
     env:
-      HARBOR_CHANGED: ${{ needs.classify.outputs.changed }}
-    runs-on: ${{ fromJSON((inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted' && '["ubuntu-latest"]' || '["self-hosted","macOS","ARM64"]') }}
+      HARBOR_TEST_CHANGED: ${{ needs.classify.outputs.changed }}
+    runs-on: ${{ fromJSON((inputs.runner || vars.HARBOR_CI_RUNNER) == 'github-hosted' && '["ubuntu-latest"]' || '["self-hosted","macOS","ARM64"]') }}
     steps:
       - uses: actions/checkout@v5
       - name: Install dependencies (hosted runners only)
@@ -129,8 +129,8 @@ with:
       count: ${{ steps.suite.outputs.count }}
       ran: ${{ steps.suite.outputs.ran }}
     env:
-      HARBOR_CHANGED: ${{ needs.classify.outputs.changed }}
-    runs-on: ${{ fromJSON((inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted' && '["ubuntu-latest"]' || '["self-hosted","macOS","ARM64"]') }}
+      HARBOR_TEST_CHANGED: ${{ needs.classify.outputs.changed }}
+    runs-on: ${{ fromJSON((inputs.runner || vars.HARBOR_CI_RUNNER) == 'github-hosted' && '["ubuntu-latest"]' || '["self-hosted","macOS","ARM64"]') }}
     steps:
       - uses: actions/checkout@v5
       - name: Install dependencies (hosted runners only)
@@ -150,8 +150,8 @@ with:
       count: ${{ steps.suite.outputs.count }}
       ran: ${{ steps.suite.outputs.ran }}
     env:
-      HARBOR_CHANGED: ${{ needs.classify.outputs.changed }}
-    runs-on: ${{ fromJSON((inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted' && '["ubuntu-latest"]' || '["self-hosted","macOS","ARM64"]') }}
+      HARBOR_TEST_CHANGED: ${{ needs.classify.outputs.changed }}
+    runs-on: ${{ fromJSON((inputs.runner || vars.HARBOR_CI_RUNNER) == 'github-hosted' && '["ubuntu-latest"]' || '["self-hosted","macOS","ARM64"]') }}
     steps:
       - uses: actions/checkout@v5
       - name: Install dependencies (hosted runners only)
@@ -184,7 +184,7 @@ with:
     outputs:
       count: ${{ steps.sum.outputs.count }}
       ran: ${{ steps.sum.outputs.ran }}
-    runs-on: ${{ fromJSON((inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted' && '["ubuntu-latest"]' || '["self-hosted","macOS","ARM64"]') }}
+    runs-on: ${{ fromJSON((inputs.runner || vars.HARBOR_CI_RUNNER) == 'github-hosted' && '["ubuntu-latest"]' || '["self-hosted","macOS","ARM64"]') }}
     steps:
       - name: Every shard must have succeeded — a failed or skipped shard FAILS this check
         if: >-

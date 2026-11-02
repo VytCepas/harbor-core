@@ -241,9 +241,9 @@ fi
 # to the thing it guards. BSD `date -j -v` first, GNU `date -d` second; if
 # NEITHER resolves, FC_CUTOFF stays empty and every rule reverts to all-history.
 # Fail LOUD: an unreadable clock must never be the thing that silences a crit.
-FC_HORIZON="${HARBOR_AUDIT_TRIAGE_HORIZON_DAYS:-${HARBOR_FC_HORIZON_DAYS:-7}}"
+FC_HORIZON="${HARBOR_AUDIT_TRIAGE_HORIZON_DAYS:-7}"
 case "$FC_HORIZON" in ''|*[!0-9]*|0) FC_HORIZON=7 ;; esac
-FC_TODAY="${HARBOR_AUDIT_TRIAGE_NOW:-${HARBOR_FC_NOW:-$(date -u +%F 2>/dev/null || true)}}"
+FC_TODAY="${HARBOR_AUDIT_TRIAGE_NOW:-$(date -u +%F 2>/dev/null || true)}"
 case "$FC_TODAY" in
   [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
   *) FC_TODAY="" ;;

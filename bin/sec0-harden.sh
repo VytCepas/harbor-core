@@ -1,1 +1,0 @@
-deploy-harden.sh

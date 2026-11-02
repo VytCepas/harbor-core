@@ -150,7 +150,6 @@
 /bin/gate-approve.sh @VytCepas
 /bin/gate-classify.sh @VytCepas
 /bin/gate-codeowners.sh @VytCepas
-/bin/gate-lib.sh @VytCepas
 /bin/gate-merge-stack-resolve.py @VytCepas
 /bin/gate-merge-stack.sh @VytCepas
 /bin/gate-merge.sh @VytCepas

@@ -4,12 +4,12 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)/box"; CFG="$T/cfg"; REPOROOT="$T/repo"; TAB="$(printf '\t')"
 PRIV="$T/priv"   # the registry is the private layer's (harbor#1149)
-mkdir -p "$CFG/projects" "$REPOROOT" "$PRIV/inject.d/box" "$T/main" "$T/other"
+mkdir -p "$CFG/projects" "$REPOROOT" "$PRIV/context-rules/user" "$T/main" "$T/other"
 key_for() { printf '%s' "$1" | sed 's|/|-|g'; }
 route_of() { printf '%s' "$CFG/projects/$(key_for "$1")/memory"; }
 is_link() { [ -L "$1" ] && echo link || echo "not a link"; }
 mkdir -p "$(route_of "$T")"; printf -- '---\nname: a\n---\nx\n' > "$(route_of "$T")/a.md"
-printf 'main\t~/main\tw\nother\t~/other\tw\n' > "$PRIV/inject.d/box/projects.tsv"
+printf 'main\t~/main\tw\nother\t~/other\tw\n' > "$PRIV/context-rules/user/projects.tsv"
 # `other` is a registry row that is not a worktree: it is routed only if the hook ran the router.
 G() { HOME="$T" PORT_ROOT="$T/port" HARBOR_SCOPE_PRIVATE="$PRIV" HARBOR_SCOPE_REPO="$REPOROOT" CLAUDE_CONFIG_DIR="$CFG" git -C "$T/main" -c core.hooksPath="$T_ROOT/hooks" "$@"; }
 git -C "$T/main" init -q; git -C "$T/main" config user.email t@t; git -C "$T/main" config user.name t
@@ -36,7 +36,7 @@ t_eq "a branch switch in a worktree routes nothing" "not a link" "$(is_link "$(r
 
 t_section "harbor#966: another repo's raw worktree is blind until the hook is wired box-wide"
 # The 2026-10-04 reading (RED 1 of 56, GREEN later that day): harbor's hooksPath reaches harbor's trees only.
-printf 'wl\t~/wl\tw\n' >> "$PRIV/inject.d/box/projects.tsv"
+printf 'wl\t~/wl\tw\n' >> "$PRIV/context-rules/user/projects.tsv"
 git init -q "$T/wl"; git -C "$T/wl" config user.email t@t; git -C "$T/wl" config user.name t
 : > "$T/wl/f"; git -C "$T/wl" add -A >/dev/null 2>&1; git -C "$T/wl" commit -qm base >/dev/null 2>&1
 : > "$T/gc-none"
@@ -67,7 +67,7 @@ t_eq "the worktree exists" yes "$([ -f "$_o-wt-c/.git" ] && echo yes || echo no)
 t_eq "…and no route was made anywhere (the router did not run)" "not a link" "$(is_link "$(route_of "$T/other")")"
 
 t_section "the hook never fails the checkout"
-rm -f "$PRIV/inject.d/box/projects.tsv"
+rm -f "$PRIV/context-rules/user/projects.tsv"
 _out="$(G worktree add -b side2 "$T/main-wt-side2" 2>&1)"; _c=$?
 t_eq "a router that stands down does not fail git worktree add" 0 "$_c"
 t_has "…and the operator is told the route is incomplete" "$_out" 'memory route incomplete'

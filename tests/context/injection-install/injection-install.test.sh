@@ -6,7 +6,7 @@
 # Then the install standard (harbor#765, #771): the interface, and what --remove or a rebuild takes out
 # lands in backups/inject-install/<TS>/ instead of being deleted.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE
 unset CLAUDE_CONFIG_DIR  # every call names its target with --dir or --live
 TOOL="$T_ROOT/bin/context-injection-install.sh"; T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"
 CFG="$T/cfg"; S="$CFG/settings.json"; mkdir -p "$CFG/bin"; printf '{"permissions":{"deny":[]}}\n' > "$S"
@@ -175,7 +175,7 @@ sh "$TOOL" --dir "$MC" --apply --remove >/dev/null 2>&1
 t_eq "--remove drops the rows of everything it moved into the backup" 0 "$(grep -cE ' (context-rules/user/|inject\.d/|bin/injection-rule\.sh |bin/govern-token\.sh )' "$MC/.harbor-manifest")"
 
 # ── the private layer (harbor#1149) ─────────────────────────────────────────────────────────────────────────────
-# Core ships no pack that names a client or a repo of one: they live in <private>/context-rules (or the old inject.d), read through scope-roots.sh. Every arm below names
+# Core ships no pack that names a client or a repo of one: they live in <private>/context-rules read through scope-roots.sh. Every arm below names
 # its layer with HARBOR_SCOPE_PRIVATE: t_init unsets it, so the arms above ran on core alone, the "no layer" case, asserted again here.
 t_section "core ships no other repo's rule folder: context-rules/ holds the box tier and harbor's own, nothing else"
 t_eq "the directories under core's context-rules" "$T_ROOT/context-rules/harbor $T_ROOT/context-rules/user" "$(find "$T_ROOT/context-rules" -mindepth 1 -maxdepth 1 -type d | sort | tr '\n' ' ' | sed 's/ $//')"
@@ -186,12 +186,12 @@ t_section "no private layer: the box tier is core's alone, the status says so, -
 t_has "status: core's box tier alone" "$(HARBOR_SCOPE_PRIVATE="$T/no-such-layer" sh "$TOOL" --dir "$CFG" 2>&1)" "private packs: none"
 t_hasnt "core alone: no private tool in the matcher" "$M" "ZzPrivateTool"
 
-PL="$T/privlayer"; mkdir -p "$PL/inject.d/box" "$PL/inject.d/demo" "$PL/inject.d/other"
-printf '# name\tpath\tcovers\ndemo\t~/port/demo\ta fixture project\n' > "$PL/inject.d/box/projects.tsv"
-printf -- '---\nid: private-box-note\nevent: SessionStart\nwhen: always\n---\n\nbody\n' > "$PL/inject.d/box/80-private-box-note.md"
-printf -- '---\nid: demo-zz\nevent: PreToolUse\ntool: ZzPrivateTool\nwhen: always\n---\n\nbody\n' > "$PL/inject.d/demo/10-demo-zz.md"
-printf -- '---\nid: other-note\nevent: SessionStart\nwhen: always\n---\n\nbody\n' > "$PL/inject.d/other/10-other.md"
-: > "$PL/inject.d/box/.DS_Store"
+PL="$T/privlayer"; mkdir -p "$PL/context-rules/user" "$PL/context-rules/demo" "$PL/context-rules/other"
+printf '# name\tpath\tcovers\ndemo\t~/port/demo\ta fixture project\n' > "$PL/context-rules/user/projects.tsv"
+printf -- '---\nid: private-box-note\nevent: SessionStart\nwhen: always\n---\n\nbody\n' > "$PL/context-rules/user/80-private-box-note.md"
+printf -- '---\nid: demo-zz\nevent: PreToolUse\ntool: ZzPrivateTool\nwhen: always\n---\n\nbody\n' > "$PL/context-rules/demo/10-demo-zz.md"
+printf -- '---\nid: other-note\nevent: SessionStart\nwhen: always\n---\n\nbody\n' > "$PL/context-rules/other/10-other.md"
+: > "$PL/context-rules/user/.DS_Store"
 pmatch() { jq -r '[.hooks.PreToolUse[]? | select((.hooks[]?.command // "") | contains("injection-rule.sh")) | .matcher] | first // ""' "$1/settings.json"; }
 
 t_section "a private layer's box tier installs with core's, and its repo packs' tools reach the matcher"
@@ -202,12 +202,12 @@ PXO="$(HARBOR_SCOPE_PRIVATE="$PL" sh "$TOOL" --dir "$PX" --apply 2>&1)"
 t_has "the run reports the private files it installed" "$PXO" "and 2 private file(s)"
 t_eq "the install holds core's box tier plus the two private files, no stray .DS_Store" \
   "$( { ls "$T_ROOT/context-rules/user"; printf '80-private-box-note.md\nprojects.tsv\n'; } | sort | tr '\n' ' ')" "$(ls "$PX/context-rules/user" | sort | tr '\n' ' ')"
-t_eq "the registry arrives byte for byte" "" "$(diff "$PL/inject.d/box/projects.tsv" "$PX/context-rules/user/projects.tsv" 2>&1)"
-t_eq "the private box pack arrives byte for byte" "" "$(diff "$PL/inject.d/box/80-private-box-note.md" "$PX/context-rules/user/80-private-box-note.md" 2>&1)"
+t_eq "the registry arrives byte for byte" "" "$(diff "$PL/context-rules/user/projects.tsv" "$PX/context-rules/user/projects.tsv" 2>&1)"
+t_eq "the private box pack arrives byte for byte" "" "$(diff "$PL/context-rules/user/80-private-box-note.md" "$PX/context-rules/user/80-private-box-note.md" 2>&1)"
 t_eq "a hidden file in the private box tier is not installed" "no" "$([ -e "$PX/context-rules/user/.DS_Store" ] && echo yes || echo no)"
 t_has "a private repo pack's tool is in the wired matcher" "$(pmatch "$PX")" "ZzPrivateTool"
 PXS="$(HARBOR_SCOPE_PRIVATE="$PL" sh "$TOOL" --dir "$PX" 2>&1)"
-t_has "status: the private box files are counted" "$PXS" "private packs: 2 box file(s) from $PL/inject.d"
+t_has "status: the private box files are counted" "$PXS" "private packs: 2 box file(s) from $PL/context-rules"
 t_has "status: a repo pack folder is named with its project's state" "$PXS" "repo pack demo: port/demo no such project"
 t_has "status: a folder with no registry row is named too" "$PXS" "repo pack other:  no such project"
 t_eq "every private file is a manifest row" 2 "$(grep -cE ' context-rules/user/(80-private-box-note\.md|projects\.tsv) ' "$PX/.harbor-manifest")"
@@ -220,7 +220,7 @@ mkph() { rm -rf "$T/ph"; PH="$T/ph"; mkdir -p "$PH/.claude/bin" "$PH/port/demo/c
 mkph
 PJ="$(HOME="$PH" HARBOR_SCOPE_PRIVATE="$PL" sh "$TOOL" --live --apply --projects 2>&1)"
 t_has "the registered project is seeded" "$PJ" "demo: seeded port/demo/context-rules/demo"
-t_eq "...with the layer's pack, byte for byte" "" "$(diff -r "$PL/inject.d/demo" "$PH/port/demo/context-rules/demo" 2>&1)"
+t_eq "...with the layer's pack, byte for byte" "" "$(diff -r "$PL/context-rules/demo" "$PH/port/demo/context-rules/demo" 2>&1)"
 t_eq "...and what it overwrote is in the run's backup" old "$(cat "$(find "$PH/.claude/backups/inject-install" -path '*/projects/demo/demo/10-demo-zz.md' | head -1)" 2>/dev/null)"
 t_eq "...and nothing was seeded into the old .claude/inject.d (harbor#1010)" no "$([ -e "$PH/port/demo/.claude/inject.d" ] && echo yes || echo no)"
 t_has "a folder the registry does not name is skipped, with the reason" "$PJ" "other: no such project in the private projects.tsv"
@@ -230,14 +230,14 @@ PN="$(HOME="$PH" HARBOR_SCOPE_PRIVATE="$T/no-such-layer" sh "$TOOL" --live --app
 t_has "no private layer: --projects is skipped and says why" "$PN" "core ships no repo packs"
 t_eq "...and the project keeps what it had" old "$(cat "$PH/port/demo/context-rules/demo/10-demo-zz.md")"
 
-t_section "harbor#1010: a project seeded before the move, in .claude/inject.d, is named and left in place"
-mkph; mkdir -p "$PH/port/demo/.claude/inject.d"; cp "$PL/inject.d/demo/10-demo-zz.md" "$PH/port/demo/.claude/inject.d/"; rm -rf "$PH/port/demo/context-rules"
-t_has "status: current in the old place only asks for a re-seed" "$(HOME="$PH" HARBOR_SCOPE_PRIVATE="$PL" sh "$TOOL" --live --projects 2>&1)" \
-  "repo pack demo: port/demo current in the old .claude/inject.d only: re-seed"
+t_section "harbor#1010: a project seeded before the move, in .claude/inject.d, is left in place and no longer read"
+mkph; mkdir -p "$PH/port/demo/.claude/inject.d"; cp "$PL/context-rules/demo/10-demo-zz.md" "$PH/port/demo/.claude/inject.d/"; rm -rf "$PH/port/demo/context-rules"
+t_has "status: the old place does not count as seeded" "$(HOME="$PH" HARBOR_SCOPE_PRIVATE="$PL" sh "$TOOL" --live --projects 2>&1)" \
+  "repo pack demo: port/demo absent or drifted"
 PJO="$(HOME="$PH" HARBOR_SCOPE_PRIVATE="$PL" sh "$TOOL" --live --apply --projects 2>&1)"
-t_has "the re-seed lands in context-rules/demo" "$PJO" "demo: seeded port/demo/context-rules/demo"
-t_has "...says the old folder is still there and still read" "$PJO" "port/demo/.claude/inject.d is still there and still read until rename-0031's date"
-t_eq "...and leaves it, byte for byte (it may hold the repo's own rules)" "" "$(diff "$PL/inject.d/demo/10-demo-zz.md" "$PH/port/demo/.claude/inject.d/10-demo-zz.md" 2>&1)"
+t_has "the seed lands in context-rules/demo" "$PJO" "demo: seeded port/demo/context-rules/demo"
+t_has "...says the old folder is still there and no longer read" "$PJO" "port/demo/.claude/inject.d is still there and no longer read"
+t_eq "...and leaves it, byte for byte (it may hold the repo's own rules)" "" "$(diff "$PL/context-rules/demo/10-demo-zz.md" "$PH/port/demo/.claude/inject.d/10-demo-zz.md" 2>&1)"
 t_has "status: current" "$(HOME="$PH" HARBOR_SCOPE_PRIVATE="$PL" sh "$TOOL" --live --projects 2>&1)" "repo pack demo: port/demo current"
 
 t_section "the private repo folders are data too: --projects refuses a script, a link, a subfolder or another file, and writes nothing"
@@ -252,24 +252,24 @@ prefusal() { # <label> <layer> <expect> → the dry run exits 1, --apply exits 1
   t_has "$1: it says why" "$_po" "$3"
   t_eq "$1: the project keeps what it had, and nothing else" "10-demo-zz.md old" "$(ls -A "$PH/port/demo/context-rules/demo" | tr '\n' ' ')$(cat "$PH/port/demo/context-rules/demo/10-demo-zz.md")"
   t_eq "$1: the config dir got no pack tier and no engine" "no no" "$([ -e "$PH/.claude/context-rules/user" ] && echo yes || echo no) $([ -e "$PH/.claude/bin/injection-rule.sh" ] && echo yes || echo no)"; }
-LP="$(mklayer script)"; printf '#!/bin/sh\necho hi\n' > "$LP/inject.d/demo/90-evil.sh"
-printf -- '---\nid: evil\nevent: PreToolUse\ntool: Bash\nwhen: always\nrun: 90-evil.sh\n---\n' > "$LP/inject.d/demo/20-evil.md"
+LP="$(mklayer script)"; printf '#!/bin/sh\necho hi\n' > "$LP/context-rules/demo/90-evil.sh"
+printf -- '---\nid: evil\nevent: PreToolUse\ntool: Bash\nwhen: always\nrun: 90-evil.sh\n---\n' > "$LP/context-rules/demo/20-evil.md"
 prefusal script "$LP" "only .md packs are seeded into a repository"
-LP="$(mklayer data)"; printf 'x\n' > "$LP/inject.d/demo/notes.txt"
+LP="$(mklayer data)"; printf 'x\n' > "$LP/context-rules/demo/notes.txt"
 prefusal "another file" "$LP" "only .md packs are seeded into a repository"
-LP="$(mklayer link)"; ln -s /etc/hosts "$LP/inject.d/demo/20-link.md"
+LP="$(mklayer link)"; ln -s /etc/hosts "$LP/context-rules/demo/20-link.md"
 prefusal link "$LP" "which is not a plain file"
-LP="$(mklayer subdir)"; mkdir "$LP/inject.d/demo/sub"
+LP="$(mklayer subdir)"; mkdir "$LP/context-rules/demo/sub"
 prefusal subfolder "$LP" "which is not a plain file"
-LP="$(mklayer folderlink)"; mv "$LP/inject.d/demo" "$T/lay-folderlink-target"; ln -s "$T/lay-folderlink-target" "$LP/inject.d/demo"
+LP="$(mklayer folderlink)"; mv "$LP/context-rules/demo" "$T/lay-folderlink-target"; ln -s "$T/lay-folderlink-target" "$LP/context-rules/demo"
 prefusal "folder link" "$LP" "is a link, not a directory"
-LP="$(mklayer ds)"; : > "$LP/inject.d/demo/.DS_Store"
+LP="$(mklayer ds)"; : > "$LP/context-rules/demo/.DS_Store"
 mkph; PDS="$(HOME="$PH" HARBOR_SCOPE_PRIVATE="$LP" sh "$TOOL" --live --apply --projects 2>&1)"; _pc=$?
 t_eq "a folder holding only .md packs and a .DS_Store seeds, exit 0" 0 "$_pc"
 t_has "...and says so" "$PDS" "demo: seeded port/demo/context-rules/demo"
-t_eq "...the pack arrives byte for byte, the .DS_Store stays behind" "10-demo-zz.md |" "$(ls -A "$PH/port/demo/context-rules/demo" | tr '\n' ' ')|$(diff "$LP/inject.d/demo/10-demo-zz.md" "$PH/port/demo/context-rules/demo/10-demo-zz.md" 2>&1)"
+t_eq "...the pack arrives byte for byte, the .DS_Store stays behind" "10-demo-zz.md |" "$(ls -A "$PH/port/demo/context-rules/demo" | tr '\n' ' ')|$(diff "$LP/context-rules/demo/10-demo-zz.md" "$PH/port/demo/context-rules/demo/10-demo-zz.md" 2>&1)"
 t_has "...and the status calls the project current, a .DS_Store notwithstanding" "$PDS" "repo pack demo: port/demo current"
-LP="$(mklayer noseed)"; printf '#!/bin/sh\necho hi\n' > "$LP/inject.d/demo/90-evil.sh"
+LP="$(mklayer noseed)"; printf '#!/bin/sh\necho hi\n' > "$LP/context-rules/demo/90-evil.sh"
 t_exit "a script in a repo folder does not stop a run that seeds nothing (no --projects)" 0 env HOME="$PH" HARBOR_SCOPE_PRIVATE="$LP" sh "$TOOL" --live
 
 t_section "the private box tier is data: a script, a link or a name core already ships is refused, and nothing is written"
@@ -281,12 +281,12 @@ refusal() { # <label> <layer> <expect> → one refusal arm: dry run exits 1, --a
   t_has "$1: it says why" "$_ro" "$3"
   t_eq "$1: nothing was installed" "no no" "$([ -e "$_rd/context-rules/user" ] && echo yes || echo no) $([ -e "$_rd/bin/injection-rule.sh" ] && echo yes || echo no)"
   t_eq "$1: settings.json is untouched" '{"permissions":{"allow":[],"deny":[]}}' "$(cat "$_rd/settings.json")"; }
-LS="$T/layer-script"; mkdir -p "$LS/inject.d/box"; printf '#!/bin/sh\necho hi\n' > "$LS/inject.d/box/90-evil.sh"
+LS="$T/layer-script"; mkdir -p "$LS/context-rules/user"; printf '#!/bin/sh\necho hi\n' > "$LS/context-rules/user/90-evil.sh"
 refusal script "$LS" "only .md packs and projects.tsv are installed from the private layer"
-LL="$T/layer-link"; mkdir -p "$LL/inject.d/box"; ln -s /etc/hosts "$LL/inject.d/box/90-link.md"
+LL="$T/layer-link"; mkdir -p "$LL/context-rules/user"; ln -s /etc/hosts "$LL/context-rules/user/90-link.md"
 refusal link "$LL" "is not a plain file"
 CORE1="$(ls "$T_ROOT/context-rules/user" | grep '\.md$' | head -1)"
-LC="$T/layer-collide"; mkdir -p "$LC/inject.d/box"; printf 'shadow\n' > "$LC/inject.d/box/$CORE1"
+LC="$T/layer-collide"; mkdir -p "$LC/context-rules/user"; printf 'shadow\n' > "$LC/context-rules/user/$CORE1"
 refusal collide "$LC" "a private file never replaces a shipped pack"
 t_exit "a PORT_ROOT that cannot name a layer is a refusal, not a silent core-alone install" 1 \
   env -u HARBOR_SCOPE_PRIVATE PORT_ROOT="$(printf 'a\tb')" sh "$TOOL" --dir "$T/ref-script" 
@@ -311,8 +311,8 @@ MD3="$T/mut-m"; mkdir -p "$MD3/bin"; printf '{"permissions":{"allow":[],"deny":[
 t_has "mutant: reached its own output" "$(HARBOR_SCOPE_PRIVATE="$PL" sh "$MC3" --dir "$MD3" --apply 2>&1)" "backup:"
 t_hasnt "mutant: a private pack's tool is missing from the matcher" "$(pmatch "$MD3")" "ZzPrivateTool"
 # (d) --projects seeds from the private folders
-MC4="$(mutant 's#for _d in "\$PRIVINJ"/\*/; do#for _d in "$ROOT"/inject.d/*/; do#' mut-seed.sh)"
-t_has "mutant: the sed applied" "$(cat "$MC4")" 'for _d in "$ROOT"/inject.d/*/; do'
+MC4="$(mutant 's#for _d in "\$PRIVINJ"/\*/; do#for _d in "$ROOT"/context-rules/*/; do#' mut-seed.sh)"
+t_has "mutant: the sed applied" "$(cat "$MC4")" 'for _d in "$ROOT"/context-rules/*/; do'
 mkph; HOME="$PH" HARBOR_SCOPE_PRIVATE="$PL" sh "$MC4" --live --apply --projects >/dev/null 2>&1
 t_eq "mutant: the project keeps its stale pack, the layer's was never seeded" old "$(cat "$PH/port/demo/context-rules/demo/10-demo-zz.md")"
 # (e) the repo folders are data: each guard of the --projects pre-check, cut in turn

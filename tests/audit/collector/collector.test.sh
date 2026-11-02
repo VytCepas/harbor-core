@@ -68,7 +68,7 @@ t_eq "and is caught by the full pass the daily checkpoint runs" "$((_e0 + 1))" "
 
 t_section "the old names a pre-W9 LaunchDaemon sets are read until 2026-12-01 (harbor#967 W9)"
 printf 'old1\n' > "$S/h/old-names.jsonl"
-HARBOR_COLLECTOR_SRC="$S" HARBOR_COLLECTOR_STORE="$ST" sh "$C" >/dev/null 2>&1; t_eq "a run with only the old names exits 0" 0 "$?"
+HARBOR_AUDIT_COLLECTOR_SOURCES="$S" HARBOR_AUDIT_COLLECTOR_STORE="$ST" sh "$C" >/dev/null 2>&1; t_eq "a run with only the old names exits 0" 0 "$?"
 t_eq "...and copies from the old-name source into the old-name store" yes "$(copied | grep -qx old1 && echo yes || echo no)"
 
 t_section "signed checkpoints"

@@ -1,1 +1,0 @@
-drift-install.sh

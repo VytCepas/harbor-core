@@ -1,1 +1,0 @@
-drift-renew-check.sh

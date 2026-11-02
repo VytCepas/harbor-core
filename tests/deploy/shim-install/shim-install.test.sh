@@ -3,7 +3,7 @@
 # (harbor#765, #771): --live or --dir, the dry-run exit rule, and a repointed link kept in the backup.
 # The "live" dir is the sandbox HOME's ~/.local/bin, so a broken gate writes nowhere real.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE
 SI="$T_ROOT/bin/deploy-shim-install.sh"; B="$T_TMP/bin-shims"; mkdir -p "$B"
 run() { HARBOR_SCOPE_LOCAL_BIN="$B" sh "$SI" "$@" > "$T_TMP/out" 2>&1; echo $?; }  # $B is the live dir here
 out() { cat "$T_TMP/out"; }

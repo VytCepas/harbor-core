@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
+[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0
 # B2 (harbor#3) — PreToolUse(Write|Edit|MultiEdit) system-file guard.
 # Blocks an agent from editing the Helm floor's OWN control surfaces inside the
 # active config dir: settings.json, the guard scripts (bin/guard-*.sh,
@@ -135,7 +135,7 @@ case "$(lower "$ABS")" in
   */.claude/settings.json|*/.claude/settings.local.json)
     _sw="$(floor_field '[.tool_input.content, .tool_input.new_string, (.tool_input.edits[]?.new_string)] | map(select(type == "string")) | join("\n")')"
     case "$_sw" in
-      *HARBOR_ADMISSION_DISABLE*|*HARBOR_ADMISSION_SHADOW*|*HELM_DISABLE_FLOOR*|*HELM_FLOOR_SHADOW*)
+      *HARBOR_ADMISSION_DISABLE*|*HARBOR_ADMISSION_SHADOW*)
         floor_block selfedit \
           "a floor switch (HARBOR_ADMISSION_DISABLE or HARBOR_ADMISSION_SHADOW, or an old name of one) written into a settings file reaches every later session's hooks — the operator sets it at launch" \
           switch-in-settings.content

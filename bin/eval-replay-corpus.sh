@@ -55,7 +55,7 @@ CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 while [ "${CFG%/}" != "$CFG" ] && [ "$CFG" != "/" ]; do CFG="${CFG%/}"; done
 case "$CFG" in /*) ;; *) die "config dir must be absolute: $CFG" "CLAUDE_CONFIG_DIR=\$HOME/.claude sh $0 --help" ;; esac
 
-SRC_DIR="${HARBOR_SESSION_TRANSCRIPTS:-${HARBOR_TRANSCRIPTS:-$HOME/.claude/projects}}"
+SRC_DIR="${HARBOR_SESSION_TRANSCRIPTS:-$HOME/.claude/projects}"
 OUT=""            # required: where to write. There is no default on purpose.
 LIMIT=0
 SINCE=0           # --since: only transcripts modified in the last N days (harbor#1420)
