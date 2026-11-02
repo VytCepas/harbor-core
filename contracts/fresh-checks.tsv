@@ -17,6 +17,8 @@ docs/index.html	sh bin/doc-index-generate.sh --check	sh bin/doc-index-generate.s
 vendor/naming/MANIFEST.tsv	sh bin/standard-vendor.sh --check .	sh bin/standard-vendor.sh .	
 contracts/README.md	sh bin/doc-register-index.sh --check	sh bin/doc-register-index.sh --write	
 docs/reference/registers.md	sh bin/doc-register-index.sh --check	sh bin/doc-register-index.sh --write	
+docs/reference/env.md	sh bin/standard-inventory.sh page env --check	sh bin/standard-inventory.sh page env --write	
+contracts/cli.md	sh bin/standard-inventory.sh page cli --check	sh bin/standard-inventory.sh page cli --write	
 -	access-environment.sh	checks a live settings.json, not a tracked file
 -	decider-set.sh	wiring-versus-table drift, not a generated file
 -	doc-graph-generate.sh	build/graph.tsv is an untracked build product, absent on a fresh checkout

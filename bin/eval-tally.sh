@@ -7,62 +7,18 @@
 #   sh bin/eval-tally.sh report [--days N] [--json]
 #   sh bin/eval-tally.sh open                       tasks recorded with no winner yet
 #
-# ITS TICKET IS #293 AND ITS SIGNAL IS NOT #293's. That ticket asks for
-# SatisfactionCapture — how good was this session — and demands a decision before
-# an implementation: VOID it, build the consumer first, or build the narrow
-# explicit record only. This is the third shape applied to a DIFFERENT signal: a
-# comparative verdict between two arms, not a rating of one. #293's warning that
-# "A and B are different measurements and must not share a field" is why they are
-# different files as well: nothing here writes a satisfaction row, and #293 stays
-# open and undecided.
-#
-# #293's FALSIFIER IS INHERITED VERBATIM: if this surface carries no verdicts
-# after two weeks of ordinary use, the honest reading is that it should not have
-# been built, and it should be closed by that evidence rather than by argument.
-#
-# WHY THIS EXISTS. Measured 2026-08-27: 88% of bin/ line-mass is Harbor governing,
-# testing or observing Harbor, and 44 test suites answer "does Harbor work". Not
-# one answers "is the work better". Every such instrument is ENDOGENOUS — its
-# input is Harbor's own output, so green proves self-consistency and nothing else
-# (docs/explanation/verification-expanded.md § Endogenous and exogenous instruments).
-#
-# WHAT MAKES THIS ONE EXOGENOUS, AND IT IS ONE LINE OF CODE: the winner is an
-# ARGUMENT. Nothing here reads a transcript, scores an output, or asks a model.
-# The moment this script can derive a winner it stops being able to prove
-# anything, because it would then be judging by the same faculty that produced
-# the work. The refusal to infer is the whole instrument.
-#
-# --varied IS REQUIRED, and the check is not bureaucracy. A tally with no
-# independent variable records which arm won and can never say why, which is a
-# ledger that accumulates rows and settles no argument.
-#
-# NOT HOST-SHARDED, DELIBERATELY. bin/status-usage-aggregate.sh keys its ledger by
-# $HOST; `hostname` on this box has been measured answering both its real name
-# and a bare `Mac`, and the flip forked every host-sharded ledger into two halves
-# that each read as complete. One file, no shard, no fork.
-#
-# `record` WRITES WITHOUT AN --apply GATE, unlike audit-triage-run.sh and
-# status-usage-aggregate.sh. Those derive a whole file and can clobber; this appends one
-# operator-typed line to a machine-local ledger, and CONSTITUTION §№2.11 is the
-# reason to leave it ungated — a weekly habit behind a confirmation prompt is a
-# habit that stops. `report` and `open` write nothing.
-#
-# INTEGERS AND LABELS ONLY — THERE IS NO FREE-TEXT FIELD, AND THAT IS #293's
-# CONSTRAINT RATHER THAN A STYLE CHOICE. A `--note` was drafted and cut. The
-# ledger lives under $CFG/MEMORY, and `worklog-push.sh` sets
-# LOG_DIR="${HARBOR_MEMORY_LOG_DIR:-$CFG/MEMORY}" — so this file sits INSIDE the tree
-# that gets staged for the private memory-store remote. It is safe today only by
-# extension: the allowlist is deny-by-default and its globs are
-# WORK/sessions/*/*.md, KNOWLEDGE/*.md, LEARNING/*.md, WISDOM/*.md, IDEAS.md,
-# README.md, .gitignore — none of which can match AB/*.jsonl (checked
-# 2026-08-28). Safety by extension is one added glob away from being no safety,
-# and #293 records a harvester killed for writing prose into a directory that WAS
-# inside the allowlist. So the field that would carry operator prose does not
-# exist, and --varied is capped and control-char-refused below to stop it
-# becoming one by drift.
-#
-# PRINTS IDS, LABELS AND COUNTS, NEVER CONTENT (CONSTITUTION §3). Nothing here
-# reads a transcript or emits a path under $HOME.
+# #293 asks for SatisfactionCapture (how good was this session); this is a different signal, a comparative verdict between two arms. A and B must not
+# share a field, so nothing here writes a satisfaction row. #293's falsifier is inherited: no verdicts after two weeks of use means close it on that evidence.
+# WHY: every Harbor instrument is ENDOGENOUS (its input is Harbor's own output), so green proves self-consistency only (docs/explanation/
+# verification-expanded.md, Endogenous and exogenous instruments). This one is EXOGENOUS because the winner is an ARGUMENT: nothing here reads a
+# transcript, scores an output or asks a model. The refusal to infer is the whole instrument.
+# --varied is REQUIRED: a tally with no independent variable says who won, never why.
+# NOT HOST-SHARDED: `hostname` has answered both its real name and `Mac`, forking host-sharded ledgers into two halves that each read as complete.
+# `record` WRITES WITHOUT AN --apply GATE: it appends one operator-typed line to a machine-local ledger, and a weekly habit behind a prompt stops (§2.11).
+# INTEGERS AND LABELS ONLY, NO FREE-TEXT FIELD (#293's constraint): the ledger sits under $CFG/MEMORY, inside the tree worklog-push.sh stages for the
+# private remote. The allowlist does not match AB/*.jsonl today, but safety by extension is one glob from none, so --varied is capped and control-char-refused.
+# PRINTS IDS, LABELS AND COUNTS, NEVER CONTENT (CONSTITUTION §3).
+# Removed notes: docs/explanation/code-cases/bin-eval-tally.md
 set -eu
 
 # stdout is data here (the report table, --json, the open list), so the log is on stderr (LOG_FD=2,
@@ -71,7 +27,6 @@ set -eu
 log_init ab-tally
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
-# die <what failed> <fix> [exit] — FAIL, its fix, the summary, then the exit code the tool always had (2).
 die() { log_fail "$1"; log_fix "$2"; log_end || :; exit "${3:-2}"; }
 
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
@@ -109,11 +64,7 @@ case "$VERB" in
 record)
   [ -n "$TASK" ]   || die "record needs --task" "sh $0 record --task <id> --varied <label> --winner A|B|tie"
   [ -n "$VARIED" ] || die "record needs --varied — a tally with no independent variable settles nothing" "sh $0 record --task $TASK --varied <label> --winner A|B|tie"
-  # --varied IS A LABEL AND THE CAP IS WHAT KEEPS IT ONE. Without a bound it
-  # becomes the prose field this ledger deliberately does not have (harbor#293),
-  # one long verdict at a time, and nobody would notice until the first push glob
-  # widened. Control characters are refused outright: a newline would also split
-  # one JSON record into two lines and silently corrupt every later read.
+  # --varied is a label and the cap keeps it one (otherwise it becomes the prose field this ledger lacks, harbor#293); a newline would also split one JSON record in two.
   if [ "${#VARIED}" -gt "$VARIED_MAX" ]; then
     die "--varied is a label, max $VARIED_MAX chars (got ${#VARIED}). Name the variable, do not describe it." "sh $0 record --task $TASK --varied <a short label> --winner A|B|tie"
   fi
@@ -126,8 +77,7 @@ record)
     *)  die "--winner must be A, B or tie (got '$WINNER')" "sh $0 record --task $TASK --varied $VARIED --winner A|B|tie" ;;
   esac
   mkdir -p "$LEDGER_DIR"
-  # DATE IS UTC AND WHOLE-SECOND. A local-time stamp reorders rows across a DST
-  # boundary, and this file is append-ordered by nothing but its own timestamps.
+  # UTC and whole-second: a local-time stamp reorders rows across a DST boundary.
   _now="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   jq -cn --arg at "$_now" --arg task "$TASK" --arg varied "$VARIED" \
          --arg winner "$WINNER" \
@@ -138,9 +88,7 @@ record)
   ;;
 
 open)
-  # A row recorded with --winner tie is DECIDED, not open. "Open" here means a
-  # task the operator started two arms on and never came back to; it exists so an
-  # abandoned comparison is visible rather than quietly absent from the tally.
+  # A row recorded with --winner tie is DECIDED. "Open" means two arms were started and the operator never came back.
   [ -f "$LEDGER" ] || { log_note "no ledger yet at ${LEDGER#"$HOME"/}"; log_end; exit $?; }
   jq -r 'select(.winner == "") | .task' "$LEDGER" 2>/dev/null | sort -u
   log_ok "listed the tasks recorded with no winner"
@@ -170,10 +118,7 @@ report)
     log_end; exit $?
   fi
 
-  # THE n<5 FLOOR IS A VERIFICATION RULE, NOT A DISPLAY CHOICE. A win rate over
-  # three rows is noise wearing a percentage, and printing one invites exactly the
-  # confident-and-wrong conclusion this whole instrument exists to prevent
-  # (CONSTITUTION §№2.2 — confidence requires source).
+  # THE n<5 FLOOR IS A VERIFICATION RULE, NOT A DISPLAY CHOICE: a win rate over three rows is noise wearing a percentage (CONSTITUTION §2.2).
   jq -rs --arg cut "$CUT" '
     map(select($cut == "" or .at >= $cut))
     | if length == 0 then "no verdicts in this window"

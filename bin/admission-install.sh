@@ -6,30 +6,16 @@
 #   --with-stop-gate  also install the Stop gate (admission-stop.sh), which CAN refuse to let a turn end
 #   --accept-loss     install even though this source lacks floor commits already installed (install-stamp)
 #
-# Copies the guard scripts into <dir>/bin, applies the B1 deny extension
-# (admission-deny.sh), and additively merges the floor hooks into <dir>/settings.json.
-# Additive + idempotent: never removes a foreign hook, never re-adds a floor hook
-# already present (keyed by command string). Assumes the SEC-0 read-deny base is
-# already applied (it is, live). B6 (the recurring integrity gate) is deliberately
-# NOT installed by default — it lands LAST, after this install is verified
-# (docs/explanation/admission-baseline.md order).
-#
-# --help, the target and every standard flag come from bin/deploy-install-lib.sh (lint D7):
-# physical paths, so `~/.claude/` or a symlink cannot reach live without --live
-# (P11-01); intent is a flag, never a position (harbor#52: `<sandbox> --live` used to
-# write live, the last word winning); CLAUDE_CONFIG_DIR never picks the dir. Every
-# printed command is spelled by il_spell/il_cmd, so it passes this script's own gate
-# (harbor#95, #142 — a hint the gate refuses teaches the operator to delete the gate).
+# Copies the guard scripts into <dir>/bin, applies the B1 deny extension (admission-deny.sh), and additively merges the floor hooks into <dir>/settings.json. Additive + idempotent: never removes a foreign hook, never re-adds a floor hook already present (keyed by command string). Assumes the SEC-0 read-deny base is applied. B6 is NOT installed by default: it lands LAST, after this install is verified (docs/explanation/admission-baseline.md order).
+# --help, the target and every standard flag come from bin/deploy-install-lib.sh (lint D7): physical paths, intent is a flag never a position (harbor#52), CLAUDE_CONFIG_DIR never picks the dir. Every printed command is spelled by il_spell/il_cmd, so it passes this script's own gate (harbor#95, #142).
+# Removed notes: docs/explanation/code-cases/bin-admission-install.md
 set -eu
 SRC="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 . "$SRC/library-log.sh"
 . "$SRC/deploy-install-lib.sh"
 log_init floor-install
 WITH_B6=0
-# SG (harbor#291) — the Stop gate is OPT-IN, on the same reasoning that makes B6
-# opt-in: a gate that can refuse to let a TURN end must be a deliberate act on each
-# box, not a side effect of deploying the floor. deploy-runtime-install.sh's header
-# invariant — "installs no guard and wires no hook" — is why the wiring lives here.
+# SG (harbor#291): the Stop gate is OPT-IN, as B6 is: a gate that can refuse to let a TURN end must be a deliberate act per box. The wiring lives here because deploy-runtime-install.sh installs no guard and wires no hook.
 WITH_STOP=0
 il_opt() {
   # shellcheck disable=SC2034 # IL_TAKE: read by deploy-install-lib.sh
@@ -57,43 +43,21 @@ if [ ! -f "$S" ]; then
   log_end; exit 1
 fi
 
-GUARDS='admission-hook.sh library-admission.sh admission-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh annotate-web.sh pin-instructions.sh context-resolve.sh admission-observe.sh admission-cloud.sh admission-destroy.sh admission-deliverables.sh admission-api-route.sh govern-hook.sh'
-# THE RECOVERY PATH, SEPARATE FROM THE GUARDS AND INSTALLED WITH THEM (harbor#275).
-# These are not guards — nothing wires them to a hook — but B6's own block message
-# is `sh $CFG/bin/deploy-restore.sh …`, so a floor whose gate can fire without them
-# present hands a locked-out operator a command that is not there. Held apart from
-# $GUARDS because that variable is read by floor-test.sh's X13 payload derivation,
-# admission-integrity.sh's floor MINIMUM and admission-remove.sh's removal list, and
-# widening it would change all three by accident.
-# baseline-pin.sh left this list when deploy's snapshots replaced it (harbor#765).
-# library-log.sh and deploy-install-lib.sh are what deploy-restore.sh, deploy-harden.sh and pin-instructions.sh source
-# (harbor#771, #765), so they are the recovery path too: copied, and content-pinned, with it.
+GUARDS='admission-hook.sh library-admission.sh admission-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh admission-decide.sh annotate-web.sh pin-instructions.sh context-resolve.sh admission-observe.sh admission-cloud.sh admission-destroy.sh admission-deliverables.sh admission-api-route.sh govern-hook.sh'
+# RECOVERY PATH, separate from $GUARDS (harbor#275): not guards (nothing wires them), but B6's own block message is `sh $CFG/bin/deploy-restore.sh ...`, so the floor must ship them. Held apart because $GUARDS is read by X13's payload derivation, admission-integrity.sh's floor MINIMUM and admission-remove.sh's removal list.
+# library-log.sh and deploy-install-lib.sh are what deploy-restore.sh, deploy-harden.sh and pin-instructions.sh source (harbor#771, #765), so they are copied and content-pinned with it.
 RECOVERY='deploy-restore.sh deploy-harden.sh library-log.sh deploy-install-lib.sh'
-# THE EVENT PRODUCERS (harbor#1043, PR 2): the hook and the bus it calls. Not guards — nothing here
-# can veto a call, and the floor never depends on them — so they are copied and recorded in the
-# manifest but NOT content-pinned and not in $GUARDS (B6's minimum, floor-test's X13 payload and
-# the removal list all read that variable). floor-uninstall reads this line too. event-bus.sh
-# sources library-log.sh, which $RECOVERY already ships beside it.
+# EVENT PRODUCERS (harbor#1043): the hook and the bus it calls. Not guards (nothing can veto, the floor never depends on them): copied and recorded in the manifest but NOT content-pinned and not in $GUARDS. floor-uninstall reads this line too.
 EVENTS='event-bus.sh event-hook.sh'
-# THE APPROVAL GATE (harbor#1018): the tools the ask and allow rules name, the library they share, and merge-stack
-# with its merge backstop, which every gate merge goes through (ship contract §5b.10). Copied and recorded, NOT content-pinned and NOT in $GUARDS: no hook runs them, and
-# B6 blocks every session over a pinned file with no kill-switch line. The rules name these installed copies because
-# a session cannot write <cfg>/bin (B1, guard-bash, guard-selfedit). Required checks are each repo's own
-# .agents/required-checks.tsv, read from GitHub (contract §5a.6). floor-uninstall reads this line too.
+# APPROVAL GATE (harbor#1018): the tools the ask and allow rules name, their shared library, and merge-stack with its merge backstop (ship contract §5b.10). Copied and recorded, NOT pinned and NOT in $GUARDS: no hook runs them, and B6 blocks every session over a pinned file with no kill-switch line. The rules name these installed copies because a session cannot write <cfg>/bin (B1, guard-bash, guard-selfedit). floor-uninstall reads this line too.
 GATES='library-fs.sh library-gate.sh gate-classify.sh gate-merge.sh gate-approve.sh gate-queue.sh gate-merge-check.sh gate-merge-stack.sh gate-merge-stack-resolve.py deploy-fleet.sh'
 
-# The floor hook wiring: event, matcher, guard. guard-egress covers Bash+Write;
-# guard-bash Bash; guard-selfedit Write|Edit|MultiEdit; annotate-web the web/MCP
-# content sources on PostToolUse.
-# <onfail> is `block` for a veto (P13E-2): padding a payload until the guard is slow was a way past every
-# rule. il_merge_hook (install-lib) sets it on a hook already wired, too.
+# The floor hook wiring: event, matcher, guard. <onfail> is `block` for a veto (P13E-2: padding a payload until the guard is slow was a way past every rule); il_merge_hook sets it on a hook already wired too.
 
 # onFailure needs Claude Code 2.1.295 or later: il_onfailure decides, HARBOR_ADMISSION_ONFAILURE=1|0 overriding it.
 ONFAIL="$(il_onfailure)"
 
-# THE WIRING TABLE (harbor#766), one row per hook: <event>;<matcher>;<argv after /bin/sh>;<opt-in>;
-# <also wired by>. A bare name in the argv is a file in <dir>/bin. The dry run and the apply both
-# wire from it, and admission-remove.sh reads it to decide what to strip, so the three cannot drift.
+# WIRING TABLE (harbor#766), one row per hook: <event>;<matcher>;<argv after /bin/sh>;<opt-in>;<also wired by>. A bare name in the argv is a file in <dir>/bin. The dry run and the apply both wire from it and admission-remove.sh reads it to decide what to strip, so the three cannot drift.
 floor_hooks() { cat <<'ROWS'
 PreToolUse;Bash;admission-hook.sh admission-bash.sh
 PreToolUse;Bash|Write|Edit|MultiEdit;admission-hook.sh admission-egress.sh
@@ -201,10 +165,7 @@ _hook_cmd() { # <argv> → the command string wired for it
   done
   printf '%s' "$_hc"
 }
-# Merge every row this run installs into $NEW. The opt-in rows are in the DRY RUN
-# too, so its hooks diff shows the Stop gate and B6 this run would wire: a gate the
-# dry run never mentioned is one the operator did not know this installer owns
-# (harbor#275). A `case`, never `[ … ] && …`: under set -eu that leaves $? = 1.
+# Merge every row this run installs into $NEW. Opt-in rows are in the DRY RUN too, so its hooks diff shows the Stop gate and B6 (harbor#275). A `case`, never `[ ... ] && ...`: under set -eu that leaves $? = 1.
 wire_floor() {
   while IFS=';' read -r _ev _m _argv _opt _co; do
     case "$_ev" in ''|'#'*) continue ;; esac
@@ -234,19 +195,8 @@ _rewire
 wire_floor
 
 if [ "$IL_APPLY" -eq 1 ]; then log_head "apply to $DIR"; else log_head "plan for $DIR (dry run: nothing is written)"; fi
-# THE VERDICT, AT THE MOMENT OF DECISION (2026-08-03). Five documents described
-# `eval-pass-score.sh` as the gate on this installer. It is not one and never was: no
-# CI job wraps this script, so `--live --apply` was never blocked by anything. The
-# fix is DISCLOSURE, not a gate: the install decision is the operator's policy
-# call, and a script that refuses on a score turns a judgement into a number the
-# next person routes around with a flag. Advisory by construction — a failure to
-# compute it is reported as that, never as approval.
-# LINT X7 REPORTS THIS CALL AND THAT ADVISORY IS CORRECT — it stands on purpose.
-# eval-pass-score.sh is repo-scoped: it reads $ROOT/docs/explanation/admission-baseline.md, the adversarial pass
-# register, which is not shipped to a config dir either; shipping the script alone
-# would make it RUN AND FAIL on every install, and shipping docs/explanation/admission-baseline.md to fix that
-# would put the defect register on every box to serve one advisory line. So the
-# call stays repo-only and the ABSENCE is announced (CONSTITUTION No.2 clause 7).
+# THE VERDICT, AT THE MOMENT OF DECISION: eval-pass-score.sh is NOT a gate on this installer and never was; the fix is DISCLOSURE. Advisory by construction: a failure to compute it is reported as that, never as approval.
+# Lint X7 reports this call and that advisory is correct: the script is repo-scoped (it reads the adversarial pass register, which is not shipped to a config dir), so shipping it alone would make it RUN AND FAIL on every install. The call stays repo-only and the ABSENCE is announced (constitution No.2 clause 7).
 if [ -x "$SRC/eval-pass-score.sh" ] || [ -f "$SRC/eval-pass-score.sh" ]; then
   # The scorer's own status, never tail's: an unavailable verifier reported as exit 0 is the defect.
   _pstmp=$(mktemp "${TMPDIR:-/tmp}/harbor.XXXXXX"); _psrc=0
@@ -264,8 +214,7 @@ for g in $GUARDS; do log_note "guard to copy into $DIR/bin: $g"; done
 for g in $EVENTS; do log_note "event producer to copy into $DIR/bin: $g (not a guard: no content pin)"; done
 for g in $GATES; do log_note "approval gate tool to copy into $DIR/bin: $g (not a guard: no content pin)"; done
 if [ "$WITH_STOP" -eq 1 ]; then log_note "guard to copy into $DIR/bin: admission-stop.sh (opt-in Stop gate — CAN refuse to let a TURN end)"; fi
-# LISTED IN THE DRY RUN TOO, because these are content-pinned and a pin the dry
-# run never mentioned is a file the operator did not know this installer owns (harbor#275).
+# Listed in the dry run too: these are content-pinned, and a pin the dry run never mentioned is a file the operator did not know this installer owns (harbor#275).
 for g in $RECOVERY; do log_note "recovery tooling to copy and pin alongside them: $g"; done
 log_note "the B1 deny extension (admission-deny.sh) will be applied"
 # The hooks this run would add, one line each, from the same table the apply wires.
@@ -282,19 +231,8 @@ else
 fi
 
 # ── would this deploy REMOVE work that is already installed? (harbor#115) ────
-# On 2026-08-04 a deploy from a `main` checkout that predated an unmerged branch
-# wrote older guards over newer ones and silently removed four live security
-# fixes. `git pull` said "Already up to date" — correctly. `floor-verify` still
-# said FLOOR IS ON, because every check it makes was still true.
-#
-# A REFUSAL IN BOTH MODES NOW (the install standard's dry-run rule): the dry run is
-# the moment the operator would have caught this, and deploy's plan phase reads its
-# exit code to predict the apply before anything is written.
-#
-# "THE CHECK SAID NO" AND "THE CHECK COULD NOT RUN" ARE DIFFERENT ANSWERS (harbor#313):
-# an deploy-install-stamp.sh that is simply NOT THERE was once announced as a regression that
-# did not exist. STILL FAIL-CLOSED: an unrunnable check is not permission to deploy
-# over live work; only the diagnosis differs, decided by existence, not exit code.
+# A deploy from a `main` checkout that predated an unmerged branch once wrote older guards over newer ones and silently removed four live security fixes, while `git pull` said "Already up to date" and floor-verify said FLOOR IS ON. Refused in BOTH modes (the install standard's dry-run rule): deploy's plan phase reads this exit code to predict the apply.
+# "The check said no" and "the check could not run" are different answers (harbor#313): a missing deploy-install-stamp.sh was once announced as a regression that did not exist. Still FAIL-CLOSED; only the diagnosis differs, decided by existence, not exit code.
 _stamp_tool="$SRC/deploy-install-stamp.sh"
 if [ ! -f "$_stamp_tool" ]; then
   il_loss "the regression check could not run: deploy-install-stamp.sh is not next to this script ($_stamp_tool), so nothing says this deploy is safe (run it from a checkout, or re-run the runtime installer so the installed copy has it — harbor#313)" \
@@ -311,8 +249,7 @@ fi
 il_stop
 
 if [ "$IL_APPLY" -eq 0 ]; then
-  # The Stop gate, in the DRY RUN as well as after the apply: a gate that can hold a
-  # session open must not be discoverable only in hindsight.
+  # The Stop gate in the DRY RUN as well: a gate that can hold a session open must not be discoverable only in hindsight.
   if [ "$WITH_STOP" -eq 1 ]; then
     log_note "stop gate: WOULD install admission-stop.sh and wire it at Stop. It CAN refuse a turn end — once per defect, not once per turn. Fails open."
   else
@@ -344,17 +281,8 @@ done
 if [ -n "$_gmiss" ]; then log_warn "approval gate NOT installed:$_gmiss not beside $SRC; deploy the floor from a checkout"
 else log_ok "approval gate copied into $DIR/bin: $(echo $GATES | tr ' ' ',') (harbor#1018)"; fi
 # ── NEVER ROLL BACK A FILE THE OTHER INSTALLER OWNS (PR #276 review, P1) ─────
-# Two of $RECOVERY are in deploy-runtime-install.sh's own $FILES, so copying them
-# unconditionally would, after a runtime deploy from a newer checkout and a floor
-# deploy from an older one, silently revert them to the older bytes and pin them —
-# while the runtime stamp goes on claiming the newer version is installed. The
-# regression gate above cannot see it: it asks install-stamp about `floor-install`.
-#
-# THE STAMP TIMESTAMP, NOT GIT ANCESTRY: the question is "did runtime-install write
-# these shared bytes more recently than the last floor deploy", i.e. who is the
-# current author. Lexical compare is correct for same-offset ISO-8601, which one box
-# writes; a DST change between two installs makes it fail SAFE, toward copying.
-# THE SHARED SET IS DERIVED, never listed here (the T2 defect harbor#275 was made of).
+# Two of $RECOVERY are in deploy-runtime-install.sh's $FILES, so copying them unconditionally would, after a runtime deploy from a newer checkout and a floor deploy from an older one, revert them to older bytes and pin them while the runtime stamp still claims the newer version. The regression gate above cannot see it (it asks install-stamp about floor-install).
+# Decided by the STAMP TIMESTAMP, not git ancestry: who wrote these shared bytes most recently. Lexical compare is right for same-offset ISO-8601 on one box; a DST change fails SAFE, toward copying. The shared set is DERIVED, never listed here (harbor#275's T2 defect).
 _rt_files="$(sed -n 's/^FILES="\(.*\)"/\1/p' "$SRC/deploy-runtime-install.sh" 2>/dev/null || true)"
 _stamp_f="$DIR/.helm-install-stamp"
 _rt_ts="$(sed -n 's/^runtime-install [0-9a-f]* \([^ ]*\).*/\1/p' "$_stamp_f" 2>/dev/null | tail -1)"
@@ -377,13 +305,7 @@ for g in $RECOVERY; do
   il_install_exec "$SRC/$g" "$DIR/bin/$g"; il_manifest "bin/$g"
 done
 log_ok "recovery tooling copied into $DIR/bin: $(echo $RECOVERY | tr ' ' ',')$([ -z "$KEPT" ] || printf ' (except the kept: %s)' "$KEPT")"
-# Per-guard content pins. B6 checked only that the files existed, so a guard
-# gutted to its kill-switch line plus `exit 0` was reported intact (red-team pass 6).
-# ONE LIST, USED TWICE — COPY THEN PIN, and that is the whole of harbor#275: a pin
-# over a file this run did not write captures bytes of unknown provenance, and B6
-# then blocked EVERY session (measured on this box 2026-08-22). Copying first makes
-# the pin describe bytes this installer wrote, and makes the install order stop
-# mattering: both installers write identical bytes, so the hash cannot move.
+# Per-guard content pins: B6 once checked only that files existed, so a guard gutted to its kill-switch line plus `exit 0` read as intact (red-team pass 6). COPY THEN PIN, one list used twice (harbor#275): a pin over a file this run did not write captures bytes of unknown provenance and B6 blocked every session; copying first makes the pin describe bytes this installer wrote and makes install order irrelevant.
 mkdir -p "$DIR/.helm-pins"
 for g in $GUARDS $RECOVERY; do
   [ -f "$DIR/bin/$g" ] && il_sha < "$DIR/bin/$g" > "$DIR/.helm-pins/$g.sha256"
@@ -391,14 +313,7 @@ done
 log_ok "content-pinned in $DIR/.helm-pins: every guard and the recovery tooling (harbor#275)"
 # A rename leaves the old name's copy and pin behind; B6 would check it for a kill-switch (harbor#949).
 il_renamed_retire "$SRC/.." 1 $GUARDS $RECOVERY $EVENTS $GATES || { log_end; exit 1; }
-# B8 (harbor#38) — pin the persistent INSTRUCTION surfaces. Not a lock: these stay
-# writable, but from here a change to CLAUDE.md / agents / skills / commands is
-# reported at the next SessionStart instead of loading unseen.
-#
-# THE PINNER'S GATE IS NOT OURS TO PASS (harbor#135, #142): re-pinning blesses
-# whatever the instruction surfaces currently say, so on the live dir it is the
-# operator's act, never an installer's (CONSTITUTION's self-approval rule). The live
-# path DISCLOSES the exact command instead; a sandbox is pinned here.
+# B8 (harbor#38): pin the persistent INSTRUCTION surfaces. Not a lock: they stay writable, but a change to CLAUDE.md / agents / skills / commands is reported at the next SessionStart. The pinner's gate is not ours to pass (harbor#135, #142): re-pinning blesses whatever they currently say, so on the live dir it is the operator's act; the live path DISCLOSES the command, a sandbox is pinned here.
 B8_OPERATOR=0
 if [ "$IL_LIVE" -eq 0 ]; then
   if il_run sh "$DIR/bin/pin-instructions.sh" --apply >/dev/null 2>&1; then
@@ -424,17 +339,12 @@ if [ "$WITH_B6" -eq 1 ]; then
   il_install_exec "$SRC/admission-integrity.sh" "$DIR/bin/admission-integrity.sh"; il_manifest bin/admission-integrity.sh
   il_sha < "$DIR/bin/admission-integrity.sh" > "$DIR/.helm-pins/admission-integrity.sh.sha256"
 fi
-# SG (harbor#291) — the Stop gate, wired from its table row. CONTENT-PINNED in the
-# same breath as the copy: a guard this installer wrote and did not pin is invisible
-# to B6's content loop. Pinned here rather than listed in $GUARDS, because $GUARDS is
-# also the presence list and a box that never opted in must not fail a check for a
-# file it deliberately does not have.
+# SG (harbor#291): the Stop gate, CONTENT-PINNED in the same breath as the copy (a guard written and not pinned is invisible to B6's content loop). Pinned here rather than listed in $GUARDS, which is also the presence list: a box that never opted in must not fail a check for a file it deliberately lacks.
 if [ "$WITH_STOP" -eq 1 ]; then
   il_install_exec "$SRC/admission-stop.sh" "$DIR/bin/admission-stop.sh"; il_manifest bin/admission-stop.sh
   il_sha < "$DIR/bin/admission-stop.sh" > "$DIR/.helm-pins/admission-stop.sh.sha256"
 fi
-# Re-read settings (floor-deny just rewrote deny) and wire the SAME table the dry
-# run showed onto THAT (harbor#766: this was a second, hand-kept copy of it).
+# Re-read settings (floor-deny just rewrote deny) and wire the SAME table the dry run showed (harbor#766).
 NEW="$(cat "$S")"
 _rewire
 wire_floor
@@ -443,21 +353,15 @@ wire_floor
 il_write_json "$NEW" "$S" || { log_end; exit 1; }
 log_ok "hooks merged into $S; its pre-run bytes are in $IL_BK"
 
-# OBSERVE-1 bootstrap. The hot path creates NOTHING (guard-lib property 3), so
-# without this the ledger does not exist until the next SessionStart and every
-# decision until then is silently unrecorded. Run once, here, where a fork costs
-# nothing and no verdict is pending.
+# OBSERVE-1 bootstrap: the hot path creates NOTHING (guard-lib property 3), so without this the ledger does not exist until the next SessionStart and decisions until then go unrecorded. Run once here, where a fork costs nothing.
 CLAUDE_CONFIG_DIR="$DIR" sh "$DIR/bin/admission-observe.sh" </dev/null >/dev/null 2>&1 || true
 
-# NOT SILENT, and the pin is the reason: a kept file is pinned to the bytes on disk,
-# so the gate stays quiet — exactly when a reader needs telling that this deploy did
-# not write what its own line above says it writes.
+# NOT SILENT: a kept file is pinned to the bytes on disk, so the gate stays quiet exactly when a reader needs telling that this deploy did not write what its line above says.
 if [ -n "$KEPT" ]; then
   log_warn "KEPT the installed copy of: $KEPT — runtime-install stamped this dir AFTER the last floor deploy, and those files are in its payload too, so overwriting them would roll it back; they are pinned to the bytes now on disk, so B6 stays quiet. To make this floor source the author, deploy the runtime from it first"
   log_fix "sh $(dirname "$0")/deploy-runtime-install.sh --apply $(il_spell)"
 fi
-# RECORD WHAT WAS DEPLOYED (harbor#115), only after the apply ran, so a refused or
-# aborted install never claims to be installed. --live is install-stamp's own gate.
+# RECORD WHAT WAS DEPLOYED (harbor#115) only after the apply ran, so a refused install never claims to be installed; --live is install-stamp's own gate.
 _stw_rc=0
 if [ "$IL_LIVE" -eq 1 ]; then _stw="$(sh "$SRC/deploy-install-stamp.sh" --write "$DIR" floor-install --live 2>&1)" || _stw_rc=$?
 else _stw="$(sh "$SRC/deploy-install-stamp.sh" --write "$DIR" floor-install 2>&1)" || _stw_rc=$?; fi
@@ -467,18 +371,14 @@ else
   log_warn "install-stamp could not record this deploy, so the next run cannot detect a rollback: $(printf '%s\n' "$_stw" | tail -1)"
   log_fix "sh $SRC/deploy-install-stamp.sh --write '$DIR' floor-install$( [ "$IL_LIVE" -eq 1 ] && echo ' --live' )"
 fi
-# What this run installed, one row per file (install standard §3). B6's .helm-pins above is the
-# separate store: the tamper gate never reads a record written by the thing it checks.
+# What this run installed, one row per file (install standard §3). B6's .helm-pins is a separate store: the tamper gate never reads a record written by the thing it checks.
 il_manifest_write || { log_end; exit 1; }
 if [ "$B8_OPERATOR" -eq 1 ]; then
-  # THE TARGET IS SPELLED OUT, never left to the environment (Codex review, #148),
-  # and --live stays because it is the AUTHORISATION. Deploy asks this itself (#285).
+  # The target is spelled out, never left to the environment (Codex review, #148); --live stays because it is the AUTHORISATION.
   log_note "B8: the instruction surfaces were NOT re-pinned, deliberately (harbor#135): blessing what CLAUDE.md / agents / skills / commands say is your act, not an installer's; until you do, B6 reports the drift every session. Review with: sh $DIR/bin/pin-instructions.sh --check $(il_spell)"
   il_next --deploy-does "sh $DIR/bin/pin-instructions.sh --apply $(il_spell)"
 fi
-# A printed NEXT whose work is already done is the same defect as an advisory that
-# cries wolf (§2.11): measured 2026-08-18, `--apply --with-b6` then told the operator
-# to run `--apply --with-b6`. Deploy prints its own B6 advice, so it is skipped there.
+# A printed NEXT whose work is already done is an advisory that cries wolf (No.2.11): `--apply --with-b6` once told the operator to run `--apply --with-b6`. Deploy prints its own B6 advice, so it is skipped there.
 if [ "$WITH_B6" -eq 0 ]; then
   log_note "B6 installs LAST, after you have verified a session with the floor on"
   il_next --deploy-does "$(il_apply_cmd floor) --with-b6"

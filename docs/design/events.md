@@ -10,7 +10,7 @@ status: unreviewed
 `harbor event` verb, its suites under `tests/event/bus/`, and the `event.retention` row in
 [docs/reference/checks.md](../../docs/reference/checks.md). PR 2 adds the producers below (harbor#1051 PR 1 adds the tool and agent ones); the CI waits that
 move onto `wait` (PR 3) are not built yet. E2 (harbor#1044), the dispatcher that reacts to events, is
-[below](#e2--reacting-harbor1044); it ships inert. Design origin: the operator's research brief of 2026-10-05, adapted here to the
+[below](#e2--reacting-harbor1044); it is on by deploy, its spawner off. Design origin: the operator's research brief of 2026-10-05, adapted here to the
 standard names (#949) and to the night-stack contract of 2026-10-06.
 
 **The security floor never depends on the bus.** No guard reads it, and a broken bus cannot fail a
@@ -235,9 +235,12 @@ integrity path the floor refuses to a session (below). Its place on the bus is `
 2. **Caps:** $0.25 per spawned agent, $5 per UTC day, enforced by the dispatcher from `total_cost_usd`.
 3. **Orchestrator:** a standing `claude --bg` session subscribes; projects-orchestrator does not change.
    It waits on `subscribe`, which is refused until the socket is verified (below).
-4. **Ships inert.** Merging and deploying change nothing at runtime. `deploy-runtime-install.sh` copies
-   `event-dispatch.sh` into the config dir and nothing runs it: no installer loads the launchd plist, writes a
-   rule, creates `spawn.on` or wires the catch-up hook. Each is a step the operator takes (opting in, below).
+4. **On by deploy, spawner off (operator decision 2026-11-02, harbor#1437).** `deploy-runtime-install.sh` copies
+   `event-dispatch.sh` into the config dir; the operator's own deploy (`bin/deploy.sh`, apply, live) then installs the launchd
+   plist (`bin/deploy-launchd-sync.sh`), restarts the follower when its script changed, and runs `event-dispatch.sh reconcile`,
+   which installs the presets `contracts/event-rules.tsv` marks `#default` and replaces a refused one. It still never creates
+   `spawn.on`, writes a `--spawn` rule or wires the catch-up hook: those stay the operator's steps (opting in, below). A Claude
+   session can do none of this: `on`, `reconcile` and deploy refuse under `CLAUDECODE` (#555 decision 3).
 
 ### The follower
 

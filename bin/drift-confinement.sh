@@ -6,6 +6,7 @@
 #   sh drift-confinement.sh            exit 0 matched or not installed, 1 drift, 3 unchecked (D-29, never a green)
 #   sh drift-confinement.sh --state    the same, plus one word on stdout: match | drift | not-installed | unchecked,
 #                                      and no receipt (floor-verify's read; a verifier writes nothing)
+#   sh drift-confinement.sh --status   the reconcile records (contracts/reconcile.md): a row per leaf that differs, its age; 3 unchecked
 # Read-only: it never writes managed settings; the fix is the operator's `sudo sh deploy-confinement.sh`.
 # Every finding line carries [check:drift.confinement]; the receipt goes to log_receipt's dir (docs/reference/checks.md).
 # HARBOR_MANAGED_SETTINGS moves the target, as in deploy-confinement.sh (tests, no root).
@@ -14,14 +15,18 @@ case "${1:-}" in -h|--help) awk 'NR<2{next} /^#/{sub(/^# ?/,""); print; next} {e
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 . "$HERE/library-log.sh"
 log_init drift-confinement
-STATE=0
+STATE=0; STATUS=0
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
-case "${1:-}" in
-  --state) STATE=1; LOG_FD=2 ;;
-  '') ;;
-  *) log_fail "unknown argument $1"; log_fix "sh $0 --help"; exit 2 ;;
-esac
+for _a in "$@"; do
+  case "$_a" in
+    --state) STATE=1; LOG_FD=2 ;;
+    --status) STATUS=1; LOG_FD=2 ;;   # stdout is data
+    *) LOG_FD=2; log_fail "unknown argument $_a"; log_fix "sh $0 --help"; exit 2 ;;
+  esac
+done
+[ "$STATE$STATUS" != 11 ] || { LOG_FD=2; log_fail "--state and --status are two different reads"; log_fix "sh $0 --help"; exit 2; }
 ID=drift.confinement; P="[check:$ID]"
+[ "$STATUS" = 0 ] || status_init "$ID" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}" || exit 3
 if [ -n "${HARBOR_MANAGED_SETTINGS:-}" ]; then MF="$HARBOR_MANAGED_SETTINGS"
 elif [ "$(uname -s)" = Darwin ]; then MF='/Library/Application Support/ClaudeCode/managed-settings.json'
 else MF=/etc/claude-code/managed-settings.json; fi
@@ -33,10 +38,11 @@ finish() {
   # --state is floor-verify's read, and a verifier writes nothing: only a direct run leaves the receipt.
   [ "$STATE" = 1 ] || log_receipt "$(receipt_dir)" "$ID" "$_fs" "$@" || log_warn "$P no receipt written to $(receipt_dir)"
   [ "$STATE" = 0 ] || printf '%s\n' "$_fw"
+  [ "$STATUS" = 0 ] || [ "$_fx" = 3 ] || status_end || :   # a run that judged closes its report; one that could not already has
   log_end || :
   exit "$_fx"
 }
-unchecked() { log_warn "$P unchecked: $1"; log_fix "$2"; finish stood-down unchecked 3; }
+unchecked() { log_warn "$P unchecked: $1"; log_fix "$2"; [ "$STATUS" = 0 ] || status_unjudged "$1" || :; finish stood-down unchecked 3; }
 
 command -v jq >/dev/null 2>&1 || unchecked "jq is required to read $MF" "$(pkg_hint jq)"
 SB=0
@@ -79,7 +85,8 @@ rm -f "$W" "$H"
 
 N=0; SUBJ=""
 add() { N=$((N + 1)); SUBJ="$SUBJ
-$1"; }
+$1"; [ "$STATUS" = 0 ] || status_drift "$1" "the installed sandbox block equals the compose" "it differs: $1" "$FIX"; }
+[ "$STATUS" = 0 ] || status_ok "$(printf '%s\n' "$WANT" | jq -r '[paths(type != "object" and type != "array")] | length' 2>/dev/null || echo 0)"
 [ "$SB" = 1 ] || { log_note "$P the marker is present but $MF holds no sandbox block: the ledger reads every call as confined"; add marker-without-block; }
 [ "$MKP" = 1 ] || { log_note "$P $MF holds a sandbox block but the marker is missing: the ledger reads every call as off"; add block-without-marker; }
 # The marker's one policy line is the P3 skip (harbor#1300): harbor.toml flipped since the install reads as drift.

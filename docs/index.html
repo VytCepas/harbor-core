@@ -362,25 +362,27 @@ containment proof against an attacker who already controls the session.</p>
 <h4>The guards</h4>
 <table class="grid"><thead><tr><th>Guard</th><th>Role</th></tr></thead><tbody>
 <tr><td><code>admission-api-route.sh</code></td><td>guard-apiroute (harbor#545) — PostToolUse(Bash|Write|Edit|MultiEdit) and</td></tr>
-<tr><td><code>admission-bash.sh</code></td><td>B3 (harbor#3) — PreToolUse(Bash) shell-injection / local-exec guard.</td></tr>
-<tr><td><code>admission-cloud.sh</code></td><td>guard-cloud (harbor#194 item 3, harbor#193 warning-layer) — PreToolUse(Bash)</td></tr>
+<tr><td><code>admission-bash.sh</code></td><td>B3 (harbor#3) - PreToolUse(Bash) shell-injection / local-exec guard: the code-execution and destruction class (ports upstream DANGEROUS_PATTERNS a4e8e74, trimmed for POSIX+WSL). Pure POSIX; FAIL-OPEN on parse error.</td></tr>
+<tr><td><code>admission-cloud.sh</code></td><td>admission-cloud.sh (harbor#194 item 3, harbor#193 warning-layer) - PreToolUse(Bash) ASK-gate for destructive cloud operations (ledger token <code>cloud</code>).</td></tr>
+<tr><td><code>admission-decide.sh</code></td><td>admission-decide.sh (harbor#1030) — the one decision function of the floor: a fired rule's mode is read from its controls.tsv row.</td></tr>
 <tr><td><code>admission-deliverables.sh</code></td><td>guard-deliverables (harbor#402) — PreToolUse(Write|Edit|MultiEdit|Bash) FILING gate.</td></tr>
 <tr><td><code>admission-deny-hash.sh</code></td><td>M7 · DeriveDenyHashes (harbor#44) — a leak filter over the operator's OWN private</td></tr>
 <tr><td><code>admission-deny.sh</code></td><td>B1 (harbor#3) — permissions.deny hard stops for the floor, on the install standard (harbor#800).</td></tr>
-<tr><td><code>admission-destroy.sh</code></td><td>guard-destroy (harbor#201) — PreToolUse(Bash) ASK/DENY gate for LOCAL work</td></tr>
+<tr><td><code>admission-destroy.sh</code></td><td>guard-destroy (harbor#201) - PreToolUse(Bash) ASK/DENY gate for LOCAL work destruction (git clean -f, git reset --hard, diskutil erase*), the class an unattended agent causes while tidying up.</td></tr>
 <tr><td><code>admission-egress.sh</code></td><td>B4 (harbor#3) — PreToolUse(Bash|Write) secret-egress guard.</td></tr>
 <tr><td><code>admission-equivalence.sh</code></td><td>EQUIV (harbor#264) — replay a corpus of hook payloads through TWO guard trees</td></tr>
-<tr><td><code>admission-hook.sh</code></td><td>B9 (harbor#39) — fail-CLOSED wrapper for the PreToolUse floor guards.</td></tr>
+<tr><td><code>admission-hook.sh</code></td><td>B9 (harbor#39) - fail-CLOSED wrapper for the PreToolUse floor guards: a missing jq/guard or a guard crash never exits 2, so it turns into a deny.</td></tr>
 <tr><td><code>admission-install.sh</code></td><td>INSTALL (harbor#3) — wrapped, additive install of the Helm POSIX floor into a config dir (harbor#765).</td></tr>
 <tr><td><code>admission-integrity.sh</code></td><td>B6 (harbor#3) — recurring fail-CLOSED SessionStart integrity gate.</td></tr>
 <tr><td><code>admission-mutation-tier.sh</code></td><td>M10 · MutationTier (harbor#44) — classify a path under a Helm config dir by what</td></tr>
 <tr><td><code>admission-observe-report.sh</code></td><td>OBSERVE-1 (harbor#41) — read the guard-decision ledger.</td></tr>
 <tr><td><code>admission-observe.sh</code></td><td>OBSERVE-1 (harbor#41) — the SessionStart half of the guard-decision ledger.</td></tr>
 <tr><td><code>admission-remove.sh</code></td><td>UNINSTALL (harbor#3 follow-on, #766) — remove the Helm floor from a config dir (the install standard, harbor#765).</td></tr>
+<tr><td><code>admission-replay.sh</code></td><td>admission-replay.sh (harbor#1030) — replay the guard corpus and diff the verdicts of two runs: a refactor of the floor changes no verdict.</td></tr>
 <tr><td><code>admission-self-edit.sh</code></td><td>B2 (harbor#3) — PreToolUse(Write|Edit|MultiEdit) system-file guard.</td></tr>
-<tr><td><code>admission-stop.sh</code></td><td>SG (harbor#291) — the ONE Stop-event gate. docs/reference/coverage.md:86 read "Harbor has no</td></tr>
+<tr><td><code>admission-stop.sh</code></td><td>SG (harbor#291) — the ONE Stop-event gate: the mechanism for №2 Verification, narrowed to what a shell script can decide without judgement (docs/reference/coverage.md recorded "no Stop gate at all").</td></tr>
 <tr><td><code>admission-verify.sh</code></td><td>VERIFY (harbor#3 follow-on) — answer "is the floor actually on?" in one command (harbor#800).</td></tr>
-<tr><td><code>library-admission.sh</code></td><td>library-admission.sh — shared helpers for the Helm POSIX floor guards (workstream B,</td></tr>
+<tr><td><code>library-admission.sh</code></td><td>library-admission.sh (harbor#3) - shared helpers for the POSIX floor guards; sourced by bin/guard-*.sh after their kill-switch line.</td></tr>
 </tbody></table>
 
 <h3>Two properties that are not the same thing</h3>
@@ -818,6 +820,7 @@ already had in mind.</p>
 <tr><td>box</td><td><code>default-way-route.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
 <tr><td>box</td><td><code>external-content-is-data.md</code></td><td><code>PostToolUse</code></td><td><code>injected-instruction</code></td><td>match</td></tr>
 <tr><td>box</td><td><code>large-tool-result.md</code></td><td><code>PostToolUse</code></td><td><code>always</code></td><td>session</td></tr>
+<tr><td>box</td><td><code>long-wait-process-exists.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
 <tr><td>box</td><td><code>name-note-create.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
 <tr><td>box</td><td><code>name-note.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
 <tr><td>box</td><td><code>post-compaction-carry.md</code></td><td><code>SessionStart</code></td><td><code>source-is compact</code></td><td>never</td></tr>
@@ -827,6 +830,7 @@ already had in mind.</p>
 <tr><td>box</td><td><code>session-title-missing.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
 <tr><td>box</td><td><code>skill-on-first-use.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
 <tr><td>box</td><td><code>subagent-contract.md</code></td><td><code>SubagentStart</code></td><td><code>always</code></td><td>never</td></tr>
+<tr><td>box</td><td><code>suite-run-through-runner.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
 <tr><td>box</td><td><code>tool-failure-is-not-a-result.md</code></td><td><code>PostToolUseFailure</code></td><td><code>always</code></td><td>session</td></tr>
 <tr><td>box</td><td><code>unbounded-wait-loop.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
 <tr><td>box</td><td><code>variable-is-one-argument.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
@@ -870,6 +874,7 @@ scripts here are deliberately reachable only by name.</p>
 <tr><td><code>harbor event</code></td><td><code>event-bus.sh</code></td><td>no</td><td>the local event bus: emit, wait (0 match, 3 deadline), since, tail, prune; dispatch, on, pull, subscribe (E2)</td></tr>
 <tr><td><code>harbor ui</code></td><td><code>status-console.sh</code></td><td>no</td><td>a localhost console of the live state as read-only panels: 127.0.0.1, one-use link, stops when idle</td></tr>
 <tr><td><code>harbor scope</code></td><td><code>scope.sh</code></td><td>no</td><td>scope install: create the PORT_ROOT skeleton and an empty private layer (--dry-run, --seed-from-projects); never overwrites</td></tr>
+<tr><td><code>harbor repo</code></td><td><code>scope-repo.sh</code></td><td>no</td><td>create or adopt a repo in one run, list where each is known, audit one: new, adopt, list, audit (harbor#1430)</td></tr>
 <tr><td><code>harbor access</code></td><td><code>access.sh</code></td><td>no</td><td>the access register: add, list, has, refs, check, stored, status, rotate, revoke; a ref the register does not name is refused by bin/secret</td></tr>
 <tr><td><code>harbor pack</code></td><td><code>pack.sh</code></td><td>no</td><td>install a workload repo's harbor-pack/ box-wide and remove it exactly: list, install, remove (--dir or --live; dry run unless --apply)</td></tr>
 <tr><td><code>harbor merge-stack</code></td><td><code>gate-merge-stack.sh</code></td><td>no</td><td>merge a plan's PRs in order, each on its own green CI: check, rehearse, merge, verify (docs/design/merge-stack.md)</td></tr>
@@ -1159,7 +1164,7 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <tr><td><code>drift.skill-bytes</code> (was X8)</td><td>an installed skill (authored or vendored) is byte-identical to its tracked source, and drift names its DIRECTION</td></tr>
 <tr><td><code>drift.payload-closure</code> (was X7)</td><td>every script that an installed script invokes is itself in an installer payload</td></tr>
 <tr><td><code>drift.prod-policy-copy</code> (was X5)</td><td>every deployed prod_guard.py matches the AUTHORITATIVE copy</td></tr>
-<tr><td><code>drift.launchd-plist</code> (was X9)</td><td>every launchd-scheduled docs/reference/checks.md check has a tracked plist, and the installed copy matches</td></tr>
+<tr><td><code>drift.launchd-plist</code> (was X9)</td><td>every launchd-scheduled docs/reference/checks.md check has a tracked plist, the installed copy matches, and every tracked com.harbor.* plist is a row of the composed register (advisory; the reverse direction is harbor#1433)</td></tr>
 <tr><td><code>skill.readme-row</code> (was T10)</td><td>every skills/ entry has a row in skills/README.md (why it exists)</td></tr>
 <tr><td><code>skill.use-when</code> (was T11)</td><td>every tracked skill's description carries USE WHEN trigger phrases</td></tr>
 <tr><td><code>skill.book-current</code> (was T9)</td><td>the tracked skill catalog is current against the skills this checkout tracks</td></tr>
@@ -1191,6 +1196,10 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <tr><td><code>lint.platform-calls</code></td><td>a bin/ script calls no bare macOS-only tool: ported, declared or in a helper (harbor#618)</td></tr>
 <tr><td><code>lint.domain</code></td><td>core files naming a workload tool only go down (contracts/lint-domain-baseline.txt, harbor#1274)</td></tr>
 <tr><td><code>doc.constitution-abstract</code></td><td>policy/constitution.md names no date, ticket, absolute path or workload repo (harbor#1273)</td></tr>
+<tr><td><code>policy.clause-anchored</code></td><td>every bold-led clause of policy/constitution.md has a row in policy/clauses.tsv and every row a clause (harbor#1026)</td></tr>
+<tr><td><code>policy.clause-traced</code></td><td>every clause row holds known values, and names an existing control or judgment (harbor#1026)</td></tr>
+<tr><td><code>policy.enforcement-covered</code></td><td>every clause has an enforcement pair, moments and modes are known, a pair binds at its earliest checkable moment, and a block pair earned it (harbor#1028)</td></tr>
+<tr><td><code>policy.enforcement-current</code></td><td>docs/policy/enforcement.md is the matrix policy/enforcement.tsv generates (harbor#1028)</td></tr>
 <tr><td><code>lint.dev-paths</code></td><td>core code naming a dev-layer path only goes down (contracts/lint-dev-paths-baseline.txt, harbor#1275)</td></tr>
 <tr><td><code>lint.core-writes</code></td><td>core scripts writing into the checkout only goes down (contracts/lint-core-writes-baseline.txt, harbor#1275)</td></tr>
 <tr><td><code>lint.share</code></td><td>every file of a known kind lives in a share its kind allows (harbor#1274)</td></tr>
@@ -1212,6 +1221,10 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <tr><td><code>ci.action-sha-pinned</code></td><td>every workflow uses: is a full 40-hex commit SHA followed by a # version comment, never a mutable tag (harbor#1426)</td></tr>
 <tr><td><code>lint.mode-matches-engine</code></td><td>each rule's behaviour agrees with its controls.tsv mode, and no rule title carries a tier word (harbor#1422)</td></tr>
 <tr><td><code>drift.check-register</code></td><td>docs/reference/checks.md and the check rows of controls.tsv agree: ids, falsifier suite, scheduled or not (harbor#1422)</td></tr>
+<tr><td><code>skill.catalog-covers-tools</code></td><td>every harbor verb and every bin tool contracts/cli.md marks Agent-facing has a row in contracts/agent-tools.tsv, and every row a verb or script (advisory, harbor#1010)</td></tr>
+<tr><td><code>context.repo-sources-agree</code></td><td>repos.tsv, projects.tsv, yard markers and fleet discovery name the same repos (advisory, harbor#1430)</td></tr>
+<tr><td><code>standard.kit-complete</code></td><td>every register and control family has a row in standards/naming/kit.tsv and every row names something that exists (harbor#1436)</td></tr>
+<tr><td><code>scope.system-register</code></td><td>every row of contracts/systems.tsv names a script or a root that exists, is unique, and shadows no harbor verb (harbor#1436)</td></tr>
 </tbody></table>
 </div>
 
@@ -1549,6 +1562,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/deploy/deploy/prune.test.sh</code></td><td><code>bin/deploy.sh bin/deploy-restore.sh bin/deploy-install-lib.sh bin/library-log.sh bin/drift-install.sh tests/deploy/deploy/prune.test.sh tests/install/deploy-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/deploy/bootstrap/bootstrap.test.sh</code></td><td><code>bin/deploy-bootstrap.sh bin/deploy.sh bin/scope-roots.sh bin/library-log.sh bin/deploy-install-lib.sh contracts/roots.tsv tests/deploy/bootstrap/bootstrap.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/bash/cd-fold.test.sh</code></td><td><code>bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/admission/bash/cd-fold.* tests/admission/bash/fixture.sh</code></td></tr>
+<tr><td><code>tests/admission/decide/decide.test.sh</code></td><td><code>bin/admission-decide.sh bin/admission-replay.sh standards/naming/controls.tsv tests/admission/decide/decide.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/bash/config.test.sh</code></td><td><code> bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/guards/bash.config* tests/admission/bash/config.test.sh* tests/admission/bash/fixture.sh</code></td></tr>
 <tr><td><code>tests/admission/bash/destroy.test.sh</code></td><td><code>bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/admission/bash/destroy.* tests/admission/bash/fixture.sh</code></td></tr>
 <tr><td><code>tests/admission/bash/baseline-surface.test.sh</code></td><td><code>bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/admission/bash/baseline-surface.* tests/admission/bash/fixture.sh</code></td></tr>
@@ -1573,7 +1587,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/admission/bash/bash.test.sh</code></td><td><code>        bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/admission/bash/bash.test.sh tests/admission/bash/fixture.sh tests/guards/guards.jsonl tests/guards/shapes.jsonl tests/guards/benign.jsonl tests/guards/exemptions.jsonl</code></td></tr>
 <tr><td><code>tests/doc/index-generate/index-generate.test.sh</code></td><td><code>bin/doc-index-generate.sh bin/library-log.sh tests/doc/index-generate/index-generate.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/skill/eval-runners/eval-runners.test.sh</code></td><td><code>evals/* fixtures/eval-runners/* tests/skill/eval-runners/eval-runners.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/skill/catalog/catalog.test.sh</code></td><td><code>bin/skill-catalog.sh bin/library-log.sh bin/scope-roots.sh bin/deploy-install-lib.sh contracts/roots.tsv contracts/skill-book-router.tsv skills/skill-catalog/SKILL.md tests/skill/catalog/catalog.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/skill/catalog/catalog.test.sh</code></td><td><code>bin/skill-catalog.sh bin/library-log.sh bin/scope-roots.sh bin/deploy-install-lib.sh contracts/roots.tsv contracts/skill-book-router.tsv skills/skill-catalog/SKILL.md contracts/agent-tools.tsv contracts/cli.md bin/harbor tests/skill/catalog/catalog.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/skill/atlas/zones.test.sh</code></td><td><code>skills/doc-atlas/build/build.py tests/skill/atlas/zones.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/skill/atlas/inside.test.sh</code></td><td><code>skills/doc-atlas/build/build.py tests/skill/atlas/inside.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/skill/archify/report-pipe.test.sh</code></td><td><code>vendor/archify/scripts/check-render-output.mjs vendor/archify/bin/archify.mjs fixtures/archify/fanout-architecture.json tests/skill/archify/report-pipe.test.sh tests/lib/core.sh</code></td></tr>
@@ -1755,7 +1769,8 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/standard/catalog/map.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/deploy/first-run/first-run.test.sh</code></td><td><code>bin/admission-verify.sh bin/drift-install.sh bin/pin-instructions.sh bin/deploy-install-lib.sh bin/library-log.sh bin/scope-roots.sh bin/harbor tests/deploy/first-run/first-run.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/ci/runner/wedge.test.sh</code></td><td><code>bin/ci-runners.sh bin/ci-runners-*-lib.sh bin/library-log.sh tests/ci/runner/wedge.test.sh tests/ci/ci-runners-fixture.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/drift/reconcile/contract.test.sh</code></td><td><code>bin/library-log.sh bin/memory-route.sh bin/drift-reference-check.sh bin/doc-cited-paths.awk bin/library-fs.sh contracts/reconcile.md standards/naming/controls.tsv tests/drift/reconcile/contract.test.sh tests/checks/reference-check-fixture.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/drift/reconcile/contract.test.sh</code></td><td><code>bin/library-log.sh bin/memory-route.sh bin/drift-reference-check.sh bin/drift-port-root.sh bin/drift-confinement.sh bin/deploy-confinement.sh bin/scope-roots.sh contracts/finding.md bin/doc-cited-paths.awk bin/library-fs.sh contracts/reconcile.md standards/naming/controls.tsv tests/drift/reconcile/contract.test.sh tests/checks/reference-check-fixture.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/drift/status/status.test.sh</code></td><td><code>bin/drift-status.sh bin/library-log.sh standards/naming/controls.tsv tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/ci/runners/scale.test.sh</code></td><td><code>bin/ci-runners.sh bin/ci-runners-*-lib.sh bin/library-log.sh tests/ci/runners/scale.test.sh tests/ci/ci-runners-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/standard/rename/window.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/standard/rename/collapse.test.sh</code></td><td><code>always</code></td></tr>
@@ -1779,6 +1794,9 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/lint/pr/pr.test.sh</code></td><td><code>bin/lint-pr.sh bin/lint-name.sh bin/library-log.sh hooks/commit-msg standards/naming/* fixtures/naming/* tests/lint/pr/pr.test.sh tests/lib/core.sh bin/standard-register.sh</code></td></tr>
 <tr><td><code>tests/context/injection-rule/name-note-create.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh bin/lint-name.sh bin/library-log.sh standards/naming/* context-rules/* tests/context/injection-rule/name-note-create.test.sh tests/lib/core.sh bin/standard-register.sh</code></td></tr>
 <tr><td><code>tests/lint/renderer/renderer.test.sh</code></td><td><code>bin/lint-renderer.sh bin/library-log.sh standards/naming/* tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/policy/clauses/clauses.test.sh</code></td><td><code>bin/policy-check.sh bin/library-log.sh policy/* standards/naming/terms.tsv standards/naming/controls.tsv registries/coverage-incidents.tsv fixtures/policy/* tests/policy/clauses/clauses.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/policy/enforcement/enforcement.test.sh</code></td><td><code>bin/policy-check.sh policy/* docs/policy/* docs/reference/checks.md standards/naming/terms.tsv standards/naming/controls.tsv fixtures/policy/* tests/policy/enforcement/enforcement.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/lint/policy/clauses.test.sh</code></td><td><code>bin/lint-conventions.sh bin/policy-check.sh policy/* standards/naming/controls.tsv standards/naming/terms.tsv tests/checks/lint-fixture.sh policy/enforcement.tsv docs/policy/* tests/lint/policy/clauses.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/policy/resolve/order.test.sh</code></td><td><code>bin/policy-resolve.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/standard/vendor/vendor.test.sh</code></td><td><code>bin/standard-vendor.sh bin/lint-name.sh bin/lint-renderer.sh bin/library-log.sh standards/naming/* tests/standard/vendor/vendor.test.sh tests/lib/core.sh bin/standard-register.sh</code></td></tr>
 <tr><td><code>tests/standard/fleet-names/job.test.sh</code></td><td><code>bin/standard-fleet-names.sh bin/standard-fleet-names-run.sh bin/lint-name.sh bin/standard-vendor.sh bin/ci-release-names.sh bin/scope-roots.sh bin/library-log.sh standards/naming/* contracts/roots.tsv tests/standard/fleet-names/job.test.sh tests/lib/core.sh bin/standard-register.sh</code></td></tr>
@@ -1803,6 +1821,20 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/standard/schema/emit.test.sh</code></td><td><code>bin/standard-schema.sh bin/library-log.sh contracts/seams.tsv contracts/schemas/* fixtures/marker/* tests/standard/schema/emit.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/standard/seams/fresh.test.sh</code></td><td><code>bin/standard-seams-fresh.sh bin/library-log.sh bin/scope-roots.sh contracts/seams.tsv tests/standard/seams/fresh.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/name/versions.test.sh</code></td><td><code>bin/lint-name.sh bin/standard-vendor.sh bin/standard-register.sh bin/lint-renderer.sh bin/library-log.sh standards/naming/* tests/lint/name/versions.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/standard/inventory/facts.test.sh</code></td><td><code>bin/standard-inventory.sh bin/standard-register.sh bin/lint-name.sh bin/library-log.sh contracts/env.tsv contracts/bin.tsv contracts/roots.tsv contracts/idle-tools.txt standards/naming/* tests/standard/inventory/facts.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/standard/inventory/schedule.test.sh</code></td><td><code>bin/standard-inventory.sh bin/check-registry-generate.sh bin/standard-register.sh bin/library-log.sh docs/reference/checks.md launchd/* standards/naming/aliases.tsv tests/standard/inventory/schedule.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/standard/id-resolve/resolve.test.sh</code></td><td><code>bin/standard-id-resolve.sh bin/library-log.sh bin/lint-conventions.sh standards/naming/* registries/coverage-incidents.tsv tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/deploy/launchd-sync/sync.test.sh</code></td><td><code>bin/deploy-launchd-sync.sh bin/deploy-launchd-render.sh bin/library-log.sh bin/scope-roots.sh launchd/* contracts/roots.tsv tests/deploy/launchd-sync/sync.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/event/dispatch/reconcile.test.sh</code></td><td><code>bin/event-dispatch.sh bin/event-bus.sh bin/library-log.sh contracts/event-rules.tsv docs/reference/checks.md bin/status-fleet-snapshot-refresh.sh bin/alert-notify.sh bin/session-*.sh tests/event/dispatch/fixture.sh tests/event/dispatch/reconcile.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/agent/idle/idle.test.sh</code></td><td><code>bin/agent-idle-check.sh bin/library-log.sh tests/agent/idle/idle.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/check/run/run.test.sh</code></td><td><code>bin/check-run.sh bin/library-log.sh contracts/scheduled-checks.tsv launchd/* docs/reference/checks.md tests/check/run/run.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/standard/kit/kit.test.sh</code></td><td><code>bin/standard-kit.sh bin/standard-vendor.sh bin/standard-register.sh bin/lint-conventions.sh bin/library-log.sh standards/naming/* tests/standard/kit/kit.test.sh tests/lib/core.sh tests/checks/lint-fixture.sh</code></td></tr>
+<tr><td><code>tests/scope/system/system.test.sh</code></td><td><code>bin/scope-system.sh bin/harbor bin/lint-name.sh bin/lint-conventions.sh bin/scope-roots.sh bin/library-log.sh contracts/systems.tsv contracts/roots.tsv contracts/cli.md tests/scope/system/system.test.sh tests/lib/core.sh tests/checks/lint-fixture.sh</code></td></tr>
+<tr><td><code>tests/scope/repo/repo.test.sh</code></td><td><code>bin/scope-repo.sh bin/scope-repo-sources.sh bin/scope-system.sh bin/scope-roots.sh bin/scope-repos-generate.sh bin/scope.sh bin/standard-kit.sh bin/standard-vendor.sh bin/standard-label-sync.sh bin/memory-route.sh bin/lint-conventions.sh bin/harbor bin/library-log.sh contracts/systems.tsv contracts/cli.md standards/naming/* tests/scope/repo/repo.test.sh tests/lib/core.sh tests/checks/lint-fixture.sh</code></td></tr>
+<tr><td><code>tests/scope/repo/sources.test.sh</code></td><td><code>bin/scope-repo-sources.sh bin/scope-roots.sh bin/lint-conventions.sh bin/library-log.sh contracts/roots.tsv tests/scope/repo/sources.test.sh tests/lib/core.sh tests/checks/lint-fixture.sh</code></td></tr>
+<tr><td><code>tests/deploy/kit/bootstrap.test.sh</code></td><td><code>bin/deploy-runtime-install.sh bin/standard-kit.sh bin/scope.sh bin/scope-roots.sh bin/lint-name.sh bin/standard-register.sh bin/library-log.sh standards/naming/* tests/deploy/kit/bootstrap.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/standard/seams/export.test.sh</code></td><td><code>bin/standard-seams-fresh.sh bin/library-log.sh bin/scope-roots.sh contracts/seams.tsv contracts/layers.tsv contracts/roots.tsv tests/standard/seams/export.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/lint/conventions/repo-kit.test.sh</code></td><td><code>bin/lint-conventions.sh bin/scope-repo-sources.sh bin/standard-kit.sh bin/scope-system.sh bin/scope-roots.sh standards/naming/* contracts/systems.tsv contracts/roots.tsv tests/lint/conventions/repo-kit.test.sh tests/lib/core.sh tests/checks/lint-fixture.sh</code></td></tr>
 </tbody></table>
 </div>
 
@@ -1892,7 +1924,7 @@ session and one that costs nothing until wanted.</p>
 <tr><td><code>doc-deliverable-contract</code></td><td>ambient</td><td>"Before writing anything a person outside this session will read — a client thread reply, a ticket comment, a recommendation, a proposal — restate</td></tr>
 <tr><td><code>doc-learning-artifact</code></td><td>invoked only</td><td>"The approved house style and build kit for study pages — an exam guide, a course explainer, a revision page: one section per tab, hand-drawn SVG di</td></tr>
 <tr><td><code>housekeeping</code></td><td>invoked only</td><td>"Reclaim a drifted box: the measured trash classes that accumulate here, the detector for each, and — the load-bearing half — the things that LOOK</td></tr>
-<tr><td><code>skill-catalog</code></td><td>ambient</td><td>"The index of every skill and credentialed CLI on this box, with the path to read each one — most are hidden from your listing and this is the only </td></tr>
+<tr><td><code>skill-catalog</code></td><td>ambient</td><td>"The index of every skill, `harbor` verb, agent-facing bin tool and credentialed CLI on this box, each with the path or exact command; most are hidden</td></tr>
 <tr><td><code>test-strength</code></td><td>invoked only</td><td>Prove a load-bearing test can actually fail, and that it fails for the right reason. Break the thing it guards, watch it go red, restore — then chec</td></tr>
 </tbody></table>
 </div>
@@ -2180,12 +2212,14 @@ score a plumbing gap as a verdict on the idea.</p>
 <tr><td><code>admission-install.sh</code></td><td>INSTALL (harbor#3) — wrapped, additive install of the Helm POSIX floor into a config dir (harbor#765).</td></tr>
 <tr><td><code>admission-observe-report.sh</code></td><td>OBSERVE-1 (harbor#41) — read the guard-decision ledger.</td></tr>
 <tr><td><code>admission-verify.sh</code></td><td>VERIFY (harbor#3 follow-on) — answer "is the floor actually on?" in one command (harbor#800).</td></tr>
+<tr><td><code>agent-idle-check.sh</code></td><td>agent-idle-check.sh (harbor#1437) — a subagent that is running and has written nothing for an hour (check id agent.idle).</td></tr>
 <tr><td><code>alert-notify.sh</code></td><td>pulse-notify (harbor#9 — workstream E, E1) — the edge trigger and the sink.</td></tr>
 <tr><td><code>alert-probe.sh</code></td><td>pulse (harbor#9 — workstream E, E1) — the between-sessions health probe.</td></tr>
 <tr><td><code>audit-collector-check.sh</code></td><td>audit-collector-check.sh (harbor#1181 lane 5) — the destination for the collector's findings: reads its world-readable</td></tr>
 <tr><td><code>audit-stream-lib.sh</code></td><td>audit-stream-lib.sh (harbor#1181 lane 3) — the one append contract, docs/design/telemetry.md. Sourced, never run.</td></tr>
 <tr><td><code>audit-triage-run.sh</code></td><td>judge-run (harbor#44 follow-through — M5's scheduling half) — run the ledger</td></tr>
 <tr><td><code>audit-triage.sh</code></td><td>M5 · FailureCapture (harbor#44) — JUDGE the guard-decision ledger.</td></tr>
+<tr><td><code>check-run.sh</code></td><td>check-run.sh (harbor#1437) — the scheduled entry of the read-only checks that run from main: one runner, one table.</td></tr>
 <tr><td><code>ci-github-plan.sh</code></td><td>ci-github-plan.sh (harbor#1060) — has the GitHub account's plan changed, or has branch protection become unreadable?</td></tr>
 <tr><td><code>ci-governor-hook.sh</code></td><td>ci-governor-hook.sh (harbor#1032) — a runner job hook: tells bin/ci-governor.sh a job started or finished.</td></tr>
 <tr><td><code>ci-governor.sh</code></td><td>ci-governor.sh (harbor#1032) — a CPU-core budget that every CI job and local suite run on this Mac goes through.</td></tr>
@@ -2216,9 +2250,9 @@ score a plumbing gap as a verdict on the idea.</p>
 <tr><td><code>gate-merge-check.sh</code></td><td>gate-merge-check.sh — refuse to merge a PR that has no green verdict (CI-3, harbor#150)</td></tr>
 <tr><td><code>gate-merge-stack-resolve.py</code></td><td></td></tr>
 <tr><td><code>gate-merge-stack.sh</code></td><td>gate-merge-stack.sh (harbor#1060) — merge a plan's PRs in order, squash only, each on its own green CI.</td></tr>
-<tr><td><code>gate-merged-check.sh</code></td><td>merged-check (harbor#213) — answer "is this branch's work already in BASE?" by</td></tr>
+<tr><td><code>gate-merged-check.sh</code></td><td>merged-check (harbor#213) - is this branch's work already in BASE? Judged by CONTENT, not reachability:</td></tr>
 <tr><td><code>housekeeping-clean.sh</code></td><td>housekeeping-clean.sh (harbor#456) — the machine-decidable half of skills/housekeeping.</td></tr>
-<tr><td><code>library-admission.sh</code></td><td>library-admission.sh — shared helpers for the Helm POSIX floor guards (workstream B,</td></tr>
+<tr><td><code>library-admission.sh</code></td><td>library-admission.sh (harbor#3) - shared helpers for the POSIX floor guards; sourced by bin/guard-*.sh after their kill-switch line.</td></tr>
 <tr><td><code>library-alert.sh</code></td><td>library-alert.sh (harbor#618) — one desktop notification helper with a fallback chain, sourced by every notifier.</td></tr>
 <tr><td><code>library-fs.sh</code></td><td>library-fs.sh (harbor#618) — a file's mtime, size, mode and owner on BSD and GNU stat, one spelling.</td></tr>
 <tr><td><code>library-log.sh</code></td><td>library-log.sh (harbor#771) — the one log format (contracts/logging.md), sourced by every tool that logs.</td></tr>
@@ -2469,24 +2503,27 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/access-github-app-install.sh</code></td><td>access-github-app-install.sh — the in-session GitHub App scripts, COPIED from bin/access-github-app/. harbor#1225.</td></tr>
 <tr><td><code>bin/access.sh</code></td><td>access.sh (harbor#1205, harbor#1149) - <code>harbor access</code>: the access register, the one list of every identity an</td></tr>
 <tr><td><code>bin/admission-api-route.sh</code></td><td>guard-apiroute (harbor#545) — PostToolUse(Bash|Write|Edit|MultiEdit) and</td></tr>
-<tr><td><code>bin/admission-bash.sh</code></td><td>B3 (harbor#3) — PreToolUse(Bash) shell-injection / local-exec guard.</td></tr>
-<tr><td><code>bin/admission-cloud.sh</code></td><td>guard-cloud (harbor#194 item 3, harbor#193 warning-layer) — PreToolUse(Bash)</td></tr>
+<tr><td><code>bin/admission-bash.sh</code></td><td>B3 (harbor#3) - PreToolUse(Bash) shell-injection / local-exec guard: the code-execution and destruction class (ports upstream DANGEROUS_PATTERNS a4e8e74, trimmed for POSIX+WSL). Pure POSIX; FAIL-OPEN on parse error.</td></tr>
+<tr><td><code>bin/admission-cloud.sh</code></td><td>admission-cloud.sh (harbor#194 item 3, harbor#193 warning-layer) - PreToolUse(Bash) ASK-gate for destructive cloud operations (ledger token <code>cloud</code>).</td></tr>
+<tr><td><code>bin/admission-decide.sh</code></td><td>admission-decide.sh (harbor#1030) — the one decision function of the floor: a fired rule's mode is read from its controls.tsv row.</td></tr>
 <tr><td><code>bin/admission-deliverables.sh</code></td><td>guard-deliverables (harbor#402) — PreToolUse(Write|Edit|MultiEdit|Bash) FILING gate.</td></tr>
 <tr><td><code>bin/admission-deny-hash.sh</code></td><td>M7 · DeriveDenyHashes (harbor#44) — a leak filter over the operator's OWN private</td></tr>
 <tr><td><code>bin/admission-deny.sh</code></td><td>B1 (harbor#3) — permissions.deny hard stops for the floor, on the install standard (harbor#800).</td></tr>
-<tr><td><code>bin/admission-destroy.sh</code></td><td>guard-destroy (harbor#201) — PreToolUse(Bash) ASK/DENY gate for LOCAL work</td></tr>
+<tr><td><code>bin/admission-destroy.sh</code></td><td>guard-destroy (harbor#201) - PreToolUse(Bash) ASK/DENY gate for LOCAL work destruction (git clean -f, git reset --hard, diskutil erase*), the class an unattended agent causes while tidying up.</td></tr>
 <tr><td><code>bin/admission-egress.sh</code></td><td>B4 (harbor#3) — PreToolUse(Bash|Write) secret-egress guard.</td></tr>
 <tr><td><code>bin/admission-equivalence.sh</code></td><td>EQUIV (harbor#264) — replay a corpus of hook payloads through TWO guard trees</td></tr>
-<tr><td><code>bin/admission-hook.sh</code></td><td>B9 (harbor#39) — fail-CLOSED wrapper for the PreToolUse floor guards.</td></tr>
+<tr><td><code>bin/admission-hook.sh</code></td><td>B9 (harbor#39) - fail-CLOSED wrapper for the PreToolUse floor guards: a missing jq/guard or a guard crash never exits 2, so it turns into a deny.</td></tr>
 <tr><td><code>bin/admission-install.sh</code></td><td>INSTALL (harbor#3) — wrapped, additive install of the Helm POSIX floor into a config dir (harbor#765).</td></tr>
 <tr><td><code>bin/admission-integrity.sh</code></td><td>B6 (harbor#3) — recurring fail-CLOSED SessionStart integrity gate.</td></tr>
 <tr><td><code>bin/admission-mutation-tier.sh</code></td><td>M10 · MutationTier (harbor#44) — classify a path under a Helm config dir by what</td></tr>
 <tr><td><code>bin/admission-observe-report.sh</code></td><td>OBSERVE-1 (harbor#41) — read the guard-decision ledger.</td></tr>
 <tr><td><code>bin/admission-observe.sh</code></td><td>OBSERVE-1 (harbor#41) — the SessionStart half of the guard-decision ledger.</td></tr>
 <tr><td><code>bin/admission-remove.sh</code></td><td>UNINSTALL (harbor#3 follow-on, #766) — remove the Helm floor from a config dir (the install standard, harbor#765).</td></tr>
+<tr><td><code>bin/admission-replay.sh</code></td><td>admission-replay.sh (harbor#1030) — replay the guard corpus and diff the verdicts of two runs: a refactor of the floor changes no verdict.</td></tr>
 <tr><td><code>bin/admission-self-edit.sh</code></td><td>B2 (harbor#3) — PreToolUse(Write|Edit|MultiEdit) system-file guard.</td></tr>
-<tr><td><code>bin/admission-stop.sh</code></td><td>SG (harbor#291) — the ONE Stop-event gate. docs/reference/coverage.md:86 read "Harbor has no</td></tr>
+<tr><td><code>bin/admission-stop.sh</code></td><td>SG (harbor#291) — the ONE Stop-event gate: the mechanism for №2 Verification, narrowed to what a shell script can decide without judgement (docs/reference/coverage.md recorded "no Stop gate at all").</td></tr>
 <tr><td><code>bin/admission-verify.sh</code></td><td>VERIFY (harbor#3 follow-on) — answer "is the floor actually on?" in one command (harbor#800).</td></tr>
+<tr><td><code>bin/agent-idle-check.sh</code></td><td>agent-idle-check.sh (harbor#1437) — a subagent that is running and has written nothing for an hour (check id agent.idle).</td></tr>
 <tr><td><code>bin/alert-notify.sh</code></td><td>pulse-notify (harbor#9 — workstream E, E1) — the edge trigger and the sink.</td></tr>
 <tr><td><code>bin/alert-probe.sh</code></td><td>pulse (harbor#9 — workstream E, E1) — the between-sessions health probe.</td></tr>
 <tr><td><code>bin/annotate-web.sh</code></td><td>B4 (harbor#3) — PostToolUse annotator for attacker-writable content sources.</td></tr>
@@ -2497,6 +2534,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/audit-triage-run.sh</code></td><td>judge-run (harbor#44 follow-through — M5's scheduling half) — run the ledger</td></tr>
 <tr><td><code>bin/audit-triage.sh</code></td><td>M5 · FailureCapture (harbor#44) — JUDGE the guard-decision ledger.</td></tr>
 <tr><td><code>bin/check-registry-generate.sh</code></td><td>check-registry-generate.sh (harbor#1149, D-79) - the one check registry: core docs/reference/checks.md plus the private layer's rows</td></tr>
+<tr><td><code>bin/check-run.sh</code></td><td>check-run.sh (harbor#1437) — the scheduled entry of the read-only checks that run from main: one runner, one table.</td></tr>
 <tr><td><code>bin/ci-github-plan.sh</code></td><td>ci-github-plan.sh (harbor#1060) — has the GitHub account's plan changed, or has branch protection become unreadable?</td></tr>
 <tr><td><code>bin/ci-governor-hook.sh</code></td><td>ci-governor-hook.sh (harbor#1032) — a runner job hook: tells bin/ci-governor.sh a job started or finished.</td></tr>
 <tr><td><code>bin/ci-governor.sh</code></td><td>ci-governor.sh (harbor#1032) — a CPU-core budget that every CI job and local suite run on this Mac goes through.</td></tr>
@@ -2529,6 +2567,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/deploy-install-lib.sh</code></td><td>deploy-install-lib.sh (harbor#765, harbor#771) — the install standard's shared half: argument parsing, target</td></tr>
 <tr><td><code>bin/deploy-install-stamp.sh</code></td><td>deploy-install-stamp.sh — refuse a deploy that would REMOVE installed work (harbor#115)</td></tr>
 <tr><td><code>bin/deploy-launchd-render.sh</code></td><td>deploy-launchd-render.sh — fill a launchd plist template from the roots table (harbor#630, #1149).</td></tr>
+<tr><td><code>bin/deploy-launchd-sync.sh</code></td><td>deploy-launchd-sync.sh (harbor#1437) — deploy brings the box's scheduled jobs up and keeps them on current code.</td></tr>
 <tr><td><code>bin/deploy-live-verify.sh</code></td><td>deploy-live-verify.sh (harbor#735) — does the INSTALLED box work? The read-only live tier of the test</td></tr>
 <tr><td><code>bin/deploy-push.sh</code></td><td>deploy-push.sh (harbor#1149, DESIGN.md v2.1) - <code>harbor deploy push</code>: share core. One snapshot commit of the core set, no history.</td></tr>
 <tr><td><code>bin/deploy-restore.sh</code></td><td>RECOVER (harbor#34, #765) — put a config dir back from a deploy snapshot.</td></tr>
@@ -2554,6 +2593,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/drift-port-root.sh</code></td><td>drift-port-root.sh (harbor#966, check id <code>drift.port-root</code>) - every directory under PORT_ROOT is a registered repo or an exempt kind.</td></tr>
 <tr><td><code>bin/drift-reference-check.sh</code></td><td>M8 · ReferenceCheck (harbor#44) — validate the INSTALLED surface.</td></tr>
 <tr><td><code>bin/drift-renew-check.sh</code></td><td>renew-check (harbor#44 follow-through, harbor#800) — what is BUILT here and NOT RUNNING there.</td></tr>
+<tr><td><code>bin/drift-status.sh</code></td><td>drift-status.sh (harbor#1031 item 5, #949) - every drift check's <code>--status</code>, read through ONE parser.</td></tr>
 <tr><td><code>bin/drift-wall.sh</code></td><td>drift-wall.sh (harbor#1442, #1440) — the check drift.wall: does each agent surface hold the main-files invariant (no</td></tr>
 <tr><td><code>bin/eval-git-verbs-probe.sh</code></td><td>eval-git-verbs-probe (harbor#1291) — does every row of contracts/verbs/git.md behave as listed in a fresh session,</td></tr>
 <tr><td><code>bin/eval-hook-latency.sh</code></td><td>eval-hook-latency (harbor#1290) — what the snapshot step adds to a discarding git command in</td></tr>
@@ -2574,7 +2614,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/gate-merge-check.sh</code></td><td>gate-merge-check.sh — refuse to merge a PR that has no green verdict (CI-3, harbor#150)</td></tr>
 <tr><td><code>bin/gate-merge-stack.sh</code></td><td>gate-merge-stack.sh (harbor#1060) — merge a plan's PRs in order, squash only, each on its own green CI.</td></tr>
 <tr><td><code>bin/gate-merge.sh</code></td><td>gate-merge.sh (harbor#1018) — the unattended merge: a PR whose change touches no protected path, green on its</td></tr>
-<tr><td><code>bin/gate-merged-check.sh</code></td><td>merged-check (harbor#213) — answer "is this branch's work already in BASE?" by</td></tr>
+<tr><td><code>bin/gate-merged-check.sh</code></td><td>merged-check (harbor#213) - is this branch's work already in BASE? Judged by CONTENT, not reachability:</td></tr>
 <tr><td><code>bin/gate-pr-plan.sh</code></td><td>gate-pr-plan.sh (harbor#1413) — how a pull request lands, derived from the live repo, never typed from memory.</td></tr>
 <tr><td><code>bin/gate-pr-wait.sh</code></td><td>gate-pr-wait.sh (harbor#552) — wait on a pull request until the FIRST thing that</td></tr>
 <tr><td><code>bin/gate-push.sh</code></td><td>gate-push.sh (harbor#1411) — run a repo's pre-push checks BEFORE git connects, then push in seconds.</td></tr>
@@ -2586,7 +2626,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/govern-hook.sh</code></td><td>govern-hook.sh (harbor#7) — just-in-time governance. Inject the rule at the</td></tr>
 <tr><td><code>bin/govern-token.sh</code></td><td>govern-token.sh (harbor#7) — provenance for injected governance notes.</td></tr>
 <tr><td><code>bin/housekeeping-clean.sh</code></td><td>housekeeping-clean.sh (harbor#456) — the machine-decidable half of skills/housekeeping.</td></tr>
-<tr><td><code>bin/library-admission.sh</code></td><td>library-admission.sh — shared helpers for the Helm POSIX floor guards (workstream B,</td></tr>
+<tr><td><code>bin/library-admission.sh</code></td><td>library-admission.sh (harbor#3) - shared helpers for the POSIX floor guards; sourced by bin/guard-*.sh after their kill-switch line.</td></tr>
 <tr><td><code>bin/library-alert.sh</code></td><td>library-alert.sh (harbor#618) — one desktop notification helper with a fallback chain, sourced by every notifier.</td></tr>
 <tr><td><code>bin/library-fs.sh</code></td><td>library-fs.sh (harbor#618) — a file's mtime, size, mode and owner on BSD and GNU stat, one spelling.</td></tr>
 <tr><td><code>bin/library-gate.sh</code></td><td>library-gate.sh (harbor#1018) — the approval gate's shared library.</td></tr>
@@ -2622,6 +2662,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/memory.sh</code></td><td>memory (harbor#6 — workstream D, D1/D7) — the L0 memory front door.</td></tr>
 <tr><td><code>bin/pack.sh</code></td><td>pack.sh (harbor#1149, D-80, D-84) - <code>harbor pack</code>: install a workload repo's harbor-pack/ box-wide, and remove it exactly.</td></tr>
 <tr><td><code>bin/pin-instructions.sh</code></td><td>B8 (harbor#38) — pin the PERSISTENT INSTRUCTION surfaces of a config dir (the install standard, harbor#765).</td></tr>
+<tr><td><code>bin/policy-check.sh</code></td><td>policy-check.sh (harbor#1026, #1028) — the constitution as a register: every clause a row, every row traced.</td></tr>
 <tr><td><code>bin/policy-constitution-install.sh</code></td><td>policy-constitution-install.sh (harbor#173 · A2) — deploy policy/constitution.md to the box.</td></tr>
 <tr><td><code>bin/policy-resolve.sh</code></td><td>policy-resolve.sh (harbor#957, #1001) — one config order: flag, then env, then repo config, then user config, then default.</td></tr>
 <tr><td><code>bin/prod-guard-ambient.sh</code></td><td>B10 (harbor#56) — the ambient shim for yard's <code>prod_guard.py</code>.</td></tr>
@@ -2633,8 +2674,11 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/scope-managed-retention.sh</code></td><td>MANAGED RETENTION (harbor#1181 lane 6) — pins transcript retention in the root-owned managed-settings.json,</td></tr>
 <tr><td><code>bin/scope-managed-telemetry.sh</code></td><td>MANAGED TELEMETRY (harbor#1181 lane 6) — pins Claude Code's own OTLP log events, sent to the collector's receiver</td></tr>
 <tr><td><code>bin/scope-marker-backfill.sh</code></td><td>H3 (harbor#4) — declare the detect-and-defer boundary across the installed base.</td></tr>
+<tr><td><code>bin/scope-repo-sources.sh</code></td><td>scope-repo-sources.sh (harbor#1430; check id <code>context.repo-sources-agree</code>) - the four places a repo is known, held against each other.</td></tr>
+<tr><td><code>bin/scope-repo.sh</code></td><td>scope-repo.sh (harbor#1430, #1423 T18.7; <code>harbor repo</code>) - one command creates or adopts a repo, and audits it.</td></tr>
 <tr><td><code>bin/scope-repos-generate.sh</code></td><td>scope-repos-generate.sh (GOVERNANCE, harbor#966; check id <code>scope.repos-generated</code>) - the files that list the repos are</td></tr>
 <tr><td><code>bin/scope-roots.sh</code></td><td>scope-roots.sh — resolve the named roots in contracts/roots.tsv, and check that the</td></tr>
+<tr><td><code>bin/scope-system.sh</code></td><td>scope-system.sh (harbor#1436; check id <code>scope.system-register</code>) - <code>harbor &lt;system&gt; &lt;verb&gt;</code>, dispatched by register.</td></tr>
 <tr><td><code>bin/scope.sh</code></td><td>scope.sh (harbor#966, harbor#1149) - <code>harbor scope install</code>: the PORT_ROOT skeleton and an empty</td></tr>
 <tr><td><code>bin/session-autocompact.sh</code></td><td>session-autocompact.sh (harbor#187) — types /compact into a session's Terminal tab, on the agent's word.</td></tr>
 <tr><td><code>bin/session-check.sh</code></td><td>session-check.sh (harbor#1043, #1044) — rule event.session-check: lint what a finished session changed.</td></tr>
@@ -2655,7 +2699,10 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/standard-fleet-names-run.sh</code></td><td>standard-fleet-names-run.sh (harbor#967) — the scheduled entry of docs/reference/checks.md <code>standard.fleet-names</code>: the weekly naming check.</td></tr>
 <tr><td><code>bin/standard-fleet-names.sh</code></td><td>standard-fleet-names.sh (harbor#967, harbor#957) — the weekly naming check over the whole fleet: check id standard.fleet-names.</td></tr>
 <tr><td><code>bin/standard-frozen-generate.sh</code></td><td>standard-frozen-generate.sh (harbor#1276, #949) - the names a stranger types or reads, frozen in standards/naming/frozen.tsv.</td></tr>
+<tr><td><code>bin/standard-id-resolve.sh</code></td><td>standard-id-resolve.sh (harbor#957 item 10, #949) - the ONE reader that turns an old or printed id into its control.</td></tr>
+<tr><td><code>bin/standard-inventory.sh</code></td><td>standard-inventory.sh (harbor#1431, harbor#1432, harbor#1433) — the box inventories: every environment variable, every bin/ file</td></tr>
 <tr><td><code>bin/standard-issue-label.sh</code></td><td>issue-connector (harbor#512) — label an issue from the one taxonomy, and tell it</td></tr>
+<tr><td><code>bin/standard-kit.sh</code></td><td>standard-kit.sh (harbor#1436, #1423 T18.13; check id <code>standard.kit-complete</code>) - what a repo of each kind inherits.</td></tr>
 <tr><td><code>bin/standard-label-sync.sh</code></td><td>standard-label-sync.sh (harbor#1427) — label-axes.tsv is the only label source: this plans what makes a repo's labels equal it.</td></tr>
 <tr><td><code>bin/standard-register.sh</code></td><td>standard-register.sh (harbor#1424) — the one reader of the .tsv registers, and the check that every one is declared.</td></tr>
 <tr><td><code>bin/standard-rename.sh</code></td><td>standard-rename.sh (harbor#996 B2, B3) — the rename codemod: renames.tsv rows in; moved files, rewritten references, a residual list out.</td></tr>

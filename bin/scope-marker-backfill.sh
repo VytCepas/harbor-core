@@ -63,19 +63,14 @@ if [ "$COUNT" -eq 0 ]; then
   log_end || :; exit 1
 fi
 
-# The contract's permissive spellings (contracts/marker.md): `context : repo`,
-# `"context": repo`, `context: "repo"`. Anchored at column 0 — a `context:`
-# indented under another block is a different key that shares a name. Matching
-# the KEY, not a value, because any declared value means "already declared".
-# Either key declares it (harbor#963): `scope:` is the standard's spelling, `context:` the legacy one, and a
-# repo already on `scope: project` must not gain a `context: repo` beside it.
+# Permissive spellings (contracts/marker.md), anchored at column 0 so an indented `context:` (another block's key) is not matched; the KEY is matched, not the value, because any value means "already declared". Either key declares it (harbor#963).
+# Removed notes: docs/explanation/code-cases/bin-scope-marker-backfill.md
 KEY_RE='^[[:space:]]*["'"'"']?(context|scope)["'"'"']?[[:space:]]*:'
 KEY_RE_TOP='^["'"'"']?(context|scope)["'"'"']?[[:space:]]*:'
 
 log_head "fleet: $COUNT governed repos (read from $PO_DIR)"
 [ "$APPLY" -eq 1 ] || log_note "DRY RUN — nothing is written; to write: sh $0 --apply"
 
-# The rows go through a file, not a pipe, so the loop runs in this shell and its counts reach the summary.
 ROWS="$(mktemp "${TMPDIR:-/tmp}/marker-backfill.XXXXXX")"
 trap 'rm -f "$ROWS"' EXIT INT TERM HUP
 printf '%s' "$FLEET" | jq -r '.[] | "\(.descriptor.name)\t\(.descriptor.path)\t\(.descriptor.config_root)"' > "$ROWS"
@@ -90,9 +85,7 @@ while IFS="$(printf '\t')" read -r name path root; do
     log_ok "$name: already declares $(printf '%s' "$_kl" | sed -E 's/^["'"'"']?([a-z]+).*/\1/'): $(printf '%s' "$_kl" | sed 's/.*:[[:space:]]*//' | tr -d '"'"'")"
     continue
   fi
-  # An indented `context:` is a DIFFERENT key, but writing a top-level one
-  # beside it produces a file with two keys a reader could confuse. Report and
-  # leave it: this tool does not resolve ambiguity it did not create.
+  # An indented `context:` is a different key; report and leave it rather than write a second, confusable one.
   if /usr/bin/grep -Eq "$KEY_RE" "$cfg"; then
     log_warn "$name: has an INDENTED context: or scope: key; resolve by hand"
     log_fix "vi $cfg  # make the key top-level, or remove it"
@@ -107,11 +100,7 @@ while IFS="$(printf '\t')" read -r name path root; do
     log_fix "git -C $path status --short  # commit or stash, then rerun (or pass --include-dirty)"
     continue
   fi
-  # This tool must never be able to rewrite the LIVE config. It is not a
-  # settings.json mutator and carries no `--live` gate (lint D2 exempts it for
-  # that reason), so the refusal below is what makes the exemption true rather
-  # than a claim: resolved with `cd -P`, because `~/.claude/../.claude` and a
-  # symlinked route name the same directory a string compare would miss.
+  # Must never rewrite the LIVE config: this has no `--live` gate (lint D2 exempts it for that reason), so this refusal makes the exemption true. Resolved with `cd -P` so symlinked and `..` routes cannot slip past a string compare.
   _cfgdir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
   _cfgdir_phys="$(CDPATH= cd -P -- "$_cfgdir" 2>/dev/null && pwd -P || printf '%s' "$_cfgdir")"
   _target_phys="$(CDPATH= cd -P -- "$(dirname "$cfg")" 2>/dev/null && pwd -P || printf '%s' "$path")"
@@ -124,14 +113,7 @@ while IFS="$(printf '\t')" read -r name path root; do
     log_note "$name: would prepend \"scope: project\" to ${cfg#"$HOME"/}"
     continue
   fi
-  # PREPENDING IS NOT ALWAYS THE TOP (PR #96 review). A descriptor may open with
-  # `%YAML`/`%TAG` directives and/or a `---` document-start marker. Writing above
-  # those makes `scope: project` a SEPARATE first document — a single-document
-  # loader then reads `{scope: project}` and loses the whole descriptor — or puts
-  # a key illegally before a directive. So find the document start and insert
-  # after it. Comments and blank lines may precede the marker and are skipped;
-  # the first line that is real content ends the search, because a `---` after
-  # content is a second document and not this one's header.
+  # Prepending is not always the top (PR #96): a descriptor may open with `%YAML`/`%TAG` directives or a `---` marker, and a key written above them becomes a separate first document or sits before a directive. Insert after the document start; comments and blanks before it are skipped, and a `---` after content is a second document.
   _ins=0; _n=0
   while IFS= read -r _l; do
     _n=$((_n + 1))

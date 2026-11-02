@@ -108,6 +108,20 @@ sed 's/END { exit !found }/END { exit 0 }/' "$RC" > "$MUTL"
 t_eq "the probe mutant differs from the source" yes "$(differs "$RC" "$MUTL")"
 t_eq "a probe that answers yes to everything fires on a citation-free document" yes "$(fired "$(rules_by "$MUTL" "$F10B")" REF-10)"
 
+t_section "REF-9 and skills/.trash/, a skill the harness moved aside (harbor#1437)"
+# Measured 2026-11-02: the live box's REF-9 failed on a trashed skill nobody reads. A deleted skill is not a surface.
+F9T="$(mkfixture ref9-trash)"; mkskill "$F9T" alpha 'no citations in this one'
+mkdir -p "$F9T/skills/.trash/old-skill"; printf '[x](./nope-does-not-exist.md)\n' > "$F9T/skills/.trash/old-skill/SKILL.md"
+t_eq "a dead citation inside skills/.trash/ is not REF-9" no "$(fired "$(rules_of "$F9T")" REF-9)"
+F9T2="$(mkfixture ref9-trash-live)"; mkskill "$F9T2" old-skill '[x](./nope-does-not-exist.md)'
+t_eq "control: the same dead citation in a live skill is REF-9" yes "$(fired "$(rules_of "$F9T2")" REF-9)"
+F9T3="$(mkfixture ref9-trash-name)"; mkskill "$F9T3" trash-notes '[x](./nope-does-not-exist.md)'
+t_eq "a skill merely NAMED trash-* is still examined" yes "$(fired "$(rules_of "$F9T3")" REF-9)"
+MUTT="$(mkmut mut-trash)"
+sed 's| -path "\$DIR/skills/.trash" -prune -o||' "$RC" > "$MUTT"
+t_eq "the trash-prune mutant differs from the source" yes "$(differs "$RC" "$MUTT")"
+t_eq "without the prune the trashed skill is REF-9 (the defect)" yes "$(fired "$(rules_by "$MUTT" "$F9T")" REF-9)"
+
 t_section "mutation: REF-9's resolution is load-bearing"
 MUT9="$(mkmut mut-ref9)"
 sed 's|^    \*)   printf .%s/%s. "\$2" "\$_ct_p" ;;.*$|    *)   printf "%s" "$_ct_p" ;;|' "$RC" > "$MUT9"

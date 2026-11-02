@@ -232,6 +232,9 @@ ROWS
     _dest="${_pw%/}/.worktrees/$REPO_NAME/$_slug"
     mkdir -p -- "$(dirname -- "$_dest")"
     [ -e "$_dest" ] && { printf 'worktree: already exists: %s\n' "$_dest" >&2; exit 1; }
+    # The branch is checked against the naming standard before it exists (harbor#978); advisory, never a refusal.
+    _nc="$(sh "$DIR/lint-name.sh" --check branch "$ARG" 2>&1)" \
+      || log_warn "branch name: $(printf '%s\n' "$_nc" | grep -E '^ +(FAIL|WARN):' | head -1)"
     git -C "$ROOT" worktree add -b "$ARG" "$_dest" "$BASE"
     # BORN WITH THE MEMORY STORE (harbor#589). The store is keyed by the session's cwd, so a fresh
     # worktree starts blind. The repo's own routing, memory-route.sh --apply, discovers the new tree

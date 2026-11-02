@@ -9,26 +9,11 @@
 #   A dry run exits 1 exactly when --apply would refuse (nested, newer, box-only files).
 #   skill-catalog is the one skill that is COMPOSED, not copied (harbor#1149): see COMPOSED below.
 #
-# WHY THIS EXISTS. Until now the documented mechanism was a hand-typed
-# `cp -R skills/<name>/. ~/.claude/skills/<name>/`, and skills/README.md records
-# the measured failure: omit the trailing `/.` and cp -R into an existing
-# destination silently produces ~/.claude/skills/<name>/<name>/ and leaves the
-# ORIGINAL files serving. Nothing errors. That trap sat in front of 25 pending
-# directory renames, which is why a verb had to exist before the surgery.
-#
-# THREE THINGS IT DOES THAT THE cp DOES NOT:
-#   1. Verifies byte-identity AFTER writing, with diff -r (generated caches
-#      excluded), and fails if not.
-#   2. Refuses to leave a nested <name>/<name>/ behind, and detects a pre-existing
-#      one from an earlier hand-typed install.
-#   3. Handles the rename case, which a copy cannot: installing kebab `red-team`
-#      while PascalCase `RedTeam` is still present leaves BOTH in the listing,
-#      and the model sees two skills where the repo has one.
-#
-# DRY RUN IS THE DEFAULT, deliberately. This writes into ~/.claude/skills, an
-# instruction surface the B8 pin watches; every write here makes the operator
-# re-pin. A verb that mutates that surface on a typo is worse than the cp it
-# replaces.
+# Why: the hand-typed `cp -R skills/<name>/. ~/.claude/skills/<name>/` silently nests <name>/<name>/ and leaves
+# the original files serving if the trailing `/.` is omitted. This verb verifies byte-identity after writing
+# (diff -r, caches excluded), refuses a nested dir, and handles a rename (kebab `red-team` beside PascalCase
+# `RedTeam` leaves two skills in the listing). Dry run is the default: this writes an instruction surface the B8 pin watches.
+# Removed notes: docs/explanation/code-cases/bin-skill-install.md
 set -eu
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 ROOT="$(CDPATH='' cd -- "$HERE/.." && pwd)"
@@ -37,13 +22,8 @@ ROOT="$(CDPATH='' cd -- "$HERE/.." && pwd)"
 . "$HERE/deploy-install-lib.sh"
 log_init skills-install
 
-# ── TWO PAYLOAD KINDS, ONE GATE (harbor#7) ──────────────────────────────────
-# Slash commands are flat .md FILES; skills are DIRECTORIES. The nesting refusal
-# and `--from-old` are directory-shaped and do not transfer — but the part that
-# actually protects the operator does: dry-run by default, verify after writing,
-# and refuse the live instruction surface without an explicit --live. That gate
-# is the reason this file exists, and a second installer would be a second copy
-# of it, drifting in the direction nobody notices until it matters.
+# Two payload kinds, one gate (harbor#7): commands are flat files, skills are directories. The nesting refusal and
+# `--from-old` are directory-shaped; the gate (dry run, verify after writing, no live surface without --live) is shared.
 KIND=skills; ALL=0; NAME=''; FROM_OLD=''
 il_opt() {
   # shellcheck disable=SC2034 # IL_TAKE: read by deploy-install-lib.sh
@@ -73,12 +53,9 @@ src_for() {
   return 1
 }
 
-# THE SKILL BOOK IS COMPOSED, NOT COPIED (harbor#1149). The installed book lists every skill installed in the config dir and
-# the CLIs on the box, so it differs from the tracked copy by design. Copying the tracked one over it drops every row the repo
-# does not ship (the box's skills, the packs', the CLI table) until the next deploy, and a byte comparison calls the composed
-# one DRIFTED for ever. bin/skill-catalog.sh install is its one writer and its one judge (`install --check`), so this installer
-# asks it, and --all installs the book LAST because it lists what the run installed. Without the generator beside this script
-# (a copy of the tree that lacks it) the book is an ordinary payload.
+# The skill book is COMPOSED, not copied (harbor#1149): the installed book lists every installed skill and CLI, so
+# copying the tracked one drops rows and a byte check would call it DRIFTED for ever. bin/skill-catalog.sh install is
+# its one writer and judge, and --all installs it LAST. Without the generator beside this script it is an ordinary payload.
 COMPOSED=skill-catalog
 _composed() { [ "$KIND" = skills ] && [ "$1" = "$COMPOSED" ] && [ -f "$ROOT/bin/skill-catalog.sh" ]; }
 
@@ -87,17 +64,9 @@ _cmd_for() { # <name>
   printf 'sh %s --apply%s %s %s' "$IL_SELF" "$([ "$KIND" = commands ] && printf ' commands')" "$1" "$(il_spell)"
 }
 
-# ── THE EXEC BIT IS PART OF THE PAYLOAD, AND diff -r CANNOT SEE IT ──────────
-# Measured 2026-09-05 installing `measurement-audit`: the tracked
-# check-event-volumes.sh is 755, the live copy had been 644 since it was
-# hand-created, and `cp -R` into an EXISTING file keeps the DESTINATION's mode —
-# so the copy landed 644 while install_one printed "verified byte-identical" and
-# state_of went on reporting `current`. `./check-event-volumes.sh` then exits
-# 126. A checker that cannot be run, behind a green install and a green listing:
-# the same shape as every other defect this workstream is about, one layer down.
-#
-# Only the skills path needs this. Slash commands are flat .md files that nothing
-# executes, so the commands path below is deliberately left comparing bytes.
+# The exec bit is payload and diff -r cannot see it: `cp -R` over an existing file keeps the destination's mode, so
+# a 644 copy of a 755 checker passed the byte check and then exited 126. Only the skills path needs this; commands
+# are never executed.
 # Mode through fs-lib (harbor#618): octal digits, or '?' when unreadable. On GNU the old BSD-first
 # chain put filesystem text into 'chmod "$(_mode_of …)"', so no skill could install once a mode drifted.
 _mode_of() { _mo="$(fs_mode "$1")"; printf '%s' "${_mo:-?}"; } # <file> -> numeric mode
@@ -110,8 +79,7 @@ _mode_mismatches() { # <src-dir> <dest-dir> -> prints one line per differing fil
   done
 }
 
-# Generated caches are not payload: a box-only __pycache__ made every re-install
-# of its skill fail the byte check below, after writing (found by the #702 deploy).
+# Generated caches are not payload: a box-only __pycache__ failed every re-install's byte check (#702).
 _diff_r() { diff -r -x __pycache__ -x '*.pyc' -x .DS_Store "$@"; }
 
 state_of() {
@@ -177,32 +145,16 @@ _loss() { # <name> <what installing would lose>
 }
 
 # ── RENAME (--from-old) ─────────────────────────────────────────────────────
-# A CASE-ONLY RENAME IS THE SAME DIRECTORY, and this box's volume is
-# case-INSENSITIVE (macOS default). `Telos` and `telos` are two strings and one
-# directory, so the string guard below passes, `install_one` writes into the
-# directory it is about to delete, and the skill is destroyed — after printing
-# that it installed successfully (harbor#239).
-#
-# The suite did not catch it because case 6 asserted only that the OLD name was
-# gone. On a case-insensitive volume that assertion is satisfied BY the
-# destruction: the test passed because the skill had been deleted. The missing
-# half — does the installed skill still exist — is now asserted too.
-#
-# Every rename this verb actually performs is PascalCase -> kebab-case, so the
-# untested shape was also the only shape that occurs in practice.
+# A case-only rename is the same directory on this case-insensitive volume: `Telos`/`telos` pass the string guard,
+# install_one writes into the directory about to be deleted, and the skill is destroyed after "installed" (harbor#239).
+# The test must assert the installed skill still exists, not only that the old name is gone.
 remove_old() {
   [ -n "$FROM_OLD" ] || return 0
   [ "$FROM_OLD" != "$1" ] || return 0
   [ -d "$DEST_ROOT/$FROM_OLD" ] || return 0
 
-  # A SYMLINK IS NOT THE SAME DIRECTORY WEARING ANOTHER NAME, even when it
-  # points at one. `[ -d ]` above follows it, and the probe below is visible
-  # through both paths, so the case-only branch would claim it — and then the
-  # two-step `mv` moves the LINK into the destination DIRECTORY, leaving
-  # `<name>.rename-tmp.<pid>` inside the installed skill while reporting
-  # success (PR #241 review, P2). There is no rename to perform: the link goes
-  # into the backup. Refusing to follow a link here also matches how the marker
-  # walk treats one — a link is writable from outside the thing being governed.
+  # A symlink is not the same directory under another name: the case-only branch would claim it and the two-step mv
+  # would move the link INTO the installed skill (PR #241). There is no rename to perform; the link goes to the backup.
   if [ -L "$DEST_ROOT/$FROM_OLD" ]; then
     _aside "$DEST_ROOT/$FROM_OLD" || return 1
     il_manifest_drop "$KIND/$FROM_OLD"
@@ -210,12 +162,8 @@ remove_old() {
     return 0
   fi
 
-  # ASK THE FILESYSTEM, do not compare strings — and not `pwd -P` either, which
-  # returns the spelling you typed rather than the one on disk, so both names
-  # still compare unequal (measured; the first cut of this fix did exactly that
-  # and changed nothing). Dropping a marker in one name and looking for it under
-  # the other is the only check that cannot be fooled, and it needs no `stat`
-  # flavour test — BSD and GNU disagree on the flags for inode/device.
+  # Ask the filesystem, not strings and not `pwd -P` (which returns the spelling typed): drop a marker under one name and
+  # look for it under the other. No `stat` flavour test needed (BSD and GNU differ).
   _same=0
   _probe=".harbor-same-dir-probe.$$"
   if : > "$DEST_ROOT/$FROM_OLD/$_probe" 2>/dev/null; then
@@ -224,10 +172,7 @@ remove_old() {
   fi
 
   if [ "$_same" -eq 1 ]; then
-    # Same directory: the content is already correct (install_one wrote it), so
-    # only the SPELLING is wrong. Two-step through a temporary name — a direct
-    # `mv Alpha alpha` is a no-op or an error on a case-insensitive volume
-    # depending on the filesystem, and neither is a rename.
+    # Same directory, wrong spelling: rename in two steps through a temp name, since a direct `mv Alpha alpha` is a no-op or an error here.
     _tmp="$DEST_ROOT/$1.rename-tmp.$$"
     if ! mv "$DEST_ROOT/$FROM_OLD" "$_tmp" 2>/dev/null; then
       log_fail "$1: could not stage the case-only rename of $DEST_ROOT/$FROM_OLD"
@@ -267,12 +212,8 @@ install_one() {
   fi
   if [ "$st" = current ]; then
     log_ok "$n: current"
-    # THE RENAME CLEANUP MUST NOT SIT BEHIND THIS EARLY RETURN. It did, and
-    # tests/skill/install/install.test.sh (then bin/) case 6 caught it on the suite's first run: when the
-    # new kebab name is ALREADY current, the function returned before removing the
-    # old PascalCase directory, so both stayed in the listing and the model saw two
-    # skills where the repo has one. That is precisely the failure --from-old
-    # exists to prevent, and it was silent — the run printed "already current".
+    # The rename cleanup must not sit behind this early return: when the kebab name was already current the old
+    # PascalCase dir stayed and the listing held two skills (install test case 6).
     # A current copy is recorded too, so the first deploy on the standard leaves a complete manifest.
     if [ "$IL_APPLY" -eq 1 ]; then il_manifest_drop "$KIND/$n"; il_manifest "$KIND/$n"; remove_old "$n"
     elif [ -n "$FROM_OLD" ] && [ -d "$DEST_ROOT/$FROM_OLD" ]; then
@@ -286,13 +227,8 @@ install_one() {
     return 1
   fi
 
-  # ── I3 · ASK BEFORE WRITING, NOT AFTER (harbor#117) ───────────────────────
-  # Everything below this line verifies the copy LANDED. Nothing above it asked
-  # whether the copy was SAFE — and the answer lives in the bytes the cp is about
-  # to destroy. skill-collision-verify.sh refuses only when a live file's bytes are in no
-  # commit and no install record (harbor#476, #641): work the repo has never seen.
-  # An ordinary update leaves the live copy an older commit, so this stays silent
-  # for it. The dry run asks too, so a refusal shows before anything is written.
+  # I3 · ask before writing (harbor#117): skill-collision-verify.sh refuses only when a live file's bytes are in no
+  # commit and no install record (harbor#476, #641), so an ordinary update stays silent. The dry run asks too.
   _refused=0; _replace=0; _collided=0
   if [ "$st" = DRIFTED ] && [ -x "$ROOT/bin/skill-collision-verify.sh" ] && [ "$KIND" = skills ]; then
     if ! _co="$(CLAUDE_CONFIG_DIR="$IL_TARGET" sh "$ROOT/bin/skill-collision-verify.sh" "$n" 2>&1)"; then
@@ -355,9 +291,7 @@ install_one() {
     return 1
   fi
 
-  # Carry the source's modes over — `cp -R` did not, for any file that already
-  # existed at the destination — and then CHECK, because a repair that is not
-  # verified is the same promise the byte check above refused to take on trust.
+  # Carry the source's modes over (`cp -R` did not for existing files), then CHECK that it took.
   ( cd "$src" && find . -type f -print ) | while IFS= read -r _im_rel; do
     [ -n "$_im_rel" ] || continue
     [ -f "$dest/$_im_rel" ] || continue
@@ -375,11 +309,8 @@ install_one() {
   remove_old "$n"
 }
 
-# The dest root may not exist at all — commands/ was absent on this box until this work created it,
-# which is the whole reason slash commands were unused here. Creating it is part of installing, not
-# a precondition, for skills/ too: a dry run must work when it is absent (the single most likely first
-# use), and a dry run exits 1 only for what --apply would refuse, which an absent dir is not.
-# The creation sits below il_target's live gate, so a refused run leaves no directory behind.
+# The dest root may be absent (commands/ was): creating it is part of installing, and a dry run must work without it
+# and exit 1 only for what --apply would refuse. The creation sits below il_target's live gate.
 if [ "$IL_APPLY" -eq 1 ]; then
   mkdir -p "$DEST_ROOT"
   log_head "apply to $DEST_ROOT"
@@ -422,9 +353,8 @@ elif [ "$ALL" -eq 1 ]; then
   done
   # The composed book goes last: it lists what the loop above installed.
   if _composed "$COMPOSED" && src_for "$COMPOSED" >/dev/null; then install_one "$COMPOSED" || BAD=1; fi
-  # A RETIRED skill's rows go too: tracked here no longer, and gone from disk. 472 rows of skills retired on 2026-10-26
-  # stayed, and reference-check printed "473 references do not resolve" at every session start. A skill still tracked
-  # but missing on disk keeps its rows (REF-5's real finding), and so does a retired dir still on disk (box-only).
+  # A RETIRED skill's rows go too (472 rows stayed and reference-check printed "473 references do not resolve" every
+  # session). A skill still tracked but missing on disk keeps its rows (REF-5's finding), as does a retired dir still on disk.
   if [ "$IL_APPLY" -eq 1 ] && [ -f "$IL_TARGET/.harbor-manifest" ]; then
     for _rn in $(awk -v k="$KIND/" '!/^#/ && NF >= 5 && $(NF-1) == "skills-install" {
         r = $0; sub(/^[^ ]+ [^ ]+ /, "", r); sub(/ [^ ]+ [^ ]+$/, "", r)

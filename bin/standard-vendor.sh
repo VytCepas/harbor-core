@@ -48,8 +48,13 @@ DEST="$REPO/vendor/naming"; MAN="$DEST/MANIFEST.tsv"
 
 if command -v shasum >/dev/null 2>&1; then sha() { shasum -a 256 "$1" | cut -c1-64; }; else sha() { sha256sum "$1" | cut -c1-64; }; fi
 
-# The package: <path under vendor/naming> TAB <source path under the harbor tree>, one per line.
+# The package: <path under vendor/naming> TAB <source path under the harbor tree>, one per line. The kit manifest
+# (standards/naming/kit.tsv, harbor#1436) names it: its vendored=yes tool and register rows, so "yard vendors it" is one list.
+# A tree without the manifest (an older harbor) is vendored the way it was: the fixed tools and every standards/naming/*.tsv.
 package() {
+  if [ -f "$HSRC/standards/naming/kit.tsv" ]; then
+    sh "$HSRC/bin/standard-kit.sh" --root "$HSRC" --registry "$HSRC/standards/naming" --package; return
+  fi
   printf 'lint-name.sh\tbin/lint-name.sh\nlint-renderer.sh\tbin/lint-renderer.sh\nlibrary-log.sh\tbin/library-log.sh\n'
   printf 'standard-vendor.sh\tbin/standard-vendor.sh\nstandard-register.sh\tbin/standard-register.sh\n'
   printf 'doc-shape.sh\tbin/doc-shape.sh\ndoc-fresh-verify.sh\tbin/doc-fresh-verify.sh\n'   # harbor#1434, #1435
@@ -58,7 +63,7 @@ package() {
     printf 'registry/%s\tstandards/naming/%s\n' "${_f##*/}" "${_f##*/}"
   done
 }
-[ "$OFFLINE" = 1 ] || for _need in bin/lint-name.sh bin/lint-renderer.sh bin/library-log.sh bin/standard-vendor.sh bin/standard-register.sh bin/doc-shape.sh bin/doc-fresh-verify.sh standards/naming/registers.tsv; do
+[ "$OFFLINE" = 1 ] || for _need in bin/lint-name.sh bin/lint-renderer.sh bin/library-log.sh bin/standard-vendor.sh bin/standard-register.sh bin/doc-shape.sh bin/doc-fresh-verify.sh bin/standard-kit.sh standards/naming/registers.tsv; do
   [ -f "$HSRC/$_need" ] || { log_fail "no $_need under $HSRC (unchecked)"; log_fix "sh $SRC/standard-vendor.sh --source <a harbor checkout> $REPO"; log_end || :; exit 3; }
 done
 SV="$(sed -n 's/^# standard_version: *//p' "$HSRC/standards/naming/registers.tsv" 2>/dev/null | head -n 1)" || SV=""
@@ -77,7 +82,7 @@ if [ "$MODE" = write ]; then
       printf '%s\t%s\t%s\n' "$_p" "$(sha "$DEST.new/$_p")" "$_s"
     done
   } > "$DEST.new/MANIFEST.tsv"
-  chmod +x "$DEST.new/lint-name.sh" "$DEST.new/lint-renderer.sh" "$DEST.new/standard-vendor.sh" "$DEST.new/standard-register.sh" 2>/dev/null || :
+  chmod +x "$DEST.new/lint-name.sh" "$DEST.new/lint-renderer.sh" "$DEST.new/standard-vendor.sh" "$DEST.new/standard-register.sh" "$DEST.new/standard-kit.sh" 2>/dev/null || :
   rm -rf "$DEST"; mkdir -p "$REPO/vendor"; mv "$DEST.new" "$DEST"
   _n="$(grep -vc '^#' "$MAN")"
   log_ok "vendored naming@$SV ($_n files) from harbor ${COMMIT%"${COMMIT#???????}"} into $DEST"
