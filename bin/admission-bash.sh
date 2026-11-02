@@ -3,7 +3,7 @@
 # B3 (harbor#3) — PreToolUse(Bash) shell-injection / local-exec guard.
 # Ports upstream DANGEROUS_PATTERNS @ a4e8e74 (safety-classifier.ts:44-76),
 # trimmed for POSIX+WSL (dropped the OpenRouter/email routing shapes → B4).
-# This covers the code-execution + destruction class that project-init's
+# This covers the code-execution + destruction class that yard's
 # prod_guard deliberately OMITS (prod_guard owns cloud/data-destruction; the
 # two corpora are complementary). Pure POSIX. FAIL-OPEN on parse error.
 # LINUX (harbor#618): osascript, plutil and ditto below are macOS tools named so they are REFUSED;
@@ -22,7 +22,7 @@
 #
 # B5 narrowing: CATASTROPHIC shapes fire everywhere. PROJECT-POLICY shapes
 # (protected-branch git) are deferred only where the governing repo WIRES
-# project-init's github_command_guard, which then adjudicates them — this prevents
+# yard's github_command_guard, which then adjudicates them — this prevents
 # the double-ask the B5 ticket forbids. A marker alone is not that guard (harbor#954).
 set -eu
 # harbor#810: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./library-admission.sh.
@@ -183,7 +183,7 @@ hit "(^|[^[:alnum:]_])(sed|perl|python[0-9.]*)[^;&|]*([[:space:]]-[a-z]*i|--in-p
 # EXECUTION AND INSTALLATION, NEVER A MENTION (harbor#549). The first cut refused
 # any unquoted mention, so `ls`, `rm`, `grep`, `cat`, `git add` and `shellcheck` of
 # the installer or the router's leftovers were denied: nine ordinary commands,
-# and project-init#1005 (the installer's own fix) could not be worked from a
+# and yard#1005 (the installer's own fix) could not be worked from a
 # session. A name is refused only at COMMAND POSITION, as the SCRIPT an
 # interpreter or `source` runs, or as the PACKAGE an install/exec verb takes.
 # Every wrapper, runtime and shell may carry a PATH (`/usr/bin/npm`, `/bin/bash`,
@@ -1457,7 +1457,7 @@ CFG_RE="(${CFG_ABS_RE}|${LIVE_RE}|~/\\.claude|${TILDE_CFG}|\\\$HOME/\\.claude|\\
 #
 # BLAST RADIUS IS THE CONFIG DIR ONLY. CFG_RE anchors on `$CFG_ABS`/`$HOME/.claude`,
 # never on a bare `.claude` component, so a project's own `<repo>/.claude/CLAUDE.md`
-# and everything project-init scaffolds stay writable. Verified by construction:
+# and everything yard scaffolds stay writable. Verified by construction:
 # `$HOME/oldproj/.claude/…` does not contain the literal `$HOME/.claude`.
 #
 # READS STAY OPEN. Every rule anchored on SURFACE is a WRITE shape — redirect,
@@ -3528,11 +3528,11 @@ fi
 
 # ── PROJECT-POLICY shapes — deferred only to a wired repo guard (B5, harbor#954) ─
 # Protected-branch force-push / hard reset. Where the governing repo wires
-# github_command_guard (a PreToolUse hook, or the project-init-lifecycle plugin
+# github_command_guard (a PreToolUse hook, or the scaffolder's lifecycle plugin
 # installed and enabled), that guard owns this and we must not double-ask.
 # Anywhere else — no repo, or a marked repo with no such guard — the floor is the
 # sole gate: handing the rule off on a marker alone left those repos unguarded.
-if ! floor_repo_wires github_command_guard project-init-lifecycle; then
+if ! floor_repo_wires github_command_guard "$FLOOR_SCAFFOLDER_LIFECYCLE_PLUGIN"; then
   hit '(^|[^[:alnum:]_])git([[:space:]]+-[CcP][[:space:]]*[^[:space:]]*)*[[:space:]]+push([^|]*)(--force|--force-with-lease|-f)([^|]*)[[:space:]:/](main|master|production|prod)([[:space:]]|$)' \
     && floor_block bash "git push --force to a protected branch (no wired repo guard — floor is sole gate)" force-push-protected.flat
   hit '(^|[^[:alnum:]_])git([[:space:]]+-[CcP][[:space:]]*[^[:space:]]*)*[[:space:]]+push([^|]*)(--force|-f)([[:space:]]|$)' \

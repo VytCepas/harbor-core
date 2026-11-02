@@ -33,6 +33,7 @@ kind	kinds.tsv	-	-	a kind of artifact
 register	registers.tsv	-	-	this file
 rename	renames.tsv	-	-	a path rename the standard orders, one row each: the codemod's only input (harbor#996)
 frozen	frozen.tsv	-	-	a name a stranger types or reads, frozen with the date it first appeared; written by bin/standard-frozen-generate.sh, never by hand (harbor#1276)
+repo	-	-	-	a registered repo or archive under PORT_ROOT: its row is the private layer's repos.tsv (contracts/private-layer.md), never a file in core, because it names the operator's repos (harbor#966)
 repo-kind	repo-kinds.tsv	-	-	the top-level entries each kind of repo carries (§8)
 dialect	dialects.tsv	-	-	a naming dialect a repo may register for objects the standard does not name (D-33, D-53)
 lint	controls.tsv	type=lint	lint-rules:bin/lint-conventions.sh	a static rule; bin/lint-conventions.sh's ids are the census, bin/lint-name.sh's are read from this registry

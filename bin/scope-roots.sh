@@ -12,6 +12,7 @@
 #   sh scope-roots.sh --remote <id>  one repo's clone URL from the registry's remote column; exit 1, empty, with no registry, no such row, or remote '-' (harbor#966)
 #   sh scope-roots.sh --get <VAR>    (above) follows repos.tsv for a REPOS row: the registry's path replaces the row's first segment; a role row finds its repo by kind (harbor#966)
 #   sh scope-roots.sh --registry-check   every repos.tsv row valid: id, path and symlinks inside PORT_ROOT, kind, topology and interaction known; an optional 7th column is a free note (`proposed`: a guessed value awaiting a yes)
+#   sh scope-roots.sh --rows         every validated row, all eleven columns (id path kind remote topology interaction note domain governed owner covers; '-' where a short row has none): what bin/scope-repos-generate.sh reads (harbor#966)
 #   sh scope-roots.sh --topology <id>    one repo's topology TAB interaction mode from the registry ('-' TAB '-' on a four-column row); exit 1, empty, with no registry or no such row (harbor#966)
 #   sh scope-roots.sh --platform-ids     the platform's own repos, one id per line: registry rows of a platform kind (control-plane, scaffolder,
 #                                    fleet-controller), else the roots table's HARBOR_SCOPE_REPO / _SCAFFOLDER / _FLEET_CONTROLLER rows (harbor#966)
@@ -207,9 +208,9 @@ clean_lines() { # <file>
     END { if (bom || cr) printf "roots: note: %s had %s%s%s; read as plain text\n", f, bom ? "a BOM" : "", (bom && cr) ? " and " : "", cr ? "CRLF line endings" : "" > "/dev/stderr" }' "$1"
 }
 
-# Rows validated and printed as id TAB path TAB kind TAB remote TAB topology TAB interaction (a four-field
-# row prints '-' for the last two, harbor#966). A row that would resolve outside
-# PORT_ROOT, repeat an id or a path (case-insensitively) or has other than four, six or seven fields refuses the
+# Rows validated and printed as id TAB path TAB kind TAB remote TAB topology TAB interaction TAB note TAB domain TAB governed
+# TAB owner TAB covers (a shorter row prints '-' for what it lacks, harbor#966). A row that would resolve outside
+# PORT_ROOT, repeat an id or a path (case-insensitively) or has other than four, six, seven or eleven fields refuses the
 # whole read (exit 2): a lookup that skips a bad row answers "unknown" for a repo that is only
 # mistyped. One trailing / on a path is dropped. This pass is lexical; confine() follows symlinks.
 # Kinds, topologies and interaction modes are judged only when a kinds file is given (--registry-check), so a
@@ -217,11 +218,13 @@ clean_lines() { # <file>
 registry_rows() { # <repos.tsv, or /dev/stdin> [<repo-kinds.tsv>] — the file name in messages is $RF
   RF="${RF:-$1}" KF="${2:-}" awk -F'\t' '
     function bad(m) { printf "roots: %s:%d: %s\n", ENVIRON["RF"], NR, m > "/dev/stderr"; err = 1 }
-    BEGIN { kf = ENVIRON["KF"]
-            if (kf != "") while ((getline l < kf) > 0) { if (l ~ /^#/ || l ~ /^id\t/) continue; split(l, f, "\t"); if (f[1] != "") kind[f[1]] = 1 } }
+    BEGIN { kf = ENVIRON["KF"]; tf = ENVIRON["TF"]
+            if (kf != "") while ((getline l < kf) > 0) { if (l ~ /^#/ || l ~ /^id\t/) continue; split(l, f, "\t"); if (f[1] != "") kind[f[1]] = 1 }
+            if (tf != "") while ((getline l < tf) > 0) { if (l ~ /^#/) continue; split(l, f, "\t"); if (f[2] ~ /(^|,)domain(,|$)/) dom[f[1]] = 1 } }
     /^[ \t]*#/ || /^[ \t]*$/ || $1 == "id" { next }
-    { if (NF != 4 && NF != 6 && NF != 7) { bad("expected id, path, kind, remote[, topology, interaction[, note]] (tab-separated), got " NF " field(s)"); next }
+    { if (NF != 4 && NF != 6 && NF != 7 && NF != 11) { bad("expected id, path, kind, remote[, topology, interaction[, note[, domain, governed, owner, covers]]] (tab-separated), got " NF " field(s)"); next }
       tp = (NF >= 6) ? $5 : "-"; im = (NF >= 6) ? $6 : "-"
+      nt = (NF >= 7) ? $7 : "-"; dm = (NF == 11) ? $8 : "-"; gv = (NF == 11) ? $9 : "-"; ow = (NF == 11) ? $10 : "-"; cv = (NF == 11) ? $11 : "-"
       if ($1 !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/) { bad("id \"" $1 "\" is not a repo name"); next }
       if ($1 in seen) { bad("duplicate id \"" $1 "\""); next }
       p = $2; sub(/\/$/, "", p)
@@ -234,8 +237,16 @@ registry_rows() { # <repos.tsv, or /dev/stdin> [<repo-kinds.tsv>] — the file n
       if (kf != "" && !($3 in kind)) { bad("kind \"" $3 "\" is not in " kf); next }
       if (kf != "" && tp !~ /^(platform|stream-aligned|enabling|complicated-subsystem|-)$/) { bad("topology \"" tp "\" is not platform, stream-aligned, enabling, complicated-subsystem or -"); next }
       if (kf != "" && im !~ /^(x-as-a-service|collaboration|facilitating|-)$/) { bad("interaction \"" im "\" is not x-as-a-service, collaboration, facilitating or -"); next }
+      if (NF == 11) {
+        if (dm == "" || gv == "" || ow == "" || cv == "") { bad("domain, governed, owner and covers are never empty; write - for none"); next }
+        if (dm != "-" && dm !~ /^[a-z][a-z0-9-]*$/) { bad("domain \"" dm "\" is not a lowercase word or -"); next }
+        if (tf != "" && dm != "-" && !(dm in dom)) { bad("domain \"" dm "\" is not a domain term in " tf); next }
+        if (gv !~ /^(yes|no|-)$/) { bad("governed \"" gv "\" is not yes, no or -"); next }
+        if (ow != "-" && ow !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/) { bad("owner \"" ow "\" is not a name or -"); next }
+        if (length(cv) > 300) { bad("covers is " length(cv) " characters, over the 300 a one-line routing hint keeps"); next }
+      }
       seen[$1] = 1; pathseen[lp] = $1
-      printf "%s\t%s\t%s\t%s\t%s\t%s\n", $1, p, $3, $4, tp, im }
+      printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", $1, p, $3, $4, tp, im, nt, dm, gv, ow, cv }
     END { exit err ? 2 : 0 }' "$1"
 }
 
@@ -456,6 +467,11 @@ case "${1:-}" in
     case "$__hit" in ''|-) echo "roots: repo '$2' has no remote in the registry" >&2; exit 1 ;; esac
     printf '%s\n' "$__hit"
     ;;
+  --rows)
+    __rf="$(private_dir)/repos.tsv" || exit 2
+    [ -f "$__rf" ] || { echo "roots: no registry at $__rf, so there are no rows" >&2; exit 1; }
+    registry_load "$__rf" || exit 2
+    ;;
   --topology)
     [ -n "${2:-}" ] || { echo "roots: --topology needs a repo id" >&2; exit 2; }
     case "$2" in *[!A-Za-z0-9._-]*|.*) echo "roots: '$2' is not a repo name" >&2; exit 2 ;; esac
@@ -493,7 +509,9 @@ case "${1:-}" in
     __kinds="$ROOT/standards/naming/repo-kinds.tsv"
     [ -f "$__kinds" ] || __kinds="$SRC/repo-kinds.tsv"
     [ -f "$__kinds" ] || { echo "roots: no kinds register at $ROOT/standards/naming/repo-kinds.tsv or $SRC/repo-kinds.tsv: no kind can be judged (redeploy: deploy-runtime-install.sh ships it)" >&2; exit 2; }
-    __rows="$(printf '%s\n' "$__clean" | RF="$__reg" registry_rows /dev/stdin "$__kinds")" || exit 2
+    # A domain is judged against the terms register when this is a checkout; installed there is none, and the shape check stands.
+    __terms="$ROOT/standards/naming/terms.tsv"; [ -f "$__terms" ] || __terms=""
+    __rows="$(printf '%s\n' "$__clean" | RF="$__reg" TF="$__terms" registry_rows /dev/stdin "$__kinds")" || exit 2
     [ "$__reg" = /dev/stdin ] || confine "$(port_root)" "$__rows" || exit 2
     printf 'roots --registry-check: green - every row of %s is valid\n' "$__reg"
     ;;
