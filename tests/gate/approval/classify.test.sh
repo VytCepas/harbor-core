@@ -108,8 +108,9 @@ CO="$T_ROOT/bin/gate-codeowners.sh"
 t_exit "CODEOWNERS is current" 0 sh "$CO" --check
 t_has "...the register's rows are owned" "$(cat "$T_ROOT/.github/CODEOWNERS")" "/bin/guard-* @"
 t_has "...and CODEOWNERS owns itself" "$(cat "$T_ROOT/.github/CODEOWNERS")" "/.github/ @"
-mkdir -p "$T_TMP/co/bin" "$T_TMP/co/.agents" "$T_TMP/co/.github"
-cp "$CO" "$T_ROOT/bin/library-log.sh" "$T_TMP/co/bin/"; cp "$T_ROOT/.agents/ship.conf" "$T_ROOT/.agents/protected-paths.tsv" "$T_TMP/co/.agents/"
+# gate-codeowners.sh reads the register by name, so the copy carries the reader and its schema (harbor#1424)
+mkdir -p "$T_TMP/co/bin" "$T_TMP/co/.agents" "$T_TMP/co/.github" "$T_TMP/co/standards/naming"
+cp "$CO" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/standard-register.sh" "$T_TMP/co/bin/"; cp "$T_ROOT/standards/naming/schemas.tsv" "$T_TMP/co/standards/naming/"; cp "$T_ROOT/.agents/ship.conf" "$T_ROOT/.agents/protected-paths.tsv" "$T_TMP/co/.agents/"
 cp "$T_ROOT/.github/CODEOWNERS" "$T_TMP/co/.github/"
 t_exit "a copy of the tree is current too" 0 sh "$T_TMP/co/bin/gate-codeowners.sh" --check
 printf 'newly/protected.sh\tfloor\ta row added to the register\n' >> "$T_TMP/co/.agents/protected-paths.tsv"

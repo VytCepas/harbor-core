@@ -1,3 +1,9 @@
+---
+kind: explanation
+owner: @VytCepas
+status: unreviewed
+---
+
 # Recommendation and critique — the reasoning
 
 `policy/constitution.md` carries the rule. This carries why each clause is shaped the

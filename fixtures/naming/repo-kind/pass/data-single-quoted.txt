@@ -4,7 +4,7 @@
 README.md
 AGENTS.md
 CLAUDE.md
-justfile
+justfile	setup:\nlint:\ntest:\nci:
 .agents/config.yaml	repo-kind: 'data'
 docs/
 models/

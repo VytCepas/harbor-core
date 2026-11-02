@@ -1,3 +1,9 @@
+---
+kind: reference
+owner: @VytCepas
+status: unreviewed
+---
+
 # docs/ — the architecture page
 
 `index.html` is **built on demand and not committed** (gitignored, harbor#1197). A fresh clone has none.

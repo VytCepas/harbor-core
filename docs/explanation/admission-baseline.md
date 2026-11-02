@@ -1,3 +1,9 @@
+---
+kind: explanation
+owner: @VytCepas
+status: unreviewed
+---
+
 # FLOOR — workstream B's landing doc (kill-switch, sandbox, restore)
 
 The Pre-Phase-2 gate (harbor#33/#34) establishes three guarantees BEFORE any

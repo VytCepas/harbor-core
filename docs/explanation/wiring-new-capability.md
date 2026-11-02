@@ -1,3 +1,9 @@
+---
+kind: explanation
+owner: @VytCepas
+status: unreviewed
+---
+
 # Wiring — a capability that does not reach the moment of use is not built
 
 **On-demand.** The rules are in [policy/constitution.md](../../policy/constitution.md) § *Fix the

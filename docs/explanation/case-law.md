@@ -1,3 +1,9 @@
+---
+kind: explanation
+owner: @VytCepas
+status: unreviewed
+---
+
 # Case law — the dated cases behind the constitution's rules
 
 **On-demand.** [policy/constitution.md](../../policy/constitution.md) states each rule without a date,

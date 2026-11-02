@@ -1,3 +1,9 @@
+---
+kind: explanation
+owner: @VytCepas
+status: unreviewed
+---
+
 # Absent by decision — what policy/constitution.md deliberately does not claim
 
 **On-demand.** Moved out of the resident prompt on 2026-07-26 because it is read

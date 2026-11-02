@@ -1,3 +1,9 @@
+---
+kind: how-to
+owner: @VytCepas
+status: unreviewed
+---
+
 # SEC-0 — hand-harden the box (do first, platform-independent)
 
 The one step to run **before** any Harbor building, on whichever machine you build on. It makes your box safe regardless of the fork decision. Script: [`bin/deploy-harden.sh`](../../bin/deploy-harden.sh).

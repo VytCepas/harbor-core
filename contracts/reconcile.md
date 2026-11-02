@@ -49,7 +49,7 @@ Tab-separated, one record per line, in this order: the header, the drifted rows,
   A report whose `summary` says `0` examined says so; whether that is green or `unchecked` is the check's own
   plain-mode verdict, and `--status` keeps it.
 
-## Exit codes (D-29)
+## Exit codes (harbor/D-29)
 
 | Exit | Closing record | Meaning |
 |---|---|---|
@@ -59,7 +59,7 @@ Tab-separated, one record per line, in this order: the header, the drifted rows,
 | 3 | `unchecked` | It could not judge (no registry, no jq, a store it cannot read). **Never a green**, and the first-seen state is left alone |
 
 The exit code and the closing record must agree, and `<drifted>` must equal the rows printed: the contract
-test reads all three. Where a check's plain mode predates D-29 and exits something else for "could not
+test reads all three. Where a check's plain mode predates harbor/D-29 and exits something else for "could not
 judge" (`drift-reference-check.sh` exits 1 with no jq), `--status` exits 3.
 
 ## First-seen state

@@ -88,7 +88,7 @@ t_has "a harbor tree with bin/corpus-build.sh has its name.family finding" "$_h0
 cp "$R/naming-families.tsv" "$R/naming-words.tsv" "$M/"
 _h1="$(judge "$M" "$M/standards/naming")"
 t_has "an overlay planted at its root is name.overlay-shape" "$_h1" "name.overlay-shape${TAB}overlay:naming-families.tsv"
-t_eq "…and every other finding is the one it had without it" "$(plain "$_h0")" "$(plain "$(printf '%s\n' "$_h1" | awk -F'\t' '$2 != "name.overlay-shape"')")"
+t_eq "…and every other finding is the one it had without it (the planted .tsv files are also undeclared registers, harbor#1424)" "$(plain "$_h0")" "$(plain "$(printf '%s\n' "$_h1" | awk -F'\t' '$2 != "name.overlay-shape" && !($2 == "standard.register-declared" && $3 ~ /^register:naming-/)')")"
 t_exit "…and the run fails" 1 sh "$LN" --root "$M" --registry "$M/standards/naming"
 
 t_section "the vendored judge reads the overlay with no harbor checkout"
