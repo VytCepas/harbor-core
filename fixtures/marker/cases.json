@@ -421,9 +421,7 @@
       },
       "cwd": ".",
       "expect": "ambient",
-      "settled": true,
-      "roles": ["resolver"],
-      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos"
+      "settled": true
     },
     {
       "id": "M39-scope-project-is-governed",
@@ -433,9 +431,7 @@
       },
       "cwd": ".",
       "expect": "repo",
-      "settled": true,
-      "roles": ["resolver"],
-      "roles_why": "only the shell resolver reads `scope:` so far"
+      "settled": true
     },
     {
       "id": "M40-either-key-opts-out",
@@ -445,9 +441,7 @@
       },
       "cwd": ".",
       "expect": "ambient",
-      "settled": true,
-      "roles": ["resolver"],
-      "roles_why": "only the shell resolver reads `scope:` so far"
+      "settled": true
     },
     {
       "id": "M41-scope-user-spaced-colon",
@@ -455,9 +449,7 @@
       "files": {".agents/config.yaml": "scope : user\n"},
       "cwd": ".",
       "expect": "ambient",
-      "settled": true,
-      "roles": ["resolver"],
-      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+      "settled": true
     },
     {
       "id": "M42-scope-user-quoted-key",
@@ -465,9 +457,7 @@
       "files": {".agents/config.yaml": "\"scope\": user\n"},
       "cwd": ".",
       "expect": "ambient",
-      "settled": true,
-      "roles": ["resolver"],
-      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+      "settled": true
     },
     {
       "id": "M43-scope-user-commented-out",
@@ -475,9 +465,7 @@
       "files": {".agents/config.yaml": "# scope: user\nscope: project\n"},
       "cwd": ".",
       "expect": "repo",
-      "settled": true,
-      "roles": ["resolver"],
-      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+      "settled": true
     },
     {
       "id": "M44-nested-scope-key-is-not-the-marker",
@@ -485,9 +473,7 @@
       "files": {".agents/config.yaml": "scope: project\ntooling:\n  scope: user\n"},
       "cwd": ".",
       "expect": "repo",
-      "settled": true,
-      "roles": ["resolver"],
-      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+      "settled": true
     },
     {
       "id": "M45-scope-hash-without-whitespace-is-the-value",
@@ -495,9 +481,7 @@
       "files": {".agents/config.yaml": "scope: user#typo\n"},
       "cwd": ".",
       "expect": "repo",
-      "settled": true,
-      "roles": ["resolver"],
-      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+      "settled": true
     },
     {
       "id": "M46-scope-user-trailing-comment",
@@ -505,9 +489,7 @@
       "files": {".agents/config.yaml": "scope: user  # opted out deliberately\n"},
       "cwd": ".",
       "expect": "ambient",
-      "settled": true,
-      "roles": ["resolver"],
-      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+      "settled": true
     },
     {
       "id": "M47-legacy-file-beside-scope-user",
@@ -516,9 +498,7 @@
       "files": {".agents/config.yaml": "scope: user\n"},
       "cwd": ".",
       "expect": "ambient",
-      "settled": true,
-      "roles": ["resolver"],
-      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+      "settled": true
     },
     {
       "id": "M48-scope-user-inner-beats-legacy-outer",
@@ -527,9 +507,7 @@
       "files": {"sub/.agents/config.yaml": "scope: user\n"},
       "cwd": "sub",
       "expect": "ambient",
-      "settled": true,
-      "roles": ["resolver"],
-      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+      "settled": true
     },
     {
       "id": "M49-legacy-inner-beats-scope-user-outer",
@@ -540,7 +518,7 @@
       "expect": "repo",
       "settled": true,
       "roles": ["resolver"],
-      "roles_why": "only the shell resolver reads `scope:` so far; yard and fleet adopt it in their own repos (harbor#963)"
+      "roles_why": "the allowlist role needs `.agents/config.yaml` and the inner repo has only the legacy `project-init.md`, so it walks on to the outer opt-out; the descriptor role does not walk (harbor#963)"
     },
     {
       "id": "M33-marker-at-port-root",

@@ -42,6 +42,7 @@ tests/admission/baseline/b8.test.sh
 tests/admission/baseline/managed.test.sh
 tests/admission/baseline/confinement.test.sh
 tests/admission/baseline/ledger.test.sh
+tests/admission/baseline/ledger-class.test.sh
 tests/admission/baseline/session.test.sh
 tests/admission/baseline/status.test.sh
 tests/admission/baseline/shards.test.sh
@@ -429,6 +430,11 @@ tests/deploy/install/renamed.test.sh
 tests/deploy/install/renamed-wiring.test.sh
 tests/deploy/install/renamed-wiring-w7.test.sh
 tests/gate/push/push.test.sh
+tests/scope/generate/generate.test.sh
+tests/scope/siblings/siblings.test.sh
+tests/admission/destroy/latency.test.sh
+tests/admission/git/probe.test.sh
+tests/access/browser-flow/browser-flow.test.sh
 tests/standard/register/reader.test.sh
 tests/standard/register/index.test.sh
 tests/standard/register/vendored.test.sh

@@ -211,4 +211,48 @@ t_hasnt "and prints no rate" "$(CLAUDE_CONFIG_DIR="$FC3" sh "$OR" --confinement 
 OUTC0="$(CLAUDE_CONFIG_DIR="$FR0" sh "$OR" --confinement 2>&1)"
 t_has "a ledger from before the field reads as no data, never as 0%" "$OUTC0" "(no Bash record carries the confinement field yet"
 
+t_section "--confinement: escapes by class, each class with a treatment (harbor#1441)"
+# xrec: the bash guard's record of an unconfined call, carrying the closed-enum class `x`. No command text exists to print.
+xrec() { # <dir> <n> <class>
+  _i=0; while [ "$_i" -lt "$2" ]; do
+    printf '{"v":1,"ts":"2026-10-22T09:00:00Z","g":"bash","d":"allow","r":"bash-clean","s":"meta","t":"Bash","h":"-","sk":"-","c":"unconfined","x":"%s"}\n' "$3" >> "$(SINK_OF "$1")"; _i=$((_i+1)); done
+}
+FX="$(mkfixture cls)"; unseal "$FX"; census "$FX" 2
+crec "$FX" 40 "2026-10-22T08:00:00Z" confined
+CLASSES="$(sed -n "s/^HARBOR_ADMISSION_CLASSES='\(.*\)'.*/\1/p" "$SRC/library-admission.sh")"
+t_eq "CONTROL: the writer declares the class enum" yes "$([ -n "$CLASSES" ] && echo yes || echo no)"
+for _c in $CLASSES; do xrec "$FX" 2 "$_c"; done
+crec "$FX" 3 "2026-10-18T09:00:00Z" unconfined   # written before the class field
+seal "$FX"
+OUTX="$(CLAUDE_CONFIG_DIR="$FX" sh "$OR" --confinement 2>&1)"
+for _c in $CLASSES; do
+  t_has "class $_c: counted, with its treatment kind" "$OUTX" "$(printf '    %-14s %5d' "$_c" 2)"
+done
+t_has "records from before the field are one counted class, never spread over the others" "$OUTX" "$(printf '    %-14s %5d' unclassified 3)"
+t_has "every class has a treatment row" "$OUTX" "untreated: 0"
+t_hasnt "and no class is named as missing one" "$OUTX" "no treatment row:"
+# a contract that lacks a row: the report names it and counts it
+NOROW="$T_TMP/classes-norow.tsv"; grep -v '^vcs	' "$T_ROOT/contracts/confinement-classes.tsv" > "$NOROW"
+OUTN="$(HARBOR_ADMISSION_CLASSES_FILE="$NOROW" CLAUDE_CONFIG_DIR="$FX" sh "$OR" --confinement 2>&1)"
+t_has "a class with no row is untreated" "$OUTN" "untreated: 1"
+t_has "...and named" "$OUTN" "no treatment row: vcs"
+BADKIND="$T_TMP/classes-badkind.tsv"; sed 's/^cloud	[a-z]*	/cloud	maybe	/' "$T_ROOT/contracts/confinement-classes.tsv" > "$BADKIND"
+t_has "a treatment kind outside the four is untreated" "$(HARBOR_ADMISSION_CLASSES_FILE="$BADKIND" CLAUDE_CONFIG_DIR="$FX" sh "$OR" --confinement 2>&1)" "no treatment row: cloud"
+# a class the ledger carries and the writer's enum does not know
+FY="$(mkfixture cls-alien)"; unseal "$FY"; census "$FY" 2
+crec "$FY" 10 "2026-10-22T08:00:00Z" confined; xrec "$FY" 1 forged; seal "$FY"
+t_has "a class outside the enum is untreated" "$(CLAUDE_CONFIG_DIR="$FY" sh "$OR" --confinement 2>&1)" "no treatment row: forged"
+# the rate section stays as it was, and the byte-free rule holds
+t_hasnt "the output carries no command text field" "$OUTX" "dangerouslyDisableSandbox"
+t_eq "the contract rows are exactly the writer's enum plus unclassified" "$(printf '%s unclassified\n' "$CLASSES" | tr ' ' '\n' | sort | tr '\n' ' ')" \
+  "$(grep -v '^#' "$T_ROOT/contracts/confinement-classes.tsv" | grep -v '^class	' | cut -f1 | sort | tr '\n' ' ')"
+
+t_section "--since reads a measured week on its own days (harbor#1441)"
+OUTS="$(CLAUDE_CONFIG_DIR="$FX" sh "$OR" --confinement --since 2026-10-20 2>&1)"
+t_hasnt "a record from before the day is out of every count" "$OUTS" "unclassified"
+t_hasnt "...and its day has no row" "$OUTS" "2026-10-18"
+t_has "the days from it on are kept" "$OUTS" "2026-10-22"
+t_exit "a date that is not YYYY-MM-DD is refused" 1 sh -c "CLAUDE_CONFIG_DIR='$FX' sh '$OR' --confinement --since yesterday >/dev/null 2>&1"
+t_exit "--since with no date is refused" 1 sh -c "CLAUDE_CONFIG_DIR='$FX' sh '$OR' --confinement --since >/dev/null 2>&1"
+
 t_done
