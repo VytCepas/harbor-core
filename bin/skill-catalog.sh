@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # skill-catalog.sh — generate the skill catalog, the index that makes invoked-only skills findable (harbor#155, harbor#1149, harbor#1010).
-#   Renamed from skill-book.sh (harbor#1010); the old name is retired.
+#   Renamed from skill-book.sh (harbor#1010): bin/skill-book.sh stays for one release as an alias that runs this file and says so on stderr.
 #   EVERY ROW CARRIES A TIER, derived from where the skill lives and never typed: core (skills/), vendored (vendor/skills/),
 #   pack (an installed pack's manifest in <config dir>/.harbor-packs lists it), box (installed, and nothing here tracks it); a
 #   tool in ~/.local/bin is tier cli. An executable that is no tool (contracts/catalog-non-tools.tsv) is not a row.
@@ -103,7 +103,7 @@ ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 . "$ROOT/bin/library-log.sh"; log_init skill-catalog
 . "$ROOT/bin/deploy-install-lib.sh"
 TAB='	'
-LOCAL_BIN="${HARBOR_SCOPE_LOCAL_BIN:-$HOME/.local/bin}"
+LOCAL_BIN="${HARBOR_SCOPE_LOCAL_BIN:-${HARBOR_LOCAL_BIN:-$HOME/.local/bin}}"
 OUT="$ROOT/skills/skill-catalog/SKILL.md"
 ROUTER="$ROOT/contracts/skill-book-router.tsv"
 NONTOOLS="$ROOT/contracts/catalog-non-tools.tsv"

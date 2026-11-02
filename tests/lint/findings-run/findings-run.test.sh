@@ -14,7 +14,7 @@ git init -q --bare "$G"; git -C "$G" symbolic-ref HEAD refs/heads/main   # whate
 mkdir -p "$S/bin"
 cat > "$S/bin/lint-findings.sh" <<'FAKE'
 #!/bin/sh
-printf '%s %s %s\n' "$1" "${HARBOR_SCOPE_ROOT:-}" "${HARBOR_LINT_FINDINGS_REPO:-}" >> "$CALLS"
+printf '%s %s %s\n' "$1" "${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-}}" "${HARBOR_LINT_FINDINGS_REPO:-${HARBOR_FINDINGS_REPO:-}}" >> "$CALLS"
 env | grep -E '^(HARBOR_TEST_PLANTED|GIT_TRACE|https_proxy)=' >> "$CALLS.env" || :
 case "$1" in
   reconcile) printf 'findings: reconciled — examined 1 rules\n'; [ -z "${FAKE_NEW:-}" ] || printf '  new (first reconcile):      lint/X1\n'; exit "${FAKE_RC_RECONCILE:-0}" ;;

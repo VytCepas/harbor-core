@@ -263,12 +263,12 @@ t_eq "an unwritable mount and no notifyutil still exit 0: the job is never faile
 # Every call here aims the clear at a fixture: in harbor's own CI container an unaimed one emptied the pool's /tmp.
 : > "$FX/dockerenv"
 tmpfix() { rm -rf "$TR"; TR="$FX/tmproot"; mkdir -p "$TR/smoke-venv/bin"; : > "$TR/gitleaks.tmp"; ln -s /nonexistent "$TR/link"; mkfifo "$TR/clr-debug-pipe"; }
-tmpfix; env -u HARBOR_CI_GOVERNOR_EVENTS HARBOR_CI_GOVERNOR_DOCKERENV="$FX/dockerenv" HARBOR_CI_GOVERNOR_TEMPORARY_ROOT="$TR" sh "$T_ROOT/bin/ci-governor-hook.sh"; RC=$?
+tmpfix; env -u HARBOR_CI_GOVERNOR_EVENTS -u HARBOR_GOV_EVENTS HARBOR_CI_GOVERNOR_DOCKERENV="$FX/dockerenv" HARBOR_CI_GOVERNOR_TEMPORARY_ROOT="$TR" sh "$T_ROOT/bin/ci-governor-hook.sh"; RC=$?
 t_eq "as the runner wires it in a container, it empties /tmp of the last job's files, dirs and links" "clr-debug-pipe" "$(ls "$TR")"
 t_eq "...keeps the runner's live pipe, and still exits 0" 0 "$RC"
 tmpfix; HARBOR_CI_GOVERNOR_EVENTS="$FX/events" HARBOR_CI_GOVERNOR_DOCKERENV="$FX/dockerenv" HARBOR_CI_GOVERNOR_TEMPORARY_ROOT="$TR" sh "$T_ROOT/bin/ci-governor-hook.sh"
 t_eq "a suite calling it in a container (HARBOR_CI_GOVERNOR_EVENTS set) clears nothing (harbor#1072)" 4 "$(ls "$TR" | wc -l | tr -d ' ')"
-tmpfix; env -u HARBOR_CI_GOVERNOR_EVENTS HARBOR_CI_GOVERNOR_DOCKERENV="$FX/no-dockerenv" HARBOR_CI_GOVERNOR_TEMPORARY_ROOT="$TR" sh "$T_ROOT/bin/ci-governor-hook.sh"
+tmpfix; env -u HARBOR_CI_GOVERNOR_EVENTS -u HARBOR_GOV_EVENTS HARBOR_CI_GOVERNOR_DOCKERENV="$FX/no-dockerenv" HARBOR_CI_GOVERNOR_TEMPORARY_ROOT="$TR" sh "$T_ROOT/bin/ci-governor-hook.sh"
 t_eq "on the host (no /.dockerenv) it clears nothing" 4 "$(ls "$TR" | wc -l | tr -d ' ')"
 
 # ── wiring: the two local suite entries wait for a slot, visibly ────────────────────────────────

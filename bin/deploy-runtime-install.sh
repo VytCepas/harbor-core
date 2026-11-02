@@ -41,7 +41,7 @@ il_target
 DIR="$IL_TARGET"
 # The commit column of this run's .harbor-manifest rows (install standard §3): the checkout it runs from.
 il_source "$SRC/.."
-REFRESH="${HARBOR_STATUS_LINE_REFRESH:-10}"
+REFRESH="${HARBOR_STATUS_LINE_REFRESH:-${HARBOR_STATUSLINE_REFRESH:-10}}"
 if ! command -v jq >/dev/null 2>&1; then
   log_fail "jq is required, and is not on PATH"
   log_fix "$(pkg_hint jq)"
@@ -624,7 +624,7 @@ for f in $_pin_drift; do
   case "$_fi_pay" in *" $f "*) _pin_cov="${_pin_cov}${_pin_cov:+ }$f" ;; *) _pin_hard="${_pin_hard}${_pin_hard:+ }$f" ;; esac
 done
 if [ -n "$_pin_cov" ]; then
-  if [ "${HARBOR_DEPLOY_ACTIVE:-0}" = 1 ]; then
+  if [ "${HARBOR_DEPLOY_ACTIVE:-${HARBOR_DEPLOY:-0}}" = 1 ]; then
     log_note "content pins behind for: $_pin_cov — floor-install re-pins them next in this deploy"
   else
     log_note "content pins behind for: $_pin_cov — floor-install re-pins them: sh $SRC/admission-install.sh $(il_spell) --apply, next in the documented order (B6 blocks a new session until it runs)"

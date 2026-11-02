@@ -38,11 +38,11 @@ HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 . "$HERE/library-log.sh"
 . "$HERE/deploy-install-lib.sh"
 log_init renew-check
-REPO="${HARBOR_SCOPE_REPO:-${PORT_ROOT:-$HOME/port}/harbor}"
+REPO="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}"
 AGENTS="$HOME/Library/LaunchAgents"
 # Where a schedule is built and installed: launchd on macOS, systemd user units elsewhere (harbor#618).
 case "$(uname -s 2>/dev/null)" in
-  Darwin) JOBSRC="$REPO/launchd"; JOBGLOB='*.plist'; JOBDEST="$AGENTS"; JOBSYS="${HARBOR_DRIFT_RENEW_DAEMONS:-/Library/LaunchDaemons}" ;;
+  Darwin) JOBSRC="$REPO/launchd"; JOBGLOB='*.plist'; JOBDEST="$AGENTS"; JOBSYS="${HARBOR_DRIFT_RENEW_DAEMONS:-${HARBOR_RENEW_DAEMONS:-/Library/LaunchDaemons}}" ;;
   *) JOBSRC="$REPO/systemd"; JOBGLOB='*.timer'; JOBDEST="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"; JOBSYS="" ;;
 esac
 # The target, --apply and --live are install-lib's (lint D7): physical paths, the live dir only by
@@ -209,7 +209,7 @@ CONST_LIVE="$TGT/CLAUDE.md"
 # two OPPOSITE remedies and the suite has to be able to reach the branch where it
 # binds; 60 against a path with 19 commits in its entire history (measured
 # 2026-09-20) is slack, not a limit anyone will meet.
-CONST_WALK_MAX="${HARBOR_DRIFT_CONSTITUTION_WALK_MAX:-60}"
+CONST_WALK_MAX="${HARBOR_DRIFT_CONSTITUTION_WALK_MAX:-${HARBOR_CONST_WALK_MAX:-60}}"
 if [ ! -f "$CONST_LIVE" ]; then
   note "const!" "no CLAUDE.md in ${TGT#"$HOME"/} — the constitution has never been deployed to this config dir" "$(_fix constitution constitution-install)"
 elif [ "$_repo_ok" = 1 ]; then

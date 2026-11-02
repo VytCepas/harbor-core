@@ -55,16 +55,6 @@
 # proved, and the codemod writes none. Past the date --apply collapses `${NEW:-${OLD:-d}}` to `${NEW:-d}` and renames the rest;
 # no remove_by is a plain rename. The old name's exemption row stays while the window is open.
 #
-# A CLOSED WINDOW LEAVES ONE READ (harbor#968). A site that already reads the new name beside the old one (`-u NEW -u OLD`, `*NEW*|*OLD*`,
-# `${NEW+x}${OLD+x}`, `NEW="$v" OLD="$v"`, `vars.NEW || vars.OLD`, a name list, "NEW, or OLD until D") drops the old read with the
-# connector that joined it. A line naming both names in no repeat shape is left as written and listed: never rewritten to "NEW ... NEW".
-# A table line that is exactly `<OLD><TAB><NEW>` (an alias table) is dropped whole, its quotes settled.
-# THREE THINGS THE CODEMOD NEVER WRITES. (1) A file that declares `rename-fixture: <why>` in its first 25 lines (whole file), or
-# `rename-fixture[NAME ...]: <why>` (only those old names or paths), keeps what it says on purpose: a suite that feeds an old name.
-# The report lists `fixture-kept`; it is no residual. (2) vendor/: a vendored copy is brought up to date by `sh bin/standard-vendor.sh .`
-# after the merge; the report lists `vendor` and warns. (3) .github/workflows/: an agent may not write one, so its edits are written to
-# <report dir>/rename-workflows.patch (`git apply` it) and the workflow stays residual until the operator does. --plan also writes
-# <report dir>/rename-plan.patch, every rewrite it predicts, to read or grep before --apply.
 # THE BOX IS A SECOND RUN, AFTER THE DEPLOY. Hook commands may name the new file only once it is
 # installed, or the fail-closed wrapper denies every call. So: --apply rewrites the repo; deploy the
 # renamed tree; then --apply with the target rewrites the hook commands, the memory notes and the
@@ -170,12 +160,6 @@ BOX_DIRS = ('bin', 'hooks', '.helm-pins', 'skills', 'commands', 'agents', 'conte
 REG = 'standards/naming/renames.tsv'
 EXEMPT = 'standards/naming/exemptions.tsv'
 RX_BLOCK = re.compile(rb'\b(BEGIN|END) (derived|generated)\b(?:[: ]+(?:by )?([A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+))?')
-
-# A FIXTURE IS DECLARED IN THE FILE (harbor#968): `rename-fixture: <why>` in its first 25 lines keeps the whole file as written, and
-# `rename-fixture[NAME ...]: <why>` keeps only those old names or tokens. The marker line is never rewritten or listed.
-FIXTURE_MARK = b'rename-fixture'
-RX_FIXTURE = re.compile(rb'rename-fixture(?:\[([^\]]*)\])?:')
-ALL = object()
 
 def enc(s): return s.encode('utf-8', 'surrogateescape')
 def dec(b): return b.decode('utf-8', 'surrogateescape')
@@ -420,7 +404,7 @@ def brace_end(s, i):
         i += 1
     return None
 
-def env_line(l, ER, erx, prose, cnt, skip=()):
+def env_line(l, ER, erx, prose, cnt):
     """One line through the env rows. ER: old name -> (new name, 'window' | 'plain'). cnt counts the changes per old name.
     A reader in a window becomes ${NEW:-<the reader>}: `$O` -> `${N:-$O}`, `${O}` -> `${N:-${O}}`, `${O:-d}` -> `${N:-${O:-d}}`.
     What CLEARS the name must clear both while readers still fall back to the old one: `unset O` -> `unset N O`, `O= cmd` -> `N= O= cmd`."""
@@ -430,8 +414,6 @@ def env_line(l, ER, erx, prose, cnt, skip=()):
         if s < pos:
             continue
         o = m.group(1); n, how = ER[o]; pre = l[:s]
-        if o in skip:
-            continue    # a dual read the line keeps (dual_elim), or a name a fixture keeps
         if how == 'plain' or prose:
             out += [l[pos:s], n]; pos = e; cnt[o] = cnt.get(o, 0) + 1
             continue
@@ -501,274 +483,29 @@ def collapse_line(l, CO, cnt):
             cnt[o] = cnt.get(o, 0) + c1 + c2
     return l
 
-# ── a hand-written dual read has the old name BESIDE the new one (harbor#968). Closing the window by renaming the old name to the
-# new one would write the new name twice: `env -u A -u A`, `A|A`, `${A+x}${A+x}`, `A="$x" A="$x"`, `vars.A || vars.A`, "A, or A until D".
-# So on a line that already carries the new name the old read is DROPPED, with the connector that joined it, and a line where it
-# cannot be dropped whole is left exactly as written (the old name stays, --residual lists it): never half a guess.
-CONN = (b'||', b'&&', b'|', b'/', b'or', b'and')
-RX_FLAG = re.compile(rb'^--?[A-Za-z][A-Za-z-]*$')
-RX_BARE = re.compile(rb'^[A-Z][A-Z0-9_]*$')
-RX_DATEW = re.compile(rb'^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
-RX_WSPLIT = re.compile(rb'''^([\'"(\[{/]*)(.*?)([\'")\]};,.:/\\]*)$''', re.S)
-RX_TOKS = re.compile(rb'(\s*)(\S+)')
-RX_ALT = re.compile(rb'[^\s|()]+(?:\|[^\s|()]+)+')
-SENT = b'\0ALIAS\0'    # a table line the collapse drops whole: `<old><TAB><new>` (resolve_alias settles the quotes around it)
-RX_ALIAS_PRE = re.compile(rb'''^(?:[A-Za-z_][A-Za-z0-9_]*=['"]?)?$''')
-
-def wsplit(w):
-    m = RX_WSPLIT.match(w)
-    return (m.group(1), m.group(2), m.group(3)) if m.group(2) else (b'', w, b'')    # `[`, `]`, `\\`: the word is all core
-
-def loose(w, part, closers):
-    """The characters of `part` (a word's lead or tail) that close or open something the word did not: a quote with an odd count,
-    a bracket without its mate, and any punctuation. They go to the neighbour that stays."""
-    budget = {}
-    for q in (b"'", b'"'):
-        budget[q] = w.count(q) % 2
-    for a, b in ((b'(', b')'), (b'[', b']'), (b'{', b'}')):
-        net = w.count(a) - w.count(b)
-        budget[a] = max(0, net) if not closers else 0
-        budget[b] = max(0, -net) if closers else 0
-    keep = []
-    for ch in part:
-        c = bytes([ch])
-        if c in budget:
-            if budget[c] > 0:
-                keep.append(c); budget[c] -= 1
-        else:
-            keep.append(c)
-    return b''.join(keep)
-
-def dual_elim(l, PL, rxo, rxn):
-    """PL: old -> new for names renamed plain. Returns (line, skip): `skip` is the old names to leave alone on this line."""
-    def olds(s): return {m.group(1) for m in rxo.finditer(s)}
-    def norm(s): return rxo.sub(lambda m: PL[m.group(1)], s)
-    news = {m.group(1) for m in rxn.finditer(l)}
-    live = {o for o in olds(l) if PL[o] in news}
-    if not live:
-        return l, set()
-    out = l
-    # 1. adjacent expansions: `${N+x}${O+x}`
-    rxe = re.compile(rb'\$\{([A-Za-z0-9_]+)((?:[-+:=?#%][^{}]*)?)\}')
-    while True:
-        ms = list(rxe.finditer(out)); hit = None
-        for a, b in zip(ms, ms[1:]):
-            if a.end() == b.start() and a.group(2) == b.group(2) and norm(a.group(1)) == norm(b.group(1)):
-                if a.group(1) in live: hit = a
-                elif b.group(1) in live: hit = b
-                if hit: break
-        if hit is None:
-            break
-        out = out[:hit.start()] + out[hit.end():]
-    # 2. an alternation: `*N*|*O*`, `(A|B|A_old|B_old)`
-    def alt(m):
-        items = m.group(0).split(b'|')
-        for idx in range(len(items) - 1, -1, -1):
-            if len(items) < 2 or not (olds(items[idx]) & live):
-                continue
-            cores = [wsplit(x)[1] for x in items]
-            nc = norm(cores[idx])
-            if not any(k != idx and cores[k] == nc for k in range(len(items))):
-                continue
-            lt, ll = loose(items[idx], wsplit(items[idx])[2], True), loose(items[idx], wsplit(items[idx])[0], False)
-            rest = items[:idx] + items[idx + 1:]
-            if lt:
-                if idx == 0:
-                    return m.group(0)
-                rest[idx - 1] += lt
-            if ll:
-                if idx >= len(rest):
-                    return m.group(0)
-                rest[idx] = ll + rest[idx]
-            items = rest
-        return b'|'.join(items)
-    out = RX_ALT.sub(alt, out)
-    # 3. words: a clause or a name that repeats one beside it
-    T = [[m.group(1), m.group(2)] for m in RX_TOKS.finditer(out)]
-    tws = out[sum(len(a) + len(b) for a, b in T):]
-    for _ in range(40):
-        for i in range(len(T)):
-            if olds(T[i][1]) & live:
-                res = word_drop(T, i, live, norm, olds)
-                if res is not None:
-                    T = res
-                    break
-        else:
-            break
-    out = b''.join(a + b for a, b in T) + tws
-    left = olds(out) & live
-    return (l, live) if left else (out, set())
-
-def same(a, b):
-    """Two words that spell the same clause part: equal, or one the other with a wrapper (`select(.key` and `.key`)."""
-    return a == b or (min(len(a), len(b)) >= 2 and (a.endswith(b) or b.endswith(a)))
-
-def word_drop(T, i, live, norm, olds):
-    """Drop the word i (an old read) with the words that are its clause, when the line already holds the same clause under the
-    new name. The new list, or None when no context here says it is a repeat."""
-    def core(k): return wsplit(T[k][1])[1]
-    lead, ci, tail = wsplit(T[i][1])
-    cands = olds(ci) & live
-    if len(cands) != 1:
-        return None
-    o = next(iter(cands)); nc = norm(ci)
-    for j in range(len(T)):
-        cj = core(j)
-        if j == i or olds(T[j][1]) or not (cj == nc or (cj.endswith(nc) and not re.match(rb'[' + WB + rb']', cj[-len(nc) - 1:-len(nc)]))):
-            continue
-        kmax = 0
-        while i - kmax - 1 >= 0 and j - kmax - 1 >= 0 and (j > i or i - kmax - 1 > j) and same(norm(core(i - kmax - 1)), norm(core(j - kmax - 1))):
-            kmax += 1
-        for k in range(kmax, -1, -1):
-            s, before, after = i - k, False, False
-            ends = i + 1 >= len(T) or core(i + 1) in CONN or core(i + 1) in (b'until', b'through') or bool(wsplit(T[i][1])[2])
-            if s >= 1 and core(s - 1) in CONN and ends:
-                before = True
-            elif i + 1 < len(T) and core(i + 1) in CONN and (s == 0 or core(s - 1) in CONN or T[s - 1][1].endswith(b'(')):
-                after = True
-            if k >= 1:
-                ok = all(RX_FLAG.match(core(x)) for x in range(s, i)) or before
-            else:
-                ok = (ci.startswith(o + b'=') or before or after
-                      or (ci == o and ((i >= 1 and RX_BARE.match(core(i - 1))) or (i + 1 < len(T) and RX_BARE.match(core(i + 1))))))
-            if not ok:
-                continue
-            e = i
-            opens = sum(core(x) in (b'[', b'[[') for x in range(s, i + 1)) - sum(core(x) in (b']', b']]') for x in range(s, i + 1))
-            while opens > 0 and e + 1 < len(T) and j + (e + 1 - i) < len(T) and core(e + 1) in (b']', b']]') and core(e + 1) == core(j + (e + 1 - i)):
-                e += 1; opens -= 1
-            lo, hi = (s - 1 if before else s), (e + 1 if after else e)
-            prev, nxt = lo - 1, hi + 1
-            lt, ll = loose(T[e][1], wsplit(T[e][1])[2], True), loose(T[s][1], wsplit(T[s][1])[0], False)
-            new = [list(x) for x in T]
-            if prev >= 0 and before and core(lo) in (b'or', b'and') and new[prev][1].endswith(b','):
-                new[prev][1] = new[prev][1][:-1]
-            prose = (before or after) and core(lo if before else hi) in (b'or', b'and')
-            dated = prose and nxt + 1 < len(T) and core(nxt) in (b'until', b'through') and RX_DATEW.match(core(nxt + 1))
-            if dated:
-                dl = loose(T[nxt + 1][1], wsplit(T[nxt + 1][1])[2], True)
-                lt, hi, nxt = lt + dl, hi + 2, nxt + 2
-            if lt:
-                if prev < 0:
-                    continue
-                new[prev][1] += lt
-            if ll:
-                if nxt >= len(new):
-                    continue
-                new[nxt][1] = ll + new[nxt][1]
-            if lo == 0 and nxt < len(new):
-                new[nxt][0] = new[0][0]
-            return new[:lo] + new[hi + 1:]
-    return None
-
-RX_WNOTE = re.compile(rb'the old name[^#]*until [0-9]{4}-[0-9]{2}-[0-9]{2}')    # the repo's own tag on a dual-read line
-RX_COMMENT = re.compile(rb'\s+(?://|#)\s.*$')
-DROPL = b'\0DROP\0'
-
-def adjacent_dups(was, PL, rxo, keep=()):
-    """The indexes of lines that read an old name on a line of their own, beside a line that reads the new one the same way:
-    `process.env.NEW,` then `process.env.OLD,   // the old name`, or `X = NEW` then `|| OLD`. Renaming the old would repeat the line."""
-    def norm(x): return rxo.sub(lambda m: PL[m.group(1)], x)
-    def code(x): return RX_COMMENT.sub(b'', x).strip()
-    drop = set()
-    for i, l in enumerate(was):
-        ms = {m.group(1) for m in rxo.finditer(l)} - set(keep)
-        if not ms:
-            continue
-        ci = norm(code(l))
-        ci0 = ci.lstrip(b'|& ') if ci[:2] in (b'||', b'&&') else ci
-        for k in (i - 1, i + 1):
-            if 0 <= k < len(was) and k not in drop and not rxo.search(was[k]):
-                ck = code(was[k])
-                if ci and (ci == ck or (ci0 != ci and ci0 and ck.endswith(ci0))):
-                    drop.add(i)
-                    break
-    return drop
-
-def alias_pair(l, PL, rxo):
-    """A line of an alias table that is exactly one retired pair, `<old><TAB><new>`, alone or as the first or last line of a quoted table."""
-    for o, n in PL.items():
-        m = re.search(rb'(?<![' + WB + rb'])' + re.escape(o) + rb'\t' + re.escape(n) + rb'(?![' + WB + rb'])', l)
-        if m and RX_ALIAS_PRE.match(l[:m.start()]) and l[m.end():] in (b'', b"'", b'"'):
-            return SENT + l[:m.start()] + b'\0' + l[m.end():]
-    return None
-
-def resolve_alias(raw):
-    """The lines of a file after tline, with every alias-pair line dropped and the quotes of a table settled."""
-    out, carry = [], b''
-    for l in raw:
-        if l == DROPL:
-            continue
-        if l.startswith(SENT):
-            pre, post = l[len(SENT):].split(b'\0', 1)
-            pre, carry = carry + pre, b''
-            if post == b'':
-                carry = pre
-            elif pre.strip() == b'':
-                if out: out[-1] += post
-                else: out.append(post)
-            else:
-                out.append(pre + post)
-        else:
-            out.append(carry + l); carry = b''
-    if carry:
-        out.append(carry)
-    return out
-
-def make_tline(rxw, repw, ER, erx, CO, claimed=None, marks=(), fixture=None):
+def make_tline(rxw, repw, ER, erx, CO, claimed=None, marks=()):
     """A line transform for the repo rewrite and the plan's prediction: file tokens plain, env names by their rules.
     Returns the new line; `cnt` collects the env changes per old name, `plain` the file-token substitutions.
-    `claimed(token, path, line)` leaves a mention that names another file; `marks` are the lines the codemod wrote itself.
-    `fixture(path)` is None, ALL (the file is left as written) or the set of old names the file keeps (harbor#968)."""
-    PL = {o: n for o, (n, how) in ER.items() if how == 'plain'}
-    rxo = bound([dec(o) for o in PL]) if PL else None
-    rxn = bound([dec(n) for n in PL.values()]) if PL else None
+    `claimed(token, path, line)` leaves a mention that names another file; `marks` are the lines the codemod wrote itself."""
     def tline(l, path, cnt, plain):
-        if (marks and any(mk in l for mk in marks)) or FIXTURE_MARK in l:
+        if marks and any(mk in l for mk in marks):
             return l
-        fx = fixture(path) if fixture else None
-        if fx is ALL:
-            return l
-        skip = set(fx or ())
         pr = path.lower().endswith(PROSE_EXT) or l.lstrip()[:1] == b'#' or l.lstrip()[:2] == b'//'
         if CO:
             l = collapse_line(l, CO, cnt)
-        if PL:
-            hit = alias_pair(l, PL, rxo)
-            if hit is not None:
-                return hit
-            l, drop = dual_elim(l, PL, rxo, rxn)
-            skip |= drop
-            if RX_WNOTE.search(l):    # tagged as the window's old read and no repeat shape took it out: a person decides
-                skip |= {m.group(1) for m in rxo.finditer(l)}
         if rxw is not None:
             cur = l
             def sub(m):
                 t = m.group(1)
-                if t in skip or (claimed is not None and claimed(t, path, cur)):
+                if claimed is not None and claimed(t, path, cur):
                     return t
                 plain[0] += 1
                 return repw[t]
             l = rxw.sub(sub, l)
         if erx is not None:
-            l = env_line(l, ER, erx, pr, cnt, skip)
+            l = env_line(l, ER, erx, pr, cnt)
         return l
-    tline.PL, tline.rxo = PL, rxo
     return tline
-
-def vend(p): return p.startswith('vendor/')    # a vendored copy: re-vendored by bin/standard-vendor.sh, never rewritten here
-def wflow(p): return p.startswith('.github/workflows/')    # an agent may not write a workflow: its edits become a patch
-
-def udiff(p, old, new):
-    """`git apply`-able diff of one file."""
-    import difflib
-    def keep(b):
-        parts = dec(b).split('\n')
-        return [x + '\n' for x in parts[:-1]] + ([parts[-1]] if parts[-1] else [])
-    out = ['diff --git a/%s b/%s\n' % (p, p)]
-    for x in difflib.unified_diff(keep(old), keep(new), 'a/' + p, 'b/' + p):
-        out.append(x if x.endswith('\n') else x + '\n\\ No newline at end of file\n')
-    return ''.join(out)
 
 MEMO = {}    # path -> bytes: the scans re-read every tracked file once per row; any write below forgets what it touched
 def readb(p):
@@ -1059,15 +796,9 @@ def scan(a, ctx):
     pend_ex, keep_ex, shims, tline = ctx['retire'], ctx['keep_ex'], ctx['shim_paths'], ctx['tline']
     line_hit, kept_line = ctx['line_hit'], ctx['kept_line']
     out, ctx['claimed_sites'], ctx['shared_plan'], ctx['kept'] = [], [], [], []
-    ctx['vendor'] = set()
     for p in sorted(files):
         mode = files[p]
         if p == REG or p in shims:
-            continue
-        if vend(p):    # a vendored copy is re-vendored (bin/standard-vendor.sh), never rewritten or judged here
-            vd = readb(os.path.join(root, p)) if mode not in ('120000', '160000') else None
-            if rx.search(enc(p)) or (vd is not None and not binary(vd) and rx.search(vd)):
-                ctx['vendor'].add(p)
             continue
         if p not in pend_old and rx.search(enc(p)):
             if kept_line(enc(p), p):
@@ -1111,10 +842,7 @@ def scan(a, ctx):
                 fix = not line_hit(after, p) or (after != l and kept_line(after, p))
                 if fix:
                     ctx['shared_plan'] += [(p, n, t, l) for t in ctx['shared_toks'](l, p)]
-                if wflow(p):    # the codemod writes none: the edit is in the workflow patch, the operator applies it
-                    out.append(('workflow', '%s:%d' % (p, n), ('in the workflow patch: ' if fix else 'no rewrite decides this form: ') + short(l), fix))
-                else:
-                    out.append(('repo', '%s:%d' % (p, n), short(l) if fix else 'no rewrite decides this form: ' + short(l), fix))
+                out.append(('repo', '%s:%d' % (p, n), short(l) if fix else 'no rewrite decides this form: ' + short(l), fix))
     for r in ctx['shim_rows']:
         for rel, why, fixable in lint_gaps(root, r):
             out.append(('repo', rel, why, fixable))
@@ -1244,18 +972,6 @@ def run(a):
             log('FAIL', '%s: a shim at %s would be the file %s itself on a case-insensitive disk' % (r['id'], r['old'], r['new']), 'drop remove_by: a case-only move leaves nothing to forward')
             return 1
     files = tracked(root)
-    fxmemo = {}
-    def fixture_of(p):
-        """None, ALL, or the set of old names the file declares it keeps (`rename-fixture` in its first 25 lines)."""
-        if p not in fxmemo:
-            data = readb(os.path.join(root, p)) if files.get(p) not in ('120000', '160000') else None
-            m = RX_FIXTURE.search(b'\n'.join(data.split(b'\n', 25)[:25])) if data and not binary(data) else None
-            fxmemo[p] = None if m is None else (set((m.group(1) or b'').split()) or ALL)
-        return fxmemo[p]
-    for r in sel:
-        for x in (r['old'], r['new']):
-            if wflow(x):
-                log('FAIL', '%s: %s is a workflow, which an agent may not write: the operator moves it' % (r['id'], x), 'git mv it by hand, then re-run'); return 1
     frows, erows = [r for r in sel if r['surface'] != 'env'], [r for r in sel if r['surface'] == 'env']
     pending, applied, expired, shimmed = [], [], [], []
     for r in frows:
@@ -1286,9 +1002,9 @@ def run(a):
     erx = bound([dec(o) for o in ER]) if ER else None
     envpend = []
     if erows:
-        tl0, cnt0 = make_tline(None, {}, ER, erx, CO, fixture=fixture_of), {}
+        tl0, cnt0 = make_tline(None, {}, ER, erx, CO), {}
         for p in sorted(files):
-            if p in (REG, EXEMPT) or files[p] in ('120000', '160000') or vend(p):
+            if p in (REG, EXEMPT) or files[p] in ('120000', '160000'):
                 continue
             data = readb(os.path.join(root, p))
             if data is None or binary(data) or not erx.search(data):
@@ -1303,7 +1019,7 @@ def run(a):
         newin = set()
         nrx = bound([r['rep'] for r in erows])
         for p in sorted(files):
-            if p in (REG, EXEMPT) or files[p] in ('120000', '160000') or p.lower().endswith(PROSE_EXT) or vend(p):
+            if p in (REG, EXEMPT) or files[p] in ('120000', '160000') or p.lower().endswith(PROSE_EXT):
                 continue
             data = readb(os.path.join(root, p))
             if data is not None and not binary(data):
@@ -1387,17 +1103,13 @@ def run(a):
         return tr is not None and tr.search(l) is not None
     shim_rows = shimmed + [r for r in pending if window(r)]
     marks = [enc(SHIM_MARK % r['id']) for r in shim_rows + expired]
-    fxkept = {}
     def line_hit(l, p, sites=None, n=0):
         """Does the line hold a reference nobody has claimed? The claimed ones go to `sites`."""
-        if not rx.search(l) or (marks and any(mk in l for mk in marks)) or FIXTURE_MARK in l:
+        if not rx.search(l) or (marks and any(mk in l for mk in marks)):
             return False
         real = False
-        fx = fixture_of(p)
         for m in rx.finditer(l):
-            if fx is ALL or (fx and m.group(1) in fx):
-                fxkept.setdefault(p, set()).add(l)    # a fixture keeps it on purpose: listed, no residual
-            elif claimed(m.group(1), p, l):
+            if claimed(m.group(1), p, l):
                 if sites is not None:
                     sites.append((p, n, m.group(1), l))
             else:
@@ -1406,7 +1118,7 @@ def run(a):
     def shared_toks(l, p):
         """The tokens on a line that the rewrite takes and another tracked file also ends with."""
         return [m.group(1) for m in rx.finditer(l) if m.group(1) in cdirs and not claimed(m.group(1), p, l)]
-    tline = make_tline(rxw, repw, ER_W, erx_w, CO_W, claimed, marks, fixture_of)
+    tline = make_tline(rxw, repw, ER_W, erx_w, CO_W, claimed, marks)
     def kept_line(l, p):
         """Does every unclaimed reference on the line belong to a row already applied? Then no run but --residual judges it."""
         if mode == 'residual':
@@ -1420,7 +1132,7 @@ def run(a):
               | {r['old'] for r in envpend if ER[enc(r['tok'])][1] != 'window'})
     edges, inputs = graph(a)
     ctx = dict(envmap={dec(o): dec(n) for o, (n, _h) in ER.items()}, rx=rx, rep=rep, files=files, pending=pending, siblings=[], records=None, retire=retire, keep_ex=keep_ex, shim_paths=set(shims_now), tline=tline,
-               line_hit=line_hit, kept_line=kept_line, vendor=set(), kept=[], shared_toks=shared_toks, shared_done=[], shim_rows=shim_rows, shim_new={r['old']: r['new'] for r in shim_rows}, shim_until={r['old']: r['remove_by'] for r in shim_rows})
+               line_hit=line_hit, kept_line=kept_line, kept=[], shared_toks=shared_toks, shared_done=[], shim_rows=shim_rows, shim_new={r['old']: r['new'] for r in shim_rows}, shim_until={r['old']: r['remove_by'] for r in shim_rows})
     for label in ('fleet', 'yard'):
         w, st = inputs.get(label, ('-', 'absent'))
         if st != 'absent':
@@ -1429,15 +1141,6 @@ def run(a):
     if st != 'absent':
         ctx['records'] = expand(w, a['home'])
     rpt = []
-    def xform(p, data):
-        """A file through tline: (lines before, lines after tline, the new bytes, file-token count, env counts)."""
-        plain, cnt = [0], {}
-        was = data.split(b'\n')
-        fx = fixture_of(p)
-        dr = adjacent_dups(was, tline.PL, tline.rxo, fx or ()) if tline.PL and fx is not ALL else ()
-        raw = [DROPL if i in dr else tline(l, p, cnt, plain) for i, l in enumerate(was)]
-        return was, raw, b'\n'.join(resolve_alias(raw)), plain, cnt
-    wfc, allc = [], []    # the diffs: every rewrite (--plan), and the workflow ones (plan and apply: the codemod writes none)
     for r in sel:
         state = 'pending' if r in pending or r in envpend else 'applied'
         rpt.append(('row', r['id'], r['old'], r['new'], r['surface'], r['wave'], r['tok'], r['rep'], state))
@@ -1475,18 +1178,6 @@ def run(a):
             log('ok', '%s: the graph lists %d site(s) of %s: %d reference(s), %d inside a longer name (left alone); %d more line(s) name it bare, which the graph does not index'
                 % (r['id'], len(sites), r['old'], nref, nsub, bare))
     before = scan(a, ctx)
-    if mode == 'plan':
-        for p in sorted(files):
-            if p in (REG, EXEMPT) or p in ctx['shim_paths'] or files[p] in ('120000', '160000') or vend(p):
-                continue
-            data = readb(os.path.join(root, p))
-            if data is None or binary(data) or not rx.search(data):
-                continue
-            new = xform(p, data)[2]
-            if new != data:
-                allc.append(udiff(p, data, new))
-                if wflow(p):
-                    wfc.append(allc[-1])
     late = [('repo', r['old'], 'the shim outlived its remove_by %s' % r['remove_by'], mode == 'plan') for r in expired if mode != 'apply']
     if mode == 'plan':
         before += late    # --apply removes it
@@ -1537,24 +1228,23 @@ def run(a):
             nrw = nfiles = 0
             envdone = {}
             for p in sorted(files):
-                if p in (REG, EXEMPT) or p in ctx['shim_paths'] or files[p] in ('120000', '160000') or vend(p):
+                if p in (REG, EXEMPT) or p in ctx['shim_paths'] or files[p] in ('120000', '160000'):
                     continue
                 full = os.path.join(root, p)
                 data = readb(full)
                 if data is None or binary(data) or not rx.search(data):
                     continue
-                was, now, new, plain, cnt = xform(p, data)
+                plain, cnt = [0], {}
+                was = data.split(b'\n')
+                now = [tline(l, p, cnt, plain) for l in was]
+                new = b'\n'.join(now)
                 if new != data:
                     ctx['shared_done'] += [(p, k, t, a_) for k, (a_, b_) in enumerate(zip(was, now), 1) if a_ != b_ for t in shared_toks(a_, p)]
                 ctx.setdefault('hit_lines', {})[p] = (data, {ln for ln, (a_, b_) in enumerate(zip(was, now), 1) if a_ != b_ or (line_hit(a_, p) and not kept_line(a_, p))})
                 if new == data:
                     continue
-                n = plain[0] + sum(cnt.values())
-                if wflow(p):
-                    wfc.append(udiff(p, data, new))
-                    rpt.append(('workflow-patch', p, str(n)))
-                    continue
                 write_keep_mode(full, new)
+                n = plain[0] + sum(cnt.values())
                 for o, c in cnt.items():
                     envdone[o] = envdone.get(o, 0) + c
                 rpt.append(('rewrite', 'repo', p, str(n)))
@@ -1659,7 +1349,7 @@ def run(a):
                          rb'|[(|]' + w + rb'(?:\||\)-)'
                          rb'|' + var + re.escape(enc(stem[len(word):] + dot + ext)) + rb'(?![' + WB + rb'])')
         for p in sorted(ctx['files']):
-            if p == REG or ctx['files'][p] in ('120000', '160000') or vend(p):
+            if p == REG or ctx['files'][p] in ('120000', '160000'):
                 continue
             data = readb(os.path.join(root, p))
             if data is None or binary(data):
@@ -1749,7 +1439,7 @@ def run(a):
             n = 0
             srx, trx = bound([stem]), bound([r['tok']])
             for p in ctx['files']:
-                if p == REG or ctx['files'][p] in ('120000', '160000') or vend(p):
+                if p == REG or ctx['files'][p] in ('120000', '160000'):
                     continue
                 data = readb(os.path.join(root, p))
                 if data is not None and not binary(data):
@@ -1759,31 +1449,6 @@ def run(a):
                 log('note', '%s: the stem `%s` still appears %d time(s) (a log or check id, or prose): another surface, not rewritten' % (r['id'], stem, n))
     if not a.get('box'):
         log('note', 'the box was not scanned: no --live or --dir, so hook commands, notes and deployed copies are unchecked')
-    if ctx['vendor']:
-        vs = sorted(ctx['vendor'])
-        for v in vs:
-            rpt.append(('vendor', v))
-        log('WARN', '%d vendored file(s) carry an old name (first %s): vendor/ is never rewritten here, so they are not residual' % (len(vs), vs[0]),
-            'after the merge: sh bin/standard-vendor.sh . (re-vendor), then commit vendor/')
-    if fxkept:
-        for fp in sorted(fxkept):
-            rpt.append(('fixture-kept', fp, str(len(fxkept[fp]))))
-        log('note', '%d line(s) in %d file(s) declare rename-fixture and keep an old name on purpose: left as written, no residual (first %s)'
-            % (sum(len(v) for v in fxkept.values()), len(fxkept), sorted(fxkept)[0]))
-    pdir = os.path.dirname(a['report'])
-    for name, chunks, what in (('rename-plan.patch', allc, 'every rewrite --plan predicts'), ('rename-workflows.patch', wfc, 'the workflow edits')):
-        pp = os.path.join(pdir, name)
-        if chunks:
-            with open(pp, 'w', encoding='utf-8', errors='surrogateescape') as f:
-                f.write(''.join(chunks))
-            rpt.append(('patch', name, str(len(chunks))))
-            if name == 'rename-workflows.patch':
-                log('WARN', '%d workflow file(s) carry an edit and were NOT written (an agent may not): the patch is %s' % (len(chunks), pp),
-                    'operator: git apply %s' % pp)
-            elif mode == 'plan':
-                log('note', '%s: %s, as a diff to grep (%d file(s))' % (pp, what, len(chunks)))
-        elif mode != 'residual' and os.path.lexists(pp):
-            os.remove(pp)    # a stale patch of an earlier run
     for h in res:
         rpt.append(('residual', h[0], h[1], h[2]))
     with open(a['report'], 'w', encoding='utf-8', errors='surrogateescape') as f:

@@ -5,5 +5,5 @@ N1	name.rule-id
 name	name.rule-id
 widget.case	name.rule-id
 name.Skill_Dir	name.rule-id
-admission.golden-first	name.alias
+admission.floor-first	name.alias
 check.cfg-age	name.abbreviation

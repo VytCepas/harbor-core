@@ -63,7 +63,7 @@ log_init lint-name
 
 usage() { awk 'NR < 2 { next } /^# DELIBERATELY/ || !/^#/ { exit } { sub(/^# ?/, ""); print }' "$SELF"; }
 
-ACTION=tree; FORMAT=""; ROOT=""; REG=""; BASE="${HARBOR_CI_BASE:-origin/main}"; TODAY=""; EXBASE=""
+ACTION=tree; FORMAT=""; ROOT=""; REG=""; BASE="${HARBOR_CI_BASE:-${HARBOR_BASE:-origin/main}}"; TODAY=""; EXBASE=""
 UNCHECKED=3   # D-49: pass 0, fail 1, usage 2, unchecked 3
 SURFACE=""; NAME=""; VIEW=""; SLOTS=""
 while [ $# -gt 0 ]; do

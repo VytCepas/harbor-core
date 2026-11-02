@@ -21,10 +21,10 @@ esac
 # says what failed and how to see why, on the stdout launchd keeps.
 . "$(dirname -- "$0")/library-log.sh"
 log_init fleet-snapshot-refresh
-CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-$HOME/.claude/cache}"
+CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
 CACHE="$CACHE_DIR/fleet-snapshot.json"
 # the fleet file through the registry-aware reader beside this script (harbor#966)
-FLEET="${HARBOR_SCOPE_FLEET_FILE:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_FLEET_FILE 2>/dev/null || :)}"
+FLEET="${HARBOR_SCOPE_FLEET_FILE:-${HARBOR_FLEET_FILE:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_FLEET_FILE 2>/dev/null || :)}}"
 # the fleet CLI, a roots.tsv row read through the same reader (harbor#966)
 ORCH="${HARBOR_SCOPE_FLEET_CONTROLLER_BIN:-${HARBOR_ORCH_BIN:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER_BIN 2>/dev/null || :)}}"
 

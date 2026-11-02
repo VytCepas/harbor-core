@@ -182,6 +182,7 @@ bin/event-hook.sh	installed	derived: shipped by admission-install.sh
 bin/gate-approve.sh	installed	derived: shipped by admission-install.sh
 bin/gate-classify.sh	installed	derived: shipped by admission-install.sh
 bin/gate-codeowners.sh	installed	derived: the approval gate
+bin/gate-lib.sh	installed	derived: the approval gate
 bin/gate-merge-check.sh	installed	derived: shipped by admission-install.sh
 bin/gate-merge-stack-resolve.py	installed	derived: shipped by admission-install.sh
 bin/gate-merge-stack.sh	installed	derived: shipped by admission-install.sh

@@ -135,4 +135,5 @@ of the store. `undeclared` is the first place to look.
 - **Locally:** `HARBOR_TEST_SUITE_CACHE=1 sh bin/test-suite-run.sh --select`.
 - **In CI:** the suite-shard job passes a repository variable through, never on a push (the script refuses
   main too; the workflow line is belt and braces). Then `gh variable set HARBOR_TEST_SUITE_CACHE --body 1`; to turn
-  it off, `gh variable delete HARBOR_TEST_SUITE_CACHE`. The old name `HARBOR_SUITE_CACHE` is retired (harbor#967).
+  it off, `gh variable delete HARBOR_TEST_SUITE_CACHE`. Until 2026-12-01 the old name `HARBOR_SUITE_CACHE` is read too, by
+  the runner and (once its W9 patch lands) by the workflow, so a repository variable under either name works (harbor#967).

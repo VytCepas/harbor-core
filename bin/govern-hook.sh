@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-case "${1:-}:${HARBOR_ADMISSION_DISABLE:-0}" in --box:1) exit 0 ;; esac
+case "${1:-}:${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" in --box:1) exit 0 ;; esac
 # govern-hook.sh (harbor#7) — just-in-time governance. Inject the rule at the
 # moment it applies, instead of paying for it in every session's prefix.
 #
@@ -299,7 +299,7 @@ if [ "$BOX" = 1 ]; then
 else
   [ -n "$REPO" ] || exit 0
 fi
-BASE="${HARBOR_CI_BASE_BRANCH:-main}"
+BASE="${HARBOR_CI_BASE_BRANCH:-${HARBOR_BASE_BRANCH:-main}}"
 
 emit() { # <event> <model-text> [user-line] — or nothing at all
   [ -n "$2" ] || return 0
@@ -374,8 +374,9 @@ _log() { # <deny|advise> <rule>
 # registry is the trust boundary, as for inject-hook's `scope: box`: a merge
 # naming a cloned third-party repo must not run that repo's script in a hook.
 _registered() {
-  # Beside the box tier (harbor#1010).
+  # Beside the box tier, which moved in harbor#1010; the old place is read while no new one is installed.
   _reg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/context-rules/user/projects.tsv"
+  [ -f "$_reg" ] || _reg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/inject.d/projects.tsv"
   [ -f "$_reg" ] || return 1
   _me="$(cd "$1" 2>/dev/null && pwd -P || true)"
   _own="$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
@@ -419,8 +420,8 @@ _box_target() {
   [ -n "$_bt" ] && [ -f "$_bt/bin/gate-merge-check.sh" ] || return 0
   _registered "$_bt" || return 0
   # Once: a session in that repo, or a worktree of it, with the merge pack is the pack's.
-  if [ -n "$PROJ" ] && [ "$(_owner "$PROJ")" = "$_bt" ]; then
-    for _mn in "$PROJ"/context-rules/*/merge-note.sh; do [ ! -f "$_mn" ] || return 0; done
+  if [ -n "$PROJ" ] && [ "$(_owner "$PROJ")" = "$_bt" ]; then  # either layout carries the pack (harbor#1010)
+    for _mn in "$PROJ"/context-rules/*/merge-note.sh "$PROJ/.claude/inject.d/merge-note.sh"; do [ ! -f "$_mn" ] || return 0; done
   fi
   printf '%s' "$_bt"
 }

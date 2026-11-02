@@ -3,7 +3,7 @@
 # checker can fail; --generated reads every page the repo can rebuild. Exit 3 is UNCHECKED (D-29) only
 # when its reason names a missing verifier (No.2.7); any other non-zero is a failure, and a bad argument
 # is 2 (D-49: before the migration both were 2).
-PROBES="${HARBOR_ACCESS_PROBE_DIR:-$HOME/.local/lib/browser-probes}"  # the Playwright install, found before t_init
+PROBES="${HARBOR_ACCESS_PROBE_DIR:-${HARBOR_PROBE_DIR:-$HOME/.local/lib/browser-probes}}"  # the Playwright install, found before t_init
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 HARBOR_ACCESS_PROBE_DIR="$PROBES"; export HARBOR_ACCESS_PROBE_DIR
 # Under a sandbox HOME, archify's Chrome hangs on the keychain fetching the page's https web font, so

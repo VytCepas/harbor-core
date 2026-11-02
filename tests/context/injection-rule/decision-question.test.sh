@@ -4,8 +4,8 @@
 # note, and the documents must name every label the script enforces.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 T="$T_TMP"; CFG="$T/cfg"; REPO="$T/repo"; U="$T_ROOT/context-rules/user"
-mkdir -p "$CFG/context-rules/user" "$CFG/bin" "$REPO"
-cp "$U/decision-question-shape.md" "$U/decision-question.sh" "$U/decision-answer-binds.md" "$CFG/context-rules/user/"
+mkdir -p "$CFG/inject.d" "$CFG/bin" "$REPO"
+cp "$U/decision-question-shape.md" "$U/decision-question.sh" "$U/decision-answer-binds.md" "$CFG/inject.d/"
 cp "$T_ROOT/hooks/injection-rule/injection-rule.sh" "$T_ROOT/bin/library-admission.sh" "$CFG/bin/"
 
 REC='Ship it now. Why: smallest change. Pros: one commit. Cons: no migration window. Consequence: reversible by revert; touches the CI owner. Flips if: CI is red on main.'

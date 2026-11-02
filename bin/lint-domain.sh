@@ -18,7 +18,7 @@
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
 TERMS="${DOMAIN_TERMS:-$ROOT/contracts/domain-terms.tsv}"
 ALLOW="${DOMAIN_ALLOW:-$ROOT/contracts/domain-allow.tsv}"
 BASE="${DOMAIN_BASELINE:-$ROOT/contracts/lint-domain-baseline.txt}"
@@ -33,12 +33,12 @@ GW=-w; REPOS=0; REG=''; WHAT="workload tool"
 if [ "${1:-}" = --repos ]; then
   REPOS=1; GW=''; WHAT="workload repo"; shift
   _pvl="${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}"
-  _pvr="$_pvl/context-rules/user/projects.tsv"
+  _pvr="$_pvl/context-rules/user/projects.tsv"; [ -f "$_pvr" ] || _pvr="$_pvl/inject.d/box/projects.tsv"  # harbor#1010
   REG="${DOMAIN_REPO_REGISTRY:-$_pvr}"
   BASE="${DOMAIN_REPOS_BASELINE:-$ROOT/contracts/lint-domain-repos-baseline.txt}"
   ALLOW="${DOMAIN_REPOS_ALLOW:-$ROOT/contracts/domain-repos-allow.tsv}"
   # The platform's own repos (control plane, yard, fleet) are not workloads: their ids come from the registry (harbor#966).
-  _pids="$(env -u HARBOR_SCOPE_ROOT sh "$SRC/scope-roots.sh" --platform-ids)" || { echo "lint-domain: scope-roots.sh --platform-ids failed" >&2; exit 2; }
+  _pids="$(env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$SRC/scope-roots.sh" --platform-ids)" || { echo "lint-domain: scope-roots.sh --platform-ids failed" >&2; exit 2; }
   OWN=" $(printf '%s' "$_pids" | tr '\n' ' ') "
   TERMS="$T/repo-terms.tsv"
   { printf 'id\tpattern\tnote\n'

@@ -3,4 +3,3 @@
 # Raise it deliberately by editing the row and saying why in the commit; lower it when --ratchet reports a saving.
 # Covers policy/constitution.md + tracked ambient skill descriptions only; not the memory index, plugins, commands or injection.
 18823	2026-11-01	lowered 12455 B from 31278: the constitution's rationale moved to docs/explanation/ in harbor#1392
-18826	2026-11-02	raised 3 B: the constitution names the renamed skill-catalog (was skill-book) in harbor#966

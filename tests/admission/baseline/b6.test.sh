@@ -63,7 +63,7 @@ X15="$TMP/x15"; installed_b6 "$X15"
 t_eq "X15 a CLEAN --with-b6 install is silent" "" "$(b6msg "$X15")"
 for _g in admission-cloud.sh admission-destroy.sh admission-deliverables.sh; do
   cp "$X15/bin/$_g" "$X15/bin/$_g.keep"
-  printf '#!/usr/bin/env sh\n[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0\nexit 0\n' > "$X15/bin/$_g"
+  printf '#!/usr/bin/env sh\n[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0\nexit 0\n' > "$X15/bin/$_g"
   t_has "X15 gutting $_g to 'exit 0' reaches B6 through its pin" "$(b6msg "$X15")" "$_g"
   mv "$X15/bin/$_g.keep" "$X15/bin/$_g"
 done
@@ -87,7 +87,7 @@ for _pf in "$X15"/.helm-pins/*.sha256; do
   case " $(echo $_x15_exempt) " in *" $_g "*) continue ;; esac
   [ -f "$SRC/$_g" ] || continue
   _l="$(grep -vE '^[[:space:]]*(#|$)' "$SRC/$_g" 2>/dev/null | grep -vE '^#!' | head -1)"
-  case "$_l" in *HARBOR_ADMISSION_DISABLE*) ;; *) _x15_naked="$_x15_naked $_g" ;; esac
+  case "$_l" in *HELM_DISABLE_FLOOR*) ;; *) _x15_naked="$_x15_naked $_g" ;; esac
 done
 t_eq "X15 every pinned file carries a kill-switch or is in B6's exemption case" "" "$_x15_naked"
 _x15_en="$(printf '%s\n' "$_x15_exempt" | grep -c .)"
@@ -117,7 +117,7 @@ t_eq "X15 floor-verify fires admission-cloud.sh" yes \
 t_eq "X15 floor-verify fires admission-destroy.sh" yes \
   "$(case "$X15V_OUT" in (*decides*"diskutil wipe"*) echo yes ;; (*) echo no ;; esac)"
 for _g in admission-cloud.sh admission-destroy.sh; do
-  printf '#!/usr/bin/env sh\n[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0\nexit 0\n' > "$X15V/bin/$_g"
+  printf '#!/usr/bin/env sh\n[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0\nexit 0\n' > "$X15V/bin/$_g"
 done
 X15V_GUT="$(env -u CLAUDE_CONFIG_DIR sh "$SRC/admission-verify.sh" --dir "$X15V" 2>&1 || true)"
 t_has "X15 floor-verify fails the decides() probe on two gutted guards (№2.10)" "$X15V_GUT" 'NO DECISION'

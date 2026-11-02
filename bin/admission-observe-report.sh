@@ -167,11 +167,11 @@ show_advise() {
 
 # EVERY ROW CARRIES ITS AGE (harbor#591): a gate firing since August and one that started today
 # rendered alike, so the block was a census. first/last are the ledger's own ts days (UTC); the age
-# is days since first, against HARBOR_TEST_NOW (epoch) or the clock. No dated ts: `?`.
+# is days since first, against HARBOR_TEST_NOW / HARBOR_NOW (epoch) or the clock. No dated ts: `?`.
 show_gdeny() {
   log_head "gates that fired (cloud / destroy)"
   if [ "$NGDENY" = 0 ] && [ "$NASK" = 0 ]; then echo "  (no gate decisions recorded)"; return; fi
-  _gnow="${HARBOR_TEST_NOW:-$(date +%s)}"
+  _gnow="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
   case "$_gnow" in ''|*[!0-9]*) _gnow="$(date +%s)" ;; esac
   printf '%s\n' "$REC" \
     | jq -r 'select((.d=="deny" and .g!="wrapper") or .d=="ask")|"\(.d)\t\(.g)\t\(.r)\t\(.ts|tostring|.[0:10])"' 2>/dev/null \

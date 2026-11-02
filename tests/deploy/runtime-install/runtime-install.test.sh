@@ -3,7 +3,7 @@
 # manifest reads tests/admission/baseline/, and — harbor#708 — the four one-word commands have exactly one owner,
 # contracts/shims.tsv through shim-install, so runtime-install writes nothing in ~/.local/bin.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY_ACTIVE  # a run inside a session or a deploy must not decide a case
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY  # a run inside a session or a deploy must not decide a case
 TOOL="$T_ROOT/bin/deploy-runtime-install.sh"; SRCB="$T_ROOT/bin"; T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"
 ri() { env -u CLAUDE_CONFIG_DIR sh "$TOOL" "$@"; }  # t_init's CLAUDE_CONFIG_DIR is not these targets
 
@@ -127,7 +127,7 @@ cp "$T_ROOT"/bin/*.sh "$T_ROOT"/bin/*.awk "$T_ROOT"/bin/*.py "$CB/bin/"
 cp "$T_ROOT/tests/deploy/restore/recover.test.sh" "$CB/tests/deploy/restore/"; cp "$T_ROOT/tests/lib/core.sh" "$CB/tests/lib/"
 copy_data "$CB"; copy_hooks "$CB"
 printf '#!/bin/sh\n[ "$1" = --check ] || exit 0\nprintf "  FAIL: %%s would remove 2 installed commit(s) from %%s\\n  fix: x\\n  note: abc1234 a commit only the box has\\n" "$3" "$2"\nexit 1\n' > "$CB/bin/deploy-install-stamp.sh"
-for tool in deploy-runtime-install admission-install; do
+for tool in runtime-install floor-install; do
   RD="$T/rg-$tool"; mkdir -p "$RD"; printf '{"permissions":{"deny":[]}}\n' > "$RD/settings.json"
   cp "$RD/settings.json" "$T/rg-$tool.before"
   _o="$(env -u CLAUDE_CONFIG_DIR sh "$CB/bin/$tool.sh" --dir "$RD" 2>&1)"; _c=$?

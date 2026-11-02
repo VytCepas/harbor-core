@@ -11,7 +11,7 @@
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
 . "$SRC/library-log.sh"
 log_init lint-pr
 T="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -rf "$T"' EXIT

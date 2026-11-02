@@ -14,7 +14,7 @@
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
 . "$SRC/library-log.sh"
 log_init deploy-push
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
@@ -234,7 +234,7 @@ else PASSS=1; PASSV="no bin/eval-pass-score.sh at HEAD"; fi
 RTS=0
 if [ "$CIBASE" = 1 ]; then RTV="not run: a CI comparison base, never a release"
 elif [ -f "$RAW/bin/eval-redteam-corpus.sh" ]; then
-  env -u HARBOR_EVAL_REDTEAM_BASELINE -u HARBOR_EVAL_REDTEAM_SOURCES -u HARBOR_SCOPE_CACHE_DIR sh "$RAW/bin/eval-redteam-corpus.sh" --print \
+  env -u HARBOR_EVAL_REDTEAM_BASELINE -u HARBOR_REDTEAM_BASELINE -u HARBOR_EVAL_REDTEAM_SOURCES -u HARBOR_REDTEAM_SOURCES -u HARBOR_SCOPE_CACHE_DIR -u HARBOR_CACHE_DIR sh "$RAW/bin/eval-redteam-corpus.sh" --print \
     > "$TMP/redteam.out" 2>&1 || RTS=1
   RTV="$(grep -cE '^  ok: ' "$TMP/redteam.out" | tr -d ' ') corpus line(s) ok, $(grep -cE '^  FAIL: ' "$TMP/redteam.out" | tr -d ' ') red"
 else RTS=1; RTV="no bin/eval-redteam-corpus.sh at HEAD"; fi

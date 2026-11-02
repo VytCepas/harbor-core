@@ -37,7 +37,7 @@ t_eq "RE-ENTRY-1 nested: status-gen runs no suite from inside one" 0 "$(_re_spaw
 t_has "RE-ENTRY-1 nested: the refusal says why" "$(cat "$RE/nested/err" 2>/dev/null)" 'harbor#288'
 # The negative control: marker cleared, same fixture, the stub MUST run, or the two above prove nothing.
 _re_fixture "$RE/toplevel"
-env -u HARBOR_TEST_IN_SUITE HARBOR_SCOPE_ROOT="$RE/toplevel" sh "$SRC/status-generate.sh" --json-fast \
+env -u HARBOR_TEST_IN_SUITE -u HARBOR_IN_SUITE HARBOR_SCOPE_ROOT="$RE/toplevel" sh "$SRC/status-generate.sh" --json-fast \
   >"$RE/toplevel/out" 2>/dev/null || true
 t_eq "RE-ENTRY-1 control: top level reaches the run branch" 1 "$(_re_spawns "$RE/toplevel")"
 t_eq "RE-ENTRY-1 control: the stub's count is read" 7 "$(jq -r '.assertions."floor-test"' "$RE/toplevel/out" 2>/dev/null)"

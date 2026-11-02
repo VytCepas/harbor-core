@@ -81,26 +81,26 @@ esac
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 [ $# -le 1 ] || { LOG_FD=2; log_fail "unexpected argument $2 after $1"; log_fix "sh $0 --help"; exit 2; }
 
-BRANCH="${HARBOR_CI_TIP_BRANCH:-main}"
+BRANCH="${HARBOR_CI_TIP_BRANCH:-${HARBOR_TIP_BRANCH:-main}}"
 SELF="$(repo_slug)"                          # harbor's own OWNER/NAME (harbor#1149); empty when nothing names it
-STRICT="${HARBOR_CI_TIP_STRICT:-$SELF}"         # repos whose every push runs CI: a commit with no run there IS red
-WINDOW="${HARBOR_CI_TIP_WINDOW:-30}"            # first-parent commits judged per run
-PEND_SEC="${HARBOR_CI_TIP_PENDING_SEC:-7200}"   # a run pending longer than this is stuck
+STRICT="${HARBOR_CI_TIP_STRICT:-${HARBOR_TIP_STRICT:-$SELF}}"         # repos whose every push runs CI: a commit with no run there IS red
+WINDOW="${HARBOR_CI_TIP_WINDOW:-${HARBOR_TIP_WINDOW:-30}}"            # first-parent commits judged per run
+PEND_SEC="${HARBOR_CI_TIP_PENDING_SEC:-${HARBOR_TIP_PENDING_SEC:-7200}}"   # a run pending longer than this is stuck
 GRACE_SEC=600                                # a fresh commit has no run for a moment
 RECHECK_SEC=3600                             # a final state is re-read this often (a nightly run can turn green red)
 FALLBACK_MAX=10                              # by-sha reads per repo per run, a rate-limit bound
-CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-$HOME/.claude/cache}"
+CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 OUT="$CACHE_DIR/main-tip-verdict.json"
 LOG="$CACHE_DIR/checks.log"
 # The check tier's receipt (harbor#896): red over the non-green commits' short shas, green when none,
 # stood-down when GitHub did not answer. --print writes nothing, so it leaves no receipt either.
 RECEIPTS="$(receipt_dir)"   # harbor#904: the dir the reconcile reads, not $CACHE_DIR/checks
-NOW="${HARBOR_TEST_NOW:-$(date +%s)}"
-GH="${HARBOR_TEST_GH:-gh}"
+NOW="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
+GH="${HARBOR_TEST_GH:-${HARBOR_GH:-gh}}"
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required, so nothing was judged"; log_fix "$(pkg_hint jq)"; exit 3; }
 # Harbor is in the fleet unless HARBOR_CI_TIP_REPO names the one repo judged: with no name for it the verdict would leave harbor's own main out.
-[ -n "$SELF" ] || [ -n "${HARBOR_CI_TIP_REPO:-}" ] || { log_fail "harbor's own repository is not derivable (no origin in this checkout, no repo-slug.txt beside this install), so nothing was judged"
+[ -n "$SELF" ] || [ -n "${HARBOR_CI_TIP_REPO:-${HARBOR_TIP_REPO:-}}" ] || { log_fail "harbor's own repository is not derivable (no origin in this checkout, no repo-slug.txt beside this install), so nothing was judged"
   log_fix "HARBOR_CI_TIP_REPO=<owner/name> sh $0, or deploy again: the install carries bin/repo-slug.txt"; exit 3; }
 case "$WINDOW" in ''|*[!0-9]*) WINDOW=30 ;; esac
 [ "$WINDOW" -ge 1 ] || WINDOW=30
@@ -111,8 +111,8 @@ api() { "$GH" api "$1" 2>/dev/null; }
 
 # The fleet, one OWNER/NAME a line: harbor, the snapshot's repos with workflows, the config's `repo` lines.
 fleet() {
-  if [ -n "${HARBOR_CI_TIP_REPO:-}" ]; then printf '%s\n' "${HARBOR_CI_TIP_REPO:-}"; return 0; fi
-  SNAP="${HARBOR_STATUS_FLEET_SNAPSHOT:-$CACHE_DIR/fleet-snapshot.json}"
+  if [ -n "${HARBOR_CI_TIP_REPO:-${HARBOR_TIP_REPO:-}}" ]; then printf '%s\n' "${HARBOR_CI_TIP_REPO:-${HARBOR_TIP_REPO:-}}"; return 0; fi
+  SNAP="${HARBOR_STATUS_FLEET_SNAPSHOT:-${HARBOR_FLEET_SNAPSHOT:-$CACHE_DIR/fleet-snapshot.json}}"
   {
     printf '%s\n' "$SELF"
     if [ -s "$SNAP" ]; then

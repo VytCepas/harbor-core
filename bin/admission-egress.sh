@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0
+[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
 # B4 (harbor#3) — PreToolUse(Bash|Write) secret-egress guard.
 # Ports upstream SECRET_VALUE_SHAPES @ a4e8e74 (egress-class-core.ts:27-38) +
 # the SECRET_ASSIGNMENT_SHAPE from Safety.hook.ts:186. Blocks when a

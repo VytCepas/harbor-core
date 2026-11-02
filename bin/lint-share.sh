@@ -14,7 +14,7 @@
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
 KINDS="${SHARE_KINDS:-$ROOT/standards/naming/kinds.tsv}"
 . "$SRC/library-log.sh"
 log_init lint-share

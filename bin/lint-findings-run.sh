@@ -43,7 +43,7 @@ log_init findings-run
 URL=""; STORE=""; _slug="$(repo_slug)"; [ -z "$_slug" ] || URL="https://github.com/$_slug.git"
 CFG_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)"
 if [ "$OVERRIDES" = 1 ]; then
-  URL="${HARBOR_LINT_FINDINGS_URL:-$URL}"; STORE="${HARBOR_LINT_FINDINGS_REPO:-}"
+  URL="${HARBOR_LINT_FINDINGS_URL:-${HARBOR_FINDINGS_URL:-$URL}}"; STORE="${HARBOR_LINT_FINDINGS_REPO:-${HARBOR_FINDINGS_REPO:-}}"
   CFG_DIR="${CLAUDE_CONFIG_DIR:?--overrides needs CLAUDE_CONFIG_DIR}"
 fi
 for _v in $(env | sed -n 's/^\(HARBOR_[A-Za-z0-9_]*\)=.*/\1/p'); do unset "$_v"; done

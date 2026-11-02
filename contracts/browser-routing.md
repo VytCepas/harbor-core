@@ -100,7 +100,7 @@ the instrument that sees them.
 > both. Never publish "the tag is absent" from a single run of either.
 
 **The fallback is enforced, not advised** (inject pack
-`65-browser-route-platform-chrome`): a Claude-in-Chrome navigation to any host in
+`65-browser-route-harbor-chrome`): a Claude-in-Chrome navigation to any host in
 `contracts/browser-agent-hosts.txt` is denied with the `harbor chrome goto` command
 to run instead, and the first Claude-in-Chrome call of a session carries the route
 (`66-browser-route-reminder`). A session called ads.reddit.com "blocked" twice on

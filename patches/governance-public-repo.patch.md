@@ -2,9 +2,9 @@
 
 **STATUS: APPLIED by the CI workflow bundle (chore/ci-workflow-bundle, 2026-10-14),
 before the visibility flip, which is the order it needs: a public repo with the old
-selector still sends a fork PR to whatever `HARBOR_CI_RUNNER` says. Edits 1 to 5 are in,
+selector still sends a fork PR to whatever `HARBOR_RUNNER` says. Edits 1 to 5 are in,
 except that Edit 1's selector does NOT carry `|| 'github-hosted'`: unset
-`HARBOR_CI_RUNNER` on a PRIVATE repo still means `self-hosted`, as the file's header and
+`HARBOR_RUNNER` on a PRIVATE repo still means `self-hosted`, as the file's header and
 `bin/ci-runner-switch.sh` read it, so this repo's runner does not move to billed minutes
 the day it lands. A public repo is hosted through `!github.event.repository.private`
 alone, unset variable or not. The operator's controls below are settings pages, not
@@ -50,7 +50,7 @@ settings page the operator opens.
    *Fork pull request workflows from outside collaborators* → **Require approval
    for all outside collaborators**. First-time contributors are not enough: a
    returning contributor's second PR would run unapproved.
-3. **Check `bin/ci-runner-switch.sh` does not reset `HARBOR_CI_RUNNER`.** It runs every
+3. **Check `bin/ci-runner-switch.sh` does not reset `HARBOR_RUNNER`.** It runs every
    300 s from `status-fleet-snapshot-refresh.sh` on the box and writes `self-hosted` into
    the repo variable when the account's *private-repo* Actions minutes pass 90 %
    of the allowance. After the flip harbor's own minutes stop counting (public
@@ -83,7 +83,7 @@ labels `self-hosted`, `Linux`, `ARM64`.
 
 Negative control, so the check is known to be able to fail: a fork PR cannot be
 opened on a private repo, so do it with an ordinary branch PR while the repo is
-still private and `HARBOR_CI_RUNNER=self-hosted` — the same command must then list
+still private and `HARBOR_RUNNER=self-hosted` — the same command must then list
 the colima runner's name. If it does not, the command cannot see the difference
 and its all-hosted answer after the flip proves nothing.
 
@@ -91,7 +91,7 @@ and its all-hosted answer after the flip proves nothing.
 
 **Six identical lines**, at 117, 163, 284, 296, 313 and 327. Replace each.
 
-Selects hosted when the repo is public, **or** when `HARBOR_CI_RUNNER` (and the
+Selects hosted when the repo is public, **or** when `HARBOR_RUNNER` (and the
 dispatch input) is unset or says `github-hosted`. Only a private repo with the
 variable set to something else reaches `self-hosted`. `!github.event.repository.private`
 is also true when the payload carries no repository at all, so an unexpected event
@@ -100,18 +100,18 @@ fails toward the hosted runner, never toward the Mac.
 Before (each of the six):
 
 ```yaml
-    runs-on: ${{ fromJSON((inputs.runner || vars.HARBOR_CI_RUNNER) == 'github-hosted' && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64"]') }}
+    runs-on: ${{ fromJSON((inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted' && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64"]') }}
 ```
 
 After (each of the six):
 
 ```yaml
-    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER || 'github-hosted') == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64"]') }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_RUNNER || 'github-hosted') == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64"]') }}
 ```
 
-Behaviour change on the still-private repo: an **unset** `HARBOR_CI_RUNNER` used to
+Behaviour change on the still-private repo: an **unset** `HARBOR_RUNNER` used to
 mean `self-hosted` and now means hosted (billed minutes). Check
-`gh variable get HARBOR_CI_RUNNER -R VytCepas/harbor` first; `ci-runner-switch.sh`
+`gh variable get HARBOR_RUNNER -R VytCepas/harbor` first; `ci-runner-switch.sh`
 normally keeps it set, so this should change nothing today. To keep unset =
 self-hosted while private, drop `|| 'github-hosted'` from the After line.
 
@@ -216,21 +216,21 @@ Before (lines 20–21):
 After:
 
 ```yaml
-#                          holds no ~/.claude. Only a PRIVATE repo with HARBOR_CI_RUNNER set
+#                          holds no ~/.claude. Only a PRIVATE repo with HARBOR_RUNNER set
 #                          to anything but `github-hosted` lands here; a public repo never does.
 ```
 
 Before (lines 33–34):
 
 ```yaml
-#   repo-wide — `gh variable set HARBOR_CI_RUNNER --body github-hosted` (or
+#   repo-wide — `gh variable set HARBOR_RUNNER --body github-hosted` (or
 #               `self-hosted`); unset falls back to self-hosted
 ```
 
 After:
 
 ```yaml
-#   repo-wide — `gh variable set HARBOR_CI_RUNNER --body github-hosted` (or
+#   repo-wide — `gh variable set HARBOR_RUNNER --body github-hosted` (or
 #               `self-hosted`); unset, and every public repo, falls back to github-hosted
 ```
 
@@ -278,7 +278,7 @@ above there is no runner for it to pick on a public one.
 number(s). Run from the repository root:
 
 ```
-grep -n -F "runs-on: \${{ fromJSON((inputs.runner || vars.HARBOR_CI_RUNNER) == 'github-hosted'" .github/workflows/governance.yml
+grep -n -F "runs-on: \${{ fromJSON((inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted'" .github/workflows/governance.yml
 grep -n -F "        options: [full, quick]" .github/workflows/governance.yml
 grep -n -F "      - uses: actions/checkout@v5" .github/workflows/governance.yml
 grep -n -F "#   self-hosted (default)  a GitHub runner" .github/workflows/governance.yml
@@ -297,7 +297,7 @@ block against the file before applying, do not apply on faith.
 - `sh bin/lint-conventions.sh` and the workflow-shape suites (`tests/admission/baseline/shards.test.sh`
   checks the `floor` relay against the pool) stay green; run the selected suites.
 - Push to a branch and watch one `pull_request` run: on the still-private repo every
-  job lands on the runner `HARBOR_CI_RUNNER` names; `gh run view <id> --json jobs` lists it.
+  job lands on the runner `HARBOR_RUNNER` names; `gh run view <id> --json jobs` lists it.
 - After the visibility flip, run the fork-PR verification above and keep its output
   with the epic.
 - **Failure to watch for:** a job stuck `Waiting for a runner` means the selector

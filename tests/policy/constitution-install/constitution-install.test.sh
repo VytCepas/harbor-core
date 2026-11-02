@@ -4,7 +4,7 @@
 # Each case is a throwaway checkout with a V1 -> V2 history, deploying into its own config dir.
 # Then the install standard (harbor#765, #771): the interface, the dry-run exit rule, backups and the log.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY_ACTIVE
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY
 V1='# Rules
 
 **It defers inside a governed repo.** Where a project carries the marker,

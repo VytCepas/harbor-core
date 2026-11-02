@@ -142,7 +142,7 @@ desc_bytes() { # <file> -> bytes of the whole description: value
 # bounds it); plugin and slash-command descriptions are installed by the operator, not by deploy; the SessionStart
 # injection moves by ~10 KB with the caller's directory and with the live packs. All three stay in the report above.
 if [ "$MODE" = ratchet ]; then
-  RB="${HARBOR_CONTEXT_RATCHET_BASELINE:-$ROOT/registries/context-ratchet.tsv}"; RBN="${RB#$ROOT/}"
+  RB="${HARBOR_CONTEXT_RATCHET_BASELINE:-${HARBOR_RATCHET_BASELINE:-$ROOT/registries/context-ratchet.tsv}}"; RBN="${RB#$ROOT/}"
   rl="$(printf '%s\t%s\n' "$(bytes "$ROOT/policy/constitution.md")" policy/constitution.md)"
   for d in "$ROOT"/skills/*/ "$ROOT"/vendor/skills/*/; do
     f="$d/SKILL.md"; [ -f "$f" ] || continue
@@ -428,7 +428,7 @@ _inject_bytes() { # <cwd> -> bytes the SessionStart injection would deliver ther
 }
 # ONLY FOR THE LIVE CONFIG DIR, AND THE REASON IS A PROPERTY OF THE INJECTOR.
 # `CLAUDE_CONFIG_DIR` does NOT isolate this surface: inject-hook.sh loads packs
-# from two tiers, and when the second — `$REPO/context-rules/<repo>`, where REPO
+# from two tiers, and when the second — `$REPO/context-rules/<repo>` (or `.claude/inject.d`), where REPO
 # falls back to the probed directory — resolves under $HOME, the LIVE packs load
 # whatever $CFG says. Measured 2026-09-20: an empty config dir still returned
 # 11,791 B at $HOME. So a shadow-dir run would charge the fixture the real box's
@@ -447,7 +447,7 @@ _cfg_is_live=0
 [ "$(cd -P -- "$CFG" 2>/dev/null && pwd -P)" = "$(cd -P -- "$LIVE_DIR" 2>/dev/null && pwd -P)" ] && _cfg_is_live=1
 if [ "$_cfg_is_live" -eq 0 ]; then
   printf '%-46s %8s  %s\n' "SessionStart injection" 0 "NOT MEASURABLE — \$CLAUDE_CONFIG_DIR is not the live dir"
-elif [ -f "$_injector" ] && [ "${HARBOR_CONTEXT_BUDGET_NO_PROBE:-0}" != 1 ]; then
+elif [ -f "$_injector" ] && [ "${HARBOR_CONTEXT_BUDGET_NO_PROBE:-${HARBOR_BUDGET_NO_PROBE:-0}}" != 1 ]; then
   inj_local="$(_inject_bytes "$PWD")"; : "${inj_local:=0}"
   row "SessionStart injection (this cwd)" "$inj_local" "probed via hooks/injection-rule/injection-rule.sh"
   # The worst case is a session started where no repo governs — the case that

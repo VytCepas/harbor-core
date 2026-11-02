@@ -15,8 +15,8 @@ SID="${1:-}"; TTY="${2:-}"
 case "$SID" in ''|*[!A-Za-z0-9_-]*) exit 0 ;; esac
 case "${TTY#ttys}" in ''|"$TTY"|*[!0123456789]*) exit 0 ;; esac
 STATE="${HARBOR_STATUS_DIR:-${HOME:-/nonexistent}/.local/state/harbor}"
-DELAY="${HARBOR_SESSION_AUTOCOMPACT_DELAY:-2}"; case "$DELAY" in ''|*[!0-9.]*) DELAY=2 ;; esac
-OSA="${HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT:-osascript}"
+DELAY="${HARBOR_SESSION_AUTOCOMPACT_DELAY:-${HARBOR_AUTOCOMPACT_DELAY:-2}}"; case "$DELAY" in ''|*[!0-9.]*) DELAY=2 ;; esac
+OSA="${HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT:-${HARBOR_AUTOCOMPACT_OSA:-osascript}}"
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 . "$HERE/library-log.sh"
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh

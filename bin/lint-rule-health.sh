@@ -52,11 +52,11 @@ log_init rule-health
 # Not a run (contracts/logging.md): the words go to stderr and there is no summary line.
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 [ $# -eq 0 ] || { LOG_FD=2; log_fail "unknown argument: $1"; log_fix "sh $0 --help"; exit 2; }
-ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH='' cd -- "$HERE/.." && pwd)}"
-LINT="${HARBOR_LINT_RULE_HEALTH_LINT:-$ROOT/bin/lint-conventions.sh}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH='' cd -- "$HERE/.." && pwd)}}"
+LINT="${HARBOR_LINT_RULE_HEALTH_LINT:-${HARBOR_RH_LINT:-$ROOT/bin/lint-conventions.sh}}"
 CTL="$ROOT/standards/naming/controls.tsv"
-COST_S="${HARBOR_LINT_RULE_HEALTH_COST_S:-5}"; case "$COST_S" in ''|*[!0-9]*) COST_S=5 ;; esac
-TODAY="${HARBOR_LINT_RULE_HEALTH_NOW:-$(date -u +%Y-%m-%d)}"
+COST_S="${HARBOR_LINT_RULE_HEALTH_COST_S:-${HARBOR_RH_COST_S:-5}}"; case "$COST_S" in ''|*[!0-9]*) COST_S=5 ;; esac
+TODAY="${HARBOR_LINT_RULE_HEALTH_NOW:-${HARBOR_RH_NOW:-$(date -u +%Y-%m-%d)}}"
 RD="$(receipt_dir)"
 SILENT_DAYS=56
 # D-64 (standards/naming.md section 10.3): a warn rule outside lint-name.sh may go to block once it has gone red and
@@ -133,8 +133,8 @@ engine_findings() { # <engine> — its own findings, one rule id per finding, ap
 # D-92: the repos a name rule must be clean in, "<name> TAB <checkout>". harbor is judged at this tree, not at the
 # registry's checkout, so a branch is held to its own state. HARBOR_LINT_RULE_HEALTH_REPOS names a file of that shape (tests).
 name_scan() { # <engine> — appends "<rule> TAB <repo> TAB <count>" to $T/p.rep, bad repos to $T/p.repbad, every repo to $T/p.repall
-  _nl="${HARBOR_LINT_RULE_HEALTH_NAME_LINT:-$ROOT/bin/lint-name.sh}"
-  if [ -n "${HARBOR_LINT_RULE_HEALTH_REPOS:-}" ]; then cat "${HARBOR_LINT_RULE_HEALTH_REPOS}" > "$T/p.repos" 2> /dev/null || stand_down "the repo list ${HARBOR_LINT_RULE_HEALTH_REPOS} could not be read" "ls ${HARBOR_LINT_RULE_HEALTH_REPOS}"
+  _nl="${HARBOR_LINT_RULE_HEALTH_NAME_LINT:-${HARBOR_RH_NAMELINT:-$ROOT/bin/lint-name.sh}}"
+  if [ -n "${HARBOR_LINT_RULE_HEALTH_REPOS:-${HARBOR_RH_REPOS:-}}" ]; then cat "${HARBOR_LINT_RULE_HEALTH_REPOS:-$HARBOR_RH_REPOS}" > "$T/p.repos" 2> /dev/null || stand_down "the repo list ${HARBOR_LINT_RULE_HEALTH_REPOS:-$HARBOR_RH_REPOS} could not be read" "ls ${HARBOR_LINT_RULE_HEALTH_REPOS:-$HARBOR_RH_REPOS}"
   else sh "$ROOT/bin/scope-roots.sh" --repos > "$T/p.repos" 2> /dev/null || stand_down "the repo registry could not be read, so no repo was linted" "sh $ROOT/bin/scope-roots.sh --repos"; fi
   [ -s "$T/p.repos" ] || stand_down "the repo registry lists no repo" "sh $ROOT/bin/scope-roots.sh --repos"
   while IFS="$(printf '\t')" read -r _rn _rp; do
@@ -173,7 +173,7 @@ promotion() {
   awk -F'\t' '$1 == "A" || $1 == "V" { print $2 }' "$T/p.lc" >> "$T/p.cnt"
   awk '{ c[$1]++ } END { for (k in c) print k "\t" c[k] }' "$T/p.cnt" > "$T/p.cntn"
   # accepted-as-false: the finding store's issues labelled finding:accepted, keyed lint/<key>
-  _repo="${HARBOR_LINT_FINDINGS_REPO:-$(git -C "$ROOT" remote get-url origin 2>/dev/null | sed -e 's#^.*github\.com[:/]##' -e 's#\.git$##')}"
+  _repo="${HARBOR_LINT_FINDINGS_REPO:-${HARBOR_FINDINGS_REPO:-$(git -C "$ROOT" remote get-url origin 2>/dev/null | sed -e 's#^.*github\.com[:/]##' -e 's#\.git$##')}}"
   [ -n "$_repo" ] || stand_down "no finding store to read, so accepted-as-false cannot be counted" "HARBOR_LINT_FINDINGS_REPO=<owner/name> sh $0 --promotion"
   gh issue list -R "$_repo" --label finding:accepted --state all --limit 1000 --json body,createdAt,closedAt > "$T/p.acc.json" 2>"$T/gh.err" \
     || stand_down "the finding store $_repo could not be read ($(head -1 "$T/gh.err")), so accepted-as-false cannot be counted" "gh auth status"
@@ -272,9 +272,9 @@ promotion() {
 }
 
 # 1 · which rules the passing lint suites watched go red
-if [ -n "${HARBOR_LINT_RULE_HEALTH_SUITES:-}" ]; then
+if [ -n "${HARBOR_LINT_RULE_HEALTH_SUITES:-${HARBOR_RH_SUITES:-}}" ]; then
   # shellcheck disable=SC2086 # a space-separated list, split on purpose
-  printf '%s\n' ${HARBOR_LINT_RULE_HEALTH_SUITES:-} > "$T/suites"
+  printf '%s\n' ${HARBOR_LINT_RULE_HEALTH_SUITES:-${HARBOR_RH_SUITES:-}} > "$T/suites"
 else
   # harbor#961 W2: the lint suite and its parts moved from tests/checks/lint*-test.sh
   { find "$ROOT/tests/lint/conventions" -maxdepth 1 -type f -name '*.test.sh' ! -name 'mktemp-template.test.sh' 2>/dev/null
@@ -311,7 +311,7 @@ _total="$(awk '{ s += $2 } END { printf "%.0f", s }' "$T/costs")"
 awk -v f="$COST_S" '$2 > f { print $1 }' "$T/costs" | sort -u > "$T/costly"
 
 # 3 · the ledger's fire history, and whether it is long enough to judge silence
-_repo="${HARBOR_LINT_FINDINGS_REPO:-$(git -C "$ROOT" remote get-url origin 2>/dev/null | sed -e 's#^.*github\.com[:/]##' -e 's#\.git$##')}"
+_repo="${HARBOR_LINT_FINDINGS_REPO:-${HARBOR_FINDINGS_REPO:-$(git -C "$ROOT" remote get-url origin 2>/dev/null | sed -e 's#^.*github\.com[:/]##' -e 's#\.git$##')}}"
 # An unread store STANDS DOWN, never "not judged": a green receipt would close an open silent:
 # finding as fixed. A young ledger is green honestly — no silent: can be filed before 8 weeks of it.
 : > "$T/silent"; _judged=no

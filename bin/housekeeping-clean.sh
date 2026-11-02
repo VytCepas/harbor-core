@@ -119,15 +119,15 @@ set -eu
 . "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-fs.sh"
 log_init harbor-clean
 
-HOME_DIR="${HARBOR_HOUSEKEEPING_CLEAN_HOME:-$HOME}"
+HOME_DIR="${HARBOR_HOUSEKEEPING_CLEAN_HOME:-${HARBOR_CLEAN_HOME:-$HOME}}"
 CFG="${CLAUDE_CONFIG_DIR:-$HOME_DIR/.claude}"
-AGE="${HARBOR_HOUSEKEEPING_CLEAN_AGE:-14}"
-IDLE="${HARBOR_HOUSEKEEPING_CLEAN_IDLE:-7}"
-GH="${HARBOR_HOUSEKEEPING_CLEAN_GH:-gh}"
-SCRATCH="${HARBOR_HOUSEKEEPING_CLEAN_SCRATCH:-/tmp/claude-$(id -u)}"
-SLOTS="${HARBOR_HOUSEKEEPING_CLEAN_SLOTS:-9 16}"
-DUE_AT="${HARBOR_HOUSEKEEPING_CLEAN_DUE:-10}"
-NOW="${HARBOR_TEST_NOW:-$(date +%s)}"
+AGE="${HARBOR_HOUSEKEEPING_CLEAN_AGE:-${HARBOR_CLEAN_AGE:-14}}"
+IDLE="${HARBOR_HOUSEKEEPING_CLEAN_IDLE:-${HARBOR_CLEAN_IDLE:-7}}"
+GH="${HARBOR_HOUSEKEEPING_CLEAN_GH:-${HARBOR_CLEAN_GH:-gh}}"
+SCRATCH="${HARBOR_HOUSEKEEPING_CLEAN_SCRATCH:-${HARBOR_CLEAN_SCRATCH:-/tmp/claude-$(id -u)}}"
+SLOTS="${HARBOR_HOUSEKEEPING_CLEAN_SLOTS:-${HARBOR_CLEAN_SLOTS:-9 16}}"
+DUE_AT="${HARBOR_HOUSEKEEPING_CLEAN_DUE:-${HARBOR_CLEAN_DUE:-10}}"
+NOW="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
 KEEPF="$CFG/.helm-sweep-keep"
 APPLY=0
 JSON=0
@@ -418,7 +418,7 @@ repos() {
       for _d in "$HOME_DIR"/*/ "${PORT_ROOT:-$HOME_DIR/port}"/*/; do
         [ -e "$_d/.git" ] && printf '%s\n' "${_d%/}"
       done
-      _fs="${HARBOR_SCOPE_CACHE_DIR:-$CFG/cache}/fleet-snapshot.json"
+      _fs="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$CFG/cache}}/fleet-snapshot.json"
       if [ -f "$_fs" ] && command -v jq >/dev/null 2>&1; then
         jq -r '.[]? | .descriptor.path? // empty' "$_fs" 2>/dev/null || true
       fi
@@ -613,7 +613,7 @@ link_phys() {
 # A worktree one of its symlinks resolves into is an installed runtime, not finished work (harbor#922).
 install_links() {
   [ -f "$TMPD/installs" ] && return 0
-  __ib="$(HOME="$HOME_DIR"; printf '%s' "${HARBOR_SCOPE_LOCAL_BIN:-$HOME/.local/bin}")"
+  __ib="$(HOME="$HOME_DIR"; printf '%s' "${HARBOR_SCOPE_LOCAL_BIN:-${HARBOR_LOCAL_BIN:-$HOME/.local/bin}}")"
   find "$__ib" -maxdepth 1 -type l 2>/dev/null | sort | while IFS= read -r __l; do
     if __t="$(link_phys "$__l")"; then printf '%s\t%s\n' "$__t" "${__l#"$HOME_DIR"/}"; fi
   done > "$TMPD/installs"
@@ -663,7 +663,7 @@ _kill_tree() {
 # timeout(1), and neither does this box. The watchdog kills its own sleep when it
 # is stopped, so a finished call leaves nothing behind.
 bounded() {
-  _t="${HARBOR_HOUSEKEEPING_CLEAN_BOUND:-$1}"; shift
+  _t="${HARBOR_HOUSEKEEPING_CLEAN_BOUND:-${HARBOR_CLEAN_BOUND:-$1}}"; shift
   "$@" & _bp=$!
   ( trap 'kill "$_bs" 2>/dev/null; exit 0' TERM
     sleep "$_t" & _bs=$!; wait "$_bs"; _kill_tree "$_bp" ) & _bw=$!
@@ -675,7 +675,7 @@ bounded() {
 
 # A list that FILLED its limit is a list that was cut off — the `cu find` lesson.
 # Overridable only so the suite can prove the cut is caught without 2,000 PRs.
-PR_LIMIT="${HARBOR_HOUSEKEEPING_CLEAN_PR_LIMIT:-2000}"
+PR_LIMIT="${HARBOR_HOUSEKEEPING_CLEAN_PR_LIMIT:-${HARBOR_CLEAN_PR_LIMIT:-2000}}"
 GHQ='query($owner:String!,$name:String!,$endCursor:String){repository(owner:$owner,name:$name){issues(states:OPEN,first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{number updatedAt body subIssuesSummary{total completed} closedByPullRequestsReferences(first:10,includeClosedPrs:true){nodes{state}}}}}}'
 
 # gh_try <out> <cmd…> — bounded, retried up to 3 times on a 5xx or gateway timeout, never on a 4xx.
@@ -687,7 +687,7 @@ gh_try() {
     _gn=$((_gn + 1))
     grep -Eqi 'HTTP 5[0-9][0-9]|Gateway Time-?out|Bad Gateway|Service Unavailable' "$_go.err" 2>/dev/null || return 1
     [ "$_gn" -lt 3 ] || return 1
-    sleep $((_gn * ${HARBOR_HOUSEKEEPING_CLEAN_RETRY_WAIT:-2}))
+    sleep $((_gn * ${HARBOR_HOUSEKEEPING_CLEAN_RETRY_WAIT:-${HARBOR_CLEAN_RETRY_WAIT:-2}}))
   done
 }
 

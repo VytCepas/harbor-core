@@ -43,7 +43,7 @@
 #             (CONSTITUTION §2.10), and it is harbor#163.
 set -eu
 
-ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}}"
 DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 # THE REPO'S NAME COMES FROM ITS MAIN WORKTREE (harbor#1149), never from $ROOT: run from inside a worktree,
 # $ROOT is that worktree and its basename would nest the new tree under .worktrees/<repo>-wt-<x>/.
@@ -51,7 +51,7 @@ DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 MAIN="$(git -C "$ROOT" worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p')"
 [ -n "$MAIN" ] || MAIN="$ROOT"
 REPO_NAME="$(basename -- "$MAIN")"
-BASE="${HARBOR_CI_BASE:-origin/main}"
+BASE="${HARBOR_CI_BASE:-${HARBOR_BASE:-origin/main}}"
 APPLY=0; FORCE=0
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2   # stdout is the verdict table and the gc plan; the log goes to stderr
@@ -228,7 +228,7 @@ ROWS
       && { printf 'worktree: branch already exists: %s\n' "$ARG" >&2; exit 1; }
     _slug="$(printf '%s' "$ARG" | tr '/' '-')"
     # harbor#1149: worktrees live under $PORT_ROOT/.worktrees/<repo>/; the sibling `<repo>-wt-*` layout is legacy.
-    _pw="$(HARBOR_SCOPE_ROOT= sh "$DIR/scope-roots.sh" --port-root)" || { echo "worktree: cannot resolve PORT_ROOT" >&2; exit 1; }
+    _pw="$(HARBOR_SCOPE_ROOT= HARBOR_ROOT= sh "$DIR/scope-roots.sh" --port-root)" || { echo "worktree: cannot resolve PORT_ROOT" >&2; exit 1; }
     _dest="${_pw%/}/.worktrees/$REPO_NAME/$_slug"
     mkdir -p -- "$(dirname -- "$_dest")"
     [ -e "$_dest" ] && { printf 'worktree: already exists: %s\n' "$_dest" >&2; exit 1; }
@@ -261,7 +261,7 @@ ROWS
     # A bare name is tried in both layouts (harbor#1149): the new one first, then the legacy sibling.
     case "$_want" in
       */*) ;;
-      *) _pw="$(HARBOR_SCOPE_ROOT= sh "$DIR/scope-roots.sh" --port-root 2>/dev/null || :)"
+      *) _pw="$(HARBOR_SCOPE_ROOT= HARBOR_ROOT= sh "$DIR/scope-roots.sh" --port-root 2>/dev/null || :)"
          _want="${_pw%/}/.worktrees/$REPO_NAME/$ARG"
          [ -d "$_want" ] || _want="$(dirname -- "$MAIN")/$REPO_NAME-wt-$ARG" ;;
     esac

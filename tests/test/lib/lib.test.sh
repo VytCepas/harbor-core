@@ -44,7 +44,7 @@ o="$(child "t_section a; t_exit x 1 sh -c 'exit 2'; t_done")"
 t_has 't_exit rejects a different code'   "$o" "x (want 'exit 1', got 'exit 2')"
 
 t_section "sandbox"
-o="$(HARBOR_ADMISSION_DISABLE=1 CLOUD_POSTURE=deny child 't_section a; t_eq home "$T_TMP/home" "$HOME"; t_eq cfg "$T_TMP/cfg" "$CLAUDE_CONFIG_DIR"; t_eq knob "" "${HARBOR_ADMISSION_DISABLE:-}${CLOUD_POSTURE:-}"; echo "tmp=$T_TMP"; t_done')"
+o="$(HARBOR_ADMISSION_DISABLE=1 HELM_DISABLE_FLOOR=1 CLOUD_POSTURE=deny child 't_section a; t_eq home "$T_TMP/home" "$HOME"; t_eq cfg "$T_TMP/cfg" "$CLAUDE_CONFIG_DIR"; t_eq knob "" "${HARBOR_ADMISSION_DISABLE:-}${HELM_DISABLE_FLOOR:-}${CLOUD_POSTURE:-}"; echo "tmp=$T_TMP"; t_done')"
 t_has 'HOME, config dir and knobs are the sandbox' "$o" "rc=0"
 _ct="$(printf '%s\n' "$o" | sed -n 's/^tmp=//p')"
 [ -n "$_ct" ] && [ ! -e "$_ct" ] && t_pass || t_fail "the child's sandbox was not removed: ${_ct:-no path printed}"

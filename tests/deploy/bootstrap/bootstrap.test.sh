@@ -6,7 +6,7 @@
 # What it proves: the private layer says what a machine is. core clones, downloads and needs nothing beyond harbor, and
 # a repo whose registry row has a remote is cloned from THAT remote, not from <harbor's owner>/<id>.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY_ACTIVE
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY
 T_TMP="$(cd "$T_TMP" && pwd -P)"
 TAB='	'
 _inst='#!/bin/sh

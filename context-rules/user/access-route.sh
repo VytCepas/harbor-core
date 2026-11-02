@@ -41,7 +41,7 @@ OUT="$(printf '%s' "$P" | jq -r '
 [ -n "$OUT" ] || exit 0
 
 case "$CMD" in
-  *check-routes*|*harbor-private/*|*/memory/*|*context-rules*) exit 0 ;;
+  *check-routes*|*harbor-private/*|*/memory/*|*inject.d*|*context-rules*) exit 0 ;;
 esac
 # The first word AFTER any leading `cd <dir> &&`, because that prefix is how most
 # commands on this box begin (bare `cd ~/…` is forbidden, so an absolute cd leads
@@ -60,7 +60,7 @@ HIT="$(printf '%s\n' "$OUT" | /usr/bin/grep -oE "$SIG" 2>/dev/null | head -1 || 
 # checkout it is beside this file; installed, it is in the harbor checkout.
 case "$0" in */*) _H="${0%/*}" ;; *) _H=. ;; esac
 _R="$_H/../../bin/scope-roots.sh"
-[ -f "$_R" ] && [ -f "$_H/../../contracts/roots.tsv" ] || _R="${HARBOR_SCOPE_REPO:-${PORT_ROOT:-$HOME/port}/harbor}/bin/scope-roots.sh"
+[ -f "$_R" ] && [ -f "$_H/../../contracts/roots.tsv" ] || _R="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}/bin/scope-roots.sh"
 DIR="$(sh "$_R" --access 2>/dev/null)" || exit 0
 [ -n "$DIR" ] || exit 0
 

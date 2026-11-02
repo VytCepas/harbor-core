@@ -3,13 +3,13 @@
 # deploy suites' throwaway repo; pack.sh is a stub that logs its argv and refuses on PACK_STUB_REFUSE=dry|apply|both,
 # in the line shape the real one prints (pack.sh's own behaviour is tests/scope/pack/pack.test.sh).
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY_ACTIVE
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY
 T_TMP="$(cd "$T_TMP" && pwd -P)"
 . "$(dirname "$0")/../../install/deploy-fixture.sh"
 PV="$T_TMP/pv"; mkdir -p "$PV"; HARBOR_SCOPE_PRIVATE="$PV"; export HARBOR_SCOPE_PRIVATE
 PACK_STUB='#!/bin/sh
 printf "pack.sh %s\n" "$*" >> "$STUB_LOG"
-[ "${HARBOR_DEPLOY_ACTIVE:-}" = 1 ] || printf "pack.sh\n" >> "$STUB_LOG.nodeploy"
+[ "${HARBOR_DEPLOY_ACTIVE:-${HARBOR_DEPLOY:-}}" = 1 ] || printf "pack.sh\n" >> "$STUB_LOG.nodeploy"
 case " $* " in *" --apply "*) m=apply ;; *) m=dry ;; esac
 if [ "${PACK_STUB_REFUSE:-}" = "$m" ] || [ "${PACK_STUB_REFUSE:-}" = both ]; then
   echo "  FAIL: skipped demo: dirty: harbor-pack/ has uncommitted or untracked changes"
