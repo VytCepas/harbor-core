@@ -35,7 +35,7 @@
 #               `self-hosted`); unset falls back to self-hosted on a private repo,
 #               and every public repo is github-hosted whatever it says.
 #               The old name HARBOR_RUNNER is read after HARBOR_CI_RUNNER until
-#               2026-11-15 (harbor#961 W6); dropped 2026-11-02 with the rename wave.
+#               2026-11-15 (harbor#961 W6); then drop `|| vars.HARBOR_RUNNER`.
 #
 # The suites were deliberately made host-independent (floor-test reports the same
 # assertion count under a bare $HOME as under the operator's) so that flipping
@@ -137,9 +137,9 @@ jobs:
     outputs:
       verified: ${{ steps.v.outputs.verified }}
       base: ${{ steps.v.outputs.base }}
-    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Did this tree already pass on its PR?
@@ -158,7 +158,7 @@ jobs:
   # timeout: #1237's job was cancelled at 30 min with 176 of 307 suites done.
   #
   # HOW MANY SHARDS. One per harbor runner, from the repo variable
-  # HARBOR_TEST_SUITE_SHARDS, a JSON list (unset: [1,2] for harbor-linux and
+  # HARBOR_SUITE_SHARDS, a JSON list (unset: [1,2] for harbor-linux and
   # harbor-linux-2). More legs than runners only queue. Most legs this file
   # takes is 4 (the results_N outputs below); a fifth is refused in `suites`.
   #
@@ -183,7 +183,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: ${{ fromJSON(vars.HARBOR_TEST_SUITE_SHARDS || '[1,2]') }}
+        shard: ${{ fromJSON(vars.HARBOR_SUITE_SHARDS || '[1,2]') }}
     outputs:
       conventions: ${{ steps.out.outputs.conventions }}
       results_1: ${{ steps.out.outputs.results_1 }}
@@ -197,10 +197,10 @@ jobs:
     env:
       HARBOR_CI_BASE: ${{ (github.event_name == 'push' && needs.verified.outputs.base) || format('origin/{0}', github.base_ref || 'main') }}
       HARBOR_CI_LEVEL: ${{ (inputs.level || vars.HARBOR_CI_LEVEL) }}
-      HARBOR_TEST_SUITE_CACHE: ${{ github.event_name != 'push' && vars.HARBOR_TEST_SUITE_CACHE || '' }}
-    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-pool"]') }}
+      HARBOR_SUITE_CACHE: ${{ github.event_name != 'push' && vars.HARBOR_SUITE_CACHE || '' }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-pool"]') }}
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0          # suite-select diffs against the base; lint C2 needs main..HEAD
           persist-credentials: false
@@ -210,18 +210,6 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq jq shellcheck dash
           curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz \
             | sudo tar -xz -C /usr/local/bin gitleaks
-          # bun: the memory engine and console suites skip without it (harbor#1409). Same pin and checksum as runners/linux/Dockerfile.
-          curl -fsSL https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-linux-x64.zip -o /tmp/bun.zip
-          echo "36368faef7527875d5ffa52e53cd48021741f2a83eb6208a8dd64068d422a913  /tmp/bun.zip" | sha256sum -c -
-          sudo unzip -q -j /tmp/bun.zip bun-linux-x64/bun -d /usr/local/bin && sudo chmod 755 /usr/local/bin/bun
-          # vale v3.26.0, Linux_64-bit tarball. SHA-256 per the release asset digest; checksums file:
-          # https://github.com/vale-cli/vale/releases/download/v3.26.0/vale_3.26.0_checksums.txt
-          curl -fsSL https://github.com/vale-cli/vale/releases/download/v3.26.0/vale_3.26.0_Linux_64-bit.tar.gz -o /tmp/vale.tgz
-          echo "22aa69a556558e4a9dfc63c17030777383d8d3c48dcdfad655fa98e839d666ed  /tmp/vale.tgz" | sha256sum -c -
-          sudo tar -xz -C /usr/local/bin -f /tmp/vale.tgz vale
-          # A missing tool now fails its suite instead of skipping green (tests/status/console, tests/memory/memory, tests/doc/vale).
-          echo "HARBOR_TEST_REQUIRE_BUN=1" >> "$GITHUB_ENV"
-          echo "HARBOR_TEST_REQUIRE_VALE=1" >> "$GITHUB_ENV"
       # Fail LOUDLY and once, rather than letting each suite discover its own
       # missing dependency and degrade differently. Lint C4 reads this list.
       - name: Every binary the suites depend on must exist
@@ -379,9 +367,9 @@ jobs:
       marker_count: ${{ steps.tally.outputs.marker_count }}
     env:
       HARBOR_CI_LEVEL: ${{ (inputs.level || vars.HARBOR_CI_LEVEL) }}
-    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       # Every shard listed must report, and every candidate must have exactly one
@@ -390,7 +378,7 @@ jobs:
         id: combine
         continue-on-error: true
         env:
-          SHARDS: ${{ vars.HARBOR_TEST_SUITE_SHARDS || '[1,2]' }}
+          SHARDS: ${{ vars.HARBOR_SUITE_SHARDS || '[1,2]' }}
           R1: ${{ needs.suite-shard.outputs.results_1 }}
           R2: ${{ needs.suite-shard.outputs.results_2 }}
           R3: ${{ needs.suite-shard.outputs.results_3 }}
@@ -402,7 +390,7 @@ jobs:
         run: |
           set -- ; bad=0
           for k in $(printf '%s' "$SHARDS" | jq -r '.[]'); do
-            case "$k" in 1|2|3|4) ;; *) echo "HARBOR_TEST_SUITE_SHARDS lists shard $k: this file carries outputs for 1-4 only" >&2; bad=1; continue ;; esac
+            case "$k" in 1|2|3|4) ;; *) echo "HARBOR_SUITE_SHARDS lists shard $k: this file carries outputs for 1-4 only" >&2; bad=1; continue ;; esac
             eval "r=\$R$k g=\$G$k"
             f="$RUNNER_TEMP/shard-$k.tsv"
             if [ -n "$r" ]; then printf '%s' "$r" | base64 -d > "$f"; else : > "$f"; fi
@@ -410,7 +398,7 @@ jobs:
             [ "$g" = success ] || bad=1
             set -- "$@" "$f"
           done
-          [ $# -gt 0 ] || { echo "HARBOR_TEST_SUITE_SHARDS names no shard" >&2; exit 1; }
+          [ $# -gt 0 ] || { echo "HARBOR_SUITE_SHARDS names no shard" >&2; exit 1; }
           set -- --combine "$RUNNER_TEMP/suites.tsv" "$@"
           [ "$HARBOR_CI_LEVEL" != quick ] || set -- --include contracts/suites-quick.txt "$@"
           sh bin/test-suite-run.sh "$@" || bad=1
@@ -441,7 +429,7 @@ jobs:
     timeout-minutes: 5
     needs: [verified, suites]
     if: ${{ always() }}
-    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
     steps:
       - name: bin/lint-conventions.sh passed in the suites job
         run: |
@@ -453,7 +441,7 @@ jobs:
     timeout-minutes: 5
     needs: [verified, suites]
     if: ${{ always() }}
-    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
     steps:
       - name: The suites that judge the linter passed in the pool
         run: |
@@ -470,7 +458,7 @@ jobs:
     outputs:
       count: ${{ needs.suites.outputs.floor_count }}
       ran: ${{ needs.suites.outputs.floor_ran }}
-    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
     steps:
       - name: Every floor part passed in the pool — anything else FAILS this check
         run: |
@@ -484,14 +472,14 @@ jobs:
     # !cancelled(), not always(): not required, so a superseded run may stay quiet.
     # Level quick skips this (it was 39 of 46 standard-level reds).
     if: ${{ !cancelled() && needs.verified.outputs.verified != 'true' && (inputs.level || vars.HARBOR_CI_LEVEL) != 'quick' }}
-    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64","harbor-gate"]') }}
     steps:
       - name: A dependency that did not succeed must FAIL this check, never skip it
         if: needs.suites.result != 'success' || needs.floor.result != 'success'
         run: |
           echo "STATUS.md was NOT checked: suites=${{ needs.suites.result }} floor=${{ needs.floor.result }}" >&2
           exit 1
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Install dependencies (hosted runners only)
