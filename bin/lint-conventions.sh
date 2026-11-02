@@ -7685,6 +7685,39 @@ if [ -f "$ROOT/bin/skill-catalog.sh" ] && [ -d "$_sm_cfg/skills" ] && [ -f "$_sm
 fi
 }
 
+
+# ── ci.action-sha-pinned · every workflow `uses:` is a full commit SHA with its version comment (harbor#1426) ──
+# A mutable tag (@v5, @main) can be repointed at other code by anyone who can push the tag; the SHA cannot, and the `# v6.0.3`
+# comment is what a person and the update bot read the pin by. Local actions (./) and docker refs are not tags. Judged where the
+# workflows are, ROOT/.github/workflows, so the same rule runs on any repo with HARBOR_SCOPE_ROOT=<repo>. Warn until 28 clean days
+# (a person's edit of controls.tsv promotes it), read from the control's own row like the decision rules.
+rule_ci_action_sha_pinned() {
+rule "ci.action-sha-pinned every workflow uses: is a full 40-hex commit SHA followed by a # version comment, never a mutable tag (harbor#1426)"
+_ap="${TMPDIR:-/tmp}/ap.$$"; : > "$_ap.out"
+for _apf in "$ROOT"/.github/workflows/*.yml "$ROOT"/.github/workflows/*.yaml; do
+  [ -f "$_apf" ] || continue
+  LC_ALL=C awk -v f="${_apf#"$ROOT"/}" '
+    /^[[:space:]]*(-[[:space:]]+)?uses:[[:space:]]/ {
+      line = $0; sub(/^[[:space:]]*(-[[:space:]]+)?uses:[[:space:]]*/, "", line)
+      ref = line; sub(/[[:space:]]+#.*$/, "", ref); gsub(/["\047]/, "", ref); sub(/[[:space:]]+$/, "", ref)
+      if (ref ~ /^\.\// || ref ~ /^docker:\/\//) next
+      cm = (line ~ /[[:space:]]#[[:space:]]*v?[0-9]/)
+      pos = index(ref, "@"); sha = (pos > 0 && substr(ref, pos + 1) ~ /^[0-9a-f]{40}$/)
+      if (!sha) printf "%s\t%d\t%s is a mutable tag: pin it to the commit SHA of the release\n", f, NR, ref
+      else if (!cm) printf "%s\t%d\t%s carries no # version comment\n", f, NR, ref
+    }' "$_apf" >> "$_ap.out"
+done
+while IFS="$(printf '\t')" read -r _apn _apl _apm; do
+  [ -n "$_apn" ] || continue
+  case "$(_decision_mode ci.action-sha-pinned)" in
+    block) bad ci.action-sha-pinned "$_apn:$_apl $_apm" "$_apn" ;;
+    shadow) _adv ci.action-sha-pinned "$_apn" ;;
+    *) _adv ci.action-sha-pinned "$_apn"; printf '  ADVISORY [ci.action-sha-pinned] %s:%s %s\n' "$_apn" "$_apl" "$_apm" >&2 ;;
+  esac
+done < "$_ap.out"
+rm -f "$_ap.out"
+}
+
 # ── the dispatcher ───────────────────────────────────────────────────────────
 # THE ORDER IS DERIVED, NOT DECLARED (harbor#537, docs/explanation/doc-truth.md). A
 # hand-written registry of 78 ids is a copy, and a copy that drops one entry

@@ -72,3 +72,5 @@ gate-pr-plan.sh         VERB  the hand-over step: an agent runs it to derive the
 gate-repo-drift.sh       VERB  the operator runs it: each governed repo's GitHub rules, declared in ship.conf, against live, with the commands that close each drift (harbor#1418); not scheduled until the operator says yes
 doc-register-index.sh   VERB  regenerates contracts/README.md and docs/reference/registers.md (harbor#1424); doc-fresh-verify.sh runs its --check from contracts/fresh-checks.tsv
 standard-decision-migrate.sh  VERB  one-shot: an operator or an agent runs it on a repo whose records predate the shared shape (harbor#1429); `--check` is the idempotence proof
+standard-schema.sh IDLE  the producer's schema check (harbor#1425): validates contracts/schemas fixtures against the schema harbor owns; its suite runs in the governance suites job on every PR, but no script or hook calls the tool itself
+standard-seams-fresh.sh IDLE  the weekly seam freshness check standard.seam-fresh (harbor#1425); its launchd job waits for the operator's yes to a new recurring job, so nothing schedules it yet

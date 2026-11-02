@@ -279,6 +279,31 @@ names this section.
 A capability that half-works while ungoverned is worse than one that is absent,
 because nobody can reason about what it did.
 
+## Apps that are not a website — the routing order (harbor#1440, decided 2026-11-01)
+
+The rows above choose a browser backend. They answer nothing for a desktop app, a Mac-only tool or a system with no
+page to drive, and with no written order a session picks screen control by habit. Agent-OS design: a hardened host
+plus narrow brokers, and a box only when a task triggers it. For any system a task must act on, take the **first**
+step that exists, and say which step and why when skipping one:
+
+| # | Step | What it is | Exists today |
+|---|---|---|---|
+| 1 | **Broker** | A narrow, credential-holding channel with a short verb list, the credential outside the confinement: an API or CLI behind a wrapper, or an MCP server. A new app gets one **before** anything below is considered | the mail and calendar wrappers, the ticket CLI, `gh`, the remote MCP connectors; `harbor chrome` is the broker for a web UI, which is step 2 |
+| 2 | **Browser via `harbor chrome`** | The app has a web UI the operator is signed in to: rows 1 to 4 above, row 4 for a logged-in one. Never `allowAppleEvents` (DE-40) | `harbor chrome`, `harbor browser` |
+| 3 | **Guest** (#1444) | A Lume macOS guest, built only for an app that has **no broker and no web UI**, and for the clean-Mac install test. Not built until a task names the app | not built; trigger open |
+
+Screen control of the operator's own desktop is not a step: it is what step 3 replaces. Nothing here provides trusted
+input from a real keyboard or pointer, so an agent driving a guest's screen is driving an untrusted surface.
+
+**The trigger for step 3 is a missing broker, named.** #1444's trigger comment quotes this table and says: *the app is
+`<name>`; step 1 is missing because `<no API, CLI or MCP / the API cannot do `<verb>`>`; step 2 is missing because
+`<it has no web UI>`*. A comment that cannot fill those three blanks has not fired the trigger.
+
+**Adding a broker is a step-1 deliverable, not an exemption.** It states the verbs it grants, where its credential
+lives, and what it refuses, in the shape of `harbor chrome`'s guardrail table above. A broker that runs as a local MCP
+server also needs a row in `contracts/confinement-mcp.tsv`: wrapped in `srt`, or exempt with the reason
+(`bin/drift-wall.sh` reads it).
+
 ## What this router does NOT cover
 
 **Our own generated HTML.** `bin/doc-visual-check.sh` and `bin/doc-visual-check.mjs`

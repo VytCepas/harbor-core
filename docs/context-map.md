@@ -28,22 +28,22 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | Kind | Folder | Level | Layer | Lifecycle | Files |
 |---|---|---|---|---|---|
 | policy | policy/ | system | source | living | 1 |
-| standard | standards/ | system | source | versioned | 29 |
-| contract | contracts/ | system | source | versioned | 37 |
+| standard | standards/ | system | source | versioned | 30 |
+| contract | contracts/ | system | source | versioned | 38 |
 | decision-record | docs/decisions/ | element | source | dated | 93 |
 | hook | hooks/ | component | source | living | 47 |
 | skill | skills/ | component | source | living | 40 |
-| fixture | fixtures/ | element | source | living | 293 |
-| registry | registries/ | component | source | versioned | 57 |
-| test | tests/ | component | source | living | 466 |
+| fixture | fixtures/ | element | source | living | 295 |
+| registry | registries/ | component | source | versioned | 61 |
+| test | tests/ | component | source | living | 474 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| script | bin/ | component | source | living | 225 |
+| script | bin/ | component | source | living | 230 |
 | how-to | docs/how-to/ | component | source | living | 1 |
 | reference | docs/reference/ | component | generated | generated | 6 |
 | explanation | docs/explanation/ | component | source | living | 15 |
-| (no kind) | - | - | - | - | 238 |
+| (no kind) | - | - | - | - | 239 |
 
 ## Folders
 
@@ -52,12 +52,12 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | (repo root) | 11 | 1 | 1 |
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
-| `bin/` | 229 | 28 | 2 |
+| `bin/` | 234 | 28 | 2 |
 | `commands/` | 5 | 4 | 1 |
 | `context-rules/` | 49 | 6 | 1 |
-| `contracts/` | 93 | 10 | 2 |
+| `contracts/` | 98 | 10 | 2 |
 | `docs/` | 139 | 11 | 8 |
-| `fixtures/` | 293 | 10 | 1 |
+| `fixtures/` | 295 | 10 | 1 |
 | `hooks/` | 43 | 6 | 1 |
 | `launchd/` | 13 | 8 | 1 |
 | `patches/` | 12 | 3 | 1 |
@@ -65,11 +65,11 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `registries/` | 1 | 1 | 1 |
 | `runners/` | 2 | 1 | 1 |
 | `skills/` | 40 | 8 | 1 |
-| `standards/` | 29 | 1 | 1 |
+| `standards/` | 30 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 466 | 28 | 1 |
+| `tests/` | 474 | 28 | 1 |
 | `tools/` | 10 | 2 | 1 |
-| `vendor/` | 98 | 1 | 1 |
+| `vendor/` | 99 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
 
 ## Families
@@ -82,25 +82,25 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | alert | observability | 2 | 3 | 0 | 2 | 0 | 0 |
 | audit | control-plane | 8 | 14 | 0 | 5 | 0 | 2 |
 | check | observability | 1 | 4 | 0 | 1 | 53 | 0 |
-| ci | coordination | 17 | 46 | 2 | 5 | 1 | 5 |
+| ci | coordination | 17 | 46 | 2 | 5 | 1 | 7 |
 | context | control-plane | 7 | 13 | 1 | 3 | 0 | 37 |
 | deploy | control-plane | 15 | 28 | 1 | 1 | 0 | 7 |
 | doc | control-plane | 15 | 12 | 0 | 34 | 0 | 21 |
-| drift | control-plane | 5 | 7 | 0 | 4 | 2 | 13 |
+| drift | control-plane | 7 | 9 | 0 | 4 | 4 | 13 |
 | eval | control-plane | 8 | 7 | 0 | 1 | 0 | 0 |
 | event | observability | 3 | 18 | 0 | 3 | 0 | 2 |
 | gate | control-plane | 16 | 13 | 0 | 1 | 0 | 0 |
 | housekeeping | control-plane | 1 | 1 | 0 | 2 | 0 | 0 |
 | library | policy-function | 6 | 1 | 0 | 0 | 0 | 0 |
-| lint | control-plane | 25 | 64 | 0 | 10 | 3 | 35 |
+| lint | control-plane | 25 | 67 | 0 | 10 | 3 | 35 |
 | memory | memory-store | 6 | 10 | 1 | 23 | 0 | 1 |
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
 | policy | policy-function | 2 | 2 | 1 | 0 | 0 | 3 |
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
-| scope | coordination | 8 | 15 | 0 | 0 | 0 | 4 |
+| scope | coordination | 9 | 16 | 0 | 0 | 0 | 4 |
 | session | data-plane | 14 | 5 | 0 | 3 | 0 | 0 |
 | skill | catalog | 5 | 17 | 0 | 8 | 0 | 13 |
-| standard | policy-function | 11 | 19 | 122 | 1 | 5 | 56 |
+| standard | policy-function | 13 | 21 | 123 | 1 | 6 | 58 |
 | status | observability | 10 | 21 | 0 | 4 | 0 | 0 |
 | test | control-plane | 4 | 5 | 2 | 7 | 0 | 15 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
@@ -281,9 +281,11 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 
 - `bin/drift-confinement.sh`
 - `bin/drift-install.sh`
+- `bin/drift-launchd-wall.sh`
 - `bin/drift-port-root.sh`
 - `bin/drift-reference-check.sh`
 - `bin/drift-renew-check.sh`
+- `bin/drift-wall.sh`
 
 ### eval
 
@@ -408,6 +410,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 ### scope
 
 - `bin/scope-layers.sh`
+- `bin/scope-managed-folders.sh`
 - `bin/scope-managed-mods.sh`
 - `bin/scope-managed-retention.sh`
 - `bin/scope-managed-telemetry.sh`
@@ -462,6 +465,8 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/standard-label-sync.sh`
 - `bin/standard-register.sh`
 - `bin/standard-rename.sh`
+- `bin/standard-schema.sh`
+- `bin/standard-seams-fresh.sh`
 - `bin/standard-shape.sh`
 - `bin/standard-vendor.sh`
 - `docs/decisions/0001-uppercase-policy.md`
@@ -575,6 +580,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `standards/naming/surfaces.tsv`
 - `standards/naming/terms.tsv`
 - `standards/naming/verbs.tsv`
+- `standards/naming/versions.tsv`
 - `standards/naming/words.tsv`
 - `standards/naming/writers.tsv`
 - `standards/rename-maps/fleet-modules-in-projects-orchestrator.tsv`
@@ -630,9 +636,9 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `bin/` | 13 |
 | `commands/` | 2 |
 | `context-rules/` | 37 |
-| `contracts/` | 73 |
+| `contracts/` | 78 |
 | `docs/` | 36 |
-| `fixtures/` | 254 |
+| `fixtures/` | 256 |
 | `hooks/` | 32 |
 | `patches/` | 10 |
 | `runners/` | 2 |
@@ -640,7 +646,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `systemd/` | 15 |
 | `tests/` | 28 |
 | `tools/` | 8 |
-| `vendor/` | 98 |
+| `vendor/` | 99 |
 | `worklog/` | 1 |
 
 ## Top-level layout
