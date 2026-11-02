@@ -51,7 +51,7 @@ fx_world; fx_base api; fx_main api PLAN_FAILS 1; fx_pr web 21 page.html hi
 t_eq "exit 1" 1 "$(ship night)"
 t_eq "planned, not applied" "1 0" "$(fx_ops plan) $(fx_ops apply)"
 t_has "the problem names the plan's log" "$(fx_report)" "the deploy plan failed (exit 1), nothing applied (log: "
-t_eq "the receipt is red over the repo's plan" "red acme/api:plan" "$(jq -r '"\(.status) \(.subjects | join(" "))"' "$CLAUDE_CONFIG_DIR/cache/checks/ship.json")"
+t_eq "the receipt is red over the repo's plan" "red acme/api:plan" "$(jq -r '"\(.status) \(.subjects | join(" "))"' "$CLAUDE_CONFIG_DIR/cache/checks/deploy.fleet.json")"
 t_eq "web still merged" "merge web #21 " "$(fx_merged)"
 t_eq "the baseline did not move" "$(git --git-dir="$T_TMP/remotes/api.git" rev-parse trunk~1)" "$(fx_state api .sha)"
 
@@ -133,7 +133,7 @@ SHIP=''
 
 t_section "a restore outside the runner: the live install disagrees, so the baseline is not trusted (red-proof)"
 manual_world() { fx_world; fx_base api; fx_main api secrets/key k; ship deploy acme/api --sha "$(fx_tip api)" --approved >/dev/null
-  ( cd "$T_TMP/port/api" && SHIP_SNAPSHOT_ID=snap-1 sh ops/restore.sh ); fx_main api src/u.txt u; }
+  ( cd "$T_TMP/port/api" && SHIP_SNAPSHOT_ID=snap-1 sh ops/deploy-restore.sh ); fx_main api src/u.txt u; }
 manual_world
 t_eq "the approved protected deploy, then a manual restore" "snap-1 $(git --git-dir="$T_TMP/remotes/api.git" rev-parse trunk~1)" "$(fx_state api .snapshot) $(fx_state api .sha)"
 t_eq "the next night: exit 0, nothing applied" "0 1" "$(ship night) $(fx_ops apply)"

@@ -1,7 +1,7 @@
 #!/bin/sh
 # check-routes.sh — assert the access register is a checkable instrument, not a diary.
 #
-# The access register (the private layer's access/, CONTRACTS/access-card.md) holds the route
+# The access register (the private layer's access/, contracts/access-card.md) holds the route
 # documents describing how to reach each system and as whom. Measured 2026-08-29: not one of them carries a runnable check, and
 # nothing anywhere runs them. So the `verified:` claim in a route can only ever
 # age, and the first thing a session does with a route is re-derive it by hand —
@@ -17,6 +17,7 @@
 #   check-routes.sh --report [dir]     derive the "what we can do today" table
 #   check-routes.sh --accounts [dir]   derive ACCOUNTS.md: which account connects to what
 #   check-routes.sh --coverage <corpus> [dir]  systems referenced with no route
+#   check-routes.sh --probe <cmd> <expect>  one check, one verdict word (harbor access status|rotate)
 #   check-routes.sh --self-test        prove it goes RED before trusting it GREEN
 #
 # WHICH ACCOUNT, AND WITH WHAT ROLE (2026-09-24). A card used to name its
@@ -39,18 +40,18 @@
 set -eu
 
 # THE CARD STORE IS PRIVATE DATA (harbor#1149): a card names accounts, so it lives in the private
-# layer and core ships the format only. The ONE resolver is `bin/roots.sh --access` ($ACCESS_DIR
+# layer and core ships the format only. The ONE resolver is `bin/scope-roots.sh --access` ($ACCESS_DIR
 # wins); this file never spells the location. With no register the answer is exit 2 and a line saying
 # nothing was checked, never a pass: a gate that found no cards and said "ok" would be the vacuous
 # green the old ACCESS_DIR row in roots.tsv warned about. An explicit [dir] needs no register.
 ACCESS_DIR_DEFAULT=''
 register_dir() {
   case "$0" in */*) _rh="${0%/*}" ;; *) _rh=. ;; esac
-  _rr="$_rh/../../../bin/roots.sh"   # run from a checkout; an installed copy asks the checkout
-  [ -f "$_rr" ] && [ -f "$_rh/../../../CONTRACTS/roots.tsv" ] || _rr="${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}/bin/roots.sh"
+  _rr="$_rh/../../../bin/scope-roots.sh"   # run from a checkout; an installed copy asks the checkout
+  [ -f "$_rr" ] && [ -f "$_rh/../../../contracts/roots.tsv" ] || _rr="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}/bin/scope-roots.sh"
   if ACCESS_DIR_DEFAULT="$(sh "$_rr" --access)"; then return 0; fi
   printf 'check-routes: no access register, so NOTHING was checked and this is not a pass.\n' >&2
-  printf '              Pass a card directory, or create the private layer (harbor scope install, CONTRACTS/private-layer.md).\n' >&2
+  printf '              Pass a card directory, or create the private layer (harbor scope install, contracts/private-layer.md).\n' >&2
   exit 2
 }
 want_dir() { [ -n "${1:-}" ] || register_dir; }   # <the optional [dir] argument>
@@ -201,6 +202,8 @@ usage() {
   printf '       %s --accounts [dir]          derive which account connects to what\n' "$0" >&2
   printf '       %s --coverage <corpus> [dir] systems referenced with no route\n' "$0" >&2
   printf '       %s --run [dir]               ACTUALLY RUN every check: (opt-in)\n' "$0" >&2
+  printf '       %s --probe <cmd> <expect>    run ONE check: one verdict word, never its output\n' "$0" >&2
+  printf '       %s --classify <cmd> <expect> what kind of check it is, running nothing\n' "$0" >&2
   printf '       %s --self-test               prove it goes RED first\n' "$0" >&2
   exit 2
 }
@@ -703,42 +706,52 @@ BROWSER_CHECK='^[[:blank:]]*open[[:blank:]]+https?://'
 # literal of its expectation. Sets _pv to pass|fail|refused|browser|manual|uncheckable.
 # Used for `check:` (reach) and `role-check:` (the role held), so the two can
 # never grow different ideas of what a read is.
-run_probe() { # <label> <cmd> <expect>
-  _plbl=$1; _pcmd=$2; _pexp=$3
-  printf '   %s$ %s\n' "$_plbl" "$_pcmd"
+probe_lits() { printf '%s' "$1" | tr '`' '\n' | awk 'NR % 2 == 0' | /usr/bin/grep -v '^[[:blank:]]*$' || true; }
+
+# What kind of probe a command is, before anything runs: refused | browser | manual | uncheckable | run.
+# Sets _plits to the backticked literals of <expect>. The one classifier for run_probe and probe_one
+# (`harbor access status` and `rotate`), so a register entry and a card share one idea of what a read is.
+probe_class() { # <cmd> <expect>
   # Strip the redirections that are part of ordinary READ hygiene before
   # testing for writes. `>/dev/null` and `2>&1` appear in almost every honest
   # check — a token check that discards its own output most of all — and a
   # guard that refuses ordinary work is a guard that gets switched off
   # (Helm No.2.11). Only a redirection that lands somewhere real survives this.
-  _pprobe=$(printf '%s' "$_pcmd" \
+  _pprobe=$(printf '%s' "$1" \
     | sed -e 's|[0-9]*>&[0-9]*||g' -e 's|[0-9]*>[[:blank:]]*/dev/null||g')
-  if printf '%s' "$_pprobe" | /usr/bin/grep -qE "$WRITE_VERBS"; then
-    printf '   %sREFUSED      not a read — a route card documents reach, not a change\n' "$_plbl"
-    _pv=refused; return 0
-  fi
-  if printf '%s' "$_pcmd" | /usr/bin/grep -qE "$BROWSER_CHECK"; then
-    printf '   %sBROWSER      for an agent in Chrome; the page must show: %s\n' "$_plbl" "$_pexp"
-    _pv=browser; return 0
-  fi
-  if printf '%s' "$_pcmd" | /usr/bin/grep -qE "$MANUAL_VERBS"; then
-    printf '   %sMANUAL       needs a human eye; run it yourself, then date the card\n' "$_plbl"
-    _pv=manual; return 0
-  fi
-  _plits=$(printf '%s' "$_pexp" | tr '`' '\n' | awk 'NR % 2 == 0' | /usr/bin/grep -v '^[[:blank:]]*$' || true)
-  if [ -z "$_plits" ]; then
-    printf '   %sUNCHECKABLE  `expect:` carries no backticked literal to match on\n' "$_plbl"
-    _pv=uncheckable; return 0
-  fi
-  _pout=$(sh -c "$_pcmd" 2>&1 || true)
-  _pmiss=''
+  _plits=$(probe_lits "$2")
+  if printf '%s' "$_pprobe" | /usr/bin/grep -qE "$WRITE_VERBS"; then echo refused
+  elif printf '%s' "$1" | /usr/bin/grep -qE "$BROWSER_CHECK"; then echo browser
+  elif printf '%s' "$1" | /usr/bin/grep -qE "$MANUAL_VERBS"; then echo manual
+  elif [ -z "$_plits" ]; then echo uncheckable
+  else echo run; fi
+}
+
+# The literals of <expect> that <output> does not contain, one per line; empty is a match.
+probe_missing() { # <output> <literals>
   while IFS= read -r _pl; do
     [ -n "$_pl" ] || continue
-    printf '%s' "$_pout" | /usr/bin/grep -qF -- "$_pl" || _pmiss="${_pmiss}${_pl}
-"
+    printf '%s' "$1" | /usr/bin/grep -qF -- "$_pl" || printf '%s\n' "$_pl"
   done <<EOF
-$_plits
+$2
 EOF
+}
+
+run_probe() { # <label> <cmd> <expect>
+  _plbl=$1; _pcmd=$2; _pexp=$3
+  printf '   %s$ %s\n' "$_plbl" "$_pcmd"
+  _pk=$(probe_class "$_pcmd" "$_pexp")
+  _plits=$(probe_lits "$_pexp")
+  case "$_pk" in
+    refused) printf '   %sREFUSED      not a read — a route card documents reach, not a change\n' "$_plbl"; _pv=refused; return 0 ;;
+    browser) printf '   %sBROWSER      for an agent in Chrome; the page must show: %s\n' "$_plbl" "$_pexp"; _pv=browser; return 0 ;;
+    manual) printf '   %sMANUAL       needs a human eye; run it yourself, then date the card\n' "$_plbl"; _pv=manual; return 0 ;;
+    uncheckable) printf '   %sUNCHECKABLE  `expect:` carries no backticked literal to match on\n' "$_plbl"; _pv=uncheckable; return 0 ;;
+  esac
+  _pout=$(sh -c "$_pcmd" 2>&1 || true)
+  _pmiss=$(probe_missing "$_pout" "$_plits")
+  [ -z "$_pmiss" ] || _pmiss="$_pmiss
+"
   if [ -n "$_pmiss" ]; then
     printf '   %sFAIL         output does not contain:\n' "$_plbl"
     printf '%s' "$_pmiss" | sed 's/^/                  /'
@@ -749,6 +762,39 @@ EOF
     printf '   %spass\n' "$_plbl"
     _pv=pass
   fi
+}
+
+# One probe for `harbor access status|rotate`: prints ONE verdict word and never the probe's output, which a
+# failing CLI can fill with its own credential. No `timeout` on macOS, so a watchdog: the probe runs in the
+# background and is killed (its direct children first) after PROBE_TIMEOUT seconds, default 30.
+# Exit 0 pass, 1 fail|timeout|refused, 3 browser|manual|uncheckable (not machine-decidable).
+probe_one() { # <cmd> <expect>
+  _ok=$(probe_class "$1" "$2")
+  case "$_ok" in
+    refused) echo refused; return 1 ;;
+    browser|manual|uncheckable) echo "$_ok"; return 3 ;;
+  esac
+  _olits=$(probe_lits "$2")
+  _od=$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")
+  _op=''
+  trap 'rm -rf "$_od"' EXIT
+  # An interrupt ends the probe too, rather than leaving it running past a caller that has given up.
+  # Every call `|| :`: under set -e a pkill that matches no child would end the trap before the kill and the exit.
+  trap '[ -z "$_op" ] || { pkill -TERM -P "$_op" 2>/dev/null || :; kill -TERM "$_op" 2>/dev/null || :; }; rm -rf "$_od"; exit 130' INT TERM HUP
+  sh -c "$1" > "$_od/out" 2>&1 < /dev/null &
+  _op=$!; _ot=0; _olim=${PROBE_TIMEOUT:-30}
+  while kill -0 "$_op" 2>/dev/null; do
+    if [ "$_ot" -ge "$_olim" ]; then
+      pkill -TERM -P "$_op" 2>/dev/null || :
+      kill -TERM "$_op" 2>/dev/null || :
+      wait "$_op" 2>/dev/null || :
+      echo timeout; return 1
+    fi
+    sleep 1; _ot=$((_ot + 1))
+  done
+  wait "$_op" 2>/dev/null || :
+  if [ -z "$(probe_missing "$(cat "$_od/out")" "$_olits")" ]; then echo pass; return 0; fi
+  echo fail; return 1
 }
 
 run_dir() {
@@ -1170,6 +1216,8 @@ case "$1" in
   --dispatch)  shift; want_dir "${1:-}"; dispatch_dir "${1:-$ACCESS_DIR_DEFAULT}" ;;
   --accounts)  shift; want_dir "${1:-}"; accounts_dir "${1:-$ACCESS_DIR_DEFAULT}" ;;
   --run)       shift; want_dir "${1:-}"; run_dir "${1:-$ACCESS_DIR_DEFAULT}" ;;
+  --probe)     [ $# -eq 3 ] || usage; probe_one "$2" "$3" && exit 0 || exit $? ;;
+  --classify)  [ $# -eq 3 ] || usage; probe_class "$2" "$3" ;;
   --coverage)  shift; [ $# -ge 1 ] || usage
                want_dir "${2:-}"; coverage_dir "$1" "${2:-$ACCESS_DIR_DEFAULT}" ;;
   -h|--help)   usage ;;

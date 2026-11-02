@@ -4,6 +4,7 @@ status: accepted
 alias: D-58
 date: 2026-10-04
 source: research/10-hierarchy-modularity.md
+revised_by: D-88
 ---
 
 # Where a level shows; what `system` means

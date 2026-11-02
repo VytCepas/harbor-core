@@ -8,7 +8,7 @@ the gate that judges it. See [README.md](./README.md).
 
 Found by harbor#669 (2026-09-24). Evidence in brief:
 
-- **58 of the 69 suites** in `CONTRACTS/suites.txt` run one after another in
+- **58 of the 69 suites** in `contracts/suites.txt` run one after another in
   this one job. It was added on 2026-08-01 with a comment saying the correct
   count was 0, and it kept the 20-minute limit it had when it ran nothing.
 - **The slowest passing run took 19.2 minutes**, 1,143 s of it suites (run
@@ -69,9 +69,9 @@ Replace the `run: |` body of the step `run manifest suites with no dedicated job
               continue
             fi
             printf '== %s\n' "$s"
-            sh bin/suite-select.sh --run "$s"
+            sh bin/test-suite-select.sh --run "$s"
             ran=$((ran + 1))
-          done < CONTRACTS/suites.txt
+          done < contracts/suites.txt
           printf '\nmanifest suites considered: %d\n' "$ran"
 ```
 
@@ -96,9 +96,9 @@ with:
             i=$((i + 1))
             [ $(( (i - 1) % 3 )) -eq ${{ matrix.shard }} ] || continue
             printf '== %s\n' "$s"
-            sh bin/suite-select.sh --run "$s"
+            sh bin/test-suite-select.sh --run "$s"
             ran=$((ran + 1))
-          done < CONTRACTS/suites.txt
+          done < contracts/suites.txt
           printf '\nmanifest suites considered by shard %s of 3: %d of %d\n' "${{ matrix.shard }}" "$ran" "$i"
 ```
 
@@ -112,8 +112,8 @@ with:
 2. **Nothing requires the old check name.** Branch protection on `main`
    requires `conventions linter`, `security-floor suite` and `conventions linter
    suite`. The manifest job is not among them, so renaming it blocks nothing.
-   Confirm with `sh bin/merge-check.sh <pr>`, which reads protection live.
-3. **Lint C3 stays green.** It only needs `CONTRACTS/suites.txt` to still be
+   Confirm with `sh bin/gate-merge-check.sh <pr>`, which reads protection live.
+3. **Lint C3 stays green.** It only needs `contracts/suites.txt` to still be
    read by the workflow, and it is.
 
 ## Failure to watch for

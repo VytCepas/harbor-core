@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# bin/event-bus.sh prune (harbor#1043, CHECKS.md event.retention): a day file dated more than 14
+# bin/event-bus.sh prune (harbor#1043, docs/reference/checks.md event.retention): a day file dated more than 14
 # days before today (UTC) is deleted, every younger one kept; the sweep rides the first emit of
 # each day unless prune.off is in the bus dir, and a file it cannot delete is said, with its fix.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
@@ -15,7 +15,7 @@ plant "$BUS" 2026-08-01 2026-09-20 2026-09-21 2026-09-22 2026-10-05 2026-10-06
 sh "$EB" prune > "$T_TMP/out" 2> "$T_TMP/err"; rc=$?
 t_eq "exit 0" 0 "$rc"
 t_eq "15 days old and older are gone; 14 days old is kept" '2026-09-22 2026-10-05 2026-10-06 ' "$(left)"
-t_has "the run is stamped with its CHECKS.md id" "$(cat "$T_TMP/err")" "ok: [check:event.retention] removed 3 day file(s) dated before 2026-09-22, kept 3"
+t_has "the run is stamped with its docs/reference/checks.md id" "$(cat "$T_TMP/err")" "ok: [check:event.retention] removed 3 day file(s) dated before 2026-09-22, kept 3"
 t_eq "stdout stays clean" '' "$(cat "$T_TMP/out")"
 sh "$T_ROOT/bin/harbor" event prune >/dev/null 2>&1; rc=$?
 t_eq "harbor event prune: exit 0 on a bus already in retention" 0 "$rc"

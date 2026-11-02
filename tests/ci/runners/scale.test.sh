@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # bin/ci-runners.sh past one runner a repo (harbor#1060): governance N, org runners N, a hold on an org, memory and cpu limits per
-# runner, and the memory budget against the VM. Split from tests/ci/ci-runners-test.sh at the 500-line budget (tests/README.md T2);
+# runner, and the memory budget against the VM. Split from tests/ci/runners/runners.test.sh at the 500-line budget (tests/README.md T2);
 # the same stubbed gh and docker, from tests/ci/ci-runners-fixture.sh.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/ci/ci-runners-fixture.sh"

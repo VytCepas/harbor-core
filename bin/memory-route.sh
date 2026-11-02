@@ -10,7 +10,7 @@
 # judged), which is never a green. Exit 2 = a usage error. Until the D-49 window
 # closes a reader also accepts 2 as "could not look" (the code it used to exit).
 #
-# `--status` is the reconcile form (CONTRACTS/reconcile.md, harbor#1031): the same
+# `--status` is the reconcile form (contracts/reconcile.md, harbor#1031): the same
 # judgement, printed as desired / observed / delta / age for each repo that starts
 # blind, and nothing for the ones that do not. It reports only, so it refuses
 # `--apply` (exit 2), and its exit code is the plain run's.
@@ -55,12 +55,12 @@
 set -u
 
 # Its errors go through log-lib on stderr: stdout is the report, which lint IJ6 parses (harbor#896).
-# shellcheck disable=SC2034 # read by log-lib.sh
-LOG_FD=2; . "$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)/log-lib.sh"; log_init memory-route
+# shellcheck disable=SC2034 # read by library-log.sh
+LOG_FD=2; . "$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)/library-log.sh"; log_init memory-route
 
 _phys() { CDPATH= cd -P -- "$1" 2>/dev/null && pwd -P || printf '%s' "$1"; }
 
-REPO="${HARBOR_REPO:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)}"
+REPO="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)}}"
 LIVE_DIR="$HOME/.claude"
 CFG="${CLAUDE_CONFIG_DIR:-$LIVE_DIR}"
 APPLY=0
@@ -100,7 +100,7 @@ stood_down() { # <reason>
   exit 3
 }
 receipt() { _oifs=$IFS; IFS='
-'; set -f; log_receipt "$RECEIPTS" memory-route "$1" $BLINDS || { log_warn "no receipt written to $RECEIPTS"; log_end || :; }
+'; set -f; log_receipt "$RECEIPTS" memory.route "$1" $BLINDS || { log_warn "no receipt written to $RECEIPTS"; log_end || :; }
   set +f; IFS=$_oifs; }
 
 # THE WRITE NEEDS AN EXPLICIT --live FOR THE LIVE DIR (lint D2). Reading
@@ -118,7 +118,7 @@ if [ "$APPLY" = 1 ] && [ "$(_phys "$CFG")" = "$(_phys "$LIVE_DIR")" ] && [ "$EXP
   exit 2
 fi
 if [ "$STATUS" = 1 ] && [ "$APPLY" = 1 ]; then
-  # not a run (CONTRACTS/logging.md): said on stderr, no summary line
+  # not a run (contracts/logging.md): said on stderr, no summary line
   log_fail "--status only reports, and --apply writes"; log_fix "run one: sh $0 --live --status (report) or sh $0 --live --apply (route)"
   exit 2
 fi
@@ -137,11 +137,14 @@ fi
 # a directory name contains a dash, and this only ever needs the forward map.
 key_for() { printf '%s' "$1" | sed 's|/|-|g'; }
 
-# THE REGISTRY IS THE PRIVATE LAYER'S (harbor#1149): <private>/inject.d/box/projects.tsv, through the one resolver beside this
+# THE REGISTRY IS THE PRIVATE LAYER'S (harbor#1149): <private>/context-rules/user/projects.tsv (harbor#1010), through the one resolver beside this
 # script. None is the stand-down below, which names where it looked.
 _SELF="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)"
-REGISTRY="$(env -u HARBOR_ROOT sh "$_SELF/roots.sh" --projects 2>/dev/null || :)"
-[ -n "$REGISTRY" ] || REGISTRY="$(env -u HARBOR_ROOT sh "$_SELF/roots.sh" --private 2>/dev/null || :)/inject.d/box/projects.tsv"
+REGISTRY="$(env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$_SELF/scope-roots.sh" --projects 2>/dev/null || :)"
+if [ -z "$REGISTRY" ]; then  # named where the layer's own layout would hold it (harbor#1010)
+  _pv="$(env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$_SELF/scope-roots.sh" --private 2>/dev/null || :)"
+  if [ -d "$_pv/context-rules" ]; then REGISTRY="$_pv/context-rules/user/projects.tsv"; else REGISTRY="$_pv/inject.d/box/projects.tsv"; fi
+fi
 STORE_ROOT="$CFG/projects"
 # PHYSICAL, on both sides of the comparison. Claude Code keys the directory off
 # the resolved path, which this box's own store proves: the scratchpad silos are
@@ -149,21 +152,21 @@ STORE_ROOT="$CFG/projects"
 # symlink to /private/tmp. Taking $HOME raw while resolving the repo paths works
 # only for as long as no path above either one is a link — true for
 # this box's $HOME today and false the moment this runs anywhere else.
-[ "$STATUS" = 0 ] || status_init memory-route "$CFG" || exit 3
+[ "$STATUS" = 0 ] || status_init memory.route "$CFG" || exit 3
 HOME_KEY="$(key_for "$(_phys "$HOME")")"
 HOME_STORE="$STORE_ROOT/$HOME_KEY/memory"
 
 # ── stand down loudly, never quietly green ──────────────────────────────────
-# renew-check.sh's case 4 is the precedent: "nothing to compare against" and
+# drift-renew-check.sh's case 4 is the precedent: "nothing to compare against" and
 # "nothing wrong" must not render the same. A green here would certify routing
 # that was never examined.
 if [ ! -f "$REGISTRY" ]; then
-  say "[check:memory-route] STOOD DOWN — no registry at $REGISTRY, so the governed repos are unknown."
+  say "[check:memory.route] STOOD DOWN — no registry at $REGISTRY, so the governed repos are unknown."
   say "  This is not a pass. Nothing was examined."
   stood_down "no registry at ${REGISTRY#"$REPO"/}, so the governed repos are unknown"
 fi
 if [ ! -d "$HOME_STORE" ]; then
-  say "[check:memory-route] STOOD DOWN — no store at $HOME_STORE to route to."
+  say "[check:memory.route] STOOD DOWN — no store at $HOME_STORE to route to."
   say "  This is not a pass. Nothing was examined."
   stood_down "no store at projects/$HOME_KEY/memory to route to"
 fi
@@ -184,12 +187,12 @@ count_notes() {
 
 HOME_N="$(count_notes "$HOME_STORE")"
 if [ "$HOME_N" -eq 0 ]; then
-  say "[check:memory-route] STOOD DOWN — the store at $HOME_STORE is empty."
+  say "[check:memory.route] STOOD DOWN — the store at $HOME_STORE is empty."
   say "  This is not a pass. Routing a repo at an empty store buys nothing."
   stood_down "the store at projects/$HOME_KEY/memory is empty, so routing a repo at it buys nothing"
 fi
 
-say "[check:memory-route] $CFG"
+say "[check:memory.route] $CFG"
 say "  store: $HOME_STORE ($HOME_N notes)"
 
 BAD=0; OK=0; MADE=0; EXAMINED=0
@@ -199,7 +202,7 @@ BAD=0; OK=0; MADE=0; EXAMINED=0
 # ten registry paths and called the job done; measured immediately afterwards,
 # eight more directories a session can legitimately open were still blind —
 # three harbor worktrees (INCLUDING THE ONE THIS TOOL WAS BEING WRITTEN IN),
-# the pipeline repo's sub-checkouts (resolved through the repo registry), a project-init worktree, and a mail
+# the pipeline repo's sub-checkouts (resolved through the repo registry), a yard worktree, and a mail
 # tool's installed copy under ~/.local/lib.
 #
 # Two shapes, both ordinary on this box:
@@ -270,7 +273,7 @@ done < "$REGISTRY" | sort -u -t"$(printf '\t')" -k2,2 > "$TARGETS"
 # Measured 2026-09-23 after the move: its store was an EMPTY directory the
 # harness had made on the first session there, so every session started in
 # ~/port loaded no memory, and this check was green throughout. Same rule as
-# floor_port_root (CONTRACTS/port-root.md): empty is unset. A root that does not
+# floor_port_root (contracts/port-root.md): empty is unset. A root that does not
 # exist is skipped, as a registry row's missing directory is.
 _pr="${PORT_ROOT:-$HOME/port}"
 if [ -d "$_pr" ]; then
@@ -362,7 +365,7 @@ done < "$TARGETS"
 # having checked nothing at all, which is the failure this file's own stand-down
 # block exists to prevent one level up.
 if [ "$EXAMINED" -eq 0 ]; then
-  say "[check:memory-route] STOOD DOWN — the registry parsed to 0 usable rows."
+  say "[check:memory.route] STOOD DOWN — the registry parsed to 0 usable rows."
   say "  This is not a pass. Check the tab separators in $REGISTRY."
   stood_down "the registry parsed to 0 usable rows, so nothing was examined"
 fi
@@ -370,11 +373,14 @@ fi
 [ "$STATUS" = 0 ] || status_end || :
 say ""
 if [ "$BAD" -eq 0 ]; then
-  say "[check:memory-route] green — $OK of $EXAMINED governed repo(s) routed${MADE:+, $MADE created this run}"
+  say "[check:memory.route] green — $OK of $EXAMINED governed repo(s) routed${MADE:+, $MADE created this run}"
   receipt green
   exit 0
 fi
-say "[check:memory-route] RED — $BAD of $EXAMINED governed repo(s) start blind"
+say "[check:memory.route] RED — $BAD of $EXAMINED governed repo(s) start blind"
 receipt red
 [ "$APPLY" = 1 ] || say "  Fix: sh $REPO/bin/memory-route.sh --live --apply"
+# The cause, not just the repair (harbor#966): a raw worktree of a repo without harbor's hooks is born blind.
+git config --global --get hook.harbor-memory-route.command >/dev/null 2>&1 ||
+  say "  Cause: hooks/post-checkout is not wired box-wide, so a raw worktree outside harbor is born blind (its header has the two git config lines)"
 exit 1
