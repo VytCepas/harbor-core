@@ -1,0 +1,35 @@
+# default-way-route.tsv (harbor#1397) — where harbor builds each thing a session would otherwise drop into the box by hand.
+#
+# WHY THIS FILE EXISTS. Claude Code lets a session write a skill into ~/.claude/skills, a script into ~/.claude/bin,
+# a hook into settings.json, a rule into CLAUDE.md or a memory note, and a job into ~/Library/LaunchAgents. Each one
+# works until the next deploy overwrites it or leaves it unowned, and nothing said so at the moment it happened.
+# default-way-route.sh reads these rows on every Write, Edit and Bash call and, when one matches, names the harbor
+# home and the install route. A new kind is a row here, never a change to the script.
+#
+# standard_version: 2.0.0
+#
+# COLUMNS  kind <TAB> tools <TAB> recogniser <TAB> content <TAB> quiet <TAB> home <TAB> install <TAB> reason
+#   kind        the artefact kind, a kebab id; it is the note's subject
+#   tools       which calls the row judges, |-separated from Write, Edit and Bash
+#   recogniser  cfg:<glob>   a path under the Claude config dir ($CLAUDE_CONFIG_DIR, else ~/.claude)
+#               home:<glob>  a path under $HOME
+#               cmd:<ERE>    a Bash command segment, split on ; && || | and newlines, heredoc bodies stripped (Bash only)
+#               In a glob `*` is one path segment or part of one, and the match also covers everything below it.
+#               A Write or Edit is judged by its file_path. A Bash call is judged by what it WRITES: a redirect or
+#               tee target, a mkdir or touch operand, or the last operand of cp, mv, ln, rsync, install,
+#               ditto, sed -i or perl -i; a directory the glob's last `*` segment sits in counts as a target too. Reads never match.
+#   content     an ERE the written text must also match (Write content, Edit new_string, the whole Bash command); - for none
+#   quiet       an ERE that, when the Bash command matches it, means the write already goes by harbor's route; - for none
+#   home        where harbor builds it, relative to the harbor checkout; {name} is the segment the recogniser's first * matched
+#   install     how it reaches the box. `harbor deploy` refuses --apply inside a session and from a worktree, so it is the operator's, from a terminal on merged main
+#   reason      one line on why the installed copy is the wrong place
+kind	tools	recogniser	content	quiet	home	install	reason
+skill	Write|Edit|Bash	cfg:skills/*	-	skills?-install\.sh|harbor[ \t]+skills	skills/{name}/SKILL.md, with USE WHEN triggers in its description and a row in skills/README.md (a workload's skill goes in its pack's skills/)	harbor skills --apply --live (deploy.sh --only skills); one skill: sh bin/skill-install.sh {name} --apply --live	the skills installer copies tracked skills by byte identity and the catalog indexes what it installed, so a skill written into the box is refused as box-only or overwritten by the next deploy, and no other box or reviewer ever sees it
+script	Write|Edit|Bash	cfg:bin/*	-	-	bin/<family>-<object>.sh, its name checked by sh bin/lint-name.sh --check bin <name>, listed in the FILES of bin/deploy-runtime-install.sh, with a row in contracts/cli.md	harbor deploy --apply --live --only runtime	the runtime installer owns ~/.claude/bin and records each file in .harbor-manifest; a script it did not ship is untracked, untested, and gone or stale after the next deploy
+hook-script	Write|Edit|Bash	cfg:hooks/*	-	-	hooks/<engine>/<engine>.sh with its manifest.tsv (hooks/README.md); a note or a deny at a tool call is a context rule, context-rules/user/<id>.md with a run: script beside it	harbor deploy --apply --live (the runtime installer copies the engine into bin/, and bin/deploy-hooks.sh wires it from the manifest)	harbor installs nothing into hooks/: an engine runs from bin/ and is wired from its manifest, so a file here is wired by hand, by nobody's registry, and invisible to drift checks
+hook-wiring	Write|Edit|Bash	cfg:settings*.json	hooks|PreToolUse|PostToolUse|SessionStart|UserPromptSubmit|SubagentStart|PreCompact|"Stop"	deploy-hooks\.sh	a wire row in hooks/<engine>/manifest.tsv; for a note or a deny at a tool call, a context rule in context-rules/user/<id>.md, which the injection-rule engine already wired runs	harbor deploy --apply --live (bin/deploy-hooks.sh writes the hooks block from the manifests)	the hooks block is desired state that bin/deploy-hooks.sh writes from the manifests, so a hand-added entry has no manifest row, no controls.tsv row and no off switch anyone can find
+constitution	Write|Edit|Bash	cfg:CLAUDE.md	-	-	policy/constitution.md; a rule a check can enforce is a context rule (context-rules/user/<id>.md) or a lint, registered in standards/naming/controls.tsv	sh bin/deploy.sh --only constitution --apply --live	the box CLAUDE.md is the deployed copy of policy/constitution.md, so an edit here is overwritten by the next deploy and never reviewed
+memory-rule	Write|Edit|Bash	cfg:projects/*/memory/*	type:[ \t]*feedback	-	a context rule, context-rules/user/<id>.md (with a run: script when the moment needs a parse), or a lint registered in standards/naming/controls.tsv; keep the note only for what no moment can check	harbor deploy --apply --live --only inject	a feedback memory is a rule that reaches a session only when it is recalled; the constitution says a preference that belongs in a config file, a lint or a hook is a missed system patch when it goes into memory
+launchd-job	Write|Edit|Bash	home:Library/LaunchAgents/*	-	launchd-render\.sh	launchd/com.harbor.<family>.<object>.plist, plus its row in docs/reference/checks.md naming what it watches, where it notifies and its off switch	sh bin/deploy-launchd-render.sh launchd/<file>.plist > ~/Library/LaunchAgents/<file>.plist, then launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/<file>.plist, from a terminal	a scheduled job with no checks.md row is a check only its author knows about: nobody can trace its alert to it or retire it without reading the source
+systemd-job	Write|Edit|Bash	home:.config/systemd/user/*	-	systemd/harbor-[a-z0-9-]+\.(service|timer)	systemd/harbor-<unit>.service and .timer, the same job as its launchd plist, plus its row in docs/reference/checks.md	cp systemd/harbor-<unit>.service systemd/harbor-<unit>.timer ~/.config/systemd/user/ && systemctl --user enable --now harbor-<unit>.timer, from a terminal	a scheduled job with no checks.md row is a check only its author knows about: nobody can trace its alert to it or retire it without reading the source
+cron-job	Bash	cmd:^[ \t(]*((do|then|else|sudo)[ \t]+)*crontab([ \t]+-u[ \t]+[^ \t]+)?[ \t]+(-e|-[ \t]*$|[^- \t#])	-	-	a launchd plist in launchd/ (macOS) or a systemd user timer in systemd/ (Linux), plus its row in docs/reference/checks.md; harbor schedules nothing with cron	the launchd-job or systemd-job route	a cron entry is a scheduled job no registry lists: nobody can trace its alert to it or retire it without reading the source

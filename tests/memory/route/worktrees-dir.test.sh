@@ -2,15 +2,15 @@
 # memory-route.sh routes every tree under <PORT_ROOT>/.worktrees/<repo>/<slug>, including a tree of a repo
 # that has no projects.tsv row (harbor#1149). Everything is a fixture, $HOME included.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)/box"; CFG="$T/cfg"; REPOROOT="$T/repo"; REG="$T/priv/inject.d/box/projects.tsv"
+T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)/box"; CFG="$T/cfg"; REPOROOT="$T/repo"; REG="$T/priv/context-rules/user/projects.tsv"
 PORT="$T/port"; TAB="$(printf '\t')"
-mkdir -p "$CFG/projects" "$REPOROOT" "$T/priv/inject.d/box" "$PORT"   # the registry is the private layer's (harbor#1149)
+mkdir -p "$CFG/projects" "$REPOROOT" "$T/priv/context-rules/user" "$PORT"   # the registry is the private layer's (harbor#1149)
 key_for() { printf '%s' "$1" | sed 's|/|-|g'; }
 route_of() { printf '%s' "$CFG/projects/$(key_for "$1")/memory"; }
 is_link() { [ -L "$1" ] && echo link || echo "not a link"; }
 mkdir -p "$(route_of "$T")"; printf -- '---\nname: a\n---\nx\n' > "$(route_of "$T")/a.md"
 printf '# c\nregd\t~/port/regd\tw\n' > "$REG"
-mr() { HOME="$T" PORT_ROOT="$PORT" HARBOR_SCOPE_PRIVATE="$T/priv" HARBOR_REPO="$REPOROOT" sh "$T_ROOT/bin/memory-route.sh" --dir "$CFG" "$@" 2>&1; }
+mr() { HOME="$T" PORT_ROOT="$PORT" HARBOR_SCOPE_PRIVATE="$T/priv" HARBOR_SCOPE_REPO="$REPOROOT" sh "$T_ROOT/bin/memory-route.sh" --dir "$CFG" "$@" 2>&1; }
 repo() { mkdir -p "$PORT/$1"; git -C "$PORT/$1" init -q; git -C "$PORT/$1" config user.email t@t; git -C "$PORT/$1" config user.name t
   : > "$PORT/$1/f"; git -C "$PORT/$1" add -A >/dev/null 2>&1; git -C "$PORT/$1" commit -qm base >/dev/null 2>&1; }
 repo regd; repo unregd                      # unregd is in repos.tsv, not in projects.tsv
