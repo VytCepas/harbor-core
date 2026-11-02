@@ -1,3 +1,9 @@
+---
+kind: explanation
+owner: @VytCepas
+status: unreviewed
+---
+
 # Doc-truth — the incidents behind "derive, don't state"
 
 **On-demand.** The rules are in [policy/constitution.md](../../policy/constitution.md) § *Fix the

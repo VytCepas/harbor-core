@@ -1,3 +1,9 @@
+---
+kind: design
+owner: harbor#1060
+status: unreviewed
+---
+
 # Local CI that heals itself (harbor#1060)
 
 **Status:** built in the PR that adds this file. Evidence base: the 2026-10-06 sessions on `harbor-linux`.

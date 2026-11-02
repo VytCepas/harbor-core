@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # doc-fresh-verify.sh (harbor#1287) — is every generated file current? One verdict line per file, and the exact fix for a stale one.
 #
-#   sh bin/doc-fresh-verify.sh [--table FILE]    exit 0 all fresh (or skipped/unchecked), 1 any stale, 2 usage
+#   sh bin/doc-fresh-verify.sh [--table FILE] [--root DIR]    exit 0 all fresh (or skipped/unchecked), 1 any stale, 2 usage
 #
 # WHY. 7 of 12 failed PR runs 2026-10-14..17 were a stale generated file (docs/generated/status.md, docs/context-map.md, a derived
 # register or CODEOWNERS block), each found only after the 15-20 min suite pool. Every one of them has a generator
@@ -14,16 +14,19 @@ set -eu
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 . "$SRC/library-log.sh"
 log_init fresh-check
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
-TABLE="$ROOT/contracts/fresh-checks.tsv"
+_up=..; case "$(CDPATH= cd -- "$SRC" && pwd)" in */vendor/naming) _up=../.. ;; esac   # vendored: the repo is two levels up (harbor#1434)
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/$_up" && pwd)}}"
+TABLE=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --table) [ $# -ge 2 ] || { echo "fresh-check: --table needs a file" >&2; exit 2; }; TABLE="$2"; shift ;;
+    --root) [ $# -ge 2 ] || { echo "fresh-check: --root needs a directory" >&2; exit 2; }; ROOT="$2"; shift ;;
     -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); if ($0=="") exit; print; next } {exit}' "$0"; exit 0 ;;
     *) echo "fresh-check: unknown argument $1 (sh $0 --help)" >&2; exit 2 ;;
   esac
   shift
 done
+[ -n "$TABLE" ] || TABLE="$ROOT/contracts/fresh-checks.tsv"
 [ -f "$TABLE" ] || { echo "fresh-check: no table at $TABLE" >&2; exit 2; }
 cd "$ROOT"
 OUT="$(mktemp -d "${TMPDIR:-/tmp}/fresh-check.XXXXXX")" || exit 2

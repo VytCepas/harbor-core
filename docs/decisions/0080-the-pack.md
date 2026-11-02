@@ -3,7 +3,10 @@ kind: decision-record
 status: accepted
 alias: D-80
 date: 2026-10-10
+supersedes: -
+superseded_by: -
 source: standards/naming.md
+owner: @VytCepas
 ---
 
 # The pack

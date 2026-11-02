@@ -125,6 +125,8 @@ hooks/access-confinement/access-confinement.test.sh
 tests/drift/confinement/compare.test.sh
 tests/admission/confinement/covered.test.sh
 tests/access/chrome/mcp.test.sh
+tests/access/chrome/session.test.sh
+tests/access/chrome/benchmark.test.sh
 tests/context/injection-rule/notes.test.sh
 tests/context/injection-rule/agent-brief.test.sh
 tests/context/injection-rule/decision-question.test.sh
@@ -320,10 +322,14 @@ hooks/ticket-note/private-owners.test.sh
 tests/lint/citations/private.test.sh
 tests/lint/decision/citation.test.sh
 tests/lint/decision/orphan.test.sh
+tests/lint/decision/record.test.sh
+tests/lint/decision/supersedes.test.sh
+tests/lint/decision/migrate.test.sh
 tests/doc/decision/table.test.sh
 tests/standard/decision/graph.test.sh
 tests/standard/relation/graph.test.sh
 tests/lint/shape/validate.test.sh
+tests/lint/doc-shape/doc-shape.test.sh
 tests/scope/keys/read.test.sh
 tests/scope/pack/pack.test.sh
 tests/scope/pack/checks.test.sh
@@ -394,6 +400,7 @@ tests/drift/reconcile/contract.test.sh
 tests/ci/runners/scale.test.sh
 tests/standard/rename/window.test.sh
 tests/lint/name/modes.test.sh
+tests/lint/name/repo-verb.test.sh
 tests/deploy/push/license.test.sh
 tests/lint/share/check.test.sh
 tests/lint/wired/registered.test.sh
@@ -407,6 +414,7 @@ tests/lint/comment/added.test.sh
 tests/lint/name/issue-taxonomy.test.sh
 tests/lint/name/validators.test.sh
 tests/lint/name/overlay.test.sh
+tests/lint/name/vendored.test.sh
 tests/doc/vale/vale.test.sh
 tests/lint/pr/pr.test.sh
 tests/context/injection-rule/name-note-create.test.sh
@@ -421,3 +429,8 @@ tests/deploy/install/renamed-wiring.test.sh
 tests/deploy/install/renamed-wiring-w7.test.sh
 tests/deploy/install/renamed-wiring-w9.test.sh
 tests/gate/push/push.test.sh
+tests/standard/register/reader.test.sh
+tests/standard/register/index.test.sh
+tests/standard/register/vendored.test.sh
+tests/lint/shape/fields.test.sh
+tests/standard/label-sync/label-sync.test.sh

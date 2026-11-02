@@ -3,7 +3,10 @@ kind: decision-record
 status: accepted
 alias: D-49
 date: 2026-10-04
+supersedes: -
+superseded_by: -
 source: research/12a-reviewer.md
+owner: @VytCepas
 ---
 
 # Exit codes and output tags

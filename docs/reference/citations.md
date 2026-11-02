@@ -1,3 +1,9 @@
+---
+kind: reference
+owner: @VytCepas
+status: unreviewed
+---
+
 # CITATIONS — every external URL Harbor's own documents cite
 
 Hand-maintained and machine-checked — **not** generated like

@@ -3,7 +3,10 @@ kind: decision-record
 status: accepted
 alias: D-16
 date: 2026-10-04
+supersedes: -
+superseded_by: -
 source: research/09b-implementation-traceability.md
+owner: @VytCepas
 ---
 
 # Spelling
