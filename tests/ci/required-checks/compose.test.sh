@@ -161,4 +161,5 @@ t_has "...and once the layer drops it, no commit explains the installed row: mod
 t_has "...and the fix names the generator, not a box-only capture" "$(drift "$PG")" "gate-required-generate.sh"
 sh "$R/bin/gate-required-generate.sh" --core "$R/contracts/required-checks.tsv" --private "$PG" | grep -v "^acme/core${TAB}gate\$" > "$CFG/bin/required-checks.tsv"
 t_has "a core row dropped from the installed list is not behind, it is edited: modified" "$(drift "$PG")" "FAIL: modified required-checks.tsv ("
+t_red ci.public-ci   # the falsifier this suite names for them (harbor#1422)
 t_done

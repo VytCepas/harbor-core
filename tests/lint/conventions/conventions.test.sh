@@ -146,4 +146,5 @@ done
 t_eq "no rule reads state an earlier rule set" "" "$_RI_BAD"
 t_eq "…asked of every rule the file defines" "$_ro_defined" "$_RI_RAN"
 
+t_red ci.conventions-linter   # the falsifier this suite names for them (harbor#1422)
 t_done

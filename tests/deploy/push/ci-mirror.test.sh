@@ -201,12 +201,12 @@ t_eq "a dry run needs no token and is green" "0" "$RC"
 t_eq "...pushes nothing" "0" "$(nbranches)"
 t_eq "...calls no gh create or edit" "0" "$(( $(ghcalls 'pr create') + $(ghcalls 'pr edit') ))"
 t_eq "...and runs no git fetch or push" "0" "$(gitcalls ARGV)"
-# harbor#967 W9: public-ci.yml sets the old names until its patch lands, so both are read until 2026-12-01.
+# harbor#966: the old names are gone (public-ci.yml sets the renamed keys); an old name alone must no longer be read.
 _od="HARBOR_$(printf CORE_MIRROR_DIR)"; _ot="HARBOR_$(printf CORE_MIRROR_TOKEN)"   # the old names, built apart so no source line holds one
-env "$_od=$MIR" sh "$S/bin/ci-mirror.sh" --dry-run 7 >/dev/null 2>&1; t_eq "the old mirror-dir name alone still reaches the checkout (dry run green)" "0" "$?"
+env "$_od=$MIR" sh "$S/bin/ci-mirror.sh" --dry-run 7 >/dev/null 2>&1; t_eq "the old mirror-dir name alone no longer reaches the checkout" "1" "$?"
 : > "$STUB/gh.log"; OUT="$(env "$_ot=$TOKEN" sh "$S/bin/ci-mirror.sh" --close 7 2>&1)"
-t_hasnt "the old token name alone passes the token check" "$OUT" "is not set"
-t_has "...and is the token gh runs with" "$(cat "$STUB/gh.log")" "GH_TOKEN=$TOKEN"
+t_has "the old token name alone no longer passes the token check" "$OUT" "is not set"
+t_eq "...and is not the token gh runs with" "0" "$(grep -c "GH_TOKEN=$TOKEN" "$STUB/gh.log" || :)"
 S2="$(mk dryleak)"; pr "$S2" docs/leak.md 'owned by Zorblax' >/dev/null
 NOTOKEN=1; run "$S2" --dry-run 7
 t_eq "a dry run of a leaking PR is red" "1" "$RC"
@@ -220,7 +220,7 @@ run "$S" 7
 t_eq "a mirror checkout whose origin is not harbor-core is refused" "1" "$RC"
 t_eq "...nothing pushed" "0" "$(nbranches)"
 HARBOR_CI_CORE_MIRROR_DIR="$T_TMP/none" sh "$S/bin/ci-mirror.sh" 7 >/dev/null 2>&1; t_eq "no mirror checkout is refused" "1" "$?"
-HARBOR_CI_CORE_MIRROR_TOKEN="$TOKEN" sh "$S/bin/ci-mirror.sh" 7 >/dev/null 2>&1; t_eq "with neither mirror-dir name set it is refused" "1" "$?"
+HARBOR_CI_CORE_MIRROR_TOKEN="$TOKEN" sh "$S/bin/ci-mirror.sh" 7 >/dev/null 2>&1; t_eq "with no mirror dir set it is refused" "1" "$?"
 sh "$S/bin/ci-mirror.sh" >/dev/null 2>&1; t_eq "no PR number is a usage error" "2" "$?"
 sh "$S/bin/ci-mirror.sh" abc >/dev/null 2>&1; t_eq "a non-numeric PR is a usage error" "2" "$?"
 sh "$S/bin/ci-mirror.sh" --bogus 7 >/dev/null 2>&1; t_eq "an unknown option is a usage error" "2" "$?"

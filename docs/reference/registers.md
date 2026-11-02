@@ -28,6 +28,7 @@ reference to an id that is not there are each red (`standard.register-declared`,
 | `standards/naming/label-axes.tsv` | standard | id | `id axis value legacy globs min max status meaning` | - | `bin/lint-name.sh` | an issue label as axis:value with the legacy label it replaces |
 | `standards/naming/label-retired.tsv` | standard | id | `id replaced_by reason` | - | `bin/standard-label-sync.sh` | a label the register retires, with the label that absorbs it |
 | `standards/naming/verbs.tsv` | standard | id | `id meaning exit kinds note` | kinds>standards/naming/repo-kinds.tsv:id@space | `bin/lint-name.sh` | a task verb a repo kind must carry in its justfile |
+| `standards/naming/versions.tsv` | standard | id | `id axis name value sha hold_at hold_reason upgrade note` | - | `bin/lint-name.sh` | the versions register: runtimes, tools, libraries and GitHub Actions, with hold_at and upgrade-as-PR (harbor#1426) |
 | `standards/naming/writers.tsv` | standard | id | `id kind value surface note` | surface>standards/naming/surfaces.tsv:id | `bin/lint-renderer.sh` | a script that creates a named thing, and the command patterns that find one |
 | `standards/naming/words.tsv` | standard | id | `id note` | - | `bin/lint-name.sh` | an English or technical word a name may carry beyond the terms |
 | `standards/naming/schemas.tsv` | standard | id | `id header columns key refs owner read_by note` | owner>standards/naming/terms.tsv:id read_by>path: | `bin/standard-register.sh` | this file: the schema of every .tsv register |
@@ -38,6 +39,7 @@ reference to an id that is not there are each red (`standard.register-declared`,
 | `contracts/agents.tsv` | agent | role | `role model effort tools input output done_when must_not stop_rule` | - | - | the role table a subagent brief is built from |
 | `contracts/catalog-non-tools.tsv` | skill | glob | `glob why` | - | `bin/skill-catalog.sh` | a name glob that is not a tool, with the reason |
 | `contracts/confinement-coverage.tsv` | admission | id | `id coverage why` | id>standards/naming/controls.tsv:id | `bin/deploy-confinement.sh` | how each admission rule is covered by the confinement |
+| `contracts/confinement-mcp.tsv` | admission | server | `server verdict reason` | - | `bin/drift-wall.sh` | a local MCP server and whether it must start under srt or is exempt, with the reason (harbor#1442) |
 | `contracts/confinement-classes.tsv` | admission | class | `class kind treatment where` | - | `bin/admission-observe-report.sh` | every class of Bash call that asks to leave the sandbox, and its treatment (harbor#1441) |
 | `contracts/core-writes-allow.tsv` | lint | path+target | `path target reason` | path>path: | `bin/lint-core-writes.sh` | a core script allowed to write a path |
 | `contracts/credential-patterns.tsv` | access | id | `id ere note` | - | `bin/lint-secrets.sh` | the shapes of a credential value |
@@ -53,6 +55,7 @@ reference to an id that is not there are each red (`standard.register-declared`,
 | `contracts/fresh-checks.tsv` | doc | file+check | `file check fix needs?` | - | `bin/doc-fresh-verify.sh` | a generated file and the command that proves it current |
 | `contracts/hooks-external.tsv` | lint | script | `script event why` | - | `bin/lint-conventions.sh` | a hook the box runs that no installer wires |
 | `contracts/issue-taxonomy.tsv` | standard | kind+label | `kind label glob meaning` | - | `bin/standard-issue-label.sh` | the issue type and theme sets, generated from label-axes.tsv |
+| `contracts/launchd-wall-exempt.tsv` | admission | label+path | `label path reason` | - | `bin/drift-launchd-wall.sh` | a launchd job allowed to run code from inside the confinement write list, with the reason (harbor#1442) |
 | `contracts/layers.tsv` | deploy | path | `path layer note` | - | `bin/lint-layout-map.sh` | the layer of every path |
 | `contracts/layout-map.tsv` | standard | entry | `entry kind layer note` | layer>standards/naming/terms.tsv:id | `bin/lint-layout-map.sh` | the kind and layer of each top-level repo entry |
 | `contracts/leak-patterns.tsv` | lint | id | `id kind pattern note` | - | `bin/lint-leaks.sh` | a pattern for a value that must not leave the box |
@@ -64,6 +67,7 @@ reference to an id that is not there are each red (`standard.register-declared`,
 | `contracts/required-checks.tsv` | gate | repo+check | `repo check` | - | `bin/gate-merge-check.sh` | the checks a PR must pass to merge, per repo |
 | `contracts/roots.tsv` | scope | var | `var base rel breaks shared?` | - | `bin/deploy-install-lib.sh` | a root variable and the base it resolves against |
 | `contracts/scaffolder-plugins.tsv` | admission | key | `key name` | - | `bin/prod-guard-install.sh` | a scaffolder plugin the guards know |
+| `contracts/seams.tsv` | standard | id | `id kind producer consumer copy_path pin schema freshness owner allowed_lag reason` | freshness>standards/naming/controls.tsv:id | `bin/lint-name.sh` | one row per cross-repo contract: producer, consumer, copy, pin, schema and freshness check (harbor#1425) |
 | `contracts/session-waiting.tsv` | session | id | `id regex positive negative` | - | `hooks/session-state/session-state.sh` | a pattern that says the session waits on the operator |
 | `contracts/shims.tsv` | deploy | name | `name root rel` | root>contracts/roots.tsv:var | `bin/deploy-shim-install.sh` | a PATH shim and the root it resolves against |
 | `contracts/skill-book-router.tsv` | skill | skill | `skill situation` | - | `bin/skill-catalog.sh` | the situation each skill answers |

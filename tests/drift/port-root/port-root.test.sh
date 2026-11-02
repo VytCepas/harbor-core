@@ -37,4 +37,5 @@ t_exit "one row later it is green" 0 drift
 t_section "a registry that cannot be read is never green"
 printf 'id\tpath\tkind\tremote\nbad\t/abs\tworkload\t-\n' > "$V/repos.tsv"
 t_exit "exit 2 on a refused registry" 2 drift
+t_red check.port-drift   # the falsifier this suite names for them (harbor#1422)
 t_done

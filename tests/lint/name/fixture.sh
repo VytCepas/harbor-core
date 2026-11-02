@@ -13,6 +13,7 @@ mini() { # <dir>
   mkdir -p "$1/contracts" "$1/context-rules" "$1/docs/reference"
   cp "$T_ROOT"/bin/admission-*.sh "$T_ROOT"/bin/library-admission.sh "$T_ROOT/bin/lint-conventions.sh" "$1/bin/"; cp "$T_ROOT/docs/reference/checks.md" "$1/docs/reference/"
   cp "$T_ROOT/contracts/required-checks.tsv" "$1/contracts/"; cp -R "$T_ROOT"/context-rules/. "$1/context-rules/"
+  mkdir -p "$1/hooks"; cp "$T_ROOT/hooks/pre-commit" "$T_ROOT/hooks/pre-push" "$T_ROOT/hooks/commit-msg" "$1/hooks/"   # the hook census (harbor#1422)
   # a stub for every file a control names as its engine or its proof, so the copy is a tree controls.tsv can be judged in
   awk -F'\t' '/^#/ || $1 == "id" { next } { print $4; print $11 }' "$REG/controls.tsv" | sort -u | awk '$0 != "-"' | while IFS= read -r _p; do
     mkdir -p "$1/$(dirname "$_p")"; [ -e "$1/$_p" ] || : > "$1/$_p"

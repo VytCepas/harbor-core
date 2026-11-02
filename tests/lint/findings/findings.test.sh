@@ -349,4 +349,5 @@ HARBOR_SCOPE_ROOT="$XS" HARBOR_LINT_FINDINGS_OUT="$TMP/x3e/records.tsv" sh "$T_R
 t_eq "a --check that prints no kind files verdict-unreadable" "R context.budget-ceiling|A context.budget-ceiling verdict-unreadable:registries/context-baseline.tsv|" "$(tr '\t\n' ' |' < "$TMP/x3e/records.tsv")"
 t_has "with the tool's own line as the message" "$(cat "$TMP/x3e/lint.log")" 'ADVISORY [context.budget-ceiling] boom: measuring failed'
 
+t_red check.findings   # the falsifier this suite names for them (harbor#1422)
 t_done

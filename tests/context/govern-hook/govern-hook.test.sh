@@ -56,6 +56,7 @@ t_eq "the deny is valid JSON" 0 "$(printf '%s' "$out" | jq -e . >/dev/null 2>&1;
 t_has "THE INCIDENT is denied" "$out" '"permissionDecision":"deny"'
 t_has "the backstop's own words reach the reason" "$out" 'detect-and-defer fixtures pending'
 t_has "the deny names the one-process route" "$out" '--merge 253'
+t_red context.merge-governance   # the incident merge was denied above (harbor#1422)
 t_has "and the override that leaves a record" "$out" '--force'
 stub 0 'ok  #253 — 12 check(s) pass, 2 of them required'
 out="$(fire PreToolUse 'gh pr merge 253 --squash' "$MC")"
@@ -267,6 +268,7 @@ t_eq "passes an ordinary message" 0 "$(cm 'feat: an ordinary subject line')"
 t_eq "blocks a Co-Authored-By trailer" 1 "$(cm 'Co-Authored-By: Claude <noreply@anthropic.com>')"
 t_eq "blocks the generated-with banner" 1 "$(cm '🤖 Generated with Claude Code')"
 t_eq "blocks a Claude-Session trailer (harbor#584)" 1 "$(cm "$(printf 'fix: a subject\n\nClaude-Session: https://claude.ai/code/session_x')")"
+t_red git.commit-message-no-ai-attribution   # the three trailers above were refused (harbor#1422)
 t_eq "allows the Claude-Session trailer to be named mid-line" 0 "$(cm 'docs: why the Claude-Session: trailer is attribution')"
 t_eq "ignores a git comment line" 0 "$(cm '# Co-Authored-By: Claude')"
 t_eq "allows the rule to be discussed mid-line" 0 "$(cm 'docs: explain why Co-Authored-By trailers are banned')"
