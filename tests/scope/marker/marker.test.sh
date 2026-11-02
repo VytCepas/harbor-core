@@ -10,7 +10,7 @@
 _MR="$(dirname "$0")/../../../bin/scope-roots.sh"
 PI_DIR="${HARBOR_SCOPE_SCAFFOLDER:-$(sh "$_MR" --get HARBOR_SCOPE_SCAFFOLDER 2>/dev/null || :)}"          # the suite never writes there
 PO_DIR="${HARBOR_SCOPE_FLEET_CONTROLLER:-$(sh "$_MR" --get HARBOR_SCOPE_FLEET_CONTROLLER 2>/dev/null || :)}"
-SKIP_CROSS="${HARBOR_TEST_SKIP_CROSS:-${HARBOR_SKIP_CROSS:-0}}"  # and before t_init clears the caller's HARBOR_* (harbor#773)
+SKIP_CROSS="${HARBOR_TEST_SKIP_CROSS:-0}"  # and before t_init clears the caller's HARBOR_* (harbor#773)
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 CASES="$T_ROOT/fixtures/marker/cases.json"; M="$T_TMP/m"; mkdir -p "$M"; TAB="$(printf '\t')"
 command -v jq >/dev/null 2>&1 || { echo "marker-test: jq is required" >&2; exit 1; }

@@ -4,7 +4,7 @@
 README.md
 AGENTS.md
 CLAUDE.md
-justfile	setup:\nlint:\ntypecheck:\nformat:\ntest:\ntest-quick:\naudit:\nsbom:\nlicense:\nfuzz:\nscan:\nnaming:\ndocs:\nci:\nfast-ci:\nci-local-on:\nci-local-off:
+justfile
 .agents/config.yaml	repo-kind: "workload"  # standards/naming/repo-kinds.tsv
 docs/
 bin/

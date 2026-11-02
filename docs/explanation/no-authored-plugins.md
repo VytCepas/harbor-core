@@ -1,9 +1,3 @@
----
-kind: explanation
-owner: @VytCepas
-status: unreviewed
----
-
 # No Harbor-authored plugins — the measurements that retired the tier
 
 **On-demand.** The rule is enforced by lint **X10**. This is why it exists.

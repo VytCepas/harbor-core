@@ -5,7 +5,7 @@
 # Then the install standard (harbor#765, #771): --live or --dir, the dry-run exit rule, --accept-loss,
 # and a backup of what an install replaces or a rename removes.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE
 SUT="$T_ROOT/bin/skill-install.sh"; ROOT="$T_TMP/repo"; CFG="$CLAUDE_CONFIG_DIR"
 mkdir -p "$ROOT/bin" "$ROOT/skills/alpha" "$ROOT/vendor/skills/beta" "$CFG/skills"
 cp "$SUT" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/deploy-install-lib.sh" "$T_ROOT/bin/library-fs.sh" "$ROOT/bin/"
@@ -140,7 +140,7 @@ t_has "--all dry run: an absent one is would install" "$DRY" "  note: beta: woul
 t_has "--all dry run: a current one is ok" "$DRY" "  ok: epsilon: current"
 t_has "--all dry run: ends with its apply command" "$DRY" "  note: next: sh $ROOT/bin/skill-install.sh --apply --all --dir '$(cd "$CFG" && pwd -P)'"
 CDRY="$(HOME="$T_TMP/ch3" CLAUDE_CONFIG_DIR="$T_TMP/ch3/elsewhere" sh "$SUT" commands --all --dir "$T_TMP/ch3/elsewhere" 2>&1)"
-t_has "commands dry run: the same shapes" "$CDRY" "  ok: harbor-merge: current"
+t_has "commands dry run: the same shapes" "$CDRY" "  ok: gate-merge: current"
 mkdir -p "$CFG/skills/OldAlpha"; echo old > "$CFG/skills/OldAlpha/SKILL.md"
 t_eq "a rename applies" 0 "$(rc alpha --apply --from-old OldAlpha)"
 t_eq "...the old dir is gone from the skills dir" gone "$(gone "$CFG/skills/OldAlpha")"

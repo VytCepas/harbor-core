@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
+[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0
 # B3 (harbor#3) — PreToolUse(Bash) shell-injection / local-exec guard.
 # Ports upstream DANGEROUS_PATTERNS @ a4e8e74 (safety-classifier.ts:44-76),
 # trimmed for POSIX+WSL (dropped the OpenRouter/email routing shapes → B4).
@@ -151,13 +151,13 @@ hit '(^|[^[:alnum:]_])(sh|bash|zsh|dash|source|\.)[[:space:]]+(<[[:space:]]*)?<[
 # HARBOR_ADMISSION_SHADOW (harbor#482) is a second switch of the same class — a shadow
 # session blocks almost nothing — so it is guarded by the same two rules, which
 # stay enforcing in shadow (floor_shadow_enforces).
-rawhit '(^|[^[:alnum:]_])(export[[:space:]]+)?(HARBOR_ADMISSION_DISABLE|HARBOR_ADMISSION_SHADOW|HELM_DISABLE_FLOOR|HELM_FLOOR_SHADOW)[[:space:]]*=' \
-  && floor_block bash "assigning a floor switch (HARBOR_ADMISSION_DISABLE or HARBOR_ADMISSION_SHADOW, or their old names HELM_DISABLE_FLOOR and HELM_FLOOR_SHADOW) — both are set by the operator on the command line, never by a session" killswitch-assign.flat
+rawhit '(^|[^[:alnum:]_])(export[[:space:]]+)?(HARBOR_ADMISSION_DISABLE|HARBOR_ADMISSION_SHADOW)[[:space:]]*=' \
+  && floor_block bash "assigning a floor switch (HARBOR_ADMISSION_DISABLE or HARBOR_ADMISSION_SHADOW) — both are set by the operator on the command line, never by a session" killswitch-assign.flat
 # `launchctl setenv` puts a switch into every process launchd starts later, the
 # next Terminal included. The second alternative is a switch name REDIRECTED into
 # a settings file: a settings.json `env` block reaches every hook, and
 # `printf '{"env":…}' > f` names no writer before the name.
-rawhit "(>[|!&]?|>>!?|tee|sed|perl|python[0-9.]*|cat|launchctl[[:space:]]+setenv)[^;&|]*(HARBOR_ADMISSION_DISABLE|HARBOR_ADMISSION_SHADOW|HELM_DISABLE_FLOOR|HELM_FLOOR_SHADOW)|(HARBOR_ADMISSION_DISABLE|HARBOR_ADMISSION_SHADOW|HELM_DISABLE_FLOOR|HELM_FLOOR_SHADOW)[^;&|]*(>[|!&]?|>>!?)[^;&|]*settings[^;&|]*\.json" \
+rawhit "(>[|!&]?|>>!?|tee|sed|perl|python[0-9.]*|cat|launchctl[[:space:]]+setenv)[^;&|]*(HARBOR_ADMISSION_DISABLE|HARBOR_ADMISSION_SHADOW)|(HARBOR_ADMISSION_DISABLE|HARBOR_ADMISSION_SHADOW)[^;&|]*(>[|!&]?|>>!?)[^;&|]*settings[^;&|]*\.json" \
   && floor_block bash "persisting a floor switch into a file would disable or shadow the floor for every later session" killswitch-persist.flat
 RCFILE='(\.zshrc|\.zshenv|\.zprofile|\.zlogin|\.bashrc|\.bash_profile|\.bash_login|\.profile|/etc/profile|/etc/profile\.d|/etc/paths|/etc/zsh(env|rc|profile|login)?|\.config/fish/(config\.fish|conf\.d)|\.cshrc|\.kshrc|\.ssh/(authorized_keys2?|config|rc|environment))([^.a-zA-Z0-9_-]|$)'
 hit "(>[|!&]?|>>!?)[[:space:]]*[^[:space:];&|]*$RCFILE" \

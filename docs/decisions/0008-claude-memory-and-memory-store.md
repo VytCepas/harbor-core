@@ -3,10 +3,7 @@ kind: decision-record
 status: accepted
 alias: D-8
 date: 2026-10-04
-supersedes: -
-superseded_by: -
 source: research/08-gap-review.md
-owner: @VytCepas
 ---
 
 # `~/.claude/MEMORY/` and the `helm-log` repo

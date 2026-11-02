@@ -145,7 +145,7 @@ fi
 # can point this at a synthetic tree and never read a real transcript. Sharing the
 # name matters: two spellings of "where the transcripts are" is two things to
 # redirect, and a suite that redirects one of them reads the operator's store.
-SRC_DIR="${HARBOR_SESSION_TRANSCRIPTS:-${HARBOR_TRANSCRIPTS:-$CFG/projects}}"
+SRC_DIR="${HARBOR_SESSION_TRANSCRIPTS:-$CFG/projects}"
 
 command -v jq >/dev/null 2>&1 || die "jq is required" "$(pkg_hint jq)"
 

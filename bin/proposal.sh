@@ -62,7 +62,7 @@ case "${1:-}" in
              exit 0 ;;
 esac
 DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
-ROOT="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-$(CDPATH= cd -- "$DIR/.." && pwd -P)}}"
+ROOT="${HARBOR_SCOPE_REPO:-$(CDPATH= cd -- "$DIR/.." && pwd -P)}"
 STORE="$ROOT/proposals"
 
 # Status lines are log-lib's, on stderr: stdout is the verb's data (list, count, show, a dry run's files).

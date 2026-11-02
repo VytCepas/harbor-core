@@ -54,8 +54,8 @@ case "${1:-}" in
   *)         log_fail "unknown flag $1"; log_fix "sh $0 --help"; log_end || :; exit 2 ;;
 esac
 
-SRC="${HARBOR_STATUS_PLAN_SRC:-${HARBOR_PLAN_SRC:-$ROOT/docs/reports/platform-build-tickets.md}}"
-OUT="${HARBOR_STATUS_PLAN_OUT:-${HARBOR_PLAN_OUT:-$ROOT/docs/generated/plan.md}}"
+SRC="${HARBOR_STATUS_PLAN_SRC:-$ROOT/docs/reports/platform-build-tickets.md}"
+OUT="${HARBOR_STATUS_PLAN_OUT:-$ROOT/docs/generated/plan.md}"
 if [ ! -f "$SRC" ]; then
   log_fail "no plan at ${SRC#$ROOT/}"
   log_fix "git -C $ROOT checkout -- ${SRC#$ROOT/}"
@@ -170,8 +170,6 @@ if [ "$MODE" = summary ]; then
 fi
 
 emit() {
-  printf -- '---\nkind: generated-doc\nowner: harbor#117\nstatus: generated\nsource: sh bin/status-plan-generate.sh\n---\n'
-  printf '<!-- generated-by: sh bin/status-plan-generate.sh -->\n'
   printf '# PLAN — generated, do not edit\n\n'
   printf 'Which plan ticket is built, DERIVED from each ticket own falsifier rather\n'
   printf 'than from a checkbox. Regenerate with `sh bin/status-plan-generate.sh`; lint rule\n'

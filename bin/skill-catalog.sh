@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # skill-catalog.sh — generate the skill catalog, the index that makes invoked-only skills findable (harbor#155, harbor#1149, harbor#1010).
-#   Renamed from skill-book.sh (harbor#1010): bin/skill-book.sh stays for one release as an alias that runs this file and says so on stderr.
+#   Renamed from skill-book.sh (harbor#1010); the old name is retired.
 #   EVERY ROW CARRIES A TIER, derived from where the skill lives and never typed: core (skills/), vendored (vendor/skills/),
 #   pack (an installed pack's manifest in <config dir>/.harbor-packs lists it), box (installed, and nothing here tracks it); a
 #   tool in ~/.local/bin is tier cli. An executable that is no tool (contracts/catalog-non-tools.tsv) is not a row.
@@ -103,7 +103,7 @@ ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 . "$ROOT/bin/library-log.sh"; log_init skill-catalog
 . "$ROOT/bin/deploy-install-lib.sh"
 TAB='	'
-LOCAL_BIN="${HARBOR_SCOPE_LOCAL_BIN:-${HARBOR_LOCAL_BIN:-$HOME/.local/bin}}"
+LOCAL_BIN="${HARBOR_SCOPE_LOCAL_BIN:-$HOME/.local/bin}"
 OUT="$ROOT/skills/skill-catalog/SKILL.md"
 ROUTER="$ROOT/contracts/skill-book-router.tsv"
 NONTOOLS="$ROOT/contracts/catalog-non-tools.tsv"
@@ -380,8 +380,6 @@ emit() {
 name: skill-catalog
 description: "The index of every skill and credentialed CLI on this box, with the path to read each one — most are hidden from your listing and this is the only route to them. USE WHEN you are about to do reasoning work by hand: design an eval or a pass^k study, run a red-team or adversarial pass, chase a root cause, reason from first principles, get independent perspectives on a decision, write or optimise a prompt, extract the substance of a paper or a long document, generate options. ALSO WHEN what skills do I have, list skills, find a tool, which tool reads email/calendar/tickets/tags, I forgot the name of that skill, skill-book (its name before harbor#1010). NOT FOR invoking a skill already in your listing — this is for the ones you cannot see."
 ---
-
-<!-- generated-by: sh bin/skill-catalog.sh -->
 
 # Skill catalog
 

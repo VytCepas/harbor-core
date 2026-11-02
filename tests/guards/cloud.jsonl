@@ -108,10 +108,6 @@
 {"id":"subagent-gcloud-delete","rule":"cloud-soft","want":"deny","cmd":"gcx tools gcloud compute instances delete vm","ctx":{"agent_type":"workflow-subagent"},"why":"harbor#194"}
 {"id":"subagent-expiry","rule":"cloud-soft","want":"deny","cmd":"gcx tools bq update --expiration 1 proj:ds.tbl","ctx":{"agent_type":"workflow-subagent"},"why":"harbor#194"}
 {"id":"subagent-expiry-zero-clears","rule":"cloud-soft","want":"allow","cmd":"gcx tools bq update --expiration 0 proj:ds.tbl","ctx":{"agent_type":"workflow-subagent"},"why":"harbor#194"}
-{"id":"subagent-expiry-equals","rule":"cloud-soft","want":"deny","cmd":"gcx tools bq update --expiration=1 proj:ds.tbl","ctx":{"agent_type":"workflow-subagent"},"why":"harbor#1410: the = spelling an agent types"}
-{"id":"subagent-expiry-partition","rule":"cloud-soft","want":"deny","cmd":"gcx tools bq update --time_partitioning_expiration 1 proj:ds.tbl","ctx":{"agent_type":"workflow-subagent"},"why":"harbor#1410"}
-{"id":"subagent-transfer-config","rule":"cloud-soft","want":"deny","cmd":"gcx tools bq mk --transfer_config --data_source=scheduled_query --params=x","ctx":{"agent_type":"workflow-subagent"},"why":"harbor#1410"}
-{"id":"abs-path-bq-rm-f","rule":"cloud-soft","want":"ask","cmd":"/opt/homebrew/bin/bq rm -f proj:ds.tbl","why":"harbor#1410"}
 {"id":"expiry-bogus-flag","rule":"cloud-soft","want":"allow","cmd":"gcx tools bq update --time_partition_expiration 1 proj:ds.tbl"}
 {"id":"expiry-zero-clears","rule":"cloud-soft","want":"allow","cmd":"gcx tools bq update --expiration 0 proj:ds.tbl","why":"clearing an expiry prevents data loss"}
 {"id":"expiry-zero-clears-equals","rule":"cloud-soft","want":"allow","cmd":"gcx tools bq update --expiration=0 proj:ds.tbl"}

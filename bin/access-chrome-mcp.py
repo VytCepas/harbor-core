@@ -14,13 +14,8 @@ one that decides. A project's settings `env` reaches this process too, so the CL
 and only the locale, HOME, TMPDIR and session variables passed on: the CLI's own test seams (HARBOR_ACCESS_PLAYWRIGHT_CLI, the private
 host list) cannot be set from a repo.
 The CLI names its browser session from CLAUDE_CODE_SESSION_ID; without it this process names one per parent session
-(mcp-<ppid>), so two sessions never share a page. `harbor chrome` on the CLI stays for the operator's own terminal.
-
-harbor#1421: this file is now the launcher. Beside it, access-chrome-mcp.ts is the server (one process and one daemon
-connection for the whole session instead of a process chain per call); main() replaces this process with it, under the same
-scrubbed environment, so the registration above does not change. Without bun or the .ts file the loop below is the server,
-as it was, one `access-browser-agent.sh` per call."""
-import json, os, shutil, subprocess, sys
+(mcp-<ppid>), so two sessions never share a page. `harbor chrome` on the CLI stays for the operator's own terminal."""
+import json, os, subprocess, sys
 
 HERE = os.path.dirname(os.path.realpath(__file__))
 AGENT = os.path.join(HERE, 'access-browser-agent.sh')
@@ -115,15 +110,7 @@ def handle(msg):
         return {'jsonrpc': '2.0', 'id': mid, 'error': {'code': -32601, 'message': 'method not found: %s' % method}}
     return {'jsonrpc': '2.0', 'id': mid, 'result': result}
 
-def exec_bun():   # the session server, in place of this process; returns only when it cannot
-    ts = os.path.join(HERE, 'access-chrome-mcp.ts')
-    bun = shutil.which('bun', path=PATH + ':' + os.path.expanduser('~/.bun/bin'))
-    if bun is None or not os.path.isfile(ts): return
-    try: os.execve(bun, [bun, ts], session_env())
-    except OSError: return
-
 def main():
-    exec_bun()
     for line in sys.stdin:
         line = line.strip()
         if not line: continue

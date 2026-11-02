@@ -1,9 +1,3 @@
----
-kind: reference
-owner: @VytCepas
-status: unreviewed
----
-
 # PROVENANCE — every asset Harbor took from upstream, and what we changed
 
 **A2 (harbor#2).** Harbor does not fork upstream; it **adopts and upgrades** it

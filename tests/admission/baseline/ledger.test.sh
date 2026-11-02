@@ -157,7 +157,7 @@ t_eq "O-27 control: the closed dir takes the record, so the zero above is the ga
 otrunc
 HARBOR_ADMISSION_DISABLE=1 CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/admission-observe.sh" </dev/null >/dev/null 2>&1
 t_has "O-17 an overridden session is recorded" "$(olast)" '"d":"override","r":"floor-disabled"'
-_o17='HELM_DISABLE_FLOOR:-0.*exit 0'  # the control: the same pattern does find a real guard's kill-switch
+_o17='HARBOR_ADMISSION_DISABLE:-0.*exit 0'  # the control: the same pattern does find a real guard's kill-switch
 t_eq "O-17 admission-observe.sh carries no kill-switch of its own" "guard-bash:switch floor-observe:none" \
   "guard-bash:$(grep -q "$_o17" "$CFG/bin/admission-bash.sh" && echo switch || echo none) floor-observe:$(grep -q "$_o17" "$CFG/bin/admission-observe.sh" && echo switch || echo none)"
 otrunc
@@ -435,7 +435,7 @@ t_eq "SH-04 every would-be block in one call is recorded, not only the first" "p
   "$(jq -r 'select(.d=="shadow")|.r' "$OSINK" | sort -u | tr '\n' ' ' | sed 's/ $//')"
 otrunc
 t_eq "SH-05 a later enforcing rule still blocks after a shadowed one" 2 \
-  "$(_sh admission-bash.sh "$(bash_j 'echo aaa | base64 -d | bash; HELM_DISABLE_FLOOR=1 true')")"
+  "$(_sh admission-bash.sh "$(bash_j 'echo aaa | base64 -d | bash; HARBOR_ADMISSION_DISABLE=1 true')")"
 t_eq "SH-05 both decisions are on record: the shadowed one and the block" "block:killswitch-assign shadow:pipe-to-shell" \
   "$(jq -r '"\(.d):\(.r)"' "$OSINK" | sort | tr '\n' ' ' | sed 's/ $//')"
 otrunc
@@ -456,7 +456,7 @@ printf '%s' "$(bash_j 'echo hello')" | FLOOR_SHADOWED=1 CLAUDE_CONFIG_DIR="$CFG"
 t_has "SH-10 an inherited FLOOR_SHADOWED cannot suppress a clean pass's record" "$(olast)" '"d":"allow","r":"bash-clean"'
 printf '%s' "$(bash_j 'echo aaa | base64 -d | bash')" | CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/admission-bash.sh" >/dev/null 2>"$TMP/sh.err"
 t_has "SH-09 a refusal prints the narrow remedy: one command, by the operator" "$(cat "$TMP/sh.err")" '"! <command>"'
-t_hasnt "SH-09 and not the kill-switch for every rule" "$(cat "$TMP/sh.err")" 'HELM_DISABLE_FLOOR=1'
+t_hasnt "SH-09 and not the kill-switch for every rule" "$(cat "$TMP/sh.err")" 'HARBOR_ADMISSION_DISABLE=1'
 printf '%s' "$(edit_j Write "$CFG/settings.json")" | CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/admission-self-edit.sh" >/dev/null 2>"$TMP/sh.err"
 t_has "SH-09b a file-tool refusal names the edit, made by hand, as its remedy" "$(cat "$TMP/sh.err")" 'make this one edit themselves'
 t_hasnt "SH-09b and not a command to run" "$(cat "$TMP/sh.err")" '"! <command>"'

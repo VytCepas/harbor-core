@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
+[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0
 # SG (harbor#291) — the ONE Stop-event gate. docs/reference/coverage.md:86 read "Harbor has no
 # Stop gate at all", and docs/reference/coverage.md:38 read "№2 Verification is Harbor's longest
 # constitutional rule and has no mechanism, in a file that says 'a rule with no
@@ -456,7 +456,7 @@ fi
 if [ -n "$SG2" ]; then
   MSG="$MSG SG-2: the last verdict for a suite this session ran is not clean — $(printf '%s' "$SG2" | tr '\n' ';'). Re-run it green, or say which run was a deliberate mutation and what it proved."
 fi
-MSG="$MSG (Stop fires at the end of every turn, so this refusal is raised ONCE for this state and the next turn is not held; a new unverified edit is a new state. HARBOR_ADMISSION_DISABLE (or HELM_DISABLE_FLOOR) is read at session start and cannot lift a refusal already under way.)"
+MSG="$MSG (Stop fires at the end of every turn, so this refusal is raised ONCE for this state and the next turn is not held; a new unverified edit is a new state. HARBOR_ADMISSION_DISABLE) is read at session start and cannot lift a refusal already under way.)"
 
 # THE STATE IS RECORDED BEFORE THE VERDICT IS EMITTED, so a caller that reads
 # stdout and exits cannot leave this turn refused and the next one refused again

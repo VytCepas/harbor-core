@@ -84,6 +84,3 @@ tests/skill/install/install.test.sh	vendor/skills/	builds its own fixture tree
 tests/lint/decision/citation.test.sh	vendor/skills/	builds its own fixture tree
 tests/skill/catalog/catalog.test.sh	vendor/skills/	builds its own fixture tree
 tests/skill/fire/output-contract.test.sh	evals/	names the vendored evals skill dir under a temp tree, not the eval corpus (harbor#961)
-contracts/README.md.tmpl	docs/generated/status.md	the source of contracts/README.md, a document: it links the counts in prose, as the README did before it was generated (harbor#1424)
-bin/doc-shape.sh	*	the git grep pathspec excludes these directories from the generated-header scan; an absent directory excludes nothing (harbor#1434)
-vendor/naming/doc-shape.sh	*	vendored copy of bin/doc-shape.sh; same exclude pathspec, an absent directory excludes nothing (harbor#1434)

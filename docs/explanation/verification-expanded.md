@@ -1,9 +1,3 @@
----
-kind: explanation
-owner: @VytCepas
-status: unreviewed
----
-
 # Verification doctrine — expanded
 
 **On-demand.** The twelve rules live in [policy/constitution.md](../../policy/constitution.md)

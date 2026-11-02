@@ -111,8 +111,8 @@ il_target
 # It named the target itself if it passed il_target; children get the target from --live alone.
 unset CLAUDE_CONFIG_DIR
 CFG="$IL_TARGET"
-LOCAL_BIN="${HARBOR_SCOPE_LOCAL_BIN:-${HARBOR_LOCAL_BIN:-$HOME/.local/bin}}"
-BASE="${HARBOR_CI_BASE_BRANCH:-${HARBOR_BASE_BRANCH:-main}}"
+LOCAL_BIN="${HARBOR_SCOPE_LOCAL_BIN:-$HOME/.local/bin}"
+BASE="${HARBOR_CI_BASE_BRANCH:-main}"
 # Installers under deploy skip the next steps deploy itself performs (harbor#285).
 HARBOR_DEPLOY_ACTIVE=1; export HARBOR_DEPLOY_ACTIVE
 AL=''; [ "$IL_ACCEPT_LOSS" -eq 0 ] || AL=' --accept-loss'
@@ -200,11 +200,8 @@ _ask() {
 # B6 as the next SessionStart would see it: prints clean | advisory:<msg> | BLOCKED:<msg>.
 _b6_verdict() {
   _g="$CFG/bin/admission-integrity.sh"
-  # A pre-W6 box runs B6 as guard-integrity.sh: judge it by that, never by this tree's copy, which expects the
-  # admission-* wiring only this deploy installs (refused the W6 deploy, harbor#949). Until the shim goes, 2026-11-15.
-  _b6old=guard-integrity; [ -f "$_g" ] || _g="$CFG/bin/$_b6old.sh"   # through a name, as _b6_installed does: the shim stays idle to lint
   [ -f "$_g" ] || _g="$ROOT/bin/admission-integrity.sh"
-  _g_out="$(env -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW -u HELM_DISABLE_FLOOR -u HELM_FLOOR_SHADOW CLAUDE_CONFIG_DIR="$CFG" sh "$_g" </dev/null 2>/dev/null || true)"
+  _g_out="$(env -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW CLAUDE_CONFIG_DIR="$CFG" sh "$_g" </dev/null 2>/dev/null || true)"
   if [ -z "$_g_out" ]; then printf 'clean'; return; fi
   # `.continue == false`, never `//`: jq's alternative operator treats false as missing.
   if printf '%s' "$_g_out" | jq -e '.continue == false' >/dev/null 2>&1; then
@@ -467,13 +464,10 @@ _preflight() {
 # A flag the operator passed once is not a record: a box whose settings.json wires the Stop gate, or
 # that runs B6, is refreshed by every deploy, or VERIFY calls the unrefreshed copy stale (2026-09-27).
 FLOOR_OPTS=''
-# A box deployed before W6 wired these under their old names (guard-stop.sh, guard-integrity.sh): both spellings
-# count, or the deploy that ships the rename would stop refreshing B6 and the Stop gate (harbor#961 W6).
-_stop_wired() { jq -e '[.hooks.Stop[]?.hooks[]?.command // empty | select(test("(^|/)(guard|admission)-stop\\.sh( |$)"))] | length > 0' "$CFG/settings.json" >/dev/null 2>&1; }
+_stop_wired() { jq -e '[.hooks.Stop[]?.hooks[]?.command // empty | select(test("(^|/)admission-stop\\.sh( |$)"))] | length > 0' "$CFG/settings.json" >/dev/null 2>&1; }
 _b6_installed() {
-  _b6old=guard-integrity   # its name before W6, read until the shim goes (2026-11-15)
-  { [ -f "$CFG/bin/admission-integrity.sh" ] || [ -f "$CFG/bin/$_b6old.sh" ]; } \
-    && jq -e '[.hooks.SessionStart[]?.hooks[]?.command // empty | select(test("(guard|admission)-integrity"))] | length > 0' "$CFG/settings.json" >/dev/null 2>&1
+  [ -f "$CFG/bin/admission-integrity.sh" ] \
+    && jq -e '[.hooks.SessionStart[]?.hooks[]?.command // empty | select(test("admission-integrity"))] | length > 0' "$CFG/settings.json" >/dev/null 2>&1
 }
 _optins() {
   _want floor || return 0
@@ -950,7 +944,7 @@ _floor_verify() {
   _want_any runtime floor sec0 prod-guard || return 0
   log_head 'floor-verify · fires known-blocked shapes at the installed floor'
   _fv_rc=0
-  env -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW -u HELM_DISABLE_FLOOR -u HELM_FLOOR_SHADOW CLAUDE_CONFIG_DIR="$CFG" sh "$ROOT/bin/admission-verify.sh" --live >"$WORK/fv" 2>&1 || _fv_rc=$?
+  env -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW CLAUDE_CONFIG_DIR="$CFG" sh "$ROOT/bin/admission-verify.sh" --live >"$WORK/fv" 2>&1 || _fv_rc=$?
   _fvv="$(sed -n 's/^  note: \(FLOOR IS .*\)$/\1/p' "$WORK/fv" | tail -1)"; [ -n "$_fvv" ] || _fvv="$(tail -1 "$WORK/fv")"
   if [ "$_fv_rc" -eq 0 ]; then
     log_ok "floor-verify: $_fvv"

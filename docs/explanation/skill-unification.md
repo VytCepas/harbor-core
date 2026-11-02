@@ -1,9 +1,3 @@
----
-kind: explanation
-owner: @VytCepas
-status: unreviewed
----
-
 # Skills unification — separating from upstream, on Harbor's own rules
 
 **Branch:** `feat/skills-unification` — **gone as of 2026-08-28**; `git branch -a`

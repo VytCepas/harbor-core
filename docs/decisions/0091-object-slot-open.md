@@ -3,10 +3,7 @@ kind: decision-record
 status: accepted
 alias: D-91
 date: 2026-10-27
-supersedes: -
-superseded_by: -
 source: harbor#1259
-owner: harbor#1259
 ---
 
 # The object slot stays open

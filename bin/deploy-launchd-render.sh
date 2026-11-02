@@ -39,7 +39,7 @@ set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 SRC="$(CDPATH= cd -- "$SRC" && pwd -P)"
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd -P)}}"
+ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd -P)}"
 . "$SRC/library-log.sh"
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; log_init launchd-render

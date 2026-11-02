@@ -70,7 +70,7 @@ LOG_FD=2
 
 usage() { sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; }
 
-BRANCH="${HARBOR_GATE_BRANCH:-${HARBOR_BRANCH:-main}}"
+BRANCH="${HARBOR_GATE_BRANCH:-main}"
 DO_MERGE=0; FORCE=0; PR=""; MODE=check; SUBJECT=""; MATCH=""; DELETE=0; REQUIRED_ONLY=0
 # ── THE STRATEGY IS A CHOICE, AND IT WAS HARDCODED (harbor#267) ──────────────
 # `--merge` MEANS TWO DIFFERENT THINGS in this file, which is the whole reason
@@ -155,16 +155,16 @@ command -v gh >/dev/null 2>&1 || { echo "merge-check: gh is not installed" >&2; 
 # whatever cwd the session is in and `gh repo view` needs to be inside a git
 # remote. Same shape as bin/status-generate.sh:80: the script knows where it lives.
 repo() {
-  if [ -n "${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-}}" ]; then
-    case "${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-}}" in
+  if [ -n "${HARBOR_SCOPE_REPO:-}" ]; then
+    case "${HARBOR_SCOPE_REPO:-}" in
       */*/*|/*|*[[:space:]]*|*/)
-        printf 'merge-check: HARBOR_SCOPE_REPO=%s is not owner/name.\n' "${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-}}" >&2
+        printf 'merge-check: HARBOR_SCOPE_REPO=%s is not owner/name.\n' "${HARBOR_SCOPE_REPO:-}" >&2
         printf '  This tool wants a GitHub repo id; bin/drift-renew-check.sh wants a PATH from the\n' >&2
         printf '  same variable name. Unset it here, or export HARBOR_SCOPE_REPO=owner/name.\n' >&2
         printf '' ;;
-      */*) printf '%s' "${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-}}" ;;
+      */*) printf '%s' "${HARBOR_SCOPE_REPO:-}" ;;
       *)
-        printf 'merge-check: HARBOR_SCOPE_REPO=%s is not owner/name (no slash).\n' "${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-}}" >&2
+        printf 'merge-check: HARBOR_SCOPE_REPO=%s is not owner/name (no slash).\n' "${HARBOR_SCOPE_REPO:-}" >&2
         printf '' ;;
     esac
     return 0
@@ -246,13 +246,13 @@ else
     *"Branch not protected"*) GATE_WHY="branch is not protected, HTTP 404" ;;
   esac
 fi
-RCFILE="${HARBOR_GATE_REQUIRED_CHECKS:-${HARBOR_REQUIRED_CHECKS:-$MC_DIR/../contracts/required-checks.tsv}}"
+RCFILE="${HARBOR_GATE_REQUIRED_CHECKS:-$MC_DIR/../contracts/required-checks.tsv}"
 LISTED=""
 if [ -r "$RCFILE" ]; then
   # Run from a checkout with no list handed in, the rows are core's then the private layer's (gate-required-generate.sh, harbor#1149).
   # An overlay that does not compose leaves core's rows alone, and says so: a repo with no row has no local gate, which refuses.
   _rcrows=""
-  if [ -z "${HARBOR_GATE_REQUIRED_CHECKS:-${HARBOR_REQUIRED_CHECKS:-}}" ] && [ -f "$MC_DIR/gate-required-generate.sh" ]; then
+  if [ -z "${HARBOR_GATE_REQUIRED_CHECKS:-}" ] && [ -f "$MC_DIR/gate-required-generate.sh" ]; then
     _rcrows="$(sh "$MC_DIR/gate-required-generate.sh" --core "$RCFILE" 2>/dev/null)" \
       || { _rcrows=""; log_warn "the private layer's required-checks.tsv does not compose with core's (or cannot be read), so only core's rows are read"; log_fix "sh $MC_DIR/gate-required-generate.sh   # names the line"; }
   fi

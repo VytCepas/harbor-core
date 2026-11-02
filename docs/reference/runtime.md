@@ -1,9 +1,3 @@
----
-kind: reference
-owner: @VytCepas
-status: unreviewed
----
-
 # docs/reference/runtime.md — local containers, Kubernetes, and GCP parity
 
 What to use on the workstation, and the four places where "it worked locally"

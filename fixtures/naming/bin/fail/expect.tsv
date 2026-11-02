@@ -2,8 +2,8 @@
 # COLUMNS  name <TAB> rule ids
 name	rule
 install-drift-x.sh	name.family
-floor-verify.sh	name.family,name.alias
-guard_bash.sh	name.family,name.alias,name.separator
+golden-verify.sh	name.family,name.alias
+golden_bash.sh	name.family,name.alias,name.separator
 audit_triage.py	name.separator
 harbor-clean-x.sh	name.family,name.alias
 docs-gen-x.sh	name.family,name.abbreviation

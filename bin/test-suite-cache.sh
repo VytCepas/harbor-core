@@ -24,7 +24,7 @@
 set -eu
 
 DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$DIR/.." && pwd)}}"
+ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$DIR/.." && pwd)}"
 DECL="$ROOT/contracts/suite-paths.txt"
 TAB="$(printf '\t')"
 FORMAT=v1   # the entry and manifest format; bumping it is a cold cache
@@ -89,7 +89,7 @@ _keys() { # <suites-file> <out>
     printf 'cache %s\n' "$(git hash-object "$DIR/test-suite-cache.sh")"
     printf 'trust %s\n' "$_dom"
     printf 'host %s\n' "$(uname -srm)"
-    printf 'salt %s\n' "${HARBOR_TEST_SUITE_CACHE_SALT:-${HARBOR_SUITE_CACHE_SALT:-}}"
+    printf 'salt %s\n' "${HARBOR_TEST_SUITE_CACHE_SALT:-}"
   } > "$W/head"
   # The references: every code file the suites name, followed, memoised across suites in one awk.
   awk -F '\t' -v root="$ROOT" -v inv="$W/inv" -v OFS='\t' '
@@ -214,7 +214,7 @@ _prep() { # <suites-file>
 
 # ── the store: <dir>/<domain>/<key>, a regular file this user wrote in a dir this user owns ──
 _store() {
-  _base="${HARBOR_TEST_SUITE_CACHE_DIR:-${HARBOR_SUITE_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/harbor/suite-cache}}"
+  _base="${HARBOR_TEST_SUITE_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/harbor/suite-cache}"
   _dom="$(_domain)" || return 1
   STORE="$_base/$(printf '%s' "$_dom" | tr -c 'A-Za-z0-9._-' '_')"
   mkdir -p "$STORE" 2>/dev/null || return 1
@@ -234,7 +234,7 @@ _gate() {
     1) ;;
     *) echo "bin/test-suite-select.sh --why-all exited $_rc: the selection could not be judged"; return ;;
   esac
-  _store || { echo "no store this user owns and can write at ${HARBOR_TEST_SUITE_CACHE_DIR:-${HARBOR_SUITE_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/harbor/suite-cache}}"; return; }
+  _store || { echo "no store this user owns and can write at ${HARBOR_TEST_SUITE_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/harbor/suite-cache}"; return; }
 }
 
 case "$CMD" in
@@ -282,7 +282,7 @@ case "$CMD" in
       printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$FORMAT" "$_secs" "$_cnt" "$_when" "$_s" "$_c" > "$STORE/.$_key.$$"
       mv -f "$STORE/.$_key.$$" "$STORE/$_key"; _n=$((_n + 1))
     done < "$W/plan"
-    find "$STORE" -type f -mtime +"${HARBOR_TEST_SUITE_CACHE_DAYS:-${HARBOR_SUITE_CACHE_DAYS:-30}}" -exec rm -f {} + 2>/dev/null || :
+    find "$STORE" -type f -mtime +"${HARBOR_TEST_SUITE_CACHE_DAYS:-30}" -exec rm -f {} + 2>/dev/null || :
     printf 'recorded %s pass(es)%s\n' "$_n" "$([ "$_moved" = 0 ] || printf '; %s not, an input changed during the run' "$_moved")"
     ;;
 

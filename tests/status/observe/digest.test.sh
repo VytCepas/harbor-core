@@ -6,7 +6,7 @@
 # state this suite owns: every fire must land in the fixture sink (harbor#373, #430), and
 # no fixture record may reach a sandbox ledger, or the LIVE one, ruled by content: a per-run nonce (harbor#696).
 # Read before t_init, which sandboxes HOME and the config dir; the live ledger is read, never written.
-REAL_CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"; REQ_LIVE="${HARBOR_TEST_REQUIRE_LIVE_LEDGER:-${HARBOR_REQUIRE_LIVE_LEDGER:-0}}"
+REAL_CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"; REQ_LIVE="${HARBOR_TEST_REQUIRE_LIVE_LEDGER:-0}"
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 NONCE="$(od -An -N6 -tx1 /dev/urandom 2>/dev/null | tr -d ' \n')"; NONCE="${NONCE:-$$$(date +%s)}"
 LIVE_LEDGER="$(find "$REAL_CFG/MEMORY/OBSERVABILITY" -maxdepth 2 -name guard-decisions.jsonl 2>/dev/null | head -1)"

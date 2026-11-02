@@ -59,7 +59,7 @@ In `.github/workflows/governance.yml`, in the **`status`** job
       # box running six. No env plumbing and no dependency guard: unlike
       # status-gen, docs-gen derives nothing from a suite count and nothing from
       # host state — verified by generating twice and comparing (identical), and
-      # by grepping it for STATUS/HARBOR_SUITE_COUNTS/hostname (no matches).
+      # by grepping it for STATUS/HARBOR_STATUS_SUITE_COUNTS/hostname (no matches).
       - name: docs/index.html must be regenerated, not hand-edited
         run: sh bin/doc-index-generate.sh --check
 ```

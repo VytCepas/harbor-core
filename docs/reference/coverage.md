@@ -1,9 +1,3 @@
----
-kind: reference
-owner: @VytCepas
-status: unreviewed
----
-
 # COVERAGE — upstream's hook surface, and Harbor's disposition for each
 
 **Why this file exists.** A 186-capability coverage sweep ran on 2026-07-26 and

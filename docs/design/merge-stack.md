@@ -1,9 +1,3 @@
----
-kind: design
-owner: @VytCepas
-status: unreviewed
----
-
 # Merge stack — many PRs onto main, in order, without surprises
 
 **Status:** harbor#1060. `harbor merge-stack check|rehearse|merge|verify <plan>`, one POSIX `sh` tool

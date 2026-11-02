@@ -22,7 +22,7 @@ HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 for _lib in library-log.sh deploy-install-lib.sh; do
   [ -f "$HERE/$_lib" ] && continue
   printf 'restore: %s is missing beside %s, so this copy cannot run. Run the checkout copy instead:\n' "$_lib" "$HERE" >&2
-  printf '  sh %s/bin/deploy-restore.sh %s\n' "${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}" "$*" >&2
+  printf '  sh %s/bin/deploy-restore.sh %s\n' "${HARBOR_SCOPE_REPO:-${PORT_ROOT:-$HOME/port}/harbor}" "$*" >&2
   exit 1
 done
 . "$HERE/library-log.sh"
@@ -251,7 +251,7 @@ log_note "never touched: MEMORY, backups, .helm-snapshots, and every entry the s
 LB_ACT=''; LB_DIR=''
 _lb_plan() {
   _lbd="$(sed -n 's/^# dir: //p' "$LBREC" | head -1)"
-  _lbw="$(_il_phys "${HARBOR_SCOPE_LOCAL_BIN:-${HARBOR_LOCAL_BIN:-$HOME/.local/bin}}")"
+  _lbw="$(_il_phys "${HARBOR_SCOPE_LOCAL_BIN:-$HOME/.local/bin}")"
   if [ -z "$_lbd" ] || [ "$_lbd" != "$_lbw" ]; then
     log_skip "~/.local/bin: the record names ${_lbd:-no dir}, and this box's is $_lbw, so no link is put back"; return 0
   fi
@@ -341,7 +341,7 @@ _g="$TARGET/bin/admission-integrity.sh"
 _v=''; _vk=note
 if [ ! -f "$_g" ]; then _v='not installed (no bin/admission-integrity.sh)'; _vk=skip
 else
-  _o="$(env -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW -u HELM_DISABLE_FLOOR -u HELM_FLOOR_SHADOW CLAUDE_CONFIG_DIR="$TARGET" sh "$_g" </dev/null 2>/dev/null || true)"
+  _o="$(env -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW CLAUDE_CONFIG_DIR="$TARGET" sh "$_g" </dev/null 2>/dev/null || true)"
   if [ -z "$_o" ]; then _v='clean'; _vk=ok
   elif command -v jq >/dev/null 2>&1; then
     if printf '%s' "$_o" | jq -e '.continue == false' >/dev/null 2>&1; then

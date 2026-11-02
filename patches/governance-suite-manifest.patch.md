@@ -27,7 +27,7 @@ cover, so nothing runs twice.
 ```yaml
   suite-manifest:
     name: manifest suites (not already wired to a job)
-    runs-on: ${{ fromJSON((inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted' && '["ubuntu-latest"]' || '["self-hosted","macOS","ARM64"]') }}
+    runs-on: ${{ fromJSON((inputs.runner || vars.HARBOR_CI_RUNNER) == 'github-hosted' && '["ubuntu-latest"]' || '["self-hosted","macOS","ARM64"]') }}
     steps:
       - uses: actions/checkout@v5
 

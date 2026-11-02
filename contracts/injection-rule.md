@@ -53,12 +53,11 @@ not a feature.
 
 Box and repo are read on every fire, box first; reached trees come last, and only on a tool event.
 
-**A rule is `context-rules/<scope>/<id>.md` (harbor#1010, harbor/D-43, harbor/D-65).** The id is the file name; `id:` is only for a
+**A rule is `context-rules/<scope>/<id>.md` (harbor#1010, D-43, D-65).** The id is the file name; `id:` is only for a
 rule whose id differs from it. Within a tier, rules run by `order:` (a whole number), then rules with none, each group
 by file name. A repo's `context-rules/user/` is the box tier's source and is never read as that repo's own.
-**The old layout is read for one release:** the box tier also reads `<config>/inject.d/` and a repo also reads
-`.claude/inject.d/`, where an `NN-` file name sorts as `order: NN`; an id found in the new tree skips the old file.
-The removal date is the `dir:inject.d` row in `standards/naming/renames.tsv`. The engine resolves the repo from
+**The old `inject.d/` layout is retired** (the `dir:inject.d` row in `standards/naming/renames.tsv`): nothing reads
+`<config>/inject.d/` or `.claude/inject.d/`, and `lint-conventions.sh` fails a rule that sits there. The engine resolves the repo from
 `CLAUDE_PROJECT_DIR`, falling back to the hook process's cwd — so **one
 box-level wiring serves every repository**, including ones that do not exist
 yet. That is the property that makes this scale: adding a project is a
@@ -75,7 +74,7 @@ diverge whenever a session is started in one place and worked in another — eve
 main checkout and a session opened at `$HOME` keeps `$HOME` as its project.
 
 When they diverge the repo tier is not merely wrong, it is **empty**: `$HOME`
-resolves `$REPO/.claude/inject.d` onto the box pack directory itself,
+resolves `$REPO/.claude/context-rules/user` onto the box pack directory itself,
 `tree_dirs()` drops it as a duplicate of the box tier, and no repo rule loads at
 all. Measured 2026-08-29 in the session auditing this question — harbor's own
 three packs, the merge-governance chain among them, governed nothing, and the
@@ -133,7 +132,7 @@ session is one nobody reads.
 
 ### `scope: box` — a repo rule that follows the call
 
-A pack in a repository's own `context-rules/<repo>/` (or the old `.claude/inject.d/`) that declares `scope: box` is
+A pack in a repository's own `context-rules/<repo>/` that declares `scope: box` is
 also delivered when a session **outside** that repository makes a tool call that
 touches it. Decided 2026-09-24 on harbor#599. The repo consents per rule, in its
 own data, and the default (`scope: repo`, or no key) is to stay home.

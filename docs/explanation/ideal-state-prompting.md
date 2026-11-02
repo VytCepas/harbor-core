@@ -1,9 +1,3 @@
----
-kind: explanation
-owner: @VytCepas
-status: unreviewed
----
-
 # Ideal-state prompting — the reasoning
 
 **On-demand.** The rule is in [policy/constitution.md](../../policy/constitution.md)

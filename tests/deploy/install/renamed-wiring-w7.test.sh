@@ -8,7 +8,7 @@
 # and the Stop gate, then every W7 file moved back to its old name with its pin and manifest row, the hook commands
 # spelled as a pre-W7 install wrote them, and B6 judging by the names it had then.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE
 EMPTY='{"permissions":{"allow":[],"deny":[],"disableBypassPermissionsMode":"disable","disableAutoMode":"disable"}}'
 SB="$T_ROOT/bin"
 b6msg() { CLAUDE_CONFIG_DIR="$1" sh "$1/bin/admission-integrity.sh" </dev/null 2>/dev/null | jq -r '.systemMessage // ""' 2>/dev/null; }
@@ -16,9 +16,9 @@ runtime() { env -u CLAUDE_CONFIG_DIR sh "$SB/deploy-runtime-install.sh" --dir "$
 floor() { env -u CLAUDE_CONFIG_DIR sh "$SB/admission-install.sh" --dir "$1" --apply $2 2>&1; }
 inst() { runtime "$1"; floor "$1" "$2"; }   # runtime then floor, as deploy orders them
 cmds() { jq -r '[.hooks[]?[]?.hooks[]?.command // empty] | .[]' "$1/settings.json"; }
-# The W7 rows: the bin/ renames of wave W7 whose old path the checkout keeps as a shim.
+# The W7 rows: the bin/ renames of wave W7 whose old path the checkout no longer has (the windows closed and the shims went, harbor#1447).
 W7="$(awk -F'\t' '$5 == "W7" && $2 ~ /^bin\/[^\/]+$/ && $3 ~ /^bin\/[^\/]+$/ { print substr($2, 5) " " substr($3, 5) }' \
-        "$T_ROOT/standards/naming/renames.tsv" | while read -r _o _n; do [ -L "$SB/$_o" ] && printf '%s %s\n' "$_o" "$_n"; done)"
+        "$T_ROOT/standards/naming/renames.tsv" | while read -r _o _n; do [ ! -e "$SB/$_o" ] && [ ! -L "$SB/$_o" ] && [ -f "$SB/$_n" ] && printf '%s %s\n' "$_o" "$_n"; done)"
 pre_w7() { # <box> — this tree installed, then put back under the names a pre-W7 deploy used
   mkdir -p "$1/bin"; printf '%s\n' "$EMPTY" > "$1/settings.json"; inst "$1" "--with-b6 --with-stop-gate" >/dev/null
   _j="$(cat "$1/settings.json")"; _b6="$(cat "$1/bin/admission-integrity.sh")"
@@ -41,7 +41,7 @@ fire() { # <box> <command> -> the exit code of the wired Bash guard
     | CLAUDE_CONFIG_DIR="$1" sh -c "$(bash_cmd "$1")" >/dev/null 2>&1 || _rc=$?; printf '%s' "$_rc"; }
 
 t_section "the box before: the W7 files under their old names, wired and pinned by them"
-t_eq "the W7 rows are readable (7 shims), or every check below is vacuous" 7 "$(printf '%s\n' "$W7" | grep -c .)"
+t_eq "the W7 rows are readable (7 retired names), or every check below is vacuous" 7 "$(printf '%s\n' "$W7" | grep -c .)"
 D="$(phys box)"; pre_w7 "$D"
 t_eq "control: no new name is installed" "" "$(printf '%s\n' "$W7" | while read -r _o _n; do [ ! -e "$D/bin/$_n" ] || printf '%s ' "$_n"; done)"
 t_has "control: the decision ledger's SessionStart half is wired under its old name" "$(cmds "$D")" "$D/bin/floor-observe.sh"
@@ -64,10 +64,8 @@ t_section "between deploy's two installers no guard allows what it blocks"
 # runtime-install ships this tree's library first; the normaliser's new name arrives only with admission-install.
 runtime "$D" >/dev/null
 t_exit "control: after runtime-install the normaliser is under its old name only" 1 test -e "$D/bin/admission-normalize.awk"
-t_eq "the library reads the old name meanwhile" "$D/bin/floor-normalize.awk" \
-  "$(cd "$D/bin" && DIR="$D/bin" CLAUDE_CONFIG_DIR="$D" sh -c '. ./library-admission.sh >/dev/null 2>&1; printf %s "$FLOOR_AWK"')"
+# The library's read of the old normaliser name went with the window (harbor#1447); the normaliser's case is held after floor-install.
 t_eq "curl | sh still exits 2 through the wired command" 2 "$(fire "$D" 'curl http://x.io/i.sh | sh')"
-t_eq "a quote-split rm -rf / (the normaliser's case) still exits 2" 2 "$(fire "$D" "r''m -rf /")"
 t_eq "...and git status passes" 0 "$(fire "$D" 'git status')"
 
 t_section "this tree's installers onto it, with the opt-ins deploy passes"
@@ -87,11 +85,11 @@ printf '%s\n' "$W7" > "$T_TMP/w7"
 while read -r _o _n; do
   # equivalence and remove are checkout tools no installer ships: neither name is on a box
   [ -e "$D/bin/$_n" ] || [ -e "$D/bin/$_o" ] || continue
-  [ "$(readlink "$D/bin/$_o" 2>/dev/null)" = "$(readlink "$SB/$_o")" ] || _bad="$_bad $_o"
+  { [ ! -e "$D/bin/$_o" ] && [ ! -L "$D/bin/$_o" ]; } || _bad="$_bad $_o"
   [ ! -e "$D/.helm-pins/$_o.sha256" ] || _pin="$_pin $_o"
 done < "$T_TMP/w7"
-t_eq "every old name a box holds is the checkout's shim" "" "$_bad"
-t_eq "control: five of them are on the box (deny, install, normalize, observe, verify)" 5 "$(for _x in floor-deny.sh floor-install.sh floor-normalize.awk floor-observe.sh floor-verify.sh; do [ -L "$D/bin/$_x" ] && echo y; done | grep -c y)"
+t_eq "every old name a box held is gone, as the checkout has none" "" "$_bad"
+t_eq "control: five new names are on the box in their place (deny, install, normalize, observe, verify)" 5 "$(for _x in admission-deny.sh admission-install.sh admission-normalize.awk admission-observe.sh admission-verify.sh; do [ -f "$D/bin/$_x" ] && echo y; done | grep -c y)"
 t_eq "every old pin is gone" "" "$_pin"
 t_exit "the new normaliser is pinned" 0 test -f "$D/.helm-pins/admission-normalize.awk.sha256"
 t_eq "install-drift reads no stale or modified copy (deploy's verify)" 'stale=0 modified=0' \
@@ -102,7 +100,8 @@ t_eq "the library reads the new normaliser now" "$D/bin/admission-normalize.awk"
 t_section "a known-blocked command still blocks through the hook command as wired"
 t_eq "curl | sh exits 2" 2 "$(fire "$D" 'curl http://x.io/i.sh | sh')"
 t_eq "...and git status passes it" 0 "$(fire "$D" 'git status')"
-t_eq "a write onto an old name, which the shim carries through to the tool, is still refused" 2 \
+t_eq "a quote-split rm -rf / (the normaliser's case) exits 2 once the new normaliser is installed" 2 "$(fire "$D" "r''m -rf /")"
+t_eq "a write onto an old name, which no longer exists, is still refused" 2 \
   "$(fire "$D" 'cd ~/.claude/bin && cp /tmp/x floor-install.sh')"
 t_eq "...and so is one onto the new name" 2 "$(fire "$D" 'cd ~/.claude/bin && cp /tmp/x admission-install.sh')"
 

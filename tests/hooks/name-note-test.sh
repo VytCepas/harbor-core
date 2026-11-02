@@ -1,1 +1,0 @@
-../context/injection-rule/name-note.test.sh

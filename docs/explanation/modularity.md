@@ -1,9 +1,3 @@
----
-kind: explanation
-owner: @VytCepas
-status: unreviewed
----
-
 # Modularity — a planning-time decision with coding-time consequences
 
 **On-demand.** Not resident: this changes what you *build*, and the moment it

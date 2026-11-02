@@ -1,1 +1,0 @@
-../access/gcloud-credentials/gcloud-credentials.test.sh

@@ -310,13 +310,13 @@ for _f in library-admission.sh admission-normalize.awk admission-observe.sh; do 
 printf '{"permissions":{"allow":[],"deny":[]}}\n' > "$SWC/settings.json"
 sw_run() { # <project dir> [<observe script>] -> what the SessionStart hook printed
   printf '{"hook_event_name":"SessionStart","session_id":"S-sw","cwd":"%s"}' "$1" \
-    | env -u CLAUDE_PROJECT_DIR -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW -u HELM_DISABLE_FLOOR -u HELM_FLOOR_SHADOW CLAUDE_CONFIG_DIR="$SWC" sh "${2:-$SWC/bin/admission-observe.sh}" 2>/dev/null
+    | env -u CLAUDE_PROJECT_DIR -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW CLAUDE_CONFIG_DIR="$SWC" sh "${2:-$SWC/bin/admission-observe.sh}" 2>/dev/null
 }
 sw_proj() { rm -rf "$SW/$1"; mkdir -p "$SW/$1/.claude"; printf '%s' "$SW/$1"; }
 # the control: the same hook, no switch in any settings file, says nothing
 _p="$(sw_proj clean)"; printf '{"env":{"FOO":"1"}}\n' > "$_p/.claude/settings.json"
 t_eq "SW a settings file with no switch in it is silent" "" "$(sw_run "$_p")"
-for _n in HARBOR_ADMISSION_DISABLE HARBOR_ADMISSION_SHADOW HELM_DISABLE_FLOOR HELM_FLOOR_SHADOW; do   # both spellings until 2026-11-15 (harbor#961 W5)
+for _n in HARBOR_ADMISSION_DISABLE HARBOR_ADMISSION_SHADOW; do
   _last="${_n#"${_n%?}"}"; _head="${_n%?}"
   _hex="$(printf '%s' "$_last" | od -An -tx1 | tr -d ' \n')"
   # 1. a JSON \u escape in the key
@@ -351,8 +351,8 @@ awk '/^# ── a settings `env` block that sets either switch/ {skip=1} /^# A S
   "$SRC/admission-observe.sh" > "$SWC/bin/observe-nocheck.sh"
 t_eq "SW the cut-out copy differs from admission-observe.sh (the cut found the check)" yes \
   "$(cmp -s "$SWC/bin/observe-nocheck.sh" "$SRC/admission-observe.sh" && echo no || echo yes)"
-_p="$(sw_proj mut)"; printf '{"env":{"HELM_DISABLE_FLOOR":"1"}}\n' > "$_p/.claude/settings.json"
-t_has "SW the real hook reports the switch (mutation control)" "$(sw_run "$_p")" "HELM_DISABLE_FLOOR"
+_p="$(sw_proj mut)"; printf '{"env":{"HARBOR_ADMISSION_DISABLE":"1"}}\n' > "$_p/.claude/settings.json"
+t_has "SW the real hook reports the switch (mutation control)" "$(sw_run "$_p")" "HARBOR_ADMISSION_DISABLE"
 t_eq "SW with the check removed the report is empty (the fixtures above go red)" "" "$(sw_run "$_p" "$SWC/bin/observe-nocheck.sh")"
 
 ff_sealed

@@ -1,9 +1,3 @@
----
-kind: report
-owner: harbor#667
-status: unreviewed
----
-
 # Test-suite audit (harbor#667)
 
 **Measured 2026-10-31 against `feat/naming-final-w7` at `d29bfcaa`, covering the 385 suites in `contracts/suites.txt`.** This replaces the 2026-09-24 audit, which covered 73 files and a 15-suite mutation pilot. Its findings were closed on #694, #695, #696 and #905. Every number below was derived on that day. Re-derive it with the method at the bottom rather than trusting it later: a count in a document is a copy, and copies drift.
