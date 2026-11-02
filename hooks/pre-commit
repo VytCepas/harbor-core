@@ -84,6 +84,7 @@ done <<EOF
 $(git diff --cached --name-only --diff-filter=ACMR)
 EOF
 
+# control: git.pre-commit-admission-smoke
 if [ -n "$_floor_staged" ]; then
   echo ""
   echo "pre-commit: a floor surface is staged — running the guard smoke suite."

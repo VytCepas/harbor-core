@@ -51,4 +51,5 @@ printf '# day=2026-10-08\nf1\t10\tFORGED\n' > "$ST/checkpoints/2026-10-08.tsv"
 t_eq "a signed day rewritten in the store is red" 1 "$(run)"
 t_has "and names it" "$(jq -r '.subjects[]' "$CF/cache/checks/audit.collector-health.json" | tr '\n' ' ')" checkpoint-changed
 t_eq "the anchored copy keeps the original" abc "$(cut -f3 "$CF/MEMORY/CHECKPOINTS/Box-9/2026-10-08.tsv" | tail -n 1)"
+t_red check.collector.health   # the falsifier this suite names for them (harbor#1422)
 t_done

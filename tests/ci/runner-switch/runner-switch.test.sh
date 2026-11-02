@@ -258,4 +258,5 @@ t_eq "no unexpected gh call across the whole suite" "none" "$(cat "$FX/unexpecte
 reset; usage priv:100; echo github-hosted > "$FX/var"; run >/dev/null
 t_has "control: the stub records the billing read it served" "$(cat "$CALLS")" "billing/usage?year=2026&month=9"
 t_hasnt "control: ...and nothing wrote" "$(cat "$CALLS")" "variable set"
+t_red check.runner-switch check.runner-switch-org   # the falsifier this suite names for them (harbor#1422)
 t_done

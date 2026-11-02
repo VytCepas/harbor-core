@@ -90,4 +90,5 @@ t_eq "uid 0 with the override set: refused" 1 "$(rr 0 /tmp/x.json)"
 t_eq "CONTROL: uid 0 without the override: allowed" 0 "$(rr 0 '')"
 t_eq "CONTROL: non-root with the override (the test path): allowed" 0 "$(rr 501 /tmp/x.json)"
 t_has "PATH is pinned at the top" "$(sed -n '1,/^HERE=/p' "$INST")" 'PATH=/usr/bin:/bin:/usr/sbin:/sbin'
+t_red check.managed-mods   # the falsifier this suite names for them (harbor#1422)
 t_done

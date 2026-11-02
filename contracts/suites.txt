@@ -124,6 +124,8 @@ hooks/session-title/session-title.test.sh
 tests/deploy/hooks/render.test.sh
 hooks/access-confinement/access-confinement.test.sh
 tests/drift/confinement/compare.test.sh
+tests/drift/launchd-wall/launchd-wall.test.sh
+tests/drift/wall/wall.test.sh
 tests/admission/confinement/covered.test.sh
 tests/access/chrome/mcp.test.sh
 tests/access/chrome/session.test.sh
@@ -154,6 +156,7 @@ tests/lint/findings/findings.test.sh
 tests/lint/findings/heal.test.sh
 tests/lint/findings-run/findings-run.test.sh
 tests/lint/conventions/findings.test.sh
+tests/lint/conventions/mode.test.sh
 tests/lint/name/name.test.sh
 tests/lint/rule-health/rule-health.test.sh
 tests/skill/gates/gates.test.sh
@@ -290,6 +293,7 @@ tests/gate/approval/queue.test.sh
 tests/gate/approval/ancestry.test.sh
 tests/audit/stream/registry.test.sh
 tests/scope/managed-retention/managed-retention.test.sh
+tests/scope/managed-folders/managed-folders.test.sh
 tests/audit/stream-lib/stream-lib.test.sh
 tests/audit/collector/collector.test.sh
 tests/audit/collector-check/collector-check.test.sh
@@ -440,3 +444,8 @@ tests/standard/register/index.test.sh
 tests/standard/register/vendored.test.sh
 tests/lint/shape/fields.test.sh
 tests/standard/label-sync/label-sync.test.sh
+tests/lint/name/seams.test.sh
+tests/lint/conventions/action-pin.test.sh
+tests/standard/schema/emit.test.sh
+tests/standard/seams/fresh.test.sh
+tests/lint/name/versions.test.sh

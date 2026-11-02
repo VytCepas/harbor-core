@@ -145,7 +145,7 @@ agent-instructions	concept	agent instructions file	context	S5	experimental	-	res
 harness	concept	harness	environment	-	experimental	-	research/02: agentic engineering; CC-DOCS	Claude Code; CC; the CLI	-	The agent runtime that runs the model loop, tools, permissions and hooks
 surface	concept	agent surface	harness	-	experimental	-	research/02: REPO project-init README	IDE integration	-	One harness product a workload is configured for: Claude Code, Codex, Cursor and others
 session	concept,family	session	data-plane	S1	experimental	-	research/02: CC-DOCS	conversation; run	-	One harness run from start to stop, made of turns
-hook	kind	hook	component	S3	stable	-	research/02: CC-HOOKS; GIT githooks; standard §4	engine hook; git hook	-	A handler the harness or git runs at a named event
+hook	kind,control-type	hook	component	S3	stable	-	research/02: CC-HOOKS; GIT githooks; standard §4	engine hook; git hook	-	A handler the harness or git runs at a named event
 hook-event	concept	hook event	hook	-	experimental	-	research/02: CC-HOOKS	SessionStart; PreToolUse; PostToolUse; Stop; pre-commit; pre-push	-	A named moment a hook binds to; platform names are kept verbatim
 skill	family,kind	skill	catalog	S1	stable	-	research/02: CC-DOCS (skills); standard §3 (D-17); standard §4	book; pack	-	A packaged instruction set with a description the harness can select or the user can invoke
 model-invocable	concept	model-invocable skill	skill	S1	experimental	-	research/02: CC-DOCS (disable-model-invocation)	ambient skill; model-invoked (prior)	-	A skill listed every session and selectable by the model
@@ -281,7 +281,7 @@ apply	verb	apply	-	-	stable	-	standard §3	-	-	Verb: the last word of a name tha
 prune	verb	prune	-	-	stable	-	standard §3	-	-	Verb: the last word of a name that performs it
 list	verb	list	-	-	stable	-	standard §3	-	-	Verb: the last word of a name that performs it
 pull	verb	pull	-	-	stable	-	standard §3	-	-	Verb: the last word of a name that performs it
-push	verb	push	-	-	stable	-	standard §3	-	-	Verb: the last word of a name that performs it
+push	verb,moment	push	-	-	stable	-	standard §3	-	-	Verb: the last word of a name that performs it; moment: at git push
 wait	verb	wait	-	-	stable	-	standard §3	-	-	Verb: the last word of a name that performs it
 select	verb	select	-	-	stable	-	standard §3	-	-	Verb: the last word of a name that performs it
 posix	subject	posix	lint	-	stable	-	standard §3	-	-	Lint subject family: the first segment of a lint rule id

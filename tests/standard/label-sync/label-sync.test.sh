@@ -77,4 +77,5 @@ t_eq "a bare repo name is exit 2" "exit 2" "$(code --repo justname)"
 t_section "the register is label-axes.tsv: a fixture label that is not in it is reported"
 printf 'foo\tx\n' > "$FX/o_r.labels"
 t_has "foo is reported against the shipped register" "$(run --repo o/r)" "unregistered foo"
+t_red check.label-registered check.label-sync   # the falsifier this suite names for them (harbor#1422)
 t_done
