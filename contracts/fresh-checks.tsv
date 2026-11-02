@@ -27,3 +27,5 @@ docs/reference/registers.md	sh bin/doc-register-index.sh --check	sh bin/doc-regi
 -	doc-fresh-verify.sh	this runner
 -	standard-fleet-names.sh	the weekly fleet naming check: it runs other repos' --check modes and writes a receipt, it generates nothing
 -	standard-label-sync.sh	its --check mode reports labels on GitHub against the register, it generates no tracked file
+-	standard-schema.sh	validates a fixture against a schema and prints findings, it generates nothing
+-	standard-seams-fresh.sh	the weekly seam freshness check: it compares other repos' copies and writes a receipt, it generates nothing

@@ -89,6 +89,8 @@ bin/scope-managed-retention.sh	settings	writes cleanupPeriodDays into the root-o
 bin/deploy-confinement.sh	settings	writes the sandbox block into the root-owned managed-settings.json (harbor#1298)
 contracts/confinement-hosts.txt	settings	the hosts deploy-confinement.sh writes into managed settings (harbor#1298)
 contracts/confinement-paths.txt	settings	the write zone and read allows deploy-confinement.sh writes into managed settings (harbor#1298)
+bin/scope-managed-folders.sh	settings	writes the Edit deny rows for the main folders into the root-owned managed-settings.json (harbor#1442)
+contracts/main-folders.txt	settings	the main folders scope-managed-folders.sh denies the Edit tool in managed settings (harbor#1442)
 standards/naming/controls.tsv	ci-gate	the control register: each control's mode, owner and red proof, which the lint and the naming census read; a renderer will read it too (harbor#1272)
 # Everything an installer ships into the config dir or wires as a hook or statusline (review finding 3); every shim
 # target contracts/shims.tsv links into ~/.local/bin and both registers (operator-run: it runs as the operator outside
@@ -170,8 +172,10 @@ bin/doc-refs.sh	ci-gate	derived: called by .github/workflows/governance.yml
 bin/doc-shape.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/drift-confinement.sh	installed	derived: called by bin/admission-verify.sh
 bin/drift-install.sh	installed	derived: called by bin/admission-verify.sh
+bin/drift-launchd-wall.sh	ship	derived: called by bin/drift-wall.sh
 bin/drift-reference-check.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/drift-renew-check.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/drift-wall.sh	ship	derived: called by bin/deploy-live-verify.sh
 bin/eval-pass-score.sh	installed	derived: called by bin/admission-install.sh
 bin/eval-redteam-corpus-run.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/eval-redteam-corpus.sh	ci-gate	derived: called by .github/workflows/public-ci.yml
@@ -244,6 +248,7 @@ bin/prod-guard-ambient.sh	installed	derived: wired by prod-guard-install.sh
 bin/prod-guard-install.sh	installed	derived: called by bin/prod-guard-ambient.sh
 bin/proposal.sh	installed	derived: called by bin/drift-renew-check.sh
 bin/scope-layers.sh	ci-gate	derived: called by bin/deploy-push.sh
+bin/scope-managed-folders.sh	ship	derived: called by bin/drift-wall.sh
 bin/scope-managed-mods.sh	installed	derived: called by bin/admission-verify.sh
 bin/scope-roots.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/secret	operator-run	derived: linked into ~/.local/bin as secret by contracts/shims.tsv
