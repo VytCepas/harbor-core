@@ -52,6 +52,7 @@ hand-kept account of direction and status; this table is what exists.
 | [browser-routing.md](./browser-routing.md) | md | Which browser — the router (harbor#458) |
 | [catalog-non-tools.tsv](./catalog-non-tools.tsv) | tsv | catalog-non-tools.tsv (harbor#1010) - executables the catalog never lists as tools: its CLI table is for credentialed commands a session can |
 | [cli.md](./cli.md) | md | harbor` — the L0 command surface (CLI-1, harbor#42) |
+| [confinement-classes.tsv](./confinement-classes.tsv) | tsv | confinement-classes.tsv (harbor#1441, #555 decision 10 (a)) — every class of Bash call that asks to leave the sandbox, and |
 | [confinement-coverage.tsv](./confinement-coverage.tsv) | tsv | confinement-coverage.tsv (harbor#1300, #555 P3) — for every admission rule in standards/naming/controls.tsv, |
 | [confinement-hosts.txt](./confinement-hosts.txt) | txt | confinement-hosts.txt (harbor#1298, #555) — the hosts a confined shell command may reach, core's half. |
 | [confinement-paths.txt](./confinement-paths.txt) | txt | confinement-paths.txt (harbor#1298, #555) — what a confined shell command may write and read, core's half. |

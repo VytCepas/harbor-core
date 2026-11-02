@@ -30,7 +30,7 @@ chmod +x "$BF/bin/projects-orchestrator"
 _bf_out="$(PATH="$BF/bin:$PATH" HARBOR_SCOPE_FLEET_CONTROLLER="$BF/po" CLAUDE_CONFIG_DIR="$CFG" \
   sh "$SRC/scope-marker-backfill.sh" --apply --include-dirty 2>&1 || true)"
 t_has "H3: the back-fill refuses a config-dir target" "$_bf_out" 'REFUSED'
-t_exit "H3: the back-fill did not write into the config surface" 1 /usr/bin/grep -q '^context: repo' "$CFG/.agents/config.yaml"
+t_exit "H3: the back-fill did not write into the config surface" 1 /usr/bin/grep -Eq '^(context: repo|scope: project)' "$CFG/.agents/config.yaml"
 # Where it DOES write, the file stays one YAML document: the key lands after %YAML/--- (PR #96).
 _bf_doc="$TMP/backfill-doc"; mkdir -p "$_bf_doc/bin" "$_bf_doc/po" "$_bf_doc/repo/.agents"
 printf -- '%%YAML 1.2\n---\nproject:\n  name: "hdr"\n' > "$_bf_doc/repo/.agents/config.yaml"
@@ -43,7 +43,7 @@ PATH="$_bf_doc/bin:$PATH" HARBOR_SCOPE_FLEET_CONTROLLER="$_bf_doc/po" CLAUDE_CON
   sh "$SRC/scope-marker-backfill.sh" --apply --include-dirty >/dev/null 2>&1 || true
 _bf_lines="$(tr '\n' '|' < "$_bf_doc/repo/.agents/config.yaml")"
 t_eq "H3: the back-fill kept the YAML document header ($_bf_lines)" yes \
-  "$(case "$_bf_lines" in ('%YAML 1.2|---|context: repo|project:'*) echo yes ;; (*) echo no ;; esac)"
+  "$(case "$_bf_lines" in ('%YAML 1.2|---|scope: project|project:'*) echo yes ;; (*) echo no ;; esac)"
 
 t_section "REGRESSION: red-team pass 8 (installers: X7, X8)"
 # X7: a failed `jq >tmp && mv` short-circuits under set -eu and the installer still printed APPLIED.

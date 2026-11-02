@@ -5,6 +5,7 @@
 # every line of contracts/suites.txt. A name here that is not in the manifest fails the run (exit 2).
 tests/admission/baseline/baseline.test.sh
 tests/admission/baseline/ledger.test.sh
+tests/admission/baseline/ledger-class.test.sh
 tests/admission/baseline/status.test.sh
 tests/admission/baseline/b8.test.sh
 tests/admission/baseline/install.test.sh

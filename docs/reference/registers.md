@@ -38,6 +38,7 @@ reference to an id that is not there are each red (`standard.register-declared`,
 | `contracts/agents.tsv` | agent | role | `role model effort tools input output done_when must_not stop_rule` | - | - | the role table a subagent brief is built from |
 | `contracts/catalog-non-tools.tsv` | skill | glob | `glob why` | - | `bin/skill-catalog.sh` | a name glob that is not a tool, with the reason |
 | `contracts/confinement-coverage.tsv` | admission | id | `id coverage why` | id>standards/naming/controls.tsv:id | `bin/deploy-confinement.sh` | how each admission rule is covered by the confinement |
+| `contracts/confinement-classes.tsv` | admission | class | `class kind treatment where` | - | `bin/admission-observe-report.sh` | every class of Bash call that asks to leave the sandbox, and its treatment (harbor#1441) |
 | `contracts/core-writes-allow.tsv` | lint | path+target | `path target reason` | path>path: | `bin/lint-core-writes.sh` | a core script allowed to write a path |
 | `contracts/credential-patterns.tsv` | access | id | `id ere note` | - | `bin/lint-secrets.sh` | the shapes of a credential value |
 | `contracts/decision-orphans.tsv` | standard | id | `id reason` | - | `bin/lint-conventions.sh` | a decision record deliberately cited nowhere |
