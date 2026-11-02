@@ -3,7 +3,10 @@ kind: decision-record
 status: accepted
 alias: D-86
 date: not recorded in source
+supersedes: -
+superseded_by: -
 source: standards/naming.md
+owner: @VytCepas
 ---
 
 # The session family
