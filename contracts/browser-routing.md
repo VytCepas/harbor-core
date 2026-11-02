@@ -230,6 +230,16 @@ clicked next to one. Allowing without it leaves the CLI waiting with no error.
 `harbor chrome doctor` reports row 4 from the box: the profiles holding the
 extension, whether the token is set, and whether the retired MCP is still wired.
 
+## Record once, replay as a script — signed out only (harbor#1445)
+
+Row 4 refuses `recording-*`, `tracing-*`, `video-*` and `run-code` on purpose: its browser is signed in.
+The same pinned `@playwright/cli` can record a flow and replay it from a file on a **disposable, headless,
+in-memory** browser, which is a different thing with no credential in it:
+`sh bin/access-browser-flow.sh record <flow.js> <url> <steps.tsv>`, then `replay <flow.js> --shot <png> --text <css>`.
+Every run asserts no `Cookies` or `Login Data` database in its throwaway profile holds a row (Chromium creates
+both files empty in any profile, so their names prove nothing) and removes the profile. A flow that needs a
+signed-in page is out of scope: that is row 5, still gated.
+
 ## Row 5 — the backend exists, is unregistered, and is a credential
 
 **Update 2026-09-30:** the `@playwright/mcp` server that is this row's backend is

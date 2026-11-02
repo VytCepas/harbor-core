@@ -12,7 +12,7 @@
 #
 # Provenance: floor_in_repo re-implements the resolution algorithm frozen in
 # harbor contracts/marker.md (walk up; .agents/ or legacy .claude/config.yaml;
-# innermost marker wins). Deliberately NOT an import of project-init's private
+# innermost marker wins). Deliberately NOT an import of yard's private
 # prod_guard._find_config — three parallel implementations, one shared fixture
 # suite (marker.md:17).
 
@@ -20,6 +20,14 @@
 # payload was never judged within 61 s, while C judged it in 0.09 s: a hook timeout, which fails open
 # (harbor-core's first hosted CI, Q-R4). Nothing here matches multibyte text, so C changes no verdict.
 LC_ALL=C; export LC_ALL
+
+# THE TWO NAMES THE FLOOR READS FROM THE SCAFFOLDER, and the only two in bin/ (harbor#966, #999). The floor cannot ask the
+# repo registry: it is hash-pinned POSIX with no I/O it does not control. So they are named once, here, and
+# contracts/marker.md is the contract that freezes both; tests/scope/siblings holds the count and the agreement.
+# LEGACY marker file: a marker for the verdict, removed only after fleet reports no repo still on it (#963).
+# LIFECYCLE plugin id: the repo guard whose wiring lets the floor hand the force-push rules over (floor_repo_wires).
+FLOOR_SCAFFOLDER_MARKER_LEGACY="project-init.md"
+FLOOR_SCAFFOLDER_LIFECYCLE_PLUGIN="project-init-lifecycle"
 
 # floor_config_dir — the config dir this session runs against.
 floor_config_dir() {
@@ -34,7 +42,7 @@ floor_config_dir() {
 
 # floor_port_root — the workspace root the governed repos live under, per
 # contracts/port-root.md. ONE setting with three readers: Harbor reads it here,
-# project-init's config walk stops before it, projects-orchestrator defaults PO_FLEET_ROOT
+# yard's config walk stops before it, fleet defaults PO_FLEET_ROOT
 # and fleet.yaml's scan root from it (harbor#619). Same shape as the marker
 # spec next door — one frozen resolution rule, re-implemented per language,
 # pinned by shared fixtures — and for the same reason: the POSIX floor must not
@@ -255,8 +263,8 @@ floor_no_human() {
 # marker's config.yaml decides `ambient` (see below).
 #
 # M12 (owner decision 2026-07-25): a BARE `.agents/` directory is NOT a marker.
-# The spec always read "`.agents/` present (`project-init.md` / `config.yaml`)",
-# and project-init's reference `_find_config` has always required a file. Helm
+# The spec always read "`.agents/` present (the legacy marker file / `config.yaml`)",
+# and yard's reference `_find_config` has always required a file. Helm
 # was the permissive one, which is the wrong direction for a guard: a bare
 # directory made the floor stand down over a repo that had no policy yet — the
 # exact window a scaffolder opens when it mkdirs `.agents/` before writing into
@@ -265,7 +273,7 @@ floor_no_human() {
 # M14 (owner decision 2026-08-02): the walk STOPS BEFORE $HOME. One file at
 # `~/.agents/config.yaml` resolves every directory beneath it to `repo` and
 # stands the ambient layer down machine-wide — and it is a cheap accident, not
-# an attack: project-init run once in the wrong cwd scaffolds `.agents/` right
+# an attack: yard run once in the wrong cwd scaffolds `.agents/` right
 # there. M12 raised the bar from a bare directory to a named FILE and did not
 # close this, because a scaffolder writes named files. Directories outside
 # $HOME are untouched and still walk to `/`.
@@ -322,7 +330,7 @@ floor_in_repo() {
     if [ -n "$_pr" ] && [ "$d" = "$_pr" ]; then break; fi
     _mk=""
     if [ -d "$d/.agents" ] && [ ! -L "$d/.agents" ]; then
-      for _f in "$d/.agents/config.yaml" "$d/.agents/project-init.md"; do
+      for _f in "$d/.agents/config.yaml" "$d/.agents/$FLOOR_SCAFFOLDER_MARKER_LEGACY"; do
         if [ -f "$_f" ] && [ ! -L "$_f" ]; then _mk="$_f"; break; fi
       done
     fi
@@ -332,7 +340,7 @@ floor_in_repo() {
     if [ -n "$_mk" ]; then
       HARBOR_ADMISSION_MARKER_DIR="$d"
       # `context: ambient` is the owner opting THIS repo back in to the global
-      # layer (project-init PI-901 emits `context: repo` and defines `ambient`
+      # layer (yard PI-901 emits `context: repo` and defines `ambient`
       # as the opt-out). Read at the marker the walk just found, because the
       # innermost marker wins: an explicit opt-out must DECIDE `ambient`, not
       # "keep looking", or an outer repo's marker would silently overrule it.
@@ -354,12 +362,12 @@ floor_in_repo() {
       # YAML — `"context": ambient`, `context : ambient`, `context: "ambient"` —
       # and missing one of them means the floor reads a genuine opt-out as
       # `repo` and STANDS DOWN. That is the unsafe direction, so the reader is
-      # deliberately the permissive one here. KEEP IN STEP with project-init's
+      # deliberately the permissive one here. KEEP IN STEP with yard's
       # _CONTEXT_KEY_RE, which preserves exactly these spellings on upgrade
       # (PI-901, PR #902 review): a spelling the writer keeps but the reader
       # misses is an opt-out that survives and is then ignored.
       #
-      # A COMMENT NEEDS WHITESPACE BEFORE IT (project-init PR #927 review, ported
+      # A COMMENT NEEDS WHITESPACE BEFORE IT (yard PR #927 review, ported
       # here to keep the readers in step). `#` begins a YAML comment only when
       # preceded by whitespace; otherwise it is part of the plain scalar. So
       # `context: ambient#typo` is the value `ambient#typo`, NOT `ambient`, and
@@ -676,6 +684,46 @@ FLOOR_OBS_GUARDS=' bash egress selfedit integrity web wrapper session cloud dest
 FLOOR_OBS_VERDICTS=' block allow deny ask gate advise override armed shadow covered '
 FLOOR_OBS_SHAPES=' argv flat path channel content meta '
 FLOOR_OBS_TOOLS=' Bash Write Edit MultiEdit NotebookEdit WebFetch WebSearch Task Agent ToolSearch mcp none other '
+# The escape classes (harbor#1441, #555 decision 10 (a)): what an unconfined Bash call was, as a closed enum. Every name is
+# a row of contracts/confinement-classes.tsv (the treatment); the observe-report suite holds the two equal.
+HARBOR_ADMISSION_CLASSES='readonly vcs cloud container script interp network fsmutate system compound event-bus session-title other'
+
+# floor_obs_class <command> — sets _xo to the class of a command by its first verb. Parameter expansion and
+# case only: no fork on the hot path, and no byte of the command can reach _xo (every arm assigns a literal).
+# `cd X &&` and `VAR=v` prefixes are stepped over; the first verb of a compound is its class, an approximation the
+# report says out loud.
+floor_obs_class() {
+  _xs="$1"
+  case "$_xs" in
+    *session-titles/*) _xo=session-title; return 0 ;;
+    *event-bus.sh*emit*|*'harbor event emit'*) _xo=event-bus; return 0 ;;
+  esac
+  _xn=0
+  while [ "$_xn" -lt 6 ]; do
+    _xn=$((_xn + 1))
+    _xs="${_xs#"${_xs%%[![:space:]]*}"}"
+    _xv="${_xs%%[[:space:];&|<>()]*}"
+    case "$_xv" in
+      cd|pushd) _xr="${_xs#*&&}"; [ "$_xr" != "$_xs" ] || _xr="${_xs#*;}"; [ "$_xr" != "$_xs" ] || break; _xs="$_xr"; continue ;;
+      [A-Za-z_]*=*) _xr="${_xs#*[[:space:]]}"; [ "$_xr" != "$_xs" ] || break; _xs="$_xr"; continue ;;
+    esac
+    break
+  done
+  _xv="${_xv##*/}"
+  case "$_xv" in
+    for|while|until|if|case|'{'|'!'|function|'') _xo=compound ;;
+    cd|pushd|grep|egrep|fgrep|rg|sed|awk|cat|head|tail|ls|find|wc|sort|uniq|jq|diff|cmp|stat|file|echo|printf|test|'['|pwd|tr|cut|basename|dirname|realpath|readlink|fd|tree|du|df|which|type|command|date|env|true|false|column|less|more|nl|xargs|wait|sleep) _xo=readonly ;;
+    git|gh) _xo=vcs ;;
+    gcx|gcloud|bq|cu|stape|gsutil|aws|az|fly|kubectl|terraform|firebase|wrangler) _xo=cloud ;;
+    docker|docker-compose|colima|podman) _xo=container ;;
+    sh|bash|zsh|dash) _xo=script ;;
+    python|python3|uv|uvx|node|bun|npm|npx|pnpm|ruby|perl|deno|pip|pip3|pytest) _xo=interp ;;
+    curl|wget|ssh|scp|rsync|nc|ping|dig|nslookup) _xo=network ;;
+    mkdir|cp|mv|rm|touch|chmod|chown|ln|install|mktemp|rmdir|ditto|tee) _xo=fsmutate ;;
+    open|osascript|launchctl|brew|sudo|defaults|pkill|kill|killall|ps|lsof|pbcopy|pbpaste|caffeinate|say|security|codesign|xcrun) _xo=system ;;
+    *) case "${_xs%%[[:space:]]*}" in ./*|/*) _xo=script ;; *) _xo=other ;; esac ;;
+  esac
+}
 
 floor_log_decision() { # <guard> <verdict> <rule.shape>
   # Charset gate BEFORE enum membership, always. The membership test expands the
@@ -847,8 +895,17 @@ floor_log_decision() { # <guard> <verdict> <rule.shape>
     fi
   fi
 
-  { printf '{"v":1,"ts":"%s","g":"%s","d":"%s","r":"%s","s":"%s","t":"%s","h":"%s","sk":"%s","c":"%s"}\n' \
-      "$_ots" "$_og" "$_ov" "$_or" "$_osh" "$_ot" "$_odg" "$_osk" "$_oc" >> "$_osink"; } 2>/dev/null || :
+  # THE ESCAPE CLASS, `x` (harbor#1441): which kind of call asked to leave the sandbox, from the first verb of the command
+  # and printed as a literal from HARBOR_ADMISSION_CLASSES, never a payload byte. Only the bash guard's record of an unconfined
+  # call carries one; `-` everywhere else. Read by admission-observe-report.sh --confinement.
+  _ox=-
+  if [ "$_oc" = unconfined ] && [ "$_og" = bash ]; then
+    _xo=other; floor_obs_class "${FLOOR_OBS_SUBJECT:-}" 2>/dev/null || :; _ox="$_xo"
+    case " $HARBOR_ADMISSION_CLASSES " in *" $_ox "*) ;; *) _ox=other ;; esac
+  fi
+
+  { printf '{"v":1,"ts":"%s","g":"%s","d":"%s","r":"%s","s":"%s","t":"%s","h":"%s","sk":"%s","c":"%s","x":"%s"}\n' \
+      "$_ots" "$_og" "$_ov" "$_or" "$_osh" "$_ot" "$_odg" "$_osk" "$_oc" "$_ox" >> "$_osink"; } 2>/dev/null || :
   return 0
 }
 

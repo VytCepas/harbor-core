@@ -32,8 +32,10 @@ a transient. The treatment for each kind is already decided:
   $TMPDIR. Name temp files under it (mktemp "${TMPDIR:-/tmp}/x.XXXXXX"); a bare
   mktemp is refused. Writes into ~/.claude (session title, memory) go through the
   Write tool, never a shell redirect.
+- The event bus (~/.local/state/harbor/events): `event-bus.sh emit` is a confinement write row, so a refusal
+  there means the install predates it. Name that to the operator; the retry is not the treatment.
 - A credential file: denied by design. gh, git and gcx read the token the
   access-confinement hook mints before each call, so call them, not the file.
-Retrying outside the sandbox is the escape the #555 stop rule counts; when one is
+Retrying outside the sandbox is the escape the #555 stop rule counts, by class (contracts/confinement-classes.tsv); when one is
 needed, say why in the response.
 NOTE
