@@ -47,4 +47,3 @@ word	words.tsv	-	-	an English or technical word a name may carry beyond the term
 schema	schemas.tsv	-	-	the schema of every .tsv register: columns, key, references, owner and reader (harbor#1424)
 label-retired	label-retired.tsv	-	-	a label the register retires: no register row carries it, and the sync plans its removal (harbor#1427)
 verb	verbs.tsv	-	-	a task verb a repo kind must carry in its justfile, with its meaning and exit contract (harbor#1428)
-version	versions.tsv	-	-	a runtime, tool, library or action version the box pins, with hold_at and its reason (harbor#1426)
