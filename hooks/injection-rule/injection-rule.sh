@@ -738,23 +738,11 @@ _top() {
 # $0 (this script, <config>/bin), refuses anything but the known enums, and fails silent, so a box with no
 # ledger stays blind rather than wrong. library-admission.sh is read only on a fire (once a session for most
 # packs), never on the silent hot path. Only fires are written: a silent arm has no decision to record.
-log_rule() { # <advise|deny|shadow> <pack id>
+log_rule() { # <advise|deny> <pack id>
   [ -f "$SELF_DIR/library-admission.sh" ] || return 0
   ( DIR="$SELF_DIR"; . "$SELF_DIR/library-admission.sh" >/dev/null 2>&1
     # shellcheck disable=SC2034 # FLOOR_TOOL: read by library-admission.sh
     FLOOR_TOOL="$TOOL"; floor_log_decision inject "$1" "$2.meta" ) >/dev/null 2>&1 || :
-}
-
-# THE MODE IS THE REGISTER'S, READ HERE (harbor#1422). A pack's controls.tsv row (type injection, `emitted` = the pack id)
-# says shadow (the rule is recorded, never spoken), warn (a note) or block (a `run:` pack's deny is honoured). A pack with
-# no row keeps the behaviour it always had, so a repo's own pack or an unreadable register changes nothing.
-CTL="${HARBOR_CONTEXT_CONTROLS:-}"
-if [ -z "$CTL" ]; then
-  for _c in "$SELF_DIR/controls.tsv" "$SELF_DIR/../standards/naming/controls.tsv"; do [ ! -f "$_c" ] || { CTL="$_c"; break; }; done
-fi
-ctl_mode() { # <pack id> -> shadow|warn|block, or nothing when no row names it
-  [ -n "$CTL" ] && [ -f "$CTL" ] || return 0
-  awk -F'\t' -v i="$1" '$3 == "injection" && $12 == i { print $2; exit }' "$CTL" 2>/dev/null || :
 }
 
 shell_targets() {
@@ -1030,7 +1018,6 @@ WHEN
     if [ "$_once" != never ] && already "$_key"; then
       explain "skip $_id: already delivered this session ($_key)"; continue
     fi
-    _cmode="$(ctl_mode "$_id")"
 
     # `run:` — a dynamic body, for the rules whose condition is computable but
     # not expressible as a predicate. The script gets the payload on stdin and
@@ -1069,13 +1056,13 @@ WHEN
       # about, and it must not repeat quietly.
       case "$_note" in
         'HARBOR-DECISION deny: '*)
-          if [ "$EVENT" = PreToolUse ] && [ "$_cmode" != warn ] && [ "$_cmode" != shadow ]; then
+          if [ "$EVENT" = PreToolUse ]; then
             DECISION=deny
             DREASON="${_note#HARBOR-DECISION deny: }"
             explain "DECIDE $_id: deny"
           else
             _note="${_note#HARBOR-DECISION deny: }"
-            explain "downgrade $_id: a deny cannot ride on $EVENT, or its row is $_cmode — delivered as a note"
+            explain "downgrade $_id: a deny cannot ride on $EVENT — delivered as a note"
           fi ;;
       esac
     else
@@ -1094,13 +1081,6 @@ WHEN
       break
     fi
     [ -n "$_note" ] || { explain "skip $_id: empty note"; continue; }
-
-    if [ "$_cmode" = shadow ]; then
-      explain "SHADOW $_id: recorded, not spoken"
-      log_rule shadow "$_id"
-      if [ "$_once" != never ]; then remember "$_key"; fi
-      continue
-    fi
 
     explain "FIRE $_id"
     log_rule advise "$_id"

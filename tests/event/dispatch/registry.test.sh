@@ -117,5 +117,4 @@ t_section "harbor event routes the E2 verbs"
 t_exit "harbor event subscribe → 4" 4 sh "$T_ROOT/bin/harbor" event subscribe x
 t_has "harbor event on --list shows the presets added above" "$(sh "$T_ROOT/bin/harbor" event on --list 2>/dev/null)" "event.alerting"
 t_exit "harbor event dispatch --bogus is a usage error" 2 sh "$T_ROOT/bin/harbor" event dispatch --bogus
-t_red check.event.fleet-snapshot check.event.alerting   # the falsifier this suite names for them (harbor#1422)
 t_done

@@ -239,5 +239,4 @@ if [ -f "$LIVE_PRIV/leaks.tsv" ] || [ -f "$LIVE_PRIV/terms.tsv" ]; then
 else
   printf '  note: no private layer at %s: the live-tree case did not run\n' "$LIVE_PRIV" >&2
 fi
-t_red check.lint.leaks   # the falsifier this suite names for them (harbor#1422)
 t_done

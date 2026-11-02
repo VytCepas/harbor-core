@@ -90,5 +90,4 @@ t_has "above the baseline the rule reports" "$(lint1 lint.credential-reads "$D")
 
 t_section "the tree itself"
 t_eq "the repo is at or under its own baseline" "0" "$(rc "$T_ROOT")"
-t_red check.lint.credential-reads   # the falsifier this suite names for them (harbor#1422)
 t_done

@@ -55,7 +55,6 @@ hand-kept account of direction and status; this table is what exists.
 | [confinement-classes.tsv](./confinement-classes.tsv) | tsv | confinement-classes.tsv (harbor#1441, #555 decision 10 (a)) — every class of Bash call that asks to leave the sandbox, and |
 | [confinement-coverage.tsv](./confinement-coverage.tsv) | tsv | confinement-coverage.tsv (harbor#1300, #555 P3) — for every admission rule in standards/naming/controls.tsv, |
 | [confinement-hosts.txt](./confinement-hosts.txt) | txt | confinement-hosts.txt (harbor#1298, #555) — the hosts a confined shell command may reach, core's half. |
-| [confinement-mcp.tsv](./confinement-mcp.tsv) | tsv | confinement-mcp.tsv (harbor#1442, #1440) — every LOCAL (stdio) MCP server, and how it holds the main-files invariant. |
 | [confinement-paths.txt](./confinement-paths.txt) | txt | confinement-paths.txt (harbor#1298, #555) — what a confined shell command may write and read, core's half. |
 | [control-plane-state.md](./control-plane-state.md) | md | The `.helm-*` state files — which ones a session may write |
 | [core-writes-allow.tsv](./core-writes-allow.tsv) | tsv | core-writes-allow.tsv (harbor#1275) - core scripts that may write into the checkout because the write is not a stray file. |
@@ -83,7 +82,6 @@ hand-kept account of direction and status; this table is what exists.
 | [isa-ledger.md](./isa-ledger.md) | md | ISA ledger — where a run lives, and what indexes it |
 | [issue-taxonomy.tsv](./issue-taxonomy.tsv) | tsv | issue-taxonomy (harbor#512) — THE ONLY PLACE THE TYPE AND THEME SETS EXIST. |
 | [knowledge-base.md](./knowledge-base.md) | md | pilot — the practice layer, and where it should live |
-| [launchd-wall-exempt.tsv](./launchd-wall-exempt.tsv) | tsv | launchd-wall-exempt.tsv (harbor#1442) — a com.harbor.* launchd job allowed to run code from inside the confinement's |
 | [layers.tsv](./layers.tsv) | tsv | layers.tsv (harbor#1149, DESIGN.md v2.1) - which tracked paths are core (shared by `harbor deploy push`) and which stay in the dev repo. |
 | [layout-map.tsv](./layout-map.tsv) | tsv | layout-map.tsv (harbor#1272, #949 standard points 2 and 5) - what every tracked top-level entry of harbor IS. |
 | [leak-patterns.tsv](./leak-patterns.tsv) | tsv | leak-patterns.tsv (harbor#1149, harbor/D-79) - the generic patterns of the leak gate (bin/lint-leaks.sh). |
@@ -97,7 +95,6 @@ hand-kept account of direction and status; this table is what exists.
 | [lint-siblings-baseline.txt](./lint-siblings-baseline.txt) | txt | lint-siblings-baseline.txt (harbor#966) - occurrences of another repo's path in the tree. Only goes down. |
 | [log-exempt.tsv](./log-exempt.tsv) | tsv | log-exempt.tsv (harbor#771) — every shell program in bin/ that does not yet log through |
 | [logging.md](./logging.md) | md | Logging — one log format for Harbor's tools and tests |
-| [main-folders.txt](./main-folders.txt) | txt | main-folders.txt (harbor#1442, #1440) — the folders an agent must never change through the file tools, because they |
 | [marker.md](./marker.md) | md | Detect-and-defer marker seam — FREEZE (and fix the name collision) |
 | [memory-format.md](./memory-format.md) | md | Memory format (shared canonical) |
 | [merge-stack-union.txt](./merge-stack-union.txt) | txt | merge-stack-union.txt (harbor#1060) — the line lists whose pure additions `harbor merge-stack` keeps from both sides. |
@@ -119,7 +116,6 @@ hand-kept account of direction and status; this table is what exists.
 | [required-checks.tsv](./required-checks.tsv) | tsv | Required checks per repo: the merge gate when GitHub cannot be (harbor#1060). |
 | [roots.tsv](./roots.tsv) | tsv | roots.tsv — every named root, and the base it hangs off. harbor#630. |
 | [scaffolder-plugins.tsv](./scaffolder-plugins.tsv) | tsv | scaffolder-plugins.tsv (harbor#999, #966) - the names yard publishes its Claude Code plugins under. |
-| [seams.tsv](./seams.tsv) | tsv | seams.tsv (harbor#1425) — one row per cross-repo contract: who produces it, who consumes it, its copy, its pin. |
 | [secret-legacy-refs.txt](./secret-legacy-refs.txt) | txt | secret-legacy-refs.txt (harbor#1205) - secret refs bin/secret still serves with no register entry. Only goes down. |
 | [session-waiting.tsv](./session-waiting.tsv) | tsv | session-waiting.tsv (harbor#1043, #1044) — rule 2 of hooks/session-state/session-state.sh: when is the operator the one being waited on? |
 | [shims.tsv](./shims.tsv) | tsv | shims.tsv — the commands the operator types, and the file each one is. harbor#630. |

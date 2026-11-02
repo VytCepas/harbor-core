@@ -41,7 +41,6 @@ MSG="${1:?commit-msg: no message file}"
 # Comment lines are stripped by git before the message is stored, so judging
 # them would fail a commit for text that never reaches the history — the false
 # positive CONSTITUTION §2.11 names.
-# control: git.commit-message-no-ai-attribution
 if grep -vE '^[[:space:]]*#' "$MSG" | grep -qiE "${HARBOR_LINT_ATTRIBUTION_ERE:-}"; then
   echo "" >&2
   echo "commit-msg: AI attribution in the commit message." >&2

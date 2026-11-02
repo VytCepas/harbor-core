@@ -158,5 +158,4 @@ D="$T_TMP/bare"; mkdir -p "$D/bin"
 t_has "a tree with neither tool is skipped, said so" "$(lint1 module.graph-conform "$D")" "skip: no bin/lint-module.sh"
 t_eq "...with no violation" "0" "$(vcount "$(lint1 module.graph-conform "$D")")"
 
-t_red module.graph-conform   # bin/lint-module.sh, which the conventions rule relays, goes red above (harbor#1422)
 t_done

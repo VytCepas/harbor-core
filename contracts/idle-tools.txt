@@ -76,5 +76,3 @@ eval-hook-latency.sh     VERB  the operator (or the lane that changes the snapsh
 eval-git-verbs-probe.sh   VERB  the operator types it after a deploy or a register edit: every row of contracts/verbs/git.md decided free, asked, denied or blocked from the deployed rules and the wired hooks (harbor#1291); `--live` reads the box's own settings
 doc-register-index.sh   VERB  regenerates contracts/README.md and docs/reference/registers.md (harbor#1424); doc-fresh-verify.sh runs its --check from contracts/fresh-checks.tsv
 standard-decision-migrate.sh  VERB  one-shot: an operator or an agent runs it on a repo whose records predate the shared shape (harbor#1429); `--check` is the idempotence proof
-standard-schema.sh IDLE  the producer's schema check (harbor#1425): validates contracts/schemas fixtures against the schema harbor owns; its suite runs in the governance suites job on every PR, but no script or hook calls the tool itself
-standard-seams-fresh.sh IDLE  the weekly seam freshness check standard.seam-fresh (harbor#1425); its launchd job waits for the operator's yes to a new recurring job, so nothing schedules it yet

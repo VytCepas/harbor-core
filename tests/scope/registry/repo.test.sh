@@ -106,7 +106,6 @@ t_section "the INSTALLED copy judges kinds by the register shipped beside it (no
 IC="$T_TMP/icfg"; mkdir -p "$IC"; printf '{"permissions":{"deny":[]}}\n' > "$IC/settings.json"
 env -u CLAUDE_CONFIG_DIR -u CLAUDECODE -u HARBOR_DEPLOY_ACTIVE sh "$T_ROOT/bin/deploy-runtime-install.sh" --apply --dir "$IC" >/dev/null 2>&1
 t_eq "the runtime installer ships the kinds register beside scope-roots.sh" present "$([ -f "$IC/bin/repo-kinds.tsv" ] && echo present || echo absent)"
-t_eq "the runtime installer ships the controls register beside the injection engine (harbor#1422)" present "$([ -f "$IC/bin/controls.tsv" ] && echo present || echo absent)"
 mkpriv kw "$H"'svc	svc	workload	-
 '
 iroots() { R env -u HARBOR_SCOPE_ROOT sh "$IC/bin/scope-roots.sh" "$@"; }

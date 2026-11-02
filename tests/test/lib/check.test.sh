@@ -107,5 +107,4 @@ for g in $(jq -r .guard "$T_ROOT/tests/guards/guards.jsonl"); do
   t_eq "shared rows ($g) vs deny-all" "$(must_fail '.want != "deny"' "$sh_rows")" "$(fails "$K/deny.sh" "t_shared \$S $g")"
   t_eq "shared rows ($g) vs allow-all" "$(must_fail '.want != "allow"' "$sh_rows")" "$(fails "$K/allow.sh" "t_shared \$S $g")"
 done
-t_red test.harness-only test.file-budget test.row-shape test.admission-hook-routing test.rule-coverage test.exemption-effect test.red-proof-derived test.table-can-fail   # tests/lib/check.sh goes red on each rule above (harbor#1422)
 t_done

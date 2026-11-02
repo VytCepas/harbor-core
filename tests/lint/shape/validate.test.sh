@@ -119,5 +119,4 @@ D="$T_TMP/bare"; mkdir -p "$D/bin"
 t_has "a tree with neither tool is skipped, said so" "$(lint1 standard.shape-conform "$D")" "skip: no bin/standard-shape.sh"
 t_eq "...with no violation" "0" "$(vcount "$(lint1 standard.shape-conform "$D")")"
 
-t_red standard.shape-conform   # bin/standard-shape.sh, which the conventions rule relays, goes red above (harbor#1422)
 t_done

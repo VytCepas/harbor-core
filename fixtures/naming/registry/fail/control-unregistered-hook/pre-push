@@ -1,5 +1,0 @@
-#!/usr/bin/env sh
-# a fixture git hook: one rule with a row and one without
-# control: git.pre-push-lint
-# control: git.pre-push-ghost
-exit 0

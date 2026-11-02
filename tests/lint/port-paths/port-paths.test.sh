@@ -181,5 +181,4 @@ t_eq "stale installed root: --verify" 1 "$c"; t_eq "stale installed root: summar
 cp "$P6/harbor/policy/constitution.md" "$C6/CLAUDE.md"
 o="$(run_pp "$H6" "$C6" "$P6" "$X6" --verify 2>/dev/null)"; c=$?
 t_eq "installed caught up: --verify" 0 "$c"; t_eq "installed caught up: summary" '  note: CODE=0 DOC=1 EXEMPT=2 (stale: 0)' "$(summary "$o")"
-t_red check.port-paths   # the falsifier this suite names for them (harbor#1422)
 t_done

@@ -28,36 +28,10 @@ set -u
 ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
 FAIL=0
 RULES=0
-_ADV_M=note; _ADV_L=ADVISORY
 say()  { printf '%s\n' "$1"; }
-# ── the mode is the register's (harbor#1422, D-62, D-64) ─────────────────────────────────────────────────────────────────
-# A rule's mode is its controls.tsv row, read once here: block fails the run, warn prints an advisory, shadow records and
-# prints nothing. Promoting a rule is a one-cell edit in a person's PR. The register is the linter's OWN tree's (HARBOR_LINT_CONTROLS
-# points a suite at another); an id with no row keeps the call's old default, so a tree without a register behaves as it did.
-#   bad     a finding at the rule's mode (default block)      _adv   a finding the rule prints next, at its mode (default warn)
-#   _hard   a failure no row lowers: an engine that judged nothing, or a verdict its own engine already moded
-#   _advn   a note: the rule could not look, or a tier the rule keeps below its row; never a failure
-# Printing a line is _advp (printf form) or _advm (a finished string) right after _adv/_advn, which choose its label.
-_NL='
-'
-_CTL="${HARBOR_LINT_CONTROLS:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)/standards/naming/controls.tsv}"
-_MODES=''
-[ ! -f "$_CTL" ] || _MODES="$_NL$(awk -F'\t' '/^#/ || $3 != "lint" { next } { print $1 "=" $2 }' "$_CTL" 2>/dev/null)$_NL"
-_mode_of() { # <id> → _MO: shadow, warn or block; empty when no row names the id
-  _MO=''
-  case "$_MODES" in *"$_NL$1="*) _MO="${_MODES#*"$_NL$1="}"; _MO="${_MO%%"$_NL"*}" ;; esac
-  case "$_MO" in advisory|inform) _MO=warn ;; esac
-}
-_redlog() { [ -z "${LINT_REDLOG:-}" ] || printf '%s\n' "$1" >> "$LINT_REDLOG" 2>/dev/null || :; }
-bad()  { _mode_of "$1"; _bm="${_MO:-block}"; _redlog "$1"
-         case "$_bm" in
-           block)  FAIL=$((FAIL+1)); printf '  VIOLATION [%s] %s\n' "$1" "$2" >&2; _bk=V ;;
-           shadow) _bk=A ;;
-           *)      printf '  %s [%s] %s\n' ADVISORY "$1" "$2" >&2; _bk=A ;;   # a warn finding has no subject-pairing line to keep (FL2)
-         esac
-         [ -z "${HARBOR_LINT_FINDINGS_OUT:-}" ] || { _fid="$1"; shift 2; _fsub "$_bk" "$_fid" "$@"; }; }  # <ID> <message> [subject…]
-_hard() { FAIL=$((FAIL+1)); printf '  VIOLATION [%s] %s\n' "$1" "$2" >&2; _redlog "$1"
-          [ -z "${HARBOR_LINT_FINDINGS_OUT:-}" ] || { _fid="$1"; shift 2; _fsub V "$_fid" "$@"; }; }  # <ID> <message> [subject…]
+bad()  { FAIL=$((FAIL+1)); printf '  VIOLATION [%s] %s\n' "$1" "$2" >&2  # <ID> <message> [subject…]
+         [ -z "${LINT_REDLOG:-}" ] || printf '%s\n' "$1" >> "$LINT_REDLOG" 2>/dev/null || :
+         [ -z "${HARBOR_LINT_FINDINGS_OUT:-}" ] || { _fid="$1"; shift 2; _fsub V "$_fid" "$@"; }; }
 rule() { RULES=$((RULES+1)); printf '── %s\n' "$1"
          [ -z "${HARBOR_LINT_FINDINGS_OUT:-}" ] || printf 'R\t%s\n' "${1%% *}" >> "${HARBOR_LINT_FINDINGS_OUT:-}"; }
 
@@ -75,16 +49,8 @@ rule() { RULES=$((RULES+1)); printf '── %s\n' "$1"
 # every rule that went red at least once. bin/lint-rule-health.sh reads it; unset, it costs one [ -z ].
 # NOT A HARBOR_* KNOB, deliberately: it can never change a verdict (a failed append is swallowed),
 # so it must reach every suite's linter, and t_init clears inherited HARBOR_* to keep knobs out (C10).
-_adv() { _mode_of "$1"; _ADV_M="${_MO:-warn}"; _redlog "$1"   # <ID> <subject>… — the finding the next _advp/_advm prints
-         case "$_ADV_M" in block) FAIL=$((FAIL+1)); _ADV_L=VIOLATION; _ak=V ;; shadow) _ADV_L=''; _ak=A ;; *) _ADV_L=ADVISORY; _ak=A ;; esac
-         [ -z "${HARBOR_LINT_FINDINGS_OUT:-}" ] || _fsub "$_ak" "$@"; return 0; }
-_advn() { _mode_of "$1"; _ADV_M=note; _ADV_L=ADVISORY; [ "$_MO" != shadow ] || _ADV_M=shadow; _redlog "$1"   # <ID> <subject>… — a note, never a failure
-          [ -z "${HARBOR_LINT_FINDINGS_OUT:-}" ] || _fsub A "$@"; return 0; }
-# shellcheck disable=SC2059 # the caller's string is the format, as with printf
-_vmode() { _mode_of "$1"; _ADV_M="${_MO:-block}"; case "$_ADV_M" in block) _ADV_L=VIOLATION ;; shadow) _ADV_L='' ;; *) _ADV_L=ADVISORY ;; esac; }  # <ID> — the label a rule that prints its own lines uses
-_vtally() { [ "$2" -gt 0 ] || return 0; _redlog "$1"; [ "$_ADV_M" != block ] || FAIL=$((FAIL + $2)); }  # <ID> <n> — n failures, counted at the rule's mode
-_advp() { [ "$_ADV_M" != shadow ] || return 0; _apf="$1"; shift; _apf="${_apf#  ADVISORY}"; _apf="  $_ADV_L${_apf#  VIOLATION}"; printf "$_apf" "$@" >&2; }
-_advm() { [ "$_ADV_M" != shadow ] || return 0; _apm="${1#  ADVISORY}"; printf '  %s%s\n' "$_ADV_L" "${_apm#  VIOLATION}" >&2; }
+_adv() { [ -z "${LINT_REDLOG:-}" ] || printf '%s\n' "$1" >> "$LINT_REDLOG" 2>/dev/null || :
+         [ -z "${HARBOR_LINT_FINDINGS_OUT:-}" ] || _fsub A "$@"; return 0; }  # <ID> <subject>…
 _fsub() { # <A|V> <ID> <subject>… — one `<kind> TAB <ID> TAB <subject>` line per subject
   _fk="$1"; _fr="$2"; shift 2
   [ "$#" -gt 0 ] || set -- "$_fr"   # a violation that names no subject is about its rule
@@ -408,7 +374,7 @@ done
 # pack and the installed skills, so a cross-repo target passes and a typo stays red. Where
 # nothing outside harbor can be listed (CI), an unresolved target is noted, not judged.
 rule_N3() {
-rule "skill.not-for-target-exists a NOT FOR handoff in a description names a skill that exists (harbor#273, #1010)"
+rule "skill.not-for-target-exists a NOT FOR handoff in a description names a skill that exists (block) (harbor#273, #1010)"
 _n3_known=""
 for _h in $SKILL_HOMES; do
   [ -d "$_h" ] || continue
@@ -479,7 +445,6 @@ done
 rule_N2() {
 rule "skill.frontmatter-keys frontmatter uses harness-defined keys only (known legacy allowed)"
 # ALLOWED is defined in the shared section at the top (harbor#537) — another rule reads it.
-_vmode skill.frontmatter-keys
 for _h in $SKILL_HOMES; do
   [ -d "$_h" ] || continue
   for f in "$_h"/*/SKILL.md; do
@@ -487,11 +452,11 @@ for _h in $SKILL_HOMES; do
     awk '/^---$/{c++; next} c==1' "$f" 2>/dev/null \
       | grep -oE '^[A-Za-z_][A-Za-z0-9_-]*:' | tr -d ':' \
       | grep -vE "^($ALLOWED)$" \
-      | while IFS= read -r k; do [ -n "$k" ] && _advp '  VIOLATION [skill.frontmatter-keys] bespoke frontmatter key "%s" in %s\n' "$k" "${f#$ROOT/}" >&2; done
+      | while IFS= read -r k; do [ -n "$k" ] && printf '  VIOLATION [skill.frontmatter-keys] bespoke frontmatter key "%s" in %s\n' "$k" "${f#$ROOT/}" >&2; done
   done
   c="$(for f in "$_h"/*/SKILL.md; do awk '/^---$/{c++; next} c==1' "$f" 2>/dev/null; done \
        | grep -oE '^[A-Za-z_][A-Za-z0-9_-]*:' | tr -d ':' | grep -vcE "^($ALLOWED)$")"
-  [ "${c:-0}" -gt 0 ] && _vtally skill.frontmatter-keys 1
+  [ "${c:-0}" -gt 0 ] && FAIL=$((FAIL+1))
 done
 }
 
@@ -507,20 +472,20 @@ done
 # the relay below writes none: under one N4 id the record would say nothing per rule. N4 is red in the
 # log only when it could not judge, through bad().
 rule_N4() {
-rule "standard.names-conform every name passes bin/lint-name.sh against standards/naming/ (harbor#950)"
+rule "standard.names-conform every name passes bin/lint-name.sh against standards/naming/ (warn) (harbor#950)"
 _n4="$ROOT/bin/lint-name.sh"
-if [ ! -f "$_n4" ]; then _hard standard.names-conform "no bin/lint-name.sh in this tree, so no name was judged"; return 0; fi
+if [ ! -f "$_n4" ]; then bad standard.names-conform "no bin/lint-name.sh in this tree, so no name was judged"; return 0; fi
 _n4o="${TMPDIR:-/tmp}/n4.$$"; _n4rc=0; _n4red="${LINT_REDLOG:-}"
 LINT_REDLOG="$_n4red" sh "$_n4" --root "$ROOT" > /dev/null 2> "$_n4o" || _n4rc=$?
 if [ "$_n4rc" -gt 1 ]; then
-  _hard standard.names-conform "bin/lint-name.sh exited $_n4rc and judged nothing: $(grep -m1 'FAIL:' "$_n4o" | sed 's/^ *FAIL: //')"
+  bad standard.names-conform "bin/lint-name.sh exited $_n4rc and judged nothing: $(grep -m1 'FAIL:' "$_n4o" | sed 's/^ *FAIL: //')"
 else
   _n4n=0; LINT_REDLOG=""   # the relay records findings, not reds: lint-name.sh already logged its ids
   while IFS= read -r _n4l; do
     case "$_n4l" in
       '  WARN: ['*) _n4n=$((_n4n + 1)); _n4s="${_n4l#*] }"; _n4s="${_n4s%% — *}"
-                    _adv standard.names-conform "$_n4s"; _advp '  ADVISORY [standard.names-conform] %s\n' "${_n4l#  WARN: }" >&2 ;;
-      '  FAIL: ['*) _n4s="${_n4l#*] }"; LINT_REDLOG="$_n4red"; _hard standard.names-conform "${_n4l#  FAIL: }" "${_n4s%% — *}"; LINT_REDLOG="" ;;
+                    _adv standard.names-conform "$_n4s"; printf '  ADVISORY [standard.names-conform] %s\n' "${_n4l#  WARN: }" >&2 ;;
+      '  FAIL: ['*) _n4s="${_n4l#*] }"; LINT_REDLOG="$_n4red"; bad standard.names-conform "${_n4l#  FAIL: }" "${_n4s%% — *}"; LINT_REDLOG="" ;;
     esac
   done < "$_n4o"
   LINT_REDLOG="$_n4red"
@@ -547,7 +512,7 @@ rm -f "$_n4o"
 # MISSING BASE IS TOLD FROM THE OTHER EXIT-3 CAUSES BY lint-name.sh's `no base to compare against` FAIL line; if that
 # wording moves, a missing base turns into a VIOLATION, which is loud, never a silent pass.
 rule_standard_names_added() {
-rule "standard.names-added every path the branch adds passes bin/lint-name.sh (harbor#968)"
+rule "standard.names-added every path the branch adds passes bin/lint-name.sh (warn) (harbor#968)"
 _na="$ROOT/bin/lint-name.sh"
 if [ ! -f "$_na" ]; then say "  skip: no bin/lint-name.sh in this tree, so no added path was judged"; return 0; fi
 if ! git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then say "  skip: not a git tree, so there is no branch to ask what it added"; return 0; fi
@@ -555,17 +520,17 @@ _nao="${TMPDIR:-/tmp}/na.$$"; _narc=0
 sh "$_na" --root "$ROOT" --added > /dev/null 2> "$_nao" || _narc=$?
 if [ "$_narc" -eq 3 ] && grep -q 'FAIL: no base to compare against' "$_nao"; then
   _nar="${LINT_REDLOG:-}"; LINT_REDLOG=""   # "could not look" is not the rule going red: its record stays honest
-  _advn standard.names-added bin/lint-name.sh; _advp '  ADVISORY [standard.names-added] unchecked: no base to compare against (HARBOR_CI_BASE, else origin/main), so no added path was judged\n' >&2
+  _adv standard.names-added bin/lint-name.sh; printf '  ADVISORY [standard.names-added] unchecked: no base to compare against (HARBOR_CI_BASE, else origin/main), so no added path was judged\n' >&2
   LINT_REDLOG="$_nar"
 elif [ "$_narc" -gt 1 ]; then
-  _hard standard.names-added "bin/lint-name.sh exited $_narc and judged nothing: $(grep -m1 'FAIL:' "$_nao" | sed 's/^ *FAIL: //')"
+  bad standard.names-added "bin/lint-name.sh exited $_narc and judged nothing: $(grep -m1 'FAIL:' "$_nao" | sed 's/^ *FAIL: //')"
 else
   _nan=0
   while IFS= read -r _nal; do
     case "$_nal" in
       '  WARN: ['*) _nan=$((_nan + 1)); _nas="${_nal#*] }"; _nas="${_nas%% — *}"
-                    _adv standard.names-added "$_nas"; _advp '  ADVISORY [standard.names-added] %s\n' "${_nal#  WARN: }" >&2 ;;
-      '  FAIL: ['*) _nas="${_nal#*] }"; _hard standard.names-added "${_nal#  FAIL: }" "${_nas%% — *}" ;;
+                    _adv standard.names-added "$_nas"; printf '  ADVISORY [standard.names-added] %s\n' "${_nal#  WARN: }" >&2 ;;
+      '  FAIL: ['*) _nas="${_nal#*] }"; bad standard.names-added "${_nal#  FAIL: }" "${_nas%% — *}" ;;
     esac
   done < "$_nao"
   [ "$_nan" -gt 0 ] || say "  $(tail -1 "$_nao")"
@@ -581,27 +546,27 @@ rm -f "$_nao"
 # cannot be built, and that is said as an advisory, never silence: "could not look" must not read as clean.
 # A tree that carries neither tool is not a harbor checkout and is skipped, as the fixture trees are.
 rule_module_graph_conform() {
-rule "module.graph-conform the reference graph passes bin/lint-module.sh: system, family and layer edges (harbor#996)"
+rule "module.graph-conform the reference graph passes bin/lint-module.sh: system, family and layer edges (warn) (harbor#996)"
 _mg="$ROOT/bin/lint-module.sh"; _mgg="$ROOT/bin/doc-graph-generate.sh"
 if [ ! -f "$_mg" ] || [ ! -f "$_mgg" ]; then say "  skip: no bin/lint-module.sh and bin/doc-graph-generate.sh in this tree, so no graph was judged"; return 0; fi
 _mgd="${TMPDIR:-/tmp}/mg.$$"; mkdir -p "$_mgd"; _mgrc=0
 sh "$_mgg" --root "$ROOT" --out "$_mgd/graph.tsv" > /dev/null 2> "$_mgd/gen.err" || _mgrc=$?
 if [ "$_mgrc" -eq 3 ]; then
-  _advn module.graph-conform build/graph.tsv; _advp '  ADVISORY [module.graph-conform] unchecked: python3 is absent, so no module edge was judged (install python3)\n' >&2
+  _adv module.graph-conform build/graph.tsv; printf '  ADVISORY [module.graph-conform] unchecked: python3 is absent, so no module edge was judged (install python3)\n' >&2
 elif [ "$_mgrc" -ne 0 ]; then
-  _hard module.graph-conform "bin/doc-graph-generate.sh exited $_mgrc and built no graph: $(grep -m1 'FAIL:' "$_mgd/gen.err" | sed 's/^ *FAIL: //')"
+  bad module.graph-conform "bin/doc-graph-generate.sh exited $_mgrc and built no graph: $(grep -m1 'FAIL:' "$_mgd/gen.err" | sed 's/^ *FAIL: //')"
 else
   _mgred="${LINT_REDLOG:-}"; _mgrc=0
   LINT_REDLOG="$_mgred" sh "$_mg" --root "$ROOT" --graph "$_mgd/graph.tsv" > /dev/null 2> "$_mgd/out" || _mgrc=$?
   if [ "$_mgrc" -gt 1 ]; then
-    _hard module.graph-conform "bin/lint-module.sh exited $_mgrc and judged nothing: $(grep -m1 'FAIL:' "$_mgd/out" | sed 's/^ *FAIL: //')"
+    bad module.graph-conform "bin/lint-module.sh exited $_mgrc and judged nothing: $(grep -m1 'FAIL:' "$_mgd/out" | sed 's/^ *FAIL: //')"
   else
     _mgn=0; LINT_REDLOG=""   # the relay records findings, not reds: lint-module.sh already logged its ids
     while IFS= read -r _mgl; do
       case "$_mgl" in
         '  WARN: ['*) _mgn=$((_mgn + 1)); _mgs="${_mgl#*] }"; _mgs="${_mgs%% — *}"
-                      _adv module.graph-conform "$_mgs"; _advp '  ADVISORY [module.graph-conform] %s\n' "${_mgl#  WARN: }" >&2 ;;
-        '  FAIL: ['*) _mgs="${_mgl#*] }"; LINT_REDLOG="$_mgred"; _hard module.graph-conform "${_mgl#  FAIL: }" "${_mgs%% — *}"; LINT_REDLOG="" ;;
+                      _adv module.graph-conform "$_mgs"; printf '  ADVISORY [module.graph-conform] %s\n' "${_mgl#  WARN: }" >&2 ;;
+        '  FAIL: ['*) _mgs="${_mgl#*] }"; LINT_REDLOG="$_mgred"; bad module.graph-conform "${_mgl#  FAIL: }" "${_mgs%% — *}"; LINT_REDLOG="" ;;
       esac
     done < "$_mgd/out"
     LINT_REDLOG="$_mgred"
@@ -617,20 +582,20 @@ rm -rf "$_mgd"
 # the registry exists to remove. A citation it could not look at (a sibling checkout absent in CI, a shallow clone)
 # is counted NOT JUDGED in its summary line, which is printed when there is no finding. A tree without the tool is skipped.
 rule_doc_refs_conform() {
-rule "doc.refs-conform the entry docs pass bin/doc-refs.sh: cited paths resolve, docs are not left behind (harbor#996)"
+rule "doc.refs-conform the entry docs pass bin/doc-refs.sh: cited paths resolve, docs are not left behind (warn) (harbor#996)"
 _dr="$ROOT/bin/doc-refs.sh"
 if [ ! -f "$_dr" ]; then say "  skip: no bin/doc-refs.sh in this tree, so no entry doc was judged"; return 0; fi
 _drd="${TMPDIR:-/tmp}/dr.$$"; _drrc=0; _drred="${LINT_REDLOG:-}"
 LINT_REDLOG="$_drred" sh "$_dr" --root "$ROOT" > /dev/null 2> "$_drd" || _drrc=$?
 if [ "$_drrc" -gt 1 ]; then
-  _hard doc.refs-conform "bin/doc-refs.sh exited $_drrc and judged nothing: $(grep -m1 'FAIL:' "$_drd" | sed 's/^ *FAIL: //')"
+  bad doc.refs-conform "bin/doc-refs.sh exited $_drrc and judged nothing: $(grep -m1 'FAIL:' "$_drd" | sed 's/^ *FAIL: //')"
 else
   _drn=0; LINT_REDLOG=""   # the relay records findings, not reds: doc-refs.sh already logged its ids
   while IFS= read -r _drl; do
     case "$_drl" in
       '  WARN: ['*) _drn=$((_drn + 1)); _drs="${_drl#*] }"; _drs="${_drs%% — *}"
-                    _adv doc.refs-conform "$_drs"; _advp '  ADVISORY [doc.refs-conform] %s\n' "${_drl#  WARN: }" >&2 ;;
-      '  FAIL: ['*) _drs="${_drl#*] }"; LINT_REDLOG="$_drred"; _hard doc.refs-conform "${_drl#  FAIL: }" "${_drs%% — *}"; LINT_REDLOG="" ;;
+                    _adv doc.refs-conform "$_drs"; printf '  ADVISORY [doc.refs-conform] %s\n' "${_drl#  WARN: }" >&2 ;;
+      '  FAIL: ['*) _drs="${_drl#*] }"; LINT_REDLOG="$_drred"; bad doc.refs-conform "${_drl#  FAIL: }" "${_drs%% — *}"; LINT_REDLOG="" ;;
     esac
   done < "$_drd"
   LINT_REDLOG="$_drred"
@@ -646,27 +611,27 @@ rm -f "$_drd"
 # box) and one catalog listing (under 1 s). Without python3 no graph is built, and that is an advisory, never silence.
 # A tree that carries neither tool is not a harbor checkout and is skipped, as the fixture trees are.
 rule_standard_shape_conform() {
-rule "standard.shape-conform every instance of a kind carries its kinds.tsv shapes, judged by bin/standard-shape.sh (harbor#996)"
+rule "standard.shape-conform every instance of a kind carries its kinds.tsv shapes, judged by bin/standard-shape.sh (warn) (harbor#996)"
 _ss="$ROOT/bin/standard-shape.sh"; _ssg="$ROOT/bin/doc-graph-generate.sh"
 if [ ! -f "$_ss" ] || [ ! -f "$_ssg" ]; then say "  skip: no bin/standard-shape.sh and bin/doc-graph-generate.sh in this tree, so no shape was judged"; return 0; fi
 _ssd="${TMPDIR:-/tmp}/ss.$$"; mkdir -p "$_ssd"; _ssrc=0
 sh "$_ssg" --root "$ROOT" --out "$_ssd/graph.tsv" > /dev/null 2> "$_ssd/gen.err" || _ssrc=$?
 if [ "$_ssrc" -eq 3 ]; then
-  _advn standard.shape-conform build/graph.tsv; _advp '  ADVISORY [standard.shape-conform] unchecked: python3 is absent, so no shape was judged (install python3)\n' >&2
+  _adv standard.shape-conform build/graph.tsv; printf '  ADVISORY [standard.shape-conform] unchecked: python3 is absent, so no shape was judged (install python3)\n' >&2
 elif [ "$_ssrc" -ne 0 ]; then
-  _hard standard.shape-conform "bin/doc-graph-generate.sh exited $_ssrc and built no graph: $(grep -m1 'FAIL:' "$_ssd/gen.err" | sed 's/^ *FAIL: //')"
+  bad standard.shape-conform "bin/doc-graph-generate.sh exited $_ssrc and built no graph: $(grep -m1 'FAIL:' "$_ssd/gen.err" | sed 's/^ *FAIL: //')"
 else
   _ssred="${LINT_REDLOG:-}"; _ssrc=0
   LINT_REDLOG="$_ssred" sh "$_ss" --root "$ROOT" --graph "$_ssd/graph.tsv" > /dev/null 2> "$_ssd/out" || _ssrc=$?
   if [ "$_ssrc" -gt 1 ]; then
-    _hard standard.shape-conform "bin/standard-shape.sh exited $_ssrc and judged nothing: $(grep -m1 'FAIL:' "$_ssd/out" | sed 's/^ *FAIL: //')"
+    bad standard.shape-conform "bin/standard-shape.sh exited $_ssrc and judged nothing: $(grep -m1 'FAIL:' "$_ssd/out" | sed 's/^ *FAIL: //')"
   else
     _ssn=0; LINT_REDLOG=""   # the relay records findings, not reds: standard-shape.sh already logged its id
     while IFS= read -r _ssl; do
       case "$_ssl" in
         '  WARN: ['*) _ssn=$((_ssn + 1)); _sss="${_ssl#*] }"; _sss="${_sss%% — *}"
-                      _adv standard.shape-conform "$_sss"; _advp '  ADVISORY [standard.shape-conform] %s\n' "${_ssl#  WARN: }" >&2 ;;
-        '  FAIL: ['*) _sss="${_ssl#*] }"; LINT_REDLOG="$_ssred"; _hard standard.shape-conform "${_ssl#  FAIL: }" "${_sss%% — *}"; LINT_REDLOG="" ;;
+                      _adv standard.shape-conform "$_sss"; printf '  ADVISORY [standard.shape-conform] %s\n' "${_ssl#  WARN: }" >&2 ;;
+        '  FAIL: ['*) _sss="${_ssl#*] }"; LINT_REDLOG="$_ssred"; bad standard.shape-conform "${_ssl#  FAIL: }" "${_sss%% — *}"; LINT_REDLOG="" ;;
       esac
     done < "$_ssd/out"
     LINT_REDLOG="$_ssred"
@@ -680,20 +645,20 @@ rm -rf "$_ssd"
 # RUNS bin/doc-shape.sh and relays its findings as advisories, as standard.shape-conform does: the three rules
 # (doc.kind-folder, doc.frontmatter-fields, doc.fresh-registered), their modes and ids are its and controls.tsv's.
 rule_doc_shape_conform() {
-rule "doc.shape-conform docs/**/*.md carry kind, owner and status, and a generated-by header equals its fresh-checks.tsv row, judged by bin/doc-shape.sh (harbor#1434, #1435)"
+rule "doc.shape-conform docs/**/*.md carry kind, owner and status, and a generated-by header equals its fresh-checks.tsv row, judged by bin/doc-shape.sh (warn) (harbor#1434, #1435)"
 _dsh="$ROOT/bin/doc-shape.sh"
 if [ ! -f "$_dsh" ]; then say "  skip: no bin/doc-shape.sh in this tree, so no doc was judged"; return 0; fi
 _dso="${TMPDIR:-/tmp}/ds.$$"; _dsrc=0; _dsred="${LINT_REDLOG:-}"
 sh "$_dsh" --root "$ROOT" > /dev/null 2> "$_dso" || _dsrc=$?
 if [ "$_dsrc" -gt 1 ]; then
-  _hard doc.shape-conform "bin/doc-shape.sh exited $_dsrc and judged nothing: $(grep -m1 'FAIL:' "$_dso" | sed 's/^ *FAIL: //')"
+  bad doc.shape-conform "bin/doc-shape.sh exited $_dsrc and judged nothing: $(grep -m1 'FAIL:' "$_dso" | sed 's/^ *FAIL: //')"
 else
   _dsn=0; LINT_REDLOG=""   # the relay records findings, not reds: doc-shape.sh already logged its ids
   while IFS= read -r _dsl; do
     case "$_dsl" in
       '  WARN: ['*) _dsn=$((_dsn + 1)); _dss="${_dsl#*] }"; _dss="${_dss%% — *}"
-                    _adv doc.shape-conform "$_dss"; _advp '  ADVISORY [doc.shape-conform] %s\n' "${_dsl#  WARN: }" >&2 ;;
-      '  FAIL: ['*) _dss="${_dsl#*] }"; LINT_REDLOG="$_dsred"; _hard doc.shape-conform "${_dsl#  FAIL: }" "${_dss%% — *}"; LINT_REDLOG="" ;;
+                    _adv doc.shape-conform "$_dss"; printf '  ADVISORY [doc.shape-conform] %s\n' "${_dsl#  WARN: }" >&2 ;;
+      '  FAIL: ['*) _dss="${_dsl#*] }"; LINT_REDLOG="$_dsred"; bad doc.shape-conform "${_dsl#  FAIL: }" "${_dss%% — *}"; LINT_REDLOG="" ;;
     esac
   done < "$_dso"
   LINT_REDLOG="$_dsred"
@@ -706,29 +671,29 @@ rm -f "$_dso"
 # RUNS bin/lint-comment.sh and relays its findings as advisories, as N4 does (ids and modes are its and controls.tsv's).
 # Exit 3, no base (a shallow clone), is an advisory, never silence or a failure; exit 2 or above 3 judged nothing.
 rule_lint_comment_conform() {
-rule "lint.comment-conform the lines a branch adds pass bin/lint-comment.sh: header line 2, comment runs (harbor#978)"
+rule "lint.comment-conform the lines a branch adds pass bin/lint-comment.sh: header line 2, comment runs (warn) (harbor#978)"
 _lc="$ROOT/bin/lint-comment.sh"
 if [ ! -f "$_lc" ]; then say "  skip: no bin/lint-comment.sh in this tree, so no added line was judged"; return 0; fi
 _lco="${TMPDIR:-/tmp}/lc.$$"; _lcrc=0; _lcred="${LINT_REDLOG:-}"
 LINT_REDLOG="$_lcred" sh "$_lc" --root "$ROOT" > /dev/null 2> "$_lco" || _lcrc=$?
 if [ "$_lcrc" -eq 3 ]; then
   LINT_REDLOG=""   # "could not look" is not the rule going red
-  _advn lint.comment-conform bin/lint-comment.sh; _advp '  ADVISORY [lint.comment-conform] unchecked: no base to compare against (HARBOR_CI_BASE, else origin/main), so no added line was judged\n' >&2
+  _adv lint.comment-conform bin/lint-comment.sh; printf '  ADVISORY [lint.comment-conform] unchecked: no base to compare against (HARBOR_CI_BASE, else origin/main), so no added line was judged\n' >&2
   LINT_REDLOG="$_lcred"
 elif [ "$_lcrc" -gt 1 ]; then
-  _hard lint.comment-conform "bin/lint-comment.sh exited $_lcrc and judged nothing: $(grep -m1 'FAIL:' "$_lco" | sed 's/^ *FAIL: //')"
+  bad lint.comment-conform "bin/lint-comment.sh exited $_lcrc and judged nothing: $(grep -m1 'FAIL:' "$_lco" | sed 's/^ *FAIL: //')"
 else
   _lcn=0; _lcf=0; LINT_REDLOG=""   # the relay records findings, not reds: lint-comment.sh already logged its ids
   while IFS= read -r _lcl; do
     case "$_lcl" in
       '  WARN: ['*) _lcn=$((_lcn + 1)); _lcs="${_lcl#*] }"; _lcs="${_lcs%% — *}"
-                    _adv lint.comment-conform "$_lcs"; _advp '  ADVISORY [lint.comment-conform] %s\n' "${_lcl#  WARN: }" >&2 ;;
-      '  FAIL: ['*) _lcf=$((_lcf + 1)); _lcs="${_lcl#*] }"; LINT_REDLOG="$_lcred"; _hard lint.comment-conform "${_lcl#  FAIL: }" "${_lcs%% — *}"; LINT_REDLOG="" ;;
+                    _adv lint.comment-conform "$_lcs"; printf '  ADVISORY [lint.comment-conform] %s\n' "${_lcl#  WARN: }" >&2 ;;
+      '  FAIL: ['*) _lcf=$((_lcf + 1)); _lcs="${_lcl#*] }"; LINT_REDLOG="$_lcred"; bad lint.comment-conform "${_lcl#  FAIL: }" "${_lcs%% — *}"; LINT_REDLOG="" ;;
     esac
   done < "$_lco"
   LINT_REDLOG="$_lcred"
   # exit 1 with no [rule] FAIL line is the engine dying (a missing lib exits 1), not a finding: never a pass
-  if [ "$_lcrc" -eq 1 ] && [ "$_lcf" -eq 0 ]; then _hard lint.comment-conform "bin/lint-comment.sh exited 1 with no finding and judged nothing: $(head -1 "$_lco")"; fi
+  if [ "$_lcrc" -eq 1 ] && [ "$_lcf" -eq 0 ]; then bad lint.comment-conform "bin/lint-comment.sh exited 1 with no finding and judged nothing: $(head -1 "$_lco")"; fi
   [ "$_lcn" -gt 0 ] || say "  $(grep -m1 'no added header' "$_lco" | sed -E 's/^ *(ok|note): //')"
 fi
 rm -f "$_lco"
@@ -966,7 +931,7 @@ if git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
     rm -f "$_s6out"
   else
     # NO BASE IS NOT A CLEAN RESULT — C2's reason 1, one rule over.
-    _advn lint.exec-bit-kept no-base; _advp '  ADVISORY [lint.exec-bit-kept] no origin/main or main to compare against — NO file mode was inspected\n' >&2
+    _adv lint.exec-bit-kept no-base; printf '  ADVISORY [lint.exec-bit-kept] no origin/main or main to compare against — NO file mode was inspected\n' >&2
   fi
 fi
 }
@@ -1005,15 +970,15 @@ done
 # A hook that runs in every session and has no controls.tsv row has no mode, owner or off switch a person can
 # read, and the census never sees a guard that answers in JSON instead of floor_block. The set is F1's.
 rule_admission_wired_registered() {
-rule "admission.wired-registered every wired hook script (bin/decider-set.sh) is the engine of a standards/naming/controls.tsv row (harbor#1272)"
+rule "admission.wired-registered every wired hook script (bin/decider-set.sh) is the engine of a standards/naming/controls.tsv row (harbor#1272) (advisory)"
 _wrset="$ROOT/bin/decider-set.sh"; _wrc="$ROOT/standards/naming/controls.tsv"
-[ -f "$_wrset" ] && [ -f "$_wrc" ] || { _hard admission.wired-registered "bin/decider-set.sh or standards/naming/controls.tsv is missing, so the wired set cannot be checked"; return 0; }
+[ -f "$_wrset" ] && [ -f "$_wrc" ] || { bad admission.wired-registered "bin/decider-set.sh or standards/naming/controls.tsv is missing, so the wired set cannot be checked"; return 0; }
 _wrl="$(sh "$_wrset" 2>/dev/null | cut -f1)"
-[ -n "$_wrl" ] || { _hard admission.wired-registered "bin/decider-set.sh listed no wired script, so nothing was checked"; return 0; }
+[ -n "$_wrl" ] || { bad admission.wired-registered "bin/decider-set.sh listed no wired script, so nothing was checked"; return 0; }
 for _s in $_wrl; do
   _wre="$(_payload_src "$_s")"; _wre="${_wre#"$ROOT"/}"  # a hook engine's row names its folder's file (D-88)
   awk -F'\t' -v e="$_wre" '/^#/ { next } $4 == e { f = 1; exit } END { exit !f }' "$_wrc" \
-    || { _adv admission.wired-registered "$_wre"; _advp '  ADVISORY [admission.wired-registered] %s is wired as a hook and no standards/naming/controls.tsv row names it as its engine\n' "$_wre" >&2; }
+    || { _adv admission.wired-registered "$_wre"; printf '  ADVISORY [admission.wired-registered] %s is wired as a hook and no standards/naming/controls.tsv row names it as its engine\n' "$_wre" >&2; }
 done
 }
 
@@ -1088,7 +1053,7 @@ done
 # outliers and nothing routine. ADVISORY — a size threshold is a smell, and
 # promoting a smell to a build failure is how a linter gets routed around.
 rule_G1() {
-rule "lint.long-file-reason files over 300 lines name their exemption reason in the header"
+rule "lint.long-file-reason files over 300 lines name their exemption reason in the header (advisory)"
 for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   _tot="$(wc -l < "$f" | tr -d ' ')"
@@ -1134,7 +1099,7 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
     # firing on bin/eval-replay.sh at 311 lines, which is the rule working: a file
     # crossed the line as it grew, and the right response is a note to carry into
     # the next PLANNING session, not a mid-task split under a full context window.
-    _adv lint.long-file-reason "${f#$ROOT/}"; _advp "  ADVISORY [lint.long-file-reason] %s is %s lines of code (%s total) and its header does not say why (docs/explanation/modularity.md)\n" "${f#$ROOT/}" "$_n" "$_tot"
+    _adv lint.long-file-reason "${f#$ROOT/}"; printf "  ADVISORY [lint.long-file-reason] %s is %s lines of code (%s total) and its header does not say why (docs/explanation/modularity.md)\n" "${f#$ROOT/}" "$_n" "$_tot"
   fi
 done
 }
@@ -1330,7 +1295,7 @@ rm -f "$_F11P"
 
 # ── F12 · no POSIX-compatibility violations under `sh` (shellcheck SC3xxx) ──
 rule_F12() {
-rule "posix.shellcheck every script is POSIX under sh — no shellcheck SC3xxx (a box without shellcheck gets a note)"
+rule "posix.shellcheck every script is POSIX under sh — no shellcheck SC3xxx (advisory when shellcheck is absent)"
 # WHY ONLY SC3xxx, AND NOT THE WHOLE TOOL. Measured 2026-09-06 over 166 scripts:
 # at its defaults it reports 3,132 findings here, and ~97% of them are this
 # repo's house style rather than defects — 1,969 SC2015 (`test && ok || bad`, the
@@ -1408,7 +1373,7 @@ $_F12T
 F12TEOF
   fi
 else
-  _advn posix.shellcheck shellcheck-absent; _advp '  ADVISORY [posix.shellcheck] shellcheck is not installed — this rule verified NOTHING.\n' >&2
+  _adv posix.shellcheck shellcheck-absent; printf '  ADVISORY [posix.shellcheck] shellcheck is not installed — this rule verified NOTHING.\n' >&2
   printf '           brew install shellcheck (or apt install shellcheck) to arm it.\n' >&2
 fi
 }
@@ -1471,7 +1436,7 @@ F13EOF
 else
   # It rides F12's run, so it verified nothing either, and says so rather than let a
   # silent skip read as green — the X1 defect found earlier the same day.
-  _advn posix.awk-apostrophe shellcheck-absent; _advp '  ADVISORY [posix.awk-apostrophe] shellcheck is not installed — this rule verified NOTHING.\n' >&2
+  _adv posix.awk-apostrophe shellcheck-absent; printf '  ADVISORY [posix.awk-apostrophe] shellcheck is not installed — this rule verified NOTHING.\n' >&2
 fi
 }
 
@@ -1881,12 +1846,11 @@ _d5miss="$(printf '%s\n' "$_d5reads" | while IFS= read -r _p; do
     printf '%s\n' "$_d5edits" | grep -qxF -- "$_p" || printf '%s\n' "$_p"
   done)"
 if [ -n "$_d5miss" ]; then
-  _vmode deploy.deny-read-edit-pair
   printf '%s\n' "$_d5miss" | while IFS= read -r _p; do
     [ -n "$_p" ] || continue
-    _advp '  VIOLATION [deploy.deny-read-edit-pair] Read-denied but WRITABLE by Write/NotebookEdit — add "Edit(%s)": bin/admission-deny.sh\n' "$_p" >&2
+    printf '  VIOLATION [deploy.deny-read-edit-pair] Read-denied but WRITABLE by Write/NotebookEdit — add "Edit(%s)": bin/admission-deny.sh\n' "$_p" >&2
   done
-  _vtally deploy.deny-read-edit-pair "$(printf '%s\n' "$_d5miss" | grep -c . || true)"
+  FAIL=$((FAIL + $(printf '%s\n' "$_d5miss" | grep -c . || true)))
 fi
 }
 
@@ -2642,7 +2606,7 @@ fi
 # as a working one is how a repo ends up believing it has a control it does not,
 # so it is reported every run until the patch lands.
 if [ -f "$CI" ] && [ -f "$_DECL" ] && ! grep -q 'suite-select' "$CI"; then
-  _advn test.suite-paths governance.yml; _advp '  ADVISORY [test.suite-paths] governance.yml does not call bin/test-suite-select.sh yet — the declarations are inert until patches/governance-change-class.patch.md is applied\n'
+  _adv test.suite-paths governance.yml; printf '  ADVISORY [test.suite-paths] governance.yml does not call bin/test-suite-select.sh yet — the declarations are inert until patches/governance-change-class.patch.md is applied\n'
 fi
 }
 
@@ -3610,9 +3574,8 @@ for f in "$ROOT"/docs/*.html "$ROOT"/bin/*.sh $(_engines) "$ROOT"/skills/*/bin/*
   # any pipeline: a `while read` on the right of a pipe runs in a subshell, so a
   # FAIL incremented in there is discarded and the gate prints violations while
   # reporting green.
-  _vmode doc.dark-tokens
-  [ "$_ADV_M" = shadow ] || printf '%s\n' "$_h1out" | sed "s|^|  $_ADV_L [doc.dark-tokens] ${f#$ROOT/}: |;s|\$| has no value|" >&2
-  _vtally doc.dark-tokens 1
+  printf '%s\n' "$_h1out" | sed "s|^|  VIOLATION [doc.dark-tokens] ${f#$ROOT/}: |;s|\$| has no value|" >&2
+  FAIL=$((FAIL+1))
 done
 }
 
@@ -3636,7 +3599,6 @@ rule "doc.counts-in-status-only only docs/generated/status.md states a countable
 # a count split across two lines is out of reach of this shape either way, and
 # pretending otherwise in the pattern would be the more misleading of the two.
 COUNTABLE='[0-9]+[[:space:]]+(lint rules|vendored skills|frozen contracts|floor guards|marker fixtures)'
-_vmode doc.counts-in-status-only
 for f in "$ROOT"/*.md "$ROOT"/contracts/*.md "$ROOT"/docs/explanation/*.md; do
   [ -f "$f" ] || continue
   b="$(basename "$f")"
@@ -3645,9 +3607,9 @@ for f in "$ROOT"/*.md "$ROOT"/contracts/*.md "$ROOT"/docs/explanation/*.md; do
   case "$b" in docs/generated/status.md|docs/explanation/admission-baseline.md|docs/reports/qa-plan.md) continue ;; esac
   grep -nEi "$COUNTABLE" "$f" 2>/dev/null | grep -v 'docs/generated/status.md' | head -3 \
     | while IFS= read -r hit; do
-        [ -n "$hit" ] && _advp '  VIOLATION [doc.counts-in-status-only] %s restates a docs/generated/status.md count: %s\n' "${f#$ROOT/}" "$(printf '%s' "$hit" | cut -c1-90)" >&2
+        [ -n "$hit" ] && printf '  VIOLATION [doc.counts-in-status-only] %s restates a docs/generated/status.md count: %s\n' "${f#$ROOT/}" "$(printf '%s' "$hit" | cut -c1-90)" >&2
       done
-  if grep -qEi "$COUNTABLE" "$f" 2>/dev/null; then _vtally doc.counts-in-status-only 1; fi
+  if grep -qEi "$COUNTABLE" "$f" 2>/dev/null; then FAIL=$((FAIL+1)); fi
 done
 }
 
@@ -4135,7 +4097,7 @@ EOF_T3
 # tree and still ambient live keeps costing bytes and keeps being selectable, so the
 # repo would claim a saving that the machine never made.
 rule_X4() {
-rule "drift.skill-tier every installed skill has a governed counterpart, and their tiers agree"
+rule "drift.skill-tier every installed skill has a governed counterpart, and their tiers agree (advisory)"
 _sk_live="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills"
 if [ -d "$_sk_live" ]; then
   _x4_missing=0; _x4_tier=0; _x4_uninst=0; _x4_noskill=0; _x4_synced=0
@@ -4160,7 +4122,7 @@ if [ -d "$_sk_live" ]; then
       if [ "$n" = synced ]; then
         _x4_synced="$_x4_below"
       else
-        _adv drift.skill-tier "no-skill-md:$n"; _advm "  ADVISORY [drift.skill-tier] installed directory with no top-level SKILL.md, so it is not a skill X4 can compare: $n ($_x4_below SKILL.md below it)" >&2
+        _adv drift.skill-tier "no-skill-md:$n"; echo "  ADVISORY [drift.skill-tier] installed directory with no top-level SKILL.md, so it is not a skill X4 can compare: $n ($_x4_below SKILL.md below it)" >&2
         _x4_noskill=$(( _x4_noskill + 1 ))
       fi
       continue
@@ -4174,12 +4136,12 @@ if [ -d "$_sk_live" ]; then
       [ -f "$cand/SKILL.md" ] && { src="$cand"; break; }
     done
     if [ -z "$src" ]; then
-      _adv drift.skill-tier "ungoverned:$n"; _advm "  ADVISORY [drift.skill-tier] installed skill under no governed copy: $n" >&2
+      _adv drift.skill-tier "ungoverned:$n"; echo "  ADVISORY [drift.skill-tier] installed skill under no governed copy: $n" >&2
       _x4_missing=$(( _x4_missing + 1 )); continue
     fi
     _lt="$(tier_of "$d/SKILL.md")"; _st="$(tier_of "$src/SKILL.md")"
     if [ "$_lt" != "$_st" ]; then
-      _adv drift.skill-tier "tier:$n"; _advm "  ADVISORY [drift.skill-tier] tier mismatch: $n is $_lt live but $_st in ${src#$ROOT/}" >&2
+      _adv drift.skill-tier "tier:$n"; echo "  ADVISORY [drift.skill-tier] tier mismatch: $n is $_lt live but $_st in ${src#$ROOT/}" >&2
       _x4_tier=$(( _x4_tier + 1 ))
     fi
   done
@@ -4209,7 +4171,7 @@ if [ -d "$_sk_live" ]; then
       _found=2   # not installed, deliberately — say so once, do not count it
       echo "  (X4) vendored and deliberately DORMANT, not a gap: $v"
     fi
-    [ "$_found" -eq 0 ] && { _adv drift.skill-tier "uninstalled:$v"; _advm "  ADVISORY [drift.skill-tier] vendored but not installed: $v" >&2; _x4_uninst=$(( _x4_uninst + 1 )); }
+    [ "$_found" -eq 0 ] && { _adv drift.skill-tier "uninstalled:$v"; echo "  ADVISORY [drift.skill-tier] vendored but not installed: $v" >&2; _x4_uninst=$(( _x4_uninst + 1 )); }
   done
   [ "$(( _x4_missing + _x4_tier + _x4_uninst + _x4_noskill ))" -eq 0 ] \
     && echo "  installed and governed surfaces agree." \
@@ -4271,7 +4233,7 @@ fi
 }
 
 rule_X2() {
-rule "drift.config-bin the live ~/.claude/bin does not lag the repo"
+rule "drift.config-bin the live ~/.claude/bin does not lag the repo (advisory)"
 # THE CONFIG DIR IS WHEREVER CLAUDE_CONFIG_DIR SAYS, and this rule did not ask.
 # bin/skill-install.sh:43 writes to `${CLAUDE_CONFIG_DIR:-$HOME/.claude}`; these
 # advisories read `${HARBOR_DEPLOY_LIVE_DIR:-$HOME/.claude}`. With CLAUDE_CONFIG_DIR set —
@@ -4288,11 +4250,11 @@ rule "drift.config-bin the live ~/.claude/bin does not lag the repo"
 _x2_side() {
   _x2_rm="$(_x8_repo_time "$1")"; _x2_lm="$(_x8_mtime "$2")"
   if [ -n "$_x2_rm" ] && [ -n "$_x2_lm" ] && [ "$_x2_lm" -gt "$_x2_rm" ]; then
-    _adv drift.config-bin "live-newer:~/.claude/$3"; _advp "  ADVISORY [drift.config-bin] LIVE IS NEWER — this checkout lags the box; capture it, do NOT reinstall over it: ~/.claude/%s\\n" "$3"
+    _adv drift.config-bin "live-newer:~/.claude/$3"; printf "  ADVISORY [drift.config-bin] LIVE IS NEWER — this checkout lags the box; capture it, do NOT reinstall over it: ~/.claude/%s\\n" "$3"
   elif [ -n "$_x2_rm" ] && [ -n "$_x2_lm" ] && [ "$_x2_rm" -gt "$_x2_lm" ]; then
-    _adv drift.config-bin "repo-newer:~/.claude/$3"; _advp "  ADVISORY [drift.config-bin] repo is newer — the box lags; run the installer that ships it: ~/.claude/%s\\n" "$3"
+    _adv drift.config-bin "repo-newer:~/.claude/$3"; printf "  ADVISORY [drift.config-bin] repo is newer — the box lags; run the installer that ships it: ~/.claude/%s\\n" "$3"
   else
-    _adv drift.config-bin "undecidable:~/.claude/$3"; _advp "  ADVISORY [drift.config-bin] differs, direction UNDECIDABLE — read the diff before either copy: ~/.claude/%s\\n" "$3"
+    _adv drift.config-bin "undecidable:~/.claude/$3"; printf "  ADVISORY [drift.config-bin] differs, direction UNDECIDABLE — read the diff before either copy: ~/.claude/%s\\n" "$3"
   fi
 }
 if [ -d "$LIVEBIN" ]; then
@@ -4329,7 +4291,7 @@ if [ -d "$LIVEBIN" ]; then
       if _installer_payload | tr ' ' '\n' | grep -Fxq "$b"; then
         _x2_side "$f" "$LIVEBIN/$b" "bin/$b"
       else
-        _adv drift.config-bin "unowned:~/.claude/bin/$b"; _advp "  ADVISORY [drift.config-bin] UNOWNED: ~/.claude/bin/%s — no installer ships it there, so no install can refresh it and it is frozen at whatever version it was born with. Find what references it BEFORE removing it: this rule reads the two installer payloads and NOTHING else\\n" "$b"
+        _adv drift.config-bin "unowned:~/.claude/bin/$b"; printf "  ADVISORY [drift.config-bin] UNOWNED: ~/.claude/bin/%s — no installer ships it there, so no install can refresh it and it is frozen at whatever version it was born with. Find what references it BEFORE removing it: this rule reads the two installer payloads and NOTHING else\\n" "$b"
       fi
     fi
   done
@@ -4366,7 +4328,7 @@ done
 # Advisory, for X2's reason: the subject is outside the repo, so a hard failure
 # would fire on a box where the tool is simply installed from somewhere else.
 rule_X2b() {
-rule "drift.local-bin the ~/.local/bin installs do not differ from the repo"
+rule "drift.local-bin the ~/.local/bin installs do not differ from the repo (advisory)"
 # HARBOR_SCOPE_LOCAL_BIN, the same name deploy-runtime-install.sh takes, so the rule and the
 # installer can be pointed at one fixture together. Without it this rule could
 # only ever be tested against the operator's real ~/.local/bin — which is to say
@@ -4413,7 +4375,7 @@ if [ -d "$_localbin" ]; then
     # test exactly like an absent file and this rule said nothing — while the
     # command it names answers "No such file or directory" every time it is typed.
     if [ -L "$_dst" ] && [ ! -e "$_dst" ]; then
-      _adv drift.local-bin "dangling:~/.local/bin/${_pair#*:}"; _advp "  ADVISORY [drift.local-bin] DANGLING: ~/.local/bin/%s points at %s, which does not exist — re-run the installer\\n" \
+      _adv drift.local-bin "dangling:~/.local/bin/${_pair#*:}"; printf "  ADVISORY [drift.local-bin] DANGLING: ~/.local/bin/%s points at %s, which does not exist — re-run the installer\\n" \
         "${_pair#*:}" "$(readlink "$_dst" 2>/dev/null || printf '?')"
       continue
     fi
@@ -4429,7 +4391,7 @@ if [ -d "$_localbin" ]; then
       case " $_x2b_owned " in
         *" $_pair "*)
           if [ -f "$_x2b_stamp" ] && grep -q '^runtime-install ' "$_x2b_stamp" 2>/dev/null; then
-            _adv drift.local-bin "never-deployed:~/.local/bin/${_pair#*:}"; _advp "  ADVISORY [drift.local-bin] NEVER DEPLOYED: ~/.local/bin/%s is absent, though deploy-runtime-install.sh ships it and has run on this box — re-run it\\n" "${_pair#*:}"
+            _adv drift.local-bin "never-deployed:~/.local/bin/${_pair#*:}"; printf "  ADVISORY [drift.local-bin] NEVER DEPLOYED: ~/.local/bin/%s is absent, though deploy-runtime-install.sh ships it and has run on this box — re-run it\\n" "${_pair#*:}"
           fi ;;
       esac
       continue
@@ -4437,7 +4399,7 @@ if [ -d "$_localbin" ]; then
     # A LINK INTO THE REPO CANNOT DRIFT, which is why it is the shipped form.
     [ -L "$_dst" ] && continue
     cmp -s "$_src" "$_dst" \
-      || { _adv drift.local-bin "differs:~/.local/bin/${_pair#*:}"; _advp "  ADVISORY [drift.local-bin] installed copy DIFFERS (either direction): ~/.local/bin/%s vs bin/%s\\n" \
+      || { _adv drift.local-bin "differs:~/.local/bin/${_pair#*:}"; printf "  ADVISORY [drift.local-bin] installed copy DIFFERS (either direction): ~/.local/bin/%s vs bin/%s\\n" \
            "${_pair#*:}" "${_pair%%:*}"; }
   done
 fi
@@ -4452,7 +4414,7 @@ fi
 # side can be the newer. Advisory for X2's reason, and it never copies: installing a hook in another
 # repository is the operator's act.
 rule_X11() {
-rule "drift.work-log-hook the installed work-log pre-push hook does not differ from worklog/pre-push"
+rule "drift.work-log-hook the installed work-log pre-push hook does not differ from worklog/pre-push (advisory)"
 _x11s="$ROOT/worklog/pre-push"
 _x11r="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/MEMORY"
 case "$_x11r" in "$HOME"/*) _x11v="~/${_x11r#"$HOME"/}" ;; *) _x11v="$_x11r" ;; esac
@@ -4464,11 +4426,11 @@ case "$_x11h" in "$HOME"/*) _x11hv="~/${_x11h#"$HOME"/}" ;; *) _x11hv="$_x11h" ;
 if [ ! -e "$_x11r/.git" ]; then
   say "  work-log pre-push: no work-log repository at $_x11v, nothing to compare"
 elif [ ! -f "$_x11h" ]; then
-  _adv drift.work-log-hook absent:worklog-pre-push; _advp '  ADVISORY [drift.work-log-hook] the work-log repository has no pre-push hook, so its gitleaks gate is not installed — review worklog/pre-push, then copy it to %s\n' "$_x11hv"
+  _adv drift.work-log-hook absent:worklog-pre-push; printf '  ADVISORY [drift.work-log-hook] the work-log repository has no pre-push hook, so its gitleaks gate is not installed — review worklog/pre-push, then copy it to %s\n' "$_x11hv"
 elif cmp -s "$_x11s" "$_x11h"; then
   say "  work-log pre-push: the installed copy matches worklog/pre-push"
 else
-  _adv drift.work-log-hook differs:worklog-pre-push; _advp '  ADVISORY [drift.work-log-hook] the installed work-log pre-push differs from worklog/pre-push — review both, then copy the right one to %s\n' "$_x11hv"
+  _adv drift.work-log-hook differs:worklog-pre-push; printf '  ADVISORY [drift.work-log-hook] the installed work-log pre-push differs from worklog/pre-push — review both, then copy the right one to %s\n' "$_x11hv"
 fi
 }
 
@@ -4501,7 +4463,7 @@ fi
 # Not-installed remains out of scope — that is X4's call, and duplicating it here
 # would turn one advisory into two for the same fact.
 rule_X8() {
-rule "drift.skill-bytes an installed skill (authored or vendored) is byte-identical to its tracked source, and drift names its DIRECTION"
+rule "drift.skill-bytes an installed skill (authored or vendored) is byte-identical to its tracked source, and drift names its DIRECTION (advisory)"
 # THE INSTALL RENAMES `name:`, AND THAT IS NOT DRIFT. The installer writes the
 # frontmatter `name:` in the installed spelling (kebab in the repo, often
 # PascalCase on the box) — the same documented rename this loop already resolves
@@ -4699,7 +4661,7 @@ if [ -d "$_x8_live" ]; then
     _x8_norm="$(printf '%s' "$n" | tr 'A-Z' 'a-z' | sed 's/[_-]//g')"
     _x8_seen="$_x8_seen $_x8_norm"
     if [ -z "$_x8_dst" ]; then
-      _adv drift.skill-bytes "uninstalled:${d#$ROOT/}"; _advm "  ADVISORY [drift.skill-bytes] tracked here, installed on no box: ${d#$ROOT/} — intended, or a deploy nobody ran?" >&2
+      _adv drift.skill-bytes "uninstalled:${d#$ROOT/}"; echo "  ADVISORY [drift.skill-bytes] tracked here, installed on no box: ${d#$ROOT/} — intended, or a deploy nobody ran?" >&2
       continue
     fi
     _x8_checked=$(( _x8_checked + 1 ))
@@ -4734,12 +4696,12 @@ if [ -d "$_x8_live" ]; then
         fi
         case "$_x8_grc" in
           0) ;;
-          1) _adv drift.skill-bytes "generated:$n"; _advm "  ADVISORY [drift.skill-bytes] GENERATED — the installed copy is not what the generator writes for this config dir; do not copy either way, regenerate: $n -> sh $_x8_gen install --apply" >&2
+          1) _adv drift.skill-bytes "generated:$n"; echo "  ADVISORY [drift.skill-bytes] GENERATED — the installed copy is not what the generator writes for this config dir; do not copy either way, regenerate: $n -> sh $_x8_gen install --apply" >&2
              _x8_drift=$(( _x8_drift + 1 )) ;;
-          *) _advn drift.skill-bytes "generator-failed:$n"; _advm "  ADVISORY [drift.skill-bytes] GENERATED — the generator FAILED (rc=$_x8_grc), so $n was not judged: sh $_x8_gen install --check --live" >&2 ;;
+          *) _adv drift.skill-bytes "generator-failed:$n"; echo "  ADVISORY [drift.skill-bytes] GENERATED — the generator FAILED (rc=$_x8_grc), so $n was not judged: sh $_x8_gen install --check --live" >&2 ;;
         esac
       elif _x8_differs "$d" "$_x8_dst" "$_x8_tier"; then
-        _adv drift.skill-bytes "generated:$n"; _advm "  ADVISORY [drift.skill-bytes] GENERATED — do not copy either way, regenerate: $n -> sh $_x8_gen" >&2
+        _adv drift.skill-bytes "generated:$n"; echo "  ADVISORY [drift.skill-bytes] GENERATED — do not copy either way, regenerate: $n -> sh $_x8_gen" >&2
         _x8_drift=$(( _x8_drift + 1 ))
       fi
       continue
@@ -4755,11 +4717,11 @@ if [ -d "$_x8_live" ]; then
       _x8_rm="${_x8_times% *}"
       _x8_lm="${_x8_times#* }"
       if _x8_main_superseded "$_x8_dst" "skills/$n"; then
-        _adv drift.skill-bytes "repo-newer:$n"; _advm "  ADVISORY [drift.skill-bytes] repo is newer — the box lags; reinstalling is the right direction: $n -> ${_x8_dst##*/}" >&2
+        _adv drift.skill-bytes "repo-newer:$n"; echo "  ADVISORY [drift.skill-bytes] repo is newer — the box lags; reinstalling is the right direction: $n -> ${_x8_dst##*/}" >&2
         echo "             the live bytes are an older ${HARBOR_CI_BASE:-origin/main} version of this skill, whatever branch also holds them" >&2
       elif [ -n "$_x8_rm" ] && [ -n "$_x8_lm" ] && [ "$_x8_lm" -gt "$_x8_rm" ] \
          && [ "$_x8_tier" = vendored ]; then
-        _adv drift.skill-bytes "vendored-live-newer:$n"; _advm "  ADVISORY [drift.skill-bytes] VENDORED and live is newer — INSPECT, do not capture blind: $n -> ${_x8_dst##*/}" >&2
+        _adv drift.skill-bytes "vendored-live-newer:$n"; echo "  ADVISORY [drift.skill-bytes] VENDORED and live is newer — INSPECT, do not capture blind: $n -> ${_x8_dst##*/}" >&2
         echo "             the repo copy is the de-persona'd intake artefact; a blind capture reimports upstream persona text" >&2
       elif [ -n "$_x8_rm" ] && [ -n "$_x8_lm" ] && [ "$_x8_lm" -gt "$_x8_rm" ]; then
         # THE MARKER GOES ON THE ADVISORY LINE, not a continuation. Measured
@@ -4769,25 +4731,25 @@ if [ -d "$_x8_live" ]; then
         # belongs where the action is read, and every reader here greps.
         _x8_ref="$(_x8_ref_match "$_x8_dst" "skills/$n")"
         if [ -n "$_x8_ref" ]; then
-          _adv drift.skill-bytes "branch-skew:$n"; _advm "  ADVISORY [drift.skill-bytes] BRANCH SKEW — the live bytes are committed verbatim on $_x8_ref, so this is NOT newer work: $n -> ${_x8_dst##*/}" >&2
+          _adv drift.skill-bytes "branch-skew:$n"; echo "  ADVISORY [drift.skill-bytes] BRANCH SKEW — the live bytes are committed verbatim on $_x8_ref, so this is NOT newer work: $n -> ${_x8_dst##*/}" >&2
           echo "             this tree is older than $_x8_ref; capturing would re-import that ref, not rescue anything" >&2
         else
-          _adv drift.skill-bytes "live-newer:$n"; _advm "  ADVISORY [drift.skill-bytes] LIVE IS NEWER — capture it into the repo, do NOT reinstall: $n -> ${_x8_dst##*/}" >&2
+          _adv drift.skill-bytes "live-newer:$n"; echo "  ADVISORY [drift.skill-bytes] LIVE IS NEWER — capture it into the repo, do NOT reinstall: $n -> ${_x8_dst##*/}" >&2
         fi
       elif [ -n "$_x8_rm" ] && [ -n "$_x8_lm" ] && [ "$_x8_rm" -gt "$_x8_lm" ]; then
         _x8_ref="$(_x8_ref_match "$_x8_dst" "skills/$n")"
         if [ -n "$_x8_ref" ]; then
-          _adv drift.skill-bytes "branch-skew:$n"; _advm "  ADVISORY [drift.skill-bytes] BRANCH SKEW — the live bytes are committed verbatim on $_x8_ref, so the box is NOT lagging: $n -> ${_x8_dst##*/}" >&2
+          _adv drift.skill-bytes "branch-skew:$n"; echo "  ADVISORY [drift.skill-bytes] BRANCH SKEW — the live bytes are committed verbatim on $_x8_ref, so the box is NOT lagging: $n -> ${_x8_dst##*/}" >&2
           echo "             this tree is newer than $_x8_ref; installing from here is a branch decision, not a repair" >&2
         else
-          _adv drift.skill-bytes "repo-newer:$n"; _advm "  ADVISORY [drift.skill-bytes] repo is newer — the box lags; reinstalling is the right direction: $n -> ${_x8_dst##*/}" >&2
+          _adv drift.skill-bytes "repo-newer:$n"; echo "  ADVISORY [drift.skill-bytes] repo is newer — the box lags; reinstalling is the right direction: $n -> ${_x8_dst##*/}" >&2
         fi
       else
         # SAME MTIME, OR UNREADABLE. Two same-day edits and a `cp` that preserved
         # nothing both land here, and neither side can be called authoritative
         # from outside. Saying so is the honest answer; guessing is how the wrong
         # copy gets destroyed.
-        _adv drift.skill-bytes "undecidable:$n"; _advm "  ADVISORY [drift.skill-bytes] differs, direction UNDECIDABLE — read the diff before either copy: $n -> ${_x8_dst##*/}" >&2
+        _adv drift.skill-bytes "undecidable:$n"; echo "  ADVISORY [drift.skill-bytes] differs, direction UNDECIDABLE — read the diff before either copy: $n -> ${_x8_dst##*/}" >&2
       fi
       _x8_detail "$d" "$_x8_dst" "$_x8_tier" | sed "s|$HOME|~|g;s|^|      |" >&2
       _x8_drift=$(( _x8_drift + 1 ))
@@ -4819,9 +4781,9 @@ if [ -d "$_x8_live" ]; then
     case " $_x8_seen " in *" $_x8_lnorm "*) continue ;; esac
     _x8_ref="$(_x8_ref_match "$_x8_l" "skills/$_x8_ln")"
     if [ -n "$_x8_ref" ]; then
-      _adv drift.skill-bytes "branch-skew:$_x8_ln"; _advm "  ADVISORY [drift.skill-bytes] not in THIS working tree, but committed on $_x8_ref — branch skew, not drift: $_x8_ln" >&2
+      _adv drift.skill-bytes "branch-skew:$_x8_ln"; echo "  ADVISORY [drift.skill-bytes] not in THIS working tree, but committed on $_x8_ref — branch skew, not drift: $_x8_ln" >&2
     else
-      _adv drift.skill-bytes "untracked:$_x8_ln"; _advm "  ADVISORY [drift.skill-bytes] INSTALLED BUT TRACKED NOWHERE — no review path and no second copy, on any ref: $_x8_ln" >&2
+      _adv drift.skill-bytes "untracked:$_x8_ln"; echo "  ADVISORY [drift.skill-bytes] INSTALLED BUT TRACKED NOWHERE — no review path and no second copy, on any ref: $_x8_ln" >&2
     fi
     _x8_orphan=$(( _x8_orphan + 1 ))
   done
@@ -4910,7 +4872,7 @@ fi
 # _x7_read_only is defined in the shared section at the top (harbor#537) — another rule reads it.
 }
 rule_X7() {
-rule "drift.payload-closure every script that an installed script invokes is itself in an installer payload"
+rule "drift.payload-closure every script that an installed script invokes is itself in an installer payload (advisory)"
 # ONE ENUMERATOR, SHARED WITH X2 — see its header for the third installer both
 # rules were blind to. The alias is kept so this rule's later references read as
 # they always did.
@@ -4925,7 +4887,7 @@ _X7P="$(printf '%s' "${_X7P:-0}" | tr -dc '0-9')"
 if [ "${_X7P:-0}" -lt 10 ]; then
   # A payload that came back empty would make every check below vacuously pass —
   # the shape CONSTITUTION №2.10 calls worse than no test. Say so instead.
-  _advn drift.payload-closure payloads-unreadable; _advp '  ADVISORY [drift.payload-closure] could not read the installer payloads (got %s entries) — this rule verified NOTHING\n' "${_X7P:-0}" >&2
+  _adv drift.payload-closure payloads-unreadable; printf '  ADVISORY [drift.payload-closure] could not read the installer payloads (got %s entries) — this rule verified NOTHING\n' "${_X7P:-0}" >&2
 else
   # OUT OF $ROOT: a scratch file in the repo is picked up by the tracked-file
   # rules further down and by anything reading `git status`.
@@ -4957,7 +4919,7 @@ else
           [ "$_r" = "$_t" ] && continue
           grep -Fxq "$_r" "$_X7F" 2>/dev/null && continue
           _x7_read_only "$_t" "$_r" && continue
-          _adv drift.payload-closure "bin/$_t->$_r"; _advp '  ADVISORY [drift.payload-closure] bin/%s invokes $%s/%s, which no installer ships — the call resolves to nothing on a real box\n' "$_t" "$_v" "$_r" >&2
+          _adv drift.payload-closure "bin/$_t->$_r"; printf '  ADVISORY [drift.payload-closure] bin/%s invokes $%s/%s, which no installer ships — the call resolves to nothing on a real box\n' "$_t" "$_v" "$_r" >&2
         done
   done
   # A SUITE pair ships a suite that runs on the box and calls its subjects through $B/, the installed
@@ -4965,12 +4927,12 @@ else
   for _x7p in $(sed -n 's/^SUITE="\(.*\)"$/\1/p' $(_installers) 2>/dev/null | tr ' ' '\n' | grep ':' | sort -u); do
     _x7s="${_x7p%%:*}"
     if [ ! -f "$ROOT/$_x7s" ]; then
-      _adv drift.payload-closure "suite-missing:$_x7s"; _advp '  ADVISORY [drift.payload-closure] SUITE %s is not in this checkout — its calls were NOT checked\n' "$_x7s" >&2; continue
+      _adv drift.payload-closure "suite-missing:$_x7s"; printf '  ADVISORY [drift.payload-closure] SUITE %s is not in this checkout — its calls were NOT checked\n' "$_x7s" >&2; continue
     fi
     grep -v '^[[:space:]]*#' "$ROOT/$_x7s" 2>/dev/null | grep -oE '\$B/[a-z0-9-]+\.(sh|awk)' | sed 's#^\$B/##' | sort -u \
       | while read -r _r; do
           grep -Fxq -- "$_r" "$_X7F" 2>/dev/null && continue
-          _adv drift.payload-closure "$_x7s->$_r"; _advp '  ADVISORY [drift.payload-closure] SUITE %s (installed as %s) invokes $B/%s, which no installer ships — the call resolves to nothing on a real box\n' "$_x7s" "${_x7p#*:}" "$_r" >&2
+          _adv drift.payload-closure "$_x7s->$_r"; printf '  ADVISORY [drift.payload-closure] SUITE %s (installed as %s) invokes $B/%s, which no installer ships — the call resolves to nothing on a real box\n' "$_x7s" "${_x7p#*:}" "$_r" >&2
         done
   done
   rm -f "$_X7F"
@@ -5011,7 +4973,7 @@ guarded_find() { # guarded_find <root> <maxdepth> <find expression...>
 # install vs the mirror where both exist (loud SKIP elsewhere); this stays the
 # advisory second signal, and the only one that walks scaffolded copies.
 rule_X5() {
-rule "drift.prod-policy-copy every deployed prod_guard.py matches the AUTHORITATIVE copy"
+rule "drift.prod-policy-copy every deployed prod_guard.py matches the AUTHORITATIVE copy (advisory)"
 # THE BASELINE IS THE POINT OF THIS RULE, and the first version got it wrong.
 # It compared deployed copies against the marketplace mirror under
 # ~/.claude/plugins — which is itself STALE: HEAD c2b81b1 (2026-07-13) against an
@@ -5032,7 +4994,7 @@ if [ -f "$_BASE" ]; then
   # The channel first: a stale mirror means every NEW scaffold is born wrong, which
   # no per-copy comparison can show.
   if [ -f "$_SRC" ] && [ -f "$_MIRROR" ] && ! cmp -s "$_SRC" "$_MIRROR"; then
-    _adv drift.prod-policy-copy mirror-stale; _advp '  ADVISORY [drift.prod-policy-copy] the marketplace mirror is STALE against the source repo — new scaffolds inherit it\n'
+    _adv drift.prod-policy-copy mirror-stale; printf '  ADVISORY [drift.prod-policy-copy] the marketplace mirror is STALE against the source repo — new scaffolds inherit it\n'
   fi
   _n=0
   # Depth-bounded: this runs in every lint, and an unbounded $HOME walk is how a
@@ -5075,9 +5037,9 @@ if [ -f "$_BASE" ]; then
     # Direction matters: a copy missing the refusal is a live weakness, a copy that
     # merely differs may be ahead of the baseline.
     if ! grep -q 'is_symlink' "$_c"; then
-      _adv drift.prod-policy-copy "missing-refusal:${_c#$HOME/}"; _advp '  ADVISORY [drift.prod-policy-copy] MISSING the PI-903 symlink refusal: %s\n' "${_c#$HOME/}"
+      _adv drift.prod-policy-copy "missing-refusal:${_c#$HOME/}"; printf '  ADVISORY [drift.prod-policy-copy] MISSING the PI-903 symlink refusal: %s\n' "${_c#$HOME/}"
     else
-      _adv drift.prod-policy-copy "differs:${_c#$HOME/}"; _advp '  ADVISORY [drift.prod-policy-copy] differs from the %s (has the refusal): %s\n' "$_BKIND" "${_c#$HOME/}"
+      _adv drift.prod-policy-copy "differs:${_c#$HOME/}"; printf '  ADVISORY [drift.prod-policy-copy] differs from the %s (has the refusal): %s\n' "$_BKIND" "${_c#$HOME/}"
     fi
   done
   printf '  %s deployed copy/copies checked against the %s.\n' "$_n" "$_BKIND"
@@ -5130,7 +5092,7 @@ _plist_of() { # <id> -> the plist path, or nothing
   return 0
 }
 rule_X9() {
-rule "drift.launchd-plist every launchd-scheduled docs/reference/checks.md check has a tracked plist, and the installed copy matches"
+rule "drift.launchd-plist every launchd-scheduled docs/reference/checks.md check has a tracked plist, and the installed copy matches (advisory)"
 # THE SCHEDULE COLUMN IS PART OF THE REGISTER, AND THIS RULE USED TO IGNORE IT.
 # X9 demanded `launchd/com.harbor.<id>.plist` for EVERY row, while the register's
 # own third column says of eight of the fifteen that they are not launchd jobs at
@@ -5167,7 +5129,7 @@ rule "drift.launchd-plist every launchd-scheduled docs/reference/checks.md check
 # cell cannot be trusted, so the row keeps the old strict behaviour and the shape
 # is reported — never quietly dropped from the count.
 _x9_la="$HOME/Library/LaunchAgents"
-_x9_reg="$(_registry 2>/dev/null)" || { _adv drift.launchd-plist registry-refused; _advp '  ADVISORY [drift.launchd-plist] the private layer'"'"'s checks.md does not compose into the register (sh bin/check-registry-generate.sh names the line), so core docs/reference/checks.md alone was read\n'; _x9_reg="$(cat "$ROOT/docs/reference/checks.md" 2>/dev/null)"; }
+_x9_reg="$(_registry 2>/dev/null)" || { _adv drift.launchd-plist registry-refused; printf '  ADVISORY [drift.launchd-plist] the private layer'"'"'s checks.md does not compose into the register (sh bin/check-registry-generate.sh names the line), so core docs/reference/checks.md alone was read\n'; _x9_reg="$(cat "$ROOT/docs/reference/checks.md" 2>/dev/null)"; }
 _x9_rows="$(printf '%s\n' "$_x9_reg" | awk -F'|' '
   /^\| `[a-z0-9.-]+` \|/ {
     id = $2; gsub(/[` ]/, "", id)
@@ -5187,7 +5149,7 @@ _x9_rows="$(printf '%s\n' "$_x9_reg" | awk -F'|' '
       print id " unread"
   }' 2>/dev/null)"
 if [ -z "$_x9_rows" ]; then
-  _adv drift.launchd-plist no-rows; _advp '  ADVISORY [drift.launchd-plist] docs/reference/checks.md has no registry rows this rule can read — the register or its table shape moved\n'
+  _adv drift.launchd-plist no-rows; printf '  ADVISORY [drift.launchd-plist] docs/reference/checks.md has no registry rows this rule can read — the register or its table shape moved\n'
 else
   _x9_n=0; _x9_other=0; _x9_untracked=0; _x9_drift=0; _x9_unread=0
   _x9_tmp="${TMPDIR:-/tmp}/harbor-x9.$$"
@@ -5195,11 +5157,11 @@ else
     [ -n "$_x9_id" ] || continue
     _x9_n=$(( _x9_n + 1 ))
     if [ "$_x9_kind" = shape ]; then
-      _adv drift.launchd-plist "shape:$_x9_id"; _advp '  ADVISORY [drift.launchd-plist] %s: the row has the wrong column count, so its schedule cannot be read — checked strictly\n' "$_x9_id"
+      _adv drift.launchd-plist "shape:$_x9_id"; printf '  ADVISORY [drift.launchd-plist] %s: the row has the wrong column count, so its schedule cannot be read — checked strictly\n' "$_x9_id"
     elif [ "${_x9_kind#rides:}" != "$_x9_kind" ]; then
       _x9_host="${_x9_kind#rides:}"
       if [ -n "$(_plist_of "$_x9_host")" ]; then _x9_other=$(( _x9_other + 1 )); continue; fi
-      _adv drift.launchd-plist "rides-unscheduled:$_x9_id"; _advp '  ADVISORY [drift.launchd-plist] %s runs inside %s, which has no tracked plist — so neither has a schedule in any commit\n' "$_x9_id" "$_x9_host"
+      _adv drift.launchd-plist "rides-unscheduled:$_x9_id"; printf '  ADVISORY [drift.launchd-plist] %s runs inside %s, which has no tracked plist — so neither has a schedule in any commit\n' "$_x9_id" "$_x9_host"
       _x9_untracked=$(( _x9_untracked + 1 )); continue
     elif [ "$_x9_kind" = other ]; then
       # Registered, governed, and not a launchd job. Counted so the register's
@@ -5208,12 +5170,12 @@ else
       _x9_other=$(( _x9_other + 1 )); continue
     elif [ "$_x9_kind" = unread ] && [ -z "$(_plist_of "$_x9_id")" ]; then
       # a tracked plist is evidence enough that it is a launchd job; without one, say what is unknown
-      _adv drift.launchd-plist "unreadable:$_x9_id"; _advp '  ADVISORY [drift.launchd-plist] %s: its schedule names no launchd time and no non-launchd kind, so whether it owes a plist cannot be read — say "not scheduled", the host it runs inside, or its time\n' "$_x9_id"
+      _adv drift.launchd-plist "unreadable:$_x9_id"; printf '  ADVISORY [drift.launchd-plist] %s: its schedule names no launchd time and no non-launchd kind, so whether it owes a plist cannot be read — say "not scheduled", the host it runs inside, or its time\n' "$_x9_id"
       _x9_unread=$(( _x9_unread + 1 )); continue
     fi
     _x9_repo="$(_plist_of "$_x9_id")"
     if [ -z "$_x9_repo" ]; then
-      _adv drift.launchd-plist "uncommitted:com.harbor.$_x9_id.plist"; _advp '  ADVISORY [drift.launchd-plist] registered but in NO COMMIT: %s — launchd keeps what it loaded, so this shows at reboot\n' "com.harbor.$_x9_id.plist"
+      _adv drift.launchd-plist "uncommitted:com.harbor.$_x9_id.plist"; printf '  ADVISORY [drift.launchd-plist] registered but in NO COMMIT: %s — launchd keeps what it loaded, so this shows at reboot\n' "com.harbor.$_x9_id.plist"
       _x9_untracked=$(( _x9_untracked + 1 )); continue
     fi
     # Absent installed copy is NOT drift: a check may legitimately be registered
@@ -5227,7 +5189,7 @@ else
     else
       cmp -s "$_x9_repo" "$_x9_la/com.harbor.$_x9_id.plist" && continue
     fi
-    _adv drift.launchd-plist "differs:com.harbor.$_x9_id.plist"; _advp '  ADVISORY [drift.launchd-plist] installed copy differs from what the repo renders to: %s — render it again (sh bin/deploy-launchd-render.sh), or commit what the box is running\n' "com.harbor.$_x9_id.plist"
+    _adv drift.launchd-plist "differs:com.harbor.$_x9_id.plist"; printf '  ADVISORY [drift.launchd-plist] installed copy differs from what the repo renders to: %s — render it again (sh bin/deploy-launchd-render.sh), or commit what the box is running\n' "com.harbor.$_x9_id.plist"
     _x9_drift=$(( _x9_drift + 1 ))
   done
   rm -f "$_x9_tmp"
@@ -5319,7 +5281,7 @@ done
 }
 
 rule_T9() {
-rule "skill.book-current the tracked skill catalog is current against the skills this checkout tracks"
+rule "skill.book-current the tracked skill catalog is current against the skills this checkout tracks (advisory)"
 # The tracked book reads nothing outside the checkout (harbor#1149), so this needs no config dir and gives one verdict on every machine.
 # That is asserted, not assumed: tests/skill/catalog/catalog.test.sh poisons HOME, the config dir, the tool dir and the private layer and requires the same verdict (harbor#158).
 if [ -f "$ROOT/bin/skill-catalog.sh" ]; then
@@ -5333,8 +5295,8 @@ if [ -f "$ROOT/bin/skill-catalog.sh" ]; then
   sh "$ROOT/bin/skill-catalog.sh" --check >"$_t9_err" 2>&1; _t9_rc=$?
   case "$_t9_rc" in
     0) ;;
-    1) _adv skill.book-current skills/skill-catalog/SKILL.md; _advp '  ADVISORY [skill.book-current] skills/skill-catalog/SKILL.md is STALE — run: sh bin/skill-catalog.sh\n' ;;
-    *) _adv skill.book-current generator-failed; _advp '  ADVISORY [skill.book-current] the generator FAILED (rc=%s) — do NOT run it to "fix" this:\n' "$_t9_rc"
+    1) _adv skill.book-current skills/skill-catalog/SKILL.md; printf '  ADVISORY [skill.book-current] skills/skill-catalog/SKILL.md is STALE — run: sh bin/skill-catalog.sh\n' ;;
+    *) _adv skill.book-current generator-failed; printf '  ADVISORY [skill.book-current] the generator FAILED (rc=%s) — do NOT run it to "fix" this:\n' "$_t9_rc"
        sed 's/^/      /' "$_t9_err" | head -5 ;;
   esac
   rm -f "$_t9_err"
@@ -5454,7 +5416,7 @@ fi
 }
 
 rule_X3() {
-rule "context.budget-ceiling the always-on context surface stays under its ceiling"
+rule "context.budget-ceiling the always-on context surface stays under its ceiling (advisory)"
 # ── THE BASELINE VERDICT COMES FIRST (harbor#183) ───────────────────────────
 # The percentage below is measured against `HARBOR_CONTEXT_CEILING`, and #183
 # established that the number has no referent: capacity, cost and dilution were
@@ -5469,7 +5431,7 @@ if [ -f "$ROOT/bin/context-budget.sh" ]; then
   _x3b="$(sh "$ROOT/bin/context-budget.sh" --check --kind 2>&1)" || {
     _x3k="$(printf '%s\n' "$_x3b" | sed -n 's/^kind=\([a-z-]*\)$/\1/p' | tail -1)"
     _x3m="$(printf '%s\n' "$_x3b" | grep -v '^kind=' | head -1)"
-    _adv context.budget-ceiling "${_x3k:-verdict-unreadable}:registries/context-baseline.tsv"; _advp '  ADVISORY [context.budget-ceiling] %s\n' "$_x3m"; }
+    _adv context.budget-ceiling "${_x3k:-verdict-unreadable}:registries/context-baseline.tsv"; printf '  ADVISORY [context.budget-ceiling] %s\n' "$_x3m"; }
 fi
 if [ -x "$ROOT/bin/context-budget.sh" ] || [ -f "$ROOT/bin/context-budget.sh" ]; then
   # Match the verdict LINE, not a position: the OVER branch prints a blank line
@@ -5477,13 +5439,13 @@ if [ -x "$ROOT/bin/context-budget.sh" ] || [ -f "$ROOT/bin/context-budget.sh" ];
   # on the one case it exists for.
   _cb="$(sh "$ROOT/bin/context-budget.sh" 2>/dev/null | grep -E '^(OVER by|[0-9]+% of ceiling)' | head -1)"
   case "$_cb" in
-    OVER*) _adv context.budget-ceiling context-ceiling; _advp '  ADVISORY [context.budget-ceiling] %s\n' "$_cb"
+    OVER*) _adv context.budget-ceiling context-ceiling; printf '  ADVISORY [context.budget-ceiling] %s\n' "$_cb"
            # THE OLD REMEDY WAS CIRCULAR: it named the tool that had just printed
            # this line, so the operator ran it and got the same total again. What
            # is actionable is WHICH surface to trim, and on this box that is the
            # cwd-keyed memory index — 22,467 B of a 44,311 B total on 2026-08-20,
            # larger than CLAUDE.md and bounded by nothing until CX1.
-           _advn context.budget-ceiling -; _advp '  ADVISORY [context.budget-ceiling] the breakdown, and what to trim: sh bin/memory-store-check.sh\n' ;;
+           _adv context.budget-ceiling -; printf '  ADVISORY [context.budget-ceiling] the breakdown, and what to trim: sh bin/memory-store-check.sh\n' ;;
     *%*)   printf '  %s\n' "$_cb" ;;
   esac
 fi
@@ -5576,7 +5538,7 @@ unset _pm
 # pruned, so the clean message names the bound rather than claiming the tree is
 # empty. A silent cap reads as "covered everything" when it did not.
 rule_X6() {
-rule "scope.repo-discoverable every governed repo is reachable by fleet.yaml's own discovery"
+rule "scope.repo-discoverable every governed repo is reachable by fleet.yaml's own discovery (advisory)"
 # ASK THE QUESTION THE FLEET ASKS. The previous predicate built a roots x exclude
 # CROSS PRODUCT and walked each branch to depth 4, which is not how discovery
 # works: registry.py's _scan_root lists entries ONE LEVEL under each root and
@@ -5662,7 +5624,7 @@ X6ROOTS
     [ -n "$_m" ] || continue
     _repo="$(dirname "$_m")"
     _x6_reachable "$_repo" && continue
-    _adv scope.repo-discoverable "$_repo"; _advp '  ADVISORY [scope.repo-discoverable] governed repo the fleet cannot reach: %s\n' "$_repo" >&2
+    _adv scope.repo-discoverable "$_repo"; printf '  ADVISORY [scope.repo-discoverable] governed repo the fleet cannot reach: %s\n' "$_repo" >&2
     _x6=$((_x6+1))
   done <<X6HITS
 $_x6_hits
@@ -5670,7 +5632,7 @@ X6HITS
   if [ "$_x6" -eq 0 ]; then
     echo "  every governed repo under a fleet root is reachable (walked to depth 4, hidden pruned)."
   else
-    _advn scope.repo-discoverable -; _advp '  ADVISORY [scope.repo-discoverable] %d unreachable — add the PARENT dir to roots:, or list the repo under projects:, in %s\n' \
+    _adv scope.repo-discoverable -; printf '  ADVISORY [scope.repo-discoverable] %d unreachable — add the PARENT dir to roots:, or list the repo under projects:, in %s\n' \
       "$_x6" "$_FLEET" >&2
   fi
 fi
@@ -5910,7 +5872,7 @@ X1EOF
       || bad drift.sandbox-copy "sandbox wires a guard directly instead of through admission-hook.sh (rebuild the sandbox)"
   fi
 else
-  _advn drift.sandbox-copy no-dev-sandbox; _advp '  ADVISORY [drift.sandbox-copy] no dev sandbox at %s — this rule verified NOTHING.\n' "$SBX" >&2
+  _adv drift.sandbox-copy no-dev-sandbox; printf '  ADVISORY [drift.sandbox-copy] no dev sandbox at %s — this rule verified NOTHING.\n' "$SBX" >&2
   printf '           build one: sh bin/test-sandbox-make.sh --fresh --with-floor\n' >&2
 fi
 }
@@ -5989,7 +5951,7 @@ for f in "$ROOT"/context-rules/*/*.md "${_INJ_DIR:-/nonexistent}"/*/*.md; do
   # tree to fix.
   if [ -z "$(_ij_fm "$f" | awk -F': *' '$1=="description"{print $2;exit}')" ]; then
     case "$_rel" in
-      private:*) _advn context.pack-shape "$_rel"; _advp '  ADVISORY [context.pack-shape] pack has no description: %s\n' "$_rel" >&2 ;;
+      private:*) _adv context.pack-shape "$_rel"; printf '  ADVISORY [context.pack-shape] pack has no description: %s\n' "$_rel" >&2 ;;
       *) bad context.pack-shape "pack has no description: $_rel" ;;
     esac
   fi
@@ -5998,12 +5960,11 @@ for f in "$ROOT"/context-rules/*/*.md "${_INJ_DIR:-/nonexistent}"/*/*.md; do
   # THE PREDICATE VOCABULARY IS FIXED, and an unrecognised one is silent at run
   # time. Checking it here is the difference between a typo caught at commit and
   # a rule that has quietly never fired since the day it was written.
-  _vmode context.pack-shape
   _ij_fm "$f" | sed -n 's/^when:[[:space:]]*//p' | while IFS= read -r _w; do
     _w="${_w#not }"
     case "${_w%% *}" in
       always|cmd-prefix|cmd-word|cmd-contains|path-contains|content-contains|repo-has|tool-is|source-is|injected-instruction) ;;
-      *) _advp '  VIOLATION [context.pack-shape] unknown predicate "%s": %s\n' "${_w%% *}" "$_rel" >&2
+      *) printf '  VIOLATION [context.pack-shape] unknown predicate "%s": %s\n' "${_w%% *}" "$_rel" >&2
          printf 'x' >> "${TMPDIR:-/tmp}/ij1.$$" ;;
     esac
   done
@@ -6063,7 +6024,7 @@ rm -f "$_ijl"
 # The subshell above cannot increment FAIL — the same defect CLI1's header
 # records three times over — so its violations are counted through a file.
 if [ -f "${TMPDIR:-/tmp}/ij1.$$" ]; then
-  _vtally context.pack-shape "$(wc -c < "${TMPDIR:-/tmp}/ij1.$$" | tr -d ' ')"
+  FAIL=$(( FAIL + $(wc -c < "${TMPDIR:-/tmp}/ij1.$$" | tr -d ' ') ))
   rm -f "${TMPDIR:-/tmp}/ij1.$$"
 fi
 }
@@ -6120,7 +6081,7 @@ if [ -n "$_reg" ]; then
     if [ -d "$_INJ_DIR/$_n" ]; then
       :   # seeded from the private layer
     elif [ ! -d "$_abs" ]; then
-      _advn context.registry-dirs "$_p"; _advp '  ADVISORY [context.registry-dirs] %s is not on this box — cannot tell whether anything governs %s\n' "$_p" "$_n"
+      _adv context.registry-dirs "$_p"; printf '  ADVISORY [context.registry-dirs] %s is not on this box — cannot tell whether anything governs %s\n' "$_p" "$_n"
     elif [ -n "$(find "$_abs/context-rules" -path "$_abs/context-rules/user" -prune -o -name '*.md' -print 2>/dev/null | head -1)" ]; then
       :   # self-seeded: the packs live in the project's own tree (harbor#1010)
     else
@@ -6157,7 +6118,7 @@ elif [ -f "$ROOT/bin/status-plan-generate.sh" ]; then
   _t1c="$(sh "$ROOT/bin/status-plan-generate.sh" --summary 2>/dev/null || true)"
   case "$_t1c" in
     *' 0 UNDECLARED'*) printf '  every plan ticket names a falsifier.\n' ;;
-    *UNDECLARED*)      _advn doc.plan-generated undeclared-falsifiers; _advp '  ADVISORY [doc.plan-generated] %s — an UNDECLARED ticket cannot be proven finished\n' "$_t1c" ;;
+    *UNDECLARED*)      _adv doc.plan-generated undeclared-falsifiers; printf '  ADVISORY [doc.plan-generated] %s — an UNDECLARED ticket cannot be proven finished\n' "$_t1c" ;;
   esac
 fi
 }
@@ -6184,7 +6145,7 @@ fi
 # that would drift against them. Depth 1 under $HOME, which is this box's stated
 # layout convention and the one X6 also assumes.
 rule_IJ3() {
-rule "context.repo-registered every governed repo on this box has a registry row"
+rule "context.repo-registered every governed repo on this box has a registry row (advisory)"
 _inj_load
 _ij3_reg="$_INJ_REG"
 _ij3_home="${HARBOR_LINT_ESTATE_ROOT:-$HOME}"
@@ -6200,7 +6161,7 @@ if [ -f "$_ij3_reg" ] && [ -d "$_ij3_home" ]; then
     awk -F'\t' -v k="$_rn" '$1 == k { found = 1 } END { exit !found }' "$_ij3_reg" && continue
     _ij3_extra=''
     [ -d "$_r/.claude/skills" ] && _ij3_extra=' — and it carries .claude/skills nothing outside can see'
-    _adv context.repo-registered "$_rn"; _advp '  ADVISORY [context.repo-registered] governed but unregistered: %s%s\n' "$_rn" "$_ij3_extra"
+    _adv context.repo-registered "$_rn"; printf '  ADVISORY [context.repo-registered] governed but unregistered: %s%s\n' "$_rn" "$_ij3_extra"
     _ij3_missing=$(( _ij3_missing + 1 ))
   done
   if [ "$_ij3_missing" -eq 0 ]; then
@@ -6229,7 +6190,7 @@ fi
 # has none — a hard rule would fail every build on a machine that is behaving
 # correctly, which is CONSTITUTION §2.11's false positive exactly.
 rule_IJ4() {
-rule "drift.pack-installed every tracked pack is installed where the engine reads it — box and project"
+rule "drift.pack-installed every tracked pack is installed where the engine reads it — box and project (advisory)"
 _inj_load
 _ij4_reg="$_INJ_REG"
 _ij4_home="${HARBOR_LINT_ESTATE_ROOT:-$HOME}"
@@ -6248,11 +6209,11 @@ if [ -n "$_ij4_reg" ]; then
     # Seeded into the repo's own context-rules/<name>/ since harbor#1010.
     _ij4_sd="context-rules/$_n"
     if [ ! -d "$_t/$_ij4_sd" ]; then
-      _adv drift.pack-installed "never-seeded:$_n"; _advp '  ADVISORY [drift.pack-installed] %s pack is tracked but NEVER SEEDED: %s/%s does not exist\n' \
+      _adv drift.pack-installed "never-seeded:$_n"; printf '  ADVISORY [drift.pack-installed] %s pack is tracked but NEVER SEEDED: %s/%s does not exist\n' \
         "$_n" "${_t#"$_ij4_home"/}" "$_ij4_sd"
       _ij4_bad=$(( _ij4_bad + 1 ))
     elif ! diff -r "$_d" "$_t/$_ij4_sd" >/dev/null 2>&1; then
-      _adv drift.pack-installed "drifted:$_n"; _advp '  ADVISORY [drift.pack-installed] %s pack has drifted from the repo copy: %s/%s\n' \
+      _adv drift.pack-installed "drifted:$_n"; printf '  ADVISORY [drift.pack-installed] %s pack has drifted from the repo copy: %s/%s\n' \
         "$_n" "${_t#"$_ij4_home"/}" "$_ij4_sd"
       _ij4_bad=$(( _ij4_bad + 1 ))
     fi
@@ -6276,11 +6237,11 @@ if [ -d "$ROOT/context-rules/user" ] && [ -d "$_ij4_cfg" ]; then
   fi
   _ij4_seen=$(( _ij4_seen + 1 ))
   if [ ! -d "$_ij4_cfg/context-rules/user" ]; then
-    _adv drift.pack-installed box-never-installed; _advp '  ADVISORY [drift.pack-installed] the BOX packs are tracked but NEVER INSTALLED: %s/context-rules/user does not exist\n' \
+    _adv drift.pack-installed box-never-installed; printf '  ADVISORY [drift.pack-installed] the BOX packs are tracked but NEVER INSTALLED: %s/context-rules/user does not exist\n' \
       "${_ij4_cfg#"$HOME"/}"
     _ij4_bad=$(( _ij4_bad + 1 ))
   elif ! diff -r "$_ij4_u" "$_ij4_cfg/context-rules/user" >/dev/null 2>&1; then
-    _adv drift.pack-installed box-drifted; _advp '  ADVISORY [drift.pack-installed] the BOX packs have drifted from the repo copy: %s/context-rules/user\n' \
+    _adv drift.pack-installed box-drifted; printf '  ADVISORY [drift.pack-installed] the BOX packs have drifted from the repo copy: %s/context-rules/user\n' \
       "${_ij4_cfg#"$HOME"/}"
     _ij4_bad=$(( _ij4_bad + 1 ))
   fi
@@ -6331,7 +6292,7 @@ fi
 # is the operator's call, and this rule states what it found rather than demanding
 # an edit nobody wants.
 rule_IJ5() {
-rule "context.registry-resolves every registry row still resolves to a directory"
+rule "context.registry-resolves every registry row still resolves to a directory (advisory)"
 _inj_load
 _ij5_reg="$_INJ_REG"
 _ij5_home="${HARBOR_LINT_ESTATE_ROOT:-$HOME}"
@@ -6356,7 +6317,7 @@ if [ -f "$_ij5_reg" ]; then
   else
     printf '%s' "$_ij5_names" | while IFS= read -r _row; do
       [ -n "$_row" ] || continue
-      _adv context.registry-resolves "$_row"; _advp '  ADVISORY [context.registry-resolves] registry row points at nothing: %s — the pointer DROPS it in silence, so every session is told a count that excludes it\n' "$_row"
+      _adv context.registry-resolves "$_row"; printf '  ADVISORY [context.registry-resolves] registry row points at nothing: %s — the pointer DROPS it in silence, so every session is told a count that excludes it\n' "$_row"
     done
   fi
 fi
@@ -6407,7 +6368,7 @@ fi
 # ADVISORY, for IJ3's reason: the remedy writes symlinks into the operator's
 # config dir, which is theirs to run, not lint's to demand.
 rule_IJ6() {
-rule "memory.repo-reachable every governed repo's sessions can load the memory store"
+rule "memory.repo-reachable every governed repo's sessions can load the memory store (advisory)"
 _ij6_tool="$ROOT/bin/memory-route.sh"
 _ij6_cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 if [ -x "$_ij6_tool" ] || [ -f "$_ij6_tool" ]; then
@@ -6419,7 +6380,7 @@ if [ -x "$_ij6_tool" ] || [ -f "$_ij6_tool" ]; then
          _ij6_n="$(printf '%s\n' "$_ij6_blind" | grep -c .)"
          # The ledger records this once, as check/memory.route, from the receipt the run above just
          # wrote (harbor#896); a lint/IJ6 finding over the same repos would file it twice.
-         _adv memory.repo-reachable -; _advp '  ADVISORY [memory.repo-reachable] %s governed repo(s) start with NO memory — sh bin/memory-route.sh --live --apply\n' "$_ij6_n" ;;
+         _adv memory.repo-reachable -; printf '  ADVISORY [memory.repo-reachable] %s governed repo(s) start with NO memory — sh bin/memory-route.sh --live --apply\n' "$_ij6_n" ;;
       3) : ;;   # stood down (D-29 unchecked): not a live box, and never a finding
       2) : ;;   # D-49 window: the code a stood-down run exited before D-49 (and a usage error today): read the same
       *) : ;;   # anything else is no verdict either
@@ -6568,7 +6529,7 @@ done
 # on 2026-08-06 a reinstall was one keystroke from destroying 38 lines that
 # existed only on the box.
 rule_CM3() {
-rule "drift.slash-commands the installed slash commands do not drift from the repo"
+rule "drift.slash-commands the installed slash commands do not drift from the repo (advisory)"
 _cm3_live="${HARBOR_DEPLOY_LIVE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}/commands"
 _cm3_n=0
 for f in "$ROOT"/commands/*.md; do
@@ -6589,11 +6550,11 @@ for f in "$ROOT"/commands/*.md; do
   # the second place to say "reinstall" over newer live work.
   _cm3_rm="$(_x8_repo_time "$f")"; _cm3_lm="$(_x8_mtime "$_cm3_d")"
   if [ -n "$_cm3_rm" ] && [ -n "$_cm3_lm" ] && [ "$_cm3_lm" -gt "$_cm3_rm" ]; then
-    _adv drift.slash-commands "live-newer:$_cm3_b"; _advm "  ADVISORY [drift.slash-commands] LIVE IS NEWER — capture it into the repo, do NOT reinstall: $_cm3_b" >&2
+    _adv drift.slash-commands "live-newer:$_cm3_b"; echo "  ADVISORY [drift.slash-commands] LIVE IS NEWER — capture it into the repo, do NOT reinstall: $_cm3_b" >&2
   elif [ -n "$_cm3_rm" ] && [ -n "$_cm3_lm" ] && [ "$_cm3_rm" -gt "$_cm3_lm" ]; then
-    _adv drift.slash-commands "repo-newer:$_cm3_b"; _advm "  ADVISORY [drift.slash-commands] repo is newer — the box lags; reinstall is the right direction: $_cm3_b" >&2
+    _adv drift.slash-commands "repo-newer:$_cm3_b"; echo "  ADVISORY [drift.slash-commands] repo is newer — the box lags; reinstall is the right direction: $_cm3_b" >&2
   else
-    _adv drift.slash-commands "undecidable:$_cm3_b"; _advm "  ADVISORY [drift.slash-commands] differs, direction UNDECIDABLE — read the diff before either copy: $_cm3_b" >&2
+    _adv drift.slash-commands "undecidable:$_cm3_b"; echo "  ADVISORY [drift.slash-commands] differs, direction UNDECIDABLE — read the diff before either copy: $_cm3_b" >&2
   fi
   _cm3_n=$(( _cm3_n + 1 ))
 done
@@ -6602,7 +6563,7 @@ done
 
 # ── C2 · no Claude attribution in commit messages ──────────────────────────
 rule_C2() {
-rule "git.no-ai-attribution no AI attribution in commits on THIS branch (main's older commits get a note)"
+rule "git.no-ai-attribution no AI attribution in commits on THIS branch (main history is advisory)"
 # THE PATTERN IS NOT DEFINED HERE. It is read out of hooks/commit-msg, which is
 # the one place it exists, because the two checks are the same rule at two
 # moments and a second grep for the same shape is a copy that drifts silently
@@ -6667,11 +6628,11 @@ if [ -n "$_c2_ere" ] && git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
     # a shared branch, which is the operator's decision. FULL history, not a
     # window — see reason 3 above.
     m="$(git -C "$ROOT" log --format='%B' "$base" 2>/dev/null | grep -ciE "$_c2_ere" || true)"
-    [ "${m:-0}" -gt 0 ] && { _advn git.no-ai-attribution "attributed-commits:$base"; _advp '  ADVISORY [git.no-ai-attribution] %s pre-existing commit(s) on %s carry attribution (needs a force-push to fix)\n' "$m" "$base"; }
+    [ "${m:-0}" -gt 0 ] && { _adv git.no-ai-attribution "attributed-commits:$base"; printf '  ADVISORY [git.no-ai-attribution] %s pre-existing commit(s) on %s carry attribution (needs a force-push to fix)\n' "$m" "$base"; }
   else
     # A REPO WITH NO BASE REF IS NOT A CLEAN REPO. Silence here is what reason 1
     # looked like from the outside for as long as it stood.
-    _advn git.no-ai-attribution no-base; _advp '  ADVISORY [git.no-ai-attribution] no origin/main or main ref in this checkout — NO commit was inspected\n' >&2
+    _adv git.no-ai-attribution no-base; printf '  ADVISORY [git.no-ai-attribution] no origin/main or main ref in this checkout — NO commit was inspected\n' >&2
   fi
   # ── THE COUNTER IS NOT THE MECHANISM ────────────────────────────────────────
   # C2 can only count a trailer after it exists; hooks/commit-msg is the only
@@ -6724,7 +6685,7 @@ if [ -n "$_c2_ere" ] && git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
            [ -e "$_c2_gd/hooks/$_c2_hn" ] || _c2_missing="$_c2_missing $_c2_hn"
          done
          [ -z "$_c2_missing" ] \
-           || { _advn git.no-ai-attribution $_c2_missing; _advp '  ADVISORY [git.no-ai-attribution] tracked hook(s) NOT installed (core.hooksPath=%s):%s — the counter is not the mechanism; these are. Install them: git -C %s config core.hooksPath hooks\n' \
+           || { _adv git.no-ai-attribution $_c2_missing; printf '  ADVISORY [git.no-ai-attribution] tracked hook(s) NOT installed (core.hooksPath=%s):%s — the counter is not the mechanism; these are. Install them: git -C %s config core.hooksPath hooks\n' \
                 "${_c2_hp:-unset}" "$_c2_missing" "$ROOT"; } ;;
     esac
   fi
@@ -6763,7 +6724,7 @@ rule "lint.no-home-path no tracked file names the running user's home directory 
 # bin/deploy-launchd-render.sh from contracts/roots.tsv), so they are scanned like any file.
 _hp1_home="${HOME:-}"
 case "$_hp1_home" in
-  ''|/) _advn lint.no-home-path home-unset; _advp '  ADVISORY [lint.no-home-path] $HOME is "%s" — NO file was inspected\n' "$_hp1_home" >&2 ;;
+  ''|/) _adv lint.no-home-path home-unset; printf '  ADVISORY [lint.no-home-path] $HOME is "%s" — NO file was inspected\n' "$_hp1_home" >&2 ;;
   *)
     if git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
       # To a file, not a pipe: `bad` inside `| while` runs in a subshell, and
@@ -6782,7 +6743,7 @@ case "$_hp1_home" in
       done < "$_hp1_tmp"
       rm -f "$_hp1_tmp"
     else
-      _advn lint.no-home-path not-a-checkout; _advp '  ADVISORY [lint.no-home-path] %s is not a git checkout — NO file was inspected\n' "$ROOT" >&2
+      _adv lint.no-home-path not-a-checkout; printf '  ADVISORY [lint.no-home-path] %s is not a git checkout — NO file was inspected\n' "$ROOT" >&2
     fi ;;
 esac
 }
@@ -6821,7 +6782,7 @@ rm -f "$_root1_out"
 
 # ── SHIM1 · the operator's PATH shims still point at a file (advisory) ───────
 rule_SHIM1() {
-rule "drift.shim-targets every shim in contracts/shims.tsv points where the table says"
+rule "drift.shim-targets every shim in contracts/shims.tsv points where the table says (advisory)"
 # ADVISORY, and that is the honest level. Nineteen symlinks in ~/.local/bin point
 # into this repo and NOTHING created them — the set on any box is whatever its
 # operator typed, so a fresh clone legitimately has none of them and a hard
@@ -6845,11 +6806,11 @@ _shim1_n="$(grep -cE '^  (note: [^ ]+: would (link|repoint) |FAIL: )' "$_shim1_o
 if [ "${_shim1_n:-0}" -eq 0 ] && grep -q '^  ok: ' "$_shim1_out"; then
   say "  all $(grep -c '^  ok: ' "$_shim1_out") shim(s) point where the table says."
 else
-  _adv drift.shim-targets shims; _advp '  ADVISORY [drift.shim-targets] %s shim(s) missing, mispointed or blocked — sh bin/deploy-shim-install.sh --live, then --apply --live\n' \
+  _adv drift.shim-targets shims; printf '  ADVISORY [drift.shim-targets] %s shim(s) missing, mispointed or blocked — sh bin/deploy-shim-install.sh --live, then --apply --live\n' \
     "${_shim1_n:-0}" >&2
 fi
 grep -E '^  WARN: .* is unmanaged' "$_shim1_out" 2>/dev/null | while IFS= read -r _shim1_u; do
-  _adv drift.shim-targets "unmanaged:${_shim1_u%% is unmanaged*}"; _advp '  ADVISORY [drift.shim-targets] %s\n' "${_shim1_u#  WARN: }" >&2
+  _adv drift.shim-targets "unmanaged:${_shim1_u%% is unmanaged*}"; printf '  ADVISORY [drift.shim-targets] %s\n' "${_shim1_u#  WARN: }" >&2
 done
 rm -f "$_shim1_out"
 }
@@ -7028,7 +6989,7 @@ else
   if [ -n "$_l1_mb" ]; then
     git -C "$ROOT" ls-tree -r "$_l1_mb" -- bin/ 2>/dev/null | awk -F'\t' '{ split($1, a, " "); print $2 "\t" a[3] }' > "$_l1t/base"
   else
-    _advn lint.log-contract no-base; _advp '  ADVISORY [lint.log-contract] no base (%s) to compare against — NO exempt file was checked for change\n' "${HARBOR_CI_BASE:-origin/main}" >&2
+    _adv lint.log-contract no-base; printf '  ADVISORY [lint.log-contract] no base (%s) to compare against — NO exempt file was checked for change\n' "${HARBOR_CI_BASE:-origin/main}" >&2
   fi
   cut -f1 "$_l1t/rows" | sort | uniq -d | sed 's#^#contracts/log-exempt.tsv lists it twice: #' >> "$_l1t/msgs"
   while IFS='	' read -r _l1p _l1k _l1w; do
@@ -7036,7 +6997,7 @@ else
     case "$_l1k" in wave-B|ratchet|protocol) ;; *) printf 'contracts/log-exempt.tsv: %s has kind "%s" — wave-B, ratchet or protocol\n' "$_l1p" "$_l1k" >> "$_l1t/msgs"; continue ;; esac
     [ -n "${_l1w:-}" ] || printf 'contracts/log-exempt.tsv: %s has an empty why\n' "$_l1p" >> "$_l1t/msgs"
     if [ ! -e "$ROOT/$_l1p" ]; then  # it can exempt nothing: a file re-created here is new since the base
-      _advn lint.log-contract "gone:$_l1p"; _advp '  ADVISORY [lint.log-contract] contracts/log-exempt.tsv lists %s, which is gone — drop the row\n' "$_l1p" >&2; continue
+      _adv lint.log-contract "gone:$_l1p"; printf '  ADVISORY [lint.log-contract] contracts/log-exempt.tsv lists %s, which is gone — drop the row\n' "$_l1p" >&2; continue
     fi
     if [ "$_l1k" = protocol ]; then
       printf '%s\n' "${_l1w:-}" | grep -qE "$_l1_consumer" \
@@ -7141,9 +7102,9 @@ _fl2m="$(awk '/^[[:space:]]*#/ { next }
      { i = index($0, "ADVISORY [")
        if (i == 0) next
        pre = substr($0, 1, i - 1)
-       if (pre !~ /(printf|echo|_advp|_advm)[[:space:]]+["\047][[:space:]]*$/) next
+       if (pre !~ /(printf|echo)[[:space:]]+["\047][[:space:]]*$/) next
        id = substr($0, i + 10); id = substr(id, 1, index(id, "]") - 1)
-       if (index(pre, "_adv " id " ") == 0 && index(pre, "_advn " id " ") == 0) printf "bin/lint-conventions.sh:%d prints ADVISORY [%s] with no `_adv %s <subject>` (or `_advn`) before it on the line\n", NR, id, id
+       if (index(pre, "_adv " id " ") == 0) printf "bin/lint-conventions.sh:%d prints ADVISORY [%s] with no `_adv %s <subject>` before it on the line\n", NR, id, id
      }' "$_fl2f")"
 while IFS= read -r _fl2l; do [ -z "$_fl2l" ] || bad lint.advisory-recorded "$_fl2l"; done <<FL2MSGS
 $_fl2m
@@ -7313,7 +7274,7 @@ fi
 rule_lint_locale_ranges() {
 rule "lint.locale-ranges no sh case pattern holds a single-case letter range or a punctuation range (harbor#1149)"
 if ! git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
-  _advn lint.locale-ranges not-a-checkout; _advp '  ADVISORY [lint.locale-ranges] %s is not a git checkout — NO file was inspected\n' "$ROOT" >&2
+  _adv lint.locale-ranges not-a-checkout; printf '  ADVISORY [lint.locale-ranges] %s is not a git checkout — NO file was inspected\n' "$ROOT" >&2
 elif [ ! -f "$ROOT/bin/lint-locale-ranges.awk" ]; then
   bad lint.locale-ranges "bin/lint-locale-ranges.awk is missing, so no case pattern was inspected"
 else
@@ -7342,7 +7303,7 @@ fi
 rule_lint_comment_commands() {
 rule "lint.comment-commands no shell comment quotes a destructive command in backticks"
 if ! git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
-  _advn lint.comment-commands not-a-checkout; _advp '  ADVISORY [lint.comment-commands] %s is not a git checkout — NO file was inspected\n' "$ROOT" >&2
+  _adv lint.comment-commands not-a-checkout; printf '  ADVISORY [lint.comment-commands] %s is not a git checkout — NO file was inspected\n' "$ROOT" >&2
 elif [ ! -f "$ROOT/bin/lint-comment-commands.awk" ]; then
   bad lint.comment-commands "bin/lint-comment-commands.awk is missing, so no comment was inspected"
 else
@@ -7457,7 +7418,7 @@ while IFS= read -r _dds; do
       bad standard.decision-dangling "$_ddp cites $_ddi, which no record in $_dds defines" "$_ddp"
     done < "$_dd.out"
   else
-    _advn standard.decision-dangling "$_dds"; _advp '  ADVISORY [standard.decision-dangling] unchecked: no checkout of %s is registered on this box, so its ids were not judged\n' "$_dds" >&2
+    _adv standard.decision-dangling "$_dds"; printf '  ADVISORY [standard.decision-dangling] unchecked: no checkout of %s is registered on this box, so its ids were not judged\n' "$_dds" >&2
   fi
 done < "$_dd.sys"
 # a bare D-n in a surface read outside the repo means a different decision to each reader
@@ -7514,7 +7475,9 @@ rm -f "$_do.recs" "$_do.cites" "$_do.cited" "$_do.allow" "$_do.out"
 # names it back, and the other way round. The far side of a cross-repo edge is read from that system's checkout when the box
 # has one, and the edge is unchecked, never red, when it does not (a CI run sees one repo). Run on another repo with
 # HARBOR_SCOPE_ROOT=<repo>.
-# The mode is the control's own row (D-62), read by bad() like every rule's: promoting it is a one-cell edit in controls.tsv.
+# A warn control prints an advisory and a block one fails the run, read from the control's own row (D-62): promoting it is a
+# one-cell edit in controls.tsv, and a shadow one only records.
+_decision_mode() { awk -F'\t' -v i="$1" '$1 == i { print $2; exit }' "$_DS_HOME/standards/naming/controls.tsv" 2>/dev/null; }
 
 rule_standard_decision_fields() {
 rule "standard.decision-fields every decision record opens with the shared front matter: kind, status, alias, date, supersedes, superseded_by (harbor#1429)"
@@ -7535,7 +7498,11 @@ LC_ALL=C awk -F'\t' '
     if (miss != "" || badf != "") printf "%s\t%s%s\n", $1, (miss != "" ? "lacks" miss : ""), (badf != "" ? (miss != "" ? "; " : "") "invalid" badf : "") }' "$_df.rows" > "$_df.out"
 while IFS="$(printf '\t')" read -r _dfp _dfm; do
   [ -n "$_dfp" ] || continue
-  bad standard.decision-fields "$_dfp $_dfm" "$_dfp"
+  case "$(_decision_mode standard.decision-fields)" in
+    block) bad standard.decision-fields "$_dfp $_dfm" "$_dfp" ;;
+    shadow) _adv standard.decision-fields "$_dfp" ;;
+    *) _adv standard.decision-fields "$_dfp"; printf '  ADVISORY [standard.decision-fields] %s %s\n' "$_dfp" "$_dfm" >&2 ;;
+  esac
 done < "$_df.out"
 rm -f "$_df.rows" "$_df.out"
 }
@@ -7583,9 +7550,13 @@ LC_ALL=C awk -F'\t' -v s="$_dns" '
 while IFS="$(printf '\t')" read -r _dnp _dnm _dnx; do
   [ -n "$_dnp" ] || continue
   if [ "$_dnp" = UNCHECKED ]; then
-    _advn standard.decision-supersession "$_dnx"; _advp '  ADVISORY [standard.decision-supersession] unchecked: no checkout of %s is registered on this box, so %s was not judged against it\n' "${_dnm%%/*}" "$_dnx" >&2
+    _adv standard.decision-supersession "$_dnx"; printf '  ADVISORY [standard.decision-supersession] unchecked: no checkout of %s is registered on this box, so %s was not judged against it\n' "${_dnm%%/*}" "$_dnx" >&2
   else
-    bad standard.decision-supersession "$_dnp: $_dnm" "$_dnp"
+    case "$(_decision_mode standard.decision-supersession)" in
+      block) bad standard.decision-supersession "$_dnp: $_dnm" "$_dnp" ;;
+      shadow) _adv standard.decision-supersession "$_dnp" ;;
+      *) _adv standard.decision-supersession "$_dnp"; printf '  ADVISORY [standard.decision-supersession] %s: %s\n' "$_dnp" "$_dnm" >&2 ;;
+    esac
   fi
 done < "$_dn.out"
 rm -f "$_dn.rows" "$_dn.edges" "$_dn.out" "$_dn.targets" "$_dn.far"
@@ -7653,7 +7624,7 @@ rm -f "$_ek.reg" "$_ek.kinds" "$_ek.emitted" "$_ek.refs"
 # fact, and a repeated key is read by whichever parser comes last. Vendored skills keep their upstream shape (vendor/skills/).
 # Block since the operator's decision of 2026-10-29 (harbor#1010).
 rule_skill_description_shape() {
-rule "skill.description-shape an authored skill's description carries USE WHEN then NOT FOR, and its frontmatter has at most one visibility key (harbor#1010)"
+rule "skill.description-shape an authored skill's description carries USE WHEN then NOT FOR, and its frontmatter has at most one visibility key (block, harbor#1010)"
 for _ds_d in "$ROOT"/skills/*/; do
   [ -f "$_ds_d/SKILL.md" ] || continue
   _ds_n="$(basename "$_ds_d")"
@@ -7677,7 +7648,7 @@ done
 # dead end with confidence. Only a backticked token that is a plain repo-relative path is judged: `~/...`, absolute paths,
 # globs, URLs and `<placeholders>` name the box or a pattern, which a CI checkout cannot resolve. Skills under skills/ only.
 rule_skill_cited_path_exists() {
-rule "skill.cited-path-exists a backticked repo path in an authored skill's description exists in the tree (harbor#1010)"
+rule "skill.cited-path-exists a backticked repo path in an authored skill's description exists in the tree (block, harbor#1010)"
 for _cp_d in "$ROOT"/skills/*/; do
   [ -f "$_cp_d/SKILL.md" ] || continue
   _cp_n="$(basename "$_cp_d")"
@@ -7699,7 +7670,7 @@ done
 # or an installer that did not write its row), or a row whose skill is gone. Advisory, and silent where it cannot judge: a CI
 # checkout has no installed skills dir or no manifest, and "could not look" is the generator's exit 3, never an advisory.
 rule_drift_skill_manifest() {
-rule "drift.skill-manifest every skill installed in the config dir has a row in .harbor-manifest or a pack's manifest, and every skill row an installed skill (harbor#1010)"
+rule "drift.skill-manifest every skill installed in the config dir has a row in .harbor-manifest or a pack's manifest, and every skill row an installed skill (advisory, harbor#1010)"
 _sm_cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 if [ -f "$ROOT/bin/skill-catalog.sh" ] && [ -d "$_sm_cfg/skills" ] && [ -f "$_sm_cfg/.harbor-manifest" ]; then
   if [ "$(CDPATH='' cd -P -- "$_sm_cfg" 2>/dev/null && pwd -P)" = "$(CDPATH='' cd -P -- "$HOME/.claude" 2>/dev/null && pwd -P)" ]; then _sm_sp="--live"; else _sm_sp="--dir $_sm_cfg"; fi
@@ -7708,122 +7679,10 @@ if [ -f "$ROOT/bin/skill-catalog.sh" ] && [ -d "$_sm_cfg/skills" ] && [ -f "$_sm
   case "$_sm_rc" in
     0|3) ;;
     *) printf '%s\n' "$_sm_out" | sed -n 's/^ *FAIL: //p' | while IFS= read -r _sm_l; do
-         _adv drift.skill-manifest "$_sm_l"; _advp '  ADVISORY [drift.skill-manifest] %s\n' "$_sm_l" >&2
+         _adv drift.skill-manifest "$_sm_l"; printf '  ADVISORY [drift.skill-manifest] %s\n' "$_sm_l" >&2
        done ;;
   esac
 fi
-}
-
-
-# ── ci.action-sha-pinned · every workflow `uses:` is a full commit SHA with its version comment (harbor#1426) ──
-# A mutable tag (@v5, @main) can be repointed at other code by anyone who can push the tag; the SHA cannot, and the `# v6.0.3`
-# comment is what a person and the update bot read the pin by. Local actions (./) and docker refs are not tags. Judged where the
-# workflows are, ROOT/.github/workflows, so the same rule runs on any repo with HARBOR_SCOPE_ROOT=<repo>. Warn until 28 clean days
-# (a person's edit of controls.tsv promotes it), read from the control's own row like the decision rules.
-rule_ci_action_sha_pinned() {
-rule "ci.action-sha-pinned every workflow uses: is a full 40-hex commit SHA followed by a # version comment, never a mutable tag (harbor#1426)"
-_ap="${TMPDIR:-/tmp}/ap.$$"; : > "$_ap.out"
-for _apf in "$ROOT"/.github/workflows/*.yml "$ROOT"/.github/workflows/*.yaml; do
-  [ -f "$_apf" ] || continue
-  LC_ALL=C awk -v f="${_apf#"$ROOT"/}" '
-    /^[[:space:]]*(-[[:space:]]+)?uses:[[:space:]]/ {
-      line = $0; sub(/^[[:space:]]*(-[[:space:]]+)?uses:[[:space:]]*/, "", line)
-      ref = line; sub(/[[:space:]]+#.*$/, "", ref); gsub(/["\047]/, "", ref); sub(/[[:space:]]+$/, "", ref)
-      if (ref ~ /^\.\// || ref ~ /^docker:\/\//) next
-      cm = (line ~ /[[:space:]]#[[:space:]]*v?[0-9]/)
-      pos = index(ref, "@"); sha = (pos > 0 && substr(ref, pos + 1) ~ /^[0-9a-f]{40}$/)
-      if (!sha) printf "%s\t%d\t%s is a mutable tag: pin it to the commit SHA of the release\n", f, NR, ref
-      else if (!cm) printf "%s\t%d\t%s carries no # version comment\n", f, NR, ref
-    }' "$_apf" >> "$_ap.out"
-done
-while IFS="$(printf '\t')" read -r _apn _apl _apm; do
-  [ -n "$_apn" ] || continue
-  case "$(_decision_mode ci.action-sha-pinned)" in
-    block) bad ci.action-sha-pinned "$_apn:$_apl $_apm" "$_apn" ;;
-    shadow) _adv ci.action-sha-pinned "$_apn" ;;
-    *) _adv ci.action-sha-pinned "$_apn"; printf '  ADVISORY [ci.action-sha-pinned] %s:%s %s\n' "$_apn" "$_apl" "$_apm" >&2 ;;
-  esac
-done < "$_ap.out"
-rm -f "$_ap.out"
-}
-
-# ── lint.mode-matches-engine · what an engine does and what its row says agree (harbor#1422) ──────────────────────────────
-# A mode cell is a copy the moment an engine ignores it. This reads each rule's calls and holds them to the row: a rule whose
-# only failures are _hard (no row lowers them) while the row says warn or shadow is a gate the register does not control, and a
-# rule that only ever notes (_advn) under a block row can never fail. event.kind-registered was the first: five `bad` calls that
-# blocked while its row said warn. A rule with a moded call (bad, _adv) takes its mode from the row, so it cannot disagree. A
-# rule title never carries a tier word, since a title is a second copy of the mode. The same is held for injection packs: a pack
-# whose run: script can emit HARBOR-DECISION deny is a block row, and a block row names a pack that can deny.
-# HARBOR_LINT_SOURCE and HARBOR_LINT_CONTROLS point a suite at a fixture engine and register.
-rule_lint_mode_matches_engine() {
-rule "lint.mode-matches-engine each rule's behaviour agrees with its controls.tsv mode, and no rule title carries a tier word (harbor#1422)"
-_mm_src="${HARBOR_LINT_SOURCE:-$0}"
-[ -f "$_mm_src" ] && [ -f "$_CTL" ] || { _advn lint.mode-matches-engine no-register; _advp '  ADVISORY [lint.mode-matches-engine] the linter source or controls.tsv is missing — NO rule was compared\n'; return 0; }
-_mm_o="${TMPDIR:-/tmp}/mm.$$"
-awk -F'\t' 'FILENAME == ARGV[1] { if ($0 !~ /^#/ && $3 == "lint") M[$1] = $2; next }
-  /^rule_[A-Za-z0-9_]+\(\) \{$/ { pend = 1; id = ""; next }
-  pend && /^rule "/ { split($0, w, " "); id = substr(w[2], 2); sub(/"$/, "", id); pend = 0
-    t = $0; if (t ~ /\(([^)]*[ ,(])?(block|warn|shadow|advisory)([ ,)][^)]*)?\)/) print id "\ttitle\tthe title names a tier; the mode is in the row, so a title is a copy that drifts"
-    next }
-  /^[[:space:]]*#/ { next }
-  id != "" {
-    l = $0
-    if (l ~ ("(^|[^_a-zA-Z])bad " id " ") || l ~ ("_adv " id " ") || l ~ ("_vtally " id " ")) MD[id]++
-    if (l ~ ("_hard " id " ")) HD[id]++
-    if (l ~ ("_advn " id " ")) NT[id]++ }
-  END { for (i in HD) if (MD[i] == 0 && (i in M) && M[i] != "block") print i "\tdrift\tevery failure it raises is _hard, so it blocks whatever its row says; the row says " M[i]
-        for (i in NT) if (MD[i] == 0 && HD[i] == 0 && (i in M) && M[i] == "block") print i "\tdrift\tit only ever notes, so it can never fail; the row says block" }' "$_CTL" "$_mm_src" > "$_mm_o"
-while IFS="$(printf '\t')" read -r _mmi _mmk _mmm; do
-  [ -n "$_mmi" ] && bad lint.mode-matches-engine "$_mmi: $_mmm" "$_mmi"
-done < "$_mm_o"
-# injection packs: a run: script that can deny is a block row, and a block row names a pack that can
-awk -F'\t' '$3 == "injection" { print $12 "\t" $2 }' "$_CTL" > "$_mm_o.inj"
-for _mmf in "$ROOT"/context-rules/*/*.md; do
-  [ -f "$_mmf" ] || continue
-  _mmd="${_mmf%/*}"; _mmn="${_mmf##*/}"; _mmn="${_mmn%.md}"
-  _mmfm="$(awk 'NR == 1 && $0 != "---" { exit } NR > 1 && $0 == "---" { exit } NR > 1' "$_mmf")"
-  _mmid="$(printf '%s\n' "$_mmfm" | sed -n 's/^id:[[:space:]]*//p' | head -1)"; [ -n "$_mmid" ] || _mmid="$_mmn"
-  _mmrun="$(printf '%s\n' "$_mmfm" | sed -n 's/^run:[[:space:]]*//p' | head -1)"
-  _mmev="$(printf '%s\n' "$_mmfm" | sed -n 's/^event:[[:space:]]*//p' | head -1)"
-  # a deny rides PreToolUse only; a script that EMITS the sentinel (printf/echo) or hands over to govern-hook.sh can issue one
-  _mmcan=no
-  [ "$_mmev" = PreToolUse ] && [ -n "$_mmrun" ] && [ -f "$_mmd/$_mmrun" ] \
-    && awk '/(printf|echo).*HARBOR-DECISION deny|govern-hook\.sh/ { f = 1 } END { exit !f }' "$_mmd/$_mmrun" && _mmcan=yes
-  _mmrow="$(awk -F'\t' -v i="$_mmid" '$1 == i { print $2; exit }' "$_mm_o.inj")"
-  [ -n "$_mmrow" ] || continue
-  if [ "$_mmcan" = yes ] && [ "$_mmrow" != block ]; then bad lint.mode-matches-engine "pack $_mmid can deny (its run: script emits HARBOR-DECISION deny) and its row says $_mmrow: the engine downgrades a deny that is not a block row" "${_mmf#$ROOT/}"
-  elif [ "$_mmcan" = no ] && [ "$_mmrow" = block ]; then bad lint.mode-matches-engine "pack $_mmid cannot deny and its row says block: block means a deny is honoured" "${_mmf#$ROOT/}"; fi
-done
-rm -f "$_mm_o" "$_mm_o.inj"
-}
-
-# ── drift.check-register · docs/reference/checks.md and the check rows of controls.tsv are one register (harbor#1422) ──────
-# The 60-odd checks were kept by hand in two places, and a row edited in one was a lie in the other. This holds the cells both carry to
-# each other: the id (a row's `emitted` when it has one, else its id), the falsifier suite the schedule cell names against the row's
-# red_proof, and whether the check is scheduled against the row's moment. The disable command stays prose in the schedule cell, because a
-# command is not a cell either file can hold twice. HARBOR_LINT_CONTROLS points a suite at a fixture register.
-rule_drift_check_register() {
-rule "drift.check-register docs/reference/checks.md and the check rows of controls.tsv agree: ids, falsifier suite, scheduled or not (harbor#1422)"
-_cr_md="$ROOT/docs/reference/checks.md"
-[ -f "$_cr_md" ] && [ -f "$_CTL" ] || { _advn drift.check-register no-register; _advp '  ADVISORY [drift.check-register] docs/reference/checks.md or controls.tsv is missing — NO check row was compared\n'; return 0; }
-_cr_o="${TMPDIR:-/tmp}/cr.$$"
-awk -F'\t' 'FILENAME == ARGV[1] { if ($0 !~ /^#/ && $3 == "check") { k = ($12 != "-" && $12 != "") ? $12 : $1; ROW[k] = $1; MOM[k] = $6; RED[k] = $11 } next }
-  /^## Register/ { on = 1; next } on && /^## / { on = 0 }
-  on && /^\| `/ {
-    n = split($0, c, "|"); id = c[2]; gsub(/[ `]/, "", id); sc = c[4]; seen[id] = 1
-    f = ""; if (match(sc, /tests\/[A-Za-z0-9_.\/-]+\.test\.sh/)) f = substr(sc, RSTART, RLENGTH)
-    if (!(id in ROW)) { print id "\tchecks.md has the check and controls.tsv has no row for it"; next }
-    r = (RED[id] == "" ? "-" : RED[id])
-    if (f != "" && r != f) print ROW[id] "\tthe schedule cell names the falsifier " f " and red_proof is " r
-    if (f == "" && r != "-") print ROW[id] "\tred_proof is " r " and the schedule cell names no falsifier suite"
-    low = tolower(sc)
-    if (low ~ /not scheduled/ && MOM[id] == "schedule") print ROW[id] "\tthe schedule cell says not scheduled and the moment is schedule"
-    if (low !~ /not scheduled/ && MOM[id] == "manual") print ROW[id] "\tthe moment is manual and the schedule cell does not say not scheduled" }
-  END { for (k in ROW) if (!(k in seen)) print ROW[k] "\tcontrols.tsv has the check row and checks.md has no row for it" }' "$_CTL" "$_cr_md" | LC_ALL=C sort > "$_cr_o"
-while IFS="$(printf '\t')" read -r _cri _crm; do
-  [ -n "$_cri" ] && bad drift.check-register "$_cri: $_crm" "$_cri"
-done < "$_cr_o"
-rm -f "$_cr_o"
 }
 
 # ── the dispatcher ───────────────────────────────────────────────────────────
