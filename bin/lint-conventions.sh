@@ -641,6 +641,32 @@ fi
 rm -rf "$_ssd"
 }
 
+# ── doc.shape-conform · docs carry one front matter shape, generated files one header (warn, harbor#1434, #1435) ──
+# RUNS bin/doc-shape.sh and relays its findings as advisories, as standard.shape-conform does: the three rules
+# (doc.kind-folder, doc.frontmatter-fields, doc.fresh-registered), their modes and ids are its and controls.tsv's.
+rule_doc_shape_conform() {
+rule "doc.shape-conform docs/**/*.md carry kind, owner and status, and a generated-by header equals its fresh-checks.tsv row, judged by bin/doc-shape.sh (warn) (harbor#1434, #1435)"
+_dsh="$ROOT/bin/doc-shape.sh"
+if [ ! -f "$_dsh" ]; then say "  skip: no bin/doc-shape.sh in this tree, so no doc was judged"; return 0; fi
+_dso="${TMPDIR:-/tmp}/ds.$$"; _dsrc=0; _dsred="${LINT_REDLOG:-}"
+sh "$_dsh" --root "$ROOT" > /dev/null 2> "$_dso" || _dsrc=$?
+if [ "$_dsrc" -gt 1 ]; then
+  bad doc.shape-conform "bin/doc-shape.sh exited $_dsrc and judged nothing: $(grep -m1 'FAIL:' "$_dso" | sed 's/^ *FAIL: //')"
+else
+  _dsn=0; LINT_REDLOG=""   # the relay records findings, not reds: doc-shape.sh already logged its ids
+  while IFS= read -r _dsl; do
+    case "$_dsl" in
+      '  WARN: ['*) _dsn=$((_dsn + 1)); _dss="${_dsl#*] }"; _dss="${_dss%% — *}"
+                    _adv doc.shape-conform "$_dss"; printf '  ADVISORY [doc.shape-conform] %s\n' "${_dsl#  WARN: }" >&2 ;;
+      '  FAIL: ['*) _dss="${_dsl#*] }"; LINT_REDLOG="$_dsred"; bad doc.shape-conform "${_dsl#  FAIL: }" "${_dss%% — *}"; LINT_REDLOG="" ;;
+    esac
+  done < "$_dso"
+  LINT_REDLOG="$_dsred"
+  [ "$_dsn" -gt 0 ] || say "  $(grep -m1 'carry the front matter shape' "$_dso" | sed -E 's/^ *(ok|note): //')"
+fi
+rm -f "$_dso"
+}
+
 # ── lint.comment-conform · the lines a branch adds pass bin/lint-comment.sh (warn, harbor#978) ──
 # RUNS bin/lint-comment.sh and relays its findings as advisories, as N4 does (ids and modes are its and controls.tsv's).
 # Exit 3, no base (a shallow clone), is an advisory, never silence or a failure; exit 2 or above 3 judged nothing.
@@ -1562,11 +1588,15 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   # the flag when it should be the write. Recorded there rather than fixed here,
   # because keying D2 on a config-surface write is a change to a floor-adjacent rule
   # and does not belong in the commit that tripped over it.
+  #
+  # standard-label-sync.sh (harbor#1427) is the same shape, the seventh: --apply writes labels to GitHub through gh,
+  # a dry run is the default, and tests/standard/label-sync/label-sync.test.sh asserts against a call log that the dry run writes nothing.
   case "$(basename "$f")" in
     *-test.sh) continue ;;
     status-generate.sh|doc-index-generate.sh|scope-marker-backfill.sh|worktree.sh|proposal.sh) continue ;;
     standard-frozen-generate.sh) continue ;;  # --apply writes standards/naming/frozen.tsv in the repo, never the live box (harbor#1276)
     standard-issue-label.sh) continue ;;
+    standard-label-sync.sh) continue ;;  # --apply writes GitHub labels through gh, never a config dir (harbor#1427)
     # lint-findings.sh (harbor#590) writes GitHub issues and never a config dir; its --apply is gated
     # on the checkout being origin/main instead, asserted in tests/lint/findings/findings.test.sh. The
     # seventh of harbor#144's shape: the trigger is the flag when it should be the write.
@@ -7299,15 +7329,24 @@ fi
 # but tracked in the exported core (bin/deploy-push.sh:82), where it would make every record cited.
 # contracts/decision-orphans.tsv is the deliberate-orphan allow-list: one id per row, and a row that is
 # cited or names no record is itself red. Output: `path TAB line TAB D-n`, one row per citation.
+# A citation is `D-<n>` inside the repo and `<system>/D-<n>` outside it (harbor#1429, D-20): the system is harbor, yard
+# or fleet, this repo's own system, or a workload's repo name. Output: `path TAB line TAB id TAB form`, where id is `D-<n>`
+# for this repo's own records (bare or qualified with its own system) and `<system>/D-<n>` for another's; form is `bare`
+# or `qualified` as written. Vendored text, at the root or under a template (yard ships harbor's naming package in
+# templates/base/vendor/), is another repo's and is not judged. A prefix that names no system is no qualifier: `x/D-3` stays a bare D-3, as it always was.
 _decision_cites() {
-  git -C "$ROOT" grep -InE '(^|[^A-Za-z0-9_-])D-[0-9]+([^0-9A-Za-z]|$)' -- . ':(exclude)vendor' ':(exclude)contracts/decision-orphans.tsv' ':(exclude)docs/index.html' 2>/dev/null \
-    | LC_ALL=C awk '{
+  git -C "$ROOT" grep -InE '(^|[^A-Za-z0-9_-])([a-z][a-z0-9-]*/)?D-[0-9]+([^0-9A-Za-z]|$)' -- . ':(exclude,glob)**/vendor/**' ':(exclude)contracts/decision-orphans.tsv' ':(exclude)docs/index.html' 2>/dev/null \
+    | LC_ALL=C awk -v own="$(_decision_system "$ROOT")" -v known=" harbor yard fleet $(_decision_system "$ROOT") " '{
         p = $0; i = index(p, ":"); path = substr(p, 1, i - 1); rest = substr(p, i + 1)
         j = index(rest, ":"); ln = substr(rest, 1, j - 1); txt = substr(rest, j + 1)
-        while (match(txt, /(^|[^A-Za-z0-9_-])D-[0-9]+([^0-9A-Za-z]|$)/)) {
-          s = substr(txt, RSTART, RLENGTH)
-          if (match(s, /D-[0-9]+/)) printf "%s\t%s\t%s\n", path, ln, substr(s, RSTART, RLENGTH)
-          txt = substr(txt, RSTART + RLENGTH) } }'
+        while (match(txt, /(^|[^A-Za-z0-9_-])([a-z][a-z0-9-]*\/)?D-[0-9]+([^0-9A-Za-z]|$)/)) {
+          s = substr(txt, RSTART, RLENGTH); txt = substr(txt, RSTART + RLENGTH)
+          if (!match(s, /D-[0-9]+/)) continue
+          id = substr(s, RSTART, RLENGTH); pre = substr(s, 1, RSTART - 1); sys = ""; form = "bare"
+          if (match(pre, /[a-z][a-z0-9-]*\/$/)) { sys = substr(pre, RSTART, RLENGTH - 1)
+            if (index(known, " " sys " ")) form = "qualified"; else sys = "" }
+          if (form == "qualified" && sys != own) id = sys "/" id
+          printf "%s\t%s\t%s\t%s\n", path, ln, id, form } }'
 }
 # `alias TAB path` for each record: the first `alias: D-<n>` line of a docs/decisions/NNNN-*.md.
 _decision_records() {
@@ -7317,21 +7356,83 @@ _decision_records() {
     printf '%s\t%s\n' "$_dr_a" "${_dr_f#"$ROOT"/}"
   done
 }
+# The system a checkout is (harbor#1429): its .agents/config.yaml `repo-kind:` row of repo-kinds.tsv names a platform system
+# (harbor, yard, fleet) in its note; any other repo is its own system, named by its directory.
+_decision_system() { # <root> → system name
+  _ds_k="$(sed -n 's/^repo-kind: *\([a-z-]*\).*/\1/p' "$1/.agents/config.yaml" 2>/dev/null | head -n 1)"
+  _ds_n=""
+  [ -z "$_ds_k" ] || _ds_n="$(awk -F'\t' -v k="$_ds_k" '!/^#/ && $1 == k && $NF ~ /^(harbor|yard|fleet)$/ { print $NF; exit }' "$_DS_HOME/standards/naming/repo-kinds.tsv" 2>/dev/null)"
+  printf '%s' "${_ds_n:-${1##*/}}"
+}
+_DS_HOME="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"   # the tree this lint runs from: it owns repo-kinds.tsv and scope-roots.sh
+# `<system>` → the checkout of that system, from the registry (scope-roots.sh --get for a platform role, --repo for a workload);
+# exit 1 and nothing when the box has no such checkout. HARBOR_SCOPE_REPO, _SCAFFOLDER and _FLEET_CONTROLLER override it.
+_decision_root_of() {
+  case "$1" in
+    harbor) _dr_v=HARBOR_SCOPE_REPO ;; yard) _dr_v=HARBOR_SCOPE_SCAFFOLDER ;; fleet) _dr_v=HARBOR_SCOPE_FLEET_CONTROLLER ;; *) _dr_v="" ;;
+  esac
+  if [ -n "$_dr_v" ]; then _dr_p="$(env -u HARBOR_SCOPE_ROOT sh "$_DS_HOME/bin/scope-roots.sh" --get "$_dr_v" 2>/dev/null)" || return 1
+  else _dr_p="$(env -u HARBOR_SCOPE_ROOT sh "$_DS_HOME/bin/scope-roots.sh" --repo "$1" 2>/dev/null)" || return 1; fi
+  [ -d "$_dr_p/docs/decisions" ] || return 1
+  printf '%s' "$_dr_p"
+}
+# The front matter of every record under <root>, one row each: path kind status alias date supersedes superseded_by revised_by,
+# TAB-separated; a field the record lacks reads `<absent>`, and a file that does not open with `---` lacks all of them.
+_decision_rows() { # <root>
+  for _dw_f in "$1"/docs/decisions/[0-9][0-9][0-9][0-9]-*.md; do
+    [ -f "$_dw_f" ] || continue
+    LC_ALL=C awk -v p="docs/decisions/${_dw_f##*/}" '
+      BEGIN { split("kind status alias date supersedes superseded_by revised_by", K, " "); for (i = 1; i <= 7; i++) v[K[i]] = "<absent>" }
+      NR == 1 { if ($0 != "---") exit; next }
+      $0 == "---" { exit }
+      { i = index($0, ":"); if (i < 2) next; k = substr($0, 1, i - 1); if (!(k in v) || v[k] != "<absent>") next
+        s = substr($0, i + 1); sub(/^[ \t]+/, "", s); sub(/[ \t\r]+$/, "", s); v[k] = s }
+      END { printf "%s", p; for (i = 1; i <= 7; i++) printf "\t%s", v[K[i]]; printf "\n" }' "$_dw_f"
+  done
+}
 
 rule_standard_decision_dangling() {
-rule "standard.decision-dangling every D-n cited in the tree resolves to a decision record (docs/decisions/, harbor#1029)"
+rule "standard.decision-dangling every D-n cited in the tree resolves to a decision record, <system>/D-n to a record of that system, and a bare D-n stays out of the surfaces read outside the repo (harbor#1029, #1429)"
 if ! git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
   bad standard.decision-dangling "$ROOT is not a git checkout, so no citation was judged"; return 0
 fi
 _dd="${TMPDIR:-/tmp}/dd.$$"
 _decision_records > "$_dd.recs"; _decision_cites > "$_dd.cites"
+# this repo's own ids: a bare or own-qualified D-n must be a record here
 LC_ALL=C awk -F'\t' 'NR == FNR { known[$1] = 1; next }
-  !($3 in known) { printf "%s\t%s\n", $1, $3 }' "$_dd.recs" "$_dd.cites" > "$_dd.out"
+  $3 !~ /\// && !($3 in known) { printf "%s\t%s\n", $1, $3 }' "$_dd.recs" "$_dd.cites" > "$_dd.out"
 while IFS="$(printf '\t')" read -r _ddp _ddi; do
   [ -n "$_ddp" ] || continue
   bad standard.decision-dangling "$_ddp cites $_ddi, which no record in docs/decisions/ defines" "$_ddp"
 done < "$_dd.out"
-rm -f "$_dd.recs" "$_dd.cites" "$_dd.out"
+# another system's ids: judged against that system's checkout, and unchecked, never red, when the box has none
+LC_ALL=C awk -F'\t' '$3 ~ /\// { split($3, a, "/"); print a[1] }' "$_dd.cites" | LC_ALL=C sort -u > "$_dd.sys"
+while IFS= read -r _dds; do
+  [ -n "$_dds" ] || continue
+  if _ddr="$(_decision_root_of "$_dds")"; then
+    _decision_rows "$_ddr" | LC_ALL=C awk -F'\t' '{ print $4 }' > "$_dd.far"
+    LC_ALL=C awk -F'\t' -v s="$_dds" 'NR == FNR { known[s "/" $1] = 1; next }
+      index($3, s "/") == 1 && !($3 in known) { printf "%s\t%s\n", $1, $3 }' "$_dd.far" "$_dd.cites" > "$_dd.out"
+    while IFS="$(printf '\t')" read -r _ddp _ddi; do
+      [ -n "$_ddp" ] || continue
+      bad standard.decision-dangling "$_ddp cites $_ddi, which no record in $_dds defines" "$_ddp"
+    done < "$_dd.out"
+  else
+    _adv standard.decision-dangling "$_dds"; printf '  ADVISORY [standard.decision-dangling] unchecked: no checkout of %s is registered on this box, so its ids were not judged\n' "$_dds" >&2
+  fi
+done < "$_dd.sys"
+# a bare D-n in a surface read outside the repo means a different decision to each reader
+if [ -f "$ROOT/contracts/decision-reach.tsv" ]; then
+  awk -F'\t' '!/^#/ && NF { print $1 }' "$ROOT/contracts/decision-reach.tsv" > "$_dd.reach"
+  LC_ALL=C awk -F'\t' 'NR == FNR { r[++n] = $1; next }
+    $4 == "bare" { for (i = 1; i <= n; i++) if ($1 == r[i] || (substr(r[i], length(r[i])) == "/" && index($1, r[i]) == 1)) { printf "%s\t%s\t%s\n", $1, $2, $3; break } }' "$_dd.reach" "$_dd.cites" > "$_dd.out"
+  _dds="$(_decision_system "$ROOT")"
+  while IFS="$(printf '\t')" read -r _ddp _ddl _ddi; do
+    [ -n "$_ddp" ] || continue
+    bad standard.decision-dangling "$_ddp:$_ddl cites $_ddi bare, in a surface contracts/decision-reach.tsv lists as read outside this repo — write $_dds/$_ddi" "$_ddp"
+  done < "$_dd.out"
+fi
+rm -f "$_dd.recs" "$_dd.cites" "$_dd.out" "$_dd.sys" "$_dd.far" "$_dd.reach"
 }
 
 rule_standard_decision_orphan() {
@@ -7364,6 +7465,101 @@ while IFS="$(printf '\t')" read -r _dop _doi _dom; do
   bad standard.decision-orphan "$_dop: $_dom" "$_dop"
 done < "$_do.out"
 rm -f "$_do.recs" "$_do.cites" "$_do.cited" "$_do.allow" "$_do.out"
+}
+
+# ── standard.decision-fields / standard.decision-supersession · one record shape, supersession both ways (harbor#1429) ─
+# Every governed repo keeps its records in docs/decisions/NNNN-<slug>.md under one front matter: kind, status, alias, date,
+# supersedes, superseded_by, plus revised_by where a record is revised in part. A field with nothing to say reads `-`, so a
+# missing field is never mistaken for an empty one. A reference is `D-<n>` inside the repo and `<system>/D-<n>` outside it;
+# a list is comma-separated. The pair is the contract: a record that names a successor is `superseded` and its successor
+# names it back, and the other way round. The far side of a cross-repo edge is read from that system's checkout when the box
+# has one, and the edge is unchecked, never red, when it does not (a CI run sees one repo). Run on another repo with
+# HARBOR_SCOPE_ROOT=<repo>.
+# A warn control prints an advisory and a block one fails the run, read from the control's own row (D-62): promoting it is a
+# one-cell edit in controls.tsv, and a shadow one only records.
+_decision_mode() { awk -F'\t' -v i="$1" '$1 == i { print $2; exit }' "$_DS_HOME/standards/naming/controls.tsv" 2>/dev/null; }
+
+rule_standard_decision_fields() {
+rule "standard.decision-fields every decision record opens with the shared front matter: kind, status, alias, date, supersedes, superseded_by (harbor#1429)"
+_df="${TMPDIR:-/tmp}/df.$$"
+_decision_rows "$ROOT" > "$_df.rows"
+LC_ALL=C awk -F'\t' '
+  function ref(x) { return x ~ /^([a-z][a-z0-9-]*\/)?D-[0-9]+$/ }
+  function refs(x,  n, a, i) { if (x == "-") return 1; n = split(x, a, /, */); for (i = 1; i <= n; i++) if (!ref(a[i])) return 0; return 1 }
+  { miss = ""; badf = ""
+    if ($2 == "<absent>") miss = miss " kind"; else if ($2 != "decision-record") badf = badf " kind=" $2
+    if ($3 == "<absent>") miss = miss " status"; else if ($3 !~ /^(proposed|accepted|rejected|superseded)$/) badf = badf " status=" $3
+    if ($4 == "<absent>") miss = miss " alias"; else if ($4 !~ /^D-[0-9]+$/) badf = badf " alias=" $4
+    if ($5 == "<absent>") miss = miss " date"; else if ($5 !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ && $5 != "not recorded in source") badf = badf " date=" $5
+    if ($6 == "<absent>") miss = miss " supersedes"; else if (!refs($6)) badf = badf " supersedes=" $6
+    if ($7 == "<absent>") miss = miss " superseded_by"; else if (!refs($7)) badf = badf " superseded_by=" $7
+    if ($8 != "<absent>" && ($8 == "-" || !refs($8))) badf = badf " revised_by=" $8
+    if ($4 ~ /^D-[0-9]+$/) { if ($4 in seen) badf = badf " alias " $4 " is also " seen[$4]; else seen[$4] = $1 }
+    if (miss != "" || badf != "") printf "%s\t%s%s\n", $1, (miss != "" ? "lacks" miss : ""), (badf != "" ? (miss != "" ? "; " : "") "invalid" badf : "") }' "$_df.rows" > "$_df.out"
+while IFS="$(printf '\t')" read -r _dfp _dfm; do
+  [ -n "$_dfp" ] || continue
+  case "$(_decision_mode standard.decision-fields)" in
+    block) bad standard.decision-fields "$_dfp $_dfm" "$_dfp" ;;
+    shadow) _adv standard.decision-fields "$_dfp" ;;
+    *) _adv standard.decision-fields "$_dfp"; printf '  ADVISORY [standard.decision-fields] %s %s\n' "$_dfp" "$_dfm" >&2 ;;
+  esac
+done < "$_df.out"
+rm -f "$_df.rows" "$_df.out"
+}
+
+rule_standard_decision_supersession() {
+rule "standard.decision-supersession supersedes and superseded_by name each other, and a record that names a successor is superseded (harbor#1429)"
+_dn="${TMPDIR:-/tmp}/dn.$$"; _dns="$(_decision_system "$ROOT")"
+_decision_rows "$ROOT" > "$_dn.rows"
+# edges: <record path> <side: sup|by> <this system/alias> <target as system/D-n>
+LC_ALL=C awk -F'\t' -v s="$_dns" '
+  function q(x, sys) { return x ~ /\// ? x : sys "/" x }
+  function emit(side, list,  n, a, i) { if (list == "-" || list == "<absent>") return; n = split(list, a, /, */)
+    for (i = 1; i <= n; i++) printf "%s\t%s\t%s\t%s\n", $1, side, s "/" $4, q(a[i], s) }
+  { emit("sup", $6); emit("by", $7) }' "$_dn.rows" > "$_dn.edges"
+# status against superseded_by, inside this repo
+LC_ALL=C awk -F'\t' '
+  $7 != "<absent>" && $7 != "-" && $3 != "superseded" { printf "%s\t%s names a successor (%s) but its status is %s, not superseded\n", $1, $4, $7, $3 }
+  $7 == "-" && $3 == "superseded" { printf "%s\t%s is superseded but superseded_by names no successor\n", $1, $4 }' "$_dn.rows" > "$_dn.out"
+# edges against the far record: the target exists, and names this record back on the opposite side
+LC_ALL=C awk -F'\t' '{ print $4 }' "$_dn.edges" | LC_ALL=C sort -u > "$_dn.targets"
+: > "$_dn.far"
+while IFS= read -r _dnt; do
+  [ -n "$_dnt" ] || continue
+  _dny="${_dnt%%/*}"; _dnr=""
+  if [ "$_dny" = "$_dns" ]; then _dnr="$ROOT"; else _dnr="$(_decision_root_of "$_dny")" || _dnr=""; fi
+  if [ -z "$_dnr" ]; then
+    printf '%s\t-\t-\t-\tunchecked\n' "$_dnt" >> "$_dn.far"; continue
+  fi
+  _decision_rows "$_dnr" | LC_ALL=C awk -F'\t' -v t="$_dnt" -v s="$_dny" '
+    function q(x) { return x ~ /\// ? x : s "/" x }
+    s "/" $4 == t { print t "\t" $6 "\t" $7 "\t" $1 "\tfound"; hit = 1; exit }
+    END { if (!hit) print t "\t-\t-\t-\tmissing" }' >> "$_dn.far"
+done < "$_dn.targets"
+LC_ALL=C awk -F'\t' -v s="$_dns" '
+  function has(list, want, far,  n, a, i) { if (list == "-" || list == "<absent>") return 0; n = split(list, a, /, */)
+    for (i = 1; i <= n; i++) if ((a[i] ~ /\// ? a[i] : far "/" a[i]) == want) return 1; return 0 }
+  NR == FNR { split($0, x, "\t"); fs[$1] = x[2]; fb[$1] = x[3]; fst[$1] = x[5]; next }
+  { t = $4; me = $3
+    if (t == me) { printf "%s\t%s names itself as its own %s\n", $1, me, ($2 == "sup" ? "predecessor" : "successor"); next }
+    if (fst[t] == "missing") { printf "%s\t%s names %s, which no record defines\n", $1, me, t; next }
+    if (fst[t] == "unchecked") { printf "UNCHECKED\t%s\t%s\n", t, $1; next }
+    split(t, ty, "/"); far = ty[1]
+    if ($2 == "by" && !has(fs[t], me, far)) printf "%s\t%s is superseded by %s, whose supersedes does not name it back\n", $1, me, t
+    if ($2 == "sup" && !has(fb[t], me, far)) printf "%s\t%s supersedes %s, whose superseded_by does not name it back\n", $1, me, t }' "$_dn.far" "$_dn.edges" >> "$_dn.out"
+while IFS="$(printf '\t')" read -r _dnp _dnm _dnx; do
+  [ -n "$_dnp" ] || continue
+  if [ "$_dnp" = UNCHECKED ]; then
+    _adv standard.decision-supersession "$_dnx"; printf '  ADVISORY [standard.decision-supersession] unchecked: no checkout of %s is registered on this box, so %s was not judged against it\n' "${_dnm%%/*}" "$_dnx" >&2
+  else
+    case "$(_decision_mode standard.decision-supersession)" in
+      block) bad standard.decision-supersession "$_dnp: $_dnm" "$_dnp" ;;
+      shadow) _adv standard.decision-supersession "$_dnp" ;;
+      *) _adv standard.decision-supersession "$_dnp"; printf '  ADVISORY [standard.decision-supersession] %s: %s\n' "$_dnp" "$_dnm" >&2 ;;
+    esac
+  fi
+done < "$_dn.out"
+rm -f "$_dn.rows" "$_dn.edges" "$_dn.out" "$_dn.targets" "$_dn.far"
 }
 
 # ── event.kind-registered · the event bus has one register of kinds, and nothing waits on silence ──

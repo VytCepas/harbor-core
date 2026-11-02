@@ -26,8 +26,9 @@
 #   sh bin/lint-name.sh --help
 #
 #   --format findings   also print one `<A|V> TAB <rule> TAB <subject>` record per finding on stdout
-#   --root <dir>        the tree to judge (default: this checkout)
-#   --registry <dir>    the registry (default: <root>/standards/naming)
+#   --root <dir>        the tree to judge (default: this checkout; a vendored copy judges the repo that carries it)
+#   --registry <dir>    the registry (default: <root>/standards/naming; a vendored copy's own registry/ when the root has none).
+#                       A root with no standards/naming/ is a workload: the rules that judge the registry itself stay silent (harbor#1415)
 #   --base <ref>        the base for --changed, --added and name.exemption-grow (default: $HARBOR_CI_BASE or origin/main)
 #   --today YYYY-MM-DD  the date alias and exemption expiry is judged against (default: $HARBOR_LINT_TODAY, else today in UTC, D-51)
 #   --exemptions-base <file>   the base exemptions.tsv for name.exemption-grow (default: read from git)
@@ -103,8 +104,13 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+# A vendored copy (vendor/naming/, MANIFEST.tsv beside it) judges the repo that carries it, with the registry beside it
+# (harbor#967, #1415): bare, it finds both; harbor's own bin/ has neither file, so its defaults are unchanged.
+VENDORED=0; [ ! -f "$HERE/MANIFEST.tsv" ] || [ ! -f "$HERE/registry/registers.tsv" ] || VENDORED=1
+if [ "$VENDORED" = 1 ] && [ -z "$ROOT" ]; then ROOT="$HERE/../.."; fi
 ROOT="${ROOT:-$(CDPATH='' cd -- "$HERE/.." && pwd)}"
 ROOT="$(CDPATH='' cd -- "$ROOT" 2>/dev/null && pwd)" || { log_fail "no such root: $ROOT"; log_fix "sh $SELF --root <dir>"; log_end || :; exit 2; }
+if [ -z "$REG" ] && [ "$VENDORED" = 1 ] && [ ! -f "$ROOT/standards/naming/registers.tsv" ]; then REG="$HERE/registry"; fi
 REG="${REG:-$ROOT/standards/naming}"
 TODAY="${TODAY:-${HARBOR_LINT_TODAY:-$(date -u +%Y-%m-%d)}}"   # D-51: UTC for every date; the env pins it for a caller that cannot pass --today
 case "$TODAY" in [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;; *)
@@ -172,6 +178,10 @@ for _ov in naming-words.tsv naming-families.tsv; do
   if [ "$_ov" = naming-words.tsv ]; then OVW="$OVDIR/$_ov"; else OVF="$OVDIR/$_ov"; fi
 done
 REL_REG="${REG#"$ROOT"/}"
+# A root with no standards/naming/ of its own is judged by harbor's registry, not the owner of it: the registry-owner rules
+# (regrule) judge harbor's controls and exemptions, so a workload run leaves them to harbor (harbor#967, #1415).
+FOREIGN=0
+case "$ACTION" in tree|changed|added) [ -f "$ROOT/standards/naming/registers.tsv" ] || FOREIGN=1 ;; esac
 # THE FILES THIS RUN READS ARE registers.tsv's `file` column (harbor#950), not a list written here: terms.tsv
 # first, because every other file's classes are checked against it, then each named file once in row order.
 # A register is its file plus its row, so a new one needs no edit to this file. Two guards keep that honest:
@@ -216,11 +226,11 @@ function selfpath(s) {
 # An overlay finding is always block: a malformed private layer must not read as clean, even under --check (D-85).
 function emitb(rule, subject, msg) { if ((rule SUBSEP subject) in DONE) return; DONE[rule SUBSEP subject] = 1; print "F", rule, "block", subject, msg }
 function emitw(rule, subject, msg) { if ((rule SUBSEP subject) in DONE) return; DONE[rule SUBSEP subject] = 1; print "F", rule, "warn", subject, msg }
-function regrule(r) { return r ~ /^name\.(registry-|exemption-|alias-expired|control-|surface-)/ }
+function regrule(r) { return r ~ /^name\.(registry-|exemption-|alias-expired|control-|surface-)/ || r ~ /^standard\.(register-declared|reference-resolves)$/ }
 function emit(rule, subject, msg,   k, e) {
   if (mode == "check" && regrule(rule) && surface != "registry") return
   if (mode == "registry" && !regrule(rule)) return
-  if (mode == "added" && regrule(rule)) return   # --added judges the names a branch brings in, not the registry (a tree run does that)
+  if ((mode == "added" || (foreign == 1 && rule !~ /^standard\./)) && regrule(rule)) return   # --added judges names a branch brings in, a foreign root leaves the registry to harbor, but its own registers are judged (harbor#1424)
   if (mode == "check" && (surface in VIEWR) && VIEWR[surface] != "" && index("," VIEWR[surface] ",", "," rule ",") == 0) return   # a view of a surface for some rules only
   k = rule SUBSEP subject
   if (k in DONE) return
@@ -689,6 +699,10 @@ function shape(f, msg) { emit("name.registry-shape", REL[f], msg) }
 # requires and whether it is there (absent | file where a directory is wanted | dir where a file is wanted | ok).
 function repokind_check(label, kind, tok, state,   sj) {
   sj = "repo-kind:" label
+  if (tok ~ /^just:/) {   # a verb the kind requires of the justfile (verbs.tsv, harbor#1428); the subject carries no path, so a repo exempts it by verb
+    if (state == "absent" && (kind in RKREQ)) emit("name.repo-verb", "repo-verb:" substr(tok, 6), "a " q(kind) " repo carries the verb " q(substr(tok, 6)) " in its justfile and this one has none (standards/naming/verbs.tsv)")
+    return
+  }
   if (kind == "") emit("name.repo-kind", sj, "this directory declares no repo-kind: its .agents/config.yaml needs a `repo-kind: <id>` line naming a row of repo-kinds.tsv")
   else if (!(kind in RKREQ)) emit("name.repo-kind", sj, "its kind " q(kind) " is not a row of repo-kinds.tsv")
   else if (state == "absent") emit("name.repo-kind", sj ":" tok, "a " q(kind) " repo carries " q(tok) " and this one has none (standards/naming/repo-kinds.tsv)")
@@ -876,6 +890,7 @@ FILENAME != recfile {
 }
 $1 == "F" { file_rec($2, $3); next }
 $1 == "X" { file_rec($2, ""); next }
+$1 == "G" { emit($2, $3, $4); next }
 $1 == "E" { env_check("env:" $2, $2); next }
 $1 == "C" { check_rec($2, $3); next }
 $1 == "D" { repokind_check($2, $3, $4, $5); next }
@@ -998,7 +1013,7 @@ judge() { # <mode> <records> [nolegacy] -> the judge's output
   # shellcheck disable=SC2046 # one path per registry file, none with spaces by construction
   awk -v mode="$1" -v surface="$SURFACE" -v today="$TODAY" -v exbase="$_ex" -v recfile="$2" -v root="$ROOT" \
       -v nolegacy="${3:-0}" -v files="$FILES" -v unlisted="$UNLISTED" -v priv="$PRIV" -v packt="$PACKT" \
-      -v ovw="$OVW" -v ovf="$OVF" -v ovhome="$OVHOME" \
+      -v ovw="$OVW" -v ovf="$OVF" -v ovhome="$OVHOME" -v foreign="$FOREIGN" \
       "$JUDGE" $(for _f in $FILES; do reg_file "$_f"; printf ' '; done) ${PRIV:+"$PRIV"} $PACKT ${OVW:+"$OVW"} ${OVF:+"$OVF"} "$2"
 }
 
@@ -1098,6 +1113,12 @@ rk_facts() { # <dir, absolute or relative to --root>
     esac
     printf 'D\t%s\t%s\t%s\t%s\n' "$1" "$_rk" "$_t" "$_s"
   done
+  # The verbs verbs.tsv requires of the kind, each read off the justfile's recipe names (harbor#1428). No justfile is
+  # name.repo-kind's finding already, so it is not repeated once per verb.
+  [ -f "$_rd/justfile" ] || return 0
+  awk -F'\t' -v k="$_rk" -v d="$1" 'FILENAME == ARGV[1] { if ($0 ~ /^[a-z][a-z0-9_-]*( [^:=]*)?:/ && index($0, ":=") == 0) { n = $0; sub(/[: ].*/, "", n); have[n] = 1 } next }
+    /^#/ || !H[FILENAME]++ { next }
+    $4 != "-" && index(" " $4 " ", " " k " ") { printf "D\t%s\t%s\tjust:%s\t%s\n", d, k, $1, ($1 in have) ? "ok" : "absent" }' "$_rd/justfile" "$(reg_file verbs.tsv)"
 }
 
 # census → `K TAB <register> TAB <id>` for every control id the tree carries, found by the extractor each
@@ -1135,6 +1156,27 @@ census() {
   done
 }
 
+# register_facts <file of "<mode> TAB <path>"> → `G TAB <rule> TAB <subject> TAB <message>`: every tracked .tsv against its row in
+# schemas.tsv, and every reference column against its target (standard.register-declared, standard.reference-resolves; harbor#1424).
+# bin/standard-register.sh does the reading, so the lint and every engine meet a register through one reader. A fixture's own
+# registers are the .tsv files under its overlay directory (below the top, which overlays the registry itself).
+register_facts() {
+  _sch="$(reg_file schemas.tsv)"
+  [ -r "$_sch" ] || { log_note "no schemas.tsv in the registry: registers were not checked against a schema (harbor#1424)"; return 0; }
+  # the vendored package always ships the reader (standard-vendor.sh --check says when it is gone); a bare copy of the lint judges names only
+  [ -f "$HERE/standard-register.sh" ] || { log_note "no standard-register.sh beside the lint: registers were not checked against schemas.tsv (harbor#1424)"; return 0; }
+  awk -F'\t' -v r="$ROOT" '{ print $2 "\t" r "/" $2 }' "$1" > "$T/regmap"
+  # the registry's own files, as the run reads them (a fixture overlay applied); a registry outside the judged root is not that tree's
+  case "$REG" in "$ROOT"/*)
+    for _rf in "$REG"/*.tsv; do [ -f "$_rf" ] || continue; printf '%s/%s\t%s\n' "$REL_REG" "${_rf##*/}" "$(reg_file "${_rf##*/}")"; done >> "$T/regmap"
+    [ -z "$_od" ] || find "$_od" -maxdepth 1 -type f -name '*.tsv' | while IFS= read -r _xf; do printf '%s/%s\t%s\n' "$REL_REG" "${_xf##*/}" "$(reg_file "${_xf##*/}")"; done >> "$T/regmap" ;;
+  esac
+  [ -z "$_od" ] || find "$_od" -mindepth 2 -type f -name '*.tsv' | while IFS= read -r _xf; do printf '%s\t%s\n' "${_xf#"$_od"/}" "$_xf"; done >> "$T/regmap"
+  _ex=""; [ "$OVHOME" = 1 ] || [ ! -f "$OVDIR/naming-schemas.tsv" ] || _ex="$OVDIR/naming-schemas.tsv"
+  sh "$HERE/standard-register.sh" --root "$ROOT" --schemas "$_sch" ${_ex:+--extra "$_ex"} --map "$T/regmap" facts || {
+    log_fail "the register reader failed, so the registers were not judged"; log_fix "sh $HERE/standard-register.sh check"; log_end || :; exit "$UNCHECKED"; }
+}
+
 case "$ACTION" in
   list)
     awk -F'\t' '/^#/ || !H[FILENAME]++ || NF < 2 { next } $3 == "lint" && $4 == "bin/lint-name.sh" { printf "  %-26s %-9s %s\n", $1, $2, $NF }' "$(reg_file controls.tsv)"
@@ -1153,6 +1195,7 @@ case "$ACTION" in
     if [ "$SURFACE" = registry ]; then
       list_tree | awk -F'\t' '{ print "X\t" $2 }' > "$T/rec"
       census >> "$T/rec"
+      list_tree > "$T/ltree"; register_facts "$T/ltree" >> "$T/rec"
       judge registry "$T/rec" > "$T/out" || unchecked
     else
       judge check "$T/rec" > "$T/out" || unchecked
@@ -1197,8 +1240,10 @@ case "$ACTION" in
     # already, so --added leaves the env tokens to the tree run, and judges the paths.
     [ "$ACTION" = added ] || env_tokens "$T/files" | awk '{ print "E\t" $0 }' >> "$T/rec"
     # bin/lint-conventions.sh's rule ids are names on the rule-id surface too (harbor#957).
-    [ "$ACTION" != tree ] || lc_rules | awk -F'\t' '{ print "C\trule-id\t" $1 }' >> "$T/rec"
-    [ "$ACTION" != tree ] || census >> "$T/rec"
+    [ "$ACTION" != tree ] || [ "$FOREIGN" = 1 ] || lc_rules | awk -F'\t' '{ print "C\trule-id\t" $1 }' >> "$T/rec"
+    [ "$ACTION" != tree ] || [ "$FOREIGN" = 1 ] || census >> "$T/rec"
+    # A workload's own registers are judged too: its undeclared .tsv is red there as here (harbor#1424 item 7).
+    [ "$ACTION" != tree ] || register_facts "$T/files" >> "$T/rec"
     log_head "$_what in ${ROOT##*/}"
     judge "$ACTION" "$T/rec" > "$T/out" || unchecked
     _rc=0; report "$T/out" "$_what" || _rc=1
@@ -1256,11 +1301,16 @@ gen() { # <view> -> writes under build/, prints the path
               for (i = 1; i <= nf; i++) { printf "%s %s\n", sys, fam[i]; printf "%s", (fam[i] in line) ? line[fam[i]] : "    (no command yet)\n" } }
       ' "$(reg_file terms.tsv)" "$T/bin" > "$_out/cli-tree.txt"; printf '%s\n' "$_out/cli-tree.txt" ;;
     labels)
-      # D-30: every label is <axis>:<value>. The other axes are label-axes.tsv's, rendered by
-      # --gen issue-taxonomy (harbor#978).
-      awk -F'\t' 'BEGIN { print "# generated by bin/lint-name.sh --gen labels from standards/naming/terms.tsv — do not edit"; print "name\tdescription" }
-        /^#/ || !H[FILENAME]++ { next } $2 ~ /(^|,)family(,|$)/ { d = $11; sub(/^Family: /, "", d); printf "family:%s\t%s\n", $1, d }' \
-        "$(reg_file terms.tsv)" > "$_out/labels.tsv"; printf '%s\n' "$_out/labels.tsv" ;;
+      # D-30, harbor#1427: every label is <axis>:<value>, and this is THE list a sync or a scaffolder creates from: the
+      # family labels terms.tsv derives, then every other label row of label-axes.tsv (the explicit meaning wins nothing
+      # over a family's; a name is listed once). The axis rows are not labels. Descriptions are cut to GitHub's 100.
+      awk -F'\t' 'BEGIN { print "# generated by bin/lint-name.sh --gen labels from standards/naming/terms.tsv and label-axes.tsv — do not edit"; print "name\tdescription" }
+        FILENAME == ARGV[1] { if ($0 ~ /^#/ || !H[FILENAME]++) next
+          if ($2 ~ /(^|,)family(,|$)/) { d = $11; sub(/^Family: /, "", d); seen["family:" $1] = 1; print "family:" $1 "\t" substr(d, 1, 100) }
+          next }
+        /^#/ || !G[FILENAME]++ { next } $3 == "-" || ($1 in seen) { next }
+        { print $1 "\t" substr($9, 1, 100) }' \
+        "$(reg_file terms.tsv)" "$(reg_file label-axes.tsv)" > "$_out/labels.tsv"; printf '%s\n' "$_out/labels.tsv" ;;
     vale)
       _v="$ROOT/build/vale"; mkdir -p "$_v/styles/Harbor"
       printf '%s\n' '# generated by bin/lint-name.sh --gen vale from standards/naming/aliases.tsv — do not edit' \
@@ -1384,7 +1434,7 @@ FIXTURE_DAY=2026-10-04   # every fixture is judged on one fixed day, so an alias
 rk_build() { # <manifest> <dir>
   mkdir -p "$2"
   while IFS='	' read -r _e _c; do
-    case "$_e" in ''|'#'*) continue ;; */) mkdir -p "$2/$_e" ;; *) mkdir -p "$2/$(dirname "$_e")"; printf '%s\n' "$_c" > "$2/$_e" ;; esac
+    case "$_e" in ''|'#'*) continue ;; */) mkdir -p "$2/$_e" ;; *) mkdir -p "$2/$(dirname "$_e")"; printf '%b\n' "$_c" > "$2/$_e" ;; esac
   done < "$1"
 }
 one() { # <surface> <name> -> the red log of one --check, in $T/red

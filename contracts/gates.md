@@ -67,8 +67,8 @@ invokes it in neither its CI nor its justfile.
 7. **It distinguishes "I could not run" from "I found nothing".** Two different
    claims, and collapsing them fails in the direction that MANUFACTURES a
    finding. Convention: exit `0` measured with data, `1` measured with no data,
-   `3` could not run — auth, network, a missing binary, an unreadable input (D-29
-   `unchecked`, D-49; this said `2` until then, and `2` is now a bad argument).
+   `3` could not run — auth, network, a missing binary, an unreadable input (harbor/D-29
+   `unchecked`, harbor/D-49; this said `2` until then, and `2` is now a bad argument).
    Measured 2026-09-03: `shard-age.sh` answered `no shards matched` and exit 1
    against a table holding 1,382 of them, because a `2>/dev/null` swallowed a
    reauth failure and the exit status came from a trailing `grep .`. It said

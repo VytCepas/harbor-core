@@ -502,6 +502,7 @@ nav() {
 page() {
   cat <<'HEAD'
 <!doctype html>
+<!-- generated-by: sh bin/doc-index-generate.sh --apply -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
