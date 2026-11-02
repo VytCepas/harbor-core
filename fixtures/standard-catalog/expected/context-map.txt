@@ -1,11 +1,9 @@
 ---
 kind: context-map
 status: generated
-owner: harbor#996
-source: sh bin/standard-catalog.sh --map
+owner_issue: 996
 layer: generated
 ---
-<!-- generated-by: sh bin/standard-catalog.sh --map -->
 
 # Context map
 

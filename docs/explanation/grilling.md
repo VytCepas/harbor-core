@@ -1,9 +1,3 @@
----
-kind: explanation
-owner: @VytCepas
-status: unreviewed
----
-
 # Grilling — resolving a design tree before building against it
 
 **Two halves, two scopes.** *The anatomy of an option*, *the option set* and

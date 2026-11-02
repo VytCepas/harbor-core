@@ -536,13 +536,6 @@ fi
 # the property that makes it safe for CI to diff (harbor#91).
 gen() {
 cat <<EOF
----
-kind: generated-doc
-owner: harbor#3
-status: generated
-source: sh bin/status-generate.sh --apply
----
-<!-- generated-by: sh bin/status-generate.sh --apply -->
 # STATUS — generated, do not edit
 
 Every number Harbor states about itself lives here and nowhere else.

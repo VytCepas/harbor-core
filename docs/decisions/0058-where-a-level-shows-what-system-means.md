@@ -3,11 +3,8 @@ kind: decision-record
 status: accepted
 alias: D-58
 date: 2026-10-04
-supersedes: -
-superseded_by: -
 source: research/10-hierarchy-modularity.md
 revised_by: D-88
-owner: @VytCepas
 ---
 
 # Where a level shows; what `system` means

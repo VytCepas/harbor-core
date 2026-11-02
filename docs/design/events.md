@@ -1,9 +1,3 @@
----
-kind: design
-owner: @VytCepas
-status: unreviewed
----
-
 # Events — a local bus agents can wait on
 
 **Status:** E1 of the Events milestone (harbor#1043). PR 1 lands the bus: `bin/event-bus.sh`, the

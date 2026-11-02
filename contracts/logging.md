@@ -64,7 +64,7 @@ log: <path>
 
 ## Retired tags
 
-harbor/D-29 gives an outcome one word, and the TAG set above renders it. A word that meant the same thing before
+D-29 gives an outcome one word, and the TAG set above renders it. A word that meant the same thing before
 is retired, and LOG1 (a) refuses a log-lib user whose `printf` or `echo` starts its line with one.
 `tests/lint/conventions/log.test.sh` iterates this table, so a row LOG1 does not refuse fails that suite, and
 it reads LOG1's own word list back, so a word LOG1 refuses that has no row here fails it too.
@@ -116,7 +116,7 @@ are not tags and stay green. The guard channel's `BLOCKED` is channel 2's protoc
 - **A usage error exits 2 before the run starts**, with usage on stderr and no summary: it is not a run.
   A dry run that predicts a refusal exits 1; "inside a Claude session" alone is a `note` and exits 0
   (the install standard's decision). *Each tool's own suite.*
-- **A check that could not judge exits 3 (harbor/D-29 `unchecked`, harbor/D-49), and says so as a FAIL.** A missing
+- **A check that could not judge exits 3 (D-29 `unchecked`, D-49), and says so as a FAIL.** A missing
   binary, a store or registry it cannot read, a verifier that is not installed: nothing was judged, and
   that is never a green and never a usage error. It prints `FAIL: unchecked — <why>, so nothing was
   judged`, the `fix:` that resolves it, the summary, and exits 3. The count is a failure, so "0 if and only
@@ -132,9 +132,9 @@ are not tags and stay green. The guard channel's `BLOCKED` is channel 2's protoc
   | skip | `skip:` | 0 |
 
   Mode (`block warn shadow`), decision (`allow ask deny`), severity and state are closed sets of their
-  own (harbor/D-29) and are not outcomes. **The reader window (harbor/D-49):** a reader of a migrated check's status
+  own (D-29) and are not outcomes. **The reader window (D-49):** a reader of a migrated check's status
   also accepts the old 2 as "could not judge" until a person closes the window, and marks each such line
-  `harbor/D-49 window`. `git grep -n 'harbor/D-49 window'` is the whole list, and closing the window is deleting what it
+  `D-49 window`. `git grep -n 'D-49 window'` is the whole list, and closing the window is deleting what it
   names. The migrated checks are `memory.route`, `lint.rule-health`, `lint.port-paths`, `ci.main-tip-verdict` and
   `visual-check`; their exit-3 and exit-2 arms are in each check's own suite.
 - **A wrapper that ends in `exec` has no run to summarise once the command it hands over to starts.**
@@ -143,7 +143,7 @@ are not tags and stay green. The guard channel's `BLOCKED` is channel 2's protoc
   *tests/cli/gcx/output-contract.test.sh, tests/access/gcloud/output-contract.test.sh.*
 - **`access-browser.sh` has not migrated yet.** It logs a `skip`, ends with the summary (failed 0) and exits 2 for
   an unavailable verifier: a skip is never a pass, so a failed count of 0 does not always mean exit 0 there.
-  That is the old map and the one residual of harbor/D-49, so a tool added now uses the unchecked line above.
+  That is the old map and the one residual of D-49, so a tool added now uses the unchecked line above.
   *tests/access/browser/output-contract.test.sh.*
 
 ## The log file

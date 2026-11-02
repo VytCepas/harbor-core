@@ -1,9 +1,0 @@
-# fixtures/naming/repo-kind/fail/missing-verb.txt (harbor#1428) — a workload whose justfile has no `test` and no `ci` recipe: name.repo-verb.
-# A recipe is a name at the start of a line followed by a colon; `lint:` is one, `test := x` is a variable, an indented line is a body.
-# A repo-kind fixture is a manifest, built into a real directory before --check repo-kind reads it (bin/lint-name.sh rk_build): one entry per line, docs/ for a directory, <file> TAB <text> for a file with content, \n and \t in the text expanded.
-README.md
-AGENTS.md
-CLAUDE.md
-justfile	setup:\nlint:\ntypecheck:\nformat:\ntest-quick:\naudit:\nsbom:\nlicense:\nfuzz:\nscan:\nnaming:\ndocs:\nfast-ci:\nci-local-on:\nci-local-off:\ntest := x\n\tci: nothing
-.agents/config.yaml	repo-kind: workload
-docs/

@@ -1,9 +1,3 @@
----
-kind: design
-owner: harbor#1181
-status: unreviewed
----
-
 # Telemetry: one stream system (harbor#1181)
 
 **Status:** decided by the operator 2026-10-09; built lane by lane (#1181). Lane 0 is #1182, lane 1 is this

@@ -3,10 +3,7 @@ kind: decision-record
 status: accepted
 alias: D-92
 date: 2026-10-28
-supersedes: -
-superseded_by: -
 source: harbor#968
-owner: harbor#968
 ---
 
 # Name rules are promoted on evidence, not on the calendar

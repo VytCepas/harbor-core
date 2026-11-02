@@ -213,6 +213,13 @@ t_has "…and says every register file has its row" "$_ulo" "has a registers.tsv
 
 t_section "--check case, path.test and repo-kind exit 0 or 1, never 2 (harbor#996 item 10, #961 items 3 and 6)"
 okrc() { sh -c 'sh "$1" --check "$2" "$3" > /dev/null 2>&1; test $? -le 1' _ "$LN" "$1" "$2"; }   # <surface> <name>: exit 0 or 1
+RKD="$TMP/rkdirs"; mkdir -p "$RKD"
+mkrk() { # <dir> <kind> <entry>... : a repo tree; a trailing / is a directory, .agents/config.yaml carries the kind
+  _d="$RKD/$1"; _k="$2"; shift 2; rm -rf "$_d"; mkdir -p "$_d/.agents"; [ -z "$_k" ] || printf 'repo-kind: %s\n' "$_k" > "$_d/.agents/config.yaml"
+  for _e in "$@"; do case "$_e" in */) mkdir -p "$_d/$_e" ;; *) mkdir -p "$_d/$(dirname "$_e")"; : > "$_d/$_e" ;; esac; done
+  printf '%s' "$_d"
+}
+rk() { sh "$LN" --check repo-kind "$1" 2>&1; }
 WL="README.md AGENTS.md CLAUDE.md justfile docs/"
 t_exit "case: a path with a finding" 0 okrc case docs/Notes.md
 t_exit "case: a clean path" 0 okrc case docs/notes.md
@@ -255,11 +262,11 @@ t_has "a workload with every required entry is clean" "$(rk "$(mkrk whole worklo
 t_has "…with optional entries and entries the kind does not list beside them (valid but unusual)" \
   "$(rk "$(mkrk extras workload $WL bin/ src/ .github/ .gitignore build/ notes.txt)")" "no finding"
 t_has "…and a double-quoted kind with a trailing comment" \
-  "$(mkrk quoted workload $WL >/dev/null; printf 'repo-kind: "workload"  # standards/naming/repo-kinds.tsv\n' > "$RKD/quoted/.agents/config.yaml"; rk "$RKD/quoted")" "no finding"
+  "$(mkrk quoted '' $WL >/dev/null; printf 'repo-kind: "workload"  # standards/naming/repo-kinds.tsv\n' > "$RKD/quoted/.agents/config.yaml"; rk "$RKD/quoted")" "no finding"
 t_has "…and a single-quoted one" \
-  "$(mkrk single workload $WL >/dev/null; printf "repo-kind: 'workload'\n" > "$RKD/single/.agents/config.yaml"; rk "$RKD/single")" "no finding"
+  "$(mkrk single '' $WL >/dev/null; printf "repo-kind: 'workload'\n" > "$RKD/single/.agents/config.yaml"; rk "$RKD/single")" "no finding"
 t_has "…and the kind line among other keys" \
-  "$(mkrk keys workload $WL >/dev/null; printf 'context: repo\nscope: project\nrepo-kind: workload\n' > "$RKD/keys/.agents/config.yaml"; rk "$RKD/keys")" "no finding"
+  "$(mkrk keys '' $WL >/dev/null; printf 'context: repo\nscope: project\nrepo-kind: workload\n' > "$RKD/keys/.agents/config.yaml"; rk "$RKD/keys")" "no finding"
 t_has "a control plane needs its longer list, and has it" "$(rk "$(mkrk plane control-plane README.md AGENTS.md CLAUDE.md LICENSE CHANGELOG.md justfile bin/ tests/ docs/)")" "no finding"
 t_has "a required file that is missing is a name.repo-kind finding naming it" "$(rk "$(mkrk nofile workload AGENTS.md CLAUDE.md justfile docs/)")" "[name.repo-kind] repo-kind:$RKD/nofile:README.md"
 t_has "a required directory that is missing is one too" "$(rk "$(mkrk nodir workload README.md AGENTS.md CLAUDE.md justfile)")" "repo-kind:$RKD/nodir:docs/"

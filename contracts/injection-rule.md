@@ -53,7 +53,7 @@ not a feature.
 
 Box and repo are read on every fire, box first; reached trees come last, and only on a tool event.
 
-**A rule is `context-rules/<scope>/<id>.md` (harbor#1010, harbor/D-43, harbor/D-65).** The id is the file name; `id:` is only for a
+**A rule is `context-rules/<scope>/<id>.md` (harbor#1010, D-43, D-65).** The id is the file name; `id:` is only for a
 rule whose id differs from it. Within a tier, rules run by `order:` (a whole number), then rules with none, each group
 by file name. A repo's `context-rules/user/` is the box tier's source and is never read as that repo's own.
 **The old `inject.d/` layout is retired** (the `dir:inject.d` row in `standards/naming/renames.tsv`): nothing reads

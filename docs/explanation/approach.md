@@ -1,9 +1,3 @@
----
-kind: explanation
-owner: @VytCepas
-status: unreviewed
----
-
 # Harbor — Execution Approach
 
 How to actually build this: thin slices, gates between them, dogfood everything, and **the security floor + a sandbox exist before upstream ever executes against anything real.**

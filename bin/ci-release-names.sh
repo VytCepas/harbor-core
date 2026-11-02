@@ -48,9 +48,7 @@ trap 'rm -rf "$T"' EXIT INT TERM HUP
 
 [ -n "$CONTROLS" ] || CONTROLS="$ROOT/standards/naming/controls.tsv"
 [ -f "$CONTROLS" ] || unchecked "no controls.tsv at $CONTROLS, so the mode of $CONTROL_ID is unknown" "ls $ROOT/standards/naming"
-MODE="$(sh "$_SRC/standard-register.sh" get --as standards/naming/controls.tsv --where "id=$CONTROL_ID" "$CONTROLS" mode)" \
-  || unchecked "$CONTROLS is not the register schemas.tsv declares, so the mode of $CONTROL_ID is unknown" "sh $_SRC/standard-register.sh check"
-case "$MODE" in advisory|inform) MODE=warn ;; esac
+MODE="$(awk -F'\t' -v id="$CONTROL_ID" '/^#/ { next } $1 == id { m = $2; if (m == "advisory" || m == "inform") m = "warn"; print m; exit }' "$CONTROLS")"
 [ -n "$MODE" ] || unchecked "no controls.tsv row for $CONTROL_ID, so its mode is unknown" "add the row to $CONTROLS"
 command -v jq >/dev/null 2>&1 || unchecked "jq is absent, so gh's answers cannot be read" "$(pkg_hint jq)"
 

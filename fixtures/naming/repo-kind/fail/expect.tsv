@@ -7,4 +7,3 @@ fixtures/naming/repo-kind/fail/unknown-kind.txt	name.repo-kind
 fixtures/naming/repo-kind/fail/missing-readme.txt	name.repo-kind
 fixtures/naming/repo-kind/fail/docs-is-a-file.txt	name.repo-kind
 fixtures/naming/repo-kind/fail/justfile-is-a-directory.txt	name.repo-kind
-fixtures/naming/repo-kind/fail/missing-verb.txt	name.repo-verb

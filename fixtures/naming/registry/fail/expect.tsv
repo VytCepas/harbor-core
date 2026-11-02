@@ -28,8 +28,3 @@ fixtures/naming/registry/fail/surface-bad-view	name.registry-shape
 fixtures/naming/registry/fail/kind-bad-bound	name.registry-shape
 fixtures/naming/registry/fail/kind-bad-relation-bounded	name.registry-shape
 fixtures/naming/registry/fail/kind-empty-bound	name.registry-shape
-fixtures/naming/registry/fail/register-undeclared	standard.register-declared
-fixtures/naming/registry/fail/register-row-no-file	standard.register-declared
-fixtures/naming/registry/fail/register-header-mismatch	standard.register-declared
-fixtures/naming/registry/fail/reference-dangling	standard.reference-resolves
-fixtures/naming/registry/fail/reference-dangling-control	standard.reference-resolves,name.control-shape

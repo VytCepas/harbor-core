@@ -9,7 +9,7 @@ run: agent-brief.sh
 ---
 
 <!--
-harbor#953 (#949 harbor/D-44): an inform pack for the brief an Agent call carries. It names what the
+harbor#953 (#949 D-44): an inform pack for the brief an Agent call carries. It names what the
 `prompt` lacks (a done/outcome statement, constraints, an output location) and whether `model` is
 unset, and it NEVER denies: the sentinel is not in the script, so this pack cannot block a call.
 

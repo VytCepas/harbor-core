@@ -3,10 +3,7 @@ kind: decision-record
 status: accepted
 alias: D-89
 date: 2026-10-24
-supersedes: -
-superseded_by: -
 source: harbor#950
-owner: harbor#950
 ---
 
 # Two more moments: event and manual

@@ -170,8 +170,6 @@ if [ "$MODE" = summary ]; then
 fi
 
 emit() {
-  printf -- '---\nkind: generated-doc\nowner: harbor#117\nstatus: generated\nsource: sh bin/status-plan-generate.sh\n---\n'
-  printf '<!-- generated-by: sh bin/status-plan-generate.sh -->\n'
   printf '# PLAN — generated, do not edit\n\n'
   printf 'Which plan ticket is built, DERIVED from each ticket own falsifier rather\n'
   printf 'than from a checkbox. Regenerate with `sh bin/status-plan-generate.sh`; lint rule\n'

@@ -1,9 +1,3 @@
----
-kind: explanation
-owner: @VytCepas
-status: unreviewed
----
-
 # The estate boundary — who owns what, and what crosses
 
 One page for the question "where does this belong?", written because on

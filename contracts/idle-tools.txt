@@ -70,5 +70,3 @@ lint-pr.sh      IDLE  validates a PR title, body and branch (harbor#978); nothin
 policy-resolve.sh  IDLE  the one config order (harbor#1001); its fixture runs it, no CLI calls it yet because the CLIs that read config are other repos or later waves
 gate-pr-plan.sh         VERB  the hand-over step: an agent runs it to derive the operator's merge, approve and re-run commands (harbor#1413); the Stop gate wiring is harbor#1284
 gate-repo-drift.sh       VERB  the operator runs it: each governed repo's GitHub rules, declared in ship.conf, against live, with the commands that close each drift (harbor#1418); not scheduled until the operator says yes
-doc-register-index.sh   VERB  regenerates contracts/README.md and docs/reference/registers.md (harbor#1424); doc-fresh-verify.sh runs its --check from contracts/fresh-checks.tsv
-standard-decision-migrate.sh  VERB  one-shot: an operator or an agent runs it on a repo whose records predate the shared shape (harbor#1429); `--check` is the idempotence proof

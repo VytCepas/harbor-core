@@ -1,7 +1,7 @@
 # The pack loader - `harbor pack`
 
 **Seam:** a workload repo's `harbor-pack/` folder -> the config dir. `bin/pack.sh` is the only reader and writer
-(harbor#1149, harbor/D-80, harbor/D-84). `harbor deploy` runs it (below); `harbor pack` runs it by hand.
+(harbor#1149, D-80, D-84). `harbor deploy` runs it (below); `harbor pack` runs it by hand.
 
 Dependency direction: private -> workload/pack -> core. Core names no pack and no repo; `harbor.toml` `packs`
 ([private-layer.md](./private-layer.md)) lists the repo ids, and `scope-roots.sh --repo <id>` resolves each checkout.
@@ -23,7 +23,7 @@ The target is chosen as every installer chooses it (`bin/deploy-install-lib.sh`)
 ## `harbor-pack/`
 
 ```
-pack.toml   name, version, harbor_version, description - all four, each a quoted string (flat TOML, harbor/D-81)
+pack.toml   name, version, harbor_version, description - all four, each a quoted string (flat TOML, D-81)
 skills/<name>/...   bin/<file>   shims.tsv   conf-keys.txt   terms.tsv   context-rules/user/<file>.md   checks.md   controls.tsv   skill-packs/<core skill>/<name>.md   tests/ (never installed)   README* (ignored)
 ```
 

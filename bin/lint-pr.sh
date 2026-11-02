@@ -38,10 +38,7 @@ fi
 [ -f "$CONTROLS" ] || die "no standards/naming/controls.tsv under $ROOT"
 
 # A rule's mode is controls.tsv's, never written here: block fails the run, shadow is silent, anything else warns.
-mode_of() { # the register is read by name (harbor#1424); an absent row warns
-  _mo="$(sh "$SRC/standard-register.sh" get --as standards/naming/controls.tsv --where "id=$1" "$CONTROLS" mode)" || die "controls.tsv is not the register schemas.tsv declares"
-  printf '%s\n' "${_mo:-warn}"
-}
+mode_of() { awk -F'\t' -v id="$1" '$1 == id { print $2; found = 1; exit } END { if (!found) print "warn" }' "$CONTROLS"; }
 BLOCKED=0
 finding() { # <rule> <message>
   case "$(mode_of "$1")" in

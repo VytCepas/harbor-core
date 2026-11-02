@@ -1,9 +1,3 @@
----
-kind: design
-owner: @VytCepas
-status: unreviewed
----
-
 # Tests and CI on this box
 
 Everything an agent needs to run tests and read CI here without rediscovering it. Each claim names the command or

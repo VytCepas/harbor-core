@@ -3,10 +3,7 @@ kind: decision-record
 status: accepted
 alias: D-74
 date: 2026-10-04
-supersedes: -
-superseded_by: -
 source: research/13-consolidation.md
-owner: @VytCepas
 ---
 
 # Epic done-when 3

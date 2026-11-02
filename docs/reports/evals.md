@@ -1,9 +1,3 @@
----
-kind: report
-owner: @VytCepas
-status: unreviewed
----
-
 # Evals — what was measured about hooks, books and context, and what it settled
 
 **Run 2026-08-07/08.** Every number here was produced on this box. Where a claim

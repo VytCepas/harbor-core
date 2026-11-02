@@ -1,9 +1,3 @@
----
-kind: design
-owner: @VytCepas
-status: unreviewed
----
-
 # Approval gate — the operator approves protected merges and deploys with a click
 
 **Status:** harbor#1018, PR A of the ship contract (`~/Deliverables/2026-10-06-night-stack/SHIP-CONTRACT.md` v1.2).
