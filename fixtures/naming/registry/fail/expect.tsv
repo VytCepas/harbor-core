@@ -33,3 +33,7 @@ fixtures/naming/registry/fail/register-row-no-file	standard.register-declared
 fixtures/naming/registry/fail/register-header-mismatch	standard.register-declared
 fixtures/naming/registry/fail/reference-dangling	standard.reference-resolves
 fixtures/naming/registry/fail/reference-dangling-control	standard.reference-resolves,name.control-shape
+fixtures/naming/registry/fail/seam-unregistered	standard.seam-registered
+fixtures/naming/registry/fail/version-unregistered	standard.version-registered
+fixtures/naming/registry/fail/control-unregistered-hook	name.control-unregistered
+fixtures/naming/registry/fail/control-stable-unproven	name.control-shape

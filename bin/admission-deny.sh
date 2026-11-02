@@ -6,6 +6,8 @@
 #   sh admission-deny.sh --withdraw [--apply] (--live | --dir PATH)     remove the entries WITHDRAWN records
 #   sh admission-deny.sh --prune-inert [--apply] (--live | --dir PATH)  remove deny entries the harness never
 #                                                              consults (Write/NotebookEdit/MultiEdit/Glob PATH rules)
+#   sh admission-deny.sh --print                                   the allow and ask rules contracts/verbs/*.md imply, one
+#                                                              `allow|ask<TAB>Bash(..)<TAB>register` per row; reads no settings.json
 #   The target, --help and every standard flag come from bin/deploy-install-lib.sh (lint D7): no positional dir.
 
 # Extends the SEC-0 read-deny set with EDIT coverage of the same
@@ -52,6 +54,15 @@ il_opt() {
 }
 # PHYSICAL paths and INTENT AS A FLAG (P11-01, harbor#52): a trailing slash, a symlink or a
 # position cannot reach live without --live, and CLAUDE_CONFIG_DIR never picks the dir (harbor#800).
+# --print (harbor#1419): the derived rules alone, so a reader sees a rule per allow/ask row without a target or a dry run.
+if [ "${1:-}" = --print ]; then
+  [ $# -eq 1 ] || il_usage_error '--print takes no other argument'
+  [ -d "$IL_VERBS_DIR" ] || { log_warn "verbs: no registers at $IL_VERBS_DIR (an installed copy): nothing is derived"; exit 1; }
+  for _gvp in allow ask; do
+    il_verbs "$_gvp" | awk -F'\t' -v p="$_gvp" '$1 == "OK" { print p "\tBash(" $2 ")\t" $3 }'
+  done
+  exit 0
+fi
 il_parse "$@"
 APPLY="$IL_APPLY"
 # Combining two modes would make the printed preview describe one thing while the write did another.

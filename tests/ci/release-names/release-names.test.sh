@@ -79,4 +79,5 @@ t_section "usage is 2"
 t_eq "an unknown argument" "exit 2" "$(code --nope)"
 t_eq "--repo without OWNER/NAME" "exit 2" "$(code --repo harbor)"
 t_eq "--repo with nothing after it" "exit 2" "$(code --repo)"
+t_red ci.release-names   # the falsifier this suite names for them (harbor#1422)
 t_done

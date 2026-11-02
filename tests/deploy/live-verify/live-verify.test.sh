@@ -4,6 +4,7 @@
 # with the floor installed and its ledger armed, and a scratch HARBOR_SCOPE_LOCAL_BIN holding the shims.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 LV="$T_ROOT/bin/deploy-live-verify.sh"; SRC="$T_ROOT/bin"; C="$HOME/.claude"; LB="$T_TMP/localbin"
+HARBOR_MANAGED_SETTINGS="$T_TMP/no-managed/managed-settings.json"; export HARBOR_MANAGED_SETTINGS   # the wall step reads it: never the real one
 unset CLAUDE_CONFIG_DIR CI GITHUB_ACTIONS HARBOR_ACCESS_BROWSER_LIVE_URL
 HARBOR_DRIFT_REF=HEAD; HARBOR_SCOPE_LOCAL_BIN="$LB"; export HARBOR_DRIFT_REF HARBOR_SCOPE_LOCAL_BIN
 rc() { "$@" > "$T_TMP/out" 2>&1; echo "exit $?"; }  # the exit; output in $T_TMP/out
@@ -35,9 +36,11 @@ t_eq "every check green exits 0" "exit 0" "$(rc sh "$LV" --live)"
 for id in floor doctor install-drift shims roots sec0-env; do
   t_has "the $id check has its line, and it is green" "$(line "$id")" "ok: [check:deploy.live-verify] $id "
 done
+t_has "the wall has its line: a WARN here, since the fixture box has no managed install (born warn)" "$(line wall)" "WARN: [check:deploy.live-verify] wall — does not hold: confined Bash"
+t_has "...stamped with its own check id as well" "$(line wall)" "[check:drift.wall]"
 t_has "the probes are named even when not run" "$(out)" "skip: [check:deploy.live-verify] probe:secret "
 t_has "and say how to opt in" "$(line probe:secret)" '--probes'
-t_eq "the run ends with its summary" "live-verify: 6 ok, 0 failed, 0 warnings" "$(tail -1 "$T_TMP/out")"
+t_eq "the run ends with its summary" "live-verify: 6 ok, 0 failed, 1 warnings" "$(tail -1 "$T_TMP/out")"
 t_eq "every result line carries the check id" "$(grep -cE '^  (ok|FAIL|WARN|skip): ' "$T_TMP/out")" \
   "$(grep -cE '^  (ok|FAIL|WARN|skip): \[check:deploy.live-verify\] ' "$T_TMP/out")"
 t_has "docs/reference/checks.md registers the id, unscheduled" "$(grep '^| `deploy.live-verify` |' "$T_ROOT/docs/reference/checks.md")" 'not scheduled'
@@ -55,7 +58,7 @@ t_has "the shims line is the FAIL" "$(line shims)" "FAIL: [check:deploy.live-ver
 t_has "it names the shim" "$(line shims)" 'harbor'
 t_has "the fix is the installer's apply" "$(out)" "fix: sh $SRC/deploy-shim-install.sh --apply --live"
 t_has "the other checks stay green" "$(line roots)" "ok: [check:deploy.live-verify] roots "
-t_eq "the summary counts it" "live-verify: 5 ok, 1 failed, 0 warnings" "$(tail -1 "$T_TMP/out")"
+t_eq "the summary counts it" "live-verify: 5 ok, 1 failed, 1 warnings" "$(tail -1 "$T_TMP/out")"
 rm -f "$LB/harbor"
 t_eq "a missing shim is red too" "exit 1" "$(rc sh "$LV" --live)"
 sh "$SRC/deploy-shim-install.sh" --apply --live > /dev/null 2>&1
@@ -77,7 +80,7 @@ t_has "it names the missing key" "$(line sec0-env)" 'DISABLE_ERROR_REPORTING'
 t_has "the fix is deploy's sec0 apply, never sec0-harden run bare (deploy is the only live entry)" "$(out)" \
   "fix: sh $SRC/deploy.sh --only sec0 --apply --live"
 t_has "the other checks stay green" "$(line roots)" "ok: [check:deploy.live-verify] roots "
-t_eq "the summary counts it" "live-verify: 5 ok, 1 failed, 0 warnings" "$(tail -1 "$T_TMP/out")"
+t_eq "the summary counts it" "live-verify: 5 ok, 1 failed, 1 warnings" "$(tail -1 "$T_TMP/out")"
 sh "$SRC/deploy-harden.sh" --apply --live > /dev/null 2>&1
 t_eq "sec0-harden's own apply repairs it (no drift left for the next deploy)" "$_env0" "$(jq -S '.env' "$C/settings.json")"
 t_eq "green again" "exit 0" "$(rc sh "$LV" --live)"
@@ -112,7 +115,7 @@ for id in floor install-drift shims sec0-env; do
 done
 t_has "doctor reads the tools, not the install, and still runs" "$(line doctor)" "ok: [check:deploy.live-verify] doctor "
 t_has "roots reads the checkout, and still runs" "$(line roots)" "ok: [check:deploy.live-verify] roots "
-t_eq "the summary counts the one failure" "live-verify: 2 ok, 1 failed, 0 warnings" "$(tail -1 "$T_TMP/out")"
+t_eq "the summary counts the one failure" "live-verify: 2 ok, 1 failed, 1 warnings" "$(tail -1 "$T_TMP/out")"
 mkdir -p "$NH/.claude"; NHP="$(cd "$NH/.claude" && pwd -P)"
 t_eq "a config dir with no settings.json is the same precondition" "exit 1" "$(rcx sh "$LV" --live)"
 t_has "...naming the file" "$(grep -m1 '^  FAIL: ' "$T_TMP/out")" "precondition — no settings.json in $NHP"
@@ -149,4 +152,5 @@ t_exit "a CLAUDE_CONFIG_DIR naming another dir is refused" 2 env CLAUDE_CONFIG_D
 t_exit "--help answers" 0 sh "$LV" --help
 t_eq "harbor check dispatches to it" "exit 0" "$(rc sh "$SRC/harbor" check --live)"
 t_has "through the dispatcher, the same lines" "$(out)" "ok: [check:deploy.live-verify] roots "
+t_red check.live-verify   # the falsifier this suite names for them (harbor#1422)
 t_done

@@ -44,4 +44,6 @@ t_has "and prints FAIL with its id" "$out" "FAIL: [name.renderer-used]"
 t_section "usage"
 t_exit "an unknown flag" 2 sh "$LR" --nope
 t_exit "--help" 0 sh "$LR" --help
+t_red name.renderer-used   # the falsifier this suite names for them (harbor#1422)
+t_red name.renderer-used   # bin/lint-renderer.sh runs outside the conventions linter (harbor#1422)
 t_done

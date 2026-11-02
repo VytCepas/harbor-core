@@ -430,4 +430,5 @@ t_section "bytecode in the scaffolder's payload is found where the registry puts
 mkdir -p "$T_TMP/yard/templates/base/__pycache__"; printf 'x' > "$T_TMP/yard/templates/base/__pycache__/m.pyc"
 _py="$(with env HARBOR_SCOPE_SCAFFOLDER="$T_TMP/yard" sh "$TOOL")"
 t_has "a __pycache__ under the scaffolder's templates is reported" "$_py" "pycache-in-payload"
+t_red check.housekeeping   # the falsifier this suite names for them (harbor#1422)
 t_done

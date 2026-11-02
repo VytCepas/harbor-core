@@ -38,4 +38,5 @@ t_eq "protobuf is refused with a reason" 415 "$(post application/x-protobuf /v1/
 t_eq "a path that is not OTLP is 404" 404 "$(post application/json /other)"
 t_eq "metrics are accepted and dropped" 200 "$(post application/json /v1/metrics)"
 kill "$PID" 2>/dev/null; wait "$PID" 2>/dev/null
+t_red check.otlp-receiver   # the falsifier this suite names for them (harbor#1422)
 t_done

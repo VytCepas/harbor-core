@@ -226,11 +226,12 @@ SUITE="tests/deploy/restore/recover.test.sh:bin/recover-test.sh tests/lib/core.s
 # manifest blob, never a working tree whose branch would decide which presets are valid (harbor#1044 review r3 #5).
 # repo-slug.txt: harbor's own owner/name, which log-lib's repo_slug reads beside an installed tool (main-tip-verdict, runner-switch,
 # gh-plan, ci-governor and findings-run), where no checkout's origin can name it; nothing a session can write may (harbor#1149).
-DATA="contracts/obligation-kinds.tsv:bin/obligation-kinds.tsv contracts/merge-stack-union.txt:bin/merge-stack-union.txt contracts/required-checks.tsv:bin/required-checks.tsv docs/reference/checks.md:bin/docs/reference/checks.md contracts/event-rules.tsv:bin/event-rules.tsv contracts/session-waiting.tsv:bin/session-waiting.tsv contracts/repo-slug.txt:bin/repo-slug.txt contracts/roots.tsv:bin/roots.tsv standards/naming/repo-kinds.tsv:bin/repo-kinds.tsv"
+DATA="contracts/obligation-kinds.tsv:bin/obligation-kinds.tsv contracts/merge-stack-union.txt:bin/merge-stack-union.txt contracts/required-checks.tsv:bin/required-checks.tsv docs/reference/checks.md:bin/docs/reference/checks.md contracts/event-rules.tsv:bin/event-rules.tsv contracts/session-waiting.tsv:bin/session-waiting.tsv contracts/repo-slug.txt:bin/repo-slug.txt contracts/roots.tsv:bin/roots.tsv standards/naming/repo-kinds.tsv:bin/repo-kinds.tsv standards/naming/controls.tsv:bin/controls.tsv"
 
 # scope-roots.sh (harbor#966) with its table bin/roots.tsv: ci-runners, fleet-snapshot-refresh and deploy-fleet find a sibling checkout
 # through the repo registry from here; scope-roots.sh reads roots.tsv beside itself when it has no contracts/ above it.
 # repo-kinds.tsv likewise: the installed scope-roots.sh --registry-check judges the kind column against it (harbor#961).
+# controls.tsv: the installed injection engine reads each pack's mode from its row, beside itself (harbor#1422).
 
 # ── REFRESH-ONLY: files this installer UPDATES but will never INSTALL ────────
 # admission-integrity.sh (B6) is the one file in the floor with no reachable update

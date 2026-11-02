@@ -165,4 +165,5 @@ D="$T_TMP/bare"; mkdir -p "$D/bin"
 t_has "a tree without the tool is skipped, said so" "$(lint1 doc.refs-conform "$D")" "skip: no bin/doc-refs.sh"
 t_eq "...with no violation" "0" "$(vcount "$(lint1 doc.refs-conform "$D")")"
 
+t_red doc.refs-conform   # bin/doc-refs.sh, which the conventions rule relays, goes red above (harbor#1422)
 t_done
