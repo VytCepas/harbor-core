@@ -1,0 +1,10 @@
+# core-writes-allow.tsv (harbor#1275) - core scripts that may write into the checkout because the write is not a stray file.
+# Columns, tab-separated, one header row:  path  target  reason
+#   path    a tracked file, or a directory prefix ending in "/"
+#   target  the path under the tree the script writes, or * for every target of that script
+#   reason  required: why the write cannot leave an untracked file in a harbor-core clone
+# Read by bin/lint-core-writes.sh; a row without a reason refuses the run. A tracked core file, a gitignored path and a mkdir of a
+# tracked directory are never counted, so they need no row: a row is for what the rules cannot see (a file the script creates
+# and the repo does not track, written because the operator ran the command that says so).
+path	target	reason
+bin/status-plan-generate.sh	docs/generated/plan.md	writes only when its dev-layer source docs/reports/platform-build-tickets.md exists; in a core clone it refuses before any write (harbor#1275)
