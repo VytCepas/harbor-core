@@ -86,5 +86,4 @@ t_eq "advisory, before its remove_by date: green" "0" "$(HARBOR_SCOPE_ROOT="$D" 
 t_eq "blocking, from its remove_by date: NEW and red" "1" "$(HARBOR_SCOPE_ROOT="$D" LINT_NAME_BIN="$TMP/judge-block.sh" sh "$R" >/dev/null 2>&1; echo $?)"
 printf '#!/bin/sh\nprintf "A\\tname.case\\tWarn_Bad.md\\n"\n' > "$TMP/judge-other.sh"
 t_eq "control: any other advisory finding is still NEW" "1" "$(HARBOR_SCOPE_ROOT="$D" LINT_NAME_BIN="$TMP/judge-other.sh" sh "$R" >/dev/null 2>&1; echo $?)"
-t_red check.lint.name-ratchet   # the falsifier this suite names for them (harbor#1422)
 t_done

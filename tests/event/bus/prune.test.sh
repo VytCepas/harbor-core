@@ -50,5 +50,4 @@ if [ "$(id -u)" != 0 ]; then
   t_eq "an emit whose sweep fails still exits 0" 0 "$rc"
   chmod 700 "$BUS"
 else echo "  skip: running as root, which can delete from a read-only dir — the red case is unprovable here"; fi
-t_red check.event.retention   # the falsifier this suite names for them (harbor#1422)
 t_done

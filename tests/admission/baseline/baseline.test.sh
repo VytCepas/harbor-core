@@ -497,4 +497,4 @@ cp "$MUT.orig" "$MUT"; rm -f "$MUT.orig"
 t_eq "the guard re-arms after the mutant is restored" 2 "$(fire admission-bash.sh "$(bash_j 'rm -rf /')")"
 
 ff_sealed
-t_red ci.security-baseline-suite; t_done   # t_red: the gate suite this row names (harbor#1422)
+t_done

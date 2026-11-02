@@ -239,5 +239,4 @@ else
   t_eq "the follower launchd runs: exit 0, so KeepAlive SuccessfulExit=false leaves it down" 0 "$(follow_rc env PATH="$NP" /bin/sh "$ED" dispatch)"
   t_has "...and checks.log says it is not following" "$(cat "$CACHE/checks.log")" "NOT FOLLOWING: perl is not on PATH"
 fi
-t_red check.event.dispatch   # the falsifier this suite names for them (harbor#1422)
 t_done

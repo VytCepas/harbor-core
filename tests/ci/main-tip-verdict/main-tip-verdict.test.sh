@@ -318,5 +318,4 @@ t_eq "...and writes no verdict that would leave harbor out" no "$([ -f "$CACHE/m
 _np1="$(FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_CI_TIP_REPO=other/fork HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CHECK_RECEIPTS="$CACHE/checks" HARBOR_TEST_NOW="$NOW" sh "$NOPIN/ci-main-tip-verdict.sh" 2>&1; echo "rc=$?")"
 t_has "...unless HARBOR_CI_TIP_REPO names the one repo to judge" "$_np1" 'rc=0'
 
-t_red check.main-tip-verdict   # the falsifier this suite names for them (harbor#1422)
 t_done

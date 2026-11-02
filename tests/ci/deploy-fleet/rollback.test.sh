@@ -96,5 +96,4 @@ fx_mutant "MF a reused snapshot id is trusted" 's/^  \[ -n "\$SID" \] && \[ "\$S
 stale_world; ship night >/dev/null
 t_eq "the mutant restores an older run's snapshot" "restore snap-1" "$(grep '^restore' "$SF/ops.log")"
 SHIP=''
-t_red check.deploy   # the falsifier this suite names for them (harbor#1422)
 t_done

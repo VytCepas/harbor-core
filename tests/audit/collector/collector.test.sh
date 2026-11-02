@@ -91,5 +91,4 @@ printf '# forged\n' >> "$ST/checkpoints/2026-10-08.tsv"
 t_eq "an edited checkpoint fails its signature" 1 "$(run --verify 2026-10-08)"
 t_eq "an unknown argument is a usage error" 2 "$(run --bogus)"
 chflags -R nouappnd "$ST" 2>/dev/null || :   # append-only files cannot be unlinked: let the temp dir go
-t_red check.collector check.collector-checkpoint   # the falsifier this suite names for them (harbor#1422)
 t_done

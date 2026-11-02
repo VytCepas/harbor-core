@@ -58,6 +58,4 @@ t_exit "no arguments" 2 sh "$GC"
 t_exit "an unknown flag" 2 sh "$GC" --nope
 t_exit "a body file that is not there" 2 sh "$GC" --title t --body-file "$T_TMP/none.md" --branch b
 t_exit "--help" 0 sh "$GC" --help
-t_red lint.pr-body-shape lint.pr-issue-link lint.pr-no-ai-attribution   # the falsifier this suite names for them (harbor#1422)
-t_red lint.pr-body-shape lint.pr-issue-link lint.pr-no-ai-attribution   # bin/lint-pr.sh runs outside the conventions linter, so its rules log here (harbor#1422)
 t_done

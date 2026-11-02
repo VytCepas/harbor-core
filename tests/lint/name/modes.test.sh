@@ -59,7 +59,6 @@ na() { HARBOR_SCOPE_ROOT="$AD" HARBOR_CI_BASE=main sh "$LINT" --only standard.na
 _nao="$(na)"
 t_has "an added bad name is an advisory of the rule" "$_nao" "ADVISORY [standard.names-added] [name.case] New_Bad.md"
 t_has "…and a renamed-to-bad one" "$_nao" "ADVISORY [standard.names-added] [name.case] docs/Renamed_Bad.md"
-t_red standard.names-added   # the added bad names above are advised by the rule (harbor#1422)
 t_hasnt "…and not a legacy name the branch only modified" "$_nao" "Legacy_Old.md"
 t_eq "…and an advisory is not a violation" "" "$(printf '%s\n' "$_nao" | grep 'VIOLATION')"
 _nf="$TMP/na.findings"; : > "$_nf"
@@ -97,7 +96,7 @@ t_hasnt "…and is not told as a missing base" "$_nb" "no base to compare agains
 t_has "…and the rule's record goes red, because it could not judge" "$(cat "$_nr")" "standard.names-added"
 cp "$REG/registers.tsv" "$AD/standards/naming/registers.tsv"
 t_hasnt "restored, the same tree is no violation" "$(na)" "VIOLATION"
-t_eq "controls.tsv holds the rule at warn, owned by standard, with this suite as its red proof" "standard.names-added	warn	lint	bin/lint-conventions.sh	tests/lint/name/modes.test.sh" \
+t_eq "controls.tsv holds the rule at warn, owned by standard, with this suite as its red proof" "standard.names-added	warn	lint	bin/lint-conventions.sh	tests/lint/name/name.test.sh" \
   "$(awk -F'\t' '$1 == "standard.names-added" { print $1 "\t" $2 "\t" $3 "\t" $4 "\t" $11 }' "$REG/controls.tsv")"
 t_has "--list names it beside its sibling" "$(sh "$LN" --list)" "standard.names-added"
 

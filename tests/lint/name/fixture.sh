@@ -12,10 +12,7 @@ mini() { # <dir>
   # the sources the census reads, real, so a copy is a tree whose every control id is carried (an empty census is red)
   mkdir -p "$1/contracts" "$1/context-rules" "$1/docs/reference"
   cp "$T_ROOT"/bin/admission-*.sh "$T_ROOT"/bin/library-admission.sh "$T_ROOT/bin/lint-conventions.sh" "$1/bin/"; cp "$T_ROOT/docs/reference/checks.md" "$1/docs/reference/"
-  # an empty seam register (its header only), so the seam rule runs in the copy: a vendored copy with no row is red there too (harbor#1425)
-  grep -E '^#|^id	' "$T_ROOT/contracts/seams.tsv" > "$1/contracts/seams.tsv"
   cp "$T_ROOT/contracts/required-checks.tsv" "$1/contracts/"; cp -R "$T_ROOT"/context-rules/. "$1/context-rules/"
-  mkdir -p "$1/hooks"; cp "$T_ROOT/hooks/pre-commit" "$T_ROOT/hooks/pre-push" "$T_ROOT/hooks/commit-msg" "$1/hooks/"   # the hook census (harbor#1422)
   # a stub for every file a control names as its engine or its proof, so the copy is a tree controls.tsv can be judged in
   awk -F'\t' '/^#/ || $1 == "id" { next } { print $4; print $11 }' "$REG/controls.tsv" | sort -u | awk '$0 != "-"' | while IFS= read -r _p; do
     mkdir -p "$1/$(dirname "$_p")"; [ -e "$1/$_p" ] || : > "$1/$_p"

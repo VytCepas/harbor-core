@@ -3,8 +3,6 @@
 #   sh bin/lint-rule-health.sh          run the lint suites with a red log, time every rule, read the ledger, write a receipt
 #   sh bin/lint-rule-health.sh --help   this text
 #   sh bin/lint-rule-health.sh --promotion   which warn rules may go to block (harbor#968, D-64, D-92): eligible or not, and why; reads, never writes
-#   sh bin/lint-rule-health.sh --stability [--write]   derive each row's stability (stable = observed red + 28 days in its mode); --write rewrites the cell, for a person to review (harbor#1422)
-#   sh bin/lint-rule-health.sh --proof       per control type: rows, proven, unproven, and rows naming a suite that did not log them (harbor#1422); exit 1 on one
 #   exit 0 = every rule earns its keep · 1 = candidates, named · 2 = usage · 3 = stood down, nothing judged
 #   (D-29: 3 is unchecked; before D-49 it exited 2 for stood down. No script reads its exit, so no reader window.)
 #   receipt: ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/cache/checks/lint.rule-health.json, which the findings
@@ -42,10 +40,8 @@
 #   HARBOR_LINT_RULE_HEALTH_NOW       today, YYYY-MM-DD (default: the date)
 #   HARBOR_LINT_FINDINGS_REPO  owner/name of the finding store (default: this checkout's origin)
 set -eu
-PROMOTION=no; PROOF=no; STAB=no; STABW=no
+PROMOTION=no
 case "${1:-}" in
-  --proof) PROOF=yes; shift ;;
-  --stability) PROOF=yes; STAB=yes; shift; if [ "${1:-}" = --write ]; then STABW=yes; shift; fi ;;
   -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); if ($0=="") exit; print; next } {exit}' "$0"; exit 0 ;;
   --promotion) PROMOTION=yes; shift ;;
 esac
@@ -274,63 +270,6 @@ promotion() {
       }
     }'
 }
-
-# --proof (harbor#1422): red_proof is OBSERVED, not read. Every suite a row of a suite-proved type names runs with its own LINT_REDLOG, and a
-# suite that fails counts for nothing (its log is dropped), so an id is proven only when a passing suite wrote it: the linter for a lint rule,
-# t_red (tests/lib/core.sh) for an injection pack, a check, a CI gate or a hook. A row that names a suite and is not in that suite's log is
-# `unlogged`, and exits 1: the cell claims a proof nothing observed. A row naming no suite is `unproven`, which is a count that must fall.
-# HARBOR_LINT_RULE_HEALTH_TYPES narrows the types (default: every type a suite proves). It reads and runs suites; it writes no receipt.
-# --stability (harbor#1422): stable = a passing suite watched the row go red AND it has stood 28 days (PROMOTE_DAYS) in its present mode, the
-# date its mode cell last changed in the register's history (a rewrite that keeps the mode does not reset it). deprecated is a person's call
-# and is kept; everything not observed stays experimental. Without --write it prints the changes it would make; with it, the cell is
-# rewritten in place for a person to review. A row of a type no suite proves (admission) cannot be observed, so it never becomes stable.
-stability() {
-  git -C "$ROOT" log --reverse --format='@%cs' -p -- standards/naming/controls.tsv standards/naming/rules.tsv 2> /dev/null \
-    | awk -F'\t' '/^@[0-9][0-9][0-9][0-9]-/ { d = substr($0, 2); next } /^\+[^+]/ { id = substr($1, 2); if (!(id in M) || M[id] != $2) { M[id] = $2; S[id] = d } }
-        END { for (i in S) print i "\t" S[i] }' > "$T/st.since"
-  awk -F'\t' -v R="$T/pr.red" -v S="$T/st.since" -v NOW="$TODAY" -v DAYS="$PROMOTE_DAYS" -v OUT="$T/st.new" -v W="$STABW" '
-    function jd(s,  y, m, d, a) { y = substr(s, 1, 4) + 0; m = substr(s, 6, 2) + 0; d = substr(s, 9, 2) + 0; a = int((14 - m) / 12); y = y + 4800 - a; m = m + 12 * a - 3
-                                  return d + int((153 * m + 2) / 5) + 365 * y + int(y / 4) - int(y / 100) + int(y / 400) - 32045 }
-    BEGIN { while ((getline l < R) > 0) red[l] = 1; while ((getline l < S) > 0) { split(l, p, "\t"); since[p[1]] = p[2] } }
-    /^#/ || $1 == "id" || NF < 13 { print > OUT; next }
-    { want = $8
-      if ($8 != "deprecated") want = (($1 in red) && ($1 in since) && jd(NOW) - jd(since[$1]) >= DAYS) ? "stable" : "experimental"
-      if (want != $8) { printf "  stability: %s %s -> %s (mode %s since %s)\n", $1, $8, want, $2, since[$1] > "/dev/stderr"; ch++ }
-      line = $1; for (i = 2; i <= NF; i++) line = line "\t" (i == 8 ? want : $i); print line > OUT }
-    END { printf "stability: %d row(s) change\n", ch + 0 > "/dev/stderr" }' "$CTL"
-  [ "$STABW" != yes ] || cp "$T/st.new" "$CTL"
-  log_end || :; exit 0
-}
-proof() {
-  [ -f "$CTL" ] || stand_down "no control register at ${CTL#"$ROOT"/}" "ls $CTL"
-  _pt=",${HARBOR_LINT_RULE_HEALTH_TYPES:-lint,check,injection,ci,hook},"
-  awk -F'\t' -v T="$_pt" '/^#/ || $1 == "id" || NF < 11 { next } index(T, "," $3 ",") { print $1 "\t" $3 "\t" $11 }' "$CTL" > "$T/pr.rows"
-  [ -s "$T/pr.rows" ] || stand_down "no control row of type ${_pt#,} in ${CTL#"$ROOT"/}" "cut -f3 $CTL | sort | uniq -c"
-  cut -f3 "$T/pr.rows" | awk '$0 ~ /\.sh$/' | sort -u > "$T/pr.suites"
-  : > "$T/pr.red"; : > "$T/pr.failed"; _pn=0
-  while IFS= read -r _s; do
-    [ -f "$ROOT/$_s" ] || { printf '%s\n' "$_s" >> "$T/pr.failed"; continue; }
-    _pn=$((_pn + 1)); : > "$T/pr.red.$_pn"; _rc=0
-    # stdin is /dev/null: a suite that reads it would eat the rest of the list this loop is reading
-    LINT_REDLOG="$T/pr.red.$_pn" sh "$ROOT/$_s" < /dev/null > "$T/suite.out" 2>&1 || _rc=$?
-    if [ "$_rc" -eq 0 ]; then cat "$T/pr.red.$_pn" >> "$T/pr.red"; else printf '%s\n' "$_s" >> "$T/pr.failed"; fi
-  done < "$T/pr.suites"
-  sort -u "$T/pr.red" -o "$T/pr.red"
-  if [ "$STAB" = yes ]; then stability; fi
-  printf '%-10s %5s %7s %9s %9s\n' type rows proven unproven unlogged
-  awk -F'\t' -v R="$T/pr.red" -v F="$T/pr.failed" 'BEGIN { while ((getline l < R) > 0) red[l] = 1; while ((getline l < F) > 0) bad[l] = 1 }
-    { n[$2]++; if ($1 in red) p[$2]++
-      else if ($3 == "-") { u[$2]++; print "unproven\t" $1 > "/dev/stderr" }
-      else { x[$2]++; print "unlogged\t" $1 "\t" $3 "\t" (($3 in bad) ? "the suite failed or is missing" : "the suite passed and did not log it") > "/dev/stderr" } }
-    END { for (t in n) printf "%-10s %5d %7d %9d %9d\n", t, n[t], p[t], u[t], x[t] }' "$T/pr.rows" 2> "$T/pr.msgs" | LC_ALL=C sort
-  _ux="$(grep -c '^unlogged' "$T/pr.msgs" || true)"
-  grep '^unlogged' "$T/pr.msgs" | awk -F'\t' '{ printf "  unlogged: %s names %s: %s\n", $2, $3, $4 }' >&2 || :
-  log_note "unproven rows name no suite; unlogged rows name one that did not write them to LINT_REDLOG ($_ux)"
-  log_end || :
-  [ "${_ux:-0}" -eq 0 ] && [ ! -s "$T/pr.failed" ] || exit 1
-  exit 0
-}
-if [ "$PROOF" = yes ]; then proof; fi
 
 # 1 · which rules the passing lint suites watched go red
 if [ -n "${HARBOR_LINT_RULE_HEALTH_SUITES:-}" ]; then

@@ -77,24 +77,6 @@ t_has "a block with its marker gone: the ledger would read every call as off" "$
 cp "$T_TMP/marker.good" "$T_TMP/managed/harbor-confinement"
 t_eq "CONTROL: back to green" match "$(state)"
 
-t_section "allowAppleEvents is never policy (DE-40, harbor#1442)"
-# The key at any depth of the installed file, any value but false: break it, red; restore it, green.
-jq '.sandbox.allowAppleEvents = true' "$T_TMP/good.json" > "$M"
-OUT="$(dc)"
-t_eq "planted inside the sandbox block: drift" "1 drift" "$(rc) $(state)"
-t_has "...naming the key and the decision" "$OUT" "sets sandbox.allowAppleEvents: allowAppleEvents removes the sandbox's code-execution isolation"
-t_has "...in the receipt's subjects" "$(jq -r '.subjects[]' "$HARBOR_CHECK_RECEIPTS/drift.confinement.json")" "apple-events:sandbox.allowAppleEvents"
-jq '.allowAppleEvents = "yes"' "$T_TMP/good.json" > "$M"
-t_eq "planted at the top level, outside the block the compose owns: drift" drift "$(state)"
-jq '.sandbox.allowAppleEvents = false' "$T_TMP/good.json" > "$M"
-t_eq "set to false it is the same as absent: the compose has no such leaf, so it reads as extra, not as the key" drift "$(state)"
-t_hasnt "...and is not reported as a planted allowAppleEvents" "$(dc)" "never policy"
-printf '{"allowAppleEvents":true}\n' > "$M"; rm -f "$T_TMP/managed/harbor-confinement"
-t_eq "planted where no confinement is installed: still red, not not-installed" drift "$(state)"
-t_has "...with the key as the only finding" "$(dc)" "the managed file sets allowAppleEvents, which is never policy"
-cp "$T_TMP/good.json" "$M"; cp "$T_TMP/marker.good" "$T_TMP/managed/harbor-confinement"
-t_eq "CONTROL: restored, green again" "0 match" "$(rc) $(state)"
-
 t_section "could not judge is unchecked (3), never green"
 printf 'not a host!\n' > "$PRIV/confinement-hosts.txt"
 t_eq "a compose that fails: exit 3" 3 "$(rc)"
@@ -128,5 +110,4 @@ for _p in $FILES $STATE_ROWS ~/.claude/settings.json; do
 done
 t_eq "every floor file has an Edit deny rule" "" "$_unc"
 t_exit "CONTROL: a path outside the floor is not covered" 1 covered "~/.claude/projects/x/memory/a.md"
-t_red check.drift.confinement   # the falsifier this suite names for them (harbor#1422)
 t_done

@@ -74,8 +74,6 @@
 /bin/deploy-confinement.sh @VytCepas
 /contracts/confinement-hosts.txt @VytCepas
 /contracts/confinement-paths.txt @VytCepas
-/bin/scope-managed-folders.sh @VytCepas
-/contracts/main-folders.txt @VytCepas
 /standards/naming/controls.tsv @VytCepas
 /bin/access-browser.sh @VytCepas
 /bin/access-github-app-install.sh @VytCepas
@@ -140,10 +138,8 @@
 /bin/doc-shape.sh @VytCepas
 /bin/drift-confinement.sh @VytCepas
 /bin/drift-install.sh @VytCepas
-/bin/drift-launchd-wall.sh @VytCepas
 /bin/drift-reference-check.sh @VytCepas
 /bin/drift-renew-check.sh @VytCepas
-/bin/drift-wall.sh @VytCepas
 /bin/eval-pass-score.sh @VytCepas
 /bin/eval-redteam-corpus-run.sh @VytCepas
 /bin/eval-redteam-corpus.sh @VytCepas
