@@ -249,4 +249,5 @@ chk "$FX/s-green.json"; chk "$FX/s-today.json"
 t_eq "settings.json is byte-identical after a green and a red check" "$BEFORE" "$(cksum < "$FX/s-green.json")$(cksum < "$FX/s-today.json")"
 t_has "--help shows the usage block, not only the first paragraph" "$(sh "$TOOL" --help)" "sh access-environment.sh --check"
 
+t_red drift.repo-visibility   # the falsifier this suite names for them (harbor#1422)
 t_done

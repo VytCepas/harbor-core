@@ -101,6 +101,12 @@ while IFS="$(printf '\t')" read -r pack shape id arm label payload; do
   case "$got:$arm" in fire:fire|deny:deny) seen_fire="$seen_fire $id" ;; silent:silent) seen_silent="$seen_silent $id" ;; esac
 done < "$T/rows.tsv"
 
+# A pack whose FIRE or DENY row held went red on its trap: the register's red proof for it (harbor#1422, bin/lint-rule-health.sh).
+for _id in $seen_fire; do
+  _cid="$(awk -F'\t' -v i="$_id" '$3 == "injection" && $12 == i { print $1; exit }' "$T_ROOT/standards/naming/controls.tsv")"
+  [ -z "$_cid" ] || t_red "$_cid"
+done
+
 t_section "every tracked note has both arms, or is a named exemption"
 for id in $(tracked_ids); do
   case " $EXEMPT " in *" $id "*) continue ;; esac

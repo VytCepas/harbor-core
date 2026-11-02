@@ -1,0 +1,1 @@
+probe	controls.tsv	type=hook	hook-rules:fixtures/naming/registry/fail/control-unregistered-hook/pre-push	a fixture census: a rule in a git hook that controls.tsv has no row for (harbor#1422)

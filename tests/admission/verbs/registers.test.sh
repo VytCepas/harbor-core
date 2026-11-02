@@ -25,6 +25,14 @@ vr_derive() { # <tree> <dir> -> <dir>/settings.json as floor-deny --apply writes
   mkdir -p "$2"; printf '{"permissions":{"allow":[],"deny":[]}}\n' > "$2/settings.json"
   CLAUDE_CONFIG_DIR="$2" sh "$1/bin/admission-deny.sh" --apply --dir "$2" > "$2/fd.log" 2>&1; echo "$?" > "$2/fd.rc"
 }
+vr_print() { sh "$1/bin/admission-deny.sh" --print; } # <tree> -> allow|ask TAB Bash(rule) TAB register, one per derived rule
+vr_pcheck() { # <register.md> <print-output-file> -> one line per row of that file with no --print rule, and per --print rule with no row
+  _f="${1##*/}"; _w="$T_TMP/pchk"; rm -rf "$_w"; mkdir -p "$_w"
+  sh "$RD" rows "$1" | awk -F'\t' '($4 == "allow" || $4 == "ask") && ($2 ~ /^[a-z][a-z-]* [a-z][a-z-]*( |$)/ || ($4 == "ask" && $2 ~ /^[a-z][a-z-]* \*$/)) && $2 !~ /[<>`|;&$]/ { print $4 "\tBash(" $2 ")" }' | sort -u > "$_w/want"
+  awk -F'\t' -v f="$_f" '$3 == f { print $1 "\t" $2 }' "$2" | sort -u > "$_w/have"
+  comm -23 "$_w/want" "$_w/have" | sed "s/^/$_f: register row has no --print rule: /"
+  comm -13 "$_w/want" "$_w/have" | sed "s/^/$_f: --print rule has no register row: /"
+}
 vr_check() { # <register.md> <settings.json> -> one line per disagreement between that file and the rules, nothing when they agree
   _f="${1##*/}"; _w="$T_TMP/chk"; rm -rf "$_w"; mkdir -p "$_w"
   sh "$RD" rows "$1" | cut -f2- > "$_w/rows"        # spelling, class, perm, actor, instead
@@ -75,6 +83,10 @@ t_eq "floor-deny --apply exits 0" 0 "$(cat "$T_TMP/real/fd.rc")"
 t_hasnt "floor-deny skipped no row" "$(cat "$T_TMP/real/fd.log")" "so it is skipped"
 t_has "the dry-run log names a derived rule" "$(cat "$T_TMP/real/fd.log")" "allow rule (verbs): Bash(gh pr create *)"
 for _f in $FILES; do t_eq "$_f: no disagreement" "" "$(vr_check "$VD/$_f" "$T_TMP/real/settings.json")"; done
+vr_print "$T_TMP/tree" > "$T_TMP/print.tsv"
+for _f in $FILES; do
+  t_eq "$_f: --print shows a rule for every allow and ask row, and no other" "" "$(vr_pcheck "$VD/$_f" "$T_TMP/print.tsv")"
+done
 t_has "gcal-write asks" "$(jq -r '.permissions.ask[]' "$T_TMP/real/settings.json")" "Bash(gcal-write *)"
 t_has "cu asks on --anyway" "$(jq -r '.permissions.ask[]' "$T_TMP/real/settings.json")" "Bash(cu set *--anyway*)"
 t_hasnt "gh merge has no allow rule" "$(jq -r '.permissions.allow[]' "$T_TMP/real/settings.json")" "Bash(gh pr merge"
@@ -94,6 +106,9 @@ for _r in "git.md|git ls-tree *" "gh.md|gh pr create *" "cu.md|cu show *" "mail.
   vr_tree "$T_TMP/t-$_f"; cp "$T_TMP/m/$_f" "$T_TMP/t-$_f/contracts/verbs/$_f"; vr_derive "$T_TMP/t-$_f" "$T_TMP/d-$_f"
   t_hasnt "$_f: floor-deny reads that file, so the rule is gone" "$(jq -r '.permissions.allow[]' "$T_TMP/d-$_f/settings.json")" "Bash($_s)"
   t_eq "$_f: and the check passes on what it derived" "" "$(vr_check "$T_TMP/m/$_f" "$T_TMP/d-$_f/settings.json")"
+  vr_print "$T_TMP/t-$_f" > "$T_TMP/print-$_f.tsv"
+  t_has "$_f: --print still lists the rule the flipped row implied, and the check says so" "$(vr_pcheck "$T_TMP/m/$_f" "$T_TMP/print.tsv")" "$_f: --print rule has no register row: allow	Bash($_s)"
+  t_eq "$_f: --print on the tree with the flipped register drops it, and the check passes" "" "$(vr_pcheck "$T_TMP/m/$_f" "$T_TMP/print-$_f.tsv")"
 done
 
 t_section "red: settings.json lacks a rule a register implies, or carries one no register does"

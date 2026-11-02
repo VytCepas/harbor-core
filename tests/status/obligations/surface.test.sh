@@ -337,4 +337,5 @@ redproof "lint X9: the row reader without the dot" case_lint "$T_ROOT/bin/lint-c
 t_eq "the register row itself exists, with its five cells and its disable command" yes "$(grep '^| `status.obligations` |' "$T_ROOT/docs/reference/checks.md" | awk -F'|' 'NF == 7 && $6 ~ /Disable:/ && $5 ~ /OVERDUE/ { print "yes" }')"
 t_eq "and has its Platforms row" 1 "$(grep -c '^| status.obligations | inherits' "$T_ROOT/docs/reference/checks.md" | tr -d ' ')"
 
+t_red check.status.obligations   # the falsifier this suite names for them (harbor#1422)
 t_done

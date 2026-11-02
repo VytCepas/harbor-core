@@ -247,4 +247,5 @@ verdict="$( STATE_DIR="$T_TMP/lockrace"; mkdir -p "$STATE_DIR"; L="$STATE_DIR/ti
   cat "$L.verdict" 2>/dev/null || echo stolen )"
 t_eq "the live holder keeps its lock; the waiter takes it once released" intact "$verdict"
 
+t_red check.ci-governor   # the falsifier this suite names for them (harbor#1422)
 t_done

@@ -138,8 +138,9 @@ own spacing.
 `method`, `review` and `delete-branch` declare the repo's GitHub rules (harbor#1418). `sh bin/gate-repo-drift.sh --print`
 compares each with the live repo (`allow_*_merge`, `delete_branch_on_merge`, the branch's `pull_request` rule) and prints
 the operator command that closes each drift; classic branch protection is 403 to the App and is reported unreadable,
-never clean. A repo with no `ship.conf` is declared by `--declared FILE` rows (`slug<TAB>key<TAB>value`). It applies
-nothing.
+never clean. A repo with no `ship.conf` is declared by rows (`slug<TAB>key<TAB>value`) in the private layer's `repo-rules.tsv` or
+`--declared FILE` (a ship.conf opts a repo into the approval gate, so none is added only to declare rules); an `exempt` row
+takes a repo or registry folder out of scope, with its reason. It applies nothing.
 
 Commands run from the repo's main checkout through `sh -c`, with `SHIP_UNATTENDED=1`, `SHIP_REPO=<owner/name>`,
 `SHIP_SNAPSHOT=<file>` and, for `restore` only, `SHIP_SNAPSHOT_ID=<id>`. A snapshot id is one token of

@@ -322,6 +322,7 @@ t_section "an id the tree carries and controls.tsv lacks is red, for each census
 CN="$TMP/census"; mini "$CN"; mkdir -p "$CN/context-rules" "$CN/contracts" "$CN/docs/reference"
 cp "$T_ROOT"/bin/admission-*.sh "$T_ROOT"/bin/library-admission.sh "$CN/bin/"; cp "$T_ROOT/bin/lint-conventions.sh" "$CN/bin/"; cp "$T_ROOT/docs/reference/checks.md" "$CN/docs/reference/"
 cp "$T_ROOT/contracts/required-checks.tsv" "$CN/contracts/"; cp -R "$T_ROOT"/context-rules/. "$CN/context-rules/"
+mkdir -p "$CN/hooks"; cp "$T_ROOT/hooks/pre-commit" "$T_ROOT/hooks/pre-push" "$T_ROOT/hooks/commit-msg" "$CN/hooks/"   # the hook census (harbor#1422)
 cn() { sh "$CN/bin/lint-name.sh" --root "$CN" --check registry standards/naming 2>&1; }
 t_has "the real guards, checks, packs and rules are all registered: no finding" "$(cn)" "no finding"
 grep -v '^admission\.' "$REG/controls.tsv" > "$CN/standards/naming/controls.tsv"
@@ -344,8 +345,11 @@ rm "$CN/context-rules/user/ghost-pack.md"
 printf 'VytCepas/harbor\tghost gate\n' >> "$CN/contracts/required-checks.tsv"
 t_has "a required CI check with no row is red" "$(cn)" "[name.control-unregistered] ci:ghost gate"
 cp "$T_ROOT/contracts/required-checks.tsv" "$CN/contracts/required-checks.tsv"
+printf '# control: git.ghost-hook a rule no row holds\n' >> "$CN/hooks/pre-push"
+t_has "a hook rule with no row is red (harbor#1422)" "$(cn)" "[name.control-unregistered] hook:git.ghost-hook"
+cp "$T_ROOT/hooks/pre-push" "$CN/hooks/pre-push"
 t_has "and the clean copy is clean again" "$(cn)" "no finding"
-for _src in 'guard-rules:bin/admission-\*.sh' 'checks-table:docs/reference/checks.md' 'inject-ids:context-rules' 'lint-rules:bin/lint-conventions.sh' 'required-checks:contracts/required-checks.tsv'; do
+for _src in 'guard-rules:bin/admission-\*.sh' 'checks-table:docs/reference/checks.md' 'inject-ids:context-rules' 'lint-rules:bin/lint-conventions.sh' 'required-checks:contracts/required-checks.tsv' 'hook-rules:hooks/pre-commit,hooks/pre-push,hooks/commit-msg'; do
   _bad="${_src%%:*}:zz-missing"
   sed "s#$_src#$_bad#" "$REG/registers.tsv" > "$CN/standards/naming/registers.tsv"
   t_has "a census whose source is missing fails loud: $_src" "$(cn)" "found no id: its source is missing or empty"
@@ -488,4 +492,5 @@ mv "$TMP/rules.block" "$B/standards/naming/controls.tsv"
 t_exit "a block-level finding exits 1" 1 sh "$B/bin/lint-name.sh" --root "$B" --check path Notes.md
 t_exit "…and an advisory one exits 0" 0 sh "$LN" --check path Notes.md
 
+t_red check.repo-verbs   # the falsifier this suite names for them (harbor#1422)
 t_done

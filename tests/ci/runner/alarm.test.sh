@@ -126,4 +126,5 @@ t_has "...and the offline gate runner by name on the confirming tick" "$(last)" 
 t_section "the stubs were told every call, and no billing was read"
 t_eq "no unexpected gh or docker call" 0 "$(nlines "$FX/unexpected.log")"
 t_eq "no billing, budget or spending-limit call" 0 "$(grep -c -i -e billing -e budget -e spending "$FX/gh.log" || true)"
+t_red check.ci-runner-alarm   # the falsifier this suite names for them (harbor#1422)
 t_done

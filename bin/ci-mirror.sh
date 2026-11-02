@@ -51,10 +51,6 @@ NODIFF="no core file differs from the PR's base"
 HSLUG="${HARBOR_CI_SLUG:-$(slug_of_url "$(git -C "$ROOT" config --get remote.origin.url 2>/dev/null || :)")}"
 slug_valid "$HSLUG" || refuse "the harbor repo slug is unknown" "export HARBOR_CI_SLUG=<owner>/harbor"
 
-# public-ci.yml still sets the old names until its rename patch is applied; read both, new first (harbor#966).
-HARBOR_CI_CORE_MIRROR_TOKEN="${HARBOR_CI_CORE_MIRROR_TOKEN:-${HARBOR_CORE_MIRROR_TOKEN:-}}"  # secret-seam: entry harbor-core-mirror-token
-HARBOR_CI_CORE_MIRROR_DIR="${HARBOR_CI_CORE_MIRROR_DIR:-${HARBOR_CORE_MIRROR_DIR:-}}"
-
 need_token() {
   [ -n "${HARBOR_CI_CORE_MIRROR_TOKEN:-}" ] || refuse "HARBOR_CI_CORE_MIRROR_TOKEN is not set, so nothing can reach $CORE" "store the fine-grained harbor-core token as that harbor secret"  # secret-seam: Actions secret (entry harbor-core-mirror-token)
 }

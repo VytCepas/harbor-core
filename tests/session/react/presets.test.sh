@@ -95,4 +95,5 @@ rm -f "$ST/sessions/abcdef123.check"; git -C "$REPO" update-ref refs/remotes/ori
 t_eq "no changed files against origin/main: no verdict" no "$([ -e "$ST/sessions/abcdef123.check" ] && echo yes || echo no)"
 git -C "$REPO" reset -q --hard HEAD~1; fire "$(ev session.state abcdef123 waiting-operator)" session-check.sh
 t_eq "a state other than done: no verdict" no "$([ -e "$ST/sessions/abcdef123.check" ] && echo yes || echo no)"
+t_red check.event.session-notify check.event.session-ci-watch check.event.session-cleanup-report check.event.session-check   # the falsifier this suite names for them (harbor#1422)
 t_done

@@ -178,4 +178,5 @@ t_eq "13c: an EMPTY PORT_ROOT routes \$HOME/port" link "$(is_link "$(route_of "$
 mkdir -p "$T/ws"
 HOME="$T" PORT_ROOT="$T/ws/" HARBOR_SCOPE_REPO="$REPOROOT" sh "$T_ROOT/bin/memory-route.sh" --dir "$CFG" --apply >/dev/null 2>&1
 t_eq "13d: an exported PORT_ROOT, trailing slash and all, is the root routed" link "$(is_link "$(route_of "$T/ws")")"
+t_red check.memory-route   # the falsifier this suite names for them (harbor#1422)
 t_done
