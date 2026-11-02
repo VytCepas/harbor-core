@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0
+[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
 # guard-deliverables (harbor#402) — PreToolUse(Write|Edit|MultiEdit|Bash) FILING gate.
 #
 # THE RULE IT ENFORCES. A NEW document written for a human to read — .html, .md,
@@ -178,7 +178,7 @@ suggest() { # <abs>
 
 deny() { # <rule> <shape> <what>
   # Shadow (harbor#482): recorded, not refused — floor_block's contract, for a JSON-verdict guard.
-  if [ "${HARBOR_ADMISSION_SHADOW:-0}" = 1 ]; then
+  if [ "${HARBOR_ADMISSION_SHADOW:-${HELM_FLOOR_SHADOW:-0}}" = 1 ]; then
     { floor_log_decision deliverables shadow "$1.$2" 2>/dev/null || :; } 2>/dev/null || :
     exit 0
   fi

@@ -46,7 +46,7 @@ rt_judge() { # <sandbox> ; stdin: one hook event
   while IFS= read -r _c; do
     [ -n "$_c" ] || continue
     _r=0
-    _o="$(printf '%s' "$_ev" | (cd "$1/work" && env -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW -u CLAUDE_PROJECT_DIR \
+    _o="$(printf '%s' "$_ev" | (cd "$1/work" && env -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW -u HELM_DISABLE_FLOOR -u HELM_FLOOR_SHADOW -u CLAUDE_PROJECT_DIR \
             HOME="$1/home" CLAUDE_CONFIG_DIR="$_cfg" TMPDIR="$1/tmp" sh -c "$_c") 2>/dev/null)" || _r=$?
     _d=''
     if [ "$_r" = 2 ]; then _d=deny
@@ -68,7 +68,7 @@ fi
 . "$ROOT/bin/library-log.sh"
 log_init redteam-corpus
 # the command a fix line names: a scheduled run executes a temp clone that is gone by the time anyone reads it
-SELFCMD="${HARBOR_EVAL_REDTEAM_SELF:-sh $0}"
+SELFCMD="${HARBOR_EVAL_REDTEAM_SELF:-${HARBOR_REDTEAM_SELF:-sh $0}}"
 MODE=run; REFRESH=1; FUZZ=0
 for _a in "$@"; do
   case "$_a" in
@@ -80,13 +80,13 @@ for _a in "$@"; do
 done
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required"; log_fix "$(pkg_hint jq)"; log_end || :; exit 2; }
 
-CORPDIR="${HARBOR_EVAL_REDTEAM_DIR:-$(sh "$ROOT/bin/scope-roots.sh" --get HARBOR_EVAL_REDTEAM_DIR)}"
-CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-$HOME/.claude/cache}"
+CORPDIR="${HARBOR_EVAL_REDTEAM_DIR:-${HARBOR_REDTEAM_DIR:-$(sh "$ROOT/bin/scope-roots.sh" --get HARBOR_EVAL_REDTEAM_DIR)}}"
+CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
 STATE="$CACHE_DIR/redteam"; LOG="$CACHE_DIR/checks.log"
-SOURCES="${HARBOR_EVAL_REDTEAM_SOURCES:-$ROOT/contracts/redteam-sources.tsv}"
-BASELINE="${HARBOR_EVAL_REDTEAM_BASELINE:-$ROOT/contracts/redteam-baseline.tsv}"
-NOW="${HARBOR_TEST_NOW:-$(date +%s)}"; case "$NOW" in ''|*[!0-9]*) NOW="$(date +%s)" ;; esac
-NODE="${HARBOR_EVAL_NODE:-node}"
+SOURCES="${HARBOR_EVAL_REDTEAM_SOURCES:-${HARBOR_REDTEAM_SOURCES:-$ROOT/contracts/redteam-sources.tsv}}"
+BASELINE="${HARBOR_EVAL_REDTEAM_BASELINE:-${HARBOR_REDTEAM_BASELINE:-$ROOT/contracts/redteam-baseline.tsv}}"
+NOW="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"; case "$NOW" in ''|*[!0-9]*) NOW="$(date +%s)" ;; esac
+NODE="${HARBOR_EVAL_NODE:-${HARBOR_NODE:-node}}"
 iso() { date -u -r "$NOW" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d "@$NOW" +%Y-%m-%dT%H:%M:%SZ; }
 age() { # <seconds>
   if [ "$1" -lt 3600 ]; then printf '%dm' $(($1 / 60)); elif [ "$1" -lt 86400 ]; then printf '%dh' $(($1 / 3600))
@@ -159,7 +159,7 @@ _phys() { (CDPATH='' cd -- "$1" 2>/dev/null && pwd -P); }
 LIVE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 [ "$(_phys "$SBX/cfg")" != "$(_phys "$LIVE_DIR")" ] ||
   { log_fail "the sandbox config dir resolves to the live one ($LIVE_DIR)"; log_fix "TMPDIR=<a scratch dir> $SELFCMD"; log_end || :; exit 3; }
-if ! (cd "$SBX/work" && env -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW HOME="$SBX/home" CLAUDE_CONFIG_DIR="$SBX/cfg" \
+if ! (cd "$SBX/work" && env -u HARBOR_ADMISSION_DISABLE -u HARBOR_ADMISSION_SHADOW -u HELM_DISABLE_FLOOR -u HELM_FLOOR_SHADOW HOME="$SBX/home" CLAUDE_CONFIG_DIR="$SBX/cfg" \
         TMPDIR="$SBX/tmp" sh -c 'sh "$1/bin/deploy-harden.sh" --apply --dir "$2" && sh "$1/bin/admission-install.sh" --apply --dir "$2"' \
         _ "$ROOT" "$SBX/cfg") > "$TMP/install.out" 2>&1; then
   log_fail "the sandbox floor did not install: $(grep FAIL "$TMP/install.out" | head -1 | sed 's/^ *//')"

@@ -83,23 +83,24 @@ REPO="$(cd "${CLAUDE_PROJECT_DIR:-$PWD}" 2>/dev/null && git rev-parse --show-top
 
 # THE TWO TIERS CAN BE THE SAME DIRECTORY, and then every box pack fires twice.
 # Measured, not imagined: a session whose project dir is $HOME resolves REPO=$HOME,
-# and $HOME/.claude/context-rules/user IS $CFG/context-rules/user. The doubled note is the visible
+# and $HOME/.claude/inject.d IS $CFG/inject.d. The doubled note is the visible
 # half; the silent half is worse, because `once: session` spends its ledger key on
 # the first pass and a genuinely two-tier box would then skip a repo rule. Compared
 # PHYSICALLY (symlinks resolved) for the reason lint D2 exists: /tmp and
 # /private/tmp are the same directory and differ as strings.
 _phys() { CDPATH='' cd -P -- "$1" 2>/dev/null && pwd -P || printf '%s' "$1"; }
 
-# A rule is context-rules/<scope>/<id>.md (harbor#1010, D-43, D-65); the old inject.d/ layout is retired and not read.
-# Box tier: $CFG/context-rules/user. A tree: each context-rules/<scope>/ but user (the box
-# tier's source, which only the installer delivers). A tree dir that IS a box dir is dropped.
+# TWO LAYOUTS FOR ONE RELEASE (harbor#1010, D-43, D-65). A rule is context-rules/<scope>/<id>.md;
+# the old inject.d/ is still read until the date in standards/naming/renames.tsv. New first: on an id clash it wins.
+# Box tier: $CFG/context-rules/user, then $CFG/inject.d. A tree: each context-rules/<scope>/ but user (the box
+# tier's source, which only the installer delivers), then .claude/inject.d. A tree dir that IS a box dir is dropped.
 box_dirs() {
-  for _bd in "$CFG/context-rules/user"; do [ ! -d "$_bd" ] || printf '%s\n' "$_bd"; done
+  for _bd in "$CFG/context-rules/user" "$CFG/inject.d"; do [ ! -d "$_bd" ] || printf '%s\n' "$_bd"; done
   return 0
 }
 BOXP="$(box_dirs | while IFS= read -r _bd; do _phys "$_bd"; printf '\n'; done)"
 tree_dirs() { # <tree>
-  for _td in "$1"/context-rules/*/; do
+  for _td in "$1"/context-rules/*/ "$1/.claude/inject.d"; do
     _td="${_td%/}"
     [ -d "$_td" ] || continue
     case "$_td" in "$1/context-rules/user") continue ;; esac
@@ -852,8 +853,9 @@ touched_trees() {
 # with this engine's governance stamp. `projects.tsv` beside the box packs is the
 # operator's list of this estate's projects; a worktree counts as its owner,
 # because the registry names repositories, not their checkouts.
-# It lives with the box tier (harbor#1010).
+# It moves with the box tier (harbor#1010); the old place is read while no new one is installed.
 REG="$CFG/context-rules/user/projects.tsv"
+[ -f "$REG" ] || REG="$CFG/inject.d/projects.tsv"
 registered() { # <physical tree>
   [ -f "$REG" ] || return 1
   _own="$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"

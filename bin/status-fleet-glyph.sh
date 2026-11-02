@@ -128,10 +128,10 @@ case "${1:-}" in
              exit 0 ;;
 esac
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-$CFG/cache}"
+CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$CFG/cache}}"
 CACHE="$CACHE_DIR/fleet-snapshot.json"
 OBS="$CACHE_DIR/guard-decisions.json"
-STALE_S="${HARBOR_STATUS_GLYPH_STALE_S:-900}"
+STALE_S="${HARBOR_STATUS_GLYPH_STALE_S:-${HARBOR_GLYPH_STALE_S:-900}}"
 
 E="$(printf '\033')"
 DIM="$E[2m"; RST="$E[0m"; RED="$E[31m"; YEL="$E[33m"; GRN="$E[32m"
@@ -186,8 +186,8 @@ IN="$(cat 2>/dev/null || true)"
 # dump hook, "does this version really send effort.level" is answerable only from
 # documentation, and CONSTITUTION §2.5 is explicit that a source which exists is
 # not a source that supports the claim. One tick with this set settles it.
-if [ -n "${HARBOR_STATUS_GLYPH_DUMP:-}" ] && [ -n "$IN" ]; then
-  ( umask 077; printf '%s\n' "$IN" >> "${HARBOR_STATUS_GLYPH_DUMP:-}" ) 2>/dev/null || true
+if [ -n "${HARBOR_STATUS_GLYPH_DUMP:-${HARBOR_GLYPH_DUMP:-}}" ] && [ -n "$IN" ]; then
+  ( umask 077; printf '%s\n' "$IN" >> "${HARBOR_STATUS_GLYPH_DUMP:-${HARBOR_GLYPH_DUMP:-}}" ) 2>/dev/null || true
 fi
 
 # ── terminal width → render tier ─────────────────────────────────────────────
@@ -201,7 +201,7 @@ fi
 # never by measuring the finished string — an ANSI-laden string containing
 # double-width emoji has no correct `${#s}`, and a width computed from one is the
 # confident wrong number this file's own rules forbid.
-_c="${HARBOR_STATUS_GLYPH_COLS:-${COLUMNS:-0}}"
+_c="${HARBOR_STATUS_GLYPH_COLS:-${HARBOR_GLYPH_COLS:-${COLUMNS:-0}}}"
 case "$_c" in ''|*[!0-9]*) _c=0 ;; esac
 if   [ "$_c" -eq 0 ]   || [ "$_c" -ge 120 ]; then TIER=full
 elif [ "$_c" -ge 100 ]; then TIER=wide
@@ -271,7 +271,7 @@ ROW1=""
 # countdowns below unpinnable — a golden-output suite cannot assert on a value
 # that moves between the fixture and the assertion. HARBOR_TEST_NOW lets the suite
 # freeze it; nothing else sets it, so live rendering takes the real clock.
-NOW_EPOCH="${HARBOR_TEST_NOW:-$(date +%s)}"
+NOW_EPOCH="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
 if [ -n "$IN" ] && command -v jq >/dev/null 2>&1; then
   ROW1="$(printf '%s' "$IN" | jq -r --arg dim "$DIM" --arg rst "$RST" \
                                     --arg red "$RED" --arg yel "$YEL" \
@@ -544,7 +544,7 @@ fi
 # RAISED TO 80 (operator decisions 2026-10-16: "at least 60", then 80). The title now leads
 # its own row, PLACE, and the alarms it used to push off the edge live on YOU, so
 # the cost that justified 48 is gone; the cap still bounds the one prose field.
-NAME_CAP="${HARBOR_STATUS_GLYPH_NAME_CAP:-80}"
+NAME_CAP="${HARBOR_STATUS_GLYPH_NAME_CAP:-${HARBOR_GLYPH_NAME_CAP:-80}}"
 case "$NAME_CAP" in ''|*[!0-9]*|0) NAME_CAP=24 ;; esac
 if [ -n "$NAME" ] && [ "${#NAME}" -gt "$NAME_CAP" ]; then
   _keep=$((NAME_CAP - 1))
@@ -626,7 +626,7 @@ fi
 # the comparison is against the literal string `busy` and what reaches the row is
 # a digit this script produced. Echoing a peer field would be a cross-session
 # instruction channel; a tally is not.
-SESSDIR="${HARBOR_SESSION_REGISTRY_DIR:-$CFG/sessions}"
+SESSDIR="${HARBOR_SESSION_REGISTRY_DIR:-${HARBOR_SESSIONS_DIR:-$CFG/sessions}}"
 SHIPS=0; BUSY=0; HERE=1
 for _sf in "$SESSDIR"/*.json; do
   [ -f "$_sf" ] || continue
@@ -1150,7 +1150,7 @@ seg3() { # <level> <text>
   case "$1" in 2) _k="$RED" ;; 1) _k="$YEL" ;; *) _k="" ;; esac
   ROW3="$ROW3${ROW3:+ $SEP }${_k}$2${_k:+$RST}"
 }
-if [ "${HARBOR_STATUS_GLYPH_MACHINE:-1}" != 0 ]; then
+if [ "${HARBOR_STATUS_GLYPH_MACHINE:-${HARBOR_GLYPH_MACHINE:-1}}" != 0 ]; then
   # CPU BUSY IS READ FROM A CACHE, NEVER SAMPLED INLINE. A real busy figure needs two
   # counter reads a second apart (iostat -c 2 -w 1); `ps %cpu` is a decayed average and
   # `top -l 1` costs 250 ms. A detached sampler refreshes `epoch busy` and a render
@@ -1161,7 +1161,7 @@ if [ "${HARBOR_STATUS_GLYPH_MACHINE:-1}" != 0 ]; then
   case "$_cp" in ''|*[!0-9]*) _cp="" ;; esac
   _age=$(( NOW_EPOCH - _ce ))
   if [ "$_age" -lt 0 ] || [ "$_age" -gt 120 ]; then _cp=""; fi
-  if [ "${HARBOR_STATUS_GLYPH_MACHINE_REFRESH:-1}" != 0 ] && { [ -z "$_cp" ] || [ "$_age" -ge 8 ]; } \
+  if [ "${HARBOR_STATUS_GLYPH_MACHINE_REFRESH:-${HARBOR_GLYPH_MACHINE_REFRESH:-1}}" != 0 ] && { [ -z "$_cp" ] || [ "$_age" -ge 8 ]; } \
      && command -v iostat >/dev/null 2>&1; then
     # `.try` rate-limits the spawn: a burst of ticks inside one second must not fan out.
     _tr=0
@@ -1238,7 +1238,7 @@ if [ "${HARBOR_STATUS_GLYPH_MACHINE:-1}" != 0 ]; then
   # Data volume, since `/` is the sealed system snapshot. Used is total minus available, because APFS
   # volumes share a container and the Used column undercounts. One `df` fork; yellow under 15% free,
   # red under 7%. HARBOR_STATUS_GLYPH_DF stands in for df in the suite.
-  _df="$("${HARBOR_STATUS_GLYPH_DF:-df}" -k "${HOME:-/}" 2>/dev/null | awk 'NR == 2 && $2 ~ /^[0-9]+$/ && $4 ~ /^[0-9]+$/ && $2 > 0 {
+  _df="$("${HARBOR_STATUS_GLYPH_DF:-${HARBOR_GLYPH_DF:-df}}" -k "${HOME:-/}" 2>/dev/null | awk 'NR == 2 && $2 ~ /^[0-9]+$/ && $4 ~ /^[0-9]+$/ && $2 > 0 {
           printf "%d %d %d", ($2 - $4) / 1048576, $2 / 1048576, ($4 * 100) / $2 }')" || true
   case "$_df" in
     *[!0-9\ ]*|'') ;;
@@ -1255,8 +1255,8 @@ fi
 # Emoji by operator request, an exception to decision 3: 🏠 trusted gateway, 🔒 VPN route,
 # 🔓 neither or firewall off; 📱/📵 Remote Control. An unreadable source renders nothing.
 NET3=""
-if [ "${HARBOR_STATUS_GLYPH_MACHINE:-1}" != 0 ]; then
-  _fw="$("${HARBOR_STATUS_GLYPH_FIREWALL:-/usr/libexec/ApplicationFirewall/socketfilterfw}" --getglobalstate 2>/dev/null \
+if [ "${HARBOR_STATUS_GLYPH_MACHINE:-${HARBOR_GLYPH_MACHINE:-1}}" != 0 ]; then
+  _fw="$("${HARBOR_STATUS_GLYPH_FIREWALL:-${HARBOR_GLYPH_FW:-/usr/libexec/ApplicationFirewall/socketfilterfw}}" --getglobalstate 2>/dev/null \
     | awk '/State = 0/ { print "off"; exit } /State = [0-9]/ { print "on"; exit }')" || true
   _rt="$(route -n get 1.1.1.1 2>/dev/null \
     | awk '$1 == "interface:" { i = $2 } $1 == "gateway:" { g = $2 } END { if (i != "") print i, g }')" || true

@@ -10,9 +10,9 @@ case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 . "$HERE/library-log.sh"; . "$HERE/library-fs.sh"
 log_init collector-check
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-STORE="${HARBOR_AUDIT_COLLECTOR_STORE:-/Library/Application Support/Harbor/collector}"
+STORE="${HARBOR_AUDIT_COLLECTOR_STORE:-${HARBOR_COLLECTOR_STORE:-/Library/Application Support/Harbor/collector}}"
 ST="$STORE/status.json"; SEEN="$CFG/cache/collector-check.seen"; RD="$(receipt_dir)"
-STALE="${HARBOR_AUDIT_COLLECTOR_STALE:-900}"
+STALE="${HARBOR_AUDIT_COLLECTOR_STALE:-${HARBOR_COLLECTOR_STALE:-900}}"
 if [ ! -f "$ST" ]; then
   log_skip "no collector at $STORE: not installed, nothing to judge"
   log_receipt "$RD" audit.collector-health stood-down not-installed || log_warn "could not write the receipt in $RD"
@@ -34,7 +34,7 @@ case "$total" in *[!0-9]*|'') why="$why status-unparseable" ;; *) [ "$total" -le
 # Lane 5b, the cross-check: the client counts its own tool decisions (cc-summary.json, written by audit-otlp-receiver.py),
 # the floor writes one guard row per call. Decisions today with NO guard row is a floor that stopped recording: hooks
 # disarmed, the ledger made unwritable, or rows suppressed. Silent when the receiver has no count for today.
-_day="$(date -u +%Y-%m-%d)"; _min="${HARBOR_AUDIT_COLLECTOR_SILENT_MINUTES:-20}"
+_day="$(date -u +%Y-%m-%d)"; _min="${HARBOR_AUDIT_COLLECTOR_SILENT_MINUTES:-${HARBOR_COLLECTOR_SILENT_MIN:-20}}"
 _dec="$(jq -r --arg d "$_day" "[(.[\$d] // {}) | to_entries[] | select(.key | test(\"tool_decision$\")) | .value] | add // 0" "$STORE/cc-summary.json" 2>/dev/null || echo 0)"
 case "$_dec" in ""|*[!0-9]*) _dec=0 ;; esac
 if [ "$_dec" -ge "$_min" ]; then

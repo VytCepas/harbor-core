@@ -6,7 +6,7 @@ set -u
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 LOGL="$T_ROOT/bin/library-log.sh"; IL="$T_ROOT/bin/deploy-install-lib.sh"; W="$T_TMP/w"; mkdir -p "$W"
 LIVE="$HOME/.claude"; mkdir -p "$LIVE"; SB="$T_TMP/sb"; mkdir -p "$SB"
-unset CLAUDE_CONFIG_DIR CLAUDECODE HARBOR_DEPLOY_ACTIVE  # a run inside a session or a deploy must not decide a case
+unset CLAUDE_CONFIG_DIR CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY  # a run inside a session or a deploy must not decide a case
 mk() { # <body> — the tool is $W/demo.sh; its header is the usage il_usage prints
   printf '#!/bin/sh\n# demo — a tool on the install standard.\n#   sh demo.sh [--apply] (--live | --dir PATH)\n\nset -eu\n. "%s"\n. "%s"\nlog_init demo\n%s\n' \
     "$LOGL" "$IL" "$1" > "$W/demo.sh"

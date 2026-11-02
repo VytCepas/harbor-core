@@ -5,8 +5,8 @@
 # The command rows are a neutral fixture (`fixturectl create`); real rows come from workload packs.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 T="$T_TMP"; CFG="$T/cfg"; REPO="$T/repo"; BARE="$T/bare"
-mkdir -p "$CFG/context-rules/user" "$CFG/bin" "$CFG/name-create.d" "$REPO/bin" "$REPO/standards" "$BARE"
-cp "$T_ROOT/context-rules/user/name-note-create.md" "$T_ROOT/context-rules/user/name-note-create.sh" "$CFG/context-rules/user/"
+mkdir -p "$CFG/inject.d" "$CFG/bin" "$CFG/name-create.d" "$REPO/bin" "$REPO/standards" "$BARE"
+cp "$T_ROOT/context-rules/user/name-note-create.md" "$T_ROOT/context-rules/user/name-note-create.sh" "$CFG/inject.d/"
 cp "$T_ROOT/hooks/injection-rule/injection-rule.sh" "$T_ROOT/bin/library-admission.sh" "$CFG/bin/"
 cp "$T_ROOT/bin/lint-name.sh" "$T_ROOT/bin/library-log.sh" "$REPO/bin/"; cp -R "$T_ROOT/standards/naming" "$REPO/standards/"
 printf 'x\n' > "$REPO/README.md"

@@ -30,7 +30,7 @@ jobs:
     steps:
       - run: echo done
   expr:
-    runs-on: ${{ vars.HARBOR_CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ vars.HARBOR_RUNNER || 'ubuntu-latest' }}
     steps:
       - run: echo x
   matrixed:

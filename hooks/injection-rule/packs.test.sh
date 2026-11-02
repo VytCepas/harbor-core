@@ -1,19 +1,19 @@
 #!/usr/bin/env sh
 # The packs harbor ships, through inject-hook.sh: they parse, route and stay silent where they
 # must, only context-bearing events emit, every tracked pack is well-formed, and the merge gate
-# denies end to end through context-rules/repo (harbor#173, #181, #184, #254, #315).
+# denies end to end through .claude/inject.d (harbor#173, #181, #184, #254, #315).
 . "$(dirname "$0")/../../tests/lib/core.sh"; t_init
 . "$T_ROOT/tests/context/injection-rule/fixture.sh"
-BOX="$T/boxcfg"; mkdir -p "$BOX/context-rules/user"; cp -R "$T_ROOT"/context-rules/user/. "$BOX/context-rules/user/"
+BOX="$T/boxcfg"; mkdir -p "$BOX/inject.d"; cp -R "$T_ROOT"/context-rules/user/. "$BOX/inject.d/"
 # The untitled-session note fires on every first tool call; its own cases live in fixtures/injection-rule/notes.tsv (harbor#1257).
 : > "$BOX/session-title.off"
 # The registry is the private layer's file (harbor#1149): core ships none, so a fixture with example names stands in,
 # beside the packs where the installer puts it. It resolves against $HOME, the sandbox: stand up the directories it names.
-printf '# fixture registry\nharbor\t~/port/harbor\tthe fixture control plane\ndemo\t~/port/demo\ta fixture project\n' > "$BOX/context-rules/user/projects.tsv"
+printf '# fixture registry\nharbor\t~/port/harbor\tthe fixture control plane\ndemo\t~/port/demo\ta fixture project\n' > "$BOX/inject.d/projects.tsv"
 while IFS="$(printf '\t')" read -r _rn _rp _rest; do
   case "$_rn" in ''|'#'*) continue ;; esac
   case "$_rp" in '~/'*) mkdir -p "$HOME/${_rp#'~/'}" ;; esac
-done < "$BOX/context-rules/user/projects.tsv"
+done < "$BOX/inject.d/projects.tsv"
 firebox() { fire_cfg "$BOX" "$1"; }
 
 t_section "8 · the shipped box packs route"
@@ -33,9 +33,9 @@ t_hasnt "the compaction carry is silent on source=startup" \
   "$(firebox '{"hook_event_name":"SessionStart","source":"startup","session_id":"b2b"}')" 'rebuilt by compaction'
 t_eq "PreCompact, context-less, emits nothing rather than rejected JSON" "" "$(firebox '{"hook_event_name":"PreCompact","session_id":"b2c"}')"
 t_eq "PostCompact is context-less too" "" "$(firebox '{"hook_event_name":"PostCompact","session_id":"b2d"}')"
-CTXCFG="$T/ctxcfg"; mkdir -p "$CTXCFG/context-rules/user"
+CTXCFG="$T/ctxcfg"; mkdir -p "$CTXCFG/inject.d"
 for _ev in UserPromptExpansion PostModelSwitch Notification PostCompact; do
-  printf -- '---\nid: ctx-%s\nevent: %s\nwhen: always\nonce: never\n---\nCTXPROBE\n' "$_ev" "$_ev" > "$CTXCFG/context-rules/user/00-ctx-$_ev.md"
+  printf -- '---\nid: ctx-%s\nevent: %s\nwhen: always\nonce: never\n---\nCTXPROBE\n' "$_ev" "$_ev" > "$CTXCFG/inject.d/00-ctx-$_ev.md"
 done
 for _ev in UserPromptExpansion PostModelSwitch Notification; do
   t_has "$_ev carries a model-visible channel" "$(fire_cfg "$CTXCFG" "$(jq -cn --arg e "$_ev" '{hook_event_name:$e,session_id:"ctxprobe"}')")" 'additionalContext'
@@ -81,8 +81,8 @@ until nc -z localhost 99; do sleep 5; done' w9)")" 'cannot report giving up'
 
 t_section "8 · the project and repo-skills pointers"
 # The directory comes from the path column, never the name (harbor#619 moved repos under ~/port).
-_first="$(awk -F'\t' '$1 !~ /^#/ && NF >= 2 { print $1; exit }' "$BOX/context-rules/user/projects.tsv")"
-_firstrel="$(awk -F'\t' '$1 !~ /^#/ && NF >= 2 { print $2; exit }' "$BOX/context-rules/user/projects.tsv")"
+_first="$(awk -F'\t' '$1 !~ /^#/ && NF >= 2 { print $1; exit }' "$BOX/inject.d/projects.tsv")"
+_firstrel="$(awk -F'\t' '$1 !~ /^#/ && NF >= 2 { print $2; exit }' "$BOX/inject.d/projects.tsv")"
 _firstdir="$HOME/${_firstrel#'~/'}"; git -C "$_firstdir" init -q . >/dev/null 2>&1
 _pp="$(printf '%s' '{"hook_event_name":"SessionStart","session_id":"b5"}' \
   | CLAUDE_CONFIG_DIR="$BOX" CLAUDE_PROJECT_DIR="$_firstdir" sh "$SUT" 2>/dev/null)"
@@ -121,8 +121,8 @@ t_has "a tool: pattern matches the family it names (a regex, like settings.json)
 t_eq "a tool outside the declared set is still skipped" "" "$(_res NotDeclaredAnywhere 90000 lv2k)"
 
 t_section "8b · PostToolUseFailure, on the measured payload shape (claude 2.1.258)"
-FAILCFG="$T/failcfg"; mkdir -p "$FAILCFG/context-rules/user"
-cp "$T_ROOT/context-rules/user/tool-failure-is-not-a-result.md" "$T_ROOT/context-rules/user/tool-failure.sh" "$FAILCFG/context-rules/user/"
+FAILCFG="$T/failcfg"; mkdir -p "$FAILCFG/inject.d"
+cp "$T_ROOT/context-rules/user/tool-failure-is-not-a-result.md" "$T_ROOT/context-rules/user/tool-failure.sh" "$FAILCFG/inject.d/"
 fail_ev() { # <is_interrupt> <error> [session]
   jq -cn --argjson i "$1" --arg e "$2" --arg s "${3:-f-$$}" \
     '{hook_event_name:"PostToolUseFailure",tool_name:"Read",session_id:$s,tool_input:{file_path:"/nope.txt"},tool_use_id:"tu1",error:$e,is_interrupt:$i,duration_ms:4}'
@@ -133,7 +133,7 @@ fire_cfg "$FAILCFG" "$(fail_ev false 'first' f3)" >/dev/null
 t_eq "the second failure in a session is silent" "" "$(fire_cfg "$FAILCFG" "$(fail_ev false 'second' f3)")"
 t_has "the note rides a model-visible channel on this event" "$(fire_cfg "$FAILCFG" "$(fail_ev false 'x' f4)")" 'additionalContext'
 ERRCFG="$T/errcfg"
-pack "$ERRCFG/context-rules/user" 10-err.md <<'PACK'
+pack "$ERRCFG/inject.d" 10-err.md <<'PACK'
 ---
 id: err
 event: PostToolUseFailure
@@ -192,11 +192,11 @@ for _f in "$T_ROOT"/context-rules/*/*.md; do
 done
 
 t_section "the merge gate end to end: shipped pack, real govern-hook.sh, stubbed backstop (harbor#254)"
-E2E="$T/e2e"; mkdir -p "$E2E/repo/bin" "$E2E/repo/context-rules/repo" "$E2E/cfg"
+E2E="$T/e2e"; mkdir -p "$E2E/repo/bin" "$E2E/repo/.claude/inject.d" "$E2E/cfg"
 ( cd "$E2E/repo" && git init -q . && git config user.email t@t && git config user.name t \
   && git config commit.gpgsign false && printf 'x\n' > README && git add -A && git commit -qm init ) >/dev/null 2>&1
-cp "$T_ROOT/bin/govern-hook.sh" "$E2E/repo/bin/"; cp "$T_ROOT/context-rules/harbor/merge-note.sh" "$E2E/repo/context-rules/repo/"
-for _mp in "$T_ROOT"/context-rules/harbor/*merge*.md; do cp "$_mp" "$E2E/repo/context-rules/repo/"; done
+cp "$T_ROOT/bin/govern-hook.sh" "$E2E/repo/bin/"; cp "$T_ROOT/context-rules/harbor/merge-note.sh" "$E2E/repo/.claude/inject.d/"
+for _mp in "$T_ROOT"/context-rules/harbor/*merge*.md; do cp "$_mp" "$E2E/repo/.claude/inject.d/"; done
 _e2e() { # <exit> <text> <command>
   printf '#!/usr/bin/env sh\nprintf "%%s\\n" "%s"\nexit %s\n' "$2" "$1" > "$E2E/repo/bin/gate-merge-check.sh"
   jq -cn --arg c "$3" '{hook_event_name:"PreToolUse",tool_name:"Bash",session_id:"e-1",tool_input:{command:$c}}' \
@@ -209,7 +209,7 @@ t_hasnt "a green PR is not interrupted" "$(_e2e 0 'ok  #253 — 12 check(s) pass
 t_hasnt "a tooling fault fails open" "$(_e2e 2 'merge-check: gh is not installed' 'gh pr merge 253')" 'permissionDecision'
 
 t_section "the browser route: Claude in Chrome is refused on a host harbor chrome covers (2026-09-30)"
-_HR="$HOME/$(awk -F'\t' '$1 == "harbor" { sub(/^~\//, "", $2); print $2; exit }' "$BOX/context-rules/user/projects.tsv")"
+_HR="$HOME/$(awk -F'\t' '$1 == "harbor" { sub(/^~\//, "", $2); print $2; exit }' "$BOX/inject.d/projects.tsv")"
 mkdir -p "$_HR/contracts"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" "$_HR/contracts/"
 nav_ev() { printf '{"hook_event_name":"PreToolUse","session_id":"%s","tool_name":"mcp__claude-in-chrome__navigate","tool_input":{"url":"%s","tabId":1}}' "$2" "$1"; }
 batch_ev() { printf '{"hook_event_name":"PreToolUse","session_id":"%s","tool_name":"mcp__claude-in-chrome__browser_batch","tool_input":{"actions":[{"name":"computer","input":{"action":"wait"}},{"name":"navigate","input":{"tabId":1,"url":"%s"}}]}}' "$2" "$1"; }

@@ -65,7 +65,7 @@ LIVE="$HOME/.claude"
 set_gates() {
   GATE="$CFG/.helm-dispatch"; RULES="$GATE/rules"; LEDGER="$GATE/ledger"; SPEND="$GATE/spend"; SPAWN_ON="$GATE/spawn.on"
   KILL="$CFG/.harbor-autoship.off"; KILL_LIVE="$(lexcanon "$LIVE")/.harbor-autoship.off"
-  RECEIPT="${HARBOR_SCOPE_CACHE_DIR:-$CFG/cache}/event-dispatch-state.json"
+  RECEIPT="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$CFG/cache}}/event-dispatch-state.json"
 }
 set_gates
 # The ship contract's kill switch (SHIP-CONTRACT §4), read in the config dir AND the live ~/.claude: a dispatcher
@@ -79,7 +79,7 @@ HANDLERS='status-fleet-snapshot-refresh.sh alert-notify.sh session-notify.sh ses
 # A handler or agent starts from env -i and gets only these (harbor#1044 review #5): no key or token reaches it.
 # OAuth still works: macOS reads the login keychain as $USER, keyed to CLAUDE_CONFIG_DIR when set; Linux reads
 # $HOME/.claude/.credentials.json (code.claude.com/docs/en/authentication, "Credential management").
-KEEP_ENV='HOME USER LOGNAME SHELL TMPDIR LANG CLAUDE_CONFIG_DIR HARBOR_EVENT_DIR HARBOR_SCOPE_CACHE_DIR HARBOR_EVENT_BUS_SKEW'
+KEEP_ENV='HOME USER LOGNAME SHELL TMPDIR LANG CLAUDE_CONFIG_DIR HARBOR_EVENT_DIR HARBOR_SCOPE_CACHE_DIR HARBOR_CACHE_DIR HARBOR_EVENT_BUS_SKEW'   # HARBOR_CACHE_DIR: the old name, until 2026-11-15 (harbor#961 W5)
 US="$(printf '\037')"
 NL='
 '
@@ -162,7 +162,7 @@ need_jq() { command -v jq >/dev/null 2>&1 || fail "[check:event.dispatch] jq is 
 alarm() {
   log_warn "[check:$1] $2"
   now
-  _cl="${HARBOR_SCOPE_CACHE_DIR:-$CFG/cache}"
+  _cl="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$CFG/cache}}"
   { mkdir -p "$_cl" && printf '[check:%s] %s %s\n' "$1" "$(iso)" "$2" >> "$_cl/checks.log"; } 2>/dev/null || :
 }
 
@@ -745,7 +745,7 @@ KIND_RE='"kind":"([(]'"$_K"'([|]'"$_K"')*[)]|'"$_K"')"'
 # Until remove_by (UTC, inclusive) a rule installed under the old id keeps firing, judged by the new id's register row;
 # `on --preset <old>` installs the new id, and installing or removing the new id removes the old file, so one rule never
 # fires twice. Past the date the old id is refused like any unregistered rule, with the two commands that move it.
-ID_ALIASES='event.pulse event.alerting 2026-10-31'   # closed by the operator's decision of 2026-11-01: no pacing
+ID_ALIASES='event.pulse event.alerting 2026-11-15'
 id_alias() { # <id> -> RID: the id its register row is under; ALIAS_GONE: the date an old id's window closed, else empty
   RID="$1"; ALIAS_GONE=""
   _ia="$(printf '%s\n' "$ID_ALIASES" | awk -v id="$1" '$1 == id { print $2 " " $3; exit }')"

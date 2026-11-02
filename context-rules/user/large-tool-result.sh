@@ -53,7 +53,7 @@ TOOL="$(printf '%s' "$PAYLOAD" | jq -r '.tool_name // empty' 2>/dev/null || true
 BYTES="$(printf '%s' "$PAYLOAD" | jq -r '(.tool_response // empty) | tostring | utf8bytelength' 2>/dev/null || true)"
 case "$BYTES" in ''|*[!0-9]*) exit 0 ;; esac
 
-LIMIT="${HARBOR_CONTEXT_RESULT_BYTES:-32768}"
+LIMIT="${HARBOR_CONTEXT_RESULT_BYTES:-${HARBOR_RESULT_BYTES:-32768}}"
 case "$LIMIT" in ''|*[!0-9]*) LIMIT=32768 ;; esac
 [ "$BYTES" -gt "$LIMIT" ] || exit 0
 

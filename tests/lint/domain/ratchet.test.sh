@@ -72,7 +72,7 @@ D="$(mk noterms 3)"; rm "$D/contracts/domain-terms.tsv"
 t_eq "no terms register" "2" "$(red "$D")"
 
 t_section "--repos: workload repo names from the private registry, only where they read as a repo (harbor#1273)"
-PV="$T_TMP/pv/context-rules/user"; mkdir -p "$PV"
+PV="$T_TMP/pv/inject.d/box"; mkdir -p "$PV"
 printf '# name\tpath\twhat\nzorbcorp\t~/x\tmade up\nbrook\t~/b\tan English word\nharbor\t~/h\tthe control plane\n' > "$PV/projects.tsv"
 DR() { HARBOR_SCOPE_PRIVATE="$T_TMP/pv" HARBOR_SCOPE_ROOT="$1" sh "$T_ROOT/bin/lint-domain.sh" --repos "$2" 2>&1; }
 D="$(mk repos 3)"

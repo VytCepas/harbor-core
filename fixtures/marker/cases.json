@@ -616,7 +616,7 @@
     },
     {
       "id": "M37-port-root-unset-uses-the-default",
-      "why": "PORT_ROOT UNSET is not an opt-out. The pre-move audit for harbor#619 measured PORT_ROOT, HARBOR_SCOPE_REPO, ESTATE_DIR and three more unset in .zshrc, .zprofile and a live shell, so a stop that only applied to an exported value would be off on exactly the machine it was built for. With PORT_ROOT unset the root is the documented default $HOME/port, and the stop applies there.",
+      "why": "PORT_ROOT UNSET is not an opt-out. The pre-move audit for harbor#619 measured PORT_ROOT, HARBOR_REPO, ESTATE_DIR and three more unset in .zshrc, .zprofile and a live shell, so a stop that only applied to an exported value would be off on exactly the machine it was built for. With PORT_ROOT unset the root is the documented default $HOME/port, and the stop applies there.",
       "tree": [
         "port/.agents/config.yaml",
         "port/thing/keep"

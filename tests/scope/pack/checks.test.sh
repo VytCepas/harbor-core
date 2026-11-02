@@ -18,7 +18,7 @@ refusal() { # <label> <pack id> <target> <needle>
 }
 
 t_section "install composes the pack's rows into bin/docs/reference/checks.md; remove takes them back byte for byte"
-mkpack ck; mkpack cj; rm -rf "$PW/cj/harbor-pack/skills" "$PW/cj/harbor-pack/bin" "$PW/cj/harbor-pack/shims.tsv" "$PW/cj/harbor-pack/context-rules"; G "$PW/cj" add -A; G "$PW/cj" commit -q -m checks-only; listed '"ck", "cj"'
+mkpack ck; mkpack cj; rm -rf "$PW/cj/harbor-pack/skills" "$PW/cj/harbor-pack/bin" "$PW/cj/harbor-pack/shims.tsv" "$PW/cj/harbor-pack/inject.d"; G "$PW/cj" add -A; G "$PW/cj" commit -q -m checks-only; listed '"ck", "cj"'
 TG="$(target one)"; B0="$(snap "$TG")"; CORE_IDS="$(ids < "$T_ROOT/docs/reference/checks.md" | wc -l | tr -d ' ')"
 pk install ck --apply --dir "$TG" >/dev/null 2>&1
 t_eq "the register gains the pack's one row" "$(( CORE_IDS + 1 ))" "$(ids < "$TG/bin/docs/reference/checks.md" | wc -l | tr -d ' ')"

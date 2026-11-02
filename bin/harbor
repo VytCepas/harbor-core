@@ -75,7 +75,7 @@ _self_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 # with none, the two 127 failures below still print what failed and the fix, because recovery must
 # not need a file that may be part of what broke.
 _lld=''
-for _c in "$_self_dir" "${HARBOR_SCOPE_BIN:-}" "${PORT_ROOT:-$HOME/port}/harbor/bin"; do
+for _c in "$_self_dir" "${HARBOR_SCOPE_BIN:-${HARBOR_BIN:-}}" "${PORT_ROOT:-$HOME/port}/harbor/bin"; do
   if [ -n "$_c" ] && [ -f "$_c/library-log.sh" ]; then _lld="$_c"; break; fi
 done
 if [ -n "$_lld" ]; then
@@ -99,11 +99,11 @@ case "$(uname -s 2>/dev/null || :)" in MINGW*|MSYS*|CYGWIN*)
   if [ -n "$_lld" ]; then log_fail "$_w"; log_fix "$_wf"; log_end || :; else printf 'harbor: %s\n  fix: %s\n' "$_w" "$_wf" >&2; fi
   exit 1 ;;
 esac
-if [ -n "${HARBOR_SCOPE_BIN:-}" ]; then
-  if [ -f "${HARBOR_SCOPE_BIN:-}/status-generate.sh" ]; then
-    BIN="${HARBOR_SCOPE_BIN:-}"
+if [ -n "${HARBOR_SCOPE_BIN:-${HARBOR_BIN:-}}" ]; then
+  if [ -f "${HARBOR_SCOPE_BIN:-${HARBOR_BIN:-}}/status-generate.sh" ]; then
+    BIN="${HARBOR_SCOPE_BIN:-${HARBOR_BIN:-}}"
   else
-    _fail127 "HARBOR_SCOPE_BIN=${HARBOR_SCOPE_BIN:-} has no status-generate.sh — refusing to fall back" "unset HARBOR_SCOPE_BIN"
+    _fail127 "HARBOR_SCOPE_BIN=${HARBOR_SCOPE_BIN:-${HARBOR_BIN:-}} has no status-generate.sh — refusing to fall back" "unset HARBOR_SCOPE_BIN HARBOR_BIN"
   fi
 else
   for _c in "$_self_dir" "${PORT_ROOT:-$HOME/port}/harbor/bin"; do

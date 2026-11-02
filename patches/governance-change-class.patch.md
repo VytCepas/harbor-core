@@ -82,7 +82,7 @@ a worse failure than a slow run.
     needs: preflight
     outputs:
       changed: ${{ steps.diff.outputs.changed }}
-    runs-on: ${{ fromJSON((inputs.runner || vars.HARBOR_CI_RUNNER) == 'github-hosted' && '["ubuntu-latest"]' || '["self-hosted","macOS","ARM64"]') }}
+    runs-on: ${{ fromJSON((inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted' && '["ubuntu-latest"]' || '["self-hosted","macOS","ARM64"]') }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -103,7 +103,7 @@ a worse failure than a slow run.
           } >> "$GITHUB_OUTPUT"
       - name: The verdict, per suite
         env:
-          HARBOR_TEST_CHANGED: ${{ steps.diff.outputs.changed }}
+          HARBOR_CHANGED: ${{ steps.diff.outputs.changed }}
         run: |
           sh bin/test-suite-select.sh --list > "$RUNNER_TEMP/verdicts.txt"
           cat "$RUNNER_TEMP/verdicts.txt"
@@ -134,7 +134,7 @@ Replace the job's `needs:` and `outputs:` and add `env:`:
       count: ${{ steps.suite.outputs.count }}
       ran: ${{ steps.suite.outputs.ran }}
     env:
-      HARBOR_TEST_CHANGED: ${{ needs.classify.outputs.changed }}
+      HARBOR_CHANGED: ${{ needs.classify.outputs.changed }}
 ```
 
 Replace the two suite steps. The redirect-never-pipe reasoning, the
@@ -161,7 +161,7 @@ Same three changes each — `needs`, a `ran` output, `env` — and one step body
       count: ${{ steps.suite.outputs.count }}
       ran: ${{ steps.suite.outputs.ran }}
     env:
-      HARBOR_TEST_CHANGED: ${{ needs.classify.outputs.changed }}
+      HARBOR_CHANGED: ${{ needs.classify.outputs.changed }}
 ```
 ```yaml
       - name: Prove the segment table is built correctly
@@ -176,7 +176,7 @@ Same three changes each — `needs`, a `ran` output, `env` — and one step body
       count: ${{ steps.suite.outputs.count }}
       ran: ${{ steps.suite.outputs.ran }}
     env:
-      HARBOR_TEST_CHANGED: ${{ needs.classify.outputs.changed }}
+      HARBOR_CHANGED: ${{ needs.classify.outputs.changed }}
 ```
 ```yaml
       - name: Run the marker fixtures against the POSIX resolver
@@ -237,7 +237,7 @@ becomes:
           if [ "${{ needs.floor.outputs.ran }}" = "true" ] \
              && [ "${{ needs.normalize.outputs.ran }}" = "true" ] \
              && [ "${{ needs.marker.outputs.ran }}" = "true" ]; then
-            HARBOR_STATUS_SUITE_COUNTS="floor-test=${{ needs.floor.outputs.count }},normalize-test=${{ needs.normalize.outputs.count }},marker-test=${{ needs.marker.outputs.count }}" \
+            HARBOR_SUITE_COUNTS="floor-test=${{ needs.floor.outputs.count }},normalize-test=${{ needs.normalize.outputs.count }},marker-test=${{ needs.marker.outputs.count }}" \
               sh bin/status-generate.sh --check
           else
             echo "count-bearing suites stood down for this change class —"
@@ -246,7 +246,7 @@ becomes:
           fi
 ```
 
-Delete the step's old `env: HARBOR_STATUS_SUITE_COUNTS:` block; it is inline above now.
+Delete the step's old `env: HARBOR_SUITE_COUNTS:` block; it is inline above now.
 
 **Leave the dependency-failure guard exactly as it is.** It fires on
 `result != 'success'`, and no job is skipped under this design, so a stood-down

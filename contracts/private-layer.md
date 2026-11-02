@@ -14,7 +14,7 @@ The directory is `${HARBOR_SCOPE_PRIVATE:-$PORT_ROOT/harbor-private}`, with `POR
 | `leaks-baseline.txt` | one number: the private leak count, which only goes down | `bin/lint-leaks.sh --check`, when the file exists |
 | `access/` | account, role and route cards; names only, never a secret; format in [access-card.md](./access-card.md) | `bin/scope-roots.sh --access`, the one resolver; through it `skills/access-ledger/bin/check-routes.sh`, `skills/topology/bin/check-topology.sh`, `context-rules/user/access-route.sh` and lint `doc.urls-cited` |
 | `access/register.md` | the identity register: one `## <id>` entry per account, role, app, mailbox or token, each with a `secret:` reference, never a value; created with a header only; format in [access-register.md](./access-register.md) | `bin/access.sh` (`harbor access`), the one reader; through it `bin/secret`, which refuses a ref no entry names |
-| `context-rules/` | the rule packs that name a client or one of its repos, in the shape of core's `context-rules/`: `user/` (the `.md` packs every session carries, and `projects.tsv`, the registry: `name` TAB `~/path` TAB `what it covers`), one folder per repo (`<name>/*.md`, seeded into that repo by `--projects`) and `notes.tsv` (their probe rows, in the columns of `fixtures/injection-rule/notes.tsv`); see [`context-rules/`](#context-rules) | `bin/scope-roots.sh --inject` and `--projects`, the resolver; through it `bin/context-injection-install.sh`, `bin/memory-route.sh`, `bin/access-environment.sh`, `bin/scope.sh`, `tests/context/injection-rule/notes.test.sh` (`HARBOR_CONTEXT_NOTES_PRIVATE`) and lint `IJ1`..`IJ5`. Absent is core's box tier alone, no registry and nothing to seed |
+| `context-rules/` (`inject.d/` until it moves, harbor#1010) | the rule packs that name a client or one of its repos, in the shape of core's `context-rules/`: `user/` (`box/` under `inject.d/`; the `.md` packs every session carries, and `projects.tsv`, the registry: `name` TAB `~/path` TAB `what it covers`), one folder per repo (`<name>/*.md`, seeded into that repo by `--projects`) and `notes.tsv` (their probe rows, in the columns of `fixtures/injection-rule/notes.tsv`); see [`context-rules/`](#context-rules) | `bin/scope-roots.sh --inject` and `--projects`, the resolver; through it `bin/context-injection-install.sh`, `bin/memory-route.sh`, `bin/access-environment.sh`, `bin/scope.sh`, `tests/context/injection-rule/notes.test.sh` (`HARBOR_CONTEXT_NOTES_PRIVATE`) and lint `IJ1`..`IJ5`. Absent is core's box tier alone, no registry and nothing to seed |
 | `checks.md` | private check rows (client monitors): a fragment in the register's own shape, see [`checks.md`](#checksmd) | `bin/check-registry-generate.sh`; through it `deploy-runtime-install.sh`, `drift-install.sh`, `lint-findings.sh`, `lint-conventions.sh` (`drift.launchd-plist`, `audit.finding-lanes`) |
 | `controls.tsv` | the `check.<id>` control rows of those checks, in the core `standards/naming/controls.tsv` columns | nothing yet: `bin/lint-name.sh` overlays `terms.tsv` only |
 | `jobs/` | private scheduled jobs: the launchd plists of the checks in `checks.md` and in `harbor-pack/checks.md` (a pack ships no plist, harbor#1273), named `com.harbor.<id>.plist` | `drift.launchd-plist` (the plist a row owes) and `drift-renew-check.sh` (built here, installed nowhere). Core has no plist installer either: the operator copies a plist into the LaunchAgents folder, from `jobs/` here and from `launchd/` there |
@@ -133,8 +133,8 @@ Absent, `--coverage` says NOT CHECKED (exit 2) and the gate holds core's labels 
 
 Core's `context-rules/` holds `user/` (the box tier) and `harbor/` (harbor's own repo rules) and nothing else: the packs
 every box needs and none that names a client or another repo. The rest is here, in the same shape. `sh bin/scope-roots.sh
---inject` prints `<private>/context-rules` (the old `<private>/inject.d` is retired, harbor#1010), and
-`--projects` the registry, `<rules>/user/projects.tsv` with no layer, neither
+--inject` prints `<private>/context-rules`, or the old `<private>/inject.d` while the layer has not moved (harbor#1010), and
+`--projects` the registry, `<rules>/user/projects.tsv` (`box/projects.tsv` under `inject.d/`); with no layer, neither
 directory or no registry each prints nothing, says
 why on stderr and exits 1, and no reader treats that as a pass: the installer is core alone, `memory.route` stands
 down naming where it looked, and lint IJ2 says it did not check.
@@ -147,9 +147,10 @@ down naming where it looked, and lint IJ2 says it did not check.
   refuses the run.
 - **The matcher includes them.** The tool matcher the installer wires is derived from every pack the engine may meet,
   the private repo packs among them, so a private pack on a tool no core pack names is still invoked.
-- **`--projects` seeds from here.** The installer's `--projects` step copies `<private>/context-rules/<name>/` into the
-  project the registry row `<name>` names, as that repo's own `context-rules/<name>/` (harbor#1010; what was there is copied to the run's
-  backup first). An old `.claude/inject.d` is left in place but is no longer read; a folder with no row is skipped
+- **`--projects` seeds from here.** The installer's `--projects` step copies `<private>/context-rules/<name>/` (or `inject.d/<name>/`) into the
+  project the registry row `<name>` names, as that repo's own `context-rules/<name>/` (harbor#1010; what was there, and
+  any old `.claude/inject.d`, is copied to the run's backup first). An old `.claude/inject.d` is left in place, since
+  it may hold the repo's own rules, and the engine reads it until rename-0031's date; a folder with no row is skipped
   and says so.
 - **`notes.tsv`** carries the probe rows of these packs. `HARBOR_CONTEXT_NOTES_PRIVATE=<layer> sh tests/context/injection-rule/notes.test.sh`
   runs them beside core's `fixtures/injection-rule/notes.tsv`.
@@ -157,8 +158,8 @@ down naming where it looked, and lint IJ2 says it did not check.
   a deploy between the two installs a box with neither.
 - **The move (harbor#1010).** Moving this folder to `context-rules/` is one private commit: `inject.d/box/` becomes
   `context-rules/user/` with `projects.tsv`, each `inject.d/<name>/` becomes `context-rules/<name>/`, each `NN-x.md` becomes
-  `<id>.md` with `order: NN` where order matters, and `notes.tsv` moves with them. Core reads only the new layout
-  (the `dir:inject.d` row in `standards/naming/renames.tsv` is the record).
+  `<id>.md` with `order: NN` where order matters, and `notes.tsv` moves with them. Core reads either layout until the
+  `dir:inject.d` row's date in `standards/naming/renames.tsv`.
 
 ## The tree names no sibling repo
 

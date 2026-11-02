@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0
+[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
 # B6 (harbor#3) — recurring fail-CLOSED SessionStart integrity gate.
 # Asserts, at every session start, that the floor is intact:
 #   1. permissions.deny + mode locks + plugins + marketplaces hash-match the
@@ -344,7 +344,7 @@ for g in $CHECK; do
       # the session (convention audit 2026-07-25).
       line="$("$FLOOR_GREP" -vE '^[[:space:]]*(#|$)' "$f" 2>/dev/null | "$FLOOR_GREP" -vE '^#!' | head -1)"
       case "$line" in
-        *HARBOR_ADMISSION_DISABLE*) ;;
+        *HARBOR_ADMISSION_DISABLE*|*HELM_DISABLE_FLOOR*) ;;
         *) note "kill-switch missing from $g (first live line: ${line:-<empty>})" ;;
       esac
       ;;

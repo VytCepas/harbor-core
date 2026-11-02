@@ -816,7 +816,7 @@ trap 'rm -f "$TMP" "$TMP.d"' EXIT INT TERM
 _gen() {
   _py gen "out=$TMP" "root=$ROOT" "home=$HOME" "cfg=$CFG" \
     "harbor_repo=$(_root HARBOR_SCOPE_REPO)" "fleet=$(_root HARBOR_SCOPE_FLEET_CONTROLLER)" "yard=$(_root HARBOR_SCOPE_SCAFFOLDER)" \
-    "memory_store=${HARBOR_MEMORY_LOG_DIR:-$CFG/MEMORY}" "local_bin=$(_root HARBOR_SCOPE_LOCAL_BIN)"
+    "memory_store=${HARBOR_MEMORY_LOG_DIR:-${HARBOR_LOG_DIR:-$CFG/MEMORY}}" "local_bin=$(_root HARBOR_SCOPE_LOCAL_BIN)"
 }
 if [ "$MODE" = dangling ]; then
   # A failed scan is 3 (unchecked), never 1: reference-check read 1 as "rows found", so a scan that died on an

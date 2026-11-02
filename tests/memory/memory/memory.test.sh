@@ -5,7 +5,7 @@
 # HARBOR_TEST_REQUIRE_BUN=1 and HARBOR_TEST_REQUIRE_GITLEAKS=1 turn a missing tool into a failure.
 LIVE_CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"  # read before t_init sandboxes it
 # The caller's knobs too, before t_init clears every HARBOR_* (harbor#773). memory.sh reads the bun one.
-MEM_BUN="${HARBOR_MEMORY_BUN:-}"; REQ_BUN="${HARBOR_TEST_REQUIRE_BUN:-0}"; REQ_GITLEAKS="${HARBOR_TEST_REQUIRE_GITLEAKS:-0}"
+MEM_BUN="${HARBOR_MEMORY_BUN:-}"; REQ_BUN="${HARBOR_TEST_REQUIRE_BUN:-${HARBOR_REQUIRE_BUN:-0}}"; REQ_GITLEAKS="${HARBOR_TEST_REQUIRE_GITLEAKS:-${HARBOR_REQUIRE_GITLEAKS:-0}}"
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 [ -z "$MEM_BUN" ] || { HARBOR_MEMORY_BUN="$MEM_BUN"; export HARBOR_MEMORY_BUN; }
 FIX="$T_ROOT/fixtures/memory"; CORPUS="$FIX/corpus"; EXPECT="$FIX/expected.json"

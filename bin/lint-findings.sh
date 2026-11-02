@@ -32,12 +32,12 @@ case "${1:-}" in
   -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); if ($0=="") exit; print; next } {exit}' "$0"; exit 0 ;;
 esac
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
-ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH='' cd -- "$HERE/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH='' cd -- "$HERE/.." && pwd)}}"
 . "$HERE/library-log.sh"; . "$HERE/library-fs.sh"
 log_init findings
 LINT="$HERE/lint-conventions.sh"
 CONTRACT="$ROOT/contracts/finding.md"
-TODAY="${HARBOR_LINT_FINDINGS_NOW:-$(date -u +%Y-%m-%d)}"
+TODAY="${HARBOR_LINT_FINDINGS_NOW:-${HARBOR_FINDINGS_NOW:-$(date -u +%Y-%m-%d)}}"
 case "$TODAY" in [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;; *) TODAY="$(date -u +%Y-%m-%d)" ;; esac
 umask 077
 T="$(mktemp -d "${TMPDIR:-/tmp}/findings.XXXXXX")"
@@ -57,7 +57,7 @@ stop()  { log_fail "$1"; log_fix "$2"; log_end || :; exit 1; }
 digest_of_file() { LC_ALL=C sort -u "$1" | fs_sha256 | cut -c1-16; }
 
 repo() {
-  [ -z "${HARBOR_LINT_FINDINGS_REPO:-}" ] || { printf '%s' "${HARBOR_LINT_FINDINGS_REPO:-}"; return 0; }
+  [ -z "${HARBOR_LINT_FINDINGS_REPO:-${HARBOR_FINDINGS_REPO:-}}" ] || { printf '%s' "${HARBOR_LINT_FINDINGS_REPO:-${HARBOR_FINDINGS_REPO:-}}"; return 0; }
   git -C "$ROOT" remote get-url origin 2>/dev/null \
     | sed -e 's#^.*github\.com[:/]##' -e 's#\.git$##'
 }
@@ -128,10 +128,20 @@ recent_findings() {
 successors() { # → $T/succ: `letter TAB id`
   [ -f "$T/succ" ] || { sh "$LINT" --ids 2>/dev/null | awk -F'\t' 'NR > 1 && $2 != "-" { print $2 "\t" $1 }' > "$T/succ" || :; }
 }
+# A check renamed to its family id (harbor#961 W5, decided 2026-10-29) is the same check: its renames.tsv row of
+# surface check-id (old check:<id>, new check:<id>) is read until its remove_by date, so an issue keyed check/<old> joins
+# under check/<new> exactly as a letter id does, and a receipt <old>.json counts as <new>'s until <new>.json exists.
+# Past remove_by the row is not read: the old key is then a check with no row, as any unregistered id is.
+check_aliases() { # → $T/calias: `old TAB new`, the check ids whose alias window is open on TODAY
+  [ -f "$T/calias" ] || awk -F'\t' -v d="$TODAY" '$1 ~ /^rename-/ && $4 == "check-id" && $2 ~ /^check:/ && $3 ~ /^check:/ \
+      && $6 ~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ && d <= $6 { print substr($2, 7) "\t" substr($3, 7) }' \
+      "$ROOT/standards/naming/renames.tsv" > "$T/calias" 2>/dev/null || : > "$T/calias"
+}
 canon_key() { # <key> → the key under its current id
-  successors
-  awk -F'\t' -v k="$1" 'BEGIN { split(k, p, "/") } p[1] == "lint" && $1 == substr(k, 6) { print "lint/" $2; f = 1; exit }
-                         END { if (!f) print k }' "$T/succ"
+  successors; check_aliases
+  awk -F'\t' -v k="$1" 'BEGIN { split(k, p, "/") } FILENAME == ARGV[1] && p[1] == "lint" && $1 == substr(k, 6) { print "lint/" $2; f = 1; exit }
+                         FILENAME == ARGV[2] && p[1] == "check" && $1 == substr(k, 7) { print "check/" $2; f = 1; exit }
+                         END { if (!f) print k }' "$T/succ" "$T/calias"
 }
 read_store() { # → $T/store.tsv: number state reason dispositions created key digest seen schema marker-key
   gh issue list -R "$REPO" --label finding --state all --limit 1000 \
@@ -146,10 +156,11 @@ read_store() { # → $T/store.tsv: number state reason dispositions created key 
     | map(tostring | if . == "" then "-" else . end) | @tsv' \
     "$T/store.json" | sort -t'	' -k1,1nr > "$T/store.raw" \
     || stop "the finding store at $REPO did not parse" "gh issue list -R $REPO --label finding --state all --json number,body"
-  successors
+  successors; check_aliases
   # The map is read in BEGIN, never as a first file: an empty map would make NR == FNR hold for the
   # store itself and swallow every row, and an empty store files every finding again.
-  awk -F'\t' -v OFS='\t' -v S="$T/succ" 'BEGIN { while ((getline l < S) > 0) { split(l, p, "\t"); s["lint/" p[1]] = "lint/" p[2] } }
+  awk -F'\t' -v OFS='\t' -v S="$T/succ" -v C="$T/calias" 'BEGIN { while ((getline l < S) > 0) { split(l, p, "\t"); s["lint/" p[1]] = "lint/" p[2] }
+                                                    while ((getline l < C) > 0) { split(l, p, "\t"); s["check/" p[1]] = "check/" p[2] } }
        { m = "-"; if ($6 in s) { m = $6; $6 = s[$6] } print $0, m }' "$T/store.raw" > "$T/store.tsv"
 }
 # latest <key> → the newest issue's row for that key, or nothing
@@ -260,6 +271,7 @@ receipts() {
     | sort -u > "$T/checks.ids"
   sed 's#^\(.*\)$#check/\1 the `\1` check (docs/reference/checks.md)#' "$T/checks.ids" >> "$T/titles"
   [ -d "$_rdir" ] || return 0
+  check_aliases
   for _rf in "$_rdir"/*.json; do
     [ -f "$_rf" ] || continue
     jq -r --arg now "$TODAY" --argjson max "$RECEIPT_DAYS" '
@@ -271,6 +283,9 @@ receipts() {
     [ -s "$T/r1" ] || continue
     IFS='	' read -r _ri _rs _rfr _ < "$T/r1"
     [ "${_rf##*/}" = "$_ri.json" ] || { printf 'check/%s (receipt %s names another id)\n' "$_ri" "${_rf##*/}" >> "$T/receipt.refused"; continue; }
+    # A receipt under an old id is its new id's until the new one writes its own (check_aliases).
+    _rn="$(awk -F'\t' -v i="$_ri" '$1 == i { print $2; exit }' "$T/calias")"
+    if [ -n "$_rn" ]; then [ -f "$_rdir/$_rn.json" ] && continue; _ri="$_rn"; fi
     if ! grep -qxF "$_ri" "$T/checks.ids"; then printf 'check/%s (receipt with no docs/reference/checks.md row)\n' "$_ri" >> "$T/receipt.refused"; continue; fi
     # An unknown status is refused, never read as a run: a run that fires nothing would close the finding.
     case "$_rs" in green|red|stood-down) ;; *) printf 'check/%s (receipt status %s is not green, red or stood-down)\n' "$_ri" "$_rs" >> "$T/receipt.refused"; continue ;; esac

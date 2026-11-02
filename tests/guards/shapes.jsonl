@@ -22,6 +22,6 @@
 {"shape":"subagent-transcript","ctx":{"transcript_path":"/Users/x/.claude/projects/p/subagents/agent-1.jsonl"},"reps":["ask"],"expect":"no-human","why":"harbor#194"}
 {"shape":"autonomous","ctx":{"permission_mode":"bypassPermissions"},"reps":["ask"],"expect":"no-human","why":"harbor#194"}
 {"shape":"posture-deny","posture":"deny","reps":["deny","ask"],"expect":"no-human","why":"the posture knob escalates ask to deny"}
-{"shape":"kill-switch","env":{"HARBOR_ADMISSION_DISABLE":"1"},"reps":["deny"],"expect":"allow","why":"the operator's kill switch"}
+{"shape":"kill-switch","env":{"HELM_DISABLE_FLOOR":"1"},"reps":["deny"],"expect":"allow","why":"the operator's kill switch"}
 {"shape":"heredoc-apostrophe-body","form":"git commit -F - <<'HD'\nit's how {cmd} is caught\nHD","reps":["deny"],"expect":"allow","why":"harbor#805: an apostrophe in a quoted-delimiter body is literal and must not switch the veto off"}
 {"shape":"kill-switch-harbor-name","env":{"HARBOR_ADMISSION_DISABLE":"1"},"reps":["deny"],"expect":"allow","why":"the operator's kill switch"}

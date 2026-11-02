@@ -15,8 +15,8 @@ case "${1:-}" in -h|--help) awk 'NR<2{next} /^#/{sub(/^# ?/,""); print; next} {e
 . "$HERE/library-log.sh"
 . "$HERE/library-fs.sh"
 log_init collector
-SRC="${HARBOR_AUDIT_COLLECTOR_SOURCES:-}"
-STORE="${HARBOR_AUDIT_COLLECTOR_STORE:-/Library/Application Support/Harbor/collector}"
+SRC="${HARBOR_AUDIT_COLLECTOR_SOURCES:-${HARBOR_COLLECTOR_SRC:-}}"
+STORE="${HARBOR_AUDIT_COLLECTOR_STORE:-${HARBOR_COLLECTOR_STORE:-/Library/Application Support/Harbor/collector}}"
 NS=harbor-collector   # ssh-keygen -Y namespace: a signature made for anything else does not verify here
 [ -n "$SRC" ] || { log_fail "HARBOR_AUDIT_COLLECTOR_SOURCES is not set"; log_fix "set it to <cfg>/MEMORY/OBSERVABILITY in the launchd job"; exit 2; }
 umask 077
@@ -64,7 +64,7 @@ ingest() {
     # The fast path: a CLOSED file (idle over an hour: archives, rotated generations) with unchanged size and mtime skips
     # the re-hash (5 s per 200 MB measured); anything recent is always re-hashed, so mtime's one-second grain hides
     # nothing. An edit to a closed file that restores size and mtime is caught by the daily --checkpoint full pass.
-    if [ "${HARBOR_AUDIT_COLLECTOR_FULL:-0}" != 1 ] && [ "$size" = "$done_b" ] && [ -n "$done_m" ] && [ "$mt" = "$done_m" ] \
+    if [ "${HARBOR_AUDIT_COLLECTOR_FULL:-${HARBOR_COLLECTOR_FULL:-0}}" != 1 ] && [ "$size" = "$done_b" ] && [ -n "$done_m" ] && [ "$mt" = "$done_m" ] \
        && [ "$((_now - mt))" -gt 3600 ]; then
       printf '%s\t%s\t%s\t%s\t%s\n' "$ino" "$done_b" "$done_h" "$rel" "$done_m" >> "$_new"; _files=$((_files + 1)); continue
     fi

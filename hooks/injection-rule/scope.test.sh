@@ -30,8 +30,8 @@ printf 'subproj\t~/proj/sub\ta subdirectory, not a repo root\ndecoy\t~/decoy\tso
 t_hasnt "a registered subdirectory does not claim the whole repository" "$(_pp "$W/home/proj")" 'YOU ARE IN: subproj'
 
 t_section "8c · an access failure names its route card and account (2026-09-24)"
-ACCCFG="$T/acccfg"; mkdir -p "$ACCCFG/context-rules/user" "$T/access"
-cp "$T_ROOT/context-rules/user/access-route-pointer.md" "$T_ROOT/context-rules/user/access-route.sh" "$ACCCFG/context-rules/user/"
+ACCCFG="$T/acccfg"; mkdir -p "$ACCCFG/inject.d" "$T/access"
+cp "$T_ROOT/context-rules/user/access-route-pointer.md" "$T_ROOT/context-rules/user/access-route.sh" "$ACCCFG/inject.d/"
 # The command-to-card table is the register's own (<register>/routes.tsv, harbor#1149); core ships none, so the fixture writes one.
 printf 'example-project|api\\.example\\.test\texample\n@B@gcloud \tgcloud\n' > "$T/access/routes.tsv"
 cat > "$T/access/example.md" <<'CARD'
@@ -82,25 +82,25 @@ t_section "scope: box · a repo rule that follows the call (harbor#599)"
 # The session stands in no repository. alpha is REGISTERED, with one pack that did not
 # consent; beta consents but is NOT registered, which is the trust boundary under test.
 SB="$T/sb"; SBC="$SB/cfg"; WS="$SB/ws"; A="$WS/alpha"; B="$WS/beta"
-mkdir -p "$SBC/context-rules/user" "$A/context-rules/repo" "$B/context-rules/repo"
+mkdir -p "$SBC/inject.d" "$A/.claude/inject.d" "$B/.claude/inject.d"
 scoped() { # <dir> <file> <id> <when> <scope> <body>
   printf -- '---\nid: %s\nevent: PreToolUse\nwhen: %s\n%s---\n%s\n' "$3" "$4" "${5:+scope: $5
 }" "$6" > "$1/$2"
 }
-scoped "$A/context-rules/repo" 10-consents.md alpha-consents always box ALPHA-CONSENTS
-scoped "$A/context-rules/repo" 20-private.md alpha-private always '' ALPHA-PRIVATE
-scoped "$A/context-rules/repo" 30-marker.md alpha-marker 'repo-has MARKER.txt' box ALPHA-HAS-MARKER
-printf -- '---\nid: alpha-run\nevent: PreToolUse\nwhen: always\nscope: box\nrun: where.sh\n---\n' > "$A/context-rules/repo/40-run.md"
-printf '#!/usr/bin/env sh\nprintf "RAN-IN %%s\\n" "$(pwd -P)"\n' > "$A/context-rules/repo/where.sh"
+scoped "$A/.claude/inject.d" 10-consents.md alpha-consents always box ALPHA-CONSENTS
+scoped "$A/.claude/inject.d" 20-private.md alpha-private always '' ALPHA-PRIVATE
+scoped "$A/.claude/inject.d" 30-marker.md alpha-marker 'repo-has MARKER.txt' box ALPHA-HAS-MARKER
+printf -- '---\nid: alpha-run\nevent: PreToolUse\nwhen: always\nscope: box\nrun: where.sh\n---\n' > "$A/.claude/inject.d/40-run.md"
+printf '#!/usr/bin/env sh\nprintf "RAN-IN %%s\\n" "$(pwd -P)"\n' > "$A/.claude/inject.d/where.sh"
 printf 'x\n' > "$A/MARKER.txt"
-scoped "$B/context-rules/repo" 10-consents.md beta-consents always box BETA-CONSENTS
+scoped "$B/.claude/inject.d" 10-consents.md beta-consents always box BETA-CONSENTS
 for _r in "$A" "$B"; do
   ( cd "$_r" && git init -q . && git config user.email t@t && git config user.name t \
     && git config commit.gpgsign false && printf 'x\n' > README.md && git add -A && git commit -qm init ) >/dev/null 2>&1
 done
 git -C "$A" remote add origin https://github.com/fixture/alpha.git
 git -C "$A" worktree add -q "$WS/feature" -b feature >/dev/null 2>&1  # a name that gives no hint of its owner
-printf 'alpha\t%s\tthe fixture repo\n' "$A" > "$SBC/context-rules/user/projects.tsv"
+printf 'alpha\t%s\tthe fixture repo\n' "$A" > "$SBC/inject.d/projects.tsv"
 PA="$(CDPATH='' cd -P -- "$A" && pwd -P)"
 reach() { # <payload> [project dir]
   printf '%s' "$1" | CLAUDE_CONFIG_DIR="$SBC" CLAUDE_PROJECT_DIR="${2:-$WS}" PORT_ROOT="$WS" sh "$SUT" 2>/dev/null
@@ -129,12 +129,12 @@ t_eq "inside its own repo the pack is delivered once, not twice" 1 "$(printf '%s
 t_has "inside its own repo a home-only pack still loads" "$_r" 'ALPHA-PRIVATE'
 
 t_section "repo-tier: the report reads the same answer the sweep acted on"
-cp "$T_ROOT/context-rules/user/repo-tier-not-loaded.md" "$T_ROOT/context-rules/user/repo-tier.sh" "$SBC/context-rules/user/"
+cp "$T_ROOT/context-rules/user/repo-tier-not-loaded.md" "$T_ROOT/context-rules/user/repo-tier.sh" "$SBC/inject.d/"
 t_has "names what crossed and what stayed home" "$(reach "$(rd "$A/README.md" "$WS")")" \
   'NOT govern this session: alpha-private (delivered anyway, because they declare scope: box: alpha-consents alpha-marker alpha-run)'
 _rb="$(reach "$(rd "$B/README.md" "$WS")")"
 t_has "an unregistered tree loses even its consenting rule, and says so" "$_rb" 'NOT govern this session: beta-consents.'
 t_has "the loss is reported under its heading" "$_rb" 'REPO RULES NOT LOADED'
-rm -f "$A/context-rules/repo/20-private.md"
+rm -f "$A/.claude/inject.d/20-private.md"
 gone "a tree whose every rule crossed is not reported" "$(reach "$(rd "$A/README.md" "$WS")")" 'REPO RULES NOT LOADED'
 t_done

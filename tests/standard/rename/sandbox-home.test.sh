@@ -28,8 +28,7 @@ t_eq "the row names a valid new name" 0 "$(sh "$CL/bin/lint-name.sh" --check bin
 R --apply --id rename-9001 > "$T_TMP/apply.out" 2>"$T_TMP/apply.err"; t_eq "apply exits 0" 0 "$?"
 t_eq "residual 0" "residual 0" "$(head -1 "$T_TMP/apply.out")"
 t_eq "the file moved" present "$([ -f "$CL/bin/admission-annotate-web.sh" ] && [ ! -e "$CL/bin/annotate-web.sh" ] && echo present || echo absent)"
-t_eq "no true reference to the old path is left outside the register" 0 "$(git -C "$CL" grep -E -c '(^|[^A-Za-z0-9_-])annotate-web[.]sh' -- . ':!standards/naming/renames.tsv' ':!vendor' | wc -l | tr -d ' ')"
-t_eq "...vendor/ is the exception: a vendored copy is left to bin/standard-vendor.sh (harbor#968)" "vendor/naming/registry/controls.tsv" "$(git -C "$CL" grep -l -E '(^|[^A-Za-z0-9_-])annotate-web[.]sh' -- vendor | sed -n 1p)"
+t_eq "no true reference to the old path is left outside the register" 0 "$(git -C "$CL" grep -E -c '(^|[^A-Za-z0-9_-])annotate-web[.]sh' -- . ':!standards/naming/renames.tsv' | wc -l | tr -d ' ')"
 git -C "$CL" add -A; git -C "$CL" commit -qm applied
 
 t_section "the box half waits for the deploy, then rewires settings and pins"

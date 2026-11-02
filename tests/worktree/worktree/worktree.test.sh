@@ -165,9 +165,9 @@ t_section "new links the parent's memory store (harbor#589)"
 # HOME is pinned to the fixture dir so the registry row `~/repo` is the fixture repo; PORT_ROOT is
 # pinned so a host value adds no directory to the sweep.
 HK="$(printf '%s' "$P" | sed 's|/|-|g')"
-mkdir -p "$P/cfg/projects/$HK/memory" "$P/mrrepo" "$P/priv/context-rules/user"   # the registry is the private layer's (harbor#1149)
+mkdir -p "$P/cfg/projects/$HK/memory" "$P/mrrepo" "$P/priv/inject.d/box"   # the registry is the private layer's (harbor#1149)
 printf 'note\n' > "$P/cfg/projects/$HK/memory/a.md"
-printf 'repo\t~/repo\tw\n' > "$P/priv/context-rules/user/projects.tsv"
+printf 'repo\t~/repo\tw\n' > "$P/priv/inject.d/box/projects.tsv"
 HOME="$P" PORT_ROOT="$P/port" HARBOR_SCOPE_PRIVATE="$P/priv" HARBOR_SCOPE_REPO="$P/mrrepo" wt new feat/mem >/dev/null
 WK="$(printf '%s' "$P/port/.worktrees/repo/feat-mem" | sed 's|/|-|g')"
 t_eq "the new worktree's memory route is a symlink" yes "$(yn [ -L "$P/cfg/projects/$WK/memory" ])"

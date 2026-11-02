@@ -31,7 +31,7 @@ Parts B–D have no prerequisite and can be applied alone.
 Every job in `.github/workflows/governance.yml` has this same `runs-on` line:
 
 ```yaml
-    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_CI_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64"]') }}
+    runs-on: ${{ fromJSON((!github.event.repository.private || (inputs.runner || vars.HARBOR_RUNNER) == 'github-hosted') && '["ubuntu-latest"]' || '["self-hosted","Linux","ARM64"]') }}
 ```
 
 - In job **`suite-shard`** only, replace `'["self-hosted","Linux","ARM64"]'` with
@@ -81,13 +81,13 @@ with:
 2. In job `suite-shard`, replace:
 
 ```yaml
-      HARBOR_CI_BASE: origin/${{ github.base_ref || 'main' }}
+      HARBOR_BASE: origin/${{ github.base_ref || 'main' }}
 ```
 
 with:
 
 ```yaml
-      HARBOR_CI_BASE: ${{ (github.event_name == 'push' && needs.verified.outputs.base) || format('origin/{0}', github.base_ref || 'main') }}
+      HARBOR_BASE: ${{ (github.event_name == 'push' && needs.verified.outputs.base) || format('origin/{0}', github.base_ref || 'main') }}
 ```
 
 An empty `base` (no PR found, API failure, anything doubtful) falls back to
@@ -121,19 +121,19 @@ with:
 In job `suite-shard`, replace:
 
 ```yaml
-      HARBOR_CI_LEVEL: ${{ (inputs.level || vars.HARBOR_CI_LEVEL) }}
+      HARBOR_LEVEL: ${{ (inputs.level || vars.HARBOR_CI_LEVEL) }}
 ```
 
 with:
 
 ```yaml
-      HARBOR_CI_LEVEL: ${{ (inputs.level || vars.HARBOR_CI_LEVEL) }}
-      HARBOR_TEST_SUITE_CACHE: ${{ github.event_name != 'push' && vars.HARBOR_TEST_SUITE_CACHE || '' }}
+      HARBOR_LEVEL: ${{ (inputs.level || vars.HARBOR_CI_LEVEL) }}
+      HARBOR_SUITE_CACHE: ${{ github.event_name != 'push' && vars.HARBOR_SUITE_CACHE || '' }}
 ```
 
 This changes nothing until the repo variable exists: on with
-`gh variable set HARBOR_TEST_SUITE_CACHE --body 1`, off with
-`gh variable delete HARBOR_TEST_SUITE_CACHE`. Push runs never use it, so `main`
+`gh variable set HARBOR_SUITE_CACHE --body 1`, off with
+`gh variable delete HARBOR_SUITE_CACHE`. Push runs never use it, so `main`
 keeps a full verdict. Contract and limits: `contracts/suite-cache.md`.
 
 ## After applying — what proves it landed

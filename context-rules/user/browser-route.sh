@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# 65-browser-route-platform-chrome — a Claude-in-Chrome navigation to a vendor UI
+# 65-browser-route-harbor-chrome — a Claude-in-Chrome navigation to a vendor UI
 # that `harbor chrome` covers is refused, and the refusal names the command.
 #
 # WHY (2026-09-30). contracts/browser-routing.md made `harbor chrome` row 4's first

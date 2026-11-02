@@ -18,8 +18,7 @@ git -C "$AD" checkout -q -b feature
 : > "$AD/New_Bad.md"; : > "$AD/docs/good-new.md"                                  # a bad name added, a good one added
 printf 'more\n' >> "$AD/Legacy_Old.md"                                            # a legacy bad name, only modified
 git -C "$AD" mv docs/keep-me.md docs/Renamed_Bad.md                              # a good name renamed to a bad one
-_G="GOLD$(printf EN)"   # the banned prefix, spelled apart so this file holds no such env name
-printf "#!/usr/bin/env sh\n%s_PROBE_FIXTURE=1\n" "$_G" > "$AD/scripts/probe.sh"       # a new file using a banned env prefix
+printf '#!/usr/bin/env sh\nHELM_PROBE_FIXTURE=1\n' > "$AD/scripts/probe.sh"       # a new file using a legacy env prefix
 cp "$AD/standards/naming/dialects.tsv" "$AD/standards/naming/ghost.tsv"          # a register file registers.tsv does not name
 git -C "$AD" add -A && git -C "$AD" -c user.email=t@example.invalid -c user.name=t commit -q -m branch
 : > "$AD/Untracked_Bad.md"                                                        # not the branch's yet
@@ -30,13 +29,13 @@ t_has "…and so is a good name renamed to a bad one: a rename is an add of its 
 t_hasnt "a good name the branch adds is not" "$_ad" "good-new.md"
 t_hasnt "…nor a legacy bad name the branch only modified" "$_ad" "Legacy_Old.md"
 t_hasnt "…nor an untracked file, which is not the branch's yet" "$_ad" "Untracked_Bad.md"
-t_hasnt "…nor an env token read out of an added file: the file may only use one that was there" "$_ad" "${_G}_PROBE_FIXTURE"
+t_hasnt "…nor an env token read out of an added file: the file may only use one that was there" "$_ad" "HELM_PROBE_FIXTURE"
 t_hasnt "…nor the registry: a file registers.tsv does not name is a tree finding, not an added name" "$_ad" "register-file:ghost.tsv"
 t_has "positive control: the same run judged the branch" "$_ad" "the names added since main"
 _chg="$(ad --changed)"
 t_has "--changed on the same branch does see the modified legacy name" "$_chg" "[name.case] Legacy_Old.md"
 t_has "…the untracked one" "$_chg" "[name.case] Untracked_Bad.md"
-t_has "…the env token" "$_chg" "env:${_G}_PROBE_FIXTURE"
+t_has "…the env token" "$_chg" "env:HELM_PROBE_FIXTURE"
 t_has "…and the unlisted register file" "$_chg" "register-file:ghost.tsv"
 t_exit "an added bad name exits 0 at warn" 0 sh "$AD/bin/lint-name.sh" --root "$AD" --base main --added
 t_exit "with no base to compare against, --added is unchecked, never clean" 3 sh "$AD/bin/lint-name.sh" --root "$AD" --base no-such-ref --added
@@ -102,7 +101,6 @@ t_has "--list names it beside its sibling" "$(sh "$LN" --list)" "standard.names-
 
 t_section "--gen writes every view under build/, from the registry"
 M="$TMP/gen"; mini "$M"   # a copy of its own: in tests/lint/name/name.test.sh this ran on the mutant tree
-printf 'oldword\talerting\tlegacy\tglossary\t2099-01-01\ta fixture legacy row, so the swap list holds one whatever the register retires\n' >> "$M/standards/naming/aliases.tsv"
 for _v in glossary naming-guide cli-tree labels vale; do
   t_exit "--gen $_v exits 0" 0 sh "$M/bin/lint-name.sh" --root "$M" --gen "$_v"
 done
@@ -111,12 +109,12 @@ t_exit "the glossary is valid UTF-8 (a byte-cut → made 234 rows invalid, harbo
 t_has "…and its broader chain is whole" "$(grep '^| \*\*lint\*\*' "$M/build/naming/glossary.md")" "audit → "
 t_has "the CLI tree parses a family script back into its tuple" "$(cat "$M/build/naming/cli-tree.txt")" "harbor lint name    <- bin/lint-name.sh"
 t_has "the label set is <axis>:<value>" "$(cat "$M/build/naming/labels.tsv")" "$(printf 'family:admission\t')"
-t_has "the Vale swap list comes from the legacy aliases" "$(cat "$M/build/vale/styles/Harbor/Legacy.yml")" "'oldword': alerting"
+t_has "the Vale swap list comes from the legacy aliases" "$(cat "$M/build/vale/styles/Harbor/Legacy.yml")" "'floor': security baseline"
 t_has "…and the spelling swap from the spelling aliases (D-16)" "$(cat "$M/build/vale/styles/Harbor/Spelling.yml")" "'behaviour': behavior"
 if command -v vale > /dev/null 2>&1; then
-  printf '# Notes\n\nThe oldword blocks it. Its behaviour holds.\n' > "$M/vale-probe.md"
+  printf '# Notes\n\nThe floor blocks it. Its behaviour holds.\n' > "$M/vale-probe.md"
   _vl="$(cd "$M" && vale --config build/vale/.vale.ini vale-probe.md 2>&1)"
-  t_has "vale runs the generated config and flags a legacy term" "$_vl" "alerting"
+  t_has "vale runs the generated config and flags a legacy term" "$_vl" "security baseline"
   t_has "…and a UK spelling" "$_vl" "Use behavior instead of behaviour"
 else
   t_eq "vale is absent: the generated config was not run (verified NOTHING about it)" absent absent
@@ -183,9 +181,10 @@ t_exit "…and a malformed overlay fails the run" 1 sh -c 'HARBOR_SCOPE_PRIVATE=
 t_has "a repeated id in the overlay goes red" "$(ovf)" "name.registry-duplicate"
 { printf '%s\n' "$_hdr"; _row family client; } > "$PV/terms.tsv"
 t_has "an id that collides with a core term goes red" "$(ovf)" "name.registry-duplicate"
-{ printf '%s\n' "$_hdr"; _row golden system; } > "$PV/terms.tsv"
-t_has "an id that is a core alias goes red" "$(chk env "${_G}_ADMISSION_DISABLE")" "is a core alias"
-t_has "…and --check does not let the alias through" "$(chk env "${_G}_ADMISSION_DISABLE")" "FAIL: [name.registry-duplicate]"
+_helm=$(printf helm | tr a-z A-Z)   # built, so the tree holds no legacy env name
+{ printf '%s\n' "$_hdr"; _row helm system; } > "$PV/terms.tsv"
+t_has "an id that is a core alias goes red" "$(chk env "$_helm"_ADMISSION_DISABLE)" "is a core alias"
+t_has "…and --check does not let the alias through" "$(chk env "$_helm"_ADMISSION_DISABLE)" "FAIL: [name.registry-duplicate]"
 { printf '%s\n' "$_hdr"; _row AcmeSys client; } > "$PV/terms.tsv"
 t_has "an id that is not lowercase kebab goes red" "$(ovf)" "name.registry-shape"
 t_has "…and --check blocks it, not just warns" "$(chk env ACME_LINT_X)" "FAIL: [name.registry-shape]"

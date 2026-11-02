@@ -49,7 +49,7 @@
 # occupies the single runner every other branch is queued behind.
 set -eu
 ROOT="$(git rev-parse --show-toplevel)"
-BASE_BRANCH="${HARBOR_CI_BASE_BRANCH:-main}"
+BASE_BRANCH="${HARBOR_CI_BASE_BRANCH:-${HARBOR_BASE_BRANCH:-main}}"
 
 [ -f "$ROOT/bin/test-suite-select.sh" ] || exit 0
 [ -f "$ROOT/contracts/suites.txt" ] || exit 0
@@ -81,7 +81,7 @@ fi
 # a long hook ends in HTTP 401. `sh bin/gate-push.sh` runs this hook under `git push --dry-run`, records the pass, then
 # pushes; gate-push.sh check answers 0 only for that exact sha, push and check set (the lines below). Else: full run.
 # gate-push: file lib.sh ../bin/gate-push.sh
-# gate-push: env HARBOR_GATE_PREPUSH_FULL HARBOR_CI_BASE_BRANCH HARBOR_TEST_CHANGED
+# gate-push: env HARBOR_GATE_PREPUSH_FULL HARBOR_PREPUSH_FULL HARBOR_CI_BASE_BRANCH HARBOR_BASE_BRANCH HARBOR_TEST_CHANGED HARBOR_CHANGED
 if [ -f "$_hk_here/../bin/gate-push.sh" ]; then
   _gp_in="$(mktemp "${TMPDIR:-/tmp}/pre-push.XXXXXX")"
   cat > "$_gp_in"
@@ -135,7 +135,7 @@ fi
 if [ -n "$_range" ]; then
   HARBOR_TEST_CHANGED="$(git -C "$ROOT" diff --name-only --no-renames "$_range" 2>/dev/null || true)"
   export HARBOR_TEST_CHANGED
-  [ -n "${HARBOR_TEST_CHANGED:-}" ] || unset HARBOR_TEST_CHANGED
+  [ -n "${HARBOR_TEST_CHANGED:-${HARBOR_CHANGED:-}}" ] || unset HARBOR_TEST_CHANGED HARBOR_CHANGED
 fi
 export HARBOR_CI_BASE="origin/$BASE_BRANCH"
 
@@ -158,9 +158,9 @@ if [ -f "$ROOT/bin/doc-fresh-verify.sh" ]; then
   fi
 fi
 
-if [ "${HARBOR_GATE_PREPUSH_FULL:-0}" = 1 ]; then
+if [ "${HARBOR_GATE_PREPUSH_FULL:-${HARBOR_PREPUSH_FULL:-0}}" = 1 ]; then
   echo "pre-push: FULL mode — every suite bin/test-suite-select.sh picks for this push."
-  [ -n "${HARBOR_TEST_CHANGED:-}" ] && printf '%s\n' "${HARBOR_TEST_CHANGED:-}" | sed 's/^/          /'
+  [ -n "${HARBOR_TEST_CHANGED:-${HARBOR_CHANGED:-}}" ] && printf '%s\n' "${HARBOR_TEST_CHANGED:-${HARBOR_CHANGED:-}}" | sed 's/^/          /'
   while IFS= read -r _s; do
     case "$_s" in ''|\#*) continue ;; esac
     # A path entry is relative to the repo root; a bare name lives in bin/ (harbor#695).
@@ -200,7 +200,7 @@ else
   # `-I --ignore-files` and a matcher whose behaviour depends on PATH order means
   # something different on the CI runner.
   _floor=0; _floor_ran=0
-  for _p in ${HARBOR_TEST_CHANGED:-}; do
+  for _p in ${HARBOR_TEST_CHANGED:-${HARBOR_CHANGED:-}}; do
     case "$_p" in
       bin/admission-*.sh|bin/library-admission.sh|bin/guard-*.sh|bin/floor-*.sh|bin/floor-*.awk|bin/admission-*.awk|bin/deploy-harden.sh|hooks/*) _floor=1 ;;
     esac

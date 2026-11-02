@@ -33,8 +33,8 @@ SRC="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 . "$SRC/library-log.sh"
 . "$SRC/deploy-install-lib.sh"
 log_init shim-install
-ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH='' cd -- "$SRC/.." && pwd)}"
-TABLE="${HARBOR_DEPLOY_SHIMS_TABLE:-$ROOT/contracts/shims.tsv}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH='' cd -- "$SRC/.." && pwd)}}"
+TABLE="${HARBOR_DEPLOY_SHIMS_TABLE:-${HARBOR_SHIMS_TABLE:-$ROOT/contracts/shims.tsv}}"
 # The live dir is the operator's PATH dir, from the roots table; no variable must agree with a --dir.
 # shellcheck disable=SC2034 # IL_LIVE_DIR: read by deploy-install-lib.sh
 IL_LIVE_DIR="$(sh "$SRC/scope-roots.sh" --get HARBOR_SCOPE_LOCAL_BIN)"

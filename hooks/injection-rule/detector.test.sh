@@ -4,7 +4,7 @@
 # and every tracked file is swept against an allowlist in both directions (harbor#173, #327).
 . "$(dirname "$0")/../../tests/lib/core.sh"; t_init
 . "$T_ROOT/tests/context/injection-rule/fixture.sh"
-pack "$CFG/context-rules/user" 70-detect.md <<'PACK'
+pack "$CFG/inject.d" 70-detect.md <<'PACK'
 ---
 id: detector
 event: PostToolUse

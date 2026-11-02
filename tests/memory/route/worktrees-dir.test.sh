@@ -2,9 +2,9 @@
 # memory-route.sh routes every tree under <PORT_ROOT>/.worktrees/<repo>/<slug>, including a tree of a repo
 # that has no projects.tsv row (harbor#1149). Everything is a fixture, $HOME included.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)/box"; CFG="$T/cfg"; REPOROOT="$T/repo"; REG="$T/priv/context-rules/user/projects.tsv"
+T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)/box"; CFG="$T/cfg"; REPOROOT="$T/repo"; REG="$T/priv/inject.d/box/projects.tsv"
 PORT="$T/port"; TAB="$(printf '\t')"
-mkdir -p "$CFG/projects" "$REPOROOT" "$T/priv/context-rules/user" "$PORT"   # the registry is the private layer's (harbor#1149)
+mkdir -p "$CFG/projects" "$REPOROOT" "$T/priv/inject.d/box" "$PORT"   # the registry is the private layer's (harbor#1149)
 key_for() { printf '%s' "$1" | sed 's|/|-|g'; }
 route_of() { printf '%s' "$CFG/projects/$(key_for "$1")/memory"; }
 is_link() { [ -L "$1" ] && echo link || echo "not a link"; }

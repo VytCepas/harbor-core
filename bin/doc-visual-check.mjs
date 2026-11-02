@@ -31,6 +31,7 @@ const EXIT = { pass: 0, fail: 1, usage: 2, unchecked: 3 };
 // The probe host is where Playwright and a Chrome channel live. Overridable so
 // this never hard-codes one machine's home into a public repo (No.3).
 const PROBE_DIR = process.env.HARBOR_ACCESS_PROBE_DIR
+  || process.env.HARBOR_PROBE_DIR   // the old name, read until 2026-11-15 (harbor#961 W5)
   || path.join(process.env.HOME || '', '.local/lib/browser-probes');
 
 const VIEWPORTS = [

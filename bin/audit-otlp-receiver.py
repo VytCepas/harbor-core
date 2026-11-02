@@ -118,7 +118,7 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--port", type=int, default=4318)
-    ap.add_argument("--store", default=os.environ.get("HARBOR_AUDIT_COLLECTOR_STORE") or "/Library/Application Support/Harbor/collector")
+    ap.add_argument("--store", default=os.environ.get("HARBOR_AUDIT_COLLECTOR_STORE") or os.environ.get("HARBOR_COLLECTOR_STORE") or "/Library/Application Support/Harbor/collector")
     ap.add_argument("--ingest")
     a = ap.parse_args()
     if a.ingest:

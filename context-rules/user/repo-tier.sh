@@ -6,7 +6,8 @@
 # scopes repo packs to the session's PROJECT directory (CLAUDE_PROJECT_DIR, else
 # the hook's cwd). A session launched at $HOME and then worked in a worktree has
 # a project directory of $HOME and a working directory of the worktree, so the
-# repo tier is $HOME's (`$HOME/.claude/context-rules/user` is the BOX pack dir; `tree_dirs()` drops it as a duplicate), and the tree the session is actually editing governs
+# repo tier is $HOME's (`$HOME/.claude/context-rules/user` is the BOX pack dir, or the old
+# `$HOME/.claude/inject.d` until it moves; `tree_dirs()` drops it as a duplicate), and the tree the session is actually editing governs
 # nothing. Measured 2026-08-29 in the session auditing this very question: three
 # harbor packs — including the whole merge-governance chain — were not loaded,
 # and NOTHING said so. The engine detects the collision and is silent about it,
@@ -62,12 +63,12 @@ _rules() { # <tree>
   sent=''; kept=''; nk=0
   _crossed=0
   case "
-${HARBOR_CONTEXT_REACHED:-}" in *"
+${HARBOR_CONTEXT_REACHED:-${HARBOR_REACHED:-}}" in *"
 $1
 "*) _crossed=1 ;; esac
-  # An id once; the id is derived when id: is absent.
+  # Both layouts for one release, new first, an id once (harbor#1010); the id is derived when id: is absent.
   _ids=' '
-  for f in "$1"/context-rules/*/*.md; do
+  for f in "$1"/context-rules/*/*.md "$1"/.claude/inject.d/*.md; do
     [ -f "$f" ] || continue
     case "$f" in "$1"/context-rules/user/*) continue ;; esac
     i="$(awk '/^---[[:space:]]*$/{n++; next} n==1 && /^id:/{sub(/^id:[[:space:]]*/,""); print; exit}' "$f")"
@@ -119,7 +120,7 @@ fi
 # two readers of one definition is the point at which a copy starts drifting.
 # Run by hand, with no engine above it, the variable is empty and the pack is
 # silent here, which is the fail-open direction every pack takes.
-[ -n "${HARBOR_CONTEXT_TOUCHED:-}" ] || exit 0
+[ -n "${HARBOR_CONTEXT_TOUCHED:-${HARBOR_TOUCHED:-}}" ] || exit 0
 while IFS= read -r _t; do
   [ -n "$_t" ] || continue
   [ "$_t" != "$GOVERNED" ] || continue
@@ -127,5 +128,5 @@ while IFS= read -r _t; do
   _say "This call reaches into $(_rel "$_t") from $(_rel "$(_phys "$CWD")"), which is inside no repository"
   exit 0
 done <<EOF
-${HARBOR_CONTEXT_TOUCHED:-}
+${HARBOR_CONTEXT_TOUCHED:-${HARBOR_TOUCHED:-}}
 EOF

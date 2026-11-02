@@ -17,8 +17,8 @@
 #                                    fleet-controller), else the roots table's HARBOR_SCOPE_REPO / _SCAFFOLDER / _FLEET_CONTROLLER rows (harbor#966)
 #   sh scope-roots.sh --port-root | --private   the workspace root, the private layer's directory
 #   sh scope-roots.sh --access       the access register (<private>/access, or $ACCESS_DIR); exit 1, empty, when there is none
-#   sh scope-roots.sh --inject       the private rules (<private>/context-rules); exit 1, empty, when there is none
-#   sh scope-roots.sh --projects     the project registry (<rules>/user/projects.tsv); exit 1, empty, when there is none
+#   sh scope-roots.sh --inject       the private rules (<private>/context-rules, else the old <private>/inject.d); exit 1, empty, when there is none
+#   sh scope-roots.sh --projects     the project registry (<rules>/user/projects.tsv; box/ in the old inject.d); exit 1, empty, when there is none
 #   sh scope-roots.sh --conf <key>   one value from harbor.toml (an array prints one element per line)
 #   sh scope-roots.sh --conf-keys    core's own harbor.toml keys, one per line (a pack's keys come from its conf-keys.txt)
 #   sh scope-roots.sh --base <BOX|REPOS>   what a base is on this box ($HOME, or the workspace root): the text a launchd template's @HOME@ fills (harbor#630)
@@ -50,10 +50,10 @@ set -eu
 # dirname call empty, `cd -- ""` silently stays put, and SRC becomes whatever
 # the SESSION's cwd happened to be (harbor#810, #813).
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
-TABLE="${HARBOR_SCOPE_ROOTS_TABLE:-$ROOT/contracts/roots.tsv}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
+TABLE="${HARBOR_SCOPE_ROOTS_TABLE:-${HARBOR_ROOTS_TABLE:-$ROOT/contracts/roots.tsv}}"
 # Installed (harbor#966): no contracts/ above bin/, so the table ships beside this file as roots.tsv.
-[ -f "$TABLE" ] || [ -n "${HARBOR_SCOPE_ROOTS_TABLE:-}" ] || ! [ -f "$SRC/roots.tsv" ] || TABLE="$SRC/roots.tsv"
+[ -f "$TABLE" ] || [ -n "${HARBOR_SCOPE_ROOTS_TABLE:-${HARBOR_ROOTS_TABLE:-}}" ] || ! [ -f "$SRC/roots.tsv" ] || TABLE="$SRC/roots.tsv"
 # contracts/logging.md channel 1. LOG_FD=2: --get and --list print DATA on stdout (a value, a
 # table), and --check's success line is that same protocol — every log-lib line stays on stderr.
 . "$SRC/library-log.sh"
@@ -67,9 +67,12 @@ LOG_FD=2
 # override when the new one is unset: the dual-read window. Past it, delete the line and the old name is refused.
 W5_ALIASES='HARBOR_ORCHESTRATOR	HARBOR_SCOPE_FLEET_CONTROLLER
 HARBOR_PROJECT_INIT	HARBOR_SCOPE_SCAFFOLDER
+HARBOR_REPO	HARBOR_SCOPE_REPO
+HARBOR_FLEET_FILE	HARBOR_SCOPE_FLEET_FILE
+HARBOR_LOCAL_BIN	HARBOR_SCOPE_LOCAL_BIN
 HARBOR_ORCH_BIN	HARBOR_SCOPE_FLEET_CONTROLLER_BIN'
 # harbor#967 W9: the red-team corpus root took the eval family's name; the same window, until 2026-12-01.
-W9_ALIASES=''
+W9_ALIASES='HARBOR_REDTEAM_DIR	HARBOR_EVAL_REDTEAM_DIR'
 ROOT_ALIASES="$W5_ALIASES
 $W9_ALIASES"
 w5_new() { printf '%s\n' "$ROOT_ALIASES" | awk -F'\t' -v n="$1" '$1 == n { print $2; f = 1 } END { if (!f) print n }'; }
@@ -179,19 +182,21 @@ access_dir() {
 }
 
 # The private rules (contracts/private-layer.md, harbor#1149): <private>/context-rules, the shape of core's context-rules/ -
-# user/ for the rules every session on the box carries (and the project registry), one folder per repo for the rules
+# user/ (box/ in the old inject.d) for the rules every session on the box carries (and the project registry), one folder per repo for the rules
 # `context-injection-install.sh --projects` seeds. They name clients and repos, so core ships none. Nothing in it is code: the
 # installer takes .md packs and projects.tsv only. Absent is exit 1 with nothing on stdout and the reason on stderr,
 # so a reader says "no private packs" and never reads or seeds an empty path.
 inject_dir() {
   __pv="$(private_dir)" || return 2
   [ -d "$__pv" ] || { echo "roots: no private layer at $__pv, so there are no private rule packs (contracts/private-layer.md)" >&2; return 1; }
-  [ -d "$__pv/context-rules" ] || { echo "roots: the private layer at $__pv has no context-rules/ directory (contracts/private-layer.md)" >&2; return 1; }
-  printf '%s' "$__pv/context-rules"
+  # harbor#1010: the new layout (context-rules/{user,<repo>}/) wins; the old inject.d/{box,<repo>}/ is read for one release.
+  if [ -d "$__pv/context-rules" ]; then printf '%s' "$__pv/context-rules"; return 0; fi
+  [ -d "$__pv/inject.d" ] || { echo "roots: the private layer at $__pv has no context-rules/ or inject.d/ directory (contracts/private-layer.md)" >&2; return 1; }
+  printf '%s' "$__pv/inject.d"
 }
 projects_file() {
   __id="$(inject_dir)" || return $?
-  __pf="$__id/user/projects.tsv"
+  case "$__id" in */context-rules) __pf="$__id/user/projects.tsv" ;; *) __pf="$__id/box/projects.tsv" ;; esac
   [ -f "$__pf" ] || { echo "roots: no project registry at $__pf (contracts/private-layer.md)" >&2; return 1; }
   printf '%s' "$__pf"
 }

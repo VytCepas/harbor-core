@@ -46,10 +46,10 @@
 # `case` patterns are unaffected by `-f`; nothing here relies on expansion.
 set -euf
 
-ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}}"
 DECL="$ROOT/contracts/suite-paths.txt"
 MAN="$ROOT/contracts/suites.txt"
-BASE="${HARBOR_CI_BASE:-origin/main}"
+BASE="${HARBOR_CI_BASE:-${HARBOR_BASE:-origin/main}}"
 
 case "${1:-}" in
   -h|--help|'') sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
@@ -168,6 +168,8 @@ _matches() { # <path> <glob>...
 CHANGED=""
 if [ -n "${HARBOR_TEST_CHANGED+x}" ]; then
   CHANGED="$HARBOR_TEST_CHANGED"
+elif [ -n "${HARBOR_CHANGED+x}" ]; then   # the old name, read until 2026-11-15 (harbor#961 W5)
+  CHANGED="$HARBOR_CHANGED"
 else
   if CHANGED="$(git -C "$ROOT" diff --name-only --no-renames "$BASE...$HEADREF" 2>/dev/null)"; then
     # Uncommitted work counts when judging the local HEAD: before the first commit the committed diff is empty, and
@@ -260,7 +262,7 @@ if [ -z "$ALL_WHY" ] && { [ -n "$APPENDED" ] || [ -n "$GROWN" ]; }; then
   ADDED="$(git -C "$ROOT" diff --name-only --no-renames --diff-filter=A "$BASE...$HEADREF" 2>/dev/null)" \
     || ALL_WHY="rows were appended to the selector's inputs and git cannot list the paths this changeset adds"
   # New files not yet committed are added paths too (see the changeset above).
-  [ -n "$ALL_WHY" ] || [ "$HEADREF" != HEAD ] || [ -n "${HARBOR_TEST_CHANGED+x}" ] \
+  [ -n "$ALL_WHY" ] || [ "$HEADREF" != HEAD ] || [ -n "${HARBOR_TEST_CHANGED+x}${HARBOR_CHANGED+x}" ] \
     || ADDED="$ADDED${ADDED:+
 }$( { git -C "$ROOT" diff --name-only --no-renames --diff-filter=A HEAD; git -C "$ROOT" ls-files --others --exclude-standard; } 2>/dev/null)"
 fi

@@ -209,7 +209,7 @@ floor_switch_settings_files() {
 floor_switch_in_settings() {
   [ -f "$1" ] || return 0
   "$FLOOR_JQ" -r '(.env // {}) | if type == "object" then
-      to_entries[] | select(.key == "HARBOR_ADMISSION_DISABLE" or .key == "HARBOR_ADMISSION_SHADOW")
+      to_entries[] | select(.key == "HARBOR_ADMISSION_DISABLE" or .key == "HARBOR_ADMISSION_SHADOW" or .key == "HELM_DISABLE_FLOOR" or .key == "HELM_FLOOR_SHADOW")
       | select((.value | tostring) == "1") | .key else empty end' "$1" 2>/dev/null | sort -u || :
 }
 
@@ -949,7 +949,7 @@ floor_block() {
     FLOOR_SHADOWED=1
     return 0
   fi
-  if [ "${HARBOR_ADMISSION_SHADOW:-0}" = 1 ] && ! floor_shadow_enforces "$1" "${3%.*}"; then
+  if [ "${HARBOR_ADMISSION_SHADOW:-${HELM_FLOOR_SHADOW:-0}}" = 1 ] && ! floor_shadow_enforces "$1" "${3%.*}"; then
     printf 'HELM FLOOR [%s:%s]: SHADOW — would have blocked; recorded, not enforced\n' "$1" "${3%.*}" >&2
     floor_log_decision "$1" shadow "${3:-}" || :
     FLOOR_SHADOWED=1
@@ -1238,6 +1238,10 @@ _fa="${FLOOR_AWK:-}"
 case "$_fa" in */admission-normalize.awk) ;; *) _fa="" ;; esac
 # harbor#813: no dirname fork for a caller that set no DIR.
 case "${0:-.}" in */*) _fad="${0%/*}" ;; *) _fad=. ;; esac
+# W7 (harbor#949): a deploy ships this library (runtime-install) before the normaliser's new name (admission-install),
+# so between the two only the old name is in bin/. Read it there, named through a variable, until the shim goes (2026-12-01).
+_fan=floor-normalize
+[ -n "$_fa" ] || [ -s "${DIR:-$_fad}/admission-normalize.awk" ] || [ ! -s "${DIR:-$_fad}/$_fan.awk" ] || _fa="${DIR:-$_fad}/$_fan.awk"
 FLOOR_AWK="${_fa:-${DIR:-$_fad}/admission-normalize.awk}"
 
 # floor_expand_vars <text> — substitute simple `NAME=value` assignments made

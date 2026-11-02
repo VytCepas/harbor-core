@@ -14,7 +14,7 @@
 #
 # NEVER BLOCKS. Every path exits 0. This resolver only records; the standing-down
 # is done by the readers.
-[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0
+[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
 set -u
 # harbor#813: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./library-admission.sh from it.
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac

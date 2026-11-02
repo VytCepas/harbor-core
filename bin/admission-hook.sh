@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0
+[ "${HARBOR_ADMISSION_DISABLE:-${HELM_DISABLE_FLOOR:-0}}" = "1" ] && exit 0
 # B9 (harbor#39) — fail-CLOSED wrapper for the PreToolUse floor guards.
 #
 # THE PROBLEM IT SOLVES: every dependency failure in the guard chain was silent,

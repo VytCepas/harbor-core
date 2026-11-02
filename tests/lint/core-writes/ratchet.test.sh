@@ -11,7 +11,7 @@ mk() { # <name> <baseline> → 5 hits: bin/a.sh (out.txt, b.txt, state.tsv, d/),
   printf 'path\ttarget\treason\nbin/allowed.sh\t*\tthe operator asked for the file\n' > "$_d/contracts/core-writes-allow.tsv"
   printf '/build/\n' > "$_d/.gitignore"
   cat > "$_d/bin/a.sh" <<'EOF'
-ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
+ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}}"
 echo x > "$ROOT/out.txt"
 cp src "$ROOT/b.txt"
 OUT="${BASE_X:-$ROOT/state.tsv}"; printf 'r\n' >> "$OUT"

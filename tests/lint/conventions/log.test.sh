@@ -27,7 +27,7 @@ printf '#!/usr/bin/env sh\n# fixture (harbor#771)\nset -u\necho hi\n' > "$R/bin/
 t_has 'an extensionless shell program is in the domain' "$(L)" "VIOLATION [lint.log-contract] bin/cli logs outside the standard"
 rm "$R/bin/cli"; printf '// fixture (harbor#771)\nconsole.log("✓ hi");\n' > "$R/bin/page.mjs"
 green "a Node program, which cannot source a sh library"
-printf '#!/usr/bin/env sh\n[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0\n# fixture (harbor#771)\ncase "$x" in *[!!-~]*) exit 2 ;; esac\nexit 0\n' > "$R/bin/guard-x.sh"
+printf '#!/usr/bin/env sh\n[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0\n# fixture (harbor#771)\ncase "$x" in *[!!-~]*) exit 2 ;; esac\nexit 0\n' > "$R/bin/guard-x.sh"
 green "a floor file (channel 2) needs no row, and a bracket holding !! is not a mark"
 printf '. "$(dirname "$0")/library-log.sh"\n' >> "$R/bin/guard-x.sh"
 t_has 'a floor file that sources log-lib is red' "$(L)" "VIOLATION [lint.log-contract] bin/guard-x.sh is a floor file (channel 2) and sources library-log.sh"

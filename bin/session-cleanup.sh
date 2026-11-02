@@ -16,7 +16,7 @@ SID="${1:-}"
 case "$SID" in ''|*[!A-Za-z0-9_-]*) exit 0 ;; esac
 STATE="${HARBOR_STATUS_DIR:-${HOME:-/nonexistent}/.local/state/harbor}"
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
-CLEAN="${HARBOR_SESSION_CLEANUP_TOOL:-$HERE/housekeeping-clean.sh}"
+CLEAN="${HARBOR_SESSION_CLEANUP_TOOL:-${HARBOR_CLEANUP_TOOL:-$HERE/housekeeping-clean.sh}}"
 . "$HERE/library-log.sh"
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; log_init session-cleanup

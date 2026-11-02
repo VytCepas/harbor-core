@@ -3,4 +3,4 @@
 name	rule
 drift	name.rule-id
 drift.cfg-age	name.abbreviation
-drift.golden-pins	name.alias
+drift.floor-pins	name.alias

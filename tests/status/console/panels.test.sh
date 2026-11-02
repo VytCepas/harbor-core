@@ -2,7 +2,7 @@
 # harbor ui's panels (harbor#738): each names its source and run time, is derived at page load, says
 # `unavailable: <reason>` and never 0, and shows no command output unescaped. Red proofs as in console-guards-test.sh.
 # Skips, loudly, where bun is absent; HARBOR_TEST_REQUIRE_BUN=1 turns that into a failure.
-REAL_HOME="$HOME"; UI_BUN="${HARBOR_STATUS_CONSOLE_BUN:-}"; REQ_BUN="${HARBOR_TEST_REQUIRE_BUN:-0}"  # before t_init clears them
+REAL_HOME="$HOME"; UI_BUN="${HARBOR_STATUS_CONSOLE_BUN:-}"; REQ_BUN="${HARBOR_TEST_REQUIRE_BUN:-${HARBOR_REQUIRE_BUN:-0}}"  # before t_init clears them
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/lib/linux-sim.sh"; . "$T_ROOT/tests/cli/console-fixture.sh"
 [ -n "$UI_BUN" ] || UI_BUN="$(command -v bun 2>/dev/null || true)"

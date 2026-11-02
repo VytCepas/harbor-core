@@ -233,8 +233,8 @@ t_has "an uppercase path is a name.case finding" "$(sh "$LN" --check case docs/N
 t_has "…and so is an uppercase directory" "$(sh "$LN" --check case Docs/notes.md 2>&1)" "[name.case] Docs"
 t_has "a lowercase path with a separator the standard refuses: green on case" "$(sh "$LN" --check case docs/my_notes.md 2>&1)" "no finding"
 t_has "…and red on path, where the separator rule judges it" "$(sh "$LN" --check path docs/my_notes.md 2>&1)" "[name.separator] docs/my_notes.md"
-t_has "a legacy alias in a lowercase path: green on case" "$(sh "$LN" --check case docs/golden-log-export.md 2>&1)" "no finding"
-t_has "…and red on path" "$(sh "$LN" --check path docs/golden-log-export.md 2>&1)" "[name.alias] docs/golden-log-export.md"
+t_has "a legacy alias in a lowercase path: green on case" "$(sh "$LN" --check case docs/helm-log-export.md 2>&1)" "no finding"
+t_has "…and red on path" "$(sh "$LN" --check path docs/helm-log-export.md 2>&1)" "[name.alias] docs/helm-log-export.md"
 t_has "a UK spelling in a path is an alias finding that names the US word (D-16)" "$(sh "$LN" --check path docs/colour-guide.md 2>&1)" '[name.alias] docs/colour-guide.md — `colour` is a UK spelling: write `color`'
 t_has "…and its US spelling is green" "$(sh "$LN" --check path docs/color-guide.md 2>&1)" "no finding"
 for _n in README.md LICENSE CHANGELOG.md SKILL.md .github/ISSUE_TEMPLATE/bug.md CLAUDE.md.tmpl; do
@@ -378,14 +378,12 @@ t_eq "no control id of the modularity rules collides with a lint id" 0 "$(grep -
 t_eq "…the rules are module.* ids: D-60's five, layer-direction and module.graph-conform (harbor#996)" 7 "$(grep -c '^module\.' "$REG/controls.tsv")"
 
 t_section "an alias warns until its remove_by date and blocks from it (harbor#968)"
-AER="$TMP/aereg"; mkdir -p "$AER"; cp -R "$REG/." "$AER/"   # a register of its own with one fixture legacy row, whatever the real one retires
-printf 'oldword\talerting\tlegacy\tglossary\t2026-11-15\ta fixture legacy row\n' >> "$AER/aliases.tsv"
-_ae() { sh "$LN" --check registry "$AER" --root "$T_ROOT" --registry "$AER" --today "$1" 2>&1; echo "exit $?"; }
+_ae() { sh "$LN" --check registry "$REG" --root "$T_ROOT" --registry "$REG" --today "$1" 2>&1; echo "exit $?"; }
 _aw="$(_ae 2026-11-02)"
-t_has "within 14 days of 2026-11-15: a warning" "$_aw" "WARN: [name.alias-expired] alias:oldword"
+t_has "within 14 days of 2026-11-15: a warning" "$_aw" "WARN: [name.alias-expired] alias:aboard"
 t_has "…and the run exits 0" "$_aw" "exit 0"
 _ab="$(_ae 2026-11-15)"
-t_has "on 2026-11-15 itself: a block" "$_ab" "FAIL: [name.alias-expired] alias:oldword"
+t_has "on 2026-11-15 itself: a block" "$_ab" "FAIL: [name.alias-expired] alias:aboard"
 t_has "…and the run exits 1" "$_ab" "exit 1"
 
 t_section "exemptions expire by rename wave, never on one day (harbor#950)"
@@ -444,9 +442,9 @@ t_has "…and lists bin/lint-conventions.sh's ids" "$_ls" "admission.kill-switch
 t_has "…beside controls.tsv's" "$_ls" "name.case"
 t_eq "…every one of them" "$(($(rules "$REG" | grep -c .) + $(grep -c '^rule "' "$LINT")))" "$(printf '%s\n' "$_ls" | grep -c .)"
 LC="$TMP/lcids"; mini "$LC"
-printf 'rule_F1() {\nrule "admission.golden-first a fixture rule"\n}\n' > "$LC/bin/lint-conventions.sh"
+printf 'rule_F1() {\nrule "admission.floor-first a fixture rule"\n}\n' > "$LC/bin/lint-conventions.sh"
 t_has "a lint-conventions id is judged as a rule-id name, read and never run" \
-  "$(sh "$LC/bin/lint-name.sh" --root "$LC" 2>&1)" "[name.alias] rule-id:admission.golden-first"
+  "$(sh "$LC/bin/lint-name.sh" --root "$LC" 2>&1)" "[name.alias] rule-id:admission.floor-first"
 printf 'rule_F1() {\nrule "admission.kill-switch-first a fixture rule"\n}\n' > "$LC/bin/lint-conventions.sh"
 _lcg="$(sh "$LC/bin/lint-name.sh" --root "$LC" 2>&1)"
 t_hasnt "…and a good one is not" "$_lcg" "rule-id:admission"
