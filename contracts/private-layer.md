@@ -7,7 +7,7 @@ The directory is `${HARBOR_SCOPE_PRIVATE:-$PORT_ROOT/harbor-private}`, with `POR
 
 | File | Format | Read by |
 |---|---|---|
-| `repos.tsv` | `id` TAB `path` TAB `kind` TAB `remote`, optionally TAB `topology` TAB `interaction` and TAB `note`, and (all four together) TAB `domain` TAB `governed` TAB `owner` TAB `covers`; `#` lines and the header skipped | `bin/scope-roots.sh --repos`, `--rows`, `--repo <id>`, `--remote <id>`, `--topology <id>`, `--platform-ids`, `--registry-check`; through `--platform-ids`, `lint-domain.sh --repos` and `lint-constitution.sh` know the platform's own repos; through `--repo` and `--remote`, `deploy-bootstrap.sh` finds a pack's checkout and where to clone it from |
+| `repos.tsv` | `id` TAB `path` TAB `kind` TAB `remote`, optionally TAB `topology` TAB `interaction` and TAB `note`; `#` lines and the header skipped | `bin/scope-roots.sh --repos`, `--repo <id>`, `--remote <id>`, `--topology <id>`, `--platform-ids`, `--registry-check`; through `--platform-ids`, `lint-domain.sh --repos` and `lint-constitution.sh` know the platform's own repos; through `--repo` and `--remote`, `deploy-bootstrap.sh` finds a pack's checkout and where to clone it from |
 | `harbor.toml` | flat TOML subset (below) | `bin/scope-roots.sh --conf <key>`; `bin/deploy.sh` and `bin/deploy-bootstrap.sh` read `components` and `packs` through it |
 | `terms.tsv` | client and system terms, in the core `terms.tsv` columns | `bin/lint-name.sh`, the naming overlay (harbor/D-85) |
 | `leaks.tsv` | the leak gate's patterns, never terms: `id` TAB `kind` TAB `pattern` TAB `note`, kind one of literal, word, domain, email-domain, regex | `bin/lint-leaks.sh` (harbor/D-79, harbor/D-85; harbor#1149) |
@@ -34,7 +34,7 @@ The directory is `${HARBOR_SCOPE_PRIVATE:-$PORT_ROOT/harbor-private}`, with `POR
 ## `repos.tsv`
 
 - `id` is a repo name (`[A-Za-z0-9][A-Za-z0-9._-]*`), unique.
-- Four fields, or six, seven or eleven. `path` is relative to `PORT_ROOT`: no leading `/`, `~` or `$`, no `..`, `.` or empty
+- Four fields, or six. `path` is relative to `PORT_ROOT`: no leading `/`, `~` or `$`, no `..`, `.` or empty
   segment; one trailing `/` is dropped. A row that breaks this, repeats an id, or repeats a path (case
   ignored) refuses the **whole read** (exit 2, the file and line on stderr), because skipping it would
   answer "unknown" for a repo that is only mistyped. A checkout that exists must also resolve, symlinks
@@ -48,12 +48,6 @@ The directory is `${HARBOR_SCOPE_PRIVATE:-$PORT_ROOT/harbor-private}`, with `POR
   reads as `-` `-`. Only `--registry-check` judges the two vocabularies; `--topology <id>` prints them, TAB-separated.
   An optional seventh column, `note`, is free text no reader prints; `proposed` marks a topology or interaction value that
   is a guess awaiting the operator's yes, and a row without it is decided.
-- `domain`, `governed`, `owner` and `covers` (harbor#966) make the row everything a list of repos needs, so the lists are generated and never kept
-  beside it (`bin/scope-repos-generate.sh`). They come all four together, after `note`, and are never empty: write `-` for none. `domain` is a
-  domain term of `standards/naming/terms.tsv` (platform repos carry none, harbor/D-70) or `-`; `governed` is `yes` (a repo the fleet manages and a
-  session outside it is told about), `no` or `-`; `owner` is a name or `-`; `covers` is a one-line, 300-character-at-most answer to "what question
-  sends a reader here", which becomes the project registry's third column and the workspace README's. `--rows` prints all eleven columns, `-` where
-  a shorter row has none. Only `--registry-check` judges the vocabularies.
 - `--platform-ids` prints the platform's own repos, one id per line: the rows whose `kind` is `control-plane`,
   `scaffolder` or `fleet-controller` (kind, not topology: a workload can be a platform to its users and is still not
   harbor's), and with no registry the first segment of the roots table's `HARBOR_SCOPE_REPO`, `HARBOR_SCOPE_SCAFFOLDER` and

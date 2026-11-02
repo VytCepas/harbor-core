@@ -93,11 +93,8 @@ plan() { # <repo> <n> — appends one plan object to $W/plans; returns 0 lands, 
         method_from: $mf, note: $note, steps: $s}' >> "$W/plans"
   }
   STATE=""; MS=""
-  PRJ="$("$GH" pr view "$N" -R "$R" --json state,isDraft,mergeStateStatus,reviewDecision,headRefOid,headRefName,baseRefName,author,statusCheckRollup,reviews,commits 2>"$W/err")" \
+  PRJ="$("$GH" pr view "$N" -R "$R" --json state,isDraft,mergeStateStatus,reviewDecision,headRefOid,headRefName,baseRefName,author,statusCheckRollup,reviews 2>"$W/err")" \
     || { finish "could not read the PR: $(head -n 1 "$W/err")" false; return 3; }
-  # a re-run on the same head leaves the old run in the rollup: judge only the newest of each workflow+name
-  PRJ="$(printf '%s' "$PRJ" | jq -c '.statusCheckRollup |= ((. // []) | group_by([.workflowName // "", .name // .context // ""])
-    | map(max_by(.startedAt // .completedAt // "")))')" || { finish "could not read the PR's checks" false; return 3; }
   g() { printf '%s' "$PRJ" | jq -r "$1"; }
   STATE="$(g .state)"; MS="$(g .mergeStateStatus)"; RD="$(g '.reviewDecision // ""')"
   SHA="$(g .headRefOid)"; HEAD="$(g .headRefName)"; BASE="$(g .baseRefName)"
@@ -111,9 +108,6 @@ plan() { # <repo> <n> — appends one plan object to $W/plans; returns 0 lands, 
   # checks: a red required check stops the plan; a red optional one (UNSTABLE) is only noted
   RED="$(g '[.statusCheckRollup[]? | select((.conclusion // .state // "") as $c | ["FAILURE","ERROR","TIMED_OUT","CANCELLED","ACTION_REQUIRED","STARTUP_FAILURE"] | index($c)) | (.name // .context)] | unique | join(", ")')"
   WAIT="$(g '[.statusCheckRollup[]? | select((.status // "COMPLETED") != "COMPLETED" or ((.state // "") | IN("PENDING","EXPECTED"))) | (.name // .context)] | unique | join(", ")')"
-  # a pending review-gate status (a StatusContext `review/...`) waits on a person, not on CI (harbor#1418)
-  WAIT_CI="$(g '[.statusCheckRollup[]? | select((.context // "") | test("^review(/|$)") | not) | select((.status // "COMPLETED") != "COMPLETED" or ((.state // "") | IN("PENDING","EXPECTED"))) | (.name // .context)] | unique | join(", ")')"
-  GATE="$(g '[.statusCheckRollup[]? | select((.context // "") | test("^review(/|$)")) | select((.state // "") | IN("PENDING","EXPECTED")) | .context] | unique | join(", ")')"
   RUNS="$(g '[.statusCheckRollup[]? | select((.conclusion // "") | IN("FAILURE","TIMED_OUT","CANCELLED","STARTUP_FAILURE")) | (.detailsUrl // "") | (capture("/actions/runs/(?<id>[0-9]+)") | .id)?] | unique | .[]')"
   if [ "$MS" = DIRTY ]; then
     step app resolve "the head conflicts with $BASE" "merge origin/$BASE into $HEAD in a worktree, then push"
@@ -175,37 +169,23 @@ plan() { # <repo> <n> — appends one plan object to $W/plans; returns 0 lands, 
     else case " $ALLOWED " in *" squash "*) M=squash ;; *) M="$1" ;; esac; MF="undeclared (no ship.conf method); allowed: $ALLOWED"; fi
   fi
 
-  # approval: GitHub's own word, a pending review-gate status, the rules' unattributed-change flag, or a green PR that
-  # GitHub still blocks and nobody approved. Every pull_request rule on the branch counts: any code-owner wins, the largest count.
+  # approval: GitHub's own word, or a green PR that GitHub still blocks and nobody approved
   APPROVED="$(g '[.reviews[]? | select(.state == "APPROVED" and (.author.is_bot | not))] | length')"
   HUMAN_AUTHOR="$(g 'if .author.is_bot then "" else .author.login end')"
-  # commits the App opened the PR for but a person authored: GitHub calls the push unattributed
-  UNATTR="$(g 'if .author.is_bot then (.author.login | sub("^app/"; "")) as $a | [.commits[]? | select(([.authors[]?.login] | index($a)) | not)] | length else 0 end')"
-  RULEP="$(jq -cn --argjson u "$RUL" '[$u[]? | select(.type == "pull_request") | .parameters] as $p
-    | {co: any($p[]; .require_code_owner_review == true), n: ([$p[].required_approving_review_count // 0] | max // 0),
-       un: any($p[]; .require_extra_approval_for_unattributed_changes == true)}')"
-  rp() { printf '%s' "$RULEP" | jq -r "$1"; }
-  UNATTR_RULE=""; [ "$UNATTR" -gt 0 ] && [ "$(rp .un)" = true ] && UNATTR_RULE="the base rules require an extra approval for changes the App pushed for someone else (unattributed)"
   NEED=""
   case "$RD" in
     CHANGES_REQUESTED) finish "changes requested: address the review first" false "$M" "$MF"; return 1 ;;
     REVIEW_REQUIRED) NEED="GitHub reports REVIEW_REQUIRED" ;;
   esac
-  # a gate that lags an approval already given stays in WAIT; otherwise it is the missing approval, not CI
-  if [ -n "$GATE" ] && [ "$APPROVED" -eq 0 ] && [ "$RD" != APPROVED ]; then
-    NEED="${NEED:-$GATE is pending (awaiting review)}"; WAIT="$WAIT_CI"
-  fi
   if [ -z "$NEED" ] && [ "$MS" = BLOCKED ] && [ -z "$WAIT" ] && [ "$RD" != APPROVED ]; then
     if [ "$APPROVED" -gt 0 ]; then
       finish "blocked by a rule this cannot read (approved, checks green; classic protection is 403 to the App)" false "$M" "$MF"; return 1
     fi
-    if [ "$(rp .co)" = true ]; then NEED="the base rules require a code-owner review"
-    elif [ "$(rp .n)" -gt 0 ]; then NEED="the base rules require $(rp .n) approval(s)"
-    elif [ -n "$UNATTR_RULE" ]; then NEED="$UNATTR_RULE"
-    else NEED="GitHub blocks a green PR and no rule is readable: a classic-protection review (403 to the App)"; fi
+    NEED="$(jq -rn --argjson u "$RUL" '[$u[]? | select(.type == "pull_request") | .parameters] | .[0] // {}
+      | if .require_code_owner_review then "the base rules require a code-owner review"
+        elif (.required_approving_review_count // 0) > 0 then "the base rules require \(.required_approving_review_count) approval(s)"
+        else "GitHub blocks a green PR and no rule is readable: a classic-protection review (403 to the App)" end')"
   fi
-  # the rule is explicit, so it asks while CI still runs too
-  if [ -z "$NEED" ] && [ "$MS" = BLOCKED ] && [ "$RD" != APPROVED ] && [ "$APPROVED" -eq 0 ]; then NEED="$UNATTR_RULE"; fi
   if [ -n "$NEED" ]; then
     if [ -n "$HUMAN_AUTHOR" ]; then
       step operator approve "$NEED, and $HUMAN_AUTHOR authored it: a second person must approve" "# ask a reviewer other than $HUMAN_AUTHOR"

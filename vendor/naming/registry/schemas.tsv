@@ -52,7 +52,6 @@ naming-schemas.tsv?	=	=standards/naming/schemas.tsv	=		standard	bin/standard-reg
 contracts/agents.tsv	row	role model effort tools input output done_when must_not stop_rule	role		agent	-	the role table a subagent brief is built from
 contracts/catalog-non-tools.tsv	row	glob why	glob		skill	bin/skill-catalog.sh	a name glob that is not a tool, with the reason
 contracts/confinement-coverage.tsv	row	id coverage why	id	id>standards/naming/controls.tsv:id	admission	bin/deploy-confinement.sh	how each admission rule is covered by the confinement
-contracts/confinement-classes.tsv	row	class kind treatment where	class		admission	bin/admission-observe-report.sh	every class of Bash call that asks to leave the sandbox, and its treatment (harbor#1441)
 contracts/core-writes-allow.tsv	row	path target reason	path+target	path>path:	lint	bin/lint-core-writes.sh	a core script allowed to write a path
 contracts/credential-patterns.tsv	row	id ere note	id		access	bin/lint-secrets.sh	the shapes of a credential value
 contracts/decision-orphans.tsv	none	id reason	id		standard	bin/lint-conventions.sh	a decision record deliberately cited nowhere

@@ -164,36 +164,6 @@ mkpriv nt4 "$H"'z	z	workload	-	enablng	collaboration	proposed
 '
 t_exit "...and a bad one is still refused" 2 roots --registry-check
 
-t_section "four more columns say what a repo is for: domain, governed, owner, covers (harbor#966)"
-mkpriv el 'id	path	kind	remote	topology	interaction	note	domain	governed	owner	covers
-harbor	harbor	control-plane	-	platform	-	-	-	yes	operator	the control plane
-zorbcorp	zorbcorp	workload	-	stream-aligned	x-as-a-service	-	tracking	yes	operator	tags and pixels
-legacy	legacy	workload	-
-'
-t_exit "eleven columns beside seven, six and four are valid" 0 roots --registry-check
-t_eq "--rows prints all eleven, with - for what a short row lacks" "harbor	harbor	control-plane	-	platform	-	-	-	yes	operator	the control plane
-zorbcorp	zorbcorp	workload	-	stream-aligned	x-as-a-service	-	tracking	yes	operator	tags and pixels
-legacy	legacy	workload	-	-	-	-	-	-	-	-" "$(roots --rows)"
-t_eq "--repos is unchanged by the new columns" "harbor	$PW/harbor
-zorbcorp	$PW/zorbcorp
-legacy	$PW/legacy" "$(roots --repos)"
-t_eq "--topology is unchanged by them" "stream-aligned	x-as-a-service" "$(roots --topology zorbcorp)"
-mkpriv el2 "$H"'z	z	workload	-	-	-	-	tracking	maybe	operator	x
-'
-t_exit "a governed value that is not yes, no or - is refused" 2 roots --registry-check
-t_has "...naming it" "$(roots --registry-check 2>&1)" 'governed "maybe"'
-mkpriv el3 "$H"'z	z	workload	-	-	-	-	nowhere	yes	operator	x
-'
-t_exit "a domain that is no term of the standard is refused" 2 roots --registry-check
-t_has "...naming it" "$(roots --registry-check 2>&1)" 'domain "nowhere"'
-mkpriv el4 "$H"'z	z	workload	-	-	-	-	tracking	yes		x
-'
-t_exit "an empty owner is refused (write - for none)" 2 roots --registry-check
-mkpriv el5 "$H"'z	z	workload	-	-	-	-	tracking	yes	-	x	extra
-'
-t_exit "twelve fields are refused" 2 roots --repo z
-t_exit "no registry: --rows exits 1" 1 env PORT_ROOT="$T_TMP/none-at-all" sh "$T_ROOT/bin/scope-roots.sh" --rows
-
 t_section "--platform-ids: the platform's own repos, by kind (harbor#966)"
 mkpriv pl "$H"'cp	cp	control-plane	-
 yd	tools/yd	scaffolder	-
