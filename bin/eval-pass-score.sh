@@ -2,14 +2,25 @@
 # eval-pass-score.sh — MAD confidence gating over docs/explanation/admission-baseline.md's adversarial pass table.
 # harbor#3 (workstream B), method taken from upstream `Loop` @ a4e8e74 (docs/reference/provenance.md).
 #
-# WHY: the install criterion ("a pass must find fewer defects than it introduces") was called failed by eye; with four data points a 17 -> 9 move may be
-# indistinguishable from the series' own scatter. Upstream's Loop gates this with |delta| / MAD(series) and refuses to bank a delta below the noise floor.
-# MAD, not stddev: n=4, and one pass-10-shaped outlier would swallow a stddev whole.
-# Removed notes: docs/explanation/code-cases/bin-eval-pass-score.md
+# Why this exists. The stated criterion for installing the floor live is "a pass
+# must find fewer defects than it introduces", and it has been called failed
+# three times by eye. By eye is not good enough: with four data points, a metric
+# that moves 17 -> 9 looks like progress and may be indistinguishable from the
+# scatter of the series itself. Upstream's Loop skill gates exactly this — it
+# computes |delta| / MAD(series) per iteration and refuses to bank a delta below
+# the noise floor, logging it `marginal` instead. Same problem, same gate.
+#
+# MAD (median absolute deviation) rather than stddev: n=4, and one pass-10-shaped
+# outlier would swallow a stddev whole.
 set -eu
 
-# --help BEFORE ANY WORK (S4, harbor#140): the text is the header read out of THIS file, so help cannot drift; a script that ignored --help ran a
-# sweep of `bin/*.sh --help` past five minutes.
+# --help BEFORE ANY WORK (S4, harbor#140). Placed immediately after strict mode
+# so it is the first executable line: a --help that reaches an argument parser is
+# a --help that a script with no parser ignores, and this file had none. Measured
+# 2026-08-20: a sweep of `bin/*.sh --help` ran past five minutes because at least
+# one script treated the flag as a request to do work, and five of the scripts
+# with no --help at all are mutators. The text is the header, read out of THIS
+# file at runtime, so a help message cannot drift from what the script says it is.
 case "${1:-}" in
   -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); if ($0=="") exit; print; next } {exit}' "$0"
              printf '\n(flags, if any, are in the header above and the source below.)\n'
@@ -20,6 +31,7 @@ ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 # install / 3 the gate did not run), which admission-install.sh reads, so a verdict FAIL ends the run with that code.
 . "$ROOT/bin/library-log.sh"
 log_init pass-score
+# die <what failed> <fix> <exit> — FAIL, its fix, the summary, the exit code the tool always had.
 die() { log_fail "$1"; log_fix "$2"; log_end || :; exit "$3"; }
 FLOOR="$ROOT/docs/explanation/admission-baseline.md"
 NOISE_FLOOR=1.0   # |delta|/MAD below this is not evidence. Upstream's threshold.
@@ -27,8 +39,12 @@ NOISE_FLOOR=1.0   # |delta|/MAD below this is not evidence. Upstream's threshold
 [ -f "$FLOOR" ] || die "no $FLOOR" "git checkout -- docs/explanation/admission-baseline.md" 1
 
 # ── Extract the pass table ────────────────────────────────────────────────
-# The header row names the passes, each metric row carries one integer per pass; a leading ~ is tolerated (pass 10 was an estimate). The doc carries one
-# table per pass-review, each a superset of the last, so the LAST match is current (grep -m1 read the pass-11 table).
+# The header row names the passes; each metric row carries one integer per pass.
+# Numbers are read with a leading ~ tolerated ("~24" — pass 10 was an estimate,
+# and recording it as exact would be a worse lie than recording it as fuzzy).
+# docs/explanation/admission-baseline.md carries one table per pass-review, each a superset of the last, so
+# the LAST match is the current one. `grep -m1` here read the pass-11 table and
+# silently reported a three-point series as if it were the whole record.
 row() { # <label> -> space-separated integers
   grep "^| $1 |" "$FLOOR" 2>/dev/null | tail -1 \
     | sed 's/^|[^|]*|//; s/|$//; s/|/ /g' \
@@ -57,7 +73,8 @@ stats() { # stdin: one integer per line
       mad = med(dev, n)
       delta = v[n-1] - v[n-2]
       ad = (delta < 0) ? -delta : delta
-      # MAD == 0: the series has no scale, so any movement is unmeasurable, not automatically real.
+      # MAD == 0 means the series has not moved off its median often enough to
+      # have a scale. Any movement is then unmeasurable, not automatically real.
       if (mad == 0) { printf "%d %.1f %.1f %s inf\n", delta, m, mad, "—"; exit }
       printf "%d %.1f %.1f %.2f %.2f\n", delta, m, mad, ad/mad, ad/mad
     }'
@@ -81,6 +98,7 @@ for metric in confirmed refuted "caused by the previous round's fixes" criticals
   if [ "$ratio" = "—" ]; then
     v="UNMEASURABLE (MAD=0)"
   else
+    # POSIX sh has no float compare; awk decides.
     if awk "BEGIN{exit !($ratio >= $NOISE_FLOOR)}"; then v="SIGNAL"; else v="NOISE — do not bank"; fi
   fi
 
@@ -93,9 +111,17 @@ for metric in confirmed refuted "caused by the previous round's fixes" criticals
 done
 
 # ── OBSERVE/REPLAY evidence (M2, harbor#44) ─────────────────────────────────
-# Reported ALONGSIDE the table, not in the gate: the table counts DEFECTS FOUND PER ADVERSARIAL PASS, the replay counts RULE HITS ON REAL TRAFFIC, and
-# substituting one for the other would change what the MAD gate gates (harbor#44's "read real block counts" taken literally would make this lie).
-# The replay adds the denominator CONSTITUTION rule 2 (a false positive is a defect) never had.
+# harbor#44's Done-when says "eval-pass-score.sh reads real block counts instead of
+# pass-report estimates". Taken literally that is a CATEGORY ERROR and
+# implementing it literally would make this script lie: the table above counts
+# DEFECTS FOUND PER ADVERSARIAL PASS, while the replay counts RULE HITS ON REAL
+# TRAFFIC. Substituting one for the other would silently change what the MAD
+# gate is gating. So the replay is reported ALONGSIDE, with the relationship
+# stated, and the pass series is left alone.
+#
+# What the replay genuinely adds is the denominator the table never had:
+# CONSTITUTION rule 2 says "a false positive is a defect, not safety", and until
+# harbor#44 there was no data source that could ever falsify it.
 _rp="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.helm-replay/baseline.tsv"
 if [ -f "$_rp" ]; then
   _tot="$(wc -l < "$_rp" | tr -d ' ')"
@@ -111,12 +137,35 @@ else
   log_note "Build the evidence with: sh bin/eval-replay.sh --baseline"
 fi
 
-# THE GATE WAS ONE-SIDED (#47 finding 20): it fired only when criticals was above the noise floor AND rising on the last step, so a run of clean passes
-# then a jump, or a series ending flat above zero, exited 0. Hence the LEVEL test (criticals above zero at the end is not clean) and the TREND test across
-# the whole series. `|| true` because grep is last in the pipeline and `set -eu` killed the script on a criticals row with no numeric cell (rc=1, no verdict).
-# An empty series is UNMEASURED: a gate that did not run must not print a verdict that reads like it did (pass-3 review).
+# THE GATE WAS ONE-SIDED (#47 finding 20). It fired only when `criticals` was
+# BOTH above the noise floor AND rising on the last step — so the worst possible
+# series, a run of clean passes followed by a jump, exited 0: with a low MAD the
+# ratio is huge, but a single quiet pass before the jump made `last > prev` the
+# only test that mattered, and any series ending flat sailed through. Two extra
+# tests, both cheap:
+#   • the LEVEL, not just the delta — criticals above zero at the end is not a
+#     clean floor however the series got there;
+#   • the TREND across the whole series, so one quiet pass cannot launder a rise.
+# `|| true` because `grep` is LAST in this pipeline, so the assignment inherits
+# its status — and under `set -eu` a docs/explanation/admission-baseline.md whose newest criticals row carries
+# no numeric cell killed the script right here: the table printed, then nothing,
+# rc=1, no verdict, no message.
+#
+# TWO CORRECTIONS TO WHAT THIS COMMENT USED TO CLAIM (pass-3 review), both of
+# which were wrong in the direction that flatters the fix:
+#   • "or one whose cells are `n/a`, which stats() itself emits" — stats() writes
+#     n/a to its OWN stdout at line 52; it never writes docs/explanation/admission-baseline.md, and nothing in
+#     this repo does. A table with fewer than 3 passes leaves crit_all populated
+#     and the gate firing. That path does not exist.
+#   • "the guards below were unreachable on exactly the path they were written
+#     for" — they are reachable now and still cannot fire, because every one is
+#     gated on `[ -n "${crit_last:-}" ]`, which is empty precisely when this path
+#     is taken. Completing the run is not the same as running the gate.
+# So the honest state is the third branch below: an empty series is UNMEASURED,
+# and a gate that did not run must not print a verdict that reads like it did.
 crit_all="$(row criticals | tr ' ' '\n' | grep -E '^[0-9]+$' || true)"
 if [ -z "${crit_all:-}" ]; then
+  # This is not "no worsening".
   die "VERDICT: no readable criticals series in $FLOOR — THE GATE DID NOT RUN" "grep -n '^| criticals |' $FLOOR # fix the criticals row, then sh $0" 3
 fi
 crit_last="$(printf '%s\n' "$crit_all" | tail -1)"
@@ -141,7 +190,8 @@ if [ -n "$open_row" ]; then
   esac
 fi
 if [ -n "${crit_last:-}" ] && [ "$crit_last" -gt 0 ]; then
-  # A series that ENDS above zero does not meet "fewer defects than it introduces", whichever direction it moved.
+  # A criterion of "fewer defects than it introduces" is not met by a series that ENDS above zero, whichever
+  # direction it moved.
   [ "${crit_last:-0}" -lt "${crit_max:-0}" ] || log_note "the latest criticals value is the worst in the series, not a recovery from it"
   log_fail "VERDICT: the latest pass still reports $crit_last critical(s). Do not install."
   log_nofix "docs/explanation/admission-baseline.md — an adjudicated pass that leaves zero criticals open, its row \`| open criticals |\` (decision 23, harbor#1149)"

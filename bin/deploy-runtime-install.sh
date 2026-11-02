@@ -215,16 +215,7 @@ fi
 # event-dispatch.sh (harbor#1044) is what launchd/com.harbor.event.dispatch.plist runs from here; shipped inert: no
 # installer loads that plist or writes a rule. event-bus.sh ships with it (floor-install copies it too): the loop
 # guard needs the bus that passes HARBOR_EVENT_CAUSE on, and a dispatcher beside an older bus refuses to follow.
-FILES="scope-roots.sh check-run.sh agent-idle-check.sh library-admission.sh access-confinement.sh memory-log-token-save.sh lint-findings-run.sh eval-redteam-corpus-run.sh standard-fleet-names-run.sh ticket-note.sh reply-shape.sh session-subagent-check.sh session-autocompact.sh session-cleanup.sh context-resolve.sh admission-deny.sh admission-install.sh deploy-install-stamp.sh gate-merged-check.sh status-fleet-glyph.sh status-subagent-glyph.sh context-peers.sh status-fleet-snapshot-refresh.sh housekeeping-clean.sh ci-queue.sh ci-main-tip-verdict.sh ci-github-plan.sh ci-runner-switch.sh ci-runners.sh ci-lost-job.sh ci-governor.sh ci-governor-hook.sh session-verdicts.sh admission-observe-report.sh deploy-restore.sh test-sandbox-make.sh worklog-push.sh memory-harvest.sh alert-probe.sh alert-notify.sh status-usage-aggregate.sh audit-triage-run.sh audit-triage.sh admission-verify.sh decider-set.sh drift-renew-check.sh memory-store-check.sh context-budget.sh drift-reference-check.sh doc-cited-paths.awk failure-observe.sh library-log.sh deploy-install-lib.sh library-fs.sh library-alert.sh status-obligations.sh ci-runners-fleet-lib.sh ci-runners-provision-lib.sh ci-runners-github-lib.sh ci-runners-watch-lib.sh gate-merge-stack.sh gate-merge-stack-resolve.py gate-merge-check.sh event-dispatch.sh event-bus.sh audit-stream-lib.sh audit-collector-check.sh session-state.sh session-react-lib.sh session-notify.sh session-save-now.sh session-ci-watch.sh ci-wait.sh session-cleanup-report.sh session-check.sh session-title.sh"
-# THE CORE SHARE (harbor#1436, standards/naming/kit.tsv): a clean box gets the registers and tools a system is built from, so `harbor
-# scope install` plus this installer leave an empty but valid register set. The tools join FILES; each core-share register joins DATA
-# as bin/standards/naming/<name>, cut to the core share by standard-kit.sh --core-file (a clean system has no hub controls and no legacy).
-_KIT="$SRC/standard-kit.sh"
-CORE_REGS=""
-if [ -f "$_KIT" ] && [ -f "$SRC/../standards/naming/kit.tsv" ]; then
-  FILES="$(printf '%s %s\n' "$FILES" "$(sh "$_KIT" --root "$SRC/.." --core-tools | tr '\n' ' ')" | tr ' ' '\n' | awk 'NF && !seen[$0]++' | tr '\n' ' ' | sed 's/ $//')"
-  CORE_REGS="$(sh "$_KIT" --root "$SRC/.." --core | tr '\n' ' ')"
-fi
+FILES="scope-roots.sh library-admission.sh access-confinement.sh memory-log-token-save.sh lint-findings-run.sh eval-redteam-corpus-run.sh standard-fleet-names-run.sh ticket-note.sh reply-shape.sh session-subagent-check.sh session-autocompact.sh session-cleanup.sh context-resolve.sh admission-deny.sh admission-install.sh deploy-install-stamp.sh gate-merged-check.sh status-fleet-glyph.sh status-subagent-glyph.sh context-peers.sh status-fleet-snapshot-refresh.sh housekeeping-clean.sh ci-queue.sh ci-main-tip-verdict.sh ci-github-plan.sh ci-runner-switch.sh ci-runners.sh ci-lost-job.sh ci-governor.sh ci-governor-hook.sh session-verdicts.sh admission-observe-report.sh deploy-restore.sh test-sandbox-make.sh worklog-push.sh memory-harvest.sh alert-probe.sh alert-notify.sh status-usage-aggregate.sh audit-triage-run.sh audit-triage.sh admission-verify.sh decider-set.sh drift-renew-check.sh memory-store-check.sh context-budget.sh drift-reference-check.sh doc-cited-paths.awk failure-observe.sh library-log.sh deploy-install-lib.sh library-fs.sh library-alert.sh status-obligations.sh ci-runners-fleet-lib.sh ci-runners-provision-lib.sh ci-runners-github-lib.sh ci-runners-watch-lib.sh gate-merge-stack.sh gate-merge-stack-resolve.py gate-merge-check.sh event-dispatch.sh event-bus.sh audit-stream-lib.sh audit-collector-check.sh session-state.sh session-react-lib.sh session-notify.sh session-save-now.sh session-ci-watch.sh ci-wait.sh session-cleanup-report.sh session-check.sh session-title.sh"
 # The restore-path suite and the harness it sources, as <checkout path>:<config-dir path> (harbor#727).
 # Same relative layout as the repo, so bin/recover-test.sh finds ../lib/core.sh with no checkout.
 SUITE="tests/deploy/restore/recover.test.sh:bin/recover-test.sh tests/lib/core.sh:lib/core.sh"
@@ -236,7 +227,6 @@ SUITE="tests/deploy/restore/recover.test.sh:bin/recover-test.sh tests/lib/core.s
 # repo-slug.txt: harbor's own owner/name, which log-lib's repo_slug reads beside an installed tool (main-tip-verdict, runner-switch,
 # gh-plan, ci-governor and findings-run), where no checkout's origin can name it; nothing a session can write may (harbor#1149).
 DATA="contracts/obligation-kinds.tsv:bin/obligation-kinds.tsv contracts/merge-stack-union.txt:bin/merge-stack-union.txt contracts/required-checks.tsv:bin/required-checks.tsv docs/reference/checks.md:bin/docs/reference/checks.md contracts/event-rules.tsv:bin/event-rules.tsv contracts/session-waiting.tsv:bin/session-waiting.tsv contracts/repo-slug.txt:bin/repo-slug.txt contracts/roots.tsv:bin/roots.tsv standards/naming/repo-kinds.tsv:bin/repo-kinds.tsv standards/naming/controls.tsv:bin/controls.tsv"
-for _cr in $CORE_REGS; do DATA="$DATA standards/naming/$_cr:bin/standards/naming/$_cr"; done
 
 # scope-roots.sh (harbor#966) with its table bin/roots.tsv: ci-runners, fleet-snapshot-refresh and deploy-fleet find a sibling checkout
 # through the repo registry from here; scope-roots.sh reads roots.tsv beside itself when it has no contracts/ above it.
@@ -389,7 +379,7 @@ done
 CK_SRC="$SRC/../docs/reference/checks.md"
 CK_TMP="$(mktemp "${TMPDIR:-/tmp}/runtime-install-checks.XXXXXX")" || { log_fail "could not make a temp file for the composed register"; log_nofix "TMPDIR"; log_end; exit 1; }
 RC_TMP="$(mktemp "${TMPDIR:-/tmp}/runtime-install-required.XXXXXX")" || { log_fail "could not make a temp file for the composed required-checks list"; log_nofix "TMPDIR"; log_end; exit 1; }
-trap 'rm -f "$CK_TMP" "$RC_TMP" "$RC_TMP.new" "$CK_TMP.in" "$CK_TMP.hooks" "$CK_TMP".core.*' EXIT
+trap 'rm -f "$CK_TMP" "$RC_TMP" "$RC_TMP.new" "$CK_TMP.in" "$CK_TMP.hooks"' EXIT
 # The packs installed here (checks.d/<repo-id>.md, written by pack.sh) are composed in too, so reinstalling the runtime never drops their rows.
 if _ck_err="$(sh "$SRC/check-registry-generate.sh" --core "$SRC/../docs/reference/checks.md" --packs "$DIR/checks.d" 2>&1 >"$CK_TMP")"; then CK_SRC="$CK_TMP"
 else
@@ -405,7 +395,7 @@ else
   il_refuse "the private layer's required-checks.tsv does not compose with core's: $(printf '%s' "$_rc_err" | sed -n 's/^.*FAIL[: ]*//p' | head -1)" \
     "sh $SRC/gate-required-generate.sh   # names the line; the private layer is contracts/private-layer.md"
 fi
-data_src() { case "$1" in standards/naming/*:bin/standards/naming/*) _cf="${1%%:*}"; _cf="${_cf##*/}"; sh "$_KIT" --root "$SRC/.." --core-file "$_cf" > "$CK_TMP.core.$_cf" && printf '%s' "$CK_TMP.core.$_cf" ;; *) case "${1%%:*}" in docs/reference/checks.md) printf '%s' "$CK_SRC" ;; contracts/required-checks.tsv) printf '%s' "$RC_SRC" ;; *) printf '%s' "$SRC/../${1%%:*}" ;; esac ;; esac; } # <checkout path>:<config-dir path> -> the bytes to install
+data_src() { case "${1%%:*}" in docs/reference/checks.md) printf '%s' "$CK_SRC" ;; contracts/required-checks.tsv) printf '%s' "$RC_SRC" ;; *) printf '%s' "$SRC/../${1%%:*}" ;; esac; } # <checkout path>:<config-dir path> -> the bytes to install
 for f in $FILES; do
   if [ ! -f "$DIR/bin/$f" ]; then log_note "bin/$f (new)"
   elif cmp -s "$(_src "$f")" "$DIR/bin/$f"; then log_note "bin/$f (replace, identical)"
@@ -656,17 +646,6 @@ if [ "$_stw_rc" -eq 0 ]; then
 else
   log_warn "install-stamp could not record this deploy, so the next run cannot detect a rollback: $(printf '%s\n' "$_stw" | tail -1)"
   log_fix "sh $SRC/deploy-install-stamp.sh --write '$DIR' runtime-install$( [ "$IL_LIVE" -eq 1 ] && echo ' --live' )"
-fi
-
-# A runtime-install row whose file is gone records nothing (bin/CHECKS.md survived its move, harbor#1437): dropped, so
-# the live verify can fail on a row with no file. Another installer's rows are its own to prune.
-if [ "$IL_APPLY" -eq 1 ] && [ -f "$DIR/.harbor-manifest" ]; then
-  awk '!/^#/ && NF >= 5 && $(NF - 1) == "runtime-install" { r = $0; sub(/^[^ ]+ [^ ]+ /, "", r); sub(/ [^ ]+ [^ ]+$/, "", r); print r }' "$DIR/.harbor-manifest" |
-  while IFS= read -r _gone; do
-    [ -e "$DIR/$_gone" ] || [ -L "$DIR/$_gone" ] || printf '%s\n' "$_gone"
-  done > "${TMPDIR:-/tmp}/runtime-install-gone.$$"
-  while IFS= read -r _gone; do il_manifest_drop "$_gone"; log_note "manifest: dropped the row for $_gone, a file this install no longer ships and that is gone"; done < "${TMPDIR:-/tmp}/runtime-install-gone.$$"
-  rm -f "${TMPDIR:-/tmp}/runtime-install-gone.$$"
 fi
 
 # What this run installed, one row per file (install standard §3); B6 never reads it.

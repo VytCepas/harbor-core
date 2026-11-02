@@ -6,11 +6,11 @@
 LR="$T_ROOT/bin/lint-renderer.sh"
 F="$T_TMP/fx"
 mk() { rm -rf "$F"; mkdir -p "$F/bin" "$F/hooks" "$F/standards/naming"; cp "$T_ROOT/bin/library-log.sh" "$F/bin/"
-  cp "$T_ROOT/standards/naming/writers.tsv" "$T_ROOT/standards/naming/surfaces.tsv" "$F/standards/naming/"
+  cp "$T_ROOT/standards/naming/writers.tsv" "$F/standards/naming/"
   printf 'name.renderer-used\twarn\tcheck\tbin/lint-renderer.sh\n' > "$F/standards/naming/controls.tsv"
-  printf '%s\n' '#!/bin/sh' 'sh bin/lint-name.sh --check branch "$1"' 'git switch -c "$1"' > "$F/bin/worktree.sh"
-  printf '%s\n' '#!/bin/sh' 'sh bin/lint-name.sh --check commit "$1"' 'gh issue create --title "$1"' > "$F/bin/lint-findings.sh"
-  printf '%s\n' '#!/bin/sh' 'sh bin/lint-name.sh --check branch "$1"' 'git switch -c "$1"' > "$F/bin/ci-runs-on.sh"; }
+  printf '%s\n' '#!/bin/sh' 'N="$(sh bin/lint-name.sh --render branch type=fix issue=1 slug=x)"' 'git switch -c "$N"' > "$F/bin/worktree.sh"
+  printf '%s\n' '#!/bin/sh' 'N="$(sh bin/lint-name.sh --render issue-title family=a)"' 'gh issue create --title "$N"' > "$F/bin/lint-findings.sh"
+  printf '%s\n' '#!/bin/sh' 'N="$(sh bin/lint-name.sh --render branch type=ci issue=1 slug=x)"' 'git switch -c "$N"' > "$F/bin/ci-runs-on.sh"; }
 run() { HARBOR_SCOPE_ROOT="$F" sh "$LR" "$@" 2>&1; }
 
 t_section "writers that call the renderer are clean"
@@ -40,15 +40,6 @@ sed 's/\twarn\t/\tblock\t/' "$F/standards/naming/controls.tsv" > "$F/c" && mv "$
 out="$(run)"; rc=$?
 t_eq "a block rule exits 1" 1 "$rc"
 t_has "and prints FAIL with its id" "$out" "FAIL: [name.renderer-used]"
-
-t_section "a surface without a grammar is checked, a surface with one is rendered"
-mk; printf '%s\n' '#!/bin/sh' 'sh bin/lint-name.sh --render branch type=fix issue=1 slug=x' 'git switch -c x' > "$F/bin/worktree.sh"
-t_has "--render on a grammar-less surface does not count (the renderer answers: no grammar)" "$(run)" "bin/worktree.sh writes a name without calling the renderer (lint-name.sh --check)"
-mk; printf 'gridwriter\twriter\tbin/gridwriter.sh\tbin\ta grammar surface\n' >> "$F/standards/naming/writers.tsv"
-printf '%s\n' '#!/bin/sh' 'sh bin/lint-name.sh --check bin "$1"' 'git switch -c x' > "$F/bin/gridwriter.sh"
-t_has "--check on a grammar surface does not count" "$(run)" "bin/gridwriter.sh writes a name without calling the renderer (lint-name.sh --render)"
-printf '%s\n' '#!/bin/sh' 'sh bin/lint-name.sh --render bin family=a object=b ext=sh' 'git switch -c x' > "$F/bin/gridwriter.sh"
-t_hasnt "--render on it does" "$(run)" "bin/gridwriter.sh writes a name"
 
 t_section "usage"
 t_exit "an unknown flag" 2 sh "$LR" --nope

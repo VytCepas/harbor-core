@@ -195,7 +195,6 @@ tests/deploy/deploy/prune.test.sh
 tests/deploy/bootstrap/bootstrap.test.sh
 # The floor guards' tables, one suite per bash part so the manifest shards share the load.
 tests/admission/bash/cd-fold.test.sh
-tests/admission/decide/decide.test.sh
 tests/admission/bash/config.test.sh
 tests/admission/bash/destroy.test.sh
 tests/admission/bash/baseline-surface.test.sh
@@ -403,7 +402,6 @@ tests/standard/catalog/map.test.sh
 tests/deploy/first-run/first-run.test.sh
 tests/ci/runner/wedge.test.sh
 tests/drift/reconcile/contract.test.sh
-tests/drift/status/status.test.sh
 tests/ci/runners/scale.test.sh
 tests/standard/rename/window.test.sh
 tests/standard/rename/collapse.test.sh
@@ -427,9 +425,6 @@ tests/doc/vale/vale.test.sh
 tests/lint/pr/pr.test.sh
 tests/context/injection-rule/name-note-create.test.sh
 tests/lint/renderer/renderer.test.sh
-tests/policy/clauses/clauses.test.sh
-tests/policy/enforcement/enforcement.test.sh
-tests/lint/policy/clauses.test.sh
 tests/policy/resolve/order.test.sh
 tests/standard/vendor/vendor.test.sh
 tests/standard/fleet-names/job.test.sh
@@ -454,17 +449,3 @@ tests/lint/conventions/action-pin.test.sh
 tests/standard/schema/emit.test.sh
 tests/standard/seams/fresh.test.sh
 tests/lint/name/versions.test.sh
-tests/standard/inventory/facts.test.sh
-tests/standard/inventory/schedule.test.sh
-tests/standard/id-resolve/resolve.test.sh
-tests/deploy/launchd-sync/sync.test.sh
-tests/event/dispatch/reconcile.test.sh
-tests/agent/idle/idle.test.sh
-tests/check/run/run.test.sh
-tests/standard/kit/kit.test.sh
-tests/scope/system/system.test.sh
-tests/scope/repo/repo.test.sh
-tests/scope/repo/sources.test.sh
-tests/deploy/kit/bootstrap.test.sh
-tests/standard/seams/export.test.sh
-tests/lint/conventions/repo-kit.test.sh

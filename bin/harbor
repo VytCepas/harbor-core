@@ -52,7 +52,6 @@ tree	standard-catalog.sh --tree	no	the seven D-57 levels from the registry, down
 event	event-bus.sh	no	the local event bus: emit, wait (0 match, 3 deadline), since, tail, prune; dispatch, on, pull, subscribe (E2)
 ui	status-console.sh	no	a localhost console of the live state as read-only panels: 127.0.0.1, one-use link, stops when idle
 scope	scope.sh	no	scope install: create the PORT_ROOT skeleton and an empty private layer (--dry-run, --seed-from-projects); never overwrites
-repo	scope-repo.sh	no	create or adopt a repo in one run, list where each is known, audit one: new, adopt, list, audit (harbor#1430)
 access	access.sh	no	the access register: add, list, has, refs, check, stored, status, rotate, revoke; a ref the register does not name is refused by bin/secret
 pack	pack.sh	no	install a workload repo's harbor-pack/ box-wide and remove it exactly: list, install, remove (--dir or --live; dry run unless --apply)
 merge-stack	gate-merge-stack.sh	no	merge a plan's PRs in order, each on its own green CI: check, rehearse, merge, verify (docs/design/merge-stack.md)
@@ -116,12 +115,6 @@ verb_field() { # <verb> <field-number> — empty if the verb is unknown
   printf '%s\n' "$VERBS" | awk -F'\t' -v v="$1" -v f="$2" '$1 == v { print $f; exit }'
 }
 
-# The registered systems (harbor#1436): `harbor <system> <verb>` is a row of contracts/systems.tsv, not a branch of this file.
-_systems() {
-  [ -n "${BIN:-}" ] && [ -f "$BIN/scope-system.sh" ] || return 0
-  sh "$BIN/scope-system.sh" systems 2>/dev/null || :
-}
-
 usage() {
   cat <<EOF
 harbor — the Helm (L0) management command.   contract v$CONTRACT_VERSION
@@ -131,11 +124,6 @@ harbor — the Helm (L0) management command.   contract v$CONTRACT_VERSION
 EOF
   printf '%s\n' "$VERBS" | awk -F'\t' 'NF >= 4 {
     printf "  %-12s %-5s %s\n", $1, ($3 == "yes" ? "--json" : ""), $4 }'
-  _sys="$(_systems)"
-  if [ -n "$_sys" ]; then
-    printf '\n  registered systems (harbor <system> <verb>, contracts/systems.tsv):\n'
-    printf '%s\n' "$_sys" | awk -F'\t' '{ printf "  %-12s       %s\n", $1, $2 }'
-  fi
   cat <<EOF
 
   help | --help        this table
@@ -165,10 +153,6 @@ deploy	push	deploy-push.sh
 _sub="$(printf '%s\n' "$SUBVERBS" | awk -F'\t' -v v="$VERB" -v s="${1:-}" '$1 == v && $2 == s { print $3; exit }')"
 if [ -n "$_sub" ]; then shift; _run="$_sub"; fi
 SCRIPT="${_run%% *}"
-# A word that is no verb of this table may be a registered system: the register's row runs it, so a new system edits no code here.
-if [ -z "$SCRIPT" ] && _systems | awk -F'\t' -v s="$VERB" '$1 == s { f = 1 } END { exit !f }'; then
-  exec sh "$BIN/scope-system.sh" run "$VERB" "$@"
-fi
 if [ -z "$SCRIPT" ]; then
   # Exit 2, and name the closest thing rather than only complaining: an unknown
   # verb is usually a near-miss, and "unknown verb" with no list is a dead end.

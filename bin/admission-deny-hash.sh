@@ -7,14 +7,41 @@
 #   sh admission-deny-hash.sh --scan    [--live | <cfg>] [file...]   stdin or files; exit 1 on a hit
 #   ... --json
 #
-# THE GAP IT CLOSES: admission-egress.sh knows generic secret SHAPES, not *your* secrets (an unusual-prefix API key, a client's name). Only salted, truncated digests are stored, so the filter is not itself the leak.
-# Removed notes: docs/explanation/code-cases/bin-admission-deny-hash.md
+# THE GAP IT CLOSES. `admission-egress.sh` knows generic secret SHAPES — `sk-`, `ghp_`,
+# PEM headers. It cannot know *your* secrets, so it cannot catch an API key with an
+# unusual prefix, or a client's name. This closes that without the filter becoming
+# the leak: only salted, truncated digests are stored.
 #
-# THE TERMS ARE DECLARED, NOT INFERRED. Inferring secrets from the private corpus is a policy guess that fails both ways (a miss gives false confidence; too wide blocks ordinary work, and a blocking control gets switched off). The source of truth is `<cfg>/.helm-deny-terms`, authored by the operator: one term per line, `#` comments ignored. `--propose` only PRINTS candidates for review (the system proposes; a person promotes).
+# ── THE TERMS ARE DECLARED, NOT INFERRED, AND THAT IS THE DESIGN ─────────────
 #
-# NOT WIRED INTO A GUARD: admission-egress.sh is a B6 hash-pinned surface, so consulting this filter needs a re-pin, the operator's act (owner decision 2026-08-05).
-# SINGLE-TOKEN TERMS ONLY: scanning digests each whitespace-delimited token, so `--derive` REJECTS a term containing whitespace rather than storing a digest nothing can match.
-# DELIBERATELY ONE FILE (docs/explanation/modularity.md): three modes share one digest primitive and one filter format, and the format is the whole contract.
+# The obvious build reads the private corpus and decides for itself which tokens
+# are secret. That is a policy guess with a cost in both directions: guess narrow
+# and the filter misses the thing it exists to catch, giving false confidence;
+# guess wide and it blocks ordinary work, which is how a control gets switched off
+# (policy/constitution.md §2.11).
+#
+# So the source of truth is `<cfg>/.helm-deny-terms`, authored by the operator: one
+# term per line, `#` comments ignored. `--propose` reads the corpus and PRINTS
+# candidates for review, writing nothing. That is the constitution's rule made
+# concrete — the system may observe continuously and propose in batch, and may not
+# promote its own observations into a control without a person approving them.
+#
+# ── WHAT IT DELIBERATELY IS NOT ──────────────────────────────────────────────
+#
+# NOT WIRED INTO A GUARD. `admission-egress.sh` is a B6 hash-pinned control surface, so
+# making it consult this filter needs a re-pin and is the operator's act (owner
+# decision 2026-08-05). This ships the filter and an offline scanner, so the
+# detection exists and is measurable before anything blocks a tool call on it.
+#
+# SINGLE-TOKEN TERMS ONLY. Scanning digests each whitespace-delimited token of the
+# input and tests membership, so a multi-word phrase cannot match. Said out loud
+# because a filter that silently ignores half its terms is worse than one that
+# refuses them: `--derive` REJECTS a term containing whitespace rather than storing
+# a digest nothing will ever match.
+#
+# DELIBERATELY ONE FILE (docs/explanation/modularity.md): three modes over one digest
+# primitive and one filter format. Splitting them would put two spellings of the
+# filter format in two files, and the format is the whole contract.
 set -eu
 
 # stdout is data here (--propose's candidate terms, --scan --json), so the log is on stderr (LOG_FD=2,
@@ -32,7 +59,11 @@ JSON=0
 DIR=""
 LIVE_OK=0
 LIVE_DIR="$HOME/.claude"
-# OPERANDS STAY IN "$@", never a space-joined string (PR #127 review): a filename with a space split into two nonexistent paths and, with errors swallowed, the scan reported CLEAN.
+# OPERANDS STAY IN "$@", NEVER IN A SPACE-JOINED STRING (PR #127 review). The first
+# cut accumulated `FILES="$FILES $1"` and later expanded it unquoted, so a filename
+# containing a space was split into two nonexistent paths — and because the reader
+# swallowed errors, the scan then reported CLEAN. Re-queueing each operand onto the
+# positional list preserves it byte-for-byte, whatever is in it.
 _argc=$#
 _seen=0
 while [ "$_seen" -lt "$_argc" ]; do
@@ -53,8 +84,15 @@ done
 [ -n "$DIR" ] || { [ "$LIVE_OK" -eq 1 ] && DIR="$LIVE_DIR"; }
 CFG="${DIR:-${CLAUDE_CONFIG_DIR:-$LIVE_DIR}}"
 
-# THE HASHER IS DERIVED, NEVER RE-IMPLEMENTED: floor_obs_digest owns salt, separator and truncation; a second spelling would drift and stop matching, which for a leak filter fails toward MISSING a hit.
-# It is sourced from the SIBLING, never from the inspected directory (a hostile `<cfg>/bin/library-admission.sh` could redefine the digest to a constant); the SALT still comes from the inspected dir, which is data.
+# THE HASHER IS DERIVED, NEVER RE-IMPLEMENTED. floor_obs_digest owns the algorithm
+# — salt, separator, truncation length — and a second spelling here would drift
+# silently and stop matching, which for a leak filter fails toward MISSING a hit.
+#
+# SOURCED FROM THE SIBLING, NEVER FROM THE INSPECTED DIRECTORY. Sourcing
+# `<cfg>/bin/library-admission.sh` executes a file out of the tree under inspection; a
+# hostile copy could redefine the digest to a constant and every scan would come
+# back clean. `$SELF/library-admission.sh` is the same trust domain as this script. The
+# SALT still comes from the inspected dir, which is data, not code.
 [ -r "$SELF/library-admission.sh" ] || die "library-admission.sh is not readable beside this script: $SELF" "git checkout -- bin/library-admission.sh"
 # shellcheck source=/dev/null
 . "$SELF/library-admission.sh"
@@ -66,7 +104,17 @@ digest_of() { # <term> -> 16 hex chars, or `-` when the box cannot hash
   FLOOR_OBS_SUBJECT="$1" floor_obs_digest "$CFG"
 }
 
-# ONE TOKEN ALPHABET, USED BY BOTH SIDES (PR #127 review): if --derive and --scan disagree about what a token IS, a term can be stored and never matched (`client:api/key`, a base64 token ending in `=`). The alphabet is defined once here; the round-trip check and the scan tokenizer both read it.
+# ── ONE TOKEN ALPHABET, USED BY BOTH SIDES (PR #127 review) ──────────────────
+# `--derive` hashes whole terms; `--scan` hashes the tokens it finds in the input.
+# If those two disagree about what a token IS, a term can be stored and never
+# matched — `--derive` reports coverage for something no scan can ever hit, which
+# is the same silently-inert failure the multi-word refusal exists to prevent.
+# Measured examples that the first cut accepted and could never match:
+# `client:api/key` (`:` and `/` are separators to the scanner) and a base64 token
+# ending in `=`.
+#
+# So the alphabet is defined ONCE, here, and both the round-trip check and the scan
+# tokenizer read it. A second spelling is the drift the T rules exist for.
 TOKEN_CLASS='A-Za-z0-9._@+-'
 
 # term_roundtrips <term> — 0 iff the scanner's tokenizer yields this term, whole.
@@ -79,7 +127,11 @@ term_roundtrips() {
 
 # ── --derive · terms -> filter ───────────────────────────────────────────────
 if [ "$MODE" = "derive" ]; then
-  # WRITES, SO IT IS GATED (lint D2): the default target is the active config dir, which on the operator's machine IS the live one. Resolved-path compare, since a trailing slash or symlink spells the same directory differently.
+  # WRITES, SO IT IS GATED (lint D2). The default target is the active config dir,
+  # which on the operator's machine IS the live one — so a bare --derive would
+  # write a filter into ~/.claude because nobody named anywhere else. Resolved-path
+  # compare, because a trailing slash or a symlinked route spells the same
+  # directory differently.
   if [ "$LIVE_OK" -eq 0 ]; then
     _phys="$(CDPATH= cd -P -- "$CFG" 2>/dev/null && pwd -P || printf '%s' "$CFG")"
     _live="$(CDPATH= cd -P -- "$LIVE_DIR" 2>/dev/null && pwd -P || printf '%s' "$LIVE_DIR")"
@@ -88,7 +140,16 @@ if [ "$MODE" = "derive" ]; then
     fi
   fi
   [ -f "$TERMS" ] || die "no terms file at $TERMS" "sh $0 --propose"
-  # THE TERMS FILE IS THE SECRET, AND IT IS PLAINTEXT: the FILTER holds no secret in the clear, but the TERMS file necessarily does. Warned, never silently fixed (chmod-ing a file the operator authored modifies their content); neither file is in permissions.deny or the file-tool guard's protected set today (M10 tier 0), so closing that is an operator act.
+  # ── THE TERMS FILE IS THE SECRET, AND IT IS PLAINTEXT ──────────────────────
+  # The FILTER contains no secret in the clear, which is the ticket's promise. The
+  # TERMS file necessarily does: the operator wrote the strings into it. So this
+  # design does not remove a plaintext secret from the box, it adds one — and
+  # saying so is the difference between a control and a comforting story.
+  #
+  # Warned, never silently fixed: chmod-ing a file the operator authored is
+  # modifying their content. Neither this file nor the filter is in
+  # `permissions.deny` or the file-tool guard's protected set today; by M10's tier
+  # table both are tier 0, so closing that is an operator act.
   if [ -r "$TERMS" ]; then
     _tmode="$(ls -l "$TERMS" 2>/dev/null | cut -c1-10)"
     case "$_tmode" in
@@ -105,13 +166,17 @@ if [ "$MODE" = "derive" ]; then
   _n=0; _skipped=0
   while IFS= read -r _line || [ -n "$_line" ]; do
     case "$_line" in ''|\#*) continue ;; esac
-    # A TERM WITH WHITESPACE IS REFUSED, NOT SILENTLY STORED: scanning is token-wise, so a phrase's digest could never match and the operator would believe it was covered.
+    # A TERM WITH WHITESPACE IS REFUSED, NOT SILENTLY STORED. Scanning is
+    # token-wise, so a phrase's digest could never match anything and the operator
+    # would believe it was covered.
     case "$_line" in *[[:space:]]*)
       log_warn "refusing multi-word term (scanning is token-wise): $_line"
       log_fix "edit $TERMS: one token per line, then sh $0 --derive $CFG"
       _skipped=$((_skipped+1)); continue ;;
     esac
-    # Any separator outside the scan alphabet splits the term the same way, so its digest could never be produced from real content.
+    # …and the general case the whitespace check only covers a slice of: any
+    # separator outside the scan alphabet splits the term, so its stored digest
+    # could never be produced from real content.
     if ! term_roundtrips "$_line"; then
       log_warn "refusing term the scanner cannot reproduce as one token (it would be stored and never matched): $_line"
       log_fix "edit $TERMS: split the term, or drop the separators, then sh $0 --derive $CFG"
@@ -124,7 +189,8 @@ if [ "$MODE" = "derive" ]; then
   done < "$TERMS"
 
   sort -u "$_tmp" > "$_tmp.s" && mv "$_tmp.s" "$_tmp"
-  # 0600: the filter is a fingerprint of a secret, and an offline dictionary attack over a guessable term space is cheap.
+  # 0600: the filter is not a secret, but it is a fingerprint OF one, and an
+  # offline dictionary attack over a guessable term space is cheap.
   ( umask 077; cp "$_tmp" "$FILTER" )
   chmod 0600 "$FILTER" 2>/dev/null || :
   log_ok "wrote $(wc -l < "$FILTER" | tr -d ' ') digest(s) -> $FILTER"
@@ -134,7 +200,12 @@ fi
 
 # ── --propose · candidates, printed and never written ────────────────────────
 if [ "$MODE" = "propose" ]; then
-  # READ-ONLY BY CONSTRUCTION: no write path. It prints high-signal shapes from the private corpus for the operator to curate; it does NOT decide what is secret. Corpus paths go on the positional list for the reason recorded at the argument loop.
+  # READ-ONLY BY CONSTRUCTION: this mode has no write path at all. It prints
+  # high-signal shapes out of the private corpus for the operator to curate into
+  # the terms file. It does NOT decide what is secret — see the header.
+  # Corpus paths are collected onto the positional list rather than a space-joined
+  # string, for the reason recorded at the argument loop: a path containing a space
+  # becomes two nonexistent paths, and the reader then finds nothing.
   set --
   for _c in "$CFG/MEMORY/IDENTITY.md" "$CFG/MEMORY/TELOS"/*.md "$CFG/MEMORY/TELOS"/*/*.md; do
     [ -f "$_c" ] && set -- "$@" "$_c"
@@ -165,7 +236,12 @@ _probe="$(digest_of harbor-deny-hash-selftest)"
 
 _in="$(mktemp "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -f "$_in" "$_in.t"' EXIT INT TERM
 
-# AN UNREADABLE INPUT IS REFUSED, NEVER SCANNED AS EMPTY (PR #127 review): a missing path, a permission error or a space-split filename once left the buffer empty and the scanner printed `clean` over content it never read, the worst outcome for a leak filter. Checked BEFORE reading so the refusal names the path.
+# AN UNREADABLE INPUT IS REFUSED, NEVER SCANNED AS EMPTY (PR #127 review). The
+# first cut ran `cat $FILES … 2>/dev/null || :`, so a missing path, a permission
+# error, or a filename split on a space left the buffer empty or partial — and the
+# scanner then printed `clean` and exited 0 over content it had never read. For a
+# leak filter that is the worst available outcome: a confident all-clear on an
+# unexamined file. Checked BEFORE reading, so the refusal names the path.
 if [ "$#" -gt 0 ]; then
   for _f in "$@"; do
     [ -e "$_f" ] || die "no such input: $_f" "ls -l \"$_f\""
@@ -177,7 +253,10 @@ else
   cat > "$_in" || die "failed reading stdin — refusing to report" "sh $0 --scan $CFG <a file>"
 fi
 
-# Tokens deduped BEFORE hashing (one fork per distinct token). No length floor: --derive stores whatever the operator declared, so skipping short tokens could hide a hit.
+# Tokens deduped BEFORE hashing: one sha256 fork per distinct token, not per
+# occurrence. No length floor is applied: --derive is the only writer of the filter
+# and it stores whatever the operator declared, so skipping short tokens here could
+# hide a hit.
 tr -cs "$TOKEN_CLASS" '\n' < "$_in" | sort -u > "$_in.t"
 
 _hits=0
@@ -187,10 +266,15 @@ while IFS= read -r _tok; do
   [ -n "$_tok" ] || continue
   _d="$(digest_of "$_tok")"
   [ "$_d" = "-" ] && continue
-  # $FLOOR_GREP, never a bare grep (lint F3), and load-bearing: this box's grep is a ugrep wrapper with -I --ignore-files that silently skips inputs it judges binary or ignored, so a skipped filter file makes every membership test MISS.
+  # $FLOOR_GREP, NEVER a bare grep (lint F3), and here it is load-bearing rather
+  # than stylistic: this box's grep is a ugrep wrapper carrying -I --ignore-files,
+  # which silently skips inputs it judges binary or ignored. A skipped filter file
+  # makes every membership test MISS, and for a leak filter that is the dangerous
+  # direction — a scan that reports clean over content full of declared terms.
   if "$FLOOR_GREP" -qxF -- "$_d" "$FILTER" 2>/dev/null; then
     _hits=$((_hits+1))
-    # The match is reported by DIGEST, never by value: printing the token would make this tool the leak (including into a CI log).
+    # THE MATCH IS REPORTED BY DIGEST, NEVER BY VALUE. Printing the token would
+    # make this tool the leak it exists to prevent — including into a CI log.
     [ "$JSON" != "1" ] || { printf '%s{"digest":"%s","length":%s}' "$_sep" "$_d" "${#_tok}"; _sep=","; }
     log_fail "HIT digest=$_d length=${#_tok}"
     log_nofix "contracts/control-plane-state.md — remove the declared private term from the scanned content, then re-run sh $0 --scan"

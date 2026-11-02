@@ -16,11 +16,10 @@ for _d in empty-agents forged-file forged-link; do
     > "$T_TMP/$_d/.claude/settings.json"
 done
 for _f in admission-hook.sh library-admission.sh admission-self-edit.sh admission-bash.sh admission-egress.sh annotate-web.sh \
-          admission-decide.sh admission-deny.sh admission-normalize.awk admission-observe.sh admission-install.sh admission-integrity.sh library-log.sh; do
+          admission-deny.sh admission-normalize.awk admission-observe.sh admission-install.sh admission-integrity.sh library-log.sh; do
   cp "$_fs/$_f" "$_fc/bin/$_f"
 done
 chmod +x "$_fc"/bin/*.sh
-mkdir -p "$_fc/standards/naming"; cp "$T_ROOT/standards/naming/controls.tsv" "$_fc/standards/naming/controls.tsv"   # the register the decision function reads (harbor#1030)
 printf '{"permissions":{"allow":[],"deny":[],"disableBypassPermissionsMode":"disable","disableAutoMode":"disable"}}\n' > "$_fc/settings.json"
 sh "$_fs/deploy-harden.sh" --apply --dir "$_fc" > /dev/null 2>&1
 sh "$_fs/admission-install.sh" --apply --dir "$_fc" > /dev/null 2>&1

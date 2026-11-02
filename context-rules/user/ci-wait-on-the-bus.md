@@ -10,9 +10,7 @@ once: session
 
 <!--
 `when: always` with the gate inside the run script, as 90-unbounded-wait-loop.md does: "this command
-polls CI" is a parse (a `gh pr checks`, `gh pr view` or `gh run` read inside a wait, a loop that sleeps, or a `--watch`), not a substring.
-harbor#1010 widened it from `gh pr checks` in a while/until to `gh pr view` and `for`/`watch` loops, and the note now names
-`ci-wait.sh <owner/repo>#<n> --timeout N` run in the background (measured 2026-11-02: a lane idled 7.5 h on a hand-rolled wait).
+polls CI" is a parse (a `gh pr checks` or `gh run` read inside a wait, or a `--watch`), not a substring.
 
 `once: session` because the remedy is one command a session learns once; a second poll in the same
 session is the same lesson.
@@ -27,6 +25,6 @@ WHY IT CLEARS THE BAR IN "Writing a good rule":
                   waiter on #1366 ran 50 minutes against a script path it could not read.
   · nothing else fires — 90-unbounded-wait-loop stays silent on any command calling wait-for, which is
                   exactly the shape of these polls; no lint or CI job sees a runtime wait.
-  · falsifier   — a session polling `gh pr checks` or `gh pr view` in wait-for, a loop or `--watch` that does NOT get
-                  the note, or a single `gh pr checks <n>` read, a `while read` loop (or `harbor event ci` itself) that DOES.
+  · falsifier   — a session polling `gh pr checks` in wait-for, a loop or `--watch` that does NOT get the
+                  note, or a single `gh pr checks <n>` read (or `harbor event ci` itself) that DOES.
 -->

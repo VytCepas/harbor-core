@@ -51,4 +51,3 @@ schema	schemas.tsv	-	-	the schema of every .tsv register: columns, key, referenc
 label-retired	label-retired.tsv	-	-	a label the register retires: no register row carries it, and the sync plans its removal (harbor#1427)
 verb	verbs.tsv	-	-	a task verb a repo kind must carry in its justfile, with its meaning and exit contract (harbor#1428)
 version	versions.tsv	-	-	a runtime, tool, library or action version the box pins, with hold_at and its reason (harbor#1426)
-kit	kit.tsv	-	-	what each repo kind inherits: register, control family, tool, template, check and pin items with share and vendoring (harbor#1436)

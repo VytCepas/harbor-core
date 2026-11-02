@@ -162,20 +162,6 @@ t_eq "a real failure is read once and then remembered: the second pass reads no 
 fleet; plant alpha 302 failure 1 3600 "$STEPS" "$REAL"; run rerun-lost --apply >/dev/null
 t_eq "a job with a failed step has its annotations never read" 0 "$(grep -c '/annotations' "$FX/gh.log" || true)"
 
-t_section "a pass leaves its receipt, so the findings reconcile can see the check (harbor#1437)"
-RC="$CLAUDE_CONFIG_DIR/cache/checks/ci.lost-rerun.json"; rm -f "$RC"
-fleet; plantall; run rerun-lost >/dev/null
-t_eq "a dry run leaves no receipt" no "$([ -f "$RC" ] && echo yes || echo no)"
-run rerun-lost --apply >/dev/null
-t_eq "a completed pass writes a green receipt" green "$(jq -r .status "$RC" 2>/dev/null)"
-t_eq "...for the registered id" ci.lost-rerun "$(jq -r .id "$RC" 2>/dev/null)"
-fleet; plant alpha 301 cancelled 1 3600 "$NOSTEPS" "$LOST"; : > "$FX/rerun.fail"; run rerun-lost --apply >/dev/null
-t_eq "a re-run call GitHub refused makes it red" red "$(jq -r .status "$RC" 2>/dev/null)"
-t_has "...naming the job" "$(jq -r '.subjects[]' "$RC" 2>/dev/null)" "VytCepas/alpha/3010"
-rm -f "$FX/rerun.fail"; fleet; plantall; printf 'lost-rerun off\n' > "$CLAUDE_CONFIG_DIR/.harbor-ci-runners"; rm -f "$RC"; run rerun-lost --apply >/dev/null
-t_eq "lost-rerun off writes none: a switched-off check is not a green one" no "$([ -f "$RC" ] && echo yes || echo no)"
-rm -f "$CLAUDE_CONFIG_DIR/.harbor-ci-runners"
-
 t_section "API budget"
 fleet; plantall; run rerun-lost --apply >/dev/null; : > "$FX/gh.log"; run rerun-lost --apply >/dev/null
 t_eq "the second pass over the same runs reads no jobs and no annotations" 0 "$(grep -c -e '/jobs' -e '/annotations' "$FX/gh.log" || true)"

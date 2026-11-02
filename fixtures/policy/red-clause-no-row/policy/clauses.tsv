@@ -1,2 +1,0 @@
-id	strength	binding	modality	subject	target	relation	min	max	enforced_by	motivated_by	falsifier	anchor
-t.1	policy	box	duty	governance	clause	-	-	-	fx.one	-	x	Do the thing.

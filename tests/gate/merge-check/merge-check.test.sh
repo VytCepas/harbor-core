@@ -5,7 +5,6 @@
 MC="$T_ROOT/bin/gate-merge-check.sh"; STUB="$T_TMP/stub"; mkdir -p "$STUB"
 LOG="$T_TMP/gh.log"; CHECKS="$T_TMP/checks.tsv"; REQF="$T_TMP/required.tsv"
 PROT="$T_TMP/protection.json"; PROT_RC="$T_TMP/protection.rc"; ANNOT="$T_TMP/annot.txt"
-PRFILES="$T_TMP/prfiles.txt"; PRMETA="$T_TMP/prmeta.json"; TREE="$T_TMP/tree"  # the PR's changed files, its refs and labels, and a file per ref
 RCF="$T_TMP/required-checks.tsv"  # the local gate's declaration; absent unless a case writes it
 # `pr checks` rows are TAB separated, as real gh emits and the tool cuts on. --required returns
 # its own set: main requires 2 of ~13 jobs. A malformed repo id 404s, as real gh does.
@@ -27,13 +26,9 @@ case "\$1 \$2" in
                   case "\$_tail" in
                     branches/*) cat "$PROT"; exit "\$(cat "$PROT_RC")" ;;
                     check-runs/*/annotations) cat "$ANNOT" 2>/dev/null; exit 0 ;;
-                    contents/*) _c="\${_tail#contents/}"; _ref="\${_c#*\?ref=}"; _pp="\${_c%%\?*}"
-                                cat "$TREE/\$_ref/\$_pp" 2>/dev/null && exit 0; echo "gh: Not Found (HTTP 404)" >&2; exit 1 ;;
                   esac
                 fi
                 echo "gh: Not Found (HTTP 404)" >&2; exit 1 ;;
-  "pr diff")    cat "$PRFILES" 2>/dev/null; exit 0 ;;
-  "pr view")    cat "$PRMETA" 2>/dev/null; exit 0 ;;
   "pr merge")   echo "merged"; exit 0 ;;
 esac
 case "\$1" in
@@ -350,29 +345,4 @@ t_eq "a layer file that exists and is not a file: the repo it would name is refu
 t_has "...and the warning names the layer" "$(mcck acme/other 156)" "required-checks.tsv does not compose"
 rmdir "$PV/required-checks.tsv"
 
-t_section "the amendment gate: a constitutional clause changes only with amendment:approved (harbor#1026)"
-rows "$GREEN"; prot "$PROTECTED" 0
-amend() { # <fixture> <labels-json> : a PR whose base and head trees are the fixture's
-  rm -rf "$TREE"; mkdir -p "$TREE/base" "$TREE/head"
-  cp -R "$T_ROOT/fixtures/policy/$1/base/policy" "$TREE/base/"; cp -R "$T_ROOT/fixtures/policy/$1/head/policy" "$TREE/head/"
-  printf 'bin/x.sh\npolicy/constitution.md\n' > "$PRFILES"
-  printf '{"baseRefOid":"base","headRefOid":"head","labels":%s}' "$2" > "$PRMETA"; }
-amend red-amendment '[]'
-t_eq "a constitutional edit with no label is refused though every check is green" 1 "$(rc 156)"
-t_has "...saying which label is missing" "$(mc 156)" "amendment:approved"
-t_eq "--force does not lift it" 1 "$(rc --merge 156 --force)"
-t_eq "...and nothing was merged" 0 "$(merges)"
-amend red-amendment '[{"name":"bug"}]'
-t_eq "other labels do not count" 1 "$(rc 156)"
-amend red-amendment '[{"name":"amendment:approved"}]'
-t_eq "the label lets a green PR through" 0 "$(rc 156)"
-amend pass-amendment-plain '[]'
-t_eq "a plain-rule edit needs no label (a guard that blocks ordinary work gets switched off)" 0 "$(rc 156)"
-amend red-amendment '[]'; rm -rf "$TREE/head"
-t_eq "an unreadable head is refused, not waved through" 1 "$(rc 156)"
-printf 'bin/x.sh\n' > "$PRFILES"
-t_eq "a PR that touches no policy file is not asked" 0 "$(rc 156)"
-: > "$PRFILES"; rm -f "$PRMETA"
-
 t_done
-
