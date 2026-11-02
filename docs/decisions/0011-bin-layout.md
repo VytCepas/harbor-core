@@ -3,8 +3,11 @@ kind: decision-record
 status: accepted
 alias: D-11
 date: 2026-10-04
+supersedes: -
+superseded_by: -
 source: research/09a-holistic-review.md
 revised_by: D-88
+owner: @VytCepas
 ---
 
 # `bin/` layout

@@ -1,3 +1,9 @@
+---
+kind: explanation
+owner: @VytCepas
+status: unreviewed
+---
+
 # FLOOR — workstream B's landing doc (kill-switch, sandbox, restore)
 
 The Pre-Phase-2 gate (harbor#33/#34) establishes three guarantees BEFORE any
@@ -1252,10 +1258,10 @@ load-bearing, not a preference: `MEMORY/` is a **git repo with a live remote**
 allowlist omits it. **Any other name silently loses both** and starts pushing a
 behavioural profile of what your guards blocked to GitHub.
 
-**What a record carries** — eleven keys, one `printf`, one `write()`:
+**What a record carries** — ten keys, one `printf`, one `write()`:
 
 ```
-{"v":1,"ts":"…Z","g":"bash","d":"block","r":"pipe-to-shell","s":"flat","t":"Bash","h":"41ffb499d32b7e54","sk":"9c0e5a17b2d4f863","c":"confined","x":"-"}
+{"v":1,"ts":"…Z","g":"bash","d":"block","r":"pipe-to-shell","s":"flat","t":"Bash","h":"41ffb499d32b7e54","sk":"9c0e5a17b2d4f863","c":"confined"}
 ```
 
 Every field is a call-site literal, a closed enum mapped through a `case` with no
@@ -1292,16 +1298,6 @@ non-Bash record. It is read from the marker and the payload's own key, never fro
 command text, so a command that quotes the key stays `confined`. Unconfined over
 confined Bash records is the escape rate the #555 stop rule measures
 (`admission-observe-report.sh --confinement`).
-
-`x` is the **escape class** of an unconfined Bash call (harbor#1441): one word from
-`HARBOR_ADMISSION_CLASSES` in `bin/library-admission.sh`, set by `floor_obs_class` from the first verb of
-the command (a `cd X &&` or `VAR=v` prefix stepped over; a session-title write and a bus emit
-recognised whole). Only the bash guard's record of an unconfined call carries one, `-` everywhere
-else. It is a literal from the enum, so no command byte reaches the ledger, and it costs no fork.
-The first verb of a compound stands for the compound, which `compound` and `other` admit. The
-treatment of each class is `contracts/confinement-classes.tsv`, and
-`admission-observe-report.sh --confinement` prints the count per class and `untreated: N`. A
-record from before the field has no `x` and reads as `unclassified`.
 
 `covered` is the verdict of a rule the confinement already enforces (harbor#1300,
 #555 P3): a confined Bash call hit a rule that `contracts/confinement-coverage.tsv`

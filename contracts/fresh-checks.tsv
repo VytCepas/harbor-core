@@ -1,6 +1,8 @@
 # fresh-checks.tsv (harbor#1287) — the generated files bin/doc-fresh-verify.sh proves current, each in seconds.
 #
 # file <TAB> check (sh, run from the repo root; exit 0 fresh, 1 stale, anything else unchecked) <TAB> fix <TAB> needs
+# THE HEADER (harbor#1434). Every file named here carries one comment line `generated-by: <command>` in its first 20 lines, <command> equal to its `fix` column;
+# bin/doc-shape.sh holds the two equal both ways (doc.fresh-registered), so a generated file with no row, or a row whose file lacks the header, is red.
 # `needs` is the path that must exist for the row to apply (default: the file itself) — an exported tree carries no
 # dev layer, and a row with nothing to judge is SKIPPED, never red. A `-` row names a script that has a --check mode
 # and is NOT a generated-file freshness check, with the reason: tests/doc/fresh-verify/fresh-verify.test.sh fails on any bin/ script
@@ -13,6 +15,8 @@ docs/generated/plan.md	sh bin/status-plan-generate.sh --check	sh bin/status-plan
 skills/skill-catalog/SKILL.md	sh bin/skill-catalog.sh --check	sh bin/skill-catalog.sh	
 docs/index.html	sh bin/doc-index-generate.sh --check	sh bin/doc-index-generate.sh --apply	
 vendor/naming/MANIFEST.tsv	sh bin/standard-vendor.sh --check .	sh bin/standard-vendor.sh .	
+contracts/README.md	sh bin/doc-register-index.sh --check	sh bin/doc-register-index.sh --write	
+docs/reference/registers.md	sh bin/doc-register-index.sh --check	sh bin/doc-register-index.sh --write	
 -	access-environment.sh	checks a live settings.json, not a tracked file
 -	decider-set.sh	wiring-versus-table drift, not a generated file
 -	doc-graph-generate.sh	build/graph.tsv is an untracked build product, absent on a fresh checkout
@@ -22,4 +26,4 @@ vendor/naming/MANIFEST.tsv	sh bin/standard-vendor.sh --check .	sh bin/standard-v
 -	standard-shape.sh	a lint over the graph
 -	doc-fresh-verify.sh	this runner
 -	standard-fleet-names.sh	the weekly fleet naming check: it runs other repos' --check modes and writes a receipt, it generates nothing
--	scope-repos-generate.sh	judges the repo lists on this box against the registry, not a file tracked here (harbor#966)
+-	standard-label-sync.sh	its --check mode reports labels on GitHub against the register, it generates no tracked file

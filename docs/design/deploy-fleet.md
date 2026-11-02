@@ -1,3 +1,9 @@
+---
+kind: design
+owner: @VytCepas
+status: unreviewed
+---
+
 # Ship — merge and deploy the fleet overnight, restore a bad deploy, report in the morning
 
 **Status:** harbor#1060, harbor#1018. `harbor ship night|deploy`, one POSIX `sh` tool (`bin/deploy-fleet.sh`), built to

@@ -4,6 +4,7 @@
 # cited record, or for an id with no record, is itself red.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/checks/lint-fixture.sh"
+Q() { printf '%s/D-%s' "$1" "$2"; }   # a qualified id built at run time, so this file cites nothing itself
 rec() { printf -- '---\nkind: decision-record\nstatus: accepted\nalias: %s\ndate: 2026-10-04\nsource: x\n---\n\n# %s\n' "$2" "$3"; }
 mk() { # <name> → records D-1 (cited by standards/a.md) and D-2 (cited by nothing)
   _d="$T_TMP/$1"; mkdir -p "$_d/docs/decisions" "$_d/standards" "$_d/contracts"
@@ -23,6 +24,14 @@ t_has "...naming the orphan's record" "$OUT" "docs/decisions/0002-two.md"
 t_section "a citation from inside docs/decisions does not make a record cited"
 D="$(mk inner)"; rec x D-3 Three > "$D/docs/decisions/0003-three.md"; printf -- 'revised_by: D-2\n' >> "$D/docs/decisions/0003-three.md"; commit "$D"
 t_has "D-2 is still an orphan" "$(lint1 standard.decision-orphan "$D")" "docs/decisions/0002-two.md"
+
+t_section "a citation written with this repo's own system counts as a citation (harbor#1429)"
+D="$(mk qualified)"; mkdir -p "$D/.agents"; printf 'scope: project\nrepo-kind: control-plane\n' > "$D/.agents/config.yaml"
+printf 'the rule is harbor/D-2 here\n' >> "$D/standards/a.md"; commit "$D"
+t_eq "harbor/D-2 cites D-2, so nothing is an orphan" "0" "$(vcount "$(lint1 standard.decision-orphan "$D")")"
+D="$(mk foreign)"; mkdir -p "$D/.agents"; printf 'scope: project\nrepo-kind: control-plane\n' > "$D/.agents/config.yaml"
+printf 'the rule is %s here\n' "$(Q yard 2)" >> "$D/standards/a.md"; commit "$D"
+t_has "$(Q yard 2) is another system's record and does not cite this repo's D-2" "$(lint1 standard.decision-orphan "$D")" "docs/decisions/0002-two.md"
 
 t_section "the allow-list exempts a deliberate orphan"
 D="$(mk allowed)"; printf '# id\treason\nD-2\tdeliberately uncited\n' > "$D/contracts/decision-orphans.tsv"; commit "$D"

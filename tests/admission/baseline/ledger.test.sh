@@ -75,7 +75,7 @@ t_has "O-06 the record names the rule and the mechanism" "$(olast)" '"g":"bash",
 otrunc
 fire_block "O-07 argv twin blocks" admission-bash.sh "$(bash_j 'rm -f -r /')"
 t_eq "O-07 rm-rf-root attributed to a mechanism" yes "$(_re "$(olast)" '"r":"rm-rf-root","s":"(argv|flat)"')"
-t_eq "O-08 the key set is EQUAL, not merely contained" '"v","ts","g","d","r","s","t","h","sk","c","x"' \
+t_eq "O-08 the key set is EQUAL, not merely contained" '"v","ts","g","d","r","s","t","h","sk","c"' \
   "$(printf '%s' "$(olast)" | jq -r 'keys_unsorted|@csv')"
 t_eq "O-09 every line in the sink parses" "" "$(jq -R 'fromjson? // "BAD"' "$OSINK" | grep BAD || true)"
 # O-33 (harbor#1298): the confinement field is a closed enum read from the marker and the payload, never the command.

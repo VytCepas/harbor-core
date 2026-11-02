@@ -34,7 +34,10 @@ t_eq "the summary counts it" 1 "$(ERR | tail -1 | grep -c '^status-gen: 0 ok, 1 
 
 t_section "the default mode: the document alone on stdout"
 t_eq "exit 0" "exit 0" "$(run)"
-t_eq "stdout is the document" "# STATUS" "$(OUT | head -1 | cut -c1-8)"
+# a docs/ file carries the shared front matter and the generated-by header (harbor#1434, #1435), so the document opens with them
+t_eq "stdout is the document: the front matter opens it" "---" "$(OUT | head -n 1)"
+t_eq "...then the generated-by header" "<!-- generated-by: sh bin/status-generate.sh --apply -->" "$(OUT | sed -n '/^---$/,/^---$/!p' | head -n 1)"
+t_eq "...then the title" "# STATUS" "$(OUT | grep -m 1 '^# ' | cut -c1-8)"
 t_eq "no log line is mixed into it" 0 "$(OUT | grep -c "$LOGLINE")"
 t_has "the log is on stderr" "$(ERR)" "── status-gen · generate"
 t_eq "the summary ends stderr" 1 "$(ERR | tail -1 | grep -c '^status-gen: [0-9][0-9]* ok, 0 failed, [0-9]* warnings$')"

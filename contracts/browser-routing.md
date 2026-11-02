@@ -128,11 +128,16 @@ rule and it is unchanged here.
 **Reached as MCP tools (harbor#1301, #555 P4).** A confined Bash command cannot
 reach the operator's Chrome: the sandbox's `allowLocalBinding` stays off, and turning
 it on would open their logged-in profile to every confined command. So row 4 is also
-the local MCP server `harbor_chrome` (`bin/access-chrome-mcp.py`), which runs
-outside the confinement: one tool per verb, `mcp__harbor_chrome__<verb>` with hyphens
-as underscores, each with its own permission entry and no server-wide allow. Every
-tool runs `access-browser-agent.sh` with an argument list, so every guardrail below is the
-one that decides. A session uses the tools when they are listed; `harbor chrome` in
+the local MCP server `harbor_chrome` (`bin/access-chrome-mcp.py`, which starts
+`bin/access-chrome-mcp.ts`), which runs outside the confinement: one tool per verb,
+`mcp__harbor_chrome__<verb>` with hyphens as underscores, each with its own permission entry
+and no server-wide allow. The server holds one connection to the session's `@playwright/cli`
+daemon for the whole session (harbor#1421; a call used to start a `bunx` + node chain and
+took 5-15 s) and carries the guardrails below for the hot verbs; attach, detach, tabs, front,
+wait-signin, doctor, status, hosts and tab-new are `access-browser-agent.sh`, run with an
+argument list, so those guardrails are the script's. The two are held to the same cases by
+`tests/access/chrome/session.test.sh` and `tests/access/browser/`. Each call's timings
+(total, guards, daemon, settle, in ms) append to `$TMPDIR/harbor-browser/<session>/.timings.tsv`. A session uses the tools when they are listed; `harbor chrome` in
 Bash stays for the operator's own terminal and an unconfined box. The operator
 registers the server once: `claude mcp add --scope user harbor_chrome -- python3 -I
 <checkout>/bin/access-chrome-mcp.py`.
@@ -229,16 +234,6 @@ clicked next to one. Allowing without it leaves the CLI waiting with no error.
 
 `harbor chrome doctor` reports row 4 from the box: the profiles holding the
 extension, whether the token is set, and whether the retired MCP is still wired.
-
-## Record once, replay as a script — signed out only (harbor#1445)
-
-Row 4 refuses `recording-*`, `tracing-*`, `video-*` and `run-code` on purpose: its browser is signed in.
-The same pinned `@playwright/cli` can record a flow and replay it from a file on a **disposable, headless,
-in-memory** browser, which is a different thing with no credential in it:
-`sh bin/access-browser-flow.sh record <flow.js> <url> <steps.tsv>`, then `replay <flow.js> --shot <png> --text <css>`.
-Every run asserts no `Cookies` or `Login Data` database in its throwaway profile holds a row (Chromium creates
-both files empty in any profile, so their names prove nothing) and removes the profile. A flow that needs a
-signed-in page is out of scope: that is row 5, still gated.
 
 ## Row 5 — the backend exists, is unregistered, and is a credential
 

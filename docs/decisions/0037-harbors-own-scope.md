@@ -3,7 +3,10 @@ kind: decision-record
 status: accepted
 alias: D-37
 date: 2026-10-04
+supersedes: -
+superseded_by: -
 source: research/09a-holistic-review.md
+owner: @VytCepas
 ---
 
 # Harbor's own scope
