@@ -11,7 +11,7 @@ job:
 
 ```
 Run echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
-  HARBOR_REQUIRE_BUN: 1
+  HARBOR_TEST_REQUIRE_BUN: 1
 ── the Bun engine assertions, folded into one ──
     memory-engine.test: 56 passed, 0 failed
 memory-test: 50 passed, 0 failed
@@ -29,7 +29,7 @@ Run `31128495190` on `main` at `d172a2f`, all 11 jobs green, job
 
 ```
 2026-08-06T21:51:11Z ── the Bun engine assertions, folded into one ──
-2026-08-06T21:51:11Z memory-test: SKIPPED the engine assertions (no bun on PATH; set HARBOR_REQUIRE_BUN=1 to make this fatal)
+2026-08-06T21:51:11Z memory-test: SKIPPED the engine assertions (no bun on PATH; set HARBOR_TEST_REQUIRE_BUN=1 to make this fatal)
 ```
 
 The runner is the operator's own Mac and bun is installed on it:
@@ -59,13 +59,13 @@ Note both report **50**. That is the host-count-stability the file's header
 claims, working — and it is also why the skip was invisible: no count moves, no
 job turns red, nothing in the summary changes.
 
-`HARBOR_REQUIRE_BUN=1` exists precisely to catch this, per the same header:
+`HARBOR_TEST_REQUIRE_BUN=1` exists precisely to catch this, per the same header:
 
-> the skip is printed loudly rather than swallowed, and `HARBOR_REQUIRE_BUN=1`
+> the skip is printed loudly rather than swallowed, and `HARBOR_TEST_REQUIRE_BUN=1`
 > converts it into a failure — which is how CI on a box that IS supposed to have
 > bun finds out that it does not, instead of quietly testing less.
 
-`git grep -n HARBOR_REQUIRE_BUN` returns four hits, **all inside
+`git grep -n HARBOR_TEST_REQUIRE_BUN` returns four hits, **all inside
 `bin/memory-test.sh` itself**. Nothing sets it. The mechanism has no caller.
 
 ## The fix
@@ -96,23 +96,23 @@ Second, on the `run manifest suites with no dedicated job` step:
           # `runner: github-hosted` dispatch option must stay usable, so making
           # this unconditional would turn a working leg red for a dependency it
           # was never expected to have.
-          HARBOR_REQUIRE_BUN: ${{ runner.os == 'macOS' && '1' || '' }}
+          HARBOR_TEST_REQUIRE_BUN: ${{ runner.os == 'macOS' && '1' || '' }}
         run: |
 ```
 
 An empty value is not `1`, and `memory-test.sh` reads
-`${HARBOR_REQUIRE_BUN:-0}`, so the hosted leg is unaffected.
+`${HARBOR_TEST_REQUIRE_BUN:-0}`, so the hosted leg is unaffected.
 
 ## Do them in that order, in one commit
 
-`HARBOR_REQUIRE_BUN=1` without the `PATH` step turns the run **red** rather than
+`HARBOR_TEST_REQUIRE_BUN=1` without the `PATH` step turns the run **red** rather than
 quiet — the correct direction, and a bad thing to discover during an incident.
 Verified:
 
 ```
 $ env PATH="/usr/bin:/bin:/usr/sbin:/sbin" HOME=<a home with no .bun> \
-      HARBOR_REQUIRE_BUN=1 sh bin/memory-test.sh
-  FAIL: HARBOR_REQUIRE_BUN=1 but no bun on PATH — the engine assertions did not run
+      HARBOR_TEST_REQUIRE_BUN=1 sh bin/memory-test.sh
+  FAIL: HARBOR_TEST_REQUIRE_BUN=1 but no bun on PATH — the engine assertions did not run
 memory-test: 49 passed, 1 failed        (exit 1)
 ```
 
@@ -134,7 +134,7 @@ any future suite that looks for bun by name.
 
 **Not preflight.** Adding `bun` to the `for t in …` loop at `governance.yml:119`
 would fail the `github-hosted` leg, which has no bun and is not supposed to.
-Rule **C4** would stay satisfied — `bin/doctor.sh:59` already probes bun — but
+Rule **C4** would stay satisfied — `bin/deploy-doctor.sh:59` already probes bun — but
 the loop is a hard failure for every runner, and bun is `optional` by design:
 the security floor is deliberately zero-Bun.
 
@@ -159,7 +159,7 @@ is ever wanted it has to go in **both** halves, or in neither.
 |---|---|
 | the `manifest suites` job log | `memory-engine.test: 56 passed, 0 failed`, and **no** `SKIPPED the engine assertions` line |
 | `memory-test`'s own total | still `50 passed` — the folded assertion is what makes the count host-stable, and that claim should be re-verified rather than assumed |
-| a `runner: github-hosted` dispatch | still green, still skipping, no `HARBOR_REQUIRE_BUN` failure |
+| a `runner: github-hosted` dispatch | still green, still skipping, no `HARBOR_TEST_REQUIRE_BUN` failure |
 
 **The failure to watch for** is the engine assertions running and *failing* — they
 have never executed in CI, so their first green there is new information, not a

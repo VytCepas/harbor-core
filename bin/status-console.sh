@@ -13,8 +13,9 @@
 # dependencies, bound to 127.0.0.1, and it runs only the commands in tools/ui/sources.ts. Needs bun.
 set -eu
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 log_init status-console
 
 case "${1:-}" in -h|--help) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
