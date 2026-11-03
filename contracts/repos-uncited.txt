@@ -1,0 +1,10 @@
+# repos-uncited.txt (harbor#999, #1273) - GitHub repos under the owner that exist and that no document cites by URL.
+#
+# Lint doc.repos-exist (bin/lint-conventions.sh) accepts a repo a document names when docs/reference/citations.md
+# cites it with a 2xx/3xx, or when it is listed here. Adding a citation for one of these would be inventing a
+# citation to satisfy a lint rule, so they are listed instead. Each name should leave the day a document cites it,
+# and a repo rename edits its line here in the same window (the old name stays readable while GitHub redirects it).
+#
+# One repo name per line.
+helm-log
+projects-orchestrator

@@ -1,0 +1,7 @@
+name: job
+on: push
+jobs:
+  j:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: someone/unregistered-action@0123456789abcdef0123456789abcdef01234567 # v1

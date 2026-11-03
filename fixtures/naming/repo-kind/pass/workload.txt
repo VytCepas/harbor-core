@@ -4,6 +4,6 @@
 README.md
 AGENTS.md
 CLAUDE.md
-justfile
+justfile	setup:\nlint:\ntypecheck:\nformat:\ntest:\ntest-quick:\naudit:\nsbom:\nlicense:\nfuzz:\nscan:\nnaming:\ndocs:\nci:\nfast-ci:\nci-local-on:\nci-local-off:
 .agents/config.yaml	repo-kind: workload
 docs/

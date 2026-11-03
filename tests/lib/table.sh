@@ -2,6 +2,7 @@
 #   t_table  <guard-path> <rows.jsonl>   asserts each row's verdict (`want`)
 #   t_msgs   <guard-path> <rows.jsonl>   asserts each row's reason text (`has` / `hasnt`)
 #   t_shared <guard-path> <name>         the shared shapes + benign corpus for one guard
+#   T_VERDICT_LOG=<file> makes t_table append `suite TAB row TAB verdict` per row: the before/after replay of harbor#1030
 # Rows run on $T_JOBS workers (default 3); assertions then run in row order. T_SMOKE=1 runs the
 # first row per rule and verdict only, for pre-commit; its summary says it is not a full run.
 T_JOBS="${T_JOBS:-3}"
@@ -11,9 +12,9 @@ _t_run_rows() { # <guard-path> <rows.jsonl> — fills $_tw/in and $_tw/out
   _tw="$T_TMP/rows.$(basename "$2" .jsonl).$$"; rm -rf "$_tw"; mkdir -p "$_tw/in" "$_tw/out"
   _gd="$(dirname "$1")"
   for _fx in nonorm copy; do
-    mkdir -p "$T_TMP/fx-$_fx"; cp "$1" "$_gd/guard-lib.sh" "$T_TMP/fx-$_fx/" 2>/dev/null
+    mkdir -p "$T_TMP/fx-$_fx"; cp "$1" "$_gd/library-admission.sh" "$T_TMP/fx-$_fx/" 2>/dev/null
   done
-  cp "$_gd/floor-normalize.awk" "$T_TMP/fx-copy/" 2>/dev/null
+  cp "$_gd/admission-normalize.awk" "$T_TMP/fx-copy/" 2>/dev/null
   jq -c -s 'if env.T_SMOKE == "1" then reduce .[] as $r ({seen: {}, out: []};  # smoke: first row per rule and verdict
       ([$r.rule, $r.want] | tojson) as $k | if $r.rule != null and .seen[$k] then . else .seen[$k] = true | .out += [$r] end) | .out
     else . end | .[]' "$2" | awk -v d="$_tw/in" '{ f = sprintf("%s/%04d", d, NR); print > f; close(f) }'
@@ -28,6 +29,8 @@ t_table() { # <guard-path> <rows.jsonl> [section title]
     eval "$_tl"; _tg=""; _to="${_tf%/in/*}/out/${_tf##*/}"
     [ ! -f "$_to" ] || IFS= read -r _tg < "$_to"
     t_eq "$_id" "$_want" "$_tg"
+    # T_VERDICT_LOG=<file>: every row's got-verdict as `suite TAB row TAB verdict`, so a before/after run of the corpus can be diffed (harbor#1030)
+    [ -z "${T_VERDICT_LOG:-}" ] || printf '%s\t%s\t%s\n' "$T_SELF" "$_id" "$_tg" >> "$T_VERDICT_LOG"
     [ -z "$_todo" ] || { T_TODO=$((T_TODO + 1)); printf '  todo: %s — today %s, should be %s\n' "$_id" "$_want" "$_todo"; }
   done < "$_tw/rows.sh"
 }
