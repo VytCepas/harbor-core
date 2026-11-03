@@ -82,7 +82,7 @@ reference to an id that is not there are each red (`standard.register-declared`,
 | `registries/coverage-incidents.tsv` | lint | incident | `incident source property status mechanism confidence evidence same-as unwatched` | - | `bin/lint-port-paths.sh` | each incident and whether a mechanism watches it |
 | `.agents/protected-paths.tsv` | gate | glob+class | `glob class reason` | - | `bin/gate-classify.sh` | the paths only the operator may merge or deploy, derived |
 | `.agents/required-checks.tsv` | gate | repo+check | `repo check` | - | `bin/gate-merge-check.sh` | the required checks, read from the default branch on GitHub |
-| `context-rules/user/default-way-route.tsv` | context | kind | `kind tools recogniser content quiet home install reason surface deny` | surface>standards/naming/surfaces.tsv:id@, | `context-rules/user/default-way-route.sh` | the default way each kind of thing is made |
+| `context-rules/user/default-way-route.tsv` | context | kind | `kind tools recogniser content quiet home install reason` | - | `context-rules/user/default-way-route.sh` | the default way each kind of thing is made |
 | `hooks/*/manifest.tsv` | context | - | `key value arg1? arg2? arg3?` | - | `bin/deploy-hooks.sh` | a hook engine's manifest: how it is wired and what it senses |
 | `evals/skill/e5trap/corpus-manifest.tsv` | eval | name | `name bytes digest` | - | - | the distractor skills of the trap corpus, by hash |
 | `evals/context/e11live/rows.tsv` | eval | label | `label expect fired any_note` | - | - | one probe's outcome per row; rewritten by each run of evals/context/e11live/probe.sh |

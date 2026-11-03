@@ -1,4 +1,0 @@
-watches: **the plan that makes a repo's labels the register's** (harbor#1427), the corrective half of `standard.label-registered`, by `bin/standard-label-sync.sh` without `--check`: create what is missing, rename a legacy label so its issues keep it, merge one whose target exists, list a retired label (`status:*`) for removal. A dry run by default; `--apply` executes create, rename and merge, `--apply --remove-retired` also removes. It never touches an unregistered label
-schedule: not scheduled, manual: a person runs `--apply` after reading the dry run (encoding a fix is human-gated); falsifier: `sh tests/standard/label-sync/label-sync.test.sh`
-notifies: the dry run's plan on stdout
-red: the plan is not empty, or a label is unregistered (exit 1); a repo it could not read is exit 3. Disable: nothing is scheduled; retire it with its row, its `controls.tsv` row and the script

@@ -103,7 +103,6 @@ bin/deploy-restore.sh	command	put a config dir back from a deploy snapshot.	harb
 bin/deploy-runtime-install.sh	command	install the Helm RUNTIME, which is not the floor (the install standard, harbor#765).	harbor#59
 bin/deploy-shim-install.sh	command	the ~/.local/bin commands, from contracts/shims.tsv. harbor#630.	harbor#630
 bin/deploy.sh	command	install every Harbor payload onto THIS box, in the one order that works.	harbor#457
-bin/doc-checks-generate.sh	command	regenerates docs/reference/checks.md from controls.tsv, the check-rows fragments and the template; --check is the fresh-checks row.	harbor#1437
 bin/doc-cite-verify.sh	command	fetch every external URL Harbor's docs cite, report status. harbor#5 (workstream C), method from upstream	harbor#5
 bin/doc-cited-paths.awk	helper	THE ONE EXTRACTOR for paths cited in prose. awk -f doc-cited-paths.awk <file> one cited path per line, in file order	harbor#462
 bin/doc-drive-push.sh	command	copy a filed deliverable into Google Drive and print the link a person can actually open.	harbor#422
@@ -247,7 +246,6 @@ bin/standard-kit.sh	command	what a repo of each kind inherits: the kit manifest 
 bin/standard-label-sync.sh	command	label-axes.tsv is the only label source: this plans what makes a repo's labels equal it.	harbor#1427
 bin/standard-register.sh	command	the one reader of the .tsv registers, and the check that every one is declared.	harbor#1424
 bin/standard-rename.sh	command	the rename codemod: renames.tsv rows in; moved files, rewritten references, a residual list out.	harbor#996
-bin/standard-render-check.sh	command	is a rendered repo or yard scaffold what the standard says? Naming gate, AGENTS.md path tokens and README sections; writes nothing.	harbor#967
 bin/standard-schema.sh	command	the producer validates its own output against the JSON Schema it owns.	harbor#1425
 bin/standard-seams-fresh.sh	command	the weekly seam freshness check standard.seam-fresh: each cross-repo copy against its producer, as a delta with ages.	harbor#1425
 bin/standard-shape.sh	command	the shape validator: every instance of a kind carries the relations kinds.tsv requires.	harbor#996
@@ -256,7 +254,6 @@ bin/status-console.sh	command	`harbor ui`: Harbor's live state as read-only pane
 bin/status-dashboard-generate.sh	command	render Harbor's numbers as a local HTML page.	harbor#59
 bin/status-fleet-glyph.sh	command	Claude Code statusline. Deliberately one file (docs/explanation/modularity.md): `lint-module-shape.sh --seam` finds no seam	harbor#21
 bin/status-fleet-snapshot-refresh.sh	command	write the fleet snapshot cache the statusline glyph reads. The glyph NEVER invokes the orchestrator; only this refresher does, on	harbor#21
-bin/status-fleet-watch.sh	command	the hourly fleet watch pass (check status.fleet-watch): the CI, cloud and supervised-process probes refreshed on the fleet snapshot tick.	harbor#1437
 bin/status-generate.sh	command	generate docs/generated/status.md, the ONE place Harbor states a number about itself.	harbor#3
 bin/status-obligations.sh	command	the obligations ledger: a projection of the event bus.	harbor#1050
 bin/status-plan-generate.sh	command	which plan tickets are DONE, derived and not stated.	harbor#117

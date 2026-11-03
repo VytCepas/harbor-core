@@ -309,47 +309,4 @@ run "$S" 7
 t_eq "a PR that removes a leak from its base: refused" "1" "$RC"
 t_has "...naming the base" "$OUT" "the PR's base"
 t_eq "...nothing pushed" "0" "$(nbranches)"
-t_section "--publish (harbor#1437): main's tip lands on harbor-core main as one fast-forward snapshot; nothing else moves main"
-S="$(mk pub)"; core pub; MAIN0="$(tip main)"; SRC1="$(git -C "$S" rev-parse HEAD)"
-run "$S" --publish 7
-t_eq "a publish is green" "0" "$RC"
-t_eq "...main moved by exactly one commit, a fast-forward" "$MAIN0" "$(git -C "$BARE" rev-parse refs/heads/main~1)"
-t_has "...naming the source it was staged from" "$(git -C "$BARE" log -1 --format=%B refs/heads/main)" "Source commit: $SRC1"
-PUBFILES="$(git -C "$BARE" ls-tree -r --name-only refs/heads/main | tr '\n' ' ')"
-t_has "...holding the core set" "$PUBFILES" "docs/a.md"
-t_hasnt "...and no dev path" "$PUBFILES" "EVALS-DATA"
-t_hasnt "...no push of the run is forced" "$(grep ' push ' "$STUB/git.log" | sed 's/ HDR .*//')" "force"
-t_hasnt "...the token is in no argv git ran" "$(sed 's/ HDR .*//' "$STUB/git.log")" "$TOKEN"
-t_eq "...no mirror branch was pushed" "0" "$(nbranches)"
-MAIN1="$(tip main)"; PUSHES="$(gitcalls ' push ')"
-run "$S" --publish 7
-t_eq "the same tip again is green" "0" "$RC"
-t_has "...saying main already holds it" "$OUT" "already holds"
-t_eq "...and pushes nothing" "$PUSHES" "$(gitcalls ' push ')"
-t_eq "...main stays put" "$MAIN1" "$(tip main)"
-printf 'second\n' > "$S/docs/b.md"; git -C "$S" add -A >/dev/null 2>&1; git -C "$S" commit -qm second >/dev/null 2>&1
-run "$S" --publish 7
-t_eq "a newer tip publishes again" "0" "$RC"
-t_eq "...one commit further, a fast-forward" "$MAIN1" "$(git -C "$BARE" rev-parse refs/heads/main~1)"
-MAIN2="$(tip main)"
-git -C "$S" checkout -q "$SRC1" >/dev/null 2>&1
-run "$S" --publish 7
-t_eq "a checkout older than main's source is green" "0" "$RC"
-t_has "...skipped as older" "$OUT" "newer than this checkout"
-t_eq "...main did not go back" "$MAIN2" "$(tip main)"
-git -C "$S" checkout -q - >/dev/null 2>&1
-S2="$(mk other)"
-run "$S2" --publish 7
-t_eq "a checkout that does not hold main's last source is refused" "1" "$RC"
-t_eq "...main unchanged" "$MAIN2" "$(tip main)"
-printf 'a Zorblax line\n' > "$S/docs/leak2.md"; git -C "$S" add -A >/dev/null 2>&1; git -C "$S" commit -qm leak2 >/dev/null 2>&1
-run "$S" --publish 7
-t_eq "a red gate publishes nothing" "1" "$RC"
-t_eq "...main unchanged" "$MAIN2" "$(tip main)"
-NOTOKEN=1; run "$S" --publish 7
-t_eq "--publish without the token is refused" "1" "$RC"
-S="$(mk pubmirror)"; core pubmirror; pr "$S" docs/ok.md 'fine' >/dev/null
-run "$S" 7; t_eq "a PR mirror exists first" "2" "$(nbranches)"
-run "$S" --publish 7
-t_eq "a publish closes that PR's mirror" "0" "$(nbranches)"
 t_done

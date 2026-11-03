@@ -1,4 +1,1 @@
 bin/tool.sh
-bin/gate.sh=# sh bin/commented-out.sh is a comment, not a call
-bin/gate.sh=sh bin/tool.sh --real
-bin/gate.sh=echo "sh bin/gone.sh" # example: a deliberate example

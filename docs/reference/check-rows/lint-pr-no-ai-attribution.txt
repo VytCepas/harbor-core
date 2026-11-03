@@ -1,4 +1,0 @@
-watches: whether a PR body carries AI attribution, by the pattern in hooks/commit-msg `HARBOR_LINT_ATTRIBUTION_ERE` that lint C2 reads too (harbor#978), by `bin/lint-pr.sh`
-schedule: not scheduled: run on a PR by hand or by a workflow that calls `bin/lint-pr.sh`; the mode is the rule's row in `standards/naming/controls.tsv` (warn prints, never fails). Falsifier: `sh tests/lint/pr/pr.test.sh`
-notifies: the tool's WARN line naming `[lint.pr-no-ai-attribution]`
-red: a PR body carries an attribution trailer; remove it. Disable: delete the `lint.pr-no-ai-attribution` rows in `standards/naming/controls.tsv`, `bin/lint-pr.sh`, `tests/lint/pr/pr.test.sh` and their lines in `contracts/suites.txt` and `contracts/suite-paths.txt`

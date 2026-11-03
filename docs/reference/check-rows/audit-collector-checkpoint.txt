@@ -1,4 +1,0 @@
-watches: the collector store's daily signature (harbor#1181 lane 5): `bin/audit-collector.sh --checkpoint` signs yesterday's manifest with `ssh-keygen -Y` (namespace `harbor-collector`); `--verify DAY` checks it
-schedule: **04:00 daily, launchd system daemon `com.harbor.audit.collector-checkpoint` / systemd `harbor-audit-collector-checkpoint.timer`**, installed by `sudo sh bin/audit-collector-install.sh`; falsifier: `tests/audit/collector/collector.test.sh`
-notifies: `checkpoints/<day>.tsv` and `.sig` in the store, public for the off-host anchor
-red: a day could not be signed (no key, or one already signed). Disable: the `audit.collector-checkpoint` platform row

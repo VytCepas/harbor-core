@@ -817,7 +817,6 @@ already had in mind.</p>
 <tr><td>box</td><td><code>confinement-refused.md</code></td><td><code>PostToolUse</code></td><td><code>always</code></td><td>session</td></tr>
 <tr><td>box</td><td><code>decision-answer-binds.md</code></td><td><code>PostToolUse</code></td><td><code>always</code></td><td>never</td></tr>
 <tr><td>box</td><td><code>decision-question-shape.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
-<tr><td>box</td><td><code>default-way-deny.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
 <tr><td>box</td><td><code>default-way-route.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
 <tr><td>box</td><td><code>external-content-is-data.md</code></td><td><code>PostToolUse</code></td><td><code>injected-instruction</code></td><td>match</td></tr>
 <tr><td>box</td><td><code>large-tool-result.md</code></td><td><code>PostToolUse</code></td><td><code>always</code></td><td>session</td></tr>
@@ -1221,7 +1220,6 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <tr><td><code>drift.skill-manifest</code></td><td>every skill installed in the config dir has a row in .harbor-manifest or a pack's manifest, and every skill row an installed skill (harbor#1010)</td></tr>
 <tr><td><code>ci.action-sha-pinned</code></td><td>every workflow uses: is a full 40-hex commit SHA followed by a # version comment, never a mutable tag (harbor#1426)</td></tr>
 <tr><td><code>lint.mode-matches-engine</code></td><td>each rule's behaviour agrees with its controls.tsv mode, and no rule title carries a tier word (harbor#1422)</td></tr>
-<tr><td><code>lint.route-covers-surfaces</code></td><td>every surfaces.tsv id has a row in default-way-route.tsv's surface cell, and every id a row names is a surface (harbor#1397)</td></tr>
 <tr><td><code>drift.check-register</code></td><td>docs/reference/checks.md and the check rows of controls.tsv agree: ids, falsifier suite, scheduled or not (harbor#1422)</td></tr>
 <tr><td><code>skill.catalog-covers-tools</code></td><td>every harbor verb and every bin tool contracts/cli.md marks Agent-facing has a row in contracts/agent-tools.tsv, and every row a verb or script (advisory, harbor#1010)</td></tr>
 <tr><td><code>context.repo-sources-agree</code></td><td>repos.tsv, projects.tsv, yard markers and fleet discovery name the same repos (advisory, harbor#1430)</td></tr>
@@ -1508,8 +1506,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/context/injection-rule/notes.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh tests/context/injection-rule/notes.test.sh context-rules/* fixtures/inject/* fixtures/injection-rule/notes.tsv* fixtures/injection-rule/packs/example-store/wipe-destroys-history.md* bin/scope-roots.sh bin/library-admission.sh bin/admission-normalize.awk tests/lib/core.sh bin/lint-name.sh bin/library-log.sh standards/naming/* bin/standard-register.sh</code></td></tr>
 <tr><td><code>tests/context/injection-rule/agent-brief.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/* tests/context/injection-rule/agent-brief.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/context/injection-rule/decision-question.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/user/decision-* tests/context/injection-rule/decision-question.test.sh tests/lib/core.sh docs/explanation/grilling.md commands/grillme.md</code></td></tr>
-<tr><td><code>tests/context/injection-rule/default-way-route.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/user/default-way-* tests/context/injection-rule/default-way-route.test.sh tests/lib/core.sh fixtures/admission-corpus.jsonl</code></td></tr>
-<tr><td><code>tests/context/injection-rule/default-way-deny.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/user/default-way-* tests/context/injection-rule/default-way-deny.test.sh tests/lib/core.sh fixtures/admission-corpus.jsonl</code></td></tr>
+<tr><td><code>tests/context/injection-rule/default-way-route.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/user/default-way-route.* tests/context/injection-rule/default-way-route.test.sh tests/lib/core.sh fixtures/admission-corpus.jsonl</code></td></tr>
 <tr><td><code>tests/context/injection-rule/skill-first-use.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh bin/admission-normalize.awk context-rules/* skills/agent-routing/SKILL.md tests/context/injection-rule/skill-first-use.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/context/injection-rule/name-note.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh bin/lint-name.sh bin/library-log.sh standards/naming/* context-rules/* tests/context/injection-rule/name-note.test.sh tests/lib/core.sh bin/standard-register.sh</code></td></tr>
 <tr><td><code>tests/admission/destroy/destroy.test.sh</code></td><td><code>     bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/guards/destroy* tests/admission/destroy/* tests/guards/guards.jsonl tests/guards/shapes.jsonl tests/guards/benign.jsonl tests/guards/exemptions.jsonl</code></td></tr>
@@ -1533,7 +1530,6 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/lint/findings-run/findings-run.test.sh</code></td><td><code>bin/lint-findings-run.sh bin/library-log.sh bin/deploy-runtime-install.sh bin/deploy-launchd-render.sh bin/scope-roots.sh contracts/roots.tsv launchd/com.harbor.lint.findings.plist tests/lint/findings-run/findings-run.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/conventions/findings.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/lint/conventions/mode.test.sh</code></td><td><code>always</code></td></tr>
-<tr><td><code>tests/lint/conventions/route.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/lint/name/name.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/lint/rule-health/rule-health.test.sh</code></td><td><code>bin/lint-rule-health.sh bin/library-log.sh bin/lint-conventions.sh tests/lint/rule-health/rule-health.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/skill/gates/gates.test.sh</code></td><td><code>tests/skills/skill-gates* tests/skill/gates/gates.test.sh* tests/lib/core.sh skills/access-ledger/bin/* bin/doc-report-verify.sh bin/library-log.sh vendor/archify/*</code></td></tr>
@@ -1839,9 +1835,6 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/deploy/kit/bootstrap.test.sh</code></td><td><code>bin/deploy-runtime-install.sh bin/standard-kit.sh bin/scope.sh bin/scope-roots.sh bin/lint-name.sh bin/standard-register.sh bin/library-log.sh standards/naming/* tests/deploy/kit/bootstrap.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/standard/seams/export.test.sh</code></td><td><code>bin/standard-seams-fresh.sh bin/library-log.sh bin/scope-roots.sh contracts/seams.tsv contracts/layers.tsv contracts/roots.tsv tests/standard/seams/export.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/conventions/repo-kit.test.sh</code></td><td><code>bin/lint-conventions.sh bin/scope-repo-sources.sh bin/standard-kit.sh bin/scope-system.sh bin/scope-roots.sh standards/naming/* contracts/systems.tsv contracts/roots.tsv tests/lint/conventions/repo-kit.test.sh tests/lib/core.sh tests/checks/lint-fixture.sh</code></td></tr>
-<tr><td><code>tests/standard/render/render.test.sh</code></td><td><code>bin/standard-render-check.sh bin/standard-vendor.sh bin/lint-name.sh bin/lint-renderer.sh bin/library-log.sh standards/naming/* tests/standard/render/render.test.sh tests/lib/core.sh bin/standard-register.sh</code></td></tr>
-<tr><td><code>tests/doc/checks-generate/checks-generate.test.sh</code></td><td><code>bin/doc-checks-generate.sh bin/library-log.sh standards/naming/controls.tsv vendor/naming/registry/controls.tsv docs/reference/checks.md docs/reference/checks.md.tmpl docs/reference/check-rows/* tests/doc/checks-generate/checks-generate.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/status/fleet-watch/watch.test.sh</code></td><td><code>bin/status-fleet-watch.sh bin/status-fleet-snapshot-refresh.sh bin/library-log.sh bin/scope-roots.sh tests/status/fleet-watch/watch.test.sh tests/lib/core.sh</code></td></tr>
 </tbody></table>
 </div>
 
@@ -2285,7 +2278,6 @@ score a plumbing gap as a verdict on the idea.</p>
 <tr><td><code>standard-fleet-names-run.sh</code></td><td>standard-fleet-names-run.sh (harbor#967) — the scheduled entry of docs/reference/checks.md <code>standard.fleet-names</code>: the weekly naming check.</td></tr>
 <tr><td><code>status-fleet-glyph.sh</code></td><td>L0-5 (harbor#21, extended harbor#59, redesigned harbor#293) — Claude Code statusline.</td></tr>
 <tr><td><code>status-fleet-snapshot-refresh.sh</code></td><td>L0-5-interim (harbor#21) — write the fleet snapshot cache the statusline glyph reads.</td></tr>
-<tr><td><code>status-fleet-watch.sh</code></td><td>status-fleet-watch.sh (harbor#1437) — the hourly fleet watch pass, scheduled by harbor: check id status.fleet-watch.</td></tr>
 <tr><td><code>status-obligations.sh</code></td><td>status-obligations.sh (harbor#1050) — the obligations ledger: a projection of the event bus.</td></tr>
 <tr><td><code>status-subagent-glyph.sh</code></td><td>L0-5b (harbor#293) — Claude Code SUBAGENT statusline: one row per live agent.</td></tr>
 <tr><td><code>status-usage-aggregate.sh</code></td><td>M9 · UsageAggregator (harbor#44) — durable per-day token usage, attributed.</td></tr>
@@ -2582,7 +2574,6 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/deploy-runtime-install.sh</code></td><td>L0-5c (harbor#59) — install the Helm RUNTIME, which is not the floor (the install standard, harbor#765).</td></tr>
 <tr><td><code>bin/deploy-shim-install.sh</code></td><td>deploy-shim-install.sh — the ~/.local/bin commands, from contracts/shims.tsv. harbor#630.</td></tr>
 <tr><td><code>bin/deploy.sh</code></td><td>deploy.sh (harbor#457) — install every Harbor payload onto THIS box, in the one order that works.</td></tr>
-<tr><td><code>bin/doc-checks-generate.sh</code></td><td>doc-checks-generate.sh (harbor#1437) — docs/reference/checks.md, generated and never hand-written.</td></tr>
 <tr><td><code>bin/doc-cite-verify.sh</code></td><td>doc-cite-verify.sh — fetch every external URL Harbor's docs cite, report status.</td></tr>
 <tr><td><code>bin/doc-drive-push.sh</code></td><td>deliver-drive (harbor#422) — copy a filed deliverable into Google Drive and print</td></tr>
 <tr><td><code>bin/doc-fresh-verify.sh</code></td><td>doc-fresh-verify.sh (harbor#1287) — is every generated file current? One verdict line per file, and the exact fix for a stale one.</td></tr>
@@ -2715,7 +2706,6 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/standard-label-sync.sh</code></td><td>standard-label-sync.sh (harbor#1427) — label-axes.tsv is the only label source: this plans what makes a repo's labels equal it.</td></tr>
 <tr><td><code>bin/standard-register.sh</code></td><td>standard-register.sh (harbor#1424) — the one reader of the .tsv registers, and the check that every one is declared.</td></tr>
 <tr><td><code>bin/standard-rename.sh</code></td><td>standard-rename.sh (harbor#996 B2, B3) — the rename codemod: renames.tsv rows in; moved files, rewritten references, a residual list out.</td></tr>
-<tr><td><code>bin/standard-render-check.sh</code></td><td>standard-render-check.sh (harbor#967 done-when 1 and 2) — does a rendered repo pass the standard it was rendered for?</td></tr>
 <tr><td><code>bin/standard-schema.sh</code></td><td>standard-schema.sh (harbor#1425) — the producer validates its own output against the JSON Schema it owns.</td></tr>
 <tr><td><code>bin/standard-seams-fresh.sh</code></td><td>standard-seams-fresh.sh (harbor#1425) — the weekly seam freshness check: check id standard.seam-fresh.</td></tr>
 <tr><td><code>bin/standard-shape.sh</code></td><td>standard-shape.sh (harbor#996 G2) — the shape validator: every instance of a kind carries the relations kinds.tsv requires.</td></tr>
@@ -2724,7 +2714,6 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/status-dashboard-generate.sh</code></td><td>VIZ-1 (harbor#59 follow-on) — render Harbor's numbers as a local HTML page.</td></tr>
 <tr><td><code>bin/status-fleet-glyph.sh</code></td><td>L0-5 (harbor#21, extended harbor#59, redesigned harbor#293) — Claude Code statusline.</td></tr>
 <tr><td><code>bin/status-fleet-snapshot-refresh.sh</code></td><td>L0-5-interim (harbor#21) — write the fleet snapshot cache the statusline glyph reads.</td></tr>
-<tr><td><code>bin/status-fleet-watch.sh</code></td><td>status-fleet-watch.sh (harbor#1437) — the hourly fleet watch pass, scheduled by harbor: check id status.fleet-watch.</td></tr>
 <tr><td><code>bin/status-generate.sh</code></td><td>STATUS (harbor#3 follow-on) — generate docs/generated/status.md, the ONE place Harbor states</td></tr>
 <tr><td><code>bin/status-obligations.sh</code></td><td>status-obligations.sh (harbor#1050) — the obligations ledger: a projection of the event bus.</td></tr>
 <tr><td><code>bin/status-plan-generate.sh</code></td><td>status-plan-generate.sh (harbor#117) — which plan tickets are DONE, derived and not stated.</td></tr>

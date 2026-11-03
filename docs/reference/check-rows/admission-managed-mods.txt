@@ -1,4 +1,0 @@
-watches: the root-owned managed-settings file (macOS `/Library/Application Support/ClaudeCode/`, Linux `/etc/claude-code/`): present, `allowManagedModsOnly` and `disableSideloadFlags` set, owned by root (harbor#1022)
-schedule: **not scheduled** — a row in `admission-verify.sh --live` (`harbor verify`); falsifier: `sh tests/admission/baseline/managed.test.sh`
-notifies: the `managed:` line in `floor-verify`: a WARN when the file is absent (before the operator's install), a FAIL when present but wrong, the install as its fix
-red: any mod can approve a call a user-tier guard blocked, and `--plugin-dir`/`--agents`/`--mcp-config` load unchecked (harbor#940). Fix: `sudo sh bin/scope-managed-mods.sh`. Disable: `sudo sh bin/scope-managed-mods.sh --uninstall` (removes only its own keys; the row then warns, by design)

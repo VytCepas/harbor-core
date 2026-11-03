@@ -4,29 +4,8 @@
 # naming harbor's home for it and its install route. The kinds are rows of default-way-route.tsv beside this file.
 # A note, never a decision: the HARBOR-DECISION sentinel appears nowhere below.
 #
-# default-way-deny.sh runs this with --deny and answers for the rows whose `deny` cell names the tool; this script then
-# stays silent on them. Off switch for both: `sh default-way-route.sh --off` (--on, --status), logged.
-#
 # FAIL-OPEN: no jq, no registry, a payload with no path or command, or no matching row prints nothing and exits 0.
 set -u
-CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"; CFG="${CFG%/}"
-OFFF="$CFG/.harbor-default-way.off"
-# The off switch (harbor#1397): one command, one log line, the same pair in reverse. A session never reaches it by a
-# hook payload, only by being run with an argument.
-case "${1:-}" in
-  --off|--on|--status)
-    _lg="$CFG/cache/context-switch.log"
-    _st() { if [ -e "$OFFF" ]; then echo "default-way-route: off ($OFFF)"; else echo "default-way-route: on"; fi; }
-    case "$1" in
-      --status) _st; exit 0 ;;
-      --off) : > "$OFFF" || { echo "default-way-route: cannot write $OFFF" >&2; exit 1; } ;;
-      --on) rm -f "$OFFF" ;;
-    esac
-    mkdir -p "$CFG/cache" 2>/dev/null && printf '%s [context:default-way-route] switched %s by %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${1#--}" "$(id -un 2>/dev/null || echo unknown)" >> "$_lg" 2>/dev/null
-    _st; exit 0 ;;
-esac
-[ ! -e "$OFFF" ] || exit 0
-VERDICT=advise; [ "${1:-}" != --deny ] || VERDICT=deny
 command -v jq >/dev/null 2>&1 || exit 0
 HERE="${0%/*}"; [ "$HERE" != "$0" ] || HERE=.
 REGF="$HERE/default-way-route.tsv"
@@ -34,6 +13,7 @@ REGF="$HERE/default-way-route.tsv"
 P="$(cat)"
 [ -n "$P" ] || exit 0
 TOOL="$(printf '%s' "$P" | jq -r '.tool_name // empty | strings' 2>/dev/null)" || exit 0
+CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"; CFG="${CFG%/}"
 CFGP="$(CDPATH= cd -- "$CFG" 2>/dev/null && pwd -P)" || CFGP="$CFG"
 HOMEP="$(CDPATH= cd -- "$HOME" 2>/dev/null && pwd -P)" || HOMEP="$HOME"
 
@@ -60,12 +40,8 @@ case "$TOOL" in
   *) exit 0 ;;
 esac
 
-# A row's `content` ERE sees the text with each line break turned into one control character (tab is one too, so keep a
-# tab out of an ERE that must tell the two apart): no ERE here needs a newline escape, which awks read differently.
-BODYF="$(printf '%s' "$BODY" | tr '\n' '\001')"
-
 # The first matching row, as kind<TAB>home<TAB>install<TAB>reason<TAB>shown path<TAB>name; nothing when none matches.
-HIT="$(TOOL="$TOOL" TARGET="$TARGET" CMD="$CMD" BODY="$BODYF" VERDICT="$VERDICT" CFG="$CFG" CFGP="$CFGP" H="$HOME" HP="$HOMEP" awk -F'\t' '
+HIT="$(TOOL="$TOOL" TARGET="$TARGET" CMD="$CMD" BODY="$BODY" CFG="$CFG" CFGP="$CFGP" H="$HOME" HP="$HOMEP" awk -F'\t' '
   function esc(s,   o, c, i) { o = ""; for (i = 1; i <= length(s); i++) { c = substr(s, i, 1); if (index("\\^$.[]|()*+?{}", c)) o = o "\\" c; else o = o c }; return o }
   # A glob as an anchored ERE: `*` is part of one segment, and anything below the match counts.
   function globre(g,   o, c, i) { o = ""; for (i = 1; i <= length(g); i++) { c = substr(g, i, 1); if (c == "*") o = o "[^/]*"; else o = o esc(c) }; return o }
@@ -76,7 +52,6 @@ HIT="$(TOOL="$TOOL" TARGET="$TARGET" CMD="$CMD" BODY="$BODYF" VERDICT="$VERDICT"
     return "" }
   function judge(p, rec,   g, r) {
     if (rec ~ /^cfg:/)  { g = substr(rec, 5); r = under(p, ENVIRON["CFG"], g);  if (r == "" && ENVIRON["CFGP"] != ENVIRON["CFG"]) r = under(p, ENVIRON["CFGP"], g); if (r != "") { SHOWN = p; NAMEOF = r; return 1 } }
-    if (rec ~ /^path:/) { if (p ~ substr(rec, 6)) { SHOWN = p; NAMEOF = p; sub(/\/[^\/]*$/, "", NAMEOF); sub(/^.*\//, "", NAMEOF); ISPATH = 1; return 1 } }
     if (rec ~ /^home:/) { g = substr(rec, 6); r = under(p, ENVIRON["H"], g);    if (r == "" && ENVIRON["HP"] != ENVIRON["H"]) r = under(p, ENVIRON["HP"], g);    if (r != "") { SHOWN = p; NAMEOF = r; return 1 } }
     return 0 }
   # A shell word as an absolute path: quotes dropped, ~ $HOME ${HOME} $CLAUDE_CONFIG_DIR spelled out.
@@ -122,12 +97,9 @@ HIT="$(TOOL="$TOOL" TARGET="$TARGET" CMD="$CMD" BODY="$BODYF" VERDICT="$VERDICT"
   NR == 1 { next }
   /^#/ || NF < 8 { next }
   { if (("|" $2 "|") !~ ("\\|" ENVIRON["TOOL"] "\\|")) next
-    # A deny cell names the tools on which the row is a deny: that verdict has its own script, so each answers only its own.
-    isd = ($10 != "" && $10 != "-" && ("|" $10 "|") ~ ("\\|" ENVIRON["TOOL"] "\\|"))
-    if ((ENVIRON["VERDICT"] == "deny") != isd) next
-    if ($5 != "-" && ((ENVIRON["TOOL"] == "Bash") ? ENVIRON["CMD"] : ENVIRON["TARGET"]) ~ $5) next
+    if ($5 != "-" && ENVIRON["TOOL"] == "Bash" && ENVIRON["CMD"] ~ $5) next
     if ($4 != "-" && ENVIRON["BODY"] !~ $4) next
-    hit = 0; SHOWN = ""; NAMEOF = ""; ISPATH = 0; BASHMODE = (ENVIRON["TOOL"] == "Bash")
+    hit = 0; SHOWN = ""; NAMEOF = ""; BASHMODE = (ENVIRON["TOOL"] == "Bash")
     if ($3 ~ /^cmd:/) { if (BASHMODE) { c = mask(ENVIRON["CMD"]); gsub(/&&|\|\||;|\|/, "\n", c); n = split(c, cs, "\n")
         for (k = 1; k <= n && !hit; k++) if (cs[k] ~ substr($3, 5)) { hit = 1; SHOWN = cs[k]; gsub(/^[ \t(]+|[ \t)]+$/, "", SHOWN) } } }
     else if (!BASHMODE) hit = judge(ENVIRON["TARGET"], $3)
@@ -135,7 +107,7 @@ HIT="$(TOOL="$TOOL" TARGET="$TARGET" CMD="$CMD" BODY="$BODYF" VERDICT="$VERDICT"
     if (!hit) next
     # {name}: the segment the first `*` matched (`skills/*` and `skills/foo/SKILL.md` give foo).
     g = $3; sub(/^[a-z]+:/, "", g); ng = split(g, gs, "/"); ix = 0; for (k = 1; k <= ng && !ix; k++) if (index(gs[k], "*")) ix = k
-    split(NAMEOF, parts, "/"); nm = (ix ? parts[ix] : ""); if (ISPATH) nm = NAMEOF; if (nm == "") nm = "<name>"
+    split(NAMEOF, parts, "/"); nm = (ix ? parts[ix] : ""); if (nm == "") nm = "<name>"
     sh = SHOWN; if (index(sh, ENVIRON["H"] "/") == 1) sh = "~" substr(sh, length(ENVIRON["H"]) + 1)
     printf "%s\t%s\t%s\t%s\t%s\t%s\n", $1, $6, $7, $8, sh, nm; exit }
 ' "$REGF" 2>/dev/null)" || exit 0
@@ -149,9 +121,5 @@ EOF
 ROOT="$(awk -F'\t' '$1 == "harbor" { print $2; exit }' "$HERE/projects.tsv" 2>/dev/null)"
 [ -n "$ROOT" ] || ROOT='your harbor checkout'
 sub_name() { printf '%s' "$1" | awk -v n="$NAME" '{ while ((i = index($0, "{name}")) > 0) $0 = substr($0, 1, i - 1) n substr($0, i + 6); print }'; }
-if [ "$VERDICT" = deny ]; then
-  printf '%s\n' "Default-way check (harbor#1397). This call writes the installed copy of a $KIND at \`$SHOWN\`; a deploy overwrites it and no reviewer ever sees it. Edit the source in $ROOT instead: $(sub_name "$HOMEDIR"). It reaches the box by: $(sub_name "$INSTALL"). Why: $REASON."
-else
-  printf '%s\n' "Default-way check (harbor#1397, advisory, the call was not blocked). This call builds a $KIND at \`$SHOWN\`, the way Claude Code allows by default; harbor builds it in $ROOT instead: $(sub_name "$HOMEDIR"). It reaches the box by: $(sub_name "$INSTALL"). Why: $REASON. If this is a deliberate box-only change, say so in your answer and carry on."
-fi
+printf '%s\n' "Default-way check (harbor#1397, advisory, the call was not blocked). \`$SHOWN\` is where Claude Code puts a $KIND by default, and harbor builds it in $ROOT instead: $(sub_name "$HOMEDIR"). It reaches the box by: $(sub_name "$INSTALL"). Why: $REASON. If this is a deliberate box-only change, say so in your answer and carry on."
 exit 0

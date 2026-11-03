@@ -33,4 +33,3 @@ contracts/cli.md	sh bin/standard-inventory.sh page cli --check	sh bin/standard-i
 -	standard-label-sync.sh	its --check mode reports labels on GitHub against the register, it generates no tracked file
 -	standard-schema.sh	validates a fixture against a schema and prints findings, it generates nothing
 -	standard-seams-fresh.sh	the weekly seam freshness check: it compares other repos' copies and writes a receipt, it generates nothing
-docs/reference/checks.md	sh bin/doc-checks-generate.sh --check	sh bin/doc-checks-generate.sh --write	

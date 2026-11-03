@@ -1,4 +1,0 @@
-watches: writes the fleet snapshot cache the statusline glyph reads
-schedule: every 300s
-notifies: none — cache only
-red: stale glyph; previous cache is kept on failure

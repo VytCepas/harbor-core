@@ -4,7 +4,7 @@
 #   sh bin/doc-refs.sh                     judge this checkout's entry docs
 #   sh bin/doc-refs.sh --root <dir>        judge that checkout (a CI job in a sibling repo points this at itself)
 #   sh bin/doc-refs.sh --fleet             judge every checkout in the registry (scope-roots.sh --repos), one count row each
-#   sh bin/doc-refs.sh --self-test         every fixture yields exactly its expected ids, and every rule went red
+#   sh bin/doc-refs.sh --self-test         every fixture yields exactly its expected ids, and both rules went red
 #   sh bin/doc-refs.sh --list              each rule's id, mode and title, read from standards/naming/controls.tsv
 #   sh bin/doc-refs.sh --help
 #
@@ -26,7 +26,6 @@
 # THE RULES, each a standards/naming/controls.tsv row whose mode is read there and never here:
 #   doc.refs-resolve   a path an entry doc cites does not exist where it says
 #   doc.refs-stale     an entry doc has N or more commits behind the paths it cites
-#   doc.refs-ghost     a gate (bin/, hooks/, contracts/, .github/, ...) runs `sh bin/X` and X is not in the tree (item 11)
 #
 # WHAT IS CITED. Entry docs: README.md, AGENTS.md, CLAUDE.md, docs/how-to/handover.md and docs/context-map*.md. In them:
 #   [text](target)       a link target, relative to the doc, then to the root. URLs, mailto and #anchors are not paths.
@@ -99,7 +98,7 @@ CONTROLS="$REG/controls.tsv"
 T="$(mktemp -d "${TMPDIR:-/tmp}/doc-refs.XXXXXX")"
 trap 'rm -rf "$T"' EXIT INT TERM HUP
 
-IDS="doc.refs-resolve doc.refs-stale doc.refs-ghost"
+IDS="doc.refs-resolve doc.refs-stale"
 
 mode_of() {
   awk -F'\t' -v id="$1" '/^#/ { next } $1 == id { m = $2; if (m == "advisory" || m == "inform") m = "warn"; print m; exit }' "$CONTROLS"
@@ -274,22 +273,6 @@ judge() {
     done < "$_list"
   fi
   [ -z "$_stale_nj" ] || _nj=$((_nj + 1))
-  # doc.refs-ghost (harbor#996 item 11): a gate that RUNS `sh bin/X` where X is not in the tree. A leading comment, an `example:`
-  # line and prose (*.md) are not calls. Whole-checkout runs only: --doc judges the docs it was given.
-  _ghost=0
-  : > "$T/ghost.cand"
-  if [ -z "$DOCS" ] && git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
-    git -C "$ROOT" grep -n -I -E '(sh|bash) +(\./)?bin/[A-Za-z0-9][A-Za-z0-9._-]*\.(sh|py|awk|mjs)' -- bin hooks githooks contracts .github justfile launchd runners systemd tools policy ':(exclude)*.md' > "$T/ghost.grep" 2>/dev/null || :
-    awk -F: '{ f = $1; l = $2; t = substr($0, length(f) + length(l) + 3)
-        if (t ~ /^[ \t]*(#|\/\/)/ || t ~ /example:/) next
-        while (match(t, /(sh|bash) +(\.\/)?bin\/[A-Za-z0-9][A-Za-z0-9._-]*\.(sh|py|awk|mjs)/)) {
-          c = substr(t, RSTART, RLENGTH); sub(/^(sh|bash) +(\.\/)?/, "", c); printf "%s\t%s\t%s\n", f, l, c; t = substr(t, RSTART + RLENGTH) } }' "$T/ghost.grep" > "$T/ghost.cand" || :
-    while IFS='	' read -r _gf _gl _gp; do
-      [ -e "$ROOT/$_gp" ] && continue
-      _ghost=$((_ghost + 1))
-      printf 'doc.refs-ghost\t%s:%s -> %s\t%s:%s runs `%s`, which does not exist\n' "$_gf" "$_gl" "$_gp" "$_gf" "$_gl" "$_gp" >> "$T/findings"
-    done < "$T/ghost.cand"
-  fi
   LC_ALL=C sort -t '	' -k1,1 -k2,2 "$T/findings" -o "$T/findings"
   _dang="$(awk -F'\t' '$1 == "doc.refs-resolve"' "$T/findings" | wc -l | tr -d ' ')"
   _stl="$(awk -F'\t' '$1 == "doc.refs-stale"' "$T/findings" | wc -l | tr -d ' ')"
@@ -317,7 +300,7 @@ run() {
     esac
     _n=$((_n + 1))
   done < "$T/judged"
-  _sum="$_docs doc(s), $_refs citation(s): $_dang dangling, $_stl stale, $_ghost ghost command(s), $_exempt example-marked, $_prod produced (git-ignored), $_skipped fenced line(s) not read"
+  _sum="$_docs doc(s), $_refs citation(s): $_dang dangling, $_stl stale, $_exempt example-marked, $_prod produced (git-ignored), $_skipped fenced line(s) not read"
   if [ -s "$T/absent" ]; then _sum="$_sum; not judged, system checkout absent: $(LC_ALL=C sort -u "$T/absent" | tr '\n' ' ' | sed 's/ $//')"; fi
   [ -z "$_stale_nj" ] || _sum="$_sum; staleness not judged ($_stale_nj)"
   # "ok" is for a run that looked at everything it was pointed at; a partial look is a note, never a clean pass

@@ -188,7 +188,6 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_HOUSEKEEPING_CLEAN_SLOTS` | tuning | `9 16` | space-separated hours of day at which housekeeping-clean --if-due records a run (default 9 and 16) | housekeeping |  | tests only |
 | `HARBOR_LINT_ATTRIBUTION_ERE` | handoff | none | Single regex of banned AI-attribution trailers defined in hooks/commit-msg; lint C2 and lint-pr read it from there | lint |  | tests only |
 | `HARBOR_LINT_CONTROLS` | path | `standards/naming/controls.tsv` | controls.tsv lint-conventions reads modes and proofs from; a suite points it at a fixture register | lint |  | tests only |
-| `HARBOR_LINT_DISPOSABLE` | handoff | none | Set to 1 by lint-findings-run.sh for its throwaway clone; lint C2 reads it to silence only the hooks-not-installed advisory there | lint |  | tests only |
 | `HARBOR_LINT_ESTATE_ROOT` | path | `$HOME` | Home-like root the estate lint rule looks under for the operator's files (default $HOME) | lint |  | tests only |
 | `HARBOR_LINT_FINDINGS_NOW` | test-only | `computed` | Overrides today's date (YYYY-MM-DD) in lint-findings.sh so age checks are deterministic; defaults to the current UTC date | lint |  | tests only |
 | `HARBOR_LINT_FINDINGS_OUT` | path | none | File the lint passes append their structured findings records to; unset means no findings are recorded | lint |  | tests only |
