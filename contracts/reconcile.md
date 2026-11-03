@@ -1,9 +1,10 @@
 # Reconcile — one `--status` for every drift check
 
-**Seam:** L0 Helm check → the console, the batch report and the operator. **Status: harbor#1031 PR 1 —
-the contract, its test and two adopters, [`memory-route.sh`](../bin/memory-route.sh) and
-[`drift-reference-check.sh`](../bin/drift-reference-check.sh), are implemented. The remaining adopters, the
-auto-remediation allowlist and the consumers are PR 2 and later (the last section).**
+**Seam:** L0 Helm check → the console, the batch report and the operator. **Status: harbor#1031 PR 1 and PR 2.
+The contract, its test and four adopters ([`memory-route.sh`](../bin/memory-route.sh),
+[`drift-reference-check.sh`](../bin/drift-reference-check.sh), [`drift-port-root.sh`](../bin/drift-port-root.sh) and
+[`drift-confinement.sh`](../bin/drift-confinement.sh)), the one reader [`drift-status.sh`](../bin/drift-status.sh) and the
+auto-remediation allowlist are implemented. The adopters still to come are in the last section.**
 
 A drift check compares a desired state with an observed one. Harbor has many, and each used to answer in
 its own words. This is the controller pattern from Kubernetes (spec, status, reconcile) applied as an
@@ -125,11 +126,35 @@ mentions `status_init` in a comment or a string, a lint rule and a check that do
 green. The `drift.*` lint rules (`awk -F'\t' '$3 == "lint" && $10 == "drift"' standards/naming/controls.tsv`) are
 judged inside `bin/lint-conventions.sh`, which has no `--status`; they are not adopters in PR 1.
 
+## The auto-remediation allowlist (#1031 item 4)
+
+`--status` repairs nothing. A tool that does repair what a check found asks first, and the one list it asks is the
+HEAL rows of [`finding.md`](./finding.md) (the lanes block), which a person adds in a PR: *"Nothing outside the HEAL
+rows may repair on its own."* There is no second list.
+`bin/library-log.sh` carries the question: `repair_allowed <key> <subject> <repair>` is 0 when a HEAL row of that key
+matches the subject and names that repair, and 2, a FAIL and a fix, for anything else: no row, a PROPOSE row, a
+repair the row does not name, a `stood-down` subject, or no allowlist to read. `lint-findings.sh heal` reads its rows
+through `heal_rows` (the same parser) and asks `repair_allowed` again before it runs each repair. The contract test
+holds the refusals: a fixture repair that is not on the list is refused, a PROPOSE row is not an allowance, and a
+`repair_allowed` that allows everything goes red.
+
+Other tools that repair on their own (the dispatcher's `HANDLERS`, a Fleet allowlist column, the obligation repairs of
+#1052) are not these rows; each says why it is a second list, or joins this one.
+
+## The consumer: one parser (#1031 item 5)
+
+`sh bin/drift-status.sh` derives the adopters (the same query as the next section, `--list` prints them), runs each
+`--status` and reads every report through one parser. It prints only what is off, tab-separated:
+`<check> new|standing <key> <desired> <observed> <delta> <age>`, `<check> unchecked <reason>`, and a closing
+`total <adopters> <drifted rows> <unchecked adopters>`. A report that breaks this contract (prose among the records, an
+exit code that disagrees with the closing record) is read as `unchecked`, never as a green. Exit 0 green, 1 a row is
+off, 2 usage, 3 an adopter could not judge and nothing else is off. The console (#737) and the batch report (#1028)
+read this output; neither exists yet, and neither may learn a check's own format. `tests/drift/status/status.test.sh`
+reads two adopters through it.
+
 ## Not in this contract yet
 
-- **The auto-remediation allowlist** (#1031 item 4): a reconciler that repairs outside the list is refused.
-  Nothing here repairs, so PR 1 has nothing to refuse.
-- **The consumers** (#1031 item 5): the console (#737) and the batch report (#1028) reading `--status` through
-  one parser. They land when the adopters they read do.
 - **The remaining adopters**, including the `--check` modes of #996, #1026 and #1027. Each adopts by the
-  section above.
+  section above. `drift-renew-check.sh` is the next candidate; it exits 0 whatever it finds (a reporter), so its
+  `--status` needs the verdict kept separate from the exit.
+- **The console and the batch report** themselves (#737, #1028): they read `drift-status.sh`.

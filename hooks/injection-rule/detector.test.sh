@@ -67,6 +67,7 @@ KNOWN_FP='policy/constitution.md
 docs/reports/evals.md
 contracts/injection-rule.md
 hooks/injection-rule/injection-rule.sh
+docs/explanation/code-cases/hooks-injection-rule-injection-rule.md
 docs/src/injection-rule.html
 fixtures/injection-rule/notes.tsv
 context-rules/user/external-content-is-data.md

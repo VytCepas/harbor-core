@@ -6,75 +6,21 @@
 # Exit 0 = every installed bin/ file, and every file the runtime ships elsewhere (lib/), matches the
 # ref, resolved through runtime-install's SUITE mapping (harbor#763). Exit 1 = at least one does not.
 #
-# WHY THIS IS NOT ALREADY COVERED. Three things on this box compare an install
-# against something, and none of them asks this question:
-#
-#   admission-integrity.sh (B6)  pins the box to ITSELF — settings, plugins and
-#                            marketplaces against `.sec0-baseline.sha256`, plus
-#                            "every guard is present, non-empty, has the
-#                            kill-switch". A guard that is present, non-empty
-#                            and SIX WEEKS STALE passes all three.
-#   deploy-install-stamp.sh (#115)  gates the WRITE: "would this deploy remove commits
-#                            that are already live". It fires at deploy time and
-#                            says nothing between deploys.
-#   pin-instructions.sh (B8) pins INSTRUCTION surfaces (CLAUDE.md, skills,
-#                            hooks, plugins). `bin/` is not among them.
-#   drift-renew-check.sh (#44)     asks "is anything BUILT here not DEPLOYED", by
-#                            counting commits since the install stamp over each
-#                            installer's OWN declared payload.
-#   lint X2 / X2b            the closest siblings, and the ones to read first.
-#                            X2 walks `$ROOT/bin/*.sh` and compares each against
-#                            its twin in the live bin; X2b does the same for
-#                            `~/.local/bin`. Both already handle the hard part —
-#                            which SIDE is newer — and X2's header carries the
-#                            incident that taught it.
-#
-# ALL OF THEM ENUMERATE FROM THE REPOSITORY. That is the gap, and it is the whole
-# reason this exists. X2 loops over repo files and asks "is this deployed";
-# renew-check loops over the installer's payload and asks "did this get out".
-# Neither ever lists the live directory, so a file that exists ONLY on the box —
-# in no repo tree and no installer payload — is not something they report; it is
-# something they cannot reach. X2 skips it at `[ -f "$LIVEBIN/$b" ] || continue`
-# before any comparison happens, because the loop never had it to begin with.
-#
-# This enumerates `$DIR/bin` and asks what is unaccounted for. Verified
-# 2026-09-05: in the same lint run that reported X2's one advisory, and with
-# `renew-check --live` printing `renew 0` — both correct — memory-log-token-save.sh sat
-# in the live floor holding a GitHub PAT, and neither could name it.
-#
-# So the box was pinned to itself from three directions and to the repository
-# from none. Measured 2026-09-05: `memory-log-token-save.sh` was live in the floor's
-# `bin/`, handling a GitHub PAT, and existed in no branch, no commit and no
-# working tree of this repository. Nothing had ever reported it, because
-# nothing was asking.
-#
-# WHY CONTENT AND NOT A COMMIT COUNT. The obvious check is "how many commits
-# has main moved since the install stamp". It was built that way first and the
-# measurement killed it: on 2026-09-05 the stamp read 14 commits behind while
-# all 48 installed files were byte-identical to `origin/main`. floor-install and
-# runtime-install write overlapping sets, so each stamp undercounts what the
-# other deployed, and a lag counter reports drift that is not there. A check
-# that cries wolf gets switched off, and a disabled check protects nothing
-# (CLAUDE.md No.2.11).
-#
-# THE FOUR VERDICTS. Content alone cannot tell a stale copy from a hand-edit, so
-# git is asked instead of guessed. The live bytes are hashed with
-# `git hash-object`, which yields the same blob id git itself would store, and
-# that id is looked up in the path's history:
-#
+# WHY THIS IS NOT ALREADY COVERED: admission-integrity.sh (B6) pins the box to ITSELF, deploy-install-stamp.sh (#115) gates the
+# WRITE, pin-instructions.sh (B8) pins instruction surfaces and not bin/, drift-renew-check.sh (#44) counts commits over each
+# installer's declared payload, and lint X2/X2b walk the REPO's bin/ and compare each file to its live twin. All ENUMERATE FROM
+# THE REPOSITORY, so a file that exists only on the box (once a GitHub-PAT holder in the live floor, in no commit) is out of
+# their reach. This enumerates $DIR/bin and asks what is unaccounted for.
+# WHY CONTENT AND NOT A COMMIT COUNT: a lag counter read 14 commits behind while all 48 installed files were byte-identical to
+# the ref, because floor-install and runtime-install write overlapping sets; a check that cries wolf gets switched off (No.2.11).
+# THE FOUR VERDICTS: the live bytes are hashed with `git hash-object` and looked up in the path's history.
 #   current    blob == the blob at <ref>.
-#   stale      blob == the blob at some ANCESTOR commit for that path. The file
-#              is a real past version, so this is an undeployed change, and the
-#              number of commits since is reported.
-#   modified   blob matches <ref> and no ancestor. Nobody's deploy produced
-#              these bytes -- either a hand-edit or a file the repo has not seen.
-#   unsourced  the path does not exist at <ref> at all. Loudest of the four: a
-#              live floor file with no source of truth, which no deploy can
-#              reproduce and no review has read.
-#
-# `stale` and `modified` are deliberately separate. Merging them would report a
-# missed deploy and an unreviewed edit to a security guard as the same event,
-# and only one of those is fixed by re-running the installer.
+#   stale      blob == the blob at some ANCESTOR commit: an undeployed change; the commits since are reported.
+#   modified   blob matches no commit of the path: a hand-edit, or a file the repo has not seen.
+#   unsourced  the path does not exist at <ref>: a live floor file with no source of truth. Loudest of the four.
+# `stale` and `modified` stay separate: a missed deploy and an unreviewed edit to a guard are different events, and only one is
+# fixed by re-running the installer.
+# Removed notes: docs/explanation/code-cases/bin-drift-install.md
 set -u
 
 STAMP='[check:install-drift]'
@@ -90,10 +36,7 @@ REPO="$(CDPATH= cd -- "$(dirname -- "$0")/.." 2>/dev/null && pwd)" || REPO=""
 . "$REPO/bin/deploy-install-lib.sh"
 log_init install-drift
 
-# EXIT 2 NEVER COMES WITHOUT A FAIL LINE AND ITS FIX (harbor#457). It used to leave one printf on stderr, so a caller
-# that relays the first FAIL (live-verify) could only say "exited 2: no FAIL line". The libs load before the arguments
-# are read for that reason (a --dir or --ref with no value included: dash dies on the second shift with no FAIL line);
-# the one exit 2 left outside is the line above, where the libs themselves cannot be found.
+# Exit 2 never comes without a FAIL line and its fix (harbor#457); the libs load before the arguments are read for that reason.
 _die2() { # <what failed> <fix command | "none: <where>">
   log_fail "$1 $STAMP"
   case "${2-}" in 'none: '*) log_nofix "${2#none: }" ;; *) log_fix "${2-}" ;; esac
@@ -124,9 +67,8 @@ _redeploy() { # the command that puts this repo's bytes back: deploy for the liv
          "$(_qn "$REPO")" "$(_target_spelling)" "$(_qn "$REPO")" "$(_target_spelling)"; fi
 }
 
-# NO INSTALL TO COMPARE IS NAMED BY ITS CAUSE (harbor#457): a box with no config dir, or no settings.json, has had no
-# first-run step, and one with a config dir but no bin/ has had no deploy (unless .harbor-manifest says one ran). The
-# first has a command only on the live box.
+# No install to compare is named by its cause (harbor#457): no config dir or settings.json means no first-run step; a config dir
+# without bin/ means no deploy (unless .harbor-manifest says one ran).
 if [ ! -d "$DIR/bin" ]; then
   if { [ ! -d "$DIR" ] || [ ! -f "$DIR/settings.json" ]; } && ! il_installed "$DIR"; then
     if [ "$(_phys "$DIR")" = "$(_phys "$LIVE")" ]; then _fx="$(il_first_run_cmd "$REPO")"; _why=': the first-run step has not been taken'
@@ -139,9 +81,7 @@ if [ ! -d "$DIR/bin" ]; then
   _die2 "no bin/ in $DIR, so there is no install to compare: $_why" "$(_redeploy)"
 fi
 
-# A ref that does not resolve must ABORT, never silently classify every file as
-# `unsourced` -- that failure mode reports a clean box as catastrophically
-# broken, which is the same false-positive trap in the other direction.
+# A ref that does not resolve must ABORT, never classify every file `unsourced`.
 git -C "$REPO" rev-parse --verify --quiet "$REF^{commit}" >/dev/null 2>&1 || \
   _die2 "ref does not resolve: $REF" "none: git -C $(_qn "$REPO") rev-parse --verify $(_qn "$REF") (the ref this check compares against)"
 
@@ -151,17 +91,16 @@ NL='
 '
 TAB='	'
 
-# WHERE AN INSTALLED FILE COMES FROM (harbor#763). bin/<name> is bin/<name> in the repo, except for
-# what runtime-install's SUITE ships from elsewhere: bin/recover-test.sh is tests/deploy/restore/recover.test.sh,
-# lib/core.sh is tests/lib/core.sh. The mapping is read from the installer AT THE REF, so the question
-# is always "what would that commit's installer have put here". Without it the suite read `unsourced`
-# on every run, forever, and a stale or hand-edited copy of it could never be told apart.
-# DATA ships the same way (docs/reference/checks.md, contracts/*.tsv into bin/), so it is read too.
+# WHERE AN INSTALLED FILE COMES FROM (harbor#763): bin/<name> is bin/<name> in the repo, except what runtime-install's SUITE and
+# DATA ship from elsewhere. The mapping is read from the installer AT THE REF, so the question is what that commit's
+# installer would have put here; without it the suite read `unsourced` on every run.
 SUITE_MAP="$(git -C "$REPO" show "$REF:bin/deploy-runtime-install.sh" 2>/dev/null \
   | sed -n -e 's/^SUITE="\(.*\)"/\1/p' -e 's/^DATA="\(.*\)"/\1/p' | tr ' ' '\n' \
   | awk -F: 'NF == 2 && $1 != "" && $2 != "" { print $2 "\t" $1 }')"
 _src_of() { # <relpath under the config dir> -> the repo path it is installed from
   _so="$(printf '%s\n' "$SUITE_MAP" | awk -F'\t' -v r="$1" '$1 == r { print $2; exit }')"
+  # The core share's registers install as bin/standards/naming/<name> from standards/naming/<name> (harbor#1436).
+  case "$1" in bin/standards/naming/*.tsv) _so="standards/naming/${1#bin/standards/naming/}" ;; esac
   # A hook engine ships from its folder (D-88): bin/<name> is gone at that ref and hooks/<stem>/<name> is there.
   case "${_so:-$1}" in bin/*)
     git -C "$REPO" cat-file -e "$REF:$1" 2>/dev/null || ! git -C "$REPO" cat-file -e "$REF:$(il_engine_path "${1#bin/}")" 2>/dev/null \
@@ -170,15 +109,14 @@ _src_of() { # <relpath under the config dir> -> the repo path it is installed fr
   printf '%s' "${_so:-$1}"
 }
 
-# THE SET: every file in bin/ (a file only the box has is the finding this exists for), plus what the
-# install manifest (install standard §3) and SUITE record elsewhere — lib/core.sh — for the two installers
-# whose payload this check owns. The verdict never comes from the manifest: it is git's, below.
+# THE SET: every file in bin/ (a file only the box has is the finding this exists for), plus what the install manifest and
+# SUITE record elsewhere (lib/core.sh). The verdict never comes from the manifest: it is git's, below.
 _set="$(find "$DIR/bin" -type f ! -name ".*" 2>/dev/null | sed "s#^$DIR/##" | LC_ALL=C sort
         il_mf_rows "$DIR" | awk -F'\t' '($3 == "runtime-install" || $3 == "floor-install") && $1 !~ /^bin\/[^\/]*$/ { print $1 }'
         printf '%s\n' "$SUITE_MAP" | awk -F'\t' '$1 != "" && $1 !~ /^bin\/[^\/]*$/ { print $1 }')"
 _set="$(printf '%s\n' "$_set" | awk 'NF && !seen[$0]++')"
-# A file a pack installed (its manifest in .harbor-packs, written by pack.sh) is that pack's, not this commit's, and
-# pack.sh refuses to write over a core file: so it is never `unsourced` here.
+# A file a pack installed (.harbor-packs, written by pack.sh) is that pack's, and pack.sh refuses to write over a core file:
+# so it is never `unsourced` here.
 _pown="$(mktemp "${TMPDIR:-/tmp}/install-drift-own.XXXXXX")" || _die2 "cannot create a temp file in ${TMPDIR:-/tmp}" "none: the TMPDIR this check was given"
 cat "$DIR"/.harbor-packs/*.tsv 2>/dev/null | awk -F'\t' '$1 == "F" { print $2 }' > "$_pown"
 if [ -s "$_pown" ]; then
@@ -186,28 +124,32 @@ if [ -s "$_pown" ]; then
 fi
 rm -f "$_pown"
 
-# THE REGISTER IS INSTALLED COMPOSED (harbor#1149): bin/docs/reference/checks.md is core docs/reference/checks.md plus the private layer's rows and the
-# rows of the packs installed in $DIR/checks.d, so
-# the blob it is held to is the composition of the register AT THAT COMMIT, never the bare core blob. With no private
-# layer the composition is core byte for byte, and the blob is the commit's own.
+# THE REGISTER IS INSTALLED COMPOSED (harbor#1149): bin/docs/reference/checks.md is core's register plus the private layer's rows
+# and the installed packs' ($DIR/checks.d), so it is held to the composition AT THAT COMMIT, not the bare core blob.
 _ckt="$(mktemp "${TMPDIR:-/tmp}/install-drift-checks.XXXXXX")" || _die2 "cannot create a temp file in ${TMPDIR:-/tmp}" "none: the TMPDIR this check was given"
-trap 'rm -f "$_ckt" "$_ckt.out" "$_ckt.rc" "$_ckt.rc.out"' EXIT
-# The required-checks list is installed composed the same way (harbor#1149): bin/required-checks.tsv is core's rows plus the private
-# layer's required-checks.tsv, so it is held to the composition of the list AT THAT COMMIT; with no layer that is the commit's own blob.
+trap 'rm -rf "$_ckt" "$_ckt.out" "$_ckt.rc" "$_ckt.rc.out" "$_ckt.reg"' EXIT
+# The required-checks list is composed the same way (harbor#1149), and held to the composition AT THAT COMMIT.
 _blob_of() { # <commit> <repo path> -> the blob this path is held to at that commit
   if [ "$2" = contracts/required-checks.tsv ] && git -C "$REPO" show "$1:$2" > "$_ckt.rc" 2>/dev/null \
      && sh "$REPO/bin/gate-required-generate.sh" --core "$_ckt.rc" > "$_ckt.rc.out" 2>/dev/null; then
     git -C "$REPO" hash-object "$_ckt.rc.out" 2>/dev/null && return 0
   fi
+  # A core-share register is installed cut to the core share (standard-kit.sh --core-file), so it is held to that cut AT THAT COMMIT.
+  case "$2" in standards/naming/*.tsv)
+    if [ -f "$REPO/bin/standard-kit.sh" ] && mkdir -p "$_ckt.reg" && git -C "$REPO" show "$1:standards/naming/kit.tsv" > "$_ckt.reg/kit.tsv" 2>/dev/null \
+       && git -C "$REPO" show "$1:$2" > "$_ckt.reg/${2##*/}" 2>/dev/null \
+       && sh "$REPO/bin/standard-kit.sh" --root "$REPO" --registry "$_ckt.reg" --core-file "${2##*/}" > "$_ckt.out" 2>/dev/null; then
+      git -C "$REPO" hash-object "$_ckt.out" 2>/dev/null && return 0
+    fi ;;
+  esac
   if [ "$2" = docs/reference/checks.md ] && git -C "$REPO" show "$1:docs/reference/checks.md" > "$_ckt" 2>/dev/null \
      && sh "$REPO/bin/check-registry-generate.sh" --core "$_ckt" --packs "$DIR/checks.d" > "$_ckt.out" 2>/dev/null; then
     git -C "$REPO" hash-object "$_ckt.out" 2>/dev/null && return 0
   fi
   git -C "$REPO" rev-parse --quiet --verify "$1:$2" 2>/dev/null
 }
-# An install made before the list was composed is a bare older core blob, and one made when the private layer held other rows is an
-# older core with an older revision of the layer's file (the layer is a repo of its own and records them). Both are BEHIND, not edited
-# in place; only bytes no commit of either explains read modified (a layer row deployed uncommitted and since dropped, or an edit).
+# An install made before the list was composed, or when the private layer held other rows, is BEHIND, not edited in place; only
+# bytes no commit of either explains read modified.
 RC_SRC=contracts/required-checks.tsv
 _lrevs=""
 [ ! -f "$REPO/bin/gate-required-generate.sh" ] || _lrevs="$(sh "$REPO/bin/gate-required-generate.sh" --layer-revs 2>/dev/null || :)"
@@ -234,9 +176,7 @@ while IFS= read -r rel; do
   ref_blob="$(_blob_of "$REF" "$src" || true)"
 
   if [ -z "$ref_blob" ]; then
-    # Absent at the ref. It may still be a file the repo DELETED, which is a
-    # different story from one it never had, so history is asked before the
-    # louder verdict is used.
+    # Absent at the ref may still be a file the repo DELETED, a different story from one it never had: history is asked first.
     if git -C "$REPO" rev-list "$REF" -- "$src" 2>/dev/null | head -1 | grep -q .; then
       findings="${findings}unsourced$TAB$b${TAB}deleted from the repo, still installed$TAB$rel$TAB$src$NL"
     else
@@ -251,8 +191,7 @@ while IFS= read -r rel; do
     continue
   fi
 
-  # Differs from the ref. Walk that path's history for these exact bytes; an engine moved into
-  # hooks/<engine>/ (D-88) also walks its old bin/ path, or every copy from before the move reads modified.
+  # Differs from the ref: walk the path's history for these exact bytes (an engine moved into hooks/ also walks its old bin/ path, D-88).
   behind=0; matched=0; older=0
   case "$src" in hooks/*) was="$rel" ;; *) was="$src" ;; esac
   for c in $(git -C "$REPO" rev-list "$REF" -- "$src" "$was" 2>/dev/null); do

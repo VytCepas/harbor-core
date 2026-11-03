@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- harbor:template-only
+     THIS FILE IS A TEMPLATE (harbor#630). Do not cp it: render it.
+
+       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.standard.script-uncalled.plist > ~/Library/LaunchAgents/com.harbor.standard.script-uncalled.plist
+
+     This block is not installed; bin/deploy-launchd-render.sh drops it. -->
+<!-- docs/reference/checks.md `standard.script-uncalled` (harbor#1437): which bin/ files nothing calls, weekly (Monday 09:20 local, read only: a sweep of the tree). Scheduled on the operator's word of 2026-11-02 ("everything
+     must be run automatically without asking me to turn something on"): INSTALLED BY DEPLOY (harbor:deploy-installs is the marker
+     bin/deploy-launchd-sync.sh reads; `sh bin/deploy.sh --apply --live` renders this file into ~/Library/LaunchAgents and loads it).
+     A Claude session cannot install this, by design (#555 decision 3).
+
+     It runs the INSTALLED check-run.sh, never the checkout: that copy clones main fresh and runs the row of contracts/scheduled-checks.tsv. The check leaves its own receipt for the daily findings job.
+
+     See it work: `launchctl kickstart -k gui/$(id -u)/com.harbor.standard.script-uncalled`, then `cat /tmp/com.harbor.standard.script-uncalled.out` and
+     `jq . ~/.claude/cache/checks/standard.script-uncalled.json`.
+
+     Disable (docs/reference/checks.md's two-lookup rule):
+       launchctl bootout gui/$(id -u)/com.harbor.standard.script-uncalled
+       rm ~/Library/LaunchAgents/com.harbor.standard.script-uncalled.plist -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.harbor.standard.script-uncalled</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>@HOME@/.claude/bin/check-run.sh</string>
+    <string>standard.script-uncalled</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key><integer>1</integer>
+    <key>Hour</key><integer>9</integer>
+    <key>Minute</key><integer>20</integer>
+  </dict>
+  <key>RunAtLoad</key><false/>
+  <key>LimitLoadToSessionType</key><string>Aqua</string>
+  <key>ProcessType</key><string>Background</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/usr/bin:/bin:/usr/sbin:/opt/homebrew/bin</string>
+    <key>HOME</key><string>@HOME@</string>
+  </dict>
+  <key>StandardOutPath</key><string>/tmp/com.harbor.standard.script-uncalled.out</string>
+  <key>StandardErrorPath</key><string>/tmp/com.harbor.standard.script-uncalled.err</string>
+</dict>
+</plist>

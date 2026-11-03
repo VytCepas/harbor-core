@@ -3,7 +3,7 @@
 # REAL deploy.sh, deploy-restore.sh, library-log.sh and deploy-install-lib.sh run in it (harbor#457, #765).
 # STUB_HOOK_* values are shell source run by the stub's `sh -c`, so their quotes are literal.
 # shellcheck disable=SC2089,SC2090
-INSTALLERS='policy-constitution-install.sh deploy-shim-install.sh deploy-harden.sh deploy-runtime-install.sh admission-install.sh prod-guard-install.sh skill-install.sh skill-catalog.sh context-injection-install.sh pack.sh'
+INSTALLERS='policy-constitution-install.sh deploy-shim-install.sh deploy-harden.sh deploy-runtime-install.sh admission-install.sh prod-guard-install.sh skill-install.sh skill-catalog.sh context-injection-install.sh pack.sh deploy-launchd-sync.sh'
 # A stub logs argv, fails when STUB_FAIL names "<script>:dry|apply", runs STUB_HOOK_<name> on apply.
 # It records a child run WITHOUT HARBOR_DEPLOY_ACTIVE=1 (#285) or WITH a CLAUDE_CONFIG_DIR, both of which deploy
 # must never hand a child, and prints one line in the log shape, for the relay into deploy's log.

@@ -4,6 +4,8 @@
 #   EVERY ROW CARRIES A TIER, derived from where the skill lives and never typed: core (skills/), vendored (vendor/skills/),
 #   pack (an installed pack's manifest in <config dir>/.harbor-packs lists it), box (installed, and nothing here tracks it); a
 #   tool in ~/.local/bin is tier cli. An executable that is no tool (contracts/catalog-non-tools.tsv) is not a row.
+#   sh bin/skill-catalog.sh --coverage   the commands and tools section only: exit 1 when a `harbor` verb or a script contracts/cli.md marks Agent-facing has no row in
+#                                     contracts/agent-tools.tsv, or a row names a verb or script that does not exist (harbor#1010); 3 when there is nothing to judge
 #   sh bin/skill-catalog.sh [--check]    the TRACKED book, skills/skill-catalog/SKILL.md: only the skills the export ships (skills/; vendor/skills/ is dev-layer); --check diffs instead of writing (lint T9)
 #   sh bin/skill-catalog.sh install [--check] [--apply] (--live | --dir PATH)
 #   sh bin/skill-catalog.sh install --manifest (--live | --dir PATH)
@@ -11,68 +13,39 @@
 #                                     manifest in .harbor-packs, or a manifest row names a skill dir that is gone; 3 when there is no manifest to judge by
 #                                     the INSTALLED book, <config dir>/skills/skill-catalog/SKILL.md: every skill installed there, the box's and the packs' included, and the CLIs in ~/.local/bin; a dry run unless --apply; --check exits 1 when it is not current
 #
-# TWO BOOKS BECAUSE THERE ARE TWO QUESTIONS (harbor#1149). The tracked book answers "what does THIS repo ship", and it is
-# the same bytes on every machine: it reads nothing outside the checkout (not the config dir, not ~/.local/bin, not the
-# private layer), so `--check` is a pure function of the tree and can fail CI. The installed book answers "what can a
-# session on THIS box reach", which is the tracked skills plus whatever a pack, the private layer or the operator put in
-# the config dir. It used to be the only book, written INTO the tracked file from the live box, so every client skill
-# and the operator's address on the box landed in git and in the public export. deploy.sh runs `install --apply --live`
-# after the packs, so the installed book lists every installed skill; the tracked file is no longer rewritten by a deploy.
+# THE BOOK ALSO LISTS COMMANDS (harbor#1010): every `harbor <verb>` and every bin/ script contracts/cli.md marks `**Agent-facing.**`, each with its
+# USE WHEN and invocation from contracts/agent-tools.tsv, so one grep answers "is there a tool for this". A verb or mark with no row (or a row with
+# nothing behind it) is a DEFECT like a broken skill; `--coverage` is the check lint skill.catalog-covers-tools runs.
+# Two books, two questions (harbor#1149). The tracked book answers "what does THIS repo ship": the same bytes
+# on every machine, reading nothing outside the checkout, so `--check` is a pure function of the tree. The
+# installed book answers "what can a session on THIS box reach" (tracked skills plus packs, private layer and
+# operator additions); deploy.sh runs `install --apply --live` after the packs.
+# Removed notes: docs/explanation/code-cases/bin-skill-catalog.md
 #
-# WHEN EACH BOOK IS REGENERATED, AND WHY NOT AT SessionStart (harbor#158, decided 2026-10-31). Two triggers, one per book, and
-# neither is a session event:
-#   tracked book    by hand, `sh bin/skill-catalog.sh`, after a skill under skills/ is added, renamed or re-described. Lint T9
-#                   is the detector (advisory, and a pure function of the checkout), and its FAIL line names the command; a
-#                   DEFECTS section or exit 1/3 (below) is the detector for a skill that cannot be indexed at all.
-#   installed book  by `deploy.sh`, which runs `install --apply --live` after the packs; lint X8 asks `install --check` whether
-#                   the installed copy still matches the skills installed beside it. Every route that puts a skill on the box
-#                   (skills-install, a pack) goes through deploy, so the write happens when the set changes, not when it is read.
-# A SessionStart hook was weighed and rejected: it would write the operator's instruction surface (which the B8 pin watches) on
-# every session to fix a staleness that only changes on a deploy; it would race concurrent sessions over one file; and a hook that
-# fails is silent to the operator, so it detects LATER than X8 does. The cost accepted: a skill hand-copied into the config dir
-# between deploys is missing from the installed book until X8 reports it (X4 reports the same skill as untracked).
+# Regeneration (harbor#158, decided 2026-10-31), one trigger per book and neither is a session event:
+#   tracked book    by hand, `sh bin/skill-catalog.sh`, after a skill under skills/ changes; lint T9 detects staleness.
+#   installed book  by `deploy.sh`; lint X8 asks `install --check` whether it still matches the installed skills.
+# A SessionStart hook was rejected: it would rewrite the instruction surface (the B8 pin watches it) every session,
+# race concurrent sessions, and fail silently. Accepted cost: a hand-copied skill is missing from the installed
+# book until X8 reports it.
 #
-# WHY THIS IS GENERATED AND NOT WRITTEN. An index of this many skills maintained
-# by hand drifts the moment one is added, renamed or hidden, and an index that
-# lies is worse than no index because it is trusted. Same reasoning that makes
-# docs/generated/status.md generated and lint rules T1/T2 forbid a hand-typed count — including
-# in this comment, which said "33 skills" while the box had 36.
+# Generated, not written: a hand-kept index drifts the moment a skill is added or renamed, and an index that lies is trusted.
 #
-# DEFECTS ARE LOUD, NOT BLANK (harbor#158). A skill with no frontmatter, no single-line description, no name or a name that is not
-# its directory's, and two skills that share a directory name (skills/ and vendor/skills/), differ only by case, or declare one
-# `name:`, are listed in a DEFECTS section above every table. In the tracked book they also fail: the write exits 1 after writing,
-# `--check` exits 3, so T9 reports "the generator FAILED" with the reason and never offers a regenerate. In the installed book
-# they warn only: a box with one broken skill must still deploy.
+# DEFECTS ARE LOUD, NOT BLANK (harbor#158). A skill with no frontmatter, description or name, a name that is not its
+# directory's, or a collision (skills/ vs vendor/skills/, case-only, shared `name:`) is listed in a DEFECTS section
+# above every table. Tracked book: write exits 1, `--check` exits 3. Installed book: warns only, a box with one broken skill must still deploy.
 #
-# `--check` diffs instead of writing, so a lint rule can flag a stale book. T9 is advisory, so nothing fails
-# CI on a stale book yet (this header once claimed the opposite, until an adversarial pass pointed out that
-# nothing anywhere fails on one); the tracked book is deterministic now, so a rule could.
+# `--check` diffs instead of writing, so a lint rule can flag a stale book (T9 is advisory; nothing fails CI on it yet).
 #
-# `--check` HAS THREE ANSWERS, NOT TWO (harbor#1149): 0 current, 1 STALE (regenerate it), 3 the generator could not say (a
-# router row it cannot read, no skills dir to scan). A bad row once exited 1 like a stale book, so T9 and X8 called a
-# malformed router file STALE and sent the reader to a regenerate that fails with the real error. Every other mode keeps the
-# install standard's 1 for a refusal (so does the target gate refusing a --dir that names the live dir), and 2 is usage.
+# `--check` HAS THREE ANSWERS (harbor#1149): 0 current, 1 STALE (regenerate), 3 the generator could not say (an unreadable
+# router row, no skills dir). A bad row once exited 1 and was reported as STALE. Every other mode keeps 1 for a refusal; 2 is usage.
 #
-# WHAT PROBLEM IT SOLVES. `disable-model-invocation: true` removes a skill from
-# the model's listing ENTIRELY — most skills on this box carry it — so they are
-# invisible to a session and effectively invisible to the operator, who has to
-# remember they exist. Listing them costs one `description` line, because the
-# book is itself a skill: its body loads only when opened.
+# Why: `disable-model-invocation: true` removes a skill from the model's listing entirely, so most skills are
+# invisible. The book is itself a skill, so one `description` line lists them, and it carries PATHS because a
+# hidden skill cannot be invoked but its SKILL.md can always be read.
 #
-# AND WHY IT CARRIES PATHS, NOT JUST NAMES. A hidden skill cannot be invoked by
-# the model at all. But a SKILL.md is a markdown file, so a path makes it
-# readable even when it is unreachable — which is the whole trick.
-#
-# THE TRIGGERS ARE TASK-SHAPED, NOT META-SHAPED (harbor#173 · A5), and this file
-# shipped the opposite first. Every trigger in the description below used to ask
-# ABOUT skills — "what skills do I have", "list skills", "I forgot the name of
-# that skill" — so the book surfaced when the operator wanted an inventory and
-# never when a session was doing the work a hidden skill covers. The evidence is
-# this repo's own: the session that ran a pass^k reliability study by hand had an
-# `Evals` skill on the box whose triggers include `pass@k`, and it never
-# surfaced. That is 11,639 B of trigger vocabulary reachable only by asking the
-# one question nobody asks mid-task. The meta triggers are kept — they were not
-# wrong, only insufficient.
+# Triggers are task-shaped, not meta-shaped (harbor#173 A5): they name the work a hidden skill covers, because meta
+# triggers ("list skills") only surface the book for an inventory, never mid-task. The meta triggers are kept.
 #
 # THE "START HERE" TABLE IS DATA (harbor#1149): contracts/skill-book-router.tsv, one row per situation, and a row is
 # printed only when its skill is in the book being written, so the tracked book never routes to a skill the repo does
@@ -80,22 +53,14 @@
 # place, or appends a row for a skill core does not route. Only `install` reads it.
 set -eu
 
-# --help BEFORE ANY WORK (S4, harbor#140). Placed immediately after strict mode
-# so it is the first executable line: a --help that reaches an argument parser is
-# a --help that a script with no parser ignores, and this file had none. Measured
-# 2026-08-20: a sweep of `bin/*.sh --help` ran past five minutes because at least
-# one script treated the flag as a request to do work, and five of the scripts
-# with no --help at all are mutators. The text is the header, read out of THIS
-# file at runtime, so a help message cannot drift from what the script says it is.
+# --help before any work (S4, harbor#140): first executable line, so a flag is never taken for a request to do work.
+# The text is this header, read at runtime, so it cannot drift from the script.
 case "${1:-}" in
   -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); if ($0=="") exit; print; next } {exit}' "$0"
              printf '\n(flags, if any, are in the header above and the source below.)\n'
              exit 0 ;;
 esac
-# Glob order is LC_COLLATE-dependent: under en_US.UTF-8 the list case-folds and
-# interleaves, under C it does not. Two boxes then generate two different books
-# from identical input and --check flaps forever, which is how a guard gets
-# switched off. Pin the collation rather than trusting the caller's environment.
+# Glob order is LC_COLLATE-dependent; pin it or two boxes generate different books and --check flaps.
 LC_ALL=C
 export LC_ALL
 
@@ -106,13 +71,11 @@ TAB='	'
 LOCAL_BIN="${HARBOR_SCOPE_LOCAL_BIN:-$HOME/.local/bin}"
 OUT="$ROOT/skills/skill-catalog/SKILL.md"
 ROUTER="$ROOT/contracts/skill-book-router.tsv"
+AGENTTOOLS="$ROOT/contracts/agent-tools.tsv"
 NONTOOLS="$ROOT/contracts/catalog-non-tools.tsv"
 
-# An unrecognised argument must NOT fall through to the write branch. `--chekc`
-# used to overwrite the very file it was asked to verify and exit 0 — the exact
-# shape that makes a gate vacuous, since a typo in a hook "passes" by destroying
-# the evidence.
-MODE=tracked; CHECK=0; MANIFEST=0
+# An unrecognised argument must not fall through to the write branch (`--chekc` once overwrote the file it was asked to verify).
+MODE=tracked; CHECK=0; MANIFEST=0; COVERAGE=0
 if [ "${1:-}" = install ]; then MODE=install; shift; fi
 il_opt() { case "$1" in --check) CHECK=1; IL_TAKE=1 ;; --manifest) MANIFEST=1; IL_TAKE=1 ;; *) IL_TAKE=0 ;; esac; }
 if [ "$MODE" = install ]; then
@@ -120,23 +83,21 @@ if [ "$MODE" = install ]; then
 else
   case "${1:-}" in
     --check) CHECK=1 ;;
+    --coverage) COVERAGE=1 ;;
     '') ;;
-    *) printf 'usage: skill-catalog.sh [--check] | install [--check|--manifest] [--apply] (--live | --dir PATH)\n' >&2; exit 2 ;;
+    *) printf 'usage: skill-catalog.sh [--check|--coverage] | install [--check|--manifest] [--apply] (--live | --dir PATH)\n' >&2; exit 2 ;;
   esac
   [ "$#" -le 1 ] || { printf 'usage: skill-catalog.sh [--check] | install [--check] [--apply] (--live | --dir PATH)\n' >&2; exit 2; }
 fi
 
 # What a book that cannot be generated exits: 3 when --check is asking, because 1 there already means STALE.
-RC_BROKEN=1; [ "$CHECK" -eq 0 ] && [ "$MANIFEST" -eq 0 ] || RC_BROKEN=3
+RC_BROKEN=1; [ "$CHECK" -eq 0 ] && [ "$MANIFEST" -eq 0 ] && [ "$COVERAGE" -eq 0 ] || RC_BROKEN=3
 
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/skill-catalog.XXXXXX")" || exit 2
 trap 'rm -rf "$WORK"' EXIT INT TERM
 
-# THE TRACKED BOOK NAMES THE INSTALL PATH, NOT A PATH IT WAS GENERATED FROM. This file used to build every row's path
-# from the directory it scanned, and a scan of any directory but the live one wrote a scratch path into a tracked file
-# (measured 2026-09-07: `--check` reported 36 rows differing only in their path prefix, and nothing else would have
-# caught it). The tracked book scans the checkout and says where an install puts the skills, so there is no path to get
-# wrong; the installed book scans the config dir it is written into, and says that dir.
+# The tracked book names the INSTALL path, not the path it was generated from; otherwise a scan of any other
+# directory wrote a scratch path prefix into a tracked file.
 if [ "$MODE" = install ]; then
   il_target
   SKILL_DIR="$IL_TARGET/skills"
@@ -151,9 +112,8 @@ if [ "$MODE" = install ]; then
   PRIV="$(sh "$ROOT/bin/scope-roots.sh" --private 2>/dev/null || :)"
   [ -d "$SKILL_DIR" ] || { log_fail "no skills dir at $SKILL_DIR"; log_nofix "the header of bin/skill-catalog.sh"; log_end || :; exit "$RC_BROKEN"; }
   if [ "$MANIFEST" -eq 1 ]; then
-    # Every installed skill is owned by a recorded install: core and vendored skills by a row of the deploy's manifest, a pack's by
-    # that pack's manifest. A dir with neither was put there by hand or by an installer that did not record it, and a row with no dir
-    # is an install that was undone by hand: both are drift, and the second is the one nothing else reports.
+    # Every installed skill is owned by a recorded install (the deploy manifest, or a pack's). A dir with neither, or a row
+    # with no dir, is drift; the second is the one nothing else reports.
     IM="$IL_TARGET/.harbor-manifest"
     [ -f "$IM" ] || { log_fail "no $IM: no install has been recorded here, so no skill can be judged"; log_fix "sh bin/deploy.sh --apply --only skills $(il_spell)"; log_end || :; exit 3; }
     : > "$WORK/orphans"; _mn=0
@@ -184,10 +144,7 @@ else
   PRIV=''
 fi
 
-# The frontmatter ONLY — everything between the opening `---` and the next one.
-# Scanning the whole file misfiled any skill whose BODY mentioned the key at
-# column 0, and this generator's own output discusses that key, so the book was
-# one prose reflow away from classifying itself as hidden.
+# The frontmatter ONLY: scanning the whole file misfiled any skill whose body mentioned the key at column 0.
 frontmatter() {
   awk 'NR==1 && $0 !~ /^---[[:space:]]*$/ { exit }
        NR>1  && $0 ~  /^---[[:space:]]*$/ { exit }
@@ -208,10 +165,7 @@ field() {
 # Escape the one character that would break out of a markdown table cell.
 cell() { printf '%s' "$1" | sed 's/|/\\|/g'; }
 
-# Truncate on WHOLE WORDS, never a byte offset. `substr()` split multibyte
-# sequences: awk aborted with a conversion failure under a UTF-8 locale (empty
-# cell, status discarded by the surrounding $( )) and wrote invalid UTF-8 under
-# C. Concatenating whole words cannot split a character.
+# Truncate on whole words, never a byte offset: `substr()` split multibyte sequences and awk aborted under UTF-8.
 clip() {
   printf '%s' "$2" | awk -v max="$1" '
     { out = ""
@@ -220,35 +174,18 @@ clip() {
         if (length(cand) > max) { out = out "…"; break }
         out = cand
       }
-      # A single word longer than the budget would otherwise leave the cell as
-      # a bare ellipsis, which reads as "this skill has no purpose". Print the
-      # word whole: over-wide beats uninformative, and it still cannot split a
-      # multibyte character.
+      # A single word over the budget is printed whole: over-wide beats a bare ellipsis, and it still cannot split a character.
       if (out == "…" || out == "") out = $1
       print out }'
 }
 
-# The purpose, plus the NOT FOR clause that disambiguates confusable siblings.
-#
-# The first cut stripped everything after `USE WHEN`, which killed `NOT FOR`
-# too — measured at 33 of 36 skills, 27 of which name a specific sibling. For a
-# hidden skill the book is the ONLY disambiguator, so it was deleting the one
-# sentence that prevents picking the wrong tool. It also truncated at the first
-# full stop, which erased mail-cal's APPROVAL-GATED warning. USE WHEN triggers
-# go instead: a reader already inside the book does not need them.
+# The purpose, plus the NOT FOR clause that disambiguates confusable siblings. USE WHEN is stripped here
+# (not NOT FOR, which was once lost with it) because a reader already inside the book does not need triggers.
 purpose() {
   printf '%s' "$1" | sed -e 's/[[:space:]]*USE WHEN.*//' -e 's/[[:space:]]*NOT FOR.*//'
 }
-# THE TRIGGERS ARE WHAT A READER ARRIVES WITH, AND THE BOOK DELETED THEM.
-# `purpose()` above strips `USE WHEN` on purpose and that is still right for the
-# tables: a reader already inside a row does not need the trigger phrases. But
-# it meant the WHOLE book carried none of them — measured 2026-08-28, `grep -i`
-# for a warehouse, `datalayer` and `red team` each returned zero over the generated
-# file, while four skill trees name those subjects. Someone looking for the skill
-# that owns a subject searches with the subject's own vocabulary, so an index
-# with the vocabulary stripped answers every such search with silence.
-# The path goes on the SAME LINE as the triggers because grep returns one line,
-# and a hit that does not carry the path sends the reader back to the top.
+# The triggers ARE what a reader arrives with: the tables strip them, so a subject-vocabulary `grep` over the book
+# returned nothing. The path goes on the SAME LINE as the triggers because grep returns one line.
 triggers() {
   printf '%s' "$1" | sed -n 's/.*USE WHEN[[:space:]]*\(.*\)/\1/p' | sed 's/[[:space:]]*NOT FOR.*//'
 }
@@ -284,10 +221,8 @@ sib_cell() {
   else printf '_repo `%s` not registered on this box_' "$1"; fi
 }
 
-# contract_for <tool> — where to read before touching it. A tool with no
-# contract is listed AS A GAP rather than omitted: an absent row reads as "no
-# such tool", a row saying "none" reads as work.
-# A sibling's tool is the private layer's cli-contracts.tsv (harbor#1273), read first; core names harbor's own.
+# A tool with no contract is listed AS A GAP, not omitted (an absent row reads as "no such tool"). A sibling's
+# tool is the private layer's cli-contracts.tsv (harbor#1273), read first; core names harbor's own.
 contract_for() {
   __cr="$(awk -F'\t' -v t="$1" '$1 == t { print $2 "\t" $3 "\t" $4; exit }' "$WORK/clis")"
   if [ -n "$__cr" ]; then
@@ -378,7 +313,7 @@ emit() {
   cat <<'HEAD'
 ---
 name: skill-catalog
-description: "The index of every skill and credentialed CLI on this box, with the path to read each one — most are hidden from your listing and this is the only route to them. USE WHEN you are about to do reasoning work by hand: design an eval or a pass^k study, run a red-team or adversarial pass, chase a root cause, reason from first principles, get independent perspectives on a decision, write or optimise a prompt, extract the substance of a paper or a long document, generate options. ALSO WHEN what skills do I have, list skills, find a tool, which tool reads email/calendar/tickets/tags, I forgot the name of that skill, skill-book (its name before harbor#1010). NOT FOR invoking a skill already in your listing — this is for the ones you cannot see."
+description: "The index of every skill, `harbor` verb, agent-facing bin tool and credentialed CLI on this box, each with the path or exact command; most are hidden from your listing and this is the only route to them. USE WHEN you are about to wait on CI or a PR, run a suite, push, merge or do any scripted chore by hand, or do reasoning work by hand: design an eval or a pass^k study, run a red-team pass, chase a root cause, reason from first principles, get independent perspectives, write or optimise a prompt, extract a paper, generate options. ALSO WHEN what skills do I have, list skills, find a tool, is there a harbor command for this, how do I wait on CI, skill-book (its old name). NOT FOR invoking a skill already in your listing."
 ---
 
 <!-- generated-by: sh bin/skill-catalog.sh -->
@@ -442,11 +377,13 @@ without loading the whole thing; `B=~/.claude/skills/skill-catalog/SKILL.md`.
 grep -i 'consent' "$B"                        # which skill owns a subject
 sed -n '/^## Find by trigger/,$p' "$B"        # the trigger index alone
 sed -n '/^## Start here/,/^## Skills/p' "$B"  # the situation table alone
-awk -F'`' '/^- `/ { print $2 }' "$B"          # every skill name, one per line
+awk -F'`' '/^- `/ { print $2 }' "$B"          # every skill, verb and tool name, one per line
+sed -n '/^## Commands and tools/,/^## Credentialed/p' "$B"  # the harbor verbs and bin tools alone
 ```
 
 The first is the one that matters: search with the vocabulary the task arrives
-with, not with a skill's name, because you do not know the name yet.
+with, not with a skill's name, because you do not know the name yet. The same
+goes for a chore: `grep -i 'wait' "$B"` finds `harbor event ci` and `ci-wait.sh` before you write a poll loop.
 
 HEAD2
 
@@ -466,6 +403,23 @@ HEAD2
     is_hidden "$f" && continue
     printf '| `%s` | %s | %s |\n' "$(cell "$n")" "$(tier_of "$n")" "$(describe "$f")"
   done < "$WORK/list"
+
+  if [ "$AGENT_ON" -eq 1 ]; then
+    cat <<'CMDS'
+
+## Commands and tools — `harbor <verb>` and the `bin/` scripts agents call directly
+
+Not skills and in no listing, so a session hand-rolls what already exists (it polled CI by hand while `harbor event ci` waits on
+the event bus). Rows are generated from `contracts/agent-tools.tsv`; the verbs are bin/harbor's table, the tools are the scripts
+`contracts/cli.md` marks Agent-facing, and a verb or marked tool with no row is a DEFECT above. `bin/` paths are the harbor
+checkout (`~/port/harbor`) or your worktree of it.
+
+CMDS
+    printf '### `harbor` verbs\n\n| Verb | Use when | Run |\n|---|---|---|\n'
+    awk -F'\t' '$1 == "verb" { gsub(/\|/, "\\|"); printf "| `harbor %s` | %s | `%s` |\n", $2, $3, $4 }' "$WORK/agent"
+    printf '\n### `bin/` tools\n\n| Tool | Use when | Run |\n|---|---|---|\n'
+    awk -F'\t' '$1 == "tool" { gsub(/\|/, "\\|"); printf "| `%s` | %s | `%s` |\n", $2, $3, $4 }' "$WORK/agent"
+  fi
 
   cat <<'TOOLS'
 
@@ -516,6 +470,10 @@ TOOLS
     [ -n "$_t" ] || _t="(no USE WHEN clause — this skill cannot be found by subject)"
     printf -- '- `%s` — `%s` — %s\n' "$n" "$SHOWN/$n/SKILL.md" "$_t"
   done < "$WORK/list"
+  if [ "$AGENT_ON" -eq 1 ]; then
+    awk -F'\t' '{ nm = ($1 == "verb") ? "harbor " $2 : $2
+      printf "- `%s` — %s — `%s`\n", nm, $3, $4 }' "$WORK/agent"
+  fi
   cat <<'FOOT'
 
 **None of them has a delete verb, and that is a decision** — nothing they touch
@@ -574,6 +532,58 @@ awk -F'\t' '
   END { for (k in cnt) if (cnt[k] > 1) printf "collision\tthe directory name %s is taken more than once: %s\n", k, where[k]
         for (k in nc) if (nc[k] > 1) printf "collision\ttwo directories declare name: %s: %s\n", k, nw[k] }' "$WORK/dirs" | sort >> "$WORK/defects"
 
+# THE COMMANDS AND TOOLS (harbor#1010). Rows come from contracts/agent-tools.tsv; what MUST have a row is derived, not typed: every
+# verb of bin/harbor's table and every script contracts/cli.md marks `**Agent-facing.**`. A hole is a defect line (kind uncovered or
+# dangling), so it is loud in the book and fails the write, and `--coverage` reports only these. No tsv, no section.
+: > "$WORK/agent"
+AGENT_ON=0
+if [ -f "$AGENTTOOLS" ]; then
+  AGENT_ON=1
+  _cli="$ROOT/contracts/cli.md"; _disp="$ROOT/bin/harbor"
+  : > "$WORK/verbs"; : > "$WORK/marked"
+  [ ! -f "$_disp" ] || awk -F'\t' '/^VERBS="/{f=1;next} /^"$/{f=0} f && NF >= 4 { print $1 }' "$_disp" > "$WORK/verbs"
+  [ ! -f "$_cli" ] || sed -n 's/^| `\([A-Za-z0-9._-][A-Za-z0-9._-]*\)` | \*\*Agent-facing\.\*\*.*/\1/p' "$_cli" > "$WORK/marked"
+  awk -F'\t' -v f="$AGENTTOOLS" -v bin="$ROOT/bin" -v vf="$WORK/verbs" -v mf="$WORK/marked" -v good="$WORK/agent" -v hasverbs="$([ -s "$WORK/verbs" ] && echo 1 || echo 0)" -v hascli="$([ -f "$_cli" ] && echo 1 || echo 0)" '
+    function bad(k, m) { printf "%s\t%s\n", k, m > "/dev/stderr"; nbad++ }
+    FILENAME == vf { verbs[$1] = 1; next }
+    FILENAME == mf { marked[$1] = 1; next }
+    { sub(/\r$/, "") }
+    /^[ \t]*#/ || /^[ \t]*$/ { next }
+    !hdr { hdr = 1; if ($0 != "kind\tname\tuse_when\tinvocation") { bad("malformed", f " line " FNR ": the header is not kind, name, use_when, invocation"); stop = 1 }; next }
+    stop { next }
+    NF != 4 || $2 == "" || $3 == "" || $4 == "" { bad("malformed", "contracts/agent-tools.tsv line " FNR ": expected kind, name, use_when, invocation (4 non-empty columns)"); next }
+    ($1 SUBSEP $2) in seen { bad("malformed", "contracts/agent-tools.tsv line " FNR ": " $1 " " $2 " repeats line " seen[$1, $2]); next }
+    $1 != "verb" && $1 != "tool" { bad("malformed", "contracts/agent-tools.tsv line " FNR ": kind " $1 " is not verb or tool"); next }
+    { seen[$1, $2] = FNR; k = $1; n = $2
+      if (k == "verb") { split(n, a, " "); v = a[1]; rows_verb[v] = 1
+        if (n == v) top[v] = 1
+        if (hasverbs && !(v in verbs)) { bad("dangling", "contracts/agent-tools.tsv row `harbor " n "`: " v " is not a verb of bin/harbor"); next }
+        if (index($4, "harbor " n) == 0) { bad("dangling", "contracts/agent-tools.tsv row `harbor " n "`: its invocation does not run `harbor " n "`"); next } }
+      else { rows_tool[n] = 1
+        if (system("test -f \"" bin "/" n "\"") != 0) { bad("dangling", "contracts/agent-tools.tsv row `" n "`: bin/" n " does not exist"); next }
+        b = n; sub(/\.sh$/, "", b)
+        if (index($4, b) == 0) { bad("dangling", "contracts/agent-tools.tsv row `" n "`: its invocation does not run " b); next }
+        if (hascli && !(n in marked)) { bad("dangling", "contracts/agent-tools.tsv row `" n "`: contracts/cli.md does not mark it Agent-facing"); next } }
+      print > good }
+    END { for (v in verbs) if (!(v in top)) bad("uncovered", "the harbor verb `" v "` has no row in contracts/agent-tools.tsv")
+          for (m in marked) { if (!(m in rows_tool)) bad("uncovered", "`" m "` is marked Agent-facing in contracts/cli.md and has no row in contracts/agent-tools.tsv")
+            if (system("test -f \"" bin "/" m "\"") != 0) bad("dangling", "contracts/cli.md marks `" m "` Agent-facing, and bin/" m " does not exist") } }' \
+    "$WORK/verbs" "$WORK/marked" "$AGENTTOOLS" 2> "$WORK/agent.err" || :
+  sort -u "$WORK/agent.err" >> "$WORK/defects"
+fi
+if [ "$COVERAGE" -eq 1 ]; then
+  [ "$AGENT_ON" -eq 1 ] || { log_fail "no contracts/agent-tools.tsv: nothing to judge"; log_nofix "the header of bin/skill-catalog.sh"; log_end || :; exit 3; }
+  _nc=0
+  while IFS="$TAB" read -r _dk _dm; do
+    case "$_dk" in uncovered|dangling|malformed) ;; *) continue ;; esac
+    _nc=$((_nc + 1)); log_fail "$_dk: $_dm"
+    log_fix "add or correct the row in contracts/agent-tools.tsv (USE WHEN and exact invocation), then: sh bin/skill-catalog.sh"
+  done < "$WORK/defects"
+  [ "$_nc" -eq 0 ] || { log_end || :; exit 1; }
+  log_ok "every harbor verb and every Agent-facing tool has a row, and every row has a verb or script behind it ($(wc -l < "$WORK/agent" | tr -d ' ') rows)"
+  log_end; exit $?
+fi
+
 router_rows > "$WORK/router"
 if grep -q '^E' "$WORK/router"; then
   awk -F'\t' '$1 == "E" { print $2 }' "$WORK/router" > "$WORK/router.err"
@@ -603,23 +613,13 @@ if [ "$MODE" = tracked ]; then
     if cmp -s "$WORK/book" "$OUT"; then
       log_ok "current — ${OUT#"$ROOT/"} matches the skills this checkout tracks"; log_end; exit $?
     else
-      # A TRUNCATED DIFF THAT DOES NOT SAY IT IS TRUNCATED PRODUCES FALSE
-      # NEGATIVES, and this one did. `head -40` alone hid every row past the
-      # fortieth, so on 2026-09-07 a check of whether two newly-installed skills
-      # appeared in the book came back "absent" — the rows were there, forty lines
-      # further down. Four tool calls were spent on a defect that did not exist,
-      # and the same shape would let a reviewer approve a book missing whatever sat
-      # below the cut. The cap stays (a 200-line diff in a terminal is not read
-      # either); what changes is that the suppressed count is stated, so an
-      # absence found here is known to be provisional.
+      # A truncated diff must say it is truncated: `head -40` alone hid every row past the fortieth and a check came back
+      # "absent" for rows that were there. The cap stays; the suppressed count is stated.
       diff "$OUT" "$WORK/book" > "$WORK/diff" 2>/dev/null || true
       head -40 "$WORK/diff" >&2
       _sb_n=$(wc -l < "$WORK/diff" | tr -d ' ')
       if [ "${_sb_n:-0}" -gt 40 ]; then
-        # NAME A COMMAND THAT STILL WORKS AFTER THIS EXITS. The obvious line here
-        # is `diff $OUT $tmp`, and the temp copy is deleted when this exits — a remedy that
-        # cannot run is worse than none, because it costs the reader a round trip
-        # to discover that. The book is tracked, so regenerate and let git show it.
+        # Name a command that still works after this exits: the temp copy is deleted. The book is tracked, so regenerate and let git show it.
         log_note "$((_sb_n - 40)) more diff line(s) suppressed; for the whole change: sh bin/skill-catalog.sh && git diff -- ${OUT#"$ROOT/"}"
       fi
       log_fail "STALE — ${OUT#"$ROOT/"} differs from what the skills this checkout tracks generate"

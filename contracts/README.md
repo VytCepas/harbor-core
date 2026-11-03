@@ -48,12 +48,15 @@ hand-kept account of direction and status; this table is what exists.
 |---|---|---|
 | [access-card.md](./access-card.md) | md | The access card - the format of the access register |
 | [access-register.md](./access-register.md) | md | The access register - one list of every identity an agent may use |
+| [agent-tools.tsv](./agent-tools.tsv) | tsv | agent-tools.tsv (harbor#1010) - the USE WHEN and the exact invocation of every agent-facing `harbor` verb and bin/ tool; bin/skill-catalog.s |
 | [agents.tsv](./agents.tsv) | tsv | - |
+| [bin.tsv](./bin.tsv) | tsv | bin.tsv (harbor#1432) — every file under bin/: its form, purpose and ticket. |
 | [box-profile.md](./box-profile.md) | shim | the old name of `host-profile.md` (renames.tsv), kept until its remove_by date |
 | [browser-agent-hosts.txt](./browser-agent-hosts.txt) | txt | Hosts `harbor chrome` may navigate to (goto, tab-new): the big platforms any |
 | [browser-routing.md](./browser-routing.md) | md | Which browser — the router (harbor#458) |
 | [catalog-non-tools.tsv](./catalog-non-tools.tsv) | tsv | catalog-non-tools.tsv (harbor#1010) - executables the catalog never lists as tools: its CLI table is for credentialed commands a session can |
 | [cli.md](./cli.md) | md | harbor` — the L0 command surface (CLI-1, harbor#42) |
+| [cli.md.tmpl](./cli.md.tmpl) | tmpl | harbor` — the L0 command surface (CLI-1, harbor#42) |
 | [confinement-classes.tsv](./confinement-classes.tsv) | tsv | confinement-classes.tsv (harbor#1441, #555 decision 10 (a)) — every class of Bash call that asks to leave the sandbox, and |
 | [confinement-coverage.tsv](./confinement-coverage.tsv) | tsv | confinement-coverage.tsv (harbor#1300, #555 P3) — for every admission rule in standards/naming/controls.tsv, |
 | [confinement-hosts.txt](./confinement-hosts.txt) | txt | confinement-hosts.txt (harbor#1298, #555) — the hosts a confined shell command may reach, core's half. |
@@ -70,8 +73,9 @@ hand-kept account of direction and status; this table is what exists.
 | [domain-allow.tsv](./domain-allow.tsv) | tsv | domain-allow.tsv (harbor#1274) - core paths that may name a workload tool because harbor's own logic needs the name. |
 | [domain-repos-allow.tsv](./domain-repos-allow.tsv) | tsv | domain-repos-allow.tsv (harbor#1273) - core files that may name a workload repo, read by bin/lint-domain.sh --repos. |
 | [domain-terms.tsv](./domain-terms.tsv) | tsv | domain-terms.tsv (harbor#1274, harbor#1149) - the workload vocabulary core must not carry: tools of a workload, not of harbor. |
+| [env.tsv](./env.tsv) | tsv | env.tsv (harbor#1431) — every environment variable harbor reads: its kind, default, meaning and owner. |
 | [event-kinds.tsv](./event-kinds.tsv) | tsv | event-kinds.tsv (harbor#1367) — every kind on the local event bus: its shape, its subject, and the file that emits it. |
-| [event-rules.tsv](./event-rules.tsv) | tsv | event-rules.tsv (harbor#1044) — the `harbor event on` rules Harbor ships as presets. NONE is on. |
+| [event-rules.tsv](./event-rules.tsv) | tsv | event-rules.tsv (harbor#1044) — the `harbor event on` rules Harbor ships as presets. |
 | [finding.md](./finding.md) | md | CONTRACT — a finding: its key, its digest, its age, and a person's disposition |
 | [fleet-controller-json.md](./fleet-controller-json.md) | md | --json` output seam (L2 Fleet → L0 Helm) — FREEZE before Helm consumes it |
 | [fresh-checks.tsv](./fresh-checks.tsv) | tsv | fresh-checks.tsv (harbor#1287) — the generated files bin/doc-fresh-verify.sh proves current, each in seconds. |
@@ -121,6 +125,7 @@ hand-kept account of direction and status; this table is what exists.
 | [required-checks.tsv](./required-checks.tsv) | tsv | Required checks per repo: the merge gate when GitHub cannot be (harbor#1060). |
 | [roots.tsv](./roots.tsv) | tsv | roots.tsv — every named root, and the base it hangs off. harbor#630. |
 | [scaffolder-plugins.tsv](./scaffolder-plugins.tsv) | tsv | scaffolder-plugins.tsv (harbor#999, #966) - the names yard publishes its Claude Code plugins under. |
+| [scheduled-checks.tsv](./scheduled-checks.tsv) | tsv | scheduled-checks.tsv (harbor#1437) — the read-only checks launchd runs from main through bin/check-run.sh. |
 | [seams.tsv](./seams.tsv) | tsv | seams.tsv (harbor#1425) — one row per cross-repo contract: who produces it, who consumes it, its copy, its pin. |
 | [secret-legacy-refs.txt](./secret-legacy-refs.txt) | txt | secret-legacy-refs.txt (harbor#1205) - secret refs bin/secret still serves with no register entry. Only goes down. |
 | [session-waiting.tsv](./session-waiting.tsv) | tsv | session-waiting.tsv (harbor#1043, #1044) — rule 2 of hooks/session-state/session-state.sh: when is the operator the one being waited on? |
@@ -135,9 +140,11 @@ hand-kept account of direction and status; this table is what exists.
 | [suites-quick.txt](./suites-quick.txt) | txt | QUICK LEVEL — the suites CI runs when the level is `quick` (dispatch input `level`, else repo |
 | [suites-tally.txt](./suites-tally.txt) | txt | REQUIRED-CHECK GROUPS — which suites each required CI verdict is tallied from (harbor#961). |
 | [suites.txt](./suites.txt) | txt | SUITE MANIFEST (harbor#61) — the list of test suites CI must run. |
+| [systems.tsv](./systems.tsv) | tsv | systems.tsv (harbor#1436, #1423 T18.13) - the systems `harbor <system> <verb>` dispatches, by register and not by code. |
 | [test-contract.md](./test-contract.md) | md | Test contract — the rules every governed repo's tests follow |
 | [unwatched.txt](./unwatched.txt) | txt | UNWATCHED (harbor#594) — every property of this repo whose failure is on record |
 | [vendoring.md](./vendoring.md) | md | Vendoring — refuse, depend, vendor, or take the idea (harbor#459) |
+| [verbs.tsv](./verbs.tsv) | tsv | verbs.tsv (harbor#1432) — the verbs of the `harbor` command: the script each dispatches to, whether it takes --json, and its note. |
 
 ## Rules for every seam
 

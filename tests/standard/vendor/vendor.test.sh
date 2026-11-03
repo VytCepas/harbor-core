@@ -5,7 +5,7 @@
 SV="$T_ROOT/bin/standard-vendor.sh"
 H="$T_TMP/harbor"; R="$T_TMP/repo"
 mkh() { rm -rf "$H"; mkdir -p "$H/bin" "$H/standards/naming"
-  cp "$T_ROOT/bin/lint-name.sh" "$T_ROOT/bin/lint-renderer.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/standard-vendor.sh" "$T_ROOT/bin/standard-register.sh" "$T_ROOT/bin/doc-shape.sh" "$T_ROOT/bin/doc-fresh-verify.sh" "$H/bin/"
+  cp "$T_ROOT/bin/lint-name.sh" "$T_ROOT/bin/lint-renderer.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/standard-vendor.sh" "$T_ROOT/bin/standard-register.sh" "$T_ROOT/bin/doc-shape.sh" "$T_ROOT/bin/doc-fresh-verify.sh" "$T_ROOT/bin/standard-kit.sh" "$H/bin/"
   cp "$T_ROOT"/standards/naming/*.tsv "$H/standards/naming/"; }
 mkr() { rm -rf "$R"; mkdir -p "$R"; }
 chk() { sh "$SV" --check --source "$H" "$R" 2>&1; }
@@ -47,6 +47,7 @@ echo x > "$R/vendor/naming/stray.sh"
 out="$(chk)"; rc=$?; t_eq "an extra file exits 1" 1 "$rc"; t_has "named extra" "$out" "extra: vendor/naming/stray.sh"
 mkr; sh "$SV" --source "$H" "$R" >/dev/null 2>&1
 printf 'x\tx\n' > "$H/standards/naming/newreg.tsv"
+printf 'register.newreg\tregister\tstandards/naming/newreg.tsv\t*\tcore\tyes\ta register harbor added\n' >> "$H/standards/naming/kit.tsv"   # the kit names the package (harbor#1436)
 out="$(chk)"; rc=$?; t_eq "a file harbor added exits 1" 1 "$rc"; t_has "named new" "$out" "new: vendor/naming/registry/newreg.tsv"
 
 t_section "re-vendoring heals the drift"

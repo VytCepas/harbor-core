@@ -6,22 +6,13 @@
 # blocks the session: every path exits 0. Staging is a tracked-glob allowlist
 # — git add -A is deliberately absent (G1).
 
-# CLAUDE_CONFIG_DIR-aware: in a sandbox session this resolves to the sandbox,
-# whose MEMORY has no .git — the hook stands down instead of touching live.
+# CLAUDE_CONFIG_DIR-aware: a sandbox session resolves to a MEMORY with no .git, so the hook stands down instead of touching live.
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 WORKLOG_DIR="${HARBOR_MEMORY_LOG_DIR:-$CFG/MEMORY}"
 TOKEN_FILE="${HARBOR_MEMORY_LOG_TOKEN_FILE:-$CFG/.helm-log-token}"
 
-# ONE marker implementation, not three (H2, contracts/marker.md). This hook used
-# to walk the tree itself with `[ -e "$d/.agents" ]` — the exact predicate
-# floor_in_repo was hardened away from after the 2026-07-24 marker-forgery
-# finding, because it accepts a zero-byte FILE or a symlink to anywhere. Verified
-# still forgeable here before the change: a planted `.agents` file made this hook
-# stand down, i.e. silently stopped work-log sync, while the guards refused the
-# same forgery. It also walked from the hook process's own $PWD instead of the
-# session cwd the payload carries.
-#
-# Stdin is read FIRST now, because the shared resolver reads .cwd from it.
+# One marker implementation (H2, contracts/marker.md): the hook's own `.agents` walk accepted a zero-byte file or symlink and started from the process $PWD, so a planted file silently stopped work-log sync. Stdin is read FIRST because the shared resolver reads .cwd from it.
+# Removed notes: docs/explanation/code-cases/hooks-worklog-push-worklog-push.md
 # harbor#813: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./library-admission.sh from it.
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
 [ ! -f "$DIR/manifest.tsv" ] || DIR="$DIR/../../bin"  # D-88: in the repo an engine sits beside its manifest in hooks/<engine>/; deployed, flat beside its libraries
@@ -31,22 +22,16 @@ case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; . "$DIR/library-log.sh"
 floor_read_stdin
-# Stands down only where the repo's .agents/config.yaml says `worklog: off` (harbor#954).
 floor_engine_stand_down && exit 0
 
 [ -d "$WORKLOG_DIR/.git" ] || exit 0
 
-# Session record — append-only, write-once path per host (memory-format contract).
 SID="$(floor_field '.session_id')"
 CWD="$(floor_field '.cwd')"
 HOST="$(floor_host_token)"
 DATE="$(date +%Y-%m-%d)"
 [ -n "$SID" ] || SID="unknown-$(date +%H%M%S)"
-# The format lives in floor_worklog_record (library-admission.sh), not here. It used to
-# be open-coded, and harbor#6 added a SECOND writer — memory-harvest.sh, which
-# backfills a record for a session that never reached this hook. Two open-coded
-# writers of one format drift silently: both keep producing files, they just stop
-# being the same shape.
+# The format lives in floor_worklog_record (library-admission.sh), shared with memory-harvest.sh: two open-coded writers of one format drift silently.
 floor_worklog_record "$WORKLOG_DIR" "$HOST" "$SID" "$DATE" "$(date +%H:%M)" "${CWD:-unknown}" || true
 
 cd "$WORKLOG_DIR" || exit 0
@@ -59,8 +44,7 @@ _wl_lock="$WORKLOG_DIR/.git/harbor-worklog.lock"
 mkdir "$_wl_lock" 2>/dev/null || exit 0
 trap 'rmdir "$_wl_lock" 2>/dev/null' EXIT
 
-# Tracked-glob allowlist (deny-by-default; never git add -A). One add per
-# glob: git aborts a multi-pathspec add wholesale if ANY pathspec is empty.
+# Tracked-glob allowlist, deny-by-default; one add per glob because git aborts a multi-pathspec add if ANY pathspec is empty.
 for g in 'WORK/sessions/*/*.md' 'KNOWLEDGE/*.md' 'LEARNING/*.md' 'CHECKPOINTS/*/*' \
          'WISDOM/*.md' IDEAS.md README.md .gitignore; do
   git add -- "$g" >/dev/null 2>&1 || true
@@ -68,18 +52,13 @@ done
 
 git diff --cached --quiet 2>/dev/null && exit 0   # nothing new
 
-# Fail-CLOSED secret gate on the staged snapshot.
 if ! command -v gitleaks >/dev/null 2>&1; then
   git reset -q
   log_warn "gitleaks is missing, so the work-log commit and push are BLOCKED (fail-closed): $WORKLOG_DIR"
   log_fix "$(pkg_hint gitleaks)"; log_end || :
   exit 0
 fi
-# floor_gitleaks_staged, not a literal subcommand: 8.18.4 has no `gitleaks git`
-# and exits 1 on it, which `--exit-code 1` makes indistinguishable from a finding
-# — so this gate refused every commit on a box carrying the version CI itself
-# pins, while reporting a secret. See library-admission.sh for the probe and the measured
-# equivalence. The fail-closed posture below is unchanged: non-zero still blocks.
+# floor_gitleaks_staged, not a literal subcommand: 8.18.4 (CI's pin) has no `gitleaks git`, and its exit 1 read as a finding. Non-zero still blocks (fail-closed).
 if ! floor_gitleaks_staged "$WORKLOG_DIR" >/dev/null 2>&1; then
   git reset -q
   log_warn "gitleaks found a secret in the staged work-log, so its commit and push are BLOCKED (fail-closed): inspect $WORKLOG_DIR"
@@ -109,10 +88,7 @@ if [ -n "$_wl_fb" ]; then
   log_fix "git -C \"$WORKLOG_DIR\" config user.name '<name>' && git -C \"$WORKLOG_DIR\" config user.email '<email>'"; log_end || :
 fi
 
-# Push — network failures are the ONLY fail-open leg (commit stays local).
-# The token is the store's `worklog-token` and nothing else (harbor#1205, decided 2026-10-23). A plaintext file
-# left from before is never read: it is named, with the command that moves it. Each state warns once (a stamp per
-# state), so a token that is gone is said, never silently unpushed.
+# Push - network failures are the ONLY fail-open leg. The token is the store's `worklog-token` only (harbor#1205); a leftover plaintext file is named, never read. Each state warns once.
 wl_warn_once() {
   _wl_st="$CFG/.worklog-token-warned.$1"
   [ -e "$_wl_st" ] && return 0
@@ -132,32 +108,13 @@ else
   exit 0
 fi
 
-# THE TOKEN GOES THROUGH THE ENVIRONMENT, NEVER THE URL. CONSTITUTION §4 states
-# this as a bare imperative — "Never put auth tokens in URLs. Authorization:
-# header only — URLs leak into logs, shell history, and referrers" — and this
-# hook, which runs on every Stop, was the thing breaking it. A URL-embedded
-# credential reaches the reflog, `ps`, and any proxy in front of the remote.
-# The credential helper receives it from the environment instead: the helper
-# STRING is visible in `ps`, the token is not. It also means a failure message
-# from git can no longer contain the credential, which is why the error is now
-# safe to print.
-#
-# PUSH TO `origin`, NOT TO A URL. Pushing to an explicit URL never advances
-# origin/main, so `git status` in the work-log reported a monotonically growing
-# [ahead N] while every push was succeeding — measured at 11 with local HEAD and
-# the remote ref at the IDENTICAL sha. A status signal that is always wrong is
-# one nobody reads, and this one hid the only question worth asking of a
-# sync hook: is the log actually leaving this machine?
+# The token goes through the environment, never the URL (CONSTITUTION 4): the helper string shows in `ps`, the token does not, and git's error can no longer contain it.
+# Push to `origin`, not a URL: an explicit URL never advances origin/main, so `git status` showed a growing [ahead N] while every push succeeded.
 _wl_helper='!f(){ test "$1" = get && printf "username=x-access-token\npassword=%s\n" "$WORKLOG_TOKEN"; }; f'  # secret-seam: entry worklog-token, injected by secret run
 _wl_err="$(sh "$_wl_secret" run worklog-token WORKLOG_TOKEN -- git -c credential.helper="$_wl_helper" push --quiet origin main 2>&1)"
 _wl_rc=$?
 
-# FAIL OPEN ON NETWORK ONLY, which is what the header has always claimed. The
-# old `>/dev/null 2>&1 || true` made a rejected credential, a non-fast-forward,
-# a deleted remote and a clean success indistinguishable — so the stated
-# contract and the implemented one were different documents. The commit is
-# local either way and the next Stop retries; what changes is whether the
-# operator ever learns the log stopped leaving the machine.
+# Fail open on NETWORK only: the old `>/dev/null 2>&1 || true` hid rejected credentials and non-fast-forwards. The commit stays local either way; the operator must learn the log stopped leaving the machine.
 if [ "$_wl_rc" -ne 0 ]; then
   case "$_wl_err" in
     *'Could not resolve host'*|*'unable to access'*|*'Connection refused'* \
