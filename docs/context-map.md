@@ -37,7 +37,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | registry | registries/ | component | source | versioned | 68 |
 | test | tests/ | component | source | living | 507 |
 | report | docs/reports/ | element | report | dated | 2 |
-| design | docs/design/ | component | source | living | 7 |
+| design | docs/design/ | component | source | living | 8 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | generated-doc | docs/generated/ | component | generated | generated | 1 |
 | script | bin/ | component | source | living | 250 |
@@ -57,7 +57,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `commands/` | 5 | 4 | 1 |
 | `context-rules/` | 57 | 6 | 1 |
 | `contracts/` | 106 | 11 | 2 |
-| `docs/` | 307 | 24 | 9 |
+| `docs/` | 308 | 24 | 9 |
 | `fixtures/` | 438 | 11 | 1 |
 | `hooks/` | 43 | 7 | 1 |
 | `launchd/` | 21 | 10 | 1 |
@@ -750,7 +750,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `commands/` | 2 |
 | `context-rules/` | 45 |
 | `contracts/` | 85 |
-| `docs/` | 127 |
+| `docs/` | 128 |
 | `fixtures/` | 263 |
 | `hooks/` | 29 |
 | `patches/` | 10 |
