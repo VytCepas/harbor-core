@@ -16,10 +16,9 @@ case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
 SRC="$(CDPATH= cd -- "$SRC" && pwd -P)"
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; . "$SRC/library-log.sh"; log_init scope-repo-sources
-TAB="$(printf '\t')"
 SR() { sh "$SRC/scope-roots.sh" "$@"; }
 
-MODE=delta
+MODE='delta'
 case "${1:-}" in
   '') ;;
   --matrix) MODE=matrix ;;

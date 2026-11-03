@@ -6,15 +6,15 @@
 INV="$T_ROOT/bin/standard-inventory.sh"
 R="$T_TMP/repo"
 ENVH='var	repo	kind	default	meaning	stability	owner	controls'
-BINH='path	form	purpose	ticket'
+BINH='path	form	layer	purpose	ticket'
 mkrepo() {
   rm -rf "$R"; mkdir -p "$R/bin" "$R/contracts" "$R/standards/naming"
   cp "$T_ROOT/bin/standard-register.sh" "$T_ROOT/bin/library-log.sh" "$INV" "$R/bin/"
   cp "$T_ROOT/standards/naming/schemas.tsv" "$R/standards/naming/"
   printf 'var\tbase\trel\tbreaks\tshared\n' > "$R/contracts/roots.tsv"
   printf '%s\n' "$ENVH" > "$R/contracts/env.tsv"
-  printf '%s\n%s\n%s\n' "$BINH" 'bin/standard-register.sh	command	the reader	-' 'bin/library-log.sh	library	the log	-' > "$R/contracts/bin.tsv"
-  printf 'bin/standard-inventory.sh	command	this	-\n' >> "$R/contracts/bin.tsv"
+  printf '%s\n%s\n%s\n' "$BINH" 'bin/standard-register.sh	command	floor	the reader	-' 'bin/library-log.sh	library	floor	the log	-' > "$R/contracts/bin.tsv"
+  printf 'bin/standard-inventory.sh	command	floor	this	-\n' >> "$R/contracts/bin.tsv"
   printf '#!/usr/bin/env sh\necho "${HARBOR_TEST_FIXTURE_X:-1}"\n' > "$R/bin/fixture-x.sh"
 }
 facts() { sh "$R/bin/standard-inventory.sh" --root "$R" facts 2>&1; }
@@ -61,16 +61,30 @@ t_has "kind" "$(facts)" 'kind:HARBOR_TEST_FIXTURE_K'
 t_section "bin: a file with no row is red, a row with no file is red"
 mkrepo
 t_has "bin/fixture-x.sh has no row" "$(facts)" 'file:bin/fixture-x.sh'
-printf 'bin/fixture-x.sh\tcommand\ta fixture script\t-\nbin/fixture-gone.sh\tcommand\tno file\t-\n' >> "$R/contracts/bin.tsv"
+printf 'bin/fixture-x.sh\tcommand\tfloor\ta fixture script\t-\nbin/fixture-gone.sh\tcommand\tfloor\tno file\t-\n' >> "$R/contracts/bin.tsv"
 out="$(facts)"
 t_hasnt "a row clears the file finding" "$out" 'file:bin/fixture-x.sh'
 t_has "a row with no file is red" "$out" 'row:bin/fixture-gone.sh'
-printf 'bin/fixture-z.sh\tgadget\tbad form\t-\n' >> "$R/contracts/bin.tsv"; : > "$R/bin/fixture-z.sh"
+printf 'bin/fixture-z.sh\tgadget\tfloor\tbad form\t-\n' >> "$R/contracts/bin.tsv"; : > "$R/bin/fixture-z.sh"
 t_has "a form outside the set is red" "$(facts)" 'form:bin/fixture-z.sh'
+
+t_section "bin: the layer is floor (sh), trio (Python) or tool (TypeScript), and it must agree with the file's language"
+mkrepo
+printf 'bin/fixture-x.sh\tcommand\tfloor\ta fixture script\t-\nbin/fixture-py.py\tcommand\ttrio\ta python script\t-\nbin/fixture-ts.ts\tcommand\ttool\ta ts script\t-\n' >> "$R/contracts/bin.tsv"
+: > "$R/bin/fixture-py.py"; : > "$R/bin/fixture-ts.ts"
+t_hasnt "a layer that matches the language is clean" "$(facts; echo end)" 'layer:'
+sed -i.bak 's/^bin\/fixture-py.py\tcommand\ttrio/bin\/fixture-py.py\tcommand\tfloor/' "$R/contracts/bin.tsv"; rm -f "$R/contracts/bin.tsv.bak"
+t_has "a Python file filed as floor is red" "$(facts)" 'layer:bin/fixture-py.py'
+sed -i.bak 's/^bin\/fixture-py.py\tcommand\tfloor/bin\/fixture-py.py\tcommand\tgadget/' "$R/contracts/bin.tsv"; rm -f "$R/contracts/bin.tsv.bak"
+t_has "a layer outside the set is red" "$(facts)" 'layer:bin/fixture-py.py'
+sed -i.bak 's/^bin\/fixture-py.py\tcommand\tgadget/bin\/fixture-py.py\tcommand\t-/' "$R/contracts/bin.tsv"; rm -f "$R/contracts/bin.tsv.bak"
+t_has "an empty layer is red" "$(facts)" 'layer:bin/fixture-py.py'
+t_has "the schema row carries the layer column" "$(sh "$T_ROOT/bin/standard-register.sh" schema contracts/bin.tsv)" 'path form layer purpose ticket'
+t_eq "every row of the real register carries a layer" "0" "$(awk -F'\t' '!/^#/ && $1 != "path" && ($3 == "" || $3 == "-")' "$T_ROOT/contracts/bin.tsv" | wc -l | tr -d ' ')"
 
 t_section "bin: an uncalled file is a retirement proposal, never a deletion"
 mkrepo; mkdir -p "$R/hooks" "$R/cfg"
-printf 'bin/fixture-x.sh\tcommand\ta fixture script\t-\nbin/fixture-called.sh\tcommand\ta called script\t-\n' >> "$R/contracts/bin.tsv"
+printf 'bin/fixture-x.sh\tcommand\tfloor\ta fixture script\t-\nbin/fixture-called.sh\tcommand\tfloor\ta called script\t-\n' >> "$R/contracts/bin.tsv"
 printf '#!/usr/bin/env sh\ntrue\n' > "$R/bin/fixture-called.sh"
 printf '#!/usr/bin/env sh\nsh bin/fixture-called.sh\n' > "$R/hooks/pre"
 unc() { sh "$R/bin/standard-inventory.sh" --root "$R" --config-dir "$R/cfg" --today 2026-11-02 uncalled 2>&1; }

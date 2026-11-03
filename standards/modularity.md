@@ -74,7 +74,7 @@ There are no cycles between systems.
 
 A family's public entry is its command (`<system> <family> ...`, `bin/<family>-*`) or its package's exported names.
 Files whose name starts with `_`, files named `lib` or ending in `-lib`, and anything under a `lib/` or `_*/` folder
-are private. The families a family may use are the `depends_on` column of its row in `standards/naming/terms.tsv`.
+are private, unless `contracts/family-entries.tsv` declares the file its family's entry. The families a family may use are the `depends_on` column of its row in `standards/naming/terms.tsv`.
 
 *Why.* A family is a module, not a prefix, only if something stops its neighbours reaching past its entry.
 

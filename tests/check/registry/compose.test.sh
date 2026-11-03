@@ -95,6 +95,25 @@ t_has "...says which line is missing" "$(cat "$T_TMP/err")" "<!-- private:regist
 t_exit "an unknown argument is exit 2" 2 sh "$GEN" --nope
 t_exit "a missing core is exit 2" 2 sh "$GEN" --core "$T_TMP/none.md" --private "$T_TMP/nowhere"
 
+t_section "an installed pack and its repo's own fragment are one source, not two (harbor#1433)"
+# `harbor pack install` copies <repo>/harbor-pack/checks.md to <config>/checks.d/<repo-id>.md, and --repos reads the same file again
+PK="$T_TMP/checks.d"; RP="$T_TMP/repo-acme"; mkdir -p "$PK" "$RP/harbor-pack"
+cp "$(frag packsrc "$REG" "$PLAT")/checks.md" "$RP/harbor-pack/checks.md"; cp "$RP/harbor-pack/checks.md" "$PK/acme.md"
+printf 'acme\t%s\n' "$RP" > "$T_TMP/repos.tsv"
+_o="$(sh "$GEN" --core "$CORE" --private "$T_TMP/nowhere" --packs "$PK" --repos "$T_TMP/repos.tsv" 2>"$T_TMP/err")"; _r=$?
+t_eq "the installed pack and the same fragment in its repo compose: exit 0" 0 "$_r"
+t_eq "...each id once" "core-one core-two acme-feed acme-tags" "$(printf '%s\n' "$_o" | ids | tr '\n' ' ' | sed 's/ $//')"
+t_eq "...and each platforms row once" "core-one core-two acme-feed acme-tags" "$(printf '%s\n' "$_o" | pids | tr '\n' ' ' | sed 's/ $//')"
+printf '%s\n' '| `acme-extra` | a row only the repo has | hourly | desktop | r |' > "$T_TMP/x"; printf '%s\n' '| acme-extra | macOS only | w | `launchctl bootout c` |' > "$T_TMP/y"
+sed -e '/^| `acme-tags`/r '"$T_TMP/x" -e '/^| acme-tags/r '"$T_TMP/y" "$RP/harbor-pack/checks.md" > "$T_TMP/changed.md"; cp "$T_TMP/changed.md" "$RP/harbor-pack/checks.md"
+_o="$(sh "$GEN" --core "$CORE" --private "$T_TMP/nowhere" --packs "$PK" --repos "$T_TMP/repos.tsv" 2>"$T_TMP/err")"; _r=$?
+t_eq "a stale pack (the repo's fragment has moved on) is still refused: exit 2" 2 "$_r"
+t_has "...naming the id that stands twice" "$(cat "$T_TMP/err")" "is in $PK/acme.md and in"
+rm -f "$PK/acme.md"
+_o="$(sh "$GEN" --core "$CORE" --private "$T_TMP/nowhere" --packs "$PK" --repos "$T_TMP/repos.tsv" 2>"$T_TMP/err")"; _r=$?
+t_eq "the repo's fragment with no installed pack composes on its own" 0 "$_r"
+t_has "...and carries the repo's own row" "$_o" "acme-extra"
+
 t_section "the real tree: the insertion points are there, and core alone is the registry"
 t_eq "docs/reference/checks.md has one register insertion point" 1 "$(grep -cx '<!-- private:register -->' "$T_ROOT/docs/reference/checks.md")"
 t_eq "docs/reference/checks.md has one platforms insertion point" 1 "$(grep -cx '<!-- private:platforms -->' "$T_ROOT/docs/reference/checks.md")"
