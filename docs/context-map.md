@@ -34,7 +34,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | hook | hooks/ | component | source | living | 47 |
 | skill | skills/ | component | source | living | 40 |
 | fixture | fixtures/ | element | source | living | 438 |
-| registry | registries/ | component | source | versioned | 69 |
+| registry | registries/ | component | source | versioned | 68 |
 | test | tests/ | component | source | living | 507 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 8 |
@@ -56,7 +56,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `bin/` | 254 | 29 | 2 |
 | `commands/` | 5 | 4 | 1 |
 | `context-rules/` | 57 | 6 | 1 |
-| `contracts/` | 107 | 11 | 2 |
+| `contracts/` | 106 | 11 | 2 |
 | `docs/` | 308 | 24 | 9 |
 | `fixtures/` | 438 | 11 | 1 |
 | `hooks/` | 43 | 7 | 1 |
@@ -78,7 +78,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
 | access | control-plane | 12 | 28 | 2 | 6 | 0 | 0 |
-| admission | control-plane | 26 | 87 | 0 | 6 | 0 | 167 |
+| admission | control-plane | 26 | 87 | 0 | 6 | 0 | 172 |
 | agent | control-plane | 1 | 2 | 0 | 8 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
 | audit | control-plane | 8 | 14 | 0 | 10 | 0 | 2 |
@@ -749,7 +749,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `bin/` | 13 |
 | `commands/` | 2 |
 | `context-rules/` | 45 |
-| `contracts/` | 86 |
+| `contracts/` | 85 |
 | `docs/` | 128 |
 | `fixtures/` | 263 |
 | `hooks/` | 29 |

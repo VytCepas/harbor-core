@@ -47,35 +47,53 @@ dev_node_replace() {
   return 1
 }
 
+# The rule that fired is decided by its row (harbor#1030): a warn row asks a person, a block row denies. With no register to read, a
+# rule keeps the tier it held before rows (this is the warning layer, fail-open by design), so the box is never stricter for want of a file.
+_resolve() {
+  case "$RULE" in
+    git-clean-force|git-reset-hard|git-stash-drop|git-reflog-expire|git-worktree-remove-force|device-node-replace) _fb=warn ;;
+    *) _fb=block ;;
+  esac
+  if floor_decide destroy "$RULE" 1 0 "$_fb"; then _dv="$FLOOR_VERDICT"; elif [ "$_fb" = warn ]; then _dv=ask; else _dv=block; fi
+  case "$_dv" in
+    ask) DECISION=ask ;;
+    block) DECISION=deny ;;
+    *) { floor_log_decision destroy "$_dv" "$RULE.$SHAPE" 2>/dev/null || :; } 2>/dev/null || :   # shadow, warn or off: recorded, allowed
+       exit 0 ;;
+  esac
+}
+
 REASON=""; DECISION=""; RULE=""; SHAPE="argv"
 # --- CATASTROPHIC: irreversible device wipe → deny, always ------------------
 if floor_seg_has '^([^:]*/)?diskutil$' '^erase|^secureErase$|^reformat$|^zeroDisk$|^randomDisk$|^partitionDisk$|^deleteContainer$|^deleteVolume'; then
-  DECISION="deny"; RULE="diskutil-wipe"; REASON="diskutil device/volume wipe — IRREVERSIBLE physical destruction"
+  RULE="diskutil-wipe"; REASON="diskutil device/volume wipe — IRREVERSIBLE physical destruction"
 # --- WORK-LOSS: git ops that destroy the working tree or its recovery net → ask
 elif floor_seg_has '^([^:]*/)?git$' '^clean$' '^--force$|^-[a-zA-Z]*f[a-zA-Z]*$'; then
-  DECISION="ask";  RULE="git-clean-force"; REASON="git clean -f permanently deletes untracked/ignored files (no reflog)"
+  RULE="git-clean-force"; REASON="git clean -f permanently deletes untracked/ignored files (no reflog)"
 # git takes any unambiguous prefix of a long flag, and --h is already --hard (harbor#1313).
 elif floor_seg_has '^([^:]*/)?git$' '^reset$' '^--h(a(rd?)?)?$'; then
-  DECISION="ask";  RULE="git-reset-hard"; REASON="git reset --hard discards the working tree"
+  RULE="git-reset-hard"; REASON="git reset --hard discards the working tree"
 elif floor_seg_has '^([^:]*/)?git$' '^stash$' '^clear$|^drop$'; then
-  DECISION="ask";  RULE="git-stash-drop"; REASON="git stash clear/drop deletes stashed work (not in the branch reflog)"
+  RULE="git-stash-drop"; REASON="git stash clear/drop deletes stashed work (not in the branch reflog)"
 elif floor_seg_has '^([^:]*/)?git$' '^reflog$' '^expire$'; then
-  DECISION="ask";  RULE="git-reflog-expire"; REASON="git reflog expire destroys the recovery net reset/branch-D rely on"
+  RULE="git-reflog-expire"; REASON="git reflog expire destroys the recovery net reset/branch-D rely on"
 elif floor_seg_has '^([^:]*/)?git$' '^worktree$' '^remove$' '^--force$|^-[a-zA-Z]*f[a-zA-Z]*$'; then
-  DECISION="ask";  RULE="git-worktree-remove-force"; REASON="git worktree remove --force discards a worktree's uncommitted work"
+  RULE="git-worktree-remove-force"; REASON="git worktree remove --force discards a worktree's uncommitted work"
 elif dev_node_replace; then
-  DECISION="ask";  RULE="device-node-replace"; REASON="mv/install with a raw /dev disk node as an operand replaces or removes the device node (harbor#1313)"
+  RULE="device-node-replace"; REASON="mv/install with a raw /dev disk node as an operand replaces or removes the device node (harbor#1313)"
 fi
+[ -z "$RULE" ] || _resolve
 
 # harbor#306, THE ARGV LAYER WENT BLIND: every rule above is floor_seg_has, so when floor_seg_load yields no table (over FLOOR_MAX_NORM, no awk, admission-normalize.awk missing) a diskutil wipe was a silent allow.
 # The backstop asks only what it can answer without the tokenizer, whether the text names diskutil, and denies; a second copy of the rules would drift. The ask tier is deliberately not covered (git appears in huge commands constantly).
 # jq absent is covered one layer up: admission-hook.sh's jq canary denies before this runs.
-if [ -z "$DECISION" ] && floor_seg_degraded; then
+if [ -z "$RULE" ] && floor_seg_degraded; then
   # floor_bash_targets forks awk and runs only here, so the allow path stays cheap; over the cap it returns the raw command.
   _DT="$(floor_bash_targets "$CMD")"
   if printf '%s' "$_DT" | "$FLOOR_GREP" -iEq -- '(^|[^[:alnum:]_./-])([a-zA-Z0-9_./-]*/)?diskutil([[:space:]]|$)'; then
-    DECISION="deny"; RULE="argv-blind-diskutil"; SHAPE="flat"
+    RULE="argv-blind-diskutil"; SHAPE="flat"
     REASON="the argv tokenizer could not parse this call (over the ${FLOOR_MAX_NORM}-byte normalizer cap, nested past what the normalizer expands, or awk/admission-normalize.awk unavailable) and the command names diskutil, whose erase/reformat/zero verbs are deny-always — so the guard cannot tell an IRREVERSIBLE device wipe from a diskutil list. Re-run it under the cap, or the operator runs it themselves as a \`!\` command, which is not a tool call"
+    _resolve
   fi
 fi
 
@@ -283,11 +301,11 @@ _snap_run() {
   while IFS="$_stab" read -r _sk _sd _sx; do
     case "$_sk" in
       PUSH) if _snap_push "$_sd" "$_sx"; then
-              DECISION="deny"; RULE="git-push-snapshots"; _PLAIN=1
+              RULE="git-push-snapshots"; _PLAIN=1; _resolve
               REASON="this push would publish refs/snapshots/* from $_sd — local-only copies of uncommitted work that can hold untracked secrets such as a .env (harbor#1290). Push named branches instead, or drop the snapshots first: git -C $_sd for-each-ref --format='delete %(refname)' refs/snapshots/ | git -C $_sd update-ref --stdin"
             fi ;;
       BLIND) if [ "$_sd" = push ]; then
-               DECISION="deny"; RULE="git-push-snapshots"; _PLAIN=1
+               RULE="git-push-snapshots"; _PLAIN=1; _resolve
                REASON="this push names --mirror or a refs/* refspec, and the guard cannot tell which repository it runs in ($_sx), so it cannot rule out publishing refs/snapshots/* — local-only copies of uncommitted work (harbor#1290). Run it with git -C <absolute path>, or push named branches"
              fi ;;
     esac
@@ -328,6 +346,8 @@ if [ "$DECISION" = "ask" ]; then
   if [ "${HARBOR_ADMISSION_DESTROY_POSTURE:-ask}" = "deny" ]; then DECISION="deny"
   elif floor_no_human; then DECISION="deny"; _NHNOTE=" [no-human context — an ask would auto-approve here, so escalated to deny]"
   fi
+  # the escalation is asked of the function too, so the stamp the log and the reader see says deny
+  [ "$DECISION" != deny ] || floor_decide destroy "$RULE" 1 1 "$_fb" || :
 fi
 
 # The tail is per shape: "diskutil list/info are never gated" is false for the degraded block.

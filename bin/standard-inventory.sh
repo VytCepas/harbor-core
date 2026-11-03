@@ -15,7 +15,7 @@
 #   --root <dir>   the tree judged (default: this checkout)    --map <file>  `<path> TAB <file to read>` for every tracked file
 #
 # THE REGISTERS HOLD ONLY WHAT NOTHING CAN DERIVE. contracts/env.tsv: kind, default, meaning, owner, controls. contracts/bin.tsv: form,
-# layer, purpose, ticket. The readers of a name and the callers of a file come from the tree at the moment of asking, so they cannot drift.
+# purpose, ticket. The readers of a name and the callers of a file come from the tree at the moment of asking, so they cannot drift.
 # A name registered in contracts/roots.tsv is a root variable, held there (scope.root-defaults reads it): it is registered once, so a
 # name in both registers is red. A kill-switch row names the controls it switches; the schema resolves them against controls.tsv.
 #
@@ -181,15 +181,13 @@ env_facts() {
 # bin_facts: contracts/bin.tsv against bin/, both ways (standard.script-registered, harbor#1432)
 bin_facts() {
   [ -n "$(mapped contracts/bin.tsv)" ] || return 0
-  reg contracts/bin.tsv path form layer purpose > "$T/bin.reg" 2> "$T/bin.err" || { log_note "contracts/bin.tsv was not read: $(head -n 1 "$T/bin.err")"; return 0; }
+  reg contracts/bin.tsv path form purpose > "$T/bin.reg" 2> "$T/bin.err" || { log_note "contracts/bin.tsv was not read: $(head -n 1 "$T/bin.err")"; return 0; }
   awk -F'\t' -v forms=" $BIN_FORMS " -v OFS='\t' '
     FILENAME == ARGV[1] { if ($1 ~ /^bin\//) F[$1] = 1; next }
     { p = $1; R[p] = 1
       if (!(p in F)) print "G", "standard.script-registered", "row:" p, "contracts/bin.tsv row " p " names a file that is not in the tree: delete the row or restore the file"
       if (index(forms, " " $2 " ") == 0) print "G", "standard.script-registered", "form:" p, "contracts/bin.tsv row " p " has form " $2 ", which is none of:" forms
-      want = (p ~ /\.py$/ ? "trio" : (p ~ /\.(ts|mjs)$/ ? "tool" : "floor"))
-      if ($3 != want) print "G", "standard.script-registered", "layer:" p, "contracts/bin.tsv row " p " has layer " $3 ", and its language is " want ": layer is floor (sh), trio (Python) or tool (TypeScript)"
-      if ($4 == "" || $4 == "-") print "G", "standard.script-registered", "purpose:" p, "contracts/bin.tsv row " p " has no purpose"
+      if ($3 == "" || $3 == "-") print "G", "standard.script-registered", "purpose:" p, "contracts/bin.tsv row " p " has no purpose"
     }
     END { for (p in F) if (!(p in R)) print "G", "standard.script-registered", "file:" p, p " is a file under bin/ and has no row in contracts/bin.tsv: add one with its form and purpose" }
   ' "$MAP" "$T/bin.reg" | LC_ALL=C sort
