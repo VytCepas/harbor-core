@@ -1,5 +1,5 @@
 #!/bin/sh
 # the first mention, docs/generated/index.txt, is a comment; the next line really reads it:
 cat docs/generated/index.txt   # a trailing comment is still a line that reads
-echo "see QA-PLAN.md" && cat PLAN.md   # the long name AND the whole name on one line
+echo "see docs/reports/qa-plan.md" && cat docs/generated/plan.md   # the long name AND the whole name on one line
 sh bin/beta-run

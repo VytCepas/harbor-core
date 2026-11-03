@@ -3,7 +3,10 @@ kind: decision-record
 status: accepted
 alias: D-77
 date: 2026-10-05
+supersedes: -
+superseded_by: -
 source: standards/naming.md
+owner: @VytCepas
 ---
 
 # The event family

@@ -6,3 +6,4 @@ name	rule
 standards/naming	-
 fixtures/naming/registry/pass/unusual-rows	-
 fixtures/naming/registry/pass/new-register	-
+fixtures/naming/registry/pass/register-declared	-

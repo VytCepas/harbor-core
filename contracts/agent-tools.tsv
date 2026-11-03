@@ -1,0 +1,56 @@
+# agent-tools.tsv (harbor#1010) - the USE WHEN and the exact invocation of every agent-facing `harbor` verb and bin/ tool; bin/skill-catalog.sh renders them into the skill catalog.
+# Why a data file: the verb table in bin/harbor and the agent-facing marks in contracts/cli.md say WHAT a thing is; a session arrives with a SITUATION, and that sentence is the only thing it can search by. The catalog is generated from this file and is the one route to a tool no listing announces.
+# Coverage is checked both ways (skill-catalog.sh --coverage; lint skill.catalog-covers-tools): every verb in bin/harbor and every script contracts/cli.md marks `**Agent-facing.**` has a row here, and every row names a verb or bin/ script that exists and appears in its own invocation.
+# Columns, tab-separated, one header row. kind is verb or tool. name is a verb (or `verb subverb`, e.g. `event ci`) or a bin/ file name. use_when is one sentence, no tab. invocation is the exact command; run bin/ tools from the harbor checkout (~/port/harbor) or your worktree of it. Row order is the table order. Names no client, company or account.
+kind	name	use_when	invocation
+verb	status	you need the generated counts, or the obligations ledger (open PRs, approvals, overdue items)	harbor status [--json]; harbor status obligations --json
+verb	doctor	a dependency may be missing and you need to know what breaks without it	harbor doctor [--json]
+verb	verify	you must know whether the security floor is on for this box	harbor verify
+verb	check	you must know whether the installed box works (floor, doctor, shims, roots), read-only	harbor check --live
+verb	lint	you changed anything in this repo and want the conventions gate before you push	harbor lint
+verb	fresh	a document or working-context file may be stale	harbor fresh [--open]
+verb	cite	a citation in docs/reference/citations.md may have drifted (needs network)	harbor cite
+verb	observe	you want to see what the guards decided, and why a command was blocked	harbor observe
+verb	dash	you want the state of the box as a page to open	harbor dash [--open]
+verb	deploy	you changed something that ships to the config dir and need it installed; plan first	harbor deploy --live (plan); harbor deploy --apply --live (install)
+verb	install	you need the security floor installed or reinstalled through deploy	harbor install --live; harbor install --apply --live
+verb	uninstall	you need the floor removed through deploy	harbor uninstall --live; harbor uninstall --apply --live
+verb	restore	an install broke the config dir and you need the last snapshot back	harbor restore --live (dry run); harbor restore --apply --live
+verb	skills	you added or changed a skill or command and need it installed on the box	harbor skills --live; harbor skills --apply --live
+verb	inject	you added or changed an injection rule (context-rules/) and need it live	harbor inject --live; harbor inject --apply --live
+verb	constitution	policy/constitution.md changed and the box CLAUDE.md must follow	harbor constitution --live; harbor constitution --apply --live
+verb	browser	you need a browser and do not know which backend to use	harbor browser route
+verb	chrome	you must act in the operator's logged-in Chrome (a console, a dashboard behind a sign-in)	harbor chrome attach; harbor chrome detach
+verb	refs	you are about to rename or delete a path or an id and need every place that cites it	harbor refs <path-or-id>
+verb	find	you need the scripts, tests, checks and docs a family or system owns	harbor find <term>
+verb	tree	you need the layered map of systems, families and components	harbor tree
+verb	event	you need the event bus: emit, wait for, or read events	harbor event tail 20; harbor event emit <kind> <subject>
+verb	event ci	you are waiting on a PR's CI: use this instead of polling gh pr checks	harbor event ci <owner/repo>#<n> --timeout 1800 (run in the background)
+verb	event wait	you wait for any other event on the bus (a PR opened, a job done)	harbor event wait '<grep -E pattern>' --timeout N
+verb	ui	you want the live state as a localhost console	harbor ui
+verb	scope	you are setting up a fresh machine's PORT_ROOT and private layer	harbor scope install --dry-run
+verb	access	you need to know which identity may reach a system, or register one	harbor access list; harbor access has <id>
+verb	pack	a workload repo ships a harbor-pack/ that must be installed box-wide or removed	harbor pack list; harbor pack install <repo-id> --live
+verb	merge-stack	several PRs must merge in order, each on its own green CI	harbor merge-stack check <plan>
+verb	ship	opted-in fleet repos must be merged and deployed unattended	harbor ship night [--plan <file>]
+verb	repo	you create a new governed repo or adopt a checkout into the registry (scaffold, register, route memory, plan labels)	harbor repo new <name> --kind <repo-kind> --dry-run; harbor repo list; harbor repo audit <name>
+tool	ci-wait.sh	you wait on a PR's CI verdict (never poll gh pr checks, gh run watch or gh pr view in a loop)	sh ~/port/harbor/bin/ci-wait.sh <owner/repo>#<n> --timeout 1800 (run in the background; exit 0 green, 1 red, 3 still running)
+tool	wait-for	you wait on an EXTERNAL condition (a port, a cloud build, a data sync) and need a deadline and a diagnosis	wait-for -t 900 -i 30 -n <label> -- <predicate command>
+tool	gate-pr-wait.sh	you wait on a PR for the first thing that needs you: a review thread, a failed check or green	sh ~/port/harbor/bin/gate-pr-wait.sh <owner/repo> <pr> --timeout 1800
+tool	gate-pr-plan.sh	you must hand a PR over and need the steps to land it, derived from the live repo	sh ~/port/harbor/bin/gate-pr-plan.sh --handover <owner/repo>#<n>
+tool	gate-merge-check.sh	you are about to merge a PR and want to know whether it may be merged	sh ~/port/harbor/bin/gate-merge-check.sh <pr>
+tool	gate-push.sh	you push a branch: verify first, then push in seconds (a plain git push dies with HTTP 401 under load)	sh ~/port/harbor/bin/gate-push.sh -u origin <branch>
+tool	test-suite-run.sh	you run suites: this carries the idle and hard timeouts and the CPU governor, a suite run by hand has neither	sh ~/port/harbor/bin/test-suite-run.sh --select [<suite-or-path>...]
+tool	test-suite-select.sh	you want to know which suites your changeset must run, and why	sh ~/port/harbor/bin/test-suite-select.sh --list
+tool	doc-fresh-verify.sh	you want to know in seconds whether every generated file is current, and the fix for a stale one	sh ~/port/harbor/bin/doc-fresh-verify.sh
+tool	gate-register-derive.sh	pre-push says the protected-paths register is stale	sh ~/port/harbor/bin/gate-register-derive.sh --write
+tool	gate-codeowners.sh	pre-push says .github/CODEOWNERS is stale	sh ~/port/harbor/bin/gate-codeowners.sh --write
+tool	standard-vendor.sh	pre-push says the vendored naming package differs from the registers	sh ~/port/harbor/bin/standard-vendor.sh .
+tool	skill-catalog.sh	you added or re-described a skill, or registered an agent-facing tool, and the catalog must be regenerated	sh ~/port/harbor/bin/skill-catalog.sh
+tool	lint-name.sh	you name a file, script, env var, rule id or skill and want it judged before you commit	sh ~/port/harbor/bin/lint-name.sh --check <surface> <name>
+tool	lint-name-ratchet.sh	you added a path or an env name and want to know whether it is a new naming finding	sh ~/port/harbor/bin/lint-name-ratchet.sh
+tool	lint-pr.sh	you wrote a PR title, body or branch name and want it judged against the git convention	sh ~/port/harbor/bin/lint-pr.sh --title <t> --body-file <f> --branch <b>
+tool	worktree.sh	you start a task and need a worktree of your own, or you finish one	sh ~/port/harbor/bin/worktree.sh new <branch>; sh ~/port/harbor/bin/worktree.sh list
+tool	context-peers.sh	you need to know which other sessions are live in this working tree	sh ~/port/harbor/bin/context-peers.sh --repo <dir>
+tool	scope-roots.sh	you need a governed repo's checkout path, or a named root, without guessing it	sh ~/port/harbor/bin/scope-roots.sh --repo <id>; sh ~/port/harbor/bin/scope-roots.sh --get <VAR>
+tool	memory.sh	you need what the notes store already knows about a subject before you start	memory <query>

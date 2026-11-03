@@ -10,32 +10,38 @@
 #                                                 `path.test` is the test surface under its second name and `case` is
 #                                                 path judged for name.case alone (surfaces.tsv, view); `repo-kind`
 #                                                 takes a directory: its .agents/config.yaml names the kind, and the
-#                                                 entries repo-kinds.tsv requires of it must be there
+#                                                 entries repo-kinds.tsv requires of it must be there; `overlay` takes a
+#                                                 directory and judges the repo overlay at its root (below)
 #   sh bin/lint-name.sh --self-test               every fail fixture goes red, every pass stays green, every rule
 #                                                 goes red on every surface controls.tsv declares for it, and every
 #                                                 grammar surface's example survives parse then render unchanged
 #   sh bin/lint-name.sh --render <surface> k=v..  a tuple rendered by surfaces.tsv's grammar, e.g.
 #                                                 --render bin family=admission object=bash ext=sh
 #   sh bin/lint-name.sh --parse <surface> <name>  a name parsed back into its slots, one k=v per line
-#   sh bin/lint-name.sh --gen <view>              glossary | naming-guide | cli-tree | labels | vale | exemptions,
+#   sh bin/lint-name.sh --gen <view>              glossary | naming-guide | cli-tree | labels | vale | exemptions | vendors |
+#                                                 issue-taxonomy,
 #                                                 written under build/ (untracked)
 #   sh bin/lint-name.sh --list                    every lint rule id, its mode and title: controls.tsv's, then
 #                                                 bin/lint-conventions.sh's (harbor#957), one list with no id twice
 #   sh bin/lint-name.sh --help
 #
 #   --format findings   also print one `<A|V> TAB <rule> TAB <subject>` record per finding on stdout
-#   --root <dir>        the tree to judge (default: this checkout)
-#   --registry <dir>    the registry (default: <root>/standards/naming)
-#   --base <ref>        the base for --changed, --added and name.exemption-grow (default: $HARBOR_BASE or origin/main)
-#   --today YYYY-MM-DD  the date alias and exemption expiry is judged against (default: today in UTC, D-51)
+#   --root <dir>        the tree to judge (default: this checkout; a vendored copy judges the repo that carries it)
+#   --registry <dir>    the registry (default: <root>/standards/naming; a vendored copy's own registry/ when the root has none).
+#                       A root with no standards/naming/ is a workload: the rules that judge the registry itself stay silent (harbor#1415)
+#   --base <ref>        the base for --changed, --added and name.exemption-grow (default: $HARBOR_CI_BASE or origin/main)
+#   --today YYYY-MM-DD  the date alias and exemption expiry is judged against (default: $HARBOR_LINT_TODAY, else today in UTC, D-51)
 #   --exemptions-base <file>   the base exemptions.tsv for name.exemption-grow (default: read from git)
 #   HARBOR_SCOPE_PRIVATE=<dir>  the private layer whose terms.tsv overlays client and system terms (D-85; default: $PORT_ROOT/harbor-private)
+#   <root>/naming-words.tsv, <root>/naming-families.tsv   the repo overlay (harbor#967): a repo's own words and families,
+#                               in words.tsv's and terms.tsv's row shape, read from the judged root and never from a root
+#                               that holds standards/naming/ (standards/naming.md §14)
 #
 #   exit (D-49) 0 pass, warn and shadow findings allowed · 1 a block finding, or a failed self-test · 2 usage · 3 unchecked
 #   LINT_REDLOG=<file> appends the id of every rule that goes red, as bin/lint-conventions.sh does.
 #   mode (D-29, D-64): block fails the run, warn prints, shadow only records (LINT_REDLOG and the count).
 #
-# DELIBERATELY ONE FILE (DOCTRINE/modularity.md): one POSIX sh + awk program so the scaffolder can
+# DELIBERATELY ONE FILE (docs/explanation/modularity.md): one POSIX sh + awk program so the scaffolder can
 # vendor it into any repo with no toolchain (standards/naming.md §10.2). The awk does the judging;
 # the sh around it only collects names and formats. Every rule is a controls.tsv row, every term a
 # terms.tsv row and every surface's grammar a surfaces.tsv cell: nothing about the vocabulary or the
@@ -47,17 +53,18 @@
 # applied, so the lint cannot be talked out of judging itself.
 set -eu
 
-# ${0%/*}, not dirname: a hook runs this (inject.d/box/name-note.sh), and a failed fork would make HERE the cwd (harbor#810).
+# ${0%/*}, not dirname: a hook runs this (context-rules/user/name-note.sh), and a failed fork would make HERE the cwd (harbor#810).
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH='' cd -- "$HERE" && pwd)"
 SELF="$HERE/${0##*/}"
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2   # stdout carries --check, --format findings and --gen output; the log goes to stderr
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 log_init lint-name
 
 usage() { awk 'NR < 2 { next } /^# DELIBERATELY/ || !/^#/ { exit } { sub(/^# ?/, ""); print }' "$SELF"; }
 
-ACTION=tree; FORMAT=""; ROOT=""; REG=""; BASE="${HARBOR_BASE:-origin/main}"; TODAY=""; EXBASE=""
+ACTION=tree; FORMAT=""; ROOT=""; REG=""; BASE="${HARBOR_CI_BASE:-origin/main}"; TODAY=""; EXBASE=""
 UNCHECKED=3   # D-49: pass 0, fail 1, usage 2, unchecked 3
 SURFACE=""; NAME=""; VIEW=""; SLOTS=""
 while [ $# -gt 0 ]; do
@@ -97,10 +104,15 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+# A vendored copy (vendor/naming/, MANIFEST.tsv beside it) judges the repo that carries it, with the registry beside it
+# (harbor#967, #1415): bare, it finds both; harbor's own bin/ has neither file, so its defaults are unchanged.
+VENDORED=0; [ ! -f "$HERE/MANIFEST.tsv" ] || [ ! -f "$HERE/registry/registers.tsv" ] || VENDORED=1
+if [ "$VENDORED" = 1 ] && [ -z "$ROOT" ]; then ROOT="$HERE/../.."; fi
 ROOT="${ROOT:-$(CDPATH='' cd -- "$HERE/.." && pwd)}"
 ROOT="$(CDPATH='' cd -- "$ROOT" 2>/dev/null && pwd)" || { log_fail "no such root: $ROOT"; log_fix "sh $SELF --root <dir>"; log_end || :; exit 2; }
+if [ -z "$REG" ] && [ "$VENDORED" = 1 ] && [ ! -f "$ROOT/standards/naming/registers.tsv" ]; then REG="$HERE/registry"; fi
 REG="${REG:-$ROOT/standards/naming}"
-TODAY="${TODAY:-$(date -u +%Y-%m-%d)}"   # D-51: UTC for every date
+TODAY="${TODAY:-${HARBOR_LINT_TODAY:-$(date -u +%Y-%m-%d)}}"   # D-51: UTC for every date; the env pins it for a caller that cannot pass --today
 case "$TODAY" in [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;; *)
   log_fail "--today is not YYYY-MM-DD: $TODAY"; log_fix "sh $SELF --today 2026-10-04"; log_end || :; exit 2 ;;
 esac
@@ -137,7 +149,39 @@ PRIV="${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}/terms.tsv
 { [ "$ACTION" != self-test ] && [ -f "$PRIV" ]; } || PRIV=""
 [ "$ACTION" != self-test ] || { HARBOR_SCOPE_PRIVATE="$T/no-private"; export HARBOR_SCOPE_PRIVATE; }
 [ -z "$PRIV" ] || [ -r "$PRIV" ] || { log_fail "the private overlay $PRIV is not readable — nothing was judged"; log_fix "ls -l $PRIV"; log_end || :; exit "$UNCHECKED"; }
+# A pack's system terms (harbor#950): <config dir>/terms.d/<repo-id>.tsv, written by bin/pack.sh install, read with the
+# private overlay's rules and class `system` only, so a workload registers its own systems and core names none.
+PACKT=""
+# --self-test's fixture runs are children of this one: they inherit an empty config dir, as they inherit no private root.
+[ "$ACTION" != self-test ] || { CLAUDE_CONFIG_DIR="$T/no-config"; export CLAUDE_CONFIG_DIR; }
+if [ "$ACTION" != self-test ]; then
+  for _pt in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/terms.d/*.tsv; do
+    [ -f "$_pt" ] || continue
+    case "$_pt" in *[[:space:]]*) log_fail "a pack overlay path holds whitespace: $_pt — nothing was judged"; log_nofix "bin/lint-name.sh"; log_end || :; exit "$UNCHECKED" ;; esac
+    [ -r "$_pt" ] || { log_fail "the pack overlay $_pt is not readable — nothing was judged"; log_fix "ls -l $_pt"; log_end || :; exit "$UNCHECKED"; }
+    PACKT="$PACKT${PACKT:+ }$_pt"
+  done
+fi
+# The repo overlay (harbor#967): a repo outside harbor registers its own words and families at the root it is judged
+# from, so it stops exempting its domain names and core stays free of them. A root holding standards/naming/ registers
+# there instead: its overlay is refused, never read. Absent is fine; present but unreadable is UNCHECKED.
+OVDIR="$ROOT"
+if [ "$ACTION" = check ] && [ "$SURFACE" = overlay ]; then
+  case "$NAME" in /*) OVDIR="$NAME" ;; *) OVDIR="$ROOT/$NAME" ;; esac
+  [ -d "$OVDIR" ] || { log_fail "no such directory: $NAME"; log_fix "sh $SELF --check overlay <dir>, the root whose naming-words.tsv and naming-families.tsv are judged"; log_end || :; exit 2; }
+fi
+OVHOME=0; [ ! -f "$OVDIR/standards/naming/registers.tsv" ] || OVHOME=1
+OVW=""; OVF=""
+for _ov in naming-words.tsv naming-families.tsv; do
+  [ -e "$OVDIR/$_ov" ] || continue
+  { [ -f "$OVDIR/$_ov" ] && [ -r "$OVDIR/$_ov" ]; } || { log_fail "the repo overlay $OVDIR/$_ov is not a readable file — nothing was judged"; log_fix "ls -l $OVDIR/$_ov"; log_end || :; exit "$UNCHECKED"; }
+  if [ "$_ov" = naming-words.tsv ]; then OVW="$OVDIR/$_ov"; else OVF="$OVDIR/$_ov"; fi
+done
 REL_REG="${REG#"$ROOT"/}"
+# A root with no standards/naming/ of its own is judged by harbor's registry, not the owner of it: the registry-owner rules
+# (regrule) judge harbor's controls and exemptions, so a workload run leaves them to harbor (harbor#967, #1415).
+FOREIGN=0
+case "$ACTION" in tree|changed|added) [ -f "$ROOT/standards/naming/registers.tsv" ] || FOREIGN=1 ;; esac
 # THE FILES THIS RUN READS ARE registers.tsv's `file` column (harbor#950), not a list written here: terms.tsv
 # first, because every other file's classes are checked against it, then each named file once in row order.
 # A register is its file plus its row, so a new one needs no edit to this file. Two guards keep that honest:
@@ -148,7 +192,7 @@ REL_REG="${REG#"$ROOT"/}"
 _rg="$(reg_file registers.tsv)"
 [ -r "$_rg" ] || { log_fail "the registry has no readable registers.tsv — nothing was judged"; log_fix "ls $REG"; log_end || :; exit "$UNCHECKED"; }
 FILES="$(awk -F'\t' '/^#/ || /^[ \t]*$/ { next } !h++ { next } $2 ~ /^[a-z][a-z0-9-]*\.tsv$/ && !s[$2]++ { printf "%s ", $2 }' "$_rg")"
-for _f in terms.tsv aliases.tsv exemptions.tsv controls.tsv surfaces.tsv kinds.tsv repo-kinds.tsv registers.tsv; do
+for _f in terms.tsv aliases.tsv exemptions.tsv controls.tsv surfaces.tsv kinds.tsv repo-kinds.tsv registers.tsv renames.tsv words.tsv; do
   case " $FILES " in *" $_f "*) ;; *)
     log_fail "registers.tsv has no row naming $_f, which the judge reads — nothing was judged"
     log_fix "add its row to $REL_REG/registers.tsv (id, file, select, census, note)"; log_end || :; exit "$UNCHECKED" ;;
@@ -182,22 +226,23 @@ function selfpath(s) {
 # An overlay finding is always block: a malformed private layer must not read as clean, even under --check (D-85).
 function emitb(rule, subject, msg) { if ((rule SUBSEP subject) in DONE) return; DONE[rule SUBSEP subject] = 1; print "F", rule, "block", subject, msg }
 function emitw(rule, subject, msg) { if ((rule SUBSEP subject) in DONE) return; DONE[rule SUBSEP subject] = 1; print "F", rule, "warn", subject, msg }
-function regrule(r) { return r ~ /^name\.(registry-|exemption-|alias-expired|control-|surface-)/ }
+function regrule(r) { return r ~ /^name\.(registry-|exemption-|alias-expired|control-|surface-)/ || r ~ /^standard\.(register-declared|reference-resolves|seam-registered|version-registered|env-registered|script-registered)$/ }
 function emit(rule, subject, msg,   k, e) {
   if (mode == "check" && regrule(rule) && surface != "registry") return
   if (mode == "registry" && !regrule(rule)) return
-  if (mode == "added" && regrule(rule)) return   # --added judges the names a branch brings in, not the registry (a tree run does that)
+  if ((mode == "added" || (foreign == 1 && rule !~ /^standard\./)) && regrule(rule)) return   # --added judges names a branch brings in, a foreign root leaves the registry to harbor, but its own registers are judged (harbor#1424)
   if (mode == "check" && (surface in VIEWR) && VIEWR[surface] != "" && index("," VIEWR[surface] ",", "," rule ",") == 0) return   # a view of a surface for some rules only
   k = rule SUBSEP subject
   if (k in DONE) return
   DONE[k] = 1
   if (!regrule(rule)) { e = exempt(rule, subject); if (e != "") { USED[e] = 1; NSUP++; return } }
-  print "F", rule, ((rule in MODE) ? MODE[rule] : "warn"), subject, msg
+  print "F", rule, ((FORCEWARN == 1) ? "warn" : (rule in MODE) ? MODE[rule] : "warn"), subject, msg
 }
 function exempt(rule, subject,   k, i, b, b2) {
   if (selfpath(subject)) return ""
   k = rule SUBSEP subject
   if (k in EXACT) return EXACT[k]
+  if (subject in RENWIN) return RENWIN[subject]   # an env name in its dual-read window (renames.tsv, harbor#961 W5)
   for (i = 1; i <= NPRE; i++) if ((PRER[i] == rule || PRER[i] == "*") && index(subject, PRES[i]) == 1) return PREI[i]
   b = base(subject); b2 = b; sub(/\.tmpl$/, "", b2)
   for (i = 1; i <= NGLOB; i++) if ((GLR[i] == rule || GLR[i] == "*") && (b ~ GLB[i] || b2 ~ GLB[i])) return GLI[i]
@@ -218,11 +263,49 @@ function alias_check(subj, W, from, n, ctx,   a, k, j, m, ok) {
       if (!ok) continue
       if (AKD[a] == "abbreviation")
         emit("name.abbreviation", subj, q(a) " is an unregistered abbreviation: spell out " q(ATERM[a]) " (D-18)")
+      else if (AKD[a] == "spelling")
+        emit("name.alias", subj, q(a) " is a UK spelling: write " q(ATERM[a]) ", the standard is US English (D-16)")
       else if (!allowed(a, ctx))
         emit("name.alias", subj, q(a) " is a " AKD[a] " alias" (ATERM[a] == "-" ? "" : " of " q(ATERM[a])) ", not allowed on " ctx " (D-38, standards/naming/aliases.tsv)")
       break
     }
   }
+}
+# A word of a name is known when it is a term, a word of a multi-word term, an alias (judged by its own rule),
+# a registered word, a private-overlay term or a repo-overlay word or family. KW is empty only if words.tsv is absent,
+# and then nothing is flagged.
+function twload(   k, j, nwk, WK) {   # TW: the words of every term; TWC: of the core terms only
+  if (!NKW_LOADED) { for (k in T) { nwk = split(k, WK, "-"); for (j = 1; j <= nwk; j++) { TW[WK[j]] = 1; if (!(k in OVT)) TWC[WK[j]] = 1 } }; NKW_LOADED = 1 }
+}
+function wordknown(w) {
+  twload()
+  return (length(w) < 2) || (w in KW) || (w in T) || (w in TW) || (w in AL) || (w in OVT) || (w in RW) || (!HAVEWORDS)
+}
+# A core term: one terms.tsv names, not the private overlay, so a repo overlay is judged the same on every box.
+function coreterm(w) { return (w in T) && !(w in OVT) }
+# One row of the repo overlay (harbor#967), at f line FNR: registers the row, or emits why it does not.
+function overlay_row(f, ofn, ofam,   id, sj, i, cl, st, df) {
+  id = $1; sj = "overlay:" ofn ":" id
+  if (NF != HDR[f]) { emitb("name.overlay-shape", "overlay:" ofn ":line" FNR, ofn " line " FNR " has " NF " columns, the header has " HDR[f]); return }
+  if (id !~ /^[a-z][a-z0-9]*$/) { emitb("name.overlay-shape", sj, ofn " line " FNR ": " q(id) " is not one lowercase word, so no name could carry it (§6.3)"); return }
+  if (id in RSEEN) { emitb("name.overlay-shape", sj, ofn " line " FNR " repeats " q(id) " of " RSEEN[id] ": one row per word"); return }
+  RSEEN[id] = ofn " line " FNR
+  if (id in AL) { emitb("name.overlay-shadow", sj, q(id) " is a harbor " AKD[id] " alias" (ATERM[id] == "-" ? "" : " of " q(ATERM[id])) ": an overlay cannot register it (aliases.tsv)"); return }
+  twload()
+  if (ofam) {
+    cl = col(f, "class"); st = col(f, "stability"); df = col(f, "definition")
+    if (cl != "family") { emitb("name.overlay-shape", sj, ofn " line " FNR ": class " q(cl) " is not family: the overlay adds families only"); return }
+    if (st != "experimental" && st != "stable" && st != "deprecated") { emitb("name.overlay-shape", sj, ofn " line " FNR ": stability " q(st) " is not experimental, stable or deprecated (D-19)"); return }
+    if (df == "" || df == "-") { emitb("name.overlay-shape", sj, ofn " line " FNR ": a family says what it holds: the definition is empty"); return }
+    # a word harbor parses into a slot keeps that one meaning: a family that is also a verb, a domain or a system is two parses (§3)
+    for (i = 1; i <= 4; i++) if (coreterm(id) && ((OGRAM[i] SUBSEP id) in IS)) {
+      emitb("name.overlay-shadow", sj, q(id) " is a harbor " OGRAM[i] (OGRAM[i] == "family" ? ": the overlay cannot redefine it, use it as it is" : ": a family of the same word would parse two ways (§3)")); return }
+    IS["family", id] = 1; RW[id] = 1; return
+  }
+  if (coreterm(id)) { emitb("name.overlay-shadow", sj, q(id) " is already a harbor term (terms.tsv): delete the row"); return }
+  if (id in KW) { emitb("name.overlay-shadow", sj, q(id) " is already in the harbor words.tsv: delete the row"); return }
+  if (id in TWC) { emitb("name.overlay-shadow", sj, q(id) " is already a word of a harbor term (terms.tsv): delete the row"); return }
+  RW[id] = 1
 }
 # The words of one name: the date prefix and a decision-record number are not words (§6.3).
 function word_check(subj, W, n, path,   i, start) {
@@ -236,6 +319,8 @@ function word_check(subj, W, n, path,   i, start) {
   for (i = start; i <= n; i++) {
     if (W[i] == "") { emit("name.word", subj, "an empty word: a leading, trailing or doubled separator (§6.3)"); continue }
     if (W[i] ~ /^[0-9]/) emit("name.word", subj, "the word " q(W[i]) " starts with a digit (§6.3)")
+    else if (W[i] != "" && W[i] !~ /[0-9]/ && !wordknown(W[i]))
+      emit("name.word-unregistered", subj, q(W[i]) " is in no registry: a name is built of terms and registered English words, so spell it out or add a row to standards/naming/words.tsv (D-18)")
   }
   return start
 }
@@ -396,6 +481,55 @@ function trender(sid, V,   n, i, g, out, nm, v, ok, k, J, part) {
   }
   return out
 }
+# ── harbor#1259: the validators, rendered from the same compiled grammar (tcompile) and term sets (slotok) ──
+# A validator is an allowlist of shape and family, never a second parser: a registered slot is the words slotok
+# accepts (aliases allowed on the surface included), a free slot is lowercase words joined by the grammar joiner.
+# Vocabulary (the object slot, D-38) is not in it; the lint denylists and alias rules still judge that.
+function vlit(s,   o, i, c) {   # a literal, escaped for an ERE outside a bracket expression
+  o = ""
+  for (i = 1; i <= length(s); i++) { c = substr(s, i, 1); o = o (index("\\^$.[]|()*+?{}", c) ? "\\" c : c) }
+  return o
+}
+function valts(sid, cls, up,   k, KP, n, m, i, j, w, t, ctx, J, out, seen) {   # the words of a slot class, as the surface spells them
+  J = TJ[sid]; ctx = (sid == "env") ? "env-prefix" : sid; n = 0; m = 0
+  delete WL; delete VW; delete seen
+  for (k in IS) {
+    split(k, KP, SUBSEP)
+    if ((KP[1] == "family" && (cls == "family" || cls == "family|domain")) || (KP[1] == "domain" && cls == "family|domain") \
+        || (KP[1] == "verb" && cls == "verb") || (KP[1] == "system" && cls == "system")) WL[++n] = KP[2]
+  }
+  if (cls == "system") for (k in AL) if (allowed(k, ctx)) WL[++n] = k
+  for (i = 1; i <= n; i++) {
+    w = WL[i]; gsub(/-/, J, w); if (up) w = toupper(w)
+    if (!(w in seen)) { seen[w] = 1; VW[++m] = w }
+  }
+  if (m == 0) { VERR = "no term of class " cls " (the grammar of " sid " needs one)"; return "" }
+  for (i = 2; i <= m; i++) for (j = i; j > 1 && VW[j - 1] > VW[j]; j--) { t = VW[j]; VW[j] = VW[j - 1]; VW[j - 1] = t }
+  out = ""; for (i = 1; i <= m; i++) out = out (i > 1 ? "|" : "") vlit(VW[i])
+  return "(" out ")"
+}
+function vslot(sid, nm, up,   J, w) {   # one slot: its words, or a free word-run joined by the surface joiner
+  J = TJ[sid]
+  if (slotclass(nm) != "free") return valts(sid, slotclass(nm), up)
+  w = up ? "[A-Z][A-Z0-9]*" : "[a-z][a-z0-9]*"
+  return (nm == "ext") ? w : w "(" J w ")*"
+}
+function vtok(sid, i) {
+  if (TK[sid, i] == "L") return vlit(TV[sid, i])
+  return vslot(sid, tolower(TV[sid, i]), TV[sid, i] == toupper(TV[sid, i]))
+}
+function vre(sid, from, to,   i, g, k, out, part) {   # tokens from..to; an optional group is (..)? as the template spells it
+  out = ""
+  for (i = from; i <= to; i++) {
+    if (TO[sid, i]) {
+      g = i; while (g + 1 <= to && TO[sid, g + 1] == TO[sid, i]) g++
+      part = ""; for (k = i; k <= g; k++) part = part vtok(sid, k)
+      out = out "(" part ")?"; i = g; continue
+    }
+    out = out vtok(sid, i)
+  }
+  return out
+}
 function dfs(u,   n, D, i, v) {
   COLOR[u] = 1
   n = split(DEP[u], D, ",")
@@ -445,6 +579,46 @@ function mcp_check(subj, name,   r) {
   if (name !~ /^mcp__[a-z][a-z0-9_]*__[a-z][a-z0-9_]*$/) emit(SRULE["mcp-tool"], subj, "an MCP tool is mcp__<server>__<tool>, lowercase snake: " q(name) " (harbor#1301)")
   r = tmatch("mcp-tool", name, "")
   if (r != "") emit(SRULE["mcp-tool"], subj, shape_msg("mcp-tool", r))
+}
+# harbor#957: a release tag is v<semver> and its release title is the tag; no other tag shape names a release.
+function release_check(subj, name) {
+  if (name !~ /^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/)
+    emit("name.release-tag", subj, "a release tag is v<major>.<minor>.<patch> (SemVer 2.0), and the release title is the tag: " q(name) " (harbor#957)")
+}
+# harbor#1001: one field grammar for a JSON key, a registry column and a config key: snake; an instant ends _at, a day _date,
+# a duration _s or _ms, a size _bytes, an id _id, a boolean starts is_ or has_. Retired spellings are listed.
+function field_check(subj, name,   bad, last) {
+  if (name !~ /^[a-z][a-z0-9]*(_[a-z0-9]+)*$/) { emit("name.field", subj, "a field is lowercase snake_case: " q(name) " (harbor#1001)"); return }
+  last = name; sub(/^.*_/, "", last)
+  if (last ~ /^(ts|time|timestamp|datetime|tstamp)$/) bad = "an instant ends _at, a day ends _date"
+  else if (last ~ /^(sec|secs|second|seconds)$/) bad = "seconds end _s"
+  else if (last ~ /^(msec|millis|milliseconds)$/) bad = "milliseconds end _ms"
+  else if (last ~ /^(kb|mb|gb|size)$/) bad = "a size ends _bytes"
+  else if (last ~ /^(uid|ident)$/) bad = "an identifier ends _id"
+  else if (last == "flag") bad = "a boolean starts is_ or has_"
+  if (bad != "") emit("name.field", subj, q(name) ": " bad " (harbor#1001)")
+}
+# harbor#978 (D-21): a commit subject, which is also a PR title, is <type>(<family>): <subject>, the type a commit-type term.
+# Scope = a register domain: the same family-or-domain set a name slot takes (operator, 2026-10-27).
+function commit_check(subj, name,   t, sc, n, S, i, rest) {
+  if (name !~ /^[a-z][a-z0-9]*(\([^()]*\))?!?: ./) {
+    emit("name.commit", subj, "a commit subject is <type>(<domain>): <subject>: " q(name) " (D-21)"); return
+  }
+  t = name; sub(/[(!:].*$/, "", t)
+  if (!(("commit-type" SUBSEP t) in IS)) emit("name.commit", subj, "the type " q(t) " is not a registered commit type (terms.tsv, class commit-type)")
+  if (name !~ /^[a-z][a-z0-9]*\(/) { emit("name.commit", subj, "the subject has no (<family>) scope: " q(name) " (D-21)"); return }
+  sc = name; sub(/^[^(]*\(/, "", sc); sub(/\).*$/, "", sc)
+  n = split(sc, S, ",")
+  for (i = 1; i <= n; i++)
+    if (!(("family" SUBSEP S[i]) in IS) && !(("domain" SUBSEP S[i]) in IS)) emit("name.commit", subj, "the scope " q(S[i]) " is not a registered domain (terms.tsv, class family or domain; D-21)")
+}
+# harbor#978 (D-21): a branch is <type>/<issue>-<slug>, lowercase kebab, the type a commit-type term.
+function branch_check(subj, name,   t) {
+  if (name !~ /^[a-z][a-z0-9]*\/[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$/) {
+    emit("name.branch", subj, "a branch is <type>/<issue>-<slug>, lowercase kebab: " q(name) " (D-21)"); return
+  }
+  t = name; sub(/\/.*$/, "", t)
+  if (!(("commit-type" SUBSEP t) in IS)) emit("name.branch", subj, "the type " q(t) " is not a registered commit type (terms.tsv, class commit-type)")
 }
 function skill_check(subj, name,   r) {
   r = tmatch("skill", tolower(name), "")
@@ -514,6 +688,10 @@ function check_rec(sf, nm,   p) {
   else if (sf == "skill") { seg_check("skills/" nm, nm, 0, "skill", "skills/" nm, ""); skill_check("skills/" nm, nm) }
   else if (sf == "env") env_check("env:" nm, nm)
   else if (sf == "mcp-tool") mcp_check("mcp-tool:" nm, nm)
+  else if (sf == "release-tag") release_check("release-tag:" nm, nm)
+  else if (sf == "field") field_check("field:" nm, nm)
+  else if (sf == "commit") commit_check("commit:" nm, nm)
+  else if (sf == "branch") branch_check("branch:" nm, nm)
   else if (sf == "rule-id" || sf == "check-id") id_check(sf ":" nm, nm, sf)
 }
 function shape(f, msg) { emit("name.registry-shape", REL[f], msg) }
@@ -521,6 +699,10 @@ function shape(f, msg) { emit("name.registry-shape", REL[f], msg) }
 # requires and whether it is there (absent | file where a directory is wanted | dir where a file is wanted | ok).
 function repokind_check(label, kind, tok, state,   sj) {
   sj = "repo-kind:" label
+  if (tok ~ /^just:/) {   # a verb the kind requires of the justfile (verbs.tsv, harbor#1428); the subject carries no path, so a repo exempts it by verb
+    if (state == "absent" && (kind in RKREQ)) emit("name.repo-verb", "repo-verb:" substr(tok, 6), "a " q(kind) " repo carries the verb " q(substr(tok, 6)) " in its justfile and this one has none (standards/naming/verbs.tsv)")
+    return
+  }
   if (kind == "") emit("name.repo-kind", sj, "this directory declares no repo-kind: its .agents/config.yaml needs a `repo-kind: <id>` line naming a row of repo-kinds.tsv")
   else if (!(kind in RKREQ)) emit("name.repo-kind", sj, "its kind " q(kind) " is not a row of repo-kinds.tsv")
   else if (state == "absent") emit("name.repo-kind", sj ":" tok, "a " q(kind) " repo carries " q(tok) " and this one has none (standards/naming/repo-kinds.tsv)")
@@ -529,10 +711,12 @@ function repokind_check(label, kind, tok, state,   sj) {
 }
 BEGIN {
   FS = "\t"; OFS = "\t"
-  split("family verb domain client abbreviation kind layer concept system extension subject level mode outcome decision severity state control-type moment function lifecycle share relation modality tier", L, " ")
+  _npk = split(packt, _PK, " "); for (i = 1; i <= _npk; i++) ISPACK[_PK[i]] = 1   # the pack overlays (harbor#950)
+  split("family verb domain client abbreviation kind layer concept system extension subject level mode outcome decision severity priority state control-type moment function lifecycle share relation modality tier strength commit-type", L, " ")
   for (i in L) CLASS[L[i]] = 1
-  split("codename legacy banned abbreviation", L, " "); for (i in L) AKIND[L[i]] = 1
+  split("codename legacy banned abbreviation spelling", L, " "); for (i in L) AKIND[L[i]] = 1
   split("tool-required world-name legacy", L, " "); for (i in L) EKIND[L[i]] = 1
+  split("family verb domain system", OGRAM, " ")   # the classes a name slot parses (slotclass); a repo family takes none of them
   TODAYN = jdn(today)
   if (exbase != "") {
     while ((getline l < exbase) > 0) {
@@ -545,23 +729,42 @@ BEGIN {
 }
 FILENAME != recfile {
   f = FILENAME
-  if (priv != "" && f == priv) {
-    if (!(f in SHORT)) { SHORT[f] = "terms.tsv"; REL[f] = "harbor-private/terms.tsv (private overlay, D-85)" }
+  if ((priv != "" && f == priv) || (f in ISPACK)) {
+    if (!(f in SHORT)) { SHORT[f] = "terms.tsv"; REL[f] = (f in ISPACK) ? "terms.d/" base(f) " (pack overlay, harbor#950)" : "harbor-private/terms.tsv (private overlay, D-85)" }
     if (FNR == 1 && index($0, "\357\273\277") == 1) { $0 = substr($0, length("\357\273\277") + 1); emitw("name.registry-shape", "private-terms:bom", REL[f] " starts with a byte-order mark; it was stripped and the file read (D-85)") }
     if (sub(/\r$/, "")) { $0 = $0; if (!PCRLF) { PCRLF = 1; emitw("name.registry-shape", "private-terms:crlf", REL[f] " has CRLF line endings; they were stripped and the file read (D-85)") } }
     if ($0 ~ /^#/ || $0 ~ /^[ \t]*$/) next
     if (!(f in HDR)) {
-      if ($0 != THDR) { emitb("name.registry-shape", "private-terms:header", REL[f] ": the header row differs from standards/naming/terms.tsv: the overlay carries the same columns (D-85)"); PBAD = 1 }
+      if ($0 != THDR) { emitb("name.registry-shape", "private-terms:header", REL[f] ": the header row differs from standards/naming/terms.tsv: the overlay carries the same columns (D-85)"); PBAD[f] = 1 }
       HDR[f] = NF; HDR1[f] = $1; for (i = 1; i <= NF; i++) COL[f, $i] = i; next
     }
-    if (PBAD) next
+    if (f in PBAD) next
     if (NF != HDR[f]) { emitb("name.registry-shape", "private-terms:line" FNR, REL[f] " line " FNR " has " NF " columns, the header has " HDR[f]); next }
+    if ($1 in OVT) { emitb("name.registry-duplicate", "term:" $1, REL[f] " line " FNR " repeats the term " q($1) " of " OVT[$1]); next }
     if ($1 in T) { emitb("name.registry-duplicate", "term:" $1, REL[f] " line " FNR " repeats the core term " q($1)); next }
     if ($1 in AL) { emitb("name.registry-duplicate", "term:" $1, REL[f] " line " FNR ": " q($1) " is a core alias, and the overlay cannot make it a term (D-85)"); next }
     if ($1 !~ /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/) { emitb("name.registry-shape", "private-term:" $1, REL[f] " line " FNR ": " q($1) " is not a lowercase kebab term, so the overlay would never match it (D-85)"); next }
     np = split(col(f, "class"), PC, ",")
-    for (i = 1; i <= np; i++) if (PC[i] != "client" && PC[i] != "system") {
+    if (f in ISPACK) { if (col(f, "class") != "system") { emitb("name.registry-shape", "private-term:" $1, REL[f] " line " FNR ": class " q(col(f, "class")) " is not system: a pack registers its system terms only (harbor#950)"); next } }
+    else for (i = 1; i <= np; i++) if (PC[i] != "client" && PC[i] != "system") {
       emitb("name.registry-shape", "private-term:" $1, REL[f] " line " FNR ": class " q(PC[i]) " is not client or system: the overlay adds only those (D-85)"); next }
+    OVT[$1] = REL[f]
+  }
+  else if ((ovw != "" && f == ovw) || (ovf != "" && f == ovf)) {
+    # The repo overlay (harbor#967), in the row shape of words.tsv and terms.tsv. Every finding is block and none is
+    # exempted, as for the private overlay: a malformed or shadowing overlay must not read as clean.
+    ofn = base(f); ofam = (f == ovf)
+    if (ovhome) { emitb("name.overlay-shape", "overlay:" ofn, ofn " sits beside standards/naming/: this tree registers its words and families there, so the overlay was not read (harbor#967)"); next }
+    if (FNR == 1 && index($0, "\357\273\277") == 1) { $0 = substr($0, length("\357\273\277") + 1); emitb("name.overlay-shape", "overlay:" ofn ":bom", ofn " starts with a byte-order mark: save it as plain UTF-8") }
+    if (sub(/\r$/, "")) { $0 = $0; emitb("name.overlay-shape", "overlay:" ofn ":crlf", ofn " has CRLF line endings: save it with LF") }
+    if ($0 ~ /^#/ || $0 ~ /^[ \t]*$/) next
+    if (!(f in HDR)) {
+      HDR[f] = NF; for (i = 1; i <= NF; i++) COL[f, $i] = i
+      if ($0 != (ofam ? THDR : WHDR)) { OBAD[f] = 1; emitb("name.overlay-shape", "overlay:" ofn ":header", ofn ": the header row is not the one of " (ofam ? "terms.tsv" : "words.tsv") ", " q(ofam ? THDR : WHDR) ", so no row was read") }
+      next
+    }
+    if (!(f in OBAD)) overlay_row(f, ofn, ofam)
+    next
   }
   else if (FNR == 1) {
     NREG++; REGF[NREG] = f; SHORT[f] = base(f); REL[f] = (index(f, root "/") == 1) ? substr(f, length(root) + 2) : f
@@ -574,7 +777,7 @@ FILENAME != recfile {
     next
   }
   if ($0 ~ /^[ \t]*$/) next
-  if (!(f in HDR)) { if (SHORT[f] == "terms.tsv") THDR = $0; HDR[f] = NF; HDR1[f] = $1; for (i = 1; i <= NF; i++) COL[f, $i] = i; next }
+  if (!(f in HDR)) { if (SHORT[f] == "terms.tsv") THDR = $0; if (SHORT[f] == "words.tsv") WHDR = $0; HDR[f] = NF; HDR1[f] = $1; for (i = 1; i <= NF; i++) { COL[f, $i] = i; field_check("column:" SHORT[f] ":" $i, $i) }; next }
   if (NF != HDR[f]) shape(f, "line " FNR " has " NF " columns, the header has " HDR[f])
   sh = SHORT[f]; reg = sh; sub(/s?\.tsv$/, "", reg); sub(/ie$/, "y", reg)
   id = $1
@@ -599,15 +802,17 @@ FILENAME != recfile {
     st = col(f, "stability")
     if (st != "experimental" && st != "stable" && st != "deprecated") emit("name.registry-term", "term:" id, "stability " q(st) " is not experimental, stable or deprecated (D-19)")
     if (st == "deprecated" && !(col(f, "successor") ~ /^[a-z]/)) emit("name.registry-term", "term:" id, "a deprecated term names its successor (D-19)")
+  } else if (sh == "words.tsv") {
+    KW[id] = 1; HAVEWORDS = 1   # an English or technical word a name may carry beyond the terms (D-18, harbor#984)
   } else if (sh == "aliases.tsv") {
     AL[id] = 1; AKD[id] = col(f, "kind"); ATERM[id] = col(f, "term"); ASURF[id] = col(f, "surfaces"); AREM[id] = col(f, "remove_by")
     AWN[id] = split(id, AW, "-"); for (i = 1; i <= AWN[id]; i++) AWORD[id, i] = AW[i]
     if (!kebab(id)) emit("name.registry-term", "alias:" id, q(id) " is not a lowercase kebab alias")
-    if (!(AKD[id] in AKIND)) emit("name.registry-term", "alias:" id, "kind " q(AKD[id]) " is not codename, legacy, banned or abbreviation")
+    if (!(AKD[id] in AKIND)) emit("name.registry-term", "alias:" id, "kind " q(AKD[id]) " is not codename, legacy, banned, abbreviation or spelling")
     if (AKD[id] == "legacy" && !isdate(AREM[id])) emit("name.registry-term", "alias:" id, "a legacy alias has a remove_by date")
     if (AKD[id] == "codename" && AKD[id] != "" && AREM[id] != "never") emit("name.registry-term", "alias:" id, "a codename never expires: remove_by is never")
-    if (isdate(AREM[id]) && TODAYN >= jdn(AREM[id]) - 14)
-      emit("name.alias-expired", "alias:" id, q(id) " is removed by " AREM[id] (TODAYN >= jdn(AREM[id]) ? ", which has passed" : ", within 14 days") ": rename what still uses it (§10.3)")
+    if (AKD[id] == "spelling" && (AREM[id] != "never" || ASURF[id] != "-")) emit("name.registry-term", "alias:" id, "a spelling is allowed nowhere and never expires: surfaces -, remove_by never (D-16)")
+    if (isdate(AREM[id]) && TODAYN >= jdn(AREM[id]) - 14) AEXP[++NAEXP] = id   # judged at END, once controls.tsv has set the mode of the rule
     if (AKD[id] == "codename") for (i = 1; i <= split(ASURF[id], SS, ","); i++) if (SS[i] == "env-prefix") SYS[++NSYS] = id
   } else if (sh == "exemptions.tsv") {
     er = col(f, "rule"); es = col(f, "subject"); ek = col(f, "kind"); ed = col(f, "remove_by")
@@ -627,6 +832,13 @@ FILENAME != recfile {
       NGLOB++; GLR[NGLOB] = er; GLB[NGLOB] = "^" g "$"; GLI[NGLOB] = id }
     else if (es ~ /\/$/) { NPRE++; PRER[NPRE] = er; PRES[NPRE] = es; PREI[NPRE] = id }
     else EXACT[er, es] = id
+  } else if (sh == "renames.tsv") {
+    # An env row with a remove_by date is a dual-read window: until that date every reader reads the new name, then the
+    # old one, so the old name stays in the tree on purpose and the row, not an exemptions.tsv row, is what it rests on.
+    # Past the date it is judged again, which is when bin/standard-rename.sh --apply collapses the reads. A --check
+    # judges a name at its birth, and a first scan (--gen exemptions) judges the tree bare, so neither applies it.
+    ro = col(f, "old"); rd = col(f, "remove_by")
+    if (col(f, "surface") == "env" && ro ~ /^env:/ && isdate(rd) && TODAYN <= jdn(rd) && mode != "check" && nolegacy != 1) RENWIN[ro] = id
   } else if (sh == "controls.tsv") {
     RULE[++NRULE] = id; ctype = col(f, "type"); cm = col(f, "mode"); mm = (cm in LEGMODE) ? LEGMODE[cm] : cm
     MODE[id] = mm; CTYPE[id] = ctype; CENG[id] = col(f, "engine"); CSURF[id] = col(f, "surfaces"); CRED[id] = col(f, "red_proof")
@@ -642,6 +854,7 @@ FILENAME != recfile {
     if (!(("family" SUBSEP COWN[id]) in IS)) emit("name.control-shape", "control:" id ":owner", "owner " q(COWN[id]) " is not a registered family (09a C4)")
     if (CSTAB[id] != "experimental" && CSTAB[id] != "stable" && CSTAB[id] != "deprecated") emit("name.control-shape", "control:" id ":stability", "stability " q(CSTAB[id]) " is not experimental, stable or deprecated (D-19)")
     if (CSTAB[id] == "deprecated" && CSUCC[id] == "-") emit("name.control-shape", "control:" id ":successor", "a deprecated control names its successor (D-19)")
+    if (CSTAB[id] == "stable" && CRED[id] == "-") emit("name.control-shape", "control:" id ":stability", "a stable control names the suite that watched it red: stable is derived from an observed red proof (harbor#1422)")
   } else if (sh == "surfaces.tsv") {
     SURF[id] = 1; SRULE[id] = col(f, "rule"); REND[id] = col(f, "renderer"); SEX[id] = col(f, "example"); SCHK[id] = col(f, "checked")
     vw = col(f, "view")   # - | <surface>[:<rule>,<rule>]: this id is that surface, for those rules only when some are listed
@@ -678,6 +891,7 @@ FILENAME != recfile {
 }
 $1 == "F" { file_rec($2, $3); next }
 $1 == "X" { file_rec($2, ""); next }
+$1 == "G" { emit($2, $3, $4); next }
 $1 == "E" { env_check("env:" $2, $2); next }
 $1 == "C" { check_rec($2, $3); next }
 $1 == "D" { repokind_check($2, $3, $4, $5); next }
@@ -696,7 +910,27 @@ $1 == "T" { sid = $2; if (!(sid in TJ)) { print "T", sid, "err", "surfaces.tsv h
             r = tmatch(sid, tolower(o), "")
             if (r != "" || tslots(sid) != t1) { print "T", sid, "err", "parse(render(t)) differs from t for " q(ex); next }
             print "T", sid, "ok"; next }
+# harbor#1259: one anchored ERE per grammar-backed surface. A Python test (D-14) and a PATH command (D-11) are the two
+# forms the lint judges outside the grammar shape, so the validator takes them too, as test_check and bin_check do.
+$1 == "V" { sid = $2
+  if (!(sid in TJ)) { print "V", sid, "err", "surfaces.tsv has no grammar for " q(sid); next }
+  if (TERR[sid] != "") { print "V", sid, "err", TERR[sid]; next }
+  VERR = ""; n = NTK[sid]; body = vre(sid, 1, n)
+  if (sid == "test") {
+    ap = 0; for (i = 1; i <= n; i++) if (TK[sid, i] == "S" && tolower(TV[sid, i]) == "aspect") ap = i
+    if (ap == 0) VERR = "the test grammar has no <aspect> slot for the Python form (D-14)"
+    else body = "(" body ")|(" vre(sid, 1, ap - 1) "test_[a-z][a-z0-9_]*\\.py)"
+  }
+  if (sid == "bin" && TEXT[sid]) body = "(" body ")|([a-z][a-z0-9]*(-[a-z][a-z0-9]*)*)"
+  if (VERR != "") { print "V", sid, "err", VERR; next }
+  print "V", sid, "ok", "^(" body ")$"; next }
 END {
+  # An alias warns until its remove_by date and blocks from it (operator decision 2026-10-29, harbor#968).
+  for (i = 1; i <= NAEXP; i++) {
+    id = AEXP[i]; FORCEWARN = (TODAYN < jdn(AREM[id]))
+    emit("name.alias-expired", "alias:" id, q(id) " is removed by " AREM[id] (TODAYN >= jdn(AREM[id]) ? ", which has passed" : ", within 14 days") ": rename what still uses it (§10.3)")
+  }
+  FORCEWARN = 0
   for (i = 1; i <= NREG; i++) {
     f = REGF[i]
     if (!(f in WHY)) shape(f, "no `# WHY` line in the header (§4)")
@@ -708,11 +942,18 @@ END {
     emit("name.registry-term", "term:" id, "broader " q(BROADER[id]) " is not a term (§1.1)")
   for (a in AL) {
     if (a in T) emit("name.registry-overlap", "alias:" a, q(a) " is both an alias and a term: labels are disjoint (§1.1)")
-    if (AKD[a] != "abbreviation" && ATERM[a] != "-" && !(ATERM[a] in T)) emit("name.registry-term", "alias:" a, "its term " q(ATERM[a]) " is not a term")
+    if (AKD[a] != "abbreviation" && AKD[a] != "spelling" && ATERM[a] != "-" && !(ATERM[a] in T)) emit("name.registry-term", "alias:" a, "its term " q(ATERM[a]) " is not a term")
   }
   # terms: depends_on edges between families, and the level chain (D-57)
   for (id in T) {
     nd = split(DEP[id], DD, ",")
+    # harbor#1001: a severity sets one default priority; its depends_on names that priority term, one severity per priority
+    if (("severity" SUBSEP id) in IS) {
+      if (nd != 1 || !(("priority" SUBSEP DD[1]) in IS)) emit("name.registry-term", "term:" id, "a severity names the one priority it sets in depends_on (p0..p3, harbor#1001)")
+      else if (SEVOF[DD[1]] != "") emit("name.registry-term", "term:" id, "the priority " q(DD[1]) " is already set by " q(SEVOF[DD[1]]) ": one priority per severity (harbor#1001)")
+      else SEVOF[DD[1]] = id
+      continue
+    }
     for (i = 1; i <= nd; i++) {
       d = DD[i]; if (d == "" || d == "-") continue
       if (!(("family" SUBSEP d) in IS)) emit("name.registry-term", "term:" id, "depends_on " q(d) " is not a family (M3, D-60)")
@@ -772,7 +1013,9 @@ judge() { # <mode> <records> [nolegacy] -> the judge's output
   fi
   # shellcheck disable=SC2046 # one path per registry file, none with spaces by construction
   awk -v mode="$1" -v surface="$SURFACE" -v today="$TODAY" -v exbase="$_ex" -v recfile="$2" -v root="$ROOT" \
-      -v nolegacy="${3:-0}" -v files="$FILES" -v unlisted="$UNLISTED" -v priv="$PRIV" "$JUDGE" $(for _f in $FILES; do reg_file "$_f"; printf ' '; done) ${PRIV:+"$PRIV"} "$2"
+      -v nolegacy="${3:-0}" -v files="$FILES" -v unlisted="$UNLISTED" -v priv="$PRIV" -v packt="$PACKT" \
+      -v ovw="$OVW" -v ovf="$OVF" -v ovhome="$OVHOME" -v foreign="$FOREIGN" \
+      "$JUDGE" $(for _f in $FILES; do reg_file "$_f"; printf ' '; done) ${PRIV:+"$PRIV"} $PACKT ${OVW:+"$OVW"} ${OVF:+"$OVF"} "$2"
 }
 
 # ── what a whole-tree or --changed run judges ────────────────────────────────
@@ -802,7 +1045,7 @@ list_since() { # <diff-filter letters> <1 to add the untracked files>
 env_tokens() { # <file of "<mode> TAB <path>"> -> one name per line
   _pre="$(awk -F'\t' '/^#/ || !H[FILENAME]++ { next }
     FILENAME ~ /terms\.tsv$/ && $2 ~ /(^|,)system(,|$)/ { print $1 }
-    FILENAME ~ /aliases\.tsv$/ && $3 != "abbreviation" && $1 !~ /-/ { print $1 }' "$(reg_file terms.tsv)" "$(reg_file aliases.tsv)" ${PRIV:+"$PRIV"} \
+    FILENAME ~ /aliases\.tsv$/ && $3 != "abbreviation" && $3 != "spelling" && $1 !~ /-/ { print $1 }' "$(reg_file terms.tsv)" "$(reg_file aliases.tsv)" ${PRIV:+"$PRIV"} $PACKT \
     | tr 'a-z-' 'A-Z_' | sort -u | tr '\n' '|' | sed 's/|$//')"
   [ -n "$_pre" ] || return 0
   awk -F'\t' '{ p = $2 }
@@ -871,6 +1114,12 @@ rk_facts() { # <dir, absolute or relative to --root>
     esac
     printf 'D\t%s\t%s\t%s\t%s\n' "$1" "$_rk" "$_t" "$_s"
   done
+  # The verbs verbs.tsv requires of the kind, each read off the justfile's recipe names (harbor#1428). No justfile is
+  # name.repo-kind's finding already, so it is not repeated once per verb.
+  [ -f "$_rd/justfile" ] || return 0
+  awk -F'\t' -v k="$_rk" -v d="$1" 'FILENAME == ARGV[1] { if ($0 ~ /^[a-z][a-z0-9_-]*( [^:=]*)?:/ && index($0, ":=") == 0) { n = $0; sub(/[: ].*/, "", n); have[n] = 1 } next }
+    /^#/ || !H[FILENAME]++ { next }
+    $4 != "-" && index(" " $4 " ", " " k " ") { printf "D\t%s\t%s\tjust:%s\t%s\n", d, k, $1, ($1 in have) ? "ok" : "absent" }' "$_rd/justfile" "$(reg_file verbs.tsv)"
 }
 
 # census → `K TAB <register> TAB <id>` for every control id the tree carries, found by the extractor each
@@ -890,8 +1139,13 @@ census() {
       required-checks) [ -f "$ROOT/$_a" ] && awk -F'\t' -v r="$_arg" '/^#/ || NF < 2 { next } $1 == r { print $2 }' "$ROOT/$_a" ;;
       inject-ids)  for _d in $(printf '%s' "$_a" | tr ',' ' '); do
                      [ -d "$ROOT/$_d" ] && find "$ROOT/$_d" -type f -name '*.md' | sort | while IFS= read -r _f; do
-                       awk 'NR == 1 && $0 != "---" { exit } /^---$/ && NR > 1 { exit } /^id:/ { sub(/^id:[ \t]*/, ""); print; exit }' "$_f"
+                       # the id: key, else the file name (D-43, harbor#1010: the id is derived)
+                       awk -v n="${_f##*/}" 'BEGIN { sub(/\.md$/, "", n) } NR == 1 { if ($0 != "---") exit; f = 1 } /^---$/ && NR > 1 { exit }
+                         /^id:/ { sub(/^id:[ \t]*/, ""); if ($0 != "") { print; d = 1; exit } } END { if (f && !d) print n }' "$_f"
                      done
+                   done ;;
+      hook-rules)  for _f in $(printf '%s' "$_a" | tr ',' ' '); do
+                     [ -f "$ROOT/$_f" ] && sed -n 's/^[[:space:]]*# control: \([^ ]*\).*$/\1/p' "$ROOT/$_f"
                    done ;;
       guard-rules) for _f in "$ROOT"/$_a; do
                      [ -f "$_f" ] && awk '/^[ \t]*#/ { next } { l = $0; while (l ~ /\\$/ && (getline nx) > 0) { sub(/\\$/, "", l); l = l " " nx }
@@ -904,6 +1158,99 @@ census() {
     if [ -s "$T/cx" ]; then awk -v r="$_rg" 'NF { print "K\t" r "\t" $0 }' "$T/cx"
     else printf 'M\t%s\t%s\n' "$_rg" "$_cs"; fi
   done
+}
+
+# register_facts <file of "<mode> TAB <path>"> → `G TAB <rule> TAB <subject> TAB <message>`: every tracked .tsv against its row in
+# schemas.tsv, and every reference column against its target (standard.register-declared, standard.reference-resolves; harbor#1424).
+# bin/standard-register.sh does the reading, so the lint and every engine meet a register through one reader. A fixture's own
+# registers are the .tsv files under its overlay directory (below the top, which overlays the registry itself).
+register_facts() {
+  _sch="$(reg_file schemas.tsv)"
+  [ -r "$_sch" ] || { log_note "no schemas.tsv in the registry: registers were not checked against a schema (harbor#1424)"; return 0; }
+  # the vendored package always ships the reader (standard-vendor.sh --check says when it is gone); a bare copy of the lint judges names only
+  [ -f "$HERE/standard-register.sh" ] || { log_note "no standard-register.sh beside the lint: registers were not checked against schemas.tsv (harbor#1424)"; return 0; }
+  awk -F'\t' -v r="$ROOT" '{ print $2 "\t" r "/" $2 }' "$1" > "$T/regmap"
+  # the registry's own files, as the run reads them (a fixture overlay applied); a registry outside the judged root is not that tree's
+  case "$REG" in "$ROOT"/*)
+    for _rf in "$REG"/*.tsv; do [ -f "$_rf" ] || continue; printf '%s/%s\t%s\n' "$REL_REG" "${_rf##*/}" "$(reg_file "${_rf##*/}")"; done >> "$T/regmap"
+    [ -z "$_od" ] || find "$_od" -maxdepth 1 -type f -name '*.tsv' | while IFS= read -r _xf; do printf '%s/%s\t%s\n' "$REL_REG" "${_xf##*/}" "$(reg_file "${_xf##*/}")"; done >> "$T/regmap" ;;
+  esac
+  [ -z "$_od" ] || find "$_od" -mindepth 2 -type f -name '*.tsv' | while IFS= read -r _xf; do printf '%s\t%s\n' "${_xf#"$_od"/}" "$_xf"; done >> "$T/regmap"
+  _ex=""; [ "$OVHOME" = 1 ] || [ ! -f "$OVDIR/naming-schemas.tsv" ] || _ex="$OVDIR/naming-schemas.tsv"
+  sh "$HERE/standard-register.sh" --root "$ROOT" --schemas "$_sch" ${_ex:+--extra "$_ex"} --map "$T/regmap" facts || {
+    log_fail "the register reader failed, so the registers were not judged"; log_fix "sh $HERE/standard-register.sh check"; log_end || :; exit "$UNCHECKED"; }
+}
+
+# seam_facts → `G TAB standard.seam-registered TAB <subject> TAB <message>`: contracts/seams.tsv against the tree, both ways (harbor#1425).
+# A copy is a tracked MANIFEST.tsv or a top-level vendor/<name>/; it needs a row naming it as the copy_path of a row whose consumer is
+# this tree (harbor). A row whose copy is gone, or whose schema this tree owns and does not hold, is red too. Reads $T/regmap, so a
+# fixture overlay applies; silent when the tree has no register (a workload carries none).
+seam_facts() {
+  [ -s "$T/regmap" ] || return 0
+  _sm="$(awk -F'\t' '$1 == "contracts/seams.tsv" { f = $2 } END { print f }' "$T/regmap")"
+  [ -n "$_sm" ] && [ -r "$_sm" ] || return 0
+  awk -F'\t' '
+    FNR == NR { if ($0 ~ /^#/ || $1 == "id" || NF < 11) next
+      if ($4 == "harbor" && $5 != "-") { nc++; C[nc] = $5; CID[nc] = $1; OPT[nc] = 0
+        if (C[nc] ~ /\?$/) { sub(/\?$/, "", C[nc]); OPT[nc] = 1 } }   # a trailing ? is a dev-layer copy the core export does not ship (D-85)
+      if ($3 == "harbor" && $7 != "-") { ns++; S[ns] = $7; SID[ns] = $1 }
+      next }
+    { P[$1] = 1 }
+    END {
+      for (p in P) {
+        if (p ~ /(^|\/)(fixtures|tests?)\// || p ~ /^build\//) continue
+        u = ""
+        if (p ~ /(^|\/)MANIFEST\.tsv$/) { u = p; sub(/MANIFEST\.tsv$/, "", u) }
+        else if (p ~ /^vendor\/[^\/]+\//) { split(p, a, "/"); u = "vendor/" a[2] "/" }
+        if (u == "" || (u in SEEN)) continue
+        SEEN[u] = 1; ok = 0
+        for (i = 1; i <= nc; i++) if (C[i] == u || (C[i] ~ /\/$/ && index(u, C[i]) == 1)) ok = 1
+        if (!ok) printf "G\tstandard.seam-registered\tcopy:%s\t%s is a vendored copy with no row in contracts/seams.tsv: add a row naming it as copy_path (harbor#1425)\n", u, u
+      }
+      for (i = 1; i <= nc; i++) {
+        found = 0
+        for (p in P) if (p == C[i] || (C[i] ~ /\/$/ && index(p, C[i]) == 1)) { found = 1; break }
+        if (!found && !OPT[i]) printf "G\tstandard.seam-registered\trow:%s\tcontracts/seams.tsv row %s names the copy %s, which is not in the tree: delete the row or restore the copy\n", CID[i], CID[i], C[i]
+      }
+      for (i = 1; i <= ns; i++) if (!(S[i] in P)) printf "G\tstandard.seam-registered\tschema:%s\tcontracts/seams.tsv row %s names the schema %s, which this tree owns and does not hold: the producer ships its schema\n", SID[i], SID[i], S[i]
+    }' "$_sm" "$T/regmap"
+}
+
+# version_facts → `G TAB standard.version-registered TAB <subject> TAB <message>`: every action a workflow of the judged tree uses
+# must be a row of the versions register (axis action, name owner/repo[/path]); a pin the register does not name is a pin held in
+# one place only (harbor#1426). Reads the workflows through $T/regmap, so a fixture applies; silent where the registry carries no
+# versions.tsv, and for a local or docker ref, which is not a pin.
+version_facts() {
+  [ -s "$T/regmap" ] || return 0
+  _vf="$(reg_file versions.tsv)"; [ -r "$_vf" ] || return 0
+  awk -F'\t' '/^#/ || $1 == "id" { next } $2 == "action" { print $3 }' "$_vf" | sort -u > "$T/vnames"
+  awk -F'\t' '$1 ~ /^\.github\/workflows\/[^\/]+\.ya?ml$/ { print $1 "\t" $2 }' "$T/regmap" | sort -u > "$T/vwf"
+  # a fixture overlay carries its files as workflows/*.yml, so no fixture sits in a real workflow folder (the overlay maps only .tsv files)
+  [ -z "${_od:-}" ] || find "$_od/workflows" -maxdepth 1 -type f -name '*.yml' 2>/dev/null | while IFS= read -r _wf; do printf '.github/workflows/%s\t%s\n' "${_wf##*/}" "$_wf"; done >> "$T/vwf"
+  [ -s "$T/vwf" ] || return 0
+  # a composite action this tree holds (.github/actions/<name>/action.yml) is the repo's own, not a third-party pin (harbor#967)
+  awk -F'\t' '$1 ~ /^\.github\/actions\/[^\/]+\/action\.ya?ml$/ { n = $1; sub(/^\.github\/actions\//, "", n); sub(/\/.*$/, "", n); print n }' "$T/regmap" | sort -u > "$T/vown"
+  while IFS='	' read -r _vp _vr; do
+    awk -v f="$_vp" -v own="$T/vown" 'BEGIN { while ((getline x < own) > 0) O[x] = 1 }
+      /^[[:space:]]*(-[[:space:]]+)?uses:[[:space:]]/ {
+        l = $0; sub(/^[[:space:]]*(-[[:space:]]+)?uses:[[:space:]]*/, "", l); sub(/[[:space:]]+#.*$/, "", l); gsub(/["\047]/, "", l)
+        if (l ~ /^\.\// || l ~ /^docker:\/\//) next
+        if (l ~ /^[^\/@]+\/[^\/@]+\/\.github\/actions\/[^\/@]+(@|$)/) { nm = l; sub(/^[^\/@]+\/[^\/@]+\/\.github\/actions\//, "", nm); sub(/@.*$/, "", nm); if (nm in O) next }
+        n = index(l, "@"); if (n > 0) l = substr(l, 1, n - 1)
+        print l "\t" f }' "$_vr"
+  done < "$T/vwf" | sort -u | awk -F'\t' 'NR == FNR { k[$1] = 1; next } !($1 in k) { seen[$1] = (($1 in seen) ? seen[$1] ", " : "") $2 }
+      END { for (a in seen) printf "G\tstandard.version-registered\taction:%s\t%s is pinned in %s and has no row in standards/naming/versions.tsv: register the action once, for every repo (harbor#1426)\n", a, a, seen[a] }' "$T/vnames" -
+}
+
+# inventory_facts → `G TAB <rule> TAB <subject> TAB <message>`: contracts/env.tsv and contracts/bin.tsv against the tree, both ways
+# (standard.env-registered, standard.script-registered; harbor#1431, #1432). Reads $T/regmap, so a fixture overlay applies; silent
+# where the tree carries neither register or the vendored copy has no standard-inventory.sh beside it.
+inventory_facts() {
+  [ -f "$HERE/standard-inventory.sh" ] && [ -s "$T/regmap" ] || return 0
+  # a fixture overlay that carries neither register leaves the tree's verdict as the plain run gives it: it is not judged again
+  [ -z "${_od:-}" ] || [ -f "$_od/contracts/env.tsv" ] || [ -f "$_od/contracts/bin.tsv" ] || [ -f "$_od/contracts/roots.tsv" ] || return 0
+  sh "$HERE/standard-inventory.sh" --root "$ROOT" --map "$T/regmap" facts || {
+    log_fail "the inventory reader failed, so the env and bin registers were not judged"; log_fix "sh $HERE/standard-inventory.sh facts"; log_end || :; exit "$UNCHECKED"; }
 }
 
 case "$ACTION" in
@@ -924,6 +1271,7 @@ case "$ACTION" in
     if [ "$SURFACE" = registry ]; then
       list_tree | awk -F'\t' '{ print "X\t" $2 }' > "$T/rec"
       census >> "$T/rec"
+      list_tree > "$T/ltree"; register_facts "$T/ltree" >> "$T/rec"; seam_facts >> "$T/rec"; version_facts >> "$T/rec"; inventory_facts >> "$T/rec"
       judge registry "$T/rec" > "$T/out" || unchecked
     else
       judge check "$T/rec" > "$T/out" || unchecked
@@ -968,8 +1316,13 @@ case "$ACTION" in
     # already, so --added leaves the env tokens to the tree run, and judges the paths.
     [ "$ACTION" = added ] || env_tokens "$T/files" | awk '{ print "E\t" $0 }' >> "$T/rec"
     # bin/lint-conventions.sh's rule ids are names on the rule-id surface too (harbor#957).
-    [ "$ACTION" != tree ] || lc_rules | awk -F'\t' '{ print "C\trule-id\t" $1 }' >> "$T/rec"
-    [ "$ACTION" != tree ] || census >> "$T/rec"
+    [ "$ACTION" != tree ] || [ "$FOREIGN" = 1 ] || lc_rules | awk -F'\t' '{ print "C\trule-id\t" $1 }' >> "$T/rec"
+    [ "$ACTION" != tree ] || [ "$FOREIGN" = 1 ] || census >> "$T/rec"
+    # A workload's own registers are judged too: its undeclared .tsv is red there as here (harbor#1424 item 7).
+    [ "$ACTION" != tree ] || register_facts "$T/files" >> "$T/rec"
+    [ "$ACTION" != tree ] || seam_facts >> "$T/rec"
+    [ "$ACTION" != tree ] || version_facts >> "$T/rec"
+    [ "$ACTION" != tree ] || inventory_facts >> "$T/rec"
     log_head "$_what in ${ROOT##*/}"
     judge "$ACTION" "$T/rec" > "$T/out" || unchecked
     _rc=0; report "$T/out" "$_what" || _rc=1
@@ -1025,13 +1378,25 @@ gen() { # <view> -> writes under build/, prints the path
           line[w[1]] = line[w[1]] sprintf("    %s %s%s%s    <- %s\n", sys, w[1], (obj == "" ? "" : " " obj), (verb == "" ? "" : " " verb), $0) }
         END { print "# generated by bin/lint-name.sh --gen cli-tree from standards/naming/terms.tsv and bin/ — do not edit"
               for (i = 1; i <= nf; i++) { printf "%s %s\n", sys, fam[i]; printf "%s", (fam[i] in line) ? line[fam[i]] : "    (no command yet)\n" } }
-      ' "$(reg_file terms.tsv)" "$T/bin" > "$_out/cli-tree.txt"; printf '%s\n' "$_out/cli-tree.txt" ;;
+      ' "$(reg_file terms.tsv)" "$T/bin" > "$_out/cli-tree.txt"
+      # harbor#1436: the registered systems are the dispatch table, so the tree lists what `harbor <system> <verb>` runs
+      if [ -f "$ROOT/contracts/systems.tsv" ]; then
+        { printf '# the registered systems, dispatched by contracts/systems.tsv through bin/scope-system.sh\n'
+          awk -F'\t' '/^#/ || !H++ { next } NF >= 5 { printf "harbor %s %s    <- %s\n", $1, ($2 == "*" ? "<verb>" : $2), $3 }' "$ROOT/contracts/systems.tsv"
+        } >> "$_out/cli-tree.txt"
+      fi
+      printf '%s\n' "$_out/cli-tree.txt" ;;
     labels)
-      # D-30: every label is <axis>:<value>. Only the family axis is the registry's today; the type
-      # and theme axes live in CONTRACTS/issue-taxonomy.tsv until harbor#958 moves them.
-      awk -F'\t' 'BEGIN { print "# generated by bin/lint-name.sh --gen labels from standards/naming/terms.tsv — do not edit"; print "name\tdescription" }
-        /^#/ || !H[FILENAME]++ { next } $2 ~ /(^|,)family(,|$)/ { d = $11; sub(/^Family: /, "", d); printf "family:%s\t%s\n", $1, d }' \
-        "$(reg_file terms.tsv)" > "$_out/labels.tsv"; printf '%s\n' "$_out/labels.tsv" ;;
+      # D-30, harbor#1427: every label is <axis>:<value>, and this is THE list a sync or a scaffolder creates from: the
+      # family labels terms.tsv derives, then every other label row of label-axes.tsv (the explicit meaning wins nothing
+      # over a family's; a name is listed once). The axis rows are not labels. Descriptions are cut to GitHub's 100.
+      awk -F'\t' 'BEGIN { print "# generated by bin/lint-name.sh --gen labels from standards/naming/terms.tsv and label-axes.tsv — do not edit"; print "name\tdescription" }
+        FILENAME == ARGV[1] { if ($0 ~ /^#/ || !H[FILENAME]++) next
+          if ($2 ~ /(^|,)family(,|$)/) { d = $11; sub(/^Family: /, "", d); seen["family:" $1] = 1; print "family:" $1 "\t" substr(d, 1, 100) }
+          next }
+        /^#/ || !G[FILENAME]++ { next } $3 == "-" || ($1 in seen) { next }
+        { print $1 "\t" substr($9, 1, 100) }' \
+        "$(reg_file terms.tsv)" "$(reg_file label-axes.tsv)" > "$_out/labels.tsv"; printf '%s\n' "$_out/labels.tsv" ;;
     vale)
       _v="$ROOT/build/vale"; mkdir -p "$_v/styles/Harbor"
       printf '%s\n' '# generated by bin/lint-name.sh --gen vale from standards/naming/aliases.tsv — do not edit' \
@@ -1047,7 +1412,30 @@ gen() { # <view> -> writes under build/, prints the path
       awk -F'\t' '
         BEGIN { print "# generated by bin/lint-name.sh --gen vale — do not edit"; print "extends: existence"; print "message: \"%s is banned in the standard: see standards/naming/aliases.tsv\""; print "level: error"; print "ignorecase: true"; print "tokens:" }
         /^#/ || !H[FILENAME]++ { next } $3 == "banned" { gsub(/-/, "[- ]", $1); printf "  - \047\\b%s\\b\047\n", $1 }' "$(reg_file aliases.tsv)" > "$_v/styles/Harbor/Banned.yml"
+      awk -F'\t' -v ext=substitution -v msg="Use %s instead of %s: the standard is US English (D-16, standards/naming/aliases.tsv)" '
+        BEGIN { print "# generated by bin/lint-name.sh --gen vale — do not edit"; print "extends: " ext; print "message: \"" msg "\""; print "level: warning"; print "ignorecase: true"; print "swap:" }
+        /^#/ || !H[FILENAME]++ { next } $3 == "spelling" { printf "  \047%s\047: %s\n", $1, $2 }' "$(reg_file aliases.tsv)" > "$_v/styles/Harbor/Spelling.yml"
       printf '%s\n' "$_v/.vale.ini" ;;
+    issue-taxonomy)
+      # harbor#978: the connector's taxonomy format from label-axes.tsv, so the label list has one source. The
+      # legacy-to-new map goes beside it. Neither is committed and nothing on GitHub is renamed by either.
+      awk -F'\t' 'BEGIN { print "# generated by bin/lint-name.sh --gen issue-taxonomy from standards/naming/label-axes.tsv — do not edit"
+                          print "# FORMAT: kind <TAB> label <TAB> glob|- <TAB> meaning; #AXIS <TAB> axis <TAB> min <TAB> max <TAB> who sets it" }
+        /^#/ || !H[FILENAME]++ { next }
+        $3 == "-" { printf "#AXIS\t%s\t%s\t%s\t%s\n", $2, $6, $7, $9; next }
+        { printf "%s\t%s\t%s\t%s\n", $2, $1, $5, $9 }' "$(reg_file label-axes.tsv)" > "$_out/issue-taxonomy.tsv"
+      awk -F'\t' 'BEGIN { print "# generated by bin/lint-name.sh --gen issue-taxonomy from standards/naming/label-axes.tsv — do not edit"
+                          print "legacy\tlabel\tstatus" }
+        /^#/ || !H[FILENAME]++ { next } $3 != "-" { printf "%s\t%s\t%s\n", $4, $1, $8 }' "$(reg_file label-axes.tsv)" > "$_out/label-map.tsv"
+      printf '%s\n' "$_out/issue-taxonomy.tsv" ;;
+    vendors)
+      # harbor#985: the vendor-token map a dialect checker reads (azimuth's check-naming), so the vendor list has one source.
+      # `use` is the current term; a token row is a legacy alias valid inside a dialect until touched (D-54).
+      awk -F'\t' 'BEGIN { print "# generated by bin/lint-name.sh --gen vendors from standards/naming/aliases.tsv and terms.tsv — do not edit"
+                          print "token\tuse\tstatus\tremove_by" }
+        FILENAME == ARGV[1] { if ($0 !~ /^#/ && H1++ && $2 != "-" ) { n = split($4, S, ","); for (i = 1; i <= n; i++) if (S[i] == "dialect") { printf "%s\t%s\tlegacy\t%s\n", $1, $2, $5; U[$2] = 1 } } next }
+        $0 !~ /^#/ && H2++ && ($1 in U) { printf "%s\t%s\tcurrent\t-\n", $1, $1 }' "$(reg_file aliases.tsv)" "$(reg_file terms.tsv)" > "$_out/vendors.tsv"
+      printf '%s\n' "$_out/vendors.tsv" ;;
     exemptions)
       # The first scan (harbor#950): one legacy row per finding the rules make on this tree today,
       # judged with no legacy row applied. A person reviews and commits the rows; after that the
@@ -1065,7 +1453,7 @@ gen() { # <view> -> writes under build/, prints the path
           function batch(s,   a, n) {
             if (s ~ /^env:/) return "5 W5 state, env and launchd"
             n = split(s, a, "/")
-            if (a[1] == "EVALS-DATA") return "1 W1 eval data " (n > 2 ? a[2] : "(root)")
+            if (a[1] == "evals") return "1 W1 eval data " (n > 2 ? a[2] : "(root)")
             if (a[1] == "tests" || a[1] == "fixtures") return "2 W2 tests"
             if (a[1] == "bin" && n == 2 && a[2] ~ /^(guard-|floor-hook|guard-integrity)/) return "6 W6 admission"
             if (a[1] == "bin" && n == 2 && a[2] !~ /\./) return "4 W4 PATH"
@@ -1084,13 +1472,38 @@ gen() { # <view> -> writes under build/, prints the path
             for (i = 1; i <= NR; i++) printf "legacy-%04d\t%s\tlegacy\t%s\tfirst scan, harbor#950; %s\n", i, R[i], D[B[i]], LAB[B[i]]
           }' > "$_out/exemptions.legacy.tsv"
       printf '%s\n' "$_out/exemptions.legacy.tsv" ;;
+    validators)
+      # harbor#1259: build/validators.txt, one `<surface> TAB <ERE>` per grammar-backed surface, derived here and never by hand.
+      validators_to "$ROOT/build/validators.txt" || return 1
+      printf '%s\n' "$ROOT/build/validators.txt" ;;
     *) return 2 ;;
   esac
+}
+# The derivation (harbor#1259): the judge renders each grammar, so a grammar cell that cannot be compiled is refused here.
+validators_to() { # <file> -> writes the validators; nonzero when a grammar cannot be rendered
+  awk -F'\t' '/^#/ || !H[FILENAME]++ { next } $6 != "-" && $6 != "" { print "V\t" $1 }' "$(reg_file surfaces.tsv)" > "$T/vrec"
+  # Core registers only: the private, pack and repo overlays would make build/validators.txt differ between boxes and
+  # repos, and a validator is the shape the public standard gives. A private system prefix is then a vocabulary question
+  # for the lint, and a repo family never reaches a view (harbor#967).
+  _vp="$PRIV"; _vk2="$PACKT"; _vow="$OVW"; _vof="$OVF"; PRIV=""; PACKT=""; OVW=""; OVF=""
+  judge validators "$T/vrec" > "$T/vout" || unchecked
+  PRIV="$_vp"; PACKT="$_vk2"; OVW="$_vow"; OVF="$_vof"
+  _vbad=0
+  while IFS='	' read -r _vk _vs _vst _vwhy; do
+    [ "$_vk" = V ] || continue
+    [ "$_vst" = ok ] || { log_fail "--gen validators: $_vs: $_vwhy"; log_fix "fix the grammar cell of $_vs in $REL_REG/surfaces.tsv"; _vbad=1; }
+  done < "$T/vout"
+  [ "$_vbad" -eq 0 ] || return 1
+  mkdir -p "$(dirname "$1")"
+  { printf '%s\n' "# generated by bin/lint-name.sh --gen validators from $REL_REG/surfaces.tsv and terms.tsv — do not edit"
+    awk -F'\t' '$1 == "V" && $3 == "ok" { print $2 "\t" $4 }' "$T/vout"
+  } > "$1.new" && mv "$1.new" "$1"
 }
 
 if [ "$ACTION" = gen ]; then
   _rc=0; gen "$VIEW" || _rc=$?
-  if [ "$_rc" -eq 2 ]; then log_fail "unknown view: $VIEW"; log_fix "sh $SELF --gen glossary|naming-guide|cli-tree|labels|vale|exemptions"; log_end || :; exit 2; fi
+  if [ "$_rc" -eq 2 ]; then log_fail "unknown view: $VIEW"; log_fix "sh $SELF --gen glossary|naming-guide|cli-tree|labels|vale|exemptions|issue-taxonomy|vendors|validators"; log_end || :; exit 2; fi
+  if [ "$_rc" -ne 0 ]; then log_end || :; exit 1; fi
   log_ok "wrote --gen $VIEW under ${ROOT##*/}/build/"; log_end || :; exit 0
 fi
 
@@ -1107,7 +1520,7 @@ FIXTURE_DAY=2026-10-04   # every fixture is judged on one fixed day, so an alias
 rk_build() { # <manifest> <dir>
   mkdir -p "$2"
   while IFS='	' read -r _e _c; do
-    case "$_e" in ''|'#'*) continue ;; */) mkdir -p "$2/$_e" ;; *) mkdir -p "$2/$(dirname "$_e")"; printf '%s\n' "$_c" > "$2/$_e" ;; esac
+    case "$_e" in ''|'#'*) continue ;; */) mkdir -p "$2/$_e" ;; *) mkdir -p "$2/$(dirname "$_e")"; printf '%b\n' "$_c" > "$2/$_e" ;; esac
   done < "$1"
 }
 one() { # <surface> <name> -> the red log of one --check, in $T/red
@@ -1199,4 +1612,35 @@ if [ -s "$T/nopair" ]; then
 else
   log_ok "every rule went red on every surface it declares ($(grep -c . "$T/pairs" | tr -d ' ') rule×surface pairs)"
 fi
+
+# The validators (harbor#1259). The derivation runs into $T, so this never reads the box; the file a consumer reads is
+# build/validators.txt, and when it exists it must be what the derivation gives and must pass the same checks.
+vcheck() { # <validators file> <label> -> every grammar surface has one, its example matches it, and it refuses "" and "a b"
+  _vres="$(awk -F'\t' -v label="$2" '
+    FILENAME == ARGV[1] { if ($0 !~ /^#/ && NF == 2) { RE[$1] = $2 }; next }
+    /^#/ || !H[FILENAME]++ { next }
+    $6 != "-" && $6 != "" { G[$1] = 1; n++
+      if (!($1 in RE)) { print "fail\tno validator for " $1; next }
+      if (!($5 ~ RE[$1])) print "fail\t" $1 " its example " $5 " does not match its validator"
+    }
+    END {
+      for (s in RE) {
+        if (!(s in G)) print "fail\ta validator for " s ", which has no grammar cell (prose renders no validator)"
+        if (("" ~ RE[s]) || ("a b" ~ RE[s])) print "fail\t" s " accepts a string that is empty or has a space"
+      }
+      print "count\t" n + 0
+    }' "$1" "$(reg_file surfaces.tsv)")"
+  _vfail="$(printf '%s\n' "$_vres" | awk -F'\t' '$1 == "fail" { printf "%s; ", $2 }')"
+  _vn="$(printf '%s\n' "$_vres" | awk -F'\t' '$1 == "count" { print $2 }')"
+  if [ -n "$_vfail" ]; then log_fail "$2: ${_vfail%; }"; log_fix "sh $SELF --gen validators"
+  else log_ok "$2: $_vn grammar surfaces, each example matches its validator, none accepts \"\" or \"a b\""; fi
+}
+if validators_to "$T/validators.txt"; then
+  vcheck "$T/validators.txt" "validators derived in this run"
+  if [ -f "$ROOT/build/validators.txt" ]; then
+    if cmp -s "$T/validators.txt" "$ROOT/build/validators.txt"; then log_ok "build/validators.txt is what --gen validators derives"
+    else log_fail "build/validators.txt is not what --gen validators derives (edited by hand, or stale)"; log_fix "sh $SELF --gen validators"; fi
+    vcheck "$ROOT/build/validators.txt" "build/validators.txt"
+  fi
+else log_fail "the validators could not be derived from the grammar cells"; log_fix "sh $SELF --gen validators"; fi
 log_end

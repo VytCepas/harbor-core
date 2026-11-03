@@ -144,6 +144,43 @@ for SH in $SHELLS; do
     '{"command":"gh pr create --title \"fix: it'"'"'s done\" --body \"$(cat <<'"'"'EOF'"'"'\n## Summary\n- a && b; c | d\nEOF\n)\""}' "$URL1\\n"
   true_pr "a CRLF-terminated last line" VytCepas/harbor#1234 '{"command":"gh pr create --fill"}' "$URL1\\r\\n"
 
+  t_section "$SH: every gh pr create of a compound command is recognised, once each (harbor#1437)"
+  # Measured 2026-11-02: 5 of about 20 PRs opened in a day had a pr.opened, the rest were made inside a loop or a chain.
+  U1="https://github.com/VytCepas/harbor/pull/11"; U2="https://github.com/VytCepas/harbor/pull/12"; U3="https://github.com/o/r/pull/13"
+  multi() { # <label> <want: space-separated subjects, or none> <tool_input json> <stdout json value>
+    rm -rf "$BUS"; fire $SH "$(post Bash "$3" "{\"stdout\":\"$4\"}")" >/dev/null
+    _w="$2"; [ "$_w" != none ] || _w=""
+    t_eq "$1" "$_w" "$(one pr.opened .subject | tr '\n' ' ' | sed 's/ $//')"; }
+  multi "a for loop: one event per PR, in order" "VytCepas/harbor#11 VytCepas/harbor#12" \
+    '{"command":"for b in a b; do git switch $b; gh pr create --head $b --fill; done"}' "$U1\\n$U2\\n"
+  multi "a while-read loop on separate lines" "VytCepas/harbor#11 VytCepas/harbor#12" \
+    '{"command":"while read b; do\n  gh pr create --head $b --fill\ndone < branches.txt"}' "$U1\\n$U2\\n"
+  multi "two creates chained with ; and &&" "VytCepas/harbor#11 VytCepas/harbor#12" \
+    '{"command":"gh pr create --head a --fill; gh pr create --head b --fill && cd .."}' "$U1\\n$U2\\n"
+  multi "creates in different repos with -R" "VytCepas/harbor#11 o/r#13" \
+    '{"command":"gh pr create -R VytCepas/harbor --fill && gh pr create -R o/r --fill"}' "$U1\\n$U3\\n"
+  multi "a create followed by a quiet echo" "VytCepas/harbor#11" \
+    '{"command":"gh pr create --fill && echo done"}' "$U1\\n"
+  multi "the same URL printed twice is one event" "VytCepas/harbor#11" \
+    '{"command":"for b in a b; do gh pr create --fill; done"}' "$U1\\n$U1\\n"
+  multi "one create cannot yield two PRs outside a loop (the earlier URL is not gh's)" "VytCepas/harbor#12" \
+    '{"command":"gh pr create --fill"}' "$U1\\n$U2\\n"
+  multi "a loop whose result ends in something else opens nothing" none \
+    '{"command":"for b in a b; do gh pr create --fill; done"}' "$U1\\ndone\\n"
+  multi "a loop followed by cat of a file" none \
+    '{"command":"for b in a b; do gh pr create --fill; done; cat notes.txt"}' "$U1\\n$U2\\n"
+  multi "an echo naming a URL after the create is not quiet" none \
+    '{"command":"gh pr create --fill; echo https://github.com/evil/x/pull/1"}' "https://github.com/evil/x/pull/1\\n"
+  multi "a loop that names no create at all" none \
+    '{"command":"for b in a b; do gh pr view $b; done"}' "$U1\\n$U2\\n"
+  multi "in a loop, the PR that already exists is dropped and the new one kept" "VytCepas/harbor#12" \
+    '{"command":"for b in a b; do gh pr create --head $b --fill; done"}' "a pull request for branch a into branch main already exists:\\n$U1\\n$U2\\n"
+  multi "a creation captured in a variable and echoed" "VytCepas/harbor#11" \
+    '{"command":"url=$(gh pr create --fill); echo $url"}' "$U1\\n"
+  rm -rf "$BUS"; fire $SH "$(post Bash '{"command":"for b in a b; do gh pr create --head $b --fill; done"}' "{\"stdout\":\"$U1\\n$U2\\n\"}")" >/dev/null
+  t_eq "each event of a loop keeps its own repo, link and the session" "harbor https://github.com/VytCepas/harbor/pull/12 $SID" \
+    "$(one pr.opened '"\(.repo) \(.data.link) \(.data.session_id)"' | tail -1)"
+
   t_section "$SH: what is not a producer's tool or result emits nothing (and exits 0)"
   rm -rf "$BUS"
   for case in \
