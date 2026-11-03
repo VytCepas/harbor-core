@@ -1,6 +1,6 @@
 # required-checks.tsv (harbor#1018, ship contract §5a.6) — the checks a harbor PR must pass to merge through
 # merge-stack or the approval gate, which read this file from the default branch on GitHub.
 # repo<TAB>check name, exactly as `gh pr checks` prints it. KEEP IN STEP with harbor's rows in
-# CONTRACTS/required-checks.tsv, which bin/merge-check.sh reads when it runs from a checkout.
+# contracts/required-checks.tsv, which bin/gate-merge-check.sh reads when it runs from a checkout.
 
 VytCepas/harbor	public-ci

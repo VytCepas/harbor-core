@@ -1,7 +1,7 @@
 # fixtures/naming/path.test/fail (harbor#950) — test paths that MUST go red through the second name of the test surface. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
 # COLUMNS  name <TAB> the rule ids that must go red, comma-separated
 name	rule
-tests/checks/lint-test.sh	name.test-path
+tests/checks/lint-x-test.sh	name.test-path
 tests/admission/bash-test.sh	name.test-path
-tests/floor/floor.b6-test.sh	name.test-path
+tests/floor/floor.b7-test.sh	name.test-path
 tests/admission/bash/destroy.test.v2.sh	name.test-path

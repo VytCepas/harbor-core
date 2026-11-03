@@ -17,7 +17,7 @@ command -v gitleaks >/dev/null 2>&1 || {
 # ~/.claude/MEMORY/.git/hooks/, a DIFFERENT repository, where harbor's bin/ may
 # not be present at all. A hook that sources a library from a path outside the
 # repo it guards fails open the moment that path moves — so this one stays
-# standalone, and the duplication is the price of that. guard-lib.sh carries the
+# standalone, and the duplication is the price of that. library-admission.sh carries the
 # reference implementation and the measured equivalence; keep the two in step.
 if gitleaks git --help >/dev/null 2>&1; then
   exec gitleaks git --no-banner --exit-code 1 "$(git rev-parse --show-toplevel)"

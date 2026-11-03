@@ -3,7 +3,10 @@ kind: decision-record
 status: accepted
 alias: D-49
 date: 2026-10-04
+supersedes: -
+superseded_by: -
 source: research/12a-reviewer.md
+owner: @VytCepas
 ---
 
 # Exit codes and output tags
@@ -17,7 +20,7 @@ Naming-standard decision D-49. The decision text is imported unchanged from stan
 
 ## Decision
 
-**migrate to D-29**: pass 0, fail 1, usage 2, unchecked 3, skip 0; the 8 exit-2 checks, `visual-check.sh` and LOG1 tags move, old codes accepted during a window
+**migrate to D-29**: pass 0, fail 1, usage 2, unchecked 3, skip 0; the 8 exit-2 checks, `doc-visual-check.sh` and LOG1 tags move, old codes accepted during a window
 
 ## Consequences
 
