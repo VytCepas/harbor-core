@@ -23,6 +23,7 @@ set -u
 LC_ALL=C; export LC_ALL
 case "$0" in */*) _SRC="${0%/*}" ;; *) _SRC=. ;; esac
 _SRC="$(CDPATH='' cd -- "$_SRC" && pwd)"
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh (harbor#1392)
 LOG_FD=2
 . "$_SRC/library-log.sh"
 log_init status-fleet-watch
