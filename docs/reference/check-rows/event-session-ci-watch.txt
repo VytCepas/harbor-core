@@ -1,0 +1,4 @@
+watches: **a PR's checks, watched until they settle** (harbor#1044): the preset that runs `session-ci-watch.sh` on `pr.opened`; it starts `~/.local/bin/wait-for` detached on `gh pr checks` and never merges, approves or re-runs anything
+schedule: **not scheduled: a rule of `event.dispatch`, on by deploy** (`#default` in `contracts/event-rules.tsv`; `event-dispatch.sh reconcile` installs it, harbor#1437). It fires on `pr.opened`, debounced 30 s, at most 12 an hour. On: `harbor event on --preset event.session-ci-watch`. Off: `harbor event on --off event.session-ci-watch`; falsifier: `sh tests/session/react/presets.test.sh`
+notifies: one desktop banner with the verdict (green, red, or still running at the deadline, default 1800 s) and a `reactions.log` line
+red: checks red, or a watch that ended undecided. Disable: `harbor event on --off event.session-ci-watch`; a watch already started ends at its own deadline

@@ -3,7 +3,10 @@ kind: decision-record
 status: accepted
 alias: D-69
 date: 2026-10-04
+supersedes: -
+superseded_by: -
 source: research/12a-reviewer.md
+owner: @VytCepas
 ---
 
 # Remaining repo names
@@ -16,7 +19,7 @@ Naming-standard decision D-69, from standard-draft.md §12. Core keeps the two d
 - Taken after reviews 09a, 09b, 10 and 11 (§12 header).
 - Source: research/12a-reviewer.md
 - Moved (harbor#1273): the original text names which workload repo takes which name. It is in the private layer's
-  `notes/repo-names.md` (`sh bin/roots.sh --private`), byte for byte. This stub keeps D-69 citable.
+  `notes/repo-names.md` (`sh bin/scope-roots.sh --private`), byte for byte. This stub keeps D-69 citable.
 
 ## Decision
 

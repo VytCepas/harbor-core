@@ -3,8 +3,11 @@ kind: decision-record
 status: accepted
 alias: D-63
 date: 2026-10-04
+supersedes: -
+superseded_by: -
 source: research/12a-reviewer.md
 revised_by: D-77
+owner: @VytCepas
 ---
 
 # The standard's own family

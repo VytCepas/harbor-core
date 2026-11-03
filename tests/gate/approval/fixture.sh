@@ -14,16 +14,16 @@ ag_world() {
   GF="$T_TMP/gf";rm -rf "$GF" "$HOME/.local" "$CLAUDE_CONFIG_DIR"; export GF
   mkdir -p "$GF/contents/.agents" "$GF/pr" "$GF/compare" "$GF/runs" "$GF/watch" "$GF/checks" "$CLAUDE_CONFIG_DIR/bin"
   CFG="$(CDPATH='' cd -P -- "$CLAUDE_CONFIG_DIR" && pwd -P)"; GB="$CFG/bin"
-  for f in log-lib.sh fs-lib.sh gate-lib.sh gate-classify.sh gate-merge.sh gate-approve.sh gate-queue.sh merge-check.sh event-bus.sh \
+  for f in library-log.sh library-fs.sh library-gate.sh gate-classify.sh gate-merge.sh gate-approve.sh gate-queue.sh gate-merge-check.sh event-bus.sh \
            gate-merge-stack.sh gate-merge-stack-resolve.py; do
     cp "$T_ROOT/bin/$f" "$GB/$f"
   done
   : > "$GB/required-checks.tsv"   # as runtime-install ships them beside merge-stack; harbor's own rows name no acme repo
-  cp "$T_ROOT/CONTRACTS/merge-stack-union.txt" "$GB/"
+  cp "$T_ROOT/contracts/merge-stack-union.txt" "$GB/"
   printf '%s\tCI gate\n' "$AG_R" > "$GF/contents/.agents/required-checks.tsv"
   jq -n --arg a "Bash($GB/gate-approve.sh *)" '{permissions: {ask: [$a], allow: [], deny: [], disableBypassPermissionsMode: "disable"}}' > "$CFG/settings.json"
   printf 'repo %s\nworkflow ci.yml\n' "$AG_R" > "$GF/contents/.agents/ship.conf"
-  printf 'glob\tclass\treason\nbin/guard-*\tguard\tthe floor\nCONSTITUTION.md\tconstitution\tthe constitution\n' > "$GF/contents/.agents/protected-paths.tsv"
+  printf 'glob\tclass\treason\nbin/admission-*\tguard\tthe floor\nCONSTITUTION.md\tconstitution\tthe constitution\n' > "$GF/contents/.agents/protected-paths.tsv"
   echo OPEN > "$GF/pr/7.state"; echo "$SHA_A" > "$GF/pr/7.head"
   ag_files "$SHA_A" docs/a.md
   printf 'CI gate\tpass\t1m\thttps://example.invalid/run/1\n' > "$GF/checks/7"
@@ -54,6 +54,7 @@ case "$1 $2" in
       '{state: $s, baseRefName: "main", headRefOid: $h, mergeable: "MERGEABLE", title: "PR", headRefName: "feat"}' | emit ;;
   "pr checks") case " $* " in *" --required "*) echo "no required checks reported" >&2; exit 1 ;; esac   # no branch protection
       cat "$F/checks/$3"; grep -qv "	pass	" "$F/checks/$3" && exit 8; exit 0 ;;
+  "pr diff") exit 0 ;;   # no changed file, so no constitutional clause is amended (harbor#1026)
   "pr merge") echo "$*" >> "$F/merge.log"; [ ! -f "$F/mergefail" ] || exit 1; echo MERGED > "$F/pr/$3.state" ;;
   "run list") k="$commit"; [ -f "$F/runs/$k" ] || k=default
       if [ -f "$F/runs/$k" ]; then cat "$F/runs/$k"; else echo '[{"databaseId":900,"status":"completed","conclusion":"success","workflowName":"ci"}]'; fi | emit ;;

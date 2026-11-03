@@ -1,0 +1,29 @@
+# confinement-classes.tsv (harbor#1441, #555 decision 10 (a)) — every class of Bash call that asks to leave the sandbox, and
+# its treatment. `admission-observe-report.sh --confinement` joins the ledger's per-class escape count to this file and
+# prints `untreated: N`: the classes with no row here, or a row whose kind is not one of the four. A class is a name in
+# HARBOR_ADMISSION_CLASSES (bin/library-admission.sh), set from the first verb of the command by floor_obs_class and written to
+# the ledger as `x`; `unclassified` is a record from before that field. The observe-report suite holds this file's class
+# set equal to the writer's enum, so a class added there with no row here is red.
+#
+# kind  allow     a confinement row that lets the call run confined (a host, a path, a socket)
+#       route     a tool or hook that does the work outside the wall, or a note that names the confined way
+#       operator  an `!` step or sudo install only the operator can run
+#       accepted  counted in the week and left on the open retry (#555 decision 11: a rare tool earns no new row)
+# `accepted` is a treatment only for a class the week then measures: it is the retry the 2% line counts.
+#
+# COLUMNS  class <TAB> kind <TAB> treatment <TAB> where
+class	kind	treatment	where
+readonly	route	the note on the call itself says this verb runs confined, so the flag is dropped	context-rules/user/confinement-read-escape.md
+vcs	allow	github.com and api.github.com are on the host list; gh, git and gcx read the token the access hook mints before the call	contracts/confinement-hosts.txt hooks/access-confinement
+cloud	accepted	workload hosts are the private layer's rows (#555 decision 11); a host that escapes repeatedly in the week earns one	contracts/confinement-hosts.txt
+container	accepted	the container runtime socket sits outside the write zone; the call is counted, not opened	contracts/confinement-paths.txt
+script	accepted	a script's class is what it runs; the run is counted and the script that escapes repeatedly is classed by its verb	contracts/confinement-classes.tsv
+interp	accepted	an interpreter runs anything; it is counted, and a repeated cause earns its own row	contracts/confinement-classes.tsv
+network	accepted	a host off the list goes through the open retry (#555 decision 11)	contracts/confinement-hosts.txt
+fsmutate	accepted	a write outside the zone is the refusal the note names; writes inside it never need the flag	context-rules/user/confinement-refused.md
+system	operator	launchctl, sudo, open and the like act on the machine, not the repo; the operator runs them with `!`	contracts/confinement-classes.tsv
+compound	accepted	a loop or group has no single verb; the first verb inside it cannot be read without a parse	contracts/confinement-classes.tsv
+event-bus	allow	the bus directory is a write row, so `event-bus.sh emit` runs confined	contracts/confinement-paths.txt
+session-title	route	the title is written with the Write tool and applied by the session-title hook, never a shell redirect	hooks/session-title/session-title.sh
+other	accepted	a verb the enum does not name is counted; a verb that recurs is added to floor_obs_class with a row	bin/library-admission.sh
+unclassified	accepted	a ledger record from before the class field; it ages out with rotation	contracts/confinement-classes.tsv
