@@ -146,11 +146,6 @@ admission.class-cloud-destroy	judged	a remote action or a command class: the san
 admission.cloud-kubectl-delete	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
 admission.cloud-terraform-destroy	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
 admission.cloud-aws-destroy	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
-admission.cloud-catastrophic	judged	a remote action or a command class: the sandbox does not see its effect
-admission.cloud-gtm-version	judged	a remote action or a command class: the sandbox does not see its effect
-admission.cloud-argv-blind	judged	a remote action or a command class: the sandbox does not see its effect
-admission.cloud-soft	judged	a remote action or a command class: the sandbox does not see its effect
-admission.cloud-identity	judged	a remote action or a command class: the sandbox does not see its effect
 admission.class-deploy	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
 admission.class-force-push	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
 admission.class-secret-read	judged	a remote action: the host list does not decide what a permitted host receives

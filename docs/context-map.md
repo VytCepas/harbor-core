@@ -78,7 +78,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
 | access | control-plane | 12 | 28 | 2 | 6 | 0 | 0 |
-| admission | control-plane | 26 | 87 | 0 | 6 | 0 | 172 |
+| admission | control-plane | 26 | 87 | 0 | 6 | 0 | 167 |
 | agent | control-plane | 1 | 2 | 0 | 8 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
 | audit | control-plane | 8 | 14 | 0 | 10 | 0 | 2 |

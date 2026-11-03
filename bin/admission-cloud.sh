@@ -238,32 +238,14 @@ fi
 
 # Decision. CATASTROPHIC (dataset/bucket/project delete, IAM writes, raw REST DELETE) DENIES ALWAYS regardless of posture: an ASK auto-approves in an unattended session, the failure this guard exists for. The operator who means one runs it in a session launched with the kill-switch. SOFT asks; CLOUD_POSTURE=deny escalates it for fully unattended sessions.
 # NO-HUMAN AUTO-ESCALATION (harbor#194): floor_no_human (transcript under /subagents/, agent_type, autonomous permission_mode) escalates the ask to deny without touching the interactive path (fail-safe toward "human present").
-# THE RULE FIRST, THEN ITS ROW (harbor#1030): the tier is the guard's finding; whether it asks or denies is the row of the rule it files under. Without a register the tier keeps what it held before rows.
-case "$TIER" in
-  CATASTROPHIC) [ "$BLIND" = 1 ] && _crule=argv-blind-cloud || _crule=cloud-catastrophic ;;
-  SOFT)         _crule=cloud-soft ;;
-  IDENTITY)     _crule=cloud-identity ;;
-  GTMSTD)       _crule=cloud-gtm-version ;;
-  NGKUBE)       _crule=cloud-kubectl-delete ;;
-  NGTF)         _crule=cloud-terraform-destroy ;;
-  NGAWS)        _crule=cloud-aws-destroy ;;
-  *)            _crule=cloud-unclassified ;;
-esac
 NOHUMAN=0; floor_no_human && NOHUMAN=1
-if [ "$TIER" = CATASTROPHIC ] || [ "$TIER" = GTMSTD ]; then _cfb=block; else _cfb=warn; fi
-_cesc=0; if [ "$NOHUMAN" = 1 ] || [ "${CLOUD_POSTURE:-ask}" = "deny" ]; then _cesc=1; fi
-if floor_decide cloud "$_crule" 1 0 "$_cfb"; then _cdv="$FLOOR_VERDICT"; elif [ "$_cfb" = warn ]; then _cdv=ask; else _cdv=block; fi
+if [ "$TIER" = CATASTROPHIC ] || [ "$TIER" = GTMSTD ]; then DECISION="deny"
+elif [ "$NOHUMAN" = 1 ]; then DECISION="deny"
+elif [ "${CLOUD_POSTURE:-ask}" = "deny" ]; then DECISION="deny"
+else DECISION="ask"; fi
+
 _NHNOTE=""
-if [ "$_cdv" = ask ] && [ "$_cesc" = 1 ]; then   # an ask the unattended caller would auto-approve is asked again as a deny
-  if floor_decide cloud "$_crule" 1 1 "$_cfb"; then _cdv="$FLOOR_VERDICT"; else _cdv=block; fi
-  [ "$NOHUMAN" != 1 ] || _NHNOTE=" [no-human context — an ask would auto-approve here, so escalated to deny; a human runs this from an interactive session]"
-fi
-case "$_cdv" in
-  ask)   DECISION="$_cdv" ;;
-  block) DECISION="deny" ;;
-  *)     { floor_log_decision cloud "$_cdv" "$_crule.$SHAPE" 2>/dev/null || :; } 2>/dev/null || :   # shadow, warn or off: recorded, allowed
-         exit 0 ;;
-esac
+[ "$TIER" != CATASTROPHIC ] && [ "$TIER" != GTMSTD ] && [ "$NOHUMAN" = 1 ] && _NHNOTE=" [no-human context — an ask would auto-approve here, so escalated to deny; a human runs this from an interactive session]"
 # PER SHAPE: the argv tail ("Reads are never gated") is FALSE for the degraded block, where the tokenizer cannot see the verb.
 if [ "$BLIND" = 1 ]; then
   MSG="$REASON."
@@ -300,5 +282,15 @@ printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision"
 
 # Census, on the deny path only and never fatal (mirrors guard-bash). The TIER goes in the RULE token, not the shape (the shape slot is enum-gated, so it was coerced to `meta`), mapped through a `case` over call-site literals so design note 4 holds with no fork.
 # THE BLIND ARM IS ITS OWN TOKEN: it carries the tier's posture but not its evidence, so filing it under cloud-catastrophic would read as a matched rule.
+case "$TIER" in
+  CATASTROPHIC) [ "$BLIND" = 1 ] && _crule=argv-blind-cloud || _crule=cloud-catastrophic ;;
+  SOFT)         _crule=cloud-soft ;;
+  IDENTITY)     _crule=cloud-identity ;;
+  GTMSTD)       _crule=cloud-gtm-version ;;
+  NGKUBE)       _crule=cloud-kubectl-delete ;;
+  NGTF)         _crule=cloud-terraform-destroy ;;
+  NGAWS)        _crule=cloud-aws-destroy ;;
+  *)            _crule=cloud-unclassified ;;
+esac
 { floor_log_decision cloud "$DECISION" "$_crule.$SHAPE" 2>/dev/null || :; } 2>/dev/null || :
 exit 0

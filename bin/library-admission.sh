@@ -535,33 +535,6 @@ floor_obs_digest() { # <cfg-dir> [subject]
   return 0
 }
 
-# floor_decide <guard> <rule> [ask 0|1] [escalate 0|1] [fallback-mode] — the verdict the controls register gives a fired rule
-# (harbor#1030): block | shadow | warn | ask | off in FLOOR_VERDICT and the stamp in FLOOR_STAMP (stderr unless _FD_DEFER=1), both made by bin/admission-decide.sh beside
-# the guard (or $FLOOR_DECIDE). Returns 1 with nothing printed when that file is absent, and the caller decides as it did before
-# rows. A guard that answers a person passes ask=1 (it never reads the shadow switch); the rest read it here, and a rule that
-# keeps enforcing (floor_shadow_enforces) is never loosened. <rule> carries no shape suffix.
-floor_decide() {
-  _fdd="${FLOOR_DECIDE:-}"
-  if [ -z "$_fdd" ]; then case "$0" in */*) _fdd="${0%/*}/admission-decide.sh" ;; *) _fdd=./admission-decide.sh ;; esac; fi
-  FLOOR_STAMP=; FLOOR_VERDICT=
-  [ -f "$_fdd" ] || return 1
-  _fda="${3:-0}"; _fds=0; _fde=0
-  if [ "$_fda" != 1 ]; then
-    [ "${HARBOR_ADMISSION_SHADOW:-0}" = 1 ] && _fds=1
-    ! floor_shadow_enforces "$1" "$2" || _fde=1
-  fi
-  # The stamp comes back as a field and is printed here, or by floor_block after its refusal, which the reader sees first.
-  _fdl="$(sh "$_fdd" "$1" "$2" --shadow "$_fds" --enforcing "$_fde" --ask "$_fda" --escalate "${4:-0}" --defer-stamp 1 ${5:+--fallback "$5"})" || _fdl=''
-  _fdt="$(printf '\t')"; _fdv=''; _fdx=''; _fdy=''; _fdz=''
-  IFS="$_fdt" read -r _fdv _fdx _fdy _fdz <<FDEOF
-$_fdl
-FDEOF
-  FLOOR_STAMP="$_fdz"
-  case "$_fdv" in block|shadow|warn|ask|off) ;; *) case "${5:-block}:$_fda" in warn:1) _fdv=ask ;; *) _fdv=block ;; esac ;; esac
-  [ -z "$FLOOR_STAMP" ] || [ "${_FD_DEFER:-0}" = 1 ] || printf '%s\n' "$FLOOR_STAMP" >&2
-  FLOOR_VERDICT="$_fdv"
-}
-
 # floor_block <guard> <message> [rule.shape] - deny the tool call: reason to stderr (fed back to the model), one record, exit 2. The one blocking exit in the floor.
 # The record is written AFTER both printfs, so a logger fault cannot swallow the reason; the rule id is shown so the operator can name a wrong rule.
 # The printed remedy is the NARROWEST true one (harbor#482): a `!` command or a hand edit, not the blanket kill-switch. Lint F16 keeps the blanket hatch out of every guard but the two where it is the true remedy.
@@ -575,26 +548,27 @@ floor_block() {
     FLOOR_SHADOWED=1
     return 0
   fi
-  # ROWS DECIDE (harbor#1030): the mode of the fired rule is its controls.tsv row, answered by floor_decide for every guard that
-  # blocks through here. The predicate stays in the guard. No decision function beside the guard decides as before: the same
-  # table, with every row a block row.
-  _FD_DEFER=1
-  if floor_decide "$1" "${3%.*}"; then _fbv="$FLOOR_VERDICT"
+  # ROWS DECIDE (harbor#1030 PR 1): for a guard whose rules are registered, the mode of the fired rule is its controls.tsv row,
+  # read by bin/admission-decide.sh beside this file. The predicate stays in the guard; the stamp is printed by the decision function.
+  # No decision function beside the guard decides as before: the same table, with every row a block row.
+  _fbv=''; _fbd="${FLOOR_DECIDE:-}"
+  if [ -z "$_fbd" ]; then case "$0" in */*) _fbd="${0%/*}/admission-decide.sh" ;; *) _fbd=./admission-decide.sh ;; esac; fi
+  if [ "$1" = egress ] && [ -f "$_fbd" ]; then
+    _fbs=0; [ "${HARBOR_ADMISSION_SHADOW:-0}" = 1 ] && _fbs=1
+    _fbe=0; ! floor_shadow_enforces "$1" "${3%.*}" || _fbe=1
+    _fbv="$(sh "$_fbd" "$1" "${3%.*}" --shadow "$_fbs" --enforcing "$_fbe" | cut -f1)" || _fbv=block
+    case "$_fbv" in block|shadow|warn) ;; *) _fbv=block ;; esac
   elif [ "${HARBOR_ADMISSION_SHADOW:-0}" = 1 ] && ! floor_shadow_enforces "$1" "${3%.*}"; then
     _fbv=shadow
-  else _fbv=''
   fi
-  _FD_DEFER=0
   if [ "$_fbv" = shadow ]; then
     printf 'HELM FLOOR [%s:%s]: SHADOW — would have blocked; recorded, not enforced\n' "$1" "${3%.*}" >&2
-    [ -z "${FLOOR_STAMP:-}" ] || printf '%s\n' "$FLOOR_STAMP" >&2
     floor_log_decision "$1" shadow "${3:-}" || :
     FLOOR_SHADOWED=1
     return 0
   fi
   if [ "$_fbv" = warn ]; then
     printf 'HELM FLOOR [%s:%s]: WARN — %s\n' "$1" "${3%.*}" "$2" >&2
-    [ -z "${FLOOR_STAMP:-}" ] || printf '%s\n' "$FLOOR_STAMP" >&2
     floor_log_decision "$1" advise "${3:-}" || :
     FLOOR_SHADOWED=1
     return 0
@@ -611,7 +585,6 @@ floor_block() {
     *)
       printf '(if this refusal is wrong: the operator can run this one command as "! <command>" at the prompt, which is not a tool call, so no guard sees it; the rule id above is what to report)\n' >&2 ;;
   esac
-  [ -z "${FLOOR_STAMP:-}" ] || printf '%s\n' "$FLOOR_STAMP" >&2   # after the refusal and its footnote: the first line is the reason
   floor_log_decision "$1" block "${3:-}" || :
   exit 2
 }
