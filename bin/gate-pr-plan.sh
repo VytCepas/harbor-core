@@ -18,6 +18,10 @@
 #            allowed_merge_methods.
 #   update   a BEHIND PR gets update-branch and a re-plan, nothing after: the update moves the head, and a push
 #            dismisses a stale approval, so an approve or a pinned merge planned now would be wasted.
+#   red      a red head BEHIND its base (compare behind_by > 0) gets update-branch and a re-plan, not a re-run: the red may
+#            already be fixed on the base (harbor#1418). Up to date, the re-run stays the step.
+#   declared ship.conf `review` and `delete-branch` are read when present; live wins and a mismatch is drift in the
+#            note (harbor#1418). The two readers share bin/library-repo-rules.sh with bin/gate-repo-drift.sh.
 #   approve  when GitHub says REVIEW_REQUIRED, or blocks a PR whose checks are green and which nobody approved
 #            (a code-owner rule leaves reviewDecision empty; classic protection is 403 to the App, so it is inferred).
 #   merge    --match-head-commit <the sha judged here>: a later push makes GitHub refuse it, never land it unjudged.
@@ -35,6 +39,7 @@
 # ENV   HARBOR_TEST_GH a fake gh · HARBOR_GATE_OPERATOR_GH the operator's gh (default: the REAL the gh shim execs)
 set -u
 . "$(dirname -- "$0")/library-log.sh"
+. "$(dirname -- "$0")/library-repo-rules.sh"
 
 case "${1:-}" in
   -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); print; next } {exit}' "$0"; exit 0 ;;
@@ -65,6 +70,16 @@ target() {
   printf '%s\t%s\n' "$_r" "$_n"
 }
 
+# the head is behind its base: update-branch (the App's in harbor's own owner's repos, else the operator's), then re-plan
+update_steps() { # <why-the-head-moves>
+  if [ "${R%%/*}" = "$OWN" ]; then
+    step app update "the head is behind $BASE" "gh pr update-branch $N -R $R"
+  else
+    step operator update "the head is behind $BASE, and update-branch in another org's repo is refused to the App" "$OG pr update-branch $N -R $R"
+  fi
+  step app re-plan "$1" "sh $0 $R#$N"
+}
+
 step() { # <who> <what> <why> <cmd>
   jq -cn --arg w "$1" --arg a "$2" --arg y "$3" --arg c "$4" '{who: $w, what: $a, why: $y, cmd: $c}' >> "$W/steps"
 }
@@ -78,8 +93,11 @@ plan() { # <repo> <n> — appends one plan object to $W/plans; returns 0 lands, 
         method_from: $mf, note: $note, steps: $s}' >> "$W/plans"
   }
   STATE=""; MS=""
-  PRJ="$("$GH" pr view "$N" -R "$R" --json state,isDraft,mergeStateStatus,reviewDecision,headRefOid,headRefName,baseRefName,author,statusCheckRollup,reviews 2>"$W/err")" \
+  PRJ="$("$GH" pr view "$N" -R "$R" --json state,isDraft,mergeStateStatus,reviewDecision,headRefOid,headRefName,baseRefName,author,statusCheckRollup,reviews,commits 2>"$W/err")" \
     || { finish "could not read the PR: $(head -n 1 "$W/err")" false; return 3; }
+  # a re-run on the same head leaves the old run in the rollup: judge only the newest of each workflow+name
+  PRJ="$(printf '%s' "$PRJ" | jq -c '.statusCheckRollup |= ((. // []) | group_by([.workflowName // "", .name // .context // ""])
+    | map(max_by(.startedAt // .completedAt // "")))')" || { finish "could not read the PR's checks" false; return 3; }
   g() { printf '%s' "$PRJ" | jq -r "$1"; }
   STATE="$(g .state)"; MS="$(g .mergeStateStatus)"; RD="$(g '.reviewDecision // ""')"
   SHA="$(g .headRefOid)"; HEAD="$(g .headRefName)"; BASE="$(g .baseRefName)"
@@ -93,41 +111,58 @@ plan() { # <repo> <n> — appends one plan object to $W/plans; returns 0 lands, 
   # checks: a red required check stops the plan; a red optional one (UNSTABLE) is only noted
   RED="$(g '[.statusCheckRollup[]? | select((.conclusion // .state // "") as $c | ["FAILURE","ERROR","TIMED_OUT","CANCELLED","ACTION_REQUIRED","STARTUP_FAILURE"] | index($c)) | (.name // .context)] | unique | join(", ")')"
   WAIT="$(g '[.statusCheckRollup[]? | select((.status // "COMPLETED") != "COMPLETED" or ((.state // "") | IN("PENDING","EXPECTED"))) | (.name // .context)] | unique | join(", ")')"
+  # a pending review-gate status (a StatusContext `review/...`) waits on a person, not on CI (harbor#1418)
+  WAIT_CI="$(g '[.statusCheckRollup[]? | select((.context // "") | test("^review(/|$)") | not) | select((.status // "COMPLETED") != "COMPLETED" or ((.state // "") | IN("PENDING","EXPECTED"))) | (.name // .context)] | unique | join(", ")')"
+  GATE="$(g '[.statusCheckRollup[]? | select((.context // "") | test("^review(/|$)")) | select((.state // "") | IN("PENDING","EXPECTED")) | .context] | unique | join(", ")')"
   RUNS="$(g '[.statusCheckRollup[]? | select((.conclusion // "") | IN("FAILURE","TIMED_OUT","CANCELLED","STARTUP_FAILURE")) | (.detailsUrl // "") | (capture("/actions/runs/(?<id>[0-9]+)") | .id)?] | unique | .[]')"
   if [ "$MS" = DIRTY ]; then
     step app resolve "the head conflicts with $BASE" "merge origin/$BASE into $HEAD in a worktree, then push"
     finish "conflicts with $BASE" false; return 1
   fi
   if [ -n "$RED" ] && [ "$MS" != UNSTABLE ] && [ "$MS" != CLEAN ]; then
+    # harbor#1418: a red head behind its base may be red from a defect the base already fixed; a re-run repeats it
+    BEHIND_BY="$("$GH" api "repos/$R/compare/$BASE...$HEAD" --jq .behind_by 2>"$W/err")" \
+      || { finish "could not compare $HEAD with $BASE: $(head -n 1 "$W/err")" false; return 3; }
+    case "$BEHIND_BY" in ''|*[!0-9]*) finish "could not read how far $HEAD is behind $BASE" false; return 3 ;; esac
+    if [ "$BEHIND_BY" -gt 0 ]; then
+      update_steps "the red may already be fixed on $BASE ($BEHIND_BY commit(s) ahead of the head): update first, re-run only if it is still red"
+      finish "red: $RED, and behind $BASE by $BEHIND_BY" false; return 1
+    fi
     for _id in $RUNS; do step operator rerun "the App is refused re-runs" "$OG run rerun $_id -R $R --failed"; done
     finish "red: $RED" false; return 1
   fi
   [ -z "$RED" ] || NOTE="optional checks red: $RED"
   [ "$(g .isDraft)" != true ] || step app ready "a draft cannot merge" "gh pr ready $N -R $R"
   if [ "$MS" = BEHIND ]; then
-    if [ "${R%%/*}" = "$OWN" ]; then
-      step app update "the head is behind $BASE" "gh pr update-branch $N -R $R"
-    else
-      step operator update "the head is behind $BASE, and update-branch in another org's repo is refused to the App" "$OG pr update-branch $N -R $R"
-    fi
-    step app re-plan "the update moves the head and dismisses a stale approval; plan the rest on the new head once CI is green" "sh $0 $R#$N"
+    update_steps "the update moves the head and dismisses a stale approval; plan the rest on the new head once CI is green"
     finish "behind $BASE" true; return 0
   fi
 
   # method: ship.conf when the live repo allows it, else the one allowed, else squash
   RJ="$("$GH" api "repos/$R" 2>"$W/err")" || { finish "could not read the repo: $(head -n 1 "$W/err")" false; return 3; }
   RUL="$("$GH" api "repos/$R/rules/branches/$BASE" 2>"$W/err")" || { finish "could not read $BASE's rules: $(head -n 1 "$W/err")" false; return 3; }
-  ALLOWED="$(jq -rn --argjson r "$RJ" --argjson u "$RUL" '
-    [if $r.allow_squash_merge == false then empty else "squash" end,
-     if $r.allow_merge_commit == false then empty else "merge" end,
-     if $r.allow_rebase_merge == false then empty else "rebase" end] as $repo
-    | ([$u[]? | select(.type == "pull_request") | .parameters.allowed_merge_methods // empty] | if length == 0 then $repo else (.[0]) end) as $rule
-    | [$repo[] | select(. as $m | $rule | index($m))] | join(" ")')"
+  ALLOWED="$(rr_methods "$RJ" "$RUL")"
   SHIP="$("$GH" api "repos/$R/contents/.agents/ship.conf?ref=$BASE" -H "Accept: application/vnd.github.raw" 2>"$W/err")" || {
     grep -q 'HTTP 404' "$W/err" || { finish "could not read ship.conf: $(head -n 1 "$W/err")" false; return 3; }
     SHIP=""; }
-  DECL="$(printf '%s\n' "$SHIP" | awk '$1 == "method" { print $2; exit }')"
-  case "$DECL" in merge-commit) DECL=merge ;; esac
+  DECL="$(printf '%s\n' "$SHIP" | rr_conf method)"; DECL="$(rr_method_decl "${DECL%% *}")"
+  # harbor#1418: ship.conf's review and delete-branch against the live facts; live wins, a mismatch is drift in the note
+  DRIFT=""
+  _d="$(printf '%s\n' "$SHIP" | rr_conf review)"
+  if [ -n "$_d" ]; then
+    _dn="$(rr_review_decl "$_d")"; _live="$(rr_review_live "$RUL")"
+    if [ "$_dn" = invalid ]; then DRIFT="drift: ship.conf review $_d is not '<n> [code-owner]' or 'none'"
+    elif [ -z "$_live" ]; then
+      [ "$_dn" = 0 ] || DRIFT="ship.conf declares review $_dn but this cannot read a review rule (classic protection is 403 to the App)"
+    elif [ "$_live" != "$_dn" ]; then DRIFT="drift: ship.conf says review $_dn, the live rules require $_live"; fi
+  fi
+  _d="$(printf '%s\n' "$SHIP" | rr_conf delete-branch)"
+  if [ -n "$_d" ]; then
+    _dn="$(rr_deletebranch_decl "$_d")"; _live="$(printf '%s' "$RJ" | jq -r '.delete_branch_on_merge // false')"
+    if [ "$_dn" = invalid ]; then DRIFT="${DRIFT:+$DRIFT; }drift: ship.conf delete-branch $_d is not yes or no"
+    elif [ "$_live" != "$_dn" ]; then DRIFT="${DRIFT:+$DRIFT; }drift: ship.conf says delete-branch $( [ "$_dn" = true ] && echo yes || echo no ), the live repo's delete_branch_on_merge is $_live"; fi
+  fi
+  [ -z "$DRIFT" ] || NOTE="${NOTE:+$NOTE; }$DRIFT"
   if [ -n "$DECL" ]; then
     case " $ALLOWED " in
       *" $DECL "*) M="$DECL"; MF="ship.conf" ;;
@@ -140,23 +175,37 @@ plan() { # <repo> <n> — appends one plan object to $W/plans; returns 0 lands, 
     else case " $ALLOWED " in *" squash "*) M=squash ;; *) M="$1" ;; esac; MF="undeclared (no ship.conf method); allowed: $ALLOWED"; fi
   fi
 
-  # approval: GitHub's own word, or a green PR that GitHub still blocks and nobody approved
+  # approval: GitHub's own word, a pending review-gate status, the rules' unattributed-change flag, or a green PR that
+  # GitHub still blocks and nobody approved. Every pull_request rule on the branch counts: any code-owner wins, the largest count.
   APPROVED="$(g '[.reviews[]? | select(.state == "APPROVED" and (.author.is_bot | not))] | length')"
   HUMAN_AUTHOR="$(g 'if .author.is_bot then "" else .author.login end')"
+  # commits the App opened the PR for but a person authored: GitHub calls the push unattributed
+  UNATTR="$(g 'if .author.is_bot then (.author.login | sub("^app/"; "")) as $a | [.commits[]? | select(([.authors[]?.login] | index($a)) | not)] | length else 0 end')"
+  RULEP="$(jq -cn --argjson u "$RUL" '[$u[]? | select(.type == "pull_request") | .parameters] as $p
+    | {co: any($p[]; .require_code_owner_review == true), n: ([$p[].required_approving_review_count // 0] | max // 0),
+       un: any($p[]; .require_extra_approval_for_unattributed_changes == true)}')"
+  rp() { printf '%s' "$RULEP" | jq -r "$1"; }
+  UNATTR_RULE=""; [ "$UNATTR" -gt 0 ] && [ "$(rp .un)" = true ] && UNATTR_RULE="the base rules require an extra approval for changes the App pushed for someone else (unattributed)"
   NEED=""
   case "$RD" in
     CHANGES_REQUESTED) finish "changes requested: address the review first" false "$M" "$MF"; return 1 ;;
     REVIEW_REQUIRED) NEED="GitHub reports REVIEW_REQUIRED" ;;
   esac
+  # a gate that lags an approval already given stays in WAIT; otherwise it is the missing approval, not CI
+  if [ -n "$GATE" ] && [ "$APPROVED" -eq 0 ] && [ "$RD" != APPROVED ]; then
+    NEED="${NEED:-$GATE is pending (awaiting review)}"; WAIT="$WAIT_CI"
+  fi
   if [ -z "$NEED" ] && [ "$MS" = BLOCKED ] && [ -z "$WAIT" ] && [ "$RD" != APPROVED ]; then
     if [ "$APPROVED" -gt 0 ]; then
       finish "blocked by a rule this cannot read (approved, checks green; classic protection is 403 to the App)" false "$M" "$MF"; return 1
     fi
-    NEED="$(jq -rn --argjson u "$RUL" '[$u[]? | select(.type == "pull_request") | .parameters] | .[0] // {}
-      | if .require_code_owner_review then "the base rules require a code-owner review"
-        elif (.required_approving_review_count // 0) > 0 then "the base rules require \(.required_approving_review_count) approval(s)"
-        else "GitHub blocks a green PR and no rule is readable: a classic-protection review (403 to the App)" end')"
+    if [ "$(rp .co)" = true ]; then NEED="the base rules require a code-owner review"
+    elif [ "$(rp .n)" -gt 0 ]; then NEED="the base rules require $(rp .n) approval(s)"
+    elif [ -n "$UNATTR_RULE" ]; then NEED="$UNATTR_RULE"
+    else NEED="GitHub blocks a green PR and no rule is readable: a classic-protection review (403 to the App)"; fi
   fi
+  # the rule is explicit, so it asks while CI still runs too
+  if [ -z "$NEED" ] && [ "$MS" = BLOCKED ] && [ "$RD" != APPROVED ] && [ "$APPROVED" -eq 0 ]; then NEED="$UNATTR_RULE"; fi
   if [ -n "$NEED" ]; then
     if [ -n "$HUMAN_AUTHOR" ]; then
       step operator approve "$NEED, and $HUMAN_AUTHOR authored it: a second person must approve" "# ask a reviewer other than $HUMAN_AUTHOR"

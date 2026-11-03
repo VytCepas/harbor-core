@@ -26,6 +26,7 @@ table below.
 | 10 | Controls, `register:` namespaces | `controls.tsv`, `registers.tsv` |
 | 13 | Workspace, private layer, packs, share (D-78 to D-85) | `terms.tsv` class `share`; `kinds.tsv` column `share` |
 | 14 | A repo's own words and families (harbor#967) | `naming-words.tsv`, `naming-families.tsv` at a repo's root |
+| 15 | Documents: front matter and the generated header (harbor#1434, #1435) | `kinds.tsv` column `required_fields`; `contracts/fresh-checks.tsv`; `contracts/doc-folders.tsv` |
 | 9, 11 | Conventions beyond names; migration | the draft behind harbor#949, until their registers land |
 
 ## 0. Principles
@@ -181,7 +182,7 @@ the tool that forces it.**
      shrinks (`name.exemption-stale`, `name.exemption-grow`), and each row expires on the date of the rename wave
      that retires it (harbor#961), a week apart, so the list never expires on one day.
    - Promotion to block is a person's PR. A `lint-name.sh` rule is promoted on evidence (D-92): it has gone red and
-     reports 0 findings in every governed repo (`sh bin/rule-health.sh --promotion`). Any other rule keeps D-64: red,
+     reports 0 findings in every governed repo (`sh bin/lint-rule-health.sh --promotion`). Any other rule keeps D-64: red,
      then 4 weeks with no finding accepted as false.
    - There are no inline ignores.
    - An expiring alias warns from 14 days before its date and blocks from it (`name.alias-expired`).
@@ -210,6 +211,14 @@ the tool that forces it.**
 
 The operator's decisions, 2026-10-03 and 2026-10-04. The rationale is in harbor#949; the ids are permanent. Rows
 from D-57 on are listed where this file, the registry or the lint cite them.
+
+**A decision id is box-wide as `<system>/D-<n>`** (harbor#1429, D-20's `[system/]` prefix): harbor, yard and fleet each number
+their records from D-1, so a bare `D-29` names a record only inside the repo whose `docs/decisions/` holds it, and every document
+read outside its repo writes `harbor/D-29`. Every governed repo keeps a record as `docs/decisions/<NNNN>-<slug>.md` under one front
+matter: `kind`, `status` (`proposed`, `accepted`, `rejected` or `superseded`), `alias` (`D-<n>`), `date`, `supersedes` and
+`superseded_by` (`-` for none, else a comma-separated list of `[system/]D-<n>`), and `revised_by` where a partial revision
+leaves the record accepted. Supersession is a pair: a record that names a successor is `superseded` and its successor names it
+back (`standard.decision-supersession`).
 
 | # | Subject | Decided |
 |---|---|---|
@@ -300,7 +309,7 @@ The target design is `DESIGN.md` of the core-packs deliverable; this section is 
   the repos named in `harbor-private/repos.tsv` (`id`, `path`, `kind`, `remote`; D-82).
 - **Private layer (D-79):** `$PORT_ROOT/harbor-private`, data only: `harbor.toml`, `repos.tsv`, `terms.tsv`,
   `leaks.tsv`, `access/`, `checks.md`, `controls.tsv`, `jobs/`, `CLAUDE.personal.md`.
-- **Pack (D-80):** `<workload repo>/harbor-pack/` with `pack.toml`, `skills/`, `bin/`, `context-rules/user/` (`inject.d/` until harbor#1010's date), `checks.tsv`,
+- **Pack (D-80):** `<workload repo>/harbor-pack/` with `pack.toml`, `skills/`, `bin/`, `context-rules/user/`, `checks.tsv`,
   `tests/`. No `hooks/`, no `guard-*`.
 - **Config grammar (D-81):** `harbor.toml` and `pack.toml` are one flat TOML subset: one `key = value` per line,
   `#` comments, values a double-quoted string or a one-line array of them, no tables.
@@ -344,3 +353,16 @@ A repo family reaches only the repo's own runs: `name.family`, `name.test-path`,
 family slot and the commit scope. It never reaches harbor's tree, `--gen cli-tree`, `--gen labels` or the validators.
 The overlay adds no verbs. A verb is optional in the `bin` grammar, so an unregistered one is read as part of the
 object and is not a finding.
+
+## 15. Documents: front matter and the generated header (harbor#1434, #1435)
+
+Two shapes, both judged by `bin/doc-shape.sh` (vendored as `vendor/naming/doc-shape.sh`) and both declared in `kinds.tsv`'s `required_fields`.
+
+1. **Front matter, on every `docs/**/*.md`.** The file opens with `---` and carries `kind`, `owner` and `status`, and `source` where the kind's `required_fields` names it:
+   - `kind` is the `kinds.tsv` id whose folder holds the file (`docs/how-to/` is `how-to`); a folder the registry does not name gets a row in the repo's `contracts/doc-folders.tsv`. A `README.md` or `index.md` directly in `docs/` is `reference`. A mismatch is `doc.kind-folder`.
+   - `owner` is a ticket (`repo#n`, `KEY-n`) or a person (`@login`), never a team and never absent.
+   - `status` is `proposed`, `accepted`, `rejected` or `superseded` for a decision record, and `current`, `draft`, `unreviewed`, `superseded`, `archived` or `generated` for any other doc. A script writes `unreviewed`: it cannot know the doc is current.
+   - `source` is the command or file the doc derives from, required of a decision record, a generated doc and the context map.
+   - A missing or malformed field is `doc.frontmatter-fields`. `sh bin/doc-shape.sh --write` writes what is missing and is idempotent: `kind` from the folder, `owner` from the doc's own ticket reference, else the git history's top human author, else the `CODEOWNERS` default (listed on stdout, never invented).
+2. **The generated header, on every generated file.** One comment line `generated-by: <command>` in the file's own comment syntax: `#` before the text, `//` before it, or `<!-- ... -->` around it, after any front matter and within the file's first 20 lines. A file generated only in part carries it there too. `<command>` is the `fix` column of the file's row in `contracts/fresh-checks.tsv`, held equal both ways: a header with no row, a row whose file lacks the header, and a command that differs from the `fix` are `doc.fresh-registered`. The generator writes the header, so a regeneration never strips it.
+

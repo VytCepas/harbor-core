@@ -1,43 +1,17 @@
 #!/usr/bin/env sh
 # memory-harvest (harbor#6 — workstream D, D1) — the work-log reconciler.
-#
-# THE GAP IT CLOSES. worklog-push.sh writes a session record on Stop. A session
-# that crashes, is killed, or ends with the machine asleep never reaches Stop, so
-# it leaves a transcript and no record. Measured on this machine before this hook
-# existed: 87 transcripts in 30 days, 61 of them with no work-log record. D1's
-# done-when is "a crashed session re-harvests on next start"; this is that.
-#
-# IT NEVER OPENS A TRANSCRIPT. Everything it needs is in the index: the session
-# id is the filename, the project is the directory name, and the clock is the
-# file's mtime. That is not a shortcut — DEAD-ENDS DE-16 rejected building a
-# durable corpus out of transcript CONTENT, because it outlives the 30-day GC
-# that deletes the transcripts and because a shape-preserving scrubber still let
-# live-secret-shaped payloads through. Reading only the index makes the whole
-# class unreachable rather than mitigated. There is no scrubber here because
-# there is nothing to scrub.
-#
-# WIRED AT SessionStart (harbor#1390). It was at Stop because its stand-down once read
-# the context a SessionStart hook writes; since harbor#954 it reads only the repo's
-# `worklog: off`, so the reason is gone and Stop only made it run every turn. The
-# starting session is skipped: its transcript exists and its record is Stop's to write.
-# hooks/memory-harvest/manifest.tsv carries the history.
-#
-# BOUNDED, because a SessionStart hook is on a path the operator waits for.
-# DEAD-ENDS DE-09: a hook that exceeds its timeout is SKIPPED, so a slow
-# reconciler does not fail loudly — it silently stops running, and a fail-open
-# bypass wearing a performance regression's clothes is the worst shape
-# available. Two bounds: a day window, and a per-run cap. What the cap drops is
-# REPORTED, never silent: a run that quietly covered half the backlog reads
-# exactly like one that covered all of it.
-#
-# NEVER BLOCKS THE SESSION: every path exits 0.
+# The work-log reconciler: a session that crashes or is killed never reaches Stop, so worklog-push.sh writes no record; this re-harvests it on the next start (D1).
+# It NEVER OPENS A TRANSCRIPT: the session id is the filename, the project the directory, the clock the mtime. DEAD-ENDS DE-16 rejected a durable corpus of transcript content (it outlives the 30-day GC and scrubbers let secrets through), so there is nothing to scrub.
+# Wired at SessionStart (harbor#1390); the starting session is skipped, its record is Stop's to write. hooks/memory-harvest/manifest.tsv carries the history.
+# Bounded (DEAD-ENDS DE-09: a hook over its timeout is SKIPPED, silently): a day window and a per-run cap, and what the cap drops is REPORTED. Every path exits 0.
+# Removed notes: docs/explanation/code-cases/hooks-memory-harvest-memory-harvest.md
 set -u
 
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-WORKLOG_DIR="${HARBOR_MEMORY_LOG_DIR:-${HARBOR_LOG_DIR:-$CFG/MEMORY}}"
-PROJECTS="${HARBOR_MEMORY_TRANSCRIPT_DIR:-${HARBOR_TRANSCRIPT_DIR:-$CFG/projects}}"
-DAYS="${HARBOR_MEMORY_HARVEST_DAYS:-${HARBOR_HARVEST_DAYS:-7}}"
-CAP="${HARBOR_MEMORY_HARVEST_CAP:-${HARBOR_HARVEST_CAP:-25}}"
+WORKLOG_DIR="${HARBOR_MEMORY_LOG_DIR:-$CFG/MEMORY}"
+PROJECTS="${HARBOR_MEMORY_TRANSCRIPT_DIR:-$CFG/projects}"
+DAYS="${HARBOR_MEMORY_HARVEST_DAYS:-7}"
+CAP="${HARBOR_MEMORY_HARVEST_CAP:-25}"
 
 # harbor#813: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./library-admission.sh from it.
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
@@ -47,8 +21,7 @@ case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; . "$DIR/library-log.sh"
 
-# Stdin FIRST: the shared resolver reads .cwd from the payload, and the
-# stand-down decision depends on it. Same order as worklog-push.sh.
+# Stdin FIRST: the resolver reads .cwd from the payload (same order as worklog-push.sh).
 floor_read_stdin
 # Stands down only on the repo's `worklog: off` — identical to worklog-push.sh (harbor#954).
 floor_engine_stand_down && exit 0
@@ -60,29 +33,11 @@ SELF="$(floor_field '.session_id')"
 
 HOST="$(floor_host_token)"
 
-# Every session id already recorded under ANY host partition, from the FILENAMES —
-# the record's name is <date>-<session-id>.md and the date is not known in advance,
-# so matching on the id means stripping the date rather than guessing it.
-#
-# ALL partitions, not just this host's (PR #119 review). A session id belongs to
-# exactly one machine, so "recorded anywhere" is the correct predicate, while
-# scoping the check to $HOST makes every record written under a PREVIOUS host token
-# invisible: the session reads as unharvested and gets written a second time.
-#
-# Not hypothetical, and not a risk this change introduces — it is a duplication this
-# change STOPS. The 2026-08-04 token flip did exactly this, and every one of the 38
-# session records it wrote under `Mac` was a duplicate of one that already existed
-# under the real host name: 38 ids in both directories, 0 unique to `Mac`. Writes
-# still go to $HOST; only the reconciliation predicate is host-agnostic.
+# Session ids already recorded under ANY host partition (PR #119): an id belongs to one machine, and scoping to $HOST made records written under a previous host token read as unharvested and written twice. Writes still go to $HOST.
 SEEN="$(find "$WORKLOG_DIR/WORK/sessions" -mindepth 2 -maxdepth 2 -type f -name '*.md' 2>/dev/null \
   | sed -e 's|.*/||' -e 's/\.md$//' -e 's/^[0-9][0-9-]*-//' | LC_ALL=C sort -u)"
 
-# A project directory name is the cwd with every separator replaced by a dash,
-# which is LOSSY: a path that itself contains a dash is indistinguishable from a
-# separator. So the decode is checked rather than trusted — if the reconstructed
-# path is a real directory, use it; otherwise record the encoded name verbatim
-# and let the reader see that it is encoded. Guessing a plausible path that was
-# never the cwd would be worse than showing the raw one.
+# A project dir name is the cwd with separators dashed, which is lossy: the decode is checked against a real directory, else the encoded name is kept verbatim.
 decode_cwd() { # <project-dir-name>
   _dc_raw="$1"
   _dc_try="$(printf '%s' "$_dc_raw" | sed 's|-|/|g')"
@@ -99,13 +54,10 @@ for f in $(find "$PROJECTS" -maxdepth 2 -type f -name '*.jsonl' -mtime "-$DAYS" 
   [ -n "$SID" ] || continue
   [ "$SID" != "$SELF" ] || continue
 
-  # Already recorded — by id, whatever date the record carries.
   printf '%s\n' "$SEEN" | LC_ALL=C "$FLOOR_GREP" -qxF -- "$SID" && continue
 
   PROJ="$(basename "$(dirname "$f")")"
-  # Harness scratch directories are not work. They are created by test runs and
-  # e2e probes under the system temp dir, and backfilling them would fill the
-  # cross-device work-log with sessions that never belonged to anyone.
+  # Harness scratch dirs (test runs, probes under the system temp dir) are not work.
   case "$PROJ" in
     -private-tmp*|-tmp*|-var-folders*) continue ;;
   esac
@@ -115,8 +67,6 @@ for f in $(find "$PROJECTS" -maxdepth 2 -type f -name '*.jsonl' -mtime "-$DAYS" 
     continue
   fi
 
-  # The transcript's mtime is the closest available stamp for when the session
-  # ended. `date -r` reads a file's mtime on both BSD and GNU date.
   STAMP="$(date -r "$f" +'%Y-%m-%d %H:%M' 2>/dev/null)" || continue
   [ -n "$STAMP" ] || continue
   D_DATE="${STAMP%% *}"
@@ -129,9 +79,7 @@ for f in $(find "$PROJECTS" -maxdepth 2 -type f -name '*.jsonl' -mtime "-$DAYS" 
 $SID"
 done
 
-# NO SILENT CAPS. If the backlog is bigger than one run may write, say so — the
-# next session start takes the next batch, and the operator can see it happening instead
-# of wondering why the log is still short.
+# No silent caps: say so when the backlog exceeds one run; the next session start takes the next batch.
 if [ "$SKIPPED_CAP" -gt 0 ]; then
   log_note "wrote $WROTE record(s); $SKIPPED_CAP more still unrecorded (cap $CAP, the next session start continues)"
   log_end || :

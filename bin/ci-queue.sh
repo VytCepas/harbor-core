@@ -5,48 +5,20 @@
 #   sh ci-queue.sh            write $HARBOR_SCOPE_CACHE_DIR/ci-queue.json (default ~/.claude/cache)
 #   sh ci-queue.sh --print    print one line per repo instead of writing the cache
 #
-# WHAT IT ANSWERS. "How long until CI is done" — asked 2026-09-23 while three
-# runners worked through two overlapping runs, when the answer took five API
-# reads and a schedule worked out by hand. status-fleet-glyph.sh renders it as ⏳N ·~Mm.
-#
-# THE REPOS ARE DERIVED, NEVER LISTED. Every running runner container's
-# RUNNER_URL, and every <runner>/.runner under HARBOR_CI_RUNNERS_DIR (default
-# ~/runners), names the repo it serves, and the number of runners per repo is the
-# parallelism the estimate schedules against.
-# Adding or removing a runner changes the estimate with no edit here.
-#
-# THE ESTIMATE. A job's typical length is the median of its last three successful
-# runs in the same workflow. A running job has typical minus elapsed left, never
-# below zero; a queued job waits for the earliest free runner. A run that has not
-# listed its jobs yet is assumed to need its workflow's usual set. NOT MODELLED:
-# `needs:` between jobs, so a job that waits on another reads as startable now and
-# the estimate runs short — which is why the glyph prints it with a `~`. A job with
-# no history takes the longest known typical, so an unknown job never shortens it.
-#
-# ABSOLUTE TIMES ONLY. The cache stores the epoch each repo should be free (`eta`),
-# never a countdown: status-fleet-glyph.sh subtracts the clock at print time, as row 1
-# does for the rate-limit reset (harbor#84), because the harness can skip or cancel
-# any tick and a stored countdown is wrong by however long it was left standing.
-#
-# A REPO GITHUB WOULD NOT ANSWER FOR is written with "unread": true and renders as
-# `?`: "could not look" must never read as "nothing running".
-#
-# A WEDGED RUNNER IS NOT A BUSY ONE (harbor#152). On 2026-08-06 six jobs sat
-# `queued` for 25 minutes against a runner the API reported `online, busy=false`;
-# the fault was only in the runner's own _diag log, and a service restart cleared
-# it. Either fact alone is normal — a queue waits, an idle runner is idle — and
-# only the conjunction is a stall: a SELF-HOSTED job queued over STALL_SEC (600)
-# while at least one runner of this repo is online and not busy. It must hold on
-# two refreshes in a row, because a runner idles about a minute between jobs
-# (#279) and one sample would page on every handoff. A hosted job queued beside
-# an idle self-hosted runner is not a stall: that runner could never take it.
-#
-# IT REPORTS AND NAMES THE REMEDY; IT NEVER RESTARTS ANYTHING. A restart is a
-# self-healing act on live infrastructure from an unreviewed signal, and the
-# 2026-08-06 outage was server-side, where a restart loop would only flap. The
-# runners endpoint needs repo admin; when it cannot be read the stall is UNKNOWN
-# (`idle: null`) and the estimate above is untouched.
-#
+# Answers "how long until CI is done" (asked 2026-09-23); status-fleet-glyph.sh renders it as ⏳N ·~Mm.
+# Repos are DERIVED, never listed: every running runner container's RUNNER_URL and every <runner>/.runner under
+# HARBOR_CI_RUNNERS_DIR (default ~/runners) names a repo; runners per repo is the parallelism scheduled against.
+# Estimate: a job's typical length is the median of its last three successful runs in the same workflow. A running job has
+# typical minus elapsed (floor 0); a queued job waits for the earliest free runner; a run with no jobs listed yet is assumed
+# to need its workflow's usual set; no history takes the longest known typical. NOT MODELLED: `needs:`, so the estimate runs short (hence the glyph's `~`).
+# Absolute times only: the cache stores the epoch each repo is free (`eta`), never a countdown; status-fleet-glyph.sh
+# subtracts the clock at print time, as row 1 does (harbor#84), since a skipped tick would leave a countdown wrong.
+# A repo GitHub would not answer for is written "unread": true and renders `?`: "could not look" is never "nothing running".
+# A wedged runner is not a busy one (harbor#152): a SELF-HOSTED job queued over STALL_SEC (600) while a runner of this repo is
+# online and not busy, held on two refreshes in a row (runners idle ~1 min between jobs, #279). A hosted job beside an idle self-hosted runner is no stall.
+# It reports and names the remedy, never restarts (the 2026-08-06 outage was server-side). The runners endpoint needs repo
+# admin; unreadable means UNKNOWN (`idle: null`) and the estimate is untouched.
+# Removed notes: docs/explanation/code-cases/bin-ci-queue.md
 # Run by status-fleet-snapshot-refresh.sh every 300s. Writes atomically; on any failure
 # the previous cache is kept. POSIX sh, jq, gh (HARBOR_TEST_GH swaps in a fake).
 set -eu
@@ -65,12 +37,12 @@ case "${1:-}" in
   *) log_fail "unknown option $1"; log_fix "sh $0 --help"; log_end || :; exit 2 ;;
 esac
 
-RUNNERS_DIR="${HARBOR_CI_RUNNERS_DIR:-${HARBOR_RUNNERS_DIR:-$HOME/runners}}"
-CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
+RUNNERS_DIR="${HARBOR_CI_RUNNERS_DIR:-$HOME/runners}"
+CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-$HOME/.claude/cache}"
 OUT="$CACHE_DIR/ci-queue.json"
-NOW="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
-GH="${HARBOR_TEST_GH:-${HARBOR_GH:-gh}}"
-DOCKER="${HARBOR_CI_DOCKER:-${HARBOR_DOCKER:-docker}}"
+NOW="${HARBOR_TEST_NOW:-$(date +%s)}"
+GH="${HARBOR_TEST_GH:-gh}"
+DOCKER="${HARBOR_CI_DOCKER:-docker}"
 STALL_SEC="${HARBOR_CI_STALL_SEC:-600}"
 STALL_CONFIRM=240   # a second refresh, less jitter: 300s apart, never one sample
 command -v jq >/dev/null 2>&1 || { log_fail "jq is required and is not on PATH"; log_fix "$(pkg_hint jq)"; log_end || :; exit 2; }
@@ -80,11 +52,7 @@ trap 'rm -rf "$T"' EXIT INT TERM
 
 api() { "$GH" api "$1" 2>/dev/null; }   # <endpoint> -> JSON on stdout, nonzero on failure
 
-# owner/repo, once per runner folder. The runner writes .runner with a UTF-8
-# byte-order mark; it is stripped here rather than trusting every jq to skip it.
-# UNPROVEN ON THIS BOX: jq 1.7 already skips the mark, so ci-queue-test.sh stays
-# green with the `tr` removed (measured 2026-09-23). The strip is for an older jq,
-# and no suite here can show it doing anything.
+# Runner .runner files carry a UTF-8 BOM, stripped here. UNPROVEN on this box: jq 1.7 skips it anyway (2026-09-23), so no suite can show the strip doing anything.
 : > "$T/repos"
 for _f in "$RUNNERS_DIR"/*/.runner; do
   [ -f "$_f" ] || continue
@@ -107,11 +75,8 @@ while read -r _n _repo; do
   _ok=1
   api "repos/$_repo/actions/runs?status=in_progress&per_page=50" > "$T/a.json" || _ok=0
   api "repos/$_repo/actions/runs?status=queued&per_page=50"      > "$T/b.json" || _ok=0
-  # A RUN OLDER THAN A DAY IS A GHOST, NOT WORK. Measured 2026-09-23: a governance
-  # run created 2026-08-06, the day of a GitHub Actions outage, still reads
-  # `queued` with no jobs seven weeks later. Assumed to need its workflow's usual
-  # set, it turned "1 job left" into "9 jobs, ~15m". Ghosts are counted, never
-  # scheduled; `gh run cancel <id>` clears one.
+  # A run older than a day is a ghost, not work (a run from the 2026-08-06 outage still read `queued` and turned "1 job left"
+  # into "9 jobs"). Ghosts are counted, never scheduled; `gh run cancel <id>` clears one.
   [ "$_ok" = 1 ] && jq -s --argjson now "$NOW" '[.[].workflow_runs[]?] | unique_by(.id)
       | map(. + {ghost: (((.created_at // "1970-01-01T00:00:00Z") | fromdateiso8601) < ($now - 86400))})' \
       "$T/a.json" "$T/b.json" > "$T/all.json" 2>/dev/null || _ok=0
@@ -147,9 +112,7 @@ while read -r _n _repo; do
   fi
   jq -s . "$T/jobs.jsonl" > "$T/jobs.json"
   jq -s . "$T/hist.jsonl" > "$T/hist.json"
-  # The idle runners, by name, or null when the endpoint will not answer. Kept
-  # apart from _ok on purpose: an unreadable runner list costs the stall verdict,
-  # never the estimate.
+  # Idle runners by name, or null when the endpoint will not answer; kept apart from _ok so an unreadable list costs the stall verdict, never the estimate.
   if api "repos/$_repo/actions/runners?per_page=100" > "$T/rn.json" \
      && jq -e '.runners' "$T/rn.json" >/dev/null 2>&1; then
     jq -c '[.runners[] | select(.status == "online" and .busy == false)
@@ -157,11 +120,7 @@ while read -r _n _repo; do
   else
     printf 'null\n' > "$T/idle.json"
   fi
-  # A SUSPICION IS CARRIED ONLY ACROSS ONE REFRESH (Codex on #699). If the box
-  # slept, the last cache can be hours old, and reusing its suspect_since would
-  # turn the first sample after waking into a "second" observation. So the
-  # previous cache must be at most two refresh intervals (600s) old, or the
-  # suspicion starts again from now.
+  # A suspicion is carried across ONE refresh only (Codex on #699): the previous cache must be at most 600s old, or a box that slept would turn its first sample into a "second" observation.
   _since="$(jq -r --arg r "$_repo" --argjson now "$NOW" '
       if ($now - ((.at // 0) | tonumber)) > 600 then empty
       else (.repos[]? | select(.repo == $r) | .suspect_since // empty) end' "$OUT" 2>/dev/null || :)"
@@ -192,12 +151,7 @@ while read -r _n _repo; do
     | ($idle[0]) as $idle
     | [$jobs[] | select(.status == "queued" and .created_at != null
           and ($now - (.created_at | fromdateiso8601)) >= $stallsec)] as $old
-    # ONLY A RUNNER THAT COULD TAKE THE JOB (Codex on #699): its labels must
-    # cover the job labels, compared case-blind as GitHub does. This is also what
-    # keeps a HOSTED job out: no self-hosted runner carries ubuntu-latest. A
-    # separate self-hosted filter was redundant beside it, and a mutant removing
-    # it survived every case, so it went. An idle Linux runner
-    # beside a queued macOS job is not a stall, and restarting it would help nothing.
+    # Only a runner that could take the job (Codex on #699): its labels must cover those of the job, case-blind as GitHub does; that also keeps a hosted job out.
     | [($idle // [])[] | .labels as $rl
         | select(any($old[]; ([(.labels // [])[] | ascii_downcase] - $rl) | length == 0))] as $able
     | ($idle != null and ($able | length) > 0) as $suspect

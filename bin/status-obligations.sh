@@ -95,7 +95,7 @@ LOG_FD=2
 log_init status-obligations
 
 EVDIR="${HARBOR_EVENT_DIR:-$HOME/.local/state/harbor/events}"
-DIR="${HARBOR_STATUS_OBLIGATION_DIR:-${HARBOR_OBLIGATION_DIR:-$HOME/.local/state/harbor/obligations}}"
+DIR="${HARBOR_STATUS_OBLIGATION_DIR:-$HOME/.local/state/harbor/obligations}"
 # The register: the checkout's contracts/ when it is beside bin/, else the copy runtime-install ships next to this script
 # (an installed config dir has no contracts/ entry of its own: deploy's snapshot set would not cover one, harbor#1115).
 KINDS="${HARBOR_STATUS_OBLIGATION_KINDS:-}"
@@ -107,7 +107,7 @@ SNAP="$DIR/snapshot.json"
 NOW="${HARBOR_STATUS_OBLIGATION_NOW:-$(date -u '+%Y-%m-%dT%H:%M:%SZ')}"
 LEDGER_SKIPPED=0   # ledger lines this run skipped because they did not parse
 
-CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-${HARBOR_CACHE_DIR:-$HOME/.claude/cache}}"
+CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-$HOME/.claude/cache}"
 RED_AFTER_S=86400   # a row this long past its deadline turns the receipt red (harbor#1050)
 
 command -v jq >/dev/null 2>&1 || {
@@ -611,7 +611,7 @@ live_rows() { # <source> — the subjects of live rows whose kind the register r
 read_sessions() {
   _to="$(slot)"; [ "$_to" -gt 0 ] || { src_set sessions false "read budget spent"; return 0; }
   if [ -n "$SESSIONS_BIN" ]; then _rc=0; _out="$(bounded "$_to" "$SESSIONS_BIN" --json </dev/null 2>/dev/null)" || _rc=$?
-  elif [ ! -d "${HARBOR_SESSION_REGISTRY_DIR:-${HARBOR_SESSIONS_DIR:-$CFG/sessions}}" ]; then src_set sessions false "no session registry on this box"; return 0
+  elif [ ! -d "${HARBOR_SESSION_REGISTRY_DIR:-$CFG/sessions}" ]; then src_set sessions false "no session registry on this box"; return 0
   else _rc=0; _out="$(bounded "$_to" sh "$HERE/context-peers.sh" --json </dev/null 2>/dev/null)" || _rc=$?; fi
   [ "$_rc" -eq 0 ] || { src_set sessions false "$(why "$_rc" "$_to")"; return 0; }
   printf '%s' "$_out" | jq -e 'type == "array"' >/dev/null 2>&1 || { src_set sessions false "the registry read was not a list"; return 0; }
@@ -729,7 +729,11 @@ read_finished() {
       _hit="$(find "$_sd/subagents/workflows" -name "agent-$_id.jsonl" -type f 2>/dev/null | head -n 1)"
       [ -n "$_hit" ] || _hit="$(find "$_sd/subagents/workflows" -name '*.jsonl' -type f -exec grep -lF "$_id" {} + 2>/dev/null | head -n 1)"
       if [ -n "$_hit" ]; then _run="${_hit%/*}"; _run="${_run##*/}"
-      else _run="$(grep -F "\"tool_use_id\":\"$_id\"" "$_tf" 2>/dev/null | grep -o 'wf_[a-z0-9]*-[a-z0-9]*' | head -n 1)"; fi
+      # grep only narrows the transcript; jq reads the tool_result's own text (harbor#1420), so the same id quoted
+      # in another field cannot name a different run.
+      else _run="$(grep -F "\"tool_use_id\":\"$_id\"" "$_tf" 2>/dev/null | jq -R -r --arg id "$_id" 'fromjson? | objects | .message? | objects | .content? | arrays | .[] | objects
+        | select(.type == "tool_result" and .tool_use_id == $id) | (.content | if type == "array" then map(.text? // "") | join("\n") else tostring end)
+        | capture("(?<r>wf_[a-z0-9]+-[a-z0-9]+)")? | .r' 2>/dev/null | head -n 1)"; fi
       [ -n "$_run" ] && grep -qxF "$_run" "$T/fin.runs" && printf '%s\tworkflow\n' "$_subj"
     done >> "$T/fin.ids"
   done

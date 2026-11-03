@@ -272,7 +272,7 @@ t_eq "a worktree whose later work is NOT pushed: RISK" 1 "$(rows RISK finished-w
 
 t_section "23c a worktree an install root links into is KEEP, never DECIDE (harbor#922)"
 # ~/.local/lib/quuxmail shape: idle, no PR, and the runtime behind ~/.local/bin. Reached by a relative chain via an alias.
-unset HARBOR_SCOPE_LOCAL_BIN HARBOR_LOCAL_BIN  # the root is the fixture home's .local/bin, as roots.tsv declares
+unset HARBOR_SCOPE_LOCAL_BIN  # the root is the fixture home's .local/bin, as roots.tsv declares
 gg checkout -q -b wt-installed main; mkdir -p "$GR/bin"; printf 'tool\n' > "$GR/bin/tool"; gg add bin/tool
 GIT_AUTHOR_DATE="$(ago 30) +0000" GIT_COMMITTER_DATE="$(ago 30) +0000" gg commit -qm tool
 gg checkout -q -b wt-idle main; commit idle 30 >/dev/null; gg checkout -q main
@@ -430,4 +430,5 @@ t_section "bytecode in the scaffolder's payload is found where the registry puts
 mkdir -p "$T_TMP/yard/templates/base/__pycache__"; printf 'x' > "$T_TMP/yard/templates/base/__pycache__/m.pyc"
 _py="$(with env HARBOR_SCOPE_SCAFFOLDER="$T_TMP/yard" sh "$TOOL")"
 t_has "a __pycache__ under the scaffolder's templates is reported" "$_py" "pycache-in-payload"
+t_red check.housekeeping   # the falsifier this suite names for them (harbor#1422)
 t_done

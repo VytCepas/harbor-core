@@ -88,8 +88,9 @@ if [ -n "$TX" ] && [ -r "$TX" ]; then
   # grep keeps only the few lines a rule can use, so jq parses a fraction of the window.
   WIN="${HARBOR_STATUS_WINDOW:-3000000}"
   case "$WIN" in ''|*[!0-9]*) WIN=3000000 ;; esac
-  # An AskUserQuestion is pending when it is the last thing the transcript says.
-  if tail -n 1 "$TX" 2>/dev/null | grep -q '"name":"AskUserQuestion"'; then ASKPEND=1; fi
+  # An AskUserQuestion is pending when the last line is an assistant tool_use of it. jq, not grep (harbor#1420):
+  # grep also matched the same text inside a tool's OUTPUT on that line.
+  if tail -n 1 "$TX" 2>/dev/null | jq -e '[.message.content[]? | select(type=="object" and .type=="tool_use" and .name=="AskUserQuestion")] | length > 0' >/dev/null 2>&1; then ASKPEND=1; fi
   # `jq -R` + `fromjson?`: the window's first line is cut mid-record and must not stop the parse.
   STREAM="$(tail -c "$WIN" "$TX" 2>/dev/null | grep -E '"name":"(Bash|Write|Edit|NotebookEdit)"|(passed|rules), [0-9]+ (failed|violations)|/pull/[0-9]|tasks/[A-Za-z0-9]+\.output' 2>/dev/null | jq -R -r 'fromjson? |
     if .type=="assistant" then
@@ -223,7 +224,7 @@ fi
 
 # compact: ask the agent at a finished turn; run on its [compact-ok].
 ASKED="${PASK:-}"; ASKMSG=""; RUNC=""
-ASKPCT="${HARBOR_SESSION_AUTOCOMPACT_PERCENT:-${HARBOR_AUTOCOMPACT_PCT:-35}}"; case "$ASKPCT" in ''|*[!0-9]*) ASKPCT=35 ;; esac
+ASKPCT="${HARBOR_SESSION_AUTOCOMPACT_PERCENT:-35}"; case "$ASKPCT" in ''|*[!0-9]*) ASKPCT=35 ;; esac
 if [ ! -e "$STATE/compact-auto.off" ] && [ -f "$HERE/session-autocompact.sh" ] && [ "$NRUN" -eq 0 ]; then
   # Only as the message's last non-blank line: a quoted or explained marker is not the agent's word.
   _lastl="$(printf '%s\n' "$MSG" | awk 'NF { l = $0 } END { sub(/^[ \t]+/, "", l); sub(/[ \t]+$/, "", l); print l }')"
@@ -305,7 +306,7 @@ if [ -n "$RUNCL" ]; then
 fi
 if [ -n "$RUNC" ]; then
   # The tty of the claude process above this hook; the helper finds the Terminal tab by it.
-  _tty="${HARBOR_SESSION_AUTOCOMPACT_TTY:-${HARBOR_AUTOCOMPACT_TTY:-}}"; _p="$PPID"; _i=0
+  _tty="${HARBOR_SESSION_AUTOCOMPACT_TTY:-}"; _p="$PPID"; _i=0
   while [ -z "$_tty" ] && [ "$_i" -lt 4 ] && [ -n "$_p" ] && [ "$_p" -gt 1 ] 2>/dev/null; do
     _l="$(ps -o tty= -o ppid= -p "$_p" 2>/dev/null)" || break
     set -- $_l; case "${1:-}" in ''|'??'|'?') ;; *) _tty="$1"; break ;; esac

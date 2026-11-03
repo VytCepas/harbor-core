@@ -14,43 +14,22 @@
 #   HARBOR_STANDARD_ISSUE_REPO   owner/name; defaults to this checkout's origin
 #   HARBOR_STANDARD_TAXONOMY     path to the taxonomy; defaults to contracts/issue-taxonomy.tsv
 #
-# IT SUGGESTS A THEME AND NEVER A TYPE, and the asymmetry is the design. A theme is
-# a claim about which part of the tree an issue is about, so it can be derived from
-# the paths the issue names against the globs contracts/issue-taxonomy.tsv declares.
-# A type is a claim about the system's STATE — whether something is wrong now (bug)
-# or right and unenforced (tech-debt) — and no content predicate can settle that.
-# Guessing it would produce a plausible label nobody chose, which is the failure this
-# repo files tickets about. So --check reports a missing type and stops.
-#
-# IT NEVER APPLIES WHAT IT SUGGESTS. --suggest prints; --apply takes labels from the
-# caller and refuses any the taxonomy does not carry. Two verbs, because a connector
-# that labels on its own authority is an unreviewed classifier writing into the
-# backlog at machine speed — CONSTITUTION's "encoding a fix is a human-gated act".
-#
-# A PROVENANCE EPIC IS THEME-EXEMPT, and that is a rule rather than a tolerance. An
-# `epic:provenance` is the origin record of an audit pass: its children span several
-# themes by nature, so forcing one on it would file a true finding under a false
-# heading. Every other kind must carry both axes. Without this the audit's "none" line
-# could never appear, and a checker that can never come back clean is one nobody reads.
-#
-# A FALSIFIER IS THE CHEAPEST TRIAGE STEP THERE IS, and it is reported rather than
-# required. On 2026-09-16 FOUR tickets closed on nothing but a re-read of their own
-# stated refutation condition — it had already fired, weeks earlier, and nobody had
-# looked. That is the highest-yield paragraph in a ticket and it costs one read.
-#
-# It is not part of --check, deliberately: most of the backlog predates the
-# convention, so making it fatal would redden 122 issues and teach the reader to
-# ignore the checker (§2.11). `--falsifiers` names them, and the count is the thing
-# to watch trend down.
-#
-# THE SIBLING HALF IS WHY THIS EXISTS AT ALL. Twelve themes carry 122 open issues, and
-# before this, finding an issue's family meant knowing the backlog by heart. On
-# 2026-09-16 three sibling epics from ONE audit pass were found referencing each other
-# nowhere, across three repos, six weeks after they were filed.
+# It suggests a theme and never a type: a theme is a claim about which part of the tree an issue is about, derivable
+# from the paths it names against contracts/issue-taxonomy.tsv; a type is a claim about the system's STATE, which no
+# content predicate settles, so --check reports a missing type and stops.
+# It never applies what it suggests: --apply takes labels from the caller and refuses any the taxonomy lacks (a
+# connector labelling on its own authority is an unreviewed classifier; encoding a fix is a human-gated act).
+# A provenance epic is theme-exempt, a rule not a tolerance: its children span themes by nature, and without the
+# exemption the audit's "none" line could never appear.
+# A falsifier is reported, not required (2026-09-16: four tickets closed on re-reading a refutation condition that had
+# already fired). It is not part of --check: most of the backlog predates it and a fatal check would redden 122 issues (§2.11).
+# The sibling half is why this exists: finding an issue's family meant knowing the backlog by heart (three sibling epics
+# from one audit pass referenced each other nowhere for six weeks).
+# Removed notes: docs/explanation/code-cases/bin-standard-issue-label.md
 set -eu
 
 ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
-TAX="${HARBOR_STANDARD_TAXONOMY:-${HARBOR_TAXONOMY:-$ROOT/contracts/issue-taxonomy.tsv}}"
+TAX="${HARBOR_STANDARD_TAXONOMY:-$ROOT/contracts/issue-taxonomy.tsv}"
 
 # The one log format (contracts/logging.md). Diagnostics go to stderr, so stdout stays data for every
 # mode except --audit and --falsifiers, which set LOG_FD=1 because their stdout is the report.
@@ -65,21 +44,15 @@ esac
 
 [ -f "$TAX" ] || { printf 'issue-connector: no taxonomy at %s\n' "${TAX#"$ROOT"/}" >&2; exit 2; }
 
-# THE REPO IS DERIVED, NOT TYPED. A constant here would be a second copy of a fact
-# `git remote` already holds, and this script runs from worktrees whose origin is
-# the same repo.
+# The repo is derived from `git remote`, not typed: worktrees share the origin.
 repo() {
-  if [ -n "${HARBOR_STANDARD_ISSUE_REPO:-${HARBOR_ISSUE_REPO:-}}" ]; then printf '%s\n' "${HARBOR_STANDARD_ISSUE_REPO:-${HARBOR_ISSUE_REPO:-}}"; return 0; fi
+  if [ -n "${HARBOR_STANDARD_ISSUE_REPO:-}" ]; then printf '%s\n' "${HARBOR_STANDARD_ISSUE_REPO:-}"; return 0; fi
   git -C "$ROOT" remote get-url origin 2>/dev/null \
     | sed -e 's|^git@[^:]*:||' -e 's|^https://[^/]*/||' -e 's|\.git$||'
 }
 
-# labels_all -> EVERY declared label, whatever its kind (harbor#609). The apply
-# gate is where this contract is enforced, so it has to read all of it: the gate
-# used to test `type` and `theme` alone, which meant `--apply P1-high` was refused
-# as "not in the taxonomy" while P1-high sat on 58 open issues. A validation
-# narrower than the contract it cites teaches the caller to set labels by hand
-# instead, which is exactly how 23 labels came to be applied against no list.
+# labels_all is EVERY declared label (harbor#609): the apply gate tested `type` and `theme` alone and refused
+# `--apply P1-high` as "not in the taxonomy" while it sat on 58 issues, teaching callers to label by hand.
 labels_all() { awk -F'\t' '/^#/ || NF < 4 { next } { print $2 }' "$TAX"; }
 
 # tax <kind> -> label<TAB>glob<TAB>meaning, comments and blanks dropped
@@ -102,10 +75,7 @@ first_match() {
 }
 
 # ── suggest ─────────────────────────────────────────────────────────────────────
-# A THEME IS SUGGESTED FROM THE INTERSECTION, not from a keyword. Every tracked path
-# a theme's globs cover is compared against the paths the issue body names, and the
-# theme with the most hits wins. A tie prints both rather than picking, because a
-# coin-flip label reads exactly like a considered one.
+# A theme is suggested from the INTERSECTION of the paths its globs cover and the paths the issue names; a tie prints both.
 suggest_theme() {
   _sb="$1"                      # file holding the issue body
   _best=0; _win=''
@@ -203,9 +173,7 @@ case "$mode" in
     log_head "open issues stating no falsifier"
     while IFS='	' read -r num labs body; do
       [ -n "$num" ] || continue
-      # AN EPIC IS EXEMPT, and for the same reason a provenance epic is theme-exempt:
-      # an epic's falsifier is its children's. Requiring one of the container would
-      # file a true finding under a false heading.
+      # An epic is exempt, like a provenance epic: its falsifier is its children's.
       case ",$labs," in *",epic:"*) continue ;; esac
       tot=$(( tot + 1 ))
       case "$body" in
@@ -226,11 +194,8 @@ case "$mode" in
     FAIL=0
 
     A="$(mktemp "${TMPDIR:-/tmp}/harbor.XXXXXX")"; ALLOPEN="$(mktemp "${TMPDIR:-/tmp}/harbor.XXXXXX")"; GRAPH="$(mktemp "${TMPDIR:-/tmp}/harbor.XXXXXX")"
-    # THE READ'S STATUS IS THE GATE. Before this, a failed `gh` either aborted the run silently
-    # under `set -e` (exit 1, no line printed) or, when it succeeded with no rows, produced an
-    # empty $ALLOPEN that every section below read as "nothing open": cardinality said "none",
-    # and the closed-parent join swallowed the whole graph (harbor#626, DE-15). Nothing audited
-    # is not a clean audit, so the run stops here and says so.
+    # The read's status is the gate (harbor#626, DE-15): a failed `gh` aborted silently under `set -e`, or returned no rows
+    # so every section read "nothing open". Nothing audited is not a clean audit, so the run stops and says so.
     OPENREAD=yes
     gh issue list -R "$R" --state open --limit 400 --json number,labels \
       -q '.[] | "\(.number)\t\([.labels[].name]|join(","))"' 2>/dev/null > "$A" || OPENREAD=no
@@ -244,11 +209,7 @@ case "$mode" in
     fi
     cut -f1 "$A" > "$ALLOPEN"
 
-    # ── 1 · CARDINALITY, read from the #AXIS rows rather than hard-coded ────────
-    # The seven-axis table this replaced was PROSE. A human read "layer exactly
-    # one" and no checker did, so 32 issues violated it while every gate stayed
-    # green (harbor#612). Parsing the declaration is the only thing that keeps
-    # the rule and the mechanism from drifting apart.
+    # Cardinality is read from the #AXIS rows, not hard-coded: the prose table let 32 issues violate "layer exactly one" (harbor#612).
     log_head "cardinality"
     card="$(awk -F'\t' '/^#AXIS/{print $2"\t"$3"\t"$4}' "$TAX")"
     [ -n "$card" ] || { printf 'issue-connector: taxonomy declares no #AXIS rows\n' >&2; exit 2; }
@@ -266,9 +227,7 @@ case "$mode" in
         msg=""
         for (ax in mn) {
           got=c[ax]+0
-          # A PROVENANCE EPIC IS THEME-EXEMPT and that is a rule, not a tolerance:
-          # its children span themes by nature, so requiring one files a true
-          # finding under a false heading.
+          # Provenance epic is theme-exempt (see the header).
           if (ax=="theme" && prov) continue
           if (got < mn[ax]) msg = msg sprintf(" %s=%d(min %d)", ax, got, mn[ax])
           if (got > mx[ax]) msg = msg sprintf(" %s=%d(max %d)", ax, got, mx[ax])
@@ -289,10 +248,7 @@ case "$mode" in
     if [ -n "$und" ]; then printf '%s\n' "$und" | sed 's/^/  /'; FAIL=1; else printf '  none\n'; fi
 
     # ── 3 · THE CONTRACT AGAINST THE TRACKER, BOTH DIRECTIONS ──────────────────
-    # harbor#609 declared `theme:security` and `theme:testing`; NEITHER EXISTED on
-    # the tracker, while bare `security` and `testing` sat on 20 issues the apply
-    # gate then refused. A contract checked in one direction only is how that
-    # shipped green.
+    # Check the contract against the tracker in both directions: harbor#609 declared `theme:security`/`theme:testing` that never existed on the tracker.
     printf '\n'; log_head "taxonomy against the tracker"
     LIVE="$(mktemp "${TMPDIR:-/tmp}/harbor.XXXXXX")"; DECL="$(mktemp "${TMPDIR:-/tmp}/harbor.XXXXXX")"
     gh label list -R "$R" --limit 300 --json name -q '.[].name' 2>/dev/null | LC_ALL=C sort > "$LIVE"
@@ -317,9 +273,7 @@ case "$mode" in
     # Native sub-issues are authoritative (#612 Q2). Everything here is a question
     # about the EDGE, never about a label that claims to restate it.
     printf '\n'; log_head "ownership graph"
-    # PAGINATED, because the first cut asked for `first:100` against 135 open
-    # issues and silently reported 24 orphans instead of 34 — a truncated page
-    # reads exactly like a smaller problem.
+    # Paginated: `first:100` against 135 open issues reported 24 orphans instead of 34.
     _cur=''; _pages=0
     while [ "$_pages" -lt 20 ]; do
       _pages=$((_pages + 1))
@@ -384,21 +338,12 @@ case "$mode" in
       rm -f "$N"
       [ -n "$lonely" ] && printf '  %-22s %s of %s cite no sibling:%s\n' \
         "$th" "$(printf '%s' "$lonely" | tr -s ' ' '\n' | grep -c '#' || true)" "$cnt" "$lonely"
-    # `|| true` IS LOAD-BEARING AND IS NOT COSMETIC. This pipeline is the last
-    # command in the --audit arm, and `set -e` is on (line 50). Its status is the
-    # loop body's final `[ -n "$lonely" ] && printf`, which is FALSE whenever the
-    # LAST theme happens to have no lonely issue. The script then died HERE with
-    # status 1, and everything below — including the whole --strict gate — never
-    # ran. Measured 2026-09-21 on live harbor: `--audit` and `--audit --strict`
-    # both exited 1, the second one not because it was strict. An AND-OR list
-    # exempts every command but the last from `set -e`, which is the whole fix.
+    # `|| true` is load-bearing: this is the last command in the --audit arm under `set -e`, and its status is false when the
+    # last theme has no lonely issue, which killed the run before the --strict gate (measured 2026-09-21).
     done || true
 
     rm -f "$A" "$ALLOPEN" "$GRAPH" "$AX" "$MAP"
-    # REPORTING IS THE DEFAULT AND FAILING IS OPT-IN. Turning 67 standing
-    # violations into a red exit on day one is the false positive CONSTITUTION
-    # No.2 clause 11 names: a checker that blocks ordinary work gets switched off.
-    # --strict is what CI uses once the count is zero.
+    # Reporting is the default and failing is opt-in: a red exit on 67 standing violations is a false positive (No.2.11). CI uses --strict once the count is zero.
     if [ "$STRICT" = yes ] && [ "$FAIL" -ne 0 ]; then
       printf '\naudit: violations above, and --strict was given\n' >&2
       exit 1

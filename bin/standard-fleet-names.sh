@@ -27,7 +27,7 @@ set -u
 LC_ALL=C; export LC_ALL
 
 case "$0" in */*) _SRC="${0%/*}" ;; *) _SRC=. ;; esac
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$_SRC/.." && pwd)}}"
+ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$_SRC/.." && pwd)}"
 LOG_FD=2
 . "$ROOT/bin/library-log.sh"
 log_init standard-fleet-names

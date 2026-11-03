@@ -58,9 +58,9 @@ d_default_run()   { _w="$1"; _o="$2"; shift 2; CLAUDE_CONFIG_DIR="$_w" sh "$SUT"
 mr_key()   { printf '%s' "$1" | sed 's|/|-|g'; }
 mr_route() { _k="$(mr_key "$1/$2")"; mkdir -p "$1/cfg/projects/$_k"; ln -s "$1/cfg/projects/$(mr_key "$1")/memory" "$1/cfg/projects/$_k/memory"; }   # <world> <repo>
 d_memory_route_setup() { # a box whose two governed repos both reach the one store; the registry is the private layer's (harbor#1149)
-  mkdir -p "$1/cfg/projects" "$1/repo" "$1/priv/inject.d/box" "$1/zorbcorp" "$1/blorp" "$1/cfg/projects/$(mr_key "$1")/memory"
+  mkdir -p "$1/cfg/projects" "$1/repo" "$1/priv/context-rules/user" "$1/zorbcorp" "$1/blorp" "$1/cfg/projects/$(mr_key "$1")/memory"
   printf 'x\n' > "$1/cfg/projects/$(mr_key "$1")/memory/a.md"
-  printf '# registry\nzorbcorp\t~/zorbcorp\tw\nblorp\t~/blorp\tw\n' > "$1/priv/inject.d/box/projects.tsv"
+  printf '# registry\nzorbcorp\t~/zorbcorp\tw\nblorp\t~/blorp\tw\n' > "$1/priv/context-rules/user/projects.tsv"
   mr_route "$1" zorbcorp; mr_route "$1" blorp
 }
 d_memory_route_break() { rm -f "$1/cfg/projects/$(mr_key "$1/blorp")/memory"; }
@@ -69,9 +69,9 @@ d_memory_route_cfg()   { printf '%s' "$1/cfg"; }
 d_memory_route_run()   { _w="$1"; _o="$2"; shift 2; HOME="$_w" PORT_ROOT="$_w/port" HARBOR_SCOPE_PRIVATE="$_w/priv" HARBOR_SCOPE_REPO="$_w/repo" sh "$SUT" --dir "$_w/cfg" "$@" > "$_o" 2>/dev/null < /dev/null; }
 d_memory_route_plain() { d_memory_route_run "$1" /dev/null; }
 d_memory_route_blind() { # no registry: the governed repos are unknown
-  mv "$1/priv/inject.d/box/projects.tsv" "$1/projects.tsv.away"
+  mv "$1/priv/context-rules/user/projects.tsv" "$1/projects.tsv.away"
   d_memory_route_run "$1" "$2" --status; _r=$?
-  mv "$1/projects.tsv.away" "$1/priv/inject.d/box/projects.tsv"; return $_r
+  mv "$1/projects.tsv.away" "$1/priv/context-rules/user/projects.tsv"; return $_r
 }
 
 d_drift_reference_check_setup() { mkfixture "${1##*/}" > /dev/null; }
@@ -88,6 +88,41 @@ d_drift_reference_check_blind() { # no jq on PATH: settings.json cannot be read
   mkdir -p "$W/nojq"
   for _b in sh awk sed sort uniq tr basename grep printf; do _p="$(command -v "$_b" 2>/dev/null)" && ln -sf "$_p" "$W/nojq/$_b" 2>/dev/null; done
   PATH="$W/nojq" sh "$SUT" "$1" --status > "$2" 2>/dev/null < /dev/null
+}
+
+# a workspace whose registry names one repo; a stray directory is the drift
+d_drift_port_root_setup() {
+  mkdir -p "$1/home" "$1/port/alpha" "$1/port/.worktrees" "$1/priv" "$1/cfg"
+  printf 'id\tpath\tkind\tremote\nalpha\talpha\tworkload\t-\n' > "$1/priv/repos.tsv"
+}
+d_drift_port_root_break() { mkdir -p "$1/port/stray-a" "$1/port/stray-b"; }
+d_drift_port_root_fix()   { rmdir "$1/port/stray-a" "$1/port/stray-b"; }
+d_drift_port_root_cfg()   { printf '%s' "$1/cfg"; }
+d_drift_port_root_run()   { _w="$1"; _o="$2"; shift 2; HOME="$_w/home" PORT_ROOT="$_w/port" HARBOR_SCOPE_PRIVATE="$_w/priv" CLAUDE_CONFIG_DIR="$_w/cfg" sh "$SUT" "$@" > "$_o" 2>/dev/null < /dev/null; }
+d_drift_port_root_plain() { d_drift_port_root_run "$1" /dev/null; }
+d_drift_port_root_blind() { # a registry the resolver refuses: nothing can be judged
+  printf 'id\tpath\tkind\tremote\nbad\t/abs\tworkload\t-\n' > "$1/priv/repos.tsv"
+  d_drift_port_root_run "$1" "$2" --status; _r=$?
+  printf 'id\tpath\tkind\tremote\nalpha\talpha\tworkload\t-\n' > "$1/priv/repos.tsv"; return $_r
+}
+
+# the managed-settings file is a fixture the writer itself installs (deploy-confinement.sh), so the check is read against real output
+d_drift_confinement_setup() {
+  mkdir -p "$1/port" "$1/priv" "$1/managed" "$1/cfg"
+  PORT_ROOT="$1/port" HARBOR_MANAGED_SETTINGS="$1/managed/managed-settings.json" HARBOR_CONFINEMENT_PRIVATE="$1/priv" HARBOR_CONFINEMENT_OS=Darwin \
+    sh "$T_ROOT/bin/deploy-confinement.sh" > /dev/null 2>&1
+  cp "$1/managed/managed-settings.json" "$1/managed/good.json"
+}
+d_drift_confinement_break() { jq 'del(.sandbox)' "$1/managed/good.json" > "$1/managed/managed-settings.json"; }
+d_drift_confinement_fix()   { cp "$1/managed/good.json" "$1/managed/managed-settings.json"; }
+d_drift_confinement_cfg()   { printf '%s' "$1/cfg"; }
+d_drift_confinement_run()   { _w="$1"; _o="$2"; shift 2; PORT_ROOT="$_w/port" HARBOR_MANAGED_SETTINGS="$_w/managed/managed-settings.json" HARBOR_CONFINEMENT_PRIVATE="$_w/priv" HARBOR_CONFINEMENT_OS=Darwin HARBOR_CHECK_RECEIPTS="$_w/cache/receipts" CLAUDE_CONFIG_DIR="$_w/cfg" sh "$SUT" "$@" > "$_o" 2>/dev/null < /dev/null; }
+d_drift_confinement_plain() { d_drift_confinement_run "$1" /dev/null; }
+d_drift_confinement_blind() { # a managed file that is not JSON cannot be read
+  cp "$1/managed/managed-settings.json" "$1/managed/held.json"   # the world as it is: blind is a look, not a fix
+  printf 'not json\n' > "$1/managed/managed-settings.json"
+  d_drift_confinement_run "$1" "$2" --status; _r=$?
+  cp "$1/managed/held.json" "$1/managed/managed-settings.json"; return $_r
 }
 
 # ── the audit of one check ───────────────────────────────────────────────────
@@ -214,7 +249,7 @@ cat_of() { printf '%s\n' "$1" | grep "^\[$2\]" || :; }   # <audit output> <categ
 t_section "the adopters are derived from controls.tsv and the scripts, never listed"
 DERIVED="$(adopter_rows "$CT" "$T_ROOT" | cut -f1)"
 t_eq "the query finds adopters at all" yes "$([ -n "$DERIVED" ] && echo yes || echo no)"
-t_eq "the adopters are memory-route.sh and drift-reference-check.sh, by their check ids" "drift.reference-check memory.route" "$(printf '%s\n' $DERIVED | sort | tr '\n' ' ' | sed 's/ $//')"
+t_eq "the adopters are memory-route.sh, drift-reference-check.sh, drift-port-root.sh and drift-confinement.sh, by their check ids" "drift.confinement drift.port-root drift.reference-check memory.route" "$(printf '%s\n' $DERIVED | sort | tr '\n' ' ' | sed 's/ $//')"
 t_eq "no script uses the helper without a check row naming it, and no adopter lacks its row (the derivation runs both ways)" "" "$(audit_registry "$CT" "$T_ROOT" 0 | grep '^\[derive\]' || :)"
 t_eq "check rows of one engine file share one owner (a marker in the owner cell unplaces docs/reference/checks.md in standard-catalog.sh)" "" "$(engine_owner_splits "$CT")"
 
@@ -309,5 +344,29 @@ mkctl 1 "$(fxrow check.fixture-marked check drift fixture-other)"
 t_eq "one check row owned by another family than the rest of its engine file is named (the file is unplaced in standard-catalog.sh)" "docs/reference/checks.md" "$(engine_owner_splits "$FX/controls.tsv")"
 mkctl 1; { printf '%s\n' "$(fxrow lint.a lint lint -)" "$(fxrow lint.b lint skill -)"; } >> "$FX/controls.tsv"
 t_eq "valid but unusual: lint rows of one engine file with different owners are not a split (a lint engine owns many families)" "" "$(engine_owner_splits "$FX/controls.tsv")"
+
+t_section "a repair outside the auto-remediation allowlist is refused (harbor#1031 item 4)"
+# The one list is the HEAL rows of contracts/finding.md. A fixture contract holds one HEAL row per shape: a glob subject,
+# a subject-less repair, and a PROPOSE row, which is not an allowance.
+AL="$W/finding.md"
+cat > "$AL" <<'ALLOW'
+<!-- lanes:begin -->
+| lane | key | subject | repair | ticket |
+|---|---|---|---|---|
+| HEAL | `lint/lint.exec-bit-kept` | `bin/*` | `chmod +x <subject>` | #574 |
+| HEAL | `check/memory.route` | `*` | `sh bin/memory-route.sh --live --apply` | #589 |
+| PROPOSE | `check/drift.port-root` | `*` | `sh bin/drift-port-root.sh --apply` | #1 |
+<!-- lanes:end -->
+ALLOW
+RA() { ( LOG_FD=2; . "$T_ROOT/bin/library-log.sh"; log_init ra; repair_allowed "$@" ) >/dev/null 2>&1; echo $?; }
+t_eq "a repair a HEAL row names, on a subject its glob matches, is allowed" 0 "$(RA lint/lint.exec-bit-kept bin/x.sh 'chmod +x "$1"' "$AL")"
+t_eq "a subject-less HEAL repair is allowed" 0 "$(RA check/memory.route - 'sh bin/memory-route.sh --live --apply' "$AL")"
+t_eq "the same repair on a subject the glob does not match is refused" 2 "$(RA lint/lint.exec-bit-kept docs/x.md 'chmod +x "$1"' "$AL")"
+t_eq "a repair the row does not name is refused" 2 "$(RA check/memory.route - 'sh bin/other-repair.sh --apply' "$AL")"
+t_eq "a key with no row is refused" 2 "$(RA check/drift.reference-check - 'sh bin/drift-reference-check.sh --apply' "$AL")"
+t_eq "a PROPOSE row is not an allowance" 2 "$(RA check/drift.port-root - 'sh bin/drift-port-root.sh --apply' "$AL")"
+t_eq "a stood-down subject is never repaired" 2 "$(RA check/memory.route stood-down 'sh bin/memory-route.sh --live --apply' "$AL")"
+t_eq "no allowlist at all refuses, it does not allow" 2 "$(RA check/memory.route - 'sh bin/memory-route.sh --live --apply' "$W/absent.md")"
+t_eq "the real allowlist allows its own first HEAL row" 0 "$(RA lint/skill.book-current skills/skill-catalog/SKILL.md 'sh bin/skill-catalog.sh' "$T_ROOT/contracts/finding.md")"
 
 t_done

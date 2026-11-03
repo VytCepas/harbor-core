@@ -103,7 +103,7 @@ t_eq "unset: bin/test-suite-cache.sh is never run" no "$([ -f "$T_TMP/stub-calle
 HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_CHANGED="$CH" HARBOR_TEST_SUITE_CACHE=1 sh "$G/test-suite-run.sh" tests/x/a.sh > /dev/null 2>&1
 t_eq "control: set, it is" yes "$([ -f "$T_TMP/stub-called" ] && echo yes || echo no)"
 rm -f "$T_TMP/stub-called"   # harbor#967 W9: governance.yml sets the old name until its patch lands; both are read until 2026-12-01
-HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_CHANGED="$CH" HARBOR_SUITE_CACHE=1 sh "$G/test-suite-run.sh" tests/x/a.sh > /dev/null 2>&1
+HARBOR_SCOPE_ROOT="$R" HARBOR_TEST_CHANGED="$CH" HARBOR_TEST_SUITE_CACHE=1 sh "$G/test-suite-run.sh" tests/x/a.sh > /dev/null 2>&1
 t_eq "the old name alone turns it on too" yes "$([ -f "$T_TMP/stub-called" ] && echo yes || echo no)"
 
 t_section "never on main, never when everything runs"

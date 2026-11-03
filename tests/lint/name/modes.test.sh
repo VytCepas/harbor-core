@@ -18,7 +18,8 @@ git -C "$AD" checkout -q -b feature
 : > "$AD/New_Bad.md"; : > "$AD/docs/good-new.md"                                  # a bad name added, a good one added
 printf 'more\n' >> "$AD/Legacy_Old.md"                                            # a legacy bad name, only modified
 git -C "$AD" mv docs/keep-me.md docs/Renamed_Bad.md                              # a good name renamed to a bad one
-printf '#!/usr/bin/env sh\nHELM_PROBE_FIXTURE=1\n' > "$AD/scripts/probe.sh"       # a new file using a legacy env prefix
+_G="GOLD$(printf EN)"   # the banned prefix, spelled apart so this file holds no such env name
+printf "#!/usr/bin/env sh\n%s_PROBE_FIXTURE=1\n" "$_G" > "$AD/scripts/probe.sh"       # a new file using a banned env prefix
 cp "$AD/standards/naming/dialects.tsv" "$AD/standards/naming/ghost.tsv"          # a register file registers.tsv does not name
 git -C "$AD" add -A && git -C "$AD" -c user.email=t@example.invalid -c user.name=t commit -q -m branch
 : > "$AD/Untracked_Bad.md"                                                        # not the branch's yet
@@ -29,13 +30,13 @@ t_has "…and so is a good name renamed to a bad one: a rename is an add of its 
 t_hasnt "a good name the branch adds is not" "$_ad" "good-new.md"
 t_hasnt "…nor a legacy bad name the branch only modified" "$_ad" "Legacy_Old.md"
 t_hasnt "…nor an untracked file, which is not the branch's yet" "$_ad" "Untracked_Bad.md"
-t_hasnt "…nor an env token read out of an added file: the file may only use one that was there" "$_ad" "HELM_PROBE_FIXTURE"
+t_hasnt "…nor an env token read out of an added file: the file may only use one that was there" "$_ad" "${_G}_PROBE_FIXTURE"
 t_hasnt "…nor the registry: a file registers.tsv does not name is a tree finding, not an added name" "$_ad" "register-file:ghost.tsv"
 t_has "positive control: the same run judged the branch" "$_ad" "the names added since main"
 _chg="$(ad --changed)"
 t_has "--changed on the same branch does see the modified legacy name" "$_chg" "[name.case] Legacy_Old.md"
 t_has "…the untracked one" "$_chg" "[name.case] Untracked_Bad.md"
-t_has "…the env token" "$_chg" "env:HELM_PROBE_FIXTURE"
+t_has "…the env token" "$_chg" "env:${_G}_PROBE_FIXTURE"
 t_has "…and the unlisted register file" "$_chg" "register-file:ghost.tsv"
 t_exit "an added bad name exits 0 at warn" 0 sh "$AD/bin/lint-name.sh" --root "$AD" --base main --added
 t_exit "with no base to compare against, --added is unchecked, never clean" 3 sh "$AD/bin/lint-name.sh" --root "$AD" --base no-such-ref --added
@@ -58,6 +59,7 @@ na() { HARBOR_SCOPE_ROOT="$AD" HARBOR_CI_BASE=main sh "$LINT" --only standard.na
 _nao="$(na)"
 t_has "an added bad name is an advisory of the rule" "$_nao" "ADVISORY [standard.names-added] [name.case] New_Bad.md"
 t_has "…and a renamed-to-bad one" "$_nao" "ADVISORY [standard.names-added] [name.case] docs/Renamed_Bad.md"
+t_red standard.names-added   # the added bad names above are advised by the rule (harbor#1422)
 t_hasnt "…and not a legacy name the branch only modified" "$_nao" "Legacy_Old.md"
 t_eq "…and an advisory is not a violation" "" "$(printf '%s\n' "$_nao" | grep 'VIOLATION')"
 _nf="$TMP/na.findings"; : > "$_nf"
@@ -95,12 +97,13 @@ t_hasnt "…and is not told as a missing base" "$_nb" "no base to compare agains
 t_has "…and the rule's record goes red, because it could not judge" "$(cat "$_nr")" "standard.names-added"
 cp "$REG/registers.tsv" "$AD/standards/naming/registers.tsv"
 t_hasnt "restored, the same tree is no violation" "$(na)" "VIOLATION"
-t_eq "controls.tsv holds the rule at warn, owned by standard, with this suite as its red proof" "standard.names-added	warn	lint	bin/lint-conventions.sh	tests/lint/name/name.test.sh" \
+t_eq "controls.tsv holds the rule at warn, owned by standard, with this suite as its red proof" "standard.names-added	warn	lint	bin/lint-conventions.sh	tests/lint/name/modes.test.sh" \
   "$(awk -F'\t' '$1 == "standard.names-added" { print $1 "\t" $2 "\t" $3 "\t" $4 "\t" $11 }' "$REG/controls.tsv")"
 t_has "--list names it beside its sibling" "$(sh "$LN" --list)" "standard.names-added"
 
 t_section "--gen writes every view under build/, from the registry"
 M="$TMP/gen"; mini "$M"   # a copy of its own: in tests/lint/name/name.test.sh this ran on the mutant tree
+printf 'oldword\talerting\tlegacy\tglossary\t2099-01-01\ta fixture legacy row, so the swap list holds one whatever the register retires\n' >> "$M/standards/naming/aliases.tsv"
 for _v in glossary naming-guide cli-tree labels vale; do
   t_exit "--gen $_v exits 0" 0 sh "$M/bin/lint-name.sh" --root "$M" --gen "$_v"
 done
@@ -109,12 +112,12 @@ t_exit "the glossary is valid UTF-8 (a byte-cut → made 234 rows invalid, harbo
 t_has "…and its broader chain is whole" "$(grep '^| \*\*lint\*\*' "$M/build/naming/glossary.md")" "audit → "
 t_has "the CLI tree parses a family script back into its tuple" "$(cat "$M/build/naming/cli-tree.txt")" "harbor lint name    <- bin/lint-name.sh"
 t_has "the label set is <axis>:<value>" "$(cat "$M/build/naming/labels.tsv")" "$(printf 'family:admission\t')"
-t_has "the Vale swap list comes from the legacy aliases" "$(cat "$M/build/vale/styles/Harbor/Legacy.yml")" "'floor': security baseline"
+t_has "the Vale swap list comes from the legacy aliases" "$(cat "$M/build/vale/styles/Harbor/Legacy.yml")" "'oldword': alerting"
 t_has "…and the spelling swap from the spelling aliases (D-16)" "$(cat "$M/build/vale/styles/Harbor/Spelling.yml")" "'behaviour': behavior"
 if command -v vale > /dev/null 2>&1; then
-  printf '# Notes\n\nThe floor blocks it. Its behaviour holds.\n' > "$M/vale-probe.md"
+  printf '# Notes\n\nThe oldword blocks it. Its behaviour holds.\n' > "$M/vale-probe.md"
   _vl="$(cd "$M" && vale --config build/vale/.vale.ini vale-probe.md 2>&1)"
-  t_has "vale runs the generated config and flags a legacy term" "$_vl" "security baseline"
+  t_has "vale runs the generated config and flags a legacy term" "$_vl" "alerting"
   t_has "…and a UK spelling" "$_vl" "Use behavior instead of behaviour"
 else
   t_eq "vale is absent: the generated config was not run (verified NOTHING about it)" absent absent
@@ -181,10 +184,9 @@ t_exit "…and a malformed overlay fails the run" 1 sh -c 'HARBOR_SCOPE_PRIVATE=
 t_has "a repeated id in the overlay goes red" "$(ovf)" "name.registry-duplicate"
 { printf '%s\n' "$_hdr"; _row family client; } > "$PV/terms.tsv"
 t_has "an id that collides with a core term goes red" "$(ovf)" "name.registry-duplicate"
-_helm=$(printf helm | tr a-z A-Z)   # built, so the tree holds no legacy env name
-{ printf '%s\n' "$_hdr"; _row helm system; } > "$PV/terms.tsv"
-t_has "an id that is a core alias goes red" "$(chk env "$_helm"_ADMISSION_DISABLE)" "is a core alias"
-t_has "…and --check does not let the alias through" "$(chk env "$_helm"_ADMISSION_DISABLE)" "FAIL: [name.registry-duplicate]"
+{ printf '%s\n' "$_hdr"; _row golden system; } > "$PV/terms.tsv"
+t_has "an id that is a core alias goes red" "$(chk env "${_G}_ADMISSION_DISABLE")" "is a core alias"
+t_has "…and --check does not let the alias through" "$(chk env "${_G}_ADMISSION_DISABLE")" "FAIL: [name.registry-duplicate]"
 { printf '%s\n' "$_hdr"; _row AcmeSys client; } > "$PV/terms.tsv"
 t_has "an id that is not lowercase kebab goes red" "$(ovf)" "name.registry-shape"
 t_has "…and --check blocks it, not just warns" "$(chk env ACME_LINT_X)" "FAIL: [name.registry-shape]"
@@ -233,4 +235,19 @@ sed 's/^\(id.term.kind.surfaces.remove_by.\)note$/\1note_ts/' "$F/standards/nami
 t_has "a register header column off the grammar goes red" "$(sh "$F/bin/lint-name.sh" --root "$F" 2>&1)" "column:aliases.tsv:note_ts"
 sed 's/^\(critical.*	\)p0\(	\)/\1p1\2/' "$F/standards/naming/terms.tsv" > "$TMP/tm"; mv "$TMP/tm" "$F/standards/naming/terms.tsv"
 t_has "two severities setting one priority go red" "$(sh "$F/bin/lint-name.sh" --root "$F" 2>&1)" "is already set by"
+t_section "exemptions expire by rename wave, never on one day (harbor#950)"
+# The retirement left 19 legacy rows, too few for a share to mean anything: below 40 rows the rule is "not on one day" (3+ dates).
+_spread() { # <exemptions file> -> yes|no
+  awk -F'\t' '/^#/ || $1 == "id" { next } $4 == "legacy" { n++; d[$5]++ }
+    END { m = 0; k = 0; for (x in d) { k++; if (d[x] > m) m = d[x] }; print ((n >= 40 ? m * 4 < n : k >= 3) ? "yes" : "no") }' "$1"; }
+_ex="$(awk -F'\t' '/^#/ || $1 == "id" { next } $4 == "legacy" { n++ } END { print n+0 }' "$REG/exemptions.tsv")"
+t_eq "legacy rows do not expire on one day or in one heap ($_ex rows)" yes "$(_spread "$REG/exemptions.tsv")"
+_xo="$TMP/spread-one"; _xs="$TMP/spread-many"
+awk 'BEGIN { for (i = 0; i < 60; i++) printf "legacy-%04d\tname.x\tp%d\tlegacy\t2027-01-25\tx\n", i, i }' > "$_xo"
+awk 'BEGIN { for (i = 0; i < 60; i++) printf "legacy-%04d\tname.x\tp%d\tlegacy\t2027-02-%02d\tx\n", i, i, 1 + i % 8 }' > "$_xs"
+t_eq "mutation: 60 rows on one day is reported" no "$(_spread "$_xo")"
+t_eq "…and 60 rows over 8 dates is not" yes "$(_spread "$_xs")"
+awk 'BEGIN { for (i = 0; i < 20; i++) printf "legacy-%04d\tname.x\tp%d\tlegacy\t2027-01-25\tx\n", i, i }' > "$_xo"
+t_eq "mutation: 20 rows on one day is reported too" no "$(_spread "$_xo")"
+t_eq "every legacy row's reason names its wave" "" "$(awk -F'\t' '/^#/ || $1 == "id" { next } $4 == "legacy" && $6 !~ /; (W[1-6] |skills)/' "$REG/exemptions.tsv" | head -3)"
 t_done

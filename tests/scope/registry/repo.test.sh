@@ -104,11 +104,12 @@ t_exit "...though the lookup still answers" 0 roots --repo harbor
 
 t_section "the INSTALLED copy judges kinds by the register shipped beside it (no standards/ above bin/)"
 IC="$T_TMP/icfg"; mkdir -p "$IC"; printf '{"permissions":{"deny":[]}}\n' > "$IC/settings.json"
-env -u CLAUDE_CONFIG_DIR -u CLAUDECODE -u HARBOR_DEPLOY_ACTIVE -u HARBOR_DEPLOY sh "$T_ROOT/bin/deploy-runtime-install.sh" --apply --dir "$IC" >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR -u CLAUDECODE -u HARBOR_DEPLOY_ACTIVE sh "$T_ROOT/bin/deploy-runtime-install.sh" --apply --dir "$IC" >/dev/null 2>&1
 t_eq "the runtime installer ships the kinds register beside scope-roots.sh" present "$([ -f "$IC/bin/repo-kinds.tsv" ] && echo present || echo absent)"
+t_eq "the runtime installer ships the controls register beside the injection engine (harbor#1422)" present "$([ -f "$IC/bin/controls.tsv" ] && echo present || echo absent)"
 mkpriv kw "$H"'svc	svc	workload	-
 '
-iroots() { R env -u HARBOR_SCOPE_ROOT -u HARBOR_ROOT sh "$IC/bin/scope-roots.sh" "$@"; }
+iroots() { R env -u HARBOR_SCOPE_ROOT sh "$IC/bin/scope-roots.sh" "$@"; }
 t_exit "a workload row is green from the installed copy" 0 iroots --registry-check
 mkpriv kw2 "$H"'svc	svc	nonsense	-
 '
@@ -163,6 +164,36 @@ t_exit "a proposed note does not excuse a bad topology: a good one is green" 0 r
 mkpriv nt4 "$H"'z	z	workload	-	enablng	collaboration	proposed
 '
 t_exit "...and a bad one is still refused" 2 roots --registry-check
+
+t_section "four more columns say what a repo is for: domain, governed, owner, covers (harbor#966)"
+mkpriv el 'id	path	kind	remote	topology	interaction	note	domain	governed	owner	covers
+harbor	harbor	control-plane	-	platform	-	-	-	yes	operator	the control plane
+zorbcorp	zorbcorp	workload	-	stream-aligned	x-as-a-service	-	tracking	yes	operator	tags and pixels
+legacy	legacy	workload	-
+'
+t_exit "eleven columns beside seven, six and four are valid" 0 roots --registry-check
+t_eq "--rows prints all eleven, with - for what a short row lacks" "harbor	harbor	control-plane	-	platform	-	-	-	yes	operator	the control plane
+zorbcorp	zorbcorp	workload	-	stream-aligned	x-as-a-service	-	tracking	yes	operator	tags and pixels
+legacy	legacy	workload	-	-	-	-	-	-	-	-" "$(roots --rows)"
+t_eq "--repos is unchanged by the new columns" "harbor	$PW/harbor
+zorbcorp	$PW/zorbcorp
+legacy	$PW/legacy" "$(roots --repos)"
+t_eq "--topology is unchanged by them" "stream-aligned	x-as-a-service" "$(roots --topology zorbcorp)"
+mkpriv el2 "$H"'z	z	workload	-	-	-	-	tracking	maybe	operator	x
+'
+t_exit "a governed value that is not yes, no or - is refused" 2 roots --registry-check
+t_has "...naming it" "$(roots --registry-check 2>&1)" 'governed "maybe"'
+mkpriv el3 "$H"'z	z	workload	-	-	-	-	nowhere	yes	operator	x
+'
+t_exit "a domain that is no term of the standard is refused" 2 roots --registry-check
+t_has "...naming it" "$(roots --registry-check 2>&1)" 'domain "nowhere"'
+mkpriv el4 "$H"'z	z	workload	-	-	-	-	tracking	yes		x
+'
+t_exit "an empty owner is refused (write - for none)" 2 roots --registry-check
+mkpriv el5 "$H"'z	z	workload	-	-	-	-	tracking	yes	-	x	extra
+'
+t_exit "twelve fields are refused" 2 roots --repo z
+t_exit "no registry: --rows exits 1" 1 env PORT_ROOT="$T_TMP/none-at-all" sh "$T_ROOT/bin/scope-roots.sh" --rows
 
 t_section "--platform-ids: the platform's own repos, by kind (harbor#966)"
 mkpriv pl "$H"'cp	cp	control-plane	-
@@ -423,9 +454,8 @@ t_eq "the fleet controller is the one fleet-controller row" "$PW/tools/fleet" "$
 t_eq "...and the rest of a row's path is kept" "$PW/tools/fleet/fleet.yaml" "$(roots --get HARBOR_SCOPE_FLEET_FILE)"
 t_eq "a W5 old name asks the same row" "$PW/yard" "$(roots --get HARBOR_PROJECT_INIT)"
 t_eq "the W9 red-team root answers by its new name" "$PW/vendor-src" "$(roots --get HARBOR_EVAL_REDTEAM_DIR)"
-t_eq "...and by its old one until 2026-12-01 (harbor#967)" "$PW/vendor-src" "$(roots --get HARBOR_REDTEAM_DIR)"
-t_eq "...where an override under the old name is still read" "/corpora" "$(HARBOR_REDTEAM_DIR=/corpora roots --get HARBOR_EVAL_REDTEAM_DIR)"
-t_eq "...and the new name's override wins over it" "/new" "$(HARBOR_EVAL_REDTEAM_DIR=/new HARBOR_REDTEAM_DIR=/corpora roots --get HARBOR_EVAL_REDTEAM_DIR)"
+_oldrt="HARBOR_$(printf REDTEAM_DIR)"   # built from parts: the name lint reads tokens
+t_eq "...and the retired old name's override is ignored" "$PW/vendor-src" "$(export "$_oldrt=/corpora"; roots --get HARBOR_EVAL_REDTEAM_DIR)"
 t_eq "--id names the renamed scaffolder" "yard" "$(roots --id HARBOR_SCOPE_SCAFFOLDER)"
 t_eq "--id names the renamed fleet controller" "fleet" "$(roots --id HARBOR_SCOPE_FLEET_CONTROLLER)"
 t_eq "--id of a non-role row is the table's id" "harbor" "$(roots --id HARBOR_SCOPE_REPO)"

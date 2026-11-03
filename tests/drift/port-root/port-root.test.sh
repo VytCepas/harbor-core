@@ -26,7 +26,16 @@ mkdir -p "$P/zeta-wt-x"
 t_eq "a -wt- dir of an UNregistered id is not exempt" "stray-repo
 zeta-wt-x" "$(drift --names 2>/dev/null)"
 
+t_section "a git repo with no row is red, the case the ticket names (harbor#966)"
+rm -rf "$P/stray-repo" "$P/zeta-wt-x"
+git init -q "$P/unlisted-repo" && mkdir -p "$P/unlisted-repo/.agents" && : > "$P/unlisted-repo/.agents/config.yaml"
+t_exit "a real checkout nobody registered: exit 1" 1 drift
+t_eq "...and it is the one named" "unlisted-repo" "$(drift --names 2>/dev/null)"
+printf 'unlisted-repo\tunlisted-repo\tworkload\t-\n' >> "$V/repos.tsv"
+t_exit "one row later it is green" 0 drift
+
 t_section "a registry that cannot be read is never green"
 printf 'id\tpath\tkind\tremote\nbad\t/abs\tworkload\t-\n' > "$V/repos.tsv"
 t_exit "exit 2 on a refused registry" 2 drift
+t_red check.port-drift   # the falsifier this suite names for them (harbor#1422)
 t_done

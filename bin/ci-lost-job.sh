@@ -21,18 +21,10 @@
 #   sh ci-lost-job.sh --runner-pattern    print the phrases GitHub's own runner annotates a job with when it lost its
 #      connection mid-job (an ERE); `ci-runners.sh rerun-lost` matches with it (harbor#1060). Exit codes above are unchanged.
 #
-# WHY. GitHub cancels a queued job it could not dispatch and annotates the check
-# run "The job was not acquired by Runner of type self-hosted even after multiple
-# attempts". The job has no runner, no steps and no log, so `gh pr checks` scores
-# it like any other red check. Measured 2026-09-17..24: 8 such jobs in 1,257,
-# spread over every kind of job, each read as a failing suite until somebody
-# opened the annotation. Re-running it is a repair with no judgment in it; the
-# read that tells the two apart is this one, and it lives in one place so
-# gate-pr-wait.sh and gate-merge-check.sh cannot drift apart on the phrase.
-#
-# EVERY ANNOTATION, NOT ANY. A job that ran, failed and was ALSO annotated is a
-# failure first; calling it lost would send someone to re-run a real red. Zero
-# annotations is not lost either — that is the ordinary shape of a failed step.
+# WHY. GitHub cancels a queued job it could not dispatch; it has no runner, steps or log, so it reads as a failing suite.
+# Measured 2026-09-17..24: 8 of 1,257 jobs. One reader (this) so gate-pr-wait.sh and gate-merge-check.sh cannot drift on the phrase.
+# EVERY annotation, not any: a job that ran and failed is a failure first; zero annotations is the ordinary failed step.
+# Removed notes: docs/explanation/code-cases/bin-ci-lost-job.md
 set -eu
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2   # stdout is this tool's answer (the re-run command), so the log goes to stderr
@@ -58,7 +50,7 @@ JOB="$(printf '%s' "$LINK" | sed -n 's#.*/actions/runs/[0-9][0-9]*/job/\([0-9][0
 [ -n "$RUN" ] && [ -n "$JOB" ] || die "not an Actions job link: $LINK" "pass the link gh pr checks --json link prints for an Actions job"
 
 LOST_PHRASE='was not acquired by Runner'
-GH="${HARBOR_TEST_GH:-${HARBOR_GH:-gh}}"   # a test swaps in a fake
+GH="${HARBOR_TEST_GH:-gh}"   # a test swaps in a fake
 msgs="$($GH api "repos/$REPO/check-runs/$JOB/annotations" --jq '.[].message' 2>/dev/null)" \
   || die "cannot read the annotations of check run $JOB" "gh auth status"
 [ -n "$msgs" ] || exit 1
@@ -69,10 +61,7 @@ if printf '%s\n' "$msgs" | grep -vqF "$LOST_PHRASE"; then
   fi
   exit 1
 fi
-# `--job`, NOT `--failed` (Codex on #692): gh defines --failed as "only failed
-# jobs", and a lost job is CANCELLED — so --failed could leave it untouched and
-# re-run an unrelated real failure instead. The link's /job/<id> is the job's
-# databaseId, which is what --job takes; gh's warning is about the /jobs/<n>
-# step URL, which the parser above never accepts.
+# `--job`, not `--failed`: a lost job is CANCELLED, so --failed could re-run an unrelated real failure (Codex on #692).
+# The link's /job/<id> is the databaseId --job takes; the parser above never accepts the /jobs/<n> step URL.
 printf 'gh run rerun --job %s --repo %s   # run %s\n' "$JOB" "$REPO" "$RUN"
 exit 0

@@ -1,1 +1,0 @@
-lint-findings-run.sh

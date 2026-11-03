@@ -545,15 +545,23 @@ def gen(a):
             if p.startswith('launchd/') and p.endswith('.plist') and p.count('/') == 1:
                 twins.setdefault(p[len('launchd/'):], t['prefix'] + p)
     n_la = 0
+    n_la_orphan = 0
     if os.path.isdir(la):
         for b in sorted(os.listdir(la)):
+            p = os.path.join(la, b)
             if b in twins:
-                p = os.path.join(la, b)
                 dst = box(p)
                 wiring.append((dst, p))
                 edges.add(('deploys_to', twins[b], dst, dst))
                 n_la += 1
-        inputs.append(('launchagents', T(la), '%d with a tracked launchd/ twin' % n_la))
+            elif b.startswith('com.harbor.') and b.endswith('.plist'):
+                # ours by name, twin in a repo this scan does not read: its wiring is still scanned, and the input row counts it (harbor#996 item 1)
+                wiring.append((box(p), p))
+                n_la_orphan += 1
+        row = '%d with a tracked launchd/ twin' % n_la
+        if n_la_orphan:
+            row += ', %d more com.harbor.* with no twin in a scanned tree (wiring read, no deploys_to edge)' % n_la_orphan
+        inputs.append(('launchagents', T(la), row))
     else:
         inputs.append(('launchagents', T(la), 'absent'))
 
@@ -816,7 +824,7 @@ trap 'rm -f "$TMP" "$TMP.d"' EXIT INT TERM
 _gen() {
   _py gen "out=$TMP" "root=$ROOT" "home=$HOME" "cfg=$CFG" \
     "harbor_repo=$(_root HARBOR_SCOPE_REPO)" "fleet=$(_root HARBOR_SCOPE_FLEET_CONTROLLER)" "yard=$(_root HARBOR_SCOPE_SCAFFOLDER)" \
-    "memory_store=${HARBOR_MEMORY_LOG_DIR:-${HARBOR_LOG_DIR:-$CFG/MEMORY}}" "local_bin=$(_root HARBOR_SCOPE_LOCAL_BIN)"
+    "memory_store=${HARBOR_MEMORY_LOG_DIR:-$CFG/MEMORY}" "local_bin=$(_root HARBOR_SCOPE_LOCAL_BIN)"
 }
 if [ "$MODE" = dangling ]; then
   # A failed scan is 3 (unchecked), never 1: reference-check read 1 as "rows found", so a scan that died on an

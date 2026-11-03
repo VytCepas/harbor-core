@@ -9,60 +9,27 @@
 #
 # Exit 0 = the verb did its job. 1 = a gate refused. 2 = bad usage.
 #
-# THE INVERSION THIS FILE IS BUILT ON: A REVIEWER MAY VETO, NEVER APPROVE. The
-# request that produced it was the opposite — let an independent subagent bless a
-# change so the human gate can be skipped — and that direction cannot be made
-# safe here. An LLM reviewer is a RULE, and this estate has already measured that
-# rules do not bound an agent that can act: an `ask` verdict auto-approves off the
-# main loop, and the standing conclusion was "the mitigation is identity, never a
-# rule". A reviewer that can widen `permissions.deny` is an agent granting itself
-# permission by convincing another instance of itself. Harbor also carries the
-# receipt: pass 9's confidently-applied fixes caused ~24 defects that pass 10
-# found, WITH A GREEN SUITE THROUGHOUT — a reviewing agent would have read that
-# same green suite.
-#
-# So a review can only ever REMOVE a packet from the queue. There is deliberately
-# no `--approve` flag and no "approved" state: a packet is `pending` until a
-# human runs `apply --apply`, and an unrefuted packet is UNREFUTED, never
-# approved. The failure mode of a broken or captured reviewer is therefore a
-# missed improvement, never a self-granted permission.
-#
-# A REVIEW IS A SIGNATURE OVER THE PATCH BYTES, not over the packet name. Each
-# verdict records the sha256 of `patch.diff` as reviewed; `apply` recomputes it
-# and ignores every verdict for a different digest. Without that, "reviewed" is a
-# label on a directory whose contents can be swapped afterwards — which is the
-# whole attack this design would otherwise invite.
-#
-# THE TIER IS COMPUTED FROM THE PATCH, NEVER DECLARED. A packet that names its
-# own risk level is a claim written by the thing being judged. `apply` classifies
-# the touched paths itself, every time, and floor-adjacent paths need `--floor`
-# typed by the operator on top of `--apply`.
-#
-# THE PACKET MACHINERY IS UNPATCHABLE FROM A PACKET. A diff touching this file or
-# its suite is refused outright, at `new` and again at `apply`, with no flag that
-# overrides it. Everything else here is a gate a human chooses to pass; that one
-# is the hinge they all hang on.
-#
-# IT IS NOT WIRED TO ANYTHING. No hook, no launchd job, and nothing in this repo
-# calls `apply`. Generating and reviewing are safe to automate; ingesting is the
-# human act, and automating the last step would delete the property the first two
-# exist to protect.
+# A reviewer may veto, never approve. An LLM reviewer is a rule, and rules do not bound an agent that can act
+# (an `ask` verdict auto-approves off the main loop; pass 9's confident fixes caused ~24 defects pass 10 found,
+# with a green suite throughout). So a review can only REMOVE a packet from the queue: there is no `--approve`
+# and no "approved" state. A packet is `pending` until a human runs `apply --apply`; an unrefuted packet is
+# UNREFUTED. A captured reviewer costs a missed improvement, never a self-granted permission.
+# A review is a signature over the patch bytes: each verdict records the sha256 of `patch.diff`, and `apply`
+# ignores verdicts for a different digest, so a reviewed directory cannot be swapped afterwards.
+# The tier is computed from the patch, never declared; floor-adjacent paths need `--floor` on top of `--apply`.
+# This file and its suite are unpatchable from a packet, at `new` and at `apply`, with no override.
+# It is wired to nothing (no hook, no launchd job): generating and reviewing may be automated, ingesting is the human act.
+# Removed notes: docs/explanation/code-cases/bin-proposal.md
 set -u
 
-# --help BEFORE ANY WORK (S4, harbor#140). Placed immediately after strict mode
-# so it is the first executable line: a --help that reaches an argument parser is
-# a --help that a script with no parser ignores, and this file had none. Measured
-# 2026-08-20: a sweep of `bin/*.sh --help` ran past five minutes because at least
-# one script treated the flag as a request to do work, and five of the scripts
-# with no --help at all are mutators. The text is the header, read out of THIS
-# file at runtime, so a help message cannot drift from what the script says it is.
+# --help before any work (S4, harbor#140): the text is this header, read at runtime.
 case "${1:-}" in
   -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); if ($0=="") exit; print; next } {exit}' "$0"
              printf '\n(flags, if any, are in the header above and the source below.)\n'
              exit 0 ;;
 esac
 DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
-ROOT="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-$(CDPATH= cd -- "$DIR/.." && pwd -P)}}"
+ROOT="${HARBOR_SCOPE_REPO:-$(CDPATH= cd -- "$DIR/.." && pwd -P)}"
 STORE="$ROOT/proposals"
 
 # Status lines are log-lib's, on stderr: stdout is the verb's data (list, count, show, a dry run's files).
@@ -87,10 +54,8 @@ touches_machinery() { # <patch-file>
     case "$f" in bin/proposal.sh|tests/proposal/proposal/proposal.test.sh) printf '%s\n' "$f" ;; esac
   done
 }
-# Floor-adjacent: allowed, but only when the operator types --floor as well. The
-# linter is in this list on purpose — a packet that exempts itself from a lint
-# rule is the same self-granting shape as one that edits its own reviewer, one
-# indirection further out.
+# Floor-adjacent: allowed with --floor. The linter is listed on purpose: a packet exempting itself from a lint
+# rule is the same self-granting shape as one editing its reviewer.
 touches_floor() { # <patch-file>
   _files_in "$1" | while IFS= read -r f; do
     case "$f" in
@@ -98,21 +63,10 @@ touches_floor() { # <patch-file>
     esac
   done
 }
-# EVERY SIDE OF EVERY CHANGE SHAPE, and this is not defensive padding — the
-# first version read `+++ b/` alone and TWO ATTACKS WALKED THROUGH IT, both
-# reproduced 2026-08-13 against a fixture repo:
-#
-#   · a patch that DELETES bin/proposal.sh has `+++ /dev/null` and its only
-#     mention of the file is on the `---` side, so the machinery gate saw a
-#     0-file "ordinary" packet. Deleting the reviewer is at least as powerful as
-#     editing it, and that is the one gate with no override.
-#   · a pure RENAME (`bin/guard-x.sh` -> `bin/harmless.sh`) carries NO `+++` line
-#     at all — only `rename from`/`rename to` — so a floor file could be moved
-#     out of the floor tier with no --floor typed.
-#
-# So both sides are read, plus the rename pair, `/dev/null` is dropped, and git's
-# quoted form (`--- "a/x y"`) is unquoted — an unquoted parse would make a path
-# with a space invisible to both classifiers.
+# Read EVERY side of every change shape: `+++ b/` alone let two attacks through (2026-08-13). A patch DELETING
+# bin/proposal.sh has `+++ /dev/null`, so the machinery gate saw 0 files; a pure RENAME has no `+++` line, so a
+# floor file could leave the floor tier. Both sides and the rename pair are read, `/dev/null` is dropped, and
+# git's quoted form (`--- "a/x y"`) is unquoted so a path with a space is not invisible.
 _files_in() {
   sed -n -e 's|^--- ||p' -e 's|^+++ ||p' "$1" 2>/dev/null \
     | sed -e 's|^"||' -e 's|"$||' -e 's|^[ab]/||' | grep -v '^/dev/null$'
@@ -143,13 +97,8 @@ new)
   [ -d "$STORE/$SLUG" ] && die "packet exists: $SLUG" 1 "sh bin/proposal.sh show $SLUG"
   P="$STORE/$SLUG"
   mkdir -p "$P/reviews" || die "cannot create $P" 1
-  # UNTRACKED FILES ARE REFUSED, NOT SILENTLY DROPPED. `git diff HEAD` sees only
-  # tracked content, so a change that ADDS a file produces a patch missing that
-  # file entirely — and the packet then reads as "the change" while carrying part
-  # of it. Measured the first time this ran against a real working tree: a packet
-  # was created from a 7-file diff whose two new scripts were not in it, including
-  # the one the machinery gate exists to catch. Refusing is side-effect-free;
-  # `git add -N` is one command and makes the intent explicit in the index.
+  # Untracked files are REFUSED, not silently dropped: `git diff HEAD` omits added files, so a packet read as
+  # "the change" while missing part of it. `git add -N` makes the intent explicit.
   if [ -z "$FROM" ]; then
     _unt="$(git -C "$ROOT" ls-files --others --exclude-standard -- ':!proposals' 2>/dev/null)"
     if [ -n "$_unt" ]; then
@@ -165,16 +114,8 @@ new)
     rm -rf "$P"
     die "the patch touches the packet machinery itself — refused with no override" 1
   fi
-  # EVIDENCE IS EXPLICIT, AND STDIN IS NEVER READ UNLESS ASKED FOR. The first
-  # version read stdin whenever it was not a tty, and that BLOCKS FOREVER on an
-  # open-but-silent pipe — measured 2026-08-13: the same command took 4 seconds
-  # under `(sleep 4) | …` and would hang indefinitely under a scheduled or
-  # piped caller. `[ -t 0 ]` answers "is this a terminal", never "does data
-  # follow", and no read can tell an empty pipe from a slow one.
-  #
-  # ABSENCE IS RECORDED, not defaulted to something reassuring: an empty
-  # evidence file reads as "none was offered", which is what a reviewer and the
-  # operator both need to see stated.
+  # Evidence is explicit and stdin is never read unless asked: reading whenever it was not a tty blocked forever on
+  # an open-but-silent pipe. Absence is recorded ("none was offered"), not defaulted to something reassuring.
   case "$EV" in
     "")  : > "$P/evidence.md" ;;
     -)   cat > "$P/evidence.md" ;;
@@ -300,12 +241,8 @@ apply)
     log_note "floor-adjacent paths in this patch: $(touches_floor "$P/patch.diff" | tr '\n' ' ')"
     die "refusing without --floor" 1 "sh bin/proposal.sh apply $SLUG --floor   # typed by the operator, on top of --apply"
   fi
-  # A dirty tree makes `git apply` unrevertable by inspection: the operator can
-  # no longer tell what the packet did from what they were already doing.
-  # EXCLUDING THE PACKET STORE, which is the one thing that is always modified
-  # here: `new` and `review` write into proposals/ by design, so counting it as
-  # dirt would make every packet unappliable the moment it was reviewed — a gate
-  # that blocks the ordinary path, which §2.11 calls a defect rather than safety.
+  # A dirty tree makes `git apply` unrevertable by inspection. The packet store is excluded: `new` and `review`
+  # write into proposals/ by design, so counting it would make every reviewed packet unappliable.
   [ -n "$(git -C "$ROOT" status --porcelain -- ':!proposals' 2>/dev/null)" ] && \
     die "working tree is dirty — commit or stash first, so this patch is the only change in it" 1 "git stash   # or commit, then re-run apply"
   git -C "$ROOT" apply --check "$P/patch.diff" 2>/dev/null || \

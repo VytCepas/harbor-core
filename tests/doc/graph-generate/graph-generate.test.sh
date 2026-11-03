@@ -42,6 +42,7 @@ printf '{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","co
 ln -s "$HB/bin/x" "$H/.local/bin/x"
 sed "s#~#$H#" "$HB/launchd/com.x.job.plist" > "$H/Library/LaunchAgents/com.x.job.plist"
 printf 'not ours\n' > "$H/Library/LaunchAgents/com.other.plist"
+printf '<plist><string>~/.claude/bin/a.sh</string></plist>\n' | sed "s#~#$H#" > "$H/Library/LaunchAgents/com.harbor.untracked.plist"   # installed, its twin lives in another repo
 
 G="$HB/build/graph.tsv"
 gen() { sh "$TOOL" --root "$HB" "$@"; }
@@ -96,6 +97,8 @@ t_eq "an unknown row is ?" 1 "$(row deploys_to '?' '~/.claude/bin/gone.sh')"
 t_eq "a ~/.local/bin link" 1 "$(row deploys_to harbor:bin/x '~/.local/bin/x')"
 t_eq "an installed LaunchAgent with a twin" 1 "$(row deploys_to harbor:launchd/com.x.job.plist '~/Library/LaunchAgents/com.x.job.plist')"
 t_eq "a LaunchAgent with no twin is not ours" 0 "$(grep -c 'com.other' "$G" || :)"
+t_eq "a com.harbor.* LaunchAgent with no tracked twin still wires its script (harbor#996 item 1)" 1 "$(row references '~/Library/LaunchAgents/com.harbor.untracked.plist' '~/.claude/bin/a.sh')"
+t_eq "...and the input row says it is outside the twin set" 1 "$(grep -c '^# input.launchagents.*1 with a tracked launchd/ twin, 1 more com.harbor' "$G" || :)"
 t_eq "the installed plist wires the deployed script" 1 "$(row references '~/Library/LaunchAgents/com.x.job.plist' '~/.claude/bin/a.sh')"
 t_eq "settings.json wires the deployed script" 1 "$(row references '~/.claude/settings.json' '~/.claude/bin/a.sh')"
 R="$(gen --refs bin/a.sh 2>/dev/null)"

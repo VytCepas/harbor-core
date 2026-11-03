@@ -172,4 +172,5 @@ ag_world; : > "$CFG/.harbor-autoship.off"
 ag_mutant "M5 the kill switch is not read" library-gate.sh 's|gate_killed() { \[ -e "\$GATE_CFG/.harbor-autoship.off" \]; }|gate_killed() { false; }|'
 ag_run gate-merge.sh "$AG_R" 7
 t_eq "M5: the mutant merges under the kill switch" 0 "$RC"
+t_red check.gate.approve   # the falsifier this suite names for them (harbor#1422)
 t_done

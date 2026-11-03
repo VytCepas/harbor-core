@@ -1,4 +1,4 @@
-# leak-patterns.tsv (harbor#1149, D-79) - the generic patterns of the leak gate (bin/lint-leaks.sh).
+# leak-patterns.tsv (harbor#1149, harbor/D-79) - the generic patterns of the leak gate (bin/lint-leaks.sh).
 # Names no real entity: real clients, companies and accounts live in the private layer's leaks.tsv and terms.tsv.
 # Columns, tab-separated, one header row:  id  kind  pattern  note
 #   kind  literal | word | domain | email-domain | regex | allow

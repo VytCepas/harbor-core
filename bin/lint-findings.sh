@@ -32,12 +32,12 @@ case "${1:-}" in
   -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); if ($0=="") exit; print; next } {exit}' "$0"; exit 0 ;;
 esac
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH='' cd -- "$HERE/.." && pwd)}}"
+ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH='' cd -- "$HERE/.." && pwd)}"
 . "$HERE/library-log.sh"; . "$HERE/library-fs.sh"
 log_init findings
 LINT="$HERE/lint-conventions.sh"
 CONTRACT="$ROOT/contracts/finding.md"
-TODAY="${HARBOR_LINT_FINDINGS_NOW:-${HARBOR_FINDINGS_NOW:-$(date -u +%Y-%m-%d)}}"
+TODAY="${HARBOR_LINT_FINDINGS_NOW:-$(date -u +%Y-%m-%d)}"
 case "$TODAY" in [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;; *) TODAY="$(date -u +%Y-%m-%d)" ;; esac
 umask 077
 T="$(mktemp -d "${TMPDIR:-/tmp}/findings.XXXXXX")"
@@ -57,18 +57,13 @@ stop()  { log_fail "$1"; log_fix "$2"; log_end || :; exit 1; }
 digest_of_file() { LC_ALL=C sort -u "$1" | fs_sha256 | cut -c1-16; }
 
 repo() {
-  [ -z "${HARBOR_LINT_FINDINGS_REPO:-${HARBOR_FINDINGS_REPO:-}}" ] || { printf '%s' "${HARBOR_LINT_FINDINGS_REPO:-${HARBOR_FINDINGS_REPO:-}}"; return 0; }
+  [ -z "${HARBOR_LINT_FINDINGS_REPO:-}" ] || { printf '%s' "${HARBOR_LINT_FINDINGS_REPO:-}"; return 0; }
   git -C "$ROOT" remote get-url origin 2>/dev/null \
     | sed -e 's#^.*github\.com[:/]##' -e 's#\.git$##'
 }
 
 # The lanes block, as `lane TAB key TAB subject TAB repair` rows. Lint FL1 holds its shape.
-lanes() {
-  awk '/^<!-- lanes:begin -->$/ { t = 1; next } /^<!-- lanes:end -->$/ { t = 0 } t && /^\|/' "$CONTRACT" 2>/dev/null \
-    | awk -F'|' '{ for (i = 2; i < NF; i++) { f = $i; gsub(/`/, "", f); gsub(/^[[:space:]]+|[[:space:]]+$/, "", f); $i = f }
-                   if ($2 == "lane" || $2 ~ /^-+$/) next
-                   printf "%s\t%s\t%s\t%s\n", $2, $3, $4, $5 }'
-}
+lanes() { heal_rows "$CONTRACT"; }   # the one parser is library-log.sh's (harbor#1031 item 4)
 # lane_of <key> <subjects-file> → the lane, and for a split key `HEAL for n of m`
 lane_of() {
   _lk="$1"; _lm=0; _ln=0; _ll=PROPOSE
@@ -128,20 +123,10 @@ recent_findings() {
 successors() { # → $T/succ: `letter TAB id`
   [ -f "$T/succ" ] || { sh "$LINT" --ids 2>/dev/null | awk -F'\t' 'NR > 1 && $2 != "-" { print $2 "\t" $1 }' > "$T/succ" || :; }
 }
-# A check renamed to its family id (harbor#961 W5, decided 2026-10-29) is the same check: its renames.tsv row of
-# surface check-id (old check:<id>, new check:<id>) is read until its remove_by date, so an issue keyed check/<old> joins
-# under check/<new> exactly as a letter id does, and a receipt <old>.json counts as <new>'s until <new>.json exists.
-# Past remove_by the row is not read: the old key is then a check with no row, as any unregistered id is.
-check_aliases() { # → $T/calias: `old TAB new`, the check ids whose alias window is open on TODAY
-  [ -f "$T/calias" ] || awk -F'\t' -v d="$TODAY" '$1 ~ /^rename-/ && $4 == "check-id" && $2 ~ /^check:/ && $3 ~ /^check:/ \
-      && $6 ~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ && d <= $6 { print substr($2, 7) "\t" substr($3, 7) }' \
-      "$ROOT/standards/naming/renames.tsv" > "$T/calias" 2>/dev/null || : > "$T/calias"
-}
 canon_key() { # <key> → the key under its current id
-  successors; check_aliases
-  awk -F'\t' -v k="$1" 'BEGIN { split(k, p, "/") } FILENAME == ARGV[1] && p[1] == "lint" && $1 == substr(k, 6) { print "lint/" $2; f = 1; exit }
-                         FILENAME == ARGV[2] && p[1] == "check" && $1 == substr(k, 7) { print "check/" $2; f = 1; exit }
-                         END { if (!f) print k }' "$T/succ" "$T/calias"
+  successors
+  awk -F'\t' -v k="$1" 'BEGIN { split(k, p, "/") } p[1] == "lint" && $1 == substr(k, 6) { print "lint/" $2; f = 1; exit }
+                         END { if (!f) print k }' "$T/succ"
 }
 read_store() { # → $T/store.tsv: number state reason dispositions created key digest seen schema marker-key
   gh issue list -R "$REPO" --label finding --state all --limit 1000 \
@@ -156,11 +141,10 @@ read_store() { # → $T/store.tsv: number state reason dispositions created key 
     | map(tostring | if . == "" then "-" else . end) | @tsv' \
     "$T/store.json" | sort -t'	' -k1,1nr > "$T/store.raw" \
     || stop "the finding store at $REPO did not parse" "gh issue list -R $REPO --label finding --state all --json number,body"
-  successors; check_aliases
+  successors
   # The map is read in BEGIN, never as a first file: an empty map would make NR == FNR hold for the
   # store itself and swallow every row, and an empty store files every finding again.
-  awk -F'\t' -v OFS='\t' -v S="$T/succ" -v C="$T/calias" 'BEGIN { while ((getline l < S) > 0) { split(l, p, "\t"); s["lint/" p[1]] = "lint/" p[2] }
-                                                    while ((getline l < C) > 0) { split(l, p, "\t"); s["check/" p[1]] = "check/" p[2] } }
+  awk -F'\t' -v OFS='\t' -v S="$T/succ" 'BEGIN { while ((getline l < S) > 0) { split(l, p, "\t"); s["lint/" p[1]] = "lint/" p[2] } }
        { m = "-"; if ($6 in s) { m = $6; $6 = s[$6] } print $0, m }' "$T/store.raw" > "$T/store.tsv"
 }
 # latest <key> → the newest issue's row for that key, or nothing
@@ -271,7 +255,6 @@ receipts() {
     | sort -u > "$T/checks.ids"
   sed 's#^\(.*\)$#check/\1 the `\1` check (docs/reference/checks.md)#' "$T/checks.ids" >> "$T/titles"
   [ -d "$_rdir" ] || return 0
-  check_aliases
   for _rf in "$_rdir"/*.json; do
     [ -f "$_rf" ] || continue
     jq -r --arg now "$TODAY" --argjson max "$RECEIPT_DAYS" '
@@ -283,9 +266,6 @@ receipts() {
     [ -s "$T/r1" ] || continue
     IFS='	' read -r _ri _rs _rfr _ < "$T/r1"
     [ "${_rf##*/}" = "$_ri.json" ] || { printf 'check/%s (receipt %s names another id)\n' "$_ri" "${_rf##*/}" >> "$T/receipt.refused"; continue; }
-    # A receipt under an old id is its new id's until the new one writes its own (check_aliases).
-    _rn="$(awk -F'\t' -v i="$_ri" '$1 == i { print $2; exit }' "$T/calias")"
-    if [ -n "$_rn" ]; then [ -f "$_rdir/$_rn.json" ] && continue; _ri="$_rn"; fi
     if ! grep -qxF "$_ri" "$T/checks.ids"; then printf 'check/%s (receipt with no docs/reference/checks.md row)\n' "$_ri" >> "$T/receipt.refused"; continue; fi
     # An unknown status is refused, never read as a run: a run that fires nothing would close the finding.
     case "$_rs" in green|red|stood-down) ;; *) printf 'check/%s (receipt status %s is not green, red or stood-down)\n' "$_ri" "$_rs" >> "$T/receipt.refused"; continue ;; esac
@@ -519,7 +499,12 @@ cmd_heal() {
     fi
     # The branch carries main's commit, so a recurrence after a merged or closed PR never meets an
     # old branch; an open PR for the same key and digest, on any commit, is the one to reuse.
-    _bp="heal/$(printf '%s' "$_k" | tr '/' '-')-$_d-"; _br="$_bp$SHA7"
+    # The branch, commit and PR title are the standard's shapes (harbor#978): fix/<issue>-<slug>, fix(<domain>): <subject>.
+    _bp="fix/$_num-heal-$(printf '%s' "$_k" | tr 'A-Z/._' 'a-z---')-$_d-"; _br="$_bp$SHA7"
+    _subj="fix(lint): the HEAL-lane repair for #$_num ($_k)"
+    for _c in "branch $_br" "commit $_subj"; do
+      sh "$HERE/lint-name.sh" --check "${_c%% *}" "${_c#* }" >/dev/null 2>&1 || log_warn "heal name off the standard: ${_c%% *} ${_c#* }"
+    done
     gh pr list -R "$REPO" --state open --limit 1000 --json number,headRefName,url,isCrossRepository > "$T/prs.json" 2>/dev/null \
       || stop "could not ask $REPO for an open heal PR" "gh pr list -R $REPO --state open"
     _open="$(jq -r --arg p "$_bp" '[.[] | select(.isCrossRepository == false and (.headRefName | startswith($p)))][0] | select(.) | "\(.number) \(.url)"' "$T/prs.json")"
@@ -540,7 +525,9 @@ cmd_heal() {
       || stop "could not make a worktree to repair $_k in: $(head -1 "$T/wt.err")" "git -C $ROOT worktree prune"
     { printf 'healed %s on `origin/main` %s (HEAL lane, contracts/finding.md):\n\n' "$TODAY" "$SHA7"; } > "$T/note"
     while IFS='	' read -r _c _s; do
-      _rc=0; ( cd "$_wt" && sh -c "$_c" heal "$_s" ) > "$T/out" 2>&1 || _rc=$?
+      # the runner asks the allowlist again before each repair, so a row edited out between the plan and the run is refused (harbor#1031)
+      if repair_allowed "$_k" "$_s" "$_c" "$CONTRACT" >"$T/ra.err" 2>&1; then _rc=0; ( cd "$_wt" && sh -c "$_c" heal "$_s" ) > "$T/out" 2>&1 || _rc=$?
+      else _rc=2; cp "$T/ra.err" "$T/out"; fi
       if [ "$_s" = - ]; then printf -- '- `%s` → exit %s\n' "$_c" "$_rc" >> "$T/note"
       else printf -- '- `%s` on `%s` → exit %s\n' "$_c" "$_s" "$_rc" >> "$T/note"; fi
       if [ "$_rc" -eq 0 ]; then printf '%s → %s\n' "$(heal_who "$_k" "$_s")" "$_c" >> "$T/h.fixed"
@@ -556,12 +543,12 @@ cmd_heal() {
       : > "$T/push.err"
       if [ "$_pushed" = 1 ] || { git -C "$_wt" checkout -q -b "$_br" \
            && git -C "$_wt" add -u \
-           && git -C "$_wt" commit -q -m "heal($_k): the HEAL-lane repair for #$_num" \
+           && git -C "$_wt" commit -q -m "$_subj" \
            && git -C "$_wt" push -q -u origin "$_br" 2>"$T/push.err"; }; then
         { printf 'The HEAL-lane repair for finding #%s (`%s`), run by `sh bin/lint-findings.sh heal --apply` (harbor#856).\n\n' "$_num" "$_k"
           sed 1,2d "$T/note"
           printf '\nA draft because a repair that changes a tracked file is reviewed, never pushed to main.\n'; } > "$T/prbody"
-        if _pr="$(gh pr create -R "$REPO" --draft --base main --head "$_br" --title "heal $_k: the HEAL-lane repair for #$_num" --body-file "$T/prbody" 2>"$T/pr.err")"; then
+        if _pr="$(gh pr create -R "$REPO" --draft --base main --head "$_br" --title "$_subj" --body-file "$T/prbody" 2>"$T/pr.err")"; then
           printf '\nA tracked file changed, so it is a draft PR: %s\n' "$_pr" >> "$T/note"
           printf '%s → draft PR %s\n' "$_k" "$_pr" >> "$T/h.pr"
         else

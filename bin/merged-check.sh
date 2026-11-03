@@ -1,1 +1,0 @@
-gate-merged-check.sh

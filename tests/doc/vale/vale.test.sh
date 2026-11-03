@@ -1,14 +1,19 @@
 #!/usr/bin/env sh
 # bin/doc-vale.sh (harbor#978): Vale warns once on a legacy alias and once on a UK spelling, not inside backticks,
 # and says "verified NOTHING" when Vale is missing.
+REQ_VALE="${HARBOR_TEST_REQUIRE_VALE:-0}"  # before t_init clears it
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 HAVE_VALE=1; command -v vale >/dev/null 2>&1 || HAVE_VALE=0   # the runner has no vale: the warnings arm is skipped, said, and the missing-vale arm still runs
 [ "$HAVE_VALE" = 1 ] || printf 'SKIP: vale is not installed here, so the warnings arm is NOT exercised (the missing-vale arm below still is)\n'
+# harbor#1409: CI sets HARBOR_TEST_REQUIRE_VALE=1, so a missing vale fails here instead of skipping green.
+[ "$HAVE_VALE" = 1 ] || t_eq "vale is absent, so HARBOR_TEST_REQUIRE_VALE must be off" 0 "$REQ_VALE"
 DV="$T_ROOT/bin/doc-vale.sh"
 R="$T_TMP/r"; mkdir -p "$R/standards" "$R/bin"; cp -R "$T_ROOT/standards/naming" "$R/standards/naming"
 cp "$T_ROOT/bin/lint-name.sh" "$T_ROOT/bin/library-log.sh" "$DV" "$R/bin/"
-printf 'The floor is high.\n\nPaint it the colour red.\n' > "$T_TMP/bad.md"
-printf 'Use `floor` and `colour` in code.\n' > "$T_TMP/ticks.md"
+# Real legacy aliases retire on their dates (harbor#961), so the arm plants its own in the copy.
+printf 'xoldword\tbaseline\tlegacy\tglossary,registry,record,memory-prose\t2099-01-01\ttest fixture\n' >> "$R/standards/naming/aliases.tsv"
+printf 'The xoldword is high.\n\nPaint it the colour red.\n' > "$T_TMP/bad.md"
+printf 'Use `xoldword` and `colour` in code.\n' > "$T_TMP/ticks.md"
 printf 'Nothing to say here.\n' > "$T_TMP/clean.md"
 printf 'Ban the self-healing thing.\n' > "$T_TMP/banned.md"
 run() { sh "$R/bin/doc-vale.sh" "$@" 2>&1; }

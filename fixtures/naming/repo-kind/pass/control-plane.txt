@@ -6,7 +6,7 @@ AGENTS.md
 CLAUDE.md
 LICENSE
 CHANGELOG.md
-justfile
+justfile	lint:\ntest:
 .agents/config.yaml	repo-kind: control-plane
 bin/
 tests/

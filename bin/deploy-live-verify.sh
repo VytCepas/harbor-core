@@ -96,7 +96,7 @@ else
 fi
 
 # 3. The installed bin/ against the repo, by content. It needs the checkout, never the installed copy.
-_ref="${HARBOR_DRIFT_REF:-${HELM_DRIFT_REF:-origin/main}}"
+_ref="${HARBOR_DRIFT_REF:-origin/main}"
 if skipped install-drift; then :
 elif git -C "$HERE/.." rev-parse --git-dir > /dev/null 2>&1; then
   logged install-drift "sh $HERE/drift-install.sh --dir '$CFG' --ref $_ref" \
@@ -139,6 +139,34 @@ else
   log_fix "sh $HERE/deploy.sh --only sec0 --apply --live"
 fi
 fi
+
+# 7. The wall (harbor#1442): one row per agent surface against the main-files invariant. Born warn, as drift.confinement is
+#    (standards/naming/controls.tsv): the retried-Bash row stays "does not hold" until #555 P4, so a FAIL here would turn
+#    every box red. It reads contracts/ beside it, so the installed copy skips, as install-drift does.
+if [ -f "$HERE/drift-wall.sh" ] && [ -f "$HERE/../contracts/main-folders.txt" ]; then
+  sh "$HERE/drift-wall.sh" --state < /dev/null > "$W/wall" 2>&1; _r=$?   # --state: a verifier writes no receipt
+  _no="$(sed -n 's/^  FAIL: \[check:drift.wall\] \([^:]*\): does not hold.*/\1/p' "$W/wall" | tr '\n' ',' | sed 's/,$//; s/,/, /g')"
+  case "$_r" in
+    0) log_ok "$ID wall — every judged surface holds [check:drift.wall]" ;;
+    1) log_warn "$ID wall — does not hold: ${_no:-see the report} [check:drift.wall]"; log_fix "sh $HERE/drift-wall.sh (one row per surface)" ;;
+    *) log_warn "$ID wall — drift-wall.sh could not judge (exit $_r) [check:drift.wall]"; log_fix "sh $HERE/drift-wall.sh" ;;
+  esac
+else log_skip "$ID wall — needs the repo checkout, and $HERE is not one"; fi
+# 8. The scheduled jobs (harbor#1437): a launchd job still running a script older than its installed copy is red. The
+#    dispatcher ran a week-old event-dispatch.sh because a deploy replaced the file and never restarted it.
+logged launchd "sh $HERE/deploy-launchd-sync.sh verify" sh "$HERE/deploy-launchd-sync.sh" verify
+
+# 9. The install manifest names only files that exist (harbor#1437): a row with no file (bin/CHECKS.md outlived its move) is
+#    a record of nothing, and a reader that trusts the manifest would trust it.
+if [ -f "$CFG/.harbor-manifest" ]; then
+  _nofile="$(awk '!/^#/ && NF >= 5 { r = $0; sub(/^[^ ]+ [^ ]+ /, "", r); sub(/ [^ ]+ [^ ]+$/, "", r); print r }' "$CFG/.harbor-manifest" |
+    while IFS= read -r _r; do [ -e "$CFG/$_r" ] || [ -L "$CFG/$_r" ] || printf '%s ' "$_r"; done)"
+  if [ -z "$_nofile" ]; then log_ok "$ID manifest — every .harbor-manifest row has its file"
+  else
+    log_fail "$ID manifest — rows with no file: ${_nofile% }"
+    log_fix "sh $HERE/deploy.sh --apply --live (runtime-install drops the rows of files it no longer ships)"
+  fi
+else log_skip "$ID manifest — no .harbor-manifest in $CFG"; fi
 
 # ── the opt-in probes: the real-system coverage the hermetic suites stub (harbor#667) ─────────────
 if [ "$PROBES" -eq 0 ]; then
@@ -185,12 +213,12 @@ fi
 
 # The browser's consent arm drives a real page, so it runs only on a URL the operator names: the
 # default is a client's live site, and a probe there writes a visit into that client's analytics.
-if [ -z "${HARBOR_ACCESS_BROWSER_LIVE_URL:-${HARBOR_BROWSER_LIVE_URL:-}}" ]; then
+if [ -z "${HARBOR_ACCESS_BROWSER_LIVE_URL:-}" ]; then
   log_skip "$ID probe:browser — set HARBOR_ACCESS_BROWSER_LIVE_URL to a site whose analytics you own"
 else
   sh "$HERE/access-browser.sh" --self-test-live < /dev/null > "$W/browser" 2>&1; _r=$?
   case "$_r" in
-    0) log_ok "$ID probe:browser — the consent arms pass on ${HARBOR_ACCESS_BROWSER_LIVE_URL:-${HARBOR_BROWSER_LIVE_URL:-}}" ;;
+    0) log_ok "$ID probe:browser — the consent arms pass on ${HARBOR_ACCESS_BROWSER_LIVE_URL:-}" ;;
     2) log_skip "$ID probe:browser — $(grep -m1 'SKIP' "$W/browser" || echo 'backend unavailable')" ;;
     *) log_fail "$ID probe:browser — --self-test-live exited $_r: $(grep -m1 'FAIL' "$W/browser")"
        log_nofix "sh $HERE/access-browser.sh --self-test-live" ;;

@@ -63,7 +63,7 @@ on the same issue, as a letter id is, and a receipt `<old>.json` counts as `<new
 `contracts/unwatched.txt` what nothing watches, and this, what is currently firing.
 
 A lint id is `<family>.<slug>` and permanent; the letter ids it replaced (`X5`) are deprecated,
-never reused (D-19, harbor#957). A marker that still spells a letter joins under its successor
+never reused (harbor/D-19, harbor#957). A marker that still spells a letter joins under its successor
 (`sh bin/lint-conventions.sh --ids`), so a rename orphans no finding: the reconcile reports it as
 `would re-key`, and `--apply` rewrites the marker and the title on the same issue.
 

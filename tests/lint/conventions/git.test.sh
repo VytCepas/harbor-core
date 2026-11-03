@@ -93,6 +93,19 @@ git -C "$C2R" config core.hooksPath hooks
 t_hasnt "core.hooksPath=hooks satisfies the advisory" "[$(_c2lines)]" "$C2_NOHOOK"
 git -C "$C2R" config --unset core.hooksPath
 
+t_section "C2: hooksPath names where git runs hooks, wherever that is (harbor#879)"
+# a worktree's hooksPath is the main checkout's hooks by absolute path; the old test asked for $ROOT/hooks and for .git/hooks
+rm -f "$C2A/.git/hooks/commit-msg" "$C2A/.git/hooks/pre-commit" "$C2A/.git/hooks/pre-push"
+mkdir -p "$TMP/c2elsewhere"; for _h in commit-msg pre-commit pre-push; do cp "$ROOT/hooks/$_h" "$TMP/c2elsewhere/$_h"; done
+git -C "$C2A" config core.hooksPath "$TMP/c2elsewhere"
+t_eq "an absolute hooksPath that holds every tracked hook is not 'uninstalled'" "" "$(_c2all)"
+rm -f "$TMP/c2elsewhere/pre-push"
+t_has "…but one that lacks a tracked hook still names it" "$(_c2all)" 'pre-push'
+git -C "$C2A" config core.hooksPath /dev/null
+t_has "hooksPath=/dev/null on an ordinary checkout is still reported" "$(_c2all)" 'commit-msg'
+t_eq "…and is silent in the findings run's own disposable clone" "" "$(HARBOR_LINT_DISPOSABLE=1 _c2all)"
+git -C "$C2A" config --unset core.hooksPath
+
 t_section "C2: the CI suppression, in its own direction (#346)"
 _c2ci() { GITHUB_ACTIONS="$1" HARBOR_SCOPE_ROOT="$C2R" sh "$C2R/bin/lint-conventions.sh" --only C2 2>&1; }
 _o="$(_c2ci true)"

@@ -48,6 +48,7 @@ while [ "${CFG%/}" != "$CFG" ] && [ "$CFG" != "/" ]; do CFG="${CFG%/}"; done
 OBS="$CFG/MEMORY/OBSERVABILITY"
 MODE=all
 PROBES=0
+SINCE=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -61,8 +62,9 @@ while [ $# -gt 0 ]; do
     --confinement) MODE=confinement ;;
     --json)      MODE=json ;;
     --with-probes) PROBES=1 ;;
+    --since) [ $# -ge 2 ] && case "$2" in [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;; *) false ;; esac || { echo "observe-report: --since needs a UTC date, YYYY-MM-DD" >&2; exit 1; }; SINCE="$2"; shift ;;
     -h|--help)
-      echo "usage: admission-observe-report.sh [--rules|--gates|--overrides|--fp|--advise|--shadow|--reroute|--confinement|--json] [--with-probes]"
+      echo "usage: admission-observe-report.sh [--rules|--gates|--overrides|--fp|--advise|--shadow|--reroute|--confinement|--json] [--with-probes] [--since YYYY-MM-DD]"
       echo "  --with-probes  keep harbor's own probe and suite traffic in the --fp candidates"
       echo "  (reads \$CLAUDE_CONFIG_DIR/MEMORY/OBSERVABILITY/*/guard-decisions.jsonl*)"
       exit 0 ;;
@@ -88,6 +90,8 @@ command -v jq >/dev/null 2>&1 || stop "jq is required to read the ledger at $OBS
 # rather than aborting the report. A ledger that cannot be read at all is the
 # one failure mode that would make this whole ticket pointless.
 REC="$(cat $FILES 2>/dev/null | jq -c 'fromjson? // empty' -R 2>/dev/null || true)"
+# --since: only records from that UTC day on, so a measured week reads on its own days (harbor#1441).
+[ -z "$SINCE" ] || REC="$(printf '%s\n' "$REC" | jq -c --arg d "$SINCE" 'select(.ts[0:10] >= $d)' 2>/dev/null || true)"
 [ -n "$REC" ] || stop "no parseable records in $OBS" "read the newest guard-decisions.jsonl by hand: a sink that is not JSONL means floor_log_decision refused every write"
 
 # tr -d, and NOT a bare `grep -c`: BSD grep -c pads its count, the padding
@@ -167,11 +171,11 @@ show_advise() {
 
 # EVERY ROW CARRIES ITS AGE (harbor#591): a gate firing since August and one that started today
 # rendered alike, so the block was a census. first/last are the ledger's own ts days (UTC); the age
-# is days since first, against HARBOR_TEST_NOW / HARBOR_NOW (epoch) or the clock. No dated ts: `?`.
+# is days since first, against HARBOR_TEST_NOW (epoch) or the clock. No dated ts: `?`.
 show_gdeny() {
   log_head "gates that fired (cloud / destroy)"
   if [ "$NGDENY" = 0 ] && [ "$NASK" = 0 ]; then echo "  (no gate decisions recorded)"; return; fi
-  _gnow="${HARBOR_TEST_NOW:-${HARBOR_NOW:-$(date +%s)}}"
+  _gnow="${HARBOR_TEST_NOW:-$(date +%s)}"
   case "$_gnow" in ''|*[!0-9]*) _gnow="$(date +%s)" ;; esac
   printf '%s\n' "$REC" \
     | jq -r 'select((.d=="deny" and .g!="wrapper") or .d=="ask")|"\(.d)\t\(.g)\t\(.r)\t\(.ts|tostring|.[0:10])"' 2>/dev/null \
@@ -345,6 +349,44 @@ show_reroute() {
 # --confinement (harbor#1298): the escape rate #555 decision 10(a) stops on. One record per Bash call comes from
 # guard-bash (g=bash); `c` says whether the call ran confined or asked to leave the sandbox. Days are UTC.
 CONF_STOP=2
+
+# Escapes by class (harbor#1441): the ledger's `x` (a closed enum the bash guard sets from the first verb, so no command
+# text is stored or printed) joined to contracts/confinement-classes.tsv. A class is untreated when the contract has no
+# row for it or the row's kind is not one of the four; the enum is read from the writer so a class nothing has escaped
+# through yet still needs its row. A record from before the field is one class, `unclassified`.
+show_escape_classes() {
+  _cc="${HARBOR_ADMISSION_CLASSES_FILE:-$HERE/../contracts/confinement-classes.tsv}"
+  _ce="$(sed -n "s/^HARBOR_ADMISSION_CLASSES='\(.*\)'.*/\1/p" "$HERE/library-admission.sh" 2>/dev/null | head -1)"
+  _cn="$(printf '%s\n' "$REC" | jq -r 'select(.g=="bash" and .t=="Bash" and .c=="unconfined")|(.x // "unclassified")' 2>/dev/null | sort | uniq -c)"
+  echo "  escapes by class (first verb of each unconfined call; the ledger holds the class, never the command):"
+  if [ ! -f "$_cc" ]; then
+    echo "  (no class contract beside this copy, so treatments are unchecked: run the checkout copy)"
+    printf '%s\n' "$_cn" | awk 'NF { printf "    %-14s %5d\n", $2, $1 }'
+    return
+  fi
+  echo "    class          calls  share  treatment"
+  { printf '%s\n' "$_cn"; echo "@@"; printf '%s\n' "$_ce"; echo "@@"; cat "$_cc"; } | awk -F'\t' '
+    BEGIN { part = 0 }
+    $0 == "@@" { part++; next }
+    part == 0 { split($0, a, " "); if (a[1] > 0) { n[a[2]] = a[1]; tot += a[1]; seen[a[2]] = 1 } next }
+    part == 1 { m = split($0, a, " "); for (i = 1; i <= m; i++) seen[a[i]] = 1; next }
+    part == 2 && $0 !~ /^#/ && $1 != "class" && NF >= 3 { kind[$1] = $2; why[$1] = $3 }
+    END {
+      for (c in seen) {
+        ok = (c in kind) && (kind[c] == "allow" || kind[c] == "route" || kind[c] == "operator" || kind[c] == "accepted") && why[c] != ""
+        if (!ok) { un++; miss = miss (miss == "" ? "" : ", ") c }
+        if (n[c] > 0) order[c] = n[c]
+        line[c] = sprintf("%s %5d  %4.1f%%  %s", c, n[c] + 0, (tot ? 100 * n[c] / tot : 0), ok ? kind[c] ": " why[c] : "NONE")
+      }
+      for (c in order) out[++k] = sprintf("%09d\t%s", 999999999 - order[c], c)
+      for (c in seen) if (!(c in order)) out[++k] = sprintf("%09d\t%s", 999999999, c)
+      for (i = 1; i <= k; i++) for (j = i + 1; j <= k; j++) if (out[j] < out[i]) { t = out[i]; out[i] = out[j]; out[j] = t }
+      for (i = 1; i <= k; i++) { split(out[i], b, "\t"); c = b[2]; printf "    %-14s %s\n", c, substr(line[c], length(c) + 2) }
+      printf "  untreated: %d\n", un + 0
+      if (un) printf "  no treatment row: %s\n", miss
+    }'
+}
+
 show_confinement() {
   log_head "confinement escape rate (harbor#555 decision 10a)"
   echo "  Bash calls that asked to run outside the sandbox, over all calls while it was installed."
@@ -373,6 +415,7 @@ show_confinement() {
       printf "  all days: %d of %d (%.1f%%) against the %d%% stop line: %s\n", u, c + u, r, stop, (r > stop ? "OVER, so P3 does not ship" : "under")
       if (t["off"]) printf "  %d Bash call(s) ran with no confinement installed and sit out of the rate\n", t["off"]
     }'
+  show_escape_classes
   # P3 (harbor#1300): blocks a confined call left to the sandbox, per rule. Absent until the operator turns the skip on.
   _cv="$(printf '%s\n' "$REC" | jq -r 'select(.d=="covered")|.r' 2>/dev/null | sort | uniq -c | sort -rn)"
   [ -z "$_cv" ] || { echo "  left to the sandbox (P3, covered), by rule:"; printf '%s\n' "$_cv" | awk '{ printf "  %8d  %s\n", $1, $2 }'; }

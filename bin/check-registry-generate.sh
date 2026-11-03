@@ -2,12 +2,14 @@
 # check-registry-generate.sh (harbor#1149, D-79) - the one check registry: core docs/reference/checks.md plus the private layer's rows
 # plus every installed pack's rows.
 #
-#   sh check-registry-generate.sh [--core FILE] [--private DIR] [--packs DIR]   the composed register, on stdout
+#   sh check-registry-generate.sh [--core FILE] [--private DIR] [--packs DIR] [--repos FILE]   the composed register, on stdout
 #
 # The private layer holds <private>/checks.md, a fragment in the register's own shape: a "## Register" table
 # body, a "## Platforms" table body and a "## Notes" prose block, each optional. A pack ships the same fragment as
 # harbor-pack/checks.md, which `harbor pack install` puts at <config dir>/checks.d/<repo-id>.md; --packs names that
-# directory (default: none). Core docs/reference/checks.md carries the two insertion points <!-- private:register --> and
+# directory (default: none). --repos names a file of `name TAB path` lines (scope-roots.sh --repos): each governed repo's own
+# harbor-pack/checks.md is composed after the packs, in the same fragment shape, so a repo registers its scheduled workflows where
+# it keeps them (harbor#1433). Core docs/reference/checks.md carries the two insertion points <!-- private:register --> and
 # <!-- private:platforms -->, one at the end of each table. The register rows go in at the first, the platforms rows
 # at the second, private rows before pack rows (packs by repo id), and the notes close the file under "## Private notes"
 # and "## Pack notes: <repo-id>". No fragment at all prints docs/reference/checks.md unchanged: byte for byte.
@@ -20,7 +22,7 @@
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_SCOPE_ROOT:-${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}}"
+ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
 . "$SRC/library-log.sh"
 log_init check-registry-generate
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
@@ -28,12 +30,13 @@ LOG_FD=2
 
 CORE="$ROOT/docs/reference/checks.md"
 PRIV="${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}"
-PACKS=''
+PACKS=''; REPOS=''
 while [ $# -gt 0 ]; do
   case "$1" in
     --core) [ $# -ge 2 ] || { log_fail "--core takes a file"; log_fix "sh $0 --core docs/reference/checks.md"; log_end || :; exit 2; }; CORE="$2"; shift 2 ;;
     --private) [ $# -ge 2 ] || { log_fail "--private takes a directory"; log_fix "sh $0 --private DIR"; log_end || :; exit 2; }; PRIV="$2"; shift 2 ;;
     --packs) [ $# -ge 2 ] || { log_fail "--packs takes a directory"; log_fix "sh $0 --packs DIR"; log_end || :; exit 2; }; PACKS="$2"; shift 2 ;;
+    --repos) [ $# -ge 2 ] || { log_fail "--repos takes a file"; log_fix "sh $0 --repos FILE"; log_end || :; exit 2; }; REPOS="$2"; shift 2 ;;
     -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); if ($0=="") exit; print; next } {exit}' "$0"; exit 0 ;;
     *) log_fail "unknown argument: $1"; log_fix "sh $0 --help"; log_end || :; exit 2 ;;
   esac
@@ -52,6 +55,15 @@ if [ -f "$FRAG" ] && grep -q '[^[:space:]]' "$FRAG"; then printf '%s\n' "$FRAG" 
 if [ -n "$PACKS" ] && [ -d "$PACKS" ]; then
   find "$PACKS" -maxdepth 1 -type f -name '*.md' 2>/dev/null | LC_ALL=C sort | while IFS= read -r _pf; do
     if grep -q '[^[:space:]]' "$_pf"; then printf '%s\n' "$_pf"; fi
+  done >> "$TMP/srcs"
+fi
+# Each governed repo's own fragment (harbor#1433): copied under its registry name so the notes carry it, composed after the packs.
+if [ -n "$REPOS" ] && [ -r "$REPOS" ]; then
+  mkdir -p "$TMP/repofrags"
+  grep -v '^#' "$REPOS" | LC_ALL=C sort | while IFS='	' read -r _rn _rp; do
+    if [ -n "$_rn" ] && [ -f "$_rp/harbor-pack/checks.md" ] && grep -q '[^[:space:]]' "$_rp/harbor-pack/checks.md"; then
+      cp "$_rp/harbor-pack/checks.md" "$TMP/repofrags/$_rn.md" && printf '%s\n' "$TMP/repofrags/$_rn.md"
+    fi
   done >> "$TMP/srcs"
 fi
 if [ ! -s "$TMP/srcs" ]; then cat "$CORE"; exit 0; fi

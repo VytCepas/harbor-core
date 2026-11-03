@@ -31,7 +31,7 @@
 #   repo    the fixture repo shape: `plain`, `skills` (a HIDDEN skill), `visible`, or `naming` (carries
 #           bin/lint-name.sh and standards/naming/, the only repos name-note judges)
 #   arm     fire | silent | deny   (deny = a run: pack returning the decision sentinel)
-#   payload one line of JSON. @REPO@ expands to the fixture repo, @OTHER@ to a
+#   payload one line of JSON. @CFG@ expands to the fixture config dir, @REPO@ to the fixture repo, @OTHER@ to a
 #           SECOND repo that carries packs, @BARE@ to a repo that carries none,
 #           and @BIG@ to a 40 KB string.
 #
@@ -116,9 +116,9 @@ box	plain	decision-question-shape	silent	a complete question: anatomy on every o
 box	plain	decision-question-shape	silent	a question with no options (an extended host's open text question)	{"hook_event_name":"PreToolUse","tool_name":"AskUserQuestion","session_id":"dq5","tool_input":{"questions":[{"question":"What should the ticket be called?","kind":"text"}]}}
 box	plain	decision-answer-binds	fire	the answers to a round come back	{"hook_event_name":"PostToolUse","tool_name":"AskUserQuestion","session_id":"da1","tool_input":{"questions":[]},"tool_response":{"answers":{"Ship the fix now?":"Ship (Recommended)"}}}
 box	plain	decision-answer-binds	silent	the question is being asked, not yet answered	{"hook_event_name":"PreToolUse","tool_name":"AskUserQuestion","session_id":"da2","tool_input":{"questions":[{"question":"Ship the fix now?","header":"Ship","multiSelect":false,"options":[{"label":"Ship (Recommended)","description":"Ship it now. Why: smallest change that closes the gap. Pros: one commit. Cons: no migration window. Consequence: reversible by revert; touches the CI owner. Flips if: CI is red on main."},{"label":"Hold","description":"Hold a week. Pros: no risk this week. Cons: the gap stays open. Consequence: blocks the release; nobody else touched."}]}]}}
-box	plain	browser-route-harbor-chrome	deny	a Claude-in-Chrome navigate to ads.reddit.com	{"hook_event_name":"PreToolUse","tool_name":"mcp__claude-in-chrome__navigate","tool_input":{"url":"https://ads.reddit.com/","tabId":1}}
-box	plain	browser-route-harbor-chrome	silent	a host harbor chrome does not cover	{"hook_event_name":"PreToolUse","tool_name":"mcp__claude-in-chrome__navigate","tool_input":{"url":"https://en.wikipedia.org/wiki/X","tabId":1}}
-box	plain	browser-route-harbor-chrome	silent	a lookalike of a covered host	{"hook_event_name":"PreToolUse","tool_name":"mcp__claude-in-chrome__navigate","tool_input":{"url":"https://ads.reddit.com.evil.test/","tabId":1}}
+box	plain	browser-route-platform-chrome	deny	a Claude-in-Chrome navigate to ads.reddit.com	{"hook_event_name":"PreToolUse","tool_name":"mcp__claude-in-chrome__navigate","tool_input":{"url":"https://ads.reddit.com/","tabId":1}}
+box	plain	browser-route-platform-chrome	silent	a host harbor chrome does not cover	{"hook_event_name":"PreToolUse","tool_name":"mcp__claude-in-chrome__navigate","tool_input":{"url":"https://en.wikipedia.org/wiki/X","tabId":1}}
+box	plain	browser-route-platform-chrome	silent	a lookalike of a covered host	{"hook_event_name":"PreToolUse","tool_name":"mcp__claude-in-chrome__navigate","tool_input":{"url":"https://ads.reddit.com.evil.test/","tabId":1}}
 box	plain	browser-route-reminder	fire	the first Claude-in-Chrome call	{"hook_event_name":"PreToolUse","tool_name":"mcp__claude-in-chrome__tabs_context_mcp","tool_input":{}}
 box	plain	browser-route-reminder	silent	a harbor chrome call is Bash, not the extension	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"harbor chrome goto https://ads.reddit.com/"}}
 example-store	plain	example-wipe-destroys-history	fire	cmd-contains twice: the tool and the flag	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"example-tool run --wipe --select demo"}}
@@ -141,3 +141,23 @@ box	plain	session-title-missing	silent	a payload with no session id	{"hook_event
 box	plain	default-way-route	fire	a skill copied straight into the config dir	{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"dwr-fire","tool_input":{"command":"cp -R skills/demo \"$CLAUDE_CONFIG_DIR/skills/\""}}
 box	plain	default-way-route	silent	listing the installed skills reads, it writes nothing	{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"dwr-ls","tool_input":{"command":"ls \"$CLAUDE_CONFIG_DIR/skills\""}}
 box	plain	default-way-route	silent	the same skill written to its harbor home	{"hook_event_name":"PreToolUse","tool_name":"Write","session_id":"dwr-home","tool_input":{"file_path":"@REPO@/skills/demo/SKILL.md","content":"body"}}
+box	plain	default-way-deny	fire	a skill written straight into the config dir (born warn: the deny rides as a note; the arm is deny once the row is block)	{"hook_event_name":"PreToolUse","tool_name":"Write","session_id":"dwd-deny","tool_input":{"file_path":"@CFG@/skills/demo/SKILL.md","content":"body"}}
+box	plain	default-way-deny	silent	the same skill written to its source path in the checkout	{"hook_event_name":"PreToolUse","tool_name":"Write","session_id":"dwd-src","tool_input":{"file_path":"@REPO@/skills/demo/SKILL.md","content":"body"}}
+box	plain	default-way-deny	silent	a shell copy into the config dir is the route pack's note, not a deny	{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"dwd-bash","tool_input":{"command":"cp -R skills/demo \"$CLAUDE_CONFIG_DIR/skills/\""}}
+box	plain	confinement-refused	fire	a bus emit the sandbox refused	{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"sh bin/event-bus.sh emit obligation.open x"},"tool_response":{"stdout":"","stderr":"FAIL: emit: cannot create /Users/x/.local/state/harbor/events\n<sandbox_violations>\ndeny file-write-create /Users/x/.local/state/harbor/events/2026-11-02.jsonl\n</sandbox_violations>"}}
+box	plain	confinement-read-escape	fire	a read-only grep that asks to leave the sandbox	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"cd /tmp && grep -rn foo . | head","dangerouslyDisableSandbox":true}}
+box	plain	confinement-read-escape	silent	the same grep without the flag	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"grep -rn foo . | head"}}
+box	plain	confinement-read-escape	silent	a git call that asks to leave the sandbox is not a read	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git status","dangerouslyDisableSandbox":true}}
+box	plain	confinement-read-escape	silent	a read piped into a file write	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"grep -rn foo . > /etc/out.txt","dangerouslyDisableSandbox":true}}
+box	plain	ci-wait-on-the-bus	fire	an until loop on gh pr view with a sleep	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"until gh pr view 12 -R a/b --json state -q .state | grep -q MERGED; do sleep 30; done"}}
+box	plain	ci-wait-on-the-bus	fire	a for loop on gh pr checks that sleeps	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"for i in 1 2 3 4; do gh pr checks 12 -R a/b; sleep 60; done"}}
+box	plain	ci-wait-on-the-bus	silent	a while read loop over gh pr view (EOF bounds it)	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"while read n; do gh pr view $n -R a/b; done < prs.txt"}}
+box	plain	ci-wait-on-the-bus	silent	ci-wait.sh itself	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"sh ~/port/harbor/bin/ci-wait.sh a/b#12 --timeout 1800"}}
+box	plain	suite-run-through-runner	fire	a suite run with sh	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"sh tests/skill/catalog/catalog.test.sh"}}
+box	plain	suite-run-through-runner	fire	a suite run by path behind an env assignment	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"HARBOR_X=1 ./tests/skill/catalog/catalog.test.sh"}}
+box	plain	suite-run-through-runner	silent	the runner given the same suite	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"sh bin/test-suite-run.sh --select tests/skill/catalog/catalog.test.sh"}}
+box	plain	suite-run-through-runner	silent	a read of the suite file	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"ls tests/skill/catalog/catalog.test.sh"}}
+box	plain	long-wait-process-exists	fire	a sleep of half an hour	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"sleep 1800"}}
+box	plain	long-wait-process-exists	fire	wait-for with a long deadline	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"wait-for -t 3600 -i 30 -- test -f /tmp/done"}}
+box	plain	long-wait-process-exists	silent	a short sleep	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"sleep 5"}}
+box	plain	long-wait-process-exists	silent	the phrase quoted, not run	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"echo \"sleep 1800\""}}

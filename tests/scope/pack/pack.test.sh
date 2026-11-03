@@ -50,19 +50,18 @@ refused hooks hk "hooks/"
 mkpack gd; printf 'x\n' > "$PW/gd/harbor-pack/bin/guard-thing.sh"; G "$PW/gd" add -A; G "$PW/gd" commit -q -m g
 refused guard gd "guard-*"
 
-t_section "harbor#1010: a pack's rules in the new layout, context-rules/user/, land in the same installed tier"
-mkpack nl; mkdir -p "$PW/nl/harbor-pack/context-rules/user"; G "$PW/nl" mv harbor-pack/inject.d/demo.md harbor-pack/context-rules/user/demo.md
-G "$PW/nl" commit -q -m layout; listed '"nl"'
+t_section "a pack's rules, context-rules/user/, land in the installed box tier (harbor#1010)"
+mkpack nl; listed '"nl"'
 t_eq "the fixture pack carries no inject.d/" "harbor-pack/context-rules/user/demo.md" "$(G "$PW/nl" ls-files | grep 'demo\.md$')"
 TGN="$T_TMP/tg-nl"; mkdir -p "$TGN/bin" "$TGN/skills"
 t_exit "install --apply exits 0" 0 pk install nl --apply --dir "$TGN"
 t_eq "the new-layout rule lands under a pack-owned name" "yes" "$([ -f "$TGN/context-rules/user/pack-demo-nl--demo.md" ] && echo yes || echo no)"
-mkpack ns; mkdir -p "$PW/ns/harbor-pack/context-rules/demo"; G "$PW/ns" mv harbor-pack/inject.d/demo.md harbor-pack/context-rules/demo/demo.md
+mkpack ns; mkdir -p "$PW/ns/harbor-pack/context-rules/demo"; G "$PW/ns" mv harbor-pack/context-rules/user/demo.md harbor-pack/context-rules/demo/demo.md
 G "$PW/ns" commit -q -m scope
 refused scope ns "a repo scope is that repo's own"
 
 t_section "refusal 2: an inject pack with run:"
-mkpack rn; printf -- '---\nid: r\nevent: PreToolUse\nwhen: always\nrun: check.sh\n---\nn\n' > "$PW/rn/harbor-pack/inject.d/r.md"; G "$PW/rn" add -A; G "$PW/rn" commit -q -m r
+mkpack rn; printf -- '---\nid: r\nevent: PreToolUse\nwhen: always\nrun: check.sh\n---\nn\n' > "$PW/rn/harbor-pack/context-rules/user/r.md"; G "$PW/rn" add -A; G "$PW/rn" commit -q -m r
 refused run rn "run:"
 
 t_section "refusal 3: a bin/ name that shadows a core command"

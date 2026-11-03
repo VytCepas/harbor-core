@@ -30,7 +30,7 @@ jobs:
     steps:
       - run: echo done
   expr:
-    runs-on: ${{ vars.HARBOR_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ vars.HARBOR_CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - run: echo x
   matrixed:
@@ -149,8 +149,8 @@ t_section "apply prints the commands to run by hand"
 R2="$T_TMP/repo2"; mkdir -p "$R2/.github/workflows"
 printf 'jobs:\n  a:\n    runs-on: ubuntu-latest\n' > "$R2/.github/workflows/a.yml"
 OUT3="$(sh "$TOOL" "$R2" --apply 2>&1)"
-t_has "a branch is created by the operator" "$OUT3" "switch -c ci/runs-on-adopt"
-t_has "a push is printed, not run" "$OUT3" "push -u origin ci/runs-on-adopt"
+t_has "a branch is created by the operator" "$OUT3" "switch -c ci/1060-runs-on-adopt"
+t_has "a push is printed, not run" "$OUT3" "push -u origin ci/1060-runs-on-adopt"
 t_has "a PR command is printed" "$OUT3" "gh pr create"
 
 t_section "usage errors"

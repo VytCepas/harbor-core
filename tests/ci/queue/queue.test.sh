@@ -155,4 +155,5 @@ printf 'previous\n' > "$CACHE/ci-queue.json"; chmod 500 "$CACHE"
 q >/dev/null 2>&1
 chmod 700 "$CACHE"
 t_eq "an unwritable cache dir leaves the previous file" previous "$(cat "$CACHE/ci-queue.json")"
+t_red check.ci-queue   # the falsifier this suite names for them (harbor#1422)
 t_done

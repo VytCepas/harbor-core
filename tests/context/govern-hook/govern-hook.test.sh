@@ -56,6 +56,7 @@ t_eq "the deny is valid JSON" 0 "$(printf '%s' "$out" | jq -e . >/dev/null 2>&1;
 t_has "THE INCIDENT is denied" "$out" '"permissionDecision":"deny"'
 t_has "the backstop's own words reach the reason" "$out" 'detect-and-defer fixtures pending'
 t_has "the deny names the one-process route" "$out" '--merge 253'
+t_red context.merge-governance   # the incident merge was denied above (harbor#1422)
 t_has "and the override that leaves a record" "$out" '--force'
 stub 0 'ok  #253 — 12 check(s) pass, 2 of them required'
 out="$(fire PreToolUse 'gh pr merge 253 --squash' "$MC")"
@@ -100,11 +101,11 @@ fi
 t_section "2d · --box: the box-wired gate finds the repo from the call (harbor#516)"
 # A registered checkout under a fake port root whose origin is Own/Gov, and a session standing elsewhere.
 PORTB="$T/portb"; GOV="$PORTB/gov"; CFGB="$T/cfgb"; ELSE="$T/elsewhere"
-mkdir -p "$GOV/bin" "$CFGB/inject.d" "$ELSE"; gitq -C "$GOV" init; id_cfg "$GOV"
+mkdir -p "$GOV/bin" "$CFGB/context-rules/user" "$ELSE"; gitq -C "$GOV" init; id_cfg "$GOV"
 gitq -C "$GOV" remote add origin https://github.com/Own/Gov.git
 ( cd "$GOV" && printf 'x\n' > README && git add -A && git commit -qm init ) >/dev/null 2>&1
 GOVP="$(cd "$GOV" && pwd -P)"
-printf 'gov\t%s\tfixture\n' "$GOV" > "$CFGB/inject.d/projects.tsv"
+printf 'gov\t%s\tfixture\n' "$GOV" > "$CFGB/context-rules/user/projects.tsv"
 bstub() { printf '#!/usr/bin/env sh\nprintf "%%s\\n" "%s"\nexit %s\n' "$2" "$1" > "$GOV/bin/gate-merge-check.sh"; }  # <exit> <text>
 fireb() { # <event> <command> <call cwd> [project dir] → the --box hook's stdout
   printf '%s' "$2" | jq -Rs --arg e "$1" --arg c "$3" '{hook_event_name:$e,tool_name:"Bash",cwd:$c,tool_input:{command:.}}' \
@@ -144,13 +145,12 @@ t_eq "standing in the repo with its merge pack, the pack checks it and --box sta
   "$(fireb PreToolUse 'gh pr merge 7' "$GOV" "$GOV")"
 t_has "the same repo reached from outside is still checked" "$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov' "$ELSE")" '"permissionDecision":"deny"'
 rm -rf "$GOV/context-rules"
-: > "$CFGB/inject.d/projects.tsv"
-t_eq "an unregistered checkout never runs its gate-merge-check.sh" "" "$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov' "$ELSE")"
-mkdir -p "$CFGB/context-rules/user"; printf 'gov\t%s\tfixture\n' "$GOV" > "$CFGB/context-rules/user/projects.tsv"
-t_has "the registry beside the new box tier is read (harbor#1010)" "$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov' "$ELSE")" '"permissionDecision":"deny"'
 : > "$CFGB/context-rules/user/projects.tsv"
-t_eq "...and wins over the old one" "" "$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov' "$ELSE")"
-rm -rf "$CFGB/context-rules"; printf 'gov\t%s\tfixture\n' "$GOV" > "$CFGB/inject.d/projects.tsv"
+t_eq "an unregistered checkout never runs its gate-merge-check.sh" "" "$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov' "$ELSE")"
+mkdir -p "$CFGB/inject.d"; printf 'gov\t%s\tfixture\n' "$GOV" > "$CFGB/inject.d/projects.tsv"
+t_eq "the retired inject.d registry is not read" "" "$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov' "$ELSE")"
+printf 'gov\t%s\tfixture\n' "$GOV" > "$CFGB/context-rules/user/projects.tsv"
+t_has "the registry beside the box tier is read (harbor#1010)" "$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov' "$ELSE")" '"permissionDecision":"deny"'
 bstub 0 'ok  #7 — 3 check(s) pass'
 out="$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov' "$ELSE")"
 t_hasnt "a green PR from outside is not interrupted" "$out" 'permissionDecision'
@@ -166,8 +166,8 @@ WT="$T/gov-wt"; gitq -C "$GOV" worktree add -q "$WT" -b wt-branch
 printf '#!/usr/bin/env sh\necho "ok  stale copy"\nexit 0\n' > "$WT/bin/gate-merge-check.sh"
 t_has "from a worktree, the OWNER's backstop decides, not the worktree's copy" \
   "$(fireb PreToolUse 'gh pr merge 7' "$WT")" 'owner says no'
-mkdir -p "$WT/.claude/inject.d"; printf 'x\n' > "$WT/.claude/inject.d/merge-note.sh"
-t_eq "a session launched in a worktree with the merge pack (the old layout) is left to the pack, even via -R" "" \
+mkdir -p "$WT/context-rules/gov"; printf 'x\n' > "$WT/context-rules/gov/merge-note.sh"
+t_eq "a session launched in a worktree with the merge pack is left to the pack, even via -R" "" \
   "$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov' "$WT" "$WT")"
 # A folder whose .git FILE names the registered repo must not get its own script run.
 FAKE="$T/fake"; mkdir -p "$FAKE/bin"; printf 'gitdir: %s/.git\n' "$GOV" > "$FAKE/.git"
@@ -224,7 +224,7 @@ done
 t_exit "no jq on PATH exits 0" 0 env PATH="$NOJQ" CLAUDE_PROJECT_DIR="$REPO" /bin/sh "$SUT" < "$T/m1.json"
 t_eq "no jq on PATH says nothing" "" "$(PATH="$NOJQ" CLAUDE_PROJECT_DIR="$REPO" /bin/sh "$SUT" < "$T/m1.json" 2>/dev/null)"
 
-t_section "6b · events that moved to inject.d/box, the stamp, and --note"
+t_section "6b · events that moved to context-rules/user, the stamp, and --note"
 for _ev in PreCompact SubagentStart Stop; do
   t_eq "$_ev says nothing here" "" "$(printf '{"hook_event_name":"%s","session_id":"s"}' "$_ev" \
     | CLAUDE_PROJECT_DIR="$REPO" sh "$SUT" 2>/dev/null)"
@@ -268,6 +268,7 @@ t_eq "passes an ordinary message" 0 "$(cm 'feat: an ordinary subject line')"
 t_eq "blocks a Co-Authored-By trailer" 1 "$(cm 'Co-Authored-By: Claude <noreply@anthropic.com>')"
 t_eq "blocks the generated-with banner" 1 "$(cm '🤖 Generated with Claude Code')"
 t_eq "blocks a Claude-Session trailer (harbor#584)" 1 "$(cm "$(printf 'fix: a subject\n\nClaude-Session: https://claude.ai/code/session_x')")"
+t_red git.commit-message-no-ai-attribution   # the three trailers above were refused (harbor#1422)
 t_eq "allows the Claude-Session trailer to be named mid-line" 0 "$(cm 'docs: why the Claude-Session: trailer is attribution')"
 t_eq "ignores a git comment line" 0 "$(cm '# Co-Authored-By: Claude')"
 t_eq "allows the rule to be discussed mid-line" 0 "$(cm 'docs: explain why Co-Authored-By trailers are banned')"

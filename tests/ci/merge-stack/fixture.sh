@@ -22,8 +22,8 @@ ms_world() { # [harbor] — a bare repo; `harbor` adds harbor's own files, other
 #!/bin/sh
 # stub merge-check: squash-merge PR N into the bare remote's default branch, as GitHub does, and mark it merged
 echo "merge-check $1 $2 $3" >> "$MS_FIX/merge.log"
-echo "repo=${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-}} rc=${HARBOR_GATE_REQUIRED_CHECKS:-${HARBOR_REQUIRED_CHECKS:-}} br=${HARBOR_GATE_BRANCH:-${HARBOR_BRANCH:-}}" >> "$MS_FIX/env.log"
-[ -z "${HARBOR_GATE_REQUIRED_CHECKS:-${HARBOR_REQUIRED_CHECKS:-}}" ] || cat "${HARBOR_GATE_REQUIRED_CHECKS:-$HARBOR_REQUIRED_CHECKS}" >> "$MS_FIX/rc.log"   # what the file said when merge-check read it
+echo "repo=${HARBOR_SCOPE_REPO:-} rc=${HARBOR_GATE_REQUIRED_CHECKS:-} br=${HARBOR_GATE_BRANCH:-}" >> "$MS_FIX/env.log"
+[ -z "${HARBOR_GATE_REQUIRED_CHECKS:-}" ] || cat "${HARBOR_GATE_REQUIRED_CHECKS}" >> "$MS_FIX/rc.log"   # what the file said when merge-check read it
 echo "$*" >> "$MS_FIX/args.log"
 MS_PR="$3" sh "$MS_FIX/../merge-into.sh" "$@"
 EOF
@@ -111,6 +111,7 @@ case "$1 $2" in
     case " $* " in *" --required "*) [ "$(cat "$F/protection.rc" 2>/dev/null || echo 1)" = 0 ] || { echo "no required checks reported" >&2; exit 1; } ;; esac
     if [ -f "$F/checks.tsv" ]; then cat "$F/checks.tsv"; exit 0; fi; echo "no required checks reported" >&2; exit 1 ;;
   "api repos/"*"/protection") cat "$F/protection.out" 2>/dev/null; exit "$(cat "$F/protection.rc" 2>/dev/null || echo 1)" ;;
+  "pr diff") exit 0 ;;   # no changed file, so no constitutional clause is amended (harbor#1026)
   "pr merge") echo "$*" >> "$F/gh-merge.log"; MS_PR="$3" exec sh "$F/../merge-into.sh" "$@" ;;
   *) echo "stub gh: unhandled: $*" >&2; exit 1 ;;
 esac

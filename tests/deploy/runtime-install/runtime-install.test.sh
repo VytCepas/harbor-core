@@ -3,7 +3,7 @@
 # manifest reads tests/admission/baseline/, and — harbor#708 — the four one-word commands have exactly one owner,
 # contracts/shims.tsv through shim-install, so runtime-install writes nothing in ~/.local/bin.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY  # a run inside a session or a deploy must not decide a case
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE  # a run inside a session or a deploy must not decide a case
 TOOL="$T_ROOT/bin/deploy-runtime-install.sh"; SRCB="$T_ROOT/bin"; T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"
 ri() { env -u CLAUDE_CONFIG_DIR sh "$TOOL" "$@"; }  # t_init's CLAUDE_CONFIG_DIR is not these targets
 
@@ -127,7 +127,7 @@ cp "$T_ROOT"/bin/*.sh "$T_ROOT"/bin/*.awk "$T_ROOT"/bin/*.py "$CB/bin/"
 cp "$T_ROOT/tests/deploy/restore/recover.test.sh" "$CB/tests/deploy/restore/"; cp "$T_ROOT/tests/lib/core.sh" "$CB/tests/lib/"
 copy_data "$CB"; copy_hooks "$CB"
 printf '#!/bin/sh\n[ "$1" = --check ] || exit 0\nprintf "  FAIL: %%s would remove 2 installed commit(s) from %%s\\n  fix: x\\n  note: abc1234 a commit only the box has\\n" "$3" "$2"\nexit 1\n' > "$CB/bin/deploy-install-stamp.sh"
-for tool in runtime-install floor-install; do
+for tool in deploy-runtime-install admission-install; do
   RD="$T/rg-$tool"; mkdir -p "$RD"; printf '{"permissions":{"deny":[]}}\n' > "$RD/settings.json"
   cp "$RD/settings.json" "$T/rg-$tool.before"
   _o="$(env -u CLAUDE_CONFIG_DIR sh "$CB/bin/$tool.sh" --dir "$RD" 2>&1)"; _c=$?
@@ -185,6 +185,19 @@ t_eq "an installed B6 it refreshed is a row" runtime-install "$(mrow bin/admissi
 t_eq "the generated suite payload file is not a row: no repo file is its source" "" "$(mrow bin/.helm-suite-payloads)"
 MN="$T/mf-nob6"; mkdir -p "$MN"; printf '{}\n' > "$MN/settings.json"; ri --apply --dir "$MN" >/dev/null 2>&1
 t_eq "a B6 it did not install has no row" 0 "$(grep -c ' bin/admission-integrity.sh ' "$MN/.harbor-manifest")"
+
+t_section "a manifest row whose file is gone is pruned by the next install (harbor#1437)"
+# bin/CHECKS.md moved to bin/docs/reference/checks.md and its row stayed in the live manifest, where nothing read it back.
+printf '%s 100644 bin/CHECKS.md runtime-install %s\n' "$(printf x | git hash-object --stdin)" "$_h" >> "$MI/.harbor-manifest"
+printf '%s 100644 bin/gone/with space.md runtime-install %s\n' "$(printf y | git hash-object --stdin)" "$_h" >> "$MI/.harbor-manifest"
+printf '%s 100644 bin/theirs.md some-other-installer %s\n' "$(printf z | git hash-object --stdin)" "$_h" >> "$MI/.harbor-manifest"
+t_eq "control: the dangling rows are in the manifest" 3 "$(grep -c -e ' bin/CHECKS.md ' -e ' bin/gone/with space.md ' -e ' bin/theirs.md ' "$MI/.harbor-manifest")"
+ri --dir "$MI" >/dev/null 2>&1
+t_eq "a dry run prunes nothing" 3 "$(grep -c -e ' bin/CHECKS.md ' -e ' bin/gone/with space.md ' -e ' bin/theirs.md ' "$MI/.harbor-manifest")"
+ri --apply --dir "$MI" >/dev/null 2>&1
+t_eq "the runtime-install rows with no file are gone" 0 "$(grep -c -e ' bin/CHECKS.md ' -e ' bin/gone/with space.md ' "$MI/.harbor-manifest")"
+t_eq "another installer's row is not this one's to prune" 1 "$(grep -c ' bin/theirs.md ' "$MI/.harbor-manifest")"
+t_eq "a row whose file exists stays" "$(git hash-object "$MI/bin/recover-test.sh") 100755 runtime-install $_h" "$(mrow bin/recover-test.sh)"
 
 t_section "the installed dispatcher follows with the installed bus: the loop guard's cause reaches it (harbor#1044 r2 #3)"
 # runtime-install alone must ship a bus that passes HARBOR_EVENT_CAUSE on; the dispatcher refuses (4) beside one that does not.

@@ -80,15 +80,16 @@ t_hasnt "...and it loads under the plist's environment" "$(env -u CLAUDE_CONFIG_
 t_exit "the installed copy refuses a CLAUDE_CONFIG_DIR that is not its own (4)" 4 env CLAUDE_CONFIG_DIR="$T_TMP/elsewhere" sh "$ED" on --list
 rm -rf "$HOME/port"
 
-t_section "the launchd job is the KeepAlive follower, shipped and not installed"
+t_section "the launchd job is the KeepAlive follower, installed by a deploy (harbor#1437)"
 PL="$T_ROOT/launchd/com.harbor.event.dispatch.plist"
 flat="$(tr -d ' \n\t' < "$PL")"
 t_has "it runs the installed dispatcher's dispatch verb" "$flat" "/.claude/bin/event-dispatch.sh</string><string>dispatch</string></array>"
 t_has "...under /bin/sh" "$flat" "<key>ProgramArguments</key><array><string>/bin/sh</string>"
 t_has "restarted on a crash, left down after exit 0" "$flat" "<key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>"
 t_has "in the operator's GUI session, for the keychain" "$flat" "<key>LimitLoadToSessionType</key><string>Aqua</string>"
-t_has "docs/reference/checks.md registers it as not installed" "$(grep '^| `event.dispatch` |' "$T_ROOT/docs/reference/checks.md")" "NOT installed"
-t_eq "no installer copies or loads it" "" "$(grep -h 'LaunchAgents\|launchctl' "$T_ROOT"/bin/*install*.sh "$T_ROOT"/bin/deploy.sh 2>/dev/null | grep 'event\.dispatch')"
+t_has "docs/reference/checks.md registers it as installed by deploy" "$(grep '^| `event.dispatch` |' "$T_ROOT/docs/reference/checks.md")" "KeepAlive: installed by"
+t_has "the plist carries the marker deploy-launchd-sync.sh installs by" "$flat" "harbor:deploy-installs"
+t_eq "only the deploy-run sync tool loads it: no bin/*install*.sh names it" "" "$(grep -h 'LaunchAgents\|launchctl' "$T_ROOT"/bin/*install*.sh 2>/dev/null | grep 'event\.dispatch')"
 
 t_section "subscribe is refused until the messaging socket is verified"
 sh "$ED" subscribe '"kind":"git\.merge"' 2>"$T_TMP/sub.err"; rc=$?
@@ -96,30 +97,20 @@ t_eq "exit 4" 4 "$rc"
 t_has "it says UNVERIFIED and why" "$(cat "$T_TMP/sub.err")" "UNVERIFIED"
 t_has "...and where the finding is" "$(cat "$T_TMP/sub.err")" "docs/design/events.md"
 
-t_section "event.pulse is the old id of event.alerting: a rule installed under it keeps firing until 2026-11-15 (harbor#961)"
-# Clocks pinned to fixed dates, so the suite means the same on any day: noon UTC on 2026-11-01 (in the window), 2026-11-16 (past it).
-IN=$((1793534400 - $(date -u +%s))); PAST=$((1794830400 - $(date -u +%s)))
+t_section "event.pulse is the retired id of event.alerting: a rule installed under it is refused and fires nothing (harbor#961)"
 rm -f "$GT/rules/"*.rule
 MARK="$T_TMP/alerting.fired"
 printf '#!/bin/sh\necho fired >> "%s"\n' "$MARK" > "$T_TMP/alert-stub.sh"; install_bin alert-notify.sh "$T_TMP/alert-stub.sh"
 sh "$ED" on --preset event.alerting >/dev/null 2>&1
 sed 's/^id=event\.alerting$/id=event.pulse/' "$GT/rules/event.alerting.rule" > "$GT/rules/event.pulse.rule"; rm -f "$GT/rules/event.alerting.rule"
 t_has "a rule a deploy before the rename installed carries the old id" "$(cat "$GT/rules/event.pulse.rule")" "id=event.pulse"
-t_hasnt "in the window it is not refused on load" "$(HARBOR_EVENT_BUS_SKEW=$IN sh "$ED" on --list 2>/dev/null)" "REFUSED"
-HARBOR_EVENT_BUS_SKEW=$IN emit git.merge alias-probe >/dev/null
-HARBOR_EVENT_BUS_SKEW=$IN dispatch_once
-t_eq "...and it fires on its trigger" fired "$(cat "$MARK" 2>/dev/null)"
-t_has "...recorded under the id it was installed with" "$(outcomes event.pulse)" "done"
-t_has "past 2026-11-15 the old id is refused on load" "$(HARBOR_EVENT_BUS_SKEW=$PAST sh "$ED" on --list 2>/dev/null)" "event.pulse	REFUSED: event.pulse was renamed event.alerting"
-: > "$MARK"; HARBOR_EVENT_BUS_SKEW=$PAST emit git.merge alias-late >/dev/null; HARBOR_EVENT_BUS_SKEW=$PAST dispatch_once
-t_eq "...and runs nothing" "" "$(cat "$MARK")"
-t_exit "...and on --preset under the old id is refused past the date" 1 env HARBOR_EVENT_BUS_SKEW=$PAST sh "$ED" on --preset event.pulse
-t_exit "in the window, on --preset under the old id installs the new one" 0 env HARBOR_EVENT_BUS_SKEW=$IN sh "$ED" on --preset event.pulse
-t_eq "...and leaves one rule: the old file goes" "event.alerting.rule" "$(ls "$GT/rules" | grep '\.rule$' | tr '\n' ' ' | sed 's/ $//')"
-cp "$GT/rules/event.alerting.rule" "$GT/rules/event.pulse.rule"; sed -i.bak 's/^id=event\.alerting$/id=event.pulse/' "$GT/rules/event.pulse.rule"; rm -f "$GT/rules/event.pulse.rule.bak"
-t_exit "on --off with the new id" 0 env HARBOR_EVENT_BUS_SKEW=$IN sh "$ED" on --off event.alerting
+t_has "the old id is refused on load, with the id to use" "$(sh "$ED" on --list 2>/dev/null)" "event.pulse	REFUSED: event.pulse was renamed event.alerting"
+emit git.merge alias-late >/dev/null; dispatch_once
+t_eq "...and runs nothing" "" "$(cat "$MARK" 2>/dev/null)"
+t_exit "...and on --preset under the old id is refused" 1 sh "$ED" on --preset event.pulse
+t_exit "on --off with the new id" 0 sh "$ED" on --off event.alerting
 t_eq "...removes the rule under the old id too" "" "$(ls "$GT/rules" | grep '\.rule$')"
-t_has "the renames register carries the check-id row lint-findings reads" "$(cat "$T_ROOT/standards/naming/renames.tsv")" "check:event.pulse	check:event.alerting	check-id"
+t_has "the renames register keeps the check-id row as the record" "$(cat "$T_ROOT/standards/naming/renames.tsv")" "check:event.pulse	check:event.alerting	check-id"
 install_bin alert-notify.sh "$T_ROOT/bin/alert-notify.sh"
 sh "$ED" on --preset event.alerting >/dev/null 2>&1   # the list below reads it
 
@@ -127,4 +118,5 @@ t_section "harbor event routes the E2 verbs"
 t_exit "harbor event subscribe → 4" 4 sh "$T_ROOT/bin/harbor" event subscribe x
 t_has "harbor event on --list shows the presets added above" "$(sh "$T_ROOT/bin/harbor" event on --list 2>/dev/null)" "event.alerting"
 t_exit "harbor event dispatch --bogus is a usage error" 2 sh "$T_ROOT/bin/harbor" event dispatch --bogus
+t_red check.event.fleet-snapshot check.event.alerting   # the falsifier this suite names for them (harbor#1422)
 t_done

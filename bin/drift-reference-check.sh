@@ -14,54 +14,14 @@
 # findings, one row each as desired / observed / delta / age, and its exit code
 # is the plain run's. It cannot be combined with --json, and it never repairs.
 #
-# WHY IT EXISTS, WITH THE THREE FINDINGS THAT MADE THE CASE. Lint K1 and T3
-# validate references in the REPO. Nothing validated the copy that actually
-# runs, and the two are not the same file: `~/.claude/CLAUDE.md` is loaded into
-# every session, while `bin/lint-conventions.sh` reads `policy/constitution.md` out of
-# a checkout that the harness never opens. On 2026-08-03 a survey of the live
-# box found, with K1 green the whole time:
-#
-#   1. The installed constitution cites `./docs/explanation/…`, `./contracts/…`,
-#      `./docs/explanation/admission-baseline.md` and `./docs/generated/status.md`. None of those directories or files are
-#      deployed under the config dir, so the document that says "if you find a
-#      citation that does not resolve, that is a defect in this file" carried a
-#      pile of them — on the surface where it is actually read.
-#   2. `context-resolve.sh` was wired at SessionStart TWICE. harbor#95 fixed the
-#      two installers so they can no longer CREATE a duplicate, and its WIRE-1
-#      assertion proves that from an empty settings.json — but nothing looks at
-#      a box that already had one, and this box did. The installers are
-#      append-only by design; the residue outlived the fix.
-#   3. The constitution stated the egress scanner was "built and not installed"
-#      while it was installed, wired under two matchers, and blocking.
-#
-# All three are one class: a claim about the installed surface, checked against
-# the repo. This tool checks the installed surface against itself.
-#
-# WHAT IT DOES NOT DO. It never repairs anything. Every surface it reads is one
-# `admission-self-edit.sh` protects (settings.json, bin/, the pins) — a tool that
-# could fix these findings would be a tool that can disable the floor, so this
-# one reports and hands the operator a command. It also does not compare live
-# against repo: that is lint X2's job, and two rules answering one question is
-# the drift class the T rules exist for. X2 asks "does the deployed copy lag?";
-# this asks "does the deployed surface hold together on its own?"
-#
-# PERMISSIONS.DENY IS DELIBERATELY OUT OF SCOPE. A deny glob naming a path that
-# does not exist is fail-SAFE, and matching globs against a filesystem to decide
-# whether a rule is "used" manufactures false positives — which get guards
-# switched off (CONSTITUTION №2.11). Absence of a deny is B1's own concern.
-#
-# Deliberately one file (docs/explanation/modularity.md): `lint-module-shape.sh --seam` reads it "real but
-# PRIVATE — leave it one file" (2026-10-02, 0 symbols with two outside callers). The REF rules
-# share one walk of the installed surface; split, each would walk it again.
+# Why (harbor#44): lint K1/T3 check references in the repo, but ~/.claude/CLAUDE.md (loaded every session) is a different file from the checkout's policy/constitution.md, and nothing checked it. This tool checks the installed surface against itself; lint X2 owns live-vs-repo.
+# Read-only on purpose: every surface it reads is one admission-self-edit.sh protects, so it reports and hands the operator a command, never repairs.
+# permissions.deny is out of scope: a deny naming a missing path is fail-safe, and matching globs to the filesystem manufactures false positives (CONSTITUTION №2.11).
+# One file on purpose (docs/explanation/modularity.md): the REF rules share one walk of the installed surface.
+# Removed notes: docs/explanation/code-cases/bin-drift-reference-check.md
 set -u
 
-# --help BEFORE ANY WORK (S4, harbor#140). Placed immediately after strict mode
-# so it is the first executable line: a --help that reaches an argument parser is
-# a --help that a script with no parser ignores, and this file had none. Measured
-# 2026-08-20: a sweep of `bin/*.sh --help` ran past five minutes because at least
-# one script treated the flag as a request to do work, and five of the scripts
-# with no --help at all are mutators. The text is the header, read out of THIS
-# file at runtime, so a help message cannot drift from what the script says it is.
+# --help before any work (S4, harbor#140). The text is this file's own header, read at runtime up to the first blank comment line, so it cannot drift.
 case "${1:-}" in
   -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); if ($0=="") exit; print; next } {exit}' "$0"
              printf '\n(flags, if any, are in the header above and the source below.)\n'
@@ -98,8 +58,7 @@ fi
 JSON=0
 for a in "$@"; do [ "$a" = "--json" ] && JSON=1; done
 
-# RESOLVED FROM THIS SCRIPT'S OWN DIRECTORY, the extractor and log-lib both: the tree under
-# inspection may be hostile (audit-triage.sh, audit-triage-run.sh). No dirname: B9's PATH has none.
+# Resolved from this script's own directory, never the inspected tree, which may be hostile (audit-triage.sh). No dirname: B9's PATH has none.
 case "$0" in */*) SELF="${0%/*}" ;; *) SELF=. ;; esac
 SELF="$(CDPATH= cd -- "$SELF" && pwd -P)"
 EXTRACT="$SELF/doc-cited-paths.awk"
@@ -121,9 +80,7 @@ log_init reference-check
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 [ "$JSON$STATUS" = 00 ] || LOG_FD=2
 [ "$STATUS" = 0 ] || status_init drift.reference-check "$DIR" || exit 3
-# Every report loop below reads a here-document, and a shell that cannot create one's temp file runs them on
-# nothing and reports clean (seen in a sandboxed subagent, 2026-10-27). `read` is a builtin, so a PATH with no
-# coreutils still probes. Refused, never read as a pass.
+# A shell that cannot create a here-document's temp file runs every report loop below on nothing and reads clean; refuse instead.
 _hd=""
 { IFS= read -r _hd <<EOF
 ok
@@ -135,8 +92,7 @@ if [ "$_hd" != ok ]; then
   log_end || :; exit 2
 fi
 
-# An absent config dir is an ANSWER, not a misuse — the same argument
-# admission-verify.sh:44 makes. Nothing is installed, so nothing dangles.
+# An absent config dir is an answer, not misuse (as admission-verify.sh): nothing installed, nothing dangles.
 if [ ! -d "$DIR" ]; then
   if [ "$STATUS" = 1 ]; then status_end; exit $?; fi
   if [ "$JSON" = 1 ]; then printf '{"dir":"%s","installed":false,"findings":[]}\n' "$DIR"; exit 0; fi
@@ -144,9 +100,7 @@ if [ ! -d "$DIR" ]; then
   log_end; exit $?
 fi
 
-# B9: a missing jq must never read as a clean run. `admission-bash.sh` exited 0 on
-# 'rm -rf /' for exactly this reason. Loud, and exit 1 — not 0, and not 2, which
-# a caller would filter out as "I typed it wrong".
+# B9: a missing jq must never read as a clean run. Exit 1, not 2, which a caller would filter as "I typed it wrong".
 if ! command -v jq >/dev/null 2>&1; then
   log_fail "jq not found, so $DIR/settings.json cannot be read — this is NOT a clean result"
   log_fix "$(pkg_hint jq)"
@@ -155,23 +109,7 @@ if ! command -v jq >/dev/null 2>&1; then
   log_end; exit 1
 fi
 
-# ── the declared-root reader (harbor#462) ─────────────────────────────────────
-# THE DECLARED ROOT. One line, human-visible, exactly parseable, one copy of the
-# fact — the format and the argument for it are at REF-5 below:
-#
-#     > **Path root:** `~/port/harbor` — every `./`-prefixed path in this document…
-#
-# The root is the FIRST backticked token after the literal `**Path root:**`, so a
-# declaration line may carry as much prose as it likes afterwards without the
-# parse drifting. `~/` is expanded here because a document written for a human
-# says `~/port/harbor` and a filesystem test needs $HOME; nothing else is expanded, so
-# no shell ever sees this string.
-#
-# It prints NOTHING when there is no declaration, and the caller treats that as
-# the fallback case rather than as an error — REF-8 is what makes the fallback
-# visible. A malformed declaration (the marker with no backticked token) also
-# prints nothing and is therefore reported by REF-8 as undeclared, which is the
-# honest reading: a root nobody can parse is a root nobody declared.
+# the declared-root reader (harbor#462): the root is the first backticked token after the literal `**Path root:**`, `~/` expanded. Prints nothing when undeclared or malformed; REF-8 makes that fallback visible.
 _declared_root() { # <file> -> absolute root, or empty
   _dr="$(awk '
     /\*\*Path root:\*\*/ {
@@ -186,20 +124,7 @@ _declared_root() { # <file> -> absolute root, or empty
   esac
 }
 
-# WHERE ONE CITATION RESOLVES, and the ONLY place that question is answered —
-# REF-5 and REF-9 both call this, for the same reason doc-cited-paths.awk is one
-# file: two copies of a resolution rule is how one of them drifts out of step
-# with the declaration it prints.
-#
-# THE DECLARED ROOT BINDS `./` AND NOTHING ELSE, because that is what the
-# declaration the tool prints actually promises: "every `./`-prefixed path in
-# this document resolves there". The first cut applied the root to every
-# relative citation, which was latent for CLAUDE.md — all ten of its citations
-# are `./`-prefixed, verified 2026-09-06, so no behaviour changed there — and
-# WRONG the moment REF-9 arrived, because a skill mixes the two forms in one
-# file: `references/pitfalls.md` ships beside SKILL.md and must resolve against
-# its own directory, while `./contracts/cu.md` means the repo. Binding both to
-# one base breaks whichever form the base is not for.
+# Where one citation resolves; REF-5 and REF-9 share it. The declared root binds `./` only: a skill mixes `./contracts/cu.md` (the repo) with `references/x.md` (beside SKILL.md), and one base breaks whichever form it is not for.
 _cite_target() { # <ref> <document-dir> <declared-root-or-empty> -> absolute path
   _ct_p="${1%%#*}"                        # the fragment is not part of the path
   case "$_ct_p" in
@@ -226,12 +151,11 @@ finding() { # <rule> <subject> <what-breaks> [<fix command>] — the fix is the 
 "
 }
 
-# The command that installs <component>'s part of this dir: through deploy on the live box, the one
-# live entry (install standard §4), and the installer itself, --dir spelled, anywhere else (harbor#809).
+# The command that installs <component>'s part of this dir: through deploy on the live box, the installer itself (--dir) elsewhere (harbor#809).
 _phys() { CDPATH= cd -P -- "$1" 2>/dev/null && pwd -P || printf '%s' "$1"; }
 _sq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 _install_fix() { # <component> <installer>
-  _if_r="$(sh "$SELF/scope-roots.sh" --get HARBOR_SCOPE_REPO 2>/dev/null || :)"; [ -n "$_if_r" ] || _if_r="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}"
+  _if_r="$(sh "$SELF/scope-roots.sh" --get HARBOR_SCOPE_REPO 2>/dev/null || :)"; [ -n "$_if_r" ] || _if_r="${HARBOR_SCOPE_REPO:-${PORT_ROOT:-$HOME/port}/harbor}"
   LIVE="$HOME/.claude"  # deploy's live target, whatever CLAUDE_CONFIG_DIR says: deploy refuses a differing one
   if [ "$(_phys "$DIR")" = "$(_phys "$LIVE")" ]; then
     printf 'sh %s --apply --only %s --live' "$(_sq "$_if_r/bin/deploy.sh")" "$1"
@@ -241,40 +165,14 @@ _install_fix() { # <component> <installer>
   fi
 }
 
-# ── THE DENOMINATOR (harbor#467) ─────────────────────────────────────────────
-# REF-5 printed `every hook, pin and citation on the installed surface resolves`
-# over a constitution from which it had extracted ZERO citations, and that line
-# was believed for the 34 days the tool existed. "0 findings" and "0 items
-# examined" are the same output and opposite facts, so a report carrying only
-# findings is unfalsifiable from outside it: nothing in the output distinguishes
-# a clean surface from a checker that never looked at one.
-#
-# So every extracting rule below records WHAT IT EXAMINED, the reporter prints
-# that on a clean run as well as a dirty one — a clean run is precisely where an
-# unread denominator does its damage — and REF-10 turns "I extracted nothing
-# from a document that plainly cites things" into a finding rather than a pass.
+# THE DENOMINATOR (harbor#467). Every extracting rule records what it examined and the report prints it on clean runs too: "0 findings" and "0 items examined" look identical, and REF-5 once reported "resolves" over zero extracted citations. REF-10 turns an extractor that found nothing in a cited document into a finding.
 EXAMINED=""   # one `rule<TAB>count<TAB>what` per line
 examined() { # <rule> <count> <what>
   EXAMINED="$EXAMINED$1	$2	$3
 "
 }
 
-# DELIBERATELY BROADER THAN THE EXTRACTOR, and consulted ONLY where the
-# extractor returned zero. `doc-cited-paths.awk` knows two dialects; this knows "a
-# token with a slash and a file extension", which is what a citation looks like
-# in a dialect nobody has taught the tool yet — the bare-prose one included.
-# Breadth is safe here BECAUSE of the zero guard: it can only ever speak about a
-# document the real extractor found nothing in, so it can neither inflate a
-# count nor block ordinary work (CONSTITUTION No.2.11).
-#
-# WHAT IT CANNOT SEE, said out loud rather than left implied: PARTIAL blindness.
-# An extractor that finds nine citations and misses a tenth written in a dialect
-# it does not know still reports nine, and this rule stays silent. Closing that
-# would need a second extractor as good as the first — the thing that does not
-# exist, and the reason #467 is about the zero and not about the shortfall.
-#
-# URLs are blanked before the test because REF-5 scopes them out deliberately: a
-# document whose only reference is `https://…` has not defeated the extractor.
+# Deliberately broader than the extractor and consulted only where it returned zero (harbor#467), so it can neither inflate a count nor block ordinary work (№2.11). It cannot see partial blindness (nine of ten found). URLs are blanked first: REF-5 scopes them out on purpose.
 _looks_cited() { # <file> -> 0 if the file contains anything citation-shaped
   awk '
     { line = $0
@@ -285,31 +183,10 @@ _looks_cited() { # <file> -> 0 if the file contains anything citation-shaped
     END { exit !found }' "$1" 2>/dev/null
 }
 
-# Every absolute path inside a hook command string. A command is not one path:
-# `/bin/sh …/admission-hook.sh …/admission-bash.sh` names the wrapper AND the scanner,
-# and the wrapper existing tells you nothing about the scanner. Splitting on
-# whitespace is correct here and would not be for arbitrary input — these are
-# strings the installers wrote, and a config dir containing a space is already
-# broken for every hook the harness spawns.
-#
-# awk, not grep, and the reason is not style. On the operator's Mac `grep` is a
-# ugrep wrapper carrying `-I --ignore-files`, so it silently skips binary AND
-# gitignored files. A missed line here produces FEWER findings — a false CLEAN —
-# and this whole tool exists to stop exactly that shape of lie. Nothing in this
-# script may rest a negative on a `grep` whose flags it does not control.
+# Every absolute path inside a hook command: a command names the wrapper AND the scanner, and the wrapper existing says nothing about the scanner. awk, not grep: grep here is ugrep and skips gitignored and binary files, which gives fewer findings, a false clean.
 cmd_paths() { printf '%s\n' "$1" | tr ' ' '\n' | awk '/^\//'; }
 
-# ── settings.json must PARSE before any rule claims to have read it ──────────
-# Found by review 2026-08-03, and it is this tool's own failure mode aimed at
-# itself: every settings rule below runs `jq … "$S" 2>/dev/null`, so a malformed
-# file made jq exit non-zero, sent its complaint to /dev/null, produced no rows,
-# and the run reported `"clean": true` with exit 0. REPRODUCED with a settings.json
-# containing `{bad`. Three rules silently did not run and the tool said the
-# surface was fine.
-#
-# The B9 guard above covers a MISSING jq and missed an UNREADABLE file — the same
-# lesson, one layer in. "I could not look" must never render as "there is nothing
-# to see", which is the whole reason this script exists.
+# settings.json must PARSE before any rule claims to have read it: the rules below send jq's complaint to /dev/null, so a malformed file once produced no rows and "clean": true. "Could not look" must never render as "nothing to see".
 SETTINGS_OK=0
 if [ -f "$S" ]; then
   if jq -e . "$S" >/dev/null 2>&1; then
@@ -321,18 +198,13 @@ if [ -f "$S" ]; then
 fi
 
 # ── REF-1 · every hook command names a file that exists ──────────────────────
-# What breaks: the harness spawns the hook, `sh` reports "No such file", and the
-# hook's exit status decides the event. For a PreToolUse guard that is a floor
-# with a hole; for SessionStart it is noise the operator learns to ignore.
+# What breaks: the harness spawns a hook whose script does not exist; for a PreToolUse guard that is a hole in the floor.
 if [ "$SETTINGS_OK" = 1 ]; then
   jq -r '.hooks // {} | to_entries[] | .key as $e | .value[]? | .hooks[]?.command // empty | "\($e)\t\(.)"' "$S" 2>/dev/null \
   | while IFS='	' read -r ev cmd; do
       [ -n "${cmd:-}" ] || continue
       for p in $(cmd_paths "$cmd"); do
-        # `_n` is a COUNT ROW, not a finding (harbor#467). The loop runs in a
-        # pipeline subshell, so a shell variable incremented here would be lost
-        # at the `done`; carrying the denominator out through the same file the
-        # findings travel in keeps one pass and cannot drift from what was read.
+        # `_n` is a count row, not a finding (harbor#467): the loop runs in a pipeline subshell, so the denominator travels in the same file as the findings.
         printf '_n\t\t\n'
         [ -e "$p" ] || printf 'REF-1\t%s: %s\tthe harness will spawn a hook whose script does not exist\n' "$ev" "$p"
       done
@@ -347,46 +219,14 @@ if [ "$SETTINGS_OK" = 1 ]; then
 fi
 
 # ── REF-2 · no command wired twice under the SAME selector ───────────────────
-# THE PREDICATE IS THE WHOLE RULE, and the obvious one is wrong. `admission-egress.sh`
-# is wired twice at PreToolUse ON PURPOSE — once for the write tools, once for
-# the web/MCP channel — so "the same command appears twice in one event" reports
-# the fix as a defect. floor-test.sh's WIRE-1 works around that by `grep -v`-ing
-# guard-egress out of its comparison, which would also hide a genuine duplicate
-# of it.
-#
-# What actually makes two wirings a duplicate is that they carry the same
-# command under an EQUIVALENT selector, and a missing `matcher` key is the same
-# selector as `""` — which is exactly the shape harbor#95 was about: one
-# installer wrote `{hooks:[…]}`, the other `{matcher:"",hooks:[…]}`, neither
-# dedupe could see the other, and both selected every event.
-#
-# What breaks: the hook runs twice per event. Invisible for a recorder; for
-# context-resolve.sh, which emits additionalContext, it injected the notice into
-# the session twice.
-#
-# THE REPAIR, because this tool reports and never fixes — and a finding with no
-# route to a fix is one the operator learns to scroll past. Nothing in the repo
-# removes a stale wiring: both installers are append-only by design (harbor#95
-# fixed them so they cannot CREATE a duplicate, which does nothing about one
-# already on the box). So it is a human running, from their own terminal:
-#
+# A duplicate is the same command under an EQUIVALENT selector (a missing `matcher` key equals ""; harbor#95), not merely twice in one event: admission-egress.sh is wired twice on purpose (write tools, web/MCP).
+# What breaks: the hook runs once per wiring (context-resolve.sh injected its notice twice).
+# This tool never fixes; the installers are append-only, so the repair is the operator's, from their own terminal:
 #   jq --arg c "/bin/sh $HOME/.claude/bin/context-resolve.sh" \
 #      '.hooks.SessionStart |= map(select(has("matcher") or ([.hooks[].command] | index($c) | not)))' \
 #      ~/.claude/settings.json
-#
-# DIRECTION MATTERS AND THE OPPOSITE FILTER DISARMS THE FLOOR. It drops the
-# bucket with NO `matcher` key and keeps the `matcher: ""` one — because that is
-# the bucket also carrying admission-observe.sh and admission-integrity.sh. Selecting the
-# other way removes two hooks and reports success. Verified on a copy of the live
-# settings.json 2026-08-03: REF-2 cleared, all five SessionStart commands intact.
-#
-# Re-pin afterwards (`sh ~/.claude/bin/pin-instructions.sh --apply --live`) or B8
-# raises a drift alarm on the operator's own repair, then confirm with
-# `sh bin/drift-reference-check.sh --live`.
-#
-# Whether deploy-runtime-install.sh should grow a dedupe instead is UNDECIDED: it would
-# give a settings.json mutator the power to DELETE hook entries, which is not
-# obviously the right trade for a class that has occurred once.
+# Direction matters: this drops the bucket with NO `matcher` key and keeps `matcher: ""`, the one that also carries admission-observe.sh and admission-integrity.sh; the opposite filter removes two hooks and reports success.
+# Re-pin afterwards with pin-instructions.sh or B8 alarms on the repair, then run `sh bin/drift-reference-check.sh --live`.
 if [ "$SETTINGS_OK" = 1 ]; then
   jq -r '.hooks // {} | to_entries[] | .key as $e | .value[]? | (.matcher // "") as $m
          | .hooks[]?.command // empty | [$e, $m, .] | @tsv' "$S" 2>/dev/null \
@@ -403,8 +243,7 @@ if [ "$SETTINGS_OK" = 1 ]; then
 fi
 
 # ── REF-3 · the statusline command exists ────────────────────────────────────
-# What breaks: the status line goes blank or prints an error into the operator's
-# prompt every refresh interval, forever, and there is no log to read.
+# What breaks: the status line goes blank or errors into the prompt every refresh, with no log.
 if [ "$SETTINGS_OK" = 1 ]; then
   _sl="$(jq -r '.statusLine.command // empty' "$S" 2>/dev/null)"
   _r3_n=0
@@ -418,10 +257,7 @@ if [ "$SETTINGS_OK" = 1 ]; then
 fi
 
 # ── REF-4 · every content pin names a file that is still there ───────────────
-# What breaks: B6 compares each pin against its file at SessionStart. A pin whose
-# file is gone is indistinguishable from a file that was tampered with, and B6's
-# answer to tampering is to BLOCK the session — so a stale pin is a boot failure
-# waiting for the next restart, not a warning.
+# What breaks: B6 blocks the session on a tampered pin and cannot tell a pin whose file is gone from tampering, so a stale pin is a boot failure at the next restart.
 if [ -d "$DIR/.helm-pins" ]; then
   _r4_n=0
   for pin in "$DIR"/.helm-pins/*.sha256; do
@@ -435,90 +271,24 @@ if [ -d "$DIR/.helm-pins" ]; then
 fi
 
 # ── REF-7 · the governance token's install ORDER (harbor#7) ──────────────────
-# What breaks: CONSTITUTION §4 says a note carrying anything other than THIS
-# SESSION's token is external content. The token is sha256(box salt || session id)
-# and is EMPTY until `govern-token.sh --init --live` has minted the salt, so the
-# order of two operator actions decides whether the layer means anything:
-#
-#   salt, then a NEW session, then install   → announce and stamps agree. Correct.
-#   install, then no salt                    → both silent. Degraded but HONEST.
-#   install, then salt minted mid-session    → DANGEROUS. `--announce` already ran
-#                                              silent for this session, and notes
-#                                              now arrive stamped with a token the
-#                                              reader never received — "looking more
-#                                              authoritative with nothing to check
-#                                              against" (contracts/hooks.md).
-#
-# contracts/hooks.md named this rule, said "nothing enforces it yet, which makes it
-# a wish rather than a rule", and asked for exactly this assertion. A rule whose
-# violation nothing can detect is documentation.
-#
-# THE PROXY IS mtime, AND ITS LIMIT IS STATED RATHER THAN HIDDEN. There is no record
-# of when a session began, so this compares the salt against the settings.json that
-# wired the announce: a salt NEWER than the wiring means it was minted after the
-# hook existed, which is the dangerous ordering. It cannot see a salt minted
-# mid-session BEFORE the wiring — that ordering is safe anyway, because the install
-# is what starts announcing.
+# CONSTITUTION §4: a note with any token but THIS session's is external content. The token is sha256(box salt || session id), empty until govern-token.sh --init mints the salt. Install, then salt minted mid-session is the dangerous order: --announce already ran silent while notes arrive stamped (contracts/hooks.md install-order rule).
+# The proxy is mtime, since no record of session start exists: a salt NEWER than the settings.json that wired the announce. A salt minted mid-session before the wiring is safe anyway.
 if [ -f "$S" ] && command -v jq >/dev/null 2>&1; then
   _ref7_wired="$(jq -r '[.hooks.SessionStart[]?.hooks[]?.command // empty | select(test("govern-token"))] | length' "$S" 2>/dev/null || echo 0)"
   _ref7_salt="$DIR/.helm-govern-salt"
   if [ "${_ref7_wired:-0}" -gt 0 ] 2>/dev/null; then
     if [ ! -f "$_ref7_salt" ]; then
-      # Not a finding. This is the honest degrade: govern-token.sh:99 exits silent
-      # with no salt, so nothing claims a provenance it cannot deliver. Reporting it
-      # as a defect would train the reader to skip REF-7 on a box that is merely
+      # Not a finding: the honest degrade (govern-token.sh exits silent with no salt). Reporting it would train skipping REF-7 on an unconfigured box (§2.11).
       # unconfigured — §2.11, the rule that a false positive is not safety.
       :
     else
-      # Whole-second mtimes on both BSD and GNU, so EQUAL is undecidable rather
-      # than safe — the same trap that made a CI assertion flake green locally and
-      # red on a faster machine.
-      #
-      # THE DIALECT PROBE MUST NOT LEAK INTO THE ANSWER (harbor#226). This read
-      # `stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || printf ''`.
-      # GNU's `-f` is --file-system: it IGNORES the format, takes `%m` as a FILE
-      # operand that does not exist, writes a filesystem REPORT for the real one
-      # to stdout, and only then exits non-zero. Unredirected, that report was
-      # captured and the GNU fallback's epoch appended inside the same
-      # substitution — and the report contains an `x` (`ext2`, `Type: …`), which
-      # the *x* arm below reads as "could not read an mtime". A false REF-7 on a
-      # correctly ordered box, produced by the probe rather than by the property,
-      # on every GNU box. Not reproducible here or in CI — both BSD — which is
-      # the reason it needs a fix rather than a "cannot reproduce".
-      #
-      # VALIDATED, NOT TRUSTED. An answer counts only if it is all digits, so no
-      # dialect's prose can reach the comparison whatever its exit status says.
+      # Whole-second mtimes on BSD and GNU, so EQUAL is undecidable rather than safe.
+      # The dialect probe must not leak into the answer (harbor#226): GNU `stat -f` is --file-system, writes a filesystem report to stdout before failing, and its `x` read as "no mtime" (a false REF-7 on every GNU box; not reproducible on BSD CI).
       _ref7_m() { # <file> -> epoch mtime, or empty (bin/library-fs.sh, harbor#618)
         fs_mtime "$1"
       }
-      # A ONE-SESSION HAZARD MUST NOT BE A PERMANENT FINDING (harbor#226). The
-      # ordering costs something only in the session where the salt appeared
-      # mid-flight: from the next SessionStart on, the announce runs with the salt
-      # in place and the token is delivered. Both mtimes are frozen, though, so
-      # the comparison alone reports that spent hazard forever — a verdict that
-      # cannot go green, which is harbor#211's shape one tool over and the class
-      # §2.11 calls a defect, because a check that is always red gets skipped.
-      #
-      # NOT FIXED WITH A MARKER FILE. govern-token.sh:32 states "THE HOOK NEVER
-      # WRITES" and argues it: the token is derived rather than stored precisely
-      # so concurrent sessions cannot collide or fork a shared file, on a box
-      # whose `hostname` has already forked host-sharded ledgers. Buying this
-      # verdict with a per-session write would trade a real property for a
-      # cosmetic one.
-      #
-      # SO THE EVIDENCE IS ONE THE CONFIG DIR ALREADY CARRIES. Claude Code writes
-      # $CFG/sessions/<pid>.json per process (context-peers.sh:9). A record NEWER
-      # than the salt means a session has begun since it was minted, so that
-      # session's announce ran with the salt present and the window is shut —
-      # which is exactly what the remedy below tells the operator to do.
-      #
-      # mtime, NOT the JSON. Those records are heterogeneous on this box, measured
-      # rather than assumed: some carry `startedAt` as epoch milliseconds, others
-      # only `procStart` as a `Sun Aug 16 12:29:11 2026` string. A check resting on
-      # an undocumented shape is one upstream edit away from silently passing.
-      #
-      # NO SESSIONS DIRECTORY MEANS NO EVIDENCE, AND NO EVIDENCE KEEPS THE FINDING.
-      # This is a reporter, so the conservative direction is to report.
+      # A one-session hazard must not be a permanent finding (harbor#226): both mtimes are frozen, so the comparison alone would stay red forever.
+      # Evidence the config dir already carries: a $CFG/sessions/<pid>.json newer than the salt means a session began since, so its announce saw the salt. mtime, not the JSON (records are heterogeneous: epoch-ms startedAt, or only a procStart string). No marker file: govern-token.sh never writes, by design. No sessions dir is no evidence, and the finding stays.
       _ref7_discharged() { # <salt-mtime> -> 0 when a session has started since
         _sd="$DIR/sessions"
         [ -d "$_sd" ] || return 1
@@ -550,69 +320,13 @@ if [ -f "$S" ] && command -v jq >/dev/null 2>&1; then
 fi
 
 # ── REF-5 · the installed CLAUDE.md's citations resolve ──────────────────────
-# The K1 analogue for the surface that is actually read. K1 fails the build when
-# a path cited in policy/constitution.md goes missing from the REPO; this asks the same
-# question of the deployed copy, where the answer is different, because the repo
-# ships docs the installers do not deploy.
-#
-# What breaks: the constitution instructs the reader to follow its citations and
-# says an unresolvable one is a defect to report. Every dead link teaches the
-# reader that parts of that document are inert — which is the failure the
-# document itself names, one layer down.
-#
-# THIS RULE WAS BLIND FOR ITS ENTIRE EXISTENCE AND THAT IS WHY IT IS REWRITTEN
-# (harbor#462). It extracted `](target)` markdown links only. Commit 8b50867 —
-# the SAME commit that created this file, 2026-08-03 — migrated policy/constitution.md
-# from 16 markdown links to 13 backticked `./path`s, on the reasoning written
-# into lint K1's comment: "plain text, which cannot dangle anywhere". K1 was
-# given a second arm to read the new form. This rule was not.
-#
-# The premise was false. A backticked `./docs/explanation/grilling.md` dangles exactly
-# as hard as a link to it. What the migration changed is that the only
-# instrument aimed at the installed surface stopped being able to SEE the
-# citations, so its finding count went 12 -> 0 and READ LIKE A REPAIR. Measured
-# 2026-09-06: 0 paths extracted from a 21,552-byte CLAUDE.md carrying 10, all 10
-# dead, "every hook, pin and citation on the installed surface resolves", exit 0.
-#
-# So the extractor is no longer written here. It is bin/doc-cited-paths.awk, run by
-# this rule and by K1, because two copies is what let one dialect change slip
-# past one of them. RESOLVED FROM THIS SCRIPT'S OWN DIRECTORY, never from the
-# tree under inspection — audit-triage.sh's header argues that at length: a
-# hostile copy in an inspected tree would otherwise choose what this rule can see.
-#
-# THE DECLARED ROOT IS THE OTHER HALF, and without it this rule can only ever be
-# permanently red. `./docs/explanation/grilling.md` is not WRONG — it is unrooted, and
-# three roots are in play on this box (the repo, a skill's own directory, the
-# installed config dir). Nothing declared which one a citation meant, so a
-# reference that works from one place is silently dead from another. A document
-# may now say so in one line, and this rule resolves against what it says:
-#
-#     > **Path root:** `~/port/harbor` — every `./`-prefixed path in this document
-#     > resolves there, never against the directory this copy is installed into.
-#
-# EXACTLY-PARSEABLE AND HUMAN-VISIBLE, one copy of the fact. The root is the
-# first backticked token after the literal `**Path root:**`, `~` expanded. A
-# declaration naming a root that does not exist is a finding, not a pass — that
-# is the shape where "I could not look" renders as "there is nothing to see".
-#
-# NO DECLARATION IS ALSO AN ANSWER, and a quiet one: the document falls back to
-# resolving against its own directory, which is the pre-2026-09-06 behaviour and
-# is correct for a document that ships beside what it cites. REF-8 is what makes
-# the fallback visible rather than assumed.
-#
-# Anchors, URLs and mailto are skipped: a `#section` link is intra-document, and
-# a URL's liveness is doc-cite-verify.sh's job and needs a network.
-#
-# A FRAGMENT IS NOT PART OF THE PATH. `[details](./A.md#section)` was tested for
-# a literal file named `A.md#section` and reported as dead even where `A.md`
-# exists — reproduced against a fixture. The fragment is stripped before the
-# filesystem test and kept in the report, so the operator sees what the document
-# actually says.
+# The K1 analogue for the surface that is read: K1 checks policy/constitution.md in the repo, this checks the deployed copy, where the installers do not deploy every doc. What breaks: a dead citation teaches the reader that parts of the document are inert.
+# Blind until harbor#462: it extracted only `](target)` links after the constitution moved to backticked `./path`s, so findings went 12 -> 0 and read like a repair. The extractor is now bin/doc-cited-paths.awk, shared with K1 and resolved from this script's own directory, never the tree under inspection (audit-triage.sh).
+# Declared root: a document may carry a `**Path root:**` line naming one backticked root (one parseable line); a root that is not a directory is a finding. No declaration falls back to the document's own directory, and REF-8 makes that visible.
+# Anchors, URLs and mailto are skipped (doc-cite-verify.sh owns URLs). A #fragment is stripped before the filesystem test and kept in the report.
 if [ -f "$DIR/CLAUDE.md" ]; then
   if [ ! -f "$EXTRACT" ]; then
-    # B9's rule one layer in: a missing extractor must never read as a clean
-    # citation sweep. This is the tool's own "I could not look" case and it is
-    # louder than a finding, because every path below it would silently be zero.
+    # B9 one layer in: a missing extractor must never read as a clean citation sweep.
     finding "REF-5" "doc-cited-paths.awk" \
       "the shared extractor is not beside this script ($EXTRACT) — NO citation was checked, and this is not a pass"
   else
@@ -622,12 +336,7 @@ if [ -f "$DIR/CLAUDE.md" ]; then
         "the document declares a path root that is not a directory on this box, so every ./ citation in it resolves nowhere"
       _root=""
     fi
-    # THE DENOMINATOR IS THE EXTRACTOR'S OUTPUT, not the subset that reaches the
-    # filesystem (harbor#467). A document whose only reference is a URL has NOT
-    # defeated the extractor — the tool saw it and scoped it out on purpose —
-    # and counting the post-skip subset would make that document read as blind.
-    # Extracted once into a file rather than twice into a pipe: two passes are
-    # two answers, and the one the report prints must be the one REF-5 used.
+    # The denominator is the extractor's output, not the subset reaching the filesystem (harbor#467): a URL-only document was seen and scoped out, not missed. Extracted once into a file so the printed count is the one REF-5 used.
     awk -f "$EXTRACT" "$DIR/CLAUDE.md" 2>/dev/null | sort -u > "${TMPDIR:-/tmp}/refchk-5c.$$"
     CITED_CLAUDE="$(awk 'NF { n++ } END { print n+0 }' "${TMPDIR:-/tmp}/refchk-5c.$$")"
     while read -r ref; do
@@ -639,10 +348,7 @@ if [ -f "$DIR/CLAUDE.md" ]; then
     rm -f "${TMPDIR:-/tmp}/refchk-5c.$$"
     examined "REF-5" "$CITED_CLAUDE" "citation(s) extracted from CLAUDE.md"
     while IFS='	' read -r r s w; do [ -n "${r:-}" ] && finding "$r" "$s" "$w"; done < "${TMPDIR:-/tmp}/refchk-5.$$"
-    # WHAT REF-8 NEEDS, COMPUTED WHERE THE ANSWER EXISTS. Not "are there ./
-    # citations" — that is true of every correct document that ships beside what
-    # it cites — but "did a ./ citation actually FAIL". Counted from REF-5's own
-    # findings so the two rules cannot disagree about the same file.
+    # REF-8's predicate, counted from REF-5's own findings so the two cannot disagree: did a ./ citation FAIL, not are there any.
     REL_DEAD="$(awk -F'	' 'index($2, "CLAUDE.md \xe2\x86\x92 ./") == 1' \
                 "${TMPDIR:-/tmp}/refchk-5.$$" | wc -l | tr -d ' ')"
     rm -f "${TMPDIR:-/tmp}/refchk-5.$$"
@@ -650,19 +356,13 @@ if [ -f "$DIR/CLAUDE.md" ]; then
 fi
 
 # ── REF-5 · and the installed surface's own dangling edges (harbor#996 C2) ───
-# The reference graph's `deploys_to` edges that end on a file this config dir does not hold: the install
-# manifest says a file was installed and it is gone. `doc-graph-generate.sh --dangling` owns the definition (it reads the
-# manifest alone, no tree scan, so this stays cheap); this folds each row into REF-5 beside the dead citations,
-# since both are "a reference on the installed surface that resolves nowhere". doc-graph-generate.sh is found beside this
-# script or in the harbor checkout, never in the tree under inspection (the same rule as EXTRACT above); with
-# neither the count says 0 examined, which is not a pass.
+# The reference graph's `deploys_to` edges ending on a file this config dir lacks (harbor#996 C2). doc-graph-generate.sh --dangling owns the definition (manifest only, no tree scan); it is found beside this script or in the harbor checkout, never in the inspected tree. With neither, the count says 0 examined, which is not a pass.
 _gg="$SELF/doc-graph-generate.sh"
 if [ ! -f "$_gg" ]; then
-  _gg="$(sh "$SELF/scope-roots.sh" --get HARBOR_SCOPE_REPO 2>/dev/null || :)"; _gg="${_gg:-${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}}/bin/doc-graph-generate.sh"
+  _gg="$(sh "$SELF/scope-roots.sh" --get HARBOR_SCOPE_REPO 2>/dev/null || :)"; _gg="${_gg:-${HARBOR_SCOPE_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}/bin/doc-graph-generate.sh"
 fi
 if [ -f "$DIR/.harbor-manifest" ] && [ -f "$_gg" ] && command -v python3 >/dev/null 2>&1; then
-  # Held in a variable, not a temp file: an unwritable TMPDIR made the file's 473 rows read as none (2026-10-27).
-  # graph-gen exits 0 clean or 1 with dangling rows; anything else judged nothing, and says so as a finding.
+  # Held in a variable, not a temp file: an unwritable TMPDIR made 473 rows read as none. graph-gen exits 0 or 1 (dangling rows); anything else judged nothing.
   _gr=0; _dang="$(CLAUDE_CONFIG_DIR="$DIR" sh "$_gg" --dangling 2>/dev/null)" || _gr=$?
   if [ "$_gr" -le 1 ]; then
     while IFS='	' read -r _dp _ds _dw; do
@@ -679,35 +379,8 @@ elif [ -f "$DIR/.harbor-manifest" ]; then
 fi
 
 # ── REF-8 · a document citing ./paths declares which root they resolve against ─
-# harbor#462's actual finding, and the reason REF-5 above could be "fixed" for
-# three years without the defect moving: `./docs/explanation/grilling.md` is not a wrong
-# path, it is an UNROOTED one. The constitution is authored in a tree where `./`
-# works and installed in one where it does not, so every citation in it is green
-# at the source and dead at the only place anyone reads it. Nothing in the text
-# said which tree it meant, so each reader resolved against wherever they were
-# standing and got a different answer.
-#
-# What breaks: silently, and in the direction that reads as health. A session
-# following §"Context sufficiency" to `./docs/explanation/grilling.md` gets nothing, so
-# what actually binds is the one-paragraph summary in the constitution — weaker
-# than the doctrine it replaced and sitting next to an escape clause.
-#
-# WARN-SHAPED, NOT CRIT, and deliberately so: a document that ships beside what
-# it cites needs no declaration, and demanding one everywhere would fire on every
-# correct README on the box. It fires only where the fallback is doing real work
-# — a config-dir document citing ./paths that DO resolve there is silent, because
-# nothing is at risk; one whose citations resolve only by luck is what this names.
-# THE PREDICATE IS A FAILURE, NOT A HABIT, and the first cut of this rule got
-# that wrong in the direction that matters. It fired whenever a document cited
-# any ./path without declaring a root — which is true of every correct README
-# that ships beside what it cites, and the suite caught it immediately: five
-# green assertions went red, including "the clean fixture is clean". That is
-# §2.11 exactly, and a rule that fires on correct documents is one the operator
-# mutes, after which it cannot carry the finding it was built for.
-#
-# So it speaks only where the missing declaration is doing real damage: a ./
-# citation that FAILED, in a document that never said which root it meant. All
-# resolving means nothing is at risk and this stays silent whatever the dialect.
+# harbor#462: `./docs/...` is not a wrong path but an unrooted one. The constitution is authored where `./` works and installed where it does not, so each reader resolved against wherever they stood and a followed citation gave nothing.
+# Warn-shaped, and fires only on a FAILURE: a ./ citation that failed in a document declaring no root. Firing on every document that cites ./paths (the first cut) turned the clean fixture red (§2.11).
 if [ -f "$DIR/CLAUDE.md" ] && [ -f "$EXTRACT" ] && [ "${REL_DEAD:-0}" -gt 0 ] 2>/dev/null; then
   if [ -z "$(_declared_root "$DIR/CLAUDE.md")" ]; then
     finding "REF-8" "CLAUDE.md" \
@@ -716,57 +389,12 @@ if [ -f "$DIR/CLAUDE.md" ] && [ -f "$EXTRACT" ] && [ "${REL_DEAD:-0}" -gt 0 ] 2>
 fi
 
 # ── REF-9 · the installed SKILLS' citations resolve where they are read ──────
-# REF-5 generalised from one document to the corpus beside it, and the reason it
-# is a separate rule rather than a wider REF-5 is that the two have different
-# blast radii: the constitution is charged to every session, a skill is read when
-# its subject comes up. Same extractor, same resolver, same declared-root rule.
-#
-# WHY IT EXISTS: harbor#462 was filed as ten dead pointers in one file, and the
-# constitution was fixed first because it is the largest single item in the
-# context budget. That framing was too narrow. Measured 2026-09-06 across 46
-# installed skills and 539 markdown files, with REF-5's own resolver: THREE
-# citations are dead at the point of use, and all three are the same defect —
-#
-#   skills/dev-tracking/SKILL.md   ../../contracts/cu.md
-#   skills/test-strength/SKILL.md  ../../contracts/prove-targets.md
-#   skills/test-strength/SKILL.md  ../../docs/explanation/verification-expanded.md
-#
-# — a skill escaping its own directory to reach a repo document the installer
-# does not deploy. Green from the repo, dead from ~/.claude/skills/<name>/. The
-# third one is the sharpest: test-strength is the skill whose whole subject is
-# gates that cannot fail, and its pointer to the contract listing the declared
-# prove-targets handed the reader nothing.
-#
-# RELATIVE CITATIONS ONLY, and this is the false-positive line (§2.11). An
-# absolute `/x` is already rooted, so the ambiguous-root question this rule asks
-# does not apply to it — and the vendored corpus is full of web-absolute paths
-# that are not filesystem paths at all: `/favicon.png` inside
-# fabric/Patterns/create_markmap_visualization/system.md is the recorded case.
-# Reporting that as a dead file reference would be a rule the operator mutes,
-# and a muted rule protects nothing. Config-owned absolutes are REF-1's and
-# REF-4's job, where the tool knows what the path is FOR.
-#
-# ONE AWK PROCESS, NOT ONE PER FILE. 539 files at one exec each measured 687 ms
-# against 135 ms for a single WITHFILE pass, and this rule is most of what the
-# check costs — a check that gets slow enough to notice is a check someone moves
-# off the session path. The measured total belongs to docs/reference/checks.md's row and is
-# deliberately not restated here: this comment said `0.22 s` while that row said
-# 0.31 s, which is the copy-drift CONSTITUTION "derive it" exists to stop.
-#
-# NOT skills/synced/, AND THIS IS AN OWNERSHIP LINE, NOT A PATTERN. The harness
-# writes that tree itself — account-synced skills, one `<bucket>/manifest.json`
-# per sync, surfaced in the listing as `anthropic-skills:*` — and rewrites it on
-# every sync, so no edit made on this box survives to repair a finding there. It
-# arrived after this rule was written and was scanned by default. Measured
-# 2026-09-17: its first run here produced REF-9's only two findings, both the
-# `[Source](URL)` citation TEMPLATE deep-research hands its subagents, where
-# `URL` is a placeholder and not a file. A red nobody on this box can act on is
-# the §2.11 defect, not caution. The tree is COUNTED and not examined, so the
-# exclusion is visible on every run rather than silent. A per-tree owner field
-# would let this line read a registry instead of naming a path (harbor#527);
-# until one exists, this path is the only such exclusion.
-_owned_skill_md() { # <find action> → every installed skill markdown file outside skills/synced/
-  find "$DIR/skills" -path "$DIR/skills/synced" -prune -o -name '*.md' "$@" 2>/dev/null
+# REF-5 generalised to the skills corpus: same extractor, resolver and declared-root rule, separate because the blast radius differs (the constitution is in every session, a skill when its subject comes up). Found by harbor#462: skills escaping their own directory (../../contracts/cu.md) to repo docs the installer does not deploy, green from the repo and dead from ~/.claude/skills/<name>/.
+# Relative citations only (§2.11): an absolute /x is already rooted, and vendored corpora hold web paths such as /favicon.png that are not files. Config-owned absolutes are REF-1's and REF-4's.
+# One awk process, not one per file (539 files measured 687 ms against 135 ms); the total is docs/reference/checks.md's, not restated here.
+# Not skills/synced/: an ownership line, not a pattern. The harness rewrites that tree on every sync, so no edit here survives, and its only findings were a `[Source](URL)` placeholder template (a red nobody can act on, §2.11). It is counted, not examined, so the exclusion shows on every run (harbor#527).
+_owned_skill_md() { # <find action> → every installed skill markdown file outside skills/synced/ and skills/.trash/ (a skill the harness moved aside, harbor#1437)
+  find "$DIR/skills" -path "$DIR/skills/synced" -prune -o -path "$DIR/skills/.trash" -prune -o -name '*.md' "$@" 2>/dev/null
 }
 if [ -d "$DIR/skills" ]; then
   if [ ! -f "$EXTRACT" ]; then
@@ -776,10 +404,7 @@ if [ -d "$DIR/skills" ]; then
     _owned_skill_md -print0 \
       | xargs -0 awk -v WITHFILE=1 -f "$EXTRACT" 2>/dev/null \
       | sort -u > "${TMPDIR:-/tmp}/refchk-9.$$"
-    # Both halves of REF-9's denominator (harbor#467): how many rows came back,
-    # and how many files they could have come from. The second is what makes the
-    # first readable — `0 citations` over 0 files is an empty skills tree, and
-    # `0 citations` over 539 files is a broken extractor.
+    # REF-9's denominator (harbor#467): rows returned and files they could come from; 0 over 0 files is an empty tree, 0 over many is a broken extractor.
     SKILL_FILES="$(_owned_skill_md -print | awk 'END { print NR+0 }')"
     CITED_SKILLS="$(awk 'NF { n++ } END { print n+0 }' "${TMPDIR:-/tmp}/refchk-9.$$")"
     _r9_synced="$(find "$DIR/skills/synced" -name '*.md' 2>/dev/null | awk 'END { print NR+0 }')"
@@ -788,9 +413,7 @@ if [ -d "$DIR/skills" ]; then
     else
       examined "REF-9" "$CITED_SKILLS" "citation(s) extracted from $SKILL_FILES installed skill file(s)"
     fi
-    # The declared root is read once per document, not once per citation: a
-    # skill carrying twelve references would otherwise re-parse its frontmatter
-    # twelve times, and the answer cannot change between them.
+    # The declared root is read once per document, not once per citation.
     _r9_doc=''; _r9_root=''; _r9_dir=''
     while IFS='	' read -r _doc ref; do
       [ -n "${_doc:-}" ] || continue
@@ -815,26 +438,13 @@ if [ -d "$DIR/skills" ]; then
 fi
 
 # ── REF-10 · an extractor that returned NOTHING from a cited document ────────
-# harbor#467, and the rule the 34 days of green actually needed. Every rule above
-# asks "does what I found resolve"; this one asks the question none of them can,
-# which is "did I find anything at all". They are not the same question and the
-# output cannot tell them apart: a gate over a document full of citations it
-# cannot parse prints the identical clean line as a gate over a document with
-# none, and the operator has no way in from the outside.
-#
-# The predicate is deliberately asymmetric — the real extractor decides there is
-# a problem by returning zero, and `_looks_cited` only decides whether that zero
-# is suspicious. Neither can fire alone, which is what keeps a broad probe from
-# becoming a false positive (see _looks_cited for what that costs).
+# harbor#467, the rule the 34 days of green needed. The rules above ask "does what I found resolve"; this asks "did I find anything". Asymmetric on purpose: the extractor decides by returning zero and `_looks_cited` only whether that zero is suspicious, so neither fires alone.
 if [ -f "$DIR/CLAUDE.md" ] && [ -f "$EXTRACT" ] && [ "$CITED_CLAUDE" -eq 0 ]; then
   _looks_cited "$DIR/CLAUDE.md" && finding "REF-10" "CLAUDE.md" \
     "the citation extractor returned NOTHING from a document that carries citation-shaped text — REF-5's clean line would have meant 'I checked zero paths', which is not the claim it appears to make"
 fi
 if [ -f "$EXTRACT" ] && [ "$SKILL_FILES" -gt 0 ] && [ "$CITED_SKILLS" -eq 0 ]; then
-  # Only reached when the corpus produced zero rows, so the cost of this second
-  # pass is paid exclusively in the broken case.
-  # The same corpus REF-9 read, or this could name a synced file as proof the
-  # extractor went blind on a file the extractor was never given.
+  # Reached only when the corpus produced zero rows, over the same corpus REF-9 read (not synced files).
   _r10_hit="$(_owned_skill_md -print \
               | while IFS= read -r _f; do _looks_cited "$_f" && { printf '%s' "$_f"; break; }; done)"
   [ -n "${_r10_hit:-}" ] && finding "REF-10" "skills/ → ${_r10_hit#"$DIR"/}" \
@@ -842,24 +452,8 @@ if [ -f "$EXTRACT" ] && [ "$SKILL_FILES" -gt 0 ] && [ "$CITED_SKILLS" -eq 0 ]; t
 fi
 
 # ── REF-6 · an INSTALLED config dir with no constitution ─────────────────────
-# REF-5 is guarded on `[ -f "$DIR/CLAUDE.md" ]`, so until this rule existed the
-# absence of the constitution was the quietest possible state: zero findings,
-# exit 0, "every hook, pin and citation resolves". A checker whose clean result
-# is indistinguishable from "there was nothing to check" is the exact failure it
-# was built to catch, and it shipped that way on 2026-08-03 — found the same day
-# by an adversarial pass, which also found `harbor verify` green on the same box
-# for the same reason (admission-verify.sh now carries the B8 half of this).
-#
-# THE PREDICATE IS `settings.json`, NOT the directory. An empty or absent dir is
-# answered above: nothing is installed, so nothing dangles. A dir carrying
-# settings.json is a CONFIGURED box, and a configured box with no CLAUDE.md is
-# not "unused" — it is governed by hooks and guards while loading no doctrine.
-#
-# BEFORE WIRING THIS INTO floor-verify OR A GATE, READ THIS: test-sandbox-make.sh:69
-# aborts when floor-verify fails, and it never writes a CLAUDE.md into a
-# sandbox. This rule is correct FOR A SANDBOX — doctrine genuinely is not
-# loaded there — so anything that turns it into a hard failure must give
-# sandboxes a constitution first, or it breaks every sandbox build (№2.11).
+# REF-5 is guarded on CLAUDE.md existing, so its absence was the quietest state: zero findings, exit 0. The predicate is settings.json, not the directory (an empty dir is answered above): a configured box with no CLAUDE.md runs hooks and loads no doctrine.
+# Before turning this into a hard failure in floor-verify or a gate: test-sandbox-make.sh aborts when floor-verify fails and writes no CLAUDE.md into a sandbox, so give sandboxes a constitution first (№2.11).
 if [ -f "$S" ] && [ ! -f "$DIR/CLAUDE.md" ]; then
   finding "REF-6" "CLAUDE.md" \
     "a configured box with no constitution — hooks and guards run, doctrine does not, and every other rule here reports clean" \
@@ -929,10 +523,7 @@ else
 $FINDINGS
 EOF
 fi
-# THE DENOMINATOR IS PART OF THE VERDICT, never a --verbose extra (harbor#467).
-# Printed on a clean run as well as a dirty one, because a clean run is exactly
-# where "0 findings" and "0 items examined" become indistinguishable, and that
-# is the state this tool spent 34 days in.
+# The denominator is part of the verdict (harbor#467), printed on clean runs too.
 while IFS='	' read -r r n w; do
   [ -n "${r:-}" ] || continue
   log_note "$(printf '%-6s examined %s %s' "$r" "$n" "$w")"

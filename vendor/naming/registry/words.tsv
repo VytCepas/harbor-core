@@ -1011,6 +1011,7 @@ crossing	-
 crossings	-
 crosswalk	-
 csp	standard technical acronym in common use
+cu	tool, product or format name
 curated	-
 curates	-
 curl	-
@@ -2958,6 +2959,7 @@ ordering	-
 orders	-
 ordinal	-
 ordinary	-
+org	GitHub's own short word for an organisation; the check id ci.runner-switch-org carries it, and so does its fragment name
 organizer	-
 orgs	-
 oriented	-
@@ -4648,6 +4650,7 @@ unavailable	-
 unbalanced	-
 unbounded	-
 unbuilt	-
+uncalled	-
 uncertainty	-
 unchanged	-
 unchecked	-

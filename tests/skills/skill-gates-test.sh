@@ -1,1 +1,0 @@
-../skill/gates/gates.test.sh

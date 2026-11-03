@@ -3,7 +3,7 @@
 # case: a public repo must render PUBLIC, a private one PRIVATE, and a row the box cannot read must render
 # UNKNOWN, never a guessed visibility. The stub answers from a fixture table and fails on any repo it was not
 # told about, so no real GitHub call is made. The registry is read through scope-roots.sh --repos (falling back to
-# the private layer's inject.d/box/projects.tsv, harbor#1149), and --check holds a fresh render against the live block's visibility lines:
+# the private layer's context-rules/user/projects.tsv, harbor#1149), and --check holds a fresh render against the live block's visibility lines:
 # green when they match, red when a repo's visibility, a line or the whole set differs, never a write.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 TOOL="$T_ROOT/bin/access-environment.sh"; FX="$T_TMP/fx"; mkdir -p "$FX"
@@ -58,14 +58,14 @@ t_eq "missing registry exits 2" 2 "$RC"
 
 # ── the registry: scope-roots.sh --repos first, the private layer's projects.tsv when there is none ─────────
 # A fixture workspace: PORT_ROOT holds the checkouts, the private layer holds repos.tsv (id path kind remote, the path relative to PORT_ROOT). HARBOR_SCOPE_ROOT is
-# a root whose bin/, contracts/ and standards/ are the real ones. A second private layer carries only inject.d/box/projects.tsv (harbor#1149: core ships none), so the fallback names nothing of this box.
+# a root whose bin/, contracts/ and standards/ are the real ones. A second private layer carries only context-rules/user/projects.tsv (harbor#1149: core ships none), so the fallback names nothing of this box.
 WS="$FX/ws"; PRIV="$FX/private"; HR="$FX/hroot"; PROJ="$FX/projonly"
-mkdir -p "$WS" "$PRIV" "$HR" "$PROJ/inject.d/box"
+mkdir -p "$WS" "$PRIV" "$HR" "$PROJ/context-rules/user"
 cp -R "$FX/pub" "$WS/pubrepo-checkout"; cp -R "$FX/priv" "$WS/privrepo-checkout"
 printf 'id\tpath\tkind\tremote\nwspub\tpubrepo-checkout\tworkload\t-\nwspriv\tprivrepo-checkout\tworkload\t-\n' > "$PRIV/repos.tsv"
 ln -s "$T_ROOT/bin" "$HR/bin"; ln -s "$T_ROOT/contracts" "$HR/contracts"; ln -s "$T_ROOT/standards" "$HR/standards"
-printf 'fallbackrow\t%s\tonly in projects.tsv\n' "$FX/pub" > "$PROJ/inject.d/box/projects.tsv"
-mkdir -p "$PRIV/inject.d/box"; cp "$PROJ/inject.d/box/projects.tsv" "$PRIV/inject.d/box/projects.tsv"   # beside repos.tsv: never read
+printf 'fallbackrow\t%s\tonly in projects.tsv\n' "$FX/pub" > "$PROJ/context-rules/user/projects.tsv"
+mkdir -p "$PRIV/context-rules/user"; cp "$PROJ/context-rules/user/projects.tsv" "$PRIV/context-rules/user/projects.tsv"   # beside repos.tsv: never read
 envrun() { # <private dir> [tool args…] → the tool run in the fixture workspace; stdout then stderr in $FX/e.out / e.err
   _p="$1"; shift
   HARBOR_SCOPE_ROOT="$HR" HARBOR_SCOPE_PRIVATE="$_p" PORT_ROOT="$WS" sh "$TOOL" "$@" > "$FX/e.out" 2> "$FX/e.err"; ERC=$?
@@ -79,12 +79,12 @@ t_has "...and the private one" "$(cat "$FX/e.out")" "- wspriv (exampleorg/privre
 t_hasnt "projects.tsv is not read while a registry exists" "$(cat "$FX/e.out")" "fallbackrow"
 t_has "the log says which registry it read" "$(cat "$FX/e.err")" "registry: scope-roots.sh --repos"
 
-t_section "no repos.tsv: the private layer's inject.d/box/projects.tsv"
+t_section "no repos.tsv: the private layer's context-rules/user/projects.tsv"
 envrun "$PROJ" --gh "$GH"
 t_eq "exits 0" 0 "$ERC"
 t_has "the fallback row is rendered" "$(cat "$FX/e.out")" "- fallbackrow (exampleorg/pubrepo): PUBLIC"
 t_hasnt "...and none of the registry's" "$(cat "$FX/e.out")" "wspub"
-t_has "the log names the fallback" "$(cat "$FX/e.err")" "registry: inject.d/box/projects.tsv"
+t_has "the log names the fallback" "$(cat "$FX/e.err")" "registry: context-rules/user/projects.tsv"
 
 t_section "no private layer: no registry, exit 2 and never this box's"
 envrun "$FX/no-private-layer" --gh "$GH"
@@ -249,4 +249,5 @@ chk "$FX/s-green.json"; chk "$FX/s-today.json"
 t_eq "settings.json is byte-identical after a green and a red check" "$BEFORE" "$(cksum < "$FX/s-green.json")$(cksum < "$FX/s-today.json")"
 t_has "--help shows the usage block, not only the first paragraph" "$(sh "$TOOL" --help)" "sh access-environment.sh --check"
 
+t_red drift.repo-visibility   # the falsifier this suite names for them (harbor#1422)
 t_done

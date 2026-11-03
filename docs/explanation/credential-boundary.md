@@ -1,3 +1,9 @@
+---
+kind: explanation
+owner: @VytCepas
+status: unreviewed
+---
+
 # The credential boundary — why the identity is the wall and the rule is the warning
 
 Recorded 2026-07-31 from [harbor#57](https://github.com/VytCepas/harbor/issues/57),

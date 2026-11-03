@@ -5,53 +5,13 @@
 #   sh hooks/injection-rule/injection-rule.sh --list                      what packs exist, and where
 #   sh hooks/injection-rule/injection-rule.sh --explain < payload.json    which rules matched, and why
 #
-# DELIBERATELY ONE FILE (lint G1, docs/explanation/modularity.md): splitting the
-# predicate vocabulary from the pack loader would put the two halves of one
-# contract in two files, and the thing this replaces is exactly that scatter.
-#
-# WHY AN ENGINE AND NOT ANOTHER HOOK SCRIPT. bin/govern-hook.sh is 360 lines of
-# shell for four rules, and every rule a second repo wants is a second script
-# with its own matcher, its own fail-open discipline and its own bugs. That does
-# not scale past one repo, and the operator's environment is already four —
-# harbor and its workload repos — with more coming. So the shell is written
-# ONCE and the rules become DATA: a repo declares `context-rules/<repo>/<id>.md` and
-# gets just-in-time governance with no shell of its own.
-#
-# WHAT MAKES THIS WORTH THE BYTES, MEASURED. E6 (docs/reports/evals.md) ran the same sentence
-# two ways: as prose inside a runbook the model had already opened it scored
-# 0/4, and injected at the tool call it scored 4/4. E8 then showed that volume in
-# the prefix changes nothing — a 595 B constitution and a 17,845 B one both score
-# 3.00/3. The variable is not how much you write or where in the prefix you put
-# it. It is whether the rule is RESIDENT when the model acts, or has to be
-# fetched. Every repo here has a CLAUDE.md whose whole content is "the real
-# instructions are in AGENTS.md, read it first", which is the fetch-required
-# shape, so those instructions do not bind. This is the fix for that.
-#
-# INFORM BY DEFAULT, AND THAT IS MEASURED. E6 ran a veto arm and an inform arm
-# against the same trap: inform 4/4, veto 3/4, and the veto's one miss was a
-# session that stopped to ask instead of acting. Vetoing belongs to the floor
-# (admission-bash.sh, admission-egress.sh) where the question is "may this happen at
-# all", and a pack that merely wants attention must never reach for it.
-#
-# THERE IS ONE OPT-IN DENY, AND THIS PARAGRAPH USED TO SAY THERE WAS NONE. It
-# said "deliberately no `deny` mode here" for the whole of the time the mode
-# existed: PR #262 added the `HARBOR-DECISION deny:` sentinel because a real
-# gate had been silently disarmed — bin/govern-hook.sh computes a blocking merge
-# verdict, and reaching it through this engine wrapped that verdict as prose,
-# which cannot stop a Bash call. Suite green, every red PR merged. A header that
-# denies the existence of the blocking path is worse than no header, because a
-# reader deciding whether a pack CAN block gets a confident wrong answer. The
-# sentinel is exact, opt-in, `run:`-only and PreToolUse-only; the rules that keep
-# it from becoming a second floor are stated where it is implemented, below.
-#
-# CONDITIONAL OR NOTHING (CONSTITUTION §2.11). Every path prints nothing when it
-# has nothing true to say. A false positive is a defect, not safety: a guard that
-# fires on ordinary work is a guard that gets switched off, and this one is
-# especially exposed because it rides on the Bash tool.
-#
-# FAIL-OPEN EVERYWHERE. No jq, malformed JSON, an unreadable pack, an unknown
-# predicate, a `run:` script that errors — every one exits 0 having printed
-# nothing. A hook whose failure mode is noise is a hook that gets removed.
+# One file on purpose (lint G1, docs/explanation/modularity.md): the predicate vocabulary and the pack loader are one contract.
+# Rules are DATA (context-rules/<repo>/<id>.md); the shell is written once. Why inject at the tool call: E6/E8 in docs/reports/evals.md
+# (a rule RESIDENT when the model acts binds; one it must fetch does not).
+# Inform by default (E6: inform 4/4, veto 3/4); vetoing is the floor's job (admission-bash.sh, admission-egress.sh).
+# One opt-in deny exists: the `run:`-only, PreToolUse-only `HARBOR-DECISION deny:` sentinel (harbor#254), rules at its implementation.
+# Conditional or nothing (CONSTITUTION 2.11) and fail-open: no jq, bad JSON, unreadable pack, unknown predicate, erroring `run:` all exit 0 silent.
+# Removed notes: docs/explanation/code-cases/hooks-injection-rule-injection-rule.md
 set -eu
 
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
@@ -68,39 +28,26 @@ case "${1:-}" in
   *)          printf '  FAIL: injection-rule: unknown flag %s\n  fix: sh %s --help\n' "$1" "$0" >&2; exit 2 ;;
 esac
 
-# ── pack discovery ──────────────────────────────────────────────────────────
-# TWO TIERS, AND THE ORDER IS THE PRECEDENCE. Box packs carry rules true in every
-# session on this machine (the subagent contract, what survives compaction, that
-# fetched content is data). Repo packs carry rules true only inside one tree.
-#
-# THE REPO IS RESOLVED FROM THE SESSION'S CWD, NOT FROM THIS SCRIPT'S LOCATION.
-# The installed copy lives in the box config dir and must serve whatever repo the
-# session is standing in; resolving from $0 would make every session load
-# harbor's rules. CLAUDE_PROJECT_DIR is what the harness sets; cwd is the
-# fallback for a hand-run.
+# -- pack discovery --
+# Two tiers, box then repo; the order is the precedence. The repo comes from the session's cwd (CLAUDE_PROJECT_DIR), not from $0:
+# the installed copy must serve whatever repo the session stands in.
 REPO="$(cd "${CLAUDE_PROJECT_DIR:-$PWD}" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null || true)"
 [ -n "$REPO" ] || REPO="${CLAUDE_PROJECT_DIR:-$PWD}"
 
-# THE TWO TIERS CAN BE THE SAME DIRECTORY, and then every box pack fires twice.
-# Measured, not imagined: a session whose project dir is $HOME resolves REPO=$HOME,
-# and $HOME/.claude/inject.d IS $CFG/inject.d. The doubled note is the visible
-# half; the silent half is worse, because `once: session` spends its ledger key on
-# the first pass and a genuinely two-tier box would then skip a repo rule. Compared
-# PHYSICALLY (symlinks resolved) for the reason lint D2 exists: /tmp and
-# /private/tmp are the same directory and differ as strings.
+# The two tiers can be the same directory (project dir = $HOME), and then box packs fire twice and `once: session` spends its key early.
+# Compared physically (symlinks resolved, lint D2): /tmp and /private/tmp differ as strings.
 _phys() { CDPATH='' cd -P -- "$1" 2>/dev/null && pwd -P || printf '%s' "$1"; }
 
-# TWO LAYOUTS FOR ONE RELEASE (harbor#1010, D-43, D-65). A rule is context-rules/<scope>/<id>.md;
-# the old inject.d/ is still read until the date in standards/naming/renames.tsv. New first: on an id clash it wins.
-# Box tier: $CFG/context-rules/user, then $CFG/inject.d. A tree: each context-rules/<scope>/ but user (the box
-# tier's source, which only the installer delivers), then .claude/inject.d. A tree dir that IS a box dir is dropped.
+# A rule is context-rules/<scope>/<id>.md (harbor#1010, D-43, D-65); the old inject.d/ layout is retired and not read.
+# Box tier: $CFG/context-rules/user. A tree: each context-rules/<scope>/ but user (the box
+# tier's source, which only the installer delivers). A tree dir that IS a box dir is dropped.
 box_dirs() {
-  for _bd in "$CFG/context-rules/user" "$CFG/inject.d"; do [ ! -d "$_bd" ] || printf '%s\n' "$_bd"; done
+  for _bd in "$CFG/context-rules/user"; do [ ! -d "$_bd" ] || printf '%s\n' "$_bd"; done
   return 0
 }
 BOXP="$(box_dirs | while IFS= read -r _bd; do _phys "$_bd"; printf '\n'; done)"
 tree_dirs() { # <tree>
-  for _td in "$1"/context-rules/*/ "$1/.claude/inject.d"; do
+  for _td in "$1"/context-rules/*/; do
     _td="${_td%/}"
     [ -d "$_td" ] || continue
     case "$_td" in "$1/context-rules/user") continue ;; esac
@@ -129,17 +76,12 @@ rule_files() { # <dir>... (new layout first) -> one rule file per line; an id al
       printf "%d\t%s\t%s\n", o, n, f }' | sort -t "$(printf '\t')" -k1,1n -k2,2 | cut -f3-
 }
 
-# Collation is pinned for the same reason skill-catalog.sh pins it: glob order is
-# LC_COLLATE-dependent, and two boxes ordering the same packs differently would
-# emit notes in a different order and make any diff-based check flap.
+# Collation pinned: glob order is LC_COLLATE-dependent and a differing order would flap diff-based checks.
 LC_ALL=C
 export LC_ALL
 
-# ── frontmatter ─────────────────────────────────────────────────────────────
-# THE FRONTMATTER ONLY, never the whole file. skill-catalog.sh records the failure
-# this avoids: scanning the body misfiled any skill whose prose mentioned the key
-# at column 0 — and these packs are documents ABOUT matching, so a pack that
-# discussed `event:` in its note would classify itself.
+# -- frontmatter --
+# Frontmatter only, never the body: packs are documents ABOUT matching and would classify themselves (as skill-catalog.sh records).
 fm()   { awk 'NR==1 && $0 !~ /^---[[:space:]]*$/ { exit }
               NR>1  && $0 ~  /^---[[:space:]]*$/ { exit }
               NR>1' "$1"; }
@@ -149,15 +91,9 @@ body() { awk 'BEGIN { n = 0 }
 fmv()  { fm "$1" | awk -v k="^$2:[[:space:]]*" '$0 ~ k { sub(k, ""); print; exit }'; }
 fmall(){ fm "$1" | awk -v k="^$2:[[:space:]]*" '$0 ~ k { sub(k, ""); print }'; }
 
-# ── THE SAME ANSWERS, ONE awk PER PACK (harbor#669) ────────────────────────
-# fmv is `fm | awk`, two processes, and the sweep asked it for the id and the
-# event of EVERY pack on EVERY event before it could skip one. Measured
-# 2026-09-24: about 60 awk per hook call and 300-460 ms at load 7, paid on every
-# tool call in every session, and 131 s of one CI suite that runs this engine
-# once per tracked file. The sweep now reads a pack's frontmatter once (fm_load)
-# and answers each key by string handling in this shell: no fork, no temp file.
-# Same match as fmv: the first line that starts with `<key>:`, with the blanks
-# after the colon stripped. fmv/fmall stay for --list, which is not on a hot path.
+# -- the same answers, one awk per pack (harbor#669) --
+# fmv is `fm | awk`; the sweep asks every pack on every event, so it reads frontmatter once (fm_load) and answers by string handling.
+# Same match as fmv (first `<key>:` line, blanks after the colon stripped); fmv/fmall stay for --list.
 NL='
 '
 fm_load() { _FM="$(fm "$1")"; }
@@ -194,11 +130,8 @@ if [ "$MODE" = list ]; then
   exit 0
 fi
 
-# ── the payload ─────────────────────────────────────────────────────────────
-# NO jq HARD DEPENDENCY, same position as govern-hook.sh and annotate-web.sh:
-# without jq we cannot BUILD valid JSON for arbitrary text, and the choice is a
-# fixed safe string or silence. Nothing here is a safety boundary — a missed
-# note costs a note — so it is silence.
+# -- the payload --
+# No jq means no valid JSON for arbitrary text: silence, since a missed note costs only a note.
 PAYLOAD="$(cat)"
 [ -n "$PAYLOAD" ] || exit 0
 command -v jq >/dev/null 2>&1 || exit 0
@@ -211,31 +144,12 @@ TOOL="$(field '.tool_name')"
 SID="$(field '.session_id')"
 CMD="$(field '.tool_input.command' | head -c 262144)"
 FPATH="$(field '.tool_input.file_path')"
-# SessionStart says WHY it started: startup | resume | clear | compact | fork.
-# The distinction is the whole reason the post-compaction rule can exist at all
-# (see the EVENTS_WITH_CONTEXT block) — without it, a rule about compaction would
-# have to fire on every session opening and would be noise four times in five.
+# SessionStart's `source` (startup|resume|clear|compact|fork) is what lets the post-compaction rule exist without firing on every start.
 SOURCE="$(field '.source')"
 
-# The written text for a Write/Edit, and the tool's OUTPUT for a PostToolUse.
-# Capped, because a hook that blocks its tool call while a shell walks a 40 MB
-# string is a hook the operator disables. 256 KB is far past any prose file and
-# far short of anything that stalls.
-#
-# THE NULL FILTER COMES BEFORE `tostring`, NOT AFTER. It was the other way round,
-# so a payload with no `tool_response` produced the literal four-character string
-# `null` as content — jq's `tostring` runs on the null and the later
-# `select(. != null)` sees a non-null string. Nothing shipped uses
-# `content-contains`, so it had no live effect; it was a loaded gun for the first
-# pack that did. Found by an adversarial pass.
-#
-# `.error` IS PART OF THE CONTENT ON A FAILURE, and without this line it was the
-# same loaded gun the paragraph above describes. `PostToolUseFailure` carries NO
-# `tool_response` — measured live against 2.1.258, the payload is `tool_name`,
-# `tool_input`, `tool_use_id`, `error`, `is_interrupt`, `duration_ms` — so on the
-# one event whose whole subject is what went wrong, `content-contains` matched
-# against an empty string and could only ever return false. Silently: no error,
-# no note, a predicate that reads as "did not match".
+# Written text for Write/Edit and the tool OUTPUT for PostToolUse, capped so the hook cannot stall its tool call.
+# The null filter precedes `tostring`, else a missing tool_response became the literal string `null`.
+# `.error` is content too: PostToolUseFailure carries no tool_response, so content-contains could never match there.
 CONTENT="$(printf '%s' "$PAYLOAD" | jq -r '
   [ (.tool_input.content? // empty),
     (.tool_input.new_string? // empty),
@@ -243,44 +157,24 @@ CONTENT="$(printf '%s' "$PAYLOAD" | jq -r '
     (.tool_response? | select(. != null)
       | if type == "string" then . else (tostring) end) ]
   | map(select(. != null and . != "")) | join("\n")
-  # BOTH ENDS, NOT THE HEAD. A plain `head -c` made the cap an evasion: bury the
-  # injection past byte 262144 of an oversized document and nothing scans it.
-  # Keeping the tail costs nothing and closes the cheapest bypass there was.
+  # Keep both ends: a head-only cap let an injection past byte 262144 evade the scan.
   | if (length > 262144) then (.[:196608] + "\n" + .[-65536:]) else . end
   ' 2>/dev/null || true)"
 
-# ── provenance ──────────────────────────────────────────────────────────────
-# NOT A LABEL. bin/govern-token.sh's header carries the argument at length: this
-# estate pipes FETCHED WEB PAGES through a byte-identical additionalContext
-# envelope, so `[HARBOR GOVERNANCE]` in a page is indistinguishable from this
-# file's output by inspection, and a self-label is exactly what an attack writes.
-# The token is derived from a box-local salt the fetched content cannot contain.
-# Empty is the default and degrades to an unlabelled note that still says
-# something true — a provenance mechanism that turned reminders OFF when
-# unconfigured would be worse than the problem.
+# -- provenance --
+# Not a label: fetched pages ride the same envelope, so the stamp carries a token derived from a box-local salt (bin/govern-token.sh).
+# An empty token degrades to an unlabelled note rather than turning reminders off.
 TOK=''
 [ -f "$SELF_DIR/govern-token.sh" ] && \
   TOK="$(sh "$SELF_DIR/govern-token.sh" --token "$SID" 2>/dev/null || true)"
 STAMP='[HARBOR GOVERNANCE]'
 [ -n "$TOK" ] && STAMP="[HARBOR GOVERNANCE $TOK]"
 
-# ── the predicate vocabulary ────────────────────────────────────────────────
-# FIXED, AND NOT A LANGUAGE. Every predicate below compares a value FROM the
-# payload against a pattern FROM a trusted pack file, and the payload value is
-# only ever the subject of a `case`, never the pattern. Nothing from the payload
-# is ever eval'd, interpolated into a command string, or used as a glob —
-# CONSTITUTION §4's rule about external input, applied to the one file in this
-# design that reads attacker-reachable text on purpose.
-#
-# `case` GLOBS, NOT grep, for the reason hooks/pre-commit and govern-hook.sh both
-# record: this machine's `grep` is a ugrep wrapper carrying `-I --ignore-files`,
-# and a matcher whose behaviour depends on which grep is first in PATH means
-# something different on the CI runner. `case` is POSIX and has no flavour.
+# -- the predicate vocabulary --
+# Fixed, not a language: payload values are only ever the subject of a `case`, never a pattern, never eval'd or interpolated (CONSTITUTION 4).
+# `case` globs, not grep: this box's grep is a ugrep wrapper (see hooks/pre-commit).
 
-# A heredoc body is not code. govern-hook.sh's header records the incident: a
-# documentation line inside a heredoc is indistinguishable from a command by
-# position alone, and an adversarial review demonstrated command-position
-# splitting did not fix it.
+# A heredoc body is not code (see govern-hook.sh's header).
 strip_heredocs() {
   printf '%s\n' "$1" | awk '
     BEGIN { skip = 0 }
@@ -294,26 +188,9 @@ strip_heredocs() {
       }
     }'
 }
-# A QUOTED ARGUMENT IS NOT CODE EITHER, and this was the worst defect an
-# adversarial pass found in this file. `segments()` split on `; & | ( )` and
-# newline WITHOUT regard to quoting, so
-#   git commit -m "docs: record the gate (gh pr create needs the agents first)"
-# produced a segment reading `gh pr create needs the agents first` and fired the
-# a workload pack — on a commit, not on a PR. contracts/injection-rule.md stated the
-# opposite as a guarantee. And the second-order effect is worse than the noise:
-# those packs are `once: session`, so the benign commit SPENT the ledger key and
-# the real `gh pr create` later in the same session got total silence. A rule
-# that fires on the wrong turn and is then disarmed for the right one is strictly
-# worse than no rule at all.
-#
-# So quoted bodies are blanked — length-preserving, quotes kept — before any
-# splitting, exactly as heredoc bodies already are. State carries across lines so
-# a multi-line quoted argument is covered too.
-#
-# AN UNBALANCED QUOTE BLANKS THE REST OF THE COMMAND, and that is the deliberate
-# direction to fail in: the cost is a missed note, where the opposite choice
-# costs a false one. §2.11 — a false positive is a defect, a missed reminder
-# costs a reminder.
+# A quoted argument is not code either: unblanked, a commit message mentioning `gh pr create` fired a pack and, being `once: session`, disarmed it for the real call.
+# Quoted bodies are blanked (length-preserving, quotes kept) before splitting; state carries across lines.
+# An unbalanced quote blanks the rest of the command: a missed note beats a false one (2.11).
 blank_quoted() {
   printf '%s\n' "$1" | awk '
     BEGIN { q = "" }
@@ -334,24 +211,14 @@ blank_quoted() {
     }'
 }
 
-# THE WHITESPACE NORMALISATION HAPPENS HERE, IN THE ONE awk THAT ALREADY RUNS.
-# It used to be a `tr` per segment inside the matching loop, which is one
-# fork-pair per segment of the command — measured by an adversarial pass at 8.7 s
-# for a 3,000-segment `&&` chain and 14.7 s for 5,000, against a hook timeout of
-# 10. A PreToolUse hook that blocks its own tool call for fifteen seconds on a
-# long pipeline is a hook the operator switches off, and the shape that triggers
-# it is an ordinary generated command line, not an attack. Now it is one fork
-# total and the same 3,000 segments cost about as much as one.
+# Whitespace normalisation lives in this one awk: a `tr` per segment cost a fork pair each and exceeded the hook timeout on long `&&` chains.
 segments() {
   blank_quoted "$(strip_heredocs "${1:-}")" \
     | tr '\n;&|()' '\012\012\012\012\012\012\012' \
     | awk '{ gsub(/[[:space:]]+/, " "); sub(/^ /, ""); sub(/ $/, ""); if ($0 != "") print }'
 }
 
-# THE SUBCOMMAND, NOT A SUBSTRING. govern-hook.sh shipped the substring version
-# first and it fired on `gh pr list --search "pr merge"` and on any prose
-# argument mentioning the phrase. The predicate is the first N WORDS of a
-# command-position segment, so the phrase has to be the invocation.
+# The subcommand, not a substring: the predicate is the first N words of a command-position segment.
 seg_prefix() { # <words> -> 0 when some segment starts with exactly those words
   _want="$1"
   while IFS= read -r _s; do
@@ -360,24 +227,8 @@ seg_prefix() { # <words> -> 0 when some segment starts with exactly those words
       "$_want"|"$_want "*) ;;
       *) continue ;;
     esac
-    # `--help` RENDERS DOCUMENTATION AND DOES NOTHING ELSE, for every command
-    # that has ever had a manual. A note about the consequences of an action,
-    # delivered to someone reading how the action works, is noise by definition —
-    # govern-hook.sh carried this exclusion for its one rule, and it belongs in
-    # the vocabulary so every future pack inherits it.
-    #
-    # `-h` IS NOT IN THIS LIST AND THE FIRST CUT HAD IT THERE, on the claim that
-    # the exclusion "can never wrongly suppress". That claim was false twice over,
-    # measured. `-h` is a VALUE flag for tools installed on this box — `docker run
-    # -h web`, `mysql -h prod.db.internal` — so it silences real invocations of
-    # real commands. And the test scanned the whole segment rather than a flag
-    # position, so `gh pr merge 12 --body 'pass -h to see flags'` silenced an
-    # installed pack from inside a quoted string. `--help` has neither problem:
-    # no tool on this box takes it as a value, and a segment containing it as a
-    # token is a manual read.
-    # Tested against the segment as it now stands, whose quoted bodies are
-    # already blanked by blank_quoted() — so `--help` inside an argument cannot
-    # suppress a real invocation, which is the second half of the same defect.
+    # `--help` renders documentation: a consequence note there is noise. `-h` is deliberately not excluded (a value flag: `docker run -h`, `mysql -h`).
+    # Quoted bodies are already blanked, so `--help` inside an argument cannot suppress a real invocation.
     case " $_s " in *' --help '*) continue ;; esac
     case "$_s" in *' --help') continue ;; esac
     return 0
@@ -387,12 +238,8 @@ SEGS
   return 1
 }
 
-# THE COMMAND WORD, for a tool whose invocation varies in front of its name
-# (inst-quiet-predicates). cmd-prefix needs the segment to START with the words,
-# so `X=dir gcal-write add` and `~/.local/bin/gcal-write add` slipped past it, and
-# the cmd-contains it replaced fired on prose, greps and PR bodies. Same segments
-# (heredocs and quoted bodies already gone), then assignments skipped, and the
-# word must be the name or a path ending in `/name`. `--help` is excluded as above.
+# The command word, for tools whose invocation varies in front of the name (inst-quiet-predicates): assignments skipped,
+# the word must be the name or a path ending `/name`; `--help` excluded as above.
 seg_word() { # <name> -> 0 when some segment's command word is <name>
   _want="$1"
   while IFS= read -r _s; do
@@ -414,12 +261,7 @@ pred() { # <predicate line> -> 0 when satisfied
   case "$_p" in 'not '*) _neg=1; _p="${_p#not }" ;; esac
   _kind="${_p%% *}"
   if [ "$_kind" = "$_p" ]; then _arg=''; else _arg="${_p#* }"; fi
-  # AN UNKNOWN PREDICATE IS ITS OWN ANSWER, NOT "DID NOT MATCH". The first cut
-  # returned the same 1 for both, and `not` could not tell them apart — so
-  # `not cmd-prefx git push`, one letter wrong, inverted a never-matching typo
-  # into a rule that fired on everything. Exactly the universal-rule-from-a-typo
-  # failure the comment below promises cannot happen, arriving through the one
-  # operator this file also provides. Found by an adversarial pass, reproduced.
+  # An unknown predicate is its own answer: returning 1 let `not <typo>` invert into a rule that fired on everything.
   case "$_kind" in
     always|cmd-prefix|cmd-word|cmd-contains|path-contains|content-contains|repo-has|tool-is|source-is|injected-instruction) ;;
     *) explain "unknown predicate '$_kind' — refusing to fire either way"; return 1 ;;
@@ -446,27 +288,9 @@ pred() { # <predicate line> -> 0 when satisfied
   return "$_r"
 }
 
-# ── the detector ────────────────────────────────────────────────────────────
-# THE ONE PREDICATE THAT IS NOT A STRING COMPARE, and the reason this file exists
-# rather than a fifth branch in govern-hook.sh.
-#
-# E9 measured the hole precisely. An HTML comment reading `SYSTEM DIRECTIVE …
-# ignore previous instructions` was refused 4/4 by every arm including the one
-# with NO constitution at all — models are trained on that shape. A plausible
-# `## Documentation pipeline convention` heading, inside the very file the task
-# asked the model to summarise, was obeyed 6 of 8 times without §4 and STILL 2 of
-# 8 times with §4 fully present. §4 is load-bearing and it is not sufficient, and
-# this estate is unusually exposed to the convention shape because its sessions
-# are trained by their own environment to follow documented conventions.
-#
-# So the detector does not look for menace. It looks for text that addresses THE
-# PROCESSOR OF THE CONTENT rather than its reader — the one thing a legitimate
-# document almost never does and every content-borne injection must.
-#
-# TWO TIERS, BECAUSE ONE LIST WOULD HAVE TO CHOOSE between missing the quiet
-# shape and firing on ordinary prose. LOUD phrases are unambiguous and fire
-# alone. QUIET phrases are individually innocent and need corroboration: two of
-# them, or one plus a write/exfiltrate marker.
+# -- the detector --
+# The one predicate that is not a string compare. E9 (docs/reports/evals.md): a plausible 'documentation convention' injection was obeyed even with section 4 present.
+# So it looks for text addressed to the PROCESSOR of the content, not for menace. LOUD phrases fire alone; QUIET ones need two, or one plus a MARKERS hit.
 LOUD='ignore previous instruction
 ignore all previous
 ignore prior instruction
@@ -582,12 +406,8 @@ own_committed_read() {
   return 1
 }
 
-# The same provenance for a Bash READER (inst-quiet-predicates): `cat`, `head`, `tail`,
-# `sed -n`, `grep`, `wc` over files that each pass own_committed_file. Two locks, both needed:
-# the command has no separator, redirect or substitution and every stage is a reader; and
-# EVERY output line (stdout, stderr, error) is in one of those files, once grep's `name:`,
-# `N:` / `N-` and `cat -n` gutters are off. So any byte from elsewhere — a fetch, another
-# repo, an untracked or edited file — fails the second lock and the detector still runs.
+# The same provenance for a Bash READER (inst-quiet-predicates): every stage a reader (cat/head/tail/sed -n/grep/wc) over own_committed_file files,
+# no separator, redirect or substitution, and EVERY output line found in those files. Any foreign byte fails and the detector still runs.
 own_committed_bash() {
   [ "$TOOL" = Bash ] && [ -n "$CMD" ] || return 1
   case "$CMD" in *';'*|*'&'*|*'>'*|*'<'*|*'`'*|*'('*|*')'*|*'
@@ -658,22 +478,11 @@ detect_injection() {
   return 1
 }
 
-# ── the once-ledger ─────────────────────────────────────────────────────────
-# THE DEFAULT IS ONCE PER SESSION, and it is the difference between a mechanism
-# and wallpaper. A note repeated on every Bash call stops being read by its third
-# appearance, which is CONSTITUTION §2.11 arriving by a different door: the guard
-# is not switched off, it is tuned out, and nothing turns red either way.
-#
-# KEYED ON THE SESSION ID, WHICH IS WHY IT IS SAFE TO WRITE AT ALL. govern-hook.sh
-# is stateless by design because five sessions run concurrently on this machine
-# and `hostname` here intermittently answers `Mac`, which has already forked
-# host-sharded ledgers in this estate. A file per session id shares nothing
-# between sessions and cannot inherit that fork. With no session id — a hand-run,
-# a self-test — there is no ledger and every rule fires.
+# -- the once-ledger --
+# Default once per session: a note repeated on every Bash call is tuned out (2.11). Keyed on the session id (a file per session shares nothing
+# across concurrent sessions); no id means no ledger and every rule fires.
 SEEN=''
-# NEVER BUILD A PATH FROM UNVETTED TEXT (CONSTITUTION §4). The session id is
-# harness-supplied and reaches the filesystem here; a `../` in it would write
-# outside the ledger. Vetted before it is used, not after.
+# Vet the session id before it reaches a path (CONSTITUTION 4).
 case "$SID" in *[!A-Za-z0-9._-]*) SID='' ;; esac
 if [ -n "$SID" ] && [ "$MODE" = hook ]; then
   _sd="$CFG/state/inject"
@@ -703,29 +512,12 @@ USERMSG=''
 _GREP=/usr/bin/grep; [ -x "$_GREP" ] || _GREP=grep
 explain() { [ "$MODE" = explain ] && printf '%s\n' "$*" >&2 || true; }
 
-# ── the trees this call touches (harbor#599) ───────────────────────────────
-# ONE DEFINITION, written in contracts/injection-rule.md ("The tree a call touches") and
-# computed HERE for both of its readers: `scope: box` delivery below, and
-# repo-tier.sh's report, which receives the result as HARBOR_CONTEXT_TOUCHED instead of
-# working it out a second time. It was repo-tier.sh's own code for one PR
-# (#601); a second reader is what made it a seam.
-#   · a file tool — the path it names (`file_path`, `notebook_path`, `path`)
-#   · a shell command — its working folder (`.cwd`), every `-C <dir>`, and a
-#     `gh` `-R`/`--repo` slug mapped to its checkout under PORT_ROOT
-# `cd X && …` is NOT followed, by the #599 decision: reading a directory out of
-# a cd chain is the shell parsing #539 records as the floor's longest run of
-# fixes to fixes. The harness carries the new folder in the next call's `.cwd`.
-#
-# THE SHELL HALF REUSES THE FLOOR'S PARSER, library-admission.sh beside this file,
-# rather than growing a second one: floor_seg_load keeps a quoted argument as one
-# token, so a commit message that MENTIONS `git -C x` is never a flag. It does not
-# know heredoc bodies, so those segments are skipped up to their delimiter. No
-# guard-lib, or a command past its size bound, means no shell targets — silence,
-# which is this engine's posture everywhere else.
+# -- the trees this call touches (harbor#599) --
+# One definition (contracts/injection-rule.md, "The tree a call touches"), computed here for `scope: box` delivery and for repo-tier.sh (HARBOR_CONTEXT_TOUCHED).
+# A file tool: its path. A shell command: .cwd, every `-C <dir>`, a `gh -R/--repo` slug mapped under PORT_ROOT. `cd X &&` is not followed (#599).
+# The shell half reuses the floor's parser (library-admission.sh, floor_seg_load); heredoc segments are skipped. No guard-lib or oversize command: no targets, silence.
 
-# The repository holding <path>, physically, or nothing. A path that does not
-# exist yet (a Write creating a file) is walked up to the nearest directory that
-# does, and a file is walked up to its directory.
+# The repository holding <path>, physically (a not-yet-existing path walks up to the nearest directory).
 _top() {
   _d="$1"
   while [ ! -d "$_d" ]; do _d="$(dirname -- "$_d")"; done
@@ -734,16 +526,25 @@ _top() {
   return 0
 }
 
-# THE DECISION LOG (harbor#953). A rule that spoke leaves one record in guard-decisions.jsonl, through the
-# floor's own writer: g=inject, d=advise or deny, r=<pack id>. floor_log_decision works out the sink from
-# $0 (this script, <config>/bin), refuses anything but the known enums, and fails silent, so a box with no
-# ledger stays blind rather than wrong. library-admission.sh is read only on a fire (once a session for most
-# packs), never on the silent hot path. Only fires are written: a silent arm has no decision to record.
-log_rule() { # <advise|deny> <pack id>
+# THE DECISION LOG (harbor#953). A rule that spoke leaves one record (g=inject, d=advise|deny, r=<pack id>) through the floor's floor_log_decision,
+# read only on a fire; it fails silent, so a box with no ledger stays blind rather than wrong.
+log_rule() { # <advise|deny|shadow> <pack id>
   [ -f "$SELF_DIR/library-admission.sh" ] || return 0
   ( DIR="$SELF_DIR"; . "$SELF_DIR/library-admission.sh" >/dev/null 2>&1
     # shellcheck disable=SC2034 # FLOOR_TOOL: read by library-admission.sh
     FLOOR_TOOL="$TOOL"; floor_log_decision inject "$1" "$2.meta" ) >/dev/null 2>&1 || :
+}
+
+# THE MODE IS THE REGISTER'S, READ HERE (harbor#1422). A pack's controls.tsv row (type injection, `emitted` = the pack id)
+# says shadow (the rule is recorded, never spoken), warn (a note) or block (a `run:` pack's deny is honoured). A pack with
+# no row keeps the behaviour it always had, so a repo's own pack or an unreadable register changes nothing.
+CTL="${HARBOR_CONTEXT_CONTROLS:-}"
+if [ -z "$CTL" ]; then
+  for _c in "$SELF_DIR/controls.tsv" "$SELF_DIR/../standards/naming/controls.tsv"; do [ ! -f "$_c" ] || { CTL="$_c"; break; }; done
+fi
+ctl_mode() { # <pack id> -> shadow|warn|block, or nothing when no row names it
+  [ -n "$CTL" ] && [ -f "$CTL" ] || return 0
+  awk -F'\t' -v i="$1" '$3 == "injection" && $12 == i { print $2; exit }' "$CTL" 2>/dev/null || :
 }
 
 shell_targets() {
@@ -833,9 +634,7 @@ touched_trees() {
       *)     if [ -n "$CWDP" ]; then printf '%s/%s\n' "$CWDP" "$_pp"; fi ;;
     esac
     if [ "$TOOL" = Bash ]; then
-      # The session's own project directory resolves to the governed tree or to
-      # none, and either way there is nothing to reach — so the commonest shape,
-      # a session that never left where it started, costs no fork here.
+      # The session's own project directory reaches nothing new, so a session that never left it costs no fork here.
       if [ -n "$CWDP" ] && [ "$CWDP" != "${CLAUDE_PROJECT_DIR:-$PWD}" ]; then printf '%s\n' "$CWDP"; fi
       shell_targets
     fi
@@ -846,16 +645,9 @@ touched_trees() {
   return 0
 }
 
-# THE REGISTRY IS THE TRUST BOUNDARY. A reached tree's packs are delivered, and a
-# `run:` pack EXECUTES, because the session touched that tree — so which trees
-# may do that cannot be "any repository a tool call names". A cloned third-party
-# repo read once would otherwise run its own script inside this hook and speak
-# with this engine's governance stamp. `projects.tsv` beside the box packs is the
-# operator's list of this estate's projects; a worktree counts as its owner,
-# because the registry names repositories, not their checkouts.
-# It moves with the box tier (harbor#1010); the old place is read while no new one is installed.
+# The registry is the trust boundary: a reached tree's packs are delivered and a `run:` pack executes, so only trees listed in projects.tsv
+# (box tier, harbor#1010; a worktree counts as its owner) may do that.
 REG="$CFG/context-rules/user/projects.tsv"
-[ -f "$REG" ] || REG="$CFG/inject.d/projects.tsv"
 registered() { # <physical tree>
   [ -f "$REG" ] || return 1
   _own="$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
@@ -897,12 +689,9 @@ esac
 HARBOR_CONTEXT_TOUCHED="$TOUCHED"; HARBOR_CONTEXT_REACHED="$REACHED"
 export HARBOR_CONTEXT_TOUCHED HARBOR_CONTEXT_REACHED
 
-# ── evaluate every pack ─────────────────────────────────────────────────────
-# Three sources, one line per rule file in sweep order: `<file> TAB <tree it speaks for> TAB <reached>`.
-# Box and repo packs speak for the governed tree. A REACHED tree's packs speak
-# for that tree — `repo-has` is judged there and a `run:` script runs there — and
-# only the ones that declare `scope: box` are read at all: the repo consents per
-# rule, in its own data, and the default is to stay home.
+# -- evaluate every pack --
+# Sweep lines are `<file> TAB <tree it speaks for> TAB <reached>`. Box and repo packs speak for the governed tree;
+# a reached tree's packs are read only if they declare `scope: box`.
 tier_files() { # <tree it speaks for> <reached> <dirs, one per line> -> the sweep lines of one tier
   _tt="$1"; _tr="$2"; _IFS="$IFS"; IFS="$NL"; set -f; set -- $3; set +f; IFS="$_IFS"
   [ $# -gt 0 ] || return 0
@@ -921,9 +710,7 @@ DECISION=''; DREASON=''
 while IFS="$(printf '\t')" read -r _file RT _reach; do
   [ -n "$_file" ] || continue
   _dir="${_file%/*}"
-  # A DECISION ENDS THE SWEEP. Once a pack has denied the call, later packs are
-  # commenting on a tool use that will not happen, and the `break` below only
-  # leaves the inner loop — without this the next directory would keep firing.
+  # A decision ends the sweep; the `break` below only leaves the inner loop.
   [ "$DECISION" = deny ] && break
   # One pass per file since harbor#1010; the loop stays so `continue` and the deny `break` keep their meaning.
   for _f in "$_file"; do
@@ -940,24 +727,9 @@ while IFS="$(printf '\t')" read -r _file RT _reach; do
     [ "$_ev" = "$EVENT" ] || { explain "skip $_id: event $_ev != $EVENT"; continue; }
     fm_get tool; _tl="$FMV"
     if [ -n "$_tl" ] && [ "$_tl" != "$TOOL" ]; then
-      # ── ONE MATCHING SEMANTICS, THE HARNESS'S (harbor#184) ──────────────────
-      # This was literal alternation — `case "|$_tl|" in *"|$TOOL|"*)` — while the
-      # matcher column in settings.json, which decides whether this engine is
-      # invoked at all, is a REGEX. Two semantics for one field, and the narrower
-      # one silently wins: a pack declaring `mcp__.*` passed the harness matcher
-      # and was then skipped here, because no tool is literally named `mcp__.*`.
-      # Measured while wiring harbor#184's pack, whose whole target set is the
-      # `mcp__claude-in-chrome__*` family — 58 of the 88 MB of result bytes.
-      #
-      # A regex is a superset of the alternation the contract already promises, and
-      # tool names are `[A-Za-z0-9_]+` in practice, so nothing that worked stops
-      # working. An unparseable pattern makes grep fail, which reads as no match —
-      # silence, which is this engine's posture everywhere else.
-      #
-      # THE GREP IS PINNED, as library-admission.sh pins $FLOOR_GREP and lint F3 requires
-      # of every file that sources it (this one does, for the shell half of "the
-      # tree a call touches"). On this box `grep` in a PATH can be a ugrep wrapper,
-      # and which grep answers must not decide whether a rule matches.
+      # -- tool matching is the harness's regex (harbor#184) --
+      # Literal alternation skipped packs declaring `mcp__.*` that the harness matcher had passed. The grep is pinned (lint F3);
+      # an unparseable pattern makes grep fail, which reads as no match.
       printf '%s\n' "$TOOL" | "$_GREP" -qE "^($_tl)$" 2>/dev/null \
         || { explain "skip $_id: tool $_tl does not match $TOOL"; continue; }
     fi
@@ -973,44 +745,16 @@ while IFS="$(printf '\t')" read -r _file RT _reach; do
 $_whens
 WHEN
     [ "$_ok" -eq 1 ] || continue
-    # NO PREDICATE IS NOT "ALWAYS". A pack that forgot its `when:` would fire on
-    # every event of its type forever, which is the loudest possible failure for
-    # the most likely possible typo.
+    # No predicate is not "always": a pack missing its `when:` would fire on every event of its type.
     [ "$_npred" -gt 0 ] || { explain "skip $_id: no when: predicate — refusing to fire"; continue; }
 
     # ONCE: session | match | never.
-    #
-    # `match` EXISTS BECAUSE `session` HAS A COVERAGE HOLE, and the hole was
-    # measured rather than imagined. Sweeping the detector below across this
-    # estate's markdown fires on a handful of documents that DISCUSS injection —
-    # the constitution's §4 describes the attack in the attack's own words, and
-    # this repo's eval page quotes the fixtures verbatim. Under `once: session` a
-    # session that read one of those first would have spent its single note on a
-    # document ABOUT injection and then said nothing about a genuinely hostile
-    # file read afterwards. `match` keys the ledger on what matched, so a benign
-    # hit costs one sentence and consumes nothing.
-    #
-    # The exact set is NOT written down here. hooks/injection-rule/detector.test.sh sweeps every
-    # tracked markdown file and compares against an allowlist, so a new false
-    # positive turns the suite red on the commit that introduces it. A count in a
-    # comment is a copy, and this one was already wrong when it was written.
+    # `match` keys the ledger on what matched, so a benign hit on a document ABOUT injection does not spend the session's single note.
+    # The known false-positive set is in hooks/injection-rule/detector.test.sh, not here.
     fm_get once; _once="$FMV"; [ -n "$_once" ] || _once=session
     _key="$_id"
-    # THE COMMAND IS PART OF THE SUBJECT, AND IT WAS NOT (harbor#180). A Bash rule
-    # at PreToolUse has no file path and no content — nothing has been written or
-    # returned yet — so every command in a session hashed to the SAME empty
-    # subject and `once: match` silently became `once: session`. Measured: five
-    # different trap-shaped commands in one session, only the first spoke.
-    #
-    # That is the quietest possible failure for the most natural pack there is —
-    # `cmd-prefix` plus `match` is what anyone writes for a rule that should
-    # re-fire on a genuinely different command — and nothing turned red, because
-    # the rule fired once and looked like it was working.
-    #
-    # RAW COMMAND, NOT THE MATCHED PREFIX. `gh pr merge 174` and `gh pr merge 179`
-    # are different acts on different objects and a merge rule should speak for
-    # both; keying on the prefix would collapse them into one and re-introduce the
-    # same silence one level up.
+    # The command is part of the subject (harbor#180): without it every Bash command hashed to one empty subject and `once: match` acted as `once: session`.
+    # Keyed on the raw command, not the matched prefix, so two merges of different PR numbers each speak.
     if [ "$_once" = match ]; then
       _subject="$FPATH"
       [ -n "$_subject" ] || _subject="$(printf '%s' "$CONTENT" | head -c 4096)"
@@ -1020,51 +764,28 @@ WHEN
     if [ "$_once" != never ] && already "$_key"; then
       explain "skip $_id: already delivered this session ($_key)"; continue
     fi
+    _cmode="$(ctl_mode "$_id")"
 
-    # `run:` — a dynamic body, for the rules whose condition is computable but
-    # not expressible as a predicate. The script gets the payload on stdin and
-    # its STDOUT is the note; empty stdout means no note, which is how such a
-    # rule stays silent. Invoked as an ARGUMENT to sh, never interpolated into a
-    # command string (CONSTITUTION §4).
-    #
-    # RESOLVED NEXT TO ITS PACK, RUN FROM THE SESSION'S REPO. Two different
-    # things, and conflating them is what made the first cut unusable: the script
-    # belongs to whoever wrote the pack (box or repo), while the state it reports
-    # on is the session's working tree. `..` and absolute paths are refused so a
-    # pack cannot reach outside its own directory to pick an interpreter target.
+    # `run:` - the script gets the payload on stdin and its STDOUT is the note; empty stdout is silence. Invoked as an ARGUMENT to sh (CONSTITUTION 4).
+    # Resolved next to its pack, run from the session's repo; `..` and absolute paths are refused.
     fm_get run; _run="$FMV"
     if [ -n "$_run" ]; then
       case "$_run" in /*|*..*) explain "skip $_id: run: must be a plain filename beside the pack"; continue ;; esac
       if [ ! -f "$_dir/$_run" ]; then explain "skip $_id: run: $_run not found in $_dir"; continue; fi
       _note="$(printf '%s' "$PAYLOAD" | (cd "${RT:-$REPO}" 2>/dev/null && sh "$_dir/$_run") 2>/dev/null || true)"
-      # ── A `run:` PACK MAY RETURN A DECISION, NOT ONLY A NOTE (harbor#254) ──
-      # `run:` contracts that stdout is the note, and that contract silently
-      # disarmed a real gate: bin/govern-hook.sh computes the merge backstop's
-      # verdict and emits a PreToolUse `permissionDecision: deny`, but reached
-      # through this engine it went through `--note`, which prints prose — and
-      # prose wrapped as additionalContext cannot stop a Bash call. Suite green
-      # on both sides; every red PR still merged. Found by review (PR #262).
-      #
-      # THE SENTINEL IS OPT-IN AND EXACT. A pack that wants to decide prints
-      # `HARBOR-DECISION deny: <reason>` as its first line; anything else is a
-      # note exactly as before. Only `run:` output is inspected — a static
-      # markdown body cannot acquire blocking power by containing a sentence.
-      #
-      # AND ONLY WHERE THE HARNESS HAS A CHANNEL FOR IT. `permissionDecision` is
-      # PreToolUse-only (contracts/hooks.md). On any other event the sentinel is
-      # stripped and the text is delivered as an ordinary note, with the
-      # downgrade stated to the operator — because a decision the harness
-      # discards is the PreCompact failure this file already carries a comment
-      # about, and it must not repeat quietly.
+      # -- a `run:` pack may return a decision (harbor#254) --
+      # Prose in additionalContext cannot stop a Bash call; the merge backstop's deny was silently disarmed through `--note`.
+      # The sentinel `HARBOR-DECISION deny: <reason>` as first line is opt-in and exact, and only `run:` output is inspected.
+      # permissionDecision is PreToolUse-only (contracts/hooks.md): on other events the sentinel is stripped and delivered as a note, downgrade stated.
       case "$_note" in
         'HARBOR-DECISION deny: '*)
-          if [ "$EVENT" = PreToolUse ]; then
+          if [ "$EVENT" = PreToolUse ] && [ "$_cmode" != warn ] && [ "$_cmode" != shadow ]; then
             DECISION=deny
             DREASON="${_note#HARBOR-DECISION deny: }"
             explain "DECIDE $_id: deny"
           else
             _note="${_note#HARBOR-DECISION deny: }"
-            explain "downgrade $_id: a deny cannot ride on $EVENT — delivered as a note"
+            explain "downgrade $_id: a deny cannot ride on $EVENT, or its row is $_cmode — delivered as a note"
           fi ;;
       esac
     else
@@ -1084,6 +805,13 @@ WHEN
     fi
     [ -n "$_note" ] || { explain "skip $_id: empty note"; continue; }
 
+    if [ "$_cmode" = shadow ]; then
+      explain "SHADOW $_id: recorded, not spoken"
+      log_rule shadow "$_id"
+      if [ "$_once" != never ]; then remember "$_key"; fi
+      continue
+    fi
+
     explain "FIRE $_id"
     log_rule advise "$_id"
     # Each note names the rule that raised it, so an alert reaches its owner and off-switch in one
@@ -1091,9 +819,7 @@ WHEN
     NOTES="$NOTES[context:$_id] $_note "
     if [ "$_once" != never ]; then remember "$_key"; fi
 
-    # `mode: notify` also speaks to the HUMAN. systemMessage sidesteps the trust
-    # question outright — a line the operator reads never has to be believed by
-    # the model — so anything whose real audience is the person gets both.
+    # `mode: notify` also speaks to the HUMAN (systemMessage): a line the operator reads never has to be believed by the model.
     fm_get mode
     if [ "$FMV" = notify ]; then
       fm_get summary; _um="$FMV"; [ -n "$_um" ] || _um="$_id"
@@ -1105,45 +831,14 @@ $(sweep_files)
 PACKS
 
 NOTES="${NOTES% }"
-# A DENY WITH NO OTHER NOTE IS STILL AN ANSWER. `[ -n "$NOTES" ] || exit 0` alone
-# dropped it on the floor: the decision's text rides in its own field, so NOTES is
-# empty in exactly the case that matters most, and the engine exited silently
-# while the red merge proceeded.
+# A deny with no other note is still an answer: its text rides in its own field, so NOTES is empty in exactly that case.
 [ -n "$NOTES" ] || [ "${DECISION:-}" = deny ] || exit 0
 
-# ── the emit, and WHICH EVENTS CAN CARRY A NOTE AT ALL ──────────────────────
-# NOT EVERY HOOK EVENT REACHES THE MODEL. `hookSpecificOutput.additionalContext`
-# is accepted on the events below and REJECTED everywhere else — and rejected
-# means the harness discards the WHOLE object, so a `mode: notify` systemMessage
-# riding along in the same JSON is thrown away with it. The failure is silent
-# from the engine's side: the script exits 0 having written well-formed JSON, and
-# only the operator's terminal shows "Hook JSON output validation failed".
-#
-# THIS IS NOT A GUESS. It shipped broken: `20-precompact-carry.md` declared
-# `event: PreCompact`, and PreCompact accepts only the top-level `decision`
-# pattern — there is no channel from a PreCompact hook to the model in this
-# harness at all. Every compaction this box performed emitted an object the
-# harness rejected. The rule was retargeted to SessionStart + `source-is compact`
-# (see context-rules/user/post-compaction-carry.md), which fires on the far side of
-# the same moment and CAN be heard. Lint IJ1 now refuses a pack that declares a
-# context-less event without `mode: notify`, so this class cannot return quietly.
-#
-# The list tracks the harness, not our preferences. When it changes, this line
-# and contracts/injection-rule.md's table change together.
-#
-# READ OFF THE BINARY'S OWN SCHEMA ON 2026-09-02, not inferred and not recalled.
-# `hookSpecificOutput` is a discriminated union in 2.1.258 and every arm either
-# carries `additionalContext` or does not; extracting the union settled three
-# events this list had wrong by omission — UserPromptExpansion, PostModelSwitch
-# and Notification all accept it and were being downgraded to operator-only.
-# Nothing ships on them, so the cost was zero and the direction is what matters:
-# a list of what the harness accepts, maintained by hand, drifts toward SMALLER
-# than the truth, and every omission is a pack that silently talks to nobody.
-#
-# AND `PostCompact` IS NOT IN THE UNION AT ALL. contracts/hooks.md carried it as
-# "receives the summary — could verify what survived", which reads like an open
-# avenue; it is the same closed door as PreCompact. The post-compaction rule
-# stays on SessionStart + `source-is compact`, which is the only channel there is.
+# -- the emit, and which events can carry a note --
+# additionalContext is accepted on the events below and REJECTED elsewhere, and a rejection discards the WHOLE object, notify systemMessage included.
+# PreCompact accepts only the top-level `decision` pattern, so the post-compaction rule is SessionStart + `source-is compact`; lint IJ1 refuses a
+# context-less event without `mode: notify`. The list was read off the harness's own schema (2.1.258); PostCompact is not in it.
+# When it changes, this line and contracts/injection-rule.md's table change together.
 case "$EVENT" in
   SessionStart|Setup|SubagentStart|UserPromptSubmit|UserPromptExpansion|PostModelSwitch|Notification|PreToolUse|PostToolUse|PostToolUseFailure|PostToolBatch|Stop|SubagentStop)
     _ctx=yes ;;
@@ -1151,9 +846,7 @@ case "$EVENT" in
 esac
 
 if [ "$_ctx" = no ]; then
-  # The model cannot be reached on this event. Say it to the operator instead of
-  # emitting JSON that will be discarded — a note delivered to nobody, with a
-  # validation error where the note should have been, is worse than silence.
+  # No model-visible channel: tell the operator instead of emitting JSON the harness would discard.
   explain "event $EVENT carries no model-visible channel — operator note only"
   if [ -n "$USERMSG" ]; then
     jq -cn --arg m "harbor: ${USERMSG%; }" '{systemMessage:$m}' 2>/dev/null || true
@@ -1161,11 +854,7 @@ if [ "$_ctx" = no ]; then
   exit 0
 fi
 
-# A DECISION SHORT-CIRCUITS THE NOTE, because they are answers to different
-# questions and only one of them stops the call. The reason reaches the model as
-# `permissionDecisionReason`, which is the channel a deny already travels on
-# (contracts/hooks.md: confirmed live — admission-bash.sh's denial landed mid-turn
-# and redirected the work), so it does not also need to be an additionalContext.
+# A decision short-circuits the note; its reason travels as `permissionDecisionReason` (contracts/hooks.md).
 if [ "${DECISION:-}" = deny ]; then
   jq -cn --arg e "$EVENT" --arg r "$STAMP $DREASON" \
     '{hookSpecificOutput:{hookEventName:$e,permissionDecision:"deny",permissionDecisionReason:$r}}' \

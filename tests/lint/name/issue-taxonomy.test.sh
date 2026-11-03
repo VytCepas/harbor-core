@@ -28,12 +28,15 @@ t_has "renaming the id in the registry renames the generated label" "$(cat "$TX"
 t_hasnt "…and the old id is gone" "$(cat "$TX")" "type:bug"
 t_section "--gen vendors: a dialect checker's vendor list is the registry's (harbor#985)"
 VR="$T_TMP/v"; mkdir -p "$VR/standards"; cp -R "$T_ROOT/standards/naming" "$VR/standards/naming"
+# The real fb row retired with its window (2026-11-15); the generator is unchanged, so a synthetic legacy dialect token stands in.
+printf 'xoldfb\tmeta\tlegacy\tcli,dialect,glossary\t2000-01-01\ta vendor token valid inside a dialect until touched\n' >> "$VR/standards/naming/aliases.tsv"
+cp "$VR/standards/naming/aliases.tsv" "$T_TMP/aliases.fixture"
 vgen() { sh "$T_ROOT/bin/lint-name.sh" --root "$VR" --gen vendors >/dev/null 2>&1; }
 t_exit "--gen vendors exits 0" 0 sh "$T_ROOT/bin/lint-name.sh" --root "$VR" --gen vendors
 VT="$VR/build/naming/vendors.tsv"
-t_has "fb maps to meta as a legacy token" "$(cat "$VT")" "$(printf 'fb\tmeta\tlegacy')"
+t_has "a dialect token maps to meta as a legacy token" "$(cat "$VT")" "$(printf 'xoldfb\tmeta\tlegacy')"
 t_has "the current vendor term is listed" "$(cat "$VT")" "$(printf 'meta\tmeta\tcurrent')"
-sed 's/^fb\tmeta/fb\tmetaa/' "$T_ROOT/standards/naming/aliases.tsv" > "$VR/standards/naming/aliases.tsv"
+TB="$(printf '\t')"; sed "s/^xoldfb${TB}meta/xoldfb${TB}metaa/" "$T_TMP/aliases.fixture" > "$VR/standards/naming/aliases.tsv"
 vgen
-t_has "mutation: changing the registry changes the result" "$(cat "$VT")" "$(printf 'fb\tmetaa\tlegacy')"
+t_has "mutation: changing the registry changes the result" "$(cat "$VT")" "$(printf 'xoldfb\tmetaa\tlegacy')"
 t_done

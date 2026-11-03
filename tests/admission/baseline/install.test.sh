@@ -30,7 +30,7 @@ chmod +x "$BF/bin/projects-orchestrator"
 _bf_out="$(PATH="$BF/bin:$PATH" HARBOR_SCOPE_FLEET_CONTROLLER="$BF/po" CLAUDE_CONFIG_DIR="$CFG" \
   sh "$SRC/scope-marker-backfill.sh" --apply --include-dirty 2>&1 || true)"
 t_has "H3: the back-fill refuses a config-dir target" "$_bf_out" 'REFUSED'
-t_exit "H3: the back-fill did not write into the config surface" 1 /usr/bin/grep -q '^context: repo' "$CFG/.agents/config.yaml"
+t_exit "H3: the back-fill did not write into the config surface" 1 /usr/bin/grep -Eq '^(context: repo|scope: project)' "$CFG/.agents/config.yaml"
 # Where it DOES write, the file stays one YAML document: the key lands after %YAML/--- (PR #96).
 _bf_doc="$TMP/backfill-doc"; mkdir -p "$_bf_doc/bin" "$_bf_doc/po" "$_bf_doc/repo/.agents"
 printf -- '%%YAML 1.2\n---\nproject:\n  name: "hdr"\n' > "$_bf_doc/repo/.agents/config.yaml"
@@ -43,7 +43,7 @@ PATH="$_bf_doc/bin:$PATH" HARBOR_SCOPE_FLEET_CONTROLLER="$_bf_doc/po" CLAUDE_CON
   sh "$SRC/scope-marker-backfill.sh" --apply --include-dirty >/dev/null 2>&1 || true
 _bf_lines="$(tr '\n' '|' < "$_bf_doc/repo/.agents/config.yaml")"
 t_eq "H3: the back-fill kept the YAML document header ($_bf_lines)" yes \
-  "$(case "$_bf_lines" in ('%YAML 1.2|---|context: repo|project:'*) echo yes ;; (*) echo no ;; esac)"
+  "$(case "$_bf_lines" in ('%YAML 1.2|---|scope: project|project:'*) echo yes ;; (*) echo no ;; esac)"
 
 t_section "REGRESSION: red-team pass 8 (installers: X7, X8)"
 # X7: a failed `jq >tmp && mv` short-circuits under set -eu and the installer still printed APPLIED.
@@ -179,12 +179,12 @@ X11="$TMP/x11"; mkcfg "$X11" '{"permissions":{"deny":[]}}'
 fi_run deploy-runtime-install.sh "$X11" --apply >/dev/null 2>&1 || true
 t_eq "X11 runtime-install does not INSTALL admission-integrity.sh on a box without the scanners" no \
   "$([ -e "$X11/bin/admission-integrity.sh" ] && echo yes || echo no)"
-printf '#!/usr/bin/env sh\n[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0\n# stale B6\nexit 0\n' > "$X11/bin/admission-integrity.sh"
+printf '#!/usr/bin/env sh\n[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0\n# stale B6\nexit 0\n' > "$X11/bin/admission-integrity.sh"
 fi_run deploy-runtime-install.sh "$X11" --apply >/dev/null 2>&1 || true
 t_eq "X11 runtime-install refreshes an installed admission-integrity.sh" "$(_x9sha < "$SRC/admission-integrity.sh")" "$(_x9sha < "$X11/bin/admission-integrity.sh")"
 mkdir -p "$X11/.helm-pins"
 printf 'a-stale-pin-that-matches-nothing\n' > "$X11/.helm-pins/admission-integrity.sh.sha256"
-printf '#!/usr/bin/env sh\n[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0\nexit 0\n' > "$X11/bin/admission-integrity.sh"
+printf '#!/usr/bin/env sh\n[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0\nexit 0\n' > "$X11/bin/admission-integrity.sh"
 X11_OUT="$(fi_run deploy-runtime-install.sh "$X11" --apply 2>&1 || true)"
 t_eq "X11 a refreshed B6 is reported quietly, never under the session-blocked banner" quiet-note \
   "$(case "$X11_OUT" in (*"B6 CONTENT PINS ARE NOW STALE"*) echo blocked-banner ;; (*"admission-integrity.sh was refreshed, so its pin"*) echo quiet-note ;; (*) echo silent ;; esac)"
@@ -398,7 +398,7 @@ G5="$TMP/g516"; G5P="$G5/port"; G5G="$G5P/gov"; G5H="$G5/home"; mkdir -p "$G5G/b
 mkcfg "$G5/cfg" "$PERM" $SCANNERS
 fi_run admission-install.sh "$G5/cfg" --apply >/dev/null 2>&1 || true
 git -C "$G5G" init -q; git -C "$G5G" remote add origin https://github.com/Own/Gov.git
-mkdir -p "$G5/cfg/inject.d"; printf 'gov\t%s\tfixture\n' "$G5G" > "$G5/cfg/inject.d/projects.tsv"
+mkdir -p "$G5/cfg/context-rules/user"; printf 'gov\t%s\tfixture\n' "$G5G" > "$G5/cfg/context-rules/user/projects.tsv"
 printf '#!/usr/bin/env sh\necho "REFUSED  a check is not passing on #7"\nexit 1\n' > "$G5G/bin/gate-merge-check.sh"
 _g5c="$(jq -r '[.hooks.PreToolUse[]? | select(.matcher == "Bash") | .hooks[].command | select(test("govern-hook"))][0] // empty' "$G5/cfg/settings.json")"
 _g5o="$(jq -n --arg c "$G5H" '{hook_event_name:"PreToolUse",tool_name:"Bash",cwd:$c,tool_input:{command:"gh pr merge 7 -R Own/Gov --squash"}}' \
@@ -452,17 +452,17 @@ _of2n="$(jq '[.hooks.PreToolUse[]?.hooks[]?] | length' "$OF2/settings.json")"
 HARBOR_ADMISSION_ONFAILURE=1 fi_run admission-install.sh "$OF2" --apply >/dev/null 2>&1 || true
 t_eq "OF3 a re-install sets it on hooks already wired" block "$(_of_pre "$OF2")"
 t_eq "OF3 ...without wiring any of them twice" "$_of2n" "$(jq '[.hooks.PreToolUse[]?.hooks[]?] | length' "$OF2/settings.json")"
-# rename-1331 (W7): the old name is read after the new one until 2026-12-01, and the new one wins. Subshells, because
-# macOS /bin/sh keeps a prefix assignment to a function after it returns, so OF3's new name would decide these.
-OF4="$TMP/onfail-old"; mkcfg "$OF4" "$PERM"
-( unset HARBOR_ADMISSION_ONFAILURE; FLOOR_ONFAILURE=1; export FLOOR_ONFAILURE; fi_run admission-install.sh "$OF4" --apply ) >/dev/null 2>&1 || true
-t_eq "OF4 the old name FLOOR_ONFAILURE still sets onFailure until 2026-12-01" block "$(_of_pre "$OF4")"
-OF6="$TMP/onfail-old-off"; mkcfg "$OF6" "$PERM"   # 1 and 0 both, so a box with or without claude on PATH discriminates
-( unset HARBOR_ADMISSION_ONFAILURE; FLOOR_ONFAILURE=0; export FLOOR_ONFAILURE; fi_run admission-install.sh "$OF6" --apply ) >/dev/null 2>&1 || true
-t_eq "OF6 ...and clears it" none "$(_of_pre "$OF6")"
-OF5="$TMP/onfail-both"; mkcfg "$OF5" "$PERM"
-( HARBOR_ADMISSION_ONFAILURE=0 FLOOR_ONFAILURE=1; export HARBOR_ADMISSION_ONFAILURE FLOOR_ONFAILURE; fi_run admission-install.sh "$OF5" --apply ) >/dev/null 2>&1 || true
-t_eq "OF5 ...and the new name wins over it" none "$(_of_pre "$OF5")"
+# rename-1331 (W7): the retired name (built from parts: the name lint reads tokens) is no longer read. Subshells, because
+# macOS /bin/sh keeps a prefix assignment to a function after it returns. 1 and 0 both, so a box with or without claude on PATH discriminates.
+_oldof="FLOOR_$(printf ONFAILURE)"
+OF4="$TMP/onfail-none"; mkcfg "$OF4" "$PERM"
+( unset HARBOR_ADMISSION_ONFAILURE "$_oldof"; fi_run admission-install.sh "$OF4" --apply ) >/dev/null 2>&1 || true
+OF5="$TMP/onfail-old-on"; mkcfg "$OF5" "$PERM"
+( unset HARBOR_ADMISSION_ONFAILURE; export "$_oldof=1"; fi_run admission-install.sh "$OF5" --apply ) >/dev/null 2>&1 || true
+OF6="$TMP/onfail-old-off"; mkcfg "$OF6" "$PERM"
+( unset HARBOR_ADMISSION_ONFAILURE; export "$_oldof=0"; fi_run admission-install.sh "$OF6" --apply ) >/dev/null 2>&1 || true
+t_eq "OF4 the retired name set to 1 changes nothing" "$(_of_pre "$OF4")" "$(_of_pre "$OF5")"
+t_eq "OF6 ...and set to 0 changes nothing either" "$(_of_pre "$OF4")" "$(_of_pre "$OF6")"
 
 ff_sealed
 t_done

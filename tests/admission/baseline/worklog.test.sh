@@ -33,11 +33,11 @@ t_eq "#311 bin/worklog-pull.sh is gone from the tree" no "$([ -e "$HROOT/bin/wor
 t_eq "#311 the reference scan reads a git checkout, so an empty result means none" yes \
   "$(git -C "$HROOT" rev-parse --git-dir >/dev/null 2>&1 && echo yes || echo no)"
 # Dated records keep the name (evaluation runs, incident and plan ledgers, the estate exemption row).
-# bin/idea is frozen by lint's log-exempt ratchet until it moves onto library-log.sh, so its comment stays.
+# bin/idea is frozen by lint's log-exempt ratchet until it moves onto library-log.sh, so its comment stays (moved verbatim to its code-case).
 # Everything else that WIRES or DOCUMENTS the hook is in scope: putting the wiring back turns this red.
 _wpull_refs="$(git -C "$HROOT" grep -l -e 'worklog-pull' -- . ':!evals' ':!skills/topology/EVALS' \
   ':!registries/coverage-incidents.tsv' ':!contracts/port-paths-exempt.tsv' ':!docs/generated/plan.md' ':!docs/reports/platform-build-tickets.md' \
-  ':!tests/admission/baseline/worklog.test.sh' ':!bin/idea' ':!docs/audits/test-audit.md' 2>/dev/null)"
+  ':!tests/admission/baseline/worklog.test.sh' ':!bin/idea' ':!docs/explanation/code-cases/bin-idea.md' ':!docs/audits/test-audit.md' 2>/dev/null)"
 t_eq "#311 no live surface names worklog-pull (installer, lint, contract, doc, test)" "" "$_wpull_refs"
 
 t_section "harbor#324 worklog-push: a failed push names the git error, not the pre-push scan banner"

@@ -100,7 +100,7 @@ the instrument that sees them.
 > both. Never publish "the tag is absent" from a single run of either.
 
 **The fallback is enforced, not advised** (inject pack
-`65-browser-route-harbor-chrome`): a Claude-in-Chrome navigation to any host in
+`65-browser-route-platform-chrome`): a Claude-in-Chrome navigation to any host in
 `contracts/browser-agent-hosts.txt` is denied with the `harbor chrome goto` command
 to run instead, and the first Claude-in-Chrome call of a session carries the route
 (`66-browser-route-reminder`). A session called ads.reddit.com "blocked" twice on
@@ -128,11 +128,16 @@ rule and it is unchanged here.
 **Reached as MCP tools (harbor#1301, #555 P4).** A confined Bash command cannot
 reach the operator's Chrome: the sandbox's `allowLocalBinding` stays off, and turning
 it on would open their logged-in profile to every confined command. So row 4 is also
-the local MCP server `harbor_chrome` (`bin/access-chrome-mcp.py`), which runs
-outside the confinement: one tool per verb, `mcp__harbor_chrome__<verb>` with hyphens
-as underscores, each with its own permission entry and no server-wide allow. Every
-tool runs `access-browser-agent.sh` with an argument list, so every guardrail below is the
-one that decides. A session uses the tools when they are listed; `harbor chrome` in
+the local MCP server `harbor_chrome` (`bin/access-chrome-mcp.py`, which starts
+`bin/access-chrome-mcp.ts`), which runs outside the confinement: one tool per verb,
+`mcp__harbor_chrome__<verb>` with hyphens as underscores, each with its own permission entry
+and no server-wide allow. The server holds one connection to the session's `@playwright/cli`
+daemon for the whole session (harbor#1421; a call used to start a `bunx` + node chain and
+took 5-15 s) and carries the guardrails below for the hot verbs; attach, detach, tabs, front,
+wait-signin, doctor, status, hosts and tab-new are `access-browser-agent.sh`, run with an
+argument list, so those guardrails are the script's. The two are held to the same cases by
+`tests/access/chrome/session.test.sh` and `tests/access/browser/`. Each call's timings
+(total, guards, daemon, settle, in ms) append to `$TMPDIR/harbor-browser/<session>/.timings.tsv`. A session uses the tools when they are listed; `harbor chrome` in
 Bash stays for the operator's own terminal and an unconfined box. The operator
 registers the server once: `claude mcp add --scope user harbor_chrome -- python3 -I
 <checkout>/bin/access-chrome-mcp.py`.
@@ -230,6 +235,16 @@ clicked next to one. Allowing without it leaves the CLI waiting with no error.
 `harbor chrome doctor` reports row 4 from the box: the profiles holding the
 extension, whether the token is set, and whether the retired MCP is still wired.
 
+## Record once, replay as a script — signed out only (harbor#1445)
+
+Row 4 refuses `recording-*`, `tracing-*`, `video-*` and `run-code` on purpose: its browser is signed in.
+The same pinned `@playwright/cli` can record a flow and replay it from a file on a **disposable, headless,
+in-memory** browser, which is a different thing with no credential in it:
+`sh bin/access-browser-flow.sh record <flow.js> <url> <steps.tsv>`, then `replay <flow.js> --shot <png> --text <css>`.
+Every run asserts no `Cookies` or `Login Data` database in its throwaway profile holds a row (Chromium creates
+both files empty in any profile, so their names prove nothing) and removes the profile. A flow that needs a
+signed-in page is out of scope: that is row 5, still gated.
+
 ## Row 5 — the backend exists, is unregistered, and is a credential
 
 **Update 2026-09-30:** the `@playwright/mcp` server that is this row's backend is
@@ -273,6 +288,31 @@ names this section.
 
 A capability that half-works while ungoverned is worse than one that is absent,
 because nobody can reason about what it did.
+
+## Apps that are not a website — the routing order (harbor#1440, decided 2026-11-01)
+
+The rows above choose a browser backend. They answer nothing for a desktop app, a Mac-only tool or a system with no
+page to drive, and with no written order a session picks screen control by habit. Agent-OS design: a hardened host
+plus narrow brokers, and a box only when a task triggers it. For any system a task must act on, take the **first**
+step that exists, and say which step and why when skipping one:
+
+| # | Step | What it is | Exists today |
+|---|---|---|---|
+| 1 | **Broker** | A narrow, credential-holding channel with a short verb list, the credential outside the confinement: an API or CLI behind a wrapper, or an MCP server. A new app gets one **before** anything below is considered | the mail and calendar wrappers, the ticket CLI, `gh`, the remote MCP connectors; `harbor chrome` is the broker for a web UI, which is step 2 |
+| 2 | **Browser via `harbor chrome`** | The app has a web UI the operator is signed in to: rows 1 to 4 above, row 4 for a logged-in one. Never `allowAppleEvents` (DE-40) | `harbor chrome`, `harbor browser` |
+| 3 | **Guest** (#1444) | A Lume macOS guest, built only for an app that has **no broker and no web UI**, and for the clean-Mac install test. Not built until a task names the app | not built; trigger open |
+
+Screen control of the operator's own desktop is not a step: it is what step 3 replaces. Nothing here provides trusted
+input from a real keyboard or pointer, so an agent driving a guest's screen is driving an untrusted surface.
+
+**The trigger for step 3 is a missing broker, named.** #1444's trigger comment quotes this table and says: *the app is
+`<name>`; step 1 is missing because `<no API, CLI or MCP / the API cannot do `<verb>`>`; step 2 is missing because
+`<it has no web UI>`*. A comment that cannot fill those three blanks has not fired the trigger.
+
+**Adding a broker is a step-1 deliverable, not an exemption.** It states the verbs it grants, where its credential
+lives, and what it refuses, in the shape of `harbor chrome`'s guardrail table above. A broker that runs as a local MCP
+server also needs a row in `contracts/confinement-mcp.tsv`: wrapped in `srt`, or exempt with the reason
+(`bin/drift-wall.sh` reads it).
 
 ## What this router does NOT cover
 

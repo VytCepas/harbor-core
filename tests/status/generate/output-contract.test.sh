@@ -3,7 +3,7 @@
 # JSON and only that; the run log is on stderr; a stale or unmeasured docs/generated/status.md is a FAIL or WARN with its fix, and
 # the run ends with the summary. Suites are three-line fakes in a fixture tree.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset HARBOR_TEST_IN_SUITE HARBOR_IN_SUITE HARBOR_STATUS_SUITE_COUNTS HARBOR_SUITE_COUNTS  # t_init keeps the re-entry marker; these runs must reach the run branch
+unset HARBOR_TEST_IN_SUITE HARBOR_STATUS_SUITE_COUNTS  # t_init keeps the re-entry marker; these runs must reach the run branch
 P="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"; R="$P/repo"; mkdir -p "$R/bin" "$R/build"
 cp "$T_ROOT/bin/status-generate.sh" "$T_ROOT/bin/library-log.sh" "$R/bin/"
 mk_suite() { printf '#!/usr/bin/env sh\necho "%s: %s passed, 0 failed"\n' "$2" "$3" > "$R/bin/$1"; }
@@ -34,7 +34,10 @@ t_eq "the summary counts it" 1 "$(ERR | tail -1 | grep -c '^status-gen: 0 ok, 1 
 
 t_section "the default mode: the document alone on stdout"
 t_eq "exit 0" "exit 0" "$(run)"
-t_eq "stdout is the document" "# STATUS" "$(OUT | head -1 | cut -c1-8)"
+# a docs/ file carries the shared front matter and the generated-by header (harbor#1434, #1435), so the document opens with them
+t_eq "stdout is the document: the front matter opens it" "---" "$(OUT | head -n 1)"
+t_eq "...then the generated-by header" "<!-- generated-by: sh bin/status-generate.sh --apply -->" "$(OUT | sed -n '/^---$/,/^---$/!p' | head -n 1)"
+t_eq "...then the title" "# STATUS" "$(OUT | grep -m 1 '^# ' | cut -c1-8)"
 t_eq "no log line is mixed into it" 0 "$(OUT | grep -c "$LOGLINE")"
 t_has "the log is on stderr" "$(ERR)" "── status-gen · generate"
 t_eq "the summary ends stderr" 1 "$(ERR | tail -1 | grep -c '^status-gen: [0-9][0-9]* ok, 0 failed, [0-9]* warnings$')"
@@ -59,7 +62,7 @@ t_exit "docs/generated/status.md survives" 0 cmp -s "$R/docs/generated/status.md
 t_section "a bad HARBOR_STATUS_SUITE_COUNTS: FAIL, its fix, exit 2"
 t_eq "exit 2" "exit 2" "$(HARBOR_STATUS_SUITE_COUNTS=zz run --check)"
 t_has "the FAIL" "$(ERR)" "  FAIL: HARBOR_STATUS_SUITE_COUNTS: zz is not <suite>=<count>"
-t_eq "its fix" "  fix: unset HARBOR_STATUS_SUITE_COUNTS HARBOR_SUITE_COUNTS" "$(after '^  FAIL: HARBOR_STATUS_SUITE_COUNTS')"
+t_eq "its fix" "  fix: unset HARBOR_STATUS_SUITE_COUNTS" "$(after '^  FAIL: HARBOR_STATUS_SUITE_COUNTS')"
 t_section "a core-only checkout (a layer table, no docs/generated/status.md) writes to the state directory, never the tree (harbor#1275)"
 C="$P/core"; SD="$P/state"; mkdir -p "$C/bin" "$C/contracts" "$SD"
 cp "$T_ROOT/bin/status-generate.sh" "$T_ROOT/bin/library-log.sh" "$C/bin/"

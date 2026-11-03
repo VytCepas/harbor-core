@@ -3,7 +3,7 @@
 # the composition at the ref, and drift.launchd-plist finds a private check's plist in the layer's jobs/.
 # Layers are throwaway directories; the ids are made up and name no real entity.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE
 T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"
 REG='| `acme-feed` | the Acme feed | hourly | desktop | the feed stopped |'
 PLAT='| acme-feed | macOS only | client watcher | `launchctl bootout a` |'

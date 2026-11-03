@@ -3,7 +3,10 @@ kind: decision-record
 status: accepted
 alias: D-88
 date: 2026-10-23
+supersedes: -
+superseded_by: -
 source: harbor#1272
+owner: harbor#1272
 ---
 
 # A hook engine is a folder named after it

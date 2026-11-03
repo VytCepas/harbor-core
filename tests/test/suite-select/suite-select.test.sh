@@ -309,4 +309,5 @@ t_has "a dash suite left behind by a move" "$(printf 'tests/old/x-test.sh\n' >> 
   "dash: tests/old/x-test.sh is not on disk"
 t_has "an empty dash list" "$(printf '# none\n' > "$RG/contracts/suites-dash.txt"; reg_findings "$RG")" \
   "dash: contracts/suites-dash.txt is missing or names no suite"
+t_red ci.suites   # the falsifier this suite names for them (harbor#1422)
 t_done

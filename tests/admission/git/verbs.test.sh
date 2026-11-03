@@ -1,10 +1,10 @@
 #!/usr/bin/env sh
-# git verbs (harbor#1291): contracts/git-verbs.md is the one list of git shapes. This holds it to the three things
+# git verbs (harbor#1291): contracts/verbs/git.md is the one list of git shapes (the other registers: verbs/registers.test.sh). This holds it to the three things
 # that must agree with it: the allow/ask/deny rules bin/admission-deny.sh actually WRITES (run, not read), guard-bash's
 # read-only git list, and the floor rule ids it cites. And it refuses any derived allow rule that matches a gated
 # shape with no ask, deny or floor block over it. Every disagreement kind is driven red below on a mutated copy.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-REG="$T_ROOT/contracts/git-verbs.md"; GB="$T_ROOT/bin/admission-bash.sh"; GD="$T_ROOT/bin/admission-destroy.sh"
+REG="$T_ROOT/contracts/verbs/git.md"; GB="$T_ROOT/bin/admission-bash.sh"; GD="$T_ROOT/bin/admission-destroy.sh"
 TAB="$(printf '\t')"
 
 gv_rows() { # <register> -> spelling, class, perm, floor, calls, refused (tab-separated, one row per line)
@@ -24,9 +24,9 @@ gv_derive() { # <tree> <dir> -> <dir>/settings.json as floor-deny --apply writes
   CLAUDE_CONFIG_DIR="$2" sh "$1/bin/admission-deny.sh" --apply --dir "$2" > "$2/fd.log" 2>&1; echo "$?" > "$2/fd.rc"
 }
 gv_tree() { # <dir> -> a tree holding floor-deny and the libraries it sources, with a copy of the register
-  mkdir -p "$1/bin" "$1/contracts"
-  cp "$T_ROOT/bin/admission-deny.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/deploy-install-lib.sh" "$1/bin/"
-  cp "$REG" "$1/contracts/git-verbs.md"
+  mkdir -p "$1/bin" "$1/contracts/verbs"
+  cp "$T_ROOT/bin/admission-deny.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/deploy-install-lib.sh" "$T_ROOT/bin/gate-verbs.sh" "$1/bin/"
+  cp "$REG" "$1/contracts/verbs/git.md"
 }
 # Spellings no allow rule may pass unguarded. The register's own gated rows are checked too; these are the
 # attack shapes beside them: abbreviations, a flag after the subcommand, a config injection behind -C.
@@ -127,7 +127,7 @@ gv_derive "$T_ROOT" "$T_TMP/real"
 t_eq "floor-deny --apply exits 0" 0 "$(cat "$T_TMP/real/fd.rc")"
 _n_allow="$(awk -F'\t' '$3 == "allow"' "$T_TMP/rows" | wc -l | tr -d ' ')"
 t_eq "every allow row became an allow rule" "$_n_allow" "$(jq '[.permissions.allow[] | select(startswith("Bash(git "))] | length' "$T_TMP/real/settings.json")"
-t_has "the dry-run log names a derived rule" "$(cat "$T_TMP/real/fd.log")" "allow rule (git-verbs): Bash(git ls-tree *)"
+t_has "the dry-run log names a derived rule" "$(cat "$T_TMP/real/fd.log")" "allow rule (verbs): Bash(git ls-tree *)"
 t_eq "no disagreement" "" "$(gv_check "$REG" "$GB" "$GD" "$T_TMP/real/settings.json")"
 
 t_section "red: guard-bash drops a verb the register says is read-only"
@@ -155,21 +155,21 @@ t_has "and the gated shape it lets through" "$_x" \
 
 t_section "red, end to end: a register row that would allow a gated shape is derived, then refused"
 gv_tree "$T_TMP/tree"
-sed 's/^| `git push \*` | write | classifier |/| `git push *` | write | allow |/' "$REG" > "$T_TMP/tree/contracts/git-verbs.md"
-t_has "the mutation applied" "$(cat "$T_TMP/tree/contracts/git-verbs.md")" '| `git push *` | write | allow |'
+sed 's/^| `git push \*` | write | classifier |/| `git push *` | write | allow |/' "$REG" > "$T_TMP/tree/contracts/verbs/git.md"
+t_has "the mutation applied" "$(cat "$T_TMP/tree/contracts/verbs/git.md")" '| `git push *` | write | allow |'
 gv_derive "$T_TMP/tree" "$T_TMP/mut"
 t_has "floor-deny derived it" "$(jq -r '.permissions.allow[]' "$T_TMP/mut/settings.json")" "Bash(git push *)"
-t_has "the check refuses it" "$(gv_check "$T_TMP/tree/contracts/git-verbs.md" "$GB" "$GD" "$T_TMP/mut/settings.json")" \
+t_has "the check refuses it" "$(gv_check "$T_TMP/tree/contracts/verbs/git.md" "$GB" "$GD" "$T_TMP/mut/settings.json")" \
   "allow rule Bash(git push *) passes the gated shape 'git push --force-with-lease origin feat'"
 
 t_section "red: an allow row that leads with a flag is skipped by floor-deny and named by the check"
 gv_tree "$T_TMP/tree2"
-printf '| `git -C * log *` | read | allow | - | 0 | 0 | |\n' >> "$T_TMP/tree2/contracts/git-verbs.md"
+printf '| `git -C * log *` | read | allow | - | 0 | 0 | |\n' >> "$T_TMP/tree2/contracts/verbs/git.md"
 gv_derive "$T_TMP/tree2" "$T_TMP/mut2"
 t_has "floor-deny warns and skips it" "$(cat "$T_TMP/mut2/fd.log")" \
-  "git-verbs: an allow row must start 'git <subcommand>' and carry no <>|;&\$, so it is skipped: git -C * log *"
+  "verbs/git.md: an allow row must start '<cli> <subcommand>' and carry no <>|;&\$, so it is skipped: git -C * log *"
 t_eq "and writes no such rule" 0 "$(jq '[.permissions.allow[] | select(. == "Bash(git -C * log *)")] | length' "$T_TMP/mut2/settings.json")"
-t_has "the check names the row" "$(gv_check "$T_TMP/tree2/contracts/git-verbs.md" "$GB" "$GD" "$T_TMP/mut2/settings.json")" \
+t_has "the check names the row" "$(gv_check "$T_TMP/tree2/contracts/verbs/git.md" "$GB" "$GD" "$T_TMP/mut2/settings.json")" \
   "row git -C * log *: an allow rule must start git <subcommand> and name no <argument>"
 
 t_section "red: a malformed row, and a floor rule id that does not exist"

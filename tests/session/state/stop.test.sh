@@ -58,6 +58,11 @@ tx asked "$(tu c1 2020-01-01T00:00:00.000Z 'ls')" "$(tr_ c1 ok)" "$(ask)"
 run s-ask asked 'Pick one.'; t_eq "a turn ending on an AskUserQuestion is waiting-operator" "waiting-operator W-ask" "$(rec s-ask state) $(rec s-ask reason)"
 tx answered "$(ask)" "$(tr_ q1 yes)"
 run s-ans answered 'Thanks.'; t_eq "an answered AskUserQuestion is not" idle "$(rec s-ans state)"
+# harbor#1420: the same name inside a tool's OUTPUT on the last line is not a pending question.
+echoed() { jq -nc '{type:"user",message:{content:[{type:"tool_result",tool_use_id:"q9",content:"ok"}]},toolUseResult:{name:"AskUserQuestion"}}'; }
+tx echoed "$(tu c2 2020-01-01T00:00:00.000Z 'ls')" "$(echoed)"
+t_has "the fixture line carries the literal name in its output" "$(echoed)" '"name":"AskUserQuestion"'
+run s-echo echoed 'Done.'; t_eq "AskUserQuestion text inside a tool output is not waiting-operator" idle "$(rec s-echo state)"
 
 t_section "blocked: SG-2, and it agrees with admission-stop.sh on the same transcript"
 tx red "$(tu c2 2020-01-01T00:00:01.000Z 'sh tests/x-test.sh')" "$(tr_ c2 'x-test: 3 passed, 1 failed')"
@@ -201,7 +206,7 @@ t_eq "...and nothing typed" "" "$(cat "$T/osa.calls")"; rm -f "$ST/compact-auto.
 sh "$T_ROOT/bin/session-autocompact.sh" '../x' ttys999
 sh "$T_ROOT/bin/session-autocompact.sh" ac-bad 'ttys1;touch x'
 t_eq "the helper: an unsafe session id or tty runs nothing" "" "$(cat "$T/osa.calls")"
-unset HARBOR_SESSION_AUTOCOMPACT_TTY HARBOR_AUTOCOMPACT_TTY HARBOR_SESSION_AUTOCOMPACT_DELAY HARBOR_AUTOCOMPACT_DELAY; export HARBOR_SESSION_AUTOCOMPACT_PERCENT=101 HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT=false
+unset HARBOR_SESSION_AUTOCOMPACT_TTY HARBOR_SESSION_AUTOCOMPACT_DELAY; export HARBOR_SESSION_AUTOCOMPACT_PERCENT=101 HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT=false
 
 t_section "cleanup: a merged PR of this session asks once; [cleanup-ok] as the last line runs the sweep's RECLAIM rows"
 printf '#!/bin/sh\nprintf "%%s\\n" "$*" >> "%s/clean.calls"\ncase "$*" in *--apply*) echo "  RECLAIM  finished-worktrees  0B  wt-x" ;; esac\n' "$T" > "$T/clean"; chmod +x "$T/clean"
@@ -247,7 +252,7 @@ cleaned; t_has "...the sweep ran" "$(cat "$T/clean.calls")" '--apply --live'
 typed cl-2; t_has "...and /compact was typed" "$(cat "$T/osa.calls")" '/dev/ttys999'
 sleep 0.5; : > "$T/clean.calls"; sh "$T_ROOT/bin/session-cleanup.sh" '../x'
 t_eq "the helper: an unsafe session id runs nothing" "" "$(cat "$T/clean.calls")"
-unset HARBOR_SESSION_AUTOCOMPACT_TTY HARBOR_AUTOCOMPACT_TTY HARBOR_SESSION_AUTOCOMPACT_DELAY HARBOR_AUTOCOMPACT_DELAY HARBOR_SESSION_CLEANUP_TOOL HARBOR_CLEANUP_TOOL; export HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT=false
+unset HARBOR_SESSION_AUTOCOMPACT_TTY HARBOR_SESSION_AUTOCOMPACT_DELAY HARBOR_SESSION_CLEANUP_TOOL; export HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT=false
 
 t_section "fail-open, off switch, and speed"
 printf 'not json' | CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" > "$T/out" 2>&1; t_eq "garbage on stdin: exit 0, silent" "0:" "$?:$(cat "$T/out")"
@@ -262,4 +267,5 @@ awk 'BEGIN { s = sprintf("%1000s", "x"); for (i = 0; i < 20000; i++) printf "{\"
 a="$(date +%s)"; run s-big big 'ok'; b="$(date +%s)"
 t_eq "a 20 MB transcript is read through a window: still done within 2 s" yes "$([ $((b - a)) -le 2 ] && [ "$(rec s-big state)" = idle ] && echo yes || echo no)"
 settle  # let the last detached bus append finish before the sandbox is removed
+t_red check.session-state check.event.session-save-now   # the falsifier this suite names for them (harbor#1422)
 t_done

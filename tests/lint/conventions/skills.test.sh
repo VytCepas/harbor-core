@@ -157,6 +157,21 @@ _o="[$(_x8)]"
 t_hasnt "a paired skill raises no orphan advisory" "$_o" "$X8_ORPHAN"
 t_hasnt "…and no installed-on-no-box advisory" "$_o" "$X8_UNINST"
 
+t_section "X4 and X8: a skill an installed pack lists is governed by that pack (harbor#885, #889)"
+_x8_pair_setup no yes
+mkdir -p "$X8C/.harbor-packs"
+t_has "control: an installed skill no manifest lists is still an orphan" "$(_x8 | grep demo)" "INSTALLED BUT $X8_ORPHAN"
+printf '# repo\tdemo\nblob\tskills/demo/SKILL.md\n' > "$X8C/.harbor-packs/p.tsv"
+t_eq "X8: a pack-listed skill is not tracked-nowhere" "" "$(_x8 | grep demo)"
+X4P="$TMP/x4pack"; rm -rf "$X4P"; mkdir -p "$X4P/bin" "$X4P/cfg/skills/packed" "$X4P/cfg/.harbor-packs"; cp "$LINT" "$X4P/bin/"
+printf -- '---\nname: packed\n---\n' > "$X4P/cfg/skills/packed/SKILL.md"
+x4p() { CLAUDE_CONFIG_DIR="$X4P/cfg" lint1 X4 "$X4P" | awk '/── drift\.skill-tier /{p=1; next} /^── /{p=0} p'; }
+t_has "control: X4 calls an unlisted installed skill ungoverned" "$(x4p)" 'under no governed copy: packed'
+printf 'blob\tskills/packed/SKILL.md\n' > "$X4P/cfg/.harbor-packs/p.tsv"
+_o="$(x4p)"
+t_hasnt "X4: a pack-listed skill is not ungoverned" "$_o" 'under no governed copy: packed'
+t_has "…and is counted, not silent" "$_o" '1 pack-owned skill(s) counted'
+
 t_section "X4: an installed directory with no top-level SKILL.md is never skipped silently (#527)"
 X4R="$TMP/x4root"; mkdir -p "$X4R/bin" "$X4R/skills/alpha" "$X4R/cfg/skills/alpha"; cp "$LINT" "$X4R/bin/"
 printf -- '---\nname: alpha\n---\n' > "$X4R/skills/alpha/SKILL.md"; cp "$X4R/skills/alpha/SKILL.md" "$X4R/cfg/skills/alpha/"
@@ -244,6 +259,20 @@ printf '# m\nabc 100644 skills/one/SKILL.md skills-install deadbeef\n' > "$SMC/.
 t_eq "an installed skill with its row is silent" "" "$(_sm)"
 mkdir -p "$SMC/skills/two"; printf -- '---\nname: two\ndescription: "X. USE WHEN x."\n---\n' > "$SMC/skills/two/SKILL.md"
 t_has "a skill installed by hand is advised, by name" "$(_sm)" 'installed skill two has no row'
+
+t_section "skill.catalog-covers-tools: an Agent-facing tool with no catalog row is advised (harbor#1010)"
+CTR="$TMP/ct-repo"; rm -rf "$CTR"; mkdir -p "$CTR/bin" "$CTR/contracts" "$CTR/skills/skill-catalog"
+cp "$LINT" "$T_ROOT/bin/skill-catalog.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/scope-roots.sh" "$T_ROOT/bin/deploy-install-lib.sh" "$CTR/bin/"
+cp "$T_ROOT/contracts/roots.tsv" "$CTR/contracts/"; printf '#!/bin/sh\n' > "$CTR/bin/tool.sh"
+printf '#!/bin/sh\nVERBS="\nv\tv.sh\tno\tthe v\n"\n' > "$CTR/bin/harbor"
+printf '| `tool.sh` | **Agent-facing.** a tool |\n' > "$CTR/contracts/cli.md"
+printf 'kind\tname\tuse_when\tinvocation\nverb\tv\tyou need v\tharbor v\n' > "$CTR/contracts/agent-tools.tsv"
+_ct() { (cd "$CTR" && HARBOR_SCOPE_ROOT="$CTR" sh "$CTR/bin/lint-conventions.sh" --only skill.catalog-covers-tools 2>&1 | grep 'ADVISORY \[skill.catalog-covers-tools\]' || true); }
+t_has "RED: a tool cli.md marks Agent-facing, with no row" "$(_ct)" '`tool.sh` is marked Agent-facing in contracts/cli.md and has no row'
+printf 'tool\ttool.sh\tyou run the tool\tsh bin/tool.sh\n' >> "$CTR/contracts/agent-tools.tsv"
+t_eq "GREEN: with its row, silent" "" "$(_ct)"
+printf 'tool\tgone.sh\tit is gone\tsh bin/gone.sh\n' >> "$CTR/contracts/agent-tools.tsv"
+t_has "RED: a row whose script does not exist" "$(_ct)" 'bin/gone.sh does not exist'
 
 t_section "test-strength is cross-linked from where verification is taught (harbor#1010)"
 for _tl in docs/explanation/verification-expanded.md AGENTS.md; do

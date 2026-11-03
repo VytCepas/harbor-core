@@ -1,3 +1,9 @@
+---
+kind: design
+owner: @VytCepas
+status: unreviewed
+---
+
 # Ship — merge and deploy the fleet overnight, restore a bad deploy, report in the morning
 
 **Status:** harbor#1060, harbor#1018. `harbor ship night|deploy`, one POSIX `sh` tool (`bin/deploy-fleet.sh`), built to
@@ -123,8 +129,18 @@ own spacing.
 | `apply` | unattended deploy; **must snapshot first** and write the snapshot id to the file in `$SHIP_SNAPSHOT` | none (merge-only repo) |
 | `verify` | a health check; exit 0 = healthy. Repeatable, and all must pass | none (then a deploy is never autonomous) |
 | `restore` | puts back the snapshot whose id is in `$SHIP_SNAPSHOT_ID` | none (then a deploy is never autonomous) |
+| `method` | the one merge method the repo means: `merge-commit`, `squash` or `rebase`; read by `bin/gate-pr-plan.sh` and checked by `bin/gate-repo-drift.sh` (harbor#1418) | undeclared |
+| `review` | the review the base branch requires: `<approvals>` or `<approvals> code-owner`, `none` for no review; compared with the ruleset's `pull_request` rule | undeclared |
+| `delete-branch` | `yes` when GitHub deletes a head on merge (`delete_branch_on_merge`), else `no` | undeclared |
 | `deployed` | prints the commit the live install is at (first token); the recorded sha is trusted only while it agrees | none (a restore outside the runner is not seen) |
 | `timeout.<cmd>` | seconds for `plan`, `apply`, `verify`, `restore` or `deployed` | 600, 1800, 600, 1800, 60 |
+
+`method`, `review` and `delete-branch` declare the repo's GitHub rules (harbor#1418). `sh bin/gate-repo-drift.sh --print`
+compares each with the live repo (`allow_*_merge`, `delete_branch_on_merge`, the branch's `pull_request` rule) and prints
+the operator command that closes each drift; classic branch protection is 403 to the App and is reported unreadable,
+never clean. A repo with no `ship.conf` is declared by rows (`slug<TAB>key<TAB>value`) in the private layer's `repo-rules.tsv` or
+`--declared FILE` (a ship.conf opts a repo into the approval gate, so none is added only to declare rules); an `exempt` row
+takes a repo or registry folder out of scope, with its reason. It applies nothing.
 
 Commands run from the repo's main checkout through `sh -c`, with `SHIP_UNATTENDED=1`, `SHIP_REPO=<owner/name>`,
 `SHIP_SNAPSHOT=<file>` and, for `restore` only, `SHIP_SNAPSHOT_ID=<id>`. A snapshot id is one token of

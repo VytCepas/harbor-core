@@ -22,30 +22,28 @@ for a in "$@"; do case "$a" in
   *) log_fail "unknown argument $a"; log_nofix "sh bin/audit-collector-install.sh --help"; exit 2 ;;
 esac; done
 # The test knobs (HARBOR_AUDIT_COLLECTOR_OS, _HOME, _SOURCES, _USER) let a dry run plan another OS, home, source list or user; under root each
-# is refused: an install never takes a caller-chosen ACL target, path or platform. Until 2026-12-01 the four old names
-# are read too (harbor#967 W9), so they are refused under root as well.
-for v in HARBOR_AUDIT_COLLECTOR_OS HARBOR_AUDIT_COLLECTOR_HOME HARBOR_AUDIT_COLLECTOR_SOURCES HARBOR_AUDIT_COLLECTOR_USER \
-         HARBOR_COLLECTOR_OS HARBOR_COLLECTOR_HOME HARBOR_COLLECTOR_SRC HARBOR_COLLECTOR_USER; do
+# is refused: an install never takes a caller-chosen ACL target, path or platform.
+for v in HARBOR_AUDIT_COLLECTOR_OS HARBOR_AUDIT_COLLECTOR_HOME HARBOR_AUDIT_COLLECTOR_SOURCES HARBOR_AUDIT_COLLECTOR_USER; do
   eval "_v=\${$v:-}"
   [ -z "$_v" ] || [ "$(id -u)" -ne 0 ] || { log_fail "$v is set under root: refusing"; log_fix "sudo env -u $v sh $0"; exit 1; }
 done
-OS="${HARBOR_AUDIT_COLLECTOR_OS:-${HARBOR_COLLECTOR_OS:-$(uname -s)}}"
+OS="${HARBOR_AUDIT_COLLECTOR_OS:-$(uname -s)}"
 OP="${SUDO_USER:-$(id -un)}"
 [ "$OP" != root ] || { log_fail "run it with sudo from your own account, so it wires YOUR config dir"; log_nofix "sudo sh $0"; exit 1; }
 case "$OS" in
-  Darwin) U="${HARBOR_AUDIT_COLLECTOR_USER:-${HARBOR_COLLECTOR_USER:-_harborlog}}"; BIN='/Library/Application Support/Harbor/collector-bin'; STORE='/Library/Application Support/Harbor/collector'
+  Darwin) U="${HARBOR_AUDIT_COLLECTOR_USER:-_harborlog}"; BIN='/Library/Application Support/Harbor/collector-bin'; STORE='/Library/Application Support/Harbor/collector'
           GRP=wheel; OPHOME="$(dscl . -read "/Users/$OP" NFSHomeDirectory 2>/dev/null | awk '{print $2}')" ;;
-  Linux)  U="${HARBOR_AUDIT_COLLECTOR_USER:-${HARBOR_COLLECTOR_USER:-harborlog}}"; BIN=/opt/harbor/collector-bin; STORE=/var/lib/harbor/collector
+  Linux)  U="${HARBOR_AUDIT_COLLECTOR_USER:-harborlog}"; BIN=/opt/harbor/collector-bin; STORE=/var/lib/harbor/collector
           GRP=root; OPHOME="$(getent passwd "$OP" 2>/dev/null | cut -d: -f6)" ;;
   *) log_fail "$OS: macOS and Linux only (harbor#831: Windows only through WSL2, which is Linux here)"; log_nofix "run it on the box"; exit 1 ;;
 esac
-OPHOME="${HARBOR_AUDIT_COLLECTOR_HOME:-${HARBOR_COLLECTOR_HOME:-$OPHOME}}"
+OPHOME="${HARBOR_AUDIT_COLLECTOR_HOME:-$OPHOME}"
 [ -n "$OPHOME" ] || { log_fail "no home dir for $OP"; log_nofix "check the account"; exit 1; }
 # Every source the collector copies (lane 4), wherever its writer keeps it; only those that exist now are wired.
-CAND="${HARBOR_AUDIT_COLLECTOR_SOURCES:-${HARBOR_COLLECTOR_SRC:-$OPHOME/.claude/MEMORY/OBSERVABILITY:$OPHOME/.claude/MEMORY/USAGE:$OPHOME/.local/state/harbor/events:$OPHOME/.local/state/harbor/obligations:$OPHOME/.claude/.helm-approvals:$OPHOME/.claude/cache/checks.log}}"
+CAND="${HARBOR_AUDIT_COLLECTOR_SOURCES:-$OPHOME/.claude/MEMORY/OBSERVABILITY:$OPHOME/.claude/MEMORY/USAGE:$OPHOME/.local/state/harbor/events:$OPHOME/.local/state/harbor/obligations:$OPHOME/.claude/.helm-approvals:$OPHOME/.claude/cache/checks.log}"
 SRC=""; _ifs="$IFS"; IFS=:
 for _c in $CAND; do IFS="$_ifs"; if [ -e "$_c" ]; then SRC="${SRC:+$SRC:}$_c"; else log_note "not wired, absent today: $_c"; fi; done; IFS="$_ifs"
-case ":$SRC:" in *"/MEMORY/OBSERVABILITY:"*) ;; *) [ -n "${HARBOR_AUDIT_COLLECTOR_SOURCES:-${HARBOR_COLLECTOR_SRC:-}}" ] || { log_fail "no $OPHOME/.claude/MEMORY/OBSERVABILITY: start one session with the floor installed first"; log_nofix "harbor deploy"; exit 1; } ;; esac
+case ":$SRC:" in *"/MEMORY/OBSERVABILITY:"*) ;; *) [ -n "${HARBOR_AUDIT_COLLECTOR_SOURCES:-}" ] || { log_fail "no $OPHOME/.claude/MEMORY/OBSERVABILITY: start one session with the floor installed first"; log_nofix "harbor deploy"; exit 1; } ;; esac
 [ -n "$SRC" ] || { log_fail "no source exists"; log_nofix "start a Claude Code session first"; exit 1; }
 
 step() { log_note "$*"; [ "$MODE" = dry ] || "$@"; }

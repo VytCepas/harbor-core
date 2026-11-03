@@ -5,7 +5,7 @@
 # The wiring matrix and the floor predicate are copies (of admission-install.sh, status-generate.sh);
 # the drift and agreement cases fail when a copy drifts. The notifier is pulse-notify-test.sh.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset HARBOR_TEST_IN_SUITE HARBOR_IN_SUITE  # t_init keeps status-gen's re-entry marker; this suite runs status-gen at top level (harbor#773)
+unset HARBOR_TEST_IN_SUITE  # t_init keeps status-gen's re-entry marker; this suite runs status-gen at top level (harbor#773)
 P="$T_ROOT/bin/alert-probe.sh"; TMP="$T_TMP/pulse"; mkdir -p "$TMP"
 mkcfg() { # <name> <deny: sentinel|unrelated|empty> <hooks: full|no-mcp|no-advis|bash-only|shim|odd|none> <missing-guard|->
   _d="$TMP/$1"; mkdir -p "$_d/bin" "$_d/cache"
@@ -186,7 +186,7 @@ cud "$NOWZ" green 0
 t_section "dispatch: the event dispatcher's receipt (harbor#1044 review r3 #4)"
 dsp() { printf '{"status":"%s","at":1,"pid":%s,"reason":"%s"}\n' "$1" "$2" "${3-}" > "$WIRED/cache/event-dispatch-state.json"; }
 rm -f "$WIRED/cache/event-dispatch-state.json"
-t_eq "no receipt is ok: the dispatcher ships inert" ok "$(verdict "$(run "$WIRED")" dispatch)"
+t_eq "no receipt and no installed job is ok" ok "$(verdict "$(run "$WIRED")" dispatch)"
 dsp down 1 'jq is not on PATH'
 O="$(run "$WIRED")"
 t_eq "down is crit" crit "$(verdict "$O" dispatch)"
@@ -200,6 +200,17 @@ dsp off 1; t_eq "off is ok" ok "$(verdict "$(run "$WIRED")" dispatch)"
 printf 'not json' > "$WIRED/cache/event-dispatch-state.json"
 t_eq "an unreadable receipt is unknown" unknown "$(verdict "$(run "$WIRED")" dispatch)"
 rm -f "$WIRED/cache/event-dispatch-state.json"
+# harbor#1437: a deploy installs the job, so installed-and-silent is a dead dispatcher; a standing refusal is a warn.
+DPL="$HOME/Library/LaunchAgents/com.harbor.event.dispatch.plist"; mkdir -p "${DPL%/*}"; : > "$DPL"
+O="$(run "$WIRED")"
+t_eq "the job installed and no receipt ever written is warn: it is not running" warn "$(verdict "$O" dispatch)"
+t_has "...and says so" "$(detail "$O" dispatch)" "has never written its receipt"
+rm -f "$DPL"
+dsp following "$$"; printf 'event.pulse\told-handler.sh is not on the handler allowlist\n' > "$WIRED/cache/event-dispatch-refused.tsv"
+O="$(run "$WIRED")"
+t_eq "a following dispatcher with a standing refusal is warn" warn "$(verdict "$O" dispatch)"
+t_has "...naming the rule" "$(detail "$O" dispatch)" "event.pulse"
+rm -f "$WIRED/cache/event-dispatch-refused.tsv" "$WIRED/cache/event-dispatch-state.json"
 
 t_section "worklog: no store is unknown; unpushed is warn; in sync is ok"
 t_eq "an absent work-log is unknown" unknown "$(verdict "$(run "$WIRED")" worklog)"

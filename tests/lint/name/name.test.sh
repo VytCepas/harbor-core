@@ -213,13 +213,6 @@ t_has "…and says every register file has its row" "$_ulo" "has a registers.tsv
 
 t_section "--check case, path.test and repo-kind exit 0 or 1, never 2 (harbor#996 item 10, #961 items 3 and 6)"
 okrc() { sh -c 'sh "$1" --check "$2" "$3" > /dev/null 2>&1; test $? -le 1' _ "$LN" "$1" "$2"; }   # <surface> <name>: exit 0 or 1
-RKD="$TMP/rkdirs"; mkdir -p "$RKD"
-mkrk() { # <dir> <kind> <entry>... : a repo tree; a trailing / is a directory, .agents/config.yaml carries the kind
-  _d="$RKD/$1"; _k="$2"; shift 2; rm -rf "$_d"; mkdir -p "$_d/.agents"; [ -z "$_k" ] || printf 'repo-kind: %s\n' "$_k" > "$_d/.agents/config.yaml"
-  for _e in "$@"; do case "$_e" in */) mkdir -p "$_d/$_e" ;; *) mkdir -p "$_d/$(dirname "$_e")"; : > "$_d/$_e" ;; esac; done
-  printf '%s' "$_d"
-}
-rk() { sh "$LN" --check repo-kind "$1" 2>&1; }
 WL="README.md AGENTS.md CLAUDE.md justfile docs/"
 t_exit "case: a path with a finding" 0 okrc case docs/Notes.md
 t_exit "case: a clean path" 0 okrc case docs/notes.md
@@ -233,8 +226,8 @@ t_has "an uppercase path is a name.case finding" "$(sh "$LN" --check case docs/N
 t_has "…and so is an uppercase directory" "$(sh "$LN" --check case Docs/notes.md 2>&1)" "[name.case] Docs"
 t_has "a lowercase path with a separator the standard refuses: green on case" "$(sh "$LN" --check case docs/my_notes.md 2>&1)" "no finding"
 t_has "…and red on path, where the separator rule judges it" "$(sh "$LN" --check path docs/my_notes.md 2>&1)" "[name.separator] docs/my_notes.md"
-t_has "a legacy alias in a lowercase path: green on case" "$(sh "$LN" --check case docs/helm-log-export.md 2>&1)" "no finding"
-t_has "…and red on path" "$(sh "$LN" --check path docs/helm-log-export.md 2>&1)" "[name.alias] docs/helm-log-export.md"
+t_has "a legacy alias in a lowercase path: green on case" "$(sh "$LN" --check case docs/golden-log-export.md 2>&1)" "no finding"
+t_has "…and red on path" "$(sh "$LN" --check path docs/golden-log-export.md 2>&1)" "[name.alias] docs/golden-log-export.md"
 t_has "a UK spelling in a path is an alias finding that names the US word (D-16)" "$(sh "$LN" --check path docs/colour-guide.md 2>&1)" '[name.alias] docs/colour-guide.md — `colour` is a UK spelling: write `color`'
 t_has "…and its US spelling is green" "$(sh "$LN" --check path docs/color-guide.md 2>&1)" "no finding"
 for _n in README.md LICENSE CHANGELOG.md SKILL.md .github/ISSUE_TEMPLATE/bug.md CLAUDE.md.tmpl; do
@@ -262,11 +255,11 @@ t_has "a workload with every required entry is clean" "$(rk "$(mkrk whole worklo
 t_has "…with optional entries and entries the kind does not list beside them (valid but unusual)" \
   "$(rk "$(mkrk extras workload $WL bin/ src/ .github/ .gitignore build/ notes.txt)")" "no finding"
 t_has "…and a double-quoted kind with a trailing comment" \
-  "$(mkrk quoted '' $WL >/dev/null; printf 'repo-kind: "workload"  # standards/naming/repo-kinds.tsv\n' > "$RKD/quoted/.agents/config.yaml"; rk "$RKD/quoted")" "no finding"
+  "$(mkrk quoted workload $WL >/dev/null; printf 'repo-kind: "workload"  # standards/naming/repo-kinds.tsv\n' > "$RKD/quoted/.agents/config.yaml"; rk "$RKD/quoted")" "no finding"
 t_has "…and a single-quoted one" \
-  "$(mkrk single '' $WL >/dev/null; printf "repo-kind: 'workload'\n" > "$RKD/single/.agents/config.yaml"; rk "$RKD/single")" "no finding"
+  "$(mkrk single workload $WL >/dev/null; printf "repo-kind: 'workload'\n" > "$RKD/single/.agents/config.yaml"; rk "$RKD/single")" "no finding"
 t_has "…and the kind line among other keys" \
-  "$(mkrk keys '' $WL >/dev/null; printf 'context: repo\nscope: project\nrepo-kind: workload\n' > "$RKD/keys/.agents/config.yaml"; rk "$RKD/keys")" "no finding"
+  "$(mkrk keys workload $WL >/dev/null; printf 'context: repo\nscope: project\nrepo-kind: workload\n' > "$RKD/keys/.agents/config.yaml"; rk "$RKD/keys")" "no finding"
 t_has "a control plane needs its longer list, and has it" "$(rk "$(mkrk plane control-plane README.md AGENTS.md CLAUDE.md LICENSE CHANGELOG.md justfile bin/ tests/ docs/)")" "no finding"
 t_has "a required file that is missing is a name.repo-kind finding naming it" "$(rk "$(mkrk nofile workload AGENTS.md CLAUDE.md justfile docs/)")" "[name.repo-kind] repo-kind:$RKD/nofile:README.md"
 t_has "a required directory that is missing is one too" "$(rk "$(mkrk nodir workload README.md AGENTS.md CLAUDE.md justfile)")" "repo-kind:$RKD/nodir:docs/"
@@ -329,6 +322,7 @@ t_section "an id the tree carries and controls.tsv lacks is red, for each census
 CN="$TMP/census"; mini "$CN"; mkdir -p "$CN/context-rules" "$CN/contracts" "$CN/docs/reference"
 cp "$T_ROOT"/bin/admission-*.sh "$T_ROOT"/bin/library-admission.sh "$CN/bin/"; cp "$T_ROOT/bin/lint-conventions.sh" "$CN/bin/"; cp "$T_ROOT/docs/reference/checks.md" "$CN/docs/reference/"
 cp "$T_ROOT/contracts/required-checks.tsv" "$CN/contracts/"; cp -R "$T_ROOT"/context-rules/. "$CN/context-rules/"
+mkdir -p "$CN/hooks"; cp "$T_ROOT/hooks/pre-commit" "$T_ROOT/hooks/pre-push" "$T_ROOT/hooks/commit-msg" "$CN/hooks/"   # the hook census (harbor#1422)
 cn() { sh "$CN/bin/lint-name.sh" --root "$CN" --check registry standards/naming 2>&1; }
 t_has "the real guards, checks, packs and rules are all registered: no finding" "$(cn)" "no finding"
 grep -v '^admission\.' "$REG/controls.tsv" > "$CN/standards/naming/controls.tsv"
@@ -351,8 +345,11 @@ rm "$CN/context-rules/user/ghost-pack.md"
 printf 'VytCepas/harbor\tghost gate\n' >> "$CN/contracts/required-checks.tsv"
 t_has "a required CI check with no row is red" "$(cn)" "[name.control-unregistered] ci:ghost gate"
 cp "$T_ROOT/contracts/required-checks.tsv" "$CN/contracts/required-checks.tsv"
+printf '# control: git.ghost-hook a rule no row holds\n' >> "$CN/hooks/pre-push"
+t_has "a hook rule with no row is red (harbor#1422)" "$(cn)" "[name.control-unregistered] hook:git.ghost-hook"
+cp "$T_ROOT/hooks/pre-push" "$CN/hooks/pre-push"
 t_has "and the clean copy is clean again" "$(cn)" "no finding"
-for _src in 'guard-rules:bin/admission-\*.sh' 'checks-table:docs/reference/checks.md' 'inject-ids:context-rules' 'lint-rules:bin/lint-conventions.sh' 'required-checks:contracts/required-checks.tsv'; do
+for _src in 'guard-rules:bin/admission-\*.sh' 'checks-table:docs/reference/checks.md' 'inject-ids:context-rules' 'lint-rules:bin/lint-conventions.sh' 'required-checks:contracts/required-checks.tsv' 'hook-rules:hooks/pre-commit,hooks/pre-push,hooks/commit-msg'; do
   _bad="${_src%%:*}:zz-missing"
   sed "s#$_src#$_bad#" "$REG/registers.tsv" > "$CN/standards/naming/registers.tsv"
   t_has "a census whose source is missing fails loud: $_src" "$(cn)" "found no id: its source is missing or empty"
@@ -378,19 +375,15 @@ t_eq "no control id of the modularity rules collides with a lint id" 0 "$(grep -
 t_eq "…the rules are module.* ids: D-60's five, layer-direction and module.graph-conform (harbor#996)" 7 "$(grep -c '^module\.' "$REG/controls.tsv")"
 
 t_section "an alias warns until its remove_by date and blocks from it (harbor#968)"
-_ae() { sh "$LN" --check registry "$REG" --root "$T_ROOT" --registry "$REG" --today "$1" 2>&1; echo "exit $?"; }
+AER="$TMP/aereg"; mkdir -p "$AER"; cp -R "$REG/." "$AER/"   # a register of its own with one fixture legacy row, whatever the real one retires
+printf 'oldword\talerting\tlegacy\tglossary\t2026-11-15\ta fixture legacy row\n' >> "$AER/aliases.tsv"
+_ae() { sh "$LN" --check registry "$AER" --root "$T_ROOT" --registry "$AER" --today "$1" 2>&1; echo "exit $?"; }
 _aw="$(_ae 2026-11-02)"
-t_has "within 14 days of 2026-11-15: a warning" "$_aw" "WARN: [name.alias-expired] alias:aboard"
+t_has "within 14 days of 2026-11-15: a warning" "$_aw" "WARN: [name.alias-expired] alias:oldword"
 t_has "…and the run exits 0" "$_aw" "exit 0"
 _ab="$(_ae 2026-11-15)"
-t_has "on 2026-11-15 itself: a block" "$_ab" "FAIL: [name.alias-expired] alias:aboard"
+t_has "on 2026-11-15 itself: a block" "$_ab" "FAIL: [name.alias-expired] alias:oldword"
 t_has "…and the run exits 1" "$_ab" "exit 1"
-
-t_section "exemptions expire by rename wave, never on one day (harbor#950)"
-_ex="$(awk -F'\t' '/^#/ || $1 == "id" { next } $4 == "legacy" { n++; d[$5]++ } END { m = 0; for (k in d) if (d[k] > m) { m = d[k]; dk = k }; printf "%d %d %s", n, m, dk }' "$REG/exemptions.tsv")"
-_exn="${_ex%% *}"; _exm="${_ex#* }"; _exm="${_exm%% *}"
-t_eq "the largest remove_by date holds under a quarter of the legacy rows ($_ex)" yes "$([ $((_exm * 4)) -lt "$_exn" ] && echo yes || echo no)"
-t_eq "every legacy row's reason names its wave" "" "$(awk -F'\t' '/^#/ || $1 == "id" { next } $4 == "legacy" && $6 !~ /; (W[1-6] |skills)/' "$REG/exemptions.tsv" | head -3)"
 
 t_section "harbor's tree exits 0 with advisories only"
 _tr="$(sh "$LN" 2>&1)"; _trrc=$?
@@ -442,9 +435,9 @@ t_has "…and lists bin/lint-conventions.sh's ids" "$_ls" "admission.kill-switch
 t_has "…beside controls.tsv's" "$_ls" "name.case"
 t_eq "…every one of them" "$(($(rules "$REG" | grep -c .) + $(grep -c '^rule "' "$LINT")))" "$(printf '%s\n' "$_ls" | grep -c .)"
 LC="$TMP/lcids"; mini "$LC"
-printf 'rule_F1() {\nrule "admission.floor-first a fixture rule"\n}\n' > "$LC/bin/lint-conventions.sh"
+printf 'rule_F1() {\nrule "admission.golden-first a fixture rule"\n}\n' > "$LC/bin/lint-conventions.sh"
 t_has "a lint-conventions id is judged as a rule-id name, read and never run" \
-  "$(sh "$LC/bin/lint-name.sh" --root "$LC" 2>&1)" "[name.alias] rule-id:admission.floor-first"
+  "$(sh "$LC/bin/lint-name.sh" --root "$LC" 2>&1)" "[name.alias] rule-id:admission.golden-first"
 printf 'rule_F1() {\nrule "admission.kill-switch-first a fixture rule"\n}\n' > "$LC/bin/lint-conventions.sh"
 _lcg="$(sh "$LC/bin/lint-name.sh" --root "$LC" 2>&1)"
 t_hasnt "…and a good one is not" "$_lcg" "rule-id:admission"
@@ -452,12 +445,14 @@ t_has "positive control: that run judged the tree" "$_lcg" "lint-name:"
 
 t_section "--format findings is the kind TAB id TAB subject record"
 F="$TMP/fmt"; mini "$F"; mkdir -p "$F/docs" "$F/bin"; : > "$F/docs/Notes.md"
-printf '#!/usr/bin/env sh\nHELM_PROBE_FIXTURE=1 sh x\n' > "$F/bin/probe.sh"
+# the real helm row retired with its window, so a synthetic legacy prefix stands in for it
+printf 'xoldpfx\tplatform\tlegacy\tglossary\t2099-01-01\ta fixture legacy prefix\n' >> "$F/standards/naming/aliases.tsv"
+printf '#!/usr/bin/env sh\nXOLDPFX_PROBE_FIXTURE=1 sh x\n' > "$F/bin/probe.sh"
 _ff="$(sh "$F/bin/lint-name.sh" --root "$F" --format findings 2>/dev/null)"
 t_eq "every record is A TAB name.<rule> TAB subject" "" "$(printf '%s\n' "$_ff" | grep -vE "^A	name\.[a-z-]+	[^	]+$")"
 t_has "a bad path is a record" "$_ff" "$(printf 'A\tname.case\tdocs/Notes.md')"
-t_has "an env name read from code is a record" "$_ff" "$(printf 'A\tname.env\tenv:HELM_PROBE_FIXTURE')"
-t_has "…and its legacy prefix is an alias finding" "$_ff" "$(printf 'A\tname.alias\tenv:HELM_PROBE_FIXTURE')"
+t_has "an env name read from code is a record" "$_ff" "$(printf 'A\tname.env\tenv:XOLDPFX_PROBE_FIXTURE')"
+t_has "…and its legacy prefix is an alias finding" "$_ff" "$(printf 'A\tname.alias\tenv:XOLDPFX_PROBE_FIXTURE')"
 
 t_section "an env rename's dual-read window exempts the old name until remove_by (harbor#961 W5)"
 # The names are built from pieces, so this suite's own source holds no env token for the tree lint to judge.
@@ -497,4 +492,5 @@ mv "$TMP/rules.block" "$B/standards/naming/controls.tsv"
 t_exit "a block-level finding exits 1" 1 sh "$B/bin/lint-name.sh" --root "$B" --check path Notes.md
 t_exit "…and an advisory one exits 0" 0 sh "$LN" --check path Notes.md
 
+t_red check.repo-verbs   # the falsifier this suite names for them (harbor#1422)
 t_done

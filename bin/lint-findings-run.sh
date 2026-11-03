@@ -43,7 +43,7 @@ log_init findings-run
 URL=""; STORE=""; _slug="$(repo_slug)"; [ -z "$_slug" ] || URL="https://github.com/$_slug.git"
 CFG_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)"
 if [ "$OVERRIDES" = 1 ]; then
-  URL="${HARBOR_LINT_FINDINGS_URL:-${HARBOR_FINDINGS_URL:-$URL}}"; STORE="${HARBOR_LINT_FINDINGS_REPO:-${HARBOR_FINDINGS_REPO:-}}"
+  URL="${HARBOR_LINT_FINDINGS_URL:-$URL}"; STORE="${HARBOR_LINT_FINDINGS_REPO:-}"
   CFG_DIR="${CLAUDE_CONFIG_DIR:?--overrides needs CLAUDE_CONFIG_DIR}"
 fi
 for _v in $(env | sed -n 's/^\(HARBOR_[A-Za-z0-9_]*\)=.*/\1/p'); do unset "$_v"; done
@@ -105,6 +105,8 @@ GIT_AUTHOR_NAME="${_name:-harbor findings}"; GIT_AUTHOR_EMAIL="${_mail:-findings
 GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"; GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
 export GIT_CONFIG_NOSYSTEM GIT_CONFIG_GLOBAL GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0 \
   GIT_CONFIG_KEY_1 GIT_CONFIG_VALUE_1 GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
+# the lint that runs on this clone must not read its missing hooks as the operator's (harbor#879)
+HARBOR_LINT_DISPOSABLE=1; export HARBOR_LINT_DISPOSABLE
 git clone --quiet --single-branch --branch main "$URL" "$WT" 2>"$T/fetch.err" \
   || refuse "could not fetch main from $URL: $(head -1 "$T/fetch.err")" "git clone $URL"
 SHA="$(git -C "$WT" rev-parse HEAD)"

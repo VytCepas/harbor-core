@@ -107,9 +107,9 @@ _rp_red SHIM1 "1 shim(s) missing, mispointed or blocked" "a table shim absent fr
 HOME="$_SH0"; export HOME
 
 t_section "IJ6: a governed repo whose sessions load no memory (harbor#588)"
-_rp_fresh; mkdir -p "$RP/priv/inject.d/box"; cp "$SRC/memory-route.sh" "$SRC/library-log.sh" "$SRC/scope-roots.sh" "$RP/bin/"; cp "$ROOT/contracts/roots.tsv" "$RP/contracts/"   # memory-route sources log-lib (harbor#896) and asks scope-roots.sh, which reads its table, for the registry (harbor#1149)
+_rp_fresh; mkdir -p "$RP/priv/context-rules/user"; cp "$SRC/memory-route.sh" "$SRC/library-log.sh" "$SRC/scope-roots.sh" "$RP/bin/"; cp "$ROOT/contracts/roots.tsv" "$RP/contracts/"   # memory-route sources log-lib (harbor#896) and asks scope-roots.sh, which reads its table, for the registry (harbor#1149)
 _IJ_H="$TMP/rp-ij6-home"; rm -rf "$_IJ_H"; mkdir -p "$_IJ_H/repo"; _IJ_H="$(cd -P "$_IJ_H" && pwd -P)"
-printf 'repo\t~/repo\n' > "$RP/priv/inject.d/box/projects.tsv"
+printf 'repo\t~/repo\n' > "$RP/priv/context-rules/user/projects.tsv"
 _IJ_S="$_IJ_H/.claude/projects/$(printf '%s' "$_IJ_H" | sed 's|/|-|g')/memory"; mkdir -p "$_IJ_S"; : > "$_IJ_S/note.md"
 _IJ_K="$_IJ_H/.claude/projects/$(printf '%s' "$_IJ_H/repo" | sed 's|/|-|g')"; mkdir -p "$_IJ_K"; ln -s "$_IJ_S" "$_IJ_K/memory"
 _IJ_OH="$HOME"; _IJ_OC="${CLAUDE_CONFIG_DIR:-}"; _IJ_OP="${HARBOR_SCOPE_PRIVATE:-}"; HOME="$_IJ_H"; CLAUDE_CONFIG_DIR="$_IJ_H/.claude"; HARBOR_SCOPE_PRIVATE="$RP/priv"; export HOME CLAUDE_CONFIG_DIR HARBOR_SCOPE_PRIVATE

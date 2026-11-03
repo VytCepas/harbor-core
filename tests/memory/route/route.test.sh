@@ -8,8 +8,8 @@
 T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)/box"
 CFG="$T/cfg"; REPOROOT="$T/repo"; TAB="$(printf '\t')"
 # The registry is the private layer's (harbor#1149): a fixture layer, named for every call below.
-REG="$T/priv/inject.d/box/projects.tsv"; HARBOR_SCOPE_PRIVATE="$T/priv"; export HARBOR_SCOPE_PRIVATE
-mkdir -p "$CFG/projects" "$REPOROOT" "$T/priv/inject.d/box"
+REG="$T/priv/context-rules/user/projects.tsv"; HARBOR_SCOPE_PRIVATE="$T/priv"; export HARBOR_SCOPE_PRIVATE
+mkdir -p "$CFG/projects" "$REPOROOT" "$T/priv/context-rules/user"
 key_for() { printf '%s' "$1" | sed 's|/|-|g'; }  # the tool's own derivation, not a hand-typed key
 route_of() { printf '%s' "$CFG/projects/$(key_for "$1")/memory"; }
 HOME_STORE="$(route_of "$T")"; mkdir -p "$HOME_STORE"
@@ -178,4 +178,5 @@ t_eq "13c: an EMPTY PORT_ROOT routes \$HOME/port" link "$(is_link "$(route_of "$
 mkdir -p "$T/ws"
 HOME="$T" PORT_ROOT="$T/ws/" HARBOR_SCOPE_REPO="$REPOROOT" sh "$T_ROOT/bin/memory-route.sh" --dir "$CFG" --apply >/dev/null 2>&1
 t_eq "13d: an exported PORT_ROOT, trailing slash and all, is the root routed" link "$(is_link "$(route_of "$T/ws")")"
+t_red check.memory-route   # the falsifier this suite names for them (harbor#1422)
 t_done

@@ -230,7 +230,7 @@ il_stop() {
 }
 
 il_next() { # [--deploy-does] <command>
-  if [ "${1-}" = --deploy-does ]; then shift; [ "${HARBOR_DEPLOY_ACTIVE:-${HARBOR_DEPLOY:-0}}" = 1 ] && return 0; fi
+  if [ "${1-}" = --deploy-does ]; then shift; [ "${HARBOR_DEPLOY_ACTIVE:-0}" = 1 ] && return 0; fi
   log_note "next: ${1-}"
 }
 
@@ -271,7 +271,7 @@ il_first_run_cmd() { # [<checkout>]
   fi
   if [ -z "$_fr_r" ]; then
     _fr_r="$(sh "${IL_SELF%/*}/scope-roots.sh" --get HARBOR_SCOPE_REPO 2>/dev/null || :)"
-    [ -n "$_fr_r" ] || _fr_r="${HARBOR_SCOPE_REPO:-${HARBOR_REPO:-${PORT_ROOT:-$HOME/port}/harbor}}"  # spelled as contracts/roots.tsv has it (scope-roots.sh --check)
+    [ -n "$_fr_r" ] || _fr_r="${HARBOR_SCOPE_REPO:-${PORT_ROOT:-$HOME/port}/harbor}"  # spelled as contracts/roots.tsv has it (scope-roots.sh --check)
   fi
   printf 'sh %s scope install' "$(_il_sq "$_fr_r/bin/harbor")"
 }
@@ -303,7 +303,7 @@ il_merge_hook() { # <settings-json> <event> <matcher> <cmd> [<onfail>]  â†’ new 
 # A PreToolUse veto that times out or crashes lets the call through unless onFailure is set
 # (code.claude.com/docs/en/hooks). An unknown version gets no field: an older client may reject the key.
 il_onfailure() {
-  case "${HARBOR_ADMISSION_ONFAILURE:-${FLOOR_ONFAILURE:-}}" in 1) echo block; return 0 ;; 0) return 0 ;; esac
+  case "${HARBOR_ADMISSION_ONFAILURE:-}" in 1) echo block; return 0 ;; 0) return 0 ;; esac
   _ofv="$(claude --version 2>/dev/null | sed -n 's/^\([0-9][0-9]*\)\.\([0-9][0-9]*\)\.\([0-9][0-9]*\).*/\1 \2 \3/p' | head -n 1)"
   [ -n "$_ofv" ] || return 0
   set -- $_ofv
@@ -503,15 +503,12 @@ il_renamed_rewire() { # <settings-json> <repo root> <cfg dir> <installed name>â€
     end' "$_rw_j"
 }
 
-# THE GIT VERBS REGISTER (harbor#1291). floor-deny adds the allow and ask rules contracts/git-verbs.md's rows imply
-# and floor-uninstall takes the same rules out, so both read them here. A spelling that does not start
-# `git <subcommand>`, or names an <argument> or a shell metacharacter, comes back BAD and is never a rule.
-IL_GIT_VERBS="${IL_SELF%/*}/../contracts/git-verbs.md"
-il_git_verbs() { # <allow|ask> -> "OK<TAB><spelling>" or "BAD<TAB><spelling>" per register row with that perm
-  [ -f "$IL_GIT_VERBS" ] || return 0
-  awk -F'|' -v want="$1" '/^\| `/ {
-      s = $2; p = $4; gsub(/^[ \t`]+|[ \t`]+$/, "", s); gsub(/^[ \t]+|[ \t]+$/, "", p)
-      if (p != want) next
-      if (s !~ /^git [a-z][a-z-]*( |$)/ || s ~ /[<>`|;&$]/) { print "BAD\t" s; next }
-      print "OK\t" s }' "$IL_GIT_VERBS"
+# THE VERB REGISTERS (harbor#1291, #1419). floor-deny adds the allow and ask rules that the rows of every
+# contracts/verbs/*.md imply, and floor-uninstall takes the same rules out, so both read them here, through the one
+# reader in gate-verbs.sh. A spelling that does not start `<cli> <subcommand>`, or names an <argument> or a
+# shell metacharacter, comes back BAD and is never a rule.
+IL_VERBS_DIR="${IL_SELF%/*}/../contracts/verbs"
+il_verbs() { # <allow|ask> -> "OK<TAB><spelling><TAB><register>" or "BAD<TAB>..." per register row with that perm
+  [ -d "$IL_VERBS_DIR" ] && [ -f "${IL_SELF%/*}/gate-verbs.sh" ] || return 0
+  HARBOR_GATE_VERBS_DIR="$IL_VERBS_DIR" sh "${IL_SELF%/*}/gate-verbs.sh" rules "$1"
 }

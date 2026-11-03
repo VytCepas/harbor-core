@@ -107,7 +107,7 @@ _rp_red D1 "hardcoded live config dir: bin/cfg.sh" "a bare \$HOME config path"
 
 t_section "D3 / F1 / F2: a guard's exit code, kill switch and caret"
 _rp_fresh
-_KS='[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0'
+_KS='[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0'
 guard() { printf '#!/usr/bin/env sh\n# guard (harbor#588)\n%s\n' "$1" > "$RP/bin/guard-zz.sh"; }
 # F1 derives its set from bin/decider-set.sh (harbor#954): the fixture's decider set is its one guard, no drift
 printf '#!/usr/bin/env sh\n# decider-set stub (harbor#954)\ncase "${1:-}" in --switch) echo guard-zz.sh ;; --check|--exempt|--records) : ;; esac\n' > "$RP/bin/decider-set.sh"
@@ -169,10 +169,10 @@ t_section "F16: a floor guard printing the kill-switch as its remedy (harbor#482
 _rp_fresh
 printf "#!/usr/bin/env sh\nGUARDS='guard-zz.sh admission-hook.sh pin-zz.sh'\n" > "$RP/bin/admission-install.sh"
 _rp_sh "$RP/bin/guard-zz.sh"; printf "printf 'run it once as a ! command\\\\n' >&2\n# the old hatch was HARBOR_ADMISSION_DISABLE=1 claude\n" >> "$RP/bin/guard-zz.sh"
-_rp_sh "$RP/bin/admission-hook.sh"; printf "printf 'Fix the guard, or open an unguarded session: HELM_DISABLE_FLOOR=1 claude\\\\n' >&2\n" >> "$RP/bin/admission-hook.sh"
+_rp_sh "$RP/bin/admission-hook.sh"; printf "printf 'Fix the guard, or open an unguarded session: HARBOR_ADMISSION_DISABLE=1 claude\\\\n' >&2\n" >> "$RP/bin/admission-hook.sh"
 _rp_sh "$RP/bin/pin-zz.sh"
 _rp_green F16 "a narrow remedy, the hatch in a comment, and the wrapper where it is the true one"
-printf "printf '(operator escape hatch: HELM_DISABLE_FLOOR=1 claude)\\\\n' >&2\n" >> "$RP/bin/pin-zz.sh"
+printf "printf '(operator escape hatch: HARBOR_ADMISSION_DISABLE=1 claude)\\\\n' >&2\n" >> "$RP/bin/pin-zz.sh"
 _rp_red F16 "bin/pin-zz.sh prints the kill-switch as a remedy on 1 code line(s)" "the hatch in a file only the GUARDS line names"
 printf '#!/usr/bin/env sh\n' > "$RP/bin/admission-install.sh"
 _rp_red F16 "has no GUARDS=" "an installer whose floor file set cannot be derived"
@@ -322,7 +322,7 @@ _rp_green G1 "the same length under a header that names its exemption"
 { printf '#!/usr/bin/env sh\n'; awk 'BEGIN { for (i = 0; i < 58; i++) print "# why this file is long, line " i }'
   printf '# DELIBERATELY ONE FILE (docs/explanation/modularity.md)\n'; code310; } > "$RP/bin/big.sh"
 _rp_green G1 "an exemption at the end of a 60-line header (harbor#578)"
-{ printf '#!/usr/bin/env sh\n[ "${HELM_DISABLE_FLOOR:-0}" = "1" ] && exit 0\n# DELIBERATELY ONE FILE (docs/explanation/modularity.md)\n'
+{ printf '#!/usr/bin/env sh\n[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0\n# DELIBERATELY ONE FILE (docs/explanation/modularity.md)\n'
   code310; } > "$RP/bin/big.sh"
 _rp_green G1 "an exemption after the kill-switch preamble F1 requires"
 { printf '#!/usr/bin/env sh\n# big (harbor#578)\nset -eu\n# DELIBERATELY ONE FILE (docs/explanation/modularity.md)\n'; code310; } > "$RP/bin/big.sh"
@@ -490,4 +490,5 @@ _rp_inst hint-only.sh 'x="$(il_cmd --apply)"'
 _rp_red D2 "mutator without a --live gate: bin/hint-only.sh" "the same hint in a file with no il_target and no gate"
 rm "$RP/bin/hint-only.sh"
 
+t_red ci.conventions-linter-suite   # the falsifier this suite names for them (harbor#1422)
 t_done

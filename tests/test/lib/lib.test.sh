@@ -44,7 +44,7 @@ o="$(child "t_section a; t_exit x 1 sh -c 'exit 2'; t_done")"
 t_has 't_exit rejects a different code'   "$o" "x (want 'exit 1', got 'exit 2')"
 
 t_section "sandbox"
-o="$(HARBOR_ADMISSION_DISABLE=1 HELM_DISABLE_FLOOR=1 CLOUD_POSTURE=deny child 't_section a; t_eq home "$T_TMP/home" "$HOME"; t_eq cfg "$T_TMP/cfg" "$CLAUDE_CONFIG_DIR"; t_eq knob "" "${HARBOR_ADMISSION_DISABLE:-}${HELM_DISABLE_FLOOR:-}${CLOUD_POSTURE:-}"; echo "tmp=$T_TMP"; t_done')"
+o="$(HARBOR_ADMISSION_DISABLE=1 CLOUD_POSTURE=deny child 't_section a; t_eq home "$T_TMP/home" "$HOME"; t_eq cfg "$T_TMP/cfg" "$CLAUDE_CONFIG_DIR"; t_eq knob "" "${HARBOR_ADMISSION_DISABLE:-}${CLOUD_POSTURE:-}"; echo "tmp=$T_TMP"; t_done')"
 t_has 'HOME, config dir and knobs are the sandbox' "$o" "rc=0"
 _ct="$(printf '%s\n' "$o" | sed -n 's/^tmp=//p')"
 [ -n "$_ct" ] && [ ! -e "$_ct" ] && t_pass || t_fail "the child's sandbox was not removed: ${_ct:-no path printed}"
@@ -166,6 +166,52 @@ t_eq 'posture sets the guard knob'        "deny"    "$(gen 'select(.id == "shape
 t_eq 'an exemption replaces the verdict'  "ask/deny" "$(gen 'select(.id == "shape:sub/ask") | "\(.want)/\(.todo)"')"
 t_eq 'benign rows keep their fields'      "allow/5" "$(gen 'select(.id == "benign:b1") | "\(.want)/\(.pad)"')"
 t_eq 'a rep can carry its own verdict'    "ls/block" "$(gen 'select(.id == "shape:up2/allow") | "\(.cmd)/\(.want)"')"
+
+t_section "a suite bounds its own run by any route (harbor#1437)"
+# A suite run as `sh tests/x/y.test.sh` skips bin/test-suite-run.sh and its timeouts: one hung 14h40m on a child that never
+# returned. t_init now carries the runner's two limits. bchild never trusts the code under test to end: it cuts the run
+# off itself after <secs> and reports HUNG.
+bchild() { # <wall secs> <body> — "rc=<n>" (HUNG when cut off) then the output; the env is the caller's
+  { printf '. "%s/core.sh"; t_init\n' "$LIB"; printf '%s\n' "$2"; } > "$R/tests/x/c-test.sh"
+  sh "$R/tests/x/c-test.sh" > "$T_TMP/b.out" 2>&1 < /dev/null & _bp=$!; _bi=0; _bs=0
+  while kill -0 "$_bp" 2>/dev/null && [ "$_bi" -lt $(($1 * 4)) ]; do sleep 0.25; _bi=$((_bi + 1)); done
+  if kill -0 "$_bp" 2>/dev/null; then _bs=HUNG; pkill -9 -P "$_bp" 2>/dev/null; kill -9 "$_bp" 2>/dev/null; wait "$_bp" 2>/dev/null
+  else wait "$_bp"; _bs=$?; fi
+  printf 'rc=%s\n%s\n' "$_bs" "$(cat "$T_TMP/b.out")"
+}
+# A confined shell refuses ps (harbor#555): the watchdog then cannot find the hung child, kills the suite itself and it exits 137.
+_ps=0; ps -A -o pid= > /dev/null 2>&1 && _ps=1
+cut() { # <label> <output> — 124 when ps could find the hung child; 124 or 137 when it could not
+  _r="$(printf '%s\n' "$2" | sed -n '1p')"
+  case "$_r:$_ps" in rc=124:*|rc=137:0) t_pass ;; *) t_fail "$1 (got $_r)" ;; esac
+}
+o="$(HARBOR_TEST_SUITE_TIMEOUT=2 bchild 25 't_section a; t_eq x 1 1; sleep 600; t_done')"
+cut 'a suite that sleeps forever is cut off by its own idle limit (124, or 137 with no ps)' "$o"
+[ "$_ps" = 0 ] || t_has '...and says what timed out, with the limit' "$o" "timed out: no progress for 2s, or"
+t_hasnt '...and printed no pass summary' "$o" "c-test: 1 passed"
+o="$(bchild 25 't_section a; ( sleep 1 ) & wait; t_eq x 1 1; t_done')"
+t_has 'a bare `wait` in a suite still returns: the watchdog is not its job (it hung tests/admission/baseline once)' "$o" "rc=0"
+o="$(HARBOR_TEST_SUITE_TIMEOUT=2 bchild 25 't_section a; t_eq x 1 1; sh -c "sleep 600"; t_done')"
+cut 'a child that never returns (the X7 hang) is cut off too' "$o"
+o="$(HARBOR_TEST_SUITE_TIMEOUT=2 bchild 25 'sh -c "sleep 7771" & echo "kid=$!"; t_section a; t_eq x 1 1; wait; t_done')"
+_kid="$(printf '%s\n' "$o" | sed -n 's/^kid=//p')"
+cut 'a backgrounded child hang is cut off' "$o"
+sleep 1
+if [ "$_ps" = 0 ]; then kill -9 "$_kid" 2>/dev/null; t_pass   # no ps: the orphan is the known cost
+elif [ -n "$_kid" ] && kill -0 "$_kid" 2>/dev/null; then t_fail "the cut-off left its child $_kid running"; kill -9 "$_kid" 2>/dev/null; else t_pass; fi
+o="$(HARBOR_TEST_SUITE_TIMEOUT=100 HARBOR_TEST_SUITE_HARD_TIMEOUT=3 bchild 25 'while :; do t_section s; sleep 1; done')"
+cut 'the hard limit cuts off a suite that keeps making progress' "$o"
+[ "$_ps" = 0 ] || t_has '...and names the hard limit' "$o" "or 3s in all"
+o="$(HARBOR_TEST_SUITE_TIMEOUT=3 HARBOR_TEST_SUITE_HARD_TIMEOUT=0 bchild 25 'for i in 1 2 3 4 5; do t_section "s$i"; t_eq x 1 1; sleep 1; done; t_done')"
+t_has 'steady progress outlives the idle limit' "$o" "rc=0"
+o="$(HARBOR_TEST_SUITE_TIMEOUT=0 bchild 25 't_section a; t_eq x 1 1; sleep 3; t_done')"
+t_has 'HARBOR_TEST_SUITE_TIMEOUT=0 means no limit, as in the runner' "$o" "rc=0"
+o="$(HARBOR_TEST_SUITE_TIMEOUT=2x bchild 25 't_section a; t_eq x 1 1; t_done')"
+t_has 'a non-numeric limit is refused like the runner refuses it' "$o" "rc=2"
+o="$(bchild 25 't_section a; t_eq x 1 1; t_done')"
+t_has 'with no limit set a quick suite is untouched' "$o" "rc=0"
+sleep 2
+t_eq 'no watchdog outlives the suites above' 0 "$(pgrep -f "$R/tests/x/c-test.sh" 2>/dev/null | wc -l | tr -d ' ')"
 
 t_section "a suite that writes the repo's shared git config fails (harbor#1152)"
 git init -q "$R" 2>/dev/null

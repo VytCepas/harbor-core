@@ -4,7 +4,7 @@
 # bin/required-checks.tsv and install-drift holds it to the composition at the ref. Layers are throwaway directories; the repos
 # and checks are made up and name no real entity.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE
 T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"; TAB="$(printf '\t')"
 GEN="$T_ROOT/bin/gate-required-generate.sh"
 CORE="$T/core.tsv"; printf '# core: harbor only\nacme/core\tgate\n' > "$CORE"
@@ -161,4 +161,5 @@ t_has "...and once the layer drops it, no commit explains the installed row: mod
 t_has "...and the fix names the generator, not a box-only capture" "$(drift "$PG")" "gate-required-generate.sh"
 sh "$R/bin/gate-required-generate.sh" --core "$R/contracts/required-checks.tsv" --private "$PG" | grep -v "^acme/core${TAB}gate\$" > "$CFG/bin/required-checks.tsv"
 t_has "a core row dropped from the installed list is not behind, it is edited: modified" "$(drift "$PG")" "FAIL: modified required-checks.tsv ("
+t_red ci.public-ci   # the falsifier this suite names for them (harbor#1422)
 t_done

@@ -163,4 +163,19 @@ mkdir -p "$TMP/dash2"; echo '{"repos":[]}' > "$TMP/dash2/fleet-snapshot.json"
 PAGE2="$(dash "$TMP/dash2")"
 t_has "a cache with no pulse state says so" "$PAGE2" "No probe has run"
 t_has "a snapshot that is not an array says so" "$PAGE2" "not the array"
+t_section "the dispatch row is filed as finding check/event.dispatch (harbor#1437, contracts/finding.md)"
+RCPT="$CLAUDE_CONFIG_DIR/cache/checks/event.dispatch.json"; rm -f "$RCPT"
+mkdisp() { jq -n --arg v "$1" --arg d "$2" '{ran_at: 1700000000, generated:"x", inputs_seen:1, checks_run:1, worst:$v, checks:{dispatch:{verdict:$v, detail:$d}}}'; }
+fake "$(mkdisp crit 'NOT FOLLOWING: jq is not on PATH')"; fresh; nrun >/dev/null
+t_eq "a crit dispatch row writes a red receipt" red "$(jq -r .status "$RCPT" 2>/dev/null)"
+t_has "...carrying the row's detail as its subject" "$(jq -r '.subjects[]' "$RCPT" 2>/dev/null)" "NOT FOLLOWING: jq is not on PATH"
+fake "$(mkdisp warn 'rule(s) event.pulse refused on two passes running')"; nrun >/dev/null
+t_eq "a warn (a refused rule) is red too" red "$(jq -r .status "$RCPT" 2>/dev/null)"
+fake "$(mkdisp ok 'following the event bus (pid 1)')"; nrun >/dev/null
+t_eq "ok clears it: green" green "$(jq -r .status "$RCPT" 2>/dev/null)"
+fake "$(mkdisp unknown 'the receipt is not the JSON')"; rm -f "$RCPT"; nrun >/dev/null
+t_eq "unknown files nothing (could not look is not a finding)" no "$(has_state "$RCPT")"
+fake "$(mkdisp crit 'x')"; nrun --dry-run >/dev/null
+t_eq "--dry-run writes no receipt" no "$(has_state "$RCPT")"
+
 t_done

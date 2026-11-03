@@ -5,7 +5,7 @@
 # The throwaway repo and stubs are deploy-test's (deploy-fixture.sh); one section runs the REAL
 # installers into a sandbox to derive what the snapshot must cover.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-unset CLAUDECODE HARBOR_DEPLOY_ACTIVE HARBOR_DEPLOY  # a run inside a session or a deploy must not decide a case
+unset CLAUDECODE HARBOR_DEPLOY_ACTIVE  # a run inside a session or a deploy must not decide a case
 T_TMP="$(cd "$T_TMP" && pwd -P)"  # deploy reports the config dir physically (install-lib's il_target)
 . "$(dirname "$0")/../../install/deploy-fixture.sh"
 need_pty
