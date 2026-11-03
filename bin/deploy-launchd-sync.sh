@@ -58,6 +58,30 @@ bytes_of() {
   done
 }
 mtime_of() { fs_mtime "$1"; }
+# bootout is asynchronous: bootstrapping a KeepAlive job launchd is still unloading is refused (the 2026-11-03 deploy).
+# unloaded <label>: wait up to 10 s for launchd to drop it. A suite stubs launchctl `print` to report it alive for N polls.
+unloaded() {
+  _w=0
+  while launchctl print "gui/$UID_/$1" >/dev/null 2>&1; do
+    [ "$_w" -lt 10 ] || return 1
+    sleep 1; _w=$((_w + 1))
+  done
+}
+# load_job <label> <plist>: bootstrap; a refused bootstrap is retried once after the same wait.
+load_job() {
+  launchctl bootstrap "gui/$UID_" "$2" >/dev/null 2>&1 && return 0
+  unloaded "$1" || :
+  launchctl bootstrap "gui/$UID_" "$2" >/dev/null 2>&1
+}
+# reload_job <label> <plist>: bootout, wait until it is gone, bootstrap.
+reload_job() {
+  launchctl bootout "gui/$UID_/$1" >/dev/null 2>&1 || :
+  unloaded "$1" || log_note "$ID $1 is still loaded 10 s after bootout"
+  load_job "$1" "$2"
+}
+# is_loaded <label>: launchd has the job (running or not). wants_loaded <plist>: it asks to be started, by KeepAlive or RunAtLoad.
+is_loaded() { launchctl print "gui/$UID_/$1" >/dev/null 2>&1; }
+wants_loaded() { grep -Eq '<key>KeepAlive</key>|<key>RunAtLoad</key>[[:space:]]*<true/>' "$1"; }
 # pid_of <label>: the job's pid, or nothing when it is not running.
 pid_of() { launchctl print "gui/$UID_/$1" 2>/dev/null | sed -n 's/^[[:space:]]*pid = \([0-9][0-9]*\)$/\1/p' | head -1; }
 # start_of <pid>: the process start as an epoch, from ps elapsed time ([[dd-]hh:]mm:ss).
@@ -88,11 +112,18 @@ plan|apply)
       log_fail "$ID $_b does not render: $(tr '\n' ' ' < "$_out.err")"; log_fix "sh $HERE/deploy-launchd-render.sh --check $_t"; rm -f "$_out" "$_out.err"; continue
     fi
     rm -f "$_out.err"
-    if [ -f "$LA/$_b" ] && cmp -s "$_out" "$LA/$_b"; then rm -f "$_out"; continue; fi
+    if [ -f "$LA/$_b" ] && cmp -s "$_out" "$LA/$_b"; then
+      rm -f "$_out"
+      # Unchanged bytes are not a loaded job: an earlier bootstrap that was refused left it on disk and down (2026-11-03).
+      is_loaded "$_l" && continue
+      if [ "$MODE" = plan ]; then log_note "$ID would load $_l: $_b is installed but launchd does not have it"; continue; fi
+      if load_job "$_l" "$LA/$_b"; then log_ok "$ID loaded $_b: it was installed and not loaded"
+      else log_fail "$ID $_b is installed but launchctl bootstrap refused it"; log_fix "launchctl bootstrap gui/$UID_ $LA/$_b"; fi
+      continue
+    fi
     if [ "$MODE" = plan ]; then log_note "$ID would install $_b into $LA and (re)load $_l"; rm -f "$_out"; continue; fi
     mkdir -p "$LA" && cp "$_out" "$LA/$_b" && rm -f "$_out" || { log_fail "$ID could not write $LA/$_b"; log_fix "ls -ld $LA"; continue; }
-    launchctl bootout "gui/$UID_/$_l" >/dev/null 2>&1 || :
-    if launchctl bootstrap "gui/$UID_" "$LA/$_b" >/dev/null 2>&1; then log_ok "$ID installed and loaded $_b"
+    if reload_job "$_l" "$LA/$_b"; then log_ok "$ID installed and loaded $_b"
     else log_fail "$ID installed $_b but launchctl bootstrap refused it"; log_fix "launchctl bootstrap gui/$UID_ $LA/$_b"; fi
   done
   # 2. a running job whose program or script bytes changed since the snapshot is restarted, and no other.
@@ -124,6 +155,10 @@ verify)
   _n=0
   for _p in $(installed_plists); do
     _l="$(plist_label "$_p")"; [ -n "$_l" ] || continue
+    if wants_loaded "$_p" && ! is_loaded "$_l"; then
+      log_fail "$ID $_l is installed but not loaded: launchd is not running it"
+      log_fix "launchctl bootstrap gui/$UID_ $_p   (or: sh bin/deploy.sh --apply --live)"; continue
+    fi
     _pid="$(pid_of "$_l")"; [ -n "$_pid" ] || continue
     _st="$(start_of "$_pid")" || { log_skip "$ID $_l: pid $_pid has no readable start time"; continue; }
     _n=$((_n + 1)); _stale=""

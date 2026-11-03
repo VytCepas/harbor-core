@@ -331,7 +331,8 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
   mf_rows "$ID" F > "$WORK/owned"; : > "$WORK/release"
   while IFS="$TAB" read -r _s _r; do
     if [ -e "$T/$_r" ] || [ -L "$T/$_r" ]; then
-      awk -v r="$_r" '$0 == r { f = 1 } END { exit !f }' "$WORK/owned" && continue
+      # Case-folded: on APFS a case-only rename (EVALS/R2.md -> evals/r2.md) finds the old file at the new path.
+      awk -v r="$_r" 'BEGIN { r = tolower(r) } tolower($0) == r { f = 1 } END { exit !f }' "$WORK/owned" && continue
       if core_released "$_r"; then printf '%s\n' "$_r" >> "$WORK/release"; continue; fi
       refuse "$_r already exists in the target and is not this pack's" || return 1
     fi
@@ -380,13 +381,19 @@ install_one() { # <id> - returns 1 when the pack was skipped
     return 0
   fi
   # Directories this run creates, shallowest first, so remove can take them back.
-  : > "$WORK/dirs"
+  : > "$WORK/dirs"; : > "$WORK/dirs.gone"
   while IFS="$TAB" read -r _s _r; do
     _d="${_r%/*}"
     while [ "$_d" != "$_r" ] && [ "$_d" != . ]; do printf '%s\n' "$_d"; _x="${_d%/*}"; [ "$_x" != "$_d" ] || break; _d="$_x"; done
   done < "$WORK/plan" | awk '{ print length($0) "\t" $0 }' | sort -n | cut -f2- | awk '!s[$0]++' > "$WORK/dirs.all"
+  # A case-only rename: the old spelling is taken back first, files then empty directories, so the write below leaves
+  # the new spelling on disk even where both are one path (APFS keeps the old name on an in-place write).
+  awk -F'\t' 'NR == FNR { p[tolower($2)] = $2; next } (tolower($0) in p) && p[tolower($0)] != $0' "$WORK/plan" "$WORK/owned" > "$WORK/respell"
+  while IFS= read -r _r; do rm -f "$T/$_r"; done < "$WORK/respell"
+  mf_rows "$ID" D | awk 'NR == FNR { p[tolower($0)] = $0; next } (tolower($0) in p) && p[tolower($0)] != $0 { print length($0) "\t" $0 }' "$WORK/dirs.all" - |
+    sort -rn | cut -f2- | while IFS= read -r _d; do rmdir "$T/$_d" 2>/dev/null && printf '%s\n' "$_d" >> "$WORK/dirs.gone"; done
   while IFS= read -r _d; do [ -d "$T/$_d" ] || printf '%s\n' "$_d" >> "$WORK/dirs"; done < "$WORK/dirs.all"
-  mf_rows "$ID" D | awk 'NF' >> "$WORK/dirs"
+  mf_rows "$ID" D | awk -v g="$WORK/dirs.gone" 'BEGIN { while ((getline l < g) > 0) gone[l] = 1 } NF && !($0 in gone)' >> "$WORK/dirs"
   awk '!s[$0]++' "$WORK/dirs" > "$WORK/dirs.u"
   while IFS= read -r _d; do mkdir -p "$T/$_d"; done < "$WORK/dirs.all"
   while IFS="$TAB" read -r _s _r; do
@@ -394,7 +401,7 @@ install_one() { # <id> - returns 1 when the pack was skipped
   done < "$WORK/plan"
   # Files an earlier install wrote and this one no longer carries.
   while IFS= read -r _r; do
-    awk -F'\t' -v r="$_r" '$2 == r { f = 1 } END { exit !f }' "$WORK/plan" || rm -f "$T/$_r"
+    awk -F'\t' -v r="$_r" 'BEGIN { r = tolower(r) } tolower($2) == r { f = 1 } END { exit !f }' "$WORK/plan" || rm -f "$T/$_r"
   done < "$WORK/owned"
   mkdir -p "$MFD"
   {
@@ -412,6 +419,20 @@ install_one() { # <id> - returns 1 when the pack was skipped
 remove_one() { # <id>
   ID="$1"
   [ -f "$MFD/$ID.tsv" ] || { log_fail "skipped $ID: no install manifest in $T"; log_fix "sh $0 list $(il_spell)"; return 1; }
+  # harbor.toml keys only this pack declares: take its conf-keys.d file away and scope-roots.sh refuses the file as an unknown
+  # key, which also breaks the `packs` read that install and deploy start from. Refuse here; the unknown-key error stays (2026-11-03).
+  if [ -f "$T/conf-keys.d/$ID.txt" ] && _pv="$(sh "$SRC/scope-roots.sh" --private 2>/dev/null)" && [ -f "$_pv/harbor.toml" ]; then
+    : > "$WORK/keys.rest"
+    for _f in "$T"/conf-keys.d/*.txt; do [ -f "$_f" ] && [ "$_f" != "$T/conf-keys.d/$ID.txt" ] && tr -d '\r' < "$_f" >> "$WORK/keys.rest"; done
+    _held="$(tr -d '\r' < "$_pv/harbor.toml" | awk -v mine="$T/conf-keys.d/$ID.txt" -v rest="$WORK/keys.rest" '
+      BEGIN { while ((getline l < mine) > 0) if (l ~ /^[a-z][a-z0-9_]*$/) m[l] = 1; while ((getline l < rest) > 0) delete m[l] }
+      { l = $0; sub(/^[ \t]+/, "", l); if (l ~ /^#/) next; k = l; sub(/[ \t]*=.*/, "", k); if (k in m) printf "%s ", k }')"
+    if [ -n "$_held" ]; then
+      log_fail "skipped $ID: $_pv/harbor.toml still sets ${_held% }, which only this pack declares; without the pack scope-roots.sh refuses the file (unknown key) and install and deploy can no longer read packs"
+      log_fix "delete the line(s) ${_held% } from $_pv/harbor.toml (keep packs), then run this again"
+      return 1
+    fi
+  fi
   if [ "$IL_APPLY" -eq 0 ]; then log_ok "would remove $ID ($(mf_rows "$ID" F | wc -l | tr -d ' ') files)"; return 0; fi
   _hadck=0; mf_rows "$ID" F | awk '$0 ~ /^checks\.d\// { f = 1 } END { exit !f }' && _hadck=1
   mf_rows "$ID" F | while IFS= read -r _r; do [ -z "$_r" ] || rm -f "$T/$_r"; done
