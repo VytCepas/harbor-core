@@ -212,6 +212,12 @@ _export_tree() (
   done
 )
 _fx='evil\.com|example\.(com|org)|localhost|domain\.tld|interactsh|https://x[\\]?$|abc\.com|target\.com|https?://[^ ]*\*|https?://[^ ]*<|https?://[^ ]*\$[0-9]|https://www\.googleapis\.com/auth/'
+# A skill an installed pack's manifest lists is tracked in that pack's own repo, so it is governed there (harbor#885, #889).
+# The same test skill-catalog.sh applies; <config dir>/.harbor-packs/*.tsv col 2 is the installed path.
+_pack_owns_skill() { # <config dir> <skill dir name>
+  [ -d "$1/.harbor-packs" ] || return 1
+  awk -F'\t' -v p="skills/$2/" 'index($2, p) == 1 { f = 1 } END { exit !f }' "$1"/.harbor-packs/*.tsv 2>/dev/null
+}
 _x8_mtime() { # <file> -> epoch seconds, or empty
   _v="$(stat -f %m "$1" 2>/dev/null || true)"
   case "$_v" in ''|*[!0-9]*) _v="$(stat -c %Y "$1" 2>/dev/null || true)" ;; esac
@@ -253,6 +259,11 @@ _installer_payload() {
   sed -n 's/^REFRESH_ONLY="\(.*\)"/\1/p' $(_installers) 2>/dev/null
   sed -n "s/^GUARDS='\(.*\)'/\1/p"       $(_installers) 2>/dev/null
   sed -n "s/^PAYLOAD='\(.*\)'/\1/p"      $(_installers) 2>/dev/null
+  # The approval-gate list, and a file the installer copies behind an opt-in flag: both are shipped, and both were read as
+  # "no installer ships it" (harbor#888, #1450).
+  sed -n "s/^GATES='\(.*\)'/\1/p"        $(_installers) 2>/dev/null
+  grep -ohE 'il_install_exec "\$SRC/[a-z0-9-]+\.sh"' $(_installers) 2>/dev/null \
+    | sed -E 's#.*/##; s/"$//'
   # Copied by name rather than through a list, so it cannot be derived above.
   grep -ohE 'cp "\$SRC/[a-z0-9-]+\.sh"'   $(_installers) 2>/dev/null \
     | sed -E 's#.*/##; s/"$//'
@@ -4173,6 +4184,9 @@ if [ -d "$_sk_live" ]; then
     for cand in "$ROOT/vendor/skills/$k" "$ROOT/vendor/skills/$ks" "$ROOT/skills/$n" "$ROOT/skills/$k"; do
       [ -f "$cand/SKILL.md" ] && { src="$cand"; break; }
     done
+    if [ -z "$src" ] && _pack_owns_skill "${_sk_live%/skills}" "$n"; then
+      _x4_pack=$(( ${_x4_pack:-0} + 1 )); continue
+    fi
     if [ -z "$src" ]; then
       _adv drift.skill-tier "ungoverned:$n"; _advm "  ADVISORY [drift.skill-tier] installed skill under no governed copy: $n" >&2
       _x4_missing=$(( _x4_missing + 1 )); continue
@@ -4214,6 +4228,7 @@ if [ -d "$_sk_live" ]; then
   [ "$(( _x4_missing + _x4_tier + _x4_uninst + _x4_noskill ))" -eq 0 ] \
     && echo "  installed and governed surfaces agree." \
     || echo "  $_x4_missing ungoverned, $_x4_tier tier mismatch(es), $_x4_uninst not installed, $_x4_noskill directory(ies) with no SKILL.md."
+  [ "${_x4_pack:-0}" -eq 0 ] || echo "  ${_x4_pack} pack-owned skill(s) counted, not compared — each is tracked in its pack's repo."
   [ -d "$_sk_live/synced" ] && echo "  $_x4_synced harness-synced skill(s) under synced/ counted, not compared — the harness rewrites them on sync."
 fi
 
@@ -4458,7 +4473,10 @@ _x11r="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/MEMORY"
 case "$_x11r" in "$HOME"/*) _x11v="~/${_x11r#"$HOME"/}" ;; *) _x11v="$_x11r" ;; esac
 [ -f "$_x11s" ] || { say "  no worklog/pre-push in this tree"; return 0; }
 # Where GIT runs the hook, which core.hooksPath or a gitdir file can move (review #942).
-_x11h="$(git -C "$_x11r" rev-parse --git-path hooks/pre-push 2>/dev/null)" || _x11h=""
+# Asked with the operator's own git config: the findings run exports GIT_CONFIG_* (hooksPath=/dev/null, no global config)
+# for its throwaway clone, and that made this answer "/dev/null/pre-push" on every reconcile (harbor#973).
+_x11h="$(env -u GIT_CONFIG_COUNT -u GIT_CONFIG_NOSYSTEM -u GIT_CONFIG_GLOBAL -u GIT_CONFIG_KEY_0 -u GIT_CONFIG_VALUE_0 -u GIT_CONFIG_KEY_1 -u GIT_CONFIG_VALUE_1 \
+  git -C "$_x11r" rev-parse --git-path hooks/pre-push 2>/dev/null)" || _x11h=""
 case "$_x11h" in /*) ;; "") _x11h="$_x11r/.git/hooks/pre-push" ;; *) _x11h="$_x11r/$_x11h" ;; esac
 case "$_x11h" in "$HOME"/*) _x11hv="~/${_x11h#"$HOME"/}" ;; *) _x11hv="$_x11h" ;; esac
 if [ ! -e "$_x11r/.git" ]; then
@@ -4817,6 +4835,8 @@ if [ -d "$_x8_live" ]; then
     _x8_ln="$(basename "$_x8_l")"
     _x8_lnorm="$(printf '%s' "$_x8_ln" | tr 'A-Z' 'a-z' | sed 's/[_-]//g')"
     case " $_x8_seen " in *" $_x8_lnorm "*) continue ;; esac
+    # a pack's skill is tracked in the pack's repo, which is the second copy this branch asks for (harbor#889)
+    ! _pack_owns_skill "${_x8_live%/skills}" "$_x8_ln" || continue
     _x8_ref="$(_x8_ref_match "$_x8_l" "skills/$_x8_ln")"
     if [ -n "$_x8_ref" ]; then
       _adv drift.skill-bytes "branch-skew:$_x8_ln"; _advm "  ADVISORY [drift.skill-bytes] not in THIS working tree, but committed on $_x8_ref — branch skew, not drift: $_x8_ln" >&2
@@ -6695,7 +6715,9 @@ if [ -n "$_c2_ere" ] && git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
   # self-approval loop. So it names the state and the one command. Suppressed
   # under GITHUB_ACTIONS: a disposable CI checkout never has local hooks and
   # never should, so printing it there would be noise on every run.
-  if [ -z "${GITHUB_ACTIONS:-}" ] && [ -f "$_c2_hook" ]; then
+  # HARBOR_LINT_DISPOSABLE is set by lint-findings-run.sh for its own throwaway clone, which has hooksPath=/dev/null on
+  # purpose; reading that as "the operator's hooks are missing" filed harbor#879 on every reconcile.
+  if [ -z "${GITHUB_ACTIONS:-}" ] && [ -z "${HARBOR_LINT_DISPOSABLE:-}" ] && [ -f "$_c2_hook" ]; then
     _c2_hp="$(git -C "$ROOT" config --get core.hooksPath 2>/dev/null || true)"
     # RESOLVED AGAINST $ROOT, because --git-common-dir ANSWERS RELATIVE. Asked
     # from a repo root it returns the bare `.git`, so joining a path onto it
@@ -6706,6 +6728,13 @@ if [ -n "$_c2_ere" ] && git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
     # harbor#307 is about, one rule over.
     _c2_gd="$(git -C "$ROOT" rev-parse --git-common-dir 2>/dev/null || echo .git)"
     case "$_c2_gd" in /*) ;; *) _c2_gd="$ROOT/$_c2_gd" ;; esac
+    # git runs hooks from core.hooksPath when set, else <common-dir>/hooks; a worktree's hooksPath names the main
+    # checkout's hooks by absolute path, which the old `hooks|$ROOT/hooks` test called "not installed" (harbor#879).
+    case "$_c2_hp" in
+      "") _c2_hd="$_c2_gd/hooks" ;;
+      /*) _c2_hd="$_c2_hp" ;;
+      *) _c2_hd="$ROOT/$_c2_hp" ;;
+    esac
     case "$_c2_hp" in
       hooks|"$ROOT/hooks") ;;
       *) # ALL THREE TRACKED HOOKS, not just commit-msg. The state first measured
@@ -6728,7 +6757,7 @@ if [ -n "$_c2_ere" ] && git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
          for _c2_h in "$ROOT"/hooks/*; do
            [ -f "$_c2_h" ] || continue
            _c2_hn="${_c2_h##*/}"
-           [ -e "$_c2_gd/hooks/$_c2_hn" ] || _c2_missing="$_c2_missing $_c2_hn"
+           [ -e "$_c2_hd/$_c2_hn" ] || _c2_missing="$_c2_missing $_c2_hn"
          done
          [ -z "$_c2_missing" ] \
            || { _advn git.no-ai-attribution $_c2_missing; _advp '  ADVISORY [git.no-ai-attribution] tracked hook(s) NOT installed (core.hooksPath=%s):%s — the counter is not the mechanism; these are. Install them: git -C %s config core.hooksPath hooks\n' \
@@ -7844,6 +7873,27 @@ for _mmf in "$ROOT"/context-rules/*/*.md; do
   elif [ "$_mmcan" = no ] && [ "$_mmrow" = block ]; then bad lint.mode-matches-engine "pack $_mmid cannot deny and its row says block: block means a deny is honoured" "${_mmf#$ROOT/}"; fi
 done
 rm -f "$_mm_o" "$_mm_o.inj"
+}
+
+# ── lint.route-covers-surfaces · every surface has a route row (harbor#1397) ─────────────────────────────────────────────
+# default-way-route.tsv says, per kind of thing a session could build the default way, where harbor builds it. A surface in
+# surfaces.tsv with no row naming it is a kind of name nobody decided a route for; a row naming a surface that is not there
+# is a stale key. A row with tools - is the answer "no default path", so a surface is covered by being decided, not by firing.
+rule_lint_route_covers_surfaces() {
+rule "lint.route-covers-surfaces every surfaces.tsv id has a row in default-way-route.tsv's surface cell, and every id a row names is a surface (harbor#1397)"
+_rs_s="$ROOT/standards/naming/surfaces.tsv"; _rs_r="$ROOT/context-rules/user/default-way-route.tsv"
+[ -f "$_rs_s" ] && [ -f "$_rs_r" ] || { _advn lint.route-covers-surfaces no-register; _advp '  ADVISORY [lint.route-covers-surfaces] surfaces.tsv or default-way-route.tsv is missing — NO surface was compared\n'; return 0; }
+_rs_o="${TMPDIR:-/tmp}/rs.$$"
+awk -F'\t' 'FILENAME == ARGV[1] { if ($0 !~ /^#/ && $1 != "id" && $1 != "") S[$1] = 1; next }
+  /^#/ || $1 == "kind" || $1 == "" { next }
+  { if (NF < 9 || $9 == "") { print $1 "\thas no surface cell (use - for none)"; next }
+    n = split($9, a, ",")
+    for (i = 1; i <= n; i++) { if (a[i] == "-") continue; seen[a[i]] = 1; if (!(a[i] in S)) print $1 "\tnames the surface " a[i] ", which surfaces.tsv does not have" } }
+  END { for (s in S) if (!(s in seen)) print s "\tthe surface has no row in default-way-route.tsv: add it to a kind that builds it, or to a row with tools - saying why no session builds it by default" }' "$_rs_s" "$_rs_r" | LC_ALL=C sort > "$_rs_o"
+while IFS="$(printf '\t')" read -r _rsi _rsm; do
+  [ -n "$_rsi" ] && bad lint.route-covers-surfaces "$_rsi: $_rsm" "$_rsi"
+done < "$_rs_o"
+rm -f "$_rs_o"
 }
 
 # ── drift.check-register · docs/reference/checks.md and the check rows of controls.tsv are one register (harbor#1422) ──────

@@ -86,7 +86,7 @@ fi
 while IFS="$(printf '\t')" read -r pack shape id arm label payload; do
   case "$pack" in ''|'#'*) continue ;; esac
   rows=$((rows + 1)); REPO="$T/repo"; make_repo "$REPO" "$pack" "$shape"
-  _p="$(printf '%s' "$payload" | sed "s|@REPO@|$REPO|g; s|@OTHER@|$OTHER|g; s|@BARE@|$BARE|g; s|@TRANSCRIPT@|$T/transcript.jsonl|g")"
+  _p="$(printf '%s' "$payload" | sed "s|@REPO@|$REPO|g; s|@OTHER@|$OTHER|g; s|@BARE@|$BARE|g; s|@TRANSCRIPT@|$T/transcript.jsonl|g; s|@CFG@|$T/cfg|g")"
   case "$_p" in *'@BIG@'*) _p="$(printf '%s' "$_p" | sed "s|@BIG@|$BIG|")" ;; esac
   out="$(printf '%s' "$_p" | CLAUDE_CONFIG_DIR="$T/cfg" CLAUDE_PROJECT_DIR="$REPO" PORT_ROOT="$T" \
           HARBOR_SCOPE_REPO="$T_ROOT" ACCESS_DIR="$T/access" HARBOR_MANAGED_SETTINGS="$T/managed/managed-settings.json" \

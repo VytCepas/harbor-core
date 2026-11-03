@@ -1228,10 +1228,14 @@ version_facts() {
   # a fixture overlay carries its files as workflows/*.yml, so no fixture sits in a real workflow folder (the overlay maps only .tsv files)
   [ -z "${_od:-}" ] || find "$_od/workflows" -maxdepth 1 -type f -name '*.yml' 2>/dev/null | while IFS= read -r _wf; do printf '.github/workflows/%s\t%s\n' "${_wf##*/}" "$_wf"; done >> "$T/vwf"
   [ -s "$T/vwf" ] || return 0
+  # a composite action this tree holds (.github/actions/<name>/action.yml) is the repo's own, not a third-party pin (harbor#967)
+  awk -F'\t' '$1 ~ /^\.github\/actions\/[^\/]+\/action\.ya?ml$/ { n = $1; sub(/^\.github\/actions\//, "", n); sub(/\/.*$/, "", n); print n }' "$T/regmap" | sort -u > "$T/vown"
   while IFS='	' read -r _vp _vr; do
-    awk -v f="$_vp" '/^[[:space:]]*(-[[:space:]]+)?uses:[[:space:]]/ {
+    awk -v f="$_vp" -v own="$T/vown" 'BEGIN { while ((getline x < own) > 0) O[x] = 1 }
+      /^[[:space:]]*(-[[:space:]]+)?uses:[[:space:]]/ {
         l = $0; sub(/^[[:space:]]*(-[[:space:]]+)?uses:[[:space:]]*/, "", l); sub(/[[:space:]]+#.*$/, "", l); gsub(/["\047]/, "", l)
         if (l ~ /^\.\// || l ~ /^docker:\/\//) next
+        if (l ~ /^[^\/@]+\/[^\/@]+\/\.github\/actions\/[^\/@]+(@|$)/) { nm = l; sub(/^[^\/@]+\/[^\/@]+\/\.github\/actions\//, "", nm); sub(/@.*$/, "", nm); if (nm in O) next }
         n = index(l, "@"); if (n > 0) l = substr(l, 1, n - 1)
         print l "\t" f }' "$_vr"
   done < "$T/vwf" | sort -u | awk -F'\t' 'NR == FNR { k[$1] = 1; next } !($1 in k) { seen[$1] = (($1 in seen) ? seen[$1] ", " : "") $2 }

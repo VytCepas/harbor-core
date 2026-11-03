@@ -25,7 +25,7 @@ decision() { printf '%s' "$OUT" | jq -r '.hookSpecificOutput.permissionDecision 
 # fire <kind> <tool> <subject> [content]: the note names the kind, and the case is kept for the recogniser breaks below
 fire() {
   call "$2" "$3" "${4:-}"
-  t_has "$1 fires on $2 $(printf '%s' "$3" | head -c 70)" "$(note)" "puts a $1 by default"
+  t_has "$1 fires on $2 $(printf '%s' "$3" | head -c 70)" "$(note)" "builds a $1 at"
   t_eq "  and does not deny" "" "$(decision)"
   printf '%s\t%s\n' "$1" "$(cat "$T/in.json")" >> "$T/cases"
 }
@@ -37,16 +37,10 @@ FEEDBACK="$(printf -- '---\nname: x\nmetadata:\n  type: feedback\n---\nNever do 
 PROJECT="$(printf -- '---\nname: y\nmetadata:\n  type: project\n---\nThe build moved to y.\n')"
 
 t_section "each kind fires on the path Claude Code would use by default"
-fire skill Write "$CFG/skills/demo/SKILL.md" 'body'
-fire skill Edit "$CFG/skills/demo/SKILL.md" 'body'
 fire skill Bash 'cp -R skills/demo "$CLAUDE_CONFIG_DIR/skills/"'
 fire skill Bash 'mkdir -p ${CLAUDE_CONFIG_DIR}/skills/demo && cat > ${CLAUDE_CONFIG_DIR}/skills/demo/SKILL.md'
-fire script Write "$CFG/bin/demo-tool.sh" 'echo'
 fire script Bash 'printf x | tee "$CLAUDE_CONFIG_DIR/bin/demo-tool.sh"'
-fire hook-script Write "$CFG/hooks/pre.sh" 'echo'
 fire hook-script Bash 'install -m 755 pre.sh "$CLAUDE_CONFIG_DIR/hooks/pre.sh"'
-fire hook-wiring Edit "$CFG/settings.json" '"hooks": {"PreToolUse": []}'
-fire hook-wiring Write "$CFG/settings.local.json" '{"hooks":{"Stop":[]}}'
 fire hook-wiring Bash 'jq ".hooks.PreToolUse += []" "$CLAUDE_CONFIG_DIR/settings.json" > x && mv x "$CLAUDE_CONFIG_DIR/settings.json"'
 fire constitution Edit "$CFG/CLAUDE.md" 'Always do y.'
 fire constitution Bash 'printf "rule\n" >> "$CLAUDE_CONFIG_DIR/CLAUDE.md"'
@@ -63,19 +57,44 @@ fire cron-job Bash 'crontab -e'
 fire cron-job Bash 'crontab my.cron'
 
 t_section "the note names the home, the install route and the skill"
-call Write "$CFG/skills/demo/SKILL.md" 'body'
+call Bash "mkdir -p $CFG/skills/demo"
 t_has "it names the source path with the skill's name" "$(note)" 'skills/demo/SKILL.md, with USE WHEN'
 t_has "it names the install route" "$(note)" 'sh bin/skill-install.sh demo --apply --live'
 t_has "it gives the reason" "$(note)" 'Why: the skills installer'
 t_has "it says it did not block" "$(note)" 'advisory, the call was not blocked'
 t_has "it carries the rule id" "$(note)" '[context:default-way-route]'
 printf 'harbor\t~/port/harbor\tfixture\n' > "$BOX/projects.tsv"
-call Write "$CFG/skills/demo/SKILL.md" 'body'
+call Bash "mkdir -p $CFG/skills/demo"
 t_has "with a registry beside the pack, it names the checkout" "$(note)" 'builds it in ~/port/harbor instead'
 rm -f "$BOX/projects.tsv"
 
+t_section "a Write or Edit of an installed copy is the deny pack's, not this one's"
+quiet "a skill written into the config dir" Write "$CFG/skills/demo/SKILL.md" 'body'
+quiet "a script edited in the config dir" Edit "$CFG/bin/demo-tool.sh" 'echo'
+quiet "a hook script written into the config dir" Write "$CFG/hooks/pre.sh" 'echo'
+quiet "a hooks block written into settings.json" Edit "$CFG/settings.json" '"hooks": {"PreToolUse": []}'
+
+t_section "the inferred kinds draw a note, never a deny, wherever the file is"
+fire slash-command Write "$CFG/commands/demo.md" 'body'
+fire agent Write "$CFG/agents/demo-reviewer.md" 'body'
+fire workflow Bash 'mkdir -p "$CLAUDE_CONFIG_DIR/workflows/demo-run"'
+SKILLMD="$(printf -- '---\nname: demo\ndescription: demo thing. USE WHEN demo.\n---\n# Demo\n\nRun the demo.\n\n```sh\nsh bin/demo-tool.sh --all\n```\n')"
+SKILLBIG="$(printf -- '---\nname: demo\ndescription: demo thing. USE WHEN demo.\n---\n# Demo\n\nStep one reads the file.\n\n```sh\nsh bin/demo-tool.sh --all\n```\n\nStep two checks the output by hand.\n')"
+fire one-command-skill Write /home/someone/Desktop/demo/SKILL.md "$SKILLMD"
+fire one-command-skill Write /home/someone/port/harbor/skills/demo/SKILL.md "$SKILLMD"
+fire skill-outside-source Write /home/someone/Desktop/demo/SKILL.md "$SKILLBIG"
+fire memory-rule-phrased Write "$CFG/projects/-home/memory/stay-small.md" "$PROJECT
+Never grow the index past its limit."
+call Write /home/someone/Desktop/demo/SKILL.md "$SKILLMD"
+t_has "the one-command note suggests a bin tool" "$(note)" 'a bin/ tool'
+t_eq "  and does not deny" "" "$(decision)"
+
 t_section "silent on the harbor home and harbor's own install routes"
-quiet "a skill in the checkout" Write "$REPO/skills/demo/SKILL.md" 'body'
+quiet "a skill in the checkout" Write "$REPO/skills/demo/SKILL.md" "$SKILLBIG"
+quiet "a SKILL.md fixture under TMPDIR" Write "$TMPDIR/fx/SKILL.md" "$SKILLMD"
+quiet "a SKILL.md in a pack's skills source" Write "$REPO/packs/p/skills/demo/SKILL.md" "$SKILLBIG"
+quiet "a SKILL.md that is not a skill (no description)" Write /home/someone/Desktop/demo/SKILL.md 'notes'
+quiet "a feedback-free memory without a rule sentence" Write "$CFG/projects/-home/memory/stay-small.md" "$PROJECT"
 quiet "a script in the checkout" Write "$REPO/bin/demo-tool.sh" 'echo'
 quiet "a hook engine in the checkout" Write "$REPO/hooks/demo/demo.sh" 'echo'
 quiet "a hook manifest in the checkout" Write "$REPO/hooks/demo/manifest.tsv" 'wire	PreToolUse	-	10'
@@ -112,24 +131,24 @@ quiet "a Read-shaped tool is not judged" Read "$CFG/skills/demo/SKILL.md"
 quiet "an echo that names the path" Bash 'echo "$CLAUDE_CONFIG_DIR/skills/demo"'
 
 t_section "it informs and never denies"
-call Write "$CFG/skills/demo/SKILL.md" 'body'
+call Bash "mkdir -p $CFG/skills/demo"
 t_eq "exit 0" 0 "$RC"
 t_eq "the script never prints a deny sentinel" 0 "$(grep 'printf' "$U/default-way-route.sh" | grep -c 'HARBOR-DECISION')"
 t_eq "garbage payload: silent exit 0" "0:" \
   "$(printf 'not json' | CLAUDE_PROJECT_DIR="$REPO" /bin/sh "$CFG/bin/injection-rule.sh" 2>/dev/null; printf '%s:' $?)"
-jq -nc '{hook_event_name:"PreToolUse",tool_name:"Write",session_id:"once",tool_input:{file_path:"'"$CFG"'/bin/a.sh",content:"x"}}' > "$T/once.json"
+jq -nc '{hook_event_name:"PreToolUse",tool_name:"Bash",session_id:"once",tool_input:{command:"echo x > '"$CFG"'/bin/a.sh"}}' > "$T/once.json"
 _o1="$(CLAUDE_PROJECT_DIR="$REPO" /bin/sh "$CFG/bin/injection-rule.sh" < "$T/once.json")"
 _o2="$(CLAUDE_PROJECT_DIR="$REPO" /bin/sh "$CFG/bin/injection-rule.sh" < "$T/once.json")"
-t_has "once: match — the first write of a path draws the note" "$_o1" 'puts a script by default'
+t_has "once: match — the first write of a path draws the note" "$_o1" 'builds a script at'
 t_eq "  and a second write of the same path in the session draws none" "" "$_o2"
 mv "$BOX/default-way-route.tsv" "$T/reg.bak"
-call Write "$CFG/skills/demo/SKILL.md" 'body'
+call Bash "mkdir -p $CFG/skills/demo"
 t_eq "no registry beside the script: silent" "" "$(note)"
 mv "$T/reg.bak" "$BOX/default-way-route.tsv"
 
 t_section "every row has a fire case, and each case goes silent when its recogniser is broken"
 REG="$BOX/default-way-route.tsv"; cp "$REG" "$T/reg.orig"
-for _k in $(awk -F'\t' '!/^#/ && NF >= 8 && $1 != "kind" { print $1 }' "$T/reg.orig"); do
+for _k in $(awk -F'\t' '!/^#/ && NF >= 8 && $1 != "kind" && $2 != "-" { print $1 }' "$T/reg.orig"); do
   _n="$(awk -F'\t' -v k="$_k" '$1 == k' "$T/cases" | grep -c .)"
   t_eq "row $_k has at least one fire case" yes "$([ "$_n" -gt 0 ] && echo yes || echo no)"
   # The row's recogniser swapped for one that can never match, every other row intact.
@@ -138,7 +157,7 @@ for _k in $(awk -F'\t' '!/^#/ && NF >= 8 && $1 != "kind" { print $1 }' "$T/reg.o
   _still=0
   while IFS= read -r _p; do
     _r="$(printf '%s' "$_p" | jq -c '.session_id = "broken-\(.session_id)"' | CLAUDE_PROJECT_DIR="$REPO" /bin/sh "$CFG/bin/injection-rule.sh" 2>/dev/null)"
-    case "$_r" in *"puts a $_k by default"*) _still=$((_still + 1)) ;; esac
+    case "$_r" in *"builds a $_k at"*) _still=$((_still + 1)) ;; esac
   done < "$T/kcases"
   t_eq "  with its recogniser broken, none of its $_n case(s) fires" 0 "$_still"
 done
@@ -149,7 +168,7 @@ t_section "the admission corpus: the fire set is pinned, so a new false positive
 # silent by construction and are not run. The corpus spells the config dir ~/.claude, so it is the config dir here.
 _got="$(grep -E '\.claude|CLAUDE_CONFIG_DIR|LaunchAgents|systemd/user|crontab' "$T_ROOT/fixtures/admission-corpus.jsonl" | while IFS= read -r _l; do
   _n="$(printf '%s' "$_l" | CLAUDE_CONFIG_DIR="$HOME/.claude" sh "$U/default-way-route.sh" 2>/dev/null)"
-  [ -z "$_n" ] || printf '%s\t%s\n' "$(printf '%s' "$_n" | sed -n 's/.* puts an* \([a-z-]*\) by default.*/\1/p')" "$(printf '%s' "$_l" | jq -r .tool_input.command)"
+  [ -z "$_n" ] || printf '%s\t%s\n' "$(printf '%s' "$_n" | sed -n 's/.* builds an* \([a-z-]*\) at .*/\1/p')" "$(printf '%s' "$_l" | jq -r .tool_input.command)"
 done | sort)"
 _want="$(sort <<'EOF'
 constitution	cd ~/.claude && sed s/a/b/ CLAUDE.md --in-place

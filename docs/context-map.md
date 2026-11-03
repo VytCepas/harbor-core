@@ -33,18 +33,18 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | decision-record | docs/decisions/ | element | source | dated | 93 |
 | hook | hooks/ | component | source | living | 47 |
 | skill | skills/ | component | source | living | 40 |
-| fixture | fixtures/ | element | source | living | 435 |
+| fixture | fixtures/ | element | source | living | 438 |
 | registry | registries/ | component | source | versioned | 68 |
-| test | tests/ | component | source | living | 502 |
+| test | tests/ | component | source | living | 507 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | generated-doc | docs/generated/ | component | generated | generated | 1 |
-| script | bin/ | component | source | living | 247 |
+| script | bin/ | component | source | living | 250 |
 | how-to | docs/how-to/ | component | source | living | 1 |
-| reference | docs/reference/ | component | generated | generated | 7 |
+| reference | docs/reference/ | component | generated | generated | 86 |
 | explanation | docs/explanation/ | component | source | living | 102 |
-| (no kind) | - | - | - | - | 255 |
+| (no kind) | - | - | - | - | 257 |
 
 ## Folders
 
@@ -53,12 +53,12 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | (repo root) | 11 | 1 | 1 |
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
-| `bin/` | 251 | 29 | 2 |
+| `bin/` | 254 | 29 | 2 |
 | `commands/` | 5 | 4 | 1 |
-| `context-rules/` | 55 | 6 | 1 |
+| `context-rules/` | 57 | 6 | 1 |
 | `contracts/` | 106 | 11 | 2 |
-| `docs/` | 228 | 11 | 9 |
-| `fixtures/` | 435 | 11 | 1 |
+| `docs/` | 307 | 24 | 9 |
+| `fixtures/` | 438 | 11 | 1 |
 | `hooks/` | 43 | 7 | 1 |
 | `launchd/` | 21 | 10 | 1 |
 | `patches/` | 12 | 3 | 1 |
@@ -68,7 +68,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `skills/` | 40 | 8 | 1 |
 | `standards/` | 31 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 502 | 28 | 1 |
+| `tests/` | 507 | 28 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 101 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -78,32 +78,32 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
 | access | control-plane | 12 | 28 | 2 | 6 | 0 | 0 |
-| admission | control-plane | 26 | 87 | 0 | 3 | 0 | 167 |
-| agent | control-plane | 1 | 2 | 0 | 7 | 0 | 0 |
-| alert | observability | 2 | 3 | 0 | 2 | 0 | 0 |
-| audit | control-plane | 8 | 14 | 0 | 5 | 0 | 2 |
-| check | observability | 2 | 5 | 0 | 1 | 57 | 0 |
-| ci | coordination | 17 | 46 | 2 | 6 | 1 | 7 |
-| context | control-plane | 7 | 13 | 1 | 3 | 0 | 41 |
-| deploy | control-plane | 16 | 30 | 1 | 1 | 0 | 7 |
-| doc | control-plane | 15 | 12 | 0 | 34 | 0 | 21 |
-| drift | control-plane | 8 | 10 | 0 | 4 | 4 | 14 |
-| eval | control-plane | 10 | 7 | 0 | 1 | 0 | 0 |
-| event | observability | 3 | 19 | 0 | 3 | 0 | 2 |
-| gate | control-plane | 19 | 13 | 0 | 2 | 0 | 6 |
-| housekeeping | control-plane | 1 | 1 | 0 | 2 | 0 | 0 |
+| admission | control-plane | 26 | 87 | 0 | 6 | 0 | 167 |
+| agent | control-plane | 1 | 2 | 0 | 8 | 0 | 0 |
+| alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
+| audit | control-plane | 8 | 14 | 0 | 10 | 0 | 2 |
+| check | observability | 2 | 5 | 0 | 1 | 58 | 0 |
+| ci | coordination | 17 | 46 | 2 | 20 | 1 | 7 |
+| context | control-plane | 7 | 14 | 1 | 3 | 0 | 42 |
+| deploy | control-plane | 16 | 30 | 1 | 4 | 0 | 7 |
+| doc | control-plane | 16 | 13 | 0 | 35 | 0 | 22 |
+| drift | control-plane | 8 | 10 | 0 | 11 | 4 | 14 |
+| eval | control-plane | 10 | 7 | 0 | 2 | 0 | 0 |
+| event | observability | 3 | 19 | 0 | 12 | 0 | 2 |
+| gate | control-plane | 19 | 13 | 0 | 5 | 0 | 6 |
+| housekeeping | control-plane | 1 | 1 | 0 | 3 | 0 | 0 |
 | library | policy-function | 6 | 1 | 0 | 0 | 0 | 0 |
-| lint | control-plane | 25 | 70 | 0 | 11 | 3 | 36 |
-| memory | memory-store | 6 | 10 | 1 | 23 | 0 | 1 |
+| lint | control-plane | 25 | 71 | 0 | 20 | 3 | 37 |
+| memory | memory-store | 6 | 10 | 1 | 24 | 0 | 1 |
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
-| policy | policy-function | 3 | 4 | 3 | 135 | 0 | 7 |
+| policy | policy-function | 3 | 4 | 3 | 136 | 0 | 7 |
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
-| scope | coordination | 13 | 21 | 0 | 0 | 0 | 5 |
-| session | data-plane | 14 | 5 | 0 | 3 | 0 | 0 |
+| scope | coordination | 13 | 21 | 0 | 1 | 0 | 5 |
+| session | data-plane | 14 | 5 | 0 | 7 | 0 | 0 |
 | skill | catalog | 5 | 17 | 0 | 8 | 0 | 14 |
-| standard | policy-function | 16 | 26 | 124 | 5 | 12 | 61 |
-| status | observability | 10 | 21 | 0 | 4 | 0 | 0 |
-| test | control-plane | 4 | 5 | 2 | 7 | 0 | 15 |
+| standard | policy-function | 17 | 27 | 124 | 12 | 12 | 61 |
+| status | observability | 11 | 22 | 0 | 9 | 0 | 0 |
+| test | control-plane | 4 | 5 | 2 | 8 | 0 | 15 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
 
 ## Per family
@@ -160,6 +160,9 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/govern-token.sh`
 - `bin/prod-guard-ambient.sh`
 - `docs/explanation/admission-baseline.md`
+- `docs/reference/check-rows/admission-api-route.txt`
+- `docs/reference/check-rows/admission-destroy-snapshot.txt`
+- `docs/reference/check-rows/admission-managed-mods.txt`
 - `patches/admission-shard.patch.md`
 
 ### agent
@@ -170,6 +173,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `context-rules/user/agent-model-required.md`
 - `context-rules/user/agent-model.sh`
 - `contracts/agent-tools.tsv`
+- `docs/reference/check-rows/agent-idle.txt`
 - `launchd/com.harbor.agent.idle.plist`
 - `skills/agent-routing/SKILL.md`
 
@@ -177,6 +181,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 
 - `bin/alert-notify.sh`
 - `bin/alert-probe.sh`
+- `docs/reference/check-rows/alert-probe.txt`
 - `docs/src/alert.html`
 - `launchd/com.harbor.alert.probe.plist`
 
@@ -190,6 +195,11 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/audit-stream-lib.sh`
 - `bin/audit-triage-run.sh`
 - `bin/audit-triage.sh`
+- `docs/reference/check-rows/audit-collector-checkpoint.txt`
+- `docs/reference/check-rows/audit-collector-health.txt`
+- `docs/reference/check-rows/audit-collector.txt`
+- `docs/reference/check-rows/audit-otlp-receiver.txt`
+- `docs/reference/check-rows/audit-triage.txt`
 - `launchd/com.harbor.audit.collector-checkpoint.plist`
 - `launchd/com.harbor.audit.collector.plist`
 - `launchd/com.harbor.audit.otlp-receiver.plist`
@@ -227,6 +237,20 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `context-rules/user/ci-wait-on-the-bus.sh`
 - `docs/design/ci-local-heal.md`
 - `docs/design/ci-tests-on-this-host.md`
+- `docs/reference/check-rows/ci-fleet-contract-freshness.txt`
+- `docs/reference/check-rows/ci-fleet-scheduled.txt`
+- `docs/reference/check-rows/ci-github-plan.txt`
+- `docs/reference/check-rows/ci-governor.txt`
+- `docs/reference/check-rows/ci-lost-rerun.txt`
+- `docs/reference/check-rows/ci-main-tip-verdict.txt`
+- `docs/reference/check-rows/ci-queue.txt`
+- `docs/reference/check-rows/ci-release-names.txt`
+- `docs/reference/check-rows/ci-runner-alarm.txt`
+- `docs/reference/check-rows/ci-runner-switch-org.txt`
+- `docs/reference/check-rows/ci-runner-switch.txt`
+- `docs/reference/check-rows/ci-runners.txt`
+- `docs/reference/check-rows/ci-scaffolder-nightly.txt`
+- `docs/reference/check-rows/ci-scaffolder-third-party-updates.txt`
 - `launchd/com.harbor.ci.governor.plist`
 - `launchd/com.harbor.ci.release-names.plist`
 
@@ -262,9 +286,13 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/deploy-shim-install.sh`
 - `bin/deploy.sh`
 - `docs/design/deploy-fleet.md`
+- `docs/reference/check-rows/deploy-fleet.txt`
+- `docs/reference/check-rows/deploy-launchd.txt`
+- `docs/reference/check-rows/deploy-live-verify.txt`
 
 ### doc
 
+- `bin/doc-checks-generate.sh`
 - `bin/doc-cite-verify.sh`
 - `bin/doc-cited-paths.awk`
 - `bin/doc-drive-push.sh`
@@ -297,6 +325,13 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/drift-renew-check.sh`
 - `bin/drift-status.sh`
 - `bin/drift-wall.sh`
+- `docs/reference/check-rows/drift-confinement.txt`
+- `docs/reference/check-rows/drift-launchd-wall.txt`
+- `docs/reference/check-rows/drift-port-root.txt`
+- `docs/reference/check-rows/drift-reference-check.txt`
+- `docs/reference/check-rows/drift-renew-check.txt`
+- `docs/reference/check-rows/drift-repo-visibility.txt`
+- `docs/reference/check-rows/drift-wall.txt`
 
 ### eval
 
@@ -310,6 +345,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/eval-replay-worker.sh`
 - `bin/eval-replay.sh`
 - `bin/eval-tally.sh`
+- `docs/reference/check-rows/eval-redteam-corpus.txt`
 - `launchd/com.harbor.eval.redteam-corpus.plist`
 
 ### event
@@ -319,6 +355,15 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/event-hook.sh`
 - `contracts/event-kinds.tsv`
 - `contracts/event-rules.tsv`
+- `docs/reference/check-rows/event-alerting.txt`
+- `docs/reference/check-rows/event-dispatch.txt`
+- `docs/reference/check-rows/event-fleet-snapshot.txt`
+- `docs/reference/check-rows/event-retention.txt`
+- `docs/reference/check-rows/event-session-check.txt`
+- `docs/reference/check-rows/event-session-ci-watch.txt`
+- `docs/reference/check-rows/event-session-cleanup-report.txt`
+- `docs/reference/check-rows/event-session-notify.txt`
+- `docs/reference/check-rows/event-session-save-now.txt`
 - `launchd/com.harbor.event.dispatch.plist`
 
 ### gate
@@ -340,6 +385,9 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/gate-required-generate.sh`
 - `bin/gate-verbs.sh`
 - `commands/gate-merge.md`
+- `docs/reference/check-rows/gate-approve.txt`
+- `docs/reference/check-rows/gate-merge-backstop.txt`
+- `docs/reference/check-rows/gate-repo-drift.txt`
 - `hooks/commit-msg`
 - `hooks/pre-commit`
 - `hooks/pre-push`
@@ -348,6 +396,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 ### housekeeping
 
 - `bin/housekeeping-clean.sh`
+- `docs/reference/check-rows/housekeeping-clean.txt`
 - `skills/housekeeping/SKILL.md`
 
 ### library
@@ -394,6 +443,15 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `contracts/lint-name-baseline.txt`
 - `contracts/lint-secrets-baseline.txt`
 - `contracts/lint-siblings-baseline.txt`
+- `docs/reference/check-rows/lint-credential-reads.txt`
+- `docs/reference/check-rows/lint-findings.txt`
+- `docs/reference/check-rows/lint-leaks.txt`
+- `docs/reference/check-rows/lint-name-ratchet.txt`
+- `docs/reference/check-rows/lint-port-paths.txt`
+- `docs/reference/check-rows/lint-pr-body-shape.txt`
+- `docs/reference/check-rows/lint-pr-issue-link.txt`
+- `docs/reference/check-rows/lint-pr-no-ai-attribution.txt`
+- `docs/reference/check-rows/lint-rule-health.txt`
 - `launchd/com.harbor.lint.findings.plist`
 - `launchd/com.harbor.lint.rule-health.plist`
 
@@ -405,6 +463,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/memory-store-check.sh`
 - `bin/memory.sh`
 - `contracts/memory-format.md`
+- `docs/reference/check-rows/memory-route.txt`
 - `hooks/memory-harvest/memory-harvest.sh`
 - `tools/memory/memory-engine.test.ts`
 - `tools/memory/memory-engine.ts`
@@ -420,6 +479,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/policy-check.sh`
 - `bin/policy-constitution-install.sh`
 - `bin/policy-resolve.sh`
+- `docs/reference/check-rows/policy-enforcement-report.txt`
 - `policy/clauses.tsv`
 - `policy/constitution.md`
 - `policy/enforcement.tsv`
@@ -442,6 +502,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/scope-roots.sh`
 - `bin/scope-system.sh`
 - `bin/scope.sh`
+- `docs/reference/check-rows/scope-repos-generated.txt`
 - `hooks/injection-rule/scope.test.sh`
 
 ### session
@@ -458,6 +519,10 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `context-rules/user/session-title-missing.md`
 - `context-rules/user/session-title-missing.sh`
 - `contracts/session-waiting.tsv`
+- `docs/reference/check-rows/session-reply-shape.txt`
+- `docs/reference/check-rows/session-state.txt`
+- `docs/reference/check-rows/session-subagent-stop.txt`
+- `docs/reference/check-rows/session-title.txt`
 - `hooks/session-state/session-state.sh`
 - `hooks/session-subagent-check/session-subagent-check.sh`
 - `hooks/session-title/session-title.sh`
@@ -493,6 +558,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/standard-label-sync.sh`
 - `bin/standard-register.sh`
 - `bin/standard-rename.sh`
+- `bin/standard-render-check.sh`
 - `bin/standard-schema.sh`
 - `bin/standard-seams-fresh.sh`
 - `bin/standard-shape.sh`
@@ -590,6 +656,13 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `docs/decisions/0091-object-slot-open.md`
 - `docs/decisions/0092-promote-name-rules-on-evidence.md`
 - `docs/decisions/README.md`
+- `docs/reference/check-rows/standard-fleet-names.txt`
+- `docs/reference/check-rows/standard-label-registered.txt`
+- `docs/reference/check-rows/standard-label-sync.txt`
+- `docs/reference/check-rows/standard-repo-verbs.txt`
+- `docs/reference/check-rows/standard-schedule-registered.txt`
+- `docs/reference/check-rows/standard-script-uncalled.txt`
+- `docs/reference/check-rows/standard-seam-fresh.txt`
 - `launchd/com.harbor.standard.fleet-names.plist`
 - `launchd/com.harbor.standard.label-registered.plist`
 - `launchd/com.harbor.standard.schedule-registered.plist`
@@ -633,12 +706,18 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/status-dashboard-generate.sh`
 - `bin/status-fleet-glyph.sh`
 - `bin/status-fleet-snapshot-refresh.sh`
+- `bin/status-fleet-watch.sh`
 - `bin/status-generate.sh`
 - `bin/status-obligations.sh`
 - `bin/status-plan-generate.sh`
 - `bin/status-subagent-glyph.sh`
 - `bin/status-telemetry-report.sh`
 - `bin/status-usage-aggregate.sh`
+- `docs/reference/check-rows/status-fleet-snapshot.txt`
+- `docs/reference/check-rows/status-fleet-watch.txt`
+- `docs/reference/check-rows/status-obligations.txt`
+- `docs/reference/check-rows/status-usage-sessions.txt`
+- `docs/reference/check-rows/status-usage.txt`
 - `launchd/com.harbor.status.fleet-snapshot.plist`
 - `launchd/com.harbor.status.usage-sessions.plist`
 - `launchd/com.harbor.status.usage.plist`
@@ -651,6 +730,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/test-suite-select.sh`
 - `contracts/test-contract.md`
 - `docs/audits/test-audit.md`
+- `docs/reference/check-rows/test-fleet.txt`
 - `skills/test-strength/SKILL.md`
 
 ### worktree
@@ -668,10 +748,10 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `.github/` | 2 |
 | `bin/` | 13 |
 | `commands/` | 2 |
-| `context-rules/` | 43 |
+| `context-rules/` | 45 |
 | `contracts/` | 85 |
-| `docs/` | 125 |
-| `fixtures/` | 261 |
+| `docs/` | 127 |
+| `fixtures/` | 263 |
 | `hooks/` | 29 |
 | `patches/` | 10 |
 | `runners/` | 2 |

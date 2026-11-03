@@ -1,0 +1,4 @@
+watches: same script as `status.usage` — `status-usage-aggregate.sh`
+schedule: 04:37 daily
+notifies: none — cache only
+red: —

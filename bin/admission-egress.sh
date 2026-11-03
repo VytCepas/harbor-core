@@ -466,7 +466,14 @@ $TARGETS_ALL"
   # harbor#716: _CHAN is this gate over $DOCV. A channel named only in a document body
   # still runs the secret scans, but no longer arms the env-dump and credential-path rules.
   _CHAN=0
-  if m "$EGRESS" || rawdoc "$EGRESS"; then _CHAN=1; fi
+  # harbor#1420 §8: a URL in a body that cat/tee writes is a citation, not a channel; a channel WORD there still
+  # arms (the file may be a script). DOCW is DOCV with those writer bodies dropped too.
+  DOCW="$DOCV"; TARGETS_W="$TARGETS"
+  case "$DOCV" in *'<<'*) floor_hd_body_expands "$DOCV" || DOCW="$(floor_hd_drop_doc_bodies --writers "$DOCV")" ;; esac
+  [ "$DOCW" = "$DOCV" ] || TARGETS_W="$(floor_bash_targets "$DOCW")"
+  EGRESS_WORD="${EGRESS%|://)})"
+  if m "$EGRESS_WORD" || rawdoc "$EGRESS_WORD" \
+     || printf '%s' "$TARGETS_W" | "$FLOOR_GREP" -iEq -- "$EGRESS" || printf '%s' "$DOCW" | "$FLOOR_GREP" -iEq -- "$EGRESS"; then _CHAN=1; fi
   if mall "$EGRESS" || raw "$EGRESS"; then
     if jwt_is_privileged; then
       floor_block egress "a privileged-role JWT (service_role/admin) is headed out over an outbound channel" privileged-jwt-egress.channel
