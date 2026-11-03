@@ -103,7 +103,6 @@ bin/access.sh	operator-run	derived: called by bin/secret
 bin/admission-api-route.sh	installed	derived: shipped by admission-install.sh
 bin/admission-bash.sh	installed	derived: shipped by admission-install.sh
 bin/admission-cloud.sh	installed	derived: shipped by admission-install.sh
-bin/admission-decide.sh	installed	derived: shipped by admission-install.sh
 bin/admission-deliverables.sh	installed	derived: shipped by admission-install.sh
 bin/admission-deny.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/admission-destroy.sh	installed	derived: shipped by admission-install.sh
@@ -118,7 +117,6 @@ bin/admission-remove.sh	ship	derived: called by bin/deploy.sh
 bin/admission-self-edit.sh	installed	derived: shipped by admission-install.sh
 bin/admission-stop.sh	installed	derived: wired by admission-install.sh
 bin/admission-verify.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/agent-idle-check.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/alert-notify.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/alert-probe.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/annotate-web.sh	installed	derived: shipped by admission-install.sh
@@ -130,7 +128,6 @@ bin/audit-stream-lib.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/audit-triage-run.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/audit-triage.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/check-registry-generate.sh	ci-gate	derived: called by bin/lint-conventions.sh
-bin/check-run.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/ci-github-plan.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/ci-governor-hook.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/ci-governor.sh	installed	derived: shipped by deploy-runtime-install.sh
@@ -160,7 +157,6 @@ bin/deploy-hooks.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/deploy-install-lib.sh	installed	derived: shipped by admission-install.sh
 bin/deploy-install-stamp.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/deploy-launchd-render.sh	installed	derived: called by bin/drift-renew-check.sh
-bin/deploy-launchd-sync.sh	ship	derived: called by bin/deploy-live-verify.sh
 bin/deploy-live-verify.sh	ship	derived: runs as ship.conf verify
 bin/deploy-push.sh	ci-gate	derived: called by bin/ci-mirror.sh
 bin/deploy-restore.sh	installed	derived: shipped by admission-install.sh
@@ -247,7 +243,6 @@ bin/memory.sh	operator-run	derived: linked into ~/.local/bin as memory by contra
 bin/name-check	operator-run	derived: linked into ~/.local/bin as name-check by contracts/shims.tsv
 bin/pack.sh	ship	derived: called by bin/deploy.sh
 bin/pin-instructions.sh	installed	derived: shipped by admission-install.sh
-bin/policy-check.sh	installed	derived: called by bin/gate-merge-check.sh
 bin/policy-constitution-install.sh	installed	derived: called by bin/admission-verify.sh
 bin/prod-guard-ambient.sh	installed	derived: wired by prod-guard-install.sh
 bin/prod-guard-install.sh	installed	derived: called by bin/prod-guard-ambient.sh
@@ -255,11 +250,7 @@ bin/proposal.sh	installed	derived: called by bin/drift-renew-check.sh
 bin/scope-layers.sh	ci-gate	derived: called by bin/deploy-push.sh
 bin/scope-managed-folders.sh	ship	derived: called by bin/drift-wall.sh
 bin/scope-managed-mods.sh	installed	derived: called by bin/admission-verify.sh
-bin/scope-repo-sources.sh	ci-gate	derived: called by bin/lint-conventions.sh
-bin/scope-repo.sh	ci-gate	derived: called by bin/scope-repo-sources.sh
-bin/scope-repos-generate.sh	ci-gate	derived: called by bin/scope-repo-sources.sh
 bin/scope-roots.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/scope-system.sh	operator-run	derived: called by bin/harbor
 bin/secret	operator-run	derived: linked into ~/.local/bin as secret by contracts/shims.tsv
 bin/session-autocompact.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/session-check.sh	installed	derived: shipped by deploy-runtime-install.sh
@@ -276,9 +267,6 @@ bin/standard-catalog.sh	ci-gate	derived: called by bin/deploy-push.sh
 bin/standard-fleet-names-run.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/standard-fleet-names.sh	installed	derived: called by bin/standard-fleet-names-run.sh
 bin/standard-frozen-generate.sh	ci-gate	derived: called by bin/lint-conventions.sh
-bin/standard-inventory.sh	ci-gate	derived: called by bin/lint-name.sh
-bin/standard-kit.sh	ci-gate	derived: called by bin/lint-conventions.sh
-bin/standard-label-sync.sh	ci-gate	derived: called by bin/scope-repo.sh
 bin/standard-register.sh	installed	derived: called by bin/gate-codeowners.sh
 bin/standard-shape.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/standard-vendor.sh	installed	derived: called by bin/standard-fleet-names.sh

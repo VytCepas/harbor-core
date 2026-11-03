@@ -4,11 +4,9 @@
      bus. It wakes on a new bus line (`event-bus.sh wait`, tail -F), never on a timer, and at least hourly for
      rule backstops. Its position is the byte offset in ~/.local/state/harbor/events/dispatch/offsets.
 
-     INSTALLED BY DEPLOY (harbor:deploy-installs is the marker bin/deploy-launchd-sync.sh reads: `sh bin/deploy.sh --apply --live`
-     renders this file into ~/Library/LaunchAgents and loads it, harbor#1437, the operator's decision of 2026-11-02 that nothing
-     needs turning on by hand). A deploy that changes event-dispatch.sh restarts it. It reacts only through the event rules
-     deploy reconciles from contracts/event-rules.tsv, and spawns nothing until ~/.claude/.helm-dispatch/spawn.on exists,
-     which a deploy never creates.
+     SHIPPED, NOT INSTALLED (harbor:shipped-inert is the marker bin/drift-renew-check.sh reads: a plist that carries it
+     and sits on no schedule is not a missed job). Installing it is the operator's decision at deploy time, and even installed it is
+     inert until a rule exists (`harbor event on`), and spawns nothing until ~/.claude/.helm-dispatch/spawn.on exists.
 
      KeepAlive SuccessfulExit=false: restarted after a crash, left down after exit 0, which is how
      `touch .../dispatch/dispatch.off` stops it. A missing dependency (jq, perl, or a bus that does not pass the
@@ -18,7 +16,9 @@
 
      TEMPLATE: launchd does not expand $HOME, so the home and local-bin paths below are placeholders that
      bin/deploy-launchd-render.sh fills in from contracts/roots.tsv when the plist is installed; never cp this file (harbor#630).
-     A Claude session cannot install this, by design (#555 decision 3): only the operator's deploy does.
+     An agent cannot install this, by design. Operator steps: docs/design/events.md, "E2 — opting in":
+       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.event.dispatch.plist > ~/Library/LaunchAgents/com.harbor.event.dispatch.plist
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.harbor.event.dispatch.plist
 
      Disable (docs/reference/checks.md's two-lookup rule):
        launchctl bootout gui/$(id -u)/com.harbor.event.dispatch

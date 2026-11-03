@@ -103,7 +103,6 @@ do_rerun_lost() {
   # an empty phrase would match every job: no phrase from ci-lost-job.sh means no shape-3 re-run, and a warning
   RUNNER_RE="$(sh "$LJ" --runner-pattern 2>/dev/null)" || RUNNER_RE=""
   [ -n "$RUNNER_RE" ] || { log_warn "rerun-lost: no runner phrase from ci-lost-job.sh"; return 0; }
-  lostfail=""   # jobs whose re-run call failed this pass: the receipt's subjects
   serve_targets
   # the governance repo's own runner, which no fleet row covers: only when it is online
   _g="${GOV_REPO#*/}"
@@ -156,17 +155,10 @@ do_rerun_lost() {
       else
         grep -v "^$slug $lost " "$LOSTS" > "$T/lost.n" 2>/dev/null; cat "$T/lost.n" > "$LOSTS"
         log_warn "$slug job $lost: the re-run failed; it is tried again next time"
-        lostfail="$lostfail $slug/$lost"
       fi
     done < "$T/lids"
   done < "$T/targets"
   awk -v cut="$((NOW - 1209600))" '$NF > cut' "$LOSTS" > "$T/lost.n" 2>/dev/null && cat "$T/lost.n" > "$LOSTS" || :
   awk -v cut="$((NOW - 259200))" '$NF > cut' "$SEEN" > "$T/seen.n" 2>/dev/null && cat "$T/seen.n" > "$SEEN" || :
-  # The receipt every registered check leaves (contracts/finding.md): without it the findings reconcile reports this check
-  # "not visible" whether it ran or not (harbor#1437). Green = a pass completed; red = a re-run call failed, named.
-  if [ "$APPLY" = 1 ]; then
-    if [ -n "$lostfail" ]; then log_receipt "$(receipt_dir)" ci.lost-rerun red $lostfail || log_warn "no receipt written for ci.lost-rerun"
-    else log_receipt "$(receipt_dir)" ci.lost-rerun green || log_warn "no receipt written for ci.lost-rerun"; fi
-  fi
 }
 

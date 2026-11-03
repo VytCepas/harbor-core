@@ -202,13 +202,6 @@ printf 'fixture\n' > "$X9R/launchd/com.harbor.zz-fixture-host.plist"
 t_hasnt "its host's tracked plist clears it" "$(_x9)" 'zz-fixture-rider'
 t_has "positive control: the rider was counted as not launchd-scheduled" "$(_x9)" '1 registered check(s): 1 not launchd-scheduled'
 rm -f "$X9R/launchd/com.harbor.zz-fixture-host.plist"
-# harbor#1433: the reverse direction, a tracked plist whose id is no row of the register
-reg '| `zz-fixture-other` | a thing | hourly | desktop | it broke |'
-printf 'fixture\n' > "$X9R/launchd/com.harbor.zz-fixture-orphan.plist"
-t_has "a tracked plist with no register row is reported" "$(_x9)" 'tracked but in no register row: com.harbor.zz-fixture-orphan.plist'
-reg '| `zz-fixture-orphan` | a thing | hourly | desktop | it broke |'
-t_hasnt "a row for it clears the finding" "$(_x9)" 'tracked but in no register row'
-rm -f "$X9R/launchd/com.harbor.zz-fixture-orphan.plist"
 # harbor#592: a phrasing X9 cannot read is reported as unreadable, never as an uncommitted plist
 reg '| `zz-fixture-moon` | a thing | whenever the moon is full | desktop | it broke |'
 t_has "an unrecognised schedule is called unreadable" "$(_x9)" 'its schedule names no launchd time and no non-launchd kind'

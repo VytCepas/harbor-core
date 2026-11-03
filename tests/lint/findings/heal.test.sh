@@ -61,10 +61,10 @@ t_section "heal · --apply repairs the HEAL rows only, a tracked change as a dra
 : > "$GH_LOG"; OUT="$(heal "$TMP/h1" --apply)"
 t_eq "the operator's checkout is untouched" 100644 "$(git -C "$HP" ls-files -s bin/tool.sh | cut -c1-6)"
 t_eq "and its working file too" no "$([ -x "$HP/bin/tool.sh" ] && echo yes || echo no)"
-_hb="$(git -C "$HO" for-each-ref --format='%(refname:short)' refs/heads/fix/)"
+_hb="$(git -C "$HO" for-each-ref --format='%(refname:short)' refs/heads/heal/)"
 t_eq "one heal branch on origin, named for the digest and main's commit" \
-  "fix/$(num_of lint/lint.exec-bit-kept)-heal-lint-lint-exec-bit-kept-$(sh "$F" digest bin/tool.sh 'bin/x;touch PWNED')-$(git -C "$HP" rev-parse --short=7 HEAD)" "$_hb"
-t_eq "and no local heal branch is left behind" "" "$(git -C "$HP" branch --list 'fix/*')"
+  "heal/lint-lint.exec-bit-kept-$(sh "$F" digest bin/tool.sh 'bin/x;touch PWNED')-$(git -C "$HP" rev-parse --short=7 HEAD)" "$_hb"
+t_eq "and no local heal branch is left behind" "" "$(git -C "$HP" branch --list 'heal/*')"
 t_eq "carrying the repair" 100755 "$(git -C "$HO" ls-tree "$_hb" bin/tool.sh | cut -c1-6)"
 t_eq "main on origin did not move" "$MAIN0" "$(git -C "$HO" rev-parse main)"
 t_eq "the PR is a draft" true "$(jq -r '.prs[0].draft' "$GH_STATE")"
@@ -93,7 +93,7 @@ printf 'moved\n' > "$HP/moved"; git -C "$HP" add moved; git -C "$HP" commit -qm 
 git -C "$HP" push -q origin HEAD:main; git -C "$HP" fetch -q origin
 NOW=2026-10-12; OUT="$(heal "$TMP/h1" --apply)"
 t_eq "a second PR" 2 "$(jq '.prs | length' "$GH_STATE")"
-t_eq "two heal branches on origin" 2 "$(git -C "$HO" for-each-ref refs/heads/fix/ | grep -c .)"
+t_eq "two heal branches on origin" 2 "$(git -C "$HO" for-each-ref refs/heads/heal/ | grep -c .)"
 t_hasnt "and nothing failed" "$OUT" "FAILED"
 
 t_section "heal · review #891: a PR whose record never reached the finding gets it on the next run"
@@ -110,7 +110,7 @@ hrec "$TMP/h2" --apply > /dev/null
 _prs="$(jq '.prs | length' "$GH_STATE")"
 t_exit "the run exits 1" 1 env HARBOR_SCOPE_ROOT="$HP" HARBOR_LINT_FINDINGS_NOW=2026-10-15 GH_NOW=2026-10-15 sh "$F" heal --from "$TMP/h2" --apply
 t_eq "no PR for the partial change" "$_prs" "$(jq '.prs | length' "$GH_STATE")"
-t_eq "no skill.not-for-target-exists branch on origin" "" "$(git -C "$HO" for-each-ref refs/heads/fix/$(num_of lint/skill.not-for-target-exists)-heal-lint-skill-not-for-target-exists-)"
+t_eq "no skill.not-for-target-exists branch on origin" "" "$(git -C "$HO" for-each-ref refs/heads/heal/lint-skill.not-for-target-exists-)"
 t_has "the failure and its output are in the finding" "$(comments_on "$(num_of lint/skill.not-for-target-exists)")" "route table locked"
 t_has "and it says nothing was published" "$(comments_on "$(num_of lint/skill.not-for-target-exists)")" "A repair FAILED, so nothing was published"
 t_eq "the checkout is untouched" "" "$(git -C "$HP" status --porcelain)"
@@ -123,7 +123,7 @@ _prs="$(jq '.prs | length' "$GH_STATE")"
 t_exit "a failed PR create fails the run" 1 env GIT_AUTHOR_DATE=2026-10-16T09:00:00 GIT_COMMITTER_DATE=2026-10-16T09:00:00 GH_FAIL=prcreate HARBOR_SCOPE_ROOT="$HP" HARBOR_LINT_FINDINGS_NOW=2026-10-16 GH_NOW=2026-10-16 sh "$F" heal --from "$TMP/h1" --apply
 t_eq "no PR" "$_prs" "$(jq '.prs | length' "$GH_STATE")"
 t_eq "no worktree left registered" 1 "$(git -C "$HP" worktree list | grep -c .)"
-t_eq "no local heal branch" "" "$(git -C "$HP" branch --list 'fix/*')"
+t_eq "no local heal branch" "" "$(git -C "$HP" branch --list 'heal/*')"
 t_has "the finding says the branch waits" "$(comments_on "$(num_of lint/lint.exec-bit-kept)")" "opening its draft PR FAILED"
 # a later commit time, so a re-push would be a different commit and rejected, as it is for real
 NOW=2026-10-17; OUT="$(GIT_AUTHOR_DATE=2026-10-17T09:00:00 GIT_COMMITTER_DATE=2026-10-17T09:00:00 heal "$TMP/h1" --apply)"
@@ -132,7 +132,7 @@ t_hasnt "and does not fail" "$OUT" "FAILED"
 
 t_section "heal · review #891: a fork's PR on the heal prefix is not the repair"
 jq '(.prs[] | select(.state == "OPEN")).state = "MERGED"' "$GH_STATE" > "$GH_STATE.n" && mv "$GH_STATE.n" "$GH_STATE"
-_hb="fix/$(num_of lint/lint.exec-bit-kept)-heal-lint-lint-exec-bit-kept-$(sh "$F" digest bin/tool.sh 'bin/x;touch PWNED')-$(git -C "$HP" rev-parse --short=7 HEAD)"
+_hb="heal/lint-lint.exec-bit-kept-$(sh "$F" digest bin/tool.sh 'bin/x;touch PWNED')-$(git -C "$HP" rev-parse --short=7 HEAD)"
 jq --arg h "$_hb" '.prs += [{number: 900, head: $h, draft: false, state: "OPEN", fork: true}]' "$GH_STATE" > "$GH_STATE.n" && mv "$GH_STATE.n" "$GH_STATE"
 _prs="$(jq '.prs | length' "$GH_STATE")"
 NOW=2026-10-18; OUT="$(heal "$TMP/h1" --apply)"
@@ -149,7 +149,7 @@ sed -i.bak 's#`chmod +x <subject>` | \#574#`sh '"$TMP"'/killer.sh <subject>` | \
 git -C "$HP" commit -qam "a repair that is interrupted"; git -C "$HP" push -q origin HEAD:main; git -C "$HP" fetch -q origin
 HARBOR_SCOPE_ROOT="$HP" HARBOR_LINT_FINDINGS_NOW=2026-10-19 GH_NOW=2026-10-19 sh -c 'PPID_HEAL=$$; export PPID_HEAL; exec sh "$0" heal --from "$1" --apply' "$F" "$TMP/h1" > /dev/null 2>&1
 t_eq "no worktree left registered" 1 "$(git -C "$HP" worktree list | grep -c .)"
-t_eq "no local heal branch" "" "$(git -C "$HP" branch --list 'fix/*')"
+t_eq "no local heal branch" "" "$(git -C "$HP" branch --list 'heal/*')"
 
 t_section "check tier · heal sees check/memory.route and runs its repair"
 GH_STATE="$TMP/gh-heal.json"; export GH_STATE

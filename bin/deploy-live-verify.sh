@@ -152,21 +152,6 @@ if [ -f "$HERE/drift-wall.sh" ] && [ -f "$HERE/../contracts/main-folders.txt" ];
     *) log_warn "$ID wall — drift-wall.sh could not judge (exit $_r) [check:drift.wall]"; log_fix "sh $HERE/drift-wall.sh" ;;
   esac
 else log_skip "$ID wall — needs the repo checkout, and $HERE is not one"; fi
-# 8. The scheduled jobs (harbor#1437): a launchd job still running a script older than its installed copy is red. The
-#    dispatcher ran a week-old event-dispatch.sh because a deploy replaced the file and never restarted it.
-logged launchd "sh $HERE/deploy-launchd-sync.sh verify" sh "$HERE/deploy-launchd-sync.sh" verify
-
-# 9. The install manifest names only files that exist (harbor#1437): a row with no file (bin/CHECKS.md outlived its move) is
-#    a record of nothing, and a reader that trusts the manifest would trust it.
-if [ -f "$CFG/.harbor-manifest" ]; then
-  _nofile="$(awk '!/^#/ && NF >= 5 { r = $0; sub(/^[^ ]+ [^ ]+ /, "", r); sub(/ [^ ]+ [^ ]+$/, "", r); print r }' "$CFG/.harbor-manifest" |
-    while IFS= read -r _r; do [ -e "$CFG/$_r" ] || [ -L "$CFG/$_r" ] || printf '%s ' "$_r"; done)"
-  if [ -z "$_nofile" ]; then log_ok "$ID manifest — every .harbor-manifest row has its file"
-  else
-    log_fail "$ID manifest — rows with no file: ${_nofile% }"
-    log_fix "sh $HERE/deploy.sh --apply --live (runtime-install drops the rows of files it no longer ships)"
-  fi
-else log_skip "$ID manifest — no .harbor-manifest in $CFG"; fi
 
 # ── the opt-in probes: the real-system coverage the hermetic suites stub (harbor#667) ─────────────
 if [ "$PROBES" -eq 0 ]; then

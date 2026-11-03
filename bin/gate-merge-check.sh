@@ -15,19 +15,52 @@
 #                                       which is what this tool has always done —
 #                                       harbor#267). The chosen one is printed.
 #
-#   HARBOR_SCOPE_REPO   owner/name (default: the checkout's remote, else this script's checkout). NOT a path
-#   (bin/drift-renew-check.sh reads the same name as a path); a non-owner/name value is REFUSED, see repo().
+#   HARBOR_SCOPE_REPO   owner/name; default comes from the checkout's remote, and
+#                 falling back to THIS SCRIPT'S checkout when cwd is elsewhere.
+#                 NOT a path — bin/drift-renew-check.sh reads the same name as a path;
+#                 a value that is not owner/name is REFUSED here, see repo().
 #   HARBOR_GATE_BRANCH the protected branch (default: main)
-#   HARBOR_GATE_REQUIRED_CHECKS  the local gate's declaration, rows repo<TAB>check name (default:
-#   contracts/required-checks.tsv, then the private layer's via gate-required-generate.sh). Set, it is the only list read.
-# Removed notes: docs/explanation/code-cases/bin-gate-merge-check.md
+#   HARBOR_GATE_REQUIRED_CHECKS
+#                 the local gate's declaration (default: contracts/required-checks.tsv
+#                 beside this script, followed by the private layer's required-checks.tsv
+#                 when gate-required-generate.sh is beside it): repo<TAB>check name, one
+#                 row per required check. Set, it is the only list read
 #
-# Backstop for the day branch protection lapses (#150; protection has enforced since 2026-08-06). The lapse is
-# silent: a private repo on a free plan answers 403 and every rule stops applying, hence --protection.
-# `gh pr checks` is the oracle, not a reimplementation: it already scores a CANCELLED run as failing against a
-# required context. Protection 403, or requiring nothing, gates on contracts/required-checks.tsv (harbor#1060).
-# EVERY check is judged by default, not only the required ones: with --required it reported ok while a
-# non-required check was red. --required-only keeps the narrow "what blocks" question.
+# WHY THIS EXISTS, AND WHY ITS SCOPE SHRANK. #150 specified this as the merge
+# gate GitHub could not provide, because branch protection needs a paid plan on a
+# private repo. The plan was bought on 2026-08-06 and protection now enforces, so
+# this is no longer the gate — it is the BACKSTOP for the day it goes away.
+#
+# THE LAPSE IS SILENT, which is the whole argument for `--protection`. A private
+# repo on a free plan does not report "your rules are off"; the protection
+# endpoint simply answers 403 and every rule stops applying. Nothing in the UI
+# turns red, no PR complains, and the next merge of a failing branch succeeds
+# quietly. A subscription is a control with an expiry date and no alarm.
+#
+# `gh pr checks` IS THE ORACLE, deliberately, rather than a reimplementation over
+# the check-runs API. It is what GitHub itself scores, and it already encodes the
+# rule that cost this repo a morning: a CANCELLED check run counts as FAILING
+# against a required context and never clears. A local reimplementation would
+# have to rediscover that, and would drift the first time GitHub changed how a
+# conclusion maps to a verdict. Copies of a fact that lives somewhere else drift
+# silently while reading correctly.
+#
+# THE LAPSE HAPPENED (2026-10-05, harbor#1060): protection 403, or requiring
+# nothing, gates on contracts/required-checks.tsv instead — each listed check
+# must be on the PR head and pass. Protection that requires checks stays the gate.
+#
+# EVERY CHECK, NOT ONLY THE REQUIRED ONES — and this is a CORRECTION, made the
+# first time the tool was pointed at a real merge. It ran with `--required`, and
+# `main` then required exactly two of roughly thirteen jobs on purpose, so it reported
+#
+#   ok  #157 — every required check passes (2)
+#
+# while `recover red-green` sat at `failure`. It was not wrong by its own
+# definition; it was answering a narrower question than the one being asked.
+# "Would GitHub let this through" and "is anything red" are different questions
+# on a repo that requires a subset, and a tool whose whole job is refusing to
+# merge red must answer the second one by default. `--required-only` keeps the
+# first available, because knowing what actually BLOCKS is a real question too.
 set -eu
 MC_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 # The log goes to stderr, where the refusals always went (contracts/logging.md, LOG1).
@@ -39,15 +72,36 @@ usage() { sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; }
 
 BRANCH="${HARBOR_GATE_BRANCH:-main}"
 DO_MERGE=0; FORCE=0; PR=""; MODE=check; SUBJECT=""; MATCH=""; DELETE=0; REQUIRED_ONLY=0
-# STRATEGY (harbor#267): harbor's --merge means "do the merge", gh's --merge is the merge-commit strategy.
-# The default stays merge-commit; --squash/--rebase/--merge-commit select, and the chosen one is printed.
+# ── THE STRATEGY IS A CHOICE, AND IT WAS HARDCODED (harbor#267) ──────────────
+# `--merge` MEANS TWO DIFFERENT THINGS in this file, which is the whole reason
+# this was easy to miss: harbor's `--merge` is "do the merge", and gh's `--merge`
+# is the merge-COMMIT strategy. The second one was written into the argv below
+# with no way to choose it, so the squash shape was unreachable through the
+# sanctioned route — and squash is what 95 of 287 commits on `main` use, 18 of
+# the last 20. Measured 2026-08-22.
+#
+# THE DEFAULT DOES NOT MOVE. Both shapes are established here — 29 of the last 80
+# commits have two parents, and `--subject` exists to give those the conventional
+# `Merge harbor#N: …` title — so which one this repo should prefer is a convention
+# decision for the operator, not a side effect of a bug fix. What changes is that
+# the other two are now reachable, and that the chosen one is PRINTED: a strategy
+# nobody can see is one nobody notices is wrong.
 STRATEGY=merge
 [ $# -gt 0 ] || { usage; exit 0; }
-# --subject keeps the repo's `Merge harbor#N: <what>` title instead of GitHub's default.
+# `--subject` EXISTS BECAUSE OF THE FIRST REAL USE. Without it `--merge` produces
+# GitHub's default "Merge pull request #N from <branch>", and this repo's history
+# is "Merge harbor#N: <what it does>". A gate that costs you the commit
+# convention is a gate people route around, and a gate nobody uses enforces
+# nothing — which is the same "a rule with no mechanism is a wish" trap this
+# whole tool exists to avoid falling into.
 while [ $# -gt 0 ]; do
   case "$1" in
     --merge)         DO_MERGE=1 ;;
-    # A second, different strategy is refused up front, not discovered as a gh argument error after the check passed.
+    # ONE STRATEGY, AND A SECOND ONE IS REFUSED rather than silently overwriting
+    # the first. `--squash --rebase` is a caller who does not know what they want,
+    # and learning that from gh's error AFTER the backstop has already run is
+    # learning it too late — the check would have passed and the merge would then
+    # fail on argument parsing, which reads like the gate broke.
     --squash|--rebase|--merge-commit)
       _s="${1#--}"; [ "$_s" = merge-commit ] && _s=merge
       if [ -n "${STRATEGY_SET:-}" ] && [ "$_s" != "$STRATEGY" ]; then
@@ -74,9 +128,32 @@ done
 
 command -v gh >/dev/null 2>&1 || { echo "merge-check: gh is not installed" >&2; exit 2; }
 
-# HARBOR_SCOPE_REPO is owner/name here but a PATH in bin/drift-renew-check.sh. A path 404s the protection endpoint
-# and reads as "no rule", a confident wrong answer, so the shape is validated (one slash, no leading slash, no
-# whitespace) rather than renamed. Falls back to this script's own checkout: /harbor-merge runs from any cwd.
+# ONE NAME, TWO MEANINGS — and only one of them can be right here. This file
+# documents HARBOR_SCOPE_REPO as `owner/name`; bin/drift-renew-check.sh:38 uses the SAME
+# variable as a FILESYSTEM PATH (`REPO="${HARBOR_SCOPE_REPO:-${PORT_ROOT:-$HOME/port}/harbor}"`) and its
+# header tells the operator to set it that way. Measured 2026-08-13 with the
+# renew-check spelling exported:
+#
+#   HARBOR_SCOPE_REPO="$HOME/harbor" sh bin/gate-merge-check.sh --protection
+#   -> PROTECTION ABSENT  $HOME/harbor/main is reachable and carries no rule
+#
+# Wrong, on the one question this file exists to answer. `gh api
+# repos/$HARBOR_SCOPE_REPO/branches/main/protection` 404s, and the 404 arm
+# below correctly means "reachable, no rule configured" — so a nonsense repo id
+# is indistinguishable from a real lapse. The asymmetry is what makes it a
+# defect rather than a nuisance: renew-check STANDS DOWN and says so when the
+# value is the wrong kind, while this file returned a confident wrong answer
+# about whether the merge gate still exists.
+#
+# So VALIDATE THE SHAPE rather than rename. Renaming would break the operator's
+# muscle memory for whichever tool lost, and both headers already document their
+# own meaning; what was missing is a refusal when the value cannot possibly be
+# what this file needs. `owner/name` is exactly one slash, no leading slash, and
+# no whitespace — a path fails all three.
+#
+# AND FALL BACK TO THIS SCRIPT'S OWN CHECKOUT, because /harbor-merge runs from
+# whatever cwd the session is in and `gh repo view` needs to be inside a git
+# remote. Same shape as bin/status-generate.sh:80: the script knows where it lives.
 repo() {
   if [ -n "${HARBOR_SCOPE_REPO:-}" ]; then
     case "${HARBOR_SCOPE_REPO:-}" in
@@ -101,7 +178,12 @@ repo() {
 if [ "$MODE" = protection ]; then
   R="$(repo)"
   [ -n "$R" ] || { echo "merge-check: could not determine the repository" >&2; exit 2; }
-  # 200: rules exist, report the contexts (a typo'd context leaves the branch unmergeable). 403: plan lapsed. 404: no rule.
+  # The three answers are genuinely different and only one of them is fine.
+  #   200  rules exist — report which contexts, so a TYPO is visible too. A
+  #        required context naming a check nobody reports never goes green and
+  #        makes the branch permanently unmergeable, silently.
+  #   403  the plan no longer allows protection on a private repo. THE LAPSE.
+  #   404  the endpoint is reachable and no rule is configured.
   _out="$(gh api "repos/$R/branches/$BRANCH/protection" 2>&1)" && _rc=0 || _rc=$?
   if [ "$_rc" -eq 0 ]; then
     _ctx="$(printf '%s' "$_out" | jq -r '.required_status_checks.contexts // [] | join(", ")' 2>/dev/null || printf '')"
@@ -132,7 +214,9 @@ if [ "$MODE" = protection ]; then
       log_fix "gh api -X PUT repos/$R/branches/$BRANCH/protection, or list the checks in contracts/required-checks.tsv"
       log_end || exit 1 ;;
     *)
-      # UNKNOWN IS NOT OK: offline, unauthenticated or rate-limited is no evidence that the gate is up.
+      # UNKNOWN IS NOT OK. Offline, unauthenticated, rate-limited — none of them
+      # are evidence that the gate is up, and reporting them as fine is how a
+      # backstop becomes decoration.
       log_fail "PROTECTION UNKNOWN  could not read $R/$BRANCH protection: $_out"
       log_fix "gh auth status; then re-run sh bin/gate-merge-check.sh --protection"
       log_end || exit 1 ;;
@@ -165,7 +249,8 @@ fi
 RCFILE="${HARBOR_GATE_REQUIRED_CHECKS:-$MC_DIR/../contracts/required-checks.tsv}"
 LISTED=""
 if [ -r "$RCFILE" ]; then
-  # With no list handed in, rows are core's then the private layer's (harbor#1149); a repo with no row has no local gate.
+  # Run from a checkout with no list handed in, the rows are core's then the private layer's (gate-required-generate.sh, harbor#1149).
+  # An overlay that does not compose leaves core's rows alone, and says so: a repo with no row has no local gate, which refuses.
   _rcrows=""
   if [ -z "${HARBOR_GATE_REQUIRED_CHECKS:-}" ] && [ -f "$MC_DIR/gate-required-generate.sh" ]; then
     _rcrows="$(sh "$MC_DIR/gate-required-generate.sh" --core "$RCFILE" 2>/dev/null)" \
@@ -185,14 +270,18 @@ elif [ -n "$LISTED" ] && [ -n "$GATE_WHY" ]; then
   log_note "gate: local (contracts/required-checks.tsv — GitHub protection unavailable: $GATE_WHY)"
 fi
 
-# gh exits non-zero both when a check fails and when nothing has reported, so the rows are the signal, not the
-# status; captured so `set -e` survives.
+# `gh pr checks` exits non-zero when anything is not passing AND when nothing has
+# reported yet; both must refuse, so the exit status is not the signal — the rows
+# are. Captured rather than piped so a failing exit does not end the script under
+# `set -e`.
 if [ "$REQUIRED_ONLY" -eq 1 ] && [ "$GATE" != local ]; then
   CHECKS="$(gh pr checks "$PR" --repo "$R" --required 2>&1)" || :
 else
   CHECKS="$(gh pr checks "$PR" --repo "$R" 2>&1)" || :
 fi
-# The required set is read separately so each row can be labelled.
+# The required set is read separately so each row can be LABELLED. A refusal that
+# does not say whether the red check actually blocks the merge sends the reader
+# to the settings page to find out.
 if [ "$GATE" = local ]; then
   REQNAMES="$LISTED"
 else
@@ -215,10 +304,14 @@ while IFS= read -r _line; do
   printf '%s\n' "$REQNAMES" | grep -Fxq "$_name" && _tag=" [required]"
   [ "$GATE" = local ] && [ "$REQUIRED_ONLY" -eq 1 ] && [ -z "$_tag" ] && continue
   case "$_state" in
-    # `skipping` is a job that did not run, not a failure (CONSTITUTION §2.11).
+    # `skipping` is gh's word for a job that did not run. It is not a failure and
+    # must not be treated as one, or the tool refuses every ordinary PR the
+    # moment a conditional job exists — CONSTITUTION §2.11.
     pass|skipping) ;;
     *) # A JOB NO RUNNER EVER TOOK STILL REFUSES — nothing green exists to merge
-       # A job no runner took still refuses but is labelled a re-run, not a failure (harbor#675; bin/ci-lost-job.sh).
+       # on — but it is labelled, because it is a re-run and not a failure
+       # (harbor#675). bin/ci-lost-job.sh owns the read; a link that is not an
+       # Actions job, or an annotation it cannot read, leaves the row unlabelled.
        _lost=""
        case "$_state" in
          fail|cancel)
@@ -234,8 +327,11 @@ done <<CHECKROWS
 $CHECKS
 CHECKROWS
 
-# A required check must have reported (harbor#1073): `gh pr checks --required` lists only existing contexts.
-# Local gate: `skipping` is no pass either; the GitHub gate scores skipped as met.
+# A REQUIRED CHECK MUST HAVE REPORTED. Missing is not a pass: `gh pr checks
+# --required` lists only the contexts that exist, so a required check not yet
+# created reads as "all present checks green" (harbor#1073). Local gate: the
+# listed names, and `skipping` is no pass either — a listed check is a relay
+# that runs every time. GitHub gate: its contexts; GitHub itself scores skipped as met.
 if [ "$GATE" != none ]; then
   if [ "$GATE" = local ]; then _need="$LISTED"; else _need="$_plist"; fi
   while IFS= read -r _n; do
@@ -254,13 +350,24 @@ fi
 VERDICT=pass
 WHY=""
 if [ "$ROWS" -eq 0 ]; then
-  # No rows is not a pass: nothing has reported yet, or the repo has no protection.
+  # NO ROWS IS NOT A PASS. It is the state a PR sits in before anything has
+  # reported, and it is also what a repo with no protection looks like — the
+  # case this tool exists for. Either way there is no verdict to merge on.
   VERDICT=refuse
   WHY="no required checks have reported on #$PR
   $CHECKS"
 elif [ "$GATE" != local ] && [ "$REQROWS" -eq 0 ]; then
-  # Rows but nothing REQUIRED is two cases (no rule: nothing gates; rule exists, run not there yet); `--required`
-  # is empty for both, so the branch rule is the tiebreaker.
+  # ROWS > 0 and nothing is REQUIRED. That is TWO different situations and a
+  # refusal that cannot tell them apart is not actionable:
+  #
+  #   the branch carries no rule          → nothing gates this merge, ever
+  #   the rule exists, nothing reported   → the required run has not got there
+  #
+  # `gh pr checks --required` returns empty for both, so the branch rule itself
+  # is the tiebreaker. Measured against #158 while its run was still queued: the
+  # first draft of this arm reported "nothing gates this merge" about a properly
+  # protected branch, which is exactly the kind of confidently wrong refusal that
+  # gets a gate switched off.
   VERDICT=refuse
   if [ -n "$_pctx" ]; then
     WHY="#$PR has $ROWS check(s) reporting, but none of the REQUIRED contexts has:
@@ -271,44 +378,6 @@ elif [ "$GATE" != local ] && [ "$REQROWS" -eq 0 ]; then
 elif [ -n "$BAD" ]; then
   VERDICT=refuse
   WHY="a check is not passing on #$PR:$BAD"
-fi
-
-# THE AMENDMENT GATE (harbor#1026). A PR that changes a constitutional clause (its row or its prose) is merged only with the
-# `amendment:approved` label, which an agent cannot apply (the disposition-label refusal, harbor#855). --force does not lift it:
-# an override of a red check is a person's call recorded in the commit; an amendment is the person's approval itself.
-AMEND_REFUSE=""
-if _afiles="$(gh pr diff "$PR" --repo "$R" --name-only 2>/dev/null)"; then
-  if printf '%s\n' "$_afiles" | grep -qxE 'policy/(constitution\.md|clauses\.tsv)'; then
-    _ameta="$(gh pr view "$PR" --repo "$R" --json baseRefOid,headRefOid,labels 2>/dev/null || printf '')"
-    _abase="$(printf '%s' "$_ameta" | jq -r '.baseRefOid // empty' 2>/dev/null || printf '')"
-    _ahead="$(printf '%s' "$_ameta" | jq -r '.headRefOid // empty' 2>/dev/null || printf '')"
-    _alab="$(printf '%s' "$_ameta" | jq -r '.labels[]?.name' 2>/dev/null || printf '')"
-    _atmp="$(mktemp -d "${TMPDIR:-/tmp}/amend.XXXXXX")"; _aok=1
-    for _side in base head; do
-      if [ "$_side" = base ]; then _aref="$_abase"; else _aref="$_ahead"; fi
-      mkdir -p "$_atmp/$_side/policy"
-      for _af in constitution.md clauses.tsv; do
-        [ -n "$_aref" ] && gh api "repos/$R/contents/policy/$_af?ref=$_aref" -H "Accept: application/vnd.github.raw" > "$_atmp/$_side/policy/$_af" 2>/dev/null || _aok=0
-      done
-    done
-    if [ "$_aok" -eq 0 ]; then
-      AMEND_REFUSE="the PR changes policy/ and its base or head could not be read, so whether a constitutional clause changed is unknown"
-    elif _aout="$(sh "$MC_DIR/policy-check.sh" --amends "$_atmp/base" "$_atmp/head" 2>&1)"; then
-      :
-    elif ! printf '%s\n' "$_alab" | grep -qx 'amendment:approved'; then
-      AMEND_REFUSE="the PR amends a constitutional clause and carries no amendment:approved label (a person applies it): $(printf '%s' "$_aout" | grep 'WARN:' | sed 's/.*\] //' | paste -sd';' - )"
-    fi
-    rm -rf "$_atmp"
-  fi
-else
-  AMEND_REFUSE="the PR's changed files could not be read, so whether it amends the constitution is unknown"
-fi
-
-if [ -n "$AMEND_REFUSE" ]; then
-  log_fail "REFUSED  $AMEND_REFUSE"
-  log_fix "the operator applies the label amendment:approved after reading the diff; --force does not lift this"
-  log_end || :
-  exit 1
 fi
 
 if [ "$VERDICT" = pass ]; then
@@ -327,11 +396,26 @@ if [ "$VERDICT" != pass ] && [ "$FORCE" -eq 0 ]; then
   exit 1
 fi
 
-# The override goes in the merge commit body, so `git log` can answer "was this merged red, and who decided?".
+# THE OVERRIDE GOES IN THE MERGE COMMIT, not only on the terminal. A warning
+# printed at the moment of the merge is gone as soon as the scrollback is, and
+# the question a reader asks six weeks later — "was this merged red, and did
+# someone decide that?" — is answerable only from the history. `git log` is the
+# one place that cannot be lost.
 BODY=""
 if [ "$VERDICT" != pass ]; then
-  # A rebase creates no merge commit, so the --body override record has nowhere to land: refused, not dropped
-  # (PR #270 review). --squash is fine.
+  # ── A REBASE CANNOT CARRY THE RECORD, SO IT IS REFUSED (PR #270 review) ────
+  # The override is only worth anything because it survives the scrollback, and
+  # it survives by riding in a commit body. Read out of the installed
+  # `gh pr merge --help`: `--body` is "Body text for the merge commit", and
+  # `--rebase` replays the existing commits onto the base — it creates no merge
+  # commit at all. So `--force --rebase` printed the promise and wrote it
+  # nowhere: the one path where the guarantee matters most is the one where it
+  # silently evaporated.
+  #
+  # REFUSED RATHER THAN DEGRADED. Merging red is the operator's call to make;
+  # making it and leaving no trace is not, and a warning that the trace was
+  # dropped would be read past. `--squash` is fine — a squash produces a commit
+  # and `--body` lands in it — so this refusal is exactly as narrow as the defect.
   if [ "$STRATEGY" = rebase ]; then
     printf 'merge-check: --force cannot be recorded under --rebase.\n' >&2
     printf '  A rebase creates no merge commit, so the override note has nowhere to live\n' >&2

@@ -1,7 +1,10 @@
 #!/usr/bin/env sh
 [ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0
-# SG (harbor#291) — the ONE Stop-event gate: the mechanism for №2 Verification, narrowed to what a shell script can decide without judgement (docs/reference/coverage.md recorded "no Stop gate at all").
-# Removed notes: docs/explanation/code-cases/bin-admission-stop.md
+# SG (harbor#291) — the ONE Stop-event gate. docs/reference/coverage.md:86 read "Harbor has no
+# Stop gate at all", and docs/reference/coverage.md:38 read "№2 Verification is Harbor's longest
+# constitutional rule and has no mechanism, in a file that says 'a rule with no
+# mechanism is a wish'". This is that mechanism, narrowed to the part a shell
+# script can decide without judgement.
 #
 # TWO RULES DERIVED FROM THE TRANSCRIPT AND NOTHING ELSE:
 #   SG-1  a floor surface was edited this session and the floor suite did not
@@ -11,15 +14,66 @@
 # AND ONE THAT JUDGES THE COMMAND THE FINAL MESSAGE HANDS OVER (harbor#1284):
 #   SG-3  it will not run where it lands; warn by default, see its block below
 #
-# The transcript is the evidence, not the wording: a gate reading the assistant's prose is satisfied by a rewrite, the opposite of №2. Teeth are defensible here (unlike M5's FailureCapture) because both predicates are orderings over tool calls that happened or did not, not a judgement.
+# THE TRANSCRIPT IS THE EVIDENCE, NOT THE WORDING. That is upstream's whole
+# insight and docs/reference/coverage.md:250 records it: "VerificationGate.hook.ts grades
+# evidence FROM THE TRANSCRIPT, not from the message's wording, so rewording
+# never passes it." A gate that read the assistant's prose would be satisfied by
+# a rewrite, which is the opposite of №2.
 #
-# `Stop` is the end of a TURN, not of a session (binary 2.1.241: Stop "Right before Claude concludes its response", SessionEnd "When a session is ending"). At every-turn firing an unverified floor edit would refuse every later turn until a five-minute suite run (§2.11), hence the verdict block records state and refuses ONCE per distinct defect. SessionEnd cannot hold a session open, and `stop_hook_active` names Stop/SubagentStop only.
+# WHY TEETH ARE DEFENSIBLE HERE AND WERE NOT FOR M5. FailureCapture declined to
+# block because "a failure worth healing" is a judgement and fails
+# policy/constitution.md's `deterministic` criterion. Neither rule below is a judgement:
+# what counts as evidence is defined by the repo (its own suite), and both
+# predicates are orderings over tool calls that either happened or did not.
 #
-# The harness bounds the blocking (2.1.241): `stop_hook_active` is in the payload (honoured on the first live line below), there is a block cap (CLAUDE_CODE_STOP_HOOK_BLOCK_CAP), and `decision:"block"` carries a `reason` fed back to Claude.
+# `Stop` IS THE END OF A TURN, NOT THE END OF A SESSION, and everything about the
+# cadence below follows from that. Measured, from the binary's own event summaries
+# at 2.1.241:
+#     Stop:        "Right before Claude concludes its response"
+#     SessionEnd:  "When a session is ending"
+# The first cut of this gate was designed and documented against the wrong one of
+# those. The blocking mechanism was unaffected — the binary's operator-facing
+# string is "A hook blocked the turn from ending" — but the CADENCE was: at
+# every-turn firing, an unverified floor edit would refuse every subsequent turn
+# until a five-minute suite run, including the turn spent writing the assertion
+# for it. That is §2.11 in one paragraph, which is why the verdict block records
+# state and refuses ONCE per distinct defect.
 #
-# Fail open on every error path, the floor's polarity deliberately inverted: this runs at the end of EVERY turn, so a fail-closed internal error refuses every turn, and HARBOR_ADMISSION_DISABLE is read at startup so it cannot rescue a refusal under way. Missing jq, unreadable transcript, bad JSON: allow. Nothing else in the floor may depend on this gate having fired.
+# SessionEnd was considered and is the wrong event even though its name fits: a
+# session that is already ending cannot be held open, and the reference's
+# `stop_hook_active` contract names Stop/SubagentStop only. A nudge nobody can act
+# on is a log line, not a gate.
 #
-# Not caught: a floor surface mutated through Bash (`sed -i`, a redirect, `cp`) inside a CHECKOUT. The tool route carries the path as a field; the Bash route carries text no reliable rule separates from a read (guard-bash withdrew its write rule after six false positives). The config dir's Bash route is already blocked, so the gap is checkout-only and pinned as a PASS in the suite.
+# THE HARNESS BOUNDS THE BLOCKING, not this script's care. Measured against the
+# binary at 2.1.241, all four facts from its embedded reference:
+#   • the payload carries `stop_hook_active`, and the documented pattern is
+#     "For Stop/SubagentStop hooks, check stop_hook_active in the input and
+#     return success while it's true" — honoured on the FIRST live line below
+#   • there is a block cap, raisable with CLAUDE_CODE_STOP_HOOK_BLOCK_CAP and
+#     counted as `tengu_stop_hook_block_count`
+#   • `decision:"block"` carries a `reason` that is "fed back to Claude"
+#   • the operator sees "A hook blocked the turn from ending"
+#
+# FAIL OPEN ON EVERY ERROR PATH, and this is the one place the floor's usual
+# polarity is deliberately inverted. admission-integrity.sh is fail-CLOSED at
+# SessionStart and that is right there: a session that will not START costs one
+# restart. Here the blast radius of the opposite choice is worse than it first
+# looks — this hook runs at the end of EVERY turn, so a fail-closed internal error
+# refuses every turn for the rest of the session, and HARBOR_ADMISSION_DISABLE is read
+# at startup so it cannot rescue a refusal already under way. Missing jq,
+# unreadable transcript, bad JSON, any surprise ⇒ allow. The cost is a missed
+# nudge; that is the correct trade at this event, and it is why nothing else in
+# the floor may depend on this gate having fired.
+#
+# WHAT IT DOES NOT CATCH, enumerated rather than left to be discovered. A floor
+# surface mutated through Bash (`sed -i`, a redirect, `cp`) inside a CHECKOUT is
+# invisible here: the tool route (Write/Edit/NotebookEdit) carries the path as a
+# field, and the Bash route carries it as text that no reliable rule separates
+# from a read of the same path — "is this command WRITING that file?" is the
+# question guard-bash withdrew a rule over after six false positives in pass 10.
+# Inside the CONFIG dir the floor already blocks that route, so the gap is
+# checkout-only. It is a real gap and pinned as a PASS in the suite, so the day
+# one of those starts blocking, this rule has stopped being path-scoped.
 set -u
 # harbor#810: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./library-admission.sh.
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
@@ -28,13 +82,28 @@ DIR="$(CDPATH= cd -- "${DIR:-/}" && pwd)"
 
 floor_read_stdin
 
-# The loop guard, first: every later line can be skipped safely, this one cannot. `.stop_hook_active` is a JSON boolean and floor_field maps `false` to empty, so a bare string compare is the test.
+# ── THE LOOP GUARD, FIRST, BEFORE ANY OTHER TEST ────────────────────────────
+# Not merely early — first. Every line after this one can be skipped safely; this
+# one cannot, and putting it anywhere else invites a later edit to insert work
+# above it. `.stop_hook_active` is a JSON boolean, and floor_field's `// empty`
+# maps `false` to the empty string, so a bare string compare is the whole test.
 if [ "$(floor_field '.stop_hook_active')" = "true" ]; then
   floor_log_decision session allow stop-reentry.meta || :
   exit 0
 fi
 
-# No stand-down inside a governed repo (harbor#676): this is a GATE for №2, and the five constitutional rules never yield there (harbor#581); contracts/marker.md lists every stand-down site and lint M2 holds it to the code. No session id means allow: there is nowhere to record the one-shot verdict, and the harness always sends one.
+# IT DOES NOT STAND DOWN INSIDE A GOVERNED REPO (harbor#676). This line was
+# `floor_engine_stand_down && exit 0`, copied from the two work-log Stop hooks
+# (worklog-push.sh, memory-harvest.sh). Those are ENGINE hooks: standing down
+# means not acting, and no rule is withdrawn. This is a GATE for №2 Verification,
+# and harbor#581 decided the five constitutional rules never yield inside a
+# governed repo. contracts/marker.md lists every stand-down site and lint M2
+# holds that list to the code, so re-adding a stand-down here fails the lint
+# unless it is declared, with a ticket.
+#
+# NO SESSION ID ⇒ ALLOW. The stand-down used to cover this too: with no id there
+# is nowhere to record the one-shot verdict, so the gate would refuse at every turn
+# end. The harness always sends session_id; fail open on the shape it never sends.
 [ -n "$(floor_field '.session_id')" ] || exit 0
 
 TX="$(floor_field '.transcript_path')"
@@ -43,7 +112,29 @@ TX="$(floor_field '.transcript_path')"
 [ -r "$TX" ] || exit 0
 command -v jq >/dev/null 2>&1 || exit 0
 
-# The event stream: one jq pass (~93 ms over an 1854-line transcript; a Stop hook that costs a second gets turned off), three record kinds, each carrying the tool_use id. The id is what makes SG-2 a fact: a verdict line is believed only when it came out of a command that RAN that suite, else `cat` of an old build log reads as a red suite. The RES branch filters inside jq (a tool result can be a whole file). `.text? // ""` and the array/scalar test on `.content`: both shapes occur. BGT carries a background task id and a Read of a task output file is a CMD record, so a background run pairs through the later read (SG_PAIR). A Read result `N<tab>` prefix is stripped.
+# ── THE EVENT STREAM ───────────────────────────────────────────────────────
+# One jq pass, order preserved, three record kinds, each carrying the tool_use id
+# where there is one. Measured at 93ms over an 1854-line transcript on this box,
+# which is why this is a single pass and not a grep-per-rule: a Stop hook that
+# costs a second is a Stop hook the operator turns off.
+#
+# THE ID IS WHAT MAKES SG-2 A FACT RATHER THAN A HEURISTIC. A verdict line is
+# only believed when it came out of a command that RAN that suite. Without the
+# pairing, `cat` of an old build log — or of a commit message quoting one — reads
+# as a red suite this session ran, which is a false positive on a rule whose
+# whole job is to be believed.
+#
+# The RES branch filters INSIDE jq. A tool result can be a whole file, and
+# emitting them all to be filtered in the shell was the first shape — it moved
+# megabytes through a pipe to keep a dozen lines.
+#
+# `.text? // ""` and the array/scalar test on `.content`: both shapes occur, and
+# a missing `.text` on a non-text block must not abort the whole extraction.
+#
+# BGT carries a background task's id (launched so, or moved there at the timeout),
+# and a Read of a task output file is a
+# CMD record, so a run in the background pairs through the later read of its own
+# output file (SG_PAIR below). A Read result's `N<tab>` line prefix is stripped.
 STREAM="$(jq -r '
   if .type=="assistant" then
     (.message.content[]? | select(.type=="tool_use") |
@@ -83,7 +174,9 @@ STREAM="$(jq -r '
 #      loses it (replay 2026-10-17: "is it on?" three times, the same merge chain re-run)
 #   P3 a `!` command calls bare gh, which the shim runs as the App (bang-gh-runs-as-the-app)
 #   P4 an install or deploy runs while a PR this session opened is unmerged: it installs main
-# `gcloud auth login` (its browser flow ran to exit 0 under `!`) and `cd ~/` under `!` (ran clean in the transcripts) are NOT predicates.
+# `gcloud auth login` is NOT P1: its browser flow ran to exit 0 under `!` (replay, 7419e469).
+# `cd ~/` under `!` was in the issue and is NOT a predicate: `! cd ~/port/… && …` ran
+# clean in the transcripts, and the trap it names is the model's own tool calls.
 # SG3_TTY names every bin/ script that prompts, with the flag that makes it prompt; the
 # suite fails when a bin/*.sh reads /dev/tty or prints [y/N] and is missing here.
 # Mode: warn tells the operator (systemMessage) and holds nothing; block refuses once like
@@ -165,7 +258,10 @@ if [ -n "${SG3_MSG:-}" ]; then
 fi
 [ -n "$STREAM" ] || [ -n "$SG3" ] || exit 0
 
-# One suite-name key, shared by SG-1 and SG-2 (harbor#1176): a labelled summary `<label> <rc> <verdict>` puts its label before the suite name; strip through the last ` <rc> `.
+# ── ONE SUITE-NAME KEY, SHARED BY SG-1 AND SG-2 (harbor#1176) ───────────────
+# A labelled summary `<label> <rc> <verdict>` puts its label before the suite name.
+# Both rules key verdicts by name, so both take the key through this one function,
+# prepended to each awk program: strip through the last ` <rc> `.
 SG_SUITE_FN='function suite_key(s) { sub(/^.* [0-9]+ /, "", s); return s }'
 
 # ── WHICH TOOL CALLS PRODUCED A VERDICT, SHARED BY SG-1 AND SG-2 ────────────
@@ -178,10 +274,39 @@ SG_PAIR='
   $1 == "BGT" && ($2 in ran) { bg[$3] = 1 }'
 
 # ── SG-1 · a floor surface was edited and the suite did not run after it ────
-# Path-scoped to the floor's own file set: bin/admission-*.sh, bin/library-admission.sh, bin/floor-*.sh, bin/admission-normalize.awk and the old guard-*.sh names (harbor#961 W6); `bin/` is required.
-# Only the FULL suite counts as evidence: since harbor#727 that is tests/admission/baseline/baseline.test.sh plus every <part>.test.sh, a verdict line from EVERY part, from a suite-invoking command, after the edit (one part is a fraction, harbor#679). The pre-commit smoke prints another name and is refused (№2.7: unavailable verifier means defer, never substitute). AFTER, not merely PRESENT: a run before the edit verified the code it replaced.
-# Harbor's floor surfaces only (harbor#676): once the gate stopped standing down in governed repos, a project's own bin/guard-auth.sh matched the pattern and demanded Harbor's floor-test (§2.11). A path counts only when the tree above its bin/ holds tests/admission/baseline/baseline.test.sh, or it is the installed floor in the config dir; the parts owed are that tree, or for the config dir the cwd, else the main part alone. Every other MUT record is dropped before the rule reads; SG-2 reads the unfiltered stream.
-# The root check runs once per distinct path, not per stream line (the first cut cost +215 ms per turn end): one awk pass lists floor-shaped paths and the approved set reaches the rule through ENVIRON, the one channel POSIX awk does not escape-process.
+# PATH-SCOPED, and the pattern is the floor's own file set: bin/admission-*.sh, bin/library-admission.sh,
+# bin/floor-*.sh, bin/admission-normalize.awk, and the old guard-*.sh names (harbor#961 W6). `bin/` is required, so a note called
+# guard-notes.sh in a docs dir is not a floor surface.
+#
+# ONLY THE FULL SUITE COUNTS AS EVIDENCE. Since harbor#727 the floor suite is
+# tests/admission/baseline/baseline.test.sh plus every tests/admission/baseline/<part>.test.sh, so the
+# evidence is a verdict line from EVERY part, from a suite-invoking command, after
+# the edit: one part is a fraction, as a shard was (harbor#679). The pre-commit
+# smoke prints `baseline.test smoke: …`, another name, so it is refused like the
+# `--smoke` it replaced (№2.7 — "unavailable verifier means defer, never
+# substitute"): it is the right depth for a commit gate, not for "verified".
+#
+# AFTER, not merely PRESENT. A run that happened BEFORE the edit verified the
+# code the edit replaced. Ordering is the predicate, and it is pinned in both
+# directions.
+#
+# HARBOR'S floor surfaces, not every file with a floor-shaped NAME (harbor#676,
+# found by review on #684). Once this gate stopped standing down inside governed
+# repos, a project's own bin/guard-auth.sh matched the pattern, and the gate
+# demanded Harbor's floor-test for code that suite never touches — §2.11. So a
+# path counts only when the tree above its bin/ holds tests/admission/baseline/baseline.test.sh (a
+# Harbor checkout or worktree, wherever it lives: the tree whose suite would verify
+# the edit), or when it is the installed floor in the config dir. The parts owed
+# are that tree's; the config dir has none beside it, so it owes the cwd's, else
+# the main part alone. Every other MUT
+# record is dropped before the rule reads the stream; SG-2 reads the unfiltered one.
+#
+# THE ROOT CHECK RUNS ONCE PER DISTINCT PATH, never once per stream line. The
+# first cut filtered the whole stream in a shell loop and cost +215 ms per turn
+# end on a 7,606-line transcript. So one awk pass lists the few floor-shaped
+# paths, the shell tests each once, and the rule reads the approved set through
+# ENVIRON: that is the only channel POSIX awk offers that does not
+# escape-process the value.
 _sg_cfgbin="$(floor_config_dir)/bin"
 _sg_cwd="$(floor_field '.cwd')"
 _sg_cands="$(printf '%s\n' "$STREAM" | awk -F '\t' '
@@ -234,7 +359,17 @@ if [ -n "$SG1" ]; then
 fi
 
 # ── SG-2 · a suite THIS SESSION RAN went red and no later run of it went green ─
-# Keyed on the suite NAME, so a green normalize-test cannot vouch for a red floor-test. Last verdict per name wins, so fix-and-rerun is invisible. `floor-test --smoke` and `floor-test` are different keys: folding them would let a smoke clear a red full run (№2.7). The id gate comes first: a verdict whose tool_use id belongs to no suite command (SG_PAIR) was READ, not produced.
+# Keyed on the suite NAME, so a green normalize-test cannot vouch for a red
+# floor-test. Last verdict per name wins; a later green clears an earlier red,
+# which is what makes an ordinary fix-and-rerun cycle invisible to this rule.
+#
+# `floor-test --smoke` and `floor-test` are DIFFERENT keys on purpose: they are
+# runs at different depths, and folding them would let the smoke clear a red full
+# run — №2.7 again, from the other side.
+#
+# The id gate is the first clause: a verdict whose tool_use id belongs to no
+# suite-invoking command, nor to a read of a background suite's own output file
+# (SG_PAIR), is a verdict this session READ, not one it produced.
 SG2="$(printf '%s\n' "$STREAM" | awk -F '\t' "$SG_SUITE_FN$SG_PAIR"'
   $1 == "RES" && ($2 in ran) {
     line = $3
@@ -259,15 +394,44 @@ if [ -z "$SG1" ] && [ -z "$SG2" ] && [ -z "$SG3" ]; then
 fi
 
 # ── ONCE PER STATE, NOT ONCE PER TURN ──────────────────────────────────────
-# Stop fires at the end of every turn (SessionEnd cannot block), so demanding a ~5-minute suite run after the edit AND after writing its assertion would get the gate switched off (§2.11). So block ONCE per distinct unverified state: the key is a digest of the offending path and the red verdicts, so ignoring the nudge does not trap the turn while a NEW unverified edit is a new state. The cost, deliberate: the model may proceed after one refusal; the alternative traps a session and the harness cap would end it anyway. Keyed on the path, three floor files edited unverified are refused three times.
-# SG-2 keys on the red suites' NAMES, not their counts, so a re-run that moves the counts is the same state. Given up: a different new failure in that suite goes unflagged until it is green once.
+# `Stop` is NOT the session-end event. The binary's own summary is "Right before
+# Claude concludes its response" — it fires at the end of EVERY turn, and
+# SessionEnd ("When a session is ending") is the other one and cannot block. The
+# first cut of this gate was written against the wrong premise and would have
+# blocked every turn until the suite ran.
+#
+# WHY THAT WOULD HAVE BEEN A GUARD PEOPLE SWITCH OFF. Working on a guard is: edit
+# it, write the assertion, run the suite. floor-test is ~5 minutes. A gate that
+# refuses the turn after the edit AND the turn after the assertion is demanding
+# two five-minute runs to do one piece of work, and §2.11 says exactly what
+# happens next.
+#
+# So: block ONCE per distinct unverified state. The key is a digest of what is
+# wrong — the offending path, and the red verdicts — so ignoring the nudge does
+# not trap the turn, while a NEW unverified edit is a new state and says so. The
+# nudge also lands at the earliest moment anything can be done about it, which is
+# strictly better than the session-end firing this was designed for.
+#
+# THE COST, STATED: the model may proceed after one refusal. That is deliberate.
+# The alternative traps a session, and the harness's own cap would end the
+# refusal anyway — at which point the gate would have spent its credibility
+# instead of its one useful sentence.
+#
+# Bounded chattiness: keyed on the path, so a session editing three floor files
+# without running the suite is refused three times, not once and not thirty.
+# Precision beats quiet here — each refusal names a different real defect.
+# SG-2 keys on the red suites' NAMES, not their counts, so a re-run that moves the counts is the
+# same state. Given up: a different new failure in that suite goes unflagged until it is green once.
 SG2_NAMES="$(printf '%s\n' "$SG2" | awk "$SG_SUITE_FN"'{ c = index($0, ":"); if (c > 1) print suite_key(substr($0, 1, c - 1)) }' | sort -u | tr '\n' ';')"
 SG_KEY="$(printf 'SG1:%s|SG2:%s|SG3:%s' "$SG1" "$SG2_NAMES" "$(printf '%s' "$SG3" | sort | tr '\n' ';')" | floor_sha 2>/dev/null)"
 SG_SID="$(floor_field '.session_id')"
 case "$SG_SID" in ''|*[!A-Za-z0-9_-]*) SG_SID='' ;; esac
 SG_SEEN=""
 if [ -n "$SG_KEY" ] && [ -n "$SG_SID" ]; then
-  # Digests and a session id only, never a path or command text: this file lives under the private config dir.
+  # DIGESTS AND A SESSION ID ONLY — never a path, never command text. This file
+  # lives under the config dir §3 calls private, and a state record that carried
+  # the path would put transcript content into a second place with its own
+  # lifetime.
   SG_SEEN="$(floor_config_dir)/.helm-stop-gate/$SG_SID"
   if [ -f "$SG_SEEN" ] && "$FLOOR_GREP" -qxF -- "$SG_KEY" "$SG_SEEN" 2>/dev/null; then
     floor_log_decision session allow stop-already-said.meta || :
@@ -276,7 +440,15 @@ if [ -n "$SG_KEY" ] && [ -n "$SG_SID" ]; then
 fi
 
 # ── THE VERDICT ────────────────────────────────────────────────────────────
-# One block carrying BOTH findings (two would spend the harness cap on one turn's work). The escape hatch named is the true one: HARBOR_ADMISSION_DISABLE is read at session start and cannot lift a refusal under way; what bounds this is the harness cap.
+# ONE block carrying BOTH findings. Two Stop blocks in a row would spend the
+# harness's cap on what is a single turn's worth of work, and the second refusal
+# would arrive after the model had already been told to fix the first.
+#
+# THE ESCAPE HATCH NAMED HERE IS THE TRUE ONE. The PreToolUse guards print their
+# own narrow remedy since harbor#482, and the kill-switch would be a lie at this
+# event anyway: the variable is read when the session starts, so it cannot lift a
+# refusal already under way. What actually bounds this is the harness's own cap,
+# so that is what is said.
 MSG="HELM STOP GATE — the turn was BLOCKED because this session's own transcript does not carry the evidence №2 requires."
 if [ -n "$SG1" ]; then
   MSG="$MSG SG-1: ${SG1} was edited this session and the floor suite did not run after that edit: every part, tests/admission/baseline/baseline.test.sh and each tests/admission/baseline/<part>.test.sh. Run them — a T_SMOKE=1 run does not count, it is the smoke and not the suite — or say plainly which assertion you are deferring and why."
@@ -286,7 +458,12 @@ if [ -n "$SG2" ]; then
 fi
 MSG="$MSG (Stop fires at the end of every turn, so this refusal is raised ONCE for this state and the next turn is not held; a new unverified edit is a new state. HARBOR_ADMISSION_DISABLE) is read at session start and cannot lift a refusal already under way.)"
 
-# The state is recorded BEFORE the verdict is emitted, so a caller that reads stdout and exits cannot leave the next turn refused for the same reason. Best-effort: if the record cannot be written the gate still blocks; `|| :` keeps that from becoming a non-zero exit.
+# THE STATE IS RECORDED BEFORE THE VERDICT IS EMITTED, so a caller that reads
+# stdout and exits cannot leave this turn refused and the next one refused again
+# for the same reason. Best-effort: if the record cannot be written the gate still
+# blocks, which is the one place it is stricter than fail-open — the alternative
+# is a refusal it has no memory of, i.e. once per turn, i.e. the shape this whole
+# block exists to avoid. `|| :` keeps that failure from becoming a non-zero exit.
 if [ -n "$SG_SEEN" ]; then
   { mkdir -p "$(dirname "$SG_SEEN")" && printf '%s\n' "$SG_KEY" >> "$SG_SEEN"; } 2>/dev/null || :
 fi
@@ -310,7 +487,10 @@ else
   jq -cn --arg o "$SG3T" '{systemMessage:$o}' 2>/dev/null || exit 0
 fi
 
-# One ledger record PER RULE that fired, not a fused id: audit-triage.sh ranks by rule token and a compound would rank as a never-before-seen rule.
+# One ledger record PER RULE that fired, not a fused id. A compound token would
+# be a rule name that appears in no source file, and audit-triage.sh ranks by
+# rule token — a fused id would rank as its own never-before-seen rule every
+# time the pair coincided.
 [ -n "$SG1" ] && { floor_log_decision session gate floor-edited-unverified.meta || :; }
 [ -n "$SG2" ] && { floor_log_decision session gate suite-red-at-exit.meta || :; }
 if [ -n "$SG3" ]; then

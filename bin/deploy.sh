@@ -691,7 +691,6 @@ _plan() {
     _relay --brief "$WORK/out"
   done
   _want_any packs inject && _packs_plan
-  _launchd_snap; _launchd_plan
   for _x in yard fleet; do _want "$_x" && _xr_plan "$_x"; done
   [ -z "$UNREACH" ] || _unreachable
   return 0
@@ -740,28 +739,6 @@ _unreachable() {
 # The packs step recomposes bin/docs/reference/checks.md when a pack's checks.d changed in this deploy, after runtime-install recorded
 # it; event-dispatch reads the register only at its recorded blob, so every preset was refused (harbor#1044). Then
 # runtime-install runs again: it composes the register with the packs as they now are, and records that.
-# The event rules (harbor#1437): the installed dispatcher reconciles {cfg}/.helm-dispatch/rules with the installed
-# contracts/event-rules.tsv, so the presets marked #default are on after a deploy and a renamed handler or id is replaced, with no
-# one running `on`. After the register was re-recorded (the dispatcher judges rules by the register's blob). It never creates
-# spawn.on. Exit 3 means a refused rule that is no preset was left alone: a note, the rule is the operator's.
-_events_reconcile() {
-  _want runtime || return 0
-  [ -f "$CFG/bin/event-dispatch.sh" ] || return 0
-  log_note 'running: event-dispatch.sh reconcile (default-on presets installed, a refused preset replaced)'
-  _erc=0; _run sh "$CFG/bin/event-dispatch.sh" reconcile || _erc=$?
-  case "$_erc" in
-    0) ;;
-    3) log_note 'event-dispatch: a refused rule that is no preset was left as it is (named above); sh '"$CFG"'/bin/event-dispatch.sh on --list' ;;
-    *) _INSTALL_FAILED="event-dispatch.sh reconcile (rc=$_erc)"; return 1 ;;
-  esac
-}
-_events_verify() { # a rule refused now is red: the follower would run nothing for it
-  _want runtime || return 0
-  [ -f "$CFG/bin/event-dispatch.sh" ] || return 0
-  _hrc=0; sh "$CFG/bin/event-dispatch.sh" health >"$WORK/health.out" 2>&1 </dev/null || _hrc=$?
-  if [ "$_hrc" -eq 0 ]; then log_ok 'event rules: every installed rule passes its re-check'
-  else _bad 'event rules: a rule is refused and runs nothing' "sh '$CFG/bin/event-dispatch.sh' reconcile"; _notes < "$WORK/health.out"; fi
-}
 _register_rerecord() {
   _want runtime || return 0
   _rr_want="$(awk '!/^#/ && NF == 5 && $3 == "bin/docs/reference/checks.md" && $4 == "runtime-install" { b = $1 } END { print b }' "$CFG/.harbor-manifest" 2>/dev/null)"
@@ -785,13 +762,11 @@ _install() {
             'inject:context-injection-install.sh --live --apply' \
             'packs:PACKS' \
             'packs:deploy-shim-install.sh --live --apply' \
-            'runtime:EVENTS' \
             'skills:skill-catalog.sh install --apply --live' \
             'yard:XREPO' 'fleet:XREPO'; do
     _c="${_p%%:*}"; _p="${_p#*:}"
     if [ "$_c" = packs ]; then _want_any packs inject || continue; else _want "$_c" || continue; fi
     if [ "$_p" = PACKS ]; then _packs_install || return 1; _register_rerecord || return 1; continue; fi
-    if [ "$_p" = EVENTS ]; then _events_reconcile || return 1; continue; fi
     if [ "$_p" = XREPO ]; then
       _xd="$(_xr_get "$_c")"
       case "$_xd" in ''|skip) continue ;; esac
@@ -910,33 +885,6 @@ _recheck() {
   else log_note "re-check: $((FAILS - _rk)) check(s) fail on the restored box; each FAIL line above names it"; fi
 }
 
-# ── LAUNCHD (harbor#1437): the scheduled jobs come up with a deploy and run the bytes it installed ────────────────
-# bin/deploy-launchd-sync.sh: snapshot before the install, install the plists marked harbor:deploy-installs and restart the
-# running jobs whose program changed after it, verify that no job runs older code. Only with the runtime, whose files are
-# the jobs' programs. A box without launchctl skips it inside the tool.
-_launchd_snap() { # a dry run and an apply alike: the snapshot is what the plan and the restart compare against
-  _want runtime || return 0
-  sh "$ROOT/bin/deploy-launchd-sync.sh" snapshot "$WORK/launchd.snap" >"$WORK/launchd.out" 2>&1 || { _relay --brief "$WORK/launchd.out"; _bad 'launchd: could not record the installed jobs before the install' 'none: its FAIL line above'; }
-}
-_launchd_plan() {
-  _want runtime && [ -s "$WORK/launchd.snap" ] || return 0
-  sh "$ROOT/bin/deploy-launchd-sync.sh" plan "$WORK/launchd.snap" >"$WORK/launchd.out" 2>&1 || true
-  _relay --brief "$WORK/launchd.out"
-}
-_launchd_apply() {
-  _want runtime || return 0
-  log_head 'launchd · install the marked plists, restart the jobs whose program changed'
-  _lrc=0; sh "$ROOT/bin/deploy-launchd-sync.sh" apply "$WORK/launchd.snap" >"$WORK/launchd.out" 2>&1 || _lrc=$?
-  _relay --brief "$WORK/launchd.out"
-  [ "$_lrc" -eq 0 ] || _bad "launchd: the install or a restart failed (rc=$_lrc)" 'none: the FAIL and fix lines above'
-}
-_launchd_verify() {
-  _want runtime || return 0
-  _lrc=0; sh "$ROOT/bin/deploy-launchd-sync.sh" verify >"$WORK/launchd.vout" 2>&1 || _lrc=$?
-  if [ "$_lrc" -eq 0 ]; then log_ok 'launchd: every running job runs the bytes installed'
-  else _bad 'launchd: a job is running code older than its installed copy' 'none: the FAIL and fix lines below'; _relay --brief "$WORK/launchd.vout"; fi
-}
-
 # ── VERIFY: ask the box, never infer from exit codes alone ────────────────────
 _verify() {
   log_head 'verify'
@@ -969,8 +917,6 @@ _verify() {
   fi
 
   _refcheck
-  _launchd_verify
-  _events_verify
 
   # The other repos' installed builds against their trees (harbor#736): their --check exits non-zero on drift.
   for _x in yard fleet; do
@@ -1373,7 +1319,6 @@ if [ "$UNATTENDED" -eq 1 ]; then
   log_ok "snapshot id written for the runner: $SHIP_SNAPSHOT"
 fi
 _INSTALL_FAILED=''
-_launchd_snap
 if ! _install; then
   log_head 'install failed'
   if [ -s "$WORK/xr.out" ]; then _xr_report
@@ -1388,7 +1333,6 @@ if ! _install; then
   exit 1
 fi
 
-_launchd_apply
 _verify
 # Never ask to bless the surfaces of an install that already failed verification.
 if [ "$FAILS" -eq 0 ]; then _repin

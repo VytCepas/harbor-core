@@ -134,20 +134,4 @@ t_has "bytes from its old bin/ path are stale" "$out" "  FAIL: stale eng.sh (ins
 t_hasnt "...never modified" "$out" "modified eng.sh"
 printf 'eng v0\n' > "$CFG/bin/eng.sh"
 t_has "bytes no commit had, at either path, are still modified" "$(drift)" "  FAIL: modified eng.sh"
-
-t_section "a core-share register installs cut to the core share and is held to that cut (harbor#1436)"
-reset_install; cp "$T_ROOT/bin/standard-kit.sh" "$R/bin/"; mkdir -p "$R/standards/naming" "$CFG/bin/standards/naming"
-printf 'id\titem\tref\tkinds\tshare\tvendored\tnote\nregister.terms\tregister\tstandards/naming/terms.tsv\t*\tcore\tyes\tn\nregister.exemptions\tregister\tstandards/naming/exemptions.tsv\t*\tcore\tyes\tn\n' > "$R/standards/naming/kit.tsv"
-printf 'id\tx\nt1\ta\n' > "$R/standards/naming/terms.tsv"; printf 'id\trule\nlegacy-1\tname.case\n' > "$R/standards/naming/exemptions.tsv"
-g add bin standards; g commit -qm kit; g branch -f ref-main HEAD
-cp "$R/standards/naming/terms.tsv" "$CFG/bin/standards/naming/terms.tsv"
-sh "$R/bin/standard-kit.sh" --root "$R" --core-file exemptions.tsv > "$CFG/bin/standards/naming/exemptions.tsv"
-out="$(drift)"
-t_hasnt "an installed core register is sourced, not unsourced" "$out" "unsourced standards/naming"
-t_hasnt "...and the cut one is held to the cut, not the whole file" "$out" "modified standards/naming"
-printf 'x\n' > "$CFG/bin/standards/naming/stray.tsv"
-t_has "control: a register no repo path feeds IS reported unsourced" "$(drift)" "unsourced standards/naming/stray.tsv"
-rm -f "$CFG/bin/standards/naming/stray.tsv"
-printf 'legacy-9\tname.case\n' >> "$CFG/bin/standards/naming/exemptions.tsv"
-t_has "bytes that are neither the cut nor an older commit's are modified" "$(drift)" "  FAIL: modified standards/naming/exemptions.tsv"
 t_done

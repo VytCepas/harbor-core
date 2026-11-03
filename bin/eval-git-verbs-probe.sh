@@ -53,7 +53,6 @@ export HOME="$W/home" CLAUDE_CONFIG_DIR="$W/cfg"
 unset HARBOR_ADMISSION_DISABLE HELM_DISABLE_FLOOR
 
 # --- the rules --------------------------------------------------------------------------------------------------
-# shellcheck disable=SC2034 # IL_ENV, IL_DIR and IL_DIR_SET are inputs il_target reads
 if [ "$DERIVED" = 1 ]; then
   mkdir -p "$W/derived"; printf '{"permissions":{"allow":[],"deny":[]}}\n' > "$W/derived/settings.json"
   # il_target refuses a --dir that is physically the live config dir; il_run is the install standard's executed spelling.

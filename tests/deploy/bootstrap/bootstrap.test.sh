@@ -31,7 +31,7 @@ box() {
   for f in deploy-bootstrap.sh deploy.sh scope-roots.sh scope.sh library-log.sh deploy-install-lib.sh deploy-restore.sh; do [ ! -f "$T_ROOT/bin/$f" ] || cp "$T_ROOT/bin/$f" "$_h/bin/"; done
   cp "$T_ROOT/contracts/roots.tsv" "$_h/contracts/roots.tsv"
   for s in policy-constitution-install.sh deploy-shim-install.sh deploy-harden.sh deploy-runtime-install.sh admission-install.sh pack.sh \
-           prod-guard-install.sh skill-install.sh skill-catalog.sh context-injection-install.sh deploy-launchd-sync.sh; do printf '%s\n' "$_inst" > "$_h/bin/$s"; done
+           prod-guard-install.sh skill-install.sh skill-catalog.sh context-injection-install.sh; do printf '%s\n' "$_inst" > "$_h/bin/$s"; done
   printf '#!/bin/sh\nexit 0\n' > "$_h/bin/deploy-install-stamp.sh"; chmod +x "$_h/bin/"*
   # The test's own reading of the table: every REPOS row's first path segment gets a bare remote.
   # ...plus the pack repo the pack sections clone: no core root names it since its paths left with the pack (harbor#1149).

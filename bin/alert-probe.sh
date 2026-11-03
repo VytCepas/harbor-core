@@ -4,19 +4,63 @@
 #   sh alert-probe.sh            # the table
 #   sh alert-probe.sh --json     # {ran_at, inputs_seen, worst, checks{}}
 #
-# The cadence this occupies: status-fleet-glyph.sh (numbers that move, per statusline tick), session-verdicts.sh (standing verdicts, once per session) and status-dashboard-generate.sh (on demand) all run only while the operator is looking. A box with no session open for three days is checked by nothing; pulse is the unattended rhythm: launchd fires it, it evaluates, alert-notify.sh speaks only when a verdict CHANGES.
-# Writes nothing: a pure evaluator, safe from any session; the writer is alert-notify.sh, which is what lets the suite test every verdict without a sink or a cache.
-# It never fires a guard: admission-verify.sh proves the floor by firing six blocked shapes, each appending a real block record to the guard-decision ledger that observe-report --fp adjudicates from, which at a 300s interval is on the order of a thousand fabricated blocks a day. So `floor` says WIRED, never PROVEN; `harbor verify` proves it by hand.
-# Every check is answerable from the live config dir alone; nothing reads the repo, since a probe that needs a checkout cannot report while the checkout is missing or broken. Live-bin lag and repo counts are `status-gen --observed`'s, document staleness doc-freshness.sh's, the full dependency table deploy-doctor.sh's.
-# Unknown is not ok: an unreadable source yields `unknown`, and `inputs_seen` counts the checks that got a real answer (DE-14, DE-18: a reporter that says zero when it never ran).
-# The wired-guard predicate is a copy of status-generate.sh's (whole-path-segment match on admission-hook.sh plus a non-empty check over the guard files; `test("guard-")` gave a false green because prod-guard-ambient.sh satisfies the substring). pulse-test.sh asserts the two agree on one fixture: a copy with a test that fails on divergence is a seam.
-# Removed notes: docs/explanation/code-cases/bin-alert-probe.md
+# THE CADENCE THIS OCCUPIES, AND WHY IT IS THE ONLY ONE LEFT. Harbor already
+# answers "what is true right now" three times, each at a different rhythm:
+# status-fleet-glyph.sh carries the numbers that MOVE, per statusline tick, over a
+# cache; session-verdicts.sh carries the standing verdicts that do NOT move,
+# once per session, loudly; status-dashboard-generate.sh renders everything on demand. All
+# three run only while the operator is already looking. A box with no session
+# open for three days is checked by nothing, and that is exactly the window in
+# which a work-log stops syncing or a floor stands down unnoticed. Pulse is the
+# unattended rhythm: launchd fires it, it evaluates, and alert-notify.sh speaks
+# only when a verdict CHANGES.
+#
+# WRITES NOTHING. This file is a pure evaluator so it is safe to run at any
+# moment, from any session, in any state — the writer is alert-notify.sh, which
+# is the only thing that touches the state file. That split is what makes the
+# suite able to test every verdict without a sink or a cache.
+#
+# IT NEVER FIRES A GUARD. admission-verify.sh answers "is the floor ON?" by firing
+# six known-blocked shapes, and every one of those appends a real block record
+# to the guard-decision ledger — the only real-traffic dataset Harbor has, and
+# the one observe-report --fp adjudicates false positives from. On a 300s
+# interval that is on the order of a thousand fabricated blocks a day. A probe
+# must not manufacture the evidence its own system learns from, so this reads
+# the wiring and refuses to call the reading a firing test: `floor` says WIRED,
+# never PROVEN. `harbor verify` remains the thing that proves it, by hand.
+#
+# EVERY CHECK IS ANSWERABLE FROM THE LIVE CONFIG DIR ALONE. Nothing here reads
+# the repo. That is a constraint, not an omission: a probe that needs a checkout
+# to be present, current and unbroken cannot report on the box while the
+# checkout is any of those things. It costs four candidate checks, each of which
+# has a better home — live-bin lag and the repo counts are `status-gen
+# --observed` and the dashboard; document staleness is doc-freshness.sh; the full
+# twenty-row dependency table is deploy-doctor.sh. `deps` here asks the narrower
+# question those cannot: which tools does the INSTALLED surface need tonight.
+#
+# UNKNOWN IS NOT OK, AND A ZERO IS UNMEASURED UNTIL THE RUN IS PROVEN. A source
+# that cannot be read yields `unknown`, never `ok`, and `inputs_seen` counts the
+# checks that got a real answer. DE-14 and DE-18 are both instances of the same
+# defect — a reporter that says zero when it never ran, and the clean number is
+# the one you want to believe.
+#
+# THE WIRED-GUARD PREDICATE IS A COPY, AND THE SUITE KNOWS IT. status-generate.sh
+# owns the correct one: a whole-path-segment match on admission-hook.sh plus a
+# presence-and-nonempty check over the guard files. The tempting one-liner —
+# `test("guard-")` over the hook table — produced a false green on 2026-08-01,
+# because prod-guard-ambient.sh satisfies the substring on a box with none of
+# B2-B6. This file cannot call status-gen (that would be the repo dependency
+# above), so it copies the corrected predicate, and pulse-test.sh asserts the
+# two agree on the same fixture. A copy with a test that fails when it diverges
+# is a seam; a copy without one is the drift T2 exists to prevent.
 set -eu
 
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-$CFG/cache}"
 FLEET_CACHE="$CACHE_DIR/fleet-snapshot.json"
-# Six times the refresher's interval: narrower and a machine that slept through one wake-up reports a dead fleet job every morning (§2.11).
+# Six times the refresher's own interval. Narrower than that and a machine that
+# slept through one wake-up reports a dead fleet job every morning, which is the
+# false positive that gets a channel muted (CONSTITUTION №2.11).
 FLEET_MAX_AGE="${HARBOR_ALERT_PROBE_FLEET_MAX_AGE:-1800}"
 MODE="${1:-}"
 
@@ -44,7 +88,9 @@ ALERT_LIB_DIR="$_pd"; . "$_pd/library-alert.sh"
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; log_init pulse
 
-# jq missing must not print nothing: it is the dependency whose absence made every guard exit 0 on rm -rf / (B9).
+# jq missing is not a reason to print nothing — it is the single dependency
+# whose absence made every guard exit 0 on 'rm -rf /' (B9). Say so in plain
+# text and exit non-zero rather than emitting malformed JSON.
 if ! command -v jq >/dev/null 2>&1; then
   log_fail "CRIT deps — jq is missing, and every floor guard fails open without it"
   log_fix "$(pkg_hint jq)"
@@ -61,11 +107,27 @@ mtime() { fs_mtime "$1"; } # <file> -> epoch seconds, or empty (bin/library-fs.s
 check_floor() {
   _s="$CFG/settings.json"
   if [ ! -f "$_s" ]; then emit floor unknown "no settings.json in the config dir"; return 0; fi
-  # Ask for the entry ONLY admission-deny.sh writes, not a non-empty list: one unrelated deny rule made this read "B1 is live" on a box with every Harbor pattern removed.
+  # ASK FOR THE ENTRY ONLY admission-deny.sh WRITES, not for a non-empty list. A
+  # deny array is a list anyone may add to, so a single unrelated rule made this
+  # read "B1 is live" on a box where every Harbor pattern had been removed.
+  # status-generate.sh asks for the sentinel by name; so does this.
   _sentinel='(.permissions.deny // []) | index("Edit(~/.claude/.helm-floor-teeth)")'
   _deny=no
   jq -e "$_sentinel" "$_s" >/dev/null 2>&1 && _deny=yes
-  # The matrix, not the basename: admission-install.sh wires distinct (event, matcher, guard) triples, and flattening them to "does this guard appear anywhere" missed pass 11's critical (admission-egress.sh's mcp__*, Task/Agent, WebFetch/WebSearch and NotebookEdit branches could not run for months because only Bash|Write|Edit was wired). This list MIRRORS admission-install.sh, which the probe cannot read (no repo); pulse-test.sh extracts the installer's `add` lines and fails when the two disagree.
+  # THE MATRIX, NOT THE BASENAME. admission-install.sh wires five distinct
+  # (event, matcher, guard) triples, and a check that flattens them into "does
+  # this guard appear anywhere" cannot see the failure the installer's own
+  # comment records as pass 11's critical: admission-egress.sh carries dedicated
+  # branches for mcp__*, Task/Agent, WebFetch/WebSearch and NotebookEdit, and
+  # for months NONE of them could run because only the Bash|Write|Edit matcher
+  # was ever wired. The suite missed it "because its wiring assertions only
+  # checked the pairs the installer already wired". Same trap, one level up:
+  # asking an easier question than the one the row claims to answer.
+  #
+  # This list is a MIRROR of admission-install.sh and cannot read it — the probe
+  # runs from the live config dir with no repo. pulse-test.sh extracts the
+  # installer's own `add` lines and fails when the two disagree, which is what
+  # keeps a mirror from becoming a fossil.
   _unwired=""; _ntot=0   # _ntot counts the MATRIX rows below, so "no guard wired" tracks the table
   _parsed=yes
   jq -e . "$_s" >/dev/null 2>&1 || _parsed=no
@@ -89,11 +151,20 @@ PreToolUse	Monitor	admission-egress.sh
 PreToolUse	Grep	admission-egress.sh
 MATRIX
   fi
-  # An EMPTY file parses as neither valid nor invalid: jq over zero inputs prints nothing and exits 0, so this once reported a healthy floor on an unguarded box. Reachable: deploy-harden.sh writes the live settings with a truncating redirect, so an interrupted apply leaves exactly that file.
+  # An EMPTY file parses as neither valid nor invalid to a naive check: jq over
+  # zero inputs prints nothing and exits 0, so an earlier version of this code
+  # fell through every integer test into its `ok` default and reported a healthy
+  # floor on a completely unguarded box. Reachable, not theoretical -
+  # deploy-harden.sh writes the live settings with a truncating in-place redirect,
+  # so an interrupted apply leaves exactly that file.
   if [ "$_parsed" = no ]; then
     emit floor unknown "the live settings file is empty or could not be parsed"; return 0
   fi
-  # All seven files, not the five obvious guards: annotate-web.sh (B4 PostToolUse) and admission-normalize.awk (the shared normaliser) missing is a partial install that reads as complete.
+  # ALL SEVEN FILES, not the five that are obviously guards. annotate-web.sh is
+  # the B4 PostToolUse guard and admission-normalize.awk is the shared normaliser; a
+  # live dir missing either is a partial install that reads as complete. This
+  # list started as five, and the suite's agreement assertion against
+  # status-generate.sh failed on its first run and named the two.
   _missing=0
   for _f in admission-hook.sh library-admission.sh admission-bash.sh admission-egress.sh \
             admission-self-edit.sh annotate-web.sh admission-normalize.awk; do
@@ -126,7 +197,9 @@ check_deps() {
   if [ -n "$_crit" ]; then
     emit deps crit "missing:$_crit — the work-log cannot sync at all"
   elif [ -n "$_warn" ]; then
-    # gitleaks is fail-CLOSED: without it worklog-push refuses the commit silently on every Stop. A missing sink means this probe's own sink is dead, so a CRIT would be seen by nobody.
+    # gitleaks is fail-CLOSED by design: without it worklog-push refuses the
+    # commit, silently, on every Stop. A missing sink means this probe's own
+    # sink is dead and a CRIT would be seen by nobody.
     emit deps warn "missing:$_warn — a fail-closed gate or the notify sink is down"
   else
     emit deps ok "jq, git, gitleaks and the notify sink are all present"
@@ -134,7 +207,11 @@ check_deps() {
 }
 
 # ── fleet · the orchestrator snapshot, and whether its writer is alive ───────
-# Reads only descriptor.name, hooks and status: the cache carries each repo's full memory store inline (client names, escalation notes), which §3 makes the operator's business, and a notification body carries none of it.
+# READS FOUR FIELDS AND NO OTHERS. The cache carries each repo's full memory
+# store inline, bodies and all — client names, escalation notes, whatever a
+# scaffolded repo happens to keep in .agents/memory. §3 makes that the operator's
+# business and nobody else's, so this reads descriptor.name, hooks and status
+# only, and a notification body never carries even those.
 check_fleet() {
   if [ ! -f "$FLEET_CACHE" ]; then emit fleet unknown "no fleet snapshot has been written yet"; return 0; fi
   _m="$(mtime "$FLEET_CACHE")"
@@ -142,7 +219,13 @@ check_fleet() {
   if [ -n "$_m" ]; then
     _age=$((_now - _m))
     if [ "$_age" -gt "$FLEET_MAX_AGE" ]; then
-      # A closed laptop looks exactly like a dead refresher: both are launchd StartInterval jobs on one machine, so if OUR last run is also older than the window nothing was running. Warning would fire a false WARN after every sleep and a false RECOVERED minutes later, a flap on a channel that only speaks on change. The notifier passes its previous ran_at.
+      # A CLOSED LAPTOP LOOKS EXACTLY LIKE A DEAD REFRESHER, in wall-clock. Both
+      # jobs are launchd StartInterval jobs on the same machine, so if OUR last
+      # run is also older than the window, nothing was running and the stale
+      # cache says nothing about the refresher. Warning here would fire a false
+      # WARN on the first probe after every sleep, and a false RECOVERED five
+      # minutes later — a flap on a channel whose whole value is that it only
+      # speaks when something changed. The notifier passes its previous ran_at.
       _last="${HARBOR_ALERT_PROBE_LAST_RUN:-0}"
       case "$_last" in ''|*[!0-9]*) _last=0 ;; esac
       if [ "$_last" -gt 0 ] && [ "$((_now - _last))" -gt "$FLEET_MAX_AGE" ]; then
@@ -155,14 +238,24 @@ check_fleet() {
   fi
   _n="$(jq -r 'if type == "array" then length else "x" end' "$FLEET_CACHE" 2>/dev/null || printf 'x')"
   case "$_n" in x|"") emit fleet unknown "the snapshot is not the array the refresher writes"; return 0 ;; esac
-  # Only the literal "missing" is a finding. The snapshot carries a third value, `-`, for a repo the orchestrator could not answer for; "anything not OK is bad" turns every future value into a false alarm.
+  # ONLY the literal "missing" is a finding. The live snapshot carries a third
+  # value — `-` — for a repo the orchestrator could not answer for, and the
+  # first cut of this check counted it as broken: it reported three repos in
+  # trouble when two were. A predicate of the form "anything that is not OK is
+  # bad" turns every future field value into a false alarm, which is the defect
+  # that gets a channel muted.
   _bad="$(jq -r '[.[] | select(.hooks == "missing")] | length' "$FLEET_CACHE" 2>/dev/null || printf 'x')"
   _unread="$(jq -r '[.[] | select((.hooks | type) != "string" or (.hooks != "ok" and .hooks != "missing"))] | length' \
               "$FLEET_CACHE" 2>/dev/null || printf 'x')"
   case "$_bad$_unread" in *x*|"") emit fleet unknown "the snapshot could not be read"; return 0 ;; esac
-  # Drift is deliberately NOT a verdict: most repos carry uncommitted work most of the time. Missing governance hooks is the fleet fact that is broken rather than in progress.
+  # Drift is deliberately NOT a verdict. Most repos carry uncommitted work most
+  # of the time; alerting on it would notify every day and teach the operator to
+  # ignore the channel. Governance hooks missing is the fleet fact that is
+  # actually broken rather than merely in progress.
   if [ "$_n" -eq 0 ]; then
-    # An empty fleet is a valid fleet; otherwise unread == total (0 == 0) would report unknown forever on a clean machine.
+    # An empty fleet is a valid fleet — a box with nothing scaffolded yet. The
+    # unread-equals-total branch below would otherwise call 0 == 0 an unreadable
+    # snapshot and report unknown forever on a clean machine.
     emit fleet ok "the snapshot lists no repos"
   elif [ "$_bad" -gt 0 ]; then
     emit fleet warn "$_bad of $_n repo(s) are missing governance hooks"
@@ -176,29 +269,51 @@ check_fleet() {
 }
 
 # ── cudoctor · is the ticket-standard gate still firing, and did it check ────
-# The receipt had no reader. bin/cu-doctor-run.sh writes cu-doctor-state.json and calls `ran_at` liveness, but (2026-09-02) nothing read it, so the job could stop firing while the file read `green` forever.
-# Three states: `error` means cu doctor REFUSED and nothing was checked; it is as quiet on stdout as `green`, so only this tells them apart unattended.
-# The threshold is 3x the cadence, not check_fleet's 6x: this is a StartCalendarInterval job at 08:47 that launchd fires on WAKE, so a closed laptop still gets its run, and two consecutive days without one means the job is gone. Overridable for a box on another cadence.
+# THE RECEIPT HAD NO READER. bin/cu-doctor-run.sh writes cu-doctor-state.json and
+# its own header calls `ran_at` liveness — "a clean run and a run that never
+# happened both leave an empty log". Measured 2026-09-02: nothing on the box read
+# it. The repo, ~/.claude/bin and ~/.local/bin between them contained exactly one
+# file naming the path, and it was the writer. So the job could stop firing and
+# the file would sit there reading `green` forever, which is the same defect one
+# level up — a reporter that says zero when it never ran.
+#
+# THREE STATES, NOT TWO, and `error` is the one that matters most: it means
+# cu doctor REFUSED and nothing was checked. A `green` receipt and an `error`
+# receipt are equally quiet on stdout; only this tells them apart unattended.
+#
+# THE THRESHOLD IS 3x THE CADENCE, not the 6x check_fleet uses, and the
+# difference is deliberate. Fleet is a 300s job where one sleep cycle explains a
+# stale cache; this is a StartCalendarInterval job at 08:47 that launchd fires on
+# WAKE when the hour has passed, so a closed laptop still gets its run. Two
+# consecutive days with no run is not a laptop being shut, it is the job being
+# gone. Overridable, because a box on a different cadence should not have to
+# patch this file.
 CUDOCTOR_STATE="$CACHE_DIR/cu-doctor-state.json"
 CUDOCTOR_MAX_AGE="${HARBOR_ALERT_PROBE_CLICKUP_DOCTOR_MAX_AGE:-259200}"
 check_cudoctor() {
   if [ ! -f "$CUDOCTOR_STATE" ]; then
     emit cudoctor unknown "no cu doctor receipt has been written yet"; return 0
   fi
-  # ran_at, not mtime: it is the field the writer promises and only moves when a run completed.
+  # ran_at, NOT mtime, because that is the field the writer promises and the one
+  # its header names. mtime moves if anything touches the file; ran_at only moves
+  # when a run actually completed.
   _at="$(jq -r '.ran_at // empty' "$CUDOCTOR_STATE" 2>/dev/null || true)"
   _st="$(jq -r '.status // empty' "$CUDOCTOR_STATE" 2>/dev/null || true)"
   if [ -z "$_st" ]; then
     emit cudoctor unknown "the receipt is not the JSON cu-doctor-run.sh writes"; return 0
   fi
-  # BSD date parses the Z form with -j -f, GNU wants -d; digits or nothing, as mtime() above.
+  # BSD date parses the Z form with -j -f; GNU wants -d. Digits or nothing, the
+  # same contract mtime() above keeps, for the same reason.
   _ep="$(date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$_at" +%s 2>/dev/null || true)"
   case "$_ep" in ''|*[!0-9]*) _ep="$(date -u -d "$_at" +%s 2>/dev/null || true)" ;; esac
   case "$_ep" in ''|*[!0-9]*) _ep="" ;; esac
   if [ -n "$_ep" ]; then
     _age=$(( $(date +%s) - _ep ))
     if [ "$_age" -gt "$CUDOCTOR_MAX_AGE" ]; then
-      # Staleness outranks the verdict inside: a six-day-old `green` is evidence nothing has looked, not that the board is clean.
+      # STALENESS OUTRANKS THE VERDICT INSIDE. A receipt saying `green` from six
+      # days ago is not evidence the board is clean; it is evidence nothing has
+      # looked. Reporting the stored verdict here would be believing a number
+      # that predates the question.
       emit cudoctor warn "last run was $((_age / 86400))d ago — the daily gate has stopped firing, so its verdict is stale whatever it says"
       return 0
     fi
@@ -210,19 +325,23 @@ check_cudoctor() {
     green)   emit cudoctor ok "every ticket gate green, $((_age / 3600))h ago" ;;
     failing) emit cudoctor warn "$_n ticket gate(s) failing — cu doctor" ;;
     error)   emit cudoctor crit "cu doctor REFUSED and nothing was checked — see $CUDOCTOR_STATE" ;;
-    # A status the writer does not emit is not ok.
+    # A status the writer does not currently emit is not ok. Every future value
+    # arriving as a healthy green is the defect this whole file keeps finding.
     *)       emit cudoctor unknown "unrecognised receipt status \"$_st\"" ;;
   esac
 }
 
 # ── worklog · is the git-backed log actually leaving this machine ────────────
-# Cleanliness is not the signal (the store is dirty by design); unpushed commits are, since they accumulate only when the Stop push is failing.
+# Cleanliness is NOT the signal: the store is dirty by design (IDENTITY.md and
+# TELOS/ are untracked forever, outside the staging allowlist). Unpushed commits
+# are, because they only accumulate when the Stop push is failing.
 check_worklog() {
   _m="$CFG/MEMORY"
   if [ ! -d "$_m/.git" ]; then emit worklog unknown "no work-log repository"; return 0; fi
   if ! command -v git >/dev/null 2>&1; then emit worklog unknown "git is missing"; return 0; fi
   if ! git -C "$_m" rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
-    # session-verdicts.sh owns this verdict, loudly, once per session; repeating it here would put one fact on two channels.
+    # session-verdicts.sh owns this one, loudly, once per session. Repeating it
+    # as a WARN here would put the same fact on two channels.
     emit worklog unknown "the branch has no upstream (session-verdicts owns this verdict)"
     return 0
   fi
@@ -232,7 +351,19 @@ check_worklog() {
     emit worklog warn "$_ahead session record(s) committed and never pushed"
     return 0
   fi
-  # Ahead=0 has two meanings, one bad: everything pushed, or nothing ever committed, which is what a frozen Stop hook produces (the gitleaks gate is fail-closed, so a missing scanner makes worklog-push refuse silently). Age separates them; a week never trips on normal use and always trips on a freeze, and the wording carries both readings since an idle machine is the innocent one. Scoped to the record paths: an unscoped `log -1` is refreshed by any commit (idea commits push IDEAS.md on their own), so a frozen work-log reads fresh the moment the operator files an idea. worklog-push.sh's staging allowlist is the authority on where a session record lands.
+  # AHEAD=0 HAS TWO MEANINGS AND ONE OF THEM IS BAD. Everything pushed, or
+  # nothing was ever committed — which is what a frozen Stop hook produces: the
+  # gitleaks gate is fail-closed, so a missing scanner makes worklog-push refuse
+  # the commit, silently, on every session. The ahead-count then sits at 0
+  # forever and the check reports a healthy log that has not moved in weeks.
+  # Age is the only thing that separates the two. A week is wide enough that a
+  # normal stretch of use never trips it and an actual freeze always does; the
+  # wording carries both readings because an idle machine is the innocent one.
+  # SCOPED TO THE RECORD PATHS. An unscoped `log -1` is refreshed by any commit
+  # the store receives — idea commits and pushes IDEAS.md on its own — so a
+  # work-log whose Stop hook has been frozen for months reads as fresh the
+  # moment the operator files an idea. The staging allowlist in worklog-push.sh
+  # is the authority on where a session record lands.
   _last="$(git -C "$_m" log -1 --format=%ct -- 'WORK/sessions' 2>/dev/null || printf '')"
   case "$_last" in ''|*[!0-9]*) emit worklog ok "in sync with the remote"; return 0 ;; esac
   _age=$(( $(date +%s) - _last ))
@@ -244,24 +375,15 @@ check_worklog() {
 }
 
 # ── dispatch · is the event dispatcher following, if this box runs one ──────
-# A NOT FOLLOWING line in checks.log scrolled out of the console panel within an hour, and launchd lists an exited-0 job like an idle one (harbor#1044 review r3 #4). So the follower leaves a receipt (status following, down, off or stopped, with pid and reason) and this row is the surface: down is crit, and pulse-notify speaks on the change. No receipt is ok, not unknown: the dispatcher is opt-in and ships inert.
-# harbor#1437: a deploy installs the job now, so "installed and never reported" is a dead dispatcher, and a rule the follower
-# has refused on two passes running (cache/event-dispatch-refused.tsv) is a warn: it runs nothing. alert-notify.sh files the
-# dispatch row as finding check/event.dispatch.
+# A NOT FOLLOWING line in checks.log scrolled out of the console's 40-line panel
+# within an hour, and launchd lists a job that exited 0 the same way as one that
+# is idle (harbor#1044 review r3 #4). So the follower leaves a receipt — status
+# following, down, off or stopped, with its pid and reason — and this row is the
+# surface: down is crit, and pulse-notify speaks on the change. No receipt is ok,
+# not unknown: the dispatcher is opt-in and ships inert, so most boxes have none.
 DISPATCH_STATE="$CACHE_DIR/event-dispatch-state.json"
-DISPATCH_REFUSED="$CACHE_DIR/event-dispatch-refused.tsv"
-DISPATCH_PLIST="${HOME:-/nonexistent}/Library/LaunchAgents/com.harbor.event.dispatch.plist"
 check_dispatch() {
-  if [ ! -f "$DISPATCH_STATE" ]; then
-    if [ -f "$DISPATCH_PLIST" ]; then emit dispatch warn "the dispatcher is installed (launchd com.harbor.event.dispatch) and has never written its receipt: it is not running, or runs code that predates the receipt"
-    else emit dispatch ok "no event dispatcher has run here (none installed)"; fi
-    return 0
-  fi
-  if [ -s "$DISPATCH_REFUSED" ]; then
-    _rl="$(cut -f1 "$DISPATCH_REFUSED" | tr '\n' ' ' | sed 's/ $//')"
-    emit dispatch warn "rule(s) $_rl refused on two passes running and run nothing — event-dispatch.sh reconcile (a deploy runs it) replaces a refused preset"
-    return 0
-  fi
+  if [ ! -f "$DISPATCH_STATE" ]; then emit dispatch ok "no event dispatcher has run here (opt-in, shipped inert)"; return 0; fi
   _st="$(jq -r '.status // empty' "$DISPATCH_STATE" 2>/dev/null || true)"
   _pid="$(jq -r '.pid // empty' "$DISPATCH_STATE" 2>/dev/null || true)"
   _why="$(jq -r '.reason // empty' "$DISPATCH_STATE" 2>/dev/null || true)"
@@ -284,7 +406,9 @@ check_cudoctor
 check_dispatch
 
 # ── verdict arithmetic ───────────────────────────────────────────────────────
-# ok < unknown < warn < crit. unknown outranks ok deliberately: "could not look" is worse news than "looked and fine", and an all-unreadable run must not render as a healthy zero.
+# ok < unknown < warn < crit. unknown outranks ok deliberately: "I could not
+# look" is worse news than "I looked and it was fine", and a run where every
+# source was unreadable must not render as a healthy zero.
 rank() { case "$1" in ok) echo 0 ;; unknown) echo 1 ;; warn) echo 2 ;; crit) echo 3 ;; *) echo 1 ;; esac; }
 WORST=ok
 SEEN=0

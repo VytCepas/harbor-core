@@ -7,8 +7,6 @@
 #   event-dispatch.sh on --preset <id> | --list | --off <id>
 #   event-dispatch.sh pull --session ID [--repo NAME]   one line: this repo's events since the session's last turn
 #   event-dispatch.sh pull --hook                       the same, as a UserPromptSubmit hook: bounded, always exit 0
-#   event-dispatch.sh health                            vet every rule now; a rule refused twice running is a standing refusal
-#   event-dispatch.sh reconcile [--dry-run]             deploy's step: install the default-on presets, replace a refused preset
 #   event-dispatch.sh subscribe '<pattern>'             REFUSED (exit 4): the messaging socket is unverified
 #
 # State: the operator's gates in {cfg}/.helm-dispatch/ (rules/, ledger, spend/, spawn.on), a floor-protected
@@ -17,14 +15,11 @@
 # the catch-up line. While {cfg}/.harbor-autoship.off exists no handler or agent runs, and one running is killed.
 # dispatch runs only as the installed {cfg}/bin copy, with that {cfg}, and neither it nor a rule write runs in a
 # Claude session. A missing dependency leaves the follower down: exit 0, a NOT FOLLOWING alarm and pulse row.
-# `health` and the follower's own passes write a standing refusal (the same rule refused on two passes) to
-# {cache}/event-dispatch-refused.tsv, which alert.probe's dispatch row reads and alert-notify.sh files as finding
-# check/event.dispatch (contracts/finding.md); a rule refused on every load no longer warns into /tmp alone (harbor#1437).
 # Exit: 0 ok, 1 failed, 2 usage, 4 refused. Design: docs/design/events.md, "E2". The floor never depends on it.
 
 # Not $(dirname): a hook runs this (F15, harbor#813).
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
-usage() { sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; }
 case "${1-}" in -h|--help|help) usage; exit 0 ;; esac
 HOOK=0; [ "${1-}" = pull ] && case " $* " in *" --hook "*) HOOK=1 ;; esac
 if [ "$HOOK" = 1 ]; then
@@ -389,41 +384,6 @@ EOF
   return 0
 }
 
-# health_pass (harbor#1437): vet every rule file without waiting for an event to trigger it. A rule refused on this pass and
-# on the previous one (HARBOR_EVENT_HEALTH_SECS apart, default 600, so a deploy's few seconds between two installs is not
-# one) is a STANDING refusal: it is listed in the refused file, which the pulse reads. Nothing standing removes the file.
-HEALTH_SECS="${HARBOR_EVENT_HEALTH_SECS:-600}"
-case "$HEALTH_SECS" in ''|*[!0-9]*) HEALTH_SECS=600 ;; esac
-HEALTH_AT=0; HEALTH_NOW=""
-health_pass() {
-  REFUSED_FILE="${HARBOR_SCOPE_CACHE_DIR:-$CFG/cache}/event-dispatch-refused.tsv"
-  H_IDS=""; HEALTH_NOW=""   # H_*: rule_vet and the checks under it reuse the short _x names
-  for H_F in "$RULES"/*.rule; do
-    [ -f "$H_F" ] || continue
-    rule_load "$H_F" || continue
-    rule_vet && continue
-    H_R="$(printf '%s' "$R_BAD" | tr '\n\t\r' '   ' | cut -c1-300)"
-    HEALTH_NOW="$HEALTH_NOW$R_ID	$H_R$NL"
-    H_IDS="$H_IDS $R_ID"
-  done
-  H_PREV=""; [ ! -f "$ST/refused.prev" ] || H_PREV=" $(tr '\n' ' ' < "$ST/refused.prev")"
-  mkdir -p "$ST" 2>/dev/null || return 0
-  : > "$ST/refused.cur"
-  for H_I in $H_IDS; do printf '%s\n' "$H_I" >> "$ST/refused.cur"; done
-  printf '%s' "$HEALTH_NOW" | while IFS='	' read -r H_I H_R; do
-    [ -n "$H_I" ] || continue
-    case "$H_PREV " in *" $H_I "*) printf '%s\t%s\n' "$H_I" "$H_R" ;; esac
-  done > "$ST/refused.standing"
-  mv -f "$ST/refused.cur" "$ST/refused.prev"
-  if [ -s "$ST/refused.standing" ]; then
-    mkdir -p "${REFUSED_FILE%/*}" 2>/dev/null && cp "$ST/refused.standing" "$REFUSED_FILE.new" 2>/dev/null && mv -f "$REFUSED_FILE.new" "$REFUSED_FILE" 2>/dev/null || :
-  else
-    rm -f "$REFUSED_FILE"
-  fi
-  rm -f "$ST/refused.standing"
-  return 0
-}
-
 # chain_ok <cause>: walk the cause chain. Refused when it is MAX_DEPTH long, or when this rule already fired
 # on an ancestor — its own output coming back round. Sets WHY.
 cause_of() {
@@ -737,7 +697,6 @@ cmd_dispatch() {
   now; _pday=$((NOW / 86400))
   while :; do
     if [ -e "$ST/dispatch.off" ]; then log_note "[check:event.dispatch] $ST/dispatch.off appeared — stopping"; receipt off; exit 0; fi
-    now; if [ $((NOW - HEALTH_AT)) -ge "$HEALTH_SECS" ]; then HEALTH_AT=$NOW; health_pass; fi
     # The bus is asked again whenever its bytes change, before a batch acts on anything (review r3 #3).
     bus_fresh || bus_down
     _brc=0; batch || _brc=$?
@@ -931,64 +890,6 @@ cmd_on() {
   esac
 }
 
-# ── health and reconcile (harbor#1437) ────────────────────────────────────────────────────────────
-cmd_health() {
-  pin_cfg || { log_fail "health: refused — $PIN_WHY"; log_nofix "run it with that config dir's CLAUDE_CONFIG_DIR, or without one"; log_end || :; exit 4; }
-  mkdir -p "$ST" || fail "[check:event.dispatch] cannot create $ST" "mkdir -p '$ST'"
-  health_pass
-  [ -n "$HEALTH_NOW" ] || { printf 'event-dispatch: every rule passes its re-check\n'; return 0; }
-  printf '%s' "$HEALTH_NOW" | while IFS='	' read -r H_I H_R; do
-    [ -z "$H_I" ] || printf 'REFUSED\t%s\t%s\n' "$H_I" "$H_R"
-  done
-  [ ! -s "$REFUSED_FILE" ] || printf 'standing refusals are in %s\n' "$REFUSED_FILE"
-  exit 1
-}
-
-# cmd_reconcile: what the operator's deploy does so that no one runs `on` by hand (the 2026-11-02 decision; a Claude session
-# never gets here, no_session). Rules are the operator's gates: this only (1) replaces a REFUSED rule whose id is a preset, or an
-# old id of one (event.pulse -> event.alerting), with the preset as the installed register and event-rules.tsv define it, and
-# (2) installs each preset event-rules.tsv marks `#default`. A healthy rule is left as it is, a refused rule that is no preset
-# is reported and untouched, and the spawner (spawn.on, --spawn rules) is never created or turned on.
-cmd_reconcile() {
-  _dry=0
-  while [ $# -gt 0 ]; do case "$1" in --dry-run) _dry=1 ;; *) usage_fail "reconcile: unknown option $1" ;; esac; shift; done
-  [ "$_dry" = 1 ] || no_session "reconciling the rules"
-  pin_cfg || { log_fail "reconcile: refused — $PIN_WHY"; log_nofix "run it with that config dir's CLAUDE_CONFIG_DIR, or without one"; log_end || :; exit 4; }
-  data_file event-rules.tsv || fail "reconcile: $WHY" "sh bin/deploy-runtime-install.sh --live --apply (it ships contracts/event-rules.tsv into {cfg}/bin)"
-  _rt="$FOUND"
-  _all="$(awk -F'	' '!/^#/ && NF >= 6 { print $1 }' "$_rt")"
-  _defs="$(awk -F'	' '$1 == "#default" { print $2 }' "$_rt")"
-  mkdir -p "$RULES" || fail "[check:event.dispatch] cannot create $RULES" "mkdir -p '$RULES'"
-  _left=0; _acts=0
-  for _rf in "$RULES"/*.rule; do
-    [ -f "$_rf" ] || continue
-    rule_load "$_rf" || continue
-    rule_vet && continue
-    _rid="$R_ID"; _why="$R_BAD"
-    _tgt="$(printf '%s\n' "$ID_ALIASES" | awk -v id="$_rid" '$1 == id { print $2; exit }')"; [ -n "$_tgt" ] || _tgt="$_rid"
-    if printf '%s\n' "$_all" | grep -q -x -F -e "$_tgt"; then
-      _acts=$((_acts + 1))
-      if [ "$_dry" = 1 ]; then log_note "[check:$_tgt] would reinstall the preset: $_rid is refused ($_why)"; continue; fi
-      log_note "[check:$_tgt] $_rid is refused ($_why): reinstalling the preset"
-      ( on_preset "$_tgt" ) || { log_fail "[check:$_tgt] the preset could not be reinstalled over $_rid"; log_fix "sh $SELF on --list, then sh $SELF on --preset $_tgt"; _left=$((_left + 1)); }
-    else
-      log_warn "[check:event.dispatch] rule $_rid is refused and is not a preset, so deploy leaves it: $_why"
-      _left=$((_left + 1))
-    fi
-  done
-  for _d in $_defs; do
-    printf '%s\n' "$_all" | grep -q -x -F -e "$_d" || continue
-    [ ! -f "$RULES/$_d.rule" ] || continue
-    _acts=$((_acts + 1))
-    if [ "$_dry" = 1 ]; then log_note "[check:$_d] would install the default-on preset"; continue; fi
-    ( on_preset "$_d" ) || { log_fail "[check:$_d] the default-on preset could not be installed"; log_fix "sh $SELF on --preset $_d"; _left=$((_left + 1)); }
-  done
-  [ "$_acts" -gt 0 ] || log_ok "[check:event.dispatch] every installed rule passes its re-check and every default-on preset is installed"
-  log_end || :
-  [ "$_left" = 0 ] || exit 3
-  exit 0
-}
-
 # ── pull: the catch-up line ───────────────────────────────────────────────────────────────────────
 pull_core() { # <session> <repo> → one line or nothing
   _of="$ST/sessions/$1"
@@ -1060,9 +961,7 @@ case "$VERB" in
   dispatch) cmd_dispatch "$@" ;;
   on) cmd_on "$@" ;;
   pull) cmd_pull "$@" ;;
-  health) cmd_health "$@" ;;
-  reconcile) cmd_reconcile "$@" ;;
   subscribe) cmd_subscribe "$@" ;;
   '') usage >&2; exit 2 ;;
-  *) printf 'event-dispatch: unknown verb %s (dispatch, on, pull, health, reconcile, subscribe)\n' "$VERB" >&2; exit 2 ;;
+  *) printf 'event-dispatch: unknown verb %s (dispatch, on, pull, subscribe)\n' "$VERB" >&2; exit 2 ;;
 esac

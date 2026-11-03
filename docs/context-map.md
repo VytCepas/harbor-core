@@ -27,24 +27,23 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 
 | Kind | Folder | Level | Layer | Lifecycle | Files |
 |---|---|---|---|---|---|
-| policy | policy/ | system | source | living | 3 |
-| standard | standards/ | system | source | versioned | 31 |
-| contract | contracts/ | system | source | versioned | 39 |
+| policy | policy/ | system | source | living | 1 |
+| standard | standards/ | system | source | versioned | 30 |
+| contract | contracts/ | system | source | versioned | 38 |
 | decision-record | docs/decisions/ | element | source | dated | 93 |
 | hook | hooks/ | component | source | living | 47 |
 | skill | skills/ | component | source | living | 40 |
-| fixture | fixtures/ | element | source | living | 435 |
-| registry | registries/ | component | source | versioned | 68 |
-| test | tests/ | component | source | living | 502 |
+| fixture | fixtures/ | element | source | living | 298 |
+| registry | registries/ | component | source | versioned | 62 |
+| test | tests/ | component | source | living | 483 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 7 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| generated-doc | docs/generated/ | component | generated | generated | 1 |
-| script | bin/ | component | source | living | 247 |
+| script | bin/ | component | source | living | 234 |
 | how-to | docs/how-to/ | component | source | living | 1 |
-| reference | docs/reference/ | component | generated | generated | 7 |
-| explanation | docs/explanation/ | component | source | living | 102 |
-| (no kind) | - | - | - | - | 255 |
+| reference | docs/reference/ | component | generated | generated | 6 |
+| explanation | docs/explanation/ | component | source | living | 15 |
+| (no kind) | - | - | - | - | 241 |
 
 ## Folders
 
@@ -53,24 +52,24 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | (repo root) | 11 | 1 | 1 |
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
-| `bin/` | 251 | 29 | 2 |
+| `bin/` | 238 | 28 | 2 |
 | `commands/` | 5 | 4 | 1 |
-| `context-rules/` | 55 | 6 | 1 |
-| `contracts/` | 106 | 11 | 2 |
-| `docs/` | 228 | 11 | 9 |
-| `fixtures/` | 435 | 11 | 1 |
+| `context-rules/` | 51 | 6 | 1 |
+| `contracts/` | 99 | 10 | 2 |
+| `docs/` | 139 | 11 | 8 |
+| `fixtures/` | 298 | 10 | 1 |
 | `hooks/` | 43 | 7 | 1 |
-| `launchd/` | 21 | 10 | 1 |
+| `launchd/` | 13 | 8 | 1 |
 | `patches/` | 12 | 3 | 1 |
-| `policy/` | 3 | 1 | 1 |
+| `policy/` | 1 | 1 | 1 |
 | `registries/` | 1 | 1 | 1 |
 | `runners/` | 2 | 1 | 1 |
 | `skills/` | 40 | 8 | 1 |
-| `standards/` | 31 | 1 | 1 |
+| `standards/` | 30 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 502 | 28 | 1 |
+| `tests/` | 483 | 28 | 1 |
 | `tools/` | 10 | 2 | 1 |
-| `vendor/` | 101 | 1 | 1 |
+| `vendor/` | 99 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
 
 ## Families
@@ -78,30 +77,30 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
 | access | control-plane | 12 | 28 | 2 | 6 | 0 | 0 |
-| admission | control-plane | 26 | 87 | 0 | 3 | 0 | 167 |
-| agent | control-plane | 1 | 2 | 0 | 7 | 0 | 0 |
+| admission | control-plane | 24 | 86 | 0 | 3 | 0 | 167 |
+| agent | control-plane | 0 | 1 | 0 | 5 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 2 | 0 | 0 |
 | audit | control-plane | 8 | 14 | 0 | 5 | 0 | 2 |
-| check | observability | 2 | 5 | 0 | 1 | 57 | 0 |
-| ci | coordination | 17 | 46 | 2 | 6 | 1 | 7 |
-| context | control-plane | 7 | 13 | 1 | 3 | 0 | 41 |
-| deploy | control-plane | 16 | 30 | 1 | 1 | 0 | 7 |
+| check | observability | 1 | 4 | 0 | 1 | 54 | 0 |
+| ci | coordination | 17 | 46 | 2 | 5 | 1 | 7 |
+| context | control-plane | 7 | 13 | 1 | 3 | 0 | 38 |
+| deploy | control-plane | 15 | 28 | 1 | 1 | 0 | 7 |
 | doc | control-plane | 15 | 12 | 0 | 34 | 0 | 21 |
-| drift | control-plane | 8 | 10 | 0 | 4 | 4 | 14 |
+| drift | control-plane | 7 | 9 | 0 | 4 | 4 | 14 |
 | eval | control-plane | 10 | 7 | 0 | 1 | 0 | 0 |
-| event | observability | 3 | 19 | 0 | 3 | 0 | 2 |
-| gate | control-plane | 19 | 13 | 0 | 2 | 0 | 6 |
+| event | observability | 3 | 18 | 0 | 3 | 0 | 2 |
+| gate | control-plane | 19 | 13 | 0 | 1 | 0 | 6 |
 | housekeeping | control-plane | 1 | 1 | 0 | 2 | 0 | 0 |
 | library | policy-function | 6 | 1 | 0 | 0 | 0 | 0 |
-| lint | control-plane | 25 | 70 | 0 | 11 | 3 | 36 |
+| lint | control-plane | 25 | 68 | 0 | 10 | 3 | 36 |
 | memory | memory-store | 6 | 10 | 1 | 23 | 0 | 1 |
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
-| policy | policy-function | 3 | 4 | 3 | 135 | 0 | 7 |
+| policy | policy-function | 2 | 2 | 1 | 0 | 0 | 3 |
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
-| scope | coordination | 13 | 21 | 0 | 0 | 0 | 5 |
+| scope | coordination | 10 | 18 | 0 | 0 | 0 | 4 |
 | session | data-plane | 14 | 5 | 0 | 3 | 0 | 0 |
-| skill | catalog | 5 | 17 | 0 | 8 | 0 | 14 |
-| standard | policy-function | 16 | 26 | 124 | 5 | 12 | 61 |
+| skill | catalog | 5 | 17 | 0 | 8 | 0 | 13 |
+| standard | policy-function | 13 | 21 | 123 | 1 | 6 | 58 |
 | status | observability | 10 | 21 | 0 | 4 | 0 | 0 |
 | test | control-plane | 4 | 5 | 2 | 7 | 0 | 15 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
@@ -136,7 +135,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/admission-api-route.sh`
 - `bin/admission-bash.sh`
 - `bin/admission-cloud.sh`
-- `bin/admission-decide.sh`
 - `bin/admission-deliverables.sh`
 - `bin/admission-deny-hash.sh`
 - `bin/admission-deny.sh`
@@ -151,7 +149,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/admission-observe-report.sh`
 - `bin/admission-observe.sh`
 - `bin/admission-remove.sh`
-- `bin/admission-replay.sh`
 - `bin/admission-self-edit.sh`
 - `bin/admission-stop.sh`
 - `bin/admission-verify.sh`
@@ -164,13 +161,10 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 
 ### agent
 
-- `bin/agent-idle-check.sh`
 - `context-rules/user/agent-brief.md`
 - `context-rules/user/agent-brief.sh`
 - `context-rules/user/agent-model-required.md`
 - `context-rules/user/agent-model.sh`
-- `contracts/agent-tools.tsv`
-- `launchd/com.harbor.agent.idle.plist`
 - `skills/agent-routing/SKILL.md`
 
 ### alert
@@ -199,7 +193,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 ### check
 
 - `bin/check-registry-generate.sh`
-- `bin/check-run.sh`
 - `docs/reference/checks.md`
 
 ### ci
@@ -228,7 +221,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `docs/design/ci-local-heal.md`
 - `docs/design/ci-tests-on-this-host.md`
 - `launchd/com.harbor.ci.governor.plist`
-- `launchd/com.harbor.ci.release-names.plist`
 
 ### context
 
@@ -254,7 +246,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/deploy-install-lib.sh`
 - `bin/deploy-install-stamp.sh`
 - `bin/deploy-launchd-render.sh`
-- `bin/deploy-launchd-sync.sh`
 - `bin/deploy-live-verify.sh`
 - `bin/deploy-push.sh`
 - `bin/deploy-restore.sh`
@@ -295,7 +286,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/drift-port-root.sh`
 - `bin/drift-reference-check.sh`
 - `bin/drift-renew-check.sh`
-- `bin/drift-status.sh`
 - `bin/drift-wall.sh`
 
 ### eval
@@ -343,7 +333,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `hooks/commit-msg`
 - `hooks/pre-commit`
 - `hooks/pre-push`
-- `launchd/com.harbor.gate.repo-drift.plist`
 
 ### housekeeping
 
@@ -395,7 +384,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `contracts/lint-secrets-baseline.txt`
 - `contracts/lint-siblings-baseline.txt`
 - `launchd/com.harbor.lint.findings.plist`
-- `launchd/com.harbor.lint.rule-health.plist`
 
 ### memory
 
@@ -417,12 +405,9 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 
 ### policy
 
-- `bin/policy-check.sh`
 - `bin/policy-constitution-install.sh`
 - `bin/policy-resolve.sh`
-- `policy/clauses.tsv`
 - `policy/constitution.md`
-- `policy/enforcement.tsv`
 
 ### proposal
 
@@ -436,11 +421,8 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/scope-managed-retention.sh`
 - `bin/scope-managed-telemetry.sh`
 - `bin/scope-marker-backfill.sh`
-- `bin/scope-repo-sources.sh`
-- `bin/scope-repo.sh`
 - `bin/scope-repos-generate.sh`
 - `bin/scope-roots.sh`
-- `bin/scope-system.sh`
 - `bin/scope.sh`
 - `hooks/injection-rule/scope.test.sh`
 
@@ -486,10 +468,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/standard-fleet-names-run.sh`
 - `bin/standard-fleet-names.sh`
 - `bin/standard-frozen-generate.sh`
-- `bin/standard-id-resolve.sh`
-- `bin/standard-inventory.sh`
 - `bin/standard-issue-label.sh`
-- `bin/standard-kit.sh`
 - `bin/standard-label-sync.sh`
 - `bin/standard-register.sh`
 - `bin/standard-rename.sh`
@@ -591,10 +570,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `docs/decisions/0092-promote-name-rules-on-evidence.md`
 - `docs/decisions/README.md`
 - `launchd/com.harbor.standard.fleet-names.plist`
-- `launchd/com.harbor.standard.label-registered.plist`
-- `launchd/com.harbor.standard.schedule-registered.plist`
-- `launchd/com.harbor.standard.script-uncalled.plist`
-- `launchd/com.harbor.standard.seam-fresh.plist`
 - `standards/modularity.md`
 - `standards/naming.md`
 - `standards/naming/aliases.tsv`
@@ -603,7 +578,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `standards/naming/exemptions.tsv`
 - `standards/naming/frozen.tsv`
 - `standards/naming/kinds.tsv`
-- `standards/naming/kit.tsv`
 - `standards/naming/label-axes.tsv`
 - `standards/naming/label-retired.tsv`
 - `standards/naming/registers.tsv`
@@ -668,10 +642,10 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `.github/` | 2 |
 | `bin/` | 13 |
 | `commands/` | 2 |
-| `context-rules/` | 43 |
-| `contracts/` | 85 |
-| `docs/` | 125 |
-| `fixtures/` | 261 |
+| `context-rules/` | 39 |
+| `contracts/` | 79 |
+| `docs/` | 36 |
+| `fixtures/` | 259 |
 | `hooks/` | 29 |
 | `patches/` | 10 |
 | `runners/` | 2 |
@@ -679,7 +653,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `systemd/` | 15 |
 | `tests/` | 28 |
 | `tools/` | 8 |
-| `vendor/` | 101 |
+| `vendor/` | 99 |
 | `worklog/` | 1 |
 
 ## Top-level layout

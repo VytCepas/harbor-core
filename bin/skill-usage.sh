@@ -6,13 +6,37 @@
 #   sh bin/skill-usage.sh --unused     installed skills with no invocation in the
 #                                      window the transcript store still holds
 #
-# Frequency half of context cost (size x frequency; bin/context-budget.sh measures only size). Read from the
-# transcripts and never written to a ledger: a distilled second copy drifts. Prints counts and names, never
-# content (CONSTITUTION §3).
-# Two clocks (harbor#518): the record's `.timestamp` is last-seen; file mtime only bounds the store's window (the
-# ceiling statement). The tax is charged-bytes DIVIDED BY uses, not bytes x uses, which would rank the
-# most-used skill as the most expensive.
-# Removed notes: docs/explanation/code-cases/bin-skill-usage.md
+# THE NUMBER EVERY COST ARGUMENT IN THIS REPO NEEDED AND NOBODY HAD. Context cost
+# is size x frequency. `bin/context-budget.sh` measures size exactly and frequency
+# not at all, so every trim decision on this branch — which skills to keep
+# ambient, whether the book earns its description, whether a hook's per-fire cost
+# beats a prefix's one-time cost — was priced with one factor missing.
+#
+# READ FROM TRANSCRIPTS, NEVER WRITTEN TO A LEDGER, and that is a rule rather than
+# a convenience. A PostToolUse counter was the obvious build and it is the wrong
+# one: it would persist a distilled second copy of something the transcripts
+# already record perfectly, and a distilled copy drifts while reading correctly.
+# The transcripts are the source; this is a query over them.
+#
+# IT PRINTS COUNTS AND NAMES, NEVER CONTENT (CONSTITUTION §3). Session transcripts
+# hold work-log material, absolute paths and identity. Nothing here emits a line
+# of one — the output is a skill name, an integer and a date.
+#
+# TWO CLOCKS, AND CONFLATING THEM IS THE BUG THIS AVOIDS (harbor#518). File mtime
+# answers "what window does the store still hold" — a property of the GC, used for
+# the CEILING statement below and nothing else. The `.timestamp` ON THE RECORD
+# answers "when did this skill last fire", which is a property of the work. #518
+# proposed deriving last-seen from mtime and that would have been wrong in the
+# lenient direction: a long session that invokes a skill in its first minute and
+# is touched hours later would report the skill as far fresher than it was. The
+# record carries the exact moment, so nothing here reads an mtime for last-seen.
+#
+# WHY NOT `bytes x invocations`, WHICH IS WHAT #518 ASKED FOR. That product rises
+# with use, so it ranks the most-used skill as the most expensive and inverts the
+# decision it exists to inform. An ambient description is charged in EVERY session
+# whether or not anything invokes it; the invocations are the RETURN, not the cost.
+# So the join is charged-bytes DIVIDED BY uses — bytes paid per invocation earned,
+# which is the number a trim decision actually needs and the one #492 can cite.
 set -eu
 # harbor#521: touched, so converted (LOG1 ratchet). Stdout is the report; the log goes to stderr.
 HERE="$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)" || HERE=""
@@ -42,8 +66,10 @@ done
 [ -d "$PROJ" ] || stop "no session store at ${PROJ#"$HOME"/}" "ls -d ${PROJ#"$HOME"/}   # or set CLAUDE_CONFIG_DIR to the config dir that holds the transcripts"
 command -v jq >/dev/null 2>&1 || stop "jq is required" "$(pkg_hint jq)"
 
-# File list by find, not a glob or grep: this estate's grep is ugrep with --ignore-files and silently skips the
-# gitignored session store.
+# THE FILE LIST IS BUILT BY find, NOT BY A GLOB. This estate's `grep` is a ugrep
+# wrapper carrying `-I --ignore-files`, which silently skips gitignored files —
+# and the whole session store is gitignored. A negative rested on that grep would
+# read as "this skill was never used" when it means "grep declined to look".
 LIST="${TMPDIR:-/tmp}/skill-usage.$$"
 trap 'rm -f "$LIST" "$LIST.hits" "$LIST.names" "$LIST.last"' EXIT INT TERM
 if [ -n "$DAYS" ]; then
@@ -53,17 +79,39 @@ else
 fi
 _sessions="$(wc -l < "$LIST" | tr -d ' ')"
 
-# The window this tool can see (harbor#248): the transcript store is garbage-collected, so "never" is a claim about
-# a rolling window. The span is derived from the files, never a constant.
-# Verbatim from lint-conventions.sh:_x8_mtime: `-f` is "filesystem" to GNU stat, so an `||` chain would append to
-# its garbage. Digits or nothing.
+# ── THE WINDOW THIS TOOL CAN SEE, WHICH IS NOT FOREVER (harbor#248) ─────────
+# This file's footer told the reader that "only a count over a LARGE window"
+# separates "nothing wanted it" from "the description never triggered" — while
+# having no idea how large its own window was, and printing `have NEVER been
+# invoked` about it. Measured 2026-08-21: the store held 498 session files whose
+# oldest mtime was 8 days old, and `bin/status-usage-aggregate.sh`'s header already
+# records why — *"the transcript store is garbage-collected"*. So "never" was a
+# claim about a rolling window, stated as a claim about all time, by the one tool
+# whose whole purpose is to price a permanent decision.
+#
+# It matters beyond wording: harbor#178's "2,251 sessions" cannot be reproduced
+# from this store today, and A6 was refused on a frequency count this tool now
+# reads as zero. Neither can be re-argued without knowing the window each number
+# came from.
+#
+# DERIVED FROM THE FILES, NEVER A CONSTANT. A documented GC horizon would be a
+# copy of a harness behaviour nobody here controls, and copies drift while
+# reading perfectly (T2). The span is whatever the store actually holds.
+#
+# Verbatim from lint-conventions.sh:_x8_mtime, and verbatim ON PURPOSE — `-f`
+# means "file system" to GNU stat and "format" to BSD, so on Linux the first call
+# prints filesystem fields and then fails, and an `||` chain appends the second
+# call's answer to that garbage. Digits or nothing.
 _su_mtime() { # <file> -> epoch seconds, or empty
   _v="$(stat -f %m "$1" 2>/dev/null || true)"
   case "$_v" in ''|*[!0-9]*) _v="$(stat -c %Y "$1" 2>/dev/null || true)" ;; esac
   case "$_v" in ''|*[!0-9]*) _v="" ;; esac
   printf '%s' "$_v"
 }
-# Explicit `if`, not `[ ... ] && ...`: under `set -e` a failing AND-list as the last command aborts the loop.
+#
+# EXPLICIT `if`, NOT `[ … ] && …`. This file runs under `set -e`, and an AND-list
+# whose test fails is the last command of this loop body — the shape that aborts
+# a strict shell on the perfectly ordinary case of "this file is not the oldest".
 _oldest=''; _newest=''
 while IFS= read -r _f; do
   _m="$(_su_mtime "$_f")"
@@ -74,18 +122,40 @@ while IFS= read -r _f; do
   fi
 done < "$LIST"
 
-# Phrased "no invocation in", not "never": the reader is looking at days, not history.
+# The span is printed in DAYS and the phrasing is deliberately "no invocation in"
+# rather than "never": a reader deciding whether to make a skill permanently
+# unreachable needs to know they are looking at days, not history.
 _window='an unknown span — no readable mtime in the store'
 if [ -n "$_oldest" ]; then
   _span_d=$(( ( _newest - _oldest ) / 86400 ))
   _window="$_span_d day(s) of transcripts"
 fi
 
-# Both invocation shapes: the Skill tool's `input.skill`, and an operator-typed slash command arriving as a
-# `<command-name>` marker (counting only the first reports most skills as unused). One jq pass also carries the
-# record timestamp; rows are `epoch<TAB>date<TAB>name`. `fromdateiso8601` refuses fractional seconds, so the
-# timestamp is sliced to [0:19] + Z, which keeps `date` out of this file (BSD and GNU differ). The `try` is
-# load-bearing: a raise aborts the document and `|| true` would turn every hit in it into a quiet zero.
+# BOTH SHAPES OF AN INVOCATION. The Skill tool records the name in
+# `input.skill`, and a slash command the operator typed arrives as a
+# `<command-name>` marker in a user turn. Counting only the first would report
+# every operator-invoked skill — which on this box is most of them — as unused,
+# and "unused" is exactly the verdict this tool exists to make safe to act on.
+# ONE PASS, AND IT CARRIES THE CLOCK. This was two jq invocations per file, one
+# per shape, both emitting a bare name. Folding them into a single filter that
+# also picks up the record's own timestamp is faster than the pair it replaces
+# (measured 2026-09-16 over 51 files: 13s against 16s) and is the entire source
+# of the last-seen column. Each row is `epoch<TAB>date<TAB>name`.
+#
+# `fromdateiso8601` REFUSES FRACTIONAL SECONDS, which these timestamps carry
+# (`2026-09-14T08:13:09.399Z`). Slicing to [0:19] and re-appending `Z` is the
+# whole fix, and doing the parse inside jq means this file calls `date` NOWHERE —
+# BSD `date -r` and GNU `date -d @` disagree exactly like the `stat` split that
+# F11 exists to catch, and the disagreement is silent.
+#
+# THE `try` IS LOAD-BEARING, NOT DEFENSIVE NOISE. jq aborts the whole document on
+# a raise, and this call is wrapped in `2>/dev/null || true` — so one malformed
+# timestamp anywhere in a transcript would discard EVERY hit in that file and
+# report it as a quiet zero. A skill would read as unused because one line was
+# unparseable, which is precisely the verdict this tool exists to make safe.
+# Same reason nothing is dropped for a MISSING timestamp: the hit still counts,
+# it simply has no date, because losing a count to protect a column would trade
+# the answer for the decoration.
 : > "$LIST.hits"
 while IFS= read -r f; do
   [ -f "$f" ] || continue
@@ -108,24 +178,44 @@ while IFS= read -r f; do
   ' "$f" 2>/dev/null >> "$LIST.hits" || true
 done < "$LIST"
 
-# Name-only projection: `grep -Fxq` and `uniq -c` below match whole lines and break on three-column rows.
+# THE NAME-ONLY PROJECTION EXISTS BECAUSE TWO CONSUMERS MATCH WHOLE LINES.
+# `grep -Fxq` below and the `uniq -c` table at the foot both assumed one bare
+# name per line; against a three-column row the first silently never matches and
+# the second counts date+name pairs as distinct skills. Deriving the old shape
+# here keeps both correct without either having to know about the new columns.
 cut -f3 "$LIST.hits" > "$LIST.names"
 
 _total="$(wc -l < "$LIST.hits" | tr -d ' ')"
 
-# Last seen per skill: the largest epoch each name appears with, and its date.
+# LAST SEEN, PER SKILL: the largest epoch each name ever appears with, and the
+# date that goes with it. One pass, no sort, no second read of the store.
 awk -F'\t' '{ if ($1 + 0 > m[$3] + 0) { m[$3] = $1; d[$3] = $2 } }
             END { for (k in m) printf "%s\t%s\t%s\n", k, m[k], d[k] }' \
     "$LIST.hits" > "$LIST.last"
 
-# Recency cutoff derived from the store (half the span, floored at a day). "Now" is the newest event on record,
-# so a rerun over an unchanged store gives the same answer.
+# THE RECENCY LINE IS DERIVED FROM THE STORE, NEVER A CONSTANT — same argument as
+# the window above. Half the measured span, floored at a day so a store holding a
+# single day cannot classify everything in it as stale. "Now" is the newest event
+# on record rather than the wall clock, so the verdict is reproducible: re-running
+# this tomorrow over an unchanged store returns the same answer it did today.
 _clamped=''
 _newest_evt="$(awk -F'\t' '$1 + 0 > m + 0 { m = $1 } END { print m + 0 }' "$LIST.hits")"
 
-# Clamp the anchor to the newest file mtime: one record dated 2099 flipped every other skill to STALE (§2.11).
-# No honest event postdates the newest mtime. The offending row still prints its own date, as the only evidence
-# that something is wrong.
+# THE ANCHOR IS CLAMPED TO THE STORE'S OWN UPPER BOUND, AND THIS IS NOT THEORY —
+# an adversarial run on 2026-09-16 put ONE record dated 2099 in a two-file store
+# and every other skill in it flipped to STALE. The recency axis is measured from
+# the newest event on record, so a single impossible stamp moves the cutoff years
+# forward and takes the whole report with it, silently and in the direction that
+# invents work. §2.11: a false positive is a defect, and one that fires on every
+# row is the kind that gets the instrument switched off.
+#
+# The bound is free and already computed. A record is written to a file BEFORE
+# that file's mtime settles, so no honest event can postdate the newest mtime in
+# the store. Clamping to `_newest` costs nothing when the data is sane and
+# contains the blast radius when it is not — clock skew, a restored backup, a
+# half-written line. The offending ROW still prints its own date rather than a
+# laundered one, because hiding the bad datum would remove the only evidence that
+# anything is wrong; it simply stops setting the threshold for everyone else.
 if [ -n "${_newest:-}" ] && [ "$_newest_evt" -gt "$_newest" ]; then
   _clamped="$_newest_evt"
   _newest_evt="$_newest"
@@ -134,7 +224,10 @@ _stale_s=$(( ( ${_newest:-0} - ${_oldest:-0} ) / 2 ))
 [ "$_stale_s" -ge 86400 ] || _stale_s=86400
 _stale_d=$(( _stale_s / 86400 ))
 
-# Tier and description size: length($0) of the description line matches context-budget.sh:126, so the tools join.
+# Tier and description size, needed by BOTH modes now. The size is `length($0)`
+# of the description LINE and that is deliberate — `context-budget.sh:126` uses
+# the identical expression, so the two tools stay join-compatible by construction
+# rather than by anyone remembering to keep them in step.
 _tier_of() { # <skill-dir> -> ambient | invoked-only
   if awk 'NR==1 && $0 !~ /^---/ {exit} NR>1 && $0 ~ /^---/ {exit} NR>1' "$1/SKILL.md" 2>/dev/null \
      | grep -q '^disable-model-invocation:[[:space:]]*true'
@@ -160,13 +253,23 @@ if [ "$MODE" = unused ]; then
     [ -f "$d/SKILL.md" ] || continue
     n="$(basename "$d")"
     grep -Fxq "$n" "$LIST.names" 2>/dev/null && continue
-    # Two zero-invocation states (harbor#518): an AMBIENT skill pays its description every session (SILENT); an
-    # invoked-only one costs nothing (DORMANT).
+    # THE TWO ZERO-INVOCATION STATES ARE NOT THE SAME FINDING (harbor#518). This
+    # list reported them as one undifferentiated "unused" set, and only one half
+    # is actionable: an AMBIENT skill that never fires pays for its description in
+    # every session and returns nothing, while an invoked-only one that never
+    # fires costs zero and is merely dormant. SILENT is a bill; DORMANT is an
+    # option nobody exercised, and acting on the second buys exactly nothing.
     case "$(_tier_of "$d")" in
       invoked-only) _t='DORMANT — invoked-only (costs nothing)' ;;
       *)            _t='SILENT — AMBIENT, pays its description every session' ;;
     esac
-    # Bytes, not just the tier (harbor#178): the join with context-budget.sh, measured as the description LINE.
+    # THE BYTES, NOT JUST THE TIER (harbor#178). "AMBIENT and never invoked" is
+    # the finding; what a trim decision needs on top of it is HOW MUCH, and
+    # without that this report sent the reader to context-budget.sh, which knows
+    # the ambient total and not which rows earned it. Neither tool could answer
+    # the question on its own, and the answer is a join of the two — so the
+    # frequency report carries the size, measured the same way context-budget
+    # measures it (the description LINE, which is what the harness lists).
     _b=0
     case "$_t" in
       SILENT*) _b="$(_desc_bytes "$d")"
@@ -179,7 +282,8 @@ if [ "$MODE" = unused ]; then
   done
   printf '\n  %d of %d installed skill(s) had NO invocation in the window above.\n' "$_n" \
     "$(_c=0; for d in "$SKILLS"/*/; do [ -f "$d/SKILL.md" ] && _c=$(( _c + 1 )); done; printf '%s' "$_c")"
-  # The only actionable line: the number a ceiling decision is made against.
+  # THE ONLY LINE THAT IS ACTIONABLE. Everything above it is inventory; this is
+  # the number a ceiling decision is made against, and it did not exist before.
   if [ "$_amb_n" -gt 0 ]; then
     printf '  %d of them are AMBIENT, costing %d B in EVERY session and returning nothing.\n' \
       "$_amb_n" "$_amb_b"
@@ -205,7 +309,8 @@ printf '  STALE = no invocation in the last %s day(s), which is half the span ab
 printf '  DERIVED from the store, not a threshold anyone chose, and it moves with it.\n'
 printf '  The tax is the description charged across every session in the window,\n'
 printf '  divided by the invocations it returned. Blank where nothing is charged.\n'
-# Say so when the data is impossible; a silent clamp would hide a clock problem in the store.
+# SAY SO WHEN THE DATA IS IMPOSSIBLE. A clamp that repaired the report silently
+# would leave the reader trusting a store that has a clock problem in it.
 if [ -n "$_clamped" ]; then
   printf '\n  NOTE: a record is dated later than any file in the store was written.\n'
   printf '  The recency cutoff was clamped to the newest file mtime so one bad\n'
@@ -215,9 +320,16 @@ fi
 printf '\n'
 printf '  %6s  %-26s %-12s %-10s %-6s %s\n' 'uses' 'skill' 'tier' 'last seen' 'state' 'context tax'
 sort "$LIST.names" | uniq -c | sort -rn | while read -r c n; do
-  # Not every name is an installed skill (`compact`, `clear`, `resume` have no SKILL.md): tier is absent and the
-  # tax a dash, since a zero would claim a cost never measured. ASCII in the columns: printf pads by bytes and an
-  # em-dash is three.
+  # NOT EVERY NAME HERE IS AN INSTALLED SKILL. `compact`, `clear` and `resume`
+  # are harness commands that arrive through the same `<command-name>` marker,
+  # and they have no SKILL.md and therefore no description to charge. A dash is
+  # the honest answer for them; a zero would read as "free", which is a claim
+  # about a cost this tool never measured.
+  # ASCII IN THE COLUMNS, AND THAT IS AN ALIGNMENT RULE RATHER THAN A STYLE ONE.
+  # `printf %-12s` pads to a BYTE count, and an em-dash is three bytes in UTF-8,
+  # so a `—` placeholder silently shortens its own column by two and skews every
+  # row that uses it. Measured here on the first run. The prose above may keep
+  # its dashes; the table may not.
   if [ -f "$SKILLS/$n/SKILL.md" ]; then _tier="$(_tier_of "$SKILLS/$n")"; else _tier='absent'; fi
 
   _seen="$(_last_of "$n")"
@@ -225,7 +337,10 @@ sort "$LIST.names" | uniq -c | sort -rn | while read -r c n; do
   case "$_epoch" in ''|*[!0-9]*) _epoch=0 ;; esac
   [ -n "$_date" ] || _date='-'
 
-  # Epoch 0 means no parseable timestamp: still counted, but not placed on the recency axis (a dash, not a guessed state).
+  # An epoch of 0 means the hit carried no parseable timestamp. It still counts —
+  # see the extraction above — but it cannot be placed on the recency axis, and
+  # guessing a state for it would be the fabrication the whole column exists to
+  # avoid. It gets a dash, and the uses column still tells the truth.
   if [ "$_epoch" -eq 0 ]; then _state='-'
   elif [ "$_epoch" -ge $(( _newest_evt - _stale_s )) ]; then _state='ACTIVE'
   else _state='STALE'

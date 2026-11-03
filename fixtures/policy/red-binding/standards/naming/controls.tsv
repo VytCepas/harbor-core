@@ -1,3 +1,0 @@
-id	mode	type	engine	surfaces	moment	function	stability	successor	owner	red_proof	emitted	title
-fx.one	warn	lint	bin/x.sh	-	ci	detective	experimental	-	policy	-	-	a control
-fx.two	warn	lint	bin/y.sh	-	ci	detective	experimental	-	policy	-	-	another control

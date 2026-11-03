@@ -6,7 +6,7 @@
 # on harbor's tree, so a finding on it is a finding about what the arm put there afterwards.
 mini() { # <dir>
   mkdir -p "$1/bin" "$1/standards" "$1/fixtures"
-  cp "$LN" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/standard-register.sh" "$T_ROOT/bin/standard-inventory.sh" "$1/bin/"
+  cp "$LN" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/standard-register.sh" "$1/bin/"
   cp -R "$REG" "$1/standards/"; cp "$T_ROOT/standards/naming.md" "$1/standards/"
   cp -R "$T_ROOT/fixtures/naming" "$1/fixtures/"
   # the sources the census reads, real, so a copy is a tree whose every control id is carried (an empty census is red)
@@ -25,8 +25,7 @@ mini() { # <dir>
     mkdir -p "$1/$(dirname "$_p")"; [ -e "$1/$_p" ] || : > "$1/$_p"
   done
   # the copy's schema table declares only the registers the copy holds: a row with no file is red (standard.register-declared)
-  # ...except the two inventory registers, which the copy declares OPTIONAL: it holds neither, but a fixture overlay carries one and must find it declared (harbor#1431, #1432)
-  awk -F'\t' -v r="$1" '/^#/ || $1 == "id" || ($1 !~ /\*/ && system("test -e \"" r "/" $1 "\"") == 0) { print; next } $1 == "contracts/env.tsv" || $1 == "contracts/bin.tsv" { $1 = $1 "?"; print }' OFS='\t' "$REG/schemas.tsv" > "$1/standards/naming/schemas.tsv"
+  awk -F'\t' -v r="$1" '/^#/ || $1 == "id" || ($1 !~ /\*/ && system("test -e \"" r "/" $1 "\"") == 0) { print }' "$REG/schemas.tsv" > "$1/standards/naming/schemas.tsv"
   grep -v '^legacy-' "$REG/exemptions.tsv" > "$1/standards/naming/exemptions.tsv"
   sh "$1/bin/lint-name.sh" --root "$1" --gen exemptions > /dev/null 2>&1
   cat "$1/build/naming/exemptions.legacy.tsv" >> "$1/standards/naming/exemptions.tsv"

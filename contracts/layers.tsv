@@ -50,9 +50,6 @@ evals/	dev	eval corpora, bulk data
 AGENTS.md	core	
 CLAUDE.md	core	
 policy/constitution.md	core	
-policy/clauses.tsv	core	the constitution as a register (harbor#1026); its tests run in the export
-policy/enforcement.tsv	core	which control enforces which clause (harbor#1028)
-docs/policy/	core	the enforcement matrix generated from policy/enforcement.tsv
 registries/context-ratchet.tsv	core	the deploy ratchet baseline read by bin/context-budget.sh --ratchet
 CONTRIBUTING.md	core	how to contribute to the export
 docs/reports/evals.md	core	

@@ -54,7 +54,6 @@ case "$1 $2" in
       '{state: $s, baseRefName: "main", headRefOid: $h, mergeable: "MERGEABLE", title: "PR", headRefName: "feat"}' | emit ;;
   "pr checks") case " $* " in *" --required "*) echo "no required checks reported" >&2; exit 1 ;; esac   # no branch protection
       cat "$F/checks/$3"; grep -qv "	pass	" "$F/checks/$3" && exit 8; exit 0 ;;
-  "pr diff") exit 0 ;;   # no changed file, so no constitutional clause is amended (harbor#1026)
   "pr merge") echo "$*" >> "$F/merge.log"; [ ! -f "$F/mergefail" ] || exit 1; echo MERGED > "$F/pr/$3.state" ;;
   "run list") k="$commit"; [ -f "$F/runs/$k" ] || k=default
       if [ -f "$F/runs/$k" ]; then cat "$F/runs/$k"; else echo '[{"databaseId":900,"status":"completed","conclusion":"success","workflowName":"ci"}]'; fi | emit ;;
