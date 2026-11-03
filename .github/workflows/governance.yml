@@ -337,7 +337,7 @@ jobs:
           DASH: ${{ steps.dash.outcome }}
         run: |
           r="$RUNNER_TEMP/suites.tsv"; [ -f "$r" ] || : > "$r"
-          echo "results_$K=$(base64 < "$r" | tr -d '\n')" >> "$GITHUB_OUTPUT"
+          echo "results_$K=$(gzip -9 < "$r" | base64 | tr -d '\n')" >> "$GITHUB_OUTPUT"
           g=success
           for o in "$CONV" "$RUN" "$DASH"; do case "$o" in success|skipped) ;; *) g=failure ;; esac; done
           [ "$RUN" = success ] || g=failure
@@ -405,7 +405,7 @@ jobs:
             case "$k" in 1|2|3|4) ;; *) echo "HARBOR_TEST_SUITE_SHARDS lists shard $k: this file carries outputs for 1-4 only" >&2; bad=1; continue ;; esac
             eval "r=\$R$k g=\$G$k"
             f="$RUNNER_TEMP/shard-$k.tsv"
-            if [ -n "$r" ]; then printf '%s' "$r" | base64 -d > "$f"; else : > "$f"; fi
+            if [ -n "$r" ]; then printf '%s' "$r" | base64 -d | gzip -dc > "$f"; else : > "$f"; fi
             echo "shard $k: $(grep -c . "$f" || :) result row(s), green=${g:-missing}"
             [ "$g" = success ] || bad=1
             set -- "$@" "$f"
