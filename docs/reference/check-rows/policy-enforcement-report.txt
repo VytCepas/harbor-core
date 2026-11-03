@@ -1,0 +1,4 @@
+watches: **which enforcement pairs are not earning their keep** (harbor#1028), by `bin/policy-check.sh --report`: every pair of `policy/enforcement.tsv` whose control has no red proof in `controls.tsv`
+schedule: **not scheduled.** Falsifier: `sh tests/policy/enforcement/enforcement.test.sh`. A person runs it; a recurring run needs the operator's explicit yes (job, schedule, identity, location)
+notifies: stdout, one `PROPOSE: [policy.enforcement-report]` line per pair, for the person who reads `checks.log` once it is scheduled; no file is written and no mode is edited
+red: a pair listed has never been seen red: prove it red (a passing suite in which the control fires) or retire the clause or control with a successor, as a person's PR. It proposes; the constitution's human gate edits the mode. Disable: nothing to disable until it is scheduled (`rm` the plist then)

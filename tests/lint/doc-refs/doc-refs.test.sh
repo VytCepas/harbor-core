@@ -19,10 +19,10 @@ setmode() { # <root> <rule> <mode>
   awk -F'\t' -v OFS='\t' -v r="$2" -v m="$3" '$1 == r { $2 = m } { print }' "$1/standards/naming/controls.tsv" > "$1/c.tmp" && mv "$1/c.tmp" "$1/standards/naming/controls.tsv"; }
 mkroot() { _r="$T_TMP/$1"; mkdir -p "$_r/fixtures" "$_r/standards"; cp -R "$FX" "$_r/fixtures/doc-refs"; cp -R "$REG" "$_r/standards/naming"; printf '%s' "$_r"; }
 
-t_section "the self-test passes, and its red log names both rules"
+t_section "the self-test passes, and its red log names every rule"
 t_exit "--self-test exits 0" 0 sh "$TOOL" --self-test
 RED0="$T_TMP/red0"; : > "$RED0"; LINT_REDLOG="$RED0" sh "$TOOL" --self-test >/dev/null 2>&1
-t_eq "...the log a caller's LINT_REDLOG reads" "doc.refs-resolve doc.refs-stale" "$(sort -u "$RED0" | tr '\n' ' ' | sed 's/ $//')"
+t_eq "...the log a caller's LINT_REDLOG reads" "doc.refs-ghost doc.refs-resolve doc.refs-stale" "$(sort -u "$RED0" | tr '\n' ' ' | sed 's/ $//')"
 
 t_section "RED PROOF: a planted dangling <system>:path turns the check red; an example: marker does not"
 D="$(mktree plant)"; printf '# x\n\nSee `sysb:src/real.py`.\n' > "$D/README.md"; commit "$D"
@@ -92,7 +92,7 @@ t_exit "--help exits 0" 0 sh "$TOOL" --help
 t_has "--list reads the modes from controls.tsv" "$(sh "$TOOL" --list)" "doc.refs-resolve   warn"
 
 t_section "the modes are controls.tsv's: warn prints, shadow records only, block fails"
-for _id in doc.refs-resolve doc.refs-stale doc.refs-conform; do
+for _id in doc.refs-resolve doc.refs-stale doc.refs-ghost doc.refs-conform; do
   t_eq "$_id is warn in the registry" "warn" "$(awk -F'\t' -v i="$_id" '$1 == i { print $2 }' "$REG/controls.tsv")"
 done
 D="$(mktree modes)"; printf 'See `bin/gone.sh`.\n' > "$D/README.md"; commit "$D"
@@ -146,6 +146,18 @@ t_has "alpha: 1 doc, 1 citation, 1 dangling" "$OUT" "alpha	1	1	1	0	"
 t_has "beta: a doc with no citation" "$OUT" "beta	1	0	0	0	"
 t_has "gamma: no checkout, said" "$OUT" "gamma	-	-	-	-	checkout absent"
 
+t_section "RED PROOF: a gate that runs a script the tree no longer holds (doc.refs-ghost, harbor#996 item 11)"
+D="$(mktree ghost)"; printf '# x\n' > "$D/README.md"
+printf '%s\n' '# sh bin/gone-in-a-comment.sh' 'sh bin/tool.sh --real' 'echo "sh bin/gone-example.sh" # example: deliberate' > "$D/bin/gate.sh"; commit "$D"
+t_eq "a gate that runs an existing script, a comment and an example: line -> no ghost" "" "$(DR "$D" | grep 'doc.refs-ghost')"
+printf '%s\n' 'log_fix "sudo sh bin/renamed-away.sh"' >> "$D/bin/gate.sh"; commit "$D"
+t_has "the planted ghost command is a finding at its line" "$(DR "$D")" "A	doc.refs-ghost	bin/gate.sh:4 -> bin/renamed-away.sh"
+RED="$T_TMP/red-ghost"; : > "$RED"; LINT_REDLOG="$RED" sh "$TOOL" --root "$D" --registry "$REG" --no-registry >/dev/null 2>&1
+t_eq "...and the rule is red in the log" "doc.refs-ghost" "$(sort -u "$RED")"
+printf '%s\n' '# x' 'See `sh bin/renamed-away.sh`' > "$D/docs-note.md"; rm "$D/bin/gate.sh"; printf '%s\n' 'sh bin/tool.sh' > "$D/bin/gate.sh"; commit "$D"
+t_eq "restoring the call to an existing script is green again" "" "$(DR "$D" | grep 'doc.refs-ghost')"
+t_eq "prose (*.md) is never a gate: a ghost named in a note is no finding" "" "$(DR "$D" | grep 'doc.refs-ghost')"
+
 t_section "bin/lint-conventions.sh relays the findings as advisories and exits clean"
 D="$T_TMP/relay"; mkdir -p "$D/bin" "$D/standards"
 cp "$T_ROOT/bin/doc-refs.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/scope-roots.sh" "$D/bin/"; mkdir -p "$D/contracts"; cp "$T_ROOT/contracts/roots.tsv" "$D/contracts/"
@@ -165,5 +177,6 @@ D="$T_TMP/bare"; mkdir -p "$D/bin"
 t_has "a tree without the tool is skipped, said so" "$(lint1 doc.refs-conform "$D")" "skip: no bin/doc-refs.sh"
 t_eq "...with no violation" "0" "$(vcount "$(lint1 doc.refs-conform "$D")")"
 
+t_red doc.refs-ghost
 t_red doc.refs-conform   # bin/doc-refs.sh, which the conventions rule relays, goes red above (harbor#1422)
 t_done

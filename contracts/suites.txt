@@ -134,6 +134,7 @@ tests/context/injection-rule/notes.test.sh
 tests/context/injection-rule/agent-brief.test.sh
 tests/context/injection-rule/decision-question.test.sh
 tests/context/injection-rule/default-way-route.test.sh
+tests/context/injection-rule/default-way-deny.test.sh
 tests/context/injection-rule/skill-first-use.test.sh
 tests/context/injection-rule/name-note.test.sh
 tests/admission/destroy/destroy.test.sh
@@ -157,6 +158,7 @@ tests/lint/findings/heal.test.sh
 tests/lint/findings-run/findings-run.test.sh
 tests/lint/conventions/findings.test.sh
 tests/lint/conventions/mode.test.sh
+tests/lint/conventions/route.test.sh
 tests/lint/name/name.test.sh
 tests/lint/rule-health/rule-health.test.sh
 tests/skill/gates/gates.test.sh
@@ -468,3 +470,6 @@ tests/scope/repo/sources.test.sh
 tests/deploy/kit/bootstrap.test.sh
 tests/standard/seams/export.test.sh
 tests/lint/conventions/repo-kit.test.sh
+tests/standard/render/render.test.sh
+tests/doc/checks-generate/checks-generate.test.sh
+tests/status/fleet-watch/watch.test.sh

@@ -16,6 +16,7 @@ cat > "$S/bin/lint-findings.sh" <<'FAKE'
 #!/bin/sh
 printf '%s %s %s\n' "$1" "${HARBOR_SCOPE_ROOT:-}" "${HARBOR_LINT_FINDINGS_REPO:-}" >> "$CALLS"
 env | grep -E '^(HARBOR_TEST_PLANTED|GIT_TRACE|https_proxy)=' >> "$CALLS.env" || :
+printf '%s\n' "${HARBOR_LINT_DISPOSABLE:-}" >> "$CALLS.disp"
 case "$1" in
   reconcile) printf 'findings: reconciled — examined 1 rules\n'; [ -z "${FAKE_NEW:-}" ] || printf '  new (first reconcile):      lint/X1\n'; exit "${FAKE_RC_RECONCILE:-0}" ;;
   heal)      printf 'findings heal: dry\n'; exit "${FAKE_RC_HEAL:-0}" ;;
@@ -44,6 +45,10 @@ t_eq "the receipt says ok, at main" "ok $MAIN7" "$(jq -r '"\(.status) \(.sha)"' 
 t_has "and is stamped" "$(jq -r .ran_at "$STATE")" "T"
 t_eq "the clone is gone" 0 "$(wts)"
 t_eq "a run that changed nothing writes no checks.log line" no "$([ -s "$CLOG" ] && echo yes || echo no)"
+
+t_section "the lint it drives knows its clone is throwaway (harbor#879)"
+rm -f "$CALLS.disp"; : > "$CALLS"; HARBOR_LINT_DISPOSABLE= run > /dev/null
+t_eq "both calls carry HARBOR_LINT_DISPOSABLE=1" 2 "$(grep -c '^1$' "$CALLS.disp" 2>/dev/null)"
 
 t_section "a run that changed something writes one checks.log line"
 FAKE_NEW=1 run > /dev/null

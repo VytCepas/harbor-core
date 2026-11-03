@@ -157,6 +157,21 @@ _o="[$(_x8)]"
 t_hasnt "a paired skill raises no orphan advisory" "$_o" "$X8_ORPHAN"
 t_hasnt "…and no installed-on-no-box advisory" "$_o" "$X8_UNINST"
 
+t_section "X4 and X8: a skill an installed pack lists is governed by that pack (harbor#885, #889)"
+_x8_pair_setup no yes
+mkdir -p "$X8C/.harbor-packs"
+t_has "control: an installed skill no manifest lists is still an orphan" "$(_x8 | grep demo)" "INSTALLED BUT $X8_ORPHAN"
+printf '# repo\tdemo\nblob\tskills/demo/SKILL.md\n' > "$X8C/.harbor-packs/p.tsv"
+t_eq "X8: a pack-listed skill is not tracked-nowhere" "" "$(_x8 | grep demo)"
+X4P="$TMP/x4pack"; rm -rf "$X4P"; mkdir -p "$X4P/bin" "$X4P/cfg/skills/packed" "$X4P/cfg/.harbor-packs"; cp "$LINT" "$X4P/bin/"
+printf -- '---\nname: packed\n---\n' > "$X4P/cfg/skills/packed/SKILL.md"
+x4p() { CLAUDE_CONFIG_DIR="$X4P/cfg" lint1 X4 "$X4P" | awk '/── drift\.skill-tier /{p=1; next} /^── /{p=0} p'; }
+t_has "control: X4 calls an unlisted installed skill ungoverned" "$(x4p)" 'under no governed copy: packed'
+printf 'blob\tskills/packed/SKILL.md\n' > "$X4P/cfg/.harbor-packs/p.tsv"
+_o="$(x4p)"
+t_hasnt "X4: a pack-listed skill is not ungoverned" "$_o" 'under no governed copy: packed'
+t_has "…and is counted, not silent" "$_o" '1 pack-owned skill(s) counted'
+
 t_section "X4: an installed directory with no top-level SKILL.md is never skipped silently (#527)"
 X4R="$TMP/x4root"; mkdir -p "$X4R/bin" "$X4R/skills/alpha" "$X4R/cfg/skills/alpha"; cp "$LINT" "$X4R/bin/"
 printf -- '---\nname: alpha\n---\n' > "$X4R/skills/alpha/SKILL.md"; cp "$X4R/skills/alpha/SKILL.md" "$X4R/cfg/skills/alpha/"
