@@ -31,6 +31,14 @@ t_section "a mutable tag on a registered action is still registered (the SHA lin
 wf "actions/checkout@v5"
 t_hasnt "no version finding" "$(tree)" "[$V]"
 
+t_section "a repo's own composite action is not a third-party pin (harbor#967)"
+mkdir -p "$R/.github/actions/mine"; printf 'name: mine\nruns:\n  using: composite\n  steps: []\n' > "$R/.github/actions/mine/action.yml"
+wf "owner/repo/.github/actions/mine@$SHA # v1" "owner/repo/.github/actions/other@$SHA # v1"
+OUT="$(tree)"
+t_hasnt "the action the tree holds is not asked for" "$OUT" "owner/repo/.github/actions/mine is pinned"
+t_has "an action path the tree does not hold still is" "$OUT" "owner/repo/.github/actions/other is pinned"
+rm -rf "$R/.github/actions"
+
 t_section "a repo with no workflows is silent"
 rm -rf "$R/.github"
 t_hasnt "no version finding" "$(tree)" "[$V]"

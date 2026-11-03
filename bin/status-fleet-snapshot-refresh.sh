@@ -162,3 +162,7 @@ harbor_emit fleet.snapshots "$(jq -c '{repos: length, dirty: (map(select(.status
 # harbor#1181 lane 5: the second-uid collector's findings land here, on this schedule (docs/reference/checks.md collector.health).
 # It stands down when no collector is installed, and its red is its own receipt and checks.log line, not this job's.
 [ ! -f "$HERE/audit-collector-check.sh" ] || sh "$HERE/audit-collector-check.sh" >/dev/null 2>&1 || :
+
+# harbor#1437: the fleet controller's watch pass, once an hour, on this schedule (docs/reference/checks.md status.fleet-watch).
+# --if-due makes every other tick a no-op; the pass is bounded, and its red is its own receipt and checks.log line, not this job's.
+[ ! -f "$HERE/status-fleet-watch.sh" ] || sh "$HERE/status-fleet-watch.sh" --if-due >/dev/null 2>&1 || :

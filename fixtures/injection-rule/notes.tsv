@@ -31,7 +31,7 @@
 #   repo    the fixture repo shape: `plain`, `skills` (a HIDDEN skill), `visible`, or `naming` (carries
 #           bin/lint-name.sh and standards/naming/, the only repos name-note judges)
 #   arm     fire | silent | deny   (deny = a run: pack returning the decision sentinel)
-#   payload one line of JSON. @REPO@ expands to the fixture repo, @OTHER@ to a
+#   payload one line of JSON. @CFG@ expands to the fixture config dir, @REPO@ to the fixture repo, @OTHER@ to a
 #           SECOND repo that carries packs, @BARE@ to a repo that carries none,
 #           and @BIG@ to a 40 KB string.
 #
@@ -141,6 +141,9 @@ box	plain	session-title-missing	silent	a payload with no session id	{"hook_event
 box	plain	default-way-route	fire	a skill copied straight into the config dir	{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"dwr-fire","tool_input":{"command":"cp -R skills/demo \"$CLAUDE_CONFIG_DIR/skills/\""}}
 box	plain	default-way-route	silent	listing the installed skills reads, it writes nothing	{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"dwr-ls","tool_input":{"command":"ls \"$CLAUDE_CONFIG_DIR/skills\""}}
 box	plain	default-way-route	silent	the same skill written to its harbor home	{"hook_event_name":"PreToolUse","tool_name":"Write","session_id":"dwr-home","tool_input":{"file_path":"@REPO@/skills/demo/SKILL.md","content":"body"}}
+box	plain	default-way-deny	fire	a skill written straight into the config dir (born warn: the deny rides as a note; the arm is deny once the row is block)	{"hook_event_name":"PreToolUse","tool_name":"Write","session_id":"dwd-deny","tool_input":{"file_path":"@CFG@/skills/demo/SKILL.md","content":"body"}}
+box	plain	default-way-deny	silent	the same skill written to its source path in the checkout	{"hook_event_name":"PreToolUse","tool_name":"Write","session_id":"dwd-src","tool_input":{"file_path":"@REPO@/skills/demo/SKILL.md","content":"body"}}
+box	plain	default-way-deny	silent	a shell copy into the config dir is the route pack's note, not a deny	{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"dwd-bash","tool_input":{"command":"cp -R skills/demo \"$CLAUDE_CONFIG_DIR/skills/\""}}
 box	plain	confinement-refused	fire	a bus emit the sandbox refused	{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"sh bin/event-bus.sh emit obligation.open x"},"tool_response":{"stdout":"","stderr":"FAIL: emit: cannot create /Users/x/.local/state/harbor/events\n<sandbox_violations>\ndeny file-write-create /Users/x/.local/state/harbor/events/2026-11-02.jsonl\n</sandbox_violations>"}}
 box	plain	confinement-read-escape	fire	a read-only grep that asks to leave the sandbox	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"cd /tmp && grep -rn foo . | head","dangerouslyDisableSandbox":true}}
 box	plain	confinement-read-escape	silent	the same grep without the flag	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"grep -rn foo . | head"}}

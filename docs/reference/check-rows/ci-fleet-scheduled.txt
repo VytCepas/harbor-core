@@ -1,0 +1,4 @@
+watches: the scheduled runs of the fleet repo's `ci.yml` (harbor#1433): a weekly OpenSSF Scorecard run and a nightly fuzz run, each job gated on its own cron
+schedule: **not scheduled on this box: GitHub Actions runs it at 04:00 UTC Mondays (scorecard) and nightly (fuzz), `fleet/.github/workflows/ci.yml`** (a bridge row, as `ci.scaffolder-nightly`; the other triggers of that file are push and pull_request, which are not schedules); falsifier: `sh tests/standard/inventory/schedule.test.sh`
+notifies: GitHub's failed-run notice to whoever last edited the workflow; nothing of harbor's
+red: the security posture slipped or a fuzz run found a crash. Disable: edit the `schedule:` entries out of `ci.yml` in a fleet checkout

@@ -182,7 +182,7 @@ the tool that forces it.**
      shrinks (`name.exemption-stale`, `name.exemption-grow`), and each row expires on the date of the rename wave
      that retires it (harbor#961), a week apart, so the list never expires on one day.
    - Promotion to block is a person's PR. A `lint-name.sh` rule is promoted on evidence (D-92): it has gone red and
-     reports 0 findings in every governed repo (`sh bin/rule-health.sh --promotion`). Any other rule keeps D-64: red,
+     reports 0 findings in every governed repo (`sh bin/lint-rule-health.sh --promotion`). Any other rule keeps D-64: red,
      then 4 weeks with no finding accepted as false.
    - There are no inline ignores.
    - An expiring alias warns from 14 days before its date and blocks from it (`name.alias-expired`).

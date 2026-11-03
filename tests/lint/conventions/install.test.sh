@@ -11,6 +11,11 @@ cp -P "$ROOT"/bin/*.sh "$X7R/bin/" 2>/dev/null; cp -P "$ROOT"/bin/*.awk "$X7R/bi
 _x7lines() { sh "$X7R/bin/lint-conventions.sh" --only X7 2>&1 | grep 'ADVISORY \[drift.payload-closure\]' || true; }
 _X7_PRISTINE="$(_x7lines)"
 t_hasnt "silent about a call whose target IS shipped" "$_X7_PRISTINE" 'context-peers.sh'
+t_hasnt "an approval gate shipped through GATES is silent (harbor#888)" "$_X7_PRISTINE" 'gate-approve.sh'
+t_hasnt "a file copied behind an opt-in flag by il_install_exec is silent (harbor#888)" "$_X7_PRISTINE" 'admission-stop.sh'
+sed -i.bak "/^GATES=/s/ gate-approve\.sh//" "$X7R/bin/admission-install.sh"
+t_has "…and dropping it from GATES reports the call again" "$(_x7lines)" 'invokes $DIR/gate-approve.sh'
+mv "$X7R/bin/admission-install.sh.bak" "$X7R/bin/admission-install.sh"
 # Keyed on the FILES line and one name: context-peers.sh is also in the header prose above the list.
 sed -i.bak '/^FILES=/s/ context-peers\.sh//' "$X7R/bin/deploy-runtime-install.sh"
 t_hasnt "the fixture really dropped context-peers.sh from the payload" "$(grep '^FILES=' "$X7R/bin/deploy-runtime-install.sh")" 'context-peers.sh'
@@ -261,6 +266,11 @@ t_has "a differing installed copy is reported" "$(_x11)" "the installed work-log
 cp "$X11R/worklog/pre-push" "$X11R/cfg/MEMORY/.git/hooks/pre-push"
 t_has "the copy is silent, and says what it compared" "$(_x11)" "the installed copy matches worklog/pre-push"
 t_hasnt "…with no advisory" "$(_x11)" "the installed work-log pre-push differs from worklog/pre-push"
+# the findings run exports hooksPath=/dev/null for its own clone; the work-log repo is the operator's, not the clone's (harbor#973)
+git -C "$X11R/cfg/MEMORY" init -q >/dev/null 2>&1 && cp "$X11R/worklog/pre-push" "$X11R/cfg/MEMORY/.git/hooks/pre-push"
+_x11env() { GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null _x11; }
+t_hasnt "the findings run's hooksPath=/dev/null does not hide an installed hook" "$(_x11env)" "has no pre-push hook"
+t_has "…and the installed copy still matches" "$(_x11env)" "the installed copy matches worklog/pre-push"
 printf ' ' >> "$X11R/worklog/pre-push"
 t_has "one byte changed in the tracked file fires again" "$(_x11)" "the installed work-log pre-push differs from worklog/pre-push"
 # review #942: git decides where the hook lives, so core.hooksPath and a gitdir file are honoured
