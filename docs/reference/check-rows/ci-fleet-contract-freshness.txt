@@ -1,4 +1,0 @@
-watches: the fleet repo's weekly contract-freshness workflow (harbor#1433): whether its vendored yard contract is still the contract upstream ships; it opens a ticket, never blocks a PR
-schedule: **not scheduled on this box: GitHub Actions runs it at 07:00 UTC Mondays, `fleet/.github/workflows/contract-freshness.yml`** (a bridge row, as `ci.scaffolder-nightly`); falsifier: `sh tests/standard/inventory/schedule.test.sh`
-notifies: an issue in the fleet repo when the vendored copy is behind
-red: upstream moved and nobody re-vendored, so the tripwire tests run on a stale copy. Disable: `gh workflow disable contract-freshness.yml` in a fleet checkout

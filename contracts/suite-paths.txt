@@ -55,7 +55,6 @@ tests/lint/conventions/skills.test.sh always
 tests/lint/conventions/suites.test.sh always
 tests/lint/conventions/findings.test.sh always
 tests/lint/conventions/mode.test.sh always
-tests/lint/conventions/route.test.sh always
 tests/lint/name/name.test.sh always
 tests/lint/rule-health/rule-health.test.sh bin/lint-rule-health.sh bin/library-log.sh bin/lint-conventions.sh tests/lint/rule-health/rule-health.test.sh tests/lib/core.sh
 tests/test/suite-select/suite-select.test.sh always
@@ -135,8 +134,7 @@ hooks/injection-rule/context-rules.test.sh hooks/injection-rule/injection-rule.s
 tests/context/injection-rule/notes.test.sh hooks/injection-rule/injection-rule.sh tests/context/injection-rule/notes.test.sh context-rules/* fixtures/inject/* fixtures/injection-rule/notes.tsv* fixtures/injection-rule/packs/example-store/wipe-destroys-history.md* bin/scope-roots.sh bin/library-admission.sh bin/admission-normalize.awk tests/lib/core.sh bin/lint-name.sh bin/library-log.sh standards/naming/* bin/standard-register.sh
 tests/context/injection-rule/agent-brief.test.sh hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/* tests/context/injection-rule/agent-brief.test.sh tests/lib/core.sh
 tests/context/injection-rule/decision-question.test.sh hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/user/decision-* tests/context/injection-rule/decision-question.test.sh tests/lib/core.sh docs/explanation/grilling.md commands/grillme.md
-tests/context/injection-rule/default-way-route.test.sh hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/user/default-way-* tests/context/injection-rule/default-way-route.test.sh tests/lib/core.sh fixtures/admission-corpus.jsonl
-tests/context/injection-rule/default-way-deny.test.sh hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/user/default-way-* tests/context/injection-rule/default-way-deny.test.sh tests/lib/core.sh fixtures/admission-corpus.jsonl
+tests/context/injection-rule/default-way-route.test.sh hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/user/default-way-route.* tests/context/injection-rule/default-way-route.test.sh tests/lib/core.sh fixtures/admission-corpus.jsonl
 tests/context/injection-rule/skill-first-use.test.sh hooks/injection-rule/injection-rule.sh bin/library-admission.sh bin/admission-normalize.awk context-rules/* skills/agent-routing/SKILL.md tests/context/injection-rule/skill-first-use.test.sh tests/lib/core.sh
 tests/context/injection-rule/name-note.test.sh hooks/injection-rule/injection-rule.sh bin/library-admission.sh bin/lint-name.sh bin/library-log.sh standards/naming/* context-rules/* tests/context/injection-rule/name-note.test.sh tests/lib/core.sh bin/standard-register.sh
 hooks/ticket-note/ticket-note.test.sh hooks/ticket-note/ticket-note.sh hooks/ticket-note/ticket-note.test.sh tests/lib/core.sh
@@ -475,6 +473,3 @@ tests/policy/clauses/clauses.test.sh bin/policy-check.sh bin/library-log.sh poli
 tests/lint/policy/clauses.test.sh bin/lint-conventions.sh bin/policy-check.sh policy/* standards/naming/controls.tsv standards/naming/terms.tsv tests/checks/lint-fixture.sh policy/enforcement.tsv docs/policy/* tests/lint/policy/clauses.test.sh tests/lib/core.sh
 tests/policy/enforcement/enforcement.test.sh bin/policy-check.sh policy/* docs/policy/* docs/reference/checks.md standards/naming/terms.tsv standards/naming/controls.tsv fixtures/policy/* tests/policy/enforcement/enforcement.test.sh tests/lib/core.sh
 tests/admission/decide/decide.test.sh bin/admission-decide.sh bin/admission-replay.sh standards/naming/controls.tsv tests/admission/decide/decide.test.sh tests/lib/core.sh
-tests/standard/render/render.test.sh bin/standard-render-check.sh bin/standard-vendor.sh bin/lint-name.sh bin/lint-renderer.sh bin/library-log.sh standards/naming/* tests/standard/render/render.test.sh tests/lib/core.sh bin/standard-register.sh
-tests/doc/checks-generate/checks-generate.test.sh bin/doc-checks-generate.sh bin/library-log.sh standards/naming/controls.tsv vendor/naming/registry/controls.tsv docs/reference/checks.md docs/reference/checks.md.tmpl docs/reference/check-rows/* tests/doc/checks-generate/checks-generate.test.sh tests/lib/core.sh
-tests/status/fleet-watch/watch.test.sh bin/status-fleet-watch.sh bin/status-fleet-snapshot-refresh.sh bin/library-log.sh bin/scope-roots.sh tests/status/fleet-watch/watch.test.sh tests/lib/core.sh

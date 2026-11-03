@@ -95,18 +95,6 @@ step 07c-confinement root 'su stranger -c "sh /home/stranger/port/harbor/bin/dep
 # B8 pin is the owner's own act by design (admission-install.sh:458); it is part of a first install. Run from the checkout, as
 # deploy spells it: it needs only the config dir, and a missing one is then named, not "cannot open".
 step 07b-pin-instructions stranger 'sh ~/port/harbor/bin/pin-instructions.sh --apply --live'
-# Default-way route (harbor#1397): the stranger's box carries the pack with no harbor-private. A hand-written skill in the config
-# dir draws the source path and the install command (a note while the deny row is warn, a deny once a person promotes it, never
-# silence), the same content at its source path draws nothing, and the off switch silences the pack and leaves a log line.
-step 08b-default-way stranger 'C=$HOME/.claude; E=$C/bin/injection-rule.sh
-  test -f $C/context-rules/user/default-way-deny.sh && test -f $C/context-rules/user/default-way-route.tsv &&
-  pay() { printf "{\"hook_event_name\":\"PreToolUse\",\"tool_name\":\"Write\",\"session_id\":\"$2\",\"tool_input\":{\"file_path\":\"$1\",\"content\":\"x\"}}"; } &&
-  pay $C/skills/demo/SKILL.md s1 | CLAUDE_PROJECT_DIR=$HOME sh $E > /tmp/dw1.json &&
-  grep -q "skills/demo/SKILL.md" /tmp/dw1.json && grep -q "skill-install.sh demo --apply" /tmp/dw1.json && grep -q "context:default-way-deny" /tmp/dw1.json &&
-  test -z "$(pay $HOME/port/harbor/skills/demo/SKILL.md s2 | CLAUDE_PROJECT_DIR=$HOME sh $E)" &&
-  sh $C/context-rules/user/default-way-route.sh --off | grep -q off &&
-  test -z "$(pay $C/skills/demo/SKILL.md s3 | CLAUDE_PROJECT_DIR=$HOME sh $E)" &&
-  grep -q "switched off by" $C/cache/context-switch.log'
 step 08-check stranger 'sh ~/port/harbor/bin/harbor check --live'
 step 09-verify stranger 'sh ~/port/harbor/bin/harbor verify'
 t_done

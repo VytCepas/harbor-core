@@ -243,7 +243,6 @@
 /bin/standard-shape.sh @VytCepas
 /bin/standard-vendor.sh @VytCepas
 /bin/status-fleet-snapshot-refresh.sh @VytCepas
-/bin/status-fleet-watch.sh @VytCepas
 /bin/status-generate.sh @VytCepas
 /bin/status-obligations.sh @VytCepas
 /bin/status-plan-generate.sh @VytCepas

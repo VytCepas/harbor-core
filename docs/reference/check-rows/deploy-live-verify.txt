@@ -1,4 +1,0 @@
-watches: **does the installed box work** — the live tier of the test contract (harbor#735, `contracts/test-contract.md` rule 6): floor-verify, doctor, install-drift, the shims in `HARBOR_SCOPE_LOCAL_BIN`, `scope-roots.sh --check`, and sec0's four decided `env` keys (harbor#816), read-only, one line each. `--probes` adds what harbor#667 moved behind stubs: the Keychain lookup contract, the live-dir refusal, and the browser consent arm on a URL the operator owns
-schedule: **not scheduled — `harbor check --live` in a terminal; refused under `CI`**; falsifier: `sh tests/deploy/live-verify/live-verify.test.sh`
-notifies: exit 1 + stdout, every line stamped
-red: the box differs from what the repo says works: the FAIL line names the check, and the fix line under it the command

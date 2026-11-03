@@ -4,7 +4,7 @@
 #                                      already copied, write status.json
 #   audit-collector.sh --checkpoint [DAY]    sign the store manifest for a closed UTC day (default: yesterday)
 #   audit-collector.sh --verify DAY          verify that day's checkpoint signature and that the store still matches it
-# Runs every 300 s as the _harborlog user from a root-owned copy (audit-collector-install.sh, launchd). It reads the
+# Runs every 300 s as the _harborlog user from a root-owned copy (collector-install.sh, launchd). It reads the
 # sources through an ACL the operator's uid could remove: that, an edit, a truncation or a gap is REPORTED in
 # status.json, never prevented (docs/design/telemetry.md, tier 2). Sources: HARBOR_AUDIT_COLLECTOR_SOURCES, a :-separated list of dirs and files (the
 # OBSERVABILITY dir); store: HARBOR_AUDIT_COLLECTOR_STORE.
@@ -105,7 +105,7 @@ checkpoint() { # <day>
   HARBOR_AUDIT_COLLECTOR_FULL=1 ingest   # every kept byte re-hashed before a day is signed: the fast path's backstop
   _cp="$STORE/checkpoints/$1.tsv"
   [ ! -e "$_cp" ] || { log_fail "a checkpoint for $1 already exists: one per day, never rewritten"; log_nofix "verify it: $0 --verify $1"; return 1; }
-  [ -f "$STORE/key/collector" ] || { log_fail "no signing key at $STORE/key/collector"; log_fix "sudo sh bin/audit-collector-install.sh"; return 1; }
+  [ -f "$STORE/key/collector" ] || { log_fail "no signing key at $STORE/key/collector"; log_fix "sudo sh bin/collector-install.sh"; return 1; }
   { printf '# harbor-collector checkpoint day=%s made=%s\n' "$1" "$(now)"; manifest; } > "$_cp"
   ssh-keygen -Y sign -q -f "$STORE/key/collector" -n "$NS" "$_cp" >/dev/null 2>&1 \
     || { rm -f "$_cp"; log_fail "ssh-keygen could not sign $_cp"; log_nofix "check $STORE/key"; return 1; }

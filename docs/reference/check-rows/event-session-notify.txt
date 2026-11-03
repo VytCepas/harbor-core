@@ -1,4 +1,0 @@
-watches: **a banner when a session needs you or is done** (harbor#1044): the preset in `contracts/event-rules.tsv` that runs `session-notify.sh` on `session.state` and acts on waiting-operator and done only
-schedule: **not scheduled: a rule of `event.dispatch`, on by deploy** (`#default` in `contracts/event-rules.tsv`; `event-dispatch.sh reconcile` installs it, harbor#1437). It fires on `session.state`, debounced 10 s per session, at most 30 an hour. On: `harbor event on --preset event.session-notify`. Off: `harbor event on --off event.session-notify`; falsifier: `sh tests/session/react/presets.test.sh`
-notifies: desktop banner naming the state and six characters of the session id, never a path or a message; a line in `~/.local/state/harbor/reactions.log`
-red: no banner when a session waits (sink suppressed or Focus on): delivery cannot be proven from inside the script. Disable: `harbor event on --off event.session-notify`

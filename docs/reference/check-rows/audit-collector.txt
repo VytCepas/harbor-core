@@ -1,4 +1,0 @@
-watches: **the second-uid copy of every observability stream** (harbor#1181 lane 5): `bin/audit-collector.sh`, run as `_harborlog` from a root-owned copy, appends each source's new bytes under `/Library/Application Support/Harbor/collector`, re-checks the bytes already copied, and signs a daily checkpoint (`ssh-keygen -Y`, namespace `harbor-collector`)
-schedule: **every 300 s and 04:00 daily, launchd system daemons `com.harbor.audit.collector` and `com.harbor.audit.collector-checkpoint`**, installed by the operator: `sudo sh bin/audit-collector-install.sh`; falsifier: `tests/audit/collector/collector.test.sh`
-notifies: its own `status.json` and `events.jsonl`, read by `audit.collector-health`
-red: a source was truncated, rewritten after it was copied, or became unreadable (the read ACL removed?). Disable: `sudo sh bin/audit-collector-install.sh --uninstall` (keeps the store and the user)

@@ -1,4 +1,0 @@
-watches: runs the ledger JUDGE off the session path over BOTH ledgers — guard decisions (what the floor decided about a call) and tool outcomes (what the call then did, harbor#465) — and leaves a line SessionStart reads
-schedule: 05:23 daily
-notifies: line for SessionStart; a red receipt files `check/audit.triage` in the findings store (contracts/finding.md)
-red: a guard is failing, or the same tool call has failed the same way in three sessions and each one found it independently
