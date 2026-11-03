@@ -129,6 +129,43 @@ t_eq "all stood down: pass, not ran" "rc=0 k=pass k_ran=false k_count=0 " "$(tal
 t_eq "half ran, half stood down: refused" "rc=1 k=fail k_ran=false k_count=4 " "$(tally g1 g4)"
 t_eq "a ran member with no count: refused, never summed as 0" "rc=1 k=fail k_ran=true k_count=4 " "$(tally g1 g6)"
 
+t_section "a docs-only changeset: stood-down suites tally as stood down, a missing or crashed one still fails"
+# CI's tally read a combined results file that was never written (the shards' results overflowed an env var),
+# so every suite of every group read "never ran". The tally was right to refuse those; these pin that it still
+# accepts a recorded stand-down and refuses a missing row, a crash and a missing file.
+R2="$T_TMP/repo2"; mkdir -p "$R2/tests/x" "$R2/contracts"
+for s in doc lint1 lint2; do printf '#!/bin/sh\necho "%s: 1 passed, 0 failed"\n' "$s" > "$R2/tests/x/$s.sh"; done
+printf '#!/bin/sh\necho crashing\nexit 1\n' > "$R2/tests/x/crash.sh"
+printf 'tests/x/%s.sh\n' doc lint1 lint2 crash > "$R2/contracts/suites.txt"
+LONG='src/lint/* bin/lint-* hooks/* fixtures/* contracts/* tests/lib/core.sh'
+printf 'tests/x/doc.sh tests/x/doc.sh docs/*\ntests/x/lint1.sh tests/x/lint1.sh %s\ntests/x/lint2.sh tests/x/lint2.sh %s\ntests/x/crash.sh tests/x/crash.sh docs/*\n' "$LONG" "$LONG" > "$R2/contracts/suite-paths.txt"
+run2() { HARBOR_SCOPE_ROOT="$R2" HARBOR_TEST_SUITE_TIMEOUT=60 sh "$SR" "$@" 2>&1; }
+tally2() { : > "$T_TMP/gho"; GITHUB_OUTPUT="$T_TMP/gho" HARBOR_SCOPE_ROOT="$R2" sh "$SR" --tally "$@" > "$T_TMP/tally.out" 2>&1; echo "rc=$? $(tr '\n' ' ' < "$T_TMP/gho")"; }
+export HARBOR_TEST_CHANGED='docs/a.md'
+O="$(run2 --select --shard 1/2 --results "$T_TMP/d1")"
+run2 --select --shard 2/2 --results "$T_TMP/d2" >/dev/null
+t_has "the log names the declaration the stand-down came from" "$O" "tests/x/lint1.sh stood down — no changed path matches [tests/x/lint1.sh src/lint/*"
+t_eq "the results row keeps the reason, not the declaration list (it rides an env var to the combine step)" \
+  "no changed path matches" "$(cat "$T_TMP/d1" "$T_TMP/d2" | awk -F '\t' '$5 == "tests/x/lint1.sh" { print $6 }')"
+run2 --combine "$T_TMP/dall" "$T_TMP/d1" "$T_TMP/d2" >/dev/null
+t_eq "the shards combine, a group that stood down together passes as not ran" "rc=0 g=pass g_ran=false g_count=0 " "$(tally2 "$T_TMP/dall" g tests/x/lint1.sh tests/x/lint2.sh)"
+grep -v 'tests/x/lint2.sh' "$T_TMP/dall" > "$T_TMP/dmiss"
+t_eq "NEGATIVE: a member with no row is still refused" "rc=1 g=fail g_ran=false g_count=0 " "$(tally2 "$T_TMP/dmiss" g tests/x/lint1.sh tests/x/lint2.sh)"
+t_has "...as never ran" "$(cat "$T_TMP/tally.out")" "tests/x/lint2.sh has no result"
+t_eq "NEGATIVE: a selected suite that crashed is still refused" "rc=1 g=fail g_ran=true g_count=1 " "$(tally2 "$T_TMP/dall" g tests/x/doc.sh tests/x/crash.sh)"
+t_eq "NEGATIVE: no results file at all is refused, once" "rc=1 g=fail g_ran=false g_count=0 " "$(tally2 "$T_TMP/none.tsv" g tests/x/lint1.sh tests/x/lint2.sh)"
+t_eq "...with one line naming the missing file, not a line per suite" "1" "$(grep -c 'FAIL' "$T_TMP/tally.out")"
+t_has "...that points at the combine step" "$(cat "$T_TMP/tally.out")" "no results file at $T_TMP/none.tsv"
+
+# The results of the repo's own docs-only changeset must fit one env var (Linux caps a single string at 128 KiB).
+# Measured 138168 bytes of base64 for shard 1 on 2026-11-03, which started no step at all.
+HARBOR_TEST_CHANGED="$(printf 'docs/design/trio-standard.md\ndocs/context-map.md')" sh "$SR" --plan --select --shard 1/2 --results "$T_TMP/real1" >/dev/null 2>&1
+BYTES="$(base64 < "$T_TMP/real1" | tr -d '\n' | wc -c | tr -d ' ')"
+t_eq "the real repo's docs-only shard-1 results, base64, stay under 100000 bytes (limit 131072)" yes "$([ "$BYTES" -lt 100000 ] && echo yes || echo "no: $BYTES")"
+t_exit "...and ride an env var into a new process, as the combine step's do" 0 env "R1=$(base64 < "$T_TMP/real1" | tr -d '\n')" sh -c :
+t_eq "...with a skip row for the suites that stood down" yes "$([ "$(grep -c '^skip' "$T_TMP/real1")" -gt 100 ] && echo yes || echo no)"
+unset HARBOR_TEST_CHANGED
+
 t_section "--shard K/N: the selection split by recorded time, every suite in exactly one shard (harbor#1172)"
 for s in a b c d e u; do mk "$s"; done; man a b c d e u
 printf '# generated\n50\ttests/x/a.sh\n40\ttests/x/b.sh\n30\ttests/x/c.sh\n20\ttests/x/d.sh\n10\ttests/x/e.sh\n' > "$R/tests/suite-durations.tsv"

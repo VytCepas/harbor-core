@@ -153,6 +153,13 @@ if [ "${1:-}" = "--tally" ]; then
   _res="$2"; _key="$3"; shift 3
   log_head "tally $_key"
   _v=pass; _ran=""; _tot=0; _cnt=yes
+  # No results file at all is the combine step's failure, not N suites that "never ran": say so, once.
+  if [ ! -f "$_res" ]; then
+    log_fail "$_key: no results file at $_res — the step that combines the shards' results did not produce it"
+    log_nofix "the combine step of the pool job: read its own log first"
+    if [ -n "${GITHUB_OUTPUT:-}" ]; then printf '%s=fail\n%s_ran=false\n%s_count=0\n' "$_key" "$_key" "$_key" >> "$GITHUB_OUTPUT"; fi
+    log_end; exit $?
+  fi
   for _s in "$@"; do
     _row="$(awk -F '\t' -v s="$_s" '$5 == s { print $1 "\t" $4; exit }' "$_res" 2>/dev/null || :)"
     case "$_row" in
@@ -320,7 +327,11 @@ if [ "$SEL" = 1 ]; then
     log_nofix "bin/test-suite-select.sh"; log_end; exit 1
   fi
   awk -v cf="$WORK/cand" 'FILENAME == cf { c[$1] = 1; next } $1 == "SKIP" && ($2 in c) { s = $2; $1 = ""; $2 = ""; sub(/^ +/, ""); print "skip\t0\t-\t-\t" s "\t" $0 }' \
-    "$WORK/cand" "$WORK/verdicts" >> "$RES"
+    "$WORK/cand" "$WORK/verdicts" > "$WORK/skips"
+  # The results row keeps the reason up to the declaration list ("no changed path matches [bin/* ...]"): the
+  # list is in contracts/suite-paths.txt and the log, and 400+ copies of it made a docs-only shard's results
+  # 138 KB of base64, over the 128 KiB one env var can carry: the combine step never started (docs-only run, 2026-11-03).
+  awk -F '\t' -v OFS='\t' '{ sub(/ \[.*$/, "", $6); print }' "$WORK/skips" >> "$RES"
   awk -F '\t' -v rf="$RES" 'FILENAME == rf { d[$5] = 1; next } !($1 in d)' "$RES" "$WORK/cand" > "$WORK/next"; mv "$WORK/next" "$WORK/cand"
 fi
 
@@ -345,7 +356,7 @@ if [ -n "$SK" ]; then
   if [ "$SK" != 1 ]; then
     _ns="$(awk -F '\t' '$1 == "skip"' "$RES" | grep -c . || :)"
     [ "$_ns" = 0 ] || SHNOTE="$SHNOTE; $_ns stood down, reported by shard 1"
-    awk -F '\t' '$1 != "skip"' "$RES" > "$WORK/next"; cat "$WORK/next" > "$RES"
+    awk -F '\t' '$1 != "skip"' "$RES" > "$WORK/next"; cat "$WORK/next" > "$RES"; : > "$WORK/skips"
   fi
 fi
 
@@ -375,7 +386,7 @@ log_head "run"
 [ -z "$CNOTE" ] || log_note "cache $(printf '%s' "$CNOTE" | head -1)"
 [ ! -s "$WORK/hits" ] || while IFS="$TAB" read -r _v _secs _x _y _s _why; do log_ok "cached $_s — $_why"; done < "$WORK/hits"
 log_note "$NQ suite(s), $JOBS at a time, longest first by ${DUR#"$ROOT"/}$([ -f "$DUR" ] || printf ' (absent: manifest order)')"
-_skips="$(awk -F '\t' '$1 == "skip"' "$RES")"
+_skips="$(cat "$WORK/skips" 2>/dev/null || :)"   # full reasons; the results rows carry the short form
 [ -z "$_skips" ] || printf '%s\n' "$_skips" | while IFS="$TAB" read -r _v _x _y _z _s _why; do log_skip "$_s stood down — $_why"; done
 
 # ── run: xargs keeps JOBS workers busy in queue order; this loop reports as they finish ──
