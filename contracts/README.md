@@ -76,7 +76,6 @@ hand-kept account of direction and status; this table is what exists.
 | [env.tsv](./env.tsv) | tsv | env.tsv (harbor#1431) — every environment variable harbor reads: its kind, default, meaning and owner. |
 | [event-kinds.tsv](./event-kinds.tsv) | tsv | event-kinds.tsv (harbor#1367) — every kind on the local event bus: its shape, its subject, and the file that emits it. |
 | [event-rules.tsv](./event-rules.tsv) | tsv | event-rules.tsv (harbor#1044) — the `harbor event on` rules Harbor ships as presets. |
-| [family-entries.tsv](./family-entries.tsv) | tsv | family-entries.tsv (harbor#1245) — a file of a family that module.private-use would take for private, declared its public entry. |
 | [finding.md](./finding.md) | md | CONTRACT — a finding: its key, its digest, its age, and a person's disposition |
 | [fleet-controller-json.md](./fleet-controller-json.md) | md | --json` output seam (L2 Fleet → L0 Helm) — FREEZE before Helm consumes it |
 | [fresh-checks.tsv](./fresh-checks.tsv) | tsv | fresh-checks.tsv (harbor#1287) — the generated files bin/doc-fresh-verify.sh proves current, each in seconds. |

@@ -30,7 +30,6 @@ set -eu
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 . "$HERE/library-log.sh"
 log_init policy-check
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh (harbor#1392)
 LOG_FD=2   # stdout carries the answer (--ask, --why, --gen); findings and the summary go to stderr
 ROOT="$(CDPATH='' cd -- "$HERE/.." && pwd)"
 TAB="$(printf '\t')"

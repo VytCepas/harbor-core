@@ -100,6 +100,14 @@
 {"id":"ag1018-rv-api-get-merge","rule":"merge-raw","want":"allow","cmd":"gh api repos/o/r/pulls/12/merge"}
 {"id":"ag1018-rv-graphql-query","rule":"merge-raw","want":"allow","cmd":"gh api graphql -f query='query{viewer{login}}'"}
 {"id":"ag1018-rv-refs-get","rule":"merge-raw","want":"allow","cmd":"gh api repos/o/r/git/refs/heads/main"}
+{"id":"fp-refs-delete","rule":"merge-raw","want":"allow","cmd":"/opt/homebrew/bin/gh api -X DELETE repos/VytCepas/project-init/git/refs/heads/feat/doc-shape","why":"deleting a branch is not a merge"}
+{"id":"fp-refs-delete-method-flag","rule":"merge-raw","want":"allow","cmd":"gh api --method DELETE repos/o/r/git/refs/heads/feat/x"}
+{"id":"fp-refs-delete-lower","rule":"merge-raw","want":"allow","cmd":"gh api -X delete repos/o/r/git/refs/tags/v1"}
+{"id":"fp-refs-post","rule":"merge-raw","want":"block","cmd":"gh api -X POST repos/o/r/git/refs -f ref=refs/heads/main -f sha=abc","why":"only DELETE is excused; a ref write can move a branch"}
+{"id":"fp-refs-put","rule":"merge-raw","want":"block","cmd":"gh api -X PUT repos/o/r/git/refs/heads/main -f sha=abc"}
+{"id":"fp-refs-fields-no-method","rule":"merge-raw","want":"block","cmd":"gh api repos/o/r/git/refs/heads/main -f sha=abc -f force=true","why":"fields imply POST"}
+{"id":"fp-refs-delete-then-merge","rule":"merge-raw","want":"block","cmd":"gh api -X DELETE repos/o/r/git/refs/heads/x && gh pr merge 5","why":"a delete does not excuse the segment after it"}
+{"id":"fp-pulls-merge-delete","rule":"merge-raw","want":"block","cmd":"gh api -X DELETE repos/o/r/pulls/12/merge","why":"the merge endpoint stays guarded for every non-GET"}
 {"id":"ag1018-rv-curl-get","rule":"merge-raw","want":"allow","cmd":"curl https://api.github.com/repos/o/r"}
 {"id":"ag1018-rv-alias-list","rule":"merge-raw","want":"allow","cmd":"gh alias list"}
 {"id":"ag1018-p29-apply-eq","rule":"deploy-raw","want":"block","cmd":"sh bin/deploy.sh --apply=1 --live","why":"review p29"}

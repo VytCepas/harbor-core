@@ -24,7 +24,6 @@ for _a in "$@"; do
     *) LOG_FD=2; log_fail "unknown argument $_a"; log_fix "sh $0 --help"; exit 2 ;;
   esac
 done
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh (harbor#1392)
 [ "$STATE$STATUS" != 11 ] || { LOG_FD=2; log_fail "--state and --status are two different reads"; log_fix "sh $0 --help"; exit 2; }
 ID=drift.confinement; P="[check:$ID]"
 [ "$STATUS" = 0 ] || status_init "$ID" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}" || exit 3
