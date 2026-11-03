@@ -12,7 +12,15 @@ cat > "$T_BIN/launchctl" <<STUB
 #!/bin/sh
 echo "\$*" >> "$CALLS"
 case "\$1" in
-  print) l="\${2##*/}"; [ -f "$T_TMP/pid.\$l" ] || exit 113; printf 'gui/501/%s = {\n\tpid = %s\n}\n' "\$l" "\$(cat "$T_TMP/pid.\$l")" ;;
+  bootout) l="\${2##*/}"; rm -f "$T_TMP/loaded.\$l"; [ ! -f "$T_TMP/dying.\$l" ] || : > "$T_TMP/booted.\$l" ;;
+  bootstrap) l="\$(sed -n 's|.*<key>Label</key><string>\([^<]*\)</string>.*|\1|p' "\$3")"
+    if [ -f "$T_TMP/booted.\$l" ] && [ "\$(cat "$T_TMP/dying.\$l")" -gt 0 ]; then exit 5; fi   # launchd: still unloading
+    if [ -f "$T_TMP/refuse1.\$l" ]; then rm -f "$T_TMP/refuse1.\$l"; exit 5; fi
+    : > "$T_TMP/loaded.\$l" ;;
+  print) l="\${2##*/}"
+    if [ -f "$T_TMP/booted.\$l" ] && [ "\$(cat "$T_TMP/dying.\$l")" -gt 0 ]; then echo \$((\$(cat "$T_TMP/dying.\$l") - 1)) > "$T_TMP/dying.\$l"; echo "gui/501/\$l = {"; echo "}"; exit 0; fi
+    [ -f "$T_TMP/loaded.\$l" ] && [ ! -f "$T_TMP/pid.\$l" ] && { echo "gui/501/\$l = {"; echo "}"; exit 0; }   # loaded, not running
+    [ -f "$T_TMP/pid.\$l" ] || exit 113; printf 'gui/501/%s = {\n\tpid = %s\n}\n' "\$l" "\$(cat "$T_TMP/pid.\$l")" ;;
   kickstart) l="\${3##*/}"; kill "\$(cat "$T_TMP/pid.\$l")" 2>/dev/null; sleep 300 >/dev/null 2>&1 & echo \$! > "$T_TMP/pid.\$l" ;;
 esac
 exit 0
@@ -85,6 +93,46 @@ t_hasnt "...with no placeholder left" "$(cat "$LA/com.harbor.event.dispatch.plis
 t_eq "...and bootstrapped" 1 "$(grep -c '^bootstrap gui/[0-9]* .*com.harbor.event.dispatch.plist$' "$CALLS")"
 : > "$CALLS"; sh "$TOOL" apply "$SNAP" > "$T_TMP/o" 2>&1
 t_eq "a second apply installs and loads nothing" 0 "$(grep -c 'bootstrap\|bootout' "$CALLS")"
+
+t_section "a running KeepAlive job is gone before it is bootstrapped again (2026-11-03: bootout is asynchronous)"
+EV=com.harbor.event.dispatch
+rm -f "$LA/$EV.plist"; echo 2 > "$T_TMP/dying.$EV"; : > "$CALLS"
+sh "$TOOL" apply "$SNAP" > "$T_TMP/o" 2>&1; t_eq "apply exits 0 though the job was still unloading for 2 polls" 0 "$?"
+t_has "...and says it installed and loaded the plist" "$(cat "$T_TMP/o")" "installed and loaded $EV.plist"
+t_eq "...the job was polled until launchd dropped it" 0 "$(cat "$T_TMP/dying.$EV")"
+t_eq "...and bootstrapped once" 1 "$(grep -c "^bootstrap " "$CALLS")"
+rm -f "$LA/$EV.plist" "$T_TMP/booted.$EV"; echo 0 > "$T_TMP/dying.$EV"; : > "$T_TMP/refuse1.$EV"; : > "$CALLS"
+sh "$TOOL" apply "$SNAP" > "$T_TMP/o" 2>&1; t_eq "a first bootstrap that is refused is retried once: exit 0" 0 "$?"
+t_eq "...two bootstraps" 2 "$(grep -c "^bootstrap " "$CALLS")"
+rm -f "$LA/$EV.plist" "$T_TMP/booted.$EV"; echo 99 > "$T_TMP/dying.$EV"; : > "$CALLS"
+sh "$TOOL" apply "$SNAP" > "$T_TMP/o" 2>&1; _rc=$?
+t_eq "a job that never unloads still fails, loudly: exit 1" 1 "$_rc"
+t_has "...with the command to run" "$(cat "$T_TMP/o")" "bootstrap gui/"
+rm -f "$T_TMP/dying.$EV" "$T_TMP/booted.$EV"
+
+t_section "a marked plist that is installed and unchanged but not loaded is loaded (2026-11-03: a refused bootstrap left it down)"
+rm -f "$LA/$EV.plist" "$T_TMP/loaded.$EV"; sh "$TOOL" apply "$SNAP" > "$T_TMP/o" 2>&1
+t_eq "the first apply installs and loads it" yes "$([ -f "$T_TMP/loaded.$EV" ] && echo yes || echo no)"
+rm -f "$T_TMP/loaded.$EV"; : > "$CALLS"          # the plist is on disk, byte-identical to its rendering; launchd does not have it
+sh "$TOOL" plan "$SNAP" > "$T_TMP/o" 2>&1
+t_has "plan names the load" "$(cat "$T_TMP/o")" "would load $EV"
+t_eq "...and a plan calls no bootstrap" 0 "$(grep -c '^bootstrap' "$CALLS")"
+sh "$TOOL" apply "$SNAP" > "$T_TMP/o" 2>&1; t_eq "apply exits 0" 0 "$?"
+t_eq "...and bootstraps the unchanged, unloaded plist" 1 "$(grep -c "^bootstrap gui/[0-9]* .*$EV.plist\$" "$CALLS")"
+t_eq "...so launchd has it" yes "$([ -f "$T_TMP/loaded.$EV" ] && echo yes || echo no)"
+: > "$CALLS"; sh "$TOOL" apply "$SNAP" > "$T_TMP/o" 2>&1
+t_eq "a loaded plist is left alone" 0 "$(grep -c 'bootstrap\|bootout' "$CALLS")"
+
+t_section "verify: an installed KeepAlive or RunAtLoad plist that launchd does not have is red (2026-11-03)"
+sh "$TOOL" verify > "$T_TMP/o" 2>&1; t_eq "loaded: verify is green" 0 "$?"
+rm -f "$T_TMP/loaded.$EV"
+sh "$TOOL" verify > "$T_TMP/o" 2>&1; _rc=$?
+t_eq "installed, not loaded: exit 1" 1 "$_rc"
+t_has "...naming the job" "$(cat "$T_TMP/o")" "$EV is installed but not loaded"
+t_has "...and the bootstrap command" "$(cat "$T_TMP/o")" "launchctl bootstrap gui/"
+: > "$T_TMP/loaded.$EV"; sh "$TOOL" verify > "$T_TMP/o" 2>&1; t_eq "loaded again: green" 0 "$?"
+rm -f "$T_TMP/loaded.$EV" "$LA/$EV.plist"; sh "$TOOL" verify > "$T_TMP/o" 2>&1
+t_eq "no plist installed: nothing to be loaded, green" 0 "$?"
 
 t_section "usage"
 t_exit "no mode is a usage error" 2 sh "$TOOL"

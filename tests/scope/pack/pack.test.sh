@@ -301,6 +301,72 @@ TG2="$T_TMP/tg-tm2"; mkdir -p "$TG2/bin" "$TG2/skills"; listed '"tm"'; pk instal
 tp t2 "widgetsys system"; listed '"t2"'
 t_has "a term another installed pack declares is refused, naming it" "$(pk install t2 --apply --dir "$TG2" 2>&1)" "declared by the installed pack tm.tsv"
 
+
+t_section "a case-only rename is the pack's own file on a case-insensitive filesystem (2026-11-03: LENSES/R2 -> lenses/r2)"
+# CI is case-sensitive: the APFS collision is simulated by leaving the old spelling AND the new one in the target,
+# which is what `[ -e new ]` sees when both names are one file.
+mkpack cr; mkdir -p "$PW/cr/harbor-pack/skills/demo/LENSES"; printf 'old\n' > "$PW/cr/harbor-pack/skills/demo/LENSES/R2-lens.md"
+G "$PW/cr" add -A; G "$PW/cr" commit -q -m lenses; listed '"cr"'
+TGR="$T_TMP/tg-cr"; mkdir -p "$TGR/bin" "$TGR/skills"
+t_exit "the pack installs with the old spelling" 0 pk install cr --apply --dir "$TGR"
+mkdir -p "$PW/cr/harbor-pack/skills/demo/lenses"
+G "$PW/cr" mv harbor-pack/skills/demo/LENSES/R2-lens.md harbor-pack/skills/demo/lenses/r2-lens.md; printf 'new\n' > "$PW/cr/harbor-pack/skills/demo/lenses/r2-lens.md"
+G "$PW/cr" add -A; G "$PW/cr" commit -q -m rename
+mkdir -p "$TGR/skills/demo/lenses"; [ -e "$TGR/skills/demo/lenses/r2-lens.md" ] || cp "$TGR/skills/demo/LENSES/R2-lens.md" "$TGR/skills/demo/lenses/r2-lens.md"
+t_exit "a dry run of the rename is not refused" 0 pk install cr --dir "$TGR"
+t_exit "the rename installs" 0 pk install cr --apply --dir "$TGR"
+t_eq "the new spelling is on disk with the new bytes" "new" "$(cat "$TGR/skills/demo/lenses/r2-lens.md")"
+t_eq "the old spelling is gone" "no" "$(ls "$TGR/skills/demo/lenses" | grep -qx 'R2-lens.md' && echo yes || echo no)"
+t_eq "the old directory spelling is gone" "no" "$(ls "$TGR/skills/demo" | grep -qx LENSES && echo yes || echo no)"
+t_has "the manifest names the new spelling" "$(cat "$TGR/.harbor-packs/cr.tsv")" "F	skills/demo/lenses/r2-lens.md"
+t_hasnt "...and not the old one" "$(cat "$TGR/.harbor-packs/cr.tsv")" "LENSES"
+t_exit "remove then takes the new spelling" 0 pk remove cr --apply --dir "$TGR"
+t_eq "...leaving no lenses file behind" "no" "$(find "$TGR/skills" -iname 'r2-lens.md' | grep -q . && echo yes || echo no)"
+# a genuinely foreign file is still refused, case-variant or not
+mkpack cf; mkdir -p "$PW/cf/harbor-pack/skills/demo/lenses"; printf 'p\n' > "$PW/cf/harbor-pack/skills/demo/lenses/other.md"
+G "$PW/cf" add -A; G "$PW/cf" commit -q -m e; listed '"cf"'
+TGF="$T_TMP/tg-cf"; mkdir -p "$TGF/bin" "$TGF/skills/demo/lenses"; printf 'the operator\n' > "$TGF/skills/demo/lenses/other.md"
+_o="$(pk install cf --apply --dir "$TGF" 2>&1)"; _rc=$?
+t_eq "a foreign file at the target path: exit 1" 1 "$_rc"
+t_has "...refused as not this pack's" "$_o" "skills/demo/lenses/other.md already exists in the target and is not this pack's"
+t_eq "...and the operator's file is untouched" "the operator" "$(cat "$TGF/skills/demo/lenses/other.md")"
+
+t_section "every top-level entry a pack install writes is in deploy's SNAP_SET, so a restore takes it back (2026-11-03)"
+# A restore that rolled back .harbor-packs/<id>.tsv but not conf-keys.d/<id>.txt left the file behind, and the next
+# install refused it as not this pack's. SNAP_SET is covered here, rather than install accepting identical bytes, so
+# "never overwrite what this pack did not write" keeps no exception.
+tp sn "snsys system"; printf 'sn_project\n' > "$PW/sn/harbor-pack/conf-keys.txt"; G "$PW/sn" add -A; G "$PW/sn" commit -q -m k
+listed '"sn"'; TGS="$T_TMP/tg-sn"; mkdir -p "$TGS"
+t_exit "a pack with every kind of entry installs" 0 pk install sn --apply --dir "$TGS"
+SNAPSET="$(sed -n "s/^SNAP_SET='\(.*\)'$/\1/p" "$T_ROOT/bin/deploy.sh")"
+_unc=''
+for _e in $(ls -A "$TGS"); do
+  _hit=0; set -f
+  for _g in $SNAPSET; do case "$_e" in $_g) _hit=1 ;; esac; done
+  set +f
+  [ "$_hit" -eq 1 ] || _unc="$_unc $_e"
+done
+t_eq "...and none lies outside SNAP_SET" "" "$_unc"
+t_has "...the check saw conf-keys.d and terms.d" "$(ls -A "$TGS")" "terms.d"
+
+t_section "remove refuses while the private harbor.toml sets a key only this pack declares (2026-11-03 deadlock)"
+listed '"ck"'; TGK="$T_TMP/tg-ckrm"; mkdir -p "$TGK/bin" "$TGK/skills"
+pk install ck --apply --dir "$TGK" >/dev/null 2>&1; BK="$(snap "$TGK")"
+printf 'packs = ["ck"]\nck_project = "p1"\n' > "$PRIV/harbor.toml"
+_o="$(pk remove ck --apply --dir "$TGK" 2>&1)"; _rc=$?
+t_eq "remove: exit 1" 1 "$_rc"
+t_has "...names the key" "$_o" "ck_project"
+t_has "...names harbor.toml and the fix" "$_o" "delete the line"
+t_eq "...and the target is untouched" "$BK" "$(snap "$TGK")"
+t_exit "a dry run refuses too" 1 pk remove ck --dir "$TGK"
+printf 'packs = ["ck"]\n# ck_project = "p1"\n' > "$PRIV/harbor.toml"
+t_exit "a commented-out key does not block remove" 0 pk remove ck --apply --dir "$TGK"
+listed '"ck"'; pk install ck --apply --dir "$TGK" >/dev/null 2>&1
+printf 'packs = ["ck"]\nck_project = "p1"\n' > "$PRIV/harbor.toml"
+mkdir -p "$TGK/conf-keys.d"; printf 'ck_project\n' > "$TGK/conf-keys.d/other.txt"
+t_exit "a key another installed pack also declares does not block remove" 0 pk remove ck --apply --dir "$TGK"
+listed '"ck"'
+
 t_exit "no target is a usage error" 2 pk list
 t_exit "the real dispatcher routes harbor pack" 2 env HARBOR_SCOPE_BIN="$T_ROOT/bin" sh "$T_ROOT/bin/harbor" pack
 t_done

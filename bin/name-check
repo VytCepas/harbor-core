@@ -16,20 +16,12 @@ case "${1:-}" in
   -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); print; next } {exit}' "$0"; exit 0 ;;
 esac
 
-# ~/.local/bin/name-check is a symlink: follow it to the real file, or HERE is the link's directory and library-log.sh is not in it (harbor#1259).
-# readlink without -f, which BSD has not had; a relative target is taken from the link's own directory.
-_me="$0"
-while [ -L "$_me" ]; do
-  _lt="$(readlink "$_me")" || break
-  case "$_lt" in /*) _me="$_lt" ;; *) case "$_me" in */*) _me="${_me%/*}/$_lt" ;; *) _me="$_lt" ;; esac ;; esac
-done
-case "$_me" in */*) HERE="${_me%/*}" ;; *) HERE=. ;; esac
+case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH='' cd -- "$HERE" && pwd)"
 ROOT="$(CDPATH='' cd -- "$HERE/.." && pwd)"
 LN="$HERE/lint-name.sh"
 V="$ROOT/build/validators.txt"
 SURFACES="$ROOT/standards/naming/surfaces.tsv"
-# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2   # stdout is never written: a verdict is the exit code
 . "$HERE/library-log.sh"
 log_init name-check

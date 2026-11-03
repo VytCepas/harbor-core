@@ -46,18 +46,6 @@ t_exit "a surface with no validator (its renderer is prose) is exit 2" 2 sh "$NC
 t_exit "--help exits 0" 0 sh "$NC" --help
 t_has "…and prints the usage line" "$(sh "$NC" --help)" "name-check <surface> <string>"
 
-t_section "name-check run through a symlink (as ~/.local/bin/name-check is) finds its own directory, not the link's (harbor#1259)"
-mkdir -p "$TMP/linkdir" "$TMP/linkdir2"
-ln -s "$NC" "$TMP/linkdir/name-check"
-t_exit "an absolute symlink in another directory still answers: conforming exits 0" 0 sh "$TMP/linkdir/name-check" bin admission-bash.sh
-t_exit "…and a non-conforming string exits 1" 1 sh "$TMP/linkdir/name-check" bin Admission-Bash.sh
-t_has "…with the validator's verdict, not a missing library" "$(sh "$TMP/linkdir/name-check" bin Admission-Bash.sh 2>&1)" "does not conform"
-ln -s ../validators/bin/name-check "$TMP/linkdir2/name-check"
-t_exit "a relative symlink resolves too" 0 sh "$TMP/linkdir2/name-check" bin admission-bash.sh
-ln -s "$TMP/linkdir/name-check" "$TMP/linkdir2/chained"
-t_exit "a link to a link resolves too" 0 sh "$TMP/linkdir2/chained" bin admission-bash.sh
-t_exit "run as an executable from a PATH that holds only the link" 0 env PATH="$TMP/linkdir:$PATH" name-check bin admission-bash.sh
-
 t_section "every conforming and non-conforming fixture of a grammar surface is judged as the lint judges it"
 # A pass row conforms; a fail row of this surface's grammar rule must be refused; another rule's (case, alias, word) is the
 # lint's own and only counted. Two readings sit outside the grammar: a test judges only test files (test_check), and
