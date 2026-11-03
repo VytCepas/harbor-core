@@ -98,11 +98,14 @@ suggest() { # <abs>
 }
 
 deny() { # <rule> <shape> <what>
-  # Shadow (harbor#482): recorded, not refused — floor_block's contract, for a JSON-verdict guard.
-  if [ "${HARBOR_ADMISSION_SHADOW:-0}" = 1 ]; then
-    { floor_log_decision deliverables shadow "$1.$2" 2>/dev/null || :; } 2>/dev/null || :
-    exit 0
-  fi
+  # The rule's row decides (harbor#1030); shadow (harbor#482) and warn are recorded, not refused — floor_block's contract, for a
+  # JSON-verdict guard. No decision function beside the guard: a shadow session shadows, otherwise the rule denies.
+  if floor_decide deliverables "$1"; then _dv="$FLOOR_VERDICT"; elif [ "${HARBOR_ADMISSION_SHADOW:-0}" = 1 ]; then _dv=shadow; else _dv=block; fi
+  case "$_dv" in
+    shadow|warn)
+      { floor_log_decision deliverables "$( [ "$_dv" = warn ] && echo advise || echo shadow )" "$1.$2" 2>/dev/null || :; } 2>/dev/null || :
+      exit 0 ;;
+  esac
   _msg="$3 belongs in a deliverables folder, not loose in $(printf '%s' "${LOOSE_ABS%/*}" | sed "s#^$HOMEP#~#"). Write it to ${WANT} instead — one dated folder per deliverable, so its siblings (source, charts, screenshots) have somewhere to live. Then open it and hand over the file:// link. If this file genuinely belongs where it is, say so: the operator can put it there themselves from their own terminal or with a \`!\` command, neither of which is a tool call."
   printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":%s}}\n' \
     "$(printf '%s' "$_msg" | "$FLOOR_JQ" -Rs .)"

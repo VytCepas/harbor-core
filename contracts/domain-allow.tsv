@@ -59,3 +59,6 @@ docs/explanation/code-cases/bin-admission-cloud.md	gtm	moved verbatim from bin/a
 docs/explanation/code-cases/bin-library-admission.md	bq	moved verbatim from bin/library-admission.sh, which is allowed above (harbor#1392)
 docs/explanation/code-cases/bin-prod-guard-ambient.md	bq	moved verbatim from bin/prod-guard-ambient.sh, which is allowed above (harbor#1392)
 docs/explanation/code-cases/bin-prod-guard-install.md	bq	moved verbatim from bin/prod-guard-install.sh, which is allowed above (harbor#1392)
+standards/naming/controls.tsv	gtm	the register row of the cloud guard rule id cloud-gtm-version, which the guard files its refusal under (harbor#1030)
+vendor/naming/registry/controls.tsv	gtm	the vendored copy of standards/naming/controls.tsv, byte for byte (bin/standard-vendor.sh); same reason as that row
+contracts/confinement-coverage.tsv	gtm	the coverage row of the same rule id: it names every admission row
