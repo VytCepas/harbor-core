@@ -5,7 +5,8 @@
 #   sh deploy-launchd-sync.sh plan <file>        a dry run of `apply`: what would be installed and restarted
 #   sh deploy-launchd-sync.sh apply <file>       after the install: install the marked plists that are missing or differ,
 #                                                restart every RUNNING job whose bytes changed since the snapshot (and only those)
-#   sh deploy-launchd-sync.sh verify             read-only: a job still running a script older than its installed copy is red
+#   sh deploy-launchd-sync.sh verify             read-only: a job still running a script older than its installed copy is red;
+#                                                an enabled job launchd does not have is red, one the operator disabled is a note
 #
 # WHY. A deploy replaced event-dispatch.sh and never restarted the follower, which ran a week-old copy and then refused
 # every reaction (2026-10-25..11-02, check id event.dispatch). A job is "installed" when ~/Library/LaunchAgents holds a
@@ -32,9 +33,9 @@ STATE="$HOME/.local/state/harbor"; LEDGER="$STATE/launchd-run.tsv"
 UID_="$(id -u)"
 MARK='harbor:deploy-installs'
 
-usage() { sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+usage() { sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 [ $# -ge 1 ] || usage
-case "$1" in -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
+case "$1" in -h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
 MODE="$1"; ARG="${2-}"
 case "$MODE" in snapshot|plan|apply) [ -n "$ARG" ] || usage ;; verify) ;; *) usage ;; esac
 
@@ -82,6 +83,8 @@ reload_job() {
 # is_loaded <label>: launchd has the job (running or not). wants_loaded <plist>: it asks to be started, by KeepAlive or RunAtLoad.
 is_loaded() { launchctl print "gui/$UID_/$1" >/dev/null 2>&1; }
 wants_loaded() { grep -Eq '<key>KeepAlive</key>|<key>RunAtLoad</key>[[:space:]]*<true/>' "$1"; }
+# is_disabled <label>: the operator turned the label off (`launchctl print-disabled` lists `"<label>" => disabled`), harbor#1460.
+is_disabled() { launchctl print-disabled "gui/$UID_" 2>/dev/null | grep -Fq "\"$1\" => disabled"; }
 # pid_of <label>: the job's pid, or nothing when it is not running.
 pid_of() { launchctl print "gui/$UID_/$1" 2>/dev/null | sed -n 's/^[[:space:]]*pid = \([0-9][0-9]*\)$/\1/p' | head -1; }
 # start_of <pid>: the process start as an epoch, from ps elapsed time ([[dd-]hh:]mm:ss).
@@ -156,6 +159,7 @@ verify)
   for _p in $(installed_plists); do
     _l="$(plist_label "$_p")"; [ -n "$_l" ] || continue
     if wants_loaded "$_p" && ! is_loaded "$_l"; then
+      if is_disabled "$_l"; then log_note "$ID $_l is disabled by the operator: not loaded on purpose"; continue; fi
       log_fail "$ID $_l is installed but not loaded: launchd is not running it"
       log_fix "launchctl bootstrap gui/$UID_ $_p   (or: sh bin/deploy.sh --apply --live)"; continue
     fi

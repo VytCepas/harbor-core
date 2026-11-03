@@ -140,7 +140,7 @@ direct `gh` call lacks, so it is not checked there.
   wall is branch protection, above.
   - `gh pr merge`, in any argument order, and a `gh alias set` whose expansion merges, calls the API or pushes.
   - `gh api` with a write method (`-X`/`--method`, any case and spelling, or fields) on `pulls/N/merge` (with `?…` or a
-    trailing `/`), `merges`, `git/refs/…` or `repos/o/r`. Also `mergePullRequest`, `enablePullRequestAutoMerge`,
+    trailing `/`), `merges`, `git/refs/…` (a `DELETE` of a ref is not a merge and passes) or `repos/o/r`. Also `mergePullRequest`, `enablePullRequestAutoMerge`,
     `mergeBranch`, `updateRef(s)`, `createCommitOnBranch`, and a graphql query read from a file.
   - `curl`, `wget`, `http` or `xh` writing to GitHub's REST API host.
   - `gh repo edit --default-branch`.

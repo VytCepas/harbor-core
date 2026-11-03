@@ -820,7 +820,8 @@ function judge(s,   n, w, i, j, p, k, prog, nx, redir, put) {
       if (meth == "" && fields) meth = "POST"
       if (ep ~ /(^|\/)pulls\/[0-9]+\/merge$/ && meth != "" && meth != "GET") { print "MERGE"; return }
       if (ep ~ /(^|\/)merges$/) { print "MERGE"; return }
-      if (ep ~ /(^|\/)git\/refs(\/|$)/ && meth != "" && meth != "GET") { print "MERGE"; return }
+      # a ref DELETE removes a branch or tag and moves none: not a merge; gh api has no allow rule, so the classifier still judges it
+      if (ep ~ /(^|\/)git\/refs(\/|$)/ && meth != "" && meth != "GET" && meth != "DELETE") { print "MERGE"; return }
       if (ep ~ /^repos\/[^\/]+\/[^\/]+$/ && meth != "" && meth != "GET") { print "MERGE"; return } }
     return }
   if (prog ~ /^(curl|wget|http|https|xh)$/) {

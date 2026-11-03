@@ -21,6 +21,7 @@ case "\$1" in
     if [ -f "$T_TMP/booted.\$l" ] && [ "\$(cat "$T_TMP/dying.\$l")" -gt 0 ]; then echo \$((\$(cat "$T_TMP/dying.\$l") - 1)) > "$T_TMP/dying.\$l"; echo "gui/501/\$l = {"; echo "}"; exit 0; fi
     [ -f "$T_TMP/loaded.\$l" ] && [ ! -f "$T_TMP/pid.\$l" ] && { echo "gui/501/\$l = {"; echo "}"; exit 0; }   # loaded, not running
     [ -f "$T_TMP/pid.\$l" ] || exit 113; printf 'gui/501/%s = {\n\tpid = %s\n}\n' "\$l" "\$(cat "$T_TMP/pid.\$l")" ;;
+  print-disabled) printf 'disabled services = {\n'; for f in "$T_TMP"/disabled.*; do [ -f "\$f" ] && printf '\t"%s" => disabled\n' "\${f##*/disabled.}"; done; printf '}\n' ;;
   kickstart) l="\${3##*/}"; kill "\$(cat "$T_TMP/pid.\$l")" 2>/dev/null; sleep 300 >/dev/null 2>&1 & echo \$! > "$T_TMP/pid.\$l" ;;
 esac
 exit 0
@@ -133,6 +134,23 @@ t_has "...and the bootstrap command" "$(cat "$T_TMP/o")" "launchctl bootstrap gu
 : > "$T_TMP/loaded.$EV"; sh "$TOOL" verify > "$T_TMP/o" 2>&1; t_eq "loaded again: green" 0 "$?"
 rm -f "$T_TMP/loaded.$EV" "$LA/$EV.plist"; sh "$TOOL" verify > "$T_TMP/o" 2>&1
 t_eq "no plist installed: nothing to be loaded, green" 0 "$?"
+
+t_section "verify: a label the operator disabled is a note, not a failure (harbor#1460, 2026-11-03)"
+EV2=com.harbor.event.dispatch
+job dis 0; rm -f "$T_TMP/loaded.com.harbor.dis"
+sed 's|</dict>|  <key>KeepAlive</key><true/>\n</dict>|' "$LA/com.harbor.dis.plist" > "$T_TMP/dis.plist" && cp "$T_TMP/dis.plist" "$LA/com.harbor.dis.plist"
+sh "$TOOL" verify > "$T_TMP/o" 2>&1; _rc=$?
+t_eq "enabled, KeepAlive, not loaded: still exit 1" 1 "$_rc"
+t_has "...naming the job" "$(cat "$T_TMP/o")" "com.harbor.dis is installed but not loaded"
+: > "$T_TMP/disabled.com.harbor.dis"
+sh "$TOOL" verify > "$T_TMP/o" 2>&1; _rc=$?
+t_eq "disabled by the operator, not loaded: exit 0" 0 "$_rc"
+t_has "...reported as a note saying so" "$(cat "$T_TMP/o")" "com.harbor.dis is disabled by the operator"
+t_hasnt "...and not as a failure" "$(cat "$T_TMP/o")" "installed but not loaded"
+rm -f "$T_TMP/disabled.com.harbor.dis"; : > "$T_TMP/disabled.com.harbor.other"
+sh "$TOOL" verify > "$T_TMP/o" 2>&1
+t_eq "another label being disabled does not excuse this one: exit 1" 1 "$?"
+rm -f "$T_TMP/disabled.com.harbor.other" "$LA/com.harbor.dis.plist"
 
 t_section "usage"
 t_exit "no mode is a usage error" 2 sh "$TOOL"
