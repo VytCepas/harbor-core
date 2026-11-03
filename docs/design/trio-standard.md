@@ -1,3 +1,9 @@
+---
+kind: design
+owner: @VytCepas
+status: unreviewed
+---
+
 # Trio standard — one contract across Harbor, Fleet and Yard
 
 **Status:** design, 2026-11-01. Lane epic harbor#1423 (T18 of #949), with sub-issues #1424–#1437; the control

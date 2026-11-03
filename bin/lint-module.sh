@@ -11,6 +11,7 @@
 #   --format inert      print one `<why> TAB <subject> TAB <site>` record per mention set aside (see below)
 #   --root <dir>        the tree whose graph is judged (default: this checkout)
 #   --registry <dir>    the registry (default: <root>/standards/naming): terms.tsv families, controls.tsv modes
+#   --entries <file>    declared family entries (default: <root>/contracts/family-entries.tsv): a `-lib` file listed there is public
 #   --sites <dir>       read each cited line from <dir>/<system>/<path> instead of the real trees (the self-test's fixtures)
 #
 #   exit (D-49) 0 pass, warn and shadow findings allowed · 1 a block finding, or a failed self-test · 2 usage
@@ -63,7 +64,7 @@ usage() { awk 'NR < 2 { next } /^# DELIBERATELY/ || !/^#/ { exit } { sub(/^# ?/,
 unchecked() { log_fail "$1"; log_fix "$2"; log_end || :; exit 3; }
 usage_err() { log_fail "$1"; log_fix "sh $SELF --help"; log_end || :; exit 2; }
 
-ACTION=judge; FORMAT=""; ROOT=""; REG=""; GRAPH=""; EXPLICIT=0; TERMS=""; SITES=""
+ACTION=judge; FORMAT=""; ROOT=""; REG=""; GRAPH=""; EXPLICIT=0; TERMS=""; SITES=""; ENTRIES=""
 while [ $# -gt 0 ]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
@@ -73,6 +74,7 @@ while [ $# -gt 0 ]; do
     --root) [ $# -ge 2 ] || usage_err "--root needs a directory"; ROOT="$2"; shift ;;
     --registry) [ $# -ge 2 ] || usage_err "--registry needs a directory"; REG="$2"; shift ;;
     --terms) [ $# -ge 2 ] || usage_err "--terms needs a file"; TERMS="$2"; shift ;;
+    --entries) [ $# -ge 2 ] || usage_err "--entries needs a file"; ENTRIES="$2"; shift ;;
     --sites) [ $# -ge 2 ] || usage_err "--sites needs a directory"; SITES="$2"; shift ;;
     --format) [ $# -ge 2 ] || usage_err "--format needs a value"; FORMAT="$2"; shift ;;
     -*) usage_err "unknown option $1" ;;
@@ -85,6 +87,7 @@ case "$FORMAT" in ''|findings|inert) ;; *) usage_err "--format is findings or in
 ROOT="$(CDPATH='' cd -- "$ROOT" 2>/dev/null && pwd -P)" || usage_err "--root is not a directory"
 [ -n "$REG" ] || REG="$ROOT/standards/naming"
 [ -n "$TERMS" ] || TERMS="$REG/terms.tsv"
+[ -n "$ENTRIES" ] || ENTRIES="$ROOT/contracts/family-entries.tsv"
 CONTROLS="$REG/controls.tsv"
 T="$(mktemp -d "${TMPDIR:-/tmp}/lint-module.XXXXXX")"
 trap 'rm -rf "$T"' EXIT INT TERM HUP
@@ -108,7 +111,7 @@ fi
 # judge <graph> <terms> → `F TAB rule TAB subject TAB message` per finding, `S TAB why TAB subject TAB site` per mention
 # set aside as inert, then `I TAB label TAB status` per input.
 judge() {
-  awk -F'\t' -v TERMS="$2" -v GRAPH="$1" -v ROOT="$ROOT" -v SITES="$SITES" -v HOMEDIR="${HOME:-}" '
+  awk -F'\t' -v TERMS="$2" -v ENTRIES="$ENTRIES" -v GRAPH="$1" -v ROOT="$ROOT" -v SITES="$SITES" -v HOMEDIR="${HOME:-}" '
   function sysof(n,   p, s) { p = index(n, ":"); if (p == 0) return ""; s = substr(n, 1, p - 1); return (s in SYS) ? s : "" }
   function pathof(n) { return substr(n, index(n, ":") + 1) }
   # a file that records or exercises is not judged: prose (markdown, docs/, evals/), the contract and register
@@ -123,8 +126,10 @@ judge() {
     if (a[1] == "src" && k >= 4 && (a[3] in FAMILY)) return a[3]
     return ""
   }
-  # the entry a family shows is its command and its exports; lib files and _-prefixed ones are private
+  # the entry a family shows is its command and its exports; lib files and _-prefixed ones are private, unless
+  # contracts/family-entries.tsv declares the file the family'"'"'s entry (harbor#1245)
   function private(n,   r, a, k, i, b) {
+    if (n in ENTRY) return 0
     r = pathof(n); k = split(r, a, "/"); b = a[k]
     if (b ~ /^_/ || b ~ /(^|[-_.])lib([-_.]|$)/) return 1
     for (i = 1; i < k; i++) if (a[i] == "lib" || a[i] ~ /^_/) return 1
@@ -235,6 +240,11 @@ judge() {
       if (("," c[2] ",") ~ /,family,/) { FAMILY[c[1]] = 1; DEP[c[1]] = c[10] }
     }
     close(TERMS)
+    while ((ENTRIES != "") && ((getline l < ENTRIES) > 0)) {
+      if (l ~ /^#/ || l ~ /^system\t/) continue
+      n = split(l, c, "\t"); if (n >= 2) ENTRY[c[1] ":" c[2]] = 1
+    }
+    close(ENTRIES)
     while ((getline l < GRAPH) > 0) {
       n = split(l, c, "\t")
       if (c[1] == "# input") { SYS[c[2]] = 1; setroot(c[2], c[3]); print "I\t" c[2] "\t" c[4]; continue }

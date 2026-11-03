@@ -9,7 +9,7 @@
 # harbor-pack/checks.md, which `harbor pack install` puts at <config dir>/checks.d/<repo-id>.md; --packs names that
 # directory (default: none). --repos names a file of `name TAB path` lines (scope-roots.sh --repos): each governed repo's own
 # harbor-pack/checks.md is composed after the packs, in the same fragment shape, so a repo registers its scheduled workflows where
-# it keeps them (harbor#1433). Core docs/reference/checks.md carries the two insertion points <!-- private:register --> and
+# it keeps them (harbor#1433); one whose installed pack is byte-identical is read once, as the pack. Core docs/reference/checks.md carries the two insertion points <!-- private:register --> and
 # <!-- private:platforms -->, one at the end of each table. The register rows go in at the first, the platforms rows
 # at the second, private rows before pack rows (packs by repo id), and the notes close the file under "## Private notes"
 # and "## Pack notes: <repo-id>". No fragment at all prints docs/reference/checks.md unchanged: byte for byte.
@@ -62,6 +62,8 @@ if [ -n "$REPOS" ] && [ -r "$REPOS" ]; then
   mkdir -p "$TMP/repofrags"
   grep -v '^#' "$REPOS" | LC_ALL=C sort | while IFS='	' read -r _rn _rp; do
     if [ -n "$_rn" ] && [ -f "$_rp/harbor-pack/checks.md" ] && grep -q '[^[:space:]]' "$_rp/harbor-pack/checks.md"; then
+      # an installed pack IS this file, copied (harbor pack install): counting both reads every id twice (harbor#1433). A pack that differs stays, so a stale install is refused.
+      if [ -n "$PACKS" ] && cmp -s "$PACKS/$_rn.md" "$_rp/harbor-pack/checks.md"; then continue; fi
       cp "$_rp/harbor-pack/checks.md" "$TMP/repofrags/$_rn.md" && printf '%s\n' "$TMP/repofrags/$_rn.md"
     fi
   done >> "$TMP/srcs"

@@ -15,6 +15,7 @@ set -u
 LC_ALL=C; export LC_ALL
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH= cd -- "$HERE" && pwd)"
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh (harbor#1392)
 LOG_FD=2
 . "$HERE/library-log.sh"
 log_init standard-schema

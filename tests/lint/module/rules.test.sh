@@ -34,6 +34,15 @@ t_hasnt "a family's own lib file is not private use" "$(findings private-use)" "
 t_eq "the clean graph yields nothing" "" "$(findings clean)"
 t_exit "...and exits 0" 0 sh "$TOOL" --root "$T_ROOT" --terms "$FX/clean/terms.tsv" --graph "$FX/clean/graph.tsv"
 
+t_section "a file declared a family's entry is public, and only that file (harbor#1245)"
+printf 'system\tpath\treason\nsysa\tbin/beta-lib.sh\tthe entry of beta\n' > "$T_TMP/entries.tsv"
+printf 'system\tpath\treason\nsysa\tbin/other-lib.sh\tnot the file the graph reaches\n' > "$T_TMP/entries-other.tsv"
+t_has "with no declaration the lib file is private (the baseline)" "$(findings private-use --entries "$T_TMP/none.tsv")" "A	module.private-use	sysa:bin/alpha-run.sh -> sysa:bin/beta-lib.sh"
+t_eq "declared the entry of its family, the same edge is not private use" "" "$(findings private-use --entries "$T_TMP/entries.tsv")"
+t_eq "...and the run still judged (exit 0, not a usage error that printed nothing)" "0" "$(rc_of private-use --entries "$T_TMP/entries.tsv")"
+t_has "a declaration of another file leaves it private (the row names one file, not a pattern)" "$(findings private-use --entries "$T_TMP/entries-other.tsv")" "A	module.private-use	sysa:bin/alpha-run.sh -> sysa:bin/beta-lib.sh"
+t_eq "the real register declares bin/deploy-install-lib.sh the deploy family's entry" "1" "$(awk -F'\t' '$1 == "harbor" && $2 == "bin/deploy-install-lib.sh"' "$T_ROOT/contracts/family-entries.tsv" | wc -l | tr -d ' ')"
+
 t_section "a mention that cannot read is set aside, and the live twin of each still goes red (harbor#996 C1)"
 t_eq "a comment, a longer name, a register, a test: nothing is a finding" "" "$(findings inert-mentions)"
 t_eq "...and --format inert lists exactly what was set aside, with why: every pair, a family or system edge too, and a test's path of another system, but not a test's contract or its own system" "comment	sysa:bin/alpha-run -> sysa:bin/beta-run	sysa:bin/alpha-run:5
