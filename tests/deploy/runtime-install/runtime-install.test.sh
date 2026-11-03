@@ -186,6 +186,19 @@ t_eq "the generated suite payload file is not a row: no repo file is its source"
 MN="$T/mf-nob6"; mkdir -p "$MN"; printf '{}\n' > "$MN/settings.json"; ri --apply --dir "$MN" >/dev/null 2>&1
 t_eq "a B6 it did not install has no row" 0 "$(grep -c ' bin/admission-integrity.sh ' "$MN/.harbor-manifest")"
 
+t_section "a manifest row whose file is gone is pruned by the next install (harbor#1437)"
+# bin/CHECKS.md moved to bin/docs/reference/checks.md and its row stayed in the live manifest, where nothing read it back.
+printf '%s 100644 bin/CHECKS.md runtime-install %s\n' "$(printf x | git hash-object --stdin)" "$_h" >> "$MI/.harbor-manifest"
+printf '%s 100644 bin/gone/with space.md runtime-install %s\n' "$(printf y | git hash-object --stdin)" "$_h" >> "$MI/.harbor-manifest"
+printf '%s 100644 bin/theirs.md some-other-installer %s\n' "$(printf z | git hash-object --stdin)" "$_h" >> "$MI/.harbor-manifest"
+t_eq "control: the dangling rows are in the manifest" 3 "$(grep -c -e ' bin/CHECKS.md ' -e ' bin/gone/with space.md ' -e ' bin/theirs.md ' "$MI/.harbor-manifest")"
+ri --dir "$MI" >/dev/null 2>&1
+t_eq "a dry run prunes nothing" 3 "$(grep -c -e ' bin/CHECKS.md ' -e ' bin/gone/with space.md ' -e ' bin/theirs.md ' "$MI/.harbor-manifest")"
+ri --apply --dir "$MI" >/dev/null 2>&1
+t_eq "the runtime-install rows with no file are gone" 0 "$(grep -c -e ' bin/CHECKS.md ' -e ' bin/gone/with space.md ' "$MI/.harbor-manifest")"
+t_eq "another installer's row is not this one's to prune" 1 "$(grep -c ' bin/theirs.md ' "$MI/.harbor-manifest")"
+t_eq "a row whose file exists stays" "$(git hash-object "$MI/bin/recover-test.sh") 100755 runtime-install $_h" "$(mrow bin/recover-test.sh)"
+
 t_section "the installed dispatcher follows with the installed bus: the loop guard's cause reaches it (harbor#1044 r2 #3)"
 # runtime-install alone must ship a bus that passes HARBOR_EVENT_CAUSE on; the dispatcher refuses (4) beside one that does not.
 t_eq "event-bus.sh is installed beside event-dispatch.sh, the repo's bytes" yes \

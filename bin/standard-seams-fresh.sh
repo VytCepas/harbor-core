@@ -72,12 +72,39 @@ else
   [ -z "$REF" ] || set -- "$@" --ref "$REF"
   PYTHONPATH="$FLEET/src" python3 -m projects_orchestrator.seams --register "$REG" "$@" > "$T/found" 2> "$T/err" < /dev/null; _rc=$?
 fi
+_days() { awk -v a="$1" -v b="$2" 'function jd(s,  y, m, d) { y = substr(s,1,4)+0; m = substr(s,6,2)+0; d = substr(s,9,2)+0
+    if (m <= 2) { y--; m += 12 } return int(365.25*y) + int(30.6001*(m+1)) + d }
+  BEGIN { print jd(b) - jd(a) }'; }
+
+# ── the core export (harbor#1436): a seam of kind export is the public mirror of the core layer ──
+# Its pin is the `Source commit:` line of the mirror's last commit; its lag is the number of harbor commits that touch a core path
+# (contracts/layers.tsv) since that pin; its age is the days since that export. Read only, over the local checkout of the consumer.
+# A finding when the lag passes allowed_lag, `unchecked` when the checkout or the pin cannot be read; the age is on the report line.
+: > "$T/export.age"
+awk -F'\t' '!/^#/ && $1 != "id" && $2 == "export" && $8 == "check.seam-fresh" { print $1 "\t" $4 "\t" $10 }' "$REG" > "$T/export.rows"
+while IFS="$TAB" read -r _xid _xcons _xlag; do
+  _xd=""; for _r in $ROOTS; do [ "${_r%%=*}" = "$_xcons" ] && _xd="${_r#*=}"; done
+  [ -n "$_xd" ] || _xd="$(_get "$_xcons")"
+  [ -n "$_xd" ] || _xd="$(env -u HARBOR_SCOPE_ROOT sh "$ROOT/bin/scope-roots.sh" --repo "$_xcons" 2>/dev/null || :)"
+  if [ -z "$_xd" ] || ! git -C "$_xd" rev-parse --git-dir >/dev/null 2>&1; then
+    printf '%s\tunchecked\tno checkout of %s\n' "$_xid" "$_xcons" >> "$T/found.export"; continue; fi
+  _xpin="$(git -C "$_xd" log -1 --format=%B 2>/dev/null | sed -n 's/^Source commit: *\([0-9a-f]\{7,40\}\).*/\1/p' | head -n 1)"
+  _xdate="$(git -C "$_xd" log -1 --format=%cs 2>/dev/null)"
+  if [ -z "$_xpin" ] || ! git -C "$ROOT" cat-file -e "$_xpin^{commit}" 2>/dev/null; then
+    printf '%s\tunchecked\tthe pin %s of the last export is not a harbor commit\n' "$_xid" "${_xpin:-<none>}" >> "$T/found.export"; continue; fi
+  set --; while IFS="$TAB" read -r _xp _xl _xn; do case "$_xp" in ''|'#'*|path) continue ;; esac; [ "$_xl" = core ] && set -- "$@" "$_xp"; done < "$ROOT/contracts/layers.tsv"
+  _xn="$(git -C "$ROOT" rev-list --count "$_xpin..HEAD" -- "$@" 2>/dev/null || echo 0)"
+  _xage="$(_days "${_xdate:-$TODAY}" "$TODAY")"
+  printf '%s\t%s\t%s\t%s\t%s\n' "$_xid" "$_xage" "$_xn" "$_xlag" "$(printf '%s' "$_xpin" | cut -c1-7)" >> "$T/export.age"
+  [ "$_xn" -le "$_xlag" ] || printf '%s\tstale\tthe %s export is pinned at %s, %s day(s) old and %s core commit(s) behind (allowed %s)\n' "$_xid" "$_xcons" "$(printf '%s' "$_xpin" | cut -c1-7)" "$_xage" "$_xn" "$_xlag" >> "$T/found.export"
+done < "$T/export.rows"
 if [ "$_rc" -ge 2 ]; then
   log_fail "[check:$ID] the comparison exited $_rc, so nothing is judged: $(head -n 1 "$T/err")"; log_fix "run it by hand: PYTHONPATH=<fleet>/src python3 -m projects_orchestrator.seams --register $REG --root harbor=$ROOT ..."
   log_receipt "$(receipt_dir "$CFG")" "$ID" stood-down >/dev/null 2>&1 || :
   log_end || :; exit 3
 fi
 
+[ ! -f "$T/found.export" ] || cat "$T/found.export" >> "$T/found"
 # subject: stable across runs (a commit count in the detail would make every run's finding new)
 awk -F'\t' -v OFS='\t' 'NF >= 3 && $2 != "unchecked" { print $1, "check.seam-fresh " $1 ": " $2 }' "$T/found" > "$T/cur"
 awk -F'\t' '$2 == "unchecked" { print $1 ": " $3 }' "$T/found" > "$T/notes"
@@ -101,9 +128,6 @@ NNEW="$(grep -c . "$T/new" | tr -d ' ')"; NFIX="$(grep -c . "$T/fixed" | tr -d '
 NCUR="$(grep -c . "$T/next" | tr -d ' ')"; NSTAND=$((NCUR - NNEW))
 NSEAM="$(awk -F'\t' '!/^#/ && $1 != "id" && $8 == "check.seam-fresh"' "$REG" | grep -c . | tr -d ' ')"
 
-_days() { awk -v a="$1" -v b="$2" 'function jd(s,  y, m, d) { y = substr(s,1,4)+0; m = substr(s,6,2)+0; d = substr(s,9,2)+0
-    if (m <= 2) { y--; m += 12 } return int(365.25*y) + int(30.6001*(m+1)) + d }
-  BEGIN { print jd(b) - jd(a) }'; }
 
 # ── the state and the receipt ────────────────────────────────────────────────
 _tmp="$(mktemp "$CACHE/.standard-seams-fresh.XXXXXX" 2>/dev/null)" || _tmp=""
@@ -119,6 +143,9 @@ LOG_RECEIPT_FRESH_DAYS=9 log_receipt "$(receipt_dir "$CFG")" "$ID" "$_st" "$@" \
 printf '[check:%s] %s: %s seam(s) with a freshness check, %s finding(s): %s new, %s fixed, %s standing\n' \
   "$ID" "$TODAY" "$NSEAM" "$NCUR" "$NNEW" "$NFIX" "$NSTAND"
 if [ "$NNEW" -eq 0 ] && [ "$NFIX" -eq 0 ]; then printf '  nothing new\n'; fi
+while IFS="$TAB" read -r _xid _xage _xn _xlag _xpin; do
+  printf '  age      %s: pinned at %s, %s day(s) old, %s core commit(s) behind (allowed %s)\n' "$_xid" "$_xpin" "$_xage" "$_xn" "$_xlag"
+done < "$T/export.age"
 # the detail of a new finding is on the line: the subject stays stable, the detail carries this run's counts
 while IFS= read -r _x; do
   _seam="${_x#check.seam-fresh }"; _seam="${_seam%%:*}"

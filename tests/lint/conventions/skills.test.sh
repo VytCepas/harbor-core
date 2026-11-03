@@ -245,6 +245,20 @@ t_eq "an installed skill with its row is silent" "" "$(_sm)"
 mkdir -p "$SMC/skills/two"; printf -- '---\nname: two\ndescription: "X. USE WHEN x."\n---\n' > "$SMC/skills/two/SKILL.md"
 t_has "a skill installed by hand is advised, by name" "$(_sm)" 'installed skill two has no row'
 
+t_section "skill.catalog-covers-tools: an Agent-facing tool with no catalog row is advised (harbor#1010)"
+CTR="$TMP/ct-repo"; rm -rf "$CTR"; mkdir -p "$CTR/bin" "$CTR/contracts" "$CTR/skills/skill-catalog"
+cp "$LINT" "$T_ROOT/bin/skill-catalog.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/scope-roots.sh" "$T_ROOT/bin/deploy-install-lib.sh" "$CTR/bin/"
+cp "$T_ROOT/contracts/roots.tsv" "$CTR/contracts/"; printf '#!/bin/sh\n' > "$CTR/bin/tool.sh"
+printf '#!/bin/sh\nVERBS="\nv\tv.sh\tno\tthe v\n"\n' > "$CTR/bin/harbor"
+printf '| `tool.sh` | **Agent-facing.** a tool |\n' > "$CTR/contracts/cli.md"
+printf 'kind\tname\tuse_when\tinvocation\nverb\tv\tyou need v\tharbor v\n' > "$CTR/contracts/agent-tools.tsv"
+_ct() { (cd "$CTR" && HARBOR_SCOPE_ROOT="$CTR" sh "$CTR/bin/lint-conventions.sh" --only skill.catalog-covers-tools 2>&1 | grep 'ADVISORY \[skill.catalog-covers-tools\]' || true); }
+t_has "RED: a tool cli.md marks Agent-facing, with no row" "$(_ct)" '`tool.sh` is marked Agent-facing in contracts/cli.md and has no row'
+printf 'tool\ttool.sh\tyou run the tool\tsh bin/tool.sh\n' >> "$CTR/contracts/agent-tools.tsv"
+t_eq "GREEN: with its row, silent" "" "$(_ct)"
+printf 'tool\tgone.sh\tit is gone\tsh bin/gone.sh\n' >> "$CTR/contracts/agent-tools.tsv"
+t_has "RED: a row whose script does not exist" "$(_ct)" 'bin/gone.sh does not exist'
+
 t_section "test-strength is cross-linked from where verification is taught (harbor#1010)"
 for _tl in docs/explanation/verification-expanded.md AGENTS.md; do
   t_has "$_tl points at skills/test-strength" "$(cat "$T_ROOT/$_tl")" 'skills/test-strength/SKILL.md'

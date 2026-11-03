@@ -111,6 +111,7 @@ case "$1 $2" in
     case " $* " in *" --required "*) [ "$(cat "$F/protection.rc" 2>/dev/null || echo 1)" = 0 ] || { echo "no required checks reported" >&2; exit 1; } ;; esac
     if [ -f "$F/checks.tsv" ]; then cat "$F/checks.tsv"; exit 0; fi; echo "no required checks reported" >&2; exit 1 ;;
   "api repos/"*"/protection") cat "$F/protection.out" 2>/dev/null; exit "$(cat "$F/protection.rc" 2>/dev/null || echo 1)" ;;
+  "pr diff") exit 0 ;;   # no changed file, so no constitutional clause is amended (harbor#1026)
   "pr merge") echo "$*" >> "$F/gh-merge.log"; MS_PR="$3" exec sh "$F/../merge-into.sh" "$@" ;;
   *) echo "stub gh: unhandled: $*" >&2; exit 1 ;;
 esac

@@ -63,12 +63,7 @@ repo() {
 }
 
 # The lanes block, as `lane TAB key TAB subject TAB repair` rows. Lint FL1 holds its shape.
-lanes() {
-  awk '/^<!-- lanes:begin -->$/ { t = 1; next } /^<!-- lanes:end -->$/ { t = 0 } t && /^\|/' "$CONTRACT" 2>/dev/null \
-    | awk -F'|' '{ for (i = 2; i < NF; i++) { f = $i; gsub(/`/, "", f); gsub(/^[[:space:]]+|[[:space:]]+$/, "", f); $i = f }
-                   if ($2 == "lane" || $2 ~ /^-+$/) next
-                   printf "%s\t%s\t%s\t%s\n", $2, $3, $4, $5 }'
-}
+lanes() { heal_rows "$CONTRACT"; }   # the one parser is library-log.sh's (harbor#1031 item 4)
 # lane_of <key> <subjects-file> → the lane, and for a split key `HEAL for n of m`
 lane_of() {
   _lk="$1"; _lm=0; _ln=0; _ll=PROPOSE
@@ -504,7 +499,12 @@ cmd_heal() {
     fi
     # The branch carries main's commit, so a recurrence after a merged or closed PR never meets an
     # old branch; an open PR for the same key and digest, on any commit, is the one to reuse.
-    _bp="heal/$(printf '%s' "$_k" | tr '/' '-')-$_d-"; _br="$_bp$SHA7"
+    # The branch, commit and PR title are the standard's shapes (harbor#978): fix/<issue>-<slug>, fix(<domain>): <subject>.
+    _bp="fix/$_num-heal-$(printf '%s' "$_k" | tr 'A-Z/._' 'a-z---')-$_d-"; _br="$_bp$SHA7"
+    _subj="fix(lint): the HEAL-lane repair for #$_num ($_k)"
+    for _c in "branch $_br" "commit $_subj"; do
+      sh "$HERE/lint-name.sh" --check "${_c%% *}" "${_c#* }" >/dev/null 2>&1 || log_warn "heal name off the standard: ${_c%% *} ${_c#* }"
+    done
     gh pr list -R "$REPO" --state open --limit 1000 --json number,headRefName,url,isCrossRepository > "$T/prs.json" 2>/dev/null \
       || stop "could not ask $REPO for an open heal PR" "gh pr list -R $REPO --state open"
     _open="$(jq -r --arg p "$_bp" '[.[] | select(.isCrossRepository == false and (.headRefName | startswith($p)))][0] | select(.) | "\(.number) \(.url)"' "$T/prs.json")"
@@ -525,7 +525,9 @@ cmd_heal() {
       || stop "could not make a worktree to repair $_k in: $(head -1 "$T/wt.err")" "git -C $ROOT worktree prune"
     { printf 'healed %s on `origin/main` %s (HEAL lane, contracts/finding.md):\n\n' "$TODAY" "$SHA7"; } > "$T/note"
     while IFS='	' read -r _c _s; do
-      _rc=0; ( cd "$_wt" && sh -c "$_c" heal "$_s" ) > "$T/out" 2>&1 || _rc=$?
+      # the runner asks the allowlist again before each repair, so a row edited out between the plan and the run is refused (harbor#1031)
+      if repair_allowed "$_k" "$_s" "$_c" "$CONTRACT" >"$T/ra.err" 2>&1; then _rc=0; ( cd "$_wt" && sh -c "$_c" heal "$_s" ) > "$T/out" 2>&1 || _rc=$?
+      else _rc=2; cp "$T/ra.err" "$T/out"; fi
       if [ "$_s" = - ]; then printf -- '- `%s` → exit %s\n' "$_c" "$_rc" >> "$T/note"
       else printf -- '- `%s` on `%s` → exit %s\n' "$_c" "$_s" "$_rc" >> "$T/note"; fi
       if [ "$_rc" -eq 0 ]; then printf '%s → %s\n' "$(heal_who "$_k" "$_s")" "$_c" >> "$T/h.fixed"
@@ -541,12 +543,12 @@ cmd_heal() {
       : > "$T/push.err"
       if [ "$_pushed" = 1 ] || { git -C "$_wt" checkout -q -b "$_br" \
            && git -C "$_wt" add -u \
-           && git -C "$_wt" commit -q -m "heal($_k): the HEAL-lane repair for #$_num" \
+           && git -C "$_wt" commit -q -m "$_subj" \
            && git -C "$_wt" push -q -u origin "$_br" 2>"$T/push.err"; }; then
         { printf 'The HEAL-lane repair for finding #%s (`%s`), run by `sh bin/lint-findings.sh heal --apply` (harbor#856).\n\n' "$_num" "$_k"
           sed 1,2d "$T/note"
           printf '\nA draft because a repair that changes a tracked file is reviewed, never pushed to main.\n'; } > "$T/prbody"
-        if _pr="$(gh pr create -R "$REPO" --draft --base main --head "$_br" --title "heal $_k: the HEAL-lane repair for #$_num" --body-file "$T/prbody" 2>"$T/pr.err")"; then
+        if _pr="$(gh pr create -R "$REPO" --draft --base main --head "$_br" --title "$_subj" --body-file "$T/prbody" 2>"$T/pr.err")"; then
           printf '\nA tracked file changed, so it is a draft PR: %s\n' "$_pr" >> "$T/note"
           printf '%s → draft PR %s\n' "$_k" "$_pr" >> "$T/h.pr"
         else

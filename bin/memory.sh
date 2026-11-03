@@ -1,38 +1,18 @@
 #!/usr/bin/env sh
 # memory (harbor#6 — workstream D, D1/D7) — the L0 memory front door.
-#
-# One door, two rungs. `memory <query>` runs the Bun engine when Bun is present;
-# when it is not, the SAME command still answers, over the same markdown, using
-# nothing but grep. That is D7's third standalone degradation, and it is why
-# this file is POSIX sh rather than part of the engine: a ladder whose bottom
-# rung needs the runtime that is missing is not a ladder.
-#
-# WHY THE FRONT DOOR IS NOT THE ENGINE. bin/deploy-doctor.sh classifies bun as
-# OPTIONAL — "the floor is deliberately zero-Bun" — and CI preflights a fixed
-# list of binaries that does not include it. Anything Harbor must be able to run
-# on any machine lives in bin/ and is sh; the retrieval algorithms live in
-# tools/memory/ and are TypeScript, which is the language-by-layer rule from
-# policy/constitution.md applied rather than restated.
-#
-# Writes nothing. Reads markdown. Every index is rebuilt per invocation by the
-# engine and discarded (contracts/memory-format.md).
+# `memory <query>` runs the Bun engine when present; without Bun the same command still answers
+# over the same markdown with grep only (D7). POSIX sh by design: the bottom rung must not need
+# the missing runtime. Writes nothing; engine indexes are rebuilt per invocation.
+# Removed notes: docs/explanation/code-cases/bin-memory.md
 set -u
 
-# NOGLOB, AND IT IS LOAD-BEARING. Splitting a list by setting IFS and expanding
-# unquoted — `set -- $_new`, `for f in $HITS` — controls FIELD splitting but does
-# nothing about PATHNAME expansion, which happens on the same unquoted word. So
-# `memory '*.md'` had its query term expanded against the caller's working
-# directory: measured before this line existed, the identical query returned 7
-# results run from a directory holding .md files and 1 from a directory without.
-# A search tool whose answer depends on where you were standing is worse than one
-# that errors. Nothing here needs globbing; `case` patterns are unaffected by -f.
+# NOGLOB is load-bearing: IFS splitting does not stop pathname expansion on unquoted words, so a
+# query like '*.md' would expand against the caller's cwd and the answer would depend on where
+# you stood. Nothing here needs globbing.
 set -f
 
-# ── resolve self through symlinks ───────────────────────────────────────────
-# The installed entry point is a symlink (~/.local/bin/memory), so $0's dirname
-# is the symlink's directory, not the repo's. Without this the engine is
-# unreachable from exactly the place an operator actually types the command, and
-# the tool silently drops to the grep rung while reporting nothing unusual.
+# Resolve self through the symlink (~/.local/bin/memory): otherwise the engine is unreachable and
+# the tool silently drops to the grep rung.
 _self="$0"
 _hops=0
 while [ -L "$_self" ]; do
@@ -49,8 +29,7 @@ DIR="$(CDPATH= cd -- "$(dirname -- "$_self")" && pwd)"
 REPO="$(CDPATH= cd -- "$DIR/.." && pwd)"
 ENGINE="$REPO/tools/memory/memory-engine.ts"
 
-# Status lines are log-lib's, on stderr: stdout is the answer (contracts/logging.md). A clean search logs
-# nothing; a refusal ends with the summary after its fix line. Found beside the file the link resolves to.
+# Status lines are log-lib's, on stderr: stdout is the answer (contracts/logging.md).
 [ -f "$DIR/library-log.sh" ] || { printf 'memory: library-log.sh is missing beside %s\n' "$_self" >&2; exit 2; }
 . "$DIR/library-log.sh"
 log_init memory
@@ -60,23 +39,16 @@ LOG_FD=2
 die() { _x="$1"; log_fail "$2"; log_fix "$3"; log_end || :; exit "$_x"; }
 
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-# THE DEFAULT IS THE NOTES STORE (harbor#1010 PR 4, D-68): the $HOME silo, projects/<home-key>/memory, which is where
-# the notes and their index live and where every governed repo's silo is routed (memory-route.sh). The old
-# $CFG/MEMORY tree is the fallback only when that silo does not exist, so a box without notes still answers.
-# Same key rule as memory-route.sh: the physical $HOME with every `/` turned into `-`.
+# Default is the notes store (harbor#1010 PR 4, D-68): projects/<home-key>/memory, key = physical
+# $HOME with `/` turned into `-` (as memory-route.sh); $CFG/MEMORY only when that silo is absent.
 STORE="${HARBOR_MEMORY_ROOT:-}"
 if [ -z "$STORE" ]; then
   _hk="$(CDPATH= cd -- "$HOME" 2>/dev/null && pwd -P | sed 's|/|-|g')"
   if [ -n "$_hk" ] && [ -d "$CFG/projects/$_hk/memory" ]; then STORE="$CFG/projects/$_hk/memory"; else STORE="$CFG/MEMORY"; fi
 fi
 
-# PIN grep, for the same reason bin/library-admission.sh pins $FLOOR_GREP. On this
-# machine the `grep` first in PATH is a ugrep wrapper carrying `-I
-# --ignore-files`, so it silently skips binary AND gitignored files. The grep
-# rung's entire job is to find every note that mentions a word; a wrapper that
-# quietly omits some of them returns a SHORTER list with a zero exit status,
-# which reads exactly like a correct answer. Absolute path first, PATH second so
-# this still runs on a box without /usr/bin/grep.
+# Pin grep: a ugrep wrapper first in PATH skips binary and gitignored files and returns a shorter
+# list with exit 0, which reads like a correct answer.
 MEM_GREP="$( [ -x /usr/bin/grep ] && echo /usr/bin/grep || echo grep )"
 
 usage() {
@@ -101,22 +73,9 @@ USAGE
 [ "$#" -eq 0 ] && { usage; exit 2; }
 case "${1:-}" in -h|--help|help) usage; exit 0 ;; esac
 
-# ── split off --root, keep everything else for the engine ───────────────────
-# ROTATION, not a delimited string. The first cut joined the remaining arguments
-# with newlines and re-split them with IFS, which loses any argument that
-# CONTAINS the delimiter: a single term `foo<newline>bar` came back as two terms.
-# `set -- "$@" "$1"; shift` walks the list exactly once and pushes each argument
-# onto the end unchanged, so every byte of every argument survives — spaces,
-# newlines, quotes and glob characters alike — with no IFS games and nothing for
-# `set -f` to have to protect.
-#
-# FLAGS ARE SEPARATED FROM TERMS HERE, not passed through. The engine gets its
-# options BEFORE a `--` and the query terms after it, so a term that looks like
-# a flag stays a term. Passing "$@" wholesale after `--` was tried and broke the
-# opposite way: `--json` became a search word and the JSON output vanished.
-# Every flag value is validated here rather than in the engine, so the message
-# names `memory`, and $FLAGS can be expanded unquoted safely — it only ever
-# holds literals this loop wrote.
+# Rotate the arguments (`set -- "$@" "$1"; shift`) so every byte of every term survives, with no IFS
+# splitting. Flags are validated here and reach the engine BEFORE `--`, terms after it, so a
+# flag-shaped term stays a term; $FLAGS only holds literals this loop wrote.
 VERB=""
 FLAGS=""
 _argc=$#
@@ -138,9 +97,7 @@ while [ "$_argc" -gt 0 ]; do
       _num "${1#*=}" || die 2 "${1%%=*} expects a non-negative integer" "memory ${1%%=*}=10 <terms>"
       FLAGS="$FLAGS $1"; shift; _argc=$((_argc - 1)) ;;
     --)
-      # End of options. Everything after it is a query term, including anything
-      # that looks like a flag — the standard escape hatch, and the one an
-      # operator reaches for when a search word starts with a dash.
+      # End of options: everything after `--` is a query term, even if it starts with a dash.
       shift; _argc=$((_argc - 1))
       while [ "$_argc" -gt 0 ]; do
         set -- "$@" "$1"; shift; _argc=$((_argc - 1))
@@ -157,21 +114,13 @@ case "$1" in
   *) VERB="search" ;;
 esac
 
-# ── rung 1: the engine ──────────────────────────────────────────────────────
+# rung 1: the engine
 BUN="${HARBOR_MEMORY_BUN:-}"
 [ -n "$BUN" ] || BUN="$(command -v bun 2>/dev/null || true)"
 
-# SAY SO WHEN THE RUNTIME IS PRESENT BUT THE ENGINE IS NOT. Dropping to the grep
-# rung is the correct answer on a machine with no runtime; it is the WRONG answer
-# on a machine that has one and simply cannot see tools/memory/, and the two are
-# indistinguishable in the output — both say "tier grep".
-#
-# The reachable way to land here: this script COPIED out of the repo rather than
-# symlinked to it. It resolves the engine relative to itself, so a copy at
-# ~/.claude/bin/memory.sh looks for ~/.claude/tools/memory/ and finds nothing.
-# That is why `memory` installs as a symlink while `harbor` installs as a copy —
-# `harbor restore` must survive the checkout disappearing, and this must reach
-# into it.
+# Runtime present but engine absent is NOT the no-runtime case, yet both say "tier grep". The
+# reachable cause is a COPY of this script (it resolves the engine relative to itself); `memory`
+# installs as a symlink for that reason.
 if [ -n "$BUN" ] && [ -x "$BUN" ] && [ ! -f "$ENGINE" ]; then
   log_warn "a runtime is installed but the engine is not at $ENGINE — answering at the grep tier"
   log_fix "ln -sfn <repo>/bin/memory.sh ~/.local/bin/memory   # a SYMLINK to the repo, not a copy"
@@ -179,24 +128,15 @@ if [ -n "$BUN" ] && [ -x "$BUN" ] && [ ! -f "$ENGINE" ]; then
 fi
 
 if [ -n "$BUN" ] && [ -x "$BUN" ] && [ -f "$ENGINE" ]; then
-  # `--` BEFORE the query terms, and --root BEFORE that. The engine parses argv
-  # with node:util parseArgs in strict mode, so an unseparated term beginning
-  # with a dash — a version string, a negative number, anything flag-shaped —
-  # was read as an unknown option and killed the process with exit 2. The grep
-  # rung handled the same query fine, so the PRIMARY tier failed on input its
-  # own fallback survived.
+  # `--` before the query terms: the engine uses strict parseArgs, so a dash-leading term was
+  # read as an unknown option and exited 2 while the grep rung handled it fine.
   # shellcheck disable=SC2086 — $FLAGS holds only literals written above.
   exec "$BUN" "$ENGINE" "$VERB" --root "$STORE" $FLAGS -- "$@"
 fi
 
-# ── rung 2: grep ────────────────────────────────────────────────────────────
-# Deliberately NOT a reimplementation of the ranker. It answers the question the
-# markdown can answer without a runtime — "which notes mention every one of
-# these words" — and says which rung produced it, so a degraded answer is never
-# mistaken for a ranked one.
-# EXIT 2, not 0. The requested operation did not run, and a caller that checks
-# only the status must not be told it succeeded. Distinct from a search that
-# finds nothing, which IS a successful answer and exits 0.
+# rung 2: grep. Not a ranker reimplementation: it answers "which notes mention every word" and says
+# which rung produced it. Exit 2 when the verb needs bun (the operation did not run); a search
+# that finds nothing exits 0.
 if [ "$VERB" != "search" ]; then
   die 2 "\`$VERB\` needs bun, which is not installed" "memory <terms>   # the grep tier answers a search"
 fi
@@ -208,15 +148,11 @@ if [ ! -d "$STORE" ]; then  # exit 0 is the contract: no store is an empty answe
   log_warn "no store at $STORE"; log_fix "memory --root <a memory store directory> <terms>"; log_end || :; exit 0
 fi
 
-# Progressive narrowing: start from every markdown file, then keep only the ones
-# matching each term in turn. -F because a query is words, not a regex — an
+# Narrow progressively, one term at a time; -F because a query is words, not a regex ("c++").
 # operator searching for "c++" must not get a quantifier error.
 HITS="$(find "$STORE" -type d \( -name '.*' -o -name node_modules -o -name indexes \) -prune -o \
         -type f -name '*.md' -print 2>/dev/null | sort)"
-# Terms are read straight from "$@" rather than re-collected into a string, for
-# the same reason the argument loop rotates: a term is whatever the caller typed.
-# Only the FILE list is newline-delimited, and `find -print` cannot emit a path
-# containing a newline in a form this loop could misread anyway.
+# Terms come straight from "$@"; only the file list is newline-delimited.
 for t in "$@"; do
   [ -n "$HITS" ] || break
   NEXT=""
@@ -241,13 +177,8 @@ if [ -n "$HITS" ]; then
   COUNT="$(printf '%s\n' "$HITS" | "$MEM_GREP" -c . || true)"
 fi
 
-# THE TWO RUNGS EMIT THE SAME SHAPE. A consumer must not have to know which rung
-# answered in order to read the reply, so the grep tier carries `query` too. It
-# was missing, which meant a caller could read `.query` from a ranked answer and
-# get null from a degraded one — a difference that only shows up on the machine
-# without the runtime, which is the machine nobody tests on.
-# awk, not sed: escaping a newline portably across BSD and GNU sed is a trap, and
-# awk is on CI's preflight list.
+# Both rungs emit the same shape, so the grep tier carries `query` too. awk, not sed: portable
+# newline escaping across BSD and GNU sed.
 json_escape() {
   printf '%s' "$1" | awk 'BEGIN{ORS=""} {gsub(/\\/,"\\\\"); gsub(/"/,"\\\""); if (NR>1) printf "\\n"; printf "%s", $0}'
 }

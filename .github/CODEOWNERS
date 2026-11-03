@@ -83,6 +83,7 @@
 /bin/admission-api-route.sh @VytCepas
 /bin/admission-bash.sh @VytCepas
 /bin/admission-cloud.sh @VytCepas
+/bin/admission-decide.sh @VytCepas
 /bin/admission-deliverables.sh @VytCepas
 /bin/admission-deny.sh @VytCepas
 /bin/admission-destroy.sh @VytCepas
@@ -97,6 +98,7 @@
 /bin/admission-self-edit.sh @VytCepas
 /bin/admission-stop.sh @VytCepas
 /bin/admission-verify.sh @VytCepas
+/bin/agent-idle-check.sh @VytCepas
 /bin/alert-notify.sh @VytCepas
 /bin/alert-probe.sh @VytCepas
 /bin/audit-collector-check.sh @VytCepas
@@ -104,6 +106,7 @@
 /bin/audit-triage-run.sh @VytCepas
 /bin/audit-triage.sh @VytCepas
 /bin/check-registry-generate.sh @VytCepas
+/bin/check-run.sh @VytCepas
 /bin/ci-github-plan.sh @VytCepas
 /bin/ci-governor-hook.sh @VytCepas
 /bin/ci-governor.sh @VytCepas
@@ -127,6 +130,7 @@
 /bin/deploy-doctor.sh @VytCepas
 /bin/deploy-hooks.sh @VytCepas
 /bin/deploy-launchd-render.sh @VytCepas
+/bin/deploy-launchd-sync.sh @VytCepas
 /bin/deploy-live-verify.sh @VytCepas
 /bin/deploy-push.sh @VytCepas
 /bin/deploy-runtime-install.sh @VytCepas
@@ -205,12 +209,17 @@
 /bin/memory.sh @VytCepas
 /bin/name-check @VytCepas
 /bin/pack.sh @VytCepas
+/bin/policy-check.sh @VytCepas
 /bin/policy-constitution-install.sh @VytCepas
 /bin/prod-guard-install.sh @VytCepas
 /bin/proposal.sh @VytCepas
 /bin/scope-layers.sh @VytCepas
 /bin/scope-managed-mods.sh @VytCepas
+/bin/scope-repo-sources.sh @VytCepas
+/bin/scope-repo.sh @VytCepas
+/bin/scope-repos-generate.sh @VytCepas
 /bin/scope-roots.sh @VytCepas
+/bin/scope-system.sh @VytCepas
 /bin/secret @VytCepas
 /bin/session-autocompact.sh @VytCepas
 /bin/session-check.sh @VytCepas
@@ -227,6 +236,9 @@
 /bin/standard-fleet-names-run.sh @VytCepas
 /bin/standard-fleet-names.sh @VytCepas
 /bin/standard-frozen-generate.sh @VytCepas
+/bin/standard-inventory.sh @VytCepas
+/bin/standard-kit.sh @VytCepas
+/bin/standard-label-sync.sh @VytCepas
 /bin/standard-register.sh @VytCepas
 /bin/standard-shape.sh @VytCepas
 /bin/standard-vendor.sh @VytCepas

@@ -1,20 +1,9 @@
 #!/usr/bin/env sh
 [ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0
 # B2 (harbor#3) — PreToolUse(Write|Edit|MultiEdit) system-file guard.
-# Blocks an agent from editing the Helm floor's OWN control surfaces inside the
-# active config dir: settings.json, the guard scripts (bin/guard-*.sh,
-# bin/floor-*.sh, bin/library-admission.sh), the hooks tree, the integrity pins
-# (.sec0-baseline.sha256 and the integrity rows of contracts/control-plane-state.md)
-# and deploy's snapshots under backups/. Everything else — user files, and
-# notably the rest of ~/.claude — is ALLOWED (matches upstream's "you may edit
-# ~/.claude freely" stance; we protect only the floor's teeth, not the whole
-# dir). Pure POSIX, zero Bun/node. FAIL-OPEN on any parse error: the
-# un-swallowable permissions.deny layer (B1) is the backstop.
-#
-# Provenance: ports the SYSTEM/USER classification of upstream
-# containment-zones.ts / system-file-guard-core.ts @ a4e8e74 (v7.1.1), narrowed
-# to the floor's self-protection concern (the upstream content-egress scanner
-# is B4's job, not this guard's).
+# Blocks an agent from editing the floor's OWN control surfaces in the active config dir: settings.json, bin guards and library, hooks, integrity
+# pins, deploy snapshots under backups/. The rest of ~/.claude stays editable. FAIL-OPEN on any parse error: the permissions.deny layer (B1) is the backstop. Ports containment-zones.ts and system-file-guard-core.ts @ a4e8e74 (v7.1.1), narrowed.
+# Removed notes: docs/explanation/code-cases/bin-admission-self-edit.md
 set -eu
 # harbor#810: no dirname fork. A failed or unresolvable $(dirname) left DIR at the cwd, sourcing ./library-admission.sh.
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
@@ -28,43 +17,26 @@ FLOOR_TOOL="$TOOL"
 case "$TOOL" in Write|Edit|MultiEdit) ;; *) exit 0 ;; esac
 
 CFG="$(floor_config_dir)"
-# Every path this edit would touch (Write.file_path, Edit.file_path,
-# MultiEdit uses file_path too). Empty ⇒ nothing to judge ⇒ allow.
 P="$(floor_field '.tool_input.file_path')"
 [ -n "$P" ] || exit 0
 
-# Resolve to the physical target before classifying: ./ , // and bin/../ all
-# reached the real settings.json (verified same inode) while string-matching
-# the protected globs reported "not protected" (red-team 2026-07-24).
+# Resolve to the physical target first: ./, // and bin/../ reached the real settings.json while string matching said "not protected" (red-team 2026-07-24).
+# The digest subject is that RESOLVED path, so recurrence counts see one target, not three.
 ABS="$(floor_norm_path "$P")"
-# The digest subject is the RESOLVED path, not the raw one: ./x, //x and
-# bin/../x are the same target, and a recurrence count that treats them as three
-# different things cannot answer "is this the same block again?".
 # shellcheck disable=SC2034 # FLOOR_OBS_SUBJECT: read by library-admission.sh
 FLOOR_OBS_SUBJECT="$ABS"
 
-# Protected surfaces, relative to the config dir. Match on the un-resolved ABS
-# against the config dir prefix (both live and sandbox: $CFG is whichever is
-# active; the B1 deny array independently pins the LIVE ~/.claude surfaces).
-# Both the ACTIVE config dir and the LIVE one: a sandbox session must not be
-# able to reach out and rewrite the live floor. The ROOTS are resolved
-# physically too — comparing a resolved target against an unresolved root
-# silently misses everything whenever the root sits under a symlink (macOS
-# /var → /private/var is the everyday case).
+# Both the ACTIVE and the LIVE config dir are protected (a sandbox session must not rewrite the live floor), with the roots resolved physically too:
+# a resolved target against an unresolved root misses everything under a symlink (macOS /var -> /private/var).
 LIVE="$HOME/.claude"
-# harbor#787 — each root in BOTH spellings, as guard-deliverables does for HOME: floor_norm_path
-# resolves only an existing parent, so a Write into a new backups/<snapshot>/ keeps the raw prefix.
+# harbor#787: each root in BOTH spellings, since floor_norm_path resolves only an existing parent.
 CFGR="$CFG"; LIVER="$LIVE"
 case "$CFGR" in *//*|*/./*|*/../*|*/.|*/..) CFGR="$(floor_collapse_dots "$CFGR")" ;; esac
 case "$LIVER" in *//*|*/./*|*/../*|*/.|*/..) LIVER="$(floor_collapse_dots "$LIVER")" ;; esac
 [ -d "$CFG" ]  && CFG="$(CDPATH= cd -P -- "$CFG" 2>/dev/null && pwd -P || printf '%s' "$CFG")"
 [ -d "$LIVE" ] && LIVE="$(CDPATH= cd -P -- "$LIVE" 2>/dev/null && pwd -P || printf '%s' "$LIVE")"
-# Case-folded comparison: APFS is case-INSENSITIVE by default, so
-# `Settings.json` reaches the very same inode while a POSIX `case` glob (which
-# is case-SENSITIVE) reports "not protected" — a one-character bypass, verified
-# end-to-end (red-team pass 2).
+# Case-folded: APFS is case-insensitive, so `Settings.json` reached the same inode while a case glob said "not protected" (red-team pass 2).
 lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
-# The four roots are folded in one fork, not four (harbor#787 doubled them).
 { IFS= read -r LCFG; IFS= read -r LLIVE; IFS= read -r LCFGR; IFS= read -r LLIVER; } <<ROOTS
 $(printf '%s\n%s\n%s\n%s\n' "$CFG" "$LIVE" "$CFGR" "$LIVER" | tr '[:upper:]' '[:lower:]')
 ROOTS
@@ -76,37 +48,22 @@ is_protected() {
       "$root/.sec0-baseline.sha256"|"$root/.helm-baseline"|"$root/.helm-floor-teeth") return 0 ;;
       # deploy's snapshot hash ledger (harbor#769). Writable, a session could bless a snapshot it forged.
       "$root/.helm-snapshots") return 0 ;;
-      # The instruction-surface pin (B8). Leaving it writable would let a
-      # session inject into CLAUDE.md and then re-pin over its own tracks.
+      # The instruction-surface pin (B8) and guard-apiroute's allow list and accepted copies: writable, a session could bless its own change and re-pin over it.
       "$root/.helm-instructions.sha256") return 0 ;;
-      # guard-apiroute's allow list. Writable, it would let a session allow
-      # the API reroute it was about to make.
       "$root/.helm-apiroute-allow") return 0 ;;
-      # guard-apiroute's accepted copies: the baseline a reroute is judged
-      # against. Writable, a session could bless its own reroute.
       "$root"/.helm-apiroute/*) return 0 ;;
-      # CONST-1 (harbor#44) — the constitution itself, the thing the pin above
-      # records. Protecting the record while leaving the record's SUBJECT
-      # writable was the gap: the comment above reasoned about "a session
-      # inject into CLAUDE.md" and then did not stop one. admission-bash.sh's FILES
-      # arm closed the shell-redirect channel; this closes the cheaper one,
-      # because Write/Edit/MultiEdit needs no shell at all.
-      # Anchored on $CFG/$LIVE only, and floor_config_dir() resolves solely to
-      # CLAUDE_CONFIG_DIR or ~/.claude — so a GOVERNED REPO's own CLAUDE.md,
-      # which every Harbor-managed project has, stays writable. That is the
-      # discriminating case, and recover/floor-test assert it green.
+      # CONST-1 (harbor#44): the constitution itself, the subject of the pin above. Anchored on $CFG/$LIVE only, so a governed repo's own CLAUDE.md stays
+      # writable (recover/floor-test assert it).
       "$root/claude.md"|"$root/claude.local.md") return 0 ;;
       "$root/.helm-pins"|"$root"/.helm-pins/*) return 0 ;;
       "$root/.helm-log-token") return 0 ;;
-      # harbor#779 — the rest of contracts/control-plane-state.md's integrity rows; lint F14 holds this list to it.
-      # A directory is refused by its own name too, so a file there cannot stop its writer's mkdir.
+      # harbor#779: the integrity rows of contracts/control-plane-state.md (lint F14); a directory is refused by its own name too.
       "$root/.helm-obs-salt") return 0 ;;
       "$root/.helm-obs-host"|"$root/.helm-govern-salt") return 0 ;;
       "$root/.helm-install-stamp"|"$root/.helm-judge") return 0 ;;
       "$root/.helm-peers"|"$root"/.helm-peers/*) return 0 ;;
       "$root/.helm-context"|"$root"/.helm-context/*) return 0 ;;
       "$root/.helm-stop-gate"|"$root"/.helm-stop-gate/*) return 0 ;;
-      # harbor#1044 review r3 #1 — the event dispatcher's gates: rules, ledger, spend record, spawn.on.
       "$root/.helm-dispatch"|"$root"/.helm-dispatch/*) return 0 ;;
       "$root/.helm-approvals"|"$root"/.helm-approvals/*) return 0 ;;
       "$root/.helm-ship"|"$root"/.helm-ship/*) return 0 ;;
@@ -121,16 +78,12 @@ is_protected() {
 }
 
 if is_protected "$ABS"; then
-  # The MESSAGE interpolates $ABS — a payload-derived path. That is exactly why
-  # the record carries the rule id passed here and never the message text.
+  # The message interpolates a payload-derived path, so the record carries the rule id passed here, never the message text.
   floor_block selfedit \
     "edit of a Helm floor control surface ($ABS) is denied — a guard must not be able to disable itself in-session" \
     floor-surface.path
 fi
-# A FLOOR SWITCH WRITTEN INTO ANY SETTINGS FILE (harbor#482). A settings.json `env`
-# block reaches every hook (library-admission.sh, FO-03), and a project's own
-# .claude/settings*.json is deliberately writable, so either switch planted there
-# would open every later session in that project. Only the two names are refused.
+# A FLOOR SWITCH WRITTEN INTO ANY SETTINGS FILE (harbor#482): a settings `env` block reaches every hook and a project's settings are writable by design.
 case "$(lower "$ABS")" in
   */.claude/settings.json|*/.claude/settings.local.json)
     _sw="$(floor_field '[.tool_input.content, .tool_input.new_string, (.tool_input.edits[]?.new_string)] | map(select(type == "string")) | join("\n")')"
