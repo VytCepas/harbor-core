@@ -1,0 +1,4 @@
+watches: **lint on what a finished session changed** (harbor#1044): the preset that runs `session-check.sh` on `session.state`, acting on done only, in a repo carrying `bin/lint-conventions.sh` with files changed against origin/main. Read-only on the repo
+schedule: **not scheduled: a rule of `event.dispatch`, on by deploy** (`#default` in `contracts/event-rules.tsv`; `event-dispatch.sh reconcile` installs it, harbor#1437). It fires on `session.state`, debounced 60 s, at most 12 an hour. On: `harbor event on --preset event.session-check`. Off: `harbor event on --off event.session-check`; falsifier: `sh tests/session/react/presets.test.sh`
+notifies: `~/.local/state/harbor/sessions/<session_id>.check` (`ok` or `red N`), shown by the statusline as `lint ✗` until the session leaves done; a `reactions.log` line
+red: lint found violations in a finished session's changes. Disable: `harbor event on --off event.session-check`

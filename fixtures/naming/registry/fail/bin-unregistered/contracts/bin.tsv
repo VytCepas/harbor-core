@@ -1,0 +1,2 @@
+path	form	purpose	ticket
+bin/fixture-gone.sh	command	a row with no file	-

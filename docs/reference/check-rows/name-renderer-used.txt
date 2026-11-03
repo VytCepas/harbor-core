@@ -1,0 +1,4 @@
+watches: whether every writer in `standards/naming/writers.tsv` calls `lint-name.sh --render`, and a script that creates a named thing is in the census (harbor#978), by `bin/lint-renderer.sh`
+schedule: not scheduled: run on a PR by hand or by a workflow that calls `bin/lint-renderer.sh`; the mode is the rule's row in `standards/naming/controls.tsv` (warn prints, never fails). Falsifier: `sh tests/lint/renderer/renderer.test.sh`
+notifies: the tool's WARN line naming `[name.renderer-used]`
+red: a writer builds a name without the renderer, or a creating script is missing from the census. Disable: delete the `name.renderer-used` rows in `standards/naming/controls.tsv`, `bin/lint-renderer.sh`, `tests/lint/renderer/renderer.test.sh` and their lines in `contracts/suites.txt` and `contracts/suite-paths.txt`

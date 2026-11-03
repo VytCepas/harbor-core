@@ -1,44 +1,48 @@
 #!/usr/bin/env sh
-# check-registry-generate.sh (harbor#1149, D-79) - the one check registry: core CHECKS.md plus the private layer's rows
+# check-registry-generate.sh (harbor#1149, D-79) - the one check registry: core docs/reference/checks.md plus the private layer's rows
 # plus every installed pack's rows.
 #
-#   sh check-registry-generate.sh [--core FILE] [--private DIR] [--packs DIR]   the composed register, on stdout
+#   sh check-registry-generate.sh [--core FILE] [--private DIR] [--packs DIR] [--repos FILE]   the composed register, on stdout
 #
 # The private layer holds <private>/checks.md, a fragment in the register's own shape: a "## Register" table
 # body, a "## Platforms" table body and a "## Notes" prose block, each optional. A pack ships the same fragment as
 # harbor-pack/checks.md, which `harbor pack install` puts at <config dir>/checks.d/<repo-id>.md; --packs names that
-# directory (default: none). Core CHECKS.md carries the two insertion points <!-- private:register --> and
+# directory (default: none). --repos names a file of `name TAB path` lines (scope-roots.sh --repos): each governed repo's own
+# harbor-pack/checks.md is composed after the packs, in the same fragment shape, so a repo registers its scheduled workflows where
+# it keeps them (harbor#1433). Core docs/reference/checks.md carries the two insertion points <!-- private:register --> and
 # <!-- private:platforms -->, one at the end of each table. The register rows go in at the first, the platforms rows
 # at the second, private rows before pack rows (packs by repo id), and the notes close the file under "## Private notes"
-# and "## Pack notes: <repo-id>". No fragment at all prints CHECKS.md unchanged: byte for byte.
+# and "## Pack notes: <repo-id>". No fragment at all prints docs/reference/checks.md unchanged: byte for byte.
 #
 # A fragment that cannot be composed refuses the whole read (exit 2, nothing on stdout) and never
 # half-merges: a malformed row, an id twice or already in core or in another fragment, a register row with no
 # platforms row (or the reverse), or rows with no insertion point to take them. Skipping a row would answer "no such
-# check" for a check that is only mistyped. Readers: runtime-install.sh (the installed bin/CHECKS.md), pack.sh (the same
-# file, after an install or a remove), install-drift.sh, findings.sh, lint-conventions.sh (X9, audit.finding-lanes).
+# check" for a check that is only mistyped. Readers: deploy-runtime-install.sh (the installed bin/docs/reference/checks.md), pack.sh (the same
+# file, after an install or a remove), drift-install.sh, lint-findings.sh, lint-conventions.sh (X9, audit.finding-lanes).
 set -eu
 
 case "$0" in */*) SRC="${0%/*}" ;; *) SRC=. ;; esac
-ROOT="${HARBOR_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
-. "$SRC/log-lib.sh"
+ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
+. "$SRC/library-log.sh"
 log_init check-registry-generate
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 
-CORE="$ROOT/CHECKS.md"
+CORE="$ROOT/docs/reference/checks.md"
 PRIV="${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}"
-PACKS=''
+PACKS=''; REPOS=''
 while [ $# -gt 0 ]; do
   case "$1" in
-    --core) [ $# -ge 2 ] || { log_fail "--core takes a file"; log_fix "sh $0 --core CHECKS.md"; log_end || :; exit 2; }; CORE="$2"; shift 2 ;;
+    --core) [ $# -ge 2 ] || { log_fail "--core takes a file"; log_fix "sh $0 --core docs/reference/checks.md"; log_end || :; exit 2; }; CORE="$2"; shift 2 ;;
     --private) [ $# -ge 2 ] || { log_fail "--private takes a directory"; log_fix "sh $0 --private DIR"; log_end || :; exit 2; }; PRIV="$2"; shift 2 ;;
     --packs) [ $# -ge 2 ] || { log_fail "--packs takes a directory"; log_fix "sh $0 --packs DIR"; log_end || :; exit 2; }; PACKS="$2"; shift 2 ;;
+    --repos) [ $# -ge 2 ] || { log_fail "--repos takes a file"; log_fix "sh $0 --repos FILE"; log_end || :; exit 2; }; REPOS="$2"; shift 2 ;;
     -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); if ($0=="") exit; print; next } {exit}' "$0"; exit 0 ;;
     *) log_fail "unknown argument: $1"; log_fix "sh $0 --help"; log_end || :; exit 2 ;;
   esac
 done
 PRIV="${PRIV%/}"
-[ -f "$CORE" ] || { log_fail "no register at $CORE"; log_fix "sh $0 --core <path to CHECKS.md>"; log_end || :; exit 2; }
+[ -f "$CORE" ] || { log_fail "no register at $CORE"; log_fix "sh $0 --core <path to docs/reference/checks.md>"; log_end || :; exit 2; }
 
 FRAG="$PRIV/checks.md"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/check-registry.XXXXXX")" || exit 2
@@ -51,6 +55,15 @@ if [ -f "$FRAG" ] && grep -q '[^[:space:]]' "$FRAG"; then printf '%s\n' "$FRAG" 
 if [ -n "$PACKS" ] && [ -d "$PACKS" ]; then
   find "$PACKS" -maxdepth 1 -type f -name '*.md' 2>/dev/null | LC_ALL=C sort | while IFS= read -r _pf; do
     if grep -q '[^[:space:]]' "$_pf"; then printf '%s\n' "$_pf"; fi
+  done >> "$TMP/srcs"
+fi
+# Each governed repo's own fragment (harbor#1433): copied under its registry name so the notes carry it, composed after the packs.
+if [ -n "$REPOS" ] && [ -r "$REPOS" ]; then
+  mkdir -p "$TMP/repofrags"
+  grep -v '^#' "$REPOS" | LC_ALL=C sort | while IFS='	' read -r _rn _rp; do
+    if [ -n "$_rn" ] && [ -f "$_rp/harbor-pack/checks.md" ] && grep -q '[^[:space:]]' "$_rp/harbor-pack/checks.md"; then
+      cp "$_rp/harbor-pack/checks.md" "$TMP/repofrags/$_rn.md" && printf '%s\n' "$TMP/repofrags/$_rn.md"
+    fi
   done >> "$TMP/srcs"
 fi
 if [ ! -s "$TMP/srcs" ]; then cat "$CORE"; exit 0; fi
@@ -97,7 +110,7 @@ fi
 _rc=0
 awk -F'|' '/^## / { p = ($0 ~ /^## Register/) } p && /^\| `[a-z0-9.-]+` \|/ { id = $2; gsub(/[` ]/, "", id); print id }' "$CORE" | sort > "$TMP/cs"
 # One registry, one row per id: an id may appear once across core and every fragment.
-{ while IFS= read -r _i; do printf '%s\tcore CHECKS.md\n' "$_i"; done < "$TMP/cs"
+{ while IFS= read -r _i; do printf '%s\tcore docs/reference/checks.md\n' "$_i"; done < "$TMP/cs"
   _n=0; while IFS= read -r _f; do _n=$((_n + 1)); while IFS= read -r _i; do printf '%s\t%s\n' "$_i" "$_f"; done < "$TMP/s$_n/register.ids"; done < "$TMP/srcs"; } > "$TMP/allids"
 awk -F'\t' '$1 in first { printf "%s\t%s\t%s\n", $1, first[$1], $2; next } { first[$1] = $2 }' "$TMP/allids" > "$TMP/dups"
 while IFS='	' read -r _i _a _b; do
