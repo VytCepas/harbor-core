@@ -6,16 +6,78 @@
 #                               per-SESSION rows: where the cost went, not just
 #                               what it was (harbor#185)
 #
-# Claude Code records per-message usage in the session transcript and the store is garbage-collected at 30 days, so this writes the only durable record of what the machine spent.
-# Deliberately one file (docs/explanation/modularity.md): one parse of one record shape feeding one aggregation; a split would put two spellings of the transcript field layout in two files.
-# Tokens are NOT turned into money, by decision: nothing in the transcript says how a request was billed (.message.usage.service_tier reads `standard` on essentially every entry), and a price table here
-# would be a copy that rots (lint T2). What is delivered is `.entrypoint`, which separates interactive `cli` from programmatic (`sdk-cli` and friends): a PROXY for billing mode, not a billing field.
-# Read-only unless asked: the default is a report on stdout, and --apply writes exactly one file, the ledger below.
-# It never records payload text, only integers, dates, model ids and entrypoint labels (DE-16, docs/reports/rejected-approaches.md); harbor#185 adds BYTE COUNTS, and `utf8bytelength` is all it asks of a text block.
-# One row per REQUEST, not per record (harbor#185): a streaming call writes several usage-bearing records under one requestId, so summing records over-counted output tokens 2.28x and cache reads 1.89x
-# (25 transcripts, 2026-08-22). Keep the record with the LARGEST output_tokens per requestId (the completed one) and take its whole usage block; a per-field max would blend two views of one call.
-# The historical ledger is not repaired by this: the merge never decreases a stored counter (see APPLY), so deleting affected rows is a deliberate operator act, named in the report.
-# Removed notes: docs/explanation/code-cases/bin-status-usage-aggregate.md
+# WHAT IT IS FOR. Claude Code records per-message token usage in the session
+# transcript, and the transcript store is garbage-collected at 30 days. So the
+# only durable record of what this machine spent is the one somebody writes
+# before the transcript disappears. This writes it.
+#
+# DELIBERATELY ONE FILE (docs/explanation/modularity.md): one parse of one record shape
+# feeding one aggregation. Splitting the reader from the writer would put two
+# spellings of the transcript's field layout in two files, and the field layout
+# is the part that changes when the harness changes.
+#
+# ── THE HALF THAT IS NOT HERE, AND WHY (read this before adding it) ──────────
+#
+# The ticket pairs `UsageAggregator` with `CostTracker`, whose stated origin is
+# an invoice "dominated by upstream-local processes that billed API instead of
+# subscription". Turning tokens into money is NOT implemented, and it is absent
+# by decision rather than oversight:
+#
+#   1. NOTHING IN THE TRANSCRIPT SAYS HOW A REQUEST WAS BILLED. The only
+#      tier-shaped field is `.message.usage.service_tier`, and on this machine it
+#      reads `standard` for essentially every usage-bearing entry sampled on
+#      2026-08-05 — it discriminates nothing. A tool that mapped it to a billing
+#      mode would be inventing the mapping.
+#   2. A PRICE TABLE IN THIS REPO WOULD BE A COPY THAT ROTS. Per-model prices
+#      live at the vendor and change without notice; committing them here is
+#      exactly the restated-fact class lint T2 exists to catch, and a stale price
+#      silently produces a wrong number that reads as authoritative.
+#
+# What IS delivered is the honest discriminator the origin invoice actually
+# needed: `.entrypoint`, which separates an interactive `cli` session from a
+# programmatic one (`sdk-cli` and friends). That is the axis "a local process
+# billed differently from my subscription" falls along, so usage is attributed
+# by it. Read it as a PROXY and not as a billing field, because that is what it
+# is — the transcript carries no billing field at all.
+#
+# ── READ-ONLY UNLESS ASKED ───────────────────────────────────────────────────
+# Default is a report on stdout and no write anywhere. `--apply` is the only
+# mode that touches disk, and it writes exactly one file: the ledger below.
+#
+# IT NEVER RECORDS PAYLOAD TEXT. Every value it keeps is an integer, a date, a
+# model id or an entrypoint label. docs/reports/rejected-approaches.md DE-16 refused a durable corpus
+# built out of transcript CONTENT, and that refusal is why this reads usage
+# counters and nothing else: the class is unreachable rather than mitigated,
+# so there is no scrubber here and none is needed. harbor#185 adds BYTE COUNTS
+# over that content, which is the same discipline one step further: a length is
+# not a payload, and `utf8bytelength` is the only thing this file ever asks of a
+# text block.
+#
+# ── ONE ROW PER REQUEST, NOT PER RECORD (harbor#185) ─────────────────────────
+# A streaming API call writes SEVERAL usage-bearing records to the transcript
+# under one `requestId`, and every one of them carries a usage block. Summing
+# records rather than requests therefore counts the same call repeatedly.
+# Measured over the 25 most recent transcripts on 2026-08-22:
+#
+#   usage-bearing records          11,594
+#   distinct requestIds             6,049   (3,887 of them appear 2-5 times)
+#   output tokens, summed naively   12,207,585
+#   output tokens, one per request   5,351,231     -> 2.28x over-count
+#   cache reads, summed naively      3,461,269,590
+#   cache reads, one per request     1,830,273,639 -> 1.89x over-count
+#
+# So the durable ledger — the ONLY surviving record of what this machine spent,
+# because the transcripts are garbage-collected at 30 days — read roughly double
+# for every day it has ever covered. The rule is the ticket's: keep the record
+# with the LARGEST output_tokens per requestId, which is the completed one, and
+# take its whole usage block rather than a per-field maximum across records. A
+# per-field max would blend two views of one call, and a blend is a number with
+# no request behind it.
+#
+# THE HISTORICAL LEDGER IS NOT REPAIRED BY THIS, and it cannot be: the merge
+# below never decreases a stored counter (see APPLY), so re-running writes the
+# corrected, smaller numbers nowhere. Deleting the affected rows is a deliberate
+# operator act and is named in the report rather than done here.
 set -eu
 
 # stdout is the report and its data (the tables, --json), so the log is on stderr (LOG_FD=2,
@@ -40,7 +102,9 @@ while [ $# -gt 0 ]; do
     --apply)   MODE=apply ;;
     --sessions) SESSIONS=1 ;;
     --since)   shift; SINCE="${1:-}" ;;
-    # INTENT, NOT ARGUMENT INDEX (harbor#52): gates that tested `${1:-}` let `--apply --live` through and refused `--live --apply`.
+    # INTENT, NOT ARGUMENT INDEX (harbor#52). The four gates that came before this
+    # one all tested `${1:-}` while their own loops accepted --live anywhere, so
+    # `--apply --live` passed the gate and `--live --apply` did not.
     --live)    LIVE_OK=1 ;;
     -h|--help)
       sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'
@@ -60,21 +124,35 @@ esac
 [ -n "$DIR" ] || { [ "$LIVE_OK" -eq 1 ] && DIR="$LIVE_DIR"; }
 CFG="${DIR:-${CLAUDE_CONFIG_DIR:-$LIVE_DIR}}"
 
-# ── --apply MAY NOT REACH THE LIVE DIR WITHOUT BEING TOLD TO (lint D2) ──
-# A bare --apply on the operator's machine would write into ~/.claude. Reading is unrestricted; only the write is gated, on RESOLVED paths (a trailing slash, `//` or a symlink spells one directory differently; P11-01).
+# ── --apply MAY NOT REACH THE LIVE DIR WITHOUT BEING TOLD TO (lint D2) ───────
+# The default target is the active config dir, which on the operator's machine IS
+# the live one — so a bare `--apply` would write a ledger into ~/.claude because
+# nobody named another directory, which is the accident this gate exists for.
+# Reading is unrestricted; only the write is gated.
+#
+# RESOLVED PATHS, NOT STRINGS. A trailing slash, a `//`, or a symlinked route
+# spells the same directory differently, and pass 11 used exactly that to strip
+# every hook from a live config whose --live gate was a string compare (P11-01).
 if [ "$MODE" = "apply" ] && [ "$LIVE_OK" -eq 0 ]; then
   _phys="$(CDPATH= cd -P -- "$CFG" 2>/dev/null && pwd -P || printf '%s' "$CFG")"
   _live="$(CDPATH= cd -P -- "$LIVE_DIR" 2>/dev/null && pwd -P || printf '%s' "$LIVE_DIR")"
   if [ "$_phys" = "$_live" ]; then
+    # --apply creates a durable record under the config dir.
     die "refusing to write the LIVE ledger without an explicit --live" "sh $0 --apply --live" 1
   fi
 fi
-# The same env seam eval-replay-corpus.sh uses, so the suite can point this at a synthetic tree and never read a real transcript; two spellings of where transcripts are would be two things to redirect.
+# The same env seam eval-replay-corpus.sh uses (bin/eval-replay-corpus.sh:52), so the suite
+# can point this at a synthetic tree and never read a real transcript. Sharing the
+# name matters: two spellings of "where the transcripts are" is two things to
+# redirect, and a suite that redirects one of them reads the operator's store.
 SRC_DIR="${HARBOR_SESSION_TRANSCRIPTS:-$CFG/projects}"
 
 command -v jq >/dev/null 2>&1 || die "jq is required" "$(pkg_hint jq)"
 
-# The host partition key: NEVER `hostname` (it answers the literal `Mac` while scutil answers LocalHostName; the flip forked every host-sharded ledger, harbor#119). One canonical answer, floor_host_token.
+# The host partition key. NEVER `hostname` — on this machine `hostname` answers
+# the literal `Mac` while scutil answers the configured LocalHostName, and the
+# flip silently FORKED every host-sharded ledger in ~/.claude (harbor#119). One
+# canonical answer, from guard-lib, or the fork happens again here.
 LIB="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-admission.sh"
 if [ -r "$LIB" ]; then
   # shellcheck source=/dev/null
@@ -86,12 +164,21 @@ fi
 
 LEDGER_DIR="$CFG/MEMORY/USAGE/$HOST"
 LEDGER="$LEDGER_DIR/usage.jsonl"
-# A second file, not a `kind` field in the first: the daily rows have readers and their shape is the contract.
+# A SECOND FILE, NOT A `kind` FIELD IN THE FIRST. The daily rows have readers
+# already and their shape is the contract; a per-session row shares no key with
+# them, so mixing the two would make every reader filter before it could sum.
 SLEDGER="$LEDGER_DIR/sessions.jsonl"
 
-# ── AGGREGATE ──
-# One jq pass per transcript, summed in jq (a shell loop over ~20k records forks per record). The key is (date, model, entrypoint); date is `.timestamp` truncated at the `T` (ISO-8601 UTC).
-# A record without usage is not a request; `<synthetic>` models are kept, labelled as they come, so totals agree with the transcript.
+# ── AGGREGATE ────────────────────────────────────────────────────────────────
+# One jq pass per transcript, summed in jq rather than in the shell: a shell loop
+# over ~20k records forks per record and takes minutes, and the numbers are the
+# whole product here.
+#
+# The key is (date, model, entrypoint). Date comes from `.timestamp`, truncated
+# at the `T` — the field is ISO-8601 UTC, so no date arithmetic is needed and
+# none is done. A record without a usage block is not a request and is skipped;
+# `<synthetic>` models are harness-generated and are kept, labelled as they come,
+# because dropping them would make the totals disagree with the transcript.
 if [ ! -d "$SRC_DIR" ]; then
   die "no transcript store at $SRC_DIR" "HARBOR_SESSION_TRANSCRIPTS=<projects dir> sh $0"
 fi
@@ -101,9 +188,31 @@ trap 'rm -rf "$TMP"' EXIT INT TERM
 
 find "$SRC_DIR" -type f -name '*.jsonl' 2>/dev/null > "$TMP/files" || :
 
-# One line at a time as a raw string (`-R`, `fromjson?`): jq parses JSONL as a STREAM and aborts at the first malformed line, silently dropping every later record while the tool reports a clean total
-# (a fixture with junk on line 5 lost a later 1000-token record). A half-written last line is the NORMAL state of the running session. `-R -n '[inputs]'` rather than per line, because the dedup needs a whole file at once; still one jq per file.
-# The key falls back to the record index (`idx-N`), never a shared constant: a literal would collapse requestId-less records into one row and under-count.
+# ONE LINE AT A TIME, AS A RAW STRING, and this is the whole reason `-R` is here.
+#
+# The first cut fed the file to jq directly and swallowed errors with
+# `2>/dev/null || :`. jq parses a JSONL file as a STREAM, so it aborts at the
+# first malformed line — and every record AFTER that line was silently dropped
+# while the tool reported a clean total. Measured on a fixture whose 5th line was
+# junk: a 1000-token record appended after it never appeared, and the ledger read
+# as correct. That is the exact "a clean result indistinguishable from nothing to
+# report" shape M8's REF-6 was added for.
+#
+# A half-written last line is the NORMAL state of the session currently running,
+# so this is the common case and not an edge case. `fromjson?` confines a parse
+# failure to the line that caused it, and one jq process still covers the file —
+# forking per line would fork ~20k times over the real store.
+#
+# `-R -n '[inputs]'` RATHER THAN `-R` PER LINE, because the dedup below needs to
+# see a whole file at once: the records sharing a requestId are adjacent but the
+# grouping is not expressible one line at a time. Still one jq process per file,
+# and `fromjson?` still confines a parse failure to its own line.
+#
+# THE KEY FALLS BACK TO THE RECORD INDEX, never to a shared constant. Grouping a
+# batch of requestId-less records under one literal would collapse them into a
+# single row and UNDER-count — the opposite defect, introduced by the fix for the
+# first one. `idx-N` is unique per record, so a record with no requestId is its
+# own call, which is the conservative reading.
 : > "$TMP/rows"
 while IFS= read -r _f; do
   [ -n "$_f" ] || continue
@@ -142,10 +251,30 @@ jq -s '
   | sort_by([.day, .model, .entry])
 ' "$TMP/rows" > "$TMP/agg.json"
 
-# ── PER-SESSION ROWS (harbor#185) ──
-# Daily rows record what was spent, not WHERE; cost is dominated by cache reads (context size x call count), both per-session properties. Every field is an integer or a tool name (BYTES, NOT TEXT); the categories
-# are the ones harbor#184 measured by hand (tool results 34%, tool inputs 27%, assistant text 29%, user 10%), and `thinking` is its own category. Per-tool result bytes need the tool_use_id -> name join, because a tool_result names only its id.
-# Gaps between consecutive calls settle the 5-minute versus 1-hour cache TTL question. Runs only under --sessions: it is a second pass over every file.
+# ── PER-SESSION ROWS (harbor#185) ────────────────────────────────────────────
+# WHY THE DAILY ROWS ARE NOT ENOUGH, in the ticket's words: they record what was
+# spent and not WHERE, so no context-economy change can be tested. Cost here is
+# dominated by cache reads, which are context size MULTIPLIED BY call count —
+# both per-session properties, and neither is in a (day, model, entrypoint) row.
+#
+# BYTES, NOT TEXT. Every field below is an integer or a tool name. The categories
+# are the ones harbor#184 measured by hand across 40 transcripts (tool results
+# 34%, tool inputs 27%, assistant text 29%, user 10%) — doing that by hand is how
+# the finding was made, and a finding you cannot re-measure is not a mechanism.
+# `thinking` is broken out as its own category because it is neither of those and
+# it is not free.
+#
+# PER-TOOL RESULT BYTES ARE THE POINT OF THE JOIN. A `tool_result` block names
+# only its `tool_use_id`, so attributing 13.1 KB per call to `Read` requires the
+# id -> name map from the assistant records. Without the join the top offender is
+# invisible, which is exactly the state harbor#184 describes.
+#
+# GAPS SETTLE THE TTL QUESTION WITH DATA. The distance between consecutive calls
+# decides whether a 5-minute or 1-hour prompt cache is the right assumption, and
+# the transcripts already carry it — this only counts it.
+#
+# ONLY WHEN ASKED: this is a second pass over every file, so it runs under
+# --sessions and not otherwise.
 if [ "$SESSIONS" = 1 ]; then
   : > "$TMP/srows"
   while IFS= read -r _f; do
@@ -172,11 +301,19 @@ if [ "$SESSIONS" = 1 ]; then
                  + (.message.usage.cache_creation_input_tokens // 0)
                  + (.message.usage.cache_read_input_tokens // 0) ] ) as $P
       | ( [ range(1; ($T | length)) as $i | ($T[$i] - $T[$i - 1]) ] ) as $G
-        # `.timestamp // empty`, NOT `// ""`: an empty string splits to an EMPTY ARRAY, so [0] is null and `select(. != "")` lets null through, which sorted first and made day_first read empty on every row.
+        # `.timestamp // empty`, NOT `// ""`. An empty string splits to an EMPTY
+        # ARRAY in jq, so `[0]` is null, and `select(. != "")` lets null through —
+        # which sorted to the front and made day_first read "" on every row while
+        # day_last was correct. A filter that admits the value it exists to
+        # exclude is worse than none.
       | ( [ $R[] | (.timestamp // empty) | split("T")[0] ]
           | map(select(. != null and . != "")) | sort ) as $D
       | { session: ($R[0].sessionId // ($file | split("/") | last | sub("\\.jsonl$"; ""))),
-          # THE FIRST NON-NULL, NOT RECORD ZERO: a transcript opens with harness bookkeeping (leafUuid, mode, permission-mode) that carries no cwd, so reading the first record reported every session as unknown.
+          # THE FIRST NON-NULL, NOT WHATEVER RECORD ZERO HAS. A transcript opens with
+          # harness bookkeeping (`leafUuid`, `mode`, `permission-mode`) that
+          # carries no cwd, so reading `$R[0].cwd` reported every session as
+          # "unknown" — measured, and the reason attribution existed but did not
+          # attribute.
           project: ([ $R[] | .cwd // empty ] | first // "unknown"),
           day_first: ($D | first // ""),
           day_last:  ($D | last  // ""),
@@ -194,8 +331,14 @@ if [ "$SESSIONS" = 1 ]; then
           b_assistant:   ([ $R[] | select(.type == "assistant") | blocks
                             | select(type == "object" and .type == "text")
                             | (.text // "" | utf8bytelength) ] | add // 0),
-          # Measured at ZERO and that is not a bug: thinking blocks are stored with a signature and an EMPTY thinking string (548 blocks, 0 bytes on the newest transcript, 2026-08-22), so reasoning cost is invisible to
-          # transcript-based accounting. The count ships beside the bytes so a zero cannot be read two ways.
+          # MEASURED AT ZERO, AND THE BLOCK COUNT IS WHY THAT IS NOT A BUG. The
+          # transcript stores thinking blocks with a `signature` and an EMPTY
+          # `thinking` string: 548 blocks, 0 bytes, 0 non-empty, on the newest
+          # transcript on 2026-08-22. So reasoning cost is structurally invisible
+          # to any transcript-based context accounting on this harness — a fact
+          # harbor#184 needs, since it is a whole category its byte split cannot
+          # see. The field stays because it would light up if that changed, and
+          # the count ships beside it so a zero cannot be read two ways.
           b_thinking:    ([ $R[] | select(.type == "assistant") | blocks
                             | select(type == "object" and .type == "thinking")
                             | ((.thinking // "") | utf8bytelength) ] | add // 0),
@@ -208,24 +351,59 @@ if [ "$SESSIONS" = 1 ]; then
           tools: ($TR | group_by(.name)
                       | map({ name: .[0].name, calls: length, bytes: ([ .[] | .b ] | add) })
                       | sort_by(- .bytes) | .[0:5]),
-          # ── THE DENOMINATOR harbor#184 LEVER 1 IS TESTED AGAINST ──
-          # Calls per session and tool-calls per assistant message ship as COUNTS, not a ratio (a stored mean cannot be re-aggregated across sessions). Every call re-reads the whole prefix, so four independent commands in ONE message remove three context reads.
-          # No separate message count: `calls` (the deduped requestId count) already IS it; counting raw records once reported 0.52 calls per message for a session whose real figure is 0.97.
+          # ── THE DENOMINATOR harbor#184 LEVER 1 IS TESTED AGAINST ──────────
+          # "Batch independent tool calls" has a stated test — "calls per
+          # session, and mean tool-calls per assistant message" — and the second
+          # half was not recorded anywhere, so the lever could be applied and
+          # not measured. Both halves ship as counts rather than as a ratio:
+          # a stored mean cannot be re-aggregated across sessions and a count
+          # can, which is the T2 argument applied to arithmetic.
+          #
+          # The reason this is the right denominator: every call re-reads the
+          # whole prefix, so four independent commands in ONE assistant message
+          # removes three full context reads of identical content. Turn count is
+          # the multiplier on context size, and `Bash` is the proof it matters
+          # here — 4,055 calls at a 1 KB mean result, where the cost is entirely
+          # in how many times it was called.
+          # NO SEPARATE MESSAGE COUNT: `calls` already IS it. One API request is
+          # one assistant message, and `calls` is the deduped requestId count, so
+          # a second field would be a copy — and the first draft got it wrong in
+          # exactly the way that copy invites, counting raw RECORDS (6,155) where
+          # the messages were 3,369, and reporting 0.52 calls per message for a
+          # session whose real figure is 0.97.
           tool_uses: ($TU | length),
-          # ── CARRIED RAW, BECAUSE A SESSION IS NOT A FILE ──
-          # A session that spawns subagents writes <session>/subagents/agent-*.jsonl carrying the PARENT sessionId, so one row per FILE is several rows under one key and the ledger merge cross-contaminated counters (PR #263 review).
-          # Timestamps and prefix sizes therefore travel as ARRAYS and are folded after the group-by: gaps and wall time belong to the whole call sequence, and per-file bucketing would invent gaps.
+          # ── CARRIED RAW, BECAUSE A SESSION IS NOT A FILE ──────────────────
+          # A session that spawns subagents writes <session>/subagents/agent-*.jsonl
+          # beside its own transcript, and those records carry the PARENT
+          # sessionId — measured 2026-08-22: 97 records, all under
+          # 79e64eec-…, the id of the session above them. So one row per FILE
+          # is several rows under one key: the report showed duplicates and the
+          # ledger merge then compared each duplicate against the same stored
+          # row independently, cross-contaminating counters across runs.
+          # Reported by review on PR #263.
+          #
+          # Timestamps and prefix sizes therefore travel as ARRAYS and are folded
+          # after the group-by. Wall time and the inter-call gaps are properties
+          # of the whole call sequence for a session, and computing them per file
+          # would bucket a gap that never existed: the last call in the parent and
+          # the first in a subagent are not consecutive in either file alone.
           ts: $T, pfx: $P,
           files: 1,
-          # Which side of the delegation a file is, kept because harbor#184 lever 3 is this ratio (39 Agent calls returned 0.04 MB to a parent while one workflow burned 2.06M subagent tokens).
+          # WHICH SIDE OF THE DELEGATION a file is, kept because the third lever in
+          # harbor#184 is exactly this ratio: 39 Agent calls returned 0.04 MB
+          # into a parent context while one workflow burned 2.06M subagent
+          # tokens. Merging subagent cost into the session total is right, and
+          # losing the split would erase the measurement that justifies it.
           agent: (if ($file | test("/subagents/")) then 1 else 0 end),
           gaps_raw: $G }
       | select(.calls > 0)
       end
     ' "$_f" 2>/dev/null >> "$TMP/srows" || :
   done < "$TMP/files"
-  # ── ONE ROW PER SESSION ──
-  # The fold that makes the key true: counters sum; timestamp and prefix arrays concatenate and are re-derived; `project` takes the first non-empty; the day range widens; tool rows merge by name.
+  # ── ONE ROW PER SESSION ────────────────────────────────────────────────────
+  # The fold that makes the key true. Counters sum; the timestamp and prefix
+  # arrays concatenate and are re-derived from the merged sequence; `project`
+  # takes the first non-empty; the day range widens; tool rows merge by name.
   jq -s --arg since "$SINCE" '
       def bucket($g; $lo; $hi): [ $g[] | select(. >= $lo and . < $hi) ] | length;
       group_by(.session)
@@ -268,13 +446,43 @@ if [ "$SESSIONS" = 1 ]; then
     || printf '[]\n' > "$TMP/sagg.json"
 fi
 
-# ── APPLY: merge into the durable ledger ──
-# Idempotent by key and MONOTONIC per field: a transcript grows while its session runs (appending would multiply the truth), and the source window SHRINKS as the store is GC'd at 30 days, so a plain replace overwrote full totals with partial ones (PR #120 review).
-# Each numeric field takes the maximum of stored and fresh (fields move independently). Cost: a genuine correction DOWNWARD cannot go through --apply; deleting a row by hand is the deliberate act. Days the run did not cover are untouched, which makes --since safe.
-# So the requestId dedup (harbor#185) is NOT retroactive: stored rows for days already aggregated stay ~2x high until an operator deletes them, and the report says so.
+# ── APPLY: merge into the durable ledger ─────────────────────────────────────
+# IDEMPOTENT BY KEY, AND MONOTONIC PER FIELD. A transcript is appended to while its
+# session runs, so the same day gets aggregated repeatedly with a growing total;
+# appending would make the ledger sum to several multiples of the truth. Days the
+# current run did not cover are left untouched, which is what makes `--since` safe.
+#
+# A PLAIN REPLACE WAS WRONG, AND IT DEFEATED THE WHOLE POINT (PR #120 review). The
+# transcript store is garbage-collected at 30 days, so the source window SHRINKS
+# over time. Once one transcript for a day has been aggregated and another for the
+# same `(day, model, entry)` is later GC'd, a plain `--apply` overwrote the durable
+# full total with the smaller partial one — destroying exactly the history this
+# ledger exists to outlive, silently, while reporting success.
+#
+# So a stored counter is never DECREASED: each numeric field takes the maximum of
+# stored and freshly-measured. Rationale for max rather than "skip if smaller": the
+# fields move independently, and a day can legitimately gain output tokens while a
+# cache counter is missing from the narrower window.
+#
+# The cost of this choice, stated rather than hidden: a genuine correction DOWNWARD
+# cannot be applied through `--apply`. That is the right trade — the only way a
+# count legitimately falls is if it was over-counted, which no observed path
+# produces, whereas GC shrinking the window is the normal case. Deleting a row by
+# hand remains available and is a deliberate act.
+#
+# THE CORRECTION THIS COMMIT MAKES IS THEREFORE NOT RETROACTIVE (harbor#185). The
+# requestId dedup makes every fresh number SMALLER than the double-counted one
+# already stored, and "never decrease" means `--apply` will not write it. That is
+# the right precedence — a rule that let a narrower window overwrite a wider one
+# is the defect above — but it means the stored rows for days already aggregated
+# stay ~2x high until an operator deletes them, and the report says so.
 if [ "$MODE" = "apply" ] && [ "$SESSIONS" = 1 ]; then
-  # ── THE SESSION LEDGER ──
-  # Same discipline keyed on the session id. The non-numeric fields (project, days, the tool list) take the FRESH value: they describe the session rather than accumulate over it.
+  # ── THE SESSION LEDGER ─────────────────────────────────────────────────────
+  # Same discipline, keyed on the session id, and monotonic for the same reason:
+  # a live session's transcript grows under us, so re-running must not append a
+  # second row and must not shrink one. The non-numeric fields (project, days,
+  # the tool list) take the FRESH value, because they describe the session rather
+  # than accumulate over it, and the freshest read is the most complete one.
   mkdir -p "$LEDGER_DIR"
   [ -f "$SLEDGER" ] || : > "$SLEDGER"
   jq -s '.' "$SLEDGER" > "$TMP/sold.json" 2>/dev/null || printf '[]\n' > "$TMP/sold.json"
@@ -306,7 +514,9 @@ if [ "$MODE" = "apply" ] && [ "$SESSIONS" = 1 ]; then
 elif [ "$MODE" = "apply" ]; then
   mkdir -p "$LEDGER_DIR"
   [ -f "$LEDGER" ] || : > "$LEDGER"
-  # A temp file, not `<(...)`: process substitution is a bashism and the security floor is pure POSIX sh, checked under dash in CI.
+  # A TEMP FILE, NOT `<(…)`. Process substitution is a bashism; this repo's
+  # security floor is pure POSIX sh and CI checks the suites under dash, so a
+  # `<(…)` here would run on the operator's Mac and die on a portable shell.
   jq -s '.' "$LEDGER" > "$TMP/old.json" 2>/dev/null || printf '[]\n' > "$TMP/old.json"
   [ -s "$TMP/old.json" ] || printf '[]\n' > "$TMP/old.json"
   jq -s -c '
@@ -337,6 +547,7 @@ log_ok "aggregated $(wc -l < "$TMP/files" | tr -d ' ') transcript file(s) from $
 if [ "$MODE" = "apply" ]; then log_ok "ledger updated: $([ "$SESSIONS" = 1 ] && echo "$SLEDGER" || echo "$LEDGER")"
 else log_note "ledger not written; pass --apply"; fi
 
+# ── OUTPUT · sessions ────────────────────────────────────────────────────────
 if [ "$SESSIONS" = 1 ]; then
   if [ "$JSON" = "1" ]; then
     jq -n --slurpfile rows "$TMP/sagg.json" \
@@ -371,9 +582,14 @@ if [ "$SESSIONS" = 1 ]; then
                  (.project | split("/") | last) ] | @tsv' "$TMP/sagg.json" \
     | awk -F'\t' '{ printf "%-12s  %-22s  %6s  %10s  %10s  %8ss  %s\n", $1,$2,$3,$4,$5,$6,$7 }'
 
-  # The two numbers harbor#184 is about: context re-read per call is the cost driver, and the byte split says which part to attack first.
+  # THE TWO NUMBERS harbor#184 IS ABOUT, derived here rather than left to the
+  # reader: context re-read per call is the whole cost driver, and the byte split
+  # says which part of the context to attack first.
   printf '\n'
-  # LEVER 1's measure, derived at print time rather than stored: turn count multiplies context size.
+  # LEVER 1's MEASURE, derived at print time rather than stored. Every call
+  # re-reads the whole prefix, so four independent commands in ONE assistant
+  # message removes three full context reads of identical content — turn count is
+  # the multiplier on context size, and this is the number that moves.
   jq -r '
       (map(.tool_uses // 0) | add) as $t | (map(.calls) | add // 0) as $m
     | if $m == 0 then "batching: no assistant messages measured"
@@ -404,7 +620,8 @@ if [ "$SESSIONS" = 1 ]; then
          then "  (thinking: \($tb) block(s) carrying 0 bytes — the harness stores a signature and an empty string, so reasoning cost is not measurable from a transcript)"
          else "" end)
   ' "$TMP/sagg.json"
-  # The top offender by RESULT bytes (needs the tool_use_id -> name join); harbor#184 named `Read`.
+  # The top offender by RESULT bytes, which needs the tool_use_id -> name join
+  # and is the number harbor#184 named `Read` on.
   jq -r '
       [ .[] | .tools[]? ] | group_by(.name)
     | map({ name: .[0].name, calls: (map(.calls) | add), bytes: (map(.bytes) | add) })
@@ -421,7 +638,8 @@ if [ "$SESSIONS" = 1 ]; then
       else "inter-call gaps: <1m \(.lt1m) · 1-5m \(.m1_5) · 5-60m \(.m5_60) · >60m \(.gt60m)" +
            " — \((( .m5_60 + .gt60m) * 100 / $g) | floor)% of calls land past a 5-minute cache TTL"
       end' "$TMP/sagg.json"
-  # The dedup, stated: `records` above `calls` is the over-count the daily ledger carried, so a reader knows an old stored row is too high.
+  # THE DEDUP, STATED. `records` above `calls` is the over-count the daily ledger
+  # carried, and naming it is how a reader knows an old stored row is too high.
   jq -r '
       (map(.calls) | add // 0) as $c | (map(.records) | add // 0) as $r
     | if $c == 0 or $r == $c then empty
@@ -433,6 +651,7 @@ if [ "$SESSIONS" = 1 ]; then
   log_end; exit $?
 fi
 
+# ── OUTPUT ───────────────────────────────────────────────────────────────────
 if [ "$JSON" = "1" ]; then
   jq -n --slurpfile rows "$TMP/agg.json" \
         --arg host "$HOST" --arg src "$SRC_DIR" --arg ledger "$LEDGER" \
@@ -457,7 +676,10 @@ printf '\n%-10s  %-18s  %-8s  %7s  %10s  %10s  %10s  %10s\n' \
 jq -r '.[] | [.day, .model, .entry, .msgs, .inp, .out, .cc, .cr] | @tsv' "$TMP/agg.json" \
   | awk -F'\t' '{ printf "%-10s  %-18s  %-8s  %7s  %10s  %10s  %10s  %10s\n", $1,$2,$3,$4,$5,$6,$7,$8 }'
 
-# The entrypoint split is why this tool attributes at all: non-`cli` usage is the class the CostTracker origin invoice was about, stated as a proxy (no billing field exists).
+# The entrypoint split is the reason this tool attributes at all, so it is
+# reported rather than left for the reader to sum. Non-`cli` usage is the class
+# the CostTracker origin invoice was about — stated as a proxy, which is what it
+# is, because no billing field exists to state anything stronger.
 printf '\n'
 jq -r '
     (map(select(.entry != "cli")) | length) as $n

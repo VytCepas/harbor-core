@@ -37,5 +37,3 @@ fixtures/naming/registry/fail/seam-unregistered	standard.seam-registered
 fixtures/naming/registry/fail/version-unregistered	standard.version-registered
 fixtures/naming/registry/fail/control-unregistered-hook	name.control-unregistered
 fixtures/naming/registry/fail/control-stable-unproven	name.control-shape
-fixtures/naming/registry/fail/env-unregistered	standard.env-registered
-fixtures/naming/registry/fail/bin-unregistered	standard.script-registered

@@ -87,6 +87,3 @@ tests/skill/fire/output-contract.test.sh	evals/	names the vendored evals skill d
 contracts/README.md.tmpl	docs/generated/status.md	the source of contracts/README.md, a document: it links the counts in prose, as the README did before it was generated (harbor#1424)
 bin/doc-shape.sh	*	the git grep pathspec excludes these directories from the generated-header scan; an absent directory excludes nothing (harbor#1434)
 vendor/naming/doc-shape.sh	*	vendored copy of bin/doc-shape.sh; same exclude pathspec, an absent directory excludes nothing (harbor#1434)
-contracts/cli.md.tmpl	*	the source of contracts/cli.md: its table rows describe tools that read a dev path only behind a missing-is-fine check, as the document did before it was generated (harbor#1432)
-tests/standard/id-resolve/resolve.test.sh	registries/coverage-incidents.tsv	the real-tree arm runs only when the incident register exists; the export has no dev layer and skips it
-bin/policy-check.sh	registries/coverage-incidents.tsv	read behind a -f check: the dev layer holds the incident register and a core export derives no incident edge without it

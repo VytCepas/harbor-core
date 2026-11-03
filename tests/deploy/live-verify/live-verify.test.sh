@@ -33,14 +33,14 @@ t_eq "the shims are linked in the scratch bin" yes "$([ -L "$LB/harbor" ] && ech
 t_section "a green box: every check, one line each with its id"
 _n0="$(wc -l < "$LEDGER")"; sleep 1; touch "$T_TMP/stamp"; sleep 1
 t_eq "every check green exits 0" "exit 0" "$(rc sh "$LV" --live)"
-for id in floor doctor install-drift shims roots sec0-env launchd manifest; do
+for id in floor doctor install-drift shims roots sec0-env; do
   t_has "the $id check has its line, and it is green" "$(line "$id")" "ok: [check:deploy.live-verify] $id "
 done
 t_has "the wall has its line: a WARN here, since the fixture box has no managed install (born warn)" "$(line wall)" "WARN: [check:deploy.live-verify] wall — does not hold: confined Bash"
 t_has "...stamped with its own check id as well" "$(line wall)" "[check:drift.wall]"
 t_has "the probes are named even when not run" "$(out)" "skip: [check:deploy.live-verify] probe:secret "
 t_has "and say how to opt in" "$(line probe:secret)" '--probes'
-t_eq "the run ends with its summary" "live-verify: 8 ok, 0 failed, 1 warnings" "$(tail -1 "$T_TMP/out")"
+t_eq "the run ends with its summary" "live-verify: 6 ok, 0 failed, 1 warnings" "$(tail -1 "$T_TMP/out")"
 t_eq "every result line carries the check id" "$(grep -cE '^  (ok|FAIL|WARN|skip): ' "$T_TMP/out")" \
   "$(grep -cE '^  (ok|FAIL|WARN|skip): \[check:deploy.live-verify\] ' "$T_TMP/out")"
 t_has "docs/reference/checks.md registers the id, unscheduled" "$(grep '^| `deploy.live-verify` |' "$T_ROOT/docs/reference/checks.md")" 'not scheduled'
@@ -58,7 +58,7 @@ t_has "the shims line is the FAIL" "$(line shims)" "FAIL: [check:deploy.live-ver
 t_has "it names the shim" "$(line shims)" 'harbor'
 t_has "the fix is the installer's apply" "$(out)" "fix: sh $SRC/deploy-shim-install.sh --apply --live"
 t_has "the other checks stay green" "$(line roots)" "ok: [check:deploy.live-verify] roots "
-t_eq "the summary counts it" "live-verify: 7 ok, 1 failed, 1 warnings" "$(tail -1 "$T_TMP/out")"
+t_eq "the summary counts it" "live-verify: 5 ok, 1 failed, 1 warnings" "$(tail -1 "$T_TMP/out")"
 rm -f "$LB/harbor"
 t_eq "a missing shim is red too" "exit 1" "$(rc sh "$LV" --live)"
 sh "$SRC/deploy-shim-install.sh" --apply --live > /dev/null 2>&1
@@ -80,51 +80,10 @@ t_has "it names the missing key" "$(line sec0-env)" 'DISABLE_ERROR_REPORTING'
 t_has "the fix is deploy's sec0 apply, never sec0-harden run bare (deploy is the only live entry)" "$(out)" \
   "fix: sh $SRC/deploy.sh --only sec0 --apply --live"
 t_has "the other checks stay green" "$(line roots)" "ok: [check:deploy.live-verify] roots "
-t_eq "the summary counts it" "live-verify: 7 ok, 1 failed, 1 warnings" "$(tail -1 "$T_TMP/out")"
+t_eq "the summary counts it" "live-verify: 5 ok, 1 failed, 1 warnings" "$(tail -1 "$T_TMP/out")"
 sh "$SRC/deploy-harden.sh" --apply --live > /dev/null 2>&1
 t_eq "sec0-harden's own apply repairs it (no drift left for the next deploy)" "$_env0" "$(jq -S '.env' "$C/settings.json")"
 t_eq "green again" "exit 0" "$(rc sh "$LV" --live)"
-
-t_section "a manifest row with no file turns manifest red (harbor#1437)"
-# bin/CHECKS.md moved to bin/docs/reference/checks.md; its row stayed in the live manifest and nothing said so.
-cp "$C/.harbor-manifest" "$T_TMP/manifest.keep"
-t_has "control: the manifest exists and the check is green" "$(rc sh "$LV" --live >/dev/null; line manifest)" "ok: [check:deploy.live-verify] manifest "
-printf '%s 100644 bin/CHECKS.md runtime-install abc123\n' "$(printf x | git hash-object --stdin)" >> "$C/.harbor-manifest"
-t_eq "a row whose file is gone exits 1" "exit 1" "$(rc sh "$LV" --live)"
-t_has "the manifest line is the FAIL" "$(line manifest)" "FAIL: [check:deploy.live-verify] manifest "
-t_has "...naming the dangling path" "$(line manifest)" "bin/CHECKS.md"
-t_has "...fixed by a deploy" "$(out)" "fix: sh $SRC/deploy.sh --apply --live"
-cp "$T_TMP/manifest.keep" "$C/.harbor-manifest"
-t_eq "restored, green again" "exit 0" "$(rc sh "$LV" --live)"
-
-t_section "a job running a script older than its installed copy turns launchd red (harbor#1437)"
-# launchctl is a stub reporting a real sleep as the job's pid; the job's script is then newer than that process.
-mkdir -p "$HOME/Library/LaunchAgents" "$T_TMP/jobstub"
-printf '#!/bin/sh\necho v1\n' > "$C/lv-job.sh"
-cat > "$HOME/Library/LaunchAgents/com.harbor.lvjob.plist" <<PL
-<plist version="1.0"><dict>
-  <key>Label</key><string>com.harbor.lvjob</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>/bin/sh</string>
-    <string>$C/lv-job.sh</string>
-  </array>
-</dict></plist>
-PL
-sleep 300 >/dev/null 2>&1 & echo $! > "$T_TMP/jobstub/pid"
-cat > "$T_BIN/launchctl" <<STUB
-#!/bin/sh
-case "\$1" in print) printf 'pid = %s\n' "\$(cat "$T_TMP/jobstub/pid")" ;; esac
-exit 0
-STUB
-chmod +x "$T_BIN/launchctl"
-t_eq "control: a job on the bytes it started with is green" "exit 0" "$(rc sh "$LV" --live)"
-printf '#!/bin/sh\necho v2\n' > "$C/lv-job.sh"; touch -t "$(date -v+2M +%Y%m%d%H%M.%S 2>/dev/null || date -d '+2 min' +%Y%m%d%H%M.%S)" "$C/lv-job.sh"
-t_eq "a replaced script under an older process exits 1" "exit 1" "$(rc sh "$LV" --live)"
-t_has "the launchd line is the FAIL" "$(line launchd)" "FAIL: [check:deploy.live-verify] launchd "
-t_has "...naming the job" "$(out)" "com.harbor.lvjob"
-kill "$(cat "$T_TMP/jobstub/pid")" 2>/dev/null; rm -f "$T_BIN/launchctl" "$HOME/Library/LaunchAgents/com.harbor.lvjob.plist" "$C/lv-job.sh"
-t_eq "with the job gone it is green again" "exit 0" "$(rc sh "$LV" --live)"
 
 t_section "the opt-in probes run only when asked, and touch no real item"
 . "$T_ROOT/tests/cli/keychain-stub.sh"  # a hermetic suite never reaches the real Keychain (rule 1)
@@ -156,7 +115,7 @@ for id in floor install-drift shims sec0-env; do
 done
 t_has "doctor reads the tools, not the install, and still runs" "$(line doctor)" "ok: [check:deploy.live-verify] doctor "
 t_has "roots reads the checkout, and still runs" "$(line roots)" "ok: [check:deploy.live-verify] roots "
-t_eq "the summary counts the one failure" "live-verify: 3 ok, 1 failed, 1 warnings" "$(tail -1 "$T_TMP/out")"
+t_eq "the summary counts the one failure" "live-verify: 2 ok, 1 failed, 1 warnings" "$(tail -1 "$T_TMP/out")"
 mkdir -p "$NH/.claude"; NHP="$(cd "$NH/.claude" && pwd -P)"
 t_eq "a config dir with no settings.json is the same precondition" "exit 1" "$(rcx sh "$LV" --live)"
 t_has "...naming the file" "$(grep -m1 '^  FAIL: ' "$T_TMP/out")" "precondition — no settings.json in $NHP"

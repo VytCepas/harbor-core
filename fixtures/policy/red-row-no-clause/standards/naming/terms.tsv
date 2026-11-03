@@ -1,7 +1,0 @@
-id	class	pref
-constitutional	tier,strength	constitutional
-policy	family,strength	policy
-duty	modality	duty
-prohibition	modality	prohibition
-enforced-by	relation	enforced by
-red-proof	relation	red proof
