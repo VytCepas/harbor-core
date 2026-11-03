@@ -1,19 +1,19 @@
 # tools/memory — the L0 retrieval engine (harbor#6, workstream D)
 
 Harbor's first first-party TypeScript. It exists because
-[`../../CONTRACTS/memory-format.md`](../../CONTRACTS/memory-format.md) fixes the
+[`../../contracts/memory-format.md`](../../contracts/memory-format.md) fixes the
 canonical store as markdown + YAML frontmatter + `[[wikilinks]]`, and makes
 every index **derived, gitignored and rebuilt in memory at query time** — which
 is a retrieval problem, not a shell problem.
 
 ## Why this is TypeScript when the rest of `bin/` is POSIX sh
 
-`CONSTITUTION.md` § *Operational rules* sets the language by layer: the security
+`policy/constitution.md` § *Operational rules* sets the language by layer: the security
 floor is pure POSIX `sh`, and skill-tools are TypeScript on Bun. This is the
 skill-tool layer. Two measured facts make the split load-bearing rather than
 stylistic:
 
-- `../../bin/doctor.sh` classifies `bun` as **optional**, on the stated grounds
+- `../../bin/deploy-doctor.sh` classifies `bun` as **optional**, on the stated grounds
   that *the floor is deliberately zero-Bun*.
 - CI's preflight asserts a fixed list of binaries and `bun` is not on it.
 
@@ -36,7 +36,7 @@ with `grep` when it is not.
 ## Two rules this tree lives under, both enforced
 
 Lint rule **TS1** in [`../../bin/lint-conventions.sh`](../../bin/lint-conventions.sh)
-checks both, and [`../../tests/checks/lint.docs-test.sh`](../../tests/checks/lint.docs-test.sh) proves it can
+checks both, and [`../../tests/lint/conventions/docs.test.sh`](../../tests/lint/conventions/docs.test.sh) proves it can
 fail:
 
 - **No off-disk imports.** There is no `package.json`, no lockfile, no
@@ -54,7 +54,7 @@ fail:
   BM25 already answers "what is similar". What is written is what is linked.
 - **No daemon, no port, no network.** D1's own words: *not the 31337 daemon*.
 - **No synthesis into `KNOWLEDGE/`.** Promoting a durable lesson is human-gated
-  by [`../../CONTRACTS/memory-format.md`](../../CONTRACTS/memory-format.md).
+  by [`../../contracts/memory-format.md`](../../contracts/memory-format.md).
 - **No always-on injection.** Retrieval is on demand. Anything loaded every
   session is paid for every session, which lint **X3** measures.
 

@@ -6,31 +6,31 @@
 #   sh deploy-confinement.sh --marker          print only the marker body the install writes beside it
 #   sudo sh deploy-confinement.sh --uninstall  remove the sandbox block, keep every other key
 #
-# Holds only `sandbox`, composed from CONTRACTS/confinement-hosts.txt and confinement-paths.txt, then the private
-# layer's files of the same names (CONTRACTS/private-layer.md); no layer is core alone. Managed tier: no session
+# Holds only `sandbox`, composed from contracts/confinement-hosts.txt and confinement-paths.txt, then the private
+# layer's files of the same names (contracts/private-layer.md); no layer is core alone. Managed tier: no session
 # can change it, and allowManagedDomainsOnly makes it admin-required, so no repo can loosen it (#1297 round 2).
 # The retry stays open for P1's measured week. harbor.toml `confinement_strict = "true"` closes it (P4) and
 # `confinement_credentials = "true"` adds the `secret` rows as sandbox.credentials deny (P5): both are the operator's
 # edit after the week passes #555 decision 10, and both compose deterministically, so drift.confinement compares alike.
 # A marker beside the managed file (harbor-confinement) tells the guard ledger the confinement is on, with no fork.
 # `confinement_skip = "true"` (P3, harbor#1300) adds the line `skip=covered` to it: the guards then skip the rules
-# CONTRACTS/confinement-coverage.tsv marks covered on a confined call. It lives in the root-owned marker, never read
+# contracts/confinement-coverage.tsv marks covered on a confined call. It lives in the root-owned marker, never read
 # from harbor.toml at runtime, because harbor.toml sits inside the write zone a confined session can change.
 # On Linux the install refuses unless bubblewrap can start as the operator: with failIfUnavailable a box that
 # cannot run it would refuse every session (#1297 round 5: stock Ubuntu 24.04 needs an AppArmor profile).
 # platform: enableWeakerNetworkIsolation is written on Darwin only; gh's Go TLS fails without it (#1297 round 3).
 # allowLocalBinding is written false on purpose: on, it opens the operator's logged-in Chrome to every confined command;
-# sessions reach Chrome through the harbor_chrome MCP server instead (harbor#1301, CONTRACTS/browser-routing.md row 4).
+# sessions reach Chrome through the harbor_chrome MCP server instead (harbor#1301, contracts/browser-routing.md row 4).
 # Target: macOS /Library/Application Support/ClaudeCode/, Linux and WSL /etc/claude-code/. HARBOR_MANAGED_SETTINGS
 # moves it (tests, no root). Composition runs as the operator, never root: HOME, PORT_ROOT and the layer are theirs.
 set -eu
 # Under sudo a user-writable dir on PATH would run its jq/mkdir/chown as root: pin it first.
 PATH=/usr/bin:/bin:/usr/sbin:/sbin; export PATH
 HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-CORE="$HERE/../CONTRACTS"
+CORE="$HERE/../contracts"
 # stdout is data (--compose, --dry-run, and the block root captures): the log goes to stderr, or a FAIL is swallowed
 LOG_FD=2; export LOG_FD
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 log_init deploy-confinement
 # As root nothing that steers the write or its content is caller-chosen (sudo -E or env_keep would pass it).
 confine_refuse_override() { # <uid> -> 1 and a FAIL when root is handed a path or content override
@@ -56,11 +56,11 @@ check_rows() {
 }
 # compose -> the sandbox block as JSON on stdout; 1 when a row does not compose
 compose() {
-  _port="$(sh "$HERE/roots.sh" --port-root)" && [ -n "$_port" ] \
-    || { log_fail "roots.sh resolved no workspace root (above; CONTRACTS/port-root.md)"; log_fix "sh $HERE/roots.sh --port-root"; return 1; }
+  _port="$(sh "$HERE/scope-roots.sh" --port-root)" && [ -n "$_port" ] \
+    || { log_fail "scope-roots.sh resolved no workspace root (above; contracts/port-root.md)"; log_fix "sh $HERE/scope-roots.sh --port-root"; return 1; }
   [ -d "$_port" ] && _port="$(CDPATH= cd -P -- "$_port" && pwd)"
-  _del="$(sh "$HERE/roots.sh" --conf deliverables_dir 2>/dev/null || :)"; _del="${_del:-~/Deliverables}"
-  _priv="${HARBOR_CONFINEMENT_PRIVATE-$(sh "$HERE/roots.sh" --private 2>/dev/null || :)}"
+  _del="$(sh "$HERE/scope-roots.sh" --conf deliverables_dir 2>/dev/null || :)"; _del="${_del:-~/Deliverables}"
+  _priv="${HARBOR_CONFINEMENT_PRIVATE-$(sh "$HERE/scope-roots.sh" --private 2>/dev/null || :)}"
   _hf="$CORE/confinement-hosts.txt"; _pf="$CORE/confinement-paths.txt"
   _xh=''; _xp=''; [ -z "$_priv" ] || { _xh="$_priv/confinement-hosts.txt"; _xp="$_priv/confinement-paths.txt"; }
   _ok=0
@@ -87,10 +87,10 @@ marker_body() {
   [ "$_skip" != true ] || printf 'skip=covered\n'
 }
 # conf_on <key> -> true when harbor.toml sets the key to "true", false when unset or anything else; a harbor.toml
-# roots.sh refuses (exit 2) refuses the compose: read as false, a typo would silently keep the retry open.
+# scope-roots.sh refuses (exit 2) refuses the compose: read as false, a typo would silently keep the retry open.
 conf_on() {
-  _cv="$(sh "$HERE/roots.sh" --conf "$1" 2>&1)" && _crc=0 || _crc=$?
-  [ "$_crc" -ne 2 ] || { log_fail "harbor.toml cannot be read for $1: $_cv"; log_fix "sh $HERE/roots.sh --conf $1"; return 1; }
+  _cv="$(sh "$HERE/scope-roots.sh" --conf "$1" 2>&1)" && _crc=0 || _crc=$?
+  [ "$_crc" -ne 2 ] || { log_fail "harbor.toml cannot be read for $1: $_cv"; log_fix "sh $HERE/scope-roots.sh --conf $1"; return 1; }
   [ "$_crc" -eq 0 ] && [ "$_cv" = true ] && echo true || echo false
 }
 # confine_preflight <os> -> 1 and a FAIL when this box cannot start the confinement for the operator. Darwin ships

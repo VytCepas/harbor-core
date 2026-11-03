@@ -3,7 +3,10 @@ kind: decision-record
 status: accepted
 alias: D-3
 date: 2026-10-04
+supersedes: -
+superseded_by: -
 source: research/08-gap-review.md
+owner: @VytCepas
 ---
 
 # Term for Helm / L0
@@ -18,7 +21,7 @@ Naming-standard decision D-3. The decision text is imported unchanged from stand
 
 ## Decision
 
-**`control plane`**. Verified: `findings.sh reconcile` diffs lint output against the finding store and applies the difference, and Kubernetes' control plane includes admission.
+**`control plane`**. Verified: `lint-findings.sh reconcile` diffs lint output against the finding store and applies the difference, and Kubernetes' control plane includes admission.
 
 ## Consequences
 

@@ -3,8 +3,11 @@ kind: decision-record
 status: accepted
 alias: D-61
 date: 2026-10-04
+supersedes: -
+superseded_by: -
 source: research/12a-reviewer.md
 revised_by: D-73
+owner: @VytCepas
 ---
 
 # Registry shape
