@@ -3,7 +3,7 @@
 # previous stop draws the duplicate note; a background task still running that this agent started draws
 # the orphan note; everything else is silent; every path exits 0 and never blocks (harbor#445 item E).
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-TOOL="$T_ROOT/bin/session-subagent-check.sh"
+TOOL="$T_ROOT/hooks/session-subagent-check/session-subagent-check.sh"
 T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"; CFG="$T/cfg"; ST="$T/state"
 printf 'Command running in background with ID: bg-77\nmentions bg-88 in passing\n' > "$T/agent-a.jsonl"
 printf '{"agentId":"ag10","x":1}\n{"agentId":"ag10","y":2}\n' > "$T/agent-self.jsonl"
@@ -22,7 +22,7 @@ RUN88='[{"id":"bg-88","type":"shell","status":"running","command":"sleep 99"}]'
 t_section "duplicate final report"
 run ag1 'Report A' "$NONE";  t_eq "first stop: silent" "" "$(msg)"
 run ag1 'Report A' "$NONE";  t_has "same hash as the previous stop: note" "$(msg)" 'duplicate'
-t_has "the note names its id" "$(msg)" '[check:subagent-stop]'
+t_has "the note names its id" "$(msg)" '[check:session.subagent-stop]'
 t_has "the note carries the disable command" "$(msg)" 'subagent-stop.off'
 run ag1 'Report B' "$NONE";  t_eq "a different report: silent" "" "$(msg)"
 run ag2 'Report A' "$NONE";  t_eq "the same text from ANOTHER agent: silent" "" "$(msg)"
@@ -62,4 +62,5 @@ run ag9 'D' "$NONE"; run ag9 'D' "$NONE"
 t_eq "env off" "" "$( SUBAGENT_STOP_CHECK=off; export SUBAGENT_STOP_CHECK; run ag9 'D' "$NONE"; msg )"
 mkdir -p "$CFG"; : > "$CFG/subagent-stop.off"
 run ag9 'D' "$NONE"; t_eq "sentinel off" "" "$(msg)"
+t_red check.subagent-stop   # the falsifier this suite names for them (harbor#1422)
 t_done
