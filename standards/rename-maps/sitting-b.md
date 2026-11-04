@@ -35,7 +35,7 @@ All maps are in `standards/rename-maps/`. Columns: `old_path new_path wave recom
 | W6a admission | `w6a-admission-hooks.tsv` | 23 files + 28 env | 21 / 30 (28 internal constants) | 23 ok, 0 failed, 18 flagged | 1: the same binary file |
 | W6b | `w6b-admission-hook-and-integrity.tsv` | 2 | 2 / 0 | 2 ok, 0 failed, 2 flagged | 0 |
 | T4 letter ids | `t4-letter-ids.tsv` | 93 | n/a | not a path rename; all 93 new ids pass `lint-name.sh --check rule-id` | n/a |
-| Fleet modules | `fleet-modules-in-projects-orchestrator.tsv` | 56 | n/a | draft, not approved, not planned, that repo untouched | n/a |
+| Fleet modules | `fleet-modules-in-fleet.tsv` | 56 | n/a | draft, not approved, not planned, that repo untouched | n/a |
 
 Dates: W1 2027-01-31, W2 02-07, W3 02-14, W4 02-21, W5 02-28, W6a 03-07, W6b 03-14 (T4 01-31, fleet 03-21).
 
@@ -53,7 +53,7 @@ Kept with a date: **131** rows; dropped to `-`: **791** rows with no reader foun
 2. `--import` skips env rows ("not tracked here"); the 44 env rows are added to `renames.tsv` by hand. The planner accepts them.
 3. `standard-frozen-generate.sh` derives 148 frozen rule ids (`bash:*` 110, `egress:*` 17, `destroy:*` 9, `cloud:*` 7, `deliverables:*` 3, `selfedit:*` 2) from the file names `bin/guard-*.sh` and `tests/guards/*.jsonl`. The ids stay, so no alias row, but the W2 and W6a PRs must change those two globs or `standard-frozen-generate.sh --check` goes red.
 4. Frozen names touched: `env:HARBOR_SCOPE_FLEET_CONTROLLER`, `env:HARBOR_SCOPE_SCAFFOLDER` (dated rows, alias until 2027-02-28); `HARBOR_ADMISSION_DISABLE` and `HARBOR_ADMISSION_SHADOW`, the kill switches, both spellings read until 2027-02-28; the 148 guard rule ids above; 10 CLI verbs (`status doctor check fresh cite observe dash restore browser chrome`) stay while the scripts behind them move.
-5. `SITTING-B` is now `sitting-b.md`. `fleet-modules-in-projects-orchestrator.tsv` and `t4-letter-ids.tsv` are not importable.
+5. `SITTING-B` is now `sitting-b.md`. `fleet-modules-in-fleet.tsv` and `t4-letter-ids.tsv` are not importable.
 
 ## Every row the planner flagged
 

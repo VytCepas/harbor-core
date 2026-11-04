@@ -75,7 +75,8 @@ trap 'rm -rf "$W"' EXIT
 
 if [ "$SUB" = list ]; then
   printf 'id\tpath\tkind\tgoverned\tregistry\tprojects\tmarker\tfleet\n'
-  sh "$SRC/scope-repo-sources.sh" --matrix 2>/dev/null; exit 0
+  # the matrix's exit and notes are the answer: 3 is "nothing was compared", never a green (harbor#966)
+  sh "$SRC/scope-repo-sources.sh" --matrix; exit $?
 fi
 
 [ -n "$ARG" ] || die "$SUB takes a ${SUB%audit}name" "sh $SRC/scope-repo.sh --help"

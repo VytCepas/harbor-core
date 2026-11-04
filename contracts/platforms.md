@@ -1,7 +1,7 @@
 # Platforms — where every solution runs
 
-**Seam:** shared canonical — Harbor, `project-init`, `projects-orchestrator`, and every repo
-`project-init` scaffolds. **Status: written 2026-09-30 (harbor#832, epic harbor#831), not yet
+**Seam:** shared canonical — Harbor, `yard`, `fleet`, and every repo
+`yard` scaffolds. **Status: written 2026-09-30 (harbor#832, epic harbor#831), not yet
 enforced:** each refusal below names the ticket that will build it, so no one reads it as checked.
 
 **The decision (operator, 2026-09-30):** macOS and Linux. On Windows, only inside WSL2. It
@@ -11,7 +11,7 @@ reverses harbor#615 (2026-09-22, native Windows 11 under Git Bash), closed as no
 
 1. **Supported: macOS and Linux.** WSL2 is Linux, and is supported on the same terms.
 2. **On Windows, work inside the WSL filesystem** (`~/…`), never across `/mnt/c/…`. Editing WSL
-   files from the Windows side mangles executable bits and line endings (project-init's README,
+   files from the Windows side mangles executable bits and line endings (yard's README,
    "WSL: phantom permission/CRLF changes").
 3. **A native Windows shell is refused at every entry point: what installs, and what a person
    types.** Native means `uname -s` starts with `MINGW`, `MSYS` or `CYGWIN` (Git Bash, MSYS2,
@@ -26,8 +26,8 @@ reverses harbor#615 (2026-09-22, native Windows 11 under Git Bash), closed as no
 | Repo | Refuses at | Status |
 |---|---|---|
 | Harbor | `bin/deploy.sh`, the one install entry, so no floor is wired on an unproved platform; and `bin/harbor`, the dispatcher every verb goes through | enforced (harbor#833): `tests/deploy/deploy/standard.test.sh`, `tests/deploy/cli/cli.test.sh` |
-| `project-init` | the scaffolder (scaffold and upgrade), and the SessionStart hook it scaffolds | project-init#1070, which also removes the `windows-portability` CI job and the Windows-only branches |
-| `projects-orchestrator` | CLI entry | projects-orchestrator#326 |
+| `yard` | the scaffolder (scaffold and upgrade), and the SessionStart hook it scaffolds | project-init#1070, which also removes the `windows-portability` CI job and the Windows-only branches |
+| `fleet` | CLI entry | projects-orchestrator#326 |
 
 ## What Linux support does not yet cover
 

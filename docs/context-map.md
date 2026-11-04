@@ -44,13 +44,13 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | how-to | docs/how-to/ | component | source | living | 1 |
 | reference | docs/reference/ | component | generated | generated | 86 |
 | explanation | docs/explanation/ | component | source | living | 102 |
-| (no kind) | - | - | - | - | 257 |
+| (no kind) | - | - | - | - | 258 |
 
 ## Folders
 
 | Folder | Files | Families | Kinds |
 |---|---|---|---|
-| (repo root) | 11 | 1 | 1 |
+| (repo root) | 12 | 1 | 1 |
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
 | `bin/` | 255 | 29 | 2 |
@@ -691,7 +691,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `standards/naming/versions.tsv`
 - `standards/naming/words.tsv`
 - `standards/naming/writers.tsv`
-- `standards/rename-maps/fleet-modules-in-projects-orchestrator.tsv`
+- `standards/rename-maps/fleet-modules-in-fleet.tsv`
 - `standards/rename-maps/sitting-b.md`
 - `standards/rename-maps/t4-letter-ids.tsv`
 - `standards/rename-maps/w1-docs.tsv`
@@ -745,7 +745,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 
 | Folder | Files without a family |
 |---|---|
-| (repo root) | 11 |
+| (repo root) | 12 |
 | `.agents/` | 4 |
 | `.github/` | 2 |
 | `bin/` | 12 |
@@ -803,4 +803,5 @@ Every tracked top-level entry, its kind and layer from `contracts/layout-map.tsv
 | `SECURITY.md` | policy | source | core |
 | `CONTRIBUTING.md` | policy | source | core |
 | `README.md` | explanation | source | core |
+| `CHANGELOG.md` | record | source | core |
 | `trio-decoupling-epic.md` | record | record | dev |

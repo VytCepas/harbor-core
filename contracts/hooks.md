@@ -501,7 +501,7 @@ can reach:
    new harbor-owned plugin, or just this repo's `.claude/settings.json`?
    `box-profile.md` makes the box profile the **only** up-pointing edge and names
    **D7** (*a repo works with no upstream platform*) as what a second one breaks, so a harbor
-   plugin depending on project-init needs a ruling. `bin/govern-hook.sh` sources
+   plugin depending on yard needs a ruling. `bin/govern-hook.sh` sources
    no `library-admission.sh` precisely so that every one of the three stays available.
 2. **Does lint X3 stay advisory at 135% of ceiling?** `bin/context-budget.sh` was
    undercounting by 10,471 B until 2026-08-07 — it never measured the cwd-keyed

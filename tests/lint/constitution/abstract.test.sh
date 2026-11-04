@@ -3,7 +3,7 @@
 # workload repo name (harbor#1273). The registry and its repo names are made up, so this file names no real workload.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 REGD="$T_TMP/priv/context-rules/user"; mkdir -p "$REGD"
-printf '# name\tpath\twhat\nzorbcorp\t~/x\tmade up\nharbor\t~/h\tthe control plane\nproject-init\t~/y\tyard\n' > "$REGD/projects.tsv"
+printf '# name\tpath\twhat\nzorbcorp\t~/x\tmade up\nharbor\t~/h\tthe control plane\nyard\t~/y\tthe scaffolder\n' > "$REGD/projects.tsv"
 LC() { CONSTITUTION_FILE="$1" HARBOR_SCOPE_PRIVATE="${2:-$T_TMP/priv}" sh "$T_ROOT/bin/lint-constitution.sh" 2>&1; }
 rc() { CONSTITUTION_FILE="$1" HARBOR_SCOPE_PRIVATE="${2:-$T_TMP/priv}" sh "$T_ROOT/bin/lint-constitution.sh" >/dev/null 2>&1; echo $?; }
 doc() { printf '%s\n' "$2" > "$T_TMP/$1.md"; printf '%s' "$T_TMP/$1.md"; }
@@ -11,7 +11,7 @@ doc() { printf '%s\n' "$2" > "$T_TMP/$1.md"; printf '%s' "$T_TMP/$1.md"; }
 t_section "a clean constitution is green"
 D="$(doc clean '# Rules
 > **Path root:** `~/port/harbor` resolves `./` paths (the declared root is exempt).
-A rule with a pointer (case: *Something*). Harbor, project-init and projects-orchestrator are its own repos.
+A rule with a pointer (case: *Something*). Harbor, yard and fleet are its own repos.
 Run under `/bin/sh`; deliverables go in `~/Deliverables/<YYYY-MM-DD>-<slug>/`.
 ```sh
 echo 2026-01-01 harbor#1 /Users/x zorbcorp   # a fence is code, not prose
@@ -33,7 +33,7 @@ done
 
 t_section "near misses and Harbor's own repos stay green"
 D="$(doc near '# Rules
-zorbcorporate and xzorbcorp are other words; harbor and project-init are not workloads.
+zorbcorporate and xzorbcorp are other words; harbor and yard are not workloads.
 Version 2026 and №2.12 are not dates or tickets; a heading # Title is not a ticket.')"
 t_eq "exit 0" "0" "$(rc "$D")"
 

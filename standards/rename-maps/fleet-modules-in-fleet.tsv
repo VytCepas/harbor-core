@@ -1,5 +1,5 @@
 # ===== DRAFT, NOT APPROVED; for #967's own sitting. THIS TABLE IS THE projects-orchestrator REPO'S, NOT HARBOR'S. Every path is in that repo. Harbor does not import it. =====
-# fleet-modules-in-projects-orchestrator.tsv (harbor#961, lane E): the mapping for NOT HARBOR: the projects-orchestrator repo (becomes fleet, harbor#967). DRAFT, NOT APPROVED; for the #967 sitting. Never imported here
+# fleet-modules-in-fleet.tsv (harbor#961, lane E): the mapping for NOT HARBOR: the projects-orchestrator repo (becomes fleet, harbor#967). DRAFT, NOT APPROVED; for the #967 sitting. Never imported here
 #
 # WHY THIS FILE EXISTS. The six-wave rename needs one reviewed table per wave before any file moves; the operator approves it wholesale at sitting B
 # (SITTING-B.md lists only the rows that need a decision). Names come from registered terms only (standards/naming/terms.tsv).

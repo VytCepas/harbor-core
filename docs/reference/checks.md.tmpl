@@ -31,7 +31,7 @@ Measured 2026-09-04.
 **`deploy.live-verify` and `test.fleet` are commands a person types, so there is nothing to unload.**
 Neither writes anything, so neither leaves state behind. To retire `deploy.live-verify`, remove the
 `check` row from `bin/harbor` and `contracts/cli.md`, then delete `bin/deploy-live-verify.sh` and its
-suite; to retire `test.fleet`, remove the `test-fleet` subcommand from projects-orchestrator.
+suite; to retire `test.fleet`, remove the `test-fleet` subcommand from fleet.
 Both were seen red on purpose before this row was written: a mispointed shim in a scratch
 `HARBOR_SCOPE_LOCAL_BIN`, and a planted repo whose `just test` fails.
 
@@ -245,7 +245,7 @@ A user timer stops at logout unless the user lingers (`loginctl enable-linger "$
 | drift.repo-visibility | inherits: a terminal in the harbor checkout | no schedule of its own on this box: it runs where its host runs | the register row's own |
 | ci.release-names | macOS only | launchd `com.harbor.ci.release-names`, Mondays 08:20 local, through `check-run.sh`; installed by a deploy (harbor#1437); no systemd unit is written until someone decides to run it on Linux | macOS: `launchctl bootout gui/$(id -u)/com.harbor.ci.release-names` and `rm ~/Library/LaunchAgents/com.harbor.ci.release-names.plist` |
 | deploy.live-verify | inherits: a terminal in the harbor checkout | no schedule of its own on this box: it runs where its host runs | the register row's own |
-| test.fleet | inherits: a terminal (projects-orchestrator) | no schedule of its own on this box: it runs where its host runs | the register row's own |
+| test.fleet | inherits: a terminal (fleet) | no schedule of its own on this box: it runs where its host runs | the register row's own |
 | lint.rule-health | macOS only | launchd `com.harbor.lint.rule-health`, Sundays 04:10 local, through `check-run.sh`; installed by a deploy (harbor#1437); no systemd unit is written until someone decides to run it on Linux | macOS: `launchctl bootout gui/$(id -u)/com.harbor.lint.rule-health` and `rm ~/Library/LaunchAgents/com.harbor.lint.rule-health.plist` |
 | admission.managed-mods | inherits: `admission-verify.sh --live` (`harbor verify`) | no schedule of its own on this box: it runs where its host runs | the register row's own |
 | drift.confinement | inherits: `admission-verify.sh --live` (`harbor verify`) | no schedule of its own on this box: it runs where its host runs | the register row's own |
