@@ -133,7 +133,6 @@ alan	-
 alarm	-
 album	-
 alert	-
-alerts	-
 algorithm	-
 alias	-
 aliases	-
@@ -188,7 +187,6 @@ annotations	-
 announce	-
 announced	-
 announcement	-
-anomalies	-
 anon	-
 anonymous	-
 another	-
@@ -333,7 +331,6 @@ audit	-
 audited	-
 audits	-
 august	-
-auth	-
 authenticate	-
 authenticates	-
 authentication	-
@@ -1006,7 +1003,6 @@ criticals	-
 critics	-
 critique	-
 critiques	-
-cron	-
 crons	-
 cross	-
 crossed	-
@@ -1086,7 +1082,6 @@ decoration	-
 decorator	-
 decoupling	-
 dedicated	-
-dedup	-
 deduplicate	-
 deep	-
 deeper	-
@@ -1590,7 +1585,6 @@ experimental	-
 expiration	-
 expired	-
 expires	-
-expiry	-
 explain	-
 explained	-
 explaining	-
@@ -1925,7 +1919,6 @@ graders	-
 grades	-
 grading	-
 graduate	-
-grain	-
 grained	-
 grammar	-
 grandfather	-
@@ -2587,7 +2580,6 @@ managing	-
 mandatory	-
 mangled	-
 manifest	-
-manifests	-
 manual	-
 manufactured	-
 manufactures	-
@@ -2788,7 +2780,6 @@ mutates	-
 mutating	-
 mutation	-
 mutations	-
-mute	-
 muted	-
 mx	tool, product or format name
 my	-
@@ -2969,7 +2960,6 @@ orders	-
 ordinal	-
 ordinary	-
 org	GitHub's own short word for an organisation; the check id ci.runner-switch-org carries it, and so does its fragment name
-organic	-
 organizer	-
 orgs	-
 oriented	-
@@ -3119,7 +3109,6 @@ perform	-
 performance	-
 performed	-
 performs	-
-period	-
 perm	-
 permanent	-
 permanently	-
@@ -3819,7 +3808,6 @@ roll	-
 rollback	-
 rolled	-
 rolling	-
-rollup	-
 room	-
 root	-
 rooted	-
@@ -4658,7 +4646,6 @@ unanswerable	-
 unanswered	-
 unassisted	-
 unattended	-
-unattributed	-
 unavailable	-
 unbalanced	-
 unbounded	-

@@ -76,7 +76,7 @@ if [ -n "$_floor_staged" ]; then
   done
   for _t in "$_idx"/tests/admission/bash/*.test.sh "$_idx"/tests/admission/cloud/*.test.sh \
             "$_idx"/tests/admission/deliverables/*.test.sh "$_idx"/tests/admission/destroy/*.test.sh \
-            "$_idx"/tests/admission/egress/*.test.sh "$_idx"/tests/admission/self-edit/*.test.sh; do
+            "$_idx"/tests/admission/egress/*.test.sh "$_idx"/tests/admission/selfedit/*.test.sh; do
     [ -f "$_t" ] || continue
     _n="${_t%/*}"; _n="${_n##*/}"
     case "$_gs " in *" all "*|*" $_n "*) hook_scrub_run T_SMOKE=1 T_JOBS=8 sh "$_t" || _smoke_red ;; esac

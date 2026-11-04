@@ -5,7 +5,7 @@
 #
 # Prints `PROTECTED TAB path TAB class` for each protected path and nothing for the rest. Exit 0 none is
 # protected, 1 at least one is, 2 usage or a manifest naming an absent register. The register is the one
-# <repo-root>/.agents/ship.config names (default .agents/protected-paths.tsv); the register itself, the manifest and
+# <repo-root>/.agents/ship.conf names (default .agents/protected-paths.tsv); the register itself, the manifest and
 # .github/ are protected in every repo whatever it says. Judge both paths of a rename. Read-only.
 set -eu
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac

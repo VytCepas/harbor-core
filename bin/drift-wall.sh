@@ -16,7 +16,7 @@
 # A refused canary cannot raise a config verdict (a refusal may be a prompt, not the wall); a landed one always lowers it.
 # An unwrapped MCP server with a row in contracts/confinement-mcp.tsv reads `does not hold (exempt: <reason>)` and is not red.
 # Every finding line carries [check:drift.wall]; the receipt goes to log_receipt's dir (docs/reference/checks.md).
-# HARBOR_SCOPE_MANAGED_SETTINGS, HARBOR_DRIFT_WALL_USER_SETTINGS and HARBOR_DRIFT_WALL_CLAUDE_JSON move the three files read (tests).
+# HARBOR_MANAGED_SETTINGS, HARBOR_DRIFT_WALL_USER_SETTINGS and HARBOR_DRIFT_WALL_CLAUDE_JSON move the three files read (tests).
 set -u
 case "${1:-}" in -h|--help) awk 'NR<2{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$0"; exit 0 ;; esac
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
@@ -34,7 +34,7 @@ esac
 [ "$#" -le 1 ] || { log_fail "one argument at most"; log_fix "sh $0 --help"; exit 2; }
 ID=drift.wall; P="[check:$ID]"
 CORE="$HERE/../contracts"
-if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then MF="${HARBOR_SCOPE_MANAGED_SETTINGS:-$HARBOR_MANAGED_SETTINGS}"
+if [ -n "${HARBOR_MANAGED_SETTINGS:-}" ]; then MF="$HARBOR_MANAGED_SETTINGS"
 elif [ "$(uname -s)" = Darwin ]; then MF='/Library/Application Support/ClaudeCode/managed-settings.json'
 else MF=/etc/claude-code/managed-settings.json; fi
 US="${HARBOR_DRIFT_WALL_USER_SETTINGS:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json}"
@@ -185,7 +185,7 @@ else
 fi
 
 # 3 · Edit/Write: the managed permissions.deny holds an Edit row per main folder
-_m="$(HARBOR_SCOPE_MANAGED_SETTINGS="$MF" sh "$HERE/scope-managed-folders.sh" --missing 2>/dev/null)"; _mrc=$?
+_m="$(HARBOR_MANAGED_SETTINGS="$MF" sh "$HERE/scope-managed-folders.sh" --missing 2>/dev/null)"; _mrc=$?
 if [ "$_mrc" -ne 0 ]; then
   notprobed "Edit/Write" "the managed file could not be read for deny rows ($MF)" "sh $HERE/scope-managed-folders.sh --missing"
 elif [ -z "$_m" ]; then

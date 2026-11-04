@@ -164,7 +164,7 @@ t_eq "...and a comment naming it does not" "" "$(printf '  # %s states it\n' "$_
 _code="$(_strip < "$SRC/status-fleet-glyph.sh")"
 t_hasnt "no code line names the fleet CLI" "$_code" "$_cli"
 t_hasnt "no code line names ORCH" "$_code" 'ORCH'
-t_hasnt "no code line asks for the fleet CLI's path" "$_code" 'HARBOR_SCOPE_FLEET_CONTROLLER_BIN'
+t_hasnt "no code line asks for the fleet CLI's path" "$_code" 'FLEET_CONTROLLER_BIN'
 
 t_section "session-verdicts: silent when clean, and never blocking"
 V="$TMP/vcfg"; mkdir -p "$V/bin"

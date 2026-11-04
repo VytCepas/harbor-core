@@ -63,7 +63,7 @@ box() {
   export HARBOR_SCOPE_SCAFFOLDER_BIN HARBOR_SCOPE_FLEET_CONTROLLER_BIN HARBOR_SCOPE_GH
   sh "$BIN0/scope.sh" install >/dev/null 2>&1
   PR="$PORT_ROOT"; PV="$PR/harbor-private"
-  _hk="$(printf '%s' "$(CDPATH= cd -P -- "$HOME" && pwd -P)" | LC_ALL=C sed 's/[^A-Za-z0-9]/-/g')"
+  _hk="$(printf '%s' "$(CDPATH= cd -P -- "$HOME" && pwd -P)" | sed 's|/|-|g')"
   mkdir -p "$CLAUDE_CONFIG_DIR/projects/$_hk/memory"; printf 'a note\n' > "$CLAUDE_CONFIG_DIR/projects/$_hk/memory/note.md"
 }
 rp() { _c="$1"; shift; sh "$_c" "$@" > "$B/out" 2>&1 < /dev/null; _rc=$?; echo "exit $_rc"; }   # the output is in $B/out
@@ -96,7 +96,7 @@ evidence() { # <step> -> yes|no : the step's own trace on the box and in the out
     scaffold) [ -f "$PR/throwaway/.agents/config.yaml" ] && [ -d "$PR/throwaway/.git" ] && grep -q '^  step scaffold: ok' "$B/out" ;;
     registry) awk -F'\t' '$1 == "throwaway" && $2 == "throwaway" && $3 == "workload" { f = 1 } END { exit !f }' "$PV/repos.tsv" ;;
     projects) awk -F'\t' '$1 == "throwaway" && $3 == "throwaway-case" { f = 1 } END { exit !f }' "$PV/context-rules/user/projects.tsv" 2>/dev/null ;;
-    route) _k="$(printf '%s' "$(CDPATH= cd -P -- "$PR/throwaway" && pwd -P)" | LC_ALL=C sed 's/[^A-Za-z0-9]/-/g')"; [ -n "$(find "$CLAUDE_CONFIG_DIR/projects/$_k/memory/" -name '*.md' 2>/dev/null | head -n 1)" ] ;;
+    route) _k="$(printf '%s' "$(CDPATH= cd -P -- "$PR/throwaway" && pwd -P)" | sed 's|/|-|g')"; [ -n "$(find "$CLAUDE_CONFIG_DIR/projects/$_k/memory/" -name '*.md' 2>/dev/null | head -n 1)" ] ;;
     rules) [ -d "$PV/context-rules/throwaway" ] ;;
     labels) grep -q '^gh label list --repo acme/throwaway' "$CALLS" && grep -q '^  step labels: ok' "$B/out" ;;
     versions) grep -q '^  step versions: ok' "$B/out" ;;

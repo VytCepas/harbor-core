@@ -80,7 +80,7 @@ t_eq "O-08 the key set is EQUAL, not merely contained" '"v","ts","g","d","r","s"
 t_eq "O-09 every line in the sink parses" "" "$(jq -R 'fromjson? // "BAD"' "$OSINK" | grep BAD || true)"
 # O-33 (harbor#1298): the confinement field is a closed enum read from the marker and the payload, never the command.
 _oc() { printf '%s' "$(olast)" | jq -r .c; }
-mkdir -p "$TMP/managed"; export HARBOR_SCOPE_MANAGED_SETTINGS="$TMP/managed/managed-settings.json"
+mkdir -p "$TMP/managed"; export HARBOR_MANAGED_SETTINGS="$TMP/managed/managed-settings.json"
 otrunc
 fire_block "O-33 no marker: blocks" admission-bash.sh "$(bash_j 'rm -f -r /')"
 t_eq "O-33 no confinement installed: c is off" off "$(_oc)"
@@ -97,7 +97,7 @@ t_eq "O-33 the phrase quoted in a command is not the retry" confined "$(_oc)"
 otrunc
 fire_block "O-33 a non-Bash record: blocks" admission-self-edit.sh "$(edit_j Write "$CFG/settings.json")"
 t_eq "O-33 a non-Bash tool carries no confinement state" - "$(_oc)"
-rm -f "$TMP/managed/harbor-confinement"; unset HARBOR_SCOPE_MANAGED_SETTINGS HARBOR_MANAGED_SETTINGS
+rm -f "$TMP/managed/harbor-confinement"; unset HARBOR_MANAGED_SETTINGS
 
 # O-10: a guard that logs the payload it blocked is an exfil channel aimed at its own disk (No.3).
 otrunc
@@ -302,7 +302,7 @@ obs_run >/dev/null
 t_eq "O-31 an unusable archive dir leaves .1 untouched" GEN-KEEP "$(head -c 8 "$OBD/guard-decisions.jsonl.1")"
 t_eq "O-31 and the sink is not rotated" yes "$([ "$(wc -c < "$OBD/guard-decisions.jsonl")" -ge 5300000 ] && echo yes || echo no)"
 t_eq "O-32 the stream root exists, 0700, inside the 0500 host dir" "drwx------" "$(ls -ld "$OB/cfg/MEMORY/OBSERVABILITY/$OBH/streams" | cut -c1-10)"
-t_eq "O-32 and harbor_emit can write there mid-session" 1 "$(env CLAUDE_CONFIG_DIR="$OB/cfg" HARBOR_AUDIT_STREAM_WRITER=t sh -c \
+t_eq "O-32 and harbor_emit can write there mid-session" 1 "$(env CLAUDE_CONFIG_DIR="$OB/cfg" HARBOR_WRITER=t sh -c \
   'HERE="$1"; . "$HERE/library-log.sh"; log_init t; . "$HERE/audit-stream-lib.sh"; harbor_emit probe "{}"' _ "$SRC" >/dev/null 2>&1; \
   cat "$OB/cfg/MEMORY/OBSERVABILITY/$OBH/streams/probe/"*/*.jsonl 2>/dev/null | grep -c '"stream":"probe"')"
 # O-22: `>` blocks forever in open(2) on a FIFO with no reader, and a hang leaves the dir writable.

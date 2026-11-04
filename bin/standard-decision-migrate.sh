@@ -6,9 +6,8 @@
 #   sh bin/standard-decision-migrate.sh --system <name> qualify <file>...   write bare D-<n> as <name>/D-<n> in those files
 #   sh bin/standard-decision-migrate.sh --help
 #
-#   records   A record that opens with front matter gains what it lacks of alias (from its file number), date, supersedes,
-#             superseded_by and revised_by, read from the legacy lines under its heading, else `-`; nothing else in it changes.
-#             A record with a legacy header (`**Date:**` / `**Status:**`, `- Status:` /
+#   records   A record that opens with front matter gains `supersedes: -` and `superseded_by: -` after its `date:` line when it
+#             lacks them; nothing else in it changes. A record with a legacy header (`**Date:**` / `**Status:**`, `- Status:` /
 #             `- Date:` bullets, or plain `Status:` / `Date:` lines) gains front matter in front of its unchanged text:
 #             alias D-<n> from its file number, status in MADR words, date, supersedes and superseded_by from `Supersedes:` and
 #             `Superseded-by:` lines. "Superseded in part" and "supersedes in part" keep the record accepted and name the
@@ -54,46 +53,12 @@ if [ "$MODE" = records ]; then
     [ -f "$f" ] || continue
     n="${f##*/}"; n="${n%%-*}"
     if [ "$(sed -n 1p "$f")" = "---" ]; then
-      # front matter already: add what it lacks (alias from the file number, date, the supersession pair, revised_by) and nothing else.
-      # The legacy lines under the heading (`- Date:`, `- Supersedes:`, `- Superseded-by:`, a status "superseded in part by") are read
-      # exactly as for a legacy header, so a record that says what it supersedes keeps saying it; a record with none gets the none value.
-      awk -v num="$n" '
-        function lower(x) { return tolower(x) }
-        function refs(x,  out, m) { out = ""; while (match(x, /ADR-[0-9]+/)) { m = substr(x, RSTART + 4, RLENGTH - 4) + 0
-            out = out (out == "" ? "" : ", ") "D-" m; x = substr(x, RSTART + RLENGTH) } return out }
-        function pair() { if (pairdone) return
-          if (!sup_in) print "supersedes: " sup; if (!by_in) print "superseded_by: " by
-          if (!rev_in && revby != "") print "revised_by: " revby; pairdone = 1 }
-        { line[NR] = $0 }
-        NR > 1 && !fmend && $0 == "---" { fmend = NR }
-        NR > 1 && !fmend { i = index($0, ":"); if (i > 1) { k = substr($0, 1, i - 1)
-            if (k == "alias") al_in = 1; else if (k == "date") dt_in = 1; else if (k == "supersedes") sup_in = 1
-            else if (k == "superseded_by") by_in = 1; else if (k == "revised_by") rev_in = 1 } }
-        fmend && NR <= fmend + 30 && /^(\*\*Status:\*\*|- Status:|Status:)/ && st == "" { st = $0; sub(/^(\*\*Status:\*\*|- Status:|Status:) */, "", st) }
-        fmend && NR <= fmend + 30 && /^(\*\*Date:\*\*|- Date:|Date:)/ && dt == "" { dt = $0; sub(/^(\*\*Date:\*\*|- Date:|Date:) */, "", dt); if (match(dt, /[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/)) dt = substr(dt, RSTART, RLENGTH) }
-        fmend && NR <= fmend + 30 && /^(- )?Supersedes( in part)?:/ && ss == "" { ss = $0 }
-        fmend && NR <= fmend + 30 && /^(- )?Superseded-by:/ && sb == "" { sb = $0 }
-        END {
-          if (!dt_in && dt == "") { print "ERR no Date line" > "/dev/stderr"; exit 3 }
-          t = lower(st); gsub(/\*/, "", t); head = t; sub(/[^a-z].*/, "", head)
-          part = (t ~ /in part/); revby = ""
-          if (part || (head == "accepted" && t ~ /superseded/)) { i = index(lower(st), "superseded"); revby = refs(substr(st, i)) }
-          sup = "-"; if (ss != "" && ss !~ /in part|portion|parts? of/) { r = refs(ss); if (r != "") sup = r }
-          by = "-"; if (sb != "") { r = refs(sb); if (r != "") by = r }
-          for (i = 1; i <= NR; i++) {
-            if (i == 1) { print line[i]; continue }
-            if (i == fmend) {
-              if (!al_in && !al_done) { print "alias: D-" (num + 0); al_done = 1 }
-              if (!dt_in && !dt_done) { print "date: " dt; dt_done = 1 }
-              pair(); print line[i]; continue }
-            if (i < fmend) {
-              print line[i]
-              if (line[i] ~ /^status:/) {
-                if (!al_in && !al_done) { print "alias: D-" (num + 0); al_done = 1 }
-                if (!dt_in && !dt_done) { print "date: " dt; dt_done = 1; pair() } }
-              if (line[i] ~ /^date:/) pair()
-              continue }
-            print line[i] } }' "$f" > "$TMP.new" || { log_fail "$f: no Date line to read, so its front matter was not completed"; log_fix "add date: to $f by hand"; log_end || :; exit 2; }
+      # front matter already: add the two supersession fields, with the none value, after `date:` (before the closing rule if none)
+      awk -v sup="$(sed -n '2,/^---$/p' "$f" | grep -c '^supersedes:' || :)" -v by="$(sed -n '2,/^---$/p' "$f" | grep -c '^superseded_by:' || :)" '
+        NR == 1 { print; infm = 1; next }
+        infm && /^date:/ { print; if (!sup) print "supersedes: -"; if (!by) print "superseded_by: -"; added = 1; next }
+        infm && $0 == "---" { if (!added) { if (!sup) print "supersedes: -"; if (!by) print "superseded_by: -" } infm = 0; print; next }
+        { print }' "$f" > "$TMP.new"
     else
       # legacy header → front matter in front of the unchanged text
       awk -v num="$n" '

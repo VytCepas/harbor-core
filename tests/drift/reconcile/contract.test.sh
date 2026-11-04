@@ -55,7 +55,7 @@ d_default_setup() { mkdir -p "$1"; }
 d_default_cfg()   { printf '%s' "$1"; }
 d_default_run()   { _w="$1"; _o="$2"; shift 2; CLAUDE_CONFIG_DIR="$_w" sh "$SUT" "$@" > "$_o" 2>/dev/null < /dev/null; }
 
-mr_key()   { printf '%s' "$1" | LC_ALL=C sed 's/[^A-Za-z0-9]/-/g'; }
+mr_key()   { printf '%s' "$1" | sed 's|/|-|g'; }
 mr_route() { _k="$(mr_key "$1/$2")"; mkdir -p "$1/cfg/projects/$_k"; ln -s "$1/cfg/projects/$(mr_key "$1")/memory" "$1/cfg/projects/$_k/memory"; }   # <world> <repo>
 d_memory_route_setup() { # a box whose two governed repos both reach the one store; the registry is the private layer's (harbor#1149)
   mkdir -p "$1/cfg/projects" "$1/repo" "$1/priv/context-rules/user" "$1/zorbcorp" "$1/blorp" "$1/cfg/projects/$(mr_key "$1")/memory"
@@ -109,14 +109,14 @@ d_drift_port_root_blind() { # a registry the resolver refuses: nothing can be ju
 # the managed-settings file is a fixture the writer itself installs (deploy-confinement.sh), so the check is read against real output
 d_drift_confinement_setup() {
   mkdir -p "$1/port" "$1/priv" "$1/managed" "$1/cfg"
-  PORT_ROOT="$1/port" HARBOR_SCOPE_MANAGED_SETTINGS="$1/managed/managed-settings.json" HARBOR_DEPLOY_CONFINEMENT_PRIVATE="$1/priv" HARBOR_DEPLOY_CONFINEMENT_OS=Darwin \
+  PORT_ROOT="$1/port" HARBOR_MANAGED_SETTINGS="$1/managed/managed-settings.json" HARBOR_CONFINEMENT_PRIVATE="$1/priv" HARBOR_CONFINEMENT_OS=Darwin \
     sh "$T_ROOT/bin/deploy-confinement.sh" > /dev/null 2>&1
   cp "$1/managed/managed-settings.json" "$1/managed/good.json"
 }
 d_drift_confinement_break() { jq 'del(.sandbox)' "$1/managed/good.json" > "$1/managed/managed-settings.json"; }
 d_drift_confinement_fix()   { cp "$1/managed/good.json" "$1/managed/managed-settings.json"; }
 d_drift_confinement_cfg()   { printf '%s' "$1/cfg"; }
-d_drift_confinement_run()   { _w="$1"; _o="$2"; shift 2; PORT_ROOT="$_w/port" HARBOR_SCOPE_MANAGED_SETTINGS="$_w/managed/managed-settings.json" HARBOR_DEPLOY_CONFINEMENT_PRIVATE="$_w/priv" HARBOR_DEPLOY_CONFINEMENT_OS=Darwin HARBOR_CHECK_RECEIPTS="$_w/cache/receipts" CLAUDE_CONFIG_DIR="$_w/cfg" sh "$SUT" "$@" > "$_o" 2>/dev/null < /dev/null; }
+d_drift_confinement_run()   { _w="$1"; _o="$2"; shift 2; PORT_ROOT="$_w/port" HARBOR_MANAGED_SETTINGS="$_w/managed/managed-settings.json" HARBOR_CONFINEMENT_PRIVATE="$_w/priv" HARBOR_CONFINEMENT_OS=Darwin HARBOR_CHECK_RECEIPTS="$_w/cache/receipts" CLAUDE_CONFIG_DIR="$_w/cfg" sh "$SUT" "$@" > "$_o" 2>/dev/null < /dev/null; }
 d_drift_confinement_plain() { d_drift_confinement_run "$1" /dev/null; }
 d_drift_confinement_blind() { # a managed file that is not JSON cannot be read
   cp "$1/managed/managed-settings.json" "$1/managed/held.json"   # the world as it is: blind is a look, not a fix

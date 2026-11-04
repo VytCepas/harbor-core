@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # failure-observe.sh: the MCP server segment survives into the ledger (never the tool, never arguments),
 # and FC-10 names that server instead of rendering `mcp -> -`.
-. "$(dirname "$0")/../../tests/lib/core.sh"; t_init
+. "$(dirname "$0")/../lib/core.sh"; t_init
 . "$T_ROOT/tests/audit/triage/fixture.sh"
 OBSF="$(mkfixture obs)"
 cp "$T_ROOT/hooks/failure-observe/failure-observe.sh" "$OBSF/bin/failure-observe.sh"

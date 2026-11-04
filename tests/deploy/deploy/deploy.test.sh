@@ -237,57 +237,49 @@ t_eq "answering n" 1 "$RC"; t_eq "answering n installs nothing" "" "$(applied)"
 
 t_section "--unattended: the ship runner's apply, and only the runner's (harbor#1018, ship contract §6)"
 fixture unattflags; : > "$T/snap"
-HARBOR_DEPLOY_SNAPSHOT="$T/snap"; export HARBOR_DEPLOY_SNAPSHOT  # valid, so only the missing HARBOR_DEPLOY_UNATTENDED can refuse
-run '' --apply --live --unattended; t_eq "without HARBOR_DEPLOY_UNATTENDED=1: a usage error" 2 "$RC"
-t_has "...naming it" "$(out)" "HARBOR_DEPLOY_UNATTENDED=1"
-HARBOR_DEPLOY_UNATTENDED=1; export HARBOR_DEPLOY_UNATTENDED; unset HARBOR_DEPLOY_SNAPSHOT SHIP_SNAPSHOT
-run '' --apply --live --unattended; t_eq "without HARBOR_DEPLOY_SNAPSHOT: a usage error" 2 "$RC"
-HARBOR_DEPLOY_SNAPSHOT="$T/snap"; export HARBOR_DEPLOY_SNAPSHOT
+SHIP_SNAPSHOT="$T/snap"; export SHIP_SNAPSHOT  # valid, so only the missing SHIP_UNATTENDED can refuse
+run '' --apply --live --unattended; t_eq "without SHIP_UNATTENDED=1: a usage error" 2 "$RC"
+t_has "...naming it" "$(out)" "SHIP_UNATTENDED=1"
+SHIP_UNATTENDED=1; export SHIP_UNATTENDED; unset SHIP_SNAPSHOT
+run '' --apply --live --unattended; t_eq "without SHIP_SNAPSHOT: a usage error" 2 "$RC"
+SHIP_SNAPSHOT="$T/snap"; export SHIP_SNAPSHOT
 run '' --live --unattended; t_eq "on a dry run: a usage error" 2 "$RC"
-printf 'old\n' > "$T/snap"; run '' --apply --live --unattended; t_eq "a HARBOR_DEPLOY_SNAPSHOT that is not empty: a usage error" 2 "$RC"; : > "$T/snap"
+printf 'old\n' > "$T/snap"; run '' --apply --live --unattended; t_eq "a SHIP_SNAPSHOT that is not empty: a usage error" 2 "$RC"; : > "$T/snap"
 run '' --apply --live --unattended --accept-loss; t_eq "with --accept-loss: a usage error" 2 "$RC"
 t_eq "no usage error applied anything" "" "$(applied)"
 CC=1 run 'y\n' --apply --live; CC=''
-t_eq "HARBOR_DEPLOY_UNATTENDED=1 without the flag is still refused in a session" 1 "$RC"; t_eq "...and applies nothing" "" "$(applied)"
-fixture unatt; HARBOR_DEPLOY_SNAPSHOT="$T/snap"; : > "$HARBOR_DEPLOY_SNAPSHOT"
+t_eq "SHIP_UNATTENDED=1 without the flag is still refused in a session" 1 "$RC"; t_eq "...and applies nothing" "" "$(applied)"
+fixture unatt; SHIP_SNAPSHOT="$T/snap"; : > "$SHIP_SNAPSHOT"
 printf 'bbb  CLAUDE.md\n' > "$T/b8"  # B8 drift, so the re-pin is reached
 CC=1 run '' --apply --live --unattended; CC=''
 t_eq "inside a session, with no terminal, it installs" 0 "$RC"
 t_eq "...in the one order that works" "policy-constitution-install.sh --apply,deploy-shim-install.sh --live,deploy-harden.sh --apply,deploy-runtime-install.sh --live,admission-install.sh --live,prod-guard-install.sh --live,skill-install.sh --all,skill-install.sh commands,context-injection-install.sh --live,deploy-shim-install.sh --live,skill-catalog.sh install,just $T/pi,just $T/po," \
   "$(grep -e '--apply' -e '^skill-catalog' "$LOGF" | awk '{print $1, $2}' | tr '\n' ',')"
-t_eq "the snapshot id the runner reads is this run's snapshot" "$(ls -d "$C"/backups/deploy-*)" "$(cat "$HARBOR_DEPLOY_SNAPSHOT")"
+t_eq "the snapshot id the runner reads is this run's snapshot" "$(ls -d "$C"/backups/deploy-*)" "$(cat "$SHIP_SNAPSHOT")"
 t_has "the install question is answered yes, saying why" "$(out)" "yes: --unattended"
 t_eq "the B8 re-pin is never made unattended" 0 "$(pins)"; t_has "...and says so" "$(out)" "answering No: --unattended asks nobody"
 t_hasnt "no next line hands a person the runner's flag" "$(grep -E '^  (fix|note: next):' "$T/out.txt" || :)" "--unattended"
-# The SHIP_ spellings are read until 2026-11-15 (harbor#1097): a runner that has not moved sets only these.
-fixture unattold; unset HARBOR_DEPLOY_UNATTENDED HARBOR_DEPLOY_SNAPSHOT
-SHIP_UNATTENDED=1; SHIP_SNAPSHOT="$T/snap"; export SHIP_UNATTENDED SHIP_SNAPSHOT; : > "$SHIP_SNAPSHOT"
-printf 'bbb  CLAUDE.md\n' > "$T/b8"
-CC=1 run '' --apply --live --unattended; CC=''
-t_eq "under the old SHIP_UNATTENDED and SHIP_SNAPSHOT it installs" 0 "$RC"
-t_eq "...writing the snapshot id to the file SHIP_SNAPSHOT names" "$(ls -d "$C"/backups/deploy-*)" "$(cat "$SHIP_SNAPSHOT")"
-unset SHIP_UNATTENDED SHIP_SNAPSHOT; HARBOR_DEPLOY_UNATTENDED=1; HARBOR_DEPLOY_SNAPSHOT="$T/snap"; export HARBOR_DEPLOY_UNATTENDED HARBOR_DEPLOY_SNAPSHOT
 # `harbor ship night` from a terminal: a tty is there to answer, and --unattended must still ask nobody
-fixture unatttty; HARBOR_DEPLOY_SNAPSHOT="$T/snap"; : > "$HARBOR_DEPLOY_SNAPSHOT"; printf 'bbb  CLAUDE.md\n' > "$T/b8"
+fixture unatttty; SHIP_SNAPSHOT="$T/snap"; : > "$SHIP_SNAPSHOT"; printf 'bbb  CLAUDE.md\n' > "$T/b8"
 run 'y\ny\ny\n' --apply --live --unattended
 t_eq "at a terminal, it installs" 0 "$RC"; t_eq "...and a y typed there re-pins nothing" 0 "$(pins)"
-fixture unattwt; HARBOR_DEPLOY_SNAPSHOT="$T/snap"; : > "$HARBOR_DEPLOY_SNAPSHOT"
+fixture unattwt; SHIP_SNAPSHOT="$T/snap"; : > "$SHIP_SNAPSHOT"
 MAIN="$REPO"; git -C "$REPO" worktree add -q --detach "$T/wt" 2>/dev/null; REPO="$T/wt"
 CC=1 run '' --apply --live --unattended; CC=''; REPO="$MAIN"
-t_eq "from a linked worktree, unattended is refused up front too" 1 "$RC"; t_eq "...writing no snapshot id" "" "$(cat "$HARBOR_DEPLOY_SNAPSHOT")"
+t_eq "from a linked worktree, unattended is refused up front too" 1 "$RC"; t_eq "...writing no snapshot id" "" "$(cat "$SHIP_SNAPSHOT")"
 t_eq "...its fix the terminal apply from the main checkout, without the runner's flag" \
   "  fix: sh '$MAIN/bin/deploy.sh' --apply --live   # from a terminal window" "$(grep -A1 'linked worktree' "$T/out.txt" | sed -n 2p)"
-fixture unattfail; HARBOR_DEPLOY_SNAPSHOT="$T/snap"; : > "$HARBOR_DEPLOY_SNAPSHOT"
+fixture unattfail; SHIP_SNAPSHOT="$T/snap"; : > "$SHIP_SNAPSHOT"
 STUB_FAIL=admission-install.sh:apply; STUB_HOOK_deployruntimeinstallsh="printf MODIFIED > '$C/settings.json'"; export STUB_FAIL STUB_HOOK_deployruntimeinstallsh
 CC=1 run '' --apply --live --unattended; CC=''
 t_eq "a failed unattended install" 1 "$RC"
 t_eq "...is not restored by deploy: the restore is the runner's" MODIFIED "$(cat "$C/settings.json")"
-_uid="$(cat "$HARBOR_DEPLOY_SNAPSHOT")"; t_has "...which already has the id" "$_uid" "$C/backups/deploy-"
+_uid="$(cat "$SHIP_SNAPSHOT")"; t_has "...which already has the id" "$_uid" "$C/backups/deploy-"
 t_hasnt "...and no fix line hands a person the runner's flag" "$(grep -E '^  (fix|note: next):' "$T/out.txt" || :)" "--unattended"
-# ship.config's restore line, from the id, inside a session as the gate's runner runs it
+# ship.conf's restore line, from the id, inside a session as the gate's runner runs it
 ( cd "$REPO" && env -u CLAUDE_CONFIG_DIR HOME="$H" CLAUDECODE=1 sh bin/deploy-restore.sh --apply --live --from "$_uid" --accept-loss ) >"$T/rs" 2>&1 </dev/null
 t_eq "the runner's restore from that id puts the box back" "{}" "$(cat "$C/settings.json")"
-unset STUB_FAIL STUB_HOOK_deployruntimeinstallsh HARBOR_DEPLOY_UNATTENDED HARBOR_DEPLOY_SNAPSHOT SHIP_UNATTENDED SHIP_SNAPSHOT
+unset STUB_FAIL STUB_HOOK_deployruntimeinstallsh SHIP_UNATTENDED SHIP_SNAPSHOT
 
 t_section "a refused preflight on --apply keeps its log (contracts/logging.md)"
 fixture refusedlog; echo x > "$REPO/stray"; run '' --apply --live

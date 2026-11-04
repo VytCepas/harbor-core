@@ -1,14 +1,14 @@
 #!/usr/bin/env sh
 # scope-managed-folders.sh (harbor#1442): renders contracts/main-folders.txt as Edit deny rows, merges them into the
 # managed file without touching another installer's keys, removes only its own rows, and --missing is the verifier:
-# remove a row and it names it, restore the row and it is silent. HARBOR_SCOPE_MANAGED_SETTINGS: no root.
+# remove a row and it names it, restore the row and it is silent. HARBOR_MANAGED_SETTINGS: no root.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 R="$(cd "$(dirname "$0")/../../.." && pwd)"
 S="$R/bin/scope-managed-folders.sh"
 M="$T_TMP/managed/managed-settings.json"; mkdir -p "$T_TMP/managed"
 PORT_ROOT="$T_TMP/port"; mkdir -p "$PORT_ROOT"; export PORT_ROOT
-run() { HARBOR_SCOPE_MANAGED_SETTINGS="$M" sh "$S" "$@" >/dev/null 2>&1; echo $?; }
-miss() { HARBOR_SCOPE_MANAGED_SETTINGS="$M" sh "$S" --missing 2>/dev/null; }
+run() { HARBOR_MANAGED_SETTINGS="$M" sh "$S" "$@" >/dev/null 2>&1; echo $?; }
+miss() { HARBOR_MANAGED_SETTINGS="$M" sh "$S" --missing 2>/dev/null; }
 n() { printf '%s\n' "$1" | grep -c . || :; }
 
 t_section "the rows come from the contract, Edit and home-anchored"
@@ -37,12 +37,12 @@ t_eq "a row removed: --missing names exactly it" "Edit(~/Desktop/**)" "$(miss)"
 cp "$T_TMP/good.json" "$M"
 t_eq "restored: silent" 0 "$(n "$(miss)")"
 printf 'not json' > "$M"
-t_exit "an unreadable managed file is unchecked (3), never an empty list" 3 env HARBOR_SCOPE_MANAGED_SETTINGS="$M" sh "$S" --missing
+t_exit "an unreadable managed file is unchecked (3), never an empty list" 3 env HARBOR_MANAGED_SETTINGS="$M" sh "$S" --missing
 cp "$T_TMP/good.json" "$M"
 
 t_section "dry run and uninstall"
 printf '{"permissions":{"deny":["Bash(curl:*)"]}}\n' > "$M"
-t_has "a dry run prints the merged JSON" "$(HARBOR_SCOPE_MANAGED_SETTINGS="$M" sh "$S" --dry-run 2>/dev/null)" "Edit(~/Desktop/**)"
+t_has "a dry run prints the merged JSON" "$(HARBOR_MANAGED_SETTINGS="$M" sh "$S" --dry-run 2>/dev/null)" "Edit(~/Desktop/**)"
 t_eq "and writes nothing" '["Bash(curl:*)"]' "$(jq -c .permissions.deny "$M")"
 cp "$T_TMP/good.json" "$M"
 t_eq "uninstall exits 0" 0 "$(run --uninstall)"

@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # library-gate.sh (harbor#1018) — the approval gate's shared library.
 # Never run: sourced after library-log.sh, it sets no shell option. Repo-agnostic: a repo opts in with
-# .agents/ship.config. Contract, CLI and residual risks: docs/design/approval-gate.md.
+# .agents/ship.conf. Contract, CLI and residual risks: docs/design/approval-gate.md.
 #
 #   gate_classify <root> [<ref>]     paths on stdin → PROTECTED TAB path TAB class for each protected one; 1 if any
 #   gate_init <tool>                 an installed gate tool's preamble: only the installed copy runs
@@ -12,8 +12,7 @@
 . "$HERE/library-fs.sh"   # fs_mtime, one spelling on BSD and GNU stat
 # shellcheck disable=SC2034 # GATE_TAB: read by gate-merge.sh
 GATE_TAB="$(printf '\t')"
-GATE_MANIFEST=.agents/ship.config   # the ship contract §1: a repo opts in with this one file
-GATE_MANIFEST_OLD=.agents/ship.conf   # its name until harbor#1097: still read, and still protected, until 2026-11-15
+GATE_MANIFEST=.agents/ship.conf   # the ship contract §1: a repo opts in with this one file
 
 # ── the manifest and the register (the ship contract §1, §2) ──────────────────
 gate_conf() { # <root> <key> → its values, one per line (a missing manifest prints nothing)
@@ -31,7 +30,7 @@ gate_classify() { # <root>; paths on stdin
   if [ -f "$1/$GATE_MANIFEST" ] && [ ! -f "$1/$_gcr" ]; then
     log_fail "$1/$GATE_MANIFEST names the register $_gcr, which is absent"; log_fix "git -C $1 log -1 -- $_gcr"; return 2
   fi
-  { printf '%s\tregister\talways protected\n.agents/ship.config\tmanifest\talways protected\n.agents/ship.conf\tmanifest\talways protected\n.github/**\tci-gate\talways protected\n' "$_gcr"
+  { printf '%s\tregister\talways protected\n.agents/ship.conf\tmanifest\talways protected\n.github/**\tci-gate\talways protected\n' "$_gcr"
     [ ! -f "$1/$_gcr" ] || cat "$1/$_gcr"; } >"$GATE_TMP/rows"
   awk -F'\t' '
     function re(g,   i, c, o, n) { o = ""; n = length(g)
@@ -153,12 +152,11 @@ gate_fetch_conf() { # <repo>
       && git -C "$GATE_ROOT" config remote.origin.promisor true && git -C "$GATE_ROOT" config remote.origin.partialclonefilter blob:none; } \
     || die "$1: cannot set up the gate's git tree in $GATE_ROOT" "git --version"
   _graw() { gh api -H 'Accept: application/vnd.github.raw' "repos/$1/contents/$2?ref=$GATE_MAIN" 2>/dev/null; }
-  _graw "$1" "$GATE_MANIFEST" >"$GATE_ROOT/$GATE_MANIFEST" \
-    || _graw "$1" "$GATE_MANIFEST_OLD" >"$GATE_ROOT/$GATE_MANIFEST" || rm -f "$GATE_ROOT/$GATE_MANIFEST"
+  _graw "$1" "$GATE_MANIFEST" >"$GATE_ROOT/$GATE_MANIFEST" || rm -f "$GATE_ROOT/$GATE_MANIFEST"
   if [ -f "$GATE_ROOT/$GATE_MANIFEST" ]; then
     _grg="$(gate_register_path "$GATE_ROOT")"; mkdir -p "$GATE_ROOT/$(dirname "$_grg")"
     _graw "$1" "$_grg" >"$GATE_ROOT/$_grg" || rm -f "$GATE_ROOT/$_grg"
-    [ "$(gate_conf "$GATE_ROOT" repo | head -1)" = "$1" ] || die "$1: its .agents/ship.config names repo '$(gate_conf "$GATE_ROOT" repo | head -1)'" "fix the repo line on $GATE_MAIN"
+    [ "$(gate_conf "$GATE_ROOT" repo | head -1)" = "$1" ] || die "$1: its .agents/ship.conf names repo '$(gate_conf "$GATE_ROOT" repo | head -1)'" "fix the repo line on $GATE_MAIN"
   fi
   GATE_WF="$(gate_conf "$GATE_ROOT" workflow | head -1)"
   # merge-stack reads <checkout>/.agents/required-checks.tsv: the repo's own declaration as merged (contract §5a.6), never

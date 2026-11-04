@@ -6,24 +6,24 @@
 #   sh scope-managed-telemetry.sh --dry-run         print the target path and the merged JSON, write nothing
 #   sudo sh scope-managed-telemetry.sh --uninstall  remove exactly those keys, keep the rest
 # Refuses while the receiver is not installed (audit-collector-install.sh): an exporter aimed at nothing is a silent
-# config. HARBOR_SCOPE_MANAGED_SETTINGS and HARBOR_SCOPE_RECEIVER_PLIST move the files for tests and are refused under root.
+# config. HARBOR_MANAGED_SETTINGS and HARBOR_RECEIVER_PLIST move the files for tests and are refused under root.
 set -eu
 PATH=/usr/bin:/bin:/usr/sbin:/sbin; export PATH
 HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 . "$HERE/library-log.sh"
 log_init managed-telemetry
-for v in HARBOR_SCOPE_MANAGED_SETTINGS HARBOR_MANAGED_SETTINGS HARBOR_SCOPE_RECEIVER_PLIST HARBOR_RECEIVER_PLIST; do   # old names until 2026-11-15 (harbor#1097)
+for v in HARBOR_MANAGED_SETTINGS HARBOR_RECEIVER_PLIST; do
   eval "_v=\${$v:-}"
   if [ "$(id -u)" -eq 0 ] && [ -n "$_v" ]; then
     log_fail "$v is set under root: refusing a caller-chosen path"; log_fix "sudo env -u $v sh $0"; exit 1
   fi
 done
-if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then FILE="${HARBOR_SCOPE_MANAGED_SETTINGS:-$HARBOR_MANAGED_SETTINGS}"
+if [ -n "${HARBOR_MANAGED_SETTINGS:-}" ]; then FILE="$HARBOR_MANAGED_SETTINGS"
 else case "$(uname -s)" in
   Darwin) FILE='/Library/Application Support/ClaudeCode/managed-settings.json' ;;
   *) FILE='/etc/claude-code/managed-settings.json' ;;
 esac; fi
-RECV="${HARBOR_SCOPE_RECEIVER_PLIST:-${HARBOR_RECEIVER_PLIST:-/Library/LaunchDaemons/com.harbor.audit.otlp-receiver.plist}}"
+RECV="${HARBOR_RECEIVER_PLIST:-/Library/LaunchDaemons/com.harbor.audit.otlp-receiver.plist}"
 BASE="$(dirname -- "$FILE")"
 MODE=install
 for a in "$@"; do case "$a" in
@@ -52,7 +52,7 @@ else
 fi
 log_note "target: $FILE"
 if [ "$MODE" = dry ]; then printf '%s\n' "$NEW"; log_note "dry run: nothing written"; exit 0; fi
-if [ -z "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ] && [ "$(id -u)" -ne 0 ]; then
+if [ -z "${HARBOR_MANAGED_SETTINGS:-}" ] && [ "$(id -u)" -ne 0 ]; then
   log_fail "not root: this file is root-owned by design"
   log_fix "sudo sh $0$([ "$MODE" = uninstall ] && echo ' --uninstall')"; exit 1
 fi

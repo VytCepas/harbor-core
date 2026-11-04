@@ -55,7 +55,7 @@ Pass `--fragment` when the page goes to a host that adds its own document skelet
 **A large page with interactive widgets:** the Lithuanian 9th-grade physics + maths guide
 (`~/Deliverables/2026-10-03-fizmat-9/`) is the worked example:
 - `src/widgets/core.js` is a widget toolkit (slider, plot, canvas, animation loop) and
-  `src/widgets_check.py` proves every widget reacts to every control;
+  `src/wgtest.py` proves every widget reacts to every control;
 - `src/assemble.py` merges per-unit files written by parallel builders, and `BRIEF.md` is
   the brief those builders were given.
 
@@ -73,8 +73,8 @@ Read the CSS before you invent a class.
 ## Done means
 
 - `check.py` exits 0 on **both** profiles against the page you built.
-- **If the page has widgets** (`kit/widgets/`: `core.js` toolkit + `core.css`, mounted by `mount.js`, placed as
-  `<div class="wg" data-wg="name">`), `widgets_check.py` exits 0 in all four modes. It clicks every button and fails one
+- **If the page has widgets** (`kit/widgets/`: `core.js` toolkit + `core.css`, mounted by `zz-mount.js`, placed as
+  `<div class="wg" data-wg="name">`), `wgtest.py` exits 0 in all four modes. It clicks every button and fails one
   that changes nothing, and it fails a ▶ that does not start motion or does not restart on a second press.
 - You viewed both `*-card.png` screenshots, because a pass is not an appearance.
 - `build.py` reports no unused cards.

@@ -348,11 +348,8 @@ def relate(t, texts, edges, root):
                 hit = ['none'] if re.match(r'\W*none\b', cell, re.I) else [ch for ch, rx in CHANNELS if re.search(rx, cell)]
                 for ch in hit or ['other']:
                     edges.add(('notifies', n, 'channel:' + ch, site))
-                    if ch != 'none':   # where a check tells a person is where its findings are read (harbor#1252)
-                        edges.add(('findings-land-in', n, 'channel:' + ch, site))
         rels['registered-in'] = 'docs/reference/checks.md register rows, by the id the check prints'
         rels['notifies'] = "docs/reference/checks.md's notifies column, by the channel it names"
-        rels['findings-land-in'] = "the channel the notifies cell names (none is no channel), a check's receipt (log_receipt: the finding store, contracts/finding.md) and that contract's HEAL repairs"
         # disabled-by: each check's own row, never the `## Disable` template, which is a user agent's and so wrong for a
         # system daemon (`sudo launchctl bootout system/...`). The Platforms disable cell is a command per backtick span;
         # a cell with none ("the register row's own") defers to the register row's Disable clause, read whole, since
@@ -384,7 +381,7 @@ def relate(t, texts, edges, root):
                 tier, _, i = key.partition('/')
                 for n in (chk.get(i, ()) if tier == 'check' else names.get(i, ()) if tier == 'lint' else ()):
                     edges.add(('findings-land-in', n, 'command:' + repair, H + 'contracts/finding.md:%d' % ln))
-        rels['findings-land-in'] = "the channel the notifies cell names (none is no channel), a check's receipt (log_receipt: the finding store, contracts/finding.md) and that contract's HEAL repairs"
+        rels['findings-land-in'] = "a check's receipt (log_receipt: the finding store, contracts/finding.md) and that contract's HEAL repairs"
     # enforces and enforced-by: a D-n in a control's row (above), and a markdown line that says a control enforces it:
     # the control in bold or backticks, beside the word (`enforced by lint **C2**`, `**T1/T2/T3** enforce that`), never
     # past a sentence break. enforced-by is enforces read backward, so a clause's shape counts its own edges. Recorded

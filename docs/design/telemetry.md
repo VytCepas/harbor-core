@@ -22,9 +22,9 @@ two roots, with eight-plus schemas and six retention habits. Three defects follo
 
 ## The decided shape
 
-1. **One contract.** A producer appends one JSON line (≤ 4 KB) to `$HARBOR_AUDIT_STREAM_SINK/<stream>/<YYYY-MM-DD>/<writer>.jsonl`.
+1. **One contract.** A producer appends one JSON line (≤ 4 KB) to `$HARBOR_SINK/<stream>/<YYYY-MM-DD>/<writer>.jsonl`.
    One file per writer per day: no lock, no interleaving. Producers import nothing, so Python, Bun and the research
-   repos (`guard-replay`, `skill-paths`) comply; with `HARBOR_AUDIT_STREAM_SINK` unset they write `./runs/` and stay portable.
+   repos (`guard-replay`, `skill-paths`) comply; with `HARBOR_SINK` unset they write `./runs/` and stay portable.
 2. **One envelope**, the event bus's extended: `v, id, ts, stream, sess, seq, src, repo, cause, attrs, prev`.
    `seq` and `prev` (hash of the previous line in the file) make gaps and edits visible. OTel GenAI names go inside
    `attrs` where they fit. The guard path keeps its single bounded `printf` to a pre-created file: a guard that forks

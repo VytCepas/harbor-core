@@ -2,10 +2,10 @@
 # deploy-fleet.sh (harbor#1060, harbor#1018) — the ship runner: merge and deploy opted-in fleet repos unattended,
 # catch a bad deploy, restore it, and leave a morning report. Reached as `harbor ship`. Ship contract v1, §3 and §5.
 #
-#   night [--plan <file>]... [<owner/repo>...]   every fleet repo carrying .agents/ship.config, or only those named
+#   night [--plan <file>]... [<owner/repo>...]   every fleet repo carrying .agents/ship.conf, or only those named
 #   deploy <owner/repo> --sha <sha> [--approved]  one repo's deploy, the same verify and auto-restore
 #
-# A repo opts in with one file, .agents/ship.config, read from origin's default branch, never the working tree; without
+# A repo opts in with one file, .agents/ship.conf, read from origin's default branch, never the working tree; without
 # it nothing about the repo is autonomous. Merges go through gate-merge-stack.sh, one PR per plan, pinned to the head
 # that was classified; protected work is queued through gate-queue.sh, never applied unattended. Every manifest
 # command is bounded. The flow, the manifest reference and every rail: docs/design/deploy-fleet.md.
@@ -27,9 +27,9 @@ usage: harbor ship night [--plan <file>]... [<owner/repo>...]
   night    merge each opted-in repo's ready PRs (a --plan's, else the open PRs labelled ship:auto), then deploy
            the default branch's change since the last deployed commit; protected work is queued for approval
   deploy   one repo at <sha>: plan, apply, every verify, and restore on red. --approved is gate-approve.sh's
-           alone: it lets a protected change through, and is refused when HARBOR_DEPLOY_UNATTENDED=1
+           alone: it lets a protected change through, and is refused when SHIP_UNATTENDED=1
 
-The flow, the manifest (.agents/ship.config) and the rails: docs/design/deploy-fleet.md
+The flow, the manifest (.agents/ship.conf) and the rails: docs/design/deploy-fleet.md
 EOF
 }
 usage_err() { printf 'deploy-fleet: %s\n' "$1" >&2; usage >&2; exit 2; }
@@ -72,7 +72,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 # §5a.4: --approved is the approve tool's child, never an unattended run's
-[ "$APPROVED" = 0 ] || [ "${HARBOR_DEPLOY_UNATTENDED:-${SHIP_UNATTENDED:-}}" != 1 ] || usage_err "--approved is refused when HARBOR_DEPLOY_UNATTENDED=1: only gate-approve.sh passes it"
+[ "$APPROVED" = 0 ] || [ "${SHIP_UNATTENDED:-}" != 1 ] || usage_err "--approved is refused when SHIP_UNATTENDED=1: only gate-approve.sh passes it"
 if [ "$SUB" = deploy ]; then
   set -- $SLUGS; [ $# = 1 ] || usage_err "deploy takes exactly one <owner/repo>"
   case "$SHA" in '') usage_err "deploy needs --sha <sha>" ;; *[!0-9abcdef]*) usage_err "--sha is a hex commit id: $SHA" ;; esac
@@ -187,10 +187,8 @@ dbranch() { # <checkout> → the default branch origin's HEAD names
 }
 remote_root() { # <checkout> <ref> <dir> → <dir> holds the manifest and its register as <ref> has them; 1 when <ref> has no manifest
   _rd="${3:?}"; rm -rf "${_rd:?}"; mkdir -p "$_rd/.agents"
-  # ship.config, else the old ship.conf a workload has not renamed yet (until 2026-11-15, harbor#1097); either lands as ship.config
-  git -C "$1" show "$2:.agents/ship.config" > "$_rd/.agents/ship.config" 2>/dev/null \
-    || git -C "$1" show "$2:.agents/ship.conf" > "$_rd/.agents/ship.config" 2>/dev/null || { rm -rf "${_rd:?}"; return 1; }
-  _rg="$(mf1 "$_rd/.agents/ship.config" protected)"; _rg="${_rg:-.agents/protected-paths.tsv}"
+  git -C "$1" show "$2:.agents/ship.conf" > "$_rd/.agents/ship.conf" 2>/dev/null || { rm -rf "${_rd:?}"; return 1; }
+  _rg="$(mf1 "$_rd/.agents/ship.conf" protected)"; _rg="${_rg:-.agents/protected-paths.tsv}"
   case "/$_rg/" in //*|*/../*|*/./*) return 0 ;; esac   # a register path no repo-relative read can trust: left absent, so classify refuses
   mkdir -p "$_rd/$(dirname "$_rg")"; git -C "$1" show "$2:$_rg" > "$_rd/$_rg" 2>/dev/null || rm -f "${_rd:?}/${_rg:?}"
 }
@@ -199,9 +197,9 @@ open_repo() { # <slug> <checkout> → DB, MF and ROOTD from origin/<default bran
   case "$DB" in ''|*[!A-Za-z0-9._/-]*) problem "$1: cannot read the default branch from origin" "git -C $2 ls-remote --symref origin HEAD" "$1:fetch"; return 1 ;; esac
   git -C "$2" fetch -q origin "+refs/heads/$DB:refs/remotes/origin/$DB" </dev/null 2>/dev/null \
     || { problem "$1: cannot fetch origin/$DB" "git -C $2 fetch origin $DB" "$1:fetch"; return 1; }
-  ROOTD="$RUN/$(printf '%s' "$1" | tr / _).root"; MF="$ROOTD/.agents/ship.config"
+  ROOTD="$RUN/$(printf '%s' "$1" | tr / _).root"; MF="$ROOTD/.agents/ship.conf"
   remote_root "$2" "origin/$DB" "$ROOTD" || return 2
-  [ "$(mf1 "$MF" repo)" = "$1" ] || { problem "$1: the manifest on origin/$DB names repo $(mf1 "$MF" repo)" "fix repo in .agents/ship.config on $DB" "$1:manifest"; return 1; }
+  [ "$(mf1 "$MF" repo)" = "$1" ] || { problem "$1: the manifest on origin/$DB names repo $(mf1 "$MF" repo)" "fix repo in .agents/ship.conf on $DB" "$1:manifest"; return 1; }
 }
 
 # ── the classifier (§2), fail-closed: a path it cannot judge, or a classifier that cannot answer, is protected ──
@@ -297,8 +295,7 @@ tmo() { # <cmd> <default> → the manifest's timeout.<cmd> in whole seconds, els
   [ "$_tv" -ge 1 ] 2>/dev/null && [ "$_tv" -le 86400 ] || _tv="$2"; printf '%s' "$_tv"
 }
 run_cmd() { # <checkout> <log> <seconds> <command> [snapshot id] — sh -c in the main checkout, bounded, with the contract's env
-  # (the SHIP_ spellings too, for a workload's ship.config that has not moved yet: until 2026-11-15, harbor#1097)
-  ( cd "$1" && exec env HARBOR_DEPLOY_UNATTENDED=1 SHIP_UNATTENDED=1 HARBOR_DEPLOY_REPO="$DS" SHIP_REPO="$DS" HARBOR_DEPLOY_SNAPSHOT="$SNAPF" SHIP_SNAPSHOT="$SNAPF" ${5:+"HARBOR_DEPLOY_SNAPSHOT_ID=$5" "SHIP_SNAPSHOT_ID=$5"} \
+  ( cd "$1" && exec env SHIP_UNATTENDED=1 SHIP_REPO="$DS" SHIP_SNAPSHOT="$SNAPF" ${5:+"SHIP_SNAPSHOT_ID=$5"} \
       perl -e "$SUPERVISE" "$3" sh -c "$4" ) </dev/null > "$2" 2>&1 &
   CHILD=$!; _xrc=0
   wait "$CHILD" || _xrc=$?
@@ -473,7 +470,7 @@ cmd_deploy() {
   [ -n "$_h" ] || { problem "$_s has no main checkout in the fleet" "refresh the fleet snapshot" "$_s:fleet"; return 0; }
   if [ "$APPROVED" = 0 ] && night_stopped; then log_warn "$STOPPED"; return 0; fi
   _orc=0; open_repo "$_s" "$_h" || _orc=$?
-  [ "$_orc" != 2 ] || problem "$_s does not opt in: origin's default branch carries no .agents/ship.config" "add .agents/ship.config to $_s" "$_s:fleet"
+  [ "$_orc" != 2 ] || problem "$_s does not opt in: origin's default branch carries no .agents/ship.conf" "add .agents/ship.conf to $_s" "$_s:fleet"
   [ "$_orc" = 0 ] || return 0
   deploy_stage "$_s" "$_h" "$SHA" "$APPROVED"
 }
@@ -499,7 +496,7 @@ cmd_night() {
     if [ -n "$STOPPED" ]; then add notes "$_r: not reached, the night stopped"; continue; fi
     _orc=0; open_repo "$_r" "$_c" || _orc=$?
     if [ "$_orc" = 2 ]; then
-      [ "$_how" = fleet ] || problem "$_r does not opt in: origin's default branch carries no .agents/ship.config" "add .agents/ship.config to $_r" "$_r:fleet"
+      [ "$_how" = fleet ] || problem "$_r does not opt in: origin's default branch carries no .agents/ship.conf" "add .agents/ship.conf to $_r" "$_r:fleet"
       continue
     fi
     [ "$_orc" = 0 ] || continue

@@ -12,7 +12,7 @@
 #   --ask 1        the guard answers a person (cloud, destroy): a warn row asks, a block row denies
 #   --escalate 1   no human is present, or the posture is deny: an ask becomes a deny
 #   --fallback M   the mode to assume when the register cannot answer (default block: fail closed); an ask-tier guard passes warn
-#   --register     the controls register (default: controls.tsv beside this script when installed, else ../standards/naming/controls.tsv, or $FLOOR_CONTROLS)
+#   --register     the controls register (default: ../standards/naming/controls.tsv beside this script's tree, or $FLOOR_CONTROLS)
 #
 # THE TABLE. A row's mode is the rule's mode (D-64): block enforces, warn prints and allows, shadow records and allows, off skips
 # the rule and records that it was skipped (the per-control disable: one cell, edited by a person's PR). A shadow session turns a
@@ -28,10 +28,6 @@
 : "${HARBOR_ADMISSION_DISABLE:-0}"
 set -eu
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
-# The register has two layouts and one resolution (harbor#1466): installed, deploy-runtime-install lands the uncut file beside the
-# guards as bin/controls.tsv; in the repo it is standards/naming/controls.tsv. The order is the injection engine's own.
-REG_DEFAULT="$HERE/../standards/naming/controls.tsv"
-if [ -f "$HERE/controls.tsv" ]; then REG_DEFAULT="$HERE/controls.tsv"; fi
 
 decide() { # <guard> <rule> <shadow> <enforcing> <register> <ask> <escalate> <fallback>
   _g="$1"; _r="$2"; _sh="$3"; _en="$4"; _reg="$5"; _ask="$6"; _esc="$7"; _fb="$8"; _id="admission.$2"
@@ -59,7 +55,7 @@ decide() { # <guard> <rule> <shadow> <enforcing> <register> <ask> <escalate> <fa
             else _v=warn; fi ;;
   esac
   case "$_src" in
-    unreadable) _st="$(printf '(control:%s mode:%s verdict:%s) the controls register is unreadable at %s, so the rule is decided as a block row: it fails closed. Remedy: restore standards/naming/controls.tsv (installed: bin/controls.tsv beside the guards, landed by the runtime install)' "$_id" "$_mode" "$_v" "$_reg")" ;;
+    unreadable) _st="$(printf '(control:%s mode:%s verdict:%s) the controls register is unreadable at %s, so the rule is decided as a block row: it fails closed. Remedy: restore standards/naming/controls.tsv beside the floor (the floor installer copies it)' "$_id" "$_mode" "$_v" "$_reg")" ;;
     norow)      _st="$(printf '(control:%s mode:%s verdict:%s) the controls register has no admission row for this rule, so it is decided as a block row. Remedy: add the row to standards/naming/controls.tsv' "$_id" "$_mode" "$_v")" ;;
     *)          _st="$(printf '(control:%s mode:%s verdict:%s)' "$_id" "$_mode" "$_v")" ;;
   esac
@@ -72,7 +68,7 @@ case "${1:-}" in
   --help|-h) sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 esac
 if [ "${1:-}" = --self-test ]; then
-  REG_LIVE="${FLOOR_CONTROLS:-$REG_DEFAULT}"
+  REG_LIVE="${FLOOR_CONTROLS:-$HERE/../standards/naming/controls.tsv}"
   _n=0; _f=0
   T="$(mktemp -d "${TMPDIR:-/tmp}/ad.XXXXXX")"; trap 'rm -rf "$T"' EXIT
   printf 'id\tmode\ttype\tengine\n' > "$T/reg"
@@ -131,7 +127,7 @@ fi
 
 _guard="${1:-}"; _rule="${2:-}"; [ -n "$_guard" ] && [ -n "$_rule" ] || { printf 'usage: admission-decide.sh <guard> <rule> [--shadow 0|1] [--enforcing 0|1] [--register FILE]\n' >&2; exit 2; }
 shift 2
-_shadow=0; _enf=0; _ask=0; _esc=0; _fb=""; _defer=0; _reg="${FLOOR_CONTROLS:-$REG_DEFAULT}"
+_shadow=0; _enf=0; _ask=0; _esc=0; _fb=""; _defer=0; _reg="${FLOOR_CONTROLS:-$HERE/../standards/naming/controls.tsv}"
 while [ $# -gt 0 ]; do
   case "$1" in
     --shadow) _shadow="${2:-0}"; shift ;;

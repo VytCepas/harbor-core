@@ -21,7 +21,7 @@ docs/reference/env.md	sh bin/standard-inventory.sh page env --check	sh bin/stand
 docs/policy/enforcement.md	sh bin/policy-check.sh --gen enforcement --check	sh bin/policy-check.sh --gen enforcement	
 contracts/cli.md	sh bin/standard-inventory.sh page cli --check	sh bin/standard-inventory.sh page cli --write	
 -	access-environment.sh	checks a live settings.json, not a tracked file
--	admission-decider-set.sh	wiring-versus-table drift, not a generated file
+-	decider-set.sh	wiring-versus-table drift, not a generated file
 -	doc-graph-generate.sh	build/graph.tsv is an untracked build product, absent on a fresh checkout
 -	deploy-install-stamp.sh	judges an installed config dir
 -	lint-module.sh	a lint over the graph

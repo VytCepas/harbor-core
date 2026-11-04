@@ -59,22 +59,19 @@ fx_repo() { # <name> <manifest>
   git init -q --bare "$_b"; git --git-dir="$_b" symbolic-ref HEAD "refs/heads/$_db"
   git clone -q "https://github.com/acme/$1.git" "$_w" 2>/dev/null; git -C "$_w" checkout -q -B "$_db"
   mkdir -p "$_w/.agents" "$_w/ops" "$_w/src" "$SF/gh/acme_$1/pr" "$SF/gh/acme_$1/runs"
-  # FX_OLD_MANIFEST=1: the manifest under its old name .agents/ship.conf, as a workload that has not moved yet carries it (harbor#1097)
-  _mn=ship.config; [ -z "${FX_OLD_MANIFEST:-}" ] || _mn=ship.conf
-  printf '%s\n' "$2" > "$_w/.agents/$_mn"
+  printf '%s\n' "$2" > "$_w/.agents/ship.conf"
   printf '# glob\tclass\treason\nsecrets/*\tsecrets\tkeys\n' > "$_w/.agents/protected-paths.tsv"
   printf 'ok\n' > "$_w/health.txt"; echo seed > "$_w/src/seed.txt"
   cat > "$_w/ops/plan.sh" <<'EOF'
-echo "plan $(git rev-parse --short HEAD) unattended=${HARBOR_DEPLOY_UNATTENDED:-$SHIP_UNATTENDED} repo=${HARBOR_DEPLOY_REPO:-$SHIP_REPO} dir=$(pwd)" >> "$SF/ops.log"
-echo "old $SHIP_UNATTENDED $SHIP_REPO" >> "$SF/old.log"   # the SHIP_ spellings are set too, until 2026-11-15 (harbor#1097)
+echo "plan $(git rev-parse --short HEAD) unattended=$SHIP_UNATTENDED repo=$SHIP_REPO dir=$(pwd)" >> "$SF/ops.log"
 [ ! -f "$SF/kill-in-plan" ] || touch "$CLAUDE_CONFIG_DIR/.harbor-autoship.off"
 [ ! -f PLAN_FAILS ]
 EOF
   cat > "$_w/ops/apply.sh" <<'EOF'
 echo "apply $(git rev-parse --short HEAD)" >> "$SF/ops.log"; [ ! -f APPLY_CRASHES ] || exit 3
 n=$(( $(cat "$SF/snapn" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$SF/snapn"
-mkdir -p "$SF/snaps/snap-$n"; cp -R "$LIVE/." "$SF/snaps/snap-$n/"; echo "snap-$n" > "${HARBOR_DEPLOY_SNAPSHOT:-$SHIP_SNAPSHOT}"
-[ ! -f "$SF/apply-stale" ] || echo snap-1 > "${HARBOR_DEPLOY_SNAPSHOT:-$SHIP_SNAPSHOT}"
+mkdir -p "$SF/snaps/snap-$n"; cp -R "$LIVE/." "$SF/snaps/snap-$n/"; echo "snap-$n" > "$SHIP_SNAPSHOT"
+[ ! -f "$SF/apply-stale" ] || echo snap-1 > "$SHIP_SNAPSHOT"
 cp health.txt "$LIVE/health.txt"; git rev-parse HEAD > "$LIVE/sha"
 EOF
   cat > "$_w/ops/health.sh" <<'EOF'
@@ -84,8 +81,8 @@ grep -qx ok "$LIVE/health.txt"
 EOF
   printf 'echo verify-smoke >> "$SF/ops.log"; [ -s "$LIVE/sha" ]\n' > "$_w/ops/smoke.sh"
   cat > "$_w/ops/deploy-restore.sh" <<'EOF'
-echo "restore ${HARBOR_DEPLOY_SNAPSHOT_ID:-$SHIP_SNAPSHOT_ID}" >> "$SF/ops.log"; [ -d "$SF/snaps/${HARBOR_DEPLOY_SNAPSHOT_ID:-$SHIP_SNAPSHOT_ID}" ] || exit 1
-rm -rf "${LIVE:?}"; mkdir -p "$LIVE"; cp -R "$SF/snaps/${HARBOR_DEPLOY_SNAPSHOT_ID:-$SHIP_SNAPSHOT_ID}/." "$LIVE/"
+echo "restore $SHIP_SNAPSHOT_ID" >> "$SF/ops.log"; [ -d "$SF/snaps/$SHIP_SNAPSHOT_ID" ] || exit 1
+rm -rf "${LIVE:?}"; mkdir -p "$LIVE"; cp -R "$SF/snaps/$SHIP_SNAPSHOT_ID/." "$LIVE/"
 EOF
   git -C "$_w" add -A; git -C "$_w" commit -q -m seed; git -C "$_w" push -q origin "HEAD:$_db" 2>/dev/null
   git clone -q "https://github.com/acme/$1.git" "$P/$1" 2>/dev/null
@@ -93,13 +90,13 @@ EOF
 fx_stubs() {
   cat > "$CLAUDE_CONFIG_DIR/bin/gate-classify.sh" <<'EOF'
 #!/bin/sh
-# stub classifier to contract §2: the register <root>/.agents/ship.config names, plus the always-protected paths
+# stub classifier to contract §2: the register <root>/.agents/ship.conf names, plus the always-protected paths
 root="$1"; shift; rc=0; echo "classify $root" >> "$SF/classify.log"
-reg="$(awk '$1 == "protected" { print $2 }' "$root/.agents/ship.config")"; reg="$root/${reg:-.agents/protected-paths.tsv}"
+reg="$(awk '$1 == "protected" { print $2 }' "$root/.agents/ship.conf")"; reg="$root/${reg:-.agents/protected-paths.tsv}"
 [ -f "$reg" ] || exit 2
 if [ $# -gt 0 ]; then printf '%s\n' "$@"; else cat; fi > "$SF/classify.in"; cat "$SF/classify.in" >> "$SF/classify.seen"
 while IFS= read -r p; do [ -n "$p" ] || continue; c=''
-  case "$p" in .agents/ship.config|.agents/protected-paths.tsv|.github/*) c=always ;; esac
+  case "$p" in .agents/ship.conf|.agents/protected-paths.tsv|.github/*) c=always ;; esac
   [ -n "$c" ] || c="$(awk -F'\t' -v p="$p" '!/^#/ && NF >= 2 { g = $1; gsub(/\./, "\\.", g); gsub(/\*/, ".*", g); if (p ~ ("^" g "$")) { print $2; exit } }' "$reg")"
   [ -z "$c" ] || { printf 'PROTECTED\t%s\t%s\n' "$p" "$c"; rc=1; }
 done < "$SF/classify.in"

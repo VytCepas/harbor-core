@@ -454,11 +454,10 @@ EOF
   printf '%s\n' "$_raw" > "$ST/line"
   cd "${R_CWD:-$HOME}" 2>/dev/null || cd /
   _rc=0
-  # The SHIP_UNATTENDED and HARBOR_EVENT spellings are still set until 2026-11-15 (harbor#1097).
-  # /bin/sh, not the `sh` a PATH finds; HARBOR_DEPLOY_UNATTENDED=1: a handler is unattended code by definition, so the
+  # /bin/sh, not the `sh` a PATH finds; SHIP_UNATTENDED=1: a handler is unattended code by definition, so the
   # ship contract's unattended refusals (§5a.4) see it (harbor#1044 review r2 #2). BK: the kill switch's mark.
   BK="$ST/.killed.$$"; rm -f "$BK"
-  bounded_clean "$HANDLER_SECS" "$ST/noclaude:$PATH" HARBOR_DEPLOY_UNATTENDED=1 SHIP_UNATTENDED=1 HARBOR_EVENT_JSON="$_raw" HARBOR_EVENT="$_raw" HARBOR_EVENT_ID="$E_ID" HARBOR_EVENT_KIND="$E_KIND" \
+  bounded_clean "$HANDLER_SECS" "$ST/noclaude:$PATH" SHIP_UNATTENDED=1 HARBOR_EVENT="$_raw" HARBOR_EVENT_ID="$E_ID" HARBOR_EVENT_KIND="$E_KIND" \
     HARBOR_EVENT_SUBJECT="$E_SUBJ" HARBOR_EVENT_RULE="$R_ID" HARBOR_EVENT_CAUSE="$E_ID" /bin/sh "$2" 3< "$ST/line" || _rc=$?
   cd /
   if [ -e "$BK" ]; then
@@ -521,7 +520,7 @@ You may read and report. Propose; never change a guard, a rule, a hook or a file
   # OAuth as the operator (decision 2026-10-07): never --bare; env -i, so no key or token reaches it (review #5).
   # --tools limits only built-in tools: --strict-mcp-config with no --mcp-config loads no MCP server, and
   # ENABLE_CLAUDEAI_MCP_SERVERS=false no claude.ai connector (review #6; claude --help 2.1.292, the binary).
-  bounded_clean "$HANDLER_SECS" "$PATH" ENABLE_CLAUDEAI_MCP_SERVERS=false HARBOR_DEPLOY_UNATTENDED=1 SHIP_UNATTENDED=1 HARBOR_EVENT_CAUSE="$E_ID" HARBOR_EVENT_RULE="$R_ID" \
+  bounded_clean "$HANDLER_SECS" "$PATH" ENABLE_CLAUDEAI_MCP_SERVERS=false SHIP_UNATTENDED=1 HARBOR_EVENT_CAUSE="$E_ID" HARBOR_EVENT_RULE="$R_ID" \
     "$_claude" -p "$_prompt" --model haiku --tools "$R_TOOLS" --strict-mcp-config --permission-prompts none --max-turns 5 \
     --max-budget-usd "$PER_AGENT_USD" --output-format json --setting-sources user 3</dev/null > "$_out" 2> "$_out.err" || _rc=$?
   cd /

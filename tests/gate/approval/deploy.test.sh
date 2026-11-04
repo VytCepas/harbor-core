@@ -13,7 +13,7 @@ if [ -f "\$t" ]; then rm -f "\$t"; echo "runner \$* token=yes" >> "\$GF/runner.l
 exit ${1:-0}
 EOF
 }
-world() { ag_world; printf 'repo %s\napply sh bin/deploy.sh --apply --live --unattended\n' "$AG_R" > "$GF/contents/.agents/ship.config"; runner; }
+world() { ag_world; printf 'repo %s\napply sh bin/deploy.sh --apply --live --unattended\n' "$AG_R" > "$GF/contents/.agents/ship.conf"; runner; }
 
 t_section "main still at the clicked sha: the runner deploys it under a one-shot token; ledger and queue record it"
 world; ag_run gate-queue.sh add deploy "$AG_R" "$SHA_M" --reason "protected: bin/admission-bash.sh"
@@ -48,7 +48,7 @@ t_eq "the queue row stays open" 1 "$(sh "$GB/gate-queue.sh" list --json 2>/dev/n
 t_eq "no token is left behind" "" "$(ls "$CFG/.helm-approvals/approved" 2>/dev/null)"
 
 t_section "nothing to deploy, or no runner: refused before anything runs"
-world; printf 'repo %s\n' "$AG_R" > "$GF/contents/.agents/ship.config"
+world; printf 'repo %s\n' "$AG_R" > "$GF/contents/.agents/ship.conf"
 ag_run gate-approve.sh deploy "$AG_R" "$SHA_M"
 t_eq "a manifest with no apply line: exit 1" 1 "$RC"
 t_eq "...the runner never ran" "" "$(cat "$GF/runner.log" 2>/dev/null)"

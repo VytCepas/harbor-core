@@ -15,7 +15,7 @@ drop() { # <root> <engine> → controls.tsv without that engine's rows
 
 t_section "the repo's own wiring: every wired script has a row"
 D="$(mk clean)"
-t_eq "the wired set is not empty (control)" yes "$([ "$(sh "$D/bin/admission-decider-set.sh" | grep -c .)" -ge 10 ] && echo yes || echo no)"
+t_eq "the wired set is not empty (control)" yes "$([ "$(sh "$D/bin/decider-set.sh" | grep -c .)" -ge 10 ] && echo yes || echo no)"
 t_eq "no advisory" "" "$(advs "$W" "$D")"
 
 t_section "a wired script with no row is named"

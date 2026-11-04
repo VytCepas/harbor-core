@@ -28,7 +28,7 @@
 tests/audit/triage/triage.test.sh
 tests/audit/triage/fc5.test.sh
 tests/audit/triage/ledger.test.sh
-hooks/failure-observe/mcp-segment.test.sh
+tests/hooks/failure-observe-test.sh
 hooks/failure-observe/failure-observe.test.sh
 tests/worktree/post-checkout/post-checkout.test.sh
 tests/admission/stop/stop.test.sh
@@ -218,7 +218,7 @@ tests/admission/egress/egress.test.sh
 tests/admission/egress/c1-keys.test.sh
 tests/admission/bash/exec.test.sh
 tests/admission/bash/gate.test.sh
-tests/admission/self-edit/self-edit.test.sh
+tests/admission/selfedit/selfedit.test.sh
 tests/admission/bash/bash.test.sh
 tests/doc/index-generate/index-generate.test.sh
 tests/skill/eval-runners/eval-runners.test.sh
@@ -409,7 +409,6 @@ tests/drift/status/status.test.sh
 tests/ci/runners/scale.test.sh
 tests/standard/rename/window.test.sh
 tests/standard/rename/collapse.test.sh
-tests/standard/rename/env-window.test.sh
 tests/lint/name/modes.test.sh
 tests/lint/name/repo-verb.test.sh
 tests/deploy/push/license.test.sh
@@ -466,7 +465,6 @@ tests/agent/idle/idle.test.sh
 tests/check/run/run.test.sh
 tests/standard/kit/kit.test.sh
 tests/scope/system/system.test.sh
-tests/scope/repo/rename.test.sh
 tests/scope/repo/repo.test.sh
 tests/scope/repo/sources.test.sh
 tests/deploy/kit/bootstrap.test.sh

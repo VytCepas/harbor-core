@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # drift.confinement (harbor#1299): drift-confinement.sh compares the installed sandbox block with a fresh compose.
-# A fixture managed file stands in for the root-owned one (HARBOR_SCOPE_MANAGED_SETTINGS); the install that writes it is
+# A fixture managed file stands in for the root-owned one (HARBOR_MANAGED_SETTINGS); the install that writes it is
 # deploy-confinement.sh itself, so the check is proven against the writer's own output, never a hand-built copy.
 # Also: every floor file is covered by an Edit deny rule (the ticket's last criterion).
 . "$(dirname "$0")/../../lib/core.sh"; t_init
@@ -8,7 +8,7 @@ DC="$T_ROOT/bin/drift-confinement.sh"; INST="$T_ROOT/bin/deploy-confinement.sh"
 PORT_ROOT="$T_TMP/port"; mkdir -p "$PORT_ROOT"; export PORT_ROOT
 PRIV="$T_TMP/priv"; mkdir -p "$PRIV"
 M="$T_TMP/managed/managed-settings.json"; mkdir -p "$T_TMP/managed"
-export HARBOR_SCOPE_MANAGED_SETTINGS="$M" HARBOR_DEPLOY_CONFINEMENT_PRIVATE="$PRIV" HARBOR_DEPLOY_CONFINEMENT_OS=Darwin HARBOR_CHECK_RECEIPTS="$T_TMP/receipts"
+export HARBOR_MANAGED_SETTINGS="$M" HARBOR_CONFINEMENT_PRIVATE="$PRIV" HARBOR_CONFINEMENT_OS=Darwin HARBOR_CHECK_RECEIPTS="$T_TMP/receipts"
 dc() { sh "$DC" "$@" 2>&1; }
 rc() { sh "$DC" >/dev/null 2>&1; echo $?; }
 state() { sh "$DC" --state 2>/dev/null; }

@@ -10,7 +10,7 @@ PORT_ROOT="$T_TMP/port"; mkdir -p "$PORT_ROOT/harbor-private" "$PORT_ROOT/work";
 PRIV="$PORT_ROOT/harbor-private"
 M="$T_TMP/managed/managed-settings.json"; mkdir -p "$T_TMP/managed"
 US="$T_TMP/user-settings.json"; CJ="$T_TMP/claude.json"; LA="$T_TMP/LaunchAgents"; mkdir -p "$LA"
-export HARBOR_SCOPE_MANAGED_SETTINGS="$M" HARBOR_DEPLOY_CONFINEMENT_OS=Darwin HARBOR_CHECK_RECEIPTS="$T_TMP/receipts" \
+export HARBOR_MANAGED_SETTINGS="$M" HARBOR_CONFINEMENT_OS=Darwin HARBOR_CHECK_RECEIPTS="$T_TMP/receipts" \
   HARBOR_DRIFT_WALL_USER_SETTINGS="$US" HARBOR_DRIFT_WALL_CLAUDE_JSON="$CJ" HARBOR_DRIFT_LAUNCHD_DIR="$LA"
 dw() { sh "$DW" "$@" 2>&1; }
 rc() { sh "$DW" >/dev/null 2>&1; echo $?; }

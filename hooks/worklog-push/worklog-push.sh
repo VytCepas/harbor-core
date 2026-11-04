@@ -95,7 +95,7 @@ wl_warn_once() {
   : > "$_wl_st" 2>/dev/null || :
   log_warn "$2"; log_fix "$3"; log_end || :
 }
-_wl_secret="${HARBOR_ACCESS_SECRET_BIN:-${HARBOR_SECRET_BIN:-$(command -v secret 2>/dev/null || true)}}"; [ -n "$_wl_secret" ] || _wl_secret="$HOME/.local/bin/secret"
+_wl_secret="${HARBOR_SECRET_BIN:-$(command -v secret 2>/dev/null || true)}"; [ -n "$_wl_secret" ] || _wl_secret="$HOME/.local/bin/secret"
 if [ -f "$_wl_secret" ] && sh "$_wl_secret" run worklog-token WORKLOG_TOKEN -- true >/dev/null 2>&1; then
   rm -f "$CFG/.worklog-token-warned.legacy" "$CFG/.worklog-token-warned.missing" 2>/dev/null || :
 elif [ -f "$TOKEN_FILE" ]; then

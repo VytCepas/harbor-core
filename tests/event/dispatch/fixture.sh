@@ -42,7 +42,7 @@ cat >> "$T_BIN/claude" <<'STUB'
 for a in "$@"; do printf '%s' "$a" | tr '\n' '~'; echo; done > "$D/claude.argv"
 printf 'key=%s cause=%s\n' "${ANTHROPIC_API_KEY-unset}" "${HARBOR_EVENT_CAUSE-}" > "$D/claude.env"
 env > "$D/claude.envdump"
-printf 'pwd=%s\nentries=%s\nship=%s\noldship=%s\n' "$PWD" "$(ls -A | grep -c .)" "${HARBOR_DEPLOY_UNATTENDED-unset}" "${SHIP_UNATTENDED-unset}" > "$D/claude.ctx"
+printf 'pwd=%s\nentries=%s\nship=%s\n' "$PWD" "$(ls -A | grep -c .)" "${SHIP_UNATTENDED-unset}" > "$D/claude.ctx"
 echo "$$" >> "$D/claude.starts"
 if [ -e "$D/stub.block" ]; then while [ -e "$D/stub.block" ]; do sleep 0.1; done; fi
 # stub.hook names a hook script: run it as Claude Code runs a SessionStart command hook, with this process's env.

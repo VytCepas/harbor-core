@@ -24,7 +24,7 @@ config drift — a bug in either could lock the operator out of fixing the guard
 itself. `HARBOR_ADMISSION_DISABLE=1 claude` must always open an unguarded session.
 The convention is grep-testable: lint admission.kill-switch-first (was F1) asserts
 every wired decider's first live line is the kill-switch check, or that it is
-listed exempt with a reason. The set is `bin/admission-decider-set.sh`, derived from the
+listed exempt with a reason. The set is `bin/decider-set.sh`, derived from the
 wiring `admission-install.sh` writes; that rule, floor-test, floor-verify and B6's exempt
 list read it, for both switches. Exempt: recorders, `inject-hook.sh` (a repo's
 rule packs) and `prod-guard-ambient.sh` (prod_guard.py's deny, as floor-deny's).
@@ -1773,7 +1773,7 @@ a shell a person launches, so an `export` in a terminal is out of its sight.
 
 **Why it moved.** `bin/govern-hook.sh` denies a `gh pr merge` that
 `bin/gate-merge-check.sh` refuses, and its only route was harbor's repo pack
-(`context-rules/platform/merge-governance.md`). A repo pack loads only when the
+(`context-rules/harbor/merge-governance.md`). A repo pack loads only when the
 session's project dir is the repo, and all 19 transcripts that ran `gh pr merge`
 in the 30 days harbor#516 measured were launched elsewhere. The one blocking
 rule in the inject engine had never fired outside its own suite.

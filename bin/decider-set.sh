@@ -1,11 +1,11 @@
 #!/usr/bin/env sh
-# admission-decider-set.sh (harbor#954 PR B, from #1003) -- the ONE set of wired hook scripts that the two
+# decider-set.sh (harbor#954 PR B, from #1003) -- the ONE set of wired hook scripts that the two
 # switches (HARBOR_ADMISSION_DISABLE, HARBOR_ADMISSION_SHADOW) have to answer for, and what each one does about them.
-#   sh admission-decider-set.sh            every decider: script TAB disable TAB shadow TAB reason
-#   sh admission-decider-set.sh --switch   the deciders whose first live line is the HARBOR_ADMISSION_DISABLE check
-#   sh admission-decider-set.sh --exempt   the deciders that do not carry it, each with a reason (--table has them)
-#   sh admission-decider-set.sh --records  the deciders whose refusals record under HARBOR_ADMISSION_SHADOW
-#   sh admission-decider-set.sh --check    exit 1, one FAIL line per drift between the wiring and the table below
+#   sh decider-set.sh            every decider: script TAB disable TAB shadow TAB reason
+#   sh decider-set.sh --switch   the deciders whose first live line is the HARBOR_ADMISSION_DISABLE check
+#   sh decider-set.sh --exempt   the deciders that do not carry it, each with a reason (--table has them)
+#   sh decider-set.sh --records  the deciders whose refusals record under HARBOR_ADMISSION_SHADOW
+#   sh decider-set.sh --check    exit 1, one FAIL line per drift between the wiring and the table below
 #
 # WHERE THE SET COMES FROM. The scripts in admission-install.sh's wiring table (floor_hooks) are the floor's
 # hooks, read from that file and not copied. Three other installers wire a hook into the same settings.json
@@ -74,10 +74,10 @@ case "${1:-}" in
 "; }
     for s in $WIRED; do
       table | awk -F'\t' -v s="$s" '$1 == s {f=1} END {exit !f}' \
-        || add "$s is wired into settings.json and has no row in admission-decider-set.sh DISPOSITIONS"
+        || add "$s is wired into settings.json and has no row in decider-set.sh DISPOSITIONS"
     done
     for s in $(table | cut -f1); do
-      printf '%s\n' "$WIRED" | grep -qx "$s" || add "admission-decider-set.sh has a row for $s and nothing wires it"
+      printf '%s\n' "$WIRED" | grep -qx "$s" || add "decider-set.sh has a row for $s and nothing wires it"
     done
     _rows="$(table | awk -F'\t' '
       $2 != "first" && $2 != "exempt" {printf "%s has disable=%s (first or exempt)\n", $1, $2}
@@ -88,7 +88,7 @@ case "${1:-}" in
     if [ -f "$HERE/context-injection-install.sh" ]; then
       while read -r i s; do
         [ -f "$HERE/$i" ] || continue
-        grep -q "$s" "$HERE/$i" || add "$i no longer names $s, which admission-decider-set.sh says it wires"
+        grep -q "$s" "$HERE/$i" || add "$i no longer names $s, which decider-set.sh says it wires"
       done <<SIB
 $SIBLINGS
 SIB
@@ -97,19 +97,19 @@ SIB
         [ -L "$i" ] && continue   # a rename shim (harbor#961) is an old name of an installer judged under its own
         grep -q '\.hooks' "$i" || continue
         printf '%s\n' "$SIBLINGS" | awk '{print $1}' | grep -qx "$b" \
-          || add "$b writes settings hooks and is not in admission-decider-set.sh SIBLINGS"
+          || add "$b writes settings hooks and is not in decider-set.sh SIBLINGS"
       done
     fi
     [ -n "$F" ] || exit 0
     . "$HERE/library-log.sh"; log_init decider-set
     while IFS= read -r l; do
       [ -n "$l" ] || continue
-      log_fail "$l"; log_nofix "bin/admission-decider-set.sh (the wiring is admission-install.sh's table; the rows are DISPOSITIONS)"
+      log_fail "$l"; log_nofix "bin/decider-set.sh (the wiring is admission-install.sh's table; the rows are DISPOSITIONS)"
     done <<FEOF
 $F
 FEOF
     log_end || :
     exit 1 ;;
   -h|--help) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//' ;;
-  *) printf 'usage: admission-decider-set.sh [--table|--switch|--exempt|--records|--check]\n' >&2; exit 2 ;;
+  *) printf 'usage: decider-set.sh [--table|--switch|--exempt|--records|--check]\n' >&2; exit 2 ;;
 esac

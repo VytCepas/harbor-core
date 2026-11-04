@@ -178,7 +178,7 @@ t_eq "--remove drops the rows of everything it moved into the backup" 0 "$(grep 
 # Core ships no pack that names a client or a repo of one: they live in <private>/context-rules read through scope-roots.sh. Every arm below names
 # its layer with HARBOR_SCOPE_PRIVATE: t_init unsets it, so the arms above ran on core alone, the "no layer" case, asserted again here.
 t_section "core ships no other repo's rule folder: context-rules/ holds the box tier and harbor's own, nothing else"
-t_eq "the directories under core's context-rules" "$T_ROOT/context-rules/platform $T_ROOT/context-rules/user" "$(find "$T_ROOT/context-rules" -mindepth 1 -maxdepth 1 -type d | sort | tr '\n' ' ' | sed 's/ $//')"
+t_eq "the directories under core's context-rules" "$T_ROOT/context-rules/harbor $T_ROOT/context-rules/user" "$(find "$T_ROOT/context-rules" -mindepth 1 -maxdepth 1 -type d | sort | tr '\n' ' ' | sed 's/ $//')"
 t_eq "no registry in core's box tier" "no" "$([ -e "$T_ROOT/context-rules/user/projects.tsv" ] && echo yes || echo no)"
 t_eq "no old inject.d/ left in core (harbor#1010)" "no no" "$([ -e "$T_ROOT/inject.d" ] && echo yes || echo no) $([ -e "$T_ROOT/.claude/inject.d" ] && echo yes || echo no)"
 

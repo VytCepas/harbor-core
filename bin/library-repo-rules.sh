@@ -1,12 +1,12 @@
 #!/usr/bin/env sh
-# library-repo-rules.sh (harbor#1418) — how a repo's GitHub rules are declared in ship.config and read from GitHub, one
+# library-repo-rules.sh (harbor#1418) — how a repo's GitHub rules are declared in ship.conf and read from GitHub, one
 # spelling for the two callers that compare them: gate-pr-plan.sh (a PR's plan) and gate-repo-drift.sh (the whole repo).
 # Source it; it defines functions only and needs jq.
 #
-#   rr_conf <key>                  ship.config text on stdin -> the key's first value ('#' comments stripped, as gate_conf does)
-#   rr_method_decl <value>         ship.config `method` -> squash | merge | rebase (merge-commit is merge), else the value as given
-#   rr_review_decl <value>         ship.config `review` -> "<n>" or "<n> code-owner"; `none` is "0"; anything else "invalid"
-#   rr_deletebranch_decl <value>   ship.config `delete-branch` -> true | false, else "invalid"
+#   rr_conf <key>                  ship.conf text on stdin -> the key's first value ('#' comments stripped, as gate_conf does)
+#   rr_method_decl <value>         ship.conf `method` -> squash | merge | rebase (merge-commit is merge), else the value as given
+#   rr_review_decl <value>         ship.conf `review` -> "<n>" or "<n> code-owner"; `none` is "0"; anything else "invalid"
+#   rr_deletebranch_decl <value>   ship.conf `delete-branch` -> true | false, else "invalid"
 #   rr_methods <repo-json> <rules-json>   the merge methods a PR can use now: the repo's allow_* AND the rules' allowed_merge_methods
 #   rr_review_live <rules-json>    the strictest pull_request rule on the branch, as rr_review_decl spells it; empty when none is readable
 

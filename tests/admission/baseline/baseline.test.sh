@@ -17,9 +17,9 @@ fire_block "write PEM key" admission-egress.sh "$(write_j "$_PEM
 MIIabc")"
 
 t_section "kill-switch convention (docs/explanation/admission-baseline.md / tests/deploy/restore/recover.test.sh)"
-# harbor#954: the set is admission-decider-set.sh's, derived from the wiring floor-install writes, not four names listed here.
+# harbor#954: the set is decider-set.sh's, derived from the wiring floor-install writes, not four names listed here.
 # library-admission.sh is sourced, not installed as a hook: its consumers check the switch on their line 2.
-DS="$SRC/admission-decider-set.sh"; _ks_n=0; _ks_miss=''
+DS="$SRC/decider-set.sh"; _ks_n=0; _ks_miss=''
 for _ks in $(sh "$DS" --switch); do
   g="$CFG/bin/$_ks"
   [ -f "$g" ] || { _ks_miss="$_ks_miss $_ks"; continue; }
@@ -31,14 +31,14 @@ for _ks in $(sh "$DS" --switch); do
 done
 # only the opt-in Stop gate is allowed to be absent from a default install
 t_eq "every decider that must carry the switch is installed, bar the opt-in Stop gate" " admission-stop.sh" "$_ks_miss"
-t_eq "the decider set has no drift against the wiring (admission-decider-set.sh --check)" "" "$(sh "$DS" --check 2>&1)"
+t_eq "the decider set has no drift against the wiring (decider-set.sh --check)" "" "$(sh "$DS" --check 2>&1)"
 
 t_section "decider set (harbor#954, #1003): F1, floor-test, B6 and floor-verify read one list"
 _ds_all="$(sh "$DS" --switch)"
 # F1 and floor-verify call the helper for the same list, and neither keeps a hand list beside it
-t_has "F1 reads the set from admission-decider-set.sh --switch" "$(cat "$SRC/lint-conventions.sh")" 'sh "$_f1set" --switch'
-t_has "floor-verify reads the set from admission-decider-set.sh --switch" "$(cat "$SRC/admission-verify.sh")" 'admission-decider-set.sh" --switch'
-t_has "floor-test (this arm) reads the set from admission-decider-set.sh --switch" "$(cat "$HROOT/tests/admission/baseline/baseline.test.sh")" 'sh "$DS" --switch'
+t_has "F1 reads the set from decider-set.sh --switch" "$(cat "$SRC/lint-conventions.sh")" 'sh "$_f1set" --switch'
+t_has "floor-verify reads the set from decider-set.sh --switch" "$(cat "$SRC/admission-verify.sh")" 'decider-set.sh" --switch'
+t_has "floor-test (this arm) reads the set from decider-set.sh --switch" "$(cat "$HROOT/tests/admission/baseline/baseline.test.sh")" 'sh "$DS" --switch'
 # B6: its NO-KILLSWITCH list, narrowed to deciders, is exactly the exempt deciders floor-install pins
 sh "$DS" --table | cut -f1 | sort > "$TMP/ds-all.txt"
 sh "$DS" --exempt | sort > "$TMP/ds-exempt.txt"

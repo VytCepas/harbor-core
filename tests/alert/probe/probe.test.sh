@@ -193,8 +193,7 @@ t_eq "down is crit" crit "$(verdict "$O" dispatch)"
 t_has "...and says why" "$(detail "$O" dispatch)" "NOT FOLLOWING: jq is not on PATH"
 dsp following "$$"
 t_eq "following, its pid alive, is ok" ok "$(verdict "$(run "$WIRED")" dispatch)"
-# A pid that has already exited; a killed sleep outlived t_init and held the suite 30 s (harbor#667).
-sh -c : & _dp=$!; wait "$_dp" 2>/dev/null
+sleep 30 & _dp=$!; kill "$_dp"; wait "$_dp" 2>/dev/null
 dsp following "$_dp"
 t_eq "following, its pid gone, is warn" warn "$(verdict "$(run "$WIRED")" dispatch)"
 dsp off 1; t_eq "off is ok" ok "$(verdict "$(run "$WIRED")" dispatch)"

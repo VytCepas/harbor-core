@@ -35,7 +35,7 @@ case "${1:-}" in
   *) log_fail "unknown option $1"; log_fix "sh $0 --help"; exit 2 ;;
 esac
 
-REPO="${HARBOR_CI_PLAN_REPO:-${HARBOR_PLAN_REPO:-$(repo_slug)}}"   # harbor's own OWNER/NAME (harbor#1149); empty is an unread below
+REPO="${HARBOR_PLAN_REPO:-$(repo_slug)}"   # harbor's own OWNER/NAME (harbor#1149); empty is an unread below
 BRANCH=main
 CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-$HOME/.claude/cache}"
 OUT="$CACHE_DIR/gh-plan.json"
@@ -69,7 +69,7 @@ PLAN="$("$GH" api user --jq '.plan.name' 2>/dev/null || true)"
 PLAN="$(printf '%s' "$PLAN" | tr -d ' \r\n' | tr 'A-Z' 'a-z')"
 case "$PLAN" in ''|*[!abcdefghijklmnopqrstuvwxyz0-9_-]*) unread "the plan read (gh api user)" ;; esac
 
-[ -n "$REPO" ] || unread "the repository name (no origin in this checkout, no repo-slug.txt beside this install; set HARBOR_CI_PLAN_REPO=<owner/name>)"
+[ -n "$REPO" ] || unread "the repository name (no origin in this checkout, no repo-slug.txt beside this install; set HARBOR_PLAN_REPO=<owner/name>)"
 
 # the same three answers gate-merge-check.sh --protection tells apart, and unknown is not one of them
 _p="$("$GH" api "repos/$REPO/branches/$BRANCH/protection" 2>&1)" && _rc=0 || _rc=$?

@@ -1,13 +1,13 @@
 #!/usr/bin/env sh
-# gate-repo-drift.sh (harbor#1418) — each governed repo's GitHub rules, declared in .agents/ship.config, against live.
+# gate-repo-drift.sh (harbor#1418) — each governed repo's GitHub rules, declared in .agents/ship.conf, against live.
 #
 #   sh gate-repo-drift.sh [--print | --commands] [--repo OWNER/NAME]... [--registry FILE] [--declared FILE]
 #
-# DECLARED  .agents/ship.config on the default branch: `method`, `review <n> [code-owner]` (or `none`), `delete-branch
+# DECLARED  .agents/ship.conf on the default branch: `method`, `review <n> [code-owner]` (or `none`), `delete-branch
 #           yes|no` (docs/design/deploy-fleet.md). --declared FILE adds `slug TAB key TAB value` rows for a repo or a key
-#           that has no ship.config (the private layer's declaration). A key declared nowhere is UNDECLARED. Without
+#           that has no ship.conf (the private layer's declaration). A key declared nowhere is UNDECLARED. Without
 #           --declared the private layer's repo-rules.tsv is read when it exists (contracts/private-layer.md): one
-#           declaration home for the repos that carry no ship.config, so ship.config (an opt-in to the approval gate) is
+#           declaration home for the repos that carry no ship.conf, so ship.conf (an opt-in to the approval gate) is
 #           never added only to declare rules. `<registry name or slug> TAB exempt TAB <reason>` takes a repo out of scope:
 #           never read, never undeclared, listed by --print as out of scope with its reason, counted in the summary.
 # LIVE      `gh api repos/<r>` (allow_*_merge, delete_branch_on_merge) and `repos/<r>/rules/branches/<base>` (the
@@ -135,7 +135,7 @@ fi
 sq() { sed "s/'/'\\\\''/g"; }                       # a JSON body inside single quotes
 find_() { printf '%s\t%s\t%s\t%s\n' "$R" "$1" "$2" "$3" >> "$W/findings"; }   # <kind> <key> <detail>
 fix_() { printf '%s\t%s\t%s\t%s\n' "$R" "$1" "$2" "$3" >> "$W/fixes"; }       # <key> <run|do> <text>
-decl_() { # <key> -> the declared value: ship.config first, then the --declared row
+decl_() { # <key> -> the declared value: ship.conf first, then the --declared row
   _v="$(printf '%s\n' "$SHIP" | rr_conf "$1")"
   if [ -z "$_v" ] && [ -n "$DECLF" ]; then _v="$(awk -F'\t' -v r="$R" -v k="$1" '$1 == r && $2 == k { print $3; exit }' "$DECLF")"; fi
   printf '%s\n' "$_v"
@@ -174,12 +174,9 @@ judge() { # <slug>
   RJ="$("$GH" api "repos/$R" 2>"$W/err")" || { find_ unread repo "could not read the repo: $(head -n 1 "$W/err" | cut -c1-160)"; return; }
   BASE="$(printf '%s' "$RJ" | jq -r '.default_branch // "main"')"
   RUL="$("$GH" api "repos/$R/rules/branches/$BASE" 2>"$W/err")" || { find_ unread rules "could not read $BASE's rules: $(head -n 1 "$W/err" | cut -c1-160)"; return; }
-  # ship.config, else the old ship.conf (until 2026-11-15, harbor#1097)
-  SHIP="$("$GH" api "repos/$R/contents/.agents/ship.config?ref=$BASE" -H "Accept: application/vnd.github.raw" 2>"$W/err")" || {
-    grep -q 'HTTP 404' "$W/err" || { find_ unread ship.config "could not read ship.config: $(head -n 1 "$W/err" | cut -c1-160)"; return; }
-    SHIP="$("$GH" api "repos/$R/contents/.agents/ship.conf?ref=$BASE" -H "Accept: application/vnd.github.raw" 2>"$W/err")" || {
-      grep -q 'HTTP 404' "$W/err" || { find_ unread ship.conf "could not read ship.conf: $(head -n 1 "$W/err" | cut -c1-160)"; return; }
-      SHIP=""; }; }
+  SHIP="$("$GH" api "repos/$R/contents/.agents/ship.conf?ref=$BASE" -H "Accept: application/vnd.github.raw" 2>"$W/err")" || {
+    grep -q 'HTTP 404' "$W/err" || { find_ unread ship.conf "could not read ship.conf: $(head -n 1 "$W/err" | cut -c1-160)"; return; }
+    SHIP=""; }
   UNDECL=""
 
   # method: the set a PR can use now against the one declared
@@ -251,7 +248,7 @@ judge() { # <slug>
     fi
   fi
 
-  [ -z "$UNDECL" ] || find_ undeclared declaration "no ship.config or --declared row for:$(printf '%s' "$UNDECL" | sed 's/ /, /g; s/^,//')"
+  [ -z "$UNDECL" ] || find_ undeclared declaration "no ship.conf or --declared row for:$(printf '%s' "$UNDECL" | sed 's/ /, /g; s/^,//')"
   [ "$(grep -c . "$W/findings" | tr -d ' ')" != "$NF_BEFORE" ] || printf '%s\n' "$R" >> "$W/clean"
 }
 

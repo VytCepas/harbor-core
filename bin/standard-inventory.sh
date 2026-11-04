@@ -162,14 +162,10 @@ env_facts() {
   if [ -n "$(mapped contracts/roots.tsv)" ] && reg contracts/roots.tsv var > "$T/roots.reg" 2> /dev/null; then :; else : > "$T/roots.reg"; fi
   code_files > "$T/code.files"; name_readers "$T/code.files" > "$T/env.readers"
   awk -F'\t' '$1 ~ /^tests\// && $1 !~ /\.md$/ { print $1 "\t" $2 }' "$MAP" > "$T/test.files"; name_readers "$T/test.files" > "$T/env.treaders"
-  # An env name in a dual-read window (renames.tsv, remove_by not past) is read on purpose, and its row is the new name's (harbor#1097).
-  _rn="$(mapped standards/naming/renames.tsv)"; : > "$T/env.window"
-  [ -z "$_rn" ] || [ ! -r "$_rn" ] || awk -F'\t' -v t="$TODAY" '!/^#/ && $4 == "env" && $2 ~ /^env:/ && $6 >= t { sub(/^env:/, "", $2); print $2 }' "$_rn" | LC_ALL=C sort -u > "$T/env.window"
   awk -F'\t' -v kinds=" $ENV_KINDS " -v OFS='\t' '
     FILENAME == ARGV[1] { R[$1] = 1; next }
     FILENAME == ARGV[2] { if (!($1 in firstp)) firstp[$1] = $2; seen[$1] = 1; next }
     FILENAME == ARGV[3] { T[$1] = 1; next }
-    FILENAME == ARGV[4] { W[$1] = 1; next }
     { v = $1; rp = $2; k = $3; c = $4
       if (rp != "harbor") next                     # another repo'"'"'s variable is judged in that repo'"'"'s overlay
       reg_[v] = 1
@@ -178,8 +174,8 @@ env_facts() {
       if (v in R) print "G", "standard.env-registered", "dup:" v, v " is a row of contracts/env.tsv and of contracts/roots.tsv: a name is registered once (roots.tsv holds root variables)"
       if (!(v in seen) && !(k == "test-only" && (v in T))) print "G", "standard.env-registered", "row:" v, "contracts/env.tsv row " v " is read by nothing in the tree: delete the row or restore the reader"
     }
-    END { for (n in seen) if (!(n in reg_) && !(n in R) && !(n in W)) print "G", "standard.env-registered", "var:" n, n " is read in " firstp[n] " and has no row in contracts/env.tsv: add one with its kind, default and meaning" }
-  ' "$T/roots.reg" "$T/env.readers" "$T/env.treaders" "$T/env.window" "$T/env.reg" | LC_ALL=C sort
+    END { for (n in seen) if (!(n in reg_) && !(n in R)) print "G", "standard.env-registered", "var:" n, n " is read in " firstp[n] " and has no row in contracts/env.tsv: add one with its kind, default and meaning" }
+  ' "$T/roots.reg" "$T/env.readers" "$T/env.treaders" "$T/env.reg" | LC_ALL=C sort
 }
 
 # bin_facts: contracts/bin.tsv against bin/, both ways (standard.script-registered, harbor#1432)

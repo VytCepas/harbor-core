@@ -15,7 +15,7 @@ R="$(printf '%s' "$P" | jq -r '(.tool_response // empty) | tostring' 2>/dev/null
 case "$R" in
   *'<sandbox_violations>'*) : ;;
   *'Operation not permitted'*)
-    if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then MK="$(dirname "${HARBOR_SCOPE_MANAGED_SETTINGS:-$HARBOR_MANAGED_SETTINGS}")/harbor-confinement"
+    if [ -n "${HARBOR_MANAGED_SETTINGS:-}" ]; then MK="$(dirname "$HARBOR_MANAGED_SETTINGS")/harbor-confinement"
     else case "$(uname -s)" in
       Darwin) MK='/Library/Application Support/ClaudeCode/harbor-confinement' ;;
       *) MK=/etc/claude-code/harbor-confinement ;;

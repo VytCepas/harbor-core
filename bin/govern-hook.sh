@@ -188,7 +188,7 @@ emit() { # <event> <model-text> [user-line] — or nothing at all
 
 # deny <reason> — the ONE blocking output in this file, PreToolUse only (contracts/hooks.md). Exit stays 0: the decision travels on stdout, as in admission-cloud.sh; exit 2 is the floor's channel and this is repo payload.
 # Deny, not ask: an approved `ask` leaves no record that a red PR was merged deliberately, while `gate-merge-check.sh --merge --force` writes that into the merge commit; a deny routes to it and still binds a subagent.
-# It must survive the installed route: production goes through context-rules/platform/merge-note.sh, which execs `govern-hook.sh --note`, so a deny once degraded to prose and every red PR still merged under a green suite. `--note` therefore prints a sentinel line that hooks/injection-rule/injection-rule.sh turns back into a real permissionDecision on PreToolUse (contracts/injection-rule.md).
+# It must survive the installed route: production goes through context-rules/harbor/merge-note.sh, which execs `govern-hook.sh --note`, so a deny once degraded to prose and every red PR still merged under a green suite. `--note` therefore prints a sentinel line that hooks/injection-rule/injection-rule.sh turns back into a real permissionDecision on PreToolUse (contracts/injection-rule.md).
 deny() {
   if [ "$NOTE_ONLY" = 1 ]; then printf 'HARBOR-DECISION deny: %s\n' "$1"; return 0; fi
   jq -cn --arg r "$STAMP $1" \

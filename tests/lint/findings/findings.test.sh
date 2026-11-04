@@ -312,7 +312,7 @@ t_section "context.budget-ceiling end to end (harbor#585, No.2.10): a planted re
 # The real linter and the real context-budget.sh against a fixture box, read by the real reconcile.
 GH_STATE="$TMP/gh-x3.json"; export GH_STATE; rm -f "$RCD"/*.json
 XR="$TMP/x3root"; XC="$TMP/x3cfg"; XW="$TMP/x3cwd"; XB="$TMP/x3-baseline.tsv"
-mkdir -p "$XR/bin" "$XC/skills" "$XW"; cp "$T_ROOT/bin/context-budget.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/library-fs.sh" "$XR/bin/"
+mkdir -p "$XR/bin" "$XC/skills" "$XW"; cp "$T_ROOT/bin/context-budget.sh" "$T_ROOT/bin/library-log.sh" "$XR/bin/"
 printf 'a constitution\n' > "$XC/CLAUDE.md"
 x3() { # <dir> — one context.budget-ceiling run over the fixture box, captured the way the reconcile reads a lint run
   mkdir -p "$1"; : > "$1/records.tsv"

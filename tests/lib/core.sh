@@ -45,9 +45,9 @@ t_init() { # [name] — defaults to the file name without .sh
     case " $T_PASS_ENV " in *" $_v "*) ;; *) unset "$_v" ;; esac
   done
   # No suite drives the real Chrome: `harbor chrome attach` opens a window through AppleScript.
-  HARBOR_ACCESS_BROWSER_OSASCRIPT=false; export HARBOR_ACCESS_BROWSER_OSASCRIPT
+  HARBOR_OSASCRIPT=false; export HARBOR_OSASCRIPT
   # No suite reads the real credential store: a store-reading tool's case brings its own stub (harbor#1205).
-  HARBOR_ACCESS_SECRET_BIN="$T_TMP/no-secret-store"; export HARBOR_ACCESS_SECRET_BIN
+  HARBOR_SECRET_BIN="$T_TMP/no-secret-store"; export HARBOR_SECRET_BIN
   T_PASS=0; T_FAIL=0; T_SEC=""; T_SEC_N=0
   T_REDLOG="${LINT_REDLOG:-}"   # the caller's red log, kept before a suite's own `LINT_REDLOG=x fn` leaks into the shell (harbor#1422)
   _t_watch

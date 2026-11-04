@@ -4,10 +4,10 @@
 # WHY THIS FILE EXISTS. The operator's policy of 2026-10-06: a change touching one of these paths is merged or
 # deployed only with the operator's approval, a click in Claude Code's own permission dialog; Claude merges and
 # deploys anything else. The ship contract (§2) fixes the format and bin/gate-classify.sh reads it, for every repo
-# that carries .agents/ship.config. The policy, the settings lines and the residual risks: docs/design/approval-gate.md.
+# that carries .agents/ship.conf. The policy, the settings lines and the residual risks: docs/design/approval-gate.md.
 #
 # FORMAT  glob <TAB> class <TAB> reason. Globs are repo-relative; `**` crosses directories, `*` and `?` do not.
-# Always protected whatever this file says: this register, .agents/ship.config and .github/**. A rename is judged on
+# Always protected whatever this file says: this register, .agents/ship.conf and .github/**. A rename is judged on
 # both of its paths and a deletion on the path it removes, so moving a file out of a glob, or into one, is protected.
 # tests/gate/approval/classify.test.sh holds every hook-wired script and every installer to a row here.
 #
@@ -94,7 +94,7 @@ contracts/main-folders.txt	settings	the main folders scope-managed-folders.sh de
 standards/naming/controls.tsv	ci-gate	the control register: each control's mode, owner and red proof, which the lint and the naming census read; a renderer will read it too (harbor#1272)
 # Everything an installer ships into the config dir or wires as a hook or statusline (review finding 3); every shim
 # target contracts/shims.tsv links into ~/.local/bin and both registers (operator-run: it runs as the operator outside
-# a session); every file a ship.config command runs (ship); what decides the required checks' content (ci-gate); and
+# a session); every file a ship.conf command runs (ship); what decides the required checks' content (ci-gate); and
 # everything those and the gate tools source or call. Not kept by hand: the rows between BEGIN and END are generated.
 # BEGIN derived: bin/gate-register-derive.sh --write writes the rows to END; classify.test.sh fails when they are stale
 bin/access-browser.sh	ship	derived: called by bin/deploy-live-verify.sh
@@ -104,7 +104,6 @@ bin/admission-api-route.sh	installed	derived: shipped by admission-install.sh
 bin/admission-bash.sh	installed	derived: shipped by admission-install.sh
 bin/admission-cloud.sh	installed	derived: shipped by admission-install.sh
 bin/admission-decide.sh	installed	derived: shipped by admission-install.sh
-bin/admission-decider-set.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/admission-deliverables.sh	installed	derived: shipped by admission-install.sh
 bin/admission-deny.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/admission-destroy.sh	installed	derived: shipped by admission-install.sh
@@ -149,9 +148,10 @@ bin/ci-runners.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/ci-verified.sh	ci-gate	derived: decides what a required check runs
 bin/ci-wait.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/context-budget.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/context-injection-install.sh	installed	derived: called by bin/admission-decider-set.sh
+bin/context-injection-install.sh	installed	derived: called by bin/decider-set.sh
 bin/context-peers.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/context-resolve.sh	installed	derived: shipped by admission-install.sh
+bin/decider-set.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/deploy-confinement.sh	installed	derived: called by bin/admission-verify.sh
 bin/deploy-doctor.sh	ci-gate	derived: called by .github/workflows/governance.yml
 bin/deploy-fleet.sh	installed	derived: shipped by admission-install.sh
@@ -161,12 +161,12 @@ bin/deploy-install-lib.sh	installed	derived: shipped by admission-install.sh
 bin/deploy-install-stamp.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/deploy-launchd-render.sh	installed	derived: called by bin/drift-renew-check.sh
 bin/deploy-launchd-sync.sh	ship	derived: called by bin/deploy-live-verify.sh
-bin/deploy-live-verify.sh	ship	derived: runs as ship.config verify
+bin/deploy-live-verify.sh	ship	derived: runs as ship.conf verify
 bin/deploy-push.sh	ci-gate	derived: called by bin/ci-mirror.sh
 bin/deploy-restore.sh	installed	derived: shipped by admission-install.sh
 bin/deploy-runtime-install.sh	installed	derived: called by bin/admission-install.sh
 bin/deploy-shim-install.sh	ship	derived: called by bin/deploy-live-verify.sh
-bin/deploy.sh	ship	derived: runs as ship.config plan
+bin/deploy.sh	ship	derived: runs as ship.conf plan
 bin/doc-cite-verify.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/doc-cited-paths.awk	installed	derived: shipped by deploy-runtime-install.sh
 bin/doc-fresh-verify.sh	ci-gate	derived: called by .github/workflows/governance.yml
@@ -255,7 +255,6 @@ bin/proposal.sh	installed	derived: called by bin/drift-renew-check.sh
 bin/scope-layers.sh	ci-gate	derived: called by bin/deploy-push.sh
 bin/scope-managed-folders.sh	ship	derived: called by bin/drift-wall.sh
 bin/scope-managed-mods.sh	installed	derived: called by bin/admission-verify.sh
-bin/scope-repo-rename.sh	ci-gate	derived: called by bin/scope-repo.sh
 bin/scope-repo-sources.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/scope-repo.sh	ci-gate	derived: called by bin/scope-repo-sources.sh
 bin/scope-repos-generate.sh	ci-gate	derived: called by bin/scope-repo-sources.sh

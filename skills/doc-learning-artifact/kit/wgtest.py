@@ -3,7 +3,7 @@ and a play/pause toggle really pauses), no errors, no horizontal page scroll on 
 Four modes: desktop, iPhone 13, Reduce Motion on, and a ~250 Hz screen. Exit 1 on any failure.
 Measured 2026-10-03: the old fizmat-9 build passed the earlier, weaker version of this test while 15 ▶ buttons were dead.
 
-    uvx --with playwright python widgets_check.py <page.html> [--shots DIR] [--only u01,u02]
+    uvx --with playwright python wgtest.py <page.html> [--shots DIR] [--only u01,u02]
 """
 import sys
 from pathlib import Path

@@ -13,7 +13,7 @@ VAL="fake-extension-token-0123456789"
 STUB="$T_TMP/pw-stub"
 printf '#!/bin/sh\nprintf "STUB args=%%s token=%%s\\n" "$*" "${PLAYWRIGHT_MCP_EXTENSION_TOKEN:-none}"\n' > "$STUB"; chmod +x "$STUB"
 PH="$T_TMP/private-hosts.txt"; printf '# a private vendor\nintranet.example.net\n' > "$PH"
-ag() { env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS="$PH" HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" \
+ag() { env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_BROWSER_PRIVATE_HOSTS="$PH" HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" \
   CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" "$@" > "$T_TMP/out" 2>&1; echo "exit $?"; }
 out() { cat "$T_TMP/out"; }
 

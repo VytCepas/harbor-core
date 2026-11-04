@@ -12,8 +12,7 @@ s="$(printf '%s' "$2" | cut -d/ -f2,3)"; d="$FX/$(printf '%s' "$s" | tr / _)"; r
 case "$rest" in
   "") [ -f "$d/repo.fail" ] && { echo "gh: HTTP 502" >&2; exit 1; }; cat "$d/repo.json" ;;
   /rules/branches/main) cat "$d/rules.json" ;;
-  "/contents/.agents/ship.config?ref=main") [ -f "$d/ship" ] && { cat "$d/ship"; exit 0; }; echo "gh: Not Found (HTTP 404)" >&2; exit 1 ;;
-  "/contents/.agents/ship.conf?ref=main") [ -f "$d/ship-old" ] && { cat "$d/ship-old"; exit 0; }; echo "gh: Not Found (HTTP 404)" >&2; exit 1 ;;
+  "/contents/.agents/ship.conf?ref=main") [ -f "$d/ship" ] && { cat "$d/ship"; exit 0; }; echo "gh: Not Found (HTTP 404)" >&2; exit 1 ;;
   /branches/main/protection)
     case "$(cat "$d/prot" 2>/dev/null)" in
       403) echo "gh: Resource not accessible by integration (HTTP 403)" >&2; exit 1 ;;
@@ -29,7 +28,7 @@ chmod +x "$GH"
 PRIV="$T_TMP/priv"; mkdir -p "$PRIV"
 run() { FX="$FX" HARBOR_SCOPE_PRIVATE="$PRIV" HARBOR_TEST_GH="$GH" HARBOR_GATE_REPO_DRIFT_STATE="$T_TMP/state.tsv" sh "$T_ROOT/bin/gate-repo-drift.sh" "$@" 2>&1; }
 rc() { FX="$FX" HARBOR_SCOPE_PRIVATE="$PRIV" HARBOR_TEST_GH="$GH" HARBOR_GATE_REPO_DRIFT_STATE="$T_TMP/state.tsv" sh "$T_ROOT/bin/gate-repo-drift.sh" "$@" >/dev/null 2>&1; echo $?; }
-# mk <owner/name> <SMR mask, - = off> <delete_branch_on_merge> <rules-json> [ship.config text] [protection: 403 | 404 | json]
+# mk <owner/name> <SMR mask, - = off> <delete_branch_on_merge> <rules-json> [ship.conf text] [protection: 403 | 404 | json]
 mk() {
   _d="$FX/$(printf '%s' "$1" | tr / _)"; rm -rf "$_d"; mkdir -p "$_d"
   jq -n --arg m "$2" --argjson del "$3" '{default_branch: "main", allow_squash_merge: ($m[0:1] == "S"), allow_merge_commit: ($m[1:2] == "M"),
@@ -89,15 +88,10 @@ t_has "...and the code-owner flag the declaration keeps off" "$OUT" '"require_co
 t_has "...and the rules it does not touch" "$OUT" '{"type":"deletion"}'
 t_has "...and the conditions" "$OUT" '"conditions":{"ref_name"'
 
-t_section "harbor#1097: the old .agents/ship.conf still declares a repo, until 2026-11-15"
-mk o/a -M- true "$(rule 0 true 11 '["merge"]')"
-printf 'repo o/a\nmethod merge-commit\nreview 0 code-owner\ndelete-branch yes\n' > "$FX/o_a/ship-old"
-t_has "its declaration is read" "$(run --print --repo o/a)" "o/a clean"
-
-t_section "undeclared: no ship.config and no row"
+t_section "undeclared: no ship.conf and no row"
 reset; mk o/a -M- true "$(rule 0 true 11 '["merge"]')"
 OUT="$(run --print --repo o/a)"
-t_has "listed, with the keys" "$OUT" "o/a undeclared declaration: no ship.config or --declared row for: method, delete-branch, review"
+t_has "listed, with the keys" "$OUT" "o/a undeclared declaration: no ship.conf or --declared row for: method, delete-branch, review"
 t_hasnt "never clean" "$OUT" "o/a clean"
 t_eq "exit 1" 1 "$(rc --print --repo o/a)"
 printf 'o/a\tmethod\tmerge-commit\no/a\treview\t0 code-owner\no/a\tdelete-branch\tyes\n' > "$T_TMP/decl.tsv"
@@ -105,9 +99,9 @@ t_has "control: --declared rows declare it" "$(run --print --repo o/a --declared
 mk o/a -M- true "$(rule 0 true 11 '["merge"]')" "repo o/a
 method merge-commit"
 OUT="$(run --print --repo o/a)"
-t_has "a ship.config that lacks keys is undeclared for just those" "$OUT" "for: delete-branch, review"
+t_has "a ship.conf that lacks keys is undeclared for just those" "$OUT" "for: delete-branch, review"
 
-t_section "the private layer's repo-rules.tsv declares a repo with no ship.config, with no --declared flag"
+t_section "the private layer's repo-rules.tsv declares a repo with no ship.conf, with no --declared flag"
 reset; mk o/a -M- true "$(rule 0 true 11 '["merge"]')"
 printf 'o/a\tmethod\tmerge-commit\no/a\treview\t0 code-owner\no/a\tdelete-branch\tyes\n' > "$PRIV/repo-rules.tsv"
 t_has "its rows declare it: clean" "$(run --print --repo o/a)" "o/a clean"

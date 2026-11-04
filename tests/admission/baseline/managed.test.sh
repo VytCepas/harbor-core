@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 # The floor suite, part managed (harbor#1022): the managed-settings mods lockdown. The installer
 # writes only the keys the issue names and merges; floor-verify's row warns for a missing file (the operator's sudo install
-# has not run yet) and goes red for each unset key, and a file that is not root-owned. No test needs root: HARBOR_SCOPE_MANAGED_SETTINGS
-# moves the path, HARBOR_SCOPE_MANAGED_OWNER_UID says which owner counts as root for the fixture.
+# has not run yet) and goes red for each unset key, and a file that is not root-owned. No test needs root: HARBOR_MANAGED_SETTINGS
+# moves the path, HARBOR_MANAGED_OWNER_UID says which owner counts as root for the fixture.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$(dirname "$0")/fixture.sh"
 INST="$SRC/scope-managed-mods.sh"
@@ -10,7 +10,7 @@ ME="$(id -u)"
 M="$TMP/managed/managed-settings.json"
 KEY='cc-plugin-sec-default@builtin'
 fv() { # run floor-verify against the sandbox config dir with the managed path moved; stdout only
-  HARBOR_SCOPE_MANAGED_SETTINGS="$M" HARBOR_SCOPE_MANAGED_OWNER_UID="${OWNER:-$ME}" sh "$SRC/admission-verify.sh" --dir "$CFG" 2>&1 | grep 'managed'
+  HARBOR_MANAGED_SETTINGS="$M" HARBOR_MANAGED_OWNER_UID="${OWNER:-$ME}" sh "$SRC/admission-verify.sh" --dir "$CFG" 2>&1 | grep 'managed'
 }
 good() { mkdir -p "$(dirname "$M")"; jq -n --arg k "$KEY" \
   '{pluginConfigs:{($k):{options:{allowManagedModsOnly:true}}},disableSideloadFlags:true}' > "$M"; }
@@ -34,7 +34,7 @@ printf 'not json' > "$M"; t_has "unparseable file is FAIL" "$(fv)" 'FAIL'
 
 t_section "installer: dry run, merge, never allowManagedHooksOnly, uninstall"
 rm -rf "$TMP/managed"
-export HARBOR_SCOPE_MANAGED_SETTINGS="$M"
+export HARBOR_MANAGED_SETTINGS="$M"
 DRY="$(sh "$INST" --dry-run 2>&1)"
 t_has "dry run names the target" "$DRY" "$M"
 t_has "dry run prints the keys" "$DRY" 'disableSideloadFlags'
@@ -56,7 +56,7 @@ t_eq "uninstall removes modsOnly" null "$(jq -r --arg k "$KEY" '.pluginConfigs[$
 t_has "after uninstall the row is a warning again" "$(fv)" 'WARN'
 
 t_section "the write is read back: a write that lands nowhere is a FAIL, not a green exit (harbor#457)"
-rb() { HARBOR_SCOPE_MANAGED_SETTINGS="$M" sh -c 'MANAGED_MODS_LIB=1; . "$0"; managed_verify "$@"' "$INST" "$@" 2>&1; echo "exit $?"; }
+rb() { HARBOR_MANAGED_SETTINGS="$M" sh -c 'MANAGED_MODS_LIB=1; . "$0"; managed_verify "$@"' "$INST" "$@" 2>&1; echo "exit $?"; }
 MD="$TMP/rb/harbor-mods"; M="$TMP/rb/managed-settings.json"; rm -rf "$TMP/rb"; mkdir -p "$MD/.claude-plugin"
 printf '{"b":2,"a":1}\n' > "$M"; : > "$MD/.claude-plugin/marketplace.json"
 t_has "CONTROL: the file holds the JSON meant, key order aside: ok" "$(rb install "$M" '{"a":1,"b":2}' "$MD")" "exit 0"
@@ -73,19 +73,19 @@ t_has "CONTROL: an uninstall owes no marketplace file" "$(rb uninstall "$M" '{"a
 mkdir -p "$TMP/noop"; cp "$SRC/scope-managed-mods.sh" "$SRC/library-log.sh" "$TMP/noop/"
 sed 's/chmod 0644 "$TMPF"; mv "$TMPF" "$FILE"; trap - EXIT/chmod 0644 "$TMPF"; trap - EXIT/' "$SRC/scope-managed-mods.sh" > "$TMP/noop/scope-managed-mods.sh"
 t_eq "the sabotaged copy differs from the original (the no-op is really in it)" differs "$(cmp -s "$SRC/scope-managed-mods.sh" "$TMP/noop/scope-managed-mods.sh" && echo same || echo differs)"
-export HARBOR_SCOPE_MANAGED_SETTINGS="$TMP/e2e/managed-settings.json"; rm -rf "$TMP/e2e"
+export HARBOR_MANAGED_SETTINGS="$TMP/e2e/managed-settings.json"; rm -rf "$TMP/e2e"
 OUT="$(sh "$TMP/noop/scope-managed-mods.sh" 2>&1)"; RC=$?
 t_eq "a write that lands nowhere exits 1" 1 "$RC"
-t_has "...with the read-back FAIL" "$OUT" "read-back: $HARBOR_SCOPE_MANAGED_SETTINGS is missing or not JSON after the write"
-t_eq "...and the file really is absent" absent "$([ -e "$HARBOR_SCOPE_MANAGED_SETTINGS" ] && echo present || echo absent)"
+t_has "...with the read-back FAIL" "$OUT" "read-back: $HARBOR_MANAGED_SETTINGS is missing or not JSON after the write"
+t_eq "...and the file really is absent" absent "$([ -e "$HARBOR_MANAGED_SETTINGS" ] && echo present || echo absent)"
 rm -rf "$TMP/e2e"
 OUT="$(sh "$INST" 2>&1)"; RC=$?
 t_eq "CONTROL: the real script writes it and exits 0" 0 "$RC"
 t_has "...and says it read it back" "$OUT" "and read it back"
-M="$TMP/managed/managed-settings.json"; export HARBOR_SCOPE_MANAGED_SETTINGS="$M"
+M="$TMP/managed/managed-settings.json"; export HARBOR_MANAGED_SETTINGS="$M"
 
 t_section "root refuses a caller-chosen path (decision function, no root needed)"
-rr() { HARBOR_SCOPE_MANAGED_SETTINGS="${2-}" sh -c 'MANAGED_MODS_LIB=1; . "$0"; managed_refuse_override "$1"' "$INST" "$1" >/dev/null 2>&1; echo $?; }
+rr() { HARBOR_MANAGED_SETTINGS="${2-}" sh -c 'MANAGED_MODS_LIB=1; . "$0"; managed_refuse_override "$1"' "$INST" "$1" >/dev/null 2>&1; echo $?; }
 t_eq "uid 0 with the override set: refused" 1 "$(rr 0 /tmp/x.json)"
 t_eq "CONTROL: uid 0 without the override: allowed" 0 "$(rr 0 '')"
 t_eq "CONTROL: non-root with the override (the test path): allowed" 0 "$(rr 501 /tmp/x.json)"

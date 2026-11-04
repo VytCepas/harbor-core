@@ -32,7 +32,7 @@ CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 POOL_DIR="${HARBOR_MEMORY_LOG_DIR:-$CFG/MEMORY}"
 TOKEN_FILE="${HARBOR_MEMORY_LOG_TOKEN_FILE:-$CFG/.helm-log-token}"
 FILE="$POOL_DIR/IDEAS.md"
-SECRET="${HARBOR_ACCESS_SECRET_BIN:-${HARBOR_SECRET_BIN:-$(command -v secret 2>/dev/null || true)}}"; [ -n "$SECRET" ] || SECRET="$HOME/.local/bin/secret"
+SECRET="${HARBOR_SECRET_BIN:-$(command -v secret 2>/dev/null || true)}"; [ -n "$SECRET" ] || SECRET="$HOME/.local/bin/secret"
 
 # idea_git: git with the work-log token as a header, never in the URL (No.4). The token is the store's `worklog-token`
 # only (harbor#1205, decided 2026-10-23); a leftover plaintext file is never read, only named with the command that moves it. Returns 3 when the store has no token.

@@ -42,12 +42,10 @@ threshold() {
   esac
 }
 
-# Commit times come from ONE `git log` pass (harbor#667): `git log -1 -- <file>` per document cost 7 s here. Newest commit
-# first, so the first sighting of a path is its last change; a document with no history is simply absent (age unknown).
-commit_times() { # <out file>: "<unix time><TAB><path>" per path
-  git -C "$ROOT" log -c --format=%ct --name-only --no-renames -- '*.md' 2>/dev/null | awk '
-    /^[0-9]+$/ { ct = $0; next }
-    $0 != "" && !($0 in seen) { seen[$0] = 1; print ct "\t" $0 }' > "$1"
+age_days() { # <path relative to ROOT>
+  _t="$(git -C "$ROOT" log -1 --format=%ct -- "$1" 2>/dev/null || true)"
+  [ -n "$_t" ] || { echo -1; return 0; }
+  echo $(( (NOW - _t) / 86400 ))
 }
 
 # mtime in seconds, portably; failure is -1 = unknown, never 0 = brand new. Validate the OUTPUT, never the exit code:
@@ -120,28 +118,20 @@ docs="$(cd "$ROOT" && git ls-files '*.md' 'contracts/*.md' 2>/dev/null \
 
 # A ROWS file, not a pipeline: `for ... done | sort` runs the loop in a subshell and discards the stale_n count (№2.10).
 ROWS="$(mktemp "${TMPDIR:-/tmp}/harbor.XXXXXX")"
-TIMES="$(mktemp "${TMPDIR:-/tmp}/harbor.XXXXXX")"
-AGES="$(mktemp "${TMPDIR:-/tmp}/harbor.XXXXXX")"
-trap 'rm -f "$ROWS" "$TIMES" "$AGES"' EXIT INT TERM HUP
+trap 'rm -f "$ROWS"' EXIT INT TERM HUP
 
 emit() { # <priority> <stale:0|1> <formatted line>
   printf '%08d\t%s\t%s\n' "$1" "$2" "$3" >> "$ROWS"
 }
 
-# Join the document list to the commit times, in document order; a document with no commit time drops out. A path with
-# whitespace dropped out of the old word-split loop too, so it still does (the report stays byte-identical).
-commit_times "$TIMES"
-printf '%s\n' "$docs" | awk -F'\t' 'NR == FNR { t[$2] = $1; next } ($0 in t) && $0 !~ /[ \t]/ { print t[$0] "\t" $0 }' "$TIMES" - > "$AGES"
-
-TAB="$(printf '\t')"
-while IFS="$TAB" read -r ct f; do
-  a=$(( (NOW - ct) / 86400 ))
+for f in $docs; do
+  a="$(age_days "$f")"
   [ "$a" -ge 0 ] || continue
   case "$f" in contracts/*) t="$(threshold 'contracts/x')" ;; *) t="$(threshold "$f")" ;; esac
   if [ "$a" -gt "$t" ]; then p=$(( a + 200 )); s="STALE — still right?"; k=1
   else p="$a"; s="fresh"; k=0; fi
   emit "$p" "$k" "$(printf '%-30s %5dd %5dd  %s' "$f" "$a" "$t" "$s")"
-done < "$AGES"
+done
 sort -rn "$ROWS" | cut -f3-
 stale_n="$(cut -f2 "$ROWS" | grep -c '^1$' || true)"
 : > "$ROWS"

@@ -17,25 +17,17 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_ACCESS_BROWSER_CONFIRM` | switch | none | Per-call reference of a browser element whose destructive action the operator confirms; unset means destructive clicks are refused | access |  | tests only |
 | `HARBOR_ACCESS_BROWSER_FLOW_WORKROOT` | path | `/tmp` | Directory under which access-browser-flow makes its throwaway work folder for a recorded flow (default /tmp) | access |  | tests only |
 | `HARBOR_ACCESS_BROWSER_IDLE_MS` | tuning | `14400000` | Milliseconds the access browser agent may sit idle before it stops (default 14400000, 4 hours) | access |  | tests only |
-| `HARBOR_ACCESS_BROWSER_LANE` | value | none | Lane suffix (1-12 of a-z0-9) giving a parallel agent its own browser session named <session>-<lane> | access |  | tests only |
 | `HARBOR_ACCESS_BROWSER_LIVE_ACCEPT` | value | `#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll` | CSS selector the live browser access check clicks to accept the cookie dialog (default is the Cookiebot allow-all button) | access |  | tests only |
 | `HARBOR_ACCESS_BROWSER_LIVE_URL` | value | `computed` | URL the browser consent probe drives; unset falls back to browser_live_url in harbor.toml, else the arm is skipped | access |  | tests only |
-| `HARBOR_ACCESS_BROWSER_OSASCRIPT` | test-only | `/usr/bin/osascript` | Path of the osascript binary the access browser agent calls, default /usr/bin/osascript; a test seam | access |  | tests only |
-| `HARBOR_ACCESS_BROWSER_POLL` | tuning | `3` | seconds between polls while the access browser agent waits for the operator to sign in (default 3) | access |  | tests only |
-| `HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS` | value | none | Hosts of the private layer (internal UIs, client tools) the browser agent allows after the core host list; empty means core list only | access |  | tests only |
 | `HARBOR_ACCESS_BROWSER_PROFILE` | value | `Default` | Chrome profile name the access browser agent drives, default Default | access |  | tests only |
 | `HARBOR_ACCESS_BROWSER_SESSION` | value | none | Name of the browser session the harbor chrome agent uses when set outside Claude Code; the MCP wrapper sets it to mcp-<parent pid> | access |  | tests only |
-| `HARBOR_ACCESS_BROWSER_SETTLE` | tuning | `1` | Seconds the access browser agent sleeps after sending input before probing, so Chrome's target detach lands first; default 1 | access |  | tests only |
 | `HARBOR_ACCESS_CHROME` | path | `the Google Chrome binary inside the macOS Applications folder` | Chrome executable the access browser uses; defaults to the macOS Google Chrome app, tests point it at a missing path to prove the skip | access |  | tests only |
 | `HARBOR_ACCESS_CHROME_DATA` | path | `$_chrome_data_default` | Chrome user-data directory the access browser agent drives (default: the OS's standard Google Chrome profile location) | access |  | tests only |
 | `HARBOR_ACCESS_CLAUDE_JSON` | path | `$HOME/.claude.json` | Path of the claude.json file access-browser-agent checks for a configured @playwright/mcp server (default ~/.claude.json) | access |  | tests only |
-| `HARBOR_ACCESS_CONFINEMENT_CACHE` | path | `$HOME/.cache/harbor/confinement` | Directory holding the minted GitHub App tokens and table copied in for confined sessions (default ~/.cache/harbor/confinement) | standard |  | tests only |
-| `HARBOR_ACCESS_CONFINEMENT_GCX` | test-only | `gcx` | Name or path of the gcx command used by the access-confinement hook; only the hook's suite checks its default (gcx) | access |  | tests only |
 | `HARBOR_ACCESS_DIR` | path | none | directory of access route cards read to pick the account for a host; unset uses the private layer's access/ directory | access |  | tests only |
 | `HARBOR_ACCESS_HOSTS_FILE` | test-only | `$ROOT/contracts/browser-agent-hosts.txt` | Hosts allowlist file that access-browser-hosts-add writes to, default contracts/browser-agent-hosts.txt; a test seam | access |  | tests only |
 | `HARBOR_ACCESS_PLAYWRIGHT_CLI` | test-only | none | Path of a stub standing in for the Playwright CLI so the browser-agent suites run without a real browser | access |  | tests only |
 | `HARBOR_ACCESS_PROBE_DIR` | path | `$HOME/.local/lib/browser-probes` | Directory holding the browser probe host (Playwright and a Chrome channel); defaults to ~/.local/lib/browser-probes | access |  | tests only |
-| `HARBOR_ACCESS_SECRET_BIN` | path | `computed` | Path of the secret CLI used to fetch credentials (default: found on PATH, else ~/.local/bin/secret) | standard |  | tests only |
 | `HARBOR_ADMISSION_CLASSES` | test-only | `computed` | The confinement class list admission-observe-report.sh compares with contracts/confinement-classes.tsv; a suite sets it to test the comparison | admission |  | tests only |
 | `HARBOR_ADMISSION_CLASSES_FILE` | path | `contracts/confinement-classes.tsv` | File admission-observe-report.sh reads the confinement classes from (default the register beside bin/) | admission |  | tests only |
 | `HARBOR_ADMISSION_CRED_OCC` | handoff | none | Credential path passed by admission-egress.sh to its own awk program as data, avoiding awk -v escape processing | admission |  | tests only |
@@ -68,16 +60,15 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_AUDIT_COLLECTOR_STALE` | tuning | `900` | Seconds without a new audit-collector record before the collector check reports it stale (default 900) | audit |  | tests only |
 | `HARBOR_AUDIT_COLLECTOR_STORE` | path | `/Library/Application Support/Harbor/collector` | Directory of the audit collector store; defaults to /Library/Application Support/Harbor/collector | audit |  | tests only |
 | `HARBOR_AUDIT_COLLECTOR_USER` | test-only | `harborlog` | Lets a dry run of audit-collector-install.sh plan another collector account name (default harborlog or _harborlog); refused as root | audit |  | tests only |
-| `HARBOR_AUDIT_STREAM_CAUSE` | handoff | none | Free-text cause set by a calling script and written into the audit stream event's cause field | audit |  | tests only |
-| `HARBOR_AUDIT_STREAM_REPO_NAME` | value | none | Repo name stamped into the repo field of each audit stream envelope line, empty when unset | audit |  | tests only |
-| `HARBOR_AUDIT_STREAM_SESSION` | value | `${CLAUDE_SESSION_ID:-$$` | Session id stamped on audit stream events and writer names, falling back to CLAUDE_SESSION_ID then the process id | session |  | tests only |
-| `HARBOR_AUDIT_STREAM_SINK` | path | none | Root directory the audit streams are written under; defaults to the host's OBSERVABILITY streams directory in the config dir | audit |  | tests only |
-| `HARBOR_AUDIT_STREAM_STRICT` | switch | `0` | Set to 1 so an audit-stream write failure fails the caller instead of spilling to the spill file; used by approval and deploy streams | audit |  | tests only |
-| `HARBOR_AUDIT_STREAM_WRITER` | value | `${0##*/` | Name recorded as the writer of an audit-stream event and in its id; defaults to the calling script's basename | audit |  | tests only |
 | `HARBOR_AUDIT_TRIAGE_DISABLE` | kill-switch | none | Set to 1 to stop `harbor verify` from re-running the audit triage judge after it verifies | audit | check.triage | tests only |
 | `HARBOR_AUDIT_TRIAGE_HORIZON_DAYS` | tuning | `7` | number of days of history audit triage counts when judging rules (default 7); older rows are cut off | audit |  | tests only |
 | `HARBOR_AUDIT_TRIAGE_NOW` | test-only | `computed` | Pins today's date (YYYY-MM-DD) for audit-triage so dated fixtures judge the same way; default is the current UTC date | audit |  | tests only |
+| `HARBOR_BROWSER_LANE` | value | none | Lane suffix (1-12 of a-z0-9) giving a parallel agent its own browser session named <session>-<lane> | access |  | tests only |
+| `HARBOR_BROWSER_PRIVATE_HOSTS` | value | none | Hosts of the private layer (internal UIs, client tools) the browser agent allows after the core host list; empty means core list only | access |  | tests only |
+| `HARBOR_CAUSE` | handoff | none | Free-text cause set by a calling script and written into the audit stream event's cause field | audit |  | tests only |
 | `HARBOR_CHECK_RECEIPTS` | path | `${1:-${CLAUDE_CONFIG_DIR:-$HOME/.claude` | Directory check receipts are written under, default <config dir>/cache/checks | check |  | tests only |
+| `HARBOR_CHROME_POLL` | tuning | `3` | seconds between polls while the access browser agent waits for the operator to sign in (default 3) | access |  | tests only |
+| `HARBOR_CHROME_SETTLE` | tuning | `1` | Seconds the access browser agent sleeps after sending input before probing, so Chrome's target detach lands first; default 1 | access |  | tests only |
 | `HARBOR_CI_BASE` | value | `origin/main` | Git ref the lints and test selection compare changes against (default origin/main); CI sets it to the PR base | ci |  | tests only |
 | `HARBOR_CI_BASE_BRANCH` | value | `main` | Base branch that diffs and hooks compare against; defaults to main (origin/main in the hook replay) | ci |  | tests only |
 | `HARBOR_CI_BILLING_USER` | value | `${REPO%%/*` | GitHub account whose Actions minutes are checked by ci-runner-switch (default: the repo's owner) | ci |  | tests only |
@@ -103,7 +94,6 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_CI_NORUNNER_SEC` | tuning | `600` | seconds a CI job may wait with no matching online runner before the runners watch raises an alarm (default 600) | ci |  | tests only |
 | `HARBOR_CI_NOT_CHECKS` | value | none | Replaces the list of check contexts ci-wait names in its verdict but never waits on; default review/decision, empty means none | ci |  | tests only |
 | `HARBOR_CI_OWNER` | value | `VytCepas` | GitHub owner whose runners and repos ci-runners.sh manages (default VytCepas) | ci |  | tests only |
-| `HARBOR_CI_PLAN_REPO` | value | `computed` | OWNER/NAME of the GitHub repo ci-github-plan.sh plans for; defaults to harbor's own slug resolved from the checkout | ci |  | tests only |
 | `HARBOR_CI_RUNNER` | value | none | Repo variable picking the CI runner; github-hosted uses GitHub runners, otherwise the self-hosted Mac; set by ci-runner-switch.sh | ci |  | tests only |
 | `HARBOR_CI_RUNNERS_DIR` | path | `$HOME/runners` | Directory containing the CI runner checkouts, each with a .runner file, read by the governor and queue (default ~/runners) | ci |  | tests only |
 | `HARBOR_CI_RUNNER_USER` | value | `runner` | Name of the user inside the runner image whose /home directory the fleet code assumes (default runner) | ci |  | tests only |
@@ -123,6 +113,9 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_CI_WEDGE_CPU_PCT` | tuning | none | CPU percent of one core under which a CI job counts as near zero for wedge detection, default 2 | ci |  | tests only |
 | `HARBOR_CI_WEDGE_IDLE_SEC` | tuning | none | Seconds of near-zero activity before the runner watch judges a Runner.Worker wedged (default 3600) | ci |  | tests only |
 | `HARBOR_CI_WEDGE_OOM_SEC` | tuning | none | Seconds a CI job must stay near-idle after an out-of-memory kill before the runner watch calls it wedged; default 240 | ci |  | tests only |
+| `HARBOR_CONFINEMENT_CACHE` | path | `$HOME/.cache/harbor/confinement` | Directory holding the minted GitHub App tokens and table copied in for confined sessions (default ~/.cache/harbor/confinement) | standard |  | tests only |
+| `HARBOR_CONFINEMENT_OS` | test-only | `computed` | Overrides the detected OS in deploy-confinement for a dry run; refused when running as root | deploy |  | tests only |
+| `HARBOR_CONFINEMENT_PRIVATE` | path | none | private-layer directory whose confinement-hosts and confinement-paths files extend the confinement lists; refused under root | deploy |  | tests only |
 | `HARBOR_CONTEXT_BASELINE` | path | none | Overrides the context baseline TSV file that context-budget compares against, instead of the state or registries copy | context |  | tests only |
 | `HARBOR_CONTEXT_BUDGET_NO_PROBE` | switch | `0` | Set to 1 to skip running the SessionStart injector when measuring context cost; that row reports NOT PROBED | context |  | tests only |
 | `HARBOR_CONTEXT_CEILING` | tuning | `40000` | Token ceiling the always-loaded session context is measured against by context-budget.sh; default 40000 | context |  | tests only |
@@ -135,16 +128,10 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_CONTEXT_TOUCHED` | handoff | none | Set by the injection-rule hook for context-rule packs: the physical trees touched this turn, one per line | context |  | tests only |
 | `HARBOR_CORE_MIRROR_TOKEN` | value | none | Secret fine-grained GitHub token for the harbor-core mirror (Contents, PRs, Workflows write); legacy name of HARBOR_CI_CORE_MIRROR_TOKEN | standard |  | tests only |
 | `HARBOR_DEPLOY_ACTIVE` | handoff | `0` | set to 1 by deploy.sh for its children so installers skip next steps that deploy itself performs | deploy |  | tests only |
-| `HARBOR_DEPLOY_CONFINEMENT_OS` | test-only | `computed` | Overrides the detected OS in deploy-confinement for a dry run; refused when running as root | deploy |  | tests only |
-| `HARBOR_DEPLOY_CONFINEMENT_PRIVATE` | path | none | private-layer directory whose confinement-hosts and confinement-paths files extend the confinement lists; refused under root | deploy |  | tests only |
 | `HARBOR_DEPLOY_FLEET_NOW` | test-only | `computed` | Pins the epoch-seconds clock used by deploy-fleet, default is the current time | deploy |  | tests only |
 | `HARBOR_DEPLOY_FLEET_REPORT_DIR` | path | `$HOME/Deliverables/$(lday "$NOW" %Y-%m-%d)-ship` | Directory the fleet deploy report is written under (default ~/Deliverables/<today>-ship) | deploy |  | tests only |
 | `HARBOR_DEPLOY_LIVE_DIR` | path | `${CLAUDE_CONFIG_DIR:-$HOME/.claude` | Live config directory that deploy checks and status read the installed bin from; defaults to CLAUDE_CONFIG_DIR or ~/.claude | deploy |  | tests only |
-| `HARBOR_DEPLOY_REPO` | handoff | none | OWNER/NAME of the fleet repo whose ship.config command deploy-fleet is running; set for that command only (the old SHIP_REPO is set too until 2026-11-15) | deploy |  | tests only |
 | `HARBOR_DEPLOY_SHIMS_TABLE` | path | `$ROOT/contracts/shims.tsv` | Shim table file that deploy-shim-install.sh installs from (default contracts/shims.tsv in the checkout) | deploy |  | tests only |
-| `HARBOR_DEPLOY_SNAPSHOT` | handoff | none | Path of the empty file deploy-fleet gives an apply command to write the snapshot id into; deploy.sh --unattended refuses without it (the old SHIP_SNAPSHOT is read until 2026-11-15) | deploy |  | tests only |
-| `HARBOR_DEPLOY_SNAPSHOT_ID` | handoff | none | Snapshot id deploy-fleet hands the restore command of a ship.config (the old SHIP_SNAPSHOT_ID is set too until 2026-11-15) | deploy |  | tests only |
-| `HARBOR_DEPLOY_UNATTENDED` | handoff | none | Set to 1 by deploy-fleet and the event dispatcher for unattended code: deploy.sh --unattended needs it and deploy-fleet refuses --approved under it (the old SHIP_UNATTENDED is read until 2026-11-15) | deploy |  | tests only |
 | `HARBOR_DOC_ARCHIFY_DIR` | path | `$ROOT/vendor/archify` | Directory of the archify diagram tool used by doc-visual-check (default vendor/archify in the repo) | doc |  | tests only |
 | `HARBOR_DOC_DRIVE_MOUNT` | path | none | mount point of the Drive folder doc-drive-push writes to; unset makes the script search for the real mount | doc |  | tests only |
 | `HARBOR_DOC_DRIVE_WAIT` | tuning | `30` | Seconds doc-drive-push waits for Google Drive to assign the item id of a copied deliverable, default 30 | doc |  | tests only |
@@ -159,10 +146,12 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_DRIFT_WALL_CLAUDE_JSON` | path | `$HOME/.claude.json` | Claude Code user state file drift-wall.sh judges (default ~/.claude.json) | drift |  | tests only |
 | `HARBOR_DRIFT_WALL_RUNNER` | path | none | Executable drift-wall.sh runs to probe the retried-Bash row; unset means the row is unprobed, never a pass | drift |  | tests only |
 | `HARBOR_DRIFT_WALL_USER_SETTINGS` | path | `$HOME/.claude/settings.json` | User settings.json drift-wall.sh judges (default settings.json in the config dir) | drift |  | tests only |
+| `HARBOR_EMIT_STRICT` | switch | `0` | Set to 1 so an audit-stream write failure fails the caller instead of spilling to the spill file; used by approval and deploy streams | audit |  | tests only |
 | `HARBOR_EVAL_NODE` | value | `node` | Name or path of the node binary the red-team corpus eval runs (default node) | eval |  | tests only |
 | `HARBOR_EVAL_REDTEAM_BASELINE` | path | `$ROOT/contracts/redteam-baseline.tsv` | Baseline TSV the red-team eval corpus compares against (default contracts/redteam-baseline.tsv); deploy-push unsets it | eval |  | tests only |
 | `HARBOR_EVAL_REDTEAM_SELF` | handoff | `sh $0` | Command text the red-team corpus names in its fix lines, set by the scheduled runner because its temp clone is gone by then | eval |  | tests only |
 | `HARBOR_EVAL_REDTEAM_SOURCES` | path | `$ROOT/contracts/redteam-sources.tsv` | Table file listing the red-team corpus sources (default contracts/redteam-sources.tsv in the checkout) | eval |  | tests only |
+| `HARBOR_EVENT` | handoff | none | Set by event-dispatch.sh to the raw event JSON it hands a handler script, which session scripts parse for kind and subject | event |  | tests only |
 | `HARBOR_EVENT_BUS_LOCK_TRIES` | test-only | `200` | Number of attempts event-bus.sh makes to take its lock before giving up (default 200); tests shorten the wait | event |  | tests only |
 | `HARBOR_EVENT_BUS_SKEW` | test-only | `0` | Seconds added to the event bus clock so tests can cross a UTC midnight; kept through the dispatcher's env filter | event |  | tests only |
 | `HARBOR_EVENT_BUS_TIMEOUT` | tuning | `2` | seconds before a hanging event bus emit or payload read is killed, 1 to 60 (default 2) | event |  | tests only |
@@ -171,8 +160,7 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_EVENT_HANDLER_TIMEOUT` | tuning | `600` | Seconds an event handler may run before the dispatcher kills it; default 600 | event |  | tests only |
 | `HARBOR_EVENT_HEALTH_SECS` | tuning | `600` | Seconds the event dispatcher may go without a heartbeat before alert-probe calls it down (default 600) | event |  | tests only |
 | `HARBOR_EVENT_ID` | handoff | none | Id of the event being dispatched, set by event-dispatch.sh in the environment of each handler it runs | event |  | tests only |
-| `HARBOR_EVENT_JSON` | handoff | none | Set by event-dispatch.sh to the raw event JSON it hands a handler script, which session scripts parse for kind and subject | event |  | tests only |
-| `HARBOR_EVENT_KIND` | handoff | none | Event kind event-dispatch sets in a handler's environment alongside HARBOR_EVENT_JSON and HARBOR_EVENT_ID | event |  | tests only |
+| `HARBOR_EVENT_KIND` | handoff | none | Event kind event-dispatch sets in a handler's environment alongside HARBOR_EVENT and HARBOR_EVENT_ID | event |  | tests only |
 | `HARBOR_EVENT_MAX_DEPTH` | tuning | `3` | maximum nesting depth of event dispatch before further dispatches are refused (default 3) | event |  | tests only |
 | `HARBOR_EVENT_RULE` | handoff | none | Id of the rule whose handler is running, set by event-dispatch for the handler it launches | event |  | tests only |
 | `HARBOR_EVENT_SUBJECT` | handoff | none | Subject of the triggering event, set by event-dispatch.sh for the rule handler script it runs | event |  | tests only |
@@ -187,6 +175,7 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_GATE_REQUIRED_CHECKS` | path | `$MC_DIR/../contracts/required-checks.tsv` | File listing the required CI checks the merge gates compare against (default contracts/required-checks.tsv) | gate |  | tests only |
 | `HARBOR_GATE_VERBS_DIR` | path | `computed` | directory of verb registers read by gate-verbs.sh (default contracts/verbs beside bin/) | gate |  | tests only |
 | `HARBOR_GATE_VERBS_OWN_ORG` | value | `computed` | GitHub org treated as the App's own org by gate-verbs, default the owner of this checkout's repo slug | gate |  | tests only |
+| `HARBOR_GCX` | test-only | `gcx` | Name or path of the gcx command used by the access-confinement hook; only the hook's suite checks its default (gcx) | access |  | tests only |
 | `HARBOR_HOUSEKEEPING_CLEAN_AGE` | tuning | `14` | Minimum age in days before housekeeping-clean removes log-class files; default 14 | housekeeping |  | tests only |
 | `HARBOR_HOUSEKEEPING_CLEAN_BOUND` | tuning | `$1` | Seconds before a GitHub read in housekeeping-clean is killed (default: each read's own bound) | housekeeping |  | tests only |
 | `HARBOR_HOUSEKEEPING_CLEAN_DUE` | tuning | `10` | Number of housekeeping rows at which a clean-up counts as due (default 10) | housekeeping |  | tests only |
@@ -215,6 +204,8 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_LINT_SOURCE` | path | `$0` | Linter source lint.mode-matches-engine reads the rule calls from; a suite points it at a fixture engine | lint |  | tests only |
 | `HARBOR_LINT_TODAY` | test-only | `computed` | Pins the UTC date lint-name judges alias and exemption expiry against, default today | lint |  | tests only |
 | `HARBOR_LINT_UPSTREAM_MIRROR` | path | `$HOME/.harbor-upstream` | Directory of the local upstream mirror the lint reads to check rows against (default ~/.harbor-upstream) | lint |  | tests only |
+| `HARBOR_MANAGED_OWNER_UID` | test-only | `0` | Numeric uid admission-verify expects to own the managed settings file; default 0 (root), set by fixtures only | admission |  | tests only |
+| `HARBOR_MANAGED_SETTINGS` | path | none | Managed-settings file the confinement and admission checks read instead of the OS location; the test path, unset in production | admission |  | tests only |
 | `HARBOR_MEMORY_BUN` | path | none | Path of the bun binary memory.sh runs its engine with; unset falls back to the first bun on PATH | memory |  | tests only |
 | `HARBOR_MEMORY_FIXTURES` | test-only | none | directory of fixtures the memory engine test reads (default fixtures/memory) | memory |  | tests only |
 | `HARBOR_MEMORY_HARVEST_CAP` | tuning | `25` | Maximum number of items the memory-harvest hook processes per run, default 25 | memory |  | tests only |
@@ -229,21 +220,24 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_MEMORY_TRANSCRIPT_DIR` | path | `$CFG/projects` | Directory of session transcripts that the memory-harvest hook scans (default $CFG/projects) | memory |  | tests only |
 | `HARBOR_ORCHESTRATOR` | value | none | Old name of HARBOR_SCOPE_FLEET_CONTROLLER, still read as an override until 2026-11-15; bootstrap unsets it to get the default | deploy |  | tests only |
 | `HARBOR_ORCH_BIN` | value | `computed` | old name for the fleet controller CLI path, still read as a fallback to HARBOR_SCOPE_FLEET_CONTROLLER_BIN | ci |  | tests only |
+| `HARBOR_OSASCRIPT` | test-only | `/usr/bin/osascript` | Path of the osascript binary the access browser agent calls, default /usr/bin/osascript; a test seam | access |  | tests only |
 | `HARBOR_PACK_SHIMS_DIR` | path | none | Directory holding a pack's shims.d table that deploy-shim-install.sh links alongside core's shims in a --dir run | pack |  | tests only |
+| `HARBOR_PLAN_REPO` | value | `computed` | OWNER/NAME of the GitHub repo ci-github-plan.sh plans for; defaults to harbor's own slug resolved from the checkout | ci |  | tests only |
 | `HARBOR_POLICY_TODAY` | test-only | `computed` | Date (YYYY-MM-DD) policy-check.sh uses instead of today when it ages an exemption, so a suite is deterministic | policy |  | tests only |
 | `HARBOR_PRIVATE_READ_TOKEN` | value | none | CI secret: fine-grained read token for the private harbor repo, used to fetch the leak gate's private terms | standard |  | tests only |
 | `HARBOR_PROJECT_INIT` | value | none | Old name of HARBOR_SCOPE_SCAFFOLDER, still read as an override until 2026-11-15; bootstrap unsets it to get the default | deploy |  | tests only |
+| `HARBOR_RECEIVER_PLIST` | test-only | `/Library/LaunchDaemons/com.harbor.audit.otlp-receiver.plist` | path of the OTLP receiver launchd plist that scope-managed-telemetry reads; tests move it, refused under root | scope |  | tests only |
+| `HARBOR_REPO_NAME` | value | none | Repo name stamped into the repo field of each audit stream envelope line, empty when unset | audit |  | tests only |
 | `HARBOR_SCOPE_BIN` | path | none | Extra directory searched for harbor's scope scripts when the dispatcher cannot find them next to itself | scope |  | tests only |
 | `HARBOR_SCOPE_CACHE_DIR` | path | `$HOME/.claude/cache` | Directory where scope, alert, CI and status scripts keep their cache files (default $CFG/cache, i.e. ~/.claude/cache) | scope |  | tests only |
 | `HARBOR_SCOPE_GH` | path | none | gh command scope-repo.sh passes to the label sync for its --github step; a suite swaps in a stub | scope |  | tests only |
-| `HARBOR_SCOPE_MANAGED_OWNER_UID` | test-only | `0` | Numeric uid admission-verify expects to own the managed settings file; default 0 (root), set by fixtures only | admission |  | tests only |
-| `HARBOR_SCOPE_MANAGED_SETTINGS` | path | none | Managed-settings file the confinement and admission checks read instead of the OS location; the test path, unset in production | admission |  | tests only |
 | `HARBOR_SCOPE_PRIVATE` | path | `${PORT_ROOT:-$HOME/port` | Checkout of the private harbor layer; defaults to harbor-private under the port root | scope |  | tests only |
 | `HARBOR_SCOPE_PROJECTS_TSV` | path | `computed` | Projects TSV file scope.sh reads its candidates from (default: the output path of scope-roots.sh --projects) | scope |  | tests only |
-| `HARBOR_SCOPE_RECEIVER_PLIST` | test-only | `/Library/LaunchDaemons/com.harbor.audit.otlp-receiver.plist` | path of the OTLP receiver launchd plist that scope-managed-telemetry reads; tests move it, refused under root | scope |  | tests only |
 | `HARBOR_SCOPE_ROOT` | path | `computed` | root of the harbor checkout that scripts resolve their files against; unset derives it from the script location | scope |  | tests only |
 | `HARBOR_SCOPE_ROOTS_TABLE` | path | `$ROOT/contracts/roots.tsv` | Roots table scope-roots reads, default contracts/roots.tsv in the checkout | scope |  | tests only |
 | `HARBOR_SCOPE_SYSTEMS_TABLE` | path | `contracts/systems.tsv` | Systems register scope-system.sh reads; lint-conventions points it at the judged tree, a suite at a fixture | scope |  | tests only |
+| `HARBOR_SECRET_BIN` | path | `computed` | Path of the secret CLI used to fetch credentials (default: found on PATH, else ~/.local/bin/secret) | standard |  | tests only |
+| `HARBOR_SESSION` | value | `${CLAUDE_SESSION_ID:-$$` | Session id stamped on audit stream events and writer names, falling back to CLAUDE_SESSION_ID then the process id | session |  | tests only |
 | `HARBOR_SESSION_AUTOCOMPACT_DELAY` | tuning | `2` | seconds to wait for the prompt to return before typing /compact into the Terminal tab (default 2) | session |  | tests only |
 | `HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT` | test-only | `osascript` | Command session-autocompact uses in place of osascript to type /compact; a test seam, default osascript | session |  | tests only |
 | `HARBOR_SESSION_AUTOCOMPACT_PERCENT` | tuning | `35` | Context-use percentage at which the session-state hook first asks the agent whether to compact (default 35) | session |  | tests only |
@@ -253,6 +247,7 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_SESSION_REGISTRY_DIR` | path | `$CFG/sessions` | directory of the per-session registry files read by peers, fleet glyph and obligations (default sessions under the config dir) | session |  | tests only |
 | `HARBOR_SESSION_STATE_DIR` | path | `$HOME/.local/state/harbor` | State directory under which the subagent-check hook keeps its agent-stop hashes, default ~/.local/state/harbor | session |  | tests only |
 | `HARBOR_SESSION_TRANSCRIPTS` | path | `$CFG/projects` | Directory of session transcripts the replay and usage tools read (default <config>/projects) | session |  | tests only |
+| `HARBOR_SINK` | path | none | Root directory the audit streams are written under; defaults to the host's OBSERVABILITY streams directory in the config dir | audit |  | tests only |
 | `HARBOR_SKILL_FLEET_CLI` | value | none | Name of the fleet CLI skill-catalog lists (default: looked up from the roots contract); set empty to disable the lookup | skill |  | tests only |
 | `HARBOR_STANDARD_ISSUE_REPO` | value | none | owner/name of the repo standard-issue-label files its labels in; defaults to this checkout's origin | standard |  | tests only |
 | `HARBOR_STANDARD_TAXONOMY` | path | `$ROOT/contracts/issue-taxonomy.tsv` | issue label taxonomy TSV used by standard-issue-label (default contracts/issue-taxonomy.tsv) | standard |  | tests only |
@@ -309,10 +304,11 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_TEST_SUITE_CACHE_SALT` | value | none | Arbitrary text hashed into every test-suite cache key; changing it forces a cold cache | test |  | tests only |
 | `HARBOR_TEST_SUITE_HARD_TIMEOUT` | tuning | `computed` | Total seconds a test suite may run however much it prints (default 4 x the idle timeout; 0 means no limit) | test |  | tests only |
 | `HARBOR_TEST_SUITE_JOBS` | tuning | none | Number of suites test-suite-run runs at once; unset means 3 per CPU, 3 on macOS | test |  | tests only |
-| `HARBOR_TEST_SUITE_SHARDS` | value | none | Repo variable holding a JSON list of shard numbers the CI suite matrix runs; unset means [1,2,3] | test |  | tests only |
+| `HARBOR_TEST_SUITE_SHARDS` | value | none | Repo variable holding a JSON list of shard numbers the CI suite matrix runs; unset means [1,2] | test |  | tests only |
 | `HARBOR_TEST_SUITE_TAIL` | tuning | `40` | number of log lines shown from the end of each failed suite's log (default 40) | test |  | tests only |
 | `HARBOR_TEST_SUITE_TIMEOUT` | tuning | `900` | Seconds a suite may print nothing before test-suite-run cuts it off, default 900, 0 means no limit | test |  | tests only |
 | `HARBOR_TEST_Z` | test-only | none | Throwaway variable name written into a canary fixture to prove the comment lexer reads suites correctly | test |  | tests only |
+| `HARBOR_WRITER` | value | `${0##*/` | Name recorded as the writer of an audit-stream event and in its id; defaults to the calling script's basename | audit |  | tests only |
 
 ## Root variables
 

@@ -30,21 +30,6 @@ printf -- '---\nkind: decision-record\nstatus: accepted\nalias: D-5\ndate: 2026-
 sh "$M" --root "$D" records >/dev/null 2>&1
 t_eq "after date, the rest in place" "kind: decision-record status: accepted alias: D-5 date: 2026-10-04 supersedes: - superseded_by: - source: x revised_by: D-9 " "$(fm "$D/docs/decisions/0005-five.md")"
 
-t_section "a record with front matter but no alias or date gets them, and keeps what its heading says (yard's shape)"
-D="$(mk yard)"
-printf -- '---\nkind: decision-record\nowner: @x\nstatus: superseded\n---\n\n# ADR-014: Old\n\n- Status: **Superseded** by epic #316\n- Date: 2026-06-19 (superseded 2026-06-19)\n- Superseded-by: ADR-015 (the new model)\n' > "$D/docs/decisions/0014-old.md"
-printf -- '---\nkind: decision-record\nowner: @x\nstatus: accepted\n---\n\n# ADR-015: New\n\n- Status: Accepted\n- Date: 2026-06-19\n- Supersedes: ADR-014 (branch-per-env)\n' > "$D/docs/decisions/0015-new.md"
-printf -- '---\nkind: decision-record\nowner: @x\nstatus: accepted\n---\n\n# ADR-016: Partial\n\n**Date:** 2026-06-20\n**Status:** Accepted \xe2\x80\x94 superseded in part by [ADR-017](0017-x.md)\n- Supersedes: title-format portions of ADR-003\n' > "$D/docs/decisions/0016-part.md"
-sh "$M" --root "$D" records >/dev/null 2>&1
-t_eq "the fully superseded one: alias and date after status, the pair from its Superseded-by line" "kind: decision-record owner: @x status: superseded alias: D-14 date: 2026-06-19 supersedes: - superseded_by: D-15 " "$(fm "$D/docs/decisions/0014-old.md")"
-t_eq "its successor names it" "kind: decision-record owner: @x status: accepted alias: D-15 date: 2026-06-19 supersedes: D-14 superseded_by: - " "$(fm "$D/docs/decisions/0015-new.md")"
-t_eq "a partial supersession stays accepted and names its reviser" "kind: decision-record owner: @x status: accepted alias: D-16 date: 2026-06-20 supersedes: - superseded_by: - revised_by: D-17 " "$(fm "$D/docs/decisions/0016-part.md")"
-sh "$M" --root "$D" --check records >/dev/null 2>&1
-t_eq "…and twice is once" "0" "$?"
-D4="$(mk nodate2)"; printf -- '---\nkind: decision-record\nstatus: accepted\n---\n\n# One\n' > "$D4/docs/decisions/0001-one.md"
-sh "$M" --root "$D4" records >/dev/null 2>&1
-t_eq "front matter with no date anywhere is refused, not guessed" "2" "$?"
-
 t_section "twice is once, and --check says when there is work"
 sh "$M" --root "$D" records >/dev/null 2>&1; sh "$M" --root "$D" --check records >/dev/null 2>&1
 t_eq "nothing left to change" "0" "$?"

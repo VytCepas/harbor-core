@@ -131,12 +131,8 @@ t_eq "unparseable stdin: exit 0" 0 "$RC"
 t_eq "...and silent" "" "$OUT"
 t_eq "the marker path is the installer's, on both platforms" 2 "$(grep -cE "'/Library/Application Support/ClaudeCode/harbor-confinement'|/etc/claude-code/harbor-confinement" "$T_ROOT/hooks/access-confinement/access-confinement.sh")"
 t_has "...and the installer writes that name beside managed settings" "$(cat "$T_ROOT/bin/deploy-confinement.sh")" '"$BASE/harbor-confinement"'
-# The seams by their registered names (harbor#1097) and the old ones still read elsewhere until 2026-11-15.
-SEAMS='HARBOR_(ACCESS_CONFINEMENT_(CACHE|GCX)|SCOPE_MANAGED_SETTINGS|CONFINEMENT_CACHE|APP_DIR|GCX|GCLOUD_IDENTITIES|MANAGED_SETTINGS)'
 t_eq "the shipped hook reads no seam from the environment" "" \
-  "$(grep -nE "$SEAMS" "$T_ROOT/hooks/access-confinement/access-confinement.sh" | grep -v '^[0-9]*:#' || :)"
+  "$(grep -nE 'HARBOR_(CONFINEMENT_CACHE|APP_DIR|GCX|GCLOUD_IDENTITIES|MANAGED_SETTINGS)' "$T_ROOT/hooks/access-confinement/access-confinement.sh" | grep -v '^[0-9]*:#' || :)"
 t_eq "CONTROL: the pattern finds a seam where one is read" 1 \
-  "$(printf 'GCX="${HARBOR_ACCESS_CONFINEMENT_GCX:-gcx}"\n' | grep -cE "$SEAMS")"
-t_eq "CONTROL: ...and the old spelling of one" 1 \
-  "$(printf 'GCX="${HARBOR_GCX:-gcx}"\n' | grep -cE "$SEAMS")"
+  "$(printf 'GCX="${HARBOR_GCX:-gcx}"\n' | grep -cE 'HARBOR_(CONFINEMENT_CACHE|APP_DIR|GCX|GCLOUD_IDENTITIES|MANAGED_SETTINGS)')"
 t_done

@@ -6,7 +6,7 @@
 DL="$T_ROOT/bin/drift-launchd-wall.sh"
 PORT_ROOT="$T_TMP/port"; PRIV="$PORT_ROOT/harbor-private"; mkdir -p "$PRIV" "$PORT_ROOT/work" "$T_TMP/installed/bin"
 PORT_ROOT="$(cd -P "$PORT_ROOT" && pwd)"; PRIV="$PORT_ROOT/harbor-private"
-export PORT_ROOT HARBOR_DEPLOY_CONFINEMENT_PRIVATE="$PRIV" HARBOR_DEPLOY_CONFINEMENT_OS=Darwin HARBOR_CHECK_RECEIPTS="$T_TMP/receipts"
+export PORT_ROOT HARBOR_CONFINEMENT_PRIVATE="$PRIV" HARBOR_CONFINEMENT_OS=Darwin HARBOR_CHECK_RECEIPTS="$T_TMP/receipts"
 LA="$T_TMP/LaunchAgents"; mkdir -p "$LA"; export HARBOR_DRIFT_LAUNCHD_DIR="$LA"
 dl() { sh "$DL" "$@" 2>&1; }
 rc() { sh "$DL" >/dev/null 2>&1; echo $?; }

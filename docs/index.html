@@ -365,7 +365,6 @@ containment proof against an attacker who already controls the session.</p>
 <tr><td><code>admission-bash.sh</code></td><td>B3 (harbor#3) - PreToolUse(Bash) shell-injection / local-exec guard: the code-execution and destruction class (ports upstream DANGEROUS_PATTERNS a4e8e74, trimmed for POSIX+WSL). Pure POSIX; FAIL-OPEN on parse error.</td></tr>
 <tr><td><code>admission-cloud.sh</code></td><td>admission-cloud.sh (harbor#194 item 3, harbor#193 warning-layer) - PreToolUse(Bash) ASK-gate for destructive cloud operations (ledger token <code>cloud</code>).</td></tr>
 <tr><td><code>admission-decide.sh</code></td><td>admission-decide.sh (harbor#1030) — the one decision function of the floor: a fired rule's mode is read from its controls.tsv row.</td></tr>
-<tr><td><code>admission-decider-set.sh</code></td><td>admission-decider-set.sh (harbor#954 PR B, from #1003) -- the ONE set of wired hook scripts that the two</td></tr>
 <tr><td><code>admission-deliverables.sh</code></td><td>guard-deliverables (harbor#402) — PreToolUse(Write|Edit|MultiEdit|Bash) FILING gate.</td></tr>
 <tr><td><code>admission-deny-hash.sh</code></td><td>M7 · DeriveDenyHashes (harbor#44) — a leak filter over the operator's OWN private</td></tr>
 <tr><td><code>admission-deny.sh</code></td><td>B1 (harbor#3) — permissions.deny hard stops for the floor, on the install standard (harbor#800).</td></tr>
@@ -805,9 +804,9 @@ already had in mind.</p>
 <h4>Every pack currently shipped</h4>
 <div class="scroll">
 <table class="grid"><thead><tr><th>Tier</th><th>Pack</th><th>Event</th><th>Fires when</th><th>Repeats</th></tr></thead><tbody>
-<tr><td>repo · platform</td><td><code>constitution-edit-is-undeployed.md</code></td><td><code>PreToolUse</code></td><td><code>path-contains policy/constitution.md</code></td><td>session</td></tr>
-<tr><td>repo · platform</td><td><code>merge-governance.md</code></td><td><code>PreToolUse</code></td><td><code>cmd-prefix gh pr merge</code></td><td>never</td></tr>
-<tr><td>repo · platform</td><td><code>post-merge-state.md</code></td><td><code>PostToolUse</code></td><td><code>cmd-prefix gh pr merge</code></td><td>never</td></tr>
+<tr><td>repo · harbor</td><td><code>constitution-edit-is-undeployed.md</code></td><td><code>PreToolUse</code></td><td><code>path-contains policy/constitution.md</code></td><td>session</td></tr>
+<tr><td>repo · harbor</td><td><code>merge-governance.md</code></td><td><code>PreToolUse</code></td><td><code>cmd-prefix gh pr merge</code></td><td>never</td></tr>
+<tr><td>repo · harbor</td><td><code>post-merge-state.md</code></td><td><code>PostToolUse</code></td><td><code>cmd-prefix gh pr merge</code></td><td>never</td></tr>
 <tr><td>box</td><td><code>access-route-pointer.md</code></td><td><code>PostToolUse</code></td><td><code>always</code></td><td>match</td></tr>
 <tr><td>box</td><td><code>agent-brief.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
 <tr><td>box</td><td><code>agent-model-required.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
@@ -876,7 +875,7 @@ scripts here are deliberately reachable only by name.</p>
 <tr><td><code>harbor event</code></td><td><code>event-bus.sh</code></td><td>no</td><td>the local event bus: emit, wait (0 match, 3 deadline), since, tail, prune; dispatch, on, pull, subscribe (E2)</td></tr>
 <tr><td><code>harbor ui</code></td><td><code>status-console.sh</code></td><td>no</td><td>a localhost console of the live state as read-only panels: 127.0.0.1, one-use link, stops when idle</td></tr>
 <tr><td><code>harbor scope</code></td><td><code>scope.sh</code></td><td>no</td><td>scope install: create the PORT_ROOT skeleton and an empty private layer (--dry-run, --seed-from-projects); never overwrites</td></tr>
-<tr><td><code>harbor repo</code></td><td><code>scope-repo.sh</code></td><td>no</td><td>create or adopt a repo in one run, list where each is known, audit one, rename one: new, adopt, list, audit, rename (harbor#1430, #966)</td></tr>
+<tr><td><code>harbor repo</code></td><td><code>scope-repo.sh</code></td><td>no</td><td>create or adopt a repo in one run, list where each is known, audit one: new, adopt, list, audit (harbor#1430)</td></tr>
 <tr><td><code>harbor access</code></td><td><code>access.sh</code></td><td>no</td><td>the access register: add, list, has, refs, check, stored, status, rotate, revoke; a ref the register does not name is refused by bin/secret</td></tr>
 <tr><td><code>harbor pack</code></td><td><code>pack.sh</code></td><td>no</td><td>install a workload repo's harbor-pack/ box-wide and remove it exactly: list, install, remove (--dir or --live; dry run unless --apply)</td></tr>
 <tr><td><code>harbor merge-stack</code></td><td><code>gate-merge-stack.sh</code></td><td>no</td><td>merge a plan's PRs in order, each on its own green CI: check, rehearse, merge, verify (docs/design/merge-stack.md)</td></tr>
@@ -1110,7 +1109,7 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <tr><td><code>lint.justfile-paths-resolve</code> (was S5)</td><td>every bin/ path the justfile names resolves (harbor#140)</td></tr>
 <tr><td><code>lint.exec-bit-kept</code> (was S6)</td><td>a script that was executable on the base stays executable (harbor#574)</td></tr>
 <tr><td><code>admission.kill-switch-first</code> (was F1)</td><td>every wired decider's first live line is the HARBOR_ADMISSION_DISABLE check, or it is listed exempt with a reason (harbor#954)</td></tr>
-<tr><td><code>admission.wired-registered</code></td><td>every wired hook script (bin/admission-decider-set.sh) is the engine of a standards/naming/controls.tsv row (harbor#1272)</td></tr>
+<tr><td><code>admission.wired-registered</code></td><td>every wired hook script (bin/decider-set.sh) is the engine of a standards/naming/controls.tsv row (harbor#1272)</td></tr>
 <tr><td><code>admission.block-id</code> (was F5)</td><td>every floor_block passes a &lt;rule&gt;.&lt;shape&gt; id (harbor#41)</td></tr>
 <tr><td><code>admission.kill-switch-remedy</code> (was F16)</td><td>no floor guard prints the kill-switch as its remedy, except where it is the true one (harbor#482)</td></tr>
 <tr><td><code>lint.long-file-reason</code> (was G1)</td><td>files over 300 lines name their exemption reason in the header</td></tr>
@@ -1404,7 +1403,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/audit/triage/triage.test.sh</code></td><td><code>bin/* hooks/* tests/audit/triage/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/audit/triage/fc5.test.sh</code></td><td><code>bin/* hooks/* tests/audit/triage/* tests/lib/core.sh tests/admission/baseline/fixture.sh tests/admission/baseline/baseline.test.sh tests/admission/baseline/*</code></td></tr>
 <tr><td><code>tests/audit/triage/ledger.test.sh</code></td><td><code>bin/* hooks/* tests/audit/triage/* tests/lib/core.sh</code></td></tr>
-<tr><td><code>hooks/failure-observe/mcp-segment.test.sh</code></td><td><code>hooks/failure-observe/* bin/library-admission.sh tests/audit/triage/* tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/hooks/failure-observe-test.sh</code></td><td><code>hooks/failure-observe/* bin/library-admission.sh tests/audit/triage/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>hooks/failure-observe/failure-observe.test.sh</code></td><td><code>bin/* hooks/* hooks/failure-observe/failure-observe.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/worktree/post-checkout/post-checkout.test.sh</code></td><td><code>hooks/post-checkout bin/memory-route.sh bin/library-log.sh tests/worktree/post-checkout/post-checkout.test.sh bin/scope-roots.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/stop/stop.test.sh</code></td><td><code>bin/* tests/admission/stop/stop.test.sh tests/lib/core.sh</code></td></tr>
@@ -1481,7 +1480,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/deploy/hooks/env.test.sh</code></td><td><code>hooks/* bin/ci-governor.sh bin/library-log.sh tests/deploy/hooks/env.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/deploy/install-stamp/install-stamp.test.sh</code></td><td><code>tests/deploy/install-stamp/install-stamp.test.sh bin/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/deploy/install/exec.test.sh</code></td><td><code>tests/deploy/install/exec.test.sh bin/deploy-install-lib.sh bin/library-log.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/deploy/runtime-install/runtime-install.test.sh</code></td><td><code>bin/deploy-runtime-install.sh tests/deploy/runtime-install/runtime-install.test.sh tests/lib/core.sh tests/admission/baseline/fixture.sh tests/admission/baseline/baseline.test.sh tests/admission/baseline/* bin/event-dispatch.sh bin/event-bus.sh docs/reference/checks.md contracts/event-rules.tsv bin/check-registry-generate.sh bin/admission-install.sh bin/admission-decide.sh standards/naming/controls.tsv</code></td></tr>
+<tr><td><code>tests/deploy/runtime-install/runtime-install.test.sh</code></td><td><code>bin/deploy-runtime-install.sh tests/deploy/runtime-install/runtime-install.test.sh tests/lib/core.sh tests/admission/baseline/fixture.sh tests/admission/baseline/baseline.test.sh tests/admission/baseline/* bin/event-dispatch.sh bin/event-bus.sh docs/reference/checks.md contracts/event-rules.tsv bin/check-registry-generate.sh</code></td></tr>
 <tr><td><code>tests/deploy/harden/harden.test.sh</code></td><td><code>bin/deploy-harden.sh bin/deploy-install-lib.sh bin/library-log.sh tests/deploy/harden/harden.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/remove/remove.test.sh</code></td><td><code>bin/* hooks/* fixtures/* contracts/* vendor/* docs/generated/status.md tests/admission/remove/remove.test.sh tests/admission/baseline/fixture.sh tests/admission/bash/fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/doc/isa-index/isa-index.test.sh</code></td><td><code>bin/doc-isa-index.sh tests/doc/isa-index/isa-index.test.sh bin/library-log.sh tests/lib/core.sh</code></td></tr>
@@ -1508,7 +1507,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/access/chrome/benchmark.test.sh</code></td><td><code>bin/access-chrome-mcp.ts bin/access-chrome-mcp.py bin/access-browser-agent.sh bin/scope-roots.sh bin/library-log.sh contracts/browser-agent-hosts.txt contracts/roots.tsv tests/access/chrome/fake-daemon.ts tests/access/chrome/benchmark.sh tests/access/chrome/benchmark-driver.ts tests/access/chrome/benchmark.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/context/injection-rule/notes.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh tests/context/injection-rule/notes.test.sh context-rules/* fixtures/inject/* fixtures/injection-rule/notes.tsv* fixtures/injection-rule/packs/example-store/wipe-destroys-history.md* bin/scope-roots.sh bin/library-admission.sh bin/admission-normalize.awk tests/lib/core.sh bin/lint-name.sh bin/library-log.sh standards/naming/* bin/standard-register.sh</code></td></tr>
 <tr><td><code>tests/context/injection-rule/agent-brief.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/* tests/context/injection-rule/agent-brief.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/context/injection-rule/decision-question.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/user/decision-* tests/context/injection-rule/decision-question.test.sh tests/lib/core.sh docs/explanation/grilling.md commands/grilling.md</code></td></tr>
+<tr><td><code>tests/context/injection-rule/decision-question.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/user/decision-* tests/context/injection-rule/decision-question.test.sh tests/lib/core.sh docs/explanation/grilling.md commands/grillme.md</code></td></tr>
 <tr><td><code>tests/context/injection-rule/default-way-route.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/user/default-way-* tests/context/injection-rule/default-way-route.test.sh tests/lib/core.sh fixtures/admission-corpus.jsonl</code></td></tr>
 <tr><td><code>tests/context/injection-rule/default-way-deny.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/user/default-way-* tests/context/injection-rule/default-way-deny.test.sh tests/lib/core.sh fixtures/admission-corpus.jsonl</code></td></tr>
 <tr><td><code>tests/context/injection-rule/skill-first-use.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh bin/admission-normalize.awk context-rules/* skills/agent-routing/SKILL.md tests/context/injection-rule/skill-first-use.test.sh tests/lib/core.sh</code></td></tr>
@@ -1588,7 +1587,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/admission/egress/c1-keys.test.sh</code></td><td><code>bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/admission/egress/c1-keys.* tests/admission/bash/fixture.sh</code></td></tr>
 <tr><td><code>tests/admission/bash/exec.test.sh</code></td><td><code>   bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/admission/bash/exec.* tests/admission/bash/fixture.sh</code></td></tr>
 <tr><td><code>tests/admission/bash/gate.test.sh</code></td><td><code>   bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/admission/bash/gate.* tests/admission/bash/fixture.sh</code></td></tr>
-<tr><td><code>tests/admission/self-edit/self-edit.test.sh</code></td><td><code>    bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/guards/selfedit* tests/admission/self-edit/self-edit.test.sh* tests/admission/bash/fixture.sh tests/guards/guards.jsonl tests/guards/shapes.jsonl tests/guards/benign.jsonl tests/guards/exemptions.jsonl</code></td></tr>
+<tr><td><code>tests/admission/selfedit/selfedit.test.sh</code></td><td><code>    bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/guards/selfedit* tests/admission/selfedit/selfedit.test.sh* tests/admission/bash/fixture.sh tests/guards/guards.jsonl tests/guards/shapes.jsonl tests/guards/benign.jsonl tests/guards/exemptions.jsonl</code></td></tr>
 <tr><td><code>tests/admission/bash/bash.test.sh</code></td><td><code>        bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/admission/bash/bash.test.sh tests/admission/bash/fixture.sh tests/guards/guards.jsonl tests/guards/shapes.jsonl tests/guards/benign.jsonl tests/guards/exemptions.jsonl</code></td></tr>
 <tr><td><code>tests/doc/index-generate/index-generate.test.sh</code></td><td><code>bin/doc-index-generate.sh bin/library-log.sh tests/doc/index-generate/index-generate.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/skill/eval-runners/eval-runners.test.sh</code></td><td><code>evals/* fixtures/eval-runners/* tests/skill/eval-runners/eval-runners.test.sh tests/lib/core.sh</code></td></tr>
@@ -1779,12 +1778,11 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/ci/runners/scale.test.sh</code></td><td><code>bin/ci-runners.sh bin/ci-runners-*-lib.sh bin/library-log.sh tests/ci/runners/scale.test.sh tests/ci/ci-runners-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/standard/rename/window.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/standard/rename/collapse.test.sh</code></td><td><code>always</code></td></tr>
-<tr><td><code>tests/standard/rename/env-window.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/lint/name/modes.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/lint/name/repo-verb.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/deploy/push/license.test.sh</code></td><td><code>LICENSE NOTICE SECURITY.md README.md vendor/* tests/deploy/push/license.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/share/check.test.sh</code></td><td><code>bin/lint-share.sh bin/scope-layers.sh bin/scope-roots.sh bin/lint-conventions.sh bin/library-log.sh contracts/layers.tsv contracts/roots.tsv standards/naming/kinds.tsv tests/lint/share/check.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/lint/wired/registered.test.sh</code></td><td><code>bin/admission-decider-set.sh bin/admission-install.sh bin/*-install.sh bin/lint-conventions.sh bin/library-log.sh standards/naming/controls.tsv</code></td></tr>
+<tr><td><code>tests/lint/wired/registered.test.sh</code></td><td><code>bin/decider-set.sh bin/admission-install.sh bin/*-install.sh bin/lint-conventions.sh bin/library-log.sh standards/naming/controls.tsv</code></td></tr>
 <tr><td><code>tests/doc/fresh-verify/fresh-verify.test.sh</code></td><td><code>bin/* hooks/* contracts/* docs/generated/status.md docs/generated/plan.md docs/* skills/* .agents/* .github/CODEOWNERS standards/* tests/doc/fresh-verify/fresh-verify.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/git/verbs.test.sh</code></td><td><code>bin/admission-deny.sh bin/library-log.sh bin/deploy-install-lib.sh bin/gate-verbs.sh bin/admission-bash.sh bin/admission-destroy.sh contracts/verbs/git.md tests/admission/git/verbs.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/verbs/registers.test.sh</code></td><td><code>bin/gate-verbs.sh bin/admission-deny.sh bin/admission-remove.sh bin/library-log.sh bin/deploy-install-lib.sh bin/admission-install.sh bin/deploy-runtime-install.sh contracts/verbs/cu.md contracts/verbs/gh.md contracts/verbs/git.md contracts/verbs/mail.md tests/admission/verbs/registers.test.sh tests/lib/core.sh</code></td></tr>
@@ -1836,7 +1834,6 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/check/run/run.test.sh</code></td><td><code>bin/check-run.sh bin/library-log.sh contracts/scheduled-checks.tsv launchd/* docs/reference/checks.md tests/check/run/run.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/standard/kit/kit.test.sh</code></td><td><code>bin/standard-kit.sh bin/standard-vendor.sh bin/standard-register.sh bin/lint-conventions.sh bin/library-log.sh standards/naming/* tests/standard/kit/kit.test.sh tests/lib/core.sh tests/checks/lint-fixture.sh</code></td></tr>
 <tr><td><code>tests/scope/system/system.test.sh</code></td><td><code>bin/scope-system.sh bin/harbor bin/lint-name.sh bin/lint-conventions.sh bin/scope-roots.sh bin/library-log.sh contracts/systems.tsv contracts/roots.tsv contracts/cli.md tests/scope/system/system.test.sh tests/lib/core.sh tests/checks/lint-fixture.sh</code></td></tr>
-<tr><td><code>tests/scope/repo/rename.test.sh</code></td><td><code>bin/scope-repo-rename.sh bin/scope-repo.sh bin/scope-roots.sh bin/scope.sh bin/memory-route.sh bin/library-log.sh bin/harbor contracts/roots.tsv contracts/cli.md standards/naming/repo-kinds.tsv tests/scope/repo/rename.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/scope/repo/repo.test.sh</code></td><td><code>bin/scope-repo.sh bin/scope-repo-sources.sh bin/scope-system.sh bin/scope-roots.sh bin/scope-repos-generate.sh bin/scope.sh bin/standard-kit.sh bin/standard-vendor.sh bin/standard-label-sync.sh bin/memory-route.sh bin/lint-conventions.sh bin/harbor bin/library-log.sh contracts/systems.tsv contracts/cli.md standards/naming/* tests/scope/repo/repo.test.sh tests/lib/core.sh tests/checks/lint-fixture.sh</code></td></tr>
 <tr><td><code>tests/scope/repo/sources.test.sh</code></td><td><code>bin/scope-repo-sources.sh bin/scope-roots.sh bin/lint-conventions.sh bin/library-log.sh contracts/roots.tsv tests/scope/repo/sources.test.sh tests/lib/core.sh tests/checks/lint-fixture.sh</code></td></tr>
 <tr><td><code>tests/deploy/kit/bootstrap.test.sh</code></td><td><code>bin/deploy-runtime-install.sh bin/standard-kit.sh bin/scope.sh bin/scope-roots.sh bin/lint-name.sh bin/standard-register.sh bin/library-log.sh standards/naming/* tests/deploy/kit/bootstrap.test.sh tests/lib/core.sh</code></td></tr>
@@ -2218,7 +2215,6 @@ score a plumbing gap as a verdict on the idea.</p>
 <div class="scroll">
 <table class="grid"><thead><tr><th>Script</th><th>What it answers</th></tr></thead><tbody>
 <tr><td><code>access-confinement.sh</code></td><td>access-confinement.sh (harbor#1298, #555 decisions 7 and 8) — the PreToolUse(Bash) hook that keeps a confined</td></tr>
-<tr><td><code>admission-decider-set.sh</code></td><td>admission-decider-set.sh (harbor#954 PR B, from #1003) -- the ONE set of wired hook scripts that the two</td></tr>
 <tr><td><code>admission-deny.sh</code></td><td>B1 (harbor#3) — permissions.deny hard stops for the floor, on the install standard (harbor#800).</td></tr>
 <tr><td><code>admission-install.sh</code></td><td>INSTALL (harbor#3) — wrapped, additive install of the Helm POSIX floor into a config dir (harbor#765).</td></tr>
 <tr><td><code>admission-observe-report.sh</code></td><td>OBSERVE-1 (harbor#41) — read the guard-decision ledger.</td></tr>
@@ -2247,6 +2243,7 @@ score a plumbing gap as a verdict on the idea.</p>
 <tr><td><code>context-budget.sh</code></td><td>context-budget.sh — measure what Harbor costs EVERY session.</td></tr>
 <tr><td><code>context-peers.sh</code></td><td>L0-11 (harbor#75) — read the session registry Claude Code already maintains,</td></tr>
 <tr><td><code>context-resolve.sh</code></td><td>H2 (harbor#4) — SessionStart resolver: write this session's detect-and-defer</td></tr>
+<tr><td><code>decider-set.sh</code></td><td>decider-set.sh (harbor#954 PR B, from #1003) -- the ONE set of wired hook scripts that the two</td></tr>
 <tr><td><code>deploy-install-lib.sh</code></td><td>deploy-install-lib.sh (harbor#765, harbor#771) — the install standard's shared half: argument parsing, target</td></tr>
 <tr><td><code>deploy-install-stamp.sh</code></td><td>deploy-install-stamp.sh — refuse a deploy that would REMOVE installed work (harbor#115)</td></tr>
 <tr><td><code>deploy-restore.sh</code></td><td>RECOVER (harbor#34, #765) — put a config dir back from a deploy snapshot.</td></tr>
@@ -2517,7 +2514,6 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/admission-bash.sh</code></td><td>B3 (harbor#3) - PreToolUse(Bash) shell-injection / local-exec guard: the code-execution and destruction class (ports upstream DANGEROUS_PATTERNS a4e8e74, trimmed for POSIX+WSL). Pure POSIX; FAIL-OPEN on parse error.</td></tr>
 <tr><td><code>bin/admission-cloud.sh</code></td><td>admission-cloud.sh (harbor#194 item 3, harbor#193 warning-layer) - PreToolUse(Bash) ASK-gate for destructive cloud operations (ledger token <code>cloud</code>).</td></tr>
 <tr><td><code>bin/admission-decide.sh</code></td><td>admission-decide.sh (harbor#1030) — the one decision function of the floor: a fired rule's mode is read from its controls.tsv row.</td></tr>
-<tr><td><code>bin/admission-decider-set.sh</code></td><td>admission-decider-set.sh (harbor#954 PR B, from #1003) -- the ONE set of wired hook scripts that the two</td></tr>
 <tr><td><code>bin/admission-deliverables.sh</code></td><td>guard-deliverables (harbor#402) — PreToolUse(Write|Edit|MultiEdit|Bash) FILING gate.</td></tr>
 <tr><td><code>bin/admission-deny-hash.sh</code></td><td>M7 · DeriveDenyHashes (harbor#44) — a leak filter over the operator's OWN private</td></tr>
 <tr><td><code>bin/admission-deny.sh</code></td><td>B1 (harbor#3) — permissions.deny hard stops for the floor, on the install standard (harbor#800).</td></tr>
@@ -2569,6 +2565,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/context-injection-install.sh</code></td><td>context-injection-install.sh (harbor#173 · A1) — wire the injector, box-wide.</td></tr>
 <tr><td><code>bin/context-peers.sh</code></td><td>L0-11 (harbor#75) — read the session registry Claude Code already maintains,</td></tr>
 <tr><td><code>bin/context-resolve.sh</code></td><td>H2 (harbor#4) — SessionStart resolver: write this session's detect-and-defer</td></tr>
+<tr><td><code>bin/decider-set.sh</code></td><td>decider-set.sh (harbor#954 PR B, from #1003) -- the ONE set of wired hook scripts that the two</td></tr>
 <tr><td><code>bin/deploy-bootstrap.sh</code></td><td>deploy-bootstrap.sh (harbor#829) — a fresh machine to a passing deploy dry run, in one command:</td></tr>
 <tr><td><code>bin/deploy-confinement.sh</code></td><td>CONFINEMENT INSTALL (harbor#1298, #555 P1) — the <code>sandbox</code> block of the root-owned managed-settings.json.</td></tr>
 <tr><td><code>bin/deploy-doctor.sh</code></td><td>deploy-doctor.sh — probe the external tools Harbor's doctrine depends on.</td></tr>
@@ -2632,7 +2629,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/gate-push.sh</code></td><td>gate-push.sh (harbor#1411) — run a repo's pre-push checks BEFORE git connects, then push in seconds.</td></tr>
 <tr><td><code>bin/gate-queue.sh</code></td><td>gate-queue.sh (harbor#1018) — the approvals that wait for the operator: the ONLY queue writer (ship contract §5b.9).</td></tr>
 <tr><td><code>bin/gate-register-derive.sh</code></td><td>gate-register-derive.sh (harbor#1018, review finding 3) — the rows of harbor's protected-paths register that are</td></tr>
-<tr><td><code>bin/gate-repo-drift.sh</code></td><td>gate-repo-drift.sh (harbor#1418) — each governed repo's GitHub rules, declared in .agents/ship.config, against live.</td></tr>
+<tr><td><code>bin/gate-repo-drift.sh</code></td><td>gate-repo-drift.sh (harbor#1418) — each governed repo's GitHub rules, declared in .agents/ship.conf, against live.</td></tr>
 <tr><td><code>bin/gate-required-generate.sh</code></td><td>gate-required-generate.sh (harbor#1149, D-79) - the rows a local merge gate reads: core's contracts/required-checks.tsv</td></tr>
 <tr><td><code>bin/gate-verbs.sh</code></td><td>gate-verbs.sh (harbor#1419) — the one reader of the verb registers in contracts/verbs/, one file per CLI.</td></tr>
 <tr><td><code>bin/govern-hook.sh</code></td><td>govern-hook.sh (harbor#7) — just-in-time governance. Inject the rule at the</td></tr>
@@ -2643,7 +2640,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/library-fs.sh</code></td><td>library-fs.sh (harbor#618) — a file's mtime, size, mode and owner on BSD and GNU stat, one spelling.</td></tr>
 <tr><td><code>bin/library-gate.sh</code></td><td>library-gate.sh (harbor#1018) — the approval gate's shared library.</td></tr>
 <tr><td><code>bin/library-log.sh</code></td><td>library-log.sh (harbor#771) — the one log format (contracts/logging.md), sourced by every tool that logs.</td></tr>
-<tr><td><code>bin/library-repo-rules.sh</code></td><td>library-repo-rules.sh (harbor#1418) — how a repo's GitHub rules are declared in ship.config and read from GitHub, one</td></tr>
+<tr><td><code>bin/library-repo-rules.sh</code></td><td>library-repo-rules.sh (harbor#1418) — how a repo's GitHub rules are declared in ship.conf and read from GitHub, one</td></tr>
 <tr><td><code>bin/lint-adoption.sh</code></td><td>lint-adoption.sh (harbor#117 · A4) — every vendored asset has an intake row.</td></tr>
 <tr><td><code>bin/lint-comment.sh</code></td><td>lint-comment.sh (harbor#978) — file header line 2 and the comment rule, judged on the lines a branch adds.</td></tr>
 <tr><td><code>bin/lint-constitution.sh</code></td><td>lint-constitution.sh (harbor#1273) - the constitution states rules, never their cases: no ISO date, ticket, absolute</td></tr>
@@ -2686,7 +2683,6 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/scope-managed-retention.sh</code></td><td>MANAGED RETENTION (harbor#1181 lane 6) — pins transcript retention in the root-owned managed-settings.json,</td></tr>
 <tr><td><code>bin/scope-managed-telemetry.sh</code></td><td>MANAGED TELEMETRY (harbor#1181 lane 6) — pins Claude Code's own OTLP log events, sent to the collector's receiver</td></tr>
 <tr><td><code>bin/scope-marker-backfill.sh</code></td><td>H3 (harbor#4) — declare the detect-and-defer boundary across the installed base.</td></tr>
-<tr><td><code>bin/scope-repo-rename.sh</code></td><td>scope-repo-rename.sh (harbor#966; <code>harbor repo rename</code>) - rename a registered repo on this box, its sessions and memory with it.</td></tr>
 <tr><td><code>bin/scope-repo-sources.sh</code></td><td>scope-repo-sources.sh (harbor#1430; check id <code>context.repo-sources-agree</code>) - the four places a repo is known, held against each other.</td></tr>
 <tr><td><code>bin/scope-repo.sh</code></td><td>scope-repo.sh (harbor#1430, #1423 T18.7; <code>harbor repo</code>) - one command creates or adopts a repo, and audits it.</td></tr>
 <tr><td><code>bin/scope-repos-generate.sh</code></td><td>scope-repos-generate.sh (GOVERNANCE, harbor#966; check id <code>scope.repos-generated</code>) - the files that list the repos are</td></tr>

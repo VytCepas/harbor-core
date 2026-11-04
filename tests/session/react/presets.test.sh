@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # The session.* reaction handlers (harbor#1043, #1044): notify, save-now, ci-watch, cleanup-report and check each act on
 # their own event and state and on nothing else; cleanup-report kills and removes nothing; ci-watch validates the PR link
-# before it reaches a command. The handlers run as the dispatcher runs them: `sh <script>` with HARBOR_EVENT_JSON in the env.
+# before it reaches a command. The handlers run as the dispatcher runs them: `sh <script>` with HARBOR_EVENT in the env.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 B="$T_ROOT/bin"; T="$T_TMP"; ST="$T/state"; REPO="$T/repo"
 export HARBOR_STATUS_DIR="$ST"
@@ -13,7 +13,7 @@ STUB
 chmod +x "$T_BIN/osascript"
 ev() { # <kind> <subject> <title> [link] — a bus line as the dispatcher hands it over
   jq -nc --arg k "$1" --arg s "$2" --arg t "$3" --arg l "${4:-}" '{id:"20261010T000000Z-1-abcd",kind:$k,subject:$s,data:({session_id:$s,title:$t}+(if $l == "" then {} else {link:$l} end))}'; }
-fire() { HARBOR_EVENT_JSON="$1" sh "$B/$2" > "$T/out" 2>&1; RC=$?; }  # <event-line> <handler>
+fire() { HARBOR_EVENT="$1" sh "$B/$2" > "$T/out" 2>&1; RC=$?; }  # <event-line> <handler>
 banners() { cat "$ST/banners" 2>/dev/null; }
 reset() { rm -f "$ST/banners" "$ST/reactions.log"; }
 wait_banner() { n=0; while [ ! -s "$ST/banners" ] && [ "$n" -lt 50 ]; do sleep 0.1; n=$((n + 1)); done; }

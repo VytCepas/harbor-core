@@ -195,8 +195,8 @@ t_section "the merge gate end to end: shipped pack, real govern-hook.sh, stubbed
 E2E="$T/e2e"; mkdir -p "$E2E/repo/bin" "$E2E/repo/context-rules/repo" "$E2E/cfg"
 ( cd "$E2E/repo" && git init -q . && git config user.email t@t && git config user.name t \
   && git config commit.gpgsign false && printf 'x\n' > README && git add -A && git commit -qm init ) >/dev/null 2>&1
-cp "$T_ROOT/bin/govern-hook.sh" "$E2E/repo/bin/"; cp "$T_ROOT/context-rules/platform/merge-note.sh" "$E2E/repo/context-rules/repo/"
-for _mp in "$T_ROOT"/context-rules/platform/*merge*.md; do cp "$_mp" "$E2E/repo/context-rules/repo/"; done
+cp "$T_ROOT/bin/govern-hook.sh" "$E2E/repo/bin/"; cp "$T_ROOT/context-rules/harbor/merge-note.sh" "$E2E/repo/context-rules/repo/"
+for _mp in "$T_ROOT"/context-rules/harbor/*merge*.md; do cp "$_mp" "$E2E/repo/context-rules/repo/"; done
 _e2e() { # <exit> <text> <command>
   printf '#!/usr/bin/env sh\nprintf "%%s\\n" "%s"\nexit %s\n' "$2" "$1" > "$E2E/repo/bin/gate-merge-check.sh"
   jq -cn --arg c "$3" '{hook_event_name:"PreToolUse",tool_name:"Bash",session_id:"e-1",tool_input:{command:$c}}' \

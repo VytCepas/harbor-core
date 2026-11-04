@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # gate-register-derive.sh (harbor#1018, review finding 3) — the rows of harbor's protected-paths register that are
 # DERIVED, never kept by hand: every file an installer ships into the config dir, every script an installer wires
-# as a hook or statusline, every shim target contracts/shims.tsv links into ~/.local/bin, every file a ship.config
+# as a hook or statusline, every shim target contracts/shims.tsv links into ~/.local/bin, every file a ship.conf
 # command runs, what decides the required checks' content, and everything those and the gate tools source or call,
 # followed to a fixpoint.
 #
@@ -21,7 +21,7 @@ LOG_FD=2
 . "$HERE/library-log.sh"
 log_init gate-register-derive
 REG="${2:-$ROOT/.agents/protected-paths.tsv}"
-CONF="$ROOT/.agents/ship.config"
+CONF="$ROOT/.agents/ship.conf"
 BEGIN='# BEGIN derived: bin/gate-register-derive.sh --write writes the rows to END; classify.test.sh fails when they are stale'
 END='# END derived'
 case "${1:-}" in
@@ -73,13 +73,13 @@ awk -F'\t' -v me="${_me:-harbor}" 'NR == FNR { if ($1 !~ /^#/ && NF >= 3) rel[$1
     print p "\tlinked into ~/.local/bin as " $1 " by contracts/shims.tsv\toperator-run" }' \
   "$ROOT/contracts/roots.tsv" "$ROOT/contracts/shims.tsv" >> "$T/seed"
 printf 'contracts/%s\tdecides what ~/.local/bin points at\toperator-run\n' shims.tsv roots.tsv >> "$T/seed"
-# 4 · every file a ship.config command runs: plan, apply, verify, restore, deployed run unattended (review finding 2)
+# 4 · every file a ship.conf command runs: plan, apply, verify, restore, deployed run unattended (review finding 2)
 for _k in plan apply verify restore deployed; do
-  conf "$_k" | tr ' \t' '\n\n' | tr -d "\"'" | awk -v k="$_k" '/\// && !/^[\/$-]/ && !/\.\./ { print $0 "\truns as ship.config " k "\tship" }'
+  conf "$_k" | tr ' \t' '\n\n' | tr -d "\"'" | awk -v k="$_k" '/\// && !/^[\/$-]/ && !/\.\./ { print $0 "\truns as ship.conf " k "\tship" }'
 done >> "$T/seed"
 # 5 · what decides the required checks' content (review finding 4): the suite manifests, the stand-down map, the local
 #     required list, the push-run skip, the runner images and the test library, and what every workflow calls, not only
-#     the one ship.config judges: the public mirror runs governance.yml inside public-ci (harbor#1149). Individual test
+#     the one ship.conf judges: the public mirror runs governance.yml inside public-ci (harbor#1149). Individual test
 #     files stay open: protecting tests/** would put nearly every PR behind the click.
 for _f in "$ROOT"/contracts/suites*.txt contracts/suite-paths.txt contracts/required-checks.tsv bin/ci-verified.sh; do
   printf '%s\tdecides what a required check runs\tci-gate\n' "${_f#"$ROOT"/}"

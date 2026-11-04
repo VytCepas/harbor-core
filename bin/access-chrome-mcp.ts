@@ -106,7 +106,7 @@ function sessionName(lane: string): string {
   else s = process.env.HARBOR_ACCESS_BROWSER_SESSION || `mcp-${process.ppid}`;   // one per parent session, so two never share a page
   const bad = !s || s === 'claude-' || /[^A-Za-z0-9_-]/.test(s);
   const laneBad = lane !== '' && (/[^a-z0-9]/.test(lane) || lane.length > 12);
-  if (bad || laneBad) refuse('no session: run inside Claude Code (CLAUDE_CODE_SESSION_ID), or set HARBOR_ACCESS_BROWSER_SESSION outside it; a HARBOR_ACCESS_BROWSER_LANE is 1-12 of a-z0-9', 'export HARBOR_ACCESS_BROWSER_SESSION=manual');
+  if (bad || laneBad) refuse('no session: run inside Claude Code (CLAUDE_CODE_SESSION_ID), or set HARBOR_ACCESS_BROWSER_SESSION outside it; a HARBOR_BROWSER_LANE is 1-12 of a-z0-9', 'export HARBOR_ACCESS_BROWSER_SESSION=manual');
   return lane ? `${s}-${lane}` : s;
 }
 const workdirOf = (s: string) => path.join((process.env.TMPDIR ?? '/tmp').replace(/\/+$/, ''), 'harbor-browser', s);
@@ -539,7 +539,7 @@ function agentEnv(S: string, lane: string): NodeJS.ProcessEnv {
   for (const k of KEEP) if (process.env[k]) env[k] = process.env[k];
   env.PATH = PATH_FIXED;
   if (!env.CLAUDE_CODE_SESSION_ID && !env.HARBOR_ACCESS_BROWSER_SESSION) env.HARBOR_ACCESS_BROWSER_SESSION = `mcp-${process.ppid}`;
-  if (lane) env.HARBOR_ACCESS_BROWSER_LANE = lane;   // access-browser-agent.sh validates it
+  if (lane) env.HARBOR_BROWSER_LANE = lane;   // access-browser-agent.sh validates it
   for (const [k, v] of Object.entries(SEAMS.agentEnv ?? {})) env[k] = String(v);
   return env;
 }

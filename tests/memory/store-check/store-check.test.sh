@@ -4,7 +4,7 @@
 # not fire on (§2.11). It runs from a fixture bin/ whose context-budget.sh is a stub.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 B="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"
-FB="$B/bin"; mkdir -p "$FB"; cp "$T_ROOT/bin/memory-store-check.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/library-fs.sh" "$FB/"; T="$FB/memory-store-check.sh"
+FB="$B/bin"; mkdir -p "$FB"; cp "$T_ROOT/bin/memory-store-check.sh" "$T_ROOT/bin/library-log.sh" "$FB/"; T="$FB/memory-store-check.sh"
 stub() { # <spent> <ceiling> — one line in the shape context-budget.sh prints
   cat > "$FB/context-budget.sh" <<EOS
 #!/usr/bin/env sh
@@ -14,9 +14,7 @@ EOS
 }
 stub_absent() { rm -f "$FB/context-budget.sh"; }
 # The store sits at the cwd-keyed path, and --root names that same path (harbor#317).
-# The harness's key (claude's bundle: every character outside [A-Za-z0-9] a dash), never the tool's own (harbor#966).
-keyof() { printf '%s' "$1" | LC_ALL=C sed 's/[^A-Za-z0-9]/-/g'; }
-FCFG="$B/cfg"; S="$FCFG/projects/$(keyof "$PWD")/memory"
+FCFG="$B/cfg"; S="$FCFG/projects/$(printf '%s' "$PWD" | tr '/' '-')/memory"
 build() { # <note…> — notes a.md b.md …, and an index pointing at each
   rm -rf "$S"; mkdir -p "$S"; : > "$S/MEMORY.md"
   for n in "$@"; do printf 'body of %s\n' "$n" > "$S/$n"; printf -- '- [%s](%s) — hook\n' "$n" "$n" >> "$S/MEMORY.md"; done
@@ -204,7 +202,7 @@ t_has "16i the healthy path keeps its verdict" "$(run)" 'headroom'
 t_section "17 · a symlinked store is the one memory-route creates (harbor#608)"
 # find without -L walked nothing behind the link while bytes() read the index through it.
 linked_store() { # <cfg-dir> <real-store> — prints the symlinked cwd-keyed path
-  _lp="$1/projects/$(keyof "$PWD")/memory"; mkdir -p "$(dirname "$_lp")"; ln -s "$2" "$_lp"; printf '%s' "$_lp"
+  _lp="$1/projects/$(printf '%s' "$PWD" | tr '/' '-')/memory"; mkdir -p "$(dirname "$_lp")"; ln -s "$2" "$_lp"; printf '%s' "$_lp"
 }
 REAL="$B/real-store"; mkdir -p "$REAL"; : > "$REAL/MEMORY.md"
 for n in a.md b.md c.md; do printf 'body of %s\n' "$n" > "$REAL/$n"; printf -- '- [%s](%s) — hook\n' "$n" "$n" >> "$REAL/MEMORY.md"; done
@@ -220,10 +218,4 @@ EMPTY="$B/empty-store"; mkdir -p "$EMPTY"; printf -- '- [gone.md](gone.md) — h
 S17B="$(linked_store "$B/cfg17b" "$EMPTY")"
 t_has "17f a link to a store genuinely missing its notes still reports DANGLING" \
   "$(CLAUDE_CONFIG_DIR="$B/cfg17b" sh "$T" --root "$S17B" --index "$S17B/MEMORY.md" 2>&1)" 'DANGLING'
-
-t_section "18 · harbor#966: a cwd with a dot finds its store under the harness's key"
-DOT="$B/a/.worktrees/b_c/d"; FCFGD="$B/cfgdot"; SD="$FCFGD/projects/$(keyof "$DOT")/memory"; mkdir -p "$DOT" "$SD"; : > "$SD/MEMORY.md"
-for n in a.md b.md; do printf 'body of %s\n' "$n" > "$SD/$n"; printf -- '- [%s](%s) — hook\n' "$n" "$n" >> "$SD/MEMORY.md"; done
-stub 5000 24000
-t_eq "18a with no --root, the store found is the one under the harness's key" 2 "$(field "$( cd "$DOT" && CLAUDE_CONFIG_DIR="$FCFGD" sh "$T" 2>&1 )" notes)"
 t_done

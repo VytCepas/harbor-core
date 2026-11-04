@@ -471,8 +471,7 @@ floor_log_decision() { # <guard> <verdict> <rule.shape>
   _oc=-
   if [ "$_ot" = Bash ]; then
     _oc=off
-    _om="${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}"   # the old name is read until 2026-11-15 (harbor#1097)
-    if [ -n "$_om" ]; then [ ! -f "${_om%/*}/harbor-confinement" ] || _oc=confined
+    if [ -n "${HARBOR_MANAGED_SETTINGS:-}" ]; then [ ! -f "${HARBOR_MANAGED_SETTINGS%/*}/harbor-confinement" ] || _oc=confined
     elif [ -f '/Library/Application Support/ClaudeCode/harbor-confinement' ] || [ -f /etc/claude-code/harbor-confinement ]; then _oc=confined
     fi
     if [ "$_oc" = confined ]; then

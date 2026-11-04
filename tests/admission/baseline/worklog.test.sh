@@ -60,7 +60,7 @@ esac
 STUB
 printf 'x-test-token\n' > "$WL/token"
 _wpf() { printf '{"session_id":"%s","cwd":"%s"}' "$1" "$REPO_BARE" | CLAUDE_CONFIG_DIR="$CFG" HARBOR_MEMORY_LOG_DIR="$WL/plog" \
-  HARBOR_ACCESS_SECRET_BIN="$WL/secret" FAKE_STORE="$WL/token" sh "$T_ROOT/hooks/worklog-push/worklog-push.sh" 2>&1 >/dev/null; }
+  HARBOR_SECRET_BIN="$WL/secret" FAKE_STORE="$WL/token" sh "$T_ROOT/hooks/worklog-push/worklog-push.sh" 2>&1 >/dev/null; }
 _o="$(_wpf WL-324)"
 t_has "324 the failure is reported" "$_o" "push FAILED"
 t_has "324 …with git's own reason" "$_o" "remote rejected"
@@ -122,7 +122,7 @@ t_eq "1191 …and the session is not blocked (exit 0)" 0 "$_nh_rc"
 t_section "harbor#1205 worklog-push: the token is the store's worklog-token; a plaintext file is never read, and warns once"
 _sc="$WL/scfg"; mkdir -p "$_sc"
 _wps() { printf '{"session_id":"%s","cwd":"%s"}' "$1" "$REPO_BARE" | CLAUDE_CONFIG_DIR="$_sc" HARBOR_MEMORY_LOG_DIR="$WL/plog" \
-  HARBOR_ACCESS_SECRET_BIN="$WL/secret" FAKE_STORE="$WL/store" HARBOR_MEMORY_LOG_TOKEN_FILE="$WL/legacy" sh "$T_ROOT/hooks/worklog-push/worklog-push.sh" 2>&1 >/dev/null; }
+  HARBOR_SECRET_BIN="$WL/secret" FAKE_STORE="$WL/store" HARBOR_MEMORY_LOG_TOKEN_FILE="$WL/legacy" sh "$T_ROOT/hooks/worklog-push/worklog-push.sh" 2>&1 >/dev/null; }
 rm -f "$WL/store" "$WL/legacy"
 t_has "1205 no token anywhere: it says the log is never pushed" "$(_wps WL-1205-a)" "never pushed"
 t_eq "1205 …once: the next Stop is silent" "" "$(_wps WL-1205-b)"

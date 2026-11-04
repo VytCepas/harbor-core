@@ -49,7 +49,7 @@ if [ "$M" != "$S" ]; then
   gate_ledger approve-deploy "$R $S" "refused-stale main=$M"
   die "$R $GATE_MAIN is now at $M, not the approved $S: an approval covers one exact commit" "$GATE_BIN/gate-approve.sh deploy $R $M"
 fi
-[ -n "$(gate_conf "$GATE_ROOT" apply)" ] || die "$R has no apply line in .agents/ship.config on $GATE_MAIN: nothing to deploy" "gh api repos/$R/contents/.agents/ship.config"
+[ -n "$(gate_conf "$GATE_ROOT" apply)" ] || die "$R has no apply line in .agents/ship.conf on $GATE_MAIN: nothing to deploy" "gh api repos/$R/contents/.agents/ship.conf"
 [ -f "$GATE_BIN/deploy-fleet.sh" ] || die "the runner $GATE_BIN/deploy-fleet.sh is not installed" "harbor deploy --apply --live   # from a terminal"
 # The one-shot token (contract §5a.4): the runner takes --approved only while it exists, and consumes it. A session
 # cannot write <cfg>/.helm-approvals, and guard-bash refuses --approved typed in a session, so only this click makes one.

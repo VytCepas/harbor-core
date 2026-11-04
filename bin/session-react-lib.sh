@@ -2,7 +2,7 @@
 # session-react-lib.sh (harbor#1043, #1044) — what the session.* reaction handlers share. Sourced, never run.
 #
 #   . "$HERE/session-react-lib.sh"
-#   react_event       parse $HARBOR_EVENT_JSON: RKIND RSID RSTATE RLINK; returns 1 unless RSID is a plain session id
+#   react_event       parse $HARBOR_EVENT: RKIND RSID RSTATE RLINK; returns 1 unless RSID is a plain session id
 #   react_rec <key>   one field of the session's state record (empty when there is none)
 #   react_notify <subtitle> <body>   a desktop banner through bin/library-alert.sh's chain; 1 when it was only logged
 #   react_log <id> <text>            one line in $RSTATE_DIR/reactions.log
@@ -20,7 +20,7 @@ react_event() {
   # shellcheck disable=SC2034 # RLINK, RSTATE: read by the session-*.sh that source this
   RKIND="" RSID="" RSTATE="" RLINK="" RDSID=""
   command -v jq >/dev/null 2>&1 || return 1
-  eval "$(printf '%s' "${HARBOR_EVENT_JSON:-${HARBOR_EVENT:-}}" | jq -r '@sh "RKIND=\(.kind // "") RSID=\(.subject // "") RSTATE=\(.data.title // "") RLINK=\(.data.link // "") RDSID=\(.data.session_id // "")"' 2>/dev/null)" || return 1
+  eval "$(printf '%s' "${HARBOR_EVENT:-}" | jq -r '@sh "RKIND=\(.kind // "") RSID=\(.subject // "") RSTATE=\(.data.title // "") RLINK=\(.data.link // "") RDSID=\(.data.session_id // "")"' 2>/dev/null)" || return 1
   # pr.opened carries the owning session in data.session_id; session.* events use the subject.
   case "$RKIND" in session.*) ;; *) RSID="$RDSID" ;; esac
   case "$RSID" in ''|*[!A-Za-z0-9_-]*) return 1 ;; esac

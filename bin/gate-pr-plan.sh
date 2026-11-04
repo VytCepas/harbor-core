@@ -5,22 +5,22 @@
 #
 # PR is owner/repo#n, a github.com pull URL, or a bare n, which means the cwd's origin and nothing else (no origin:
 # usage error, so a number is never judged against the wrong repo). Reads the PR, its checks, the repo's merge
-# settings, the base branch's rules and the repo's .agents/ship.config, and prints the steps in run order, each marked
+# settings, the base branch's rules and the repo's .agents/ship.conf, and prints the steps in run order, each marked
 # app or operator with why. Read-only: it runs nothing it prints.
 #
 # WHY. 2026-11-01: two PRs were handed over as `gh pr merge --squash` and GitHub refused both.
 # One needed a review its classic protection holds (403 to the App); the other needed a code-owner review while
-# reviewDecision reads empty, and its ship.config says merge-commit. Every one of those facts was readable.
+# reviewDecision reads empty, and its ship.conf says merge-commit. Every one of those facts was readable.
 #
 # DERIVED, NEVER DEFAULTED
-#   method   ship.config `method` when the live repo allows it, refused when it does not (that is drift, not a choice);
+#   method   ship.conf `method` when the live repo allows it, refused when it does not (that is drift, not a choice);
 #            undeclared: the one method allowed, else squash when allowed. Live = the repo's allow_* AND the rules'
 #            allowed_merge_methods.
 #   update   a BEHIND PR gets update-branch and a re-plan, nothing after: the update moves the head, and a push
 #            dismisses a stale approval, so an approve or a pinned merge planned now would be wasted.
 #   red      a red head BEHIND its base (compare behind_by > 0) gets update-branch and a re-plan, not a re-run: the red may
 #            already be fixed on the base (harbor#1418). Up to date, the re-run stays the step.
-#   declared ship.config `review` and `delete-branch` are read when present; live wins and a mismatch is drift in the
+#   declared ship.conf `review` and `delete-branch` are read when present; live wins and a mismatch is drift in the
 #            note (harbor#1418). The two readers share bin/library-repo-rules.sh with bin/gate-repo-drift.sh.
 #   approve  when GitHub says REVIEW_REQUIRED, or blocks a PR whose checks are green and which nobody approved
 #            (a code-owner rule leaves reviewDecision empty; classic protection is 403 to the App, so it is inferred).
@@ -138,44 +138,41 @@ plan() { # <repo> <n> — appends one plan object to $W/plans; returns 0 lands, 
     finish "behind $BASE" true; return 0
   fi
 
-  # method: ship.config when the live repo allows it, else the one allowed, else squash
+  # method: ship.conf when the live repo allows it, else the one allowed, else squash
   RJ="$("$GH" api "repos/$R" 2>"$W/err")" || { finish "could not read the repo: $(head -n 1 "$W/err")" false; return 3; }
   RUL="$("$GH" api "repos/$R/rules/branches/$BASE" 2>"$W/err")" || { finish "could not read $BASE's rules: $(head -n 1 "$W/err")" false; return 3; }
   ALLOWED="$(rr_methods "$RJ" "$RUL")"
-  # ship.config, else the old ship.conf (until 2026-11-15, harbor#1097)
-  SHIP="$("$GH" api "repos/$R/contents/.agents/ship.config?ref=$BASE" -H "Accept: application/vnd.github.raw" 2>"$W/err")" || {
-    grep -q 'HTTP 404' "$W/err" || { finish "could not read ship.config: $(head -n 1 "$W/err")" false; return 3; }
-    SHIP="$("$GH" api "repos/$R/contents/.agents/ship.conf?ref=$BASE" -H "Accept: application/vnd.github.raw" 2>"$W/err")" || {
-      grep -q 'HTTP 404' "$W/err" || { finish "could not read ship.conf: $(head -n 1 "$W/err")" false; return 3; }
-      SHIP=""; }; }
+  SHIP="$("$GH" api "repos/$R/contents/.agents/ship.conf?ref=$BASE" -H "Accept: application/vnd.github.raw" 2>"$W/err")" || {
+    grep -q 'HTTP 404' "$W/err" || { finish "could not read ship.conf: $(head -n 1 "$W/err")" false; return 3; }
+    SHIP=""; }
   DECL="$(printf '%s\n' "$SHIP" | rr_conf method)"; DECL="$(rr_method_decl "${DECL%% *}")"
-  # harbor#1418: ship.config's review and delete-branch against the live facts; live wins, a mismatch is drift in the note
+  # harbor#1418: ship.conf's review and delete-branch against the live facts; live wins, a mismatch is drift in the note
   DRIFT=""
   _d="$(printf '%s\n' "$SHIP" | rr_conf review)"
   if [ -n "$_d" ]; then
     _dn="$(rr_review_decl "$_d")"; _live="$(rr_review_live "$RUL")"
-    if [ "$_dn" = invalid ]; then DRIFT="drift: ship.config review $_d is not '<n> [code-owner]' or 'none'"
+    if [ "$_dn" = invalid ]; then DRIFT="drift: ship.conf review $_d is not '<n> [code-owner]' or 'none'"
     elif [ -z "$_live" ]; then
-      [ "$_dn" = 0 ] || DRIFT="ship.config declares review $_dn but this cannot read a review rule (classic protection is 403 to the App)"
-    elif [ "$_live" != "$_dn" ]; then DRIFT="drift: ship.config says review $_dn, the live rules require $_live"; fi
+      [ "$_dn" = 0 ] || DRIFT="ship.conf declares review $_dn but this cannot read a review rule (classic protection is 403 to the App)"
+    elif [ "$_live" != "$_dn" ]; then DRIFT="drift: ship.conf says review $_dn, the live rules require $_live"; fi
   fi
   _d="$(printf '%s\n' "$SHIP" | rr_conf delete-branch)"
   if [ -n "$_d" ]; then
     _dn="$(rr_deletebranch_decl "$_d")"; _live="$(printf '%s' "$RJ" | jq -r '.delete_branch_on_merge // false')"
-    if [ "$_dn" = invalid ]; then DRIFT="${DRIFT:+$DRIFT; }drift: ship.config delete-branch $_d is not yes or no"
-    elif [ "$_live" != "$_dn" ]; then DRIFT="${DRIFT:+$DRIFT; }drift: ship.config says delete-branch $( [ "$_dn" = true ] && echo yes || echo no ), the live repo's delete_branch_on_merge is $_live"; fi
+    if [ "$_dn" = invalid ]; then DRIFT="${DRIFT:+$DRIFT; }drift: ship.conf delete-branch $_d is not yes or no"
+    elif [ "$_live" != "$_dn" ]; then DRIFT="${DRIFT:+$DRIFT; }drift: ship.conf says delete-branch $( [ "$_dn" = true ] && echo yes || echo no ), the live repo's delete_branch_on_merge is $_live"; fi
   fi
   [ -z "$DRIFT" ] || NOTE="${NOTE:+$NOTE; }$DRIFT"
   if [ -n "$DECL" ]; then
     case " $ALLOWED " in
-      *" $DECL "*) M="$DECL"; MF="ship.config" ;;
-      *) finish "drift: ship.config says method $DECL, the live repo allows only: ${ALLOWED:-nothing}" false; return 1 ;;
+      *" $DECL "*) M="$DECL"; MF="ship.conf" ;;
+      *) finish "drift: ship.conf says method $DECL, the live repo allows only: ${ALLOWED:-nothing}" false; return 1 ;;
     esac
   else
     set -- $ALLOWED
     if [ $# -eq 1 ]; then M="$1"; MF="the only method $R allows"
     elif [ $# -eq 0 ]; then finish "the repo and its rules allow no merge method" false; return 1
-    else case " $ALLOWED " in *" squash "*) M=squash ;; *) M="$1" ;; esac; MF="undeclared (no ship.config method); allowed: $ALLOWED"; fi
+    else case " $ALLOWED " in *" squash "*) M=squash ;; *) M="$1" ;; esac; MF="undeclared (no ship.conf method); allowed: $ALLOWED"; fi
   fi
 
   # approval: GitHub's own word, a pending review-gate status, the rules' unattributed-change flag, or a green PR that
