@@ -38,7 +38,7 @@ box() {
   REPOS="$(awk -F"$TAB" '!/^#/ && $2 == "REPOS" { sub(/\/.*/, "", $3); print $3 }' "$_h/contracts/roots.tsv" | { cat; echo zorbcorp; } | sort -u | tr '\n' ' ')"
   for r in $REPOS; do
     mkdir -p "$T/src/$r"
-    case "$r" in project-init|projects-orchestrator) printf 'install:\n\techo x\n' > "$T/src/$r/justfile" ;;
+    case "$r" in yard|fleet) printf 'install:\n\techo x\n' > "$T/src/$r/justfile" ;;
                  harbor) ;; *) echo "$r" > "$T/src/$r/README" ;; esac
     git -C "$T/src/$r" init -q -b main && git -C "$T/src/$r" add -A
     git -C "$T/src/$r" -c user.name=t -c user.email=t@t commit -qm init && git clone -q --bare "$T/src/$r" "$REM/acme/$r.git"
@@ -111,7 +111,7 @@ t_section "control: the fixture is the fresh machine it claims to be"
 box ctl
 t_eq "no uv or just on the suite's PATH before the run" "" "$(env PATH="$P" sh -c 'command -v uv just' 2>/dev/null || :)"
 t_eq "no checkout under the throwaway HOME" no "$([ -d "$H/port/harbor" ] && echo yes || echo no)"
-t_has "the table names the repos the suite built remotes for" "$REPOS" "project-init"
+t_has "the table names the repos the suite built remotes for" "$REPOS" "yard"
 t_exit "https is refused under the suite's git (nothing can reach the network)" 128 \
   env HOME="$H" GIT_ALLOW_PROTOCOL=file git ls-remote https://example.invalid/x.git
 
@@ -162,21 +162,21 @@ t_eq "exit" 0 "$RC"
 dry_run_ok "fresh"
 t_has "deploy's preflight passed" "$(out)" "Preflight passed"
 t_eq "gh cloned harbor and the two the components name, nothing else" \
-  "acme/harbor acme/project-init acme/projects-orchestrator " "$(clones | tr ' ' '\n' | sort | tr '\n' ' ' | sed 's/^ //')"
-t_eq "...and the estate and workload repos the table also names were not cloned" "harbor project-init projects-orchestrator " "$(checkouts)"
-for r in project-init projects-orchestrator; do
+  "acme/fleet acme/harbor acme/yard " "$(clones | tr ' ' '\n' | sort | tr '\n' ' ' | sed 's/^ //')"
+t_eq "...and the estate and workload repos the table also names were not cloned" "fleet harbor yard " "$(checkouts)"
+for r in yard fleet; do
   t_eq "$r: a checkout on main at ~/port/$r" main "$(git -C "$H/port/$r" symbolic-ref --short HEAD 2>/dev/null || echo none)"
 done
-t_eq "...its origin is the github URL, not the local remote" "https://github.com/acme/project-init.git" \
-  "$(git -C "$H/port/project-init" config --get remote.origin.url)"
+t_eq "...its origin is the github URL, not the local remote" "https://github.com/acme/yard.git" \
+  "$(git -C "$H/port/yard" config --get remote.origin.url)"
 t_eq "curl fetched exactly the two official installers" \
   "https://astral.sh/uv/install.sh https://just.systems/install.sh" "$(grep -o 'https://[^ ]*' "$T/log.curl" | tr '\n' ' ' | sed 's/ $//')"
 t_has "...over https only" "$(head -1 "$T/log.curl")" "--proto =https"
 t_eq "uv installed into ~/.local/bin" "uv 0.0-stub" "$("$H/.local/bin/uv" --version 2>&1)"
 t_eq "just installed into ~/.local/bin" "just 0.0-stub" "$("$H/.local/bin/just" --version 2>&1)"
 t_eq "the uv installer was told not to edit shell profiles" no "$([ -s "$T/log.rcedit" ] && echo yes || echo no)"
-t_has "deploy reached project-init's own dry run through the installed just" "$(cat "$T/log.inst")" "just $H/port/project-init"
-t_has "...and projects-orchestrator's" "$(cat "$T/log.inst")" "just $H/port/projects-orchestrator"
+t_has "deploy reached yard's own dry run through the installed just" "$(cat "$T/log.inst")" "just $H/port/yard"
+t_has "...and fleet's" "$(cat "$T/log.inst")" "just $H/port/fleet"
 t_has "deploy ran the installers' dry runs" "$(cat "$T/log.inst")" "deploy-runtime-install.sh --live"
 t_eq "nothing ran with --apply: the apply is the operator's" "" "$(grep -- '--apply' "$T/log.inst" || :)"
 t_has "the apply is named as the operator's next step" "$(out)" "sh '$H/port/harbor/bin/deploy.sh' --apply --live"
@@ -191,34 +191,34 @@ t_eq "no file under HOME changed" "" "$(written)"
 t_eq "no clone" "" "$(clones)"
 t_eq "...and gh was not even asked whether it is logged in" "" "$(cat "$T/log.ghall")"
 t_eq "no download" "" "$(cat "$T/log.curl")"
-t_has "each repo is reported present and not touched" "$(out)" "project-init: present at $H/port/project-init, not touched"
+t_has "each repo is reported present and not touched" "$(out)" "yard: present at $H/port/yard, not touched"
 t_has "uv found where the first run put it" "$(out)" "uv present ($H/.local/bin/uv)"
-t_has "the control: the mark catches a write" "$(touch "$H/port/project-init/README"; written)" "port/project-init/README"
+t_has "the control: the mark catches a write" "$(touch "$H/port/yard/README"; written)" "port/yard/README"
 
 t_section "each component names its own repo"
 box yard 'components = ["core", "yard"]'; run
 t_eq "yard: exit" 0 "$RC"
-t_eq "yard: project-init alone" "harbor project-init " "$(checkouts)"
+t_eq "yard: yard alone" "harbor yard " "$(checkouts)"
 t_eq "yard: uv and just are fetched (its recipe runs just)" "https://astral.sh/uv/install.sh https://just.systems/install.sh" \
   "$(grep -o 'https://[^ ]*' "$T/log.curl" | tr '\n' ' ' | sed 's/ $//')"
 box fleet 'components = ["core", "fleet"]'; run
 t_eq "fleet: exit" 0 "$RC"
-t_eq "fleet: projects-orchestrator alone" "harbor projects-orchestrator " "$(checkouts)"
-t_has "fleet: just ran its install" "$(cat "$T/log.inst")" "just $H/port/projects-orchestrator"
+t_eq "fleet: fleet alone" "fleet harbor " "$(checkouts)"
+t_has "fleet: just ran its install" "$(cat "$T/log.inst")" "just $H/port/fleet"
 box pg 'components = ["core", "prod-guard"]'; run
 t_eq "prod-guard: exit" 0 "$RC"
-t_eq "prod-guard: its source is a project-init checkout, and that is all" "harbor project-init " "$(checkouts)"
+t_eq "prod-guard: its source is a yard checkout, and that is all" "harbor yard " "$(checkouts)"
 t_eq "prod-guard: no uv or just (no repo's just install runs)" "" "$(cat "$T/log.curl")"
 t_has "prod-guard: said so" "$(out)" "uv and just are not needed"
 box both 'components = ["core", "yard", "prod-guard"]'; run
 t_eq "yard and prod-guard name one checkout: exit" 0 "$RC"
-t_eq "...and it is cloned once" "acme/harbor acme/project-init" "$(clones | sed 's/ $//')"
+t_eq "...and it is cloned once" "acme/harbor acme/yard" "$(clones | sed 's/ $//')"
 box coll 'components = ["core", "collector"]'; run
 t_eq "collector: exit" 0 "$RC"
 t_eq "collector: root installs it, so nothing is cloned" "harbor " "$(checkouts)"
 box legacy 'channel = "main"'; run
 t_eq "no components key: exit" 0 "$RC"
-t_eq "...deploy's legacy default is every component, so both repos are prepared" "harbor project-init projects-orchestrator " "$(checkouts)"
+t_eq "...deploy's legacy default is every component, so both repos are prepared" "fleet harbor yard " "$(checkouts)"
 t_has "...and the run says why" "$(out)" "harbor.toml names no components"
 
 t_section "packs name their repos too"
@@ -273,40 +273,40 @@ t_has "...and the run says where it came from" "$(out)" "thing: cloned from http
 box origpath "$PK" "$ROW"; mkbare other/thing real; run "git clone -q '$REM/acme/harbor.git' ~/port/harbor && $BOOT"
 t_eq "every clone has a remote, so harbor's own origin may be a path: exit" 0 "$RC"
 t_hasnt "...and no owner was looked for" "$(out)" "cloning from github.com/"
-box compother 'components = ["core", "yard"]' "project-init${TAB}project-init${TAB}workload${TAB}https://github.com/other/project-init.git"
-mkbare other/project-init realpi justfile; run
+box compother 'components = ["core", "yard"]' "yard${TAB}yard${TAB}workload${TAB}https://github.com/other/yard.git"
+mkbare other/yard realpi justfile; run
 t_eq "a component's repo also comes from its registry row: exit" 0 "$RC"
-t_eq "...gh cloned other/project-init" "acme/harbor other/project-init" "$(clones | sed 's/ $//')"
-t_eq "...into the directory deploy reads" realpi "$(cat "$H/port/project-init/README")"
+t_eq "...gh cloned other/yard" "acme/harbor other/yard" "$(clones | sed 's/ $//')"
+t_eq "...into the directory deploy reads" realpi "$(cat "$H/port/yard/README")"
 
 t_section "each variable names its own checkout: HARBOR_PROJECT_INIT is yard's, PROJECT_INIT_SRC is prod-guard's"
 box ovr 'components = ["core", "yard", "prod-guard"]'
-run "$GIT_HARBOR && git clone -q https://github.com/acme/project-init.git ~/port/yard-src && git clone -q https://github.com/acme/project-init.git ~/port/guard-src && HARBOR_SCOPE_SCAFFOLDER=\$HOME/port/yard-src PROJECT_INIT_SRC=\$HOME/port/guard-src $BOOT"
+run "$GIT_HARBOR && git clone -q https://github.com/acme/yard.git ~/port/yard-src && git clone -q https://github.com/acme/yard.git ~/port/guard-src && HARBOR_SCOPE_SCAFFOLDER=\$HOME/port/yard-src PROJECT_INIT_SRC=\$HOME/port/guard-src $BOOT"
 t_eq "two different checkouts exported: exit" 0 "$RC"
-t_has "yard's is the one HARBOR_PROJECT_INIT names" "$(out)" "project-init: present at $H/port/yard-src, not touched"
-t_has "prod-guard's is the one PROJECT_INIT_SRC names" "$(out)" "project-init: present at $H/port/guard-src, not touched"
-t_eq "...and the default directory was not made" no "$([ -e "$H/port/project-init" ] && echo yes || echo no)"
+t_has "yard's is the one HARBOR_PROJECT_INIT names" "$(out)" "yard: present at $H/port/yard-src, not touched"
+t_has "prod-guard's is the one PROJECT_INIT_SRC names" "$(out)" "yard: present at $H/port/guard-src, not touched"
+t_eq "...and the default directory was not made" no "$([ -e "$H/port/yard" ] && echo yes || echo no)"
 box ovrmiss 'components = ["core", "yard"]'
 run "$GIT_HARBOR && HARBOR_SCOPE_SCAFFOLDER=\$HOME/port/yard-src $BOOT"
 t_eq "an exported directory that is not there yet: exit" 0 "$RC"
-t_eq "...gets the repo the table's default names, not one named for the directory" "acme/project-init" "$(clones | sed 's/ $//')"
+t_eq "...gets the repo the table's default names, not one named for the directory" "acme/yard" "$(clones | sed 's/ $//')"
 t_eq "...and it is on main in the exported directory" main "$(git -C "$H/port/yard-src" symbolic-ref --short HEAD 2>/dev/null || echo none)"
 
 t_section "gh is for private repos, not a precondition"
 box nologin 'components = ["core", "yard"]'; GH_AUTH=1 run; GH_AUTH=''
 t_eq "gh not logged in, a clone needed: exit" 0 "$RC"
-t_eq "...plain git cloned it" "harbor project-init " "$(checkouts)"
+t_eq "...plain git cloned it" "harbor yard " "$(checkouts)"
 t_eq "...gh cloned only the documented harbor step" "acme/harbor" "$(clones | sed 's/ $//')"
 t_has "...warned that gh is missing or not logged in" "$(out)" "gh is missing or not logged in"
 t_has "...and that only public repositories are reachable" "$(out)" "reaches public repositories only"
-box private 'components = ["core", "yard"]'; rm -rf "$REM/acme/project-init.git"; GH_AUTH=1 run "$GIT_HARBOR && $BOOT"; GH_AUTH=''
+box private 'components = ["core", "yard"]'; rm -rf "$REM/acme/yard.git"; GH_AUTH=1 run "$GIT_HARBOR && $BOOT"; GH_AUTH=''
 t_eq "a repo plain git cannot reach: exit" 1 "$RC"
 t_has "...reason" "$(out)" "only a public repository can be cloned"
 t_has "...the fix is gh" "$(out)" "install gh (https://cli.github.com), gh auth login"
 t_eq "...deploy never ran" "" "$(cat "$T/log.inst")"
-box gone 'components = ["core", "yard"]'; rm -rf "$REM/acme/project-init.git"; run
+box gone 'components = ["core", "yard"]'; rm -rf "$REM/acme/yard.git"; run
 t_eq "a repo gh cannot clone: exit" 1 "$RC"
-t_has "...the fix is the gh command" "$(out)" "  fix: gh repo clone acme/project-init '$H/port/project-init'"
+t_has "...the fix is the gh command" "$(out)" "  fix: gh repo clone acme/yard '$H/port/yard'"
 
 t_section "refused before any write"
 refused() { # <label> <reason> — after the documented clone, bootstrap writes nothing and runs no deploy
@@ -320,8 +320,8 @@ refused() { # <label> <reason> — after the documented clone, bootstrap writes 
 box win 'components = ["core", "yard"]'; UNAME=MINGW64_NT-10.0-22631 run; UNAME=''
 refused "a native Windows shell" "native Windows shell"
 t_has "...naming WSL2 as the way in" "$(out)" "WSL2"
-box notgit 'components = ["core", "yard"]'; mkdir -p "$H/port/project-init"; run
-refused "a non-checkout where a repo belongs" "project-init: $H/port/project-init exists and is not a git checkout"
+box notgit 'components = ["core", "yard"]'; mkdir -p "$H/port/yard"; run
+refused "a non-checkout where a repo belongs" "yard: $H/port/yard exists and is not a git checkout"
 box badtoml 'components = ["core", "bogus"]'; run
 refused "a component that does not exist" "harbor.toml components: 'bogus' is not a component"
 box oddowner 'components = ["core", "yard"]'; run "git clone -q '$REM/acme/harbor.git' ~/port/harbor && $BOOT"

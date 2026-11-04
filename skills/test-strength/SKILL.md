@@ -117,7 +117,7 @@ down.
 
 ## Provenance
 
-Re-authored for Harbor from `project-init`'s `verify-test-strength`
+Re-authored for Harbor from `yard`'s `verify-test-strength`
 (L3, `plugins/project-init-workflow/`), read 2026-08-28. **Not a copy and not a
 move:** `contracts/host-profile.md` makes the box profile the only up-pointing
 edge, so an L0 session may not depend on a Yard plugin — the idea comes up, the

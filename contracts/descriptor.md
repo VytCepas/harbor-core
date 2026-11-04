@@ -1,7 +1,7 @@
 # Descriptor seam (L3 → L2 + L0) — ALREADY FIRST-CLASS: EXTEND, do not reinvent
 
-**Source of truth:** `project-init` `schemas/descriptor.schema.json` — **contract version 2**, additive-only.
-**Existing tests/CI (do not duplicate):** project-init `tests/policy/contracts/test_descriptor_schema.py`; orchestrator vendored copy + `tests/test_contract.py` + golden `config.v2.yaml` + `check_contract_freshness.py` + `.github/workflows/contract-freshness.yml`.
+**Source of truth:** `yard` `schemas/descriptor.schema.json` — **contract version 2**, additive-only.
+**Existing tests/CI (do not duplicate):** yard `tests/policy/contracts/test_descriptor_schema.py`; orchestrator vendored copy + `tests/test_contract.py` + golden `config.v2.yaml` + `check_contract_freshness.py` + `.github/workflows/contract-freshness.yml`.
 
 ## The memory tier field (the one Harbor must not break)
 `memory.tier` is an integer on the **REAL** ladder — verified against `_MEMORY_TIERS`:
@@ -21,4 +21,4 @@ Orchestrator gates `graph_path` at tier ≥ 2 and `rag_endpoint` at tier ≥ 3. 
 - Keep **every legacy stack name as a permanent recognized alias**; add an upgrade fixture so already-scaffolded repos don't blank their tier on upgrade (see the PI-606 rename-regression scar).
 - Removing/renaming a value = **breaking v3** = lock-step orchestrator `CONTRACT_VERSION_MAX` bump in the same release.
 
-_Owner: PI-4 / D4 (project-init). Consumers: orchestrator (D6), helm (D1–D3)._
+_Owner: PI-4 / D4 (yard). Consumers: orchestrator (D6), helm (D1–D3)._

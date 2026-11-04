@@ -233,7 +233,7 @@ integrity path the floor refuses to a session (below). Its place on the bus is `
    "Authentication", "Credential management"). Read from the docs and the binary, not run.
    `user` keeps the floor's hooks (they live in user settings) and leaves out project and local settings.
 2. **Caps:** $0.25 per spawned agent, $5 per UTC day, enforced by the dispatcher from `total_cost_usd`.
-3. **Orchestrator:** a standing `claude --bg` session subscribes; projects-orchestrator does not change.
+3. **Orchestrator:** a standing `claude --bg` session subscribes; fleet does not change.
    It waits on `subscribe`, which is refused until the socket is verified (below).
 4. **On by deploy, spawner off (operator decision 2026-11-02, harbor#1437).** `deploy-runtime-install.sh` copies
    `event-dispatch.sh` into the config dir; the operator's own deploy (`bin/deploy.sh`, apply, live) then installs the launchd
@@ -505,7 +505,7 @@ Off again, in reverse: remove the hook, `rm ~/.claude/.helm-dispatch/spawn.on`, 
   `HARBOR_DEPLOY_UNATTENDED=1`, and a planted absolute-path `claude` there passes the noclaude shim. The same reach
   already exists through `com.harbor.status.fleet-snapshot` every 300 s; the dispatcher adds event-timed runs, not
   reach. *Proposed fix:* before each fire, verify every runtime-install manifest row in one
-  `git hash-object --stdin-paths` call and refuse on any mismatch; record projects-orchestrator's bytes in a
+  `git hash-object --stdin-paths` call and refuse on any mismatch; record fleet's bytes in a
   manifest (or have the preset call a read-only refresh mode that runs no orchestrator and no gh write); and
   say in docs/reference/checks.md which writes the preset makes.
 - **The check-to-exec window is the whole run (r3 #7).** *Exposure:* `/bin/sh` reads a handler script as it

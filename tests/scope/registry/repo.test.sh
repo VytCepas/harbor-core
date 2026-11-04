@@ -205,7 +205,7 @@ t_eq "control-plane, scaffolder and fleet-controller rows, no workload" "cp
 yd
 fl" "$(roots --platform-ids)"
 PW="$T_TMP/plnone"; mkdir -p "$PW"
-t_eq "no registry: the roots table's three role rows" "$(printf '%s\n' harbor projects-orchestrator project-init | sort)" "$(roots --platform-ids | sort)"
+t_eq "no registry: the roots table's three role rows" "$(printf '%s\n' fleet harbor yard | sort)" "$(roots --platform-ids | sort)"
 mkpriv plbad "$H"'evil	../x	workload	-
 '
 t_exit "a refused registry is refused here too" 2 roots --platform-ids
@@ -434,14 +434,14 @@ printf 'id\tpath\tkind\tremote\nbad\t../x\tworkload\t-\n' > "$PW/harbor-private/
 t_exit "a registry already invalid is not appended to" 1 env PORT_ROOT="$PW" HARBOR_SCOPE_PROJECTS_TSV="$T_TMP/p3.tsv" sh "$T_ROOT/bin/scope.sh" install --seed-from-projects
 
 t_section "--get follows the registry for a REPOS role, and keeps the table path with none (harbor#966)"
-mkpriv g "$H"'projects-orchestrator	moved/fleet	fleet-controller	-
+mkpriv g "$H"'fleet	moved/fleet	fleet-controller	-
 '
 t_eq "a role row resolves through the registry's path" "$PW/moved/fleet" "$(roots --get HARBOR_ORCHESTRATOR)"
 t_eq "...and keeps the rest of the row's path" "$PW/moved/fleet/fleet.yaml" "$(roots --get HARBOR_SCOPE_FLEET_FILE)"
-t_eq "a repo the registry lacks keeps the table path" "$PW/project-init" "$(roots --get HARBOR_PROJECT_INIT)"
+t_eq "a repo the registry lacks keeps the table path" "$PW/yard" "$(roots --get HARBOR_PROJECT_INIT)"
 t_eq "an exported override still wins" "/elsewhere" "$(HARBOR_SCOPE_FLEET_CONTROLLER=/elsewhere roots --get HARBOR_ORCHESTRATOR)"
 PW="$T_TMP/g-none"; mkdir -p "$PW"
-t_eq "no registry is today's literal" "$PW/projects-orchestrator" "$(roots --get HARBOR_ORCHESTRATOR)"
+t_eq "no registry is today's literal" "$PW/fleet" "$(roots --get HARBOR_ORCHESTRATOR)"
 
 t_section "a role row finds a renamed repo by its kind, not the table's id (harbor#966, #999)"
 mkpriv rn "$H"'yard	yard	scaffolder	-
@@ -460,13 +460,13 @@ t_eq "--id names the renamed scaffolder" "yard" "$(roots --id HARBOR_SCOPE_SCAFF
 t_eq "--id names the renamed fleet controller" "fleet" "$(roots --id HARBOR_SCOPE_FLEET_CONTROLLER)"
 t_eq "--id of a non-role row is the table's id" "harbor" "$(roots --id HARBOR_SCOPE_REPO)"
 t_exit "--id of a BOX row is a usage error" 2 roots --id HARBOR_SCOPE_LOCAL_BIN
-mkpriv rn2 "$H"'project-init	pi	scaffolder	-
-yard	yard	scaffolder	-
+mkpriv rn2 "$H"'old-yard	pi	scaffolder	-
+yard	yard-new	scaffolder	-
 '
-t_eq "two rows of the kind (a rename window) fall back to the id" "$PW/pi" "$(roots --get HARBOR_SCOPE_SCAFFOLDER)"
-t_eq "...and --id to the table's" "project-init" "$(roots --id HARBOR_SCOPE_SCAFFOLDER)"
+t_eq "two rows of the kind (a rename window) fall back to the id" "$PW/yard-new" "$(roots --get HARBOR_SCOPE_SCAFFOLDER)"
+t_eq "...and --id to the table's" "yard" "$(roots --id HARBOR_SCOPE_SCAFFOLDER)"
 PW="$T_TMP/rn-none"; mkdir -p "$PW"
-t_eq "no registry: --id is today's table id" "projects-orchestrator" "$(roots --id HARBOR_SCOPE_FLEET_CONTROLLER)"
+t_eq "no registry: --id is today's table id" "fleet" "$(roots --id HARBOR_SCOPE_FLEET_CONTROLLER)"
 
 t_section "a skill's notes/ pointer finds its file through scope-roots.sh --private (harbor#1149)"
 # dev-tracking, the skill that carried one, left core for the private layer's pack (harbor#1273), whose suite checks it;

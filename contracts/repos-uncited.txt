@@ -7,4 +7,5 @@
 #
 # One repo name per line.
 helm-log
-projects-orchestrator
+fleet
+yard

@@ -49,4 +49,5 @@ NOTICE	policy	source	third-party notices
 SECURITY.md	policy	source	vulnerability reporting policy
 CONTRIBUTING.md	policy	source	how to contribute to the export
 README.md	explanation	source	what harbor is and how to start
+CHANGELOG.md	record	source	the change record a control-plane repo carries (repo-kinds.tsv); harbor cuts no tagged releases
 trio-decoupling-epic.md	record	record	epic notes

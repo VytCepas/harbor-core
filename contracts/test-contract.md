@@ -1,7 +1,7 @@
 # Test contract — the rules every governed repo's tests follow
 
-**Seam:** shared canonical — Harbor, `project-init`, `projects-orchestrator`, and every repo
-`project-init` scaffolds. **Status: written 2026-09-28 (harbor#734, epic harbor#733).** Each rule
+**Seam:** shared canonical — Harbor, `yard`, `fleet`, and every repo
+`yard` scaffolds. **Status: written 2026-09-28 (harbor#734, epic harbor#733).** Each rule
 names the mechanism that fails when the rule is broken, per implementation. Where no mechanism
 exists yet, the rule says so and names the ticket, so no one reads it as checked.
 
@@ -25,11 +25,11 @@ shared is these rules, one entry point — `just test` — and one summary line 
      TMPDIR into a fresh temp dir and clears the floor's `HELM_*` knobs, plus (harbor#824) the
      `GIT_*` vars a git hook exports — see the rule below. Checked by
      [lib-test.sh](../tests/test/lib/lib.test.sh).
-   - *Python:* an autouse fixture in the root `conftest.py` that `project-init` scaffolds
+   - *Python:* an autouse fixture in the root `conftest.py` that `yard` scaffolds
      (project-init#1044) points HOME, `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_CACHE_HOME`,
      `XDG_STATE_HOME`, `CLAUDE_CONFIG_DIR` and TMPDIR at the test's `tmp_path`. Toolchain caches
      (uv, cargo, rustup, go, bun) keep their real locations: they are content, not configuration,
-     and a cold cache turns every `uv run` into a download. Checked by project-init's
+     and a cold cache turns every `uv run` into a download. Checked by yard's
      `tests/policy/contracts/test_test_contract.py`, which scaffolds a repo, plants a test asserting
      `Path.home()` is not the real home, and runs it.
    - *Known class — an inherited knob:* a suite that reads a `HARBOR_*` variable its caller
@@ -59,7 +59,7 @@ shared is these rules, one entry point — `just test` — and one summary line 
    - *Harbor:* `t_exit <label> <code> <cmd>` takes the code, and [core.sh](../tests/lib/core.sh)
      has no "non-zero" assertion to reach for.
    - *Python:* `just test` exits with pytest's own code, unchanged: 0 all passed, 1 a test
-     failed, 2 interrupted, 5 nothing collected. Checked by project-init's
+     failed, 2 interrupted, 5 nothing collected. Checked by yard's
      `tests/policy/contracts/test_test_contract.py`. **An assertion of `returncode != 0` in a Python test
      is not mechanised:** project-init#1052.
 
@@ -76,7 +76,7 @@ shared is these rules, one entry point — `just test` — and one summary line 
      [test-contract-test.sh](../tests/test/contract/contract.test.sh).
    - *Python:* the scaffolded root `conftest.py` prints `<project>: N passed, M failed` at the
      end of every pytest run, `just test` and `just test-cov` alike. An error counts as failed; a
-     skip counts in neither. Checked by project-init's `tests/policy/contracts/test_test_contract.py`.
+     skip counts in neither. Checked by yard's `tests/policy/contracts/test_test_contract.py`.
    - *The reader:* `projects-orchestrator test-fleet` (projects-orchestrator#316) runs `just
      test` in every repo `fleet.yaml` names and prints one row per repo: repo, passed, failed,
      exit.
@@ -120,7 +120,7 @@ shared is these rules, one entry point — `just test` — and one summary line 
 ## The entry point
 
 `just test` in every governed repo runs its hermetic tests, ends with the rule 3 summary line and
-exits with the exact code. `just lint` and `just ci` sit beside it. `project-init` stamps the
+exits with the exact code. `just lint` and `just ci` sit beside it. `yard` stamps the
 contract into every repo it scaffolds and carries it into existing ones on `project-init
 upgrade`; `projects-orchestrator test-fleet` reports every fleet repo red or green in one table.
 

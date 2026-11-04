@@ -86,11 +86,11 @@ Obsidian goes away.
 |---|---|---|
 | **Harbor** | the whole system (this repo = planning) | `VytCepas/harbor` |
 | **Helm** | **L0** — the environment you steer from; the assistant + the `harbor` command (the CLI is `harbor`, not `helm` — see [standards/naming.md](./standards/naming.md) §6.4). **Not a fork** — Harbor adopts and vendors from an upstream project at a pinned SHA (decision 2026-07-25, [docs/reference/provenance.md](./docs/reference/provenance.md)) | `VytCepas/harbor` — the L0 code lives here permanently; there is no separate repo |
-| **Fleet** | **L2** — cross-repo fleet health/heal/deploy | `VytCepas/projects-orchestrator` |
-| **Yard** | **L3** — per-repo scaffolder + lifecycle governance | `VytCepas/project-init` |
+| **Fleet** | **L2** — cross-repo fleet health/heal/deploy | `VytCepas/fleet` |
+| **Yard** | **L3** — per-repo scaffolder + lifecycle governance | `VytCepas/yard` |
 | **Log** | the git-backed cross-device work-log | your own private repo: the origin of `~/.claude/MEMORY` |
 
-`Fleet` and `Yard` are **in-system call-signs** — `projects-orchestrator` and `project-init` keep their published names. Nothing is renamed on disk.
+`Fleet` and `Yard` are **in-system call-signs** — `fleet` and `yard` are the repos `fleet` (was `projects-orchestrator`) and `yard` (was `project-init`), renamed 2026-11-04; their console scripts and Python packages keep the old names.
 
 The metaphor is a working one, not decoration: a **Ship** is a governed project (it carries `.agents/` + `context: repo`), the **Yard** builds and refits ships, the **Fleet** commands them, you stand at the **Helm**, and the **Log** is the record. *Aboard a Ship vs ashore in the Harbor* is the detect-and-defer boundary ([contracts/marker.md](./contracts/marker.md)).
 
@@ -111,11 +111,11 @@ sh ~/port/harbor/bin/harbor verify
 
 Start Claude Code once first, so that `~/.claude/settings.json` exists: deploy refuses without it (harbor#457).
 
-`deploy-bootstrap.sh` clones only what `harbor.toml` names: `yard` and `prod-guard` need project-init, `fleet` needs projects-orchestrator, and each entry of `packs` brings its own repository. It installs `uv` and `just` into `~/.local/bin` for `yard` or `fleet` only. A clone uses `gh` when it is logged in, else plain `git` over https, which reaches public repositories only. On your own machine, clone your private layer into `~/port/harbor-private` instead of running `scope install`, then run `deploy-bootstrap.sh` (harbor#829).
+`deploy-bootstrap.sh` clones only what `harbor.toml` names: `yard` and `prod-guard` need yard, `fleet` needs fleet, and each entry of `packs` brings its own repository. It installs `uv` and `just` into `~/.local/bin` for `yard` or `fleet` only. A clone uses `gh` when it is logged in, else plain `git` over https, which reaches public repositories only. On your own machine, clone your private layer into `~/port/harbor-private` instead of running `scope install`, then run `deploy-bootstrap.sh` (harbor#829).
 
 ## The architecture in one line
 
-**Helm (L0)** consumes the trio, never absorbs it — dependency points **down**. Fleet governance lives in the orchestrator; per-repo governance lives in project-init; **detect-and-defer** fails toward the repo so inside a scaffolded repo the repo wins and Helm's global engine stands down. The security path is pure POSIX (zero Bun in the floor; Bun only for skill-tools). Helm is **adopted and vendored, not forked** — upstream is pinned at a SHA in `~/.harbor-upstream` and every divergence is recorded in [docs/reference/provenance.md](./docs/reference/provenance.md), because with no overlay branch there is no `git merge` to tell you what changed.
+**Helm (L0)** consumes the trio, never absorbs it — dependency points **down**. Fleet governance lives in the orchestrator; per-repo governance lives in yard; **detect-and-defer** fails toward the repo so inside a scaffolded repo the repo wins and Helm's global engine stands down. The security path is pure POSIX (zero Bun in the floor; Bun only for skill-tools). Helm is **adopted and vendored, not forked** — upstream is pinned at a SHA in `~/.harbor-upstream` and every divergence is recorded in [docs/reference/provenance.md](./docs/reference/provenance.md), because with no overlay branch there is no `git merge` to tell you what changed.
 
 ## Documents
 
@@ -143,4 +143,4 @@ Apache License 2.0 (see `LICENSE`), Copyright 2026 Vytautas Cepas. Vendored thir
 - **Seams frozen first** in [`contracts/`](./contracts/) (descriptor · `--json` · marker · **box-profile** · memory-format) so the four repos can build in tandem without drift.
 - **Development process:** GitHub-lifecycle throughout — every ticket = issue → branch → PR with its Done-when as the acceptance gate.
 
-Tracked as GitHub Issues here (epic #1 + workstream tickets #2–#13; where an issue body conflicts with the docs at HEAD, the docs win). Cross-repo tickets are also filed in `project-init` and `projects-orchestrator`.
+Tracked as GitHub Issues here (epic #1 + workstream tickets #2–#13; where an issue body conflicts with the docs at HEAD, the docs win). Cross-repo tickets are also filed in `yard` and `fleet`.
