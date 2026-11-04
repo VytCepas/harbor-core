@@ -4,7 +4,7 @@
 # installer wires as a hook, is protected, derived from the installers rather than listed here.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 C="$T_ROOT/bin/gate-classify.sh"; W="$T_TMP/repo"
-mkdir -p "$W/.agents"; printf 'repo acme/widgets\nprotected .agents/reg.tsv\n' > "$W/.agents/ship.conf"
+mkdir -p "$W/.agents"; printf 'repo acme/widgets\nprotected .agents/reg.tsv\n' > "$W/.agents/ship.config"
 printf 'glob\tclass\treason\nsrc/core/**\tcore\tthe core\nbin/guard-*\tguard\tguards\n# a comment\nconfig.json\tsettings\tit\n' > "$W/.agents/reg.tsv"
 cls() { RC=0; OUT="$(sh "${CL:-$C}" "$W" "$@" 2>/dev/null)" || RC=$?; }
 
@@ -38,21 +38,21 @@ RC=0; sh "$T_TMP/mutc/gate-classify.sh" "$W" Bin/guard-x.sh >/dev/null 2>&1 || R
 t_eq "M2: matched by case, Bin/guard-x.sh is open" 0 "$RC"
 
 t_section "always protected, whatever the register says"
-cls .agents/reg.tsv .agents/ship.conf .github/workflows/ci.yml
+cls .agents/reg.tsv .agents/ship.config .github/workflows/ci.yml
 t_eq "the register the manifest names, the manifest and .github/" "register manifest ci-gate" "$(printf '%s\n' "$OUT" | cut -f3 | tr '\n' ' ' | sed 's/ $//')"
 cls ../escape /etc/passwd ./bin/guard-x.sh
 t_eq "an absolute path or a .. is protected; ./ is stripped" "unsafe unsafe guard" "$(printf '%s\n' "$OUT" | cut -f3 | tr '\n' ' ' | sed 's/ $//')"
 mkdir -p "$T_TMP/mut"; cp "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/library-fs.sh" "$C" "$T_TMP/mut/"
-sed 's|\.agents/ship.conf\\tmanifest\\talways protected\\n||' "$T_ROOT/bin/library-gate.sh" > "$T_TMP/mut/library-gate.sh"
+sed 's|\.agents/ship.config\\tmanifest\\talways protected\\n||' "$T_ROOT/bin/library-gate.sh" > "$T_TMP/mut/library-gate.sh"
 t_exit "M1: the mutation applies" 1 cmp -s "$T_TMP/mut/library-gate.sh" "$T_ROOT/bin/library-gate.sh"
-CL="$T_TMP/mut/gate-classify.sh" cls .agents/ship.conf
+CL="$T_TMP/mut/gate-classify.sh" cls .agents/ship.config
 t_eq "M1: without the fixed row the manifest is open" 0 "$RC"
 
 t_section "a manifest naming an absent register cannot be judged; no manifest leaves only the three"
 mv "$W/.agents/reg.tsv" "$W/.agents/gone.tsv"
 cls docs/x.md
 t_eq "exit 2" 2 "$RC"
-rm "$W/.agents/ship.conf"
+rm "$W/.agents/ship.config"
 cls src/core/a .agents/protected-paths.tsv .github/x
 t_eq "no manifest: the default register path, the manifest and .github/ only" "PROTECTED	.agents/protected-paths.tsv	register
 PROTECTED	.github/x	ci-gate" "$OUT"
@@ -61,17 +61,17 @@ t_eq "no repo root: usage, exit 2" 2 "$RC"
 
 t_section "harbor's register: the policy's paths are protected"
 for p in policy/constitution.md docs/explanation/verification-expanded.md bin/admission-bash.sh bin/admission-install.sh bin/library-admission.sh \
-         bin/admission-normalize.awk hooks/pre-commit context-rules/user/x.md context-rules/harbor/merge-note.sh skills/x/SKILL.md \
+         bin/admission-normalize.awk hooks/pre-commit context-rules/user/x.md context-rules/platform/merge-note.sh skills/x/SKILL.md \
          bin/deploy-runtime-install.sh bin/deploy.sh bin/deploy-restore.sh bin/deploy-harden.sh bin/pin-instructions.sh \
          contracts/required-checks.tsv contracts/hooks.md .github/workflows/governance.yml bin/gate-approve.sh \
-         bin/library-gate.sh bin/gate-merge-check.sh .agents/protected-paths.tsv .agents/ship.conf; do
+         bin/library-gate.sh bin/gate-merge-check.sh .agents/protected-paths.tsv .agents/ship.config; do
   t_exit "$p is protected" 1 sh "$C" "$T_ROOT" "$p"
 done
 t_exit "docs/design/approval-gate.md is not" 0 sh "$C" "$T_ROOT" docs/design/approval-gate.md
 
 t_section "harbor's register: the leak gate's patterns are human-gated (harbor#1149)"
 t_exit "contracts/leak-patterns.tsv is protected: an allow row cannot forgive a leak unseen" 1 sh "$C" "$T_ROOT" contracts/leak-patterns.tsv
-mkdir -p "$T_TMP/lp/.agents"; cp "$T_ROOT/.agents/ship.conf" "$T_TMP/lp/.agents/"
+mkdir -p "$T_TMP/lp/.agents"; cp "$T_ROOT/.agents/ship.config" "$T_TMP/lp/.agents/"
 grep -v '	ci-gate	the generic patterns of the leak gate' "$T_ROOT/.agents/protected-paths.tsv" > "$T_TMP/lp/.agents/protected-paths.tsv"
 t_exit "RED-PROOF: without the leak-patterns row, the register is open there" 0 \
   sh "$C" "$T_TMP/lp" contracts/leak-patterns.tsv
@@ -80,7 +80,7 @@ t_section "harbor's register: the skill catalog's router is an instruction surfa
 # deploy writes this file's text into the installed skill catalog, so a change to it is a change to what every session reads.
 t_eq "contracts/skill-book-router.tsv is protected as instructions" instructions "$(sh "$C" "$T_ROOT" contracts/skill-book-router.tsv | cut -f3)"
 t_eq "...as is the generator that reads it, and the tracked book it writes" "ship instructions" "$(sh "$C" "$T_ROOT" bin/skill-catalog.sh skills/skill-catalog/SKILL.md | cut -f3 | tr '\n' ' ' | sed 's/ $//')"
-mkdir -p "$T_TMP/sbr/.agents"; cp "$T_ROOT/.agents/ship.conf" "$T_TMP/sbr/.agents/"
+mkdir -p "$T_TMP/sbr/.agents"; cp "$T_ROOT/.agents/ship.config" "$T_TMP/sbr/.agents/"
 grep -v '	instructions	the Start-here text deploy writes' "$T_ROOT/.agents/protected-paths.tsv" > "$T_TMP/sbr/.agents/protected-paths.tsv"
 t_exit "RED-PROOF: without the router row, a change touching only the router is open" 0 \
   sh "$C" "$T_TMP/sbr" contracts/skill-book-router.tsv
@@ -92,7 +92,7 @@ for p in launchd/com.harbor.event.dispatch.plist systemd/harbor-event-dispatch.s
          tools/dispatch/com.harbor.event.dispatch.plist runners/linux/harbor-x.timer; do
   t_eq "$p is protected as a persistent job" persistent-job "$(sh "$C" "$T_ROOT" "$p" | cut -f3)"
 done
-mkdir -p "$T_TMP/pj/.agents"; cp "$T_ROOT/.agents/ship.conf" "$T_TMP/pj/.agents/"
+mkdir -p "$T_TMP/pj/.agents"; cp "$T_ROOT/.agents/ship.config" "$T_TMP/pj/.agents/"
 grep -v '	persistent-job	' "$T_ROOT/.agents/protected-paths.tsv" > "$T_TMP/pj/.agents/protected-paths.tsv"
 t_exit "RED-PROOF: without the persistent-job rows, a change touching only the dispatcher plist is open" 0 \
   sh "$C" "$T_TMP/pj" launchd/com.harbor.event.dispatch.plist
@@ -110,7 +110,7 @@ t_has "...the register's rows are owned" "$(cat "$T_ROOT/.github/CODEOWNERS")" "
 t_has "...and CODEOWNERS owns itself" "$(cat "$T_ROOT/.github/CODEOWNERS")" "/.github/ @"
 # gate-codeowners.sh reads the register by name, so the copy carries the reader and its schema (harbor#1424)
 mkdir -p "$T_TMP/co/bin" "$T_TMP/co/.agents" "$T_TMP/co/.github" "$T_TMP/co/standards/naming"
-cp "$CO" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/standard-register.sh" "$T_TMP/co/bin/"; cp "$T_ROOT/standards/naming/schemas.tsv" "$T_TMP/co/standards/naming/"; cp "$T_ROOT/.agents/ship.conf" "$T_ROOT/.agents/protected-paths.tsv" "$T_TMP/co/.agents/"
+cp "$CO" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/standard-register.sh" "$T_TMP/co/bin/"; cp "$T_ROOT/standards/naming/schemas.tsv" "$T_TMP/co/standards/naming/"; cp "$T_ROOT/.agents/ship.config" "$T_ROOT/.agents/protected-paths.tsv" "$T_TMP/co/.agents/"
 cp "$T_ROOT/.github/CODEOWNERS" "$T_TMP/co/.github/"
 t_exit "a copy of the tree is current too" 0 sh "$T_TMP/co/bin/gate-codeowners.sh" --check
 printf 'newly/protected.sh\tfloor\ta row added to the register\n' >> "$T_TMP/co/.agents/protected-paths.tsv"
@@ -122,10 +122,10 @@ _drv="$(sh "$D" --print 2>/dev/null | cut -f1)"
 t_eq "every derived path classifies protected" "" "$(printf '%s\n' "$_drv" | sh "$C" "$T_ROOT" | cut -f2 | sort | comm -13 - "$(printf '%s\n' "$_drv" | sort > "$T_TMP/drv"; echo "$T_TMP/drv")")"
 grep -v '^bin/event-bus.sh	' "$T_ROOT/.agents/protected-paths.tsv" > "$T_TMP/reg-minus"
 t_exit "RED-PROOF: a register missing one derived row fails the check" 1 sh "$D" --check "$T_TMP/reg-minus"
-mkdir -p "$T_TMP/rr/.agents"; cp "$T_TMP/reg-minus" "$T_TMP/rr/.agents/protected-paths.tsv"; cp "$T_ROOT/.agents/ship.conf" "$T_TMP/rr/.agents/"
+mkdir -p "$T_TMP/rr/.agents"; cp "$T_TMP/reg-minus" "$T_TMP/rr/.agents/protected-paths.tsv"; cp "$T_ROOT/.agents/ship.config" "$T_TMP/rr/.agents/"
 t_exit "...and the file it dropped is open there" 0 sh "$C" "$T_TMP/rr" bin/event-bus.sh
 
-t_section "harbor's register: what runs as the operator outside a session, what ship.conf runs, what decides the checks"
+t_section "harbor's register: what runs as the operator outside a session, what ship.config runs, what decides the checks"
 _five="bin/gcloud bin/gcloud-credentials bin/secret bin/idea bin/wait-for"
 t_eq "the five core shim targets in ~/.local/bin are protected (a pack's own shims are in its repo, harbor#1149)" "$_five" \
   "$(printf '%s\n' $_five | sh "$C" "$T_ROOT" | cut -f2 | tr '\n' ' ' | sed 's/ $//')"
@@ -150,7 +150,7 @@ rp() { # <what> <sed expression> <path it alone protected>
 }
 rp "shim targets" 's|"\$ROOT/contracts/shims.tsv" >>|/dev/null >>|' bin/wait-for
 rp "the two registers" '/decides what ~\/.local\/bin points at/d' contracts/shims.tsv
-rp "ship.conf commands" 's/^for _k in plan apply verify restore deployed;/for _k in none;/' bin/deploy-live-verify.sh
+rp "ship.config commands" 's/^for _k in plan apply verify restore deployed;/for _k in none;/' bin/deploy-live-verify.sh
 rp "the suite manifests" 's|"\$ROOT"/contracts/suites\*\.txt ||' contracts/suites.txt
 rp "the runner and test-library globs" 's/^for _d in runners tests\/lib;/for _d in none;/' tests/lib/row.sh
 t_exit "a script only a workflow the gate does not judge calls is protected: the mirror runs governance.yml (harbor#1149)" \

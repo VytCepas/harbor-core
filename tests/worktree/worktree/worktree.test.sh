@@ -164,12 +164,12 @@ t_section "new links the parent's memory store (harbor#589)"
 # The store is keyed by the session's cwd, so a worktree born without a route starts blind.
 # HOME is pinned to the fixture dir so the registry row `~/repo` is the fixture repo; PORT_ROOT is
 # pinned so a host value adds no directory to the sweep.
-HK="$(printf '%s' "$P" | sed 's|/|-|g')"
+HK="$(printf '%s' "$P" | LC_ALL=C sed 's/[^A-Za-z0-9]/-/g')"
 mkdir -p "$P/cfg/projects/$HK/memory" "$P/mrrepo" "$P/priv/context-rules/user"   # the registry is the private layer's (harbor#1149)
 printf 'note\n' > "$P/cfg/projects/$HK/memory/a.md"
 printf 'repo\t~/repo\tw\n' > "$P/priv/context-rules/user/projects.tsv"
 HOME="$P" PORT_ROOT="$P/port" HARBOR_SCOPE_PRIVATE="$P/priv" HARBOR_SCOPE_REPO="$P/mrrepo" wt new feat/mem >/dev/null
-WK="$(printf '%s' "$P/port/.worktrees/repo/feat-mem" | sed 's|/|-|g')"
+WK="$(printf '%s' "$P/port/.worktrees/repo/feat-mem" | LC_ALL=C sed 's/[^A-Za-z0-9]/-/g')"
 t_eq "the new worktree's memory route is a symlink" yes "$(yn [ -L "$P/cfg/projects/$WK/memory" ])"
 t_eq "it resolves to a non-empty store (what a session there loads)" 1 "$(find "$P/cfg/projects/$WK/memory/" -maxdepth 1 -name '*.md' | grep -c .)"
 wt retire feat-mem >/dev/null

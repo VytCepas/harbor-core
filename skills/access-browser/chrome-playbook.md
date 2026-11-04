@@ -12,7 +12,7 @@ each failure means, what has already been tried and failed, and step-by-step tas
    `goto`. Never leave a tab or window behind: `detach` closes exactly the tabs this
    session opened (attach's, `tab-new`'s) and nothing of the operator's.
 2. **Parallel work is a lane, not a tab.** Two agents in one session each set their own
-   `HARBOR_BROWSER_LANE` and `attach`: a window each. Two tabs in one window cannot both
+   `HARBOR_ACCESS_BROWSER_LANE` and `attach`: a window each. Two tabs in one window cannot both
    show, so one goes `hidden` and its clicks time out. `tab-new` is for a second page
    in the same lane that only gets read.
 3. **Never take the operator's focus.** `attach` hands focus straight back to the app

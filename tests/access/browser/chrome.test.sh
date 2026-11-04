@@ -3,7 +3,7 @@
 # signed-out stop and wait-signin, and the upload guard. Split from browser-test.sh for its line budget.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 AGENT="$T_ROOT/bin/access-browser-agent.sh"; unset HARBOR_ACCESS_CHROME
-HARBOR_CHROME_SETTLE=0; export HARBOR_CHROME_SETTLE
+HARBOR_ACCESS_BROWSER_SETTLE=0; export HARBOR_ACCESS_BROWSER_SETTLE
 . "$(dirname "$0")/../../cli/browser/agent-stub.sh"
 OWN="$T_TMP/harbor-browser/claude-abc123def456/.owned-tabs"
 
@@ -21,7 +21,7 @@ t_eq "a goto is not probed" "$((_ev0 + 1))" "$(ag goto https://ads.reddit.com/x 
 t_eq "a fill whose tab went blank is refused" "exit 1" "$(STUB_BLANK=1; export STUB_BLANK; ag fill e9 hello)"
 t_has "naming the lost tab" "$(out)" "the tab was lost"
 t_has "and the way back" "$(out)" "fix: harbor chrome goto"
-t_eq "a tab that goes blank 0.3 s after the fill is still caught" "exit 1" "$(STUB_LATE_BLANK="$T_TMP/late"; HARBOR_CHROME_SETTLE=1; export STUB_LATE_BLANK HARBOR_CHROME_SETTLE; ag fill e9 hello)"
+t_eq "a tab that goes blank 0.3 s after the fill is still caught" "exit 1" "$(STUB_LATE_BLANK="$T_TMP/late"; HARBOR_ACCESS_BROWSER_SETTLE=1; export STUB_LATE_BLANK HARBOR_ACCESS_BROWSER_SETTLE; ag fill e9 hello)"
 rm -f "$T_TMP/late"
 ERRX="$HOME/Library/Caches/ms-playwright/daemon/0123/claude-abc123def456.err"; mkdir -p "${ERRX%/*}"
 printf '%s\n' '2026-10-14T12:11:04.000Z pw:mcp:relay → Playwright: Target.detachedFromTarget' '2026-10-14T12:11:04.205Z pw:mcp:error Error: Cannot access a chrome-extension:// URL of different extension' > "$ERRX"
@@ -131,20 +131,20 @@ t_eq "wait-signin off a sign-in page returns at once" "exit 0" "$(ag wait-signin
 t_has "saying so" "$(out)" "no tab of this session is on a sign-in page"
 printf '%s\n' "9${TAB}1${TAB}true${TAB}https://www.reddit.com/login/${TAB}601" > "$OSA_TABS"
 printf '%s\n' "9${TAB}1${TAB}true${TAB}https://ads.reddit.com/account/x?y=1${TAB}601" > "$OSA_TABS.next"
-t_eq "wait-signin returns once the operator signed in" "exit 0" "$(STUB_URL='https://ads.reddit.com/account/x?y=1'; export STUB_URL; HARBOR_CHROME_POLL=1 ag wait-signin 10)"
+t_eq "wait-signin returns once the operator signed in" "exit 0" "$(STUB_URL='https://ads.reddit.com/account/x?y=1'; export STUB_URL; HARBOR_ACCESS_BROWSER_POLL=1 ag wait-signin 10)"
 t_has "and the session still drives the tab" "$(out)" "still drives the tab"
 printf '%s\n' "9${TAB}1${TAB}true${TAB}https://www.reddit.com/login/${TAB}601" > "$OSA_TABS"
 printf '%s\n' "9${TAB}1${TAB}true${TAB}https://ads.reddit.com/account/x?y=1${TAB}601" > "$OSA_TABS.next"
 _c0="$(osa 'close 601')"; _g0="$(called 'goto https://ads.reddit.com/account/x?y=1')"
-t_eq "a connection dropped during sign-in is re-made" "exit 0" "$(HARBOR_CHROME_POLL=1 ag wait-signin 10)"
+t_eq "a connection dropped during sign-in is re-made" "exit 0" "$(HARBOR_ACCESS_BROWSER_POLL=1 ag wait-signin 10)"
 t_eq "closing the sign-in tab" "$((_c0 + 1))" "$(osa 'close 601')"
 t_eq "and opening the page it reached" "$((_g0 + 1))" "$(called 'goto https://ads.reddit.com/account/x?y=1')"
 printf '601\n' > "$OWN"; printf '%s\n' "9${TAB}1${TAB}true${TAB}https://www.reddit.com/login/${TAB}601" > "$OSA_TABS"
-t_eq "wait-signin gives up after its time" "exit 1" "$(HARBOR_CHROME_POLL=5 ag wait-signin 10)"
+t_eq "wait-signin gives up after its time" "exit 1" "$(HARBOR_ACCESS_BROWSER_POLL=5 ag wait-signin 10)"
 t_has "saying it is still on sign-in" "$(out)" "still on a sign-in page after 10 s"
 printf '%s\n' "9${TAB}1${TAB}true${TAB}https://www.reddit.com/login/${TAB}601" > "$OSA_TABS"
 printf '%s\n' "9${TAB}1${TAB}true${TAB}https://www.autogidas.lt/${TAB}601" > "$OSA_TABS.next"
-t_eq "a sign-in that lands off the allow-list is refused" "exit 1" "$(STUB_URL='https://www.autogidas.lt/'; export STUB_URL; HARBOR_CHROME_POLL=1 ag wait-signin 10)"
+t_eq "a sign-in that lands off the allow-list is refused" "exit 1" "$(STUB_URL='https://www.autogidas.lt/'; export STUB_URL; HARBOR_ACCESS_BROWSER_POLL=1 ag wait-signin 10)"
 t_has "by wait-signin itself, while the session still drives the tab" "$(out)" "which is not on the allow-list"
 rm -f "$OWN" "$ACC"/*.md; : > "$OSA_TABS"
 t_eq "a failed click on a hidden tab is refused" "exit 1" "$(STUB_HIDDEN=1; STUB_FAIL=1; export STUB_HIDDEN STUB_FAIL; ag click e3)"

@@ -24,7 +24,7 @@ mouth — the highest-quality feedback signal in the system — and it was
 structurally unobservable. A hook that runs REGARDLESS of the switch is the
 only place it can be seen.
 
-bin/decider-set.sh lists this file as exempt from the kill-switch line, with that reason, and lint F1
+bin/admission-decider-set.sh lists this file as exempt from the kill-switch line, with that reason, and lint F1
 reads the list. It is SessionStart-only and never reaches a verdict: it cannot block anything.
 
 It is also the ONLY component permitted to create anything. floor_log_decision

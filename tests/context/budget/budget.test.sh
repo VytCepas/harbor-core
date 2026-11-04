@@ -7,7 +7,8 @@ TOOL="${CB_TOOL:-$T_ROOT/bin/context-budget.sh}"  # CB_TOOL: run this suite agai
 B="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)"
 CFG="$B/cfg"; RICH="$B/rich"; POOR="$B/poor"  # rich owns the big store, poor owns none
 mkdir -p "$CFG/skills" "$RICH" "$POOR"
-slug() { printf '%s' "$1" | tr '/' '-'; }
+# The harness's key (claude's bundle: every character outside [A-Za-z0-9] a dash), never the tool's own (harbor#966).
+slug() { printf '%s' "$1" | LC_ALL=C sed 's/[^A-Za-z0-9]/-/g'; }
 fill() { _n=0; : > "$1"; while [ "$_n" -lt "$2" ]; do printf '%s' "$3" >> "$1"; _n=$((_n+1)); done; }  # <file> <n> <char>
 mkdir -p "$CFG/projects/$(slug "$RICH")/memory"; fill "$CFG/projects/$(slug "$RICH")/memory/MEMORY.md" 5000 x
 fill "$CFG/CLAUDE.md" 1000 c  # a constitution, so the base surface is non-zero and the same for both cwds
@@ -123,7 +124,7 @@ t_eq "it prints no delta, because there is none to print" 0 "$(grep -c '(+\|MOVE
 rm -rf "$CFG/commands"
 # Plant a method change: same surfaces, a different way of pricing a description.
 sed 's/t += length(\$0) + 1/t += length($0) + 2/' "$TOOL" > "$B/tool-m.sh"
-cp "$(dirname "$TOOL")/library-log.sh" "$B/library-log.sh"
+cp "$(dirname "$TOOL")/library-log.sh" "$B/library-log.sh"; cp "$(dirname "$TOOL")/library-fs.sh" "$B/library-fs.sh"
 ( cd "$POOR" && CLAUDE_CONFIG_DIR="$CFG" HARBOR_CONTEXT_CEILING=9000 HARBOR_CONTEXT_BASELINE="$BL" sh "$B/tool-m.sh" --check ) > "$B/m.out" 2>&1; RC=$?
 t_eq "a changed measuring function: exit" 1 "$RC"
 t_has "it says the instrument changed" "$(cat "$B/m.out")" 'INSTRUMENT CHANGED'
@@ -166,7 +167,7 @@ t_eq "a directory where the baseline should be" unreadable "$(kindof)"
 rmdir "$BL"
 t_exit "an unknown flag after --check: exit 2" 2 env CLAUDE_CONFIG_DIR="$CFG" HARBOR_CONTEXT_BASELINE="$BL" sh "$TOOL" --check --nope
 t_section "9 · the baseline lives in the state directory, never the checkout (harbor#1275)"
-TR="$B/tree"; ST="$B/state"; mkdir -p "$TR/bin" "$ST"; cp "$TOOL" "$TR/bin/context-budget.sh"; cp "$(dirname "$TOOL")/library-log.sh" "$TR/bin/"
+TR="$B/tree"; ST="$B/state"; mkdir -p "$TR/bin" "$ST"; cp "$TOOL" "$TR/bin/context-budget.sh"; cp "$(dirname "$TOOL")/library-log.sh" "$(dirname "$TOOL")/library-fs.sh" "$TR/bin/"
 cbrun() { ( cd "$POOR" && env -u HARBOR_CONTEXT_BASELINE CLAUDE_CONFIG_DIR="$CFG" HARBOR_CONTEXT_CEILING=9000 HARBOR_STATUS_DIR="$ST" sh "$TR/bin/context-budget.sh" "$1" ) > "$B/st.out" 2>&1; }
 cbrun --record; RC=$?
 t_eq "a core clone (no in-tree file): --record exits 0" 0 "$RC"
@@ -191,4 +192,8 @@ rm "$IMP/AGENTS.md"; run "$IMP" 40000 "$B/imp2.out"
 t_has "an import with no file is not counted" "$(cat "$B/imp2.out")" "@imports + .claude/rules, 1 file(s))"
 printf '# r\n\n@../outside.md\n' > "$IMP/CLAUDE.md"; fill "$B/outside.md" 9 z; run "$IMP" 40000 "$B/imp3.out"
 t_has "a parent-directory import is not followed" "$(cat "$B/imp3.out")" "1 file(s))"
+t_section "11 · harbor#966: a cwd with a dot finds its store under the harness's key"
+DOT="$B/a/.worktrees/b_c/d"; mkdir -p "$DOT" "$CFG/projects/$(slug "$DOT")/memory"; fill "$CFG/projects/$(slug "$DOT")/memory/MEMORY.md" 7 m
+run "$DOT" 40000 "$B/dot.out"
+t_has "the cwd-keyed index is the one under the harness's key" "$(cat "$B/dot.out")" "projects/$(slug "$DOT")/memory/MEMORY.md"
 t_done

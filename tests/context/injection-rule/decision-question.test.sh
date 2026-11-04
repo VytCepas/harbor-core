@@ -71,7 +71,7 @@ t_eq "and never a decision" "" "$(decision)"
 t_section "the standard's documents name every label the script enforces"
 _labels="$(sed -n "s/^LABELS_[A-Z]*='\(.*\)'$/\1/p" "$U/decision-question.sh" | tr '|' '\n')"
 t_eq "the script declares five labels" 5 "$(printf '%s\n' "$_labels" | grep -c .)"
-for _doc in docs/explanation/grilling.md commands/grillme.md; do
+for _doc in docs/explanation/grilling.md commands/grilling.md; do
   printf '%s\n' "$_labels" | while IFS= read -r _l; do
     [ -n "$_l" ] || continue
     grep -qF "\`$_l\`" "$T_ROOT/$_doc" && printf 'ok\n' || printf 'MISSING %s in %s\n' "$_l" "$_doc"

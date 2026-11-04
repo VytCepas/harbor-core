@@ -81,7 +81,7 @@ def call(name, arguments):
     lane = arguments.get('lane')
     if lane is not None:
         if not isinstance(lane, str): return 'lane must be a string', True
-        env['HARBOR_BROWSER_LANE'] = lane   # access-browser-agent.sh validates it
+        env['HARBOR_ACCESS_BROWSER_LANE'] = lane   # access-browser-agent.sh validates it
     try:
         r = subprocess.run(['/bin/sh', AGENT, verb] + args, env=env, stdin=subprocess.DEVNULL, capture_output=True,
                            text=True, timeout=LONG.get(verb, 180))

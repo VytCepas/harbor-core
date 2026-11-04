@@ -5,7 +5,8 @@
 T="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)/box"; CFG="$T/cfg"; REPOROOT="$T/repo"; TAB="$(printf '\t')"
 PRIV="$T/priv"   # the registry is the private layer's (harbor#1149)
 mkdir -p "$CFG/projects" "$REPOROOT" "$PRIV/context-rules/user" "$T/main" "$T/other"
-key_for() { printf '%s' "$1" | sed 's|/|-|g'; }
+# The harness's key (claude's bundle: every character outside [A-Za-z0-9] a dash), never the tool's own (harbor#966).
+key_for() { printf '%s' "$1" | LC_ALL=C sed 's/[^A-Za-z0-9]/-/g'; }
 route_of() { printf '%s' "$CFG/projects/$(key_for "$1")/memory"; }
 is_link() { [ -L "$1" ] && echo link || echo "not a link"; }
 mkdir -p "$(route_of "$T")"; printf -- '---\nname: a\n---\nx\n' > "$(route_of "$T")/a.md"

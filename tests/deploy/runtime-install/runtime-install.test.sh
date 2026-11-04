@@ -43,6 +43,25 @@ for n in idea memory gcloud; do
   t_eq "...and resolves to a file" yes "$([ -f "$LB/$n" ] && echo yes || echo no)"
 done
 
+t_section "an installed guard finds the controls register where the deploy puts it (harbor#1466)"
+# The floor install copies the guards, the runtime install lands the uncut register beside them as bin/controls.tsv: <dir>/bin/../standards/naming does not exist.
+FH="$T/floorhome"; mkdir -p "$FH/.claude"; printf '{}' > "$FH/.claude/settings.json"
+env -u CLAUDE_CONFIG_DIR HOME="$FH" sh "$TOOL" --live --apply >/dev/null 2>&1
+env -u CLAUDE_CONFIG_DIR HOME="$FH" sh "$T_ROOT/bin/admission-install.sh" --live --apply >/dev/null 2>&1
+IG="$FH/.claude/bin/admission-decide.sh"; IR="$FH/.claude/bin/controls.tsv"
+t_eq "the two installs left the guard's decision function and the uncut register in bin/" "yes yes" \
+  "$([ -f "$IG" ] && echo yes || echo no) $(cmp -s "$T_ROOT/standards/naming/controls.tsv" "$IR" && echo yes || echo no)"
+t_eq "the installed layout has no standards/naming beside bin/ (the path the guard used to read)" no "$([ -e "$FH/.claude/standards/naming/controls.tsv" ] && echo yes || echo no)"
+t_exit "the installed guard's self-test sweeps every admission row of the installed register" 0 env -u FLOOR_CONTROLS sh "$IG" --self-test
+printf 'admission.zz-installed-warn\twarn\tadmission\tbin/admission-egress.sh\n' >> "$IR"
+t_eq "an installed guard decides a warn-mode rule as warn from the register, not as a block" "warn register" \
+  "$(env -u FLOOR_CONTROLS sh "$IG" egress zz-installed-warn 2>/dev/null | cut -f1,3 | tr '\t' ' ')"
+t_eq "...and an ask-tier guard asks on it" "ask register" "$(env -u FLOOR_CONTROLS sh "$IG" cloud zz-installed-warn --ask 1 2>/dev/null | cut -f1,3 | tr '\t' ' ')"
+t_eq "the repo copy still finds standards/naming/controls.tsv with no override (its self-test sweeps the live register)" 0 "$(env -u FLOOR_CONTROLS sh "$SRCB/admission-decide.sh" --self-test >/dev/null 2>&1; echo $?)"
+rm -f "$IR"
+t_eq "an installed guard with no register still fails closed" "block unreadable" \
+  "$(env -u FLOOR_CONTROLS sh "$IG" egress zz-installed-warn 2>/dev/null | cut -f1,3 | tr '\t' ' ')"
+
 t_section "the restore-path suite ships with its harness and runs with no checkout (harbor#727)"
 RC="$T/rcfg"; mkdir -p "$RC/bin"; printf '{}' > "$RC/settings.json"; printf 'stale\n' > "$RC/bin/recover-test.sh"
 t_has "the dry run names the stale copy as replaced" "$(ri --dir "$RC" 2>&1)" "  note: bin/recover-test.sh (replace)"

@@ -15,7 +15,7 @@
 # standard_version: 2.0.0
 old_path	new_path	wave	recommendation	confidence	reason	remove_by	frozen	surface	reader
 bin/annotate-web.sh	bin/admission-annotate-web.sh	W6a	rename	med	PostToolUse hook that marks fetched content as data; wired by floor-install, so it moves with the admission set	2027-03-07			deployed copy ~/.claude/bin/; ~/.claude/settings.json hook command
-bin/decider-set.sh	bin/admission-decider-set.sh	W6a	rename	high	the wired hook set the two kill switches govern	2027-03-07			deployed copy ~/.claude/bin/
+bin/admission-decider-set.sh	bin/admission-decider-set.sh	W6a	rename	high	the wired hook set the two kill switches govern	2027-03-07			deployed copy ~/.claude/bin/
 bin/admission-deny.sh	bin/admission-deny.sh	W6a	rename	high	floor is a legacy alias of baseline; the deny installer joins the admission set	2027-03-07			deployed copy ~/.claude/bin/; memory notes; repo studio
 bin/admission-equivalence.sh	bin/admission-equivalence.sh	W6a	rename	high	equiv is a banned abbreviation; proves two guard trees give identical verdicts	-			none found
 bin/admission-install.sh	bin/admission-install.sh	W6a	rename	high	installs the admission set	2027-03-07			deployed copy ~/.claude/bin/; memory notes

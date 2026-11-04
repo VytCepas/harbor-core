@@ -107,4 +107,16 @@ for f in $(printf '%s\n' "$callers" | awk -F'\t' '$2 == "-" && $1 ~ /\.sh$/ { su
   grep -q "^${f}[[:space:]]" "$T_ROOT/contracts/idle-tools.txt" || undeclared="$undeclared $f"
 done
 t_eq "every .sh file the sweep finds uncalled is declared in contracts/idle-tools.txt" "" "${undeclared# }"
+t_section "env: an old name in its dual-read window needs no row of its own (harbor#1097)"
+mkrepo
+mkdir -p "$R/standards/naming"
+printf 'HARBOR_TEST_FIXTURE_NEW\tharbor\tvalue\t-\tthe renamed value\texperimental\tstandard\t-\n' >> "$R/contracts/env.tsv"
+printf '#!/usr/bin/env sh\necho "${HARBOR_TEST_FIXTURE_NEW:-${HARBOR_TEST_FIXTURE_OLD:-}}"\n' > "$R/bin/fixture-x.sh"
+printf 'id\told\tnew\tsurface\twave\tremove_by\treason\nrename-9001\tenv:HARBOR_TEST_FIXTURE_OLD\tenv:HARBOR_TEST_FIXTURE_NEW\tenv\tW5e\t2026-11-15\ttest\n' > "$R/standards/naming/renames.tsv"
+t_hasnt "the old name read beside the new one is no finding" "$(facts; echo end)" 'HARBOR_TEST_FIXTURE_OLD'
+t_has "...and it is one once the window is past, which is when the codemod collapses it" \
+  "$(sh "$R/bin/standard-inventory.sh" --root "$R" --today 2026-11-16 facts 2>&1)" 'var:HARBOR_TEST_FIXTURE_OLD'
+sed -i.bak 's/\t2026-11-15\t/\t-\t/' "$R/standards/naming/renames.tsv"; rm -f "$R/standards/naming/renames.tsv.bak"
+t_has "a rename with no date opens no window" "$(facts)" 'var:HARBOR_TEST_FIXTURE_OLD'
+
 t_done

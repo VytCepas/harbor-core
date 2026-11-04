@@ -37,7 +37,9 @@ t_exit "--strict-names exits 1" 1 env HARBOR_MEMORY_HOST_NAMES=Boxy-MacBook sh "
 t_has "json carries the finding" "$(names --json)" '"kind":"NAME-CLAIM"'
 
 t_section "the default store is the notes store"
-H="$T_TMP/home"; K="$(CDPATH= cd -- "$H" && pwd -P | sed 's|/|-|g')"
+# The harness's key (claude's bundle: every character outside [A-Za-z0-9] a dash), never the tool's own (harbor#966).
+keyof() { printf '%s' "$1" | LC_ALL=C sed 's/[^A-Za-z0-9]/-/g'; }
+H="$T_TMP/home"; K="$(keyof "$(CDPATH= cd -- "$H" && pwd -P)")"
 mkdir -p "$CLAUDE_CONFIG_DIR/projects/$K/memory" "$CLAUDE_CONFIG_DIR/MEMORY"
 note "$CLAUDE_CONFIG_DIR/projects/$K/memory/notes-store-answers-first.md" notes-store-answers-first
 note "$CLAUDE_CONFIG_DIR/MEMORY/old-tree-answers-second.md" old-tree-answers-second
@@ -46,4 +48,10 @@ t_hasnt "and not the old tree" "$(sh "$MEM" --json answers 2>/dev/null)" "old-tr
 t_has "lint reads it too" "$(sh "$LINT" 2>&1)" "projects/$K/memory"
 rm -rf "$CLAUDE_CONFIG_DIR/projects"
 t_has "no notes store falls back to the old tree" "$(sh "$MEM" --json answers 2>/dev/null)" "old-tree-answers-second"
+
+t_section "harbor#966: a HOME with a dot reads the notes store under the harness's key"
+D="$(CDPATH= cd -P -- "$T_TMP" && pwd -P)/a/.worktrees/b_c/d"; mkdir -p "$D"; DK="$(keyof "$D")"
+note "$CLAUDE_CONFIG_DIR/projects/$DK/memory/dotted-home-answers-here.md" dotted-home-answers-here
+t_has "memory reads the store under the harness's key" "$(HOME="$D" sh "$MEM" --json answers 2>/dev/null)" "dotted-home-answers-here"
+t_has "memory-lint reads it too" "$(HOME="$D" sh "$LINT" 2>&1)" "projects/$DK/memory"
 t_done

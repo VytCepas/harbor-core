@@ -226,9 +226,9 @@ if runnable admission-bash.sh "kill-switch"; then
   [ "$c" = "0" ] && ok "kill-switch: HARBOR_ADMISSION_DISABLE=1 opens an unguarded session" || no "kill-switch BROKEN — $DIR/bin/admission-bash.sh exited $c with the switch set" "$FLOOR_FIX"
 fi
 
-# 5a. Every decider meant to carry the kill-switch does (harbor#954), from decider-set.sh, the set lint F1 and floor-test read. Installed deciders only.
-if [ -f "$HERE/decider-set.sh" ]; then
-  for _ds in $(sh "$HERE/decider-set.sh" --switch); do
+# 5a. Every decider meant to carry the kill-switch does (harbor#954), from admission-decider-set.sh, the set lint F1 and floor-test read. Installed deciders only.
+if [ -f "$HERE/admission-decider-set.sh" ]; then
+  for _ds in $(sh "$HERE/admission-decider-set.sh" --switch); do
     [ -f "$DIR/bin/$_ds" ] || continue
     _dl="$(grep -vE '^[[:space:]]*(#|$)' "$DIR/bin/$_ds" | grep -vE '^#!' | head -1)"
     case "$_dl" in
@@ -237,7 +237,7 @@ if [ -f "$HERE/decider-set.sh" ]; then
     esac
   done
 else
-  adv "decider set NOT checked: decider-set.sh is not beside $HERE" "$FLOOR_FIX"
+  adv "decider set NOT checked: admission-decider-set.sh is not beside $HERE" "$FLOOR_FIX"
 fi
 
 # 5b. THE APPROVAL GATE (harbor#1018): its click is an `ask` rule on gate-approve.sh, and a PermissionRequest hook this floor does not own can
@@ -315,10 +315,10 @@ else
   log_skip "install-drift not run (needs the repo checkout, not the installed copy)"
 fi
 
-# the mods lockdown (harbor#1022): a root-owned managed file refusing user mods. Runs for --live, or where HARBOR_MANAGED_SETTINGS names a file
-# (the test path); a sandbox --dir has no managed tier and skips. HARBOR_MANAGED_OWNER_UID lets a fixture stand in for root; production never sets it.
-if [ "$IL_LIVE" -eq 1 ] || [ -n "${HARBOR_MANAGED_SETTINGS:-}" ]; then
-  if [ -n "${HARBOR_MANAGED_SETTINGS:-}" ]; then _mf="$HARBOR_MANAGED_SETTINGS"
+# the mods lockdown (harbor#1022): a root-owned managed file refusing user mods. Runs for --live, or where HARBOR_SCOPE_MANAGED_SETTINGS names a file
+# (the test path); a sandbox --dir has no managed tier and skips. HARBOR_SCOPE_MANAGED_OWNER_UID lets a fixture stand in for root; production never sets it.
+if [ "$IL_LIVE" -eq 1 ] || [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then
+  if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then _mf="${HARBOR_SCOPE_MANAGED_SETTINGS:-$HARBOR_MANAGED_SETTINGS}"
   elif [ "$(uname -s)" = Darwin ]; then _mf='/Library/Application Support/ClaudeCode/managed-settings.json'
   else _mf='/etc/claude-code/managed-settings.json'; fi
   _mfix="sudo sh $HERE/scope-managed-mods.sh"
@@ -330,7 +330,7 @@ if [ "$IL_LIVE" -eq 1 ] || [ -n "${HARBOR_MANAGED_SETTINGS:-}" ]; then
   elif ! jq -e '.disableSideloadFlags == true
       and (.pluginConfigs["cc-plugin-sec-default@builtin"].options.allowManagedModsOnly == true)' "$_mf" >/dev/null 2>&1; then
     no "managed: $_mf lacks allowManagedModsOnly or disableSideloadFlags (unset, false or unreadable)" "$_mfix"
-  elif [ "$(ls -ldn "$_mf" 2>/dev/null | awk '{print $3}')" != "${HARBOR_MANAGED_OWNER_UID:-0}" ]; then
+  elif [ "$(ls -ldn "$_mf" 2>/dev/null | awk '{print $3}')" != "${HARBOR_SCOPE_MANAGED_OWNER_UID:-${HARBOR_MANAGED_OWNER_UID:-0}}" ]; then
     no "managed: $_mf is not root-owned — a file the user can write is not a managed tier" "$_mfix"
   else
     ok "managed: $_mf holds allowManagedModsOnly + disableSideloadFlags, root-owned"
@@ -339,7 +339,7 @@ fi
 
 # ── drift.confinement (harbor#1299): the installed sandbox block against a fresh compose ──
 # The installed copy skips (the compose reads contracts/ and the private layer). Born warn: drift and unchecked are advisories, never a FAIL.
-if [ "$IL_LIVE" -eq 1 ] || [ -n "${HARBOR_MANAGED_SETTINGS:-}" ]; then
+if [ "$IL_LIVE" -eq 1 ] || [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then
   if [ -f "$HERE/drift-confinement.sh" ] && [ -f "$HERE/deploy-confinement.sh" ]; then
     _cst="$(sh "$HERE/drift-confinement.sh" --state 2>/dev/null)" && _crc=0 || _crc=$?
     case "$_cst" in

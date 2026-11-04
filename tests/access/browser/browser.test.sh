@@ -8,7 +8,7 @@ REQUIRE_NODE="${HARBOR_TEST_REQUIRE_NODE:-}"  # set by the runner image that car
 BROWSER="$T_ROOT/bin/access-browser.sh"; AGENT="$T_ROOT/bin/access-browser-agent.sh"; ROUTING="$T_ROOT/contracts/browser-routing.md"
 unset HARBOR_ACCESS_CHROME
 # No settle after input verbs, except in the one test that measures the race.
-HARBOR_CHROME_SETTLE=0; export HARBOR_CHROME_SETTLE
+HARBOR_ACCESS_BROWSER_SETTLE=0; export HARBOR_ACCESS_BROWSER_SETTLE
 P="$T_TMP/probe"; mkdir -p "$P/node_modules/playwright" "$T_TMP/empty"
 printf '%s\n' "export const chromium = { launch: async () => { throw new Error('playwright stub: no launch offline'); } };" \
   > "$P/node_modules/playwright/index.mjs"
@@ -142,14 +142,17 @@ t_has "only that the query was cut" "$(out)" "connect.html?<cut>"
 t_eq "tab-list with the connect page passes" "exit 0" "$(STUB_TOKEN_URL=1; export STUB_TOKEN_URL; ag tab-list)"
 t_hasnt "and hides the token too" "$(out)" "SEKRET99"
 rm -f "$OWN"
-t_eq "attach still connects when AppleScript fails" "exit 0" "$(STUB_OSA_FAIL=1; export STUB_OSA_FAIL; HARBOR_OSASCRIPT=/no/such/osascript; export HARBOR_OSASCRIPT; ag attach)"
+t_eq "attach still connects when AppleScript fails" "exit 0" "$(STUB_OSA_FAIL=1; export STUB_OSA_FAIL; HARBOR_ACCESS_BROWSER_OSASCRIPT=/no/such/osascript; export HARBOR_ACCESS_BROWSER_OSASCRIPT; ag attach)"
 t_has "and warns that the tab shares a window" "$(out)" "no window of its own"
 t_eq "the approval token is refused" "exit 1" "$(rc env PLAYWRIGHT_MCP_EXTENSION_TOKEN=x HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc sh "$AGENT" tab-list)"
-t_eq "a lane passes" "exit 0" "$(HARBOR_BROWSER_LANE=ads1; export HARBOR_BROWSER_LANE; ag tab-list)"
+t_eq "a lane passes" "exit 0" "$(HARBOR_ACCESS_BROWSER_LANE=ads1; export HARBOR_ACCESS_BROWSER_LANE; ag tab-list)"
 t_has "as this session's own name plus the lane" "$(out)" "args=-s=claude-abc123def456-ads1 tab-list"
-t_eq "a lane with other characters is refused" "exit 1" "$(HARBOR_BROWSER_LANE='x/../y'; export HARBOR_BROWSER_LANE; ag tab-list)"
-t_eq "a lane in capitals is refused, whatever the locale" "exit 1" "$(LANG=en_NZ.UTF-8 LC_ALL=en_NZ.UTF-8 HARBOR_BROWSER_LANE=ADS; export HARBOR_BROWSER_LANE; ag tab-list)"
-t_eq "a lane over 12 characters is refused" "exit 1" "$(HARBOR_BROWSER_LANE=abcdefghijklm; export HARBOR_BROWSER_LANE; ag tab-list)"
+t_eq "a lane with other characters is refused" "exit 1" "$(HARBOR_ACCESS_BROWSER_LANE='x/../y'; export HARBOR_ACCESS_BROWSER_LANE; ag tab-list)"
+t_eq "a lane in capitals is refused, whatever the locale" "exit 1" "$(LANG=en_NZ.UTF-8 LC_ALL=en_NZ.UTF-8 HARBOR_ACCESS_BROWSER_LANE=ADS; export HARBOR_ACCESS_BROWSER_LANE; ag tab-list)"
+t_eq "a lane over 12 characters is refused" "exit 1" "$(HARBOR_ACCESS_BROWSER_LANE=abcdefghijklm; export HARBOR_ACCESS_BROWSER_LANE; ag tab-list)"
+t_eq "the old HARBOR_BROWSER_LANE still names a lane, until 2026-11-15 (harbor#1097)" "exit 0" "$(HARBOR_BROWSER_LANE=ads1; export HARBOR_BROWSER_LANE; ag tab-list)"
+t_has "...as the same session name" "$(out)" "args=-s=claude-abc123def456-ads1 tab-list"
+t_eq "...and over 12 characters it is refused" "exit 1" "$(HARBOR_BROWSER_LANE=abcdefghijklm; export HARBOR_BROWSER_LANE; ag tab-list)"
 t_eq "no session id is refused" "exit 1" "$(rc env -u CLAUDE_CODE_SESSION_ID -u HARBOR_ACCESS_BROWSER_SESSION -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" sh "$AGENT" tab-list)"
 t_eq "a non-numeric idle timeout is refused" "exit 1" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_BROWSER_IDLE_MS=soon HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc sh "$AGENT" attach)"
 
@@ -202,7 +205,7 @@ t_eq "every host line sits under a comment saying why" "" \
 # real ones live in harbor-private/browser-hosts.txt. The overlay opens them, core alone refuses them, and its tenants are exact hosts.
 OV="$T_TMP/overlay-hosts.txt"
 printf '# A partner agency\npartner.example.net\n# A university tenant, exact hosts (*.sharepoint.com is every tenant)\ntenant-a.sharepoint.com\ntenant-a-my.sharepoint.com\n# The university LMS\nlms.example.edu\n' > "$OV"
-ago() { rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_BROWSER_PRIVATE_HOSTS="$OV" HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" "$@"; }
+ago() { rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS="$OV" HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" "$@"; }
 _bad=''
 for u in https://partner.example.net/roadmap https://lms.example.edu/course/1 https://tenant-a-my.sharepoint.com/personal/x https://tenant-a.sharepoint.com/; do
   [ "$(ago goto "$u")" = "exit 0" ] || _bad="$_bad $u"

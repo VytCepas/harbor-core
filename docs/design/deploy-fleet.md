@@ -12,7 +12,7 @@ status: unreviewed
 contract's CLI, at the installed paths §5b.9 pins. The suites are `tests/ci/deploy-fleet/`; every rail below has a
 mutant in them that goes red when the rail is removed.
 
-**Universal.** Any repo opts in by adding one file, `.agents/ship.conf`, on its default branch. No code path in the
+**Universal.** Any repo opts in by adding one file, `.agents/ship.config`, on its default branch. No code path in the
 runner names a repo, a tool or a register of its own (`fleet.test.sh` greps for it, and the grep has its own
 red-proof). The suites run two different fake repos with no harbor file in either, one deploy-capable on a default
 branch called `trunk` and one merge-only on `main`, end to end.
@@ -30,7 +30,7 @@ harbor ship deploy <owner/repo> --sha <sha> [--approved]
   `gate-approve.sh` alone**: it lets a protected change, a repo with no baseline, a rolled-back commit or a manifest
   with no verify through. The runner takes it only while the click's one-shot token
   `<config>/.helm-approvals/approved/deploy-<owner>_<name>-<sha12>` exists, and deletes it; it refuses it when
-  `SHIP_UNATTENDED=1` (§5a.4), and the approval gate's floor guard refuses every other spelling. Without it, a
+  `HARBOR_DEPLOY_UNATTENDED=1` (§5a.4), and the approval gate's floor guard refuses every other spelling. Without it, a
   protected change is queued.
 - **Installed** by the floor component beside the gate tools, as `<config>/bin/deploy-fleet.sh`, with one allow rule,
   `Bash(<config>/bin/deploy-fleet.sh night*)` (floor-deny, removed by floor-uninstall). No rule names `deploy`.
@@ -69,7 +69,7 @@ For each repo, in `owner/name` order:
    fast-forwarded to `origin/<default>`. The change is every path between the **last deployed commit** and that sha.
    It is **queued** when the manifest has no `verify` or no `restore`, when no commit was ever deployed, when the last
    one is not an ancestor, when the range contains a rolled-back commit, or when the classifier says a path is
-   protected. Otherwise: `plan`, then `apply` (which snapshots and writes the id to `$SHIP_SNAPSHOT`), then every
+   protected. Otherwise: `plan`, then `apply` (which snapshots and writes the id to `$HARBOR_DEPLOY_SNAPSHOT`), then every
    `verify`. All green → the deployed commit is recorded.
 3. **Red verify, a failed or timed-out apply, or a signal after apply started.** `restore` with **this run's**
    snapshot id, every `verify` again, the commit recorded as rolled back, a finding filed, the report written, and
@@ -101,11 +101,11 @@ then restores this run's snapshot, reports, and exits 143. A signal during a res
 | A commit with no baseline is queued | no recorded commit, never a fallback | `deploy` MD2 |
 | A recorded commit that is not an ancestor is queued | `merge-base --is-ancestor` | `deploy` MA |
 | The default branch is origin's, never `main` | `ls-remote --symref` | `deploy` MDB |
-| `--approved` never in an unattended run | refused when `SHIP_UNATTENDED=1` | `deploy` MU |
+| `--approved` never in an unattended run | refused when `HARBOR_DEPLOY_UNATTENDED=1` | `deploy` MU |
 | The kill switch stops the run | `<config>/.harbor-autoship.off`, read before each step | `merge` MR3, and switched on mid-run; `deploy` MK (between plan and apply) |
 | A hung command never hangs the night | per-command timeout, process-group kill | `signal` MT |
 | A signal after apply restores | the TERM/INT/HUP trap | `signal` MS |
-| Restore only targets this run's snapshot | a fresh, empty `$SHIP_SNAPSHOT` per apply; no id → not restored | `rollback` MB5 |
+| Restore only targets this run's snapshot | a fresh, empty `$HARBOR_DEPLOY_SNAPSHOT` per apply; no id → not restored | `rollback` MB5 |
 | A reused snapshot id is refused (§5b.13) | an id equal to the recorded one is not this run's | `rollback` MF |
 | At most one rollback a night | a rollback stops the run and every unattended run for 16 hours | `rollback` MB2, MB3 |
 | A rolled-back commit is never applied unattended again | queued until `approve deploy` moves the baseline past it | `rollback` MB4 |
@@ -115,7 +115,7 @@ then restores this run's snapshot, reports, and exits 143. A signal during a res
 | An edited baseline is not trusted | `.sum` over the state; mismatch → queued | `deploy` MSUM |
 | A restore outside the runner is seen | the manifest's `deployed` must equal the recorded sha | `deploy` MLIVE |
 
-## The manifest: `.agents/ship.conf` on the default branch
+## The manifest: `.agents/ship.config` on the default branch
 
 One `key value` line each; a `#` at the start of a line or after whitespace starts a comment. A command keeps its
 own spacing.
@@ -126,9 +126,9 @@ own spacing.
 | `workflow` | the CI workflow file that gates a merge | every workflow on the head |
 | `protected` | path of the repo's protected-paths register (read by the classifier) | `.agents/protected-paths.tsv` |
 | `plan` | deploy dry run; exit 0 = the plan is sane; writes nothing | none |
-| `apply` | unattended deploy; **must snapshot first** and write the snapshot id to the file in `$SHIP_SNAPSHOT` | none (merge-only repo) |
+| `apply` | unattended deploy; **must snapshot first** and write the snapshot id to the file in `$HARBOR_DEPLOY_SNAPSHOT` | none (merge-only repo) |
 | `verify` | a health check; exit 0 = healthy. Repeatable, and all must pass | none (then a deploy is never autonomous) |
-| `restore` | puts back the snapshot whose id is in `$SHIP_SNAPSHOT_ID` | none (then a deploy is never autonomous) |
+| `restore` | puts back the snapshot whose id is in `$HARBOR_DEPLOY_SNAPSHOT_ID` | none (then a deploy is never autonomous) |
 | `method` | the one merge method the repo means: `merge-commit`, `squash` or `rebase`; read by `bin/gate-pr-plan.sh` and checked by `bin/gate-repo-drift.sh` (harbor#1418) | undeclared |
 | `review` | the review the base branch requires: `<approvals>` or `<approvals> code-owner`, `none` for no review; compared with the ruleset's `pull_request` rule | undeclared |
 | `delete-branch` | `yes` when GitHub deletes a head on merge (`delete_branch_on_merge`), else `no` | undeclared |
@@ -138,18 +138,18 @@ own spacing.
 `method`, `review` and `delete-branch` declare the repo's GitHub rules (harbor#1418). `sh bin/gate-repo-drift.sh --print`
 compares each with the live repo (`allow_*_merge`, `delete_branch_on_merge`, the branch's `pull_request` rule) and prints
 the operator command that closes each drift; classic branch protection is 403 to the App and is reported unreadable,
-never clean. A repo with no `ship.conf` is declared by rows (`slug<TAB>key<TAB>value`) in the private layer's `repo-rules.tsv` or
-`--declared FILE` (a ship.conf opts a repo into the approval gate, so none is added only to declare rules); an `exempt` row
+never clean. A repo with no `ship.config` is declared by rows (`slug<TAB>key<TAB>value`) in the private layer's `repo-rules.tsv` or
+`--declared FILE` (a ship.config opts a repo into the approval gate, so none is added only to declare rules); an `exempt` row
 takes a repo or registry folder out of scope, with its reason. It applies nothing.
 
-Commands run from the repo's main checkout through `sh -c`, with `SHIP_UNATTENDED=1`, `SHIP_REPO=<owner/name>`,
-`SHIP_SNAPSHOT=<file>` and, for `restore` only, `SHIP_SNAPSHOT_ID=<id>`. A snapshot id is one token of
+Commands run from the repo's main checkout through `sh -c`, with `HARBOR_DEPLOY_UNATTENDED=1`, `HARBOR_DEPLOY_REPO=<owner/name>`,
+`HARBOR_DEPLOY_SNAPSHOT=<file>` and, for `restore` only, `HARBOR_DEPLOY_SNAPSHOT_ID=<id>`. A snapshot id is one token of
 `[A-Za-z0-9._:/@+-]`, new for this run; anything else counts as no id. The manifest is repo content, so it is itself
 protected.
 
 ## Opting a repo in
 
-1. Add `.agents/ship.conf` and `.agents/protected-paths.tsv` (`glob<TAB>class<TAB>reason`) in a PR; the manifest,
+1. Add `.agents/ship.config` and `.agents/protected-paths.tsv` (`glob<TAB>class<TAB>reason`) in a PR; the manifest,
    the register and `.github/` are always protected, so it merges with the operator's click.
 2. The repo must be in the fleet snapshot (`fleet.yaml`, as `ci-runners.sh` reads it), with one main checkout: a
    linked worktree is never used, and of two clones the one named after the repo wins. Otherwise name it in a plan.
@@ -159,14 +159,14 @@ protected.
 An example for a repo that is not harbor (documentation only):
 
 ```
-# .agents/ship.conf: acme/storefront, a static site behind a CDN
+# .agents/ship.config: acme/storefront, a static site behind a CDN
 repo      acme/storefront
 workflow  ci.yml
 plan      make deploy-plan
-apply     make deploy SNAPSHOT_TO="$SHIP_SNAPSHOT"      # uploads the previous release id first
+apply     make deploy SNAPSHOT_TO="$HARBOR_DEPLOY_SNAPSHOT"      # uploads the previous release id first
 verify    make healthcheck                             # the live site answers 200
 verify    make smoke
-restore   make rollback RELEASE="$SHIP_SNAPSHOT_ID"
+restore   make rollback RELEASE="$HARBOR_DEPLOY_SNAPSHOT_ID"
 timeout.verify 120
 ```
 

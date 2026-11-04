@@ -4,6 +4,7 @@
 #
 #   sh memory-route.sh [--dir <config-dir> | --live] [--apply] [--quiet]
 #   sh memory-route.sh [--dir <config-dir> | --live] --status
+#   sh memory-route.sh --key <path|->    the harness's store key for a path (what a session started there reads); - reads paths on stdin
 #
 # Exit 0 = every governed repo resolves to a non-empty store. Exit 1 = at least
 # one starts blind. Exit 3 = it could not look (D-29 unchecked: nothing was
@@ -26,6 +27,7 @@ set -u
 # Its errors go through log-lib on stderr: stdout is the report, which lint IJ6 parses (harbor#896).
 # shellcheck disable=SC2034 # read by library-log.sh
 LOG_FD=2; . "$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)/library-log.sh"; log_init memory-route
+. "$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)/library-fs.sh"   # fs_session_key, the harness's key (harbor#966)
 
 _phys() { CDPATH= cd -P -- "$1" 2>/dev/null && pwd -P || printf '%s' "$1"; }
 
@@ -37,6 +39,14 @@ QUIET=0
 STATUS=0
 TARGETED=0
 EXPLICIT_LIVE=0
+
+# The harness's own key, from library-fs.sh: `/` alone kept every `.` and `_`, so all 890 routes under .worktrees/ sat under keys no
+# session reads, and this check counted them ok (harbor#966). Over 200 the harness hashes: judged in the walk below.
+key_for() { fs_session_key "$1"; }
+if [ "${1:-}" = --key ]; then  # `--key -`: one path per stdin line, one key per line (bin/scope-repo-rename.sh asks for hundreds)
+  [ -n "${2:-}" ] || { log_fail "--key takes a path, or - for stdin"; log_fix "sh $0 --key <path>"; log_end || :; exit 2; }
+  if [ "$2" = - ]; then fs_session_keys; else key_for "$2"; fi; exit 0
+fi
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -88,9 +98,8 @@ if [ "$APPLY" = 1 ] && [ "$TARGETED" = 0 ]; then
   exit 2
 fi
 
-# ── the key derivation, which is the one thing here that can be wrong ────────
-# Claude Code names a project directory after the session cwd with every `/` replaced by `-` (/Users/x/<repo> -> -Users-x-<repo>). Derived, never parsed back: only the forward map is needed.
-key_for() { printf '%s' "$1" | sed 's|/|-|g'; }
+# ── the key derivation (key_for, above), which is the one thing here that can be wrong ────────
+# Derived, never parsed back: only the forward map is needed, and bin/scope-repo-rename.sh and hooks/post-checkout ask --key for it.
 
 # THE REGISTRY IS THE PRIVATE LAYER'S (harbor#1149): <private>/context-rules/user/projects.tsv (harbor#1010), through the one resolver beside this
 # script. None is the stand-down below, which names where it looked.
@@ -196,6 +205,10 @@ while IFS="$(printf '\t')" read -r name target; do
 
   k="$(key_for "$target")"
   link="$STORE_ROOT/$k/memory"
+  if [ "${#k}" -gt 200 ]; then  # the harness hashes a longer key; not derived here, so never counted as routed
+    say "  BLIND  $name — its store key is over 200 characters, which the harness hashes (shorten the path)"
+    blind "a key over 200 characters" "shorten the path"; continue
+  fi
 
   if [ -L "$link" ]; then
     n="$(count_notes "$link")"

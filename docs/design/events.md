@@ -337,9 +337,9 @@ harbor event on --preset <id> | --list | --off <id>
   an event whose `cause` chain is 3 deep (`HARBOR_EVENT_MAX_DEPTH`) or passes through an event this same
   rule fired on (its own output coming back round); **debounce** per (rule, subject), leading edge, by the
   events' own `ts` (default 60 s); **rate** per rule, fires in the rolling hour (default 6, at most 60).
-- **The handler** runs from its argv, never a shell string: the event reaches it as `HARBOR_EVENT` (the
+- **The handler** runs from its argv, never a shell string: the event reaches it as `HARBOR_EVENT_JSON` (the
   line), `HARBOR_EVENT_ID`, `_KIND`, `_SUBJECT`, `_RULE` and on stdin, under `env -i` and the same allowlist as an
-  agent, so no key or token reaches it either, plus `SHIP_UNATTENDED=1`: a handler is unattended by definition,
+  agent, so no key or token reaches it either, plus `HARBOR_DEPLOY_UNATTENDED=1`: a handler is unattended by definition,
   so the ship contract's unattended refusals see it. It runs under `/bin/sh`, from HOME unless `--cwd`. It is killed after
   `HARBOR_EVENT_HANDLER_TIMEOUT` seconds (600) with its process group. Its exit code is in the ledger, and a
   non-zero one is a `[check:<rule>]` line in `cache/checks.log`.
@@ -362,7 +362,7 @@ ENABLE_CLAUDEAI_MCP_SERVERS=false claude -p '<prompt + the event, marked as data
 - **Off until `{cfg}/.helm-dispatch/spawn.on` exists.** Without it the event is recorded `skip:inert` and nothing
   runs.
 - **Its own empty directory.** Without `--cwd` the agent starts in a new `mktemp -d` under `dispatch/work/`,
-  removed after, never HOME: the event in its prompt is untrusted. It gets `SHIP_UNATTENDED=1` like a handler.
+  removed after, never HOME: the event in its prompt is untrusted. It gets `HARBOR_DEPLOY_UNATTENDED=1` like a handler.
 - **Narrow tools.** `--tools` is refused unless every name is `Read`, `Grep` or `Glob`: a spawned agent reads
   and proposes, and never promotes a guard or a rule. Anything that would prompt is denied. `--tools` names
   only built-in tools, so `--strict-mcp-config` with no `--mcp-config` loads no MCP server ("Only use MCP
@@ -477,7 +477,7 @@ Off again, in reverse: remove the hook, `rm ~/.claude/.helm-dispatch/spawn.on`, 
 | A first start fires nothing on history; a running follower wakes on a new line; one follower per bus, with 12 started at once past a dead holder's leftovers, and the ledger intact; TERM and `dispatch.off` stop it, asleep or not | `resume.test.sh` |
 | A rule is refused without its docs/reference/checks.md row, its trigger in it, or its disable command, at `on` and at every load (tools, kind, id) | `rules.test.sh`, `registry.test.sh`, `tests/check/schedules/schedules.test.sh` |
 | Idempotent by event id; debounced per (rule, subject); the loop guard (own output, depth 3); rate per rule; backstop | `rules.test.sh` |
-| Inert without `spawn.on`; the exact argv; `env -i` and the allowlist, no key or token; `agent.result` with its cause; $5 a UTC day; a missing cost is the cap; an overrun is an alarm; a `--` handler is only `sh {cfg}/bin/<allowlisted>` with its recorded bytes (every r2 probe form refused); its own empty cwd; `SHIP_UNATTENDED=1`; the kill switch; no rule approves; a spawn killed four times ran once and kept its reservation | `spawn.test.sh`, `registry.test.sh` |
+| Inert without `spawn.on`; the exact argv; `env -i` and the allowlist, no key or token; `agent.result` with its cause; $5 a UTC day; a missing cost is the cap; an overrun is an alarm; a `--` handler is only `sh {cfg}/bin/<allowlisted>` with its recorded bytes (every r2 probe form refused); its own empty cwd; `HARBOR_DEPLOY_UNATTENDED=1`; the kill switch; no rule approves; a spawn killed four times ran once and kept its reservation | `spawn.test.sh`, `registry.test.sh` |
 | One line or 0 bytes; this repo only; never the session's own; a first offset without reading the bus; as a hook, exit 0 and silent on a garbage payload, a hung bus, a hung git, an open stdin, a missing library | `pull.test.sh` |
 | `subscribe` is refused as unverified; `harbor event` routes the E2 verbs; the plist is the KeepAlive follower | `registry.test.sh` |
 
@@ -502,7 +502,7 @@ Off again, in reverse: remove the hook, `rm ~/.claude/.helm-dispatch/spawn.on`, 
   but the ~10 sibling scripts it runs are not, nor `~/.local/bin/projects-orchestrator`, which no manifest
   records and a session can rewrite (guard-bash refuses neither a Write to it nor `uv tool install --force`).
   The preset also makes credentialed `gh` calls, including runner-switch's `HARBOR_CI_RUNNER` variable path, with
-  `SHIP_UNATTENDED=1`, and a planted absolute-path `claude` there passes the noclaude shim. The same reach
+  `HARBOR_DEPLOY_UNATTENDED=1`, and a planted absolute-path `claude` there passes the noclaude shim. The same reach
   already exists through `com.harbor.status.fleet-snapshot` every 300 s; the dispatcher adds event-timed runs, not
   reach. *Proposed fix:* before each fire, verify every runtime-install manifest row in one
   `git hash-object --stdin-paths` call and refuse on any mismatch; record projects-orchestrator's bytes in a

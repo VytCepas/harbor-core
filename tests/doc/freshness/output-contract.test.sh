@@ -18,6 +18,10 @@ t_section "the report: the table on stdout, the log on stderr"
 t_eq "exit 0 (age is a priority signal)" "exit 0" "$(run)"
 t_eq "stdout starts with the table header" "DOCUMENT" "$(OUT | head -1 | awk '{print $1}')"
 t_has "the stale document is a table row" "$(OUT)" "OLD.md"
+# Ages come from one `git log` pass (harbor#667); these pin the numbers, not just the rows.
+row() { awk -v f="$1" '$1 == f { print $2 }' "$T_TMP/out"; }
+t_eq "a document committed in 2020 is thousands of days old" 1 "$(row OLD.md | awk '{ n = $1 + 0; print (n > 2000 && n < 20000) }')"
+t_eq "a document committed today is 0d" 0d "$(row FRESH.md)"
 t_eq "no log line is mixed into stdout" 0 "$(OUT | grep -c '^  \(ok\|FAIL\|WARN\|note\|skip\|fix\):')"
 t_eq "the header is on stderr" "── freshness · documents, stalest first" "$(ERR | head -1)"
 t_has "a stale document is a WARN" "$(ERR)" "  WARN: 1 document(s) past threshold"
@@ -31,6 +35,15 @@ git -C "$R" rm -q -f OLD.md; git -C "$R" commit -q -m drop
 run >/dev/null
 t_has "the ok line" "$(ERR)" "  ok: nothing past its threshold"
 t_eq "the summary" "freshness: 1 ok, 0 failed, 0 warnings" "$(ERR | tail -1)"
+
+t_section "renames and files with no history (the per-file log's behaviour)"
+GIT_COMMITTER_DATE="2020-01-01T00:00:00Z" GIT_AUTHOR_DATE="2020-01-01T00:00:00Z" sh -c 'printf "y\n" > "$1/MOVEME.md"; git -C "$1" add MOVEME.md; git -C "$1" commit -q -m old2 -- MOVEME.md' _ "$R"
+git -C "$R" mv MOVEME.md MOVED.md; git -C "$R" commit -q -m rename
+printf 'x\n' > "$R/STAGED.md"; git -C "$R" add STAGED.md
+run >/dev/null
+t_eq "a renamed document ages from the rename commit" 0d "$(row MOVED.md)"
+t_eq "the old name is gone" "" "$(row MOVEME.md)"
+t_eq "a staged file with no history is not scored" "" "$(row STAGED.md)"
 
 t_section "--open: the markers on stdout, the log on stderr"
 t_eq "exit 0" "exit 0" "$(run --open)"

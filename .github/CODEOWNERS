@@ -84,6 +84,7 @@
 /bin/admission-bash.sh @VytCepas
 /bin/admission-cloud.sh @VytCepas
 /bin/admission-decide.sh @VytCepas
+/bin/admission-decider-set.sh @VytCepas
 /bin/admission-deliverables.sh @VytCepas
 /bin/admission-deny.sh @VytCepas
 /bin/admission-destroy.sh @VytCepas
@@ -126,7 +127,6 @@
 /bin/context-budget.sh @VytCepas
 /bin/context-injection-install.sh @VytCepas
 /bin/context-peers.sh @VytCepas
-/bin/decider-set.sh @VytCepas
 /bin/deploy-doctor.sh @VytCepas
 /bin/deploy-hooks.sh @VytCepas
 /bin/deploy-launchd-render.sh @VytCepas
@@ -215,6 +215,7 @@
 /bin/proposal.sh @VytCepas
 /bin/scope-layers.sh @VytCepas
 /bin/scope-managed-mods.sh @VytCepas
+/bin/scope-repo-rename.sh @VytCepas
 /bin/scope-repo-sources.sh @VytCepas
 /bin/scope-repo.sh @VytCepas
 /bin/scope-repos-generate.sh @VytCepas
@@ -277,5 +278,5 @@
 /tests/lib/** @VytCepas
 /tests/lib/core.sh @VytCepas
 /.agents/protected-paths.tsv @VytCepas
-/.agents/ship.conf @VytCepas
+/.agents/ship.config @VytCepas
 /.github/ @VytCepas

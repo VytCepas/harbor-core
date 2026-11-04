@@ -5,7 +5,7 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 TOOL="${RT_TOOL:-$T_ROOT/bin/context-budget.sh}"
 F="$T_TMP/tree"; mkdir -p "$F/bin" "$F/registries" "$F/policy" "$F/skills/amb" "$F/skills/hid" "$F/vendor/skills/vend"
-cp "$TOOL" "$F/bin/context-budget.sh"; cp "$T_ROOT/bin/library-log.sh" "$F/bin/library-log.sh"
+cp "$TOOL" "$F/bin/context-budget.sh"; cp "$T_ROOT/bin/library-log.sh" "$F/bin/library-log.sh"; cp "$T_ROOT/bin/library-fs.sh" "$F/bin/library-fs.sh"
 fill() { _n=0; : > "$1"; while [ "$_n" -lt "$2" ]; do printf 'c' >> "$1"; _n=$((_n+1)); done; }  # <file> <bytes>
 skill() { printf -- '---\nname: %s\ndescription: %s\n%s---\n' "$2" "$3" "$4" > "$1/SKILL.md"; }  # <dir> <name> <desc> <extra>
 fill "$F/policy/constitution.md" 1000

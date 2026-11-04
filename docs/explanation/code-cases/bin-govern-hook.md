@@ -255,7 +255,7 @@ a subagent, where an `ask` with no human attached is toothless.
 ── AND IT HAS TO SURVIVE THE ROUTE THE OPERATOR ACTUALLY RUNS ───────────────
 Found by review, not by this file's suite, and it is §2.6 exactly: the suite
 fired the hook DIRECTLY while production goes through
-`context-rules/harbor/merge-note.sh`, which execs `govern-hook.sh --note` because
+`context-rules/platform/merge-note.sh`, which execs `govern-hook.sh --note` because
 `run:` packs contract that stdout IS the note. So a deny degraded to prose,
 `inject-hook.sh` wrapped that prose as additionalContext, and every red PR
 still merged — with a green suite either side of it. A gate that is inert on

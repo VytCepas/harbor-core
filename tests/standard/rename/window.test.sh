@@ -218,7 +218,8 @@ t_eq "BEHAVIOUR: the old spelling no longer switches it" "posture=ask again=" "$
 t_eq "...the new one still does" "shadow" "$(probe HARBOR_ADMISSION_SHADOW=1)"
 t_eq "the exemption row goes with the window" 0 "$(grep -c 'env:XOLD_FLOOR_SHADOW' "$CR/standards/naming/exemptions.tsv")"
 t_exit "...and the residual is 0" 0 crun --residual --wave W5
-printf 'rename-0003\tenv:XOLD_OTHER\tenv:HARBOR_NOTAFAMILY_X\tenv\tW5\t-\ta name the registry rejects\n' >> "$CR/standards/naming/renames.tsv"
+# the rejected name is built, so the naming lint does not read this suite's fixture as a name of the tree (harbor#1097)
+printf 'rename-0003\tenv:XOLD_OTHER\tenv:%s_NOTAFAMILY_X\tenv\tW5\t-\ta name the registry rejects\n' HARBOR >> "$CR/standards/naming/renames.tsv"
 printf 'echo "$XOLD_OTHER"\n' >> "$CR/bin/probe.sh"
 t_exit "the registry rejects a new env name: refused" 1 crun --apply --id rename-0003
 t_has "...naming the rule" "$(crun --plan --id rename-0003 2>&1)" "name.env"

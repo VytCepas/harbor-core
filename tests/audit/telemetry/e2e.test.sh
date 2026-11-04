@@ -21,7 +21,7 @@ t_eq "the host dir is sealed 0500 for the session" "dr-x------" "$(ls -ld "$OH" 
 t_eq "the stream root inside it is writable" "drwx------" "$(ls -ld "$OH/streams" | cut -c1-10)"
 guard allow; guard block; guard allow
 t_eq "three guard calls are three ledger rows (plus the armed row)" 3 "$(grep -vc '"d":"armed"' "$L")"
-t_eq "a stream line is written mid-session" 0 "$(CLAUDE_CONFIG_DIR="$CF" HARBOR_WRITER=e2e sh -c '. "$1/library-log.sh"; log_init e2e; HERE="$1"; . "$1/audit-stream-lib.sh"; harbor_emit fleet.snapshots "{\"repos\":3}"' _ "$CF/bin" >/dev/null 2>&1; echo $?)"
+t_eq "a stream line is written mid-session" 0 "$(CLAUDE_CONFIG_DIR="$CF" HARBOR_AUDIT_STREAM_WRITER=e2e sh -c '. "$1/library-log.sh"; log_init e2e; HERE="$1"; . "$1/audit-stream-lib.sh"; harbor_emit fleet.snapshots "{\"repos\":3}"' _ "$CF/bin" >/dev/null 2>&1; echo $?)"
 F="$(find "$OH/streams/fleet.snapshots" -name '*.jsonl' | head -n 1)"
 t_eq "and its chain verifies" "" "$(. "$B/library-log.sh"; log_init v; HERE="$B"; . "$B/audit-stream-lib.sh"; stream_verify "$F")"
 

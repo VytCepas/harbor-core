@@ -19,6 +19,7 @@ set -f
 case "$0" in */*) _sc_dir="${0%/*}" ;; *) _sc_dir=. ;; esac
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; . "$_sc_dir/library-log.sh"
+. "$_sc_dir/library-fs.sh"   # fs_session_key: the harness's key, as memory-route.sh (harbor#966)
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 STORE=""
 INDEX=""
@@ -80,7 +81,7 @@ done
 
 # THE SAME RESOLUTION context-budget.sh USES, deliberately. Direct slug match on
 # the working directory, no walk-up to an ancestor store.
-STORE_DEFAULT="$CFG/projects/$(printf '%s' "$PWD" | tr '/' '-')/memory"
+STORE_DEFAULT="$CFG/projects/$(fs_session_key "$PWD")/memory"
 [ -n "$STORE" ] || STORE="$STORE_DEFAULT"
 [ -n "$INDEX" ] || INDEX="$STORE/MEMORY.md"
 

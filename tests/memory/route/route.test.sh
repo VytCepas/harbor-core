@@ -10,7 +10,8 @@ CFG="$T/cfg"; REPOROOT="$T/repo"; TAB="$(printf '\t')"
 # The registry is the private layer's (harbor#1149): a fixture layer, named for every call below.
 REG="$T/priv/context-rules/user/projects.tsv"; HARBOR_SCOPE_PRIVATE="$T/priv"; export HARBOR_SCOPE_PRIVATE
 mkdir -p "$CFG/projects" "$REPOROOT" "$T/priv/context-rules/user"
-key_for() { printf '%s' "$1" | sed 's|/|-|g'; }  # the tool's own derivation, not a hand-typed key
+# The harness's key (claude's bundle: every character outside [A-Za-z0-9] a dash), never the tool's own: a copy of the tool could not fail.
+key_for() { printf '%s' "$1" | LC_ALL=C sed 's/[^A-Za-z0-9]/-/g'; }
 route_of() { printf '%s' "$CFG/projects/$(key_for "$1")/memory"; }
 HOME_STORE="$(route_of "$T")"; mkdir -p "$HOME_STORE"
 printf -- '---\nname: a\n---\nbody\n' > "$HOME_STORE/a.md"

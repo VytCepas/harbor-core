@@ -23,7 +23,8 @@ CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 # The default is the notes store, as bin/memory.sh resolves it (harbor#1010): projects/<home-key>/memory, else the old MEMORY tree.
 STORE="${HARBOR_MEMORY_ROOT:-}"
 if [ -z "$STORE" ]; then
-  _hk="$(CDPATH='' cd -- "$HOME" 2>/dev/null && pwd -P | sed 's|/|-|g')"
+  . "$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)/library-fs.sh"   # fs_session_keys: the harness's key (harbor#966)
+  _hk="$(CDPATH='' cd -- "$HOME" 2>/dev/null && pwd -P | fs_session_keys)"
   if [ -n "$_hk" ] && [ -d "$CFG/projects/$_hk/memory" ]; then STORE="$CFG/projects/$_hk/memory"; else STORE="$CFG/MEMORY"; fi
 fi
 STRICT=0

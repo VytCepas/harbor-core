@@ -7,7 +7,7 @@
 # Keychain credential (harbor#1297 round 1). The token then comes from the access-confinement hook's cache.
 [ "${1:-}" = get ] || exit 0
 [ "${CLAUDECODE:-}" = 1 ] || exit 0
-_C="${HARBOR_CONFINEMENT_CACHE:-$HOME/.cache/harbor/confinement}"
+_C="${HARBOR_ACCESS_CONFINEMENT_CACHE:-${HARBOR_CONFINEMENT_CACHE:-$HOME/.cache/harbor/confinement}}"
 # The installation follows the repo owner: path= when git sends it (useHttpPath), else the cwd's origin.
 _p=; while IFS= read -r _l && [ -n "$_l" ]; do case "$_l" in path=*) _p="${_l#path=}" ;; esac; done
 _o="${_p%%/*}"

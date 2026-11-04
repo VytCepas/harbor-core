@@ -17,7 +17,6 @@ _phys() { CDPATH= cd -P -- "$1" 2>/dev/null && pwd -P || printf '%s' "$1"; }
 _cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 _top="$(_phys "$(git rev-parse --show-toplevel 2>/dev/null)")"
 case "$_top/" in "$(_phys "$HOME")/"*) ;; *) exit 0 ;; esac
-[ ! -L "$_cfg/projects/$(printf '%s' "$_top" | sed 's|/|-|g')/memory" ] || exit 0
 
 _hk_self="$0"
 while [ -L "$_hk_self" ]; do
@@ -26,6 +25,8 @@ while [ -L "$_hk_self" ]; do
 done
 _hk_root="$(CDPATH= cd -- "$(dirname -- "$_hk_self")/.." && pwd)"
 [ -f "$_hk_root/bin/memory-route.sh" ] || exit 0
+# the harness's key, from the router itself (harbor#966): a `/`-only copy here missed every .worktrees/ tree
+[ ! -L "$_cfg/projects/$(sh "$_hk_root/bin/memory-route.sh" --key "$_top")/memory" ] || exit 0
 
 if [ "$(_phys "$_cfg")" = "$(_phys "$HOME/.claude")" ]; then set -- --live; else set -- --dir "$_cfg"; fi
 

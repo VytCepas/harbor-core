@@ -140,7 +140,7 @@ t_eq "a slug with no checkout is silent" "" "$(fireb PreToolUse 'gh pr merge 7 -
 t_eq "outside any repo with no -R is silent" "" "$(fireb PreToolUse 'gh pr merge 7' "$ELSE")"
 t_eq "a non-merge command is silent" "" "$(fireb PreToolUse 'gh pr view 7 -R Own/Gov' "$ELSE")"
 t_eq "PostToolUse is not the box gate's event" "" "$(fireb PostToolUse 'gh pr merge 7 -R Own/Gov' "$ELSE")"
-mkdir -p "$GOV/context-rules/harbor"; printf 'x\n' > "$GOV/context-rules/harbor/merge-note.sh"
+mkdir -p "$GOV/context-rules/platform"; printf 'x\n' > "$GOV/context-rules/platform/merge-note.sh"
 t_eq "standing in the repo with its merge pack, the pack checks it and --box stays silent" "" \
   "$(fireb PreToolUse 'gh pr merge 7' "$GOV" "$GOV")"
 t_has "the same repo reached from outside is still checked" "$(fireb PreToolUse 'gh pr merge 7 -R Own/Gov' "$ELSE")" '"permissionDecision":"deny"'

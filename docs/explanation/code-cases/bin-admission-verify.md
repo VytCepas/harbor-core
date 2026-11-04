@@ -191,9 +191,9 @@ throwaway REGISTERED repo whose gate-merge-check.sh always refuses: a merge name
 ## bin/admission-verify.sh, lines 295-297 (before this edit)
 
 ```text
-5a. Every decider that is meant to carry the kill-switch does (harbor#954): the set decider-set.sh derives from the
+5a. Every decider that is meant to carry the kill-switch does (harbor#954): the set admission-decider-set.sh derives from the
     wiring floor-install writes, the same one lint F1 and floor-test read. Installed deciders only; an absent one is
-    the presence check's finding (1.), and a copy with no decider-set.sh beside it says so rather than guessing a list.
+    the presence check's finding (1.), and a copy with no admission-decider-set.sh beside it says so rather than guessing a list.
 ```
 
 ## bin/admission-verify.sh, lines 311-314 (before this edit)
@@ -275,9 +275,9 @@ pass.
 
 ```text
 ── the mods lockdown (harbor#1022): a root-owned managed file refusing user mods ──
-Runs for --live, or wherever HARBOR_MANAGED_SETTINGS names a file (the test path). A sandbox --dir
+Runs for --live, or wherever HARBOR_SCOPE_MANAGED_SETTINGS names a file (the test path). A sandbox --dir
 has no managed tier of its own, so it skips rather than reporting the host's file against it.
-HARBOR_MANAGED_OWNER_UID (default 0) lets a fixture stand in for root; production never sets it.
+HARBOR_SCOPE_MANAGED_OWNER_UID (default 0) lets a fixture stand in for root; production never sets it.
 ```
 
 ## bin/admission-verify.sh, lines 435-437 (before this edit)

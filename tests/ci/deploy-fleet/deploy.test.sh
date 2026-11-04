@@ -33,7 +33,7 @@ t_eq "the mutant applies a repo it has never deployed" 1 "$(fx_ops apply)"
 SHIP=''
 
 t_section "a manifest with no restore, or no verify, is never deployed unattended (red-proof)"
-cut_world() { fx_world; fx_git api "drop $1" sh -c 'grep -v "^$0 " .agents/ship.conf > m; mv m .agents/ship.conf' "$1"
+cut_world() { fx_world; fx_git api "drop $1" sh -c 'grep -v "^$0 " .agents/ship.config > m; mv m .agents/ship.config' "$1"
   fx_base api; fx_main api src/x.txt x; }
 cut_world restore
 t_eq "no restore: exit 0" 0 "$(ship night)"
@@ -91,12 +91,12 @@ side_world; ship night >/dev/null
 t_eq "the mutant applies over a history it never deployed" 1 "$(fx_ops apply)"
 SHIP=''
 
-t_section "--approved is refused when SHIP_UNATTENDED=1 (§5a.4) (red-proof)"
+t_section "--approved is refused when HARBOR_DEPLOY_UNATTENDED=1 (§5a.4) (red-proof)"
 fx_world; fx_base api; fx_main api secrets/key k; S="$(fx_tip api)"
-t_eq "exit 2, nothing applied" "2 0" "$(SHIP_UNATTENDED=1 ship deploy acme/api --sha "$S" --approved) $(fx_ops apply)"
+t_eq "exit 2, nothing applied" "2 0" "$(HARBOR_DEPLOY_UNATTENDED=1 ship deploy acme/api --sha "$S" --approved) $(fx_ops apply)"
 t_has "...saying who may pass it" "$(cat "$T_TMP/out")" "only gate-approve.sh passes it"
-fx_mutant "MU --approved accepted unattended" 's/^\[ "\$APPROVED" = 0 \] || \[ "\${SHIP_UNATTENDED:-}" != 1 \] || usage_err/: || usage_err/'
-fx_world; fx_base api; fx_main api secrets/key k; ( SHIP_UNATTENDED=1; export SHIP_UNATTENDED; ship deploy acme/api --sha "$(fx_tip api)" --approved >/dev/null )
+fx_mutant "MU --approved accepted unattended" 's/^\[ "\$APPROVED" = 0 \] || \[ "\${HARBOR_DEPLOY_UNATTENDED:-\${SHIP_UNATTENDED:-}}" != 1 \] || usage_err/: || usage_err/'
+fx_world; fx_base api; fx_main api secrets/key k; ( HARBOR_DEPLOY_UNATTENDED=1; export HARBOR_DEPLOY_UNATTENDED; ship deploy acme/api --sha "$(fx_tip api)" --approved >/dev/null )
 t_eq "the mutant applies a protected change in an unattended run" 1 "$(fx_ops apply)"
 SHIP=''
 
@@ -133,7 +133,7 @@ SHIP=''
 
 t_section "a restore outside the runner: the live install disagrees, so the baseline is not trusted (red-proof)"
 manual_world() { fx_world; fx_base api; fx_main api secrets/key k; ship deploy acme/api --sha "$(fx_tip api)" --approved >/dev/null
-  ( cd "$T_TMP/port/api" && SHIP_SNAPSHOT_ID=snap-1 sh ops/deploy-restore.sh ); fx_main api src/u.txt u; }
+  ( cd "$T_TMP/port/api" && HARBOR_DEPLOY_SNAPSHOT_ID=snap-1 sh ops/deploy-restore.sh ); fx_main api src/u.txt u; }
 manual_world
 t_eq "the approved protected deploy, then a manual restore" "snap-1 $(git --git-dir="$T_TMP/remotes/api.git" rev-parse trunk~1)" "$(fx_state api .snapshot) $(fx_state api .sha)"
 t_eq "the next night: exit 0, nothing applied" "0 1" "$(ship night) $(fx_ops apply)"
@@ -142,4 +142,10 @@ fx_mutant "MLIVE the live install is not read" 's/^  if \[ -n "\$_base" \] && \[
 manual_world; ship night >/dev/null
 t_eq "the mutant re-applies the undone protected change unattended" 2 "$(fx_ops apply)"
 SHIP=''
+t_section "a workload still carrying .agents/ship.conf opts in, until 2026-11-15 (harbor#1097)"
+FX_OLD_MANIFEST=1; export FX_OLD_MANIFEST; prot_world; S="$(fx_tip api)"; unset FX_OLD_MANIFEST
+t_eq "ship deploy --approved reads the old manifest" 0 "$(ship deploy acme/api --sha "$S" --approved)"
+t_eq "...and applies and verifies" "1 1" "$(fx_ops apply) $(fx_ops verify-smoke)"
+t_eq "...and the baseline is the commit" "$S" "$(fx_state api .sha)"
+
 t_done

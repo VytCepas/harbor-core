@@ -21,7 +21,7 @@
 # platform: enableWeakerNetworkIsolation is written on Darwin only; gh's Go TLS fails without it (#1297 round 3).
 # allowLocalBinding is written false on purpose: on, it opens the operator's logged-in Chrome to every confined command;
 # sessions reach Chrome through the harbor_chrome MCP server instead (harbor#1301, contracts/browser-routing.md row 4).
-# Target: macOS /Library/Application Support/ClaudeCode/, Linux and WSL /etc/claude-code/. HARBOR_MANAGED_SETTINGS
+# Target: macOS /Library/Application Support/ClaudeCode/, Linux and WSL /etc/claude-code/. HARBOR_SCOPE_MANAGED_SETTINGS
 # moves it (tests, no root). Composition runs as the operator, never root: HOME, PORT_ROOT and the layer are theirs.
 set -eu
 # Under sudo a user-writable dir on PATH would run its jq/mkdir/chown as root: pin it first.
@@ -35,7 +35,7 @@ log_init deploy-confinement
 # As root nothing that steers the write or its content is caller-chosen (sudo -E or env_keep would pass it).
 confine_refuse_override() { # <uid> -> 1 and a FAIL when root is handed a path or content override
   [ "$1" -eq 0 ] || return 0
-  for _v in HARBOR_MANAGED_SETTINGS HARBOR_CONFINEMENT_PRIVATE HARBOR_CONFINEMENT_OS; do
+  for _v in HARBOR_SCOPE_MANAGED_SETTINGS HARBOR_MANAGED_SETTINGS HARBOR_DEPLOY_CONFINEMENT_PRIVATE HARBOR_CONFINEMENT_PRIVATE HARBOR_DEPLOY_CONFINEMENT_OS HARBOR_CONFINEMENT_OS; do   # old names until 2026-11-15 (harbor#1097)
     eval "_s=\${$_v:-}"
     [ -z "$_s" ] && continue
     log_fail "$_v is set under root: refusing a caller-chosen target or content"
@@ -60,14 +60,14 @@ compose() {
     || { log_fail "scope-roots.sh resolved no workspace root (above; contracts/port-root.md)"; log_fix "sh $HERE/scope-roots.sh --port-root"; return 1; }
   [ -d "$_port" ] && _port="$(CDPATH= cd -P -- "$_port" && pwd)"
   _del="$(sh "$HERE/scope-roots.sh" --conf deliverables_dir 2>/dev/null || :)"; _del="${_del:-~/Deliverables}"
-  _priv="${HARBOR_CONFINEMENT_PRIVATE-$(sh "$HERE/scope-roots.sh" --private 2>/dev/null || :)}"
+  _priv="${HARBOR_DEPLOY_CONFINEMENT_PRIVATE-${HARBOR_CONFINEMENT_PRIVATE-$(sh "$HERE/scope-roots.sh" --private 2>/dev/null || :)}}"
   _hf="$CORE/confinement-hosts.txt"; _pf="$CORE/confinement-paths.txt"
   _xh=''; _xp=''; [ -z "$_priv" ] || { _xh="$_priv/confinement-hosts.txt"; _xp="$_priv/confinement-paths.txt"; }
   _ok=0
   check_rows "$_hf" hosts || _ok=1; check_rows "$_pf" paths || _ok=1
   [ -z "$_priv" ] || { check_rows "$_xh" hosts || _ok=1; check_rows "$_xp" paths || _ok=1; }
   [ "$_ok" = 0 ] || return 1
-  _os="${HARBOR_CONFINEMENT_OS:-$(uname -s)}"
+  _os="${HARBOR_DEPLOY_CONFINEMENT_OS:-${HARBOR_CONFINEMENT_OS:-$(uname -s)}}"
   _strict="$(conf_on confinement_strict)" && _cred="$(conf_on confinement_credentials)" || return 1
   { rows "$_hf"; [ -z "$_xh" ] || rows "$_xh"; } | sed 's/^/host /' > "$_T/rows"
   { rows "$_pf"; [ -z "$_xp" ] || rows "$_xp"; } | sed -e "s|@PORT_ROOT@|$_port|g" -e "s|@DELIVERABLES@|$_del|g" >> "$_T/rows"
@@ -126,7 +126,7 @@ _T="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -rf "$_T"' EXIT INT 
 if [ "$MODE" = compose ]; then compose || { log_end || :; exit 1; }; exit 0; fi
 if [ "$MODE" = marker ]; then marker_body || { log_end || :; exit 1; }; exit 0; fi
 
-if [ -n "${HARBOR_MANAGED_SETTINGS:-}" ]; then FILE="$HARBOR_MANAGED_SETTINGS"
+if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then FILE="${HARBOR_SCOPE_MANAGED_SETTINGS:-$HARBOR_MANAGED_SETTINGS}"
 else case "$(uname -s)" in
   Darwin) FILE='/Library/Application Support/ClaudeCode/managed-settings.json' ;;
   *) FILE='/etc/claude-code/managed-settings.json' ;;
@@ -158,11 +158,11 @@ fi
 log_note "target: $FILE"
 if [ "$MODE" != uninstall ]; then
   CONFINE_AS=''; [ "$(id -u)" -ne 0 ] || CONFINE_AS="sudo -u $SUDO_USER"
-  confine_preflight "${HARBOR_CONFINEMENT_OS:-$(uname -s)}" || { log_end || :; exit 1; }
+  confine_preflight "${HARBOR_DEPLOY_CONFINEMENT_OS:-${HARBOR_CONFINEMENT_OS:-$(uname -s)}}" || { log_end || :; exit 1; }
 fi
 if [ "$MODE" = dry ]; then printf '%s\n' "$NEW"; log_note "dry run: nothing written"; exit 0; fi
 
-if [ -z "${HARBOR_MANAGED_SETTINGS:-}" ] && [ "$(id -u)" -ne 0 ]; then
+if [ -z "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ] && [ "$(id -u)" -ne 0 ]; then
   log_fail "not root: this file is root-owned by design"; log_fix "sudo sh $0$([ "$MODE" = uninstall ] && echo ' --uninstall')"; exit 1
 fi
 mkdir -p "$BASE"

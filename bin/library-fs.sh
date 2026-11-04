@@ -7,6 +7,8 @@
 #   fs_mode <file>    permission bits, octal (644)           fs_uid <file>    numeric owner
 #   fs_sha256 < <file>   stdin's sha256 as bare hex, sha256sum else shasum (harbor#1392: one copy outside
 #                        the floor library and the installers' deploy-install-lib.sh)
+#   fs_session_key <path>   the harness's session-store key, <config>/projects/<key>/ (harbor#966)
+#   fs_session_keys         the same for each path on stdin, one key per line
 #
 # fs_mode keeps the low three octal digits: GNU `%a` prints 4755 for a setuid file where BSD `%Lp` prints 755.
 #
@@ -29,3 +31,9 @@ fs_size()  { _fs_q %s %z "$1" 9; }
 fs_mode()  { _fs_q %a %Lp "$1" 7; }
 fs_uid()   { _fs_q %u %u "$1" 9; }
 fs_sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
+
+# The harness's own key (claude 2.1.317's bundle: k(e) = e.replace(/[^a-zA-Z0-9]/g, "-")), the one derivation every reader of
+# <config>/projects/ uses (harbor#966): a `/`-only copy put every .worktrees/ tree under a key no session reads. Over 200
+# characters the harness hashes the key; a caller that can meet such a path judges the length itself.
+fs_session_keys() { LC_ALL=C sed 's/[^A-Za-z0-9]/-/g'; }
+fs_session_key() { printf '%s\n' "$1" | fs_session_keys; }

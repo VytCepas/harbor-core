@@ -31,16 +31,16 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | standard | standards/ | system | source | versioned | 31 |
 | contract | contracts/ | system | source | versioned | 39 |
 | decision-record | docs/decisions/ | element | source | dated | 93 |
-| hook | hooks/ | component | source | living | 47 |
+| hook | hooks/ | component | source | living | 48 |
 | skill | skills/ | component | source | living | 40 |
 | fixture | fixtures/ | element | source | living | 438 |
 | registry | registries/ | component | source | versioned | 69 |
-| test | tests/ | component | source | living | 507 |
+| test | tests/ | component | source | living | 508 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 8 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | generated-doc | docs/generated/ | component | generated | generated | 1 |
-| script | bin/ | component | source | living | 250 |
+| script | bin/ | component | source | living | 251 |
 | how-to | docs/how-to/ | component | source | living | 1 |
 | reference | docs/reference/ | component | generated | generated | 86 |
 | explanation | docs/explanation/ | component | source | living | 102 |
@@ -53,13 +53,13 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | (repo root) | 11 | 1 | 1 |
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
-| `bin/` | 254 | 29 | 2 |
+| `bin/` | 255 | 29 | 2 |
 | `commands/` | 5 | 4 | 1 |
 | `context-rules/` | 57 | 6 | 1 |
 | `contracts/` | 107 | 11 | 2 |
 | `docs/` | 308 | 24 | 9 |
 | `fixtures/` | 438 | 11 | 1 |
-| `hooks/` | 43 | 7 | 1 |
+| `hooks/` | 44 | 7 | 1 |
 | `launchd/` | 21 | 10 | 1 |
 | `patches/` | 12 | 3 | 1 |
 | `policy/` | 3 | 1 | 1 |
@@ -68,7 +68,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `skills/` | 40 | 8 | 1 |
 | `standards/` | 31 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 507 | 28 | 1 |
+| `tests/` | 508 | 27 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 101 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -78,7 +78,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
 | access | control-plane | 12 | 28 | 2 | 6 | 0 | 0 |
-| admission | control-plane | 26 | 87 | 0 | 6 | 0 | 172 |
+| admission | control-plane | 27 | 87 | 0 | 6 | 0 | 172 |
 | agent | control-plane | 1 | 2 | 0 | 8 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
 | audit | control-plane | 8 | 14 | 0 | 10 | 0 | 2 |
@@ -92,16 +92,16 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | event | observability | 3 | 19 | 0 | 12 | 0 | 2 |
 | gate | control-plane | 19 | 13 | 0 | 5 | 0 | 6 |
 | housekeeping | control-plane | 1 | 1 | 0 | 3 | 0 | 0 |
-| library | policy-function | 6 | 1 | 0 | 0 | 0 | 0 |
+| library | policy-function | 6 | 0 | 0 | 0 | 0 | 0 |
 | lint | control-plane | 25 | 71 | 0 | 20 | 3 | 37 |
 | memory | memory-store | 6 | 10 | 1 | 24 | 0 | 1 |
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
 | policy | policy-function | 3 | 4 | 3 | 136 | 0 | 7 |
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
-| scope | coordination | 13 | 21 | 0 | 1 | 0 | 5 |
+| scope | coordination | 14 | 22 | 0 | 1 | 0 | 5 |
 | session | data-plane | 14 | 5 | 0 | 7 | 0 | 0 |
 | skill | catalog | 5 | 17 | 0 | 8 | 0 | 14 |
-| standard | policy-function | 17 | 27 | 124 | 12 | 12 | 61 |
+| standard | policy-function | 17 | 28 | 124 | 12 | 12 | 61 |
 | status | observability | 11 | 22 | 0 | 9 | 0 | 0 |
 | test | control-plane | 4 | 5 | 2 | 8 | 0 | 15 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
@@ -137,6 +137,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/admission-bash.sh`
 - `bin/admission-cloud.sh`
 - `bin/admission-decide.sh`
+- `bin/admission-decider-set.sh`
 - `bin/admission-deliverables.sh`
 - `bin/admission-deny-hash.sh`
 - `bin/admission-deny.sh`
@@ -496,6 +497,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/scope-managed-retention.sh`
 - `bin/scope-managed-telemetry.sh`
 - `bin/scope-marker-backfill.sh`
+- `bin/scope-repo-rename.sh`
 - `bin/scope-repo-sources.sh`
 - `bin/scope-repo.sh`
 - `bin/scope-repos-generate.sh`
@@ -746,13 +748,13 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | (repo root) | 11 |
 | `.agents/` | 4 |
 | `.github/` | 2 |
-| `bin/` | 13 |
+| `bin/` | 12 |
 | `commands/` | 2 |
 | `context-rules/` | 45 |
 | `contracts/` | 86 |
 | `docs/` | 128 |
 | `fixtures/` | 263 |
-| `hooks/` | 29 |
+| `hooks/` | 30 |
 | `patches/` | 10 |
 | `runners/` | 2 |
 | `skills/` | 1 |

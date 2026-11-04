@@ -25,7 +25,7 @@ case "$1" in
   *) exit 2 ;;
 esac
 STUB
-export HARBOR_SECRET_BIN="$T/secret" FAKE_STORE="$T/store"
+export HARBOR_ACCESS_SECRET_BIN="$T/secret" FAKE_STORE="$T/store"
 _gh='git''hub'
 GOOD="${_gh}_pat_11ABCDEFG0$(printf 'x%.0s' 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0)NOTAREAL"
 NEARMISS="${_gh}_patx_11ABCDEFG"

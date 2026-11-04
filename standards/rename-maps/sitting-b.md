@@ -11,7 +11,7 @@ Answered by the operator on 2026-10-27; the maps below carry the answers. Every 
 | 3 | Four docs and the superseded four | as mapped | none |
 | 4 | `EVALS-DATA` families and arm folders | as mapped | none |
 | 5 | Six skills, three commands | skills are decided in #1010 (`agent-routing` keeps its name, `agent` is now a family); the commands are approved | the 6 skill `decide` rows dropped; `commands/harbor-{context,merge,skills}.md` are W3 `rename` rows to `context-budget`, `gate-merge`, `skill-catalog`, old names kept until the W3 date |
-| 6 | Cross-repo names | (a) `ship.conf` and `SHIP_*` go to #967; (b) as proposed, dual read to 2027-02-28 | the `.agents/ship.conf` row removed; `HARBOR_SCOPE_FLEET_CONTROLLER` and `HARBOR_SCOPE_SCAFFOLDER` kept with a date |
+| 6 | Cross-repo names | (a) `ship.config` and `SHIP_*` go to #967; (b) as proposed, dual read to 2027-02-28 | the `.agents/ship.config` row removed; `HARBOR_SCOPE_FLEET_CONTROLLER` and `HARBOR_SCOPE_SCAFFOLDER` kept with a date |
 | 7 | ~100 family-less `HARBOR_*` env names | no map now; a separate wave after sitting C | none |
 | 8 | Fleet modules | hold | the file header says "DRAFT, NOT APPROVED; for #967's own sitting" |
 | 9 | `docs/src/NN-*.html` | rename all 11, an `order:` list replaces the prefixes | 11 W1 rows (`docs/src/overview.html` and so on, `20-floor` to `baseline`, `30-inject` to `injection-rule`, `80-monitor` to `alert`). The `doc-index-generate.sh` change ships with the W1 PR, not with these rows |
@@ -215,7 +215,7 @@ tests/policy/constitution-install/constitution-install.test.sh  2 lines in 2 fil
 tests/deploy/deploy/deploy.test.sh  36 lines in 19 files reach it by family `deploy` (glob, regex or built name), first docs/explanation/admission-baseline.md:1908
 tests/deploy/doctor/doctor.test.sh  4 lines in 3 files reach it by family `doctor` (glob, regex or built name), first tests/lint/conventions/suites.test.sh:31
 tests/deploy/doctor/output-contract.test.sh  1 lines in 1 files reach it by family `output` (glob, regex or built name), first inject.d/box/agent-brief.sh:36
-tests/deploy/first-run/first-run.test.sh  13 lines in 1 files reach it by family `first` (glob, regex or built name), first bin/decider-set.sh:36
+tests/deploy/first-run/first-run.test.sh  13 lines in 1 files reach it by family `first` (glob, regex or built name), first bin/admission-decider-set.sh:36
 tests/admission/remove/remove.test.sh  32 lines in 23 files reach it by family `floor` (glob, regex or built name), first .agents/protected-paths.tsv:21
 tests/context/injection-install/injection-install.test.sh  5 lines in 4 files reach it by family `inject` (glob, regex or built name), first bin/admission-bash.sh:1241
 tests/drift/install/install.test.sh  25 lines in 13 files reach it by family `install` (glob, regex or built name), first evals/context/2026-09-07-ecc/subagent-reports/ecc-agentic-architecture-deep-dive.md:80

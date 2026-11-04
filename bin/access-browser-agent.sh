@@ -11,7 +11,7 @@
 #   harbor chrome doctor           is row 4 ready on this box
 #   harbor chrome detach           release the operator's Chrome
 #   harbor chrome tabs             every Chrome tab, by window, query strings cut; `=` marks this session's page
-#   HARBOR_BROWSER_LANE=<a-z0-9> harbor chrome …   a parallel agent's own browser session, <session>-<lane>
+#   HARBOR_ACCESS_BROWSER_LANE=<a-z0-9> harbor chrome …   a parallel agent's own browser session, <session>-<lane>
 #   harbor chrome front            make this session's tab the visible one and give focus back
 #   harbor chrome wait-signin [s]  wait (default 300 s) while the operator signs in, then carry on
 #   harbor chrome hosts            the allow-list goto/tab-new reads: core, then the private layer
@@ -38,7 +38,7 @@ ROUTER='contracts/browser-routing.md, row 4'
 HOSTS_FILE="$ROOT/contracts/browser-agent-hosts.txt"
 # The private layer's own hosts (internal UIs and client tools; core names none), read after the core list. The
 # env is the test seam; absent is the core list alone (contracts/private-layer.md).
-PRIV_HOSTS="${HARBOR_BROWSER_PRIVATE_HOSTS:-}"
+PRIV_HOSTS="${HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS:-${HARBOR_BROWSER_PRIVATE_HOSTS:-}}"
 if [ -z "$PRIV_HOSTS" ]; then
   _pd="$(sh "$HERE/scope-roots.sh" --private 2>/dev/null || :)"
   [ -z "$_pd" ] || PRIV_HOSTS="$_pd/browser-hosts.txt"
@@ -174,10 +174,11 @@ _session() {
   case "$_s" in ''|claude-|*[!A-Za-z0-9_-]*) return 1 ;; esac
   # A lane: parallel agents of ONE session each get their own browser session, as
   # <own name>-<lane>. Appended, never replacing, so a lane cannot name another session's.
-  if [ -n "${HARBOR_BROWSER_LANE:-}" ]; then
-    case "$HARBOR_BROWSER_LANE" in *[!abcdefghijklmnopqrstuvwxyz0-9]*) return 1 ;; esac
-    [ "${#HARBOR_BROWSER_LANE}" -le 12 ] || return 1
-    _s="$_s-$HARBOR_BROWSER_LANE"
+  _lane="${HARBOR_ACCESS_BROWSER_LANE:-${HARBOR_BROWSER_LANE:-}}"   # the old name is read until 2026-11-15 (harbor#1097)
+  if [ -n "$_lane" ]; then
+    case "$_lane" in *[!abcdefghijklmnopqrstuvwxyz0-9]*) return 1 ;; esac
+    [ "${#_lane}" -le 12 ] || return 1
+    _s="$_s-$_lane"
   fi
   printf '%s' "$_s"
 }
@@ -243,9 +244,9 @@ _cli_run() { ( _cli "$@" ); }   # the same CLI, returning here instead of exec'i
 
 # Chrome itself, through AppleScript: tabs, which one is showing, which window is in front.
 # A tab Chrome is not showing reports `hidden` and input verbs time out on it; a second session
-# activating its own tab in the same window did that (2026-10-14). HARBOR_OSASCRIPT is the test seam.
+# activating its own tab in the same window did that (2026-10-14). HARBOR_ACCESS_BROWSER_OSASCRIPT is the test seam.
 _osa() { # <script on stdin> [args] — never launches Chrome
-  "${HARBOR_OSASCRIPT:-/usr/bin/osascript}" - "$@"
+  "${HARBOR_ACCESS_BROWSER_OSASCRIPT:-${HARBOR_OSASCRIPT:-/usr/bin/osascript}}" - "$@"
 }
 # Lines: <window id> TAB <tab index> TAB <true|false: active> TAB <url> TAB <tab id>.
 _chrome_tabs() {
@@ -360,7 +361,7 @@ _gone_check() {
 # Target.detachedFromTarget then Target.createTarget). The detach lands ~300 ms after
 # the input, so settle first. A failed probe gives no verdict.
 _lost_check() { # <held output>
-  sleep "${HARBOR_CHROME_SETTLE:-1}"
+  sleep "${HARBOR_ACCESS_BROWSER_SETTLE:-${HARBOR_CHROME_SETTLE:-1}}"
   _p="$(_cli_run "-s=$S" --raw eval "$STATE_EXPR" 2>/dev/null)" || return 0
   case "$_p" in *'blank\":true'*|*'"blank":true'*) ;; *) return 0 ;; esac
   _e="$(_relay_err)"; _t=''
@@ -524,7 +525,7 @@ case "$PROFILE" in
   ''|*[!A-Za-z0-9\ ]*) _refuse "HARBOR_ACCESS_BROWSER_PROFILE is not a Chrome profile dir name: $PROFILE" 'unset HARBOR_ACCESS_BROWSER_PROFILE' ;;
 esac
 
-S="$(_session)" || _refuse 'no session: run inside Claude Code (CLAUDE_CODE_SESSION_ID), or set HARBOR_ACCESS_BROWSER_SESSION outside it; a HARBOR_BROWSER_LANE is 1-12 of a-z0-9' 'export HARBOR_ACCESS_BROWSER_SESSION=manual'
+S="$(_session)" || _refuse 'no session: run inside Claude Code (CLAUDE_CODE_SESSION_ID), or set HARBOR_ACCESS_BROWSER_SESSION outside it; a HARBOR_ACCESS_BROWSER_LANE is 1-12 of a-z0-9' 'export HARBOR_ACCESS_BROWSER_SESSION=manual'
 WORKDIR="${TMPDIR:-/tmp}"; WORKDIR="${WORKDIR%/}/harbor-browser/$S"
 
 case "$VERB" in
@@ -698,7 +699,7 @@ OSA
 )" || _r=''
     [ -n "$_r" ] || _refuse 'AppleScript could not show the tab' 'System Settings > Privacy & Security > Automation: let the terminal control Google Chrome and System Events'
     # Checked, not assumed: front once said ok on a tab that stayed hidden (field test, 2026-10-14).
-    sleep "${HARBOR_CHROME_SETTLE:-1}"
+    sleep "${HARBOR_ACCESS_BROWSER_SETTLE:-${HARBOR_CHROME_SETTLE:-1}}"
     _p="$(_cli_run "-s=$S" --raw eval "$STATE_EXPR" 2>/dev/null)" || _p=''
     case "$_p" in *'visibility\":\"hidden'*|*'"visibility":"hidden'*)
       # A window fully covered by another, same-size one reads hidden too (macOS occlusion), and
@@ -712,7 +713,7 @@ on run argv
   if prev is not "com.google.Chrome" then tell application id prev to activate
 end run
 OSA
-      sleep "${HARBOR_CHROME_SETTLE:-1}"
+      sleep "${HARBOR_ACCESS_BROWSER_SETTLE:-${HARBOR_CHROME_SETTLE:-1}}"
       _p="$(_cli_run "-s=$S" --raw eval "$STATE_EXPR" 2>/dev/null)" || _p=''
       case "$_p" in *'visibility\":\"hidden'*|*'"visibility":"hidden'*)
         _handoff "front: $_r is raised in Chrome, but the page is still hidden (another app's window covers it, or it is on another Space)" 'harbor chrome tabs   # then move that window where it shows' ;;
@@ -741,7 +742,7 @@ EOF
     _t=0
     while _signin_url "$_u" || [ "$_u" = about:blank ]; do
       [ "$_t" -lt "$_max" ] || _handoff "still on a sign-in page after $_max s ($(_url_host "$_u"))" 'harbor chrome wait-signin   # again, once signed in'
-      sleep "${HARBOR_CHROME_POLL:-3}"; _t=$((_t + ${HARBOR_CHROME_POLL:-3}))
+      sleep "${HARBOR_ACCESS_BROWSER_POLL:-${HARBOR_CHROME_POLL:-3}}"; _t=$((_t + ${HARBOR_ACCESS_BROWSER_POLL:-${HARBOR_CHROME_POLL:-3}}))
       _u="$(_pick | awk -F '\t' -v t="$_tid" '$1 == t { print $2 }')"
       [ -n "$_u" ] || _handoff 'the sign-in tab was closed' 'harbor chrome attach'
     done

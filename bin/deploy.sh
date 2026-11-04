@@ -16,8 +16,8 @@
 #   --accept-loss   passed to constitution-, runtime-, floor- and skills-install and to deploy-restore.sh;
 #                   deploy's own regression check then warns instead of refusing
 #   --unattended    the ship runner's apply (deploy-fleet.sh, ship contract §6), never a person's: needs --apply,
-#                   SHIP_UNATTENDED=1 and SHIP_SNAPSHOT naming an empty file. Installs without the [y/N], writes
-#                   the snapshot id to SHIP_SNAPSHOT, and answers No to the restore and the B8 re-pin
+#                   HARBOR_DEPLOY_UNATTENDED=1 and HARBOR_DEPLOY_SNAPSHOT naming an empty file. Installs without the [y/N], writes
+#                   the snapshot id to HARBOR_DEPLOY_SNAPSHOT, and answers No to the restore and the B8 re-pin
 #   -h, --help      this text. The live box only: each installer takes --dir for a sandbox.
 #
 # Owns ORDER, PREFLIGHT, SNAPSHOT and VERIFY. Every write is delegated to the
@@ -99,9 +99,11 @@ fi
 # session from typing it; the restore stays the runner's (manifest `restore`), the re-pin stays the operator's.
 if [ "$UNATTENDED" -eq 1 ]; then
   [ "$IL_APPLY" -eq 1 ] || il_usage_error '--unattended takes --apply: a dry run asks nothing'
-  [ "${SHIP_UNATTENDED:-}" = 1 ] || il_usage_error '--unattended is the ship runner alone, which sets SHIP_UNATTENDED=1'
-  [ -n "${SHIP_SNAPSHOT:-}" ] && [ -f "$SHIP_SNAPSHOT" ] && [ ! -L "$SHIP_SNAPSHOT" ] && [ ! -s "$SHIP_SNAPSHOT" ] \
-    || il_usage_error '--unattended needs SHIP_SNAPSHOT naming an empty file, where the runner reads the snapshot id'
+  # the SHIP_ names are read until 2026-11-15 (harbor#1097)
+  [ "${HARBOR_DEPLOY_UNATTENDED:-${SHIP_UNATTENDED:-}}" = 1 ] || il_usage_error '--unattended is the ship runner alone, which sets HARBOR_DEPLOY_UNATTENDED=1'
+  SNAPFILE="${HARBOR_DEPLOY_SNAPSHOT:-${SHIP_SNAPSHOT:-}}"
+  [ -n "$SNAPFILE" ] && [ -f "$SNAPFILE" ] && [ ! -L "$SNAPFILE" ] && [ ! -s "$SNAPFILE" ] \
+    || il_usage_error '--unattended needs HARBOR_DEPLOY_SNAPSHOT naming an empty file, where the runner reads the snapshot id'
   [ "$UNINSTALL" -eq 0 ] && [ "$PRUNE" -eq 0 ] && [ "$IL_ACCEPT_LOSS" -eq 0 ] \
     || il_usage_error '--unattended takes no --uninstall, --prune or --accept-loss: those stay at a terminal'
 fi
@@ -1369,8 +1371,8 @@ if [ "$UNATTENDED" -eq 1 ]; then
         "none: run from a config dir whose path has no spaces, or deploy from a terminal: $DEPLOY_CMD"
       log_end || :; exit 1 ;;
   esac
-  printf '%s\n' "$SNAP" >"$SHIP_SNAPSHOT" || { _bad "could not write the snapshot id to $SHIP_SNAPSHOT; nothing was installed" "ls -l '$SHIP_SNAPSHOT'"; log_end || :; exit 1; }
-  log_ok "snapshot id written for the runner: $SHIP_SNAPSHOT"
+  printf '%s\n' "$SNAP" >"$SNAPFILE" || { _bad "could not write the snapshot id to $SNAPFILE; nothing was installed" "ls -l '$SNAPFILE'"; log_end || :; exit 1; }
+  log_ok "snapshot id written for the runner: $SNAPFILE"
 fi
 _INSTALL_FAILED=''
 _launchd_snap
