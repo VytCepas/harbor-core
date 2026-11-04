@@ -26,7 +26,7 @@ esac
 STUB
 chmod +x "$GH"
 NOW=1790000000
-run() { FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_PLAN_REPO=o/r HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_TEST_NOW="${AT:-$NOW}" sh "$T_ROOT/bin/ci-github-plan.sh" "$@" 2>&1; }
+run() { FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_CI_PLAN_REPO=o/r HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_TEST_NOW="${AT:-$NOW}" sh "$T_ROOT/bin/ci-github-plan.sh" "$@" 2>&1; }
 state() { printf '%s\n' "$1" > "$FX/plan"; printf '%s\n' "$2" > "$FX/prot"; }
 reset() { rm -f "$CACHE/gh-plan.json" "$CACHE/checks.log" "$FX/plan.fail" "$FX/calls.log"; state pro github; }
 nlog() { if [ -f "$CACHE/checks.log" ]; then grep -c 'check:ci.github-plan' "$CACHE/checks.log"; else echo 0; fi; }

@@ -5,7 +5,7 @@
 #   sudo sh scope-managed-retention.sh              write cleanupPeriodDays (merged into any existing managed file)
 #   sh scope-managed-retention.sh --dry-run         print the target path and the merged JSON, write nothing
 #   sudo sh scope-managed-retention.sh --uninstall  remove exactly the key this wrote, keep the rest
-# HARBOR_MANAGED_SETTINGS moves the file (tests, no root) and is refused under root. A session cannot run this.
+# HARBOR_SCOPE_MANAGED_SETTINGS moves the file (tests, no root) and is refused under root. A session cannot run this.
 set -eu
 # Under sudo a user-writable dir on PATH would run its jq/mkdir/chown as root: pin it first.
 PATH=/usr/bin:/bin:/usr/sbin:/sbin; export PATH
@@ -13,12 +13,12 @@ HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 . "$HERE/library-log.sh"
 log_init managed-retention
 DAYS=365   # operator decision 2026-10-09 (harbor#1181)
-if [ "$(id -u)" -eq 0 ] && [ -n "${HARBOR_MANAGED_SETTINGS:-}" ]; then
-  log_fail "HARBOR_MANAGED_SETTINGS is set under root: refusing to write a caller-chosen path"
-  log_fix "sudo env -u HARBOR_MANAGED_SETTINGS sh $0"; exit 1
+if [ "$(id -u)" -eq 0 ] && [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then
+  log_fail "HARBOR_SCOPE_MANAGED_SETTINGS (or HARBOR_MANAGED_SETTINGS) is set under root: refusing to write a caller-chosen path"
+  log_fix "sudo env -u HARBOR_SCOPE_MANAGED_SETTINGS -u HARBOR_MANAGED_SETTINGS sh $0"; exit 1
 fi
-if [ -n "${HARBOR_MANAGED_SETTINGS:-}" ]; then
-  FILE="$HARBOR_MANAGED_SETTINGS"
+if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then
+  FILE="${HARBOR_SCOPE_MANAGED_SETTINGS:-$HARBOR_MANAGED_SETTINGS}"
 else
   case "$(uname -s)" in
     Darwin) FILE='/Library/Application Support/ClaudeCode/managed-settings.json' ;;
@@ -48,7 +48,7 @@ fi
 log_note "target: $FILE"
 if [ "$MODE" = dry ]; then printf '%s\n' "$NEW"; log_note "dry run: nothing written"; exit 0; fi
 
-if [ -z "${HARBOR_MANAGED_SETTINGS:-}" ] && [ "$(id -u)" -ne 0 ]; then
+if [ -z "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ] && [ "$(id -u)" -ne 0 ]; then
   log_fail "not root: this file is root-owned by design"
   log_fix "sudo sh $0$([ "$MODE" = uninstall ] && echo ' --uninstall')"; exit 1
 fi

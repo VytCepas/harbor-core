@@ -217,7 +217,7 @@ not acquire the power to block a tool call by containing a sentence.
 
 **Why this exists (harbor#254).** `bin/govern-hook.sh` computes the merge
 backstop's verdict and emits a deny. Reached through this engine — which is how
-production reaches it, via `context-rules/harbor/merge-note.sh` — `--note` printed
+production reaches it, via `context-rules/platform/merge-note.sh` — `--note` printed
 that verdict as prose, the engine wrapped the prose as additionalContext, and
 prose cannot stop a `Bash` call: every red PR still merged, with a green suite on
 both sides of the gap. The suite fired the hook directly; the operator does not.

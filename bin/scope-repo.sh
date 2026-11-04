@@ -5,6 +5,8 @@
 #   harbor repo adopt <path> [--kind <repo-kind>] [options] the same for a checkout that exists (its directory name is the id)
 #   harbor repo list                                        where each repo is known: registry, projects.tsv, yard marker, fleet
 #   harbor repo audit <name>                                re-run the checks a new repo passes
+#   harbor repo rename <old> <new> [--apply --live]         rename a registered repo on this box, sessions and memory too: a dry run
+#                                                           unless --apply (bin/scope-repo-rename.sh, harbor#966)
 #   options: --path <rel to PORT_ROOT> --covers <text> --domain <term> --owner <name> --topology <t> --interaction <i>
 #            --remote <url> --slug <owner/name> --github --dry-run
 #
@@ -39,7 +41,8 @@ SUB="${1:-}"; [ $# -eq 0 ] || shift
 case "$SUB" in
   -h|--help|help|'') usage; [ -n "$SUB" ] && exit 0; exit 2 ;;
   new|adopt|list|audit) ;;
-  *) die "unknown verb '$SUB' (new, adopt, list, audit)" ;;
+  rename) exec sh "$SRC/scope-repo-rename.sh" "$@" ;;
+  *) die "unknown verb '$SUB' (new, adopt, list, audit, rename)" ;;
 esac
 
 ARG=''; KIND=''; RELPATH=''; COVERS='-'; DOMAIN='-'; OWNER='-'; TOPO='-'; INTER='-'; REMOTE='-'; SLUG=''; GITHUB=0; DRY=0

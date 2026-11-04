@@ -8,8 +8,10 @@ v() { printf '%s %s\n' "$1" "$2" >> "$V"; }  # <rule> <message>
 rel() { printf '%s' "${1#"$R"/}"; }
 SHARED='guards.jsonl shapes.jsonl benign.jsonl exemptions.jsonl'
 A="$R/tests/admission"  # harbor#961 W2: a guard's moved tables and suites are tests/admission/<guard>/<part>.{jsonl,test.sh}
+# A guard id is frozen (D-19); its suite dir follows the registered script's name: selfedit -> bin/admission-self-edit.sh -> self-edit/
+adir() { _s="$(jq -r --arg g "$1" 'select(.guard == $g) | .script // empty' "$G/guards.jsonl" 2>/dev/null)"; _s="${_s#admission-}"; printf '%s' "${_s%.sh}"; }
 tables() { { find "$G" \( -name "$1.jsonl" -o -name "$1.*.jsonl" \) ! -name '*.msg.jsonl'
-  find "$A/$1" -name '*.jsonl' ! -name message.jsonl; } 2>/dev/null | sort; }  # <guard> — its verdict tables
+  find "$A/$(adir "$1")" -name '*.jsonl' ! -name message.jsonl; } 2>/dev/null | sort; }  # <guard> — its verdict tables
 gof() { case "$1" in "$A"/*) _x="${1%/*}"; printf '%s' "${_x##*/}" ;; *) _x="${1##*/}"; printf '%s' "${_x%%.*}" ;; esac; }  # a table's guard
 
 # T1 every suite under tests/ runs on the harness and asserts only through it.
@@ -76,7 +78,7 @@ for g in $REG; do
   if [ -z "$_gf" ]; then v test.admission-hook-routing "guards.jsonl: '$g' names no .script"
   elif [ ! -f "$R/bin/$_gf" ]; then v test.admission-hook-routing "guards.jsonl: '$g' has no bin/$_gf"; fi
   [ -n "$(tables "$g")" ] || v test.admission-hook-routing "guards.jsonl: '$g' has no tests/guards/$g.jsonl"
-  [ -f "$G/$g-test.sh" ] || [ -f "$A/$g/$g.test.sh" ] || v test.admission-hook-routing "guards.jsonl: '$g' has no tests/admission/$g/$g.test.sh"
+  [ -f "$G/$g-test.sh" ] || [ -f "$A/$(adir "$g")/$(adir "$g").test.sh" ] || [ -f "$A/$g/$g.test.sh" ] || v test.admission-hook-routing "guards.jsonl: '$g' has no tests/admission/$(adir "$g")/$(adir "$g").test.sh"
 done
 for f in $(find "$G" -name '*-test.sh' 2>/dev/null | sort); do  # <guard>-test.sh, or <guard>.<part>-test.sh for one part
   n="$(basename "$f" -test.sh)"; g="${n%%.*}"
@@ -87,13 +89,14 @@ for f in $(find "$G" -name '*.*.jsonl' ! -name '*.msg.jsonl' 2>/dev/null | sort)
   n="$(basename "$f" .jsonl)"; [ -f "$G/$n-test.sh" ] || [ -f "$A/${n%%.*}/${n#*.}.test.sh" ] || v test.admission-hook-routing "$(rel "$f"): no suite tests/guards/$n-test.sh runs it"
 done
 for g in $REG; do  # a moved guard's own suites: <guard>.test.sh, or <part>.test.sh beside its table (here or in tests/guards)
-  for f in $(find "$A/$g" -name '*.test.sh' 2>/dev/null | sort); do
+  d="$(adir "$g")"
+  for f in $(find "$A/$d" -name '*.test.sh' 2>/dev/null | sort); do
     n="$(basename "$f" .test.sh)"
     grep -q 't_table' "$f" || continue   # a guard's other suite (destroy/snapshot) runs no table
-    [ "$n" = "$g" ] || [ -f "$A/$g/$n.jsonl" ] || [ -f "$G/$g.$n.jsonl" ] || v test.admission-hook-routing "$(rel "$f"): has no table tests/admission/$g/$n.jsonl"
+    [ "$n" = "$d" ] || [ -f "$A/$d/$n.jsonl" ] || [ -f "$G/$g.$n.jsonl" ] || v test.admission-hook-routing "$(rel "$f"): has no table tests/admission/$d/$n.jsonl"
   done
-  for f in $(find "$A/$g" -name '*.jsonl' ! -name message.jsonl 2>/dev/null | sort); do
-    n="$(basename "$f" .jsonl)"; [ -f "$A/$g/$n.test.sh" ] || v test.admission-hook-routing "$(rel "$f"): no suite tests/admission/$g/$n.test.sh runs it"
+  for f in $(find "$A/$d" -name '*.jsonl' ! -name message.jsonl 2>/dev/null | sort); do
+    n="$(basename "$f" .jsonl)"; [ -f "$A/$d/$n.test.sh" ] || v test.admission-hook-routing "$(rel "$f"): no suite tests/admission/$d/$n.test.sh runs it"
   done
 done
 for f in $(find "$R/tests" \( -name '*-test.sh' -o -name '*.test.sh' \) ! -type l | sort); do  # a rename shim is an old name (harbor#961)

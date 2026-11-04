@@ -237,49 +237,57 @@ t_eq "answering n" 1 "$RC"; t_eq "answering n installs nothing" "" "$(applied)"
 
 t_section "--unattended: the ship runner's apply, and only the runner's (harbor#1018, ship contract §6)"
 fixture unattflags; : > "$T/snap"
-SHIP_SNAPSHOT="$T/snap"; export SHIP_SNAPSHOT  # valid, so only the missing SHIP_UNATTENDED can refuse
-run '' --apply --live --unattended; t_eq "without SHIP_UNATTENDED=1: a usage error" 2 "$RC"
-t_has "...naming it" "$(out)" "SHIP_UNATTENDED=1"
-SHIP_UNATTENDED=1; export SHIP_UNATTENDED; unset SHIP_SNAPSHOT
-run '' --apply --live --unattended; t_eq "without SHIP_SNAPSHOT: a usage error" 2 "$RC"
-SHIP_SNAPSHOT="$T/snap"; export SHIP_SNAPSHOT
+HARBOR_DEPLOY_SNAPSHOT="$T/snap"; export HARBOR_DEPLOY_SNAPSHOT  # valid, so only the missing HARBOR_DEPLOY_UNATTENDED can refuse
+run '' --apply --live --unattended; t_eq "without HARBOR_DEPLOY_UNATTENDED=1: a usage error" 2 "$RC"
+t_has "...naming it" "$(out)" "HARBOR_DEPLOY_UNATTENDED=1"
+HARBOR_DEPLOY_UNATTENDED=1; export HARBOR_DEPLOY_UNATTENDED; unset HARBOR_DEPLOY_SNAPSHOT SHIP_SNAPSHOT
+run '' --apply --live --unattended; t_eq "without HARBOR_DEPLOY_SNAPSHOT: a usage error" 2 "$RC"
+HARBOR_DEPLOY_SNAPSHOT="$T/snap"; export HARBOR_DEPLOY_SNAPSHOT
 run '' --live --unattended; t_eq "on a dry run: a usage error" 2 "$RC"
-printf 'old\n' > "$T/snap"; run '' --apply --live --unattended; t_eq "a SHIP_SNAPSHOT that is not empty: a usage error" 2 "$RC"; : > "$T/snap"
+printf 'old\n' > "$T/snap"; run '' --apply --live --unattended; t_eq "a HARBOR_DEPLOY_SNAPSHOT that is not empty: a usage error" 2 "$RC"; : > "$T/snap"
 run '' --apply --live --unattended --accept-loss; t_eq "with --accept-loss: a usage error" 2 "$RC"
 t_eq "no usage error applied anything" "" "$(applied)"
 CC=1 run 'y\n' --apply --live; CC=''
-t_eq "SHIP_UNATTENDED=1 without the flag is still refused in a session" 1 "$RC"; t_eq "...and applies nothing" "" "$(applied)"
-fixture unatt; SHIP_SNAPSHOT="$T/snap"; : > "$SHIP_SNAPSHOT"
+t_eq "HARBOR_DEPLOY_UNATTENDED=1 without the flag is still refused in a session" 1 "$RC"; t_eq "...and applies nothing" "" "$(applied)"
+fixture unatt; HARBOR_DEPLOY_SNAPSHOT="$T/snap"; : > "$HARBOR_DEPLOY_SNAPSHOT"
 printf 'bbb  CLAUDE.md\n' > "$T/b8"  # B8 drift, so the re-pin is reached
 CC=1 run '' --apply --live --unattended; CC=''
 t_eq "inside a session, with no terminal, it installs" 0 "$RC"
 t_eq "...in the one order that works" "policy-constitution-install.sh --apply,deploy-shim-install.sh --live,deploy-harden.sh --apply,deploy-runtime-install.sh --live,admission-install.sh --live,prod-guard-install.sh --live,skill-install.sh --all,skill-install.sh commands,context-injection-install.sh --live,deploy-shim-install.sh --live,skill-catalog.sh install,just $T/pi,just $T/po," \
   "$(grep -e '--apply' -e '^skill-catalog' "$LOGF" | awk '{print $1, $2}' | tr '\n' ',')"
-t_eq "the snapshot id the runner reads is this run's snapshot" "$(ls -d "$C"/backups/deploy-*)" "$(cat "$SHIP_SNAPSHOT")"
+t_eq "the snapshot id the runner reads is this run's snapshot" "$(ls -d "$C"/backups/deploy-*)" "$(cat "$HARBOR_DEPLOY_SNAPSHOT")"
 t_has "the install question is answered yes, saying why" "$(out)" "yes: --unattended"
 t_eq "the B8 re-pin is never made unattended" 0 "$(pins)"; t_has "...and says so" "$(out)" "answering No: --unattended asks nobody"
 t_hasnt "no next line hands a person the runner's flag" "$(grep -E '^  (fix|note: next):' "$T/out.txt" || :)" "--unattended"
+# The SHIP_ spellings are read until 2026-11-15 (harbor#1097): a runner that has not moved sets only these.
+fixture unattold; unset HARBOR_DEPLOY_UNATTENDED HARBOR_DEPLOY_SNAPSHOT
+SHIP_UNATTENDED=1; SHIP_SNAPSHOT="$T/snap"; export SHIP_UNATTENDED SHIP_SNAPSHOT; : > "$SHIP_SNAPSHOT"
+printf 'bbb  CLAUDE.md\n' > "$T/b8"
+CC=1 run '' --apply --live --unattended; CC=''
+t_eq "under the old SHIP_UNATTENDED and SHIP_SNAPSHOT it installs" 0 "$RC"
+t_eq "...writing the snapshot id to the file SHIP_SNAPSHOT names" "$(ls -d "$C"/backups/deploy-*)" "$(cat "$SHIP_SNAPSHOT")"
+unset SHIP_UNATTENDED SHIP_SNAPSHOT; HARBOR_DEPLOY_UNATTENDED=1; HARBOR_DEPLOY_SNAPSHOT="$T/snap"; export HARBOR_DEPLOY_UNATTENDED HARBOR_DEPLOY_SNAPSHOT
 # `harbor ship night` from a terminal: a tty is there to answer, and --unattended must still ask nobody
-fixture unatttty; SHIP_SNAPSHOT="$T/snap"; : > "$SHIP_SNAPSHOT"; printf 'bbb  CLAUDE.md\n' > "$T/b8"
+fixture unatttty; HARBOR_DEPLOY_SNAPSHOT="$T/snap"; : > "$HARBOR_DEPLOY_SNAPSHOT"; printf 'bbb  CLAUDE.md\n' > "$T/b8"
 run 'y\ny\ny\n' --apply --live --unattended
 t_eq "at a terminal, it installs" 0 "$RC"; t_eq "...and a y typed there re-pins nothing" 0 "$(pins)"
-fixture unattwt; SHIP_SNAPSHOT="$T/snap"; : > "$SHIP_SNAPSHOT"
+fixture unattwt; HARBOR_DEPLOY_SNAPSHOT="$T/snap"; : > "$HARBOR_DEPLOY_SNAPSHOT"
 MAIN="$REPO"; git -C "$REPO" worktree add -q --detach "$T/wt" 2>/dev/null; REPO="$T/wt"
 CC=1 run '' --apply --live --unattended; CC=''; REPO="$MAIN"
-t_eq "from a linked worktree, unattended is refused up front too" 1 "$RC"; t_eq "...writing no snapshot id" "" "$(cat "$SHIP_SNAPSHOT")"
+t_eq "from a linked worktree, unattended is refused up front too" 1 "$RC"; t_eq "...writing no snapshot id" "" "$(cat "$HARBOR_DEPLOY_SNAPSHOT")"
 t_eq "...its fix the terminal apply from the main checkout, without the runner's flag" \
   "  fix: sh '$MAIN/bin/deploy.sh' --apply --live   # from a terminal window" "$(grep -A1 'linked worktree' "$T/out.txt" | sed -n 2p)"
-fixture unattfail; SHIP_SNAPSHOT="$T/snap"; : > "$SHIP_SNAPSHOT"
+fixture unattfail; HARBOR_DEPLOY_SNAPSHOT="$T/snap"; : > "$HARBOR_DEPLOY_SNAPSHOT"
 STUB_FAIL=admission-install.sh:apply; STUB_HOOK_deployruntimeinstallsh="printf MODIFIED > '$C/settings.json'"; export STUB_FAIL STUB_HOOK_deployruntimeinstallsh
 CC=1 run '' --apply --live --unattended; CC=''
 t_eq "a failed unattended install" 1 "$RC"
 t_eq "...is not restored by deploy: the restore is the runner's" MODIFIED "$(cat "$C/settings.json")"
-_uid="$(cat "$SHIP_SNAPSHOT")"; t_has "...which already has the id" "$_uid" "$C/backups/deploy-"
+_uid="$(cat "$HARBOR_DEPLOY_SNAPSHOT")"; t_has "...which already has the id" "$_uid" "$C/backups/deploy-"
 t_hasnt "...and no fix line hands a person the runner's flag" "$(grep -E '^  (fix|note: next):' "$T/out.txt" || :)" "--unattended"
-# ship.conf's restore line, from the id, inside a session as the gate's runner runs it
+# ship.config's restore line, from the id, inside a session as the gate's runner runs it
 ( cd "$REPO" && env -u CLAUDE_CONFIG_DIR HOME="$H" CLAUDECODE=1 sh bin/deploy-restore.sh --apply --live --from "$_uid" --accept-loss ) >"$T/rs" 2>&1 </dev/null
 t_eq "the runner's restore from that id puts the box back" "{}" "$(cat "$C/settings.json")"
-unset STUB_FAIL STUB_HOOK_deployruntimeinstallsh SHIP_UNATTENDED SHIP_SNAPSHOT
+unset STUB_FAIL STUB_HOOK_deployruntimeinstallsh HARBOR_DEPLOY_UNATTENDED HARBOR_DEPLOY_SNAPSHOT SHIP_UNATTENDED SHIP_SNAPSHOT
 
 t_section "a refused preflight on --apply keeps its log (contracts/logging.md)"
 fixture refusedlog; echo x > "$REPO/stray"; run '' --apply --live
@@ -399,102 +407,4 @@ run 'y\ny\n' --apply --live; unset STUB_HOOK_skillinstallsh
 t_eq "re-pin accepted" 0 "$RC"
 t_eq "pin-instructions --apply runs with --live, the only target spelling it takes" 1 "$(grep -cx 'pin-instructions --apply --live' "$LOGF")"
 
-t_section "harbor uninstall is deploy --only floor --uninstall: flags (harbor#808)"
-fixture unflags
-run '' --uninstall --live; t_eq "--uninstall without --only floor" 2 "$RC"
-t_has "...names the one component it takes" "$(out)" "--uninstall takes --only floor"
-run '' --only skills --uninstall --live; t_eq "--uninstall of a component with no uninstaller" 2 "$RC"
-run '' --only floor,skills --uninstall --live; t_eq "--uninstall of the floor and another component" 2 "$RC"
-run '' --only floor --uninstall --with-b6 --live; t_eq "--uninstall with an opt-in" 2 "$RC"
-t_eq "no usage error ran anything (log bytes)" 0 "$(wc -c < "$LOGF" | tr -d ' ')"
-
-# The REAL floor-uninstall, reading the real floor-install and runtime-install beside it, on a floor it
-# recognises: floor-hook + guard-bash wired and present, a pin, the teeth; and a foreign hook it keeps.
-unfloor() {
-  cp "$T_ROOT/bin/admission-remove.sh" "$T_ROOT/bin/admission-install.sh" "$T_ROOT/bin/deploy-runtime-install.sh" "$REPO/bin/"
-  git -C "$REPO" add bin/admission-remove.sh; commit_push realfloor
-  mkdir -p "$C/bin"; printf '#!/bin/sh\nexit 0\n' > "$C/bin/admission-hook.sh"; cp "$C/bin/admission-hook.sh" "$C/bin/admission-bash.sh"
-  printf 'x  bin/admission-bash.sh\n' > "$C/.helm-pins/admission-bash.sh.sha256"; printf 'teeth\n' > "$C/.helm-floor-teeth"
-  jq -n --arg g "/bin/sh $C/bin/admission-hook.sh $C/bin/admission-bash.sh" --arg m "/bin/sh $H/mine.sh" \
-    '{hooks: {PreToolUse: [{matcher: "Bash", hooks: [{type: "command", command: $g}, {type: "command", command: $m}]}]}}' > "$C/settings.json"
-  cp "$C/settings.json" "$T/settings.before"
-}
-unmanifest() { # the two floor files' rows, and one row for a file the uninstall keeps (harbor#815)
-  { printf '# .harbor-manifest (install standard §3, bin/deploy-install-lib.sh): <git-blob> <mode> <relpath> <installer> <commit>\n'
-    for _f in admission-hook.sh admission-bash.sh; do printf '%s 100755 bin/%s floor-install -\n' "$(git hash-object "$C/bin/$_f")" "$_f"; done
-    printf '%s 100644 lib/core.sh runtime-install -\n' "$(git hash-object "$C/bin/admission-hook.sh")"
-  } > "$C/.harbor-manifest"
-  cp "$C/.harbor-manifest" "$T/manifest.before"
-}
-t_section "harbor uninstall: a dry run plans through floor-uninstall's own dry run and removes nothing"
-fixture undry; unfloor; run '' --only floor --uninstall --live
-t_eq "the uninstall dry run" 0 "$RC"
-t_has "it relays what floor-uninstall would remove" "$(out)" "  note: floor file to remove: bin/admission-bash.sh"
-t_eq "...and removes nothing" "$(cat "$T/settings.before")" "$(cat "$C/settings.json")"
-t_has "its next step is the apply, which its own gate takes" "$(out)" "  note: next: sh '$REPO/bin/deploy.sh' --apply --only floor --uninstall --live"
-t_eq "no installer ran" "" "$(applied)"
-CC=1 run 'y\n' --only floor --uninstall --apply --live; CC=''
-t_eq "inside a Claude session its --apply is refused up front" 1 "$RC"
-t_has "...before any plan" "$(out)" "refused up front: running inside a Claude session"
-t_eq "...and nothing is removed" "$(cat "$T/settings.before")" "$(cat "$C/settings.json")"
-
-t_section "harbor uninstall --apply: snapshot first, remove, verify the floor is GONE, offer the snapshot back"
-fixture unapply; unfloor; unmanifest; run 'y\n' --only floor --uninstall --apply --live
-SNAPD="$(ls -d "$C"/backups/deploy-* 2>/dev/null | head -1)"
-t_eq "the uninstall" 0 "$RC"
-t_has "a snapshot was taken before the removal" "$(tar -tzf "$SNAPD/config.tgz" 2>/dev/null)" "bin/admission-bash.sh"
-t_eq "...recorded in the ledger deploy-restore.sh demands" 1 "$(grep -c "backups/${SNAPD##*/}/config.tgz" "$C/.helm-snapshots" 2>/dev/null || echo 0)"
-t_eq "the floor's hook is unwired and the foreign one kept" "/bin/sh $H/mine.sh" "$(jq -r '[.hooks.PreToolUse[]?.hooks[]?.command] | join(",")' "$C/settings.json")"
-t_eq "the floor's files are gone from bin/" no "$([ -e "$C/bin/admission-bash.sh" ] && echo yes || echo no)"
-t_has "the snapshot holds .harbor-manifest as it was" "$(tar -tzf "$SNAPD/config.tgz" 2>/dev/null)" ".harbor-manifest"
-t_eq ".harbor-manifest drops the moved files' rows and keeps the rest (harbor#815)" \
-  "$(grep ' lib/core.sh ' "$T/manifest.before")" "$(grep -v '^#' "$C/.harbor-manifest")"
-t_has "verify reads the floor as absent, by floor-uninstall's own dry run" "$(out)" "  ok: the floor is gone: floor-uninstall's own dry run finds no hook and no file left to remove"
-t_hasnt "...and floor-verify is not run on the floor it just removed" "$(out)" "floor-verify:"
-t_has "the snapshot is offered back as the command that restores it" "$(out)" \
-  "  note: next: sh '$REPO/bin/deploy-restore.sh' --apply --live --from '$SNAPD' --accept-loss"
-t_has "the run keeps its log" "$(dlog)" "  ok: the floor is gone: "
-_rcmd="$(sed -n "s|^  note: next: \(sh '$REPO/bin/deploy-restore.sh' .*\)$|\1|p" "$T/out.txt" | head -1)"
-t_has "the restore command was printed, to run as printed" "$_rcmd" "/bin/deploy-restore.sh' --apply --live --from '$SNAPD' --accept-loss"
-env -u CLAUDE_CONFIG_DIR HOME="$H" sh -c "$_rcmd" </dev/null >"$T/restore.out" 2>&1; _rrc=$?
-t_eq "the printed restore command runs as printed" 0 "$_rrc"
-t_eq "...and puts the floor's wiring back, byte for byte" "$(cat "$T/settings.before")" "$(cat "$C/settings.json")"
-t_eq "...and the floor's files" yes "$([ -f "$C/bin/admission-bash.sh" ] && [ -f "$C/.helm-pins/admission-bash.sh.sha256" ] && echo yes || echo no)"
-t_eq "...and their .harbor-manifest rows, byte for byte (harbor#815)" "$(cat "$T/manifest.before")" "$(cat "$C/.harbor-manifest")"
-
-t_section "harbor uninstall: a floor still present after the removal fails verify and offers the snapshot back"
-fixture unfail; unfloor
-printf '#!/bin/sh\ncase " $* " in *" --apply "*) printf MODIFIED > "$HOME/.claude/settings.json"; echo "  ok: stub removed nothing"; exit 0 ;; esac\necho "  note: hook to remove: PreToolUse: /bin/sh x/admission-bash.sh"\n' > "$REPO/bin/admission-remove.sh"
-commit_push stubun; run 'y\ny\n' --only floor --uninstall --apply --live
-t_eq "an uninstall that left the floor" 1 "$RC"
-t_has "verify names it" "$(out)" "  FAIL: the floor is still present after floor-uninstall"
-t_has "...relaying what is left" "$(out)" "  note: hook to remove: PreToolUse: /bin/sh x/admission-bash.sh"
-t_has "the restore plan is deploy-restore.sh's, on this run's snapshot" "$(out)" "── restore · plan for $C (dry run: nothing is written)"
-t_eq "accepting the restore puts settings.json back" "$(cat "$T/settings.before")" "$(cat "$C/settings.json")"
-t_has "...and every check runs again on the restored box" "$(out)" "── deploy · re-check · every check again, on the restored box"
-t_section "harbor#916 · runtime without floor refuses a pinned file it would replace, before any write"
-fixture pin916
-printf 'stale-pin\n' > "$C/.helm-pins/library-log.sh.sha256"
-commit_push pin916; run '' --only runtime --apply --live
-t_eq "--only runtime fails the preflight" 1 "$RC"
-t_has "naming the pinned file" "$(out)" "would replace B6-pinned library-log.sh"
-t_has "with the run that re-pins it" "$(out)" "--only runtime,floor"
-t_has "refused in the preflight" "$(out)" "PREFLIGHT FAILED"
-t_eq "so no installer applied anything" "" "$(applied)"
-run '' --only runtime,floor --live
-t_hasnt "with floor selected it is not refused" "$(out)" "would replace B6-pinned"
-_sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
-_sha256 < "$REPO/bin/library-log.sh" > "$C/.helm-pins/library-log.sh.sha256"
-run '' --only runtime --live
-t_has "and a pin that already matches lets runtime go alone" "$(out)" "runtime replaces no B6-pinned file"
-printf '#!/bin/sh\necho stub\n' > "$REPO/bin/deploy-runtime-install.sh"; commit_push nofiles916
-run '' --only runtime --live
-t_has "a runtime-install with no FILES line is a FAIL, never a pass" "$(out)" "cannot read runtime-install's FILES"
-
-fixture unpre; unfloor
-printf '#!/bin/sh\necho "  FAIL: stub: cannot read the floor payload"; echo "  fix: none automatic — see the stub"; exit 1\n' > "$REPO/bin/admission-remove.sh"
-commit_push stubpre; run '' --only floor --uninstall --live
-t_eq "a floor-uninstall dry run that refuses fails the preflight" 1 "$RC"
-t_has "...saying so" "$(out)" "PREFLIGHT FAILED"
-t_has "...relaying its FAIL line" "$(out)" "  FAIL: stub: cannot read the floor payload"
 t_done

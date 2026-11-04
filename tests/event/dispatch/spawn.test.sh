@@ -41,7 +41,7 @@ t_section "the agent starts from env -i: no key or token, only the allowlist (re
 leaked="$(grep -E '^(ANTHROPIC_|CLAUDE_CODE_OAUTH_TOKEN|GH_TOKEN|GITHUB_TOKEN|AWS_|HARBOR_TEST_SECRET)' "$T_TMP/claude.envdump" | cut -d= -f1 | tr '\n' ' ')"
 t_eq "no ANTHROPIC_*, CLAUDE_CODE_OAUTH_TOKEN, GH_TOKEN, AWS_* or stray variable reached it" "" "$leaked"
 want="$(for v in HOME USER LOGNAME SHELL TMPDIR LANG CLAUDE_CONFIG_DIR HARBOR_EVENT_DIR HARBOR_SCOPE_CACHE_DIR HARBOR_EVENT_BUS_SKEW; do
-  eval "[ -z \"\${$v+1}\" ] || echo $v"; done; printf '%s\n' PATH ENABLE_CLAUDEAI_MCP_SERVERS SHIP_UNATTENDED HARBOR_EVENT_CAUSE HARBOR_EVENT_RULE)"
+  eval "[ -z \"\${$v+1}\" ] || echo $v"; done; printf '%s\n' PATH ENABLE_CLAUDEAI_MCP_SERVERS HARBOR_DEPLOY_UNATTENDED SHIP_UNATTENDED HARBOR_EVENT_CAUSE HARBOR_EVENT_RULE)"
 t_eq "its environment is exactly the allowlist" "$(printf '%s\n' "$want" | sort | tr '\n' ' ')" \
   "$(cut -d= -f1 "$T_TMP/claude.envdump" | grep -v -x -E 'PWD|OLDPWD|SHLVL|_' | sort | tr '\n' ' ')"
 t_has "claude.ai connectors are off" "$(cat "$T_TMP/claude.envdump")" "ENABLE_CLAUDEAI_MCP_SERVERS=false"
@@ -137,18 +137,19 @@ t_has "its working directory is under the dispatcher's state dir" "$wd" "$ST/wor
 t_eq "...it was empty when the agent started" "entries=0" "$(grep '^entries=' "$T_TMP/claude.ctx")"
 t_eq "...and it is gone after" no "$([ -e "$wd" ] && echo yes || echo no)"
 
-t_section "SHIP_UNATTENDED=1 reaches every handler and agent (review r2 #2)"
-t_eq "the agent has SHIP_UNATTENDED=1" "ship=1" "$(grep '^ship=' "$T_TMP/claude.ctx")"
-printf 'printf "ship=%%s\\n" "${SHIP_UNATTENDED-unset}" > "%s"\n' "$T_TMP/handler.ship" > "$T_TMP/ship.sh"
+t_section "HARBOR_DEPLOY_UNATTENDED=1 reaches every handler and agent (review r2 #2)"
+t_eq "the agent has HARBOR_DEPLOY_UNATTENDED=1" "ship=1" "$(grep '^ship=' "$T_TMP/claude.ctx")"
+t_eq "...and the old SHIP_UNATTENDED=1, until 2026-11-15 (harbor#1097)" "oldship=1" "$(grep '^oldship=' "$T_TMP/claude.ctx")"
+printf 'printf "ship=%%s old=%%s\\n" "${HARBOR_DEPLOY_UNATTENDED-unset}" "${SHIP_UNATTENDED-unset}" > "%s"\n' "$T_TMP/handler.ship" > "$T_TMP/ship.sh"
 handler event.test-cmd "$T_TMP/ship.sh"
-unset SHIP_UNATTENDED
+unset HARBOR_DEPLOY_UNATTENDED SHIP_UNATTENDED
 emit test.cmd ship1 >/dev/null; dispatch_once 2>/dev/null
-t_eq "a cmd handler has SHIP_UNATTENDED=1, though the dispatcher was started without it" "ship=1" "$(cat "$T_TMP/handler.ship" 2>/dev/null)"
+t_eq "a cmd handler has HARBOR_DEPLOY_UNATTENDED=1, though the dispatcher was started without it" "ship=1 old=1" "$(cat "$T_TMP/handler.ship" 2>/dev/null)"
 
 t_section "while the kill switch {cfg}/.harbor-autoship.off exists, nothing runs (review r2 #2)"
 rm -f "$T_TMP/handler.ship" "$T_TMP/claude.starts"; : > "$CFG/.harbor-autoship.off"
 emit test.cmd killed1 >/dev/null; emit test.spawn killed2 >/dev/null
-SHIP_UNATTENDED=1 sh "$ED" dispatch --once 2>/dev/null
+HARBOR_DEPLOY_UNATTENDED=1 sh "$ED" dispatch --once 2>/dev/null
 t_eq "the cmd handler did not run" no "$([ -e "$T_TMP/handler.ship" ] && echo yes || echo no)"
 t_eq "the agent did not run, spawn.on or not" no "$([ -e "$T_TMP/claude.starts" ] && echo yes || echo no)"
 t_eq "...both recorded" "skip:autoship-off skip:autoship-off" "$(awk -F'\t' '$6 == "killed1" || $6 == "killed2" { print $5 }' "$LEDGER" | tr '\n' ' ' | sed 's/ $//')"

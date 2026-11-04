@@ -88,7 +88,7 @@ bin/context-compaction-digest.sh	command	floor	the traps THIS session sprang, fr
 bin/context-injection-install.sh	command	floor	wire the injector, box-wide.	harbor#173
 bin/context-peers.sh	command	floor	read the session registry Claude Code already maintains, and answer the question no session can answer about itself: who else is	harbor#75
 bin/context-resolve.sh	command	floor	SessionStart resolver: write this session's detect-and-defer context to a per-session FILE.	harbor#4
-bin/decider-set.sh	command	floor	the ONE set of wired hook scripts that the two switches (HARBOR_ADMISSION_DISABLE, HARBOR_ADMISSION_SHADOW) have to answer for	harbor#954
+bin/admission-decider-set.sh	command	floor	the ONE set of wired hook scripts that the two switches (HARBOR_ADMISSION_DISABLE, HARBOR_ADMISSION_SHADOW) have to answer for	harbor#954
 bin/deploy-bootstrap.sh	command	floor	a fresh machine to a passing deploy dry run, in one command: git clone <url> ~/port/harbor && sh ~/port/harbor/bin/harbor scope	harbor#829
 bin/deploy-confinement.sh	command	floor	CONFINEMENT INSTALL (harbor#1298, #555 P1) — the `sandbox` block of the root-owned managed-settings.json. sudo	harbor#1298
 bin/deploy-doctor.sh	command	floor	probe the external tools Harbor's doctrine depends on. harbor#3 (workstream B) + M1, method from upstream `Doctor` @ a4e8e74	harbor#3
@@ -155,7 +155,7 @@ bin/gate-pr-wait.sh	command	floor	wait on a pull request until the FIRST thing t
 bin/gate-push.sh	command	floor	run a repo's pre-push checks BEFORE git connects, then push in seconds.	harbor#1411
 bin/gate-queue.sh	command	floor	the approvals that wait for the operator: the ONLY queue writer (ship contract §5b.9). <cfg>/bin/gate-queue.sh add <merge|deploy>	harbor#1018
 bin/gate-register-derive.sh	command	floor	the rows of harbor's protected-paths register that are DERIVED, never kept by hand: every file an installer ships into the config	harbor#1018
-bin/gate-repo-drift.sh	command	floor	each governed repo's GitHub rules, declared in .agents/ship.conf, against live.	harbor#1418
+bin/gate-repo-drift.sh	command	floor	each governed repo's GitHub rules, declared in .agents/ship.config, against live.	harbor#1418
 bin/gate-required-generate.sh	command	floor	the rows a local merge gate reads: core's contracts/required-checks.tsv (harbor's own checks and every repo whose name may be	harbor#1149
 bin/gate-verbs.sh	command	floor	the one reader of the verb registers in contracts/verbs/, one file per CLI. The installer's rules (deploy-install-lib.sh	harbor#1419
 bin/gcloud	command	floor	installed as ~/.local/bin/gcloud, ahead of the real gcloud on PATH. Refuses `gcloud auth login` anywhere but INSIDE a gcx	harbor#546
@@ -170,7 +170,7 @@ bin/library-alert.sh	library	floor	one desktop notification helper with a fallba
 bin/library-fs.sh	library	floor	a file's mtime, size, mode and owner on BSD and GNU stat, one spelling. Sourced, never run: it sets no shell option, and every	harbor#618
 bin/library-gate.sh	library	floor	the approval gate's shared library. Never run: sourced after library-log.sh, it sets no shell option. Repo-agnostic: a repo opts	harbor#1018
 bin/library-log.sh	library	floor	the one log format (contracts/logging.md), sourced by every tool that logs. Never run: it sets no shell option (set -u in	harbor#771
-bin/library-repo-rules.sh	library	floor	how a repo's GitHub rules are declared in ship.conf and read from GitHub, one spelling for the two callers that compare them	harbor#1418
+bin/library-repo-rules.sh	library	floor	how a repo's GitHub rules are declared in ship.config and read from GitHub, one spelling for the two callers that compare them	harbor#1418
 bin/lint-adoption.sh	command	floor	every vendored asset has an intake row.	harbor#117
 bin/lint-comment-commands.awk	helper	floor	a destructive command quoted in backticks inside a shell comment (harbor lint.comment-commands).	-
 bin/lint-comment.sh	command	floor	file header line 2 and the comment rule, judged on the lines a branch adds.	harbor#978
@@ -216,6 +216,7 @@ bin/scope-managed-mods.sh	command	floor	MANAGED MODS LOCKDOWN (harbor#1022, #603
 bin/scope-managed-retention.sh	command	floor	MANAGED RETENTION (harbor#1181 lane 6) — pins transcript retention in the root-owned managed-settings.json, where no user	harbor#1181
 bin/scope-managed-telemetry.sh	command	floor	MANAGED TELEMETRY (harbor#1181 lane 6) — pins Claude Code's own OTLP log events, sent to the collector's receiver on	harbor#1181
 bin/scope-marker-backfill.sh	command	floor	declare the detect-and-defer boundary across the installed base.	harbor#4
+bin/scope-repo-rename.sh	command	floor	`harbor repo rename`: rename a registered repo on this box, its worktrees, sessions and memory with it; the GitHub rename stays the operator's.	harbor#966
 bin/scope-repo-sources.sh	command	floor	the four places a repo is known, held against each other (check context.repo-sources-agree).	harbor#1430
 bin/scope-repo.sh	command	floor	`harbor repo`: one command creates or adopts a repo, registers it everywhere and audits it.	harbor#1430
 bin/scope-repos-generate.sh	command	floor	the files that list the repos generated from the one registry, so a rename is one row (check scope.repos-generated).	harbor#966

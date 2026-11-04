@@ -147,7 +147,7 @@
 10	tests/admission/baseline/confinement.test.sh
 10	tests/admission/destroy/destroy.test.sh
 10	tests/admission/destroy/snapshot.test.sh
-10	tests/admission/selfedit/selfedit.test.sh
+10	tests/admission/self-edit/self-edit.test.sh
 10	tests/drift/reconcile/contract.test.sh
 10	tests/skill/gates/gates.test.sh
 10	tests/standard/fleet-names/job.test.sh
@@ -324,7 +324,7 @@
 1	tests/drift/port-root/port-root.test.sh
 1	tests/eval/hook-replay/output-contract.test.sh
 1	tests/event/bus/prune.test.sh
-1	tests/hooks/failure-observe-test.sh
+1	hooks/failure-observe/mcp-segment.test.sh
 1	tests/lint/adoption/output-contract.test.sh
 1	tests/lint/citations/private.test.sh
 1	tests/lint/decision/citation.test.sh

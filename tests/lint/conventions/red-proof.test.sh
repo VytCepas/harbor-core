@@ -109,8 +109,8 @@ t_section "D3 / F1 / F2: a guard's exit code, kill switch and caret"
 _rp_fresh
 _KS='[ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0'
 guard() { printf '#!/usr/bin/env sh\n# guard (harbor#588)\n%s\n' "$1" > "$RP/bin/guard-zz.sh"; }
-# F1 derives its set from bin/decider-set.sh (harbor#954): the fixture's decider set is its one guard, no drift
-printf '#!/usr/bin/env sh\n# decider-set stub (harbor#954)\ncase "${1:-}" in --switch) echo guard-zz.sh ;; --check|--exempt|--records) : ;; esac\n' > "$RP/bin/decider-set.sh"
+# F1 derives its set from bin/admission-decider-set.sh (harbor#954): the fixture's decider set is its one guard, no drift
+printf '#!/usr/bin/env sh\n# decider-set stub (harbor#954)\ncase "${1:-}" in --switch) echo guard-zz.sh ;; --check|--exempt|--records) : ;; esac\n' > "$RP/bin/admission-decider-set.sh"
 guard "$_KS
 echo judged
 exit 0"

@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # OBSERVE-1 (harbor#41) — the SessionStart half of the guard-decision ledger.
-# This script has no kill-switch line, deliberately: guards are spawned through admission-hook.sh, which returns at line 2 under an override, so only a hook that runs regardless of the switch can record it. bin/decider-set.sh lists it as exempt (lint F1).
+# This script has no kill-switch line, deliberately: guards are spawned through admission-hook.sh, which returns at line 2 under an override, so only a hook that runs regardless of the switch can record it. bin/admission-decider-set.sh lists it as exempt (lint F1).
 # SessionStart-only, never blocks. It is the ONLY component permitted to create anything (library-admission.sh property 3): the directories, sink, host token and salt are made here.
 # Removed notes: docs/explanation/code-cases/bin-admission-observe.md
 set -u

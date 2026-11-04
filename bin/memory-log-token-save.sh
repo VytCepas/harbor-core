@@ -48,7 +48,7 @@ clip_clear() {
 }
 
 DEST="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.helm-log-token"   # legacy plaintext, removed once the store holds it
-SECRET="${HARBOR_SECRET_BIN:-$(command -v secret 2>/dev/null || true)}"; [ -n "$SECRET" ] || SECRET="$HOME/.local/bin/secret"
+SECRET="${HARBOR_ACCESS_SECRET_BIN:-${HARBOR_SECRET_BIN:-$(command -v secret 2>/dev/null || true)}}"; [ -n "$SECRET" ] || SECRET="$HOME/.local/bin/secret"
 
 # `|| true` on the substitution: under `set -e` a bare `T="$(clip_read)"` aborts, so a fallback written beneath it is dead code.
 T="$(clip_read 2>/dev/null || true)"

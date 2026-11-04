@@ -41,7 +41,7 @@ t_eq "a rename OUT of a protected path is refused" 1 "$RC"
 ag_world; ag_files "$SHA_A" -CONSTITUTION.md
 ag_run gate-merge.sh "$AG_R" 7
 t_eq "a deletion of a protected path is refused" 1 "$RC"
-ag_world; ag_files "$SHA_A" .agents/ship.conf
+ag_world; ag_files "$SHA_A" .agents/ship.config
 ag_run gate-merge.sh "$AG_R" 7
 t_eq "the manifest is protected whatever the register says" 1 "$RC"
 ag_world; ag_files "$SHA_A" .github/workflows/ci.yml
@@ -164,9 +164,9 @@ t_eq "while .harbor-autoship.off exists, no unattended merge" 1 "$RC"
 t_has "...saying so" "$OUT" "the kill switch"
 ag_run gate-approve.sh merge "$AG_R" 7 "$SHA_A"
 t_eq "...the operator's approval is not unattended, so it still merges" 0 "$RC"
-ag_world; rm "$GF/contents/.agents/ship.conf"
+ag_world; rm "$GF/contents/.agents/ship.config"
 ag_run gate-merge.sh "$AG_R" 7
-t_eq "no .agents/ship.conf on main: nothing is unattended" 1 "$RC"
+t_eq "no .agents/ship.config on main: nothing is unattended" 1 "$RC"
 t_eq "...nothing merged" "" "$(ag_merged)"
 ag_world; : > "$CFG/.harbor-autoship.off"
 ag_mutant "M5 the kill switch is not read" library-gate.sh 's|gate_killed() { \[ -e "\$GATE_CFG/.harbor-autoship.off" \]; }|gate_killed() { false; }|'

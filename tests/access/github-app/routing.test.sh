@@ -121,7 +121,7 @@ t_eq "--apply repoints it in place: reset, harbor, osxkeychain" "|harbor|osxkeyc
 t_hasnt "a second dry run has nothing to repoint" "$(env -u CLAUDECODE sh "$INST" --dir "$R" 2>&1)" "would repoint"
 
 t_section "confined: the hook's cache answers when ~/.config/harbor-app cannot be opened (harbor#1298)"
-C="$T_TMP/cache"; mkdir -p "$C"; export HARBOR_CONFINEMENT_CACHE="$C"
+C="$T_TMP/cache"; mkdir -p "$C"; export HARBOR_ACCESS_CONFINEMENT_CACHE="$C"
 _later=$(($(date +%s) + 3000)); _past=$(($(date +%s) - 10))
 printf '%s\ncache:Acme-Org\n' "$_later" > "$C/gh-Acme-Org"; printf '%s\ncache:DEFAULT\n' "$_later" > "$C/gh-VytCepas"
 cp "$HOME/.config/harbor-app/orgs.tsv" "$C/orgs.tsv"

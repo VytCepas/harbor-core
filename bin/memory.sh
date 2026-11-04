@@ -32,6 +32,7 @@ ENGINE="$REPO/tools/memory/memory-engine.ts"
 # Status lines are log-lib's, on stderr: stdout is the answer (contracts/logging.md).
 [ -f "$DIR/library-log.sh" ] || { printf 'memory: library-log.sh is missing beside %s\n' "$_self" >&2; exit 2; }
 . "$DIR/library-log.sh"
+. "$DIR/library-fs.sh"   # fs_session_key: the harness's key, as memory-route.sh (harbor#966)
 log_init memory
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
@@ -39,11 +40,11 @@ LOG_FD=2
 die() { _x="$1"; log_fail "$2"; log_fix "$3"; log_end || :; exit "$_x"; }
 
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-# Default is the notes store (harbor#1010 PR 4, D-68): projects/<home-key>/memory, key = physical
-# $HOME with `/` turned into `-` (as memory-route.sh); $CFG/MEMORY only when that silo is absent.
+# Default is the notes store (harbor#1010 PR 4, D-68): projects/<home-key>/memory, key = the harness's key of the
+# physical $HOME (library-fs.sh, as memory-route.sh); $CFG/MEMORY only when that silo is absent.
 STORE="${HARBOR_MEMORY_ROOT:-}"
 if [ -z "$STORE" ]; then
-  _hk="$(CDPATH= cd -- "$HOME" 2>/dev/null && pwd -P | sed 's|/|-|g')"
+  _hk="$(CDPATH= cd -- "$HOME" 2>/dev/null && pwd -P | fs_session_keys)"
   if [ -n "$_hk" ] && [ -d "$CFG/projects/$_hk/memory" ]; then STORE="$CFG/projects/$_hk/memory"; else STORE="$CFG/MEMORY"; fi
 fi
 

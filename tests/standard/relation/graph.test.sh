@@ -15,6 +15,7 @@ TAB="$(printf '\t')"
   printf 'check.beat\twarn\tcheck\tCHECKS.md\t-\tschedule\tdetective\texperimental\t-\talert\t-\tbeat\ta wired check\n'
   printf 'check.quiet\twarn\tcheck\tCHECKS.md\t-\tschedule\tdetective\texperimental\t-\talert\t-\t-\ta check with no unit, stamp or receipt\n'
   printf 'check.lint.x\twarn\tcheck\tCHECKS.md\t-\tschedule\tdetective\texperimental\t-\tcheck\t-\tlint.x\ta check that prints a lint rule'"'"'s id\n'
+  printf 'check.silent\twarn\tcheck\tCHECKS.md\t-\tschedule\tdetective\texperimental\t-\talert\t-\t-\ta check whose register row names no notifies\n'
   printf 'check.daemon\twarn\tcheck\tCHECKS.md\t-\tschedule\tdetective\texperimental\t-\talert\t-\tdaemon\ta system daemon\n'
 } > "$HB/standards/naming/controls.tsv"
 printf '#!/bin/sh\nrule_Q1() {\nrule "lint.x a rule"\n}\n' > "$HB/bin/lint-x.sh"
@@ -34,6 +35,7 @@ cat > "$HB/docs/reference/checks.md" <<'EOF'
 | `beat` | a heartbeat | every 60s | a desktop banner and `checks.log` | it stopped |
 | `check.quiet` | nothing, `a | b` in a cell | never | none — cache only | n/a. Disable: delete `quiet.sh` and this row |
 | `lint.x` | a count that only goes down | on demand | stdout | it went up |
+| `check.silent` | a row with an empty notifies cell | never |  | n/a |
 | `daemon` | a system daemon | every 300s | its own `status.json` | it stopped. **Disable:** `sudo sh bin/daemon-setup.sh --uninstall` |
 | `unregistered` | no control row | never | desktop | n/a. Disable: `rm nothing` |
 
@@ -133,6 +135,10 @@ t_section "findings-land-in: a receipt is the finding store, a HEAL row is a rep
 t_eq "log_receipt lands the check's findings in finding:check/<id>" 1 "$(row findings-land-in control:check.beat finding:check/beat)"
 t_eq "a HEAL row inside the lanes block is a repair" 1 "$(row findings-land-in control:check.quiet 'command:sh bin/quiet.sh --fix')"
 t_eq "a commented or a test's log_receipt lands nothing" 0 "$(row findings-land-in control:check.quiet finding:check/check.quiet)"
+t_eq "a notifies channel is where the findings are read: findings-land-in" 1 "$(row findings-land-in control:check.beat channel:desktop)"
+t_eq "...one edge per channel the cell names" 2 "$(awk -F'\t' '$1 == "findings-land-in" && $2 == "control:check.beat" && $3 ~ /^channel:/' "$G" | wc -l | tr -d ' ')"
+t_eq "a declared none lands nothing in a channel" 0 "$(row findings-land-in control:check.quiet channel:none)"
+t_eq "a register row with no notifies cell derives no findings-land-in, so the shape judge goes red on it (harbor#1252)" "control:check.silent findings-land-in" "$(printf 'control:check.silent\tk-findings-land-in\ncontrol:check.beat\tk-findings-land-in\n' > "$T_TMP/tg"; sh "$T_ROOT/bin/standard-shape.sh" --no-fields --root "$T_ROOT" --graph "$G" --targets "$T_TMP/tg" --kinds "$T_ROOT/fixtures/standard-shape/kinds.tsv" --format findings 2>/dev/null | awk -F'\t' '$1 == "A" || $1 == "V" { print $3 }')"
 t_eq "a HEAL row outside the block is not read" 0 "$(cnt findings-land-in control:lint.ghost)"
 t_eq "a DECIDE row is no repair" 0 "$(cnt findings-land-in control:lint.x)"
 
@@ -142,7 +148,7 @@ t_eq "the commit that created controls.tsv is a census: it motivates no row" 0 "
 t_eq "the subject of the commit that added the row" 1 "$(row motivated-by control:lint.y issue:harbor#20)"
 t_eq "...and its Refs trailer, a bare #n being harbor's" 1 "$(row motivated-by control:lint.y issue:harbor#21)"
 t_eq "...and no row it did not add" 0 "$(row motivated-by control:lint.x issue:harbor#20)"
-t_eq "a comment line the commit added is no control" 0 "$(awk -F'\t' '$1 == "motivated-by" && $2 ~ /^control:/ && $2 !~ /^control:(lint\.[xy]|lint\.ghost|check\.(beat|quiet|lint\.x|daemon))$/' "$G" | wc -l | tr -d ' ')"
+t_eq "a comment line the commit added is no control" 0 "$(awk -F'\t' '$1 == "motivated-by" && $2 ~ /^control:/ && $2 !~ /^control:(lint\.[xy]|lint\.ghost|check\.(beat|quiet|lint\.x|daemon|silent))$/' "$G" | wc -l | tr -d ' ')"
 t_eq "a later commit that changed only another row does not motivate this one" 0 "$(row motivated-by control:lint.x issue:harbor#22)"
 t_eq "...and does motivate the row it changed" 1 "$(row motivated-by control:lint.ghost issue:harbor#22)"
 t_eq "a decision record's own citation" 1 "$(row motivated-by decision:D-1 issue:harbor#7)"

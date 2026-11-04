@@ -48,7 +48,7 @@ runs is invisible to every guard. The adversarial review of 7c23e59 (DO NOT MERG
   (contents, pull requests and issues write; actions, checks and statuses read; no workflows, no administration),
   with 1-hour installation tokens. In a Claude session (`CLAUDECODE=1`) a `gh` shim and a git credential helper use
   it; everywhere else `gh` and git are the operator's. The operator stays the author of every commit. A squash is
-  authored by the PR's opener, so an App-opened squash lands as the bot (#1154); harbor's ship.conf therefore sets
+  authored by the PR's opener, so an App-opened squash lands as the bot (#1154); harbor's ship.config therefore sets
   `method merge-commit` (#1160), which keeps the branch's own commits, and their author, on `main`.
 - **Two installations, routed by repo owner** since 2026-10-13 (#1225): the App is public so a second organisation
   could install it, and the shim and helper pass that account to `mint-token.sh <account>` when the target is
@@ -73,8 +73,8 @@ runs is invisible to every guard. The adversarial review of 7c23e59 (DO NOT MERG
   rules, so a refusal, not a wall.
 - **A deploy can now run without a terminal, but only as the runner's child.** `deploy.sh --unattended` (built
   2026-10-17 on the operator's explicit ask, after the classifier refused it twice as a weakening) is what
-  `.agents/ship.conf`'s `apply` runs. A session still cannot type it: guard-bash's `deploy-raw` refuses every
-  spelling, and its env checks (`SHIP_UNATTENDED=1`, an empty `$SHIP_SNAPSHOT`) are an accident gate, not a wall.
+  `.agents/ship.config`'s `apply` runs. A session still cannot type it: guard-bash's `deploy-raw` refuses every
+  spelling, and its env checks (`HARBOR_DEPLOY_UNATTENDED=1`, an empty `$HARBOR_DEPLOY_SNAPSHOT`) are an accident gate, not a wall.
 
 ## The ancestry: how the tool proves the click launched it
 
@@ -171,7 +171,7 @@ direct `gh` call lacks, so it is not checked there.
 | Command | Rule | Does |
 |---|---|---|
 | `bin/gate-classify.sh <repo-root> [path…]` (or stdin) | none | contract §2. Prints `PROTECTED<TAB>path<TAB>class` for each protected path. Exits 0 when none is protected, 1 when one is, 2 when the manifest names an absent register. Judge both paths of a rename |
-| `<cfg>/bin/gate-merge.sh <owner/repo> <pr>` | allow | The unattended merge. Refuses while the kill switch exists, and for a repo whose default branch has no `.agents/ship.conf`. The manifest and register are read from GitHub at the default branch, never from a local checkout. A protected PR is queued and its approve command printed on stdout (exit 1). Otherwise it merges through merge-stack, pinned to the head it classified |
+| `<cfg>/bin/gate-merge.sh <owner/repo> <pr>` | allow | The unattended merge. Refuses while the kill switch exists, and for a repo whose default branch has no `.agents/ship.config`. The manifest and register are read from GitHub at the default branch, never from a local checkout. A protected PR is queued and its approve command printed on stdout (exit 1). Otherwise it merges through merge-stack, pinned to the head it classified |
 | `<cfg>/bin/gate-approve.sh merge <owner/repo> <pr> <head-sha>` | **ask** | Merges what was clicked. The head must still be `<head-sha>`, then merge-stack merges on a plan pinned to it (`pr N head <sha>`, §5b.10): every workflow green on that head, merge-check, and `--match-head-commit`. Any other head is needs-rebase. Red is refused even when approved |
 | `<cfg>/bin/gate-approve.sh deploy <owner/repo> <sha>` | **ask** | The default branch must still be `<sha>`. Then it writes the token and runs the runner: `<cfg>/bin/deploy-fleet.sh deploy <owner/repo> --sha <sha> --approved` |
 | `<cfg>/bin/gate-queue.sh add <merge\|deploy> <owner/repo> <sha> [<pr>] --reason <text>` | allow | **The only queue writer** (§5b.9). It queues an approval, prints its id, and stores the exact approve command in the row. A merge takes its `<pr>` and a deploy none. Unattended code calls this and **never** gate-approve: a pending prompt stops a session until someone answers it |
@@ -203,7 +203,7 @@ direct `gh` call lacks, so it is not checked there.
 - Call `<cfg>/bin/gate-classify.sh` and `<cfg>/bin/gate-queue.sh add`, by those names (§5a.1, §5b.9). It never
   appends to `queue.jsonl` or emits approval events itself.
 - Refuse `--approved` unless `<cfg>/.helm-approvals/approved/<queue id>` exists for exactly this repo and sha, is younger
-  than 10 minutes (it holds its UTC write time), and is deleted on use. Refuse `--approved` under `SHIP_UNATTENDED=1`.
+  than 10 minutes (it holds its UTC write time), and is deleted on use. Refuse `--approved` under `HARBOR_DEPLOY_UNATTENDED=1`.
   The age limit closes a replay of a token a killed approval left behind.
 - Add its allow rule through floor-deny, like the ones below.
 - Own the kill-switch check, auto-restore, no retry and the per-repo deployed sha.
@@ -279,9 +279,9 @@ What the probe cannot prove:
 - **naming registry:** `ship` changes from a legacy alias of `workload` to a codename. It is allowed on path, env,
   check-id and command (§5a.8).
 - **deploy.sh `--unattended`: built in a later PR** (harbor#1018, 2026-10-17), to contract §6's narrow exception.
-  It is a usage error without `--apply`, without `SHIP_UNATTENDED=1`, or without `$SHIP_SNAPSHOT` naming an empty
+  It is a usage error without `--apply`, without `HARBOR_DEPLOY_UNATTENDED=1`, or without `$HARBOR_DEPLOY_SNAPSHOT` naming an empty
   file, and with `--uninstall`, `--prune` or `--accept-loss`. It skips the in-session refusal and the install
-  `[y/N]`, writes the snapshot path to `$SHIP_SNAPSHOT` before the first install, and answers No to every other
+  `[y/N]`, writes the snapshot path to `$HARBOR_DEPLOY_SNAPSHOT` before the first install, and answers No to every other
   question: the restore stays the runner's (`restore`), and the B8 re-pin stays the operator's. B8 drift is an
   advisory in `floor-verify`, so a declined re-pin does not roll a deploy back. The terminal path is unchanged.
   The flag is kept out of every printed fix, so no fix line hands a person a flag they cannot use. The cases and

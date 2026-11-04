@@ -1,12 +1,12 @@
 #!/usr/bin/env sh
 # The floor suite, part confinement (harbor#1298, #555 P1): deploy-confinement.sh composes core then private rows into
 # the `sandbox` block, merges it into managed-settings.json, and reads it back. No test needs root:
-# HARBOR_MANAGED_SETTINGS moves the file, HARBOR_CONFINEMENT_PRIVATE names the layer, HARBOR_CONFINEMENT_OS the platform.
+# HARBOR_SCOPE_MANAGED_SETTINGS moves the file, HARBOR_DEPLOY_CONFINEMENT_PRIVATE names the layer, HARBOR_DEPLOY_CONFINEMENT_OS the platform.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 INST="$T_ROOT/bin/deploy-confinement.sh"
 PORT_ROOT="$T_TMP/port"; mkdir -p "$PORT_ROOT"; export PORT_ROOT
 PRIV="$T_TMP/priv"; mkdir -p "$PRIV"
-cmp_() { HARBOR_CONFINEMENT_PRIVATE="$1" HARBOR_CONFINEMENT_OS="${2:-Darwin}" sh "$INST" --compose 2>&1; }
+cmp_() { HARBOR_DEPLOY_CONFINEMENT_PRIVATE="$1" HARBOR_DEPLOY_CONFINEMENT_OS="${2:-Darwin}" sh "$INST" --compose 2>&1; }
 q() { printf '%s' "$1" | jq -r "$2" 2>/dev/null; }
 
 t_section "compose: core alone, then the private layer after it"
@@ -35,7 +35,8 @@ t_section "a row that does not compose refuses, naming it"
 printf 'not a host!\n' > "$PRIV/confinement-hosts.txt"
 OUT="$(cmp_ "$PRIV")"; RC=$?
 t_has "a bad host row is a FAIL naming the row" "$OUT" "a row that does not compose: not a host!"
-t_exit "...and exit 1" 1 sh -c 'HARBOR_CONFINEMENT_PRIVATE="$1" sh "$2" --compose >/dev/null 2>&1' _ "$PRIV" "$INST"
+t_exit "...and exit 1" 1 sh -c 'HARBOR_DEPLOY_CONFINEMENT_PRIVATE="$1" sh "$2" --compose >/dev/null 2>&1' _ "$PRIV" "$INST"
+t_exit "...under the old HARBOR_CONFINEMENT_PRIVATE too, until 2026-11-15 (harbor#1097)" 1 sh -c 'HARBOR_CONFINEMENT_PRIVATE="$1" sh "$2" --compose >/dev/null 2>&1' _ "$PRIV" "$INST"
 rm -f "$PRIV/confinement-hosts.txt"; printf 'write relative/path\n' > "$PRIV/confinement-paths.txt"
 t_has "a relative path row is a FAIL" "$(cmp_ "$PRIV")" "a row that does not compose: write relative/path"
 rm -f "$PRIV/confinement-paths.txt"; mkdir "$PRIV/confinement-paths.txt"
@@ -57,7 +58,8 @@ t_eq "confinement_credentials writes the secret rows as deny (P5)" deny "$(q "$O
 t_has "...naming the key stores" "$(q "$ON" '.credentials.files[].path')" "~/.ssh"
 printf 'confinement_strict = true\n' > "$PORT_ROOT/harbor-private/harbor.toml"
 t_has "an unquoted value is a refused harbor.toml, never a silent false" "$(cmp_ '')" "harbor.toml cannot be read for confinement_strict"
-t_exit "...and the compose exits 1" 1 sh -c 'HARBOR_CONFINEMENT_PRIVATE= sh "$1" --compose >/dev/null 2>&1' _ "$INST"
+t_exit "...and the compose exits 1" 1 sh -c 'HARBOR_DEPLOY_CONFINEMENT_PRIVATE= sh "$1" --compose >/dev/null 2>&1' _ "$INST"
+t_exit "...also with only the old HARBOR_CONFINEMENT_PRIVATE emptied" 1 sh -c 'HARBOR_CONFINEMENT_PRIVATE= sh "$1" --compose >/dev/null 2>&1' _ "$INST"
 rm -f "$PORT_ROOT/harbor-private/harbor.toml"
 
 t_section "Linux preflight: bubblewrap must start for the operator, or the install refuses"
@@ -78,7 +80,7 @@ t_has "CONTROL: Linux where bwrap starts: passes" "$(pf Linux)" "exit 0"
 
 t_section "installer: dry run, merge, uninstall"
 # Darwin pinned: these arms test the write, and the Linux preflight has its own section (a CI runner has no bwrap).
-M="$T_TMP/managed/managed-settings.json"; export HARBOR_MANAGED_SETTINGS="$M" HARBOR_CONFINEMENT_PRIVATE='' HARBOR_CONFINEMENT_OS=Darwin
+M="$T_TMP/managed/managed-settings.json"; export HARBOR_SCOPE_MANAGED_SETTINGS="$M" HARBOR_DEPLOY_CONFINEMENT_PRIVATE= HARBOR_CONFINEMENT_PRIVATE='' HARBOR_DEPLOY_CONFINEMENT_OS=Darwin
 DRY="$(sh "$INST" --dry-run 2>&1)"
 t_has "dry run names the target" "$DRY" "$M"
 t_has "dry run prints the sandbox block" "$DRY" '"allowManagedDomainsOnly": true'
@@ -110,7 +112,7 @@ t_eq "uninstall removes the block" null "$(jq -r '.sandbox // "null"' "$M")"
 t_eq "...and the marker" absent "$([ -f "$(dirname "$M")/harbor-confinement" ] && echo present || echo absent)"
 t_eq "uninstall keeps the sibling's key" true "$(jq -r '.disableSideloadFlags' "$M")"
 printf 'not a host!\n' > "$PRIV/confinement-hosts.txt"
-OUT="$(HARBOR_CONFINEMENT_PRIVATE="$PRIV" sh "$INST" 2>&1 >/dev/null)"
+OUT="$(HARBOR_DEPLOY_CONFINEMENT_PRIVATE="$PRIV" sh "$INST" 2>&1 >/dev/null)"
 t_has "a refused compose during install shows its FAIL on stderr, never swallowed into the block" "$OUT" "a row that does not compose: not a host!"
 t_eq "...and the managed file is left as it was" null "$(jq -r '.sandbox // "null"' "$M")"
 rm -f "$PRIV/confinement-hosts.txt"
@@ -123,18 +125,18 @@ mkdir -p "$T_TMP/noop"; cp "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/scope-roots
 sed 's/chmod 0644 "$TMPF"; mv "$TMPF" "$FILE"/chmod 0644 "$TMPF"/' "$INST" > "$T_TMP/noop/deploy-confinement.sh"
 mkdir -p "$T_TMP/contracts"; cp "$T_ROOT/contracts/confinement-hosts.txt" "$T_ROOT/contracts/confinement-paths.txt" "$T_ROOT/contracts/roots.tsv" "$T_TMP/contracts/"
 t_eq "the sabotaged copy differs from the original" differs "$(cmp -s "$INST" "$T_TMP/noop/deploy-confinement.sh" && echo same || echo differs)"
-export HARBOR_MANAGED_SETTINGS="$T_TMP/e2e/managed-settings.json"
+export HARBOR_SCOPE_MANAGED_SETTINGS="$T_TMP/e2e/managed-settings.json"
 OUT="$(sh "$T_TMP/noop/deploy-confinement.sh" 2>&1)"; RC=$?
 t_eq "a write that lands nowhere exits 1" 1 "$RC"
-t_has "...with the read-back FAIL" "$OUT" "read-back: $HARBOR_MANAGED_SETTINGS is missing or not JSON after the write"
+t_has "...with the read-back FAIL" "$OUT" "read-back: $HARBOR_SCOPE_MANAGED_SETTINGS is missing or not JSON after the write"
 t_exit "CONTROL: the real script writes it and exits 0" 0 sh "$INST"
 
 t_section "root refuses caller-chosen targets and content (decision function, no root needed)"
 rr() { env "$2=${3:-}" sh -c 'CONFINEMENT_LIB=1; . "$0"; confine_refuse_override "$1"' "$INST" "$1" >/dev/null 2>&1; echo $?; }
-for _v in HARBOR_MANAGED_SETTINGS HARBOR_CONFINEMENT_PRIVATE HARBOR_CONFINEMENT_OS; do
+for _v in HARBOR_SCOPE_MANAGED_SETTINGS HARBOR_MANAGED_SETTINGS HARBOR_DEPLOY_CONFINEMENT_PRIVATE HARBOR_CONFINEMENT_PRIVATE HARBOR_DEPLOY_CONFINEMENT_OS HARBOR_CONFINEMENT_OS; do   # the old names are read until 2026-11-15 (harbor#1097)
   t_eq "uid 0 with $_v set: refused" 1 "$(rr 0 "$_v" x)"
 done
-t_eq "CONTROL: uid 0 with none set: allowed" 0 "$(env -u HARBOR_MANAGED_SETTINGS -u HARBOR_CONFINEMENT_PRIVATE -u HARBOR_CONFINEMENT_OS sh -c 'CONFINEMENT_LIB=1; . "$0"; confine_refuse_override 0' "$INST" >/dev/null 2>&1; echo $?)"
-t_eq "CONTROL: non-root with an override (the test path): allowed" 0 "$(rr 501 HARBOR_MANAGED_SETTINGS x)"
+t_eq "CONTROL: uid 0 with none set: allowed" 0 "$(env -u HARBOR_SCOPE_MANAGED_SETTINGS -u HARBOR_MANAGED_SETTINGS -u HARBOR_DEPLOY_CONFINEMENT_PRIVATE -u HARBOR_CONFINEMENT_PRIVATE -u HARBOR_DEPLOY_CONFINEMENT_OS -u HARBOR_CONFINEMENT_OS sh -c 'CONFINEMENT_LIB=1; . "$0"; confine_refuse_override 0' "$INST" >/dev/null 2>&1; echo $?)"
+t_eq "CONTROL: non-root with an override (the test path): allowed" 0 "$(rr 501 HARBOR_SCOPE_MANAGED_SETTINGS x)"
 t_has "PATH is pinned before anything runs" "$(sed -n '1,/^HERE=/p' "$INST")" 'PATH=/usr/bin:/bin:/usr/sbin:/sbin'
 t_done

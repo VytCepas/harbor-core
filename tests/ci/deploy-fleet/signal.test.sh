@@ -25,7 +25,7 @@ kill -TERM "$MP" 2>/dev/null; wait "$MP" 2>/dev/null; reap
 SHIP=''
 
 t_section "TERM during a hung verify: the group is killed, this run's snapshot restored, the night reported"
-term_world() { fx_world; fx_git api "verify may take 10 min" sh -c 'sed "s/^timeout.verify 3$/timeout.verify 600/" .agents/ship.conf > m && mv m .agents/ship.conf'
+term_world() { fx_world; fx_git api "verify may take 10 min" sh -c 'sed "s/^timeout.verify 3$/timeout.verify 600/" .agents/ship.config > m && mv m .agents/ship.config'
   fx_base api; fx_main api src/t.txt t; touch "$SF/verify-hangs"; }
 term_world; T0="$(date +%s)"
 sh "$T_TMP/inst/bin/deploy-fleet.sh" night > "$T_TMP/out" 2>&1 & RP=$!

@@ -2,7 +2,7 @@
 # P3 (harbor#1300, #555): a confined Bash call skips the admission rules whose target the confinement denies, and an
 # unconfined one runs every rule. The skip reads pinned paths, never the environment, so the suite drives a COPY of the
 # installed floor whose guard-lib names a fixture system dir and this user as root (HOST-1's pattern); the real copy
-# is then shown to ignore HARBOR_MANAGED_SETTINGS. Also holds contracts/confinement-coverage.tsv equal to controls.tsv
+# is then shown to ignore HARBOR_SCOPE_MANAGED_SETTINGS. Also holds contracts/confinement-coverage.tsv equal to controls.tsv
 # and to floor_confinement_covers.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/admission/baseline/fixture.sh"
@@ -89,8 +89,8 @@ t_eq "the flag with spaces around the colon: it blocks" 2 \
 
 t_section "the environment cannot turn the skip on"
 mkdir -p "$T_TMP/envsys"; cp "$SYS/harbor-confinement" "$SYS/managed-settings.json" "$T_TMP/envsys/"
-t_eq "the installed floor, HARBOR_MANAGED_SETTINGS naming a fixture with the skip: it blocks" 2 \
-  "$(printf '%s' "$W" | CLAUDE_CONFIG_DIR="$CFG" HARBOR_MANAGED_SETTINGS="$T_TMP/envsys/managed-settings.json" TMPDIR=/nonexistent-zone sh "$CFG/bin/admission-bash.sh" >/dev/null 2>&1; echo $?)"
+t_eq "the installed floor, HARBOR_SCOPE_MANAGED_SETTINGS (or the old HARBOR_MANAGED_SETTINGS) naming a fixture with the skip: it blocks" 2 \
+  "$(printf '%s' "$W" | CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_MANAGED_SETTINGS="$T_TMP/envsys/managed-settings.json" HARBOR_MANAGED_SETTINGS="$T_TMP/envsys/managed-settings.json" TMPDIR=/nonexistent-zone sh "$CFG/bin/admission-bash.sh" >/dev/null 2>&1; echo $?)"
 
 t_section "contracts/confinement-coverage.tsv: every admission rule, the guard's set, never a remote or zone rule"
 _adm="$(awk -F'\t' '!/^#/ && $3 == "admission" { print $1 }' "$T_ROOT/standards/naming/controls.tsv" | sort)"

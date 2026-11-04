@@ -91,10 +91,10 @@ case "\$sc" in
 esac
 EOF
 chmod +x "$OSA"; : > "$OSA_TABS"
-HARBOR_OSASCRIPT="$OSA"; export HARBOR_OSASCRIPT
+HARBOR_ACCESS_BROWSER_OSASCRIPT="$OSA"; export HARBOR_ACCESS_BROWSER_OSASCRIPT
 # The access register's route cards: a fixture, so no case reads the box's own.
 ACC="$T_TMP/access"; mkdir -p "$ACC"; HARBOR_ACCESS_DIR="$ACC"; export HARBOR_ACCESS_DIR
 osa() { grep -c -- "$1" "$OSACALLS" 2>/dev/null || :; }
 # PH is the private layer's extra hosts: none unless a case writes it, so the box's own layer never decides a result.
 PH="$T_TMP/private-browser-hosts.txt"
-ag() { rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_BROWSER_PRIVATE_HOSTS="$PH" HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" "$@"; }
+ag() { rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS="$PH" HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" "$@"; }

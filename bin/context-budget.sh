@@ -42,6 +42,7 @@ ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 # The --check failures speak in the house line shape (contracts/logging.md, LOG1). stderr, as before.
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2; . "$(dirname -- "$0")/library-log.sh"
+. "$(dirname -- "$0")/library-fs.sh"   # fs_session_key: the harness's key, as memory-route.sh (harbor#966)
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 
 # The baseline is a file, not a number (harbor#183): growth becomes a DIFF with a reason in the commit message.
@@ -177,9 +178,9 @@ done
 [ "$cmdn" -gt 0 ] && row "local slash-command descriptions ($cmdn)" "$cmd" "${CFG#$HOME/}/commands"
 
 # ── the cwd-keyed auto-memory index ──
-# The largest always-on item, once unmeasured (reported 22,035 B while the true figure was 32,506 B). The key is the cwd path with `/` -> `-` and there is NO walk-up: a walk-up built on a misread
+# The largest always-on item, once unmeasured (reported 22,035 B while the true figure was 32,506 B). The key is the harness's (library-fs.sh) and there is NO walk-up: a walk-up built on a misread
 # observation overcounted by 10,908 B for a session in a repo with no store. The resolved path is PRINTED so the row is falsifiable at a glance.
-mem_idx="$CFG/projects/$(printf '%s' "$PWD" | tr '/' '-')/memory/MEMORY.md"
+mem_idx="$CFG/projects/$(fs_session_key "$PWD")/memory/MEMORY.md"
 mem_local=0
 if [ -f "$mem_idx" ]; then
   mem_local="$(bytes "$mem_idx")"

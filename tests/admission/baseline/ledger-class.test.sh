@@ -20,7 +20,7 @@ _oxu() { # <command> -> the class `x` of the bash guard's record for it, run as 
     | (cd "$T_ROOT" && CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/admission-bash.sh") >/dev/null 2>&1
   jq -r 'select(.g == "bash") | .x' "$OSINK" | tail -1
 }
-mkdir -p "$TMP/managed"; export HARBOR_MANAGED_SETTINGS="$TMP/managed/managed-settings.json"; : > "$TMP/managed/harbor-confinement"
+mkdir -p "$TMP/managed"; export HARBOR_SCOPE_MANAGED_SETTINGS="$TMP/managed/managed-settings.json"; : > "$TMP/managed/harbor-confinement"
 t_eq "O-34 git is vcs" vcs "$(_oxu 'git status')"
 t_eq "O-34 a cd prefix does not hide the verb" vcs "$(_oxu 'cd /tmp && gh pr list')"
 t_eq "O-34 an env assignment does not hide the verb" vcs "$(_oxu 'GIT_PAGER=cat git log')"
@@ -41,6 +41,6 @@ otrunc
 printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git status ZZBYTESZZ"}}' | (cd "$T_ROOT" && CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/admission-bash.sh") >/dev/null 2>&1
 t_eq "O-34 a confined call carries no class" - "$(jq -r 'select(.g == "bash") | .x' "$OSINK" | tail -1)"
 t_hasnt "O-34 no command byte reaches the ledger" "$(cat "$OSINK")" 'ZZBYTESZZ'
-rm -f "$TMP/managed/harbor-confinement"; unset HARBOR_MANAGED_SETTINGS
+rm -f "$TMP/managed/harbor-confinement"; unset HARBOR_SCOPE_MANAGED_SETTINGS HARBOR_MANAGED_SETTINGS
 ff_sealed
 t_done

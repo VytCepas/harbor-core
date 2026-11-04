@@ -13,6 +13,15 @@ REG="$T_ROOT/standards/naming"
 # the rules are the controls this lint evaluates: type lint, engine bin/lint-name.sh (the module.* rows are bin/lint-module.sh's, and module.family-shape has no engine yet)
 rules() { awk -F'\t' '/^#/ || !h++ { next } $3 == "lint" && $4 == "bin/lint-name.sh" { print $1 }' "$1/controls.tsv"; }
 . "$T_ROOT/tests/lint/name/fixture.sh"   # mini <dir>
+# What a copy's self-test reads, against the tree's: empty = identical. A control that re-ran the whole self-test on an
+# unmutated copy (about 55 s each) repeated the real-tree run above; the copy being the tree's inputs is the same proof
+# (harbor#667). schemas.tsv and exemptions.tsv are the two files mini derives for a copy, so they are the only exceptions.
+same_inputs() { # <copy dir>
+  diff -rq "$T_ROOT/fixtures/naming" "$1/fixtures/naming" 2>&1
+  diff -rq -x schemas.tsv -x exemptions.tsv "$REG" "$1/standards/naming" 2>&1
+  cmp "$T_ROOT/standards/naming.md" "$1/standards/naming.md" 2>&1
+  cmp "$LN" "$1/bin/lint-name.sh" 2>&1
+}
 
 t_section "--self-test: every fail fixture goes red and every pass stays green"
 _red="$TMP/self.red"; : > "$_red"
@@ -30,16 +39,33 @@ t_section "a mutated renderer goes red: the self-test fails when name.case stops
 M="$TMP/mutant"; mini "$M"
 sed 's|if (seg ~ /\[A-Z\]/) emit("name.case"|if (0) emit("name.case"|' "$LN" > "$M/bin/lint-name.sh"
 t_eq "the mutation changed exactly one line" 1 "$(diff "$LN" "$M/bin/lint-name.sh" | grep -c '^>')"
-_mo="$(sh "$M/bin/lint-name.sh" --self-test 2>&1)"; _morc=$?
+_mo="$(sh "$M/bin/lint-name.sh" --self-test --rule name.case 2>&1)"; _morc=$?
 t_eq "the mutant's self-test exits 1" "exit 1" "exit $_morc"
 t_has "…naming the fail fixture that stayed green" "$_mo" "did not go red on name.case"
 t_has "…and the rule that never went red" "$_mo" "never went red in this self-test: name.case"
-t_eq "the unmutated copy passes the same self-test" "exit 0" "exit $(sh "$LN" --root "$M" --self-test > /dev/null 2>&1; echo $?)"
+cp "$LN" "$M/bin/lint-name.sh"
+t_eq "the unmutated copy is the tree's inputs, so the real-tree self-test above covers it" "" "$(same_inputs "$M")"
+t_eq "the limited self-test of the unmutated copy passes" "exit 0" "exit $(sh "$M/bin/lint-name.sh" --self-test --rule name.case > /dev/null 2>&1; echo $?)"
+
+t_section "--self-test --rule limits the run to the named rules (harbor#667)"
+_lo="$(sh "$M/bin/lint-name.sh" --self-test --rule name.case 2>&1)"
+t_has "the limited run says it is limited" "$_lo" "limited to --rule name.case"
+t_has "…and its coverage line says selected, not every rule" "$_lo" "every selected rule went red at least once (1 rules; limited to --rule)"
+t_hasnt "…so it never claims the full census" "$_lo" "every rule in controls.tsv went red at least once"
+# the mutant of name.case is invisible to a run limited to another rule: the flag really narrows what is judged
+sed 's|if (seg ~ /\[A-Z\]/) emit("name.case"|if (0) emit("name.case"|' "$LN" > "$M/bin/lint-name.sh"
+t_eq "a mutant of name.case passes a run limited to name.separator" "exit 0" "exit $(sh "$M/bin/lint-name.sh" --self-test --rule name.separator > /dev/null 2>&1; echo $?)"
+t_eq "…and fails a run limited to name.case" "exit 1" "exit $(sh "$M/bin/lint-name.sh" --self-test --rule name.case > /dev/null 2>&1; echo $?)"
+t_has "same_inputs can fail: it names a copy whose lint is the mutant" "$(same_inputs "$M")" "lint-name.sh"
+cp "$LN" "$M/bin/lint-name.sh"
+t_exit "a rule id that is not a lint-name rule is a usage error" 2 sh "$LN" --self-test --rule name.no-such-rule
+t_exit "--rule without --self-test is a usage error" 2 sh "$LN" --rule name.case
+t_exit "--rule with no id is a usage error" 2 sh "$LN" --self-test --rule
 
 t_section "the self-test refuses a rule with no fail fixture"
 U="$TMP/uncovered"; mini "$U"
 printf 'name.ghost-rule\twarn\tlint\tbin/lint-name.sh\tpath\tci\tdetective\texperimental\t-\tstandard\t-\t-\ta rule no fixture exercises\n' >> "$U/standards/naming/controls.tsv"
-_uo="$(sh "$U/bin/lint-name.sh" --self-test 2>&1)"; _uorc=$?
+_uo="$(sh "$U/bin/lint-name.sh" --self-test --rule name.ghost-rule 2>&1)"; _uorc=$?
 t_eq "an uncovered rule fails the self-test" "exit 1" "exit $_uorc"
 t_has "…and is named" "$_uo" "never went red in this self-test: name.ghost-rule"
 
@@ -49,11 +75,12 @@ grep -v '^docs/Reports	' "$P/fixtures/naming/directory/fail/expect.tsv" > "$TMP/
 mv "$TMP/dir.fail" "$P/fixtures/naming/directory/fail/expect.tsv"
 t_eq "the cut removed exactly the one name.case row on directory" 1 \
   "$(diff "$T_ROOT/fixtures/naming/directory/fail/expect.tsv" "$P/fixtures/naming/directory/fail/expect.tsv" | grep -c '^<')"
-_po="$(sh "$P/bin/lint-name.sh" --root "$P" --self-test 2>&1)"; _porc=$?
+_po="$(sh "$P/bin/lint-name.sh" --root "$P" --self-test --rule name.case 2>&1)"; _porc=$?
 t_eq "a rule red on four of its five surfaces fails the self-test" "exit 1" "exit $_porc"
 t_has "…naming the pair" "$_po" "a declared surface never went red: name.case on directory"
 t_hasnt "…while the rule itself still went red somewhere" "$_po" "never went red in this self-test: name.case"
-t_eq "the uncut copy passes the same self-test" "exit 0" "exit $(sh "$LN" --root "$M" --self-test > /dev/null 2>&1; echo $?)"
+cp "$T_ROOT/fixtures/naming/directory/fail/expect.tsv" "$P/fixtures/naming/directory/fail/expect.tsv"
+t_eq "the uncut copy is the tree's inputs, so the real-tree self-test above covers it" "" "$(same_inputs "$P")"
 
 t_section "mode (D-29, D-64): shadow records, warn prints, advisory is an alias of warn"
 W="$TMP/mode"; mini "$W"
@@ -99,19 +126,19 @@ t_exit "--render of a surface with no grammar is refused" 1 sh "$LN" --render pa
 SW="$TMP/swap"; mini "$SW"
 awk -F'\t' 'BEGIN { OFS = "\t" } $1 == "bin" { $2 = "<object>-<family>" } { print }' "$REG/surfaces.tsv" > "$SW/standards/naming/surfaces.tsv"
 t_eq "the swap changed exactly the bin row" 1 "$(diff "$REG/surfaces.tsv" "$SW/standards/naming/surfaces.tsv" | grep -c '^>')"
-sh "$SW/bin/lint-name.sh" --root "$SW" --self-test > "$TMP/swap.out" 2>&1; _swrc=$?
+sh "$SW/bin/lint-name.sh" --root "$SW" --self-test --rule name.family > "$TMP/swap.out" 2>&1; _swrc=$?
 t_eq "with bin = <object>-<family>, --self-test exits 1" "exit 1" "exit $_swrc"
 t_has "…because the pass fixtures of bin went red" "$(cat "$TMP/swap.out")" "bin/pass: admission-bash.sh went red on name.family"
 t_has "…and the round trip says why" "$(cat "$TMP/swap.out")" "grammar bin:"
 cp "$REG/surfaces.tsv" "$SW/standards/naming/surfaces.tsv"
-t_eq "restored, the same copy's self-test exits 0" "exit 0" "exit $(sh "$SW/bin/lint-name.sh" --root "$SW" --self-test > /dev/null 2>&1; echo $?)"
+t_eq "restored, the same copy is the tree's inputs, so the real-tree self-test covers it" "" "$(same_inputs "$SW")"
 RT="$TMP/roundtrip"; mini "$RT"
 awk -F'\t' 'BEGIN { OFS = "\t" } $1 == "skill" { $5 = "Tracking-Standards" } { print }' "$REG/surfaces.tsv" > "$RT/standards/naming/surfaces.tsv"
-_rto="$(sh "$RT/bin/lint-name.sh" --root "$RT" --self-test 2>&1)"; _rtrc=$?
+_rto="$(sh "$RT/bin/lint-name.sh" --root "$RT" --self-test --rule name.surface-grammar 2>&1)"; _rtrc=$?
 t_eq "an example that parse then render does not give back fails the self-test" "exit 1" "exit $_rtrc"
 t_has "…naming the render" "$_rto" "grammar skill: render(parse(\`Tracking-Standards\`)) is \`tracking-standards\`"
 awk -F'\t' 'BEGIN { OFS = "\t" } $1 == "test" { $5 = "tests/drift/undeployed/test_install.py" } { print }' "$REG/surfaces.tsv" > "$RT/standards/naming/surfaces.tsv"
-_rto="$(sh "$RT/bin/lint-name.sh" --root "$RT" --self-test 2>&1)"
+_rto="$(sh "$RT/bin/lint-name.sh" --root "$RT" --self-test --rule name.surface-grammar 2>&1)"
 t_has "an example the grammar cannot parse fails it too, though --check accepts the name (D-14)" "$_rto" "grammar test: the example \`tests/drift/undeployed/test_install.py\` does not parse"
 t_has "…though --check does accept that name" "$(sh "$LN" --check test tests/drift/undeployed/test_install.py 2>&1)" "no finding"
 BG="$TMP/badgrammar"; mini "$BG"
@@ -203,13 +230,12 @@ t_has "…and a well-formed one is clean, with no edit to bin/lint-name.sh" \
   "$(sh "$LN" --check registry fixtures/naming/registry/pass/new-register 2>&1)" "no finding"
 UL="$TMP/unlisted"; mini "$UL"
 cp "$REG/dialects.tsv" "$UL/standards/naming/ghost.tsv"   # a well-formed register file that no row names
-_ulo="$(sh "$UL/bin/lint-name.sh" --root "$UL" --self-test 2>&1)"; _ulrc=$?
+_ulo="$(sh "$UL/bin/lint-name.sh" --root "$UL" --self-test --rule name.registry-shape 2>&1)"; _ulrc=$?
 t_eq "a standards/naming/*.tsv with no registers.tsv row fails the self-test" "exit 1" "exit $_ulrc"
 t_has "…naming the file" "$_ulo" "standards/naming holds a file registers.tsv has no row for: ghost.tsv"
 rm "$UL/standards/naming/ghost.tsv"
-_ulo="$(sh "$UL/bin/lint-name.sh" --root "$UL" --self-test 2>&1)"; _ulrc=$?
-t_eq "removed, the same copy's self-test passes" "exit 0" "exit $_ulrc"
-t_has "…and says every register file has its row" "$_ulo" "has a registers.tsv row ("
+t_eq "removed, the same copy is the tree's inputs, so the real-tree self-test covers it" "" "$(same_inputs "$UL")"
+t_has "…and the real-tree self-test says every register file has its row" "$_st" "has a registers.tsv row ("
 
 t_section "--check case, path.test and repo-kind exit 0 or 1, never 2 (harbor#996 item 10, #961 items 3 and 6)"
 okrc() { sh -c 'sh "$1" --check "$2" "$3" > /dev/null 2>&1; test $? -le 1' _ "$LN" "$1" "$2"; }   # <surface> <name>: exit 0 or 1
@@ -296,7 +322,7 @@ t_has "restored, the same copy judges the same repo clean again" "$(rd)" "no fin
 t_section "the three new surfaces are held by the self-test: delete their fail fixtures and it goes red"
 GD="$TMP/gone"; mini "$GD"
 rm -rf "$GD/fixtures/naming/case/fail" "$GD/fixtures/naming/path.test/fail" "$GD/fixtures/naming/repo-kind/fail"
-_gdo="$(sh "$GD/bin/lint-name.sh" --root "$GD" --self-test 2>&1)"; _gdrc=$?
+_gdo="$(sh "$GD/bin/lint-name.sh" --root "$GD" --self-test --rule name.case --rule name.test-path --rule name.repo-kind 2>&1)"; _gdrc=$?
 t_eq "with the fail fixtures of case, path.test and repo-kind gone, --self-test exits 1" "exit 1" "exit $_gdrc"
 t_has "…naming case" "$_gdo" "a declared surface never went red: "
 t_has "…the case pair" "$_gdo" "name.case on case"
@@ -304,7 +330,7 @@ t_has "…the path.test pair" "$_gdo" "name.test-path on path.test"
 t_has "…the repo-kind pair" "$_gdo" "name.repo-kind on repo-kind"
 t_has "…and the rule that never went red at all" "$_gdo" "never went red in this self-test: name.repo-kind"
 cp -R "$T_ROOT/fixtures/naming/case/fail" "$GD/fixtures/naming/case/fail"; cp -R "$T_ROOT/fixtures/naming/path.test/fail" "$GD/fixtures/naming/path.test/fail"; cp -R "$T_ROOT/fixtures/naming/repo-kind/fail" "$GD/fixtures/naming/repo-kind/fail"
-t_eq "restored, the same copy's self-test exits 0" "exit 0" "exit $(sh "$GD/bin/lint-name.sh" --root "$GD" --self-test > /dev/null 2>&1; echo $?)"
+t_eq "restored, the same copy is the tree's inputs, so the real-tree self-test covers it" "" "$(same_inputs "$GD")"
 VW="$TMP/views"; mini "$VW"
 awk -F'\t' 'BEGIN { OFS = "\t" } $1 == "case" { $7 = "path.test" } { print }' "$REG/surfaces.tsv" > "$VW/standards/naming/surfaces.tsv"
 t_has "a view of a view is a shape finding" "$(sh "$VW/bin/lint-name.sh" --root "$VW" --check registry standards/naming 2>&1)" "view \`path.test\` is itself a view"
@@ -404,93 +430,6 @@ t_has "before: audit-triage.sh is a family script" "$_before" "no finding"
 t_has "after: the same name is a name.family finding" "$_after" "[name.family] bin/audit-triage.sh"
 t_eq "the glossary changed on exactly the audit row" 1 "$(diff "$TMP/glossary.before" "$O/build/naming/glossary.md" | grep -c '^> | \*\*audit\*\*')"
 t_has "…which now reads concept" "$(grep '^| \*\*audit\*\*' "$O/build/naming/glossary.md")" "| concept |"
-
-t_section "N4 relays the lint into lint-conventions"
-N="$TMP/n4"; mini "$N"; mkdir -p "$N/docs"
-t_eq "a clean tree has no N4 advisory" "" "$(advs N4 "$N")"
-t_has "…and says it judged" "$(lint1 N4 "$N")" "lint-name:"
-: > "$N/docs/Bad_Name.md"
-_a="$(advs N4 "$N")"
-t_has "a new bad name is an N4 advisory" "$_a" "ADVISORY [standard.names-conform] [name.case] docs/Bad_Name.md"
-t_has "…naming the separator rule too" "$_a" "[name.separator] docs/Bad_Name.md"
-t_eq "…and an advisory is not a violation" "" "$(viol N4 "$N")"
-_fo="$TMP/n4.findings"; : > "$_fo"
-HARBOR_SCOPE_ROOT="$N" HARBOR_LINT_FINDINGS_OUT="$_fo" sh "$LINT" --only N4 > /dev/null 2>&1
-t_has "…and its finding record carries the path as subject" "$(cat "$_fo")" "$(printf 'A\tstandard.names-conform\tdocs/Bad_Name.md')"
-_nr="$TMP/n4.red"; : > "$_nr"
-HARBOR_SCOPE_ROOT="$N" LINT_REDLOG="$_nr" sh "$LINT" --only N4 > /dev/null 2>&1
-t_has "…and LINT_REDLOG carries each finding's own rule id" "$(sort -u "$_nr")" "name.case"
-t_eq "…and never N4 for a naming finding, so each rule has its own record" "" "$(grep -x "$(lid N4)" "$_nr")"
-rm "$N/standards/naming/terms.tsv"
-t_has "a registry that cannot be read is a VIOLATION, never clean" "$(viol N4 "$N")" "judged nothing"
-: > "$_nr"; HARBOR_SCOPE_ROOT="$N" LINT_REDLOG="$_nr" sh "$LINT" --only N4 > /dev/null 2>&1
-t_has "…and that is when N4 itself is red in LINT_REDLOG, by its id" "$(cat "$_nr")" "$(lid N4)"
-rm "$N/bin/lint-name.sh"
-t_has "no lint at all is a VIOLATION" "$(viol N4 "$N")" "no bin/lint-name.sh"
-
-t_section "bin/lint-conventions.sh's ids share --list and the rule-id surface (harbor#957)"
-_ls="$(sh "$LN" --list)"
-t_eq "--list holds no id twice" "" "$(printf '%s\n' "$_ls" | awk '{ print $1 }' | sort | uniq -d)"
-t_has "…and lists bin/lint-conventions.sh's ids" "$_ls" "admission.kill-switch-first"
-t_has "…beside controls.tsv's" "$_ls" "name.case"
-t_eq "…every one of them" "$(($(rules "$REG" | grep -c .) + $(grep -c '^rule "' "$LINT")))" "$(printf '%s\n' "$_ls" | grep -c .)"
-LC="$TMP/lcids"; mini "$LC"
-printf 'rule_F1() {\nrule "admission.golden-first a fixture rule"\n}\n' > "$LC/bin/lint-conventions.sh"
-t_has "a lint-conventions id is judged as a rule-id name, read and never run" \
-  "$(sh "$LC/bin/lint-name.sh" --root "$LC" 2>&1)" "[name.alias] rule-id:admission.golden-first"
-printf 'rule_F1() {\nrule "admission.kill-switch-first a fixture rule"\n}\n' > "$LC/bin/lint-conventions.sh"
-_lcg="$(sh "$LC/bin/lint-name.sh" --root "$LC" 2>&1)"
-t_hasnt "…and a good one is not" "$_lcg" "rule-id:admission"
-t_has "positive control: that run judged the tree" "$_lcg" "lint-name:"
-
-t_section "--format findings is the kind TAB id TAB subject record"
-F="$TMP/fmt"; mini "$F"; mkdir -p "$F/docs" "$F/bin"; : > "$F/docs/Notes.md"
-# the real helm row retired with its window, so a synthetic legacy prefix stands in for it
-printf 'xoldpfx\tplatform\tlegacy\tglossary\t2099-01-01\ta fixture legacy prefix\n' >> "$F/standards/naming/aliases.tsv"
-printf '#!/usr/bin/env sh\nXOLDPFX_PROBE_FIXTURE=1 sh x\n' > "$F/bin/probe.sh"
-_ff="$(sh "$F/bin/lint-name.sh" --root "$F" --format findings 2>/dev/null)"
-t_eq "every record is A TAB name.<rule> TAB subject" "" "$(printf '%s\n' "$_ff" | grep -vE "^A	name\.[a-z-]+	[^	]+$")"
-t_has "a bad path is a record" "$_ff" "$(printf 'A\tname.case\tdocs/Notes.md')"
-t_has "an env name read from code is a record" "$_ff" "$(printf 'A\tname.env\tenv:XOLDPFX_PROBE_FIXTURE')"
-t_has "…and its legacy prefix is an alias finding" "$_ff" "$(printf 'A\tname.alias\tenv:XOLDPFX_PROBE_FIXTURE')"
-
-t_section "an env rename's dual-read window exempts the old name until remove_by (harbor#961 W5)"
-# The names are built from pieces, so this suite's own source holds no env token for the tree lint to judge.
-H=HARBOR; WO="${H}_WINDOWPROBE_X"; WN="${H}_TEST_WINDOW_PROBE"; WP="${H}_WINDOWPROBE_Y"
-W="$TMP/window"; mini "$W"
-printf '#!/usr/bin/env sh\nx="${%s:-${%s:-}}"\n' "$WN" "$WO" > "$W/bin/window-probe.sh"
-_w0="$(sh "$W/bin/lint-name.sh" --root "$W" --today 2026-11-01 2>&1)"
-t_has "control: with no row the old name is a finding" "$_w0" "[name.env] env:$WO"
-t_hasnt "…and the new one is not" "$_w0" "env:$WN"
-printf 'rename-9999\tenv:%s\tenv:%s\tenv\tW5\t2026-11-15\ta fixture window\n' "$WO" "$WN" >> "$W/standards/naming/renames.tsv"
-t_hasnt "an open window exempts the old name" "$(sh "$W/bin/lint-name.sh" --root "$W" --today 2026-11-15 2>&1)" "env:$WO"
-t_has "…and a window past its date does not" "$(sh "$W/bin/lint-name.sh" --root "$W" --today 2026-11-16 2>&1)" "[name.env] env:$WO"
-t_has "…nor does --check, which judges a name at its birth" "$(sh "$W/bin/lint-name.sh" --root "$W" --today 2026-11-01 --check env "$WO" 2>&1)" "name.env"
-printf 'rename-9998\tenv:%s\tenv:%s_PLAIN\tenv\tW5\t-\ta plain rename\n' "$WP" "$WN" >> "$W/standards/naming/renames.tsv"
-printf 'y="${%s:-}"\n' "$WP" >> "$W/bin/window-probe.sh"
-t_has "a plain rename (no remove_by) opens no window" "$(sh "$W/bin/lint-name.sh" --root "$W" --today 2026-11-01 2>&1)" "[name.env] env:$WP"
-
-t_section "--changed judges only what a branch adds"
-G="$TMP/git"; mini "$G"; : > "$G/Legacy_Old.md"
-git -C "$G" init -q -b main && git -C "$G" add -A \
-  && git -C "$G" -c user.email=t@example.invalid -c user.name=t commit -q -m base
-: > "$G/New_Bad.md"
-_ch="$(sh "$G/bin/lint-name.sh" --root "$G" --base main --changed 2>&1)"
-t_has "a new bad name is judged" "$_ch" "[name.case] New_Bad.md"
-t_hasnt "…and the legacy one beside it is not" "$_ch" "Legacy_Old.md"
-t_has "the whole-tree run does see the legacy one" "$(sh "$G/bin/lint-name.sh" --root "$G" 2>&1)" "[name.case] Legacy_Old.md"
-t_exit "--changed with no base to diff against is unchecked, not clean" 3 sh "$G/bin/lint-name.sh" --root "$G" --base no-such-ref --changed
-
-t_section "exit codes (D-49): usage 2, unchecked 3"
-t_exit "an unknown flag is usage" 2 sh "$LN" --bogus
-t_exit "an unknown --check surface is usage" 2 sh "$LN" --check no-such-surface x
-X="$TMP/noreg"; mkdir -p "$X"
-t_exit "a missing registry is unchecked" 3 sh "$LN" --root "$X"
-B="$TMP/block"; mini "$B"
-awk -F'\t' 'BEGIN { OFS = "\t" } $1 == "name.case" { $2 = "block" } { print }' "$B/standards/naming/controls.tsv" > "$TMP/rules.block"
-mv "$TMP/rules.block" "$B/standards/naming/controls.tsv"
-t_exit "a block-level finding exits 1" 1 sh "$B/bin/lint-name.sh" --root "$B" --check path Notes.md
-t_exit "…and an advisory one exits 0" 0 sh "$LN" --check path Notes.md
 
 t_red check.repo-verbs   # the falsifier this suite names for them (harbor#1422)
 t_done

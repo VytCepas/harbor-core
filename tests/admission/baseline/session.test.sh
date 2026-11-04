@@ -163,7 +163,18 @@ printf 'role, expertise, constraints\n' > "$C1A/IDENTITY.md"
 { printf -- '- `G1` · %s · active · CANARY-fresh\n' "$(date +%Y-%m-%d)"
   printf -- '- `G2` · 2020-01-02 · active · CANARY-stale\n'
   printf -- '- `G3` · active · CANARY-undated\n'; } > "$C1A/TELOS/GOALS.md"
-_fresh() { HARBOR_DOC_TELOS_DIR="$1" sh "$SRC/doc-freshness.sh" 2>&1; }
+# The repo-document half of the report ages from git, so the cases judge a fixture tree whose commit dates they set, never the live
+# tree, which ages out with the calendar (harbor#1467). A tree is a git repo with bin/doc-freshness.sh and one document committed N days ago.
+_tree() { # <dir> <age of its one document, in days>
+  mkdir -p "$1/bin"; cp "$SRC/doc-freshness.sh" "$SRC/library-log.sh" "$1/bin/"
+  printf '# a document\n' > "$1/doc.md"
+  git -C "$1" init -q 2>/dev/null; git -C "$1" config user.email harbor-test@localhost; git -C "$1" config user.name harbor-test
+  git -C "$1" add doc.md
+  _d="$(( $(date +%s) - $2 * 86400 )) +0000"
+  GIT_AUTHOR_DATE="$_d" GIT_COMMITTER_DATE="$_d" git -C "$1" commit -q -m doc
+}
+C1T="$TMP/c1a-tree"; _tree "$C1T" 3
+_fresh() { HARBOR_DOC_TELOS_DIR="$1" sh "$C1T/bin/doc-freshness.sh" 2>&1; }
 _c1a="$(_fresh "$C1A")"
 t_hasnt "C1a the report prints ids and ages, never goal TEXT (§3)" "$_c1a" 'CANARY'
 t_exit "C1a a goal reviewed today scores fresh per entry" 0 ere '^  G1 +[0-9]+d +90d +fresh' "$_c1a"
@@ -196,6 +207,11 @@ t_exit "C1a an undated goal is surfaced" 0 ere 'G3 .*UNDATED' "$_c1a"
 t_exit "C1a the stale summary counts the stale entries (no subshell loss)" 0 ere '^  WARN: [0-9]+ document\(s\) past threshold' "$_c1a"
 printf -- '- `G1` · %s · active · CANARY-fresh\n' "$(date +%Y-%m-%d)" > "$C1A/TELOS/GOALS.md"
 t_has "C1a an all-fresh corpus reports nothing past threshold" "$(_fresh "$C1A")" '  ok: nothing past its threshold'
+# ...and the same fixture with its document committed 400 days ago must report it, or the line above could never fail.
+C1S="$TMP/c1a-tree-stale"; _tree "$C1S" 400
+_c1s="$(HARBOR_DOC_TELOS_DIR="$C1A" sh "$C1S/bin/doc-freshness.sh" 2>&1)"
+t_exit "C1a a repo document committed 400 days ago is reported STALE" 0 ere '^doc\.md +[0-9]+d +90d +STALE' "$_c1s"
+t_hasnt "C1a ...and the report no longer says nothing is past threshold" "$_c1s" '  ok: nothing past its threshold'
 t_has "C1a an absent corpus reports the finding, not an empty table" "$(_fresh "$TMP/c1a-nothing-here")" 'ABSENT'
 # The control is the real hook's allowlist, driven against a fixture log repo with no remote.
 C1G="$TMP/c1a-log"; mkdir -p "$C1G/TELOS" "$C1G/KNOWLEDGE"

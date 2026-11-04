@@ -31,7 +31,7 @@ _owner() {
 }
 # Under the confinement ~/.config/harbor-app is OS-denied (harbor#1298, #555 decision 7): the access-confinement hook,
 # which runs outside it, copies the table and mints each account's token into this cache, readable from inside.
-_C="${HARBOR_CONFINEMENT_CACHE:-$HOME/.cache/harbor/confinement}"
+_C="${HARBOR_ACCESS_CONFINEMENT_CACHE:-${HARBOR_CONFINEMENT_CACHE:-$HOME/.cache/harbor/confinement}}"
 # One App installation per account: an owner listed in ~/.config/harbor-app/orgs.tsv (owner<TAB>account, owner
 # case-insensitive) gets that account's installation; every other owner, and a box with no table, keeps the default.
 # awk's own open decides, not `[ -r ]`: under Seatbelt access(2) can say readable for a file open(2) refuses.

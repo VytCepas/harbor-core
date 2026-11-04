@@ -10,8 +10,10 @@ case "$*" in
   "api repos/"*"/compare/main...feat/x --jq .behind_by") cat "$FX/behind" 2>/dev/null || echo 0 ;;
   "api repos/o/r") cat "$FX/repo.json" ;;
   "api repos/o/r/rules/branches/main") cat "$FX/rules.json" ;;
-  "api repos/o/r/contents/.agents/ship.conf?ref=main -H Accept: application/vnd.github.raw")
+  "api repos/o/r/contents/.agents/ship.config?ref=main -H Accept: application/vnd.github.raw")
     [ -f "$FX/ship" ] && { cat "$FX/ship"; exit 0; }; echo "gh: Not Found (HTTP 404)" >&2; exit 1 ;;
+  "api repos/o/r/contents/.agents/ship.conf?ref=main -H Accept: application/vnd.github.raw")
+    [ -f "$FX/ship-old" ] && { cat "$FX/ship-old"; exit 0; }; echo "gh: Not Found (HTTP 404)" >&2; exit 1 ;;
   "pr list -R o/r --base feat/x --state open --json number --jq .[].number") cat "$FX/kids" 2>/dev/null || : ;;
   *) echo "UNEXPECTED gh call: $*" >&2; exit 1 ;;
 esac
@@ -35,16 +37,23 @@ repo() {
 }
 rules() { printf '%s\n' "${1:-[]}" > "$FX/rules.json"; }
 ship() { if [ -n "${1:-}" ]; then printf 'repo o/r\nmethod %s\n' "$1" > "$FX/ship"; else rm -f "$FX/ship"; fi; }
-reset() { rm -f "$FX/pr.fail" "$FX/kids" "$FX/behind"; pr CLEAN ""; repo S-- true; rules; ship; }
+reset() { rm -f "$FX/ship-old" "$FX/pr.fail" "$FX/kids" "$FX/behind"; pr CLEAN ""; repo S-- true; rules; ship; }
 GREEN='[{"name":"ci","status":"COMPLETED","conclusion":"SUCCESS"}]'
 CO='[{"type":"pull_request","parameters":{"require_code_owner_review":true,"required_approving_review_count":0,"allowed_merge_methods":["merge","squash","rebase"]}}]'
 
-t_section "harbor#1412: a code-owner rule blocks a green PR while reviewDecision reads empty; ship.conf says merge-commit"
+t_section "harbor#1097: a repo that still has the old .agents/ship.conf is read as before, until 2026-11-15"
+reset; pr BLOCKED "" "$GREEN"; repo SM- true; rules "$CO"; printf 'repo o/r\nmethod merge-commit\n' > "$FX/ship-old"
+OUT="$(run o/r#7)"
+t_has "the method is the old file's, not squash" "$OUT" "OG pr merge 7 -R o/r --merge --match-head-commit abc123"
+printf 'repo o/r\nmethod squash\n' > "$FX/ship"
+t_hasnt "ship.config wins over ship.conf when both exist" "$(run o/r#7)" "pr merge 7 -R o/r --merge"
+
+t_section "harbor#1412: a code-owner rule blocks a green PR while reviewDecision reads empty; ship.config says merge-commit"
 reset; pr BLOCKED "" "$GREEN"; repo SM- true; rules "$CO"; ship merge-commit
 OUT="$(run o/r#7)"
 t_has "the operator approves, because GitHub blocks and nobody approved" "$OUT" "OG pr review 7 -R o/r --approve"
 t_has "...naming the rule it read" "$OUT" "code-owner review"
-t_has "the method is ship.conf's, not squash" "$OUT" "OG pr merge 7 -R o/r --merge --match-head-commit abc123"
+t_has "the method is ship.config's, not squash" "$OUT" "OG pr merge 7 -R o/r --merge --match-head-commit abc123"
 t_hasnt "GitHub deletes the head itself, so no --delete-branch" "$OUT" "--delete-branch"
 t_eq "it lands: exit 0" 0 "$(rc o/r#7)"
 
@@ -100,7 +109,7 @@ reset; repo SM- true; rules "[$(PR_RULE false 0 true)]"
 pr CLEAN "" "$GREEN" true "[]" OPEN "$HUMAN_COMMIT"
 t_hasnt "control: GitHub says CLEAN, nothing to approve" "$(run o/r#7)" "--approve"
 
-t_section "a squash-only repo: REVIEW_REQUIRED from classic protection, squash the only method, no ship.conf"
+t_section "a squash-only repo: REVIEW_REQUIRED from classic protection, squash the only method, no ship.config"
 reset; pr BLOCKED REVIEW_REQUIRED "$GREEN"; repo S-- true
 OUT="$(run o/r#7)"
 t_has "GitHub's own word asks for the approval" "$OUT" "OG pr review 7 -R o/r --approve"
@@ -113,10 +122,10 @@ OUT="$(run o/r#7)"
 t_hasnt "no approval asked for" "$OUT" "review 7"
 t_has "GitHub keeps the head, so the merge deletes it" "$OUT" "--squash --match-head-commit abc123 --delete-branch"
 
-t_section "drift: ship.conf says merge-commit, the live repo allows squash only"
+t_section "drift: ship.config says merge-commit, the live repo allows squash only"
 reset; repo S-- true; ship merge-commit
 OUT="$(run o/r#7)"
-t_has "refused and named, never swapped for squash" "$OUT" "drift: ship.conf says method merge"
+t_has "refused and named, never swapped for squash" "$OUT" "drift: ship.config says method merge"
 t_hasnt "no merge command is printed" "$OUT" "pr merge"
 t_eq "exit 1" 1 "$(rc o/r#7)"
 
@@ -184,18 +193,18 @@ t_hasnt "...and no update-branch" "$OUT" "update-branch"
 reset; pr BLOCKED "" "$RED1"; printf 'x\n' > "$FX/behind"
 t_eq "a compare that cannot be read is exit 3, never a re-run guess" 3 "$(rc o/r#7)"
 
-t_section "harbor#1418: ship.conf review and delete-branch are checked against the live facts, which win"
+t_section "harbor#1418: ship.config review and delete-branch are checked against the live facts, which win"
 reset; pr BLOCKED "" "$GREEN"; repo SM- true; rules "$CO"
 printf 'repo o/r\nmethod merge-commit\nreview 0 code-owner\ndelete-branch yes\n' > "$FX/ship"
 OUT="$(run o/r#7)"
 t_hasnt "control: a declaration that matches the live rules is no drift" "$OUT" "drift"
 printf 'repo o/r\nmethod merge-commit\nreview 1\ndelete-branch yes\n' > "$FX/ship"
 OUT="$(run o/r#7)"
-t_has "a review the rules do not require is named as drift" "$OUT" "drift: ship.conf says review 1, the live rules require 0 code-owner"
+t_has "a review the rules do not require is named as drift" "$OUT" "drift: ship.config says review 1, the live rules require 0 code-owner"
 t_has "...and the plan still lands: live wins" "$OUT" "OG pr merge 7 -R o/r --merge"
 printf 'repo o/r\nmethod merge-commit\nreview 0 code-owner\ndelete-branch no\n' > "$FX/ship"
 OUT="$(run o/r#7)"
-t_has "delete-branch declared no, live deletes the head" "$OUT" "drift: ship.conf says delete-branch no, the live repo's delete_branch_on_merge is true"
+t_has "delete-branch declared no, live deletes the head" "$OUT" "drift: ship.config says delete-branch no, the live repo's delete_branch_on_merge is true"
 t_hasnt "...and live wins: no --delete-branch" "$OUT" "--delete-branch"
 rules
 printf 'repo o/r\nmethod merge-commit\nreview 0 code-owner\ndelete-branch yes\n' > "$FX/ship"

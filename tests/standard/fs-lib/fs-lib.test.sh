@@ -95,4 +95,11 @@ t_eq "shasum only: the same bare hex" "$h" "$(printf 'hello\n' | PATH="$NS" fs_s
 sed 's/ | awk .{print \$1}.; }$/; }/' "$T_ROOT/bin/library-fs.sh" > "$T_TMP/fs-lib-nocut.sh"
 t_eq "red-proof: without the cut, the digest is not bare hex" "$h  -" "$(. "$T_TMP/fs-lib-nocut.sh"; printf 'hello\n' | PATH="$NS" fs_sha256)"
 
+t_section "harbor#966: fs_session_key is the harness's key, every character outside [A-Za-z0-9] a dash"
+# Hand-typed vectors, read off claude 2.1.317's bundle (k(e) = e.replace(/[^a-zA-Z0-9]/g, "-")), never derived from the library.
+t_eq "a dotted, underscored path" "-a--worktrees-b-c-d" "$(fs_session_key /a/.worktrees/b_c/d)"
+t_eq "a plain path keeps its letters and digits" "-Users-x-port1" "$(fs_session_key /Users/x/port1)"
+t_eq "the stdin form, one key per line" "-a-b
+-c-d" "$(printf '/a.b\n/c_d\n' | fs_session_keys)"
+
 t_done

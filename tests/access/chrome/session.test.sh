@@ -25,7 +25,7 @@ PRIV="$T_TMP/nopriv"; mkdir -p "$PRIV"; seams 0; sess 1
 # the stub shell agent: what the verbs that are Chrome's own run (attach, tabs, ...), and the tab list the sign-in stop reads
 cat > "$X/bin/access-browser-agent.sh" <<'EOF'
 for a in "$@"; do printf 'arg=%s\n' "$a"; done
-printf 'session=%s lane=%s path=%s private=%s\n' "${HARBOR_ACCESS_BROWSER_SESSION:-}" "${HARBOR_BROWSER_LANE:-}" "$PATH" "${HARBOR_BROWSER_PRIVATE_HOSTS:-none}"
+printf 'session=%s lane=%s path=%s private=%s\n' "${HARBOR_ACCESS_BROWSER_SESSION:-}" "${HARBOR_ACCESS_BROWSER_LANE:-${HARBOR_BROWSER_LANE:-}}" "$PATH" "${HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS:-${HARBOR_BROWSER_PRIVATE_HOSTS:-none}}"
 case "$1" in tabs) cat "$STUB_TABS" 2>/dev/null || : ;; esac
 EOF
 bun "$T_ROOT/tests/access/chrome/fake-daemon.ts" "$SOCK" "$CTL" "$SNAP" & DPID=$!
@@ -379,7 +379,7 @@ t_eq "...called with the verb" "arg=attach" "$(txt | sed -n 1p)"
 t_eq "tab-new carries its url as one argument" "arg=https://example.com/a b; rm -rf /" "$(mcp tab_new 'https://example.com/a b; rm -rf /' >/dev/null; txt | sed -n 2p)"
 t_has "no session id: one browser session per parent session" "$(printf '%s\n' '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"hosts","arguments":{}}}' | env -i HOME="$HOME" TMPDIR="$T_TMP" PATH="$PATH" bun "$SRV" | jq -r '.result.content[0].text')" "session=mcp-"
 t_has "a repo's PATH does not reach it: it gets the fixed one" "$(mcpe PATH="$T_TMP/evil:$PATH" hosts >/dev/null; txt)" "path=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin private=none"
-t_has "...nor its seam that widens the host list" "$(mcpe HARBOR_BROWSER_PRIVATE_HOSTS=/tmp/evil hosts >/dev/null; txt)" "private=none"
+t_has "...nor its seam that widens the host list" "$(mcpe HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS=/tmp/evil hosts >/dev/null; txt)" "private=none"
 t_eq "a daemon the shell agent replaces (attach, detach) is not held on to" 1 "$(: > "$CTL/conns"; mcp tab_list >/dev/null; mcp detach >/dev/null; sess 4; mcp tab_list >/dev/null; mcp tab_list >/dev/null; grep -c . "$CTL/conns" | awk '{ print ($1 >= 2 ? 1 : 0) }')"
 
 t_section "the launcher: access-chrome-mcp.py hands the session to this server, under its scrubbed environment"

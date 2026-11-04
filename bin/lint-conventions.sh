@@ -241,7 +241,7 @@ _x8_repo_time() { # <file in $ROOT> -> epoch seconds, or empty
 _admission_guards() {
   for _ag in "$ROOT"/bin/admission-*.sh "$ROOT"/bin/library-admission.sh "$ROOT"/bin/guard-*.sh; do   # a guard-*.sh that is a file, not a shim, is still a guard
     case "${_ag##*/}" in admission-hook.sh|admission-deny-hash.sh|admission-mutation-tier.sh|admission-observe-report.sh|admission-decide.sh|admission-replay.sh) continue ;; esac   # the last two are called, not wired: a decision function and a replay tool (harbor#1030)
-    case "${_ag##*/}" in admission-deny.sh|admission-equivalence.sh|admission-install.sh|admission-observe.sh|admission-remove.sh|admission-verify.sh) continue ;; esac   # the floor-* tools W7 renamed
+    case "${_ag##*/}" in admission-deny.sh|admission-equivalence.sh|admission-install.sh|admission-observe.sh|admission-remove.sh|admission-verify.sh|admission-decider-set.sh) continue ;; esac   # the floor-* tools W7 renamed; decider-set is read, never wired (harbor#1097)
     [ -f "$_ag" ] && [ ! -L "$_ag" ] && printf '%s\n' "$_ag"
   done
 }
@@ -985,11 +985,11 @@ fi
 # ── F1 · the floor's kill-switch convention (docs/explanation/admission-baseline.md) ──────────────────────
 rule_F1() {
 rule "admission.kill-switch-first every wired decider's first live line is the HARBOR_ADMISSION_DISABLE check, or it is listed exempt with a reason (harbor#954)"
-# THE SET IS bin/decider-set.sh's, derived from the wiring floor-install writes (harbor#1003). It used to be
+# THE SET IS bin/admission-decider-set.sh's, derived from the wiring floor-install writes (harbor#1003). It used to be
 # `bin/guard-*.sh` + annotate-web.sh: 10 files that missed inject-hook.sh and prod-guard-ambient.sh, two
 # wired deciders that read no switch. floor-test, floor-verify and B6's list are diffed against it.
-_f1set="$ROOT/bin/decider-set.sh"
-[ -f "$_f1set" ] || { bad admission.kill-switch-first "bin/decider-set.sh is missing, so the decider set cannot be derived"; return 0; }
+_f1set="$ROOT/bin/admission-decider-set.sh"
+[ -f "$_f1set" ] || { bad admission.kill-switch-first "bin/admission-decider-set.sh is missing, so the decider set cannot be derived"; return 0; }
 _f1out="$(sh "$_f1set" --check 2>&1 || :)"
 while IFS= read -r _l; do
   case "$_l" in *"FAIL: "*) bad admission.kill-switch-first "${_l#*FAIL: }" ;; esac
@@ -1016,11 +1016,11 @@ done
 # A hook that runs in every session and has no controls.tsv row has no mode, owner or off switch a person can
 # read, and the census never sees a guard that answers in JSON instead of floor_block. The set is F1's.
 rule_admission_wired_registered() {
-rule "admission.wired-registered every wired hook script (bin/decider-set.sh) is the engine of a standards/naming/controls.tsv row (harbor#1272)"
-_wrset="$ROOT/bin/decider-set.sh"; _wrc="$ROOT/standards/naming/controls.tsv"
-[ -f "$_wrset" ] && [ -f "$_wrc" ] || { _hard admission.wired-registered "bin/decider-set.sh or standards/naming/controls.tsv is missing, so the wired set cannot be checked"; return 0; }
+rule "admission.wired-registered every wired hook script (bin/admission-decider-set.sh) is the engine of a standards/naming/controls.tsv row (harbor#1272)"
+_wrset="$ROOT/bin/admission-decider-set.sh"; _wrc="$ROOT/standards/naming/controls.tsv"
+[ -f "$_wrset" ] && [ -f "$_wrc" ] || { _hard admission.wired-registered "bin/admission-decider-set.sh or standards/naming/controls.tsv is missing, so the wired set cannot be checked"; return 0; }
 _wrl="$(sh "$_wrset" 2>/dev/null | cut -f1)"
-[ -n "$_wrl" ] || { _hard admission.wired-registered "bin/decider-set.sh listed no wired script, so nothing was checked"; return 0; }
+[ -n "$_wrl" ] || { _hard admission.wired-registered "bin/admission-decider-set.sh listed no wired script, so nothing was checked"; return 0; }
 for _s in $_wrl; do
   _wre="$(_payload_src "$_s")"; _wre="${_wre#"$ROOT"/}"  # a hook engine's row names its folder's file (D-88)
   awk -F'\t' -v e="$_wre" '/^#/ { next } $4 == e { f = 1; exit } END { exit !f }' "$_wrc" \
@@ -6399,7 +6399,7 @@ fi
 # root itself.
 #
 # WHY THIS RULE DOES NOT SCAN context-rules/, which has the same shape and is CORRECT.
-# `context-rules/harbor/merge-note.sh` runs `exec sh "bin/govern-hook.sh" --note`,
+# `context-rules/platform/merge-note.sh` runs `exec sh "bin/govern-hook.sh" --note`,
 # also relative — and it works, because hooks/injection-rule/injection-rule.sh wraps every `run:`
 # call in `(cd "$REPO" 2>/dev/null && sh "$_dir/$_run")`. CITED BY SHAPE, NOT BY
 # LINE: this comment said `:587` until 2026-09-16, by which time the wrapper had

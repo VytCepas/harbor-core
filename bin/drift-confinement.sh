@@ -9,7 +9,7 @@
 #   sh drift-confinement.sh --status   the reconcile records (contracts/reconcile.md): a row per leaf that differs, its age; 3 unchecked
 # Read-only: it never writes managed settings; the fix is the operator's `sudo sh deploy-confinement.sh`.
 # Every finding line carries [check:drift.confinement]; the receipt goes to log_receipt's dir (docs/reference/checks.md).
-# HARBOR_MANAGED_SETTINGS moves the target, as in deploy-confinement.sh (tests, no root).
+# HARBOR_SCOPE_MANAGED_SETTINGS moves the target, as in deploy-confinement.sh (tests, no root).
 set -u
 case "${1:-}" in -h|--help) awk 'NR<2{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$0"; exit 0 ;; esac
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
@@ -28,7 +28,7 @@ done
 [ "$STATE$STATUS" != 11 ] || { LOG_FD=2; log_fail "--state and --status are two different reads"; log_fix "sh $0 --help"; exit 2; }
 ID=drift.confinement; P="[check:$ID]"
 [ "$STATUS" = 0 ] || status_init "$ID" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}" || exit 3
-if [ -n "${HARBOR_MANAGED_SETTINGS:-}" ]; then MF="$HARBOR_MANAGED_SETTINGS"
+if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then MF="${HARBOR_SCOPE_MANAGED_SETTINGS:-$HARBOR_MANAGED_SETTINGS}"
 elif [ "$(uname -s)" = Darwin ]; then MF='/Library/Application Support/ClaudeCode/managed-settings.json'
 else MF=/etc/claude-code/managed-settings.json; fi
 MK="$(dirname "$MF")/harbor-confinement"

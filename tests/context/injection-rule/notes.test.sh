@@ -60,7 +60,7 @@ make_repo() { # <dir> <pack> <shape>: skills = a HIDDEN skill, visible = one the
   esac
   case "$2" in
     box)  : ;;
-    self) mkdir -p "$1/context-rules/harbor"; cp -R "$T_ROOT"/context-rules/harbor/. "$1/context-rules/harbor/" ;;
+    self) mkdir -p "$1/context-rules/platform"; cp -R "$T_ROOT"/context-rules/platform/. "$1/context-rules/platform/" ;;
     *)    if [ -d "$T_ROOT/fixtures/injection-rule/packs/$2" ]; then cp -R "$T_ROOT/fixtures/injection-rule/packs/$2/." "$1/context-rules/repo/"
           else cp -R "$PRR/$2/." "$1/context-rules/repo/"; fi ;;
   esac
@@ -89,7 +89,7 @@ while IFS="$(printf '\t')" read -r pack shape id arm label payload; do
   _p="$(printf '%s' "$payload" | sed "s|@REPO@|$REPO|g; s|@OTHER@|$OTHER|g; s|@BARE@|$BARE|g; s|@TRANSCRIPT@|$T/transcript.jsonl|g; s|@CFG@|$T/cfg|g")"
   case "$_p" in *'@BIG@'*) _p="$(printf '%s' "$_p" | sed "s|@BIG@|$BIG|")" ;; esac
   out="$(printf '%s' "$_p" | CLAUDE_CONFIG_DIR="$T/cfg" CLAUDE_PROJECT_DIR="$REPO" PORT_ROOT="$T" \
-          HARBOR_SCOPE_REPO="$T_ROOT" ACCESS_DIR="$T/access" HARBOR_MANAGED_SETTINGS="$T/managed/managed-settings.json" \
+          HARBOR_SCOPE_REPO="$T_ROOT" ACCESS_DIR="$T/access" HARBOR_SCOPE_MANAGED_SETTINGS="$T/managed/managed-settings.json" \
           /bin/sh "$ENGINE" --explain 2>&1)"
   # A run: pack that returns the decision sentinel logs DECIDE, not FIRE: the `deny` arm the
   # fixture header documents, which this loop read as silent until harbor#843 shipped one.
@@ -119,7 +119,7 @@ t_section "confinement-refused (harbor#1298): the bare phrase fires only while t
 mkdir -p "$T/managed"; : > "$T/managed/harbor-confinement"
 REPO="$T/repo"; make_repo "$REPO" box plain
 _cr="$(printf '%s' '{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"touch ~/x"},"tool_response":{"stdout":"","stderr":"touch: x: Operation not permitted"}}' \
-  | CLAUDE_CONFIG_DIR="$T/cfg" CLAUDE_PROJECT_DIR="$REPO" HARBOR_MANAGED_SETTINGS="$T/managed/managed-settings.json" /bin/sh "$ENGINE" --explain 2>&1)"
+  | CLAUDE_CONFIG_DIR="$T/cfg" CLAUDE_PROJECT_DIR="$REPO" HARBOR_SCOPE_MANAGED_SETTINGS="$T/managed/managed-settings.json" /bin/sh "$ENGINE" --explain 2>&1)"
 t_has "confinement-refused fires on a refused write while the marker is present" "$_cr" "FIRE confinement-refused"
 rm -f "$T/managed/harbor-confinement"
 
@@ -136,7 +136,7 @@ printf '#!/usr/bin/env sh\nprintf "REACHED-%%s\\n" "$(cat | tr -d "\\n" | cut -c
 chmod +x "$REPO/bin/govern-hook.sh"
 _w="$(printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"gh pr merge 1"}}' \
       | CLAUDE_CONFIG_DIR="$T/cfg" CLAUDE_PROJECT_DIR="$REPO" /bin/sh "$ENGINE" 2>&1)"
-t_has "merge-governance: the engine reaches context-rules/harbor/merge-note.sh" "$_w" 'REACHED-'
+t_has "merge-governance: the engine reaches context-rules/platform/merge-note.sh" "$_w" 'REACHED-'
 printf '  %s rows, %s tracked note(s), %s exempt (%s)\n' \
   "$rows" "$(tracked_ids | wc -l | tr -d ' ')" "$(printf '%s' "$EXEMPT" | wc -w | tr -d ' ')" "$EXEMPT"
 t_done
