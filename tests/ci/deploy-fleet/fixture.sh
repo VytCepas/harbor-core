@@ -1,19 +1,20 @@
 #!/usr/bin/env sh
 # Sourced by the deploy-fleet suites after t_init. Two fake repos behind local bare remotes (url.insteadOf), no harbor file in
 # either: acme/api deploys (default branch trunk; plan, apply, two verify, restore over a fake live dir), acme/web merges only.
-# The tools run from an install dir, as §5b.9 installs them; `gh`, merge-check.sh, gate-classify.sh and gate-queue.sh are stubs
+# The tools run from an install dir, as §5b.9 installs them; `gh`, gate-merge-check.sh, gate-classify.sh and gate-queue.sh are stubs
 # to the contract's CLI. fx_world builds it; fx_pr/fx_red/fx_main/fx_base build the night; fx_mutant copies the runner.
-fx_inst() { # <dir> — the runner and merge-stack side by side, with a stub merge-check.sh
-  mkdir -p "$1/bin" "$1/CONTRACTS"
-  cp "$T_ROOT/bin/log-lib.sh" "$T_ROOT/bin/event-bus.sh" "$T_ROOT/bin/gate-merge-stack.sh" "$T_ROOT/bin/gate-merge-stack-resolve.py" \
-    "$T_ROOT/bin/deploy-fleet.sh" "$1/bin/"
-  cp "$T_ROOT/CONTRACTS/merge-stack-union.txt" "$1/CONTRACTS/"
-  : > "$1/CONTRACTS/required-checks.tsv"   # harbor's own rows, which name no acme repo (merge-stack reads them since #1126 r4)
-  cat > "$1/bin/merge-check.sh" <<'EOF'
+fx_inst() { # <dir> — the runner and merge-stack side by side, with a stub gate-merge-check.sh
+  mkdir -p "$1/bin" "$1/contracts"
+  cp "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/event-bus.sh" "$T_ROOT/bin/gate-merge-stack.sh" "$T_ROOT/bin/gate-merge-stack-resolve.py" \
+    "$T_ROOT/bin/deploy-fleet.sh" "$T_ROOT/bin/scope-roots.sh" "$1/bin/"
+  cp "$T_ROOT/contracts/roots.tsv" "$1/bin/roots.tsv"   # the installed runner finds the fleet file through scope-roots.sh (harbor#966)
+  cp "$T_ROOT/contracts/merge-stack-union.txt" "$1/contracts/"
+  : > "$1/contracts/required-checks.tsv"   # harbor's own rows, which name no acme repo (merge-stack reads them since #1126 r4)
+  cat > "$1/bin/gate-merge-check.sh" <<'EOF'
 #!/bin/sh
 # stub merge-check: squash-merge the PR into the bare default branch, as GitHub does; refuses a --match-head-commit mismatch
 n=''; mh=''; prev=''; for a in "$@"; do case "$prev" in --merge) n="$a" ;; --match-head-commit) mh="$a" ;; esac; prev="$a"; done
-r="${HARBOR_REPO#*/}"; D="$SF/gh/acme_$r"; b="$(cat "$D/pr/$n.branch")"; echo "merge $r #$n" >> "$SF/merge.log"
+r="${HARBOR_SCOPE_REPO#*/}"; D="$SF/gh/acme_$r"; b="$(cat "$D/pr/$n.branch")"; echo "merge $r #$n" >> "$SF/merge.log"
 m="$SF/merger-$r"; [ -d "$m" ] || git clone -q "https://github.com/acme/$r.git" "$m" 2>/dev/null
 git -C "$m" fetch -q origin; db="$(git -C "$m" symbolic-ref --short refs/remotes/origin/HEAD)"; git -C "$m" checkout -q -B "${db#origin/}" "$db"
 [ -z "$mh" ] || [ "$(git -C "$m" rev-parse "origin/$b")" = "$mh" ] || { echo "head moved" >&2; exit 1; }
@@ -21,16 +22,16 @@ git -C "$m" merge -q --squash "origin/$b" >/dev/null 2>&1 || { git -C "$m" reset
 git -C "$m" commit -q -m "$(cat "$D/pr/$n.title") (#$n)" && git -C "$m" push -q origin "${db#origin/}" && echo MERGED > "$D/pr/$n.state"
 [ ! -f "$SF/kill-after-merge" ] || touch "$CLAUDE_CONFIG_DIR/.harbor-autoship.off"
 EOF
-  chmod +x "$1/bin/merge-check.sh"
+  chmod +x "$1/bin/gate-merge-check.sh"
 }
 fx_db() { case "$1" in api) echo trunk ;; *) echo main ;; esac; }
 fx_world() {
   SF="$T_TMP/sf"; LIVE="$T_TMP/live"; P="$T_TMP/port"
   rm -rf "$SF" "$LIVE" "$P" "$T_TMP/wt" "$T_TMP/remotes" "$T_TMP/seed" "$HOME" "$CLAUDE_CONFIG_DIR" "$T_TMP/report" "$T_TMP/cache" "$T_TMP/events"
   mkdir -p "$SF/gh" "$LIVE" "$P" "$T_TMP/remotes" "$T_TMP/seed" "$HOME" "$CLAUDE_CONFIG_DIR/bin"
-  HARBOR_FLEET_SNAPSHOT="$T_TMP/snap.json"; HARBOR_CACHE_DIR="$T_TMP/cache"; HARBOR_DEPLOY_FLEET_REPORT_DIR="$T_TMP/report"
+  HARBOR_STATUS_FLEET_SNAPSHOT="$T_TMP/snap.json"; HARBOR_SCOPE_CACHE_DIR="$T_TMP/cache"; HARBOR_DEPLOY_FLEET_REPORT_DIR="$T_TMP/report"
   HARBOR_EVENT_DIR="$T_TMP/events"; HARBOR_DEPLOY_FLEET_NOW=1791327600   # 2026-10-07 02:00 +03
-  export T_TMP SF LIVE HARBOR_FLEET_SNAPSHOT HARBOR_CACHE_DIR HARBOR_DEPLOY_FLEET_REPORT_DIR HARBOR_EVENT_DIR HARBOR_DEPLOY_FLEET_NOW
+  export T_TMP SF LIVE HARBOR_STATUS_FLEET_SNAPSHOT HARBOR_SCOPE_CACHE_DIR HARBOR_DEPLOY_FLEET_REPORT_DIR HARBOR_EVENT_DIR HARBOR_DEPLOY_FLEET_NOW
   git config --global user.name tester; git config --global user.email tester@example.invalid
   git config --global init.defaultBranch main; git config --global advice.detachedHead false
   printf 'ok\n' > "$LIVE/health.txt"; printf 'none\n' > "$LIVE/sha"
@@ -42,7 +43,7 @@ plan sh ops/plan.sh
 apply sh ops/apply.sh
 verify sh ops/health.sh
 verify sh ops/smoke.sh   # the second check
-restore sh ops/restore.sh
+restore sh ops/deploy-restore.sh
 deployed cat "$LIVE/sha"
 timeout.verify 3'
   git -C "$P/api" worktree add -q "$P/.wt-api" -b side 2>/dev/null
@@ -51,26 +52,29 @@ timeout.verify 3'
   fx_snap "$P/api" "$P/web" "$P/.wt-api" "$P/.pi-upgrade-api" "$P/other"
   fx_stubs
 }
-fx_snap() { for _x in "$@"; do printf '%s\n' "$_x"; done | jq -R '{descriptor: {name: (split("/") | last), path: .}}' | jq -s . > "$HARBOR_FLEET_SNAPSHOT"; }
+fx_snap() { for _x in "$@"; do printf '%s\n' "$_x"; done | jq -R '{descriptor: {name: (split("/") | last), path: .}}' | jq -s . > "$HARBOR_STATUS_FLEET_SNAPSHOT"; }
 fx_repo() { # <name> <manifest>
   _b="$T_TMP/remotes/$1.git"; _w="$T_TMP/seed/$1"; _db="$(fx_db "$1")"
   git config --global url."$_b".insteadOf "https://github.com/acme/$1.git"
   git init -q --bare "$_b"; git --git-dir="$_b" symbolic-ref HEAD "refs/heads/$_db"
   git clone -q "https://github.com/acme/$1.git" "$_w" 2>/dev/null; git -C "$_w" checkout -q -B "$_db"
   mkdir -p "$_w/.agents" "$_w/ops" "$_w/src" "$SF/gh/acme_$1/pr" "$SF/gh/acme_$1/runs"
-  printf '%s\n' "$2" > "$_w/.agents/ship.conf"
+  # FX_OLD_MANIFEST=1: the manifest under its old name .agents/ship.conf, as a workload that has not moved yet carries it (harbor#1097)
+  _mn=ship.config; [ -z "${FX_OLD_MANIFEST:-}" ] || _mn=ship.conf
+  printf '%s\n' "$2" > "$_w/.agents/$_mn"
   printf '# glob\tclass\treason\nsecrets/*\tsecrets\tkeys\n' > "$_w/.agents/protected-paths.tsv"
   printf 'ok\n' > "$_w/health.txt"; echo seed > "$_w/src/seed.txt"
   cat > "$_w/ops/plan.sh" <<'EOF'
-echo "plan $(git rev-parse --short HEAD) unattended=$SHIP_UNATTENDED repo=$SHIP_REPO dir=$(pwd)" >> "$SF/ops.log"
+echo "plan $(git rev-parse --short HEAD) unattended=${HARBOR_DEPLOY_UNATTENDED:-$SHIP_UNATTENDED} repo=${HARBOR_DEPLOY_REPO:-$SHIP_REPO} dir=$(pwd)" >> "$SF/ops.log"
+echo "old $SHIP_UNATTENDED $SHIP_REPO" >> "$SF/old.log"   # the SHIP_ spellings are set too, until 2026-11-15 (harbor#1097)
 [ ! -f "$SF/kill-in-plan" ] || touch "$CLAUDE_CONFIG_DIR/.harbor-autoship.off"
 [ ! -f PLAN_FAILS ]
 EOF
   cat > "$_w/ops/apply.sh" <<'EOF'
 echo "apply $(git rev-parse --short HEAD)" >> "$SF/ops.log"; [ ! -f APPLY_CRASHES ] || exit 3
 n=$(( $(cat "$SF/snapn" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$SF/snapn"
-mkdir -p "$SF/snaps/snap-$n"; cp -R "$LIVE/." "$SF/snaps/snap-$n/"; echo "snap-$n" > "$SHIP_SNAPSHOT"
-[ ! -f "$SF/apply-stale" ] || echo snap-1 > "$SHIP_SNAPSHOT"
+mkdir -p "$SF/snaps/snap-$n"; cp -R "$LIVE/." "$SF/snaps/snap-$n/"; echo "snap-$n" > "${HARBOR_DEPLOY_SNAPSHOT:-$SHIP_SNAPSHOT}"
+[ ! -f "$SF/apply-stale" ] || echo snap-1 > "${HARBOR_DEPLOY_SNAPSHOT:-$SHIP_SNAPSHOT}"
 cp health.txt "$LIVE/health.txt"; git rev-parse HEAD > "$LIVE/sha"
 EOF
   cat > "$_w/ops/health.sh" <<'EOF'
@@ -79,9 +83,9 @@ echo verify-health >> "$SF/ops.log"
 grep -qx ok "$LIVE/health.txt"
 EOF
   printf 'echo verify-smoke >> "$SF/ops.log"; [ -s "$LIVE/sha" ]\n' > "$_w/ops/smoke.sh"
-  cat > "$_w/ops/restore.sh" <<'EOF'
-echo "restore $SHIP_SNAPSHOT_ID" >> "$SF/ops.log"; [ -d "$SF/snaps/$SHIP_SNAPSHOT_ID" ] || exit 1
-rm -rf "${LIVE:?}"; mkdir -p "$LIVE"; cp -R "$SF/snaps/$SHIP_SNAPSHOT_ID/." "$LIVE/"
+  cat > "$_w/ops/deploy-restore.sh" <<'EOF'
+echo "restore ${HARBOR_DEPLOY_SNAPSHOT_ID:-$SHIP_SNAPSHOT_ID}" >> "$SF/ops.log"; [ -d "$SF/snaps/${HARBOR_DEPLOY_SNAPSHOT_ID:-$SHIP_SNAPSHOT_ID}" ] || exit 1
+rm -rf "${LIVE:?}"; mkdir -p "$LIVE"; cp -R "$SF/snaps/${HARBOR_DEPLOY_SNAPSHOT_ID:-$SHIP_SNAPSHOT_ID}/." "$LIVE/"
 EOF
   git -C "$_w" add -A; git -C "$_w" commit -q -m seed; git -C "$_w" push -q origin "HEAD:$_db" 2>/dev/null
   git clone -q "https://github.com/acme/$1.git" "$P/$1" 2>/dev/null
@@ -89,13 +93,13 @@ EOF
 fx_stubs() {
   cat > "$CLAUDE_CONFIG_DIR/bin/gate-classify.sh" <<'EOF'
 #!/bin/sh
-# stub classifier to contract §2: the register <root>/.agents/ship.conf names, plus the always-protected paths
+# stub classifier to contract §2: the register <root>/.agents/ship.config names, plus the always-protected paths
 root="$1"; shift; rc=0; echo "classify $root" >> "$SF/classify.log"
-reg="$(awk '$1 == "protected" { print $2 }' "$root/.agents/ship.conf")"; reg="$root/${reg:-.agents/protected-paths.tsv}"
+reg="$(awk '$1 == "protected" { print $2 }' "$root/.agents/ship.config")"; reg="$root/${reg:-.agents/protected-paths.tsv}"
 [ -f "$reg" ] || exit 2
 if [ $# -gt 0 ]; then printf '%s\n' "$@"; else cat; fi > "$SF/classify.in"; cat "$SF/classify.in" >> "$SF/classify.seen"
 while IFS= read -r p; do [ -n "$p" ] || continue; c=''
-  case "$p" in .agents/ship.conf|.agents/protected-paths.tsv|.github/*) c=always ;; esac
+  case "$p" in .agents/ship.config|.agents/protected-paths.tsv|.github/*) c=always ;; esac
   [ -n "$c" ] || c="$(awk -F'\t' -v p="$p" '!/^#/ && NF >= 2 { g = $1; gsub(/\./, "\\.", g); gsub(/\*/, ".*", g); if (p ~ ("^" g "$")) { print $2; exit } }' "$reg")"
   [ -z "$c" ] || { printf 'PROTECTED\t%s\t%s\n' "$p" "$c"; rc=1; }
 done < "$SF/classify.in"

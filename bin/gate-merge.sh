@@ -5,15 +5,16 @@
 #   <cfg>/bin/gate-merge.sh <owner/repo> <pr>
 #
 # Runs only as the installed copy, the path its allow rule names. Refuses while <cfg>/.harbor-autoship.off exists,
-# for a repo with no .agents/ship.conf on its default branch, for a red or moving head, and for a protected change:
+# for a repo with no .agents/ship.config on its default branch, for a red or moving head, and for a protected change:
 # that one is queued and its exact approve command printed. The manifest and register are read from GitHub, never
 # from a local checkout. Exit 0 merged, 1 refused (the FAIL line says why), 2 usage. There is no override.
 set -eu
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH='' cd -P -- "$HERE" && pwd -P)"
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2   # stdout carries only a queued approve command
-. "$HERE/log-lib.sh"
-. "$HERE/gate-lib.sh"
+. "$HERE/library-log.sh"
+. "$HERE/library-gate.sh"
 log_init gate-merge
 usage() { sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; }
 case "${1:-}" in -h|--help) usage; exit 0 ;; esac
@@ -24,7 +25,7 @@ R="$1"; N="$2"
 log_head "merge $R#$N"
 ! gate_killed || die "the kill switch $GATE_CFG/.harbor-autoship.off exists: no unattended merge" "rm $GATE_CFG/.harbor-autoship.off   # the operator, from a terminal"
 gate_fetch_conf "$R"
-[ -f "$GATE_ROOT/$GATE_MANIFEST" ] || die "$R has no .agents/ship.conf on $GATE_MAIN: nothing about it is unattended" "gh pr view $N -R $R   # a person merges it"
+[ -f "$GATE_ROOT/$GATE_MANIFEST" ] || die "$R has no .agents/ship.config on $GATE_MAIN: nothing about it is unattended" "gh pr view $N -R $R   # a person merges it"
 A="$(gate_pr_head "$N")"
 gate_pr_paths "$A" >"$GATE_TMP/paths"
 rc=0; gate_classify "$GATE_ROOT" <"$GATE_TMP/paths" >"$GATE_TMP/protected" || rc=$?

@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
-# bin/check-registry-generate.sh: the one check registry, core CHECKS.md plus the private layer's checks.md (harbor#1149).
+# bin/check-registry-generate.sh: the one check registry, core docs/reference/checks.md plus the private layer's checks.md (harbor#1149).
 # Every layer here is a throwaway directory named by --private; the ids are made up and name no real entity.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 GEN="$T_ROOT/bin/check-registry-generate.sh"
-CORE="$T_TMP/CHECKS.md"
+CORE="$T_TMP/docs/reference/checks.md"; mkdir -p "$T_TMP/docs/reference"
 cat > "$CORE" <<'EOF'
 # CHECKS
 
@@ -76,7 +76,7 @@ refuses() { # <label> <layer dir> <message needle>
   _o="$(sh "$GEN" --core "$CORE" --private "$2" 2>"$T_TMP/err")"; _r=$?
   t_eq "$1: exit 2" 2 "$_r"; t_eq "$1: nothing on stdout" "" "$_o"; t_has "$1: says why" "$(cat "$T_TMP/err")" "$3"
 }
-refuses "an id already in core" "$(frag dupcore '| `core-one` | x | hourly | desktop | y |' '| core-one | macOS only | w | d |')" "is in core CHECKS.md"
+refuses "an id already in core" "$(frag dupcore '| `core-one` | x | hourly | desktop | y |' '| core-one | macOS only | w | d |')" "is in core docs/reference/checks.md"
 refuses "an id twice in the fragment" "$(frag duppriv "$(printf '%s\n%s' "$REG" "$(printf '%s' "$REG" | sed -n 1p)")" "$PLAT")" "repeats line"
 refuses "a register row without cells" "$(frag short '| `acme-feed` | only | three |' '| acme-feed | macOS only | w | d |')" "not a register row"
 refuses "a register row whose id is not in backticks" "$(frag bare '| acme-feed | a | hourly | desktop | r |' '| acme-feed | macOS only | w | d |')" "not a register row"
@@ -95,11 +95,30 @@ t_has "...says which line is missing" "$(cat "$T_TMP/err")" "<!-- private:regist
 t_exit "an unknown argument is exit 2" 2 sh "$GEN" --nope
 t_exit "a missing core is exit 2" 2 sh "$GEN" --core "$T_TMP/none.md" --private "$T_TMP/nowhere"
 
+t_section "an installed pack and its repo's own fragment are one source, not two (harbor#1433)"
+# `harbor pack install` copies <repo>/harbor-pack/checks.md to <config>/checks.d/<repo-id>.md, and --repos reads the same file again
+PK="$T_TMP/checks.d"; RP="$T_TMP/repo-acme"; mkdir -p "$PK" "$RP/harbor-pack"
+cp "$(frag packsrc "$REG" "$PLAT")/checks.md" "$RP/harbor-pack/checks.md"; cp "$RP/harbor-pack/checks.md" "$PK/acme.md"
+printf 'acme\t%s\n' "$RP" > "$T_TMP/repos.tsv"
+_o="$(sh "$GEN" --core "$CORE" --private "$T_TMP/nowhere" --packs "$PK" --repos "$T_TMP/repos.tsv" 2>"$T_TMP/err")"; _r=$?
+t_eq "the installed pack and the same fragment in its repo compose: exit 0" 0 "$_r"
+t_eq "...each id once" "core-one core-two acme-feed acme-tags" "$(printf '%s\n' "$_o" | ids | tr '\n' ' ' | sed 's/ $//')"
+t_eq "...and each platforms row once" "core-one core-two acme-feed acme-tags" "$(printf '%s\n' "$_o" | pids | tr '\n' ' ' | sed 's/ $//')"
+printf '%s\n' '| `acme-extra` | a row only the repo has | hourly | desktop | r |' > "$T_TMP/x"; printf '%s\n' '| acme-extra | macOS only | w | `launchctl bootout c` |' > "$T_TMP/y"
+sed -e '/^| `acme-tags`/r '"$T_TMP/x" -e '/^| acme-tags/r '"$T_TMP/y" "$RP/harbor-pack/checks.md" > "$T_TMP/changed.md"; cp "$T_TMP/changed.md" "$RP/harbor-pack/checks.md"
+_o="$(sh "$GEN" --core "$CORE" --private "$T_TMP/nowhere" --packs "$PK" --repos "$T_TMP/repos.tsv" 2>"$T_TMP/err")"; _r=$?
+t_eq "a stale pack (the repo's fragment has moved on) is still refused: exit 2" 2 "$_r"
+t_has "...naming the id that stands twice" "$(cat "$T_TMP/err")" "is in $PK/acme.md and in"
+rm -f "$PK/acme.md"
+_o="$(sh "$GEN" --core "$CORE" --private "$T_TMP/nowhere" --packs "$PK" --repos "$T_TMP/repos.tsv" 2>"$T_TMP/err")"; _r=$?
+t_eq "the repo's fragment with no installed pack composes on its own" 0 "$_r"
+t_has "...and carries the repo's own row" "$_o" "acme-extra"
+
 t_section "the real tree: the insertion points are there, and core alone is the registry"
-t_eq "CHECKS.md has one register insertion point" 1 "$(grep -cx '<!-- private:register -->' "$T_ROOT/CHECKS.md")"
-t_eq "CHECKS.md has one platforms insertion point" 1 "$(grep -cx '<!-- private:platforms -->' "$T_ROOT/CHECKS.md")"
-t_exit "with no layer the generator prints CHECKS.md unchanged" 0 sh -c "sh '$GEN' --core '$T_ROOT/CHECKS.md' --private '$T_TMP/nowhere' | cmp -s - '$T_ROOT/CHECKS.md'"
-OUT="$(sh "$GEN" --core "$T_ROOT/CHECKS.md" --private "$(frag real "$REG" "$PLAT")")"
-t_eq "a layer joins the real register: two more ids" "$(( $(ids < "$T_ROOT/CHECKS.md" | wc -l) + 2 ))" "$(printf '%s\n' "$OUT" | ids | wc -l | tr -d ' ')"
-t_eq "...and two more platforms rows" "$(( $(pids < "$T_ROOT/CHECKS.md" | wc -l) + 2 ))" "$(printf '%s\n' "$OUT" | pids | wc -l | tr -d ' ')"
+t_eq "docs/reference/checks.md has one register insertion point" 1 "$(grep -cx '<!-- private:register -->' "$T_ROOT/docs/reference/checks.md")"
+t_eq "docs/reference/checks.md has one platforms insertion point" 1 "$(grep -cx '<!-- private:platforms -->' "$T_ROOT/docs/reference/checks.md")"
+t_exit "with no layer the generator prints docs/reference/checks.md unchanged" 0 sh -c "sh '$GEN' --core '$T_ROOT/docs/reference/checks.md' --private '$T_TMP/nowhere' | cmp -s - '$T_ROOT/docs/reference/checks.md'"
+OUT="$(sh "$GEN" --core "$T_ROOT/docs/reference/checks.md" --private "$(frag real "$REG" "$PLAT")")"
+t_eq "a layer joins the real register: two more ids" "$(( $(ids < "$T_ROOT/docs/reference/checks.md" | wc -l) + 2 ))" "$(printf '%s\n' "$OUT" | ids | wc -l | tr -d ' ')"
+t_eq "...and two more platforms rows" "$(( $(pids < "$T_ROOT/docs/reference/checks.md" | wc -l) + 2 ))" "$(printf '%s\n' "$OUT" | pids | wc -l | tr -d ' ')"
 t_done

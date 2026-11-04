@@ -13,3 +13,4 @@
 {"id":"curl-delete-internal","cmd":"curl -X DELETE https://api.internal.example/thing"}
 {"id":"over-cap-no-tool","cmd":"echo hello","pad":33000}
 {"id":"no-normalizer-no-tool","cmd":"echo hello","fixture":"nonorm"}
+{"id":"bq-show-bare","cmd":"bq show proj:ds.tbl","why":"harbor#1410: the unwrapped read-only control"}

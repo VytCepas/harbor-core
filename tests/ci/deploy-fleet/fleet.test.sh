@@ -29,8 +29,8 @@ t_eq "the merge row carries the contract's fields" "merge acme/api 12 $H12" "$(f
 t_eq "the deploy row has no pr" "null" "$(fx_queue | jq -r 'select(.kind == "deploy") | .pr')"
 t_eq "the queue ids are the contract's (§5a.2)" "deploy-acme_api-$(echo "$M1" | cut -c1-12) merge-acme_api-12-$(echo "$H12" | cut -c1-12)" "$(fx_queue | jq -r .id | sort | tr '\n' ' ' | sed 's/ $//')"
 t_has "...and the report names each one" "$R" "(queue id merge-acme_api-12-$(echo "$H12" | cut -c1-12))"
-t_has "one [check:ship] line, green" "$(cat "$T_TMP/cache/checks.log")" "[check:ship] 2026-10-06T23:00:00Z green night: merged 2, deployed 0"
-t_eq "the receipt is green" green "$(jq -r .status "$CLAUDE_CONFIG_DIR/cache/checks/ship.json")"
+t_has "one [check:deploy.fleet] line, green" "$(cat "$T_TMP/cache/checks.log")" "[check:deploy.fleet] 2026-10-06T23:00:00Z green night: merged 2, deployed 0"
+t_eq "the receipt is green" green "$(jq -r .status "$CLAUDE_CONFIG_DIR/cache/checks/deploy.fleet.json")"
 t_has "api ran from its main checkout, on its default branch" "$(cat "$T_TMP/out")" "acme/api ($T_TMP/port/api, trunk)"
 t_hasnt "...never the linked worktree" "$(cat "$T_TMP/out")" ".wt-api"
 
@@ -40,6 +40,7 @@ t_eq "...queued once, not applied" 2 "$(fx_queue | grep -c .)"
 t_eq "...no apply" 0 "$(fx_ops apply)"
 t_eq "approved: exit 0" 0 "$(ship deploy acme/api --sha "$M1" --approved)"
 t_eq "plan ran unattended, with the repo" 1 "$(grep -c "unattended=1 repo=acme/api" "$SF/ops.log")"
+t_eq "...and under the old SHIP_UNATTENDED and SHIP_REPO too, until 2026-11-15 (harbor#1097)" 1 "$(grep -c '^old 1 acme/api$' "$SF/old.log")"
 t_eq "applied once, then both verify lines" "1 1 1" "$(fx_ops apply) $(fx_ops verify-health) $(fx_ops verify-smoke)"
 t_eq "the baseline is main" "$M1" "$(fx_state api .sha)"
 t_eq "...with this run's snapshot" snap-1 "$(fx_state api .snapshot)"
@@ -82,7 +83,7 @@ SHIP=''
 
 t_section "universal: the runner names no repo, tool or register of its own (red-proof)"
 names() { sed '/^[[:space:]]*#/d' "$1" | sed -E 's/HARBOR_[A-Z_]+//g; s#\.local/state/harbor#STATE#g; s#\.harbor-autoship\.off#KILL#g; s/harbor ship/VERB/g' \
-  | grep -inE 'harbor|vytcepas|deploy\.sh|restore\.sh|floor-verify|live-verify|reference-check|CONTRACTS/' || true; }
+  | grep -inE 'harbor|vytcepas|deploy\.sh|deploy-restore\.sh|floor-verify|admission-verify|live-verify|reference-check|contracts/' || true; }
 t_eq "no harbor-specific name in a code line" "" "$(names "$T_ROOT/bin/deploy-fleet.sh")"
 sed 's|^usage() {|usage() { : sh bin/deploy.sh --apply --live|' "$T_ROOT/bin/deploy-fleet.sh" > "$T_TMP/named"
 t_has "the grep sees a harbor deploy line slipped in" "$(names "$T_TMP/named")" "deploy.sh"

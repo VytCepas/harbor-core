@@ -57,7 +57,7 @@ hook_rc "$ED" pull --hook < "$T_TMP/garbage"; t_eq "a garbage payload: exit 0, n
 printf '{"session_id":"../../etc","cwd":"/"}' > "$T_TMP/badid"
 hook_rc "$ED" pull --hook < "$T_TMP/badid"; t_eq "a session id that is not an id: exit 0, nothing" "0 0" "$rc $(bytes "$o")"
 t_eq "...and no offsets file was made from it" no "$([ -e "$BUSDIR/etc" ] && echo yes || echo no)"
-mkdir -p "$T_TMP/hung"; cp "$T_ROOT/bin/event-dispatch.sh" "$T_ROOT/bin/log-lib.sh" "$T_TMP/hung/"
+mkdir -p "$T_TMP/hung"; cp "$T_ROOT/bin/event-dispatch.sh" "$T_ROOT/bin/library-log.sh" "$T_TMP/hung/"
 printf 'sleep 30\n' > "$T_TMP/hung/event-bus.sh"
 emit git.merge hungtest --repo repo-a >/dev/null
 HARBOR_EVENT_BUS_TIMEOUT=1 hook_rc "$T_TMP/hung/event-dispatch.sh" pull --hook < "$T_TMP/p9"
@@ -68,7 +68,7 @@ HARBOR_EVENT_BUS_TIMEOUT=1 hook_rc "$ED" pull --hook < "$T_TMP/never"
 t_eq "a stdin that never closes: exit 0, nothing printed, within the bound" "0 0 yes" "$rc $(bytes "$o") $([ "$el" -le 4 ] && echo yes || echo no)"
 kill "$HP" 2>/dev/null; wait "$HP" 2>/dev/null
 mkdir -p "$T_TMP/nolib"; cp "$T_ROOT/bin/event-dispatch.sh" "$T_ROOT/bin/event-bus.sh" "$T_TMP/nolib/"
-hook_rc "$T_TMP/nolib/event-dispatch.sh" pull --hook < "$T_TMP/p9"; t_eq "log-lib.sh missing: exit 0, nothing" "0 0" "$rc $(bytes "$o")"
+hook_rc "$T_TMP/nolib/event-dispatch.sh" pull --hook < "$T_TMP/p9"; t_eq "library-log.sh missing: exit 0, nothing" "0 0" "$rc $(bytes "$o")"
 : > "$ST/pull.off"; emit git.merge offtest --repo repo-a >/dev/null
 hook_rc "$ED" pull --hook < "$T_TMP/p9"; t_eq "pull.off: exit 0, nothing" "0 0" "$rc $(bytes "$o")"
 rm -f "$ST/pull.off"

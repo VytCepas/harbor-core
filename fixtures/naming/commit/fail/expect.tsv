@@ -1,0 +1,10 @@
+# fixtures/naming/commit/fail (harbor#978) — commit subjects and PR titles that MUST go red. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# COLUMNS  name <TAB> rule ids
+name	rule
+feat(PI-42): x	name.commit
+feat: no scope	name.commit
+wip(admission): x	name.commit
+Fix(admission): x	name.commit
+fix(admission) stop exit-127	name.commit
+fix(admission):	name.commit
+fix(nosuchscope): x	name.commit
