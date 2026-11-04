@@ -7,6 +7,8 @@
 
 CONF="$CLAUDE_CONFIG_DIR/.harbor-ci-governor"
 fresh() { reset; rm -f "$CONF"; }   # the shipped defaults: no mac_runners, discovery, the default low_priority
+# No registry unless a case makes one: the box's own repos.tsv must not decide the default ids (the roots table does).
+PORT_ROOT="$T_TMP/noport"; export PORT_ROOT; mkdir -p "$PORT_ROOT"
 busy() { if [ "$1" = harbor-linux ]; then : > "$FX/lbusy"; else : > "$FX/$1.lbusy"; fi; }
 idle() { if [ "$1" = harbor-linux ]; then rm -f "$FX/lbusy"; else rm -f "$FX/$1.lbusy"; fi; }
 nps() { grep -c '^ps' "$FX/docker.calls"; }
@@ -46,9 +48,9 @@ t_section "a low-priority job alone gets the whole budget"
 fresh; ctr quuxmail-linux; busy harbor-linux; gov tick >/dev/null
 t_eq "harbor-linux busy, every day-to-day container idle: budget 4 to harbor-linux" 4 "$(ccpus harbor-linux)"
 t_eq "...the idle one at its floor" 1 "$(ccpus quuxmail-linux)"
-fresh; ctr projects-orchestrator-linux busy; busy harbor-linux; gov tick >/dev/null
+fresh; ctr fleet-linux busy; busy harbor-linux; gov tick >/dev/null
 t_eq "two low jobs (harbor, Fleet) split it evenly: harbor-linux 2" 2 "$(ccpus harbor-linux)"
-t_eq "...projects-orchestrator-linux 2" 2 "$(ccpus projects-orchestrator-linux)"
+t_eq "...fleet-linux 2" 2 "$(ccpus fleet-linux)"
 
 t_section "a normal job cuts a busy low job to linux_min on the same tick, and the end restores it"
 fresh; ctr quuxmail-linux; busy harbor-linux; gov tick >/dev/null
@@ -62,14 +64,14 @@ t_has "...both" "$(tail -1 "$CACHE/checks.log")" "quuxmail-linux --cpus 1 -> 3"
 idle quuxmail-linux; tick
 t_eq "quuxmail-linux's job ends: harbor-linux is back to 4 on that tick" 4 "$(ccpus harbor-linux)"
 t_eq "...and quuxmail-linux back at its floor" 1 "$(ccpus quuxmail-linux)"
-fresh; ctr project-init-linux busy; ctr studio-linux busy; gov tick >/dev/null
-t_eq "Yard (project-init-linux) is low too: cut to 1 under studio-linux's job" 1 "$(ccpus project-init-linux)"
+fresh; ctr yard-linux busy; ctr studio-linux busy; gov tick >/dev/null
+t_eq "Yard (yard-linux) is low too: cut to 1 under studio-linux's job" 1 "$(ccpus yard-linux)"
 t_eq "...studio-linux 3" 3 "$(ccpus studio-linux)"
 # harbor#966: the default names the registry's ids, so a renamed yard's runner keeps its class.
 RP="$T_TMP/rnport"; mkdir -p "$RP/harbor-private"
-printf 'id\tpath\tkind\tremote\nyard\tyard\tscaffolder\t-\nfleet\tfleet\tfleet-controller\t-\n' > "$RP/harbor-private/repos.tsv"
-fresh; ctr yard-linux busy; ctr studio-linux busy; ( PORT_ROOT="$RP"; export PORT_ROOT; gov tick >/dev/null )
-t_eq "a renamed Yard (yard-linux, from the registry) is low too" 1 "$(ccpus yard-linux)"
+printf 'id\tpath\tkind\tremote\nshipyard\tshipyard\tscaffolder\t-\nfleet\tfleet\tfleet-controller\t-\n' > "$RP/harbor-private/repos.tsv"
+fresh; ctr shipyard-linux busy; ctr studio-linux busy; ( PORT_ROOT="$RP"; export PORT_ROOT; gov tick >/dev/null )
+t_eq "a renamed Yard (shipyard-linux, from the registry, not the default yard) is low too" 1 "$(ccpus shipyard-linux)"
 t_eq "...studio-linux 3" 3 "$(ccpus studio-linux)"
 
 t_section "two normal jobs split evenly; a low job is never starved"
@@ -111,12 +113,12 @@ t_eq "...the day-to-day job gets the other 5" 5 "$(ccpus quuxmail-linux)"
 fresh; ctr quuxmail-linux busy; ctr estate-linux busy; ctr studio-linux busy; busy harbor-linux; age harbor-linux 1000; gov tick >/dev/null
 t_eq "three day-to-day jobs on budget 4: the lift is limited to what leaves each its normal_min, so none" 1 "$(ccpus harbor-linux)"
 t_eq "...so no day-to-day job is cut under normal_min to pay for it" "2 2 2" "$(ccpus quuxmail-linux) $(ccpus estate-linux) $(ccpus studio-linux)"
-fresh; ctr quuxmail-linux busy; busy harbor-linux; age harbor-linux 1000; ctr projects-orchestrator-linux busy; age projects-orchestrator-linux 5; gov tick >/dev/null
+fresh; ctr quuxmail-linux busy; busy harbor-linux; age harbor-linux 1000; ctr fleet-linux busy; age fleet-linux 5; gov tick >/dev/null
 t_eq "an aged and a young low job beside one day-to-day job on budget 4: normal_min leaves the aged one linux_min" 1 "$(ccpus harbor-linux)"
-t_eq "...the young one is cut to linux_min" 1 "$(ccpus projects-orchestrator-linux)"
+t_eq "...the young one is cut to linux_min" 1 "$(ccpus fleet-linux)"
 t_eq "...the day-to-day job keeps normal_min 2, so the lift leaves aged only 1 on budget 4" "2 1" "$(ccpus quuxmail-linux) $(ccpus harbor-linux)"
-fresh; echo 700 > "$FX/idle"; ctr quuxmail-linux busy; busy harbor-linux; age harbor-linux 1000; ctr projects-orchestrator-linux busy; age projects-orchestrator-linux 5; gov tick >/dev/null
-t_eq "budget 8: the aged job keeps lift 2, the young one linux_min, the day-to-day job the rest" "2 1 5" "$(ccpus harbor-linux) $(ccpus projects-orchestrator-linux) $(ccpus quuxmail-linux)"
+fresh; echo 700 > "$FX/idle"; ctr quuxmail-linux busy; busy harbor-linux; age harbor-linux 1000; ctr fleet-linux busy; age fleet-linux 5; gov tick >/dev/null
+t_eq "budget 8: the aged job keeps lift 2, the young one linux_min, the day-to-day job the rest" "2 1 5" "$(ccpus harbor-linux) $(ccpus fleet-linux) $(ccpus quuxmail-linux)"
 fresh; ctr quuxmail-linux busy; busy harbor-linux; age harbor-linux 1000; echo 4 > "$FX/mem"; gov sample >/dev/null
 t_eq "an emergency still takes every runner to its emergency cap, lift or not" "0.5" "$(awk -v n="$(cat "$FX/nano")" 'BEGIN { printf "%g", n / 1e9 }')"
 
