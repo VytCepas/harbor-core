@@ -29,7 +29,7 @@ absent third parties.
 
 Both guard corpora say it of themselves. [docs/explanation/admission-baseline.md](./admission-baseline.md) puts it as *"the
 real security boundary remains credential separation and the OS sandbox, exactly as
-yard's `prod_guard` says of itself."*
+project-init's `prod_guard` says of itself."*
 
 A regex over a command string **raises the cost of an accident**. It cannot stop a
 determined path, and it cannot stop a spelling nobody modelled. Three measured gaps

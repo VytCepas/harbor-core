@@ -43,7 +43,7 @@ failed gate or a refusal. The quality gates never change with the tier.
   agent count, is what slows them.
 - **The hook sees Agent tool calls only.** Anything else sets the tier itself: a headless
   `claude -p` (pass `--model` and `--effort`), a workflow script's `agent()`, and the orchestrator,
-  whose table is `fleet`'s `models.py` (overridable under `models:` in `fleet.yaml`).
+  whose table is `projects-orchestrator`'s `models.py` (overridable under `models:` in `fleet.yaml`).
 - **A headless brief names the exact test command.** Without one, an agent runs the repository's
   full suite, often in the background, and the `claude -p` process outlives its own result. In
   the trial, 30 of 105 unscoped runs were still alive at the 15-minute kill after reporting.

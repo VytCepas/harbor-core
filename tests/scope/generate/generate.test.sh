@@ -20,9 +20,6 @@ gamma	gamma	workload	-
 ROWS
 TBL="$T/roots.tsv"
 cp "$T_ROOT/contracts/roots.tsv" "$TBL"
-# a table whose four role rows still name the old checkouts: what the generator exists to correct (harbor#966)
-sed -e 's#^\(HARBOR_SCOPE_FLEET_CONTROLLER\tREPOS\t\)fleet\t#\1old-fleet\t#' -e 's#^\(HARBOR_SCOPE_FLEET_FILE\tREPOS\t\)fleet/#\1old-fleet/#' \
-    -e 's#^\(HARBOR_SCOPE_SCAFFOLDER\tREPOS\t\)yard\t#\1old-yard\t#' -e 's#^\(PROJECT_INIT_SRC\tREPOS\t\)yard\t#\1old-yard\t#' "$TBL" > "$TBL.old" && mv "$TBL.old" "$TBL"
 gen() { PORT_ROOT="$P" HARBOR_SCOPE_PRIVATE="$V" HARBOR_SCOPE_ROOTS_TABLE="$TBL" sh "$TOOL" "$@"; }
 
 t_section "--projects: governed rows with a covers text, home-relative paths"

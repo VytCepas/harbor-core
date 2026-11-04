@@ -23,13 +23,13 @@ that derives it is given instead.
 |---|---|---|---|---|
 | **harbor** | L0 Helm | the constitution, the security floor, guards, lint, the skill sources, the check registry, and the **access card format and checker** (the cards themselves are private data, `harbor-private/access/`) | `VytCepas/harbor` | private |
 | **the workload trees** | work | the work this box governs: each workload repo owns its subject | the registry, `sh bin/scope-roots.sh --repos` | private |
-| **the trio** | L2/L3/Log | Fleet (`fleet`), Yard (`yard`), Log (`helm-log` = `~/.claude/MEMORY`) | see below | **two are PUBLIC** |
+| **the trio** | L2/L3/Log | Fleet (`projects-orchestrator`), Yard (`project-init`), Log (`helm-log` = `~/.claude/MEMORY`) | see below | **two are PUBLIC** |
 
 **Which workload tree owns what is private data.** The per-repo rows, the cautions about trees that are not repos, and
 the crossings between them are the private layer's `notes/boundary.md` (`sh bin/scope-roots.sh --private`, harbor#1273). Core
 names no workload repo; with no private layer there is no such page, and this one is the whole of the rule.
 
-**Two of the trio are PUBLIC** — `yard` and `fleet`
+**Two of the trio are PUBLIC** — `project-init` and `projects-orchestrator`
 (`gh repo view --json visibility`, 2026-09-15). Every other tree here is private.
 That is the sharpest boundary on this box, and each of those two carries a rule
 pack saying so at the moment of a commit. `helm-log` is private, which is what
@@ -72,7 +72,7 @@ apart, so both are named here.
 | Registry | Question | Owner |
 |---|---|---|
 | `harbor-private/context-rules/user/projects.tsv` | *what should a session be told exists?* | harbor (private layer, harbor#1149) |
-| `fleet/fleet.yaml` | *what should the fleet report health for?* | Fleet (gitignored, machine-specific) |
+| `projects-orchestrator/fleet.yaml` | *what should the fleet report health for?* | Fleet (gitignored, machine-specific) |
 
 Lint `IJ2` binds each registry row to a rule pack, `IJ3` walks the box for
 governed repos with no row, `IJ4` asserts every pack is installed where the

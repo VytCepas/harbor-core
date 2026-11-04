@@ -55,7 +55,6 @@ policy/enforcement.tsv	core	which control enforces which clause (harbor#1028)
 docs/policy/	core	the enforcement matrix generated from policy/enforcement.tsv
 registries/context-ratchet.tsv	core	the deploy ratchet baseline read by bin/context-budget.sh --ratchet
 CONTRIBUTING.md	core	how to contribute to the export
-CHANGELOG.md	core	the change record a control-plane repo carries (name.repo-kind)
 docs/reports/evals.md	core	
 LICENSE	core	Apache-2.0 text, verbatim
 NOTICE	core	third-party notices (Apache convention)

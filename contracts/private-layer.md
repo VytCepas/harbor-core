@@ -79,7 +79,7 @@ any other shape (a backslash or an empty string inside a value included) are ref
 | Key | Meaning | Default |
 |---|---|---|
 | `packs` | workload repos whose `harbor-pack/` is installed box-wide | unset (exit 1) |
-| `components` | `core` plus any of: `yard`, `fleet`, `prod-guard`, `collector` (installed by root: `sudo sh bin/audit-collector-install.sh`, never by deploy) | unset = the legacy full set (transitional; the template seeds `["core"]`) |
+| `components` | `core` plus any of: `yard` (project-init), `fleet` (projects-orchestrator), `prod-guard`, `collector` (installed by root: `sudo sh bin/audit-collector-install.sh`, never by deploy) | unset = the legacy full set (transitional; the template seeds `["core"]`) |
 | `channel` | `main` or `stable` | `main` |
 | `deliverables_dir` | where deliverables land | unset |
 | `worklog_repo` | the private repo the work log pushes to | unset |

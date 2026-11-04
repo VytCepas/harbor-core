@@ -7,8 +7,8 @@
 # (contracts/private-layer.md); bin/gate-required-generate.sh appends them for the readers.
 
 VytCepas/harbor	public-ci
-VytCepas/fleet	Check PR title, branch, and linked issue
-VytCepas/fleet	CI gate
-VytCepas/yard	Check PR title format
-VytCepas/yard	Check for Closes keyword in PR body
-VytCepas/yard	CI gate
+VytCepas/projects-orchestrator	Check PR title, branch, and linked issue
+VytCepas/projects-orchestrator	CI gate
+VytCepas/project-init	Check PR title format
+VytCepas/project-init	Check for Closes keyword in PR body
+VytCepas/project-init	CI gate

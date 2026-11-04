@@ -124,7 +124,7 @@ skill and a test may be the bare family (`bin/worktree.sh`), the family's defaul
 
 ### 6.4 The names the system gives itself
 
-- **The CLI is `harbor`, never `helm`.** `helm` is the Kubernetes package manager, and yard's
+- **The CLI is `harbor`, never `helm`.** `helm` is the Kubernetes package manager, and project-init's
   `prod_guard` denies `helm uninstall` in every repo it scaffolds, so a `helm` command would be blocked by our own
   guard. Lint T5 holds it; docs/reports/rejected-approaches.md records the rejected guard exception.
 - **Domains of work take the world's word.** A thing that exists without Harbor (a tag manager, a data estate, a reporting

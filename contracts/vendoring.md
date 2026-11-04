@@ -79,7 +79,7 @@ candidate.
 ## The licence axis — the verdict names its destination
 
 A verdict is **for a destination tier**. Harbor is a private tree, while
-`yard` templates and the `fleet` wheel are distributed
+`project-init` templates and the `projects-orchestrator` wheel are distributed
 from public repositories. A licence that permits a private copy can bind a
 distributed one. #459 records `trailofbits/skills` as CC-BY-SA-4.0, whose
 share-alike terms reach anything derived from it that ships. The same class

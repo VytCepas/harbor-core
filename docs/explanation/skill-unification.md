@@ -19,7 +19,7 @@ in progress, which is the drift §№2.12 names.
 > vocabulary; `docs/explanation/verification-expanded.md` gained the endogenous/exogenous
 > split and the discrimination clause; `bin/eval-tally.sh` is the first exogenous
 > instrument (harbor#293 · option A, comparative signal);
-> `skills/test-strength/` re-authors yard's `verify-test-strength` under
+> `skills/test-strength/` re-authors project-init's `verify-test-strength` under
 > the box-profile seam. **Still not done from this plan:** the 6 CONVERT and 6
 > REWRITE re-authorings, and the 31 dead `execution.jsonl` citations.
 
@@ -94,7 +94,7 @@ argument — 4.8% of spend. Harbor's own nine are 13.3%. **The two files nobody
 was treating as a context surface are 82% of it**, and one of them is not a
 skill at all.
 
-**2 · L3 already implements what we are trying to build.** `fleet`
+**2 · L3 already implements what we are trying to build.** `projects-orchestrator`
 looked like it had 18 skills invisible to Claude Code. It does not. Its
 `.claude/skills` holds only `plan` **by design**; the other eighteen arrive from
 the `project-init-workflow` **plugin**, enabled per-repo in that repo's own
@@ -137,7 +137,7 @@ extended to `topology` in #172 so the practice has a situation-first entry point
   It moves no rule red→green and rewrites 25 files inside a B8-watched tree.
 - **Do not give L2/L3 skills a tracked source in Harbor.** `contracts/host-profile.md`
   makes the box profile the *only* up-pointing edge, and names D7 — "a repo works
-  with no upstream platform" — as what a second one breaks. yard owns that layer.
+  with no upstream platform" — as what a second one breaks. project-init owns that layer.
 
 **5 · The install was the riskiest step and had no installer — now it has one.**
 `harbor skills` (`bin/skill-install.sh`, this branch). Before it,
@@ -279,7 +279,7 @@ B8-watched tree twice. They go when their skill goes.
   owning the branch. (Superseded the 2026-08 state where `~/harbor` sat on a
   feature branch and the second worktree — then `~/harbor-m5` — held `main`.)
 - **`plan` is 16 byte-identical copies** across repos, `.agents/` mirrors,
-  yard templates and a `.venv`. Not a defect — it is the scaffolder
+  project-init templates and a `.venv`. Not a defect — it is the scaffolder
   working — but nothing records that they are identical, so a reader assumes
   local customisation that is not there. The per-repo text in the listing is
   synthesised by the harness, not in the file.

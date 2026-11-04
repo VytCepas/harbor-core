@@ -114,7 +114,7 @@ before resting a design on plugin-`bin`-on-PATH from a skills-dir plugin.**
 **The security floor watching the box's third-party plugin surface stays exactly
 as it is.** `library-admission.sh` (`floor_marketplace_sha`, the `installed_plugins.json`
 and `known_marketplaces.json` projection), `deploy-harden.sh`, `admission-integrity.sh`
-and the SEC-0 baseline all watch plugins *somebody else* wrote — `yard`,
+and the SEC-0 baseline all watch plugins *somebody else* wrote — `project-init`,
 `pr-review-toolkit`, the official marketplace — reaching every session on this
 machine. That is a defence, it is unrelated to whether Harbor authors plugins of
 its own, and weakening it to satisfy this rule would be *fixing a failure by

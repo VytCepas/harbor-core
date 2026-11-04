@@ -321,10 +321,10 @@ Held in `contracts/roots.tsv`, which `scope.root-defaults` reads; a name is regi
 | variable | base | path | breaks when wrong |
 |---|---|---|---|
 | `HARBOR_SCOPE_REPO` | REPOS | `harbor` | the renewal check reads a missing repo and reports nothing to renew |
-| `HARBOR_SCOPE_FLEET_CONTROLLER` | REPOS | `fleet` | the marker fixtures SKIP the descriptor role and the suite still exits 0 |
-| `HARBOR_SCOPE_FLEET_FILE` | REPOS | `fleet/fleet.yaml` | fleet discovery finds zero projects and raises no error |
-| `HARBOR_SCOPE_SCAFFOLDER` | REPOS | `yard` | the marker fixtures SKIP the allowlist role and the suite still exits 0 |
-| `PROJECT_INIT_SRC` | REPOS | `yard` | prod-guard-install ships nothing and lint drift.prod-policy-copy (was X5) compares against a missing source |
+| `HARBOR_SCOPE_FLEET_CONTROLLER` | REPOS | `projects-orchestrator` | the marker fixtures SKIP the descriptor role and the suite still exits 0 |
+| `HARBOR_SCOPE_FLEET_FILE` | REPOS | `projects-orchestrator/fleet.yaml` | fleet discovery finds zero projects and raises no error |
+| `HARBOR_SCOPE_SCAFFOLDER` | REPOS | `project-init` | the marker fixtures SKIP the allowlist role and the suite still exits 0 |
+| `PROJECT_INIT_SRC` | REPOS | `project-init` | prod-guard-install ships nothing and lint drift.prod-policy-copy (was X5) compares against a missing source |
 | `HARBOR_SCOPE_LOCAL_BIN` | BOX | `.local/bin` | deploy writes the operator's shims somewhere nothing is on PATH |
 | `HARBOR_SCOPE_FLEET_CONTROLLER_BIN` | BOX | `.local/bin/projects-orchestrator` | the fleet CLI is not found: the fleet snapshot, the ship report and the runner table read fleet as absent |
 | `HARBOR_SCOPE_SCAFFOLDER_BIN` | BOX | `.local/bin/project-init` | the scaffolder's CLI is not found: harbor repo new and harbor yard <verb> have nothing to run |

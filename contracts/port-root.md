@@ -1,7 +1,7 @@
 # `PORT_ROOT` — the workspace root the governed repos live under
 
-**Seam:** shared canonical — L0 Helm, L3 Yard (`yard`), L2 Fleet
-(`fleet`). **Status: harbor#619 — Helm's half is implemented and
+**Seam:** shared canonical — L0 Helm, L3 Yard (`project-init`), L2 Fleet
+(`projects-orchestrator`). **Status: harbor#619 — Helm's half is implemented and
 fixtured; the other two halves are written as project-init#1030 and
 projects-orchestrator#314, and whether they have landed is those PRs' state, not
 this line's.** Read the last section before citing this file as done.
@@ -71,11 +71,11 @@ exactly the machine it was built for.
 | repo | role | owes |
 |---|---|---|
 | harbor | the floor | `floor_port_root` in `bin/library-admission.sh` resolves it; `floor_in_repo` stops before it |
-| yard | the scaffolder | stop `prod_guard._find_config`'s walk before it |
-| fleet | the fleet | default `PO_FLEET_ROOT` and `fleet.yaml`'s scan root from it |
+| project-init | the scaffolder | stop `prod_guard._find_config`'s walk before it |
+| projects-orchestrator | the fleet | default `PO_FLEET_ROOT` and `fleet.yaml`'s scan root from it |
 
 **Nothing writes it.** Every reader takes the environment variable or its
-default, so a value written by yard at init would be a field nothing
+default, so a value written by project-init at init would be a field nothing
 reads, and one written into `.agents/config.yaml` would commit a machine path
 into the repo. Dropped from harbor#619 on 2026-09-23 for that reason.
 
@@ -100,11 +100,11 @@ which is the arm that catches a shipped-vs-source drift.
 
 ## What is NOT implemented
 
-- **yard's and fleet's halves ship only when their PRs
+- **project-init's and projects-orchestrator's halves ship only when their PRs
   merge** — project-init#1030 (the walker stop) and projects-orchestrator#314
   (the fleet-root default). Until then neither package carries them.
 - **M33–M37 run against both walkers** — `resolver` (the floor) and
-  `allowlist` (yard's `_find_config`, since project-init#1030). The
+  `allowlist` (project-init's `_find_config`, since project-init#1030). The
   `descriptor` role walks no markers and does not owe the stop.
 - **Per-repo roots are not resolved through `PORT_ROOT` here.** The move
   happened on 2026-09-23. The scans that enumerate the workspace

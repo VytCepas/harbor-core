@@ -16,5 +16,5 @@
 #   summary  one line for `harbor help`
 system	verb	run	json	summary
 yard	new	tool:HARBOR_SCOPE_SCAFFOLDER_BIN new	yes	scaffold a repo of a repo-kind (--kind, --adopt, --dry-run), with its kit rendered: the scaffolder's own `new`
-yard	*	tool:HARBOR_SCOPE_SCAFFOLDER_BIN	no	the scaffolder's own CLI (yard): new, upgrade, add, remove, preset, doctor; every verb passed through
+yard	*	tool:HARBOR_SCOPE_SCAFFOLDER_BIN	no	the scaffolder's own CLI (project-init): new, upgrade, add, remove, preset, doctor; every verb passed through
 fleet	*	tool:HARBOR_SCOPE_FLEET_CONTROLLER_BIN	yes	the fleet controller's own CLI (projects-orchestrator): audit, status, checks, drift, doctor; every verb passed through

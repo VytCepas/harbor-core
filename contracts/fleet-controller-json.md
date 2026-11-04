@@ -15,7 +15,7 @@ Helm's statusline (**L0-5**), OBSERVABILITY FLEET section (**L0-6**), WORK log (
 - **Exit codes are part of the contract** (never-raise; nonzero-without-json ⇒ Helm degrades to `fleet: unknown`).
 - **Additive-only** within a version; a breaking change bumps the version and lands lock-step.
 
-_Owner: **OC-1** (fleet). Consumers: L0-5 / L0-6 / L0-7 / E2 (helm)._
+_Owner: **OC-1** (projects-orchestrator). Consumers: L0-5 / L0-6 / L0-7 / E2 (helm)._
 
 ## Measured state — 2026-08-13
 
@@ -23,7 +23,7 @@ This section exists because the four rules above are written in the present tens
 and **none of them holds yet**, which is the one thing a frozen-seam document must
 never let a reader believe. Everything here was measured, not recalled.
 
-**Producer side (fleet): none of the four rules.**
+**Producer side (projects-orchestrator): none of the four rules.**
 
 | Rule | Measured |
 |---|---|
@@ -56,7 +56,7 @@ whole tile, which is the §2.11 false positive that gets a control switched off.
 The blast radius is one wrong glyph in a statusline.
 
 **What is still owed, and by whom.** The producer-side work is OC-1's, in
-`fleet`, and harbor cannot do it from here. Harbor's own half —
+`projects-orchestrator`, and harbor cannot do it from here. Harbor's own half —
 vendoring the schema and running a freshness check — is blocked on it. Until then
 this document describes an intent, and the sentence above about the consumer's
 degradation is the only load-bearing guarantee in it.

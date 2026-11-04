@@ -161,7 +161,7 @@ different strengths, and it is important not to confuse them:
    layers 1 and 2 have been altered and refuses to open the session.
 
 The real security boundary remains credential separation and the OS sandbox,
-exactly as yard's `prod_guard` says of itself. The floor raises the
+exactly as project-init's `prod_guard` says of itself. The floor raises the
 cost of an accident or a prompt-injected mistake; it is not a containment
 proof against a determined attacker who already controls the session.
 

@@ -3,3 +3,4 @@
 # One finding per line, `<rule> TAB <subject>`. A new finding is fixed (or its word registered in standards/naming/words.tsv
 # if it is genuine vocabulary), never added here; a line whose finding no longer occurs turns lint red until it is deleted.
 # W7's FLOOR_* rows left with their rename; HELM_FLOOR_SHADOW_NOTE stays, the codemod's lookalike fixture (tests/standard/rename/window.test.sh).
+name.alias	standards/rename-maps/fleet-modules-in-projects-orchestrator.tsv

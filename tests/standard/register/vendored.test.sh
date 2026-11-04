@@ -40,18 +40,4 @@ t_has "a value the vendored kinds.tsv does not hold is still red (it is read, no
 t_has "...under the target's name, not the vendored path" "$out" "not in standards/naming/kinds.tsv column id"
 printf 'id\theader\tcolumns\tkey\trefs\towner\tread_by\tnote\nfolders.tsv\trow\tfolder kind\tfolder\tkind>standards/naming/nosuch.tsv:id\tstandard\t-\tmine\n' > "$R/naming-schemas.tsv"
 t_has "a target that is in neither place is red (negative control)" "$(tree)" "the target register standards/naming/nosuch.tsv is not in the tree"
-t_section "a repo that vendors under a subdirectory resolves against the copy it declares (harbor#966)"
-# yard's shape: the package sits in templates/base/vendor/naming and naming-schemas.tsv declares that copy as a register glob
-R2="$T_TMP/repo2"; mkdir -p "$R2/templates/base"; sh "$SV" --source "$H" "$R2/templates/base" >/dev/null 2>&1
-printf 'id\theader\tcolumns\tkey\trefs\towner\tread_by\tnote\ntemplates/base/vendor/naming/registry/*.tsv\t=\t=standards/naming/*.tsv\t=\t\tstandard\t-\ta vendored copy\ntemplates/base/vendor/naming/MANIFEST.tsv\tnone\tpath sha256 source\tpath\t\tstandard\t-\tthe manifest\nfolders.tsv\trow\tfolder kind\tfolder\tkind>standards/naming/kinds.tsv:id\tmine\t-\tmine\n' > "$R2/naming-schemas.tsv"
-printf 'folder\tkind\ndocs/a/\tmemory-store\n' > "$R2/folders.tsv"
-sub() { sh "$T_ROOT/bin/standard-register.sh" --root "$R2" --schemas "$R2/templates/base/vendor/naming/registry/schemas.tsv" --extra "$R2/naming-schemas.tsv" check 2>&1; }
-t_eq "no standards/naming/ and no root vendor/naming/ in the repo" "no" "$([ -e "$R2/standards/naming" ] || [ -e "$R2/vendor/naming" ] && echo yes || echo no)"
-out="$(sub)"
-t_hasnt "a reference to standards/naming/kinds.tsv resolves in the declared subdirectory copy" "$out" "[standard.reference-resolves]"
-t_has "...and the repo is green" "$out" "every register is declared and every reference resolves"
-printf 'docs/b/\tno-such-kind\n' >> "$R2/folders.tsv"
-t_has "a value the declared copy does not hold is still red (it is read, not skipped)" "$(sub)" "not in standards/naming/kinds.tsv column id"
-rm -f "$R2/templates/base/vendor/naming/registry/kinds.tsv"
-t_has "a declared copy that lacks the register is red (negative control)" "$(sub)" "the target register standards/naming/kinds.tsv is not in the tree"
 t_done

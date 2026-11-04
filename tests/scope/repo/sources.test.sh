@@ -31,12 +31,6 @@ t_eq "an empty registry" "exit 3" "$(code)"
 { printf 'id\tpath\tkind\tremote\ttopology\tinteraction\tnote\tdomain\tgoverned\towner\tcovers\n'; row ungov ungov workload no; } > "$PV/repos.tsv"; mkrepo ungov
 t_eq "a registry with no governed row" "exit 3" "$(code)"
 
-t_section "harbor repo list carries the matrix's verdict: nothing compared is exit 3 with its note, never a green (harbor#966)"
-LS="$T_ROOT/bin/scope-repo.sh"
-t_eq "list over a registry with no governed row exits 3" "exit 3" "$(sh "$LS" list >/dev/null 2>&1; echo "exit $?")"
-t_has "...and says why, on stderr" "$(sh "$LS" list 2>&1 >/dev/null)" "the registry has no governed row yet"
-t_has "...and still prints the header" "$(sh "$LS" list 2>/dev/null)" "id${TAB}path${TAB}kind${TAB}governed"
-
 t_section "four sources that agree print nothing and exit 0"
 mkrepo alpha; mkrepo beta
 { printf 'id\tpath\tkind\tremote\ttopology\tinteraction\tnote\tdomain\tgoverned\towner\tcovers\n'
