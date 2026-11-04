@@ -1,39 +1,42 @@
-# tests/lib/core.sh — the harness every suite under tests/ sources (harbor#667).
-#
-#   . "$(dirname "$0")/../lib/core.sh"; t_init
-#   t_section "name"; t_eq/t_has/t_hasnt/t_exit …; t_done
-#
-# t_init sandboxes the run: HOME, CLAUDE_CONFIG_DIR and TMPDIR point into a fresh
-# temp dir, the caller's HELM_* and HARBOR_* knobs are cleared, and $T_BIN leads PATH for stubs.
-# A section that runs no assertion fails, and so does a suite that runs none.
-
+# tests/lib/core.sh — the harness every suite under tests/ sources (harbor#667): `. "$(dirname "$0")/../lib/core.sh"; t_init`, then
+# t_section, t_eq/t_has/t_hasnt/t_exit and t_done. t_init sandboxes the run: HOME, CLAUDE_CONFIG_DIR and TMPDIR point into a fresh temp dir,
+# the caller's HELM_* and HARBOR_* knobs are cleared, and $T_BIN leads PATH for stubs. A section or a suite that runs no assertion fails.
+# t_init also bounds the run (harbor#1437): HARBOR_TEST_SUITE_TIMEOUT seconds with no progress (default 900, 0 = none), HARBOR_TEST_SUITE_HARD_TIMEOUT
+# in all (default 4x, 0 = none); past either, its descendants are killed and it exits 124. No timeout(1): not on BSD. Why: docs/explanation/code-cases/tests-lib-core.md
 # The caller variables t_init keeps (lint C10 reads this line): status-gen's re-entry marker must
 # reach a suite it runs and that suite's children, or the suite runs status-gen back (harbor#288).
-T_PASS_ENV='HARBOR_IN_SUITE'
+T_PASS_ENV='HARBOR_TEST_IN_SUITE'
 
 t_init() { # [name] — defaults to the file name without .sh
   T_NAME="${1:-$(basename "$0" .sh)}"
   T_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-  while [ "$T_ROOT" != / ] && [ ! -f "$T_ROOT/CONTRACTS/suites.txt" ]; do
+  while [ "$T_ROOT" != / ] && [ ! -f "$T_ROOT/contracts/suites.txt" ]; do
     T_ROOT="$(dirname "$T_ROOT")"
   done
-  if [ ! -f "$T_ROOT/CONTRACTS/suites.txt" ]; then
+  if [ ! -f "$T_ROOT/contracts/suites.txt" ]; then
     # A suite the box carries sets T_STANDALONE=1 (harbor#727): with no checkout, its root is the dir above its own.
     [ "${T_STANDALONE:-0}" = 1 ] || { echo "$T_NAME: repo root not found" >&2; exit 2; }
     T_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
   fi
   T_SELF="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/${0##*/}"; T_SELF="${T_SELF#"$T_ROOT"/}"
   _td="${TMPDIR:-/tmp}"
+  # Read before the HARBOR_* sweep below clears them; validated as the runner does (exit 2 on a non-number).
+  T_TMO="${HARBOR_TEST_SUITE_TIMEOUT:-900}"
+  case "$T_TMO" in ''|*[!0-9]*) echo "$T_NAME: HARBOR_TEST_SUITE_TIMEOUT wants seconds, got $T_TMO" >&2; exit 2 ;; esac
+  T_HARD="${HARBOR_TEST_SUITE_HARD_TIMEOUT:-$((T_TMO * 4))}"
+  case "$T_HARD" in ''|*[!0-9]*) echo "$T_NAME: HARBOR_TEST_SUITE_HARD_TIMEOUT wants seconds, got $T_HARD" >&2; exit 2 ;; esac
+  T_PID=$$
   T_TMP="$(mktemp -d "${_td%/}/$T_NAME.XXXXXX")" || exit 2
-  trap 'chmod -R u+w "$T_TMP" 2>/dev/null; rm -rf "$T_TMP"' EXIT  # u+w: an installed floor leaves 0500 dirs
-  trap 'exit 130' INT TERM HUP
+  trap '_t_unwatch; chmod -R u+w "$T_TMP" 2>/dev/null; rm -rf "$T_TMP"' EXIT  # u+w: an installed floor leaves 0500 dirs
+  trap 'exit 130' INT HUP
+  trap '_t_term' TERM
   mkdir -p "$T_TMP/home" "$T_TMP/cfg" "$T_TMP/tmp" "$T_TMP/bin"
   T_BIN="$T_TMP/bin"
   HOME="$T_TMP/home"; CLAUDE_CONFIG_DIR="$T_TMP/cfg"; TMPDIR="$T_TMP/tmp"
   PATH="$T_BIN:$PATH"
   export HOME CLAUDE_CONFIG_DIR TMPDIR PATH
   # Knobs from the caller's shell must not decide a verdict here: every HELM_*, HARBOR_* (CI's
-  # HARBOR_SUITE_COUNTS cost floor.status-test 4 passes, harbor#773) and GIT_* (a suite's own
+  # HARBOR_STATUS_SUITE_COUNTS cost floor.status-test 4 passes, harbor#773) and GIT_* (a suite's own
   # `git -C "$T_TMP/…"` inherits GIT_DIR, harbor#824) and XDG_* (a runner's outranks HOME, harbor#865).
   for _v in $(env | sed -n -e 's/^\(HELM_[A-Za-z0-9_]*\)=.*/\1/p' -e 's/^\(HARBOR_[A-Za-z0-9_]*\)=.*/\1/p') \
             CLOUD_POSTURE CLOUDSDK_CONFIG FAST XDG_CONFIG_HOME XDG_CACHE_HOME XDG_DATA_HOME XDG_STATE_HOME \
@@ -42,9 +45,65 @@ t_init() { # [name] — defaults to the file name without .sh
     case " $T_PASS_ENV " in *" $_v "*) ;; *) unset "$_v" ;; esac
   done
   # No suite drives the real Chrome: `harbor chrome attach` opens a window through AppleScript.
-  HARBOR_OSASCRIPT=false; export HARBOR_OSASCRIPT
+  HARBOR_ACCESS_BROWSER_OSASCRIPT=false; export HARBOR_ACCESS_BROWSER_OSASCRIPT
+  # No suite reads the real credential store: a store-reading tool's case brings its own stub (harbor#1205).
+  HARBOR_ACCESS_SECRET_BIN="$T_TMP/no-secret-store"; export HARBOR_ACCESS_SECRET_BIN
   T_PASS=0; T_FAIL=0; T_SEC=""; T_SEC_N=0
+  T_REDLOG="${LINT_REDLOG:-}"   # the caller's red log, kept before a suite's own `LINT_REDLOG=x fn` leaks into the shell (harbor#1422)
+  _t_watch
   _t_cfg > "$T_TMP/.cfg.before"  # the repo's shared config, before the suite touches anything (harbor#1152)
+}
+
+# The progress mark the watchdog reads: its content changes at every section, pass and fail.
+_t_beat() { [ -z "${T_HB:-}" ] || printf '%s' "$T_PASS.$T_FAIL.$T_SEC_N.$T_SEC" > "$T_HB" 2>/dev/null || :; }
+# _t_watch: a background poller (own stdout/stderr closed, so a runner's pipe is not held open). It ends when the suite
+# does. On a limit it sends the suite TERM, then kills every descendant (the hung child included, not itself): a TERM
+# trap waits for the foreground child, so this order runs _t_term the moment the child dies, before any next command.
+_t_watch() {
+  [ "$T_TMO" != 0 ] || [ "$T_HARD" != 0 ] || return 0
+  T_HB="$T_TMP/.beat"; T_HIT="$T_TMP/.timedout"; : > "$T_HB"
+  # Double-forked: a poller that is the suite's own job would be waited on by a bare `wait` in the suite, which then never
+  # returns (measured: tests/admission/baseline hung under `harbor status` on the first version). Its pid is kept in a file.
+  ( (
+    _wd="$(sh -c 'echo $PPID')"; printf '%s\n' "$_wd" > "$T_TMP/.wd"
+    exec >/dev/null 2>&1 </dev/null
+    _s=$(date +%s); _lc=$_s; _last=""
+    while kill -0 "$T_PID" 2>/dev/null; do
+      sleep 1; _n=$(date +%s)
+      _cur="$(cat "$T_HB" 2>/dev/null)"
+      [ "$_cur" = "$_last" ] || { _last="$_cur"; _lc=$_n; }
+      _why=""
+      if [ "$T_TMO" != 0 ] && [ $((_n - _lc)) -ge "$T_TMO" ]; then _why="idle"; fi
+      if [ "$T_HARD" != 0 ] && [ $((_n - _s)) -ge "$T_HARD" ]; then _why="${_why:+$_why+}hard"; fi
+      [ -n "$_why" ] || continue
+      printf '%s' "$_why" > "$T_HIT"
+      _all=" $T_PID "; _kids=""
+      while :; do
+        _new="$(ps -A -o pid= -o ppid= 2>/dev/null | awk -v all="$_all" -v me="$_wd" 'index(all, " " $2 " ") && !index(all, " " $1 " ") && $1 != me { printf "%s ", $1 }')"
+        [ -n "$_new" ] || break
+        _all="$_all$_new"; _kids="$_kids $_new"
+      done
+      kill -TERM "$T_PID" 2>/dev/null   # first: the trap then runs the moment the killed child returns, before any next command
+      [ -z "$_kids" ] || kill -9 $_kids 2>/dev/null
+      # Still here after 3s: ps was refused (a confined shell, harbor#555), so no child was found and the TERM trap never ran.
+      # The suite is killed outright (exit 137); the orphaned child is the cost of not being able to list processes.
+      sleep 3
+      if kill -0 "$T_PID" 2>/dev/null; then
+        printf '  FAIL: %s timed out and was killed (no ps to find its children; limit hit: %s)\n' "$T_NAME" "$_why" > /dev/tty 2>/dev/null || :
+        kill -9 "$T_PID" 2>/dev/null
+      fi
+      exit 0
+    done
+  ) & )
+}
+_t_unwatch() { [ ! -s "${T_TMP:-/nonexistent}/.wd" ] || kill "$(cat "$T_TMP/.wd")" 2>/dev/null || :; }
+_t_term() {
+  if [ -s "${T_HIT:-/nonexistent}" ]; then
+    printf '  FAIL: %s timed out: no progress for %ss, or %ss in all (limit hit: %s)\n' "$T_NAME" "$T_TMO" "$T_HARD" "$(cat "$T_HIT")" >&2
+    printf '  fix: none automatic — see %s\n' "${T_SELF:-$T_NAME}" >&2
+    exit 124
+  fi
+  exit 130
 }
 
 # The repo's shared .git/config (worktrees share it): t_done fails a suite that adds a key there. No repo
@@ -56,19 +115,23 @@ _t_cfg_leak() { # prints keys present now and absent before
   grep -vxF -f "$T_TMP/.cfg.before" "$T_TMP/.cfg.after" 2>/dev/null
 }
 
-t_pass() { T_PASS=$((T_PASS + 1)); T_SEC_N=$((T_SEC_N + 1)); }
+t_pass() { T_PASS=$((T_PASS + 1)); T_SEC_N=$((T_SEC_N + 1)); _t_beat; }
 t_fail() { # <what went wrong>
   T_FAIL=$((T_FAIL + 1)); T_SEC_N=$((T_SEC_N + 1))
   printf '  FAIL: %s%s\n' "${T_SEC:+$T_SEC · }" "$1" >&2
+  _t_beat
 }
 
 t_section() { # <title>
   _t_close
   T_SEC="$1"; T_SEC_N=0
   printf '── %s\n' "$1"
+  _t_beat
 }
 _t_close() { [ -z "$T_SEC" ] || [ "$T_SEC_N" -gt 0 ] || t_fail "section ran no assertions"; }
 
+# The repo file an installed name ships from: bin/<name>, else its hook engine folder (D-88; il_src in bin/deploy-install-lib.sh).
+t_src() { if [ -f "$T_ROOT/bin/$1" ] || [ ! -f "$T_ROOT/hooks/${1%.*}/$1" ]; then printf '%s' "$T_ROOT/bin/$1"; else printf '%s' "$T_ROOT/hooks/${1%.*}/$1"; fi; }
 t_eq()    { [ "$3" = "$2" ] && t_pass || t_fail "$1 (want '$2', got '$3')"; }        # <label> <want> <got>
 t_has()   { case "$2" in *"$3"*) t_pass ;; *) t_fail "$1 (missing: $3)" ;; esac; }  # <label> <text> <needle>
 t_hasnt() { # a negative on empty output proves nothing, so empty fails (lint F9's point)
@@ -80,15 +143,23 @@ t_exit() { # <label> <want-exit> <cmd> [args…] — the exact code, never "non-
   t_eq "$_tl" "exit $_tw" "exit $_tr"
 }
 
+# t_red <control id>... — this suite watched these controls go red: a planted defect made the control refuse, and the assertion
+# after it passed. The ids reach LINT_REDLOG only if the whole suite passes and is not a smoke run, so bin/lint-rule-health.sh reads a proof, never a claim
+# (harbor#1422). Unset LINT_REDLOG costs nothing; a failed append is swallowed, as the linter's is.
+t_red() { printf '%s\n' "$@" >> "$T_TMP/.red" 2>/dev/null || :; }
+
 t_done() {
   _t_close
   _tk="$(_t_cfg_leak | sed 's/=.*//' | tr '\n' ' ')"
   [ -z "$_tk" ] || t_fail "wrote the shared git config of $T_ROOT (added: ${_tk% }) — a suite must touch only its temp repo (harbor#1152)"
   [ $((T_PASS + T_FAIL)) -gt 0 ] || t_fail "the suite ran no assertions"
-  # A failed suite's FAIL lines end in one fix line naming its file (CONTRACTS/logging.md, harbor#771).
+  # A failed suite's FAIL lines end in one fix line naming its file (contracts/logging.md, harbor#771).
   [ "$T_FAIL" -eq 0 ] || printf '  fix: none automatic — see %s\n' "$T_SELF" >&2
   if [ "${T_SMOKE:-0}" = 1 ]; then printf '%s smoke: %d passed, %d failed (NOT a full run)\n' "$T_NAME" "$T_PASS" "$T_FAIL"
   else printf '%s: %d passed, %d failed\n' "$T_NAME" "$T_PASS" "$T_FAIL"; fi
-  [ "$T_FAIL" -eq 0 ] && exit 0
+  if [ "$T_FAIL" -eq 0 ]; then
+    [ -z "$T_REDLOG" ] || [ "${T_SMOKE:-0}" = 1 ] || [ ! -f "$T_TMP/.red" ] || cat "$T_TMP/.red" >> "$T_REDLOG" 2>/dev/null || :
+    exit 0
+  fi
   exit 1
 }

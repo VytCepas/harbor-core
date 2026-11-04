@@ -1,0 +1,137 @@
+#!/usr/bin/env sh
+# H3 (harbor#4) — declare the detect-and-defer boundary across the installed base.
+#
+#   sh bin/scope-marker-backfill.sh            # DRY RUN — prints what it would write
+#   sh bin/scope-marker-backfill.sh --apply    # writes
+#   sh bin/scope-marker-backfill.sh --apply --include-dirty
+#
+# WHAT IT WRITES, AND WHAT IT DOES NOT. One line — `scope: project` (the standard's key, harbor#966; it was `context: repo`) at the top of
+# a governed repo's `.agents/config.yaml` — and only where no `scope:` or `context:` key
+# exists in ANY spelling the contract allows. It never rewrites an existing
+# value: `context: ambient` is the owner's opt-out, and a back-fill that
+# overwrote it would silently re-govern a repo whose owner opted out.
+#
+# WHY THE VALUE MATTERS WHEN ABSENCE ALREADY RESOLVES `repo`. It does not change
+# the verdict — M21 says absence falls back to marker presence, so these repos
+# already resolve `repo`. It changes whether the verdict is DECLARED or INFERRED.
+# An inferred one is silent about the owner's intent, so the day someone wants a
+# repo ambient there is no field to change, only a marker to delete.
+#
+# THE TARGET SET IS THE FLEET, NOT A DIRECTORY SCAN. `.agents/` present is the
+# predicate M12 settled AGAINST, and the difference is not academic on this
+# machine: `~/port/<repo>` carries a tracked, already-pushed `.agents/` tree and
+# belongs to the employer's org, not the operator. It has no `config.yaml`, so
+# the fleet does not list it and this tool never sees it. Widening the predicate
+# would commit into someone else's repository.
+#
+# THE CWD TRAP. `fleet` reads `fleet.yaml` from the CURRENT
+# directory and otherwise falls back to scanning `cwd.parent` with no excludes,
+# so the same command returns 7 projects from the checkout and 0 from $HOME.
+# This tool always runs the CLI from the orchestrator checkout for that reason;
+# an empty fleet is treated as an error, never as "nothing to do".
+set -eu
+
+. "$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)/library-log.sh"
+log_init marker-backfill
+
+APPLY=0
+INCLUDE_DIRTY=0
+for arg in "$@"; do
+  case "$arg" in
+    --apply)         APPLY=1 ;;
+    --include-dirty) INCLUDE_DIRTY=1 ;;
+    -h|--help)       sed -n '2,32p' "$0"; exit 0 ;;
+    *) log_fail "unknown argument: $arg"; log_fix "sh $0 --help"; log_end || :; exit 2 ;;
+  esac
+done
+
+PO_DIR="$(sh "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER)" || exit 2   # harbor#966
+# The fleet CLI is the roots table's row (contracts/roots.tsv), else the same name on PATH: a rename is one row there.
+_ob="$(sh "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER_BIN 2>/dev/null || :)"
+if [ -n "$_ob" ] && [ -x "$_ob" ]; then CLI="$_ob"; else CLI="$(command -v "${_ob##*/}" 2>/dev/null || true)"; fi
+[ -n "$CLI" ] || { log_fail "the fleet CLI is not installed (not on PATH)"
+  log_nofix "contracts/marker.md (install fleet from its checkout, then rerun)"; log_end || :; exit 1; }
+[ -d "$PO_DIR" ] || { log_fail "no orchestrator checkout at $PO_DIR"
+  log_fix "git clone <the fleet repo> $PO_DIR  # or set HARBOR_SCOPE_FLEET_CONTROLLER"; log_end || :; exit 1; }
+command -v jq >/dev/null 2>&1 || { log_fail "jq is required and is not on PATH"; log_fix "$(pkg_hint jq)"; log_end || :; exit 1; }
+
+FLEET="$(cd "$PO_DIR" && "$CLI" snapshot --json 2>/dev/null || true)"
+COUNT="$(printf '%s' "$FLEET" | jq 'length' 2>/dev/null || echo 0)"
+if [ "$COUNT" -eq 0 ]; then
+  log_fail "the fleet is EMPTY as read from $PO_DIR: refusing to report 'nothing to do' (an empty answer is a tooling failure, not a clean estate)"
+  log_fix "cd $PO_DIR && $CLI snapshot --json  # check fleet.yaml and that the CLI runs there"
+  log_end || :; exit 1
+fi
+
+# Permissive spellings (contracts/marker.md), anchored at column 0 so an indented `context:` (another block's key) is not matched; the KEY is matched, not the value, because any value means "already declared". Either key declares it (harbor#963).
+# Removed notes: docs/explanation/code-cases/bin-scope-marker-backfill.md
+KEY_RE='^[[:space:]]*["'"'"']?(context|scope)["'"'"']?[[:space:]]*:'
+KEY_RE_TOP='^["'"'"']?(context|scope)["'"'"']?[[:space:]]*:'
+
+log_head "fleet: $COUNT governed repos (read from $PO_DIR)"
+[ "$APPLY" -eq 1 ] || log_note "DRY RUN — nothing is written; to write: sh $0 --apply"
+
+ROWS="$(mktemp "${TMPDIR:-/tmp}/marker-backfill.XXXXXX")"
+trap 'rm -f "$ROWS"' EXIT INT TERM HUP
+printf '%s' "$FLEET" | jq -r '.[] | "\(.descriptor.name)\t\(.descriptor.path)\t\(.descriptor.config_root)"' > "$ROWS"
+while IFS="$(printf '\t')" read -r name path root; do
+  cfg="$path/$root/config.yaml"
+  if [ ! -f "$cfg" ] || [ -L "$cfg" ]; then
+    log_warn "$name: no readable non-symlink config at $cfg"
+    continue
+  fi
+  if /usr/bin/grep -Eq "$KEY_RE_TOP" "$cfg"; then
+    _kl="$(/usr/bin/grep -Em1 "$KEY_RE_TOP" "$cfg")"
+    log_ok "$name: already declares $(printf '%s' "$_kl" | sed -E 's/^["'"'"']?([a-z]+).*/\1/'): $(printf '%s' "$_kl" | sed 's/.*:[[:space:]]*//' | tr -d '"'"'")"
+    continue
+  fi
+  # An indented `context:` is a different key; report and leave it rather than write a second, confusable one.
+  if /usr/bin/grep -Eq "$KEY_RE" "$cfg"; then
+    log_warn "$name: has an INDENTED context: or scope: key; resolve by hand"
+    log_fix "vi $cfg  # make the key top-level, or remove it"
+    continue
+  fi
+  dirty=""
+  if git -C "$path" rev-parse --git-dir >/dev/null 2>&1; then
+    [ -n "$(git -C "$path" status --porcelain 2>/dev/null)" ] && dirty="dirty"
+  fi
+  if [ -n "$dirty" ] && [ "$INCLUDE_DIRTY" -eq 0 ]; then
+    log_warn "$name: WOULD WRITE, but the tree is dirty"
+    log_fix "git -C $path status --short  # commit or stash, then rerun (or pass --include-dirty)"
+    continue
+  fi
+  # Must never rewrite the LIVE config: this has no `--live` gate (lint D2 exempts it for that reason), so this refusal makes the exemption true. Resolved with `cd -P` so symlinked and `..` routes cannot slip past a string compare.
+  _cfgdir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+  _cfgdir_phys="$(CDPATH= cd -P -- "$_cfgdir" 2>/dev/null && pwd -P || printf '%s' "$_cfgdir")"
+  _target_phys="$(CDPATH= cd -P -- "$(dirname "$cfg")" 2>/dev/null && pwd -P || printf '%s' "$path")"
+  case "$_target_phys/" in
+    "$_cfgdir_phys"/*)
+      log_warn "$name: REFUSED — resolves inside the config dir ($_cfgdir_phys)"
+      continue ;;
+  esac
+  if [ "$APPLY" -eq 0 ]; then
+    log_note "$name: would prepend \"scope: project\" to ${cfg#"$HOME"/}"
+    continue
+  fi
+  # Prepending is not always the top (PR #96): a descriptor may open with `%YAML`/`%TAG` directives or a `---` marker, and a key written above them becomes a separate first document or sits before a directive. Insert after the document start; comments and blanks before it are skipped, and a `---` after content is a second document.
+  _ins=0; _n=0
+  while IFS= read -r _l; do
+    _n=$((_n + 1))
+    case "$_l" in
+      ---|"--- "*|"---	"*) _ins=$_n; break ;;
+      "%"*|"#"*|"") continue ;;
+      *) break ;;
+    esac
+  done < "$cfg"
+  tmp="$cfg.helm-backfill.$$"
+  if [ "$_ins" -gt 0 ]; then
+    { head -n "$_ins" "$cfg"; printf 'scope: project\n'; tail -n "+$((_ins + 1))" "$cfg"; } > "$tmp"
+  else
+    { printf 'scope: project\n'; cat "$cfg"; } > "$tmp"
+  fi
+  mv "$tmp" "$cfg"
+  log_ok "$name: wrote scope: project"
+done < "$ROWS"
+
+log_note "yard specifically: its .claude/config.yaml is a byte-hashed committed mirror, so a splice there needs 'just sync-claude' in the same change or tests/contracts/test_claude_dir_sync.py goes red"
+log_end; exit $?

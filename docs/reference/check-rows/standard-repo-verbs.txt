@@ -1,0 +1,4 @@
+watches: **whether each governed repo's justfile carries the task verbs its kind requires** (harbor#1428, #1423 T18.5), by the fleet audit (`projects-orchestrator`, `audit` category `verbs`), which calls the repo's vendored `lint-name.sh --check repo-kind <dir>` and reports `name.repo-verb` findings from `standards/naming/verbs.tsv`
+schedule: not scheduled here: the fleet audit's own run (`fleet audit`); falsifier: `sh tests/lint/name/name.test.sh`
+notifies: the fleet audit report, one finding per missing verb with its severity warn
+red: a repo lacks a verb its `.agents/config.yaml` `repo-kind` requires, with no `repo-verb:<id>` row in its `naming-exemptions.tsv`. Falsifier: the fleet suite `tests/audit/fleet/test_audit_verbs.py` (a fixture justfile without `test` is red) and `sh tests/lint/name/name.test.sh`. Disable: drop the `verbs` probe from the fleet audit; the lint half is `name.repo-verb` in `controls.tsv`

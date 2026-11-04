@@ -1,0 +1,98 @@
+# enforcement.tsv (harbor#1028) — the enforcement matrix: one row per clause x moment x control, with the mode it runs in.
+#
+# WHY THIS FILE EXISTS. The constitution says "a mechanism that does not reach the moment of use is the same wish with more machinery",
+# and nothing recorded which moment each rule reaches. A row joins a clause (policy/clauses.tsv) to the control that enforces it
+# (standards/naming/controls.tsv), the moment that control binds and the mode it runs in; `judgment` is a moment, counted and never hidden.
+# bin/policy-check.sh --enforcement judges the rows; --gen enforcement renders docs/policy/enforcement.md from them.
+#
+# standard_version: 2.0.0
+#
+# COLUMNS  id clause moment mode control since promoted_by checkable_at later_why
+#   id            <clause>/<control>, or <clause>/judgment
+#   clause        a policy/clauses.tsv id
+#   moment        terms.tsv class moment, the closed set earliest first: write (admission) > session (injection) > commit (git hooks)
+#                 > pr (the required CI check) > merge (backstop) > schedule (a registered check) > deploy (floor verify) > judgment
+#   mode          shadow | warn | block, equal to the control's controls.tsv mode; - for judgment. Born shadow or warn
+#   control       a controls.tsv id, or - for judgment. The red proof is that row's red_proof: joined, never copied here
+#   since         the date this pair entered its present mode, or - when it predates the register
+#   promoted_by   who promoted the pair to its present mode (a person), grandfathered (a block that predates the register), or -
+#   checkable_at  the earliest moment the clause can be checked, a person's claim
+#   later_why     why the pair binds later than checkable_at, or - when it does not
+#
+# PROMOTION is one cell in a person's PR, allowed only after the pair went red once (the control's red_proof names the suite that
+# watched it) and ran 28 days in a lower mode. RETIREMENT deprecates the clause or control with a successor, never deletes the row.
+id	clause	moment	mode	control	since	promoted_by	checkable_at	later_why
+pre.1/doc.constitution-abstract	pre.1	pr	block	doc.constitution-abstract	-	grandfathered	pr	-
+pre.2/judgment	pre.2	judgment	-	-	-	-	judgment	-
+n1.1/judgment	n1.1	judgment	-	-	-	-	judgment	-
+n1.2/judgment	n1.2	judgment	-	-	-	-	judgment	-
+n1.3/check.reply-shape	n1.3	schedule	warn	check.reply-shape	-	-	schedule	-
+n1.4/judgment	n1.4	judgment	-	-	-	-	judgment	-
+n1.5/judgment	n1.5	judgment	-	-	-	-	judgment	-
+n2.1/check.reply-shape	n2.1	schedule	warn	check.reply-shape	-	-	schedule	-
+n2.2/judgment	n2.2	judgment	-	-	-	-	judgment	-
+n2.3/judgment	n2.3	judgment	-	-	-	-	judgment	-
+n2.4/judgment	n2.4	judgment	-	-	-	-	judgment	-
+n2.5/judgment	n2.5	judgment	-	-	-	-	judgment	-
+n2.6/judgment	n2.6	judgment	-	-	-	-	judgment	-
+n2.7/judgment	n2.7	judgment	-	-	-	-	judgment	-
+n2.8/judgment	n2.8	judgment	-	-	-	-	judgment	-
+n2.9/judgment	n2.9	judgment	-	-	-	-	judgment	-
+n2.10/check.rule-health	n2.10	schedule	warn	check.rule-health	-	-	schedule	-
+n2.11/judgment	n2.11	judgment	-	-	-	-	judgment	-
+n2.12/judgment	n2.12	judgment	-	-	-	-	judgment	-
+n3.1/judgment	n3.1	judgment	-	-	-	-	judgment	-
+n3.2/judgment	n3.2	judgment	-	-	-	-	judgment	-
+n3.3/judgment	n3.3	judgment	-	-	-	-	judgment	-
+n3.4/judgment	n3.4	judgment	-	-	-	-	judgment	-
+n3.5/judgment	n3.5	judgment	-	-	-	-	judgment	-
+n3.6/judgment	n3.6	judgment	-	-	-	-	judgment	-
+n4.1/admission.external-content-label	n4.1	write	warn	admission.external-content-label	-	-	write	-
+n4.1/context.external-content-is-data	n4.1	session	warn	context.external-content-is-data	-	-	session	-
+n4.2/admission.governance-token	n4.2	write	warn	admission.governance-token	-	-	write	-
+n4.3/judgment	n4.3	judgment	-	-	-	-	judgment	-
+n4.4/judgment	n4.4	judgment	-	-	-	-	judgment	-
+n5.1/judgment	n5.1	judgment	-	-	-	-	judgment	-
+n5.2/judgment	n5.2	judgment	-	-	-	-	judgment	-
+crit.1/judgment	crit.1	judgment	-	-	-	-	judgment	-
+crit.2/judgment	crit.2	judgment	-	-	-	-	judgment	-
+crit.3/judgment	crit.3	judgment	-	-	-	-	judgment	-
+crit.4/judgment	crit.4	judgment	-	-	-	-	judgment	-
+crit.5/judgment	crit.5	judgment	-	-	-	-	judgment	-
+crit.6/judgment	crit.6	judgment	-	-	-	-	judgment	-
+ctx.1/skill.book-current	ctx.1	pr	warn	skill.book-current	-	-	pr	-
+ctx.2/check.memory-route	ctx.2	schedule	warn	check.memory-route	-	-	schedule	-
+ctx.3/judgment	ctx.3	judgment	-	-	-	-	judgment	-
+ctx.4/judgment	ctx.4	judgment	-	-	-	-	judgment	-
+fix.1/doc.counts-in-status-only	fix.1	pr	block	doc.counts-in-status-only	-	grandfathered	pr	-
+fix.2/policy.magnitude-derived	fix.2	pr	block	policy.magnitude-derived	-	grandfathered	pr	-
+fix.2/doc.magnitude-dated	fix.2	pr	block	doc.magnitude-dated	-	grandfathered	pr	-
+fix.3/judgment	fix.3	judgment	-	-	-	-	judgment	-
+fix.4/judgment	fix.4	judgment	-	-	-	-	judgment	-
+fix.5/check.memory-route	fix.5	schedule	warn	check.memory-route	-	-	schedule	-
+fix.5/memory.repo-reachable	fix.5	pr	warn	memory.repo-reachable	-	-	pr	-
+fix.6/drift.check-register	fix.6	pr	warn	drift.check-register	-	grandfathered	pr	-
+fix.7/judgment	fix.7	judgment	-	-	-	-	judgment	-
+fix.8/judgment	fix.8	judgment	-	-	-	-	judgment	-
+fix.9/judgment	fix.9	judgment	-	-	-	-	judgment	-
+mod.1/judgment	mod.1	judgment	-	-	-	-	judgment	-
+mod.2/judgment	mod.2	judgment	-	-	-	-	judgment	-
+mod.3/judgment	mod.3	judgment	-	-	-	-	judgment	-
+idl.1/judgment	idl.1	judgment	-	-	-	-	judgment	-
+idl.2/judgment	idl.2	judgment	-	-	-	-	judgment	-
+ops.1/judgment	ops.1	judgment	-	-	-	-	judgment	-
+ops.2/judgment	ops.2	judgment	-	-	-	-	judgment	-
+ops.3/judgment	ops.3	judgment	-	-	-	-	judgment	-
+ops.4/judgment	ops.4	judgment	-	-	-	-	judgment	-
+ops.5/admission.deliverable-home-loose	ops.5	write	block	admission.deliverable-home-loose	-	grandfathered	write	-
+ops.6/admission.merge-raw	ops.6	write	block	admission.merge-raw	-	grandfathered	write	-
+ops.7/judgment	ops.7	judgment	-	-	-	-	judgment	-
+ops.8/judgment	ops.8	judgment	-	-	-	-	judgment	-
+ops.9/judgment	ops.9	judgment	-	-	-	-	judgment	-
+ops.10/judgment	ops.10	judgment	-	-	-	-	judgment	-
+ops.11/judgment	ops.11	judgment	-	-	-	-	judgment	-
+ops.12/git.no-ai-attribution	ops.12	pr	block	git.no-ai-attribution	-	grandfathered	pr	-
+ops.12/git.commit-message-no-ai-attribution	ops.12	commit	block	git.commit-message-no-ai-attribution	-	grandfathered	commit	-
+ops.12/lint.pr-no-ai-attribution	ops.12	schedule	warn	lint.pr-no-ai-attribution	-	-	schedule	-
+deg.1/judgment	deg.1	judgment	-	-	-	-	judgment	-
+deg.2/judgment	deg.2	judgment	-	-	-	-	judgment	-

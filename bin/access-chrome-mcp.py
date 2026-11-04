@@ -7,18 +7,23 @@ INTERPRETER EXCEPTION: python3, because an MCP server is a JSON-RPC loop over st
 Why a server: a confined Bash command cannot reach the operator's logged-in Chrome (allowLocalBinding stays off), and
 an MCP server runs outside the confinement, so sessions drive Chrome through these tools and never through localhost.
 Each tool is one `harbor chrome` verb (mcp__harbor_chrome__<verb>, hyphens as underscores), so each has its own
-permission entry; there is no server-wide allow. The tool runs bin/browser-agent.sh BESIDE THIS FILE with an argument
+permission entry; there is no server-wide allow. The tool runs bin/access-browser-agent.sh BESIDE THIS FILE with an argument
 list, never a shell string, so every guardrail of the CLI (the verb allowlist, the host allowlist read from
-CONTRACTS/browser-agent-hosts.txt then the private layer's browser-hosts.txt, the upload and filename checks) is the
+contracts/browser-agent-hosts.txt then the private layer's browser-hosts.txt, the upload and filename checks) is the
 one that decides. A project's settings `env` reaches this process too, so the CLI runs under /bin/sh with a fixed PATH
-and only the locale, HOME, TMPDIR and session variables passed on: the CLI's own test seams (HARBOR_PW_CLI, the private
+and only the locale, HOME, TMPDIR and session variables passed on: the CLI's own test seams (HARBOR_ACCESS_PLAYWRIGHT_CLI, the private
 host list) cannot be set from a repo.
 The CLI names its browser session from CLAUDE_CODE_SESSION_ID; without it this process names one per parent session
-(mcp-<ppid>), so two sessions never share a page. `harbor chrome` on the CLI stays for the operator's own terminal."""
-import json, os, subprocess, sys
+(mcp-<ppid>), so two sessions never share a page. `harbor chrome` on the CLI stays for the operator's own terminal.
+
+harbor#1421: this file is now the launcher. Beside it, access-chrome-mcp.ts is the server (one process and one daemon
+connection for the whole session instead of a process chain per call); main() replaces this process with it, under the same
+scrubbed environment, so the registration above does not change. Without bun or the .ts file the loop below is the server,
+as it was, one `access-browser-agent.sh` per call."""
+import json, os, shutil, subprocess, sys
 
 HERE = os.path.dirname(os.path.realpath(__file__))
-AGENT = os.path.join(HERE, 'browser-agent.sh')
+AGENT = os.path.join(HERE, 'access-browser-agent.sh')
 PROTOCOLS = ('2025-06-18', '2025-03-26', '2024-11-05')
 OUT_MAX = 100000
 LONG = {'attach': 900, 'wait-signin': 900}   # both wait on the operator: a click in Chrome, a sign-in
@@ -63,7 +68,7 @@ def session_env():
     env = {k: os.environ[k] for k in KEEP if os.environ.get(k)}
     env['PATH'] = PATH
     if not env.get('CLAUDE_CODE_SESSION_ID'):
-        env['HARBOR_BROWSER_SESSION'] = 'mcp-%d' % os.getppid()
+        env['HARBOR_ACCESS_BROWSER_SESSION'] = 'mcp-%d' % os.getppid()
     return env
 
 def call(name, arguments):
@@ -76,7 +81,7 @@ def call(name, arguments):
     lane = arguments.get('lane')
     if lane is not None:
         if not isinstance(lane, str): return 'lane must be a string', True
-        env['HARBOR_BROWSER_LANE'] = lane   # browser-agent.sh validates it
+        env['HARBOR_ACCESS_BROWSER_LANE'] = lane   # access-browser-agent.sh validates it
     try:
         r = subprocess.run(['/bin/sh', AGENT, verb] + args, env=env, stdin=subprocess.DEVNULL, capture_output=True,
                            text=True, timeout=LONG.get(verb, 180))
@@ -110,7 +115,15 @@ def handle(msg):
         return {'jsonrpc': '2.0', 'id': mid, 'error': {'code': -32601, 'message': 'method not found: %s' % method}}
     return {'jsonrpc': '2.0', 'id': mid, 'result': result}
 
+def exec_bun():   # the session server, in place of this process; returns only when it cannot
+    ts = os.path.join(HERE, 'access-chrome-mcp.ts')
+    bun = shutil.which('bun', path=PATH + ':' + os.path.expanduser('~/.bun/bin'))
+    if bun is None or not os.path.isfile(ts): return
+    try: os.execve(bun, [bun, ts], session_env())
+    except OSError: return
+
 def main():
+    exec_bun()
     for line in sys.stdin:
         line = line.strip()
         if not line: continue
