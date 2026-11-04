@@ -27,12 +27,15 @@ case "\$1 \$2" in
                   case "\$_tail" in
                     branches/*) cat "$PROT"; exit "\$(cat "$PROT_RC")" ;;
                     check-runs/*/annotations) cat "$ANNOT" 2>/dev/null; exit 0 ;;
+                    pulls/*/files) [ -f "$T_TMP/files.fail" ] && { echo "gh: Not Found (HTTP 404)" >&2; exit 1; }
+                                   cat "$PRFILES" 2>/dev/null; exit 0 ;;
                     contents/*) _c="\${_tail#contents/}"; _ref="\${_c#*\?ref=}"; _pp="\${_c%%\?*}"
                                 cat "$TREE/\$_ref/\$_pp" 2>/dev/null && exit 0; echo "gh: Not Found (HTTP 404)" >&2; exit 1 ;;
                   esac
                 fi
                 echo "gh: Not Found (HTTP 404)" >&2; exit 1 ;;
-  "pr diff")    cat "$PRFILES" 2>/dev/null; exit 0 ;;
+  "pr diff")    [ -f "$T_TMP/diff.406" ] && { echo "HTTP 406: the diff exceeded the maximum number of files (300)" >&2; exit 1; }
+                cat "$PRFILES" 2>/dev/null; exit 0 ;;
   "pr view")    cat "$PRMETA" 2>/dev/null; exit 0 ;;
   "pr merge")   echo "merged"; exit 0 ;;
 esac
@@ -372,6 +375,28 @@ amend red-amendment '[]'; rm -rf "$TREE/head"
 t_eq "an unreadable head is refused, not waved through" 1 "$(rc 156)"
 printf 'bin/x.sh\n' > "$PRFILES"
 t_eq "a PR that touches no policy file is not asked" 0 "$(rc 156)"
+# A diff over 300 files is refused by GitHub (HTTP 406); the files API still names them (harbor-core#88).
+: > "$T_TMP/diff.406"
+amend red-amendment '[]'
+t_eq "a too-large diff still reaches the amendment gate: no label, refused" 1 "$(rc 156)"
+t_has "...for the missing label, not an unreadable list" "$(mc 156)" "amendment:approved label"
+amend red-amendment '[{"name":"amendment:approved"}]'
+t_eq "...and the label lets it through" 0 "$(rc 156)"
+: > "$T_TMP/files.fail"
+t_eq "a too-large diff whose file list is unreadable too is refused" 1 "$(rc 156)"
+t_has "...as unknown" "$(mc 156)" "could not be read"
+rm -f "$T_TMP/files.fail"; seq 1 3000 | sed 's#^#f/#' > "$PRFILES"
+t_eq "a list at the files API's 3000 cap may be cut short: refused" 1 "$(rc 156)"
+rm -f "$T_TMP/diff.406"
+# A first publish: the base has no policy/ (404), so every clause is new and the label is asked; a missing head is still refused.
+amend red-amendment '[]'; rm -rf "$TREE/base"
+t_eq "a base without the constitution is a first publish: no label, refused" 1 "$(rc 156)"
+t_has "...for the missing label" "$(mc 156)" "amendment:approved label"
+amend red-amendment '[{"name":"amendment:approved"}]'; rm -rf "$TREE/base"
+t_eq "...and the label lets it through" 0 "$(rc 156)"
+amend red-amendment '[{"name":"amendment:approved"}]'; rm -rf "$TREE/head"
+t_eq "a head without the constitution is unreadable, not empty: refused even with the label" 1 "$(rc 156)"
+t_has "...as unknown" "$(mc 156)" "could not be read"
 : > "$PRFILES"; rm -f "$PRMETA"
 
 t_done

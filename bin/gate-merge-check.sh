@@ -277,7 +277,14 @@ fi
 # `amendment:approved` label, which an agent cannot apply (the disposition-label refusal, harbor#855). --force does not lift it:
 # an override of a red check is a person's call recorded in the commit; an amendment is the person's approval itself.
 AMEND_REFUSE=""
-if _afiles="$(gh pr diff "$PR" --repo "$R" --name-only 2>/dev/null)"; then
+# GitHub refuses a diff over 300 files (HTTP 406); the files API lists up to 3000, and a list at that cap may be cut short.
+pr_files() {
+  gh pr diff "$PR" --repo "$R" --name-only 2>/dev/null && return 0
+  _pf="$(gh api "repos/$R/pulls/$PR/files" --paginate -q '.[].filename' 2>/dev/null)" || return 1
+  [ "$(printf '%s\n' "$_pf" | grep -c .)" -lt 3000 ] || return 1
+  printf '%s\n' "$_pf"
+}
+if _afiles="$(pr_files)"; then
   if printf '%s\n' "$_afiles" | grep -qxE 'policy/(constitution\.md|clauses\.tsv)'; then
     _ameta="$(gh pr view "$PR" --repo "$R" --json baseRefOid,headRefOid,labels 2>/dev/null || printf '')"
     _abase="$(printf '%s' "$_ameta" | jq -r '.baseRefOid // empty' 2>/dev/null || printf '')"
@@ -288,7 +295,10 @@ if _afiles="$(gh pr diff "$PR" --repo "$R" --name-only 2>/dev/null)"; then
       if [ "$_side" = base ]; then _aref="$_abase"; else _aref="$_ahead"; fi
       mkdir -p "$_atmp/$_side/policy"
       for _af in constitution.md clauses.tsv; do
-        [ -n "$_aref" ] && gh api "repos/$R/contents/policy/$_af?ref=$_aref" -H "Accept: application/vnd.github.raw" > "$_atmp/$_side/policy/$_af" 2>/dev/null || _aok=0
+        [ -n "$_aref" ] && gh api "repos/$R/contents/policy/$_af?ref=$_aref" -H "Accept: application/vnd.github.raw" > "$_atmp/$_side/policy/$_af" 2>"$_atmp/err" && continue
+        # A base without the file is a first publish: every clause is new, so the label is still asked (harbor-core#88).
+        [ "$_side" = base ] && [ -n "$_aref" ] && grep -q 'HTTP 404' "$_atmp/err" && { : > "$_atmp/$_side/policy/$_af"; continue; }
+        _aok=0
       done
     done
     if [ "$_aok" -eq 0 ]; then
