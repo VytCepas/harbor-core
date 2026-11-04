@@ -3,8 +3,8 @@
 #
 #   sh bin/doc-refs.sh                     judge this checkout's entry docs
 #   sh bin/doc-refs.sh --root <dir>        judge that checkout (a CI job in a sibling repo points this at itself)
-#   sh bin/doc-refs.sh --fleet             judge every checkout in the registry (roots.sh --repos), one count row each
-#   sh bin/doc-refs.sh --self-test         every fixture yields exactly its expected ids, and both rules went red
+#   sh bin/doc-refs.sh --fleet             judge every checkout in the registry (scope-roots.sh --repos), one count row each
+#   sh bin/doc-refs.sh --self-test         every fixture yields exactly its expected ids, and every rule went red
 #   sh bin/doc-refs.sh --list              each rule's id, mode and title, read from standards/naming/controls.tsv
 #   sh bin/doc-refs.sh --help
 #
@@ -26,12 +26,13 @@
 # THE RULES, each a standards/naming/controls.tsv row whose mode is read there and never here:
 #   doc.refs-resolve   a path an entry doc cites does not exist where it says
 #   doc.refs-stale     an entry doc has N or more commits behind the paths it cites
+#   doc.refs-ghost     a gate (bin/, hooks/, contracts/, .github/, ...) runs `sh bin/X` and X is not in the tree (item 11)
 #
-# WHAT IS CITED. Entry docs: README.md, AGENTS.md, CLAUDE.md, HANDOFF.md and docs/context-map*.md. In them:
+# WHAT IS CITED. Entry docs: README.md, AGENTS.md, CLAUDE.md, docs/how-to/handover.md and docs/context-map*.md. In them:
 #   [text](target)       a link target, relative to the doc, then to the root. URLs, mailto and #anchors are not paths.
 #   `a/b.ext`            a backticked span that is one path with a slash: it ends in an extension or a slash, or
 #                        its first segment is a top-level entry of the checkout. A bare `FILE.md` with no slash is
-#                        PROSE (bin/cited-paths.awk argues it: guessing is how a rule gets muted).
+#                        PROSE (bin/doc-cited-paths.awk argues it: guessing is how a rule gets muted).
 #   `sh bin/x.sh -v`     a word inside a longer span counts only when it starts at a top-level entry and ends in a file
 #                        extension or a slash.
 #   `<system>:path`      a path in another checkout; <system> must be a registry id. Its checkout absent here (CI has
@@ -48,14 +49,15 @@
 # N commits ago. A cited directory is a claim that it exists, not about its contents, so it does not count here.
 # A shallow clone cannot count, so it is NOT JUDGED rather than zero.
 #
-# DELIBERATELY ONE FILE (DOCTRINE/modularity.md): the extractor, the resolver and the staleness count share one list of
+# DELIBERATELY ONE FILE (docs/explanation/modularity.md): the extractor, the resolver and the staleness count share one list of
 # cited paths; split, each would re-read the docs and could disagree about what was cited.
 set -eu
 
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 SELF="$HERE/$(basename -- "$0")"
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2   # stdout carries --format findings, the fleet table and --list; the log goes to stderr
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 log_init doc-refs
 
 usage() { awk 'NR < 2 { next } /^# DELIBERATELY/ || !/^#/ { exit } { sub(/^# ?/, ""); print }' "$SELF"; }
@@ -97,7 +99,7 @@ CONTROLS="$REG/controls.tsv"
 T="$(mktemp -d "${TMPDIR:-/tmp}/doc-refs.XXXXXX")"
 trap 'rm -rf "$T"' EXIT INT TERM HUP
 
-IDS="doc.refs-resolve doc.refs-stale"
+IDS="doc.refs-resolve doc.refs-stale doc.refs-ghost"
 
 mode_of() {
   awk -F'\t' -v id="$1" '/^#/ { next } $1 == id { m = $2; if (m == "advisory" || m == "inform") m = "warn"; print m; exit }' "$CONTROLS"
@@ -122,8 +124,8 @@ common_dir() { # <dir>
 # $T/systems: id TAB checkout (empty when the registry knows the id and this box has no checkout for it)
 build_systems() {
   : > "$T/systems"
-  if [ "$NOREG" = 0 ] && [ -f "$HERE/roots.sh" ]; then
-    sh "$HERE/roots.sh" --repos 2>/dev/null > "$T/systems" || : > "$T/systems"
+  if [ "$NOREG" = 0 ] && [ -f "$HERE/scope-roots.sh" ]; then
+    sh "$HERE/scope-roots.sh" --repos 2>/dev/null > "$T/systems" || : > "$T/systems"
   fi
   printf '%s\n' "$SYSMAP" | awk -F= 'NF >= 2 { id = $1; d = $0; sub(/^[^=]*=/, "", d); printf "%s\t%s\n", id, d }' > "$T/sysmap"
   # --system wins over the registry for the same id
@@ -207,7 +209,7 @@ judge() {
   _list="$T/doclist"
   if [ -n "$DOCS" ]; then printf '%s\n' "$DOCS" | grep . > "$_list" || : > "$_list"
   else
-    ( cd "$ROOT" && for _f in README.md AGENTS.md CLAUDE.md HANDOFF.md docs/context-map*.md; do [ -f "$_f" ] && printf '%s\n' "$_f"; done ) > "$_list" || :
+    ( cd "$ROOT" && for _f in README.md AGENTS.md CLAUDE.md docs/how-to/handover.md docs/context-map*.md; do [ -f "$_f" ] && printf '%s\n' "$_f"; done ) > "$_list" || :
   fi
   while IFS= read -r _d; do
     [ -f "$ROOT/$_d" ] || continue
@@ -215,7 +217,7 @@ judge() {
     awk -F'\t' -v DOC="$_d" -v TOPS="$_tops" -v SYSS="$_syss" "$EXTRACT_AWK" "$ROOT/$_d" >> "$T/cands" 2> "$T/skip" || { unchecked "the extractor (awk) failed on $_d, so nothing was judged" "sh $SELF --doc $_d"; }
     _skipped=$((_skipped + $(awk -F'\t' '$1 == "skipped" { n += $2 } END { print n + 0 }' "$T/skip")))
   done < "$_list"
-  [ "$_docs" -gt 0 ] || unchecked "no entry doc to judge in $ROOT (README.md AGENTS.md CLAUDE.md HANDOFF.md docs/context-map*.md), so nothing was judged" "sh $SELF --doc <file>"
+  [ "$_docs" -gt 0 ] || unchecked "no entry doc to judge in $ROOT (README.md AGENTS.md CLAUDE.md docs/how-to/handover.md docs/context-map*.md), so nothing was judged" "sh $SELF --doc <file>"
   # one row per (doc, token): the first line, how many times it was cited
   LC_ALL=C sort -t '	' -k1,1 -k7,7 -k2,2n "$T/cands" | awk -F'\t' '
     { k = $1 SUBSEP $7; if (k in n) { n[k]++; if ($4 == 0) ex[k] = 0; next } n[k] = 1; ex[k] = $4; row[k] = $0; ord[++c] = k }
@@ -272,6 +274,22 @@ judge() {
     done < "$_list"
   fi
   [ -z "$_stale_nj" ] || _nj=$((_nj + 1))
+  # doc.refs-ghost (harbor#996 item 11): a gate that RUNS `sh bin/X` where X is not in the tree. A leading comment, an `example:`
+  # line and prose (*.md) are not calls. Whole-checkout runs only: --doc judges the docs it was given.
+  _ghost=0
+  : > "$T/ghost.cand"
+  if [ -z "$DOCS" ] && git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+    git -C "$ROOT" grep -n -I -E '(sh|bash) +(\./)?bin/[A-Za-z0-9][A-Za-z0-9._-]*\.(sh|py|awk|mjs)' -- bin hooks githooks contracts .github justfile launchd runners systemd tools policy ':(exclude)*.md' > "$T/ghost.grep" 2>/dev/null || :
+    awk -F: '{ f = $1; l = $2; t = substr($0, length(f) + length(l) + 3)
+        if (t ~ /^[ \t]*(#|\/\/)/ || t ~ /example:/) next
+        while (match(t, /(sh|bash) +(\.\/)?bin\/[A-Za-z0-9][A-Za-z0-9._-]*\.(sh|py|awk|mjs)/)) {
+          c = substr(t, RSTART, RLENGTH); sub(/^(sh|bash) +(\.\/)?/, "", c); printf "%s\t%s\t%s\n", f, l, c; t = substr(t, RSTART + RLENGTH) } }' "$T/ghost.grep" > "$T/ghost.cand" || :
+    while IFS='	' read -r _gf _gl _gp; do
+      [ -e "$ROOT/$_gp" ] && continue
+      _ghost=$((_ghost + 1))
+      printf 'doc.refs-ghost\t%s:%s -> %s\t%s:%s runs `%s`, which does not exist\n' "$_gf" "$_gl" "$_gp" "$_gf" "$_gl" "$_gp" >> "$T/findings"
+    done < "$T/ghost.cand"
+  fi
   LC_ALL=C sort -t '	' -k1,1 -k2,2 "$T/findings" -o "$T/findings"
   _dang="$(awk -F'\t' '$1 == "doc.refs-resolve"' "$T/findings" | wc -l | tr -d ' ')"
   _stl="$(awk -F'\t' '$1 == "doc.refs-stale"' "$T/findings" | wc -l | tr -d ' ')"
@@ -299,7 +317,7 @@ run() {
     esac
     _n=$((_n + 1))
   done < "$T/judged"
-  _sum="$_docs doc(s), $_refs citation(s): $_dang dangling, $_stl stale, $_exempt example-marked, $_prod produced (git-ignored), $_skipped fenced line(s) not read"
+  _sum="$_docs doc(s), $_refs citation(s): $_dang dangling, $_stl stale, $_ghost ghost command(s), $_exempt example-marked, $_prod produced (git-ignored), $_skipped fenced line(s) not read"
   if [ -s "$T/absent" ]; then _sum="$_sum; not judged, system checkout absent: $(LC_ALL=C sort -u "$T/absent" | tr '\n' ' ' | sed 's/ $//')"; fi
   [ -z "$_stale_nj" ] || _sum="$_sum; staleness not judged ($_stale_nj)"
   # "ok" is for a run that looked at everything it was pointed at; a partial look is a note, never a clean pass
@@ -373,7 +391,7 @@ fi
 if [ "$ACTION" = fleet ]; then
   [ -f "$CONTROLS" ] || unchecked "no controls.tsv at $CONTROLS, so the modes are unknown" "ls $REG"
   build_systems
-  [ -s "$T/systems" ] || unchecked "the registry lists no checkout (sh bin/roots.sh --repos), so no repo was judged" "sh $HERE/roots.sh --repos"
+  [ -s "$T/systems" ] || unchecked "the registry lists no checkout (sh bin/scope-roots.sh --repos), so no repo was judged" "sh $HERE/scope-roots.sh --repos"
   log_head "fleet: every registry checkout"
   printf 'system\tdocs\tcitations\tdangling\tstale\tnot-judged\n'
   _tot_d=0; _tot_s=0; _skip=0

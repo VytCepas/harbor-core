@@ -17,7 +17,7 @@ scenario() { # the bus the kill cases share: a session, its Monitor, a PR, then 
   ev 2026-10-06T01:02:00Z pr.opened VytCepas/harbor#9; ev 2026-10-06T01:03:00Z session.stop S1
 }
 fold() { # the real script, on this bus and this state; combined output
-  env HARBOR_EVENT_DIR="$EV" HARBOR_OBLIGATION_DIR="$OB" HARBOR_STATUS_OBLIGATION_NOW="$NOW" HARBOR_STATUS_OBLIGATION_ON_OVERDUE=off \
+  env HARBOR_EVENT_DIR="$EV" HARBOR_STATUS_OBLIGATION_DIR="$OB" HARBOR_STATUS_OBLIGATION_NOW="$NOW" HARBOR_STATUS_OBLIGATION_ON_OVERDUE=off \
     ${KINDS:+HARBOR_STATUS_OBLIGATION_KINDS="$KINDS"} ${FAULT:+HARBOR_STATUS_OBLIGATION_FAULT="$FAULT"} sh "$BIN" fold 2>&1
 }
 cur() { jq -r --arg id "$1" ".obligations[] | select(.id == \$id) | .$2" "$OB/current.json"; }
@@ -54,7 +54,7 @@ t_eq "or add a line" 5 "$(lines)"
 
 t_section "resume after kill: nothing lost, nothing doubled"
 scenario; mkdir -p "$T_TMP/ref/ev" "$T_TMP/ref/ob"; cp "$EV/$D" "$T_TMP/ref/ev/$D"
-HARBOR_EVENT_DIR="$T_TMP/ref/ev" HARBOR_OBLIGATION_DIR="$T_TMP/ref/ob" HARBOR_STATUS_OBLIGATION_NOW="$NOW" sh "$BIN" fold >/dev/null 2>&1
+HARBOR_EVENT_DIR="$T_TMP/ref/ev" HARBOR_STATUS_OBLIGATION_DIR="$T_TMP/ref/ob" HARBOR_STATUS_OBLIGATION_NOW="$NOW" sh "$BIN" fold >/dev/null 2>&1
 t_eq "the unkilled reference holds five transitions" 5 "$(wc -l < "$T_TMP/ref/ob/ledger.jsonl" | tr -d ' ')"
 FAULT=before-offset; ( fold ) >/dev/null 2>&1; rc=$?; unset FAULT
 t_eq "killed after the ledger, before the offset" 137 "$rc"
@@ -114,17 +114,17 @@ fresh; ev 2026-10-06T01:00:00Z deploy.start prod; ev 2026-10-06T01:01:00Z pr.mer
 out="$(fold)"; t_eq "no row opens for an event no row names" 0 "$(count)"
 t_has "the unmatched events are counted, not silently dropped" "$out" "2 matched no register row"
 ev 2026-10-06T01:03:00Z pr.opened VytCepas/harbor#2; fold >/dev/null; t_eq "a registered kind opens" 1 "$(count)"
-fresh; KINDS="$T_TMP/kinds-nopr.tsv"; grep -v '^pr	' "$T_ROOT/CONTRACTS/obligation-kinds.tsv" > "$KINDS"
+fresh; KINDS="$T_TMP/kinds-nopr.tsv"; grep -v '^pr	' "$T_ROOT/contracts/obligation-kinds.tsv" > "$KINDS"
 ev 2026-10-06T01:00:00Z pr.opened VytCepas/harbor#2; ev 2026-10-06T01:01:00Z session.start S1; fold >/dev/null
 t_eq "a kind deleted from the register stops opening" 1 "$(count)"
 ev 2026-10-06T01:02:00Z session.stop SX; fold >/dev/null
 t_eq "a terminal event with no open row creates none" 0 "$(cur session:SX state | grep -c .)"
-fresh; KINDS="$T_TMP/kinds-bad.tsv"; sed 's/	4h	data-session/	4h/' "$T_ROOT/CONTRACTS/obligation-kinds.tsv" > "$KINDS"
+fresh; KINDS="$T_TMP/kinds-bad.tsv"; sed 's/	4h	data-session/	4h/' "$T_ROOT/contracts/obligation-kinds.tsv" > "$KINDS"
 ev 2026-10-06T01:00:00Z session.start S1; out="$(fold)"; rc=$?
 t_eq "a malformed register row is refused with exit 2" 2 "$rc"
 t_has "and named by its line" "$out" "columns, want 9"
 t_eq "and nothing is written" no "$([ -e "$OB/ledger.jsonl" ] && echo yes || echo no)"
-fresh; KINDS="$T_TMP/kinds-dl.tsv"; sed 's/	4h	data-session/	soon	data-session/' "$T_ROOT/CONTRACTS/obligation-kinds.tsv" > "$KINDS"
+fresh; KINDS="$T_TMP/kinds-dl.tsv"; sed 's/	4h	data-session/	soon	data-session/' "$T_ROOT/contracts/obligation-kinds.tsv" > "$KINDS"
 ev 2026-10-06T01:00:00Z session.start S1; out="$(fold)"; rc=$?
 t_eq "a deadline that is not a duration is refused" 2 "$rc"
 
@@ -163,7 +163,7 @@ fresh; ev 2026-10-06T01:00:00Z session.start S1; NOW=2027-10-06T00:00:00Z; fold 
 t_eq "a kind with no deadline is never overdue: a session, a year on, against the REAL register (harbor#1115)" open "$(cur session:S1 state)"
 t_eq "and carries an empty deadline_ts" "" "$(cur session:S1 deadline_ts)"
 fresh; KINDS="$T_TMP/kinds-24h.tsv"; TAB="$(printf '\t')"   # the control: the register as it was before #1115, a session due in 24h
-awk 'BEGIN { FS = OFS = "\t" } $1 == "session" { $4 = "24h" } { print }' "$T_ROOT/CONTRACTS/obligation-kinds.tsv" > "$KINDS"
+awk 'BEGIN { FS = OFS = "\t" } $1 == "session" { $4 = "24h" } { print }' "$T_ROOT/contracts/obligation-kinds.tsv" > "$KINDS"
 t_eq "the control register really gives a session 24h" 1 "$(grep -c "^session${TAB}.*${TAB}24h${TAB}self" "$KINDS")"
 ev 2026-10-06T01:00:00Z session.start S1; NOW=2026-10-07T02:00:00Z; fold >/dev/null
 t_eq "CONTROL: under that register the same session, 25h on, is overdue (so the test above can fail)" overdue "$(cur session:S1 state)"

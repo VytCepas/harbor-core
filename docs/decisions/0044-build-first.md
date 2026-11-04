@@ -3,7 +3,10 @@ kind: decision-record
 status: accepted
 alias: D-44
 date: 2026-10-04
+supersedes: -
+superseded_by: -
 source: research/standard-draft-2-final.md
+owner: @VytCepas
 ---
 
 # Build first

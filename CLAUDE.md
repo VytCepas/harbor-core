@@ -16,4 +16,4 @@ When compacting this conversation, preserve:
 - Files modified in this session (list by path)
 - Test results: pass/fail count and any failing test names
 - Unresolved errors or lint failures
-- Any decisions made that are not yet committed to `docs/` or `CONTRACTS/`
+- Any decisions made that are not yet committed to `docs/` or `contracts/`
