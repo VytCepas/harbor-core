@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # The session.* reaction handlers (harbor#1043, #1044): notify, save-now, ci-watch, cleanup-report and check each act on
 # their own event and state and on nothing else; cleanup-report kills and removes nothing; ci-watch validates the PR link
-# before it reaches a command. The handlers run as the dispatcher runs them: `sh <script>` with HARBOR_EVENT in the env.
+# before it reaches a command. The handlers run as the dispatcher runs them: `sh <script>` with HARBOR_EVENT_JSON in the env.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 B="$T_ROOT/bin"; T="$T_TMP"; ST="$T/state"; REPO="$T/repo"
 export HARBOR_STATUS_DIR="$ST"
@@ -13,7 +13,7 @@ STUB
 chmod +x "$T_BIN/osascript"
 ev() { # <kind> <subject> <title> [link] — a bus line as the dispatcher hands it over
   jq -nc --arg k "$1" --arg s "$2" --arg t "$3" --arg l "${4:-}" '{id:"20261010T000000Z-1-abcd",kind:$k,subject:$s,data:({session_id:$s,title:$t}+(if $l == "" then {} else {link:$l} end))}'; }
-fire() { HARBOR_EVENT="$1" sh "$B/$2" > "$T/out" 2>&1; RC=$?; }  # <event-line> <handler>
+fire() { HARBOR_EVENT_JSON="$1" sh "$B/$2" > "$T/out" 2>&1; RC=$?; }  # <event-line> <handler>
 banners() { cat "$ST/banners" 2>/dev/null; }
 reset() { rm -f "$ST/banners" "$ST/reactions.log"; }
 wait_banner() { n=0; while [ ! -s "$ST/banners" ] && [ "$n" -lt 50 ]; do sleep 0.1; n=$((n + 1)); done; }
@@ -36,36 +36,30 @@ t_has "a session.save-now event is logged under its rule id" "$(cat "$ST/reactio
 reset; fire "$(ev session.state abcdef123 done)" session-save-now.sh; t_eq "a session.state event: nothing logged" no "$([ -e "$ST/reactions.log" ] && echo yes || echo no)"
 t_eq "it sends no banner" "" "$(banners)"
 
-t_section "session-ci-watch: a detached wait-for on a validated PR link, then one verdict"
-cat > "$T_BIN/wait-for" <<'STUB'
-#!/bin/sh
-printf '%s\n' "$*" > "$HARBOR_STATUS_DIR/wait-for.args"
-exit "${WF_RC:-0}"
+t_section "session-ci-watch: a detached ci-wait on a validated PR link, then one verdict (harbor#1367)"
+cat > "$T/ci-wait.sh" <<'STUB'
+printf '%s\n' "$*" > "$HARBOR_STATUS_DIR/ci-wait.args"
+echo "acme/widgets#9: stub"; exit "${CW_RC:-0}"
 STUB
-cat > "$T_BIN/gh" <<'STUB'
-#!/bin/sh
-cat "$HARBOR_STATUS_DIR/gh.out"
-STUB
-chmod +x "$T_BIN/wait-for" "$T_BIN/gh"
-export HARBOR_SESSION_WAIT_FOR="$T_BIN/wait-for"
+export HARBOR_SESSION_CI_WAIT="$T/ci-wait.sh"
 LINK=https://github.com/acme/widgets/pull/9
-reset; rm -f "$ST/wait-for.args"; printf 'pass\n' > "$ST/gh.out"; fire "$(ev pr.opened abcdef123 '' "$LINK")" session-ci-watch.sh; wait_banner
+reset; rm -f "$ST/ci-wait.args"; fire "$(ev pr.opened abcdef123 '' "$LINK")" session-ci-watch.sh; wait_banner
 t_eq "the handler returns at once, exit 0" 0 "$RC"
-t_has "wait-for was given a deadline and the checks command" "$(cat "$ST/wait-for.args")" "-t 1800"
-t_has "...naming the repo and PR number" "$(cat "$ST/wait-for.args")" "gh pr checks 9 -R acme/widgets"
-t_has "green checks: the banner says so" "$(banners)" "checks green|PR #9"
-reset; printf 'pass\nfail\n' > "$ST/gh.out"; fire "$(ev pr.opened abcdef123 '' "$LINK")" session-ci-watch.sh; wait_banner
-t_has "a failing check: red" "$(banners)" "checks red"
-reset; export WF_RC=3; fire "$(ev pr.opened abcdef123 '' "$LINK")" session-ci-watch.sh; wait_banner
-t_has "wait-for gave up (exit 3): says still running" "$(banners)" "still running"; unset WF_RC
-for bad in 'https://github.com/acme/widgets/pull/9;touch x' 'https://github.com/a;b/c/pull/1' 'https://evil.example/acme/widgets/pull/9' 'https://github.com/acme/widgets/issues/9' 'https://github.com/acme/widgets/pull/'; do
-  reset; rm -f "$ST/wait-for.args"; fire "$(ev pr.opened abcdef123 '' "$bad")" session-ci-watch.sh; sleep 0.3
-  t_eq "link '$bad' never reaches wait-for" no "$([ -e "$ST/wait-for.args" ] && echo yes || echo no)"
+t_eq "ci-wait was given the PR and the deadline" "acme/widgets#9 --timeout 1800" "$(cat "$ST/ci-wait.args")"
+t_has "green (exit 0): the banner says so" "$(banners)" "checks green|PR #9"
+t_has "...and the log carries ci-wait's own line" "$(cat "$ST/reactions.log")" "acme/widgets#9: stub"
+for c in "1 checks red" "3 still running" "4 checks unreadable"; do
+  reset; CW_RC="${c%% *}" fire "$(ev pr.opened abcdef123 '' "$LINK")" session-ci-watch.sh; wait_banner
+  t_has "ci-wait exit ${c%% *}: '${c#* }'" "$(banners)" "${c#* }"
 done
-reset; rm -f "$ST/wait-for.args"; fire "$(ev session.state abcdef123 done "$LINK")" session-ci-watch.sh; sleep 0.3
-t_eq "a non-pr.opened event is ignored" no "$([ -e "$ST/wait-for.args" ] && echo yes || echo no)"
-HARBOR_SESSION_WAIT_FOR="$T/missing" fire "$(ev pr.opened abcdef123 '' "$LINK")" session-ci-watch.sh
-t_has "no wait-for installed: said in the log, exit 0" "$(cat "$ST/reactions.log"):$RC" "not watched"
+for bad in 'https://github.com/acme/widgets/pull/9;touch x' 'https://github.com/a;b/c/pull/1' 'https://evil.example/acme/widgets/pull/9' 'https://github.com/acme/widgets/issues/9' 'https://github.com/acme/widgets/pull/'; do
+  reset; rm -f "$ST/ci-wait.args"; fire "$(ev pr.opened abcdef123 '' "$bad")" session-ci-watch.sh; sleep 0.3
+  t_eq "link '$bad' never reaches ci-wait" no "$([ -e "$ST/ci-wait.args" ] && echo yes || echo no)"
+done
+reset; rm -f "$ST/ci-wait.args"; fire "$(ev session.state abcdef123 done "$LINK")" session-ci-watch.sh; sleep 0.3
+t_eq "a non-pr.opened event is ignored" no "$([ -e "$ST/ci-wait.args" ] && echo yes || echo no)"
+HARBOR_SESSION_CI_WAIT="$T/missing" fire "$(ev pr.opened abcdef123 '' "$LINK")" session-ci-watch.sh
+t_has "no ci-wait installed: said in the log, exit 0" "$(cat "$ST/reactions.log"):$RC" "not watched"
 
 t_section "session-cleanup-report: lists, and kills and removes nothing"
 git -C "$REPO" init -q && git -C "$REPO" config user.email t@t && git -C "$REPO" config user.name t
@@ -101,4 +95,5 @@ rm -f "$ST/sessions/abcdef123.check"; git -C "$REPO" update-ref refs/remotes/ori
 t_eq "no changed files against origin/main: no verdict" no "$([ -e "$ST/sessions/abcdef123.check" ] && echo yes || echo no)"
 git -C "$REPO" reset -q --hard HEAD~1; fire "$(ev session.state abcdef123 waiting-operator)" session-check.sh
 t_eq "a state other than done: no verdict" no "$([ -e "$ST/sessions/abcdef123.check" ] && echo yes || echo no)"
+t_red check.event.session-notify check.event.session-ci-watch check.event.session-cleanup-report check.event.session-check   # the falsifier this suite names for them (harbor#1422)
 t_done

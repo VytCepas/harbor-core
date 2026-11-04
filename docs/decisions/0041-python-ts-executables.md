@@ -3,7 +3,10 @@ kind: decision-record
 status: accepted
 alias: D-41
 date: 2026-10-04
+supersedes: -
+superseded_by: -
 source: research/standard-draft-2-final.md
+owner: @VytCepas
 ---
 
 # Python/TS executables

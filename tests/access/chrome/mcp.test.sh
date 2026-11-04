@@ -1,15 +1,15 @@
 #!/usr/bin/env sh
 # access-chrome-mcp.py (harbor#1301): `harbor chrome` as the MCP server harbor_chrome. A copy of the server beside a
-# stub browser-agent.sh proves the mapping (one verb per tool, arguments as a list, the session it names); the real
+# stub access-browser-agent.sh proves the mapping (one verb per tool, arguments as a list, the session it names); the real
 # server beside the real CLI proves the CLI's own host allowlist still decides, with nothing reaching Chrome.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-SRV="$T_ROOT/bin/access-chrome-mcp.py"; AG="$T_ROOT/bin/browser-agent.sh"
+SRV="$T_ROOT/bin/access-chrome-mcp.py"; AG="$T_ROOT/bin/access-browser-agent.sh"
 command -v python3 >/dev/null 2>&1 || { t_fail "python3 is required (the server's interpreter)"; t_done; }
 X="$T_TMP/x"; mkdir -p "$X"; cp "$SRV" "$X/access-chrome-mcp.py"
-cat > "$X/browser-agent.sh" <<'EOF'
+cat > "$X/access-browser-agent.sh" <<'EOF'
 for a in "$@"; do printf 'arg=%s\n' "$a"; done
-printf 'session=%s lane=%s\n' "${HARBOR_BROWSER_SESSION:-}" "${HARBOR_BROWSER_LANE:-}"
-printf 'path=%s private=%s\n' "$PATH" "${HARBOR_BROWSER_PRIVATE_HOSTS:-none}"
+printf 'session=%s lane=%s\n' "${HARBOR_ACCESS_BROWSER_SESSION:-}" "${HARBOR_ACCESS_BROWSER_LANE:-${HARBOR_BROWSER_LANE:-}}"
+printf 'path=%s private=%s\n' "$PATH" "${HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS:-${HARBOR_BROWSER_PRIVATE_HOSTS:-none}}"
 case "$1" in fail) echo 'FAIL: refused by the stub' >&2; exit 1 ;; esac
 EOF
 # rpc <server> <line>... -> the server's replies, one JSON object per line
@@ -52,17 +52,17 @@ R="$(printf '%s\n' "$(callj snapshot '{}')" | CLAUDE_CODE_SESSION_ID=abc123 pyth
 t_has "with a session id the CLI names the session itself" "$(text "$R")" "session= lane="
 R="$(rpc "$X/access-chrome-mcp.py" "$(callj snapshot '{"lane":"two"}')")"
 t_has "a lane reaches the CLI, which validates it" "$(text "$R")" "lane=two"
-cp "$X/browser-agent.sh" "$X/ba.keep"; printf 'echo "FAIL: refused by the stub" >&2; exit 1\n' > "$X/browser-agent.sh"
+cp "$X/access-browser-agent.sh" "$X/ba.keep"; printf 'echo "FAIL: refused by the stub" >&2; exit 1\n' > "$X/access-browser-agent.sh"
 R="$(rpc "$X/access-chrome-mcp.py" "$(callj goto '{"args":["https://x.example/"]}')")"
 t_eq "a refusal by the CLI is an error result" true "$(iserr "$R")"
 t_has "...carrying the CLI's own words" "$(text "$R")" "FAIL: refused by the stub"
-cp "$X/ba.keep" "$X/browser-agent.sh"
+cp "$X/ba.keep" "$X/access-browser-agent.sh"
 t_eq "an unknown tool is an error result" true "$(iserr "$(rpc "$X/access-chrome-mcp.py" "$(callj run_code '{}')")")"
 t_eq "args that are not strings are an error result" true "$(iserr "$(rpc "$X/access-chrome-mcp.py" "$(callj goto '{"args":[1]}')")")"
-t_eq "HARBOR_BROWSER_AGENT in the environment names no other CLI" "arg=hosts" \
-  "$(text "$(printf '%s\n' "$(callj hosts '{}')" | HARBOR_BROWSER_AGENT=/bin/false python3 -I "$X/access-chrome-mcp.py")" | sed -n 1p)"
+t_eq "HARBOR_ACCESS_BROWSER_AGENT (or the old HARBOR_BROWSER_AGENT) in the environment names no other CLI" "arg=hosts" \
+  "$(text "$(printf '%s\n' "$(callj hosts '{}')" | HARBOR_ACCESS_BROWSER_AGENT=/bin/false HARBOR_BROWSER_AGENT=/bin/false python3 -I "$X/access-chrome-mcp.py")" | sed -n 1p)"
 
-R="$(printf '%s\n' "$(callj hosts '{}')" | env -u CLAUDE_CODE_SESSION_ID PATH="$T_TMP/evil:$PATH" HARBOR_BROWSER_PRIVATE_HOSTS=/tmp/evil-hosts python3 -I "$X/access-chrome-mcp.py")"
+R="$(printf '%s\n' "$(callj hosts '{}')" | env -u CLAUDE_CODE_SESSION_ID PATH="$T_TMP/evil:$PATH" HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS=/tmp/evil-hosts HARBOR_BROWSER_PRIVATE_HOSTS=/tmp/evil-hosts python3 -I "$X/access-chrome-mcp.py")"
 t_has "a repo's PATH does not reach the CLI: it gets the fixed one" "$(text "$R")" "path=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin private="
 t_has "...nor its seam that widens the host list" "$(text "$R")" "private=none"
 t_section "a malformed request is an error reply, and the server keeps serving"
@@ -75,5 +75,5 @@ R="$(rpc "$SRV" "$(callj goto '{"args":["https://evil.example/"]}')")"
 t_eq "a host off the allowlist is refused" true "$(iserr "$R")"
 t_has "...by the CLI's host check" "$(text "$R")" "host refused: 'https://evil.example/'"
 R="$(rpc "$SRV" "$(callj hosts '{}')")"
-t_has "CONTROL: the allowlist the refusal read" "$(text "$R")" "CONTRACTS/browser-agent-hosts.txt"
+t_has "CONTROL: the allowlist the refusal read" "$(text "$R")" "contracts/browser-agent-hosts.txt"
 t_done

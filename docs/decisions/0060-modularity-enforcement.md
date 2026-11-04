@@ -3,7 +3,10 @@ kind: decision-record
 status: accepted
 alias: D-60
 date: 2026-10-04
+supersedes: -
+superseded_by: -
 source: research/10-hierarchy-modularity.md
+owner: @VytCepas
 ---
 
 # Modularity enforcement
