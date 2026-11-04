@@ -1,0 +1,4 @@
+watches: the yard repo's nightly workflow (harbor#1433): the full Python support-window suite on every supported version once a day, coverage in one process; informs, never gates a merge
+schedule: **not scheduled on this box: GitHub Actions runs it at 03:00 UTC daily, `yard/.github/workflows/nightly.yml`** (a bridge row: the repo keeps its own register fragment at `harbor-pack/checks.md` once it ships one, and this row is deleted the day that fragment names the workflow, since an id twice refuses the composed register); falsifier: `sh tests/standard/inventory/schedule.test.sh`
+notifies: GitHub's failed-run notice to whoever last edited the workflow; nothing of harbor's
+red: a version-specific break in the suite. Detail: the run in the yard repo's Actions tab. Disable: `gh workflow disable nightly.yml` in a yard checkout

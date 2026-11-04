@@ -1,0 +1,11 @@
+# harbor#617 — the Linux/WSL2 twin of launchd/com.harbor.status.usage-sessions.plist, docs/reference/checks.md row `status.usage-sessions`.
+# Install and disable: docs/reference/checks.md, "Platforms". WSL2 needs [boot] systemd=true in /etc/wsl.conf.
+[Unit]
+Description=Harbor check usage-sessions: per-session token usage
+
+[Service]
+Type=oneshot
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/bin/sh %h/.claude/bin/status-usage-aggregate.sh --sessions --apply --live
+IOSchedulingClass=idle
+Nice=10
