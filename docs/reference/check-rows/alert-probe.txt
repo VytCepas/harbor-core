@@ -1,0 +1,4 @@
+watches: harbor edge trigger and sink; notifies on state *changes* only
+schedule: every 900s
+notifies: desktop
+red: a watched condition changed

@@ -92,12 +92,12 @@ t_hasnt "the mutant goes on to judge #21" "$(cat "$T_TMP/out")" "is not the head
 SHIP=''
 
 t_section "opt-in and the register are read from origin's default branch, never the working tree (red-proof, review P7 and P8)"
-fx_world; fx_git web "opt out" git rm -q .agents/ship.conf; fx_pr web 21 page.html hi
+fx_world; fx_git web "opt out" git rm -q .agents/ship.config; fx_pr web 21 page.html hi
 t_eq "manifest deleted on origin main, still in the checkout: exit 0" 0 "$(ship night)"
 t_eq "...and its ship:auto PR is not merged" "" "$(fx_merged)"
-t_has "the checkout still carries the stale manifest" "$(cat "$T_TMP/port/web/.agents/ship.conf")" "repo acme/web"
-fx_mutant "MO opt-in read from the working tree" 's|git -C "\$1" show "\$2:.agents/ship.conf" > "\$_rd/.agents/ship.conf"|cp "$1/.agents/ship.conf" "$_rd/.agents/ship.conf"|'
-fx_world; fx_git web "opt out" git rm -q .agents/ship.conf; fx_pr web 21 page.html hi; ship night >/dev/null
+t_has "the checkout still carries the stale manifest" "$(cat "$T_TMP/port/web/.agents/ship.config")" "repo acme/web"
+fx_mutant "MO opt-in read from the working tree" 's|git -C "\$1" show "\$2:.agents/ship.config" > "\$_rd/.agents/ship.config"|cp "$1/.agents/ship.config" "$_rd/.agents/ship.config"|'
+fx_world; fx_git web "opt out" git rm -q .agents/ship.config; fx_pr web 21 page.html hi; ship night >/dev/null
 t_eq "the mutant merges a repo that opted out" "merge web #21 " "$(fx_merged)"
 SHIP=''
 reg_world() { fx_world; fx_git web "protect docs" sh -c 'printf "docs/*\tdocs\treview\n" >> .agents/protected-paths.tsv'; fx_pr web 22 docs/x.md d; }
@@ -115,8 +115,8 @@ fx_world; fx_base api; fx_pr web 21 page.html hi; touch "$KILL"
 t_eq "exit 0: a switch is not a failure" 0 "$(ship night)"
 t_eq "nothing merged" "" "$(fx_merged)"
 t_has "the report says why" "$(fx_report)" "stopped: the kill switch $KILLP is on"
-t_eq "the receipt stands down" stood-down "$(jq -r .status "$CLAUDE_CONFIG_DIR/cache/checks/ship.json")"
-t_has "checks.log says so" "$(cat "$T_TMP/cache/checks.log")" "[check:ship] 2026-10-06T23:00:00Z stood-down night"
+t_eq "the receipt stands down" stood-down "$(jq -r .status "$CLAUDE_CONFIG_DIR/cache/checks/deploy.fleet.json")"
+t_has "checks.log says so" "$(cat "$T_TMP/cache/checks.log")" "[check:deploy.fleet] 2026-10-06T23:00:00Z stood-down night"
 fx_world; fx_base api; fx_pr web 21 page.html hi; fx_pr web 22 more.html m; fx_pr api 11 src/a.txt a; touch "$SF/kill-after-merge"
 ship night >/dev/null
 t_eq "switched on after the first merge: the second PR and the next repo wait" "merge api #11 " "$(fx_merged)"

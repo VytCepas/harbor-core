@@ -13,7 +13,7 @@
 # Idempotent: a rewritten job is an expression, so a second --apply finds nothing. POSIX sh and awk, no yq.
 set -eu
 HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-. "$HERE/log-lib.sh"
+. "$HERE/library-log.sh"
 log_init ci-runs-on
 
 case "${1:-}" in -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); print; next } {exit}' "$0"; exit 0 ;; esac
@@ -117,12 +117,18 @@ fi
 log_note "applied: $nj job(s) in $nrw file(s) rewritten; nothing committed, nothing pushed"
 SLUG="$(git -C "$DIR" remote get-url origin 2>/dev/null | sed -e 's#^.*github\.com[:/]##' -e 's#\.git$##' || :)"
 [ -n "$SLUG" ] || SLUG="<owner/repo>"
+# The printed names are checked against the standard first (harbor#978); advisory, the commands print anyway.
+BR="ci/1060-runs-on-adopt"; SUBJ="ci(ci): read vars.CI_RUNS_ON so the repo can move to local CI"
+for _c in "branch $BR" "commit $SUBJ"; do
+  _v="$(sh "$HERE/lint-name.sh" --check "${_c%% *}" "${_c#* }" 2>&1)" \
+    || log_warn "name: $(printf '%s\n' "$_v" | grep -E '^ +(FAIL|WARN):' | head -1)"
+done
 cat <<EOF
 Next, by hand (this tool never commits or pushes):
-  git -C $DIR switch -c ci/runs-on-adopt
+  git -C $DIR switch -c $BR
   git -C $DIR add .github/workflows
-  git -C $DIR commit -m 'ci: read vars.CI_RUNS_ON so the repo can move to local CI (harbor#1060)'
-  git -C $DIR push -u origin ci/runs-on-adopt
-  gh pr create -R $SLUG --head ci/runs-on-adopt --title 'ci: read vars.CI_RUNS_ON (harbor#1060)' --body 'Hosted label stays the fallback while CI_RUNS_ON is unset.'
+  git -C $DIR commit -m '$SUBJ (harbor#1060)'
+  git -C $DIR push -u origin $BR
+  gh pr create -R $SLUG --head $BR --title '$SUBJ' --body 'Hosted label stays the fallback while CI_RUNS_ON is unset.'
 EOF
 log_end

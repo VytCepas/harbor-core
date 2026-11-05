@@ -14,8 +14,8 @@
 set -eu
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH='' cd -P -- "$HERE" && pwd -P)"
-. "$HERE/log-lib.sh"
-. "$HERE/gate-lib.sh"
+. "$HERE/library-log.sh"
+. "$HERE/library-gate.sh"
 log_init gate-approve
 usage() { sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; }
 _hex40() { case "$1" in *[!0-9abcdef]*) return 1 ;; esac; [ "${#1}" -eq 40 ]; }
@@ -49,7 +49,7 @@ if [ "$M" != "$S" ]; then
   gate_ledger approve-deploy "$R $S" "refused-stale main=$M"
   die "$R $GATE_MAIN is now at $M, not the approved $S: an approval covers one exact commit" "$GATE_BIN/gate-approve.sh deploy $R $M"
 fi
-[ -n "$(gate_conf "$GATE_ROOT" apply)" ] || die "$R has no apply line in .agents/ship.conf on $GATE_MAIN: nothing to deploy" "gh api repos/$R/contents/.agents/ship.conf"
+[ -n "$(gate_conf "$GATE_ROOT" apply)" ] || die "$R has no apply line in .agents/ship.config on $GATE_MAIN: nothing to deploy" "gh api repos/$R/contents/.agents/ship.config"
 [ -f "$GATE_BIN/deploy-fleet.sh" ] || die "the runner $GATE_BIN/deploy-fleet.sh is not installed" "harbor deploy --apply --live   # from a terminal"
 # The one-shot token (contract §5a.4): the runner takes --approved only while it exists, and consumes it. A session
 # cannot write <cfg>/.helm-approvals, and guard-bash refuses --approved typed in a session, so only this click makes one.
