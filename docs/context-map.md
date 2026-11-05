@@ -32,7 +32,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | contract | contracts/ | system | source | versioned | 39 |
 | decision-record | docs/decisions/ | element | source | dated | 93 |
 | hook | hooks/ | component | source | living | 48 |
-| skill | skills/ | component | source | living | 40 |
+| skill | skills/ | component | source | living | 41 |
 | fixture | fixtures/ | element | source | living | 438 |
 | registry | registries/ | component | source | versioned | 69 |
 | test | tests/ | component | source | living | 511 |
@@ -65,7 +65,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `policy/` | 3 | 1 | 1 |
 | `registries/` | 1 | 1 | 1 |
 | `runners/` | 2 | 1 | 1 |
-| `skills/` | 40 | 8 | 1 |
+| `skills/` | 41 | 8 | 1 |
 | `standards/` | 31 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `tests/` | 511 | 27 | 1 |
@@ -81,7 +81,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | admission | control-plane | 27 | 87 | 0 | 6 | 0 | 172 |
 | agent | control-plane | 1 | 2 | 0 | 8 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
-| audit | control-plane | 8 | 14 | 0 | 10 | 0 | 2 |
+| audit | control-plane | 8 | 14 | 0 | 11 | 0 | 2 |
 | check | observability | 2 | 5 | 0 | 1 | 58 | 0 |
 | ci | coordination | 17 | 46 | 2 | 20 | 1 | 7 |
 | context | control-plane | 7 | 14 | 1 | 3 | 0 | 42 |
@@ -205,6 +205,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `launchd/com.harbor.audit.collector.plist`
 - `launchd/com.harbor.audit.otlp-receiver.plist`
 - `launchd/com.harbor.audit.triage.plist`
+- `skills/audit-claims/SKILL.md`
 - `skills/audit-review-fanout/SKILL.md`
 
 ### check

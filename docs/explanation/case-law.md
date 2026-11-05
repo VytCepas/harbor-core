@@ -55,6 +55,17 @@ Stated by the operator on 2026-10-16. That day the operator deployed twice and
 reported done while four PRs still waited on the approval buried in a long hand-over
 list. Memory `do-everything-allowed-paste-only-necessary` is the long form.
 
+## Second reader
+
+On 2026-11-05 the operator asked whether harbor had roles for agents. The answer said
+it defined none, having looked for a `.claude/agents/` folder in two places;
+`contracts/agents.tsv` had held seven roles since 2026-10-10 (harbor#445). The claim
+was a negative, closed on one search by the agent that made it. The operator then
+asked for answers that are close to certain. harbor#542 had already put a
+fresh-context reviewer at the done boundary, for code only, and cites research that
+judges favour their own output. The `verify` role and `audit-claims` carry the same
+idea to answers (harbor#1478).
+
 ## Tilde cd
 
 Measured 2026-09-04 in a client repo: `cd ~/<repo> && grep … <relative path>` was

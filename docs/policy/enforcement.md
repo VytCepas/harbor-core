@@ -25,7 +25,7 @@ Which moment each clause binds at, and in which mode (policy/enforcement.tsv x p
 
 | strength | clauses | judgment only | share |
 |---|---|---|---|
-| constitutional | 29 | 24 | 82% |
+| constitutional | 30 | 25 | 83% |
 | policy | 40 | 30 | 75% |
 
 ## Clause x moment
@@ -51,6 +51,7 @@ Which moment each clause binds at, and in which mode (policy/enforcement.tsv x p
 | n2.10 | constitutional |  |  |  |  |  | warn |  |  |
 | n2.11 | constitutional |  |  |  |  |  |  |  | judgment |
 | n2.12 | constitutional |  |  |  |  |  |  |  | judgment |
+| n2.13 | constitutional |  |  |  |  |  |  |  | judgment |
 | n3.1 | constitutional |  |  |  |  |  |  |  | judgment |
 | n3.2 | constitutional |  |  |  |  |  |  |  | judgment |
 | n3.3 | constitutional |  |  |  |  |  |  |  | judgment |
