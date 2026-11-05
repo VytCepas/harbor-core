@@ -19,13 +19,12 @@ cmd_of() { case "$1" in # the source command each panel must name
   checks) echo 'cache/checks.log' ;; guards) echo 'bin/admission-observe-report.sh --fp' ;; context) echo 'bin/context-budget.sh --check' ;;
   memory) echo 'bin/memory-route.sh --live' ;; backlog) echo 'bin/standard-issue-label.sh --audit' ;;
   fleet) echo 'projects-orchestrator snapshot --json' ;; sessions) echo 'bin/context-peers.sh --json' ;;
-  worktrees) echo 'bin/worktree.sh list' ;; prs) echo 'gh pr list --json' ;; obligations) echo 'bin/status-obligations.sh show --json' ;; esac; }
+  worktrees) echo 'bin/worktree.sh list --quick' ;; prs) echo 'gh pr list --json' ;; obligations) echo 'bin/status-obligations.sh show --json' ;; esac; }
 ob_panel() { ui_panel "$1" obligations; }
 ob_view() { printf '%s' "$1" | sed 's/<div data-view=/\n<div data-view=/g' | grep "^<div data-view=\"$2\""; }
 ob_titles() { printf '%s' "$1" | grep -o '<td>fixture [^<]*</td>' | sed 's/<[^>]*>//g' | tr '\n' ','; }
 tiles_unavailable() { printf '%s\n' "$1" | grep -o 'class="value">unavailable<' | wc -l | tr -d ' '; }
 want_n="$(printf '%s\n' $PANEL_IDS | wc -l | tr -d ' ')"
-
 ui_tree 0; ui_start good --idle 300
 PAGE="$(ui_get /)"
 t_section "every panel is present, names its source command and when it ran"
@@ -193,6 +192,7 @@ t_has "gh too" "$(ui_panel "$MP" prs)" "unavailable: gh is not installed on this
 t_has "and the obligations script, for the Obligations tab: unavailable, never 0" "$(ob_panel "$MP")" "unavailable: bin/status-obligations.sh is not on this box"
 t_eq "the panels that could still run did" yes "$(ui_panel "$MP" register | grep -q '<td>alpha-check</td>' && echo yes)"
 ui_stop
+
 OB_NEW='{"id":"pr:acme/widgets#9","kind":"pr","subject":"acme/widgets#9","repo":"widgets","owner":"operator","title":"fixture brand new","link":"","opened_ts":"2026-10-06T01:29:00Z","deadline_ts":"","state":"open","closed_by":"","closed_ts":"","age_s":60}'
 OB_ROWS_4="[$OB_NEW,${OB_ROWS_3#\[}"
 OB_SRC_EV_DOWN='{"events":{"ok":false,"reason":"bus unreadable","ts":"2026-10-06T01:30:00Z"},"gh":{"ok":true,"reason":"","ts":"2026-10-06T01:30:00Z"}}'

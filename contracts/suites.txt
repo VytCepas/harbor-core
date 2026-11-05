@@ -255,6 +255,7 @@ tests/lint/conventions/mktemp-template.test.sh
 tests/status/fleet-snapshot/watch.test.sh
 tests/access/secret/seam.test.sh
 tests/status/console/guards.test.sh
+tests/status/console/lifecycle.test.sh
 tests/status/console/panels.test.sh
 tests/event/producer/hook.test.sh
 tests/event/producer/git.test.sh
