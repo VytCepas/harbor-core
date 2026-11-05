@@ -45,20 +45,7 @@ const logSummary = (r: Parsed) => {
 };
 const dash = (v: unknown) => (v === undefined || v === null || v === "" ? "unknown" : v);
 
-// The fleet CLI's name is a roots.tsv row (HARBOR_SCOPE_FLEET_CONTROLLER_BIN), the same one every bin/ script reads, so a rename of fleet's console script is one row
-// there and not a second edit here. Read once, when the table is built; a row that does not resolve to a plain command name falls back to the shipped name.
-export const fleetCliDefault = "projects-orchestrator";
-export function fleetCli(root: string): string {
-  try {
-    const r = Bun.spawnSync(["sh", `${root}/bin/scope-roots.sh`, "--get", "HARBOR_SCOPE_FLEET_CONTROLLER_BIN"], { cwd: root, stdin: "ignore", stdout: "pipe", stderr: "ignore", timeout: 10_000 });
-    const name = new TextDecoder().decode(r.stdout).trim().split("/").pop() ?? "";
-    return r.exitCode === 0 && /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name) ? name : fleetCliDefault;
-  } catch {
-    return fleetCliDefault;
-  }
-}
-
-export function makePanels(root: string, cfg: string, home: string, fleet: string = fleetCli(root)): readonly Panel[] {
+export function makePanels(root: string, cfg: string, home: string): readonly Panel[] {
   const sh = (script: string, ...args: string[]) => ["sh", `${root}/bin/${script}`, ...args];
   const short = (p: unknown) => (typeof p === "string" && p.startsWith(home) ? "~" + p.slice(home.length) : p);
   return Object.freeze([
@@ -80,11 +67,11 @@ export function makePanels(root: string, cfg: string, home: string, fleet: strin
       view: { kind: "text" }, headline: logSummary },
     { id: "memory", title: "Memory", tab: "state", argv: sh("memory-route.sh", "--live"), okExits: [0, 1], timeoutMs: 60_000,
       view: { kind: "text", quiet: /^\s+ok\s/ },
-      headline: (r) => lastMatch(r.text, /^\[check:memory\.route\] (.*)$/)?.[1] },
+      headline: (r) => lastMatch(r.text, /^\[check:memory-route\] (.*)$/)?.[1] },
     { id: "backlog", title: "Backlog", tab: "state", argv: sh("standard-issue-label.sh", "--audit"), okExits: [0, 1], timeoutMs: 90_000,
       note: "open issues missing an axis, and themes whose members cite no sibling",
       view: { kind: "text" }, headline: (r) => { const n = countOf(r.text, /^\s+#\d+/); return n > 0 ? `${n} flagged` : undefined; } },
-    { id: "fleet", title: "Fleet", tab: "work", argv: [fleet, "snapshot", "--json"], okExits: [0], timeoutMs: 90_000,
+    { id: "fleet", title: "Fleet", tab: "work", argv: ["projects-orchestrator", "snapshot", "--json"], okExits: [0], timeoutMs: 90_000,
       view: { kind: "json-table", rows: (j) => (Array.isArray(j) ? j : []), columns: [
         { label: "project", get: (r) => dash(r.descriptor?.name) },
         { label: "branch", get: (r) => dash(r.status?.branch) },
@@ -98,9 +85,8 @@ export function makePanels(root: string, cfg: string, home: string, fleet: strin
         { label: "kind", get: (r) => dash(r.kind) }, { label: "tree", get: (r) => dash(short(r.tree)) },
         { label: "branch", get: (r) => dash(r.branch) }] },
       headline: (r) => (Array.isArray(r.json) ? `${r.json.length} live` : undefined) },
-    { id: "worktrees", title: "Worktrees", tab: "work", // --quick: the full merge test is ~12 s a worktree on a busy box and 70 worktrees outlast any timeout
-      argv: sh("worktree.sh", "list", "--quick"), okExits: [0], timeoutMs: 60_000,
-      view: { kind: "text" }, headline: (r) => { const n = countOf(r.text, /^(SKIP|COLLECT|PRUNE)\s/); return n > 0 ? `${n} worktrees` : undefined; } },
+    { id: "worktrees", title: "Worktrees", tab: "work", argv: sh("worktree.sh", "list"), okExits: [0], timeoutMs: 60_000,
+      view: { kind: "text" }, headline: (r) => { const n = countOf(r.text, /^(SKIP|COLLECT|KEEP)\s/); return n > 0 ? `${n} worktrees` : undefined; } },
     { id: "prs", title: "Pull requests", tab: "work", argv: ["gh", "pr", "list", "--json", "number,title,headRefName,isDraft,updatedAt", "--limit", "40"],
       okExits: [0], timeoutMs: 30_000,
       view: { kind: "json-table", rows: (j) => (Array.isArray(j) ? j : []), columns: [
@@ -118,10 +104,6 @@ const firstLine = (s: string) => (s.split("\n").map((l) => l.trim()).find(Boolea
 const unavailable = (reason: string, t0: number, exit: number | null = null, text = ""): Result =>
   ({ status: "unavailable", reason, exit, text, ranAt: t0, ms: Date.now() - t0 });
 
-// Process groups of sources still running: stopping the server must reach them, or a ctrl-c or the idle stop orphans them (detached = own group).
-const live = new Set<number>();
-export function killLive() { for (const g of live) { try { process.kill(-g, "SIGKILL"); } catch { /* already gone */ } } live.clear(); } // guard:shutdown
-
 // The ONE place a process is started. It takes a Panel from the table, never an argv from anywhere else.
 export async function runPanel(p: Panel, root: string, capMs = Infinity): Promise<Result> {
   const limit = Math.min(p.timeoutMs, capMs);
@@ -134,8 +116,6 @@ export async function runPanel(p: Panel, root: string, capMs = Infinity): Promis
   } catch {
     return unavailable(`${p.argv[0]} is not installed on this box`, t0);
   }
-  live.add(proc.pid);
-  proc.exited.finally(() => live.delete(proc.pid));
   let timer: ReturnType<typeof setTimeout> | undefined;
   const deadline = new Promise<"timeout">((r) => { timer = setTimeout(() => r("timeout"), limit); });
   const done = Promise.all([new Response(proc.stdout as ReadableStream).text(), new Response(proc.stderr as ReadableStream).text(), proc.exited]);

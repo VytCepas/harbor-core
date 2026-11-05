@@ -2,8 +2,6 @@
 # worktree.sh — session worktrees: create, retire, collect (CI-4, harbor#150)
 #
 #   sh worktree.sh list             every worktree, its branch, and its verdict
-#   sh worktree.sh list --quick     the same without the squash-merge test (minutes per worktree on a busy box); a branch
-#                                   not merged by ancestry or tree equality reads "merge state not checked", never COLLECT
 #   sh worktree.sh new <branch>     a worktree under $PORT_ROOT/.worktrees/<repo>/ on a fresh branch off origin/main
 #   sh worktree.sh retire <name>    remove one — refuses dirty, held or unmerged
 #   sh worktree.sh gc               remove every clean, unheld, merged worktree
@@ -54,7 +52,7 @@ MAIN="$(git -C "$ROOT" worktree list --porcelain 2>/dev/null | sed -n '1s/^workt
 [ -n "$MAIN" ] || MAIN="$ROOT"
 REPO_NAME="$(basename -- "$MAIN")"
 BASE="${HARBOR_CI_BASE:-origin/main}"
-APPLY=0; FORCE=0; QUICK=0
+APPLY=0; FORCE=0
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2   # stdout is the verdict table and the gc plan; the log goes to stderr
 . "$DIR/library-log.sh"
@@ -73,14 +71,11 @@ for a in ${@+"$@"}; do
   case "$a" in
     --apply) APPLY=1 ;;
     --force) FORCE=1 ;;
-    --quick) QUICK=1 ;;
     -h|--help) usage; exit 0 ;;
     -*) printf 'worktree: unknown flag: %s\n' "$a" >&2; exit 2 ;;
     *)  ARG="$a" ;;
   esac
 done
-# --quick skips a safety test, so it is only for the read-only listing: a retire or a gc never takes it.
-[ "$QUICK" -eq 0 ] || [ "$CMD" = list ] || { printf 'worktree: --quick is for list only\n' >&2; exit 2; }
 case "$CMD" in
   ''|-h|--help) usage; exit 0 ;;
   list|new|retire|gc) ;;
@@ -152,13 +147,6 @@ is_merged() { # <sha>
   [ "$(sh "$DIR/gate-merged-check.sh" --repo "$ROOT" "$BASE" "$1" 2>/dev/null | awk '{print $1; exit}')" = "merged" ]
 }
 
-# --quick: the two cheap tests of gate-merged-check.sh (ancestry, tree equality). Its squash tests rebuild a patch-id index per
-# merge-base, ~12 s a worktree on a loaded box, so 70 worktrees outlast any panel timeout. Only a "yes" is a verdict.
-is_merged_quick() { # <sha>
-  git -C "$ROOT" rev-parse --verify -q "$BASE" >/dev/null 2>&1 || return 1
-  git -C "$ROOT" merge-base --is-ancestor "$1" "$BASE" 2>/dev/null || git -C "$ROOT" diff --quiet "$BASE" "$1" -- 2>/dev/null
-}
-
 # ── the worktree table ──────────────────────────────────────────────────────
 # `--porcelain` rather than the human table: the human one aligns columns and
 # has no stable field boundary, and a path with a space in it would be parsed
@@ -206,9 +194,7 @@ verdict() { # <path> <sha> <branch> -> sets V and WHY
   if is_held "$1";        then WHY="a live session is working here";    return; fi
   if is_dirty "$1";       then WHY="uncommitted or untracked changes";  return; fi
   case "$3" in '(detached)'|'') WHY="detached HEAD — no branch to judge"; return ;; esac
-  if [ "$QUICK" -eq 1 ]; then
-    is_merged_quick "$2" || { WHY="$3: merge state not checked (--quick)"; return; }
-  elif ! is_merged "$2";  then WHY="$3 is not merged into $BASE";       return; fi
+  if ! is_merged "$2";    then WHY="$3 is not merged into $BASE";       return; fi
   V=COLLECT; WHY="clean, unheld, and merged into $BASE"
 }
 

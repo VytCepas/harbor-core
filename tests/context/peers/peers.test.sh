@@ -119,13 +119,4 @@ t_has "the fixture registry carries the injection" "$(cat "$TMP/sessions/hostile
 _hostile="$(run --peers)"
 t_hasnt "the registry name does not reach additionalContext" "$_hostile" "$INJ"
 t_has "the peer line survives without the name" "$_hostile" "$LIVE_PID"
-
-t_section "ps spells lstart in the operator's locale (en_NZ prints 'Wed  4 Nov 09:40:44 2026'); the reader asks for C, so a session is not lost"
-rm -f "$TMP/sessions"/*.json 2>/dev/null; rm -rf "$TMP/peers"
-PS_DAYFIRST="$(date -r "$NOW_EPOCH" '+%a %e %b %T %Y' 2>/dev/null || date -d "@$NOW_EPOCH" '+%a %e %b %T %Y')"
-printf '#!/bin/sh\nfor a in "$@"; do case "$a" in %s) if [ "${LC_ALL:-}" = C ]; then echo "%s"; else echo "%s"; fi; exit 0 ;; esac; done\nexit 1\n' \
-  "$LIVE_PID" "$PS_LOCAL" "$PS_DAYFIRST" > "$TMP/stub/ps"; chmod +x "$TMP/stub/ps"
-mkses locale "$LIVE_PID" "$TMP" "$REC_UTC" busy localeses
-if [ "$PS_LOCAL" = "$REC_UTC" ]; then echo "  (skipped: this host is on UTC, so UTC/local reconciliation proves nothing)"
-else t_has "a live session is listed although the ambient locale spells the start day-first" "$(env -u LC_ALL -u LC_TIME PATH="$TMP/stub:$PATH" HARBOR_SESSION_REGISTRY_DIR="$TMP/sessions" HARBOR_CONTEXT_PEERS_DIR="$TMP/peers" sh "$FS" 2>&1)" "localeses"; fi
 t_done
