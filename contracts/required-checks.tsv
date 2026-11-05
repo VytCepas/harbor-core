@@ -7,6 +7,11 @@
 # (contracts/private-layer.md); bin/gate-required-generate.sh appends them for the readers.
 
 VytCepas/harbor	public-ci
+# harbor-core: its export PRs are merged by hand, and its ruleset requires no check (2026-11-04, operator decision on harbor-core#88).
+# Only jobs that run on every PR: stranger-install is path-filtered and `generated status is current` skips at level quick.
+VytCepas/harbor-core	suites
+VytCepas/harbor-core	conventions linter
+VytCepas/harbor-core	security-floor suite
 VytCepas/fleet	Check PR title, branch, and linked issue
 VytCepas/fleet	CI gate
 VytCepas/yard	Check PR title format

@@ -41,6 +41,7 @@ n2.9	constitutional	every-repo	duty	verification	claim	-	-	-	judgment	-	a conclu
 n2.10	constitutional	every-repo	duty	verification	control	red-proof	1	*	check.rule-health	-	a control whose red_proof is empty: check.rule-health --proof lists it	A test that cannot fail is worse than no test.
 n2.11	constitutional	every-repo	prohibition	verification	control	-	-	-	judgment	-	a guard that blocks ordinary work and gets switched off	A false positive is a defect, not safety.
 n2.12	constitutional	every-repo	duty	verification	claim	-	-	-	judgment	-	a plan resting on a README, HANDOFF or ADR with no probe of the running system	Your own team's documents are claims too, and the easiest to over-trust.
+n2.13	constitutional	every-repo	duty	verification	claim	-	-	-	judgment	-	an answer carrying a number, an exists-or-absent, a recommendation or a done that shipped with no verify-role verdict in the transcript	An answer that decides something gets a second reader who did not write it.
 n3.1	constitutional	every-repo	prohibition	privacy	content	-	-	-	judgment	-	~/.claude content on a public or cacheable destination	`~/.claude` is private, permanently.
 n3.2	constitutional	every-repo	prohibition	privacy	remote	-	-	-	judgment	-	a public remote on ~/.claude or a subtree: git remote -v	Never add or push to a public remote
 n3.3	constitutional	every-repo	prohibition	privacy	content	-	-	-	judgment	-	~/.claude content in a web tool's request	Never paste `~/.claude` content into a web tool

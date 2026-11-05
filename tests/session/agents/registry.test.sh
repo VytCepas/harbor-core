@@ -1,17 +1,21 @@
 #!/usr/bin/env sh
 # contracts/agents.tsv and the subagent pack's universal stop rules (harbor#445 item E): the table has the
-# nine columns on every row and the seven seed roles, every row names a stop rule, and the pack carries
+# nine columns on every row and the eight seed roles, every row names a stop rule, and the pack carries
 # the five universal rules inside its byte budget.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 TSV="$T_ROOT/contracts/agents.tsv"; PACK="$T_ROOT/context-rules/user/subagent-contract.md"
 t_section "agents.tsv shape"
 t_eq "header is the nine columns" "role	model	effort	tools	input	output	done_when	must_not	stop_rule" "$(head -n 1 "$TSV")"
 t_eq "every row has nine fields" "9" "$(awk -F'\t' '{print NF}' "$TSV" | sort -u)"
-for r in build review audit cold-read consolidate docs explore; do
+for r in build review audit cold-read consolidate docs explore verify; do
   t_eq "seed role $r present once" 1 "$(awk -F'\t' -v r="$r" 'NR>1 && $1==r' "$TSV" | wc -l | tr -d ' ')"
 done
 t_eq "no empty cell" 0 "$(awk -F'\t' 'NR>1{for(i=1;i<=NF;i++) if($i=="") n++} END{print n+0}' "$TSV")"
 t_eq "build and consolidate may not push" 2 "$(awk -F'\t' '($1=="build"||$1=="consolidate") && $8 ~ /push/' "$TSV" | wc -l | tr -d ' ')"
+V="$(awk -F'\t' '$1=="verify"' "$TSV")"
+t_has "verify never sees the writer's reasoning" "$V" "never the writer's transcript or reasoning"
+t_has "verify re-opens each source itself" "$V" "re-opened itself"
+t_has "verify may not write" "$(printf '%s' "$V" | cut -f8)" "write"
 t_section "the pack's universal stop rules"
 P="$(cat "$PACK")"
 t_has "report once" "$P" 'Report once'
