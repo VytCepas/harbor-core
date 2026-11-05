@@ -81,6 +81,7 @@ Listed for the operator, who does not get the model's skill listing.
 | Skill | Tier | What it is for |
 |---|---|---|
 | `access-ledger` | core | Which account to use on each system, the role it holds and what it cannot reach:…<br>_NOT FOR obtaining or storing a credential (the operator holds those), or a number that is wrong…_ |
+| `audit-claims` | core | A fresh-context verifier checks each claim of an answer against its source before it ships.<br>_NOT FOR a code diff (audit-review-fanout)._ |
 | `audit-review-fanout` | core | Review a code change with several cheap reviewers, each given a different lens, then verify every finding…<br>_NOT FOR a one-line or docs-only change (one reviewer is enough), proving a test can fail…_ |
 | `doc-atlas` | core | The single owner of human-readable HTML artefacts on this box: an atlas whose subject is a DRAWING, not…<br>_NOT FOR a projection of a TOPOLOGY.md, which is `topology`'s own report-gen.sh._ |
 | `doc-deliverable-contract` | core | Before writing anything a person outside this session will read — a client thread reply, a ticket…<br>_NOT FOR the investigation itself (casefile), or the durable map (topology)._ |
@@ -175,6 +176,7 @@ does not carry the path sends you back to the top.
 - `access-browser` — `~/.claude/skills/access-browser/SKILL.md` — which browser tool, does the pixel fire, no pixel fired, is the tag absent, what third parties load, subresource list, instrument a storefront, headless vs extension, drive a logged-in dashboard, harbor chrome lost or hidden tab, add a Commerce Manager data feed, screenshot someone else's site, consent banner changes what fires.
 - `access-ledger` — `~/.claude/skills/access-ledger/SKILL.md` — which account, wrong account, 401, 403, permission denied, Reauthentication failed, do I have access, can I reach X, need access, credentials, token, least privilege.
 - `agent-routing` — `~/.claude/skills/agent-routing/SKILL.md` — delegating to a subagent, choosing a model or effort for an agent, fanning out agents, writing a workflow or orchestrator launch, an Agent call was denied for a missing model, an agent failed and you are deciding whether to escalate.
+- `audit-claims` — `~/.claude/skills/audit-claims/SKILL.md` — an answer carries a number, an exists/absent, a recommendation or a done, or leaves the session.
 - `audit-review-fanout` — `~/.claude/skills/audit-review-fanout/SKILL.md` — review this PR, review the diff, code review, review my changes, audit this change, check before merge, second opinion on code.
 - `doc-atlas` — `~/.claude/skills/doc-atlas/SKILL.md` — presenting an architecture, a technology stack, a module or connection structure to a person; when an existing atlas needs updating; when somebody asks for a diagram they can click.
 - `doc-deliverable-contract` — `~/.claude/skills/doc-deliverable-contract/SKILL.md` — replying to a client or account team, answering a thread, writing a recommendation or proposal, drafting a ticket comment, sending findings to anyone, or when a correct analysis needs to become a usable answer.

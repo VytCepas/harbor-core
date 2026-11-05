@@ -21,7 +21,7 @@ Until then `agents.tsv` is the table a parent copies a role's row from when it w
 
 ## agents.tsv
 
-Tab-separated, header row first: `role model effort tools input output done_when must_not stop_rule`. Seed roles: build, review, audit, cold-read, consolidate, docs, explore. Model tiers follow the `agent-routing` skill; this table restates none of its text. Shape is held by `tests/session/agents/registry.test.sh`.
+Tab-separated, header row first: `role model effort tools input output done_when must_not stop_rule`. Seed roles: build, review, audit, cold-read, consolidate, docs, explore, verify. `verify` checks a finished answer's claims against their sources; its method is the `audit-claims` skill. Model tiers follow the `agent-routing` skill; this table restates none of its text. Shape is held by `tests/session/agents/registry.test.sh`.
 
 ## Universal stop rules
 

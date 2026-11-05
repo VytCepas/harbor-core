@@ -40,6 +40,7 @@ tests/access/gcloud-credentials/gcloud-credentials.test.sh bin/gcloud-credential
 tests/standard/issue-label/issue-label.test.sh bin/standard-issue-label.sh tests/standard/issue-label/issue-label.test.sh contracts/issue-taxonomy.tsv bin/scope-layers.sh contracts/layers.tsv tests/lib/core.sh
 tests/status/console/guards.test.sh bin/status-console.sh bin/harbor bin/library-log.sh tools/ui/* tests/status/console/guards.test.sh tests/cli/console-fixture.sh tests/lib/core.sh tests/lib/linux-sim.sh
 tests/status/console/panels.test.sh bin/status-console.sh bin/library-log.sh tools/ui/* tests/status/console/panels.test.sh tests/cli/console-fixture.sh tests/lib/core.sh tests/lib/linux-sim.sh
+tests/status/console/lifecycle.test.sh bin/status-console.sh bin/library-log.sh tools/ui/* tests/status/console/lifecycle.test.sh tests/cli/console-fixture.sh tests/lib/core.sh tests/lib/linux-sim.sh
 
 tests/lint/conventions/conventions.test.sh always
 tests/lint/conventions/c9.test.sh always

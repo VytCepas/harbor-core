@@ -49,13 +49,13 @@ command -v jq >/dev/null 2>&1 || { log_fail "jq is required, and is not on PATH"
 # A PID IS NOT AN IDENTITY: the registry is keyed by pid and does not self-reap, so a recycled pid makes an unrelated process read ALIVE and inflates the peer count with ghosts. Liveness is TWO facts: the pid exists AND the process under it started when the record says.
 # The comparison is not a string match: the record's procStart is UTC and `ps -o lstart` is local (measured: the same instant, three hours apart).
 _epoch_local() { # <ps lstart string> -> epoch seconds
-  date -j -f '%a %b %d %T %Y' "$1" +%s 2>/dev/null && return 0
-  date -d "$1" +%s 2>/dev/null && return 0
+  LC_ALL=C date -j -f '%a %b %d %T %Y' "$1" +%s 2>/dev/null && return 0
+  LC_ALL=C date -d "$1" +%s 2>/dev/null && return 0
   printf ''
 }
 _epoch_utc() { # <procStart string, UTC> -> epoch seconds
-  date -j -u -f '%a %b %d %T %Y' "$1" +%s 2>/dev/null && return 0
-  TZ=UTC date -d "$1" +%s 2>/dev/null && return 0
+  LC_ALL=C date -j -u -f '%a %b %d %T %Y' "$1" +%s 2>/dev/null && return 0
+  LC_ALL=C TZ=UTC date -d "$1" +%s 2>/dev/null && return 0
   printf ''
 }
 
@@ -65,7 +65,8 @@ _SKEW=90
 is_live() { # <pid> <procStart>
   _p="$1"; _ps="$2"
   kill -0 "$_p" 2>/dev/null || return 1
-  _l="$(ps -o lstart= -p "$_p" 2>/dev/null | sed 's/^ *//;s/ *$//')"
+  # LC_ALL=C: ps spells lstart in the operator's locale (en_NZ: "Wed  4 Nov 09:40:44 2026"), which the C-locale parse below cannot read, so every session read as not alive.
+  _l="$(LC_ALL=C ps -o lstart= -p "$_p" 2>/dev/null | sed 's/^ *//;s/ *$//')"
   # No ps output means UNKNOWN, and unknown is not alive (else this silently degrades back to `kill -0`).
   [ -n "$_l" ] || return 1
   [ -n "$_ps" ] || return 1

@@ -193,4 +193,14 @@ g "$REPO" worktree add -q "$P/nmwt" b-notmerged >/dev/null 2>&1
 wt retire "$P/nmwt" >/dev/null
 t_eq "retire keeps genuinely unmerged work" yes "$(there nmwt)"
 t_has "…and says it is not merged" "$(wt retire "$P/nmwt")" 'not merged'
+
+t_section "list --quick skips the squash-merge test (the console panel's form: minutes per worktree on a busy box)"
+mkwt qclean b-qclean; mkwt qahead b-qahead; : > "$P/qahead/f"; g "$P/qahead" add f; g "$P/qahead" commit -qm qahead
+qv() { wt list --quick | awk -v p="$P/$1" '$2 == p { print $1; exit }'; }
+t_eq "a worktree merged by ancestry is still collectable" COLLECT "$(qv qclean)"
+t_eq "an unmerged branch is kept" SKIP "$(qv qahead)"
+t_has "and the reason says the merge state was not checked, not that it is unmerged" "$(wt list --quick)" "b-qahead: merge state not checked (--quick)"
+t_eq "gc refuses --quick: it would delete on a weaker test" 2 "$(wt gc --quick >/dev/null; echo $?)"
+t_eq "so does retire" 2 "$(wt retire qclean --quick >/dev/null; echo $?)"
+t_eq "and the directory survived both" yes "$(there qclean)"
 t_done
