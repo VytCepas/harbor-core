@@ -8,14 +8,15 @@
 #   PostToolUse   → tool.background.start  subject = <session_id>:<tool_use_id>  data = {session_id, tool}
 #                     for Monitor, CronCreate, Workflow, ScheduleWakeup (not stop:true) and
 #                     Bash with run_in_background:true
-#                   → pr.opened    subject = <owner>/<repo>#<n>; only when the command's LAST simple
-#                     command is `gh pr create` and the result's stdout ENDS in one whole github.com
-#                     pull URL (never from the command text); data = {session_id, link}
+#                   → pr.opened    subject = <owner>/<repo>#<n>, one per PR; only when the command holds a `gh pr create`
+#                     (in a loop or a ; && chain too, harbor#1437), nothing but quiet commands follows the last
+#                     one, and the PR comes from a whole github.com pull URL line of the result's stdout
+#                     (never from the command text); data = {session_id, link}
 #                 → skill.call   subject = the skill name; data = {session_id}            (harbor#1181 lane 7)
 #                 → memory.read  subject = the memory note's BASENAME, for a Read of */memory/*.md, MEMORY.md or
 #                     INDEX-FULL.md, never its path or content; data = {session_id}.  Every other Read exits at once.
 #
-# Hook-invoked, the payload on stdin; nothing to run by hand. Wired by floor-install.sh, standalone
+# Hook-invoked, the payload on stdin; nothing to run by hand. Wired by admission-install.sh, standalone
 # and fail-OPEN like guard-apiroute: it exits 0 on EVERY path, prints nothing, and takes only ids
 # from the payload, each checked against a short charset. A prompt, a command, a transcript path or
 # tool output never reaches an event (docs/design/events.md, the record). Claude Code has no hook
@@ -24,7 +25,7 @@
 # 2, 1..60); a hung bus or a stdin that never closes costs the session at most twice that, then exit 0.
 # Off: `touch <bus dir>/producers.off`. The security floor never depends on this file.
 #
-# A new producer is one `case` arm below plus one row in floor-install.sh's wiring table; the
+# A new producer is one `case` arm below plus one row in admission-install.sh's wiring table; the
 # payload fields it needs go in the KEYS list (or the awk's derived flags).
 
 # Not $(dirname): a hook runs this (F15, harbor#813). No `set -e`: this exits 0 on every path.
@@ -69,13 +70,13 @@ run_bounded() {
 # quote inside a string never matches, so a forged field inside a prompt is not the field). Special
 # cases: tool_use_id is the LAST one (it follows tool_response, which can carry nested objects), and
 # the awk derives bg= (run_in_background true) and stop= (stop true) from the tool_input region only.
-# pr= and ghpr= come from two reads that must BOTH hold (harbor#1114): (1) the tool_input `command`
-# string only (never `description` or any other key), decoded, split into simple commands at an
-# unquoted ; & && || | or newline, and its LAST simple command must be `gh pr create` — so a grep or an
-# echo that merely names it does not count, and neither does `gh pr create && cat notes.txt`, whose
-# output is not gh's; (2) the tool_response `stdout`, decoded, whose LAST non-empty line must be one
-# whole github.com pull URL, with no "already exists" anywhere in the response. Nothing but those
-# flags and ids comes out. One awk, no jq.
+# pr= and ghpr= come from two reads that must BOTH hold (harbor#1114, #1437): (1) the tool_input `command`
+# string only (never `description` or any other key), decoded, split into simple commands at an unquoted
+# ; & && || | or newline; at least one is `gh pr create` (a loop body or a chain member counts) and every command
+# after the last one is quiet (done, cd, an echo naming no URL), so `gh pr create && cat notes.txt` still does not
+# count: its output is not gh's; (2) the tool_response `stdout`, decoded, whose last non-empty line must be a whole
+# github.com pull URL; its whole-line URLs are the PRs (outside a loop at most as many as there are creates, the last
+# ones), an "already exists" line dropping the URL under it. Nothing but those flags and ids comes out. One awk, no jq.
 KEYS="hook_event_name session_id agent_id source tool_name"
 FIELDS="$(run_bounded env LC_ALL=C awk -v keys="$KEYS" '
   # jstr(r): the JSON string that starts r, decoded (\n and \r become newlines, \t a space); "" when
@@ -94,9 +95,10 @@ FIELDS="$(run_bounded env LC_ALL=C awk -v keys="$KEYS" '
     }
     return ""
   }
-  # lastseg(c): the last simple command of a shell command line, quote-aware (single, double, backslash).
-  function lastseg(c,   seg, last, st, ch, pv, m) {
-    seg = ""; last = ""; st = 0
+  # splitsegs(c): every simple command of a shell command line, in order, in SEG[1..SEGN]; quote-aware (single,
+  # double, backslash), split at an unquoted ; & && || | or newline.
+  function splitsegs(c,   seg, st, ch, pv, m) {
+    seg = ""; st = 0; SEGN = 0
     while (c != "") {
       if (st == 1) {
         if (!(m = index(c, SQ))) { seg = seg c; break }
@@ -116,12 +118,26 @@ FIELDS="$(run_bounded env LC_ALL=C awk -v keys="$KEYS" '
       else {
         pv = substr(seg, length(seg), 1)
         if (ch == "&" && (pv == ">" || pv == "<" || substr(c, 1, 1) == ">")) { seg = seg ch; continue }
-        if (seg ~ /[^ \t]/) last = seg
+        if (seg ~ /[^ \t]/) SEG[++SEGN] = seg
         seg = ""
       }
     }
-    if (seg ~ /[^ \t]/) last = seg
-    return last
+    if (seg ~ /[^ \t]/) SEG[++SEGN] = seg
+  }
+  # head(x): a simple command without the shell keywords and assignment that may lead it (`do gh ...`, `u=$(gh ...`).
+  function head(x) {
+    while (x ~ /^[ \t]*(do|then|else|elif|if|while|until|time|!|\{|\()([ \t]|$)/) sub(/^[ \t]*(do|then|else|elif|if|while|until|time|!|\{|\()/, "", x)
+    sub(/^[ \t]*[A-Za-z_][A-Za-z0-9_]*="?\$\(/, "", x)
+    return x
+  }
+  function isgh(x) { return head(x) ~ /^[ \t]*([A-Za-z_][A-Za-z0-9_]*=[^ \t]*[ \t]+)*gh[ \t]+(-R[ \t]+[^ \t]+[ \t]+|--repo[ \t]+[^ \t]+[ \t]+)?pr[ \t]+create([ \t]|$)/ }
+  # quiet(x): a command that may follow the last gh pr create without putting anything of its own on stdout
+  # that could be taken for the PR line of gh (a loop closer, a cd); an echo only when it names no github.com URL.
+  function quiet(x) {
+    x = head(x)
+    if (x ~ /^[ \t]*(done|fi|esac|\}|\)|true|:|cd|sleep|wait|exit|return)([ \t]|$)/) return 1
+    if (x ~ /^[ \t]*(echo|printf)([ \t]|$)/ && x !~ /github\.com/) return 1
+    return 0
   }
   BEGIN { SQ = sprintf("%c", 39); SPECIAL = "[" SQ "\"\\\;&|\n]" }
   { s = s $0 "\n" }
@@ -142,26 +158,49 @@ FIELDS="$(run_bounded env LC_ALL=C awk -v keys="$KEYS" '
       if (match(ri, /"skill" *: *"/)) print "skill=" jstr(substr(ri, RSTART + RLENGTH))
       if (match(ri, /"file_path" *: *"/)) { fp = jstr(substr(ri, RSTART + RLENGTH))
         if (fp ~ /\/memory\/[^\/]+\.md$/ || fp ~ /\/(MEMORY|INDEX-FULL)\.md$/) { n2 = split(fp, FP, "/"); print "memfile=" FP[n2] } }
-      if (ri ~ /gh/ && ri ~ /pr/ && ri ~ /create/ && match(ri, /"command" *: *"/) &&
-          lastseg(jstr(substr(ri, RSTART + RLENGTH))) ~ /^[ \t]*([A-Za-z_][A-Za-z0-9_]*=[^ \t]*[ \t]+)*gh[ \t]+(-R[ \t]+[^ \t]+[ \t]+|--repo[ \t]+[^ \t]+[ \t]+)?pr[ \t]+create([ \t]|$)/) ghpr = 1
+      # harbor#1437: every gh pr create of a compound command counts (a loop, ; or && chain), not only the last simple
+      # command. What still must hold: nothing but quiet commands after the last one, and a URL is taken from the
+      # result stdout, a whole line, never from the command text.
+      if (ri ~ /gh/ && ri ~ /pr/ && ri ~ /create/ && match(ri, /"command" *: *"/)) {
+        splitsegs(jstr(substr(ri, RSTART + RLENGTH)))
+        nc = 0; lastc = 0; loop = 0
+        for (i = 1; i <= SEGN; i++) {
+          if (isgh(SEG[i])) { nc++; lastc = i }
+          if (head(SEG[i]) ~ /^[ \t]*(for|while|until|done)([ \t]|$)/ || SEG[i] ~ /^[ \t]*do([ \t]|$)/) loop = 1
+        }
+        if (nc > 0) { ghpr = 1; for (i = lastc + 1; i <= SEGN; i++) if (!quiet(SEG[i])) ghpr = 0 }
+      }
     }
     if (ghpr && tr) {
       r = substr(s, tr)
-      if (r !~ /already exists/ && match(r, /"stdout" *: *"/)) {
-        m = split(jstr(substr(r, RSTART + RLENGTH)), L, "\n")
+      if (match(r, /"stdout" *: *"/)) {
+        so = jstr(substr(r, RSTART + RLENGTH)); m = split(so, L, "\n")
+        # An "already exists" outside stdout cannot be tied to one URL: nothing is emitted. Inside stdout it is
+        # the line before the URL it names, and only that URL is dropped.
+        if (r ~ /already exists/ && so !~ /already exists/) m = 0
         while (m > 0 && L[m] !~ /[^ \t]/) m--
-        if (m > 0 && L[m] ~ /^https:\/\/github\.com\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/pull\/[0-9]+$/) {
-          split(substr(L[m], 20), P, "/"); print "ghpr=1"; print "pr=" P[1] "/" P[2] "#" P[4] }
+        # gh prints its URL last: a result that ends in anything else is not a gh pr create result (harbor#1114).
+        if (m > 0 && L[m] !~ /^https:\/\/github\.com\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/pull\/[0-9]+$/) m = 0
+        k = 0; prev = ""
+        for (i = 1; i <= m; i++) {
+          if (L[i] ~ /^https:\/\/github\.com\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/pull\/[0-9]+$/ && prev !~ /already exists/ && !(L[i] in seen)) {
+            seen[L[i]] = 1; U[++k] = L[i] }
+          if (L[i] ~ /[^ \t]/) prev = L[i]
+        }
+        # One gh pr create can print one URL; outside a loop, only the last nc URLs can come from gh itself.
+        first = 1; if (!loop && k > nc) first = k - nc + 1
+        if (k - first + 1 > 20) first = k - 19
+        for (i = first; i <= k; i++) { split(substr(U[i], 20), P, "/"); print "ghpr=1"; print "pr=" P[1] "/" P[2] "#" P[4] }
       }
     } }' 2>/dev/null)" || exit 0
 
 EV=""; SID=""; AID=""; SRC=""; TOOL=""; TUID=""; BG=""; STOP=""; GHPR=""; PR=""; SKILL=""; MEMF=""
 while IFS= read -r _l; do
   _v="${_l#*=}"
-  if [ "${_l%%=*}" = pr ]; then   # owner/repo#n, the one value with a `#` and a `/`
+  if [ "${_l%%=*}" = pr ]; then   # owner/repo#n, the one value with a `#` and a `/`; one per PR a compound command opened
     case "$_v" in */*#*) ;; *) continue ;; esac
     case "$_v" in *[!A-Za-z0-9._#/-]*) continue ;; esac
-    [ "${#_v}" -le 128 ] && PR="$_v"
+    [ "${#_v}" -le 128 ] && PR="$PR $_v"
     continue
   fi
   # An id is [A-Za-z0-9._:-], at most 128 bytes; anything else is not an id and is dropped.
@@ -218,9 +257,11 @@ case "$EV" in
         Bash)
           [ "$BG" != 1 ] || bg_start
           if [ "$GHPR" = 1 ] && [ -n "$PR" ]; then
-            _repo="${PR#*/}"; _repo="${_repo%#*}"
-            emit_event pr.opened "$PR" hook.post-tool-use \
-              "$(printf '{"session_id":"%s","link":"https://github.com/%s/pull/%s"}' "$SID" "${PR%#*}" "${PR#*#}")" "$_repo"
+            for _pr in $PR; do
+              _repo="${_pr#*/}"; _repo="${_repo%#*}"
+              emit_event pr.opened "$_pr" hook.post-tool-use \
+                "$(printf '{"session_id":"%s","link":"https://github.com/%s/pull/%s"}' "$SID" "${_pr%#*}" "${_pr#*#}")" "$_repo"
+            done
           fi ;;
       esac
     fi ;;

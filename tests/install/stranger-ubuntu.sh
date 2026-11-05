@@ -65,11 +65,15 @@ if [ "${STRANGER_CLAUDE_FIRST_RUN:-0}" = 1 ]; then step 03b-claude-first-run str
 else echo "stranger-ubuntu: no Claude Code first run (STRANGER_CLAUDE_FIRST_RUN=1 adds it): scope install makes settings.json" >&2; fi
 step 04-scope-install stranger 'sh ~/port/harbor/bin/harbor scope install && test -f ~/port/harbor-private/harbor.toml'
 step 04c-settings-json stranger 'test "$(cat ~/.claude/settings.json)" = "{}" && sh ~/port/harbor/bin/harbor scope install | grep -q "kept .*settings.json"'
-step 04b-seeded-core stranger 'test "$(sh ~/port/harbor/bin/roots.sh --conf components)" = core'
+step 04b-seeded-core stranger 'test "$(sh ~/port/harbor/bin/scope-roots.sh --conf components)" = core'
+# The access register is empty on a fresh box, so every ref is refused until the stranger adds one (harbor#1205).
+step 04e-empty-register stranger 'test -f ~/port/harbor-private/access/register.md &&
+  sh ~/port/harbor/bin/harbor access check 2>&1 | grep -q "0 entries" && test -z "$(sh ~/port/harbor/bin/harbor access list 2>/dev/null)" &&
+  { sh ~/port/harbor/bin/harbor access has any-ref >/dev/null 2>&1; test $? -eq 1; }'
 # scope install seeds components = ["core"], so a bare deploy plans core only, no private repos (harbor#1149).
 # bootstrap (harbor#966) reads that layer: core names nothing to clone, so it ends on deploy's dry run having cloned no
 # repository, installed no uv or just and used no gh. The image has no gh and no curl, so a bootstrap that wanted either fails here.
-step 04c-bootstrap stranger 'sh ~/port/harbor/bin/bootstrap.sh >/tmp/boot.txt 2>&1; rc=$?; cat /tmp/boot.txt
+step 04c-bootstrap stranger 'sh ~/port/harbor/bin/deploy-bootstrap.sh >/tmp/boot.txt 2>&1; rc=$?; cat /tmp/boot.txt
   [ "$rc" -eq 0 ] && grep -q "nothing is cloned" /tmp/boot.txt && grep -q "^deploy: [0-9]* ok, 0 failed" /tmp/boot.txt &&
   ! command -v gh >/dev/null && ! command -v curl >/dev/null && [ ! -e ~/.local/bin/uv ] && [ ! -e ~/.local/bin/just ] &&
   [ "$(find ~/port -maxdepth 2 -name .git | wc -l | tr -d " ")" = 1 ]'
@@ -77,7 +81,7 @@ step 05-deploy-plan stranger 'sh ~/port/harbor/bin/deploy.sh --live >/tmp/plan.t
 step 06-deploy-apply stranger "sh ~/port/harbor/bin/deploy.sh --apply --live" 'y
 '
 # Exit 0 proves nothing: the lockdown file and its marketplace must exist with the keys it claims (a vacuous green otherwise).
-step 07-managed-mods root 'sh /home/stranger/port/harbor/bin/managed-mods.sh &&
+step 07-managed-mods root 'sh /home/stranger/port/harbor/bin/scope-managed-mods.sh &&
   jq -e ".pluginConfigs[\"cc-plugin-sec-default@builtin\"].options.allowManagedModsOnly == true and .disableSideloadFlags == true" /etc/claude-code/managed-settings.json >/dev/null &&
   test -f /etc/claude-code/harbor-mods/.claude-plugin/marketplace.json'
 # Confinement (harbor#1298): composed as the stranger, no Darwin-only key on Linux. In an unprivileged container
@@ -88,9 +92,21 @@ step 07c-confinement root 'su stranger -c "sh /home/stranger/port/harbor/bin/dep
   ! SUDO_USER=stranger sh /home/stranger/port/harbor/bin/deploy-confinement.sh > /tmp/confine.log 2>&1 &&
   grep -qE "missing: bwrap|bubblewrap cannot start" /tmp/confine.log &&
   jq -e "(has(\"sandbox\") | not) and .disableSideloadFlags == true" /etc/claude-code/managed-settings.json >/dev/null'
-# B8 pin is the owner's own act by design (floor-install.sh:458); it is part of a first install. Run from the checkout, as
+# B8 pin is the owner's own act by design (admission-install.sh:458); it is part of a first install. Run from the checkout, as
 # deploy spells it: it needs only the config dir, and a missing one is then named, not "cannot open".
 step 07b-pin-instructions stranger 'sh ~/port/harbor/bin/pin-instructions.sh --apply --live'
+# Default-way route (harbor#1397): the stranger's box carries the pack with no harbor-private. A hand-written skill in the config
+# dir draws the source path and the install command (a note while the deny row is warn, a deny once a person promotes it, never
+# silence), the same content at its source path draws no default-way note (other rules may speak: harbor#1257), and the off switch silences the pack and leaves a log line.
+step 08b-default-way stranger 'C=$HOME/.claude; E=$C/bin/injection-rule.sh
+  test -f $C/context-rules/user/default-way-deny.sh && test -f $C/context-rules/user/default-way-route.tsv &&
+  pay() { printf "{\"hook_event_name\":\"PreToolUse\",\"tool_name\":\"Write\",\"session_id\":\"$2\",\"tool_input\":{\"file_path\":\"$1\",\"content\":\"x\"}}"; } &&
+  pay $C/skills/demo/SKILL.md s1 | CLAUDE_PROJECT_DIR=$HOME sh $E > /tmp/dw1.json &&
+  grep -q "skills/demo/SKILL.md" /tmp/dw1.json && grep -q "skill-install.sh demo --apply" /tmp/dw1.json && grep -q "context:default-way-deny" /tmp/dw1.json &&
+  ! { pay $HOME/port/harbor/skills/demo/SKILL.md s2 | CLAUDE_PROJECT_DIR=$HOME sh $E | grep -q "context:default-way"; } &&
+  sh $C/context-rules/user/default-way-route.sh --off | grep -q off &&
+  ! { pay $C/skills/demo/SKILL.md s3 | CLAUDE_PROJECT_DIR=$HOME sh $E | grep -q "context:default-way"; } &&
+  grep -q "switched off by" $C/cache/context-switch.log'
 step 08-check stranger 'sh ~/port/harbor/bin/harbor check --live'
 step 09-verify stranger 'sh ~/port/harbor/bin/harbor verify'
 t_done

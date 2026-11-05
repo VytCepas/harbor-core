@@ -1,8 +1,14 @@
+---
+kind: design
+owner: @VytCepas
+status: unreviewed
+---
+
 # Approval gate — the operator approves protected merges and deploys with a click
 
 **Status:** harbor#1018, PR A of the ship contract (`~/Deliverables/2026-10-06-night-stack/SHIP-CONTRACT.md` v1.2).
 It is stacked on #1126 (`harbor merge-stack`), whose CI wait it shares. PR B (#1128), the runner `bin/deploy-fleet.sh`,
-calls the CLI below. Suites: `tests/gate/approval/` and `tests/guards/bash.gate-test.sh`.
+calls the CLI below. Suites: `tests/gate/approval/` and `tests/admission/bash/gate.test.sh`.
 
 ## The policy (the operator, 2026-10-06)
 
@@ -26,8 +32,8 @@ The register's tail is **derived, not kept by hand** (`bin/gate-register-derive.
 `classify.test.sh` fails when the block is stale. It over-reaches on purpose: a script that only names another one
 in a code line counts as calling it.
 
-The classifier ignores case, so `Bin/guard-bash.sh` is protected. On a case-insensitive disk it *is*
-`bin/guard-bash.sh`.
+The classifier ignores case, so `Bin/admission-bash.sh` is protected. On a case-insensitive disk it *is*
+`bin/admission-bash.sh`.
 
 ## What actually holds, and what does not
 
@@ -42,16 +48,16 @@ runs is invisible to every guard. The adversarial review of 7c23e59 (DO NOT MERG
   (contents, pull requests and issues write; actions, checks and statuses read; no workflows, no administration),
   with 1-hour installation tokens. In a Claude session (`CLAUDECODE=1`) a `gh` shim and a git credential helper use
   it; everywhere else `gh` and git are the operator's. The operator stays the author of every commit. A squash is
-  authored by the PR's opener, so an App-opened squash lands as the bot (#1154); harbor's ship.conf therefore sets
+  authored by the PR's opener, so an App-opened squash lands as the bot (#1154); harbor's ship.config therefore sets
   `method merge-commit` (#1160), which keeps the branch's own commits, and their author, on `main`.
 - **Two installations, routed by repo owner** since 2026-10-13 (#1225): the App is public so a second organisation
   could install it, and the shim and helper pass that account to `mint-token.sh <account>` when the target is
   an owner listed in `~/.config/harbor-app/orgs.tsv` (`owner<TAB>account`; the target is `-R`,
   `gh repo <verb> OWNER/REPO`, a URL, an `api` path, else the cwd's origin). Every other owner, and a box with
   no table, keeps the default installation. The table names real organisations, so core ships none: it lives in
-  the private layer as `harbor-app/orgs.tsv` and `harbor-app-install.sh` copies it. Gap: an HTTPS `git clone`
+  the private layer as `github-app/orgs.tsv` (`harbor-app/orgs.tsv` until 2026-12-01) and `access-github-app-install.sh` copies it. Gap: an HTTPS `git clone`
   outside a repo sends no owner; `gh repo clone` does. The three scripts live in `bin/harbor-app/`, tested by
-  `tests/cli/harbor-app-routing-test.sh`, and are installed by `bin/harbor-app-install.sh` from the operator's
+  `tests/access/github-app/routing.test.sh`, and are installed by `bin/access-github-app-install.sh` from the operator's
   terminal. It **copies, never links**: a session can edit the checkout, and a shim that drops `GH_TOKEN` falls
   through to the operator's own login.
 - **`.github/CODEOWNERS` is derived from the register** (`bin/gate-codeowners.sh`) and code-owner review is required,
@@ -67,8 +73,8 @@ runs is invisible to every guard. The adversarial review of 7c23e59 (DO NOT MERG
   rules, so a refusal, not a wall.
 - **A deploy can now run without a terminal, but only as the runner's child.** `deploy.sh --unattended` (built
   2026-10-17 on the operator's explicit ask, after the classifier refused it twice as a weakening) is what
-  `.agents/ship.conf`'s `apply` runs. A session still cannot type it: guard-bash's `deploy-raw` refuses every
-  spelling, and its env checks (`SHIP_UNATTENDED=1`, an empty `$SHIP_SNAPSHOT`) are an accident gate, not a wall.
+  `.agents/ship.config`'s `apply` runs. A session still cannot type it: guard-bash's `deploy-raw` refuses every
+  spelling, and its env checks (`HARBOR_DEPLOY_UNATTENDED=1`, an empty `$HARBOR_DEPLOY_SNAPSHOT`) are an accident gate, not a wall.
 
 ## The ancestry: how the tool proves the click launched it
 
@@ -134,13 +140,13 @@ direct `gh` call lacks, so it is not checked there.
   wall is branch protection, above.
   - `gh pr merge`, in any argument order, and a `gh alias set` whose expansion merges, calls the API or pushes.
   - `gh api` with a write method (`-X`/`--method`, any case and spelling, or fields) on `pulls/N/merge` (with `?…` or a
-    trailing `/`), `merges`, `git/refs/…` or `repos/o/r`. Also `mergePullRequest`, `enablePullRequestAutoMerge`,
+    trailing `/`), `merges`, `git/refs/…` (a `DELETE` of a ref is not a merge and passes) or `repos/o/r`. Also `mergePullRequest`, `enablePullRequestAutoMerge`,
     `mergeBranch`, `updateRef(s)`, `createCommitOnBranch`, and a graphql query read from a file.
   - `curl`, `wget`, `http` or `xh` writing to GitHub's REST API host.
   - `gh repo edit --default-branch`.
   - `git push` to `main`/`master` or `--all`/`--mirror`. A repo that wires its own branch guard adjudicates its branches
     (B5).
-  - `merge-check.sh --merge` (and so its `--force`) and `merge-stack merge`.
+  - `gate-merge-check.sh --merge` (and so its `--force`) and `merge-stack merge`.
   - `deploy.sh --apply[=…]`, `harbor deploy|install|uninstall|skills|inject|constitution|restore --apply`, and any
     installer, `sec0-harden`, `floor-deny`, `floor-uninstall`, `restore` or `pin-instructions` run with `--live` and a
     write. A sandbox `--dir` install stays open.
@@ -165,7 +171,7 @@ direct `gh` call lacks, so it is not checked there.
 | Command | Rule | Does |
 |---|---|---|
 | `bin/gate-classify.sh <repo-root> [path…]` (or stdin) | none | contract §2. Prints `PROTECTED<TAB>path<TAB>class` for each protected path. Exits 0 when none is protected, 1 when one is, 2 when the manifest names an absent register. Judge both paths of a rename |
-| `<cfg>/bin/gate-merge.sh <owner/repo> <pr>` | allow | The unattended merge. Refuses while the kill switch exists, and for a repo whose default branch has no `.agents/ship.conf`. The manifest and register are read from GitHub at the default branch, never from a local checkout. A protected PR is queued and its approve command printed on stdout (exit 1). Otherwise it merges through merge-stack, pinned to the head it classified |
+| `<cfg>/bin/gate-merge.sh <owner/repo> <pr>` | allow | The unattended merge. Refuses while the kill switch exists, and for a repo whose default branch has no `.agents/ship.config`. The manifest and register are read from GitHub at the default branch, never from a local checkout. A protected PR is queued and its approve command printed on stdout (exit 1). Otherwise it merges through merge-stack, pinned to the head it classified |
 | `<cfg>/bin/gate-approve.sh merge <owner/repo> <pr> <head-sha>` | **ask** | Merges what was clicked. The head must still be `<head-sha>`, then merge-stack merges on a plan pinned to it (`pr N head <sha>`, §5b.10): every workflow green on that head, merge-check, and `--match-head-commit`. Any other head is needs-rebase. Red is refused even when approved |
 | `<cfg>/bin/gate-approve.sh deploy <owner/repo> <sha>` | **ask** | The default branch must still be `<sha>`. Then it writes the token and runs the runner: `<cfg>/bin/deploy-fleet.sh deploy <owner/repo> --sha <sha> --approved` |
 | `<cfg>/bin/gate-queue.sh add <merge\|deploy> <owner/repo> <sha> [<pr>] --reason <text>` | allow | **The only queue writer** (§5b.9). It queues an approval, prints its id, and stores the exact approve command in the row. A merge takes its `<pr>` and a deploy none. Unattended code calls this and **never** gate-approve: a pending prompt stops a session until someone answers it |
@@ -178,15 +184,15 @@ direct `gh` call lacks, so it is not checked there.
     `deploy-VytCepas_harbor-cd8bd19a1b2c` (§5a.2).
   - Each open emits `approval.open` with subject = id, a 24h `deadline_ts` and a title. A completed approval, or
     `close`, emits `approval.close` (§5a.3).
-  - `CONTRACTS/obligation-kinds.tsv` folds them as kind `approval`, so they count in `⧗N`. Its reconcile source,
+  - `contracts/obligation-kinds.tsv` folds them as kind `approval`, so they count in `⧗N`. Its reconcile source,
     `approval-queue`, also closes an id the queue file closed.
 - **Ledger:** `<cfg>/.helm-approvals/ledger.tsv`, one row per decision: `time, action, args, sha256(args), outcome`.
   The click's one-shot tokens live beside it in `approved/`.
 - **Required checks:** each repo's own `.agents/required-checks.tsv`, read from GitHub (§5a.6). Without one,
   merge-check falls back to branch protection, and refuses when nothing gates. Harbor ships its own, a copy of its
-  rows in `CONTRACTS/required-checks.tsv` that must be kept in step.
+  rows in `contracts/required-checks.tsv` that must be kept in step.
   - The actions are `merge-auto`, `approve-merge` and `approve-deploy`.
-  - It is an integrity file (CONTRACTS/helm-state.md), so a session cannot write it.
+  - It is an integrity file (contracts/control-plane-state.md), so a session cannot write it.
 - **Kill switch:** `touch ~/.claude/.harbor-autoship.off`. While it exists, `gate-merge.sh` refuses, and so must
   every unattended deploy (the runner checks it). An operator's approval is not unattended, so it still runs.
 
@@ -197,7 +203,7 @@ direct `gh` call lacks, so it is not checked there.
 - Call `<cfg>/bin/gate-classify.sh` and `<cfg>/bin/gate-queue.sh add`, by those names (§5a.1, §5b.9). It never
   appends to `queue.jsonl` or emits approval events itself.
 - Refuse `--approved` unless `<cfg>/.helm-approvals/approved/<queue id>` exists for exactly this repo and sha, is younger
-  than 10 minutes (it holds its UTC write time), and is deleted on use. Refuse `--approved` under `SHIP_UNATTENDED=1`.
+  than 10 minutes (it holds its UTC write time), and is deleted on use. Refuse `--approved` under `HARBOR_DEPLOY_UNATTENDED=1`.
   The age limit closes a replay of a token a killed approval left behind.
 - Add its allow rule through floor-deny, like the ones below.
 - Own the kill-switch check, auto-restore, no retry and the per-repo deployed sha.
@@ -206,7 +212,7 @@ direct `gh` call lacks, so it is not checked there.
 
 ## The settings lines
 
-`floor-deny.sh` adds these, append-only, on the floor component's deploy. It writes `$HOME` expanded, because a
+`admission-deny.sh` adds these, append-only, on the floor component's deploy. It writes `$HOME` expanded, because a
 Bash rule matches text and the guard admits only the physical path:
 
 ```
@@ -259,7 +265,7 @@ What the probe cannot prove:
 ## Gates this changes
 
 - **guard-bash:** the four new rules above. Before this, a session's `gh pr merge` on a green PR reached the
-  classifier. Now the floor refuses it, and `merge-check.sh --merge --force` cannot be reached from a session.
+  classifier. Now the floor refuses it, and `gate-merge-check.sh --merge --force` cannot be reached from a session.
 - **floor-deny:** adds `permissions.ask`, two `permissions.allow` entries and one deny. The sec0 baseline pin covers
   `permissions` whole, and floor-deny re-pins after it writes.
 - **floor-install / floor-uninstall:** install and remove the gate's files. Uninstall also removes the gate's ask and
@@ -273,13 +279,13 @@ What the probe cannot prove:
 - **naming registry:** `ship` changes from a legacy alias of `workload` to a codename. It is allowed on path, env,
   check-id and command (§5a.8).
 - **deploy.sh `--unattended`: built in a later PR** (harbor#1018, 2026-10-17), to contract §6's narrow exception.
-  It is a usage error without `--apply`, without `SHIP_UNATTENDED=1`, or without `$SHIP_SNAPSHOT` naming an empty
+  It is a usage error without `--apply`, without `HARBOR_DEPLOY_UNATTENDED=1`, or without `$HARBOR_DEPLOY_SNAPSHOT` naming an empty
   file, and with `--uninstall`, `--prune` or `--accept-loss`. It skips the in-session refusal and the install
-  `[y/N]`, writes the snapshot path to `$SHIP_SNAPSHOT` before the first install, and answers No to every other
+  `[y/N]`, writes the snapshot path to `$HARBOR_DEPLOY_SNAPSHOT` before the first install, and answers No to every other
   question: the restore stays the runner's (`restore`), and the B8 re-pin stays the operator's. B8 drift is an
   advisory in `floor-verify`, so a declined re-pin does not roll a deploy back. The terminal path is unchanged.
   The flag is kept out of every printed fix, so no fix line hands a person a flag they cannot use. The cases and
-  their mutants: `tests/install/deploy-test.sh`, section `--unattended`.
+  their mutants: `tests/deploy/deploy/deploy.test.sh`, section `--unattended`.
 
 ## Recorded on #1018
 

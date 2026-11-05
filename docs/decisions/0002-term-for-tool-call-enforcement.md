@@ -3,7 +3,10 @@ kind: decision-record
 status: accepted
 alias: D-2
 date: 2026-10-04
+supersedes: -
+superseded_by: -
 source: research/11a-admission-policy.md
+owner: @VytCepas
 ---
 
 # Term for tool-call enforcement
