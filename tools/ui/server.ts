@@ -6,7 +6,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { makePanels, runPanel, type Panel, type Result } from "./sources.ts";
+import { killLive, makePanels, runPanel, type Panel, type Result } from "./sources.ts";
 import { beginView } from "./obligations.ts";
 import { headline, pageHtml, panelHtml, tileHtml, type PanelState } from "./render.ts";
 
@@ -157,6 +157,7 @@ const idle = setInterval(() => {
   clearInterval(idle);
   console.log(`harbor ui: stopped after ${Math.round((Date.now() - start) / 1000)}s, idle for ${Math.round(IDLE_MS / 1000)}s`);
   server.stop(true);
+  killLive();
   process.exit(0);
 }, Math.min(1000, Math.max(100, IDLE_MS / 4)));
-for (const sig of ["SIGINT", "SIGTERM"] as const) process.on(sig, () => { server.stop(true); process.exit(0); });
+for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"] as const) process.on(sig, () => { server.stop(true); killLive(); process.exit(0); });

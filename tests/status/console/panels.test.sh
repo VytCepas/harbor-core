@@ -19,12 +19,29 @@ cmd_of() { case "$1" in # the source command each panel must name
   checks) echo 'cache/checks.log' ;; guards) echo 'bin/admission-observe-report.sh --fp' ;; context) echo 'bin/context-budget.sh --check' ;;
   memory) echo 'bin/memory-route.sh --live' ;; backlog) echo 'bin/standard-issue-label.sh --audit' ;;
   fleet) echo 'projects-orchestrator snapshot --json' ;; sessions) echo 'bin/context-peers.sh --json' ;;
-  worktrees) echo 'bin/worktree.sh list' ;; prs) echo 'gh pr list --json' ;; obligations) echo 'bin/status-obligations.sh show --json' ;; esac; }
+  worktrees) echo 'bin/worktree.sh list --quick' ;; prs) echo 'gh pr list --json' ;; obligations) echo 'bin/status-obligations.sh show --json' ;; esac; }
 ob_panel() { ui_panel "$1" obligations; }
 ob_view() { printf '%s' "$1" | sed 's/<div data-view=/\n<div data-view=/g' | grep "^<div data-view=\"$2\""; }
 ob_titles() { printf '%s' "$1" | grep -o '<td>fixture [^<]*</td>' | sed 's/<[^>]*>//g' | tr '\n' ','; }
 tiles_unavailable() { printf '%s\n' "$1" | grep -o 'class="value">unavailable<' | wc -l | tr -d ' '; }
 want_n="$(printf '%s\n' $PANEL_IDS | wc -l | tr -d ' ')"
+
+t_section "a headline reader reads the id its source prints (a renamed check id left Memory at 'ran ok')"
+# The id comes from the script itself, so renaming it there makes this red; the reader is the one in sources.ts.
+MEM_ID="$(sed -n 's/.*say "\[check:\([A-Za-z0-9.-]*\)\].*/\1/p' "$T_ROOT/bin/memory-route.sh" | head -1)"
+t_has "memory-route.sh prints a [check:<id>] line" "$MEM_ID" "memory"
+cat > "$T_TMP/headline.ts" <<HEADLINE_TS
+import { makePanels } from "$T_ROOT/tools/ui/sources.ts";
+const p = makePanels("$T_ROOT", "/cfg", "/home").find((x) => x.id === "memory")!;
+console.log(p.headline!({ text: "[check:$MEM_ID] /cfg\n  ok     a/b - 5 notes\n[check:$MEM_ID] green - 3 of 3 governed repo(s) routed\nmemory-route: 0 ok, 0 failed, 0 warnings\n" }));
+HEADLINE_TS
+cat > "$T_TMP/headline2.ts" <<HEADLINE_TS
+import { makePanels } from "$T_ROOT/tools/ui/sources.ts";
+const p = makePanels("$T_ROOT", "/cfg", "/home").find((x) => x.id === "worktrees")!;
+console.log(p.headline!({ text: "VERDICT  PATH  BRANCH  WHY\nSKIP     /a  main  the main worktree\nPRUNE    /b  x  directory is gone\nCOLLECT  /c  y  clean\n" }));
+HEADLINE_TS
+t_eq "the worktrees tile counts every verdict the script prints (PRUNE too)" "3 worktrees" "$("$UI_BUN" "$T_TMP/headline2.ts" 2>&1)"
+t_eq "the memory tile reads the check line" "green - 3 of 3 governed repo(s) routed" "$("$UI_BUN" "$T_TMP/headline.ts" 2>&1)"
 
 ui_tree 0; ui_start good --idle 300
 PAGE="$(ui_get /)"
@@ -139,6 +156,30 @@ ui_post '{"id":"floor"}' > /dev/null
 t_eq "killing only the shell leaves the forked sleep running" yes "$(alive "$(cat "$T_TMP/hang.pid")")"
 ui_stop; kill "$(cat "$T_TMP/hang.pid")" 2>/dev/null; UI_SCRIPT=""
 
+t_section "stopping the server (ctrl-c, SIGTERM, the idle stop) stops what a source is still running: nothing is orphaned"
+srv_gone() { _g=0; while [ $_g -lt 100 ] && [ "$(alive "$1")" = yes ]; do sleep 0.1; _g=$((_g + 1)); done; alive "$1"; }
+pid_up() { _g=0; while [ $_g -lt 100 ] && [ ! -s "$T_TMP/hang.pid" ]; do sleep 0.1; _g=$((_g + 1)); done; [ -s "$T_TMP/hang.pid" ]; }
+hang_tree; ui_start stopsig --idle 120
+ui_post '{"id":"floor"}' > /dev/null 2>&1 & Q1=$!
+pid_up
+t_eq "the source is running when the server is told to stop" yes "$(alive "$(cat "$T_TMP/hang.pid")")"
+kill -TERM "$UI_PID"; t_eq "SIGTERM stops the server" no "$(srv_gone "$UI_PID")"
+t_eq "and the sleep the source forked is gone with it" no "$(orphan_gone)"
+wait "$Q1" 2>/dev/null; kill "$(cat "$T_TMP/hang.pid")" 2>/dev/null
+hang_tree; ui_start stopidle --idle 2
+ui_post '{"id":"floor"}' > /dev/null 2>&1 & Q1=$!
+pid_up
+t_eq "the idle stop ends the server with the source still running" no "$(srv_gone "$UI_PID")"
+t_eq "and the sleep the source forked is gone with it" no "$(orphan_gone)"
+wait "$Q1" 2>/dev/null; kill "$(cat "$T_TMP/hang.pid")" 2>/dev/null
+ui_mutant shutdown 's/^export function killLive() {.*$/export function killLive() {} \/\/ guard:shutdown/' sources.ts
+t_eq "the shutdown mutant differs" changed "$UI_MUT"
+hang_tree; ui_start mshut --idle 120
+ui_post '{"id":"floor"}' > /dev/null 2>&1 & Q1=$!
+pid_up; kill -TERM "$UI_PID"; srv_gone "$UI_PID" > /dev/null
+t_eq "without the kill the same probe finds the sleep still running" yes "$(alive "$(cat "$T_TMP/hang.pid")")"
+wait "$Q1" 2>/dev/null; kill "$(cat "$T_TMP/hang.pid")" 2>/dev/null; UI_SCRIPT=""
+
 t_section "output is escaped: a PR title or a command line cannot inject markup"
 ui_tree 0
 EVIL='<script>alert(1)</script> & "q"'
@@ -192,6 +233,16 @@ t_has "a missing command is named" "$(ui_panel "$MP" fleet)" "unavailable: proje
 t_has "gh too" "$(ui_panel "$MP" prs)" "unavailable: gh is not installed on this box"
 t_has "and the obligations script, for the Obligations tab: unavailable, never 0" "$(ob_panel "$MP")" "unavailable: bin/status-obligations.sh is not on this box"
 t_eq "the panels that could still run did" yes "$(ui_panel "$MP" register | grep -q '<td>alpha-check</td>' && echo yes)"
+ui_stop
+
+t_section "the fleet CLI's name is the roots.tsv row, not a literal in the panel table (fleet's console script can be renamed in one place)"
+ui_tree 0; rm -f "$T_BIN/projects-orchestrator"
+printf '#!/bin/sh\n[ "$1" = --get ] && [ "$2" = HARBOR_SCOPE_FLEET_CONTROLLER_BIN ] && echo "$HOME/.local/bin/fleet-x"\n' > "$UI_ROOT/bin/scope-roots.sh"
+ui_cmd fleet-x 0 '[{"descriptor":{"name":"xproj"},"status":{"branch":"main","dirty":false,"ahead":0,"behind":0,"last_commit":"t"}}]'
+ui_start fleetrow --idle 120
+FR="$(ui_get /)"
+t_has "the Fleet panel names the command the row names" "$(ui_panel "$FR" fleet)" "fleet-x snapshot --json"
+t_has "and shows what it printed" "$(ui_panel "$FR" fleet)" "<td>xproj</td>"
 ui_stop
 OB_NEW='{"id":"pr:acme/widgets#9","kind":"pr","subject":"acme/widgets#9","repo":"widgets","owner":"operator","title":"fixture brand new","link":"","opened_ts":"2026-10-06T01:29:00Z","deadline_ts":"","state":"open","closed_by":"","closed_ts":"","age_s":60}'
 OB_ROWS_4="[$OB_NEW,${OB_ROWS_3#\[}"
