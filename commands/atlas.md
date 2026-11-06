@@ -30,6 +30,11 @@ Load the `doc-atlas` skill and follow it. The short form:
    Exit 0 is green. **Exit 127 means node or playwright is missing — a deferral, not a
    pass**, and must be reported as one.
 
+   The page carries a **Drawing | Graph** switch and, with two or more drawings, a tab
+   joining them all as one graph. `"view": "graph"` in the config makes the graph the
+   default; `"overview_graph": false` drops the joined tab. The graph has a 3D option: the
+   joined tab opens in it, a drawing's graph opens flat.
+
 5. **Hand it over as a `file://` link**, after `open`-ing it. Never publish it to a host.
 
 Report the link and one line per diagram — parts and connections. Not a description of
