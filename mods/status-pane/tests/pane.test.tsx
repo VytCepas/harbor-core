@@ -26,7 +26,7 @@ const GOOD: Script = {
   obligations: ok({ generated_ts: '', sources: {}, obligations: ROWS, proposals: [], read_ts: '' }),
   approvals: ok([{ id: 'merge-owner_repo-7-0123456789ab', command: APPROVE }]),
   sweep: ok(`${JSON.stringify({ class: 'stray-files', subject: 'port/x 1', action: `rm '${HOME}/port/x/1'` })}\n`),
-  access: { exitCode: 1, stdout: JSON.stringify({ entries: [{ id: 'gh-pr-read', state: 'expired', problem: 'expired 2026-11-01', since: '2026-11-01' }, { id: 'mail', state: 'ok', problem: null, since: '' }] }) },
+  access: { exitCode: 1, stdout: JSON.stringify({ entries: [{ id: 'gh-pr-read', state: 'expired', problem: 'expired 2026-11-01', since: '2026-11-01' }, { id: 'mail', state: 'ok', problem: null, since: '' }, { id: 'sso-login', state: 'unknown', problem: null, since: '2026-10-26' }, { id: 'slow-api', state: 'unknown', problem: 'the check did not finish in 30s', since: '2026-11-05' }] }) },
   skills: ok({ ts: '', days: 30, skills: [{ name: 'tdd', tier: 'box', hidden: true, description: 'Test first.', uses: 0, last_used: null }] }),
 }
 
@@ -104,6 +104,12 @@ test('a button press appends the row: use, fix and copy, on every surface that t
     expect(shown).toContain('sh bin/status-obligations.sh show --json · ran ') // every panel names its command and run time
     expect(shown).toContain('sh bin/skill-catalog.sh usage --json --live · ran ')
     expect(shown).toContain('sh bin/harbor access status --json · ran ')
+    expect(shown).toContain('Access · 2 need you · 1 ok · 1 no check') // an entry with no check is not a problem
+    expect(shown).toContain('slow-api: unknown · since 2026-11-05 · the check did not finish in 30s') // one that failed to answer is
+    expect(shown).toContain('1 have no check to run: harbor access status -v')
+    expect(shown).not.toContain('sso-login')
+    await ui.press({ key: 'fix:slow-api' })
+    expect(JSON.stringify(w.session.appended().at(-1)?.message.content)).toContain('slow-api: unknown')
     expect(shown).toContain('<cfg>/bin/gate-approve.sh merge owner/repo 7') // drawn without the config dir's path
     expect(shown).not.toContain(`${HOME}/.claude`)
     expect(shown).not.toContain('a session PR') // a session's row is not the operator's turn

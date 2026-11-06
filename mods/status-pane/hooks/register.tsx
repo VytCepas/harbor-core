@@ -4,12 +4,15 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { StatusPaneResult, StatusPaneResults, StatusPaneSourceId, StatusPaneTurnRow } from '../types'
+import type { StatusPaneAccessRow, StatusPaneResult, StatusPaneResults, StatusPaneSourceId, StatusPaneTurnRow } from '../types'
 import { SOURCE_IDS, runSource, scrub, where } from './sources'
 
 const PANE = 'status-pane'
 
 // Change the tag when StatusPaneResult changes: it declines what an earlier version stored, which outlives a reload.
+// Not ok and able to say why. An `unknown` with no problem has no check to fail (a sign-in, a held or unprobed entry); one
+// with a problem is a timeout, a refused check or a revoked value still stored, and that one is the operator's (harbor#1480).
+const needsYou = (a: StatusPaneAccessRow) => a.state !== 'ok' && (a.state !== 'unknown' || a.why !== '')
 const results = atom({ plugin: 'status-pane', key: 'results' } as const, {} as StatusPaneResults, { shape: 'results-1' })
 const skillQuery = atom({ plugin: 'status-pane', key: 'skillQuery' } as const, '')
 
@@ -207,20 +210,27 @@ export const register: Register = on => {
 
     // 3 · Access
     const ac = all.access
-    const accessRows = [...(ac?.access ?? [])].sort((a, b) => Number(a.state === 'ok') - Number(b.state === 'ok') || a.id.localeCompare(b.id))
+    const byId = (a: StatusPaneAccessRow, b: StatusPaneAccessRow) => a.id.localeCompare(b.id)
+    const entries = ac?.access ?? []
+    const attention = entries.filter(needsYou).sort(byId)
+    const fine = entries.filter(a => a.state === 'ok').sort(byId)
+    const noCheck = entries.length - attention.length - fine.length
+    const accessRows = [...attention, ...fine]
     const access = (
       <Box flexDirection="column">
-        <Text bold>Access{ac?.access ? ` · ${accessRows.filter(a => a.state !== 'ok').length} not ok of ${accessRows.length}` : ''}</Text>
+        <Text bold>Access{ac?.access ? ` · ${attention.length} need you · ${fine.length} ok · ${noCheck} no check` : ''}</Text>
         {ran(ac, 'access')}
         {down(ac) ??
-          (accessRows.length === 0 ? (
+          (entries.length === 0 ? (
             <Text>the register lists no entries</Text>
           ) : (
-            accessRows.map(a => {
+            <Box flexDirection="column">
+            {accessRows.map(a => {
               const line = `${a.id}: ${a.state}${a.why ? ` · ${a.why}` : ''}${a.since ? ` · since ${a.since}` : ''}`
+              const drawn = `${a.id}: ${a.state}${a.since ? ` · since ${a.since}` : ''}${a.why ? ` · ${a.why}` : ''}` // the age survives the clip
               return (
                 <Box flexDirection="row">
-                  <Text color={a.state === 'ok' ? undefined : 'warning'}>{clip(line, cols - 8)}</Text>
+                  <Text color={a.state === 'ok' ? undefined : 'warning'}>{clip(drawn, cols - 8)}</Text>
                   {a.state !== 'ok' && ACCESS_ID.test(a.id) && (
                     <Button
                       key={`fix:${a.id}`}
@@ -238,7 +248,9 @@ export const register: Register = on => {
                   )}
                 </Box>
               )
-            })
+            })}
+            {noCheck > 0 && <Text dimColor>{clip(`${noCheck} have no check to run: harbor access status -v`)}</Text>}
+            </Box>
           ))}
       </Box>
     )
