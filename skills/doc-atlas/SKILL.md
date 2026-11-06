@@ -127,6 +127,107 @@ geometry stay exact at every zoom. And the canvas is `overflow:hidden` with
 `touch-action:none`, because a scrollbar and a drag competing for one gesture is
 how a canvas feels broken.
 
+## The graph view: the same parts, laid out by force
+
+**The drawing is authored; the graph is derived.** Somebody placed every box in the
+drawing, and that placement is an argument. The graph lays the same parts and connections
+out by force, the way Obsidian and graphify show a vault, so it shows the structure nobody
+chose: which part is a hub, what hangs together, what sits alone. **Drawing | Graph** in the
+bar switches every drawing at once (`g` does the same) and the choice is remembered.
+`"view": "graph"` in the config makes the graph what a first-time reader sees; a stored
+choice still wins. Added 2026-11-05 (operator: "graphs instead, as graphify/obsidian does").
+
+**One payload, one highlight.** Both views read the same nodes, wires and zones, and
+`light()` computes the lit set once and paints it on both. A finding, a selection or a
+`Carries` click is the same state in either view. The panel is unchanged.
+
+- **Zones become hulls**: archify `boundaries` render as labelled soft regions, and the
+  layout holds each zone together (cross-zone springs are weaker). So an arrow that leaves
+  a hull still reads as a hand-over.
+- **Type is hue AND shape.** Six types in a node-link view fail the dataviz validator on
+  all pairs past three hues. So frontend is a circle, backend a hexagon, store a rounded
+  square, cloud a triangle, security a diamond, bus a pill, and external a hollow ring
+  (outside the system, so drawn as an outline). The hues keep archify's type hues, so
+  switching views does not repaint a part. The legend doubles as a control: hover a type
+  to light it.
+- **Hover a part** and its neighbourhood stays lit in the part's colour while the rest
+  dims. Flow dashes travel source to target, and edge labels appear. Reduced motion keeps
+  the colour and drops the travel.
+- **Every drawing, as one graph.** With two or more drawings the atlas gets a tab that
+  joins them all. A part is one node however many drawings carry it, matched on label as
+  `also` is, with a count badge, and its home drawing is its hull. Its panel lists the
+  shared parts (the bridges the separate tabs cannot show). An inside view hangs off its
+  parent part by a dashed link. `"overview_graph": false` turns it off. The tab is named
+  `graph` unless a drawing already has that name.
+
+### 3D: the same engine with a depth axis
+
+**3D** in the graph's zoom bar (or `3`) gives the layout depth and an orbit camera. Drag
+turns it, shift-drag pans, the arrows turn it, and Fit swings back to straight on. It is
+still SVG, so every part stays a DOM button and the panel, keyboard and `--check` work
+unchanged. **The whole-atlas graph opens in 3D and a drawing's graph in 2D**, each
+remembered apart: depth gives a 150-part merged graph room for its clusters, and on one
+drawing it mostly costs readability. The whole-atlas graph turns slowly by itself until a
+pointer arrives; a press, wheel or key stops it for the visit, and reduced motion never
+starts it. Added 2026-11-05 (operator: "3d").
+
+- **Depth is drawn three ways, none of them colour:** perspective size, fog toward the
+  ground, and paint order. SVG has no z-index, so the nodes are kept in DOM order far to
+  near, which makes "the part in front is the part you click" true by construction.
+- **Home is straight on, and at home nothing hides.** Collision stays in the screen plane,
+  so before any turn no part covers another. Depth is held tighter than width (a slab
+  facing the camera, not a ball), so the straight-on view still fills a wide stage.
+- **In 3D a label that would land on one already placed is hushed**, near before far and
+  hubs before the rest. A part's hover, selection or highlight always brings it back.
+
+### Measured traps, all hit while building it
+
+- **archify's extracted rules carry a page-wide `svg{width:100%;min-width:min(900px,100%)}`.**
+  Every inline icon outside `.canvas` stretched to 66px. Any new inline svg states its own
+  width and `min-width:0`.
+- **Edge-over-edge occlusion comes back in a force layout.** Two links leaving one node a
+  few degrees apart cover each other end to end. On a client atlas it hit 3 of 172 edges,
+  one of them covered at all nine probe points. A fan-out force keeps each pair of a
+  node's links apart by up to 24°. Measured after: 172/172 on that atlas, and 275/275 on a
+  276-part atlas whose DRAWING still loses 6 edges to archify's own occlusion (the same 6
+  on `main`).
+- **A floating legend covers nodes.** Fitted naively, 2 of 276 parts sat under it.
+  The fit reserves the legend's and the zoom cluster's corners.
+- **A probe races the camera.** Selecting a node near the edge pans to it, which moves
+  every later target. `__ATLAS_GRAPH__.settle(name)` runs the layout to rest, cancels the
+  pan and fits. `check.mjs` re-settles before each target, and the clicks are still the
+  real mouse.
+- **A colour transition on a bar control fails the contrast check**, because the check
+  reads colour the instant the theme flips. Bar controls carry no colour transition.
+- **Perspective moves parts enough to undo the fan-out.** A 23° fan in the layout
+  showed as 10° on screen, and an edge was covered at every probe point. Fan-out and
+  collision now measure the home projection, not the raw layout.
+- **A link running toward the camera foreshortens** (21px on screen for 78 units), and a
+  longer neighbour's hit stroke can cover all of it. In 3D links paint longest first, so
+  the short one keeps its stretch. Removing that sort turned a 3D edge red.
+- **A state class must not share a name with a control.** The 3D state on the graph and
+  the 3D button were both `.g3d`, and `querySelector` found the graph first. The button
+  is `.gdepth`.
+
+### What `--check` proves about it
+
+`graph nodes reachable`, `graph edges reachable`, `findings light their path on the
+graph` and `whole-atlas graph parts reachable` (which must equal the count of distinct
+labels). The switch must hide the drawing, and switching back must leave a fitted drawing.
+In 3D, on the first drawing: the switch by the real mouse, `3D graph nodes reachable` and
+edges at home, then `3D, turned: nearer part on top`. That turns the camera off-axis, and
+wherever a part's centre is covered, the part on top must be the nearer one. Switching off
+must leave no depth. The whole-atlas graph must open in 3D, so its clicks are 3D clicks and
+it gets the same turned test. The rest of the suite runs on the DRAWING, forced by
+`localStorage` before load, whatever `view` the atlas defaults to. **Falsified 2026-11-05 on a 12-drawing atlas:** control green,
+and four plants red. `pointer-events:none` on nodes gave 0/164 and 0/148. Dropping the
+highlight sync gave 0/7 findings. Keying parts by id instead of label gave `164 parts for
+148 distinct labels`. A throw in the graph model gave a FAIL verdict, not exit 2: a throw
+in that section is a broken page, not a missing verifier. **3D, falsified the same day:**
+control green, five plants red. Reversed depth order: 7 of 169 parts under a further one.
+No link sort: a 3D edge covered. A dead switch, a whole atlas that opens flat, and a switch
+that will not turn 3D off each named themselves. Re-falsify after editing `graph.js`.
+
 ## Sizing: three levers, and two of them are traps
 
 **1 · Fit the box to the drawing.** archify sizes the viewBox from the authored

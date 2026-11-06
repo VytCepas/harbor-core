@@ -2482,9 +2482,12 @@ floor_instr_memlinks() { # <config-dir>
   _iml_t="${_iml_t%.}"
   [ "$(printf '%s' "$_iml_t" | wc -l)" -eq $# ] || return 0
   printf 'ok\n'
+  # Line i pairs with $_iml_p<i>. The positional list is emptied first: bash copies it on every function call, so
+  # 1,700 links made the loop quadratic (0.21 s -> 0.08 s idle, harbor#559).
+  set --; _iml_i=0
   printf '%s' "$_iml_t" | while IFS= read -r _iml_l; do
-    floor_instr_shared_memory "$_iml_c" 'projects/*/memory' "$_iml_l" || printf '%s\n' "$1"
-    shift
+    _iml_i=$((_iml_i + 1))
+    floor_instr_shared_memory "$_iml_c" 'projects/*/memory' "$_iml_l" || eval "printf '%s\n' \"\$_iml_p$_iml_i\""
   done
 }
 # floor_instr_dirs <dir>... — the directory branch of floor_instr_manifest, for one surface ($_g) under $_cfg.

@@ -546,6 +546,15 @@ def assemble(cfg: dict, drawings: dict) -> dict:
             "cards": spec.get("cards", []),
             "nodes": nodes,
             "edges": len(edges),
+            # The graph view draws archify's zones as hulls, so it needs the membership the
+            # drawing only has as geometry. Members are checked against the parts, because
+            # a hull around an id that is not drawn would wrap nothing and say nothing.
+            "zones": [
+                {"label": b.get("label", ""), "kind": b.get("kind", "region"),
+                 "wraps": [w for w in b.get("wraps", []) if w in ids]}
+                for b in spec.get("boundaries", [])
+                if isinstance(b, dict) and any(w in ids for w in b.get("wraps", []))
+            ],
         }
     # The same component appears in several diagrams under the same label — warehouse-mcp
     # is in three. Matching on LABEL rather than id is deliberate: ids are per-spec and
@@ -651,6 +660,19 @@ def assemble(cfg: dict, drawings: dict) -> dict:
     # asking the first reader to skip the parts that are not for them does not work — they
     # cannot tell which those are, and a reference they cannot follow reads as a reference
     # they are not trusted with. `brief` (singular) still works and becomes a list of one.
+    # THE WHOLE-ATLAS GRAPH is a tab of its own once there is more than one drawing to
+    # join. Its name is a URL fragment like every other tab, so it must not take a name a
+    # diagram already has.
+    if len(data["order"]) > 1 and cfg.get("overview_graph", True):
+        gt = "graph"
+        while gt in data["diagrams"] or gt == "gaps":
+            gt = "atlas-" + gt
+        data["graphTab"] = gt
+    view = cfg.get("view", "drawing")
+    if view not in ("drawing", "graph"):
+        raise SystemExit(f"view: {view!r} — want \"drawing\" or \"graph\" (what a first-time reader sees)")
+    data["view"] = "graph" if view == "graph" else "draw"
+
     briefs = cfg.get("briefs") or ([cfg["brief"]] if cfg.get("brief") else [])
     if briefs:
         known = {f["id"] for f in findings}
@@ -662,7 +684,7 @@ def assemble(cfg: dict, drawings: dict) -> dict:
             # with a real onfocus handler and autofocus — script on load — while the only
             # check on this value was the collision test immediately below.
             ident(f"briefs[{n}].id", bid)
-            if bid in seen_ids or bid in data["diagrams"] or bid == "gaps":
+            if bid in seen_ids or bid in data["diagrams"] or bid in ("gaps", data.get("graphTab")):
                 raise SystemExit(
                     f"briefs[{n}].id {bid!r} collides with another tab — every tab is a "
                     f"URL fragment and a stored preference, so two cannot share a name"
@@ -692,6 +714,27 @@ def assemble(cfg: dict, drawings: dict) -> dict:
 # ---------------------------------------------------------------- the page
 
 SCRIPT = (Path(__file__).parent / "atlas.js").read_text(encoding="utf-8")
+GRAPH = (Path(__file__).parent / "graph.js").read_text(encoding="utf-8")
+
+# The graph tools sit in the same floating cluster as zoom; CSS shows them only when a
+# graph is on screen, so the drawing's cluster is unchanged.
+GRAPH_TOOLS = (
+    '<button class="gdepth" type="button" aria-pressed="false" aria-label="Show in 3D" '
+    'title="3D: drag to turn, shift-drag to pan ( 3 )">3D</button>'
+    '<button class="glabels" type="button" aria-pressed="false" aria-label="Show every label" '
+    'title="Every label, at any zoom">Aa</button>'
+    '<button class="grelayout" type="button" aria-label="Run the layout again" '
+    'title="Shake the layout loose">&#8635;</button>'
+)
+ZOOM = (
+    '<button class="zout" type="button" aria-label="Zoom out" title="Zoom out ( - )">&#8722;</button>'
+    '<span class="level" aria-live="off">100%</span>'
+    '<button class="zin" type="button" aria-label="Zoom in" title="Zoom in ( + )">+</button>'
+    '<button class="zfit" type="button" aria-label="Fit the diagram" title="Fit ( 0 )">&#8862;</button>'
+)
+GRAPH_HINT = ('<p class="ghint"><span class="h2d">drag a node to pull it · scroll to zoom · '
+              'double-click opens it deeper</span><span class="h3d">drag to turn · shift-drag to pan · '
+              'arrows turn · double-click opens it deeper</span></p>')
 
 
 def e(t: str) -> str:
@@ -1027,12 +1070,23 @@ def page(cfg: dict, data: dict) -> str:
             f'<div class="plate{" on" if on else ""}" id="plate-{nm}" '
             f'data-name="{nm}" role="tabpanel" aria-labelledby="tab-{nm}">'
             f'<div class="canvas">{g["svg"]}</div>'
-            f'<div class="zoombar" role="group" aria-label="Zoom">'
-            f'<button class="zout" type="button" aria-label="Zoom out" title="Zoom out ( - )">&#8722;</button>'
-            f'<span class="level" aria-live="off">100%</span>'
-            f'<button class="zin" type="button" aria-label="Zoom in" title="Zoom in ( + )">+</button>'
-            f'<button class="zfit" type="button" aria-label="Fit the diagram" title="Fit ( 0 )">&#8862;</button>'
+            f'<div class="gview"></div><div class="glegend" aria-label="Types"></div>{GRAPH_HINT}'
+            f'<div class="zoombar" role="group" aria-label="Zoom">{GRAPH_TOOLS}{ZOOM}'
             f"</div></div>"
+        )
+
+    gt = data.get("graphTab")
+    if gt:
+        tabs.append(
+            f'<button role="tab" class="gtab" id="tab-{e(gt)}" data-name="{e(gt)}" '
+            f'aria-controls="plate-{e(gt)}" aria-selected="false" tabindex="-1">'
+            "<b>Every drawing · graph</b><i>All parts and connections at once</i></button>"
+        )
+        plates.append(
+            f'<div class="plate gplate" id="plate-{e(gt)}" data-name="{e(gt)}" role="tabpanel" '
+            f'aria-labelledby="tab-{e(gt)}"><div class="gview"></div>'
+            f'<div class="glegend" aria-label="Types"></div>{GRAPH_HINT}'
+            f'<div class="zoombar" role="group" aria-label="Zoom">{GRAPH_TOOLS}{ZOOM}</div></div>'
         )
 
     # Diagnostics go last, after the drawings, because they are what the page is NOT
@@ -1062,6 +1116,8 @@ def page(cfg: dict, data: dict) -> str:
         # script would be free to drift from the one the build refuses to violate.
         "vocab": {"status": STATUS, "basis": BASIS},
         "briefs": [b["id"] for b in data.get("briefs", [])],
+        "view": data.get("view", "draw"),
+        "graphTab": data.get("graphTab"),
         "diagrams": {
             n: {k: v for k, v in g.items() if k not in ("svg", "rules")}
             for n, g in data["diagrams"].items()
@@ -1102,6 +1158,10 @@ def page(cfg: dict, data: dict) -> str:
       </span>
     </div>
     <span class="tools">
+      <span class="modes" role="group" aria-label="View each drawing as">
+        <button type="button" data-mode="draw" aria-pressed="true" title="The authored drawing ( g )"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2.5" width="5" height="4" rx="1"/><rect x="9.5" y="9.5" width="5" height="4" rx="1"/><path d="M4 6.5V11.5H9.5"/></svg><span>Drawing</span></button>
+        <button type="button" data-mode="graph" aria-pressed="false" title="The same parts as a force-directed graph ( g )"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4.5L11.5 6M4 4.5L6 12M11.5 6L6 12"/><circle cx="4" cy="4.5" r="2.2"/><circle cx="11.5" cy="6" r="1.8"/><circle cx="6" cy="12" r="2"/></svg><span>Graph</span></button>
+      </span>
       <button class="barmore" type="button" aria-expanded="false" aria-controls="baraux"
               aria-label="Search and findings" title="Search and findings">&#9906;</button>
       <button class="panner" type="button" aria-pressed="false"
@@ -1123,6 +1183,7 @@ def page(cfg: dict, data: dict) -> str:
 
 <style>{chr(10).join(css_rules)}</style>
 <script>window.__ATLAS__={payload};</script>
+<script>{GRAPH}</script>
 <script>{SCRIPT}</script>
 </body>
 </html>
