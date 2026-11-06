@@ -32,7 +32,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | contract | contracts/ | system | source | versioned | 39 |
 | decision-record | docs/decisions/ | element | source | dated | 93 |
 | hook | hooks/ | component | source | living | 48 |
-| skill | skills/ | component | source | living | 41 |
+| skill | skills/ | component | source | living | 42 |
 | fixture | fixtures/ | element | source | living | 438 |
 | registry | registries/ | component | source | versioned | 69 |
 | test | tests/ | component | source | living | 511 |
@@ -65,7 +65,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `policy/` | 3 | 1 | 1 |
 | `registries/` | 1 | 1 | 1 |
 | `runners/` | 2 | 1 | 1 |
-| `skills/` | 41 | 8 | 1 |
+| `skills/` | 42 | 8 | 1 |
 | `standards/` | 31 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `tests/` | 511 | 27 | 1 |
@@ -86,7 +86,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | ci | coordination | 17 | 46 | 2 | 20 | 1 | 7 |
 | context | control-plane | 7 | 14 | 1 | 3 | 0 | 42 |
 | deploy | control-plane | 16 | 31 | 1 | 4 | 0 | 7 |
-| doc | control-plane | 16 | 13 | 0 | 35 | 0 | 22 |
+| doc | control-plane | 16 | 13 | 0 | 36 | 0 | 22 |
 | drift | control-plane | 8 | 10 | 0 | 11 | 4 | 14 |
 | eval | control-plane | 10 | 7 | 0 | 2 | 0 | 0 |
 | event | observability | 3 | 19 | 0 | 12 | 0 | 2 |
