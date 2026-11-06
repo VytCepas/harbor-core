@@ -10,7 +10,7 @@
 #   harbor access refs                    the registered secret refs, one per line
 #   harbor access check                   is the register well formed, and free of a credential value
 #   harbor access stored                  every item bin/secret holds, and whether an entry names it (exit 1 if not)
-#   harbor access status [-v] [id...]     is each credential stored, alive, in date: what is wrong, and since when
+#   harbor access status [-v|--json] [id...]  is each credential stored, alive, in date: what is wrong, and since when; --json: the same facts as data
 #   harbor access rotate <id> [--value-stdin] [--locked]   a new value, kept only if the entry's check passes on it
 #   harbor access revoke <id>             retire an entry: refuse its ref from now on, and remove the stored value
 #
@@ -398,9 +398,16 @@ store_refs() {
 # Is each credential stored, alive and in date? Read-only on the register. What it prints is what is WRONG,
 # each with the day it was first seen so (a state file outside git keeps those days), and one tally line;
 # -v prints every entry. Exit 1 on any red, 2 when the store or the register cannot be read.
+# --json (harbor#1480) prints the same facts as ONE object on stdout, every entry, same ids, same exit codes:
+#   {"ts":ISO,"entries":[{"id","kind","state","stored","alive","expires","days_left","problem","since"}]}
+# state is ok | dead | expiring | expired | unstored | unknown (unprobed, undecided, held, unmanaged, n/a, revoked and a
+# check with no verdict are unknown; alive is true or false only when a check ran and decided). problem is the text mode's
+# reason on a red or expiring entry, else null. since is the day that state was first seen (YYYY-MM-DD). No field is read
+# from the credential store but its NAMES; a value, and a check's output, never reach it.
 cmd_status() {
-  __verbose=0
-  while [ $# -gt 0 ]; do case "$1" in -v) __verbose=1; shift ;; -*) usage ;; *) break ;; esac; done
+  __verbose=0; __json=0
+  while [ $# -gt 0 ]; do case "$1" in -v) __verbose=1; shift ;; --json) __json=1; shift ;; -*) usage ;; *) break ;; esac; done
+  if [ "$__json" = 1 ] && ! command -v jq >/dev/null 2>&1; then fail "jq is required for --json" "$(pkg_hint jq)" 2; fi
   __rf="$(register_file)" || { printf 'access status: no access register, so NOTHING was checked and this is not a pass.\n' >&2; exit 2; }
   [ -f "$__rf" ] || { printf 'access status: %s does not exist, so NOTHING was checked and this is not a pass.\n' "$__rf" >&2; exit 2; }
   [ -f "$PROBE_RUNNER" ] || fail "no probe runner at $PROBE_RUNNER, so NOTHING was probed and this is not a pass" "restore skills/access-ledger" 2
@@ -411,7 +418,7 @@ cmd_status() {
   store_refs > "$__tmp/stored" || fail "bin/secret list failed, so NOTHING was compared and this is not a pass" "run: secret list" 2
   if [ $# -gt 0 ]; then printf '%s\n' "$@"; else awk -F'\t' '$1 == "N" { print $2 }' "$__tmp/rows"; fi > "$__tmp/ids"
   __today="$(today)"
-  : > "$__tmp/out"
+  : > "$__tmp/out"; : > "$__tmp/meta"
   while IFS= read -r __id; do
     [ -n "$__id" ] || continue
     awk -F'\t' -v i="$__id" '$1 == "N" && $2 == i { f = 1 } END { exit !f }' "$__tmp/rows" \
@@ -422,7 +429,7 @@ cmd_status() {
     __has_rev=0; awk -F'\t' -v i="$__id" '$1 == "R" && $2 == i && $3 == "revoked" { f = 1 } END { exit !f }' "$__tmp/rows" && __has_rev=1
     __stored=0; [ "$__ref" = none ] || [ -z "$__ref" ] || ! grep -qxF -- "$__ref" "$__tmp/stored" || __stored=1
     # The worst state wins: red, then warn, then a gap, then ok or n/a.
-    __st=''; __why=''
+    __st=''; __why=''; __alive=''; __left=''
     if [ "$__has_rev" = 1 ]; then
       if [ "$__stored" = 1 ]; then __st=REVOKED-STORED; __why="revoked, but secret.$__ref is still stored: secret rm $__ref"
       else __st=revoked; __why="retired"; fi
@@ -442,8 +449,8 @@ cmd_status() {
       if [ -n "$__chk" ] && [ -z "$__st" ] || { [ -n "$__chk" ] && [ "$__st" = expiring ]; }; then
         __pv="$(PROBE_TIMEOUT="${PROBE_TIMEOUT:-30}" sh "$PROBE_RUNNER" --probe "$__chk" "$__exp" 2>/dev/null)" || :
         case "$__pv" in
-          pass) [ -n "$__st" ] || { __st=ok; __why="check passed"; } ;;
-          fail) __st=FAIL; __why="the check ran and its output lacks the expected literal" ;;
+          pass) __alive=true; [ -n "$__st" ] || { __st=ok; __why="check passed"; } ;;
+          fail) __alive=false; __st=FAIL; __why="the check ran and its output lacks the expected literal" ;;
           timeout) __st=TIMEOUT; __why="the check did not finish in ${PROBE_TIMEOUT:-30}s" ;;
           refused) __st=REFUSED; __why="the check is not a read, so it was not run" ;;
           browser|manual|uncheckable) [ -n "$__st" ] || { __st=undecided; __why="the check is $__pv: not machine-decidable"; } ;;
@@ -467,6 +474,10 @@ cmd_status() {
       fi
     fi
     printf '%s\t%s\t%s\n' "$__id" "$__st" "$__why" >> "$__tmp/out"
+    # For --json only: what the text line does not carry. A date or a number that is not one is null, never a guess.
+    case "$__left" in ''|*[!0-9-]*|-) __left='' ;; esac
+    [ -n "$__left" ] || __exps=''   # status could not read the date (okdate), so neither is reported
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$__id" "$__kind" "$__stored" "$__alive" "$__exps" "$__left" >> "$__tmp/meta"
   done < "$__tmp/ids"
   # The day each state was first seen: kept when the state is unchanged, today when it is new.
   mkdir -p "$(dirname "$STATE")" 2>/dev/null || :
@@ -477,6 +488,21 @@ cmd_status() {
   { awk -F'\t' 'FILENAME == ARGV[1] { seen[$1] = 1; next } !($1 in seen)' "$__tmp/out" "$STATE" 2>/dev/null || :
     awk -F'\t' '{ print $1 "\t" $2 "\t" $3 }' "$__tmp/dated"; } > "$__tmp/state.new"
   mv -f "$__tmp/state.new" "$STATE" 2>/dev/null || log_warn "could not keep $STATE: every state reads as new today"
+  if [ "$__json" = 1 ]; then
+    # dated: id, state text, first-seen day, reason. meta: id, kind, stored (0|1), alive, expires, days_left. Joined on the id.
+    awk -F'\t' -v OFS='\t' 'FILENAME == ARGV[1] { m[$1] = $0; next } { print $0, m[$1] }' "$__tmp/meta" "$__tmp/dated" \
+      | jq -R -s -c --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '
+          { ts: $ts, entries: [ split("\n")[] | select(. != "") | split("\t") as $f
+            | ($f[1]) as $st
+            | { id: $f[0], kind: ($f[5] // ""),
+                state: ({ok: "ok", MISSING: "unstored", EXPIRED: "expired", expiring: "expiring"}[$st] // (if $st == "FAIL" and $f[7] == "false" then "dead" else "unknown" end)),
+                stored: ($f[6] == "1"),
+                alive: (if $f[7] == "true" then true elif $f[7] == "false" then false else null end),
+                expires: (if ($f[8] // "") == "" then null else $f[8] end),
+                days_left: (if ($f[9] // "") == "" then null else ($f[9] | tonumber) end),
+                problem: (if ($st | test("^[A-Z]")) or $st == "expiring" then $f[3] else null end),
+                since: $f[2] } ] }' || fail "could not render the status as JSON" "check that jq works: jq --version" 2
+  else
   awk -F'\t' -v v="$__verbose" -v t="$__today" "$AWK_DATES"'
     { st = $2; red = (st ~ /^[A-Z]/); warn = (st == "expiring")
       age = dayno(t) - dayno($3); when = (age == 0) ? "new today" : "since " $3 " (" age " day" (age == 1 ? "" : "s") ")"
@@ -488,6 +514,7 @@ cmd_status() {
       for (i = 1; i in O; i++) if (n[O[i]]) printf " %d %s,", n[O[i]], O[i]
       printf " %d red\n", nred + 0
     }' "$__tmp/dated"
+  fi
   ! awk -F'\t' '$2 ~ /^[A-Z]/ { f = 1 } END { exit !f }' "$__tmp/out"
 }
 
@@ -576,6 +603,11 @@ cmd_revoke() {
 }
 
 VERB="${1:-}"; [ $# -eq 0 ] || shift
+# --json is status'"'"'s alone (harbor#1480): `harbor access` is a json-passing verb, so any other verb must refuse the flag
+# rather than ignore it, or a caller parsing the output could not tell "no data" from "not supported".
+if [ "$VERB" != status ]; then
+  for _a in "$@"; do [ "$_a" != --json ] || fail "'$VERB' has no --json; only status does" "harbor access status --json" 2; done
+fi
 case "$VERB" in
   add) cmd_add "$@" ;;
   list) cmd_list ;;

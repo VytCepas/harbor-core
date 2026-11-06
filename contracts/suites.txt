@@ -224,6 +224,7 @@ tests/admission/bash/bash.test.sh
 tests/doc/index-generate/index-generate.test.sh
 tests/skill/eval-runners/eval-runners.test.sh
 tests/skill/catalog/catalog.test.sh
+tests/skill/catalog/usage-feed.test.sh
 tests/skill/atlas/zones.test.sh
 tests/skill/atlas/inside.test.sh
 tests/skill/archify/report-pipe.test.sh
@@ -399,6 +400,7 @@ tests/ci/release-names/release-names.test.sh
 tests/access/cli/add-prompts.test.sh
 tests/access/cli/stored.test.sh
 tests/access/cli/lifecycle.test.sh
+tests/access/cli/status-json.test.sh
 tests/lint/module/rules.test.sh
 tests/lint/module/unchecked.test.sh
 tests/lint/doc-refs/doc-refs.test.sh
@@ -478,3 +480,4 @@ tests/lint/conventions/repo-kit.test.sh
 tests/standard/render/render.test.sh
 tests/doc/checks-generate/checks-generate.test.sh
 tests/status/fleet-watch/watch.test.sh
+tests/status/pane/plugin.test.sh

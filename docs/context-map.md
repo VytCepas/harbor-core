@@ -35,16 +35,16 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | skill | skills/ | component | source | living | 41 |
 | fixture | fixtures/ | element | source | living | 438 |
 | registry | registries/ | component | source | versioned | 69 |
-| test | tests/ | component | source | living | 511 |
+| test | tests/ | component | source | living | 515 |
 | report | docs/reports/ | element | report | dated | 2 |
-| design | docs/design/ | component | source | living | 8 |
+| design | docs/design/ | component | source | living | 9 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | generated-doc | docs/generated/ | component | generated | generated | 1 |
 | script | bin/ | component | source | living | 251 |
 | how-to | docs/how-to/ | component | source | living | 1 |
 | reference | docs/reference/ | component | generated | generated | 86 |
 | explanation | docs/explanation/ | component | source | living | 102 |
-| (no kind) | - | - | - | - | 258 |
+| (no kind) | - | - | - | - | 264 |
 
 ## Folders
 
@@ -57,10 +57,11 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `commands/` | 5 | 4 | 1 |
 | `context-rules/` | 57 | 6 | 1 |
 | `contracts/` | 107 | 11 | 2 |
-| `docs/` | 308 | 24 | 9 |
+| `docs/` | 309 | 24 | 9 |
 | `fixtures/` | 438 | 11 | 1 |
 | `hooks/` | 44 | 7 | 1 |
 | `launchd/` | 21 | 10 | 1 |
+| `mods/` | 6 | 1 | 1 |
 | `patches/` | 12 | 3 | 1 |
 | `policy/` | 3 | 1 | 1 |
 | `registries/` | 1 | 1 | 1 |
@@ -68,7 +69,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `skills/` | 41 | 8 | 1 |
 | `standards/` | 31 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 511 | 27 | 1 |
+| `tests/` | 515 | 27 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 101 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -77,8 +78,8 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
-| access | control-plane | 12 | 28 | 2 | 6 | 0 | 0 |
-| admission | control-plane | 27 | 87 | 0 | 6 | 0 | 172 |
+| access | control-plane | 12 | 29 | 2 | 6 | 0 | 0 |
+| admission | control-plane | 27 | 88 | 0 | 6 | 0 | 172 |
 | agent | control-plane | 1 | 2 | 0 | 8 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
 | audit | control-plane | 8 | 14 | 0 | 11 | 0 | 2 |
@@ -100,9 +101,9 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
 | scope | coordination | 14 | 22 | 0 | 1 | 0 | 5 |
 | session | data-plane | 14 | 5 | 0 | 7 | 0 | 0 |
-| skill | catalog | 5 | 17 | 0 | 8 | 0 | 14 |
+| skill | catalog | 5 | 18 | 0 | 8 | 0 | 14 |
 | standard | policy-function | 17 | 28 | 124 | 12 | 12 | 61 |
-| status | observability | 11 | 23 | 0 | 9 | 0 | 0 |
+| status | observability | 11 | 24 | 0 | 9 | 0 | 0 |
 | test | control-plane | 4 | 5 | 2 | 8 | 0 | 15 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
 
@@ -753,9 +754,10 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `commands/` | 2 |
 | `context-rules/` | 45 |
 | `contracts/` | 86 |
-| `docs/` | 128 |
+| `docs/` | 129 |
 | `fixtures/` | 263 |
 | `hooks/` | 30 |
+| `mods/` | 6 |
 | `patches/` | 10 |
 | `runners/` | 2 |
 | `skills/` | 1 |
@@ -782,6 +784,7 @@ Every tracked top-level entry, its kind and layer from `contracts/layout-map.tsv
 | `fixtures/` | fixture | source | core |
 | `hooks/` | hook | source | core |
 | `launchd/` | deploy-unit | source | core |
+| `mods/` | code | source | core |
 | `patches/` | vendored | source | core |
 | `policy/` | policy | source | dev |
 | `registries/` | record | record | dev |
