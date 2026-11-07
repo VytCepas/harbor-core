@@ -61,6 +61,7 @@ docs/reports/evals.md	core
 LICENSE	core	Apache-2.0 text, verbatim
 NOTICE	core	third-party notices (Apache convention)
 README.md	core	
+docs/how-to/suggest-go-live.md	core	
 docs/how-to/harden-the-host.md	core	
 SECURITY.md	core	vulnerability reporting policy
 justfile	core	

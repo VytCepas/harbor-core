@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
 # The status pane mod (harbor#1480): `claude plugin validate` is clean and `claude plugin test` passes on mods/status-pane.
-# The mod's own tests hold the three guarantees, each shown red once: a button press appends the row, an id outside the
-# source table is refused unrun, a failing source renders `unavailable: <reason>`. Skips, loudly, where the claude CLI
+# The mod's own tests hold the pane's guarantees, each shown red once: a button press appends the row, an id outside the
+# source table is refused unrun, a failing source renders `unavailable: <reason>`, open and refresh run no scan (harbor#1485),
+# scan-used follows only a scan that worked, the write table refuses any id the pane does not hold. Skips, loudly, where the claude CLI
 # is absent (the Linux CI runners), since both checks are the CLI's own.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 MOD="$T_ROOT/mods/status-pane"
@@ -23,6 +24,7 @@ t_hasnt "...and no error" "$OUT" 'rror:'
 t_section "test: the mod's own tests against the engine"
 OUT="$("$CLAUDE" plugin test "$MOD" 2>&1)"; RC=$?
 t_eq "plugin test exits 0" 0 "$RC"
-t_has "...three passed" "$OUT" ' 3 pass'
+WANT="$(grep -c '^test(' "$MOD/tests/pane.test.tsx")" # every test of the file, derived: a skipped or unreached one shows here
+t_has "...all $WANT passed" "$OUT" " $WANT pass"
 t_has "...none failed" "$OUT" ' 0 fail'
 t_done

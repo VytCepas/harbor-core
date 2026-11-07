@@ -25,5 +25,6 @@ system	operator	launchctl, sudo, open and the like act on the machine, not the r
 compound	accepted	a loop or group has no single verb; the first verb inside it cannot be read without a parse	contracts/confinement-classes.tsv
 event-bus	allow	the bus directory is a write row, so `event-bus.sh emit` runs confined	contracts/confinement-paths.txt
 session-title	route	the title is written with the Write tool and applied by the session-title hook, never a shell redirect	hooks/session-title/session-title.sh
+suggest-stop	allow	the suggestion state folder is a write row, so `status-suggest.sh stop` runs confined; each switch logs the origin its caller claims, a record and not a control	contracts/confinement-paths.txt
 other	accepted	a verb the enum does not name is counted; a verb that recurs is added to floor_obs_class with a row	bin/library-admission.sh
 unclassified	accepted	a ledger record from before the class field; it ages out with rotation	contracts/confinement-classes.tsv

@@ -1,13 +1,21 @@
-// The pane's allowlist (harbor#1480): every command the pane may run, in ONE table, each an argument array.
-// Modelled on tools/ui/sources.ts. A request names a source id and nothing else: no command text, path or
-// argument ever comes from the model, the prompt or a drawn row. An id outside the table is refused, unrun.
+// The pane's allowlist (harbor#1480): every command the pane may run, in TWO frozen tables, each row an argument array.
+// Modelled on tools/ui/sources.ts. SOURCES are reads: a request names a source id and nothing else, no command text,
+// path or argument. ACTIONS (harbor#1485) are the five suggestion writes: a request names an action, and for stop and
+// start one id that must match a strict pattern AND be one this pane already holds (a status row, the stopped list,
+// a candidate of the last scan). No command text, path or option ever comes from the model, the prompt or a drawn row.
+// An id outside either table is refused, unrun.
 import type { EngineInterface } from 'claude-code'
 
 import type {
   StatusPaneAccessRow,
+  StatusPaneActionId,
+  StatusPaneCandidate,
   StatusPaneResult,
+  StatusPaneResults,
+  StatusPaneScan,
   StatusPaneSkillRow,
   StatusPaneSourceId,
+  StatusPaneSuggest,
   StatusPaneTurnRow,
 } from '../types'
 
@@ -15,7 +23,7 @@ import type {
 // HARBOR_SCOPE_BIN, else ${PORT_ROOT:-$HOME/port}/harbor/bin, and only where status-generate.sh is there.
 export type Where = { bin: string; root: string; cfg: string; home: string }
 
-type Parsed = Partial<Pick<StatusPaneResult, 'turn' | 'commands' | 'skills' | 'access'>>
+type Parsed = Partial<Pick<StatusPaneResult, 'turn' | 'commands' | 'skills' | 'access' | 'suggest' | 'scan'>>
 type Parse = (stdout: string) => Parsed | string // a string is why the output is not the shape: unavailable
 
 export type Source = {
@@ -24,6 +32,7 @@ export type Source = {
   readonly okExits: readonly number[] // exits that are an answer; any other exit is unavailable
   readonly timeoutMs: number
   readonly parse: Parse
+  readonly onDemand?: boolean // never run by open or refresh: only a person's press (or a typed id) starts it
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -109,6 +118,48 @@ const parseSkills: Parse = out => {
   return { skills }
 }
 
+// The patterns every suggestion id and word passes before it is drawn or sent anywhere (contract: lane-contract.md, Panel).
+export const ROW_ID = /^[a-z0-9][a-z0-9-]{0,26}$/
+export const CANDIDATE_ID = /^[0-9a-f]{8}$/
+const KIND = /^(mod|skill|hook|job)$/ // the scan's four, as --vocabulary prints them
+const SHAPE = /^[a-z][a-z0-9 ,-]{0,119}$/ // the scan's closed vocabulary, every step of it (a test enumerates them); nothing else is let through
+const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : 0)
+
+// `status-suggest.sh status --json` (harbor#1485): schema 1.
+const parseSuggest: Parse = out => {
+  const j = json(out)
+  if (!isObj(j) || j.schema !== 1) return 'output is not the suggestion status shape (schema 1)'
+  if (typeof j.enabled !== 'boolean' || !Array.isArray(j.stopped) || !Array.isArray(j.rows))
+    return 'output is not the suggestion status shape (enabled, stopped, rows)'
+  const last = isObj(j.last) && ROW_ID.test(str(j.last.id)) ? { id: str(j.last.id), line: str(j.last.line), at: str(j.last.at) } : null
+  const suggest: StatusPaneSuggest = {
+    enabled: j.enabled,
+    stopped: j.stopped
+      .filter(isObj)
+      .filter(r => ROW_ID.test(str(r.id)))
+      .map(r => ({ id: str(r.id), since: str(r.since), origin: str(r.origin), label: str(r.label) || str(r.id) })),
+    last,
+    rows: j.rows
+      .filter(isObj)
+      .filter(r => ROW_ID.test(str(r.id)))
+      .map(r => ({ id: str(r.id), kind: str(r.kind), line: str(r.line), stopped: r.stopped === true })),
+    introDue: j.intro_due === true,
+  }
+  return { suggest }
+}
+
+// `status-suggest-scan.sh --json --live` (harbor#1485): schema 1. A candidate that fails a pattern is counted and not drawn.
+const parseScan: Parse = out => {
+  const j = json(out)
+  if (!isObj(j) || j.schema !== 1 || !Array.isArray(j.candidates)) return 'output is not the suggestion scan shape (schema 1)'
+  const all = j.candidates.filter(isObj)
+  const candidates: StatusPaneCandidate[] = all
+    .filter(r => CANDIDATE_ID.test(str(r.id)) && KIND.test(str(r.kind)) && SHAPE.test(str(r.shape)))
+    .map(r => ({ id: str(r.id), kind: str(r.kind), shape: str(r.shape), sessions: num(r.sessions), count: num(r.count) }))
+  const scan: StatusPaneScan = { days: num(j.days), sessions: num(j.sessions), candidates, dropped: j.candidates.length - candidates.length }
+  return { scan }
+}
+
 // THE TABLE. Nothing else in the mod names a command.
 export const SOURCES: Readonly<Record<StatusPaneSourceId, Source>> = Object.freeze({
   obligations: {
@@ -146,9 +197,28 @@ export const SOURCES: Readonly<Record<StatusPaneSourceId, Source>> = Object.free
     timeoutMs: 120_000,
     parse: parseSkills,
   },
+  suggest: {
+    id: 'suggest',
+    argv: w => ['sh', `${w.bin}/status-suggest.sh`, 'status', '--json'],
+    okExits: [0],
+    timeoutMs: 30_000,
+    parse: parseSuggest,
+  },
+  // Reads every session's tool calls, so it runs on a press and never on open or refresh (harbor#1485, decision 7).
+  // `time sh bin/status-suggest-scan.sh --json --live`, 1.7 GB of transcripts: 9 s at load 7, 75 s at load 65. The timeout keeps 2x the worst.
+  scan: {
+    id: 'scan',
+    argv: w => ['sh', `${w.bin}/status-suggest-scan.sh`, '--json', '--live'],
+    okExits: [0],
+    timeoutMs: 180_000,
+    parse: parseScan,
+    onDemand: true,
+  },
 })
 
 export const SOURCE_IDS = Object.keys(SOURCES) as StatusPaneSourceId[]
+// What open and refresh run: every row but the on-demand ones.
+export const REFRESH_IDS = SOURCE_IDS.filter(id => !SOURCES[id].onDemand)
 
 // Is this id a row of the table? The one check every run passes through.
 export const isSourceId = (id: string): id is StatusPaneSourceId => Object.prototype.hasOwnProperty.call(SOURCES, id)
@@ -191,16 +261,9 @@ export async function where($: EngineInterface): Promise<Where | string> {
 
 const firstLine = (s: string) => (s.split('\n').map(l => l.trim()).find(Boolean) ?? '').slice(0, 160)
 
-// The ONE place a process is started. It takes an id, looks it up in the table, and runs that row's argv;
-// an id the table does not hold is refused here, before anything runs.
-export async function runSource($: EngineInterface, id: string, w: Where | string): Promise<StatusPaneResult> {
-  const t0 = await $.clock.now()
-  if (!isSourceId(id)) {
-    return { status: 'refused', reason: `${scrub(id, undefined, 60)} is not in the source table`, command: '', ranAt: t0, ms: 0 }
-  }
-  if (typeof w === 'string') return { status: 'unavailable', reason: w, command: '', ranAt: t0, ms: 0 }
-  const src = SOURCES[id]
-  const argv = src.argv(w)
+// The ONE place a process is started, for a source and for an action alike: an argv built from a table row, nothing else.
+type Spec = { okExits: readonly number[]; timeoutMs: number; emptyOk: boolean; parse: Parse }
+async function execute($: EngineInterface, w: Where, argv: readonly string[], spec: Spec, t0: number): Promise<StatusPaneResult> {
   const command = shown(argv, w)
   const done = async (r: Omit<StatusPaneResult, 'command' | 'ranAt' | 'ms'>): Promise<StatusPaneResult> => ({
     ...r,
@@ -210,18 +273,80 @@ export async function runSource($: EngineInterface, id: string, w: Where | strin
   })
   let ran
   try {
-    ran = await $.process.run(argv, { cwd: w.root, env: { NO_COLOR: '1' }, timeoutMs: src.timeoutMs })
+    ran = await $.process.run(argv, { cwd: w.root, env: { NO_COLOR: '1' }, timeoutMs: spec.timeoutMs })
   } catch (err) {
     const why = err instanceof Error ? err.message : String(err)
     return done({ status: 'unavailable', reason: `did not run: ${scrub(firstLine(why), w, 160) || 'no reason given'}` })
   }
-  if (!src.okExits.includes(ran.exitCode)) {
+  if (!spec.okExits.includes(ran.exitCode)) {
     const why = scrub(firstLine(ran.stderr) || firstLine(ran.stdout) || 'no output', w, 160)
     return done({ status: 'unavailable', reason: `exit ${ran.exitCode}: ${why}` })
   }
   if (ran.isStdoutTruncated) return done({ status: 'unavailable', reason: 'output is larger than 4 MiB, so it was cut and is not read' })
-  if (!ran.stdout.trim() && id !== 'sweep') return done({ status: 'unavailable', reason: 'the command printed nothing' })
-  const parsed = src.parse(ran.stdout)
+  if (!ran.stdout.trim() && !spec.emptyOk) return done({ status: 'unavailable', reason: 'the command printed nothing' })
+  const parsed = spec.parse(ran.stdout)
   if (typeof parsed === 'string') return done({ status: 'unavailable', reason: parsed })
   return done({ status: 'ok', reason: '', ...parsed })
+}
+
+// It takes an id, looks it up in SOURCES, and runs that row's argv; an id the table does not hold is refused here, before anything runs.
+export async function runSource($: EngineInterface, id: string, w: Where | string): Promise<StatusPaneResult> {
+  const t0 = await $.clock.now()
+  if (!isSourceId(id)) {
+    return { status: 'refused', reason: `${scrub(id, undefined, 60)} is not in the source table`, command: '', ranAt: t0, ms: 0 }
+  }
+  if (typeof w === 'string') return { status: 'unavailable', reason: w, command: '', ranAt: t0, ms: 0 }
+  const src = SOURCES[id]
+  return execute($, w, src.argv(w), { okExits: src.okExits, timeoutMs: src.timeoutMs, emptyOk: id === 'sweep', parse: src.parse }, t0)
+}
+
+// THE WRITE TABLE (harbor#1485). The only commands the pane runs that change anything, every one scoped to the suggestion
+// state folder by the tool itself. `takesId` rows get the id from the caller and nothing else; the origin is fixed here.
+export type Action = {
+  readonly id: StatusPaneActionId
+  readonly takesId: boolean
+  readonly argv: (w: Where, id: string) => readonly string[]
+  readonly okExits: readonly number[]
+  readonly timeoutMs: number
+}
+const tool = (w: Where, ...rest: string[]) => ['sh', `${w.bin}/status-suggest.sh`, ...rest]
+export const ACTIONS: Readonly<Record<StatusPaneActionId, Action>> = Object.freeze({
+  stop: { id: 'stop', takesId: true, argv: (w, id) => tool(w, 'stop', id, '--origin', 'panel'), okExits: [0], timeoutMs: 30_000 },
+  start: { id: 'start', takesId: true, argv: (w, id) => tool(w, 'start', id, '--origin', 'panel'), okExits: [0], timeoutMs: 30_000 },
+  off: { id: 'off', takesId: false, argv: w => tool(w, 'off', '--origin', 'panel'), okExits: [0], timeoutMs: 30_000 },
+  on: { id: 'on', takesId: false, argv: w => tool(w, 'on', '--origin', 'panel'), okExits: [0], timeoutMs: 30_000 },
+  'scan-used': { id: 'scan-used', takesId: false, argv: w => tool(w, 'scan-used'), okExits: [0], timeoutMs: 30_000 },
+})
+
+export const isActionId = (id: string): id is StatusPaneActionId => Object.prototype.hasOwnProperty.call(ACTIONS, id)
+
+// The ids this pane holds right now: the status rows, the stopped list and the candidates of the last scan.
+export function knownIds(all: StatusPaneResults): Set<string> {
+  const ids = new Set<string>()
+  for (const r of all.suggest?.suggest?.rows ?? []) ids.add(r.id)
+  for (const r of all.suggest?.suggest?.stopped ?? []) ids.add(r.id)
+  for (const c of all.scan?.scan?.candidates ?? []) ids.add(c.id)
+  return ids
+}
+
+// The one check an id passes before it reaches an argv: a string, the row-id or the candidate-id pattern, and one of `known`.
+export const actionIdOk = (id: unknown, known: ReadonlySet<string>): id is string =>
+  typeof id === 'string' && (ROW_ID.test(id) || CANDIDATE_ID.test(id)) && known.has(id)
+
+// Run one action. The name must be a row of ACTIONS; stop and start need an id that passes actionIdOk, the other three take none.
+export async function runAction(
+  $: EngineInterface,
+  action: string,
+  id: string | undefined,
+  w: Where | string,
+  known: ReadonlySet<string>,
+): Promise<StatusPaneResult> {
+  const t0 = await $.clock.now()
+  const refuse = (reason: string): StatusPaneResult => ({ status: 'refused', reason, command: '', ranAt: t0, ms: 0 })
+  if (!isActionId(action)) return refuse(`${scrub(action, undefined, 60)} is not in the action table`)
+  const row = ACTIONS[action]
+  if (!row.takesId && id !== undefined) return refuse(`${action} takes no id`)
+  if (row.takesId && !actionIdOk(id, known)) return refuse(`${scrub(String(id), undefined, 60)} is not an id this pane holds`)
+  if (typeof w === 'string') return { status: 'unavailable', reason: w, command: '', ranAt: t0, ms: 0 }
+  return execute($, w, row.argv(w, id ?? ''), { okExits: row.okExits, timeoutMs: row.timeoutMs, emptyOk: true, parse: () => ({}) }, t0)
 }
