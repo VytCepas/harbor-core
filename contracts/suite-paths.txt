@@ -57,6 +57,7 @@ tests/lint/conventions/suites.test.sh always
 tests/lint/conventions/findings.test.sh always
 tests/lint/conventions/mode.test.sh always
 tests/lint/conventions/route.test.sh always
+tests/lint/conventions/suggest-table.test.sh bin/lint-suggest-table.sh bin/lint-conventions.sh context-rules/user/suggest-tool.tsv fixtures/injection-rule/suggest-tool.tsv standards/naming/controls.tsv tests/checks/lint-fixture.sh tests/lint/conventions/suggest-table.test.sh tests/lib/core.sh
 tests/lint/name/name.test.sh always
 tests/lint/rule-health/rule-health.test.sh bin/lint-rule-health.sh bin/library-log.sh bin/lint-conventions.sh tests/lint/rule-health/rule-health.test.sh tests/lib/core.sh
 tests/test/suite-select/suite-select.test.sh always
@@ -103,6 +104,7 @@ tests/deploy/shim-install/shim-install.test.sh bin/deploy-shim-install.sh tests/
 tests/admission/prod/prod.test.sh bin/* hooks/* tests/admission/prod/prod.test.sh tests/lib/core.sh
 tests/deploy/restore/recover.test.sh bin/* tests/deploy/restore/recover.test.sh tests/lib/core.sh
 tests/eval/replay/replay.test.sh bin/* tests/eval/replay/replay.test.sh tests/lib/core.sh
+tests/eval/suggest-replay/replay.test.sh bin/eval-suggest-replay.sh bin/eval-replay-corpus.sh bin/library-admission.sh bin/admission-normalize.awk bin/library-log.sh context-rules/user/suggest-* fixtures/injection-rule/suggest-tool.tsv tests/eval/suggest-replay/replay.test.sh tests/lib/core.sh
 
 tests/deploy/cli/cli.test.sh bin/* contracts/* tests/deploy/cli/cli.test.sh tests/lib/core.sh
 tests/access/gcloud/gcloud.test.sh bin/gcloud bin/library-log.sh tests/access/gcloud/gcloud.test.sh tests/lib/core.sh tests/lib/linux-sim.sh
@@ -133,10 +135,11 @@ hooks/injection-rule/packs.test.sh bin/* context-rules/* contracts/* tests/conte
 hooks/injection-rule/scope.test.sh bin/* context-rules/* contracts/* tests/context/injection-rule/fixture.sh tests/lib/core.sh hooks/injection-rule/scope.test.sh
 hooks/injection-rule/compaction-digest.test.sh bin/context-compaction-digest.sh bin/library-admission.sh context-rules/* tests/context/injection-rule/fixture.sh tests/lib/core.sh hooks/injection-rule/compaction-digest.test.sh
 hooks/injection-rule/context-rules.test.sh hooks/injection-rule/injection-rule.sh tests/context/injection-rule/fixture.sh tests/lib/core.sh hooks/injection-rule/context-rules.test.sh
-tests/context/injection-rule/notes.test.sh hooks/injection-rule/injection-rule.sh tests/context/injection-rule/notes.test.sh context-rules/* fixtures/inject/* fixtures/injection-rule/notes.tsv* fixtures/injection-rule/packs/example-store/wipe-destroys-history.md* bin/scope-roots.sh bin/library-admission.sh bin/admission-normalize.awk tests/lib/core.sh bin/lint-name.sh bin/library-log.sh standards/naming/* bin/standard-register.sh
+tests/context/injection-rule/notes.test.sh hooks/injection-rule/injection-rule.sh tests/context/injection-rule/notes.test.sh context-rules/* fixtures/inject/* fixtures/injection-rule/notes.tsv* fixtures/injection-rule/suggest-tool.tsv fixtures/injection-rule/packs/example-store/wipe-destroys-history.md* bin/scope-roots.sh bin/library-admission.sh bin/admission-normalize.awk tests/lib/core.sh bin/lint-name.sh bin/library-log.sh standards/naming/* bin/standard-register.sh
 tests/context/injection-rule/agent-brief.test.sh hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/* tests/context/injection-rule/agent-brief.test.sh tests/lib/core.sh
 tests/context/injection-rule/decision-question.test.sh hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/user/decision-* tests/context/injection-rule/decision-question.test.sh tests/lib/core.sh docs/explanation/grilling.md commands/grilling.md
 tests/context/injection-rule/default-way-route.test.sh hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/user/default-way-* tests/context/injection-rule/default-way-route.test.sh tests/lib/core.sh fixtures/admission-corpus.jsonl
+tests/context/injection-rule/suggest-tool.test.sh bin/library-admission.sh bin/admission-normalize.awk context-rules/user/suggest-* context-rules/user/ci-wait-on-the-bus* context-rules/user/suite-run-through-runner* context-rules/user/unbounded-wait-loop* context-rules/user/long-wait-process-exists* context-rules/user/default-way-route* fixtures/injection-rule/suggest-tool.tsv tests/context/injection-rule/suggest-tool.test.sh tests/lib/core.sh
 tests/context/injection-rule/default-way-deny.test.sh hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/user/default-way-* tests/context/injection-rule/default-way-deny.test.sh tests/lib/core.sh fixtures/admission-corpus.jsonl
 tests/context/injection-rule/skill-first-use.test.sh hooks/injection-rule/injection-rule.sh bin/library-admission.sh bin/admission-normalize.awk context-rules/* skills/agent-routing/SKILL.md tests/context/injection-rule/skill-first-use.test.sh tests/lib/core.sh
 tests/context/injection-rule/name-note.test.sh hooks/injection-rule/injection-rule.sh bin/library-admission.sh bin/lint-name.sh bin/library-log.sh standards/naming/* context-rules/* tests/context/injection-rule/name-note.test.sh tests/lib/core.sh bin/standard-register.sh
@@ -234,6 +237,7 @@ tests/standard/fs-lib/fs-lib.test.sh bin/library-fs.sh bin/status-fleet-glyph.sh
 tests/doc/index-generate/index-generate.test.sh bin/doc-index-generate.sh bin/library-log.sh tests/doc/index-generate/index-generate.test.sh tests/lib/core.sh
 tests/skill/eval-runners/eval-runners.test.sh evals/* fixtures/eval-runners/* tests/skill/eval-runners/eval-runners.test.sh tests/lib/core.sh
 tests/skill/catalog/catalog.test.sh bin/skill-catalog.sh bin/library-log.sh bin/scope-roots.sh bin/deploy-install-lib.sh contracts/roots.tsv contracts/skill-book-router.tsv skills/skill-catalog/SKILL.md contracts/agent-tools.tsv contracts/cli.md bin/harbor tests/skill/catalog/catalog.test.sh tests/lib/core.sh
+tests/skill/catalog/usage-feed.test.sh bin/skill-catalog.sh bin/library-log.sh bin/scope-roots.sh bin/deploy-install-lib.sh contracts/roots.tsv contracts/catalog-non-tools.tsv tests/skill/catalog/usage-feed.test.sh tests/lib/core.sh
 tests/skill/atlas/zones.test.sh skills/doc-atlas/build/build.py tests/skill/atlas/zones.test.sh tests/lib/core.sh
 tests/skill/atlas/inside.test.sh skills/doc-atlas/build/build.py tests/skill/atlas/inside.test.sh tests/lib/core.sh
 tests/skill/archify/report-pipe.test.sh vendor/archify/scripts/check-render-output.mjs vendor/archify/bin/archify.mjs fixtures/archify/fanout-architecture.json tests/skill/archify/report-pipe.test.sh tests/lib/core.sh
@@ -392,6 +396,7 @@ tests/ci/release-names/release-names.test.sh bin/ci-release-names.sh bin/library
 tests/access/cli/add-prompts.test.sh bin/access.sh bin/secret bin/scope.sh bin/scope-roots.sh bin/library-log.sh contracts/access-register.md contracts/credential-patterns.tsv contracts/secret-legacy-refs.txt tests/access/cli/add-prompts.test.sh tests/cli/keychain-stub.sh tests/lib/core.sh
 tests/access/cli/stored.test.sh bin/access.sh bin/secret bin/scope.sh bin/scope-roots.sh bin/library-log.sh contracts/secret-legacy-refs.txt tests/access/cli/stored.test.sh tests/cli/keychain-stub.sh tests/lib/core.sh
 tests/access/cli/lifecycle.test.sh bin/access.sh bin/secret bin/scope.sh bin/scope-roots.sh bin/library-log.sh skills/access-ledger/bin/check-routes.sh contracts/secret-legacy-refs.txt contracts/credential-patterns.tsv tests/access/cli/lifecycle.test.sh tests/cli/keychain-stub.sh tests/lib/core.sh
+tests/access/cli/status-json.test.sh bin/access.sh bin/secret bin/scope.sh bin/scope-roots.sh bin/library-log.sh bin/harbor skills/access-ledger/bin/check-routes.sh contracts/secret-legacy-refs.txt contracts/credential-patterns.tsv contracts/verbs.tsv tests/access/cli/status-json.test.sh tests/cli/keychain-stub.sh tests/lib/core.sh
 tests/lint/module/rules.test.sh bin/lint-module.sh contracts/family-entries.tsv bin/lint-conventions.sh bin/doc-graph-generate.sh bin/library-log.sh bin/scope-roots.sh contracts/roots.tsv standards/naming/* fixtures/lint-module/* tests/lint/module/rules.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh
 tests/lint/module/unchecked.test.sh bin/lint-module.sh bin/doc-graph-generate.sh bin/library-log.sh bin/scope-roots.sh contracts/roots.tsv standards/naming/* tests/lint/module/unchecked.test.sh tests/lib/core.sh
 tests/lint/doc-refs/doc-refs.test.sh bin/doc-refs.sh bin/lint-conventions.sh bin/library-log.sh bin/scope-roots.sh contracts/roots.tsv standards/naming/* fixtures/doc-refs/* tests/lint/doc-refs/doc-refs.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh
@@ -483,3 +488,7 @@ tests/admission/decide/decide.test.sh bin/admission-decide.sh bin/admission-repl
 tests/standard/render/render.test.sh bin/standard-render-check.sh bin/standard-vendor.sh bin/lint-name.sh bin/lint-renderer.sh bin/library-log.sh standards/naming/* tests/standard/render/render.test.sh tests/lib/core.sh bin/standard-register.sh
 tests/doc/checks-generate/checks-generate.test.sh bin/doc-checks-generate.sh bin/library-log.sh standards/naming/controls.tsv vendor/naming/registry/controls.tsv docs/reference/checks.md docs/reference/checks.md.tmpl docs/reference/check-rows/* tests/doc/checks-generate/checks-generate.test.sh tests/lib/core.sh
 tests/status/fleet-watch/watch.test.sh bin/status-fleet-watch.sh bin/status-fleet-snapshot-refresh.sh bin/library-log.sh bin/scope-roots.sh tests/status/fleet-watch/watch.test.sh tests/lib/core.sh
+tests/status/pane/plugin.test.sh mods/status-pane/* tests/status/pane/plugin.test.sh tests/lib/core.sh
+tests/status/suggest/stop.test.sh bin/status-suggest.sh bin/library-fs.sh bin/deploy-runtime-install.sh bin/deploy-confinement.sh bin/library-admission.sh contracts/confinement-paths.txt contracts/confinement-classes.tsv tests/status/suggest/* tests/lib/core.sh
+tests/status/suggest/e2e.test.sh bin/status-suggest.sh bin/library-fs.sh bin/status-suggest-scan.sh bin/admission-observe-report.sh bin/deploy-runtime-install.sh bin/context-injection-install.sh bin/library-admission.sh bin/admission-normalize.awk hooks/injection-rule/injection-rule.sh context-rules/user/suggest-* fixtures/injection-rule/suggest-tool.tsv standards/naming/controls.tsv mods/status-pane/tests/fixtures/* tests/status/suggest/* tests/lib/core.sh
+tests/status/suggest-scan/scan.test.sh bin/status-suggest-scan.sh bin/library-log.sh bin/deploy-install-lib.sh tests/status/suggest-scan/scan.test.sh tests/lib/core.sh

@@ -94,6 +94,7 @@ register.registries-coverage-incidents-tsv	register	registries/coverage-incident
 register.agents-protected-paths-tsv	register	.agents/protected-paths.tsv	scaffolder fleet-controller workload data	workload	no	rendered by yard from its template
 register.agents-required-checks-tsv	register	.agents/required-checks.tsv	scaffolder fleet-controller workload data	workload	no	rendered by yard from its template
 register.context-rules-user-default-way-route-tsv	register	context-rules/user/default-way-route.tsv	control-plane	hub	no	a control-plane register (policy, hooks, evals, context)
+register.context-rules-user-suggest-tool-tsv	register	context-rules/user/suggest-tool.tsv	control-plane	hub	no	a control-plane register (policy, hooks, evals, context)
 register.hooks-manifest-tsv	register	hooks/*/manifest.tsv	control-plane	hub	no	a control-plane register (policy, hooks, evals, context)
 register.evals-skill-e5trap-corpus-manifest-tsv	register	evals/skill/e5trap/corpus-manifest.tsv?	control-plane	hub	no	a control-plane register (policy, hooks, evals, context)
 register.evals-context-e11live-rows-tsv	register	evals/context/e11live/rows.tsv?	control-plane	hub	no	a control-plane register (policy, hooks, evals, context)

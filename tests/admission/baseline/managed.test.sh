@@ -84,6 +84,39 @@ t_eq "CONTROL: the real script writes it and exits 0" 0 "$RC"
 t_has "...and says it read it back" "$OUT" "and read it back"
 M="$TMP/managed/managed-settings.json"; export HARBOR_SCOPE_MANAGED_SETTINGS="$M"
 
+t_section "mods (harbor#1480): each mods/<name>/ copied into the marketplace, listed by a relative path, enabled by managed settings"
+MODS="$SRC/../mods"; MD="$(dirname "$M")/harbor-mods"
+drift() { sh -c 'MANAGED_MODS_LIB=1; . "$0"; managed_target; managed_mods_drift "$1" "$MDIR"' "$INST" "$MODS" 2>/dev/null; }
+rm -rf "$(dirname "$M")"
+t_has "CONTROL: before an install every mod is missing" "$(drift)" 'status-pane missing'
+sh "$INST" >/dev/null 2>&1
+t_eq "install: the mod is copied" present "$([ -f "$MD/status-pane/.claude-plugin/plugin.json" ] && echo present || echo absent)"
+t_eq "install: the marketplace lists it by a relative path" ./status-pane "$(jq -r '.plugins[] | select(.name == "status-pane") | .source' "$MD/.claude-plugin/marketplace.json")"
+t_eq "install: managed settings enable it, the seat allowManagedModsOnly admits" true "$(jq -r '.enabledPlugins["status-pane@harbor-mods"]' "$M")"
+t_eq "install: the copy is this checkout's" '' "$(drift)"
+printf 'x\n' >> "$MD/status-pane/hooks/register.tsx"
+t_has "a copy edited after the install is named, so deploy can say so" "$(drift)" 'status-pane differs'
+state() { sh -c 'MANAGED_MODS_LIB=1; . "$0"; managed_target; managed_mods_state "$1"' "$INST" "$MODS" 2>/dev/null; }
+t_has "deploy's state names the edited copy" "$(state)" 'status-pane differs'
+sh "$INST" >/dev/null 2>&1
+t_eq "deploy's state: installed and enabled reads ok" ok "$(state)"
+jq 'del(.enabledPlugins["status-pane@harbor-mods"])' "$M" > "$M.t" && mv "$M.t" "$M"
+t_eq "...a copied mod that is not enabled is not ok" 'status-pane not enabled' "$(state)"
+mkdir -p "$TMP/badmods/bad/.claude-plugin"; printf 'not json\n' > "$TMP/badmods/bad/.claude-plugin/plugin.json"
+t_eq "...and a mod it cannot list is unjudged, never ok" 'unjudged: 0 of 1 mods listed' "$(sh -c 'MANAGED_MODS_LIB=1; . "$0"; managed_target; managed_mods_state "$1"' "$INST" "$TMP/badmods" 2>/dev/null)"
+printf 'x\n' >> "$MD/status-pane/hooks/register.tsx"
+mkdir -p "$MD/gone/.claude-plugin"; printf '{"name":"gone"}\n' > "$MD/gone/.claude-plugin/plugin.json"
+jq '.enabledPlugins["gone@harbor-mods"]=true | .enabledPlugins["keep@other"]=true' "$M" > "$M.t" && mv "$M.t" "$M"
+sh "$INST" >/dev/null 2>&1
+t_eq "install again: the edited copy is replaced" '' "$(drift)"
+t_eq "...a mod no longer in mods/ leaves the marketplace" absent "$([ -d "$MD/gone" ] && echo present || echo absent)"
+t_eq "...and is no longer enabled" null "$(jq -r '.enabledPlugins["gone@harbor-mods"] // "null"' "$M")"
+t_eq "...while another marketplace's plugin is kept" true "$(jq -r '.enabledPlugins["keep@other"]' "$M")"
+sh "$INST" --uninstall >/dev/null 2>&1
+t_eq "uninstall: the mod is no longer enabled" null "$(jq -r '.enabledPlugins["status-pane@harbor-mods"] // "null"' "$M")"
+t_eq "uninstall: another marketplace's plugin is kept" true "$(jq -r '.enabledPlugins["keep@other"]' "$M")"
+rm -rf "$(dirname "$M")"
+
 t_section "root refuses a caller-chosen path (decision function, no root needed)"
 rr() { HARBOR_SCOPE_MANAGED_SETTINGS="${2-}" sh -c 'MANAGED_MODS_LIB=1; . "$0"; managed_refuse_override "$1"' "$INST" "$1" >/dev/null 2>&1; echo $?; }
 t_eq "uid 0 with the override set: refused" 1 "$(rr 0 /tmp/x.json)"

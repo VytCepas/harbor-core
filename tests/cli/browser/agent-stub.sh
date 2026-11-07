@@ -78,6 +78,7 @@ cat > "$OSA" <<EOF
 sc="\$(cat)"
 case "\$sc" in
   *'make new window'*) echo window >> "$OSACALLS"; printf '9\t%s\t%s\t7' "\${STUB_NEW_TAB:-501}" "\${STUB_PREV_APP:-com.apple.Terminal}" ;;
+  *'set bounds of'*) echo "shift \$2" >> "$OSACALLS"; [ -z "\${STUB_COVERED:-}" ] || rm -f "\$STUB_COVERED" ;;
   *'set index of'*) echo "raise \$2" >> "$OSACALLS"; [ -z "\${STUB_COVERED:-}" ] || rm -f "\$STUB_COVERED" ;;
   *'whose id is'*) shift; echo "close \$*" >> "$OSACALLS"
     [ -z "\${STUB_OSA_FAIL:-}" ] || exit 1

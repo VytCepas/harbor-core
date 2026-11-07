@@ -14,6 +14,7 @@ resolves every one; nothing outside the stage can see them.
 def css(light: str, dark: str) -> str:
     return (
         SHELL
+        + GRAPH
         + f".canvas{{{light}}}\n"
         + f'@media (prefers-color-scheme:dark){{:root:not([data-theme="light"]) .canvas{{{dark}}}}}\n'
         + f':root[data-theme="dark"] .canvas{{{dark}}}\n'
@@ -523,4 +524,201 @@ p.evnote{margin:.4rem 0 0;font-size:.7188rem;line-height:1.5;color:var(--ink-fai
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;
     transition-duration:.01ms!important;scroll-behavior:auto!important}
 }
+"""
+
+
+# The graph view. Kept as its own block because it is its own surface: nothing here
+# touches .canvas, so the drawing and its acceptance suite are exactly as they were.
+#
+# THE TYPE PALETTE is the dataviz reference instance, mapped so each type keeps the HUE
+# archify gives it in the drawing (frontend blue-cyan, backend green, store violet, cloud
+# amber, security rose, bus orange): switching views must not repaint a part. Validated
+# with dataviz/scripts/validate_palette.js; it cannot pass all-pairs at six hues, which
+# is why graph.js carries type in SHAPE as well, and why every node is labelled.
+GRAPH = """
+:root{
+  --gt-frontend:#2a78d6; --gt-backend:#1baf7a; --gt-database:#6250d6; --gt-cloud:#eda100;
+  --gt-security:#e87ba4; --gt-messagebus:#eb6834; --gt-other:#008300; --gt-external:#7d8796;
+  --g-edge:#8a94a3; --g-dot:rgba(24,34,52,.075); --g-zone:rgba(28,92,136,.045);
+  --g-zone-line:rgba(28,92,136,.22);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --gt-frontend:#3987e5; --gt-backend:#199e70; --gt-database:#9085e9; --gt-cloud:#c98500;
+  --gt-security:#d55181; --gt-messagebus:#d95926; --gt-other:#2f9e2f; --gt-external:#8f99a8;
+  --g-edge:#6c7889; --g-dot:rgba(210,225,245,.07); --g-zone:rgba(122,179,216,.055);
+  --g-zone-line:rgba(122,179,216,.26);
+}}
+:root[data-theme="dark"]{
+  --gt-frontend:#3987e5; --gt-backend:#199e70; --gt-database:#9085e9; --gt-cloud:#c98500;
+  --gt-security:#d55181; --gt-messagebus:#d95926; --gt-other:#2f9e2f; --gt-external:#8f99a8;
+  --g-edge:#6c7889; --g-dot:rgba(210,225,245,.07); --g-zone:rgba(122,179,216,.055);
+  --g-zone-line:rgba(122,179,216,.26);
+}
+
+/* archify's extracted rules include a page-wide `svg{width:100%;min-width:min(900px,100%)}`,
+   which stretches every inline icon to 66px. Each svg here states its own box. */
+/* ---------- the switch ---------- */
+.modes{display:inline-flex;padding:2px;gap:2px;border:1px solid var(--rule);border-radius:9px;
+  background:var(--panel-2)}
+.modes button{appearance:none;border:0;background:transparent;cursor:pointer;border-radius:7px;
+  display:inline-flex;align-items:center;gap:.38rem;padding:.3rem .6rem;min-height:1.75rem;
+  font:500 .75rem/1 var(--sans);color:var(--ink-soft)}
+.modes button:hover{color:var(--ink)}
+.modes button[aria-pressed=true]{background:var(--panel);color:var(--ink);
+  box-shadow:0 1px 2px rgba(16,24,40,.12),0 0 0 1px var(--rule)}
+.modes svg{width:15px;height:15px;min-width:0;flex:none;fill:none;stroke:currentColor;stroke-width:1.35;
+  stroke-linecap:round;stroke-linejoin:round}
+.modes button[data-mode=graph][aria-pressed=true] svg circle{fill:var(--accent);stroke:var(--accent)}
+.modes button[data-mode=draw][aria-pressed=true] svg rect{fill:var(--accent-soft);stroke:var(--accent)}
+/* Nothing to switch on a document, or on the whole-atlas graph, which is only a graph. */
+body.docview .modes,body.globalview .modes{visibility:hidden}
+/* ON A PHONE the switch is one button that offers the OTHER view, and the view menu, not
+   the brand, gives up the width: measured at 390px, the two-button switch squeezed the
+   brand to 0px and slid the menu over it. */
+@media (max-width:760px){
+  .modes button span{display:none}
+  .modes button{padding:.3rem .45rem;min-width:2.2rem;min-height:2.2rem;justify-content:center}
+  .modes button[aria-pressed=true]{display:none}
+  .bar{grid-template-columns:minmax(0,max-content) minmax(7.5rem,1fr) auto}
+  .brand{min-width:0}
+  .brand b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar .tabnav{justify-self:stretch}
+  .tabtrig{max-width:100%;min-width:0}
+}
+
+/* ---------- the surface ---------- */
+.gview,.glegend,.ghint{display:none}
+.zoombar .glabels,.zoombar .grelayout,.zoombar .gdepth{display:none}
+body.graphmode .plate:not(.brief):not(.gplate) .canvas{display:none}
+body.graphmode .plate:not(.brief) .gview,.gplate .gview{display:block}
+body.graphmode .plate:not(.brief) .glegend,.gplate .glegend{display:flex}
+body.graphmode .plate:not(.brief) .ghint,.gplate .ghint{display:block}
+body.graphmode .plate:not(.brief) .zoombar .glabels,body.graphmode .plate:not(.brief) .zoombar .grelayout,
+body.graphmode .plate:not(.brief) .zoombar .gdepth,
+.gplate .zoombar .glabels,.gplate .zoombar .grelayout,.gplate .zoombar .gdepth{display:block}
+.gplate.on{display:grid;grid-template-rows:minmax(0,1fr)}
+.gview{position:relative;min-height:0;overflow:hidden;border-radius:10px;border:1px solid var(--rule);
+  background-color:var(--panel);
+  background-image:radial-gradient(circle at center, var(--g-dot) 1.1px, transparent 1.3px);
+  touch-action:none;cursor:grab}
+.gview::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+  background:radial-gradient(120% 90% at 50% 40%, transparent 55%, color-mix(in srgb, var(--sink) 55%, transparent))}
+.gsvg{display:block;width:100%;height:100%;position:relative;z-index:1;
+  font-family:var(--sans);user-select:none;-webkit-user-select:none}
+.gsvg.grabbing{cursor:grabbing}
+.gsvg.dragging,.gsvg.dragging .gnode{cursor:grabbing}
+
+/* zones: an owner, a runtime or a trust line, drawn as a soft region */
+.gzone{fill:var(--g-zone);stroke:var(--g-zone-line);stroke-width:1;transition:opacity .2s}
+.gzone.trust{fill:none;stroke-dasharray:5 4;stroke:color-mix(in srgb, var(--gt-security) 55%, transparent)}
+.gzlabel{font:600 9.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;
+  fill:var(--ink-faint);text-anchor:middle;paint-order:stroke;stroke:var(--panel);
+  stroke-width:3px;stroke-linejoin:round;pointer-events:none}
+
+/* links */
+.glink{cursor:pointer}
+.ghit{fill:none;stroke:transparent;stroke-width:12;pointer-events:stroke}
+.gline{fill:none;stroke:var(--g-edge);stroke-width:1.1;stroke-opacity:.55;stroke-linecap:round;
+  transition:stroke .15s,stroke-opacity .15s,opacity .2s;pointer-events:none}
+.glink.dashed .gline{stroke-dasharray:3 4}
+.ghead{fill:var(--g-edge);fill-opacity:.7;pointer-events:none;transition:fill .15s,opacity .2s}
+.gflow{fill:none;stroke:var(--hc,var(--accent));stroke-width:2.2;stroke-linecap:round;
+  stroke-dasharray:1.5 11;opacity:0;pointer-events:none}
+.glink.near .gline,.glink:hover .gline{stroke:var(--hc,var(--accent));stroke-opacity:.95;stroke-width:1.6}
+.glink.near .ghead,.glink:hover .ghead{fill:var(--hc,var(--accent));fill-opacity:1}
+/* Direction you can SEE: the flow dashes travel from source to target on the hovered
+   part's connections. Motion carries meaning here, so reduced-motion keeps the colour
+   and the arrowheads and drops only the travel. */
+.glink.near .gflow,.glink.lit .gflow{opacity:.9;animation:gflow 1.1s linear infinite}
+@keyframes gflow{to{stroke-dashoffset:-12.5}}
+.gelabel{font:500 9.5px/1 var(--mono);fill:var(--ink-soft);text-anchor:middle;opacity:0;
+  paint-order:stroke;stroke:var(--panel);stroke-width:3.5px;stroke-linejoin:round;
+  pointer-events:none;transition:opacity .15s}
+.gelabel.near,.gelabel.lit,.gsvg.z2 .gelabel{opacity:1}
+.gsvg.hovering .gelabel:not(.near){opacity:0}
+
+/* nodes */
+.gnode{cursor:pointer;outline:none;transition:opacity .2s}
+.ghalo{fill:var(--c);opacity:0;transition:opacity .2s;pointer-events:none}
+.gring{fill:none;stroke:var(--panel);stroke-width:4;stroke-linejoin:round}
+.gdot{fill:var(--c);stroke:color-mix(in oklab, var(--c) 72%, var(--ink));stroke-width:1.1;
+  stroke-linejoin:round;transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.gdot.hollow{fill:var(--panel);stroke:var(--c);stroke-width:2.2}
+.gorbit{fill:none;stroke:var(--c);stroke-width:1.1;stroke-dasharray:2 2.6;opacity:.75;pointer-events:none}
+.gsel{fill:none;stroke:var(--accent);stroke-width:2;opacity:0;pointer-events:none}
+.gnode.sel .gsel{opacity:1;animation:gpulse 2.4s ease-in-out infinite}
+@keyframes gpulse{50%{stroke-width:3.5;stroke-opacity:.45}}
+.gnode:hover .gdot,.gnode:focus-visible .gdot{transform:scale(1.14)}
+.gnode:hover .ghalo,.gnode.near .ghalo,.gnode:focus-visible .ghalo{opacity:.16}
+.gnode.lit .ghalo,.gnode.sel .ghalo{opacity:.22}
+.gnode:focus-visible .gsel{opacity:1;stroke-dasharray:3 3}
+.gbadge circle{fill:var(--ink);stroke:var(--panel);stroke-width:1.5}
+.gbadge text{font:600 8.5px/1 var(--mono);fill:var(--panel);text-anchor:middle;pointer-events:none}
+.glabel{font-size:11px;font-weight:500;fill:var(--ink);text-anchor:middle;opacity:0;
+  paint-order:stroke;stroke:var(--panel);stroke-width:3.5px;stroke-linejoin:round;
+  pointer-events:none;transition:opacity .18s}
+.gnode[data-tier=hub] .glabel{opacity:1;font-weight:600}
+.gsvg.z1 .gnode[data-tier=mid] .glabel,.gsvg.z2 .glabel,.gsvg.alllabels .glabel{opacity:1}
+.gnode.near .glabel,.gnode.lit .glabel,.gnode.sel .glabel,.gnode:focus-visible .glabel{opacity:1}
+
+/* Hover and focus share one rule as the drawing does: dim the rest, never hide it. */
+.gsvg.hovering .gnode:not(.near){opacity:.16}
+.gsvg.hovering .glink:not(.near){opacity:.07}
+.gsvg.hovering .gzone{opacity:.45}
+.gsvg[data-focus]:not(.hovering) .gnode:not(.lit):not(.sel){opacity:.22}
+.gsvg[data-focus]:not(.hovering) .glink:not(.lit){opacity:.1}
+.gsvg[data-focus]:not(.hovering) .glink.lit .gline{stroke:var(--accent);stroke-opacity:1;stroke-width:2}
+.gsvg[data-focus]:not(.hovering) .glink.lit .ghead{fill:var(--accent);fill-opacity:1}
+.gsvg[data-focus]:not(.hovering) .gnode.lit .gdot{filter:drop-shadow(0 0 4px color-mix(in srgb, var(--c) 60%, transparent))}
+
+/* the legend: key and control at once */
+.glegend{position:absolute;left:1rem;top:1rem;z-index:5;flex-direction:column;gap:1px;
+  padding:.35rem;border:1px solid var(--rule);border-radius:10px;
+  background:color-mix(in srgb, var(--panel) 86%, transparent);backdrop-filter:blur(8px);
+  box-shadow:var(--shadow);max-height:calc(100% - 2rem);overflow:auto}
+.glegend .gl{appearance:none;border:0;background:transparent;cursor:default;border-radius:6px;
+  display:grid;grid-template-columns:16px 1fr auto;align-items:center;gap:.5rem;
+  padding:.2rem .45rem;min-height:26px;min-width:8.5rem;text-align:left;
+  font:500 .75rem/1 var(--sans);color:var(--ink-soft)}
+.glegend .gl:hover,.glegend .gl:focus-visible{background:var(--rule-soft);color:var(--ink)}
+.glegend svg{width:16px;height:16px;min-width:0;overflow:visible}
+.glegend svg path{fill:var(--c);stroke:color-mix(in oklab, var(--c) 72%, var(--ink));stroke-width:1}
+.glegend svg path.hollow{fill:var(--panel);stroke:var(--c);stroke-width:2}
+.glegend .gl i{font:500 .6875rem/1 var(--mono);font-style:normal;color:var(--ink-faint);
+  font-variant-numeric:tabular-nums}
+.ghint{position:absolute;left:1rem;bottom:1rem;z-index:4;margin:0;pointer-events:none;
+  font:500 .625rem/1 var(--mono);letter-spacing:.06em;color:var(--ink-faint);opacity:.85}
+.zoombar .glabels[aria-pressed=true],.zoombar .gdepth[aria-pressed=true]{background:var(--accent-soft);color:var(--accent)}
+.zoombar .gdepth{font:600 .6875rem/1 var(--mono);letter-spacing:.02em}
+.ghint .h3d,.plate.is3d .ghint .h2d{display:none}
+.plate.is3d .ghint .h3d{display:inline}
+.zoombar .grelayout{border-right:1px solid var(--rule)}
+@media (max-width:760px){.glegend,.ghint{display:none!important}}
+@media (max-width:960px){.ghint{bottom:calc(2.9rem + .9rem)}}
+
+/* the whole-atlas panel */
+.kind.gin{margin-left:.35rem;color:var(--ink-soft);background:var(--panel-2);border:1px solid var(--rule)}
+ul.gdiagrams{list-style:none;margin:0;padding:0}
+ul.gdiagrams li{display:grid;grid-template-columns:1fr auto auto;gap:.5rem;align-items:center;
+  padding:.18rem 0;border-bottom:1px solid var(--rule-soft)}
+ul.gdiagrams li:last-child{border-bottom:0}
+ul.gdiagrams button{appearance:none;border:0;background:transparent;cursor:pointer;text-align:left;
+  padding:.3rem .2rem;min-height:26px;font:500 .8125rem/1.3 var(--sans);color:var(--ink)}
+ul.gdiagrams button:hover{color:var(--accent)}
+ul.gdiagrams button.open{font:500 .6875rem/1 var(--mono);color:var(--accent);padding:.3rem .45rem;
+  border:1px solid var(--rule);border-radius:6px;min-width:26px}
+ul.gdiagrams .n{font:400 .6875rem/1 var(--mono);color:var(--ink-faint)}
+/* 3D. Depth is drawn three ways, none of them colour: perspective size, fog toward the
+   ground, and paint order (near on top). The fog is an inline opacity on .gbody and on the
+   line, so the transitions that ease hover would make it lag a turning camera. */
+.gbody{transition:none}
+.gshine{fill:#fff;opacity:0;pointer-events:none;transition:opacity .3s}
+.gsvg.g3d .gshine{opacity:.32}
+.gsvg.g3d .gdot{stroke-width:.8}
+.gsvg.g3d .gline{transition:stroke .15s,stroke-opacity .15s}
+.gsvg.g3d .ghead{transition:fill .15s}
+.gsvg.g3d .gzone{opacity:.55}
+.gsvg.g3d.hovering .gzone{opacity:.3}
+.gsvg:not(.alllabels) .gnode.hush:not(.near):not(.lit):not(.sel):not(:focus-visible) .glabel{opacity:0}
+@media (prefers-reduced-motion:reduce){.glink.near .gflow,.glink.lit .gflow{animation:none;stroke-dasharray:none;opacity:.5}}
 """

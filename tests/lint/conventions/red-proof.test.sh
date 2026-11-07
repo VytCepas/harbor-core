@@ -262,6 +262,9 @@ _f15_fx; printf '%s\n' "$_F15_DIRTY" >> "$RP/bin/zz-shim.sh"
 _rp_red F15 "bin/zz-shim.sh:5 resolves" "a hook named through V=\"\$DIR/bin/X\""
 _f15_fx; _f15_dirty context-rules/user/zz-pack.sh
 _rp_red F15 "context-rules/user/zz-pack.sh:3 resolves" "a box pack's run: script"
+_f15_fx; printf '%s\n' '---' 'event: SessionStart' 'run: zz-pack.sh' 'spoke: zz-spoke.sh' '---' 'body' > "$RP/context-rules/user/zz.md"
+_f15_sh context-rules/user/zz-spoke.sh "$_F15_DIRTY"
+_rp_red F15 "context-rules/user/zz-spoke.sh:3 resolves" "a box pack's spoke: script (harbor#1485)"
 _f15_fx; _f15_dirty bin/zz-lib.sh 'FLOOR_AWK="${DIR:-$(dirname -- "${0:-.}")}/admission-normalize.awk"'
 _rp_red F15 "bin/zz-lib.sh:3 resolves" "guard-lib's \${0:-.} fallback spelling"
 _f15_fx; _f15_dirty bin/zz-lib.sh 'D=`dirname $0`'
