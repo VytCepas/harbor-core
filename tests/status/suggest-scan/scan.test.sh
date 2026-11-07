@@ -114,6 +114,19 @@ for i in 1 2 3 4; do sess "m$i" "$NOW" false "$(mcp get_ad_performance)" "$(web)
 t_eq "a shape inside a longer one with the same sessions is not a second candidate" 1 "$(cands 'length')"
 t_eq "...the longest is kept" "connector report, then search the web, then write document" "$(cands '.[0].shape')"
 reset
+for i in 1 2 3 4; do sess "w$i" "$NOW" false "$(mcp get_rows)" "$(sh_ 'zz a')" "$(mcp get_rows)" "$(sh_ 'zz b')" "$(mcp get_rows)"; done
+t_eq "one step twice around a generic command is not a pattern" '[]' "$(cands)"
+reset
+for i in 1 2 3 4 5; do sess "x$i" "$NOW" false "$(mcp get_rows)" "$(web)" "$(mcp get_rows)" "$(web)"; done
+for i in 1 2 3 4; do sess "y$i" "$NOW" false "$(web)" "$(mcp get_rows)" "$(web)" "$(mcp get_rows)"; done
+t_eq "the phases of one loop are one candidate" 1 "$(cands 'length')"
+for i in 1 2 3; do sess "z$i" "$NOW" false "$(mcp get_rows)" "$(sh_ 'zz c')" "$(web)"; done
+t_eq "a generic step does not split a loop into twins" 1 "$(cands 'length')"
+FOLD="$(cands '.[0].id')"; FOLD="${FOLD#\"}"; FOLD="${FOLD%\"}"
+printf '%s\t2026-11-06\tpanel\n' "$FOLD" > "$ST/stopped.tsv"
+t_eq "a stopped loop does not come back as its twin" '[]' "$(cands)"
+rm -f "$ST/stopped.tsv"
+reset
 for i in 1 2 3 4; do sess "n$i" "$NOW" true "$(mcp get_ad_performance)" "$(wr a.md)"; done
 t_eq "subagent calls are not read" '[]' "$(cands)"
 reset

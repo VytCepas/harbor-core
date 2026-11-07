@@ -25,9 +25,10 @@
 # step is a read-only lookup and they average at least 4 a session, so it is a thing to keep in view, not a task to run), skill (it
 # touches a connector, the web, a document or the browser), hook (it edits code and then runs something), job (the rest).
 #
-# A CANDIDATE is a shape that appears in at least 3 distinct sessions and holds at least two steps that are more than plumbing (an
-# edit of code, a bare `git status` and "run a command" are not), or an edit of code followed by a named tool. It is not a part of a
-# longer shape that has the same sessions. Consecutive repeats of one token are one step. A tool call copied into a resumed session counts once (by its id); subagent calls are not read.
+# A CANDIDATE is a shape that appears in at least 3 distinct sessions and holds at least two DIFFERENT steps that are more than plumbing
+# (an edit of code, a bare `git status` and "run a command" are not), or an edit of code followed by a named tool. It is not a part of a
+# longer shape that has the same sessions. Shapes with the same non-plumbing steps are one loop read at different phases: only the best
+# is shown, and a stopped id stops them all, so a dismissed loop cannot come back as its own twin. Consecutive repeats of one token are one step. A tool call copied into a resumed session counts once (by its id); subagent calls are not read.
 # Ids in <state folder>/stopped.tsv (first column) are dropped BEFORE the cap of 3, so a dismissed candidate never starves the rest.
 # The id is a stable hash of the shape: 8 hex digits, the same id on every scan. State folder: ${HARBOR_STATUS_SUGGEST_DIR:-$HOME/.local/state/harbor/suggest}.
 #
@@ -172,13 +173,14 @@ SCAN_AWK="$(cat <<'EOF'
 function weak(t) {
   return (t ~ /^(write|edit) (code|file|data file)$/ || t ~ /^run (a command|a script)$/ || t ~ /^run git( (status|diff|log|add|branch|show|stash|checkout|switch))?$/)
 }
-function flush(   i, j, l, key, strong) {
+function flush(   i, j, l, key, strong, had) {
   if (n >= 2) {
     for (i = 1; i <= n; i++) strong[i] = !weak(seq[i])
     for (l = 2; l <= 4; l++) for (i = 1; i + l - 1 <= n; i++) {
-      ok = 0; key = seq[i]
+      ok = 0; key = seq[i]; had = SEP
       for (j = i; j < i + l; j++) {
-        if (strong[j]) ok++
+        # one step twice is still one step: browser, command, browser is no process (harbor#1485)
+        if (strong[j] && !index(had, SEP seq[j] SEP)) { ok++; had = had seq[j] SEP }
         if (j > i) { key = key SEP seq[j]; if (strong[j] && seq[j] ~ /^run / && seq[j - 1] ~ /^(write|edit) code$/) ok = 2 }
       }
       if (ok < 2) continue
@@ -210,6 +212,15 @@ function kind(key,   m, p, i, sk, hk, lk) {
 }
 function shape(key,   m, p, i, s) { m = split(key, p, SEP); s = p[1]; for (i = 2; i <= m; i++) s = s ", then " p[i]; return s }
 function dropLast(k,   i, at) { for (i = length(k); i > 0; i--) if (substr(k, i, 1) == SEP) { at = i; break }; return substr(k, 1, at - 1) }
+# The sorted distinct non-plumbing steps of a shape: every phase of one loop has the same family.
+function family(key,   a, m, p, i, j, t, f) {
+  a = split(key, t, SEP); m = 0
+  for (i = 1; i <= a; i++) if (!weak(t[i])) p[++m] = t[i]
+  for (i = 2; i <= m; i++) { f = p[i]; for (j = i - 1; j >= 1 && p[j] > f; j--) p[j + 1] = p[j]; p[j + 1] = f }
+  f = p[1]
+  for (i = 2; i <= m; i++) if (p[i] != p[i - 1]) f = f SEP p[i]
+  return f
+}
 function better(a, b) { # is key a ranked above key b
   if (sess[a] != sess[b]) return sess[a] > sess[b]
   if (cnt[a] != cnt[b]) return cnt[a] > cnt[b]
@@ -236,11 +247,19 @@ END {
     if ((pre in sess) && sess[pre] == sess[k]) dead[pre] = 1
     if ((suf in sess) && sess[suf] == sess[k]) dead[suf] = 1
   }
+  for (i = 1; i <= q; i++) {   # dead shapes count too: an id shown by an earlier scan still stops its family
+    k = qk[i]; fam[k] = family(k)
+    if (index(STOPPED, " " hid(shape(k)) " ")) stopfam[fam[k]] = 1
+  }
+  for (i = 1; i <= q; i++) {
+    k = qk[i]
+    if ((k in dead) || (fam[k] in stopfam)) continue
+    if (!(fam[k] in lead) || better(k, lead[fam[k]])) lead[fam[k]] = k
+  }
   top = 0
   for (i = 1; i <= q; i++) {
     k = qk[i]
-    if (k in dead) continue
-    if (index(STOPPED, " " hid(shape(k)) " ")) continue
+    if ((k in dead) || (fam[k] in stopfam) || lead[fam[k]] != k) continue
     pos = top + 1
     while (pos > 1 && better(k, best[pos - 1])) { if (pos <= CAP) best[pos] = best[pos - 1]; pos-- }
     if (pos <= CAP) { best[pos] = k; if (top < CAP) top++ }
