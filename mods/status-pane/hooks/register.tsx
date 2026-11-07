@@ -1,11 +1,20 @@
-// The Harbor pane (harbor#1480): the console's panels 1-3 docked beside the conversation, read-only.
+// The Harbor pane (harbor#1480): the console's panels 1-3 docked beside the conversation: read-only, but for the suggestion settings (harbor#1485).
 // It draws what the fixed source table (sources.ts) answers; every rule about the data lives in the Harbor
-// command it calls. A button copies a command, or appends one user row the model reads; nothing else writes.
+// command it calls. A button copies a command, or appends one user row the model reads. The only writes are the
+// suggestion settings (harbor#1485): the frozen ACTIONS table in sources.ts, stop/start/off/on/scan-used, nothing else.
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { StatusPaneAccessRow, StatusPaneResult, StatusPaneResults, StatusPaneSourceId, StatusPaneTurnRow } from '../types'
-import { SOURCE_IDS, runSource, scrub, where } from './sources'
+import type {
+  StatusPaneAccessRow,
+  StatusPaneActionId,
+  StatusPaneCandidate,
+  StatusPaneResult,
+  StatusPaneResults,
+  StatusPaneSourceId,
+  StatusPaneTurnRow,
+} from '../types'
+import { REFRESH_IDS, SOURCE_IDS, knownIds, runAction, runSource, scrub, where } from './sources'
 
 const PANE = 'status-pane'
 
@@ -13,7 +22,7 @@ const PANE = 'status-pane'
 // Not ok and able to say why. An `unknown` with no problem has no check to fail (a sign-in, a held or unprobed entry); one
 // with a problem is a timeout, a refused check or a revoked value still stored, and that one is the operator's (harbor#1480).
 const needsYou = (a: StatusPaneAccessRow) => a.state !== 'ok' && (a.state !== 'unknown' || a.why !== '')
-const results = atom({ plugin: 'status-pane', key: 'results' } as const, {} as StatusPaneResults, { shape: 'results-1' })
+const results = atom({ plugin: 'status-pane', key: 'results' } as const, {} as StatusPaneResults, { shape: 'results-2' })
 const skillQuery = atom({ plugin: 'status-pane', key: 'skillQuery' } as const, '')
 
 const SKILL_NAME = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/
@@ -21,6 +30,7 @@ const ACCESS_ID = /^[a-z0-9][a-z0-9._-]{0,79}$/
 const PLAIN_ID = /^[A-Za-z0-9][A-Za-z0-9._:#/-]{0,199}$/
 const MAX_TURN = 15
 const MAX_SKILLS = 12
+const MAX_SUGGEST = 8
 
 export const ageText = (s: number) =>
   s < 0 ? 'age ?' : s < 90 ? `${Math.round(s)}s` : s < 5400 ? `${Math.floor(s / 60)}m` : s < 172800 ? `${Math.floor(s / 3600)}h` : `${Math.floor(s / 86400)}d`
@@ -49,6 +59,41 @@ async function refresh($: EngineInterface, ids: readonly StatusPaneSourceId[]) {
     }),
   )
 }
+
+// One suggestion write through ACTIONS, then the status again. A refusal or a failure is said, never swallowed.
+async function act($: EngineInterface, action: StatusPaneActionId, id?: string): Promise<StatusPaneResult> {
+  const w = await where($)
+  const r = await runAction($, action, id, w, knownIds(await read($, results)))
+  if (r.status === 'ok') await refresh($, ['suggest'])
+  else $.ui.toast(r.status === 'refused' ? `refused: ${r.reason}` : `unavailable: ${action}: ${r.reason}`)
+  return r
+}
+
+// The Scan press (or a typed `/status-pane scan`): one scan, and scan-used only after a scan that worked. A press during a scan runs
+// nothing. The guard is in memory on purpose: the stored `running` status outlives a reload, and would leave the button dead.
+let scanning = false
+async function scanNow($: EngineInterface): Promise<StatusPaneResult> {
+  if (scanning) {
+    $.ui.toast('a scan is already running')
+    return { status: 'refused', reason: 'a scan is already running', command: '', ranAt: await $.clock.now(), ms: 0 }
+  }
+  scanning = true
+  try {
+    const w = await where($)
+    const now = await $.clock.now()
+    await update($, results, r => ({ ...(r ?? {}), scan: { ...(r?.scan ?? { reason: '', command: '', ms: 0 }), status: 'running', ranAt: r?.scan?.ranAt ?? now } }))
+    const res = await runSource($, 'scan', w)
+    await update($, results, r => ({ ...(r ?? {}), scan: res }))
+    if (res.status === 'ok') await act($, 'scan-used')
+    return res
+  } finally {
+    scanning = false
+  }
+}
+
+// The fixed sentence a candidate's button sends: only its validated id, kind and shape are in it (sources.ts parseScan).
+export const candidateSentence = (c: Pick<StatusPaneCandidate, 'id' | 'kind' | 'shape'>) =>
+  `Harbor suggestion ${c.id}: a ${c.kind} for ${c.shape}. Explain it in plain words, and offer to build it the standard way, through default-way-route's homes (asked from the Harbor pane).`
 
 // The exact command a "Your turn" row asks for, or why it has none.
 function turnCommand(row: StatusPaneTurnRow, all: StatusPaneResults): { command: string } | { why: string } {
@@ -80,13 +125,13 @@ export const register: Register = on => {
     if (arg) {
       // A typed id goes through the table's own check in runSource, and nowhere else: one it does not hold runs nothing.
       await $.ui.open({ id: PANE, title: 'Harbor' })
-      const r = await runSource($, arg, await where($))
+      const r = arg === 'scan' ? await scanNow($) : await runSource($, arg, await where($))
       if (r.status === 'refused') return { text: `refused: ${r.reason} (the sources: ${SOURCE_IDS.join(', ')})` }
-      await update($, results, all => ({ ...(all ?? {}), [arg as StatusPaneSourceId]: r }))
+      if (arg !== 'scan') await update($, results, all => ({ ...(all ?? {}), [arg as StatusPaneSourceId]: r }))
       return { text: `Harbor pane: ${arg} re-ran: ${r.status === 'ok' ? 'ok' : `unavailable: ${r.reason}`}.` }
     }
     await $.ui.open({ id: PANE, title: 'Harbor' })
-    void refresh($, SOURCE_IDS)
+    void refresh($, REFRESH_IDS)
     return { text: 'Harbor pane opened.' }
   })
 
@@ -109,7 +154,7 @@ export const register: Register = on => {
         <Text color="warning">unavailable: not run yet (/status-pane runs it)</Text>
       ) : r.status === 'unavailable' || r.status === 'refused' ? (
         <Text color="warning">{clip(`unavailable: ${r.reason}`)}</Text>
-      ) : r.status === 'running' && !r.turn && !r.skills && !r.access ? (
+      ) : r.status === 'running' && !r.turn && !r.skills && !r.access && !r.suggest && !r.scan ? (
         <Text dimColor>running…</Text>
       ) : undefined
 
@@ -255,15 +300,103 @@ export const register: Register = on => {
       </Box>
     )
 
+    // 4 · Suggestions: the tool's status, the stopped list, the settings, and the on-demand Scan
+    const sg = all.suggest
+    const sug = sg?.suggest
+    const sc = all.scan
+    const stoppedIds = new Set((sug?.stopped ?? []).map(r => r.id))
+    const candidates = (sc?.scan?.candidates ?? []).filter(c => !stoppedIds.has(c.id))
+    const liveRows = (sug?.rows ?? []).filter(r => !r.stopped && !stoppedIds.has(r.id))
+    const scanDown =
+      sc?.status === 'unavailable' || sc?.status === 'refused' ? (
+        <Text color="warning">{clip(`unavailable: ${sc.reason}`)}</Text>
+      ) : sc?.status === 'running' && !sc.scan ? (
+        <Text dimColor>scanning…</Text>
+      ) : undefined
+    const suggestions = (
+      <Box flexDirection="column" marginTop={1}>
+        <Text bold>
+          Suggestions{sug ? ` · ${sug.enabled ? 'on' : 'off'} · ${sug.stopped.length} stopped` : ''}
+        </Text>
+        {ran(sg, 'suggest')}
+        {down(sg) ??
+          (sug && (
+            <Box flexDirection="column">
+              <Box flexDirection="row">
+                <Text>{clip(sug.enabled ? 'suggestions are on' : 'suggestions are off', cols - 8)}</Text>
+                <Button
+                  key="suggest-toggle"
+                  label={sug.enabled ? 'turn off' : 'turn on'}
+                  onPress={async () => {
+                    await act($, sug.enabled ? 'off' : 'on')
+                  }}
+                />
+              </Box>
+              {sug.last && <Text dimColor>{clip(`last shown ${sug.last.at}: ${sug.last.line}`)}</Text>}
+              {liveRows.length === 0 && <Text dimColor>no suggestion is active</Text>}
+              {liveRows.slice(0, MAX_SUGGEST).map(r => (
+                <Box flexDirection="row">
+                  <Text>{clip(`${r.kind}: ${r.line}`, cols - 8)}</Text>
+                  <Button key={`stop:${r.id}`} label="stop" onPress={async () => void (await act($, 'stop', r.id))} />
+                </Box>
+              ))}
+              {liveRows.length > MAX_SUGGEST && <Text dimColor>{`${liveRows.length - MAX_SUGGEST} more not shown`}</Text>}
+              {sug.stopped.length > 0 && <Text bold>Stopped</Text>}
+              {sug.stopped.map(r => {
+                // The short fields first, so the clip takes the label and never them; a dismissed candidate's label is its shape while the scan is held.
+                const label = sc?.scan?.candidates.find(c => c.id === r.id)?.shape ?? r.label
+                return (
+                  <Box flexDirection="row">
+                    <Text>{clip(`${r.since ? `since ${r.since} · ` : ''}${r.origin ? `by ${r.origin} · ` : ''}${label}`, cols - 9)}</Text>
+                    <Button key={`start:${r.id}`} label="start" onPress={async () => void (await act($, 'start', r.id))} />
+                  </Box>
+                )
+              })}
+            </Box>
+          ))}
+        <Box flexDirection="row">
+          <Text bold>Scan</Text>
+          <Button key="scan" label="scan" onPress={async () => void (await scanNow($))} />
+        </Box>
+        {sc ? ran(sc, 'scan') : <Text dimColor>not scanned in this session: press scan (it reads recent sessions' tool calls)</Text>}
+        {scanDown ??
+          (sc?.scan && (
+            <Box flexDirection="column">
+              <Text dimColor>{`${sc.scan.sessions} sessions over ${sc.scan.days} days`}</Text>
+              {candidates.length === 0 && <Text>no repeated job found</Text>}
+              {candidates.map(c => (
+                <Box flexDirection="column">
+                  <Text>{clip(`${c.shape} · ${c.kind} · ${c.sessions} sessions, ${c.count} times`)}</Text>
+                  <Box flexDirection="row">
+                    <Button
+                      key={`build:${c.id}`}
+                      label="build it"
+                      onPress={async () => {
+                        await $.session.append({ message: { type: 'user', content: [{ type: 'text', text: candidateSentence(c) }] } })
+                        $.ui.toast(`Asked the model about suggestion ${c.id}. If the session is idle, send any message to start it.`)
+                      }}
+                    />
+                    {/* The held scan keeps it: the stopped list hides it above, and Start brings it back with its buttons. */}
+                    <Button key={`dismiss:${c.id}`} label="dismiss" onPress={async () => void (await act($, 'stop', c.id))} />
+                  </Box>
+                </Box>
+              ))}
+              {sc.scan.dropped > 0 && <Text dimColor>{`${sc.scan.dropped} candidate(s) not shown: unexpected shape`}</Text>}
+            </Box>
+          ))}
+      </Box>
+    )
+
     return (
       <Box flexDirection="column">
         <Box flexDirection="row">
-          <Text dimColor>{clip(typeof w === 'string' ? `unavailable: ${w}` : 'read-only · buttons copy or append one row')}</Text>
-          <Button key="refresh" label="refresh" onPress={() => refresh($, SOURCE_IDS)} />
+          <Text dimColor>{clip(typeof w === 'string' ? `unavailable: ${w}` : 'buttons copy, append one row, or change your suggestion settings')}</Text>
+          <Button key="refresh" label="refresh" onPress={() => refresh($, REFRESH_IDS)} />
         </Box>
         {turn}
         {skills}
         {access}
+        {suggestions}
       </Box>
     )
   })
