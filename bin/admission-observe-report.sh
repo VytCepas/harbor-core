@@ -124,14 +124,17 @@ NADV=$(n '.d=="advise"')
 # Shadow (harbor#482): a session record (g=session) is the boundary; every other
 # shadow record is one rule that would have blocked one call.
 NSHS=$(n '.d=="shadow" and .g=="session"')
-NSHW=$(n '.d=="shadow" and .g!="session"')
+NSHW=$(n '.d=="shadow" and .g!="session" and .g!="inject"')
+# An inject shadow record is a note or a person's line not spoken, never a block (harbor#1485): a pack born in shadow must not read as a wall.
+NSHI=$(n '.d=="shadow" and .g=="inject"')
 
 if [ "$MODE" = json ]; then
   printf '%s\n' "$REC" | jq -s --argjson t "$TOTAL" '{
     records:$t,
     verdicts:(group_by(.d)|map({key:.[0].d,value:length})|from_entries),
     rules:(map(select(.d=="block"))|group_by(.r)|map({key:.[0].r,value:length})|from_entries),
-    shadow:(map(select(.d=="shadow" and .g!="session"))|group_by(.r)|map({key:.[0].r,value:length})|from_entries),
+    shadow:(map(select(.d=="shadow" and .g!="session" and .g!="inject"))|group_by(.r)|map({key:.[0].r,value:length})|from_entries),
+    inject_shadow:(map(select(.d=="shadow" and .g=="inject"))|group_by(.r)|map({key:.[0].r,value:length})|from_entries),
     shapes:(map(select(.d=="block"))|group_by(.s)|map({key:.[0].s,value:length})|from_entries),
     tools:(group_by(.t)|map({key:.[0].t,value:length})|from_entries)
   }'
@@ -248,17 +251,22 @@ show_fp() {
 # is the population they make it on; docs/explanation/admission-baseline.md's per-rule column is read from here.
 show_shadow() {
   log_head "shadow (would have blocked; recorded, not enforced)"
-  if [ "$NSHS" = 0 ] && [ "$NSHW" = 0 ]; then
+  if [ "$NSHS" = 0 ] && [ "$NSHW" = 0 ] && [ "$NSHI" = 0 ]; then
     echo "  (no shadow sessions recorded: the operator opens one with HARBOR_ADMISSION_SHADOW at launch)"
     return
   fi
   printf '  %d shadow session(s), %d would-block record(s)\n' "$NSHS" "$NSHW"
-  [ "$NSHW" = 0 ] && return
-  echo "  would-blocks  distinct  repeated  rule"
-  printf '%s\n' "$REC" | jq -r 'select(.d=="shadow" and .g!="session")|"\(.g)/\(.r)\t\(.h)"' 2>/dev/null \
-    | awk -F'\t' '{ n[$1]++; if (!(($1 FS $2) in seen)) { seen[$1 FS $2] = 1; d[$1]++ } else if ($2 != "-") { if (!(($1 FS $2) in rep)) { rep[$1 FS $2] = 1; r[$1]++ } } }
-        END { for (k in n) printf "  %12d  %8d  %8d  %s\n", n[k], d[k], r[k], k }' \
-    | sort -rn
+  if [ "$NSHW" != 0 ]; then
+    echo "  would-blocks  distinct  repeated  rule"
+    printf '%s\n' "$REC" | jq -r 'select(.d=="shadow" and .g!="session" and .g!="inject")|"\(.g)/\(.r)\t\(.h)"' 2>/dev/null \
+      | awk -F'\t' '{ n[$1]++; if (!(($1 FS $2) in seen)) { seen[$1 FS $2] = 1; d[$1]++ } else if ($2 != "-") { if (!(($1 FS $2) in rep)) { rep[$1 FS $2] = 1; r[$1]++ } } }
+          END { for (k in n) printf "  %12d  %8d  %8d  %s\n", n[k], d[k], r[k], k }' \
+      | sort -rn
+  fi
+  [ "$NSHI" != 0 ] || return 0
+  printf '  %d inject record(s) in shadow: a note or line not spoken; only a deny pack among them would have refused\n' "$NSHI"
+  printf '%s\n' "$REC" | jq -r 'select(.d=="shadow" and .g=="inject")|"inject/\(.r)"' 2>/dev/null | sort | uniq -c | sort -rn \
+    | awk '{ printf "  %12d  %s\n", $1, $2 }'
 }
 
 # REROUTE (harbor#309): after a refused Bash call, how often is the session's next call a Write or
@@ -268,6 +276,7 @@ show_shadow() {
 # refusal with several candidates (parallel calls) is counted as ambiguous. Unkeyed records sit out.
 # A refusal with no record within a second takes the nearest same-tool allowed call within 10 s out
 # of the control as unknown: a guard can lag egress by seconds on a big heredoc (harbor#976).
+# An inject shadow record sits out too (harbor#1485): it refused nothing, so its call stays in the control.
 RR_MIN=20   # below this many calls on either side the ratio is noise, so it is withheld
 RR_JQ='
 def ep: (.ts | tostring | fromdateiso8601? // null);
@@ -278,7 +287,7 @@ def near($c): .t == $c.t and .e != null and $c.e != null and ((.e - $c.e) | fabs
 | [ $k | group_by(.sk)[]
     | (to_entries | map(.value + {p: .key, e: (.value | ep)})) as $r
     | ($r | map(select(.g == "egress"))) as $c
-    | ($r | map(select(.g != "wrapper" and .g != "session" and (.d == "block" or .d == "deny" or .d == "ask" or .d == "shadow")))) as $x
+    | ($r | map(select(.g != "wrapper" and .g != "session" and (.d == "block" or .d == "deny" or .d == "ask" or (.d == "shadow" and .g != "inject"))))) as $x
     | (reduce $x[] as $d ({taken: {}, cls: {}, rule: {}, amb: 0, lost: 0, lostd: [], unk: 0};
         . as $st
         | ([range(0; $c | length) as $j | select($d | near($c[$j])) | $j]) as $cand

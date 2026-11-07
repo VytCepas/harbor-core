@@ -12,7 +12,7 @@
 #   harbor chrome detach           release the operator's Chrome
 #   harbor chrome tabs             every Chrome tab, by window, query strings cut; `=` marks this session's page
 #   HARBOR_ACCESS_BROWSER_LANE=<a-z0-9> harbor chrome …   a parallel agent's own browser session, <session>-<lane>
-#   harbor chrome front            make this session's tab the visible one and give focus back
+#   harbor chrome front            show this session's tab (only in a window of its own tabs; never raises)
 #   harbor chrome wait-signin [s]  wait (default 300 s) while the operator signs in, then carry on
 #   harbor chrome hosts            the allow-list goto/tab-new reads: core, then the private layer
 #   harbor chrome click <ref> --force   click through an overlay ("not stable", covered)
@@ -667,6 +667,19 @@ OSA
       done
     fi
     [ "$_n" -eq 1 ] || _refuse "$_n Chrome tabs show this session's URL; need exactly one" 'harbor chrome tabs'
+    # Never switch a window under someone reading it. Switching the active tab is the only thing
+    # front does to a window, and nothing switches it back (the tab must stay shown for the click
+    # that follows), so it is allowed only where every tab in the window is this session's. Else the
+    # operator's tab in the session's window was replaced for hours (2026-11-06). A shared window
+    # whose active tab already is ours needs no switch and passes.
+    _own=" $(cat "$WORKDIR/$OWNED_NAME" 2>/dev/null | tr '\n' ' ') "   # a pipe: under set -e a failed < aborts
+    _hit="$(_chrome_tabs | awk -F '\t' -v u="$_me" 'substr($4, length($4) - length(u) + 1) == u { print $1 "\t" $3; exit }')"
+    _hw="$(printf '%s' "$_hit" | cut -f1)"; _ha="$(printf '%s' "$_hit" | cut -f2)"
+    _foreign="$(_chrome_tabs | awk -F '\t' -v w="$_hw" -v own="$_own" '$1 == w && index(own, " " $5 " ") == 0 { n++ } END { print n + 0 }')"
+    if [ "$_foreign" -gt 0 ] && [ "$_ha" != true ]; then
+      _refuse "this session's tab is hidden behind another tab in window $_hw, which holds $_foreign tab(s) that are not this session's; showing it would take that tab away from whoever is reading it" \
+        "operator: click this session's tab in window $_hw (harbor chrome tabs marks it =), or harbor chrome detach then attach for a window of its own"
+    fi
     _r="$(_osa "$_me" <<'OSA'
 on run argv
   set u to item 1 of argv
@@ -703,22 +716,25 @@ OSA
     _p="$(_cli_run "-s=$S" --raw eval "$STATE_EXPR" 2>/dev/null)" || _p=''
     case "$_p" in *'visibility\":\"hidden'*|*'"visibility":"hidden'*)
       # A window fully covered by another, same-size one reads hidden too (macOS occlusion), and
-      # attach puts the operator's window back over ours (2026-10-29). Raise ours; focus goes back.
+      # attach puts the operator's window back over ours (2026-10-29). Raising ours would sit over
+      # the operator's windows with nothing to lower it again, so shift it 40 px instead: still
+      # under theirs, no longer fully covered, and nothing of theirs moves. Never a shared window.
+      [ "$_foreign" -eq 0 ] || _handoff "front: $_r reads hidden and its window holds tabs that are not this session's, so it is not moved or raised" 'harbor chrome tabs   # then move that window where it shows'
       _w="${_r#window }"; _w="${_w%% *}"
       _osa "$_w" >/dev/null 2>&1 <<'OSA' || :
 on run argv
-  tell application "System Events" to set prev to bundle identifier of first process whose frontmost is true
-  tell application "Google Chrome" to set index of (window id ((item 1 of argv) as integer)) to 1
-  delay 0.5
-  if prev is not "com.google.Chrome" then tell application id prev to activate
+  tell application "Google Chrome"
+    set b to bounds of (window id ((item 1 of argv) as integer))
+    set bounds of (window id ((item 1 of argv) as integer)) to {(item 1 of b) + 40, (item 2 of b) + 40, (item 3 of b) + 40, (item 4 of b) + 40}
+  end tell
 end run
 OSA
       sleep "${HARBOR_ACCESS_BROWSER_SETTLE:-${HARBOR_CHROME_SETTLE:-1}}"
       _p="$(_cli_run "-s=$S" --raw eval "$STATE_EXPR" 2>/dev/null)" || _p=''
       case "$_p" in *'visibility\":\"hidden'*|*'"visibility":"hidden'*)
-        _handoff "front: $_r is raised in Chrome, but the page is still hidden (another app's window covers it, or it is on another Space)" 'harbor chrome tabs   # then move that window where it shows' ;;
+        _handoff "front: $_r was moved 40 px off the window covering it, but the page is still hidden (another app's window covers it, or it is on another Space)" 'harbor chrome tabs   # then move that window where it shows' ;;
       esac
-      log_ok "front: $_r was covered by another window; raised it, focus left where it was"; exit 0 ;;
+      log_ok "front: $_r was covered by another window; moved it 40 px clear, nothing raised, focus left where it was"; exit 0 ;;
     esac
     log_ok "front: $_r is the tab Chrome shows; focus left where it was"
     ;;
