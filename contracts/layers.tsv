@@ -30,6 +30,7 @@ docs/decisions/	core	decision records
 fixtures/	core	test fixtures
 hooks/	core	git hooks
 launchd/	core	macOS schedules
+mods/	core	Claude Code mods, shipped with the installer that copies them
 patches/	core	vendor patches
 runners/	core	CI runner setup
 skills/	core	skills

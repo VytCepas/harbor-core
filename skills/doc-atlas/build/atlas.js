@@ -8,6 +8,25 @@
   var sub = head.querySelector('p');
   var current = order[0], selected = null;
 
+  // ---- graph view state ----------------------------------------------------------
+  // One engine per drawing, built lazily on first show (a hidden host has no size), plus
+  // one for the whole atlas. MODE is a single reader preference, not per tab: "show me
+  // graphs instead" is one decision, and a page that forgets it on every tab switch
+  // makes the reader make it again.
+  var GRAPHS = {}, LIT = {}, GLOBAL = null, GLOBAL_MODEL = null;
+  var GT = D.graphTab || null;
+  var MODE = D.view === 'graph' ? 'graph' : 'draw';
+  try { var sm = localStorage.getItem('atlas-view'); if (sm === 'graph' || sm === 'draw') MODE = sm; } catch (e) {}
+  var LABELS_ALL = false;
+  // 3D, remembered apart for the drawings and for the whole atlas: depth earns its place
+  // on the big merged graph, where it gives the clusters room, and mostly costs
+  // readability on one drawing. So the whole atlas opens in 3D and a drawing in 2D.
+  var D3 = { draw: false, global: true };
+  try {
+    var s3 = JSON.parse(localStorage.getItem('atlas-3d') || 'null');
+    if (s3 && typeof s3 === 'object') { D3.draw = s3.draw === true; D3.global = s3.global !== false; }
+  } catch (e) {}
+
   function el(tag, cls, text) {
     var n = document.createElement(tag);
     if (cls) n.className = cls;
@@ -138,6 +157,16 @@
     var c = canvas(name);
     c.querySelectorAll('.lit').forEach(function (n) { n.classList.remove('lit'); });
     ids = ids || []; edgeIds = edgeIds || [];
+    // The graph shows the same state as the drawing, computed by the same rule from the
+    // payload rather than read back off the SVG, so the two views cannot disagree.
+    var litE = [];
+    (D.diagrams[name].wires || []).forEach(function (w) {
+      if (edgeIds.length) { if (edgeIds.indexOf(w.id) > -1) litE.push(w.id); return; }
+      var a = ids.indexOf(w.from) > -1, b = ids.indexOf(w.to) > -1;
+      if (ids.length > 1 ? (a && b) : (a || b)) litE.push(w.id);
+    });
+    LIT[name] = { n: ids.slice(), e: litE };
+    if (GRAPHS[name]) GRAPHS[name].light(ids, litE);
     if (!ids.length && !edgeIds.length) { c.removeAttribute('data-focus'); return; }
     c.setAttribute('data-focus', ids.concat(edgeIds).join(' '));
     ids.forEach(function (id) {
@@ -209,6 +238,7 @@
       body.appendChild(d);
     });
     light(name, null);
+    if (GRAPHS[name]) GRAPHS[name].select(null);
     if (typeof setHash === 'function') setHash(name);
   }
 
@@ -265,7 +295,9 @@
   }
 
   // ---- inspector on selection: one part ---------------------------------------
-  function showNode(name, id) {
+  // `keep` is set by the whole-atlas graph: it borrows this panel for a part while the
+  // reader stays on that tab, so the drawing's highlight and the URL are left alone.
+  function showNode(name, id, keep) {
     var g = D.diagrams[name], n = g.nodes[id];
     if (!n) return;
     selected = id;
@@ -386,7 +418,9 @@
       body.appendChild(s);
     }
 
+    if (keep) return;
     light(name, [id]);
+    if (GRAPHS[name]) GRAPHS[name].select(id);
     if (typeof setHash === 'function') setHash(name + '/' + id);
   }
 
@@ -432,6 +466,7 @@
     body.appendChild(ends);
 
     light(name, [w.from, w.to]);
+    if (GRAPHS[name]) GRAPHS[name].select(null);
   }
 
   // ---- going somewhere ----------------------------------------------------------
@@ -558,12 +593,21 @@
       trig.querySelector('i').textContent = ti ? ti.textContent : '';
       menu(false);
     }
+    Object.keys(GRAPHS).forEach(function (k) { if (k !== current) GRAPHS[k].hide(); });
+    if (GLOBAL && current !== GT) GLOBAL.hide();
+    document.body.classList.toggle('globalview', current === GT);
     if (isDiagram(current)) {
       // Only now is this plate visible, which is the only state getBBox can measure in.
       document.body.classList.remove('docview');
       tighten(canvas(current).querySelector('svg'));
       home(current);
       showDiagram(current);
+      if (MODE === 'graph') graphOf(current).show();
+    } else if (current === GT) {
+      selected = null;
+      document.body.classList.remove('docview');
+      globalGraph().show();
+      showGlobal();
     } else {
       // The brief carries its own orientation, so the panel steps out of the way rather
       // than showing the last diagram's summary beside prose that is not about it. It
@@ -648,9 +692,17 @@
   function level(name) { return plate(name).querySelector('.level'); }
   order.forEach(function (name) {
     var p = plate(name);
-    p.querySelector('.zin').addEventListener('click', function () { step(name, STEP); });
-    p.querySelector('.zout').addEventListener('click', function () { step(name, 1 / STEP); });
-    p.querySelector('.zfit').addEventListener('click', function () { home(name); });
+    // In graph mode the same three buttons drive the graph's camera instead.
+    p.querySelector('.zin').addEventListener('click', function () {
+      if (MODE === 'graph') graphOf(name).zoom(STEP); else step(name, STEP);
+    });
+    p.querySelector('.zout').addEventListener('click', function () {
+      if (MODE === 'graph') graphOf(name).zoom(1 / STEP); else step(name, 1 / STEP);
+    });
+    p.querySelector('.zfit').addEventListener('click', function () {
+      if (MODE === 'graph') graphOf(name).fit(true); else home(name);
+    });
+    wireGraphTools(p, function () { return graphOf(name); });
   });
 
   order.forEach(function (name) {
@@ -748,6 +800,26 @@
     // instance check is the guard, not a nicety.
     var t = e.target;
     if (t instanceof Element && t.closest('.inspect')) return;
+    if (t instanceof HTMLInputElement || t instanceof HTMLSelectElement) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var gr = current === GT ? globalGraph() : (isDiagram(current) && MODE === 'graph') ? graphOf(current) : null;
+    if ((e.key === 'g' || e.key === 'G') && isDiagram(current)) {
+      e.preventDefault(); setMode(MODE === 'graph' ? 'draw' : 'graph'); return;
+    }
+    if (gr && e.key === '3') { e.preventDefault(); toggle3d(current === GT); return; }
+    if (gr && gr.d3 && /^Arrow/.test(e.key)) {
+      e.preventDefault();
+      var T = 0.3;
+      gr.turn(e.key === 'ArrowLeft' ? -T : e.key === 'ArrowRight' ? T : 0,
+              e.key === 'ArrowUp' ? -T : e.key === 'ArrowDown' ? T : 0);
+      return;
+    }
+    if (gr) {
+      if (e.key === '+' || e.key === '=') { e.preventDefault(); gr.zoom(STEP); }
+      if (e.key === '-' || e.key === '_') { e.preventDefault(); gr.zoom(1 / STEP); }
+      if (e.key === '0') { e.preventDefault(); gr.fit(true); }
+      return;
+    }
     if (!isDiagram(current)) return;
     if (e.key === '+' || e.key === '=') { e.preventDefault(); step(current, STEP); }
     if (e.key === '-' || e.key === '_') { e.preventDefault(); step(current, 1 / STEP); }
@@ -757,9 +829,11 @@
   head.querySelector('.x').addEventListener('click', function (e) {
     e.stopPropagation();
     if (isDiagram(current)) showDiagram(current);
+    else if (current === GT) showGlobal();
   });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && selected && isDiagram(current)) showDiagram(current);
+    else if (e.key === 'Escape' && current === GT) showGlobal();
   });
   // On a narrow screen the panel is a sheet; its header is the handle.
   head.addEventListener('click', function () {
@@ -776,8 +850,336 @@
     try { localStorage.setItem('atlas-panel', off ? 'off' : 'on'); } catch (e) {}
     // The stage just changed size, so the fitted box has to be recomputed.
     order.forEach(function (n) { delete HOME[n]; });
-    requestAnimationFrame(function () { home(current); });
+    requestAnimationFrame(function () {
+      if (isDiagram(current)) home(current);
+      var gr = current === GT ? GLOBAL : MODE === 'graph' ? GRAPHS[current] : null;
+      if (gr && gr.built) gr.fit(true, true);
+    });
   });
+
+  // ---- the graph view ----------------------------------------------------------------
+  // The drawing is authored: somebody placed every box, and that placement is an
+  // argument. The graph is derived: the same parts and connections, laid out by force,
+  // so what it shows is STRUCTURE the author did not choose: which part is a hub, which
+  // cluster hangs together, what sits alone. Both read the same payload and the same
+  // highlight, so a finding lit on one is lit on the other.
+  function graphModel(name) {
+    var g = D.diagrams[name];
+    return {
+      nodes: Object.keys(g.nodes).map(function (id) {
+        var n = g.nodes[id];
+        return { id: id, label: n.label, type: n.type, inside: !!n.inside };
+      }),
+      links: g.wires.map(function (w) {
+        return { id: w.id, source: w.from, target: w.to, label: w.label };
+      }),
+      zones: (g.zones || []).map(function (z) { return { label: z.label, kind: z.kind, members: z.wraps }; }),
+    };
+  }
+  // The corners the graph must not fit into: the legend on the left, the zoom cluster at
+  // the bottom. Measured, not assumed, because the legend's height follows its type count.
+  function insetOf(p) {
+    return function () {
+      var host = p.querySelector('.gview').getBoundingClientRect(), out = { l: 0, t: 0, r: 0, b: 0 };
+      var lg = p.querySelector('.glegend'), zb = p.querySelector('.zoombar');
+      if (lg && lg.offsetParent && lg.getBoundingClientRect().width) out.l = lg.getBoundingClientRect().right - host.left + 6;
+      if (zb && zb.getBoundingClientRect().height) out.b = host.bottom - zb.getBoundingClientRect().top + 6;
+      return out;
+    };
+  }
+  function levelSetter(p) {
+    return function (txt) { var l = p && p.querySelector('.level'); if (l) l.textContent = txt; };
+  }
+  function graphOf(name) {
+    if (GRAPHS[name]) return GRAPHS[name];
+    var p = plate(name), host = p.querySelector('.gview');
+    var gr = new window.AtlasGraph(host, graphModel(name), {
+      seed: name, title: D.diagrams[name].title, d3: D3.draw,
+      onLevel: levelSetter(p), inset: insetOf(p),
+      onNode: function (id) { showNode(name, id); },
+      onEdge: function (id) { showWire(name, id); },
+      onOpen: function (id) { var n = D.diagrams[name].nodes[id]; if (n && n.inside) goDiagram(n.inside[0]); },
+      onBackground: function () { if (selected) showDiagram(name); },
+    });
+    GRAPHS[name] = gr;
+    legend(p, gr, graphModel(name).nodes);
+    if (LABELS_ALL) { gr.build(); gr.labels(true); }
+    var lit = LIT[name];
+    if (lit) { if (!gr.built) gr.build(); gr.light(lit.n, lit.e); }
+    if (selected && current === name && D.diagrams[name].nodes[selected]) gr.select(selected);
+    return gr;
+  }
+
+  // The legend IS the key and a control: hover a type to light every part of that type,
+  // the way Obsidian's groups work. Shape and hue both, because hue alone cannot carry six
+  // types (see graph.js on the second encoding).
+  var TYPE_NAME = { frontend: 'Frontend', backend: 'Backend', database: 'Store', cloud: 'Cloud',
+                    security: 'Security', messagebus: 'Message bus', external: 'External', other: 'Other' };
+  function legend(p, gr, nodes) {
+    var box = p.querySelector('.glegend');
+    if (!box) return;
+    box.textContent = '';
+    var count = {};
+    nodes.forEach(function (n) {
+      var t = TYPE_NAME[n.type] ? n.type : 'other';
+      count[t] = (count[t] || 0) + 1;
+    });
+    Object.keys(TYPE_NAME).forEach(function (t) {
+      if (!count[t]) return;
+      var b = el('button', 'gl');
+      b.type = 'button';
+      b.style.setProperty('--c', 'var(--gt-' + t + ')');
+      var sv = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      sv.setAttribute('viewBox', '-11 -11 22 22');
+      sv.setAttribute('aria-hidden', 'true');
+      var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      var shape = window.AtlasGraph.shapeOf(t);
+      path.setAttribute('d', window.AtlasGraph.shapePath(shape, 6.5));
+      path.setAttribute('class', shape === 'ring' ? 'hollow' : '');
+      sv.appendChild(path);
+      b.appendChild(sv);
+      b.appendChild(el('span', null, TYPE_NAME[t]));
+      b.appendChild(el('i', null, String(count[t])));
+      b.addEventListener('pointerenter', function () { if (gr.built) gr.hoverType(t); });
+      b.addEventListener('pointerleave', function () { if (gr.built) gr.hover(null); });
+      b.addEventListener('focus', function () { if (gr.built) gr.hoverType(t); });
+      b.addEventListener('blur', function () { if (gr.built) gr.hover(null); });
+      box.appendChild(b);
+    });
+  }
+
+  function wireGraphTools(p, get) {
+    var lab = p.querySelector('.glabels'), re = p.querySelector('.grelayout');
+    if (lab) lab.addEventListener('click', function () {
+      LABELS_ALL = !LABELS_ALL;
+      document.querySelectorAll('.glabels').forEach(function (b) { b.setAttribute('aria-pressed', LABELS_ALL ? 'true' : 'false'); });
+      Object.keys(GRAPHS).forEach(function (k) { if (GRAPHS[k].built) GRAPHS[k].labels(LABELS_ALL); });
+      if (GLOBAL && GLOBAL.built) GLOBAL.labels(LABELS_ALL);
+    });
+    if (re) re.addEventListener('click', function () { get().reheat(); });
+    var b3 = p.querySelector('.gdepth');
+    if (b3) b3.addEventListener('click', function () { toggle3d(p.classList.contains('gplate')); });
+  }
+  // One switch per surface: every drawing's graph follows the drawings' setting, the
+  // whole-atlas graph its own. The graph on screen animates; the rest switch silently.
+  function toggle3d(global) {
+    var on = !(global ? D3.global : D3.draw);
+    if (global) D3.global = on; else D3.draw = on;
+    try { localStorage.setItem('atlas-3d', JSON.stringify(D3)); } catch (e) {}
+    if (global) { if (GLOBAL) GLOBAL.set3d(on, current === GT); }
+    else Object.keys(GRAPHS).forEach(function (k) { GRAPHS[k].set3d(on, k === current); });
+    sync3d();
+  }
+  function sync3d() {
+    document.querySelectorAll('.plate').forEach(function (p) {
+      var on = p.classList.contains('gplate') ? D3.global : D3.draw;
+      p.classList.toggle('is3d', on);
+      var b = p.querySelector('.gdepth');
+      if (b) b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+  sync3d();
+
+  // The switch. One preference for every drawing, remembered, and announced by the
+  // segmented control itself rather than a separate status line.
+  var modeBtns = [].slice.call(document.querySelectorAll('.modes button'));
+  function setMode(m) {
+    MODE = m === 'graph' ? 'graph' : 'draw';
+    document.body.classList.toggle('graphmode', MODE === 'graph');
+    modeBtns.forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.mode === MODE ? 'true' : 'false'); });
+    try { localStorage.setItem('atlas-view', MODE); } catch (e) {}
+    if (!isDiagram(current)) return;
+    if (MODE === 'graph') {
+      var gr = graphOf(current);
+      gr.show();
+      if (selected && D.diagrams[current].nodes[selected]) gr.select(selected);
+    } else {
+      if (GRAPHS[current]) GRAPHS[current].hide();
+      // The drawing was display:none while the graph was up, and getBBox measures
+      // nothing there; re-fit now that it can be seen.
+      var svg = canvas(current).querySelector('svg');
+      if (svg && !svg.dataset.fitted) { delete HOME[current]; tighten(svg); }
+      home(current);
+    }
+  }
+  modeBtns.forEach(function (b) { b.addEventListener('click', function () { setMode(b.dataset.mode); }); });
+  document.body.classList.toggle('graphmode', MODE === 'graph');
+  modeBtns.forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.mode === MODE ? 'true' : 'false'); });
+
+  // ---- the whole atlas as one graph ---------------------------------------------------
+  // Each drawing is one view; this is all of them at once. A part is one node however many
+  // drawings carry it, matched on LABEL for the reason `also` already gives (ids are
+  // per-spec; the label is what the author asserted is the same thing). So a part that
+  // three drawings share becomes one node with three drawings' edges, which is exactly
+  // the bridge the separate tabs cannot show. Grouped by home drawing, as labelled hulls.
+  function globalModel() {
+    if (GLOBAL_MODEL) return GLOBAL_MODEL;
+    var key = {}, nodes = [], links = {}, zones = {};
+    order.forEach(function (d) {
+      var g = D.diagrams[d];
+      Object.keys(g.nodes).forEach(function (id) {
+        var n = g.nodes[id], k = n.label.trim().toLowerCase();
+        if (!key[k]) {
+          key[k] = { id: 'n' + nodes.length, label: n.label, type: n.type, home: [d, id], in: [] };
+          nodes.push(key[k]);
+          (zones[d] = zones[d] || []).push(key[k].id);
+        }
+        if (key[k].in.indexOf(d) < 0) key[k].in.push(d);
+        if (n.inside) key[k].inside = true;
+      });
+    });
+    function idOf(d, id) { return key[D.diagrams[d].nodes[id].label.trim().toLowerCase()].id; }
+    order.forEach(function (d) {
+      D.diagrams[d].wires.forEach(function (w) {
+        var a = idOf(d, w.from), b = idOf(d, w.to);
+        if (a === b) return;
+        var lk = a + '>' + b;
+        if (!links[lk]) links[lk] = { id: 'e' + Object.keys(links).length, source: a, target: b, label: w.label, weight: 0, home: [d, w.id] };
+        links[lk].weight++;
+      });
+    });
+    // An inside view hangs off the part it opens: a dashed link from that part to the
+    // most connected part of the deeper drawing, so the cluster sits next to its parent.
+    order.forEach(function (d) {
+      var g = D.diagrams[d];
+      if (!g.parent) return;
+      var best = null, deg = -1;
+      Object.keys(g.nodes).forEach(function (id) {
+        var c = g.nodes[id].carries.length;
+        if (c > deg) { deg = c; best = id; }
+      });
+      if (!best || !D.diagrams[g.parent[0]]) return;
+      var a = idOf(g.parent[0], g.parent[1]), b = idOf(d, best);
+      if (a !== b && !links[a + '>' + b]) links[a + '>' + b] = { id: 'e' + Object.keys(links).length, source: a, target: b, label: 'inside view', dashed: true, weight: 1 };
+    });
+    GLOBAL_MODEL = {
+      nodes: nodes.map(function (n) { return { id: n.id, label: n.label, type: n.type, inside: !!n.inside, badge: n.in.length, home: n.home, in: n.in }; }),
+      links: Object.keys(links).map(function (k) { return links[k]; }),
+      zones: order.filter(function (d) { return zones[d]; }).map(function (d) {
+        return { label: D.diagrams[d].tab, kind: 'region', members: zones[d], d: d };
+      }),
+    };
+    GLOBAL_MODEL.byId = {};
+    GLOBAL_MODEL.nodes.forEach(function (n) { GLOBAL_MODEL.byId[n.id] = n; });
+    GLOBAL_MODEL.byLabel = key;
+    return GLOBAL_MODEL;
+  }
+  function globalGraph() {
+    if (GLOBAL) return GLOBAL;
+    var m = globalModel(), p = plate(GT);
+    GLOBAL = new window.AtlasGraph(p.querySelector('.gview'), m, {
+      seed: 'atlas:' + order.join(','), dense: true, title: 'Every drawing', d3: D3.global, spin: true,
+      onLevel: levelSetter(p), inset: insetOf(p),
+      onNode: function (id) { globalNode(id); },
+      onEdge: function (id) {
+        var l = null;
+        m.links.forEach(function (x) { if (x.id === id) l = x; });
+        if (l && l.home) { goDiagram(l.home[0]); showWire(l.home[0], l.home[1]); }
+      },
+      onOpen: function (id) { var n = m.byId[id]; if (n) goTo(n.home[0], n.home[1]); },
+      onBackground: function () { if (selected) showGlobal(); },
+    });
+    p.querySelector('.zin').addEventListener('click', function () { GLOBAL.zoom(STEP); });
+    p.querySelector('.zout').addEventListener('click', function () { GLOBAL.zoom(1 / STEP); });
+    p.querySelector('.zfit').addEventListener('click', function () { GLOBAL.fit(true); });
+    wireGraphTools(p, function () { return GLOBAL; });
+    legend(p, GLOBAL, m.nodes);
+    if (LABELS_ALL) { GLOBAL.build(); GLOBAL.labels(true); }
+    return GLOBAL;
+  }
+  function globalLight(id) {
+    var m = globalModel(), e = [];
+    m.links.forEach(function (l) { if (l.source === id || l.target === id) e.push(l.id); });
+    GLOBAL.light(id ? [id] : [], e);
+    GLOBAL.select(id);
+  }
+  function globalNode(id) {
+    var n = globalModel().byId[id];
+    if (!n) return;
+    showNode(n.home[0], n.home[1], true);
+    selected = id;
+    // What only this view knows: how many drawings carry the part. Inserted at the top
+    // of the panel showNode just built, beside the kind badge.
+    if (n.in.length > 1) {
+      var chip = el('span', 'kind gin', 'In ' + n.in.length + ' drawings');
+      body.insertBefore(chip, body.children[1] || null);
+    }
+    var go = el('button', 'drill', 'Show it in ' + D.diagrams[n.home[0]].tab + ' →');
+    go.type = 'button';
+    go.addEventListener('click', function () { goTo(n.home[0], n.home[1]); });
+    var role = body.querySelector('.role');
+    body.insertBefore(go, role ? role.nextSibling : null);
+    globalLight(id);
+    setHash(GT + '/' + id);
+  }
+  function showGlobal() {
+    var m = globalModel();
+    selected = null;
+    inspect.classList.remove('node');
+    title.textContent = 'Every drawing, as one graph';
+    sub.textContent = m.nodes.length + ' parts · ' + m.links.length + ' connections · ' + order.length + ' drawings';
+    body.textContent = '';
+    body.appendChild(el('p', 'role',
+      'Each part appears once, however many drawings carry it. Size follows how connected it is; a number on a node counts the drawings it is in.'));
+
+    // The bridges: parts more than one drawing carries, which is what this view is for.
+    var shared = m.nodes.filter(function (n) { return n.in.length > 1; })
+      .sort(function (a, b) { return b.in.length - a.in.length || a.label.localeCompare(b.label); });
+    if (shared.length) {
+      var d1 = el('details');
+      d1.open = true;
+      d1.appendChild(el('summary', null, 'Shared across drawings · ' + shared.length));
+      var w1 = el('div', 'in'), who = el('div', 'who');
+      shared.slice(0, 16).forEach(function (n) {
+        var b = el('button', null, n.label + ' · ' + n.in.length);
+        b.type = 'button';
+        b.addEventListener('click', function () { globalNode(n.id); GLOBAL.center(n.id, true); });
+        who.appendChild(b);
+      });
+      w1.appendChild(who);
+      d1.appendChild(w1);
+      body.appendChild(d1);
+    }
+    var d2 = el('details');
+    d2.open = true;
+    d2.appendChild(el('summary', null, 'Drawings · ' + order.length));
+    var w2 = el('div', 'in'), ul = el('ul', 'gdiagrams');
+    m.zones.forEach(function (z) {
+      var li = el('li'), b = el('button', null, z.label);
+      b.type = 'button';
+      b.title = 'Light this drawing’s parts';
+      b.addEventListener('click', function () {
+        var ids = {}, e = [];
+        Object.keys(D.diagrams[z.d].nodes).forEach(function (id) {
+          ids[m.byLabel[D.diagrams[z.d].nodes[id].label.trim().toLowerCase()].id] = 1;
+        });
+        m.links.forEach(function (l) { if (ids[l.source] && ids[l.target]) e.push(l.id); });
+        GLOBAL.light(Object.keys(ids), e);
+      });
+      var go = el('button', 'open', 'Open →');
+      go.type = 'button';
+      go.setAttribute('aria-label', 'Open ' + z.label);
+      go.addEventListener('click', function () { goDiagram(z.d); });
+      li.appendChild(b);
+      li.appendChild(el('span', 'n', Object.keys(D.diagrams[z.d].nodes).length + ' parts'));
+      li.appendChild(go);
+      ul.appendChild(li);
+    });
+    w2.appendChild(ul);
+    d2.appendChild(w2);
+    body.appendChild(d2);
+    if (GLOBAL) { GLOBAL.light([], []); GLOBAL.select(null); }
+    if (typeof setHash === 'function') setHash(GT);
+  }
+  // The window seam check.mjs uses: where a graph node is on screen, and run a layout to
+  // rest so a probe does not race the animation. It reads, it never clicks.
+  window.__ATLAS_GRAPH__ = {
+    graph: function (name) { return name === GT ? globalGraph() : graphOf(name); },
+    settle: function (name) { var g = name === GT ? globalGraph() : graphOf(name); g.settle(); return true; },
+    mode: function () { return MODE; },
+    turn: function (name, yaw, pitch) { var g = name === GT ? globalGraph() : graphOf(name); g.turnTo(yaw, pitch); return true; },
+    tab: GT,
+  };
 
   // ---- find ----------------------------------------------------------------------
   // Thirty components across four tabs is past what anyone scans. The index is built at
@@ -796,7 +1198,10 @@
       li.appendChild(el('span', null, r.kind + ' · ' + r.tab));
       li.addEventListener('mousedown', function (e) {
         e.preventDefault();
-        goTo(r.d, r.id);
+        // On the whole-atlas graph a result is found where the reader already is.
+        var gk = current === GT && globalModel().byLabel[r.label.trim().toLowerCase()];
+        if (gk) { globalNode(gk.id); GLOBAL.center(gk.id, true); }
+        else goTo(r.d, r.id);
         close();
       });
       li.dataset.i = i;
@@ -882,6 +1287,7 @@
     if (!tab) return false;
     select(tab);
     if (bits[1] && isDiagram(bits[0]) && D.diagrams[bits[0]].nodes[bits[1]]) showNode(bits[0], bits[1]);
+    if (bits[1] && bits[0] === GT && globalModel().byId[bits[1]]) globalNode(bits[1]);
     return true;
   }
   var writingHash = false;
