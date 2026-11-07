@@ -10,6 +10,7 @@ cat > "$X/access-browser-agent.sh" <<'EOF'
 for a in "$@"; do printf 'arg=%s\n' "$a"; done
 printf 'session=%s lane=%s\n' "${HARBOR_ACCESS_BROWSER_SESSION:-}" "${HARBOR_ACCESS_BROWSER_LANE:-${HARBOR_BROWSER_LANE:-}}"
 printf 'path=%s private=%s\n' "$PATH" "${HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS:-${HARBOR_BROWSER_PRIVATE_HOSTS:-none}}"
+printf 'confirm=%s\n' "${HARBOR_ACCESS_BROWSER_CONFIRM:-}"
 case "$1" in fail) echo 'FAIL: refused by the stub' >&2; exit 1 ;; esac
 EOF
 # rpc <server> <line>... -> the server's replies, one JSON object per line
@@ -32,7 +33,7 @@ t_eq "a line that is not JSON is -32700, and the server keeps serving" "-32700 {
 t_section "one tool per harbor chrome verb, and none the CLI refuses"
 TL="$(rpc "$X/access-chrome-mcp.py" '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | jq -r '.result.tools[].name' | sort)"
 ALLOWED="$(awk '/^_allowed\(\) \{/ { f = 1; next } f && /case "\$1" in/ { next } f && /return 0/ { sub(/\).*/, ""); gsub(/[ \t\\]/, ""); print; exit } f { gsub(/[ \t\\]/, ""); printf "%s", $0 }' "$AG" | tr '|' '\n' | sed '/^$/d')"
-SESSION_VERBS='attach status state doctor detach tabs front wait-signin hosts'
+SESSION_VERBS='attach status state doctor detach tabs front wait-signin hosts confirm-click'
 WANT="$(printf '%s\n' $ALLOWED $SESSION_VERBS | tr '-' '_' | sort -u)"
 t_eq "CONTROL: the CLI's allowlist parses" yes "$([ "$(printf '%s\n' "$ALLOWED" | grep -c .)" -ge 20 ] && echo yes || echo no)"
 t_eq "the tools are exactly the CLI's allowed verbs and its session verbs" "$WANT" "$TL"
@@ -57,6 +58,22 @@ R="$(rpc "$X/access-chrome-mcp.py" "$(callj goto '{"args":["https://x.example/"]
 t_eq "a refusal by the CLI is an error result" true "$(iserr "$R")"
 t_has "...carrying the CLI's own words" "$(text "$R")" "FAIL: refused by the stub"
 cp "$X/ba.keep" "$X/access-browser-agent.sh"
+t_section "confirm_click is click with the CLI's confirm on its ref, only while settings.json asks (harbor#1488)"
+H="$T_TMP/h"; mkdir -p "$H/.claude"
+hrpc() { printf '%s\n' "$@" | env -u CLAUDE_CODE_SESSION_ID HOME="$H" python3 -I "$X/access-chrome-mcp.py" 2>&1; }
+R="$(hrpc "$(callj confirm_click '{"args":["e4"]}')")"
+t_eq "with no settings.json it is an error result" true "$(iserr "$R")"
+t_has "...naming the missing ask rule" "$(text "$R")" "no permissions.ask rule for mcp__harbor_chrome__confirm_click"
+t_hasnt "...and the CLI never ran" "$(text "$R")" "arg="
+jq -n '{permissions: {allow: ["mcp__harbor_chrome__confirm_click"]}}' > "$H/.claude/settings.json"
+t_eq "an allow rule is not an ask rule" true "$(iserr "$(hrpc "$(callj confirm_click '{"args":["e4"]}')")")"
+jq -n '{permissions: {ask: ["mcp__harbor_chrome__confirm_click"]}}' > "$H/.claude/settings.json"
+R="$(hrpc "$(callj confirm_click '{"args":["--force","e4"]}')")"
+t_eq "with the ask rule the CLI's verb is click" "arg=click" "$(text "$R" | sed -n 1p)"
+t_has "...with the confirm naming the ref, not the flag" "$(text "$R")" "confirm=e4"
+R="$(hrpc "$(callj click '{"args":["e4"]}')")"
+t_has "plain click never carries a confirm" "$(text "$R")" "confirm="
+t_hasnt "...not even with the rule present" "$(text "$R")" "confirm=e4"
 t_eq "an unknown tool is an error result" true "$(iserr "$(rpc "$X/access-chrome-mcp.py" "$(callj run_code '{}')")")"
 t_eq "args that are not strings are an error result" true "$(iserr "$(rpc "$X/access-chrome-mcp.py" "$(callj goto '{"args":[1]}')")")"
 t_eq "HARBOR_ACCESS_BROWSER_AGENT (or the old HARBOR_BROWSER_AGENT) in the environment names no other CLI" "arg=hosts" \
