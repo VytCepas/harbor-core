@@ -33,18 +33,18 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | decision-record | docs/decisions/ | element | source | dated | 93 |
 | hook | hooks/ | component | source | living | 48 |
 | skill | skills/ | component | source | living | 42 |
-| fixture | fixtures/ | element | source | living | 439 |
+| fixture | fixtures/ | element | source | living | 438 |
 | registry | registries/ | component | source | versioned | 69 |
-| test | tests/ | component | source | living | 522 |
+| test | tests/ | component | source | living | 515 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 9 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
-| generated-doc | docs/generated/ | component | generated | generated | 2 |
-| script | bin/ | component | source | living | 255 |
-| how-to | docs/how-to/ | component | source | living | 2 |
+| generated-doc | docs/generated/ | component | generated | generated | 1 |
+| script | bin/ | component | source | living | 251 |
+| how-to | docs/how-to/ | component | source | living | 1 |
 | reference | docs/reference/ | component | generated | generated | 86 |
 | explanation | docs/explanation/ | component | source | living | 102 |
-| (no kind) | - | - | - | - | 271 |
+| (no kind) | - | - | - | - | 264 |
 
 ## Folders
 
@@ -53,15 +53,15 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | (repo root) | 12 | 1 | 1 |
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
-| `bin/` | 259 | 29 | 2 |
+| `bin/` | 255 | 29 | 2 |
 | `commands/` | 5 | 4 | 1 |
-| `context-rules/` | 64 | 6 | 1 |
+| `context-rules/` | 57 | 6 | 1 |
 | `contracts/` | 107 | 11 | 2 |
-| `docs/` | 310 | 24 | 9 |
-| `fixtures/` | 439 | 11 | 1 |
+| `docs/` | 309 | 24 | 9 |
+| `fixtures/` | 438 | 11 | 1 |
 | `hooks/` | 44 | 7 | 1 |
 | `launchd/` | 21 | 10 | 1 |
-| `mods/` | 7 | 1 | 2 |
+| `mods/` | 6 | 1 | 1 |
 | `patches/` | 12 | 3 | 1 |
 | `policy/` | 3 | 1 | 1 |
 | `registries/` | 1 | 1 | 1 |
@@ -69,7 +69,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `skills/` | 42 | 8 | 1 |
 | `standards/` | 31 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `tests/` | 522 | 27 | 1 |
+| `tests/` | 515 | 27 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 101 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -85,16 +85,16 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | audit | control-plane | 8 | 14 | 0 | 11 | 0 | 2 |
 | check | observability | 2 | 5 | 0 | 1 | 58 | 0 |
 | ci | coordination | 17 | 46 | 2 | 20 | 1 | 7 |
-| context | control-plane | 7 | 15 | 1 | 3 | 0 | 44 |
+| context | control-plane | 7 | 14 | 1 | 3 | 0 | 42 |
 | deploy | control-plane | 16 | 31 | 1 | 4 | 0 | 7 |
 | doc | control-plane | 16 | 13 | 0 | 36 | 0 | 22 |
 | drift | control-plane | 8 | 10 | 0 | 11 | 4 | 14 |
-| eval | control-plane | 11 | 8 | 0 | 2 | 0 | 0 |
+| eval | control-plane | 10 | 7 | 0 | 2 | 0 | 0 |
 | event | observability | 3 | 19 | 0 | 12 | 0 | 2 |
 | gate | control-plane | 19 | 13 | 0 | 5 | 0 | 6 |
 | housekeeping | control-plane | 1 | 1 | 0 | 3 | 0 | 0 |
 | library | policy-function | 6 | 0 | 0 | 0 | 0 | 0 |
-| lint | control-plane | 26 | 73 | 0 | 20 | 3 | 38 |
+| lint | control-plane | 25 | 72 | 0 | 20 | 3 | 37 |
 | memory | memory-store | 6 | 10 | 1 | 24 | 0 | 1 |
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
 | policy | policy-function | 3 | 4 | 3 | 136 | 0 | 7 |
@@ -103,7 +103,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | session | data-plane | 14 | 5 | 0 | 7 | 0 | 0 |
 | skill | catalog | 5 | 18 | 0 | 8 | 0 | 14 |
 | standard | policy-function | 17 | 28 | 124 | 12 | 12 | 61 |
-| status | observability | 13 | 28 | 0 | 9 | 0 | 0 |
+| status | observability | 11 | 24 | 0 | 9 | 0 | 0 |
 | test | control-plane | 4 | 5 | 2 | 8 | 0 | 15 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
 
@@ -347,7 +347,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/eval-replay-corpus.sh`
 - `bin/eval-replay-worker.sh`
 - `bin/eval-replay.sh`
-- `bin/eval-suggest-replay.sh`
 - `bin/eval-tally.sh`
 - `docs/reference/check-rows/eval-redteam-corpus.txt`
 - `launchd/com.harbor.eval.redteam-corpus.plist`
@@ -439,7 +438,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/lint-secrets.sh`
 - `bin/lint-share.sh`
 - `bin/lint-siblings.sh`
-- `bin/lint-suggest-table.sh`
 - `contracts/lint-core-writes-baseline.txt`
 - `contracts/lint-dev-paths-baseline.txt`
 - `contracts/lint-domain-baseline.txt`
@@ -717,8 +715,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/status-obligations.sh`
 - `bin/status-plan-generate.sh`
 - `bin/status-subagent-glyph.sh`
-- `bin/status-suggest-scan.sh`
-- `bin/status-suggest.sh`
 - `bin/status-telemetry-report.sh`
 - `bin/status-usage-aggregate.sh`
 - `docs/reference/check-rows/status-fleet-snapshot.txt`
@@ -756,12 +752,12 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `.github/` | 2 |
 | `bin/` | 12 |
 | `commands/` | 2 |
-| `context-rules/` | 52 |
+| `context-rules/` | 45 |
 | `contracts/` | 86 |
-| `docs/` | 130 |
-| `fixtures/` | 264 |
+| `docs/` | 129 |
+| `fixtures/` | 263 |
 | `hooks/` | 30 |
-| `mods/` | 7 |
+| `mods/` | 6 |
 | `patches/` | 10 |
 | `runners/` | 2 |
 | `skills/` | 1 |

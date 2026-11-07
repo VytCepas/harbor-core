@@ -27,12 +27,6 @@ write ~/.cache/uv
 # an append-only log the dispatcher reads; its handlers are the manifest-checked allowlist in contracts/event-rules.tsv, so a
 # line a confined command writes can start only those. Operator review: this lets a confined command forge bus events.
 write ~/.local/state/harbor/events
-# The suggestion state (harbor#1485, escape class suggest-stop): `status-suggest.sh stop|start|off|on|shown|tick` writes the stop list, the
-# off switch, the last line shown and the session count here, and the agent runs it from Bash when the person asks it to stop a suggestion.
-# It sits outside the config dir because a confined shell cannot write there. Operator review: this lets a confined command stop or switch
-# off the suggestions, and own every entry in the folder. Each verb logs an origin to switch.log, but origin is the caller's claim in a file
-# the same command can rewrite: a record, never a control. The tool also runs outside the sandbox, so it treats the folder as hostile (its header).
-write ~/.local/state/harbor/suggest
 # CA bundles a Read deny rule closes (`Read(//**/*.pem)`): the system bundle, and certifi inside uv's cache
 read /etc/ssl/cert.pem
 read /private/etc/ssl/cert.pem

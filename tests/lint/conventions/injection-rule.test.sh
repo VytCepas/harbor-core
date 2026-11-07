@@ -28,18 +28,6 @@ t_has "a private pack on an event the engine never sees is refused, named as pri
 t_has "a private pack one level off is a pack nothing reads" "$(_ij1p demo/sub/demo.md PreToolUse)" \
   'nothing installs or reads it'
 
-t_section "IJ1: spoke: is judged as the engine judges it (harbor#1485)"
-_ij1k() { # <spoke value> → IJ1's output for a pack with a run: script, a spoke script beside it and one a level up
-  rm -rf "$TMP/ij1k"; mkdir -p "$TMP/ij1k/bin" "$TMP/ij1k/context-rules/demo"
-  printf -- '---\ndescription: a demo\nevent: PreToolUse\nwhen: always\nrun: r.sh\nspoke: %s\n---\n' "$1" > "$TMP/ij1k/context-rules/demo/demo.md"
-  : > "$TMP/ij1k/context-rules/demo/r.sh"; : > "$TMP/ij1k/context-rules/demo/s.sh"; : > "$TMP/ij1k/context-rules/up.sh"
-  lint1 IJ1 "$TMP/ij1k" || true
-}
-t_hasnt "a spoke: script beside its pack is valid" "$(_ij1k s.sh)" 'VIOLATION [context.pack-shape]'
-t_has "a spoke: script that is not there is refused" "$(_ij1k gone.sh)" 'names a spoke: script that is not beside it: context-rules/demo/demo.md -> gone.sh'
-t_has "a spoke: that climbs out is refused though the file exists, as the engine refuses it" "$(_ij1k ../up.sh)" "spoke: must be a plain filename beside it"
-t_has "an absolute spoke: is refused" "$(_ij1k "$TMP/ij1k/context-rules/up.sh")" "spoke: must be a plain filename beside it"
-
 t_section "IJ1: a tracked pack has a description (harbor#957)"
 _ij1d() { # <front-matter extra line, may be empty> → IJ1's output for a tracked pack with that line
   rm -rf "$TMP/ij1d"; mkdir -p "$TMP/ij1d/bin" "$TMP/ij1d/context-rules/demo"

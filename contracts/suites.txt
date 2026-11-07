@@ -91,7 +91,6 @@ tests/standard/rename/rename.test.sh
 tests/check/schedules/schedules.test.sh
 tests/doc/visual-check/visual-check.test.sh
 tests/eval/replay/replay.test.sh
-tests/eval/suggest-replay/replay.test.sh
 tests/status/statusline/statusline.test.sh
 tests/status/statusline/fleet.test.sh
 tests/status/statusline/machine.test.sh
@@ -137,7 +136,6 @@ tests/context/injection-rule/decision-question.test.sh
 tests/context/injection-rule/default-way-route.test.sh
 tests/context/injection-rule/default-way-deny.test.sh
 tests/context/injection-rule/skill-first-use.test.sh
-tests/context/injection-rule/suggest-tool.test.sh
 tests/context/injection-rule/name-note.test.sh
 tests/admission/destroy/destroy.test.sh
 tests/admission/destroy/c1-miscellaneous.test.sh
@@ -161,7 +159,6 @@ tests/lint/findings-run/findings-run.test.sh
 tests/lint/conventions/findings.test.sh
 tests/lint/conventions/mode.test.sh
 tests/lint/conventions/route.test.sh
-tests/lint/conventions/suggest-table.test.sh
 tests/lint/name/name.test.sh
 tests/lint/rule-health/rule-health.test.sh
 tests/skill/gates/gates.test.sh
@@ -484,6 +481,3 @@ tests/standard/render/render.test.sh
 tests/doc/checks-generate/checks-generate.test.sh
 tests/status/fleet-watch/watch.test.sh
 tests/status/pane/plugin.test.sh
-tests/status/suggest/stop.test.sh
-tests/status/suggest/e2e.test.sh
-tests/status/suggest-scan/scan.test.sh

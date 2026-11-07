@@ -182,9 +182,8 @@ collapsed to one paragraph.
 | `when` | **yes** | a predicate. **Repeatable, and repeats are ANDed** |
 | `once` | no | `session` (default) · `match` · `never` |
 | `mode` | no | `inform` (default) or `notify`, which also emits a `systemMessage` to the operator |
-| `summary` | no | the operator-facing line for `mode: notify`, unless a `run:` script supplies the line — see below |
-| `run` | no | a script beside the pack whose **stdout is the note**; empty stdout means no note. It may instead return a **decision**, or lead with the **person's line** — see below |
-| `spoke` | no | a script beside the pack, run with the row id as its one argument after the person's line really left. Same plain-filename check as `run`. Lint IJ1 refuses one that is not beside the pack |
+| `summary` | no | the operator-facing line for `mode: notify` |
+| `run` | no | a script beside the pack whose **stdout is the note**; empty stdout means no note. It may instead return a **decision** — see below |
 | `scope` | no | `repo` (default) or `box`. `box` also delivers a repo pack when a session outside the repo makes a tool call that touches it. Registered projects only, tool events only. See "`scope: box`" above |
 
 **Every delivered note starts `[context:<id>]`**, after the governance stamp, where `<id>` is the pack's `id`. The
@@ -228,48 +227,6 @@ A pack that can deny can also block ordinary work, so it is opt-in per pack, the
 sentinel is exact, and the decision is only ever as good as the predicate that
 selected the pack.
 
-### A `run:` pack may supply the person's line (harbor#1485)
-
-A `run:` script whose stdout begins with
-
-```
-HARBOR-USER-LINE <row-id>: <text>
-```
-
-is telling the person something and the agent something else. The engine strips that first line, shows `<text>`
-through `mode: notify`, and treats the rest of the output as the agent's note. `<row-id>` matches
-`^[a-z0-9][a-z0-9-]{0,26}$`.
-
-| Case | What happens |
-|---|---|
-| A box-tier pack with `mode: notify` | The sentinel is honoured |
-| Any other pack | The first line is stripped and dropped, `summary:` stands, and neither its text nor its row id goes anywhere |
-| A bad row: a bad id, no `: `, or a blank `<text>` | The whole output is dropped, and logged as a bad row |
-| A sentinel with no note after it | The line is not shown, and it is logged as a defect |
-| Static body text | Prose, as with the deny sentinel: only `run:` output is inspected |
-| `HARBOR-DECISION deny:` after the sentinel | Part of the note. The rest of the output is never read as a verdict or as a second line |
-
-**Why box tier only.** A repo pack is code from whatever repository the session stands in, and a line the operator
-reads never has to be believed by the model. A repo pack's computed text must not reach that line. The script must
-take its `<text>` from its own table and never from the payload; the engine cannot check that.
-
-**One line a session.** After the sweep ends with no deny and just before the emit, the engine takes an atomic claim,
-`mkdir <session ledger>.line`, and `remember`s the pack's key at the same point. So:
-
-- A later deny spends nothing: no claim, no key, no record, no `spoke:`. A repo pack's deny always sweeps after a box pack, so `order:` could not have avoided this.
-- Of two parallel calls one wins. The loser drops its **note with its line**, because the note tells the agent the person was told. It still spends its key, since no line can follow.
-- Of two sentinel packs in one sweep the first holds the line, and the second's output is dropped.
-- A call with no session id has no ledger to claim against, so a sentinel pack stays silent. Every other pack still fires on such a call.
-- `--explain` reports what would be said, and takes no claim, writes no record and runs no `spoke:`.
-
-**`spoke:`** runs only after the emit succeeded, never in shadow, on a deny or for a loser. It runs from the session's
-repo with stdin, stdout and stderr closed off, and its exit status is ignored. It runs inside the hook, so a watchdog
-bounds it: TERM at 3 s, KILL a second later. The hook has 10 s, and a hook that times out loses a line already claimed.
-A `spoke:` that is cut off leaves no error; a script that starts children should `exec` its last step so the bound reaches it.
-
-**In shadow** the held pack writes `d=shadow` and spends its key once the sweep ends with no deny, so a shadow record
-means the line would have been spoken. It takes no claim and runs no `spoke:`.
-
 ### A rule that speaks leaves a record (harbor#953)
 
 When a pack delivers a note, or a `run:` pack returns a deny, the engine appends one line to
@@ -277,19 +234,6 @@ When a pack delivers a note, or a `run:` pack returns a deny, the engine appends
 `advise` or `deny`, `r` is the pack's `id`. A call no rule spoke on writes nothing. The writer's rule
 field allows only `[a-z0-9-]`, so the id is the bare `agent-brief`; the `rule:context.` prefix in
 harbor#953 waits for the naming ticket. A box with no ledger stays blind, never wrong.
-
-**Every record carries the session key `sk`** (harbor#1485), the salted hash the floor's other guards write, so a rule
-can be joined to what that session did next. The engine hands the writer the session id alone, never the payload, so
-`sk` holds whatever the payload's key order and `c` still reads no payload text. It is `-` where the box has no salt.
-Keyed inject records also enter what joins on `sk`: `bin/context-compaction-digest.sh` lists a session's inject denies,
-and the reroute count in `bin/admission-observe-report.sh` reads inject deny and shadow records.
-
-**A spoken line records its row.** `r` is `<pack id>-<row id>`, for example `suggest-tool-<row-id>`, which is why a row
-id stops at 27 characters: the writer keeps 40. A line in shadow records the same token with `d=shadow`.
-
-**A sentinel the pack got wrong** records `<pack id>--bad-row` or `<pack id>--no-note` with `d=shadow`, once a session. No
-row token can equal these, because a row id never starts with `-`. `bin/admission-observe-report.sh` lists them with
-the shadow rows, which is where the defect is read.
 
 ### `once: match` and what the subject is
 

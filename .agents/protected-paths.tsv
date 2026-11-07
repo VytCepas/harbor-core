@@ -239,7 +239,6 @@ bin/lint-renderer.sh	installed	derived: called by bin/standard-vendor.sh
 bin/lint-secrets.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-share.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-siblings.sh	ci-gate	derived: called by bin/lint-conventions.sh
-bin/lint-suggest-table.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/memory-lint.sh	installed	derived: called by bin/memory-store-check.sh
 bin/memory-log-token-save.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/memory-route.sh	ci-gate	derived: called by bin/lint-conventions.sh
@@ -291,7 +290,6 @@ bin/status-generate.sh	ci-gate	derived: called by .github/workflows/governance.y
 bin/status-obligations.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/status-plan-generate.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/status-subagent-glyph.sh	installed	derived: shipped by deploy-runtime-install.sh
-bin/status-suggest.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/status-usage-aggregate.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/test-sandbox-make.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/test-suite-cache.sh	ci-gate	derived: called by bin/test-suite-run.sh

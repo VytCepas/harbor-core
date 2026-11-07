@@ -161,8 +161,3 @@ box	plain	long-wait-process-exists	fire	a sleep of half an hour	{"hook_event_nam
 box	plain	long-wait-process-exists	fire	wait-for with a long deadline	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"wait-for -t 3600 -i 30 -- test -f /tmp/done"}}
 box	plain	long-wait-process-exists	silent	a short sleep	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"sleep 5"}}
 box	plain	long-wait-process-exists	silent	the phrase quoted, not run	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"echo \"sleep 1800\""}}
-box	plain	suggest-tool	fire	a row of the neutral table fires on its command	{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"sug-fire","transcript_path":"@TRANSCRIPT@","tool_input":{"command":"fixturectl report"}}
-box	plain	suggest-tool	silent	the same word in a grep runs grep	{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"sug-grep","transcript_path":"@TRANSCRIPT@","tool_input":{"command":"grep fixturectl notes.txt"}}
-box	plain	suggest-tool	silent	a subagent call never spends the line	{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"sug-sub","agent_id":"a1","transcript_path":"@TRANSCRIPT@","tool_input":{"command":"fixturectl report"}}
-box	plain	suggest-start	fire	a new session	{"hook_event_name":"SessionStart","source":"startup","session_id":"sug-start"}
-box	plain	suggest-start	silent	a resumed session is not a new one	{"hook_event_name":"SessionStart","source":"resume","session_id":"sug-resume"}

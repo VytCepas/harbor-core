@@ -2387,8 +2387,8 @@ rm -f "$_f14_rows" "$_f14_code" "$_f14_lay"
 #
 # THE SET IS DERIVED, NEVER LISTED, from what the installers wire:
 #   wired   every argv word of a floor_hooks table row, every "/bin/sh $DIR/bin/X" (or "/bin/sh $V"
-#           with V="$DIR/bin/X") an installer composes as a harness command, and the run: and spoke:
-#           scripts of every box pack an installer that names context-rules/user installs;
+#           with V="$DIR/bin/X") an installer composes as a harness command, and the run: script of
+#           every box pack an installer that names context-rules/user installs;
 #   closed  what those execute or source (`.`, sh, bash, exec) through a path ending in a file
 #           beside them or in bin/, outside a quoted string: a hint that only NAMES a command runs nothing.
 #   declared a hook the box runs that no installer wires (worklog-push) is a row in
@@ -2421,10 +2421,8 @@ for _f15i in "$ROOT"/bin/*install*.sh; do
   if _f15_code "$_f15i" | grep -q 'context-rules/user'; then
     for _f15p in "$ROOT"/context-rules/user/*.md; do
       [ -f "$_f15p" ] || continue
-      awk 'NR == 1 && !/^---/ { exit } NR > 1 && /^---/ { exit } /^(run|spoke):[[:space:]]*/ { sub(/^(run|spoke):[[:space:]]*/, ""); print }' "$_f15p" \
-        | while IFS= read -r _f15r; do
-            [ -z "$_f15r" ] || printf 'context-rules/user/%s\t%s\n' "$_f15r" "${_f15i#"$ROOT"/} (box pack ${_f15p##*/})" >> "$_f15t/wired"
-          done
+      _f15r="$(awk 'NR == 1 && !/^---/ { exit } NR > 1 && /^---/ { exit } /^run:[[:space:]]*/ { sub(/^run:[[:space:]]*/, ""); print; exit }' "$_f15p")"
+      [ -z "$_f15r" ] || printf 'context-rules/user/%s\t%s\n' "$_f15r" "${_f15i#"$ROOT"/} (box pack ${_f15p##*/})" >> "$_f15t/wired"
     done
   fi
 done
@@ -6044,13 +6042,6 @@ for f in "$ROOT"/context-rules/*/*.md "${_INJ_DIR:-/nonexistent}"/*/*.md; do
     _b="$(awk 'BEGIN{n=0} /^---[[:space:]]*$/ {n++; next} n>=2' "$f" | tr -d '[:space:]')"
     [ -n "$_b" ] || bad context.pack-shape "pack has neither a body nor a run: — it would emit nothing: $_rel"
   fi
-  # `spoke:` is judged as the engine judges it, because the engine's refusal is silent and the script just never runs (harbor#1485).
-  _sp="$(_ij_fm "$f" | awk -F': *' '$1=="spoke"{print $2;exit}')"
-  case "$_sp" in
-    '') ;;
-    /*|*..*) bad context.pack-shape "pack's spoke: must be a plain filename beside it: $_rel -> $_sp" ;;
-    *) [ -f "$(dirname "$f")/$_sp" ] || bad context.pack-shape "pack names a spoke: script that is not beside it: $_rel -> $_sp" ;;
-  esac
   # `scope:` IS A FROZEN ENUM, AND `box` ONLY MEANS SOMETHING ON A TOOL CALL
   # (harbor#599). The engine reaches a tree because a tool call touched it; an
   # event with no tool call touches nothing, so a `scope: box` pack there is a
@@ -7903,22 +7894,6 @@ while IFS="$(printf '\t')" read -r _rsi _rsm; do
   [ -n "$_rsi" ] && bad lint.route-covers-surfaces "$_rsi: $_rsm" "$_rsi"
 done < "$_rs_o"
 rm -f "$_rs_o"
-}
-
-# ── lint.suggest-table · every suggest-tool row passes the table check (harbor#1485) ─────────────────────────────────────────
-# A row reaches a person, so the check runs on the shipped table and on the fixture the notes suite overlays. The check is its own tool
-# so a table can be held before it ships: sh bin/lint-suggest-table.sh <table>.
-rule_lint_suggest_table() {
-rule "lint.suggest-table every row of suggest-tool.tsv and its fixture has a distinctive trigger, an anchored Bash recogniser, no safe mod and a plain person's line (harbor#1485)"
-_stt=''
-for _st_f in "$ROOT/context-rules/user/suggest-tool.tsv" "$ROOT/fixtures/injection-rule/suggest-tool.tsv"; do [ ! -f "$_st_f" ] || _stt="$_stt$_st_f$_NL"; done
-[ -n "$_stt" ] || { _advn lint.suggest-table no-table; _advp '  ADVISORY [lint.suggest-table] no suggest-tool.tsv in this tree: NO row was checked\n'; return 0; }
-_st_o="${TMPDIR:-/tmp}/st.$$"
-printf '%s' "$_stt" | while IFS= read -r _st_f; do sh "$(dirname -- "$0")/lint-suggest-table.sh" "$_st_f"; done > "$_st_o" 2>&1
-while IFS= read -r _st_l; do
-  case "$_st_l" in '  FAIL: '*) _st_l="${_st_l#  FAIL: }"; bad lint.suggest-table "${_st_l#"$ROOT"/}" context-rules/user/suggest-tool.tsv ;; esac
-done < "$_st_o"
-rm -f "$_st_o"
 }
 
 # ── drift.check-register · docs/reference/checks.md and the check rows of controls.tsv are one register (harbor#1422) ──────

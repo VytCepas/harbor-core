@@ -1,7 +1,7 @@
 {
   "name": "status-pane",
   "version": "0.1.0",
-  "description": "Harbor's console as a pane beside the conversation: your turn, skills, access (harbor#1480), and the suggestion settings (harbor#1485).",
+  "description": "Harbor's console as a read-only pane beside the conversation: your turn, skills, access (harbor#1480).",
   "author": {
     "name": "Harbor"
   },

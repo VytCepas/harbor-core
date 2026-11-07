@@ -342,7 +342,7 @@ FLOOR_OBS_SHAPES=' argv flat path channel content meta '
 FLOOR_OBS_TOOLS=' Bash Write Edit MultiEdit NotebookEdit WebFetch WebSearch Task Agent ToolSearch mcp none other '
 # The escape classes (harbor#1441, #555 decision 10 (a)): what an unconfined Bash call was, as a closed enum. Every name is
 # a row of contracts/confinement-classes.tsv (the treatment); the observe-report suite holds the two equal.
-HARBOR_ADMISSION_CLASSES='readonly vcs cloud container script interp network fsmutate system compound event-bus session-title suggest-stop other'
+HARBOR_ADMISSION_CLASSES='readonly vcs cloud container script interp network fsmutate system compound event-bus session-title other'
 
 # floor_obs_class <command> — sets _xo to the class of a command by its first verb. Parameter expansion and
 # case only: no fork on the hot path, and no byte of the command can reach _xo (every arm assigns a literal).
@@ -372,16 +372,7 @@ floor_obs_class() {
     git|gh) _xo=vcs ;;
     gcx|gcloud|bq|cu|stape|gsutil|aws|az|fly|kubectl|terraform|firebase|wrangler) _xo=cloud ;;
     docker|docker-compose|colima|podman) _xo=container ;;
-    sh|bash|zsh|dash)
-      _xo=script
-      # Only a lone `sh <path>/status-suggest.sh stop|start|off|on ...`: the name elsewhere in a command, or a second command, is not this class (harbor#1485).
-      case "$_xs" in
-        *[\;\&\|\#\`]*|*'$('*|*'
-'*) ;;
-        *) _xr="${_xs#*[[:space:]]}"; _xr="${_xr#"${_xr%%[![:space:]]*}"}"; _xw="${_xr%%[[:space:]]*}"
-           _xr="${_xr#"$_xw"}"; _xr="${_xr#"${_xr%%[![:space:]]*}"}"
-           case "$_xw" in status-suggest.sh|*/status-suggest.sh) case "${_xr%%[[:space:]]*}" in stop|start|off|on) _xo=suggest-stop ;; esac ;; esac ;;
-      esac ;;
+    sh|bash|zsh|dash) _xo=script ;;
     python|python3|uv|uvx|node|bun|npm|npx|pnpm|ruby|perl|deno|pip|pip3|pytest) _xo=interp ;;
     curl|wget|ssh|scp|rsync|nc|ping|dig|nslookup) _xo=network ;;
     # mktem[p]: a bracket, so the bare-mktemp tripwire (harbor#1298) does not read this label as a call (harbor#1441).

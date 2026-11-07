@@ -543,7 +543,6 @@ for that turn.</p>
 <tr><td><code>mode</code></td><td>no</td><td><code>inform</code> (default), or <code>notify</code> which also speaks to the operator</td></tr>
 <tr><td><code>summary</code></td><td>no</td><td>the operator-facing line for <code>mode: notify</code></td></tr>
 <tr><td><code>run</code></td><td>no</td><td>a script beside the pack whose <strong>stdout is the note</strong>; empty stdout means no note</td></tr>
-<tr><td><code>spoke</code></td><td>no</td><td>a script beside the pack, run with the row id after the person's line really left; time-bounded, and its exit status is ignored</td></tr>
 </tbody>
 </table>
 </div>
@@ -833,8 +832,6 @@ already had in mind.</p>
 <tr><td>box</td><td><code>session-title-missing.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
 <tr><td>box</td><td><code>skill-on-first-use.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
 <tr><td>box</td><td><code>subagent-contract.md</code></td><td><code>SubagentStart</code></td><td><code>always</code></td><td>never</td></tr>
-<tr><td>box</td><td><code>suggest-start.md</code></td><td><code>SessionStart</code></td><td><code>source-is startup</code></td><td>session</td></tr>
-<tr><td>box</td><td><code>suggest-tool.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
 <tr><td>box</td><td><code>suite-run-through-runner.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
 <tr><td>box</td><td><code>tool-failure-is-not-a-result.md</code></td><td><code>PostToolUseFailure</code></td><td><code>always</code></td><td>session</td></tr>
 <tr><td>box</td><td><code>unbounded-wait-loop.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
@@ -1226,7 +1223,6 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <tr><td><code>ci.action-sha-pinned</code></td><td>every workflow uses: is a full 40-hex commit SHA followed by a # version comment, never a mutable tag (harbor#1426)</td></tr>
 <tr><td><code>lint.mode-matches-engine</code></td><td>each rule's behaviour agrees with its controls.tsv mode, and no rule title carries a tier word (harbor#1422)</td></tr>
 <tr><td><code>lint.route-covers-surfaces</code></td><td>every surfaces.tsv id has a row in default-way-route.tsv's surface cell, and every id a row names is a surface (harbor#1397)</td></tr>
-<tr><td><code>lint.suggest-table</code></td><td>every row of suggest-tool.tsv and its fixture has a distinctive trigger, an anchored Bash recogniser, no safe mod and a plain person's line (harbor#1485)</td></tr>
 <tr><td><code>drift.check-register</code></td><td>docs/reference/checks.md and the check rows of controls.tsv agree: ids, falsifier suite, scheduled or not (harbor#1422)</td></tr>
 <tr><td><code>skill.catalog-covers-tools</code></td><td>every harbor verb and every bin tool contracts/cli.md marks Agent-facing has a row in contracts/agent-tools.tsv, and every row a verb or script (advisory, harbor#1010)</td></tr>
 <tr><td><code>context.repo-sources-agree</code></td><td>repos.tsv, projects.tsv, yard markers and fleet discovery name the same repos (advisory, harbor#1430)</td></tr>
@@ -1471,7 +1467,6 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/check/schedules/schedules.test.sh</code></td><td><code>docs/reference/checks.md contracts/event-rules.tsv launchd/* systemd/* tests/check/schedules/schedules.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/doc/visual-check/visual-check.test.sh</code></td><td><code>bin/doc-visual-check.sh bin/doc-visual-check.mjs bin/library-log.sh tests/doc/visual-check/visual-check.test.sh bin/status-dashboard-generate.sh bin/doc-index-generate.sh docs/src/* vendor/archify/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/eval/replay/replay.test.sh</code></td><td><code>bin/* tests/eval/replay/replay.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/eval/suggest-replay/replay.test.sh</code></td><td><code>bin/eval-suggest-replay.sh bin/eval-replay-corpus.sh bin/library-admission.sh bin/admission-normalize.awk bin/library-log.sh context-rules/user/suggest-* fixtures/injection-rule/suggest-tool.tsv tests/eval/suggest-replay/replay.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/status/statusline/statusline.test.sh</code></td><td><code>bin/* tests/hooks/statusline* tests/status/statusline/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/status/statusline/fleet.test.sh</code></td><td><code>bin/* tests/hooks/statusline* tests/status/statusline/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/status/statusline/machine.test.sh</code></td><td><code>bin/* tests/hooks/statusline* tests/status/statusline/* tests/lib/core.sh</code></td></tr>
@@ -1511,13 +1506,12 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/access/chrome/mcp.test.sh</code></td><td><code>bin/* standards/naming/* contracts/browser-agent-hosts.txt tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/access/chrome/mcp.test.sh</code></td></tr>
 <tr><td><code>tests/access/chrome/session.test.sh</code></td><td><code>bin/access-chrome-mcp.ts bin/access-chrome-mcp.py bin/access-browser-agent.sh bin/scope-roots.sh bin/library-log.sh contracts/browser-agent-hosts.txt contracts/roots.tsv tests/access/chrome/fake-daemon.ts tests/access/chrome/session.test.sh tests/cli/browser/agent-stub.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/access/chrome/benchmark.test.sh</code></td><td><code>bin/access-chrome-mcp.ts bin/access-chrome-mcp.py bin/access-browser-agent.sh bin/scope-roots.sh bin/library-log.sh contracts/browser-agent-hosts.txt contracts/roots.tsv tests/access/chrome/fake-daemon.ts tests/access/chrome/benchmark.sh tests/access/chrome/benchmark-driver.ts tests/access/chrome/benchmark.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/context/injection-rule/notes.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh tests/context/injection-rule/notes.test.sh context-rules/* fixtures/inject/* fixtures/injection-rule/notes.tsv* fixtures/injection-rule/suggest-tool.tsv fixtures/injection-rule/packs/example-store/wipe-destroys-history.md* bin/scope-roots.sh bin/library-admission.sh bin/admission-normalize.awk tests/lib/core.sh bin/lint-name.sh bin/library-log.sh standards/naming/* bin/standard-register.sh</code></td></tr>
+<tr><td><code>tests/context/injection-rule/notes.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh tests/context/injection-rule/notes.test.sh context-rules/* fixtures/inject/* fixtures/injection-rule/notes.tsv* fixtures/injection-rule/packs/example-store/wipe-destroys-history.md* bin/scope-roots.sh bin/library-admission.sh bin/admission-normalize.awk tests/lib/core.sh bin/lint-name.sh bin/library-log.sh standards/naming/* bin/standard-register.sh</code></td></tr>
 <tr><td><code>tests/context/injection-rule/agent-brief.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/* tests/context/injection-rule/agent-brief.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/context/injection-rule/decision-question.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/user/decision-* tests/context/injection-rule/decision-question.test.sh tests/lib/core.sh docs/explanation/grilling.md commands/grilling.md</code></td></tr>
 <tr><td><code>tests/context/injection-rule/default-way-route.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/user/default-way-* tests/context/injection-rule/default-way-route.test.sh tests/lib/core.sh fixtures/admission-corpus.jsonl</code></td></tr>
 <tr><td><code>tests/context/injection-rule/default-way-deny.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh context-rules/user/default-way-* tests/context/injection-rule/default-way-deny.test.sh tests/lib/core.sh fixtures/admission-corpus.jsonl</code></td></tr>
 <tr><td><code>tests/context/injection-rule/skill-first-use.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh bin/admission-normalize.awk context-rules/* skills/agent-routing/SKILL.md tests/context/injection-rule/skill-first-use.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/context/injection-rule/suggest-tool.test.sh</code></td><td><code>bin/library-admission.sh bin/admission-normalize.awk context-rules/user/suggest-* context-rules/user/ci-wait-on-the-bus* context-rules/user/suite-run-through-runner* context-rules/user/unbounded-wait-loop* context-rules/user/long-wait-process-exists* context-rules/user/default-way-route* fixtures/injection-rule/suggest-tool.tsv tests/context/injection-rule/suggest-tool.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/context/injection-rule/name-note.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh bin/lint-name.sh bin/library-log.sh standards/naming/* context-rules/* tests/context/injection-rule/name-note.test.sh tests/lib/core.sh bin/standard-register.sh</code></td></tr>
 <tr><td><code>tests/admission/destroy/destroy.test.sh</code></td><td><code>     bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/guards/destroy* tests/admission/destroy/* tests/guards/guards.jsonl tests/guards/shapes.jsonl tests/guards/benign.jsonl tests/guards/exemptions.jsonl</code></td></tr>
 <tr><td><code>tests/admission/destroy/c1-miscellaneous.test.sh</code></td><td><code>bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/admission/destroy/c1-misc.*</code></td></tr>
@@ -1541,7 +1535,6 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/lint/conventions/findings.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/lint/conventions/mode.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/lint/conventions/route.test.sh</code></td><td><code>always</code></td></tr>
-<tr><td><code>tests/lint/conventions/suggest-table.test.sh</code></td><td><code>bin/lint-suggest-table.sh bin/lint-conventions.sh context-rules/user/suggest-tool.tsv fixtures/injection-rule/suggest-tool.tsv standards/naming/controls.tsv tests/checks/lint-fixture.sh tests/lint/conventions/suggest-table.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/name/name.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/lint/rule-health/rule-health.test.sh</code></td><td><code>bin/lint-rule-health.sh bin/library-log.sh bin/lint-conventions.sh tests/lint/rule-health/rule-health.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/skill/gates/gates.test.sh</code></td><td><code>tests/skills/skill-gates* tests/skill/gates/gates.test.sh* tests/lib/core.sh skills/access-ledger/bin/* bin/doc-report-verify.sh bin/library-log.sh vendor/archify/*</code></td></tr>
@@ -1858,9 +1851,6 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/doc/checks-generate/checks-generate.test.sh</code></td><td><code>bin/doc-checks-generate.sh bin/library-log.sh standards/naming/controls.tsv vendor/naming/registry/controls.tsv docs/reference/checks.md docs/reference/checks.md.tmpl docs/reference/check-rows/* tests/doc/checks-generate/checks-generate.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/status/fleet-watch/watch.test.sh</code></td><td><code>bin/status-fleet-watch.sh bin/status-fleet-snapshot-refresh.sh bin/library-log.sh bin/scope-roots.sh tests/status/fleet-watch/watch.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/status/pane/plugin.test.sh</code></td><td><code>mods/status-pane/* tests/status/pane/plugin.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/status/suggest/stop.test.sh</code></td><td><code>bin/status-suggest.sh bin/deploy-runtime-install.sh bin/deploy-confinement.sh bin/library-admission.sh contracts/confinement-paths.txt contracts/confinement-classes.tsv tests/status/suggest/* tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/status/suggest/e2e.test.sh</code></td><td><code>bin/status-suggest.sh bin/status-suggest-scan.sh bin/admission-observe-report.sh bin/deploy-runtime-install.sh bin/context-injection-install.sh bin/library-admission.sh bin/admission-normalize.awk hooks/injection-rule/injection-rule.sh context-rules/user/suggest-* fixtures/injection-rule/suggest-tool.tsv standards/naming/controls.tsv mods/status-pane/tests/fixtures/* tests/status/suggest/* tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/status/suggest-scan/scan.test.sh</code></td><td><code>bin/status-suggest-scan.sh bin/library-log.sh bin/deploy-install-lib.sh tests/status/suggest-scan/scan.test.sh tests/lib/core.sh</code></td></tr>
 </tbody></table>
 </div>
 
@@ -2308,7 +2298,6 @@ score a plumbing gap as a verdict on the idea.</p>
 <tr><td><code>status-fleet-watch.sh</code></td><td>status-fleet-watch.sh (harbor#1437) — the hourly fleet watch pass, scheduled by harbor: check id status.fleet-watch.</td></tr>
 <tr><td><code>status-obligations.sh</code></td><td>status-obligations.sh (harbor#1050) — the obligations ledger: a projection of the event bus.</td></tr>
 <tr><td><code>status-subagent-glyph.sh</code></td><td>L0-5b (harbor#293) — Claude Code SUBAGENT statusline: one row per live agent.</td></tr>
-<tr><td><code>status-suggest.sh</code></td><td>status-suggest.sh (harbor#1485) — the one writer of the suggestion state, and its reader.</td></tr>
 <tr><td><code>status-usage-aggregate.sh</code></td><td>M9 · UsageAggregator (harbor#44) — durable per-day token usage, attributed.</td></tr>
 <tr><td><code>test-sandbox-make.sh</code></td><td>SANDBOX (harbor#33) — build a disposable copy of ~/.claude's CONFIG surfaces</td></tr>
 <tr><td><code>ticket-note.sh</code></td><td>ticket-note (harbor#354) — Stop hook. When a session touched a ticket, remind the operator</td></tr>
@@ -2634,7 +2623,6 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/eval-replay-corpus.sh</code></td><td>M2 · DoctrineReplay (harbor#44) — build the real-traffic replay corpus.</td></tr>
 <tr><td><code>bin/eval-replay-worker.sh</code></td><td>eval-replay-worker.sh — adjudicate ONE corpus record, print exactly ONE verdict.</td></tr>
 <tr><td><code>bin/eval-replay.sh</code></td><td>M2 · DoctrineReplay (harbor#44) — measure a rule change against real traffic.</td></tr>
-<tr><td><code>bin/eval-suggest-replay.sh</code></td><td>eval-suggest-replay.sh (harbor#1485) — replay a suggest-tool table over every tool call in the transcript store, extended from</td></tr>
 <tr><td><code>bin/eval-tally.sh</code></td><td>eval-tally.sh (harbor#293 · option A, comparative signal) — Harbor's first</td></tr>
 <tr><td><code>bin/event-bus.sh</code></td><td>event-bus.sh (harbor#1043, E1) — the local append-only event bus: one JSON line per event.</td></tr>
 <tr><td><code>bin/event-dispatch.sh</code></td><td>event-dispatch.sh (harbor#1044, E2) — agents react to events: one follower of the bus, <code>on</code> rules, a capped spawner.</td></tr>
@@ -2686,7 +2674,6 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/lint-secrets.sh</code></td><td>lint-secrets.sh (harbor#1205) - the ratchet on credential reads that bypass bin/secret.</td></tr>
 <tr><td><code>bin/lint-share.sh</code></td><td>lint-share.sh (harbor#1274, harbor#1149, D-83) - the share check: a file lives in a share its kind may take.</td></tr>
 <tr><td><code>bin/lint-siblings.sh</code></td><td>lint-siblings.sh (harbor#966, harbor#1149) - the ratchet on occurrences of another repo's path in core.</td></tr>
-<tr><td><code>bin/lint-suggest-table.sh</code></td><td>lint-suggest-table.sh (harbor#1485) — hold every row of a suggest-tool table to the contract before it can reach a person.</td></tr>
 <tr><td><code>bin/memory-lint.sh</code></td><td>memory-lint (harbor#6 — workstream D, D2) — the deterministic anti-rot gate</td></tr>
 <tr><td><code>bin/memory-log-token-save.sh</code></td><td>memory-log-token-save.sh (harbor#431, #1205) — put the work-log token in the store as worklog-token</td></tr>
 <tr><td><code>bin/memory-route.sh</code></td><td>memory-route.sh (GOVERNANCE) — does a session started IN a governed repo load</td></tr>
@@ -2753,8 +2740,6 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/status-obligations.sh</code></td><td>status-obligations.sh (harbor#1050) — the obligations ledger: a projection of the event bus.</td></tr>
 <tr><td><code>bin/status-plan-generate.sh</code></td><td>status-plan-generate.sh (harbor#117) — which plan tickets are DONE, derived and not stated.</td></tr>
 <tr><td><code>bin/status-subagent-glyph.sh</code></td><td>L0-5b (harbor#293) — Claude Code SUBAGENT statusline: one row per live agent.</td></tr>
-<tr><td><code>bin/status-suggest-scan.sh</code></td><td>status-suggest-scan.sh (harbor#1485) — repeated work in recent sessions that could become a skill, hook, job or mod.</td></tr>
-<tr><td><code>bin/status-suggest.sh</code></td><td>status-suggest.sh (harbor#1485) — the one writer of the suggestion state, and its reader.</td></tr>
 <tr><td><code>bin/status-telemetry-report.sh</code></td><td>status-telemetry-report.sh (harbor#1181 lane 7) — the signals Harbor captures, turned into answers. TSV on stdout.</td></tr>
 <tr><td><code>bin/status-usage-aggregate.sh</code></td><td>M9 · UsageAggregator (harbor#44) — durable per-day token usage, attributed.</td></tr>
 <tr><td><code>bin/test-sandbox-make.sh</code></td><td>SANDBOX (harbor#33) — build a disposable copy of ~/.claude's CONFIG surfaces</td></tr>
