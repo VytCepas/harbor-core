@@ -14,6 +14,8 @@
 #
 # exit 0 written / current · 1 stale (--check) · 2 usage · 3 unchecked (a source is missing)
 set -eu
+# Titles are cut by bytes in every locale: under C.UTF-8 awk counts characters, so a title holding an em dash was cut elsewhere on a runner (harbor#1278).
+LC_ALL=C; export LC_ALL
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH='' cd -- "$HERE" && pwd)"
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh

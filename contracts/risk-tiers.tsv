@@ -1,0 +1,31 @@
+# risk-tiers.tsv (harbor#1278) — the core default risk list: a sibling of controls.tsv, not a column of it, because a new column
+# breaks every pack's byte-compare of its fragment (contracts/confinement-coverage.tsv says the same).
+#
+# COLUMNS  key <TAB> tier <TAB> set <TAB> label
+#   key    a control id from standards/naming/controls.tsv, unique
+#   tier   very-high | high | medium | low (contracts/hub-vocabulary.tsv)
+#   set    fixed | integrity | default (contracts/hub.md: what a hub may move)
+#   label  the plain words a request shows, at most 60 characters
+# A control with no row takes its default from its mode: block is very-high, warn is high. integrity is also derived from
+# floor_shadow_enforces, so a row here only names its label.
+key	tier	set	label
+admission.provider-secret-egress	very-high	fixed	Credentials leaving the machine
+admission.key-material-egress	very-high	fixed	Credentials leaving the machine
+admission.project-cred-egress	very-high	fixed	Credentials leaving the machine
+admission.privileged-jwt-egress	very-high	fixed	Credentials leaving the machine
+admission.key-material-read	very-high	fixed	Reading key material
+admission.keychain-dump	very-high	fixed	Reading the keychain
+admission.hub-token-read	very-high	fixed	Reading the hub token
+admission.gh-credential-operand	very-high	fixed	Credentials leaving the machine
+admission.gh-publish-secret	very-high	fixed	Credentials leaving the machine
+admission.member-support	very-high	integrity	Starting or reaching a remote support session
+admission.env-dump-pipe	very-high	fixed	Credentials leaving the machine
+admission.env-dump-socket	very-high	fixed	Credentials leaving the machine
+admission.env-dump-interpolate	very-high	fixed	Credentials leaving the machine
+admission.env-staged-then-sent	very-high	fixed	Credentials leaving the machine
+admission.gh-soft-credential-operand	very-high	fixed	Credentials leaving the machine
+admission.gh-soft-credential-positional	very-high	fixed	Credentials leaving the machine
+admission.gh-publish-unread	very-high	fixed	Publishing files too large to check for secrets
+admission.secret-to-disk	very-high	fixed	Writing a secret to a file
+admission.git-push-snapshots	very-high	fixed	Publishing local copies that can hold secrets
+admission.cd-cred-then-read	very-high	fixed	Reading key material
