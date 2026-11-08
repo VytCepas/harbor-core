@@ -1,0 +1,8 @@
+# relay-settings.txt (harbor#1278) — the relay's settings. relay/install.sh fills in @RELAY_HOST@ and lands it as /etc/harbor-relay/relay.env,
+# which harbor-relay.service reads. uptermd reads UPTERMD_<FLAG> for each of its flags (`uptermd --help`). Every listener is on loopback:
+# Caddy carries wss on 443 to the websocket one, and the unit's IPAddressDeny keeps uptermd off every other address. No port 22: companies block it.
+UPTERMD_SSH_ADDR=127.0.0.1:2223
+UPTERMD_NODE_ADDR=127.0.0.1:2223
+UPTERMD_WS_ADDR=127.0.0.1:8080
+# The name laptops connect to. The host certificate the relay signs names it, and policy `support.relay` is wss:// and this name.
+UPTERMD_HOSTNAME=@RELAY_HOST@

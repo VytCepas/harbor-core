@@ -1,0 +1,21 @@
+# member-prereqs.txt (harbor#1278) — everything a member laptop needs from its package manager, in one place.
+# Read by member-install.sh at install and, from <managed root>/bin, by member-prereqs.sh and member-session.sh.
+# One row per line: <probe> <apt package> <dnf package>. The probe is the command a session looks for; `-` means it has no command, so
+# no session goes looking for it and only an install brings it. `-` in a package column means that manager has no such package.
+# jq is a hard dependency: without it the guards fail open (M9).
+
+git git git
+- ca-certificates ca-certificates
+sudo sudo sudo
+jq jq jq
+curl curl curl
+ssh-keygen openssh-client openssh-clients
+
+# W6: the sandbox's Linux runtime
+bwrap bubblewrap bubblewrap
+socat socat socat
+
+# W7: the secret store, which stock WSL may lack
+secret-tool libsecret-tools libsecret
+gnome-keyring-daemon gnome-keyring gnome-keyring
+- dbus-user-session -

@@ -314,6 +314,22 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_TEST_SUITE_TAIL` | tuning | `40` | number of log lines shown from the end of each failed suite's log (default 40) | test |  | tests only |
 | `HARBOR_TEST_SUITE_TIMEOUT` | tuning | `900` | Seconds a suite may print nothing before test-suite-run cuts it off, default 900, 0 means no limit | test |  | tests only |
 | `HARBOR_TEST_Z` | test-only | none | Throwaway variable name written into a canary fixture to prove the comment lexer reads suites correctly | test |  | tests only |
+| `HARBOR_MEMBER_ROLE` | switch | `standalone` | member on a company laptop, set only in managed settings; on a marker box hub_env_clean sets it from member.conf and env is ignored (contracts/hub.md); anything else is a standalone install | member |  | tests only |
+| `HARBOR_HUB_REMOTE` | test-only | none | Ignored beside harbor-member-mode. Git remote hub-sync fetches instead of https://github.com/<HARBOR_HUB_REPO>.git: https or an absolute path, a test seam; the policy it serves must still verify | hub |  | tests only |
+| `HARBOR_HUB_TIMEOUT` | tuning | `8` | Seconds a hub fetch or event send may take before it is cut off and counted unreachable, default 8 | hub |  | tests only |
+| `HARBOR_MEMBER_LOGIN` | value | none | The member's GitHub login, set only in managed settings; on a marker box hub_env_clean sets it from member.conf and env is ignored (contracts/hub.md); no value means no approval and no events | member |  | tests only |
+| `HARBOR_HUB_REPO` | value | none | The hub repository as owner/name, set only in managed settings; on a marker box hub_env_clean sets it from member.conf and env is ignored (contracts/hub.md); its Issues are the board | member |  | tests only |
+| `HARBOR_HUB_API_BASE` | test-only | none | A loopback stub for the GitHub API, honoured by hub-board.sh only with no harbor-member-mode file beside it, so it can't redirect a member | member |  | tests only |
+| `HARBOR_HUB_GATE_GITLEAKS` | value | `gitleaks` | Name of the secret scanner hub-gate.sh runs; one that is not found is a finding, never a pass (harbor#1278) | hub |  | tests only |
+| `HARBOR_HUB_GATE_PRIVATE` | path | none | Folder holding the leaks.tsv or terms.tsv of the company's own names, kept outside the hub tree, that hub-gate.sh passes to the leak gate (harbor#1278) | hub |  | tests only |
+| `HARBOR_MEMBER_ROOT` | path | `OS default of the managed root` | The managed root of a member box: where bin/, hub-signers and floor.pin live; set in managed settings, and by tests for member-update.sh, which refuses it under root (contracts/hub.md) | member |  | tests only |
+| `HARBOR_MEMBER_CORE_SOURCE` | value | `the harbor-core repository` | The core repository member-update.sh fetches the pinned commit from; a test knob, refused under root, where <managed root>/core-source names it (harbor#1278) | member |  | tests only |
+| `HARBOR_MEMBER_OS` | test-only | none | Darwin, Linux or WSL: the member install's OS answer in a test; refused under root | member |  | tests only |
+| `HARBOR_MEMBER_PREFS_DIR` | test-only | `/Library/Managed Preferences` | Folder the member install searches for an MDM profile; a test seam, refused under root | member |  | tests only |
+| `HARBOR_ADMISSION_MEMBER_RECORDS` | handoff | none | The file member-dispatch.sh names for a guard's fired rules; a guard reads it only with harbor-member-mode beside it | admission |  | tests only |
+| `HARBOR_MEMBER_SUPPORT_POLL_SECONDS` | test-only | `15` | Seconds between board reads while member-support.sh waits; a test seam, dead beside the member marker | member |  | tests only |
+| `HARBOR_MEMBER_SUPPORT_WAIT_SECONDS` | test-only | `1800` | How long member-support.sh waits for an admin; a test seam, dead beside the member marker | member |  | tests only |
+| `HARBOR_MEMBER_SUPPORT_LIMIT_SECONDS` | test-only | `policy max_minutes` | The session's time limit in seconds; a test seam, dead beside the member marker | member |  | tests only |
 
 ## Root variables
 
