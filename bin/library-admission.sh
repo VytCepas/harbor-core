@@ -184,7 +184,6 @@ floor_in_repo() {
 # A symlinked .claude or settings file is refused. No jq or bad JSON: not wired, stay armed.
 floor_repo_wires() {
   _rwh="$1"; _rwp="$2"
-  ! floor_member_mode || return 1   # harbor#1278: allowManagedHooksOnly means a repo's own guard never runs, whatever its settings say
   floor_in_repo || return 1
   _rw="$HARBOR_ADMISSION_MARKER_DIR/.claude"
   { [ -d "$_rw" ] && [ ! -L "$_rw" ]; } || return 1
@@ -439,7 +438,6 @@ floor_log_decision() { # <guard> <verdict> <rule.shape>
 
   # THE TWO GATES. Order matters: the directory gate keeps the file gate's answer true one instruction later (property 2).
   _odir="$_ocfg/MEMORY/OBSERVABILITY/$_oh"
-  # W4: a floor on /mnt/c may report every folder writable, and then this gate drops every record. Hub events still carry refusals, so nothing decides on this ledger.
   [ ! -w "$_odir" ] || return 0
   _osink="$_odir/guard-decisions.jsonl"
   { [ -f "$_osink" ] && [ ! -L "$_osink" ]; } || return 0
@@ -484,9 +482,7 @@ floor_log_decision() { # <guard> <verdict> <rule.shape>
     _oc=off
     _om="${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}"   # the old name is read until 2026-11-15 (harbor#1097)
     if [ -n "$_om" ]; then [ ! -f "${_om%/*}/harbor-confinement" ] || _oc=confined
-    # W4: the /mnt/c row is the WSL marker, if the managed tree stays there.
-    elif [ -f '/Library/Application Support/ClaudeCode/harbor-confinement' ] || [ -f /etc/claude-code/harbor-confinement ] \
-        || [ -f '/mnt/c/Program Files/ClaudeCode/harbor-confinement' ]; then _oc=confined
+    elif [ -f '/Library/Application Support/ClaudeCode/harbor-confinement' ] || [ -f /etc/claude-code/harbor-confinement ]; then _oc=confined
     fi
     if [ "$_oc" = confined ]; then
       case "${FLOOR_IN:-}" in *'"dangerouslyDisableSandbox":true'*|*'"dangerouslyDisableSandbox": true'*) _oc=unconfined ;; esac
@@ -581,8 +577,6 @@ FDEOF
 # The printed remedy is the NARROWEST true one (harbor#482): a `!` command or a hand edit, not the blanket kill-switch. Lint F16 keeps the blanket hatch out of every guard but the two where it is the true remedy.
 # SHADOW (harbor#482): under HARBOR_ADMISSION_SHADOW=1 a rule records `shadow` and RETURNS, so the guard keeps evaluating and a later enforcing rule (floor_shadow_enforces) still blocks. Returning 0 keeps `hit ... && floor_block ...` lists alive under set -e.
 floor_block() {
-  # MEMBER (harbor#1278): record and keep evaluating, so one rule can't hide a later one; member-dispatch.sh takes the highest tier.
-  if floor_member_mode; then floor_member_stop "$1" "${3:-}"; return 0; fi
   # COVERED (harbor#1300): the confinement denies this target, so the OS decides; recorded, and the guard keeps
   # evaluating exactly as under shadow, so a later rule that is not covered still blocks.
   if floor_confinement_covers "$1" "${3%.*}"; then
@@ -629,34 +623,6 @@ floor_block() {
   esac
   [ -z "${FLOOR_STAMP:-}" ] || printf '%s\n' "$FLOOR_STAMP" >&2   # after the refusal and its footnote: the first line is the reason
   floor_log_decision "$1" block "${3:-}" || :
-  exit 2
-}
-
-# floor_member_mode (harbor#1278): 0 iff harbor-member-mode sits beside the running guard. A file only an admin can write, never env (contracts/hub.md).
-floor_member_mode() { case "$0" in */*) _fmm="${0%/*}" ;; *) _fmm=. ;; esac; [ -f "$_fmm/harbor-member-mode" ] && [ ! -L "$_fmm/harbor-member-mode" ]; }
-
-# floor_member_report <guard> <rule[.shape]> (harbor#1278): one `rule<TAB>guard<TAB>rule<TAB>control-id` line in the file member-dispatch.sh names.
-# Non-zero with no such file: a guard run outside the dispatcher has nowhere to record, so floor_block refuses.
-floor_member_report() {
-  _fmf="${HARBOR_ADMISSION_MEMBER_RECORDS:-}"
-  case "$_fmf" in /*) ;; *) return 1 ;; esac
-  { [ -f "$_fmf" ] && [ ! -L "$_fmf" ]; } || return 1
-  _fmr="${2%.*}"; [ -n "$_fmr" ] || _fmr=unclassified
-  _fdx=''; _FD_DEFER=1; floor_decide "$1" "$_fmr" || :; _FD_DEFER=0
-  _fmc="${_fdx:-admission.$_fmr}"
-  case "$_fmc" in *[!abcdefghijklmnopqrstuvwxyz0123456789.-]*) _fmc=admission.unclassified ;; esac
-  printf 'rule\t%s\t%s\t%s\n' "$1" "$_fmr" "$_fmc" >> "$_fmf"
-}
-
-# floor_member_stop <guard> <rule[.shape]> (harbor#1278): report, or refuse if the record can't be written. No remedy text on a member box (M1).
-floor_member_stop() {
-  if floor_member_report "$1" "${2:-}"; then
-    FLOOR_SHADOWED=1
-    floor_log_decision "$1" shadow "${2:-}" || :   # shadow: fired and recorded here; member-dispatch.sh gives the verdict
-    return 0
-  fi
-  printf 'A safety check stopped this step.\n' >&2
-  floor_log_decision "$1" block "${2:-}" || :   # after the reason, as floor_block: the ledger is the record of a refusal the dispatcher never saw
   exit 2
 }
 

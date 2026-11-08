@@ -170,7 +170,6 @@ bin/library-admission.sh	library	floor	shared helpers for the Helm POSIX floor g
 bin/library-alert.sh	library	floor	one desktop notification helper with a fallback chain, sourced by every notifier. . bin/library-alert.sh	harbor#618
 bin/library-fs.sh	library	floor	a file's mtime, size, mode and owner on BSD and GNU stat, one spelling. Sourced, never run: it sets no shell option, and every	harbor#618
 bin/library-gate.sh	library	floor	the approval gate's shared library. Never run: sourced after library-log.sh, it sets no shell option. Repo-agnostic: a repo opts	harbor#1018
-bin/library-hub.sh	library	floor	shared paths and the canonical call for the hub and member formats; decides nothing	harbor#1278
 bin/library-log.sh	library	floor	the one log format (contracts/logging.md), sourced by every tool that logs. Never run: it sets no shell option (set -u in	harbor#771
 bin/library-repo-rules.sh	library	floor	how a repo's GitHub rules are declared in ship.config and read from GitHub, one spelling for the two callers that compare them	harbor#1418
 bin/lint-adoption.sh	command	floor	every vendored asset has an intake row.	harbor#117
@@ -277,28 +276,3 @@ bin/test-suite-run.sh	command	floor	run many suites at once, longest first, and 
 bin/test-suite-select.sh	command	floor	which suites must a changeset run? (CI-2, harbor#150)	harbor#150
 bin/wait-for	command	floor	bounded, self-diagnosing wait for an EXTERNAL condition. BOX-1 · was UNTRACKED in ~/.local/bin until 2026-09-09 and is now here	-
 bin/worktree.sh	command	floor	session worktrees: create, retire, collect (CI-4, harbor#150)	harbor#150
-bin/hub-format.sh	command	floor	checks a hub policy, event, extension manifest or the core tier list against contracts/hub.md; reports and writes nothing	harbor#1278
-bin/hub-sync.sh	command	floor	fetches and proves the hub policy: ssh-keygen -Y verify against hub-signers, format, serial; keeps the last good copy; tells revocation from failure	harbor#1278
-bin/hub.sh	command	floor	`harbor hub`: init, sync, status, sign, check, pin-check, leave, project register	harbor#1278
-bin/member-session.sh	command	floor	managed SessionStart and SessionEnd hook of a member laptop: sync, floor check, heartbeat, send; never blocks	harbor#1278
-bin/library-pack-version.sh	library	floor	the harbor_version grammar of contracts/pack.md, shared by pack.sh and hub.sh	harbor#1278
-bin/hub-board.sh	command	floor	the one GitHub client for the hub board: curl with the token on stdin, returns status, body and the response Date	harbor#1278
-bin/hub-approval.sh	command	floor	files a very-high request on the board and asks whether an admin approved that exact call, per contracts/hub.md	harbor#1278
-bin/hub-events.sh	command	floor	the only sender of member events: validates, batches and posts closed-vocabulary facts to the heartbeat issue	harbor#1278
-bin/hub-fetch.sh	command	floor	the heartbeat issues of a hub repo and their comments, flattened for hub-digest.sh; read-only, nothing printed if GitHub does not answer	harbor#1278
-bin/hub-gate.sh	command	floor	the gate a hub repo must pass: leaks (export mode), gitleaks, share, policy format, signature, serial, packs, and a layout that judges files with no kind; reads and reports	harbor#1278
-bin/hub-digest.sh	command	floor	one digest of the hub heartbeat issues in the closed vocabulary: last seen, version, floor hash, refusals, requests, silent members; printed on every run, empty or not	harbor#1278
-bin/member-update.sh	command	floor	root updater, one run: verifies the hub policy, moves the managed root bin to the pinned core commit, checks member-integrity.sh, rolls back on failure; schedule is a template that nothing installs	harbor#1278
-bin/member-managed.sh	command	floor	composes the managed settings of a member laptop as JSON, and names any policy source that would hide them; writes nothing	harbor#1278
-bin/member-install.sh	command	floor	IT's one setup for a named non-admin member: prerequisites, managed root, ledger, user tier, token, and --uninstall; run as root	harbor#1278
-bin/member-windows.sh	command	floor	prints the PowerShell an administrator runs to land a staged member tree on Windows; the PowerShell has never run	harbor#1278
-bin/member-bootstrap.sh	command	floor	the first step on a clean laptop: clones harbor-core at a pinned commit, then runs the install	harbor#1278
-bin/hub-tier.sh	command	floor	a fired rule's tier and set on a member laptop: core default, then the hub, then what no hub may touch; matches hub rules as data	harbor#1278
-bin/member-dispatch.sh	command	floor	the one managed PreToolUse entry on a member laptop: runs the guards in wiring order and decides the call once, failing closed	harbor#1278
-bin/member-post.sh	command	floor	closes what member-dispatch.sh opened: an ask's outcome, an approval spent once the call has run	harbor#1278
-bin/member-integrity.sh	command	floor	hashes the managed root and managed settings against the pin IT wrote	harbor#1278
-bin/member-prereqs.sh	command	floor	the one root helper a member may run: installs the fixed list in contracts/member-prereqs.txt and refuses everything else	harbor#1278
-bin/library-board.sh	library	floor	the board's reading code: what makes a comment count, the policy read, the relay and agent checks; shared by approval and support	harbor#1278
-bin/member-support.sh	command	floor	a person on a member laptop asks an admin for help and watches: board request, verified accept, a time-limited upterm session	harbor#1278
-bin/member-support-guard.sh	command	floor	the dispatcher's rule that an agent's tool call never starts or reaches a support session	harbor#1278
-bin/hub-support.sh	command	floor	the admin side of remote support, behind harbor hub support: list, accept with the admin's gh, join with the admin's key	harbor#1278
