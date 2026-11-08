@@ -269,7 +269,6 @@ ci	family,abbreviation,control-type,moment,commit-type	ci	coordination	-	stable	
 library	family	library	standard	-	stable	-	sitting B Q2 (harbor#961), 2026-10-27	-	-	Family: shared helpers sourced by other scripts, never run (fs, log, alert, gate)
 memory	family	memory	memory-store	-	stable	-	standard §3 (D-17)	-	-	Family: notes, work log, ideas
 access	family	access	control-plane	-	stable	-	standard §3 (D-17)	-	-	Family: routes, identity matrix
-member	family	member	control-plane	-	stable	-	harbor#1278	-	-	Family: the member laptop install and its managed hooks
 install	verb	install	-	-	stable	-	standard §3	-	-	Verb: the last word of a name that performs it
 remove	verb	remove	-	-	stable	-	standard §3	-	-	Verb: the last word of a name that performs it
 verify	verb	verify	-	-	stable	-	standard §3	-	-	Verb: the last word of a name that performs it
@@ -420,7 +419,7 @@ living	lifecycle	living	-	-	stable	-	standard 09a S5	-	-	Edited in place; git is
 append-only	lifecycle	append-only	-	-	stable	-	standard 09a S5	-	-	Only grows; closed generations move to an archive
 share	concept	share	-	-	experimental	-	standard D-83	-	-	The axis of who an artefact is shared with; its values are the terms of class share
 core	share	core	-	-	stable	-	standard D-83	-	-	Shared with everyone who installs Harbor
-hub	share,family	hub	-	-	experimental	-	standard D-83 (amended, harbor#1149)	-	-	Shared with the members of one company layer
+hub	share	hub	-	-	experimental	-	standard D-83 (amended, harbor#1149)	-	-	Shared with the members of one company layer
 personal	share	personal	-	-	stable	-	standard D-83 (amended, harbor#1149)	-	-	Shared with the owner only
 pack	family	pack	catalog	S1	stable	-	standard D-84	-	-	Family: a workload repo's harbor-pack/ folder, installed box-wide
 registered-in	relation	registered in	-	-	experimental	-	research/15 §3 (CLAUDE.md: every check is registered)	-	-	The edge from a check to the register that lists it; a check with no registered-in edge is a finding

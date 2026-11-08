@@ -5,4 +5,3 @@
 18823	2026-11-01	lowered 12455 B from 31278: the constitution's rationale moved to docs/explanation/ in harbor#1392
 18826	2026-11-02	raised 3 B: the constitution names the renamed skill-catalog (was skill-book) in harbor#966
 19624	2026-11-05	raised 798 B: constitution №2.13 (a second reader for answers that decide something) and the ambient audit-claims description, operator ask on harbor#1478
-19829	2026-11-07	raised 205 B: the ambient status-suggest-scan description, so a person with no mod can ask what they repeat (decision 28 on harbor#1485, harbor#1278 step 10)

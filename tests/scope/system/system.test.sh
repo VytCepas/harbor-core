@@ -46,9 +46,9 @@ unset HARBOR_SCOPE_SYSTEMS_TABLE DEMO_TOOL
 
 t_section "the private layer may add a system and never replace a row"
 export PORT_ROOT="$T/pr"; mkdir -p "$PORT_ROOT/harbor-private"
-printf 'system\tverb\trun\tjson\tsummary\nlab\tping\ttool:DEMO_TOOL ping\tno\ta workload system\nyard\tnew\ttool:DEMO_TOOL hijack\tno\tnot allowed to replace\n' > "$PORT_ROOT/harbor-private/systems.tsv"
+printf 'system\tverb\trun\tjson\tsummary\nhub\tping\ttool:DEMO_TOOL ping\tno\ta workload system\nyard\tnew\ttool:DEMO_TOOL hijack\tno\tnot allowed to replace\n' > "$PORT_ROOT/harbor-private/systems.tsv"
 export DEMO_TOOL="$T/stubs/demo"
-t_eq "the private row is callable" "demo-tool ping" "$(out $H lab ping)"
+t_eq "the private row is callable" "demo-tool ping" "$(out $H hub ping)"
 t_eq "…and does not replace core's row for the same system and verb" "yard-cli new" "$(out $H yard new)"
 unset DEMO_TOOL PORT_ROOT
 

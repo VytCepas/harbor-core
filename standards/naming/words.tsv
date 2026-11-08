@@ -3264,7 +3264,6 @@ preflight	-
 premise	-
 prepare	-
 prepared	-
-prereqs	the issue's own name for bin/member-prereqs.sh and its list
 prerequisite	-
 prerequisites	-
 prescribes	-
@@ -4780,7 +4779,6 @@ upper	-
 uppercase	-
 ups	-
 upstream	-
-upterm	a terminal sharing tool, used for remote support (harbor#1278)
 urls	-
 us	-
 usable	-

@@ -102,10 +102,6 @@ register.vendored-registry-tsv	register	vendor/naming/registry/*.tsv	*	core	no	t
 register.vendored-manifest-tsv	register	vendor/naming/MANIFEST.tsv	*	core	no	the vendored copy itself: it is the delivery of the rows above, not an item to deliver
 register.kit	register	standards/naming/kit.tsv	*	core	yes	the standard's own register; yard vendors it into every repo
 register.contracts-systems	register	contracts/systems.tsv	control-plane	core	no	the systems harbor dispatches; installed beside the harbor command
-register.contracts-support-upterm-tsv	register	contracts/support-upterm.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
-register.contracts-hub-vocabulary-tsv	register	contracts/hub-vocabulary.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
-register.contracts-member-guards-tsv	register	contracts/member-guards.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
-register.contracts-risk-tiers-tsv	register	contracts/risk-tiers.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
 control.name	control	name	*	core	yes	judged in every repo by the vendored lint-name.sh
 control.skill	control	skill	control-plane	hub	no	engine lives in harbor; a repo inherits the verdict through the fleet audit, not the engine
 control.standard	control	standard	control-plane scaffolder fleet-controller	hub	no	engine lives in harbor; a repo inherits the verdict through the fleet audit, not the engine
@@ -126,8 +122,6 @@ control.ci	control	ci	control-plane	hub	no	engine lives in harbor; a repo inheri
 control.event	control	event	control-plane	hub	no	engine lives in harbor; a repo inherits the verdict through the fleet audit, not the engine
 control.check	control	check	control-plane	hub	no	engine lives in harbor; a repo inherits the verdict through the fleet audit, not the engine
 control.module	control	module	control-plane	hub	no	engine lives in harbor; a repo inherits the verdict through the fleet audit, not the engine
-control.hub	control	hub	control-plane	hub	no	engine lives in harbor; a repo inherits the verdict through the fleet audit, not the engine
-control.member	control	member	control-plane	hub	no	engine lives in harbor; a repo inherits the verdict through the fleet audit, not the engine
 tool.lint-name	tool	bin/lint-name.sh	*	core	yes	vendored into vendor/naming/ so the repo judges itself offline
 tool.lint-renderer	tool	bin/lint-renderer.sh	*	core	yes	vendored into vendor/naming/ so the repo judges itself offline
 tool.library-log	tool	bin/library-log.sh	*	core	yes	vendored into vendor/naming/ so the repo judges itself offline
