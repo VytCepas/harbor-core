@@ -9,6 +9,8 @@
 #                                                           unless --apply (bin/scope-repo-rename.sh, harbor#966)
 #   options: --path <rel to PORT_ROOT> --covers <text> --domain <term> --owner <name> --topology <t> --interaction <i>
 #            --remote <url> --slug <owner/name> --github --dry-run
+#            --core-only   (adopt only; harbor#1278, R28) a core install has no yard, uv or just: register, list and route the checkout,
+#                          run the checks core can run, and print health counts. Writes no plugin file and no workflow.
 #
 # THE STEPS, in order (STEPS below; each prints `step <id>: ok|warn|FAIL`, and tests/scope/repo/repo.test.sh holds one assertion per step,
 # so a step removed from this list turns that suite red):
@@ -45,7 +47,7 @@ case "$SUB" in
   *) die "unknown verb '$SUB' (new, adopt, list, audit, rename)" ;;
 esac
 
-ARG=''; KIND=''; RELPATH=''; COVERS='-'; DOMAIN='-'; OWNER='-'; TOPO='-'; INTER='-'; REMOTE='-'; SLUG=''; GITHUB=0; DRY=0
+ARG=''; KIND=''; RELPATH=''; COVERS='-'; DOMAIN='-'; OWNER='-'; TOPO='-'; INTER='-'; REMOTE='-'; SLUG=''; GITHUB=0; DRY=0; CORE_ONLY=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --kind) [ $# -ge 2 ] || die "--kind takes a repo kind"; KIND="$2"; shift 2 ;;
@@ -59,12 +61,17 @@ while [ $# -gt 0 ]; do
     --slug) [ $# -ge 2 ] || die "--slug takes owner/name"; SLUG="$2"; shift 2 ;;
     --github) GITHUB=1; shift ;;
     --dry-run) DRY=1; shift ;;
+    --core-only) CORE_ONLY=1; shift ;;
     -h|--help) usage; exit 0 ;;
     -*) die "unknown option: $1" ;;
     *) [ -z "$ARG" ] || die "one name or path, not two ('$ARG' and '$1')"; ARG="$1"; shift ;;
   esac
 done
 
+if [ "$CORE_ONLY" = 1 ]; then
+  [ "$SUB" = adopt ] || die "--core-only adopts a checkout that exists; $SUB needs the scaffolder, which a core install does not have" "harbor repo adopt <path> --kind <kind> --core-only"
+  STEPS="registry projects route rules"; CHECKS="sources ij6"
+fi
 PR="$(SR --port-root)" || die "scope-roots.sh could not resolve the workspace root" "sh $SRC/scope-roots.sh --port-root"; PR="${PR%/}"
 PV="$(SR --private 2>/dev/null)" || PV="$PR/harbor-private"
 REGF="$PV/repos.tsv"
@@ -113,8 +120,8 @@ slug_of() {
 }
 ID="$NAME"
 
-FAILS=0; WARNS=0
-ok()   { printf '  step %s: ok%s\n' "$1" "${2:+ - $2}"; }
+FAILS=0; WARNS=0; OKS=0
+ok()   { OKS=$((OKS + 1)); printf '  step %s: ok%s\n' "$1" "${2:+ - $2}"; }
 warn() { WARNS=$((WARNS + 1)); printf '  step %s: warn - %s\n' "$1" "$2"; }
 fail() { FAILS=$((FAILS + 1)); printf '  step %s: FAIL - %s\n' "$1" "$2"; }
 # the scaffolder is a root of roots.tsv; a box without it is named here, not left to a bare exit 127 (harbor#1436)
@@ -163,6 +170,8 @@ chk_sources() {
   sh "$SRC/scope-repo-sources.sh" > "$W/sources.out" 2>/dev/null; _r=$?
   [ "$_r" -ne 3 ] || { echo "no governed row to compare"; return 3; }
   _l="$(awk -F'\t' -v p="$RELPATH" '$1 == p' "$W/sources.out")"
+  # A core install has no yard marker and no fleet, so only the registry and projects.tsv can be missing (harbor#1278).
+  if [ "$CORE_ONLY" = 1 ] && [ -n "$_l" ]; then printf '%s' "$_l" | sed 's/.*missing://' | grep -Eq 'registry|projects' || _l=''; fi
   [ -z "$_l" ] || { echo "$_l" | tr '\t' ' '; return 1; }
   return 0
 }
@@ -285,6 +294,11 @@ if [ "$DRY" = 1 ]; then
 fi
 printf 'audit\n'
 run_audit
+if [ "$CORE_ONLY" = 1 ]; then
+  set -- $CHECKS
+  printf 'health: steps %s ok, %s warning, %s failed; checks %s ok, %s red, %s could not look\n' "$OKS" "$WARNS" "$FAILS" "$(($# - AFAIL - AUNLOOKED))" "$AFAIL" "$AUNLOOKED"
+  printf 'not run on a core install: steps scaffold labels versions fleet; checks ij2 ij3 kit labels versions fleet (no yard, uv or just)\n'
+fi
 [ "$FAILS" -eq 0 ] && [ "$AFAIL" -eq 0 ] || { log_fail "$FAILS step(s) failed, $AFAIL check(s) red"; log_fix "harbor repo audit $ID"; log_end || :; exit 1; }
 [ "$AUNLOOKED" -eq 0 ] || { log_note "$AUNLOOKED check(s) could not look: this is not a pass for them"; log_end || :; exit 3; }
 log_ok "$ID is created and green on every check"; log_end || :; exit 0
