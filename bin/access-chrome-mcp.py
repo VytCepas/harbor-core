@@ -53,7 +53,19 @@ VERBS = {
     'mousemove': 'move the mouse (args: [x, y])', 'mousedown': 'mouse down', 'mouseup': 'mouse up',
     'mousewheel': 'scroll (args: [dx, dy])', 'dialog-accept': 'accept the open dialog', 'dialog-dismiss': 'dismiss the open dialog',
     'upload': 'upload files (args: absolute paths) after a click opened the file chooser',
+    'confirm-click': "click a ref the operator approves in Claude Code's permission dialog (args as click): for a click that "
+                     'changes a live system (Turn on, Apply, Publish, Delete, Pay, Generate token), which click refuses or the classifier denies',
 }
+# confirm-click (harbor#1488) is click with the CLI's per-call confirm set on its ref, and only while settings.json asks the
+# operator for every call of it: that ask rule is the approval, so without it the tool refuses.
+CONFIRM_TOOL = 'mcp__harbor_chrome__confirm_click'
+SETTINGS = os.path.join(os.path.expanduser('~'), '.claude', 'settings.json')
+
+def ask_rule_present():
+    try:
+        with open(SETTINGS) as f: ask = (json.load(f).get('permissions') or {}).get('ask') or []
+    except (OSError, ValueError, AttributeError): return False
+    return isinstance(ask, list) and CONFIRM_TOOL in ask
 SCHEMA = {'type': 'object', 'additionalProperties': False, 'properties': {
     'args': {'type': 'array', 'items': {'type': 'string'}, 'description': 'the verb\'s arguments, as harbor chrome takes them'},
     'lane': {'type': 'string', 'description': 'a parallel agent\'s own browser session: 1-12 of a-z0-9'}}}
@@ -78,6 +90,14 @@ def call(name, arguments):
     args = arguments.get('args', [])
     if not isinstance(args, list) or not all(isinstance(a, str) for a in args): return 'args must be a list of strings', True
     env = session_env()
+    if verb == 'confirm-click':
+        if not ask_rule_present():
+            return ('  FAIL: confirm_click refused: settings.json has no permissions.ask rule for %s, so no dialog would ask the operator\n'
+                    '  fix: operator: sh bin/admission-deny.sh --apply --live (it adds the ask rule), then restart the session' % CONFIRM_TOOL), True
+        refs = [a for a in args if a and not a.startswith('-')]
+        if not refs: return 'confirm_click takes a snapshot ref', True
+        env['HARBOR_ACCESS_BROWSER_CONFIRM'] = refs[0]   # the CLI checks it names this target
+        verb = 'click'
     lane = arguments.get('lane')
     if lane is not None:
         if not isinstance(lane, str): return 'lane must be a string', True

@@ -27,6 +27,7 @@ docs/	explanation	source	documentation; docs/context-map.md and docs/generated/ 
 fixtures/	fixture	source	test fixtures
 hooks/	hook	source	git hooks
 launchd/	deploy-unit	source	macOS schedules, rendered at deploy
+mods/	code	source	Claude Code mods, installed by bin/scope-managed-mods.sh
 patches/	vendored	source	patches to vendored upstream code
 policy/	policy	source	the constitution, authored here and deployed as CLAUDE.md
 registries/	record	record	append-only logs and ratchets kept as data

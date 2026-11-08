@@ -694,6 +694,7 @@ _plan() {
   done
   _want_any packs inject && _packs_plan
   _launchd_snap; _launchd_plan
+  _mods_check
   for _x in yard fleet; do _want "$_x" && _xr_plan "$_x"; done
   [ -z "$UNREACH" ] || _unreachable
   return 0
@@ -912,6 +913,23 @@ _recheck() {
   else log_note "re-check: $((FAILS - _rk)) check(s) fail on the restored box; each FAIL line above names it"; fi
 }
 
+# ── MODS (harbor#1480): a Claude Code mod is root's to install, so deploy reports it and installs nothing ──────────
+# This box's managed settings set allowManagedModsOnly, which refuses a mod installed at user scope (the folder marketplace a
+# settings.json would name), and disableSideloadFlags, which refuses CLAUDE_CODE_PLUGIN_DIRS. A mod loads only from the
+# root-owned harbor-mods marketplace that scope-managed-mods.sh fills from mods/ and enables in managed settings. So deploy
+# writes no enabledPlugins or extraKnownMarketplaces into settings.json, and the baseline deploy-harden.sh pins over them is
+# unchanged by a mod. The installed copy is a copy: switching branches in this checkout does not change it.
+_mods_check() {
+  [ -d "$ROOT/mods" ] || return 0
+  _mdr="$(sh -c 'MANAGED_MODS_LIB=1; . "$0"; managed_target; managed_mods_state "$1"' "$ROOT/bin/scope-managed-mods.sh" "$ROOT/mods" 2>/dev/null)" || :
+  if [ "$_mdr" = ok ]; then
+    log_ok "mods: every mods/ mod is installed and enabled in the managed marketplace as this commit has it"
+  else
+    log_note "mods: $(printf '%s' "${_mdr:-unjudged: the check printed nothing}" | tr '\n' ',' | sed 's/,$//; s/,/, /g'): a mod loads only from the root-owned marketplace (allowManagedModsOnly), so installing it is the operator's"
+    il_next "sudo sh '$ROOT/bin/scope-managed-mods.sh'"
+  fi
+}
+
 # ── LAUNCHD (harbor#1437): the scheduled jobs come up with a deploy and run the bytes it installed ────────────────
 # bin/deploy-launchd-sync.sh: snapshot before the install, install the plists marked harbor:deploy-installs and restart the
 # running jobs whose program changed after it, verify that no job runs older code. Only with the runtime, whose files are
@@ -972,6 +990,7 @@ _verify() {
 
   _refcheck
   _launchd_verify
+  _mods_check
   _events_verify
 
   # The other repos' installed builds against their trees (harbor#736): their --check exits non-zero on drift.

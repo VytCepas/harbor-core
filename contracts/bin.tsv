@@ -138,6 +138,7 @@ bin/eval-redteam-corpus.sh	command	floor	score the pinned external red-team corp
 bin/eval-replay-corpus.sh	command	floor	build the real-traffic replay corpus	harbor#44
 bin/eval-replay-worker.sh	command	floor	adjudicate ONE corpus record, print exactly ONE verdict. harbor#133 — lifted out of eval-replay.sh's heredoc so the suite can	harbor#133
 bin/eval-replay.sh	command	floor	measure a rule change against real traffic.	harbor#44
+bin/eval-suggest-replay.sh	command	floor	replay a suggest-tool table over every tool call in the transcript store: per-row counts and payload hashes, samples only to a person.	harbor#1485
 bin/eval-tally.sh	command	floor	Harbor's first EXOGENOUS instrument: does a harness change make the work better? Two arms run the same task, the operator picks	harbor#293
 bin/event-bus.sh	command	floor	the local append-only event bus: one JSON line per event. event-bus.sh emit <kind> <subject> [--src S] [--repo R] [--cause ID]	harbor#1043
 bin/event-dispatch.sh	command	floor	agents react to events: one follower of the bus, `on` rules, a capped spawner. event-dispatch.sh dispatch [--once] follow the bus	harbor#1044
@@ -196,6 +197,7 @@ bin/lint-rule-health.sh	command	floor	which lint rules are not earning their kee
 bin/lint-secrets.sh	command	floor	the ratchet on credential reads that bypass bin/secret.	harbor#1205
 bin/lint-share.sh	command	floor	the share check: a file lives in a share its kind may take.	harbor#1274
 bin/lint-siblings.sh	command	floor	the ratchet on occurrences of another repo's path in core.	harbor#966
+bin/lint-suggest-table.sh	command	floor	hold every row of a suggest-tool table to the contract before it can reach a person.	harbor#1485
 bin/memory-lint.sh	command	floor	the deterministic anti-rot gate over a memory store. No LLM, no Bun, no network: every finding is a fact about the files	harbor#6
 bin/memory-log-token-save.sh	command	floor	put the work-log token in the store as worklog-token without ever showing it, and without leaving it on the clipboard.	harbor#431
 bin/memory-route.sh	command	floor	does a session started IN a governed repo load the memory store, or does it start blind?	harbor#1031
@@ -263,7 +265,9 @@ bin/status-fleet-watch.sh	command	floor	the hourly fleet watch pass (check statu
 bin/status-generate.sh	command	floor	generate docs/generated/status.md, the ONE place Harbor states a number about itself.	harbor#3
 bin/status-obligations.sh	command	floor	the obligations ledger: a projection of the event bus.	harbor#1050
 bin/status-plan-generate.sh	command	floor	which plan tickets are DONE, derived and not stated.	harbor#117
+bin/status-suggest.sh	command	floor	the suggestions stop tool and its state: stop, start, off, on, shown, tick, scan-used, and status --json for the panel; installed to the config bin directory for the rule's hooks.	harbor#1485
 bin/status-subagent-glyph.sh	command	floor	Claude Code SUBAGENT statusline: one row per live agent. settings.json: "subagentStatusLine": { "type": "command"	harbor#293
+bin/status-suggest-scan.sh	command	floor	repeated work in recent sessions, reduced to closed-vocabulary shapes: at most 3 candidates a skill, hook or job could take over. Read-only.	harbor#1485
 bin/status-telemetry-report.sh	command	floor	the signals Harbor captures, turned into answers. TSV on stdout. status-telemetry-report.sh approvals [--bus DIR] each approval	harbor#1181
 bin/status-usage-aggregate.sh	command	floor	durable per-day token usage, attributed.	harbor#44
 bin/test-sandbox-make.sh	command	floor	build a disposable copy of ~/.claude's CONFIG surfaces for floor development. Everything in workstream B and K1/K2 runs against	harbor#33
