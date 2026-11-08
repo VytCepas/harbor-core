@@ -176,10 +176,17 @@
 /bin/gcloud-credentials @VytCepas
 /bin/govern-hook.sh @VytCepas
 /bin/housekeeping-clean.sh @VytCepas
+/bin/hub-board.sh @VytCepas
+/bin/hub-events.sh @VytCepas
+/bin/hub-format.sh @VytCepas
+/bin/hub-sync.sh @VytCepas
 /bin/idea @VytCepas
 /bin/library-alert.sh @VytCepas
+/bin/library-board.sh @VytCepas
 /bin/library-fs.sh @VytCepas
 /bin/library-gate.sh @VytCepas
+/bin/library-hub.sh @VytCepas
+/bin/library-pack-version.sh @VytCepas
 /bin/library-repo-rules.sh @VytCepas
 /bin/lint-adoption.sh @VytCepas
 /bin/lint-comment-commands.awk @VytCepas
@@ -203,6 +210,8 @@
 /bin/lint-share.sh @VytCepas
 /bin/lint-siblings.sh @VytCepas
 /bin/lint-suggest-table.sh @VytCepas
+/bin/member-integrity.sh @VytCepas
+/bin/member-managed.sh @VytCepas
 /bin/memory-lint.sh @VytCepas
 /bin/memory-log-token-save.sh @VytCepas
 /bin/memory-route.sh @VytCepas
