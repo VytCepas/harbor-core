@@ -98,8 +98,6 @@ suggest() { # <abs>
 }
 
 deny() { # <rule> <shape> <what>
-  # harbor#1278: on a member box the dispatcher decides, so the rule is reported and no verdict is printed here.
-  if floor_member_mode; then floor_member_stop deliverables "$1.$2"; exit 0; fi
   # The rule's row decides (harbor#1030); shadow (harbor#482) and warn are recorded, not refused — floor_block's contract, for a
   # JSON-verdict guard. No decision function beside the guard: a shadow session shadows, otherwise the rule denies.
   if floor_decide deliverables "$1"; then _dv="$FLOOR_VERDICT"; elif [ "${HARBOR_ADMISSION_SHADOW:-0}" = 1 ]; then _dv=shadow; else _dv=block; fi

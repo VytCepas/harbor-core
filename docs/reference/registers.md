@@ -71,10 +71,6 @@ reference to an id that is not there are each red (`standard.register-declared`,
 | `contracts/required-checks.tsv` | gate | repo+check | `repo check` | - | `bin/gate-merge-check.sh` | the checks a PR must pass to merge, per repo |
 | `contracts/roots.tsv` | scope | var | `var base rel breaks shared?` | - | `bin/deploy-install-lib.sh` | a root variable and the base it resolves against |
 | `contracts/scaffolder-plugins.tsv` | admission | key | `key name` | - | `bin/prod-guard-install.sh` | a scaffolder plugin the guards know |
-| `contracts/hub-vocabulary.tsv` | hub | set+value | `set value meaning` | - | `bin/hub-format.sh` | the closed values a member laptop may send to the board |
-| `contracts/risk-tiers.tsv` | hub | key | `key tier set label` | key>standards/naming/controls.tsv:id | `bin/hub-tier.sh` | the core default risk list, a sibling of controls.tsv |
-| `contracts/member-guards.tsv` | member | - | `matcher argv` | - | `bin/member-dispatch.sh` | the PreToolUse guards the dispatcher runs and the Read deny patterns, generated from floor_hooks and the deny writers |
-| `contracts/support-upterm.tsv` | member | key | `key value` | - | `bin/member-install.sh` | the pinned upterm and uptermd digests and the public relay that is never used |
 | `contracts/seams.tsv` | standard | id | `id kind producer consumer copy_path pin schema freshness owner allowed_lag reason` | freshness>standards/naming/controls.tsv:id | `bin/lint-name.sh` | one row per cross-repo contract: producer, consumer, copy, pin, schema and freshness check (harbor#1425) |
 | `contracts/session-waiting.tsv` | session | id | `id regex positive negative` | - | `hooks/session-state/session-state.sh` | a pattern that says the session waits on the operator |
 | `contracts/shims.tsv` | deploy | name | `name root rel` | root>contracts/roots.tsv:var | `bin/deploy-shim-install.sh` | a PATH shim and the root it resolves against |

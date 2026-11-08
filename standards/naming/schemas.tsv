@@ -85,10 +85,6 @@ contracts/redteam-sources.tsv	row	name url commit	name		eval	bin/eval-redteam-co
 contracts/required-checks.tsv	none	repo check	repo+check		gate	bin/gate-merge-check.sh	the checks a PR must pass to merge, per repo
 contracts/roots.tsv	row	var base rel breaks shared?	var		scope	bin/deploy-install-lib.sh	a root variable and the base it resolves against
 contracts/scaffolder-plugins.tsv	row	key name	key		admission	bin/prod-guard-install.sh	a scaffolder plugin the guards know
-contracts/hub-vocabulary.tsv	row	set value meaning	set+value		hub	bin/hub-format.sh	the closed values a member laptop may send to the board
-contracts/risk-tiers.tsv	row	key tier set label	key	key>standards/naming/controls.tsv:id	hub	bin/hub-tier.sh	the core default risk list, a sibling of controls.tsv
-contracts/member-guards.tsv	none	matcher argv	-		member	bin/member-dispatch.sh	the PreToolUse guards the dispatcher runs and the Read deny patterns, generated from floor_hooks and the deny writers
-contracts/support-upterm.tsv	row	key value	key		member	bin/member-install.sh	the pinned upterm and uptermd digests and the public relay that is never used
 contracts/seams.tsv	row	id kind producer consumer copy_path pin schema freshness owner allowed_lag reason	id	freshness>standards/naming/controls.tsv:id	standard	bin/lint-name.sh	one row per cross-repo contract: producer, consumer, copy, pin, schema and freshness check (harbor#1425)
 contracts/session-waiting.tsv	none	id regex positive negative	id		session	hooks/session-state/session-state.sh	a pattern that says the session waits on the operator
 contracts/shims.tsv	row	name root rel	name	root>contracts/roots.tsv:var	deploy	bin/deploy-shim-install.sh	a PATH shim and the root it resolves against

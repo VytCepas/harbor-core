@@ -119,18 +119,6 @@ directory reached twice (a symlink) counts once. `TOPOLOGY_PACK_DIR`, when set, 
 A pack name found in two directories is a finding: `--pack`, `--detect`, `--packs` and the substance half exit 1 naming both
 files, and none of them picks one.
 
-## Hub packs (harbor#1278)
-
-`harbor pack install [<pack-id>...] --hub --apply (--live | --dir PATH)` installs a pack of the company hub on a member laptop. Which pack, at which commit,
-is the **verified signed policy's** say (`policy.json` `packs`), never an argument; the files are read from the hub clone (`scope-roots.sh --hub`) at that
-commit, from `packs/<id>/harbor-pack/`, and land as repo id `hub-<id>`, with a `# source<TAB>hub` header row in the manifest. Beside it
-`packs/<id>/extension.json` ([hub.md](./hub.md)) must be valid, name the pack, accept core's contract, and every file it lists must match its sha256 at the commit.
-
-Two things differ from every other pack, and only here: there is no leak gate and no gitleaks run, because the hub's own gate scans a pack before it merges and a
-member laptop has no gitleaks (R21); and a `hooks/` directory is skipped, not installed. A hub hook is delivered by `bin/hub.sh` to `HUB_STATE/hooks/<pack>/<path>`
-only if the signed policy's `hooks` lists it with the sha256 of the committed file, and the dispatcher runs it only if `hub-sync.sh hook <pack> <path>` still
-finds those bytes. Refusal 1 above is unchanged for every pack installed without `--hub` (#1285).
-
 ## The install manifest
 
 `<target>/.harbor-packs/<repo-id>.tsv`: `# repo|name|version|commit <value>` header rows, then `F<TAB><relpath>` for

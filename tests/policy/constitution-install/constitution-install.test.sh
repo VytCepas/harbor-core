@@ -193,26 +193,4 @@ t_eq "an apply" 0 "$(deploy "$C" "$V1")"
 t_eq "...records CLAUDE.md: the bytes installed, 100644, the installer and the checkout's commit" \
   "$(git hash-object "$C.cfg/CLAUDE.md") 100644 CLAUDE.md constitution-install $(git -C "$C" rev-parse HEAD)" \
   "$(grep ' CLAUDE.md ' "$C.cfg/.harbor-manifest" 2>/dev/null)"
-t_section "a member laptop: the pin stands in for main beside a member floor, and only there (harbor#1278)"
-C="$(checkout member)"; cp "$T_ROOT/bin/member-managed.sh" "$C/bin/"; git -C "$C" add -A; git -C "$C" -c user.email=t@t -c user.name=t commit -qm managed
-P="$(git -C "$C" rev-parse HEAD)"; git -C "$C" checkout -q --detach "$P"
-MS="$T_TMP/member-sys/managed-settings.json"; mkdir -p "${MS%/*}/harbor/bin"
-pin() { HARBOR_SCOPE_MANAGED_SETTINGS="$MS" deploy "$C" "$V1" "$@"; }
-t_eq "CONTROL: a detached checkout without --pin is refused, as DE-30 says" 1 "$(pin)"
-t_has "...by the branch gate" "$(out)" "deploying from 'HEAD', not main (DE-30)"
-t_eq "--pin with no member floor is refused: never a way round DE-30 on an operator's box" 1 "$(pin --pin "$P")"
-t_has "...named" "$(out)" "--pin is for a member laptop"
-: > "${MS%/*}/harbor/bin/harbor-member-mode"
-t_eq "--pin at HEAD beside a member floor installs" 0 "$(pin --pin "$P")"
-t_has "...saying why the gate passed" "$(out)" "at the pinned commit $P, beside a member floor"
-t_eq "...the text of the pin" "$(cat "$C/policy/constitution.md")" "$(cat "$C.cfg/CLAUDE.md")"
-t_eq "a pin that isn't HEAD is refused" 1 "$(pin --pin "$(git -C "$C" rev-parse HEAD~1)")"
-t_has "...named" "$(out)" "not the pinned commit"
-printf 'uncommitted\n' >> "$C/policy/constitution.md"
-t_eq "uncommitted edits are refused at a pin too" 1 "$(pin --pin "$P")"
-t_has "...named" "$(out)" "policy/constitution.md has uncommitted changes"
-git -C "$C" checkout -q -- policy/constitution.md
-rm "${MS%/*}/harbor/bin/harbor-member-mode"; ln -s /dev/null "${MS%/*}/harbor/bin/harbor-member-mode"
-t_eq "a marker that is a link is no member floor" 1 "$(pin --pin "$P")"
-t_eq "--pin wants 40 hex" 2 "$(pin --pin main)"
 t_done
