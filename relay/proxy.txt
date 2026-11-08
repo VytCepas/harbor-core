@@ -1,6 +1,0 @@
-# proxy.txt (harbor#1278) — a Caddyfile: TLS on 443 for the hub's relay, so a laptop behind a firewall that blocks port 22 still reaches it.
-# relay/install.sh fills in @RELAY_HOST@ and lands it as /etc/caddy/Caddyfile. Caddy gets and renews the certificate itself, which needs
-# port 80 open as well, and passes the websocket through to uptermd on loopback. The SSH inside it stays end to end between upterm and uptermd.
-@RELAY_HOST@ {
-	reverse_proxy 127.0.0.1:8080
-}

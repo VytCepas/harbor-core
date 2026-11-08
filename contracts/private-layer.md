@@ -118,13 +118,6 @@ inserting lines, loses nothing and needs no converter in either direction (harbo
   composition after the private rows (`--packs`, [pack.md](./pack.md#the-register-one-file-composed)). Nothing reads two registries: a reader opens the composed file, or goes through
   the generator.
 
-## The hub is not read from here (harbor#1278)
-
-A member laptop's hub location, role and login come from the root-owned `member.conf`, which sets `HARBOR_MEMBER_ROLE`, `HARBOR_HUB_REPO` and `HARBOR_MEMBER_LOGIN` ([hub.md](./hub.md)),
-never from `harbor.toml`, which sits in the write zone a session can change. There is no `[hub]` table and no `hub_repo` key, so the flat parser needs no change
-(review M5): a `hub_repo` line is an unknown key (exit 2). `scope-roots.sh --hub` prints the hub clone (`HUB_STATE/repo`) and exits 1, empty, on any box
-that is not a member, names no hub, or has no clone yet; no other output of `scope-roots.sh` changes. The private layer's `hub/` folder stays what `lint-share` says it is.
-
 ## The floor does not read any of it
 
 `guard-*`, `library-admission.sh` and `floor-*` never open `repos.tsv` or `harbor.toml`: they are POSIX, pinned

@@ -1,3 +1,0 @@
-# One owner for the policy, its key and the workflows: a change to any of them needs an admin.
-# Replace OWNER and hub-admins with your organisation and its admin team, then protect the main branch (docs/how-to/hub-admin.md).
-* @OWNER/hub-admins

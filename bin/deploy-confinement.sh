@@ -5,9 +5,6 @@
 #   sh deploy-confinement.sh --compose         print only the composed sandbox block
 #   sh deploy-confinement.sh --marker          print only the marker body the install writes beside it
 #   sudo sh deploy-confinement.sh --uninstall  remove the sandbox block, keep every other key
-#   --user <name>   root composes and probes as this user, with no SUDO_USER: IT or an MDM agent for a member (harbor#1278)
-#   --member        strict, credential rows on, core rows only: harbor.toml and the private layer sit in the write zone
-#   --preflight     only the probe that the confinement can start here, as the operator or --user
 #
 # Holds only `sandbox`, composed from contracts/confinement-hosts.txt and confinement-paths.txt, then the private
 # layer's files of the same names (contracts/private-layer.md); no layer is core alone. Managed tier: no session
@@ -64,7 +61,6 @@ compose() {
   [ -d "$_port" ] && _port="$(CDPATH= cd -P -- "$_port" && pwd)"
   _del="$(sh "$HERE/scope-roots.sh" --conf deliverables_dir 2>/dev/null || :)"; _del="${_del:-~/Deliverables}"
   _priv="${HARBOR_DEPLOY_CONFINEMENT_PRIVATE-${HARBOR_CONFINEMENT_PRIVATE-$(sh "$HERE/scope-roots.sh" --private 2>/dev/null || :)}}"
-  [ "${CONFINE_MEMBER:-0}" = 0 ] || _priv=''   # a member's private layer is in the agent's write zone (R11, harbor#1278)
   _hf="$CORE/confinement-hosts.txt"; _pf="$CORE/confinement-paths.txt"
   _xh=''; _xp=''; [ -z "$_priv" ] || { _xh="$_priv/confinement-hosts.txt"; _xp="$_priv/confinement-paths.txt"; }
   _ok=0
@@ -72,8 +68,7 @@ compose() {
   [ -z "$_priv" ] || { check_rows "$_xh" hosts || _ok=1; check_rows "$_xp" paths || _ok=1; }
   [ "$_ok" = 0 ] || return 1
   _os="${HARBOR_DEPLOY_CONFINEMENT_OS:-${HARBOR_CONFINEMENT_OS:-$(uname -s)}}"
-  if [ "${CONFINE_MEMBER:-0}" = 1 ]; then _strict=true; _cred=true   # never read from harbor.toml on a member (F4, R11)
-  else _strict="$(conf_on confinement_strict)" && _cred="$(conf_on confinement_credentials)" || return 1; fi
+  _strict="$(conf_on confinement_strict)" && _cred="$(conf_on confinement_credentials)" || return 1
   { rows "$_hf"; [ -z "$_xh" ] || rows "$_xh"; } | sed 's/^/host /' > "$_T/rows"
   { rows "$_pf"; [ -z "$_xp" ] || rows "$_xp"; } | sed -e "s|@PORT_ROOT@|$_port|g" -e "s|@DELIVERABLES@|$_del|g" >> "$_T/rows"
   jq -R -s --arg os "$_os" --argjson strict "$_strict" --argjson cred "$_cred" '
@@ -87,7 +82,7 @@ compose() {
 }
 # marker_body -> the marker's lines on stdout; 1 when harbor.toml cannot be read
 marker_body() {
-  _skip=false; [ "${CONFINE_MEMBER:-0}" = 1 ] || _skip="$(conf_on confinement_skip)" || return 1
+  _skip="$(conf_on confinement_skip)" || return 1
   printf 'confinement installed by deploy-confinement.sh (harbor#1298)\n'
   [ "$_skip" != true ] || printf 'skip=covered\n'
 }
@@ -118,47 +113,18 @@ confine_verify() { # <file> <expected json> -> 0, or 1 and a FAIL
   [ "$_got" = "$(printf '%s' "$2" | jq -S .)" ] && return 0
   log_fail "read-back: $1 is not the JSON this run meant to write"; log_fix "sh $0 --dry-run"; return 1
 }
-# confine_operator <uid> -> who root composes as: --user, else the person who ran sudo; 1 when neither names one (R3, harbor#1278)
-confine_operator() {
-  [ "$1" -eq 0 ] || return 0
-  if [ -n "${CONFINE_USER:-}" ]; then printf '%s' "$CONFINE_USER"; return 0; fi
-  [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ] || return 1
-  printf '%s' "$SUDO_USER"
-}
-# confine_as <name> <flag> -> this script again as that user. The name was validated by the parser below.
-confine_as() {
-  _ca_m=''; [ "${CONFINE_MEMBER:-0}" = 0 ] || _ca_m=--member
-  # shellcheck disable=SC2086 # _ca_m is empty or one flag
-  sudo -u "$1" -H env PORT_ROOT="${PORT_ROOT:-}" sh "$0" "$2" $_ca_m
-}
 [ "${CONFINEMENT_LIB:-0}" = 1 ] && return 0
 confine_refuse_override "$(id -u)" || exit 1
-MODE=install; CONFINE_USER=''; CONFINE_MEMBER=0
-while [ $# -gt 0 ]; do case "$1" in
-  --dry-run) MODE=dry ;; --compose) MODE=compose ;; --marker) MODE=marker ;; --uninstall) MODE=uninstall ;; --preflight) MODE=preflight ;;
-  --member) CONFINE_MEMBER=1 ;;
-  --user) CONFINE_USER="${2-}"; [ $# -lt 2 ] || shift
-    case "$CONFINE_USER" in ''|-*|*[!A-Za-z0-9._-]*) log_fail "--user wants a user name, got '$CONFINE_USER'"; log_nofix "sh bin/deploy-confinement.sh --help"; exit 2 ;; esac ;;
+MODE=install
+for a in "$@"; do case "$a" in
+  --dry-run) MODE=dry ;; --compose) MODE=compose ;; --marker) MODE=marker ;; --uninstall) MODE=uninstall ;;
   -h|--help) awk 'NR<2{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$0"; exit 0 ;;
-  *) log_fail "unknown argument $1"; log_nofix "sh bin/deploy-confinement.sh --help"; exit 2 ;;
-esac; shift; done
+  *) log_fail "unknown argument $a"; log_nofix "sh bin/deploy-confinement.sh --help"; exit 2 ;;
+esac; done
 command -v jq >/dev/null 2>&1 || { log_fail "jq not found on the pinned PATH ($PATH): /usr/bin/jq is expected"; log_nofix "install jq at /usr/bin (harbor#902)"; exit 1; }
 _T="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")"; trap 'rm -rf "$_T"' EXIT INT TERM
-# Named under root: compose as that user, or HOME and PORT_ROOT would be root's. Without --user these modes stay as they were.
-if [ -n "$CONFINE_USER" ] && [ "$(id -u)" -eq 0 ]; then case "$MODE" in
-  compose|marker) confine_as "$CONFINE_USER" "--$MODE" || { log_fail "composing as $CONFINE_USER failed (above)"; log_fix "sh $0 --$MODE"; exit 1; }; exit 0 ;;
-esac; fi
 if [ "$MODE" = compose ]; then compose || { log_end || :; exit 1; }; exit 0; fi
 if [ "$MODE" = marker ]; then marker_body || { log_end || :; exit 1; }; exit 0; fi
-if [ "$MODE" = preflight ]; then
-  CONFINE_AS=''
-  if [ "$(id -u)" -eq 0 ]; then
-    _op="$(confine_operator 0)" || { log_fail "run as root without sudo: there is no operator to probe for"; log_fix "sh $0 --preflight --user <name>"; exit 1; }
-    CONFINE_AS="sudo -u $_op"
-  fi
-  confine_preflight "${HARBOR_DEPLOY_CONFINEMENT_OS:-${HARBOR_CONFINEMENT_OS:-$(uname -s)}}" || { log_end || :; exit 1; }
-  exit 0
-fi
 
 if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then FILE="${HARBOR_SCOPE_MANAGED_SETTINGS:-$HARBOR_MANAGED_SETTINGS}"
 else case "$(uname -s)" in
@@ -175,14 +141,14 @@ fi
 if [ "$MODE" = uninstall ]; then
   NEW="$(printf '%s' "$CUR" | jq 'del(.sandbox)')"
 else
-  # Root composes as the operator who ran sudo, or as --user: their HOME, PORT_ROOT and private layer, never root's.
+  # Root composes as the operator who ran sudo: their HOME, PORT_ROOT and private layer, never root's.
   if [ "$(id -u)" -eq 0 ]; then
-    CONFINE_OP="$(confine_operator 0)" \
-      || { log_fail "run as root without sudo: there is no operator to compose for"; log_fix "sudo sh $0, or name one with --user <name>"; exit 1; }
-    BLOCK="$(confine_as "$CONFINE_OP" --compose)" \
-      || { log_fail "composing as $CONFINE_OP failed (above)"; log_fix "sh $0 --compose"; exit 1; }
-    MARK="$(confine_as "$CONFINE_OP" --marker)" \
-      || { log_fail "reading harbor.toml as $CONFINE_OP failed (above)"; log_fix "sh $0 --marker"; exit 1; }
+    [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ] \
+      || { log_fail "run as root without sudo: there is no operator to compose for"; log_fix "sudo sh $0"; exit 1; }
+    BLOCK="$(sudo -u "$SUDO_USER" -H env PORT_ROOT="${PORT_ROOT:-}" sh "$0" --compose)" \
+      || { log_fail "composing as $SUDO_USER failed (above)"; log_fix "sh $0 --compose"; exit 1; }
+    MARK="$(sudo -u "$SUDO_USER" -H env PORT_ROOT="${PORT_ROOT:-}" sh "$0" --marker)" \
+      || { log_fail "reading harbor.toml as $SUDO_USER failed (above)"; log_fix "sh $0 --marker"; exit 1; }
   else
     BLOCK="$(compose)" || { log_end || :; exit 1; }
     MARK="$(marker_body)" || { log_end || :; exit 1; }
@@ -191,7 +157,7 @@ else
 fi
 log_note "target: $FILE"
 if [ "$MODE" != uninstall ]; then
-  CONFINE_AS=''; [ "$(id -u)" -ne 0 ] || CONFINE_AS="sudo -u $CONFINE_OP"
+  CONFINE_AS=''; [ "$(id -u)" -ne 0 ] || CONFINE_AS="sudo -u $SUDO_USER"
   confine_preflight "${HARBOR_DEPLOY_CONFINEMENT_OS:-${HARBOR_CONFINEMENT_OS:-$(uname -s)}}" || { log_end || :; exit 1; }
 fi
 if [ "$MODE" = dry ]; then printf '%s\n' "$NEW"; log_note "dry run: nothing written"; exit 0; fi

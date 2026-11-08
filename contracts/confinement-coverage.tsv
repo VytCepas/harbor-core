@@ -178,6 +178,3 @@ admission.governance-token	judged	a hook engine, not a Bash write rule: the sand
 admission.api-route-repair	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
 admission.floor-integrity	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
 admission.prod-guard-ambient	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
-admission.member-dispatch	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
-admission.member-integrity	judged	a hook engine, not a Bash write rule: the sandbox does not see its effect
-admission.member-support	judged	not a write the confinement denies: starting or reaching a remote support session
