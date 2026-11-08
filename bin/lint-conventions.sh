@@ -757,13 +757,16 @@ rule "posix.shebang-strict bin/*.sh use #!/usr/bin/env sh + strict mode (documen
 #   library-gate.sh    — SOURCED, the same reason (harbor#1018)
 #   audit-stream-lib.sh  — SOURCED, the same reason (harbor#1181)
 #   library-alert.sh   — SOURCED, the same reason (harbor#618)
+#   library-hub.sh     — SOURCED, the same reason (harbor#1278)
+#   library-board.sh   — SOURCED, the same reason (harbor#1278; operator yes 2026-11-08)
+#   library-pack-version.sh — SOURCED, the same reason (harbor#1278)
 #   worklog-*.sh   — contractually fail-open ("every path exits 0"); -e would abort
 for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   [ -L "$f" ] && continue   # a rename shim (renames.tsv remove_by) is an old name of a file judged under its own (harbor#961)
   b="$(basename "$f")"
   head -1 "$f" | grep -q '^#!/usr/bin/env sh$' || bad posix.shebang-strict "wrong shebang: ${f#$ROOT/}"
-  case "$b" in library-admission.sh|library-log.sh|deploy-install-lib.sh|library-fs.sh|library-gate.sh|audit-stream-lib.sh|library-alert.sh|worklog-push.sh|ci-runners-fleet-lib.sh|ci-runners-provision-lib.sh|ci-runners-github-lib.sh|ci-runners-watch-lib.sh) continue ;; esac
+  case "$b" in library-admission.sh|library-log.sh|deploy-install-lib.sh|library-fs.sh|library-gate.sh|library-hub.sh|library-board.sh|library-pack-version.sh|audit-stream-lib.sh|library-alert.sh|worklog-push.sh|ci-runners-fleet-lib.sh|ci-runners-provision-lib.sh|ci-runners-github-lib.sh|ci-runners-watch-lib.sh) continue ;; esac
   grep -qE '^set -(eu|u|euo)' "$f" || bad posix.shebang-strict "no strict mode: ${f#$ROOT/}"
 done
 # EXTENSIONLESS EXECUTABLES ARE SCRIPTS TOO (2026-07-30). Every rule in this file
@@ -863,7 +866,7 @@ _S4_HOOKS="admission-hook admission-observe context-resolve annotate-web prod-gu
 worklog-push memory-harvest injection-rule eval-replay-worker admission-bash
 admission-egress admission-self-edit admission-integrity admission-cloud admission-destroy library-admission
 admission-deliverables admission-api-route
-admission-stop session-verdicts audit-triage failure-observe statusline ticket-note reply-shape library-log deploy-install-lib library-fs library-alert ci-runners-fleet-lib ci-runners-provision-lib ci-runners-github-lib ci-runners-watch-lib library-gate audit-stream-lib session-react-lib"
+admission-stop session-verdicts audit-triage failure-observe statusline ticket-note reply-shape library-log deploy-install-lib library-fs library-alert library-hub library-board library-pack-version ci-runners-fleet-lib ci-runners-provision-lib ci-runners-github-lib ci-runners-watch-lib library-gate audit-stream-lib session-react-lib"
 for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   [ -L "$f" ] && continue   # a rename shim (harbor#961) answers under its new name
@@ -1804,7 +1807,8 @@ for f in "$ROOT"/bin/*-install.sh "$ROOT"/bin/admission-remove.sh "$ROOT"/bin/de
   [ -f "$f" ] || continue
   [ -L "$f" ] && continue   # a rename shim (renames.tsv remove_by) is an old name of a file judged under its own (harbor#961)
   # harbor#961 W3 gave two non-installers an -install name: the collector's setup and the drift check of installs
-  case "${f##*/}" in audit-collector-install.sh|drift-install.sh) continue ;; esac
+  # member-install.sh targets the managed root for a named member, never a config dir (harbor#1278).
+  case "${f##*/}" in audit-collector-install.sh|drift-install.sh|member-install.sh) continue ;; esac
   _d7="${f#"$ROOT"/}"
   _d7c="$(sed -e '/^[[:space:]]*#/d' -e 's/[[:space:]]#.*$//' "$f")"
   if ! printf '%s\n' "$_d7c" | grep -qE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*deploy-install-lib\.sh'; then
@@ -6909,9 +6913,9 @@ _l1_tsv="$ROOT/contracts/log-exempt.tsv"
 [ ! -f "$_l1_tsv" ] || grep -vE '^[[:space:]]*(#|$)' "$_l1_tsv" | awk -F'\t' 'NR > 1 || $1 != "path"' > "$_l1t/rows"
 # The library itself, and this linter: its VIOLATION lines and summary are parsed by the lint suites
 # and guard-stop, a protocol like the test harness's summary rather than a run log. library-fs.sh prints a
-# value and logs nothing: a library, like log-lib.
+# value and logs nothing: a library, like log-lib. So do library-hub.sh and library-board.sh (harbor#1278).
 # library-alert.sh is a library too: its one stderr line IS the notification, said when no desktop channel takes it.
-_l1_named='bin/library-log.sh bin/lint-conventions.sh bin/library-fs.sh bin/library-alert.sh'
+_l1_named='bin/library-log.sh bin/lint-conventions.sh bin/library-fs.sh bin/library-alert.sh bin/library-hub.sh bin/library-board.sh'
 _l1_code() { sed -e 's/^[[:space:]]*#.*$//' -e 's/[[:space:]]#.*$//' "$1"; }  # comments blanked, lines kept
 _l1_uses() { _l1_code "$1" | grep -qE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*library-log\.sh'; }
 _l1_floor() { # channel 2: library-admission.sh, or F1's mark of an installed floor file

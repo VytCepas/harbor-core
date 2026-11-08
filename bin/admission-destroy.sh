@@ -54,6 +54,7 @@ _resolve() {
     git-clean-force|git-reset-hard|git-stash-drop|git-reflog-expire|git-worktree-remove-force|device-node-replace) _fb=warn ;;
     *) _fb=block ;;
   esac
+  if floor_member_mode; then DECISION=ask; return 0; fi   # harbor#1278: reported below, after the snapshot an ask takes
   if floor_decide destroy "$RULE" 1 0 "$_fb"; then _dv="$FLOOR_VERDICT"; elif [ "$_fb" = warn ]; then _dv=ask; else _dv=block; fi
   case "$_dv" in
     ask) DECISION=ask ;;
@@ -339,6 +340,8 @@ if [ "$DECISION" != deny ] && [ -n "${FLOOR_SEGS:-}" ]; then
 fi
 
 [ -n "$DECISION" ] || exit 0   # no destructive op — allow
+# harbor#1278: on a member box the dispatcher decides, so the rule is reported and no verdict is printed here.
+if floor_member_mode; then floor_member_stop destroy "$RULE.$SHAPE"; exit 0; fi
 
 # Unattended hardening: an ASK auto-approves where no human can answer it, so escalate to deny when the operator set the posture or floor_no_human detects an autonomous caller. Fail-safe toward "human present".
 _NHNOTE=""

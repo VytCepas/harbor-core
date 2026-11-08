@@ -52,3 +52,5 @@ CONTRIBUTING.md	policy	source	how to contribute to the export
 README.md	explanation	source	what harbor is and how to start
 CHANGELOG.md	record	source	the change record a control-plane repo carries (repo-kinds.tsv); harbor cuts no tagged releases
 trio-decoupling-epic.md	record	record	epic notes
+templates/	template	source	scaffolds copied by hand: the hub repo and the member updater schedule templates
+relay/	deploy-unit	source	the hub relay for member remote support, installed by hand on a VM the operator runs

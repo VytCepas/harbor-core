@@ -27,6 +27,7 @@ verb	tree	you need the layered map of systems, families and components	harbor tr
 verb	event	you need the event bus: emit, wait for, or read events	harbor event tail 20; harbor event emit <kind> <subject>
 verb	event ci	you are waiting on a PR's CI: use this instead of polling gh pr checks	harbor event ci <owner/repo>#<n> --timeout 1800 (run in the background)
 verb	event wait	you wait for any other event on the bus (a PR opened, a job done)	harbor event wait '<grep -E pattern>' --timeout N
+verb	hub	you are on a member laptop or are a hub admin: sync the company policy, see its status, sign or check a policy, or answer a remote-support request	harbor hub status; harbor hub sync; harbor hub support list
 verb	ui	you want the live state as a localhost console	harbor ui
 verb	scope	you are setting up a fresh machine's PORT_ROOT and private layer	harbor scope install --dry-run
 verb	access	you need to know which identity may reach a system, or register one	harbor access list; harbor access has <id>
