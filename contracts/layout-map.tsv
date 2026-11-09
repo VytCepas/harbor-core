@@ -27,6 +27,7 @@ docs/	explanation	source	documentation; docs/context-map.md and docs/generated/ 
 fixtures/	fixture	source	test fixtures
 hooks/	hook	source	git hooks
 launchd/	deploy-unit	source	macOS schedules, rendered at deploy
+mods/	code	source	Claude Code mods, installed by bin/scope-managed-mods.sh
 patches/	vendored	source	patches to vendored upstream code
 policy/	policy	source	the constitution, authored here and deployed as CLAUDE.md
 registries/	record	record	append-only logs and ratchets kept as data
@@ -51,3 +52,5 @@ CONTRIBUTING.md	policy	source	how to contribute to the export
 README.md	explanation	source	what harbor is and how to start
 CHANGELOG.md	record	source	the change record a control-plane repo carries (repo-kinds.tsv); harbor cuts no tagged releases
 trio-decoupling-epic.md	record	record	epic notes
+templates/	template	source	scaffolds copied by hand: the hub repo and the member updater schedule templates
+relay/	deploy-unit	source	the hub relay for member remote support, installed by hand on a VM the operator runs

@@ -393,7 +393,7 @@ t_section "terms.tsv: depends_on, the level chain and the closed sets (D-57, D-6
 t_eq "level and subsystem read as D-57: containment, and a family is not a subsystem" "yes" \
   "$(awk -F'\t' '$1 == "level" && $11 ~ /containment/ { a = 1 } $1 == "subsystem" && $11 ~ /is not one/ && $9 !~ /family/ { b = 1 } END { print (a && b) ? "yes" : "no" }' "$REG/terms.tsv")"
 t_eq "there are seven levels, one chain" 7 "$(awk -F'\t' '$2 ~ /(^|,)level(,|$)/ { n++ } END { print n }' "$REG/terms.tsv")"
-t_eq "event is a family; with pack (D-84), session (D-86) and agent (#1010) and library (#961) there are 28" 28 "$(awk -F'\t' '$2 ~ /(^|,)family(,|$)/ { n++ } END { print n }' "$REG/terms.tsv")"
+t_eq "event is a family; with pack (D-84), session (D-86) and agent (#1010), library (#961), member and hub (#1278) there are 30" 30 "$(awk -F'\t' '$2 ~ /(^|,)family(,|$)/ { n++ } END { print n }' "$REG/terms.tsv")"
 t_eq "obligation is a concept under the status family" status "$(awk -F'\t' '$1 == "obligation" { print $4 }' "$REG/terms.tsv")"
 t_eq "core registers no workload system term: a workload's pack does, and the private overlay (harbor#950, D-85)" "" \
   "$(awk -F'\t' '$2 ~ /(^|,)system(,|$)/ && $1 != "fleet" && $1 != "memory-store" { print $1 }' "$REG/terms.tsv" | sort | tr '\n' ' ' | sed 's/ $//')"

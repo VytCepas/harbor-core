@@ -211,12 +211,19 @@ bin/govern-hook.sh	installed	derived: shipped by admission-install.sh
 bin/govern-token.sh	installed	derived: wired by context-injection-install.sh
 bin/harbor	operator-run	derived: linked into ~/.local/bin as harbor by contracts/shims.tsv
 bin/housekeeping-clean.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/hub-board.sh	ci-gate	derived: called by bin/library-board.sh
+bin/hub-events.sh	ci-gate	derived: called by bin/hub-board.sh
+bin/hub-format.sh	ci-gate	derived: called by bin/library-board.sh
+bin/hub-sync.sh	ci-gate	derived: called by bin/library-board.sh
 bin/idea	operator-run	derived: linked into ~/.local/bin as idea by contracts/shims.tsv
 bin/library-admission.sh	installed	derived: shipped by admission-install.sh
 bin/library-alert.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/library-board.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/library-fs.sh	installed	derived: shipped by admission-install.sh
 bin/library-gate.sh	installed	derived: shipped by admission-install.sh
+bin/library-hub.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/library-log.sh	installed	derived: shipped by admission-install.sh
+bin/library-pack-version.sh	ship	derived: called by bin/pack.sh
 bin/library-repo-rules.sh	installed	derived: called by bin/gate-pr-plan.sh
 bin/lint-adoption.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-comment-commands.awk	ci-gate	derived: called by bin/lint-conventions.sh
@@ -239,6 +246,9 @@ bin/lint-renderer.sh	installed	derived: called by bin/standard-vendor.sh
 bin/lint-secrets.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-share.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-siblings.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/lint-suggest-table.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/member-integrity.sh	ci-gate	derived: called by bin/hub-events.sh
+bin/member-managed.sh	installed	derived: called by bin/policy-constitution-install.sh
 bin/memory-lint.sh	installed	derived: called by bin/memory-store-check.sh
 bin/memory-log-token-save.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/memory-route.sh	ci-gate	derived: called by bin/lint-conventions.sh
@@ -290,6 +300,7 @@ bin/status-generate.sh	ci-gate	derived: called by .github/workflows/governance.y
 bin/status-obligations.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/status-plan-generate.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/status-subagent-glyph.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/status-suggest.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/status-usage-aggregate.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/test-sandbox-make.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/test-suite-cache.sh	ci-gate	derived: called by bin/test-suite-run.sh

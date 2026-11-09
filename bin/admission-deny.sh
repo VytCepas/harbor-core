@@ -208,7 +208,8 @@ NEW="$(jq --argjson ADD "$ADD" \
   '.permissions //= {} | .permissions.deny = (((.permissions.deny // []) + $ADD) | unique)' "$S")"
 
 # THE APPROVAL GATE'S RULES (harbor#1018, docs/design/approval-gate.md). `ask` makes every gate-approve.sh call show Claude Code's own dialog, in auto mode too; the allow rules let the unattended merge and queue run without the classifier. Each names the INSTALLED copy under this config dir, which the floor guards; guard-bash refuses every other spelling. Append-only like the deny entries.
-GATE_ASK="$(jq -n --arg d "$DIR" '["Bash(\($d)/bin/gate-approve.sh *)"]')"
+# harbor#1488: harbor chrome's confirm_click runs only while its ask rule is present, so each consequential click (Turn on, Apply, Publish, Delete) is the operator's click in the same dialog.
+GATE_ASK="$(jq -n --arg d "$DIR" '["Bash(\($d)/bin/gate-approve.sh *)", "mcp__harbor_chrome__confirm_click"]')"
 # The ship runner (harbor#1060) is allowed for `night` only: its `deploy` is gate-approve.sh's child, never a rule's.
 GATE_ALLOW="$(jq -n --arg d "$DIR" '["Bash(\($d)/bin/gate-merge.sh *)", "Bash(\($d)/bin/gate-queue.sh *)", "Bash(\($d)/bin/deploy-fleet.sh night*)"]')"
 NEW="$(printf '%s' "$NEW" | jq --argjson a "$GATE_ASK" --argjson l "$GATE_ALLOW" '

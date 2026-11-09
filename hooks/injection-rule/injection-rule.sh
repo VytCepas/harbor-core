@@ -10,6 +10,7 @@
 # (a rule RESIDENT when the model acts binds; one it must fetch does not).
 # Inform by default (E6: inform 4/4, veto 3/4); vetoing is the floor's job (admission-bash.sh, admission-egress.sh).
 # One opt-in deny exists: the `run:`-only, PreToolUse-only `HARBOR-DECISION deny:` sentinel (harbor#254), rules at its implementation.
+# One opt-in person's line exists too: the box-tier `HARBOR-USER-LINE <row-id>:` sentinel, at most one a session (harbor#1485).
 # Conditional or nothing (CONSTITUTION 2.11) and fail-open: no jq, bad JSON, unreadable pack, unknown predicate, erroring `run:` all exit 0 silent.
 # Removed notes: docs/explanation/code-cases/hooks-injection-rule-injection-rule.md
 set -eu
@@ -491,7 +492,8 @@ if [ -n "$SID" ] && [ "$MODE" = hook ]; then
     SEEN="$_sd/$SID.seen"
     # Prune on the way past. A ledger that only grows is a directory nobody
     # notices until it has 40,000 files in it.
-    find "$_sd" -name '*.seen' -mtime +7 -exec rm -f {} + 2>/dev/null || true
+    # `*.seen*` takes the line claim beside each ledger too, a directory (harbor#1485).
+    find "$_sd" -name '*.seen*' -mtime +7 -exec rm -rf {} + 2>/dev/null || true
   fi
 fi
 
@@ -505,6 +507,11 @@ already() { # <key> -> 0 when this session has already been told
 }
 remember() {
   if [ -n "$SEEN" ]; then printf '%s\n' "$1" >> "$SEEN" 2>/dev/null || true; fi
+}
+# ONE LINE A SESSION (harbor#1485): mkdir is atomic, so two parallel calls cannot both speak. No ledger means no line. --explain spends nothing.
+claim_line() {
+  [ "$MODE" = hook ] || return 0
+  [ -n "$SEEN" ] && mkdir "$SEEN.line" 2>/dev/null
 }
 
 NOTES=''
@@ -526,13 +533,27 @@ _top() {
   return 0
 }
 
-# THE DECISION LOG (harbor#953). A rule that spoke leaves one record (g=inject, d=advise|deny, r=<pack id>) through the floor's floor_log_decision,
-# read only on a fire; it fails silent, so a box with no ledger stays blind rather than wrong.
-log_rule() { # <advise|deny|shadow> <pack id>
+# THE DECISION LOG (harbor#953). A rule that spoke leaves one record (g=inject, d=advise|deny, r=<pack id>, or <pack id>-<row id> for a line) through the
+# floor's floor_log_decision, read only on a fire; it fails silent, so a box with no ledger stays blind rather than wrong.
+# FLOOR_IN is the writer's session anchor alone (harbor#1485): sk then holds whatever the payload's key order, and `c` still reads no payload text.
+log_rule() { # <advise|deny|shadow> <pack id or row token>
   [ -f "$SELF_DIR/library-admission.sh" ] || return 0
   ( DIR="$SELF_DIR"; . "$SELF_DIR/library-admission.sh" >/dev/null 2>&1
-    # shellcheck disable=SC2034 # FLOOR_TOOL: read by library-admission.sh
-    FLOOR_TOOL="$TOOL"; floor_log_decision inject "$1" "$2.meta" ) >/dev/null 2>&1 || :
+    # shellcheck disable=SC2034 # FLOOR_TOOL, FLOOR_IN: read by library-admission.sh
+    FLOOR_TOOL="$TOOL"; FLOOR_IN="{\"session_id\":\"$SID\""; floor_log_decision inject "$1" "$2.meta" ) >/dev/null 2>&1 || :
+}
+# A sentinel the pack got wrong: <pack id>--<defect>, which no row token can equal (a row id never starts with `-`). Once a session,
+# or a bad table row writes a record on every tool call. d=shadow: recorded, not spoken.
+log_defect() { # <pack id> <defect>
+  [ "$MODE" = hook ] || return 0
+  if already "$1--$2"; then return 0; fi
+  remember "$1--$2"
+  log_rule shadow "$1--$2"
+}
+# 27 characters: the writer keeps a 40-character rule, and suggest-tool- takes 13 of them.
+row_ok() { # <row id>
+  case "$1" in ''|-*|*[!abcdefghijklmnopqrstuvwxyz0-9-]*) return 1 ;; esac
+  [ "${#1}" -le 27 ]
 }
 
 # THE MODE IS THE REGISTER'S, READ HERE (harbor#1422). A pack's controls.tsv row (type injection, `emitted` = the pack id)
@@ -707,6 +728,8 @@ sweep_files() {
 }
 
 DECISION=''; DREASON=''
+# The sweep's one held line (harbor#1485): nothing about it is logged, remembered or spoken until the sweep ends with no deny.
+H_ID=''; H_ROW=''; H_LINE=''; H_NOTE=''; H_KEY=''; H_ONCE=''; H_CMODE=''; H_DIR=''; H_SPOKE=''; SPOKEN=''
 while IFS="$(printf '\t')" read -r _file RT _reach; do
   [ -n "$_file" ] || continue
   _dir="${_file%/*}"
@@ -769,6 +792,7 @@ WHEN
     # `run:` - the script gets the payload on stdin and its STDOUT is the note; empty stdout is silence. Invoked as an ARGUMENT to sh (CONSTITUTION 4).
     # Resolved next to its pack, run from the session's repo; `..` and absolute paths are refused.
     fm_get run; _run="$FMV"
+    _row=''; _line=''
     if [ -n "$_run" ]; then
       case "$_run" in /*|*..*) explain "skip $_id: run: must be a plain filename beside the pack"; continue ;; esac
       if [ ! -f "$_dir/$_run" ]; then explain "skip $_id: run: $_run not found in $_dir"; continue; fi
@@ -787,6 +811,25 @@ WHEN
             _note="${_note#HARBOR-DECISION deny: }"
             explain "downgrade $_id: a deny cannot ride on $EVENT, or its row is $_cmode — delivered as a note"
           fi ;;
+        # -- a `run:` pack may supply the person's line (harbor#1485) --
+        # Box tier and `mode: notify` only: a repo pack's computed text never reaches a line the operator reads, so there the sentinel is stripped and
+        # `summary:` stands. Not re-read after the deny arm: this is one case on the first line, and the rest of the output is only ever a note.
+        'HARBOR-USER-LINE '*)
+          _ul="${_note%%"$NL"*}"
+          if [ "$_ul" = "$_note" ]; then _note=''; else _note="${_note#*"$NL"}"; fi
+          fm_get mode
+          if [ "$_dir" = "$CFG/context-rules/user" ] && [ "$FMV" = notify ]; then
+            _ul="${_ul#HARBOR-USER-LINE }"; _row="${_ul%%: *}"; _line="${_ul#*: }"
+            case "$_ul" in *': '*) ;; *) _row='' ;; esac
+            case "$_line" in *[![:space:]]*) ;; *) _row='' ;; esac
+            if ! row_ok "$_row"; then
+              explain "skip $_id: its line sentinel names a bad row, output dropped"
+              log_defect "$_id" bad-row
+              continue
+            fi
+          else
+            explain "fallback $_id: a line comes only from a box-tier mode: notify pack — summary: stands"
+          fi ;;
       esac
     else
       _note="$(body "$_f")"
@@ -803,7 +846,22 @@ WHEN
       log_rule deny "$_id"
       break
     fi
-    [ -n "$_note" ] || { explain "skip $_id: empty note"; continue; }
+    # A held line needs a note the agent can read: tabs alone are none, and only the space collapse above has seen them (harbor#1485).
+    if [ -n "$_row" ]; then case "$_note" in *[![:space:]]*) ;; *) _note='' ;; esac; fi
+    if [ -z "$_note" ]; then
+      explain "skip $_id: empty note"
+      [ -z "$_row" ] || log_defect "$_id" no-note
+      continue
+    fi
+
+    # A line waits for the sweep's verdict, so a later deny spends nothing (harbor#1485).
+    if [ -n "$_row" ]; then
+      if [ "$_cmode" = shadow ]; then explain "SHADOW $_id: recorded, not spoken"; else explain "FIRE $_id"; fi
+      if [ -n "$H_ID" ]; then explain "skip $_id: $H_ID holds this sweep's line"; continue; fi
+      H_ID="$_id"; H_ROW="$_row"; H_LINE="$_line"; H_NOTE="$_note"; H_KEY="$_key"; H_ONCE="$_once"; H_CMODE="$_cmode"; H_DIR="$_dir"
+      fm_get spoke; H_SPOKE="$FMV"
+      continue
+    fi
 
     if [ "$_cmode" = shadow ]; then
       explain "SHADOW $_id: recorded, not spoken"
@@ -830,6 +888,38 @@ done <<PACKS
 $(sweep_files)
 PACKS
 
+# -- the held line (harbor#1485) --
+# The claim and the once key sit together, just before the emit. The loser drops its note with its line: the note says the person was told.
+if [ -n "$H_ID" ] && [ "${DECISION:-}" != deny ]; then
+  if [ "$H_CMODE" = shadow ]; then
+    if [ "$MODE" = hook ]; then log_rule shadow "$H_ID-$H_ROW"; fi
+  elif claim_line; then
+    if [ "$MODE" = hook ]; then log_rule advise "$H_ID-$H_ROW"; fi
+    NOTES="$NOTES[context:$H_ID] $H_NOTE "
+    USERMSG="$USERMSG$H_LINE; "
+    SPOKEN=1
+  else
+    explain "skip $H_ID: this session's line is already spent"
+  fi
+  if [ "$H_ONCE" != never ]; then remember "$H_KEY"; fi
+fi
+
+# `spoke:` runs after a line really left, with the row id as its one argument, and fails silent. Same plain-filename check as `run:`.
+# A watchdog bounds it: the hook has 10 s, and a timed-out hook loses the line already claimed. TERM first, so the stop tool frees its lock.
+SPOKE_SECS=3
+run_spoke() {
+  [ "$SPOKEN" = 1 ] && [ -n "$H_SPOKE" ] || return 0
+  case "$H_SPOKE" in /*|*..*) explain "skip spoke $H_ID: spoke: must be a plain filename beside the pack"; return 0 ;; esac
+  if [ ! -f "$H_DIR/$H_SPOKE" ]; then explain "skip spoke $H_ID: $H_SPOKE not found in $H_DIR"; return 0; fi
+  [ "$MODE" = hook ] || return 0
+  ( cd "$REPO" 2>/dev/null && exec sh "$H_DIR/$H_SPOKE" "$H_ROW" ) </dev/null >/dev/null 2>&1 &
+  _spk=$!
+  ( sleep "$SPOKE_SECS"; kill -TERM "$_spk"; sleep 1; kill -KILL "$_spk" ) </dev/null >/dev/null 2>&1 &
+  _dog=$!
+  wait "$_spk" 2>/dev/null || :
+  kill "$_dog" 2>/dev/null || :
+}
+
 NOTES="${NOTES% }"
 # A deny with no other note is still an answer: its text rides in its own field, so NOTES is empty in exactly that case.
 [ -n "$NOTES" ] || [ "${DECISION:-}" = deny ] || exit 0
@@ -849,7 +939,7 @@ if [ "$_ctx" = no ]; then
   # No model-visible channel: tell the operator instead of emitting JSON the harness would discard.
   explain "event $EVENT carries no model-visible channel — operator note only"
   if [ -n "$USERMSG" ]; then
-    jq -cn --arg m "harbor: ${USERMSG%; }" '{systemMessage:$m}' 2>/dev/null || true
+    jq -cn --arg m "harbor: ${USERMSG%; }" '{systemMessage:$m}' 2>/dev/null && run_spoke || true
   fi
   exit 0
 fi
@@ -864,7 +954,7 @@ fi
 
 if [ -n "$USERMSG" ]; then
   jq -cn --arg e "$EVENT" --arg c "$STAMP $NOTES" --arg m "harbor: ${USERMSG%; }" \
-    '{systemMessage:$m,hookSpecificOutput:{hookEventName:$e,additionalContext:$c}}' 2>/dev/null || true
+    '{systemMessage:$m,hookSpecificOutput:{hookEventName:$e,additionalContext:$c}}' 2>/dev/null && run_spoke || true
 else
   jq -cn --arg e "$EVENT" --arg c "$STAMP $NOTES" \
     '{hookSpecificOutput:{hookEventName:$e,additionalContext:$c}}' 2>/dev/null || true

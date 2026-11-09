@@ -71,6 +71,10 @@ reference to an id that is not there are each red (`standard.register-declared`,
 | `contracts/required-checks.tsv` | gate | repo+check | `repo check` | - | `bin/gate-merge-check.sh` | the checks a PR must pass to merge, per repo |
 | `contracts/roots.tsv` | scope | var | `var base rel breaks shared?` | - | `bin/deploy-install-lib.sh` | a root variable and the base it resolves against |
 | `contracts/scaffolder-plugins.tsv` | admission | key | `key name` | - | `bin/prod-guard-install.sh` | a scaffolder plugin the guards know |
+| `contracts/hub-vocabulary.tsv` | hub | set+value | `set value meaning` | - | `bin/hub-format.sh` | the closed values a member laptop may send to the board |
+| `contracts/risk-tiers.tsv` | hub | key | `key tier set label` | key>standards/naming/controls.tsv:id | `bin/hub-tier.sh` | the core default risk list, a sibling of controls.tsv |
+| `contracts/member-guards.tsv` | member | - | `matcher argv` | - | `bin/member-dispatch.sh` | the PreToolUse guards the dispatcher runs and the Read deny patterns, generated from floor_hooks and the deny writers |
+| `contracts/support-upterm.tsv` | member | key | `key value` | - | `bin/member-install.sh` | the pinned upterm and uptermd digests and the public relay that is never used |
 | `contracts/seams.tsv` | standard | id | `id kind producer consumer copy_path pin schema freshness owner allowed_lag reason` | freshness>standards/naming/controls.tsv:id | `bin/lint-name.sh` | one row per cross-repo contract: producer, consumer, copy, pin, schema and freshness check (harbor#1425) |
 | `contracts/session-waiting.tsv` | session | id | `id regex positive negative` | - | `hooks/session-state/session-state.sh` | a pattern that says the session waits on the operator |
 | `contracts/shims.tsv` | deploy | name | `name root rel` | root>contracts/roots.tsv:var | `bin/deploy-shim-install.sh` | a PATH shim and the root it resolves against |
@@ -83,6 +87,7 @@ reference to an id that is not there are each red (`standard.register-declared`,
 | `.agents/protected-paths.tsv` | gate | glob+class | `glob class reason` | - | `bin/gate-classify.sh` | the paths only the operator may merge or deploy, derived |
 | `.agents/required-checks.tsv` | gate | repo+check | `repo check` | - | `bin/gate-merge-check.sh` | the required checks, read from the default branch on GitHub |
 | `context-rules/user/default-way-route.tsv` | context | kind | `kind tools recogniser content quiet home install reason surface deny` | surface>standards/naming/surfaces.tsv:id@, | `context-rules/user/default-way-route.sh` | the default way each kind of thing is made |
+| `context-rules/user/suggest-tool.tsv` | context | id | `id kind tools word recogniser quiet line switch_to safe install requires source` | - | `context-rules/user/suggest-tool.sh` | the jobs Harbor has a better way for, and the plain line a person sees (harbor#1485) |
 | `hooks/*/manifest.tsv` | context | - | `key value arg1? arg2? arg3?` | - | `bin/deploy-hooks.sh` | a hook engine's manifest: how it is wired and what it senses |
 | `evals/skill/e5trap/corpus-manifest.tsv` | eval | name | `name bytes digest` | - | - | the distractor skills of the trap corpus, by hash |
 | `evals/context/e11live/rows.tsv` | eval | label | `label expect fired any_note` | - | - | one probe's outcome per row; rewritten by each run of evals/context/e11live/probe.sh |

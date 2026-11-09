@@ -757,13 +757,16 @@ rule "posix.shebang-strict bin/*.sh use #!/usr/bin/env sh + strict mode (documen
 #   library-gate.sh    — SOURCED, the same reason (harbor#1018)
 #   audit-stream-lib.sh  — SOURCED, the same reason (harbor#1181)
 #   library-alert.sh   — SOURCED, the same reason (harbor#618)
+#   library-hub.sh     — SOURCED, the same reason (harbor#1278)
+#   library-board.sh   — SOURCED, the same reason (harbor#1278; operator yes 2026-11-08)
+#   library-pack-version.sh — SOURCED, the same reason (harbor#1278)
 #   worklog-*.sh   — contractually fail-open ("every path exits 0"); -e would abort
 for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   [ -L "$f" ] && continue   # a rename shim (renames.tsv remove_by) is an old name of a file judged under its own (harbor#961)
   b="$(basename "$f")"
   head -1 "$f" | grep -q '^#!/usr/bin/env sh$' || bad posix.shebang-strict "wrong shebang: ${f#$ROOT/}"
-  case "$b" in library-admission.sh|library-log.sh|deploy-install-lib.sh|library-fs.sh|library-gate.sh|audit-stream-lib.sh|library-alert.sh|worklog-push.sh|ci-runners-fleet-lib.sh|ci-runners-provision-lib.sh|ci-runners-github-lib.sh|ci-runners-watch-lib.sh) continue ;; esac
+  case "$b" in library-admission.sh|library-log.sh|deploy-install-lib.sh|library-fs.sh|library-gate.sh|library-hub.sh|library-board.sh|library-pack-version.sh|audit-stream-lib.sh|library-alert.sh|worklog-push.sh|ci-runners-fleet-lib.sh|ci-runners-provision-lib.sh|ci-runners-github-lib.sh|ci-runners-watch-lib.sh) continue ;; esac
   grep -qE '^set -(eu|u|euo)' "$f" || bad posix.shebang-strict "no strict mode: ${f#$ROOT/}"
 done
 # EXTENSIONLESS EXECUTABLES ARE SCRIPTS TOO (2026-07-30). Every rule in this file
@@ -863,7 +866,7 @@ _S4_HOOKS="admission-hook admission-observe context-resolve annotate-web prod-gu
 worklog-push memory-harvest injection-rule eval-replay-worker admission-bash
 admission-egress admission-self-edit admission-integrity admission-cloud admission-destroy library-admission
 admission-deliverables admission-api-route
-admission-stop session-verdicts audit-triage failure-observe statusline ticket-note reply-shape library-log deploy-install-lib library-fs library-alert ci-runners-fleet-lib ci-runners-provision-lib ci-runners-github-lib ci-runners-watch-lib library-gate audit-stream-lib session-react-lib"
+admission-stop session-verdicts audit-triage failure-observe statusline ticket-note reply-shape library-log deploy-install-lib library-fs library-alert library-hub library-board library-pack-version ci-runners-fleet-lib ci-runners-provision-lib ci-runners-github-lib ci-runners-watch-lib library-gate audit-stream-lib session-react-lib"
 for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   [ -L "$f" ] && continue   # a rename shim (harbor#961) answers under its new name
@@ -1804,7 +1807,8 @@ for f in "$ROOT"/bin/*-install.sh "$ROOT"/bin/admission-remove.sh "$ROOT"/bin/de
   [ -f "$f" ] || continue
   [ -L "$f" ] && continue   # a rename shim (renames.tsv remove_by) is an old name of a file judged under its own (harbor#961)
   # harbor#961 W3 gave two non-installers an -install name: the collector's setup and the drift check of installs
-  case "${f##*/}" in audit-collector-install.sh|drift-install.sh) continue ;; esac
+  # member-install.sh targets the managed root for a named member, never a config dir (harbor#1278).
+  case "${f##*/}" in audit-collector-install.sh|drift-install.sh|member-install.sh) continue ;; esac
   _d7="${f#"$ROOT"/}"
   _d7c="$(sed -e '/^[[:space:]]*#/d' -e 's/[[:space:]]#.*$//' "$f")"
   if ! printf '%s\n' "$_d7c" | grep -qE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*deploy-install-lib\.sh'; then
@@ -2387,8 +2391,8 @@ rm -f "$_f14_rows" "$_f14_code" "$_f14_lay"
 #
 # THE SET IS DERIVED, NEVER LISTED, from what the installers wire:
 #   wired   every argv word of a floor_hooks table row, every "/bin/sh $DIR/bin/X" (or "/bin/sh $V"
-#           with V="$DIR/bin/X") an installer composes as a harness command, and the run: script of
-#           every box pack an installer that names context-rules/user installs;
+#           with V="$DIR/bin/X") an installer composes as a harness command, and the run: and spoke:
+#           scripts of every box pack an installer that names context-rules/user installs;
 #   closed  what those execute or source (`.`, sh, bash, exec) through a path ending in a file
 #           beside them or in bin/, outside a quoted string: a hint that only NAMES a command runs nothing.
 #   declared a hook the box runs that no installer wires (worklog-push) is a row in
@@ -2421,8 +2425,10 @@ for _f15i in "$ROOT"/bin/*install*.sh; do
   if _f15_code "$_f15i" | grep -q 'context-rules/user'; then
     for _f15p in "$ROOT"/context-rules/user/*.md; do
       [ -f "$_f15p" ] || continue
-      _f15r="$(awk 'NR == 1 && !/^---/ { exit } NR > 1 && /^---/ { exit } /^run:[[:space:]]*/ { sub(/^run:[[:space:]]*/, ""); print; exit }' "$_f15p")"
-      [ -z "$_f15r" ] || printf 'context-rules/user/%s\t%s\n' "$_f15r" "${_f15i#"$ROOT"/} (box pack ${_f15p##*/})" >> "$_f15t/wired"
+      awk 'NR == 1 && !/^---/ { exit } NR > 1 && /^---/ { exit } /^(run|spoke):[[:space:]]*/ { sub(/^(run|spoke):[[:space:]]*/, ""); print }' "$_f15p" \
+        | while IFS= read -r _f15r; do
+            [ -z "$_f15r" ] || printf 'context-rules/user/%s\t%s\n' "$_f15r" "${_f15i#"$ROOT"/} (box pack ${_f15p##*/})" >> "$_f15t/wired"
+          done
     done
   fi
 done
@@ -6042,6 +6048,13 @@ for f in "$ROOT"/context-rules/*/*.md "${_INJ_DIR:-/nonexistent}"/*/*.md; do
     _b="$(awk 'BEGIN{n=0} /^---[[:space:]]*$/ {n++; next} n>=2' "$f" | tr -d '[:space:]')"
     [ -n "$_b" ] || bad context.pack-shape "pack has neither a body nor a run: — it would emit nothing: $_rel"
   fi
+  # `spoke:` is judged as the engine judges it, because the engine's refusal is silent and the script just never runs (harbor#1485).
+  _sp="$(_ij_fm "$f" | awk -F': *' '$1=="spoke"{print $2;exit}')"
+  case "$_sp" in
+    '') ;;
+    /*|*..*) bad context.pack-shape "pack's spoke: must be a plain filename beside it: $_rel -> $_sp" ;;
+    *) [ -f "$(dirname "$f")/$_sp" ] || bad context.pack-shape "pack names a spoke: script that is not beside it: $_rel -> $_sp" ;;
+  esac
   # `scope:` IS A FROZEN ENUM, AND `box` ONLY MEANS SOMETHING ON A TOOL CALL
   # (harbor#599). The engine reaches a tree because a tool call touched it; an
   # event with no tool call touches nothing, so a `scope: box` pack there is a
@@ -6900,9 +6913,9 @@ _l1_tsv="$ROOT/contracts/log-exempt.tsv"
 [ ! -f "$_l1_tsv" ] || grep -vE '^[[:space:]]*(#|$)' "$_l1_tsv" | awk -F'\t' 'NR > 1 || $1 != "path"' > "$_l1t/rows"
 # The library itself, and this linter: its VIOLATION lines and summary are parsed by the lint suites
 # and guard-stop, a protocol like the test harness's summary rather than a run log. library-fs.sh prints a
-# value and logs nothing: a library, like log-lib.
+# value and logs nothing: a library, like log-lib. So do library-hub.sh and library-board.sh (harbor#1278).
 # library-alert.sh is a library too: its one stderr line IS the notification, said when no desktop channel takes it.
-_l1_named='bin/library-log.sh bin/lint-conventions.sh bin/library-fs.sh bin/library-alert.sh'
+_l1_named='bin/library-log.sh bin/lint-conventions.sh bin/library-fs.sh bin/library-alert.sh bin/library-hub.sh bin/library-board.sh'
 _l1_code() { sed -e 's/^[[:space:]]*#.*$//' -e 's/[[:space:]]#.*$//' "$1"; }  # comments blanked, lines kept
 _l1_uses() { _l1_code "$1" | grep -qE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*library-log\.sh'; }
 _l1_floor() { # channel 2: library-admission.sh, or F1's mark of an installed floor file
@@ -7894,6 +7907,22 @@ while IFS="$(printf '\t')" read -r _rsi _rsm; do
   [ -n "$_rsi" ] && bad lint.route-covers-surfaces "$_rsi: $_rsm" "$_rsi"
 done < "$_rs_o"
 rm -f "$_rs_o"
+}
+
+# ── lint.suggest-table · every suggest-tool row passes the table check (harbor#1485) ─────────────────────────────────────────
+# A row reaches a person, so the check runs on the shipped table and on the fixture the notes suite overlays. The check is its own tool
+# so a table can be held before it ships: sh bin/lint-suggest-table.sh <table>.
+rule_lint_suggest_table() {
+rule "lint.suggest-table every row of suggest-tool.tsv and its fixture has a distinctive trigger, an anchored Bash recogniser, no safe mod and a plain person's line (harbor#1485)"
+_stt=''
+for _st_f in "$ROOT/context-rules/user/suggest-tool.tsv" "$ROOT/fixtures/injection-rule/suggest-tool.tsv"; do [ ! -f "$_st_f" ] || _stt="$_stt$_st_f$_NL"; done
+[ -n "$_stt" ] || { _advn lint.suggest-table no-table; _advp '  ADVISORY [lint.suggest-table] no suggest-tool.tsv in this tree: NO row was checked\n'; return 0; }
+_st_o="${TMPDIR:-/tmp}/st.$$"
+printf '%s' "$_stt" | while IFS= read -r _st_f; do sh "$(dirname -- "$0")/lint-suggest-table.sh" "$_st_f"; done > "$_st_o" 2>&1
+while IFS= read -r _st_l; do
+  case "$_st_l" in '  FAIL: '*) _st_l="${_st_l#  FAIL: }"; bad lint.suggest-table "${_st_l#"$ROOT"/}" context-rules/user/suggest-tool.tsv ;; esac
+done < "$_st_o"
+rm -f "$_st_o"
 }
 
 # ── drift.check-register · docs/reference/checks.md and the check rows of controls.tsv are one register (harbor#1422) ──────

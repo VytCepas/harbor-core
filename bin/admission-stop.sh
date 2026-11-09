@@ -43,7 +43,7 @@ TX="$(floor_field '.transcript_path')"
 [ -r "$TX" ] || exit 0
 command -v jq >/dev/null 2>&1 || exit 0
 
-# The event stream: one jq pass (~93 ms over an 1854-line transcript; a Stop hook that costs a second gets turned off), three record kinds, each carrying the tool_use id. The id is what makes SG-2 a fact: a verdict line is believed only when it came out of a command that RAN that suite, else `cat` of an old build log reads as a red suite. The RES branch filters inside jq (a tool result can be a whole file). `.text? // ""` and the array/scalar test on `.content`: both shapes occur. BGT carries a background task id and a Read of a task output file is a CMD record, so a background run pairs through the later read (SG_PAIR). A Read result `N<tab>` prefix is stripped.
+# The event stream: one jq pass (~93 ms over an 1854-line transcript; a Stop hook that costs a second gets turned off). A tool result or prompt is split into lines only when it holds a literal one of its line rules requires (harbor#559: the same stream, 1.15 -> 0.71 s over 100 MB). Three record kinds, each carrying the tool_use id. The id is what makes SG-2 a fact: a verdict line is believed only when it came out of a command that RAN that suite, else `cat` of an old build log reads as a red suite. The RES branch filters inside jq (a tool result can be a whole file). `.text? // ""` and the array/scalar test on `.content`: both shapes occur. BGT carries a background task id and a Read of a task output file is a CMD record, so a background run pairs through the later read (SG_PAIR). A Read result `N<tab>` prefix is stripped.
 STREAM="$(jq -r '
   if .type=="assistant" then
     (.message.content[]? | select(.type=="tool_use") |
@@ -55,7 +55,7 @@ STREAM="$(jq -r '
         then "CMD\t" + (.id // "-") + "\t" + .input.file_path
       else empty end)
   elif .type=="user" and (.message.content|type)=="string" then
-    (.message.content | split("\n")[]
+    (.message.content | select(test("erged pull request ")) | split("\n")[]
       | select(test("[Mm]erged pull request [^ ]*#[0-9]+"))
       | "PRM\t-\t" + (capture("[Mm]erged pull request (?<r>[^ ]*)#(?<n>[0-9]+)") | .r + "#" + .n))
   elif .type=="user" then
@@ -64,6 +64,7 @@ STREAM="$(jq -r '
       (if (.content|type)=="array"
          then ([.content[]? | .text? // ""] | join("\n"))
          else (.content|tostring) end)
+      | select(test("Output is being written to: |passed, |rules, | results: /|github\\.com/|erged pull request "))
       | split("\n")[] | sub("^ *[0-9]+\t"; "")
       | if test("^Command .*Output is being written to: [^ ]*/tasks/[A-Za-z0-9]+\\.output") then "BGT\t" + $id + "\t" + (capture("/tasks/(?<t>[A-Za-z0-9]+)\\.output") | .t)
         elif test("^[a-z][a-z0-9 .-]*: [0-9]+ (passed|rules), [0-9]+ (failed|violations)") then "RES\t" + $id + "\t" + .

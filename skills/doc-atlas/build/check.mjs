@@ -84,6 +84,11 @@ async function main() {
   // and it is also closer to what a reader will actually open.
   const browser = await chromium.launch({ channel: 'chrome' });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  // THE DRAWING FIRST, whatever the atlas defaults to. Everything above the graph section
+  // asserts on the authored drawing; an atlas built with "view": "graph" would otherwise
+  // hide every .canvas and fail them all for a reason that is not a defect. The graph is
+  // switched on by its own control, with the real mouse, in its own section below.
+  await page.addInitScript(() => { try { localStorage.setItem('atlas-view', 'draw'); } catch (e) {} });
 
   // A PAGE-WIDE TIMEOUT. Playwright's default is 30s, and the edge loop below tries up to
   // six points per edge before giving up on it. Measured 2026-09-05: one unreachable edge
@@ -488,6 +493,208 @@ async function main() {
     return { fail, note };
   }, { AA_NORMAL, AA_LARGE, MIN_TARGET });
 
+  // ── the graph view ────────────────────────────────────────────────────────────────
+  // The same contract as the drawing, on the second surface: every graph node and edge is
+  // reachable by the REAL mouse at its own drawn position and opens its own panel, a
+  // finding lights the same path on the graph as on the drawing, the whole-atlas graph
+  // carries one node per distinct part, and the switch returns to a fitted drawing.
+  // The layout is run to rest through the page's own seam first, so a probe aims at
+  // where a node IS rather than racing the bloom; the clicks themselves are real.
+  const graphReport = { nodes: 0, nodeTotal: 0, edges: 0, edgeTotal: 0, fail: [], find: 0, findTotal: 0,
+                        gNodes: 0, gTotal: 0, d3Nodes: 0, d3Total: 0, d3Edges: 0, d3EdgeTotal: 0 };
+  const hasGraph = await page.evaluate(() => !!window.__ATLAS_GRAPH__ && !!document.querySelector('.modes'));
+  async function graphClicks(tab, expect) {
+    await page.evaluate((n) => window.__ATLAS_GRAPH__.settle(n), tab);
+    await page.mouse.move(2, 2);
+    // Re-settled before EVERY target: selecting a node near the edge pans the camera to
+    // it, so a position read once up front would aim the next click at empty ground.
+    const where = (id) => page.evaluate(({ tab, id }) => {
+      window.__ATLAS_GRAPH__.settle(tab);
+      const r = document.querySelector(`.plate.on .gnode[data-gnode="${id}"] .gdot`).getBoundingClientRect();
+      return { id, x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+    }, { tab, id });
+    const ids = await page.evaluate(() => [...document.querySelectorAll('.plate.on .gnode')].map(g => g.getAttribute('data-gnode')));
+    for (const gid of ids) {
+      const n = await where(gid);
+      graphReport[expect.total]++;
+      const hit = await page.evaluate(({ x, y, id }) => {
+        const e = document.elementFromPoint(x, y), g = e && e.closest && e.closest('.gnode');
+        return g ? g.getAttribute('data-gnode') === id ? null : 'covered by ' + g.getAttribute('data-gnode')
+          : 'covered by ' + (e ? (e.getAttribute('class') || e.tagName) : 'nothing');
+      }, n);
+      if (hit) { graphReport.fail.push(`${tab}/${n.id}: ${hit}`); continue; }
+      await page.mouse.click(n.x, n.y);
+      const why = await page.evaluate(({ tab, id }) => {
+        const head = document.querySelector('.ins-head h2').textContent;
+        const A = window.__ATLAS__, G = window.__ATLAS_GRAPH__;
+        const want = tab === G.tab
+          ? G.graph(tab).byId[id].label
+          : A.diagrams[tab].nodes[id].label;
+        if (head !== want) return 'panel reads "' + head + '", want "' + want + '"';
+        const g = document.querySelector(`.plate.on .gnode[data-gnode="${id}"]`);
+        if (!g.classList.contains('sel')) return 'clicked node not marked selected';
+        if (!document.querySelector('.plate.on .gsvg').hasAttribute('data-focus')) return 'nothing dimmed';
+        return null;
+      }, { tab, id: n.id });
+      if (why) graphReport.fail.push(`${tab}/${n.id}: ${why}`); else graphReport[expect.ok]++;
+      await page.keyboard.press('Escape');
+    }
+    if (tab === await page.evaluate(() => window.__ATLAS_GRAPH__.tab)) return;
+    const eT = expect.etotal || 'edgeTotal', eK = expect.eok || 'edges';
+    const edges = await page.evaluate((tab) => [...document.querySelectorAll('.plate.on .glink')].map(g => {
+      window.__ATLAS_GRAPH__.settle(tab);
+      const path = g.querySelector('.ghit'), len = path.getTotalLength(), m = path.getScreenCTM();
+      // Anywhere a reader could click it, not only the midpoint: a line is reachable if any
+      // visible stretch of it is.
+      const pts = [0.5, 0.42, 0.58, 0.34, 0.66, 0.26, 0.74, 0.18, 0.82].map(f => {
+        const p = path.getPointAtLength(len * f);
+        return { x: Math.round(m.a * p.x + m.c * p.y + m.e), y: Math.round(m.b * p.x + m.d * p.y + m.f) };
+      });
+      return { id: g.getAttribute('data-glink'), pts };
+    }), tab);
+    for (const e of edges) {
+      graphReport[eT] = (graphReport[eT] || 0) + 1;
+      await page.evaluate((n) => window.__ATLAS_GRAPH__.settle(n), tab);
+      const at = await page.evaluate(({ id, pts }) => {
+        for (const p of pts) {
+          const el = document.elementFromPoint(p.x, p.y), g = el && el.closest && el.closest('.glink');
+          if (g && g.getAttribute('data-glink') === id) return p;
+        }
+        return null;
+      }, e);
+      if (!at) { graphReport.fail.push(`${tab} edge ${e.id}: covered at every probe point`); continue; }
+      await page.mouse.click(at.x, at.y);
+      const why = await page.evaluate(({ tab, id }) => {
+        const w = window.__ATLAS__.diagrams[tab].wires.find(x => x.id === id);
+        const head = document.querySelector('.ins-head h2').textContent;
+        const want = w.label || (w.fromLabel + ' \u2192 ' + w.toLabel);
+        return head === want ? null : 'panel reads "' + head + '", want "' + want + '"';
+      }, { tab, id: e.id });
+      if (why) graphReport.fail.push(`${tab} edge ${e.id}: ${why}`); else graphReport[eK] = (graphReport[eK] || 0) + 1;
+      await page.keyboard.press('Escape');
+    }
+  }
+  // In 3D the DOM order IS the depth order (a click lands on what is painted last). Turned
+  // off-axis, wherever one part covers another's centre the one on top must be nearer, or
+  // a reader clicks a part behind the one they see.
+  async function depthOrder(tab) {
+    const r = await page.evaluate((tab) => {
+      const G = window.__ATLAS_GRAPH__, g = G.graph(tab);
+      G.settle(tab);
+      G.turn(tab, 0.9, -0.45);
+      let total = 0, ok = 0, covered = 0;
+      const bad = [];
+      document.querySelectorAll('.plate.on .gnode').forEach(el => {
+        const id = el.getAttribute('data-gnode'), me = g.byId[id];
+        const b = el.querySelector('.gdot').getBoundingClientRect();
+        const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+        const top = hit && hit.closest && hit.closest('.gnode');
+        total++;
+        if (!top) { bad.push(id + ': nothing at its centre'); return; }
+        const other = g.byId[top.getAttribute('data-gnode')];
+        if (other === me) { ok++; return; }
+        covered++;
+        if (other.Z < me.Z) ok++; else bad.push(id + ': under ' + other.id + ', which is further away');
+      });
+      G.settle(tab);
+      return { total, ok, covered, bad };
+    }, tab);
+    graphReport.depthTotal = (graphReport.depthTotal || 0) + r.total;
+    graphReport.depthOk = (graphReport.depthOk || 0) + r.ok;
+    graphReport.depthCovered = (graphReport.depthCovered || 0) + r.covered;
+    r.bad.forEach(b => graphReport.fail.push(`3D depth order, ${tab}/${b}`));
+  }
+  // A THROW HERE IS A VERDICT, not a deferral: a page whose graph code throws is a broken
+  // page, and letting it escape to main() would exit 2, which reads as "could not check".
+  if (hasGraph) try {
+    const drawings = await page.evaluate(() => window.__ATLAS__.order);
+    await revealTabs(page);
+    await page.click(`[role=tab][data-name="${drawings[0]}"]`);
+    // The switch, with the real mouse: the control is the feature, not the seam.
+    await page.click('.modes button[data-mode="graph"]');
+    const on = await page.evaluate(() => document.body.classList.contains('graphmode') &&
+      getComputedStyle(document.querySelector('.plate.on .gview')).display !== 'none' &&
+      getComputedStyle(document.querySelector('.plate.on .canvas')).display === 'none');
+    if (!on) graphReport.fail.push('the Graph switch does not replace the drawing with the graph');
+    for (const d of drawings) {
+      await revealTabs(page);
+      await page.click(`[role=tab][data-name="${d}"]`);
+      await graphClicks(d, { total: 'nodeTotal', ok: 'nodes' });
+    }
+    // 3D, on the first drawing: the switch by the real mouse, every part and edge reachable
+    // at home, and the depth order honest once turned. Then back to flat.
+    await revealTabs(page);
+    await page.click(`[role=tab][data-name="${drawings[0]}"]`);
+    await page.click('.plate.on .gdepth');
+    const is3d = await page.evaluate(() => document.querySelector('.plate.on .gsvg').classList.contains('g3d') &&
+      document.querySelector('.plate.on .gdepth').getAttribute('aria-pressed') === 'true');
+    if (!is3d) graphReport.fail.push('the 3D switch does not turn the graph 3D');
+    else {
+      graphReport.d3 = true;
+      await graphClicks(drawings[0], { total: 'd3Total', ok: 'd3Nodes', etotal: 'd3EdgeTotal', eok: 'd3Edges' });
+      await depthOrder(drawings[0]);
+      await page.click('.plate.on .gdepth');
+      const flat = await page.evaluate((d) => {
+        window.__ATLAS_GRAPH__.settle(d);
+        const g = window.__ATLAS_GRAPH__.graph(d);
+        if (g.svg.classList.contains('g3d')) return 'still 3D';
+        const deep = g.nodes.filter(n => n.z !== 0 || n.s !== 1).length;
+        return deep ? deep + ' parts keep depth after the switch back' : null;
+      }, drawings[0]);
+      if (flat) graphReport.fail.push('3D off: ' + flat);
+    }
+    // A finding lights the same path on the graph as on the drawing.
+    const nF = await page.evaluate(() => (window.__ATLAS__.findings || []).length);
+    for (let i = 0; i < nF; i++) {
+      graphReport.findTotal++;
+      await page.selectOption('.fsel', String(i));
+      const why = await page.evaluate((k) => {
+        const f = window.__ATLAS__.findings[k];
+        const plate = document.querySelector('.plate.on');
+        if (!plate || plate.dataset.name !== f.diagram) return 'wrong tab';
+        window.__ATLAS_GRAPH__.settle(f.diagram);
+        const svg = plate.querySelector('.gsvg');
+        if (!svg || !svg.hasAttribute('data-focus')) return 'graph not dimmed';
+        const litN = [...svg.querySelectorAll('.gnode.lit')].map(g => g.getAttribute('data-gnode'));
+        const litE = [...svg.querySelectorAll('.glink.lit')].map(g => g.getAttribute('data-glink'));
+        const missN = (f.nodes || []).filter(x => litN.indexOf(x) < 0);
+        const missE = (f.edges || []).filter(x => litE.indexOf(x) < 0);
+        if (missN.length || missE.length) return 'unlit ' + missN.concat(missE).join(',');
+        if ((f.edges || []).length && litE.length !== f.edges.length) return 'lit ' + litE.length + ' edges for ' + f.edges.length + ' named';
+        return null;
+      }, i);
+      if (why) graphReport.fail.push(`finding ${i} on the graph: ${why}`); else graphReport.find++;
+    }
+    if (nF) await page.click('.fclear');
+    const gt = await page.evaluate(() => window.__ATLAS_GRAPH__.tab);
+    if (gt) {
+      await revealTabs(page);
+      await page.click(`[role=tab][data-name="${gt}"]`);
+      const want = await page.evaluate(() => {
+        const s = new Set();
+        Object.values(window.__ATLAS__.diagrams).forEach(g => Object.values(g.nodes).forEach(n => s.add(n.label.trim().toLowerCase())));
+        return s.size;
+      });
+      // The whole atlas opens in 3D, so these clicks are 3D clicks at home.
+      if (!await page.evaluate(() => document.querySelector('.plate.on .gsvg').classList.contains('g3d')))
+        graphReport.fail.push('the whole-atlas graph does not open in 3D');
+      await graphClicks(gt, { total: 'gTotal', ok: 'gNodes' });
+      if (graphReport.gTotal !== want) graphReport.fail.push(`whole-atlas graph draws ${graphReport.gTotal} parts for ${want} distinct labels`);
+      await depthOrder(gt);
+    }
+    await revealTabs(page);
+    await page.click(`[role=tab][data-name="${drawings[0]}"]`);
+    await page.click('.modes button[data-mode="draw"]');
+    const back = await page.evaluate(() => {
+      const svg = document.querySelector('.plate.on .canvas svg');
+      if (getComputedStyle(document.querySelector('.plate.on .canvas')).display === 'none') return 'drawing still hidden';
+      return svg && svg.dataset.fitted === '1' ? null : 'drawing not fitted after the switch back';
+    });
+    if (back) graphReport.fail.push('switch back: ' + back);
+  } catch (err) {
+    graphReport.fail.push('the graph section threw: ' + String(err && err.message || err).split('\n')[0]);
+  }
+
   // BOTH LINES CARRY THEIR DENOMINATOR. `nodes reachable: 1` was printable on a page with
   // 30 nodes, 29 of them broken — a number a reader can only misread as a scale they do
   // not have. And the edge denominator now excludes what a cap stopped it from attempting,
@@ -501,6 +708,16 @@ async function main() {
   if (findReport.total) console.log(`  findings light their path: ${findReport.ok}/${findReport.total}`);
   if (briefReport.total) console.log(`  brief links reach the drawing: ${briefReport.ok}/${briefReport.total}`);
   if (insideReport.total) console.log(`  inside views open and lead back: ${insideReport.ok}/${insideReport.total}`);
+  if (hasGraph) {
+    console.log(`  graph nodes reachable: ${graphReport.nodes}/${graphReport.nodeTotal}`);
+    console.log(`  graph edges reachable: ${graphReport.edges}/${graphReport.edgeTotal}`);
+    if (graphReport.findTotal) console.log(`  findings light their path on the graph: ${graphReport.find}/${graphReport.findTotal}`);
+    if (graphReport.gTotal) console.log(`  whole-atlas graph parts reachable: ${graphReport.gNodes}/${graphReport.gTotal}`);
+    if (graphReport.d3) console.log(`  3D graph nodes reachable: ${graphReport.d3Nodes || 0}/${graphReport.d3Total || 0}`
+      + `, edges: ${graphReport.d3Edges || 0}/${graphReport.d3EdgeTotal || 0}`);
+    if (graphReport.depthTotal) console.log(`  3D, turned: nearer part on top: ${graphReport.depthOk}/${graphReport.depthTotal}`
+      + ` (${graphReport.depthCovered} centres covered by another part)`);
+  }
   results.note.forEach(n => console.log(`  ${n}`));
   const failures = results.fail
     .concat(clickReport.nodeFail.map(f => `node unreachable or wrong panel: ${f}`))
@@ -508,6 +725,7 @@ async function main() {
     .concat(findReport.fail.map(f => `finding lights nothing: ${f}`))
     .concat(briefReport.fail.map(f => `brief link broken: ${f}`))
     .concat(insideReport.fail.map(f => `inside view broken: ${f}`))
+    .concat(graphReport.fail.map(f => `graph: ${f}`))
     .concat(consoleErrors.map(e => `console: ${e}`));
   const real = failures;
 

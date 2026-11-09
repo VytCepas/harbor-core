@@ -3051,6 +3051,7 @@ pairs	-
 palette	-
 pandectes	vendor or platform the estate integrates (azimuth standard/vendors); tool, product or format name
 pandora	-
+pane	-
 panel	-
 panels	-
 paper	-
@@ -3263,6 +3264,7 @@ preflight	-
 premise	-
 prepare	-
 prepared	-
+prereqs	the issue's own name for bin/member-prereqs.sh and its list
 prerequisite	-
 prerequisites	-
 prescribes	-
@@ -4202,6 +4204,7 @@ spiritual	-
 split	-
 splits	-
 splitting	-
+spoke	-
 sponsors	-
 spontaneous	-
 spool	-
@@ -4777,6 +4780,7 @@ upper	-
 uppercase	-
 ups	-
 upstream	-
+upterm	a terminal sharing tool, used for remote support (harbor#1278)
 urls	-
 us	-
 usable	-

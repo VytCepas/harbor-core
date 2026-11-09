@@ -23,6 +23,7 @@
 #   sh scope-roots.sh --conf <key>   one value from harbor.toml (an array prints one element per line)
 #   sh scope-roots.sh --conf-keys    core's own harbor.toml keys, one per line (a pack's keys come from its conf-keys.txt)
 #   sh scope-roots.sh --base <BOX|REPOS>   what a base is on this box ($HOME, or the workspace root): the text a launchd template's @HOME@ fills (harbor#630)
+#   sh scope-roots.sh --hub          a member box's hub clone, from member.conf beside the marker, else managed env; exit 1, empty, elsewhere or before a clone (harbor#1278)
 #
 # THE REGISTRY (contracts/private-layer.md). <private>/repos.tsv is id/path/kind/remote and the one
 # reader of it is this file; --repos and --repo answer from it, and from the table below when it is
@@ -136,6 +137,22 @@ private_dir() {
   __pv="${HARBOR_SCOPE_PRIVATE:-}"
   if [ -z "$__pv" ]; then __pv="$(port_root)/harbor-private" || return 2; fi
   printf '%s' "${__pv%/}"
+}
+
+# The hub clone of a member box (harbor#1278, F3, M5). Off the marker, role and repo come from managed env, never harbor.toml (inside the write zone a session
+# can change) and never a scope override. Beside the marker, from <managed root>/member.conf through library-hub.sh's hub_facts, as every floor script reads
+# them: a launch environment can beat settings env. Exit 1 on any other box. Always run in a $(...), so the facts it sets stay there.
+hub_dir() {
+  if [ -e "$SRC/harbor-member-mode" ]; then
+    case "$0" in */*) ;; *) return 1 ;; esac   # hub_facts finds the root from $0
+    [ -f "$SRC/library-hub.sh" ] || return 1
+    . "$SRC/library-hub.sh"
+    hub_marker && hub_facts || return 1
+  fi
+  [ "${HARBOR_MEMBER_ROLE:-}" = member ] && [ -n "${HARBOR_HUB_REPO:-}" ] || return 1
+  __hs="${XDG_STATE_HOME:-${HOME:+$HOME/.local/state}}"
+  [ -n "$__hs" ] && [ -d "$__hs/harbor/hub/repo" ] || return 1
+  printf '%s' "$__hs/harbor/hub/repo"
 }
 
 # The access register (contracts/access-card.md) names accounts, so it is private and core ships none; $ACCESS_DIR wins.
@@ -458,6 +475,7 @@ case "${1:-}" in
   --port-root) port_root || exit $?; printf '\n' ;;
   --private) private_dir || exit $?; printf '\n' ;;
   --access) __out="$(access_dir)" || exit $?; printf '%s\n' "$__out" ;;
+  --hub) __out="$(hub_dir)" || exit 1; printf '%s\n' "$__out" ;;
   --inject) __out="$(inject_dir)" || exit $?; printf '%s\n' "$__out" ;;
   --projects) __out="$(projects_file)" || exit $?; printf '%s\n' "$__out" ;;
   --registry-check)

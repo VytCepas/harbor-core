@@ -85,6 +85,8 @@ hand-kept account of direction and status; this table is what exists.
 | [hooks-external.tsv](./hooks-external.tsv) | tsv | hooks-external.tsv — hooks the live box runs that NO installer in bin/ wires. harbor#813. |
 | [hooks.md](./hooks.md) | md | Hooks — which moment, which mechanism, and which channel is actually proven |
 | [host-profile.md](./host-profile.md) | md | Box-profile seam (L0 Helm → L3 Yard) — FROZEN v1 (the plan's ONLY up-pointing read) |
+| [hub-vocabulary.tsv](./hub-vocabulary.tsv) | tsv | hub-vocabulary.tsv (harbor#1278) — the closed values a member laptop may send to the board. |
+| [hub.md](./hub.md) | md | Hub and member contract (harbor#1278) |
 | [idle-tools.txt](./idle-tools.txt) | txt | IDLE TOOLS (harbor#466) — every bin/ script that nothing runs, and why. |
 | [injection-rule.md](./injection-rule.md) | md | Rule packs — the just-in-time governance format |
 | [isa-ledger.md](./isa-ledger.md) | md | ISA ledger — where a run lives, and what indexes it |
@@ -106,6 +108,10 @@ hand-kept account of direction and status; this table is what exists.
 | [logging.md](./logging.md) | md | Logging — one log format for Harbor's tools and tests |
 | [main-folders.txt](./main-folders.txt) | txt | main-folders.txt (harbor#1442, #1440) — the folders an agent must never change through the file tools, because they |
 | [marker.md](./marker.md) | md | Detect-and-defer marker seam — FREEZE (and fix the name collision) |
+| [member-files.txt](./member-files.txt) | txt | member-files.txt (harbor#1278) — what member-install.sh copies into <managed root>/bin. contracts/hub.md is the format of that root. |
+| [member-guards.tsv](./member-guards.tsv) | tsv | member-guards.tsv (harbor#1278) — the PreToolUse guards member-dispatch.sh runs, in order: matcher <TAB> argv, then the patterns admission |
+| [member-hosts.txt](./member-hosts.txt) | txt | member-hosts.txt (harbor#1278) — the hosts a member laptop's sandboxed commands may reach, beyond core's contracts/confinement-hosts.txt. |
+| [member-prereqs.txt](./member-prereqs.txt) | txt | member-prereqs.txt (harbor#1278) — everything a member laptop needs from its package manager, in one place. |
 | [memory-format.md](./memory-format.md) | md | Memory format (shared canonical) |
 | [merge-stack-union.txt](./merge-stack-union.txt) | txt | merge-stack-union.txt (harbor#1060) — the line lists whose pure additions `harbor merge-stack` keeps from both sides. |
 | [obligation-kinds.tsv](./obligation-kinds.tsv) | tsv | obligation-kinds.tsv (harbor#1050) — every kind of unfinished work the obligations ledger tracks. |
@@ -124,6 +130,7 @@ hand-kept account of direction and status; this table is what exists.
 | [reports.md](./reports.md) | md | Reports — what a generated artefact owes its reader |
 | [repos-uncited.txt](./repos-uncited.txt) | txt | repos-uncited.txt (harbor#999, #1273) - GitHub repos under the owner that exist and that no document cites by URL. |
 | [required-checks.tsv](./required-checks.tsv) | tsv | Required checks per repo: the merge gate when GitHub cannot be (harbor#1060). |
+| [risk-tiers.tsv](./risk-tiers.tsv) | tsv | risk-tiers.tsv (harbor#1278) — the core default risk list: a sibling of controls.tsv, not a column of it, because a new column |
 | [roots.tsv](./roots.tsv) | tsv | roots.tsv — every named root, and the base it hangs off. harbor#630. |
 | [scaffolder-plugins.tsv](./scaffolder-plugins.tsv) | tsv | scaffolder-plugins.tsv (harbor#999, #966) - the names yard publishes its Claude Code plugins under. |
 | [scheduled-checks.tsv](./scheduled-checks.tsv) | tsv | scheduled-checks.tsv (harbor#1437) — the read-only checks launchd runs from main through bin/check-run.sh. |
@@ -141,6 +148,7 @@ hand-kept account of direction and status; this table is what exists.
 | [suites-quick.txt](./suites-quick.txt) | txt | QUICK LEVEL — the suites CI runs when the level is `quick` (dispatch input `level`, else repo |
 | [suites-tally.txt](./suites-tally.txt) | txt | REQUIRED-CHECK GROUPS — which suites each required CI verdict is tallied from (harbor#961). |
 | [suites.txt](./suites.txt) | txt | SUITE MANIFEST (harbor#61) — the list of test suites CI must run. |
+| [support-upterm.tsv](./support-upterm.tsv) | tsv | support-upterm.tsv (harbor#1278) — the upterm a member laptop runs for remote support, the uptermd the hub's own relay runs, and the publi |
 | [systems.tsv](./systems.tsv) | tsv | systems.tsv (harbor#1436, #1423 T18.13) - the systems `harbor <system> <verb>` dispatches, by register and not by code. |
 | [test-contract.md](./test-contract.md) | md | Test contract — the rules every governed repo's tests follow |
 | [unwatched.txt](./unwatched.txt) | txt | UNWATCHED (harbor#594) — every property of this repo whose failure is on record |
