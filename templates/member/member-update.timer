@@ -1,0 +1,12 @@
+# TEMPLATE, NOT INSTALLED (harbor#1278, step 12). The schedule for member-update.service, and it needs the operator's explicit yes
+# before anyone installs it. Install it as harbor-member-update.timer; the steps are in member-update.service.
+[Unit]
+Description=Harbor member floor update, daily
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

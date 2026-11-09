@@ -1,0 +1,68 @@
+# member-files.txt (harbor#1278) — what member-install.sh copies into <managed root>/bin. contracts/hub.md is the format of that root.
+# One row per line: <repo path> [<name in bin>]. Everything lands flat in one folder, because the scripts call each other by "${0%/*}/name"
+# and a guard finds its register as bin/controls.tsv. A listed file that is missing refuses the install: a half floor under onFailure block
+# stops every call. tests/member/install/files.test.sh holds this list against what the floor wires.
+
+# The managed hooks
+bin/member-dispatch.sh
+bin/member-post.sh
+bin/member-session.sh
+
+# Tiers, integrity, policy, approval, events
+bin/hub-tier.sh
+bin/member-integrity.sh
+bin/hub-sync.sh
+bin/hub-approval.sh
+bin/hub-board.sh
+bin/hub-events.sh
+bin/hub-format.sh
+bin/library-hub.sh
+contracts/hub-vocabulary.tsv hub-vocabulary.tsv
+contracts/risk-tiers.tsv risk-tiers.tsv
+contracts/member-guards.tsv member-guards.tsv
+
+# Remote support: a person starts it, and the dispatcher keeps the agent off it. upterm itself is fetched by digest (support-upterm.tsv)
+bin/library-board.sh
+bin/member-support.sh
+bin/member-support-guard.sh
+contracts/support-upterm.tsv support-upterm.tsv
+
+# The updater: root runs it from here, so it can't be swapped from the user tier
+bin/member-update.sh
+
+# The guards the dispatcher runs, and what they read
+bin/admission-hook.sh
+bin/admission-bash.sh
+bin/admission-egress.sh
+bin/admission-self-edit.sh
+bin/admission-cloud.sh
+bin/admission-destroy.sh
+bin/admission-deliverables.sh
+bin/admission-api-route.sh
+bin/admission-decide.sh
+bin/admission-normalize.awk
+bin/admission-observe.sh
+bin/annotate-web.sh
+bin/govern-hook.sh
+bin/library-admission.sh
+bin/library-log.sh
+standards/naming/controls.tsv controls.tsv
+
+# The token: a hook must never run a user-writable copy of these, and access.sh gates bin/secret
+bin/secret
+bin/access.sh
+bin/scope-roots.sh
+contracts/roots.tsv roots.tsv
+
+# Packs and hooks: SessionStart calls hub.sh, which calls pack.sh. Without these a policy names a hook no laptop receives, and every call is denied
+bin/hub.sh
+bin/pack.sh
+bin/library-pack-version.sh
+bin/deploy-install-lib.sh
+bin/harbor
+contracts/pack-frontmatter-keys.txt pack-frontmatter-keys.txt
+contracts/skill-pack-frontmatter-keys.txt skill-pack-frontmatter-keys.txt
+
+# The one thing a member may run as root, and the list it installs: member-session.sh calls it when a probe finds nothing
+bin/member-prereqs.sh
+contracts/member-prereqs.txt member-prereqs.txt
