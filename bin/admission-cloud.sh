@@ -249,6 +249,8 @@ case "$TIER" in
   NGAWS)        _crule=cloud-aws-destroy ;;
   *)            _crule=cloud-unclassified ;;
 esac
+# harbor#1278: on a member box the dispatcher decides, so the rule is reported and no verdict is printed here.
+if floor_member_mode; then floor_member_stop cloud "$_crule.$SHAPE"; exit 0; fi
 NOHUMAN=0; floor_no_human && NOHUMAN=1
 if [ "$TIER" = CATASTROPHIC ] || [ "$TIER" = GTMSTD ]; then _cfb=block; else _cfb=warn; fi
 _cesc=0; if [ "$NOHUMAN" = 1 ] || [ "${CLOUD_POSTURE:-ask}" = "deny" ]; then _cesc=1; fi
