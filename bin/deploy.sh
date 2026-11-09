@@ -18,10 +18,6 @@
 #   --unattended    the ship runner's apply (deploy-fleet.sh, ship contract §6), never a person's: needs --apply,
 #                   HARBOR_DEPLOY_UNATTENDED=1 and HARBOR_DEPLOY_SNAPSHOT naming an empty file. Installs without the [y/N], writes
 #                   the snapshot id to HARBOR_DEPLOY_SNAPSHOT, and answers No to the restore and the B8 re-pin
-#   --member --pin <commit>   a company laptop (harbor#1278), run by member-install.sh as the member: the member set
-#                   (constitution shim runtime skills inject packs), never floor, sec0 or prod-guard, whose copy is managed.
-#                   HEAD must be the pin and clean; no branch or origin check, no scheduled job, no B6, B8 or floor-verify.
-#                   ROLLBACK: the same run with an older pin. It takes --accept-loss implicitly, and each loss is a WARN
 #   -h, --help      this text. The live box only: each installer takes --dir for a sandbox.
 #
 # Owns ORDER, PREFLIGHT, SNAPSHOT and VERIFY. Every write is delegated to the
@@ -47,12 +43,10 @@ case "$(uname -s 2>/dev/null || :)" in MINGW*|MSYS*|CYGWIN*)
   log_end || :; exit 1 ;;
 esac
 COMPONENTS='constitution shim sec0 runtime floor prod-guard skills inject packs yard fleet'
-ONLY=''; PRUNE=0; WITH_B6=0; WITH_STOP=0; UNINSTALL=0; UNATTENDED=0; MEMBER=0; PIN=''
+ONLY=''; PRUNE=0; WITH_B6=0; WITH_STOP=0; UNINSTALL=0; UNATTENDED=0
 il_opt() {
   case "$1" in
     --unattended) UNATTENDED=1; IL_TAKE=-1 ;;  # -1: kept out of IL_ARGV, so no fix line hands a person the runner's flag
-    --member) MEMBER=1; IL_TAKE=1 ;;
-    --pin) il_value --pin "${2-}"; PIN="$2"; IL_TAKE=2 ;;
     --only) il_value --only "${2-}"; [ -z "$ONLY" ] || il_usage_error '--only given twice'; ONLY="$2"; IL_TAKE=2 ;;
     --prune) PRUNE=1; IL_TAKE=1 ;;
     --uninstall) UNINSTALL=1; IL_TAKE=1 ;;
@@ -67,22 +61,12 @@ for _c in $(printf '%s' "$ONLY" | tr ',' ' '); do
   case " $COMPONENTS " in *" $_c "*) ;; *) il_usage_error "--only $_c: not a component ($COMPONENTS)" ;; esac
 done
 [ -z "$ONLY" ] || [ -n "$(printf '%s' "$ONLY" | tr -d ', ')" ] || il_usage_error '--only needs a component'
-if [ "$MEMBER" -eq 1 ] || [ -n "$PIN" ]; then
-  [ "$MEMBER" -eq 1 ] && [ -n "$PIN" ] || il_usage_error '--member and --pin go together: a member box runs one pinned commit'
-  case "$PIN" in *[!0123456789abcdef]*) il_usage_error "--pin wants a 40-hex commit, got $PIN" ;; esac
-  [ "${#PIN}" -eq 40 ] || il_usage_error "--pin wants a 40-hex commit, got $PIN"
-  [ -z "$ONLY" ] && [ "$UNINSTALL" -eq 0 ] && [ "$PRUNE" -eq 0 ] && [ "$WITH_B6" -eq 0 ] && [ "$WITH_STOP" -eq 0 ] \
-    || il_usage_error '--member takes no --only, --uninstall, --prune, --with-b6 or --with-stop-gate: the set is fixed'
-fi
 # The default set is core plus the optional components harbor.toml `components` names (harbor#1149).
 # scope-roots.sh --conf exits 0 with the list, 1 when the key is unset (the legacy full set), anything else a usage error.
 # stderr is not captured: scope-roots.sh's own notes (a BOM or CRLF file) reach the operator, and never the list.
 CORE_SET='constitution shim sec0 runtime floor skills inject packs'
 DEFSET="$COMPONENTS"; COMP_NOTE=''
-# A member's floor is in the managed root (R9, harbor#1278); harbor.toml is never read here, because it sits in the write zone (R11).
-MEMBER_SET='constitution shim runtime skills inject packs'
-if [ "$MEMBER" -eq 1 ]; then DEFSET="$MEMBER_SET"; COMP_NOTE="components: the member set, pinned at $PIN"
-elif [ -z "$ONLY" ] && [ "$PRUNE" -eq 0 ]; then
+if [ -z "$ONLY" ] && [ "$PRUNE" -eq 0 ]; then
   _cv="$(sh "$ROOT/bin/scope-roots.sh" --conf components)" && _crc=0 || _crc=$?
   case "$_crc" in
     0)
@@ -123,8 +107,6 @@ if [ "$UNATTENDED" -eq 1 ]; then
   [ "$UNINSTALL" -eq 0 ] && [ "$PRUNE" -eq 0 ] && [ "$IL_ACCEPT_LOSS" -eq 0 ] \
     || il_usage_error '--unattended takes no --uninstall, --prune or --accept-loss: those stay at a terminal'
 fi
-# The rollback (R10, harbor#1278): IT named this commit, so a move back is a decision, not lost work. Set after the --unattended check.
-[ "$MEMBER" -eq 0 ] || IL_ACCEPT_LOSS=1
 # The live config dir, physically; a CLAUDE_CONFIG_DIR naming another dir exits 2 here, before any work.
 # On --apply the log opens now, so a refused preflight is kept too.
 il_target
@@ -136,8 +118,6 @@ BASE="${HARBOR_CI_BASE_BRANCH:-main}"
 # Installers under deploy skip the next steps deploy itself performs (harbor#285).
 HARBOR_DEPLOY_ACTIVE=1; export HARBOR_DEPLOY_ACTIVE
 AL=''; [ "$IL_ACCEPT_LOSS" -eq 0 ] || AL=' --accept-loss'
-# The constitution's branch gate takes the pin in place of main on a member box (harbor#1278); its own check is that HEAD is the pin.
-CPIN=''; [ "$MEMBER" -eq 0 ] || CPIN=" --pin $PIN"
 # deploy's own command line, for the fix lines that send the operator back here: its --only and opt-ins kept.
 _deploy_cmd() { # [<checkout>] [--accept-loss] — the apply, spelled for its gate
   _dc_r="$ROOT"; case "${1-}" in /*) _dc_r="$1"; shift ;; esac
@@ -292,12 +272,7 @@ _checkout() {
     log_ok 'running from the main checkout'
 
     _br="$(_git symbolic-ref --short -q HEAD || true)"
-    if [ "$MEMBER" -eq 1 ]; then
-      # A pin is detached and may trail main on purpose, so the three checks below become one (R10, harbor#1278).
-      _head="$(_git rev-parse HEAD)"
-      if [ "$_head" = "$PIN" ]; then log_ok "at the pinned commit $PIN"
-      else _bad "HEAD is $_head, not the pinned commit $PIN" "git -C '$ROOT' checkout --detach $PIN"; fi
-    elif [ "$_br" = "$BASE" ]; then log_ok "on $BASE"
+    if [ "$_br" = "$BASE" ]; then log_ok "on $BASE"
     else _bad "on '${_br:-detached HEAD}', not $BASE — a branch is text nobody has reviewed" "git -C '$ROOT' switch $BASE"; fi
 
     _dirty="$(_git status --porcelain)"
@@ -308,7 +283,6 @@ _checkout() {
       printf '%s\n' "$_dirty" | head -10 | _notes
     fi
 
-    [ "$MEMBER" -eq 0 ] || return 0
     if _git fetch --quiet origin "$BASE" 2>"$WORK/fetch.err"; then
       _head="$(_git rev-parse HEAD)"; _up="$(_git rev-parse "origin/$BASE" 2>/dev/null || true)"
       if [ "$_head" = "$_up" ]; then log_ok "in sync with origin/$BASE ($(_git rev-parse --short HEAD))"
@@ -329,9 +303,6 @@ _checkout() {
 _preflight() {
   log_head 'preflight · nothing is written unless every check here passes'
   _checkout
-  if [ "$MEMBER" -eq 1 ] && ! _no_user_floor; then
-    _bad "a user-tier floor is installed in $CFG, and a member box keeps it only in the managed root (R9)" "sh '$ROOT/bin/deploy.sh' --apply --only floor --uninstall --live   # from a terminal window"
-  fi
   # --with-b6 onto a box with no floor is refused here, with the reason (docs/explanation/admission-baseline.md order).
   _optins
 
@@ -687,7 +658,7 @@ _plan() {
     fi
   fi
   for _p in "runtime:deploy-runtime-install.sh --live$AL" "floor:admission-install.sh --live$AL$FLOOR_OPTS" 'prod-guard:prod-guard-install.sh --live' \
-            "constitution:policy-constitution-install.sh --live$AL$CPIN" 'inject:context-injection-install.sh --live' 'sec0:deploy-harden.sh --live'; do
+            "constitution:policy-constitution-install.sh --live$AL" 'inject:context-injection-install.sh --live' 'sec0:deploy-harden.sh --live'; do
     _want "${_p%%:*}" || continue
     _p="${_p#*:}"
     _r_rc=0
@@ -777,7 +748,7 @@ _unreachable() {
 # one running `on`. After the register was re-recorded (the dispatcher judges rules by the register's blob). It never creates
 # spawn.on. Exit 3 means a refused rule that is no preset was left alone: a note, the rule is the operator's.
 _events_reconcile() {
-  _jobs || return 0
+  _want runtime || return 0
   [ -f "$CFG/bin/event-dispatch.sh" ] || return 0
   log_note 'running: event-dispatch.sh reconcile (default-on presets installed, a refused preset replaced)'
   _erc=0; _run sh "$CFG/bin/event-dispatch.sh" reconcile || _erc=$?
@@ -788,7 +759,7 @@ _events_reconcile() {
   esac
 }
 _events_verify() { # a rule refused now is red: the follower would run nothing for it
-  _jobs || return 0
+  _want runtime || return 0
   [ -f "$CFG/bin/event-dispatch.sh" ] || return 0
   _hrc=0; sh "$CFG/bin/event-dispatch.sh" health >"$WORK/health.out" 2>&1 </dev/null || _hrc=$?
   if [ "$_hrc" -eq 0 ]; then log_ok 'event rules: every installed rule passes its re-check'
@@ -806,7 +777,7 @@ _register_rerecord() {
 }
 _install() {
   log_head 'install'
-  for _p in "constitution:policy-constitution-install.sh --apply --live$AL$CPIN" \
+  for _p in "constitution:policy-constitution-install.sh --apply --live$AL" \
             'shim:deploy-shim-install.sh --live --apply' \
             'sec0:deploy-harden.sh --apply --live' \
             "runtime:deploy-runtime-install.sh --live --apply$AL" \
@@ -959,43 +930,28 @@ _mods_check() {
   fi
 }
 
-# No user-tier floor (R9, harbor#1278): no B6 pins, and no guard wired in settings.json. Asked before and after a member install.
-_no_user_floor() {
-  [ ! -d "$CFG/.helm-pins" ] || return 1
-  [ -f "$CFG/settings.json" ] || return 0
-  ! jq -e '[.hooks // {} | .[][]?.hooks[]?.command // empty | select(test("admission-(hook|bash|egress|cloud|destroy|self-edit|deliverables)"))] | length > 0' "$CFG/settings.json" >/dev/null 2>&1
-}
-_member_verify() {
-  [ "$MEMBER" -eq 1 ] || return 0
-  log_head 'member · what verify reads on a box whose floor is managed'
-  if _no_user_floor; then log_ok "no user-tier floor: $CFG has no B6 pins and settings.json wires no guard"
-  else _bad "a user-tier floor appeared in $CFG during the install" 'none: contracts/hub.md, the member set'; fi
-}
-# Scheduled jobs need the operator's own yes on a member box, so a member deploy starts none (plan step 12).
-_jobs() { [ "$MEMBER" -eq 0 ] && _want runtime; }
-
 # ── LAUNCHD (harbor#1437): the scheduled jobs come up with a deploy and run the bytes it installed ────────────────
 # bin/deploy-launchd-sync.sh: snapshot before the install, install the plists marked harbor:deploy-installs and restart the
 # running jobs whose program changed after it, verify that no job runs older code. Only with the runtime, whose files are
 # the jobs' programs. A box without launchctl skips it inside the tool.
 _launchd_snap() { # a dry run and an apply alike: the snapshot is what the plan and the restart compare against
-  _jobs || return 0
+  _want runtime || return 0
   sh "$ROOT/bin/deploy-launchd-sync.sh" snapshot "$WORK/launchd.snap" >"$WORK/launchd.out" 2>&1 || { _relay --brief "$WORK/launchd.out"; _bad 'launchd: could not record the installed jobs before the install' 'none: its FAIL line above'; }
 }
 _launchd_plan() {
-  _jobs && [ -s "$WORK/launchd.snap" ] || return 0
+  _want runtime && [ -s "$WORK/launchd.snap" ] || return 0
   sh "$ROOT/bin/deploy-launchd-sync.sh" plan "$WORK/launchd.snap" >"$WORK/launchd.out" 2>&1 || true
   _relay --brief "$WORK/launchd.out"
 }
 _launchd_apply() {
-  _jobs || return 0
+  _want runtime || return 0
   log_head 'launchd · install the marked plists, restart the jobs whose program changed'
   _lrc=0; sh "$ROOT/bin/deploy-launchd-sync.sh" apply "$WORK/launchd.snap" >"$WORK/launchd.out" 2>&1 || _lrc=$?
   _relay --brief "$WORK/launchd.out"
   [ "$_lrc" -eq 0 ] || _bad "launchd: the install or a restart failed (rc=$_lrc)" 'none: the FAIL and fix lines above'
 }
 _launchd_verify() {
-  _jobs || return 0
+  _want runtime || return 0
   _lrc=0; sh "$ROOT/bin/deploy-launchd-sync.sh" verify >"$WORK/launchd.vout" 2>&1 || _lrc=$?
   if [ "$_lrc" -eq 0 ]; then log_ok 'launchd: every running job runs the bytes installed'
   else _bad 'launchd: a job is running code older than its installed copy' 'none: the FAIL and fix lines below'; _relay --brief "$WORK/launchd.vout"; fi
@@ -1004,15 +960,12 @@ _launchd_verify() {
 # ── VERIFY: ask the box, never infer from exit codes alone ────────────────────
 _verify() {
   log_head 'verify'
-  # B6 reads a user-tier floor a member box does not have; its integrity check is member-integrity.sh (R9, harbor#1278).
-  if [ "$MEMBER" -eq 0 ]; then
-    _v="$(_b6_verdict)"
-    case "$_v" in
-      clean)      log_ok 'B6: the next session will start' ;;
-      advisory:*) log_note "B6 advisory: ${_v#advisory:}" ;;
-      *)          _bad "B6: the next session would be BLOCKED. ${_v#BLOCKED:}" 'none: the B6 reason above, which names its own recovery' ;;
-    esac
-  fi
+  _v="$(_b6_verdict)"
+  case "$_v" in
+    clean)      log_ok 'B6: the next session will start' ;;
+    advisory:*) log_note "B6 advisory: ${_v#advisory:}" ;;
+    *)          _bad "B6: the next session would be BLOCKED. ${_v#BLOCKED:}" 'none: the B6 reason above, which names its own recovery' ;;
+  esac
 
   # stale/modified = an install did not land; unsourced is the box's own extra file (advisory).
   if _want_any runtime floor; then
@@ -1037,7 +990,7 @@ _verify() {
 
   _refcheck
   _launchd_verify
-  [ "$MEMBER" -eq 1 ] || _mods_check
+  _mods_check
   _events_verify
 
   # The other repos' installed builds against their trees (harbor#736): their --check exits non-zero on drift.
@@ -1063,7 +1016,6 @@ _refcheck() { # advisory: does the installed surface hold together (every hook, 
 
 # Last, so its B8 check sees the re-pin decision rather than the state before it.
 _floor_verify() {
-  [ "$MEMBER" -eq 0 ] || return 0
   _want_any runtime floor sec0 prod-guard || return 0
   log_head 'floor-verify · fires known-blocked shapes at the installed floor'
   _fv_rc=0
@@ -1459,12 +1411,10 @@ fi
 
 _launchd_apply
 _verify
-# Never ask to bless the surfaces of an install that already failed verification. B8 is read by floor-verify, which a member box doesn't run.
-if [ "$MEMBER" -eq 1 ]; then REPIN_DECLINED=1
-elif [ "$FAILS" -eq 0 ]; then _repin
+# Never ask to bless the surfaces of an install that already failed verification.
+if [ "$FAILS" -eq 0 ]; then _repin
 else REPIN_DECLINED=1; log_head 'B8 re-pin'; log_note 'not offered: verification failed above'; fi
 _floor_verify
-_member_verify
 _b6_state
 
 log_head 'result'

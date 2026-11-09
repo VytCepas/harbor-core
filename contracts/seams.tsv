@@ -39,7 +39,3 @@ complexity-atlas	upstream	complexity-atlas	harbor	vendor/complexity-atlas/	-	-	-
 skills	upstream	pai	harbor	vendor/skills/?	PROVENANCE.md#upstream	-	skill.vendor-provenance	skill	0	pinned to an upstream tag in PROVENANCE.md; skill.vendor-provenance judges the pin
 skills-archive	upstream	pai	harbor	vendor/skills-archive/?	PROVENANCE.md#upstream	-	skill.vendor-provenance	skill	0	the archive half of the same upstream, with its own PROVENANCE.md
 harbor-core-export	export	harbor	harbor-core	-	-	-	check.seam-fresh	deploy	60	the public mirror of contracts/layers.tsv's core paths, pinned by `Source commit:` in its last export commit; allowed_lag counts harbor commits that touch a core path since that pin (harbor#1436)
-hub-policy	format	harbor	scaffolded	-	-	-	-	hub	0	no JSON Schema: bin/hub-format.sh checks it against contracts/hub.md; a hub repo reads it in place, so there is no copy to compare (harbor#1278)
-hub-risk-tiers	format	harbor	scaffolded	-	-	-	-	hub	0	no JSON Schema: bin/hub-format.sh checks it against contracts/risk-tiers.tsv; a hub repo reads it in place, so there is no copy to compare (harbor#1278)
-hub-events	format	harbor	scaffolded	-	-	-	-	hub	0	no JSON Schema: bin/hub-format.sh checks it against contracts/hub-vocabulary.tsv; a hub repo reads it in place, so there is no copy to compare (harbor#1278)
-hub-extension	format	harbor	scaffolded	-	-	-	-	hub	0	no JSON Schema: bin/hub-format.sh checks it against contracts/hub.md; a hub repo reads it in place, so there is no copy to compare (harbor#1278)
