@@ -87,3 +87,8 @@ drift-status.sh  VERB  the consumer of the reconcile interface (harbor#1031 item
 admission-replay.sh  VERB  the operator or a lane runs it by hand around a floor refactor (harbor#1030): run on the base and on the branch, then diff
 standard-render-check.sh  VERB  the rendered-repo check (harbor#967): an agent or a yard scaffold test runs it on a scaffold or a governed repo; `--help` says the three questions
 doc-checks-generate.sh   VERB  regenerates docs/reference/checks.md from controls.tsv and docs/reference/check-rows/ (harbor#1437); doc-fresh-verify.sh runs its --check from contracts/fresh-checks.tsv
+status-suggest-scan.sh   IDLE  the pane's Scan button runs it from mods/status-pane/hooks/sources.ts, a TypeScript caller this sweep does not read (harbor#1485)
+hub-digest.sh   VERB  the hub's daily digest workflow runs it (patches/hub/hub-digest.patch.md), a patch this sweep does not read; nothing runs until the operator applies it (harbor#1278)
+hub-fetch.sh    VERB  feeds hub-digest.sh in the same workflow; an admin can run it by hand (harbor#1278)
+hub-gate.sh     VERB  the hub's gates workflow runs it (patches/hub/hub-gates.patch.md); an admin runs it before signing (harbor#1278)
+member-update.sh  VERB  IT runs it as root during the pilot; its schedule needs the operator's own yes, so nothing calls it (harbor#1278)

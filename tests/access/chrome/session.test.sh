@@ -19,7 +19,8 @@ SRV="$X/bin/access-chrome-mcp.ts"
 CTL="$T_TMP/ctl"; mkdir -p "$CTL"; SOCK="$T_TMP/d.sock"; PH="$T_TMP/priv-hosts.txt"; : > "$PH"
 DD="$T_TMP/daemons"; mkdir -p "$DD/0123"; WD="$T_TMP/harbor-browser/claude-abc123def456"
 sess() { printf '{"name":"claude-abc123def456","version":"1.64.0","timestamp":%s,"socketPath":"%s"}\n' "$1" "$SOCK" > "$DD/0123/claude-abc123def456.session"; }
-seams() { printf '{"daemonDir":"%s","settleMs":%s,"privHosts":"%s","accessDir":"%s","scopeEnv":{"HARBOR_SCOPE_PRIVATE":"%s","PORT_ROOT":"%s"},"agentEnv":{"STUB_TABS":"%s"}}\n' \
+SETF="$T_TMP/settings.json"
+seams() { printf '{"daemonDir":"%s","settingsFile":"'"$SETF"'","settleMs":%s,"privHosts":"%s","accessDir":"%s","scopeEnv":{"HARBOR_SCOPE_PRIVATE":"%s","PORT_ROOT":"%s"},"agentEnv":{"STUB_TABS":"%s"}}\n' \
   "$DD" "$1" "$PH" "$ACC" "${PRIV:-$T_TMP/nopriv}" "$T_TMP/pr" "$T_TMP/tabs-out" > "$X/bin/access-chrome-mcp.seams.json"; }
 PRIV="$T_TMP/nopriv"; mkdir -p "$PRIV"; seams 0; sess 1
 # the stub shell agent: what the verbs that are Chrome's own run (attach, tabs, ...), and the tab list the sign-in stop reads
@@ -62,7 +63,7 @@ t_eq "a list for a tool name, a list for params, no method; then a ping" "-32602
   "$(printf '%s\n' "$OUT" | jq -rc '.error.code // .result' | tr '\n' ' ' | sed 's/ $//')"
 TL="$(rpc '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | jq -r '.result.tools[].name' | sort)"
 ALLOWED="$(awk '/^_allowed\(\) \{/ { f = 1; next } f && /case "\$1" in/ { next } f && /return 0/ { sub(/\).*/, ""); gsub(/[ \t\\]/, ""); print; exit } f { gsub(/[ \t\\]/, ""); printf "%s", $0 }' "$AG" | tr '|' '\n' | sed '/^$/d')"
-WANT="$(printf '%s\n' $ALLOWED attach status state doctor detach tabs front wait-signin hosts | tr '-' '_' | sort -u)"
+WANT="$(printf '%s\n' $ALLOWED attach status state doctor detach tabs front wait-signin hosts confirm-click | tr '-' '_' | sort -u)"
 t_eq "CONTROL: the shell agent's allowlist parses" yes "$([ "$(printf '%s\n' "$ALLOWED" | grep -c .)" -ge 20 ] && echo yes || echo no)"
 t_eq "the tools are exactly the shell agent's allowed verbs and its session verbs" "$WANT" "$TL"
 t_hasnt "no tool runs code in a logged-in page" "$TL" "eval"
@@ -172,7 +173,8 @@ t_eq "the guard snapshot landed in the session workdir" yes "$([ -s "$WD/harbor-
 t_eq "a Delete button is refused" "exit 1" "$(mcp click e4)"
 t_has "...as a hand-off, so the failure ledger does not count it (FC-10)" "$(txt)" "FAIL: hand-off: destructive click refused"
 t_has "naming the label and the word" "$(txt)" "'button \"Delete campaign\"' (e4) matches 'delete'"
-t_has "with the per-call confirm as its fix" "$(txt)" "fix: HARBOR_ACCESS_BROWSER_CONFIRM=e4 harbor chrome click e4"
+t_has "with confirm_click as its fix" "$(txt)" 'fix: mcp__harbor_chrome__confirm_click with args ["e4"]'
+t_has "...and the operator's per-call confirm" "$(txt)" "HARBOR_ACCESS_BROWSER_CONFIRM=e4 harbor chrome click e4"
 t_eq "and the click never reached the daemon" 0 "$(n '^click e4')"
 t_eq "the operator's confirm in the server's environment is not honoured" "exit 1" "$(mcpe HARBOR_ACCESS_BROWSER_CONFIRM=e4 click e4)"
 t_eq "dblclick is guarded too" "exit 1" "$(mcp dblclick e4)"
@@ -200,11 +202,36 @@ t_eq "a guard snapshot the daemon could not take refuses the click" "exit 1" "$(
 clean
 # The guard line removed, the same Delete click must go through: the arms above can fail.
 mkdir -p "$T_TMP/mutant/bin" "$T_TMP/mutant/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$T_TMP/mutant/bin/"; cp "$X/contracts/browser-agent-hosts.txt" "$T_TMP/mutant/contracts/"
-sed 's/^  if (hit) handoff(`destructive .*/  if (false) handoff("");/' "$SRV" > "$T_TMP/mutant/bin/access-chrome-mcp.ts"
+sed 's/^  if (hit \&\& !confirmed) handoff(`destructive .*/  if (false) handoff("");/' "$SRV" > "$T_TMP/mutant/bin/access-chrome-mcp.ts"
 t_eq "the mutant differs from the server" yes "$(cmp -s "$SRV" "$T_TMP/mutant/bin/access-chrome-mcp.ts" || echo yes)"
 _old="$SRV"; SRV="$T_TMP/mutant/bin/access-chrome-mcp.ts"
 t_eq "and without the destructive-label line the Delete click goes through" "exit 0" "$(mcp click e4)"
 SRV="$_old"
+
+t_section "confirm_click clicks past the label check only while settings.json asks the operator (harbor#1488)"
+clean; : > "$CALLS"; rm -f "$SETF"
+t_eq "with no settings.json it is refused" "exit 1" "$(mcp confirm_click e4)"
+t_has "...naming the missing ask rule" "$(txt)" "no permissions.ask rule for mcp__harbor_chrome__confirm_click"
+jq -n '{permissions: {allow: ["mcp__harbor_chrome__confirm_click"], ask: []}}' > "$SETF"
+t_eq "an allow rule is not an ask rule" "exit 1" "$(mcp confirm_click e4)"
+printf 'not json' > "$SETF"
+t_eq "an unreadable settings.json is refused" "exit 1" "$(mcp confirm_click e4)"
+t_eq "none of those clicked" 0 "$(n '^click e4')"
+jq -n '{permissions: {ask: ["mcp__harbor_chrome__confirm_click"]}}' > "$SETF"
+t_eq "with the ask rule the Delete button is clicked" "exit 0" "$(mcp confirm_click e4)"
+t_eq "...once, by the daemon's click" 1 "$(n '^click e4')"
+t_has "...and recorded with its label" "$(cat "$WD/.confirmed.tsv" 2>/dev/null)" "delete"
+t_eq "a stale ref is still refused" "exit 1" "$(mcp confirm_click e99)"
+t_eq "a selector is still refused" "exit 1" "$(mcp confirm_click 'text=Delete')"
+t_eq "plain click on Delete is still refused with the rule present" "exit 1" "$(mcp click e4)"
+t_eq "...so the daemon clicked e4 once in all" 1 "$(n '^click e4')"
+# The ask-rule check removed, the same call must go through with no rule: the refusals above can fail.
+rm -f "$SETF"; : > "$CALLS"
+sed 's/^      if (verb === .confirm-click.) askRuleGuard();$/      \/\/ removed/' "$SRV" > "$T_TMP/mutant/bin/access-chrome-mcp.ts"
+t_eq "the ask-rule mutant differs from the server" yes "$(cmp -s "$SRV" "$T_TMP/mutant/bin/access-chrome-mcp.ts" || echo yes)"
+_old="$SRV"; SRV="$T_TMP/mutant/bin/access-chrome-mcp.ts"
+t_eq "and without the ask-rule check confirm_click clicks with no rule" "exit 0" "$(mcp confirm_click e4)"
+SRV="$_old"; clean
 
 t_section "click --force is a mouse press, and it checks what it lands on"
 : > "$CALLS"

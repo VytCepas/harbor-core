@@ -20,6 +20,7 @@ cli:doctor	cli	doctor	2026-10-17	core
 cli:event	cli	event	2026-10-17	core
 cli:find	cli	find	2026-10-17	core
 cli:fresh	cli	fresh	2026-10-17	core
+cli:hub	cli	hub	2026-11-07	core
 cli:inject	cli	inject	2026-10-17	core
 cli:install	cli	install	2026-10-17	core
 cli:lint	cli	lint	2026-10-17	core
@@ -198,6 +199,7 @@ rule:egress:gh-publish-secret	rule	egress:gh-publish-secret	2026-10-17	core
 rule:egress:gh-publish-unread	rule	egress:gh-publish-unread	2026-10-17	core
 rule:egress:gh-soft-credential-operand	rule	egress:gh-soft-credential-operand	2026-10-17	core
 rule:egress:gh-soft-credential-positional	rule	egress:gh-soft-credential-positional	2026-10-17	core
+rule:egress:hub-token-read	rule	egress:hub-token-read	2026-11-08	core
 rule:egress:key-material-egress	rule	egress:key-material-egress	2026-10-17	core
 rule:egress:key-material-read	rule	egress:key-material-read	2026-10-17	core
 rule:egress:keychain-dump	rule	egress:keychain-dump	2026-10-17	core
@@ -223,6 +225,7 @@ skill:learning-artifact	skill	learning-artifact	2026-10-17	core
 skill:review-fanout	skill	review-fanout	2026-10-17	core
 skill:skill-book	skill	skill-book	2026-10-17	core
 skill:skill-catalog	skill	skill-catalog	2026-10-26	core
+skill:status-suggest-scan	skill	status-suggest-scan	2026-11-07	core
 skill:test-strength	skill	test-strength	2026-10-17	core
 toml:browser_live_url	toml	browser_live_url	2026-10-17	core
 toml:channel	toml	channel	2026-10-17	core

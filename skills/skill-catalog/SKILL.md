@@ -86,6 +86,7 @@ Listed for the operator, who does not get the model's skill listing.
 | `doc-atlas` | core | The single owner of human-readable HTML artefacts on this box: an atlas whose subject is a DRAWING, not…<br>_NOT FOR a projection of a TOPOLOGY.md, which is `topology`'s own report-gen.sh._ |
 | `doc-deliverable-contract` | core | Before writing anything a person outside this session will read — a client thread reply, a ticket…<br>_NOT FOR the investigation itself (casefile), or the durable map (topology)._ |
 | `skill-catalog` | core | The index of every skill, `harbor` verb, agent-facing bin tool and credentialed CLI on this box, each…<br>_NOT FOR invoking a skill already in your listing._ |
+| `status-suggest-scan` | core | Runs the repeated-work scan and says in plain words what a person keeps doing by hand.<br>_NOT FOR building what it finds._ |
 
 ## Commands and tools — `harbor <verb>` and the `bin/` scripts agents call directly
 
@@ -122,6 +123,7 @@ checkout (`~/port/harbor`) or your worktree of it.
 | `harbor event` | you need the event bus: emit, wait for, or read events | `harbor event tail 20; harbor event emit <kind> <subject>` |
 | `harbor event ci` | you are waiting on a PR's CI: use this instead of polling gh pr checks | `harbor event ci <owner/repo>#<n> --timeout 1800 (run in the background)` |
 | `harbor event wait` | you wait for any other event on the bus (a PR opened, a job done) | `harbor event wait '<grep -E pattern>' --timeout N` |
+| `harbor hub` | you are on a member laptop or are a hub admin: sync the company policy, see its status, sign or check a policy, or answer a remote-support request | `harbor hub status; harbor hub sync; harbor hub support list` |
 | `harbor ui` | you want the live state as a localhost console | `harbor ui` |
 | `harbor scope` | you are setting up a fresh machine's PORT_ROOT and private layer | `harbor scope install --dry-run` |
 | `harbor access` | you need to know which identity may reach a system, or register one | `harbor access list; harbor access has <id>` |
@@ -183,6 +185,7 @@ does not carry the path sends you back to the top.
 - `doc-learning-artifact` — `~/.claude/skills/doc-learning-artifact/SKILL.md` — building or updating a study guide, exam guide, course notes page, revision page or learning artifact; when somebody wants to learn a course, a lecture series or a topic from one page.
 - `housekeeping` — `~/.claude/skills/housekeeping/SKILL.md` — the statusline shows 🧹 or SWEEP, clean up, sweep, free disk space, the box feels cluttered, tidy the fleet, obsolete worktrees or branches, stale sessions, what is safe to delete, disk is full, prune caches, retire a PR nobody will merge, merge what is waiting, garbage collect.
 - `skill-catalog` — `~/.claude/skills/skill-catalog/SKILL.md` — you are about to wait on CI or a PR, run a suite, push, merge or do any scripted chore by hand, or do reasoning work by hand: design an eval or a pass^k study, run a red-team pass, chase a root cause, reason from first principles, get independent perspectives, write or optimise a prompt, extract a paper, generate options. ALSO WHEN what skills do I have, list skills, find a tool, is there a harbor command for this, how do I wait on CI, skill-book (its old name).
+- `status-suggest-scan` — `~/.claude/skills/status-suggest-scan/SKILL.md` — a person asks what they repeat or what Harbor could take over.
 - `test-strength` — `~/.claude/skills/test-strength/SKILL.md` — a suite is written or changed, a guard is trusted, a gate reports zero, or a green result is about to be cited as evidence.
 - `harbor status` — you need the generated counts, or the obligations ledger (open PRs, approvals, overdue items) — `harbor status [--json]; harbor status obligations --json`
 - `harbor doctor` — a dependency may be missing and you need to know what breaks without it — `harbor doctor [--json]`
@@ -208,6 +211,7 @@ does not carry the path sends you back to the top.
 - `harbor event` — you need the event bus: emit, wait for, or read events — `harbor event tail 20; harbor event emit <kind> <subject>`
 - `harbor event ci` — you are waiting on a PR's CI: use this instead of polling gh pr checks — `harbor event ci <owner/repo>#<n> --timeout 1800 (run in the background)`
 - `harbor event wait` — you wait for any other event on the bus (a PR opened, a job done) — `harbor event wait '<grep -E pattern>' --timeout N`
+- `harbor hub` — you are on a member laptop or are a hub admin: sync the company policy, see its status, sign or check a policy, or answer a remote-support request — `harbor hub status; harbor hub sync; harbor hub support list`
 - `harbor ui` — you want the live state as a localhost console — `harbor ui`
 - `harbor scope` — you are setting up a fresh machine's PORT_ROOT and private layer — `harbor scope install --dry-run`
 - `harbor access` — you need to know which identity may reach a system, or register one — `harbor access list; harbor access has <id>`

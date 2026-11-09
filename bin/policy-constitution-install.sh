@@ -5,6 +5,8 @@
 #     --apply --live  write the live CLAUDE.md
 #     --from-branch   ...from a feature branch or with uncommitted policy/constitution.md edits
 #     --accept-loss   ...discarding box-only text the back-port gate found
+#     --pin <commit>  a member laptop (harbor#1278): deploy.sh --member passes the commit IT pinned. It stands in for main only
+#                     beside a managed member floor, with HEAD exactly that commit; uncommitted edits are refused as ever
 #
 # There was no mechanism at all: editing policy/constitution.md changes no running session (the harness loads the box's
 # own CLAUDE.md) and no lint or drift check compares the two. DE-30 rejected an AUTOMATED installer; this is a VERB: it
@@ -19,10 +21,14 @@ HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 log_init constitution-install
 ROOT="$(CDPATH='' cd -- "$HERE/.." && pwd)"
 SRC="$ROOT/policy/constitution.md"
-FROM_BRANCH=0
+FROM_BRANCH=0; PIN=''
 # shellcheck disable=SC2034 # IL_TAKE: read by deploy-install-lib.sh
-il_opt() { case "$1" in --from-branch) FROM_BRANCH=1; IL_TAKE=1 ;; *) IL_TAKE=0 ;; esac; }
+il_opt() { case "$1" in --from-branch) FROM_BRANCH=1; IL_TAKE=1 ;; --pin) il_value --pin "${2-}"; PIN="$2"; IL_TAKE=2 ;; *) IL_TAKE=0 ;; esac; }
 il_parse "$@"
+if [ -n "$PIN" ]; then
+  case "$PIN" in *[!0123456789abcdef]*) il_usage_error "--pin wants a 40-hex commit, got $PIN" ;; esac
+  [ "${#PIN}" -eq 40 ] || il_usage_error "--pin wants a 40-hex commit, got $PIN"
+fi
 il_target
 DEST="$IL_TARGET/CLAUDE.md"
 if [ "$IL_APPLY" -eq 1 ]; then log_head "apply to $DEST"; else log_head "plan for $DEST (dry run: nothing is written)"; fi
@@ -51,7 +57,19 @@ _branch="$(cd "$ROOT" && git rev-parse --abbrev-ref HEAD 2>/dev/null || printf u
 _dirty="$(cd "$ROOT" && git status --porcelain -- policy/constitution.md 2>/dev/null || true)"
 _base="${HARBOR_CI_BASE_BRANCH:-main}"
 log_note "source: $_branch$([ -n "$_dirty" ] && printf ' (UNCOMMITTED changes to policy/constitution.md)')"
-if [ "$_branch" != "$_base" ] && [ "$FROM_BRANCH" -eq 0 ]; then
+# A member checkout is detached at the commit IT pinned, and harbor-core holds only what main exported, so the pin is the reviewed text (R10, harbor#1278).
+# It counts only beside a member floor, whose marker only root writes, so it is never a way round DE-30 on an operator's box.
+_pinned=0
+if [ -n "$PIN" ]; then
+  _mroot="$(sh "$HERE/member-managed.sh" --where 2>/dev/null | sed -n 1p)" || _mroot=''
+  _head="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || :)"
+  if [ -z "$_mroot" ] || [ ! -f "$_mroot/bin/harbor-member-mode" ] || [ -L "$_mroot/bin/harbor-member-mode" ]; then
+    il_refuse "--pin is for a member laptop, and there is no member floor at ${_mroot:-the managed root}" "none: --pin is deploy.sh --member's, on a laptop member-install.sh set up; elsewhere deploy from $_base"
+  elif [ "$_head" != "$PIN" ]; then
+    il_refuse "HEAD is ${_head:-unknown}, not the pinned commit $PIN" "git -C '$ROOT' checkout --detach $PIN"
+  else _pinned=1; log_ok "at the pinned commit $PIN, beside a member floor"; fi
+fi
+if [ "$_branch" != "$_base" ] && [ "$FROM_BRANCH" -eq 0 ] && [ "$_pinned" -eq 0 ]; then
   il_refuse "deploying from '$_branch', not $_base (DE-30): a feature branch is text nobody has reviewed, and this file governs every future session" \
     "$(il_cmd --apply) --from-branch"
 fi

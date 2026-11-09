@@ -13,7 +13,8 @@
 // verb and option allowlists, the https host allowlist, the snapshot ref and destructive-label check on click, the --force
 // overlay check, the upload path checks, and the lost-tab, hidden-tab, gone-session and signed-out stops. The operator's
 // per-call HARBOR_ACCESS_BROWSER_CONFIRM never reaches an MCP server (the launcher scrubs the environment), so a destructive
-// click is always a hand-off here, as before. Test seams are a JSON file beside this one, never the environment: a project's
+// click is a hand-off on `click`; `confirm-click` (harbor#1488) runs it only while settings.json holds an `ask` rule for
+// mcp__harbor_chrome__confirm_click, so the approval is the operator's click in Claude Code's own dialog. Test seams are a JSON file beside this one, never the environment: a project's
 // settings `env` reaches this process, and a seam it can set is a guard it can move.
 import { spawn, spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
@@ -78,7 +79,21 @@ const VERBS: Record<string, string> = {
   mousemove: 'move the mouse (args: [x, y])', mousedown: 'mouse down', mouseup: 'mouse up',
   mousewheel: 'scroll (args: [dx, dy])', 'dialog-accept': 'accept the open dialog', 'dialog-dismiss': 'dismiss the open dialog',
   upload: 'upload files (args: absolute paths) after a click opened the file chooser',
+  'confirm-click': "click a ref the operator approves in Claude Code's permission dialog (args as click): for a click that " +
+    'changes a live system (Turn on, Apply, Publish, Delete, Pay, Generate token), which click refuses or the classifier denies',
 };
+// confirm-click is click past the destructive-label refusal, and it runs only while this ask rule is in settings.json:
+// the rule is what makes Claude Code show the operator its dialog for every call, in auto mode too (harbor#1488).
+const CONFIRM_TOOL = 'mcp__harbor_chrome__confirm_click';
+function askRuleGuard() {
+  const f = SEAMS.settingsFile ?? path.join(os.homedir(), '.claude', 'settings.json');
+  let ask: unknown = [];
+  try { ask = JSON.parse(fs.readFileSync(f, 'utf8'))?.permissions?.ask ?? []; } catch { /* absent or unreadable: no rule */ }
+  if (!Array.isArray(ask) || !ask.includes(CONFIRM_TOOL)) {
+    refuse(`confirm_click refused: settings.json has no permissions.ask rule for ${CONFIRM_TOOL}, so no dialog would ask the operator`,
+      'operator: sh bin/admission-deny.sh --apply --live (it adds the ask rule), then restart the session');
+  }
+}
 const SCHEMA = { type: 'object', additionalProperties: false, properties: {
   args: { type: 'array', items: { type: 'string' }, description: "the verb's arguments, as harbor chrome takes them" },
   lane: { type: 'string', description: "a parallel agent's own browser session: 1-12 of a-z0-9" } } };
@@ -248,7 +263,7 @@ const bare = (s: string) => s.replace(/\[(ref|box|cursor|level|active|expanded|d
 
 // Take a fresh full snapshot, read the target's label and box (a partial one would replace the CLI's ref table).
 type Target = { root: string; frame: string; box: string; label: string; file: string };
-async function guardSnapshot(c: Conn, S: string, wd: string, verb: string, ref: string): Promise<Target> {
+async function guardSnapshot(c: Conn, S: string, wd: string, verb: string, ref: string, confirmed = false): Promise<Target> {
   if (/^(e[0-9]|f[0-9].*e[0-9])/s.test(ref)) { if (/[^a-z0-9]/.test(ref)) refuse(`target refused: '${ref}' — ${verb} takes a snapshot ref`); }
   else refuse(`target refused: '${ref}' — ${verb} takes a snapshot ref (e12, f3e12); a selector carries no label for the destructive check`, 'harbor chrome snapshot');
   fs.mkdirSync(wd, { recursive: true });
@@ -276,7 +291,8 @@ async function guardSnapshot(c: Conn, S: string, wd: string, verb: string, ref: 
   if (!found) refuse(`ref ${ref} is not in the current snapshot (stale after a page change)`, 'harbor chrome snapshot');
   const lab = label.replace(/[ \t]+/g, ' ').replace(/^ *- /, '').replace(/ $/, '');
   const hit = destructive(lab);
-  if (hit) handoff(`destructive ${verb} refused: '${lab}' (${ref}) matches '${hit}' — the operator confirms one call`, `HARBOR_ACCESS_BROWSER_CONFIRM=${ref} harbor chrome ${verb} ${ref}`);
+  if (hit && !confirmed) handoff(`destructive ${verb} refused: '${lab}' (${ref}) matches '${hit}' — the operator confirms one call`, `${verb === 'click' ? `mcp__harbor_chrome__confirm_click with args ["${ref}"] (the operator approves it in the dialog); or ` : ''}HARBOR_ACCESS_BROWSER_CONFIRM=${ref} harbor chrome ${verb} ${ref}`);
+  if (confirmed) { try { fs.appendFileSync(path.join(wd, '.confirmed.tsv'), `${new Date().toISOString()}\t${ref}\t${hit || '-'}\t${lab}\n`); } catch { /* the dialog is the record */ } }
   return { root, frame: '-' + tf, box, label: lab, file: g };
 }
 
@@ -442,7 +458,7 @@ function cliArgs(verb: string, args: string[]): Record<string, unknown> {
 }
 
 type Timing = { guards: number; rpc: number; settle: number };
-async function hot(S: string, verb: string, args: string[], tm: Timing): Promise<Res> {
+async function hot(S: string, verb: string, args: string[], tm: Timing, confirmed = false): Promise<Res> {
   const t0 = performance.now();
   const wd = workdirOf(S);
   envGuards(wd);
@@ -473,7 +489,7 @@ async function hot(S: string, verb: string, args: string[], tm: Timing): Promise
   hostGuard(verb, args);
   const c = await connectOrGone(S);
   if (ref) {
-    const tgt = await guardSnapshot(c, S, wd, verb, ref);
+    const tgt = await guardSnapshot(c, S, wd, verb, ref, confirmed);
     if (force) {
       const r = await forceClick(c, S, wd, ref, btn, tgt);
       tm.guards = performance.now() - t0;
@@ -589,7 +605,8 @@ async function call(name: string, argsIn: unknown): Promise<Res> {
         if (verb === 'attach' || verb === 'detach') { conns.get(S)?.close(); conns.delete(S); }   // a new daemon, a new socket
         return r;
       }
-      const r = await hot(S, verb, args as string[], tm);
+      if (verb === 'confirm-click') askRuleGuard();
+      const r = await hot(S, verb === 'confirm-click' ? 'click' : verb, args as string[], tm, verb === 'confirm-click');
       appendTiming(workdirOf(S), verb, performance.now() - t0, tm);
       return { text: r.text.slice(0, OUT_MAX), isError: r.isError };
     } catch (e) {

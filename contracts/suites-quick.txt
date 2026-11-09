@@ -43,3 +43,5 @@ tests/access/gcloud/gcloud.test.sh
 tests/deploy/cli/cli.test.sh
 tests/admission/prod/prod.test.sh
 tests/deploy/restore/recover.test.sh
+# The one proof that the stop tool rename and lock work on GNU tools: this box has none, so it runs at either level (harbor#1485).
+tests/status/suggest/stop.test.sh

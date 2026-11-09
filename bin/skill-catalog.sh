@@ -12,6 +12,14 @@
 #                                     the MANIFEST DRIFT CHECK (harbor#1010): exit 1 when an installed skill has no row in <config dir>/.harbor-manifest or a pack's
 #                                     manifest in .harbor-packs, or a manifest row names a skill dir that is gone; 3 when there is no manifest to judge by
 #                                     the INSTALLED book, <config dir>/skills/skill-catalog/SKILL.md: every skill installed there, the box's and the packs' included, and the CLIs in ~/.local/bin; a dry run unless --apply; --check exits 1 when it is not current
+#   sh bin/skill-catalog.sh usage --json [--days N] (--live | --dir PATH)
+#                                     the USAGE FEED (harbor#1480), one JSON object on stdout: {ts, days, skills:[{name, tier, hidden, description, uses, last_used}]}.
+#                                     The skills and their tier are the installed book's own derivation; hidden is `disable-model-invocation: true`; description is
+#                                     the first sentence, at most 100 characters; --days defaults to 30 and is the knob for runtime. uses and last_used are
+#                                     counted at READ TIME from <config dir>/projects/*/*.jsonl touched in the window (a `Skill` tool_use naming the skill, or a
+#                                     user message STARTING with <command-name>/<skill>), de-duplicated by record id, and never written anywhere: no cache,
+#                                     no temp file, only names, counts and timestamps leave. Read-only: --apply is refused. Exit 1 with no JSON when the
+#                                     skills dir or the transcript store is missing (unavailable is never a zero).
 #
 # THE BOOK ALSO LISTS COMMANDS (harbor#1010): every `harbor <verb>` and every bin/ script contracts/cli.md marks `**Agent-facing.**`, each with its
 # USE WHEN and invocation from contracts/agent-tools.tsv, so one grep answers "is there a tool for this". A verb or mark with no row (or a row with
@@ -75,11 +83,28 @@ AGENTTOOLS="$ROOT/contracts/agent-tools.tsv"
 NONTOOLS="$ROOT/contracts/catalog-non-tools.tsv"
 
 # An unrecognised argument must not fall through to the write branch (`--chekc` once overwrote the file it was asked to verify).
-MODE=tracked; CHECK=0; MANIFEST=0; COVERAGE=0
-if [ "${1:-}" = install ]; then MODE=install; shift; fi
-il_opt() { case "$1" in --check) CHECK=1; IL_TAKE=1 ;; --manifest) MANIFEST=1; IL_TAKE=1 ;; *) IL_TAKE=0 ;; esac; }
+MODE=tracked; CHECK=0; MANIFEST=0; COVERAGE=0; USAGE=0; JSON=0; DAYS=30
+if [ "${1:-}" = install ]; then MODE=install; shift
+elif [ "${1:-}" = usage ]; then MODE=install; USAGE=1; shift; fi   # usage reads the installed skills, so it is install-shaped
+il_opt() {
+  if [ "$USAGE" -eq 1 ]; then
+    case "$1" in
+      --json) JSON=1; IL_TAKE=1 ;;
+      --days) il_value --days "${2-}"
+              case "$2" in *[!0-9]*|0|0[0-9]*) il_usage_error "--days needs a whole number of days, 1 or more" ;; esac
+              DAYS="$2"; IL_TAKE=2 ;;
+      *) IL_TAKE=0 ;;
+    esac
+  else
+    case "$1" in --check) CHECK=1; IL_TAKE=1 ;; --manifest) MANIFEST=1; IL_TAKE=1 ;; *) IL_TAKE=0 ;; esac
+  fi
+}
 if [ "$MODE" = install ]; then
   il_parse "$@"
+  if [ "$USAGE" -eq 1 ]; then
+    [ "$IL_APPLY" -eq 0 ] || il_usage_error "usage is read-only: --apply writes nothing here"
+    [ "$JSON" -eq 1 ] || il_usage_error "usage needs --json"
+  fi
 else
   case "${1:-}" in
     --check) CHECK=1 ;;
@@ -483,6 +508,47 @@ FOOT
 
 # The inputs, once: the skills to list, the private CLI contracts (install only) and the router rows to print.
 list_skills > "$WORK/list"
+
+# ── THE USAGE FEED (harbor#1480) ──────────────────────────────────────────────────────────────────────────
+# Transcripts are read here and nowhere else: grep keeps only the lines that can carry an invocation, jq turns each into
+# {id, skill, ts}, a second jq counts. The pipe is the whole data path: nothing derived from a transcript is written,
+# and no message text survives the first jq. An id seen twice (a resumed session copies history) counts once.
+if [ "$USAGE" -eq 1 ]; then
+  command -v jq >/dev/null 2>&1 || { log_fail "jq is required"; log_fix "$(pkg_hint jq)"; log_end || :; exit 1; }
+  PROJ="$IL_TARGET/projects"
+  [ -d "$PROJ" ] || { log_fail "no transcript store at $PROJ, so no usage can be counted and this is not zero"; log_nofix "the header of bin/skill-catalog.sh"; log_end || :; exit 1; }
+  UGREP=/usr/bin/grep; [ -x "$UGREP" ] || UGREP=grep   # grep is ugrep on the operator's box and skips what git ignores
+  while IFS="$TAB" read -r _n _f; do
+    _h=false; if is_hidden "$_f"; then _h=true; fi
+    _d="$(field "$_f" description | tr '\t' ' ')"
+    case "$_d" in '>'*|'|'*) _d='' ;; esac
+    printf '%s\t%s\t%s\t%s\n' "$_n" "$(tier_of "$_n")" "$_h" "$_d"
+  done < "$WORK/list" | jq -R -s '
+    split("\n") | map(select(. != "") | split("\t") | {name: .[0], tier: .[1], hidden: (.[2] == "true"), description: (.[3:] | join(" "))})
+    | map(.description |= ((capture("^(?<s>.*?[.!?])(\\s|$)") // {s: .}).s | if length > 100 then .[0:99] + "…" else . end))' > "$WORK/skills.json"
+  # Four workers, each its own grep | jq: one pipe write per event line (--unbuffered, far under PIPE_BUF) so two workers'
+  # lines never interleave. The events are all that crosses; a transcript line never leaves its worker.
+  USAGE_JQ='
+        def typed: if type == "string" and test("^\\s*<command-(name|message)>") then (capture("<command-name>/?(?<n>[A-Za-z0-9][A-Za-z0-9._:-]*)</command-name>")? // empty | .n) else empty end;
+        fromjson? | select(type == "object") | (.timestamp // null) as $ts | (.uuid // null) as $uid
+        | ( if .type == "assistant" then (.message.content? | arrays | .[] | select(type == "object" and .type == "tool_use" and .name == "Skill")
+                                         | {id: .id, skill: (.input.skill // .input.name | select(type == "string") | ltrimstr("/"))})
+            elif .type == "user" then (.message.content | typed) as $n | {id: $uid, skill: $n}
+            elif .type == "system" and .subtype == "local_command" then (.content | typed) as $n | {id: $uid, skill: $n}
+            else empty end )
+        | . + {ts: $ts} | select(.ts == null or .ts >= $cut)'
+  USAGE_CUT="$(jq -n -r --argjson d "$DAYS" '(now - $d * 86400) | todate')"
+  export UGREP USAGE_JQ USAGE_CUT
+  find "$PROJ" -mindepth 2 -maxdepth 2 -name '*.jsonl' -type f -mtime "-$DAYS" -print0 \
+    | xargs -0 -n 20 -P 4 sh -c '"$UGREP" -h -F -e "\"name\":\"Skill\"" -e "<command-name>" "$@" | jq --unbuffered -R -c --arg cut "$USAGE_CUT" "$USAGE_JQ"' sh 2>/dev/null \
+    | jq -s -c --argjson days "$DAYS" --slurpfile sk "$WORK/skills.json" '
+        (map(. + {key: (.id // (.skill + "|" + (.ts // "")))}) | group_by(.key) | map({skill: .[0].skill, ts: (map(.ts | select(. != null)) | .[0])})
+         | group_by(.skill) | map({key: .[0].skill, value: {uses: length, last: (map(.ts | select(. != null)) | max)}}) | from_entries) as $u
+        | {ts: (now | todate), days: $days,
+           skills: ($sk[0] | map(. + {uses: ($u[.name].uses // 0), last_used: (if $u[.name].last then ($u[.name].last[0:19] + "Z") else null end)}))}'
+  exit 0
+fi
+
 : > "$WORK/clis"
 if [ "$MODE" = install ] && [ -n "$PRIV" ] && [ -f "$PRIV/cli-contracts.tsv" ]; then
   # tool TAB repo TAB file TAB note, `-` for none; a row that cannot be read refuses the book, as a router row does.

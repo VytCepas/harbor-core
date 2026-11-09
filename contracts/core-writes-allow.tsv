@@ -11,3 +11,4 @@ bin/status-plan-generate.sh	docs/generated/plan.md	writes only when its dev-laye
 bin/doc-shape.sh	*	--write only rewrites a docs/**/*.md that git already tracks, adding front matter in place; it never creates a file (harbor#1434)
 vendor/naming/doc-shape.sh	*	vendored copy of bin/doc-shape.sh; same in-place rewrite of tracked docs, never a new file (harbor#1434)
 bin/standard-inventory.sh	*	the page subcommand writes the two generated pages it owns (docs/reference/env.md, contracts/cli.md) only under --write, the fix column of contracts/fresh-checks.tsv (harbor#1431, harbor#1432)
+relay/install.sh	*	writes only under --root, which it refuses unless absolute (the tests pass a temp dir), or with no --root under / on the relay VM as root: etc/ and usr/local/bin/ are never paths in the checkout (harbor#1278)
