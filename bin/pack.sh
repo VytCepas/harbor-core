@@ -4,6 +4,9 @@
 #   sh pack.sh install [<repo-id>...] (--live | --dir PATH)        DRY RUN (the default): the plan, nothing written
 #   sh pack.sh install [<repo-id>...] --apply (--live | --dir PATH)
 #   sh pack.sh remove <repo-id>... --apply (--live | --dir PATH)   delete what install wrote, nothing else
+#   sh pack.sh install [<pack-id>...] --hub --apply (--live | --dir PATH)   a HUB pack (harbor#1278): the id and commit come from the
+#       verified signed policy, the files from the hub clone at that commit, installed as hub-<pack-id>. No gitleaks and no leak gate:
+#       the hub's gate scans a pack before it merges (R21). A hub pack's hooks/ is never installed here; bin/hub.sh delivers them.
 # No <repo-id> on install means every repo in harbor.toml `packs`. A refused pack is skipped by name, the rest
 # still install, and the run exits 1. contracts/pack.md is the format, the refusals and the manifest.
 # A pack's check rows are a checks.md fragment (plus an optional controls.tsv), the private layer's own shape; install puts
@@ -16,16 +19,18 @@ SRC="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
 . "$SRC/library-log.sh"
 . "$SRC/deploy-install-lib.sh"
+. "$SRC/library-pack-version.sh"
 log_init pack
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 # shellcheck disable=SC2034 # IL_LOG: read by deploy-install-lib.sh
 IL_LOG=0   # a pack run keeps no backups dir: install -> remove must leave the target byte-identical
 
-VERB=''; IDS=''
-il_opt() { # positional words only: the verb, then repo ids
+VERB=''; IDS=''; HUB=0; GREF=HEAD; PKREL=harbor-pack
+il_opt() { # positional words only: the verb, then repo ids; --hub switches to hub packs
   # shellcheck disable=SC2034 # IL_TAKE: read by deploy-install-lib.sh
   case "$1" in
+    --hub) HUB=1; IL_TAKE=1 ;;
     -*) IL_TAKE=0 ;;
     *) if [ -z "$VERB" ]; then VERB="$1"; else IDS="${IDS:+$IDS }$1"; fi; IL_TAKE=-1 ;;
   esac
@@ -64,19 +69,8 @@ read_toml() {
     END { for (x in k) if (!(x in seen)) { printf "pack.toml: missing key %s\n", x > "/dev/stderr"; exit 2 } }'
 }
 
-# <constraint> <core>: exit 0 satisfied, 1 not, 2 malformed. Constraint: [op]N[.M], comma = AND.
-ver_ok() {
-  awk -v c="$1" -v core="$2" '
-    function num(v,   a) { split(v, a, "."); return a[1] * 1000000 + (a[2] == "" ? 0 : a[2]) }
-    BEGIN { n = split(c, p, /[ ]*,[ ]*/); k = num(core)
-      for (i = 1; i <= n; i++) { s = p[i]; gsub(/^[ ]+|[ ]+$/, "", s)
-        if (s !~ /^(>=|<=|>|<|=)?[0-9]+(\.[0-9]+)?$/) exit 2
-        op = s; sub(/[0-9.]+$/, "", op); v = num(substr(s, length(op) + 1))
-        if (op == ">=") ok = (k >= v); else if (op == "<=") ok = (k <= v); else if (op == ">") ok = (k > v)
-        else if (op == "<") ok = (k < v); else ok = (k == v)
-        if (!ok) exit 1 }
-      exit 0 }'
-}
+# <constraint> <core>: exit 0 satisfied, 1 not, 2 malformed (library-pack-version.sh, shared with bin/hub.sh).
+ver_ok() { pack_ver_ok "$@"; }
 
 core_version() { # the dispatcher's contract version, as N.0
   _v="$(sed -n 's/^CONTRACT_VERSION=\([0-9][0-9.]*\)$/\1/p' "$ROOT/bin/harbor" | head -n 1)"
@@ -86,24 +80,56 @@ core_version() { # the dispatcher's contract version, as N.0
 # A manifest row F/D <rel> per file or directory install made; header lines are `# key value`.
 mf_rows() { awk -F'\t' -v t="$2" '$1 == t { print $2 }' "$MFD/$1.tsv" 2>/dev/null || :; }
 
+# A hub pack (harbor#1278): which pack, at which commit, is the verified signed policy's say, never an argument. Sets ID DIR COMMIT
+# GREF PKREL PKTOML. The extension manifest must be valid, name this pack, fit core, and match the bytes at the pinned commit.
+hub_source() { # <pack-id>
+  ID="hub-$1"; _hid="$1"
+  [ -f "$SRC/hub-sync.sh" ] || refuse "hub-sync.sh is not beside pack.sh" || return 1
+  _pol="$(sh "$SRC/hub-sync.sh" path)"
+  [ -n "$_pol" ] || refuse "no verified hub policy" "harbor hub sync" || return 1
+  COMMIT="$(jq -r --arg i "$_hid" '[.packs[]? | select(.id == $i) | .commit][0] // empty' "$_pol")"
+  case "$COMMIT" in ''|*[!0123456789abcdef]*) refuse "the signed policy does not pin hub pack $_hid" || return 1 ;; esac
+  [ "${#COMMIT}" -eq 40 ] || refuse "the pinned commit of $_hid is not 40 hex" || return 1
+  DIR="$(sh "$SRC/scope-roots.sh" --hub 2>/dev/null)" && [ -n "$DIR" ] || refuse "no hub clone on this box" "harbor hub sync" || return 1
+  git -C "$DIR" cat-file -e "$COMMIT^{commit}" 2>/dev/null || refuse "the pinned commit $COMMIT is not in the hub clone" "harbor hub sync" || return 1
+  GREF="$COMMIT"; PKREL="packs/$_hid/harbor-pack"
+  git -C "$DIR" show "$GREF:$PKREL/pack.toml" > "$WORK/pack.toml" 2>/dev/null || refuse "no $PKREL/pack.toml at the pinned commit" || return 1
+  PKTOML="$WORK/pack.toml"
+  git -C "$DIR" show "$GREF:packs/$_hid/extension.json" > "$WORK/ext.json" 2>/dev/null || refuse "no extension.json at the pinned commit" || return 1
+  sh "$SRC/hub-format.sh" manifest "$WORK/ext.json" > /dev/null 2> "$WORK/ext.err" || refuse "extension.json: $(head -n 1 "$WORK/ext.err")" || return 1
+  [ "$(jq -r .id "$WORK/ext.json")" = "$_hid" ] || refuse "extension.json names another pack" || return 1
+  _erc=0; pack_ver_ok "$(jq -r .harbor_version "$WORK/ext.json")" "$(core_version)" || _erc=$?
+  [ "$_erc" -eq 0 ] || refuse "the extension needs harbor $(jq -r .harbor_version "$WORK/ext.json"), core is $(core_version)" || return 1
+  jq -r '.files[] | [.path, .sha256] | @tsv' "$WORK/ext.json" > "$WORK/ext.files"
+  while IFS="$TAB" read -r _ep _eh; do
+    [ "$(git -C "$DIR" show "$GREF:$PKREL/$_ep" 2>/dev/null | il_sha)" = "$_eh" ] || refuse "extension.json lists $_ep and its bytes at the pinned commit differ" || return 1
+  done < "$WORK/ext.files"
+  return 0
+}
+
 plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src TAB rel) and $WORK/meta
   ID="$1"; : > "$WORK/plan"
-  sh "$SRC/scope-roots.sh" --conf packs 2>/dev/null | awk -v i="$ID" '$0 == i { f = 1 } END { exit !f }' ||
-    refuse "not listed in harbor.toml packs" "add \"$ID\" to packs in harbor.toml (contracts/private-layer.md)" || return 1
-  # harbor-private is the private layer's own pack (harbor#1273): its checkout is what scope-roots.sh --private resolves, never a
-  # repos.tsv row, so HARBOR_SCOPE_PRIVATE moves the layer and its pack together.
-  if [ "$ID" = harbor-private ]; then
-    DIR="$(sh "$SRC/scope-roots.sh" --private 2>/dev/null)" && [ -d "$DIR" ] || refuse "no private layer at ${DIR:-<unresolved>}" "sh bin/scope-roots.sh --private" || return 1
+  if [ "$HUB" -eq 1 ]; then
+    hub_source "$1" || return 1
   else
-    DIR="$(sh "$SRC/scope-roots.sh" --repo "$ID" 2>/dev/null)" && [ -n "$DIR" ] || refuse "no checkout registered for the repo" "add it to repos.tsv" || return 1
+    sh "$SRC/scope-roots.sh" --conf packs 2>/dev/null | awk -v i="$ID" '$0 == i { f = 1 } END { exit !f }' ||
+      refuse "not listed in harbor.toml packs" "add \"$ID\" to packs in harbor.toml (contracts/private-layer.md)" || return 1
+    # harbor-private is the private layer's own pack (harbor#1273): its checkout is what scope-roots.sh --private resolves, never a
+    # repos.tsv row, so HARBOR_SCOPE_PRIVATE moves the layer and its pack together.
+    if [ "$ID" = harbor-private ]; then
+      DIR="$(sh "$SRC/scope-roots.sh" --private 2>/dev/null)" && [ -d "$DIR" ] || refuse "no private layer at ${DIR:-<unresolved>}" "sh bin/scope-roots.sh --private" || return 1
+    else
+      DIR="$(sh "$SRC/scope-roots.sh" --repo "$ID" 2>/dev/null)" && [ -n "$DIR" ] || refuse "no checkout registered for the repo" "add it to repos.tsv" || return 1
+    fi
+    PK="$DIR/harbor-pack"
+    [ -f "$PK/pack.toml" ] || refuse "no harbor-pack/pack.toml in $DIR" || return 1
+    COMMIT="$(git -C "$DIR" rev-parse --verify -q HEAD 2>/dev/null)" ||
+      refuse "unpinned: $DIR is not a git checkout with a commit" "git init and commit, or clone the repo" || return 1
+    [ -z "$(git -C "$DIR" status --porcelain --untracked-files=all -- harbor-pack 2>/dev/null)" ] ||
+      refuse "dirty: harbor-pack/ has uncommitted or untracked changes" "commit or discard them in $DIR" || return 1
+    PKTOML="$PK/pack.toml"
   fi
-  PK="$DIR/harbor-pack"
-  [ -f "$PK/pack.toml" ] || refuse "no harbor-pack/pack.toml in $DIR" || return 1
-  COMMIT="$(git -C "$DIR" rev-parse --verify -q HEAD 2>/dev/null)" ||
-    refuse "unpinned: $DIR is not a git checkout with a commit" "git init and commit, or clone the repo" || return 1
-  [ -z "$(git -C "$DIR" status --porcelain --untracked-files=all -- harbor-pack 2>/dev/null)" ] ||
-    refuse "dirty: harbor-pack/ has uncommitted or untracked changes" "commit or discard them in $DIR" || return 1
-  read_toml "$PK/pack.toml" > "$WORK/meta" 2> "$WORK/meta.err" ||
+  read_toml "$PKTOML" > "$WORK/meta" 2> "$WORK/meta.err" ||
     refuse "pack.toml: $(head -n 1 "$WORK/meta.err")" || return 1
   NAME="$(awk -F'\t' '$1 == "name" { print $2 }' "$WORK/meta")"
   VER="$(awk -F'\t' '$1 == "version" { print $2 }' "$WORK/meta")"
@@ -118,16 +144,23 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
   esac
 
   # Only what git tracks is installed, so an ignored file is never carried in.
-  git -C "$DIR" ls-files -s -- harbor-pack | awk -F'\t' '{ split($1, a, " "); print a[1] "\t" $2 }' > "$WORK/files"
+  if [ "$HUB" -eq 1 ]; then git -C "$DIR" ls-tree -r "$GREF" -- "$PKREL" | awk -F'\t' '{ split($1, a, " "); print a[1] "\t" $2 }' > "$WORK/files"
+  else git -C "$DIR" ls-files -s -- harbor-pack | awk -F'\t' '{ split($1, a, " "); print a[1] "\t" $2 }' > "$WORK/files"; fi
   while IFS="$TAB" read -r _m _p; do
     case "$_p" in *[!A-Za-z0-9._/-]*) refuse "path '$_p' has a character outside [A-Za-z0-9._/-]" || return 1 ;; esac
-    _r="${_p#harbor-pack/}"
+    _r="${_p#"$PKREL"/}"
+    # A hub pack's hooks are not installed here: hub.sh delivers the ones the signed policy lists, hash-checked (R21, #1285).
+    if [ "$HUB" -eq 1 ]; then case "$_r" in hooks/*) _hooked=1; continue ;; esac; fi
     [ "$_m" != 120000 ] || refuse "$_r is a symlink" || return 1
     _rl="$(printf '%s' "$_r" | tr 'A-Z' 'a-z')"   # APFS folds case: Guard-x resolves as guard-x (harbor#1149)
     case "/$_rl" in
       */hooks/*) refuse "carries a hooks/ directory ($_r): a pack may not install a hook" || return 1 ;;
       */guard-*|*/admission-*|*/library-admission*) refuse "carries a guard file ($_r): a pack may not install a guard (guard-*, admission-*, library-admission*)" || return 1 ;;
     esac
+    # A managed root is flat and carries no register to compose into, so these are refused for what they are, not on a core path it lacks (harbor#1278).
+    if [ -e "$SRC/harbor-member-mode" ]; then
+      case "$_r" in checks.md|controls.tsv|terms.tsv) refuse "$_r composes into a core register, which a member laptop doesn't carry" "the admin takes $_r out of the hub pack (contracts/hub.md, extension.json)" || return 1 ;; esac
+    fi
     case "$_r" in
       pack.toml|tests/*|README*) ;;
       checks.tsv) refuse "checks.tsv is retired: check rows are a checks.md fragment (contracts/pack.md)" "convert checks.tsv to checks.md, the register's own row shape, and commit it" || return 1 ;;
@@ -165,7 +198,7 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       context-rules/user/*/*) refuse "${_r%/*}/ is flat; $_r is nested" || return 1 ;;
       context-rules/user/*.md)
         # run: names a script beside the pack whose stdout may be a deny verdict (contracts/injection-rule.md).
-        git -C "$DIR" show "HEAD:$_p" | tr -d '\r' | awk '/^[ \t]*run[ \t]*:/ { f = 1 } END { exit f }' ||
+        git -C "$DIR" show "$GREF:$_p" | tr -d '\r' | awk '/^[ \t]*run[ \t]*:/ { f = 1 } END { exit f }' ||
           refuse "inject pack $_r has run: (it could deny); packs inject notes only" || return 1
         printf '%s\t%s\n' "$_p" "context-rules/user/pack-$NAME--${_r##*/}" >> "$WORK/plan" ;;
       context-rules/user/*) refuse "$_r is not a .md pack" || return 1 ;;
@@ -174,20 +207,23 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       *) log_warn "$ID: $_r is not a pack entry and is not installed" ;;
     esac
   done < "$WORK/files"
-  [ -s "$WORK/plan" ] || refuse "the pack installs nothing" || return 1
+  # A hub pack of hooks alone is legal (extension.json `provides`): hub.sh delivers them, and the manifest here records the pin (harbor#1278).
+  [ -s "$WORK/plan" ] || [ "${_hooked:-0}" = 1 ] || refuse "the pack installs nothing" || return 1
 
   # Stage the install set from HEAD, then gate and install only that copy: what is scanned is what lands (harbor#1149).
   rm -rf "$WORK/stage"; mkdir -p "$WORK/stage"
   while IFS="$TAB" read -r _s _r; do
     mkdir -p "$WORK/stage/${_r%/*}"
-    git -C "$DIR" show "HEAD:$_s" > "$WORK/stage/$_r"
-    if [ "$(git -C "$DIR" ls-files -s -- "$_s" | awk '{ print $1 }')" = 100755 ]; then chmod 755 "$WORK/stage/$_r"; else chmod 644 "$WORK/stage/$_r"; fi
+    git -C "$DIR" show "$GREF:$_s" > "$WORK/stage/$_r"
+    if [ "$(awk -F'\t' -v p="$_s" '$2 == p { print $1; exit }' "$WORK/files")" = 100755 ]; then chmod 755 "$WORK/stage/$_r"; else chmod 644 "$WORK/stage/$_r"; fi
     # Front matter is an ALLOWLIST, not a denylist (harbor#1149): canonical opener, top-level keys in contracts/pack-frontmatter-keys.txt (skill-pack-frontmatter-keys.txt for skill-packs/), never hooks.
     case "$_r" in checks.d/*) ;; *.[Mm][Dd])
       [ "$(head -c 3 "$WORK/stage/$_r" | od -An -tx1 | tr -d ' \n')" != efbbbf ] ||
         refuse "$_r starts with a UTF-8 BOM: front matter must be canonical" || return 1
       _fk=pack-frontmatter-keys.txt; case "$_r" in skill-packs/*|skills/*/packs/*) _fk=skill-pack-frontmatter-keys.txt ;; esac
-      _fm="$(tr -d '\r' < "$WORK/stage/$_r" | awk -v al="$ROOT/contracts/$_fk" -v fkn="$_fk" '
+      # Beside this script on a managed root, which is flat; a checkout keeps it under contracts/ (harbor#1278).
+      _fkp="$SRC/$_fk"; [ -f "$_fkp" ] || _fkp="$ROOT/contracts/$_fk"
+      _fm="$(tr -d '\r' < "$WORK/stage/$_r" | awk -v al="$_fkp" -v fkn="$_fk" '
         BEGIN { while ((getline l < al) > 0) if (l !~ /^#/ && l != "") ok[l] = 1 }
         NR == 1 { if (substr($0, 1, 3) != "---") exit 0
                   if ($0 != "---") { print "its opening line is not exactly ---"; bad = 1; exit 0 }
@@ -203,6 +239,8 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
     esac
   done < "$WORK/plan"
 
+  # A hub pack skips both gates below: the hub's own gate scans it before it merges, and a member has no gitleaks (R21).
+  if [ "$HUB" -eq 0 ]; then
   # Client-free (D-85): the export-mode leak gate over exactly the staged files (no tests/fixtures skip, no layers.tsv, binary as text).
   git -C "$WORK/stage" init -q . 2>/dev/null; git -C "$WORK/stage" add -f -A 2>/dev/null
   _lrc=0
@@ -225,6 +263,7 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
     if [ -n "$_gh" ]; then refuse "carries a secret (gitleaks: $_gh)" "take it out of the pack's tracked file; the hit is file:rule:line"
     else refuse "gitleaks could not scan the pack: $(tr -d '\033' < "$WORK/gitleaks.out" | sed 's/\[[0-9;]*m//g' | tail -n 1)" "gitleaks dir --redact . in the pack shows its error"; fi
     return 1
+  fi
   fi
 
   # Shims (harbor#1149): every row links a command to a bin/ file THIS pack installs, under a name core's own table does not
@@ -406,6 +445,7 @@ install_one() { # <id> - returns 1 when the pack was skipped
   mkdir -p "$MFD"
   {
     printf '# repo\t%s\n# name\t%s\n# version\t%s\n# commit\t%s\n' "$ID" "$NAME" "$VER" "$COMMIT"
+    if [ "$HUB" -eq 1 ]; then printf '# source\thub\n'; fi
     cut -f2 "$WORK/plan" | sort | awk '{ print "F\t" $0 }'
     awk '{ print "D\t" $0 }' "$WORK/dirs.u"
   } > "$MFD/$ID.tsv.tmp.$$" && mv -f "$MFD/$ID.tsv.tmp.$$" "$MFD/$ID.tsv"
@@ -449,7 +489,11 @@ remove_one() { # <id>
 RC=0
 case "$VERB" in
   install)
-    if [ -z "$IDS" ]; then
+    if [ -z "$IDS" ] && [ "$HUB" -eq 1 ]; then
+      _pol="$(sh "$SRC/hub-sync.sh" path 2>/dev/null)" || _pol=''
+      [ -z "$_pol" ] || IDS="$(jq -r '.packs[]?.id' "$_pol" | tr '\n' ' ')"
+      [ -n "$IDS" ] || { log_note 'the signed hub policy lists no packs: nothing to install'; log_end || :; exit 0; }
+    elif [ -z "$IDS" ]; then
       IDS="$(sh "$SRC/scope-roots.sh" --conf packs 2>/dev/null | tr '\n' ' ')" || IDS=''
       [ -n "$IDS" ] || { log_note 'harbor.toml lists no packs: nothing to install'; log_end || :; exit 0; }
     fi
