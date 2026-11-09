@@ -1,2 +1,0 @@
-{"schema":1,"id":"fixture-pack","version":"1.0.0","harbor_version":">=1","provides":["skill"],
- "files":[{"path":"skills/a/SKILL.md","sha256":"0000000000000000000000000000000000000000000000000000000000000000"}]}

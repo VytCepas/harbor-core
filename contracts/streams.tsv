@@ -35,12 +35,3 @@ collector.store	/Library/Application Support/Harbor/collector/data/<inode>.jsonl
 collector.events	/Library/Application Support/Harbor/collector/events.jsonl	bin/audit-collector.sh	EVENTS=	{ts,kind,path,detail}: truncated, edited, unreadable	none	derived	open	spill	5
 cc.events	/Library/Application Support/Harbor/collector/cc/YYYY-MM-DD.jsonl	bin/audit-otlp-receiver.py	cc-summary.json	{ts,event,attrs}: Claude Code events, allowlisted attributes only	none	derived	open	spill	5
 reconcile.state	cache/reconcile/<id>.tsv	bin/library-log.sh	cache/reconcile	key epoch (first seen)	overwrite	derived	warn	spill	4
-hub.sync	~/.local/state/harbor/hub/last-sync	bin/hub-sync.sh	last-sync	epoch<TAB>result (updated, unchanged, refused, unreachable)	overwrite	derived	open	spill	4
-hub.outbox	~/.local/state/harbor/hub/outbox.jsonl	bin/hub-events.sh	outbox.jsonl	{v,kind,ts,member,...}: closed vocabulary, contracts/hub.md Events; the only stream that leaves a member laptop	truncate-prune	derived	open	spill	5
-hub.send	~/.local/state/harbor/hub/last-send	bin/hub-events.sh	last-send	epoch of the last comment; beside it dropped, token-days-left, heartbeat-issue	overwrite	derived	open	spill	5
-hub.requests	~/.local/state/harbor/hub/requests/<id>.json	bin/hub-approval.sh	$HS/requests	{id,issue,rule,label,tier,target}: a hint, the board is checked every time	truncate-prune	derived	open	spill	5
-hub.used	~/.local/state/harbor/hub/used/<id>	bin/hub-approval.sh	$HS/used	one comment id per line: an advisory mark, expiry bounds replay	truncate-prune	derived	open	spill	5
-hub.board	~/.local/state/harbor/hub/board-state	bin/hub-board.sh	board-state	one word: ok, unreachable, token-expired, rate-limited	overwrite	derived	open	spill	5
-hub.open	~/.local/state/harbor/hub/open/<id>	bin/member-dispatch.sh	$STATE/open/$CALL_ID	session, asked, rule, tier, target, request id: one open call, closed by bin/member-post.sh	overwrite	derived	open	spill	5
-hub.opened	~/.local/state/harbor/hub/opened/<id>	bin/member-dispatch.sh	$STATE/opened/$RID	empty mark: this request's opened event was recorded	none	digest-only	open	spill	5
-hub.support	~/.local/state/harbor/hub/sup.<pid>/	bin/member-support.sh	$HS/sup.$$	one session's authorized_keys, known_hosts, session key and upterm state: gone when it ends	none	secret-adjacent	closed	spill	5
