@@ -33,8 +33,6 @@ case "$TOOL" in
   Task|Agent) PAYLOAD="$(floor_field '.tool_input.prompt')" ;;
   # A search returns file CONTENTS, so what it is aimed at is the payload (harbor#1313 L6).
   Grep) PAYLOAD="$(floor_field '[.tool_input.path, .tool_input.glob] | map(select(.)) | join(" ")')" ;;
-  # Member boxes only (harbor#1278): no standalone hook row names Read, and a standalone copy leaves here as every other tool does.
-  Read) floor_member_mode || exit 0; PAYLOAD="$(floor_field '.tool_input.file_path')" ;;
   *)     exit 0 ;;
 esac
 # harbor#309: the early allows still write their record, or a reroute join loses the call.
@@ -149,128 +147,6 @@ CRED_SOFT="(\\.npmrc|\\.pypirc|\\.env(\\.(local|production|prod|staging))?${CRED
 # Fixed, not read from the environment: raising it re-opens the quadratic scan.
 CRED_TOKEN_MAX=4096
 
-# THE READ ROWS ON A MEMBER BOX (harbor#1278): allowManagedPermissionRulesOnly drops the Read(...) deny rows standalone relies on, so their patterns ride in
-# member-guards.tsv and a hit takes the tier path, for Read and Grep alike. Gitignore anchors: `~/` home, `//**/` any depth, `//` root; a hit on a folder covers what
-# is under it. Folded, as a Mac's disk is. Lexical and physical paths are both asked, against both spellings of the home. A chain of links too long to follow is a hit.
-_rd_lc() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
-rd_load() {
-  [ -z "${_rd_rows:-}" ] || return 0
-  _rd_rows="$(awk -F'\t' '$1 == "read-deny" { print tolower($2) }' "$DIR/member-guards.tsv" | sed 's/\*\*/*/g')"
-  [ -n "$_rd_rows" ] || exit 1   # nothing to judge with: a guard crash, which the wrapper turns into a deny
-  _rd_raw="$(awk -F'\t' '$1 == "read-deny" { print $2 }' "$DIR/member-guards.tsv")"
-  _rd_home="$(_rd_lc "$HOME")"
-  _rd_phome="$(_rd_lc "$(CDPATH= cd -P -- "$HOME" 2>/dev/null && pwd -P)")"
-}
-_rd_hit() { # <lowercased absolute path>. A folder row (`x/**`) covers the folder too: a search of it reads what is under it.
-  while IFS= read -r _rh_r; do
-    case "$_rh_r" in
-      '~/'*)
-        _rh_x="${_rh_r#\~/}"; _rh_y="${_rh_x%/\*}"
-        for _rh_h in "$_rd_home" "$_rd_phome"; do
-          [ -n "$_rh_h" ] || continue
-          case "$1" in "$_rh_h"/*) ;; *) continue ;; esac
-          _rh_q="${1#"$_rh_h"/}"
-          # shellcheck disable=SC2254 # the row is a pattern, from a table only an admin can write
-          case "$_rh_q" in $_rh_x|$_rh_x/*|$_rh_y) return 0 ;; esac
-        done ;;
-      '//*/'*) _rh_x="${_rh_r#//}"; _rh_y="${_rh_x%/\*}"
-        # shellcheck disable=SC2254 # as above
-        case "$1" in $_rh_x|$_rh_x/*|$_rh_y) return 0 ;; esac ;;
-      '//'*) _rh_x="${_rh_r#/}"; _rh_y="${_rh_x%/\*}"
-        # shellcheck disable=SC2254 # as above
-        case "$1" in $_rh_x|$_rh_x/*|$_rh_y) return 0 ;; esac ;;
-      *) exit 1 ;;   # an anchor this reader doesn't know: as a crash, never a pass
-    esac
-  done <<ROWS
-$_rd_rows
-ROWS
-  return 1
-}
-# rd_abs <path>: absolute and home-expanded, relative to the call's cwd.
-rd_abs() {
-  _ra="$(floor_expand_home "$1")"
-  case "$_ra" in /*) printf '%s' "$_ra" ;; *) _ra_c="$(floor_field '.cwd')"; printf '%s/%s' "${_ra_c:-$PWD}" "$_ra" ;; esac
-}
-# rd_same <absolute file>: 0 iff it is another name of a file that exists under a home- or root-anchored row, judged by device and inode (harbor#1278, N4).
-# A second name alone is ordinary (a package store, git), so only the protected files are asked; an any-depth row names no place to look.
-rd_same() {
-  [ -f "$1" ] && [ -n "$(find "$1" -prune -links +1 2>/dev/null)" ] || return 1
-  while IFS= read -r _rs_r; do
-    case "$_rs_r" in
-      '//**/'*|'') continue ;;
-      '~/'*) _rs_b="$HOME/${_rs_r#\~/}" ;;
-      '//'*) _rs_b="${_rs_r#/}" ;;
-      *) exit 1 ;;
-    esac
-    _rs_b="${_rs_b%%\**}"; _rs_b="${_rs_b%/}"
-    [ -e "$_rs_b" ] || continue
-    # -samefile matches device and inode, and -xdev keeps the walk on the row's own device.
-    [ -z "$(find "$_rs_b" -xdev -samefile "$1" -print 2>/dev/null | head -n 1)" ] || return 0
-  done <<ROWS
-$_rd_raw
-ROWS
-  return 1
-}
-# rd_target <absolute path>: 0 iff a row covers it, physically, as written, or as another name of a protected file.
-rd_target() {
-  _rt_real="$(floor_norm_path "$1")"
-  [ -L "$_rt_real" ] || _rd_hit "$(_rd_lc "$_rt_real")" || _rd_hit "$(_rd_lc "$(floor_collapse_dots "$1")")" || rd_same "$_rt_real"
-}
-# rd_reaches <absolute folder>: 0 iff a search from it walks into a home- or root-anchored row, whose fixed head then lies under it.
-rd_reaches() {
-  _rr_l="$(_rd_lc "$(floor_collapse_dots "$1")")"; _rr_p="$(_rd_lc "$(floor_norm_path "$1")")"
-  while IFS= read -r _rr_r; do
-    case "$_rr_r" in
-      '//*/'*) continue ;;
-      '~/'*) set -- "$_rd_home/${_rr_r#\~/}" "$_rd_phome/${_rr_r#\~/}" ;;
-      '//'*) set -- "${_rr_r#/}" ;;
-      *) exit 1 ;;
-    esac
-    for _rr_h in "$@"; do
-      _rr_h="${_rr_h%%\**}"; _rr_h="${_rr_h%/}"
-      for _rr_d in "$_rr_l" "$_rr_p"; do
-        case "$_rr_h/" in "${_rr_d%/}"/*) return 0 ;; esac
-      done
-    done
-  done <<ROWS
-$_rd_rows
-ROWS
-  return 1
-}
-# rd_glob_selects <glob alternative>: 0 iff it picks out an any-depth row's files by name (`.env*`, `*.p?m`, `secrets/**`) and not ordinary ones as well.
-rd_glob_selects() {
-  while IFS= read -r _rg_r; do
-    case "$_rg_r" in '//*/'*) _rg_x="${_rg_r#//\*/}" ;; *) continue ;; esac
-    case "$_rg_x" in
-      */\*) _rg_d="${_rg_x%/\*}"; _rg_g="$1"   # a folder row: any segment of the glob that names it, and not `src` too
-        while [ -n "$_rg_g" ]; do
-          _rg_s="${_rg_g%%/*}"
-          # shellcheck disable=SC2254,SC2194 # the glob is a pattern by nature, matched against fixed sample names
-          case "$_rg_d" in $_rg_s) case src in $_rg_s) ;; *) return 0 ;; esac ;; esac
-          case "$_rg_g" in */*) _rg_g="${_rg_g#*/}" ;; *) _rg_g='' ;; esac
-        done ;;
-      *) _rg_n="$(printf '%s' "$_rg_x" | sed 's/\*/k/g')"; _rg_b="${1##*/}"   # a file row: its name against the glob's last segment, and not `k.ts` too
-        # shellcheck disable=SC2254,SC2194 # as above
-        case "$_rg_n" in $_rg_b) case k.ts in $_rg_b) ;; *) return 0 ;; esac ;; esac ;;
-    esac
-  done <<ROWS
-$_rd_rows
-ROWS
-  return 1
-}
-
-# GREP ON A MEMBER BOX (harbor#1278): the Read rows. The folder searched, a folder whose search walks into a home or root row, and a filter that picks out a row's
-# names (judged below, one brace alternative at a time) are each a read of what the row covers. Standalone keeps the key-name check alone, with its Read deny rows.
-if [ "$TOOL" = Grep ] && floor_member_mode; then
-  rd_load
-  _gm_p="$(floor_field '.tool_input.path')"; _gm_p="$(rd_abs "${_gm_p:-.}")"
-  if rd_target "$_gm_p"; then
-    floor_block egress "searching a credential file or folder reads it into the session, past the Read deny rows this box can't carry" key-material-read.path
-  elif rd_reaches "$_gm_p"; then
-    floor_block egress "a search from this folder walks into credential folders, past the Read deny rows this box can't carry: search the project folder" key-material-read.path
-  fi
-fi
-
 # GREP AIMED AT KEY MATERIAL (harbor#1313 L6): a search of an allowed directory filtered to key files could return their bytes past Read(//**/*.pem). Key names are judged against the filter itself, one brace alternative at a time (`*.p?m`, `*.{pem,crt}`). A filter that also selects ordinary files (`*`, `*.p*`) is an unfiltered search, which this does not claim to stop; the pattern is never read, so searching code FOR ".pem" stays open.
 if [ "$TOOL" = Grep ]; then
   _gk_path="$(floor_field '.tool_input.path' | tr '[:upper:]' '[:lower:]')"
@@ -295,14 +171,6 @@ if [ "$TOOL" = Grep ]; then
     done
     _gk_alts="$_gk_next"; _gk_r=$((_gk_r + 1))
   done
-  if floor_member_mode; then
-    for _gk_p in $_gk_alts; do
-      if rd_glob_selects "$_gk_p" || rd_target "$_gm_p/$(printf '%s' "$_gk_p" | sed 's/[*?]/k/g')"; then
-        floor_block egress "a search filtered to credential files reads them into the session, past the Read deny rows this box can't carry" key-material-read.path
-        break
-      fi
-    done
-  fi
   for _gk_p in $_gk_alts; do
     _gk_b="${_gk_p##*/}"  # the last segment is what selects a file by name
     _gk_key=0
@@ -317,16 +185,6 @@ if [ "$TOOL" = Grep ]; then
       "a search filtered to private key files reads them into the session, past the Read deny rule" key-material-read.path
   done
   set +f
-  floor_log_decision egress allow egress-clean.meta
-  exit 0
-fi
-
-# THE READ TOOL ON A MEMBER BOX (harbor#1278): the rows above.
-if [ "$TOOL" = Read ]; then
-  rd_load
-  if rd_target "$(rd_abs "$PAYLOAD")"; then
-    floor_block egress "reading a credential file into the session, past the Read deny rows this box can't carry" key-material-read.path
-  fi
   floor_log_decision egress allow egress-clean.meta
   exit 0
 fi
@@ -589,30 +447,6 @@ $TARGETS_ALL"
     # The macOS keychain is the same exposure by another route. `security -g` prints the password just as `-w` does, and the old flag cluster required a `w` (harbor#310). A character class `[a-zA-Z]*[gw]`, not an alternation of whole flags, because `-gw`, `-wg` and `-agw` are one token to getopt.
     if m '(^|[^[:alnum:]_])security[[:space:]]+(dump-keychain|find-(generic|internet)-password[^;&|]*[[:space:]]-[a-zA-Z]*[gw])'; then
       floor_block egress "dumping keychain secrets into the session transcript" keychain-dump.path
-    fi
-    # THE HUB TOKEN ON A MEMBER BOX (harbor#1278): contracts/hub.md denies it to the agent. A command led by secret-tool that reads, the floor's `secret` naming the
-    # ref, or one that opens the token store's files reads it; the floor reads it from its hooks, never through this tool. The normalised targets are read with
-    # quotes dropped, as a shell reads `sec""ret`, never the raw text; a command word decides, so a commit message naming them is not a read.
-    if floor_member_mode && printf '%s\n' "$TARGETS" | LC_ALL=C tr 'A-Z' 'a-z' | LC_ALL=C tr -d "\\\\'\"" | awk '
-      BEGIN {
-        n = split("sudo env exec command nohup nice time timeout xargs sh bash dash zsh ksh", r, " "); for (i = 1; i <= n; i++) wrap[r[i]] = 1
-        n = split("ls stat du file test [ echo printf git", r, " "); for (i = 1; i <= n; i++) inert[r[i]] = 1
-      }
-      {
-        m = split($0, seg, /[;|&()`]/)
-        for (i = 1; i <= m; i++) {
-          k = split(seg[i], w, /[ \t]+/); j = 1
-          while (j <= k && (w[j] == "" || w[j] ~ /^-/ || w[j] ~ /^[a-z_][a-z0-9_]*=/ || w[j] ~ /^[0-9]+$/)) j++
-          f = w[j]; sub(/.*\//, "", f)
-          while (f in wrap && j < k) { j++; while (j <= k && (w[j] ~ /^-/ || w[j] ~ /^[a-z_][a-z0-9_]*=/ || w[j] ~ /^[0-9]+[smhd]?$/)) j++; f = w[j]; sub(/.*\//, "", f) }
-          rest = ""; for (x = j + 1; x <= k; x++) rest = rest " " w[x]
-          if (f == "secret-tool" && rest ~ / (lookup|search)( |$)/) hit = 1
-          if ((f == "secret" || f == "secret.sh") && rest ~ /(^|[^a-z0-9_.-])hub-token([^a-z0-9_.-]|$)/) hit = 1
-          if (!(f in inert) && seg[i] ~ /\.local\/share\/(secret|keyrings)(\/|[ \t]|$)/) hit = 1
-        }
-      }
-      END { exit !hit }'; then
-      floor_block egress "reading the hub token into the session, which only the floor's own hooks may do" hub-token-read.argv
     fi
   fi
   # Outbound channels: network senders, remote copy, mailers, DNS-exfil tools, bash's /dev/tcp and /dev/udp redirects, clipboard, and publish-style CLIs with no URL of their own (gh gist/release, glab, pbcopy).
