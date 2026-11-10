@@ -260,6 +260,33 @@ real candidate), and promoting from that ledger would have filed the harness as 
 finding. FC-5 now drops them (`audit-triage.sh --exclusion-set`), so the judge's
 findings are what reach the store.
 
+## The review-tier finding (JSON)
+
+The `review` tier's reviewer (`skills/audit-review-fanout`) emits JSON, never the issue marker. Its key is
+`review/<lens>`, which matches the key rule above; it never files an issue. Two records exist.
+
+**Raised** (a lens subagent's reply is an array of these; `[]` when none):
+
+```json
+{"lens": "correctness|failure-handling|security|contracts|tests|surroundings",
+ "file": "repo-relative path", "line": 14, "claim": "what is wrong", "evidence": "the quoted line and why"}
+```
+
+**Judged** (the merge step's record, one per finding):
+
+```json
+{"key": "review/<lens>", "digest": "16 hex over the file path", "lens": "...", "file": "...", "line": 14,
+ "claim": "...", "evidence": "...", "severity": "high|medium|low",
+ "raised_by": ["<lens agent id>"],
+ "verdicts": [{"agent_id": "<verifier id>", "model": "sonnet", "verdict": "CONFIRMED|REFUTED|UNVERIFIABLE", "evidence": "..."}],
+ "status": "confirmed|unconfirmed|refuted"}
+```
+
+Rules: `line` is the post-change line; no verdict's `agent_id` equals any `raised_by` id; `confirmed` needs
+a CONFIRMED verdict and no REFUTED one; a deep-tier finding carries two or more `verdicts`, and a
+disagreement carries the adjudicator's as well; only `confirmed` is reported as a defect. A lens that
+failed is reported as failed, never as `[]`.
+
 ## The report is the delta and the ages, never the census
 
 What `sh bin/lint-findings.sh reconcile` prints, here a second run over a real lint census

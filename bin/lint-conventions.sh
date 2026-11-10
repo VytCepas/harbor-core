@@ -1661,6 +1661,9 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
     # access-browser-hosts-add.sh (harbor#900) writes one repo file, contracts/browser-agent-hosts.txt,
     # and never a config dir; the live box reads the deployed copy, so deploy.sh is its gate.
     access-browser-hosts-add.sh) continue ;;
+    # bq-logs.sh (harbor#1278) writes harbor's logs warehouse as the loader account, and locally only its own cursor
+    # under ~/.local/state, never a config dir; dry run unless --apply, asserted in tests/bq/logs/push.test.sh (harbor#144's shape).
+    bq-logs.sh) continue ;;
   esac
   grep -qE 'APPLY=1|MODE="--apply"|\-\-apply\)' "$f" 2>/dev/null || continue
   # ON THE INSTALL STANDARD, the gate is install-lib's il_target and D7 holds the file to it; its
@@ -6221,13 +6224,14 @@ fi
 #
 # GOVERNED MEANS A GIT REPO CARRYING `.agents/` OR `.claude/` — the same two
 # markers X5 and X6 already treat as the signal, rather than a third definition
-# that would drift against them. Depth 1 under $HOME, which is this box's stated
-# layout convention and the one X6 also assumes.
+# that would drift against them. Depth 1 under PORT_ROOT, the workspace root
+# (scope-roots.sh --port-root): the repos left $HOME for it, and a $HOME default
+# read "all 0 governed" over an empty walk (harbor#1278).
 rule_IJ3() {
 rule "context.repo-registered every governed repo on this box has a registry row"
 _inj_load
 _ij3_reg="$_INJ_REG"
-_ij3_home="${HARBOR_LINT_ESTATE_ROOT:-$HOME}"
+_ij3_home="${HARBOR_LINT_ESTATE_ROOT:-$(env -u HARBOR_SCOPE_ROOT sh "$(dirname -- "$0")/scope-roots.sh" --port-root 2>/dev/null || :)}"
 if [ -f "$_ij3_reg" ] && [ -d "$_ij3_home" ]; then
   _ij3_missing=0; _ij3_total=0
   for _r in "$_ij3_home"/*/; do
@@ -7253,6 +7257,20 @@ if [ -f "$ROOT/bin/lint-constitution.sh" ] && [ -f "$ROOT/policy/constitution.md
 fi
 }
 
+# ── skill.no-plugin-agents · a skill names no plugin's agent (harbor#1497) ─
+# A skill that needs pr-review-toolkit:* breaks where the plugin is not installed; lens briefs live in the skill.
+rule_skill_no_plugin_agents() {
+rule "skill.no-plugin-agents no file under skills/ names a pr-review-toolkit: agent (harbor#1497)"
+if [ -d "$ROOT/skills" ]; then
+  _npa_all="$(grep -rnF 'pr-review-toolkit:' "$ROOT/skills" 2>/dev/null || true)"
+  [ -z "$_npa_all" ] || while IFS= read -r _npa; do
+    bad skill.no-plugin-agents "${_npa#"$ROOT"/} — a skill must not depend on a plugin's agent; put the brief in the skill"
+  done <<NPA_EOF
+$_npa_all
+NPA_EOF
+fi
+}
+
 # ── policy.clause-anchored · policy/clauses.tsv and the constitution's clauses are one list (harbor#1026) ──────────────────
 # Every bold-led clause of policy/constitution.md has a row and every row a clause; policy-check.sh --census judges it and
 # prints each finding. A missing tool or register is a note, never a pass.
@@ -7923,6 +7941,20 @@ while IFS= read -r _st_l; do
   case "$_st_l" in '  FAIL: '*) _st_l="${_st_l#  FAIL: }"; bad lint.suggest-table "${_st_l#"$ROOT"/}" context-rules/user/suggest-tool.tsv ;; esac
 done < "$_st_o"
 rm -f "$_st_o"
+}
+
+# ── lint.review-config-shape · the review: block of .agents/config.yaml holds the shape (harbor#1497) ──────────────────────
+# The check is bin/audit-review-config.sh, which the reviewer's reader shares, so the lint and the reader cannot disagree. It refuses
+# verify off and zero lenses: no tier is single-agent. An absent file or block is valid (the defaults apply).
+rule_lint_review_config_shape() {
+rule "lint.review-config-shape the review: block of .agents/config.yaml has known keys, bounded values, explicit logins and sound globs; verify cannot be off and no tier has zero lenses (harbor#1497)"
+[ -f "$ROOT/.agents/config.yaml" ] || return 0
+_rc_o="${TMPDIR:-/tmp}/rc.$$"
+sh "$(dirname -- "$0")/audit-review-config.sh" check "$ROOT/.agents/config.yaml" > "$_rc_o" 2>&1
+while IFS= read -r _rc_l; do
+  case "$_rc_l" in '  FAIL: '*) _rc_l="${_rc_l#  FAIL: }"; bad lint.review-config-shape "${_rc_l#"$ROOT"/}" .agents/config.yaml ;; esac
+done < "$_rc_o"
+rm -f "$_rc_o"
 }
 
 # ── drift.check-register · docs/reference/checks.md and the check rows of controls.tsv are one register (harbor#1422) ──────

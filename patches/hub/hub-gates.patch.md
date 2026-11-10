@@ -4,7 +4,7 @@
 
 ## What it does
 
-On every pull request and every push to `main`, runs `bin/hub-gate.sh` from a pinned harbor-core commit over the hub checkout: the leak gate in export mode, gitleaks, the share check, the policy format, the signature, a serial that rises, and the packs. Red on any finding (R14, R23, R29).
+On every pull request and every push to `main`, runs `bin/hub-gate.sh` from a pinned harbor-core commit over the hub checkout: the leak gate in export mode, gitleaks, the share check, the policy format, the signature, a serial that rises, and the packs (with `bin/pack.sh`'s own install refusals, so a pack every laptop would skip is red). Red on any finding (R14, R23, R29).
 
 **On GitHub Free a private repo has no protected branches (R14).** The check then reports red but cannot stop a merge or a push to `main`, so a bad policy still reaches every laptop. The signature is what keeps an unsigned policy out: a laptop refuses it whatever the board says. On Team, require the check `hub gates` in branch protection (`docs/how-to/hub-admin.md`).
 

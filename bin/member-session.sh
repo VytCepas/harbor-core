@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 # member-session.sh (harbor#1278) — the managed SessionStart and SessionEnd hook on a member laptop. Format: contracts/hub.md.
 #   start  install a missing prerequisite (member-prereqs.sh), sync the policy and hub packs (bin/hub.sh sync), check the floor (member-integrity.sh check), say what an approval brings
-#          (hub-approval.sh note), send events (hub-events.sh send builds the heartbeat itself)
-#   end    send events
+#          (hub-approval.sh note), count a session start and send events (hub-events.sh send builds the heartbeat itself)
+#   end    count a session end, send events
 # The event comes from the first argument (start | end), else the hook's JSON on stdin. It never blocks a session: every step is
 # bounded and best effort, the exit is always 0, and a failed integrity check is recorded as a `check` event and said in the
 # session's context. On a box that is not a member it does nothing.
@@ -89,9 +89,38 @@ home_note() {
   AGENT_NOTE="This session opened in the home folder. Work belongs in ~/port: read, create and change files there, and run commands from there."
 }
 
+# harbor#1278 (yard start rule): each git checkout directly under ~/port that harbor does not govern, said at every session start. It lives here, in
+# the managed hook, because allowManagedHooksOnly keeps the user tier's context rules from running on this laptop, and the member can't remove this one.
+# The list is scope-repo-sources.sh --not-adopted's (the same disk scan the Mac's rule reads); a member registers a project with harbor hub project register.
+repos_note() {
+  [ -f "$HERE/scope-repo-sources.sh" ] || return 0
+  _rd="$(mktemp -d "${TMPDIR:-/tmp}/member-repos.XXXXXX" 2>/dev/null)" || return 0
+  _rr=0
+  bounded 6 sh -c 'sh "$1" --not-adopted > "$2/list" 2>/dev/null' sh "$HERE/scope-repo-sources.sh" "$_rd" > /dev/null 2>&1 || _rr=$?
+  # A list that can't be made (a registry the member broke, a scan that timed out) must not read as nothing to say: every git checkout is then named.
+  if [ "$_rr" -ne 0 ] || [ ! -f "$_rd/list" ]; then
+    _pr="$(sh "$HERE/scope-roots.sh" --port-root 2>/dev/null)" || _pr=''
+    [ -n "$_pr" ] || _pr="$HOME/port"
+    for _d in "$_pr"/*/; do
+      [ -e "${_d}.git" ] || continue
+      { [ -f "${_d}bin/harbor" ] && [ -f "${_d}contracts/roots.tsv" ]; } && continue
+      _b="${_d%/}"; _b="${_b##*/}"; [ "$_b" = harbor-private ] && continue
+      printf '%s\t-\tunregistered\n' "$_b"
+    done > "$_rd/list"
+  fi
+  _rn="$(awk -F'\t' 'NF >= 3 && $1 ~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/ { printf "%s%s", (n++ ? ", " : ""), $1 }' "$_rd/list" 2>/dev/null)" || _rn=''
+  rm -rf "$_rd"
+  [ -n "$_rn" ] || return 0
+  note "Harbor: these folders in ~/port are git repos Harbor does not govern yet: $_rn. Ask your agent to register each one."
+  AGENT_NOTE="${AGENT_NOTE:+$AGENT_NOTE }Repos under ~/port that Harbor does not govern yet (company rule): $_rn. Tell the person, and register each with: sh ~/port/harbor/bin/harbor hub project register <name>. Registering writes into ~/port/harbor-private, so leave the run to them."
+}
+
 start() {
   # Fetch once. A refusal or an unreachable hub changes nothing and is not a session problem. Only a verified revocation leaves.
-  sh "$HERE/hub-sync.sh" fetch > /dev/null 2>&1 || :
+  _frc=0; sh "$HERE/hub-sync.sh" fetch > /dev/null 2>&1 || _frc=$?
+  # 3 is an unreachable hub (a 401, a 403 and a dead network look alike, and none is a revocation): the session starts and the last good packs stay, and a finding
+  # waits in the outbox until the hub can be heard again (harbor#1278).
+  [ "$_frc" -ne 3 ] || ev check check=hub-fetch outcome=failed
   if [ "$(sh "$HERE/hub-sync.sh" state 2>/dev/null)" = revoked ]; then
     if sh "$HERE/hub.sh" leave --apply --live > /dev/null 2>&1; then
       note "Harbor: your login was revoked on the hub, so the hub packs and policy were dropped from this laptop. IT removes the managed files."
@@ -118,15 +147,17 @@ start() {
     _an="$(sh "$HERE/hub-approval.sh" note SessionStart 2>/dev/null | jq -r '.systemMessage // empty' 2>/dev/null)" || _an=''
     [ -z "$_an" ] || note "$_an"
   fi
+  repos_note
   send
 }
 
 main() {
   # First, and on an unreadable event too: with jq itself missing, the event can't be read and every step below needs it.
   [ "$EVENT" = end ] || prereqs
+  # D9: a count of session starts and ends per day (D4), never which session. A resume or compact is a SessionStart too, and counts.
   case "$EVENT" in
-    start|startup|resume|clear|compact) home_note; start ;;
-    end) send ;;
+    start|startup|resume|clear|compact) ev session outcome=started count=1; home_note; start ;;
+    end) ev session outcome=ended count=1; send ;;
     *) log_note "no session event given: nothing to do" ;;
   esac
   [ "$EVENT" != end ] && [ -n "$NOTES$AGENT_NOTE" ] || return 0

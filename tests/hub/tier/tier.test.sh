@@ -87,6 +87,8 @@ t_eq "the rest of the policy stands" "high default" "$(lk admission.dd-to-device
 m_reset; m_enforce '.hosts = ["intranet.example.com"] | .tiers = {"admission.dd-to-device":"high"}'
 t_eq "a policy that widens the network is still read" enforce "$(sh "$TIER" mode)"
 t_eq "...and its tiers apply" "high default" "$(lk admission.dd-to-device)"
+m_reset; m_enforce '.logs = {recipient: "age1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"}'
+t_eq "a policy that names the logs loader (harbor#1278) is still read: its key is one the floor knows" enforce "$(sh "$TIER" mode)"
 
 t_section "5 - policy failure: stricter, never lower (F20)"
 _bad() { # <label>: a hub-lowered row reads very-high and mode says bad

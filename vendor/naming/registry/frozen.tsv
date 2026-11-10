@@ -24,6 +24,7 @@ cli:hub	cli	hub	2026-11-07	core
 cli:inject	cli	inject	2026-10-17	core
 cli:install	cli	install	2026-10-17	core
 cli:lint	cli	lint	2026-10-17	core
+cli:logs	cli	logs	2026-11-09	core
 cli:merge-stack	cli	merge-stack	2026-10-17	core
 cli:observe	cli	observe	2026-10-17	core
 cli:pack	cli	pack	2026-10-17	core

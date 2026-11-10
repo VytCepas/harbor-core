@@ -17,3 +17,6 @@ socat socat socat
 
 # W7: bin/secret's member file store encrypts with openssl, and needs no keyring or session bus
 openssl openssl openssl
+
+# harbor#1278 (Log scope, level 2): hub-events.sh seals the laptop id and the activity counts to the loader's key, and sends none of them without it
+age age age

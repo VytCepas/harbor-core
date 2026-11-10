@@ -423,6 +423,7 @@ core	share	core	-	-	stable	-	standard D-83	-	-	Shared with everyone who installs
 hub	share,family	hub	-	-	experimental	-	standard D-83 (amended, harbor#1149)	-	-	Shared with the members of one company layer
 personal	share	personal	-	-	stable	-	standard D-83 (amended, harbor#1149)	-	-	Shared with the owner only
 pack	family	pack	catalog	S1	stable	-	standard D-84	-	-	Family: a workload repo's harbor-pack/ folder, installed box-wide
+bq	family	bq	observability	-	experimental	-	harbor#1278	BigQuery	-	Family: the BigQuery projection of harbor's logs: the closed schema, its validator, the Mac projector and the hub loader
 registered-in	relation	registered in	-	-	experimental	-	research/15 §3 (CLAUDE.md: every check is registered)	-	-	The edge from a check to the register that lists it; a check with no registered-in edge is a finding
 notifies	relation	notifies	-	-	experimental	-	research/15 §3 (CLAUDE.md: a check names where it notifies)	-	-	The edge from a check to the channel that receives its red
 disabled-by	relation	disabled by	-	-	experimental	-	research/15 §3 (CLAUDE.md: a check names how to disable it)	-	-	The edge from a check to the exact command that turns it off

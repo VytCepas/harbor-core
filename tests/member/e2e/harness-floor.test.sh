@@ -108,6 +108,21 @@ E_CWD=''
 t_has "a session opened in the home folder is told where to work" "$(printf '%s' "$E_OUT" | jq -r .hookSpecificOutput.additionalContext)" '~/port'
 t_eq "the agent is told, and the person isn't bothered" null "$(printf '%s' "$E_OUT" | jq -r .systemMessage)"
 
+t_section "11c - a git repo under ~/port that harbor does not govern is named by the managed hook (yard start rule, harbor#1278)"
+# The user tier's context rule can't run here (allowManagedHooksOnly), so the finding is member-session.sh's own, from the same disk scan.
+mkdir -p "$HOME/port/harbor-private" "$HOME/port/fresh" "$HOME/port/plain"; git -C "$HOME/port/fresh" init -q
+printf 'id\tpath\tkind\tremote\n' > "$HOME/port/harbor-private/repos.tsv"
+e_session start
+t_has "a fresh git init is named for the agent, with the register command" "$(printf '%s' "$E_OUT" | jq -r .hookSpecificOutput.additionalContext)" 'fresh'
+t_has "...and for the person" "$(printf '%s' "$E_OUT" | jq -r .systemMessage)" 'fresh'
+t_hasnt "a folder with no .git is not named" "$E_OUT" 'plain'
+printf 'fresh\tfresh\tworkload\t-\t-\t-\t-\t-\tyes\t-\t-\n' >> "$HOME/port/harbor-private/repos.tsv"
+e_session start
+t_eq "registered, it is named no more and the session says nothing" '' "$E_OUT"
+printf 'not a registry\n' > "$HOME/port/harbor-private/repos.tsv"
+e_session start
+t_has "a registry the member broke does not mute it: the repo is still named" "$(printf '%s' "$E_OUT" | jq -r .systemMessage)" 'fresh'
+
 }
 
 s12() {

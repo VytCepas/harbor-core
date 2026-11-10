@@ -29,23 +29,23 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 |---|---|---|---|---|---|
 | policy | policy/ | system | source | living | 3 |
 | standard | standards/ | system | source | versioned | 32 |
-| contract | contracts/ | system | source | versioned | 40 |
+| contract | contracts/ | system | source | versioned | 41 |
 | decision-record | docs/decisions/ | element | source | dated | 94 |
 | hook | hooks/ | component | source | living | 48 |
-| skill | skills/ | component | source | living | 44 |
+| skill | skills/ | component | source | living | 50 |
 | fixture | fixtures/ | element | source | living | 439 |
-| template | templates/ | component | source | living | 8 |
-| registry | registries/ | component | source | versioned | 76 |
-| test | tests/ | component | source | living | 594 |
+| template | templates/ | component | source | living | 10 |
+| registry | registries/ | component | source | versioned | 78 |
+| test | tests/ | component | source | living | 647 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 9 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | generated-doc | docs/generated/ | component | generated | generated | 2 |
-| script | bin/ | component | source | living | 281 |
-| how-to | docs/how-to/ | component | source | living | 5 |
+| script | bin/ | component | source | living | 287 |
+| how-to | docs/how-to/ | component | source | living | 6 |
 | reference | docs/reference/ | component | generated | generated | 86 |
 | explanation | docs/explanation/ | component | source | living | 106 |
-| (no kind) | - | - | - | - | 279 |
+| (no kind) | - | - | - | - | 282 |
 
 ## Folders
 
@@ -54,25 +54,25 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | (repo root) | 12 | 1 | 1 |
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
-| `bin/` | 285 | 31 | 2 |
+| `bin/` | 291 | 32 | 2 |
 | `commands/` | 5 | 4 | 1 |
-| `context-rules/` | 64 | 6 | 1 |
-| `contracts/` | 115 | 13 | 2 |
-| `docs/` | 318 | 26 | 9 |
+| `context-rules/` | 66 | 6 | 1 |
+| `contracts/` | 118 | 14 | 2 |
+| `docs/` | 319 | 26 | 9 |
 | `fixtures/` | 439 | 11 | 1 |
 | `hooks/` | 44 | 7 | 1 |
 | `launchd/` | 21 | 10 | 1 |
 | `mods/` | 7 | 1 | 2 |
-| `patches/` | 16 | 4 | 1 |
+| `patches/` | 17 | 4 | 1 |
 | `policy/` | 3 | 1 | 1 |
 | `registries/` | 1 | 1 | 1 |
 | `relay/` | 4 | 1 | 1 |
 | `runners/` | 2 | 1 | 1 |
-| `skills/` | 44 | 9 | 1 |
+| `skills/` | 50 | 9 | 1 |
 | `standards/` | 32 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `templates/` | 8 | 3 | 1 |
-| `tests/` | 594 | 29 | 1 |
+| `templates/` | 10 | 3 | 1 |
+| `tests/` | 647 | 30 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 101 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -85,10 +85,11 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | admission | control-plane | 27 | 90 | 0 | 6 | 0 | 176 |
 | agent | control-plane | 1 | 2 | 0 | 10 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
-| audit | control-plane | 8 | 14 | 0 | 11 | 0 | 2 |
+| audit | control-plane | 9 | 15 | 0 | 17 | 0 | 2 |
+| bq | observability | 3 | 6 | 0 | 2 | 0 | 0 |
 | check | observability | 2 | 5 | 0 | 1 | 58 | 0 |
 | ci | coordination | 17 | 46 | 2 | 20 | 1 | 7 |
-| context | control-plane | 7 | 15 | 1 | 3 | 0 | 44 |
+| context | control-plane | 7 | 16 | 1 | 3 | 0 | 45 |
 | deploy | control-plane | 16 | 31 | 1 | 4 | 0 | 7 |
 | doc | control-plane | 16 | 13 | 0 | 37 | 0 | 22 |
 | drift | control-plane | 8 | 10 | 0 | 11 | 4 | 14 |
@@ -96,17 +97,17 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | event | observability | 3 | 19 | 0 | 12 | 0 | 2 |
 | gate | control-plane | 19 | 13 | 0 | 5 | 0 | 6 |
 | housekeeping | control-plane | 1 | 1 | 0 | 3 | 0 | 0 |
-| hub |  | 11 | 35 | 1 | 6 | 0 | 4 |
-| library | policy-function | 9 | 0 | 0 | 0 | 0 | 0 |
-| lint | control-plane | 26 | 73 | 0 | 20 | 3 | 38 |
-| member | control-plane | 12 | 34 | 0 | 8 | 0 | 1 |
+| hub |  | 11 | 37 | 1 | 7 | 0 | 4 |
+| library | policy-function | 10 | 0 | 0 | 0 | 0 | 0 |
+| lint | control-plane | 26 | 74 | 0 | 20 | 3 | 39 |
+| member | control-plane | 13 | 76 | 1 | 8 | 1 | 1 |
 | memory | memory-store | 6 | 10 | 1 | 24 | 0 | 1 |
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
 | policy | policy-function | 3 | 4 | 3 | 137 | 0 | 7 |
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
 | scope | coordination | 14 | 22 | 0 | 1 | 0 | 5 |
 | session | data-plane | 14 | 5 | 0 | 7 | 0 | 0 |
-| skill | catalog | 5 | 18 | 0 | 8 | 0 | 14 |
+| skill | catalog | 5 | 18 | 0 | 8 | 0 | 15 |
 | standard | policy-function | 17 | 28 | 126 | 12 | 12 | 61 |
 | status | observability | 13 | 29 | 0 | 10 | 0 | 0 |
 | test | control-plane | 4 | 5 | 2 | 8 | 0 | 15 |
@@ -200,6 +201,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/audit-collector-install.sh`
 - `bin/audit-collector.sh`
 - `bin/audit-otlp-receiver.py`
+- `bin/audit-review-config.sh`
 - `bin/audit-stream-export.py`
 - `bin/audit-stream-lib.sh`
 - `bin/audit-triage-run.sh`
@@ -215,6 +217,14 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `launchd/com.harbor.audit.triage.plist`
 - `skills/audit-claims/SKILL.md`
 - `skills/audit-review-fanout/SKILL.md`
+
+### bq
+
+- `bin/bq-format.sh`
+- `bin/bq-load.sh`
+- `bin/bq-logs.sh`
+- `contracts/bq-schema.tsv`
+- `contracts/bq-values.tsv`
 
 ### check
 
@@ -427,6 +437,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `contracts/hub-vocabulary.tsv`
 - `contracts/hub.md`
 - `docs/how-to/hub-admin.md`
+- `patches/hub/hub-bq-load.patch.md`
 - `patches/hub/hub-digest.patch.md`
 - `patches/hub/hub-gates.patch.md`
 - `patches/hub/hub-silent.patch.md`
@@ -437,6 +448,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/library-admission.sh`
 - `bin/library-alert.sh`
 - `bin/library-board.sh`
+- `bin/library-bq.sh`
 - `bin/library-fs.sh`
 - `bin/library-gate.sh`
 - `bin/library-hub.sh`
@@ -505,10 +517,12 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/member-support-guard.sh`
 - `bin/member-support.sh`
 - `bin/member-update.sh`
+- `bin/member-upgrade.sh`
 - `bin/member-windows.sh`
 - `contracts/member-files.txt`
 - `contracts/member-guards.tsv`
 - `contracts/member-hosts.txt`
+- `contracts/member-law.md`
 - `contracts/member-prereqs.txt`
 - `docs/how-to/member-install.md`
 - `docs/how-to/member-support.md`
@@ -815,9 +829,9 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `.github/` | 2 |
 | `bin/` | 12 |
 | `commands/` | 2 |
-| `context-rules/` | 52 |
+| `context-rules/` | 54 |
 | `contracts/` | 88 |
-| `docs/` | 132 |
+| `docs/` | 133 |
 | `fixtures/` | 264 |
 | `hooks/` | 30 |
 | `mods/` | 7 |
@@ -826,7 +840,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `runners/` | 2 |
 | `skills/` | 1 |
 | `systemd/` | 15 |
-| `templates/` | 5 |
+| `templates/` | 7 |
 | `tests/` | 28 |
 | `tools/` | 8 |
 | `vendor/` | 101 |
