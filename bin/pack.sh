@@ -224,8 +224,8 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       context-rules/user/*/*) refuse "${_r%/*}/ is flat; $_r is nested" || return 1 ;;
       context-rules/user/*.md)
         # run: names a script beside the pack whose stdout may be a deny verdict (contracts/injection-rule.md).
-        git -C "$DIR" show "$GREF:$_p" | tr -d '\r' | awk '/^[ \t]*run[ \t]*:/ { f = 1 } END { exit f }' ||
-          refuse "inject pack $_r has run: (it could deny); packs inject notes only" || return 1
+        git -C "$DIR" show "$GREF:$_p" | tr -d '\r' | awk '/^[ \t]*(run|spoke)[ \t]*:/ { f = 1 } END { exit f }' ||
+          refuse "inject pack $_r has run: or spoke: (it could deny or run a script); packs inject notes only" || return 1
         printf '%s\t%s\n' "$_p" "context-rules/user/pack-$NAME--${_r##*/}" >> "$WORK/plan" ;;
       context-rules/user/*) refuse "$_r is not a .md pack" || return 1 ;;
       inject.d/*) refuse "$_r: inject.d/ is retired; a pack's rules are context-rules/user/<f>.md" || return 1 ;;

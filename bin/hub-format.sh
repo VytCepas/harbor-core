@@ -190,7 +190,7 @@ check_manifest() {
   + ck(($x.id // 0) | kebab; "id: not a kebab id")
   + ck((($x.version // "") | type == "string" and test("^[0-9]+\\.[0-9]+(\\.[0-9]+)?$")); "version: not N.M or N.M.P")
   + ck((($x.harbor_version // "") | type == "string" and test("^(>=|<=|>|<|=)?[0-9]+(\\.[0-9]+)?(,(>=|<=|>|<|=)?[0-9]+(\\.[0-9]+)?)*$")); "harbor_version: not the pack grammar")
-  + ck(($x.provides | type == "array" and length > 0 and all(.[]; . == "skill" or . == "hook" or . == "script")); "provides: skill, hook or script")
+  + ck(($x.provides | type == "array" and length > 0 and all(.[]; . == "skill" or . == "hook" or . == "script" or . == "rule")); "provides: skill, hook, script or rule")
   + (($x.files // []) | map(ck(((.path // "") | type == "string" and test("^[A-Za-z0-9._/-]+$") and (contains("..") | not) and (test("^/|//|(^|/)\\.(/|$)") | not)); "files: bad path") + ck((.sha256 // 0) | hex(64); "files: bad sha256")) | add // [])' "$1"
 }
 

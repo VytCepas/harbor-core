@@ -9,6 +9,7 @@
 #   harbor hub leave [--apply] [--live | --dir PATH]   after a VERIFIED revocation: drop hub packs and policy; names IT's root step
 #   harbor hub project register <name> [--covers TEXT] [--kind K]   register a checkout with `harbor repo adopt --core-only`
 #   harbor hub support list|accept <id>|connect <id>   admin: answer a member's request for remote help (hub-support.sh)
+#   harbor hub tools create <login>|admit <tool>   admin: a colleague's private tools repo, and a proposed skill into a hub pack (hub-tools.sh)
 #   harbor hub id                            member: this laptop account's random id for Harbor's logs, read only, and whether the
 #                                            notice receipt is recorded. Give the id to ask for your data or its deletion (legal/dpia.md R12)
 # Exit 0 done, 1 refused or a check is red, 2 usage, 3 the hub could not be reached (the last good policy stays).
@@ -136,6 +137,42 @@ sync_hooks() { # <policy>
   [ "$_hf" -eq 0 ]
 }
 
+# Hub context rules: a pack's context-rules/user/<f>.md notes, delivered to HUB_STATE/rules/<pack>/<f>.md, the folder the member engine reads (injection-rule.sh --member-root).
+# Live means: the pack is in the signed policy, its file is listed in the manifest extension.json at the pinned commit, the bytes carry that sha256, and the file is a pure
+# note (no run:, no spoke:). Anything else is not delivered, and a delivered file the policy no longer vouches for goes. HUB_STATE is protected by the sandbox and the Edit deny
+# rows (member_protected), not by ownership: the worst a hand-written note there does is fire as a note, since the engine never loads a rule with run: or spoke:.
+sync_rules() { # <policy>
+  _rf=0; _rd="$STATE/rules"; mkdir -p "$_rd"; : > "$STATE/rules.keep"
+  jq -r '.packs[]? | [.id, .commit] | @tsv' "$1" > "$STATE/rules.want"
+  _hdir="$(sh "$HERE/scope-roots.sh" --hub 2>/dev/null)" || _hdir=''
+  while IFS="$TAB" read -r _id _co; do
+    [ -n "$_id" ] && [ -n "$_hdir" ] || continue
+    # Only a pack the laptop installed, at the pin: one pack.sh refused (what the hub gate would refuse) delivers no rule either.
+    _mf="$(cfgdir)/.harbor-packs/hub-$_id.tsv"
+    [ -f "$_mf" ] && [ "$(manifest_commit "$_mf")" = "$_co" ] || continue
+    git -C "$_hdir" show "$_co:packs/$_id/extension.json" 2>/dev/null | jq -r '.files[]? | [.path, .sha256] | @tsv' 2>/dev/null > "$STATE/rules.ext" || : > "$STATE/rules.ext"
+    while IFS="$TAB" read -r _rp _rh; do
+      case "$_rp" in context-rules/user/*.md) ;; *) continue ;; esac
+      case "$_rp" in */*/*/*|*..*) continue ;; esac
+      _tmp="$_rd/.new.$$"
+      if git -C "$_hdir" show "$_co:packs/$_id/harbor-pack/$_rp" > "$_tmp" 2>/dev/null && [ "$(hub_sha256 < "$_tmp")" = "$_rh" ] &&
+         ! tr -d '\r' < "$_tmp" | awk '/^[ \t]*(run|spoke)[ \t]*:/ { f = 1 } END { exit !f }'; then
+        mkdir -p "$_rd/$_id"; chmod 644 "$_tmp"; mv -f "$_tmp" "$_rd/$_id/${_rp##*/}"
+        printf '%s\n' "$_id/${_rp##*/}" >> "$STATE/rules.keep"; log_ok "hub rule $_id/${_rp##*/} delivered"
+      else
+        rm -f "$_tmp"; _rf=$((_rf + 1))
+        log_fail "hub rule $_id/${_rp##*/} is not delivered: its hash differs from the manifest's, or it has run: or spoke:"
+        log_fix "the admin repairs the rule, regenerates extension.json and signs the new pin"; ev check check=hub-rule outcome=failed
+      fi
+    done < "$STATE/rules.ext"
+  done < "$STATE/rules.want"
+  ( cd "$_rd" && find . -type f ! -name '.new.*' | sed 's|^\./||' ) | while IFS= read -r _f; do
+    grep -qxF "$_f" "$STATE/rules.keep" || rm -f "$_rd/$_f"
+  done
+  find "$_rd" -mindepth 1 -type d -empty -exec rmdir {} + 2>/dev/null || :
+  [ "$_rf" -eq 0 ]
+}
+
 # ── sync ──────────────────────────────────────────────────────────────────────────────────────────────────
 cmd_sync() {
   tgt_parse "$@"
@@ -153,6 +190,7 @@ cmd_sync() {
   _src=0
   sync_packs "$_pol" || _src=1
   sync_hooks "$_pol" || _src=1
+  sync_rules "$_pol" || _src=1
   pin_report "$_pol"
   log_end || :
   [ "$_frc" -ne 0 ] && return "$_frc"
@@ -403,9 +441,14 @@ cmd_project() {
   _pr="$(sh "$HERE/scope-roots.sh" --port-root)" || die "no workspace root" "sh $HERE/scope-roots.sh --port-root"
   [ -d "$_pr/$_name" ] || die "no checkout at $_pr/$_name" "clone it there, then harbor hub project register $_name"
   rm -rf "$W"
-  # R28: a core install has no yard, uv or just. Say it, then do the part core can do.
-  log_note "this install has no yard, uv or just: the scaffold, label, versions and fleet steps are not run, and the project is registered, listed and routed only"
-  exec sh "$HERE/scope-repo.sh" adopt "$_pr/$_name" --kind "$_kind" --covers "$_covers" --core-only
+  # R28: a core install has no yard, uv or just. Say it, then do the part core can do: register, list and route the checkout,
+  # then lay down the project standard yard would (member-standard.sh, control member.standard).
+  log_note "this install has no yard, uv or just: the scaffold, label, versions and fleet steps are not run; the project is registered, listed and routed, and gets the member project standard (AGENTS.md, CLAUDE.md, tests/) without a governance marker"
+  _rc=0
+  sh "$HERE/scope-repo.sh" adopt "$_pr/$_name" --kind "$_kind" --covers "$_covers" --core-only || _rc=$?   # set -e: 3 (a check could not look) is an answer, not an abort
+  case "$_rc" in 0|3) ;; *) exit "$_rc" ;; esac
+  sh "$HERE/member-standard.sh" "$_pr/$_name" --name "$_name" --kind "$_kind" --covers "$_covers" || exit $?
+  exit "$_rc"
 }
 
 verb="${1:-}"; [ $# -eq 0 ] || shift
@@ -420,7 +463,8 @@ case "$verb" in
   leave) cmd_leave "$@" ;;
   project) cmd_project "$@" ;;
   support) rm -rf "$W"; exec sh "$HERE/hub-support.sh" "$@" ;;
+  tools) rm -rf "$W"; exec sh "$HERE/hub-tools.sh" "$@" ;;
   id) cmd_id "$@" ;;
   '') usage >&2; exit 2 ;;
-  *) die "unknown verb '$verb' (init, sync, status, sign, check, pin-check, leave, project, support)" ;;
+  *) die "unknown verb '$verb' (init, sync, status, sign, check, pin-check, leave, project, support, tools)" ;;
 esac

@@ -1,6 +1,7 @@
 ---
 name: audit-claims
 description: "A fresh-context verifier checks each claim of an answer against its source before it ships. USE WHEN an answer carries a number, an exists/absent, a recommendation or a done, or leaves the session. NOT FOR a code diff (audit-review-fanout)."
+architecture: decision-check analysis research
 ---
 
 # audit-claims — a second reader who did not write the answer
@@ -14,6 +15,10 @@ Why a second reader: a writer re-reading their own answer finds what they meant,
 wrote, and judges favour their own output (research cited in harbor#542). A reader with a fresh
 context gets the claims and the sources and nothing else, so it checks the text. It lowers the
 error rate and certifies nothing: the evidence is still the writer's to produce (CONSTITUTION №2).
+
+**Architecture:** this skill is the `decision-check` architecture of `contracts/agent-architectures.tsv`
+(one `verify` agent, the parent as producer), and the verify step of `analysis` and `research`.
+The register holds the roles, tiers and stop rule; this file holds the method.
 
 ## When it is required
 
