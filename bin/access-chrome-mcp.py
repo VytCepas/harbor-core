@@ -31,6 +31,7 @@ VERBS = {
     'attach': 'connect to the operator\'s Chrome; the operator clicks Connect unless the extension token is registered',
     'status': 'this session\'s browser name, pin, profile and workdir',
     'state': 'the page\'s own visibility, focus and load state',
+    'text': 'the visible text of the page, or of one element (args: [] or [ref])',
     'doctor': 'is harbor chrome ready on this box',
     'detach': 'release the operator\'s Chrome; always run it when done',
     'tabs': 'every Chrome tab by window, query strings cut; = marks this session\'s page',

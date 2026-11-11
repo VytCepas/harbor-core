@@ -1333,3 +1333,5 @@ rule	1323	skill.no-plugin-agents	live	standards/naming/controls.tsv
 rule	1324	lint.review-config-shape	live	standards/naming/controls.tsv
 rule	1325	no-plugin-agents	live	standards/naming/controls.tsv, the id less its family
 rule	1326	review-config-shape	live	standards/naming/controls.tsv, the id less its family
+rule	1327	context.sheets-write-route	live	standards/naming/controls.tsv
+rule	1328	sheets-write-route	live	standards/naming/controls.tsv, the id less its family
