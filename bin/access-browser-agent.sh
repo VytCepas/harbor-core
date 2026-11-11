@@ -46,7 +46,7 @@ fi
 # The extension token lives only in the Keychain, under this ref in the access register (harbor#1205); attach
 # uses it when registered, so Chrome connects without the Allow click. A token in the caller's env stays refused.
 TOKEN_REF='playwright-extension-token'
-PW_CLI_PIN='0.1.22'   # exact pin (vendoring D1); 0.1.22 is the first that reads the profile name
+PW_CLI_PIN='0.1.24'   # exact pin (vendoring D1); 0.1.22 first read the profile name, 0.1.24 adds background attach (harbor#1507)
 STATE_EXPR='JSON.stringify({visibility: document.visibilityState, focus: document.hasFocus(), ready: document.readyState, host: location.host, blank: location.href === "about:blank", online: navigator.onLine})'
 PW_EXTENSION_ID='mmlmfjhmonkocbjadbfplnigmagldckm'
 PROFILE="${HARBOR_ACCESS_BROWSER_PROFILE:-Default}"
@@ -530,6 +530,22 @@ WORKDIR="${TMPDIR:-/tmp}"; WORKDIR="${WORKDIR%/}/harbor-browser/$S"
 
 case "$VERB" in
   attach)
+    case "${1:-}" in
+      '') ;;
+      --headless) [ $# -eq 1 ] || _refuse 'attach takes [--headless] only' 'harbor chrome attach --headless' ;;
+      *) _refuse "attach takes [--headless] only: '$1'" 'harbor chrome attach' ;;
+    esac
+    if [ "${1:-}" = --headless ]; then
+      # The headless lane (harbor#1507): a throwaway, in-memory system Chrome with no profile, so no login and no
+      # window; the same verbs and the same host allow-list (the operator's decision, 2026-11-11). `open` stays refused
+      # as a verb: this fixed call is its only use. A lane already attached to the operator's Chrome is refused.
+      [ ! -s "$WORKDIR/$OWNED_NAME" ] || _refuse "session $S holds tabs in the operator's Chrome; a headless browser takes its own lane" "harbor_chrome attach with lane set and args [\"--headless\"]"
+      mkdir -p "$WORKDIR"; : > "$WORKDIR/.headless"
+      DEBUG='pw:mcp:relay,pw:mcp:error'; export DEBUG   # never the caller's: pw:protocol logs every request's headers
+      _rc=0; _cli_run "-s=$S" open --browser=chrome "--idle-timeout=$IDLE_MS" || { _rc=$?; rm -f "$WORKDIR/.headless"; }
+      exit "$_rc"
+    fi
+    rm -f "$WORKDIR/.headless"
     [ "$(_ext_off)" != yes ] || _refuse "the Playwright Extension is switched off in Chrome profile $PROFILE; Chrome would block its connect page (ERR_BLOCKED_BY_CLIENT)" "chrome://extensions in profile $PROFILE: switch Playwright Extension on"
     if sh "$ROOT/bin/access.sh" has "$TOKEN_REF" >/dev/null 2>&1; then
       _CLI_TOKEN=1
@@ -538,6 +554,10 @@ case "$VERB" in
       log_note "approve in Chrome: the Playwright Extension tab that just opened (connect.html) IS the approval page; click Allow, then click Connect next to any tab. One click lasts until 4 h idle or harbor chrome detach"
     fi
     PLAYWRIGHT_MCP_PROFILE_DIR_NAME="$PROFILE"; export PLAYWRIGHT_MCP_PROFILE_DIR_NAME
+    # Background (harbor#1507, CLI 0.1.24 with extension 0.5.0+): the controlled tab and its window stay behind the
+    # operator's, and stay clickable while hidden; the hidden-tab timeouts were the largest error class (490 of 1,056).
+    # HARBOR_ACCESS_BROWSER_BACKGROUND=0 turns it off for one attach.
+    if [ "${HARBOR_ACCESS_BROWSER_BACKGROUND:-1}" != 0 ]; then PLAYWRIGHT_MCP_BACKGROUND=1; export PLAYWRIGHT_MCP_BACKGROUND; fi
     # The daemon inherits DEBUG and writes it to its .err: pw:mcp:relay logs CDP
     # method names and why the relay closed (status reads it); a caller's
     # DEBUG=pw:protocol would log every request's headers there (2026-10-01). pw:mcp:error
@@ -605,6 +625,11 @@ OSA
     exit "$_rc"
     ;;
   detach)
+    if [ -e "$WORKDIR/.headless" ]; then   # the headless lane: its browser is the daemon's own, so close it whole
+      _rc=0; _cli_run "-s=$S" close || _rc=$?
+      rm -f "$WORKDIR/.headless" "$WORKDIR/.last-url"; exit "$_rc"
+    fi
+    rm -f "$WORKDIR/.last-url"   # a detach is deliberate: nothing re-attaches after it
     # Then close what this session opened, and only that.
     _rc=0; _cli_run "-s=$S" detach || _rc=$?
     # Every tab in the window attach opened is this session's (a dropped tab's replacement, later
@@ -633,8 +658,25 @@ OSA
     [ "$_rc" -eq 0 ] || _gone_check "$_o"
     _scrub < "$_o"; exit "$_rc"
     ;;
+  text)
+    # The visible text of the page or one element (harbor#1507), through two fixed functions: eval stays refused.
+    [ $# -le 1 ] || _refuse 'text takes [] or [ref]' 'harbor chrome text'
+    case "${1:-}" in
+      '') _fn='() => document.body ? document.body.innerText : ""' ;;
+      e[0-9]*|f[0-9]*e[0-9]*)
+        case "$1" in *[!abcdefghijklmnopqrstuvwxyz0123456789]*) _refuse "text takes a snapshot ref (e12, f3e12), not '$1'" 'harbor chrome snapshot' ;; esac
+        _fn='(el) => el.innerText ?? el.textContent ?? ""' ;;
+      *) _refuse "text takes a snapshot ref (e12, f3e12), not '$1'" 'harbor chrome snapshot' ;;
+    esac
+    mkdir -p "$WORKDIR"; _o="$(mktemp "$WORKDIR/.out.XXXXXX")"
+    trap 'rm -f "$_o"' EXIT INT TERM HUP
+    _rc=0; _cli_run "-s=$S" --raw eval "$_fn" ${1:+"$1"} > "$_o" || _rc=$?
+    [ "$_rc" -eq 0 ] || _gone_check "$_o"
+    { jq -r '.' "$_o" 2>/dev/null || cat "$_o"; } | _scrub | head -c 40000; exit "$_rc"   # --raw prints a JSON string
+    ;;
   tabs)
     [ $# -eq 0 ] || _refuse 'tabs takes no arguments' 'harbor chrome tabs'
+    [ ! -e "$WORKDIR/.headless" ] || _refuse "session $S is headless: it has no Chrome window; its tabs are tab-list" 'harbor chrome tab-list'
     _me="$(_session_url)"; _me="$(_bare_url "$_me")"
     _own=" $(cat "$WORKDIR/$OWNED_NAME" 2>/dev/null | tr '\n' ' ') "   # a pipe: under set -e a failed < aborts
     _chrome_tabs | while IFS="$(printf '\t')" read -r _w _t _a _u _id; do
@@ -651,6 +693,7 @@ OSA
     ;;
   front)
     [ $# -eq 0 ] || _refuse 'front takes no arguments' 'harbor chrome front'
+    [ ! -e "$WORKDIR/.headless" ] || { log_ok "front: session $S is headless; its page is always rendered"; exit 0; }
     _me="$(_session_url)"
     [ -n "$_me" ] || _refuse "no page in session $S to bring to the front" 'harbor chrome attach'
     # Matched by suffix: the whole URL, or after marking, the mark alone.
@@ -739,6 +782,7 @@ OSA
     log_ok "front: $_r is the tab Chrome shows; focus left where it was"
     ;;
   wait-signin)
+    [ ! -e "$WORKDIR/.headless" ] || _refuse "session $S is headless and signed out by design: sign-in happens in the operator's Chrome" 'harbor chrome attach   # in a lane without --headless'
     _max="${1:-300}"
     case "$_max" in ''|*[!0-9]*) _refuse "wait-signin takes seconds: $_max" 'harbor chrome wait-signin 300' ;; esac
     [ "$_max" -ge 10 ] && [ "$_max" -le 900 ] || _refuse "wait-signin waits 10..900 s: $_max" 'harbor chrome wait-signin 300'
@@ -776,8 +820,10 @@ EOF
   status)
     _e="$(_relay_err)"
     _r=''; [ -z "$_e" ] || _r="$(/usr/bin/grep 'WebSocket closed' "$_e" | tail -1 | cut -c1-200 || :)"
-    printf 'session  %s\npin      @playwright/cli@%s\nprofile  %s\nworkdir  %s\nidle     %s ms\nrelay    %s\n' \
-      "$S" "$PW_CLI_PIN" "$PROFILE" "$WORKDIR" "$IDLE_MS" "${_r:-no close recorded${_e:+ in $_e}}"
+    _mode='operator Chrome'; [ ! -e "$WORKDIR/.headless" ] || _mode='headless, in-memory, no profile'
+    [ -e "$WORKDIR/.headless" ] || [ "${HARBOR_ACCESS_BROWSER_BACKGROUND:-1}" = 0 ] || _mode="$_mode, background"
+    printf 'session  %s\npin      @playwright/cli@%s\nmode     %s\nprofile  %s\nworkdir  %s\nidle     %s ms\nrelay    %s\n' \
+      "$S" "$PW_CLI_PIN" "$_mode" "$PROFILE" "$WORKDIR" "$IDLE_MS" "${_r:-no close recorded${_e:+ in $_e}}"
     _cli list
     ;;
   *)

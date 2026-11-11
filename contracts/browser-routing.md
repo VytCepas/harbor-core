@@ -41,14 +41,14 @@ A measurement skill routed raw-protocol work to *"Chrome for Testing, binaries a
 exist on this box.** `~/Library/Caches/ms-playwright/` holds a single registry
 marker and no browser binaries.
 
-Every backend here runs on the **system Google Chrome**, version
-`152.0.7977.76` measured 2026-09-06, which is what `channel:'chrome'` has always
+Every backend here runs on the **system Google Chrome**, which is what `channel:'chrome'` has always
 resolved to. Nothing on this box downloads a bundled browser. Its path is the
 macOS default under `/Applications`, and `harbor browser doctor` prints the one
-this box actually resolved rather than restating it here:
+this box actually resolved, and its version, rather than restating them here (this file said 152 while the box ran 157,
+2026-11-11):
 
 ```
-harbor browser doctor        # chrome  Google Chrome 152.0.7977.76
+harbor browser doctor        # chrome  Google Chrome <version>
 ```
 
 A row naming a path that is not there is a row that sends a session to a dead end
@@ -110,7 +110,9 @@ to run instead, and the first Claude-in-Chrome call of a session carries the rou
 Sheets, Docs or Slides needs a focus check before every keystroke and paste, and
 `harbor chrome` has no `eval` to make one. On 2026-10-06 its keys landed in the wrong
 cells and its pastes went into the Name Box. Claude in Chrome makes that check, so
-it keeps those hosts. `harbor chrome` may still open them to read.
+it keeps those hosts. `harbor chrome` may still open them to read. **Sheets writes go through the Google Sheets
+connector** (harbor#1507, decided 2026-11-11): cell-exact and with no grid focus to guess; pack 67
+`sheets-write-route` names it when a session opens a sheet in harbor chrome.
 
 The `claude-in-chrome` extension (now row 4's fallback; it was row 4 when this was
 measured) remains unable to run unattended and can disturb the operator's own browser.
@@ -190,6 +192,12 @@ boundary**; a click can still navigate anywhere.
 | the cause is named | attach logs `pw:mcp:error` beside `pw:mcp:relay` (errors only, no headers), so a failed re-attach lands in the relay log; when it reads `Cannot access a chrome-extension:// URL of different extension`, the lost-tab refusal says another extension's frame did it and names that extension's site access as the operator's fix | suite, incl. a mutant; live 2026-10-14 |
 | Enter in the same call | `fill` and `type` take `--submit`: the detach can land ~300 ms after the text, too soon for a second call | suite, incl. a mutant |
 | no stdin | the CLI runs with stdin closed: inherited, it drained a caller's `while read` loop and only the first row ran | suite, incl. a mutant |
+| background (harbor#1507) | `attach` runs the daemon with `PLAYWRIGHT_MCP_BACKGROUND=1` (CLI 0.1.24; the extension must be 0.5.0 or later), so its window stays behind the operator's; `HARBOR_ACCESS_BROWSER_BACKGROUND=0` turns it off for one attach. **Measured 2026-11-11 on Chrome 157, extension version unread: a covered window still read `hidden` and a click timed out**, so `front` and the hidden-tab refusal stay; upstream (playwright#43868) reports a hidden tab clickable with extension 0.5.0 on Chromium 158 | suite, incl. a mutant; live 2026-11-11 |
+| `text`, fixed (harbor#1507) | `text [ref]` returns the page's or one element's `innerText` through two fixed functions, capped at 40,000 characters; a ref only, never a selector or a script, so `eval` stays refused | suite, incl. mutants |
+| `steps` (harbor#1507) | one MCP call runs up to 25 hot verbs in order through the same guards, stopping at the first failure; only the last step returns in full. A call pays ~3 s of hooks and permission checks around milliseconds of browser work (138 calls matched, 2026-11-11), so a sequence pays it once. attach, detach, front, tabs, wait-signin and `confirm_click` run alone. **`steps` is never allow-listed**: one "always allow" on it would pass goto, click and upload together, and a hook keyed to one verb's tool name does not see it (pack 67 reads its steps for that reason) | suite, incl. a mutant |
+| re-attach on goto (harbor#1507) | a `goto` that finds the relay gone re-attaches once with the registered extension token and goes on, but only when the relay's recorded close is `All controlled tabs detached` (its last tab went: 75 times in 43 sessions). Only `goto`, which is never allow-listed, so the classifier sees the call that opens the operator's Chrome; never after the operator's *Disconnect*, a dismissed debugging bar or the idle timeout; never after `detach` (it removes `.last-url`), for a headless lane, without the token, or to a host off the list. Every other verb gets the hand-off, naming that goto (security review, 2026-11-11) | suite, incl. mutants |
+| a download is not a failure | a `goto` the CLI answers `Download is starting` (an export link: 22 times) returns ok, naming Chrome's download folder | suite, incl. a mutant |
+| headless lane (harbor#1507) | `attach --headless` in a lane starts a throwaway, in-memory system Chrome (`open --browser=chrome`, no profile, so signed out by design) driven by the same verbs and **the same host allow-list** (the operator's decision, 2026-11-11); `detach` closes it; `tabs` and `wait-signin` refuse, `front` is a no-op. For a page that needs no login: no Connect, no window, no focus taken. `open` stays refused as a verb | suite, incl. mutants; live 2026-11-11 (attach 7.8 s with the first fetch of 0.1.24, goto 5.2 s, text) |
 
 **The bypass rows were found by an adversarial review on 2026-09-30** (five
 confirmed, each now a failing-then-passing test). **One gap stays open:** calling

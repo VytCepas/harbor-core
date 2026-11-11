@@ -55,6 +55,12 @@ t_eq "the ask rule names the installed gate-approve.sh" true \
 t_eq "the allow rules name the installed gate-merge.sh and gate-queue.sh" true \
   "$(jq --arg m "Bash($CLAUDE_CONFIG_DIR/bin/gate-merge.sh *)" --arg q "Bash($CLAUDE_CONFIG_DIR/bin/gate-queue.sh *)" \
      '(.permissions.allow | index($m) != null) and (.permissions.allow | index($q) != null)' "$_s")"
+chrome_allow() { jq -r '.permissions.allow[] | select(startswith("mcp__harbor_chrome__")) | sub("^mcp__harbor_chrome__"; "")' "$1" | sort | tr '\n' ' '; }
+t_eq "harbor chrome: the read verbs and fill/find/press/type are allowed, nothing else (harbor#1507)" \
+  "console doctor fill find hosts press screenshot snapshot state status tab_list tabs text type " "$(chrome_allow "$_s")"
+t_eq "harbor chrome: confirm_click stays an ask" true "$(jq '.permissions.ask | index("mcp__harbor_chrome__confirm_click") != null' "$_s")"
+jq '.permissions.allow += ["mcp__harbor_chrome__click"]' "$_s" > "$T_TMP/wide"
+t_eq "RED-PROOF: an allowed click is seen" yes "$([ "$(chrome_allow "$T_TMP/wide")" != "$(chrome_allow "$_s")" ] && echo yes || echo no)"
 ship_rules() { jq -r '[.permissions.ask[], .permissions.allow[]] | .[] | select(test("deploy-fleet"))' "$1"; }
 t_eq "the ship runner is allowed for night only (harbor#1060)" "Bash($CLAUDE_CONFIG_DIR/bin/deploy-fleet.sh night*)" "$(ship_rules "$_s")"
 jq '.permissions.allow += ["Bash('"$CLAUDE_CONFIG_DIR"'/bin/deploy-fleet.sh *)"]' "$_s" > "$T_TMP/wide"

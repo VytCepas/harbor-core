@@ -107,7 +107,7 @@ JQ_DEFS='
   def floor_hook($ev): (.command | names) as $n
     | any($n[]; IN($del[])) or any($rows[]; .ev == $ev and .argv == $n);
   def arr: if type == "array" then . else [] end;
-  def gate_rule: type == "string" and ((startswith("Bash(" + $gdir + "/bin/gate-") or startswith("Bash(" + $gdir + "/bin/deploy-fleet.sh ")) or . == "mcp__harbor_chrome__confirm_click" or IN($gv[]));'
+  def gate_rule: type == "string" and ((startswith("Bash(" + $gdir + "/bin/gate-") or startswith("Bash(" + $gdir + "/bin/deploy-fleet.sh ")) or startswith("mcp__harbor_chrome__") or IN($gv[]));'
 # The verb-register rules floor-deny derived (harbor#1291, #1419), read from the same registers by the same reader. An identical
 # rule the operator added by hand cannot be told apart, so it goes too; the dry run lists every one first.
 GV_JSON="$( { il_verbs allow; il_verbs ask; } | awk -F'\t' '$1 == "OK" { print $2 }' | jq -Rsc 'split("\n") | map(select(length > 0) | "Bash(\(.))")')"
