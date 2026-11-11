@@ -18,7 +18,7 @@ yaml_of() {
 step() { jq -r --arg n "$2" '[.jobs[].steps[] | select(.name == $n) | .run][0]' "$X/$1.json"; }
 
 t_section "1 - each patch: one workflow, parsed, pinned, nothing enabled"
-for n in hub-gates hub-digest hub-silent hub-watchdog; do
+for n in hub-gates hub-digest hub-silent hub-watchdog hub-bq-load; do
   yaml_of "$n"
   t_eq "$n parses and has jobs" "true" "$(jq '.jobs | length > 0' "$X/$n.json")"
   t_eq "$n is not applied" "1" "$(grep -c '^\*\*STATUS: NOT APPLIED' "$P/$n.patch.md")"
@@ -29,8 +29,11 @@ for n in hub-gates hub-digest hub-silent hub-watchdog; do
 done
 t_eq "no hub workflow was written into this repo" "0" "$(find "$T_ROOT/.github/workflows" -name 'hub-*' 2>/dev/null | grep -c . || true)"
 t_eq "the watchdog also runs on member activity" "true" "$(jq '.on | has("issue_comment") and has("schedule")' "$X/hub-watchdog.json")"
+t_eq "the loader runs only by hand until J1 has its yes" "[\"workflow_dispatch\"]" "$(jq -c '.on | keys' "$X/hub-bq-load.json")"
+t_eq "the loader asks for an OIDC token and nothing it does not use" '{"contents":"read","id-token":"write","issues":"read"}' "$(jq -S -c .permissions "$X/hub-bq-load.json")"
+t_eq "its identity file is removed in the step that made it" 1 "$(step hub-bq-load 'Build the rows' | grep -c 'rm -f "$RUNNER_TEMP/identity"')"
 if command -v actionlint >/dev/null 2>&1; then
-  if actionlint -shellcheck= "$X"/hub-gates.yml "$X"/hub-digest.yml "$X"/hub-silent.yml "$X"/hub-watchdog.yml > "$X/actionlint.out" 2>&1; then t_pass; else t_fail "actionlint: $(head -n 5 "$X/actionlint.out")"; fi
+  if actionlint -shellcheck= "$X"/hub-gates.yml "$X"/hub-digest.yml "$X"/hub-silent.yml "$X"/hub-watchdog.yml "$X"/hub-bq-load.yml > "$X/actionlint.out" 2>&1; then t_pass; else t_fail "actionlint: $(head -n 5 "$X/actionlint.out")"; fi
 else echo "workflows-test: SKIPPED actionlint (not installed); the parse checks above ran"; fi
 
 # a workspace as the runner has it: hub/ (made), core/ (this checkout's bin), RUNNER_TEMP

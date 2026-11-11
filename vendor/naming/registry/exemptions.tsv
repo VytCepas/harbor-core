@@ -85,3 +85,5 @@ world-0010	name.word-unregistered	fixtures/lint-module/	world-name	never	the fix
 world-0011	name.word-unregistered	fixtures/memory/corpus/	world-name	never	a note with a space in its name is a case the memory tests cover (harbor#1097; as world-0003)
 world-0012	name.word-unregistered	fixtures/standard-catalog/repo/	world-name	never	the fixture repo imitates a tree with a test directory that is no family, tests/misc, which the catalog's drift expectations name (harbor#1097)
 world-0013	name.word-unregistered	tests/guards/selfedit.jsonl	world-name	never	D-19: the guard rule ids selfedit:* are frozen and are read off this file's name (standard-frozen-generate.sh), so the file keeps the word (harbor#1097; as world-0005)
+world-0014	name.case	tests/member/pack/fixtures/hub-packs/thinking/pack-tree/skills/	world-name	never	D-52: the fixture is the real thinking company pack, whose skills are vendored upstream trees and keep the upstream's names (harbor#1278; as world-0001)
+world-0015	name.word-unregistered	tests/member/pack/fixtures/hub-packs/thinking/pack-tree/skills/	world-name	never	the upstream skill files carry their own words (harbor#1278; as world-0014)

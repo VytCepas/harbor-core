@@ -1,0 +1,4 @@
+name = "company-start"
+version = "1.0.0"
+harbor_version = ">=1"
+description = "Plain-words help for the safety settings on a member laptop"

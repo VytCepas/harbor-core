@@ -9,6 +9,8 @@
 #   harbor hub leave [--apply] [--live | --dir PATH]   after a VERIFIED revocation: drop hub packs and policy; names IT's root step
 #   harbor hub project register <name> [--covers TEXT] [--kind K]   register a checkout with `harbor repo adopt --core-only`
 #   harbor hub support list|accept <id>|connect <id>   admin: answer a member's request for remote help (hub-support.sh)
+#   harbor hub id                            member: this laptop account's random id for Harbor's logs, read only, and whether the
+#                                            notice receipt is recorded. Give the id to ask for your data or its deletion (legal/dpia.md R12)
 # Exit 0 done, 1 refused or a check is red, 2 usage, 3 the hub could not be reached (the last good policy stays).
 set -eu
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
@@ -69,13 +71,28 @@ pin_report() { # <policy>
 }
 
 # ── hub packs and hooks ───────────────────────────────────────────────────────────────────────────────────
+# A landed pack is the pin's, not the manifest's (harbor#1278): every file the manifest names is there, and each one extension.json lists at the pinned
+# commit has that sha256. A file a member edited or deleted fails it, and sync installs the pack again; a file the member added beside them is not looked at.
+pack_intact() { # <id> <commit> <manifest>
+  _hdir="$(sh "$HERE/scope-roots.sh" --hub 2>/dev/null)" || return 1
+  git -C "$_hdir" show "$2:packs/$1/extension.json" 2>/dev/null | jq -r '.files[]? | [.path, .sha256] | @tsv' > "$STATE/ext.files" 2>/dev/null || return 1
+  awk -F'\t' 'NR == FNR { h[$1] = $2; next } $1 == "F" { print $2 "\t" (($2 in h) ? h[$2] : "") }' "$STATE/ext.files" "$3" > "$STATE/ext.rows"
+  while IFS="$TAB" read -r _rp _rh; do
+    [ -f "$(cfgdir)/$_rp" ] || return 1
+    [ -z "$_rh" ] || [ "$(hub_sha256 < "$(cfgdir)/$_rp")" = "$_rh" ] || return 1
+  done < "$STATE/ext.rows"
+  return 0
+}
 sync_packs() { # <policy>: install what the policy pins, remove what it no longer lists
   _fails=0
   jq -r '.packs[]? | [.id, .commit] | @tsv' "$1" > "$STATE/packs.want"
   while IFS="$TAB" read -r _id _co; do
     [ -n "$_id" ] || continue
     _mf="$(cfgdir)/.harbor-packs/hub-$_id.tsv"
-    if [ -f "$_mf" ] && [ "$(manifest_commit "$_mf")" = "$_co" ]; then continue; fi
+    if [ -f "$_mf" ] && [ "$(manifest_commit "$_mf")" = "$_co" ]; then
+      pack_intact "$_id" "$_co" "$_mf" && continue
+      log_warn "hub pack $_id: a file landed on this laptop is not the pinned one; installing it again"
+    fi
     if pk install "$_id" --hub --apply > "$STATE/pack.out" 2>&1; then log_ok "hub pack $_id at $(printf %s "$_co" | cut -c1-12)"
     else
       _fails=$((_fails + 1)); log_fail "hub pack $_id was not installed: $(grep -m1 'skipped' "$STATE/pack.out" | cut -c1-200)"
@@ -143,6 +160,22 @@ cmd_sync() {
 }
 
 # ── status ────────────────────────────────────────────────────────────────────────────────────────────────
+# cmd_id: the id member-install.sh made, beside the managed root: read, never written or made here. Stdout is the id alone, so a
+# person can copy it; the rest goes to stderr. The board never shows it (hub-events.sh seals it), so this is the only place to read it.
+cmd_id() {
+  LOG_FD=2
+  [ $# -eq 0 ] || die "id takes no argument"
+  hub_marker || die "this is not a member laptop: it has no Harbor logs id" "docs/how-to/member-install.md" 1
+  _idf="$HERE/../../harbor-ids/$(id -un).id"
+  _id="$(cat "$_idf" 2>/dev/null)" || _id=''
+  case "$_id" in *[!0123456789abcdef]*) _id='' ;; esac
+  [ "${#_id}" -eq 32 ] || die "no valid id at $_idf: IT runs the install again, which makes one" "docs/how-to/member-install.md" 1
+  printf '%s\n' "$_id"
+  if [ -f "$HERE/../notice-received" ]; then log_note "the notice receipt is recorded: this laptop sends its counts, under this id only"
+  else log_note "no notice receipt is recorded: this laptop sends no counts to Harbor's logs"; fi
+  log_end || :
+}
+
 cmd_status() {
   tgt_parse "$@"
   printf 'role: %s\n' "$(hub_role)"
@@ -387,6 +420,7 @@ case "$verb" in
   leave) cmd_leave "$@" ;;
   project) cmd_project "$@" ;;
   support) rm -rf "$W"; exec sh "$HERE/hub-support.sh" "$@" ;;
+  id) cmd_id "$@" ;;
   '') usage >&2; exit 2 ;;
   *) die "unknown verb '$verb' (init, sync, status, sign, check, pin-check, leave, project, support)" ;;
 esac

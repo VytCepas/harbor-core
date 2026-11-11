@@ -15,7 +15,7 @@ One private repo owned by the company's GitHub organisation. It holds the signed
 ## 1. Create the repo
 
 1. In the organisation, create a **private** repo, for example `harbor-hub`. Make it from the scaffold: copy `templates/hub/` of harbor into a new folder, `git init`, commit, push. The scaffold's `README.md` repeats the first-day steps below.
-2. Do not add anything the gate does not know. `sh bin/hub-gate.sh <folder>` refuses a file that is not a policy, key, pack or description, which is how a member list or a note with a client's name stays out.
+2. Do not add anything the gate does not know. `sh bin/hub-gate.sh <folder>` refuses a file that is not a policy, key, pack or description, which is how a member list or a note with a client's name stays out. It also runs `bin/pack.sh`'s own install refusals over every `packs/<id>/` (front matter, a skill or command named like core's, a symlink, a register file), so a pack every laptop would skip is red before you sign it.
 3. Set the repository variables and secret the gates and workflows read (`patches/hub/hub-gates.patch.md` lists them): `HARBOR_CORE_REPO`, `HARBOR_CORE_SHA`, `GITLEAKS_SHA256`, the secret `HUB_LEAKS_TSV` (the company's own names), and `HUB_MEMBERS` (the logins you expect).
 
 ## 2. Roles

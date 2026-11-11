@@ -70,7 +70,8 @@ member_protected() {
     '~/.gitconfig' '~/.config/git/' \
     '~/.local/state/harbor/hub/' '~/.local/share/secret/' \
     "$2/harbor-private/" \
-    "$1/" "${1%/*}/managed-settings.json" "${1%/*}/managed-settings.d/" "${1%/*}/harbor-confinement"
+    "$1/" "${1%/*}/managed-settings.json" "${1%/*}/managed-settings.d/" "${1%/*}/harbor-confinement" "${1%/*}/CLAUDE.md"
+  case "$1" in /mnt/*) printf '%s\n' /etc/claude-code/CLAUDE.md ;; esac   # WSL: the in-distro copy (bin/member-install.sh)
 }
 # Every row as its `Edit(...)` rule. Never Write(...): the harness accepts those and never consults them (M10, bin/admission-deny.sh).
 member_edit_rows() {
@@ -132,6 +133,7 @@ member_compose() {
       + " /bin/sh " + $q + $root + "/bin/") as $sh |
     {type: "command", command: ($sh + "member-post.sh" + $q)} as $post |
     {type: "command", command: ($sh + "member-session.sh" + $q)} as $session |
+    {type: "command", command: ($sh + "member-upgrade.sh" + $q)} as $upgrade |
     {type: "command", command: ($sh + "hub-approval.sh" + $q + " note UserPromptSubmit")} as $note |
     {wslInheritsWindowsSettings: true,
      allowManagedHooksOnly: true,
@@ -150,7 +152,7 @@ member_compose() {
        PreToolUse: [{matcher: "*", hooks: [{type: "command", command: ($sh + "member-dispatch.sh" + $q), onFailure: "block"}]}],
        PostToolUse: [{matcher: "*", hooks: [$post]}],
        PostToolUseFailure: [{matcher: "*", hooks: [$post]}],
-       Stop: [{hooks: [$post]}],
+       Stop: [{hooks: [$post, $upgrade]}],
        UserPromptSubmit: [{hooks: [$note]}],
        SessionStart: [{hooks: [$session]}],
        # The default is a shared 1.5 seconds, and member-session.sh bounds its send at 8: a slow send would be cancelled and wait for the next one.

@@ -42,6 +42,8 @@ box	plain	post-compaction-carry	silent	source=startup	{"hook_event_name":"Sessio
 box	plain	post-compaction-carry	silent	source=resume	{"hook_event_name":"SessionStart","source":"resume"}
 box	plain	project-pointer	fire	SessionStart	{"hook_event_name":"SessionStart","source":"startup"}
 box	plain	project-pointer	silent	PreToolUse is a different event	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"ls -la"}}
+box	plain	repo-not-adopted	fire	a git dir under PORT_ROOT with no registry row	{"hook_event_name":"SessionStart","source":"startup"}
+box	plain	repo-not-adopted	silent	PreToolUse is a different event	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"ls -la"}}
 box	skills	repo-skills-pointer	fire	repo carries .claude/skills	{"hook_event_name":"SessionStart","source":"startup"}
 box	visible	repo-skills-pointer	silent	skills present but none hidden	{"hook_event_name":"SessionStart","source":"startup"}
 box	plain	repo-skills-pointer	silent	repo carries no .claude/skills	{"hook_event_name":"SessionStart","source":"startup"}

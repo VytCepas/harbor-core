@@ -103,6 +103,7 @@
 /bin/alert-notify.sh @VytCepas
 /bin/alert-probe.sh @VytCepas
 /bin/audit-collector-check.sh @VytCepas
+/bin/audit-review-config.sh @VytCepas
 /bin/audit-stream-lib.sh @VytCepas
 /bin/audit-triage-run.sh @VytCepas
 /bin/audit-triage.sh @VytCepas
