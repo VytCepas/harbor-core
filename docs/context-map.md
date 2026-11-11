@@ -32,7 +32,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | contract | contracts/ | system | source | versioned | 40 |
 | decision-record | docs/decisions/ | element | source | dated | 94 |
 | hook | hooks/ | component | source | living | 48 |
-| skill | skills/ | component | source | living | 44 |
+| skill | skills/ | component | source | living | 51 |
 | fixture | fixtures/ | element | source | living | 439 |
 | template | templates/ | component | source | living | 8 |
 | registry | registries/ | component | source | versioned | 76 |
@@ -68,7 +68,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `registries/` | 1 | 1 | 1 |
 | `relay/` | 4 | 1 | 1 |
 | `runners/` | 2 | 1 | 1 |
-| `skills/` | 44 | 9 | 1 |
+| `skills/` | 51 | 9 | 1 |
 | `standards/` | 32 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `templates/` | 8 | 3 | 1 |
@@ -90,7 +90,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | ci | coordination | 17 | 46 | 2 | 20 | 1 | 7 |
 | context | control-plane | 7 | 15 | 1 | 3 | 0 | 44 |
 | deploy | control-plane | 16 | 31 | 1 | 4 | 0 | 7 |
-| doc | control-plane | 16 | 13 | 0 | 37 | 0 | 22 |
+| doc | control-plane | 16 | 13 | 0 | 44 | 0 | 22 |
 | drift | control-plane | 8 | 10 | 0 | 11 | 4 | 14 |
 | eval | control-plane | 11 | 8 | 0 | 2 | 0 | 0 |
 | event | observability | 3 | 19 | 0 | 12 | 0 | 2 |
@@ -325,6 +325,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `skills/doc-deliverable-contract/SKILL.md`
 - `skills/doc-knowledge-base/SKILL.md`
 - `skills/doc-learning-artifact/SKILL.md`
+- `skills/doc-workshop-deck/SKILL.md`
 
 ### drift
 
