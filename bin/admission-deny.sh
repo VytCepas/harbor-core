@@ -212,11 +212,6 @@ NEW="$(jq --argjson ADD "$ADD" \
 GATE_ASK="$(jq -n --arg d "$DIR" '["Bash(\($d)/bin/gate-approve.sh *)", "mcp__harbor_chrome__confirm_click"]')"
 # The ship runner (harbor#1060) is allowed for `night` only: its `deploy` is gate-approve.sh's child, never a rule's.
 GATE_ALLOW="$(jq -n --arg d "$DIR" '["Bash(\($d)/bin/gate-merge.sh *)", "Bash(\($d)/bin/gate-queue.sh *)", "Bash(\($d)/bin/deploy-fleet.sh night*)"]')"
-# harbor#1507: harbor chrome's read-only verbs skip the auto-mode classifier, which held every read ~1-2 s and denied some;
-# fill/find/press/type were allowed by hand before and are named here so the install owns them. click, goto and the
-# rest stay with the classifier, and confirm_click stays an ask.
-CHROME_ALLOW="$(jq -n '["snapshot","screenshot","state","tabs","tab_list","status","doctor","hosts","console","text","fill","find","press","type"] | map("mcp__harbor_chrome__" + .)')"
-GATE_ALLOW="$(jq -n --argjson g "$GATE_ALLOW" --argjson c "$CHROME_ALLOW" '$g + $c')"
 NEW="$(printf '%s' "$NEW" | jq --argjson a "$GATE_ASK" --argjson l "$GATE_ALLOW" '
   .permissions.ask = (((.permissions.ask // []) + $a) | unique)
   | .permissions.allow = (((.permissions.allow // []) + $l) | unique)')"

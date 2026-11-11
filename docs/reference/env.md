@@ -17,7 +17,6 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_ACCESS_BROWSER_CONFIRM` | switch | none | Per-call reference of a browser element whose destructive action the operator confirms; unset means destructive clicks are refused | access |  | tests only |
 | `HARBOR_ACCESS_BROWSER_FLOW_WORKROOT` | path | `/tmp` | Directory under which access-browser-flow makes its throwaway work folder for a recorded flow (default /tmp) | access |  | tests only |
 | `HARBOR_ACCESS_BROWSER_IDLE_MS` | tuning | `14400000` | Milliseconds the access browser agent may sit idle before it stops (default 14400000, 4 hours) | access |  | tests only |
-| `HARBOR_ACCESS_BROWSER_BACKGROUND` | tuning | `1` | 0 turns off harbor chrome background attach for one attach (the window stays behind the operator's; default 1) | access |  | tests only |
 | `HARBOR_ACCESS_BROWSER_LANE` | value | none | Lane suffix (1-12 of a-z0-9) giving a parallel agent its own browser session named <session>-<lane> | access |  | tests only |
 | `HARBOR_ACCESS_BROWSER_LIVE_ACCEPT` | value | `#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll` | CSS selector the live browser access check clicks to accept the cookie dialog (default is the Cookiebot allow-all button) | access |  | tests only |
 | `HARBOR_ACCESS_BROWSER_LIVE_URL` | value | `computed` | URL the browser consent probe drives; unset falls back to browser_live_url in harbor.toml, else the arm is skipped | access |  | tests only |

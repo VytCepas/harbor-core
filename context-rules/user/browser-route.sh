@@ -21,8 +21,7 @@
 #
 # EDITORS stay on Claude in Chrome: harbor chrome has no eval, so it cannot assert
 # grid focus and wrote Sheets keys into the wrong cells after harbor#903 took
-# docs.google.com (2026-10-06). harbor chrome still admits them for reading. Sheets WRITES go through the
-# Google Sheets connector (harbor#1507, decided 2026-11-11; pack 67 sheets-write-route names it).
+# docs.google.com (2026-10-06). harbor chrome still admits them for reading.
 EDITORS="docs.google.com"
 #
 # FAIL-OPEN, like every path in this engine: no jq, no payload, no registry row,

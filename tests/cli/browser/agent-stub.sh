@@ -38,7 +38,7 @@ case " \$* " in *" upload "*) [ -z "\${STUB_UPLOAD_DENIED:-}" ] || { echo 'fileC
 case " \$* " in *" goto "*) [ -z "\${STUB_XERR:-}" ] || { echo 'pw:mcp:error Error: Cannot access a chrome-extension:// URL of different extension' >> "\$STUB_XERR"; echo 'Error: Target page, context or browser has been closed'; exit 1; } ;; esac
 # STUB_FAIL: every verb but snapshot fails as a wait on an unpainted page does.
 case " \$* " in *" snapshot "*) ;; *) [ -z "\${STUB_FAIL:-}" ] || { echo "TimeoutError: Timeout 5000ms exceeded."; exit 1; } ;; esac
-printf "STUB profile=%s pwd=%s args=%s bg=%s debug=%s\n" "\${PLAYWRIGHT_MCP_PROFILE_DIR_NAME:-}" "\$PWD" "\$*" "\${PLAYWRIGHT_MCP_BACKGROUND:-}" "\${DEBUG:-}"
+printf "STUB profile=%s pwd=%s args=%s debug=%s\n" "\${PLAYWRIGHT_MCP_PROFILE_DIR_NAME:-}" "\$PWD" "\$*" "\${DEBUG:-}"
 EOF
 chmod +x "$STUB"
 cat > "$SNAP" <<'EOF'

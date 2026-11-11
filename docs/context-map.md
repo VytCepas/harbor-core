@@ -45,7 +45,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | how-to | docs/how-to/ | component | source | living | 6 |
 | reference | docs/reference/ | component | generated | generated | 86 |
 | explanation | docs/explanation/ | component | source | living | 106 |
-| (no kind) | - | - | - | - | 284 |
+| (no kind) | - | - | - | - | 282 |
 
 ## Folders
 
@@ -56,7 +56,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.github/` | 4 | 2 | 1 |
 | `bin/` | 291 | 32 | 2 |
 | `commands/` | 5 | 4 | 1 |
-| `context-rules/` | 68 | 6 | 1 |
+| `context-rules/` | 66 | 6 | 1 |
 | `contracts/` | 118 | 14 | 2 |
 | `docs/` | 319 | 26 | 9 |
 | `fixtures/` | 439 | 11 | 1 |
@@ -89,7 +89,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | bq | observability | 3 | 6 | 0 | 2 | 0 | 0 |
 | check | observability | 2 | 5 | 0 | 1 | 58 | 0 |
 | ci | coordination | 17 | 46 | 2 | 20 | 1 | 7 |
-| context | control-plane | 7 | 16 | 1 | 3 | 0 | 46 |
+| context | control-plane | 7 | 16 | 1 | 3 | 0 | 45 |
 | deploy | control-plane | 16 | 31 | 1 | 4 | 0 | 7 |
 | doc | control-plane | 16 | 13 | 0 | 37 | 0 | 22 |
 | drift | control-plane | 8 | 10 | 0 | 11 | 4 | 14 |
@@ -829,7 +829,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `.github/` | 2 |
 | `bin/` | 12 |
 | `commands/` | 2 |
-| `context-rules/` | 56 |
+| `context-rules/` | 54 |
 | `contracts/` | 88 |
 | `docs/` | 133 |
 | `fixtures/` | 264 |

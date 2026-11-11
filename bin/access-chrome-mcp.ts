@@ -39,10 +39,6 @@ const KEEP = ['HOME', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR',
 const HOME: string = process.env.HOME ?? os.homedir();
 const STATE_EXPR = 'JSON.stringify({visibility: document.visibilityState, focus: document.hasFocus(), ready: document.readyState, host: location.host, blank: location.href === "about:blank", online: navigator.onLine})';
 const OWNED_NAME = '.owned-tabs';
-// text: two fixed functions, never the caller's (eval stays refused). innerText is what the page shows; capped, since a page can be huge.
-const TEXT_PAGE = '() => document.body ? document.body.innerText : ""';
-const TEXT_EL = '(el) => el.innerText ?? el.textContent ?? ""';
-const TEXT_MAX = 40000;
 const DESTRUCTIVE = ('delete remove archive pause publish unpublish discard pay purchase buy unlink disconnect ' +
   'ištrinti pašalinti archyvuoti sustabdyti pristabdyti publikuoti paskelbti išjungti apmokėti').split(' ');
 
@@ -50,7 +46,7 @@ const DESTRUCTIVE = ('delete remove archive pause publish unpublish discard pay 
 const LONG: Record<string, number> = { attach: 900, 'wait-signin': 900 };   // seconds
 const AGENT_VERBS = new Set(['attach', 'status', 'doctor', 'detach', 'tabs', 'front', 'wait-signin', 'hosts', 'tab-new']);
 // Run here. Default-deny: absent on purpose are run-code, eval, cookie-*, *storage-*, state-save/load, requests, route, install...
-const HOT_VERBS = new Set(['state', 'text', 'goto', 'tab-list', 'tab-select', 'tab-close', 'snapshot', 'find', 'screenshot', 'pdf',
+const HOT_VERBS = new Set(['state', 'goto', 'tab-list', 'tab-select', 'tab-close', 'snapshot', 'find', 'screenshot', 'pdf',
   'go-back', 'go-forward', 'reload', 'console', 'resize', 'click', 'dblclick', 'hover', 'fill', 'type', 'select', 'check', 'uncheck',
   'drag', 'press', 'keydown', 'keyup', 'mousemove', 'mousedown', 'mouseup', 'mousewheel', 'dialog-accept', 'dialog-dismiss', 'upload']);
 const INPUT_VERBS = new Set(['click', 'dblclick', 'fill', 'type', 'select', 'check', 'uncheck', 'drag', 'press', 'keydown', 'keyup',
@@ -58,13 +54,9 @@ const INPUT_VERBS = new Set(['click', 'dblclick', 'fill', 'type', 'select', 'che
 const SIGNIN_FAIL_VERBS = new Set(['goto', 'reload', 'go-back', 'go-forward', 'click', 'dblclick']);
 
 const VERBS: Record<string, string> = {
-  attach: "connect to the operator's Chrome (in the background; the operator clicks Connect unless the extension token is registered), " +
-    'or, with args ["--headless"] and a lane, a throwaway headless Chrome with no login on the same host allow-list',
+  attach: "connect to the operator's Chrome; the operator clicks Connect unless the extension token is registered",
   status: "this session's browser name, pin, profile and workdir",
   state: "the page's own visibility, focus and load state",
-  text: 'the visible text of the page, or of one element (args: [] or [ref]); cheaper than snapshot or screenshot for reading',
-  steps: 'run several verbs in one call, in order, stopping at the first failure (steps: [{verb, args}], at most 25; every guard runs per step; ' +
-    'not attach, detach, front, tabs, wait-signin or confirm_click). Only the last step returns its full output',
   doctor: 'is harbor chrome ready on this box',
   detach: "release the operator's Chrome; always run it when done",
   tabs: "every Chrome tab by window, query strings cut; = marks this session's page",
@@ -105,11 +97,6 @@ function askRuleGuard() {
 const SCHEMA = { type: 'object', additionalProperties: false, properties: {
   args: { type: 'array', items: { type: 'string' }, description: "the verb's arguments, as harbor chrome takes them" },
   lane: { type: 'string', description: "a parallel agent's own browser session: 1-12 of a-z0-9" } } };
-const STEPS_SCHEMA = { type: 'object', additionalProperties: false, required: ['steps'], properties: {
-  steps: { type: 'array', minItems: 1, maxItems: 25, items: { type: 'object', additionalProperties: false, required: ['verb'], properties: {
-    verb: { type: 'string', description: 'a harbor chrome verb: goto, snapshot, find, text, click, fill, type, press, select, check, screenshot…' },
-    args: { type: 'array', items: { type: 'string' } } } } },
-  lane: SCHEMA.properties.lane } };
 const toolName = (v: string) => v.replace(/-/g, '_');
 const TOOLS: Record<string, string> = Object.fromEntries(Object.keys(VERBS).map((v) => [toolName(v), v]));
 
@@ -347,17 +334,12 @@ function goneCheck(S: string, text: string) {
   if (!/^(The b|B)rowser '[^']*' is not open/m.test(text)) return;
   goneRefusal(S);
 }
-function lastClose(S: string): string {   // the relay's last recorded close reason, from the daemon log
+function goneRefusal(S: string): never {
   const e = relayErr(S);
   const last = e ? lines(e).filter((l) => l.includes('ws closed> ')).slice(-1)[0] : '';
-  return last ? last.slice(last.indexOf('ws closed> ') + 11).slice(0, 189) : '';
-}
-function goneRefusal(S: string): never {
-  const why = lastClose(S);
-  const last = readText(path.join(workdirOf(S), '.last-url')).trim();
+  const why = last ? last.slice(last.indexOf('ws closed> ') + 11).slice(0, 189) : '';
   return handoff(`no Chrome is connected to session ${S}${why ? ` — the relay last closed with ${why}` : ''}`,
-    'harbor chrome attach   # then Connect in Chrome; for an app with a login, sign in first and Connect that tab' +
-    (last && /All controlled tabs detached/.test(why) ? `; or mcp__harbor_chrome__goto with args ["${bareUrl(last)}"] re-attaches with the registered token` : ''));
+    'harbor chrome attach   # then Connect in Chrome; for an app with a login, sign in first and Connect that tab');
 }
 async function probeState(c: Conn, wd: string): Promise<string | null> {
   try { const r = await c.run({ _: ['eval', STATE_EXPR] }, wd, true); return r.isError ? null : r.text; } catch { return null; }
@@ -490,20 +472,6 @@ async function hot(S: string, verb: string, args: string[], tm: Timing, confirme
     if (r.isError) goneCheck(S, r.text);
     return { text: scrub(r.text), isError: !!r.isError };
   }
-  if (verb === 'text') {
-    if (args.length > 1) refuse('text takes [] or [ref]', 'harbor chrome text');
-    if (args.length === 1 && !/^(e[0-9]+|f[0-9]+e[0-9]+)$/.test(args[0])) refuse(`text takes a snapshot ref (e12, f3e12), not '${args[0]}'`, 'harbor chrome snapshot');
-    const c = await connectOrGone(S);
-    tm.guards = performance.now() - t0;
-    const fn = args.length ? TEXT_EL : TEXT_PAGE;
-    const r = await c.run({ _: ['eval', fn, ...args] }, wd, true).catch((e) => { if (e instanceof Gone) goneRefusal(S); throw e; });
-    tm.rpc = performance.now() - t0 - tm.guards;
-    if (r.isError) goneCheck(S, r.text);
-    let out = scrub(r.text ?? '');
-    try { const j = JSON.parse(out); if (typeof j === 'string') out = j; } catch { /* already plain */ }
-    if (out.length > TEXT_MAX) out = out.slice(0, TEXT_MAX) + `\n[text cut at ${TEXT_MAX} of ${out.length} characters: read one element with text <ref>]`;
-    return { text: out, isError: !!r.isError };
-  }
   optionGuards(verb, args, wd);
   let ref = '', btn = '', force = false, mods = false;
   if (verb === 'click' || verb === 'dblclick') {
@@ -539,9 +507,6 @@ async function hot(S: string, verb: string, args: string[], tm: Timing, confirme
     r = { isError: true, text: `Error: ${e.message}` };
   }
   tm.rpc = performance.now() - t1;
-  if (verb === 'goto' && r.isError && /Download is starting/.test(r.text ?? '')) {   // an export link: 22 of these read as failures (2026-09-30..11-11)
-    return { text: `download started from ${bareUrl(args[0])}: Chrome saves it to its own download folder (usually ~/Downloads); the page did not change`, isError: false };
-  }
   const rc = r.isError ? 1 : 0, held = r.text ?? '';
   // A goto that fails on another extension's frame says so (login pages with a password field).
   if (verb === 'goto' && rc && e0 && lines(e0).slice(el).some((l) => l.includes('chrome-extension:// URL of different extension'))) {
@@ -568,8 +533,6 @@ async function hot(S: string, verb: string, args: string[], tm: Timing, confirme
   if (!rc) {
     const pu = (held.match(/^- Page URL: (.*)$/gm) ?? []).slice(-1)[0]?.slice(12) ?? '';
     if (pu && signinUrl(pu)) { try { signedOut(wd, pu); } catch (e) { throw withPrefix(e as Refusal, scrub(held)); } }
-    const keep = pu || (verb === 'goto' ? args[0] : '');
-    if (keep && hostOk(keep) && !signinUrl(keep)) { try { fs.writeFileSync(path.join(wd, '.last-url'), keep + '\n'); } catch { /* a courtesy for the re-attach */ } }
   }
   return { text: scrub(held), isError: rc !== 0 };
 }
@@ -613,65 +576,6 @@ function viaAgent(S: string, verb: string, args: string[], lane: string): Promis
   });
 }
 
-// ── re-attach (harbor#1507) ─────────────────────────────────────────────────
-// The relay closes when its last controlled tab goes (75 times in 43 sessions, each costing an attach call and a turn). With the
-// extension token registered, attach needs no click, so a GOTO that finds the session gone re-attaches once and goes on.
-// Only goto: it is never allow-listed, so the classifier sees the call that re-attaches (a read verb that skips it must not
-// open the operator's Chrome). Only when the relay closed because its last tab went: never after the operator's Disconnect,
-// a dismissed debugging bar or the idle timeout (review, 2026-11-11). Never after a detach (it removes .last-url), never
-// headless, never without the token, never twice a call. Other verbs get the hand-off, naming the goto.
-const REATTACH_CLOSE = /All controlled tabs detached/;
-const tokenRegistered = () => SEAMS.tokenRegistered ??
-  (spawnSync('/bin/sh', [path.join(HERE, 'access.sh'), 'has', 'playwright-extension-token'], { env: { PATH: PATH_FIXED, HOME }, stdio: 'ignore' }).status === 0);
-async function reattached(S: string, lane: string, verb: string, args: string[], tm: Timing, e: unknown): Promise<Res | null> {
-  if (verb !== 'goto' || !(e instanceof Refusal) || !e.message.startsWith('hand-off: no Chrome is connected')) return null;
-  const wd = workdirOf(S);
-  const last = readText(path.join(wd, '.last-url')).trim();
-  if (!last || fs.existsSync(path.join(wd, '.headless')) || !REATTACH_CLOSE.test(lastClose(S)) || !hostOk(args[0] ?? '') || !tokenRegistered()) return null;
-  const a = await viaAgent(S, 'attach', [], lane);
-  conns.get(S)?.close(); conns.delete(S);
-  if (a.isError) return null;
-  const g = await hot(S, 'goto', args, tm);
-  return { text: `[the relay had closed with its last tab; re-attached with the registered token]\n${g.text}`, isError: g.isError };
-}
-
-// ── steps: several verbs in one call (harbor#1507) ──────────────────────────
-// Each tool call pays ~3 s of hooks and permission checks around a browser action of milliseconds (138 calls matched,
-// 2026-11-11). steps pays that once. Every step runs through hot(), so every guard runs per step; the first failure stops it.
-const STEP_MAX = 25, STEP_ECHO = 1500;
-const STEP_VERBS = new Set([...HOT_VERBS]);
-function stepsOf(a: Record<string, unknown>): { verb: string; args: string[] }[] {
-  const st = a.steps;
-  if (!Array.isArray(st) || st.length < 1 || st.length > STEP_MAX) refuse(`steps takes 1..${STEP_MAX} steps`, 'mcp__harbor_chrome__steps with steps: [{"verb": "goto", "args": ["<https url>"]}, {"verb": "snapshot"}]');
-  return (st as unknown[]).map((x, i) => {
-    const o = x as Record<string, unknown>;
-    const v = typeof o?.verb === 'string' ? o.verb.replace(/_/g, '-') : '';
-    const g = o?.args ?? [];
-    if (!STEP_VERBS.has(v)) refuse(`step ${i + 1}: '${String(o?.verb)}' cannot run inside steps (attach, detach, front, tabs, wait-signin and confirm_click run alone)`);
-    if (!Array.isArray(g) || !g.every((y) => typeof y === 'string')) refuse(`step ${i + 1}: args must be a list of strings`);
-    return { verb: v, args: g as string[] };
-  });
-}
-async function steps(S: string, list: { verb: string; args: string[] }[]): Promise<Res> {
-  const out: string[] = [];
-  for (let i = 0; i < list.length; i++) {
-    const { verb, args } = list[i], t0 = performance.now(), tm: Timing = { guards: 0, rpc: 0, settle: 0 };
-    const head = `[${i + 1}/${list.length}] ${verb}${args.length ? ' ' + args.join(' ') : ''}`;
-    let r: Res;
-    try { r = await hot(S, verb, args, tm); } catch (e) {
-      if (!(e instanceof Refusal)) throw e;
-      const pre = e instanceof PrefixedRefusal ? e.prefix : '';
-      r = { text: (pre ? pre + '\n' : '') + refusalText(e), isError: true };
-    }
-    appendTiming(workdirOf(S), verb, performance.now() - t0, tm);
-    const last = i === list.length - 1 || r.isError;
-    const body = last || r.text.length <= STEP_ECHO ? r.text : r.text.slice(0, STEP_ECHO) + ` [${r.text.length - STEP_ECHO} more characters; only the last step returns in full]`;
-    out.push(`${head} → ${r.isError ? 'FAILED' : 'ok'}\n${body}`);
-    if (r.isError) { out.push(`stopped at step ${i + 1} of ${list.length}; steps ${i + 2}..${list.length} did not run`); return { text: out.join('\n'), isError: true }; }
-  }
-  return { text: out.join('\n'), isError: false };
-}
-
 // ── tool calls, one at a time per browser session ───────────────────────────
 const queues = new Map<string, Promise<unknown>>();
 function appendTiming(wd: string, verb: string, total: number, tm: Timing) {
@@ -701,20 +605,8 @@ async function call(name: string, argsIn: unknown): Promise<Res> {
         if (verb === 'attach' || verb === 'detach') { conns.get(S)?.close(); conns.delete(S); }   // a new daemon, a new socket
         return r;
       }
-      if (verb === 'steps') {
-        const list = stepsOf(a);
-        let r: Res;
-        r = await steps(S, list);   // a gone session is the hand-off, naming the goto that re-attaches
-        return { text: r.text.slice(0, OUT_MAX), isError: r.isError };
-      }
       if (verb === 'confirm-click') askRuleGuard();
-      const hv = verb === 'confirm-click' ? 'click' : verb;
-      let r: Res;
-      try { r = await hot(S, hv, args as string[], tm, verb === 'confirm-click'); } catch (e) {
-        const ra = await reattached(S, lane, hv, args as string[], tm, e);
-        if (!ra) throw e;
-        r = ra;
-      }
+      const r = await hot(S, verb === 'confirm-click' ? 'click' : verb, args as string[], tm, verb === 'confirm-click');
       appendTiming(workdirOf(S), verb, performance.now() - t0, tm);
       return { text: r.text.slice(0, OUT_MAX), isError: r.isError };
     } catch (e) {
@@ -738,7 +630,7 @@ async function handle(msg: any): Promise<any | null> {
   if (method === 'initialize') {
     result = { protocolVersion: PROTOCOLS.includes(params.protocolVersion) ? params.protocolVersion : PROTOCOLS[0], capabilities: { tools: {} }, serverInfo: { name: 'harbor_chrome', version: '2' } };
   } else if (method === 'ping') result = {};
-  else if (method === 'tools/list') result = { tools: Object.entries(VERBS).map(([v, d]) => ({ name: toolName(v), description: `harbor chrome ${v}: ${d}`, inputSchema: v === 'steps' ? STEPS_SCHEMA : SCHEMA })) };
+  else if (method === 'tools/list') result = { tools: Object.entries(VERBS).map(([v, d]) => ({ name: toolName(v), description: `harbor chrome ${v}: ${d}`, inputSchema: SCHEMA })) };
   else if (method === 'tools/call') {
     if (typeof params.name !== 'string') return err(-32602, 'name must be a string');
     const r = await call(params.name, params.arguments ?? {});
