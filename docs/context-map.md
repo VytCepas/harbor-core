@@ -28,11 +28,11 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | Kind | Folder | Level | Layer | Lifecycle | Files |
 |---|---|---|---|---|---|
 | policy | policy/ | system | source | living | 3 |
-| standard | standards/ | system | source | versioned | 31 |
+| standard | standards/ | system | source | versioned | 32 |
 | contract | contracts/ | system | source | versioned | 40 |
-| decision-record | docs/decisions/ | element | source | dated | 93 |
+| decision-record | docs/decisions/ | element | source | dated | 94 |
 | hook | hooks/ | component | source | living | 48 |
-| skill | skills/ | component | source | living | 43 |
+| skill | skills/ | component | source | living | 44 |
 | fixture | fixtures/ | element | source | living | 439 |
 | template | templates/ | component | source | living | 8 |
 | registry | registries/ | component | source | versioned | 76 |
@@ -44,7 +44,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | script | bin/ | component | source | living | 281 |
 | how-to | docs/how-to/ | component | source | living | 5 |
 | reference | docs/reference/ | component | generated | generated | 86 |
-| explanation | docs/explanation/ | component | source | living | 102 |
+| explanation | docs/explanation/ | component | source | living | 106 |
 | (no kind) | - | - | - | - | 279 |
 
 ## Folders
@@ -58,7 +58,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `commands/` | 5 | 4 | 1 |
 | `context-rules/` | 64 | 6 | 1 |
 | `contracts/` | 115 | 13 | 2 |
-| `docs/` | 313 | 26 | 9 |
+| `docs/` | 318 | 26 | 9 |
 | `fixtures/` | 439 | 11 | 1 |
 | `hooks/` | 44 | 7 | 1 |
 | `launchd/` | 21 | 10 | 1 |
@@ -68,8 +68,8 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `registries/` | 1 | 1 | 1 |
 | `relay/` | 4 | 1 | 1 |
 | `runners/` | 2 | 1 | 1 |
-| `skills/` | 43 | 9 | 1 |
-| `standards/` | 31 | 1 | 1 |
+| `skills/` | 44 | 9 | 1 |
+| `standards/` | 32 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `templates/` | 8 | 3 | 1 |
 | `tests/` | 594 | 29 | 1 |
@@ -83,14 +83,14 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 |---|---|---|---|---|---|---|---|
 | access | control-plane | 12 | 29 | 2 | 6 | 0 | 0 |
 | admission | control-plane | 27 | 90 | 0 | 6 | 0 | 176 |
-| agent | control-plane | 1 | 2 | 0 | 8 | 0 | 0 |
+| agent | control-plane | 1 | 2 | 0 | 10 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
 | audit | control-plane | 8 | 14 | 0 | 11 | 0 | 2 |
 | check | observability | 2 | 5 | 0 | 1 | 58 | 0 |
 | ci | coordination | 17 | 46 | 2 | 20 | 1 | 7 |
 | context | control-plane | 7 | 15 | 1 | 3 | 0 | 44 |
 | deploy | control-plane | 16 | 31 | 1 | 4 | 0 | 7 |
-| doc | control-plane | 16 | 13 | 0 | 36 | 0 | 22 |
+| doc | control-plane | 16 | 13 | 0 | 37 | 0 | 22 |
 | drift | control-plane | 8 | 10 | 0 | 11 | 4 | 14 |
 | eval | control-plane | 11 | 8 | 0 | 2 | 0 | 0 |
 | event | observability | 3 | 19 | 0 | 12 | 0 | 2 |
@@ -107,7 +107,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | scope | coordination | 14 | 22 | 0 | 1 | 0 | 5 |
 | session | data-plane | 14 | 5 | 0 | 7 | 0 | 0 |
 | skill | catalog | 5 | 18 | 0 | 8 | 0 | 14 |
-| standard | policy-function | 17 | 28 | 124 | 12 | 12 | 61 |
+| standard | policy-function | 17 | 28 | 126 | 12 | 12 | 61 |
 | status | observability | 13 | 29 | 0 | 10 | 0 | 0 |
 | test | control-plane | 4 | 5 | 2 | 8 | 0 | 15 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
@@ -180,6 +180,8 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `context-rules/user/agent-model-required.md`
 - `context-rules/user/agent-model.sh`
 - `contracts/agent-tools.tsv`
+- `docs/explanation/knowledge-base/agent-memory.md`
+- `docs/explanation/knowledge-base/agent-no-rag.md`
 - `docs/reference/check-rows/agent-idle.txt`
 - `launchd/com.harbor.agent.idle.plist`
 - `skills/agent-routing/SKILL.md`
@@ -321,6 +323,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `patches/doc-generate-check.patch.md`
 - `skills/doc-atlas/SKILL.md`
 - `skills/doc-deliverable-contract/SKILL.md`
+- `skills/doc-knowledge-base/SKILL.md`
 - `skills/doc-learning-artifact/SKILL.md`
 
 ### drift
@@ -714,6 +717,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `docs/decisions/0090-doc-kinds-follow-diataxis.md`
 - `docs/decisions/0091-object-slot-open.md`
 - `docs/decisions/0092-promote-name-rules-on-evidence.md`
+- `docs/decisions/0093-knowledge-base-standard.md`
 - `docs/decisions/README.md`
 - `docs/reference/check-rows/standard-fleet-names.txt`
 - `docs/reference/check-rows/standard-label-registered.txt`
@@ -727,6 +731,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `launchd/com.harbor.standard.schedule-registered.plist`
 - `launchd/com.harbor.standard.script-uncalled.plist`
 - `launchd/com.harbor.standard.seam-fresh.plist`
+- `standards/knowledge-base.md`
 - `standards/modularity.md`
 - `standards/naming.md`
 - `standards/naming/aliases.tsv`
@@ -812,7 +817,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `commands/` | 2 |
 | `context-rules/` | 52 |
 | `contracts/` | 88 |
-| `docs/` | 130 |
+| `docs/` | 132 |
 | `fixtures/` | 264 |
 | `hooks/` | 30 |
 | `mods/` | 7 |
