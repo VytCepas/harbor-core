@@ -200,4 +200,31 @@ m_call "$(m_bash 'ls')"
 t_eq "CONTROL: restored, the same call runs" silent "$M_DEC"
 
 t_red admission.member-dispatch
+t_section "15 - every call is counted once as activity, by tool, class and verdict (D9)"
+acts() { m_events | grep -c '^record activity ' || true; }
+m_reset; m_enforce
+m_call "$(m_bash 'ls -la')"
+t_eq "a clean call: one activity" 1 "$(acts)"
+t_has "allow, its class, never the command" "$(m_events)" "activity tool=Bash verb_class=readonly verdict=allow count=1"
+t_hasnt "the command is not in any event" "$(m_events)" "ls -la"
+m_reset; m_enforce
+m_call "$(m_bash "$DD")"
+t_eq "a very-high call: denied, one activity" "deny 1" "$M_DEC $(acts)"
+t_has "with the deny verdict" "$(m_events)" "verdict=deny count=1"
+m_reset; m_enforce
+m_call "$SELF"
+t_has "a non-shell tool has no verb class" "$(m_events)" "activity tool=Edit verb_class=na verdict=deny count=1"
+m_reset; m_enforce
+m_call "$(m_tool mcp__claude_ai_Acme_Client__query '{"q":"x"}')"
+t_has "an MCP tool is mcp, never its server's name" "$(m_events)" "activity tool=mcp verb_class=na"
+t_hasnt "...the name is in no event" "$(m_events)" "Acme"
+m_reset; m_enforce
+m_call "$(m_tool Some_New_Tool '{}')"
+t_has "a tool the vocabulary lacks is other" "$(m_events)" "activity tool=other verb_class=na verdict=allow"
+m_reset; m_policy '.rollout.mode = "shadow"'
+m_call "$(m_bash "$RESET")"
+t_eq "shadow: silent" silent "$M_DEC"
+t_has "...counted as shadow, not allow" "$(m_events)" "verdict=shadow count=1"
+t_eq "...once" 1 "$(acts)"
+
 t_done

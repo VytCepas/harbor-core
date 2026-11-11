@@ -150,3 +150,5 @@ pin.runtime	pin	runtime	scaffolder fleet-controller workload data	core	yes	versi
 pin.tool	pin	tool	scaffolder fleet-controller workload data	core	yes	versions.tsv rows of this axis reach the repo through the vendored register
 pin.library	pin	library	workload	core	yes	versions.tsv rows of this axis reach the repo through the vendored register
 pin.action	pin	action	scaffolder fleet-controller workload data	core	yes	versions.tsv rows of this axis reach the repo through the vendored register
+register.contracts-bq-schema-tsv	register	contracts/bq-schema.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
+register.contracts-bq-values-tsv	register	contracts/bq-values.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload

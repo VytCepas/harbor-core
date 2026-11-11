@@ -24,6 +24,8 @@ kind	request	an approval request changed state
 kind	check	a harbor check ran
 kind	token	the board token is near its end
 kind	support	a remote support request changed state
+kind	activity	a day of tool calls of one kind, counted (logging-design D9, folded per day D4)
+kind	session	a day of session starts and ends, counted (logging-design D9, folded per day D4)
 outcome	proceeded	the person chose to go ahead
 outcome	not-run	no run was seen, so the person may have chosen to wait
 outcome	opened	the request was filed
@@ -46,3 +48,39 @@ mode	enforce	tiers apply
 reason	update	the member wants help with an update
 reason	fix	something is broken
 reason	question	the member has a question
+tool	Bash	the Bash tool
+tool	Write	the Write tool
+tool	Edit	the Edit tool
+tool	MultiEdit	the MultiEdit tool
+tool	NotebookEdit	the NotebookEdit tool
+tool	WebFetch	the WebFetch tool
+tool	WebSearch	the WebSearch tool
+tool	Task	the Task tool
+tool	Agent	the Agent tool
+tool	ToolSearch	the ToolSearch tool
+tool	mcp	any MCP tool: the server name never leaves
+tool	none	no tool
+tool	other	a tool this list does not name
+tool	Read	the Read tool
+tool	Grep	the Grep tool
+tool	Glob	the Glob tool
+tool	Skill	the Skill tool
+verb_class	readonly	a shell command of class readonly, by its first verb
+verb_class	vcs	a shell command of class vcs, by its first verb
+verb_class	cloud	a shell command of class cloud, by its first verb
+verb_class	container	a shell command of class container, by its first verb
+verb_class	script	a shell command of class script, by its first verb
+verb_class	interp	a shell command of class interp, by its first verb
+verb_class	network	a shell command of class network, by its first verb
+verb_class	fsmutate	a shell command of class fsmutate, by its first verb
+verb_class	system	a shell command of class system, by its first verb
+verb_class	compound	a shell command of class compound, by its first verb
+verb_class	event-bus	a shell command of class event-bus, by its first verb
+verb_class	session-title	a shell command of class session-title, by its first verb
+verb_class	suggest-stop	a shell command of class suggest-stop, by its first verb
+verb_class	other	a shell command of class other, by its first verb
+verb_class	na	not a shell command
+verdict	allow	the call went on
+verdict	deny	the call was refused
+verdict	ask	the person was asked
+verdict	shadow	a rule fired and was only recorded

@@ -42,7 +42,7 @@ rm -f "$MR/core-source"
 _gone=''
 for _c in $(jq -r '.hooks[][].hooks[].command' "$MFILE" | sed -n "s/^.* \/bin\/sh '.*\/bin\/\([^']*\)'.*/\1/p" | sort -u); do [ -f "$MB/$_c" ] || _gone="$_gone $_c"; done
 t_eq "every hook the settings name is in the root" '' "$_gone"
-t_eq "the settings name the five hook scripts" 4 "$(jq -r '.hooks[][].hooks[].command' "$MFILE" | sed -n "s/^.* \/bin\/sh '.*\/bin\/\([^']*\)'.*/\1/p" | sort -u | wc -l | tr -d ' ')"
+t_eq "the settings name the five hook scripts" 5 "$(jq -r '.hooks[][].hooks[].command' "$MFILE" | sed -n "s/^.* \/bin\/sh '.*\/bin\/\([^']*\)'.*/\1/p" | sort -u | wc -l | tr -d ' ')"
 mkdir -p "$T_TMP/o"
 HARBOR_HUB_API_BASE=http://127.0.0.1:9 HARBOR_ACCESS_SECRET_BIN=/bin/false sh "$MB/hub-board.sh" call "$T_TMP/o" GET "/repos/$REPO/issues?state=all" 2>/dev/null
 t_eq "the marker refuses the env seams: the call still reached this GitHub, with the stored token" 200 "$(cat "$T_TMP/o/status")"

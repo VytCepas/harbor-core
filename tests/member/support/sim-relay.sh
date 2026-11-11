@@ -331,6 +331,9 @@ t_eq "no upterm is left running" 0 "$(pgrep -f 'upterm host' | wc -l | tr -d ' '
 join "$T_TMP/admin" "$TARGET" "$T_TMP/after.out" 'wait 4'
 t_eq "the session id is dead on the relay" 255 "$JOIN_RC"
 
+cw_target() { printf 'wss://%s@%s' "$1" "$RELAY_HOST"; }
+. "$T_ROOT/tests/member/support/colleague.sh"
+
 t_section "M6 - upterm's public relay is refused by both scripts, before anything dials it"
 se_stub_upterm   # records every call: none may come
 real_policy ".support.relay = \"wss://uptermd.upterm.dev\""
