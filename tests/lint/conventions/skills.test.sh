@@ -278,4 +278,14 @@ t_section "test-strength is cross-linked from where verification is taught (harb
 for _tl in docs/explanation/verification-expanded.md AGENTS.md; do
   t_has "$_tl points at skills/test-strength" "$(cat "$T_ROOT/$_tl")" 'skills/test-strength/SKILL.md'
 done
+t_section "skill.no-plugin-agents: a skill names no plugin agent (harbor#1497)"
+NP="$T_TMP/np-root"; rm -rf "$NP"; mkdir -p "$NP/skills/demo"
+printf 'Use the `general-purpose` agent with a lens brief.\n' > "$NP/skills/demo/SKILL.md"
+t_eq "a clean skill: no violation" "" "$(viol skill.no-plugin-agents "$NP")"
+printf '| Correctness | `pr-review-toolkit:code-reviewer` |\n' >> "$NP/skills/demo/SKILL.md"
+t_has "a plugin agent name: red, with file and line" "$(viol skill.no-plugin-agents "$NP")" "skills/demo/SKILL.md:2"
+printf 'Use the general-purpose agent.\n' > "$NP/skills/demo/SKILL.md"
+t_eq "removed again: green" "" "$(viol skill.no-plugin-agents "$NP")"
+t_eq "the shipped skills/ are clean" "" "$(viol skill.no-plugin-agents "$T_ROOT")"
+
 t_done

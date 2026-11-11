@@ -7,6 +7,8 @@
 #   sh pack.sh install [<pack-id>...] --hub --apply (--live | --dir PATH)   a HUB pack (harbor#1278): the id and commit come from the
 #       verified signed policy, the files from the hub clone at that commit, installed as hub-<pack-id>. No gitleaks and no leak gate:
 #       the hub's gate scans a pack before it merges (R21). A hub pack's hooks/ is never installed here; bin/hub.sh delivers them.
+#   sh pack.sh install <pack-id>... --hub --hub-tree DIR --dir PATH   the hub gate's check: the same refusals, judged as a member laptop
+#       judges them, over DIR's HEAD in place of the signed pin. A dry run only; --apply is refused.
 # No <repo-id> on install means every repo in harbor.toml `packs`. A refused pack is skipped by name, the rest
 # still install, and the run exits 1. contracts/pack.md is the format, the refusals and the manifest.
 # A pack's check rows are a checks.md fragment (plus an optional controls.tsv), the private layer's own shape; install puts
@@ -26,11 +28,14 @@ LOG_FD=2
 # shellcheck disable=SC2034 # IL_LOG: read by deploy-install-lib.sh
 IL_LOG=0   # a pack run keeps no backups dir: install -> remove must leave the target byte-identical
 
-VERB=''; IDS=''; HUB=0; GREF=HEAD; PKREL=harbor-pack
+VERB=''; IDS=''; HUB=0; GREF=HEAD; PKREL=harbor-pack; HUBTREE=''
+# A hub pack's size bounds (harbor#1278): a file, and the pack as a whole. A file is 512 KB as policy.json is (hub-sync.sh); the real packs top out at 16 KB a file, 160 KB in all.
+PACK_MAX_FILE=524288; PACK_MAX_TOTAL=4194304
 il_opt() { # positional words only: the verb, then repo ids; --hub switches to hub packs
   # shellcheck disable=SC2034 # IL_TAKE: read by deploy-install-lib.sh
   case "$1" in
     --hub) HUB=1; IL_TAKE=1 ;;
+    --hub-tree) il_value --hub-tree "${2-}"; HUBTREE="$2"; IL_TAKE=2 ;;
     -*) IL_TAKE=0 ;;
     *) if [ -z "$VERB" ]; then VERB="$1"; else IDS="${IDS:+$IDS }$1"; fi; IL_TAKE=-1 ;;
   esac
@@ -41,6 +46,12 @@ case "$VERB" in
   '') il_usage_error 'needs a verb: list, install or remove' ;;
   *) il_usage_error "unknown verb: $VERB" ;;
 esac
+# A tree check judges and never installs: it has no signed pin to install from (harbor#1278, B2).
+if [ -n "$HUBTREE" ]; then
+  [ "$HUB" -eq 1 ] && [ "$VERB" = install ] && [ -n "$IDS" ] || il_usage_error '--hub-tree goes with install <pack-id>... --hub'
+  [ "$IL_APPLY" -eq 0 ] || il_usage_error '--hub-tree is a dry run: it has no signed pin to install from'
+  git -C "$HUBTREE" rev-parse --verify -q HEAD > /dev/null 2>&1 || il_usage_error "--hub-tree $HUBTREE is not a git checkout with a commit"
+fi
 il_target
 T="$IL_TARGET"
 MFD="$T/.harbor-packs"
@@ -84,13 +95,18 @@ mf_rows() { awk -F'\t' -v t="$2" '$1 == t { print $2 }' "$MFD/$1.tsv" 2>/dev/nul
 # GREF PKREL PKTOML. The extension manifest must be valid, name this pack, fit core, and match the bytes at the pinned commit.
 hub_source() { # <pack-id>
   ID="hub-$1"; _hid="$1"
-  [ -f "$SRC/hub-sync.sh" ] || refuse "hub-sync.sh is not beside pack.sh" || return 1
-  _pol="$(sh "$SRC/hub-sync.sh" path)"
-  [ -n "$_pol" ] || refuse "no verified hub policy" "harbor hub sync" || return 1
-  COMMIT="$(jq -r --arg i "$_hid" '[.packs[]? | select(.id == $i) | .commit][0] // empty' "$_pol")"
-  case "$COMMIT" in ''|*[!0123456789abcdef]*) refuse "the signed policy does not pin hub pack $_hid" || return 1 ;; esac
-  [ "${#COMMIT}" -eq 40 ] || refuse "the pinned commit of $_hid is not 40 hex" || return 1
-  DIR="$(sh "$SRC/scope-roots.sh" --hub 2>/dev/null)" && [ -n "$DIR" ] || refuse "no hub clone on this box" "harbor hub sync" || return 1
+  if [ -n "$HUBTREE" ]; then
+    # The gate's check: the tree's HEAD stands in for the pin; everything below is what a laptop runs.
+    DIR="$HUBTREE"; COMMIT="$(git -C "$DIR" rev-parse --verify -q HEAD)"
+  else
+    [ -f "$SRC/hub-sync.sh" ] || refuse "hub-sync.sh is not beside pack.sh" || return 1
+    _pol="$(sh "$SRC/hub-sync.sh" path)"
+    [ -n "$_pol" ] || refuse "no verified hub policy" "harbor hub sync" || return 1
+    COMMIT="$(jq -r --arg i "$_hid" '[.packs[]? | select(.id == $i) | .commit][0] // empty' "$_pol")"
+    case "$COMMIT" in ''|*[!0123456789abcdef]*) refuse "the signed policy does not pin hub pack $_hid" || return 1 ;; esac
+    [ "${#COMMIT}" -eq 40 ] || refuse "the pinned commit of $_hid is not 40 hex" || return 1
+    DIR="$(sh "$SRC/scope-roots.sh" --hub 2>/dev/null)" && [ -n "$DIR" ] || refuse "no hub clone on this box" "harbor hub sync" || return 1
+  fi
   git -C "$DIR" cat-file -e "$COMMIT^{commit}" 2>/dev/null || refuse "the pinned commit $COMMIT is not in the hub clone" "harbor hub sync" || return 1
   GREF="$COMMIT"; PKREL="packs/$_hid/harbor-pack"
   git -C "$DIR" show "$GREF:$PKREL/pack.toml" > "$WORK/pack.toml" 2>/dev/null || refuse "no $PKREL/pack.toml at the pinned commit" || return 1
@@ -108,7 +124,7 @@ hub_source() { # <pack-id>
 }
 
 plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src TAB rel) and $WORK/meta
-  ID="$1"; : > "$WORK/plan"
+  ID="$1"; : > "$WORK/plan"; _tot=0
   if [ "$HUB" -eq 1 ]; then
     hub_source "$1" || return 1
   else
@@ -148,7 +164,16 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
   else git -C "$DIR" ls-files -s -- harbor-pack | awk -F'\t' '{ split($1, a, " "); print a[1] "\t" $2 }' > "$WORK/files"; fi
   while IFS="$TAB" read -r _m _p; do
     case "$_p" in *[!A-Za-z0-9._/-]*) refuse "path '$_p' has a character outside [A-Za-z0-9._/-]" || return 1 ;; esac
+    # A git tree can name a directory .. (git mktree takes it), and skills/s/../../x then lands above the target (harbor#1278).
+    case "/$_p/" in */./*|*/../*|*//*) refuse "path '$_p' has an empty, . or .. component" || return 1 ;; esac
     _r="${_p#"$PKREL"/}"
+    if [ "$HUB" -eq 1 ]; then
+      # A company pack is read by a person before it is pinned: no hidden file or folder (a .run.sh, a .claude/settings.json), and nothing too big to read.
+      case "/$_r" in */.*) refuse "$_r is hidden: a hub pack carries no file or folder whose name starts with a dot" || return 1 ;; esac
+      _sz="$(git -C "$DIR" cat-file -s "$GREF:$_p" 2>/dev/null)" || _sz=0
+      [ "$_sz" -le "$PACK_MAX_FILE" ] || refuse "$_r is $_sz bytes, over the $PACK_MAX_FILE-byte bound for a file in a hub pack" || return 1
+      _tot=$((${_tot:-0} + _sz))
+    fi
     # A hub pack's hooks are not installed here: hub.sh delivers the ones the signed policy lists, hash-checked (R21, #1285).
     if [ "$HUB" -eq 1 ]; then case "$_r" in hooks/*) _hooked=1; continue ;; esac; fi
     [ "$_m" != 120000 ] || refuse "$_r is a symlink" || return 1
@@ -158,7 +183,8 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       */guard-*|*/admission-*|*/library-admission*) refuse "carries a guard file ($_r): a pack may not install a guard (guard-*, admission-*, library-admission*)" || return 1 ;;
     esac
     # A managed root is flat and carries no register to compose into, so these are refused for what they are, not on a core path it lacks (harbor#1278).
-    if [ -e "$SRC/harbor-member-mode" ]; then
+    # A tree check judges as that laptop does: a hub pack lands only on a member box.
+    if [ -e "$SRC/harbor-member-mode" ] || [ -n "$HUBTREE" ]; then
       case "$_r" in checks.md|controls.tsv|terms.tsv) refuse "$_r composes into a core register, which a member laptop doesn't carry" "the admin takes $_r out of the hub pack (contracts/hub.md, extension.json)" || return 1 ;; esac
     fi
     case "$_r" in
@@ -207,6 +233,14 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       *) log_warn "$ID: $_r is not a pack entry and is not installed" ;;
     esac
   done < "$WORK/files"
+  [ "${_tot:-0}" -le "$PACK_MAX_TOTAL" ] || refuse "the pack is ${_tot} bytes, over the $PACK_MAX_TOTAL-byte bound for a hub pack" || return 1
+  # Every file a hub pack installs is one extension.json lists, so a sha256 vouches for each (an unlisted file would land unchecked).
+  if [ "$HUB" -eq 1 ]; then
+    while IFS="$TAB" read -r _s _r; do
+      awk -F'\t' -v p="${_s#"$PKREL"/}" '$1 == p { f = 1 } END { exit !f }' "$WORK/ext.files" ||
+        refuse "${_s#"$PKREL"/} is in the pack and extension.json does not list it, so no sha256 vouches for it" "list it in extension.json (regenerate the manifest)" || return 1
+    done < "$WORK/plan"
+  fi
   # A hub pack of hooks alone is legal (extension.json `provides`): hub.sh delivers them, and the manifest here records the pin (harbor#1278).
   [ -s "$WORK/plan" ] || [ "${_hooked:-0}" = 1 ] || refuse "the pack installs nothing" || return 1
 
@@ -420,7 +454,7 @@ install_one() { # <id> - returns 1 when the pack was skipped
     return 0
   fi
   # Directories this run creates, shallowest first, so remove can take them back.
-  : > "$WORK/dirs"; : > "$WORK/dirs.gone"
+  : > "$WORK/dirs"; : > "$WORK/dirs.gone"; : > "$WORK/dirs.new"
   while IFS="$TAB" read -r _s _r; do
     _d="${_r%/*}"
     while [ "$_d" != "$_r" ] && [ "$_d" != . ]; do printf '%s\n' "$_d"; _x="${_d%/*}"; [ "$_x" != "$_d" ] || break; _d="$_x"; done
@@ -431,13 +465,26 @@ install_one() { # <id> - returns 1 when the pack was skipped
   while IFS= read -r _r; do rm -f "$T/$_r"; done < "$WORK/respell"
   mf_rows "$ID" D | awk 'NR == FNR { p[tolower($0)] = $0; next } (tolower($0) in p) && p[tolower($0)] != $0 { print length($0) "\t" $0 }' "$WORK/dirs.all" - |
     sort -rn | cut -f2- | while IFS= read -r _d; do rmdir "$T/$_d" 2>/dev/null && printf '%s\n' "$_d" >> "$WORK/dirs.gone"; done
-  while IFS= read -r _d; do [ -d "$T/$_d" ] || printf '%s\n' "$_d" >> "$WORK/dirs"; done < "$WORK/dirs.all"
+  while IFS= read -r _d; do [ -d "$T/$_d" ] || { printf '%s\n' "$_d" >> "$WORK/dirs"; printf '%s\n' "$_d" >> "$WORK/dirs.new"; }; done < "$WORK/dirs.all"
   mf_rows "$ID" D | awk -v g="$WORK/dirs.gone" 'BEGIN { while ((getline l < g) > 0) gone[l] = 1 } NF && !($0 in gone)' >> "$WORK/dirs"
   awk '!s[$0]++' "$WORK/dirs" > "$WORK/dirs.u"
   while IFS= read -r _d; do mkdir -p "$T/$_d"; done < "$WORK/dirs.all"
+  # Two passes, so a write that fails leaves the old version whole (harbor#1278): every file is written beside its target first, and only
+  # when all are there is each renamed into place. A failure in the first pass takes the copies back and changes nothing; a copy that failed
+  # inside a `&&` chain used to be skipped without a word, and the manifest then claimed files that were never written.
+  : > "$WORK/tmps"
   while IFS="$TAB" read -r _s _r; do
-    cp "$WORK/stage/$_r" "$T/$_r.pack.$$" && chmod "$([ -x "$WORK/stage/$_r" ] && echo 755 || echo 644)" "$T/$_r.pack.$$" && mv -f "$T/$_r.pack.$$" "$T/$_r"
+    if cp "$WORK/stage/$_r" "$T/$_r.pack.$$" && chmod "$([ -x "$WORK/stage/$_r" ] && echo 755 || echo 644)" "$T/$_r.pack.$$"; then printf '%s\n' "$_r" >> "$WORK/tmps"
+    else
+      log_fail "$ID: could not write $T/$_r, so nothing of this install was changed"; log_fix "check the permissions of $T/${_r%/*}, then run this again"
+      rm -f "$T/$_r.pack.$$"; while IFS= read -r _x; do rm -f "$T/$_x.pack.$$"; done < "$WORK/tmps"
+      awk '{ print length($0) "\t" $0 }' "$WORK/dirs.new" | sort -rn | cut -f2- | while IFS= read -r _x; do rmdir "$T/$_x" 2>/dev/null || :; done
+      return 1
+    fi
   done < "$WORK/plan"
+  while IFS= read -r _r; do
+    mv -f "$T/$_r.pack.$$" "$T/$_r" || { log_fail "$ID: could not put $T/$_r in place"; log_fix "check the permissions of $T/${_r%/*}, then run this again"; return 1; }
+  done < "$WORK/tmps"
   # Files an earlier install wrote and this one no longer carries.
   while IFS= read -r _r; do
     awk -F'\t' -v r="$_r" 'BEGIN { r = tolower(r) } tolower($2) == r { f = 1 } END { exit !f }' "$WORK/plan" || rm -f "$T/$_r"

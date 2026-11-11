@@ -65,3 +65,63 @@ contracts/confinement-coverage.tsv	gtm	the coverage row of the same rule id: it 
 tests/hub/tier/tier.test.sh	bq	a guard suite: the cloud guard must see this command to fire (harbor#1278)
 tests/member/dispatch/guards.test.sh	bq	a guard suite: the cloud guard must see this command to fire (harbor#1278)
 tests/member/floor/branch.test.sh	bq	a guard suite: the cloud guard must see this command to fire (harbor#1278)
+bin/bq-format.sh	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+bin/bq-format.sh	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+bin/bq-logs.sh	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+bin/bq-logs.sh	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+bin/bq-load.sh	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+bin/bq-load.sh	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/bq-schema.tsv	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/bq-schema.tsv	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/bq-values.tsv	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/bq-values.tsv	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/cli.md	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/cli.md	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/cli.md.tmpl	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/cli.md.tmpl	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/verbs.tsv	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/verbs.tsv	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/agent-tools.tsv	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/agent-tools.tsv	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/suites.txt	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/suites.txt	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/suite-paths.txt	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/suite-paths.txt	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/streams.tsv	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/streams.tsv	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/hub.md	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/hub.md	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+standards/naming/terms.tsv	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+standards/naming/terms.tsv	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+templates/bq/	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+templates/bq/	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+tests/bq/	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+tests/bq/	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+tests/hub/patches/workflows.test.sh	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+tests/hub/patches/workflows.test.sh	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+patches/hub/hub-bq-load.patch.md	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+patches/hub/hub-bq-load.patch.md	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+bin/harbor	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+bin/harbor	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/bq-values.tsv	gtm	generated copy of standards/naming/controls.tsv ids, some of which name the tag manager the floor guards (harbor#1278)
+contracts/core-writes-allow.tsv	bq	the row allowing bin/bq-format.sh to regenerate its own value file (harbor#1278)
+bin/library-bq.sh	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+bin/library-bq.sh	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+bin/lint-conventions.sh	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/env.tsv	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/idle-tools.txt	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+docs/reference/env.md	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+contracts/bin.tsv	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+standards/naming/schemas.tsv	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the closed BigQuery schema, its validator, the projector and the loader name the warehouse they write
+vendor/naming/registry/schemas.tsv	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the vendored copy of the naming registry rows that name the warehouse
+vendor/naming/registry/terms.tsv	bigquery	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the vendored copy of the naming registry rows that name the warehouse
+vendor/naming/registry/terms.tsv	bq	harbor's own log sink (harbor#1278, release 2 decision "Log scope"): the vendored copy of the naming registry rows that name the warehouse
+tests/member/e2e/sim-linux-company.sh	bq	the logging section runs bin/bq-load.sh, bin/bq-format.sh and bin/bq-logs.sh on the sim laptop (harbor#1278)
+tests/member/upgrade/corpus/	*	member answers the check is measured on: they are about marketing-analytics work by design, so they name its tools (harbor#1278)
+contracts/README.md	bigquery	a generated index of harbor's own files: it lists the log sink's scripts, registers and suites by name (harbor#1278, release 2 decision "Log scope")
+contracts/README.md	bq	a generated index of harbor's own files: it lists the log sink's scripts, registers and suites by name (harbor#1278, release 2 decision "Log scope")
+docs/context-map.md	bq	a generated index of harbor's own files: it lists the log sink's scripts, registers and suites by name (harbor#1278, release 2 decision "Log scope")
+docs/reference/registers.md	bq	a generated index of harbor's own files: it lists the log sink's scripts, registers and suites by name (harbor#1278, release 2 decision "Log scope")
+skills/skill-catalog/SKILL.md	bigquery	a generated index of harbor's own files: it lists the log sink's scripts, registers and suites by name (harbor#1278, release 2 decision "Log scope")
+standards/naming/kit.tsv	bq	harbor logic: the kit rows name harbor's own log-schema registers contracts/bq-schema.tsv and bq-values.tsv
+vendor/naming/registry/kit.tsv	bq	the vendored copy of the naming kit rows that name harbor's own log sink registers (harbor#1278)

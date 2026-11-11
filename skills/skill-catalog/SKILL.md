@@ -83,7 +83,7 @@ Listed for the operator, who does not get the model's skill listing.
 |---|---|---|
 | `access-ledger` | core | Which account to use on each system, the role it holds and what it cannot reach:…<br>_NOT FOR obtaining or storing a credential (the operator holds those), or a number that is wrong…_ |
 | `audit-claims` | core | A fresh-context verifier checks each claim of an answer against its source before it ships.<br>_NOT FOR a code diff (audit-review-fanout)._ |
-| `audit-review-fanout` | core | Review a code change with several cheap reviewers, each given a different lens, then verify every finding…<br>_NOT FOR a one-line or docs-only change (one reviewer is enough), proving a test can fail…_ |
+| `audit-review-fanout` | core | Review a code change with several cheap reviewers, each given a different lens, then verify every finding…<br>_NOT FOR proving a test can fail (test-strength), or the merge decision (gate-merge)._ |
 | `doc-atlas` | core | The single owner of human-readable HTML artefacts on this box: an atlas whose subject is a DRAWING, not…<br>_NOT FOR a projection of a TOPOLOGY.md, which is `topology`'s own report-gen.sh._ |
 | `doc-deliverable-contract` | core | Before writing anything a person outside this session will read — a client thread reply, a ticket…<br>_NOT FOR the investigation itself (casefile), or the durable map (topology)._ |
 | `skill-catalog` | core | The index of every skill, `harbor` verb, agent-facing bin tool and credentialed CLI on this box, each…<br>_NOT FOR invoking a skill already in your listing._ |
@@ -132,6 +132,7 @@ checkout (`~/port/harbor`) or your worktree of it.
 | `harbor merge-stack` | several PRs must merge in order, each on its own green CI | `harbor merge-stack check <plan>` |
 | `harbor ship` | opted-in fleet repos must be merged and deployed unattended | `harbor ship night [--plan <file>]` |
 | `harbor repo` | you create a new governed repo or adopt a checkout into the registry (scaffold, register, route memory, plan labels) | `harbor repo new <name> --kind <repo-kind> --dry-run; harbor repo list; harbor repo audit <name>` |
+| `harbor logs` | you are on the operator's Mac and want to see, or send, the coded rows harbor puts in BigQuery | `harbor logs push; harbor logs id` |
 
 ### `bin/` tools
 
@@ -241,6 +242,7 @@ does not carry the path sends you back to the top.
 - `context-peers.sh` — you need to know which other sessions are live in this working tree — `sh ~/port/harbor/bin/context-peers.sh --repo <dir>`
 - `scope-roots.sh` — you need a governed repo's checkout path, or a named root, without guessing it — `sh ~/port/harbor/bin/scope-roots.sh --repo <id>; sh ~/port/harbor/bin/scope-roots.sh --get <VAR>`
 - `memory.sh` — you need what the notes store already knows about a subject before you start — `memory <query>`
+- `harbor logs` — you are on the operator's Mac and want to see, or send, the coded rows harbor puts in BigQuery — `harbor logs push; harbor logs id`
 
 **None of them has a delete verb, and that is a decision** — nothing they touch
 is recoverable from a session.

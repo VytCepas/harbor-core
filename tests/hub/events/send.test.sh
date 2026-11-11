@@ -206,5 +206,61 @@ t_eq "a live member reads as seen" 'alice seen' "$(sed -n 1p "$T_TMP/seen")"
 t_eq "a silent member shows" 'bob silent' "$(sed -n 2p "$T_TMP/seen")"
 t_eq "a member whose token ran out isn't called silent" 'carol token-ended' "$(sed -n 3p "$T_TMP/seen")"
 
+t_section "10 - the id and the counts travel sealed, never in clear (Log scope level 2, legal/dpia.md R10, R11)"
+# A stub age: an age-shaped header, then the plaintext. Enough to read back what was sealed; the real cipher is age's to test.
+mkdir -p "$T_TMP/agebin"
+printf '#!/bin/sh\ncase "$1" in -r) printf "age-encryption.org/v1\\n-> X25519 stub%%s\\n" "$2"; cat ;; -d) sed "1,2d" ;; esac\n' > "$T_TMP/agebin/age"
+chmod +x "$T_TMP/agebin/age"
+REC="age1$(printf '%058d' 0 | tr 0 q)"
+LID="0f1e2d3c4b5a69788796a5b4c3d2e1f0"
+mkdir -p "$T_TMP/harbor-ids"; printf '%s\n' "$LID" > "$T_TMP/harbor-ids/$(id -un).id"
+be_policy ".approval.ttl_hours = 24 | .logs = {recipient: \"$REC\"}"
+counts() { # record the fixture's counts
+  i=0; while [ "$i" -lt 5 ]; do sh "$E" record activity tool=Bash verb_class=readonly verdict=allow count=1; i=$((i + 1)); done
+  sh "$E" record activity tool=Read verb_class=na verdict=deny count=1
+  sh "$E" record session outcome=started count=1
+  sh "$E" record session outcome=started count=1
+}
+unseal() { jq -r '.[0].sealed' "$T_TMP/batch.json" | base64 -d | sed '1,2d'; }
+be_reset; : > "$BE_ROOT/notice-received"
+counts
+PATH="$T_TMP/agebin:$PATH" sh "$E" send
+last_batch > "$T_TMP/batch.json"
+_body="$(jq -r '.[-1].body' "$BE_ST/comments/1.json")"
+t_eq "no activity or session event in clear" 0 "$(jq '[.[] | select(.kind == "activity" or .kind == "session")] | length' "$T_TMP/batch.json")"
+t_hasnt "the id is nowhere in the comment" "$_body" "$LID"
+t_eq "the heartbeat is sealed" true "$(jq '.[0] | has("sealed")' "$T_TMP/batch.json")"
+t_eq "the comment passes the board format" 0 "$(be_rc sh "$BE_BIN/hub-format.sh" board "$T_TMP/batch.json")"
+t_eq "sealed: the id" "$LID" "$(unseal | jq -r .id)"
+t_eq "sealed: the counts, folded per tool, class and verdict" "5 1 2" "$(unseal | jq -r '[(.events[] | select(.verb_class == "readonly") | .count), (.events[] | select(.tool == "Read") | .count), (.events[] | select(.kind == "session") | .count)] | map(tostring) | join(" ")')"
+t_eq "the tally is emptied by the send" no "$([ -s "$BE_HS/tally.jsonl" ] && echo yes || echo no)"
+t_eq "and nothing is left pending" 0 "$(jq -s '[.[] | select(.kind == "activity" or .kind == "session")] | length' "$P" 2>/dev/null || echo 0)"
+# a clear count on the board is refused by the board format, so the sender's gate drops it
+jq -c '. + [{v: 1, kind: "activity", ts: "2026-11-07T00:00:00Z", member: "alice", tool: "Bash", verb_class: "readonly", verdict: "allow", count: 3}]' "$T_TMP/batch.json" > "$T_TMP/clear.json"
+t_eq "the board format refuses a count in clear" 1 "$(be_rc sh "$BE_BIN/hub-format.sh" board "$T_TMP/clear.json")"
+jq -c --arg id "$LID" '.[0].sealed = $id | [.[0]]' "$T_TMP/batch.json" > "$T_TMP/clear.json"
+t_eq "and an id in clear where the seal goes" 1 "$(be_rc sh "$BE_BIN/hub-format.sh" board "$T_TMP/clear.json")"
+
+t_section "11 - no receipt marker: no counts kept, nothing sealed (R11)"
+be_reset; rm -f "$BE_ROOT/notice-received"
+counts
+t_eq "no tally is kept" no "$([ -s "$BE_HS/tally.jsonl" ] && echo yes || echo no)"
+t_eq "and that is not a drop" 0 "$(if [ -f "$BE_HS/dropped" ]; then wc -c < "$BE_HS/dropped" | tr -d ' '; else echo 0; fi)"
+PATH="$T_TMP/agebin:$PATH" sh "$E" send
+last_batch > "$T_TMP/batch.json"
+t_eq "the heartbeat carries no seal" false "$(jq '.[0] | has("sealed")' "$T_TMP/batch.json")"
+t_hasnt "and no id" "$(jq -r '.[-1].body' "$BE_ST/comments/1.json")" "$LID"
+t_has "the release-1 events still go (D8)" "$(jq -r '.[0].kind' "$T_TMP/batch.json")" "heartbeat"
+
+t_section "12 - a marker but no way to seal: said by a fixed word, the counts kept"
+be_reset; : > "$BE_ROOT/notice-received"
+counts
+sh "$E" send   # no age on PATH
+last_batch > "$T_TMP/batch.json"
+t_eq "no seal" false "$(jq '.[0] | has("sealed")' "$T_TMP/batch.json")"
+t_eq "a hub-logs-seal check says so" 1 "$(jq '[.[] | select(.kind == "check" and .check == "hub-logs-seal")] | length' "$T_TMP/batch.json")"
+t_eq "the counts wait in pending" 3 "$(jq -s '[.[] | select(.kind == "activity" or .kind == "session")] | length' "$P")"
+rm -f "$BE_ROOT/notice-received"
+
 be_down
 t_done

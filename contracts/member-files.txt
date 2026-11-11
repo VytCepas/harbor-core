@@ -7,6 +7,7 @@
 bin/member-dispatch.sh
 bin/member-post.sh
 bin/member-session.sh
+bin/member-upgrade.sh
 
 # Tiers, integrity, policy, approval, events
 bin/hub-tier.sh
@@ -52,6 +53,7 @@ standards/naming/controls.tsv controls.tsv
 bin/secret
 bin/access.sh
 bin/scope-roots.sh
+bin/scope-repo-sources.sh
 contracts/roots.tsv roots.tsv
 
 # Packs and hooks: SessionStart calls hub.sh, which calls pack.sh. Without these a policy names a hook no laptop receives, and every call is denied

@@ -40,12 +40,15 @@ t_eq "the floor's own switch is 0" 0 "$(q .env.HARBOR_ADMISSION_DISABLE)"
 t_eq "a mode has no 0, so it holds its default" warn "$(q .env.HARBOR_ADMISSION_SG3)"
 
 t_section "the managed hooks"
-t_eq "four commands, whatever the event count" 4 "$(jq -r '[.hooks[][].hooks[].command] | unique | length' "$J")"
+t_eq "five commands, whatever the event count" 5 "$(jq -r '[.hooks[][].hooks[].command] | unique | length' "$J")"
 t_has "PreToolUse is the dispatcher" "$(q '.hooks.PreToolUse[0].hooks[0].command')" " /bin/sh '/mnt/c/Program Files/ClaudeCode/harbor/bin/member-dispatch.sh'"
 t_eq "...for every tool" '*' "$(q '.hooks.PreToolUse[0].matcher')"
 t_eq "...and blocks when it fails" block "$(q '.hooks.PreToolUse[0].hooks[0].onFailure')"
 t_eq "...the only hook that does" 1 "$(jq '[.hooks[][].hooks[] | select(.onFailure)] | length' "$J")"
 for e in PostToolUse PostToolUseFailure Stop; do t_has "$e runs member-post" "$(q ".hooks.$e[0].hooks[0].command")" member-post.sh; done
+t_has "the company law is an Edit deny row, like the settings beside it" "$(jq -r '.permissions.deny[]' "$J")" "ClaudeCode/CLAUDE.md)"
+t_has "...and on WSL so is its in-distro copy at /etc/claude-code" "$(jq -r '.permissions.deny[]' "$J")" "Edit(//etc/claude-code/CLAUDE.md)"
+t_has "Stop also runs the company-law check, after member-post" "$(q '.hooks.Stop[0].hooks[1].command')" member-upgrade.sh
 for e in SessionStart SessionEnd; do t_has "$e runs member-session" "$(q ".hooks.$e[0].hooks[0].command")" member-session.sh; done
 t_exit "a root with a quote can't reach a hook command" 1 sh "$M" --hub o/n --login alice --root "/tmp/it's"
 
@@ -95,7 +98,7 @@ t_has "the managed root is denied, spaces and all" "$(q '.permissions.deny[]')" 
 t_has "and the settings file" "$(q '.permissions.deny[]')" 'Edit(//mnt/c/Program Files/ClaudeCode/managed-settings.json)'
 t_has "and the private layer, which holds the register" "$(q '.permissions.deny[]')" "harbor-private/**)"
 # One list feeds both, so a row in one and not the other is a defect in the composer.
-rows="$(MEMBER_MANAGED_LIB=1 sh -c '. "$0"; member_protected /r /p' "$M" | wc -l | tr -d ' ')"
+rows="$(MEMBER_MANAGED_LIB=1 sh -c '. "$0"; member_protected "/mnt/c/Program Files/ClaudeCode/harbor" /p' "$M" | wc -l | tr -d ' ')"
 t_eq "every protected row became an Edit row" "$rows" "$(jq '.permissions.deny | length' "$J")"
 miss="$(MEMBER_MANAGED_LIB=1 sh -c '. "$0"; member_protected "$1" "$2" | member_sandbox_rows "$2"' "$M" "$(q .env.HARBOR_MEMBER_ROOT)" "$(q '.sandbox.filesystem.allowWrite[0]')" \
   | while IFS= read -r p; do jq -e --arg p "$p" '.sandbox.filesystem.denyWrite | index($p)' "$J" >/dev/null || printf '%s\n' "$p"; done)"

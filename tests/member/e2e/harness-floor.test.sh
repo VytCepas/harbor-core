@@ -108,12 +108,35 @@ E_CWD=''
 t_has "a session opened in the home folder is told where to work" "$(printf '%s' "$E_OUT" | jq -r .hookSpecificOutput.additionalContext)" '~/port'
 t_eq "the agent is told, and the person isn't bothered" null "$(printf '%s' "$E_OUT" | jq -r .systemMessage)"
 
+t_section "11c - a git repo under ~/port that harbor does not govern is named by the managed hook (yard start rule, harbor#1278)"
+# The user tier's context rule can't run here (allowManagedHooksOnly), so the finding is member-session.sh's own, from the same disk scan.
+mkdir -p "$HOME/port/harbor-private" "$HOME/port/fresh" "$HOME/port/plain"; git -C "$HOME/port/fresh" init -q
+printf 'id\tpath\tkind\tremote\n' > "$HOME/port/harbor-private/repos.tsv"
+e_session start
+t_has "a fresh git init is named for the agent, with the register command" "$(printf '%s' "$E_OUT" | jq -r .hookSpecificOutput.additionalContext)" 'fresh'
+t_has "...and for the person" "$(printf '%s' "$E_OUT" | jq -r .systemMessage)" 'fresh'
+t_hasnt "a folder with no .git is not named" "$E_OUT" 'plain'
+printf 'fresh\tfresh\tworkload\t-\t-\t-\t-\t-\tyes\t-\t-\n' >> "$HOME/port/harbor-private/repos.tsv"
+e_session start
+t_eq "registered, it is named no more and the session says nothing" '' "$E_OUT"
+printf 'not a registry\n' > "$HOME/port/harbor-private/repos.tsv"
+e_session start
+t_has "a registry the member broke does not mute it: the repo is still named" "$(printf '%s' "$E_OUT" | jq -r .systemMessage)" 'fresh'
+rm -rf "$HOME/port/fresh" "$HOME/port/plain"   # later sections assert a silent session start
+e_session start
+t_eq "with the repo gone, the session says nothing again" '' "$E_OUT"
+
 }
 
 s12() {
 t_section "12 - a hub pack a flat root can't serve is refused by name"
 # What composes into a core register reads paths a managed root doesn't have. Each one, alone in a pack, through the real sync.
-_ext() { jq -n --arg i "$1" '{schema: 1, id: $i, version: "1.0.0", harbor_version: ">=1", provides: ["script"], files: []}' > "$HUBDIR/packs/$1/extension.json"; }
+# The manifest lists every file but pack.toml with its sha256, as the admin's generator does: an unlisted file is refused (harbor#1278).
+_ext() {
+  ( cd "$HUBDIR/packs/$1/harbor-pack" && find . -type f ! -name pack.toml | sed 's|^\./||' | LC_ALL=C sort | while IFS= read -r _f; do
+      jq -n --arg p "$_f" --arg s "$(e_sha < "$_f")" '{path: $p, sha256: $s}'; done ) |
+    jq -s --arg i "$1" '{schema: 1, id: $i, version: "1.0.0", harbor_version: ">=1", provides: ["script"], files: .}' > "$HUBDIR/packs/$1/extension.json"
+}
 for _f in checks.md controls.tsv terms.tsv; do
   _id="fixture-$(printf '%s' "$_f" | tr -d '.')"; _p="$HUBDIR/packs/$_id/harbor-pack"; mkdir -p "$_p"
   printf 'name = "%s"\nversion = "1.0.0"\nharbor_version = ">=1"\ndescription = "a pack with a register row"\n' "$_id" > "$_p/pack.toml"

@@ -12,6 +12,7 @@ PV="$PORT_ROOT/harbor-private"; RULES="$PV/context-rules/user"; mkdir -p "$RULES
 cat > "$T/fleet" <<'STUB'
 #!/bin/sh
 [ "$1" = projects ] || exit 0
+[ -z "$fleet_stub_log" ] || echo called >> "$fleet_stub_log"
 [ -z "$fleet_stub_down" ] || exit 1
 shift; while [ $# -gt 0 ]; do [ "$1" = --root ] && root="$2"; shift; done
 for d in "$root"/*/; do [ -f "${d}.agents/config.yaml" ] && printf '%s  (none, %s)\n' "$(basename "$d")" "${d%/}"; done
@@ -71,6 +72,25 @@ t_eq "exit 0 with the fleet down and the rest agreeing" "exit 0" "$(fleet_stub_d
 rm "$PORT_ROOT/alpha/.claude/project-init.md"
 t_has "…and a real delta is still found" "$(fleet_stub_down=1 run)" "alpha${TAB}present: registry,projects.tsv${TAB}missing: marker"
 : > "$PORT_ROOT/alpha/.claude/project-init.md"
+
+t_section "--not-adopted: each git checkout at depth 1 with no registry row or a governed=no row (harbor#1278)"
+t_eq "no git checkout harbor lacks: nothing" "" "$(run --not-adopted)"
+mkdir -p "$PORT_ROOT/fresh/.git" "$PORT_ROOT/ungov/.git" "$PV/.git" "$PORT_ROOT/plain-dir"
+t_has "a git dir with no registry row is unregistered" "$(run --not-adopted)" "fresh${TAB}-${TAB}unregistered"
+t_has "a governed=no row with a checkout is ungoverned, with its kind" "$(run --not-adopted)" "ungov${TAB}workload${TAB}ungoverned"
+t_hasnt "the private layer is never a registry row, so never listed" "$(run --not-adopted)" "harbor-private"
+t_hasnt "a directory with no .git is not a repo" "$(run --not-adopted)" "plain-dir"
+t_hasnt "a governed repo is not listed" "$(run --not-adopted)" "alpha"
+t_eq "exit 0 with lines" "exit 0" "$(code --not-adopted)"
+mkdir -p "$PORT_ROOT/corecopy/.git" "$PORT_ROOT/corecopy/bin" "$PORT_ROOT/corecopy/contracts"; : > "$PORT_ROOT/corecopy/bin/harbor"; : > "$PORT_ROOT/corecopy/contracts/roots.tsv"
+t_hasnt "a member's copy of the harbor core (bin/harbor beside contracts/roots.tsv) is the tool, not a project to adopt" "$(run --not-adopted)" "corecopy"
+rm -rf "$PORT_ROOT/corecopy"
+: > "$T/fleet.log"; fleet_stub_log="$T/fleet.log" run --not-adopted > /dev/null
+t_eq "the fleet CLI is never run (it costs seconds at a session start)" "" "$(cat "$T/fleet.log")"
+fleet_stub_log="$T/fleet.log" run > /dev/null
+t_eq "…which the delta does run" "called" "$(cat "$T/fleet.log")"
+t_eq "the delta is unchanged by the disk scan: a plain git dir fleet cannot see is not in it" "" "$(run | grep fresh)"
+rm -rf "$PORT_ROOT/fresh" "$PORT_ROOT/ungov/.git" "$PV/.git" "$PORT_ROOT/plain-dir"
 
 t_section "the lint rule context.repo-sources-agree is an advisory over the same verdict"
 . "$T_ROOT/tests/checks/lint-fixture.sh"
