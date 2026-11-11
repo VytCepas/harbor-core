@@ -157,6 +157,15 @@ t_has "the skills clause appears where skills exist" "$(printf '%s\n' "$OUT_IJ3"
   'with-skills — and it carries .claude/skills'
 t_hasnt "…and only there" "$(printf '%s\n' "$OUT_IJ3" | grep "$IJ3_UN unregistered")" 'carries'
 t_has "the count names how many of how many" "$OUT_IJ3" '2 of 3 governed repo(s) are unregistered'
+# THE DEFAULT ROOT IS PORT_ROOT, not $HOME (harbor#1278): with no override, a $HOME walk read "all 0" over a box whose
+# repos live in PORT_ROOT. HOME here holds a governed repo too, so a lint that still walks $HOME names the wrong one.
+IJ3D="$TMP/ij3-default"; mkdir -p "$IJ3D/home/other/.git" "$IJ3D/home/other/.agents" \
+  "$IJ3D/port/port-repo/.git" "$IJ3D/port/port-repo/.agents"
+OUT_IJ3D="$(unset HARBOR_LINT_ESTATE_ROOT; HOME="$IJ3D/home" PORT_ROOT="$IJ3D/port" HARBOR_SCOPE_PRIVATE="$IJ3P" \
+  lint1 IJ3 "$IJ3R" | grep -E 'ADVISORY \[context.repo-registered\]|governed repo\(s\)')"
+t_has "with no override, IJ3 walks PORT_ROOT and names its unregistered repo" "$OUT_IJ3D" "$IJ3_UN port-repo"
+t_hasnt "…and not a repo that sits in \$HOME" "$OUT_IJ3D" "$IJ3_UN other"
+t_has "…counting PORT_ROOT's governed repos, never an empty walk" "$OUT_IJ3D" '1 of 1 governed repo(s) are unregistered'
 
 t_section "IJ5: every registry row still resolves to a directory"
 IJ5H="$TMP/ij5-home"; IJ5R="$TMP/ij5-root"; IJ5P="$TMP/ij5-priv"; mkdir -p "$IJ5R" "$IJ5P/context-rules/user" "$IJ5H/alive"

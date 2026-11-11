@@ -59,6 +59,20 @@ hub_net_env() {
   done
 }
 
+# hub_bounded <seconds> <command...>: runs it, and past the bound ends it and what it started; 124 then. No timeout(1) on BSD. A hung credential store or hub
+# must not hold a hook: curl's own --max-time never sees a hang that is not curl's (harbor#1278).
+hub_kill_tree() { for _hk in $(pgrep -P "$1" 2>/dev/null); do hub_kill_tree "$_hk"; done; kill "$1" 2>/dev/null || :; }
+hub_bounded() {
+  _hbs="$1"; shift
+  "$@" & _hbp=$!
+  ( sleep "$_hbs"; hub_kill_tree "$_hbp" ) > /dev/null 2>&1 < /dev/null & _hbw=$!
+  _hbrc=0; wait "$_hbp" 2>/dev/null || _hbrc=$?
+  kill "$_hbw" 2>/dev/null || :
+  wait "$_hbw" 2>/dev/null || :
+  [ "$_hbrc" -lt 128 ] || return 124   # ended by the bound: no hub command exits above 4
+  return "$_hbrc"
+}
+
 # hub_sha256: stdin to lowercase hex. sha256sum on Linux, shasum on macOS.
 hub_sha256() {
   if command -v sha256sum >/dev/null 2>&1; then sha256sum | cut -d' ' -f1

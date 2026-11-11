@@ -127,6 +127,7 @@ bin/audit-collector-check.sh	installed	derived: shipped by deploy-runtime-instal
 bin/audit-collector-install.sh	ship	derived: called by bin/deploy.sh
 bin/audit-collector.sh	ship	derived: called by bin/audit-collector-install.sh
 bin/audit-otlp-receiver.py	ship	derived: called by bin/audit-collector-install.sh
+bin/audit-review-config.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/audit-stream-lib.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/audit-triage-run.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/audit-triage.sh	installed	derived: shipped by deploy-runtime-install.sh

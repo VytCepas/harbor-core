@@ -131,6 +131,19 @@ member laptop has no gitleaks (R21); and a `hooks/` directory is skipped, not in
 only if the signed policy's `hooks` lists it with the sha256 of the committed file, and the dispatcher runs it only if `hub-sync.sh hook <pack> <path>` still
 finds those bytes. Refusal 1 above is unchanged for every pack installed without `--hub` (#1285).
 
+A hub pack is read by a person before it is pinned, so it is held to more (all refusals below are `pack.sh --hub`, and the gate runs them through `--hub-tree`):
+
+- **Every path component is a name.** An empty, `.` or `..` component is refused (a git tree can hold a directory named `..`, and `skills/s/../../x` would land above the config dir); `extension.json` and policy `hooks` paths may not start with `/` or hold `//` or a `.` component.
+- **No hidden file or folder** (a name starting with a dot: `.run.sh`, `.claude/settings.json`).
+- **Size bound: 524288 bytes a file and 4194304 bytes a pack** (`PACK_MAX_FILE`, `PACK_MAX_TOTAL` in `bin/pack.sh`). The file bound is `policy.json`'s (`bin/hub-sync.sh`, 512 KB); the real packs top out at 16 KB a file and 160 KB in all.
+- **`extension.json` lists every file the pack installs**, so a sha256 vouches for each (a file it does not list is refused). `pack.toml`, `tests/`, `README*` and `hooks/` (delivered by `hub.sh` against the policy) are not installed here and need no row.
+- **One name, one pack.** A skill or `bin/` name two packs both ship is refused by the gate; on a laptop the first pack to install keeps it and the second is skipped (`already exists in the target and is not this pack's`).
+- **An update is all or nothing.** Every file of the new version is written beside its target first; only when all are written are they renamed into place, so a failed write leaves the old version whole and no `*.pack.*` file behind.
+- **A landed file is the pin's.** `hub.sh sync` compares each landed file with `extension.json` at the pinned commit at every session start, and a file a member edited or deleted is installed again; files the member added beside them stay.
+
+`--hub-tree DIR` is the hub gate's check (`bin/hub-gate.sh`, B2): the same install, refusals and extension checks over `DIR`'s `HEAD` in place of the
+signed pin, judged as a member laptop judges them (so `checks.md`, `controls.tsv` and `terms.tsv` are refused too). It is a dry run; `--apply` is refused.
+
 ## The install manifest
 
 `<target>/.harbor-packs/<repo-id>.tsv`: `# repo|name|version|commit <value>` header rows, then `F<TAB><relpath>` for

@@ -81,6 +81,9 @@ git -C "$OTHER" remote add origin https://github.com/fixture/other.git
 mkdir -p "$T/access"
 printf '# example — fixture\n\n    account:  owner@example.com | primary | fixture | gcx me\n' > "$T/access/example.md"
 printf 'example-project\texample\n' > "$T/access/routes.tsv"
+# repo-not-adopted reads PORT_ROOT (here $T): a registry with one governed row, so the fixture repos beside it are unregistered.
+mkdir -p "$T/harbor-private"
+printf 'id\tpath\tkind\tremote\ttopology\tinteraction\tnote\tdomain\tgoverned\towner\tcovers\nother\tother\tworkload\t-\t-\t-\t-\t-\tyes\t-\t-\n' > "$T/harbor-private/repos.tsv"
 
 t_section "every row of fixtures/injection-rule/notes.tsv${PRIV:+ and of the private layer context-rules/notes.tsv}"
 seen_fire=''; seen_silent=''; rows=0

@@ -16,6 +16,7 @@ allow-home-x	allow	home-path=/Users/x/	a placeholder username in a test or doc e
 allow-home-v	allow	home-path=/Users/v/	a placeholder username in a test or doc example, no person
 allow-home-zed	allow	home-path=/Users/zed/	a placeholder username in a test or doc example, no person
 allow-home-someone-home	allow	home-path=/home/someone/	a placeholder username in a test or doc example, no person
+allow-home-alice	allow	home-path=/home/alice/	the placeholder member of the support sims, published in harbor-core pull/105 (harbor#1504); no person
 allow-home-stranger	allow	home-path=/home/stranger/	a placeholder username in a test or doc example, no person
 allow-home-other	allow	home-path=/home/other/	a placeholder username in a test or doc example, no person
 allow-home-proj	allow	home-path=/home/proj/	a placeholder username in a test or doc example, no person

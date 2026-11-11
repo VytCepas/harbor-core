@@ -12,6 +12,11 @@ A free-text stream is refused unless --drop-free-text removes its text fields. L
 for this machine's user name, home path and host token, any /Users/ or /home/ path and any e-mail address; one hit
 deletes the output and exits 1, naming the class, never the value. The release key never goes in DIR.
 Exit 0 written, 1 refused by the scrub gate, 2 usage or policy.
+
+  python3 -I bin/audit-stream-export.py scrub <file> [--cfg DIR]
+
+The scrub gate alone, over any file (harbor#1278: `harbor logs push` runs its coded rows through it). Exit 0 clean, 1 a hit,
+named by class and never by value, 2 usage.
 """
 import argparse, glob, getpass, hashlib, hmac, json, os, re, secrets, socket, sys
 
@@ -46,7 +51,43 @@ def sources(row, cfg):
     return sorted(f for f in found if os.path.isfile(f))
 
 
+def scrub_hits(text, cfg):
+    """The classes of this machine's identity the text names: user, home, host, host token, a home path, an e-mail."""
+    host = ""
+    try:
+        host = open(os.path.join(cfg, ".helm-obs-host"), encoding="utf-8").read().strip()
+    except OSError:
+        pass
+    classes = {"user name": getpass.getuser(), "home path": os.path.expanduser("~"),
+               "host name": socket.gethostname().split(".")[0], "host token": host}
+    hits = [c for c, v in classes.items() if len(v) >= 3 and v.lower() in text.lower()]
+    if re.search(r"/(Users|home)/[A-Za-z0-9._-]+", text):
+        hits.append("a home-directory path")
+    if re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", text):
+        hits.append("an e-mail address")
+    return hits
+
+
+def scrub_main(argv):
+    cfg = os.environ.get("CLAUDE_CONFIG_DIR", os.path.expanduser("~/.claude"))
+    if len(argv) == 3 and argv[1] == "--cfg":
+        cfg = argv[2]
+    elif len(argv) != 1:
+        die(2, "usage: scrub <file> [--cfg DIR]")
+    try:
+        text = open(argv[0], encoding="utf-8", errors="replace").read()
+    except OSError:
+        die(2, f"cannot read {argv[0]}")
+    hits = scrub_hits(text, cfg)
+    if hits:
+        die(1, f"scrub gate: the file names {', '.join(hits)}")
+    print("  ok: scrub gate clean")
+
+
 def main():
+    if len(sys.argv) >= 2 and sys.argv[1] == "scrub":
+        scrub_main(sys.argv[2:])
+        return
     ap = argparse.ArgumentParser(add_help=True, description=__doc__.split("\n\n")[0])
     ap.add_argument("stream"); ap.add_argument("--out", required=True); ap.add_argument("--key-file", required=True)
     ap.add_argument("--from", dest="since", default=""); ap.add_argument("--to", dest="until", default="")
@@ -106,18 +147,7 @@ def main():
 
     # The scrub gate: the output is judged as text, so a field this code never heard of is judged too.
     text = open(dst, encoding="utf-8").read()
-    host = ""
-    try:
-        host = open(os.path.join(a.cfg, ".helm-obs-host"), encoding="utf-8").read().strip()
-    except OSError:
-        pass
-    classes = {"user name": getpass.getuser(), "home path": os.path.expanduser("~"),
-               "host name": socket.gethostname().split(".")[0], "host token": host}
-    hits = [c for c, v in classes.items() if len(v) >= 3 and v.lower() in text.lower()]
-    if re.search(r"/(Users|home)/[A-Za-z0-9._-]+", text):
-        hits.append("a home-directory path")
-    if re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", text):
-        hits.append("an e-mail address")
+    hits = scrub_hits(text, a.cfg)
     if hits:
         os.remove(dst)
         die(1, f"scrub gate: the output named {', '.join(hits)}; nothing was written")

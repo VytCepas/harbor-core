@@ -152,6 +152,8 @@ sub_name() { printf '%s' "$1" | awk -v n="$NAME" '{ while ((i = index($0, "{name
 if [ "$VERDICT" = deny ]; then
   printf '%s\n' "Default-way check (harbor#1397). This call writes the installed copy of a $KIND at \`$SHOWN\`; a deploy overwrites it and no reviewer ever sees it. Edit the source in $ROOT instead: $(sub_name "$HOMEDIR"). It reaches the box by: $(sub_name "$INSTALL"). Why: $REASON."
 else
-  printf '%s\n' "Default-way check (harbor#1397, advisory, the call was not blocked). This call builds a $KIND at \`$SHOWN\`, the way Claude Code allows by default; harbor builds it in $ROOT instead: $(sub_name "$HOMEDIR"). It reaches the box by: $(sub_name "$INSTALL"). Why: $REASON. If this is a deliberate box-only change, say so in your answer and carry on."
+  # A verb: home is built by a command, not in the checkout (harbor#1278).
+  case "$HOMEDIR" in verb:*) _built="with a command instead: ${HOMEDIR#verb:}" ;; *) _built="in $ROOT instead: $(sub_name "$HOMEDIR")" ;; esac
+  printf '%s\n' "Default-way check (harbor#1397, advisory, the call was not blocked). This call builds a $KIND at \`$SHOWN\`, the way Claude Code allows by default; harbor builds it $_built. It reaches the box by: $(sub_name "$INSTALL"). Why: $REASON. If this is a deliberate box-only change, say so in your answer and carry on."
 fi
 exit 0
