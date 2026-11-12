@@ -10,7 +10,7 @@ if ! command -v bun >/dev/null 2>&1; then
   t_done; exit 0
 fi
 SRVSRC="$T_ROOT/bin/access-chrome-mcp.ts"; AG="$T_ROOT/bin/access-browser-agent.sh"
-X="$T_TMP/x"; mkdir -p "$X/bin" "$X/contracts"; cp "$SRVSRC" "$X/bin/"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" "$X/contracts/"
+X="$T_TMP/x"; mkdir -p "$X/bin" "$X/contracts"; cp "$SRVSRC" "$X/bin/"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" "$T_ROOT/contracts/browser-script.tsv" "$X/contracts/"
 cp "$T_ROOT/bin/scope-roots.sh" "$T_ROOT/bin/library-log.sh" "$X/bin/"; cp "$T_ROOT/contracts/roots.tsv" "$X/contracts/"
 SRV="$X/bin/access-chrome-mcp.ts"
 CTL="$T_TMP/ctl"; mkdir -p "$CTL"; SOCK="$T_TMP/d.sock"; PH="$T_TMP/priv-hosts.txt"; : > "$PH"
@@ -33,7 +33,7 @@ trap 'kill $DPID 2>/dev/null; chmod -R u+w "$T_TMP" 2>/dev/null; rm -rf "$T_TMP"
 _i=0; while [ ! -e "$CTL/ready" ] && [ "$_i" -lt 100 ]; do sleep 0.1; _i=$((_i + 1)); done
 [ -e "$CTL/ready" ] || { t_fail "the fake daemon did not start"; t_done; exit 1; }
 CALLS="$CTL/calls"; : > "$CALLS"
-clean() { rm -f "$CTL"/download "$CTL"/blank "$CTL"/hidden "$CTL"/eval_fail "$CTL"/tablist_fail "$CTL"/fail "$CTL"/upload_denied "$CTL"/late_blank* "$CTL"/xerr "$CTL"/page_url "$CTL"/delay_ms "$CTL"/token_url "$CTL"/front_refuses; }
+clean() { rm -f "$CTL"/fail_script "$CTL"/script_result "$CTL"/download "$CTL"/blank "$CTL"/hidden "$CTL"/eval_fail "$CTL"/tablist_fail "$CTL"/fail "$CTL"/upload_denied "$CTL"/late_blank* "$CTL"/xerr "$CTL"/page_url "$CTL"/delay_ms "$CTL"/token_url "$CTL"/front_refuses; }
 
 # mcp <tool> <arg>... -> "exit 0|1"; the result text is left in $T_TMP/out. The environment is the launcher's: nothing else reaches it.
 envs() { env -i HOME="$HOME" TMPDIR="$T_TMP" PATH="$PATH" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 "$@"; }

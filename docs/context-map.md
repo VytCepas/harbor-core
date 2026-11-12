@@ -35,8 +35,8 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | skill | skills/ | component | source | living | 51 |
 | fixture | fixtures/ | element | source | living | 439 |
 | template | templates/ | component | source | living | 16 |
-| registry | registries/ | component | source | versioned | 80 |
-| test | tests/ | component | source | living | 668 |
+| registry | registries/ | component | source | versioned | 81 |
+| test | tests/ | component | source | living | 669 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 9 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
@@ -57,7 +57,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `bin/` | 300 | 32 | 2 |
 | `commands/` | 5 | 4 | 1 |
 | `context-rules/` | 68 | 6 | 1 |
-| `contracts/` | 122 | 14 | 2 |
+| `contracts/` | 123 | 14 | 2 |
 | `docs/` | 323 | 26 | 9 |
 | `fixtures/` | 439 | 11 | 1 |
 | `hooks/` | 46 | 7 | 1 |
@@ -72,7 +72,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `standards/` | 32 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `templates/` | 16 | 3 | 1 |
-| `tests/` | 668 | 30 | 1 |
+| `tests/` | 669 | 30 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 104 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -81,7 +81,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
-| access | control-plane | 12 | 31 | 2 | 6 | 0 | 0 |
+| access | control-plane | 12 | 32 | 2 | 6 | 0 | 0 |
 | admission | control-plane | 27 | 90 | 0 | 6 | 0 | 176 |
 | agent | control-plane | 1 | 2 | 0 | 12 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
@@ -846,7 +846,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `bin/` | 12 |
 | `commands/` | 2 |
 | `context-rules/` | 56 |
-| `contracts/` | 90 |
+| `contracts/` | 91 |
 | `docs/` | 134 |
 | `fixtures/` | 264 |
 | `hooks/` | 33 |
