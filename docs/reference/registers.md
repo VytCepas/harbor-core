@@ -47,7 +47,6 @@ reference to an id that is not there are each red (`standard.register-declared`,
 | `contracts/confinement-classes.tsv` | admission | class | `class kind treatment where` | - | `bin/admission-observe-report.sh` | every class of Bash call that asks to leave the sandbox, and its treatment (harbor#1441) |
 | `contracts/core-writes-allow.tsv` | lint | path+target | `path target reason` | path>path: | `bin/lint-core-writes.sh` | a core script allowed to write a path |
 | `contracts/credential-patterns.tsv` | access | id | `id ere note` | - | `bin/lint-secrets.sh` | the shapes of a credential value |
-| `contracts/browser-script.tsv` | access | verb | `verb function` | - | `bin/access-browser-agent.sh` | the fixed script `harbor chrome` runs in a page for each script-first verb (click, dblclick, hover, check, select, scroll); __ARG__ is replaced with a JSON literal; read by both routes (harbor#1507) |
 | `contracts/decision-orphans.tsv` | standard | id | `id reason` | - | `bin/lint-conventions.sh` | a decision record deliberately cited nowhere |
 | `contracts/decision-reach.tsv` | standard | path | `path why` | - | `bin/lint-conventions.sh` | a path read outside this repo, where a bare decision id is red |
 | `contracts/dev-paths-allow.tsv` | lint | path+dev | `path dev reason` | - | `bin/lint-dev-paths.sh` | a core file allowed to name a dev-layer path |

@@ -61,7 +61,6 @@ contracts/confinement-mcp.tsv	none	server verdict reason	server		admission	bin/d
 contracts/confinement-classes.tsv	row	class kind treatment where	class		admission	bin/admission-observe-report.sh	every class of Bash call that asks to leave the sandbox, and its treatment (harbor#1441)
 contracts/core-writes-allow.tsv	row	path target reason	path+target	path>path:	lint	bin/lint-core-writes.sh	a core script allowed to write a path
 contracts/credential-patterns.tsv	row	id ere note	id		access	bin/lint-secrets.sh	the shapes of a credential value
-contracts/browser-script.tsv	row	verb function	verb		access	bin/access-browser-agent.sh	the fixed script `harbor chrome` runs in a page for each script-first verb (click, dblclick, hover, check, select, scroll); __ARG__ is replaced with a JSON literal; read by both routes (harbor#1507)
 contracts/decision-orphans.tsv	none	id reason	id		standard	bin/lint-conventions.sh	a decision record deliberately cited nowhere
 contracts/decision-reach.tsv	none	path why	path		standard	bin/lint-conventions.sh	a path read outside this repo, where a bare decision id is red
 contracts/dev-paths-allow.tsv	row	path dev reason	path+dev		lint	bin/lint-dev-paths.sh	a core file allowed to name a dev-layer path

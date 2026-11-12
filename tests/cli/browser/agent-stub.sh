@@ -22,12 +22,6 @@ case " \$* " in *" fill "*) [ -z "\${STUB_LATE_BLANK:-}" ] || ( sleep 0.3; : > "
 # eval answers the state probe in the real --raw shape: a JSON string, quotes escaped.
 # STUB_COVERED: a file; the page reads hidden until a raise removes it, as an occluded window does.
 case " \$* " in *" eval "*)
-  # A script from contracts/browser-script.tsv (harbor#1507) answers in its own two-line shape, as one JSON string;
-  # STUB_SCRIPT_RESULT is a first line to answer instead (refused: ..., unchanged: ...).
-  case "\$*" in *'- Page URL: '*)
-    [ -z "\${STUB_SCRIPT_FAIL:-}" ] || { echo "Error: Execution context was destroyed"; exit 1; }
-    printf '"%s\\\\n- Page URL: %s"\n' "\${STUB_SCRIPT_RESULT:-done by script}" "\${STUB_PAGE_URL:-https://business.facebook.com/}"; exit 0 ;;
-  esac
   [ -z "\${STUB_EVAL_FAIL:-}" ] || { echo "Error: Execution context was destroyed"; exit 1; }
   if [ -n "\${STUB_HIDDEN:-}" ] || { [ -n "\${STUB_COVERED:-}" ] && [ -e "\$STUB_COVERED" ]; }; then printf '%s\n' '"{\"visibility\":\"hidden\",\"host\":\"business.facebook.com\",\"blank\":false}"'
   elif [ -n "\${STUB_BLANK:-}" ] || { [ -n "\${STUB_LATE_BLANK:-}" ] && [ -e "\$STUB_LATE_BLANK" ]; }; then printf '%s\n' '"{\"host\":\"\",\"blank\":true}"'
@@ -91,7 +85,7 @@ case "\$sc" in
     echo "\$#" ;;
   *'set active tab index'*) echo "front \$2" >> "$OSACALLS"
     [ -z "\${STUB_OSA_FAIL:-}" ] || exit 1
-    awk -F '\t' -v u="\$2" -v id="\${3:-none}" '(id != "none" ? \$5 == id : substr(\$4, length(\$4) - length(u) + 1) == u) { print "window " \$1 " tab " \$2; exit }' "$OSA_TABS" ;;
+    awk -F '\t' -v u="\$2" 'substr(\$4, length(\$4) - length(u) + 1) == u { print "window " \$1 " tab " \$2; exit }' "$OSA_TABS" ;;
   *) echo tabs >> "$OSACALLS"; cat "$OSA_TABS"
     # \$OSA_TABS.next is the list after this one: Chrome before and after a verb
     [ ! -f "$OSA_TABS.next" ] || mv "$OSA_TABS.next" "$OSA_TABS" ;;
