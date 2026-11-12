@@ -39,7 +39,7 @@ INST="$T_TMP/inst"; CFGD="$T_TMP/cfgd"
 mkinst() {
   mkdir -p "$INST/bin" "$CFGD"
   for _f in "$T_ROOT"/bin/*; do ln -sf "$_f" "$INST/bin/${_f##*/}"; done
-  for _d in contracts standards docs skills; do [ -e "$INST/$_d" ] || ln -s "$T_ROOT/$_d" "$INST/$_d"; done
+  for _d in contracts standards docs skills templates tests vendor; do [ -e "$INST/$_d" ] || ln -s "$T_ROOT/$_d" "$INST/$_d"; done
   rm -f "$INST/bin/member-integrity.sh" "$INST/bin/hub-events.sh"
   printf '#!/bin/sh\ncase "$1" in hash) echo 0123456789abcdef ;; check) exit "$(cat "%s/integrity.rc" 2>/dev/null || echo 0)" ;; esac\n' "$T_TMP" > "$INST/bin/member-integrity.sh"
   printf '#!/bin/sh\nprintf "%%s\\n" "$*" >> "%s/events.log"\n' "$T_TMP" > "$INST/bin/hub-events.sh"

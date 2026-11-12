@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+# example.test.sh — the worked example: one suite per unit, red first. Its unit is the harness itself (tests/lib/core.sh).
+# harbor member project standard. Replace it with the first real suite; copy this shape: t_init, sections, t_done.
+T_STANDALONE=1; export T_STANDALONE
+. "$(dirname "$0")/../lib/core.sh"; t_init
+
+t_section "1 - the harness passes what is true"
+t_eq "equal values pass" "a" "a"
+t_has "a needle in the text passes" "hello world" "world"
+t_exit "a command that exits 0 passes" 0 true
+
+t_section "2 - red first: a wrong assertion must fail"
+# The harness must be able to go red, or no suite built on it counts. A planted wrong assertion runs in a child
+# suite; the child must exit 1 and name the failure.
+_c="$T_TMP/red.test.sh"
+printf '%s\n' 'T_STANDALONE=1; export T_STANDALONE' ". \"$T_ROOT/lib/core.sh\"; t_init" 't_eq "planted wrong" "a" "b"' 't_done' > "$_c"
+_o="$(sh "$_c" 2>&1)"; _rc=$?
+t_eq "the planted break exits 1" 1 "$_rc"
+t_has "and names the failed assertion" "$_o" "planted wrong"
+t_done

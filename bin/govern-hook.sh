@@ -48,6 +48,8 @@ EVENT="$(field '.hook_event_name')"
 # ${0%/*}, not $(dirname): a hook must not fall back to the session's cwd (harbor#810).
 case "$0" in */*) _sd="${0%/*}" ;; *) _sd=. ;; esac
 SELF_DIR="$(CDPATH='' cd -- "$_sd" 2>/dev/null && pwd || printf '%s' "$_sd")"
+# harbor#1278: this hook runs git on repos the agent can write; gs_env stops the programs a repo's config would run. Absent beside the hook, the plain call runs as before.
+if [ -r "$SELF_DIR/library-git-safe.sh" ]; then . "$SELF_DIR/library-git-safe.sh"; else gs_env() { git "$@"; }; fi
 
 # PROVENANCE: every note is stamped with this session's token from govern-token.sh (box-local salt plus session id), because annotate-web.sh carries fetched pages through a byte-identical envelope and a self-label is exactly what an attack writes. With no salt the stamp is omitted and notes still say something true.
 SID="$(field '.session_id')"
@@ -158,14 +160,14 @@ SEGS
 # ── repo resolution ─────────────────────────────────────────────────────────
 # CLAUDE_PROJECT_DIR is what the harness sets for plugin hooks; cwd is the
 # fallback for a hand-run or a self-test. Not a repo → nothing to say.
-PROJ="$(cd "${CLAUDE_PROJECT_DIR:-$PWD}" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null || true)"
+PROJ="$(cd "${CLAUDE_PROJECT_DIR:-$PWD}" 2>/dev/null && gs_env rev-parse --show-toplevel 2>/dev/null || true)"
 REPO="$PROJ"
 if [ "$BOX" = 1 ]; then
   # --box: the call's working folder outranks the project dir, which is where the
   # session started rather than where the merge runs. Empty is fine here: a `-R`
   # slug can still name the repo.
   _cwd="$(field '.cwd')"
-  _ct="$(cd "${_cwd:-/nonexistent}" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null || true)"
+  _ct="$(cd "${_cwd:-/nonexistent}" 2>/dev/null && gs_env rev-parse --show-toplevel 2>/dev/null || true)"
   [ -z "$_ct" ] || REPO="$_ct"
 else
   [ -n "$REPO" ] || exit 0
@@ -216,7 +218,7 @@ _registered() {
   _reg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/context-rules/user/projects.tsv"
   [ -f "$_reg" ] || return 1
   _me="$(cd "$1" 2>/dev/null && pwd -P || true)"
-  _own="$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+  _own="$(gs_env -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
   case "$_own" in */.git) _own="$(cd "${_own%/.git}" 2>/dev/null && pwd -P || true)" ;; *) _own='' ;; esac
   while IFS="$(printf '\t')" read -r _rn _rp _rc; do
     case "$_rn" in ''|'#'*) continue ;; esac
@@ -236,7 +238,7 @@ _checkout_of() {
   for _d in "${PORT_ROOT:-$HOME/port}"/*/; do
     _d="${_d%/}"
     [ -d "$_d/.git" ] || continue
-    _u="$(git -C "$_d" config --get remote.origin.url 2>/dev/null || true)"
+    _u="$(gs_env -C "$_d" config --get remote.origin.url 2>/dev/null || true)"
     _u="${_u%/}"; _u="${_u%.git}"
     _us="$(printf '%s' "$_u" | awk -F'[/:]' 'NF >= 2 { print tolower($(NF - 1) "/" $NF) }')"
     [ "$_us" = "$_want" ] || continue
@@ -264,7 +266,7 @@ _box_target() {
 }
 # _owner <tree>: the main checkout it belongs to, physical; itself when it is one.
 _owner() {
-  _oc="$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+  _oc="$(gs_env -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
   case "$_oc" in */.git) (cd "${_oc%/.git}" 2>/dev/null && pwd -P) || true ;; esac
   return 0
 }
@@ -367,12 +369,12 @@ if [ "$EVENT" = PostToolUse ] && matches gh 'pr merge'; then
   # Merge-consequent state only: a hygiene checklist is equally true before the merge, after a failed one and on a Tuesday, and turns into wallpaper. What a merge changes locally is which branches and worktrees are retired.
   # No network: the comparison is against the origin/<base> ref on disk, which can be stale, and the note says so.
   cd "$REPO" 2>/dev/null || exit 0
-  git rev-parse --verify --quiet "origin/$BASE" >/dev/null 2>&1 || exit 0
+  gs_env rev-parse --verify --quiet "origin/$BASE" >/dev/null 2>&1 || exit 0
 
   # By content, not ancestry (harbor#213): `merge-base --is-ancestor` cannot see a squash merge, so every squash-merged branch was omitted and the reminder read as a quiet week. One call for all branches: gate-merged-check.sh builds its patch-id index once per invocation.
   _mc="$SELF_DIR/gate-merged-check.sh"
   if [ -f "$_mc" ]; then
-    _brs="$(git for-each-ref --format='%(refname:short)' refs/heads 2>/dev/null \
+    _brs="$(gs_env for-each-ref --format='%(refname:short)' refs/heads 2>/dev/null \
             | while IFS= read -r b; do
                 [ -n "$b" ] || continue
                 [ "$b" = "$BASE" ] && continue
@@ -396,15 +398,15 @@ if [ "$EVENT" = PostToolUse ] && matches gh 'pr merge'; then
   held=''
   if [ -n "$merged" ]; then
     for b in $merged; do
-      _w="$(git worktree list --porcelain 2>/dev/null | awk -v b="refs/heads/$b" '
+      _w="$(gs_env worktree list --porcelain 2>/dev/null | awk -v b="refs/heads/$b" '
               /^worktree /{w=$2} /^branch /{ if ($2 == b) print w }' || true)"
       [ -n "$_w" ] && held="$held $b"
     done
     held="${held# }"
   fi
 
-  behind="$(git rev-list --count "HEAD..origin/$BASE" 2>/dev/null || printf 0)"
-  cur="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || printf '')"
+  behind="$(gs_env rev-list --count "HEAD..origin/$BASE" 2>/dev/null || printf 0)"
+  cur="$(gs_env rev-parse --abbrev-ref HEAD 2>/dev/null || printf '')"
 
   note=''
   [ -n "$merged" ] && note="Merged and still present locally: $merged. Delete with git branch -d, or sh bin/worktree.sh gc for the ones held by a worktree."

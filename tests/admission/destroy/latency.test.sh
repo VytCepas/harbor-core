@@ -55,7 +55,7 @@ t_eq "a clean tree takes no snapshot: exit 2" 2 "$_rc"
 t_has "and says why" "$_o" "the ON arm took 0 snapshots"
 # Red: the guard's off switch renamed in a copy, so the OFF arm still snapshots.
 mkdir -p "$T_TMP/cp/bin"
-for _f in eval-hook-latency.sh library-log.sh admission-destroy.sh library-admission.sh admission-normalize.awk; do cp "$T_ROOT/bin/$_f" "$T_TMP/cp/bin/"; done
+for _f in eval-hook-latency.sh library-log.sh admission-destroy.sh library-admission.sh library-git-safe.sh admission-normalize.awk; do cp "$T_ROOT/bin/$_f" "$T_TMP/cp/bin/"; done
 sed 's/harbor-snapshot-off/harbor-snapshot-gone/' "$T_ROOT/bin/admission-destroy.sh" > "$T_TMP/cp/bin/admission-destroy.sh"
 _o="$(sh "$T_TMP/cp/bin/eval-hook-latency.sh" run --runs 1 --tree "$R" 2>&1)"; _rc=$?
 t_eq "a broken off switch: exit 2" 2 "$_rc"

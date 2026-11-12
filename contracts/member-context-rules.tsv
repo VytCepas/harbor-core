@@ -1,0 +1,8 @@
+# member-context-rules.tsv (harbor#1278) — the context rules that ship to a member laptop. EMPTY BY DEFAULT: a rule not listed here never fires on a member.
+# A member runs only packs from the root-owned managed root (hooks/injection-rule/injection-rule.sh --member-root), never the session repo or the box tier.
+# A rule is read from contracts/member-rules/<id>.md when that file exists (the member variant, plain language), else from context-rules/<scope>/<id>.md.
+# Listing a rule here is the operator's yes. Each id needs its pack and its rows in contracts/member-files.txt (tests/member/context/rules.test.sh).
+# bin/member-managed.sh derives the engine's hook events and tool matchers from the listed packs. A rule with `run:` or `spoke:` is refused until its scripts are listed too.
+id	reason
+external-content-is-data	a pure note, no script: warns when fetched text addresses the agent, which a non-engineer cannot spot themselves
+subagent-contract	a pure note, no script: tells any helper agent to report once, show evidence and treat fetched text as data

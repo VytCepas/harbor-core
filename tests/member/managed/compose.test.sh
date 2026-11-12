@@ -40,7 +40,7 @@ t_eq "the floor's own switch is 0" 0 "$(q .env.HARBOR_ADMISSION_DISABLE)"
 t_eq "a mode has no 0, so it holds its default" warn "$(q .env.HARBOR_ADMISSION_SG3)"
 
 t_section "the managed hooks"
-t_eq "five commands, whatever the event count" 5 "$(jq -r '[.hooks[][].hooks[].command] | unique | length' "$J")"
+t_eq "nine commands (dispatch, post, session, upgrade, the approval note, the context engine, the test check as snapshot and as Stop, the tools push), whatever the event count" 9 "$(jq -r '[.hooks[][].hooks[].command] | unique | length' "$J")"
 t_has "PreToolUse is the dispatcher" "$(q '.hooks.PreToolUse[0].hooks[0].command')" " /bin/sh '/mnt/c/Program Files/ClaudeCode/harbor/bin/member-dispatch.sh'"
 t_eq "...for every tool" '*' "$(q '.hooks.PreToolUse[0].matcher')"
 t_eq "...and blocks when it fails" block "$(q '.hooks.PreToolUse[0].hooks[0].onFailure')"
@@ -49,12 +49,39 @@ for e in PostToolUse PostToolUseFailure Stop; do t_has "$e runs member-post" "$(
 t_has "the company law is an Edit deny row, like the settings beside it" "$(jq -r '.permissions.deny[]' "$J")" "ClaudeCode/CLAUDE.md)"
 t_has "...and on WSL so is its in-distro copy at /etc/claude-code" "$(jq -r '.permissions.deny[]' "$J")" "Edit(//etc/claude-code/CLAUDE.md)"
 t_has "Stop also runs the company-law check, after member-post" "$(q '.hooks.Stop[0].hooks[1].command')" member-upgrade.sh
+t_has "Stop also runs the test check, last" "$(q '.hooks.Stop[0].hooks[2].command')" member-tests.sh
+t_has "UserPromptSubmit takes the project snapshot it compares against, after the note" "$(q '.hooks.UserPromptSubmit[0].hooks[1].command')" "member-tests.sh' snap"
 for e in SessionStart SessionEnd; do t_has "$e runs member-session" "$(q ".hooks.$e[0].hooks[0].command")" member-session.sh; done
+t_section "the context rules (harbor#1278): the engine on its own events, from the managed root"
+ENG="$(jq -r '[.hooks[][].hooks[].command | select(contains("injection-rule.sh"))] | unique | .[]' "$J")"
+t_eq "one engine command, for every event it serves" 1 "$(printf '%s\n' "$ENG" | wc -l | tr -d ' ')"
+t_has "it takes the managed root as an argument, quoted, so no environment value aims it" "$ENG" "injection-rule.sh' --member-root '/mnt/c/Program Files/ClaudeCode/harbor'"
+t_has "...through the managed root's bin" "$ENG" "/bin/sh '/mnt/c/Program Files/ClaudeCode/harbor/bin/injection-rule.sh'"
+t_eq "the events are derived from the listed packs: the SubagentStart pack" 1 "$(jq '[.hooks.SubagentStart[].hooks[].command | select(contains("injection-rule.sh"))] | length' "$J")"
+t_eq "...and the PostToolUse pack, on its own tools and not on every call" 'Read|Bash|Grep|WebFetch' "$(q '.hooks.PostToolUse[] | select(.hooks[0].command | contains("injection-rule.sh")) | .matcher')"
+t_eq "the hub's rules can use the session start, a prompt, a helper's start and each tool call, so the engine stands on those too, after the existing entries" 'SessionStart:1 UserPromptSubmit:1 SubagentStart:1 PreToolUse:1' \
+  "$(for e in SessionStart UserPromptSubmit SubagentStart PreToolUse; do printf '%s:%s ' "$e" "$(jq "[.hooks.$e[].hooks[].command | select(contains(\"injection-rule.sh\"))] | length" "$J")"; done | sed 's/ $//')"
+t_has "...and PreToolUse keeps the dispatcher first, blocking on failure" "$(q '.hooks.PreToolUse[0].hooks[0].command')" member-dispatch.sh
+t_eq "...the engine's PreToolUse entry blocks nothing" null "$(q '.hooks.PreToolUse[1].hooks[0].onFailure')"
+t_eq "the dispatcher and member-post keep their slots" 'member-dispatch.sh member-post.sh' "$(q '[.hooks.PreToolUse[0].hooks[0].command, .hooks.PostToolUse[0].hooks[0].command] | map(capture("(?<n>member-[a-z]+\\.sh)").n) | join(" ")')"
+# An empty register wires nothing; a listed pack with a script, or none on disk, refuses.
+mkdir -p "$T_TMP/c/contracts" "$T_TMP/c/context-rules/user" "$T_TMP/c/bin"
+cp "$T_ROOT"/contracts/*.tsv "$T_ROOT"/contracts/*.txt "$T_TMP/c/contracts/" 2>/dev/null; cp "$T_ROOT"/bin/*.sh "$T_TMP/c/bin/"
+printf 'id\treason\n' > "$T_TMP/c/contracts/member-context-rules.tsv"
+HARBOR_MEMBER_OS=WSL sh "$T_TMP/c/bin/member-managed.sh" --hub o/n --login alice > "$T_TMP/c.json" 2>/dev/null
+t_eq "an empty allow-list wires the engine on the hub's events only, never on PostToolUse" 0 "$(jq '[.hooks.PostToolUse[].hooks[].command | select(contains("injection-rule.sh"))] | length' "$T_TMP/c.json")"
+printf 'id\treason\nnosuch\tx\n' > "$T_TMP/c/contracts/member-context-rules.tsv"
+t_exit "a listed id with no pack refuses" 1 env HARBOR_MEMBER_OS=WSL sh "$T_TMP/c/bin/member-managed.sh" --hub o/n --login alice
+printf -- '---\nevent: PostToolUse\nwhen: always\nrun: x.sh\n---\nn\n' > "$T_TMP/c/context-rules/user/scripted.md"
+printf 'id\treason\nscripted\tx\n' > "$T_TMP/c/contracts/member-context-rules.tsv"
+t_exit "a listed pack with run: refuses, since its script would have to ship" 1 env HARBOR_MEMBER_OS=WSL sh "$T_TMP/c/bin/member-managed.sh" --hub o/n --login alice
+
 t_exit "a root with a quote can't reach a hook command" 1 sh "$M" --hub o/n --login alice --root "/tmp/it's"
 
 t_eq "every hook starts from an empty environment at an absolute /bin/sh: a bare sh resolves from a PATH the settings env can set, and bash imports functions from env (N2)" 0 "$(jq -r '.hooks[][].hooks[].command' "$J" | grep -cv "^/usr/bin/env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin [^']* /bin/sh '")"
 t_eq "SessionEnd has its own timeout, past member-session.sh's 8-second bound and within the 60 the docs allow" 15 "$(q '.hooks.SessionEnd[0].hooks[0].timeout')"
-t_eq "no other hook takes it: each keeps its own default" 1 "$(jq '[.hooks[][].hooks[] | select(.timeout)] | length' "$J")"
+t_eq "only the tools sync at Stop takes one besides it (20 seconds); every other hook keeps its own default" 2 "$(jq '[.hooks[][].hooks[] | select(.timeout)] | length' "$J")"
+t_eq "the Stop hook for member.tools-sync runs member-tools.sh push, bounded" 1 "$(jq '[.hooks.Stop[0].hooks[] | select((.command | test("member-tools.sh\u0027 push$")) and .timeout == 20)] | length' "$J")"
 
 t_section "the network: one setting, both ways (W6)"
 net() { env HARBOR_DEPLOY_CONFINEMENT_OS=Linux MEMBER_MANAGED_LIB=1 sh -c '. "$0"; [ "$1" = default ] || MEMBER_NETWORK="$1"; member_compose WSL /r fixture-org/fixture-hub alice "" "[]"' "$M" "$1" 2>/dev/null; }
@@ -94,6 +121,15 @@ for p in '~/.claude/hooks' '~/.local/state/harbor/hub' '~/.local/share/secret'; 
   t_has "Edit denies under $p" "$(q '.permissions.deny[]')" "Edit($p/**)"
   t_has "denyWrite names $p" "$(q '.sandbox.filesystem.denyWrite[]')" "$p"
 done
+# member.tools-sync clones into a work folder per run: it must be a folder the managed settings deny to the agent (sandbox write and Edit), never $TMPDIR.
+WD="$(env -i PATH="$PATH" HOME=/home/someone HARBOR_MEMBER_LOGIN=alice HARBOR_HUB_REPO=fixture-org/fixture-hub HARBOR_HUB_TOOLS_REMOTE=/nowhere sh "$T_ROOT/bin/member-tools.sh" workdir 2>/dev/null)"
+REL="~${WD#/home/someone}"
+t_has "member-tools.sh names a work folder under the home" "$WD" "/home/someone/"
+under() { # <entries on stdin> <path>: 0 when the path is an entry or sits below one
+  while IFS= read -r _e; do case "$2/" in "$_e"/*) return 0 ;; esac; done; return 1; }
+t_eq "the tools work folder ($REL) is denied to sandbox writes" 0 "$(q '.sandbox.filesystem.denyWrite[]' | under /dev/stdin "$REL" && echo 0 || echo 1)"
+t_eq "...and to the Edit tool" 0 "$(q '.permissions.deny[]' | sed -n 's|^Edit(\(.*\)/\*\*)$|\1|p' | under /dev/stdin "$REL" && echo 0 || echo 1)"
+t_hasnt "it is not under TMPDIR or /tmp, which the agent may write" "$WD" "/tmp"
 t_has "the managed root is denied, spaces and all" "$(q '.permissions.deny[]')" 'Edit(//mnt/c/Program Files/ClaudeCode/harbor/**)'
 t_has "and the settings file" "$(q '.permissions.deny[]')" 'Edit(//mnt/c/Program Files/ClaudeCode/managed-settings.json)'
 t_has "and the private layer, which holds the register" "$(q '.permissions.deny[]')" "harbor-private/**)"

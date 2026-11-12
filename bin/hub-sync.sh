@@ -13,6 +13,7 @@ case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
 HERE="$(CDPATH= cd -- "$HERE" && pwd -P)"
 . "$HERE/library-log.sh"
 . "$HERE/library-hub.sh"
+. "$HERE/library-git-safe.sh"
 log_init hub-sync
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
@@ -123,7 +124,7 @@ git_child() { # <clone> <url>
       unset HUB_SYNC_CREDENTIAL
     fi
     export GIT_CONFIG_COUNT="$_gn"
-    bounded "$TIMEOUT" git -C "$1" fetch -q --no-tags "$2" '+HEAD:refs/hub/head'
+    bounded "$TIMEOUT" gs_env -C "$1" fetch -q --no-tags "$2" '+HEAD:refs/hub/head'
   )
 }
 
@@ -170,15 +171,15 @@ cmd_fetch() {
   _url="$(remote_url)" || { log_fail "HARBOR_HUB_REPO is not owner/name"; log_fix "IT sets HARBOR_HUB_REPO in the managed settings"; record "refused: no hub repo"; return 1; }
   (umask 077; mkdir -p "$STATE") || { log_fail "cannot make $STATE"; log_fix "check the permissions of ${STATE%/*}"; return 1; }
   _clone="$STATE/repo"
-  [ -d "$_clone/.git" ] || git init -q "$_clone" 2>/dev/null || { log_fail "cannot make the hub clone at $_clone"; log_fix "check the permissions of $STATE"; return 1; }
+  [ -d "$_clone/.git" ] || gs_env init -q "$_clone" 2>/dev/null || { log_fail "cannot make the hub clone at $_clone"; log_fix "check the permissions of $STATE"; return 1; }
   if ! git_fetch "$_clone" "$_url" > /dev/null 2>&1; then
     # A 401, a 403 and a dead network look alike from here, and none of them is a revocation (F27, R22): change nothing.
     log_warn "hub unreachable: the last good policy stays"; record "unreachable"; return 3
   fi
   _cand="$STATE/cand.$$"; rm -rf "$_cand"; (umask 077; mkdir -p "$_cand")
   trap 'rm -rf "$_cand"' EXIT INT TERM
-  git -C "$_clone" show refs/hub/head:policy.json > "$_cand/policy.json" 2>/dev/null &&
-    git -C "$_clone" show refs/hub/head:policy.json.sig > "$_cand/policy.json.sig" 2>/dev/null || {
+  gs_env -C "$_clone" show --no-textconv refs/hub/head:policy.json > "$_cand/policy.json" 2>/dev/null &&
+    gs_env -C "$_clone" show --no-textconv refs/hub/head:policy.json.sig > "$_cand/policy.json.sig" 2>/dev/null || {
     log_fail "the hub has no signed policy at its head"; log_fix "the admin runs harbor hub sign and commits policy.json and policy.json.sig"
     record "refused: no policy"; return 1; }
   if [ "$(wc -c < "$_cand/policy.json" | tr -d ' ')" -gt 524288 ]; then

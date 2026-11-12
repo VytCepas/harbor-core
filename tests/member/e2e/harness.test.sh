@@ -42,7 +42,8 @@ rm -f "$MR/core-source"
 _gone=''
 for _c in $(jq -r '.hooks[][].hooks[].command' "$MFILE" | sed -n "s/^.* \/bin\/sh '.*\/bin\/\([^']*\)'.*/\1/p" | sort -u); do [ -f "$MB/$_c" ] || _gone="$_gone $_c"; done
 t_eq "every hook the settings name is in the root" '' "$_gone"
-t_eq "the settings name the five hook scripts" 5 "$(jq -r '.hooks[][].hooks[].command' "$MFILE" | sed -n "s/^.* \/bin\/sh '.*\/bin\/\([^']*\)'.*/\1/p" | sort -u | wc -l | tr -d ' ')"
+# the set bin/member-managed.sh wires: dispatch (PreToolUse), post, upgrade, tests and tools (Stop), approval note (UserPromptSubmit), session, and the context-rule engine
+t_eq "the settings name the eight hook scripts" 'hub-approval.sh injection-rule.sh member-dispatch.sh member-post.sh member-session.sh member-tests.sh member-tools.sh member-upgrade.sh' "$(jq -r '.hooks[][].hooks[].command' "$MFILE" | sed -n "s/^.* \/bin\/sh '.*\/bin\/\([^']*\)'.*/\1/p" | sort -u | tr '\n' ' ' | sed 's/ $//')"
 mkdir -p "$T_TMP/o"
 HARBOR_HUB_API_BASE=http://127.0.0.1:9 HARBOR_ACCESS_SECRET_BIN=/bin/false sh "$MB/hub-board.sh" call "$T_TMP/o" GET "/repos/$REPO/issues?state=all" 2>/dev/null
 t_eq "the marker refuses the env seams: the call still reached this GitHub, with the stored token" 200 "$(cat "$T_TMP/o/status")"
