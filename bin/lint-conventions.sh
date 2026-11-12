@@ -190,7 +190,7 @@ SKILL_HOMES="$ROOT/vendor/skills $ROOT/skills"
 # Twelve of them; everything else stayed in the single block that reads it. The
 # prose explaining each one stays with the rule that owns the question — the
 # pointer is the symbol name, which greps to both places.
-ALLOWED='name|description|when_to_use|user-invocable|argument-hint|allowed-tools|disable-model-invocation|version|effort|context|model|license|metadata|owns-commands|owns-tools|inline-section'
+ALLOWED='name|description|when_to_use|user-invocable|argument-hint|allowed-tools|disable-model-invocation|version|effort|context|model|license|metadata|owns-commands|owns-tools|inline-section|architecture'
 PROV="$ROOT/vendor/skills/PROVENANCE.md"
 CI="$ROOT/.github/workflows/governance.yml"
 _MAN="$ROOT/contracts/suites.txt"
@@ -758,6 +758,7 @@ rule "posix.shebang-strict bin/*.sh use #!/usr/bin/env sh + strict mode (documen
 #   audit-stream-lib.sh  — SOURCED, the same reason (harbor#1181)
 #   library-alert.sh   — SOURCED, the same reason (harbor#618)
 #   library-hub.sh     — SOURCED, the same reason (harbor#1278)
+#   library-git-safe.sh — SOURCED, the same reason (harbor#1278)
 #   library-board.sh   — SOURCED, the same reason (harbor#1278; operator yes 2026-11-08)
 #   library-pack-version.sh — SOURCED, the same reason (harbor#1278)
 #   worklog-*.sh   — contractually fail-open ("every path exits 0"); -e would abort
@@ -766,7 +767,7 @@ for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -L "$f" ] && continue   # a rename shim (renames.tsv remove_by) is an old name of a file judged under its own (harbor#961)
   b="$(basename "$f")"
   head -1 "$f" | grep -q '^#!/usr/bin/env sh$' || bad posix.shebang-strict "wrong shebang: ${f#$ROOT/}"
-  case "$b" in library-admission.sh|library-log.sh|deploy-install-lib.sh|library-fs.sh|library-gate.sh|library-hub.sh|library-board.sh|library-pack-version.sh|audit-stream-lib.sh|library-alert.sh|worklog-push.sh|ci-runners-fleet-lib.sh|ci-runners-provision-lib.sh|ci-runners-github-lib.sh|ci-runners-watch-lib.sh) continue ;; esac
+  case "$b" in library-admission.sh|library-log.sh|deploy-install-lib.sh|library-fs.sh|library-gate.sh|library-hub.sh|library-git-safe.sh|library-board.sh|library-pack-version.sh|audit-stream-lib.sh|library-alert.sh|worklog-push.sh|ci-runners-fleet-lib.sh|ci-runners-provision-lib.sh|ci-runners-github-lib.sh|ci-runners-watch-lib.sh) continue ;; esac
   grep -qE '^set -(eu|u|euo)' "$f" || bad posix.shebang-strict "no strict mode: ${f#$ROOT/}"
 done
 # EXTENSIONLESS EXECUTABLES ARE SCRIPTS TOO (2026-07-30). Every rule in this file
@@ -866,7 +867,7 @@ _S4_HOOKS="admission-hook admission-observe context-resolve annotate-web prod-gu
 worklog-push memory-harvest injection-rule eval-replay-worker admission-bash
 admission-egress admission-self-edit admission-integrity admission-cloud admission-destroy library-admission
 admission-deliverables admission-api-route
-admission-stop session-verdicts audit-triage failure-observe statusline ticket-note reply-shape library-log deploy-install-lib library-fs library-alert library-hub library-board library-pack-version ci-runners-fleet-lib ci-runners-provision-lib ci-runners-github-lib ci-runners-watch-lib library-gate audit-stream-lib session-react-lib"
+admission-stop session-verdicts audit-triage failure-observe statusline ticket-note reply-shape library-log deploy-install-lib library-fs library-alert library-hub library-git-safe library-board library-pack-version ci-runners-fleet-lib ci-runners-provision-lib ci-runners-github-lib ci-runners-watch-lib library-gate audit-stream-lib session-react-lib"
 for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   [ -L "$f" ] && continue   # a rename shim (harbor#961) answers under its new name
@@ -6919,7 +6920,7 @@ _l1_tsv="$ROOT/contracts/log-exempt.tsv"
 # and guard-stop, a protocol like the test harness's summary rather than a run log. library-fs.sh prints a
 # value and logs nothing: a library, like log-lib. So do library-hub.sh and library-board.sh (harbor#1278).
 # library-alert.sh is a library too: its one stderr line IS the notification, said when no desktop channel takes it.
-_l1_named='bin/library-log.sh bin/lint-conventions.sh bin/library-fs.sh bin/library-alert.sh bin/library-hub.sh bin/library-board.sh'
+_l1_named='bin/library-log.sh bin/lint-conventions.sh bin/library-fs.sh bin/library-alert.sh bin/library-hub.sh bin/library-board.sh bin/library-git-safe.sh'
 _l1_code() { sed -e 's/^[[:space:]]*#.*$//' -e 's/[[:space:]]#.*$//' "$1"; }  # comments blanked, lines kept
 _l1_uses() { _l1_code "$1" | grep -qE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*library-log\.sh'; }
 _l1_floor() { # channel 2: library-admission.sh, or F1's mark of an installed floor file
@@ -7269,6 +7270,73 @@ if [ -d "$ROOT/skills" ]; then
 $_npa_all
 NPA_EOF
 fi
+}
+
+# ── skill.agent-architecture · a skill that spawns agents names a written architecture (harbor#1278) ─
+# contracts/agent-architectures.tsv is the second table of the role register (contracts/agents.tsv): per case, which roles, how many,
+# at which tier, who verifies whom. A skill whose body spawns agents says `architecture: <id>...` in its front matter (`all` for the
+# routing skill, which serves every row). Red: no name, an unknown name, a register row that is malformed, uses a role agents.tsv
+# does not hold, lets an agent verify its own claims, or names a method skill that does not name it back.
+rule_skill_agent_architecture() {
+rule "skill.agent-architecture every skill that spawns agents names an architecture of contracts/agent-architectures.tsv; the register is well formed and no agent verifies its own claims (harbor#1278)"
+_aa_reg="$ROOT/contracts/agent-architectures.tsv"; _aa_ag="$ROOT/contracts/agents.tsv"
+_aa_ids=''
+_aa_out="${TMPDIR:-/tmp}/aa.$$"
+if [ -f "$_aa_reg" ] && [ -f "$_aa_ag" ]; then
+  awk -F'\t' '
+    FILENAME == ARGV[1] { if (FNR > 1) ROLE[$1] = 1; next }
+    FNR == 1 { if ($0 != "id\tcase\troles\treceives\treturns\tverified_by\tstop_rule\tmethod") print "P header is not the eight columns: id case roles receives returns verified_by stop_rule method"; next }
+    { id = $1
+      if (NF != 8) { print "P " id ": " NF " fields, not 8"; next }
+      if (id !~ /^[a-z]+(-[a-z]+)*$/) print "P " id ": the id is not lower-case words joined by -"
+      if (id in SEEN) print "P " id ": the id appears twice"
+      SEEN[id] = 1
+      for (i = 1; i <= 8; i++) if ($i == "") print "P " id ": column " i " is empty"
+      for (k in IN) delete IN[k]
+      for (k in USED) delete USED[k]
+      n = split($3, r, " ")
+      for (k = 1; k <= n; k++) {
+        t = r[k]; role = t; sub(/[*@].*/, "", role)
+        if (t !~ /^[a-z-]+\*([0-9]+(-[0-9]+)?|N)(@(haiku|sonnet|opus)\/(low|medium|high))?$/) print "P " id ": roles token " t " is not role*count[@model/effort]"
+        if (!(role in ROLE)) print "P " id ": role " role " is not a role of contracts/agents.tsv"
+        IN[role] = 1 }
+      m = split($6, v, " ")
+      if (m == 0) print "P " id ": verified_by is empty — every architecture says who verifies whom"
+      for (k = 1; k <= m; k++) {
+        if (split(v[k], pq, ">") != 2) { print "P " id ": verified_by " v[k] " is not producer>verifier"; continue }
+        if (pq[1] == pq[2]) print "P " id ": " v[k] " — an agent verifying its own claims"
+        for (j = 1; j <= 2; j++) { if (pq[j] != "parent" && !(pq[j] in IN)) print "P " id ": " pq[j] " in verified_by is not in roles"; USED[pq[j]] = 1 } }
+      for (k in IN) if (!(k in USED)) print "P " id ": role " k " neither produces nor verifies anything in verified_by"
+      if ($8 != "-") print "M " id "\t" $8 }
+    END { }' "$_aa_ag" "$_aa_reg" > "$_aa_out"
+  while IFS= read -r _aa_l; do
+    case "$_aa_l" in
+      'P '*) bad skill.agent-architecture "contracts/agent-architectures.tsv ${_aa_l#P }" contracts/agent-architectures.tsv ;;
+      'M '*) _aa_l="${_aa_l#M }"; _aa_id="${_aa_l%%"$(printf '\t')"*}"; _aa_m="${_aa_l#*"$(printf '\t')"}"
+             if [ ! -f "$ROOT/$_aa_m" ]; then bad skill.agent-architecture "contracts/agent-architectures.tsv $_aa_id: method $_aa_m does not exist" contracts/agent-architectures.tsv
+             elif ! awk '/^---$/ { n++; next } n == 1 && /^architecture:/ { print }' "$ROOT/$_aa_m" | grep -qE "(:|[[:space:]])($_aa_id|all)([[:space:]]|\$)"; then
+               bad skill.agent-architecture "contracts/agent-architectures.tsv $_aa_id: method $_aa_m does not name $_aa_id in its architecture:" "$_aa_m"
+             fi ;;
+    esac
+  done < "$_aa_out"
+  _aa_ids="$(awk -F'\t' 'NR > 1 { print $1 }' "$_aa_reg")"
+fi
+rm -f "$_aa_out"
+for _aa_s in "$ROOT"/skills/*/SKILL.md; do
+  [ -f "$_aa_s" ] || continue
+  _aa_rel="${_aa_s#"$ROOT"/}"
+  grep -q '^<!-- generated-by:' "$_aa_s" && continue   # a generated index lists skills, it spawns nothing
+  awk '/^---$/ { n++; next } n >= 2' "$_aa_s" | grep -qiE 'subagent|agent call|spawn' || continue
+  _aa_names="$(awk '/^---$/ { n++; next } n == 1 && /^architecture:/ { sub(/^architecture:[[:space:]]*/, ""); gsub(/["'"'"',]/, ""); print; exit }' "$_aa_s")"
+  if [ -z "$_aa_names" ]; then
+    bad skill.agent-architecture "$_aa_rel spawns agents and names no architecture — add architecture: <id> to its front matter (ids: contracts/agent-architectures.tsv)" "$_aa_rel"
+    continue
+  fi
+  for _aa_n in $_aa_names; do
+    [ "$_aa_n" = all ] && continue
+    printf '%s\n' "$_aa_ids" | grep -qx -- "$_aa_n" || bad skill.agent-architecture "$_aa_rel names architecture $_aa_n, which contracts/agent-architectures.tsv does not hold" "$_aa_rel"
+  done
+done
 }
 
 # ── policy.clause-anchored · policy/clauses.tsv and the constitution's clauses are one list (harbor#1026) ──────────────────

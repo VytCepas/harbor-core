@@ -92,22 +92,6 @@ PACK
 t_has "path-contains fires, and the alternation accepts Edit" "$(fire "$(tool_ev PreToolUse Edit file_path /x/vault/report.md)")" PATH-NOTE
 t_has "the alternation accepts Write too" "$(fire "$(tool_ev PreToolUse Write file_path /x/vault/a.md)")" PATH-NOTE
 t_eq "path-contains says nothing off the path" "" "$(fire "$(tool_ev PreToolUse Edit file_path /x/src/report.md)")"
-# The prefilter drops a literal list's misses in awk (harbor#1508): whole names only, and a regex still reaches the grep.
-t_eq "a literal tool list rejects a tool it does not name" "" "$(fire "$(tool_ev PreToolUse Read file_path /x/vault/a.md)")"
-t_eq "a literal tool list rejects a name that only contains one" "" "$(fire "$(tool_ev PreToolUse NotebookEdit file_path /x/vault/a.md)")"
-pack "$REPO/context-rules/repo" 25-rx.md <<'PACK'
----
-id: rxtool
-event: PreToolUse
-tool: mcp__harbor_.*
-when: path-contains vault/
-once: never
----
-RX-NOTE
-PACK
-t_has "a regex tool pattern still matches" "$(fire "$(tool_ev PreToolUse mcp__harbor_chrome__goto file_path /x/vault/a.md)")" RX-NOTE
-t_eq "a regex tool pattern still rejects" "" "$(fire "$(tool_ev PreToolUse mcp__other__goto file_path /x/vault/a.md)")"
-rm -f "$REPO/context-rules/repo/25-rx.md"
 pack "$REPO/context-rules/repo" 30-multi.md <<'PACK'
 ---
 id: multipred

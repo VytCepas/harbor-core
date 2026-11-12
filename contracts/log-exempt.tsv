@@ -31,3 +31,4 @@ hooks/reply-shape/reply-shape.sh	protocol	Claude Code Stop hook: systemMessage J
 hooks/session-subagent-check/session-subagent-check.sh	protocol	Claude Code SubagentStop hook: systemMessage JSON
 hooks/ticket-note/ticket-note.sh	protocol	Claude Code Stop hook: systemMessage JSON
 hooks/failure-observe/failure-observe.sh	protocol	Claude Code PostToolUseFailure hook: it prints nothing on any path by design, and its stdout would be session context
+hooks/box-tests/box-tests.sh	protocol	Claude Code Stop hook, also UserPromptSubmit: the decision-block JSON, passed through from member-tests.sh

@@ -30,6 +30,24 @@ t_eq "no workflow was written into the checkout" 0 "$(find "$PORT_ROOT/mywork" -
 t_eq "a second register is idempotent" 0 "$(out project register mywork --covers "a member project" >/dev/null; echo $?)"
 t_eq "...one registry row" 1 "$(grep -c '^mywork	' "$PV/repos.tsv")"
 
+t_section "1b - register also lays down the project standard, with no governance marker"
+for _f in AGENTS.md CLAUDE.md docs/project-standard.md tests/run.sh tests/example/example.test.sh; do t_eq "$_f is laid down" yes "$([ -f "$PORT_ROOT/mywork/$_f" ] && echo yes || echo no)"; done
+t_has "the output names the marker" "$_o" "marker: none"
+t_eq "no .agents marker was written into the checkout" no "$([ -e "$PORT_ROOT/mywork/.agents" ] && echo yes || echo no)"
+t_eq "the project's own runner passes" 0 "$(cd "$PORT_ROOT/mywork" && sh tests/run.sh >/dev/null 2>&1; echo $?)"
+mkdir -p "$PORT_ROOT/mine"; git -C "$PORT_ROOT/mine" init -q; printf 'mine\n' > "$PORT_ROOT/mine/AGENTS.md"; _k="$(cksum < "$PORT_ROOT/mine/AGENTS.md")"
+out project register mine --covers "own agents file" >/dev/null
+t_eq "a registered project's own AGENTS.md is never overwritten" "$_k" "$(cksum < "$PORT_ROOT/mine/AGENTS.md")"
+
+t_section "1c - a register whose checks could not look (exit 3) still lays the standard down"
+mkdir -p "$PORT_ROOT/nostore"; git -C "$PORT_ROOT/nostore" init -q
+# register seeds a missing store (lane E), so the store cannot be merely absent: a plain file where projects/ goes makes it unmakeable, as root too
+rm -rf "$CLAUDE_CONFIG_DIR/projects"; : > "$CLAUDE_CONFIG_DIR/projects"
+_o="$(out project register nostore --covers "no memory store")"; _rc=$?
+t_eq "exit 3, not an abort" 3 "$_rc"
+t_eq "the standard is laid down anyway" yes "$([ -f "$PORT_ROOT/nostore/AGENTS.md" ] && [ -f "$PORT_ROOT/nostore/tests/run.sh" ] && echo yes || echo no)"
+t_has "and its marker line is printed" "$_o" "marker: none"
+
 t_section "2 - refusals"
 t_eq "a project with no checkout is refused (2)" 2 "$(out project register ghost >/dev/null; echo $?)"
 t_eq "a bad name is refused (2)" 2 "$(out project register '../x' >/dev/null; echo $?)"

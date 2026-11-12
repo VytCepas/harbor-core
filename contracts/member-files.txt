@@ -8,6 +8,10 @@ bin/member-dispatch.sh
 bin/member-post.sh
 bin/member-session.sh
 bin/member-upgrade.sh
+bin/member-tools.sh
+bin/member-tests.sh
+bin/library-git-safe.sh
+contracts/agent-architectures.tsv agent-architectures.tsv
 
 # Tiers, integrity, policy, approval, events
 bin/hub-tier.sh
@@ -54,6 +58,9 @@ bin/secret
 bin/access.sh
 bin/scope-roots.sh
 bin/scope-repo-sources.sh
+bin/member-memory.sh
+bin/library-fs.sh
+contracts/credential-patterns.tsv credential-patterns.tsv
 contracts/roots.tsv roots.tsv
 
 # Packs and hooks: SessionStart calls hub.sh, which calls pack.sh. Without these a policy names a hook no laptop receives, and every call is denied
@@ -68,3 +75,9 @@ contracts/skill-pack-frontmatter-keys.txt skill-pack-frontmatter-keys.txt
 # The one thing a member may run as root, and the list it installs: member-session.sh calls it when a probe finds nothing
 bin/member-prereqs.sh
 contracts/member-prereqs.txt member-prereqs.txt
+
+# Context rules on a member: the engine in member mode reads only these, and only the ids member-context-rules.tsv lists
+hooks/injection-rule/injection-rule.sh injection-rule.sh
+contracts/member-context-rules.tsv member-context-rules.tsv
+contracts/member-rules/external-content-is-data.md external-content-is-data.md
+contracts/member-rules/subagent-contract.md subagent-contract.md
