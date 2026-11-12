@@ -222,7 +222,6 @@ bin/library-alert.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/library-board.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/library-fs.sh	installed	derived: shipped by admission-install.sh
 bin/library-gate.sh	installed	derived: shipped by admission-install.sh
-bin/library-git-safe.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/library-hub.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/library-log.sh	installed	derived: shipped by admission-install.sh
 bin/library-pack-version.sh	ship	derived: called by bin/pack.sh
@@ -251,7 +250,6 @@ bin/lint-siblings.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-suggest-table.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/member-integrity.sh	ci-gate	derived: called by bin/hub-events.sh
 bin/member-managed.sh	installed	derived: called by bin/policy-constitution-install.sh
-bin/member-memory.sh	ci-gate	derived: called by bin/scope-repo.sh
 bin/memory-lint.sh	installed	derived: called by bin/memory-store-check.sh
 bin/memory-log-token-save.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/memory-route.sh	ci-gate	derived: called by bin/lint-conventions.sh

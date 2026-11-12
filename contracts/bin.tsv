@@ -172,7 +172,6 @@ bin/library-alert.sh	library	floor	one desktop notification helper with a fallba
 bin/library-fs.sh	library	floor	a file's mtime, size, mode and owner on BSD and GNU stat, one spelling. Sourced, never run: it sets no shell option, and every	harbor#618
 bin/library-gate.sh	library	floor	the approval gate's shared library. Never run: sourced after library-log.sh, it sets no shell option. Repo-agnostic: a repo opts	harbor#1018
 bin/library-hub.sh	library	floor	shared paths and the canonical call for the hub and member formats; decides nothing	harbor#1278
-bin/library-git-safe.sh	library	floor	git for a member hook on a repo the agent can write: a git dir of our own, so no program the repo's config or attributes name can run; sourced, decides nothing	harbor#1278
 bin/library-log.sh	library	floor	the one log format (contracts/logging.md), sourced by every tool that logs. Never run: it sets no shell option (set -u in	harbor#771
 bin/library-repo-rules.sh	library	floor	how a repo's GitHub rules are declared in ship.config and read from GitHub, one spelling for the two callers that compare them	harbor#1418
 bin/lint-adoption.sh	command	floor	every vendored asset has an intake row.	harbor#117
@@ -259,7 +258,6 @@ bin/standard-render-check.sh	command	floor	is a rendered repo or yard scaffold w
 bin/standard-schema.sh	command	floor	the producer validates its own output against the JSON Schema it owns.	harbor#1425
 bin/standard-seams-fresh.sh	command	floor	the weekly seam freshness check standard.seam-fresh: each cross-repo copy against its producer, as a delta with ages.	harbor#1425
 bin/standard-shape.sh	command	floor	the shape validator: every instance of a kind carries the relations kinds.tsv requires.	harbor#996
-bin/standard-vendor-scaffolder.sh	command	floor	vendors yard's AGENTS.md and CLAUDE.md templates into vendor/scaffolder/ and holds the copy to yard (check standard.vendor-scaffolder-fresh)	harbor#1278
 bin/standard-vendor.sh	command	floor	vendors the naming package into a repo.	harbor#967
 bin/status-console.sh	command	floor	`harbor ui`: Harbor's live state as read-only panels on a localhost page.	harbor#738
 bin/status-dashboard-generate.sh	command	floor	render Harbor's numbers as a local HTML page.	harbor#59
@@ -284,7 +282,6 @@ bin/hub-format.sh	command	floor	checks a hub policy, event, extension manifest o
 bin/hub-sync.sh	command	floor	fetches and proves the hub policy: ssh-keygen -Y verify against hub-signers, format, serial; keeps the last good copy; tells revocation from failure	harbor#1278
 bin/hub.sh	command	floor	`harbor hub`: init, sync, status, sign, check, pin-check, leave, project register	harbor#1278
 bin/member-session.sh	command	floor	managed SessionStart and SessionEnd hook of a member laptop: sync, floor check, heartbeat, send; never blocks	harbor#1278
-bin/member-memory.sh	command	floor	where a registered project's agent memory lands on a member laptop (the memory-route.sh route), seeds the one store, and refuses a credential-shaped note	harbor#1278
 bin/library-pack-version.sh	library	floor	the harbor_version grammar of contracts/pack.md, shared by pack.sh and hub.sh	harbor#1278
 bin/hub-board.sh	command	floor	the one GitHub client for the hub board: curl with the token on stdin, returns status, body and the response Date	harbor#1278
 bin/hub-approval.sh	command	floor	files a very-high request on the board and asks whether an admin approved that exact call, per contracts/hub.md	harbor#1278
@@ -304,16 +301,10 @@ bin/member-bootstrap.sh	command	floor	the first step on a clean laptop: clones h
 bin/hub-tier.sh	command	floor	a fired rule's tier and set on a member laptop: core default, then the hub, then what no hub may touch; matches hub rules as data	harbor#1278
 bin/member-dispatch.sh	command	floor	the one managed PreToolUse entry on a member laptop: runs the guards in wiring order and decides the call once, failing closed	harbor#1278
 bin/member-post.sh	command	floor	closes what member-dispatch.sh opened: an ask's outcome, an approval spent once the call has run	harbor#1278
-bin/member-standard.sh	command	floor	`harbor hub project register` on a member laptop: lays down AGENTS.md, CLAUDE.md, the tests layout and the standard note from the kit, never overwriting, writing no governance marker (control member.standard)	harbor#1278
 bin/member-upgrade.sh	command	floor	the Stop check member.upgrade: a worked answer without an Upgrade line, or a deciding one without a second agent, goes back once	harbor#1278
-bin/member-tools.sh	command	floor	a member's own skills, agents and commands synced with their private repo: pull at session start, push at Stop, propose a skill to the hub; bounded, fail-open	harbor#1278
-bin/hub-tools.sh	command	floor	the admin side of members' personal tools, behind harbor hub tools: create a colleague's private repo, admit a proposed skill into a hub pack through the gate	harbor#1278
-bin/member-tests.sh	command	floor	the Stop check member.tests and its UserPromptSubmit snapshot: a registered project's code changed in a turn with no test goes back once	harbor#1278
 bin/member-integrity.sh	command	floor	hashes the managed root and managed settings against the pin IT wrote	harbor#1278
 bin/member-prereqs.sh	command	floor	the one root helper a member may run: installs the fixed list in contracts/member-prereqs.txt and refuses everything else	harbor#1278
 bin/library-board.sh	library	floor	the board's reading code: what makes a comment count, the policy read, the relay and agent checks; shared by approval and support	harbor#1278
 bin/member-support.sh	command	floor	a person on a member laptop asks an admin for help and watches: board request, verified accept, a time-limited upterm session	harbor#1278
 bin/member-support-guard.sh	command	floor	the dispatcher's rule that an agent's tool call never starts or reaches a support session	harbor#1278
 bin/hub-support.sh	command	floor	the admin side of remote support, behind harbor hub support: list, accept with the admin's gh, join with the admin's key	harbor#1278
-bin/hub-pin-upgrade.sh	command	floor	raises the hub policy pin on a branch and stops before signing; refuses a pin not on core main, a dirty hub, a contract change	harbor#1278
-bin/member-setup-generate.sh	command	floor	rebuilds every person's setup script, hash and zip at a pin from a private roster, with the pin's own member-windows.sh	harbor#1278

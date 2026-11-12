@@ -16,7 +16,7 @@ One private repo owned by the company's GitHub organisation. It holds the signed
 
 1. In the organisation, create a **private** repo, for example `harbor-hub`. Make it from the scaffold: copy `templates/hub/` of harbor into a new folder, `git init`, commit, push. The scaffold's `README.md` repeats the first-day steps below.
 2. Do not add anything the gate does not know. `sh bin/hub-gate.sh <folder>` refuses a file that is not a policy, key, pack or description, which is how a member list or a note with a client's name stays out. It also runs `bin/pack.sh`'s own install refusals over every `packs/<id>/` (front matter, a skill or command named like core's, a symlink, a register file), so a pack every laptop would skip is red before you sign it.
-3. Set the repository variables and secret the gates and workflows read (`patches/hub/hub-gates.patch.md` lists them): `HARBOR_CORE_REPO`, `HARBOR_HUB_CORE_SHA`, `GITLEAKS_SHA256`, the secret `HUB_LEAKS_TSV` (the company's own names), and `HUB_MEMBERS` (the logins you expect).
+3. Set the repository variables and secret the gates and workflows read (`patches/hub/hub-gates.patch.md` lists them): `HARBOR_CORE_REPO`, `HARBOR_CORE_SHA`, `GITLEAKS_SHA256`, the secret `HUB_LEAKS_TSV` (the company's own names), and `HUB_MEMBERS` (the logins you expect).
 
 ## 2. Roles
 
@@ -52,7 +52,7 @@ To raise the pin (`core.commit` and `core.contract`):
 
 1. Test the harbor-core release on a pilot laptop first. The pin is a commit you tested, not the latest.
 2. Set `core.commit` to the 40-hex commit and `core.contract` to that commit's `CONTRACT_VERSION`. A pin may not rise while a pack's `harbor_version` rejects the new contract.
-3. Raise the repository variable `HARBOR_HUB_CORE_SHA` to the same commit by hand, so the gate that judges the next change is the release you tested.
+3. Raise the repository variable `HARBOR_CORE_SHA` to the same commit by hand, so the gate that judges the next change is the release you tested.
 4. Sign, and merge.
 
 The policy reaches laptops at session start. The floor code under the managed root changes only when `bin/member-update.sh` runs there, or IT reinstalls. The updater verifies the policy signature itself, refuses a serial lower than the last applied, refuses a commit whose contract is not the pinned one, checks the floor with `member-integrity.sh`, and rolls back on any failure. Its schedule (`templates/member/`) is a template that nothing installs: it needs your explicit yes, as a recurring job that rewrites root-owned code. Until then, every release needs IT on every laptop, and laptops run the new policy over the old floor in between.
@@ -109,33 +109,3 @@ Say this before the pilot, in your own words, and again to each new member:
 | `silent <login>` | No valid heartbeat from that member for `silent_days` days. A laptop that is off, a holiday, an expired token and a stopped harbor look the same | Ask the person; do not infer |
 | Everyone silent on one morning | An outage on the hub side, or a bad policy every laptop refused | Read the digest of the same morning and the last run of every workflow before writing to anyone |
 | `invalid-comments` above zero in the digest | Something posted to a heartbeat issue that was not a valid event, or a comment on a member's issue by someone else | Open the heartbeat issue; the invalid comment is counted, never shown in the digest |
-
-## 10. Members' own tools (harbor#1278)
-
-Each colleague's own skills, agents and commands live in a private repo `<org>/tools-<login>`, in the hub's own organisation. The person writes it, you read it. Their laptop keeps `~/.claude/skills`, `agents` and `commands` in step with it: a pull at session start, a push at the end of a turn (`bin/member-tools.sh`, check `member.tools-sync`). Hooks and settings never sync; a name a hub pack or core skill holds is skipped and told to the person.
-
-### Create a colleague's repo (one command each)
-
-```sh
-harbor hub tools create <login> --hub <org>/<hub repo> --policy policy.json     # or --admin <login> for each reader
-```
-
-It makes `<org>/tools-<login>` private, gives the person write and every admin read (`--policy` takes the approvers of the signed policy), and refuses where the organisation's default repository permission is not `none`, because every member would then read every personal repo. Fix that once, as an owner: `gh api -X PATCH orgs/<org> -f default_repository_permission=none`. It is safe to run twice. Check: `gh api repos/<org>/tools-<login>/collaborators --jq '.[] | [.login, .role_name] | @tsv'`.
-
-### The token: today's member token cannot reach it
-
-The token in the install guide (`docs/how-to/member-install.md`) names **the hub only**, with Contents read. GitHub gives a fine-grained token no access to a repo outside its list, so with that token the personal repo answers as missing, and the sync does nothing (it says so and changes nothing). The member's token needs, in one token, resource owner the organisation, **repositories: the hub and `tools-<login>`**, permissions **Issues: read and write** and **Contents: read and write**. Contents write on the hub stays harmless while the member is at **Read** on it (section 2): a token never exceeds its person's role. GitHub ties a token to the person, so you cannot edit it for them: with the member beside you, they open the token in GitHub, Settings, Developer settings, Fine-grained tokens, add the repository and the permission, and save. Where the organisation requires approval, you approve the changed request as an owner (Organization settings, Personal access tokens, Pending requests; the REST route is `POST /orgs/<org>/personal-access-token-requests/<id>` with `action=approve`, written from memory of GitHub's docs and not run). No new secret is stored: the laptop reads the same `hub-token`, which the floor already keeps from the agent. A token that lapses stops the sync and the board together.
-
-### Take a proposed tool into the hub
-
-A member's agent runs `member-tools.sh propose skills/<name>`, and the laptop opens an issue on the hub repo `tool proposal skills/<name> from <login>` naming `<org>/tools-<login>` and the commit. It writes nothing else to the hub. Only a skill can move to a hub pack. You:
-
-1. Read the skill at that commit: `gh repo clone <org>/tools-<login> /tmp/tools-<login> -- --no-checkout && git -C /tmp/tools-<login> checkout <commit>`.
-2. Copy it into a pack and run the gate: `harbor hub tools admit skills/<name> --hub-dir <hub checkout> --pack <pack id> --from /tmp/tools-<login>`. It lists the file in `extension.json` and runs `bin/hub-gate.sh`; a red gate (a `hooks:` key, a front-matter key outside the allowlist, a core name, a symlink, a leak, a secret) puts the checkout back and exits 1. Tell the colleague what it said.
-3. List the pack's commit under `packs` in `policy.json`, raise `serial`, `harbor hub sign`, open the pull request, merge.
-
-Once the pack is signed in, the laptops install the hub's copy and the personal one is skipped by name; the person may delete theirs.
-
-### Staff are told
-
-The repo is readable by the admins. Say so with section 8.

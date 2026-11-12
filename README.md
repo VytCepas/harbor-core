@@ -19,7 +19,6 @@ session, and what loads only when it is needed.
   (`xargs`), the contents of a script file when it is run, or code inside an inline interpreter; the defence for
   those is the OS sandbox and the permission layer, not the floor. `harbor#N` references point to the private
   development tracker: provenance, not links.
-- **For an organisation:** [docs/how-to/adopt.md](./docs/how-to/adopt.md) is the start page for putting Harbor on every colleague's laptop.
 - **Status:** pre-release. The rest of this page is the design as its author uses it.
 
 ## What Harbor is — the thesis

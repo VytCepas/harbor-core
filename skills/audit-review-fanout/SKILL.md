@@ -1,7 +1,6 @@
 ---
 name: audit-review-fanout
 description: "Review a code change with several cheap reviewers, each given a different lens, then verify every finding before reporting it. The deliverable is verified defects only, each with its evidence; none found is a valid result. USE WHEN review this PR, review the diff, code review, review my changes, audit this change, check before merge, second opinion on code. NOT FOR proving a test can fail (test-strength), or the merge decision (gate-merge)."
-architecture: code-review
 ---
 
 # audit-review-fanout — distinct lenses, then verification
@@ -11,10 +10,6 @@ by a command, or the exact line is quoted beside the text or contract it breaks.
 deduplicated and ordered most severe first. Each says whether it is fixed (a review fixes
 nothing unless asked: CONSTITUTION №5). Anything unconfirmed is listed separately as
 unconfirmed, never as a defect. **No findings is a valid result.**
-
-**Architecture:** this skill is `code-review` in `contracts/agent-architectures.tsv`: `review` lens
-agents (haiku/medium), an `audit` verifier per finding (sonnet/medium), and a `verify` adjudicator
-(opus/high) only when two verifiers disagree. A lens never verifies; a verifier never raised the finding.
 
 Why this shape: in the harbor#818 trial, a single reviewer of any tier found every planted
 defect. The *extra* real bugs came from different runs noticing different things. Copies of

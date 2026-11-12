@@ -186,7 +186,6 @@
 /bin/library-board.sh @VytCepas
 /bin/library-fs.sh @VytCepas
 /bin/library-gate.sh @VytCepas
-/bin/library-git-safe.sh @VytCepas
 /bin/library-hub.sh @VytCepas
 /bin/library-pack-version.sh @VytCepas
 /bin/library-repo-rules.sh @VytCepas
@@ -214,7 +213,6 @@
 /bin/lint-suggest-table.sh @VytCepas
 /bin/member-integrity.sh @VytCepas
 /bin/member-managed.sh @VytCepas
-/bin/member-memory.sh @VytCepas
 /bin/memory-lint.sh @VytCepas
 /bin/memory-log-token-save.sh @VytCepas
 /bin/memory-route.sh @VytCepas

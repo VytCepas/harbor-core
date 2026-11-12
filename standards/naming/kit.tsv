@@ -44,7 +44,6 @@ register.naming-families-tsv	register	naming-families.tsv?	*	workload	no	a repo'
 register.naming-schemas-tsv	register	naming-schemas.tsv?	*	workload	no	a repo's own overlay of the standard's rows; the repo writes it
 register.naming-exemptions-tsv	register	naming-exemptions.tsv?	*	workload	no	a repo's own exemptions; the repo writes it
 register.contracts-agents-tsv	register	contracts/agents.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
-register.contracts-agent-architectures-tsv	register	contracts/agent-architectures.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
 register.contracts-catalog-non-tools-tsv	register	contracts/catalog-non-tools.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
 register.contracts-confinement-coverage-tsv	register	contracts/confinement-coverage.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
 register.contracts-core-writes-allow-tsv	register	contracts/core-writes-allow.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
@@ -101,12 +100,10 @@ register.evals-skill-e5trap-corpus-manifest-tsv	register	evals/skill/e5trap/corp
 register.evals-context-e11live-rows-tsv	register	evals/context/e11live/rows.tsv?	control-plane	hub	no	a control-plane register (policy, hooks, evals, context)
 register.vendored-registry-tsv	register	vendor/naming/registry/*.tsv	*	core	no	the vendored copy itself: it is the delivery of the rows above, not an item to deliver
 register.vendored-manifest-tsv	register	vendor/naming/MANIFEST.tsv	*	core	no	the vendored copy itself: it is the delivery of the rows above, not an item to deliver
-register.vendored-scaffolder-manifest-tsv	register	vendor/scaffolder/MANIFEST.tsv	*	core	no	the scaffolder templates a member laptop renders, vendored with their hashes (bin/standard-vendor-scaffolder.sh)
 register.kit	register	standards/naming/kit.tsv	*	core	yes	the standard's own register; yard vendors it into every repo
 register.contracts-systems	register	contracts/systems.tsv	control-plane	core	no	the systems harbor dispatches; installed beside the harbor command
 register.contracts-support-upterm-tsv	register	contracts/support-upterm.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
 register.contracts-hub-vocabulary-tsv	register	contracts/hub-vocabulary.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
-register.contracts-member-context-rules-tsv	register	contracts/member-context-rules.tsv	control-plane	hub	no	the context rules that ship to a member laptop; a contract of the control plane's tools, not inherited by a workload
 register.contracts-member-guards-tsv	register	contracts/member-guards.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
 register.contracts-risk-tiers-tsv	register	contracts/risk-tiers.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
 control.name	control	name	*	core	yes	judged in every repo by the vendored lint-name.sh

@@ -1,7 +1,7 @@
-# sim-linux-company.sh (harbor#1278) - sim-linux.sh's sections 8-14: what the company layers add to the member's laptop.
+# sim-linux-company.sh (harbor#1278) - sim-linux.sh's sections 8-13: what the company layers add to the member's laptop.
 # packs (hub packs land in the member's skills), yard (a repo they start is named), logging (counts, the sealed id, the receipt, the loader, the
 # closed rows), ask_tool (the question tool and the waiting state), sandbox_floor (the managed floor's sandbox), law (the managed CLAUDE.md and
-# the Stop hook), tools (a member's own tools and their private repo). Sourced by sim-linux.sh --inner inside the container after the helpers; never run alone. Every section ends on a row it can
+# the Stop hook). Sourced by sim-linux.sh --inner inside the container after the helpers; never run alone. Every section ends on a row it can
 # fail, and a CONTROL row shows the probe can see what it looks for.
 
 CORE_NOW() { cat "$MROOT/core.commit" 2>/dev/null || echo "$PIN"; }   # the commit the laptop's floor is at; a policy that names another would move the updater
@@ -140,33 +140,6 @@ yard() {
   case "$_rc" in 0|3) row PASS yard.register 'harbor hub project register fresh-init succeeds (0, or 3: checks that need yard could not look)' "rc=$_rc" "$(grep -m1 'health:' "$OUT/yard-register.log" | cut -c1-90)" ;;
     *) row FAIL yard.register 'harbor hub project register fresh-init succeeds (0, or 3)' "rc=$_rc" "$(tail -n 2 "$OUT/yard-register.log" | tr '\n' ' ' | cut -c1-120)" ;; esac
   eq yard.register-row 'and the registry holds a governed row for it' 1 "$(awk -F'\t' '$1 == "fresh-init" && $9 == "yes"' "$MH/port/harbor-private/repos.tsv" | wc -l | tr -d ' ')"
-  # lane C: register also lays the project standard down; the project's own runner passes on the laptop, no yard, uv or just
-  _fi="$MH/port/fresh-init"; _std='AGENTS.md CLAUDE.md docs/project-standard.md tests/run.sh tests/suites.txt tests/lib/core.sh tests/example/example.test.sh'
-  _have=0; for _f in $_std; do as_member - 0 "$MH" test -f "$_fi/$_f" && _have=$((_have + 1)); done
-  eq yard.standard 'register laid down the project standard: AGENTS.md, CLAUDE.md, the standard note, the runner, the harness and the example suite' 7 "$_have"
-  eq yard.standard-import 'CLAUDE.md carries the bare @AGENTS.md import' 1 "$(as_member - 0 "$_fi" grep -cx @AGENTS.md CLAUDE.md 2> /dev/null)"
-  eq yard.standard-marker 'and no governance marker: no .agents, no .claude/config.yaml' none "$([ -e "$_fi/.agents" ] || [ -e "$_fi/.claude/config.yaml" ] && echo marker || echo none)"
-  _rc=0; as_member - 0 "$_fi" sh tests/run.sh > "$OUT/yard-standard-run.log" 2>&1 || _rc=$?
-  eq yard.standard-runner "the project's own runner passes on the laptop (sh tests/run.sh)" '0 fresh-init: 5 passed, 0 failed' "$_rc $(tail -n 1 "$OUT/yard-standard-run.log")"
-  _before="$(as_member - 0 "$_fi" git status --porcelain | cksum)"
-  as_member - 0 "$WD" sh "$MH/port/harbor/bin/harbor" hub project register fresh-init > "$OUT/yard-register2.log" 2>&1 || :
-  eq yard.standard-idempotent 'a second register changes nothing in the project' "$_before" "$(as_member - 0 "$_fi" git status --porcelain | cksum)"
-  # lane E: the register made the memory route, the member's session can read and write it, the agent is told where, and a secret is refused
-  _mm() { as_member - 1 "$MH/port/fresh-init" sh "$MROOT/bin/member-memory.sh" "$@"; }
-  _route="$(_mm where 2> /dev/null)"
-  case "$_route" in "$MH/.claude/projects/"*"-port-fresh-init/memory") row PASS memory.route 'register left a route at the harness key of the project' present "${_route##*/projects/}" ;;
-    *) row FAIL memory.route 'register left a route at the harness key of the project' "${_route:-none}" 'member-memory.sh where, from the managed root' ;; esac
-  eq memory.readable 'the member reads the store index through the route' yes "$(as_member - 0 "$MH" sh -c "[ -r '$_route/MEMORY.md' ] && [ -s '$_route/MEMORY.md' ] && echo yes || echo no")"
-  _rc=0; printf 'the build needs make first\n' | as_member - 1 "$MH/port/fresh-init" sh "$MROOT/bin/member-memory.sh" add build-order > "$OUT/memory-add.log" 2>&1 || _rc=$?
-  eq memory.write 'a note the agent writes lands in the route' 0 "$_rc"
-  eq memory.found 'and is read back next session through the project key' yes "$(as_member - 0 "$MH" sh -c "grep -q 'make first' '$_route/build-order.md' && echo yes || echo no")"
-  _tok="ghp_$(printf 'b%.0s' $(seq 1 36))"; _rc=0
-  printf 'token %s\n' "$_tok" | as_member - 1 "$MH/port/fresh-init" sh "$MROOT/bin/member-memory.sh" add leaky > "$OUT/memory-leaky.log" 2>&1 || _rc=$?
-  eq memory.secret-refused 'a credential-shaped note is refused (1)' 1 "$_rc"
-  eq memory.secret-absent 'and no file is left' no "$(as_member - 0 "$MH" sh -c "[ -e '$_route/leaky.md' ] && echo yes || echo no")"
-  _wd="$WD"; WD="$MH/port/fresh-init"; session start; WD="$_wd"
-  case "$(printf '%s' "$H_OUT" | jq -r '.hookSpecificOutput.additionalContext // ""' 2> /dev/null)" in *"notes live in $_route"*) row PASS memory.told 'the session start tells the agent where the memory is' said 'additionalContext' ;;
-    *) row FAIL memory.told 'the session start tells the agent where the memory is' "$(printf '%s' "$H_OUT" | cut -c1-80)" 'additionalContext' ;; esac
   session start; eq yard.registered 'registered, only the clone is still named' 'cloned-hub' "$(_names "$(printf '%s' "$H_OUT" | jq -r '.systemMessage // ""')")"
   # the member cannot switch it off
   eq yard.managed-only 'the user tier cannot add a hook: managed hooks only' true "$(jq -r '.allowManagedHooksOnly' "$MFILE")"
@@ -350,9 +323,7 @@ ask_tool() {
   eq ask.waiting-text 'a turn ending on a question is waiting-operator, by contracts/session-waiting.tsv' 'waiting-operator W-question' "$(_cls ask2 "$RUN/tx-idle.jsonl.src" 'Which of the two do you want?')"
   eq ask.not-waiting 'CONTROL: a plain statement is not waiting' 'idle -' "$(_cls ask3 "$RUN/tx-idle.jsonl.src" 'Built the fix. All 12 tests pass.' | sed 's/ [A-Za-z-]*$/ -/')"
   claude_real ask-hooks hello
-  # the expected count is the managed file's own SessionStart hooks (the session hook, and the context engine since lane B)
-  _want="$(jq '[.hooks.SessionStart[]?.hooks[]?] | length' "$MFILE")"
-  eq ask.user-tier-hooks 'in a real session only the managed SessionStart hooks run: the user tier (session-state is one) is switched off by allowManagedHooksOnly' "$_want" "$(jsonl 'select(.subtype == "hook_started" and .hook_event == "SessionStart") | .hook_id' ask-hooks | sort -u | wc -l | tr -d ' ')"
+  eq ask.user-tier-hooks 'in a real session only the managed SessionStart hook runs: the user tier (session-state is one) is switched off by allowManagedHooksOnly' 1 "$(jsonl 'select(.subtype == "hook_started" and .hook_event == "SessionStart") | .hook_id' ask-hooks | sort -u | wc -l | tr -d ' ')"
 }
 
 # ═══ 12 · the managed floor's sandbox (a) ═══
@@ -446,77 +417,4 @@ Upgrade: ask for the weekly report pack next time, it builds this in one step."
   printf '%s\n' '{"name":"Bash","input":{"command":"ls","description":"a step"}}' '{"text":"'"$_long"'"}' > "$RUN/q.law"
   claude_real law-stop hello "$RUN/q.law" --allowedTools Bash
   eq law.real-block 'in a real session the Stop hook sends Claude back with member.upgrade' 1 "$(jsonl 'select(.subtype == "hook_response" and .hook_event == "Stop") | .stdout' law-stop | grep -c '"decision":"block"' | awk '{print ($1 >= 1)}')"
-}
-
-# ═══ 14 · personal tools (member.tools-sync): a new skill lands in the personal repo, and an unreachable repo changes nothing ═══
-# The personal repo <org>/tools-<login> is a bare repo under the stand-in GitHub (sim_github.py serves it with git http-backend, receive-pack on).
-tools_sync() {
-  say tools
-  _tr="$GIT/acme/tools-alice.git"; _own="$MH/.claude/skills/sim-own"
-  _tstate() { { find "$MH/.claude/skills" "$MH/.claude/agents" "$MH/.claude/commands" "$MH/.local/state/harbor/tools" -type f 2> /dev/null | sort | xargs -r cksum 2> /dev/null; } | sha256sum | cut -d' ' -f1; }
-  _tstop() { jq -cn --arg w "$WD" '{session_id:"sim-1",hook_event_name:"Stop",stop_hook_active:false,cwd:$w}' > "$RUN/tools-stop.json"; chmod 644 "$RUN/tools-stop.json"
-    _tc="$(jq -r '[.hooks.Stop[0].hooks[].command | select(test("member-tools.sh"))][0] // empty' "$MFILE")"
-    [ -n "$_tc" ] || { row FAIL tools.stop-wired 'a Stop hook runs member-tools.sh push' absent ''; return 1; }
-    TS_RC=0; as_member - 1 "$WD" /bin/sh -c "$_tc" < "$RUN/tools-stop.json" > "$RUN/tools-stop.out" 2> "$RUN/tools-stop.err" || TS_RC=$?; }
-  _tstop; eq tools.stop-wired 'a managed Stop hook runs member-tools.sh push, and with no repo it exits 0' 0 "$TS_RC"
-  eq tools.stop-silent 'the Stop hook says nothing on stdout, which is the hook reply' '' "$(cat "$RUN/tools-stop.out")"
-  # the personal repo does not exist: a session start and a Stop change nothing
-  _t0="$(_tstate)"; session start; _tstop
-  eq tools.missing-repo 'no personal repo: a session start and a Stop change nothing in the personal place or the tools state' "$_t0" "$(_tstate)"
-  # it exists, and another laptop of the person put a skill there
-  git init -q --bare -b main "$_tr"; git -C "$_tr" config http.receivepack true
-  rm -rf "$ADM/tools-seed"; git init -q -b main "$ADM/tools-seed"; mkdir -p "$ADM/tools-seed/skills/sim-remote"
-  printf -- '---\nname: sim-remote\ndescription: A skill from the other laptop. USE WHEN a test needs one.\n---\n\n# sim-remote\n' > "$ADM/tools-seed/skills/sim-remote/SKILL.md"
-  git -C "$ADM/tools-seed" add -A; git -C "$ADM/tools-seed" -c user.name=sim -c user.email=sim@sim.test commit -qm seed; git -C "$ADM/tools-seed" push -q "$_tr" HEAD:refs/heads/main 2>> "$LOG"
-  eq tools.control-before 'CONTROL: before the next session start the skill is not on the laptop' absent "$( [ -e "$MH/.claude/skills/sim-remote" ] && echo present || echo absent)"
-  session start
-  eq tools.pull 'a session start pulls the personal repo: its skill lands in <member HOME>/.claude/skills' yes "$( [ -f "$MH/.claude/skills/sim-remote/SKILL.md" ] && echo yes || echo no)"
-  eq tools.owner 'the member owns it' "$M" "$(stat -c %U "$MH/.claude/skills/sim-remote/SKILL.md" 2> /dev/null)"
-  eq tools.not-in-root 'and nothing of it is under the managed root' 0 "$(find "$MROOT" -path '*sim-remote*' | wc -l | tr -d ' ')"
-  # the agent writes a new skill in the personal place; the end of the turn saves it
-  as_member - 0 "$MH" sh -c "mkdir -p '$_own' && printf -- '---\nname: sim-own\ndescription: Written by the agent for the person. USE WHEN a test needs one.\n---\n\n# sim-own\n' > '$_own/SKILL.md'"
-  _tstop
-  eq tools.push 'a new skill in the personal place is in the personal repo after the Stop hook' yes "$(git -C "$_tr" cat-file -e main:skills/sim-own/SKILL.md 2> /dev/null && echo yes || echo no)"
-  eq tools.push-keeps 'and the skill from the other laptop is still there' yes "$(git -C "$_tr" cat-file -e main:skills/sim-remote/SKILL.md 2> /dev/null && echo yes || echo no)"
-  # the repo goes away: nothing changes, nothing blocks
-  mv "$_tr" "$_tr.away"; as_member - 0 "$MH" sh -c "printf 'more\n' >> '$_own/SKILL.md'"
-  _t0="$(_tstate)"; session start; _ss="$H_RC"; _tstop
-  eq tools.unreachable 'an unreachable personal repo: a session start and a Stop change nothing on disk' "$_t0" "$(_tstate)"
-  eq tools.unreachable-rc 'and neither blocks (session exit 0, Stop exit 0)' '0 0' "$_ss $TS_RC"
-  mv "$_tr.away" "$_tr"; _tstop
-  eq tools.recovers 'when the repo is back the next Stop sends the edit' yes "$(git -C "$_tr" show main:skills/sim-own/SKILL.md 2> /dev/null | grep -c '^more$' | awk '{print ($1 >= 1) ? "yes" : "no"}')"
-}
-
-# ═══ 15 · tests are written (lane D): a code change in a registered project without a test is sent back, once; with a test it passes ═══
-tests_written() {
-  say tests
-  _p="$MH/port/member-proj"
-  as_member - 0 "$MH" sh -c "rm -rf '$_p' && mkdir -p '$_p' && git init -q '$_p' && printf 'def f():\n    return 1\n' > '$_p/app.py' && printf 'notes\n' > '$_p/README.md' && git -C '$_p' add -A && git -C '$_p' -c user.name=alice -c user.email=alice@sim.test commit -q -m first"
-  as_member - 0 "$WD" sh "$MH/port/harbor/bin/harbor" hub project register member-proj > "$OUT/tests-register.log" 2>&1 || :
-  eq tests.registered 'the project is registered and has its own runner' '1 yes' "$(awk -F'\t' '$1 == "member-proj"' "$MH/port/harbor-private/repos.tsv" | wc -l | tr -d ' ') $([ -f "$_p/tests/run.sh" ] && echo yes || echo no)"
-  _sn="$(jq -r '.hooks.UserPromptSubmit[0].hooks[1].command // empty' "$MFILE")"; _st="$(jq -r '.hooks.Stop[0].hooks[2].command // empty' "$MFILE")"
-  case "$_sn" in *"member-tests.sh' snap") row PASS tests.snap-wired 'UserPromptSubmit runs the snapshot' wired "$(printf '%s' "$_sn" | cut -c1-60)" ;; *) row FAIL tests.snap-wired 'UserPromptSubmit runs the snapshot' "${_sn:-absent}" '' ;; esac
-  case "$_st" in *"member-tests.sh'") row PASS tests.stop-wired 'Stop runs the test check' wired "$(printf '%s' "$_st" | cut -c1-60)" ;; *) row FAIL tests.stop-wired 'Stop runs the test check' "${_st:-absent}" '' ;; esac
-  _run() { # <command> [stop_hook_active] -> the hook's stdout in $T_OUT
-    jq -cn --arg a "${2:-false}" '{session_id:"sim-t",hook_event_name:"Stop",stop_hook_active:($a == "true")}' > "$RUN/ts.json"; chmod 644 "$RUN/ts.json"
-    T_OUT="$(as_member - 1 "$WD" /bin/sh -c "$1" < "$RUN/ts.json" 2> /dev/null)" || :
-  }
-  _run "$_sn"; _run "$_st"
-  eq tests.control 'CONTROL: a turn that wrote nothing is not sent back' '' "$T_OUT"
-  as_member - 0 "$MH" sh -c "printf 'def g():\n    return 2\n' >> '$_p/app.py'"   # a write by a command: no Edit, no transcript
-  _run "$_st"
-  eq tests.block 'a code change with no test is sent back' block "$(printf '%s' "$T_OUT" | jq -r '.decision // "none"' 2> /dev/null)"
-  case "$(printf '%s' "$T_OUT" | jq -r '.reason // ""' 2> /dev/null)" in member.tests:*test-writing-trivial*tests/run.sh*) row PASS tests.reason 'the reason names the check, the architecture and the runner' named '' ;; *) row FAIL tests.reason 'the reason names the check, the architecture and the runner' "$(printf '%s' "$T_OUT" | cut -c1-80)" '' ;; esac
-  _run "$_st" true; eq tests.once 'with stop_hook_active it never blocks twice' '' "$T_OUT"
-  _run "$_sn"; as_member - 0 "$MH" sh -c "printf 'def h():\n    return 3\n' >> '$_p/app.py'; mkdir -p '$_p/tests/app'; printf '#!/bin/sh\nexit 0\n' > '$_p/tests/app/app.test.sh'"
-  _run "$_st"; eq tests.pass 'the same kind of change with a test beside it passes' '' "$T_OUT"
-  _run "$_sn"; as_member - 0 "$MH" sh -c "printf 'more notes\n' >> '$_p/README.md'"
-  _run "$_st"; eq tests.docs 'a docs-only change passes' '' "$T_OUT"
-  # the same checks inside a real session: a Write tool call creates a code file, the Stop hook sends Claude back. A Bash call can't carry it here: the
-  # container has no user namespace, so the Bash tool's own sandbox (bwrap) refuses to start; the command-write path is the rows above.
-  as_member - 0 "$MH" sh -c "git config --global --add safe.directory '$_p'"
-  jq -cn --arg f "$_p/extra.py" '{name:"Write",input:{file_path:$f,content:"def k():\n    return 4\n"}}' > "$RUN/q.tests"
-  printf '%s\n' '{"text":"I added the function in extra.py so it returns the new value, and the file is saved in the project folder where you asked for it."}' >> "$RUN/q.tests"
-  claude_real tests-stop hello "$RUN/q.tests" --permission-mode acceptEdits --add-dir "$_p"
-  eq tests.real-block 'in a real session the Stop hook sends Claude back with member.tests' 1 "$(jsonl 'select(.subtype == "hook_response" and .hook_event == "Stop") | .stdout' tests-stop | grep -c 'member.tests' | awk '{print ($1 >= 1)}')"
 }

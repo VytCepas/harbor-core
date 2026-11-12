@@ -31,7 +31,7 @@ For IT. One setup per laptop, for one named person who is **not** an administrat
 
 **On GitHub, per member (the member, with you beside them):**
 
-Create a fine-grained token: resource owner the organisation, repository the hub only, permissions **Issues: read and write** and **Contents: read**. A member who has a personal tools repo (`docs/how-to/hub-admin.md`, section 10) lists that repo too and takes **Contents: read and write**; the hub-only token cannot reach it. GitHub ties a token to the person who made it, so nobody can make it for them. Note its expiry date: when it lapses, very-high calls stay denied and the board goes quiet.
+Create a fine-grained token: resource owner the organisation, repository the hub only, permissions **Issues: read and write** and **Contents: read**. GitHub ties a token to the person who made it, so nobody can make it for them. Note its expiry date: when it lapses, very-high calls stay denied and the board goes quiet.
 
 **On the Claude side (an Owner, in the admin console):**
 
@@ -211,7 +211,6 @@ A failed fetch never does any of this. Policy goes only by a signed `revoked` en
 | Cloud sessions | Device files don't reach them. Turn them off in the admin console |
 | Cowork | Not covered. Check your Claude Desktop configuration |
 | Windows endpoint tools | They can't see processes inside WSL |
-| Tests with code (`member.tests`) | A project whose `.git` is a file or a symlink (a linked worktree), a split-index repo or a sha256 repo is not checked: the check fails open and says nothing. Only a registered project with a plain `.git` folder is |
 
 ## Not verified
 

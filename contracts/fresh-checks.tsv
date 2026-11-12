@@ -14,7 +14,6 @@ docs/context-map.md	sh bin/standard-catalog.sh --check	sh bin/standard-catalog.s
 docs/generated/plan.md	sh bin/status-plan-generate.sh --check	sh bin/status-plan-generate.sh	docs/reports/platform-build-tickets.md
 skills/skill-catalog/SKILL.md	sh bin/skill-catalog.sh --check	sh bin/skill-catalog.sh	
 docs/index.html	sh bin/doc-index-generate.sh --check	sh bin/doc-index-generate.sh --apply	
-vendor/scaffolder/MANIFEST.tsv	sh bin/standard-vendor-scaffolder.sh --check	sh bin/standard-vendor-scaffolder.sh --write	
 vendor/naming/MANIFEST.tsv	sh bin/standard-vendor.sh --check .	sh bin/standard-vendor.sh .	
 contracts/README.md	sh bin/doc-register-index.sh --check	sh bin/doc-register-index.sh --write	
 docs/reference/registers.md	sh bin/doc-register-index.sh --check	sh bin/doc-register-index.sh --write	

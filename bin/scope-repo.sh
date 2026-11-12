@@ -254,8 +254,6 @@ step_projects() {
 step_route() {
   [ "$DRY" = 0 ] || { ok route "would run memory-route.sh --apply"; return; }
   if [ "$CFG" = "$LIVE_DIR" ]; then set -- --live; else set -- --dir "$CFG"; fi
-  # A member has no store yet, and memory-route.sh stands down without one: make the one store first (harbor#1278, lane E).
-  [ "$CORE_ONLY" = 0 ] || CLAUDE_CONFIG_DIR="$CFG" sh "$SRC/member-memory.sh" seed > "$W/seed.out" 2>&1 || :
   HARBOR_SCOPE_REPO="$SRC/.." sh "$SRC/memory-route.sh" "$@" --apply --quiet > "$W/route.out" 2>&1; _r=$?
   case "$_r" in 0) ok route "sessions in $ID load the memory store" ;; 3) warn route "memory-route could not look (no store to route to): $(grep -m1 -E 'STOOD|stood|no store' "$W/route.out" | cut -c1-120)" ;;
     *) fail route "memory-route exited $_r" ;; esac

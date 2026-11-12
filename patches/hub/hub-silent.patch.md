@@ -35,13 +35,13 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
-      CORE_SHA: ${{ vars.HARBOR_HUB_CORE_SHA }}
+      CORE_SHA: ${{ vars.HARBOR_CORE_SHA }}
       MEMBERS: ${{ vars.HUB_MEMBERS }}
     steps:
       - name: The variables are set
         run: |
           set -eu
-          printf '%s' "$CORE_SHA" | grep -Eq '^[0-9a-f]{40}$' || { echo "HARBOR_HUB_CORE_SHA is not a 40-hex commit" >&2; exit 1; }
+          printf '%s' "$CORE_SHA" | grep -Eq '^[0-9a-f]{40}$' || { echo "HARBOR_CORE_SHA is not a 40-hex commit" >&2; exit 1; }
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           path: hub
@@ -49,7 +49,7 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           repository: ${{ vars.HARBOR_CORE_REPO }}
-          ref: ${{ vars.HARBOR_HUB_CORE_SHA }}
+          ref: ${{ vars.HARBOR_CORE_SHA }}
           path: core
           persist-credentials: false
       - name: Find the silent members

@@ -165,7 +165,6 @@ tests/lint/conventions/mode.test.sh
 tests/lint/conventions/route.test.sh
 tests/lint/conventions/suggest-table.test.sh
 tests/lint/conventions/review-config.test.sh
-tests/lint/conventions/agent-architecture.test.sh
 tests/lint/name/name.test.sh
 tests/lint/rule-health/rule-health.test.sh
 tests/skill/gates/gates.test.sh
@@ -499,7 +498,6 @@ tests/hub/resolver/hub.test.sh
 tests/hub/resolver/pack.test.sh
 tests/hub/resolver/session.test.sh
 tests/hub/resolver/project.test.sh
-tests/member/memory/route.test.sh
 tests/hub/board/client.test.sh
 tests/hub/approval/conditions.test.sh
 tests/hub/approval/request.test.sh
@@ -513,8 +511,6 @@ tests/member/update/update.test.sh
 tests/member/update/templates.test.sh
 tests/status/suggest-scan/skill.test.sh
 tests/member/managed/compose.test.sh
-tests/member/context/rules.test.sh
-tests/member/context/hub-rules.test.sh
 tests/member/windows/script.test.sh
 tests/member/install/install.test.sh
 tests/member/install/files.test.sh
@@ -526,13 +522,7 @@ tests/member/dispatch/guards.test.sh
 tests/member/dispatch/env.test.sh
 tests/member/dispatch/hooks.test.sh
 tests/member/post/post.test.sh
-tests/member/standard/standard.test.sh
 tests/member/upgrade/upgrade.test.sh
-tests/member/tools/sync.test.sh
-tests/member/tools/isolation.test.sh
-tests/member/tools/propose.test.sh
-tests/hub/tools/tools.test.sh
-tests/member/tests/tests.test.sh
 tests/member/integrity/integrity.test.sh
 tests/member/floor/branch.test.sh
 tests/hub/tier/tier.test.sh
@@ -560,5 +550,3 @@ tests/member/robust/hooks.test.sh
 tests/member/pack/robust-refusals.test.sh
 tests/member/pack/robust-time.test.sh
 tests/member/pack/robust-floor.test.sh
-tests/hub/pin/upgrade.test.sh
-tests/member/setup/generate.test.sh

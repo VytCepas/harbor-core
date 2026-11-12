@@ -15,7 +15,7 @@ Set three repository variables in the hub (Settings, Secrets and variables, Vari
 | Name | Value |
 |---|---|
 | `HARBOR_CORE_REPO` | `owner/name` of the harbor-core repo that holds `bin/hub-gate.sh` |
-| `HARBOR_HUB_CORE_SHA` | the 40-hex commit you tested, usually the same as `core.commit` in `policy.json`; raise it by hand, never from a pull request |
+| `HARBOR_CORE_SHA` | the 40-hex commit you tested, usually the same as `core.commit` in `policy.json`; raise it by hand, never from a pull request |
 | `GITLEAKS_SHA256` | the sha256 of the pinned `gitleaks_8.18.4_linux_x64.tar.gz`, from that release's checksums file |
 | secret `HUB_LEAKS_TSV` (optional) | the company's own names as a `leaks.tsv` (`id`, `kind`, `pattern`, `note`; `contracts/private-layer.md`). Without it only the generic patterns run |
 
@@ -40,7 +40,7 @@ jobs:
     name: hub gates
     runs-on: ubuntu-latest
     env:
-      CORE_SHA: ${{ vars.HARBOR_HUB_CORE_SHA }}
+      CORE_SHA: ${{ vars.HARBOR_CORE_SHA }}
       GL_SHA256: ${{ vars.GITLEAKS_SHA256 }}
       LEAKS_TSV: ${{ secrets.HUB_LEAKS_TSV }}
       BASE_REF: ${{ github.base_ref }}
@@ -49,7 +49,7 @@ jobs:
       - name: The variables are set
         run: |
           set -eu
-          printf '%s' "$CORE_SHA" | grep -Eq '^[0-9a-f]{40}$' || { echo "HARBOR_HUB_CORE_SHA is not a 40-hex commit" >&2; exit 1; }
+          printf '%s' "$CORE_SHA" | grep -Eq '^[0-9a-f]{40}$' || { echo "HARBOR_CORE_SHA is not a 40-hex commit" >&2; exit 1; }
           [ -n "$GL_SHA256" ] || { echo "GITLEAKS_SHA256 are not set" >&2; exit 1; }
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -59,7 +59,7 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           repository: ${{ vars.HARBOR_CORE_REPO }}
-          ref: ${{ vars.HARBOR_HUB_CORE_SHA }}
+          ref: ${{ vars.HARBOR_CORE_SHA }}
           path: core
           persist-credentials: false
       - name: Install gitleaks at the pinned release
@@ -99,5 +99,5 @@ jobs:
 
 - **Green with nothing judged.** The last line of a passing run is `N file(s) judged, no finding`. If `N` is 0 or the line is absent, the gate did not look at the hub: check the `path: hub` checkout.
 - **`gitleaks: sha256 mismatch`.** The release was re-uploaded or the checksum was copied from another file. Do not skip the check; copy the checksum again.
-- **A pull request raising `HARBOR_HUB_CORE_SHA`.** The variable is not in the repo, so a pull request cannot change which gate judges it. Keep it that way.
+- **A pull request raising `HARBOR_CORE_SHA`.** The variable is not in the repo, so a pull request cannot change which gate judges it. Keep it that way.
 - **The workflow file itself.** A pull request can edit `.github/workflows/hub-gates.yml` and weaken its own gate. `CODEOWNERS` covers it, and only branch protection (Team) enforces the owner's review.

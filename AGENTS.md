@@ -11,7 +11,6 @@ them). Claude Code reads [CLAUDE.md](CLAUDE.md), which imports this file.
 - [README.md](README.md) — what this repo is and how it is laid out.
 - [contracts/README.md](contracts/README.md) — the contracts index. [contracts/marker.md](contracts/marker.md) is the scope marker and the stand-down table.
 - `docs/how-to/handover.md` — current state; `docs/generated/status.md` is generated. Both stay in the development checkout (`contracts/layers.tsv`), so the exported core has neither.
-- [docs/how-to/adopt.md](docs/how-to/adopt.md) — adopting Harbor in an organisation: the three repos, setup order, release flow.
 - [standards/naming.md](standards/naming.md) — naming and conventions; the registers live in `standards/naming/`.
 - [contracts/access-card.md](contracts/access-card.md) — how to reach each system, and as whom: the card format. The cards are private data, in `$PORT_ROOT/harbor-private/access/`.
 

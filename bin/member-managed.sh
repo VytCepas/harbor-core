@@ -102,27 +102,6 @@ member_allowed_hosts() {
   [ -z "$_bad" ] || { log_fail "an allowed host that does not compose: $(printf '%s' "$_bad" | tr '\n' ' ')"; log_nofix "contracts/member-hosts.txt or policy hosts (contracts/hub.md)"; return 1; }
   printf '%s\n' "$_ar" | jq -R . | jq -s -c 'map(select(length > 0)) | unique'
 }
-# The events a hub pack's rules may use (harbor#1278). Which hub rules exist is the signed hub's, unknown here, so the engine stands on every event a "which
-# tool when" note needs: the session's start, a prompt, a helper's start and each tool call (a rule's own `tool:` and `when:` still decide whether it speaks).
-MEMBER_HUB_RULE_EVENTS='SessionStart UserPromptSubmit SubagentStart PreToolUse'
-
-# member_rule_events <contracts dir> -> JSON {"<event>": "<matcher or ->"}: the events the engine is wired on, derived from the listed packs.
-# A tool event takes the union of the packs' `tool:` values, or `*` when any pack on it names none. Empty list, empty object: nothing is wired.
-member_rule_events() {
-  _re_root="$(CDPATH='' cd -- "$1/.." && pwd)"
-  awk -F'\t' '$1 !~ /^#/ && $1 != "id" && $1 != "" { print $1 }' "$1/member-context-rules.tsv" | while IFS= read -r _id; do
-    _pk="$_re_root/contracts/member-rules/$_id.md"   # the member variant: what a member reads is plain, and the shared rule is the dev box's
-    [ -f "$_pk" ] || _pk="$(find "$_re_root/context-rules" -maxdepth 2 -name "$_id.md" 2>/dev/null | head -1)"
-    [ -n "$_pk" ] || { echo "MISSING $_id"; continue; }
-    awk -v id="$_id" 'NR==1 { next } /^---/ { exit } /^event:/ { sub(/^event:[ \t]*/, ""); e = $0 } /^tool:/ { sub(/^tool:[ \t]*/, ""); t = $0 } /^(run|spoke):/ { r = 1 }
-      END { printf "%s\t%s\t%s\t%s\n", id, e, (t == "" ? "-" : t), (r ? "script" : "") }' "$_pk"
-  done | awk -F'\t' '
-    $1 == "MISSING" || $0 ~ /^MISSING/ { print "ERR\t" $0; next }
-    $4 == "script" { print "ERR\t" $1 " has run: or spoke:"; next }
-    $2 == "" { print "ERR\t" $1 " names no event"; next }
-    { if ($3 == "-") any[$2] = 1; else { m[$2] = (m[$2] == "" ? $3 : m[$2] "|" $3) } ev[$2] = 1 }
-    END { for (e in ev) print "EV\t" e "\t" ((e in any) || m[e] == "" ? "-" : m[e]) }'
-}
 # member_compose <os> <root> <hub> <login> <user> <mcp json> [<relay host>] [<policy hosts, one per line>] -> the managed settings on stdout
 member_compose() {
   _mc_relays="$(member_denied_hosts "${7:-}")" || return 1
@@ -143,12 +122,8 @@ member_compose() {
   _mc_clash="$(jq -n -r --argjson a "$_mc_hosts" --argjson d "$_mc_relays" '[$a[] as $r | $d[] as $h | select($r == $h or (($r | startswith("*.")) and ($h | endswith($r[1:])))) | $r] | unique | .[]')"
   [ -z "$_mc_clash" ] || { log_fail "an allowed host admits a support relay: $(printf '%s' "$_mc_clash" | tr '\n' ' ')"; log_nofix "contracts/member-hosts.txt or policy hosts; the relay stays denied (contracts/hub.md)"; return 1; }
   [ "$_mc_kill" != '[]' ] || { log_fail "contracts/env.tsv names no kill switch to pin"; log_nofix "contracts/env.tsv"; return 1; }
-  _mc_ev="$(member_rule_events "$HERE/../contracts")"
-  case "$_mc_ev" in *ERR*) log_fail "contracts/member-context-rules.tsv: $(printf '%s\n' "$_mc_ev" | awk -F'\t' '$1 == "ERR" { print $2 }' | tr '\n' ' ')"; log_nofix "contracts/member-context-rules.tsv"; return 1 ;; esac
-  _mc_rules="$(printf '%s\n' "$_mc_ev" | awk -F'\t' '$1 == "EV" { print $2 "\t" $3 }' | jq -R 'split("\t") | {key: .[0], value: .[1]}' | jq -s -c 'from_entries')"
-  _mc_rules="$(printf '%s' "$_mc_rules" | jq -c --arg ev "$MEMBER_HUB_RULE_EVENTS" 'reduce ($ev | split(" ")[]) as $e (.; .[$e] = "-")')"
   jq -n --argjson block "$_mc_block" --argjson edit "$_mc_edit" --argjson deny "$_mc_deny" --argjson kill "$_mc_kill" --argjson mcp "$6" --argjson relays "$_mc_relays" \
-     --argjson hosts "$_mc_hosts" --argjson rules "$_mc_rules" \
+     --argjson hosts "$_mc_hosts" \
      --arg q "'" --arg root "$2" --arg hub "$3" --arg login "$4" --arg min "$MEMBER_MIN_VERSION" --argjson local "$MEMBER_DISABLE_LOCAL" \
      --argjson open "$_mc_open" --arg port "$_mc_port" --arg keep "$MEMBER_HOOK_ENV" '
     # Absolute: a settings env reaches every hook, and a bare `sh` resolved from its PATH could exit 0 for a hook that never ran (#1278).
@@ -159,15 +134,7 @@ member_compose() {
     {type: "command", command: ($sh + "member-post.sh" + $q)} as $post |
     {type: "command", command: ($sh + "member-session.sh" + $q)} as $session |
     {type: "command", command: ($sh + "member-upgrade.sh" + $q)} as $upgrade |
-    # member.tools-sync: own tools go to the private repo at Stop. Bounded inside, always exit 0, writes nothing on stdout.
-    {type: "command", command: ($sh + "member-tools.sh" + $q + " push"), timeout: 20} as $tools |
-    {type: "command", command: ($sh + "member-tests.sh" + $q)} as $tests |
-    {type: "command", command: ($sh + "member-tests.sh" + $q + " snap")} as $testsnap |
     {type: "command", command: ($sh + "hub-approval.sh" + $q + " note UserPromptSubmit")} as $note |
-    # The context rules: the engine in member mode, handed the root as an argument so no environment value can aim it at a repo.
-    {type: "command", command: ($sh + "injection-rule.sh" + $q + " --member-root " + $q + $root + $q)} as $engine |
-    # After the existing entries of each event, so the dispatcher stays hooks.PreToolUse[0]. A tool event takes the derived matcher.
-    ($rules | to_entries | map({key: .key, value: [(if (.key | IN("PreToolUse", "PostToolUse", "PostToolUseFailure")) then {matcher: (if .value == "-" then "*" else .value end), hooks: [$engine]} else {hooks: [$engine]} end)]}) | from_entries) as $ctx |
     {wslInheritsWindowsSettings: true,
      allowManagedHooksOnly: true,
      allowManagedPermissionRulesOnly: true,
@@ -181,16 +148,15 @@ member_compose() {
                    + (if $open then {allow: ["WebFetch(domain:*)"]} else {} end)),
      env: ({HARBOR_MEMBER_ROLE: "member", HARBOR_HUB_REPO: $hub, HARBOR_MEMBER_LOGIN: $login, HARBOR_MEMBER_ROOT: $root}
            + ($kill | map(split("\t") | {key: .[0], value: .[1]}) | from_entries)),
-     hooks: (({
+     hooks: {
        PreToolUse: [{matcher: "*", hooks: [{type: "command", command: ($sh + "member-dispatch.sh" + $q), onFailure: "block"}]}],
        PostToolUse: [{matcher: "*", hooks: [$post]}],
        PostToolUseFailure: [{matcher: "*", hooks: [$post]}],
-       Stop: [{hooks: [$post, $upgrade, $tests, $tools]}],
-       UserPromptSubmit: [{hooks: [$note, $testsnap]}],
+       Stop: [{hooks: [$post, $upgrade]}],
+       UserPromptSubmit: [{hooks: [$note]}],
        SessionStart: [{hooks: [$session]}],
        # The default is a shared 1.5 seconds, and member-session.sh bounds its send at 8: a slow send would be cancelled and wait for the next one.
-       SessionEnd: [{hooks: [$session + {timeout: 15}]}]}
-       | with_entries(.value += ($ctx[.key] // []))) as $merged | $ctx + $merged),
+       SessionEnd: [{hooks: [$session + {timeout: 15}]}]},
      sandbox: ($block
        | .filesystem.denyWrite = ((.filesystem.denyWrite + $deny) | unique)
        | .network.allowedDomains = (.network.allowedDomains + ($hosts - .network.allowedDomains))
