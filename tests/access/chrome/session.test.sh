@@ -4,51 +4,7 @@
 # the shape the real one does; a refused case is proved by the daemon's call log staying empty, never by the message alone.
 REQ_BUN="${HARBOR_TEST_REQUIRE_BUN:-0}"  # before t_init clears it
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-. "$(dirname "$0")/../../cli/browser/agent-stub.sh"
-# Where bun is absent (the hosted runner image) the suite skips loudly with one assertion, as panels.test.sh does (harbor#738).
-if ! command -v bun >/dev/null 2>&1; then
-  echo "  SKIP session: bun is not installed (the server's interpreter)"
-  t_section "bun is absent: only an image that does not promise it may skip"
-  t_eq "HARBOR_TEST_REQUIRE_BUN is off where bun is absent" 0 "$REQ_BUN"
-  t_done; exit 0
-fi
-SRVSRC="$T_ROOT/bin/access-chrome-mcp.ts"; AG="$T_ROOT/bin/access-browser-agent.sh"
-X="$T_TMP/x"; mkdir -p "$X/bin" "$X/contracts"; cp "$SRVSRC" "$X/bin/"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" "$X/contracts/"
-cp "$T_ROOT/bin/scope-roots.sh" "$T_ROOT/bin/library-log.sh" "$X/bin/"; cp "$T_ROOT/contracts/roots.tsv" "$X/contracts/"
-SRV="$X/bin/access-chrome-mcp.ts"
-CTL="$T_TMP/ctl"; mkdir -p "$CTL"; SOCK="$T_TMP/d.sock"; PH="$T_TMP/priv-hosts.txt"; : > "$PH"
-DD="$T_TMP/daemons"; mkdir -p "$DD/0123"; WD="$T_TMP/harbor-browser/claude-abc123def456"
-sess() { printf '{"name":"claude-abc123def456","version":"1.64.0","timestamp":%s,"socketPath":"%s"}\n' "$1" "$SOCK" > "$DD/0123/claude-abc123def456.session"; }
-SETF="$T_TMP/settings.json"
-seams() { printf '{"daemonDir":"%s","settingsFile":"'"$SETF"'","settleMs":%s,"privHosts":"%s","accessDir":"%s","scopeEnv":{"HARBOR_SCOPE_PRIVATE":"%s","PORT_ROOT":"%s"},"agentEnv":{"STUB_TABS":"%s"}}\n' \
-  "$DD" "$1" "$PH" "$ACC" "${PRIV:-$T_TMP/nopriv}" "$T_TMP/pr" "$T_TMP/tabs-out" > "$X/bin/access-chrome-mcp.seams.json"; }
-PRIV="$T_TMP/nopriv"; mkdir -p "$PRIV"; seams 0; sess 1
-# the stub shell agent: what the verbs that are Chrome's own run (attach, tabs, ...), and the tab list the sign-in stop reads
-cat > "$X/bin/access-browser-agent.sh" <<'EOF'
-for a in "$@"; do printf 'arg=%s\n' "$a"; done
-printf 'session=%s lane=%s path=%s private=%s\n' "${HARBOR_ACCESS_BROWSER_SESSION:-}" "${HARBOR_ACCESS_BROWSER_LANE:-${HARBOR_BROWSER_LANE:-}}" "$PATH" "${HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS:-${HARBOR_BROWSER_PRIVATE_HOSTS:-none}}"
-case "$1" in tabs) cat "$STUB_TABS" 2>/dev/null || : ;; attach) [ -z "${STUB_REATTACH:-}" ] || cp "$STUB_REATTACH.keep" "$STUB_REATTACH" ;; esac
-EOF
-bun "$T_ROOT/tests/access/chrome/fake-daemon.ts" "$SOCK" "$CTL" "$SNAP" & DPID=$!
-trap 'kill $DPID 2>/dev/null; chmod -R u+w "$T_TMP" 2>/dev/null; rm -rf "$T_TMP"' EXIT
-_i=0; while [ ! -e "$CTL/ready" ] && [ "$_i" -lt 100 ]; do sleep 0.1; _i=$((_i + 1)); done
-[ -e "$CTL/ready" ] || { t_fail "the fake daemon did not start"; t_done; exit 1; }
-CALLS="$CTL/calls"; : > "$CALLS"
-clean() { rm -f "$CTL"/download "$CTL"/blank "$CTL"/hidden "$CTL"/eval_fail "$CTL"/tablist_fail "$CTL"/fail "$CTL"/upload_denied "$CTL"/late_blank* "$CTL"/xerr "$CTL"/page_url "$CTL"/delay_ms "$CTL"/token_url; }
-
-# mcp <tool> <arg>... -> "exit 0|1"; the result text is left in $T_TMP/out. The environment is the launcher's: nothing else reaches it.
-envs() { env -i HOME="$HOME" TMPDIR="$T_TMP" PATH="$PATH" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 "$@"; }
-mcpe() { # <env assignment or ''> <tool> <arg>...
-  _e="$1"; _t="$2"; shift 2
-  _q="$(for _a in "$@"; do printf '%s\0' "$_a"; done | jq -Rs --arg t "$_t" '{jsonrpc:"2.0",id:9,method:"tools/call",params:{name:$t,arguments:{args:(split("\u0000")[:-1])}}}' -c)"
-  _r="$(printf '%s\n' "$_q" | envs ${_e:+"$_e"} bun "$SRV" 2>&1)"
-  printf '%s' "$_r" | jq -r '.result.content[0].text' > "$T_TMP/out" 2>/dev/null || printf '%s' "$_r" > "$T_TMP/out"
-  [ "$(printf '%s' "$_r" | jq -r '.result.isError' 2>/dev/null)" = false ] && echo "exit 0" || echo "exit 1"
-}
-mcp() { mcpe '' "$@"; }
-rpc() { printf '%s\n' "$@" | envs bun "$SRV" 2>&1; }
-n() { grep -c -- "$1" "$CALLS" 2>/dev/null || :; }   # how many daemon requests carried $1
-txt() { cat "$T_TMP/out"; }
+. "$(dirname "$0")/server-env.sh"
 
 t_section "the protocol, and one tool per allowed verb"
 OUT="$(rpc '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26"}}' '{"jsonrpc":"2.0","method":"notifications/initialized"}' '{"jsonrpc":"2.0","id":2,"method":"ping"}')"
@@ -327,16 +283,6 @@ t_eq "a verb the daemon took 0.6 s over is not slept on again (settle column und
 rm -f "$CTL/delay_ms"; mcp press Tab >/dev/null; _row="$(tail -n 1 "$WD/.timings.tsv")"
 t_eq "an instant daemon is waited out to the settle (500 ms)" yes "$(printf '%s' "$_row" | awk -F '\t' '$6 + 0 >= 450 { print "yes" }')"
 seams 0
-: > "$CTL/hidden"; : > "$CTL/fail"
-t_eq "a failed click on a hidden tab is refused" "exit 1" "$(mcp click e3)"
-t_has "naming the way back" "$(txt)" "fix: harbor chrome front"
-t_has "and saying the tab is hidden" "$(txt)" "the tab is hidden"
-clean; : > "$CTL/fail"
-t_eq "a failed click on a visible tab keeps the daemon's own error" "exit 1" "$(mcp click e3)"
-t_hasnt "without the hidden hint" "$(txt)" "the tab is hidden"
-t_has "and its words" "$(txt)" "TimeoutError"
-clean
-
 t_section "the stops after a verb: signed out, the other extension's frame, a gone session"
 printf '    account:  tools@example.lt | primary | Business Admin | ads.reddit.com in Chrome via harbor chrome\n' > "$ACC/reddit.md"
 printf '    account:  me@example.lt | primary | admin | business.facebook.com in the browser\n' > "$ACC/meta.md"

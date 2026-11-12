@@ -700,6 +700,14 @@ OSA
     [ -n "$_me" ] || _refuse "no page in session $S to bring to the front" 'harbor chrome attach'
     # Matched by suffix: the whole URL, or after marking, the mark alone.
     _n="$(_chrome_tabs | awk -F '\t' -v u="$_me" 'substr($4, length($4) - length(u) + 1) == u' | wc -l | tr -d ' ')"
+    _own=" $(cat "$WORKDIR/$OWNED_NAME" 2>/dev/null | tr '\n' ' ') "   # a pipe: under set -e a failed < aborts
+    # Several tabs on our URL, one of them ours by id (the operator had the same page open: 9 of
+    # 30 front failures, 2026-11-10..12): that one, by id, with no mark.
+    _tid=''
+    if [ "$_n" -gt 1 ]; then
+      _tid="$(_chrome_tabs | awk -F '\t' -v u="$_me" -v own="$_own" 'substr($4, length($4) - length(u) + 1) == u && index(own, " " $5 " ") > 0 { print $5 }')"
+      case "$_tid" in ''|*[!0-9]*) _tid='' ;; *) _n=1 ;; esac   # none, or more than one (a newline): not told apart
+    fi
     if [ "$_n" -ne 1 ]; then
       # Not exactly one tab on this URL (several share it, or the page rewrote it since the
       # CLI looked): mark ours with a same-document fragment and find the mark.
@@ -717,17 +725,17 @@ OSA
     # that follows), so it is allowed only where every tab in the window is this session's. Else the
     # operator's tab in the session's window was replaced for hours (2026-11-06). A shared window
     # whose active tab already is ours needs no switch and passes.
-    _own=" $(cat "$WORKDIR/$OWNED_NAME" 2>/dev/null | tr '\n' ' ') "   # a pipe: under set -e a failed < aborts
-    _hit="$(_chrome_tabs | awk -F '\t' -v u="$_me" 'substr($4, length($4) - length(u) + 1) == u { print $1 "\t" $3; exit }')"
+    _hit="$(_chrome_tabs | awk -F '\t' -v u="$_me" -v id="$_tid" '(id != "" ? $5 == id : substr($4, length($4) - length(u) + 1) == u) { print $1 "\t" $3; exit }')"
     _hw="$(printf '%s' "$_hit" | cut -f1)"; _ha="$(printf '%s' "$_hit" | cut -f2)"
     _foreign="$(_chrome_tabs | awk -F '\t' -v w="$_hw" -v own="$_own" '$1 == w && index(own, " " $5 " ") == 0 { n++ } END { print n + 0 }')"
     if [ "$_foreign" -gt 0 ] && [ "$_ha" != true ]; then
       _refuse "this session's tab is hidden behind another tab in window $_hw, which holds $_foreign tab(s) that are not this session's; showing it would take that tab away from whoever is reading it" \
         "operator: click this session's tab in window $_hw (harbor chrome tabs marks it =), or harbor chrome detach then attach for a window of its own"
     fi
-    _r="$(_osa "$_me" <<'OSA'
+    _r="$(_osa "$_me" "${_tid:-none}" <<'OSA'
 on run argv
   set u to item 1 of argv
+  set tid to item 2 of argv
   set res to ""
   tell application "System Events" to set prev to bundle identifier of first process whose frontmost is true
   tell application "Google Chrome"
@@ -737,7 +745,7 @@ on run argv
       set wid to item k of ids
       set w to window id wid
       repeat with t from 1 to (count tabs of w)
-        if URL of tab t of w ends with u then
+        if (tid is "none" and URL of tab t of w ends with u) or (tid is not "none" and (id of tab t of w as text) is tid) then
           -- shown first, raised only if the page then reads hidden (below)
           set active tab index of w to t
           if minimized of w then set minimized of w to false

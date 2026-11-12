@@ -85,7 +85,7 @@ case "\$sc" in
     echo "\$#" ;;
   *'set active tab index'*) echo "front \$2" >> "$OSACALLS"
     [ -z "\${STUB_OSA_FAIL:-}" ] || exit 1
-    awk -F '\t' -v u="\$2" 'substr(\$4, length(\$4) - length(u) + 1) == u { print "window " \$1 " tab " \$2; exit }' "$OSA_TABS" ;;
+    awk -F '\t' -v u="\$2" -v id="\${3:-none}" '(id != "none" ? \$5 == id : substr(\$4, length(\$4) - length(u) + 1) == u) { print "window " \$1 " tab " \$2; exit }' "$OSA_TABS" ;;
   *) echo tabs >> "$OSACALLS"; cat "$OSA_TABS"
     # \$OSA_TABS.next is the list after this one: Chrome before and after a verb
     [ ! -f "$OSA_TABS.next" ] || mv "$OSA_TABS.next" "$OSA_TABS" ;;
