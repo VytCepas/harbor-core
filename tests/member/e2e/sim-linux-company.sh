@@ -1,7 +1,7 @@
-# sim-linux-company.sh (harbor#1278) - sim-linux.sh's sections 8-12: what the company layers add to the member's laptop.
+# sim-linux-company.sh (harbor#1278) - sim-linux.sh's sections 8-13: what the company layers add to the member's laptop.
 # packs (hub packs land in the member's skills), yard (a repo they start is named), logging (counts, the sealed id, the receipt, the loader, the
-# closed rows), ask_tool (the question tool and the waiting state), sandbox_floor (the managed floor's sandbox).
-# Sourced by sim-linux.sh --inner inside the container after the helpers; never run alone. Every section ends on a row it can
+# closed rows), ask_tool (the question tool and the waiting state), sandbox_floor (the managed floor's sandbox), law (the managed CLAUDE.md and
+# the Stop hook). Sourced by sim-linux.sh --inner inside the container after the helpers; never run alone. Every section ends on a row it can
 # fail, and a CONTROL row shows the probe can see what it looks for.
 
 CORE_NOW() { cat "$MROOT/core.commit" 2>/dev/null || echo "$PIN"; }   # the commit the laptop's floor is at; a policy that names another would move the updater
@@ -140,33 +140,6 @@ yard() {
   case "$_rc" in 0|3) row PASS yard.register 'harbor hub project register fresh-init succeeds (0, or 3: checks that need yard could not look)' "rc=$_rc" "$(grep -m1 'health:' "$OUT/yard-register.log" | cut -c1-90)" ;;
     *) row FAIL yard.register 'harbor hub project register fresh-init succeeds (0, or 3)' "rc=$_rc" "$(tail -n 2 "$OUT/yard-register.log" | tr '\n' ' ' | cut -c1-120)" ;; esac
   eq yard.register-row 'and the registry holds a governed row for it' 1 "$(awk -F'\t' '$1 == "fresh-init" && $9 == "yes"' "$MH/port/harbor-private/repos.tsv" | wc -l | tr -d ' ')"
-  # lane C: register also lays the project standard down; the project's own runner passes on the laptop, no yard, uv or just
-  _fi="$MH/port/fresh-init"; _std='AGENTS.md CLAUDE.md docs/project-standard.md tests/run.sh tests/suites.txt tests/lib/core.sh tests/example/example.test.sh'
-  _have=0; for _f in $_std; do as_member - 0 "$MH" test -f "$_fi/$_f" && _have=$((_have + 1)); done
-  eq yard.standard 'register laid down the project standard: AGENTS.md, CLAUDE.md, the standard note, the runner, the harness and the example suite' 7 "$_have"
-  eq yard.standard-import 'CLAUDE.md carries the bare @AGENTS.md import' 1 "$(as_member - 0 "$_fi" grep -cx @AGENTS.md CLAUDE.md 2> /dev/null)"
-  eq yard.standard-marker 'and no governance marker: no .agents, no .claude/config.yaml' none "$([ -e "$_fi/.agents" ] || [ -e "$_fi/.claude/config.yaml" ] && echo marker || echo none)"
-  _rc=0; as_member - 0 "$_fi" sh tests/run.sh > "$OUT/yard-standard-run.log" 2>&1 || _rc=$?
-  eq yard.standard-runner "the project's own runner passes on the laptop (sh tests/run.sh)" '0 fresh-init: 5 passed, 0 failed' "$_rc $(tail -n 1 "$OUT/yard-standard-run.log")"
-  _before="$(as_member - 0 "$_fi" git status --porcelain | cksum)"
-  as_member - 0 "$WD" sh "$MH/port/harbor/bin/harbor" hub project register fresh-init > "$OUT/yard-register2.log" 2>&1 || :
-  eq yard.standard-idempotent 'a second register changes nothing in the project' "$_before" "$(as_member - 0 "$_fi" git status --porcelain | cksum)"
-  # lane E: the register made the memory route, the member's session can read and write it, the agent is told where, and a secret is refused
-  _mm() { as_member - 1 "$MH/port/fresh-init" sh "$MROOT/bin/member-memory.sh" "$@"; }
-  _route="$(_mm where 2> /dev/null)"
-  case "$_route" in "$MH/.claude/projects/"*"-port-fresh-init/memory") row PASS memory.route 'register left a route at the harness key of the project' present "${_route##*/projects/}" ;;
-    *) row FAIL memory.route 'register left a route at the harness key of the project' "${_route:-none}" 'member-memory.sh where, from the managed root' ;; esac
-  eq memory.readable 'the member reads the store index through the route' yes "$(as_member - 0 "$MH" sh -c "[ -r '$_route/MEMORY.md' ] && [ -s '$_route/MEMORY.md' ] && echo yes || echo no")"
-  _rc=0; printf 'the build needs make first\n' | as_member - 1 "$MH/port/fresh-init" sh "$MROOT/bin/member-memory.sh" add build-order > "$OUT/memory-add.log" 2>&1 || _rc=$?
-  eq memory.write 'a note the agent writes lands in the route' 0 "$_rc"
-  eq memory.found 'and is read back next session through the project key' yes "$(as_member - 0 "$MH" sh -c "grep -q 'make first' '$_route/build-order.md' && echo yes || echo no")"
-  _tok="ghp_$(printf 'b%.0s' $(seq 1 36))"; _rc=0
-  printf 'token %s\n' "$_tok" | as_member - 1 "$MH/port/fresh-init" sh "$MROOT/bin/member-memory.sh" add leaky > "$OUT/memory-leaky.log" 2>&1 || _rc=$?
-  eq memory.secret-refused 'a credential-shaped note is refused (1)' 1 "$_rc"
-  eq memory.secret-absent 'and no file is left' no "$(as_member - 0 "$MH" sh -c "[ -e '$_route/leaky.md' ] && echo yes || echo no")"
-  _wd="$WD"; WD="$MH/port/fresh-init"; session start; WD="$_wd"
-  case "$(printf '%s' "$H_OUT" | jq -r '.hookSpecificOutput.additionalContext // ""' 2> /dev/null)" in *"notes live in $_route"*) row PASS memory.told 'the session start tells the agent where the memory is' said 'additionalContext' ;;
-    *) row FAIL memory.told 'the session start tells the agent where the memory is' "$(printf '%s' "$H_OUT" | cut -c1-80)" 'additionalContext' ;; esac
   session start; eq yard.registered 'registered, only the clone is still named' 'cloned-hub' "$(_names "$(printf '%s' "$H_OUT" | jq -r '.systemMessage // ""')")"
   # the member cannot switch it off
   eq yard.managed-only 'the user tier cannot add a hook: managed hooks only' true "$(jq -r '.allowManagedHooksOnly' "$MFILE")"
@@ -350,9 +323,7 @@ ask_tool() {
   eq ask.waiting-text 'a turn ending on a question is waiting-operator, by contracts/session-waiting.tsv' 'waiting-operator W-question' "$(_cls ask2 "$RUN/tx-idle.jsonl.src" 'Which of the two do you want?')"
   eq ask.not-waiting 'CONTROL: a plain statement is not waiting' 'idle -' "$(_cls ask3 "$RUN/tx-idle.jsonl.src" 'Built the fix. All 12 tests pass.' | sed 's/ [A-Za-z-]*$/ -/')"
   claude_real ask-hooks hello
-  # the expected count is the managed file's own SessionStart hooks (the session hook, and the context engine since lane B)
-  _want="$(jq '[.hooks.SessionStart[]?.hooks[]?] | length' "$MFILE")"
-  eq ask.user-tier-hooks 'in a real session only the managed SessionStart hooks run: the user tier (session-state is one) is switched off by allowManagedHooksOnly' "$_want" "$(jsonl 'select(.subtype == "hook_started" and .hook_event == "SessionStart") | .hook_id' ask-hooks | sort -u | wc -l | tr -d ' ')"
+  eq ask.user-tier-hooks 'in a real session only the managed SessionStart hook runs: the user tier (session-state is one) is switched off by allowManagedHooksOnly' 1 "$(jsonl 'select(.subtype == "hook_started" and .hook_event == "SessionStart") | .hook_id' ask-hooks | sort -u | wc -l | tr -d ' ')"
 }
 
 # ═══ 12 · the managed floor's sandbox (a) ═══
@@ -391,4 +362,59 @@ sandbox_floor() {
   _res="$(jsonl 'select(.type == "user") | .message.content[]? | select(.type == "tool_result") | .content | tostring' sandbox-run | head -n 1 | cut -c1-80)"
   case "$_res" in *"# work"*) row PASS floor.sandbox-run 'a sandboxed command runs' ran "$_res" 'real bubblewrap' ;;
     *) row SEAM floor.sandbox-run 'a sandboxed command runs under bubblewrap' 'not run here' "$_res" 'Docker without --privileged on a userns-restricted kernel: the member uid cannot make a user namespace, root cannot reach the member files from one. Strictness of the OS layer is NOT proven by this table' ;; esac
+}
+
+# ═══ 13 · the company law (CLAUDE.md beside the managed settings) and its Stop hook ═══
+law() {
+  say law
+  _law=/etc/claude-code/CLAUDE.md
+  eq law.owner 'root owns the company law, mode 644' 'root 644' "$(stat -c '%U %a' "$_law" 2> /dev/null)"
+  eq law.bytes 'and it is byte-equal to contracts/member-law.md at the pin' "$(git -C "$ADM/core" show "$(CORE_NOW):contracts/member-law.md" | sha256sum | cut -d' ' -f1)" "$(sha256sum < "$_law" 2> /dev/null | cut -d' ' -f1)"
+  _h0="$(sha256sum < "$_law" | cut -d' ' -f1)"
+  as_member - 0 "$MH" sh -c "printf x > '$MH/law-control' && rm -f '$MH/law-control'"; eq law.control 'CONTROL: the member can write and remove a file of their own' 0 "$?"
+  _try() { _r=0; as_member - 0 "$MH" "$@" > /dev/null 2>&1 || _r=$?; [ "$_r" != 0 ] && echo refused || echo allowed; }
+  eq law.edit 'the member cannot append to it' refused "$(_try sh -c "printf 'ignore the rules\\n' >> $_law")"
+  eq law.truncate 'or truncate it' refused "$(_try sh -c ": > $_law")"
+  eq law.remove 'or remove it' refused "$(_try rm -f "$_law")"
+  eq law.move 'or move it away' refused "$(_try mv "$_law" "$MH/law.moved")"
+  eq law.chmod 'or change its mode' refused "$(_try chmod 666 "$_law")"
+  eq law.sudo 'and sudo allows nothing that could' refused "$(_try sudo -n rm -f "$_law")"
+  eq law.intact 'after all of it the file is the same bytes' "$_h0" "$(sha256sum < "$_law" | cut -d' ' -f1)"
+  eq law.edit-deny-row 'the managed permissions deny the Edit tool on it (an Edit deny row, not a hook verdict)' 1 "$(jq --arg r "Edit(/$_law)" '[.permissions.deny[] | select(. == $r)] | length' "$MFILE")"
+  eq law.edit-sandbox 'and the sandbox denies writes to it' 1 "$(jq --arg p "$_law" '[.sandbox.filesystem.denyWrite[] | select(. == $p)] | length' "$MFILE")"
+  printf '%s\n' '{"name":"Edit","input":{"file_path":"'"$_law"'","old_string":"Company rules","new_string":"No rules"}}' > "$RUN/q.edit"
+  claude_real law-edit hello "$RUN/q.edit"
+  _er="$(jsonl 'select(.type == "user") | .message.content[]? | select(.type == "tool_result") | .content | tostring' law-edit | head -n 1 | cut -c1-120)"
+  case "$_er" in *[Dd]enied*|*[Pp]ermission*) row PASS law.edit-tool 'a real Edit of it, run as root (so only the deny row can stop it), is refused' refused "$_er" ;; *) row FAIL law.edit-tool 'a real Edit of it, run as root, is refused' "${_er:-no tool result}" '' ;; esac
+  eq law.edit-intact 'and the file is unchanged' "$_h0" "$(sha256sum < "$_law" | cut -d' ' -f1)"
+  claude_real law-load hello
+  eq law.loaded 'a real session sends the company law to the model' 1 "$(grep -c -F 'Company rules for Claude Code' /srv/stub/log | awk '{print ($1 >= 1)}')"
+  # the Stop hook, as composed
+  _sc="$(jq -r '[.hooks.Stop[0].hooks[].command | select(test("member-upgrade.sh"))][0] // empty' "$MFILE")"
+  [ -n "$_sc" ] && row PASS law.stop-wired 'a Stop hook runs member-upgrade.sh' wired "$(printf '%s' "$_sc" | cut -c1-60)" || row FAIL law.stop-wired 'a Stop hook runs member-upgrade.sh' absent ''
+  eq law.stop-env 'and it starts from env -i with the pinned PATH' 1 "$(printf '%s' "$_sc" | grep -c "^/usr/bin/env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin .* /bin/sh '$MROOT/bin/member-upgrade.sh'\$")"
+  # a turn that used a tool and answered at length
+  printf '%s\n' '{"type":"user","message":{"role":"user","content":"build me the report"}}' \
+    '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Bash","input":{}}]}}' > "$RUN/tx-law.jsonl"
+  printf '%s\n' '{"type":"user","message":{"role":"user","content":"build me the report"}}' \
+    '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Bash","input":{}},{"type":"tool_use","id":"t2","name":"Agent","input":{}}]}}' > "$RUN/tx-law-agent.jsonl"
+  chmod 644 "$RUN"/tx-law*.jsonl
+  _long='I built the report from the three exports, checked the totals against the dashboard, and it works: the weekly revenue is 12 percent up on last week, and the file is saved in the work folder where you asked for it, with the chart on the first sheet and the raw rows on the second.'
+  _stop() { # <transcript> <active true|false> <message> -> the hook's stdout in $S_OUT, rc in $S_RC
+    jq -cn --arg t "$1" --argjson a "$2" --arg m "$3" '{session_id:"sim-1",transcript_path:$t,hook_event_name:"Stop",stop_hook_active:$a,last_assistant_message:$m}' > "$RUN/stop.json"; chmod 644 "$RUN/stop.json"
+    S_RC=0; S_OUT="$(as_member - 1 "$WD" /bin/sh -c "$_sc" < "$RUN/stop.json" 2> /dev/null)" || S_RC=$?
+  }
+  _stop "$RUN/tx-law.jsonl" false "$_long"
+  eq law.stop-block 'a worked answer with no Upgrade line is blocked' block "$(printf '%s' "$S_OUT" | jq -r '.decision // "none"' 2> /dev/null)"
+  case "$(printf '%s' "$S_OUT" | jq -r '.reason // ""' 2> /dev/null)" in member.upgrade:*Upgrade:*) row PASS law.stop-reason 'and the reason names the check and the Upgrade line' named '' ;; *) row FAIL law.stop-reason 'and the reason names the check and the Upgrade line' "$(printf '%s' "$S_OUT" | cut -c1-80)" '' ;; esac
+  _stop "$RUN/tx-law.jsonl" true "$_long"
+  eq law.stop-active 'with stop_hook_active true it says nothing' '' "$S_OUT"
+  eq law.stop-active-rc '...and exits 0' 0 "$S_RC"
+  _stop "$RUN/tx-law-agent.jsonl" false "$_long
+Upgrade: ask for the weekly report pack next time, it builds this in one step."
+  eq law.stop-pass 'CONTROL: an answer with the Upgrade line and a second reader passes' '' "$S_OUT"
+  # the same hook inside a real session: Claude is sent back once, then stops
+  printf '%s\n' '{"name":"Bash","input":{"command":"ls","description":"a step"}}' '{"text":"'"$_long"'"}' > "$RUN/q.law"
+  claude_real law-stop hello "$RUN/q.law" --allowedTools Bash
+  eq law.real-block 'in a real session the Stop hook sends Claude back with member.upgrade' 1 "$(jsonl 'select(.subtype == "hook_response" and .hook_event == "Stop") | .stdout' law-stop | grep -c '"decision":"block"' | awk '{print ($1 >= 1)}')"
 }

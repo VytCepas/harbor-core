@@ -40,7 +40,6 @@ tests/	core	the suites
 tools/	core	helper programs
 vendor/archify/	core	vendored upstream code
 vendor/complexity-atlas/	core	vendored upstream code
-vendor/scaffolder/	core	yard's AGENTS.md and CLAUDE.md templates vendored for the member project standard (bin/standard-vendor-scaffolder.sh)
 vendor/naming/	core	the naming package vendored from this repo (bin/standard-vendor.sh)
 vendor/skills/	dev	skills derived from an upstream project; installed from the dev checkout
 vendor/skills-archive/	dev	archived upstream skills: in git, not installed, not indexed (vendor/skills-archive/PROVENANCE.md)
@@ -99,4 +98,3 @@ docs/how-to/member-install.md	core	IT's steps for a member laptop
 relay/	core	the hub relay for member remote support: uptermd install, systemd unit and Caddy config for a VM the operator runs (harbor#1278)
 docs/how-to/member-support.md	core	remote support for a member laptop: the person, the admin, and the hub relay
 docs/how-to/review-config.md	core	the per-repo review: block; the review bot ships in harbor-core (harbor#1497)
-docs/how-to/adopt.md	core	the start page for an organisation adopting Harbor: the three repos, the setup order, the release flow

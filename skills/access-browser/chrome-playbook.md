@@ -34,6 +34,23 @@ each failure means, what has already been tried and failed, and step-by-step tas
 8. **One field, one call when timing matters.** `fill <ref> <text> --submit` sends
    Enter in the same call; a second call comes too late after a detach.
 
+## Fewer calls, faster reads (harbor#1507)
+
+Every tool call pays ~3 s of hooks and permission checks around a browser action of milliseconds (measured
+2026-11-11). So:
+
+- **`steps` for a known sequence.** `mcp__harbor_chrome__steps` with
+  `steps: [{"verb": "goto", "args": ["<https url>"]}, {"verb": "fill", "args": ["e12", "x"]}, {"verb": "snapshot"}]`
+  runs them in one call, every guard per step, and stops at the first failure. Refs from a snapshot inside the
+  same steps are not known to you yet, so take the snapshot in one call and act on its refs in the next.
+- **`text` to read, not `screenshot` or `snapshot`.** `text` is the page's visible text; `text <ref>` one
+  element's. A screenshot is for layout and canvas apps.
+- **A page that needs no login: the headless lane.** `attach` with `lane: "web"` and args `["--headless"]`, then
+  the usual verbs with the same lane; `detach` when done. Same host allow-list, no Connect, no window.
+- **A dropped relay re-attaches by itself** once, with the registered token, and reopens the last page. After
+  an input verb it asks for a fresh snapshot: refs do not survive the reload.
+- **Sheets: write through the Google Sheets connector**, never the grid (pack 67 says so when a sheet opens).
+
 ## Signing in — the operator's click, never harbor's
 
 Harbor never fills a password and never picks an entry in a password manager (LastPass,

@@ -33,7 +33,7 @@ while IFS= read -r g; do
   case "$g" in *-confirm*|context-*|session-*|ci-*) continue ;; esac
   names | grep -qxF "$g" && t_pass || t_fail "the floor wires $g, and contracts/member-files.txt doesn't carry it"
 done < "$T_TMP/wired"
-for f in library-admission.sh library-log.sh admission-decide.sh controls.tsv admission-normalize.awk secret access.sh scope-roots.sh roots.tsv library-hub.sh library-git-safe.sh \
+for f in library-admission.sh library-log.sh admission-decide.sh controls.tsv admission-normalize.awk secret access.sh scope-roots.sh roots.tsv library-hub.sh \
          hub.sh pack.sh library-pack-version.sh deploy-install-lib.sh harbor pack-frontmatter-keys.txt skill-pack-frontmatter-keys.txt; do
   names | grep -qxF "$f" && t_pass || t_fail "$f is read by what is listed, and isn't listed"
 done

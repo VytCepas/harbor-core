@@ -17,7 +17,7 @@ A laptop with no notice-receipt marker seals nothing, so it gives no row at all:
 
 1. `gcp-setup.md` is done: the project, the dataset, the loader service account, the pool and provider, the age identity secret and the views.
 2. The hub's signed policy carries `"logs": {"recipient": "age1…"}`, the recipient printed in `gcp-setup.md` step 6. Without it no laptop seals anything.
-3. Repository variables on the hub (Settings → Secrets and variables → Actions → Variables): `HARBOR_CORE_REPO`, `HARBOR_HUB_CORE_SHA` (as `hub-gates.patch.md`), `HARBOR_LOGS_PROJECT`, `HARBOR_LOGS_DATASET` (`harbor_logs`), `HARBOR_LOGS_WIF_PROVIDER` (the full provider name from step 5), `HARBOR_LOGS_LOADER_SA` (`harbor-bq-loader@PROJECT.iam.gserviceaccount.com`), `HARBOR_LOGS_IDENTITY_SECRET` (`harbor-logs-age-identity`). None of them is a secret.
+3. Repository variables on the hub (Settings → Secrets and variables → Actions → Variables): `HARBOR_CORE_REPO`, `HARBOR_CORE_SHA` (as `hub-gates.patch.md`), `HARBOR_LOGS_PROJECT`, `HARBOR_LOGS_DATASET` (`harbor_logs`), `HARBOR_LOGS_WIF_PROVIDER` (the full provider name from step 5), `HARBOR_LOGS_LOADER_SA` (`harbor-bq-loader@PROJECT.iam.gserviceaccount.com`), `HARBOR_LOGS_IDENTITY_SECRET` (`harbor-logs-age-identity`). None of them is a secret.
 4. Optionally `logs/excluded-ids.txt` in the hub, one 32-hex id a line, changed only through a reviewed PR.
 
 ## The file
@@ -42,7 +42,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
-      CORE_SHA: ${{ vars.HARBOR_HUB_CORE_SHA }}
+      CORE_SHA: ${{ vars.HARBOR_CORE_SHA }}
       PROJECT: ${{ vars.HARBOR_LOGS_PROJECT }}
       DATASET: ${{ vars.HARBOR_LOGS_DATASET }}
       SECRET: ${{ vars.HARBOR_LOGS_IDENTITY_SECRET }}
@@ -50,7 +50,7 @@ jobs:
       - name: The variables are set
         run: |
           set -eu
-          printf '%s' "$CORE_SHA" | grep -Eq '^[0-9a-f]{40}$' || { echo "HARBOR_HUB_CORE_SHA is not a 40-hex commit" >&2; exit 1; }
+          printf '%s' "$CORE_SHA" | grep -Eq '^[0-9a-f]{40}$' || { echo "HARBOR_CORE_SHA is not a 40-hex commit" >&2; exit 1; }
           printf '%s' "$PROJECT" | grep -Eq '^[a-z][a-z0-9-]{4,28}[a-z0-9]$' || { echo "HARBOR_LOGS_PROJECT is not a project id" >&2; exit 1; }
           printf '%s' "$DATASET" | grep -Eq '^[a-z_][a-z0-9_]{0,63}$' || { echo "HARBOR_LOGS_DATASET is not a dataset name" >&2; exit 1; }
           printf '%s' "$SECRET" | grep -Eq '^[A-Za-z0-9_-]{1,255}$' || { echo "HARBOR_LOGS_IDENTITY_SECRET is not a secret name" >&2; exit 1; }
@@ -62,7 +62,7 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           repository: ${{ vars.HARBOR_CORE_REPO }}
-          ref: ${{ vars.HARBOR_HUB_CORE_SHA }}
+          ref: ${{ vars.HARBOR_CORE_SHA }}
           path: core
           persist-credentials: false
       - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
@@ -119,5 +119,5 @@ Add, under `on:`, exactly:
 
 - **`no-id` for every comment.** The policy has no `logs.recipient`, the laptops lack `age`, or none has the notice marker. `harbor hub id` on a laptop says which.
 - **`google-github-actions/auth` refuses.** The pool condition does not match: it admits `main` and this file only, so a run from a branch or a renamed file is refused, as intended.
-- **The merge stops on an ASSERT.** Nothing reached the fact tables. A code a laptop sent that `dim_enum` lacks means the laptop runs a newer core than this job's `HARBOR_HUB_CORE_SHA`: raise the pin.
+- **The merge stops on an ASSERT.** Nothing reached the fact tables. A code a laptop sent that `dim_enum` lacks means the laptop runs a newer core than this job's `HARBOR_CORE_SHA`: raise the pin.
 - **Minutes run out.** The job stops and nothing says so but `v_pipeline`'s age: J2 (a freshness alert) is the remedy, and it is a recurring job of its own.

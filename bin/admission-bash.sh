@@ -11,8 +11,6 @@ set -eu
 case "$0" in */*) DIR="${0%/*}" ;; *) DIR=. ;; esac
 DIR="$(CDPATH= cd -- "${DIR:-/}" && pwd)"
 . "$DIR/library-admission.sh"
-# harbor#1278: the one git read below names a repo the agent can write; gs_env stops the programs its config would run. Absent beside the guard, the plain call runs as before.
-if [ -r "$DIR/library-git-safe.sh" ]; then . "$DIR/library-git-safe.sh"; else gs_env() { git "$@"; }; fi
 
 floor_read_stdin
 # OBSERVE-1 needs the tool class; assigned from the same jq call the test already made (zero extra forks).
@@ -895,7 +893,7 @@ gate_gh_merge_args() {
   _hrp="$(printf '%s\n' "$TARGETS" | awk -v mode=gh "$GATE_HINT_AWK" 2>/dev/null | head -1)"
   case "$_hrp" in
     '- '*)
-      _horig="$(gs_env remote get-url origin 2>/dev/null | sed -E 's#^.*github\.com[:/]##; s#/+$##; s#\.git$##')"
+      _horig="$(git remote get-url origin 2>/dev/null | sed -E 's#^.*github\.com[:/]##; s#/+$##; s#\.git$##')"
       case "$_horig" in
         */*/*|*[!A-Za-z0-9._/-]*|''|/*|*/) _hrp="" ;;
         */*) _hrp="$_horig ${_hrp#- }" ;;

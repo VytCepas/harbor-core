@@ -373,4 +373,37 @@ else
   if [ "$R" = "exit 2" ]; then t_has "--self-test-live's skip names the missing verifier" "$(out)" "SKIPPED"
   else t_eq "--self-test-live passes" "exit 0" "$R"; fi
 fi
+t_section "background, headless and text (harbor#1507)"
+t_has "attach does not run the daemon in the background by default" "$(ag attach >/dev/null; out)" "bg= debug"
+t_hasnt "...and status says no background" "$(ag status >/dev/null; out)" "background"
+ag detach >/dev/null
+t_has "HARBOR_ACCESS_BROWSER_BACKGROUND=1 turns it on for one attach" "$(HARBOR_ACCESS_BROWSER_BACKGROUND=1; export HARBOR_ACCESS_BROWSER_BACKGROUND; ag attach >/dev/null; unset HARBOR_ACCESS_BROWSER_BACKGROUND; out)" "bg=1"
+t_has "...and status says background after it" "$(ag status >/dev/null; out)" "background"
+ag detach >/dev/null
+t_hasnt "...until detach" "$(ag status >/dev/null; out)" "background"
+HL="$T_TMP/harbor-browser/claude-abc123def456-web"
+hag() { HARBOR_ACCESS_BROWSER_LANE=web; export HARBOR_ACCESS_BROWSER_LANE; ag "$@"; _x=$?; unset HARBOR_ACCESS_BROWSER_LANE; return $_x; }
+_w0="$(osa window)"
+t_eq "attach --headless passes" "exit 0" "$(hag attach --headless)"
+t_has "...opening an in-memory system Chrome, not the extension" "$(out)" "args=-s=claude-abc123def456-web open --browser=chrome --idle-timeout=14400000"
+t_hasnt "...with no profile name and no background flag" "$(out)" "profile=Default"
+t_eq "...and no Chrome window of the operator's" "$_w0" "$(osa window)"
+t_has "...with the daemon's DEBUG pinned, never the caller's" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN DEBUG=pw:protocol HARBOR_ACCESS_BROWSER_LANE=web HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" attach --headless >/dev/null; out)" "debug=pw:mcp:relay,pw:mcp:error"
+t_eq "...marked headless" yes "$([ -e "$HL/.headless" ] && echo yes || echo no)"
+t_eq "attach with any other argument is refused" "exit 1" "$(hag attach --cdp=http://x)"
+t_eq "goto in the headless lane still reads the allow-list" "exit 1" "$(hag goto https://evil.example/)"
+t_eq "tabs is refused in the headless lane: it has no window" "exit 1" "$(hag tabs)"
+t_eq "wait-signin is refused there: it is signed out by design" "exit 1" "$(hag wait-signin)"
+_f0="$(osa front)"
+t_eq "front passes there" "exit 0" "$(hag front)"
+t_eq "...and touches no window" "$_f0" "$(osa front)"
+t_eq "detach closes the headless browser" "exit 0" "$(hag detach)"
+t_has "...with the CLI's close" "$(tail -1 "$CALLS")" "-s=claude-abc123def456-web close"
+t_eq "...and drops the mark" no "$([ -e "$HL/.headless" ] && echo yes || echo no)"
+: > "$CALLS"
+t_eq "text reads the page" "exit 0" "$(ag text)"
+t_has "...through the fixed page function" "$(cat "$CALLS")" 'eval () => document.body ? document.body.innerText : ""'
+t_eq "text <ref> reads one element" "exit 0" "$(ag text e3)"
+t_eq "text with a script is refused" "exit 1" "$(ag text 'document.cookie')"
+t_eq "...and it never reached the CLI" 2 "$(grep -c . "$CALLS")"
 t_done

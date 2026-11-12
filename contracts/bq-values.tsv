@@ -1333,26 +1333,5 @@ rule	1323	skill.no-plugin-agents	live	standards/naming/controls.tsv
 rule	1324	lint.review-config-shape	live	standards/naming/controls.tsv
 rule	1325	no-plugin-agents	live	standards/naming/controls.tsv, the id less its family
 rule	1326	review-config-shape	live	standards/naming/controls.tsv, the id less its family
-rule	1327	skill.agent-architecture	live	standards/naming/controls.tsv
-rule	1328	agent-architecture	live	standards/naming/controls.tsv, the id less its family
-check	1329	hub-rule	live	bin/*.sh check=
-rule	1330	check.memory-member-notes	live	standards/naming/controls.tsv
-rule	1331	standard.vendor-scaffolder-fresh	live	standards/naming/controls.tsv
-rule	1332	member.context-rules	live	standards/naming/controls.tsv
-rule	1333	member.hub-rules	live	standards/naming/controls.tsv
-rule	1334	member.standard	live	standards/naming/controls.tsv
-rule	1335	memory-member-notes	live	standards/naming/controls.tsv, the id less its family
-rule	1336	vendor-scaffolder-fresh	live	standards/naming/controls.tsv, the id less its family
-rule	1337	context-rules	live	standards/naming/controls.tsv, the id less its family
-rule	1338	hub-rules	live	standards/naming/controls.tsv, the id less its family
-rule	1339	standard	live	standards/naming/controls.tsv, the id less its family
-rule	1340	member.tools-sync	live	standards/naming/controls.tsv
-rule	1341	member.tools-propose	live	standards/naming/controls.tsv
-rule	1342	hub.tools-admin	live	standards/naming/controls.tsv
-rule	1343	tools-sync	live	standards/naming/controls.tsv, the id less its family
-rule	1344	tools-propose	live	standards/naming/controls.tsv, the id less its family
-rule	1345	tools-admin	live	standards/naming/controls.tsv, the id less its family
-rule	1346	member.tests	live	standards/naming/controls.tsv
-rule	1347	tests	live	standards/naming/controls.tsv, the id less its family
-rule	1348	include	live	bin, hooks: <token>.<shape>
-rule	1349	admission.include	live	floor_member_report: admission.<token>
+rule	1327	context.sheets-write-route	live	standards/naming/controls.tsv
+rule	1328	sheets-write-route	live	standards/naming/controls.tsv, the id less its family

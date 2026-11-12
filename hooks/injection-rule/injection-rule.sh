@@ -20,16 +20,6 @@ CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 case "$0" in */*) SELF_DIR="${0%/*}" ;; *) SELF_DIR=. ;; esac
 [ ! -f "$SELF_DIR/manifest.tsv" ] || SELF_DIR="$SELF_DIR/../../bin"  # D-88: in the repo an engine sits beside its manifest in hooks/<engine>/; deployed, flat beside its libraries
 
-# MEMBER MODE (harbor#1278): `--member-root <managed root>` on a member laptop's managed hook. The only rules are the root's own packs
-# (<root>/bin/*.md) that <root>/bin/member-context-rules.tsv lists. The session repo, the box tier and every reached tree are never read:
-# a repo is writable by the agent, and a `run:` pack there would execute outside the sandbox. Any fault in this mode is silence (exit 0).
-MR=''; MHUB="${XDG_STATE_HOME:-${HOME:-/nonexistent}/.local/state}/harbor/hub/rules"
-if [ "${1:-}" = --member-root ]; then
-  MR="${2:-}"
-  case "$MR" in /*) ;; *) exit 0 ;; esac
-  shift 2
-fi
-
 MODE=hook
 case "${1:-}" in
   '')         MODE=hook ;;
@@ -42,14 +32,8 @@ esac
 # -- pack discovery --
 # Two tiers, box then repo; the order is the precedence. The repo comes from the session's cwd (CLAUDE_PROJECT_DIR), not from $0:
 # the installed copy must serve whatever repo the session stands in.
-# harbor#1278: this hook runs git on repos the agent can write, outside its sandbox: gs_env stops the programs a repo's config would run.
-if [ -f "$SELF_DIR/library-git-safe.sh" ]; then . "$SELF_DIR/library-git-safe.sh"; else gs_env() { git "$@"; }; fi
-# Member mode finds it after its fast exit below: the git fork is not paid by a call no rule targets.
-set_repo() {
-  REPO="$(cd "${CLAUDE_PROJECT_DIR:-$PWD}" 2>/dev/null && gs_env rev-parse --show-toplevel 2>/dev/null || true)"
-  [ -n "$REPO" ] || REPO="${CLAUDE_PROJECT_DIR:-$PWD}"
-}
-REPO=''; [ -n "$MR" ] || set_repo
+REPO="$(cd "${CLAUDE_PROJECT_DIR:-$PWD}" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null || true)"
+[ -n "$REPO" ] || REPO="${CLAUDE_PROJECT_DIR:-$PWD}"
 
 # The two tiers can be the same directory (project dir = $HOME), and then box packs fire twice and `once: session` spends its key early.
 # Compared physically (symlinks resolved, lint D2): /tmp and /private/tmp differ as strings.
@@ -59,18 +43,11 @@ _phys() { CDPATH='' cd -P -- "$1" 2>/dev/null && pwd -P || printf '%s' "$1"; }
 # Box tier: $CFG/context-rules/user. A tree: each context-rules/<scope>/ but user (the box
 # tier's source, which only the installer delivers). A tree dir that IS a box dir is dropped.
 box_dirs() {
-  if [ -n "$MR" ]; then
-    [ ! -d "$MR/bin" ] || printf '%s\n' "$MR/bin"
-    # The signed hub's rules, delivered by hub.sh into the hub's state: a folder the agent cannot write (member_protected), rebuilt at every sync.
-    for _hd in "$MHUB"/*/; do [ ! -d "$_hd" ] || printf '%s\n' "${_hd%/}"; done
-    return 0
-  fi
   for _bd in "$CFG/context-rules/user"; do [ ! -d "$_bd" ] || printf '%s\n' "$_bd"; done
   return 0
 }
-BOXP=''; [ -n "$MR" ] || BOXP="$(box_dirs | while IFS= read -r _bd; do _phys "$_bd"; printf '\n'; done)"   # member mode reads no tree, so nothing to de-duplicate
+BOXP="$(box_dirs | while IFS= read -r _bd; do _phys "$_bd"; printf '\n'; done)"
 tree_dirs() { # <tree>
-  [ -z "$MR" ] || return 0   # member mode: no tree is a source of rules
   for _td in "$1"/context-rules/*/; do
     _td="${_td%/}"
     [ -d "$_td" ] || continue
@@ -154,49 +131,11 @@ if [ "$MODE" = list ]; then
   exit 0
 fi
 
-# -- member mode: a call no rule targets pays almost nothing --
-# The managed settings run this on every tool call (a root-owned file the agent-side sync cannot rewrite, so the matcher stays `*`), so before any payload
-# parsing: no rule file at all is an exit, and so is a call whose event and tool name no loadable rule names. One awk reads every rule file once.
-# The rules folder is protected by the sandbox and the Edit deny rows (member_protected), not by ownership: the worst a hand-written note there does is
-# fire as a note, because a rule with run: or spoke: never loads and so no script can run.
-if [ -n "$MR" ] && [ "$MODE" = hook ]; then
-  _mrf=''; _mrd="$(box_dirs)"
-  _IFS="$IFS"; IFS="$NL"; set -f; set -- $_mrd; set +f; IFS="$_IFS"
-  _mrn=0; for _d in "$@"; do for _f in "$_d"/*.md; do [ -f "$_f" ] && _mrn=$((_mrn + 1)); done; done
-  [ "$_mrn" -gt 0 ] || exit 0
-  PAYLOAD="$(cat)"
-  [ -n "$PAYLOAD" ] || exit 0
-  command -v jq >/dev/null 2>&1 || exit 0
-  _mrq="$(printf '%s' "$PAYLOAD" | jq -r '[.hook_event_name // "", .tool_name // ""] | join("\t")' 2>/dev/null || true)"
-  _mre=''; _mrt=''
-  IFS='	' read -r _mre _mrt <<MRQ
-$_mrq
-MRQ
-  [ -n "$_mre" ] || exit 0
-  for _d in "$@"; do for _f in "$_d"/*.md; do [ ! -f "$_f" ] || set -- "$@" "$_f"; done; shift; done
-  awk -v mr="$MR/bin/" -v al="$MR/bin/member-context-rules.tsv" -v ev="$_mre" -v tl="$_mrt" '
-    BEGIN { while ((getline l < al) > 0) { split(l, a, "\t"); if (a[1] !~ /^#/ && a[1] != "" && a[1] != "id") ok[a[1]] = 1 } }
-    function done_file() {
-      if (f == "" || e != ev || r) return
-      if (index(f, mr) == 1 && !(id in ok)) return
-      if (t == "" || tl ~ ("^(" t ")$")) hit = 1
-    }
-    FNR == 1 { done_file(); f = FILENAME; id = FILENAME; sub(/^.*\//, "", id); sub(/\.md$/, "", id); e = t = ""; r = 0; fm = 0; if ($0 ~ /^---[ \t]*$/) fm = 1; next }
-    fm == 1 && /^---[ \t]*$/ { fm = 2; next }
-    fm == 1 {
-      if ($0 ~ /^id:/) { v = $0; sub(/^id:[ \t]*/, "", v); if (v != "") id = v }
-      else if ($0 ~ /^event:/) { e = $0; sub(/^event:[ \t]*/, "", e) }
-      else if ($0 ~ /^tool:/) { t = $0; sub(/^tool:[ \t]*/, "", t) }
-      else if ($0 ~ /^(run|spoke):/) r = 1
-    }
-    END { done_file(); exit !hit }' "$@" 2>/dev/null || exit 0
-  set_repo
-else
+# -- the payload --
 # No jq means no valid JSON for arbitrary text: silence, since a missed note costs only a note.
 PAYLOAD="$(cat)"
 [ -n "$PAYLOAD" ] || exit 0
 command -v jq >/dev/null 2>&1 || exit 0
-fi
 
 field() { printf '%s' "$PAYLOAD" | jq -r "$1 // empty" 2>/dev/null || true; }
 
@@ -430,22 +369,16 @@ HITS
 # KNOWN repo (the session's, or a registered one) and unmodified vs HEAD is the repo's own
 # committed text. Never a path rule: an untracked, edited or foreign-repo file still fires.
 own_committed_file() { # <path> -> 0 iff tracked, clean, in a known repo and operator-reviewed; sets _oc_pd _oc_fn
-  [ -z "$MR" ] || return 1   # member mode: the repo's own HEAD vouches for nothing the agent could have committed
   [ -f "$1" ] && [ ! -L "$1" ] || return 1
   case "$1" in */*) _oc_pd="$(_phys "${1%/*}")" ;; *) _oc_pd="$(_phys .)" ;; esac; _oc_fn="${1##*/}"
-  _oc_top="$(gs_env -C "$_oc_pd" rev-parse --show-toplevel 2>/dev/null || true)"; [ -n "$_oc_top" ] || return 1
+  _oc_top="$(git -C "$_oc_pd" rev-parse --show-toplevel 2>/dev/null || true)"; [ -n "$_oc_top" ] || return 1
   _oc_top="$(_phys "$_oc_top")"
   [ "$_oc_top" = "$(_phys "$REPO")" ] || registered "$_oc_top" || return 1
-  gs_env -C "$_oc_pd" ls-files --error-unmatch -- "$_oc_fn" >/dev/null 2>&1 || return 1
-  # diff HEAD runs the repo's clean filter and fsmonitor on the file: in a git dir of our own, whose config names none.
-  _oc_w="$(mktemp -d "${TMPDIR:-/tmp}/oc-gs.XXXXXX" 2>/dev/null)" || return 1
-  if gs_open_in "$_oc_pd" "$_oc_w" 2>/dev/null; then
-    gs_git diff --quiet --no-ext-diff --no-textconv HEAD -- "$GS_PREFIX$_oc_fn" 2>/dev/null || { rm -rf "$_oc_w"; return 1; }
-  else rm -rf "$_oc_w"; return 1; fi
-  rm -rf "$_oc_w"
+  git -C "$_oc_pd" ls-files --error-unmatch -- "$_oc_fn" >/dev/null 2>&1 || return 1
+  git -C "$_oc_pd" diff --quiet HEAD -- "$_oc_fn" 2>/dev/null || return 1
   # Operator-reviewed only: a row of the committed protected-paths register (the CODEOWNERS source).
   # Vendored, captured and fixture text stays external whoever merged it.
-  _oc_rel="$(gs_env -C "$_oc_pd" ls-files --full-name -- "$_oc_fn" 2>/dev/null)"; [ -n "$_oc_rel" ] || return 1
+  _oc_rel="$(git -C "$_oc_pd" ls-files --full-name -- "$_oc_fn" 2>/dev/null)"; [ -n "$_oc_rel" ] || return 1
   case "$_oc_rel" in vendor/*|evals/*|fixtures/*|tests/*.jsonl|tests/*/*.jsonl|tests/*/*/*.jsonl) return 1 ;; esac
   _oc_ok=1
   while IFS="$(printf '\t')" read -r _oc_g _oc_rest; do
@@ -456,7 +389,7 @@ own_committed_file() { # <path> -> 0 iff tracked, clean, in a known repo and ope
          case "$_oc_rel" in $_oc_g) [ "$(printf '%s' "$_oc_rel" | tr -dc /)" = "$(printf '%s' "$_oc_g" | tr -dc /)" ] && { _oc_ok=0; break; } ;; esac ;;
     esac
   done <<REG
-$(gs_env -C "$_oc_top" show --no-textconv HEAD:.agents/protected-paths.tsv 2>/dev/null)
+$(git -C "$_oc_top" show HEAD:.agents/protected-paths.tsv 2>/dev/null)
 REG
   [ "$_oc_ok" = 0 ] || return 1
 }
@@ -595,7 +528,7 @@ explain() { [ "$MODE" = explain ] && printf '%s\n' "$*" >&2 || true; }
 _top() {
   _d="$1"
   while [ ! -d "$_d" ]; do _d="$(dirname -- "$_d")"; done
-  _t="$(CDPATH='' cd -- "$_d" 2>/dev/null && gs_env rev-parse --show-toplevel 2>/dev/null || true)"
+  _t="$(CDPATH='' cd -- "$_d" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null || true)"
   if [ -n "$_t" ]; then _phys "$_t"; printf '\n'; fi
   return 0
 }
@@ -698,7 +631,7 @@ shell_targets() {
           for _d in "$_port"/*/; do
             _d="${_d%/}"
             [ -e "$_d/.git" ] || continue
-            _u="$(gs_env -C "$_d" config --get remote.origin.url 2>/dev/null || true)"
+            _u="$(git -C "$_d" config --get remote.origin.url 2>/dev/null || true)"
             _u="${_u%/}"; _u="${_u%.git}"
             _s="$(printf '%s' "$_u" | awk -F'[/:]' 'NF >= 2 { print tolower($(NF - 1) "/" $NF) }')"
             [ "$_s" = "$_want" ] || continue
@@ -712,7 +645,6 @@ shell_targets() {
 }
 
 touched_trees() {
-  [ -z "$MR" ] || return 0   # member mode: no other tree is reached
   _pp="$(printf '%s' "$PAYLOAD" | jq -r '.tool_input.file_path // .tool_input.notebook_path // .tool_input.path // empty' 2>/dev/null || true)"
   {
     case "$_pp" in
@@ -738,9 +670,8 @@ touched_trees() {
 # (box tier, harbor#1010; a worktree counts as its owner) may do that.
 REG="$CFG/context-rules/user/projects.tsv"
 registered() { # <physical tree>
-  [ -z "$MR" ] || return 1   # member mode: the registry is a user-writable file, so no tree is ever trusted by it
   [ -f "$REG" ] || return 1
-  _own="$(gs_env -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+  _own="$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
   case "$_own" in */.git) _own="$(_phys "${_own%/.git}")" ;; *) _own='' ;; esac
   while IFS="$(printf '\t')" read -r _rn _rp _rc; do
     case "$_rn" in ''|'#'*) continue ;; esac
@@ -796,11 +727,6 @@ sweep_files() {
   return 0
 }
 
-# Member mode: the root's own list of the pack ids that ship to members. No list, or an id not on it, is silence.
-MALLOW=''
-if [ -n "$MR" ]; then
-  MALLOW="$(awk -F'\t' '$1 !~ /^#/ && $1 != "id" && $1 != "" { print $1 }' "$MR/bin/member-context-rules.tsv" 2>/dev/null || true)"
-fi
 DECISION=''; DREASON=''
 # The sweep's one held line (harbor#1485): nothing about it is logged, remembered or spoken until the sweep ends with no deny.
 H_ID=''; H_ROW=''; H_LINE=''; H_NOTE=''; H_KEY=''; H_ONCE=''; H_CMODE=''; H_DIR=''; H_SPOKE=''; SPOKEN=''
@@ -814,17 +740,6 @@ while IFS="$(printf '\t')" read -r _file RT _reach; do
     [ -f "$_f" ] || continue
     fm_load "$_f"
     fm_get id; _id="$FMV"; [ -n "$_id" ] || { _id="${_f##*/}"; _id="${_id%.md}"; }
-    if [ -n "$MR" ]; then
-      # A core pack ships only when the register lists it; a hub pack is live because the signed policy pinned it and its manifest listed the file (hub.sh).
-      # Either way a rule that runs something never loads here: the second refusal, after pack.sh's and hub.sh's.
-      case "$_dir" in
-        "$MR/bin") case "$NL$MALLOW$NL" in *"$NL$_id$NL"*) ;; *) explain "skip $_id: not on the member allow-list"; continue ;; esac ;;
-        "$MHUB"/*) ;;
-        *) explain "skip $_id: not from the managed root or the hub's delivered rules"; continue ;;
-      esac
-      fm_get run; _mrun="$FMV"; fm_get spoke
-      if [ -n "$_mrun" ] || [ -n "$FMV" ]; then explain "skip $_id: a member loads notes only, and this one has run: or spoke:"; continue; fi
-    fi
     if [ "$_reach" = 1 ]; then
       fm_get scope
       if [ "$FMV" != box ]; then

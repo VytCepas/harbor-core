@@ -4,7 +4,7 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 MD="$T_TMP/managed"; MR="$MD/harbor"; MB="$MR/bin"
 mkdir -p "$MB" "$MD/harbor-ids"
-for _f in hub.sh library-log.sh library-hub.sh library-pack-version.sh library-git-safe.sh hub-sync.sh; do cp "$T_ROOT/bin/$_f" "$MB/"; done
+for _f in hub.sh library-log.sh library-hub.sh library-pack-version.sh hub-sync.sh; do cp "$T_ROOT/bin/$_f" "$MB/"; done
 : > "$MB/harbor-member-mode"
 printf 'hub=fixture-org/fixture-hub\nlogin=alice\nhome=%s\n' "$HOME" > "$MR/member.conf"
 LID="0f1e2d3c4b5a69788796a5b4c3d2e1f0"; IDF="$MD/harbor-ids/$(id -un).id"

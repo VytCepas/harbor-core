@@ -186,7 +186,6 @@
 /bin/library-board.sh @VytCepas
 /bin/library-fs.sh @VytCepas
 /bin/library-gate.sh @VytCepas
-/bin/library-git-safe.sh @VytCepas
 /bin/library-hub.sh @VytCepas
 /bin/library-pack-version.sh @VytCepas
 /bin/library-repo-rules.sh @VytCepas
@@ -214,8 +213,6 @@
 /bin/lint-suggest-table.sh @VytCepas
 /bin/member-integrity.sh @VytCepas
 /bin/member-managed.sh @VytCepas
-/bin/member-memory.sh @VytCepas
-/bin/member-tests.sh @VytCepas
 /bin/memory-lint.sh @VytCepas
 /bin/memory-log-token-save.sh @VytCepas
 /bin/memory-route.sh @VytCepas
@@ -270,7 +267,6 @@
 /bin/test-suite-select.sh @VytCepas
 /bin/wait-for @VytCepas
 /bin/worktree.sh @VytCepas
-/contracts/agent-architectures.tsv @VytCepas
 /contracts/event-rules.tsv @VytCepas
 /contracts/merge-stack-union.txt @VytCepas
 /contracts/obligation-kinds.tsv @VytCepas
@@ -285,7 +281,6 @@
 /contracts/suites.txt @VytCepas
 /docs/reference/checks.md @VytCepas
 /hooks/access-confinement/access-confinement.sh @VytCepas
-/hooks/box-tests/box-tests.sh @VytCepas
 /hooks/injection-rule/injection-rule.sh @VytCepas
 /runners/** @VytCepas
 /standards/naming/repo-kinds.tsv @VytCepas

@@ -40,7 +40,7 @@ if [ "${1:-}" != --inner ]; then
   docker build -q -t "$IMAGE" "$T/img" >/dev/null || { echo "sim-linux: docker build failed" >&2; exit 2; }
   git -C "$ROOT" bundle create "$T/sim/core.bundle" "$REF" >/dev/null 2>&1 || { echo "sim-linux: cannot bundle '$REF' (a ref name: a branch or HEAD)" >&2; exit 2; }
   _commit="$(git -C "$ROOT" rev-parse "$REF")"; printf '%s\n' "$_commit" > "$T/sim/core.commit"
-  cp "$0" "$T/sim/sim-linux.sh"; cp "$HERE/sim-linux-lib.sh" "$HERE/sim-linux-company.sh" "$HERE/sim-linux-member.sh" "$HERE/sim_github.py" "$HERE/stub_anthropic.py" "$ROOT/tests/hub/fixtures/stub_board.py" "$T/sim/"
+  cp "$0" "$T/sim/sim-linux.sh"; cp "$HERE/sim-linux-lib.sh" "$HERE/sim-linux-company.sh" "$HERE/sim_github.py" "$HERE/stub_anthropic.py" "$ROOT/tests/hub/fixtures/stub_board.py" "$T/sim/"
   [ -z "${SIM_UPTERM_DIR:-}" ] || cp "$SIM_UPTERM_DIR"/upterm_linux_*.tar.gz "$T/sim/dl/" 2>/dev/null || :
   # systemd as PID 1, as WSL's systemd=true runs it: its own cgroup namespace, remounted writable, and /run as tmpfs.
   docker run -d -t --name "$NAME" --hostname member-laptop --add-host github.com:127.0.0.1 --add-host api.github.com:127.0.0.1 \
@@ -462,7 +462,6 @@ claude_cli() {
 
 say "sim-linux inner run"
 . /sim/sim-linux-company.sh   # sections 8-12: packs, yard, logging, the question tool, the floor's sandbox
-. /sim/sim-linux-member.sh    # sections 3b, 13-15: context rules, the law, personal tools, tests written
 # SIM_ONLY="packs logging" runs those sections alone, and SIM_RESUME=1 skips the fixture and the install of a container kept with --keep (state.env holds
 # what they set): development aids, never the proof. A partial table says so in its first row.
 only() { [ -n "${SIM_ONLY:-}" ] || return 0; case " $SIM_ONLY " in *" $1 "*) return 0 ;; esac; return 1; }
@@ -478,7 +477,6 @@ fi
 only checks && checks
 only shadow && shadow_check
 only hooks && hooks
-only context && context
 only hostile && hostile
 only policies && policies
 only updater && updater
@@ -488,8 +486,6 @@ only logging && logging
 only ask && ask_tool
 only sandbox && sandbox_floor
 only law && law
-only tools && tools_sync
-only tests && tests_written
 only claude && claude_cli
 save_state
 exit 0

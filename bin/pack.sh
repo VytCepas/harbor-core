@@ -21,7 +21,6 @@ SRC="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 ROOT="${HARBOR_SCOPE_ROOT:-$(CDPATH= cd -- "$SRC/.." && pwd)}"
 . "$SRC/library-log.sh"
 . "$SRC/deploy-install-lib.sh"
-. "$SRC/library-git-safe.sh"
 . "$SRC/library-pack-version.sh"
 log_init pack
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
@@ -51,7 +50,7 @@ esac
 if [ -n "$HUBTREE" ]; then
   [ "$HUB" -eq 1 ] && [ "$VERB" = install ] && [ -n "$IDS" ] || il_usage_error '--hub-tree goes with install <pack-id>... --hub'
   [ "$IL_APPLY" -eq 0 ] || il_usage_error '--hub-tree is a dry run: it has no signed pin to install from'
-  gs_env -C "$HUBTREE" rev-parse --verify -q HEAD > /dev/null 2>&1 || il_usage_error "--hub-tree $HUBTREE is not a git checkout with a commit"
+  git -C "$HUBTREE" rev-parse --verify -q HEAD > /dev/null 2>&1 || il_usage_error "--hub-tree $HUBTREE is not a git checkout with a commit"
 fi
 il_target
 T="$IL_TARGET"
@@ -92,20 +91,13 @@ core_version() { # the dispatcher's contract version, as N.0
 # A manifest row F/D <rel> per file or directory install made; header lines are `# key value`.
 mf_rows() { awk -F'\t' -v t="$2" '$1 == t { print $2 }' "$MFD/$1.tsv" 2>/dev/null || :; }
 
-# pack_clean <dir> — 0 iff harbor-pack/ in <dir>'s checkout has no uncommitted or untracked change; 1 when it has, or when git cannot say.
-pack_clean() {
-  mkdir -p "$WORK/pc" && gs_open_in "$1" "$WORK/pc" || return 1
-  _pc_o="$(gs_git status --porcelain --untracked-files=all -- "${GS_PREFIX}harbor-pack" 2>/dev/null)" || return 1
-  [ -z "$_pc_o" ]
-}
-
 # A hub pack (harbor#1278): which pack, at which commit, is the verified signed policy's say, never an argument. Sets ID DIR COMMIT
 # GREF PKREL PKTOML. The extension manifest must be valid, name this pack, fit core, and match the bytes at the pinned commit.
 hub_source() { # <pack-id>
   ID="hub-$1"; _hid="$1"
   if [ -n "$HUBTREE" ]; then
     # The gate's check: the tree's HEAD stands in for the pin; everything below is what a laptop runs.
-    DIR="$HUBTREE"; COMMIT="$(gs_env -C "$DIR" rev-parse --verify -q HEAD)"
+    DIR="$HUBTREE"; COMMIT="$(git -C "$DIR" rev-parse --verify -q HEAD)"
   else
     [ -f "$SRC/hub-sync.sh" ] || refuse "hub-sync.sh is not beside pack.sh" || return 1
     _pol="$(sh "$SRC/hub-sync.sh" path)"
@@ -115,18 +107,18 @@ hub_source() { # <pack-id>
     [ "${#COMMIT}" -eq 40 ] || refuse "the pinned commit of $_hid is not 40 hex" || return 1
     DIR="$(sh "$SRC/scope-roots.sh" --hub 2>/dev/null)" && [ -n "$DIR" ] || refuse "no hub clone on this box" "harbor hub sync" || return 1
   fi
-  gs_env -C "$DIR" cat-file -e "$COMMIT^{commit}" 2>/dev/null || refuse "the pinned commit $COMMIT is not in the hub clone" "harbor hub sync" || return 1
+  git -C "$DIR" cat-file -e "$COMMIT^{commit}" 2>/dev/null || refuse "the pinned commit $COMMIT is not in the hub clone" "harbor hub sync" || return 1
   GREF="$COMMIT"; PKREL="packs/$_hid/harbor-pack"
-  gs_env -C "$DIR" show --no-textconv "$GREF:$PKREL/pack.toml" > "$WORK/pack.toml" 2>/dev/null || refuse "no $PKREL/pack.toml at the pinned commit" || return 1
+  git -C "$DIR" show "$GREF:$PKREL/pack.toml" > "$WORK/pack.toml" 2>/dev/null || refuse "no $PKREL/pack.toml at the pinned commit" || return 1
   PKTOML="$WORK/pack.toml"
-  gs_env -C "$DIR" show --no-textconv "$GREF:packs/$_hid/extension.json" > "$WORK/ext.json" 2>/dev/null || refuse "no extension.json at the pinned commit" || return 1
+  git -C "$DIR" show "$GREF:packs/$_hid/extension.json" > "$WORK/ext.json" 2>/dev/null || refuse "no extension.json at the pinned commit" || return 1
   sh "$SRC/hub-format.sh" manifest "$WORK/ext.json" > /dev/null 2> "$WORK/ext.err" || refuse "extension.json: $(head -n 1 "$WORK/ext.err")" || return 1
   [ "$(jq -r .id "$WORK/ext.json")" = "$_hid" ] || refuse "extension.json names another pack" || return 1
   _erc=0; pack_ver_ok "$(jq -r .harbor_version "$WORK/ext.json")" "$(core_version)" || _erc=$?
   [ "$_erc" -eq 0 ] || refuse "the extension needs harbor $(jq -r .harbor_version "$WORK/ext.json"), core is $(core_version)" || return 1
   jq -r '.files[] | [.path, .sha256] | @tsv' "$WORK/ext.json" > "$WORK/ext.files"
   while IFS="$TAB" read -r _ep _eh; do
-    [ "$(gs_env -C "$DIR" show --no-textconv "$GREF:$PKREL/$_ep" 2>/dev/null | il_sha)" = "$_eh" ] || refuse "extension.json lists $_ep and its bytes at the pinned commit differ" || return 1
+    [ "$(git -C "$DIR" show "$GREF:$PKREL/$_ep" 2>/dev/null | il_sha)" = "$_eh" ] || refuse "extension.json lists $_ep and its bytes at the pinned commit differ" || return 1
   done < "$WORK/ext.files"
   return 0
 }
@@ -147,10 +139,10 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
     fi
     PK="$DIR/harbor-pack"
     [ -f "$PK/pack.toml" ] || refuse "no harbor-pack/pack.toml in $DIR" || return 1
-    COMMIT="$(gs_env -C "$DIR" rev-parse --verify -q HEAD 2>/dev/null)" ||
+    COMMIT="$(git -C "$DIR" rev-parse --verify -q HEAD 2>/dev/null)" ||
       refuse "unpinned: $DIR is not a git checkout with a commit" "git init and commit, or clone the repo" || return 1
-    # status runs the repo's filters and fsmonitor, and DIR is a tree the agent can write (harbor#1278): in a git dir of our own (gs_open_at), whose config names none.
-    pack_clean "$DIR" || refuse "dirty: harbor-pack/ has uncommitted or untracked changes" "commit or discard them in $DIR" || return 1
+    [ -z "$(git -C "$DIR" status --porcelain --untracked-files=all -- harbor-pack 2>/dev/null)" ] ||
+      refuse "dirty: harbor-pack/ has uncommitted or untracked changes" "commit or discard them in $DIR" || return 1
     PKTOML="$PK/pack.toml"
   fi
   read_toml "$PKTOML" > "$WORK/meta" 2> "$WORK/meta.err" ||
@@ -168,8 +160,8 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
   esac
 
   # Only what git tracks is installed, so an ignored file is never carried in.
-  if [ "$HUB" -eq 1 ]; then gs_env -C "$DIR" ls-tree -r "$GREF" -- "$PKREL" | awk -F'\t' '{ split($1, a, " "); print a[1] "\t" $2 }' > "$WORK/files"
-  else gs_env -C "$DIR" ls-files -s -- harbor-pack | awk -F'\t' '{ split($1, a, " "); print a[1] "\t" $2 }' > "$WORK/files"; fi
+  if [ "$HUB" -eq 1 ]; then git -C "$DIR" ls-tree -r "$GREF" -- "$PKREL" | awk -F'\t' '{ split($1, a, " "); print a[1] "\t" $2 }' > "$WORK/files"
+  else git -C "$DIR" ls-files -s -- harbor-pack | awk -F'\t' '{ split($1, a, " "); print a[1] "\t" $2 }' > "$WORK/files"; fi
   while IFS="$TAB" read -r _m _p; do
     case "$_p" in *[!A-Za-z0-9._/-]*) refuse "path '$_p' has a character outside [A-Za-z0-9._/-]" || return 1 ;; esac
     # A git tree can name a directory .. (git mktree takes it), and skills/s/../../x then lands above the target (harbor#1278).
@@ -178,7 +170,7 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
     if [ "$HUB" -eq 1 ]; then
       # A company pack is read by a person before it is pinned: no hidden file or folder (a .run.sh, a .claude/settings.json), and nothing too big to read.
       case "/$_r" in */.*) refuse "$_r is hidden: a hub pack carries no file or folder whose name starts with a dot" || return 1 ;; esac
-      _sz="$(gs_env -C "$DIR" cat-file -s "$GREF:$_p" 2>/dev/null)" || _sz=0
+      _sz="$(git -C "$DIR" cat-file -s "$GREF:$_p" 2>/dev/null)" || _sz=0
       [ "$_sz" -le "$PACK_MAX_FILE" ] || refuse "$_r is $_sz bytes, over the $PACK_MAX_FILE-byte bound for a file in a hub pack" || return 1
       _tot=$((${_tot:-0} + _sz))
     fi
@@ -232,8 +224,8 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       context-rules/user/*/*) refuse "${_r%/*}/ is flat; $_r is nested" || return 1 ;;
       context-rules/user/*.md)
         # run: names a script beside the pack whose stdout may be a deny verdict (contracts/injection-rule.md).
-        gs_env -C "$DIR" show --no-textconv "$GREF:$_p" | tr -d '\r' | awk '/^[ \t]*(run|spoke)[ \t]*:/ { f = 1 } END { exit f }' ||
-          refuse "inject pack $_r has run: or spoke: (it could deny or run a script); packs inject notes only" || return 1
+        git -C "$DIR" show "$GREF:$_p" | tr -d '\r' | awk '/^[ \t]*run[ \t]*:/ { f = 1 } END { exit f }' ||
+          refuse "inject pack $_r has run: (it could deny); packs inject notes only" || return 1
         printf '%s\t%s\n' "$_p" "context-rules/user/pack-$NAME--${_r##*/}" >> "$WORK/plan" ;;
       context-rules/user/*) refuse "$_r is not a .md pack" || return 1 ;;
       inject.d/*) refuse "$_r: inject.d/ is retired; a pack's rules are context-rules/user/<f>.md" || return 1 ;;
@@ -256,7 +248,7 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
   rm -rf "$WORK/stage"; mkdir -p "$WORK/stage"
   while IFS="$TAB" read -r _s _r; do
     mkdir -p "$WORK/stage/${_r%/*}"
-    gs_env -C "$DIR" show --no-textconv "$GREF:$_s" > "$WORK/stage/$_r"
+    git -C "$DIR" show "$GREF:$_s" > "$WORK/stage/$_r"
     if [ "$(awk -F'\t' -v p="$_s" '$2 == p { print $1; exit }' "$WORK/files")" = 100755 ]; then chmod 755 "$WORK/stage/$_r"; else chmod 644 "$WORK/stage/$_r"; fi
     # Front matter is an ALLOWLIST, not a denylist (harbor#1149): canonical opener, top-level keys in contracts/pack-frontmatter-keys.txt (skill-pack-frontmatter-keys.txt for skill-packs/), never hooks.
     case "$_r" in checks.d/*) ;; *.[Mm][Dd])
@@ -284,7 +276,7 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
   # A hub pack skips both gates below: the hub's own gate scans it before it merges, and a member has no gitleaks (R21).
   if [ "$HUB" -eq 0 ]; then
   # Client-free (D-85): the export-mode leak gate over exactly the staged files (no tests/fixtures skip, no layers.tsv, binary as text).
-  gs_env -C "$WORK/stage" init -q . 2>/dev/null; gs_env -C "$WORK/stage" add -f -A 2>/dev/null
+  git -C "$WORK/stage" init -q . 2>/dev/null; git -C "$WORK/stage" add -f -A 2>/dev/null
   _lrc=0
   LEAKS_EXPORT=1 HARBOR_SCOPE_ROOT="$WORK/stage" LEAKS_CORE_PATTERNS="$ROOT/contracts/leak-patterns.tsv" sh "$SRC/lint-leaks.sh" --list > "$WORK/leaks.pack" 2> "$WORK/leaks.err" || _lrc=$?
   [ "$_lrc" -eq 0 ] || refuse "the leak gate could not run cleanly (exit $_lrc)" "sh bin/lint-leaks.sh --list, in $DIR" || return 1

@@ -115,20 +115,6 @@ repos_note() {
   AGENT_NOTE="${AGENT_NOTE:+$AGENT_NOTE }Repos under ~/port that Harbor does not govern yet (company rule): $_rn. Tell the person, and register each with: sh ~/port/harbor/bin/harbor hub project register <name>. Registering writes into ~/port/harbor-private, so leave the run to them."
 }
 
-# harbor#1278 (lane E): a session inside a registered project is told where its memory is and how to write it without a secret.
-memory_note() {
-  [ -f "$HERE/member-memory.sh" ] || return 0
-  _mn="$(bounded 4 sh "$HERE/member-memory.sh" note 2>/dev/null)" || _mn=''
-  [ -z "$_mn" ] || AGENT_NOTE="${AGENT_NOTE:+$AGENT_NOTE }$_mn"
-}
-
-# A member's own tools (bin/member-tools.sh, control member.tools-sync): pulled from their private repo at every start. Bounded twice, fail-open, never a session problem.
-tools_pull() {
-  [ -f "$HERE/member-tools.sh" ] || return 0
-  _tn="$(bounded "$((TIMEOUT * 2))" sh "$HERE/member-tools.sh" pull 2>/dev/null)" || _tn=''
-  [ -z "$_tn" ] || note "$_tn"
-}
-
 start() {
   # Fetch once. A refusal or an unreachable hub changes nothing and is not a session problem. Only a verified revocation leaves.
   _frc=0; sh "$HERE/hub-sync.sh" fetch > /dev/null 2>&1 || _frc=$?
@@ -162,8 +148,6 @@ start() {
     [ -z "$_an" ] || note "$_an"
   fi
   repos_note
-  memory_note
-  tools_pull
   send
 }
 

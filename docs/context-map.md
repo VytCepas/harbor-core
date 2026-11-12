@@ -29,23 +29,23 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 |---|---|---|---|---|---|
 | policy | policy/ | system | source | living | 3 |
 | standard | standards/ | system | source | versioned | 32 |
-| contract | contracts/ | system | source | versioned | 43 |
+| contract | contracts/ | system | source | versioned | 41 |
 | decision-record | docs/decisions/ | element | source | dated | 94 |
-| hook | hooks/ | component | source | living | 50 |
-| skill | skills/ | component | source | living | 51 |
+| hook | hooks/ | component | source | living | 48 |
+| skill | skills/ | component | source | living | 50 |
 | fixture | fixtures/ | element | source | living | 439 |
-| template | templates/ | component | source | living | 16 |
-| registry | registries/ | component | source | versioned | 80 |
-| test | tests/ | component | source | living | 666 |
+| template | templates/ | component | source | living | 10 |
+| registry | registries/ | component | source | versioned | 78 |
+| test | tests/ | component | source | living | 647 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 9 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | generated-doc | docs/generated/ | component | generated | generated | 2 |
-| script | bin/ | component | source | living | 296 |
-| how-to | docs/how-to/ | component | source | living | 7 |
-| reference | docs/reference/ | component | generated | generated | 89 |
+| script | bin/ | component | source | living | 287 |
+| how-to | docs/how-to/ | component | source | living | 6 |
+| reference | docs/reference/ | component | generated | generated | 86 |
 | explanation | docs/explanation/ | component | source | living | 106 |
-| (no kind) | - | - | - | - | 285 |
+| (no kind) | - | - | - | - | 284 |
 
 ## Folders
 
@@ -54,13 +54,13 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | (repo root) | 12 | 1 | 1 |
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
-| `bin/` | 300 | 32 | 2 |
+| `bin/` | 291 | 32 | 2 |
 | `commands/` | 5 | 4 | 1 |
-| `context-rules/` | 66 | 6 | 1 |
-| `contracts/` | 122 | 14 | 2 |
-| `docs/` | 323 | 26 | 9 |
+| `context-rules/` | 68 | 6 | 1 |
+| `contracts/` | 118 | 14 | 2 |
+| `docs/` | 319 | 26 | 9 |
 | `fixtures/` | 439 | 11 | 1 |
-| `hooks/` | 46 | 7 | 1 |
+| `hooks/` | 44 | 7 | 1 |
 | `launchd/` | 21 | 10 | 1 |
 | `mods/` | 7 | 1 | 2 |
 | `patches/` | 17 | 4 | 1 |
@@ -68,13 +68,13 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `registries/` | 1 | 1 | 1 |
 | `relay/` | 4 | 1 | 1 |
 | `runners/` | 2 | 1 | 1 |
-| `skills/` | 51 | 10 | 1 |
+| `skills/` | 50 | 9 | 1 |
 | `standards/` | 32 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
-| `templates/` | 16 | 3 | 1 |
-| `tests/` | 666 | 30 | 1 |
+| `templates/` | 10 | 3 | 1 |
+| `tests/` | 647 | 30 | 1 |
 | `tools/` | 10 | 2 | 1 |
-| `vendor/` | 104 | 1 | 1 |
+| `vendor/` | 101 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
 
 ## Families
@@ -83,13 +83,13 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 |---|---|---|---|---|---|---|---|
 | access | control-plane | 12 | 29 | 2 | 6 | 0 | 0 |
 | admission | control-plane | 27 | 90 | 0 | 6 | 0 | 176 |
-| agent | control-plane | 1 | 2 | 0 | 12 | 0 | 0 |
+| agent | control-plane | 1 | 2 | 0 | 10 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
 | audit | control-plane | 9 | 15 | 0 | 17 | 0 | 2 |
 | bq | observability | 3 | 6 | 0 | 2 | 0 | 0 |
-| check | observability | 2 | 5 | 0 | 1 | 59 | 0 |
+| check | observability | 2 | 5 | 0 | 1 | 58 | 0 |
 | ci | coordination | 17 | 46 | 2 | 20 | 1 | 7 |
-| context | control-plane | 6 | 16 | 1 | 3 | 0 | 45 |
+| context | control-plane | 7 | 16 | 1 | 3 | 0 | 46 |
 | deploy | control-plane | 16 | 31 | 1 | 4 | 0 | 7 |
 | doc | control-plane | 16 | 13 | 0 | 37 | 0 | 22 |
 | drift | control-plane | 8 | 10 | 0 | 11 | 4 | 14 |
@@ -97,18 +97,18 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | event | observability | 3 | 19 | 0 | 12 | 0 | 2 |
 | gate | control-plane | 19 | 13 | 0 | 5 | 0 | 6 |
 | housekeeping | control-plane | 1 | 1 | 0 | 3 | 0 | 0 |
-| hub |  | 13 | 39 | 1 | 7 | 0 | 5 |
-| library | policy-function | 11 | 0 | 0 | 0 | 0 | 0 |
-| lint | control-plane | 26 | 75 | 0 | 20 | 3 | 39 |
-| member | control-plane | 18 | 92 | 1 | 13 | 5 | 3 |
+| hub |  | 11 | 37 | 1 | 7 | 0 | 4 |
+| library | policy-function | 10 | 0 | 0 | 0 | 0 | 0 |
+| lint | control-plane | 26 | 74 | 0 | 20 | 3 | 39 |
+| member | control-plane | 13 | 76 | 1 | 8 | 1 | 1 |
 | memory | memory-store | 6 | 10 | 1 | 24 | 0 | 1 |
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
 | policy | policy-function | 3 | 4 | 3 | 137 | 0 | 7 |
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
 | scope | coordination | 14 | 22 | 0 | 1 | 0 | 5 |
 | session | data-plane | 14 | 5 | 0 | 7 | 0 | 0 |
-| skill | catalog | 5 | 18 | 0 | 8 | 0 | 16 |
-| standard | policy-function | 18 | 28 | 126 | 13 | 13 | 61 |
+| skill | catalog | 5 | 18 | 0 | 8 | 0 | 15 |
+| standard | policy-function | 17 | 28 | 126 | 12 | 12 | 61 |
 | status | observability | 13 | 29 | 0 | 10 | 0 | 0 |
 | test | control-plane | 4 | 5 | 2 | 8 | 0 | 15 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
@@ -180,11 +180,9 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `context-rules/user/agent-brief.sh`
 - `context-rules/user/agent-model-required.md`
 - `context-rules/user/agent-model.sh`
-- `contracts/agent-architectures.tsv`
 - `contracts/agent-tools.tsv`
 - `docs/explanation/knowledge-base/agent-memory.md`
 - `docs/explanation/knowledge-base/agent-no-rag.md`
-- `docs/reference/agent-architectures.md`
 - `docs/reference/check-rows/agent-idle.txt`
 - `launchd/com.harbor.agent.idle.plist`
 - `skills/agent-routing/SKILL.md`
@@ -286,6 +284,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `commands/context-budget.md`
 - `docs/context-map.md`
 - `hooks/injection-rule/context-rules.test.sh`
+- `hooks/injection-rule/injection-rule.sh`
 - `registries/context-ratchet.tsv`
 
 ### deploy
@@ -431,11 +430,9 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/hub-fetch.sh`
 - `bin/hub-format.sh`
 - `bin/hub-gate.sh`
-- `bin/hub-pin-upgrade.sh`
 - `bin/hub-support.sh`
 - `bin/hub-sync.sh`
 - `bin/hub-tier.sh`
-- `bin/hub-tools.sh`
 - `bin/hub.sh`
 - `contracts/hub-vocabulary.tsv`
 - `contracts/hub.md`
@@ -454,7 +451,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/library-bq.sh`
 - `bin/library-fs.sh`
 - `bin/library-gate.sh`
-- `bin/library-git-safe.sh`
 - `bin/library-hub.sh`
 - `bin/library-log.sh`
 - `bin/library-pack-version.sh`
@@ -515,20 +511,14 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/member-install.sh`
 - `bin/member-integrity.sh`
 - `bin/member-managed.sh`
-- `bin/member-memory.sh`
 - `bin/member-post.sh`
 - `bin/member-prereqs.sh`
 - `bin/member-session.sh`
-- `bin/member-setup-generate.sh`
-- `bin/member-standard.sh`
 - `bin/member-support-guard.sh`
 - `bin/member-support.sh`
-- `bin/member-tests.sh`
-- `bin/member-tools.sh`
 - `bin/member-update.sh`
 - `bin/member-upgrade.sh`
 - `bin/member-windows.sh`
-- `contracts/member-context-rules.tsv`
 - `contracts/member-files.txt`
 - `contracts/member-guards.tsv`
 - `contracts/member-hosts.txt`
@@ -536,10 +526,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `contracts/member-prereqs.txt`
 - `docs/how-to/member-install.md`
 - `docs/how-to/member-support.md`
-- `docs/reference/check-rows/member-standard.txt`
-- `skills/member-setup/SKILL.md`
-- `templates/member-project/member-agents.md.tmpl`
-- `templates/member-project/member-claude.md.tmpl`
 - `templates/member/member-update.service`
 - `templates/member/member-update.timer`
 
@@ -652,7 +638,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/standard-schema.sh`
 - `bin/standard-seams-fresh.sh`
 - `bin/standard-shape.sh`
-- `bin/standard-vendor-scaffolder.sh`
 - `bin/standard-vendor.sh`
 - `docs/decisions/0001-uppercase-policy.md`
 - `docs/decisions/0002-term-for-tool-call-enforcement.md`
@@ -755,7 +740,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `docs/reference/check-rows/standard-schedule-registered.txt`
 - `docs/reference/check-rows/standard-script-uncalled.txt`
 - `docs/reference/check-rows/standard-seam-fresh.txt`
-- `docs/reference/check-rows/standard-vendor-scaffolder-fresh.txt`
 - `launchd/com.harbor.standard.fleet-names.plist`
 - `launchd/com.harbor.standard.label-registered.plist`
 - `launchd/com.harbor.standard.schedule-registered.plist`
@@ -845,21 +829,21 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `.github/` | 2 |
 | `bin/` | 12 |
 | `commands/` | 2 |
-| `context-rules/` | 54 |
-| `contracts/` | 90 |
-| `docs/` | 134 |
+| `context-rules/` | 56 |
+| `contracts/` | 88 |
+| `docs/` | 133 |
 | `fixtures/` | 264 |
-| `hooks/` | 33 |
+| `hooks/` | 30 |
 | `mods/` | 7 |
 | `patches/` | 10 |
 | `relay/` | 4 |
 | `runners/` | 2 |
 | `skills/` | 1 |
 | `systemd/` | 15 |
-| `templates/` | 11 |
+| `templates/` | 7 |
 | `tests/` | 28 |
 | `tools/` | 8 |
-| `vendor/` | 104 |
+| `vendor/` | 101 |
 | `worklog/` | 1 |
 
 ## Top-level layout

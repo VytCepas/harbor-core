@@ -159,7 +159,7 @@ proof() {
     cat "$T_ROOT/bin/$5" > "$MB/$5"; [ ! -f "$MB/$_f2" ] || cat "$T_ROOT/bin/$_f2" > "$MB/$_f2"; sh "$MB/member-integrity.sh" hash > "$MR/floor.pin" ;;
   esac
 }
-HASH='[ "$(gs_env -C "$DIR" show --no-textconv "$GREF:$PKREL/$_ep" 2>/dev/null | il_sha)" = "$_eh" ] || refuse'
+HASH='[ "$(git -C "$DIR" show "$GREF:$PKREL/$_ep" 2>/dev/null | il_sha)" = "$_eh" ] || refuse'
 proof "no symlink rule" sym fixture-sym/hosts.md both pack.sh '[ "$_m" != 120000 ] || refuse "$_r is a symlink" || return 1' ':'
 proof "no hash rule" sha fixture-sha both pack.sh "$HASH" ': || refuse' hub-gate.sh 'elif [ "$(hub_sha256 < "$_d/harbor-pack/$_fp")" != "$_fs" ]; then find_' 'elif false; then find_'
 proof "no listed-file rule" unl fixture-unl/extra.md both pack.sh '"$WORK/ext.files" ||' 'true ||'

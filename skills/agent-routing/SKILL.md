@@ -4,7 +4,6 @@ description: "Which model tier and effort each delegated agent runs on — Agent
 disable-model-invocation: true
 owns-tools: Agent
 inline-section: The table
-architecture: all
 ---
 
 # agent-routing — the cheapest tier that passes the gate
@@ -12,10 +11,6 @@ architecture: all
 **Done looks like:** every agent you start names its `model` and, where the table says, its
 `effort`. It runs on the lowest row that fits the work, and moves up a row only on evidence: a
 failed gate or a refusal. The quality gates never change with the tier.
-
-**Architecture:** the tiers below serve every architecture in `contracts/agent-architectures.tsv`
-(`architecture: all`). Each row there takes its tier from `contracts/agents.tsv`, which follows this table: the
-`build` role is the haiku/high row, and a multi-file build or a failed gate moves to sonnet/medium.
 
 ## The table
 

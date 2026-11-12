@@ -58,8 +58,6 @@ case "${1-}" in -h|--help) sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 command -v jq >/dev/null 2>&1 || exit 0
 LC_ALL=C; export LC_ALL
 [ -f "$HERE/library-fs.sh" ] && . "$HERE/library-fs.sh" || fs_mtime() { :; }
-# harbor#1278: this Stop hook runs git in the session's cwd, a repo the agent can write, outside its sandbox. Without the library no git runs here.
-if [ -f "$HERE/library-git-safe.sh" ]; then . "$HERE/library-git-safe.sh"; else gs_env() { return 1; }; gs_open_in() { return 1; }; fi
 
 STATE="${HARBOR_STATUS_DIR:-${HOME:-/nonexistent}/.local/state/harbor}"
 [ ! -e "$STATE/session-state.off" ] || exit 0
@@ -144,17 +142,11 @@ BRANCH=""; DIRTY=0; HANDOVER_AT=0; PUSHED=0
 if [ -n "$CWD" ] && [ -d "$CWD" ]; then
   _rc=0; _gf="$STATE/.gs.$$"; mkdir -p "$STATE" 2>/dev/null
   # Output goes to a file, not a pipe: a killed git's child would otherwise hold a $( ) open until it exits.
-  # status runs the repo's filters and fsmonitor, so it runs in a git dir of our own (gs_open_in): the repo's config is never read.
-  # The whole git side (open, upstream, status) is one script under one 2 s alarm, in its own process group so a hung git dies with it.
-  _gs_script='. "$1"; gs_open_in "$2" "$3" || exit 1; gs_track "$2"; gs_git status --porcelain -b'
-  if [ -f "$HERE/library-git-safe.sh" ]; then
-    if command -v perl >/dev/null 2>&1; then
-      perl -e 'setpgrp(0, 0); $SIG{TERM} = sub { }; $SIG{ALRM} = sub { kill("TERM", -$$); exit 142 }; alarm 2; system(@ARGV); exit($? >> 8)' sh -c "$_gs_script" sh "$HERE/library-git-safe.sh" "$CWD" "$STATE/.gs.$$.d" > "$_gf" 2>/dev/null || _rc=$?
-    else
-      sh -c "$_gs_script" sh "$HERE/library-git-safe.sh" "$CWD" "$STATE/.gs.$$.d" > "$_gf" 2>/dev/null || _rc=$?
-    fi
-  else _rc=1; fi
-  rm -rf "$STATE/.gs.$$.d"
+  if command -v perl >/dev/null 2>&1; then
+    GIT_OPTIONAL_LOCKS=0 perl -e 'alarm 2; exec @ARGV' git -C "$CWD" status --porcelain -b > "$_gf" 2>/dev/null || _rc=$?
+  else
+    GIT_OPTIONAL_LOCKS=0 git -C "$CWD" status --porcelain -b > "$_gf" 2>/dev/null || _rc=$?
+  fi
   GS="$(cat "$_gf" 2>/dev/null)"; rm -f "$_gf"
   [ "$_rc" -ne 142 ] || exit 0
   if [ "$_rc" -eq 0 ]; then
@@ -162,7 +154,7 @@ if [ -n "$CWD" ] && [ -d "$CWD" ]; then
     BRANCH="$(printf '%s\n' "$_l1" | sed 's/^## \(No commits yet on \)\{0,1\}//; s/\.\.\..*//; s/ \[.*//')"
     DIRTY="$(printf '%s\n' "$GS" | awk 'NR > 1 && NF { n++ } END { print n + 0 }')"
     case "$_l1" in *'...'*) case "$_l1" in *ahead*|*gone*) ;; *) PUSHED=1 ;; esac ;; esac
-    _top="$(gs_env -C "$CWD" rev-parse --show-toplevel 2>/dev/null)" || _top=""
+    _top="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null)" || _top=""
     # Harbor's handover moved to docs/how-to/; every other repo keeps a root HANDOFF.md (harbor#949).
     for _hf in docs/how-to/handover.md HANDOFF.md; do
       [ -n "$_top" ] && [ -f "$_top/$_hf" ] || continue

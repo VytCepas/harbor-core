@@ -64,7 +64,7 @@ install, and the run exits 1 so the skip is seen. Dry runs refuse the same way.
    outside `[A-Za-z0-9._/-]`), and any installed `.md` whose front matter is not canonical: a BOM or an opener other than exactly `---`, no closing `---`, or a
    top-level line that is not `key: value` with a key in [pack-frontmatter-keys.txt](./pack-frontmatter-keys.txt) (never `hooks`);
    the leak gate also reads tracked files a `.gitignore` matches;
-2. an inject pack with `run:` or `spoke:` (it could deny or run a script, [inject.md](./injection-rule.md)), a nested one, or a non-`.md` file in `context-rules/user/`, or any other `context-rules/<scope>/`;
+2. an inject pack with `run:` (it could deny, [inject.md](./injection-rule.md)), a nested one, or a non-`.md` file in `context-rules/user/`, or any other `context-rules/<scope>/`;
 3. a `bin/` name equal to a core `bin/` file (with or without `.sh`, any case) or a `harbor` verb; a skill named like a core skill;
    a `skill-packs/` entry that is not [a pack for a core skill](#adding-packs-to-a-core-skill);
 4. a dirty checkout (any change or untracked file under `harbor-pack/`) or an unpinned one (no git, or no commit);
